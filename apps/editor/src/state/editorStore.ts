@@ -33,15 +33,23 @@ export function poseTitel(dok: Dokument, m: Modus): string {
   return dok.posen.find((p) => p.id === m)?.name ?? POSE_TITEL[m] ?? m;
 }
 
+/**
+ * Ein Undo-Schritt (B7, Entwurf Posen §5): das Dokument davor (im Verlauf) bzw. danach (in der Zukunft), das Ziel, in dem
+ * der Schritt geschah, und sein Name. Undo und Redo wechseln dorthin, wo der Schritt geschah („↶ Fressen: Form“).
+ */
+export type Schritt = { dok: Dokument; ziel: Modus; name: string };
+
 type EditorState = {
   dok: Dokument;
   /** Datei in der Bibliothek, null = noch nie gespeichert */
   datei: string | null;
   geaendert: boolean;
   modus: Modus;
-  verlauf: Dokument[];
-  zukunft: Dokument[];
+  verlauf: Schritt[];
+  zukunft: Schritt[];
   gesteStart: Dokument | null;
+  /** Ziel beim Gestenbeginn (der Undo-Schritt gehört dorthin) */
+  gesteZiel: Modus | null;
 
   beginGeste(): void;
   endeGeste(): void;
@@ -146,6 +154,59 @@ function nurPose(alt: Dokument, neu: Dokument): boolean {
   return gleichAusser(alt.ausstattung, neu.ausstattung, ['maulOptionen']);
 }
 
+const BLATT_NAME: Record<string, string> = { seite: 'Seite', front: 'Front', top: 'Top' };
+
+/** Teil einer Pose, der sich geändert hat (Form, Knochen, Rot/Blau, Haps, Name, Spiel-Pose). */
+function poseAenderung(a: Pose, b: Pose): string {
+  if (a.form !== b.form || a.bezug !== b.bezug || a.formAlt !== b.formAlt) return 'Form';
+  if (a.stellung !== b.stellung) return 'Knochen';
+  if (a.linien !== b.linien) return 'Rot/Blau';
+  if (a.saat !== b.saat) return 'Haps';
+  if (a.name !== b.name) return `Name „${b.name}“`;
+  if (a.spiel !== b.spiel) return b.spiel ? 'Spiel-Pose an' : 'Spiel-Pose aus';
+  return 'Pose';
+}
+
+/**
+ * Name eines Undo-Schritts aus dem Unterschied zweier Dokumente (B7): was sich geändert hat, bei einer anderen Pose als
+ * dem Ziel mit ihrem Namen davor („Idle · Form“).
+ */
+export function schrittName(alt: Dokument, neu: Dokument, ziel: Modus): string {
+  if (alt.posen !== neu.posen) {
+    const altIds = new Map(alt.posen.map((p) => [p.id, p]));
+    const neuIds = new Map(neu.posen.map((p) => [p.id, p]));
+    for (const p of neu.posen) if (!altIds.has(p.id)) return `Pose „${p.name}“ neu`;
+    for (const p of alt.posen) if (!neuIds.has(p.id)) return `Pose „${p.name}“ gelöscht`;
+    if (alt.posen.some((p, i) => neu.posen[i]?.id !== p.id)) return 'Posen umsortiert';
+    for (const p of neu.posen) {
+      const a = altIds.get(p.id)!;
+      if (a === p) continue;
+      const was = poseAenderung(a, p);
+      return p.id === ziel ? was : `${p.name} · ${was}`;
+    }
+  }
+  for (const a of ['seite', 'front', 'top'] as const) if (alt.profile[a] !== neu.profile[a]) return `Umriss ${BLATT_NAME[a]}`;
+  if (alt.kaefig?.deltas !== neu.kaefig?.deltas) return 'Pinsel';
+  if (alt.maul !== neu.maul) return 'Maullinie';
+  if (alt.zaehne !== neu.zaehne) return 'Zähne';
+  if (alt.spanten !== neu.spanten || alt.hauptspant !== neu.hauptspant) return 'Spanten';
+  if (alt.kanten !== neu.kanten) return 'Kanten';
+  if (alt.ausstattung !== neu.ausstattung) {
+    const a = alt.ausstattung ?? {};
+    const b = neu.ausstattung ?? {};
+    if (a.maulOptionen !== b.maulOptionen) return 'Rig';
+    if (a.augen !== b.augen) return 'Augen';
+    return 'Ausstattung';
+  }
+  if (alt.wirbelsaeule !== neu.wirbelsaeule) return 'Wirbelsäule';
+  if (alt.skalierung !== neu.skalierung) return 'Größe';
+  if (alt.name !== neu.name) return 'Name';
+  return 'Änderung';
+}
+
+/** Gibt es das Ziel im Dokument? (Editor immer; eine Pose nur, wenn sie in der Liste steht) */
+const zielDa = (dok: Dokument, m: Modus) => m === 'editor' || dok.posen.some((p) => p.id === m);
+
 let letzterPoseHinweis = 0;
 function poseHinweis(): void {
   const t = Date.now();
@@ -165,7 +226,17 @@ export const useEditor = create<EditorState>((set, get) => {
       return;
     }
     if (gesteStart) set({ dok: neu, geaendert: true });
-    else set({ dok: neu, geaendert: true, verlauf: [...verlauf, dok].slice(-MAX_VERLAUF), zukunft: [] });
+    else set({ dok: neu, geaendert: true, verlauf: [...verlauf, { dok, ziel: modus, name: schrittName(dok, neu, modus) }].slice(-MAX_VERLAUF), zukunft: [] });
+  };
+
+  /**
+   * Nach Undo/Redo dorthin wechseln, wo der Schritt geschah (B7), samt Hinweis. Gibt es das Ziel im wiederhergestellten
+   * Dokument nicht (mehr), bleibt der Editor-Tab.
+   */
+  const zumSchritt = (s: Schritt, pfeil: string) => {
+    const ziel = zielDa(get().dok, s.ziel) ? s.ziel : 'editor';
+    if (ziel !== get().modus) get().setzeZiel(ziel);
+    useUi.getState().zeigeHinweis(`${pfeil} ${poseTitel(get().dok, ziel)}: ${s.name}`);
   };
 
   return {
@@ -176,22 +247,24 @@ export const useEditor = create<EditorState>((set, get) => {
     verlauf: [],
     zukunft: [],
     gesteStart: null,
+    gesteZiel: null,
 
     beginGeste() {
-      if (!get().gesteStart) set({ gesteStart: get().dok });
+      if (!get().gesteStart) set({ gesteStart: get().dok, gesteZiel: get().modus });
     },
     endeGeste() {
       const start = get().gesteStart;
       if (!start) return;
       const abschliessen = () => {
-        const { gesteStart, verlauf } = get();
+        const { gesteStart, verlauf, gesteZiel, modus } = get();
         if (!gesteStart) return;
         // nach einer Formgeste: Kanten auf die neue Fläche legen (gehört zum selben Undo-Schritt)
         const jetzt = get().dok;
         const formNeu = gesteStart.profile !== jetzt.profile || gesteStart.spanten !== jetzt.spanten || gesteStart.hauptspant !== jetzt.hauptspant;
         const dok = formNeu ? kantenAnFlaeche(jetzt) : jetzt;
-        if (gesteStart !== dok) set({ dok, gesteStart: null, verlauf: [...verlauf, gesteStart].slice(-MAX_VERLAUF), zukunft: [] });
-        else set({ gesteStart: null });
+        const ziel = gesteZiel ?? modus;
+        if (gesteStart !== dok) set({ dok, gesteStart: null, gesteZiel: null, verlauf: [...verlauf, { dok: gesteStart, ziel, name: schrittName(gesteStart, dok, ziel) }].slice(-MAX_VERLAUF), zukunft: [] });
+        else set({ gesteStart: null, gesteZiel: null });
       };
       if (gesteEndeHaken && gesteEndeHaken(start, get().dok, abschliessen)) return;
       abschliessen();
@@ -283,26 +356,28 @@ export const useEditor = create<EditorState>((set, get) => {
     },
     rueckgaengig() {
       const { verlauf, zukunft, dok } = get();
-      const vorher = verlauf[verlauf.length - 1];
-      if (!vorher) return;
-      set({ dok: vorher, verlauf: verlauf.slice(0, -1), zukunft: [dok, ...zukunft], geaendert: true, gesteStart: null });
+      const s = verlauf[verlauf.length - 1];
+      if (!s) return;
+      set({ dok: s.dok, verlauf: verlauf.slice(0, -1), zukunft: [{ dok, ziel: s.ziel, name: s.name }, ...zukunft], geaendert: true, gesteStart: null, gesteZiel: null });
+      zumSchritt(s, '↶');
     },
     wiederholen() {
       const { verlauf, zukunft, dok } = get();
-      const nach = zukunft[0];
-      if (!nach) return;
-      set({ dok: nach, verlauf: [...verlauf, dok], zukunft: zukunft.slice(1), geaendert: true, gesteStart: null });
+      const s = zukunft[0];
+      if (!s) return;
+      set({ dok: s.dok, verlauf: [...verlauf, { dok, ziel: s.ziel, name: s.name }], zukunft: zukunft.slice(1), geaendert: true, gesteStart: null, gesteZiel: null });
+      zumSchritt(s, '↷');
     },
     neu() {
       // Jedes neue Wesen startet als Kugel aus drei Kreisen (Florian, 11.10.2026); Grundform ohne Vorschau (B1)
       useUi.getState().setzeOeffnung(0);
       useUi.getState().setzePoseStaerke(1);
-      set({ dok: neuesDokument(), datei: null, geaendert: false, verlauf: [], zukunft: [], gesteStart: null, modus: 'editor' });
+      set({ dok: neuesDokument(), datei: null, geaendert: false, verlauf: [], zukunft: [], gesteStart: null, gesteZiel: null, modus: 'editor' });
     },
     laden(dok, datei) {
       useUi.getState().setzeOeffnung(0);
       useUi.getState().setzePoseStaerke(1);
-      set({ dok: maulFrei() ? dok : maulImUmrissSichern(dok), datei, geaendert: false, verlauf: [], zukunft: [], gesteStart: null, modus: 'editor' });
+      set({ dok: maulFrei() ? dok : maulImUmrissSichern(dok), datei, geaendert: false, verlauf: [], zukunft: [], gesteStart: null, gesteZiel: null, modus: 'editor' });
     },
     gespeichert(datei) {
       set({ datei, geaendert: false });
