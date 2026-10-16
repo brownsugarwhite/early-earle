@@ -1,6 +1,7 @@
 // Kanten auf der Fläche (Versuch 12.10. mittags): Projektion je Blickrichtung, Sichtbarkeit, Folgen der Form.
 import { type Dokument, bewegeKnoten, neuesDokument } from '@ee/shape';
 import { describe, expect, it } from 'vitest';
+import { useUi } from '../state/uiStore';
 import { kantenAnFlaeche, kantenPunkt, kantenPunktStetig, sichtbar } from './kantenFlaeche';
 
 const R = 0.265;
@@ -37,7 +38,8 @@ describe('Kanten auf der Fläche', () => {
     expect(abstandZurKugel(neu)).toBeLessThan(0.01);
   });
 
-  it('folgt der Form: Kugel nach vorn gezogen, die Kante liegt wieder auf der Fläche', () => {
+  it('folgt der Form: Kugel nach vorn gezogen, die Kante liegt wieder auf der Fläche (Versuchs-Bauweise)', () => {
+    useUi.setState({ bauweise: 'bisher' });
     const p = kantenPunkt(dok, 'seite', { x: -0.15, y: R })!;
     const mitKante: Dokument = { ...dok, kanten: [{ knoten: [p, kantenPunkt(dok, 'seite', { x: -0.05, y: R })!].map((q) => ({ p: q, ein: [0, 0, 0] as [number, number, number], aus: [0, 0, 0] as [number, number, number], art: 'glatt' as const })), haerte: [1, 1], blick: 'seite' }] };
     // Vorderpunkt der Seite (Knoten 3 = links) 0,08 nach vorn: Die Flanke vorn wird breiter
@@ -49,5 +51,14 @@ describe('Kanten auf der Fläche', () => {
     expect(q[1]).toBeCloseTo(p[1], 6);
     const wieder = kantenPunkt(breiter, 'seite', { x: q[0], y: q[1] })!;
     expect(Math.abs(wieder[2] - q[2])).toBeLessThan(1e-6);
+    useUi.setState({ bauweise: 'kern' });
+  });
+
+  it('Bauweise Kern: keine versteckten Schreibvorgänge (der Worker legt die Linie auf die Haut)', () => {
+    useUi.setState({ bauweise: 'kern' });
+    const p = kantenPunkt(dok, 'seite', { x: -0.15, y: R })!;
+    const mitKante: Dokument = { ...dok, kanten: [{ knoten: [p, kantenPunkt(dok, 'seite', { x: -0.05, y: R })!].map((q) => ({ p: q, ein: [0, 0, 0] as [number, number, number], aus: [0, 0, 0] as [number, number, number], art: 'glatt' as const })), haerte: [1, 1], blick: 'seite' }] };
+    const breiter: Dokument = { ...mitKante, profile: { ...mitKante.profile, seite: bewegeKnoten(mitKante.profile.seite, 3, { x: -R - 0.08, y: R }) } };
+    expect(kantenAnFlaeche(breiter)).toBe(breiter);
   });
 });

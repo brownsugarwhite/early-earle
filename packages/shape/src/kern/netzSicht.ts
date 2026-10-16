@@ -24,11 +24,17 @@ const jetzt = () => (uhr ? uhr.now() : Date.now());
 /** Sichtbarkeit je Probe als Bits */
 export const SICHT = { seite: 1, front: 2, hinten: 4, top: 8, unten: 16 } as const;
 export type Blick5 = keyof typeof SICHT;
+/**
+ * Bit für Konturproben: Die Probe liegt auf dem äußeren Umriss ihrer eigenen Ansicht (gleich daneben trifft der Strahl
+ * nichts mehr). Nur diese Stücke sind „die Linie der Zeichnung“ in 3D; die übrigen Konturstücke liegen innen (Beulen,
+ * Verdecktes wie der Bauch unter dem Kopf im Top).
+ */
+export const RAND = 32;
 
 export type NetzZugArt = 'kontur-seite' | 'kontur-front' | 'kontur-top' | 'linie' | 'maul' | 'reifen' | 'falte';
 
 export type NetzZug = {
-  /** Kennung (z. B. „k:2“ = Kantenlinie 2, „m:oben“, „r:1“, „f:7“, „kt:3“ = Top-Kontur 3) */
+  /** Kennung (z. B. „l:2“ = Kantenlinie 2, „l:2s“ = ihr Spiegelbild, „m:oben“, „r:1“, „f:7“, „kt:3“ = Top-Kontur 3) */
   id: string;
   art: NetzZugArt;
   /** Proben (x, y, z) in Profil-Einheiten */
@@ -390,8 +396,21 @@ export function netzSicht(e: NetzSichtEingabe): NetzSicht {
         const nn = zug.normalen[i]!;
         return [nn[0] * aussenW, nn[1] * aussenW, nn[2] * aussenW];
       };
-      zuege.push(zugAus(`k${a[0]}:${zi}`, `kontur-${a}`, zug.punkte, aussen));
-      for (const p of zug.punkte) konturPunkte[a].push(p);
+      const z = zugAus(`k${a[0]}:${zi}`, `kontur-${a}`, zug.punkte, aussen);
+      // äußerer Umriss der eigenen Ansicht: 1,5 px entlang der Hautnormalen (liegt in der Bildebene) trifft nichts mehr
+      const ra = r[a];
+      zug.punkte.forEach((p, i) => {
+        const nn = zug.normalen[i]!;
+        const d = 1.5 / PX;
+        const q: V3 = [p[0] + nn[0] * d, p[1] + nn[1] * d, p[2] + nn[2] * d];
+        const uv = a === 'seite' ? [q[0], q[1]] : a === 'front' ? [q[2], q[1]] : [q[0], q[2]];
+        if (!tiefenSpanne(ra, uv[0]!, uv[1]!)) z.sicht[i] = z.sicht[i]! | RAND;
+      });
+      zuege.push(z);
+      // Umrissknoten heben nur auf Stücke des äußeren Umrisses (innere Schleifen liegen in der Projektion oft näher)
+      zug.punkte.forEach((p, i) => {
+        if (z.sicht[i]! & RAND) konturPunkte[a].push(p);
+      });
     });
   }
   // 2. Umrissknoten als 3D-Punkte (gezeichnete Hälfte, dann gespiegelt bei Front/Top)
@@ -439,6 +458,8 @@ export function netzSicht(e: NetzSichtEingabe): NetzSicht {
       }
     });
     zuege.push(zugAus(`l:${ki}`, 'linie', proben, undefined, haerte, knoten));
+    // gespiegelte Hälfte (Linien gelten an z = 0 gespiegelt, wie die Maullinien); eine Linie auf der Mitte nur einmal
+    if (proben.some((p) => Math.abs(p[2]) > 1e-6)) zuege.push(zugAus(`l:${ki}s`, 'linie', proben.map((p) => [p[0], p[1], -p[2]] as V3), undefined, haerte, knoten));
   });
   // 4. Maullinien (liegen schon auf der Haut)
   const maul = dok.maul?.zu;

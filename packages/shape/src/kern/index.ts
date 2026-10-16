@@ -33,3 +33,4 @@ export * from './zaehne';
 export * from './zahnPruefung';
 export * from './augenHoehle';
 export * from './rundmaul';
+export * from './netzSicht';

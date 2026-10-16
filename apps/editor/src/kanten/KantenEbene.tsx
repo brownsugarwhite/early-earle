@@ -12,6 +12,8 @@ import { useEditor } from '../state/editorStore';
 import { blickVon, useUi } from '../state/uiStore';
 import { spantenAnKante } from '../rund/RundSpantEbene';
 import { haerteBei, kantenProben, kantenPunkt, kantenPunktStetig, sichtbar } from './kantenFlaeche';
+import { useNetzStand } from '../kern/netzStand';
+import { kantenKnotenLage, kantenKnotenSichtbar, kantenZug, naechsterImNetz, netzJetzt, sichtBit, zugPunkt } from '../netz/netzLage';
 
 const PUNKT_R = 5;
 const GRIFF = 6;
@@ -26,7 +28,8 @@ export const dunkel = (h: number) => {
   const v = Math.round(112 * (1 - h));
   return `rgb(${v},${v + 8},${v + 14})`;
 };
-const weiss = (h: number) => `rgba(255,255,255,${(0.5 + 0.5 * h).toFixed(2)})`;
+/** Grau → Weiß (gespiegelte Seite) */
+export const weiss = (h: number) => `rgba(255,255,255,${(0.5 + 0.5 * h).toFixed(2)})`;
 
 const spiegel = (p: V3T): V3T => [p[0], p[1], -p[2]];
 const prozent = (h: number) => `${Math.round(h * 100)} %`;
@@ -133,9 +136,12 @@ export function eckKantenVon(dok: Dokument): EckKante[] {
  */
 export function EckKantenZeichnung({ ansicht, bild, aktiv: aktivTab }: { ansicht: Ansicht; bild: (p: V2) => V2; aktiv: boolean }) {
   const dok = useEditor((s) => s.dok);
-  const kanten = eckKantenVon(dok);
   const blick = useUi((s) => blickVon(ansicht, s.blick));
   const sicht = useUi((s) => s.kantenSicht);
+  useNetzStand((s) => s.version);
+  // Bauweise Kern (S1): Ecken sind Falten im Käfig, das Liniennetz zeigt sie auf dem echten Körper (statt des alten Lofts)
+  if (netzJetzt()) return null;
+  const kanten = eckKantenVon(dok);
   const aktiv = aktivTab && sicht === 'zeigen';
   const eigene = kanten.map((e, i) => ({ e, i })).filter(({ e }) => e.quelle.ansicht !== ansicht);
   if (!eigene.length || sicht === 'aus') return null;
@@ -229,20 +235,35 @@ export function KantenZeichnung({ ansicht, bild, aktiv: aktivTab }: { ansicht: A
   const zeichnen = useUi((s) => s.kanteZeichnen);
   // beim Breitenwerkzeug zeigt der Kreis die Zahl
   const breite = useUi((s) => s.breitenAnzeige?.ansicht === ansicht);
+  // Bauweise Kern (S1): Linie und Knoten liegen auf dem echten Körper (Liniennetz des Workers); die Striche zeichnet die
+  // Netz-Ebene, hier bleiben Knoten, Griffe und Trefferflächen — an denselben 3D-Punkten wie in den anderen Ansichten
+  useNetzStand((s) => s.version);
+  const ns = netzJetzt();
   const kanten = sicht === 'aus' ? [] : (dok.kanten ?? []);
   if (!kanten.length && !zeichnen) return null;
   const zug = (pts: V2[]) => pts.map((q, i) => `${i ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`).join('');
+  const lage = (k: Kante, ki: number, i: number) => (ns ? kantenKnotenLage(k, ki, i, ns) : k.knoten[i]!.p);
   return (
     <g className={aktiv ? 'kanten aktiv' : 'kanten'} pointerEvents={aktiv ? 'auto' : 'none'} opacity={sicht === 'blass' ? 0.35 : 1}>
       {kanten.map((k, ki) => (
         <g key={ki} data-kante={ki} pointerEvents="none">
           {k.tiefe ? <TiefenHof k={k} ansicht={ansicht} bild={bild} /> : null}
-          {ansicht !== 'seite' && <StrichBild s={striche(dok, k, ansicht, blick, bild, true)} />}
-          <StrichBild s={striche(dok, k, ansicht, blick, bild, false)} />
+          {!kantenZug(k, ki, ns) && ansicht !== 'seite' && <StrichBild s={striche(dok, k, ansicht, blick, bild, true)} />}
+          {!kantenZug(k, ki, ns) && <StrichBild s={striche(dok, k, ansicht, blick, bild, false)} />}
         </g>
       ))}
       {aktiv &&
         kanten.map((k, ki) => {
+          const nz = kantenZug(k, ki, ns);
+          if (nz) {
+            // Treffer auf dem Verlauf über die Haut (sichtbar zu mindestens der Hälfte)
+            const bit = sichtBit(blick);
+            const n = nz.sicht.length;
+            let sichtbarN = 0;
+            for (let j = 0; j < n; j++) if (nz.sicht[j]! & bit) sichtbarN++;
+            if (sichtbarN < n / 2) return null;
+            return <path key={`t${ki}`} data-kantenlinie={ki} d={zug(Array.from({ length: n }, (_, j) => bild(inAnsicht2(zugPunkt(nz, j), ansicht))))} fill="none" stroke="transparent" strokeWidth={12} />;
+          }
           const pts = proben(k);
           const sichtbarAnteil = pts.filter(({ p }) => sichtbar(dok, blick, p)).length / pts.length;
           if (sichtbarAnteil < 0.5) return null;
@@ -256,11 +277,12 @@ export function KantenZeichnung({ ansicht, bild, aktiv: aktivTab }: { ansicht: A
               {gewaehlt.map((i) => {
                 const kn = k.knoten[i];
                 if (!kn) return null;
-                const p = bild(inAnsicht2(kn.p, ansicht));
+                const kp = lage(k, ki, i);
+                const p = bild(inAnsicht2(kp, ansicht));
                 return (['ein', 'aus'] as const).map((seite) => {
                   const rel = kn[seite];
                   if (Math.hypot(...rel) < 1e-6) return null;
-                  const q = bild(inAnsicht2([kn.p[0] + rel[0], kn.p[1] + rel[1], kn.p[2] + rel[2]], ansicht));
+                  const q = bild(inAnsicht2([kp[0] + rel[0], kp[1] + rel[1], kp[2] + rel[2]], ansicht));
                   return (
                     <g key={`${i}-${seite}`} data-kantengriff={`${ki}:${i}:${seite}`} className="griff">
                       <line x1={p.x} y1={p.y} x2={q.x} y2={q.y} stroke="var(--punkt)" strokeWidth={1} />
@@ -271,8 +293,8 @@ export function KantenZeichnung({ ansicht, bild, aktiv: aktivTab }: { ansicht: A
                 });
               })}
               {k.knoten.map((kn, i) => {
-                const q = bild(inAnsicht2(kn.p, ansicht));
-                const vis = sichtbar(dok, blick, kn.p);
+                const q = bild(inAnsicht2(lage(k, ki, i), ansicht));
+                const vis = (ns ? kantenKnotenSichtbar(k, ki, i, blick, ns) : null) ?? sichtbar(dok, blick, kn.p);
                 const sel = gewaehlt.includes(i);
                 // Härte als Zahl: an einzeln gewählten Punkten; ganze Linie gewählt: einmal in der Mitte
                 const ganz = gewaehlt.length === k.knoten.length && k.knoten.length > 2;
@@ -421,7 +443,7 @@ export function kantenZeiger(e: React.PointerEvent, ctx: KantenKontext): boolean
       if (!profilZiel) ui.zeigeHinweis('Breitenwerkzeug: an einer Kante oder Ecke ziehen');
       return !profilZiel;
     }
-    const t = naechsterInAnsicht(k, ctx.ansicht, q);
+    const t = naechsterImNetz(k, ki, ctx.ansicht, q) ?? naechsterInAnsicht(k, ctx.ansicht, q);
     if (!t) return true;
     let linie = k;
     let index = t.t < 0.12 ? t.segment : t.t > 0.88 ? t.segment + 1 : -1;
@@ -435,7 +457,8 @@ export function kantenZeiger(e: React.PointerEvent, ctx: KantenKontext): boolean
     ed.beginGeste();
     setzeKante(ki, linie);
     ui.setzeKantenAuswahl({ kante: ki, indizes: [index] });
-    const mitte = inAnsicht2(linie.knoten[index]!.p, ctx.ansicht);
+    // Bauweise Kern: der Kreis sitzt am gezeigten Punkt auf der Haut (das Netz hinkt beim neuen Knoten nach: gespeichert)
+    const mitte = inAnsicht2(linie === k ? kantenKnotenLage(k, ki, index) : linie.knoten[index]!.p, ctx.ansicht);
     breiteZiehen(e, ctx, mitte, linie.haerte[index] ?? 0, (h) => {
       const jetzt = kanten()[ki];
       if (jetzt) setzeKante(ki, { ...jetzt, haerte: jetzt.haerte.map((x, i) => (i === index ? h : x)) });
@@ -454,7 +477,7 @@ export function kantenZeiger(e: React.PointerEvent, ctx: KantenKontext): boolean
     if (!knotenEl && linieEl && (ui.werkzeug === 'stift' || ui.werkzeug === 'plus')) {
       const ki = Number(linieEl.getAttribute('data-kantenlinie'));
       const k = kanten()[ki];
-      const t = k ? naechsterInAnsicht(k, ctx.ansicht, q) : null;
+      const t = k ? (naechsterImNetz(k, ki, ctx.ansicht, q) ?? naechsterInAnsicht(k, ctx.ansicht, q)) : null;
       if (k && t) {
         const r = einfuegen3(k, t.segment, t.t);
         const haerte = k.haerte.slice();
@@ -515,6 +538,8 @@ export function kantenZeiger(e: React.PointerEvent, ctx: KantenKontext): boolean
     ui.setzeKantenAuswahl(sel.length ? { kante: ki, indizes: sel } : null);
     const basis = kanten()[ki];
     if (!basis || !sel.length) return true;
+    const netzBasis = netzJetzt();
+    const basisLagen = basis.knoten.map((kn, i) => (netzBasis ? kantenKnotenLage(basis, ki, i, netzBasis) : kn.p));
     const start = q;
     ed.beginGeste();
     ctx.ziehen(
@@ -525,9 +550,11 @@ export function kantenZeiger(e: React.PointerEvent, ctx: KantenKontext): boolean
         const dok = useEditor.getState().dok;
         const knoten = basis.knoten.map((kn, i) => {
           if (!sel.includes(i)) return kn;
-          const z2 = inAnsicht2(kn.p, ctx.ansicht);
+          // Bauweise Kern: vom gezeigten Punkt auf der Haut aus (in fremden Ansichten liegt er nicht am gespeicherten)
+          const alt = basisLagen[i]!;
+          const z2 = inAnsicht2(alt, ctx.ansicht);
           const ziel2 = { x: z2.x + d.x, y: z2.y + d.y };
-          const neu = kantenPunktStetig(dok, ctx.ansicht, ziel2, kn.p) ?? ausAnsicht2(kn.p, ctx.ansicht, ziel2);
+          const neu = kantenPunktStetig(dok, ctx.ansicht, ziel2, alt) ?? ausAnsicht2(alt, ctx.ansicht, ziel2);
           return { ...kn, p: neu };
         });
         setzeKante(ki, { ...basis, knoten });

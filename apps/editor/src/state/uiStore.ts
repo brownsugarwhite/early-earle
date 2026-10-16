@@ -111,6 +111,11 @@ type UiState = {
   kanteZeichnen: KanteZeichnen | null;
   breitenAnzeige: BreitenAnzeige | null;
   kantenSicht: KantenSicht;
+  /**
+   * Plan „Liniennetz, Zielform, Käfig“, S1: Stil des Liniennetzes in den Blättern (Vergleich für Florian): „ton“ = alle Linien
+   * in der Kurvenfarbe, „farbe“ = je Ursprungsansicht eine Farbe
+   */
+  netzStil: 'ton' | 'farbe';
   /** gewählter Spant (Index in dok.spanten) und seine gewählten Punkte; bearbeitet in Front bzw. Back */
   spantAuswahl: SpantAuswahl | null;
   /** Versuch 13.10. nachmittags: gewählter Spant der Bauweise „rund“ (Index in dok.rundSpanten) und seine Punkte */
@@ -233,6 +238,7 @@ export const useUi = create<UiState>((set, get) => ({
   kanteZeichnen: null,
   breitenAnzeige: null,
   kantenSicht: 'zeigen',
+  netzStil: 'ton',
   zebra: false,
   // Phase 1 / M3 (14.10. nachts): der Käfig-Kern ist die Bauweise des Editors; die Versuche bleiben als Tabs zum Vergleichen
   bauweise: 'kern',

@@ -56,6 +56,7 @@ import { RundZeichnung } from '../rund/RundEbene';
 import { RundSpantLinien, RundSpantSchnitt, rundSpantZeiger } from '../rund/RundSpantEbene';
 import { istTrackpad, radFaktor, spiegeln2, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
 import { aktuellesNetz, useKernAnzeige } from '../kern/kernBau';
+import { NetzKnotenZeichnung, NetzZeichnung } from '../netz/NetzEbene';
 
 /** Saum ab dieser Abweichung (px bei 461 px je Kachel; Plan 9.8) */
 const SAUM_AB = 2;
@@ -546,6 +547,8 @@ export function View2D({ ansicht, w, h }: Props) {
         const b = bild({ x: ueber.bild.x1, y: ueber.bild.y1 });
         return <image href={ueber.bild.url} x={Math.min(a.x, b.x)} y={Math.min(a.y, b.y)} width={Math.abs(b.x - a.x)} height={Math.abs(b.y - a.y)} preserveAspectRatio="none" pointerEvents="none" />;
       })()}
+      {/* S1: das 3D-Liniennetz (Bauweise Kern, Grundform) unter der schwarzen Linie */}
+      <NetzZeichnung ansicht={ansicht} bild={bild} />
       {offen ? (
         <g className="offener-umriss" data-offener-umriss={offen.length}>
           {/* geschlossene Grundform blass dahinter, davor der Umriss des geöffneten Körpers */}
@@ -606,6 +609,7 @@ export function View2D({ ansicht, w, h }: Props) {
           </g>
         );
       })}
+      <NetzKnotenZeichnung ansicht={ansicht} bild={bild} />
       {ueber?.linien?.map((l, i) => (
         <path
           key={`l${i}`}

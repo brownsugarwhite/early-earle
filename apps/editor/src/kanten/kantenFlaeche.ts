@@ -5,6 +5,14 @@
 import type { Ansicht, Blick, Dokument, Kante, V2, V3T } from '@ee/shape';
 import { inAnsicht2, naechsterFlaechenpunkt, punktAuf3, segmente3, tiefeIn, treffer } from '@ee/shape/versuch';
 import { strahlen } from '../maul/maulFlaeche';
+import { kernRaster } from '../netz/netzRaster';
+import { useUi } from '../state/uiStore';
+
+/**
+ * Raster der Fläche, auf der die Linien liegen: in der Bauweise Kern der echte Körper (S1, `kernRaster`), sonst die
+ * Versuchsfläche S0.
+ */
+const raster = (dok: Dokument): Record<Ansicht, ReturnType<typeof strahlen>[Ansicht]> => kernRaster() ?? strahlen(dok);
 
 /** Raster-Ansicht einer Blickrichtung (Back nutzt das Front-Raster, Bottom das Top-Raster). */
 export const ansichtVon = (b: Blick): Ansicht => (b === 'hinten' ? 'front' : b === 'unten' ? 'top' : b);
@@ -12,7 +20,7 @@ const vonHinten = (b: Blick) => b === 'hinten' || b === 'unten';
 
 /** Punkt auf der Fläche, die man aus dieser Blickrichtung unter q sieht; außerhalb des Umrisses der nächste Flächenpunkt. */
 export function kantenPunkt(dok: Dokument, blick: Blick, q: V2): V3T | null {
-  const r = strahlen(dok)[ansichtVon(blick)];
+  const r = raster(dok)[ansichtVon(blick)];
   const hs = treffer(r, q);
   const h = hs.length ? (vonHinten(blick) ? hs[hs.length - 1]! : hs[0]!) : naechsterFlaechenpunkt(r, q);
   return h ? [h.p[0], h.p[1], h.p[2]] : null;
@@ -23,14 +31,14 @@ export function kantenPunkt(dok: Dokument, blick: Blick, q: V2): V3T | null {
  * demselben Teil der Fläche, in jeder Ansicht (wie Blenders „Face Project“ beim Verschieben).
  */
 export function kantenPunktStetig(dok: Dokument, ansicht: Ansicht, q: V2, alt: V3T): V3T | null {
-  const h = naechsterFlaechenpunkt(strahlen(dok)[ansicht], q, tiefeIn(alt, ansicht));
+  const h = naechsterFlaechenpunkt(raster(dok)[ansicht], q, tiefeIn(alt, ansicht));
   return h ? [h.p[0], h.p[1], h.p[2]] : null;
 }
 
 /** Sieht man p aus dieser Blickrichtung? Außerhalb des Umrisses: ja (die Linie liegt dann am Rand). */
 export function sichtbar(dok: Dokument, blick: Blick, p: V3T, toleranz = 0.012): boolean {
   const a = ansichtVon(blick);
-  const hs = treffer(strahlen(dok)[a], inAnsicht2(p, a));
+  const hs = treffer(raster(dok)[a], inAnsicht2(p, a));
   if (!hs.length) return true;
   const h = vonHinten(blick) ? hs[hs.length - 1]! : hs[0]!;
   return Math.abs(tiefeIn(p, a) - h.tiefe) < toleranz;
@@ -65,6 +73,9 @@ export function haerteBei(k: Kante, s: number, t: number): number {
  */
 export function kantenAnFlaeche(dok: Dokument): Dokument {
   if (!dok.kanten?.length) return dok;
+  // Bauweise Kern (S1): keine versteckten Schreibvorgänge — die Linie gilt in ihrer Zeichenansicht, die Tiefe ist nur ein
+  // Hinweis; der Worker legt sie bei jedem Bau neu auf die Haut (Liniennetz)
+  if (useUi.getState().bauweise === 'kern') return dok;
   let geaendert = false;
   const kanten = dok.kanten.map((k) => {
     const a = ansichtVon(k.blick);

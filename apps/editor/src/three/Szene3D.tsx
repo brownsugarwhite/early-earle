@@ -180,6 +180,8 @@ export function Szene3D() {
           if (aus) return;
           const s = d.skalierung;
           if (s !== 1) for (let i = 0; i < t.positionen.length; i++) t.positionen[i]! *= s;
+          // Ruhelage wie die Lagen in Welt (Kantenlinien legen ihre Knoten darauf, S1), in jedem Zweig
+          if (t.ruhe && s !== 1) for (let i = 0; i < t.ruhe.length; i++) t.ruhe[i]! *= s;
           if (t.kaefigLinien) {
             if (s !== 1) for (let i = 0; i < t.kaefigLinien.length; i++) t.kaefigLinien[i]! *= s;
             r.setzeLinien(t.kaefigLinien, t.kaefigFarben ?? undefined);
@@ -191,7 +193,6 @@ export function Szene3D() {
             r.setzePalette(PALETTEN[useKernAnzeige.getState().palette] ?? PALETTEN.tiger!);
             const sk = (p: [number, number, number]): [number, number, number] => [p[0] * s, p[1] * s, p[2] * s];
             const gesicht = t.gesicht ? { ...t.gesicht, nase: sk(t.gesicht.nase), philtrumA: sk(t.gesicht.philtrumA), philtrumB: sk(t.gesicht.philtrumB), radius: t.gesicht.radius * s, hoehe: t.gesicht.hoehe * s, breite: t.gesicht.breite * s } : null;
-            if (t.ruhe && s !== 1) for (let i = 0; i < t.ruhe.length; i++) t.ruhe[i]! *= s;
             r.setzeFell(t.stil === 'fell' ? 0.45 : 0, 0.055);
             r.setzeWesen(t.positionen, t.normalen, t.deskriptoren, t.hoehe * s, augen, t.lippenBand * s, t.ruhe, gesicht, t.atlas);
             // Phase 2 M5: eigene Augenfarbe der Ausstattung überschreibt die Palette
