@@ -52,8 +52,9 @@ export function KieferZeichnung({ ansicht, bild, w, h }: { ansicht: Ansicht; bil
   const skal = useEditor((s) => s.dok.skalierung);
   const m = ansicht === 'seite' ? aktuellesRig() : null;
   if (!m) return null;
-  // Netz-Koordinaten sind Welt (wie der Saum), `bild` erwartet Profil-Einheiten
-  const B = (p: V2) => bild({ x: p.x / skal, y: p.y / skal });
+  // Kern-Koordinaten sind Profil-Einheiten (S1, 16.10.; vorher als Welt ÷ Maßstab gelesen, falsch bei Größe ≠ 100 %)
+  void skal;
+  const B = (p: V2) => bild({ x: p.x, y: p.y });
   const { rig, laenge: L } = m;
   const G = B(rig.gelenk);
   const W = B(rig.mundwinkel);
@@ -154,11 +155,8 @@ export function kieferZeiger(e: React.PointerEvent, ctx: Ebene2DKontext): boolea
   const art = el.getAttribute('data-kiefergriff') as KieferGriff;
   e.preventDefault();
   e.stopPropagation();
-  const skal = useEditor.getState().dok.skalierung;
-  const welt = (ev: { clientX: number; clientY: number }): V2 => {
-    const q = ctx.lokal(ev.clientX, ev.clientY);
-    return { x: q.x * skal, y: q.y * skal };
-  };
+  // Zeigerlage in Kern-Koordinaten = Profil-Einheiten (S1, 16.10.)
+  const welt = (ev: { clientX: number; clientY: number }): V2 => ctx.lokal(ev.clientX, ev.clientY);
   // Knochen greifen bearbeitet die Fressen-Pose bei voller Öffnung (wie der Pinsel in der Pose)
   // Knochen gehören zur Fressen-Pose (B1): im Editor-Tab erst in den Fressen-Tab wechseln, statt still die Öffnung zu setzen
   // B3: Knochen gehören zur Pose im Tab (Stellung je Pose); sie wird dafür ganz gezeigt (im Editor-Tab: Fressen)

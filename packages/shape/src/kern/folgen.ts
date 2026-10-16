@@ -347,7 +347,9 @@ export type FolgenErgebnis = { profile: Dokument['profile']; spanten: Dokument['
  * Formen folgen: Profile an die Silhouette des gebauten Körpers (mit Deltas) anpassen, dann die Deltas gegen den
  * sauberen Käfig aus den neuen Profilen nachführen. Der Körper bleibt bitgenau, die schwarzen Linien liegen auf ihm.
  */
-export function formenFolgen(dok: Dokument, plan: Partial<Bauplan>, stand: WesenStand | null, einfuegenAbPx = Infinity): FolgenErgebnis {
+export function formenFolgen(dokEingabe: Dokument, plan: Partial<Bauplan>, stand: WesenStand | null, einfuegenAbPx = Infinity): FolgenErgebnis {
+  // Kern in Profil-Einheiten wie `wesenBauen` (S1, 16.10.): der Maßstab gilt nur für die Anzeige
+  const dok = dokEingabe.skalierung === 1 ? dokEingabe : { ...dokEingabe, skalierung: 1 };
   const deltas = dok.kaefig?.deltas ?? [];
   const r1 = wesenBauen(dok, plan, stand, false);
   const abl = r1.stand.abl;

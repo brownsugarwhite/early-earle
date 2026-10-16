@@ -48,7 +48,9 @@ export function PoseLinieZeichnung({ ansicht, bild, skal, aktiv }: { ansicht: An
   const blatt = blattVon(ansicht);
   if (!ps || !blatt || ps.umriss.length < 6) return null;
   const [a0, a1] = ACHSEN[blatt];
-  const B = (x: number, y: number) => bild({ x: x / skal, y: y / skal });
+  // Kern in Profil-Einheiten (S1, 16.10.): `bild` nimmt sie direkt (vorher ÷ Maßstab, falsch bei Größe ≠ 100 %)
+  void skal;
+  const B = (x: number, y: number) => bild({ x, y });
   let d = '';
   for (let k = 0; k < ps.umriss.length; k += 2) {
     const q = B(ps.umriss[k]!, ps.umriss[k + 1]!);
@@ -84,11 +86,8 @@ export function poseLinieZeiger(e: React.PointerEvent, ctx: Kontext): boolean {
   const b = n?.netz.pose;
   const tr = n?.netz.treffer;
   if (!n || !ps || !b || !tr) return false;
-  const skal = useEditor.getState().dok.skalierung;
-  const kern = (cx: number, cy: number): V2 => {
-    const q = ctx.lokal(cx, cy);
-    return { x: q.x * skal, y: q.y * skal };
-  };
+  // Zeigerlage in Kern-Koordinaten = Profil-Einheiten (S1, 16.10.)
+  const kern = (cx: number, cy: number): V2 => ctx.lokal(cx, cy);
   const p0 = kern(e.clientX, e.clientY);
   // Fangweiten in Kern-Einheiten (Pixel des Blatts)
   const px = Math.hypot(kern(e.clientX + 10, e.clientY).x - p0.x, kern(e.clientX, e.clientY + 10).y - p0.y) / Math.SQRT2 / 10;

@@ -130,7 +130,8 @@ export function View2D({ ansicht, w, h }: Props) {
         offen = false;
         continue;
       }
-      const q = zuBild(view, w, h, spiegeln2(blick, { x, y: saum[i + 1]! }));
+      // Kern in Profil-Einheiten (S1, 16.10.): × Maßstab wie die Kurven
+      const q = zuBild(view, w, h, spiegeln2(blick, { x: x * skal, y: saum[i + 1]! * skal }));
       d += `${offen ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
       offen = true;
     }
@@ -149,7 +150,7 @@ export function View2D({ ansicht, w, h }: Props) {
         offen = false;
         continue;
       }
-      const q = zuBild(view, w, h, spiegeln2(blick, { x, y: widerspruch[i + 1]! }));
+      const q = zuBild(view, w, h, spiegeln2(blick, { x: x * skal, y: widerspruch[i + 1]! * skal }));
       d += `${offen ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
       offen = true;
     }
@@ -170,7 +171,7 @@ export function View2D({ ansicht, w, h }: Props) {
         continue;
       }
       const seite = (ansicht === 'front' ? x : y) >= 0 ? 'eigen' : 'spiegel';
-      const q = zuBild(view, w, h, spiegeln2(blick, { x, y }));
+      const q = zuBild(view, w, h, spiegeln2(blick, { x: x * skal, y: y * skal }));
       out[seite] += `${offen === seite ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
       offen = seite;
     }

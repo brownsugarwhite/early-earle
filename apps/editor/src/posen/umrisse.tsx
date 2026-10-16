@@ -14,10 +14,12 @@ export function UmrisseZeichnung({ ansicht, bild, skal }: { ansicht: Ansicht; bi
   if (ebene !== 'posen' || (ansicht !== 'seite' && ansicht !== 'front' && ansicht !== 'top')) return null;
   const liste = aktuellesNetz()?.netz.umrisse;
   if (!liste?.length) return null;
+  void skal;
   const pfad = (u: Float32Array) => {
     let d = '';
     for (let k = 0; k + 1 < u.length; k += 2) {
-      const q = bild({ x: u[k]! / skal, y: u[k + 1]! / skal });
+      // Kern in Profil-Einheiten (S1, 16.10.): `bild` nimmt sie direkt
+      const q = bild({ x: u[k]!, y: u[k + 1]! });
       d += `${k ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
     }
     return d ? `${d}Z` : '';

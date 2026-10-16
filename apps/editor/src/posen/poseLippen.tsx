@@ -40,7 +40,9 @@ const farbe = (l: PoseLippen, n: KettenName) => (l.zu ? FARBE.tuerkis : n === 'o
 export function PoseLippenZeichnung({ ansicht, bild, aktiv, l }: { ansicht: Ansicht; bild: (p: V2) => V2; aktiv: boolean; l: PoseLippen }) {
   const auswahl = useUi((s) => s.maulAuswahl);
   const skal = useEditor((s) => s.dok.skalierung);
-  const B = (p: readonly number[]) => bild(inAnsicht2([p[0]! / skal, p[1]! / skal, p[2]! / skal], ansicht));
+  // Kern in Profil-Einheiten (S1, 16.10.)
+  void skal;
+  const B = (p: readonly number[]) => bild(inAnsicht2([p[0]!, p[1]!, p[2]!], ansicht));
   const pfad = (a: Float32Array) => {
     let d = '';
     for (let j = 0; j < a.length; j += 3) {
@@ -134,7 +136,8 @@ export function poseLippenZeiger(e: React.PointerEvent, ctx: Kontext): boolean {
   const ed = useEditor.getState();
   const skal = ed.dok.skalierung;
   const achsen = ANSICHT_ACHSEN[ctx.ansicht];
-  const kern = (q: V2): V2 => ({ x: q.x * skal, y: q.y * skal });
+  void skal;
+  const kern = (q: V2): V2 => q; // Kern in Profil-Einheiten (S1, 16.10.)
   const ziel = e.target as Element;
   const knotenEl = ziel.closest('[data-pose-maulknoten]');
   const griffEl = ziel.closest('[data-pose-maulgriff]');

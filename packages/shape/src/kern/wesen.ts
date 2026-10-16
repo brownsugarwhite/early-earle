@@ -848,7 +848,12 @@ function ableitOpt(dok: Dokument, plan: Partial<Bauplan>): Partial<AbleitOptione
   return { ...(g ? { stationen: g } : {}), ...(plan.fuehrend ? { fuehrend: plan.fuehrend } : {}), ...(plan.ring ? { ring: plan.ring } : {}) };
 }
 
-export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: WesenStand | null, schnell = false): { netz: WesenNetz; stand: WesenStand } {
+export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stand: WesenStand | null, schnell = false): { netz: WesenNetz; stand: WesenStand } {
+  // Einheiten (Plan „Liniennetz, Zielform, Käfig“, S1, 16.10.): Der Kern rechnet immer in Profil-Einheiten; der Maßstab
+  // (Größenregler) gilt nur für die Anzeige und das Spiel (× Maßstab im Editor). Vorher rechneten Leiter und Stationen in
+  // Profil-Einheiten, Naht, Breiten und Abweichung mit dem Maßstab — bei Größe ≠ 100 % ein gemischter Körper
+  // (Kugel bei 150 %: Front Δ 94 px). Bei 100 % bitgleich.
+  const dokRoh = dokEingabe.skalierung === 1 ? dokEingabe : { ...dokEingabe, skalierung: 1 };
   const plan: Bauplan = { ...BAUPLAN_STANDARD, ...planRoh };
   // Kasten des Prüfwesens (Tiger) nur, solange das Dokument keine eigenen Spanten hat: gezeichnete Spanten gewinnen (M3)
   const dok: Dokument = plan.kasten && !dokRoh.spanten?.length ? { ...dokRoh, spanten: kastenSpanten(dokRoh.profile.front, plan.kasten.fVorn, plan.kasten.fHinten, plan.kasten.fRund, plan.kasten.haerte) } : dokRoh;
