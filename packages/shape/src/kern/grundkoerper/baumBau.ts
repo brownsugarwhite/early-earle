@@ -63,9 +63,11 @@ export type BaumOptionen = AbleitOptionen & {
   feld?: Partial<FeldOptionen>;
   /** Gewicht der feinen Feldpunkte im Löser (Hebung `feld`) */
   feldGewicht: number;
+  /** dünne Kanten als Klinge: Ringe mit Halbbreite < klinge × halbe Sprossenlänge bekommen eine scharfe Naht (0 = rund) */
+  klinge: number;
 };
 
-export const BAUM_STANDARD: BaumOptionen = { ...ABLEIT_STANDARD, ...GLATTE_HAUT, fuelle: 'mittel', ansatzUebergang: 0.35, elternQuerschnitt: 'lappen', ansatz: 'kragen', kappeKante: 0.8, hebung: 'ringe', feldGewicht: 1 };
+export const BAUM_STANDARD: BaumOptionen = { ...ABLEIT_STANDARD, ...GLATTE_HAUT, fuelle: 'mittel', ansatzUebergang: 0.35, elternQuerschnitt: 'lappen', ansatz: 'kragen', kappeKante: 0.8, hebung: 'ringe', feldGewicht: 1, klinge: 0.4 };
 
 export type BaumAbleitung = {
   opt: BaumOptionen;
@@ -672,6 +674,38 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
       }
       if (ringe[s]!.spitzenEcke.anfang && topo[s]!.anfang.art === 'kappe') k.vSchaerfe[bk.kappe(s, 'anfang', c / 2, c / 2)] = opt.eckenSchaerfe;
       if (ringe[s]!.spitzenEcke.ende && topo[s]!.ende.art === 'kappe') k.vSchaerfe[bk.kappe(s, 'ende', c / 2, c / 2)] = opt.eckenSchaerfe;
+    });
+  }
+  // Dünne Kanten als Klinge: Ein Ring, dessen größte Halbbreite kleiner als `klinge` × halbe Sprossenlänge ist, ist eine
+  // schmale Linse. Zwischen zwei solchen Ringen wird die Naht (j = 0 und N/2) zur scharfen Kante, an einem dünnen Ende auch
+  // die Nahtspalte der Kappe. Rund faltete die Hinterkante der Fisch-Rückenflosse 22–26°, der Entenschwanz 53° (Kappe).
+  if (opt.klinge > 0) {
+    const scharf = (p: number, q: number) => {
+      const kante = kanteZwischen(k, p, q);
+      if (kante >= 0) k.eSchaerfe[kante] = opt.eckenSchaerfe;
+    };
+    e.streifen.forEach((st, s) => {
+      const N = st.N;
+      const c = N / 4;
+      const R = ringe[s]!.sprossen.length;
+      const duenn = ringe[s]!.sprossen.map((sp, i) => {
+        let W = 0;
+        for (let j = 1; j < N / 2; j++) if (bk.existiert(s, i, j)) W = Math.max(W, Math.abs(ziele[3 * bk.ring(s, i, j) + 2]!));
+        return W < opt.klinge * 0.5 * Math.hypot(sp.o.x - sp.u.x, sp.o.y - sp.u.y);
+      });
+      for (let i = 0; i + 1 < R; i++) {
+        if (!duenn[i] || !duenn[i + 1]) continue;
+        for (const j of [0, N / 2]) {
+          if (!bk.existiert(s, i, j) || !bk.existiert(s, i + 1, j)) continue;
+          const p = bk.ring(s, i, j);
+          const q = bk.ring(s, i + 1, j);
+          if (bk.naht[p] && bk.naht[q]) scharf(p, q);
+        }
+      }
+      for (const wo of ['anfang', 'ende'] as const) {
+        if ((wo === 'anfang' ? topo[s]!.anfang : topo[s]!.ende).art !== 'kappe' || !duenn[wo === 'anfang' ? 0 : R - 1]) continue;
+        for (let b = 0; b < c; b++) scharf(bk.kappe(s, wo, c / 2, b), bk.kappe(s, wo, c / 2, b + 1));
+      }
     });
   }
   const t3 = jetzt();

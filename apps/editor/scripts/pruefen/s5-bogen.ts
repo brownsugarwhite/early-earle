@@ -1,7 +1,8 @@
 // Plan „Liniennetz, Zielform, Käfig“ (16.10.), S5: Kontaktbogen Mittelebenen-Baum gegen S3 (glatt + Berühren mittel).
 // Je Körper zwei Zeilen: heute (eine Röhre) und Baum (Streifen der Seitenfläche). Umgebung: KOERPER (Komma-Liste), NAME,
 // OPT (JSON, Baum-Optionen), VARIANTEN (JSON {Name: Baum-Optionen}: statt „heute | Baum“ je Variante eine Zeile), NAH (1:
-// fünfte Kachel nah am ersten seitlichen Ansatz mit Zebrastreifen). Aus packages/shape:
+// fünfte Kachel nah am ersten seitlichen Ansatz mit Zebrastreifen; NAH_PUNKT "Körper:x,y,z,r;…" in px für eigene
+// Ausschnitte). Aus packages/shape:
 // npx vite-node ../../apps/editor/scripts/pruefen/s5-bogen.ts
 import { writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -51,7 +52,11 @@ for (const name of liste) {
       .filter((k) => z[k].kanten)
       .map((k) => `${{ frei: 'frei', ansatz: 'Ansatz', kappe: 'Kappe', kante: 'Kante', spitze: 'Spitze' }[k]} ${z[k].max.toFixed(0)}°/${z[k].ueber20}`)
       .join(', ');
-  if (process.env.NAH) {
+  if (process.env.NAH_PUNKT) {
+    // eigener Ausschnitt: "Name:x,y,z,r;Name:…" in px bei 461
+    const eintrag = process.env.NAH_PUNKT.split(';').map((t) => t.split(':')).find(([n]) => n === name);
+    if (eintrag) nah = eintrag[1]!.split(',').map((v) => Number(v) / 461);
+  } else if (process.env.NAH) {
     // Mitte des ersten seitlichen Ansatzes (Sehne), etwas zur Seite; Ausschnitt so groß wie die Sehne
     const e0 = baumAbleiten(dok, OPT).ebene;
     const an = e0.streifen.find((st) => st.ansatz?.art === 'seitlich')?.ansatz;

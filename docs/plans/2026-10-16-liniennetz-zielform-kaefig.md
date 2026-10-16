@@ -446,6 +446,13 @@ Käfigpunkt holt seine Tiefe dort ab, wo er in der Seite liegt.
   über seiner Fläche in der tragenden Ansicht (Top bzw. Front). Dort passt rundes Aufblasen (Linse), und es gibt keinen
   Front-Lappen, den es verlieren könnte.
 
+**Dünne Kanten als Klinge (16.10. nachts, Standard im Baum `klinge: 0.4`, umschaltbar):** Ein Ring, dessen größte Halbbreite
+kleiner als 0,4 × halbe Sprossenlänge ist, ist eine schmale Linse. Zwischen zwei solchen Ringen wird die Naht zur scharfen
+Kante, an einem dünnen Ende auch die Nahtspalte der Kappe. Entenschwanz-Kappe 53 → 4°, Fisch-Spitzen 118 → 33°, frei 21,9 →
+20,8°; Giraffe, S-Hals, Vase, Langhals, Drache und Überhang unverändert (keine dünnen Ringe). Vergleichsbild
+[`s5-reste-klinge-2026-10-16.jpg`](../progress/editor/s5-reste-klinge-2026-10-16.jpg). Vorschlag an Florian: Flossen,
+Schwänze und Flügel sind Klingen; „rund“ bleibt per Schalter.
+
 ### S6 Seitliche Teile: Flügel, Flossen, Beine, Ohren
 - Neu `kern/grundkoerper/seitenteil.ts` (Streifen im geneigten Rahmen: Naht = Top-Lappen, Mittelfläche aus der
   Front-Mittelachse, Linsen-Querschnitt, N = 8, flache Kappe) und `ansatz.ts` (Fenster als Rechteck im exakt verfeinerten
