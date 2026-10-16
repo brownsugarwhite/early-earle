@@ -18,14 +18,15 @@ import type { V2 } from '../bezier';
 import type { Dokument, GefroreneStationen } from '../dokument';
 import { type Kaefig, kanteZwischen } from '../kaefig/halbkanten';
 import { type Roehre, roehre } from '../kaefig/roehre';
-import { type AusgleichsLoeser, type Bedingung, type GrenzLoeser, ausgleichsLoeser, grenzLoeser, kaefigAusgleich, kaefigDurchZiele } from '../loeser/grenzflaeche';
+import { type AusgleichsLoeser, type Bedingung, type Glaettemass, type GrenzLoeser, ausgleichsLoeser, grenzLoeser, kaefigAusgleich, kaefigDurchZiele } from '../loeser/grenzflaeche';
+import { glaettungsZeilen, kaefigNachbarlisten } from '../loeser/normalSystem';
 import { punktAuf } from '../bezier';
 import { pfadAbtasten, segmente, vollerPfad } from '../profil';
 import { type SpantTeil, hatKieferSpanten, spantKasten, stelleVon, vorlageBei } from '../spanten';
 import { kanteAbtasten, kantenFalten } from './kanten';
 import { feinKette } from './reifen';
 import { type Unterteilung, unterteilung } from '../subdivision/catmullClark';
-import { anwenden3 } from '../subdivision/matrix';
+import { anwenden3, multiplizieren } from '../subdivision/matrix';
 import { type Leiter, WIRBEL_STANDARD, leiter } from '../versuch/wirbelsaeule';
 import { type Breiten, silhouettenBreite } from './breite';
 import { type Schlitz, schlitzIm, seiteFuerLeiter } from './schlitz';
@@ -72,7 +73,29 @@ export type AbleitOptionen = {
    * statt einem gemeinsamen für den ganzen Abschnitt — sonst trägt bei der Ente jeder Körperring oben die Halsspitze.
    */
   querschnittJeRing?: boolean;
+  /**
+   * Plan „Liniennetz, Zielform, Käfig“, S2 „Glatte Haut“: Gewicht des Glättungsmaßes (Laplace der Fläche auf Stufe 2, an
+   * Falten nur längs, an Ecken keins) im dünn besetzten Ausgleich. 0 oder fehlend = heutiger dichter Weg (bitgleich);
+   * > 0 = dünner Löser mit Glättung; `fair: -1` = dünner Löser ohne Glättung (Vergleich mit LU). Voreinstellung
+   * `GLATTE_HAUT`.
+   */
+  fair?: number;
+  /**
+   * Anteil der Glättung relativ zur Zielform (0…1, Standard 0 = Laplace gegen 0): 1 glättet nur die Abweichung vom Käfig
+   * der Ziele — die gezeichnete Fülle bleibt, der Wellenschlag der Interpolation verschwindet (gegen 0 geglättet wurden
+   * Querschnitte runder und Flossen dicker: Giraffe-Front +4 px, Fisch +5 % Volumen)
+   */
+  fairBezug?: number;
+  /** Faktor des Glättungsgewichts an den Kappen (Zeilen, die innere Kappenpunkte berühren), Standard 1 */
+  fairKappe?: number;
 };
+
+/**
+ * S2 „Glatte Haut“ (16.10.): gemessene Voreinstellung — Glättung relativ zur Zielform mit Gewicht 30, an den Kappen das
+ * Zehnfache (größte Faltenquelle), Naht 64 statt 16 (hält die schwarze Linie gegen die Glättung). Messreihe
+ * `apps/editor/scripts/pruefen/s2-glatt.ts`, Planseite „Liniennetz, Zielform, Käfig“, S2.
+ */
+export const GLATTE_HAUT: Readonly<Pick<AbleitOptionen, 'fair' | 'fairBezug' | 'fairKappe' | 'nahtGewicht'>> = { fair: 30, fairBezug: 1, fairKappe: 10, nahtGewicht: 64 };
 
 /** Durchgänge, in denen die Breitenziele an den Grenzlagen des letzten Durchgangs nachgerechnet werden (Ableitung) */
 const BREITE_DURCHGAENGE = 2;
@@ -1768,7 +1791,7 @@ export function fertigstellen(e: Rohbau): Ableitung {
     for (let i = 0; i < k.n; i++) bedingungen.push({ zeile: i, gewicht: e.zielGewicht ? e.zielGewicht[i]! : 1 });
     for (let q = 0; q < nahtFein.length; q++) bedingungen.push({ zeile: nahtFein[q]!, gewicht: opt.nahtGewicht });
     if (breite) for (let q = 0; q < breite.fein.length; q++) bedingungen.push({ zeile: breite.fein[q]!, gewicht: opt.breiteGewicht });
-    nahtLoeser = ausgleichsLoeser(u.grenze, k.n, bedingungen, opt.glaettung > 0 ? { kaefig: k, gewicht: opt.glaettung } : undefined);
+    nahtLoeser = ausgleichsLoeser(u.grenze, k.n, bedingungen, opt.glaettung > 0 ? { kaefig: k, gewicht: opt.glaettung } : undefined, glaettemassFuer(u, k, opt, vorlage.R * vorlage.N));
     xyz = kaefigAusgleich(nahtLoeser, ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, breiten, fein, opt.fuehrend));
     fein = anwenden3(u.grenze, xyz);
     // Breitenziele an den tatsächlichen Grenzlagen nachrechnen (geneigte Ringe), zwei Durchgänge
@@ -1802,6 +1825,20 @@ export function fertigstellen(e: Rohbau): Ableitung {
     breite,
     zeiten: { leiter: t1 - t0, breiten: t2 - t1, matrix: t3 - t2, loeser: t4 - t3, ziele: t5 - t4, gesamt: t5 - t0 },
   };
+}
+
+/**
+ * Glättungsmaß der Ableitung (S2): Laplace-Zeilen der Stufe 2 in Käfigpunkten, Gewicht `fair`, an den Kappen (Käfigpunkte
+ * ab `kappeAb`) × `fairKappe`; `fair < 0` = dünner Löser ohne Glättung; ohne `fair` undefined (dichter Weg).
+ */
+export function glaettemassFuer(u: Unterteilung, k: Kaefig, opt: Pick<AbleitOptionen, 'fair' | 'fairBezug' | 'fairKappe'>, kappeAb = k.n): Glaettemass | undefined {
+  const g = opt.fair ?? 0;
+  if (g === 0) return undefined;
+  const s = Math.min(2, u.stufen.length);
+  let M = u.stufen[0]!.matrix;
+  for (let i = 1; i < s; i++) M = multiplizieren(u.stufen[i]!.matrix, M);
+  const zeilen = g > 0 ? glaettungsZeilen(u.stufen[s - 1]!.kaefig, M, k.n, g, opt.fairKappe && opt.fairKappe !== 1 ? { ab: kappeAb, faktor: opt.fairKappe } : undefined) : [];
+  return { zeilen, nachbarn: kaefigNachbarlisten(k), bezug: opt.fairBezug ?? 0 };
 }
 
 export type Zug = Ableitung & { zugZeit: { leiter: number; ziele: number; loeser: number; matrix: number } };

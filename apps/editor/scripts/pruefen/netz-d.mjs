@@ -5,7 +5,7 @@
 //    ≥ 99,5 % übereinstimmend, außer an Sichtwechseln (Nachbarprobe anders) und an Konturen der eigenen Blickachse (der
 //    Strahl streift dort die Haut).
 // 2. Eine Formgeste mit Kantenlinie: schreibt nur die Profile, genau einen Undo-Schritt, `dok.kanten` bleibt gleich.
-// Umgebung: FAELLE (Komma-Liste; „kugel“ = Startkugel), AUSGABE.
+// Umgebung: FAELLE (Komma-Liste; „kugel“ = Startkugel), AUSGABE, GLATT=1 (Haut „glatt“, Plan S2).
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,11 +31,17 @@ for (const fall of faelle) {
   await page.goto(`${url}/?look=earle&palette=blob`);
   await page.waitForFunction(() => window.__stores && window.__editor && window.__editor.vertices() > 0 && document.querySelectorAll('[data-delta]').length >= 3, null, { timeout: 90_000 });
   if (fall !== 'kugel') {
-    await page.evaluate(async ({ fall, modul }) => {
+    await page.evaluate(async ({ fall, modul, glatt }) => {
       const g = await import(modul);
       const dok = g.S0_KOERPER.includes(fall) ? g.s0KoerperDokument(fall) : g.gKoerperDokument(fall);
+      if (glatt) dok.ausstattung = { ...(dok.ausstattung ?? {}), glatt: true };
       window.__stores.editor.getState().laden(dok, null);
-    }, { fall, modul });
+    }, { fall, modul, glatt: !!process.env.GLATT });
+  } else if (process.env.GLATT) {
+    await page.evaluate(() => {
+      const st = window.__stores.editor.getState();
+      st.setzeDokument({ ...st.dok, ausstattung: { ...(st.dok.ausstattung ?? {}), glatt: true } });
+    });
   }
   // Kantenlinie in der Seite über die Flanke (Härte 60 %), damit auch Linien und Falten geprüft werden
   await page.evaluate(() => {

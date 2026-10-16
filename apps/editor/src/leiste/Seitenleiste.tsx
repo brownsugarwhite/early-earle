@@ -962,8 +962,30 @@ function DarstellungFeld() {
 /** Schritt 3 („Käfig als Wahrheit“): Die Ringverteilung ist eingefroren; „Neu ableiten“ wählt sie aus den Kurven neu. */
 function AbleitenFeld() {
   const n = useEditor((s) => s.dok.kaefig?.stationen?.ringe.length ?? 0);
+  const dok = useEditor((s) => s.dok);
+  const beine = useKernAnzeige((s) => s.beine);
+  const maulChip = useKernAnzeige((s) => s.maul);
+  const glatt = dok.ausstattung?.glatt ?? false;
+  const ohneWirkung = glatt && (maulChip !== 'aus' || kernMaulAktiv(dok) || beine !== 'aus');
+  // Plan „Liniennetz, Zielform, Käfig“, S2: glatte Haut als Ausstattung des Dokuments (ein Undo-Schritt)
+  const setzeGlatt = (an: boolean) => {
+    const s = useEditor.getState();
+    const aus = { ...(s.dok.ausstattung ?? {}) };
+    if (an) aus.glatt = true;
+    else delete aus.glatt;
+    s.setzeDokument({ ...s.dok, ausstattung: aus });
+  };
   return (
     <>
+      <div className="feld">
+        <span>Haut</span>
+      </div>
+      <Chips werte={['heute', 'glatt'] as const} aktiv={glatt ? 'glatt' : 'heute'} attribut="haut" onWahl={(h) => setzeGlatt(h === 'glatt')} />
+      <p className="hilfe">
+        {ohneWirkung
+          ? 'Glatt wirkt noch nicht mit Maul oder Beinen (kommt mit dem Maul als Einsatz) — hier gilt der heutige Bau.'
+          : '„glatt“: Der Käfig gleicht die Ziele mit einem Glättungsmaß aus, statt sie genau zu treffen — keine Wellen und Kappenfalten, die schwarze Linie bleibt.'}
+      </p>
       <div className="feld">
         <span>Ringe</span>
         <b data-stationen={n}>{n ? `${n} eingefroren` : 'werden festgelegt …'}</b>

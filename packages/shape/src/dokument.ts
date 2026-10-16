@@ -126,6 +126,8 @@ export const AusstattungSchema = z.object({
   // Florian 15.10.: O zu = 0 = geschlossen unsichtbar; `punkt` = Lage der Mitte (Profileinheiten in Ruhe, rastet auf einen
   // Käfigpunkt der Spiegelebene vorn)
   rundmaul: z.object({ zu: z.number().min(0).max(0.5).optional(), auf: z.number().min(0).max(0.5).optional(), zaehne: z.number().int().min(0).max(40).optional(), punkt: V3.optional() }).optional(),
+  // Plan „Liniennetz, Zielform, Käfig“, S2: glatte Haut (Ausgleich mit Glättungsmaß, `GLATTE_HAUT`); fehlt = heutiger Bau
+  glatt: z.boolean().optional(),
 });
 /** Ausstattung als Typ mit exakten Optionalen (zod-Inferenz erlaubt `undefined`, das passt nicht zu `exactOptionalPropertyTypes`). */
 export type ZonenVorlage = { ansicht: 'seite' | 'top' | 'front'; punkte: { x: number; y: number; weich: number }[] };
@@ -203,6 +205,11 @@ export type Ausstattung = {
    * unsichtbar), Zähne rundum (Anzahl), Lage der Mitte (Profileinheiten in Ruhe; fehlt: Kappenmitte)
    */
   rundmaul?: { zu?: number; auf?: number; zaehne?: number; punkt?: [number, number, number] };
+  /**
+   * Plan „Liniennetz, Zielform, Käfig“, S2 (16.10.): glatte Haut — der Käfig-Ausgleich mit Glättungsmaß (`GLATTE_HAUT`)
+   * statt der Interpolation der Ziele; fehlt = heutiger Bau (bitgleich). Mit Maul oder Beinen noch ohne Wirkung.
+   */
+  glatt?: boolean;
 };
 
 /** Posen, die über „Neue Pose“ hinzukommen (Fressen ist immer da). */

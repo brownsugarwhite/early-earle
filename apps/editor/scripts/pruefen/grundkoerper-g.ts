@@ -2,18 +2,20 @@
 // schwarz, Wirbelsäule grün, Ringe der Seite grau) und eine Schrägansicht, alles mit Cel-Stufen wie im Earle-Look. Dazu je
 // Blatt Δ (Körper ↔ Zeichnung, px bei 461), Faltenmaß und Bauzeit.
 // Aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/grundkoerper-g.ts
-// Umgebung: NAME (Dateiname, Standard „ausgangslage“), KOERPER (Komma-Liste), TITEL
+// Umgebung: NAME (Dateiname, Standard „ausgangslage“), KOERPER (Komma-Liste), TITEL, OPT (JSON, Optionen der Ableitung),
+// KUGEL0=1 (Stationen der Startkugel eingefroren wie in Florians Ablauf)
 import { writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Dokument } from '../../../../packages/shape/src/dokument';
+import { neuesDokument } from '../../../../packages/shape/src/dokument';
 import { pfadAbtasten, vollerPfad } from '../../../../packages/shape/src/profil';
-import { ableiten, kernLeiter, zugBei } from '../../../../packages/shape/src/kern/ableiten';
+import { type AbleitOptionen, ableiten, kernLeiter, zugBei } from '../../../../packages/shape/src/kern/ableiten';
 import { type TeilErgebnis, ableitenMitTeilen } from '../../../../packages/shape/src/kern/grundkoerper/teilBau';
 import { baumAbleiten, baumTeile } from '../../../../packages/shape/src/kern/grundkoerper/baum';
 import { alleFlaechen } from '../../../../packages/shape/src/kaefig/halbkanten';
 import { blattAbweichungen } from '../../../../packages/shape/src/kern/abweichung';
-import { faltenMass, feinesNetz } from '../../../../packages/shape/src/kern/pruefstand';
+import { faltenMass, feinesNetz, mitStationenVon } from '../../../../packages/shape/src/kern/pruefstand';
 import { G_KOERPER, type GKoerper, S0_KOERPER, type S0Koerper, gKoerperDokument, s0KoerperDokument } from '../../../../packages/shape/src/kern/pruefen/grundkoerper';
 import { koerperDokument } from '../../../../packages/shape/src/kern/pruefen/koerper';
 import { zufall } from '../../../../packages/shape/src/kern/pruefen/zufall';
@@ -24,6 +26,7 @@ const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const AUSGABE = process.env.AUSGABE ?? resolve(WURZEL, 'apps/editor/pruefen-ausgabe');
 const NAME = process.env.NAME ?? 'ausgangslage';
 const TITEL = process.env.TITEL ?? 'Teil G, G1 — Ausgangslage der Grundkörper (heutiger Bau)';
+const OPT: Partial<AbleitOptionen> = process.env.OPT ? JSON.parse(process.env.OPT) : {};
 
 const b64 = (a: Float32Array | Uint32Array) => Buffer.from(a.buffer, a.byteOffset, a.byteLength).toString('base64');
 
@@ -38,7 +41,8 @@ const liste = (process.env.KOERPER ?? 'kugel,birne,ente,giraffe-bauch,s-hals,fis
 const faelle: { name: string; text: string; daten: unknown }[] = [];
 const zeilen: string[] = [];
 for (const name of liste) {
-  const dok = dokVon(name);
+  const dok = process.env.KUGEL0 ? mitStationenVon(dokVon(name), neuesDokument()) : dokVon(name);
+  const opt: Partial<AbleitOptionen> = { stufen: 3, ...OPT, ...(dok.kaefig?.stationen ? { stationen: dok.kaefig.stationen } : {}) };
   const sk = dok.skalierung;
   const t0 = performance.now();
   let abl: ReturnType<typeof ableiten>;
@@ -50,7 +54,7 @@ for (const name of liste) {
       const b = baumTeile(dok, { stufen: 3 });
       abl = b.rumpf;
       baumAeste = b.aeste;
-    } else abl = process.env.TEILE ? ableitenMitTeilen(dok, { stufen: 3 }, process.env.TEILE === 'angesteckt' ? 'angesteckt' : 'verschmolzen') : ableiten(dok, { stufen: 3 });
+    } else abl = process.env.TEILE ? ableitenMitTeilen(dok, { stufen: 3 }, process.env.TEILE === 'angesteckt' ? 'angesteckt' : 'verschmolzen') : ableiten(dok, opt);
   } catch (e) {
     zeilen.push(`${name}: Bau scheitert (${(e as Error).message})`);
     faelle.push({ name, text: `<b>${name}</b> · Bau scheitert: ${(e as Error).message}`, daten: null });
