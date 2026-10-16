@@ -67,6 +67,11 @@ export type AbleitOptionen = {
   querschnitt: boolean;
   /** Laplace-Glattheit der Käfiglagen im Ausgleich (0 = aus); dämpft Wellen neben scharfen Falten */
   glaettung: number;
+  /**
+   * Teil G, G3 (16.10.): Querschnitt liegender Ringe je Ring aus dem eigenen Höhenbereich (über die Nachbarringe geglättet)
+   * statt einem gemeinsamen für den ganzen Abschnitt — sonst trägt bei der Ente jeder Körperring oben die Halsspitze.
+   */
+  querschnittJeRing?: boolean;
 };
 
 /** Durchgänge, in denen die Breitenziele an den Grenzlagen des letzten Durchgangs nachgerechnet werden (Ableitung) */
@@ -1199,6 +1204,23 @@ export function querschnitteFuer(sprossen: readonly Sprosse[], dok: Dokument | n
       }
       const q = lappenQuerschnitt(dok, yLo, yHi, N);
       for (let k = i; k <= j; k++) out[k] = q;
+      // G3: je Ring der eigene Höhenbereich (Fenster ±1 Ring); nur, wenn die Ecken (Längsfalten) dieselben bleiben
+      if (opt.querschnittJeRing) {
+        const jeRing: Querschnitt[] = [];
+        let passt = true;
+        for (let k = i; k <= j && passt; k++) {
+          let lo = Infinity;
+          let hi = -Infinity;
+          for (let m = Math.max(i, k - 1); m <= Math.min(j, k + 1); m++) {
+            lo = Math.min(lo, sprossen[m]!.u.y, sprossen[m]!.o.y);
+            hi = Math.max(hi, sprossen[m]!.u.y, sprossen[m]!.o.y);
+          }
+          const qk = lappenQuerschnitt(dok, lo, hi, N);
+          if (qk.v.length !== q.v.length || qk.knoten.length !== q.knoten.length || qk.knoten.some((x, t) => x !== q.knoten[t])) passt = false;
+          jeRing.push(qk);
+        }
+        if (passt) for (let k = i; k <= j; k++) out[k] = jeRing[k - i]!;
+      }
     } else {
       const q = kreisQuerschnitt(N);
       for (let k = i; k <= j; k++) out[k] = q;
