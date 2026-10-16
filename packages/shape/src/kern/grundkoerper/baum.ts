@@ -79,7 +79,7 @@ export function brueckeEinsetzen(poly: readonly V2[], A: V2, B: V2): V2[] {
 }
 
 /** Dokument eines Teils: eigener Seitenumriss, ohne eingefrorene Stationen und Pinsel (die gehören zum ganzen Wesen). */
-function teilDokument(basis: Dokument, seite: Profil): Dokument {
+export function teilDokument(basis: Dokument, seite: Profil): Dokument {
   const d: Dokument = { ...basis, profile: { ...basis.profile, seite } };
   delete d.kaefig;
   return d;
@@ -105,7 +105,7 @@ export function baumTeile(dok: Dokument, optionen: Partial<AbleitOptionen> = {})
 // ---------- Schritt 3: Äste nahtlos ansetzen ----------
 
 /** Rand eines Rechteckfelds der Röhre (Ringe i0 … i1, Spalten j0 … j1, Spalten zyklisch) im Umlauf und seine Innenpunkte. */
-function feldRechteck(v: Roehre, i0: number, i1: number, j0: number, j1: number): { rand: number[]; innen: { punkt: number; a: number; b: number }[]; flaechen: Set<string> } {
+export function feldRechteck(v: Roehre, i0: number, i1: number, j0: number, j1: number): { rand: number[]; innen: { punkt: number; a: number; b: number }[]; flaechen: Set<string> } {
   const p = v.ringPunkt;
   const rand: number[] = [];
   for (let j = j0; j < j1; j++) rand.push(p(i0, j));
@@ -119,7 +119,7 @@ function feldRechteck(v: Roehre, i0: number, i1: number, j0: number, j1: number)
   return { rand, innen, flaechen };
 }
 
-const innenPoly = (pts: readonly V2[], q: V2) => {
+export const innenPoly = (pts: readonly V2[], q: V2) => {
   let drin = false;
   for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
     const a = pts[i]!;
