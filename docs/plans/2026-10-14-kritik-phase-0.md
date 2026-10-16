@@ -243,6 +243,20 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
 - **Robbe, Giraffe mit Bauch, Vierbeiner, Zweihals, Augenstiele, Flügel oben:** kein Widerspruch — ihr ganzes Δ (10–74 px)
   ist Baufehler der einen Röhre.
 
+## Florians Klarstellung zum Plan „Liniennetz, Zielform, Käfig“ (16.10.)
+
+> „Die schwarze Linie soll genau den Ist-Zustand des Meshes zeigen und da wir durch das Liniennetz alle Punkte in allen
+> Ansichten haben verstehe ich nicht warum das nicht möglich ist, bzw wie es zu den Widersprüchen kommen kann. Die
+> schwarzen Linien wie bei der Ente würden beim Bau ja gar nicht erst wie im Beispiel entstehen…“
+
+- **Das 3D-Liniennetz ist die einzige Wahrheit**, die schwarze Linie jeder Ansicht seine Projektion (der echte Umriss).
+  → Planseite, Nachtrag 16.10.; die alte Aussage „die Wahrheit bleibt in den Zeichnungen“ ist dort als überholt markiert.
+- **Die bearbeitete Ansicht führt, die anderen folgen am entsprechenden Punkt.** → S1c gebaut (Kopplung jedes Punkts in
+  jeder Formgeste); offen: S3 (dritte Koordinate jedes Umrissknotens im Dokument).
+- **Rot nur für Altes und Fremdes** (gespeicherte Wesen, Vorlagen, nachgezeichnete Bögen) mit „angleichen“ → gebaut.
+- **Gelb (Δ) ist Baukontrolle und soll leer sein.** → Bis S5/S6 zeigt es ehrlich, wo der Körper der stimmigen Linie noch
+  nicht folgen kann (Hälse, Bauch vor der Nase, Flügel).
+
 ## Befunde aus S1/S1c (Plan „Liniennetz, Zielform, Käfig“, 16.10. mittags, eigene Befunde)
 
 - **Kopplung ohne neue Punkte hat eine Grenze:** Verlangt die führende Ansicht an einer Stelle eine Breite, die die folgende

@@ -112,13 +112,26 @@ jedem Pull selbst neu.
   Aktion „angleichen“. **Gelb** (Saum) ist reine Baukontrolle.
 - Die Look-Frage aus S3 bleibt, wird aber anders gestellt: Was macht der Körper, wenn eine Ansicht etwas verlangt, das nur
   kantig geht (einfache Form) — wird er kantig, oder folgt die andere Ansicht dem runden Körper?
+- **Ergänzung 16.10. mittags** (dieselbe Klarstellung, von einer abgezweigten Sitzung zur Sicherheit weitergegeben):
+  - **S3: Die dritte Koordinate jedes Umrissknotens gehört ins Dokument** (Knotenfeld `dritte`, siehe S3) — erst dann ist
+    jeder Umrisspunkt wirklich ein gespeicherter 3D-Punkt. Die Kopplung jedes Punkts (S1c, gebaut) verallgemeinert „Kopplung
+    nur am entsprechenden Punkt“ (12.10.) und „die Formen folgen immer“ (15.10.); ab S3 entstehen auch in der dritten
+    Koordinate keine neuen Widersprüche.
+  - **Gelb (Δ) soll leer sein.** Ehrlich für den Übergang: Bis S5/S6 kann der Körper nicht jeder stimmigen Linie folgen
+    (Hälse, Bauch vor der Nase, Flügel); bis dahin zeigt Gelb, wo der Bau noch nicht nachkommt.
+  - **Ente (gemessen in der Abzweigung am Nachbau `ente-haken`):** In den ersten ≈ 50 px hinter der Schnabelspitze hat die
+    Seite nur den Schnabel (Höhe 0,51–0,62); das Top will dort 30–84 px Halbbreite, die Front erlaubt ≈ 37 px. Ab ≈ 60 px
+    liegt darunter der Bauch (Front erlaubt 129 px), dort ist nichts rot. Mit der Kopplung jedes Punkts wäre diese Zeichnung
+    nie entstanden: Die Front wäre beim Zeichnen des Tops in Schnabelhöhe mitgegangen (S1c; mit nur einem freien Front-Knoten
+    bleibt ein Rest im Top, siehe Stand).
 
 ## Die Bauweise: Form zuerst, dann ein Käfig darüber
 
 1. **Liniennetz (3D):** Umrisse, verdeckte Teillinien, P-Linien, Querschnittslinien und Wirbelsäulen sind 3D-Kurven mit
    gemeinsamen Knoten. Jede Ansicht zeigt alle: sichtbar kräftig, verdeckt dezent, Kantigkeit wie heute; überall
-   bearbeitbar. Die Wahrheit bleibt in den Zeichnungen; alles Abgeleitete rechnet der Worker und schreibt es nie heimlich
-   ins Dokument.
+   bearbeitbar. ~~Die Wahrheit bleibt in den Zeichnungen~~ (überholt, Nachtrag oben: das 3D-Liniennetz ist die einzige
+   Wahrheit, die schwarze Linie seine Projektion); alles Abgeleitete rechnet der Worker und schreibt es nie heimlich ins
+   Dokument.
 2. **Teile lesen** aus den Mittelachsen aller drei Ansichten plus einer groben 3D-Sichthülle: Hat eine Säule der Hülle
    (bei x, y) ein Stück durch die Mitte, gehört sie zur Mittelebene; zwei getrennte Stücke links und rechts sind ein
    seitliches Paar (Flügel, Flossen, Beine, Ohren). Eingefroren mit Hysterese.
