@@ -76,44 +76,127 @@ function abstandZumRand(R: Raster): Float64Array {
   return d;
 }
 
-/** Zhang–Suen-Ausdünnung (8er-Nachbarschaft): eine Zelle breite Mittellinie, Zusammenhang bleibt. */
-function ausduennen(R: Raster): Uint8Array {
+/**
+ * Nachbarmaske einer Zelle: Bit k = Nachbar p(k+2) im Uhrzeigersinn ab oben (oben, oben rechts, rechts, unten rechts,
+ * unten, unten links, links, oben links). Zellen außerhalb des Rasters zählen leer.
+ */
+function maske(a: Uint8Array, W: number, H: number, i: number): number {
+  const r = Math.floor(i / W);
+  const c = i - r * W;
+  const P = (rr: number, cc: number) => (rr >= 0 && cc >= 0 && rr < H && cc < W ? a[rr * W + cc]! : 0);
+  return P(r - 1, c) | (P(r - 1, c + 1) << 1) | (P(r, c + 1) << 2) | (P(r + 1, c + 1) << 3) | (P(r + 1, c) << 4) | (P(r + 1, c - 1) << 5) | (P(r, c - 1) << 6) | (P(r - 1, c - 1) << 7);
+}
+
+/**
+ * Zhang–Suen je Maske, vorab für alle 256 Nachbarschaften: Bit 0 = im ersten Teilschritt entfernbar, Bit 1 = im zweiten
+ * (2 ≤ Nachbarn ≤ 6, genau ein Wechsel 0 → 1 im Kreis, Produktbedingungen des Teilschritts).
+ */
+function zsTafel(bMin: number): Uint8Array {
+  const t = new Uint8Array(256);
+  for (let m = 0; m < 256; m++) {
+    const p = (k: number) => (m >> k) & 1;
+    let b = 0;
+    for (let k = 0; k < 8; k++) b += p(k);
+    if (b < bMin || b > 6) continue;
+    let wechsel = 0;
+    for (let k = 0; k < 8; k++) if (p(k) === 0 && p((k + 1) % 8) === 1) wechsel++;
+    if (wechsel !== 1) continue;
+    if (p(0) * p(2) * p(4) === 0 && p(2) * p(4) * p(6) === 0) t[m]! |= 1;
+    if (p(0) * p(2) * p(6) === 0 && p(0) * p(4) * p(6) === 0) t[m]! |= 2;
+  }
+  return t;
+}
+const ZS = zsTafel(2);
+/**
+ * Lü–Wang (1986): wie Zhang–Suen, aber erst ab drei Nachbarn entfernbar. Zhang–Suen löscht schräge, zwei Zellen breite
+ * Linien ganz — der Flügelhaken der Ente verschwand dadurch bei manchen Zügen aus dem Top-Skelett (S4).
+ */
+const LW = zsTafel(3);
+export type Ausduennung = 'zhang-suen' | 'lue-wang';
+
+/**
+ * Zhang–Suen-Ausdünnung (8er-Nachbarschaft): eine Zelle breite Mittellinie, Zusammenhang bleibt. Geprüft werden nur
+ * Randzellen (mit leerem 4er-Nachbarn) — nur sie erfüllen die Produktbedingungen; Teilschritte entfernen wie bisher alle
+ * Zellen gleichzeitig nach dem Stand zu Beginn (bitgleich zur vollen Abtastung, S4: 5–10-mal schneller).
+ */
+function ausduennen(R: Raster, art: Ausduennung = 'zhang-suen'): Uint8Array {
+  const tafel = art === 'lue-wang' ? LW : ZS;
   const { W, H } = R;
   const a = new Uint8Array(R.innen);
-  const P = (r: number, c: number) => (r >= 0 && c >= 0 && r < H && c < W ? a[r * W + c]! : 0);
-  let geaendert = true;
+  const n = W * H;
+  const leer4 = (i: number) => {
+    const r = Math.floor(i / W);
+    const c = i - r * W;
+    return r === 0 || c === 0 || r === H - 1 || c === W - 1 || !a[i - W] || !a[i + W] || !a[i - 1] || !a[i + 1];
+  };
+  const imRand = new Uint8Array(n);
+  let rand: number[] = [];
+  for (let i = 0; i < n; i++)
+    if (a[i] && leer4(i)) {
+      imRand[i] = 1;
+      rand.push(i);
+    }
   const weg: number[] = [];
+  let geaendert = true;
   while (geaendert) {
     geaendert = false;
     for (let schritt = 0; schritt < 2; schritt++) {
       weg.length = 0;
-      for (let r = 0; r < H; r++)
-        for (let c = 0; c < W; c++) {
-          if (!a[r * W + c]) continue;
-          // Nachbarn p2 … p9 im Uhrzeigersinn ab oben
-          const p = [P(r - 1, c), P(r - 1, c + 1), P(r, c + 1), P(r + 1, c + 1), P(r + 1, c), P(r + 1, c - 1), P(r, c - 1), P(r - 1, c - 1)];
-          let b = 0;
-          for (const x of p) b += x;
-          if (b < 2 || b > 6) continue;
-          let wechsel = 0;
-          for (let k = 0; k < 8; k++) if (p[k] === 0 && p[(k + 1) % 8] === 1) wechsel++;
-          if (wechsel !== 1) continue;
-          if (schritt === 0 ? p[0]! * p[2]! * p[4]! !== 0 || p[2]! * p[4]! * p[6]! !== 0 : p[0]! * p[2]! * p[6]! !== 0 || p[0]! * p[4]! * p[6]! !== 0) continue;
-          weg.push(r * W + c);
-        }
-      if (weg.length) geaendert = true;
+      for (const i of rand) if (a[i] && tafel[maske(a, W, H, i)]! & (1 << schritt)) weg.push(i);
+      if (!weg.length) continue;
+      geaendert = true;
       for (const i of weg) a[i] = 0;
+      // neue Randzellen: volle 4er-Nachbarn der entfernten; die alten bleiben Rand
+      const neu: number[] = [];
+      for (const i of rand) if (a[i]) neu.push(i);
+      else imRand[i] = 0;
+      for (const i of weg) {
+        const r = Math.floor(i / W);
+        const c = i - r * W;
+        for (const j of [r > 0 ? i - W : -1, r < H - 1 ? i + W : -1, c > 0 ? i - 1 : -1, c < W - 1 ? i + 1 : -1])
+          if (j >= 0 && a[j] && !imRand[j]) {
+            imRand[j] = 1;
+            neu.push(j);
+          }
+      }
+      // Reihenfolge wie die volle Abtastung (zeilenweise): die Teilschritte sind ordnungsfrei, die Liste nur der Ordnung halber
+      neu.sort((p, q) => p - q);
+      rand = neu;
     }
   }
   return a;
 }
 
-type Graph = { nachbarn: (i: number) => number[]; uebergaenge: (i: number) => number };
+/** Bleibt der Kreis der Nachbarn (Maske) ohne die Mitte zusammenhängend (8er-Nachbarschaft im 3 × 3-Ring), bei ≥ 2 Nachbarn? */
+const EINFACH = (() => {
+  const t = new Uint8Array(256);
+  // Nachbarschaft im Ring: aufeinanderfolgende, dazu die Kantenmitten zwei weiter (oben–rechts usw.)
+  const nb = (k: number, l: number) => (k - l + 8) % 8 === 1 || (l - k + 8) % 8 === 1 || (k % 2 === 0 && l % 2 === 0 && ((k - l + 8) % 8 === 2 || (l - k + 8) % 8 === 2));
+  for (let m = 0; m < 256; m++) {
+    const an: number[] = [];
+    for (let k = 0; k < 8; k++) if ((m >> k) & 1) an.push(k);
+    if (an.length < 2) continue;
+    const gesehen = new Set([an[0]!]);
+    const stapel = [an[0]!];
+    while (stapel.length) {
+      const k = stapel.pop()!;
+      for (const l of an) if (!gesehen.has(l) && nb(k, l)) {
+        gesehen.add(l);
+        stapel.push(l);
+      }
+    }
+    if (gesehen.size === an.length) t[m] = 1;
+  }
+  return t;
+})();
+
+type Graph = { nachbarn: (i: number) => number[]; uebergaenge: (i: number) => number; raster: { W: number; H: number } };
 
 function graphVon(R: Raster, z: Uint8Array): Graph {
   const { W, H } = R;
   const P = (r: number, c: number) => (r >= 0 && c >= 0 && r < H && c < W ? z[r * W + c]! : 0);
   return {
+    raster: { W, H },
     /** Kreuzungszahl: Wechsel 0 → 1 im Kreis der 8 Nachbarn (1 = Ende, 2 = Weg, ≥ 3 = Abzweig) — robuster als die Nachbarzahl an Treppen */
     uebergaenge: (i: number) => {
       const r = Math.floor(i / W);
@@ -149,7 +232,7 @@ function welt(R: Raster, i: number): V2 {
  * Enden-Äste wiederholt beschneiden: ein Weg vom Ende bis zum nächsten Abzweig fällt weg, wenn er weniger als
  * ANTEIL · Radius(Abzweig) (und mindestens MIN_ZELLEN) aus dem Kreis am Abzweig herausragt.
  */
-function beschneiden(R: Raster, z: Uint8Array, d: Float64Array): void {
+function beschneiden(R: Raster, z: Uint8Array, d: Float64Array, anteil = ANTEIL): void {
   const g = graphVon(R, z);
   for (let runde = 0; runde < 50; runde++) {
     let weg = 0;
@@ -178,7 +261,7 @@ function beschneiden(R: Raster, z: Uint8Array, d: Float64Array): void {
       const a = welt(R, abzweig);
       const p = welt(R, e);
       const ueber = Math.hypot(p.x - a.x, p.y - a.y) / R.h + d[e]! - d[abzweig]!;
-      if (ueber < Math.max(MIN_ZELLEN, ANTEIL * d[abzweig]!)) {
+      if (ueber < Math.max(MIN_ZELLEN, anteil * d[abzweig]!)) {
         for (const q of pfad) if (q !== abzweig) z[q] = 0;
         weg++;
       }
@@ -200,25 +283,14 @@ function skelettGraph(z: Uint8Array, g: Graph): SkelettGraph {
   // Überzählige Zellen weg (einfache Punkte): eine Zelle, deren Nachbarn auch ohne sie zusammenhängen (8er-Nachbarschaft
   // innerhalb des 3 × 3-Rings), trägt nichts zum Zusammenhang bei; Enden (ein Nachbar) bleiben. Danach ist das Skelett
   // überall eine Zelle breit: Wegzellen haben zwei Nachbarn, Enden einen, Abzweige drei und mehr. Das Ausdünnen ließ
-  // stellenweise zwei Zellen breite Schrägen, deren Zellen drei Nachbarn hatten und wie Abzweige aussahen.
-  const ringZusammen = (nb: readonly number[]) => {
-    const gesehen = new Set<number>([nb[0]!]);
-    const stapel = [nb[0]!];
-    while (stapel.length) {
-      const q = stapel.pop()!;
-      for (const r of nb) if (!gesehen.has(r) && g.nachbarn(q).includes(r)) {
-        gesehen.add(r);
-        stapel.push(r);
-      }
-    }
-    return gesehen.size === nb.length;
-  };
+  // stellenweise zwei Zellen breite Schrägen, deren Zellen drei Nachbarn hatten und wie Abzweige aussahen. (Probe je
+  // Maske über die Tafel `EINFACH`, der Reihe nach wie bisher.)
+  const { W: RW, H: RH } = g.raster;
   for (let geaendert = true; geaendert; ) {
     geaendert = false;
     for (let i = 0; i < n; i++) {
       if (!z[i]) continue;
-      const nb = g.nachbarn(i);
-      if (nb.length >= 2 && ringZusammen(nb)) {
+      if (EINFACH[maske(z, RW, RH, i)]) {
         z[i] = 0;
         geaendert = true;
       }
@@ -374,17 +446,19 @@ function wegAufGraph(G: SkelettGraph, d: Float64Array, von: number, e: number, b
  * Skelett einer geschlossenen Silhouette (Welt). `zellen` = Rasterauflösung über die größere Ausdehnung; `spiegel` für
  * Front (Achse x = 0) und Top (Achse y = 0). Liefert die Rumpfachse (durch die dickste Stelle, an Abzweigen in die
  * dickere Fortsetzung) und die Äste mit Abzweig und Überstand (wie weit der Ast aus dem Kreis am Abzweig herausragt, Welt).
+ * `anteil` (S4): kleinere Werte behalten auch schwächere Äste als Kandidaten (die Teilerkennung entscheidet mit Hysterese);
+ * `art`: Ausdünnung (S4 nimmt Lü–Wang, die Versuche bleiben bei Zhang–Suen).
  */
-export function skelett(poly: readonly V2[], zellen = 240, spiegel?: 'x' | 'y'): Skelett {
+export function skelett(poly: readonly V2[], zellen = 240, spiegel?: 'x' | 'y', anteil = ANTEIL, art: Ausduennung = 'zhang-suen'): Skelett {
   const R = rastern(poly, zellen);
   const dz = abstandZumRand(R);
-  const z = ausduennen(R);
-  beschneiden(R, z, dz);
+  const z = ausduennen(R, art);
+  beschneiden(R, z, dz, anteil);
   const g = graphVon(R, z);
   const abstand = new Float64Array(dz.length);
   for (let i = 0; i < dz.length; i++) abstand[i] = dz[i]! * R.h;
   const weg = (pfad: number[]): SkelettWeg => ({ punkte: pfad.map((i) => welt(R, i)), radius: pfad.map((i) => abstand[i]!) });
-  if (spiegel) return skelettGespiegelt(R, z, dz, abstand, g, spiegel, weg);
+  if (spiegel) return skelettGespiegelt(R, z, dz, abstand, g, spiegel, weg, anteil);
   const G = skelettGraph(z, g);
   const aeste: SkelettAst[] = [];
   if (!G.kanten.length) {
@@ -483,7 +557,7 @@ export function skelett(poly: readonly V2[], zellen = 240, spiegel?: 'x' | 'y'):
           const p = welt(R, c);
           ueber = Math.max(ueber, Math.hypot(p.x - p0.x, p.y - p0.y) + abstand[c]! - abstand[pfad[t]!]!);
         }
-        if (ast.length - 1 < MIN_ZELLEN || ueber < Math.max(MIN_ZELLEN * R.h, ANTEIL * abstand[pfad[t]!]!)) continue;
+        if (ast.length - 1 < MIN_ZELLEN || ueber < Math.max(MIN_ZELLEN * R.h, anteil * abstand[pfad[t]!]!)) continue;
         pfade.push(ast);
         aeste.push({ ...weg(ast), eltern: a, abzweig: t, ueberstand: ueber });
       }
@@ -498,7 +572,7 @@ export function skelett(poly: readonly V2[], zellen = 240, spiegel?: 'x' | 'y'):
  * positiven Seite, die von der Achse weg nach außen laufen (gespiegelte Paare entstehen beim Bau), mit Abzweig an der
  * nächsten Achsstelle; kurze Wege (Überstand unter ANTEIL · Radius am Abzweig) fallen weg.
  */
-function skelettGespiegelt(R: Raster, z: Uint8Array, dz: Float64Array, abstand: Float64Array, g: Graph, spiegel: 'x' | 'y', weg: (p: number[]) => SkelettWeg): Skelett {
+function skelettGespiegelt(R: Raster, z: Uint8Array, dz: Float64Array, abstand: Float64Array, g: Graph, spiegel: 'x' | 'y', weg: (p: number[]) => SkelettWeg, anteil = ANTEIL): Skelett {
   const { W, H } = R;
   const achse: number[] = [];
   // Achszellen: die Zellreihe, die der Achse am nächsten liegt
@@ -563,10 +637,116 @@ function skelettGespiegelt(R: Raster, z: Uint8Array, dz: Float64Array, abstand: 
       const p = welt(R, q);
       ueber = Math.max(ueber, Math.hypot(p.x - pa.x, p.y - pa.y) + abstand[q]! - abstand[achse[k]!]!);
     }
-    if (pfad.length < MIN_ZELLEN || ueber < Math.max(MIN_ZELLEN * R.h, ANTEIL * abstand[achse[k]!]!)) continue;
+    if (pfad.length < MIN_ZELLEN || ueber < Math.max(MIN_ZELLEN * R.h, anteil * abstand[achse[k]!]!)) continue;
     const w = weg([achse[k]!, ...pfad]);
     aeste.push({ ...w, eltern: 0, abzweig: k, ueberstand: ueber });
   }
   void dz;
+  return { raster: R, abstand, zellen: z, aeste };
+}
+
+/**
+ * S4 „Teile erkennen“: seitliche Äste einer gespiegelten Ansicht (Front: Achse x = 0, Top: Achse y = 0), robust gegen kleine
+ * Züge. Wie `skelettGespiegelt`, aber ohne das Beschneiden der Enden (dessen Maß hängt am Abzweig, an dem das Ablaufen
+ * gerade endet — verschwand eine winzige Nebenspur, maß der Haken der Ente plötzlich gegen den dicken Rumpf und fiel weg).
+ * Je Komponente neben der Achse ist die Spitze die Zelle, die am weitesten aus dem Kreis der Achse herausragt
+ * (Überstand), nicht die entfernteste; weitere Spitzen derselben Komponente zählen, wenn sie außerhalb der Kreise der schon
+ * gefundenen Äste liegen (Randrauschen liegt immer darin).
+ */
+export function seitlicheAeste(poly: readonly V2[], zellen: number, spiegel: 'x' | 'y', anteil = ANTEIL, minZellen = MIN_ZELLEN): Skelett {
+  const R = rastern(poly, zellen);
+  const dz = abstandZumRand(R);
+  const z = ausduennen(R, 'lue-wang');
+  const { W, H } = R;
+  const abstand = new Float64Array(dz.length);
+  for (let i = 0; i < dz.length; i++) abstand[i] = dz[i]! * R.h;
+  const weg = (pfad: number[]): SkelettWeg => ({ punkte: pfad.map((i) => welt(R, i)), radius: pfad.map((i) => abstand[i]!) });
+  const achse: number[] = [];
+  if (spiegel === 'x') {
+    const c = Math.max(0, Math.min(W - 1, Math.floor((0 - R.ox) / R.h)));
+    for (let r = 0; r < H; r++) if (R.innen[r * W + c]) achse.push(r * W + c);
+    achse.sort((a, b) => b - a);
+  } else {
+    const r = Math.max(0, Math.min(H - 1, Math.floor((0 - R.oy) / R.h)));
+    for (let c = 0; c < W; c++) if (R.innen[r * W + c]) achse.push(r * W + c);
+  }
+  const aeste: SkelettAst[] = [];
+  if (!achse.length) return { raster: R, abstand, zellen: z, aeste };
+  aeste.push({ ...weg(achse), eltern: -1, abzweig: 0, ueberstand: 0 });
+  const ap = achse.map((i) => welt(R, i));
+  const seitlich = (i: number) => {
+    const p = welt(R, i);
+    return spiegel === 'x' ? p.x : p.y;
+  };
+  const nachbarn = (i: number, an: (j: number) => boolean): number[] => {
+    const r = Math.floor(i / W);
+    const c = i - r * W;
+    const out: number[] = [];
+    for (let dr = -1; dr <= 1; dr++)
+      for (let dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue;
+        const rr = r + dr;
+        const cc = c + dc;
+        if (rr >= 0 && cc >= 0 && rr < H && cc < W && an(rr * W + cc)) out.push(rr * W + cc);
+      }
+    return out;
+  };
+  const neben = (i: number) => !!z[i] && seitlich(i) > 1.5 * R.h;
+  const gesehen = new Uint8Array(z.length);
+  for (let s = 0; s < z.length; s++) {
+    if (gesehen[s] || !neben(s)) continue;
+    const komp: number[] = [];
+    const inKomp = new Set<number>();
+    const stapel = [s];
+    gesehen[s] = 1;
+    while (stapel.length) {
+      const q = stapel.pop()!;
+      komp.push(q);
+      inKomp.add(q);
+      for (const n of nachbarn(q, neben))
+        if (!gesehen[n]) {
+          gesehen[n] = 1;
+          stapel.push(n);
+        }
+    }
+    let start = komp[0]!;
+    for (const q of komp) if (seitlich(q) < seitlich(start)) start = q;
+    const p0 = welt(R, start);
+    let k = 0;
+    for (let t = 1; t < ap.length; t++) if (Math.hypot(ap[t]!.x - p0.x, ap[t]!.y - p0.y) < Math.hypot(ap[k]!.x - p0.x, ap[k]!.y - p0.y)) k = t;
+    const pa = ap[k]!;
+    const ra = abstand[achse[k]!]!;
+    const ueber = (q: number) => {
+      const p = welt(R, q);
+      return Math.hypot(p.x - pa.x, p.y - pa.y) + abstand[q]! - ra;
+    };
+    // kürzeste Wege vom Anfang aus (Schritte im Skelett)
+    const vor = new Map<number, number>([[start, -1]]);
+    const schlange = [start];
+    for (let t = 0; t < schlange.length; t++)
+      for (const n of nachbarn(schlange[t]!, (j) => inKomp.has(j)))
+        if (!vor.has(n)) {
+          vor.set(n, schlange[t]!);
+          schlange.push(n);
+        }
+    const schwelle = Math.max(minZellen * R.h, anteil * ra);
+    // Spitzen: Zellen nach Überstand (nicht nur Endzellen — Lü–Wang lässt an Enden manchmal zwei Zellen breite Stellen,
+    // dann hatte die Spitze zwei Nachbarn und die einfache Form verlor ihre Spitzen bei jedem dritten Zugschritt)
+    const spitzen = komp.filter((q) => ueber(q) >= schwelle).sort((a, b) => ueber(b) - ueber(a));
+    const gefunden: number[][] = [];
+    for (const e of spitzen) {
+      const pe = welt(R, e);
+      // Randrauschen desselben Teils: der Kreis der Spitze liegt (bis auf 2 Zellen) in einem Kreis eines gefundenen Asts.
+      // Nur die Spitze im Kreis zu prüfen, verschluckte kleine Wülste neben einem breiten Ast (Rex-Front oben)
+      const re = abstand[e]!;
+      if (gefunden.some((pf) => pf.some((q) => Math.hypot(welt(R, q).x - pe.x, welt(R, q).y - pe.y) + re <= abstand[q]! + 2 * R.h))) continue;
+      const pfad: number[] = [];
+      for (let q = e; q !== -1 && q !== undefined; q = vor.get(q)!) pfad.push(q);
+      pfad.reverse();
+      if (pfad.length < minZellen) continue;
+      gefunden.push(pfad);
+      aeste.push({ ...weg([achse[k]!, ...pfad]), eltern: 0, abzweig: k, ueberstand: ueber(e) });
+    }
+  }
   return { raster: R, abstand, zellen: z, aeste };
 }

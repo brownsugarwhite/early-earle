@@ -33,10 +33,10 @@ const KNICK_DICKE = 0.55;
 
 const sub = (a: V2, b: V2): V2 => ({ x: a.x - b.x, y: a.y - b.y });
 const laenge = (a: V2) => Math.hypot(a.x, a.y);
-const winkelZwischen = (a: V2, b: V2) => (Math.acos(Math.max(-1, Math.min(1, (a.x * b.x + a.y * b.y) / (laenge(a) * laenge(b) || 1)))) * 180) / Math.PI;
+export const winkelZwischen = (a: V2, b: V2) => (Math.acos(Math.max(-1, Math.min(1, (a.x * b.x + a.y * b.y) / (laenge(a) * laenge(b) || 1)))) * 180) / Math.PI;
 
 /** Richtung eines Wegs ab Index i über die Länge l (vorwärts, s = +1, oder rückwärts, s = −1). */
-function richtung(w: SkelettWeg, i: number, l: number, s: 1 | -1): V2 {
+export function richtung(w: SkelettWeg, i: number, l: number, s: 1 | -1): V2 {
   const p0 = w.punkte[i]!;
   let j = i;
   while (j + s >= 0 && j + s < w.punkte.length && laenge(sub(w.punkte[j]!, p0)) < l) j += s;
@@ -44,7 +44,7 @@ function richtung(w: SkelettWeg, i: number, l: number, s: 1 | -1): V2 {
 }
 
 /** Berührpunkte des Kreises um m (Radius r) mit dem Rand, je einer links und rechts der Richtung d (nächster Randpunkt je Seite). */
-function beruehrpunkte(poly: readonly V2[], m: V2, r: number, d: V2): [V2, V2] | null {
+export function beruehrpunkte(poly: readonly V2[], m: V2, r: number, d: V2): [V2, V2] | null {
   let links: V2 | null = null;
   let rechts: V2 | null = null;
   let dl = Infinity;
@@ -93,7 +93,7 @@ function randStueck(poly: readonly V2[], i: number, j: number): V2[] {
  * zum Ansatz ≥ Radius dort); dort die Berührpunkte als Sehne. Der Ast-Umriss ist das Randstück zwischen den beiden
  * Berührpunkten, das die Ast-Spitze enthält, plus die Sehne; der Rumpf behält das andere Randstück plus die Sehne.
  */
-function schneiden(poly: readonly V2[], achse: SkelettWeg, rAnsatz: number): { schnitt: [V2, V2]; ast: V2[]; rest: V2[]; k: number } | null {
+export function schneiden(poly: readonly V2[], achse: SkelettWeg, rAnsatz: number): { schnitt: [V2, V2]; ast: V2[]; rest: V2[]; k: number } | null {
   const p0 = achse.punkte[0]!;
   let k = 1;
   while (k < achse.punkte.length - 1 && laenge(sub(achse.punkte[k]!, p0)) < rAnsatz) k++;

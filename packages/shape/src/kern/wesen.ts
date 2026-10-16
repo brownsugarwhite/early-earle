@@ -22,6 +22,7 @@ import { ringSegmente } from './reifen';
 import { ABWEICHUNG_PX, blattAbweichungen } from './abweichung';
 import { erreichbarkeit } from './grundkoerper/huelle';
 import { type NetzSicht, netzSicht } from './netzSicht';
+import { type TeilAnzeige, teilAnzeige } from './grundkoerper/teilAnsicht';
 import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
 import { anwenden3 } from '../subdivision/matrix';
 import { spantKasten, spantTeilProfil, vorlageBei } from '../spanten';
@@ -271,6 +272,12 @@ export type WesenNetz = {
    * Umrissknoten, P-Linien als Hautpunkte, Maullinien, Spantringe, Faltenlinien, je Probe die Sichtbarkeit in fünf Ansichten
    */
   netzSicht: NetzSicht | null;
+  /**
+   * S4 „Teile erkennen“ (nur Anzeige): Teilbaum aus den drei Zeichnungen (Rumpf, Mittelteile, seitliche Paare), je Teil die
+   * Wirbelsäule mit Knoten, je Ansicht die sichtbaren Flächen und die verdeckten Teilumrisse (Profil-Einheiten); nur im
+   * genauen Bau, mit dem eingefrorenen Stand aus `kaefig.stationen.teile` (Hysterese). Wird kopiert, nicht übertragen.
+   */
+  teile: TeilAnzeige | null;
   /** Front/Top: Umweg der schwarzen Linie über einen breiteren Kiefer (Paare x, y; NaN trennt), sonst fehlt das Blatt */
   umweg: { front?: Float32Array; top?: Float32Array } | null;
   info: WesenInfo;
@@ -290,6 +297,7 @@ export type WesenStand = {
   widerspruch?: WesenNetz['widerspruch'];
   randMarken?: WesenNetz['randMarken'];
   netzSicht?: NetzSicht | null;
+  teile?: TeilAnzeige | null;
   umweg?: WesenNetz['umweg'];
   blatt?: WesenInfo['blatt'];
   /** B7: zuletzt gerechnete Zusatz-Umrisse mit ihrem Schlüssel (Körper, Pinsel, Posen, Anfrage) */
@@ -298,10 +306,17 @@ export type WesenStand = {
    * B7: Werte der Ruhelage, die nicht an den Gewichten hängen (Naht, Δ je Blatt, Lippenabweichung, Ruhe je Ecke) — ein
    * reiner Gewichtswechsel (Vorschau, Überblenden, Abspielen) rechnet sie nicht neu
    */
-  ruheWerte?: { schluessel: string; naht: { max: number; mittel: number }; saum: WesenNetz['saum']; widerspruch?: WesenNetz['widerspruch']; randMarken?: WesenNetz['randMarken']; netzSicht?: NetzSicht | null; umweg: WesenNetz['umweg']; blatt: WesenInfo['blatt']; maulAbw: MaulAbweichung | undefined; ruhe: Float32Array | null; desk: Float32Array | null };
+  ruheWerte?: { schluessel: string; naht: { max: number; mittel: number }; saum: WesenNetz['saum']; widerspruch?: WesenNetz['widerspruch']; randMarken?: WesenNetz['randMarken']; netzSicht?: NetzSicht | null; teile?: TeilAnzeige | null; umweg: WesenNetz['umweg']; blatt: WesenInfo['blatt']; maulAbw: MaulAbweichung | undefined; ruhe: Float32Array | null; desk: Float32Array | null };
 };
 
 const PX = 461;
+/** Eingefrorene Stationen ohne die Teile (S4): für Schlüssel des Körperbaus — die Teile ändern den Körper nicht. */
+function stationenOhneTeile(g: GefroreneStationen | undefined): Omit<GefroreneStationen, 'teile'> | null {
+  if (!g) return null;
+  const rest = { ...g };
+  delete rest.teile;
+  return rest;
+}
 const uhr = (globalThis as { performance?: { now(): number } }).performance;
 const jetzt = () => (uhr ? uhr.now() : Date.now());
 
@@ -923,7 +938,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
   // Pose-Optionen (Winkel, Haps, Gelenk, Gewichte) bauen nicht um: sie wirken auf die gemerkte Ableitung (Fressen-Tab)
   const moEintraege = Object.entries(plan.maulOptionen ?? {}).filter(([k]) => !(MAUL_POSE_OPTIONEN as readonly string[]).includes(k));
   const moBau = moEintraege.length ? Object.fromEntries(moEintraege) : null;
-  const schluessel = JSON.stringify({ p: dokRoh.profile, s: dokRoh.spanten ?? null, ka: dokRoh.kanten ?? null, k: dokRoh.skalierung, st: dokRoh.kaefig?.stationen ?? null, ring: plan.ring ?? null, fu: plan.fuehrend ?? null, kasten: plan.kasten ?? null, linie: plan.maulLinie ?? null, mo: moBau, ba: plan.beinAnsaetze ?? null, gl: plan.glatt ?? false, fl: plan.fuelle ?? null });
+  const schluessel = JSON.stringify({ p: dokRoh.profile, s: dokRoh.spanten ?? null, ka: dokRoh.kanten ?? null, k: dokRoh.skalierung, st: stationenOhneTeile(dokRoh.kaefig?.stationen), ring: plan.ring ?? null, fu: plan.fuehrend ?? null, kasten: plan.kasten ?? null, linie: plan.maulLinie ?? null, mo: moBau, ba: plan.beinAnsaetze ?? null, gl: plan.glatt ?? false, fl: plan.fuelle ?? null });
   const gleich = stand !== null && stand.schluessel === schluessel;
   const letzte = stand && gleich ? stand : null;
   let abl: Ableitung;
@@ -1204,6 +1219,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
   let widerspruch = ruheAlt ? (ruheAlt.widerspruch ?? null) : (stand?.widerspruch ?? null);
   let randMarken = ruheAlt ? (ruheAlt.randMarken ?? null) : (stand?.randMarken ?? null);
   let netz3 = ruheAlt ? (ruheAlt.netzSicht ?? null) : (stand?.netzSicht ?? null);
+  let teile = ruheAlt ? (ruheAlt.teile ?? null) : (stand?.teile ?? null);
   let umweg = ruheAlt ? ruheAlt.umweg : (stand?.umweg ?? null);
   let blatt = ruheAlt ? ruheAlt.blatt : stand?.blatt;
   if (!ruheAlt && (!schnell || !blatt)) {
@@ -1225,6 +1241,8 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     widerspruch = { seite: tripel(er.seite), front: tripel(er.front), top: tripel(er.top) };
     // S3: wo die Fülle der Stufe deckelt (nur als Kante) und wo die Front ein anderes Teil verlangt — Stücke der Front-Linie
     randMarken = abl.rand ? randStuecke(abl.rand, dok, ruheP) : null;
+    // S4: Teile aus den Zeichnungen (unabhängig vom Körperbau), gegen den eingefrorenen Stand
+    teile = teilAnzeige(dok, dok.kaefig?.stationen?.teile ?? null);
     // 3D-Liniennetz (S1, 16.10.): auf der Ruhelage. Verdeckung auf demselben feinen Netz wie die Anzeige (eine Stufe gröber
     // wich an streifenden Stellen und in Kehlen um 2–20 px ab, gemessen gegen den Strahltest der Bühne)
     if (beine === 'aus' && !hebung) {
@@ -1247,7 +1265,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
   }
   // Lippenkanten gegen die Linien (Phase 2 M2): px je Kette in Seite und Front
   const maulAbw = ruheAlt ? ruheAlt.maulAbw : maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul && maulLinieVerwendet ? maulAbweichung(abl as MaulErgebnis, dok, maulLinieVerwendet) : undefined;
-  const info: WesenInfo = { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0, ...(blatt ? { blatt } : {}), ...(maulAbw ? { maul: maulAbw } : {}), stationen: abl.gefroren };
+  const info: WesenInfo = { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0, ...(blatt ? { blatt } : {}), ...(maulAbw ? { maul: maulAbw } : {}), stationen: abl.gefroren && teile ? { ...abl.gefroren, teile: teile.gefroren } : abl.gefroren };
   const linien = plan.kaefigLinien ? kaefigSegmente(abl, xyz) : null;
   // Lippenband nach der Kopfhöhe am Maul (nicht der ganzen Körperhöhe: beim Langhals war das Band breiter als der Kiefer)
   const maulHoehe = maul !== 'aus' ? 1.1 * ((abl as Partial<MaulErgebnis>).maul?.kopfHoehe ?? hoehe) : hoehe;
@@ -1267,7 +1285,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     if (ruhe.length !== t.positionen.length) ruhe = null;
   }
   // Ruhewerte nur nach einem genauen Bau merken (während einer Geste sind Saum und Δ der letzte Stand, nicht der aktuelle)
-  const ruheWerte: WesenStand['ruheWerte'] = ruheAlt ?? (schnell ? undefined : { schluessel: ruheSchluessel, naht: ab, saum, widerspruch, randMarken, netzSicht: netz3, umweg, blatt, maulAbw, ruhe: ruheMerkbar && ruhe ? ruhe.slice() : null, desk: deskMerkbar && desk ? desk.slice() : null });
+  const ruheWerte: WesenStand['ruheWerte'] = ruheAlt ?? (schnell ? undefined : { schluessel: ruheSchluessel, naht: ab, saum, widerspruch, randMarken, netzSicht: netz3, teile, umweg, blatt, maulAbw, ruhe: ruheMerkbar && ruhe ? ruhe.slice() : null, desk: deskMerkbar && desk ? desk.slice() : null });
   // Zähne am Zahnfleisch des posierten Käfigs (Phase 2 M4): aus dem Dokument oder die Automatik, Werte für offen mit der Öffnung
   let zaehne: WesenNetz['zaehne'] = null;
   if (maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul) {
@@ -1485,10 +1503,11 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     widerspruch,
     randMarken,
     netzSicht: netz3,
+    teile,
     umweg,
     info,
   };
-  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(randMarken ? { randMarken } : {}), ...(netz3 ? { netzSicht: netz3 } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
+  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(randMarken ? { randMarken } : {}), ...(netz3 ? { netzSicht: netz3 } : {}), ...(teile ? { teile } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
 }
 
 /** Puffer eines Netzes (zum Übertragen aus dem Worker). */

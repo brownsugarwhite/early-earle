@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import type { Dokument } from '../../../../packages/shape/src/dokument';
 import { pfadAbtasten, vollerPfad } from '../../../../packages/shape/src/profil';
 import { skelett } from '../../../../packages/shape/src/kern/grundkoerper/skelett';
-import { G_KOERPER, type GKoerper, gKoerperDokument } from '../../../../packages/shape/src/kern/pruefen/grundkoerper';
+import { G_KOERPER, type GKoerper, S0_KOERPER, type S0Koerper, gKoerperDokument, s0KoerperDokument } from '../../../../packages/shape/src/kern/pruefen/grundkoerper';
 import { type KoerperArt, koerperDokument } from '../../../../packages/shape/src/kern/pruefen/koerper';
 import { zufall } from '../../../../packages/shape/src/kern/pruefen/zufall';
 
@@ -15,7 +15,7 @@ const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const AUSGABE = process.env.AUSGABE ?? resolve(WURZEL, 'apps/editor/pruefen-ausgabe');
 const PX = 461;
 const liste = (process.env.KOERPER ?? 'kugel,ei,birne,rex,langhals,robbe,drache,ente,giraffe-bauch,s-hals,fisch').split(',');
-const dokVon = (n: string): Dokument => ((G_KOERPER as readonly string[]).includes(n) ? gKoerperDokument(n as GKoerper) : koerperDokument(n as KoerperArt, zufall(1)));
+const dokVon = (n: string): Dokument => ((G_KOERPER as readonly string[]).includes(n) ? gKoerperDokument(n as GKoerper) : (S0_KOERPER as readonly string[]).includes(n) ? s0KoerperDokument(n as S0Koerper) : koerperDokument(n as KoerperArt, zufall(1)));
 
 const daten: unknown[] = [];
 const zeilen: string[] = [];

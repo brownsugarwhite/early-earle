@@ -292,6 +292,23 @@ const GefroreneStationenSchema = z.object({
       knoten: z.number(),
     })
     .optional(),
+  teile: z
+    .object({
+      knoten: z.tuple([z.number(), z.number(), z.number()]),
+      teile: z.array(
+        z.object({
+          id: z.string(),
+          art: z.enum(['mitte', 'paar']),
+          blatt: z.enum(['seite', 'front', 'top']),
+          a: z.object({ k: z.number(), t: z.number(), p: z.object({ x: z.number(), y: z.number() }) }),
+          b: z.object({ k: z.number(), t: z.number(), p: z.object({ x: z.number(), y: z.number() }) }),
+          spitze: z.object({ x: z.number(), y: z.number() }),
+          richtung: z.enum(['oben', 'unten', 'vorn', 'hinten', 'seitlich']).optional(),
+          hoehe: z.number().optional(),
+        }),
+      ),
+    })
+    .optional(),
 });
 /**
  * `maul` (14.10.): die Entscheidungen der Maullage aus dem letzten Bau mit Maul — Ring des Mundwinkels, erster Lippenring
@@ -304,7 +321,16 @@ const GefroreneStationenSchema = z.object({
  * in Profil-Einheiten), gültig für `knoten` Knoten. Ein Zug am Bauch wirft sie nicht mehr um (Giraffe mit Bauch vor der Nase).
  */
 export type EndenAnker = { k: number; t: number; p: { x: number; y: number } };
-export type GefroreneStationen = { ringe: number[]; vorn: number[]; hinten: number[]; ecken: { ring: number; seite: 'oben' | 'unten' | 'beide' }[]; reifen: { spant: number; ring: number }[]; spitzen: { vorn: boolean; hinten: boolean }; maul?: MaulStationen; enden?: { vorn: EndenAnker; hinten: EndenAnker; knoten: number } };
+/**
+ * `teile` (Plan „Liniennetz, Zielform, Käfig“, S4): die erkannten Teile mit ihrer Sehne als Kurvenparametern der Zeichnung,
+ * in der sie erkannt wurden, der Spitze und der Richtung — gültig für die Knotenzahlen von Seite, Front und Top. Der
+ * nächste Bau liest mit Hysterese gegen sie (ein Teil bleibt bis 0,85 seiner Schwellen) und nimmt dieselbe Sehne; `hoehe`
+ * = wie weit das Teil über seine Sehne ragt (Profil-Einheiten) — findet das Skelett ein Teil nicht, bleibt es, solange es
+ * an seiner Sehne noch 0,85 davon herausragt.
+ */
+export type GefrorenesTeil = { id: string; art: 'mitte' | 'paar'; blatt: 'seite' | 'front' | 'top'; a: EndenAnker; b: EndenAnker; spitze: { x: number; y: number }; richtung?: 'oben' | 'unten' | 'vorn' | 'hinten' | 'seitlich'; hoehe?: number };
+export type GefrorenerTeilbaum = { knoten: [number, number, number]; teile: GefrorenesTeil[] };
+export type GefroreneStationen = { ringe: number[]; vorn: number[]; hinten: number[]; ecken: { ring: number; seite: 'oben' | 'unten' | 'beide' }[]; reifen: { spant: number; ring: number }[]; spitzen: { vorn: boolean; hinten: boolean }; maul?: MaulStationen; enden?: { vorn: EndenAnker; hinten: EndenAnker; knoten: number }; teile?: GefrorenerTeilbaum };
 export type MaulStationen = { winkel: number; ringA?: number; kontur?: boolean };
 const KaefigSchemaV1 = z.object({ deltas: z.array(KaefigDeltaSchema), posen: z.record(z.string(), z.array(KaefigDeltaSchema)).optional(), stationen: GefroreneStationenSchema.optional() });
 /** Version 1 (bis 15.10.2026 abends): mit Ausstattung und (M3) Käfig-Deltas der Pinsel; Pose-Deltas in `kaefig.posen`. */
