@@ -388,6 +388,36 @@ Nach R1–R4: Messreihe, Kontaktbogen, Editor (Geist), Halt für Florian.
   der Hinterkante auch oberhalb des Ansatzes, Entenschwanz). Danach S6 oder der Überhang (R4) mit einem der Wege aus dem
   Register.
 
+#### Reihenfolge ab 16.10. nachts und R5 „Höhenfeld“ (Florian: „Mach so weiter wie es die beste Reihenfolge für dich ist.
+Hauptsache am Ende geht alles sauber. Suche immer nochmal nach eleganteren Möglichkeiten“)
+
+**Reihenfolge:** R5 Höhenfeld → dünne Kanten (Klinge oder rund, mit Vergleichsbild) → S6 seitliche Teile (auf demselben
+Feld-Prinzip) → S7 Einbau als Standard → S8 Linien exakt. Nach jedem Schritt Messreihe, Bilder, Commit; Florian kann
+jederzeit eingreifen.
+
+**Befund (eine Wurzel für vier offene Punkte):** Der Baum hebt die Seitenfläche Ring für Ring: Jeder Ring bekommt einen
+eigenen Querschnitt (Front-Lappen oder rund) und einen eigenen Maßstab. In einem Fächer (Überhang-Kehle) liegen Ringe mit
+ganz verschiedenen Längen und Richtungen dicht beieinander. Benachbarte Punkte zweier Ringe bekommen dann verschiedene Tiefen,
+die Fläche faltet oder kreuzt sich (R4: 24° rund, 62–173° mit eigenem Lappen je Ring). Dieselbe Wurzel haben der Knick am
+Fisch-Schwanzstiel (abgeschnittener Front-Lappen für alle Ringe), die Front-Reste an Langhals und Drache (Kopfring aus der
+Rumpf-Glocke) und die Sonderwege an den Ansätzen (Kragenpunkte rutschen, Hermite-Überblendung unter der Sehne).
+
+**R5 Höhenfeld:** Die Zielform ist ein einziges glattes Feld H(x, y) über der Seitenfläche Ω (Körper z = ±H). Jeder
+Käfigpunkt holt seine Tiefe dort ab, wo er in der Seite liegt.
+- **Rundes Aufblasen:** Δu = −1 auf Ω, u = 0 auf dem Rand (Poisson, Raster ≈ 2 px). r = √(2u) ergibt kreisrunde Querschnitte
+  bei Streifen und eine Kugel bei der Scheibe (bis auf den Faktor), mit senkrechter Tangente an der Naht.
+- **Breite aus Top und Front:** Auf dem Grat von u (Mittelachse) ist das Ziel die Sichthülle min(Top bei x, Front bei y).
+  Das Verhältnis σ = Ziel / r wird vom Grat aus harmonisch über Ω fortgesetzt (Δσ = 0), dann ist H = r · σ. Kein Ring, kein
+  Fächer und keine Sehne entscheidet mehr über die Tiefe.
+- **Fülle wie S3 „mittel“:** Wo der Körper die Front oder das Top nicht erreicht, wird σ am Grat nachgeführt; fehlt es
+  abseits des Grats (kastige Front), wird das Profil voller (Superellipse statt Kreis), höchstens bis zum weichen Kasten.
+- **Käfig:** Ringe, Kappen, Kragen und Übergänge legen nur noch die Lage in der Seite fest. Die Punkte eines Rings werden nach
+  der Bogenlänge seines Profils (Sprosse, H) verteilt. Rutschen der Kragenpunkte und Hermite unter der Sehne entfallen.
+- Gezeichnete Spanten gelten weiter (dann Querschnitt wie in der Röhre, bis S7 Spanten je Teil bringt).
+- **Tore:** Überhang frei ≤ 20°. Kein Körper schlechter als heute um mehr als 1° (Falten je Zone) oder 0,5 px (Δ), außer wo
+  das Feld die Zeichnung genauer trifft. Hohlkehlen ≤ 20°. Bau ≤ 250 ms. Schalter `hebung: 'ringe' | 'feld'`; mit `ringe`
+  bitgleich zu heute.
+
 ### S6 Seitliche Teile: Flügel, Flossen, Beine, Ohren
 - Neu `kern/grundkoerper/seitenteil.ts` (Streifen im geneigten Rahmen: Naht = Top-Lappen, Mittelfläche aus der
   Front-Mittelachse, Linsen-Querschnitt, N = 8, flache Kappe) und `ansatz.ts` (Fenster als Rechteck im exakt verfeinerten
