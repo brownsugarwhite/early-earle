@@ -314,6 +314,46 @@ Spitzen ehrlich berichtet); Δ ≤ 1,5/2/2 px, wo erreichbar (Flügel, Brustflos
 Topologie-Neubau ≤ 500 ms. **Grenzen:** Maul, Reifen, Augen, Pinsel und Posen auf mehrteiligen Körpern erst mit S7 (die
 Tafel sagt es); die Auslegung wird je genauem Bau neu bestimmt (Einfrieren mit S7).
 
+#### S5-Reste (Plan 16.10. abends, nach Florians „ok, du kannst weiter machen“; vor dem Code)
+
+**Befund vor dem Bau** (gemessen; Ausgang wie im S5-Stand):
+- **Überhang:** Die 28°-Falte ist ein Grat oben auf dem Rücken (Ringe 14/15, quer über der Naht), keine Gabel. Jeder Ring
+  trägt die ganze Front-Glocke (schmaler Kopf auf breitem Körper), auch die schrägen Rumpfringe. Mit runden Querschnitten
+  bleiben 24° an der Kehle (Fächer). Querschnitt je Ring (Fenster ±1 Ring) gibt 173° (Umklappen an der Kehle) — verworfen.
+- **Fischschwanz:** trägt schon heute (unterer Lappen über den Übergang 2:1, oberer seitlich): keine Falte über 20° außer an
+  den gezeichneten Spitzen. Ein Y-Stück wird zurückgestellt.
+- **Hohlkehlen:** Die Falten (Giraffe 22,6°, S-Hals 22,6°, Ente 24,7°, Fisch 36,3°) liegen schon in der Zielform (vor dem
+  Löser), quer über der Naht an den Sehnenenden — auch dort, wo die Zeichnung gerade läuft (Wendewinkel über ±10 px 2–15°).
+  Ursache: Am Sehnenende treffen in einem Nahtpunkt mit sechs Kanten zwei Ringe mit verschiedener Querkrümmung zusammen.
+  Der Rumpfring ist oben rund (Giraffe: Radius ≈ 45 px), der Kindring 0 auf der Sehne ist eine flache Ellipse mit spitzem
+  Ende (≈ 11 px). Eine glatte Fläche kann beides nicht an einem Punkt.
+
+**R1 Kragen statt Sehne** (seitlich angesetzte Mittelteile; Schalter, die Sehne bleibt zum Vergleich):
+- Der erste Ring des Kinds ist eine U-Schleife auf der Haut des Rumpfs. Sie läuft vom Sehnenende A den Rumpfring durch A
+  hinab bis zur Zeile m, die Zeile m entlang unter dem Kind und den Rumpfring durch B wieder hinauf (H = 2m + w; w =
+  Rumpfringabstände unter der Sehne, gerade). Das Feld innerhalb des U gehört dem Kind.
+- Folgen:
+  - A und B sind gewöhnliche Nahtpunkte mit vier Kanten. Statt dessen gibt es vier Punkte mit fünf Kanten auf den Flanken
+    an den Ecken des U.
+  - Der Übergang Rumpf → Kind (Hohlkehle) ist das Band zwischen dem U und dem ersten Kindring.
+  - Es gibt keine verdoppelten Punkte.
+  - Rücken- und Bauchflosse können über denselben Rumpfringen sitzen (oben ein U in den Zeilen 0…m, unten eines in h − m…h).
+- So setzt man in der Unterteilungs-Modellierung Hals oder Arm an: ein Fenster im Elterngitter. Dasselbe plant S6 für die
+  seitlichen Teile.
+- Tore: Ansatz ≤ 20° an Giraffe, S-Hals, Ente und Fisch-Rückenflosse. Frei und Kappe nicht schlechter, Δ nicht schlechter um
+  mehr als 0,5 px. Käfig geschlossen und orientiert, χ = 2, keine Punkte mit sechs Kanten auf der Naht.
+
+**R2 Überlappende Flossen:** Mit dem Kragen bekommt die Fisch-Bauchflosse einen eigenen Streifen über denselben Rumpfringen
+wie die Rückenflosse (heute im Rumpf, frei 32°). Tor: frei ≤ 20° am Fisch außerhalb der Spitzen.
+
+**R3 Übergang 2:1 höher am Hals** (Langhals, Drache): Die Übergangssehne liegt dort, wo der Hals dünn wird, die Brust bleibt im
+Rumpf. Tor: Δ nicht schlechter als der eine Streifen, Falten ≤ 20°.
+
+**R4 Überhang:** Grat aus dem Glocken-Querschnitt → Kopf und Rumpf bekommen je ihren eigenen Querschnitt. Erst nach R1–R3,
+mit Messung; ein Y-Stück nur, wenn es danach noch fehlt.
+
+Nach R1–R4: Messreihe, Kontaktbogen, Editor (Geist), Halt für Florian.
+
 ### S6 Seitliche Teile: Flügel, Flossen, Beine, Ohren
 - Neu `kern/grundkoerper/seitenteil.ts` (Streifen im geneigten Rahmen: Naht = Top-Lappen, Mittelfläche aus der
   Front-Mittelachse, Linsen-Querschnitt, N = 8, flache Kappe) und `ansatz.ts` (Fenster als Rechteck im exakt verfeinerten
