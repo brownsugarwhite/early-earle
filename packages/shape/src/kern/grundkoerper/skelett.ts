@@ -197,81 +197,100 @@ type SkelettGraph = { knotenZellen: number[][]; kanten: Kante[]; knotenKanten: n
 
 function skelettGraph(z: Uint8Array, g: Graph): SkelettGraph {
   const n = z.length;
+  // Überzählige Zellen weg (einfache Punkte): eine Zelle, deren Nachbarn auch ohne sie zusammenhängen (8er-Nachbarschaft
+  // innerhalb des 3 × 3-Rings), trägt nichts zum Zusammenhang bei; Enden (ein Nachbar) bleiben. Danach ist das Skelett
+  // überall eine Zelle breit: Wegzellen haben zwei Nachbarn, Enden einen, Abzweige drei und mehr. Das Ausdünnen ließ
+  // stellenweise zwei Zellen breite Schrägen, deren Zellen drei Nachbarn hatten und wie Abzweige aussahen.
+  const ringZusammen = (nb: readonly number[]) => {
+    const gesehen = new Set<number>([nb[0]!]);
+    const stapel = [nb[0]!];
+    while (stapel.length) {
+      const q = stapel.pop()!;
+      for (const r of nb) if (!gesehen.has(r) && g.nachbarn(q).includes(r)) {
+        gesehen.add(r);
+        stapel.push(r);
+      }
+    }
+    return gesehen.size === nb.length;
+  };
+  for (let geaendert = true; geaendert; ) {
+    geaendert = false;
+    for (let i = 0; i < n; i++) {
+      if (!z[i]) continue;
+      const nb = g.nachbarn(i);
+      if (nb.length >= 2 && ringZusammen(nb)) {
+        z[i] = 0;
+        geaendert = true;
+      }
+    }
+  }
   const knotenVon = new Int32Array(n).fill(-1);
   const knotenZellen: number[][] = [];
   const knotenKanten: number[][] = [];
-  // Abzweige zu Knoten zusammenfassen
+  // Knoten: Enden (1 Nachbar) und Abzweige (≥ 3), benachbarte Abzweige zusammengefasst
   for (let i = 0; i < n; i++) {
-    if (!z[i] || knotenVon[i]! >= 0 || g.uebergaenge(i) < 3) continue;
+    if (!z[i] || knotenVon[i]! >= 0) continue;
+    const grad = g.nachbarn(i).length;
+    if (grad === 2) continue;
     const k = knotenZellen.length;
     const liste = [i];
     knotenVon[i] = k;
-    for (let t = 0; t < liste.length; t++)
-      for (const q of g.nachbarn(liste[t]!))
-        if (knotenVon[q]! < 0 && g.uebergaenge(q) >= 3) {
-          knotenVon[q] = k;
-          liste.push(q);
-        }
+    if (grad >= 3)
+      for (let t = 0; t < liste.length; t++)
+        for (const q of g.nachbarn(liste[t]!))
+          if (knotenVon[q]! < 0 && g.nachbarn(q).length >= 3) {
+            knotenVon[q] = k;
+            liste.push(q);
+          }
     knotenZellen.push(liste);
     knotenKanten.push([]);
   }
   const kanten: Kante[] = [];
   const inKante = new Uint8Array(n);
-  const neuerKnoten = (zelle: number) => {
-    const k = knotenZellen.length;
-    knotenZellen.push([zelle]);
-    knotenKanten.push([]);
-    return k;
-  };
-  for (let i = 0; i < n; i++) {
-    if (!z[i] || inKante[i] || knotenVon[i]! >= 0) continue;
-    // Komponente der Nicht-Knoten-Zellen
-    const komp = [i];
-    inKante[i] = 1;
-    for (let t = 0; t < komp.length; t++)
-      for (const q of g.nachbarn(komp[t]!))
-        if (!inKante[q] && knotenVon[q]! < 0) {
-          inKante[q] = 1;
-          komp.push(q);
-        }
-    const inKomp = new Set(komp);
-    // längster Weg in der Komponente (zweimal Breitensuche): die Kette
-    const bfs = (von: number) => {
-      const dist = new Map<number, number>([[von, 0]]);
-      const vor = new Map<number, number>();
-      const schlange = [von];
-      for (let t = 0; t < schlange.length; t++) {
-        const q = schlange[t]!;
-        for (const x of g.nachbarn(q))
-          if (inKomp.has(x) && !dist.has(x)) {
-            dist.set(x, dist.get(q)! + 1);
-            vor.set(x, q);
-            schlange.push(x);
+  // Kanten: von jedem Knoten über jede angrenzende Wegzelle bis zum nächsten Knoten verfolgen
+  for (let k = 0; k < knotenZellen.length; k++) {
+    for (const c0 of knotenZellen[k]!) {
+      for (const start of g.nachbarn(c0)) {
+        if (knotenVon[start]! === k) continue;
+        if (knotenVon[start]! >= 0) {
+          // zwei Knoten direkt benachbart: Kante ohne eigene Zellen (einmal)
+          const b = knotenVon[start]!;
+          if (b > k && !kanten.some((e) => (e.a === k && e.b === b) || (e.a === b && e.b === k))) {
+            kanten.push({ zellen: [], a: k, b });
+            knotenKanten[k]!.push(kanten.length - 1);
+            knotenKanten[b]!.push(kanten.length - 1);
           }
+          continue;
+        }
+        if (inKante[start]) continue;
+        const kette = [start];
+        inKante[start] = 1;
+        let vor = c0;
+        let jetzt = start;
+        let ende = -1;
+        for (;;) {
+          const weiter = g.nachbarn(jetzt).filter((q) => q !== vor && !kette.includes(q) && !(knotenVon[q]! === k && kette.length === 1 && q === c0));
+          const zuKnoten = weiter.find((q) => knotenVon[q]! >= 0 && !(knotenVon[q] === k && kette.length < 2));
+          if (zuKnoten !== undefined) {
+            ende = knotenVon[zuKnoten]!;
+            break;
+          }
+          const frei = weiter.filter((q) => !inKante[q] && knotenVon[q]! < 0);
+          if (!frei.length) break;
+          vor = jetzt;
+          jetzt = frei[0]!;
+          inKante[jetzt] = 1;
+          kette.push(jetzt);
+        }
+        if (ende < 0) ende = k; // Schleife zurück (sollte bei Silhouetten ohne Loch nicht vorkommen)
+        const e = kanten.length;
+        kanten.push({ zellen: kette, a: k, b: ende });
+        knotenKanten[k]!.push(e);
+        if (ende !== k) knotenKanten[ende]!.push(e);
       }
-      let fern = von;
-      for (const q of komp) if (dist.get(q)! > dist.get(fern)!) fern = q;
-      return { fern, vor };
-    };
-    const a0 = bfs(komp[0]!).fern;
-    const { fern, vor } = bfs(a0);
-    const kette: number[] = [];
-    for (let q: number | undefined = fern; q !== undefined; q = vor.get(q)) kette.push(q);
-    kette.reverse();
-    // Knoten an den Enden (angrenzende Abzweige), sonst ein eigener End-Knoten
-    const knotenAn = (zelle: number) => {
-      for (const q of g.nachbarn(zelle)) if (knotenVon[q]! >= 0) return knotenVon[q]!;
-      return -1;
-    };
-    let a = knotenAn(kette[0]!);
-    let b = knotenAn(kette[kette.length - 1]!);
-    if (a < 0) a = neuerKnoten(kette[0]!);
-    if (b < 0) b = kette.length > 1 ? neuerKnoten(kette[kette.length - 1]!) : a;
-    const e = kanten.length;
-    kanten.push({ zellen: kette, a, b });
-    knotenKanten[a]!.push(e);
-    if (b !== a) knotenKanten[b]!.push(e);
+    }
   }
+  // einzelne Linie ohne Knoten (kann nach dem Ausdünnen vorkommen, wenn alles eine Schleife wäre): nichts
   return { knotenZellen, kanten, knotenKanten };
 }
 
@@ -292,30 +311,57 @@ function vorschauRadius(k: Kante, von: number, d: Float64Array, weit: number): n
   return m ? s / m : 0;
 }
 
-/** Am Knoten in die dickere freie Kante (Vorschau über einen Abzweig-Radius); −1, wenn keine frei ist. */
-function dickereKante(G: SkelettGraph, d: Float64Array, knoten: number, benutzt: Uint8Array): number {
+/** Richtung (Rasterzellen) vom Anfang eines Zellzugs über `weit` Zellen. */
+function zugRichtung(W: number, z: readonly number[], weit: number): [number, number] {
+  const a = z[0]!;
+  const b = z[Math.min(z.length - 1, weit)]!;
+  const ra = Math.floor(a / W);
+  const rb = Math.floor(b / W);
+  return [b - rb * W - (a - ra * W), rb - ra];
+}
+
+/**
+ * Am Knoten die Fortsetzung wählen: dicker (mittlerer Radius über einen Abzweig-Radius) und gerader (Fisch: in den
+ * Schwanz, nicht in die Rückenflosse, deren Ansatz auch breit ist). Bewertung = Radius · (1 + cos Knick) / 2; ohne
+ * Ankunftsrichtung nur der Radius. −1, wenn keine Kante frei ist.
+ */
+function dickereKante(G: SkelettGraph, d: Float64Array, knoten: number, benutzt: Uint8Array, W = 0, ankunft?: [number, number]): number {
   const frei = G.knotenKanten[knoten]!.filter((x) => !benutzt[x]);
   if (!frei.length) return -1;
   let rKnoten = 0;
   for (const c of G.knotenZellen[knoten]!) rKnoten = Math.max(rKnoten, d[c]!);
   const weit = Math.max(6, Math.round(rKnoten));
+  const wert = (x: number) => {
+    const r = vorschauRadius(G.kanten[x]!, knoten, d, weit);
+    if (!ankunft || !W) return r;
+    const [ax, ay] = ankunft;
+    const [bx, by] = zugRichtung(W, kanteAb(G.kanten[x]!, knoten), weit);
+    const la = Math.hypot(ax, ay);
+    const lb = Math.hypot(bx, by);
+    const cos = la > 0 && lb > 0 ? (ax * bx + ay * by) / (la * lb) : 0;
+    return (r * (1 + cos)) / 2;
+  };
   let best = frei[0]!;
-  for (const x of frei) if (vorschauRadius(G.kanten[x]!, knoten, d, weit) > vorschauRadius(G.kanten[best]!, knoten, d, weit)) best = x;
+  for (const x of frei) if (wert(x) > wert(best)) best = x;
   return best;
 }
 
-/** Weg ab dem Knoten `von` über die Kante `e`, an jedem weiteren Knoten in die dickere Fortsetzung. */
-function wegAufGraph(G: SkelettGraph, d: Float64Array, von: number, e: number, benutzt: Uint8Array): number[] {
+/** Weg ab dem Knoten `von` über die Kante `e`, an jedem weiteren Knoten in die dickere, gerade Fortsetzung. */
+function wegAufGraph(G: SkelettGraph, d: Float64Array, von: number, e: number, benutzt: Uint8Array, W = 0): number[] {
   const out: number[] = [];
   let knoten = von;
   let kante = e;
   for (;;) {
     benutzt[kante] = 1;
     const k = G.kanten[kante]!;
-    out.push(...kanteAb(k, knoten));
+    const z = kanteAb(k, knoten);
+    out.push(...z);
     const weiter = k.a === knoten ? k.b : k.a;
     if (weiter === knoten) break;
-    const naechste = dickereKante(G, d, weiter, benutzt);
+    // Ankunftsrichtung: die letzten Zellen bis zum Knoten (umgedreht gelesen)
+    const ende = out.slice(-Math.max(6, Math.round(d[out[out.length - 1]!]!))).reverse();
+    const [rx, ry] = W ? zugRichtung(W, ende, ende.length - 1) : [0, 0];
+    const naechste = dickereKante(G, d, weiter, benutzt, W, W ? [-rx, -ry] : undefined);
     if (naechste < 0) break;
     out.push(...G.knotenZellen[weiter]!);
     knoten = weiter;
@@ -348,7 +394,9 @@ export function skelett(poly: readonly V2[], zellen = 240, spiegel?: 'x' | 'y'):
     if (mitte >= 0) aeste.push({ ...weg([mitte]), eltern: -1, abzweig: 0, ueberstand: 0 });
     return { raster: R, abstand, zellen: z, aeste };
   }
-  // Rumpf: die Kante mit der dicksten Zelle, von dort zu beiden Enden und über die Knoten weiter
+  // Rumpf: Start an der dicksten Stelle. Liegt sie an einem Abzweig (innerhalb seines Radius), beginnt der Rumpf am
+  // Knoten mit dem geradesten, dicksten Kantenpaar (Fisch: Kopf–Schwanz statt Rückenflosse–Kopf, deren Ansatz im dicken
+  // Körper liegt); sonst läuft er von der dicksten Zelle ihrer Kante in beide Richtungen.
   let eMitte = 0;
   let tMitte = 0;
   let rMax = -1;
@@ -361,16 +409,61 @@ export function skelett(poly: readonly V2[], zellen = 240, spiegel?: 'x' | 'y'):
       }
     }),
   );
+  let kMax = -1;
+  let rK = -1;
+  G.knotenZellen.forEach((zs, k) => {
+    if (G.knotenKanten[k]!.length < 3) return;
+    for (const c of zs) if (dz[c]! > rK) {
+      rK = dz[c]!;
+      kMax = k;
+    }
+  });
+  const W = R.W;
   const benutzt = new Uint8Array(G.kanten.length);
-  const km = G.kanten[eMitte]!;
-  benutzt[eMitte] = 1;
-  const fortsetzen = (knoten: number): number[] => {
-    const e = dickereKante(G, dz, knoten, benutzt);
-    return e < 0 ? [] : [...G.knotenZellen[knoten]!, ...wegAufGraph(G, dz, knoten, e, benutzt)];
+  // Ankunftsrichtung am Knoten: die letzten Zellen vor dem Knoten
+  const fortsetzen = (knoten: number, zuletzt: number[]): number[] => {
+    const ende = zuletzt.slice(-Math.max(6, Math.round(dz[zuletzt[zuletzt.length - 1]!]!))).reverse();
+    const [rx, ry] = zugRichtung(W, ende, ende.length - 1);
+    const e = dickereKante(G, dz, knoten, benutzt, W, [-rx, -ry]);
+    return e < 0 ? [] : [...G.knotenZellen[knoten]!, ...wegAufGraph(G, dz, knoten, e, benutzt, W)];
   };
-  const vorwaerts = [...km.zellen.slice(tMitte), ...(km.b !== km.a ? fortsetzen(km.b) : [])];
-  const rueckwaerts = [...km.zellen.slice(0, tMitte + 1).reverse(), ...fortsetzen(km.a)];
-  const rumpf = [...rueckwaerts.slice().reverse(), ...vorwaerts.slice(1)];
+  const pMax = welt(R, G.kanten[eMitte]!.zellen[tMitte]!);
+  const amKnoten = kMax >= 0 && G.knotenZellen[kMax]!.some((c) => {
+    const q = welt(R, c);
+    return Math.hypot(q.x - pMax.x, q.y - pMax.y) <= rMax * R.h;
+  });
+  let rumpf: number[];
+  if (amKnoten) {
+    // bestes Paar: (Radius a + Radius b) · (1 − cos Winkel) / 2 — gegenüberliegend und dick
+    const ks = G.knotenKanten[kMax]!;
+    let rKn = 0;
+    for (const c of G.knotenZellen[kMax]!) rKn = Math.max(rKn, dz[c]!);
+    const weit = Math.max(6, Math.round(rKn));
+    let bestPaar: [number, number] = [ks[0]!, ks[1]!];
+    let bestWert = -Infinity;
+    for (let i = 0; i < ks.length; i++)
+      for (let j = i + 1; j < ks.length; j++) {
+        const [ax, ay] = zugRichtung(W, kanteAb(G.kanten[ks[i]!]!, kMax), weit);
+        const [bx, by] = zugRichtung(W, kanteAb(G.kanten[ks[j]!]!, kMax), weit);
+        const la = Math.hypot(ax, ay);
+        const lb = Math.hypot(bx, by);
+        const cos = la > 0 && lb > 0 ? (ax * bx + ay * by) / (la * lb) : 0;
+        const wert = ((vorschauRadius(G.kanten[ks[i]!]!, kMax, dz, weit) + vorschauRadius(G.kanten[ks[j]!]!, kMax, dz, weit)) * (1 - cos)) / 2;
+        if (wert > bestWert) {
+          bestWert = wert;
+          bestPaar = [ks[i]!, ks[j]!];
+        }
+      }
+    const a = wegAufGraph(G, dz, kMax, bestPaar[0], benutzt, W);
+    const b = wegAufGraph(G, dz, kMax, bestPaar[1], benutzt, W);
+    rumpf = [...a.slice().reverse(), ...G.knotenZellen[kMax]!, ...b];
+  } else {
+    const km = G.kanten[eMitte]!;
+    benutzt[eMitte] = 1;
+    const vorwaerts = [...km.zellen.slice(tMitte), ...(km.b !== km.a ? fortsetzen(km.b, km.zellen) : [])];
+    const rueckwaerts = [...km.zellen.slice(0, tMitte + 1).reverse(), ...fortsetzen(km.a, km.zellen.slice().reverse())];
+    rumpf = [...rueckwaerts.slice().reverse(), ...vorwaerts.slice(1)];
+  }
   aeste.push({ ...weg(rumpf), eltern: -1, abzweig: 0, ueberstand: 0 });
   // Äste: an jedem Knoten auf einem Weg beginnen die unbenutzten Kanten einen Ast (rekursiv)
   const pfade: number[][] = [rumpf];
@@ -383,7 +476,7 @@ export function skelett(poly: readonly V2[], zellen = 240, spiegel?: 'x' | 'y'):
       if (t === undefined) continue;
       for (const e of G.knotenKanten[kn]!) {
         if (benutzt[e]) continue;
-        const ast = [pfad[t]!, ...wegAufGraph(G, dz, kn, e, benutzt)];
+        const ast = [pfad[t]!, ...wegAufGraph(G, dz, kn, e, benutzt, W)];
         const p0 = welt(R, pfad[t]!);
         let ueber = 0;
         for (const c of ast) {
