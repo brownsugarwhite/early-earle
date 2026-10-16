@@ -157,6 +157,11 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   - **Anzeige:** `src/teile/TeilEbene.tsx` (Flächen unter allem, im Umriss beschnitten; Wirbelsäulen über der schwarzen Linie,
     unter den Knoten, Zeiger nur auf den Wirbelsäulen — Flächen fangen keine Klicks), `TeilTafel.tsx`; nur Bauweise Kern,
     Grundform, Stufe Körper, `ui.teileSicht` an. Test-Haken `__editor.teile()`, Prüfung `scripts/pruefen/teile-editor.mjs`.
+  - **Eigene Kurven (`dok.teile`, `teilKurven.ts`):** gespeichert im Rahmen der Stoßstellen (Kurvenparameter des Profils),
+    nicht in Blattkoordinaten — sonst bleiben sie stehen, wenn Florian die schwarze Linie zieht. Front/Top nur die
+    gezeichnete Hälfte (Stücke allein auf der Spiegelseite werden gespiegelt). Ein Fit mit nur einem Bézier-Stück hat keinen
+    ziehbaren Knoten → mindestens zwei Stücke (de Casteljau). Klicks auf ein Stück fängt oft ein Ring des Liniennetzes ab:
+    Das Prüfskript `teile-kurve.mjs` sucht deshalb eine Stelle, an der `elementFromPoint` die Trefferlinie ist.
 - **Nachtrag 16.10. nachmittags — „glatt“ Standard für neue Wesen:** `neuesWesen()` (Editor-Store, Start und „Neu“); Skripte, die von „heute“ aus vergleichen, setzen `ausstattung: {}` (siehe `s2-editor.mjs`).
 - **Nachtrag 16.10. morgens — Regression G2 (eingefrorene Enden), Falle:** Der Editor friert nach dem ersten Bau der Startkugel die Stationen samt Enden der Wirbelsäule ein. Eine neue Automatik, die eingefrorene Werte nutzt, muss mit genau diesem Ablauf geprüft werden: Kugel bauen, dann umformen, Knoten einfügen, Maul zeichnen (Prüfreihe `KUGEL0=1`, `mitStationenVon`; Editor-Ablauf per Playwright: neue Kugel abwarten, `setzeProfile`, `setzeMaul`). „Altes Ende in der Nähe suchen“ nach einer Knotenzahl-Änderung setzte das Ende an die Kerbe statt an die Schnabelspitze (Δ 34 px). Mit Maul gelten wieder vorderster/hinterster Punkt (`endenFuer`), ohne Maul eingefrorene Enden nur, solange sie die Form tragen (`endenTragen`). Regressionsverdacht: Editor-Stände über Arbeitsbäume vergleichen (eigene Ports, `node_modules` des Editors per `rsync -a` kopieren, damit `@ee/shape` auf den Arbeitsbaum zeigt).
 - **Nachtrag 16.10. früh — B7 Posen & Leben, Fallen:**
