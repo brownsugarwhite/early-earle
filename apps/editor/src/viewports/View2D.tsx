@@ -39,6 +39,7 @@ import { blickVon, useUi } from '../state/uiStore';
 import { MaulZeichnung, aktuelleLippen, maulZeiger, setzeLippen, setzeLippenImUmriss } from '../maul/MaulEbene';
 import { KieferZeichnung, kieferZeiger } from '../kiefer/KieferEbene';
 import { PoseLinieZeichnung, poseLinieZeiger } from '../posen/poseLinie';
+import { UmrisseZeichnung } from '../posen/umrisse';
 import { PoseLippenZeichnung, poseLippenZeiger, usePoseLippen } from '../posen/poseLippen';
 import { RigZeichnung } from '../maul/RigZeichnung';
 import { ZahnZeichnung, zahnZeiger } from '../maul/ZahnEbene';
@@ -561,6 +562,7 @@ export function View2D({ ansicht, w, h }: Props) {
       {umwegPfade.eigen && <path data-umweg="eigen" d={umwegPfade.eigen} fill="none" stroke="var(--kurve)" strokeWidth={KONTUR} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
       {saumPfad && !poseBlattAnzeige && <path className="saum" data-saum="" d={saumPfad} fill="none" stroke="var(--saum)" strokeWidth={3} strokeOpacity={0.8} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
       {formAktiv && <path data-kurve="" d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="transparent" strokeWidth={14} />}
+      {bauweise === 'kern' && <UmrisseZeichnung ansicht={ansicht} bild={bild} skal={skal} />}
       {poseBlattAnzeige && <PoseLinieZeichnung ansicht={ansicht} bild={bild} skal={skal} aktiv={poseKern} />}
       <WirbelZeichnung ansicht={ansicht} bild={bild} />
       <SchnittZeichnung ansicht={ansicht} bild={bild} />

@@ -106,6 +106,20 @@ function amZug(punkte: V3[], zug: readonly { x: number; y: number }[], zelle: nu
   return out;
 }
 
+/**
+ * Äußerer Umriss eines feinen Netzes in einem Blatt (B7: Geist und Zwischenbilder), zwei Koordinaten je Punkt wie
+ * `PoseSeite.umriss` (Seite (x, y), Front (z, y), Top (x, z)).
+ */
+export function blattUmriss(fein: ArrayLike<number>, flaechen: readonly number[][], ansicht: Ansicht3): Float32Array {
+  const { zug } = aussenUmriss(alsPunkte(fein), flaechen, ansicht);
+  const out = new Float32Array(2 * zug.length);
+  zug.forEach((q, k) => {
+    out[2 * k] = q.x;
+    out[2 * k + 1] = q.y;
+  });
+  return out;
+}
+
 /** Ruhe-Umriss und Kandidaten je Ableitung und Blatt merken (hängen nur an der Ruhelage). */
 const ruheMerk = new WeakMap<ArrayLike<number>, Partial<Record<Ansicht3, { kandidaten: number[] }>>>();
 

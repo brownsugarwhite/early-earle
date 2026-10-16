@@ -119,7 +119,6 @@ let s = await zustand();
 pruefe('Tafel: Posenliste mit Grundform, Idle, Fressen', (await page.$$('[data-pose-zeile]')).length === 1 + s.posen.length && !!(await page.$('[data-pose-regler="fressen"]')), `${(await page.$$('[data-pose-zeile]')).length} Zeilen`);
 pruefe('Bühne: Chip „✎ Grundform“ in Posen & Leben', (await page.textContent('[data-ziel-chip="editor"]'))?.includes('Grundform') ?? false);
 const hGrund = await hash();
-const lGrund = await lagen();
 
 // Vorschau Fressen 50 % im Editor-Tab
 await regler('[data-pose-regler="fressen"]', 0.5);
@@ -290,6 +289,81 @@ await page.click('[data-neue-pose-art="kopie"]');
 await warteBau(v0);
 s2 = await zustand();
 pruefe('Neue Pose ▾ „Kopie von Brüllen“', s2.posen.some((q) => q.name === 'Brüllen Kopie') && s2.modus !== s.modus);
+
+// ——— Überblenden, Abspielen, Geist, Zwischenbilder (Rex) ———
+v0 = await version();
+await page.click('[data-tab="editor"]');
+await warteBau(v0);
+await ui('setzeEbene', 'posen');
+await ui('maximieren', null);
+await page.waitForTimeout(600);
+await page.selectOption('[data-ueberblenden-von]', 'idle');
+await page.selectOption('[data-ueberblenden-nach]', 'fressen');
+await regler('[data-ueberblenden-t]', 0.4);
+s = await zustand();
+pruefe('Überblenden Idle → Fressen bei 40 %: Vorschau Idle 60 %, Fressen 40 %', Math.abs((s.vorschau?.idle ?? 0) - 0.6) < 1e-9 && Math.abs((s.vorschau?.fressen ?? 0) - 0.4) < 1e-9 && s.modus === 'editor', JSON.stringify(s.vorschau));
+const vSpiel = await version();
+await page.click('[data-ueberblenden-spielen]');
+await page.waitForTimeout(2000);
+const spiel = await page.evaluate(() => window.__stores.ui.getState().ueberblenden);
+const builds = (await version()) - vSpiel;
+pruefe('▶ spielt (Pingpong): Stelle wandert, Netz wird neu gezeigt', spiel.spielt && builds >= 3, `${builds} Netze in 2 s, t = ${spiel.t.toFixed(2)}`);
+v0 = await version();
+await page.mouse.move(900, 500);
+await page.keyboard.press('Escape');
+await warteBau(v0);
+s = await zustand();
+let u = await page.evaluate(() => window.__stores.ui.getState().ueberblenden);
+pruefe('Esc hält an und beendet die Vorschau', !u.spielt && s.vorschau === null);
+await page.mouse.move(900, 500);
+await page.keyboard.press('Shift+Space');
+await page.waitForTimeout(600);
+u = await page.evaluate(() => window.__stores.ui.getState().ueberblenden);
+pruefe('⇧Leertaste spielt ab', u.spielt);
+v0 = await version();
+await page.click('[data-pose="fressen"]');
+await warteBau(v0);
+await page.waitForTimeout(300);
+u = await page.evaluate(() => window.__stores.ui.getState().ueberblenden);
+s = await zustand();
+pruefe('Zielwechsel hält das Abspielen an (Vorschau endet)', !u.spielt && s.vorschau === null && s.modus === 'fressen');
+// Geist im Editor-Tab
+v0 = await version();
+await page.click('[data-pose="editor"]');
+await warteBau(v0);
+await page.selectOption('[data-geist-pose]', 'fressen');
+await page.waitForTimeout(300);
+await warteBau(v0);
+const geister = await page.$$eval('[data-geist]', (els) => els.map((e) => e.closest('[data-view]')?.getAttribute('data-view') ?? '?'));
+pruefe('Geist: Umriss von Fressen gestrichelt in Seite, Front und Top', ['seite', 'front', 'top'].every((f) => geister.includes(f)), geister.join(', '));
+await bild('Rex: Geist (Fressen) im Seitenblatt des Editor-Tabs', 'seite');
+v0 = await version();
+await page.click('[data-geist-an]');
+await warteBau(v0);
+pruefe('Geist aus: kein Umriss', (await page.$$('[data-geist]')).length === 0);
+// Zwischenbilder
+const tZ = Date.now();
+v0 = await version();
+await page.click('[data-zwischenbilder]');
+await warteBau(v0);
+const msZ = Date.now() - tZ;
+const zw = await page.$$eval('[data-zwischenbild]', (els) => els.map((e) => e.getAttribute('data-zwischenbild') + '@' + (e.closest('[data-view]')?.getAttribute('data-view') ?? '?')));
+pruefe('Zwischenbilder: vier Umrisse je Blatt', zw.length === 12, `${zw.length} Umrisse, Bau samt Umrissen ${msZ} ms`);
+await bild('Rex: Zwischenbilder Idle → Fressen im Seitenblatt', 'seite');
+await bild('Rex: Zwischenbilder in der Front', 'front');
+// Abspielen mit Zwischenbildern: Umrisse bleiben gemerkt (kein Neurechnen je Bild)
+const vZ = await version();
+const t0 = Date.now();
+await page.click('[data-ueberblenden-spielen]');
+await page.waitForTimeout(2000);
+const nZ = (await version()) - vZ;
+await page.click('[data-ueberblenden-spielen]');
+pruefe('Abspielen mit Zwischenbildern bleibt flüssig (≥ 8 Netze in 2 s)', nZ >= 8, `${nZ} Netze in ${Date.now() - t0} ms`);
+await page.evaluate(() => window.__stores.ui.getState().setzeUeberblenden({ zwischenbilder: false }));
+v0 = await version();
+await page.mouse.move(900, 500);
+await page.keyboard.press('Escape');
+await warteBau(v0);
 
 // ——— Kugel (ohne Maul): Vorschau einer geformten Idle-Pose ———
 await laden('kugel');

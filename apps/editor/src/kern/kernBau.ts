@@ -10,6 +10,7 @@ import { useUi } from '../state/uiStore';
 import { type Look, PALETTEN } from '../three/wesenLook';
 import { WesenClient } from './wesenClient';
 import { aktuellesNetz, setzeAktuellesNetz } from './netzStand';
+import { ueberblendenGewichte, ueberblendenPaar } from '../posen/ueberblenden';
 
 export type { BeinArt, MaulArt, StilArt };
 export type KernInfo = WesenInfo;
@@ -192,7 +193,25 @@ export function bauplanAus(dok: Dokument): Partial<Bauplan> {
     atlas: atlasAn,
     // Rig (Plan 5.2): Unterkiefergewichte als Farbe, nur in der Stufe „Posen & Leben“
     gewichteZeigen: useUi.getState().gewichteZeigen && useUi.getState().ebene === 'posen',
+    ...umrisseAnfrage(dok),
   };
+}
+
+/**
+ * B7: Zusatz-Umrisse für die Blätter in „Posen & Leben“ — im Editor-Tab der Geist der gewählten Pose, mit Zwischenbildern
+ * das Überblenden bei 20/40/60/80 %. Der Worker merkt sie; Abspielen rechnet sie nicht neu.
+ */
+function umrisseAnfrage(dok: Dokument): { umrisse?: { id: string; gewichte: Record<string, number> }[] } {
+  const ui = useUi.getState();
+  if (ui.ebene !== 'posen') return {};
+  const liste: { id: string; gewichte: Record<string, number> }[] = [];
+  const modus = useEditor.getState().modus;
+  if (modus === 'editor' && ui.geist && dok.posen.some((p) => p.id === ui.geistPose)) liste.push({ id: 'geist', gewichte: { [ui.geistPose]: 1 } });
+  if (ui.ueberblenden.zwischenbilder) {
+    const { von, nach } = ueberblendenPaar();
+    for (const t of [0.2, 0.4, 0.6, 0.8]) liste.push({ id: `t${t}`, gewichte: ueberblendenGewichte(von, nach, t) });
+  }
+  return liste.length ? { umrisse: liste } : {};
 }
 
 let client: WesenClient | null = null;

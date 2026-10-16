@@ -8,6 +8,7 @@ import { berechneLayout } from './layout/layout';
 import { editorApi } from './library/speicher';
 import { useEditor, vorschauBeenden, vorschauLaeuft } from './state/editorStore';
 import { reifenNeuAmZeiger } from './kern/reifen';
+import { abspielenUmschalten } from './posen/ueberblenden';
 import { STUFEN } from './stamm/stufen';
 import { useUi } from './state/uiStore';
 
@@ -86,6 +87,10 @@ export function useTastatur() {
       if (e.ctrlKey && e.code === 'Space') {
         e.preventDefault();
         maximiereUnterMaus();
+      } else if (e.shiftKey && !cmd && !e.altKey && e.code === 'Space') {
+        // B7: Überblenden abspielen/anhalten (Pingpong)
+        e.preventDefault();
+        abspielenUmschalten();
       } else if (cmd && k === 'z') {
         e.preventDefault();
         if (e.shiftKey) useEditor.getState().wiederholen();

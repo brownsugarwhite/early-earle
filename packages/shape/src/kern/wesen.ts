@@ -25,7 +25,7 @@ import { kieferSchnitt } from './kieferSpant';
 import { type AnkerFeld, maulAnker } from './posenAnker';
 import { type PoseBearbeitung, posenAuswerten, posenFuerBau, stellungVon } from './posen/posen';
 import type { KnochenPunkte } from './posen/skin';
-import { type PoseSeite, poseBlattGriffe } from './posen/griffeSeite';
+import { type PoseSeite, blattUmriss, poseBlattGriffe } from './posen/griffeSeite';
 import { KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Haut, type KlingenLage, type KlingenVorlage, ZUNGEN_FEUER, ZUNGEN_GAS, bueschelAufHaut, flaemmchen, gekaemmt, hautAus, hautPunkt, klingenBauen, klingenNetz, klingenVorlage, zungenAmScheitel } from './klinge';
 import { MAUL_POSE_OPTIONEN, MAUL_STANDARD, type MaulAbweichung, type MaulErgebnis, type MaulLinie, type MaulOptionen, ableitenMitMaul, kieferFlaechen, kieferGewichteSetzen, maulAbweichung, maulLinieVorlage, maulOptionenVorlage, maulPose, schaedelGelenk } from './maul';
 import { type BeinErgebnis, ableitenMitBeinen, beinPose } from './teil';
@@ -105,7 +105,16 @@ export type Bauplan = Ausstattung & {
    * nur als eigener Auftrag nach einem genauen Bau, nie während einer Geste; Ergebnis in `WesenNetz.zahnMeldungen`.
    */
   zahnPruefung?: boolean;
+  /**
+   * B7 (Entwurf Posen §6): Zusatz-Umrisse der Blätter für weitere Gewichte (Geist der gewählten Pose im Editor-Tab,
+   * Zwischenbilder des Überblendens). Gemerkt im Stand; neu gerechnet nur bei geändertem Körper oder Posen, nie
+   * während einer Geste.
+   */
+  umrisse?: { id: string; gewichte: Record<string, number> }[];
 };
+
+/** B7: Umriss eines Netzes für weitere Gewichte in den drei Blättern (zwei Koordinaten je Punkt, wie `PoseSeite.umriss`). */
+export type ZusatzUmriss = { id: string; seite: Float32Array; front: Float32Array; top: Float32Array };
 
 /** Trefferdaten (M2): je Körperdreieck die feine Fläche (−1 für angesetzte Teile), je feiner Fläche Käfigfläche und Ecken-(u, v), der posierte Käfig. */
 export type TrefferDaten = {
@@ -224,6 +233,8 @@ export type WesenNetz = {
   /** B3: Daten der bearbeiteten Pose (genau eine mit Gewicht 1) für den Pinsel in der Pose — Ruhe-Käfig, Drehung je Punkt, Form */
   pose: PoseBearbeitung | null;
   /** B4: Griffe der schwarzen Linie im Seitenblatt der bearbeiteten Pose (posierter Umriss, Hautpunkte der Knoten, Zeilen) */
+  /** B7: Zusatz-Umrisse (Geist, Zwischenbilder), wenn `Bauplan.umrisse` sie verlangt */
+  umrisse: ZusatzUmriss[] | null;
   poseSeite: PoseSeite | null;
   /** B6: schwarze Linien der Pose in Front und Top */
   poseFront: PoseSeite | null;
@@ -248,6 +259,13 @@ export type WesenStand = {
   saum?: WesenNetz['saum'];
   umweg?: WesenNetz['umweg'];
   blatt?: WesenInfo['blatt'];
+  /** B7: zuletzt gerechnete Zusatz-Umrisse mit ihrem Schlüssel (Körper, Pinsel, Posen, Anfrage) */
+  umrisse?: { schluessel: string; liste: ZusatzUmriss[] };
+  /**
+   * B7: Werte der Ruhelage, die nicht an den Gewichten hängen (Naht, Δ je Blatt, Lippenabweichung, Ruhe je Ecke) — ein
+   * reiner Gewichtswechsel (Vorschau, Überblenden, Abspielen) rechnet sie nicht neu
+   */
+  ruheWerte?: { schluessel: string; naht: { max: number; mittel: number }; saum: WesenNetz['saum']; umweg: WesenNetz['umweg']; blatt: WesenInfo['blatt']; maulAbw: MaulAbweichung | undefined; ruhe: Float32Array | null; desk: Float32Array | null };
 };
 
 const PX = 461;
@@ -921,6 +939,24 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   for (let i = 1; i < abl.fein.length; i += 3) hoeheRuhe = Math.max(hoeheRuhe, abl.fein[i]!);
   const letzteStufe = abl.unterteilung.stufen[abl.unterteilung.stufen.length - 1]!.kaefig;
   const flaechen = alleFlaechen(letzteStufe);
+  // B7: Zusatz-Umrisse (Geist, Zwischenbilder) — gemerkt; während einer Geste der letzte Stand
+  let umrisse: ZusatzUmriss[] | null = null;
+  let umrisseStand: WesenStand['umrisse'];
+  if (plan.umrisse?.length && beine === 'aus') {
+    const uSchluessel = JSON.stringify({ s: schluessel, d: deltas, p: dokRoh.posen ?? [], mo: plan.maulOptionen ?? null, m: maul, u: plan.umrisse });
+    if (stand?.umrisse && (stand.umrisse.schluessel === uSchluessel || schnell)) {
+      umrisse = stand.umrisse.liste;
+      umrisseStand = stand.umrisse;
+    } else {
+      const A = abl.kaefig.xyz;
+      umrisse = plan.umrisse.map((u) => {
+        const r = maul !== 'aus' ? posenAuswerten(abl, abl as MaulErgebnis, maulOptAktuell, posen, u.gewichte, dokRoh) : posenAuswerten({ kaefig: { n: abl.kaefig.n, xyz: A } }, null, null, posen, u.gewichte);
+        const f = r.xyz === A ? abl.fein : anwenden3(abl.unterteilung.grenze, r.xyz);
+        return { id: u.id, seite: blattUmriss(f, flaechen, 'seite'), front: blattUmriss(f, flaechen, 'front'), top: blattUmriss(f, flaechen, 'top') };
+      });
+      umrisseStand = { schluessel: uSchluessel, liste: umrisse };
+    }
+  }
   const rund = plan.rundmaul && maul === 'aus' && beine === 'aus' && plan.earle ? { ...RUNDMAUL_STANDARD, ...(plan.rundmaul.zu !== undefined ? { zu: plan.rundmaul.zu } : {}), ...(plan.rundmaul.auf !== undefined ? { auf: plan.rundmaul.auf } : {}) } : null;
   // Mitte: Käfigpunkt der Spiegelebene vorn nahe dem Punkt im Dokument, nicht an einer Augapfel-Höhle; unsichtbar mit
   // O zu = 0 bei geschlossenem Maul (Florian 15.10.: kein Aufsatz, die Haut bleibt ganz)
@@ -1013,9 +1049,16 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
       hebung = -yMin;
     }
   }
-  const feinDeskAlle = earle ? deskriptoren(abl, plan.gesichtMaske) : null;
+  // B7: Werte der Ruhelage gemerkt (Schlüssel: Ableitung, Pinsel der Grundform, Augen, Gesicht); ein reiner Gewichtswechsel nimmt sie
+  const ruheSchluessel = `${schluessel}|${JSON.stringify(deltas)}|${JSON.stringify(plan.augen ?? null)}|${JSON.stringify(plan.gesichtMaske ?? null)}|${maul}|${beine}|${earle}`;
+  const ruheAlt = stand?.ruheWerte && stand.ruheWerte.schluessel === ruheSchluessel ? stand.ruheWerte : null;
+  // Deskriptoren hängen an der Ruhelage: ohne Aufsatz, angesteckte Teile, Wangen und Klingen gemerkt (die brauchen die
+  // feinen Deskriptoren selbst); eine Kopie geht ins Netz, das überträgt sie
+  const deskMerkbar = earle && !hoehle && gesteckteEcken === 0 && !plan.wangen && plan.stil === 'fest';
+  const deskAlt = deskMerkbar && ruheAlt?.desk ? ruheAlt.desk : null;
+  const feinDeskAlle = earle && !deskAlt ? deskriptoren(abl, plan.gesichtMaske) : null;
   // mit Aufsatz: Deskriptoren auf dem erweiterten Käfig (neue Punkte von ihrer Quelle, Rundmaul mit Lippe und Rachen)
-  let desk: Float32Array | null = null;
+  let desk: Float32Array | null = deskAlt ? deskAlt.slice() : null;
   if (feinDeskAlle && hoehle) {
     const t = hoehle.topo;
     const region = hoehle.mund >= 0 ? rundmaulRegion(abl, hoehle.mund, t.nAlt, hoehe, rund ?? RUNDMAUL_STANDARD, rundC) : undefined;
@@ -1059,12 +1102,12 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   const augen = augenRoh.map((a) =>
     hebung ? { ...a, pos: [a.pos[0], a.pos[1] + hebung, a.pos[2]] as V3, posiert: { pos: [a.posiert.pos[0], a.posiert.pos[1] + hebung, a.posiert.pos[2]] as V3, normale: a.posiert.normale } } : a,
   );
-  const ab = nahtAbweichung(abl, dok);
+  const ab = ruheAlt ? ruheAlt.naht : nahtAbweichung(abl, dok);
   // Abweichung je Blatt (Schritt 4) aus der Ruhelage ohne Hebung, nur nach einer echten Ableitung; Züge zeigen den letzten Stand
-  let saum = stand?.saum ?? null;
-  let umweg = stand?.umweg ?? null;
-  let blatt = stand?.blatt;
-  if (!schnell || !blatt) {
+  let saum = ruheAlt ? ruheAlt.saum : (stand?.saum ?? null);
+  let umweg = ruheAlt ? ruheAlt.umweg : (stand?.umweg ?? null);
+  let blatt = ruheAlt ? ruheAlt.blatt : stand?.blatt;
+  if (!ruheAlt && (!schnell || !blatt)) {
     const ruheP: V3[] = [];
     for (let i = 0; i < abl.fein.length / 3; i++) ruheP.push([abl.fein[3 * i]!, abl.fein[3 * i + 1]!, abl.fein[3 * i + 2]!]);
     // breitere Kiefer: dort heftet sich die schwarze Linie an (Umweg), das zählt nicht als Abweichung (14.10. nachts)
@@ -1075,7 +1118,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     blatt = { seite: { max: bl.seite.max, mittel: bl.seite.mittel }, front: { max: bl.front.max, mittel: bl.front.mittel }, top: { max: bl.top.max, mittel: bl.top.mittel } };
   }
   // Lippenkanten gegen die Linien (Phase 2 M2): px je Kette in Seite und Front
-  const maulAbw = maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul && maulLinieVerwendet ? maulAbweichung(abl as MaulErgebnis, dok, maulLinieVerwendet) : undefined;
+  const maulAbw = ruheAlt ? ruheAlt.maulAbw : maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul && maulLinieVerwendet ? maulAbweichung(abl as MaulErgebnis, dok, maulLinieVerwendet) : undefined;
   const info: WesenInfo = { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0, ...(blatt ? { blatt } : {}), ...(maulAbw ? { maul: maulAbw } : {}), stationen: abl.gefroren };
   const linien = plan.kaefigLinien ? kaefigSegmente(abl, xyz) : null;
   // Lippenband nach der Kopfhöhe am Maul (nicht der ganzen Körperhöhe: beim Langhals war das Band breiter als der Kiefer)
@@ -1086,12 +1129,17 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   for (const p of punkte) for (let d = 0; d < 3; d++) mitte[d] = mitte[d]! + p[d]! / punkte.length;
   // Ruhelage je Ecke (unposiert) bei Posen, damit Muster und Zonen nicht schwimmen
   let ruhe: Float32Array | null = null;
-  if (maul !== 'aus' || beine !== 'aus' || hoehle) {
+  // gemerkt nur ohne Höhle und Hebung (die Ruhe hängt dann allein an der Ruhelage); eine Kopie geht ins Netz (Transfer)
+  const ruheMerkbar = !hoehle && !hebung;
+  if (ruheMerkbar && ruheAlt?.ruhe && ruheAlt.ruhe.length === t.positionen.length) ruhe = ruheAlt.ruhe.slice();
+  else if (maul !== 'aus' || beine !== 'aus' || hoehle) {
     const ruhePunkte = hoehle ? punkteVon(hoehlenFein(hoehle.topo, hoehlenLagen(hoehle.topo, abl.kaefig.xyz, hoehle.ruhe))) : punkteVon(abl.fein);
     ruhe = zuDreiecken({ punkte: ruhePunkte, flaechen: koerperFlaechen, schaerfe: new Map() }, 40).positionen;
     if (hebung) for (let i = 1; i < ruhe.length; i += 3) ruhe[i]! += hebung;
     if (ruhe.length !== t.positionen.length) ruhe = null;
   }
+  // Ruhewerte nur nach einem genauen Bau merken (während einer Geste sind Saum und Δ der letzte Stand, nicht der aktuelle)
+  const ruheWerte: WesenStand['ruheWerte'] = ruheAlt ?? (schnell ? undefined : { schluessel: ruheSchluessel, naht: ab, saum, umweg, blatt, maulAbw, ruhe: ruheMerkbar && ruhe ? ruhe.slice() : null, desk: deskMerkbar && desk ? desk.slice() : null });
   // Zähne am Zahnfleisch des posierten Käfigs (Phase 2 M4): aus dem Dokument oder die Automatik, Werte für offen mit der Öffnung
   let zaehne: WesenNetz['zaehne'] = null;
   if (maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul) {
@@ -1300,6 +1348,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     rundmaul: rundmaulInfo,
     anker: ankerFeld,
     pose: bearbeitung,
+    umrisse,
     poseSeite,
     poseFront,
     poseTop,
@@ -1307,7 +1356,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     umweg,
     info,
   };
-  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}) } };
+  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
 }
 
 /** Puffer eines Netzes (zum Übertragen aus dem Worker). */

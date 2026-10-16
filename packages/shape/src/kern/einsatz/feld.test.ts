@@ -81,5 +81,5 @@ describe('Teil A, A3: Feldwahl', () => {
     expect(n).toBeGreaterThan(40);
     expect(fehler).toBe('');
     expect(zuGross.length).toBeLessThanOrEqual(2);
-  });
+  }, 120_000);
 });

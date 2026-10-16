@@ -15,4 +15,11 @@ export function zielAnmelden(): void {
     const m = useEditor.getState().modus;
     if (s.ebene !== v.ebene && vorschauLaeuft(m)) vorschauBeenden(m);
   });
+  // B7: Der Geist im Editor-Tab zeigt die zuletzt bearbeitete Pose; Überblenden standardmäßig von Idle zu ihr
+  useEditor.subscribe((s, v) => {
+    if (s.modus === v.modus || s.modus === 'editor') return;
+    const ui = useUi.getState();
+    if (ui.geistPose !== s.modus) ui.setzeGeist(ui.geist, s.modus);
+    if (s.modus !== 'idle' && ui.ueberblenden.nach !== s.modus && !ui.ueberblenden.spielt) ui.setzeUeberblenden({ nach: s.modus });
+  });
 }

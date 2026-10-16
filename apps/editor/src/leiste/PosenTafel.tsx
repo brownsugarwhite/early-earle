@@ -11,6 +11,7 @@ import { type PoseKnochen, maulOptionenDok, poseKnochen, poseKnochenZuruecksetze
 import { type Modus, poseTitel, useEditor } from '../state/editorStore';
 import { type MenueEintrag, useUi } from '../state/uiStore';
 import { Regler, geste } from './bedienung';
+import { abspielenUmschalten, anhalten, ueberblendenPaar, ueberblendenSetzen } from '../posen/ueberblenden';
 
 /** Neue Id einer Pose („p_“ + Zeit, eindeutig im Dokument). */
 function neueId(): string {
@@ -395,5 +396,94 @@ export function FormFeld({ id }: { id: Modus }) {
       </div>
       <p className="hilfe">Die Pinsel G (ziehen) und I (aufblasen, ⇧ glättet örtlich), die schwarzen Linien und Rot/Blau formen die Pose; sie folgt späteren Änderungen der Grundform.</p>
     </>
+  );
+}
+
+/**
+ * Überblenden „von → nach“ (Entwurf §6): Schieber t (Vorschau w_von = 1 − t, w_nach = t), ▶ spielt im Pingpong
+ * (⇧Leertaste), Dauer eines Durchlaufs, Zwischenbilder als Umrisse in den Blättern. Standard: von Idle aus.
+ */
+export function UeberblendenFeld() {
+  const dok = useEditor((s) => s.dok);
+  const u = useUi((s) => s.ueberblenden);
+  const { von, nach } = ueberblendenPaar();
+  const wahl = ['editor', ...dok.posen.map((p) => p.id)];
+  const titel = (id: string) => (id === 'editor' ? 'Grundform' : poseTitel(dok, id));
+  const waehle = (patch: { von?: string; nach?: string }) => {
+    useUi.getState().setzeUeberblenden(patch);
+    if (useUi.getState().vorschau) ueberblendenSetzen(useUi.getState().ueberblenden.t);
+  };
+  return (
+    <>
+      <h3 className="leiste-titel" data-abschnitt="ueberblenden">
+        Überblenden
+      </h3>
+      <div className="ueberblenden-zeile">
+        <select data-ueberblenden-von="" value={von} onChange={(e) => waehle({ von: e.target.value })}>
+          {wahl.map((id) => (
+            <option key={id} value={id}>
+              {titel(id)}
+            </option>
+          ))}
+        </select>
+        <span>→</span>
+        <select data-ueberblenden-nach="" value={nach} onChange={(e) => waehle({ nach: e.target.value })}>
+          {wahl.map((id) => (
+            <option key={id} value={id}>
+              {titel(id)}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="ueberblenden-zeile">
+        <button className={u.spielt ? 'chip aktiv' : 'chip'} data-ueberblenden-spielen={u.spielt ? 'an' : 'aus'} title="Abspielen im Pingpong (⇧Leertaste)" onClick={() => abspielenUmschalten()}>
+          {u.spielt ? '❚❚' : '▶'}
+        </button>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={u.t}
+          data-ueberblenden-t=""
+          title="Stelle der Überblendung (Vorschau)"
+          onChange={(e) => {
+            anhalten();
+            ueberblendenSetzen(Number(e.target.value));
+          }}
+        />
+        <b data-ueberblenden-wert="">{Math.round(u.t * 100)} %</b>
+      </div>
+      <Regler label="Dauer" wert={u.dauer} min={0.3} max={4} schritt={0.1} anzeige={`${u.dauer.toFixed(1).replace('.', ',')} s`} onChange={(v) => useUi.getState().setzeUeberblenden({ dauer: v })} />
+      <label className="haken">
+        <input type="checkbox" data-zwischenbilder="" checked={u.zwischenbilder} onChange={(e) => useUi.getState().setzeUeberblenden({ zwischenbilder: e.target.checked })} />
+        Zwischenbilder (Umrisse bei 20, 40, 60, 80 %)
+      </label>
+      <GeistFeld />
+    </>
+  );
+}
+
+/** Geist im Editor-Tab: Umriss der gewählten Pose gestrichelt in allen Blättern (in einer Pose: die Grundlinie). */
+function GeistFeld() {
+  const dok = useEditor((s) => s.dok);
+  const modus = useEditor((s) => s.modus);
+  const geist = useUi((s) => s.geist);
+  const pose = useUi((s) => s.geistPose);
+  return (
+    <div className="ueberblenden-zeile geist-zeile">
+      <label className="haken">
+        <input type="checkbox" data-geist-an="" checked={geist} onChange={(e) => useUi.getState().setzeGeist(e.target.checked)} />
+        Geist
+      </label>
+      <span />
+      <select data-geist-pose="" value={dok.posen.some((p) => p.id === pose) ? pose : 'fressen'} disabled={!geist} title={modus === 'editor' ? 'Diese Pose erscheint gestrichelt in allen Blättern' : 'In einer Pose zeigen die Blätter die Grundlinie gestrichelt'} onChange={(e) => useUi.getState().setzeGeist(true, e.target.value)}>
+        {dok.posen.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }

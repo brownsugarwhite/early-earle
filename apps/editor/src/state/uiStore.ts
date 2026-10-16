@@ -27,6 +27,8 @@ export type KantenSicht = 'zeigen' | 'blass' | 'aus';
 /** Breitenwerkzeug beim Ziehen: Kreis um den Punkt, Radius = Härte (Weltpunkt in der Ansicht). */
 export type BreitenAnzeige = { ansicht: Ansicht; mitte: { x: number; y: number }; h: number };
 
+export type Ueberblenden = { von: string; nach: string; t: number; dauer: number; spielt: boolean; zwischenbilder: boolean };
+
 export type MenueEintrag = { label: string; aktion: () => void; aus?: boolean } | 'trenner';
 export type KontextMenue = { x: number; y: number; eintraege: MenueEintrag[] };
 
@@ -83,6 +85,17 @@ type UiState = {
    * Laden). null = keine Vorschau; {} = die Grundform.
    */
   vorschau: Record<string, number> | null;
+  /**
+   * B7 (Entwurf §6): Überblenden „von → nach“ (Grundform = 'editor'), Stelle t, Dauer eines Durchlaufs in Sekunden, Abspielen
+   * im Pingpong, Zwischenbilder (Umrisse bei t = 0,2/0,4/0,6/0,8). Nicht im Dokument.
+   */
+  ueberblenden: Ueberblenden;
+  setzeUeberblenden(patch: Partial<Ueberblenden>): void;
+  /** B7: Geist im Editor-Tab (Stufe Posen & Leben): Umriss der gewählten Pose gestrichelt in allen Blättern */
+  geist: boolean;
+  /** Pose des Geists (folgt der zuletzt bearbeiteten Pose) */
+  geistPose: string;
+  setzeGeist(an: boolean, pose?: string): void;
   /** Fressen-Tab (Plan 5.2): Unterkiefergewichte als Farbverlauf auf dem Körper */
   gewichteZeigen: boolean;
   /** Augen (Phase 2 M5, Vorschau wie die Öffnung): Zustand, Lid von Hand (0 offen … 1 zu), Blinzeln von selbst */
@@ -199,6 +212,15 @@ export const useUi = create<UiState>((set, get) => ({
   oeffnung: 0,
   poseStaerke: 1,
   vorschau: null,
+  ueberblenden: { von: 'idle', nach: 'fressen', t: 0, dauer: 1.2, spielt: false, zwischenbilder: false },
+  setzeUeberblenden(patch) {
+    set({ ueberblenden: { ...get().ueberblenden, ...patch } });
+  },
+  geist: true,
+  geistPose: 'fressen',
+  setzeGeist(an, pose) {
+    set({ geist: an, ...(pose ? { geistPose: pose } : {}) });
+  },
   gewichteZeigen: false,
   augenZustand: 'offen',
   augenLid: 0,

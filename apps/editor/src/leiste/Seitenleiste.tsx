@@ -28,7 +28,7 @@ import { type Ebene, useUi } from '../state/uiStore';
 import { Ornament } from './Ornament';
 import { Chips, Regler, geste } from './bedienung';
 import { ZahnFeld } from './ZahnFeld';
-import { FormFeld, KnochenFeld, PosenListe } from './PosenTafel';
+import { FormFeld, KnochenFeld, PosenListe, UeberblendenFeld } from './PosenTafel';
 import { AugenFeld } from './AugenFeld';
 import { WIRBEL_FARBEN, wirbelVorschlagUebernehmen } from '../wirbel/WirbelEbene';
 import { useWirbelAnzeige } from '../wirbel/wirbelKoerper';
@@ -815,6 +815,9 @@ export function Seitenleiste() {
             <>
               <section className="leiste-bereich" data-bereich="posen-liste">
                 <PosenListe />
+              </section>
+              <section className="leiste-bereich" data-bereich="ueberblenden">
+                <UeberblendenFeld />
               </section>
               {modus !== 'editor' && (
                 <section className="leiste-bereich" data-bereich="knochen">

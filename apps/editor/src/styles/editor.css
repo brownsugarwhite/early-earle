@@ -1142,3 +1142,36 @@ button {
 .neue-pose-wahl {
   margin-top: 6px;
 }
+
+/* B7: Überblenden */
+.ueberblenden-zeile {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 8px;
+  align-items: center;
+  margin: 4px 0;
+}
+.ueberblenden-zeile:has(input[type='range']) {
+  grid-template-columns: 34px 1fr 40px;
+}
+.ueberblenden-zeile select {
+  min-width: 0;
+  height: 26px;
+  border-radius: 13px;
+  border: 0;
+  padding: 0 8px;
+  background: rgba(255, 255, 255, 0.7);
+  font: inherit;
+  font-size: 13px;
+}
+.ueberblenden-zeile b {
+  font-size: 12px;
+  text-align: right;
+}
+.haken {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  margin: 6px 0;
+}
