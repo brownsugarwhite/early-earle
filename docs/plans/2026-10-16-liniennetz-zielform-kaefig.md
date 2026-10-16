@@ -464,6 +464,38 @@ Schwänze und Flügel sind Klingen; „rund“ bleibt per Schalter.
 - Tore: Florians Ente Top ≤ 2 px (heute 50), Front ≤ 2 px, Ansatz ≤ 20°, 0 umgeklappte Flächen; Florians einfache Form mit
   Kerbe Top ≤ 2 px (heute 59–81); Fisch-Brustflossen; außerhalb Fenster + Kragen bitgleich.
 
+#### S6 im Detail (Bauplan 16.10. nachts, auf dem Baum aus S5; vor dem Code)
+
+**Ausgangslage (S4-Paare der Prüfkörper):** Ente: Flügel nur im Top (x −22…60, z bis 101). Fisch: Brustflossen in Top und
+Front (z 57…100, y 97…124). Einfache Form: hintere Spitzen im Top (z bis 188). Vierbeiner: Beine in Seite und Front (nach
+unten). Zweihals: zwei Hälse in Front und Top (nach oben). Überhang: Schultern in Top und Front. Heute baut der Baum keins
+davon (Δ misst sie nicht), die Röhre füllt sie in ihre Breite.
+
+**Bauweise: jedes Paar ist eine Röhre entlang seiner Achse, angesetzt über ein Fenster in der Rumpfhaut.**
+- **Röhre:** Ringe quer zur 3D-Achse des Teils (S4 `achse`, rechte Seite), 8 Punkte, an der Spitze eine volle Kappe (keine
+  Naht). Ring = Ellipse; ihre Halbachsen kommen aus den Ansichten, in denen das Teil erkannt ist: jeweils die Breite des
+  Teilumrisses quer zur Achse an der Stelle des Rings. Fehlt eine Ansicht (Entenflügel nur im Top), gilt Dicke = ¼ der Breite.
+  Die Höhe des Ansatzes nimmt der Rumpf an der Wurzel. Dünne Teile werden Klingen (wie oben). Die linke Seite ist das
+  Spiegelbild (zweite Röhre).
+- **Fenster (Kragen auf der Flanke):** Im Rumpf entfallen die Flächen eines Rechtecks aus w Ring- und t Zeilenabständen auf
+  der rechten Seite (nicht an der Naht) und gespiegelt links. Der Rand des Rechtecks ist Ring 0 der Röhre (8 = 2w + 2t, meist
+  w = t = 2). Die vier Ecken haben fünf Kanten, sonst bleibt alles regelmäßig. Ringe und Zeilen des Fensters liegen auf dem
+  Fußabdruck der Wurzel: Ringe an den Enden der Sehne (wie ein Kragen-Block), Zeilen um die Ansatzhöhe.
+- **Ziele und Lösen:** Fensterrand auf der Rumpfhaut, erster freier Ring knapp außerhalb (Kehle), dann die Ellipsen. Ein
+  Löser für alles. Dazu die Kanten des Teils (Vorder- und Hinterkante bzw. Außenlinie) in der Ansicht, in der es gezeichnet
+  ist, auf die gezeichnete Linie — wie die Naht in der Seite.
+- **Messen:** Δ mit den Paaren (keine Ausnahme mehr), Falten nach Zonen (Ansatz, Klinge als Kante), Käfiggüte, Bauzeit.
+
+**Teilschritte** (je Teilschritt Messung und Commit):
+- **S6.1 Topologie:** seitliche Röhre mit Spiegel und Fenster in `baumKaefig` (Tests: geschlossen, χ = 2, Valenzen, Spiegel).
+- **S6.2 Röhre:** Achse, Ringe und Ellipsen aus den Ansichten (Ente, Fisch, einfache Form, Vierbeiner, Zweihals).
+- **S6.3 Fenster im Rumpf:** feste Ringe und Zeilen am Fußabdruck der Wurzel.
+- **S6.4 Lösen und Messen:** Silhouetten der Teile im Löser, Messreihe, Kontaktbogen.
+- **S6.5 Editor:** Geist mit Paaren, Bilder, Übergabe.
+
+**Tore:** Ente Top ≤ 2 px (Baum heute 37,6 ohne Flügel), Front ≤ 2 px; Fisch-Brustflossen sichtbar und Front ≤ 3 px; einfache
+Form Top ≤ 2 px; Ansatz ≤ 20°; keine umgeklappten Flächen; Körper ohne Paare bitgleich; Bau ≤ 300 ms.
+
 ### S7 Einbau als Standard
 - Schalter `Ausstattung.koerper?: 'roehre' | 'teile'` (fehlt = heutige Röhre), Chip in der Tafel Körper, Umschalten = ein
   Undo-Schritt; eingefroren in `dok.kaefig.baum` (Teile, Ansätze, Punktzahlen, Fenster), gültig nur, solange es die Form
