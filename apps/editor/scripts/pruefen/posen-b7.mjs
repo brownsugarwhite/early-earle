@@ -91,6 +91,13 @@ const aufKoerper = async (x, y) => {
 };
 const bilder = [];
 const bild = async (name, feld) => {
+  if (feld === 'tafel') {
+    // Library zu, Tafel nach oben: sonst zeigt der Ausschnitt die Prüfwesen statt der Posen
+    await ui('libraryUmschalten', false);
+    await page.waitForTimeout(300);
+    await page.$eval('.leiste-inhalt', (el) => (el.scrollTop = 0)).catch(() => {});
+    await page.waitForTimeout(200);
+  }
   const rc = feld === 'tafel' ? await page.evaluate(() => { const r = document.querySelector('.leiste').getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: Math.min(r.height, 900) }; }) : await rechteck(feld);
   const b = await page.screenshot({ clip: { x: rc.x, y: rc.y, width: rc.w, height: rc.h } });
   bilder.push({ name, src: `data:image/png;base64,${b.toString('base64')}` });
@@ -350,6 +357,7 @@ const msZ = Date.now() - tZ;
 const zw = await page.$$eval('[data-zwischenbild]', (els) => els.map((e) => e.getAttribute('data-zwischenbild') + '@' + (e.closest('[data-view]')?.getAttribute('data-view') ?? '?')));
 pruefe('Zwischenbilder: vier Umrisse je Blatt', zw.length === 12, `${zw.length} Umrisse, Bau samt Umrissen ${msZ} ms`);
 await bild('Rex: Zwischenbilder Idle → Fressen im Seitenblatt', 'seite');
+await bild('Rex: Tafel mit Überblenden, Zwischenbildern und Geist', 'tafel');
 await bild('Rex: Zwischenbilder in der Front', 'front');
 // Abspielen mit Zwischenbildern: Umrisse bleiben gemerkt (kein Neurechnen je Bild)
 const vZ = await version();
