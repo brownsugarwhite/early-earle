@@ -39,8 +39,8 @@ jedem Pull selbst neu.
   Seitenlinie ist die Naht, auch die Hohlkehlen sind gezeichnet und damit genau. Seitliche Teile (Flügel, Flossen, Beine)
   setzen mit einem Ring-Einsatz an (dieselbe Maschine wie das Maul). Ein Glättungsmaß im Löser hält die Haut faltenfrei.
 - **Reihenfolge:** S0 Ausgangslage → S1 Liniennetz-Ansicht → S2 glatte Haut → S3 Umrisse als 3D-Kurven → S4 Teile
-  erkennen → S5 Mittelebenen-Baum → S6 seitliche Teile → S7 Einbau als Standard → S8 Linien exakt. Nach jedem Schritt
-  Bilder aus dem Editor und Halt für dich.
+  erkennen → S5 Mittelebenen-Baum → S6 seitliche Teile → S7 Einbau als Standard → S8 P-Linien als echte Kanten (Linien
+  exakt). Nach jedem Schritt Bilder aus dem Editor und Halt für dich.
 
 ## Befund (Code gelesen, eigene Messungen 16.10.)
 
@@ -149,7 +149,8 @@ jedem Pull selbst neu.
 6. **Glätte und Tempo:** Glättungsmaß (dünne Platte) auf der Grenzfläche im Löser, dünn besetzter Löser nur für die rechte
    Hälfte. Falten bleiben nur an gewollten Kanten.
 7. **Linien** als Schleifen genau auf der Linie (L0 auf die Gitter der Teile verallgemeinert), Genauigkeit über die exakte
-   Verfeinerung.
+   Verfeinerung. So werden die mit P auf die Haut gezeichneten Linien echte Kanten: Die Härte ist die Rundung längs der
+   Schleife, der Winkel kommt aus einer Ecke im Querschnitt an der Linie (Nachtrag 16.10. abends, S8).
 
 Warum das die eleganteste Lösung ist: Die heutige Röhre wird nicht ersetzt, sondern verallgemeinert; jede Linie, die du
 zeichnest, bleibt die Wahrheit (die Hohlkehle am Hals ist Teil der schwarzen Linie); 3D-Einsätze gibt es nur dort, wo
@@ -332,16 +333,75 @@ Tafel sagt es); die Auslegung wird je genauem Bau neu bestimmt (Einfrieren mit S
   Ring-Einsatz (u, θ) nach dem Posen-Entwurf 3.2); der stille Rückfall auf Punktnummern wird ein Fehler.
 - Auf mehrteiligen Körpern noch nicht: Maul (kommt mit Teil A; Maullinien bleiben gezeichnet und bearbeitbar, die Tafel
   sagt es), Reifen auf der Bühne, Augen über Ring/Spalte, Kieferknopf, Zähne — mit Hinweis. Einteilige Körper behalten alles.
+- **P-Linien (Nachtrag 16.10. abends): kein Rückschritt bis S8.** Mit P gezeichnete Linien bleiben auf mehrteiligen Körpern
+  gezeichnet, in allen Ansichten sichtbar und ziehbar und wirken mit ihrer Härte mindestens wie heute als Falte (Treppe auf
+  der nächsten Käfigschleife, je Streifen und über die Ansätze hinweg). Genau auf der Linie werden sie in S8.
 - Tore: Pinselbeule und Pose überstehen Punktzahl-Wechsel, neuen Ansatz und Umbau Kugel → Ente (≤ 1 px außerhalb, ≤ 2 px in
-  geänderten Zonen); `vergleich/ablauf.mjs` grün; Undo bitgleich; Florians Abnahme mit eigenen Wesen.
+  geänderten Zonen); `vergleich/ablauf.mjs` grün; Undo bitgleich; eine P-Linie mit Härte macht auf einem mehrteiligen Körper
+  mindestens dieselbe Falte wie auf der Röhre (Ente: Linie über den Halsansatz); Florians Abnahme mit eigenen Wesen.
 
-### S8 Linien exakt (Teil L, L1)
+### S8 P-Linien als echte Kanten — Linien exakt (Teil L: L0-Rest und L1)
+
+> Nachtrag 16.10. abends, Florian: „Wird das mit den Linien, die ich mit P auf die Haut zeichne, die dann zur Kante werden
+> können, noch eingebaut? Ich habe es nicht im Plan gefunden. Es war wichtiger Teil der Aufgabe.“ Entscheidung: Reihenfolge
+> bleibt (S8 nach S7), der Schritt steht jetzt in Klartext mit Toren für seinen Ablauf. Bauweise und Bedienung im Einzelnen:
+> [`2026-10-15-teil-l-linien-kurvennetz.md`](2026-10-15-teil-l-linien-kurvennetz.md) (Entscheidung 11).
+
+**Ziel (Florians Ablauf):**
+1. **Zeichnen:** Mit P zeichnest du eine Linie auf die Haut — in Seite, Front, Back, Top, Bottom oder auf der Bühne. Beginnt
+   oder endet sie auf einer Kontur, ist der Punkt ein gemeinsamer Knoten. Ohne Härte bleibt sie eine Linie auf der Haut (z. B.
+   Rand einer Musterzone), ohne den Körper zu verändern.
+2. **Zur Kante machen:** Mit ⇧W stellst du je Knoten die Härte ein (gestrichelt 1 px = glatt … schwarz 3 px = scharf). Eine
+   Käfigschleife liegt genau auf der Linie (keine Treppe), die Härte ist die Rundung der Kante längs der Schleife und darf
+   von Knoten zu Knoten auslaufen.
+3. **Winkel:** Der Winkel kommt aus der Form („eine Kante ist eine Ecke in einem Shape“, 12.10.): Wo die Linie eine Kontur
+   oder eine Querschnittslinie kreuzt, entsteht ein gemeinsamer Knoten; macht ⌥ ihn dort zur Ecke (z. B. in der Front),
+   läuft ein Grat längs der Linie. Ehrlich: Härte allein ergibt auf einem runden Körper nur eine flache Falte (gemessen unter
+   15°), erst die Ecke im Querschnitt einen echten Grat (Kastenfront 93°).
+4. **Bearbeiten:** Knoten und Griffe in jeder Ansicht und auf der Bühne ziehen (zwei Koordinaten je Ansicht, wie die
+   Maullinien), einfügen und löschen wie bei den Profilen; Linie und Kante folgen, ein Undo-Schritt je Geste.
+5. **Posen:** Topologie und Kantigkeit gelten in allen Posen; in einer Pose gezogen, ändert sich nur die Pose.
+
+**Bauweise:**
 - `kern/netz/` von der Röhre auf die (s, t)-Gitter der Teile verallgemeinert; Kantigkeit als Falte längs der Schleife;
   Kreuzungen mit Umrissen und Linien als gemeinsame Knoten (Teil L, Bauweise 2).
 - Genauigkeit: zuerst eine globale exakte Verfeinerung (`verfeinern1`, gleiche Fläche mit 4× Punkten; geschätzt
   Normalen 0,2–0,8°), dann eine örtliche Stufe mit Nachpassen der Übergangszone (nicht exakt, eigenes Fehlerbudget).
-- Tore (Florian): Haut ≤ 0,05 px, Normalen ≤ 0,1° auf der L0-Reihe; Käfig ≤ 2500 Punkte. Der Schritt, der am ehesten an der
-  Abbruchregel hängt — dann Bericht mit erreichtem Stand.
+- Offene L0-Fälle, die S8 erledigt: 2 Kreuzung und Knick, 3 Querschnitt aus Linien (Tiger-Kastenschnauze dreifach), 4 steil
+  und waagerecht (Langhals quer, Panzerrand), 5 ohne Springen (auch Pinselbeule neben einer neuen Linie), 6 Linien in Posen.
+- L1 im Editor: Dokument (Kante → Linie, gemeinsame Knoten, Migration der heutigen Kanten: Härte → Kantigkeit, Tiefe
+  entfällt), Griffe in allen Ansichten und auf der Bühne, Posen. L2 (Spanten werden Querschnittslinien) folgt danach wie im
+  Teil-L-Plan.
+
+**Stand vor S8 (16.10.):** Im Editor liegen die P-Linien seit S1 auf dem echten Körper, in allen Ansichten mit Kantigkeit
+sichtbar und ziehbar; als Falte wirken sie nur als Treppe auf der nächsten Käfigschleife (`kern/kanten.ts`, bis zu eine halbe
+Ringteilung neben der Linie). Die exakte Schleife gibt es nur im Kern (L0 Fall 1: Kugel längs 0,04 px, schräg Normalen
+1,4°, Rex-Braue 24°).
+
+**Tore** (Editor-Prüfung mit echten Zügen auf eigenem Vite, Florians Ablauf neue Kugel → umformen → Linie; Kugel, Rex, Ente,
+Tiger, Langhals):
+1. **Zeichnen:** Linie liegt auf der Haut (≤ 0,5 px), zeigt sich in allen Ansichten und auf der Bühne am selben 3D-Punkt
+   (≤ 0,5 px); beim Zeichnen springt der Körper ≤ 0,25 px.
+2. **Ohne Härte:** keine Falte; Haut ≤ 0,05 px und Normalen ≤ 0,1° gegen den Körper ohne Linie (L0-Reihe); Käfig ≤ 2500
+   Punkte.
+3. **Mit Härte:** Die Falte liegt genau auf der Linie (≤ 0,1 px Abstand, Richtung ≤ 1° zur Linie, keine Treppe) und folgt dem
+   Verlauf der Härte; die Anzeige im Blatt (gestrichelt … schwarz) zeigt dieselbe Kante wie das 3D.
+4. **Winkel:** Ecke im Querschnitt bei Härte 100 % → Grat mit dem gezeichneten Winkel (± 3°); kleinere Härte rundet stetig
+   (Winkel gemessen bei 0/50/100 %); Tiger-Kastenschnauze aus Linien mindestens so eben und kantig wie heute mit
+   Kasten-Spanten.
+5. **Bearbeiten:** Knoten oder Griff 30 px ziehen (je Ansicht und Bühne) → Linie und Kante folgen, kein Sprung beim
+   Loslassen (≤ 0,5 px), ein Undo-Schritt; Härte ändern verändert nur die Kante (Haut weiter als zwei Kantenlängen ≤ 0,1 px);
+   Linie löschen → Körper wie ohne sie (≤ 0,05 px); Kreuzung mit Kontur oder Linie → gemeinsamer Knoten, Ziehen bewegt beide.
+6. **Kein Rückschritt:** Pinselbeule neben einer neuen Linie bleibt (≤ 0,5 px); Δ und Falten nach Zonen abseits der Linie nicht
+   schlechter (± 0,5 px, ± 1°); alte Wesen mit Kanten laden und behalten ihre Kanten (Migration).
+7. **Posen:** Linie in Fressen ziehen → nur die Pose ändert sich, der Editor-Tab bleibt bitgleich; Kantigkeit gilt in jeder
+   Pose.
+8. **Mehrteilige Körper:** Linie über einen Ansatz (Ente: Hals–Rumpf, Giraffe) und auf einem Teil (Flosse) → Tore 1–5 gelten
+   auch dort.
+9. **Tempo:** Knotenzug ≤ 16 ms (Nachziehen auf demselben Käfig), neue Linie oder Härte am Gestenende ≤ 250 ms.
+10. **Abnahme:** Florian zeichnet an eigenen Wesen Kanten (z. B. Brauenwulst, Panzerrand, Rückenkamm, Kastenschnauze).
+- Der Schritt, der am ehesten an der Abbruchregel hängt (nach drei gemessenen Fehlanläufen an derselben Stelle anhalten) —
+  dann Bericht mit erreichtem Stand.
 
 ## Wiederverwendet
 
@@ -712,3 +772,8 @@ Tafel sagt es); die Auslegung wird je genauem Bau neu bestimmt (Einfrieren mit S
     [`s4-teile-kurve-2026-10-16.jpg`](../progress/editor/s4-teile-kurve-2026-10-16.jpg).
   - Grenzen: Ganz verdeckte und freie Stücke wandern nicht mit (sie haben keine Stoßstelle); Knoten einfügen/löschen und
     Griffe ziehen gibt es an diesen Kurven noch nicht.
+- **16.10. abends, Florian zu den P-Linien:** „Wird das mit den Linien, die ich mit P auf die Haut zeichne, die dann zur
+  Kante werden können, noch eingebaut? … Es war wichtiger Teil der Aufgabe.“ Sie standen nur technisch als S8 „Linien exakt“
+  im Plan. Entscheidung: **Reihenfolge bleibt (S8 nach S7)**; präzisiert sind Kurzfassung, Bauweise 7, S7 (kein Rückschritt
+  der P-Linien auf mehrteiligen Körpern bis S8) und S8 in Klartext mit seinem Ablauf, den offenen L0-Fällen, L1 und zehn
+  Toren.
