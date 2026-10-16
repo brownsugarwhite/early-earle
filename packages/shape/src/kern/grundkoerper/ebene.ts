@@ -211,7 +211,7 @@ function kettenZurSehne(poly: readonly V2[], X: V2, Y: V2): { a: V2[]; b: V2[] }
 }
 
 /** Leiter eines Streifens aus seinen Ketten (abgetastet wie die Leiter des Kerns, an den Enden und Kehlen entfächert). */
-function streifenLeiter(a: readonly V2[], b: readonly V2[]): Leiter {
+export function streifenLeiter(a: readonly V2[], b: readonly V2[]): Leiter {
   const P = WIRBEL_STANDARD.proben;
   return leiterInnenEntfaechern(leiterEntfaechern(leiterAusKetten(nachBogen(a, P), nachBogen(b, P), WIRBEL_STANDARD)));
 }
@@ -265,10 +265,24 @@ const UEBERGANG_ANTEIL = 0.4;
  * Kinder auf der Wirbelsäule (Rücken- und Bauchflosse übereinander), bleibt das kleinere im Elternstreifen: ein Ring kann
  * nicht zugleich auf beiden Sehnen enden, ohne dass beide Kinder dieselbe Punktzahl und Lage haben (S5.4).
  */
-export function ebene(dok: Dokument, baum?: Teilbaum, breitenVorgabe?: Breiten, ansatz: 'sehne' | 'kragen' = 'kragen'): Ebene {
+export function ebene(dok: Dokument, baum?: Teilbaum, breitenVorgabe?: Breiten, ansatz: 'sehne' | 'kragen' = 'kragen', paareSchneiden = false): Ebene {
   const b = baum ?? teilbaum(dok, dok.kaefig?.stationen?.teile ?? null);
   const breiten = breitenVorgabe ?? silhouettenBreite(dok);
-  const seite = bereinigt(huelle(dok).seite);
+  let seite = bereinigt(huelle(dok).seite);
+  // S6: Paare, die die Seite zeigt (Beine, zweiter Hals), sind eigene Röhren neben der Mittelebene — ihre Fläche gehört nicht
+  // zum Rumpf (sonst würden sie doppelt gebaut)
+  const paarSehnen: [V2, V2][] = [];
+  if (paareSchneiden) {
+    b.teile.forEach((t, i) => {
+      if (t.art !== 'paar' || !t.erkannt.seite) return;
+      const sch = t.erkannt.seite.schnitt;
+      const geteilt = teilenBei(seite, sch[0], sch[1], teilSpitze(b, i));
+      if (geteilt) {
+        seite = bereinigt(geteilt.rest);
+        paarSehnen.push([sch[0], sch[1]]);
+      }
+    });
+  }
   const mitte = b.teile.map((t, i) => ({ t, i })).filter(({ t }) => t.art === 'mitte' && t.erkannt.seite);
   // Rumpf nach dem Schneiden aller Mittelteile: liegt eine seiner Spitzen an einer Sehne, setzt das Teil den Rumpf fort
   const schneide = (teile: readonly number[]) => {
@@ -461,7 +475,14 @@ export function ebene(dok: Dokument, baum?: Teilbaum, breitenVorgabe?: Breiten, 
     if (s1 > 0 && s2 > 0) streifen[s1]!.partner = s2;
   }
   const sk = dok.skalierung;
-  const ecken = dok.profile.seite.knoten.filter((kn) => kn.art === 'ecke' && !kn.marke).map((kn) => ({ x: kn.p.x * sk, y: kn.p.y * sk }));
+  // gezeichnete Ecken; mit geschnittenen Paaren nur die auf dem verbliebenen Umriss und nicht an einer Paar-Sehne (die Ecken am
+  // Ansatz eines Beins sind die Kehle zur Röhre, die an seinem Fuß gehören der Röhre — als Ringfalte des Rumpfs gaben sie am
+  // Vierbeiner 166°)
+  const zu = [...seite, seite[0]!];
+  const ecken = dok.profile.seite.knoten
+    .filter((kn) => kn.art === 'ecke' && !kn.marke)
+    .map((kn) => ({ x: kn.p.x * sk, y: kn.p.y * sk }))
+    .filter((p) => !paarSehnen.length || (zugAbstand(p, zu) < 1e-3 && !paarSehnen.some(([A, B]) => streckenAbstand(p, A, B) < 3 / 461)));
   return { streifen, baum: b, seite, fortsetzung, ueberlappt, ecken };
 }
 

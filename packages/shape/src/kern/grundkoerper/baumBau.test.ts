@@ -114,3 +114,48 @@ describe('S5-Reste R1: Kragen', () => {
     }
   });
 });
+
+// S6 (16.10. nachts, Schalter paare): seitliche Teile als Röhren über Fenster auf ihrem Fußabdruck; Δ ohne Paar-Ausnahme.
+// Messwerte als Grenze (Ausgang ohne Paare: Ente Top 37,4 px, Fisch Front/Top 42,6 px — die Teile fehlten)
+describe('S6 seitliche Teile', () => {
+  const mitPaaren = (name: string) => {
+    const dok = teilSatzDokument(name);
+    const b = baumAbleiten(dok, { paare: true });
+    const z = faltenNachZonen(b.kaefig, b.unterteilung, b.fein, { flaechenZone: b.zone }).zonen;
+    const n = baumFeinesNetz(b);
+    const d = blattAbweichungen(n.punkte, n.flaechen, dok, 240, undefined, true);
+    const k = b.kaefig;
+    return { b, z, d, euler: k.n - k.nE + k.nF };
+  };
+
+  it('Ente: Flügel aus dem Überschuss der Front, Ansatz ohne Falten', () => {
+    const { b, z, d, euler } = mitPaaren('ente');
+    expect(euler).toBe(2);
+    expect(b.seiten.length).toBe(1);
+    expect(b.seitenAusgelassen).toEqual([]);
+    // Dicke aus der Glocke der Front (Flanken über den Rumpf hinaus), nicht ¼ der Breite
+    expect(b.seiten[0]!.ringe[0]!.r2 * 461).toBeGreaterThan(12);
+    expect(z.frei.max).toBeLessThan(20);
+    expect(z.ansatz.max).toBeLessThan(20);
+    expect(z.kappe.max).toBeLessThan(21);
+    expect(d.top.max).toBeLessThan(6);
+  });
+
+  it('Fisch: Brustflossen gebaut, Front und Top genau', () => {
+    const { b, z, d, euler } = mitPaaren('fisch');
+    expect(euler).toBe(2);
+    expect(b.seiten.length).toBe(1);
+    expect(z.ansatz.max).toBeLessThan(24);
+    expect(d.front.max).toBeLessThan(4);
+    expect(d.top.max).toBeLessThan(4);
+  });
+
+  it('Zweihals: zweiter Hals neben der Mittelebene, kein Ring auf ihr', () => {
+    const { b, z, euler } = mitPaaren('zweihals');
+    expect(euler).toBe(2);
+    expect(b.seiten.length).toBe(1);
+    for (const r of b.seiten[0]!.ringe) expect(r.mitte[2] * 461).toBeGreaterThan(20);
+    expect(z.frei.max).toBeLessThan(20);
+    expect(z.ansatz.max).toBeLessThan(25);
+  });
+});

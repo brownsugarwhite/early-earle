@@ -9,14 +9,14 @@
 
 import type { V2 } from '../../bezier';
 import type { Dokument } from '../../dokument';
-import { type BaumKaefig, type StreifenTopo, baumKaefig, kragenOrt } from '../../kaefig/baumKaefig';
+import { type BaumKaefig, type StreifenTopo, baumKaefig, fensterOrt, kragenOrt } from '../../kaefig/baumKaefig';
 import { type Kaefig, kanteZwischen } from '../../kaefig/halbkanten';
 import { type Bedingung, ausgleichsLoeser, kaefigAusgleich } from '../../loeser/grenzflaeche';
 import { type Unterteilung, unterteilung } from '../../subdivision/catmullClark';
 import { anwenden3 } from '../../subdivision/matrix';
 import { ABLEIT_STANDARD, type AbleitOptionen, type Breite, GLATTE_HAUT, type Querschnitt, type Sprosse, ausgleichsZiele, breiteSoll, glaettemassFuer, kreisQuerschnitt, lappenAusZug, nahtAnteile, nahtPfad, quadratRing, querschnitteFuer, umparametrisieren, umrissDicht } from '../ableiten';
 import { punktAuf } from '../../bezier';
-import { segmente } from '../../profil';
+import { pfadAbtasten, segmente, vollerPfad } from '../../profil';
 import { type Breiten, breitenAusPolygonen, silhouettenBreite } from '../breite';
 import { huellenBreite } from '../fuelle';
 import type { Zone } from '../pruefen/zonen';
@@ -24,6 +24,7 @@ import { frontBeruehren } from '../rand';
 import { feinKette } from '../reifen';
 import { type Ebene, RING_STANDARD, type RingOptionen, type StreifenRinge, ebene, ringeAuslegen } from './ebene';
 import { type FeldOptionen, type Hoehenfeld, hoehenfeld } from './hoehenfeld';
+import { type SeitenRing, type Seitenteil, type Ueberschuss, ringPunkt, seitenteile } from './seitenteil';
 import type { Teilbaum } from './teilbaum';
 
 /** Topologie der Streifen aus Auslegung und Ringen. */
@@ -65,9 +66,11 @@ export type BaumOptionen = AbleitOptionen & {
   feldGewicht: number;
   /** dünne Kanten als Klinge: Ringe mit Halbbreite < klinge × halbe Sprossenlänge bekommen eine scharfe Naht (0 = rund) */
   klinge: number;
+  /** S6: seitliche Teile (Paare) als Röhren über Fenster in der Rumpfflanke bauen */
+  paare: boolean;
 };
 
-export const BAUM_STANDARD: BaumOptionen = { ...ABLEIT_STANDARD, ...GLATTE_HAUT, fuelle: 'mittel', ansatzUebergang: 0.35, elternQuerschnitt: 'lappen', ansatz: 'kragen', kappeKante: 0.8, hebung: 'ringe', feldGewicht: 1, klinge: 0.4 };
+export const BAUM_STANDARD: BaumOptionen = { ...ABLEIT_STANDARD, ...GLATTE_HAUT, fuelle: 'mittel', ansatzUebergang: 0.35, elternQuerschnitt: 'lappen', ansatz: 'kragen', kappeKante: 0.8, hebung: 'ringe', feldGewicht: 1, klinge: 0.4, paare: false };
 
 export type BaumAbleitung = {
   opt: BaumOptionen;
@@ -84,11 +87,31 @@ export type BaumAbleitung = {
   zone: (f: number) => Zone | undefined;
   /** Querschnitte je Streifen und Ring (nach dem Berühren) */
   querschnitte: Querschnitt[][];
+  /** S6: gebaute seitliche Teile (Streifen ab `ebene.streifen.length`) und ausgelassene (Fenster passte nicht) */
+  seiten: Seitenteil[];
+  seitenAusgelassen: number[];
   zeiten: { ebene: number; ringe: number; ziele: number; matrix: number; loeser: number; gesamt: number };
 };
 
 const uhr = (globalThis as { performance?: { now(): number } }).performance;
 const jetzt = () => (uhr ? uhr.now() : Date.now());
+
+/** Dichter Umriss (Anteile nach Bogenlänge) aus einem geschlossenen Polygon, wie `umrissDicht`. */
+function umrissAusPolygon(poly: readonly V2[]): { pts: V2[]; anteil: Float64Array } {
+  const pts: V2[] = [];
+  const n = poly.length;
+  for (let i = 0; i < n; i++) {
+    const a = poly[i]!;
+    const b = poly[(i + 1) % n]!;
+    const teile = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / (0.5 / 461)));
+    for (let k = 0; k < teile; k++) pts.push({ x: a.x + ((b.x - a.x) * k) / teile, y: a.y + ((b.y - a.y) * k) / teile });
+  }
+  const anteil = new Float64Array(pts.length + 1);
+  for (let i = 0; i < pts.length; i++) anteil[i + 1] = anteil[i]! + Math.hypot(pts[(i + 1) % pts.length]!.x - pts[i]!.x, pts[(i + 1) % pts.length]!.y - pts[i]!.y);
+  const L = anteil[pts.length]! || 1;
+  for (let i = 0; i <= pts.length; i++) anteil[i] = anteil[i]! / L;
+  return { pts, anteil };
+}
 
 /** Halbe Silhouette als offener Zug: Front (|z|, y) von oben nach unten, Top (x, |z|) von vorn nach hinten. */
 function halbZug(dok: Dokument, blatt: 'front' | 'top'): V2[] {
@@ -131,14 +154,15 @@ function sehneSchneiden(zug: readonly V2[], A: V2, B: V2): V2[] {
  * Silhouetten des Rumpfstreifens: Front und Top ohne die seitlichen Paare (S4-Sehnen in diesen Ansichten; Flügel, Beine,
  * Brustflossen baut erst S6). Sonst bekäme der Rumpf ihre Breite und ihren Stachel im Front-Lappen (Fisch). null = keine Paare.
  */
-export function rumpfSilhouetten(dok: Dokument, b: Teilbaum): { frontHalb: V2[]; breiten: Breiten } | null {
+export function rumpfSilhouetten(dok: Dokument, b: Teilbaum, alle = false): { frontHalb: V2[]; breiten: Breiten } | null {
   let front = halbZug(dok, 'front');
   let top = halbZug(dok, 'top');
   let geschnitten = false;
   for (const t of b.teile) {
-    // nur Paare, die Front und Top zeigen (Brustflossen): Zeigt nur eine Ansicht das Paar, steckt es in der anderen im
-    // Körper, und die Sehne liegt oft innerhalb der Körperbreite (Ente: Flügel nur im Top, Sehne bei 68 px, Körper 100 px)
-    if (t.art !== 'paar' || !t.erkannt.front || !t.erkannt.top) continue;
+    // ohne S6 nur Paare, die Front und Top zeigen (Brustflossen): Zeigt nur eine Ansicht das Paar, steckt es in der anderen
+    // im Körper, und die Sehne liegt oft innerhalb der Körperbreite (Ente: Flügel nur im Top). Baut S6 die Paare (`alle`),
+    // gehören ihre Umrisse ihnen, nicht dem Rumpf
+    if (t.art !== 'paar' || (!alle && (!t.erkannt.front || !t.erkannt.top))) continue;
     const f = t.erkannt.front;
     if (f) {
       front = sehneSchneiden(front, { x: Math.abs(f.schnitt[0].x), y: f.schnitt[0].y }, { x: Math.abs(f.schnitt[1].x), y: f.schnitt[1].y });
@@ -327,39 +351,320 @@ function feldZiele(e: Ebene, ringe: readonly StreifenRinge[], topo: readonly Str
   });
 }
 
+/**
+ * S6: Überschuss von Front und Top über die Reichweite des Rumpfs (für Paare, die nur eine Ansicht zeigt). Der Rumpf reicht
+ * auf Höhe y höchstens bis min(Front ohne Paare, größte Top-Breite ohne Paare über die x, deren Seitenbereich y enthält), bei
+ * x höchstens bis min(Top ohne Paare, größte Front-Breite über seinen Seitenbereich bei x). Was die volle Silhouette darüber
+ * hinaus zeigt, gehört den Paaren: Die Glocke der Enten-Front reicht auf Höhe 50…90 px bis 101 px, der Rumpf ohne Flügel nur
+ * bis 92 px — die Flanken der Glocke sind die Flügel.
+ */
+function ueberschussVon(dok: Dokument, voll: Breiten, rumpf: Breiten, seite: readonly V2[]): Ueberschuss {
+  const sk = dok.skalierung;
+  const poly = (b: 'front' | 'top') => pfadAbtasten(vollerPfad(dok.profile[b]), 40).map((p) => ({ x: p.x * sk, y: p.y * sk }));
+  const h = 1 / 461;
+  const bereicheBei = (x: number): [number, number][] => {
+    const ys: number[] = [];
+    for (let i = 0; i < seite.length; i++) {
+      const a = seite[i]!;
+      const b = seite[(i + 1) % seite.length]!;
+      if (a.x > x === b.x > x) continue;
+      ys.push(a.y + ((x - a.x) / (b.x - a.x)) * (b.y - a.y));
+    }
+    ys.sort((p, q) => p - q);
+    const out: [number, number][] = [];
+    for (let k = 0; k + 1 < ys.length; k += 2) out.push([ys[k]!, ys[k + 1]!]);
+    return out;
+  };
+  let y0 = Infinity;
+  let y1 = -Infinity;
+  for (const p of poly('front')) {
+    y0 = Math.min(y0, p.y);
+    y1 = Math.max(y1, p.y);
+  }
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  for (const p of poly('top')) {
+    x0 = Math.min(x0, p.x);
+    x1 = Math.max(x1, p.x);
+  }
+  for (const p of seite) {
+    x0 = Math.min(x0, p.x);
+    x1 = Math.max(x1, p.x);
+  }
+  const nY = Math.max(1, Math.ceil((y1 - y0) / h) + 1);
+  const nX = Math.max(1, Math.ceil((x1 - x0) / h) + 1);
+  const pos = (v: number) => (v > 0 ? v : 0);
+  // Front: größte Rumpf-Top-Breite über die x, deren Seitenbereich die Höhe enthält; Top: größte Rumpf-Front-Breite über den
+  // Seitenbereich bei x (einmal je Bau, erst bei der ersten Frage)
+  let tafeln: { frontVoll: Float64Array; frontRumpf: Float64Array; topVoll: Float64Array; topRumpf: Float64Array } | null = null;
+  const rechnen = () => {
+    const frontR = Float64Array.from({ length: nY }, (_, k) => pos(rumpf.front(y0 + k * h)));
+    const topR = Float64Array.from({ length: nX }, (_, a) => pos(rumpf.top(x0 + a * h)));
+    const topUeber = new Float64Array(nY);
+    const frontUeber = new Float64Array(nX);
+    for (let a = 0; a < nX; a++) {
+      const w = topR[a]!;
+      for (const [lo, hi] of bereicheBei(x0 + a * h)) {
+        for (let k = Math.max(0, Math.ceil((lo - y0) / h)); k < nY && y0 + k * h <= hi; k++) {
+          if (w > topUeber[k]!) topUeber[k] = w;
+          if (frontR[k]! > frontUeber[a]!) frontUeber[a] = frontR[k]!;
+        }
+      }
+    }
+    return {
+      frontVoll: Float64Array.from({ length: nY }, (_, k) => pos(voll.front(y0 + k * h))),
+      frontRumpf: Float64Array.from({ length: nY }, (_, k) => Math.min(frontR[k]!, topUeber[k]!)),
+      topVoll: Float64Array.from({ length: nX }, (_, a) => pos(voll.top(x0 + a * h))),
+      topRumpf: Float64Array.from({ length: nX }, (_, a) => Math.min(topR[a]!, frontUeber[a]!)),
+    };
+  };
+  const eps = 0.5 / 461;
+  // längster zusammenhängender Lauf, in dem der volle Umriss den Wert erreicht und der Rumpf nicht
+  const lauf = (voll: Float64Array, rumpf: Float64Array, ab: number, wert: number): [number, number] | null => {
+    let best: [number, number] | null = null;
+    let start = -1;
+    for (let k = 0; k <= voll.length; k++) {
+      const drin = k < voll.length && voll[k]! >= wert && rumpf[k]! < wert - eps;
+      if (drin && start < 0) start = k;
+      if (!drin && start >= 0) {
+        if (!best || k - 1 - start > best[1] - best[0]) best = [start, k - 1];
+        start = -1;
+      }
+    }
+    return best ? [ab + best[0] * h, ab + best[1] * h] : null;
+  };
+  return (blatt, k, wert) => {
+    if (blatt === 'seite') return null;
+    tafeln ??= rechnen();
+    const { frontVoll, frontRumpf, topVoll, topRumpf } = tafeln;
+    if (blatt === 'front') {
+      // Front-Blatt: x = |z|, y = Höhe
+      if (k === 0) return lauf(frontVoll, frontRumpf, y0, Math.abs(wert));
+      const i = Math.round((wert - y0) / h);
+      if (i < 0 || i >= nY) return null;
+      return frontVoll[i]! > frontRumpf[i]! + eps ? [frontRumpf[i]!, frontVoll[i]!] : null;
+    }
+    if (blatt === 'top') {
+      // Top-Blatt: x = Länge, y = |z|
+      if (k === 1) return lauf(topVoll, topRumpf, x0, Math.abs(wert));
+      const a = Math.round((wert - x0) / h);
+      if (a < 0 || a >= nX) return null;
+      return topVoll[a]! > topRumpf[a]! + eps ? [topRumpf[a]!, topVoll[a]!] : null;
+    }
+    return null;
+  };
+}
+
+/** Rumpfhaut (Streifen 0) stetig über Ring i und Zeile u (rechte Hälfte), bilinear zwischen den Punkten der Querschnitte. */
+type RumpfHaut = { haut: (i: number, u: number) => [number, number, number]; R0: number; h0: number };
+
+function rumpfHaut(sp0: readonly Sprosse[], qs0: readonly Querschnitt[], Ws0: readonly number[], N0: number, bz: Breiten): RumpfHaut {
+  const R0 = sp0.length;
+  const h0 = N0 / 2;
+  const roh = new Map<number, readonly [number, number, number]>();
+  const rumpfPunkt = (i: number, j: number) => {
+    const key = i * (h0 + 1) + j;
+    let P = roh.get(key);
+    if (!P) {
+      const [x, y, z] = punkt(sp0[i]!, qs0[i]!, Ws0[i]!, j, bz);
+      P = [x, y, j === 0 || j === h0 ? 0 : z];
+      roh.set(key, P);
+    }
+    return P;
+  };
+  const haut = (i: number, u: number): [number, number, number] => {
+    const ia = Math.max(0, Math.min(R0 - 2, Math.floor(i)));
+    const ua = Math.max(0, Math.min(h0 - 1, Math.floor(u)));
+    const fi = i - ia;
+    const fu = u - ua;
+    const a = rumpfPunkt(ia, ua);
+    const b = rumpfPunkt(ia, ua + 1);
+    const c = rumpfPunkt(ia + 1, ua);
+    const d = rumpfPunkt(ia + 1, ua + 1);
+    const m = (k: 0 | 1 | 2) => (1 - fi) * ((1 - fu) * a[k] + fu * b[k]) + fi * ((1 - fu) * c[k] + fu * d[k]);
+    return [m(0), m(1), m(2)];
+  };
+  return { haut, R0, h0 };
+}
+
+/** Ein angesetztes seitliches Teil: Röhre, Topologie, Wurzelring, Ausrichtung und die Stelle (i, u) jedes Fensterpunkts. */
+type SeitenAnsatz = { teil: Seitenteil; topo: StreifenTopo; wurzel: SeitenRing; versatz: number; richtung: 1 | -1; stellen: [number, number][] };
+
+/**
+ * S6.3: Fenster der seitlichen Teile im Rumpf (Streifen 0). Der Wurzelring (Ellipse auf der Sehne) wird in 48 Punkten längs
+ * der Achse des Teils auf die Rumpfhaut gelegt: Das ist der Fußabdruck, als Stellen (Ring i, Zeile u). Das Fenster nimmt die
+ * Ringe und Zeilen, die ihn am besten fassen (8 Punkte, bei großen Fußabdrücken 16), und jeder Fensterpunkt bekommt die Stelle
+ * des Fußabdrucks unter seinem Winkel. Fenster, die Kragen oder anderen Fenstern zu nahe kommen, werden ausgelassen.
+ */
+function seitenFenster(e: Ebene, ringe: readonly StreifenRinge[], topoMitte: readonly StreifenTopo[], rh: RumpfHaut, ueberschuss?: Ueberschuss): { gebaut: SeitenAnsatz[]; ausgelassen: number[] } {
+  const sp = ringe[0]!.sprossen;
+  const { haut, R0, h0 } = rh;
+  // fehlende Koordinate am Rumpf: Höhe der Sprossenmitte am nächsten x (Top); sonst 0
+  const hoeheBei = (x: number) => {
+    let best = 0;
+    for (let i = 1; i < R0; i++) if (Math.abs((sp[i]!.o.x + sp[i]!.u.x) / 2 - x) < Math.abs((sp[best]!.o.x + sp[best]!.u.x) / 2 - x)) best = i;
+    return (sp[best]!.o.y + sp[best]!.u.y) / 2;
+  };
+  const teile = seitenteile(e.baum, (b, p) => (b === 'top' ? hoeheBei(p.x) : 0), {}, ueberschuss);
+  // belegte Stellen: Kragen (seine Zeilen 0…Tiefe über seine Ringe ± 2, wo er anteilig mitnimmt) und gesetzte Fenster
+  const belegt = Array.from({ length: R0 }, () => new Set<number>());
+  topoMitte.forEach((t) => {
+    const a = t.anfang;
+    if (a.art !== 'kragen' || a.eltern !== 0) return;
+    const w = t.N / 2 - 2 * a.tiefe;
+    for (let i = Math.max(0, a.ring - 2); i <= Math.min(R0 - 1, a.ring + w + 2); i++) for (let j = 0; j <= a.tiefe; j++) belegt[i]!.add(a.seite === 'a' ? j : h0 - j);
+  });
+  const M = 16;
+  const abst2 = (a: readonly number[], b: readonly number[]) => (a[0]! - b[0]!) ** 2 + (a[1]! - b[1]!) ** 2 + (a[2]! - b[2]!) ** 2;
+  const gebaut: SeitenAnsatz[] = [];
+  const ausgelassen: number[] = [];
+  for (const t of teile) {
+    // Wurzelring auf der Sehne, gleich orientiert wie der erste Ring
+    const r1 = t.ringe[0]!;
+    const AB = [t.wurzel.B[0] - t.wurzel.A[0], t.wurzel.B[1] - t.wurzel.A[1], t.wurzel.B[2] - t.wurzel.A[2]];
+    const lAB = Math.hypot(AB[0]!, AB[1]!, AB[2]!) || 1e-9;
+    let e1: [number, number, number] = [AB[0]! / lAB, AB[1]! / lAB, AB[2]! / lAB];
+    if (e1[0] * r1.e1[0] + e1[1] * r1.e1[1] + e1[2] * r1.e1[2] < 0) e1 = [-e1[0], -e1[1], -e1[2]];
+    const wurzel: SeitenRing = { mitte: t.wurzel.mitte, e1, r1: lAB / 2, e2: r1.e2, r2: r1.r2 };
+    // Achse an der Wurzel (zum ersten Ring), sonst die Normale des Wurzelrings
+    const D = [r1.mitte[0] - t.wurzel.mitte[0], r1.mitte[1] - t.wurzel.mitte[1], r1.mitte[2] - t.wurzel.mitte[2]];
+    let lD = Math.hypot(D[0]!, D[1]!, D[2]!);
+    let ax: [number, number, number];
+    if (lD > 1e-9) ax = [D[0]! / lD, D[1]! / lD, D[2]! / lD];
+    else {
+      const n0 = [e1[1] * r1.e2[2] - e1[2] * r1.e2[1], e1[2] * r1.e2[0] - e1[0] * r1.e2[2], e1[0] * r1.e2[1] - e1[1] * r1.e2[0]];
+      lD = Math.hypot(n0[0]!, n0[1]!, n0[2]!) || 1;
+      ax = [n0[0]! / lD, n0[1]! / lD, n0[2]! / lD];
+    }
+    // Fußabdruck: je Punkt des Wurzelrings die Stelle der Haut nahe seiner Geraden längs der Achse (grob, dann fein)
+    const kosten = (i: number, u: number, F: readonly number[]) => {
+      const P = haut(i, u);
+      const v0 = P[0] - F[0]!;
+      const v1 = P[1] - F[1]!;
+      const v2 = P[2] - F[2]!;
+      const l = v0 * ax[0] + v1 * ax[1] + v2 * ax[2];
+      return (v0 - l * ax[0]) ** 2 + (v1 - l * ax[1]) ** 2 + (v2 - l * ax[2]) ** 2 + 0.05 * (v0 * v0 + v1 * v1 + v2 * v2);
+    };
+    const stellenM: [number, number][] = [];
+    for (let m = 0; m < M; m++) {
+      const F = ringPunkt(wurzel, m, M);
+      // grob auf den Gitterpunkten, dann zweimal feiner um die beste Stelle
+      let bi = 0;
+      let bu = 1;
+      let bc = Infinity;
+      for (let i = 0; i < R0; i++) {
+        for (let u = 1; u < h0; u++) {
+          const c = kosten(i, u, F);
+          if (c < bc) {
+            bc = c;
+            bi = i;
+            bu = u;
+          }
+        }
+      }
+      for (const [weite, schritt] of [[1.5, 0.1], [0.12, 0.01]] as const) {
+        const gi = bi;
+        const gu = bu;
+        const n = Math.round(weite / schritt);
+        for (let a = -n; a <= n; a++) {
+          for (let b = -n; b <= n; b++) {
+            const i = Math.max(0, Math.min(R0 - 1, gi + a * schritt));
+            const u = Math.max(0.25, Math.min(h0 - 0.25, gu + b * schritt));
+            const c = kosten(i, u, F);
+            if (c < bc) {
+              bc = c;
+              bi = i;
+              bu = u;
+            }
+          }
+        }
+      }
+      stellenM.push([bi, bu]);
+    }
+    // Fenster: Ringe und Zeilen, die den Fußabdruck am besten fassen (Ausdehnung in Zellen), 8 Punkte, 16 nur bei großen
+    let iMin = Infinity;
+    let iMax = -Infinity;
+    let uMin = Infinity;
+    let uMax = -Infinity;
+    for (const [i, u] of stellenM) {
+      iMin = Math.min(iMin, i);
+      iMax = Math.max(iMax, i);
+      uMin = Math.min(uMin, u);
+      uMax = Math.max(uMax, u);
+    }
+    const ic = (iMin + iMax) / 2;
+    const uc = (uMin + uMax) / 2;
+    const formen: [number, number][] = [[1, 3], [2, 2], [3, 1], [1, 7], [2, 6], [3, 5], [4, 4], [5, 3], [6, 2], [7, 1]];
+    const wahl = formen
+      .map(([w, tz]) => ({ w, tz, note: Math.abs(w - (iMax - iMin)) + Math.abs(tz - (uMax - uMin)) + (w + tz === 8 ? 1 : 0) }))
+      .sort((a, b) => a.note - b.note);
+    // je Form die Lage um den Fußabdruck, sonst um eine Zelle verschoben (die Fensterpunkte rutschen ohnehin auf den
+    // Fußabdruck; ein Kragen daneben ließ sonst jedes Fenster aus, Entenflügel unter dem Hals-Kragen); frei mit einer Zelle Rand
+    let fenster: { ring: number; zeile: number; w: number; t: number } | null = null;
+    const lagen = [[0, 0], [0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]] as const;
+    for (const { w, tz } of wahl) {
+      if (w > R0 - 3 || tz > h0 - 2) continue;
+      for (const [di, dj] of lagen) {
+        const iA = Math.max(1, Math.min(R0 - 2 - w, Math.round(ic - w / 2) + di));
+        const zeile = Math.max(1, Math.min(h0 - 1 - tz, Math.round(uc - tz / 2) + dj));
+        // höchstens anderthalb Zellen bis zum Fußabdruck
+        if (iMin < iA - 1.5 || iMax > iA + w + 1.5 || uMin < zeile - 1.5 || uMax > zeile + tz + 1.5) continue;
+        let frei = true;
+        for (let i = Math.max(0, iA - 1); i <= Math.min(R0 - 1, iA + w + 1) && frei; i++) for (let j = zeile - 1; j <= zeile + tz + 1 && frei; j++) if (belegt[i]!.has(j)) frei = false;
+        if (frei) {
+          fenster = { ring: iA, zeile, w, t: tz };
+          break;
+        }
+      }
+      if (fenster) break;
+    }
+    if (!fenster) {
+      ausgelassen.push(t.teil);
+      continue;
+    }
+    const an = { art: 'fenster' as const, eltern: 0, ...fenster };
+    const N = 2 * (fenster.w + fenster.t);
+    for (let i = fenster.ring; i <= fenster.ring + fenster.w; i++) for (let j = fenster.zeile; j <= fenster.zeile + fenster.t; j++) belegt[i]!.add(j);
+    // Ausrichtung: Versatz und Richtung, mit denen die Fensterpunkte den Stellen des Fußabdrucks am nächsten liegen
+    const P = Array.from({ length: N }, (_, k) => {
+      const o = fensterOrt(an, k);
+      return haut(o.i, o.j);
+    });
+    const Q = stellenM.map(([i, u]) => haut(i, u));
+    let best = { d: Infinity, v: 0, r: 1 as 1 | -1 };
+    for (const r of [1, -1] as const) {
+      for (let v = 0; v < N; v++) {
+        let d = 0;
+        for (let k = 0; k < N; k++) d += abst2(P[k]!, Q[((((v + r * k) % N) + N) % N) * (M / N)]!);
+        if (d < best.d) best = { d, v, r };
+      }
+    }
+    const stellen = Array.from({ length: N }, (_, k) => stellenM[((((best.v + best.r * k) % N) + N) % N) * (M / N)]!);
+    gebaut.push({ teil: t, topo: { R: t.ringe.length + 1, N, anfang: an, ende: { art: 'kappe' } }, wurzel, versatz: best.v, richtung: best.r, stellen });
+  }
+  return { gebaut, ausgelassen };
+}
+
 /** Körper aus dem Mittelebenen-Baum bauen. */
 export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}, baum?: Teilbaum): BaumAbleitung {
   const opt: BaumOptionen = { ...BAUM_STANDARD, ...optionen };
   const t0 = jetzt();
   const breiten = silhouettenBreite(dok);
-  const e = ebene(dok, baum, breiten, opt.ansatz);
+  const e = ebene(dok, baum, breiten, opt.ansatz, opt.paare && opt.hebung !== 'feld');
   const t1 = jetzt();
   const ringe = ringeAuslegen(e, breiten, { ...RING_STANDARD, ansatz: opt.ansatz, kappeKante: opt.kappeKante });
-  const topo = streifenTopologie(e, ringe);
-  const t2 = jetzt();
-  const bk0 = baumKaefig(topo);
-  const n = bk0.kaefig.n;
-  const ziele = new Float64Array(3 * n);
-  const gesetzt = new Uint8Array(n);
-  const setze = (p: number, x: number, y: number, z: number) => {
-    ziele[3 * p] = x;
-    ziele[3 * p + 1] = y;
-    ziele[3 * p + 2] = z;
-    gesetzt[p] = 1;
-  };
-  // Silhouetten ohne seitliche Paare (S6) für den ganzen Bau: Die Paare liegen neben dem Rumpf, kein Mittelteil braucht ihre
-  // Breite; der Rumpf bekäme sonst ihre Ausdehnung und ihren Stachel im Front-Lappen (Fisch)
-  const rumpf = rumpfSilhouetten(dok, e.baum);
+  const topoMitte = streifenTopologie(e, ringe);
+  const mitPaaren = opt.paare && opt.hebung !== 'feld';
+  // Silhouetten ohne seitliche Paare für den ganzen Bau: Die Paare liegen neben dem Rumpf, kein Mittelteil braucht ihre Breite;
+  // der Rumpf bekäme sonst ihre Ausdehnung und ihren Stachel im Front-Lappen (Fisch). Ohne S6 nur Paare, die Front und Top
+  // zeigen; baut S6 die Paare, gehören alle ihre Umrisse ihnen
+  const rumpf = rumpfSilhouetten(dok, e.baum, mitPaaren);
   const bz = rumpf?.breiten ?? breiten;
-  let qs: Querschnitt[][];
+  // Querschnitte und Maßstäbe der Ringe (Ringmodus), vor der Topologie: S6 legt die Fenster auf die Rumpfhaut
+  let qs: Querschnitt[][] = [];
+  let Ws: number[][] = [];
   const beruehrt = new Set<string>();
-  let feld: Hoehenfeld | null = null;
-  if (opt.hebung === 'feld') {
-    // R5: ein Höhenfeld über der Seitenfläche gibt jedem Käfigpunkt seine Tiefe (keine Querschnitte je Ring)
-    feld = hoehenfeld(e.seite, bz, opt.feld ?? {});
-    feldZiele(e, ringe, topo, bk0, feld.H, setze);
-    qs = e.streifen.map((st, s) => ringe[s]!.sprossen.map(() => kreisQuerschnitt(st.N)));
-  } else {
+  if (opt.hebung !== 'feld') {
     // Querschnitte je Streifen; der erste Ring eines Kinds ist rund (seine Punkte liegen genau auf den Sehnenpunkten)
     // Silhouetten ohne seitliche Paare (S6) für den ganzen Bau: Die Paare liegen neben dem Rumpf, kein Mittelteil braucht ihre
     // Breite; der Rumpf bekäme sonst ihre Ausdehnung und ihren Stachel im Front-Lappen (Fisch)
@@ -372,7 +677,7 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
       if (st.ansatz) q[0] = kreisQuerschnitt(st.N);
       return q;
     });
-    const Ws: number[][] = e.streifen.map((_, s) => {
+    Ws = e.streifen.map((_, s) => {
       let letzte = 0;
       return ringe[s]!.sprossen.map((sp, i) => (letzte = masstab(sp, qs[s]![i]!, breitenVon(s), letzte)));
     });
@@ -393,6 +698,41 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
       });
       for (const p of rand.punkte) beruehrt.add(`${alle[p.i]!.s}/${alle[p.i]!.i}/${p.j}`);
     }
+  }
+  // S6: seitliche Teile über Fenster in der Rumpfflanke (Streifen 0)
+  const seitenAusgelassen: number[] = [];
+  const seiten: Seitenteil[] = [];
+  const seitenTopo: StreifenTopo[] = [];
+  const ansaetze: SeitenAnsatz[] = [];
+  const rh = mitPaaren ? rumpfHaut(ringe[0]!.sprossen, qs[0]!, Ws[0]!, e.streifen[0]!.N, bz) : null;
+  if (mitPaaren && rh) {
+    const geb = seitenFenster(e, ringe, topoMitte, rh, rumpf ? ueberschussVon(dok, breiten, rumpf.breiten, e.seite) : undefined);
+    for (const g of geb.gebaut) {
+      seiten.push(g.teil);
+      seitenTopo.push(g.topo);
+      ansaetze.push(g);
+    }
+    seitenAusgelassen.push(...geb.ausgelassen);
+  }
+  const topo = [...topoMitte, ...seitenTopo];
+  const t2 = jetzt();
+  const bk0 = baumKaefig(topo);
+  const n = bk0.kaefig.n;
+  const ziele = new Float64Array(3 * n);
+  const gesetzt = new Uint8Array(n);
+  const setze = (p: number, x: number, y: number, z: number) => {
+    ziele[3 * p] = x;
+    ziele[3 * p + 1] = y;
+    ziele[3 * p + 2] = z;
+    gesetzt[p] = 1;
+  };
+  let feld: Hoehenfeld | null = null;
+  if (opt.hebung === 'feld') {
+    // R5: ein Höhenfeld über der Seitenfläche gibt jedem Käfigpunkt seine Tiefe (keine Querschnitte je Ring)
+    feld = hoehenfeld(e.seite, bz, opt.feld ?? {});
+    feldZiele(e, ringe, topo, bk0, feld.H, setze);
+    qs = e.streifen.map((st, s) => ringe[s]!.sprossen.map(() => kreisQuerschnitt(st.N)));
+  } else {
     // 1. Ringe und Spitzenkappen je Streifen
     e.streifen.forEach((st, s) => {
       const N = st.N;
@@ -653,6 +993,104 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
         }
       }
     });
+    // S6: seitliche Röhren. Jeder Fensterpunkt liegt auf seiner Stelle des Fußabdrucks (Rumpfhaut, `seitenFenster`); die
+    //     Rumpfpunkte daneben gehen anteilig mit (½, ¼), wie beim Kragen. Danach die Ringe (Ellipsen) in derselben Ausrichtung
+    //     und die Kappe; links gespiegelt. Vorher lag der Fensterrand auf groben Rumpfringen und -zeilen, 1,5- bis 3-mal so lang
+    //     wie der erste Röhrenring (Ente 241 gegen 76 px), und der Löser stauchte die Haut dazwischen.
+    if (ansaetze.length && rh) {
+      const { haut, R0, h0 } = rh;
+      const N0 = e.streifen[0]!.N;
+      // geschützte Rumpfpunkte: Ring 0 anderer Kinder (Kragen), Kragen-Nachbarn, Ringe unter einer Sehne, Ecken, Enden, Übergang
+      const geschuetzt = new Set<number>();
+      topo.forEach((T, s) => {
+        const a = T.anfang;
+        if (s > 0 && a.art === 'kragen' && a.eltern === 0) {
+          for (let k = 0; k < T.N; k++) geschuetzt.add(bk0.ring(s, 0, k));
+          const w = T.N / 2 - 2 * a.tiefe;
+          for (let i = Math.max(0, a.ring - 2); i <= Math.min(R0 - 1, a.ring + w + 2); i++) {
+            for (let z = 0; z <= a.tiefe + 1; z++) {
+              const j = a.seite === 'a' ? z : h0 - z;
+              if (bk0.existiert(0, i, j)) geschuetzt.add(bk0.ring(0, i, j));
+            }
+          }
+        }
+      });
+      const ringGeschuetzt = new Set<number>([0, R0 - 1]);
+      if (ringe[0]!.uebergang) ringGeschuetzt.add(R0 - 2);
+      for (const kd of ringe[0]!.kinder) if (kd.tiefe === 0) for (let i = kd.ring; i <= kd.ring + e.streifen[kd.streifen]!.N / 2; i++) ringGeschuetzt.add(i);
+      for (const ec of ringe[0]!.ecken) ringGeschuetzt.add(ec.ring);
+      const bewegt = new Set<number>();
+      const setzeRumpf = (i: number, j: number, P: readonly [number, number, number]) => {
+        const p = bk0.ring(0, i, j);
+        setze(p, P[0], P[1], P[2]);
+        setze(bk0.ring(0, i, N0 - j), P[0], P[1], -P[2]);
+        bewegt.add(p);
+      };
+      // zuerst alle Fensterpunkte, dann die Nachbarn (ein Nachbar eines Fensters darf kein Punkt eines anderen sein)
+      ansaetze.forEach((g) => {
+        const an = g.topo.anfang;
+        if (an.art !== 'fenster') return;
+        for (let k = 0; k < g.topo.N; k++) {
+          const o = fensterOrt(an, k);
+          const [i, u] = g.stellen[k]!;
+          setzeRumpf(o.i, o.j, haut(i, u));
+        }
+      });
+      ansaetze.forEach((g) => {
+        const an = g.topo.anfang;
+        if (an.art !== 'fenster') return;
+        const versatz = new Map<string, [number, number]>();
+        for (let k = 0; k < g.topo.N; k++) {
+          const o = fensterOrt(an, k);
+          versatz.set(`${o.i}/${o.j}`, [g.stellen[k]![0] - o.i, g.stellen[k]![1] - o.j]);
+        }
+        // Nachbarn anteilig: Abstand (Zellen, Tschebyschow) 1 → ½, 2 → ¼ des Versatzes des nächsten Randpunkts
+        for (let i = an.ring - 2; i <= an.ring + an.w + 2; i++) {
+          if (i < 1 || i > R0 - 2 || ringGeschuetzt.has(i)) continue;
+          for (let j = an.zeile - 2; j <= an.zeile + an.t + 2; j++) {
+            if (j < 1 || j > h0 - 1) continue;
+            const di = i < an.ring ? an.ring - i : i > an.ring + an.w ? i - an.ring - an.w : 0;
+            const dj = j < an.zeile ? an.zeile - j : j > an.zeile + an.t ? j - an.zeile - an.t : 0;
+            const dd = Math.max(di, dj);
+            if (dd === 0 || !bk0.existiert(0, i, j)) continue;
+            const p = bk0.ring(0, i, j);
+            if (geschuetzt.has(p) || bewegt.has(p)) continue;
+            const vs = versatz.get(`${Math.max(an.ring, Math.min(an.ring + an.w, i))}/${Math.max(an.zeile, Math.min(an.zeile + an.t, j))}`);
+            if (!vs) continue;
+            const al = dd === 1 ? 0.5 : 0.25;
+            setzeRumpf(i, j, haut(Math.max(0, Math.min(R0 - 1, i + al * vs[0])), Math.max(0.25, Math.min(h0 - 0.25, j + al * vs[1]))));
+          }
+        }
+      });
+      // Ringe (Ellipsen) und Kappe in der Ausrichtung des Fußabdrucks
+      ansaetze.forEach((g, q) => {
+        const s = topoMitte.length + q;
+        const t = g.teil;
+        const N = g.topo.N;
+        const c = N / 4;
+        const paar = (p: number, x: number, y: number, z: number) => {
+          setze(p, x, y, z);
+          setze(bk0.spiegel[p]!, x, y, -z);
+        };
+        t.ringe.forEach((ring, i) => {
+          for (let j = 0; j < N; j++) {
+            const P = ringPunkt(ring, j, N, g.versatz, g.richtung);
+            paar(bk0.ring(s, i + 1, j), P[0], P[1], P[2]);
+          }
+        });
+        paar(bk0.kappe(s, 'ende', c / 2, c / 2), t.spitze[0], t.spitze[1], t.spitze[2]);
+        // weitere innere Kappenpunkte (N = 16): zwischen Endring und Spitze
+        for (let b = 1; b < c; b++) {
+          for (let a = 1; a < c; a++) {
+            if (a === c / 2 && b === c / 2) continue;
+            const p = bk0.kappe(s, 'ende', a, b);
+            const r = Math.max(Math.abs(a - c / 2), Math.abs(b - c / 2)) / (c / 2);
+            const R1 = bk0.kappe(s, 'ende', a === c / 2 ? a : a < c / 2 ? 0 : c, b === c / 2 ? b : b < c / 2 ? 0 : c);
+            paar(p, t.spitze[0] + r * (ziele[3 * R1]! - t.spitze[0]), t.spitze[1] + r * (ziele[3 * R1 + 1]! - t.spitze[1]), t.spitze[2] + r * (ziele[3 * R1 + 2]! - t.spitze[2]));
+          }
+        }
+      });
+    }
   }
   for (let p = 0; p < n; p++) if (!gesetzt[p]) throw new Error(`baumAbleiten: Punkt ${p} ohne Ziel`);
   // Topologie mit Orientierung nach den Zielen
@@ -707,6 +1145,21 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
         for (let b = 0; b < c; b++) scharf(bk.kappe(s, wo, c / 2, b), bk.kappe(s, wo, c / 2, b + 1));
       }
     });
+    // seitliche Röhren: Vorder- und Hinterkante (j = 0, N/2) dünner Ringe, rechts und gespiegelt
+    seiten.forEach((t, q) => {
+      const s = topoMitte.length + q;
+      const N = topo[s]!.N;
+      const duenn = t.ringe.map((r) => r.r2 < opt.klinge * r.r1);
+      for (let i = 0; i + 1 < duenn.length; i++) {
+        if (!duenn[i] || !duenn[i + 1]) continue;
+        for (const j of [0, N / 2]) {
+          const p = bk.ring(s, i + 1, j);
+          const pp = bk.ring(s, i + 2, j);
+          scharf(p, pp);
+          scharf(bk.spiegel[p]!, bk.spiegel[pp]!);
+        }
+      }
+    });
   }
   const t3 = jetzt();
 
@@ -717,7 +1170,8 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
   const nF = fein.length / 3;
   const feinIdx: number[] = [];
   for (let i = 0; i < nF; i++) if (Math.abs(fein[3 * i + 2]!) < 1e-7) feinIdx.push(i);
-  const umriss = umrissDicht(dok);
+  // Naht: die gezeichnete Seitenlinie; mit Paaren die Seitenfläche ohne sie (ein Bein ist keine Naht der Mittelebene)
+  const umriss = opt.paare && opt.hebung !== 'feld' ? umrissAusPolygon(e.seite) : umrissDicht(dok);
   const letzte = u.stufen[u.stufen.length - 1]!.kaefig;
   const start = bk.kappe(0, 'anfang', 2, 2);
   const pfad = nahtPfad(letzte, feinIdx, start, k.n);
@@ -765,7 +1219,7 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
   }
   const t5 = jetzt();
   const zone = baumZonen(e, ringe, bk);
-  return { opt, ebene: e, ringe, bk, kaefig: { ...k, xyz }, unterteilung: u, fein, ziele, breiten: bz, zone, querschnitte: qs, zeiten: { ebene: t1 - t0, ringe: t2 - t1, ziele: t3 - t2, matrix: t4 - t3, loeser: t5 - t4, gesamt: t5 - t0 } };
+  return { opt, ebene: e, ringe, bk, kaefig: { ...k, xyz }, unterteilung: u, fein, ziele, breiten: bz, zone, querschnitte: qs, seiten, seitenAusgelassen, zeiten: { ebene: t1 - t0, ringe: t2 - t1, ziele: t3 - t2, matrix: t4 - t3, loeser: t5 - t4, gesamt: t5 - t0 } };
 }
 
 /**
@@ -782,7 +1236,7 @@ function baumBreite(e: Ebene, ringe: readonly StreifenRinge[], qs: readonly Quer
   // Kragenpunkte (Kindring 0 auf der Elternhaut): ohne Breitenpunkt, sie gehören dem Übergang ins Kind
   const kragen = new Set<number>();
   bk.streifen.forEach((t, s) => {
-    if (t.anfang.art === 'kragen') for (let j = 0; j < t.N; j++) kragen.add(bk.ring(s, 0, j));
+    if (t.anfang.art === 'kragen' || t.anfang.art === 'fenster') for (let j = 0; j < t.N; j++) kragen.add(bk.ring(s, 0, j));
   });
   e.streifen.forEach((st, s) => {
     const N = st.N;
@@ -857,7 +1311,12 @@ function baumZonen(e: Ebene, ringe: readonly StreifenRinge[], bk: BaumKaefig): (
     if (i < 0) continue;
     const s = bk.flaecheStreifen[f]!;
     const j = bk.flaecheJ[f]!;
-    const st = e.streifen[s]!;
+    const st = e.streifen[s];
+    if (!st) {
+      // seitliche Röhre: die ersten zwei Ringbänder sind der Ansatz
+      if (i < 2) ansatz[f] = 1;
+      continue;
+    }
     const N = st.N;
     const R = ringe[s]!.sprossen.length;
     if (st.ansatz && i < 2) ansatz[f] = 1;
