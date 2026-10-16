@@ -318,3 +318,23 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
   nur im Höhenband, in dem der Ring die Front stellt, nicht den ganzen Ring.
 - **„genau“ ist kastig:** Kanten ohne Faltenmarken im Käfig (Faltenmaß 34° an der einfachen Form, Rex +12 % Volumen). →
   Falls Florian „genau“ wählt: Kanten als Falten im Käfig, sonst bleibt es eine weiche Näherung.
+
+## Befunde aus S3 Teil 1 „Front berühren“ (16.10. abends, eigene Befunde)
+
+- **Tor „kein Körper schlechter um > 2°“ nicht gehalten — angehalten:** Langhals (frisch) und Drache bekommen +1,3 bis
+  3,3° an einer Falte, die es schon gab (Langhals Hals/Kopf bei x 0,014, y 0,605). Die Ente aus der Startkugel wird an
+  ihrer schon kaputten Kappe schlechter (Front 8,7 → 14,3 px, Falten 36 → 45°). Anläufe: Gewicht der Berührpunkte,
+  Glockenbreite, Wachstumsgrenze gekappt/übersprungen, Endringe, Top-Abstand. → S5 (eigene Querschnitte je Teil) nimmt die
+  Ursachen; bis dahin ist Berühren ein Schalter je Wesen.
+- **Die Vase brauchte Breite, nicht Fülle:** Geneigte Ringe rechnen ihre Breite W an der Ringmitte, die Sichthülle an
+  ihrem Punkt erlaubt mehr (0,229 gegen 0,259). → Berühren wächst bis zur Hülle am eigenen Punkt, auch über W hinaus.
+- **Giraffe: Vorlage passt nicht zu geneigten Ringen** (Flaschen-Front auf jede Sprosse gestreckt: an der Bauchhöhe nimmt
+  der Ring den schmalen Hals der Vorlage) — Berühren müsste × 2 bis × 3,6 wachsen (+27 % Volumen). → Übersprungen (über
+  × 1,35); Lösung in S5.
+- **Seitliche Teile pumpen den Rumpf auf:** Fisch +44 % Volumen ohne Grenze. → Wünsche über × 1,35 gelten als anderes
+  Teil (S6) und werden übersprungen (Fisch dann +10 %).
+- **Glättung relativ zur Zielform hält nicht jede Zielerhöhung:** Die glatte Haut traf erhöhte Ziele nur zu etwa ⅔. →
+  Berührpunkte als Breitenpunkte; alle gewachsenen Punkte als Bedingung gaben Falten (26°), nur die verlangten (Gewicht ¼)
+  nicht.
+- **Deine einfache Form hinten: nur als Kante erreichbar** (0,8 breit bei fast 0 Höhe). „mittel“ rundet eng (22,8°),
+  Top-Ecken bleiben offen. → Markierung „nur als Kante“ im Blatt fehlt noch (Rest von S3).

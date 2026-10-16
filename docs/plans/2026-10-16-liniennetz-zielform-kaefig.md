@@ -516,3 +516,50 @@ gemessenen Fehlanläufen am selben Tor: anhalten, Kritik-Register, Bericht.
   - **Nach Florians Wahl:** S3 nach Plan bauen (Berühren örtlich auf dem Höhenband des Rings statt des ganzen Rings — das
     nimmt der Robbe den flachen Bauch —, Intervalle in `breite.ts`, dritte Koordinate als Griff, Tore), mit der gewählten
     Fülle; bei „rund“ nur Berühren ohne Fülle.
+- **16.10. abends, S3 Teil 1 „Front berühren“ gebaut** (Florian: „mach weiter“ → Fülle **mittel** wie empfohlen; Abnahme
+  offen):
+  - **Bauweise** (`packages/shape/src/kern/rand.ts`, Option `fuelle`, Dokument `ausstattung.fuelle`, Tafel Körper → „Umrisse
+    berühren aus | rund | mittel | genau“; fehlt = heute, bitgleich):
+    - Für jede Höhe, in der der Körper hinter der Front zurückbleibt, wird der Ring gewählt, der dort ohnehin am weitesten
+      reicht und dessen Sichthülle an seinem eigenen Punkt das Ziel erlaubt. Ziel ist der erreichbare Teil der Front;
+      Widersprüche bleiben rot.
+    - Gewachsen wird in einem weichen Feld aus Glocken über die Höhe (σ 0,12 der Sprosse) und über die Ringe (σ 3 Ringe),
+      zusammengesetzt als Maximum.
+    - Begrenzt wird das Wachstum durch die Hülle an der eigenen Stelle (Top bei x mit 2 px Abstand, Front bei y) und durch
+      die Fülle: Die Form ist höchstens die Superellipse der Stufe um die eigene größte Breite (mittel p 4).
+    - Die Berührpunkte werden Breitenpunkte im Ausgleich (Gewicht ¼); die Nachbarn folgen weich.
+    - Verlangt die Front mehr als × 1,35, gilt es nicht als Berührung, sondern als anderes Teil oder als unpassende
+      Vorlage (Flosse, Flügel, geneigte Giraffenringe): Dann wächst nichts.
+  - **Ergebnis** (glatte Haut, aus der Startkugel; Δ Seite/Front/Top in px, heute → berührt):
+
+    | Körper | Front | Top | Seite | Falten (freie Haut) | Volumen |
+    |---|---|---|---|---|---|
+    | deine einfache Form | **21,9 → 8,3** (4,5 davon Widerspruch) | 9,3 → 6,4 | 0,3 → 0,3 | 15,0 → 22,8°, hinten | +8 % |
+    | Vase | **13,7 → 2,3** | 15,6 → 13,7 | 1,3 | gleich | +4 % |
+    | Rex | **10,3 → 7,3** (6,0 Widerspruch) | 1,6 → 1,6 | 1,1 | gleich | +4 % |
+    | Robbe | 8,5 → 6,3 | 12,5 | 4,0 | gleich | +2 % |
+    | Giraffe mit Bauch | 22,0 → 18,9 | 9,5 → 9,0 | 1,0 | gleich | +2–5 % |
+    | Kugel, Ei, Birne | gleich | gleich | gleich | gleich | ≤ 0,3 % |
+    | Langhals, Drache | gleich | ≤ gleich | gleich | **+1,3 bis +3,3°** an einer schon vorhandenen Falte | +1–2 % |
+    | Ente aus der Startkugel | **8,7 → 14,3** (ragt unten über die Front, Kappe schon heute 95°) | 45 → 48 | 2,6 | **36 → 45°** | +3 % |
+    | Fisch, Ente mit Haken | gleich | gleich | gleich | Haken +7° | +6–12 % |
+
+    Bau 98–120 ms, Zug ≤ 7 ms. Editor-Prüfung `s3-editor.mjs` grün (deine Form 21,6 → 8,0, Vase 13,7 → 2,3, Rex
+    10,3 → 7,3 px); Test `kern/fuelle.test.ts`.
+  - **Angehalten am Tor „kein Körper schlechter um > 2°“:** Langhals und Drache bekommen +1,3 bis 3,3° an einer Falte, die
+    es schon gab. Die Ente aus der Startkugel wird an ihrer kaputten Kappe schlechter (S5). Gemessene Anläufe:
+    Gewicht der Berührpunkte (¼, ½, 1), Glockenbreite (1, 2, 3 Ringe), Wachstumsgrenze gekappt oder übersprungen
+    (1,35 / 1,5 / 1,6 / 2), Endringe aus, Abstand zum Top. Keiner davon hält alle Körper. Einträge im Kritik-Register.
+  - **Deine einfache Form hinten:** 0,8 breit bei fast 0 Höhe; das ist **nur als Kante erreichbar**. „mittel“ rundet die
+    Stelle eng (22,8°), die Top-Ecken hinten bleiben 6 px offen.
+  - **Noch nicht gebaut (Rest von S3):** dritte Koordinate als Griff (Breitenlinie ziehen), Intervalle in `breite.ts`
+    (Lappen, Kerben), Markierung „nur als Kante erreichbar“ im Blatt, Top berühren für geneigte Ringe (heute halten die
+    Breitenpunkte das Top).
+  - **Unterwegs verworfen (gemessen):** Ganze Ringe voller zu machen (erster Versuch) gab Robbe einen flachen Bauch und
+    machte Drache/Langhals 7 % voller ohne Gewinn. Ohne Wachstumsgrenze pumpten Flossen den Fisch um 44 % auf. Alle
+    gewachsenen Punkte als Bedingung zu nehmen gab Falten (einfache Form 26°). Den Ring mit der größten Hülle zu wählen
+    statt des am weitesten reichenden ließ Hälse auf × 3,6 wachsen.
+  - **Bilder:** [`s3-beruehren-editor-2026-10-16.jpg`](../progress/editor/s3-beruehren-editor-2026-10-16.jpg) (Bühne, Prüfansicht,
+    Front-Blatt heute | berührt), [`s3-beruehren-kern-2026-10-16.jpg`](../progress/editor/s3-beruehren-kern-2026-10-16.jpg).
+  - **Nächster Schritt nach Florians Blick:** Berühren als Standard für neue Wesen? Danach Rest von S3 (Breitenlinie als
+    Griff, Markierung), die Falten an Langhals/Drache und die Giraffe kommen mit S5.

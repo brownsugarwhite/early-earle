@@ -1,4 +1,4 @@
-# Übergabe (Stand 16.10.2026 nachmittags: S2 gebaut, „glatt“ Standard; S3-Look-Entscheidung vorbereitet, Halt für Florians Wahl)
+# Übergabe (Stand 16.10.2026 abends: S2 gebaut, „glatt“ Standard; S3 Teil 1 „Front berühren“ gebaut, Halt für Florian)
 
 Branch `claude/editor-grundlayout`.
 
@@ -41,6 +41,14 @@ Gesamtplan und Kritik-Register bleiben gültig:
   [`s3-fuelle-editor-2026-10-16.jpg`](progress/editor/s3-fuelle-editor-2026-10-16.jpg),
   [`s3-fuelle-kern-2026-10-16.jpg`](progress/editor/s3-fuelle-kern-2026-10-16.jpg).
 
+- **S3 Teil 1 „Front berühren“ gebaut** (Florian: „mach weiter“ → Fülle mittel): `kern/rand.ts`, Tafel Körper → „Umrisse
+  berühren aus | rund | mittel | genau“ (`ausstattung.fuelle`, fehlt = heute). Deine Form Front 21,9 → 8,3 px (4,5
+  Widerspruch), Vase 13,7 → 2,3, Rex 10,3 → 7,3, Robbe 8,5 → 6,3; Kugel/Ei/Birne gleich. Angehalten am Falten-Tor
+  (Langhals/Drache +1,3 bis 3,3°, Ente aus der Startkugel schlechter). Bilder
+  [`s3-beruehren-editor-2026-10-16.jpg`](progress/editor/s3-beruehren-editor-2026-10-16.jpg),
+  [`s3-beruehren-kern-2026-10-16.jpg`](progress/editor/s3-beruehren-kern-2026-10-16.jpg). Noch offen von S3: Breitenlinie als
+  Griff, Intervalle in `breite.ts`, Markierung „nur als Kante“.
+
 ## Entschieden (16.10. nachmittags)
 
 - **„glatt“ ist Standard für neue Wesen** (Startkugel, „Neu“; `neuesWesen()` im Editor-Store). Gespeicherte Wesen,
@@ -49,8 +57,9 @@ Gesamtplan und Kritik-Register bleiben gültig:
 ## Offen für Florian
 
 - **Angleichen** an alten Zeichnungen: Verhalten ok (die Ansicht mit dem Knopf führt)?
-- **S3 Look-Entscheidung:** rund / mittel / genau (Bilder oben). Danach S3 nach Plan mit der gewählten Fülle (Berühren
-  örtlich im Höhenband, Intervalle in `breite.ts`, dritte Koordinate als Griff, Tore).
+- **S3 ansehen** (eigene Wesen ohne Maul, Tafel Körper → „Umrisse berühren: mittel“): Soll Berühren Standard für neue
+  Wesen werden (wie „glatt“)? Die kleinen Faltenzunahmen an Langhals/Drache gehen erst mit S5 weg.
+- **Danach:** Rest von S3 (Breitenlinie als Griff, Markierung „nur als Kante“) oder gleich S4/S5.
 
 ## Arbeitsregeln
 
