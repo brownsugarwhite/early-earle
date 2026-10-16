@@ -65,6 +65,103 @@ function kieferAbdeckung(punkte: readonly V3[], flaechen: readonly (readonly num
   };
 }
 
+/** Projektion eines Punkts in ein Blatt (Seite x/y, Front z/y, Top x/z). */
+const blatt2 = (p: V3, a: Ansicht3): V2 => (a === 'seite' ? { x: p[0], y: p[1] } : a === 'front' ? { x: p[2], y: p[1] } : { x: p[0], y: p[2] });
+
+/**
+ * Plan „Liniennetz, Zielform, Käfig“, S0 (16.10.): genaue Umrissstücke des Netzes in einem Blatt — Kanten zwischen einer
+ * der Ansicht zugewandten und einer abgewandten Fläche (Silhouettenkanten des gezeichneten Netzes; auf Stufe 3 liegen die
+ * Grenzlagen so dicht, dass die Sehne < 0,01 px von der Grenzfläche abweicht). Ergebnis: Strecken (x0, y0, x1, y1) und ein
+ * Raster zum Suchen.
+ */
+export function umrissStuecke(punkte: readonly V3[], flaechen: readonly (readonly number[])[], a: Ansicht3, h: number) {
+  const ax = a === 'seite' ? 2 : a === 'front' ? 0 : 1;
+  const seite = new Int8Array(flaechen.length);
+  flaechen.forEach((f, fi) => {
+    let n = 0;
+    for (let k = 0; k < f.length; k++) {
+      const p = punkte[f[k]!]!;
+      const q = punkte[f[(k + 1) % f.length]!]!;
+      // Newell-Komponente längs der Blickachse
+      if (ax === 0) n += (p[1] - q[1]) * (p[2] + q[2]);
+      else if (ax === 1) n += (p[2] - q[2]) * (p[0] + q[0]);
+      else n += (p[0] - q[0]) * (p[1] + q[1]);
+    }
+    seite[fi] = n > 0 ? 1 : n < 0 ? -1 : 0;
+  });
+  const kanten = new Map<number, number>();
+  const N = punkte.length;
+  const stuecke: number[] = [];
+  flaechen.forEach((f, fi) => {
+    for (let k = 0; k < f.length; k++) {
+      const u = f[k]!;
+      const v = f[(k + 1) % f.length]!;
+      const schl = u < v ? u * N + v : v * N + u;
+      const andere = kanten.get(schl);
+      if (andere === undefined) {
+        kanten.set(schl, fi);
+        continue;
+      }
+      kanten.delete(schl);
+      if (seite[andere]! * seite[fi]! > 0) continue;
+      const pu = blatt2(punkte[u]!, a);
+      const pv = blatt2(punkte[v]!, a);
+      stuecke.push(pu.x, pu.y, pv.x, pv.y);
+    }
+  });
+  // Ränder (offene Netze) gehören immer zum Umriss
+  for (const [schl] of kanten) {
+    const u = Math.floor(schl / N);
+    const v = schl - u * N;
+    const pu = blatt2(punkte[u]!, a);
+    const pv = blatt2(punkte[v]!, a);
+    stuecke.push(pu.x, pu.y, pv.x, pv.y);
+  }
+  const zelle = new Map<number, number[]>();
+  const key = (i: number, j: number) => (i + 32768) * 65536 + (j + 32768);
+  for (let s = 0; s < stuecke.length; s += 4) {
+    const i0 = Math.floor(Math.min(stuecke[s]!, stuecke[s + 2]!) / h);
+    const i1 = Math.floor(Math.max(stuecke[s]!, stuecke[s + 2]!) / h);
+    const j0 = Math.floor(Math.min(stuecke[s + 1]!, stuecke[s + 3]!) / h);
+    const j1 = Math.floor(Math.max(stuecke[s + 1]!, stuecke[s + 3]!) / h);
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) (zelle.get(key(i, j)) ?? zelle.set(key(i, j), []).get(key(i, j))!).push(s);
+  }
+  /** nächster Punkt auf einem Umrissstück innerhalb von `radius`, sonst null */
+  const naechster = (p: V2, radius: number): V2 | null => {
+    const r = Math.ceil(radius / h);
+    const ic = Math.floor(p.x / h);
+    const jc = Math.floor(p.y / h);
+    let best = radius * radius;
+    let out: V2 | null = null;
+    const gesehen = new Set<number>();
+    for (let j = jc - r; j <= jc + r; j++) {
+      for (let i = ic - r; i <= ic + r; i++) {
+        const l = zelle.get(key(i, j));
+        if (!l) continue;
+        for (const s of l) {
+          if (gesehen.has(s)) continue;
+          gesehen.add(s);
+          const x0 = stuecke[s]!;
+          const y0 = stuecke[s + 1]!;
+          const dx = stuecke[s + 2]! - x0;
+          const dy = stuecke[s + 3]! - y0;
+          const l2 = dx * dx + dy * dy;
+          const t = l2 > 1e-24 ? Math.min(1, Math.max(0, ((p.x - x0) * dx + (p.y - y0) * dy) / l2)) : 0;
+          const qx = x0 + t * dx;
+          const qy = y0 + t * dy;
+          const d2 = (qx - p.x) ** 2 + (qy - p.y) ** 2;
+          if (d2 < best) {
+            best = d2;
+            out = { x: qx, y: qy };
+          }
+        }
+      }
+    }
+    return out;
+  };
+  return { stuecke: Float64Array.from(stuecke), naechster };
+}
+
 function abstandZuZug(p: V2, zug: readonly V2[]): number {
   let best = Infinity;
   const m = zug.length;
@@ -124,7 +221,7 @@ function seiteMitSchlitz(dok: Dokument): { soll: V2[]; schwarz: V2[]; fenster: V
  * Abweichungen je Blatt aus dem feinen Netz (Ruhelage, ohne Hebung) und den gezeichneten Profilen des Dokuments.
  * `zellen` = Raster der Silhouette (Genauigkeit ≈ halbe Zelle; 240 ≈ 0,3 px bei 461 px).
  */
-export function blattAbweichungen(punkte: readonly V3[], flaechen: readonly number[][], dok: Dokument, zellen = 240, kiefer?: readonly boolean[]): Record<Ansicht3, BlattAbweichung> {
+export function blattAbweichungen(punkte: readonly V3[], flaechen: readonly number[][], dok: Dokument, zellen = 240, kiefer?: readonly boolean[], genau = true): Record<Ansicht3, BlattAbweichung> {
   const netz = { punkte: punkte as V3[], flaechen: flaechen as number[][], schaerfe: new Map<string, number>() };
   const sk = dok.skalierung;
   const out = {} as Record<Ansicht3, BlattAbweichung>;
@@ -132,7 +229,26 @@ export function blattAbweichungen(punkte: readonly V3[], flaechen: readonly numb
   for (const a of ['seite', 'front', 'top'] as const) {
     const soll = a === 'seite' && schlitz ? schlitz.soll : pfadAbtasten(vollerPfad(dok.profile[a]), 24).map((p) => ({ x: p.x * sk, y: p.y * sk }));
     const fenster = a === 'seite' && schlitz ? schlitz.fenster : null;
-    const ist = umrissAusNetz(netz, a, zellen);
+    const roh = umrissAusNetz(netz, a, zellen);
+    // genau (S0, 16.10.): jeden Rasterpunkt auf die nächste Silhouettenkante des Netzes legen (≤ 2,5 Rasterzellen); das
+    // Raster entscheidet nur noch, welche Kontur außen liegt, die Lage kommt aus dem Netz (vorher ≈ halbe Zelle + Glättung)
+    let ist = roh;
+    if (genau) {
+      let x0 = Infinity;
+      let x1 = -Infinity;
+      let y0 = Infinity;
+      let y1 = -Infinity;
+      for (const p of punkte) {
+        const q = blatt2(p, a);
+        x0 = Math.min(x0, q.x);
+        x1 = Math.max(x1, q.x);
+        y0 = Math.min(y0, q.y);
+        y1 = Math.max(y1, q.y);
+      }
+      const h = Math.max(x1 - x0, y1 - y0, 1e-6) / zellen;
+      const stuecke = umrissStuecke(punkte, flaechen, a, h);
+      ist = roh.map((z) => z.map((p) => stuecke.naechster(p, 2.5 * h) ?? p));
+    }
     // Front/Top: Kieferflächen, die über ihre Vorlage hinaus verbreitert sind — dort heftet sich die Linie an den Kiefer
     let ausdehnung = 0;
     for (const q of soll) ausdehnung = Math.max(ausdehnung, Math.abs(q.x), Math.abs(q.y));
