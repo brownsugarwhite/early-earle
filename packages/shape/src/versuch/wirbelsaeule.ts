@@ -83,7 +83,7 @@ const abstand = (a: V2, b: V2) => Math.hypot(a.x - b.x, a.y - b.y);
 const lerp2 = (a: V2, b: V2, t: number): V2 => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
 
 /** Polygonzug gleichmäßig nach Bogenlänge neu abtasten (n Punkte inkl. Anfang und Ende). */
-function nachBogen(zug: readonly V2[], n: number): V2[] {
+export function nachBogen(zug: readonly V2[], n: number): V2[] {
   const s = [0];
   for (let i = 1; i < zug.length; i++) s.push(s[i - 1]! + abstand(zug[i - 1]!, zug[i]!));
   const L = s[s.length - 1]!;
@@ -247,7 +247,16 @@ export function eigeneWirbelsaeule(dok: Dokument): { punkte: V2[]; vorn: V2; hin
  */
 export function leiter(dok: Dokument, opt: WirbelOptionen = WIRBEL_STANDARD, spitzen?: { vorn: V2; hinten: V2 }, fang = 0): Leiter {
   const { ruecken, bauch } = ketten(dok, opt, spitzen, fang);
+  return leiterAusKetten(ruecken, bauch, opt);
+}
+
+/**
+ * Kürzeste Leiter zwischen zwei Ketten mit je `opt.proben` gleichmäßig abgetasteten Punkten (beide vom Anfang zum Ende).
+ * Plan „Liniennetz, Zielform, Käfig“, S5: auch für Streifen eines Mittelebenen-Baums, deren Ketten an einer Sehne beginnen.
+ */
+export function leiterAusKetten(ruecken: V2[], bauch: V2[], opt: WirbelOptionen = WIRBEL_STANDARD): Leiter {
   const P = opt.proben;
+  if (ruecken.length !== P || bauch.length !== P) throw new Error('leiterAusKetten: Ketten mit opt.proben Punkten erwartet');
 
   // Kürzeste Leiter (Zeitverzerrung): Summe der Sprossenlängen, Schritte (1,0), (0,1), (1,1)
   const D = new Float64Array(P * P).fill(Infinity);

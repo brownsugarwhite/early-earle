@@ -221,7 +221,11 @@ function seiteMitSchlitz(dok: Dokument): { soll: V2[]; schwarz: V2[]; fenster: V
  * Abweichungen je Blatt aus dem feinen Netz (Ruhelage, ohne Hebung) und den gezeichneten Profilen des Dokuments.
  * `zellen` = Raster der Silhouette (Genauigkeit ≈ halbe Zelle; 240 ≈ 0,3 px bei 461 px).
  */
-export function blattAbweichungen(punkte: readonly V3[], flaechen: readonly number[][], dok: Dokument, zellen = 240, kiefer?: readonly boolean[], genau = true): Record<Ansicht3, BlattAbweichung> {
+/**
+ * `ausnahme` (S5, 16.10.): Punkte (Blattkoordinaten), deren Abstand in keiner Richtung zählt — z. B. die Bereiche seitlicher
+ * Paare in Front und Top, solange der Bau sie noch nicht kann (S6).
+ */
+export function blattAbweichungen(punkte: readonly V3[], flaechen: readonly number[][], dok: Dokument, zellen = 240, kiefer?: readonly boolean[], genau = true, ausnahme?: (a: Ansicht3, p: V2) => boolean): Record<Ansicht3, BlattAbweichung> {
   const netz = { punkte: punkte as V3[], flaechen: flaechen as number[][], schaerfe: new Map<string, number>() };
   const sk = dok.skalierung;
   const out = {} as Record<Ansicht3, BlattAbweichung>;
@@ -261,7 +265,7 @@ export function blattAbweichungen(punkte: readonly V3[], flaechen: readonly numb
     for (const z of ist) {
       let imUmweg = false;
       for (const p of z) {
-        let d = fenster && innen(p, fenster) ? 0 : abstandZuZug(p, soll) * ABWEICHUNG_PX;
+        let d = (fenster && innen(p, fenster)) || ausnahme?.(a, p) ? 0 : abstandZuZug(p, soll) * ABWEICHUNG_PX;
         const amKiefer = !!bedeckt && d > 1 && bedeckt(p);
         if (amKiefer) {
           umweg.push(p.x, p.y);
@@ -286,6 +290,7 @@ export function blattAbweichungen(punkte: readonly V3[], flaechen: readonly numb
       // Seite hinter der Lippe des längeren Kiefers und haben keinen Umriss (14.10.: die verdeckte Kinnspitze des
       // Überbisses zählte als Abweichung, Kugel 11,5 px, Langhals 5,7 px)
       if (fenster && (innen(p, fenster) || abstandZuZug(p, fenster) * ABWEICHUNG_PX < 0.5)) continue;
+      if (ausnahme?.(a, p)) continue;
       let d = Infinity;
       for (const z of ist) d = Math.min(d, abstandZuZug(p, z));
       if (!Number.isFinite(d)) continue;

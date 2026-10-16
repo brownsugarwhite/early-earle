@@ -213,7 +213,7 @@ function naechsteStelle(poly: readonly V2[], q: V2): { i: number; f: number; p: 
  * Umriss an zwei Stellen teilen (genau an den Punkten, nicht am nächsten Rasterpunkt): das Stück mit der Spitze ist der
  * Ast (plus Sehne), der Rest bleibt beim Rumpf.
  */
-function teilenBei(poly: readonly V2[], A: V2, B: V2, spitze: V2): { schnitt: [V2, V2]; ast: V2[]; rest: V2[] } | null {
+export function teilenBei(poly: readonly V2[], A: V2, B: V2, spitze: V2): { schnitt: [V2, V2]; ast: V2[]; rest: V2[] } | null {
   const sa = naechsteStelle(poly, A);
   const sb = naechsteStelle(poly, B);
   if (sa.i === sb.i && Math.abs(sa.f - sb.f) < 1e-9) return null;

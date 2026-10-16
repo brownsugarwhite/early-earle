@@ -873,7 +873,7 @@ const LAPPEN_RASTEN = 0.03;
 export type Querschnitt = { v: number[]; w: number[]; haerte: number[]; knoten: number[] };
 
 /** Runder Querschnitt (Kreis). */
-function kreisQuerschnitt(N: number): Querschnitt {
+export function kreisQuerschnitt(N: number): Querschnitt {
   const h = N / 2;
   const v: number[] = [];
   const w: number[] = [];
