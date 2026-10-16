@@ -345,3 +345,56 @@ gemessenen Fehlanläufen am selben Tor: anhalten, Kritik-Register, Bericht.
     betrifft auch Widersprüche (welche Ansicht gewinnt, wenn zwei sich widersprechen); der Kopf der Ente wird erst rund und
     zugleich genau, wenn Florian Front oder Top an dieser Stelle anpasst.
   - Nächster Schritt nach Florians Blick: S1 (Liniennetz-Ansicht).
+- **16.10. mittags, S1 „Liniennetz-Ansicht“ und S1c „Kopplung jedes Punkts“ gebaut und gemessen** (Abnahme offen; alles
+  im Editor, Bauweise Kern, Editor-Tab/Grundform):
+  - **Vorab Einheiten:** Der Kern rechnet immer in Profil-Einheiten, der Größenregler gilt nur für die Anzeige
+    (`wesenBauen`/`formenFolgen` normieren `skalierung`); Test `kern/einheiten.test.ts` (150 % bitgleich zu 100 %).
+  - **Worker** (`kern/netzSicht.ts`, `WesenNetz.netzSicht`, nur im genauen Bau, ohne Beine/Hebung): Konturen je Blickachse
+    auf dem feinen Netz, je Probe ob sie den äußeren Umriss ihrer eigenen Ansicht bildet (`RAND`), Umrissknoten als
+    3D-Punkte, Kantenlinien per Strahl aus ihrer Zeichenansicht auf die Haut (samt Spiegelbild), Spantringe, Falten aus
+    scharfen Käfigkanten, Sichtbarkeit je Probe für Seite/Front/Back/Top/Bottom. Zeit 17–18 ms (Ente, Giraffe), Vierbeiner
+    33,5 ms (74 Faltenzüge, knapp über dem Budget 30 ms); während Gesten 0 ms (der letzte genaue Stand bleibt).
+  - **Anzeige** (`apps/editor/src/netz/`): in jedem Blatt die Umrisse der anderen Ansichten als 3D-Linien (nur die Stücke,
+    die dort den Umriss bilden; im eigenen Blatt die inneren Konturstücke), Knoten der anderen Zeichnungen als Ringe,
+    Kantenlinien und Falten mit der Kantigkeit wie bisher (statt der Eckkanten des alten Lofts), Spantringe; verdeckt
+    gestrichelt und blass. Zwei Stile zum Vergleichen: Chips „netz ton“ / „netz farbe“ in der Tafel Körper (Kanten).
+  - **Kantenlinien auf dem echten Körper:** Setzen und Ziehen über ein Strahlraster des Kern-Netzes (`netz/netzRaster.ts`
+    statt der Versuchsfläche S0), Knoten in allen Blättern am Netzpunkt; `kantenAnFlaeche` schreibt in der Bauweise Kern
+    nichts mehr (keine versteckten Schreibvorgänge).
+  - **Derselbe Punkt überall:** Hover über einem Knoten (eigener, Ring oder Kantenknoten) markiert ihn in allen Blättern
+    und auf der Bühne; Ringe fremder Knoten sind greifbar (auch verdeckte), Ziehen wirkt nur in der gemeinsamen Koordinate
+    (Seite↔Front y, Seite↔Top x, Front↔Top z), ein Undo-Schritt; ⌥-Klick wechselt zwischen übereinanderliegenden Punkten
+    (der eigene Knoten geht beim Klick vor).
+  - **S1c Kopplung jedes Punkts** (`packages/shape/src/kopplungPunkte.ts`, `gekoppelt` in jeder Formgeste): Die bearbeitete
+    Ansicht führt; die Breiten der anderen folgen am entsprechenden Punkt (Projektion der Sichthülle über die Spanne der
+    Seite, mit Intervallen — Flügelhaken, Beine, Hälse nebeneinander), kleinste Knotenbewegung quer zur Achse, keine neuen
+    Knoten, alte Widersprüche bleiben, bis man angleicht. „angleichen“ im Blatt-Titel neben „Widerspruch … px“ (diese
+    Ansicht führt, ein Undo-Schritt). Zug 0,2–4 ms (Mittel), höchstens ≈ 14 ms.
+  - **Tore (gemessen):**
+
+    | Tor | Ergebnis | Prüfung |
+    |---|---|---|
+    | derselbe Punkt Blatt ↔ Kamera des Blatts ≤ 0,5 px, auch 150 % und Back/Bottom | **0,00 px** (Kugel, Giraffe; 4 × 6 Blätter) | `netz-b.mjs` |
+    | Sichtbarkeit gegen den Strahltest der Bühne ≥ 99,5 % | **100 %** in allen 5 Blicken (Kugel, einfache Form, Giraffe, Ente-Haken) | `netz-d.mjs` |
+    | Formgeste schreibt nur Profile, ein Undo-Schritt, `dok.kanten` gleich | erfüllt (4 Körper mit Kantenlinie) | `netz-d.mjs` |
+    | nach jeder Geste Widerspruch ≤ 1 px (stimmiger Anfang) | Editor: 6 Mauszüge an der Kugel 0,0 px; Kern: 323 von 325 Zufallsgesten ≤ 1 px, folgende Ansichten immer ≤ 0,97 px, die führende nie schlechter als ohne | `netz-c.mjs`, `kopplungPunkte.test.ts` |
+    | angleichen alter Zeichnungen | 12 von 13 Prüfkörpern 0,0 px; Ente-Haken: Front führt 36,7 → 0,0 px, Top führt bleibt 36,3 px (siehe unten) | `kopplungPunkte.test.ts`, `netz-c.mjs` |
+    | Worker ≤ 30 ms je genauem Bau | 17–18 ms; Vierbeiner 33,5 ms | `netzSicht.test.ts` |
+
+  - **Ehrlich offen / Befunde:**
+    - **Zu wenige Knoten in der folgenden Ansicht:** Verlangt die führende Ansicht etwas, das die folgende nur mit einem
+      zusätzlichen Punkt kann (Ente-Haken: Kopf im Top breiter, die Front hat einen einzigen freien Knoten am Bauch), bleibt
+      die folgende stimmig und der Rest rot in der führenden. Lösung heute: an der Stelle des Rings einen Punkt setzen.
+      **Frage an Florian:** Darf die Kopplung in diesem Fall einen Punkt am entsprechenden Ring einfügen (11.10.: nie)?
+    - **Angleichen ändert die Zeichnung sichtbar** (Ente, Front führt: Top-Kopf so schmal wie die Front, Flügel spitzer);
+      der heutige Körper folgt dem erst mit S3 genauer (Front-Δ danach 44 px).
+    - **Kantenlinien-Falten sind Treppen** (Kern-Zuordnung auf die nächste Käfigschleife) — jetzt in allen Blättern zu sehen;
+      genau wird es mit S8. Der Front-Umriss wackelt an einer solchen Falte leicht (echte Wirkung der Falte).
+    - **Faltenrest im Entenhals:** 21 Proben liegen in der Seite hinter einer umgeklappten Fläche (≈ 2 px), die die Bühne
+      nicht zeichnet (Rückseite) — ein Körperfehler für S2, keine Netzfrage.
+    - Bei Überhang-Wesen zeigt das Netz den heutigen Körper (eine Röhre); die Bauchlinien unter der Nase laufen erst ab S5
+      am Bauchpunkt zusammen. Maullinien zeichnet weiter die Maulebene (ohne Verdeckung). In Posen ist das Netz aus.
+  - **Bilder:** [`s1-liniennetz-2026-10-16.jpg`](../progress/editor/s1-liniennetz-2026-10-16.jpg) (Kugel mit Kantenlinie,
+    Ente Ton/Farbe, derselbe Punkt in allen Blättern und auf der Bühne, Ziehen im Top, Angleichen vorher/nachher).
+  - **Nächster Schritt:** Florians Blick (Stil Ton/Farbe, Verhalten der Kopplung beim Zeichnen, Frage zu neuen Punkten),
+    dann S2 (glatte Haut, dünn besetzter Löser).

@@ -242,3 +242,24 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
   der Rest Baufehler. **Langhals:** Seite 3,7 px höher als die Front (Library-Vorlage ohne Kopplung), sichtbar im Front-Δ.
 - **Robbe, Giraffe mit Bauch, Vierbeiner, Zweihals, Augenstiele, Flügel oben:** kein Widerspruch — ihr ganzes Δ (10–74 px)
   ist Baufehler der einen Röhre.
+
+## Befunde aus S1/S1c (Plan „Liniennetz, Zielform, Käfig“, 16.10. mittags, eigene Befunde)
+
+- **Kopplung ohne neue Punkte hat eine Grenze:** Verlangt die führende Ansicht an einer Stelle eine Breite, die die folgende
+  nur mit einem zusätzlichen Knoten darstellen kann (Ente-Haken: Kopf im Top breit, Front mit einem einzigen freien Knoten
+  am Bauch), bleibt die folgende stimmig und der Rest als Widerspruch in der führenden stehen (Kern: 2 von 325
+  Zufallsgesten). → Frage an Florian: Punkt am entsprechenden Ring einfügen lassen (gegen die Regel vom 11.10.) oder von
+  Hand setzen?
+- **Angleichen verändert eine alte Zeichnung sichtbar** (Ente, Front führt: Top-Kopf so schmal wie die Front, Flügel
+  spitzer); der heutige Körper folgt nicht genau (Front-Δ danach 44 px). → S3 (Umrisse berühren).
+- **Kantenlinien-Falten sind Treppen über Käfigkanten** und jetzt in allen Blättern sichtbar; der Front-Umriss wackelt an
+  einer solchen Falte. → S8 (Linien exakt).
+- **Faltenrest im Entenhals:** Hinter 21 Netzproben der Seite liegt eine umgeklappte Fläche (≈ 2 px vor der Haut, Rückseite
+  zur Kamera; die Bühne zeichnet sie nicht). → S2 (glatte Haut), als Prüfung: Netzproben „hinter umgeklappter Fläche“
+  (`netz-d.mjs`) müssen 0 werden.
+- **Liniennetz knapp über dem Zeitbudget beim Vierbeiner** (33,5 ms statt ≤ 30 ms; 74 Faltenzüge, 7748 Proben). → Falten
+  gröber ausdünnen oder Sichtbarkeit je Zug statt je Probe, wenn es stört.
+- **Gemessen statt vermutet (Lehre):** Ein kleiner Außenversatz für Konturproben (gegen das Streifen in ihrer eigenen
+  Ansicht) machte sie in den anderen Ansichten fälschlich sichtbar (bis 176 px verdeckt), und die Verdeckung auf einer Stufe
+  gröber wich an streifenden Stellen und Kehlen um 2–20 px ab — beides erst durch den Vergleich mit dem Strahltest der
+  Bühne gefunden (`netz-d.mjs`) und behoben.

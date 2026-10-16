@@ -136,6 +136,8 @@ function KantenBereich() {
   const aktiv = useUi((s) => s.aktiv);
   const zeichnen = useUi((s) => s.kanteZeichnen);
   const sicht = useUi((s) => s.kantenSicht);
+  const netzStil = useUi((s) => s.netzStil);
+  const bauweise = useUi((s) => s.bauweise);
   const modus = useEditor((s) => s.modus);
   const profil = aktiv ? (istPose(modus, aktiv) ? poseSeite(dok) : dok.profile[aktiv]) : null;
   const ecken = aktiv && profil ? auswahl[aktiv].filter((i) => profil.knoten[i]?.art === 'ecke') : [];
@@ -224,6 +226,16 @@ function KantenBereich() {
           </button>
         ))}
       </div>
+      {/* S1: Stil des Liniennetzes zum Vergleichen (Ton = Kurvenfarbe, Farbe = je Ursprungsansicht) */}
+      {bauweise === 'kern' && (
+        <div className="umschalter stufen" role="radiogroup" aria-label="Liniennetz">
+          {(['ton', 'farbe'] as const).map((k) => (
+            <button key={k} className={netzStil === k ? 'chip aktiv' : 'chip'} data-netzstil={k} onClick={() => useUi.setState({ netzStil: k })}>
+              netz {k}
+            </button>
+          ))}
+        </div>
+      )}
       <KantenListe />
       {inhalt}
     </section>

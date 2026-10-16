@@ -99,3 +99,16 @@ So wurde am 16.10. die Regression G2 gefunden (Florians Ablauf: neue Kugel → u
 | `grundkoerper-g.ts` | jetzt auch die S0-Körper (`einfach`, `einfach-glatt`, `ente-haken`, `vase`, `vierbeiner`, `zweihals`, `augenstiele`, `fluegel-oben`), Widersprüche rot auf der Linie, Falten nach Zonen im Text |
 | `s0-editor.mjs` (über `run-check.sh`) | lädt Prüfkörper im echten Editor (`laden`, Stationen frieren ein), hält Δ und Widerspruch je Blatt fest, Bild je Fall; `FAELLE`, `AUSGABE` |
 | Kern: `kern/pruefen/zonen.ts`, `kern/grundkoerper/huelle.ts` | Faltenmaß nach Zonen; Erreichbarkeit der Umrisse (Widerspruch je Probe in px), Säulen der Sichthülle |
+
+## Nachtrag 16.10. mittags: S1 Liniennetz, S1c Kopplung jedes Punkts
+
+| Skript (über `run-check.sh`) | misst / zeigt |
+|---|---|
+| `netz-a.mjs` | Liniennetz je Blatt (Züge sichtbar/verdeckt, Ringe), Bilder je Fall; `FAELLE`, `NETZSTIL=ton\|farbe`, `LINIE=1` (Kantenlinie in der Seite), `KAEFIG=1`, `GROESSE` |
+| `netz-b.mjs` | derselbe Punkt: SVG-Blatt gegen die Kamera des Blatts (≤ 0,5 px, auch 150 % und Back/Bottom), Hover-Marke in allen Blättern, Ziehen eines fremden Knotens (gemeinsame Koordinate, ein Undo-Schritt); `FAELLE`, `GROESSEN` |
+| `netz-c.mjs` | S1c: Mauszüge an der Startkugel (Widerspruch ≤ 1 px nach jeder Geste, ein Undo-Schritt), „angleichen“ an der Ente-Haken |
+| `netz-d.mjs` | Sichtbarkeit des Netzes gegen den Strahltest der Bühne (≥ 99,5 %; Proben genau auf dem Umriss und hinter umgeklappten Flächen gesondert), Formgeste ohne versteckte Schreibvorgänge |
+| `netz-bauchpunkt.mjs` | Florians Beispiel: Bauchknoten der Seite im Top (Ring), Hover in allen Blättern, im Top längs ziehen |
+| `kontaktbogen.mjs <spec.json> <aus.png>` | Kontaktbogen aus Bild-Ausschnitten (ohne Server, direkt mit `node`) |
+
+Kern: `kopplungPunkte.test.ts` (Angleichen der Prüfkörper, 325 Zufallsgesten, alte Widersprüche bleiben), `kern/netzSicht.test.ts`. Prüfskripte, die `@playwright/test` laden, müssen im Repo liegen (aus dem Scratchpad findet Node das Paket nicht).
