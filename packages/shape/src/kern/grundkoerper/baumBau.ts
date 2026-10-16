@@ -10,12 +10,14 @@
 import type { V2 } from '../../bezier';
 import type { Dokument } from '../../dokument';
 import { type BaumKaefig, type StreifenTopo, baumKaefig } from '../../kaefig/baumKaefig';
-import type { Kaefig } from '../../kaefig/halbkanten';
+import { type Kaefig, kanteZwischen } from '../../kaefig/halbkanten';
 import { type Bedingung, ausgleichsLoeser, kaefigAusgleich } from '../../loeser/grenzflaeche';
 import { type Unterteilung, unterteilung } from '../../subdivision/catmullClark';
 import { anwenden3 } from '../../subdivision/matrix';
-import { ABLEIT_STANDARD, type AbleitOptionen, type Breite, GLATTE_HAUT, type Querschnitt, type Sprosse, ausgleichsZiele, breiteSoll, glaettemassFuer, kreisQuerschnitt, nahtAnteile, nahtPfad, quadratRing, querschnitteFuer, umparametrisieren, umrissDicht } from '../ableiten';
-import { type Breiten, silhouettenBreite } from '../breite';
+import { ABLEIT_STANDARD, type AbleitOptionen, type Breite, GLATTE_HAUT, type Querschnitt, type Sprosse, ausgleichsZiele, breiteSoll, glaettemassFuer, kreisQuerschnitt, lappenAusZug, nahtAnteile, nahtPfad, quadratRing, querschnitteFuer, umparametrisieren, umrissDicht } from '../ableiten';
+import { punktAuf } from '../../bezier';
+import { segmente } from '../../profil';
+import { type Breiten, breitenAusPolygonen, silhouettenBreite } from '../breite';
 import { huellenBreite } from '../fuelle';
 import type { Zone } from '../pruefen/zonen';
 import { frontBeruehren } from '../rand';
@@ -39,14 +41,15 @@ export type BaumOptionen = AbleitOptionen & {
   /** Anteil der Elternsprosse unter einer Sehne, über den ihr Querschnitt auf den Kindring übergeht */
   ansatzUebergang: number;
   /**
-   * Querschnitt der Streifen mit Kindern: `kreis` (rund, Breite aus Top/Front, Fülle über S3) oder `lappen` (Front-Lappen wie
-   * in der Röhre). Der Lappen endet unter einem Kind an der Sehne abseits der Achse und bekäme eine flache Deckkante (drei
-   * Stützstellen auf einer Höhe, Falten bis 167° an der Vase).
+   * Querschnitt der Streifen mit Kindern: `lappen` (Front-Lappen wie in der Röhre; die flache Deckkante unter einem Kind
+   * ersetzt der Übergang auf den Kindring) oder `kreis` (rund, Breite aus Top/Front, Fülle über S3). Steckt eine Flosse ohne
+   * eigenen Streifen im Rumpf (überlappende Sehnenblöcke), ist er immer rund: sonst trüge jeder Ring ihren Stachel aus der
+   * Front (Fisch 60° statt 32°). Gemessen 16.10.: Lappen Giraffe-Front 1,9 px statt 8,8, S-Hals-Ansatz 23° statt 28°.
    */
   elternQuerschnitt: 'kreis' | 'lappen';
 };
 
-export const BAUM_STANDARD: BaumOptionen = { ...ABLEIT_STANDARD, ...GLATTE_HAUT, fuelle: 'mittel', ansatzUebergang: 0.35, elternQuerschnitt: 'kreis' };
+export const BAUM_STANDARD: BaumOptionen = { ...ABLEIT_STANDARD, ...GLATTE_HAUT, fuelle: 'mittel', ansatzUebergang: 0.35, elternQuerschnitt: 'lappen' };
 
 export type BaumAbleitung = {
   opt: BaumOptionen;
@@ -68,6 +71,99 @@ export type BaumAbleitung = {
 
 const uhr = (globalThis as { performance?: { now(): number } }).performance;
 const jetzt = () => (uhr ? uhr.now() : Date.now());
+
+/** Halbe Silhouette als offener Zug: Front (|z|, y) von oben nach unten, Top (x, |z|) von vorn nach hinten. */
+function halbZug(dok: Dokument, blatt: 'front' | 'top'): V2[] {
+  const sk = dok.skalierung;
+  const pts: V2[] = [];
+  segmente(dok.profile[blatt]).forEach((seg, si) => {
+    for (let k = si === 0 ? 0 : 1; k <= 48; k++) {
+      const q = punktAuf(seg, k / 48);
+      pts.push(blatt === 'front' ? { x: Math.abs(q.x) * sk, y: q.y * sk } : { x: q.x * sk, y: Math.abs(q.y) * sk });
+    }
+  });
+  if (blatt === 'front' ? pts[0]!.y < pts[pts.length - 1]!.y : pts[0]!.x > pts[pts.length - 1]!.x) pts.reverse();
+  return pts;
+}
+
+/** Nächste Stelle (Index des Segmentanfangs, Punkt) eines offenen Zugs zu q. */
+function stelleAufZug(zug: readonly V2[], q: V2): { i: number; p: V2 } {
+  let best = { i: 0, p: zug[0]!, d: Infinity };
+  for (let i = 0; i + 1 < zug.length; i++) {
+    const a = zug[i]!;
+    const b = zug[i + 1]!;
+    const ab = { x: b.x - a.x, y: b.y - a.y };
+    const f = Math.max(0, Math.min(1, ((q.x - a.x) * ab.x + (q.y - a.y) * ab.y) / (ab.x * ab.x + ab.y * ab.y || 1)));
+    const p = { x: a.x + ab.x * f, y: a.y + ab.y * f };
+    const d = Math.hypot(p.x - q.x, p.y - q.y);
+    if (d < best.d) best = { i, p, d };
+  }
+  return best;
+}
+
+/** Ausbuchtung zwischen den Stellen von A und B durch die Sehne ersetzen. */
+function sehneSchneiden(zug: readonly V2[], A: V2, B: V2): V2[] {
+  let sa = stelleAufZug(zug, A);
+  let sb = stelleAufZug(zug, B);
+  if (sa.i > sb.i) [sa, sb] = [sb, sa];
+  return [...zug.slice(0, sa.i + 1), sa.p, sb.p, ...zug.slice(sb.i + 1)];
+}
+
+/**
+ * Silhouetten des Rumpfstreifens: Front und Top ohne die seitlichen Paare (S4-Sehnen in diesen Ansichten; Flügel, Beine,
+ * Brustflossen baut erst S6). Sonst bekäme der Rumpf ihre Breite und ihren Stachel im Front-Lappen (Fisch). null = keine Paare.
+ */
+export function rumpfSilhouetten(dok: Dokument, b: Teilbaum): { frontHalb: V2[]; breiten: Breiten } | null {
+  let front = halbZug(dok, 'front');
+  let top = halbZug(dok, 'top');
+  let geschnitten = false;
+  for (const t of b.teile) {
+    // nur Paare, die Front und Top zeigen (Brustflossen): Zeigt nur eine Ansicht das Paar, steckt es in der anderen im
+    // Körper, und die Sehne liegt oft innerhalb der Körperbreite (Ente: Flügel nur im Top, Sehne bei 68 px, Körper 100 px)
+    if (t.art !== 'paar' || !t.erkannt.front || !t.erkannt.top) continue;
+    const f = t.erkannt.front;
+    if (f) {
+      front = sehneSchneiden(front, { x: Math.abs(f.schnitt[0].x), y: f.schnitt[0].y }, { x: Math.abs(f.schnitt[1].x), y: f.schnitt[1].y });
+      geschnitten = true;
+    }
+    const o = t.erkannt.top;
+    if (o) {
+      top = sehneSchneiden(top, { x: o.schnitt[0].x, y: Math.abs(o.schnitt[0].y) }, { x: o.schnitt[1].x, y: Math.abs(o.schnitt[1].y) });
+      geschnitten = true;
+    }
+  }
+  if (!geschnitten) return null;
+  const voll = (halb: V2[], spiegel: (p: V2) => V2) => [...halb, ...halb.slice().reverse().map(spiegel)];
+  return { frontHalb: front, breiten: breitenAusPolygonen(voll(top, (p) => ({ x: p.x, y: -p.y })), voll(front, (p) => ({ x: -p.x, y: p.y }))) };
+}
+
+/** Querschnitte wie `querschnitteFuer`, die liegenden aus einem Front-Zug (ohne Ecken). */
+function querschnitteAusZug(sprossen: readonly Sprosse[], frontHalb: readonly V2[], N: number, opt: AbleitOptionen): Querschnitt[] {
+  if (!opt.querschnitt) return sprossen.map(() => kreisQuerschnitt(N));
+  const zug = frontHalb.map((p) => ({ p, ecke: -1 }));
+  const liegend = sprossen.map((sp) => Math.abs(sp.o.y - sp.u.y) >= opt.liegendAb * Math.abs(sp.o.x - sp.u.x));
+  const out: Querschnitt[] = new Array(sprossen.length);
+  let i = 0;
+  while (i < sprossen.length) {
+    let j = i;
+    while (j + 1 < sprossen.length && liegend[j + 1] === liegend[i]) j++;
+    if (liegend[i]) {
+      let yLo = Infinity;
+      let yHi = -Infinity;
+      for (let k = i; k <= j; k++) {
+        yLo = Math.min(yLo, sprossen[k]!.u.y, sprossen[k]!.o.y);
+        yHi = Math.max(yHi, sprossen[k]!.u.y, sprossen[k]!.o.y);
+      }
+      const q = lappenAusZug(zug, () => undefined, yLo, yHi, N);
+      for (let k = i; k <= j; k++) out[k] = q;
+    } else {
+      const q = kreisQuerschnitt(N);
+      for (let k = i; k <= j; k++) out[k] = q;
+    }
+    i = j + 1;
+  }
+  return out;
+}
 
 /** Maßstab eines Rings wie in der Röhre (Sichthülle: Top bei x, Front an der breitesten Stelle; rund ohne Zeichnung). */
 function masstab(sp: Sprosse, q: Querschnitt, breiten: Breiten, letzteW: number): number {
@@ -122,15 +218,22 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
     gesetzt[p] = 1;
   };
   // Querschnitte je Streifen; der erste Ring eines Kinds ist rund (seine Punkte liegen genau auf den Sehnenpunkten)
+  // Silhouetten ohne seitliche Paare (S6) für den ganzen Bau: Die Paare liegen neben dem Rumpf, kein Mittelteil braucht ihre
+  // Breite; der Rumpf bekäme sonst ihre Ausdehnung und ihren Stachel im Front-Lappen (Fisch)
+  const rumpf = rumpfSilhouetten(dok, e.baum);
+  const bz = rumpf?.breiten ?? breiten;
+  const breitenVon = (_s: number) => bz;
   const qs: Querschnitt[][] = e.streifen.map((st, s) => {
-    const rund = st.kinder.length > 0 && opt.elternQuerschnitt === 'kreis';
-    const q = querschnitteFuer(ringe[s]!.sprossen, dok, breiten, st.N, rund ? { ...opt, querschnitt: false } : opt);
+    const flosseDrin = s === 0 && e.ueberlappt.length > 0;
+    const rund = st.kinder.length > 0 && (opt.elternQuerschnitt === 'kreis' || flosseDrin);
+    const o = rund ? { ...opt, querschnitt: false } : opt;
+    const q = s === 0 && rumpf ? querschnitteAusZug(ringe[s]!.sprossen, rumpf.frontHalb, st.N, o) : querschnitteFuer(ringe[s]!.sprossen, dok, breiten, st.N, o);
     if (st.ansatz) q[0] = kreisQuerschnitt(st.N);
     return q;
   });
   const Ws: number[][] = e.streifen.map((_, s) => {
     let letzte = 0;
-    return ringe[s]!.sprossen.map((sp, i) => (letzte = masstab(sp, qs[s]![i]!, breiten, letzte)));
+    return ringe[s]!.sprossen.map((sp, i) => (letzte = masstab(sp, qs[s]![i]!, breitenVon(s), letzte)));
   });
   // S3 „Umrisse berühren“ über alle Ringe aller Streifen gemeinsam (je Höhe der Ring, der dort am weitesten reicht)
   const beruehrt = new Set<string>();
@@ -141,9 +244,9 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
       alle.map(({ s, i }) => ringe[s]!.sprossen[i]!),
       alle.map(({ s, i }) => qs[s]![i]!),
       alle.map(({ s, i }) => Ws[s]![i]!),
-      breiten,
+      bz,
       opt.fuelle,
-      huellenBreite(dok, breiten),
+      huellenBreite(dok, bz),
     );
     alle.forEach(({ s, i }, k) => {
       if (!(i === 0 && e.streifen[s]!.ansatz)) qs[s]![i] = rand.vorlagen[k] as Querschnitt;
@@ -161,7 +264,7 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
       const q = qs[s]![i]!;
       const W = Ws[s]![i]!;
       for (let j = 0; j <= N / 2; j++) {
-        const [x, y, z] = punkt(sp, q, W, j, breiten);
+        const [x, y, z] = punkt(sp, q, W, j, bz);
         const naht = j === 0 || j === N / 2;
         setze(bk0.ring(s, i, j), x, y, naht ? 0 : z);
         if (naht) {
@@ -179,11 +282,11 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
       for (let r = 1; r < c / 2; r++) {
         const q = umparametrisieren(q0, 4 * r);
         const sp = stK[r - 1]!;
-        const W = masstab(sp, q, breiten, Ws[s]![wo === 'anfang' ? 0 : R - 1]!);
+        const W = masstab(sp, q, bz, Ws[s]![wo === 'anfang' ? 0 : R - 1]!);
         for (let m = 0; m <= 4 * r; m++) {
           const [a, b] = quadratRing(c, r, m);
           const naht = m === 0 || m === 4 * r;
-          const [x, y, z] = punkt(sp, q, W, m, breiten);
+          const [x, y, z] = punkt(sp, q, W, m, bz);
           setze(bk0.kappe(s, wo, a, b), x, y, naht ? 0 : z);
           if (!naht) setze(bk0.kappe(s, wo, c - a, b), x, y, -z);
         }
@@ -198,7 +301,7 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
     const q = qs[s]![0]!;
     const W = Ws[s]![0]!;
     for (let j = 0; j <= N / 2; j++) {
-      const [x, y, z] = punkt(sp, q, W, j, breiten);
+      const [x, y, z] = punkt(sp, q, W, j, bz);
       const naht = j === 0 || j === N / 2;
       setze(bk0.ring(s, 0, j), x, y, naht ? 0 : z);
       if (!naht) setze(bk0.ring(s, 0, N - j), x, y, -z);
@@ -216,7 +319,9 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
       const kind = e.streifen[k.streifen]!;
       const H = kind.N / 2;
       const jEnde = k.seite === 'a' ? 0 : h;
-      for (let r = 0; r <= H; r++) {
+      // die Ringe durch die Sehnenenden (r = 0, H) schließen auf der Naht und bleiben, wie sie sind: auf Breite 0 mit
+      // Steigung 0 übergeblendet, wurden sie oben spitz (Grat quer über die Naht, Giraffe 30°)
+      for (let r = 1; r < H; r++) {
         const i = k.ring + r;
         const sp = ringe[s]!.sprossen[i]!;
         const pEnde = bk0.ring(s, i, jEnde);
@@ -284,6 +389,24 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
   // Topologie mit Orientierung nach den Zielen
   const bk = baumKaefig(topo, (p) => [ziele[3 * p]!, ziele[3 * p + 1]!, ziele[3 * p + 2]!]);
   const k = bk.kaefig;
+  // Falten aus gezeichneten Ecken: Ringfalte auf der Seite der Ecke (Gewicht cos² wie `faltenSetzen`), Spitzen scharf
+  if (opt.eckenSchaerfe > 0) {
+    e.streifen.forEach((st, s) => {
+      const N = st.N;
+      const c = N / 4;
+      for (const ec of ringe[s]!.ecken) {
+        for (let j = 0; j < N; j++) {
+          const th = (2 * Math.PI * (j + 0.5)) / N;
+          const w = ec.seite === 'beide' ? 1 : ec.seite === 'a' ? Math.max(0, Math.cos(th)) : Math.max(0, -Math.cos(th));
+          if (!(w > 0)) continue;
+          const kante = kanteZwischen(k, bk.ring(s, ec.ring, j), bk.ring(s, ec.ring, j + 1));
+          if (kante >= 0) k.eSchaerfe[kante] = opt.eckenSchaerfe * w * w;
+        }
+      }
+      if (ringe[s]!.spitzenEcke.anfang && topo[s]!.anfang.art === 'kappe') k.vSchaerfe[bk.kappe(s, 'anfang', c / 2, c / 2)] = opt.eckenSchaerfe;
+      if (ringe[s]!.spitzenEcke.ende && topo[s]!.ende.art === 'kappe') k.vSchaerfe[bk.kappe(s, 'ende', c / 2, c / 2)] = opt.eckenSchaerfe;
+    });
+  }
   const t3 = jetzt();
 
   // Lösen
@@ -299,21 +422,21 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
   const pfad = nahtPfad(letzte, feinIdx, start, k.n);
   const nahtFein = Uint32Array.from(pfad.geordnet);
   const anteil = nahtAnteile(pfad.geordnet, k.n, ziele, umriss);
-  const breite = baumBreite(e, ringe, qs, bk, u, ziele, breiten, beruehrt, opt);
+  const breite = baumBreite(e, ringe, qs, bk, u, ziele, bz, beruehrt, opt);
   const bedingungen: Bedingung[] = [];
   for (let i = 0; i < k.n; i++) bedingungen.push({ zeile: i, gewicht: 1 });
   for (let q = 0; q < nahtFein.length; q++) bedingungen.push({ zeile: nahtFein[q]!, gewicht: opt.nahtGewicht });
   if (breite) for (let q = 0; q < breite.fein.length; q++) bedingungen.push({ zeile: breite.fein[q]!, gewicht: opt.breiteGewicht * (breite.gewicht?.[q] ?? 1) });
   const loeser = ausgleichsLoeser(u.grenze, k.n, bedingungen, undefined, glaettemassFuer(u, k, opt, bk.kappeAb));
-  let xyz = kaefigAusgleich(loeser, ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, breiten, fein));
+  let xyz = kaefigAusgleich(loeser, ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, bz, fein));
   fein = anwenden3(u.grenze, xyz);
   for (let d = 0; breite && d < 2; d++) {
-    xyz = kaefigAusgleich(loeser, ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, breiten, fein));
+    xyz = kaefigAusgleich(loeser, ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, bz, fein));
     fein = anwenden3(u.grenze, xyz);
   }
   const t5 = jetzt();
   const zone = baumZonen(e, ringe, bk);
-  return { opt, ebene: e, ringe, bk, kaefig: { ...k, xyz }, unterteilung: u, fein, ziele, breiten, zone, querschnitte: qs, zeiten: { ebene: t1 - t0, ringe: t2 - t1, ziele: t3 - t2, matrix: t4 - t3, loeser: t5 - t4, gesamt: t5 - t0 } };
+  return { opt, ebene: e, ringe, bk, kaefig: { ...k, xyz }, unterteilung: u, fein, ziele, breiten: bz, zone, querschnitte: qs, zeiten: { ebene: t1 - t0, ringe: t2 - t1, ziele: t3 - t2, matrix: t4 - t3, loeser: t5 - t4, gesamt: t5 - t0 } };
 }
 
 /**

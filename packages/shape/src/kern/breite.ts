@@ -30,6 +30,11 @@ export function silhouettenBreite(dok: Dokument): Breiten {
   const s = dok.skalierung;
   const top = pfadAbtasten(vollerPfad(dok.profile.top), 40).map((p) => ({ x: p.x * s, y: p.y * s }));
   const front = pfadAbtasten(vollerPfad(dok.profile.front), 40).map((p) => ({ x: p.x * s, y: p.y * s }));
+  return breitenAusPolygonen(top, front);
+}
+
+/** Breiten aus geschlossenen Polygonen (Top: x, z; Front: z, y) — z. B. Silhouetten des Rumpfs ohne seitliche Teile (S5). */
+export function breitenAusPolygonen(top: readonly V2[], front: readonly V2[]): Breiten {
   let topMax = 0;
   for (const p of top) topMax = Math.max(topMax, Math.abs(p.y));
   let frontMax = 0;

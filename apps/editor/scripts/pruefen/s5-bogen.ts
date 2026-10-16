@@ -43,9 +43,9 @@ for (const name of liste) {
     });
   };
   const zonenText = (z: ReturnType<typeof faltenNachZonenRoehre>['zonen']) =>
-    (['frei', 'ansatz', 'kappe'] as const)
+    (['frei', 'ansatz', 'kappe', 'kante', 'spitze'] as const)
       .filter((k) => z[k].kanten)
-      .map((k) => `${{ frei: 'frei', ansatz: 'Ansatz', kappe: 'Kappe' }[k]} ${z[k].max.toFixed(0)}°/${z[k].ueber20}`)
+      .map((k) => `${{ frei: 'frei', ansatz: 'Ansatz', kappe: 'Kappe', kante: 'Kante', spitze: 'Spitze' }[k]} ${z[k].max.toFixed(0)}°/${z[k].ueber20}`)
       .join(', ');
   // heute
   const abl = ableiten(dok, { ...GLATTE_HAUT, fuelle: 'mittel' });

@@ -54,7 +54,7 @@ export function kaefigGuete(k: Kaefig, flaechen?: (f: number) => boolean): { win
 }
 
 const zeilen: string[] = [`S5 Messreihe „${NAME}“ — Mittelebenen-Baum gegen S3 (glatt + Berühren mittel), frisch`];
-zeilen.push('Körper          Bau   frei°  >20  Ansatz° >20  Kappe° >20 | Δ S/F/T px          | Käfig: Winkel°  Seiten  Kanten/Median | Streifen | ms');
+zeilen.push('Körper          Bau   frei°  >20  Ansatz° >20  Kappe° >20  Kante° Spitze° | Δ S/F/T px          | Käfig: Winkel°  Seiten  Kanten/Median | Streifen | ms');
 const ergebnis: Record<string, unknown> = {};
 for (const name of liste) {
   const dok = teilSatzDokument(name);
@@ -66,7 +66,7 @@ for (const name of liste) {
   const n3 = feinesNetz(abl);
   const d3 = blattAbweichungen(n3.punkte, n3.flaechen, dok, 240, undefined, true, aus);
   const g3 = kaefigGuete(abl.kaefig);
-  zeilen.push(`${name.padEnd(15)} S3    ${z3.frei.max.toFixed(1).padStart(5)} ${String(z3.frei.ueber20).padStart(4)}  ${'–'.padStart(6)}  ${'–'.padStart(3)} ${z3.kappe.max.toFixed(1).padStart(6)} ${String(z3.kappe.ueber20).padStart(3)} | ${[d3.seite.max, d3.front.max, d3.top.max].map((x) => x.toFixed(1).padStart(5)).join(' ')} | ${g3.winkel.toFixed(1).padStart(6)} ${g3.seiten.toFixed(1).padStart(7)} | 1 | ${abl.zeiten.gesamt.toFixed(0)}`);
+  zeilen.push(`${name.padEnd(15)} S3    ${z3.frei.max.toFixed(1).padStart(5)} ${String(z3.frei.ueber20).padStart(4)}  ${'–'.padStart(6)}  ${'–'.padStart(3)} ${z3.kappe.max.toFixed(1).padStart(6)} ${String(z3.kappe.ueber20).padStart(3)} ${z3.kante.max.toFixed(0).padStart(6)} ${z3.spitze.max.toFixed(0).padStart(6)} | ${[d3.seite.max, d3.front.max, d3.top.max].map((x) => x.toFixed(1).padStart(5)).join(' ')} | ${g3.winkel.toFixed(1).padStart(6)} ${g3.seiten.toFixed(1).padStart(7)} | 1 | ${abl.zeiten.gesamt.toFixed(0)}`);
   // Baum
   try {
     const b = baumAbleiten(dok, OPT);
@@ -91,9 +91,9 @@ for (const name of liste) {
       return `${(s[0]! / med).toFixed(2)}–${(s[s.length - 1]! / med).toFixed(2)}`;
     });
     zeilen.push(
-      `${''.padEnd(15)} Baum  ${z.frei.max.toFixed(1).padStart(5)} ${String(z.frei.ueber20).padStart(4)}  ${z.ansatz.max.toFixed(1).padStart(6)} ${String(z.ansatz.ueber20).padStart(3)} ${z.kappe.max.toFixed(1).padStart(6)} ${String(z.kappe.ueber20).padStart(3)} | ${[d.seite.max, d.front.max, d.top.max].map((x) => x.toFixed(1).padStart(5)).join(' ')} | ${g.winkel.toFixed(1).padStart(6)} ${g.seiten.toFixed(1).padStart(7)}  ${faktoren.join(' ')} | ${b.ebene.streifen.length} (${b.ringe.map((r, s) => `${b.ebene.streifen[s]!.N}×${r.sprossen.length}`).join(', ')}) | ${b.zeiten.gesamt.toFixed(0)} (Ebene ${b.zeiten.ebene.toFixed(0)}, Matrix ${b.zeiten.matrix.toFixed(0)}, Löser ${b.zeiten.loeser.toFixed(0)})`,
+      `${''.padEnd(15)} Baum  ${z.frei.max.toFixed(1).padStart(5)} ${String(z.frei.ueber20).padStart(4)}  ${z.ansatz.max.toFixed(1).padStart(6)} ${String(z.ansatz.ueber20).padStart(3)} ${z.kappe.max.toFixed(1).padStart(6)} ${String(z.kappe.ueber20).padStart(3)} ${z.kante.max.toFixed(0).padStart(6)} ${z.spitze.max.toFixed(0).padStart(6)} | ${[d.seite.max, d.front.max, d.top.max].map((x) => x.toFixed(1).padStart(5)).join(' ')} | ${g.winkel.toFixed(1).padStart(6)} ${g.seiten.toFixed(1).padStart(7)}  ${faktoren.join(' ')} | ${b.ebene.streifen.length} (${b.ringe.map((r, s) => `${b.ebene.streifen[s]!.N}×${r.sprossen.length}`).join(', ')}) | ${b.zeiten.gesamt.toFixed(0)} (Ebene ${b.zeiten.ebene.toFixed(0)}, Matrix ${b.zeiten.matrix.toFixed(0)}, Löser ${b.zeiten.loeser.toFixed(0)})`,
     );
-    ergebnis[name] = { s3: { frei: z3.frei.max, kappe: z3.kappe.max, delta: [d3.seite.max, d3.front.max, d3.top.max] }, baum: { frei: z.frei.max, ansatz: z.ansatz.max, kappe: z.kappe.max, delta: [d.seite.max, d.front.max, d.top.max], winkel: g.winkel, seiten: g.seiten, ms: b.zeiten.gesamt } };
+    ergebnis[name] = { s3: { frei: z3.frei.max, kappe: z3.kappe.max, kante: z3.kante.max, spitze: z3.spitze.max, delta: [d3.seite.max, d3.front.max, d3.top.max] }, baum: { frei: z.frei.max, ansatz: z.ansatz.max, kappe: z.kappe.max, kante: z.kante.max, spitze: z.spitze.max, delta: [d.seite.max, d.front.max, d.top.max], winkel: g.winkel, seiten: g.seiten, ms: b.zeiten.gesamt } };
   } catch (err) {
     zeilen.push(`${''.padEnd(15)} Baum  Fehler: ${(err as Error).message}`);
   }

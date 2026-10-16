@@ -54,6 +54,10 @@ export type Ebene = {
   seite: V2[];
   /** Mittelteile, die im Streifen ihres Elternteils bleiben (Fortsetzung) */
   fortsetzung: number[];
+  /** davon wegen überlappender Sehnenblöcke (Flosse ohne eigenen Streifen mitten am Rumpf) */
+  ueberlappt: number[];
+  /** gezeichnete Ecken der Seite (Welt; ohne Lippenanfänge) */
+  ecken: V2[];
 };
 
 const abstand = (a: V2, b: V2) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -210,6 +214,8 @@ function sehnenBereich(l: Leiter, kette: readonly V2[], seite: 'a' | 'b', A: V2,
 
 /** Abstand, den zwei Sehnenbereiche auf der Wirbelsäule mindestens halten (Anteil): dazwischen ein freier Ring. */
 const BLOCK_ABSTAND = 0.03;
+/** Ab diesem Anteil des Rumpfumfangs ist ein Kind dick: Fortsetzung statt Verbindungsstück */
+const DICK_ANTEIL = 0.5;
 
 /**
  * Auslegung der Seitenfläche. Ohne seitlich angesetzte Mittelteile ein Streifen (der Rumpf); dann baut der Kern wie heute.
@@ -238,26 +244,69 @@ export function ebene(dok: Dokument, baum?: Teilbaum, breitenVorgabe?: Breiten):
   const alle = schneide(mitte.map((m) => m.i));
   const e0 = polygonEnden(alle.rest);
   const spitzen = [alle.rest[e0.vorn]!, alle.rest[e0.hinten]!];
+  const k0 = teilenInKetten(alle.rest, e0.vorn, e0.hinten);
+  const umfangRumpf = mittlererUmfang(streifenLeiter(k0.a, k0.b), breiten);
+  // je Teil: Spitze (innen am weitesten von der Sehnenmitte) und mittlerer Umfang
+  const kindSpitze = new Map<number, V2>();
   const seitlich: number[] = [];
   const fortsetzung: number[] = [];
+  /** Fortsetzungen, die ein Ende des Rumpfstreifens bilden (Spitze am Rumpfende oder dickes Kind) */
+  const endTeile: number[] = [];
   for (const { i } of mitte) {
     const st = alle.stuecke.get(i);
     if (!st) {
       fortsetzung.push(i);
       continue;
     }
-    const L = abstand(st.schnitt[0], st.schnitt[1]);
-    const nah = spitzen.some((p) => streckenAbstand(p, st.schnitt[0], st.schnitt[1]) < 0.5 * L);
-    (nah ? fortsetzung : seitlich).push(i);
+    const [X, Y] = st.schnitt;
+    const m = { x: (X.x + Y.x) / 2, y: (X.y + Y.y) / 2 };
+    const weg = innenWege(bereinigt([...st.ast]), m);
+    let iT = 1;
+    for (let k = 1; k + 1 < st.ast.length; k++) if (weg(st.ast[k]!) > weg(st.ast[iT]!)) iT = k;
+    kindSpitze.set(i, st.ast[iT]!);
+    const L = abstand(X, Y);
+    const nah = spitzen.some((p) => streckenAbstand(p, X, Y) < 0.5 * L);
+    // dick: Umfang des Kinds mindestens halb so groß wie der des Rumpfs (Vasenhals) — ein Verbindungsstück wird dort ein
+    // Splitter zwischen dem runden Ring durch das Sehnenende und dem nächsten Sehnenpunkt (Vase 62°); dann ein Streifen
+    // durch Rumpf und Kind (Fortsetzung, Plan S5.3)
+    const kette = st.ast;
+    const kA = kette.slice(0, iT + 1);
+    const kB = kette.slice(iT).reverse();
+    const dick = mittlererUmfang(streifenLeiter(kA, kB), breiten) >= DICK_ANTEIL * umfangRumpf;
+    if (nah || dick) {
+      fortsetzung.push(i);
+      endTeile.push(i);
+    } else seitlich.push(i);
   }
   // Rumpfstreifen: nur seitlich angesetzte Teile werden abgeschnitten; überlappende Sehnenbereiche → das kleinere Teil bleibt
   let rest: V2[];
   let stuecke: Map<number, { ast: V2[]; schnitt: [V2, V2] }>;
   let kRumpf: { a: V2[]; b: V2[] };
   let lRumpf: Leiter;
+  const ueberlappt: number[] = [];
+  // Enden des Rumpfstreifens: ohne Fortsetzung wie bisher; sonst die Spitze der (ersten) Fortsetzung und die einer zweiten
+  // bzw. der Punkt, der innen am weitesten von ihr entfernt liegt (Vase: Rand und Boden)
+  const naechster = (poly: readonly V2[], p: V2) => {
+    let k = 0;
+    poly.forEach((q, j) => {
+      if (abstand(q, p) < abstand(poly[k]!, p)) k = j;
+    });
+    return k;
+  };
+  const rumpfEnden = (poly: V2[]): { vorn: number; hinten: number } => {
+    if (!endTeile.length) return polygonEnden(poly);
+    const e1 = naechster(poly, kindSpitze.get(endTeile[0]!)!);
+    if (endTeile.length >= 2) return { vorn: e1, hinten: naechster(poly, kindSpitze.get(endTeile[1]!)!) };
+    const weg = innenWege(poly, poly[e1]!);
+    let e2 = 0;
+    poly.forEach((q, j) => {
+      if (weg(q) > weg(poly[e2]!)) e2 = j;
+    });
+    return poly[e1]!.x <= poly[e2]!.x ? { vorn: e1, hinten: e2 } : { vorn: e2, hinten: e1 };
+  };
   for (;;) {
     ({ rest, stuecke } = schneide(seitlich));
-    const e = polygonEnden(rest);
+    const e = rumpfEnden(rest);
     kRumpf = teilenInKetten(rest, e.vorn, e.hinten);
     lRumpf = streifenLeiter(kRumpf.a, kRumpf.b);
     const bereiche = seitlich
@@ -278,6 +327,7 @@ export function ebene(dok: Dokument, baum?: Teilbaum, breitenVorgabe?: Breiten):
     if (weg < 0) break;
     seitlich.splice(seitlich.indexOf(weg), 1);
     fortsetzung.push(weg);
+    ueberlappt.push(weg);
   }
   const eUmfang = mittlererUmfang(lRumpf, breiten) / 16;
   const streifen: EbenenStreifen[] = [{ teile: [0, ...fortsetzung], ansatz: null, umriss: rest, ketten: kRumpf, leiter: lRumpf, N: 16, kinder: [] }];
@@ -311,7 +361,9 @@ export function ebene(dok: Dokument, baum?: Teilbaum, breitenVorgabe?: Breiten):
     streifen.push({ teile: [i], ansatz: { eltern: 0, seite: seiteAB, A, B }, umriss, ketten: { a: ka, b: kb }, leiter: lKind, N, kinder: [] });
     streifen[0]!.kinder.push(streifen.length - 1);
   }
-  return { streifen, baum: b, seite, fortsetzung };
+  const sk = dok.skalierung;
+  const ecken = dok.profile.seite.knoten.filter((kn) => kn.art === 'ecke' && !kn.marke).map((kn) => ({ x: kn.p.x * sk, y: kn.p.y * sk }));
+  return { streifen, baum: b, seite, fortsetzung, ueberlappt, ecken };
 }
 
 // ---------- Ringe ----------
@@ -327,6 +379,9 @@ export type StreifenRinge = {
   spitzen: { anfang: V2 | null; ende: V2 };
   /** angesetzte Kinder: Streifen, Seite, erster Ring; Sehnenpunkte (Anteil t von A nach B) */
   kinder: { streifen: number; seite: 'a' | 'b'; ring: number; t: number[] }[];
+  /** Ringe auf gezeichneten Ecken (Ringfalte auf der Seite der Ecke) und Ecken an den Spitzen (Punktschärfe) */
+  ecken: { ring: number; seite: 'a' | 'b' | 'beide' }[];
+  spitzenEcke: { anfang: boolean; ende: boolean };
 };
 
 export type RingOptionen = {
@@ -338,9 +393,11 @@ export type RingOptionen = {
   ringBudget: number;
   /** harte Obergrenze der Ringe je Streifen (Fehler) */
   maxRinge: number;
+  /** Kappenanteil an einer gezeichneten Spitze (Ecke): kleine Kappe, die Ringe tragen die Krümmung (wie in der Röhre) */
+  kappeSpitze: number;
 };
 
-export const RING_STANDARD: RingOptionen = { kappe: 0.05, abstand: 1, ringBudget: 480, maxRinge: 64 };
+export const RING_STANDARD: RingOptionen = { kappe: 0.05, abstand: 1, ringBudget: 480, maxRinge: 64, kappeSpitze: 0.025 };
 
 /** Sehnenpunkte des ersten Kindrings: gleiche Winkel auf einem runden Ring (Anteil von A nach B). */
 export function sehnenAnteile(H: number): number[] {
@@ -423,9 +480,30 @@ export function ringeAuslegen(e: Ebene, breiten: Breiten, opt: RingOptionen = RI
       bloecke.push({ kind: k, seite: an.seite, ringe, t });
     }
     bloecke.sort((x, y) => x.ringe[0]!.f - y.ringe[0]!.f);
+    // gezeichnete Ecken auf den Ketten dieses Streifens (nicht die Sehnenenden): an den Spitzen Punktschärfe und kleine
+    // Kappe, sonst rückt ein freier Ring auf die Ecke (Ringfalte), wie `stationenWaehlen` in der Röhre
+    const sehnenEnden: V2[] = [];
+    if (st.ansatz) sehnenEnden.push(st.ansatz.A, st.ansatz.B);
+    for (const k of st.kinder) sehnenEnden.push(e.streifen[k]!.ansatz!.A, e.streifen[k]!.ansatz!.B);
+    const spitzenEcke = { anfang: false, ende: false };
+    const innenEcken: { f: number; seite: 'a' | 'b'; p: V2; t: number }[] = [];
+    for (const p of e.ecken) {
+      if (sehnenEnden.some((q) => abstand(p, q) < 1e-3)) continue;
+      const da = zugAbstand(p, st.ketten.a);
+      const db = zugAbstand(p, st.ketten.b);
+      if (Math.min(da, db) > 1e-3) continue;
+      const seite: 'a' | 'b' = da <= db ? 'a' : 'b';
+      const t = anteilAufZug(seite === 'a' ? st.ketten.a : st.ketten.b, p);
+      const f = spineAnteilFuer(l, t, seite === 'a');
+      if (!angesetzt && f < 0.4 * opt.kappe) spitzenEcke.anfang = true;
+      else if (f > 1 - 0.4 * opt.kappe) spitzenEcke.ende = true;
+      else innenEcken.push({ f, seite, p, t });
+    }
+    const kappeAnfang = spitzenEcke.anfang ? opt.kappeSpitze : opt.kappe;
+    const kappeEnde = spitzenEcke.ende ? opt.kappeSpitze : opt.kappe;
     // Grenzen: Anfang (Kappe oder Sehne), Blöcke, Ende (Kappe)
-    const f0 = angesetzt ? 0 : opt.kappe;
-    const f1 = 1 - opt.kappe;
+    const f0 = angesetzt ? 0 : kappeAnfang;
+    const f1 = 1 - kappeEnde;
     const frei = (fa: number, fb: number): number[] => {
       // Ringe strikt zwischen fa und fb nach der Kantenlänge
       if (!(fb > fa)) return [];
@@ -468,11 +546,78 @@ export function ringeAuslegen(e: Ebene, breiten: Breiten, opt: RingOptionen = RI
     const zw = frei(fa, f1);
     for (const f of zw.length || !bloecke.length ? zw : [(fa + f1) / 2]) ringe.push(ausF(f));
     ringe.push(ausF(f1));
+    // innere Ecken: der nächste freie Ring (nicht Anfang/Ende, nicht unter einer Sehne) rückt genau auf die Ecke
+    const fest = new Set<number>([0, ringe.length - 1]);
+    for (const kr of kinderRinge) for (let j = 0; j <= e.streifen[kr.streifen]!.N / 2; j++) fest.add(kr.ring + j);
+    const eckRinge: StreifenRinge['ecken'] = [];
+    for (const ec of innenEcken.sort((x, y) => x.f - y.f)) {
+      // gegenüberliegende Ecken (Hinterkopf und Innenecke unter dem Kopf) teilen sich einen Ring: Falte auf beiden Seiten
+      const da = eckRinge.find((x) => x.seite !== ec.seite && x.seite !== 'beide' && Math.abs(ringe[x.ring]!.f - ec.f) < 0.5 * Math.min(ringe[x.ring]!.f - ringe[x.ring - 1]!.f, ringe[x.ring + 1]!.f - ringe[x.ring]!.f));
+      if (da) {
+        const r = ringe[da.ring]!;
+        ringe[da.ring] = ec.seite === 'a' ? { f: r.f, a: ec.t, b: r.b, o: ec.p, ...(r.u ? { u: r.u } : {}) } : { f: r.f, a: r.a, b: ec.t, u: ec.p, ...(r.o ? { o: r.o } : {}) };
+        da.seite = 'beide';
+        continue;
+      }
+      let best = -1;
+      for (let i = 1; i + 1 < ringe.length; i++) {
+        if (fest.has(i)) continue;
+        if (best < 0 || Math.abs(ringe[i]!.f - ec.f) < Math.abs(ringe[best]!.f - ec.f)) best = i;
+      }
+      if (best < 0) continue;
+      // Reihenfolge und Abstand zu den Nachbarn müssen erhalten bleiben (sonst kreuzen sich Sprossen bzw. fallen zwei Ringe
+      // fast zusammen: Fisch, Ecke am Schwanzansatz neben dem Sehnenring, 172°)
+      const luecke = 0.3 * Math.min(ringe[best]!.f - ringe[best - 1]!.f, ringe[best + 1]!.f - ringe[best]!.f);
+      if (!(ringe[best - 1]!.f + luecke < ec.f && ec.f < ringe[best + 1]!.f - luecke)) {
+        const schon = eckRinge.find((x) => x.ring === best);
+        if (schon && schon.seite !== ec.seite) schon.seite = 'beide';
+        continue;
+      }
+      const g = gegenAnteil(l, ec.t, ec.seite);
+      ringe[best] = ec.seite === 'a' ? { f: ec.f, a: ec.t, b: g, o: ec.p } : { f: ec.f, a: g, b: ec.t, u: ec.p };
+      fest.add(best);
+      eckRinge.push({ ring: best, seite: ec.seite });
+    }
+    // Fächer spreizen: Laufen mehrere Sprossen auf einer Kette in einem Punkt zusammen (Innenecke einer Kehrtwende, Ente:
+    // Hals → Kopf), werden ihre Enden dort entlang der Kette auseinandergeschoben, bis jedes mindestens ein Drittel des
+    // mittleren Abstands von seinen Nachbarn hat; feste Enden (Sehnen, Ecken, Endringe) bleiben
+    for (const kette of ['a', 'b'] as const) {
+      const fix = new Set<number>([0, ringe.length - 1]);
+      for (const kr of kinderRinge) if (kr.seite === kette) for (let j = 0; j <= e.streifen[kr.streifen]!.N / 2; j++) fix.add(kr.ring + j);
+      for (const er of eckRinge) if (er.seite === kette || er.seite === 'beide') fix.add(er.ring);
+      const wert = ringe.map((r) => r[kette]);
+      const abst = wert.slice(1).map((x, i) => x - wert[i]!).sort((x, y) => x - y);
+      const gap = abst.length ? (abst.reduce((x, y) => x + y, 0) / abst.length) / 3 : 0;
+      let geaendert = false;
+      for (let it = 0; it < 80; it++) {
+        let neu = false;
+        for (let i = 1; i + 1 < wert.length; i++) {
+          if (fix.has(i)) continue;
+          if (wert[i]! - wert[i - 1]! < gap || wert[i + 1]! - wert[i]! < gap) {
+            const mid = (wert[i - 1]! + wert[i + 1]!) / 2;
+            if (Math.abs(mid - wert[i]!) > 1e-9) {
+              wert[i] = mid;
+              neu = true;
+            }
+          }
+        }
+        if (!neu) break;
+        geaendert = true;
+      }
+      if (!geaendert) continue;
+      wert.forEach((w, i) => {
+        if (fix.has(i) || ringe[i]![kette] === w) return;
+        const r = ringe[i]!;
+        // das verschobene Ende liegt danach auf der Kette (ein fester Punkt gilt nur für das andere Ende)
+        ringe[i] = kette === 'a' ? { f: r.f, a: w, b: r.b, ...(r.u ? { u: r.u } : {}) } : { f: r.f, a: r.a, b: w, ...(r.o ? { o: r.o } : {}) };
+      });
+    }
     // Kappenstationen an Spitzen (c/2 − 1 je Kappe)
     const c = st.N / 4;
     const kappeVon = (seite: 'anfang' | 'ende') =>
       Array.from({ length: c / 2 - 1 }, (_, r) => {
-        const f = seite === 'anfang' ? (opt.kappe * (r + 1)) / (c / 2) : 1 - (opt.kappe * (r + 1)) / (c / 2);
+        const kp = seite === 'anfang' ? kappeAnfang : kappeEnde;
+        const f = seite === 'anfang' ? (kp * (r + 1)) / (c / 2) : 1 - (kp * (r + 1)) / (c / 2);
         const q = stationenAusLeiter(l, [f])[0]!;
         return { o: zugBei(l.ruecken, q.a), u: zugBei(l.bauch, q.b) };
       });
@@ -483,6 +628,8 @@ export function ringeAuslegen(e: Ebene, breiten: Breiten, opt: RingOptionen = RI
       kappen: { anfang: angesetzt ? [] : kappeVon('anfang'), ende: kappeVon('ende') },
       spitzen: { anfang: angesetzt ? null : l.ruecken[0]!, ende: l.ruecken[l.ruecken.length - 1]! },
       kinder: kinderRinge,
+      ecken: eckRinge,
+      spitzenEcke,
     });
     if (ringe.length > opt.maxRinge) throw new Error(`ringeAuslegen: Streifen ${s} mit ${ringe.length} Ringen`);
   });

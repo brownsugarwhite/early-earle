@@ -904,11 +904,8 @@ function spantQuerschnitt(dok: Dokument, x: number, N: number, teil: SpantTeil =
  * normiert auf die größte Breite des Lappens. Ecken der Front im Bereich werden Längsfalten.
  */
 function lappenQuerschnitt(dok: Dokument, yLoRoh: number, yHiRoh: number, N: number): Querschnitt {
-  const h = N / 2;
   const sk = dok.skalierung;
   const front = dok.profile.front;
-  let yLo = yLoRoh;
-  let yHi = yHiRoh;
   // rechte Hälfte der Front als Zug von oben nach unten, mit Markierung der Ecken (Knotenindex)
   const segs = segmente(front);
   const zug: { p: V2; ecke: number }[] = [];
@@ -922,6 +919,17 @@ function lappenQuerschnitt(dok: Dokument, yLoRoh: number, yHiRoh: number, N: num
     }
   });
   if (zug.length > 1 && zug[0]!.p.y < zug[zug.length - 1]!.p.y) zug.reverse();
+  return lappenAusZug(zug, (i) => front.knoten[i]?.haerte, yLoRoh, yHiRoh, N);
+}
+
+/**
+ * Lappen-Querschnitt aus einem Zug der rechten Front-Hälfte (oben → unten; `ecke` = Knotenindex einer Ecke oder −1, Härte
+ * über `haerteVon`). S5: auch für den Rumpf eines Baums aus einer Front ohne seitliche Teile.
+ */
+export function lappenAusZug(zug: readonly { p: V2; ecke: number }[], haerteVon: (knoten: number) => number | undefined, yLoRoh: number, yHiRoh: number, N: number): Querschnitt {
+  const h = N / 2;
+  let yLo = yLoRoh;
+  let yHi = yHiRoh;
   // Grenzen auf die Enden der Front einrasten, wenn sie fast zusammenfallen: Front und Seite sind getrennt gezeichnet,
   // die Sprosse endet z. B. bei 0,5297 und die Deckkante liegt bei 0,53. Ohne Einrasten fiele eine flache Deckkante
   // samt ihren Ecken dem Zuschneiden zum Opfer (Kasten → Schräge, keine Falten).
@@ -1014,9 +1022,8 @@ function lappenQuerschnitt(dok: Dokument, yLoRoh: number, yHiRoh: number, N: num
     }
     if (g + 1 < grenzen.length - 1) {
       const e = drin[i1]!;
-      const kn = front.knoten[e.ecke];
       knoten.push(v.length - 1);
-      haerte.push(Math.min(1, Math.max(0, kn?.haerte ?? 1)));
+      haerte.push(Math.min(1, Math.max(0, haerteVon(e.ecke) ?? 1)));
     }
   }
   let wMax = 0;
