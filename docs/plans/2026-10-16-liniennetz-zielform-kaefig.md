@@ -98,6 +98,21 @@ jedem Pull selbst neu.
 6. **Unser Fehler 2:** Alle Ansätze wurden als 3D-Problem behandelt. Für Teile auf der Mittelebene ist es ein 2D-Problem auf
    der Seitenfläche — dort ist die gezeichnete Linie die Naht, auch an der Hohlkehle. Nur seitliche Teile brauchen 3D.
 
+## Nachtrag 16.10. vormittags: Florians Klarstellung (gilt vor dem Text darunter)
+
+> Florian (nach S0): „Wenn jeder Punkt in jeder Ansicht sichtbar ist, dann haben wir doch absolut alle Informationen und es
+> kann keine Widersprüche geben.“ Und: „Die schwarze Linie soll genau den Ist-Zustand des Meshes zeigen.“
+
+- **Das 3D-Liniennetz ist die einzige Wahrheit.** Jeder Umrisspunkt ist ein 3D-Punkt; die schwarze Linie jeder Ansicht ist
+  seine Projektion, also der echte Umriss des Körpers (nicht mehr drei unabhängige Zeichnungen, wie unter Bauweise 1 und S1
+  ursprünglich geplant).
+- **Die bearbeitete Ansicht führt, die anderen folgen am entsprechenden Punkt** — die heutige Kopplung der Außenmaße wird
+  zur Kopplung jedes Punkts (S1c). Widersprüche zwischen den Ansichten entstehen beim Zeichnen nicht mehr.
+- **Rot** (Widerspruch) bleibt nur für Altes und Fremdes (gespeicherte Wesen, Vorlagen, nachgezeichnete Bögen) mit einer
+  Aktion „angleichen“. **Gelb** (Saum) ist reine Baukontrolle.
+- Die Look-Frage aus S3 bleibt, wird aber anders gestellt: Was macht der Körper, wenn eine Ansicht etwas verlangt, das nur
+  kantig geht (einfache Form) — wird er kantig, oder folgt die andere Ansicht dem runden Körper?
+
 ## Die Bauweise: Form zuerst, dann ein Käfig darüber
 
 1. **Liniennetz (3D):** Umrisse, verdeckte Teillinien, P-Linien, Querschnittslinien und Wirbelsäulen sind 3D-Kurven mit
@@ -161,6 +176,9 @@ gemessenen Fehlanläufen am selben Tor: anhalten, Kritik-Register, Bericht.
   Umriss wie heute; fremde Umrisse 2 px mit ihren Knoten als Ringe am 3D-Punkt; P-Linien und Falten mit Kantigkeit wie
   heute; verdeckt gestrichelt mit Deckkraft ≈ 0,25–0,3. Hover und Auswahl markieren denselben Punkt in allen Ansichten und
   auf der Bühne. Zwei Stilvarianten als Vergleichsbild für Florian.
+- **S1c Kopplung jedes Punkts** (Nachtrag oben): Ein Zug in einer Ansicht passt die anderen Ansichten am entsprechenden
+  Punkt an, so dass jeder Umrisspunkt erreichbar bleibt (heute nur die Außenmaße, `kopplung.ts`); keine neuen Knoten (Florian
+  11.10.). Rot nur noch für alte Zeichnungen, dazu „angleichen“. Tor: nach jeder Geste Widerspruch ≤ 1 px in allen Blättern.
 - **Bearbeiten in fremden Ansichten** (gemeinsame Koordinate, auch verdeckte Punkte wie der Bauchpunkt unter der Nase):
   Top-Punkt in der Seite längs = x, in der Front quer = z; Seitenpunkt im Top längs = x. Läuft über denselben Weg wie ein Zug
   in der eigenen Ansicht (Kopplung, ein Undo-Schritt); ⌥-Klick wechselt zwischen übereinanderliegenden Punkten.
