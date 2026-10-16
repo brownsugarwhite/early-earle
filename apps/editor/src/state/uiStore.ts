@@ -24,6 +24,11 @@ export type KanteZeichnen = { blick: Blick; ansicht: Ansicht; knoten: V3T[] };
 export type SpantAuswahl = { spant: number; knoten: number[]; teil?: 'oben' | 'unten' };
 /** Ebenenschalter der Kanten (Recherche 12.10.): zeigen, blass (nicht greifbar) oder aus. */
 export type KantenSicht = 'zeigen' | 'blass' | 'aus';
+/**
+ * Punkt des Liniennetzes (S1): ein Knoten einer Umrisszeichnung (gezeichnete Hälfte oder Spiegelbild) oder einer
+ * Kantenlinie — derselbe 3D-Punkt in jedem Blatt.
+ */
+export type NetzPunkt = { art: 'umriss'; quelle: 'seite' | 'front' | 'top'; index: number; spiegel: boolean } | { art: 'kante'; kante: number; index: number; spiegel: boolean };
 /** Breitenwerkzeug beim Ziehen: Kreis um den Punkt, Radius = Härte (Weltpunkt in der Ansicht). */
 export type BreitenAnzeige = { ansicht: Ansicht; mitte: { x: number; y: number }; h: number };
 
@@ -116,6 +121,9 @@ type UiState = {
    * in der Kurvenfarbe, „farbe“ = je Ursprungsansicht eine Farbe
    */
   netzStil: 'ton' | 'farbe';
+  /** S1: Punkt des Liniennetzes unter dem Zeiger (in irgendeinem Blatt); alle Blätter und die Bühne markieren ihn */
+  netzHover: NetzPunkt | null;
+  setzeNetzHover(p: NetzPunkt | null): void;
   /** gewählter Spant (Index in dok.spanten) und seine gewählten Punkte; bearbeitet in Front bzw. Back */
   spantAuswahl: SpantAuswahl | null;
   /** Versuch 13.10. nachmittags: gewählter Spant der Bauweise „rund“ (Index in dok.rundSpanten) und seine Punkte */
@@ -239,6 +247,12 @@ export const useUi = create<UiState>((set, get) => ({
   breitenAnzeige: null,
   kantenSicht: 'zeigen',
   netzStil: 'ton',
+  netzHover: null,
+  setzeNetzHover(p) {
+    const alt = get().netzHover;
+    if (alt === p || (alt && p && JSON.stringify(alt) === JSON.stringify(p))) return;
+    set({ netzHover: p });
+  },
   zebra: false,
   // Phase 1 / M3 (14.10. nachts): der Käfig-Kern ist die Bauweise des Editors; die Versuche bleiben als Tabs zum Vergleichen
   bauweise: 'kern',

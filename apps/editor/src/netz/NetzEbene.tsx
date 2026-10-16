@@ -11,16 +11,18 @@
 // Nur Bauweise Kern und Grundform. Die Linien liegen unter der schwarzen Linie, die Ringe darüber.
 
 import type { Ansicht, Blick, Dokument, V2 } from '@ee/shape';
-import { hauptspantStelle } from '@ee/shape';
+import { hauptspantStelle, verschiebeKnoten } from '@ee/shape';
 import { type NetzSicht, type NetzZug, type NetzZugArt, RAND } from '@ee/shape/kern';
 import { inAnsicht2 } from '@ee/shape/versuch';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { dunkel, strichBreite, strichMuster, weiss } from '../kanten/KantenEbene';
-import { useNetzStand } from '../kern/netzStand';
+import { aktuellesNetz, useNetzStand } from '../kern/netzStand';
+import { aktiveProfile, uebernehmenAktiv } from '../editing/aktiv';
+import { szene } from '../three/instanz';
 import { SPANT_HINTEN, SPANT_VORN } from '../spanten/SpantEbene';
 import { useEditor } from '../state/editorStore';
-import { blickVon, useUi } from '../state/uiStore';
-import { netzJetzt, sichtBit, zugPunkt } from './netzLage';
+import { type NetzPunkt, blickVon, useUi } from '../state/uiStore';
+import { gemeinsamerZug, netzJetzt, netzPunktLage, sichtBit, umrissKnotenLage, zugPunkt } from './netzLage';
 
 /** Kontur der eigenen Blickachse (sichtbar = der Umriss, gezeigt wird nur Verdecktes) */
 const EIGENE: Record<Blick, NetzZugArt> = { seite: 'kontur-seite', front: 'kontur-front', hinten: 'kontur-front', top: 'kontur-top', unten: 'kontur-top' };
@@ -179,45 +181,158 @@ export function NetzZeichnung({ ansicht, bild }: { ansicht: Ansicht; bild: (p: V
   );
 }
 
-/** Knoten der anderen Zeichnungen als Ringe an ihrem 3D-Punkt (über der schwarzen Linie). */
-export function NetzKnotenZeichnung({ ansicht, bild }: { ansicht: Ansicht; bild: (p: V2) => V2 }) {
-  const n = useNetz(ansicht);
-  if (!n) return null;
-  const bit = sichtBit(n.blick);
-  const ringe: ReactNode[] = [];
+/** Bedienung aus dem Blatt (wie bei den Profilknoten). */
+export type NetzKontext = {
+  lokal: (clientX: number, clientY: number) => V2;
+  ziehen: (e: React.PointerEvent, bewegen: (ev: PointerEvent) => void, ende?: (ev: PointerEvent) => void) => void;
+};
+
+type Ring = { np: Extract<NetzPunkt, { art: 'umriss' }>; q: V2; sicht: boolean };
+
+/** Ringe der fremden Umrissknoten eines Blatts (gezeichnete Hälfte und Spiegelbild, Achsknoten einmal). */
+function ringeVon(dok: Dokument, ns: NetzSicht, ansicht: Ansicht, bit: number, bild: (p: V2) => V2): Ring[] {
+  const out: Ring[] = [];
   for (const quelle of ['seite', 'front', 'top'] as const) {
     if (quelle === ansicht) continue;
-    const pts = n.ns.knoten[quelle];
-    const vis = n.ns.knotenSicht[quelle];
-    const anzahl = vis.length;
-    const halb = quelle === 'seite' ? anzahl : anzahl / 2;
-    for (let i = 0; i < anzahl; i++) {
-      const p = [pts[3 * i]!, pts[3 * i + 1]!, pts[3 * i + 2]!] as const;
-      if (!Number.isFinite(p[0])) continue;
-      // gespiegelte Hälfte: Achsknoten gibt es nur einmal; in der Seite deckt die nahe Hälfte die ferne
-      if (i >= halb && Math.abs(p[2]) < 1e-6) continue;
-      if (ansicht === 'seite' && p[2] < -1e-6) continue;
-      const q = bild(inAnsicht2([p[0], p[1], p[2]], ansicht));
-      const sicht = (vis[i]! & bit) !== 0;
-      ringe.push(
-        <circle
-          key={`${quelle}${i}`}
-          data-netz-knoten={`${quelle}:${i < halb ? i : i - halb}${i < halb ? '' : 's'}`}
-          data-sicht={sicht ? 1 : 0}
-          cx={q.x}
-          cy={q.y}
-          r={4}
-          fill="none"
-          stroke={n.stil === 'farbe' ? NETZ_FARBE[quelle] : 'var(--punkt)'}
-          strokeWidth={2}
-          opacity={sicht ? 1 : 0.35}
-        />,
-      );
+    const knoten = dok.profile[quelle].knoten;
+    for (const spiegel of quelle === 'seite' ? [false] : [false, true]) {
+      knoten.forEach((k, index) => {
+        // Achsknoten (auf der Spiegelachse) gibt es nur einmal
+        if (spiegel && Math.abs(quelle === 'front' ? k.p.x : k.p.y) < 1e-6) return;
+        const l = umrissKnotenLage(dok, quelle, index, spiegel, ns);
+        if (!l) return;
+        // in der Seite deckt die nahe Hälfte (z ≥ 0) die ferne
+        if (ansicht === 'seite' && l.p[2] < -1e-6) return;
+        out.push({ np: { art: 'umriss', quelle, index, spiegel }, q: bild(inAnsicht2(l.p, ansicht)), sicht: (l.sicht & bit) !== 0 });
+      });
     }
   }
+  return out;
+}
+
+const gleich = (a: NetzPunkt | null, b: NetzPunkt | null) => !!a && !!b && JSON.stringify(a) === JSON.stringify(b);
+let letzterGriff: NetzPunkt | null = null;
+
+/** Umrissknoten unter dem Zeiger in einem Blatt: eigene Knoten und Ringe fremder Knoten, oberster zuerst. */
+export function netzPunkteUnter(svg: SVGSVGElement, ansicht: Ansicht, clientX: number, clientY: number): Extract<NetzPunkt, { art: 'umriss' }>[] {
+  const out: Extract<NetzPunkt, { art: 'umriss' }>[] = [];
+  for (const el of document.elementsFromPoint(clientX, clientY)) {
+    if (!svg.contains(el)) continue;
+    const eigen = el.closest('[data-knoten]');
+    const ring = el.closest('[data-netz-knoten]');
+    let np: Extract<NetzPunkt, { art: 'umriss' }> | null = null;
+    if (eigen) np = { art: 'umriss', quelle: ansicht as 'seite' | 'front' | 'top', index: Number(eigen.getAttribute('data-knoten')), spiegel: false };
+    else if (ring) {
+      const [q, rest] = ring.getAttribute('data-netz-knoten')!.split(':') as ['seite' | 'front' | 'top', string];
+      np = { art: 'umriss', quelle: q, index: Number.parseInt(rest, 10), spiegel: rest.endsWith('s') };
+    }
+    if (np && !out.some((x) => gleich(x, np))) out.push(np);
+  }
+  return out;
+}
+
+/**
+ * ⌥-Klick mit der Auswahl: wechselt zwischen übereinanderliegenden Punkten (eigener Knoten und Ringe fremder Knoten, in
+ * der Reihenfolge von oben). Liefert den gewählten Punkt; null = nur einer da (normal weiter).
+ */
+export function naechsterUnter(svg: SVGSVGElement, ansicht: Ansicht, clientX: number, clientY: number): Extract<NetzPunkt, { art: 'umriss' }> | null {
+  const alle = netzPunkteUnter(svg, ansicht, clientX, clientY);
+  if (alle.length < 2) return null;
+  const jetzt = alle.findIndex((x) => gleich(x, letzterGriff));
+  const np = alle[(jetzt + 1) % alle.length]!;
+  letzterGriff = np;
+  return np;
+}
+
+/**
+ * Fremden Umrissknoten greifen: wählt ihn in seiner Zeichnung und zieht ihn entlang der gemeinsamen Koordinate (ein
+ * Undo-Schritt, Kopplung wie beim Ziehen in der eigenen Ansicht).
+ */
+export function netzKnotenGreifen(e: React.PointerEvent, ansicht: Ansicht, np: Extract<NetzPunkt, { art: 'umriss' }>, ctx: NetzKontext) {
+  e.stopPropagation();
+  const ui = useUi.getState();
+  letzterGriff = np;
+  const { quelle, index, spiegel } = np;
+  ui.auswahlLeeren();
+  ui.waehle(quelle, [index]);
+  ui.setzeNetzHover(np);
+  const start = ctx.lokal(e.clientX, e.clientY);
+  const basis = aktiveProfile();
+  const auswahlBasis = useUi.getState().auswahl;
+  useEditor.getState().beginGeste();
+  ctx.ziehen(
+    e,
+    (ev) => {
+      const p = ctx.lokal(ev.clientX, ev.clientY);
+      const d = gemeinsamerZug(ansicht, quelle, { x: p.x - start.x, y: p.y - start.y }, spiegel);
+      uebernehmenAktiv(quelle, verschiebeKnoten(basis[quelle], [index], d), [index], basis, auswahlBasis);
+    },
+    () => useEditor.getState().endeGeste(),
+  );
+}
+
+/**
+ * Knoten der anderen Zeichnungen als Ringe an ihrem 3D-Punkt (über der schwarzen Linie). Im Körper-Tab greifbar: Ziehen
+ * wirkt nur in der Koordinate, die beide Ansichten teilen; verdeckte Ringe (blass) ebenso, z. B. der Bauchpunkt unter der
+ * Nase im Top.
+ */
+export function NetzKnotenZeichnung({ ansicht, bild, aktiv, ctx }: { ansicht: Ansicht; bild: (p: V2) => V2; aktiv: boolean; ctx: NetzKontext }) {
+  const dok = useEditor((s) => s.dok);
+  const auswahl = useUi((s) => s.auswahl);
+  const hover = useUi((s) => s.netzHover);
+  const n = useNetz(ansicht);
+  if (!n) return null;
+  const ringe = ringeVon(dok, n.ns, ansicht, sichtBit(n.blick), bild);
   return (
-    <g className="netz-knoten" pointerEvents="none" opacity={n.deck}>
-      {ringe}
+    <g className="netz-knoten" pointerEvents={aktiv ? 'auto' : 'none'} opacity={n.deck}>
+      {ringe.map((r) => {
+        const { quelle, index, spiegel } = r.np;
+        const gewaehlt = auswahl[quelle].includes(index);
+        const schwebt = gleich(hover, r.np);
+        const farbe = n.stil === 'farbe' ? NETZ_FARBE[quelle] : 'var(--punkt)';
+        return (
+          <g
+            key={`${quelle}${index}${spiegel ? 's' : ''}`}
+            data-netz-knoten={`${quelle}:${index}${spiegel ? 's' : ''}`}
+            data-sicht={r.sicht ? 1 : 0}
+            className="netz-ring"
+            onPointerEnter={() => useUi.getState().setzeNetzHover(r.np)}
+            onPointerLeave={() => gleich(useUi.getState().netzHover, r.np) && useUi.getState().setzeNetzHover(null)}
+            onPointerDown={(e) => {
+              // ⌥ (Wechsel zwischen übereinanderliegenden Punkten) entscheidet das Blatt
+              if (e.button !== 0 || e.altKey) return;
+              netzKnotenGreifen(e, ansicht, r.np, ctx);
+            }}
+          >
+            <circle cx={r.q.x} cy={r.q.y} r={9} fill="transparent" />
+            <circle cx={r.q.x} cy={r.q.y} r={schwebt ? 5.5 : 4} fill={gewaehlt ? farbe : 'none'} stroke={farbe} strokeWidth={2} opacity={r.sicht ? 1 : 0.35} />
+          </g>
+        );
+      })}
     </g>
   );
+}
+
+/**
+ * Der Netzpunkt unter dem Zeiger, in jedem Blatt an seinem 3D-Punkt markiert (auch in seiner eigenen Ansicht und am
+ * Spiegelbild); das Seitenblatt setzt dazu die Marke auf der Bühne (die Blätter rendern dieselbe Szene, dort erscheint sie
+ * ebenso).
+ */
+export function NetzHoverZeichnung({ ansicht, bild }: { ansicht: Ansicht; bild: (p: V2) => V2 }) {
+  const dok = useEditor((s) => s.dok);
+  const hover = useUi((s) => s.netzHover);
+  const n = useNetz(ansicht);
+  const l = n && hover ? netzPunktLage(dok, hover, n.ns) : null;
+  useEffect(() => {
+    if (ansicht !== 'seite') return;
+    const netz = aktuellesNetz();
+    const r = szene.aktuell;
+    if (!r || !netz) return;
+    const sk = dok.skalierung;
+    r.setzeMarke(l ? [l.p[0] * sk, l.p[1] * sk, l.p[2] * sk] : null, netz.netz.hoehe * netz.skalierung);
+  }, [ansicht, l?.p[0], l?.p[1], l?.p[2], dok.skalierung]);
+  if (!n || !l) return null;
+  const q = bild(inAnsicht2(l.p, ansicht));
+  const sicht = (l.sicht & sichtBit(n.blick)) !== 0;
+  return <circle data-netz-hover="" data-sicht={sicht ? 1 : 0} cx={q.x} cy={q.y} r={10} fill="none" stroke="#ff2e9a" strokeWidth={2} strokeDasharray={sicht ? undefined : '3 3'} pointerEvents="none" />;
 }

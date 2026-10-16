@@ -1,11 +1,11 @@
 // Plan „Liniennetz, Zielform, Käfig“ (16.10.), S1: Lagen aus dem 3D-Liniennetz des Workers (`WesenNetz.netzSicht`,
 // Profil-Einheiten der Ruhelage) für die Blätter. Ein Netzpunkt hat genau einen 3D-Punkt; jede Ansicht zeigt ihn an seiner
 // Projektion, verdeckt blass. Ohne DOM (die Kanten-Ebene und Prüfungen lesen es).
-import type { Ansicht, Blick, Kante, V3T } from '@ee/shape';
-import { type NetzSicht, type NetzZug, SICHT } from '@ee/shape/kern';
+import type { Ansicht, Blick, Dokument, Kante, V3T } from '@ee/shape';
+import { type NetzSicht, type NetzZug, RAND, SICHT } from '@ee/shape/kern';
 import { aktuellesNetz } from '../kern/netzStand';
 import { useEditor } from '../state/editorStore';
-import { useUi } from '../state/uiStore';
+import { type NetzPunkt, useUi } from '../state/uiStore';
 
 /** Das Liniennetz, wenn die Blätter es zeigen: Bauweise Kern, Grundform (in Posen zeigen sie den posierten Umriss). */
 export function netzJetzt(): NetzSicht | null {
@@ -77,4 +77,82 @@ export function naechsterImNetz(k: Kante, ki: number, ansicht: Ansicht, q: { x: 
   while (s + 2 < kn.length && kn[s + 1]! <= best) s++;
   const t = (best - kn[s]!) / Math.max(1, kn[s + 1]! - kn[s]!);
   return { segment: s, t: Math.min(1, Math.max(0, t)) };
+}
+
+/** Proben des äußeren Umrisses je Ansicht (Konturproben mit RAND), gemerkt je Netz. */
+const randMerker = new WeakMap<NetzSicht, Record<'seite' | 'front' | 'top', { p: Float32Array; sicht: Uint8Array }>>();
+function randProben(ns: NetzSicht): Record<'seite' | 'front' | 'top', { p: Float32Array; sicht: Uint8Array }> {
+  let m = randMerker.get(ns);
+  if (m) return m;
+  const sammeln = (a: 'seite' | 'front' | 'top') => {
+    const p: number[] = [];
+    const sicht: number[] = [];
+    for (const z of ns.zuege) {
+      if (z.art !== `kontur-${a}`) continue;
+      for (let i = 0; i < z.sicht.length; i++) {
+        if (!(z.sicht[i]! & RAND)) continue;
+        p.push(z.punkte[3 * i]!, z.punkte[3 * i + 1]!, z.punkte[3 * i + 2]!);
+        sicht.push(z.sicht[i]!);
+      }
+    }
+    return { p: Float32Array.from(p), sicht: Uint8Array.from(sicht) };
+  };
+  m = { seite: sammeln('seite'), front: sammeln('front'), top: sammeln('top') };
+  randMerker.set(ns, m);
+  return m;
+}
+
+/**
+ * Knoten einer Umrisszeichnung als 3D-Punkt (Profil-Einheiten) mit Sichtbarkeit: die beiden Koordinaten seiner Ansicht
+ * aus der Zeichnung (sie folgen dem Zeiger sofort), die dritte von der nächsten Probe des Umrisses auf dem Körper, deren
+ * Sichtbarkeit gilt. Seite: auf der Mittelebene; Front: x vom Front-Umriss; Top: y vom Top-Umriss. Spiegelbild: z negiert.
+ */
+export function umrissKnotenLage(dok: Dokument, quelle: 'seite' | 'front' | 'top', index: number, spiegel: boolean, ns: NetzSicht): { p: V3T; sicht: number } | null {
+  const k = dok.profile[quelle].knoten[index];
+  if (!k) return null;
+  const r = randProben(ns)[quelle];
+  const n = r.sicht.length;
+  if (!n) return null;
+  // Lage in der eigenen Ansicht (Front: u = z, v = y; Top: u = x, v = z; Seite: u = x, v = y)
+  const u = quelle === 'front' && spiegel ? -k.p.x : k.p.x;
+  const v = quelle === 'top' && spiegel ? -k.p.y : k.p.y;
+  const [a, b] = quelle === 'seite' ? [0, 1] : quelle === 'front' ? [2, 1] : [0, 2];
+  let best = 0;
+  let bd = Infinity;
+  for (let i = 0; i < n; i++) {
+    const d = (r.p[3 * i + a]! - u) ** 2 + (r.p[3 * i + b]! - v) ** 2;
+    if (d < bd) {
+      bd = d;
+      best = i;
+    }
+  }
+  const sicht = r.sicht[best]!;
+  if (quelle === 'seite') return { p: [u, v, 0], sicht };
+  if (quelle === 'front') return { p: [r.p[3 * best]!, v, u], sicht };
+  return { p: [u, r.p[3 * best + 1]!, v], sicht };
+}
+
+/** 3D-Punkt eines Netzpunkts (Umrissknoten oder Kantenknoten), null ohne Netz oder Knoten. */
+export function netzPunktLage(dok: Dokument, np: NetzPunkt, ns: NetzSicht | null = netzJetzt()): { p: V3T; sicht: number } | null {
+  if (!ns) return null;
+  if (np.art === 'umriss') return umrissKnotenLage(dok, np.quelle, np.index, np.spiegel, ns);
+  const k = dok.kanten?.[np.kante];
+  if (!k?.knoten[np.index]) return null;
+  const p = kantenKnotenLage(k, np.kante, np.index, ns);
+  const z = netzZug(`l:${np.kante}${np.spiegel ? 's' : ''}`, ns);
+  const sicht = z?.knoten && z.knoten.length === k.knoten.length ? z.sicht[z.knoten[np.index]!]! : 0xff;
+  return { p: np.spiegel ? [p[0], p[1], -p[2]] : p, sicht };
+}
+
+/**
+ * Zug eines Knotens in einem fremden Blatt: nur die gemeinsame Koordinate wirkt (Seite ↔ Front: y, Seite ↔ Top: x,
+ * Front ↔ Top: z). `d` = Verschiebung in den Blattkoordinaten (Profil-Einheiten), Ergebnis = Verschiebung des Knotens in
+ * seiner eigenen Zeichnung. Am Spiegelbild läuft z andersherum.
+ */
+export function gemeinsamerZug(blatt: Ansicht, quelle: 'seite' | 'front' | 'top', d: { x: number; y: number }, spiegel: boolean): { x: number; y: number } {
+  const s = spiegel ? -1 : 1;
+  if (blatt === quelle) return d;
+  if (blatt === 'seite') return quelle === 'front' ? { x: 0, y: d.y } : { x: d.x, y: 0 };
+  if (blatt === 'front') return quelle === 'seite' ? { x: 0, y: d.y } : { x: 0, y: s * d.x };
+  return quelle === 'seite' ? { x: d.x, y: 0 } : { x: s * d.y, y: 0 };
 }

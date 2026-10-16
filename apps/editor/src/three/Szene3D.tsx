@@ -3,7 +3,8 @@ import { abtasten3, unterteilenMehrfach, zuDreiecken } from '@ee/shape/versuch';
 import { useEffect, useRef } from 'react';
 import { useRahmen } from '../layout/animation';
 import { useEditor } from '../state/editorStore';
-import { useUi } from '../state/uiStore';
+import { type NetzPunkt, useUi } from '../state/uiStore';
+import { netzPunktLage } from '../netz/netzLage';
 import { Renderer3D } from './Renderer3D';
 import { szene } from './instanz';
 import { versuchAktiv, versuchNetz } from '../versuch/subdivision';
@@ -28,7 +29,7 @@ import { PALETTEN } from './wesenLook';
 
 declare global {
   interface Window {
-    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number; netzLagen?: () => number[] | null; poseLippen?: () => unknown };
+    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number; netzLagen?: () => number[] | null; poseLippen?: () => unknown; projizieren?: (feld: 'creation' | 'seite' | 'front' | 'top', p: [number, number, number]) => [number, number] | null; netzPunkt?: (np: NetzPunkt) => [number, number, number] | null };
   }
 }
 
@@ -95,6 +96,13 @@ export function Szene3D() {
           return `${bits.length}:${h.toString(16)}`;
         },
         netzVersion: () => useNetzStand.getState().version,
+        // S1: Weltpunkt → Feldpixel (Bühne oder Blatt) und 3D-Lage eines Netzpunkts in Profil-Einheiten (E2E: derselbe Punkt
+        // in allen Blättern und auf der Bühne)
+        projizieren: (feld, p) => {
+          const q = r.projizierenViele(feld, Float32Array.from(p));
+          return q[2] ? [q[0]!, q[1]!] : null;
+        },
+        netzPunkt: (np) => netzPunktLage(useEditor.getState().dok, np)?.p ?? null,
         // B5: Rot und Blau der bearbeiteten Pose (E2E): Abweichung (px), geschlossen, Knoten, gezeigte Lippe rechts (Kern-Einheiten)
         poseLippen: () => {
           const n = aktuellesNetz();

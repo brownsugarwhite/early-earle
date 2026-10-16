@@ -56,7 +56,7 @@ import { RundZeichnung } from '../rund/RundEbene';
 import { RundSpantLinien, RundSpantSchnitt, rundSpantZeiger } from '../rund/RundSpantEbene';
 import { istTrackpad, radFaktor, spiegeln2, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
 import { aktuellesNetz, useKernAnzeige } from '../kern/kernBau';
-import { NetzKnotenZeichnung, NetzZeichnung } from '../netz/NetzEbene';
+import { NetzHoverZeichnung, NetzKnotenZeichnung, NetzZeichnung, naechsterUnter, netzKnotenGreifen } from '../netz/NetzEbene';
 
 /** Saum ab dieser Abweichung (px bei 461 px je Kachel; Plan 9.8) */
 const SAUM_AB = 2;
@@ -315,6 +315,16 @@ export function View2D({ ansicht, w, h }: Props) {
     const griffEl = ziel.closest('[data-griff]');
     const knotenEl = ziel.closest('[data-knoten]');
     const kurveEl = ziel.closest('[data-kurve]');
+    // S1: ⌥-Klick mit der Auswahl wechselt zwischen übereinanderliegenden Punkten (eigener Knoten, Ringe fremder Knoten)
+    let knotenIdx = knotenEl ? Number(knotenEl.getAttribute('data-knoten')) : null;
+    if (e.altKey && ui.werkzeug === 'auswahl' && !griffEl && svgRef.current) {
+      const np = naechsterUnter(svgRef.current, ansicht, e.clientX, e.clientY);
+      if (np && np.quelle !== ansicht) {
+        netzKnotenGreifen(e, ansicht, np, { lokal, ziehen });
+        return;
+      }
+      if (np) knotenIdx = np.index;
+    }
 
     // Zeichenstift, + und − (wie Illustrator); ⌘ hält vorübergehend die Direktauswahl
     // Breitenwerkzeug an einer Ecke der Silhouette: Härte der Ecke (die Ecke ist im 3D eine Kante)
@@ -374,9 +384,9 @@ export function View2D({ ansicht, w, h }: Props) {
       return;
     }
 
-    if (knotenEl) {
+    if (knotenIdx !== null) {
       // Klick wählt, ⇧-Klick schaltet um; gewählte Punkte ziehen gemeinsam (wie Illustrator)
-      const i = Number(knotenEl.getAttribute('data-knoten'));
+      const i = knotenIdx;
       const bisher = ui.auswahl[ansicht];
       let sel: number[];
       if (e.shiftKey) sel = bisher.includes(i) ? bisher.filter((x) => x !== i) : [...bisher, i];
@@ -598,18 +608,30 @@ export function View2D({ ansicht, w, h }: Props) {
       <SpantQuerschnitte ansicht={ansicht} bild={bild} aktiv={formAktiv} />
       <SpantLinien ansicht={ansicht} bild={bild} aktiv={formAktiv} />
       <RundSpantLinien ansicht={ansicht} bild={bild} />
+      {/* S1: Ringe fremder Knoten unter den eigenen Knoten (der eigene geht beim Klick vor, ⌥ wechselt) */}
+      <NetzKnotenZeichnung ansicht={ansicht} bild={bild} aktiv={formAktiv} ctx={{ lokal, ziehen }} />
       {formAktiv && griffe}
       <WirbelPunkte ansicht={ansicht} bild={bild} />
       {formAktiv && profil.knoten.map((k, i) => {
         const q = bild(k.p);
         return (
-          <g key={i} data-knoten={i} className={gewaehlt.includes(i) ? 'knoten gewaehlt' : 'knoten'}>
+          <g
+            key={i}
+            data-knoten={i}
+            className={gewaehlt.includes(i) ? 'knoten gewaehlt' : 'knoten'}
+            // S1: derselbe Punkt wird in den anderen Blättern und auf der Bühne markiert
+            onPointerEnter={() => useUi.getState().setzeNetzHover({ art: 'umriss', quelle: ansicht, index: i, spiegel: false })}
+            onPointerLeave={() => {
+              const hv = useUi.getState().netzHover;
+              if (hv?.art === 'umriss' && hv.quelle === ansicht && hv.index === i) useUi.getState().setzeNetzHover(null);
+            }}
+          >
             <circle cx={q.x} cy={q.y} r={10} fill="transparent" />
             <circle className="knoten-punkt" cx={q.x} cy={q.y} r={PUNKT_R} fill="var(--punkt)" />
           </g>
         );
       })}
-      <NetzKnotenZeichnung ansicht={ansicht} bild={bild} />
+      <NetzHoverZeichnung ansicht={ansicht} bild={bild} />
       {ueber?.linien?.map((l, i) => (
         <path
           key={`l${i}`}

@@ -301,7 +301,16 @@ export function KantenZeichnung({ ansicht, bild, aktiv: aktivTab }: { ansicht: A
                 const zeigeWert = sel && !breite && (!ganz || i === Math.floor((k.knoten.length - 1) / 2));
                 if (!vis) return <circle key={i} cx={q.x} cy={q.y} r={3} fill="var(--punkt)" opacity={0.3} pointerEvents="none" />;
                 return (
-                  <g key={i} data-kantenknoten={`${ki}:${i}`} className={sel ? 'knoten gewaehlt' : 'knoten'}>
+                  <g
+                    key={i}
+                    data-kantenknoten={`${ki}:${i}`}
+                    className={sel ? 'knoten gewaehlt' : 'knoten'}
+                    onPointerEnter={() => useUi.getState().setzeNetzHover({ art: 'kante', kante: ki, index: i, spiegel: false })}
+                    onPointerLeave={() => {
+                      const hv = useUi.getState().netzHover;
+                      if (hv?.art === 'kante' && hv.kante === ki && hv.index === i) useUi.getState().setzeNetzHover(null);
+                    }}
+                  >
                     <circle cx={q.x} cy={q.y} r={10} fill="transparent" />
                     <circle className="kanten-punkt" cx={q.x} cy={q.y} r={PUNKT_R} fill="var(--punkt)" stroke={sel ? '#ffffff' : 'none'} strokeWidth={2} />
                     {zeigeWert && (
