@@ -244,11 +244,12 @@ function poseHinweis(): void {
 }
 
 /**
- * Neues Wesen im Editor: die Startkugel mit glatter Haut (Florian 16.10.: „glatt als Standard für neue Wesen“, Plan
- * „Liniennetz, Zielform, Käfig“, S2). Gespeicherte Wesen, Vorlagen und Prüfwesen behalten ihre Einstellung.
+ * Neues Wesen im Editor: die Startkugel mit glatter Haut (Florian 16.10.: „glatt als Standard für neue Wesen“, S2) und
+ * „Umrisse berühren“ mit der Fülle mittel (16.10. abends, S3). Gespeicherte Wesen, Vorlagen und Prüfwesen behalten ihre
+ * Einstellung.
  */
 export function neuesWesen(): Dokument {
-  return { ...neuesDokument(), ausstattung: { glatt: true } };
+  return { ...neuesDokument(), ausstattung: { glatt: true, fuelle: 'mittel' } };
 }
 
 export const useEditor = create<EditorState>((set, get) => {

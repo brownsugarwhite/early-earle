@@ -241,6 +241,9 @@ button {
 :root {
   --saum: #ffd54a;
   --widerspruch: #ff3b5c;
+  /* S3: Front-Linie nur als Kante erreichbar (Fülle deckelt) / anderes Teil (Flosse, Flügel) */
+  --kante: #ff9a1f;
+  --teil: #8a63ff;
 }
 .view2d .saum {
   pointer-events: none;

@@ -32,7 +32,8 @@ const stand = () =>
   page.evaluate(() => {
     const st = window.__stores.editor.getState();
     const b = window.__stores.kernAnzeige.getState().info?.blatt ?? {};
-    return { hash: window.__editor.netzHash(), schritte: st.verlauf.length, fuelle: st.dok.ausstattung?.fuelle ?? 'aus', delta: ['seite', 'front', 'top'].map((a) => b[a]?.max ?? NaN) };
+    const marken = { kante: document.querySelectorAll('[data-view="front"] [data-kante]').length, teil: document.querySelectorAll('[data-view="front"] [data-teil]').length };
+    return { hash: window.__editor.netzHash(), schritte: st.verlauf.length, fuelle: st.dok.ausstattung?.fuelle ?? 'aus', delta: ['seite', 'front', 'top'].map((a) => b[a]?.max ?? NaN), marken };
   });
 async function nachBau(version) {
   await page.waitForFunction((v) => window.__editor.netzVersion() > v && document.querySelectorAll('[data-delta]').length >= 3, version, { timeout: 60_000 });
@@ -82,6 +83,8 @@ for (const fall of faelle) {
   await page.goto(`${url}/?look=earle&palette=blob`);
   await page.waitForFunction(() => window.__stores && window.__editor && window.__editor.vertices() > 0 && document.querySelectorAll('[data-delta]').length >= 3, null, { timeout: 90_000 });
   await page.waitForFunction(() => (window.__stores.editor.getState().dok.kaefig?.stationen?.ringe.length ?? 0) > 0, null, { timeout: 30_000 });
+  const start = await page.evaluate(() => window.__stores.editor.getState().dok.ausstattung ?? {});
+  pruefe(start.glatt === true && start.fuelle === 'mittel', `neue Startkugel: glatt und „Umrisse berühren: mittel“ (${JSON.stringify(start)})`);
   let v = await page.evaluate(() => window.__editor.netzVersion());
   await page.evaluate(
     async ({ fall, modul, koerperModul, zufallModul }) => {
@@ -95,7 +98,10 @@ for (const fall of faelle) {
         dok = k.koerperDokument(fall, z.zufall(1));
       }
       const st = window.__stores.editor.getState();
-      st.setzeDokument({ ...st.dok, profile: dok.profile, ...(dok.spanten ? { spanten: dok.spanten } : {}) });
+      // Vergleich von „aus“ (heutiger Bau) aus: neue Wesen berühren seit S3 schon (Florian 16.10. abends)
+      const aus = { ...(st.dok.ausstattung ?? {}) };
+      delete aus.fuelle;
+      st.setzeDokument({ ...st.dok, profile: dok.profile, ...(dok.spanten ? { spanten: dok.spanten } : {}), ausstattung: aus });
     },
     { fall, modul, koerperModul, zufallModul },
   );
@@ -115,7 +121,7 @@ for (const fall of faelle) {
     await nachBau(v);
     const b = await stand();
     pruefe(b.fuelle === stufe && b.schritte === vorher.schritte + 1 && b.hash !== vorher.hash, `Fülle „${stufe}“: ein Undo-Schritt, neues Netz`);
-    console.log(`  ${stufe}: Δ S/F/T ${d3(b.delta)} px`);
+    console.log(`  ${stufe}: Δ S/F/T ${d3(b.delta)} px · Markierungen im Front-Blatt: nur als Kante ${b.marken.kante}, anderes Teil ${b.marken.teil}`);
     await bilder(fall, stufe, false);
     vorher = b;
   }

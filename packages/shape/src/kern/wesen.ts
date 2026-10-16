@@ -11,13 +11,15 @@ import type { AugenWerte, Ausstattung, Dokument, GefroreneStationen, KaefigDelta
 import { alleFlaechen } from '../kaefig/halbkanten';
 import { type V3, zuDreiecken } from '../versuch/catmullClark';
 import { type AbleitOptionen, type Ableitung, GLATTE_HAUT, ableiten, seiteZiehen, umrissDicht } from './ableiten';
+import { silhouettenBreite } from './breite';
+import type { RandMarke } from './rand';
 import { type AtlasKachelung, type ZonenForm, atlasEcken, kachelung, punktAtlas, zonenRastern } from './atlas';
 import { HOEHLE_STANDARD, type HoehlenAuge, type HoehlenTopologie, augapfelEcke, augenOben, brauenReihe, hoehlenFein, hoehlenLagen, hoehlenTopologie } from './augenHoehle';
 import { RUNDMAUL_STANDARD, type RundmaulLage, rundmaulAchse, rundmaulDicke, rundmaulEintrag, rundmaulKandidaten, rundmaulLage, rundmaulPose, rundmaulRegion, rundmaulSichtbar, rundmaulZaehne, rundmaulZentrum } from './rundmaul';
 import { DESKRIPTOR_FLOATS, deskriptoren } from './deskriptoren';
 import { kastenSpanten } from './kasten';
 import { ringSegmente } from './reifen';
-import { blattAbweichungen } from './abweichung';
+import { ABWEICHUNG_PX, blattAbweichungen } from './abweichung';
 import { erreichbarkeit } from './grundkoerper/huelle';
 import { type NetzSicht, netzSicht } from './netzSicht';
 import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
@@ -259,6 +261,12 @@ export type WesenNetz = {
    */
   widerspruch: Record<'seite' | 'front' | 'top', Float32Array> | null;
   /**
+   * S3 „Umrisse berühren“: Stücke der Front-Linie, die die gewählte Fülle nur als Kante erreichen könnte (`kante`) bzw. die
+   * mehr verlangen als eine Berührung (`teil`: Flosse, Flügel, unpassende Vorlage); Paare (x, y) in Blattkoordinaten
+   * (Profil-Einheiten), (NaN, NaN) trennt Stücke. Nur mit `fuelle` und nur im genauen Bau.
+   */
+  randMarken: { kante: Float32Array; teil: Float32Array } | null;
+  /**
    * 3D-Liniennetz auf dem Körper der Ruhelage (Plan „Liniennetz, Zielform, Käfig“, S1): Konturen je Blickachse, gehobene
    * Umrissknoten, P-Linien als Hautpunkte, Maullinien, Spantringe, Faltenlinien, je Probe die Sichtbarkeit in fünf Ansichten
    */
@@ -280,6 +288,7 @@ export type WesenStand = {
   /** letzte Blatt-Abweichung (Schritt 4), während Gesten weiterverwendet */
   saum?: WesenNetz['saum'];
   widerspruch?: WesenNetz['widerspruch'];
+  randMarken?: WesenNetz['randMarken'];
   netzSicht?: NetzSicht | null;
   umweg?: WesenNetz['umweg'];
   blatt?: WesenInfo['blatt'];
@@ -289,7 +298,7 @@ export type WesenStand = {
    * B7: Werte der Ruhelage, die nicht an den Gewichten hängen (Naht, Δ je Blatt, Lippenabweichung, Ruhe je Ecke) — ein
    * reiner Gewichtswechsel (Vorschau, Überblenden, Abspielen) rechnet sie nicht neu
    */
-  ruheWerte?: { schluessel: string; naht: { max: number; mittel: number }; saum: WesenNetz['saum']; widerspruch?: WesenNetz['widerspruch']; netzSicht?: NetzSicht | null; umweg: WesenNetz['umweg']; blatt: WesenInfo['blatt']; maulAbw: MaulAbweichung | undefined; ruhe: Float32Array | null; desk: Float32Array | null };
+  ruheWerte?: { schluessel: string; naht: { max: number; mittel: number }; saum: WesenNetz['saum']; widerspruch?: WesenNetz['widerspruch']; randMarken?: WesenNetz['randMarken']; netzSicht?: NetzSicht | null; umweg: WesenNetz['umweg']; blatt: WesenInfo['blatt']; maulAbw: MaulAbweichung | undefined; ruhe: Float32Array | null; desk: Float32Array | null };
 };
 
 const PX = 461;
@@ -850,6 +859,52 @@ function zonenWelt(vorlagen: readonly ZonenVorlage[], g: { xMin: number; xMax: n
  * nur Pose, kein Umbau; `schnell` während Gesten → Zug am Seitenumriss statt Ableitung).
  */
 /** Ableit-Optionen aus dem Dokument: eingefrorene Stationen (Schritt 3), wenn vorhanden. */
+/**
+ * S3: Stücke der Front-Linie „nur als Kante“ bzw. „anderes Teil“ (rechts und gespiegelt), Paare (x, y) mit (NaN, NaN) als
+ * Trenner. Die Kandidaten aus dem Berühren gelten nur, wo die fertige Fläche die Front wirklich verfehlt (Kante > 1 px,
+ * anderes Teil > 2 px): Die Vorlage allein unterschätzt, was die Berührpunkte im Ausgleich holen (Vase: 13 Höhen
+ * markiert bei 2,3 px Abweichung). Benachbarte Höhen (≤ 1,6 Schritte) bilden ein Stück.
+ */
+function randStuecke(rand: { kante: readonly RandMarke[]; teil: readonly RandMarke[] }, dok: Dokument, punkte: readonly V3[]): { kante: Float32Array; teil: Float32Array } {
+  const breiten = silhouettenBreite(dok);
+  // halbe Breite der fertigen Fläche auf der Höhe y (größtes |z| in einem schmalen Band)
+  const band = 0.004;
+  const reichweite = (y: number) => {
+    let m = 0;
+    for (const p of punkte) if (Math.abs(p[1] - y) <= band) m = Math.max(m, Math.abs(p[2]));
+    return m;
+  };
+  const stuecke = (marken: readonly RandMarke[], ab: number) => {
+    const ys = marken.filter((m) => m.soll - reichweite(m.y) > ab / ABWEICHUNG_PX).map((m) => m.y).sort((a, b) => a - b);
+    if (!ys.length) return new Float32Array(0);
+    let schritt = Infinity;
+    for (let k = 1; k < ys.length; k++) if (ys[k]! - ys[k - 1]! > 1e-9) schritt = Math.min(schritt, ys[k]! - ys[k - 1]!);
+    if (!Number.isFinite(schritt)) schritt = 0.01;
+    const laeufe: number[][] = [];
+    for (const y of ys) {
+      const l = laeufe[laeufe.length - 1];
+      if (l && y - l[l.length - 1]! <= 1.6 * schritt) l.push(y);
+      else laeufe.push([y]);
+    }
+    const out: number[] = [];
+    for (const seite of [1, -1]) {
+      for (const l of laeufe) {
+        const a = l[0]! - schritt / 2;
+        const b = l[l.length - 1]! + schritt / 2;
+        const n = 6 * l.length;
+        for (let t = 0; t <= n; t++) {
+          const y = a + ((b - a) * t) / n;
+          const f = breiten.front(y);
+          if (f > 0) out.push(seite * f, y);
+        }
+        out.push(NaN, NaN);
+      }
+    }
+    return Float32Array.from(out);
+  };
+  return { kante: stuecke(rand.kante, 1), teil: stuecke(rand.teil, 2) };
+}
+
 /** Optionen der Ableitung aus Dokument und Bauplan; `koerper`: Körper ohne Maul und Beine (nur dort wirkt `glatt`, S2). */
 function ableitOpt(dok: Dokument, plan: Partial<Bauplan>, koerper = false): Partial<AbleitOptionen> {
   const g = dok.kaefig?.stationen;
@@ -1147,6 +1202,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
   // Abweichung je Blatt (Schritt 4) aus der Ruhelage ohne Hebung, nur nach einer echten Ableitung; Züge zeigen den letzten Stand
   let saum = ruheAlt ? ruheAlt.saum : (stand?.saum ?? null);
   let widerspruch = ruheAlt ? (ruheAlt.widerspruch ?? null) : (stand?.widerspruch ?? null);
+  let randMarken = ruheAlt ? (ruheAlt.randMarken ?? null) : (stand?.randMarken ?? null);
   let netz3 = ruheAlt ? (ruheAlt.netzSicht ?? null) : (stand?.netzSicht ?? null);
   let umweg = ruheAlt ? ruheAlt.umweg : (stand?.umweg ?? null);
   let blatt = ruheAlt ? ruheAlt.blatt : stand?.blatt;
@@ -1167,6 +1223,8 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
       return Float32Array.from(out);
     };
     widerspruch = { seite: tripel(er.seite), front: tripel(er.front), top: tripel(er.top) };
+    // S3: wo die Fülle der Stufe deckelt (nur als Kante) und wo die Front ein anderes Teil verlangt — Stücke der Front-Linie
+    randMarken = abl.rand ? randStuecke(abl.rand, dok, ruheP) : null;
     // 3D-Liniennetz (S1, 16.10.): auf der Ruhelage. Verdeckung auf demselben feinen Netz wie die Anzeige (eine Stufe gröber
     // wich an streifenden Stellen und in Kehlen um 2–20 px ab, gemessen gegen den Strahltest der Bühne)
     if (beine === 'aus' && !hebung) {
@@ -1209,7 +1267,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     if (ruhe.length !== t.positionen.length) ruhe = null;
   }
   // Ruhewerte nur nach einem genauen Bau merken (während einer Geste sind Saum und Δ der letzte Stand, nicht der aktuelle)
-  const ruheWerte: WesenStand['ruheWerte'] = ruheAlt ?? (schnell ? undefined : { schluessel: ruheSchluessel, naht: ab, saum, widerspruch, netzSicht: netz3, umweg, blatt, maulAbw, ruhe: ruheMerkbar && ruhe ? ruhe.slice() : null, desk: deskMerkbar && desk ? desk.slice() : null });
+  const ruheWerte: WesenStand['ruheWerte'] = ruheAlt ?? (schnell ? undefined : { schluessel: ruheSchluessel, naht: ab, saum, widerspruch, randMarken, netzSicht: netz3, umweg, blatt, maulAbw, ruhe: ruheMerkbar && ruhe ? ruhe.slice() : null, desk: deskMerkbar && desk ? desk.slice() : null });
   // Zähne am Zahnfleisch des posierten Käfigs (Phase 2 M4): aus dem Dokument oder die Automatik, Werte für offen mit der Öffnung
   let zaehne: WesenNetz['zaehne'] = null;
   if (maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul) {
@@ -1425,11 +1483,12 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     poseTop,
     saum,
     widerspruch,
+    randMarken,
     netzSicht: netz3,
     umweg,
     info,
   };
-  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(netz3 ? { netzSicht: netz3 } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
+  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(randMarken ? { randMarken } : {}), ...(netz3 ? { netzSicht: netz3 } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
 }
 
 /** Puffer eines Netzes (zum Übertragen aus dem Worker). */

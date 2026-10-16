@@ -157,6 +157,27 @@ export function View2D({ ansicht, w, h }: Props) {
     }
     return d;
   })();
+  // S3 „Umrisse berühren“ (16.10. abends): Stücke der Front-Linie, die die gewählte Fülle nur als Kante erreichen könnte
+  // (orange gestrichelt) bzw. die mehr verlangen als eine Berührung — Flosse, Flügel, unpassende Vorlage (violett gepunktet)
+  const randMarken = useKernAnzeige((s) => (s.info?.blatt && ansicht === 'front' ? (aktuellesNetz()?.netz.randMarken ?? null) : null));
+  const randPfad = (zug: Float32Array | undefined) => {
+    if (!zug || zug.length < 4) return '';
+    let d = '';
+    let offen = false;
+    for (let i = 0; i + 1 < zug.length; i += 2) {
+      const x = zug[i]!;
+      if (!Number.isFinite(x)) {
+        offen = false;
+        continue;
+      }
+      const q = zuBild(view, w, h, spiegeln2(blick, { x: x * skal, y: zug[i + 1]! * skal }));
+      d += `${offen ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
+      offen = true;
+    }
+    return d;
+  };
+  const kantePfad = randPfad(randMarken?.kante);
+  const teilPfad = randPfad(randMarken?.teil);
   // Umweg der schwarzen Linie über einen breiteren Kiefer (14.10. nachts, Florian: „Der schwarze Shape sollte sich bei
   // viel breiterem Kiefer an die Kieferlinie heften“): Front/Top, Teil der Linie — eigene Hälfte schwarz, Spiegel weiß
   const umweg = useKernAnzeige((s) => (s.info?.blatt && ansicht !== 'seite' ? (aktuellesNetz()?.netz.umweg?.[ansicht] ?? null) : null));
@@ -570,6 +591,8 @@ export function View2D({ ansicht, w, h }: Props) {
       ) : (
         <>
           {widerspruchPfad && !poseBlattAnzeige && <path className="widerspruch" data-widerspruch="" d={widerspruchPfad} fill="none" stroke="var(--widerspruch)" strokeWidth={9} strokeOpacity={0.5} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
+          {kantePfad && !poseBlattAnzeige && <path className="rand-kante" data-kante="" d={kantePfad} fill="none" stroke="var(--kante)" strokeWidth={6} strokeOpacity={0.75} strokeDasharray="7 5" strokeLinecap="round" pointerEvents="none" />}
+          {teilPfad && !poseBlattAnzeige && <path className="rand-teil" data-teil="" d={teilPfad} fill="none" stroke="var(--teil)" strokeWidth={6} strokeOpacity={0.6} strokeDasharray="1 7" strokeLinecap="round" pointerEvents="none" />}
           {profil.art === 'halb' && (poseBlattAnzeige ? <path d={pfad(gespiegelteSegmente(profil), false)} fill="none" stroke="var(--kurve-spiegel)" strokeOpacity={0.55} strokeWidth={1.5} strokeDasharray="5 4" pointerEvents="none" /> : <path d={pfad(gespiegelteSegmente(profil), false)} fill="none" stroke="var(--kurve-spiegel)" strokeWidth={KONTUR} strokeLinejoin="round" />)}
           {spalt && maulZu?.unten && !poseSeiteAnzeige ? (
             <g data-maulspalt="">

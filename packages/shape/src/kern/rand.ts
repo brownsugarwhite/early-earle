@@ -24,6 +24,8 @@ const SIGMA_R = 3.0;
  * 1,35 / 1,5 / 1,6 / 2: Fisch +10 / 17 / 21 / 33 % Volumen ohne Gewinn in der Front, einfache Form Front 8,3 / 7,8 / 6,1 / 6,1 px.
  */
 const G_MAX = 1.35;
+/** Rest, ab dem ein Wunsch als „nur als Kante erreichbar“ gilt (1 px) */
+const KANTE_AB = 1 / 461;
 /** Abstand der gewachsenen Punkte zum Top (2 px bei 461 px je Einheit) */
 const TOP_ABSTAND = 2 / 461;
 /** Sprossen, die (fast) waagerecht liegen (stehende Ringe, Hälse), gelten nur auf ihrer eigenen Höhe ± diesem Maß */
@@ -53,7 +55,15 @@ const superellipse = (s: number, p: number) => Math.max(0, 1 - Math.min(1, Math.
  * Front berühren: neue Vorlagen je Ring (Breiten w dürfen über 1 gehen, wo die Hülle am Punkt breiter ist als W), das
  * größte Wachstum je Ring und die Wünsche. `huelle(y)` = erreichbarer Teil der Front (Widersprüche blähen nichts auf).
  */
-export function frontBeruehren(sprossen: readonly Sprosse[], vorlagen: readonly Vorlage[], W: readonly number[], breiten: Breiten, art: FuelleArt, huelle?: (y: number) => number): { vorlagen: Vorlage[]; wachstum: number[]; nachfrage: Nachfrage[]; punkte: { i: number; j: number }[] } {
+/**
+ * Ergebnis des Berührens. `kante`: Höhen, an denen die Front nur mit mehr Fülle (bis zur Kante) erreichbar wäre — die
+ * Stufe deckelt; `teil`: Höhen, an denen die Front mehr verlangt, als eine Berührung darf (anderes Teil: Flosse, Flügel,
+ * oder eine Vorlage, die zum geneigten Ring nicht passt). Beides zeigt der Editor auf der Front-Linie.
+ */
+export type RandMarke = { y: number; soll: number };
+export type Beruehrung = { vorlagen: Vorlage[]; wachstum: number[]; nachfrage: Nachfrage[]; punkte: { i: number; j: number }[]; kante: RandMarke[]; teil: RandMarke[] };
+
+export function frontBeruehren(sprossen: readonly Sprosse[], vorlagen: readonly Vorlage[], W: readonly number[], breiten: Breiten, art: FuelleArt, huelle?: (y: number) => number): Beruehrung {
   const R = sprossen.length;
   const kurven = vorlagen.map((q) => dicht(q));
   let y0 = Infinity;
@@ -70,6 +80,9 @@ export function frontBeruehren(sprossen: readonly Sprosse[], vorlagen: readonly 
     return v > 0.02 && v < 0.98 ? v : null;
   };
   const nachfrage: Nachfrage[] = [];
+  const teil: RandMarke[] = [];
+  // je Wunsch die Höhe und das Soll (für die Prüfung „nur als Kante“ nach dem Wachsen)
+  const wunschHoehe: { y: number; soll: number }[] = [];
   for (let h = 0; h < HOEHEN; h++) {
     const y = y0 + ((h + 0.5) / HOEHEN) * (y1 - y0);
     const front = breiten.front(y);
@@ -112,8 +125,12 @@ export function frontBeruehren(sprossen: readonly Sprosse[], vorlagen: readonly 
     // Verlangt die Front mehr als × G_MAX, ist es keine Berührung, sondern ein anderes Teil (Flosse, Flügel; S6) oder eine
     // Vorlage, die zum geneigten Ring nicht passt (Giraffe; S5): dann bleibt der Ring (gekappt blähte es den Rumpf auf,
     // Fisch +24 %, ungekappt +44 %)
-    if (soll / w0 > G_MAX) continue;
+    if (soll / w0 > G_MAX) {
+      teil.push({ y, soll });
+      continue;
+    }
     nachfrage.push({ i: wahl, v: wahlV, g: soll / w0 });
+    wunschHoehe.push({ y, soll });
   }
   const pMax = FUELLE_EXPONENT[art];
   const wachstum = new Array<number>(R).fill(1);
@@ -157,6 +174,17 @@ export function frontBeruehren(sprossen: readonly Sprosse[], vorlagen: readonly 
     }
     return { ...q, w };
   });
+  // nur als Kante: Wünsche, die der gewachsene Ring nicht erreicht, weil die Fülle der Stufe deckelt (mit mehr Fülle käme er hin)
+  const kante: RandMarke[] = [];
+  const neuKurven = new Map<number, ReturnType<typeof dicht>>();
+  nachfrage.forEach((d, k) => {
+    const { y, soll } = wunschHoehe[k]!;
+    let kurve = neuKurven.get(d.i);
+    if (!kurve) neuKurven.set(d.i, (kurve = dicht(neu[d.i]!)));
+    const f = breiten.front(y);
+    const erreicht = reichweite(kurve, sprossen[d.i]!, W[d.i]!, y, f > 0 ? f : Infinity, breiten.top);
+    if (erreicht < soll - KANTE_AB) kante.push({ y, soll });
+  });
   // Berührpunkte: je Wunsch der Vorlagenpunkt seines Rings, der der gewünschten Höhe am nächsten liegt (die Nachbarn
   // folgen weich über das Wachstum; als Bedingung hätte jeder gewachsene Punkt die Haut gefaltet — einfache Form 26°)
   const gesehen = new Set<string>();
@@ -171,5 +199,5 @@ export function frontBeruehren(sprossen: readonly Sprosse[], vorlagen: readonly 
       punkte.push({ i: d.i, j: jBest });
     }
   }
-  return { vorlagen: neu, wachstum, nachfrage, punkte };
+  return { vorlagen: neu, wachstum, nachfrage, punkte, kante, teil };
 }

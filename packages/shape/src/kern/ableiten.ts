@@ -30,7 +30,7 @@ import { anwenden3, multiplizieren } from '../subdivision/matrix';
 import { type Leiter, WIRBEL_STANDARD, leiter } from '../versuch/wirbelsaeule';
 import { type Breiten, silhouettenBreite } from './breite';
 import { type FuelleArt, huellenBreite } from './fuelle';
-import { frontBeruehren } from './rand';
+import { type RandMarke, frontBeruehren } from './rand';
 import { type Schlitz, schlitzIm, seiteFuerLeiter } from './schlitz';
 import { endenFuer, profilAnker } from './grundkoerper/enden';
 
@@ -123,8 +123,11 @@ export type Reifen = { spant: number; ring: number };
 export type Stationen = { ringe: Station[]; kappen: { vorn: Station[]; hinten: Station[] }; ecken: Ecke[]; reifen: Reifen[]; spitzen: { vorn: boolean; hinten: boolean }; gefroren: GefroreneStationen };
 
 export type Ableitung = {
-  /** S3 „Umrisse berühren“: größtes Wachstum je Ring und Zahl der Wünsche (nur mit `opt.fuelle`) */
-  rand?: { wachstum: number[]; nachfrage: number };
+  /**
+   * S3 „Umrisse berühren“ (nur mit `opt.fuelle`): größtes Wachstum je Ring, Zahl der Wünsche, Höhen „nur als Kante
+   * erreichbar“ (die Fülle der Stufe deckelt) und Höhen eines anderen Teils (mehr als eine Berührung)
+   */
+  rand?: { wachstum: number[]; nachfrage: number; kante: RandMarke[]; teil: RandMarke[] };
   opt: AbleitOptionen;
   vorlage: Roehre;
   unterteilung: Unterteilung;
@@ -1294,7 +1297,7 @@ export type SchlitzLage = {
   front?: { z: number; y: number }[];
 };
 
-export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument | null, opt: AbleitOptionen, schlitz?: SchlitzLage): { ziele: Float64Array; hoehe: Float64Array; rand?: { wachstum: number[]; nachfrage: number; vorlagen: Querschnitt[]; punkte: { i: number; j: number }[] } } {
+export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument | null, opt: AbleitOptionen, schlitz?: SchlitzLage): { ziele: Float64Array; hoehe: Float64Array; rand?: { wachstum: number[]; nachfrage: number; vorlagen: Querschnitt[]; punkte: { i: number; j: number }[]; kante: RandMarke[]; teil: RandMarke[] } } {
   const { R, N, c } = v;
   const ziele = new Float64Array(3 * v.kaefig.n);
   const hoehe = new Float64Array(v.kaefig.n);
@@ -1460,7 +1463,7 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
     }
     if (seite === 'vorn') kastenKappe(v, ziele, hoehe, spitze, schlitz, setze);
   }
-  return rand ? { ziele, hoehe, rand: { wachstum: rand.wachstum, nachfrage: rand.nachfrage.length, vorlagen: ringQNeu.slice(), punkte: rand.punkte } } : { ziele, hoehe };
+  return rand ? { ziele, hoehe, rand: { wachstum: rand.wachstum, nachfrage: rand.nachfrage.length, vorlagen: ringQNeu.slice(), punkte: rand.punkte, kante: rand.kante, teil: rand.teil } } : { ziele, hoehe };
 }
 
 /**
@@ -1757,7 +1760,7 @@ export function ableiten(dok: Dokument, optionen: Partial<AbleitOptionen> = {}):
   faltenSetzen(vorlage, st, l, dok, breiten, opt);
   const { ziele, hoehe, rand } = zieleBerechnen(vorlage, l, st, breiten, dok, opt);
   const abl = fertigstellen({ opt, vorlage, kaefig: vorlage.kaefig, ziele, hoehe, l, st, breiten, dok, zeiten: { t0, t1, t2 }, ...(rand ? { randVorlagen: rand.vorlagen, randPunkte: rand.punkte } : {}) });
-  return rand ? { ...abl, rand: { wachstum: rand.wachstum, nachfrage: rand.nachfrage } } : abl;
+  return rand ? { ...abl, rand: { wachstum: rand.wachstum, nachfrage: rand.nachfrage, kante: rand.kante, teil: rand.teil } } : abl;
 }
 
 export type Rohbau = {
