@@ -29,7 +29,8 @@ import { type Unterteilung, unterteilung } from '../subdivision/catmullClark';
 import { anwenden3, multiplizieren } from '../subdivision/matrix';
 import { type Leiter, WIRBEL_STANDARD, leiter } from '../versuch/wirbelsaeule';
 import { type Breiten, silhouettenBreite } from './breite';
-import { type FuelleArt, fuelleImTop, fuelleJeRing, huellenBreite, querschnittFuellen } from './fuelle';
+import { type FuelleArt, huellenBreite } from './fuelle';
+import { frontBeruehren } from './rand';
 import { type Schlitz, schlitzIm, seiteFuerLeiter } from './schlitz';
 import { endenFuer, profilAnker } from './grundkoerper/enden';
 
@@ -90,10 +91,13 @@ export type AbleitOptionen = {
   /** Faktor des Glättungsgewichts an den Kappen (Zeilen, die innere Kappenpunkte berühren), Standard 1 */
   fairKappe?: number;
   /**
-   * S3-Versuch (Look-Entscheidung): Fülle der Querschnitte, damit der Körper den Front-Umriss berührt — „mittel“ bis zum
-   * weichen Kasten, „genau“ bis fast zum Kasten; fehlt oder „rund“ = Ellipsen wie bisher (bitgleich). Nur ohne Maulschlitz.
+   * S3 „Umrisse berühren“: Wo der Körper hinter der Front zurückbleibt, wird der Ring dort örtlich hinausgeschoben, bis zur
+   * Sichthülle an seinem Punkt; die Form höchstens bis zur Superellipse der Stufe (rund 2, mittel 4, genau 24). Fehlt =
+   * kein Berühren (bitgleich). Nur ohne Maulschlitz.
    */
   fuelle?: FuelleArt;
+  /** S3: Anteil des Breitengewichts für Berührpunkte (Standard 0,25) */
+  randGewicht?: number;
 };
 
 /**
@@ -119,8 +123,8 @@ export type Reifen = { spant: number; ring: number };
 export type Stationen = { ringe: Station[]; kappen: { vorn: Station[]; hinten: Station[] }; ecken: Ecke[]; reifen: Reifen[]; spitzen: { vorn: boolean; hinten: boolean }; gefroren: GefroreneStationen };
 
 export type Ableitung = {
-  /** S3-Versuch: Exponent der Querschnitt-Fülle je Ring (nur mit `opt.fuelle`) */
-  fuelle?: { exponent: number[] };
+  /** S3 „Umrisse berühren“: größtes Wachstum je Ring und Zahl der Wünsche (nur mit `opt.fuelle`) */
+  rand?: { wachstum: number[]; nachfrage: number };
   opt: AbleitOptionen;
   vorlage: Roehre;
   unterteilung: Unterteilung;
@@ -1290,7 +1294,7 @@ export type SchlitzLage = {
   front?: { z: number; y: number }[];
 };
 
-export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument | null, opt: AbleitOptionen, schlitz?: SchlitzLage): { ziele: Float64Array; hoehe: Float64Array; fuelle?: number[] } {
+export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument | null, opt: AbleitOptionen, schlitz?: SchlitzLage): { ziele: Float64Array; hoehe: Float64Array; rand?: { wachstum: number[]; nachfrage: number; vorlagen: Querschnitt[]; punkte: { i: number; j: number }[] } } {
   const { R, N, c } = v;
   const ziele = new Float64Array(3 * v.kaefig.n);
   const hoehe = new Float64Array(v.kaefig.n);
@@ -1396,22 +1400,11 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
       Wr[i] = W;
     }
   }
-  // S3-Versuch: Fülle der Querschnitte (nur die Ringe, die den Front-Umriss am ehesten erreichen; nicht mit Maulschlitz)
-  const fuelle = opt.fuelle && opt.fuelle !== 'rund' && !schlitz ? fuelleJeRing(ringSprossen, ringQNeu, Wr, breiten, opt.fuelle, dok ? huellenBreite(dok, breiten) : undefined) : null;
-  // volle Vorlage je Ring, im Top an der Stelle jedes Punkts beschnitten (zwischen Ellipse und Fülle)
-  const fuellen = <Q extends Querschnitt>(q: Q, p: number, sp: Sprosse, W: number): Q => {
-    const voll = querschnittFuellen(q, p);
-    if (voll === q) return q;
-    const v2 = q.v.slice();
-    const w2 = q.w.slice();
-    for (let j = 1; j + 1 < q.v.length; j++) {
-      const r = fuelleImTop({ v: q.v[j]!, w: q.w[j]! }, { v: voll.v[j]!, w: voll.w[j]! }, sp, W, breiten.top);
-      v2[j] = r.v;
-      w2[j] = r.w;
-    }
-    return { ...q, v: v2, w: w2 };
-  };
-  if (fuelle) for (let i = 0; i < R; i++) ringQNeu[i] = fuellen(ringQNeu[i]!, fuelle[i]!, ringSprossen[i]!, Wr[i]!);
+  // S3 „Umrisse berühren“ (Florian 16.10.: Fülle mittel): Wo der Körper hinter der Front zurückbleibt, schiebt sich der
+  // Ring mit der größten Hülle an seinem Punkt örtlich hinaus; Form höchstens die Superellipse der Stufe. Nicht mit
+  // Maulschlitz; ohne Option bitgleich.
+  const rand = opt.fuelle && !schlitz ? frontBeruehren(ringSprossen, ringQNeu, Wr, breiten, opt.fuelle, dok ? huellenBreite(dok, breiten) : undefined) : null;
+  if (rand) for (let i = 0; i < R; i++) ringQNeu[i] = rand.vorlagen[i] as Querschnitt;
   for (let i = 0; i < R; i++) {
     const sp = ringSprossen[i]!;
     const q = ringQNeu[i]!;
@@ -1429,7 +1422,7 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
     // Kappenpunkte: je Quadratring r (um die Spitze) der Querschnitt des angrenzenden Rings, auf 4r Intervalle
     // abgetastet; mit Schlitz liegt der Lippenpunkt der Kappenzeile bL auf seiner Höhe
     const iEnde = seite === 'vorn' ? 0 : R - 1;
-    const q0 = fuelle ? fuellen(ringQ[iEnde]!, fuelle[iEnde]!, ringSprossen[iEnde]!, Wr[iEnde]!) : ringQ[iEnde]!;
+    const q0 = rand ? (rand.vorlagen[iEnde] as Querschnitt) : ringQ[iEnde]!;
     setze(v.kappe(seite, c / 2, c / 2), spitze.x, spitze.y, 0, 0.5);
     for (let r = 1; r < c / 2; r++) {
       let lippe: { index: number; v: number } | undefined;
@@ -1467,7 +1460,7 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
     }
     if (seite === 'vorn') kastenKappe(v, ziele, hoehe, spitze, schlitz, setze);
   }
-  return fuelle ? { ziele, hoehe, fuelle } : { ziele, hoehe };
+  return rand ? { ziele, hoehe, rand: { wachstum: rand.wachstum, nachfrage: rand.nachfrage.length, vorlagen: ringQNeu.slice(), punkte: rand.punkte } } : { ziele, hoehe };
 }
 
 /**
@@ -1549,10 +1542,20 @@ function kastenKappe(v: Roehre, ziele: Float64Array, hoehe: Float64Array, spitze
  * Breitenpunkte im Ausgleich: je Zeile der feine Punkt (Käfigpunkt = gleicher Index, oder feiner Kettenpunkt), das
  * Vorzeichen seiner z-Seite und sein Anteil an der Soll-Halbbreite (w / wMax der Vorlage; 1 = breitester Punkt).
  */
-export type Breite = { fein: Uint32Array; vorzeichen: Int8Array; faktor: Float64Array; /** je Breitenpunkt: sein Ring stellt an seiner Höhe die Silhouette (führende Front darf ihn bis zur Front wachsen lassen) */ fuehrt?: Uint8Array };
+export type Breite = {
+  fein: Uint32Array;
+  vorzeichen: Int8Array;
+  faktor: Float64Array;
+  /** je Breitenpunkt: sein Ring stellt an seiner Höhe die Silhouette (führende Front darf ihn bis zur Front wachsen lassen) */
+  fuehrt?: Uint8Array;
+  /** S3: Anteil am Breitengewicht je Punkt (Berührpunkte schwächer, sonst 1) */
+  gewicht?: Float64Array;
+};
 
 /** Stützstellen bis so weit unter der größten Breite der Vorlage zählen als Breitenpunkte (geneigte Ringe: Kastenwand) */
 const BREITE_SCHWELLE = 0.05;
+/** S3: Anteil des Breitengewichts für Berührpunkte (voll gab Falten, wo die Haut zwischen Berührpunkten umbiegen muss) */
+const RAND_GEWICHT = 0.25;
 
 /**
  * Soll-Halbbreite eines Breitenpunkts bei (x, y): die größte, die ins Top (bei x) und in die Front (bei y) passt
@@ -1602,13 +1605,18 @@ export function ausgleichsZiele(n: number, ziele: Float64Array, umriss: { pts: V
  * Kästen die ganze flache Seite), rechts und gespiegelt; ihre Grenzlage soll die Soll-Halbbreite bei ihrem (x, y)
  * treffen (`breiteSoll`). Punkte außerhalb von Top und Front fallen weg.
  */
-export function breitenSchleife(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument, opt: AbleitOptionen, ziele: Float64Array, u: Unterteilung, k: Kaefig, haut?: Uint8Array, maulBau = false): Breite | null {
+export function breitenSchleife(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument, opt: AbleitOptionen, ziele: Float64Array, u: Unterteilung, k: Kaefig, haut?: Uint8Array, maulBau = false, randVorlagen?: readonly Querschnitt[], randPunkte?: readonly { i: number; j: number }[]): Breite | null {
   if (!(opt.breiteGewicht > 0)) return null;
   const { R, N } = v;
-  const qs = querschnitteFuer(sprossenVon(l, st.ringe), dok, breiten, N, opt);
+  const roh = querschnitteFuer(sprossenVon(l, st.ringe), dok, breiten, N, opt);
+  // S3: mit „Umrisse berühren“ die gewachsenen Querschnitte; die Berührpunkte (je Wunsch einer) werden Breitenpunkte mit dem
+  // eigenen Ziel als Anteil der Sichthülle (die glatte Haut traf die erhöhten Ziele allein nur zu etwa zwei Dritteln)
+  const qs = randVorlagen ?? roh;
+  const beruehrt = new Set((randPunkte ?? []).map((p) => p.i * N + p.j));
   const fein: number[] = [];
   const vorzeichen: number[] = [];
   const faktor: number[] = [];
+  const gewicht: number[] = [];
   // Anteil je Ring und Schleife (0 = kein Breitenpunkt)
   const breit: Float64Array[] = [];
   for (let i = 0; i < R; i++) {
@@ -1638,14 +1646,22 @@ export function breitenSchleife(v: Roehre, l: Leiter, st: Stationen, breiten: Br
         const wTop = breiten.top(ziele[3 * pz]!);
         if (wTop > 0 && Math.abs(ziele[3 * pz + 2]!) > 1.02 * wTop) continue;
       }
-      const f = maulRing ? (zBest > 0 ? Math.abs(ziele[3 * v.ringPunkt(i, j) + 2]!) / zBest : 0) : (q.w[j] ?? 0) / wBest;
-      if (f < 1 - BREITE_SCHWELLE) continue;
+      let f = maulRing ? (zBest > 0 ? Math.abs(ziele[3 * v.ringPunkt(i, j) + 2]!) / zBest : 0) : (q.w[j] ?? 0) / wBest;
+      const beruehrPunkt = !maulRing && beruehrt.has(i * N + j);
+      if (beruehrPunkt) {
+        const pz = v.ringPunkt(i, j);
+        const B = breiteSoll(breiten, ziele[3 * pz]!, ziele[3 * pz + 1]!, ziele[3 * pz + 2]!);
+        f = B > 1e-9 ? Math.min(1, Math.abs(ziele[3 * pz + 2]!) / B) : 0;
+      }
+      if (f < 1 - BREITE_SCHWELLE && !(beruehrPunkt && f > 0)) continue;
       const p = v.ringPunkt(i, j);
       if (!(breiten.top(ziele[3 * p]!) > 0) || !(breiten.front(ziele[3 * p + 1]!) > 0)) continue;
-      zeile[j] = f;
+      zeile[j] = beruehrPunkt ? 0 : f;
       fein.push(p, v.ringPunkt(i, N - j));
       vorzeichen.push(1, -1);
       faktor.push(f, f);
+      const g = beruehrPunkt ? (opt.randGewicht ?? RAND_GEWICHT) : 1;
+      gewicht.push(g, g);
     }
   }
   // feine Punkte entlang der Längskanten zwischen zwei Breitenpunkten gleicher Schleife (wie die feinen Nahtpunkte):
@@ -1661,15 +1677,17 @@ export function breitenSchleife(v: Roehre, l: Leiter, st: Stationen, breiten: Br
         fein.push(rechts[q]!);
         vorzeichen.push(1);
         faktor.push(f0 + ((f1 - f0) * q) / (rechts.length - 1));
+        gewicht.push(1);
       }
       for (let q = 1; q + 1 < links.length; q++) {
         fein.push(links[q]!);
         vorzeichen.push(-1);
         faktor.push(f0 + ((f1 - f0) * q) / (links.length - 1));
+        gewicht.push(1);
       }
     }
   }
-  return fein.length ? { fein: Uint32Array.from(fein), vorzeichen: Int8Array.from(vorzeichen), faktor: Float64Array.from(faktor) } : null;
+  return fein.length ? { fein: Uint32Array.from(fein), vorzeichen: Int8Array.from(vorzeichen), faktor: Float64Array.from(faktor), ...(gewicht.some((g) => g !== 1) ? { gewicht: Float64Array.from(gewicht) } : {}) } : null;
 }
 
 /** Falten des Käfigs aus Ecken: Ringfalten (Seitenumriss), Spitzen, Längsfalten (Ecken im Querschnitt). */
@@ -1737,9 +1755,9 @@ export function ableiten(dok: Dokument, optionen: Partial<AbleitOptionen> = {}):
   const vorlage = roehre(opt.ringe, opt.ring);
   const st = stationenWaehlen(l, opt, dok);
   faltenSetzen(vorlage, st, l, dok, breiten, opt);
-  const { ziele, hoehe, fuelle } = zieleBerechnen(vorlage, l, st, breiten, dok, opt);
-  const abl = fertigstellen({ opt, vorlage, kaefig: vorlage.kaefig, ziele, hoehe, l, st, breiten, dok, zeiten: { t0, t1, t2 } });
-  return fuelle ? { ...abl, fuelle: { exponent: fuelle } } : abl;
+  const { ziele, hoehe, rand } = zieleBerechnen(vorlage, l, st, breiten, dok, opt);
+  const abl = fertigstellen({ opt, vorlage, kaefig: vorlage.kaefig, ziele, hoehe, l, st, breiten, dok, zeiten: { t0, t1, t2 }, ...(rand ? { randVorlagen: rand.vorlagen, randPunkte: rand.punkte } : {}) });
+  return rand ? { ...abl, rand: { wachstum: rand.wachstum, nachfrage: rand.nachfrage } } : abl;
 }
 
 export type Rohbau = {
@@ -1763,6 +1781,9 @@ export type Rohbau = {
   schlitz?: Schlitz | null;
   /** Maulbau: Breitenpunkte auch auf Hautzeilen der Maulringe, keine an Kastenringen (Phase 2 M3) */
   maulBau?: boolean;
+  /** S3 „Umrisse berühren“: gewachsene Querschnitte je Ring und die Berührpunkte (Ring, Vorlagenpunkt) — Breitenpunkte im Ausgleich */
+  randVorlagen?: readonly Querschnitt[];
+  randPunkte?: readonly { i: number; j: number }[];
   zeiten: { t0: number; t1: number; t2: number };
 };
 
@@ -1811,12 +1832,12 @@ export function fertigstellen(e: Rohbau): Ableitung {
   }
   const nahtFein = Uint32Array.from(geordnet);
   let nahtLoeser: AusgleichsLoeser | null = null;
-  const breite = breitenSchleife(vorlage, l, st, breiten, dok, opt, ziele, u, k, e.haut, e.maulBau);
+  const breite = breitenSchleife(vorlage, l, st, breiten, dok, opt, ziele, u, k, e.haut, e.maulBau, e.randVorlagen, e.randPunkte);
   if (opt.nahtGewicht > 0) {
     const bedingungen: Bedingung[] = [];
     for (let i = 0; i < k.n; i++) bedingungen.push({ zeile: i, gewicht: e.zielGewicht ? e.zielGewicht[i]! : 1 });
     for (let q = 0; q < nahtFein.length; q++) bedingungen.push({ zeile: nahtFein[q]!, gewicht: opt.nahtGewicht });
-    if (breite) for (let q = 0; q < breite.fein.length; q++) bedingungen.push({ zeile: breite.fein[q]!, gewicht: opt.breiteGewicht });
+    if (breite) for (let q = 0; q < breite.fein.length; q++) bedingungen.push({ zeile: breite.fein[q]!, gewicht: opt.breiteGewicht * (breite.gewicht?.[q] ?? 1) });
     nahtLoeser = ausgleichsLoeser(u.grenze, k.n, bedingungen, opt.glaettung > 0 ? { kaefig: k, gewicht: opt.glaettung } : undefined, glaettemassFuer(u, k, opt, vorlage.R * vorlage.N));
     xyz = kaefigAusgleich(nahtLoeser, ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, breiten, fein, opt.fuehrend));
     fein = anwenden3(u.grenze, xyz);

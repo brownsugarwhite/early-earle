@@ -128,7 +128,7 @@ export const AusstattungSchema = z.object({
   rundmaul: z.object({ zu: z.number().min(0).max(0.5).optional(), auf: z.number().min(0).max(0.5).optional(), zaehne: z.number().int().min(0).max(40).optional(), punkt: V3.optional() }).optional(),
   // Plan „Liniennetz, Zielform, Käfig“, S2: glatte Haut (Ausgleich mit Glättungsmaß, `GLATTE_HAUT`); fehlt = heutiger Bau
   glatt: z.boolean().optional(),
-  // S3-Versuch (Look-Entscheidung): Fülle der Querschnitte, damit der Körper Front und Top berührt; fehlt = rund
+  // S3 „Umrisse berühren“ mit der Fülle der Stufe (rund, mittel, genau); fehlt = kein Berühren (heutiger Bau)
   fuelle: z.enum(['rund', 'mittel', 'genau']).optional(),
 });
 /** Ausstattung als Typ mit exakten Optionalen (zod-Inferenz erlaubt `undefined`, das passt nicht zu `exactOptionalPropertyTypes`). */
@@ -213,8 +213,9 @@ export type Ausstattung = {
    */
   glatt?: boolean;
   /**
-   * S3-Versuch (16.10., Look-Entscheidung): wie voll die Querschnitte werden dürfen, damit der Körper den Front-Umriss
-   * berührt — rund (Ellipsen, heute), mittel (bis „weicher Kasten“), genau (bis zur Kante). Fehlt = rund.
+   * S3 „Umrisse berühren“ (16.10.; Florian: Fülle mittel): Wo der Körper hinter der Front zurückbleibt, schiebt sich der
+   * Ring dort örtlich hinaus; die Form höchstens rund (Ellipse), mittel (weicher Kasten) oder genau (bis zur Kante).
+   * Fehlt = kein Berühren (heutiger Bau, bitgleich). Mit Maul oder Beinen noch ohne Wirkung.
    */
   fuelle?: 'rund' | 'mittel' | 'genau';
 };

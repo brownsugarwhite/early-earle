@@ -1,7 +1,7 @@
-// Plan „Liniennetz, Zielform, Käfig“ (16.10.), S3 Look-Entscheidung im echten Editor (eigener Vite über run-check.sh, nie
+// Plan „Liniennetz, Zielform, Käfig“ (16.10.), S3 „Umrisse berühren“ im echten Editor (eigener Vite über run-check.sh, nie
 // 5180): Florians Ablauf (neue Startkugel mit glatter Haut, dann die Umrisse eines Prüfkörpers übernommen), dann in der
-// Tafel Körper „Fülle rund | mittel | genau“ — je Stufe ein Undo-Schritt, Δ je Blatt aus dem Titel, Bilder der Bühne
-// (Earle-Look und Prüfansicht) und des ganzen Fensters (Blätter mit schwarzer Linie und Saum).
+// Tafel Körper „Umrisse berühren aus | rund | mittel | genau“ — je Stufe ein Undo-Schritt, Δ je Blatt aus dem Titel,
+// Bilder der Bühne (Earle-Look und Prüfansicht) und des ganzen Fensters (Blätter mit schwarzer Linie und Saum).
 // Umgebung: FAELLE (Komma-Liste, Standard einfach-glatt), AUSGABE, ZOOM (JSON je Fall), ANTEIL (Ausschnitt der Bühne).
 // Aufruf: apps/editor/scripts/pruefen/run-check.sh apps/editor/scripts/pruefen/s3-editor.mjs
 import { mkdirSync } from 'node:fs';
@@ -32,7 +32,7 @@ const stand = () =>
   page.evaluate(() => {
     const st = window.__stores.editor.getState();
     const b = window.__stores.kernAnzeige.getState().info?.blatt ?? {};
-    return { hash: window.__editor.netzHash(), schritte: st.verlauf.length, fuelle: st.dok.ausstattung?.fuelle ?? 'rund', delta: ['seite', 'front', 'top'].map((a) => b[a]?.max ?? NaN) };
+    return { hash: window.__editor.netzHash(), schritte: st.verlauf.length, fuelle: st.dok.ausstattung?.fuelle ?? 'aus', delta: ['seite', 'front', 'top'].map((a) => b[a]?.max ?? NaN) };
   });
 async function nachBau(version) {
   await page.waitForFunction((v) => window.__editor.netzVersion() > v && document.querySelectorAll('[data-delta]').length >= 3, version, { timeout: 60_000 });
@@ -106,10 +106,10 @@ for (const fall of faelle) {
   });
   await page.waitForTimeout(400);
   const a = await stand();
-  console.log(`  rund: Δ S/F/T ${d3(a.delta)} px`);
-  await bilder(fall, 'rund', true);
+  console.log(`  aus: Δ S/F/T ${d3(a.delta)} px`);
+  await bilder(fall, 'aus', true);
   let vorher = a;
-  for (const stufe of ['mittel', 'genau']) {
+  for (const stufe of (process.env.STUFEN ?? 'mittel,genau').split(',')) {
     v = await page.evaluate(() => window.__editor.netzVersion());
     await page.locator(`[data-fuelle="${stufe}"]`).click();
     await nachBau(v);

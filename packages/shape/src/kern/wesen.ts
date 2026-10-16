@@ -853,7 +853,7 @@ function zonenWelt(vorlagen: readonly ZonenVorlage[], g: { xMin: number; xMax: n
 /** Optionen der Ableitung aus Dokument und Bauplan; `koerper`: Körper ohne Maul und Beine (nur dort wirkt `glatt`, S2). */
 function ableitOpt(dok: Dokument, plan: Partial<Bauplan>, koerper = false): Partial<AbleitOptionen> {
   const g = dok.kaefig?.stationen;
-  return { ...(g ? { stationen: g } : {}), ...(plan.fuehrend ? { fuehrend: plan.fuehrend } : {}), ...(plan.ring ? { ring: plan.ring } : {}), ...(koerper && plan.glatt ? GLATTE_HAUT : {}), ...(koerper && plan.fuelle && plan.fuelle !== 'rund' ? { fuelle: plan.fuelle } : {}) };
+  return { ...(g ? { stationen: g } : {}), ...(plan.fuehrend ? { fuehrend: plan.fuehrend } : {}), ...(plan.ring ? { ring: plan.ring } : {}), ...(koerper && plan.glatt ? GLATTE_HAUT : {}), ...(koerper && plan.fuelle ? { fuelle: plan.fuelle } : {}) };
 }
 
 export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stand: WesenStand | null, schnell = false): { netz: WesenNetz; stand: WesenStand } {
@@ -868,7 +868,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
   // Pose-Optionen (Winkel, Haps, Gelenk, Gewichte) bauen nicht um: sie wirken auf die gemerkte Ableitung (Fressen-Tab)
   const moEintraege = Object.entries(plan.maulOptionen ?? {}).filter(([k]) => !(MAUL_POSE_OPTIONEN as readonly string[]).includes(k));
   const moBau = moEintraege.length ? Object.fromEntries(moEintraege) : null;
-  const schluessel = JSON.stringify({ p: dokRoh.profile, s: dokRoh.spanten ?? null, ka: dokRoh.kanten ?? null, k: dokRoh.skalierung, st: dokRoh.kaefig?.stationen ?? null, ring: plan.ring ?? null, fu: plan.fuehrend ?? null, kasten: plan.kasten ?? null, linie: plan.maulLinie ?? null, mo: moBau, ba: plan.beinAnsaetze ?? null, gl: plan.glatt ?? false, fl: plan.fuelle ?? 'rund' });
+  const schluessel = JSON.stringify({ p: dokRoh.profile, s: dokRoh.spanten ?? null, ka: dokRoh.kanten ?? null, k: dokRoh.skalierung, st: dokRoh.kaefig?.stationen ?? null, ring: plan.ring ?? null, fu: plan.fuehrend ?? null, kasten: plan.kasten ?? null, linie: plan.maulLinie ?? null, mo: moBau, ba: plan.beinAnsaetze ?? null, gl: plan.glatt ?? false, fl: plan.fuelle ?? null });
   const gleich = stand !== null && stand.schluessel === schluessel;
   const letzte = stand && gleich ? stand : null;
   let abl: Ableitung;
