@@ -126,6 +126,8 @@ function poseSchreiben(b: PoseBearbeitung, zuwachs: Map<number, V3>, anker: Para
   });
   const bezug = bezugAus(b.ruhe);
   useEditor.getState().poseSetzen(b.id, (p: Pose) => {
+    // ohne Form vorher und nachher nichts schreiben (sonst ein Bezug ohne Wirkung, Befund B6)
+    if (!deltas.length && !p.form.length) return p;
     const neu: Pose = { ...p, form: deltas, bezug };
     delete neu.formAlt;
     return neu;

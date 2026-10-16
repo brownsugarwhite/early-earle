@@ -94,6 +94,18 @@ describe('B7: Undo mit Zielwechsel', () => {
     expect(hinweis()).toBe('↶ Idle: Form');
   });
 
+  it('Geste ohne Wirkung (gleicher Inhalt, neue Objekte) schreibt keinen Undo-Schritt', () => {
+    ed().neu();
+    ed().setzeZiel('idle');
+    const vorher = ed().dok;
+    ed().beginGeste();
+    ed().poseSetzen('idle', (p) => ({ ...p, form: [{ punkt: 4, d: [0, 0.01, 0] }] }));
+    ed().poseSetzen('idle', (p) => ({ ...p, form: [] }));
+    ed().endeGeste();
+    expect(ed().verlauf.length).toBe(0);
+    expect(ed().dok).toBe(vorher);
+  });
+
   it('Name eines Schritts: andere Pose mit Namen davor, Knochen, Grundform', () => {
     const a = neuesDokument();
     const b = { ...a, posen: a.posen.map((p) => (p.id === 'idle' ? { ...p, stellung: { kiefer: { winkel: 10 } } } : p)) };

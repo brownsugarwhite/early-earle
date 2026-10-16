@@ -293,7 +293,10 @@ export const useEditor = create<EditorState>((set, get) => {
         const formNeu = gesteStart.profile !== jetzt.profile || gesteStart.spanten !== jetzt.spanten || gesteStart.hauptspant !== jetzt.hauptspant;
         const dok = formNeu ? kantenAnFlaeche(jetzt) : jetzt;
         const ziel = gesteZiel ?? modus;
-        if (gesteStart !== dok) set({ dok, gesteStart: null, gesteZiel: null, verlauf: [...verlauf, { dok: gesteStart, ziel, name: schrittName(gesteStart, dok, ziel) }].slice(-MAX_VERLAUF), zukunft: [] });
+        // B7 (Befund B6): Eine Geste ohne Wirkung (Aufblasen mit Betrag 0, Zug zurück an den Anfang) schreibt neue Objekte
+        // mit gleichem Inhalt — kein Undo-Schritt, und das alte Dokument bleibt (kein Neubau)
+        if (gesteStart !== dok && JSON.stringify(gesteStart) === JSON.stringify(dok)) set({ dok: gesteStart, gesteStart: null, gesteZiel: null });
+        else if (gesteStart !== dok) set({ dok, gesteStart: null, gesteZiel: null, verlauf: [...verlauf, { dok: gesteStart, ziel, name: schrittName(gesteStart, dok, ziel) }].slice(-MAX_VERLAUF), zukunft: [] });
         else set({ gesteStart: null, gesteZiel: null });
       };
       if (gesteEndeHaken && gesteEndeHaken(start, get().dok, abschliessen)) return;
