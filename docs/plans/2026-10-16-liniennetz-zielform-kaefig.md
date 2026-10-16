@@ -249,6 +249,70 @@ gemessenen Fehlanläufen am selben Tor: anhalten, Kritik-Register, Bericht.
   Gestenende ≤ 250 ms, Topologie-Neubau ≤ 500 ms im Hintergrund.
 - Im Editor zuerst als Geist neben dem heutigen Körper, dann zum Einschalten für Wesen ohne Pinsel-/Pose-Daten.
 
+#### S5 im Detail (Bauplan 16.10. abends, nach Florians „dann S5“; vor dem Code)
+
+**Grundgedanke.** Ein Körper aus Mittelteilen ist ein Höhenfeld über seiner Seitenfläche: Jeder Punkt (x, y) der Seite hat
+eine halbe Dicke h ≥ 0, die Haut ist z = ±h, die schwarze Linie ist h = 0. Der Käfig ist dann ein 2D-Vierecksnetz der
+Seitenfläche, verdoppelt (rechts und links), dessen Randpunkte die Naht bilden. Die heutige Röhre ist genau das: ein
+Streifen (Sprossen × Querschnittspunkte) und an jeder Spitze eine halbe Kappe. S5 legt die Seitenfläche aus mehreren
+Streifen aus; seitliche Paare (Flügel, Beine, Brustflossen) bleiben bis S6, wie sie heute sind.
+
+**Ausgangslage gemessen** (S3-Standard glatt + Berühren mittel; frisch / aus der Startkugel; freie Haut, Kappe; Δ S/F/T px):
+Langhals 16,3/14,5°, Δ 1,5/4,3/3,4 · Drache 14,7°, 1,5/4,3/3,0 · S-Hals 26,7/29,7° (106/150 Kanten > 20°), 1,5/1,8/7,4 ·
+Giraffe mit Bauch 23,2/25,0°, Kappe 22,5°, 0,9/18,8/8,5 · Überhang 57,9/43,0° (567/532), 2,4/23,1/30,1 · Vase 13,5/10,9°,
+1,1/2,9/**13,9** · Ente 16,7/45,4°, Kappe 23,6/56,8°, 4,2/2,8/46,5 (Flügel = S6) · Fisch 145° (Flossen in einer Röhre).
+Vase: Die Leiter läuft vom Rand über den Hals und biegt im Bauch zur rechten Seite; die schrägen Bauchringe ragen im Top
+bis 13,7 px über den Kreis (Diagonalen) — ein Fall für die richtigen Enden, nicht für ein Verbindungsstück.
+
+**Zwei Bauarten je Mittelteil** (aus dem eingefrorenen S4-Baum):
+1. **Seitlich angesetzt (Verbindungsstück):** Das Teil sitzt an einer Längsseite des Elternstreifens, und der Elternteil
+   läuft über beide Sehnenenden hinaus weiter (Ente, Giraffe mit Bauch, S-Hals, Überhang, Rücken- und Bauchflosse). Der
+   Elternstreifen behält seine Ringe; unter der Sehne enden H + 1 seiner Sprossen genau auf den Punkten des ersten
+   Teilrings (H = halbe Punktzahl des Teilrings), ihre Fußpunkte auf der Gegenseite gleichmäßig verteilt (Fächer, sonst
+   werden die Vierecke darunter schmal). Der erste Teilring ist die Sehne selbst, verdoppelt. Topologisch eine Hose; die
+   beiden Sehnenenden (Hohlkehlen) werden Nahtpunkte mit sechs Kanten (Sattel), sonst keine besonderen Punkte.
+2. **Am Ende angesetzt (Fortsetzung):** Das Teil setzt ein Ende des Elternstreifens fort (Langhals, Drache, Vase). Ist es
+   deutlich dünner (Umfang unter ≈ 70 % des Elternteils an der Sehne), wird die Endkappe des Elternstreifens zum Übergang
+   2:1: Ihre Nahtspalte ist die Sehne, an der das Teil mit halber Punktzahl beginnt (16 → 8). Sonst läuft der Streifen wie
+   heute als Bogen weiter (Fächer innen). Die Enden einer Fortsetzung sind die Spitze des Teils und das gegenüberliegende
+   Ende des Elternteils (Vase: Rand und Boden, Ringe waagerecht).
+3. **Entscheidung:** Winkel zwischen Sehne und Wirbelsäule des Elternteils an der Sehne unter 45° → seitlich; sonst
+   Fortsetzung; ein runder Elternteil (Seitenverhältnis < 1,3) → Fortsetzung. Körper ohne seitlich angesetzte oder
+   verjüngte Teile bauen wie heute (bitgleich).
+
+**2D-Auslegung** (neu `kern/grundkoerper/ebene.ts`): je Streifen der Umriss seines Bereichs (Teilumrisse aus S4, an den
+Sehnen geschnitten), zwei Ketten vom Anfang (Spitze oder Sehne) zum Ende, die kürzeste Leiter dazwischen (Leiter aus
+`versuch/wirbelsaeule.ts` für beliebige Ketten verallgemeinert, alte Aufrufe bitgleich). Punkte je Ring: Rumpf 16, Teile 8
+(mehr nur, wenn der Umfang es verlangt; Vielfache von 8). Ringe nach der örtlichen Kantenlänge (Umfang / Punktzahl), an
+Krümmungen verdichtet; Käfig höchstens ≈ 600 Vierecke (40 000 auf Stufe 3). Sehnenpunkte des ersten Teilrings nach
+gleichen Winkeln (runder Ring in 3D).
+
+**Käfig** (neu `kaefig/baumKaefig.ts`): Ringe je Streifen, Kappen an den Spitzen (heutige c × c-Kappe, innere Punkte zuletzt
+nummeriert wie heute), Übergangskappe mit der Sehne als Nahtspalte, verdoppelte Sprossenenden unter einer Sehne. Prüfung:
+geschlossen, orientiert, χ = 2, Valenzen wie erwartet; ein Streifen ergibt genau die heutige Röhre (Topologie und Ziele).
+
+**Zielform** (Form zuerst): je Streifen Querschnitt und Maßstab wie heute (`querschnitteFuer`, `masstab`, S3-Berühren) auf
+den eigenen Sprossen. Der erste Teilring ist der Querschnitt des Teils an der Sehne (Breite aus Front und Top dort) und
+zugleich das obere Ende der Elternsprossen darunter; deren Querschnitt geht im oberen Teil weich vom eigenen auf diesen
+Punkt über, die ersten Teilringe ebenso vom ersten Ring auf den eigenen Querschnitt. Danach Löser wie S2 (glatt, relativ zur
+Zielform), Naht auf der ganzen schwarzen Linie, Breitenpunkte aller Streifen. Die Übergänge sind die eigentliche Arbeit;
+sie werden gemessen (Falten nach Zonen mit neuer Zone „Ansatz“), nicht geschätzt.
+
+**Teilschritte** (je Teilschritt Messreihe und Bild, Commit):
+- **S5.1 Topologie:** Auslegung und Käfig, Prüfungen (geschlossen, Valenzen, ein Streifen = Röhre), Bild der 2D-Auslegung.
+- **S5.2 Seitlich angesetzt:** Zielform, Lösen, Zonen → Giraffe mit Bauch, Ente, S-Hals, Überhang, Fisch-Flossen.
+- **S5.3 Fortsetzung:** Übergangskappe 2:1 und Enden → Langhals, Drache, Vase.
+- **S5.4 Fischschwanz-Gabel:** zwei Lappen am Ende (Fortsetzung in einen Lappen, der andere seitlich — oder ein
+  Y-Stück, nach Messung).
+- **S5.5 Editor:** Schalter `ausstattung.koerper: 'teile'`, Geist neben dem heutigen Körper auf der Bühne, Prüfskript mit
+  Florians Ablauf; dann Halt mit Kontaktbogen.
+
+**Tore** (wie oben, präzisiert): einteilige Körper bitgleich zu S3; die acht Körper freie Haut, Ansatz und Kappe ≤ 20°;
+Käfig kleinster Winkel ≥ 25°, Seitenverhältnis ≤ 3, Kantenlängen je Teil im Faktor 2 um den Median (an verjüngten
+Spitzen ehrlich berichtet); Δ ≤ 1,5/2/2 px, wo erreichbar (Flügel, Brustflossen = S6, ausgenommen); Gestenende ≤ 250 ms,
+Topologie-Neubau ≤ 500 ms. **Grenzen:** Maul, Reifen, Augen, Pinsel und Posen auf mehrteiligen Körpern erst mit S7 (die
+Tafel sagt es); die Auslegung wird je genauem Bau neu bestimmt (Einfrieren mit S7).
+
 ### S6 Seitliche Teile: Flügel, Flossen, Beine, Ohren
 - Neu `kern/grundkoerper/seitenteil.ts` (Streifen im geneigten Rahmen: Naht = Top-Lappen, Mittelfläche aus der
   Front-Mittelachse, Linsen-Querschnitt, N = 8, flache Kappe) und `ansatz.ts` (Fenster als Rechteck im exakt verfeinerten
