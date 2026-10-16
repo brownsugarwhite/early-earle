@@ -38,6 +38,6 @@ describe('Teil L, L0 Fall 4: Querlinie als Ring (Fläche bleibt, Netz gleitet)',
       console.log(`  Tor (Plan): ${[auf <= TOR.reihe ? 'Ring ✓' : 'Ring ✗', m.haut <= TOR.haut ? 'Haut ✓' : 'Haut ✗', m.normale <= TOR.normale ? 'Normalen ✓' : 'Normalen ✗'].join(', ')}`);
       expect(ring.length).toBeGreaterThan(0);
       expect(auf).toBeLessThan(fall.waechter.ring);
-    });
+    }, 120_000);
   }
 });

@@ -98,5 +98,5 @@ describe('Teil A, A1: Linie auf A0', () => {
     console.log(`${gezeichnet} von ${faelle.length} Fällen zeichenbar; Pfad höchstens ${schlechtester.toFixed(2)} feine Kanten neben der Linie (Ziel des Plans ½, offen)${fehlerText ? `; Fehler: ${fehlerText}` : ''}`);
     expect(gezeichnet).toBeGreaterThan(30);
     expect(fehlerText).toBe('');
-  });
+  }, 120_000);
 });

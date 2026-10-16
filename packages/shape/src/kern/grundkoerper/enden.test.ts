@@ -2,10 +2,11 @@
 // die Giraffe mit Bauch vor der Nase bekommen Schnabel bzw. Nase als Anfang, und ein Zug am Bauch über die Nase hinweg
 // wirft die eingefrorenen Enden nicht mehr um.
 import { describe, expect, it } from 'vitest';
-import type { Dokument } from '../../dokument';
+import { type Dokument, neuesDokument } from '../../dokument';
 import { WIRBEL_STANDARD, leiter } from '../../versuch/wirbelsaeule';
 import { ableiten, kernLeiter, leiterEntfaechern, leiterInnenEntfaechern } from '../ableiten';
 import { giraffeBauchDokument, gKoerperDokument } from '../pruefen/grundkoerper';
+import { kugelMaulDokument, mitStationenVon, pruefenMaul } from '../pruefstand';
 import { KOERPER, koerperDokument } from '../pruefen/koerper';
 import { zufall } from '../pruefen/zufall';
 import { endenAutomatisch, endenFuer } from './enden';
@@ -66,4 +67,33 @@ describe('Teil G, G2: Enden der Wirbelsäule', () => {
     expect(altSprung).toBe(true);
     expect(maxNase * 461).toBeLessThan(5);
   });
+  // Regression G2 (Florian 16.10. morgens): Die an der Startkugel eingefrorenen Enden blieben nach dem Umformen an der alten
+  // Kugelstelle (Schnabel: Seite Δ 34 px; Unterbiss: Δ 20 px, 822 Durchdringungen; Vase: Wirbelsäule quer durch den Körper)
+  const K = 0.146;
+  const kn = (x: number, y: number, ex: number, ey: number, ax: number, ay: number, art: 'glatt' | 'ecke' = 'glatt') => ({ p: { x, y }, ein: { x: ex, y: ey }, aus: { x: ax, y: ay }, art });
+  const r = 0.265;
+  const schnabel = { art: 'geschlossen' as const, knoten: [kn(0, 2 * r, -K, 0, K, 0), kn(r, r, 0, K, 0, -K), kn(0, 0, K, 0, -K, 0), kn(-0.3975, 0.1405, 0.1, -0.08, 0.06, 0.02, 'ecke'), kn(-0.255, 0.1935, -0.05, -0.015, -0.03, 0.1, 'ecke')] };
+  const vase = { art: 'geschlossen' as const, knoten: [kn(-0.12, 0.95, 0, -0.08, 0.08, 0, 'ecke'), kn(0.13, 0.95, -0.08, 0, 0, -0.1, 'ecke'), kn(0.11, 0.55, 0, 0.1, 0, -0.08), kn(0.27, 0.27, 0, 0.1, 0, -0.14), kn(0, 0, K, 0, -K, 0), kn(-0.26, 0.32, 0, -0.14, 0, 0.1), kn(-0.12, 0.6, -0.02, -0.08, 0, 0.1)] };
+
+  it('Startkugel eingefroren, dann umgeformt: Schnabelspitze vorn (auch mit gezeichnetem Maul), Vase mit Ende im Kopf', () => {
+    const start = neuesDokument('kugel');
+    const g0 = ableiten(start, { stufen: 1 }).gefroren;
+    const mit = (seite: typeof schnabel, maul = false): Dokument => ({ ...start, profile: { ...start.profile, seite }, kaefig: { deltas: [], stationen: g0 }, ...(maul ? { maul: kugelMaulDokument('florian').maul! } : {}) });
+    const vornS = kernLeiter(mit(schnabel)).ruecken[0]!;
+    expect(Math.hypot(vornS.x + 0.3975, vornS.y - 0.1405)).toBeLessThan(0.005);
+    const vornM = kernLeiter(mit(schnabel, true)).ruecken[0]!;
+    expect(Math.hypot(vornM.x + 0.3975, vornM.y - 0.1405)).toBeLessThan(0.005);
+    expect(endenFuer(mit(schnabel, true)).quelle).toBe('spitzen');
+    const lv = kernLeiter(mit(vase));
+    const kopf = [lv.ruecken[0]!, lv.ruecken[lv.ruecken.length - 1]!].some((p) => p.y > 0.85);
+    expect(kopf).toBe(true);
+  });
+
+  it('Maul-Prüfreihe mit eingefrorener Startkugel: Florians Unterbiss baut wie vor G2 (Δ ≤ 2 px, keine Durchdringung)', () => {
+    const d = mitStationenVon(kugelMaulDokument('florian', true), neuesDokument('kugel'));
+    const m = pruefenMaul(d);
+    expect(m.delta.seite).toBeLessThan(2);
+    expect(m.delta.top).toBeLessThan(3);
+    expect(m.paare.every((p) => p.paare === 0)).toBe(true);
+  }, 120_000);
 });

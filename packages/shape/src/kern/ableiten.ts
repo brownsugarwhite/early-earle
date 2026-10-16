@@ -146,7 +146,10 @@ export function kernLeiter(dok: Dokument): Leiter {
   // Teil G, G2: Enden eingefroren (gleiche Knotenzahl) oder über die Mittelachse; ohne Seitenast wie bisher der vorderste
   // und der hinterste Punkt (bitgleich). Die tatsächlich benutzten Enden gehen als Anker in die eingefrorenen Stationen.
   const e = endenFuer(dok);
-  const l = leiterInnenEntfaechern(leiterEntfaechern(e.quelle === 'spitzen' ? leiter(d, WIRBEL_STANDARD) : leiter(d, WIRBEL_STANDARD, { vorn: e.vorn, hinten: e.hinten }, ENDEN_FANG)));
+  const roh = leiterEntfaechern(e.quelle === 'spitzen' ? leiter(d, WIRBEL_STANDARD) : leiter(d, WIRBEL_STANDARD, { vorn: e.vorn, hinten: e.hinten }, ENDEN_FANG));
+  // G2b (Fächer an inneren Ecken) nicht mit Maul: Der Maulbau ist mit der Leiter von vor G2 geprüft (16.10.)
+  const mitMaul = dok.profile.seite.knoten.some((k) => k.marke) || !!dok.maul || (!!dok.ausstattung?.maul && dok.ausstattung.maul !== 'aus');
+  const l = mitMaul ? roh : leiterInnenEntfaechern(roh);
   const seite = dok.profile.seite;
   return { ...l, enden: { vorn: profilAnker(seite, l.ruecken[0]!), hinten: profilAnker(seite, l.ruecken[l.ruecken.length - 1]!), knoten: seite.knoten.length } };
 }

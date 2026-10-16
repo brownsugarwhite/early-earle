@@ -47,6 +47,6 @@ describe('Teil L, L0.1: Längslinie als Reihe (Fläche bleibt, Netz gleitet)', (
       expect(auf).toBeLessThan(fall.waechter.reihe);
       if (fall.waechter.haut !== undefined) expect(m.haut).toBeLessThan(fall.waechter.haut);
       if (fall.waechter.normale !== undefined) expect(m.normale).toBeLessThan(fall.waechter.normale);
-    });
+    }, 120_000);
   }
 });

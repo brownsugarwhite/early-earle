@@ -152,23 +152,67 @@ function endenWaehlen(seite: Profil): EndenWahl {
   return { vorn: pts[iV]!, hinten: pts[iH]!, quelle: 'achse' };
 }
 
+/** Eingefrorene Enden gelten, solange ihr Abstand mindestens diesen Anteil des Durchmessers der Seite hat (schnelle Probe) … */
+const TRAGEN_SCHNELL = 0.9;
+/** … oder ihr Weg innen mindestens diesen Anteil des Wegs zwischen den automatischen Enden (volle Probe) */
+const TRAGEN_WEG = 0.9;
+
+/** Größter Abstand zweier Punkte des Umrisses (grob, auf ≤ 120 Punkten). */
+function durchmesser(pts: readonly V2[]): number {
+  const schritt = Math.max(1, Math.floor(pts.length / 120));
+  let d = 0;
+  for (let i = 0; i < pts.length; i += schritt)
+    for (let j = i + schritt; j < pts.length; j += schritt) d = Math.max(d, Math.hypot(pts[i]!.x - pts[j]!.x, pts[i]!.y - pts[j]!.y));
+  return d;
+}
+
 /**
- * Enden für den Bau: eingefroren (`dok.kaefig.stationen.enden`, gleiche Knotenzahl der Seite) oder automatisch. Liefert
- * die Punkte (Profil-Einheiten) und die Anker zum Einfrieren.
+ * Tragen eingefrorene Enden die Form noch? Florian (16.10.): Aus der Startkugel gezogen, blieben die eingefrorenen Enden
+ * links und rechts der Kugel, während Hals und Kopf nach oben wuchsen (Δ 84 px). Schnell: Liegen die Enden fast so weit
+ * auseinander wie der Durchmesser der Seite, bleiben sie (ein Zug am Bauch wirft sie nicht um). Sonst der Weg innen gegen
+ * den zwischen den automatischen Enden.
+ */
+function endenTragen(seite: Profil, vorn: V2, hinten: V2): boolean {
+  const { pts } = umriss(seite);
+  if (Math.hypot(vorn.x - hinten.x, vorn.y - hinten.y) >= TRAGEN_SCHNELL * durchmesser(pts)) return true;
+  const w = endenAutomatisch(seite);
+  const dAuto = innenWege(pts, w.vorn)(w.hinten);
+  const dEig = innenWege(pts, vorn)(hinten);
+  return dEig >= TRAGEN_WEG * dAuto;
+}
+
+/**
+ * Enden für den Bau. Liefert die Punkte (Profil-Einheiten) und die Anker zum Einfrieren.
+ * - Mit Maul (gezeichnet, markierte Lippenknoten oder aus der Ausstattung): der vorderste und der hinterste Punkt wie vor G2 (Florian 16.10.: Seit G2 blieben
+ *   die an der Startkugel eingefrorenen Enden nach dem Zeichnen des Mauls an der alten Kugelstelle statt an der
+ *   Schnabelspitze; der Unterbiss zerriss, Δ 20 px und 822 Durchdringungen statt Δ 0,8 px und 0). Der Maulbau ist mit
+ *   diesen Enden geprüft.
+ * - Eingefroren (`dok.kaefig.stationen.enden`, gleiche Knotenzahl der Seite), solange sie die Form tragen (`endenTragen`).
+ * - Sonst automatisch: neue oder andere Knotenzahl (Einfügen, Löschen, Maul gezeichnet, Bogen nachgezogen) oder stark
+ *   umgeformt. Das alte Ende „in der Nähe“ zu suchen, setzte es nach dem Umformen an eine Kerbe oder mitten in die Flanke.
  */
 export function endenFuer(dok: Dokument): { vorn: V2; hinten: V2; enden: Enden; quelle: EndenQuelle } {
   const seite = dok.profile.seite;
+  const anker = (vorn: V2, hinten: V2): Enden => ({ vorn: profilAnker(seite, vorn), hinten: profilAnker(seite, hinten), knoten: seite.knoten.length });
+  // Maul: markierte Lippenknoten (Prüfreihe, Versuche), gezeichnete Linien (Editor in der Bauweise Kern setzt keine Marken)
+  // oder ein Maul aus der Ausstattung
+  const mitMaul = seite.knoten.some((k) => k.marke) || !!dok.maul || (!!dok.ausstattung?.maul && dok.ausstattung.maul !== 'aus');
+  if (mitMaul) {
+    const { pts } = umriss(seite);
+    let iA = 0;
+    let iB = 0;
+    pts.forEach((p, i) => {
+      if (p.x < pts[iA]!.x) iA = i;
+      if (p.x > pts[iB]!.x) iB = i;
+    });
+    return { vorn: pts[iA]!, hinten: pts[iB]!, enden: anker(pts[iA]!, pts[iB]!), quelle: 'spitzen' };
+  }
   const g = dok.kaefig?.stationen?.enden;
   if (g && g.knoten === seite.knoten.length) {
     const vorn = profilPunkt(seite, g.vorn.k, g.vorn.t);
     const hinten = profilPunkt(seite, g.hinten.k, g.hinten.t);
-    return { vorn, hinten, enden: { vorn: { ...g.vorn, p: vorn }, hinten: { ...g.hinten, p: hinten }, knoten: g.knoten }, quelle: 'eingefroren' };
+    if (endenTragen(seite, vorn, hinten)) return { vorn, hinten, enden: { vorn: { ...g.vorn, p: vorn }, hinten: { ...g.hinten, p: hinten }, knoten: g.knoten }, quelle: 'eingefroren' };
   }
   const w = endenAutomatisch(seite);
-  // eine andere Knotenzahl mit alten Ankern: das alte Ende in der Nähe suchen (Einfügen, Löschen), sonst automatisch
-  const vornAlt = g ? profilAnker(seite, g.vorn.p) : null;
-  const hintenAlt = g ? profilAnker(seite, g.hinten.p) : null;
-  const vorn = vornAlt ?? profilAnker(seite, w.vorn);
-  const hinten = hintenAlt ?? profilAnker(seite, w.hinten);
-  return { vorn: vornAlt ? vornAlt.p : w.vorn, hinten: hintenAlt ? hintenAlt.p : w.hinten, enden: { vorn, hinten, knoten: seite.knoten.length }, quelle: g ? 'eingefroren' : w.quelle };
+  return { vorn: w.vorn, hinten: w.hinten, enden: anker(w.vorn, w.hinten), quelle: w.quelle };
 }
