@@ -212,5 +212,5 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
 
 - **Abspielen nicht flüssig** (Rex ≈ 8–9 Bilder/s): Ein Gewichtswechsel kostet im Worker 55 ms (posierte Dreiecke mit Normalen ≈ 37 ms, Zähne ≈ 12 ms), dazu Übertragung und Anwenden im Hauptthread. Entwurf §7 verlangt ≤ 8 ms → gemerkte Dreieckszerlegung (Topologie fest, nur Lagen und Normalen) und ein schlanker Anwendungsweg. → B10.
 - **Pose mit gegiertem Kiefer durchdringt sich** (heutiger Maulbau): Kugel mit Kiefer 34°, Gieren 8°, Schädel 14° → 16 Hautpaare (Überbiss: 9 zusätzlich zur erlaubten verdeckten Überlappung); die Fressen-Pose der Kugel (gleich) hat bei 100 % 2 Paare. Das Überblenden fügt keine hinzu. → B8 (extreme Posen) bzw. Teil A.
-- **„Aus der Vorschau“ fehlt** in „Neue Pose“: braucht einen Worker-Auftrag, der die gezeigte Mischung als Ruhe-Deltas samt gemischter Stellung ausrechnet (Haps und Lippenkorrektur eingerechnet). → B7 Rest.
+- ~~„Aus der Vorschau“ fehlt~~ → erledigt 16.10. früh (Worker-Auftrag `mischen`, exakt). Grenze: Bei einer schiefen Pose mit Lippenkorrektur wäre die Summe nicht spiegelgleich; gespeichert wird die rechte Hälfte.
 - **Erledigt aus B6:** Aufblasen mit Betrag 0 schreibt keinen leeren Undo-Schritt mehr (Geste ohne Wirkung → kein Schritt). Offen bleibt die Entscheidung zu den Hebeln an den Knoten der Pose-Linie.

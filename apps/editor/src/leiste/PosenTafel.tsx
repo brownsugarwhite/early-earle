@@ -5,10 +5,10 @@
 import { POSEN, POSE_TITEL, type Pose } from '@ee/shape';
 import { ankerVon, bezugAus, formAusFeld, kaefigNachbarn } from '@ee/shape/kern';
 import { useState } from 'react';
-import { anzeigeGewichte, kernMaulAktiv, useKernAnzeige } from '../kern/kernBau';
+import { anzeigeGewichte, kernMaulAktiv, kernMischen, useKernAnzeige } from '../kern/kernBau';
 import { aktuellesNetz, useNetzStand } from '../kern/netzStand';
 import { type PoseKnochen, maulOptionenDok, poseKnochen, poseKnochenZuruecksetzen, poseSymmetrisch, setzeMaulOptionen, setzePoseKnochen } from '../kiefer/kieferOptionen';
-import { type Modus, poseTitel, useEditor } from '../state/editorStore';
+import { type Modus, poseTitel, useEditor, vorschauLaeuft } from '../state/editorStore';
 import { type MenueEintrag, useUi } from '../state/uiStore';
 import { Regler, geste } from './bedienung';
 import { abspielenUmschalten, anhalten, ueberblendenPaar, ueberblendenSetzen } from '../posen/ueberblenden';
@@ -191,11 +191,39 @@ function menueBei(e: { clientX: number; clientY: number }, id: string): void {
   useUi.getState().oeffneMenue({ x: e.clientX, y: e.clientY, eintraege: poseMenueEintraege(id) });
 }
 
-/** „Neue Pose ▾“ der Tafel: leer, Kopie der bearbeiteten Pose, Namensvorschläge. */
+/**
+ * „Aus der Vorschau“: die gezeigte Mischung (Regler, Überblenden) wird eine neue Pose — Form als Ruhe-Deltas, Knochen
+ * gemischt, Haps und Rot/Blau eingerechnet; mit Gewicht 1 zeigt sie genau die Vorschau. Der Worker rechnet sie aus.
+ */
+export function poseAusVorschau(): void {
+  const ed = useEditor.getState();
+  const dok = ed.dok;
+  const g = anzeigeGewichte();
+  if (!Object.keys(g).length) {
+    useUi.getState().zeigeHinweis('Aus der Vorschau: erst mit den Reglern oder dem Überblenden eine Mischung zeigen');
+    return;
+  }
+  const name = freierName('Mischung');
+  kernMischen(dok, (m) => {
+    const s = useEditor.getState();
+    // nur, wenn sich die Posen seither nicht geändert haben (die Mischung gehört zu ihnen)
+    if (!m || s.dok.posen !== dok.posen || s.dok.profile !== dok.profile) {
+      if (!m) useUi.getState().zeigeHinweis('Aus der Vorschau: Rechnung fehlgeschlagen');
+      return;
+    }
+    s.poseEinfuegen({ id: neueId(), name, art: 'frei', form: m.form, bezug: m.bezug, stellung: m.stellung });
+  });
+}
+
+/** „Neue Pose ▾“ der Tafel: leer, Kopie der bearbeiteten Pose, aus der Vorschau, Namensvorschläge. */
 function NeuePoseFeld() {
   const [offen, setOffen] = useState(false);
   const dok = useEditor((s) => s.dok);
   const modus = useEditor((s) => s.modus);
+  useUi((s) => s.vorschau);
+  useUi((s) => s.oeffnung);
+  useUi((s) => s.poseStaerke);
+  const mischung = vorschauLaeuft(modus) && Object.keys(anzeigeGewichte()).length > 0;
   const frei = POSEN.filter((p) => !dok.posen.some((q) => q.id === p));
   return (
     <div className="neue-pose">
@@ -224,6 +252,19 @@ function NeuePoseFeld() {
               }}
             >
               Kopie von {poseTitel(dok, modus)}
+            </button>
+          )}
+          {mischung && (
+            <button
+              className="chip"
+              data-neue-pose-art="vorschau"
+              title="Die gezeigte Mischung als eigene Pose"
+              onClick={() => {
+                setOffen(false);
+                poseAusVorschau();
+              }}
+            >
+              Aus der Vorschau
             </button>
           )}
           {frei.map((p) => (

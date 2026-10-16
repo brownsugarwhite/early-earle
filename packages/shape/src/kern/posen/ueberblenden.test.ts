@@ -115,3 +115,29 @@ describe('B7: Überblenden (M1 Durchdringungen, M3 Bahnen)', () => {
     }, 600_000);
   }
 });
+
+describe('B7: „Aus der Vorschau“ — Mischung als eine Pose', () => {
+  for (const art of ['gleich', 'ueberbiss'] as const) {
+    it(`Kugel ${art}: neue Pose mit Gewicht 1 zeigt genau die Vorschau`, async () => {
+      const { wesenBauen } = await import('../wesen');
+      const dok0 = dokMitPosen(art);
+      // Fressen mit eigener Form, damit die Mischung Form, Haps und Knochen enthält
+      const n0 = 40;
+      const dok: Dokument = { ...dok0, posen: dok0.posen.map((q) => (q.id === 'fressen' ? { ...q, form: Array.from({ length: n0 }, (_, i) => ({ punkt: 3 * i + 1, d: [0, 0.004 * Math.sin(i), 0.002] as [number, number, number] })) } : q)) };
+      const linie = maulLinieAusDokument(dok)!;
+      for (const g of [{ fressen: 0.6, p_b: 0.3 }, { idle: 0.5, fressen: 0.5 }]) {
+        const vorschau = wesenBauen(dok, { maul: 'vorn', maulLinie: linie, gewichte: g, mischung: true }, null, false).netz;
+        const m = vorschau.mischung!;
+        expect(m).not.toBeNull();
+        const neu: Pose = { id: 'p_m', name: 'Mischung', art: 'frei', form: m.form, bezug: m.bezug, stellung: m.stellung };
+        const dok2: Dokument = { ...dok, posen: [...dok.posen, neu] };
+        const nachher = wesenBauen(dok2, { maul: 'vorn', maulLinie: linie, gewichte: { p_m: 1 } }, null, false).netz;
+        let d = 0;
+        for (let i = 0; i < vorschau.positionen.length; i++) d = Math.max(d, Math.abs(vorschau.positionen[i]! - nachher.positionen[i]!));
+        console.log(`Kugel ${art} ${JSON.stringify(g)}: neue Pose gegen Vorschau ${(d * PX).toFixed(4)} px, ${m.form.length} Käfigpunkte, Stellung ${JSON.stringify(m.stellung)}`);
+        expect(vorschau.positionen.length).toBe(nachher.positionen.length);
+        expect(d * PX).toBeLessThan(0.01);
+      }
+    }, 120_000);
+  }
+});

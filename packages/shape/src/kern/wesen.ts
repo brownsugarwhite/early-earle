@@ -7,7 +7,7 @@
 // Der `WesenStand` hält die Ableitung und den Klingenstand zwischen zwei Bauten (Pose statt Umbau, Wehen je Bild).
 
 import type { V2 } from '../bezier';
-import type { AugenWerte, Ausstattung, Dokument, GefroreneStationen, KaefigDelta, Pose, ZonenVorlage } from '../dokument';
+import type { AugenWerte, Ausstattung, Dokument, GefroreneStationen, KaefigDelta, Pose, PoseStellung, ZonenVorlage } from '../dokument';
 import { alleFlaechen } from '../kaefig/halbkanten';
 import { type V3, zuDreiecken } from '../versuch/catmullClark';
 import { type AbleitOptionen, type Ableitung, ableiten, seiteZiehen, umrissDicht } from './ableiten';
@@ -22,8 +22,8 @@ import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
 import { anwenden3 } from '../subdivision/matrix';
 import { spantKasten, spantTeilProfil, vorlageBei } from '../spanten';
 import { kieferSchnitt } from './kieferSpant';
-import { type AnkerFeld, maulAnker } from './posenAnker';
-import { type PoseBearbeitung, posenAuswerten, posenFuerBau, stellungVon } from './posen/posen';
+import { type AnkerFeld, ankerVon, maulAnker } from './posenAnker';
+import { type PoseBearbeitung, bezugAus, formAusFeld, poseStellungAus, posenAuswerten, posenFuerBau, posenMischung, stellungVon } from './posen/posen';
 import type { KnochenPunkte } from './posen/skin';
 import { type PoseSeite, blattUmriss, poseBlattGriffe } from './posen/griffeSeite';
 import { KLINGE_BUESCHEL, KLINGE_FLAMME, KLINGE_SCHWADE, type Haut, type KlingenLage, type KlingenVorlage, ZUNGEN_FEUER, ZUNGEN_GAS, bueschelAufHaut, flaemmchen, gekaemmt, hautAus, hautPunkt, klingenBauen, klingenNetz, klingenVorlage, zungenAmScheitel } from './klinge';
@@ -111,7 +111,12 @@ export type Bauplan = Ausstattung & {
    * während einer Geste.
    */
   umrisse?: { id: string; gewichte: Record<string, number> }[];
+  /** B7 „Aus der Vorschau“: die gezeigte Mischung als Daten einer neuen Pose ausgeben (`WesenNetz.mischung`) */
+  mischung?: boolean;
 };
+
+/** B7: Mischung der Gewichte als neue Pose — Form (Ruhe-Deltas auf A, rechte Hälfte und Naht), Bezug, Stellung. */
+export type PoseMischung = { form: KaefigDelta[]; bezug: number[]; stellung: PoseStellung };
 
 /** B7: Umriss eines Netzes für weitere Gewichte in den drei Blättern (zwei Koordinaten je Punkt, wie `PoseSeite.umriss`). */
 export type ZusatzUmriss = { id: string; seite: Float32Array; front: Float32Array; top: Float32Array };
@@ -235,6 +240,8 @@ export type WesenNetz = {
   /** B4: Griffe der schwarzen Linie im Seitenblatt der bearbeiteten Pose (posierter Umriss, Hautpunkte der Knoten, Zeilen) */
   /** B7: Zusatz-Umrisse (Geist, Zwischenbilder), wenn `Bauplan.umrisse` sie verlangt */
   umrisse: ZusatzUmriss[] | null;
+  /** B7: Mischung als neue Pose, wenn `Bauplan.mischung` sie verlangt */
+  mischung: PoseMischung | null;
   poseSeite: PoseSeite | null;
   /** B6: schwarze Linien der Pose in Front und Top */
   poseFront: PoseSeite | null;
@@ -957,6 +964,17 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
       umrisseStand = { schluessel: uSchluessel, liste: umrisse };
     }
   }
+  // B7 „Aus der Vorschau“: die Mischung der Gewichte als eine Pose (Form = Σ w·Summe, Stellung = Σ w·θ), Anker an Maulpunkten
+  let mischung: PoseMischung | null = null;
+  if (plan.mischung && beine === 'aus') {
+    const A = abl.kaefig.xyz;
+    const m = maul !== 'aus' ? posenMischung(abl, abl as MaulErgebnis, maulOptAktuell, posen, gewichte) : posenMischung({ kaefig: { n: abl.kaefig.n, xyz: A } }, null, null, posen, gewichte);
+    const form = formAusFeld(A, abl.kaefig.n, m.D).map((d) => {
+      const a = ankerVon(ankerFeld, d.punkt);
+      return a ? { ...d, anker: a } : d;
+    });
+    mischung = { form, bezug: bezugAus(A), stellung: poseStellungAus(m.stellung) };
+  }
   const rund = plan.rundmaul && maul === 'aus' && beine === 'aus' && plan.earle ? { ...RUNDMAUL_STANDARD, ...(plan.rundmaul.zu !== undefined ? { zu: plan.rundmaul.zu } : {}), ...(plan.rundmaul.auf !== undefined ? { auf: plan.rundmaul.auf } : {}) } : null;
   // Mitte: Käfigpunkt der Spiegelebene vorn nahe dem Punkt im Dokument, nicht an einer Augapfel-Höhle; unsichtbar mit
   // O zu = 0 bei geschlossenem Maul (Florian 15.10.: kein Aufsatz, die Haut bleibt ganz)
@@ -1349,6 +1367,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     anker: ankerFeld,
     pose: bearbeitung,
     umrisse,
+    mischung,
     poseSeite,
     poseFront,
     poseTop,

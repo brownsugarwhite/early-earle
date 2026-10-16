@@ -2,7 +2,7 @@
 // Während ein Bau läuft, ersetzt jede neue Anfrage die wartende; nach dem Ende startet nur die letzte. Animationsbilder
 // werden nur angefordert, wenn kein Auftrag läuft (sonst verfällt das Bild). Ohne Worker (Tests) wird synchron gebaut.
 
-import { type Bauplan, type WesenNetz, type WesenStand, type ZahnMeldung, formenFolgen, wesenAnimieren, wesenBauen } from '@ee/shape/kern';
+import { type Bauplan, type PoseMischung, type WesenNetz, type WesenStand, type ZahnMeldung, formenFolgen, wesenAnimieren, wesenBauen } from '@ee/shape/kern';
 import type { Dokument } from '@ee/shape';
 import type { FolgenAntwort, WorkerAntwort, WorkerAuftrag } from './wesen.worker';
 
@@ -16,7 +16,9 @@ export class WesenClient {
   private naechsterFolgen: { dok: Dokument; plan: Partial<Bauplan>; cb: (r: FolgenAntwort | null) => void } | null = null;
   /** Zahnprüfung (Phase 2 M4): wartet hinter Bau und Folgen; ein neuer Bau verdrängt sie (sie gehörte zu einem älteren Dokument) */
   private naechsterPruefen: { dok: Dokument; plan: Partial<Bauplan>; cb: (m: ZahnMeldung[] | null) => void } | null = null;
-  private laufend: { cb: (n: WesenNetz) => void } | { animation: (b: Bild | null) => void } | { folgen: (r: FolgenAntwort | null) => void } | { pruefen: (m: ZahnMeldung[] | null) => void } | null = null;
+  /** B7 „Aus der Vorschau“: wartet hinter Bau, Folgen und Prüfung; nur der neueste */
+  private naechsterMischen: { dok: Dokument; plan: Partial<Bauplan>; cb: (m: PoseMischung | null) => void } | null = null;
+  private laufend: { cb: (n: WesenNetz) => void } | { animation: (b: Bild | null) => void } | { folgen: (r: FolgenAntwort | null) => void } | { pruefen: (m: ZahnMeldung[] | null) => void } | { mischen: (m: PoseMischung | null) => void } | null = null;
   private id = 0;
   /** ohne Worker: Stand im Hauptthread */
   private stand: WesenStand | null = null;
@@ -35,7 +37,9 @@ export class WesenClient {
           this.fehler(m.fehler);
           if (lauf && 'folgen' in lauf) lauf.folgen(null);
           if (lauf && 'pruefen' in lauf) lauf.pruefen(null);
+          if (lauf && 'mischen' in lauf) lauf.mischen(null);
         } else if (m.typ === 'netz' && lauf && 'cb' in lauf) lauf.cb(m.netz);
+        else if (m.typ === 'mischung' && lauf && 'mischen' in lauf) lauf.mischen(m.mischung);
         else if (m.typ === 'animation' && lauf && 'animation' in lauf) lauf.animation(m.a);
         else if (m.typ === 'folgen' && lauf && 'folgen' in lauf) lauf.folgen(m.ergebnis);
         else if (m.typ === 'pruefung' && lauf && 'pruefen' in lauf) lauf.pruefen(m.meldungen);
@@ -45,6 +49,7 @@ export class WesenClient {
         this.fehler(e.message);
         if (this.laufend && 'folgen' in this.laufend) this.laufend.folgen(null);
         if (this.laufend && 'pruefen' in this.laufend) this.laufend.pruefen(null);
+        if (this.laufend && 'mischen' in this.laufend) this.laufend.mischen(null);
         this.laufend = null;
         this.busy = false;
         this.pumpen();
@@ -87,6 +92,24 @@ export class WesenClient {
     this.pumpen();
   }
 
+  /** B7 „Aus der Vorschau“: die Mischung der Gewichte im Bauplan als Daten einer neuen Pose; null bei Fehler. */
+  mischen(dok: Dokument, plan: Partial<Bauplan>, cb: (m: PoseMischung | null) => void): void {
+    if (!this.worker) {
+      try {
+        const r = wesenBauen(dok, { ...plan, mischung: true }, this.stand, false);
+        this.stand = r.stand;
+        cb(r.netz.mischung);
+      } catch (e) {
+        this.fehler(e instanceof Error ? e.message : String(e));
+        cb(null);
+      }
+      return;
+    }
+    this.naechsterMischen?.cb(null);
+    this.naechsterMischen = { dok, plan, cb };
+    this.pumpen();
+  }
+
   /** Formen folgen: Profile an die Silhouette des gebauten Körpers, Deltas nachgeführt; null bei Fehler. */
   folgen(dok: Dokument, plan: Partial<Bauplan>, cb: (r: FolgenAntwort | null) => void): void {
     if (!this.worker) {
@@ -120,7 +143,7 @@ export class WesenClient {
   }
 
   get beschaeftigt(): boolean {
-    return this.busy || this.naechster !== null || this.naechsterFolgen !== null || this.naechsterPruefen !== null;
+    return this.busy || this.naechster !== null || this.naechsterFolgen !== null || this.naechsterPruefen !== null || this.naechsterMischen !== null;
   }
 
   private pumpen(): void {
@@ -150,6 +173,15 @@ export class WesenClient {
       this.laufend = { pruefen: job.cb };
       const auftrag: WorkerAuftrag = { id: ++this.id, typ: 'pruefen', dok: job.dok, plan: job.plan };
       this.worker.postMessage(auftrag);
+      return;
+    }
+    if (this.naechsterMischen) {
+      const job = this.naechsterMischen;
+      this.naechsterMischen = null;
+      this.busy = true;
+      this.laufend = { mischen: job.cb };
+      const auftrag: WorkerAuftrag = { id: ++this.id, typ: 'mischen', dok: job.dok, plan: job.plan };
+      this.worker.postMessage(auftrag);
     }
   }
 
@@ -159,6 +191,7 @@ export class WesenClient {
     this.naechster = null;
     this.naechsterFolgen = null;
     this.naechsterPruefen = null;
+    this.naechsterMischen = null;
     this.laufend = null;
   }
 }

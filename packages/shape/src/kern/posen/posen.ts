@@ -84,14 +84,13 @@ export type PoseBearbeitung = { id: string; ruhe: Float64Array; dreh: Float32Arr
  * `maul` nur mit Schlitzmaul (dann Knochen, Haps-Saat und Lippenprojektion auf Rot und Blau der Pose), `opt` dessen
  * wirksame Optionen, `dok` für die Standardknoten der Pose-Linien (aus den Grundlinien). Alle Gewichte 0 → A selbst.
  */
-export function posenAuswerten(abl: { kaefig: { n: number; xyz: Float64Array } }, maul: MaulErgebnis | null, opt: MaulOptionen | null, posen: readonly Pose[], gewichte: Readonly<Record<string, number>>, dok: Dokument | null = null): PoseAuswertung {
-  const A = abl.kaefig.xyz;
-  const n = abl.kaefig.n;
-  const aktiv = posen.filter((p) => (gewichte[p.id] ?? 0) !== 0);
-  const knochenRuhe = maul && opt ? knochenPunkte(maul, opt, { ...STELLUNG_NULL, kieferZug: [0, 0] }) : null;
-  if (!aktiv.length) return { xyz: A, stellung: { ...STELLUNG_NULL, kieferZug: [0, 0] }, knochen: knochenRuhe, bearbeitung: null };
+/** Eingabe einer Pose in die Mischung: Stellung, volle Skin, Form (Ruhe-Deltas), Summe mit Saat und Lippenkorrektur. */
+type PoseEingabeVoll = { pose: Pose; w: number; st: Stellung; voll: Skin | null; form: Float64Array; summe: Float64Array; natuerlich: Float64Array; korrektur: Float64Array | null };
+
+/** Je Pose mit Gewicht: Stellung, Skin der vollen Pose, Form, Haps-Saat und Lippenkorrektur (B5) als Ruhe-Deltas. */
+function poseEingaben(A: Float64Array, n: number, maul: MaulErgebnis | null, opt: MaulOptionen | null, aktiv: readonly Pose[], gewichte: Readonly<Record<string, number>>): PoseEingabeVoll[] {
   const skinFuer = (st: Stellung): Skin | null => (maul && opt ? skinBerechnen(maul, opt, st) : null);
-  const eingaben = aktiv.map((p) => {
+  return aktiv.map((p) => {
     const st = stellungVon(p.stellung);
     const voll = skinFuer(st);
     const D = formRuhe(A, n, p, voll);
@@ -113,6 +112,16 @@ export function posenAuswerten(abl: { kaefig: { n: number; xyz: Float64Array } }
     }
     return { pose: p, w: gewichte[p.id]!, st, voll, form, summe, natuerlich, korrektur };
   });
+}
+
+export function posenAuswerten(abl: { kaefig: { n: number; xyz: Float64Array } }, maul: MaulErgebnis | null, opt: MaulOptionen | null, posen: readonly Pose[], gewichte: Readonly<Record<string, number>>, dok: Dokument | null = null): PoseAuswertung {
+  const A = abl.kaefig.xyz;
+  const n = abl.kaefig.n;
+  const aktiv = posen.filter((p) => (gewichte[p.id] ?? 0) !== 0);
+  const knochenRuhe = maul && opt ? knochenPunkte(maul, opt, { ...STELLUNG_NULL, kieferZug: [0, 0] }) : null;
+  if (!aktiv.length) return { xyz: A, stellung: { ...STELLUNG_NULL, kieferZug: [0, 0] }, knochen: knochenRuhe, bearbeitung: null };
+  const skinFuer = (st: Stellung): Skin | null => (maul && opt ? skinBerechnen(maul, opt, st) : null);
+  const eingaben = poseEingaben(A, n, maul, opt, aktiv, gewichte);
   const xyz = poseAuswerten(A, eingaben.map((e) => ({ w: e.w, deltas: e.summe, stellung: e.st })), skinFuer);
   const stellung = stellungMischen(eingaben.map((e) => ({ w: e.w, stellung: e.st })));
   const knochen = maul && opt ? knochenPunkte(maul, opt, stellung) : null;
@@ -133,6 +142,37 @@ export function posenAuswerten(abl: { kaefig: { n: number; xyz: Float64Array } }
     bearbeitung = { id: e.pose.id, ruhe: new Float64Array(A), dreh, form: e.form, lippen };
   }
   return { xyz, stellung, knochen, bearbeitung };
+}
+
+/**
+ * B7 „Aus der Vorschau“: die gezeigte Mischung als eine Pose. X(w) = Skin(A + Σ wᵢ·Sᵢ; Σ wᵢ·θᵢ) mit Sᵢ = Form + Haps-Saat
+ * + Lippenkorrektur; die neue Pose hat die Form Σ wᵢ·Sᵢ (Ruhe-Deltas auf A) und die Stellung Σ wᵢ·θᵢ — mit Gewicht 1
+ * zeigt sie genau die Vorschau (solange die Summen spiegelgleich sind; gespeichert wird die rechte Hälfte).
+ */
+export function posenMischung(abl: { kaefig: { n: number; xyz: Float64Array } }, maul: MaulErgebnis | null, opt: MaulOptionen | null, posen: readonly Pose[], gewichte: Readonly<Record<string, number>>): { D: Float64Array; stellung: Stellung } {
+  const A = abl.kaefig.xyz;
+  const n = abl.kaefig.n;
+  const aktiv = posen.filter((p) => (gewichte[p.id] ?? 0) !== 0);
+  const D = new Float64Array(3 * n);
+  const eingaben = poseEingaben(A, n, maul, opt, aktiv, gewichte);
+  for (const e of eingaben) for (let k = 0; k < D.length; k++) D[k] = D[k]! + e.w * e.summe[k]!;
+  return { D, stellung: stellungMischen(eingaben.map((e) => ({ w: e.w, stellung: e.st }))) };
+}
+
+/** Stellung der Skin als Knochenwerte einer Pose (nur Werte ≠ 0). */
+export function poseStellungAus(st: Stellung): PoseStellung {
+  const kiefer: NonNullable<PoseStellung['kiefer']> = {};
+  const schaedel: NonNullable<PoseStellung['schaedel']> = {};
+  if (st.winkelUnten) kiefer.winkel = st.winkelUnten;
+  if (st.kieferZug[0] || st.kieferZug[1]) kiefer.zug = [st.kieferZug[0], st.kieferZug[1]];
+  if (st.zugWeite) kiefer.ziehen = st.zugWeite;
+  if (st.gierenUnten) kiefer.gieren = st.gierenUnten;
+  if (st.rollenUnten) kiefer.rollen = st.rollenUnten;
+  if (st.seitUnten) kiefer.seit = st.seitUnten;
+  if (st.winkelOben) schaedel.winkel = st.winkelOben;
+  if (st.gierenOben) schaedel.gieren = st.gierenOben;
+  if (st.rollenOben) schaedel.rollen = st.rollenOben;
+  return { kiefer, schaedel };
 }
 
 /** Pose-Form aus einem vollen Ruhe-Deltafeld: rechte Hälfte und Naht (z = 0 auf der Naht), ohne Nullen. */

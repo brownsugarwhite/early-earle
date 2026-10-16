@@ -3,7 +3,7 @@
 // „neuester Auftrag gewinnt“); hier entsteht aus Dokument und Anzeige-Zustand nur der Bauplan.
 
 import type { Dokument } from '@ee/shape';
-import { type BeinArt, type Bauplan, type MaulArt, type MaulLinie, type StilArt, type WesenInfo, type WesenNetz, type ZahnMeldung, maulLinieAusDokument, pruefwesenBauplan } from '@ee/shape/kern';
+import { type BeinArt, type Bauplan, type MaulArt, type MaulLinie, type PoseMischung, type StilArt, type WesenInfo, type WesenNetz, type ZahnMeldung, maulLinieAusDokument, pruefwesenBauplan } from '@ee/shape/kern';
 import { create } from 'zustand';
 import { poseTitel, setzeGesteEndeHaken, useEditor, vorschauBeenden, vorschauLaeuft } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
@@ -242,6 +242,11 @@ export function kernBauen(dok: Dokument, schnell: boolean, cb: (netz: KernNetz) 
       if (JSON.stringify(ed.dok.kaefig?.stationen ?? null) !== JSON.stringify(g)) ed.setzeStationen(g);
     }
   });
+}
+
+/** B7 „Aus der Vorschau“: die gezeigte Mischung (Gewichte der Anzeige) als Daten einer neuen Pose; null bei Fehler. */
+export function kernMischen(dok: Dokument, cb: (m: PoseMischung | null) => void): void {
+  derClient().mischen(dok, bauplanAus(dok), cb);
 }
 
 /** Zahnprüfung (Phase 2 M4) im Worker auf dem gemerkten Stand; null bei Fehler oder wenn ein neuer Bau sie verdrängt. */
