@@ -63,7 +63,6 @@ for (const fall of faelle) {
       const sk = window.__stores.editor.getState().dok.skalierung;
       const BIT = { seite: 1, front: 2, hinten: 4, top: 8, unten: 16 };
       const EIGEN = { seite: 'kontur-seite', front: 'kontur-front', top: 'kontur-top' };
-      const eps = (1.5 / 461) * sk;
       const je = {};
       for (const feld of ['seite', 'front', 'top']) {
         const blick = feld === 'seite' ? 'seite' : blicke[feld];
