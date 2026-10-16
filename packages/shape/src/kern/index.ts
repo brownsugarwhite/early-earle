@@ -35,3 +35,4 @@ export * from './augenHoehle';
 export * from './rundmaul';
 export * from './netzSicht';
 export type { TeilAnzeige, TeilAnsichten, BlattTeile, AnsichtName } from './grundkoerper/teilAnsicht';
+export { teilKurveAus, teilKurveKnoten, teilKurveMitKnoten, teilKurveStuecke } from './grundkoerper/teilKurven';

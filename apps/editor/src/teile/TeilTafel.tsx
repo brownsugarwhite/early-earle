@@ -1,8 +1,9 @@
 // Plan „Liniennetz, Zielform, Käfig“ (16.10.), S4: Baumliste der erkannten Teile in der Tafel Körper (nur Anzeige). Zeiger
 // über einem Eintrag hebt das Teil in allen Blättern hervor; der Schalter blendet die Teile in den Blättern aus.
 import { useNetzStand, aktuellesNetz } from '../kern/netzStand';
+import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
-import { teilFarbe, teilName } from './TeilEbene';
+import { teilFarbe, teilKurvenEntfernen, teilName } from './TeilEbene';
 
 const BLATT: Record<string, string> = { seite: 'Seite', front: 'Front', top: 'Top' };
 
@@ -11,6 +12,7 @@ export function TeilTafel() {
   const sicht = useUi((s) => s.teileSicht);
   const hover = useUi((s) => s.teilHover);
   const t = aktuellesNetz()?.netz.teile ?? null;
+  const kurven = useEditor((s) => s.dok.teile);
   const setze = useUi.getState().setzeTeilHover;
   // Baum: Rumpf, darunter die Kinder je Elternteil (eingerückt)
   const tiefe = (i: number): number => {
@@ -55,12 +57,17 @@ export function TeilTafel() {
                 <span className="teil-punkt" style={{ background: teilFarbe(i) }} />
                 <span>{teilName(x.art, x.richtung)}</span>
                 {x.art !== 'rumpf' && <small>{x.erkannt.map((b) => BLATT[b] ?? b).join(', ')}</small>}
+                {(kurven ?? []).some((k) => k.teil === x.id) && (
+                  <button className="chip klein" data-teil-automatisch={x.id} title="eigene Kurven dieses Teils entfernen — die Hülle rät die verdeckten Stücke wieder" onClick={() => teilKurvenEntfernen(x.id)}>
+                    Automatisch
+                  </button>
+                )}
               </li>
             );
           })}
         </ul>
       )}
-      <p className="hilfe">Aus den drei Zeichnungen gelesen: Mitte = auf der Mittelebene (Hals, Schwanz, Flossen auf der Mitte), Paar = links und rechts (Beine, Flügel, Seitenflossen). Ein Teil ist eine Ausbuchtung mit Kehle am Ansatz. In den Blättern: Flächen je Teil, gestrichelt der verdeckte Umriss eines Teils, dünn die Wirbelsäulen. Noch nur Anzeige — gebaut wird damit ab S5.</p>
+      <p className="hilfe">Aus den drei Zeichnungen gelesen: Mitte = auf der Mittelebene (Hals, Schwanz, Flossen auf der Mitte), Paar = links und rechts (Beine, Flügel, Seitenflossen). Ein Teil ist eine Ausbuchtung mit Kehle am Ansatz. In den Blättern: Flächen je Teil, gestrichelt der verdeckte Umriss eines Teils (geraten aus den Zeichnungen), dünn die Wirbelsäulen. Klick auf ein gestricheltes Stück macht es zu einer eigenen Kurve: Knoten ziehen formt sie, ihre Enden bleiben an der schwarzen Linie; „Automatisch“ nimmt sie zurück. Noch ohne Wirkung auf den Körper — gebaut wird damit ab S5.</p>
     </>
   );
 }

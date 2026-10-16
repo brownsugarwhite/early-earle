@@ -9,7 +9,7 @@
 // ganz glatt; 1 = scharf) und Härte der Eckpunkte in den Profilen (Ecke einer Silhouette = Kante im 3D).
 
 import { z } from 'zod';
-import { type Profil, START_RADIUS, startHalbkreis, startKreis } from './profil';
+import { type Knoten as ProfilKnoten, type Profil, START_RADIUS, startHalbkreis, startKreis } from './profil';
 
 const V2 = z.object({ x: z.number(), y: z.number() });
 const Knoten = z.object({ p: V2, ein: V2, aus: V2, art: z.enum(['glatt', 'ecke']), haerte: z.number().min(0).max(1).optional(), marke: z.enum(['maul', 'maulOben', 'maulUnten']).optional() });
@@ -241,6 +241,19 @@ const DokumentFelder = {
   wirbelsaeule: Linie3Schema.optional(),
   posenProfile: z.record(z.string(), z.object({ seite: ProfilSchema.optional() })).optional(),
   rundSpanten: z.array(RundSpantSchema).optional(),
+  teile: z
+    .array(
+      z.object({
+        teil: z.string(),
+        ansicht: z.enum(['seite', 'front', 'top']),
+        a: z.object({ k: z.number(), t: z.number(), p: V2 }).optional(),
+        b: z.object({ k: z.number(), t: z.number(), p: V2 }).optional(),
+        knotenzahl: z.number(),
+        knoten: z.array(Knoten).min(2),
+        zu: z.boolean().optional(),
+      }),
+    )
+    .optional(),
 };
 /** Version 0 (bis 14.10.2026): ohne Ausstattung. */
 export const DokumentSchemaV0 = z.object({ ...DokumentFelder, version: z.literal(0) });
@@ -428,6 +441,15 @@ export function standardPosen(): Pose[] {
   ];
 }
 
+/**
+ * Eigene Kurve für ein verdecktes Stück eines Teils (Plan „Liniennetz, Zielform, Käfig“, S4; `kern/grundkoerper/teilKurven.ts`):
+ * Teil (Kennung aus `kaefig.stationen.teile`), Ansicht, Stoßstellen mit der schwarzen Linie als Kurvenparameter des Profils
+ * der Ansicht (gültig für `knotenzahl` Knoten; sonst über ihre Lage `p` neu gefunden), Knoten im Rahmen der Stoßstellen:
+ * mit `b` über die Strecke a → b (x längs, y links davon, beide durch |ab|), nur mit `a` (zweites Ende auf der Spiegelachse
+ * oder frei) als Versatz zu a, ohne Stoßstelle (ganz verdeckt, `zu` = geschlossen) an ihrer Stelle. Profil-Einheiten.
+ */
+export type TeilKurve = { teil: string; ansicht: 'seite' | 'front' | 'top'; a?: EndenAnker; b?: EndenAnker; knotenzahl: number; knoten: ProfilKnoten[]; zu?: boolean };
+
 export type Dokument = {
   format: 'ee-wesen';
   version: 2;
@@ -449,6 +471,8 @@ export type Dokument = {
   spanten?: Spant[];
   /** Stelle des Hauptspants (Front); fehlt = dickste Stelle */
   hauptspant?: number;
+  /** S4: eigene Kurven für verdeckte Stücke von Teilen (fehlt = die Hülle rät sie) */
+  teile?: TeilKurve[];
   /**
    * Versuch 12.10. nachts: selbst gezeichnete Wirbelsäule (Seite, z = 0) für die Bauweise „Wirbelsäule“; fehlt = aus dem
    * Umriss vorgeschlagen.

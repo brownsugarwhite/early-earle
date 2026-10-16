@@ -57,7 +57,7 @@ import { RundSpantLinien, RundSpantSchnitt, rundSpantZeiger } from '../rund/Rund
 import { istTrackpad, radFaktor, spiegeln2, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
 import { aktuellesNetz, useKernAnzeige } from '../kern/kernBau';
 import { NetzHoverZeichnung, NetzKnotenZeichnung, NetzZeichnung, naechsterUnter, netzKnotenGreifen } from '../netz/NetzEbene';
-import { TeilFlaechen, TeilWirbelsaeulen } from '../teile/TeilEbene';
+import { TeilFlaechen, TeilKurvenZeichnung, TeilWirbelsaeulen } from '../teile/TeilEbene';
 
 /** Saum ab dieser Abweichung (px bei 461 px je Kachel; Plan 9.8) */
 const SAUM_AB = 2;
@@ -580,7 +580,7 @@ export function View2D({ ansicht, w, h }: Props) {
         return <image href={ueber.bild.url} x={Math.min(a.x, b.x)} y={Math.min(a.y, b.y)} width={Math.abs(b.x - a.x)} height={Math.abs(b.y - a.y)} preserveAspectRatio="none" pointerEvents="none" />;
       })()}
       {/* S4: erkannte Teile (Flächen, verdeckte Teilumrisse) unter allem */}
-      <TeilFlaechen ansicht={ansicht} bild={bild} umriss={pfad(vollerPfad(profil), true)} />
+      <TeilFlaechen ansicht={ansicht} bild={bild} umriss={pfad(vollerPfad(profil), true)} aktiv={formAktiv} />
       {/* S1: das 3D-Liniennetz (Bauweise Kern, Grundform) unter der schwarzen Linie */}
       <NetzZeichnung ansicht={ansicht} bild={bild} />
       {offen ? (
@@ -636,6 +636,8 @@ export function View2D({ ansicht, w, h }: Props) {
       <RundSpantLinien ansicht={ansicht} bild={bild} />
       {/* S4: Wirbelsäulen der Teile über der schwarzen Linie, unter den Knoten */}
       <TeilWirbelsaeulen ansicht={ansicht} bild={bild} />
+      {/* S4: eigene Kurven verdeckter Teilstücke (Knoten ziehbar) */}
+      <TeilKurvenZeichnung ansicht={ansicht} bild={bild} aktiv={formAktiv} ctx={{ lokal, ziehen }} />
       {/* S1: Ringe fremder Knoten unter den eigenen Knoten (der eigene geht beim Klick vor, ⌥ wechselt) */}
       <NetzKnotenZeichnung ansicht={ansicht} bild={bild} aktiv={formAktiv} ctx={{ lokal, ziehen }} />
       {formAktiv && griffe}
