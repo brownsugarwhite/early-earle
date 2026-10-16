@@ -29,6 +29,7 @@ import { type Unterteilung, unterteilung } from '../subdivision/catmullClark';
 import { anwenden3, multiplizieren } from '../subdivision/matrix';
 import { type Leiter, WIRBEL_STANDARD, leiter } from '../versuch/wirbelsaeule';
 import { type Breiten, silhouettenBreite } from './breite';
+import { type FuelleArt, fuelleImTop, fuelleJeRing, huellenBreite, querschnittFuellen } from './fuelle';
 import { type Schlitz, schlitzIm, seiteFuerLeiter } from './schlitz';
 import { endenFuer, profilAnker } from './grundkoerper/enden';
 
@@ -88,6 +89,11 @@ export type AbleitOptionen = {
   fairBezug?: number;
   /** Faktor des Glättungsgewichts an den Kappen (Zeilen, die innere Kappenpunkte berühren), Standard 1 */
   fairKappe?: number;
+  /**
+   * S3-Versuch (Look-Entscheidung): Fülle der Querschnitte, damit der Körper den Front-Umriss berührt — „mittel“ bis zum
+   * weichen Kasten, „genau“ bis fast zum Kasten; fehlt oder „rund“ = Ellipsen wie bisher (bitgleich). Nur ohne Maulschlitz.
+   */
+  fuelle?: FuelleArt;
 };
 
 /**
@@ -113,6 +119,8 @@ export type Reifen = { spant: number; ring: number };
 export type Stationen = { ringe: Station[]; kappen: { vorn: Station[]; hinten: Station[] }; ecken: Ecke[]; reifen: Reifen[]; spitzen: { vorn: boolean; hinten: boolean }; gefroren: GefroreneStationen };
 
 export type Ableitung = {
+  /** S3-Versuch: Exponent der Querschnitt-Fülle je Ring (nur mit `opt.fuelle`) */
+  fuelle?: { exponent: number[] };
   opt: AbleitOptionen;
   vorlage: Roehre;
   unterteilung: Unterteilung;
@@ -1282,7 +1290,7 @@ export type SchlitzLage = {
   front?: { z: number; y: number }[];
 };
 
-export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument | null, opt: AbleitOptionen, schlitz?: SchlitzLage): { ziele: Float64Array; hoehe: Float64Array } {
+export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument | null, opt: AbleitOptionen, schlitz?: SchlitzLage): { ziele: Float64Array; hoehe: Float64Array; fuelle?: number[] } {
   const { R, N, c } = v;
   const ziele = new Float64Array(3 * v.kaefig.n);
   const hoehe = new Float64Array(v.kaefig.n);
@@ -1388,6 +1396,22 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
       Wr[i] = W;
     }
   }
+  // S3-Versuch: Fülle der Querschnitte (nur die Ringe, die den Front-Umriss am ehesten erreichen; nicht mit Maulschlitz)
+  const fuelle = opt.fuelle && opt.fuelle !== 'rund' && !schlitz ? fuelleJeRing(ringSprossen, ringQNeu, Wr, breiten, opt.fuelle, dok ? huellenBreite(dok, breiten) : undefined) : null;
+  // volle Vorlage je Ring, im Top an der Stelle jedes Punkts beschnitten (zwischen Ellipse und Fülle)
+  const fuellen = <Q extends Querschnitt>(q: Q, p: number, sp: Sprosse, W: number): Q => {
+    const voll = querschnittFuellen(q, p);
+    if (voll === q) return q;
+    const v2 = q.v.slice();
+    const w2 = q.w.slice();
+    for (let j = 1; j + 1 < q.v.length; j++) {
+      const r = fuelleImTop({ v: q.v[j]!, w: q.w[j]! }, { v: voll.v[j]!, w: voll.w[j]! }, sp, W, breiten.top);
+      v2[j] = r.v;
+      w2[j] = r.w;
+    }
+    return { ...q, v: v2, w: w2 };
+  };
+  if (fuelle) for (let i = 0; i < R; i++) ringQNeu[i] = fuellen(ringQNeu[i]!, fuelle[i]!, ringSprossen[i]!, Wr[i]!);
   for (let i = 0; i < R; i++) {
     const sp = ringSprossen[i]!;
     const q = ringQNeu[i]!;
@@ -1404,7 +1428,8 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
     const sprossen = sprossenVon(l, stK);
     // Kappenpunkte: je Quadratring r (um die Spitze) der Querschnitt des angrenzenden Rings, auf 4r Intervalle
     // abgetastet; mit Schlitz liegt der Lippenpunkt der Kappenzeile bL auf seiner Höhe
-    const q0 = ringQ[seite === 'vorn' ? 0 : R - 1]!;
+    const iEnde = seite === 'vorn' ? 0 : R - 1;
+    const q0 = fuelle ? fuellen(ringQ[iEnde]!, fuelle[iEnde]!, ringSprossen[iEnde]!, Wr[iEnde]!) : ringQ[iEnde]!;
     setze(v.kappe(seite, c / 2, c / 2), spitze.x, spitze.y, 0, 0.5);
     for (let r = 1; r < c / 2; r++) {
       let lippe: { index: number; v: number } | undefined;
@@ -1442,7 +1467,7 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
     }
     if (seite === 'vorn') kastenKappe(v, ziele, hoehe, spitze, schlitz, setze);
   }
-  return { ziele, hoehe };
+  return fuelle ? { ziele, hoehe, fuelle } : { ziele, hoehe };
 }
 
 /**
@@ -1712,8 +1737,9 @@ export function ableiten(dok: Dokument, optionen: Partial<AbleitOptionen> = {}):
   const vorlage = roehre(opt.ringe, opt.ring);
   const st = stationenWaehlen(l, opt, dok);
   faltenSetzen(vorlage, st, l, dok, breiten, opt);
-  const { ziele, hoehe } = zieleBerechnen(vorlage, l, st, breiten, dok, opt);
-  return fertigstellen({ opt, vorlage, kaefig: vorlage.kaefig, ziele, hoehe, l, st, breiten, dok, zeiten: { t0, t1, t2 } });
+  const { ziele, hoehe, fuelle } = zieleBerechnen(vorlage, l, st, breiten, dok, opt);
+  const abl = fertigstellen({ opt, vorlage, kaefig: vorlage.kaefig, ziele, hoehe, l, st, breiten, dok, zeiten: { t0, t1, t2 } });
+  return fuelle ? { ...abl, fuelle: { exponent: fuelle } } : abl;
 }
 
 export type Rohbau = {

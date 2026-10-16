@@ -27,6 +27,8 @@ const AUSGABE = process.env.AUSGABE ?? resolve(WURZEL, 'apps/editor/pruefen-ausg
 const NAME = process.env.NAME ?? 'ausgangslage';
 const TITEL = process.env.TITEL ?? 'Teil G, G1 — Ausgangslage der Grundkörper (heutiger Bau)';
 const OPT: Partial<AbleitOptionen> = process.env.OPT ? JSON.parse(process.env.OPT) : {};
+// VARIANTEN (JSON {Name: Optionen}): je Körper eine Zeile je Variante (z. B. S3 Fülle rund | mittel | genau)
+const VARIANTEN: Record<string, Partial<AbleitOptionen>> = process.env.VARIANTEN ? JSON.parse(process.env.VARIANTEN) : { '': OPT };
 
 const b64 = (a: Float32Array | Uint32Array) => Buffer.from(a.buffer, a.byteOffset, a.byteLength).toString('base64');
 
@@ -40,9 +42,10 @@ function dokVon(name: string): Dokument {
 const liste = (process.env.KOERPER ?? 'kugel,birne,ente,giraffe-bauch,s-hals,fisch,langhals,rex').split(',');
 const faelle: { name: string; text: string; daten: unknown }[] = [];
 const zeilen: string[] = [];
-for (const name of liste) {
+for (const [variante, optV] of liste.flatMap((n) => Object.entries(VARIANTEN).map(([v, o]) => [`${n}${v ? ` · ${v}` : ''}`, o] as const))) {
+  const name = variante.split(' · ')[0]!;
   const dok = process.env.KUGEL0 ? mitStationenVon(dokVon(name), neuesDokument()) : dokVon(name);
-  const opt: Partial<AbleitOptionen> = { stufen: 3, ...OPT, ...(dok.kaefig?.stationen ? { stationen: dok.kaefig.stationen } : {}) };
+  const opt: Partial<AbleitOptionen> = { stufen: 3, ...optV, ...(dok.kaefig?.stationen ? { stationen: dok.kaefig.stationen } : {}) };
   const sk = dok.skalierung;
   const t0 = performance.now();
   let abl: ReturnType<typeof ableiten>;
@@ -56,8 +59,8 @@ for (const name of liste) {
       baumAeste = b.aeste;
     } else abl = process.env.TEILE ? ableitenMitTeilen(dok, { stufen: 3 }, process.env.TEILE === 'angesteckt' ? 'angesteckt' : 'verschmolzen') : ableiten(dok, opt);
   } catch (e) {
-    zeilen.push(`${name}: Bau scheitert (${(e as Error).message})`);
-    faelle.push({ name, text: `<b>${name}</b> · Bau scheitert: ${(e as Error).message}`, daten: null });
+    zeilen.push(`${variante}: Bau scheitert (${(e as Error).message})`);
+    faelle.push({ name: variante, text: `<b>${variante}</b> · Bau scheitert: ${(e as Error).message}`, daten: null });
     continue;
   }
   const zeit = performance.now() - t0;
@@ -119,9 +122,9 @@ for (const name of liste) {
   const zo = baumAeste.length || (abl as Partial<TeilErgebnis>).gesteckt?.length ? null : faltenNachZonenRoehre(abl);
   const zonenText = zo ? (['frei', 'kappe', 'spitze', 'kante'] as const).filter((z) => zo.zonen[z].kanten).map((z) => `${{ frei: 'freie Haut', kappe: 'Kappe', spitze: 'Spitze', kante: 'Kante' }[z]} ${zo.zonen[z].max.toFixed(0)}°/${zo.zonen[z].ueber20}`).join(', ') : '';
   const w = (a: 'seite' | 'front' | 'top') => (er[a].max > 1 ? ` <span style="color:#d81b43">(Widerspruch ${er[a].max.toFixed(1)})</span>` : '');
-  const text = `<b>${name}</b> · Seite Δ ${d.seite.max.toFixed(1)}${w('seite')} · Front Δ ${d.front.max.toFixed(1)}${w('front')} · Top Δ ${d.top.max.toFixed(1)}${w('top')} px · Falten ${f.max.toFixed(1)}° (über 20°: ${f.ueber20})${zonenText ? ` — nach Zonen: ${zonenText}` : ''} · ${zeit.toFixed(0)} ms`;
-  zeilen.push(`${name}: Seite ${d.seite.max.toFixed(1)} px, Front ${d.front.max.toFixed(1)} px, Top ${d.top.max.toFixed(1)} px, Falten ${f.max.toFixed(1)}° (>20°: ${f.ueber20}), ${zeit.toFixed(0)} ms`);
-  faelle.push({ name, text, daten: { pos: b64(pos), tri: b64(Uint32Array.from(tri)), seite: soll('seite'), front: soll('front'), top: soll('top'), wirbel, sprossen, wid: [widerspruchZug('seite'), widerspruchZug('front'), widerspruchZug('top')] } });
+  const text = `<b>${variante}</b> · Seite Δ ${d.seite.max.toFixed(1)}${w('seite')} · Front Δ ${d.front.max.toFixed(1)}${w('front')} · Top Δ ${d.top.max.toFixed(1)}${w('top')} px · Falten ${f.max.toFixed(1)}° (über 20°: ${f.ueber20})${zonenText ? ` — nach Zonen: ${zonenText}` : ''} · ${zeit.toFixed(0)} ms`;
+  zeilen.push(`${variante}: Seite ${d.seite.max.toFixed(1)} px, Front ${d.front.max.toFixed(1)} px, Top ${d.top.max.toFixed(1)} px, Falten ${f.max.toFixed(1)}° (>20°: ${f.ueber20}), ${zeit.toFixed(0)} ms`);
+  faelle.push({ name: variante, text, daten: { pos: b64(pos), tri: b64(Uint32Array.from(tri)), seite: soll('seite'), front: soll('front'), top: soll('top'), wirbel, sprossen, wid: [widerspruchZug('seite'), widerspruchZug('front'), widerspruchZug('top')] } });
 }
 
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>

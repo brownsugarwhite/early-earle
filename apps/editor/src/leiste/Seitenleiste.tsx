@@ -968,6 +968,14 @@ function AbleitenFeld() {
   const glatt = dok.ausstattung?.glatt ?? false;
   const ohneWirkung = glatt && (maulChip !== 'aus' || kernMaulAktiv(dok) || beine !== 'aus');
   // Plan „Liniennetz, Zielform, Käfig“, S2: glatte Haut als Ausstattung des Dokuments (ein Undo-Schritt)
+  // S3-Versuch: Fülle der Querschnitte (ein Undo-Schritt; „rund“ = Feld weg)
+  const setzeFuelle = (f: 'rund' | 'mittel' | 'genau') => {
+    const s = useEditor.getState();
+    const aus = { ...(s.dok.ausstattung ?? {}) };
+    if (f === 'rund') delete aus.fuelle;
+    else aus.fuelle = f;
+    s.setzeDokument({ ...s.dok, ausstattung: aus });
+  };
   const setzeGlatt = (an: boolean) => {
     const s = useEditor.getState();
     const aus = { ...(s.dok.ausstattung ?? {}) };
@@ -986,6 +994,11 @@ function AbleitenFeld() {
           ? 'Glatt wirkt noch nicht mit Maul oder Beinen (kommt mit dem Maul als Einsatz) — hier gilt der heutige Bau.'
           : '„glatt“: Der Käfig gleicht die Ziele mit einem Glättungsmaß aus, statt sie genau zu treffen — keine Wellen und Kappenfalten, die schwarze Linie bleibt.'}
       </p>
+      <div className="feld">
+        <span>Fülle (S3-Versuch)</span>
+      </div>
+      <Chips werte={['rund', 'mittel', 'genau'] as const} aktiv={dok.ausstattung?.fuelle ?? 'rund'} attribut="fuelle" onWahl={(f) => setzeFuelle(f)} />
+      <p className="hilfe">Wie voll die Querschnitte werden dürfen, damit der Körper Front und Top berührt: rund (Ellipsen wie bisher), mittel (bis „weicher Kasten“), genau (bis zur Kante). Nur ohne Maul und Beine.</p>
       <div className="feld">
         <span>Ringe</span>
         <b data-stationen={n}>{n ? `${n} eingefroren` : 'werden festgelegt …'}</b>

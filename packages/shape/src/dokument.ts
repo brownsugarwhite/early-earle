@@ -128,6 +128,8 @@ export const AusstattungSchema = z.object({
   rundmaul: z.object({ zu: z.number().min(0).max(0.5).optional(), auf: z.number().min(0).max(0.5).optional(), zaehne: z.number().int().min(0).max(40).optional(), punkt: V3.optional() }).optional(),
   // Plan „Liniennetz, Zielform, Käfig“, S2: glatte Haut (Ausgleich mit Glättungsmaß, `GLATTE_HAUT`); fehlt = heutiger Bau
   glatt: z.boolean().optional(),
+  // S3-Versuch (Look-Entscheidung): Fülle der Querschnitte, damit der Körper Front und Top berührt; fehlt = rund
+  fuelle: z.enum(['rund', 'mittel', 'genau']).optional(),
 });
 /** Ausstattung als Typ mit exakten Optionalen (zod-Inferenz erlaubt `undefined`, das passt nicht zu `exactOptionalPropertyTypes`). */
 export type ZonenVorlage = { ansicht: 'seite' | 'top' | 'front'; punkte: { x: number; y: number; weich: number }[] };
@@ -210,6 +212,11 @@ export type Ausstattung = {
    * statt der Interpolation der Ziele; fehlt = heutiger Bau (bitgleich). Mit Maul oder Beinen noch ohne Wirkung.
    */
   glatt?: boolean;
+  /**
+   * S3-Versuch (16.10., Look-Entscheidung): wie voll die Querschnitte werden dürfen, damit der Körper den Front-Umriss
+   * berührt — rund (Ellipsen, heute), mittel (bis „weicher Kasten“), genau (bis zur Kante). Fehlt = rund.
+   */
+  fuelle?: 'rund' | 'mittel' | 'genau';
 };
 
 /** Posen, die über „Neue Pose“ hinzukommen (Fressen ist immer da). */
