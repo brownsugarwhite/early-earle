@@ -118,7 +118,7 @@ export function Szene3D() {
         // S5: Geist des Mittelebenen-Baums (Streifen, Bauzeit, Fehler, Ecken)
         geist: () => {
           const g = aktuellesNetz()?.netz.geist;
-          return g ? { streifen: g.streifen, ms: g.ms, fehler: g.fehler ?? null, ecken: g.positionen.length / 3 } : null;
+          return g ? { streifen: g.streifen, seiten: g.seiten ?? 0, ms: g.ms, fehler: g.fehler ?? null, ecken: g.positionen.length / 3 } : null;
         },
         // B5: Rot und Blau der bearbeiteten Pose (E2E): Abweichung (px), geschlossen, Knoten, gezeigte Lippe rechts (Kern-Einheiten)
         poseLippen: () => {

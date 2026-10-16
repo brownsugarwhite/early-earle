@@ -73,7 +73,10 @@ for (const fall of faelle) {
   const b = await stand();
   pruefe(b.koerper === 'teile' && b.schritte === a.schritte + 1, `Chip „Teile (Geist)“: Ausstattung koerper = teile, ein Undo-Schritt (${a.schritte} → ${b.schritte})`);
   pruefe(b.hash === a.hash, 'heutiger Körper unverändert (Netz gleich)');
-  pruefe(!!b.geist && !b.geist.fehler && b.geist.streifen >= 1 && b.geist.ecken > 0, `Geist: ${b.geist ? `${b.geist.streifen} Streifen, ${b.geist.ecken} Ecken, ${b.geist.ms.toFixed(0)} ms${b.geist.fehler ? `, Fehler ${b.geist.fehler}` : ''}` : 'fehlt'} · Tafel „${b.titel}“`);
+  pruefe(!!b.geist && !b.geist.fehler && b.geist.streifen >= 1 && b.geist.ecken > 0, `Geist: ${b.geist ? `${b.geist.streifen} Streifen, ${b.geist.seiten} seitlich, ${b.geist.ecken} Ecken, ${b.geist.ms.toFixed(0)} ms${b.geist.fehler ? `, Fehler ${b.geist.fehler}` : ''}` : 'fehlt'} · Tafel „${b.titel}“`);
+  // S6: Wesen mit seitlichen Paaren zeigen sie als Röhren (SEITEN: erwartete Zahl je Fall, z. B. "ente:1,fisch:1")
+  const soll = Object.fromEntries((process.env.SEITEN ?? '').split(',').filter(Boolean).map((t) => t.split(':')));
+  if (soll[fall] !== undefined) pruefe(b.geist?.seiten === Number(soll[fall]), `S6: ${b.geist?.seiten ?? 0} seitliche Röhren (erwartet ${soll[fall]})`);
   await page.evaluate(() => window.__stores.ui.getState().maximieren('creation'));
   await page.waitForTimeout(1200);
   await page.mouse.move(5, 5);

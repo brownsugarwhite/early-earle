@@ -1015,14 +1015,14 @@ function AbleitenFeld() {
       <p className="hilfe">Wo der Körper hinter der Front zurückbleibt, schiebt sich der Ring dort hinaus, bis er die Linie berührt. Die Stufe begrenzt die Form: rund (Ellipse), mittel (weicher Kasten), genau (bis zur Kante). Nur ohne Maul und Beine.</p>
       <div className="feld">
         <span>Körper (S5)</span>
-        <b data-geist={geist ? geist.streifen : ''}>{koerper === 'teile' ? (geist ? (geist.fehler ? 'Baum scheitert' : `${geist.streifen} Streifen · ${geist.ms.toFixed(0)} ms`) : 'wird gebaut …') : 'eine Röhre'}</b>
+        <b data-geist={geist ? geist.streifen : ''} data-seiten={geist?.seiten ?? ''}>{koerper === 'teile' ? (geist ? (geist.fehler ? 'Baum scheitert' : `${geist.streifen} Streifen${geist.seiten ? ` + ${geist.seiten} seitlich` : ''} · ${geist.ms.toFixed(0)} ms`) : 'wird gebaut …') : 'eine Röhre'}</b>
       </div>
       <Chips werte={['roehre', 'teile'] as const} aktiv={koerper} text={(k) => (k === 'roehre' ? 'Röhre' : 'Teile (Geist)')} attribut="koerper" onWahl={(k) => setzeKoerper(k)} />
       <p className="hilfe">
         {koerper === 'teile'
           ? geist?.fehler
             ? `Der Mittelebenen-Baum scheitert an diesem Wesen: ${geist.fehler}`
-            : 'Hellblau durchscheinend: der Körper aus Streifen der Seitenfläche (Rumpf, Hals, Flossen je ein Streifen, seitliche Paare noch ohne). Er ersetzt den heutigen Körper erst mit S7; ohne Maul und Beine.'
+            : 'Hellblau durchscheinend: der Körper aus Streifen der Seitenfläche (Rumpf, Hals, Flossen je ein Streifen) und seitlichen Röhren (Flügel, Beine, Brustflossen; S6). Er ersetzt den heutigen Körper erst mit S7; ohne Maul und Beine.'
           : '„Teile“ zeigt den Körper aus dem Mittelebenen-Baum (S5) als Geist über dem heutigen.'}
       </p>
       <div className="feld">

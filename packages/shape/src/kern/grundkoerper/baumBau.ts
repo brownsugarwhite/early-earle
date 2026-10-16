@@ -68,9 +68,11 @@ export type BaumOptionen = AbleitOptionen & {
   klinge: number;
   /** S6: seitliche Teile (Paare) als Röhren über Fenster in der Rumpfflanke bauen */
   paare: boolean;
+  /** S6: Gewicht der Fensterränder an ihrem Fußabdruck (1 = wie jeder Käfigpunkt) */
+  fensterGewicht: number;
 };
 
-export const BAUM_STANDARD: BaumOptionen = { ...ABLEIT_STANDARD, ...GLATTE_HAUT, fuelle: 'mittel', ansatzUebergang: 0.35, elternQuerschnitt: 'lappen', ansatz: 'kragen', kappeKante: 0.8, hebung: 'ringe', feldGewicht: 1, klinge: 0.4, paare: false };
+export const BAUM_STANDARD: BaumOptionen = { ...ABLEIT_STANDARD, ...GLATTE_HAUT, fuelle: 'mittel', ansatzUebergang: 0.35, elternQuerschnitt: 'lappen', ansatz: 'kragen', kappeKante: 0.8, hebung: 'ringe', feldGewicht: 1, klinge: 0.4, paare: false, fensterGewicht: 0.05 };
 
 export type BaumAbleitung = {
   opt: BaumOptionen;
@@ -1193,7 +1195,18 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
   const anteil = nahtAnteile(pfad.geordnet, k.n, ziele, umriss);
   const breite = feld ? null : baumBreite(e, ringe, qs, bk, u, ziele, bz, beruehrt, opt);
   const bedingungen: Bedingung[] = [];
-  for (let i = 0; i < k.n; i++) bedingungen.push({ zeile: i, gewicht: 1 });
+  // Fensterränder seitlicher Röhren nur schwach an ihren Fußabdruck gebunden: Er ist die Schnittlinie von Rumpf und Teil, eine
+  // Kehle läuft außen an ihr vorbei. Mit vollem Gewicht musste die Grenzfläche durch die Schnittlinie und knickte dort
+  // (Vierbeiner 31°); schwach gebunden folgt der Käfig der Abweichung seiner Nachbarn (Glättungsmaß relativ zur Zielform)
+  const fensterRand = new Set<number>();
+  ansaetze.forEach((g, q) => {
+    for (let j = 0; j < g.topo.N; j++) {
+      const p = bk.ring(topoMitte.length + q, 0, j);
+      fensterRand.add(p);
+      fensterRand.add(bk.spiegel[p]!);
+    }
+  });
+  for (let i = 0; i < k.n; i++) bedingungen.push({ zeile: i, gewicht: fensterRand.has(i) ? opt.fensterGewicht : 1 });
   for (let q = 0; q < nahtFein.length; q++) bedingungen.push({ zeile: nahtFein[q]!, gewicht: opt.nahtGewicht });
   if (breite) for (let q = 0; q < breite.fein.length; q++) bedingungen.push({ zeile: breite.fein[q]!, gewicht: opt.breiteGewicht * (breite.gewicht?.[q] ?? 1) });
   // R5: feine Punkte bis Stufe 1 (Punktnummern bleiben über die Stufen) auf das Feld — Lage in der Seite wie die aktuelle

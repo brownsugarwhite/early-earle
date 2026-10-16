@@ -283,7 +283,7 @@ export type WesenNetz = {
    * S5 „Mittelebenen-Baum“ (Ausstattung `koerper: 'teile'`): der Körper aus Streifen der Seitenfläche als Geist (Dreiecke ohne
    * Index, Profil-Einheiten), mit Zahl der Streifen und Bauzeit; nur im genauen Bau, ohne Maul und Beine. Sonst null.
    */
-  geist: { positionen: Float32Array; normalen: Float32Array; streifen: number; ms: number; fehler?: string } | null;
+  geist: { positionen: Float32Array; normalen: Float32Array; streifen: number; seiten?: number; ms: number; fehler?: string } | null;
   /** Front/Top: Umweg der schwarzen Linie über einen breiteren Kiefer (Paare x, y; NaN trennt), sonst fehlt das Blatt */
   umweg: { front?: Float32Array; top?: Float32Array } | null;
   info: WesenInfo;
@@ -1279,9 +1279,10 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     if (!geistStand || (geistStand.schluessel !== gSchluessel && !schnell)) {
       const t0 = jetzt();
       try {
-        const b = baumAbleiten(dok);
+        // S6: mit seitlichen Teilen (Flügel, Beine, Brustflossen als Röhren); Wesen ohne Paare bleiben bitgleich
+        const b = baumAbleiten(dok, { paare: true });
         const d = baumDreiecke(b);
-        geistStand = { schluessel: gSchluessel, netz: { ...d, streifen: b.ebene.streifen.length, ms: jetzt() - t0 } };
+        geistStand = { schluessel: gSchluessel, netz: { ...d, streifen: b.ebene.streifen.length, seiten: b.seiten.length, ms: jetzt() - t0 } };
       } catch (err) {
         geistStand = { schluessel: gSchluessel, netz: { positionen: new Float32Array(0), normalen: new Float32Array(0), streifen: 0, ms: jetzt() - t0, fehler: err instanceof Error ? err.message : String(err) } };
       }
