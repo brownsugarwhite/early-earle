@@ -14,7 +14,7 @@ import { baumAbleiten, baumTeile } from '../../../../packages/shape/src/kern/gru
 import { alleFlaechen } from '../../../../packages/shape/src/kaefig/halbkanten';
 import { blattAbweichungen } from '../../../../packages/shape/src/kern/abweichung';
 import { faltenMass, feinesNetz } from '../../../../packages/shape/src/kern/pruefstand';
-import { G_KOERPER, type GKoerper, gKoerperDokument } from '../../../../packages/shape/src/kern/pruefen/grundkoerper';
+import { G_KOERPER, type GKoerper, S0_KOERPER, type S0Koerper, gKoerperDokument, s0KoerperDokument } from '../../../../packages/shape/src/kern/pruefen/grundkoerper';
 import { koerperDokument } from '../../../../packages/shape/src/kern/pruefen/koerper';
 import { zufall } from '../../../../packages/shape/src/kern/pruefen/zufall';
 
@@ -27,6 +27,7 @@ const b64 = (a: Float32Array | Uint32Array) => Buffer.from(a.buffer, a.byteOffse
 
 function dokVon(name: string): Dokument {
   if ((G_KOERPER as readonly string[]).includes(name)) return gKoerperDokument(name as GKoerper);
+  if ((S0_KOERPER as readonly string[]).includes(name)) return s0KoerperDokument(name as S0Koerper);
   if (name === 'birne') return koerperDokument('birne', zufall(2));
   return koerperDokument(name as 'kugel', zufall(1));
 }
