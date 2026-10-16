@@ -426,3 +426,8 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
   bräuchte am Kopf wieder 1:2. Langhals und Drache bleiben ein Streifen.
 - **Messskripte und Kragen:** Skripte, die Käfigflächen in der Reihenfolge (Streifen, Ring, j) abzählen, beschriften Flächen
   mit Kragen falsch (Flächen im U entfallen). Richtig: `bk.flaecheRing`, `bk.flaecheJ`, `bk.flaecheStreifen`.
+- **R5 Höhenfeld (Versuch, 16.10. nachts):** zwei gemessene Anläufe (rund; rund + Berühren + feine Feldpunkte). Glatter an
+  Vase und Drache, aber vorn 3–7 px ungenauer an Giraffe, Ente und Fisch (keine Front-Form im Querschnitt). Kein Standard;
+  bleibt als Baustein für S6 (dünne seitliche Teile als Feld über ihrer Fläche). Aufgedeckt: Ringe, die dicht an einer
+  einspringenden Ecke vorbeilaufen (Überhang-Kehle, 1,6 px), bekommen eine Taille — im Ring-Modus unsichtbar, aber ein
+  Auslegungsfehler (Weg: Kopf als eigenes Teil, oder Sprossen um die Ecke biegen).

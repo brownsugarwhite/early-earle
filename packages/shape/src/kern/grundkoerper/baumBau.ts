@@ -23,6 +23,7 @@ import type { Zone } from '../pruefen/zonen';
 import { frontBeruehren } from '../rand';
 import { feinKette } from '../reifen';
 import { type Ebene, RING_STANDARD, type RingOptionen, type StreifenRinge, ebene, ringeAuslegen } from './ebene';
+import { type FeldOptionen, type Hoehenfeld, hoehenfeld } from './hoehenfeld';
 import type { Teilbaum } from './teilbaum';
 
 /** Topologie der Streifen aus Auslegung und Ringen. */
@@ -54,9 +55,17 @@ export type BaumOptionen = AbleitOptionen & {
   ansatz: RingOptionen['ansatz'];
   /** Mindestlänge der Kappen in Kantenlängen (0 = aus) */
   kappeKante: number;
+  /**
+   * Hebung der Seitenfläche: `ringe` (Querschnitt und Maßstab je Ring, S5) oder `feld` (ein Höhenfeld über der Seitenfläche,
+   * R5); Feld-Optionen in `feld`
+   */
+  hebung: 'ringe' | 'feld';
+  feld?: Partial<FeldOptionen>;
+  /** Gewicht der feinen Feldpunkte im Löser (Hebung `feld`) */
+  feldGewicht: number;
 };
 
-export const BAUM_STANDARD: BaumOptionen = { ...ABLEIT_STANDARD, ...GLATTE_HAUT, fuelle: 'mittel', ansatzUebergang: 0.35, elternQuerschnitt: 'lappen', ansatz: 'kragen', kappeKante: 0.8 };
+export const BAUM_STANDARD: BaumOptionen = { ...ABLEIT_STANDARD, ...GLATTE_HAUT, fuelle: 'mittel', ansatzUebergang: 0.35, elternQuerschnitt: 'lappen', ansatz: 'kragen', kappeKante: 0.8, hebung: 'ringe', feldGewicht: 1 };
 
 export type BaumAbleitung = {
   opt: BaumOptionen;
@@ -204,6 +213,118 @@ function punkt(sp: Sprosse, q: Querschnitt, W: number, j: number, breiten: Breit
   return [x, y, z, hv];
 }
 
+/**
+ * R5 Höhenfeld: Ziele aller Käfigpunkte aus einem Feld H über der Seitenfläche (Körper z = ±H). Ringe, Kappenstationen und
+ * der Übergang 2:1 legen nur die Lage ihrer Punkte in der Seite fest — nach der Bogenlänge ihres Profils (Sprosse, H) —, die
+ * Tiefe ist H an dieser Stelle (Spiegelpunkt −H, Naht 0). Kragen, Sehne und Übergang brauchen keine eigenen Regeln.
+ */
+function feldZiele(e: Ebene, ringe: readonly StreifenRinge[], topo: readonly StreifenTopo[], bk0: BaumKaefig, H: (x: number, y: number) => number, setze: (p: number, x: number, y: number, z: number) => void): void {
+  const setzePaar = (p: number, x: number, y: number, z: number) => {
+    if (bk0.naht[p]) {
+      setze(p, x, y, 0);
+      return;
+    }
+    setze(p, x, y, z);
+    const q = bk0.spiegel[p]!;
+    if (q !== p) setze(q, x, y, -z);
+  };
+  // n + 1 Punkte von a nach b, gleich lang auf dem Profil (Lage in der Seite, H)
+  const profil = (a: V2, b: V2, n: number): [number, number, number][] => {
+    const M = 96;
+    const P: [number, number, number][] = [];
+    for (let k = 0; k <= M; k++) {
+      const t = k / M;
+      const x = a.x + (b.x - a.x) * t;
+      const y = a.y + (b.y - a.y) * t;
+      P.push([x, y, Math.max(0, H(x, y))]);
+    }
+    const cum = [0];
+    for (let k = 1; k <= M; k++) cum.push(cum[k - 1]! + Math.hypot(P[k]![0] - P[k - 1]![0], P[k]![1] - P[k - 1]![1], P[k]![2] - P[k - 1]![2]));
+    const out: [number, number, number][] = [];
+    for (let j = 0; j <= n; j++) {
+      const ziel = (cum[M]! * j) / n;
+      let k = 0;
+      while (k < M - 1 && cum[k + 1]! < ziel) k++;
+      const d = cum[k + 1]! - cum[k]!;
+      const f = d > 0 ? (ziel - cum[k]!) / d : 0;
+      const A = P[k]!;
+      const B = P[k + 1]!;
+      out.push([A[0] + (B[0] - A[0]) * f, A[1] + (B[1] - A[1]) * f, A[2] + (B[2] - A[2]) * f]);
+    }
+    return out;
+  };
+  e.streifen.forEach((st, s) => {
+    const N = st.N;
+    const c = N / 4;
+    const R = ringe[s]!.sprossen.length;
+    for (let i = 0; i < R; i++) {
+      // Ring 0 eines Kinds gehört dem Elternstreifen (Sehne, Kragen) bzw. der Übergangskappe; der letzte Ring vor einem
+      // Übergang ist das U (unten)
+      if (i === 0 && st.ansatz) continue;
+      if (i === R - 1 && ringe[s]!.uebergang) continue;
+      const sp = ringe[s]!.sprossen[i]!;
+      const pts = profil(sp.o, sp.u, N / 2);
+      for (let j = 0; j <= N / 2; j++) {
+        if (!bk0.existiert(s, i, j)) continue;
+        const [x, y, z] = pts[j]!;
+        setzePaar(bk0.ring(s, i, j), x, y, z);
+      }
+    }
+    for (const wo of ['anfang', 'ende'] as const) {
+      if ((wo === 'anfang' ? topo[s]!.anfang : topo[s]!.ende).art !== 'kappe') continue;
+      const spitze = wo === 'anfang' ? ringe[s]!.spitzen.anfang! : ringe[s]!.spitzen.ende;
+      setze(bk0.kappe(s, wo, c / 2, c / 2), spitze.x, spitze.y, 0);
+      const stK = wo === 'anfang' ? ringe[s]!.kappen.anfang : ringe[s]!.kappen.ende;
+      for (let r = 1; r < c / 2; r++) {
+        const sp = stK[r - 1]!;
+        const pts = profil(sp.o, sp.u, 4 * r);
+        for (let m = 0; m <= 4 * r; m++) {
+          const [a, b] = quadratRing(c, r, m);
+          const [x, y, z] = pts[m]!;
+          setzePaar(bk0.kappe(s, wo, a, b), x, y, z);
+        }
+      }
+    }
+    // Übergang 2:1: Kindring 0 auf der Sehne (A → B), das U um die Sehne und die inneren U der Kappe
+    const ue = ringe[s]!.uebergang;
+    if (!ue) return;
+    const kind = ue.kind;
+    const Nk = e.streifen[kind]!.N;
+    const sp0 = ringe[kind]!.sprossen[0]!;
+    const kindPts = profil(sp0.o, sp0.u, Nk / 2);
+    for (let j = 0; j <= Nk / 2; j++) {
+      const [x, y, z] = kindPts[j]!;
+      setzePaar(bk0.ring(kind, 0, j), x, y, z);
+    }
+    const kindPunkt = (j: number): V2 => ({ x: kindPts[j]![0], y: kindPts[j]![1] });
+    const M = { x: (ue.A.x + ue.B.x) / 2, y: (ue.A.y + ue.B.y) / 2 };
+    const L2 = Math.hypot(ue.A.x - M.x, ue.A.y - M.y) || 1e-9;
+    const e1 = { x: (ue.A.x - M.x) / L2, y: (ue.A.y - M.y) / L2 };
+    const spR = ringe[s]!.sprossen[R - 2]!;
+    const mR = { x: (spR.o.x + spR.u.x) / 2, y: (spR.o.y + spR.u.y) / 2 };
+    let e2 = { x: -e1.y, y: e1.x };
+    if ((mR.x - M.x) * e2.x + (mR.y - M.y) * e2.y < 0) e2 = { x: -e2.x, y: -e2.y };
+    for (let j = 0; j <= N / 2; j++) {
+      const th = (Math.PI * j) / (N / 2);
+      const P = { x: M.x + e1.x * L2 * Math.cos(th) + e2.x * ue.tiefe * Math.sin(th), y: M.y + e1.y * L2 * Math.cos(th) + e2.y * ue.tiefe * Math.sin(th) };
+      setzePaar(bk0.ring(s, R - 1, j), P.x, P.y, Math.max(0, H(P.x, P.y)));
+    }
+    for (let r = 1; r < c / 2; r++) {
+      const P0 = kindPunkt(c / 2 - r);
+      const P1 = kindPunkt(c / 2 + r);
+      const Mr = { x: (P0.x + P1.x) / 2, y: (P0.y + P1.y) / 2 };
+      const wr = Math.hypot(P0.x - Mr.x, P0.y - Mr.y);
+      const tr = (ue.tiefe * r) / (c / 2);
+      for (let m = 1; m < 4 * r; m++) {
+        const th = (Math.PI * m) / (4 * r);
+        const [a, b] = quadratRing(c, r, m);
+        const P = { x: Mr.x + e1.x * wr * Math.cos(th) + e2.x * tr * Math.sin(th), y: Mr.y + e1.y * wr * Math.cos(th) + e2.y * tr * Math.sin(th) };
+        setzePaar(bk0.kappe(s, 'ende', a, b), P.x, P.y, Math.max(0, H(P.x, P.y)));
+      }
+    }
+  });
+}
+
 /** Körper aus dem Mittelebenen-Baum bauen. */
 export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}, baum?: Teilbaum): BaumAbleitung {
   const opt: BaumOptionen = { ...BAUM_STANDARD, ...optionen };
@@ -224,302 +345,313 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
     ziele[3 * p + 2] = z;
     gesetzt[p] = 1;
   };
-  // Querschnitte je Streifen; der erste Ring eines Kinds ist rund (seine Punkte liegen genau auf den Sehnenpunkten)
   // Silhouetten ohne seitliche Paare (S6) für den ganzen Bau: Die Paare liegen neben dem Rumpf, kein Mittelteil braucht ihre
   // Breite; der Rumpf bekäme sonst ihre Ausdehnung und ihren Stachel im Front-Lappen (Fisch)
   const rumpf = rumpfSilhouetten(dok, e.baum);
   const bz = rumpf?.breiten ?? breiten;
-  const breitenVon = (_s: number) => bz;
-  const qs: Querschnitt[][] = e.streifen.map((st, s) => {
-    const flosseDrin = s === 0 && e.ueberlappt.length > 0;
-    const rund = st.kinder.length > 0 && (opt.elternQuerschnitt === 'kreis' || flosseDrin);
-    const o = rund ? { ...opt, querschnitt: false } : opt;
-    const q = s === 0 && rumpf ? querschnitteAusZug(ringe[s]!.sprossen, rumpf.frontHalb, st.N, o) : querschnitteFuer(ringe[s]!.sprossen, dok, breiten, st.N, o);
-    if (st.ansatz) q[0] = kreisQuerschnitt(st.N);
-    return q;
-  });
-  const Ws: number[][] = e.streifen.map((_, s) => {
-    let letzte = 0;
-    return ringe[s]!.sprossen.map((sp, i) => (letzte = masstab(sp, qs[s]![i]!, breitenVon(s), letzte)));
-  });
-  // S3 „Umrisse berühren“ über alle Ringe aller Streifen gemeinsam (je Höhe der Ring, der dort am weitesten reicht)
+  let qs: Querschnitt[][];
   const beruehrt = new Set<string>();
-  if (opt.fuelle) {
-    const alle: { s: number; i: number }[] = [];
-    e.streifen.forEach((_, s) => ringe[s]!.sprossen.forEach((__, i) => alle.push({ s, i })));
-    const rand = frontBeruehren(
-      alle.map(({ s, i }) => ringe[s]!.sprossen[i]!),
-      alle.map(({ s, i }) => qs[s]![i]!),
-      alle.map(({ s, i }) => Ws[s]![i]!),
-      bz,
-      opt.fuelle,
-      huellenBreite(dok, bz),
-    );
-    alle.forEach(({ s, i }, k) => {
-      if (!(i === 0 && e.streifen[s]!.ansatz)) qs[s]![i] = rand.vorlagen[k] as Querschnitt;
+  let feld: Hoehenfeld | null = null;
+  if (opt.hebung === 'feld') {
+    // R5: ein Höhenfeld über der Seitenfläche gibt jedem Käfigpunkt seine Tiefe (keine Querschnitte je Ring)
+    feld = hoehenfeld(e.seite, bz, opt.feld ?? {});
+    feldZiele(e, ringe, topo, bk0, feld.H, setze);
+    qs = e.streifen.map((st, s) => ringe[s]!.sprossen.map(() => kreisQuerschnitt(st.N)));
+  } else {
+    // Querschnitte je Streifen; der erste Ring eines Kinds ist rund (seine Punkte liegen genau auf den Sehnenpunkten)
+    // Silhouetten ohne seitliche Paare (S6) für den ganzen Bau: Die Paare liegen neben dem Rumpf, kein Mittelteil braucht ihre
+    // Breite; der Rumpf bekäme sonst ihre Ausdehnung und ihren Stachel im Front-Lappen (Fisch)
+    const breitenVon = (_s: number) => bz;
+    qs = e.streifen.map((st, s) => {
+      const flosseDrin = s === 0 && e.ueberlappt.length > 0;
+      const rund = st.kinder.length > 0 && (opt.elternQuerschnitt === 'kreis' || flosseDrin);
+      const o = rund ? { ...opt, querschnitt: false } : opt;
+      const q = s === 0 && rumpf ? querschnitteAusZug(ringe[s]!.sprossen, rumpf.frontHalb, st.N, o) : querschnitteFuer(ringe[s]!.sprossen, dok, breiten, st.N, o);
+      if (st.ansatz) q[0] = kreisQuerschnitt(st.N);
+      return q;
     });
-    for (const p of rand.punkte) beruehrt.add(`${alle[p.i]!.s}/${alle[p.i]!.i}/${p.j}`);
-  }
-  // 1. Ringe und Spitzenkappen je Streifen
-  e.streifen.forEach((st, s) => {
-    const N = st.N;
-    const c = N / 4;
-    const R = ringe[s]!.sprossen.length;
-    for (let i = 0; i < R; i++) {
-      if (i === 0 && st.ansatz) continue;
-      if (i === R - 1 && ringe[s]!.uebergang) continue;
-      const sp = ringe[s]!.sprossen[i]!;
-      const q = qs[s]![i]!;
-      const W = Ws[s]![i]!;
+    const Ws: number[][] = e.streifen.map((_, s) => {
+      let letzte = 0;
+      return ringe[s]!.sprossen.map((sp, i) => (letzte = masstab(sp, qs[s]![i]!, breitenVon(s), letzte)));
+    });
+    // S3 „Umrisse berühren“ über alle Ringe aller Streifen gemeinsam (je Höhe der Ring, der dort am weitesten reicht)
+    if (opt.fuelle) {
+      const alle: { s: number; i: number }[] = [];
+      e.streifen.forEach((_, s) => ringe[s]!.sprossen.forEach((__, i) => alle.push({ s, i })));
+      const rand = frontBeruehren(
+        alle.map(({ s, i }) => ringe[s]!.sprossen[i]!),
+        alle.map(({ s, i }) => qs[s]![i]!),
+        alle.map(({ s, i }) => Ws[s]![i]!),
+        bz,
+        opt.fuelle,
+        huellenBreite(dok, bz),
+      );
+      alle.forEach(({ s, i }, k) => {
+        if (!(i === 0 && e.streifen[s]!.ansatz)) qs[s]![i] = rand.vorlagen[k] as Querschnitt;
+      });
+      for (const p of rand.punkte) beruehrt.add(`${alle[p.i]!.s}/${alle[p.i]!.i}/${p.j}`);
+    }
+    // 1. Ringe und Spitzenkappen je Streifen
+    e.streifen.forEach((st, s) => {
+      const N = st.N;
+      const c = N / 4;
+      const R = ringe[s]!.sprossen.length;
+      for (let i = 0; i < R; i++) {
+        if (i === 0 && st.ansatz) continue;
+        if (i === R - 1 && ringe[s]!.uebergang) continue;
+        const sp = ringe[s]!.sprossen[i]!;
+        const q = qs[s]![i]!;
+        const W = Ws[s]![i]!;
+        for (let j = 0; j <= N / 2; j++) {
+          if (!bk0.existiert(s, i, j)) continue;
+          const [x, y, z] = punkt(sp, q, W, j, bz);
+          const naht = j === 0 || j === N / 2;
+          setze(bk0.ring(s, i, j), x, y, naht ? 0 : z);
+          if (naht) {
+            const l = bk0.links(bk0.ring(s, i, j));
+            if (l !== bk0.ring(s, i, j)) setze(l, x, y, 0);
+          } else setze(bk0.ring(s, i, N - j), x, y, -z);
+        }
+      }
+      for (const wo of ['anfang', 'ende'] as const) {
+        if ((wo === 'anfang' ? topo[s]!.anfang : topo[s]!.ende).art !== 'kappe') continue;
+        const spitze = wo === 'anfang' ? ringe[s]!.spitzen.anfang! : ringe[s]!.spitzen.ende;
+        const q0 = qs[s]![wo === 'anfang' ? 0 : R - 1]!;
+        const stK = wo === 'anfang' ? ringe[s]!.kappen.anfang : ringe[s]!.kappen.ende;
+        setze(bk0.kappe(s, wo, c / 2, c / 2), spitze.x, spitze.y, 0);
+        for (let r = 1; r < c / 2; r++) {
+          const q = umparametrisieren(q0, 4 * r);
+          const sp = stK[r - 1]!;
+          const W = masstab(sp, q, bz, Ws[s]![wo === 'anfang' ? 0 : R - 1]!);
+          for (let m = 0; m <= 4 * r; m++) {
+            const [a, b] = quadratRing(c, r, m);
+            const naht = m === 0 || m === 4 * r;
+            const [x, y, z] = punkt(sp, q, W, m, bz);
+            setze(bk0.kappe(s, wo, a, b), x, y, naht ? 0 : z);
+            if (!naht) setze(bk0.kappe(s, wo, c - a, b), x, y, -z);
+          }
+        }
+      }
+    });
+    // 2. erster Ring der Kinder (runder Ring auf der Sehne) — überschreibt die Sprossenenden des Elternstreifens. Ein Kragen
+    //    liegt auf der Elternhaut: Jeder Kragenpunkt rutscht entlang seines Elternrings (Form bleibt) zur Naht hin bis zur
+    //    Breite des runden Kindrings 0 an seinem Winkel (Fußabdruck des Kinds), nie von ihr weg (ist das Kind breiter als der
+    //    Elternring an dieser Zeile, bleibt der Punkt; weiter weg rutschend fiel er am Fisch-Schwanzstiel auf die nächste Zeile).
+    //    Ohne das lag das Bein des U am S-Hals 25 px unter A, der erste Kindring 14 px darüber, und der Löser drückte die
+    //    Käfigpunkte zusammen (Seitenverhältnis 86)
+    //    Die zwei Elternringe vor und hinter einem Bein rutschen anteilig mit (½, ¼): Bei dünnen Kindern lagen sonst alle
+    //    Beinpunkte dicht an der Naht und der Ring davor auf seinen alten Zeilen (Trapez 2,4 : 23,6 px, Fisch-Rückenflosse).
+    const rutschen = (sp: Sprosse, q: Querschnitt, W: number, seite: 'a' | 'b', h: number, zeile: number, zSoll: number) => {
+      const prof = Array.from({ length: Math.min(h, zeile + 1) + 1 }, (_, t) => punkt(sp, q, W, seite === 'a' ? t : h - t, bz));
+      const zBei = (t: number) => {
+        const t0 = Math.min(prof.length - 2, Math.floor(t));
+        return prof[t0]![2] + (prof[t0 + 1]![2] - prof[t0]![2]) * (t - t0);
+      };
+      const tMax = Math.min(prof.length - 1, zeile);
+      let t = Math.min(0.2, tMax);
+      while (t < tMax && zBei(t) < zSoll) t = Math.min(tMax, t + 0.01);
+      return { t, lage: (tt: number) => {
+        const t0 = Math.min(prof.length - 2, Math.floor(tt));
+        const f = tt - t0;
+        const a0 = prof[t0]!;
+        const a1 = prof[t0 + 1]!;
+        return [a0[0] + (a1[0] - a0[0]) * f, a0[1] + (a1[1] - a0[1]) * f, a0[2] + (a1[2] - a0[2]) * f] as const;
+      } };
+    };
+    e.streifen.forEach((st, s) => {
+      const an = topo[s]!.anfang;
+      if (an.art !== 'kragen') return;
+      const p = an.eltern;
+      const Np = e.streifen[p]!.N;
+      const h = Np / 2;
+      const H = st.N / 2;
+      const W0 = Ws[s]![0]!;
+      for (let k = 1; k < H; k++) {
+        const o = kragenOrt(topo[p]!, an, st.N, k);
+        const zeile = an.seite === 'a' ? o.j : h - o.j;
+        const r = rutschen(ringe[p]!.sprossen[o.i]!, qs[p]![o.i]!, Ws[p]![o.i]!, an.seite, h, zeile, W0 * Math.sin((Math.PI * k) / H));
+        const [x, y, z] = r.lage(r.t);
+        setze(bk0.ring(s, 0, k), x, y, z);
+        setze(bk0.ring(s, 0, st.N - k), x, y, -z);
+      }
+      // Nachbarringe der Beine anteilig mitnehmen (nur freie Ringe: keine Endringe, keine Ecken, keine Ringe eines Blocks auf
+      // derselben Seite; ein Block der Gegenseite lässt diese Zeilen frei)
+      const R = ringe[p]!.sprossen.length;
+      const belegt = new Set<number>([0, R - 1]);
+      for (const kd of ringe[p]!.kinder) if (kd.seite === an.seite) for (let j = 0; j < kd.t.length; j++) belegt.add(kd.ring + j);
+      for (const ec of ringe[p]!.ecken) belegt.add(ec.ring);
+      const w = H - 2 * an.tiefe;
+      for (const [bein, richtung] of [
+        [an.ring, -1],
+        [an.ring + w, 1],
+      ] as const) {
+        for (const [g, alpha] of [
+          [1, 0.5],
+          [2, 0.25],
+        ] as const) {
+          const i = bein + richtung * g;
+          if (belegt.has(i)) break;
+          for (let zeile = 1; zeile <= an.tiefe; zeile++) {
+            const r = rutschen(ringe[p]!.sprossen[i]!, qs[p]![i]!, Ws[p]![i]!, an.seite, h, zeile, W0 * Math.sin((Math.PI * zeile) / H));
+            const tNeu = (1 - alpha) * zeile + alpha * r.t;
+            const [x, y, z] = r.lage(tNeu);
+            const j = an.seite === 'a' ? zeile : h - zeile;
+            setze(bk0.ring(p, i, j), x, y, z);
+            setze(bk0.ring(p, i, Np - j), x, y, -z);
+          }
+        }
+      }
+    });
+    e.streifen.forEach((st, s) => {
+      if (!st.ansatz) return;
+      if (topo[s]!.anfang.art === 'kragen') return;
+      const N = st.N;
+      const sp = ringe[s]!.sprossen[0]!;
+      const q = qs[s]![0]!;
+      const W = Ws[s]![0]!;
       for (let j = 0; j <= N / 2; j++) {
-        if (!bk0.existiert(s, i, j)) continue;
         const [x, y, z] = punkt(sp, q, W, j, bz);
         const naht = j === 0 || j === N / 2;
-        setze(bk0.ring(s, i, j), x, y, naht ? 0 : z);
-        if (naht) {
-          const l = bk0.links(bk0.ring(s, i, j));
-          if (l !== bk0.ring(s, i, j)) setze(l, x, y, 0);
-        } else setze(bk0.ring(s, i, N - j), x, y, -z);
+        setze(bk0.ring(s, 0, j), x, y, naht ? 0 : z);
+        if (!naht) setze(bk0.ring(s, 0, N - j), x, y, -z);
       }
-    }
-    for (const wo of ['anfang', 'ende'] as const) {
-      if ((wo === 'anfang' ? topo[s]!.anfang : topo[s]!.ende).art !== 'kappe') continue;
-      const spitze = wo === 'anfang' ? ringe[s]!.spitzen.anfang! : ringe[s]!.spitzen.ende;
-      const q0 = qs[s]![wo === 'anfang' ? 0 : R - 1]!;
-      const stK = wo === 'anfang' ? ringe[s]!.kappen.anfang : ringe[s]!.kappen.ende;
-      setze(bk0.kappe(s, wo, c / 2, c / 2), spitze.x, spitze.y, 0);
+    });
+    // 2b. Übergang 2:1 am Ende eines Streifens: der letzte Ring ist ein U um die Sehne (Tiefe ein Viertel der Sehne), die
+    //     Quadratringe der Kappe kleinere U zwischen den Sehnenpunkten, die Mitte ist die Sehnenmitte (Kindring 0). Breite
+    //     je Winkel θ gemischt aus dem letzten gewöhnlichen Ring und dem Kindring 0 (außen ⅓ Kind, innen mehr).
+    e.streifen.forEach((st, s) => {
+      const ue = ringe[s]!.uebergang;
+      if (!ue) return;
+      const N = st.N;
+      const c = N / 4;
+      const R = ringe[s]!.sprossen.length;
+      const kind = ue.kind;
+      const Nk = e.streifen[kind]!.N;
+      const M = { x: (ue.A.x + ue.B.x) / 2, y: (ue.A.y + ue.B.y) / 2 };
+      const L2 = Math.hypot(ue.A.x - M.x, ue.A.y - M.y) || 1e-9;
+      const e1 = { x: (ue.A.x - M.x) / L2, y: (ue.A.y - M.y) / L2 };
+      // Normale in den Rumpf: zur Mitte des letzten gewöhnlichen Rings
+      const sp = ringe[s]!.sprossen[R - 2]!;
+      const mR = { x: (sp.o.x + sp.u.x) / 2, y: (sp.o.y + sp.u.y) / 2 };
+      let e2 = { x: -e1.y, y: e1.x };
+      if ((mR.x - M.x) * e2.x + (mR.y - M.y) * e2.y < 0) e2 = { x: -e2.x, y: -e2.y };
+      // Profile über den Winkel θ ∈ [0, π]: letzter gewöhnlicher Ring (N/2 Intervalle) und Kindring 0 (Nk/2 Intervalle)
+      const profil = (werte: number[]) => (th: number) => {
+        const x = (th / Math.PI) * (werte.length - 1);
+        const i0 = Math.min(werte.length - 2, Math.max(0, Math.floor(x)));
+        return werte[i0]! + (werte[i0 + 1]! - werte[i0]!) * (x - i0);
+      };
+      const zRing = profil(Array.from({ length: N / 2 + 1 }, (_, j) => Math.abs(ziele[3 * bk0.ring(s, R - 2, j) + 2]!)));
+      const zKind = profil(Array.from({ length: Nk / 2 + 1 }, (_, j) => Math.abs(ziele[3 * bk0.ring(kind, 0, j) + 2]!)));
+      const kindPunkt = (j: number): V2 => ({ x: ziele[3 * bk0.ring(kind, 0, j)]!, y: ziele[3 * bk0.ring(kind, 0, j) + 1]! });
+      const setzeU = (p: number, q: number, P: V2, z: number) => {
+        setze(p, P.x, P.y, z);
+        if (q !== p) setze(q, P.x, P.y, -z);
+      };
+      // äußeres U = Ring R − 1
+      for (let j = 0; j <= N / 2; j++) {
+        const th = (Math.PI * j) / (N / 2);
+        const P = { x: M.x + e1.x * L2 * Math.cos(th) + e2.x * ue.tiefe * Math.sin(th), y: M.y + e1.y * L2 * Math.cos(th) + e2.y * ue.tiefe * Math.sin(th) };
+        const z = j === 0 || j === N / 2 ? 0 : (2 / 3) * zRing(th) + (1 / 3) * zKind(th);
+        setzeU(bk0.ring(s, R - 1, j), bk0.ring(s, R - 1, (N - j) % N), P, z);
+      }
+      // innere U (Quadratring r) zwischen den Sehnenpunkten b = c/2 ± r (Kindring 0: j = c/2 ∓ r)
       for (let r = 1; r < c / 2; r++) {
-        const q = umparametrisieren(q0, 4 * r);
-        const sp = stK[r - 1]!;
-        const W = masstab(sp, q, bz, Ws[s]![wo === 'anfang' ? 0 : R - 1]!);
-        for (let m = 0; m <= 4 * r; m++) {
+        const P0 = kindPunkt(c / 2 - r);
+        const P1 = kindPunkt(c / 2 + r);
+        const Mr = { x: (P0.x + P1.x) / 2, y: (P0.y + P1.y) / 2 };
+        const wr = Math.hypot(P0.x - Mr.x, P0.y - Mr.y);
+        const tr = (ue.tiefe * r) / (c / 2);
+        const al = 1 - (2 / 3) * (r / (c / 2));
+        for (let m = 1; m < 4 * r; m++) {
+          const th = (Math.PI * m) / (4 * r);
           const [a, b] = quadratRing(c, r, m);
-          const naht = m === 0 || m === 4 * r;
-          const [x, y, z] = punkt(sp, q, W, m, bz);
-          setze(bk0.kappe(s, wo, a, b), x, y, naht ? 0 : z);
-          if (!naht) setze(bk0.kappe(s, wo, c - a, b), x, y, -z);
+          const P = { x: Mr.x + e1.x * wr * Math.cos(th) + e2.x * tr * Math.sin(th), y: Mr.y + e1.y * wr * Math.cos(th) + e2.y * tr * Math.sin(th) };
+          const z = (1 - al) * zRing(th) + al * zKind(th);
+          setzeU(bk0.kappe(s, 'ende', a, b), bk0.kappe(s, 'ende', c - a, b), P, a === c / 2 ? 0 : z);
         }
       }
-    }
-  });
-  // 2. erster Ring der Kinder (runder Ring auf der Sehne) — überschreibt die Sprossenenden des Elternstreifens. Ein Kragen
-  //    liegt auf der Elternhaut: Jeder Kragenpunkt rutscht entlang seines Elternrings (Form bleibt) zur Naht hin bis zur
-  //    Breite des runden Kindrings 0 an seinem Winkel (Fußabdruck des Kinds), nie von ihr weg (ist das Kind breiter als der
-  //    Elternring an dieser Zeile, bleibt der Punkt; weiter weg rutschend fiel er am Fisch-Schwanzstiel auf die nächste Zeile).
-  //    Ohne das lag das Bein des U am S-Hals 25 px unter A, der erste Kindring 14 px darüber, und der Löser drückte die
-  //    Käfigpunkte zusammen (Seitenverhältnis 86)
-  //    Die zwei Elternringe vor und hinter einem Bein rutschen anteilig mit (½, ¼): Bei dünnen Kindern lagen sonst alle
-  //    Beinpunkte dicht an der Naht und der Ring davor auf seinen alten Zeilen (Trapez 2,4 : 23,6 px, Fisch-Rückenflosse).
-  const rutschen = (sp: Sprosse, q: Querschnitt, W: number, seite: 'a' | 'b', h: number, zeile: number, zSoll: number) => {
-    const prof = Array.from({ length: Math.min(h, zeile + 1) + 1 }, (_, t) => punkt(sp, q, W, seite === 'a' ? t : h - t, bz));
-    const zBei = (t: number) => {
-      const t0 = Math.min(prof.length - 2, Math.floor(t));
-      return prof[t0]![2] + (prof[t0 + 1]![2] - prof[t0]![2]) * (t - t0);
-    };
-    const tMax = Math.min(prof.length - 1, zeile);
-    let t = Math.min(0.2, tMax);
-    while (t < tMax && zBei(t) < zSoll) t = Math.min(tMax, t + 0.01);
-    return { t, lage: (tt: number) => {
-      const t0 = Math.min(prof.length - 2, Math.floor(tt));
-      const f = tt - t0;
-      const a0 = prof[t0]!;
-      const a1 = prof[t0 + 1]!;
-      return [a0[0] + (a1[0] - a0[0]) * f, a0[1] + (a1[1] - a0[1]) * f, a0[2] + (a1[2] - a0[2]) * f] as const;
-    } };
-  };
-  e.streifen.forEach((st, s) => {
-    const an = topo[s]!.anfang;
-    if (an.art !== 'kragen') return;
-    const p = an.eltern;
-    const Np = e.streifen[p]!.N;
-    const h = Np / 2;
-    const H = st.N / 2;
-    const W0 = Ws[s]![0]!;
-    for (let k = 1; k < H; k++) {
-      const o = kragenOrt(topo[p]!, an, st.N, k);
-      const zeile = an.seite === 'a' ? o.j : h - o.j;
-      const r = rutschen(ringe[p]!.sprossen[o.i]!, qs[p]![o.i]!, Ws[p]![o.i]!, an.seite, h, zeile, W0 * Math.sin((Math.PI * k) / H));
-      const [x, y, z] = r.lage(r.t);
-      setze(bk0.ring(s, 0, k), x, y, z);
-      setze(bk0.ring(s, 0, st.N - k), x, y, -z);
-    }
-    // Nachbarringe der Beine anteilig mitnehmen (nur freie Ringe: keine Endringe, keine Ecken, keine Ringe eines Blocks auf
-    // derselben Seite; ein Block der Gegenseite lässt diese Zeilen frei)
-    const R = ringe[p]!.sprossen.length;
-    const belegt = new Set<number>([0, R - 1]);
-    for (const kd of ringe[p]!.kinder) if (kd.seite === an.seite) for (let j = 0; j < kd.t.length; j++) belegt.add(kd.ring + j);
-    for (const ec of ringe[p]!.ecken) belegt.add(ec.ring);
-    const w = H - 2 * an.tiefe;
-    for (const [bein, richtung] of [
-      [an.ring, -1],
-      [an.ring + w, 1],
-    ] as const) {
-      for (const [g, alpha] of [
-        [1, 0.5],
-        [2, 0.25],
-      ] as const) {
-        const i = bein + richtung * g;
-        if (belegt.has(i)) break;
-        for (let zeile = 1; zeile <= an.tiefe; zeile++) {
-          const r = rutschen(ringe[p]!.sprossen[i]!, qs[p]![i]!, Ws[p]![i]!, an.seite, h, zeile, W0 * Math.sin((Math.PI * zeile) / H));
-          const tNeu = (1 - alpha) * zeile + alpha * r.t;
-          const [x, y, z] = r.lage(tNeu);
-          const j = an.seite === 'a' ? zeile : h - zeile;
-          setze(bk0.ring(p, i, j), x, y, z);
-          setze(bk0.ring(p, i, Np - j), x, y, -z);
-        }
-      }
-    }
-  });
-  e.streifen.forEach((st, s) => {
-    if (!st.ansatz) return;
-    if (topo[s]!.anfang.art === 'kragen') return;
-    const N = st.N;
-    const sp = ringe[s]!.sprossen[0]!;
-    const q = qs[s]![0]!;
-    const W = Ws[s]![0]!;
-    for (let j = 0; j <= N / 2; j++) {
-      const [x, y, z] = punkt(sp, q, W, j, bz);
-      const naht = j === 0 || j === N / 2;
-      setze(bk0.ring(s, 0, j), x, y, naht ? 0 : z);
-      if (!naht) setze(bk0.ring(s, 0, N - j), x, y, -z);
-    }
-  });
-  // 2b. Übergang 2:1 am Ende eines Streifens: der letzte Ring ist ein U um die Sehne (Tiefe ein Viertel der Sehne), die
-  //     Quadratringe der Kappe kleinere U zwischen den Sehnenpunkten, die Mitte ist die Sehnenmitte (Kindring 0). Breite
-  //     je Winkel θ gemischt aus dem letzten gewöhnlichen Ring und dem Kindring 0 (außen ⅓ Kind, innen mehr).
-  e.streifen.forEach((st, s) => {
-    const ue = ringe[s]!.uebergang;
-    if (!ue) return;
-    const N = st.N;
-    const c = N / 4;
-    const R = ringe[s]!.sprossen.length;
-    const kind = ue.kind;
-    const Nk = e.streifen[kind]!.N;
-    const M = { x: (ue.A.x + ue.B.x) / 2, y: (ue.A.y + ue.B.y) / 2 };
-    const L2 = Math.hypot(ue.A.x - M.x, ue.A.y - M.y) || 1e-9;
-    const e1 = { x: (ue.A.x - M.x) / L2, y: (ue.A.y - M.y) / L2 };
-    // Normale in den Rumpf: zur Mitte des letzten gewöhnlichen Rings
-    const sp = ringe[s]!.sprossen[R - 2]!;
-    const mR = { x: (sp.o.x + sp.u.x) / 2, y: (sp.o.y + sp.u.y) / 2 };
-    let e2 = { x: -e1.y, y: e1.x };
-    if ((mR.x - M.x) * e2.x + (mR.y - M.y) * e2.y < 0) e2 = { x: -e2.x, y: -e2.y };
-    // Profile über den Winkel θ ∈ [0, π]: letzter gewöhnlicher Ring (N/2 Intervalle) und Kindring 0 (Nk/2 Intervalle)
-    const profil = (werte: number[]) => (th: number) => {
-      const x = (th / Math.PI) * (werte.length - 1);
-      const i0 = Math.min(werte.length - 2, Math.max(0, Math.floor(x)));
-      return werte[i0]! + (werte[i0 + 1]! - werte[i0]!) * (x - i0);
-    };
-    const zRing = profil(Array.from({ length: N / 2 + 1 }, (_, j) => Math.abs(ziele[3 * bk0.ring(s, R - 2, j) + 2]!)));
-    const zKind = profil(Array.from({ length: Nk / 2 + 1 }, (_, j) => Math.abs(ziele[3 * bk0.ring(kind, 0, j) + 2]!)));
-    const kindPunkt = (j: number): V2 => ({ x: ziele[3 * bk0.ring(kind, 0, j)]!, y: ziele[3 * bk0.ring(kind, 0, j) + 1]! });
-    const setzeU = (p: number, q: number, P: V2, z: number) => {
-      setze(p, P.x, P.y, z);
-      if (q !== p) setze(q, P.x, P.y, -z);
-    };
-    // äußeres U = Ring R − 1
-    for (let j = 0; j <= N / 2; j++) {
-      const th = (Math.PI * j) / (N / 2);
-      const P = { x: M.x + e1.x * L2 * Math.cos(th) + e2.x * ue.tiefe * Math.sin(th), y: M.y + e1.y * L2 * Math.cos(th) + e2.y * ue.tiefe * Math.sin(th) };
-      const z = j === 0 || j === N / 2 ? 0 : (2 / 3) * zRing(th) + (1 / 3) * zKind(th);
-      setzeU(bk0.ring(s, R - 1, j), bk0.ring(s, R - 1, (N - j) % N), P, z);
-    }
-    // innere U (Quadratring r) zwischen den Sehnenpunkten b = c/2 ± r (Kindring 0: j = c/2 ∓ r)
-    for (let r = 1; r < c / 2; r++) {
-      const P0 = kindPunkt(c / 2 - r);
-      const P1 = kindPunkt(c / 2 + r);
-      const Mr = { x: (P0.x + P1.x) / 2, y: (P0.y + P1.y) / 2 };
-      const wr = Math.hypot(P0.x - Mr.x, P0.y - Mr.y);
-      const tr = (ue.tiefe * r) / (c / 2);
-      const al = 1 - (2 / 3) * (r / (c / 2));
-      for (let m = 1; m < 4 * r; m++) {
-        const th = (Math.PI * m) / (4 * r);
-        const [a, b] = quadratRing(c, r, m);
-        const P = { x: Mr.x + e1.x * wr * Math.cos(th) + e2.x * tr * Math.sin(th), y: Mr.y + e1.y * wr * Math.cos(th) + e2.y * tr * Math.sin(th) };
-        const z = (1 - al) * zRing(th) + al * zKind(th);
-        setzeU(bk0.kappe(s, 'ende', a, b), bk0.kappe(s, 'ende', c - a, b), P, a === c / 2 ? 0 : z);
-      }
-    }
-  });
-  // 3. Elternsprossen unter einer Sehne: im oberen Teil (Abstand d < U vom Sehnenende, in Anteilen der Sprosse) geht der
-  //    eigene Querschnitt weich in den Punkt des Kindrings über — Hermite von (Wert, Steigung) bei d = U zu (Kindbreite,
-  //    Steigung 0: die Fläche läuft senkrecht ins Kind). Addiert statt übergeblendet gab das Schultern mit Flügeln (Vase).
-  //    Danach die Punkte der Sprosse nach Bogenlänge neu verteilt: Der runde Querschnitt legt sie oben dicht (für eine
-  //    geschlossene Kuppe); offen unter dem Kind lagen die ersten drei fast auf einem Punkt (Vierecke 9 × 78 px).
-  const U = opt.ansatzUebergang;
-  e.streifen.forEach((st, s) => {
-    const h = st.N / 2;
-    for (const k of ringe[s]!.kinder) {
-      if (k.tiefe > 0) continue;
-      const kind = e.streifen[k.streifen]!;
-      const H = kind.N / 2;
-      const jEnde = k.seite === 'a' ? 0 : h;
-      // die Ringe durch die Sehnenenden (r = 0, H) schließen auf der Naht und bleiben, wie sie sind: auf Breite 0 mit
-      // Steigung 0 übergeblendet, wurden sie oben spitz (Grat quer über die Naht, Giraffe 30°)
-      for (let r = 1; r < H; r++) {
-        const i = k.ring + r;
-        const sp = ringe[s]!.sprossen[i]!;
-        const pEnde = bk0.ring(s, i, jEnde);
-        const zKind = Math.abs(ziele[3 * pEnde + 2]!);
-        const q = qs[s]![i]!;
-        // Profil (d, z) der rechten Hälfte nach Pass 1, d aufsteigend (d = 0 am Sehnenende, 1 an der Naht gegenüber)
-        const prof: { d: number; z: number }[] = [];
-        for (let j = 0; j <= h; j++) prof.push({ d: k.seite === 'a' ? 1 - q.v[j]! : q.v[j]!, z: j === jEnde ? zKind : j === 0 || j === h ? 0 : ziele[3 * bk0.ring(s, i, j) + 2]! });
-        prof.sort((x, y) => x.d - y.d);
-        const zBei = (d: number): number => {
-          for (let t = 0; t + 1 < prof.length; t++) {
-            const a0 = prof[t]!;
-            const a1 = prof[t + 1]!;
-            if (d >= a0.d && d <= a1.d) return a1.d > a0.d ? a0.z + ((a1.z - a0.z) * (d - a0.d)) / (a1.d - a0.d) : a0.z;
+    });
+    // 3. Elternsprossen unter einer Sehne: im oberen Teil (Abstand d < U vom Sehnenende, in Anteilen der Sprosse) geht der
+    //    eigene Querschnitt weich in den Punkt des Kindrings über — Hermite von (Wert, Steigung) bei d = U zu (Kindbreite,
+    //    Steigung 0: die Fläche läuft senkrecht ins Kind). Addiert statt übergeblendet gab das Schultern mit Flügeln (Vase).
+    //    Danach die Punkte der Sprosse nach Bogenlänge neu verteilt: Der runde Querschnitt legt sie oben dicht (für eine
+    //    geschlossene Kuppe); offen unter dem Kind lagen die ersten drei fast auf einem Punkt (Vierecke 9 × 78 px).
+    const U = opt.ansatzUebergang;
+    e.streifen.forEach((st, s) => {
+      const h = st.N / 2;
+      for (const k of ringe[s]!.kinder) {
+        if (k.tiefe > 0) continue;
+        const kind = e.streifen[k.streifen]!;
+        const H = kind.N / 2;
+        const jEnde = k.seite === 'a' ? 0 : h;
+        // die Ringe durch die Sehnenenden (r = 0, H) schließen auf der Naht und bleiben, wie sie sind: auf Breite 0 mit
+        // Steigung 0 übergeblendet, wurden sie oben spitz (Grat quer über die Naht, Giraffe 30°)
+        for (let r = 1; r < H; r++) {
+          const i = k.ring + r;
+          const sp = ringe[s]!.sprossen[i]!;
+          const pEnde = bk0.ring(s, i, jEnde);
+          const zKind = Math.abs(ziele[3 * pEnde + 2]!);
+          const q = qs[s]![i]!;
+          // Profil (d, z) der rechten Hälfte nach Pass 1, d aufsteigend (d = 0 am Sehnenende, 1 an der Naht gegenüber)
+          const prof: { d: number; z: number }[] = [];
+          for (let j = 0; j <= h; j++) prof.push({ d: k.seite === 'a' ? 1 - q.v[j]! : q.v[j]!, z: j === jEnde ? zKind : j === 0 || j === h ? 0 : ziele[3 * bk0.ring(s, i, j) + 2]! });
+          prof.sort((x, y) => x.d - y.d);
+          const zBei = (d: number): number => {
+            for (let t = 0; t + 1 < prof.length; t++) {
+              const a0 = prof[t]!;
+              const a1 = prof[t + 1]!;
+              if (d >= a0.d && d <= a1.d) return a1.d > a0.d ? a0.z + ((a1.z - a0.z) * (d - a0.d)) / (a1.d - a0.d) : a0.z;
+            }
+            return d <= prof[0]!.d ? prof[0]!.z : prof[prof.length - 1]!.z;
+          };
+          const eps = 1e-3;
+          const zU = zBei(U);
+          const mU = (zBei(Math.min(1, U + eps)) - zBei(Math.max(0, U - eps))) / (Math.min(1, U + eps) - Math.max(0, U - eps));
+          const zProfil = (d: number): number => {
+            if (d >= U) return zBei(d);
+            const t = 1 - d / U;
+            const h00 = 2 * t * t * t - 3 * t * t + 1;
+            const h10 = t * t * t - 2 * t * t + t;
+            const h01 = -2 * t * t * t + 3 * t * t;
+            return Math.max(0, h00 * zU + h10 * (-mU * U) + h01 * zKind);
+          };
+          // dicht abtasten, nach Bogenlänge (Sprossenlänge × d, z) neu verteilen
+          const L = Math.hypot(sp.o.x - sp.u.x, sp.o.y - sp.u.y);
+          const M = 96;
+          const cum = [0];
+          let zAlt = zProfil(0);
+          for (let m = 1; m <= M; m++) {
+            const zn = zProfil(m / M);
+            cum.push(cum[m - 1]! + Math.hypot(L / M, zn - zAlt));
+            zAlt = zn;
           }
-          return d <= prof[0]!.d ? prof[0]!.z : prof[prof.length - 1]!.z;
-        };
-        const eps = 1e-3;
-        const zU = zBei(U);
-        const mU = (zBei(Math.min(1, U + eps)) - zBei(Math.max(0, U - eps))) / (Math.min(1, U + eps) - Math.max(0, U - eps));
-        const zProfil = (d: number): number => {
-          if (d >= U) return zBei(d);
-          const t = 1 - d / U;
-          const h00 = 2 * t * t * t - 3 * t * t + 1;
-          const h10 = t * t * t - 2 * t * t + t;
-          const h01 = -2 * t * t * t + 3 * t * t;
-          return Math.max(0, h00 * zU + h10 * (-mU * U) + h01 * zKind);
-        };
-        // dicht abtasten, nach Bogenlänge (Sprossenlänge × d, z) neu verteilen
-        const L = Math.hypot(sp.o.x - sp.u.x, sp.o.y - sp.u.y);
-        const M = 96;
-        const cum = [0];
-        let zAlt = zProfil(0);
-        for (let m = 1; m <= M; m++) {
-          const zn = zProfil(m / M);
-          cum.push(cum[m - 1]! + Math.hypot(L / M, zn - zAlt));
-          zAlt = zn;
+          const vNeu: number[] = [];
+          const wNeu: number[] = [];
+          const W = Ws[s]![i]! || 1;
+          for (let j = 0; j <= h; j++) {
+            // Index ab dem Sehnenende
+            const jj = k.seite === 'a' ? j : h - j;
+            const ziel = (cum[M]! * jj) / h;
+            let m = 0;
+            while (m < M - 1 && cum[m + 1]! < ziel) m++;
+            const dd = cum[m + 1]! - cum[m]!;
+            const d = (m + (dd > 0 ? (ziel - cum[m]!) / dd : 0)) / M;
+            const v = k.seite === 'a' ? 1 - d : d;
+            const z = j === jEnde ? zKind : j === 0 || j === h ? 0 : zProfil(d);
+            vNeu.push(v);
+            wNeu.push(z / W);
+            if (j === jEnde || j === 0 || j === h) continue;
+            const x = sp.u.x + (sp.o.x - sp.u.x) * v;
+            const y = sp.u.y + (sp.o.y - sp.u.y) * v;
+            setze(bk0.ring(s, i, j), x, y, z);
+            setze(bk0.ring(s, i, st.N - j), x, y, -z);
+          }
+          qs[s]![i] = { v: vNeu, w: wNeu, haerte: [], knoten: [] };
         }
-        const vNeu: number[] = [];
-        const wNeu: number[] = [];
-        const W = Ws[s]![i]! || 1;
-        for (let j = 0; j <= h; j++) {
-          // Index ab dem Sehnenende
-          const jj = k.seite === 'a' ? j : h - j;
-          const ziel = (cum[M]! * jj) / h;
-          let m = 0;
-          while (m < M - 1 && cum[m + 1]! < ziel) m++;
-          const dd = cum[m + 1]! - cum[m]!;
-          const d = (m + (dd > 0 ? (ziel - cum[m]!) / dd : 0)) / M;
-          const v = k.seite === 'a' ? 1 - d : d;
-          const z = j === jEnde ? zKind : j === 0 || j === h ? 0 : zProfil(d);
-          vNeu.push(v);
-          wNeu.push(z / W);
-          if (j === jEnde || j === 0 || j === h) continue;
-          const x = sp.u.x + (sp.o.x - sp.u.x) * v;
-          const y = sp.u.y + (sp.o.y - sp.u.y) * v;
-          setze(bk0.ring(s, i, j), x, y, z);
-          setze(bk0.ring(s, i, st.N - j), x, y, -z);
-        }
-        qs[s]![i] = { v: vNeu, w: wNeu, haerte: [], knoten: [] };
       }
-    }
-  });
+    });
+  }
   for (let p = 0; p < n; p++) if (!gesetzt[p]) throw new Error(`baumAbleiten: Punkt ${p} ohne Ziel`);
   // Topologie mit Orientierung nach den Zielen
   const bk = baumKaefig(topo, (p) => [ziele[3 * p]!, ziele[3 * p + 1]!, ziele[3 * p + 2]!]);
@@ -557,16 +689,44 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
   const pfad = nahtPfad(letzte, feinIdx, start, k.n);
   const nahtFein = Uint32Array.from(pfad.geordnet);
   const anteil = nahtAnteile(pfad.geordnet, k.n, ziele, umriss);
-  const breite = baumBreite(e, ringe, qs, bk, u, ziele, bz, beruehrt, opt);
+  const breite = feld ? null : baumBreite(e, ringe, qs, bk, u, ziele, bz, beruehrt, opt);
   const bedingungen: Bedingung[] = [];
   for (let i = 0; i < k.n; i++) bedingungen.push({ zeile: i, gewicht: 1 });
   for (let q = 0; q < nahtFein.length; q++) bedingungen.push({ zeile: nahtFein[q]!, gewicht: opt.nahtGewicht });
   if (breite) for (let q = 0; q < breite.fein.length; q++) bedingungen.push({ zeile: breite.fein[q]!, gewicht: opt.breiteGewicht * (breite.gewicht?.[q] ?? 1) });
+  // R5: feine Punkte bis Stufe 1 (Punktnummern bleiben über die Stufen) auf das Feld — Lage in der Seite wie die aktuelle
+  // Grenzlage, z = ±H dort. Mit Zielen nur an den Käfigpunkten lag die Fläche dazwischen bis 5 px innen (Giraffe-Front 5,1)
+  const feldFein: number[] = [];
+  const feldVz: number[] = [];
+  if (feld) {
+    const n1 = u.stufen[0]!.kaefig.n;
+    for (let i = 0; i < n1; i++) {
+      const z = fein[3 * i + 2]!;
+      if (Math.abs(z) < 1e-7) continue;
+      feldFein.push(i);
+      feldVz.push(z > 0 ? 1 : -1);
+    }
+    for (const i of feldFein) bedingungen.push({ zeile: i, gewicht: opt.feldGewicht });
+  }
+  const mitFeld = (basis: Float64Array, lagen: Float64Array): Float64Array => {
+    if (!feld || !feldFein.length) return basis;
+    const out = new Float64Array(basis.length + 3 * feldFein.length);
+    out.set(basis);
+    feldFein.forEach((p, q) => {
+      const x = lagen[3 * p]!;
+      const y = lagen[3 * p + 1]!;
+      const o = basis.length + 3 * q;
+      out[o] = x;
+      out[o + 1] = y;
+      out[o + 2] = feldVz[q]! * feld!.H(x, y);
+    });
+    return out;
+  };
   const loeser = ausgleichsLoeser(u.grenze, k.n, bedingungen, undefined, glaettemassFuer(u, k, opt, bk.kappeAb));
-  let xyz = kaefigAusgleich(loeser, ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, bz, fein));
+  let xyz = kaefigAusgleich(loeser, mitFeld(ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, bz, fein), fein));
   fein = anwenden3(u.grenze, xyz);
-  for (let d = 0; breite && d < 2; d++) {
-    xyz = kaefigAusgleich(loeser, ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, bz, fein));
+  for (let d = 0; (breite || feldFein.length) && d < 2; d++) {
+    xyz = kaefigAusgleich(loeser, mitFeld(ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, bz, fein), fein));
     fein = anwenden3(u.grenze, xyz);
   }
   const t5 = jetzt();

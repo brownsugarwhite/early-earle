@@ -418,6 +418,34 @@ Käfigpunkt holt seine Tiefe dort ab, wo er in der Seite liegt.
   das Feld die Zeichnung genauer trifft. Hohlkehlen ≤ 20°. Bau ≤ 250 ms. Schalter `hebung: 'ringe' | 'feld'`; mit `ringe`
   bitgleich zu heute.
 
+**Stand R5 (16.10. nachts): gebaut als Versuch, nicht Standard** (`kern/grundkoerper/hoehenfeld.ts`, Schalter `hebung` in
+`baumBau.ts`, Test `hoehenfeld.test.ts`; mit `ringe` bitgleich):
+- Das Feld selbst trifft Front und Top meist auf 1–3 px (Vase 0,7/0,2 px), nach „Berühren“ je Zeile und Spalte (der breiteste
+  Feldpunkt bekommt die Sichthülle als Ziel, vier Durchgänge). Zielstellen nur quer zum Teil: Entlang eines Teils ist u flach,
+  zufällige Maxima trugen sonst die Breite eines anderen Teils (Vasenhals bekam die Bauchbreite, Front 25 px).
+- Mit Käfig und Löser (feine Punkte bis Stufe 1 auf das Feld), gegen den Ring-Modus:
+
+  | Körper | Falten frei/Ansatz/Kappe | Δ S/F/T px |
+  |---|---|---|
+  | Vase | 10,5/–/8,5 → **8,1/–/7,4** | 1,4/1,6/2,2 → **1,4/1,6/0,4** |
+  | Drache | 14,9/–/9,4 → **11,8/–/9,4** | 1,7/3,9/4,4 → 1,7/4,0/4,9 |
+  | Langhals | 12,6/–/9,5 → 12,7/–/9,5 | 1,2/3,9/4,4 → 1,2/4,0/4,6 |
+  | Giraffe | 11,4/11,2/7,6 → 13,7/14,7/9,0 | 1,0/1,8/1,8 → 1,0/**4,1**/1,8 |
+  | Ente | 14,4/16,4/53,1 → 18,6/15,5/43,8 (Kante 135°) | 3,4/3,8/37,4 → 3,4/**6,7**/35,7 |
+  | Fisch | 21,9/22,3/10,5 → 27,9/22,9/12,9 | 1,5/4,7/2,3 → 1,5/**11,3**/3,7 |
+  | Überhang | 28,2 → **175** | – |
+
+- **Warum kein Standard:** Das runde Aufblasen kennt die Form der Front nicht. Die Front-Lappen geben einem waagerechten Körper
+  genau den gezeichneten Umriss als Querschnitt (Rautenform des Fischs, flacher Giraffenbauch); das Feld macht daraus Ellipsen
+  und verliert vorn 3–7 px.
+- **Was das Feld aufgedeckt hat (Auslegung, nicht Feld):** Am Überhang läuft die Sprosse von Ring 8 nur 1,6 px an der
+  Kehlenspitze vorbei. Jede Fläche muss dort fast auf die Naht, der Ring bekommt eine Taille (167°). Im Ring-Modus fällt es
+  nicht auf, weil der Querschnitt die Lage ignoriert. Ein Fächer um eine einspringende Ecke braucht eine andere Auslegung
+  (Kopf als eigenes Teil).
+- **Wofür es bleibt:** als Baustein für S6. Ein Flügel oder eine Brustflosse ist ein dünnes Teil; seine Dicke ist ein Feld
+  über seiner Fläche in der tragenden Ansicht (Top bzw. Front). Dort passt rundes Aufblasen (Linse), und es gibt keinen
+  Front-Lappen, den es verlieren könnte.
+
 ### S6 Seitliche Teile: Flügel, Flossen, Beine, Ohren
 - Neu `kern/grundkoerper/seitenteil.ts` (Streifen im geneigten Rahmen: Naht = Top-Lappen, Mittelfläche aus der
   Front-Mittelachse, Linsen-Querschnitt, N = 8, flache Kappe) und `ansatz.ts` (Fenster als Rechteck im exakt verfeinerten
