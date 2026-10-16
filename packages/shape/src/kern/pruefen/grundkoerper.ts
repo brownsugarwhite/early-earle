@@ -6,7 +6,7 @@
 // Bézier-Profilen gemacht — so, wie sie auch aus dem Editor kämen. DOM-frei.
 import { type Dokument, dokumentLesen, neuesDokument } from '../../dokument';
 import { knotenNachWelt, profilGeschlossen, profilHalb } from '../../fit';
-import { abgleichen } from '../../kopplung';
+import { abgleichen, angleichen } from '../../kopplung';
 import { type Knoten, type Profil, achsenRegeln } from '../../profil';
 import ueberhangJson from '../../versuch/vorlagen/ueberhang.json';
 
@@ -260,6 +260,12 @@ export function vaseDokument(): Dokument {
   return { ...start, profile };
 }
 
+/** Wie `dokumentAus`, aber mit gekoppelten Ausdehnungen wie im Editor (Seite gibt Höhe und Länge, Front die Breite vor). */
+function dokumentAusGekoppelt(name: string, seite: readonly P[], front: readonly P[], top: readonly P[]): Dokument {
+  const d = dokumentAus(name, seite, front, top);
+  return { ...d, profile: angleichen(d.profile) };
+}
+
 /** Vierbeiner: Kopf, Rumpf, vier Beine — in der Seite zwei Beinlappen, in der Front zwei Beine mit Lücke, im Top verdeckt. */
 export function vierbeinerDokument(): Dokument {
   const seite: P[] = [
@@ -272,7 +278,7 @@ export function vierbeinerDokument(): Dokument {
     [0.045, 0.17], [0.02, 0.19], [0, 0.19],
   ];
   const top: P[] = [[-0.37, 0], [-0.33, 0.05], [-0.25, 0.06], [-0.2, 0.07], [-0.15, 0.14], [0.0, 0.16], [0.2, 0.15], [0.3, 0.1], [0.33, 0]];
-  return dokumentAus('vierbeiner', seite, front, top);
+  return dokumentAusGekoppelt('vierbeiner', seite, front, top);
 }
 
 /** Zwei Hälse: in der Seite deckungsgleich ein Hals, in Front und Top zwei nebeneinander (Lücke auf der Achse). */
@@ -290,7 +296,7 @@ export function zweihalsDokument(): Dokument {
     [-0.18, 0], [-0.22, 0.04], [-0.3, 0.045], [-0.36, 0.07], [-0.35, 0.11], [-0.3, 0.12], [-0.2, 0.12], [-0.1, 0.16], [0.05, 0.18], [0.2, 0.16],
     [0.3, 0.1], [0.33, 0],
   ];
-  return dokumentAus('zweihals', seite, front, top);
+  return dokumentAusGekoppelt('zweihals', seite, front, top);
 }
 
 /** Augenstiele: runder Körper mit zwei dünnen Stielen und Augäpfeln oben; im Top liegen die Stiele im Körperumriss. */
@@ -304,7 +310,7 @@ export function augenstieleDokument(): Dokument {
     [0.22, 0.25], [0.2, 0.1], [0.1, 0.02], [0, 0.0],
   ];
   const top: P[] = [[-0.25, 0], [-0.2, 0.12], [0.0, 0.2], [0.2, 0.12], [0.25, 0]];
-  return dokumentAus('augenstiele', seite, front, top);
+  return dokumentAusGekoppelt('augenstiele', seite, front, top);
 }
 
 /** Flügel über dem Rücken: in der Seite wie eine Rückenflosse, in der Front zwei Flügel im V, im Top seitlich. */
@@ -318,7 +324,7 @@ export function fluegelObenDokument(): Dokument {
     [0.1, 0.05], [0, 0.02],
   ];
   const top: P[] = [[-0.3, 0], [-0.25, 0.06], [-0.1, 0.1], [-0.03, 0.12], [0.0, 0.2], [0.05, 0.24], [0.12, 0.23], [0.15, 0.15], [0.2, 0.12], [0.3, 0.06], [0.32, 0]];
-  return dokumentAus('fluegel-oben', seite, front, top);
+  return dokumentAusGekoppelt('fluegel-oben', seite, front, top);
 }
 
 /** Neue Körper des Prüfsatzes S0 (zusätzlich zu `G_KOERPER` und den Körpern aus `koerper.ts`). */
