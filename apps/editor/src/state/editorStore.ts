@@ -55,6 +55,8 @@ type EditorState = {
   endeGeste(): void;
   setzeProfil(ansicht: Ansicht, profil: Profil): void;
   setzeProfile(profile: Dokument['profile']): void;
+  /** Profile samt Spanten (S1c: Punkte, die die Kopplung in die Front eingefügt hat, auch in den Spanten) */
+  setzeProfileSpanten(profile: Dokument['profile'], spanten: NonNullable<Dokument['spanten']>): void;
   setzeSkalierung(s: number): void;
   setzeName(name: string): void;
   /** Versuch 12.10.: Maul (3D-Lippenlinien) und Zähne; `null` entfernt */
@@ -122,7 +124,8 @@ const maulFrei = () => useUi.getState().bauweise === 'kern';
 function mitFormVerbunden(alt: Dokument, neu: Dokument, kantenAuch: boolean): Dokument {
   let d = neu;
   // Spanten haben die Punktstruktur der Front: Punkt in der Front eingefügt oder gelöscht → in jedem Spant ebenso
-  if (d.spanten?.length && alt.profile.front !== d.profile.front && alt.profile.front.knoten.length !== d.profile.front.knoten.length) {
+  // (nur, wenn der Aufrufer die Spanten nicht schon selbst mitgeführt hat — die Kopplung teilt sie genau, S1c)
+  if (d.spanten?.length && d.spanten === alt.spanten && alt.profile.front !== d.profile.front && alt.profile.front.knoten.length !== d.profile.front.knoten.length) {
     d = { ...d, spanten: spantenAngleichen(alt.profile.front, d.profile.front, d.spanten) };
   }
   if (d.maul && !maulFrei() && alt.profile.seite !== d.profile.seite) {
@@ -307,6 +310,9 @@ export const useEditor = create<EditorState>((set, get) => {
     },
     setzeProfile(profile) {
       aendern((d) => (d.profile === profile ? d : mitFormVerbunden(d, { ...d, profile }, !get().gesteStart)));
+    },
+    setzeProfileSpanten(profile, spanten) {
+      aendern((d) => (d.profile === profile && d.spanten === spanten ? d : mitFormVerbunden(d, { ...d, profile, spanten }, !get().gesteStart)));
     },
     setzeSkalierung(s) {
       const v = Math.min(SKALIERUNG_MAX, Math.max(SKALIERUNG_MIN, s));

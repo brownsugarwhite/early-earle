@@ -246,7 +246,7 @@ export const useUi = create<UiState>((set, get) => ({
   kanteZeichnen: null,
   breitenAnzeige: null,
   kantenSicht: 'zeigen',
-  netzStil: 'ton',
+  netzStil: 'farbe',
   netzHover: null,
   setzeNetzHover(p) {
     const alt = get().netzHover;

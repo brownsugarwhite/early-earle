@@ -304,6 +304,15 @@ export function spantenPunktEinfuegen(dok: Dokument, s: number, t: number): { do
   return { dok: d, index: r.index };
 }
 
+/**
+ * Teilungen der Front (S1c: Punkte, die die Kopplung eingefügt hat) in allen Spanten nachvollziehen: gleiche Segmente, gleiche
+ * Lage, in derselben Reihenfolge — die Spanten behalten die Punktstruktur der Front, formneutral.
+ */
+export function spantenTeilen(spanten: readonly Spant[], teilungen: readonly (readonly [number, number])[]): Spant[] {
+  if (!teilungen.length) return spanten as Spant[];
+  return spanten.map((sp) => beideTeile(sp, (pr) => teilungen.reduce((p, [s, t]) => einfuegen(p, s, t).profil, pr)));
+}
+
 /** Punkt in allen Querschnitten löschen (Achspunkte bleiben). null, wenn er nicht gelöscht werden kann. */
 export function spantenPunktLoeschen(dok: Dokument, i: number): Dokument | null {
   if (!kannLoeschen(dok.profile.front, i)) return null;

@@ -22,12 +22,14 @@ import type { V2 } from './bezier';
 import type { Ansicht } from './dokument';
 import { type Intervalle, schnittIntervalle } from './kern/grundkoerper/huelle';
 import { type Profile, abgleichen } from './kopplung';
-import { type Profil, achsenRegeln, pfadAbtasten, segment, segmentAnzahl, vollerPfad } from './profil';
+import { type Profil, achsenRegeln, einfuegen, pfadAbtasten, segment, segmentAnzahl, vollerPfad } from './profil';
 
 /** px je Profil-Einheit (Vertrag aller Messungen) */
 const PX = 461;
-/** Proben je Segment für die Bedingungen */
-const PROBEN = 12;
+/** Proben je Segment für die Bedingungen der folgenden Ansicht */
+const PROBEN = 24;
+/** Proben je Segment für Forderungen (führende Ansicht, Seite) und alte Fehler — so fein wie `erreichbarkeit` */
+const PROBEN_FEIN = 24;
 /** kleinste Breite einer folgenden Ansicht abseits der Spitzen (1 px) */
 const MINDEST = 1 / PX;
 
@@ -38,7 +40,7 @@ type Breite = 'front' | 'top';
  * und die Richtung nach innen quer zur Achse (−1: der Körper liegt zur Achse hin = äußerer Rand, +1: von der Achse weg =
  * innerer Rand einer Kerbe; 0: Rand läuft quer, die Probe ist eine Kappe).
  */
-type Probe = { s: number; laengs: number; quer: number; wa: number; wb: number; innen: -1 | 0 | 1 };
+type Probe = { s: number; u: number; laengs: number; quer: number; wa: number; wb: number; innen: -1 | 0 | 1 };
 
 const laengsVon = (b: Breite, p: V2) => (b === 'front' ? p.y : p.x);
 const querVon = (b: Breite, p: V2) => (b === 'front' ? p.x : p.y);
@@ -82,7 +84,7 @@ function proben(pr: Profil, b: Breite, m = PROBEN): Probe[] {
       const q = querVon(b, p);
       // auf der gezeichneten Hälfte (quer ≥ 0); läge die Probe auf der negativen Seite, dreht sich die Richtung
       const r = (q >= 0 ? 1 : -1) * nq;
-      out.push({ s, laengs: laengsVon(b, p), quer: Math.abs(q), wa: c0 + c1, wb: c2 + c3, innen: Math.abs(r) < 0.2 ? 0 : r > 0 ? 1 : -1 });
+      out.push({ s, u, laengs: laengsVon(b, p), quer: Math.abs(q), wa: c0 + c1, wb: c2 + c3, innen: Math.abs(r) < 0.2 ? 0 : r > 0 ? 1 : -1 });
     }
   }
   return out;
@@ -100,24 +102,99 @@ function vereinigen(listen: readonly Intervalle[]): Intervalle {
   return out;
 }
 
+/**
+ * Schnitte eines Polygons mit Linien quer zur Längsachse (wie `schnittIntervalle`), mit einem Fächerindex der Kanten nach
+ * ihrer Längsspanne: je Abfrage nur die Kanten im Fach statt aller (die Kopplung fragt je Zug einige tausend Mal).
+ */
+class Schnitte {
+  private readonly lo: number;
+  private readonly breite: number;
+  private readonly start: Uint32Array;
+  private readonly kanten: Uint32Array;
+  constructor(
+    private readonly poly: readonly V2[],
+    private readonly achse: 'x' | 'y',
+    faecher = 64,
+  ) {
+    const n = poly.length;
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const p of poly) {
+      lo = Math.min(lo, p[achse]);
+      hi = Math.max(hi, p[achse]);
+    }
+    this.lo = lo;
+    this.breite = Math.max(1e-12, (hi - lo) / faecher);
+    const fach = (w: number) => Math.min(faecher - 1, Math.max(0, Math.floor((w - lo) / this.breite)));
+    const zahl = new Uint32Array(faecher + 1);
+    const spanne = (i: number): [number, number] => {
+      const a = poly[i]![achse];
+      const b = poly[(i + 1) % n]![achse];
+      return [fach(Math.min(a, b)), fach(Math.max(a, b))];
+    };
+    for (let i = 0; i < n; i++) {
+      const [f0, f1] = spanne(i);
+      for (let f = f0; f <= f1; f++) zahl[f + 1]!++;
+    }
+    for (let f = 0; f < faecher; f++) zahl[f + 1]! += zahl[f]!;
+    this.start = zahl.slice();
+    const fuell = zahl.slice(0, faecher);
+    this.kanten = new Uint32Array(zahl[faecher]!);
+    for (let i = 0; i < n; i++) {
+      const [f0, f1] = spanne(i);
+      for (let f = f0; f <= f1; f++) this.kanten[fuell[f]!++] = i;
+    }
+  }
+  /** Querschnitt an der Längsstelle w (gerade-ungerade, wie `schnittIntervalle`) */
+  bei(w: number): Intervalle {
+    const f = Math.floor((w - this.lo) / this.breite);
+    const faecher = this.start.length - 1;
+    if (f < 0 || f >= faecher) {
+      // außerhalb: nur am Rand kann noch eine Kante liegen (w genau am Ende)
+      if (f < -1 || f > faecher) return [];
+    }
+    const ff = Math.min(faecher - 1, Math.max(0, f));
+    const n = this.poly.length;
+    const quer = this.achse === 'x' ? 'y' : 'x';
+    const t: number[] = [];
+    for (let k = this.start[ff]!; k < this.start[ff + 1]!; k++) {
+      const i = this.kanten[k]!;
+      const a = this.poly[i]!;
+      const b = this.poly[(i + 1) % n]!;
+      const av = a[this.achse];
+      const bv = b[this.achse];
+      if ((av <= w && bv > w) || (bv <= w && av > w)) {
+        const s = (w - av) / (bv - av);
+        t.push(a[quer] + s * (b[quer] - a[quer]));
+      }
+    }
+    t.sort((p, q) => p - q);
+    const out: Intervalle = [];
+    for (let i = 0; i + 1 < t.length; i += 2) out.push([t[i]!, t[i + 1]!]);
+    return out;
+  }
+}
+
 /** Querschnitte einer Ansicht entlang ihrer Längsachse, an allen Polygonecken vorgerechnet (für Projektionen). */
 class Querschnitte {
   private readonly l: Float64Array;
   private readonly iv: Intervalle[];
   /** größte Breite je Ecke, wenn der Querschnitt ein Stück durch die Achse ist; sonst NaN (allgemeiner Weg) */
   private readonly einfach: Float64Array;
+  private readonly schnitte: Schnitte;
   constructor(
     readonly poly: V2[],
-    private readonly achse: 'x' | 'y',
+    achse: 'x' | 'y',
   ) {
+    this.schnitte = new Schnitte(poly, achse);
     const ls = [...new Set(poly.map((p) => p[achse]))].sort((a, b) => a - b);
     this.l = Float64Array.from(ls);
-    this.iv = ls.map((w) => schnittIntervalle(poly, achse, w));
+    this.iv = ls.map((w) => this.schnitte.bei(w));
     this.einfach = Float64Array.from(this.iv, (iv) => (iv.length === 1 && iv[0]![0] <= 1e-12 && iv[0]![1] >= -1e-12 ? Math.max(-iv[0]![0], iv[0]![1]) : Number.NaN));
   }
   /** Querschnitt an einer Längsstelle */
   bei(w: number): Intervalle {
-    return schnittIntervalle(this.poly, this.achse, w);
+    return this.schnitte.bei(w);
   }
   /** Projektion quer über Längsbereiche: alle Querschnitte darin (Ecken und Ränder) vereinigt */
   projektion(bereiche: Intervalle): Intervalle {
@@ -291,8 +368,8 @@ function alteFehler(pr: Profile): AlteFehler | null {
 function alteFehlerRechnen(pr: Profile): AlteFehler | null {
   if (pr.front.art !== 'halb' || pr.top.art !== 'halb') return null;
   const h = new Huelle3(pr);
-  const je = (b: Breite) => Float64Array.from(proben(pr[b], b), (p) => fehlbetrag(h.erlaubt(b, p.laengs), p.quer));
-  const seite = Float64Array.from(pfadAbtasten(vollerPfad(pr.seite), PROBEN), (p) => {
+  const je = (b: Breite) => Float64Array.from(proben(pr[b], b, PROBEN_FEIN), (p) => fehlbetrag(h.erlaubt(b, p.laengs), p.quer));
+  const seite = Float64Array.from(pfadAbtasten(vollerPfad(pr.seite), PROBEN_FEIN), (p) => {
     const zf = h.front.bei(p.y);
     const zt = h.top.bei(p.x);
     return zf.length && zt.length ? abstandMengen(zf, zt).abstand : 0;
@@ -305,151 +382,302 @@ export type PunkteOptionen = {
   toleranz?: number;
   /** Widersprüche vom Gestenbeginn bestehen lassen (Standard); false = alle auflösen (angleichen) */
   altesBehalten?: boolean;
+  /** Punkte einfügen, wo die vorhandenen Knoten nicht reichen (Rest > 1 px; Standard aus) */
+  einfuegen?: boolean;
 };
+
+/** Teilung eines Segments (Florian 16.10.: Punkte einfügen, „aber nur wenn wirklich notwendig“): Segment s bei t. */
+export type Teilung = [segment: number, t: number];
+
+/** Ab diesem Rest (px) nach dem Lösen mit den vorhandenen Knoten wird ein Punkt eingefügt; höchstens so viele je Zug. */
+const EINFUEGEN_AB = 1;
+const EINFUEGEN_MAX = 2;
+
+/** Lage (s, u) nach Teilungen zurück auf die Lage vor ihnen (für die alten Fehler am Gestenbeginn). */
+function zurueck(s: number, u: number, teilungen: readonly Teilung[]): [number, number] {
+  let ss = s;
+  let uu = u;
+  for (let k = teilungen.length - 1; k >= 0; k--) {
+    const [si, ti] = teilungen[k]!;
+    if (ss === si) uu = uu * ti;
+    else if (ss === si + 1) {
+      ss = si;
+      uu = ti + uu * (1 - ti);
+    } else if (ss > si + 1) ss--;
+  }
+  return [ss, uu];
+}
 
 /**
  * Eine folgende Halbansicht `b` anpassen (die andere Breitenansicht und die Seite stehen fest): ihre Proben bleiben bzw.
  * werden erreichbar; führt die andere (`fuehrt`), werden deren unerreichbare Punkte an der nächsten Stelle von b möglich;
  * Seitenpunkte, für die Front und Top kein gemeinsames z haben, ebenso. `alt` = Fehlbeträge vom Gestenbeginn.
+ * Mit `einfuegenErlaubt`: Bleibt nach dem Lösen mit den vorhandenen Knoten mehr als 1 px übrig, wird das Segment an der
+ * Stelle des größten Rests formneutral geteilt und neu gelöst (höchstens zweimal); die Teilungen kommen mit zurück.
  */
-function folgen(profile: Profile, b: Breite, fuehrt: boolean, alt: AlteFehler | null, tol: number): Profil {
-  const pr = profile[b];
+function folgen(profile: Profile, b: Breite, fuehrt: boolean, alt: AlteFehler | null, tol: number, einfuegenErlaubt = false): { profil: Profil; teilungen: Teilung[] } {
+  const pr0 = profile[b];
   const ab: Breite = b === 'front' ? 'top' : 'front';
-  if (pr.art !== 'halb' || profile[ab].art !== 'halb') return pr;
-  const n = pr.knoten.length;
-  const beweglich = pr.knoten.map((_, k) => k !== 0 && k !== n - 1);
-  // fest während des Folgens: Seite, die andere Breitenansicht, die Längslagen der eigenen Proben (Züge wirken nur quer)
+  if (pr0.art !== 'halb' || profile[ab].art !== 'halb') return { profil: pr0, teilungen: [] };
+  // fest während des Folgens: Seite, die andere Breitenansicht, Proben der führenden Ansicht und der Seite
   const seite = polygon(profile.seite);
+  const seiteQuer = { x: new Schnitte(seite, 'x'), y: new Schnitte(seite, 'y') };
   const andere = new Querschnitte(polygon(profile[ab]), schnittAchse(ab));
-  const ps0 = proben(pr, b);
-  const altB = alt && alt[b].length === ps0.length ? alt[b] : null;
-  const erlaubtJe = ps0.map((p) => {
-    const sp = schnittIntervalle(seite, schnittAchse(b), p.laengs);
-    return sp.length ? andere.projektion(sp) : [];
-  });
-  // fest: Proben der führenden Ansicht und der Seite mit ihren Spannen
-  const ap = fuehrt ? proben(profile[ab], ab) : [];
-  const apSpanne = ap.map((q) => schnittIntervalle(seite, schnittAchse(ab), q.laengs));
+  const n0 = segmentAnzahl(pr0);
+  const altB0 = alt && alt[b].length === n0 * PROBEN_FEIN + 1 ? alt[b] : null;
+  const ap = fuehrt ? proben(profile[ab], ab, PROBEN_FEIN) : [];
+  const apSpanne = ap.map((q) => seiteQuer[schnittAchse(ab)].bei(q.laengs));
   const altA = alt && alt[ab].length === ap.length ? alt[ab] : null;
-  const sp = pfadAbtasten(vollerPfad(profile.seite), PROBEN);
+  const sp = pfadAbtasten(vollerPfad(profile.seite), PROBEN_FEIN);
   const altS = alt && alt.seite.length === sp.length ? alt.seite : null;
   const spAndere = sp.map((p) => (b === 'front' ? andere.bei(p.x) : andere.bei(p.y)));
-  let aktuell: Profil = pr;
-  for (let runde = 0; runde < 4; runde++) {
-    const ps = runde === 0 ? ps0 : proben(aktuell, b);
-    const bed: Bedingung[] = [];
-    let verletzt = false;
-    // Ziel für einen verlangten Punkt z: die Probe von b in den Längsbereichen, die z mit der kleinsten Bewegung einschließt
-    const einschliessen = (bereiche: Intervalle, z: number) => {
+  const teilungen: Teilung[] = [];
+  let aktuell: Profil = pr0;
+  /** Stand und Rest vor der letzten Teilung (sie bleibt nur, wenn sie den Rest um mindestens 0,5 px verkleinert) */
+  let vorher: { profil: Profil; rest: number } | null = null;
+  const eps = 0.5 / PX;
+  /** größter Rest nach dem Lösen; Forderungen mit Spielraum ±0,5 px in der Längslage (wie `erreichbarkeit`) */
+  const groessterRest = (
+    ps: Probe[],
+    profil: Profil,
+    ford: (ps: Probe[], profil: Profil, versatz?: number) => { bed: Bedingung; rest: number; quelle: string }[],
+    eig: (ps: Probe[]) => { rest: { j: number; rest: number }[] },
+  ): { j: number; rest: number } | null => {
+    // je Forderung (gleiche Zielprobe und Quelle) der kleinste Rest über die Längslagen 0, ±0,5 px; die Nachbarlagen nur,
+    // wenn es überhaupt einen Rest über der Schwelle gibt (meist nicht)
+    const mitte = ford(ps, profil);
+    const ueber = mitte.some((f) => (f.rest - eps) * PX > EINFUEGEN_AB);
+    const plus = ueber ? ford(ps, profil, eps) : [];
+    const minus = ueber ? ford(ps, profil, -eps) : [];
+    let best: { j: number; rest: number } | null = null;
+    for (const f of mitte) {
+      const r = (ueber ? Math.min(f.rest, ...[plus, minus].map((l) => l.find((g) => g.bed.j === f.bed.j && g.quelle === f.quelle)?.rest ?? 0)) : f.rest) - eps;
+      if (r > 0 && (!best || r > best.rest)) best = { j: f.bed.j, rest: r };
+    }
+    for (const r of eig(ps).rest) if (r.rest - eps > 0 && (!best || r.rest - eps > best.rest)) best = { j: r.j, rest: r.rest - eps };
+    return best;
+  };
+  for (let versuch = 0; ; versuch++) {
+    const n = aktuell.knoten.length;
+    const beweglich = aktuell.knoten.map((_, k) => k !== 0 && k !== n - 1);
+    const psStruktur = proben(aktuell, b);
+    // erlaubte z je eigener Probe (hängt nur von der Längslage ab, die Züge quer nicht ändern)
+    const erlaubtJe = psStruktur.map((p) => {
+      const spn = seiteQuer[schnittAchse(b)].bei(p.laengs);
+      return spn.length ? andere.projektion(spn) : [];
+    });
+    // alter Fehlbetrag je Probe, über die Teilungen auf die Proben am Gestenbeginn zurückgerechnet
+    const altB = altB0
+      ? psStruktur.map((p) => {
+          const [s0, u0] = zurueck(p.s, p.u, teilungen);
+          return altB0[Math.min(altB0.length - 1, s0 * PROBEN_FEIN + Math.round(u0 * PROBEN_FEIN))]!;
+        })
+      : null;
+    // Probe von b in den Längsbereichen, die z mit der kleinsten Bewegung einschließt
+    const einschliessenBei = (ps: Probe[], bereiche: Intervalle, z: number): Bedingung | null => {
       let best: Bedingung | null = null;
       let kosten = Infinity;
+      // feinere Abtastung der Forderungen → je Forderung weniger Gewicht (Summe wie bei PROBEN je Segment)
+      const gewicht = PROBEN / PROBEN_FEIN;
       ps.forEach((p, j) => {
         if (!bereiche.some(([lo, hi]) => p.laengs >= lo && p.laengs <= hi)) return;
         if (p.innen < 0 && p.quer < z && z - p.quer < kosten) {
           kosten = z - p.quer;
-          best = { j, richtung: 1, ziel: z };
+          best = { j, richtung: 1, ziel: z, gewicht };
         } else if (p.innen > 0 && p.quer > z && p.quer - z < kosten) {
           kosten = p.quer - z;
-          best = { j, richtung: -1, ziel: Math.max(z, MINDEST) };
+          best = { j, richtung: -1, ziel: Math.max(z, MINDEST), gewicht };
         }
       });
-      if (best) {
-        bed.push(best);
-        verletzt = true;
-      }
+      return best;
     };
-    // Punkte der führenden Ansicht erreichbar machen; Seitenpunkte: Front bei y und Top bei x brauchen ein gemeinsames z
-    const eigeneQ = new Querschnitte(polygon(aktuell), schnittAchse(b));
-    ap.forEach((q, i) => {
-      const spn = apSpanne[i]!;
-      if (!spn.length) return;
-      const f = fehlbetrag(eigeneQ.projektion(spn), q.quer);
-      if (f > tol && !(altA && altA[i]! >= f - tol)) einschliessen(spn, q.quer);
-    });
-    sp.forEach((p, i) => {
-      const zf = b === 'front' ? eigeneQ.bei(p.y) : spAndere[i]!;
-      const zt = b === 'top' ? eigeneQ.bei(p.x) : spAndere[i]!;
-      if (!zf.length || !zt.length) return;
-      const f = abstandMengen(zf, zt);
-      if (f.abstand <= tol || (altS && altS[i]! >= f.abstand - tol)) return;
-      const l = b === 'front' ? p.y : p.x;
-      einschliessen([[l - 2 / PX, l + 2 / PX]], Math.abs(b === 'front' ? f.inT : f.inF));
-    });
-    // eigene Proben: erreichbar bleiben (im Intervall, in dem sie liegen) bzw. nach innen werden; nie auf die Achse
-    ps.forEach((p, j) => {
-      bed.push({ j, richtung: 1, ziel: Math.min(p.quer, MINDEST), gewicht: EIGEN });
-      const erl = erlaubtJe[j]!;
-      if (!erl.length) return;
-      const iv = erl.find(([lo, hi]) => p.quer >= lo - tol && p.quer <= hi + tol);
-      if (iv) {
-        if (p.innen <= 0) bed.push({ j, richtung: -1, ziel: Math.max(iv[1] + tol, Math.min(p.quer, MINDEST)), gewicht: EIGEN });
-        if (p.innen >= 0 && iv[0] > MINDEST) bed.push({ j, richtung: 1, ziel: iv[0] - tol, gewicht: EIGEN });
-        return;
-      }
-      const f = fehlbetrag(erl, p.quer);
-      if (altB && altB[j]! >= f - tol) {
-        // alter Widerspruch: nicht schlimmer werden (nicht weiter nach außen)
-        if (p.innen !== 0) bed.push({ j, richtung: p.innen, ziel: p.quer, gewicht: EIGEN });
-        return;
-      }
-      if (p.innen < 0) {
-        const unter = erl.filter(([, hi]) => hi <= p.quer).map(([, hi]) => hi);
-        if (unter.length) {
-          bed.push({ j, richtung: -1, ziel: Math.max(Math.max(...unter), Math.min(p.quer, MINDEST)), gewicht: EIGEN });
-          verletzt = true;
+    /** Forderungen der führenden Ansicht und der Seite an den Stand: Bedingung und Rest (Einheiten) je unerfüllter Forderung */
+    const forderungen = (ps: Probe[], profil: Profil, versatz = 0): { bed: Bedingung; rest: number; quelle: string }[] => {
+      const out: { bed: Bedingung; rest: number; quelle: string }[] = [];
+      const eigeneQ = new Querschnitte(polygon(profil), schnittAchse(b));
+      ap.forEach((q, i) => {
+        const spn = versatz ? seiteQuer[schnittAchse(ab)].bei(q.laengs + versatz) : apSpanne[i]!;
+        if (!spn.length) return;
+        const f = fehlbetrag(eigeneQ.projektion(spn), q.quer) - (altA ? altA[i]! : 0);
+        if (f <= tol) return;
+        const c = einschliessenBei(ps, spn, q.quer);
+        if (c) out.push({ bed: c, rest: f, quelle: `a${i}` });
+      });
+      sp.forEach((p, i) => {
+        // Seitenpunkt (x, y): Front bei y und Top bei x; der Versatz verschiebt die Längslage von b
+        const zf = b === 'front' ? eigeneQ.bei(p.y + versatz) : spAndere[i]!;
+        const zt = b === 'top' ? eigeneQ.bei(p.x + versatz) : spAndere[i]!;
+        if (!zf.length || !zt.length) return;
+        const f = abstandMengen(zf, zt);
+        const rest = f.abstand - (altS ? altS[i]! : 0);
+        if (rest <= tol) return;
+        const l = b === 'front' ? p.y : p.x;
+        const c = einschliessenBei(ps, [[l - 2 / PX, l + 2 / PX]], Math.abs(b === 'front' ? f.inT : f.inF));
+        if (c) out.push({ bed: c, rest, quelle: `s${i}` });
+      });
+      return out;
+    };
+    /** eigene Proben: Bedingungen (erreichbar bleiben bzw. nach innen werden, nie auf die Achse) und Rest je Probe */
+    const eigene = (ps: Probe[]): { bed: Bedingung[]; verletzt: boolean; rest: { j: number; rest: number }[] } => {
+      const bed: Bedingung[] = [];
+      const rest: { j: number; rest: number }[] = [];
+      let verletzt = false;
+      ps.forEach((p, j) => {
+        bed.push({ j, richtung: 1, ziel: Math.min(p.quer, MINDEST), gewicht: EIGEN });
+        const erl = erlaubtJe[j]!;
+        if (!erl.length) return;
+        const iv = erl.find(([lo, hi]) => p.quer >= lo - tol && p.quer <= hi + tol);
+        if (iv) {
+          if (p.innen <= 0) bed.push({ j, richtung: -1, ziel: Math.max(iv[1] + tol, Math.min(p.quer, MINDEST)), gewicht: EIGEN });
+          if (p.innen >= 0 && iv[0] > MINDEST) bed.push({ j, richtung: 1, ziel: iv[0] - tol, gewicht: EIGEN });
+          return;
         }
-      } else if (p.innen > 0) {
-        const ueber = erl.filter(([lo]) => lo >= p.quer).map(([lo]) => lo);
-        if (ueber.length) {
-          bed.push({ j, richtung: 1, ziel: Math.min(...ueber), gewicht: EIGEN });
-          verletzt = true;
+        const f = fehlbetrag(erl, p.quer);
+        if (altB && altB[j]! >= f - tol) {
+          // alter Widerspruch: nicht schlimmer werden (nicht weiter nach außen)
+          if (p.innen !== 0) bed.push({ j, richtung: p.innen, ziel: p.quer, gewicht: EIGEN });
+          return;
+        }
+        rest.push({ j, rest: f - (altB ? altB[j]! : 0) });
+        if (p.innen < 0) {
+          const unter = erl.filter(([, hi]) => hi <= p.quer).map(([, hi]) => hi);
+          if (unter.length) {
+            bed.push({ j, richtung: -1, ziel: Math.max(Math.max(...unter), Math.min(p.quer, MINDEST)), gewicht: EIGEN });
+            verletzt = true;
+          }
+        } else if (p.innen > 0) {
+          const ueber = erl.filter(([lo]) => lo >= p.quer).map(([lo]) => lo);
+          if (ueber.length) {
+            bed.push({ j, richtung: 1, ziel: Math.min(...ueber), gewicht: EIGEN });
+            verletzt = true;
+          }
+        }
+      });
+      return { bed, verletzt, rest };
+    };
+    // Lösen mit den vorhandenen Knoten (bis zu vier Runden, je Runde neu linearisiert). Abgesichert: Ein Schritt gilt nur,
+    // wenn der gesamte Widerspruch (gewichtete Reste aller Forderungen und eigenen Proben) kleiner wird, sonst wird er
+    // halbiert und zuletzt verworfen — widersprüchliche Forderungen an Ansichten mit mehreren Teilen (Beine, Flügel)
+    // ließen den Löser sonst in eine kaputte Lösung springen (Knoten übereinander, Körper eingeschnürt; gemessen 16.10.).
+    const guete = (ps: Probe[], profil: Profil, ford?: { bed: Bedingung; rest: number }[], e?: ReturnType<typeof eigene>) => {
+      const f = ford ?? forderungen(ps, profil);
+      const ee = e ?? eigene(ps);
+      let m = 0;
+      for (const x of f) m += (x.bed.gewicht ?? 1) * x.rest * x.rest;
+      for (const r of ee.rest) m += EIGEN * r.rest * r.rest;
+      return Number.isFinite(m) ? m : Infinity;
+    };
+    let ps = psStruktur;
+    let ford = forderungen(ps, aktuell);
+    let e = eigene(ps);
+    let m = guete(ps, aktuell, ford, e);
+    for (let runde = 0; runde < 4; runde++) {
+      // nichts verletzt: die Ansicht bleibt bitgenau
+      if (!ford.length && !e.verletzt) break;
+      const delta = loesen(ps, beweglich, [...ford.map((f) => f.bed), ...e.bed]);
+      if (!delta.some((d) => Math.abs(d) > 1e-12)) break;
+      let angenommen = false;
+      for (let skala = 1; skala >= 0.25; skala /= 2) {
+        const kandidat = verschiebenQuer(aktuell, b, skala === 1 ? delta : delta.map((d) => d * skala));
+        const ps2 = proben(kandidat, b);
+        const ford2 = forderungen(ps2, kandidat);
+        const e2 = eigene(ps2);
+        const m2 = guete(ps2, kandidat, ford2, e2);
+        if (m2 < m) {
+          aktuell = kandidat;
+          ps = ps2;
+          ford = ford2;
+          e = e2;
+          m = m2;
+          angenommen = true;
+          break;
         }
       }
-    });
-    // nichts verletzt: die Ansicht bleibt bitgenau
-    if (!verletzt) break;
-    const delta = loesen(ps, beweglich, bed);
-    if (!delta.some((d) => Math.abs(d) > 1e-12)) break;
-    aktuell = verschiebenQuer(aktuell, b, delta);
+      if (!angenommen) break;
+    }
+    if (!einfuegenErlaubt) break;
+    // Rest nach dem Lösen (mit dem Spielraum der Erreichbarkeit, ±0,5 px): größte unerfüllte Forderung bzw. eigene
+    // Unerreichbarkeit; nur darüber wird geteilt (ps ist der Stand nach dem Lösen)
+    const schlimmst = groessterRest(ps, aktuell, forderungen, eigene);
+    // die letzte Teilung hat nichts gebracht (entartete Stelle: Spitze, Sohle, Gabel) → zurück und aufhören
+    if (vorher && (!schlimmst || schlimmst.rest > vorher.rest - 0.5 / PX)) {
+      if (schlimmst && schlimmst.rest * PX > EINFUEGEN_AB) {
+        aktuell = vorher.profil;
+        teilungen.pop();
+      }
+      break;
+    }
+    if (versuch >= EINFUEGEN_MAX || !schlimmst || schlimmst.rest * PX <= EINFUEGEN_AB) break;
+    vorher = { profil: aktuell, rest: schlimmst.rest };
+    const p = ps[schlimmst.j]!;
+    // formneutral teilen; nicht direkt an einem vorhandenen Knoten (dort brächte ein Punkt keine Freiheit)
+    const t = Math.min(0.8, Math.max(0.2, p.u));
+    const geteilt = einfuegen(aktuell, p.s, t);
+    if (geteilt.index < 0) break;
+    aktuell = geteilt.profil;
+    teilungen.push([p.s, t]);
   }
-  return aktuell;
+  return { profil: aktuell, teilungen };
 }
+
+/** Ergebnis der Kopplung jedes Punkts mit den eingefügten Punkten je Breitenansicht (in Reihenfolge). */
+export type PunkteErgebnis = { profile: Profile; teilungen: { front: Teilung[]; top: Teilung[] } };
 
 /**
  * Kopplung jedes Punkts nach einem Zug in `quelle` (S1c): Führt die Front, folgt das Top; führt das Top, folgt die Front;
  * führt die Seite, folgen beide. `basis` = Stand am Gestenbeginn (seine Widersprüche bleiben, außer `altesBehalten: false`).
+ * `einfuegen`: Fehlen der folgenden Ansicht Punkte, wird geteilt (Florian 16.10.: nur wenn wirklich notwendig).
  */
-export function punkteAbgleichen(profile: Profile, quelle: Ansicht, basis: Profile = profile, opt: PunkteOptionen = {}): Profile {
+export function punkteAbgleichenMit(profile: Profile, quelle: Ansicht, basis: Profile = profile, opt: PunkteOptionen = {}): PunkteErgebnis {
   const tol = (opt.toleranz ?? 0.25) / PX;
   const alt = opt.altesBehalten === false ? null : alteFehler(basis);
+  const ein = opt.einfuegen ?? false;
   const out: Profile = { ...profile };
-  if (quelle === 'front') out.top = folgen(out, 'top', true, alt, tol);
-  else if (quelle === 'top') out.front = folgen(out, 'front', true, alt, tol);
+  const teilungen: PunkteErgebnis['teilungen'] = { front: [], top: [] };
+  const folge = (b: Breite, fuehrt: boolean) => {
+    const r = folgen(out, b, fuehrt, alt, tol, ein);
+    out[b] = r.profil;
+    teilungen[b].push(...r.teilungen);
+  };
+  if (quelle === 'front') folge('top', true);
+  else if (quelle === 'top') folge('front', true);
   else {
     for (let r = 0; r < 2; r++) {
       const f0 = out.front;
       const t0 = out.top;
-      out.front = folgen(out, 'front', false, alt, tol);
-      out.top = folgen(out, 'top', false, alt, tol);
+      folge('front', false);
+      folge('top', false);
       // zweite Runde nur, wenn die Top-Änderung die Front wieder betreffen kann
       if (out.top === t0 || (r === 0 && out.front === f0 && out.top === t0)) break;
     }
   }
-  return out;
+  return { profile: out, teilungen };
 }
 
-/** Zug in `quelle` gekoppelt: Außenmaße, dann jeder Punkt (Editor: jede Formgeste). */
-export function gekoppelt(profile: Profile, quelle: Ansicht, basis: Profile = profile): Profile {
-  return punkteAbgleichen(abgleichen(profile, quelle, basis), quelle, basis);
+export function punkteAbgleichen(profile: Profile, quelle: Ansicht, basis: Profile = profile, opt: PunkteOptionen = {}): Profile {
+  return punkteAbgleichenMit(profile, quelle, basis, opt).profile;
+}
+
+/** Zug in `quelle` gekoppelt: Außenmaße, dann jeder Punkt (Editor: jede Formgeste, mit Einfügen). */
+export function gekoppeltMit(profile: Profile, quelle: Ansicht, basis: Profile = profile, opt: PunkteOptionen = {}): PunkteErgebnis {
+  return punkteAbgleichenMit(abgleichen(profile, quelle, basis), quelle, basis, opt);
+}
+
+export function gekoppelt(profile: Profile, quelle: Ansicht, basis: Profile = profile, opt: PunkteOptionen = {}): Profile {
+  return gekoppeltMit(profile, quelle, basis, opt).profile;
 }
 
 /**
  * Angleichen (S1c): Widersprüche einer alten oder fremden Zeichnung auflösen, `fuehrend` bleibt stehen, die anderen folgen
  * (Außenmaße und jeder Punkt).
  */
-export function punkteAngleichen(profile: Profile, fuehrend: Ansicht): Profile {
+export function punkteAngleichenMit(profile: Profile, fuehrend: Ansicht, opt: PunkteOptionen = {}): PunkteErgebnis {
   // Außenmaße aller drei Paare: die führende gibt ihre beiden vor, das dritte Paar die Seite (bzw. bei führender Seite die
   // Front); danach jeder Punkt
   const aussen = abgleichen(abgleichen(profile, fuehrend, profile), fuehrend === 'seite' ? 'front' : 'seite');
-  return punkteAbgleichen(aussen, fuehrend, profile, { altesBehalten: false });
+  return punkteAbgleichenMit(aussen, fuehrend, profile, { ...opt, altesBehalten: false });
+}
+
+export function punkteAngleichen(profile: Profile, fuehrend: Ansicht, opt: PunkteOptionen = {}): Profile {
+  return punkteAngleichenMit(profile, fuehrend, opt).profile;
 }

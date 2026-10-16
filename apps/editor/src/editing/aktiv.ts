@@ -6,7 +6,7 @@ import type { Ansicht, Profil, Profile } from '@ee/shape';
 import { istPose, poseSeite, poseSeiteSetzen } from '../maul/fressenForm';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
-import { type Auswahl, gekoppeltBerechnen, setzeGekoppelt } from './gekoppelt';
+import { type Auswahl, gekoppeltBerechnen, gekoppeltSetzen, setzeGekoppelt } from './gekoppelt';
 
 export function aktivesProfil(ansicht: Ansicht): Profil {
   const { dok, modus } = useEditor.getState();
@@ -37,6 +37,6 @@ export function uebernehmenAktiv(ansicht: Ansicht, neu: Profil, indizes: number[
     return;
   }
   const g = gekoppeltBerechnen(ansicht, neu, basis, auswahlBasis);
-  useEditor.getState().setzeProfile(g.profile);
+  gekoppeltSetzen(g);
   useUi.getState().setzeAuswahl({ ...g.auswahl, [ansicht]: indizes }, ansicht);
 }
