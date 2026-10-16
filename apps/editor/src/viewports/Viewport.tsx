@@ -9,6 +9,7 @@ import { Pauspapier, pauspapierAusDatei } from './Pauspapier';
 import { Steuerung3D } from './Steuerung3D';
 import { View2D } from './View2D';
 import { useKernAnzeige } from '../kern/kernBau';
+import { angleichenVon } from '../editing/gekoppelt';
 import { usePoseLippen } from '../posen/poseLippen';
 import { ZielChips } from '../posen/ZielChips';
 
@@ -56,6 +57,10 @@ function Delta({ id }: { id: 'seite' | 'front' | 'top' }) {
       {wid !== undefined && wid > 1 && (
         <span className="vp-widerspruch" data-widerspruch={wid.toFixed(1)} title="Widerspruch der Zeichnungen: Die beiden anderen Ansichten erlauben die rot markierten Stücke dieser Linie nicht — kein Körper kann sie treffen (px bei 461 px je Kachel)">
           Widerspruch {px(wid)} px
+          {/* S1c: diese Ansicht führt, die anderen folgen (alte oder fremde Zeichnungen; beim Zeichnen entsteht keiner mehr) */}
+          <button className="vp-angleichen" data-angleichen={id} title="Angleichen: Diese Ansicht bleibt, die anderen folgen ihr an jedem Punkt (ein Schritt, rückgängig mit ⌘Z)" onClick={() => angleichenVon(id)}>
+            angleichen
+          </button>
         </span>
       )}
       {id !== 'top' && <Lippen id={id} />}
