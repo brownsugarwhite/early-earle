@@ -6,7 +6,7 @@ import { rundSpantLoeschen } from './rund/RundSpantEbene';
 import { setzeLayoutZiel } from './layout/animation';
 import { berechneLayout } from './layout/layout';
 import { editorApi } from './library/speicher';
-import { useEditor } from './state/editorStore';
+import { useEditor, vorschauBeenden, vorschauLaeuft } from './state/editorStore';
 import { reifenNeuAmZeiger } from './kern/reifen';
 import { STUFEN } from './stamm/stufen';
 import { useUi } from './state/uiStore';
@@ -56,8 +56,11 @@ export function useTastatur() {
       const ui = useUi.getState();
       const cmd = e.metaKey || e.ctrlKey;
       if (e.key === 'Escape') {
+        const modus = useEditor.getState().modus;
         if (ui.menue) ui.oeffneMenue(null);
         else if (ui.dialog) ui.oeffneDialog(null);
+        // B7: Esc beendet eine Vorschau (Posenliste, Überblenden, Kieferknopf)
+        else if (vorschauLaeuft(modus)) vorschauBeenden(modus);
         else if (ui.werkzeug !== 'auswahl') ui.setzeWerkzeug('auswahl');
         else ui.auswahlLeeren();
         return;
@@ -106,6 +109,12 @@ export function useTastatur() {
         // M3: neuer Reifen am Zeiger auf der Bühne (Blender ⌃R)
         e.preventDefault();
         if (!reifenNeuAmZeiger()) ui.zeigeHinweis('⌃R: Zeiger auf den Körper in der Bühne halten');
+      } else if (!cmd && !e.altKey && k === 'q') {
+        // B7 (Entwurf §6): Q / ⇧Q schalten Editor und Posen der Reihe nach durch
+        const ed = useEditor.getState();
+        const ziele = ['editor', ...ed.dok.posen.map((p) => p.id)];
+        const i = Math.max(0, ziele.indexOf(ed.modus));
+        ed.setzeZiel(ziele[(i + (e.shiftKey ? ziele.length - 1 : 1)) % ziele.length]!);
       } else if (!cmd && !e.altKey && (k === 'a' || k === 'v')) {
         ui.setzeWerkzeug('auswahl');
       } else if (!cmd && !e.altKey && k === 'p') {

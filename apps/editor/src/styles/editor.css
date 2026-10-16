@@ -356,6 +356,53 @@ button {
   font-size: 13px;
 }
 
+/* B7: Ziel und Vorschau auf der Bühne; in einer Pose färbt sich der Rahmen in der Farbe der Stufe Posen & Leben */
+.ziel-chips {
+  position: absolute;
+  left: 50%;
+  top: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  white-space: nowrap;
+  z-index: 3;
+  pointer-events: none;
+}
+.ziel-chip,
+.vorschau-chip {
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: 14px;
+}
+.ziel-chip.pose {
+  color: #fff;
+  background: rgba(255, 46, 154, 0.88);
+}
+.ziel-chip {
+  pointer-events: auto;
+}
+.vorschau-chip {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.vorschau-aus {
+  border: 0;
+  border-radius: 9px;
+  width: 18px;
+  height: 18px;
+  line-height: 16px;
+  padding: 0;
+  background: rgba(25, 35, 43, 0.75);
+  color: #fff;
+  cursor: pointer;
+}
+.vp-ober.pose-ziel .vp-inhalt {
+  box-shadow: inset 0 0 0 3px rgba(255, 46, 154, 0.85);
+}
+
 .pose-hinweis {
   position: absolute;
   left: 50%;
@@ -1049,4 +1096,49 @@ button {
   user-select: none;
   transform-origin: center;
   image-rendering: auto;
+}
+
+/* B7: Posenliste der Tafel „Posen & Leben“ (Name = bearbeiten, Regler = Vorschau, ⋯ = Fächer) */
+.posen-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 8px;
+}
+.pose-zeile {
+  display: grid;
+  grid-template-columns: minmax(84px, auto) 1fr 40px 26px;
+  align-items: center;
+  gap: 8px;
+}
+.pose-zeile .chip {
+  justify-self: start;
+  max-width: 128px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pose-zeile input[type='range'] {
+  width: 100%;
+  min-width: 0;
+}
+.pose-zeile b {
+  font-size: 12px;
+  text-align: right;
+}
+.pose-zeile-hilfe {
+  grid-column: 2 / span 3;
+  font-size: 12px;
+  opacity: 0.6;
+}
+.chip.klein {
+  padding: 0;
+  width: 26px;
+  text-align: center;
+}
+.neue-pose {
+  margin: 2px 0 8px;
+}
+.neue-pose-wahl {
+  margin-top: 6px;
 }

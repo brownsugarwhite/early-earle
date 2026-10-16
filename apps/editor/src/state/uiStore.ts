@@ -77,6 +77,12 @@ type UiState = {
   oeffnung: number;
   /** Stärke der aktiven weiteren Pose (Posenliste: Ruhen, Laufen, …), 0 … 1; Fressen läuft über `oeffnung` */
   poseStaerke: number;
+  /**
+   * B7 (Entwurf Posen §6): Vorschau-Gewichte je Pose (Regler der Posenliste, Überblenden). Sie überdecken die Gewichte des
+   * Ziels („was ich sehe“ getrennt von „was ich bearbeite“) und enden von selbst (Bearbeiten, Esc, Ziel- und Stufenwechsel,
+   * Laden). null = keine Vorschau; {} = die Grundform.
+   */
+  vorschau: Record<string, number> | null;
   /** Fressen-Tab (Plan 5.2): Unterkiefergewichte als Farbverlauf auf dem Körper */
   gewichteZeigen: boolean;
   /** Augen (Phase 2 M5, Vorschau wie die Öffnung): Zustand, Lid von Hand (0 offen … 1 zu), Blinzeln von selbst */
@@ -129,6 +135,7 @@ type UiState = {
   libraryUmschalten(offen?: boolean): void;
   setzeEbene(e: Ebene): void;
   setzeOeffnung(a: number): void;
+  setzeVorschau(v: Record<string, number> | null): void;
   setzePoseStaerke(a: number): void;
   setzeGewichteZeigen(an: boolean): void;
   setzeAugenZustand(z: AugenZustand): void;
@@ -191,6 +198,7 @@ export const useUi = create<UiState>((set, get) => ({
   ebene: 'form',
   oeffnung: 0,
   poseStaerke: 1,
+  vorschau: null,
   gewichteZeigen: false,
   augenZustand: 'offen',
   augenLid: 0,
@@ -249,6 +257,15 @@ export const useUi = create<UiState>((set, get) => ({
   },
   setzePoseStaerke(a) {
     set({ poseStaerke: Math.min(1, Math.max(0, a)) });
+  },
+  setzeVorschau(v) {
+    if (!v) {
+      if (get().vorschau) set({ vorschau: null });
+      return;
+    }
+    const neu: Record<string, number> = {};
+    for (const [id, w] of Object.entries(v)) if (w > 1e-6) neu[id] = Math.min(1, w);
+    set({ vorschau: neu });
   },
   setzeGewichteZeigen(an) {
     set({ gewichteZeigen: an });

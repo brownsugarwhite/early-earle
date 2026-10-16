@@ -367,6 +367,8 @@ export function Szene3D() {
           if (s.oeffnung !== v.oeffnung && (useEditor.getState().dok.maul || s.bauweise === 'kern')) bauen(useEditor.getState().dok);
           // Posenliste: Stärke der aktiven weiteren Pose (ohne Umbau, Deltas)
           if (s.poseStaerke !== v.poseStaerke && s.bauweise === 'kern' && weiterePose()) bauen(useEditor.getState().dok);
+          // B7: Vorschau der Posenliste und Überblenden (Gewichte je Pose, ohne Umbau)
+          if (s.vorschau !== v.vorschau && s.bauweise === 'kern') bauen(useEditor.getState().dok);
           // Rig: Gewichtsfarben an/aus (nur in „Posen & Leben“ sichtbar)
           const gewichte = (x: typeof s) => x.gewichteZeigen && x.ebene === 'posen';
           if (gewichte(s) !== gewichte(v) && s.bauweise === 'kern' && kernMaulAktiv(useEditor.getState().dok)) bauen(useEditor.getState().dok);

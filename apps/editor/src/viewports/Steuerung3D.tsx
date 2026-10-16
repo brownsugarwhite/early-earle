@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { aktuellesNetz } from '../kern/kernBau';
+import { aktuellesNetz, werkzeugGesperrt } from '../kern/kernBau';
 import { augeZeiger, augenRandUnter, kieferUnter, kieferZeiger } from '../kern/griffe';
 import { knochen3dSchweben, knochen3dZeiger } from '../kiefer/knochen3d';
 import { pinselRing, pinselStufe, pinselZeiger } from '../kern/pinsel';
@@ -23,6 +23,8 @@ export function augeSetzen(px: number, py: number): boolean {
   const r = szene.aktuell;
   const n = aktuellesNetz();
   if (!r || !n || useUi.getState().bauweise !== 'kern') return false;
+  // B7: während einer Vorschau beendet der Klick nur sie (der Treffer läge auf dem Körper der Vorschau)
+  if (werkzeugGesperrt()) return false;
   const h = r.treffen('creation', px, py);
   if (!h) return false;
   const w = n.netz;

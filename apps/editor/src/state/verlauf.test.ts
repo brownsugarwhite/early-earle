@@ -50,6 +50,34 @@ describe('B7: Undo mit Zielwechsel', () => {
     expect(hinweis()).toBe('↶ Editor: Pose „Pose 3“ neu');
   });
 
+  it('Pose gelöscht: Undo bringt sie zurück und wechselt in sie', () => {
+    ed().neu();
+    ed().poseHinzu('p_weg', 'Weg');
+    ed().poseEntfernen('p_weg');
+    expect(ed().modus).toBe('editor');
+    expect(ed().dok.posen.some((p) => p.id === 'p_weg')).toBe(false);
+    ed().rueckgaengig();
+    expect(ed().dok.posen.some((p) => p.id === 'p_weg')).toBe(true);
+    expect(ed().modus).toBe('p_weg');
+    expect(hinweis()).toBe('↶ Weg: Pose „Weg“ gelöscht');
+  });
+
+  it('Vorschau endet beim Bearbeiten und beim Zielwechsel', () => {
+    ed().neu();
+    useUi.getState().setzeVorschau({ fressen: 0.4, idle: 0.2 });
+    expect(useUi.getState().vorschau).toEqual({ fressen: 0.4, idle: 0.2 });
+    ed().setzeName('anders');
+    expect(useUi.getState().vorschau).toBeNull();
+    useUi.getState().setzeVorschau({ fressen: 0.4 });
+    ed().setzeZiel('idle');
+    expect(useUi.getState().vorschau).toBeNull();
+    expect(useUi.getState().poseStaerke).toBe(1);
+    useUi.getState().setzeVorschau({ idle: 0.5 });
+    ed().beginGeste();
+    expect(useUi.getState().vorschau).toBeNull();
+    ed().endeGeste();
+  });
+
   it('Geste: der Schritt gehört zum Ziel beim Gestenbeginn', () => {
     ed().neu();
     ed().setzeZiel('idle');

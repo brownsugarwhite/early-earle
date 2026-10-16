@@ -4,11 +4,12 @@ import { neuesWesen, speichern } from '../aktionen';
 import { type Modus, poseTitel, useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { Groessenregler } from './Groessenregler';
+import { leerePose, poseMenueEintraege } from '../leiste/PosenTafel';
 
 function Tab({ modus }: { modus: Modus }) {
   const aktiv = useEditor((s) => s.modus === modus);
   const titel = useEditor((s) => poseTitel(s.dok, modus));
-  const entfernbar = modus !== 'editor' && modus !== 'fressen' && modus !== 'idle';
+  const spiel = useEditor((s) => !!s.dok.posen.find((p) => p.id === modus)?.spiel);
   return (
     <button
       className={aktiv ? 'pille aktiv' : 'pille'}
@@ -16,12 +17,14 @@ function Tab({ modus }: { modus: Modus }) {
       onClick={() => useEditor.getState().setzeZiel(modus)}
       onContextMenu={(e) => {
         e.preventDefault();
-        if (!entfernbar) return;
-        useUi.getState().oeffneMenue({ x: e.clientX, y: e.clientY, eintraege: [{ label: 'Pose entfernen', aktion: () => useEditor.getState().poseEntfernen(modus) }] });
+        // B7: derselbe Fächer wie ⋯ in der Posenliste (Duplizieren, Umbenennen, Zurücksetzen, Spiel-Pose, Löschen)
+        if (modus === 'editor') return;
+        useUi.getState().oeffneMenue({ x: e.clientX, y: e.clientY, eintraege: poseMenueEintraege(modus) });
       }}
       data-tab={modus}
     >
       {titel}
+      {spiel ? ' ★' : ''}
     </button>
   );
 }
@@ -32,11 +35,7 @@ function NeuePose() {
   const ref = useRef<HTMLDivElement>(null);
   const frei = POSEN.filter((p) => !posen.some((q) => q.id === p));
   // leere Pose mit eigener Id: „Pose 3“, „Pose 4“ …
-  const leer = () => {
-    let k = posen.length + 1;
-    while (posen.some((q) => q.name === `Pose ${k}`)) k++;
-    useEditor.getState().poseHinzu(`p_${Date.now().toString(36)}`, `Pose ${k}`);
-  };
+  const leer = leerePose;
 
   useEffect(() => {
     if (!offen) return;

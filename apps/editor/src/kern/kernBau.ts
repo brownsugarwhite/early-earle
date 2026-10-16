@@ -5,11 +5,11 @@
 import type { Dokument } from '@ee/shape';
 import { type BeinArt, type Bauplan, type MaulArt, type MaulLinie, type StilArt, type WesenInfo, type WesenNetz, type ZahnMeldung, maulLinieAusDokument, pruefwesenBauplan } from '@ee/shape/kern';
 import { create } from 'zustand';
-import { setzeGesteEndeHaken, useEditor } from '../state/editorStore';
+import { poseTitel, setzeGesteEndeHaken, useEditor, vorschauBeenden, vorschauLaeuft } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { type Look, PALETTEN } from '../three/wesenLook';
 import { WesenClient } from './wesenClient';
-import { setzeAktuellesNetz } from './netzStand';
+import { aktuellesNetz, setzeAktuellesNetz } from './netzStand';
 
 export type { BeinArt, MaulArt, StilArt };
 export type KernInfo = WesenInfo;
@@ -93,22 +93,61 @@ export function weiterePose(): string | null {
   return m !== 'editor' && m !== 'fressen' ? m : null;
 }
 
-/** Gewicht der gezeigten Pose (Knochen zeichnen): Editor-Tab und Fressen = `ui.oeffnung`, sonst `ui.poseStaerke`. */
+/** Gewicht der gezeigten Pose (Knochen zeichnen): das Gewicht des Ziels in der Anzeige (Editor-Tab: Fressen). */
 export function gezeigtesGewicht(): number {
   const m = useEditor.getState().modus;
-  const ui = useUi.getState();
-  return m === 'editor' || m === 'fressen' ? ui.oeffnung : ui.poseStaerke;
+  return anzeigeGewichte()[m === 'editor' ? 'fressen' : m] ?? 0;
 }
 
 /**
- * Gewichte der Posen für den Bau (B3, Plan Teil B): Editor-Tab = Grundpose (leer; eine Vorschau von Fressen über den
- * Kieferknopf zeigt `ui.oeffnung`), Fressen = `ui.oeffnung`, jede weitere Pose (Idle, …) = `ui.poseStaerke`.
+ * Gewichte des Ziels ohne Vorschau der Tafel (B3, Plan Teil B): Editor-Tab = Grundpose (leer; eine Vorschau von Fressen
+ * über den Kieferknopf zeigt `ui.oeffnung`), Fressen = `ui.oeffnung`, jede weitere Pose (Idle, …) = `ui.poseStaerke`.
  */
-export function anzeigeGewichte(): Record<string, number> {
+export function zielGewichte(): Record<string, number> {
   const m = useEditor.getState().modus;
   const ui = useUi.getState();
   if (m === 'editor' || m === 'fressen') return ui.oeffnung > 0 ? { fressen: ui.oeffnung } : {};
   return ui.poseStaerke > 0 ? { [m]: ui.poseStaerke } : {};
+}
+
+/** Gewichte der Posen für den Bau: die Vorschau (B7, Regler der Posenliste, Überblenden), sonst die des Ziels. */
+export function anzeigeGewichte(): Record<string, number> {
+  const v = useUi.getState().vorschau;
+  if (!v) return zielGewichte();
+  const g: Record<string, number> = {};
+  for (const [id, w] of Object.entries(v)) if (w > 0) g[id] = w;
+  return g;
+}
+
+/** Schlüssel eines Gewichte-Satzes (sortiert, ohne Nullen): ein Netz passt zur Anzeige, wenn die Schlüssel gleich sind. */
+export function gewichteSchluessel(g: Readonly<Record<string, number>>): string {
+  return JSON.stringify(
+    Object.entries(g)
+      .filter(([, w]) => w > 0)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+  );
+}
+
+/** Zeigt das zuletzt gebaute Netz, was gerade gezeigt werden soll? (B7: sonst ist ein Bau unterwegs) */
+export function netzZeigtAnzeige(): boolean {
+  const n = aktuellesNetz();
+  return !!n && n.gewichte === gewichteSchluessel(anzeigeGewichte());
+}
+
+/**
+ * Sperre für Werkzeuge, die auf dem gezeigten Körper greifen (Pinsel, Reifen, Augen; B7, Entwurf §5): Läuft eine
+ * Vorschau, beendet der Druck nur sie (mit Hinweis); solange danach der Bau läuft, greift das Werkzeug ebenfalls nicht —
+ * sonst rechnete es auf dem Körper der Vorschau. true = nicht greifen.
+ */
+export function werkzeugGesperrt(): boolean {
+  const ed = useEditor.getState();
+  const m = ed.modus;
+  if (vorschauLaeuft(m)) {
+    vorschauBeenden(m);
+    useUi.getState().zeigeHinweis(m === 'editor' ? 'Vorschau beendet: die Grundform ist wieder zu sehen — jetzt bearbeiten' : `Vorschau beendet: ${poseTitel(ed.dok, m)} wieder ganz zu sehen — jetzt bearbeiten`);
+    return true;
+  }
+  return !netzZeigtAnzeige();
 }
 
 export function bauplanAus(dok: Dokument): Partial<Bauplan> {
@@ -166,9 +205,11 @@ export { aktuellesNetz } from './netzStand';
 
 /** Feines Netz der Bauweise „kern“ im Worker bauen; während Gesten nur Zug, sonst Ableitung. Der neueste Auftrag gewinnt. */
 export function kernBauen(dok: Dokument, schnell: boolean, cb: (netz: KernNetz) => void): void {
-  derClient().bauen(dok, bauplanAus(dok), schnell, (netz) => {
+  const plan = bauplanAus(dok);
+  const gewichte = gewichteSchluessel(plan.gewichte ?? {});
+  derClient().bauen(dok, plan, schnell, (netz) => {
     // erst das Netz merken, dann der Stand: Abonnenten (Saum in den Blättern) lesen `aktuellesNetz()` beim Wechsel
-    setzeAktuellesNetz({ netz, skalierung: dok.skalierung });
+    setzeAktuellesNetz({ netz, skalierung: dok.skalierung, gewichte });
     useKernAnzeige.setState({ info: netz.info });
     cb(netz);
     // Schritt 3 („Käfig als Wahrheit“): Der Kern meldet die wirksame Ringverteilung, das Dokument friert sie ein; ab dann

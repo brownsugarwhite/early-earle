@@ -12,7 +12,7 @@ import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import type { Renderer3D } from '../three/Renderer3D';
 import { szene } from '../three/instanz';
-import { aktuellesNetz } from './kernBau';
+import { aktuellesNetz, werkzeugGesperrt } from './kernBau';
 import { useTreffer } from './treffer';
 
 /** Was unter dem Zeiger liegt: eine Perle (Spant-Knoten, beim Kiefer-Spant mit Teil) oder das Band eines Reifens. */
@@ -217,6 +217,8 @@ export function reifenZeiger(e: React.PointerEvent, px: number, py: number, el: 
   const r = szene.aktuell;
   const n = aktuellesNetz();
   if (!h || !r || !n?.netz.reifen) return false;
+  // B7: Perlen der Vorschau liegen nicht, wo die Grundform sie hat
+  if (werkzeugGesperrt()) return true;
   const reifen = n.netz.reifen.liste[h.reifen]!;
   const ed = useEditor.getState();
   const sp = ed.dok.spanten?.[reifen.spant];

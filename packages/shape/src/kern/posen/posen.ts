@@ -97,7 +97,8 @@ export function posenAuswerten(abl: { kaefig: { n: number; xyz: Float64Array } }
     const D = formRuhe(A, n, p, voll);
     const form = D;
     let summe = D;
-    const haps = p.art === 'fressen' ? (p.saat?.haps ?? 0) : 0;
+    // Haps-Saat: Fressen (Standard aus den Maul-Optionen, `posenFuerBau`), B7 auch eine Kopie von Fressen (freie Pose mit Saat)
+    const haps = p.saat?.haps ?? 0;
     if (maul && voll && haps > 0) {
       summe = hapsSaat(maul, voll, haps);
       for (let k = 0; k < summe.length; k++) summe[k] = summe[k]! + D[k]!;

@@ -7,7 +7,7 @@ import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import type { Renderer3D } from '../three/Renderer3D';
 import { szene } from '../three/instanz';
-import { aktuellesNetz } from './kernBau';
+import { aktuellesNetz, anzeigeGewichte, werkzeugGesperrt } from './kernBau';
 
 type V3 = [number, number, number];
 const FANG_KIEFER = 14;
@@ -71,14 +71,22 @@ export function kieferZeiger(e: React.PointerEvent, px: number, py: number, el: 
     return true;
   }
   letzterKlick = { t: jetzt, x: e.clientX, y: e.clientY };
-  const start = ui.oeffnung;
+  // B7: Editor und Fressen zeigen Fressen über die Öffnung (eine Vorschau der Posenliste endet dabei); in einer anderen
+  // Pose blendet der Knopf Fressen als Vorschau dazu
+  const modus = useEditor.getState().modus;
+  const ueberOeffnung = modus === 'editor' || modus === 'fressen';
+  if (ueberOeffnung) ui.setzeVorschau(null);
+  const basis = anzeigeGewichte();
+  const start = ueberOeffnung ? ui.oeffnung : (basis.fressen ?? 0);
   const y0 = e.clientY;
   ziehen(
     e,
     el,
     (ev) => {
       if (Math.abs(ev.clientY - y0) > 3) letzterKlick = null;
-      useUi.getState().setzeOeffnung(start + (ev.clientY - y0) / k.laengePx);
+      const w = Math.min(1, Math.max(0, start + (ev.clientY - y0) / k.laengePx));
+      if (ueberOeffnung) useUi.getState().setzeOeffnung(w);
+      else useUi.getState().setzeVorschau({ ...basis, fressen: w });
     },
     () => undefined,
   );
@@ -115,6 +123,7 @@ export function augeZeiger(e: React.PointerEvent, px: number, py: number, el: HT
   const a = augen.find((x) => x.vorn && Math.abs(Math.hypot(x.px - px, x.py - py) - x.radius) < AUGE_RAND);
   const n = aktuellesNetz();
   if (!a || !n || a.radius < 1e-6) return false;
+  if (werkzeugGesperrt()) return true;
   const ed = useEditor.getState();
   // Prüfwesen ohne Ausstattung: die Augen des Bauplans (sonst Standard) werden beim ersten Zug Teil des Dokuments
   const alt = ed.dok.ausstattung?.augen ?? pruefwesenBauplan(ed.dok.name).augen ?? { ring: 2, j: 2, groesse: 0.11 };

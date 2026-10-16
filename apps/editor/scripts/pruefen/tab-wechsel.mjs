@@ -178,7 +178,8 @@ await pinselstrich(-70, -40);
 const HR = await hash();
 pruefe('Pinsel formt die weitere Pose', HR !== kugel0);
 await page.locator('header.menueleiste button.pille', { hasText: /^Ruhen$/ }).first().click({ button: 'right' });
-await page.getByText('Pose entfernen').click();
+// B7: der Fächer der Pille heißt „Löschen“ (wie ⋯ in der Posenliste)
+await page.locator('.kontextmenue').getByRole('button', { name: 'Löschen', exact: true }).click();
 await warteBau(await version(), false);
 const ze = await zustand();
 pruefe('Pose entfernen → Editor-Tab', ze.modus === 'editor' && ze.oeffnung === 0, JSON.stringify(ze));

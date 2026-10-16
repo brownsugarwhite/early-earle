@@ -10,6 +10,7 @@ import { Steuerung3D } from './Steuerung3D';
 import { View2D } from './View2D';
 import { useKernAnzeige } from '../kern/kernBau';
 import { usePoseLippen } from '../posen/poseLippen';
+import { ZielChips } from '../posen/ZielChips';
 
 const px = (d: number) => d.toFixed(1).replace('.', ',');
 
@@ -163,7 +164,7 @@ export function ViewportOber({ id }: { id: ViewId }) {
   const links = zurueck ? t.rechts : t.links;
   const rechts = zurueck ? t.links : t.rechts;
   return (
-    <div className="vp-ober" data-view={id} style={{ ...lage(r, oben), zIndex: oben ? 11 : 10 }} onPointerEnter={() => ui.setzeHover(id)} onPointerLeave={() => useUi.getState().hover === id && ui.setzeHover(null)}>
+    <div className={id === 'creation' && modus !== 'editor' && bauweise === 'kern' ? 'vp-ober pose-ziel' : 'vp-ober'} data-view={id} style={{ ...lage(r, oben), zIndex: oben ? 11 : 10 }} onPointerEnter={() => ui.setzeHover(id)} onPointerLeave={() => useUi.getState().hover === id && ui.setzeHover(null)}>
       <Titel id={id} />
       <div
         className="vp-inhalt"
@@ -203,8 +204,9 @@ export function ViewportOber({ id }: { id: ViewId }) {
         )}
         {/* Pose-Hinweis: in der Bauweise Kern formen die Pinsel die Pose (Posenliste, 15.10.); in den Versuchen gibt es das noch nicht */}
         {/* Fressen (Florian 15.10.): Blendshape mit den Pinseln, Knochen in „Posen & Leben“ */}
-        {id === 'creation' && modus === 'fressen' && bauweise === 'kern' && <div className="pose-hinweis glas" data-pose-hinweis="fressen">Pose „Fressen“ · Pinsel G/I formen den Blendshape (Körper oder Posen &amp; Leben), Knochen in „Posen &amp; Leben“</div>}
-        {id === 'creation' && modus !== 'editor' && modus !== 'fressen' && (bauweise === 'kern' ? <div className="pose-hinweis glas">Pose „{poseName}“ · Pinsel G/I und Knochen formen sie (Körper oder Posen &amp; Leben), Stärke in „Posen &amp; Leben“</div> : !hatMaul && versuchAktiv()?.modus !== 'tiger' && versuchAktiv()?.modus !== 'maul' && <div className="pose-hinweis glas">Pose „{poseName}“: Bearbeiten kommt mit der Bauweise</div>)}
+        {/* B7: Ziel und Vorschau als Chips (Bauweise Kern); in den Versuchen bleibt der alte Hinweis */}
+        {id === 'creation' && bauweise === 'kern' && <ZielChips />}
+        {id === 'creation' && modus !== 'editor' && bauweise !== 'kern' && !hatMaul && versuchAktiv()?.modus !== 'tiger' && versuchAktiv()?.modus !== 'maul' && <div className="pose-hinweis glas">Pose „{poseName}“: Bearbeiten kommt mit der Bauweise</div>}
       </div>
       {/* Plan 9.3: die Stufe wählt der Stamm; am Viewport bleiben Zebra (Prüfansicht) und Vergrößern */}
       <div className="eckknoepfe">

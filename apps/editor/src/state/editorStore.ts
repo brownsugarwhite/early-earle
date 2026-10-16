@@ -87,6 +87,8 @@ type EditorState = {
   setzeZiel(m: Modus): void;
   /** Neue Pose (Id aus den Namensvorschlägen oder `p_…`), danach in die Pose wechseln */
   poseHinzu(id: string, name?: string): void;
+  /** B7: fertige Pose einfügen (Duplizieren, Kopie, aus der Vorschau) hinter `nach` bzw. am Ende, ein Undo-Schritt; danach in die Pose wechseln */
+  poseEinfuegen(p: Pose, nach?: string): void;
   /** Pose entfernen (nicht Idle, nicht Fressen); war sie das Ziel, zurück zur Grundpose */
   poseEntfernen(id: string): void;
   /** Eine Pose ändern (Form, Bezug, Stellung, Saat): ein Undo-Schritt bzw. Teil der laufenden Geste */
@@ -204,6 +206,29 @@ export function schrittName(alt: Dokument, neu: Dokument, ziel: Modus): string {
   return 'Änderung';
 }
 
+/**
+ * B7 (Entwurf Posen §5/§6): Läuft eine Vorschau? Regler der Posenliste und Überblenden (`ui.vorschau`), der Kieferknopf im
+ * Editor-Tab (Fressen über `ui.oeffnung`) oder die Ziel-Pose unter 100 %.
+ */
+export function vorschauLaeuft(modus: Modus): boolean {
+  const ui = useUi.getState();
+  if (ui.vorschau) return true;
+  if (modus === 'editor') return ui.oeffnung > 0;
+  if (modus === 'fressen') return ui.oeffnung < 1;
+  return ui.poseStaerke < 1;
+}
+
+/** B7: Vorschau beenden — das Ziel wieder ganz zeigen (Editor = Grundform, Pose = Gewicht 1). */
+export function vorschauBeenden(modus: Modus): void {
+  const ui = useUi.getState();
+  if (ui.vorschau) ui.setzeVorschau(null);
+  if (modus === 'editor') {
+    if (ui.oeffnung > 0) ui.setzeOeffnung(0);
+  } else if (modus === 'fressen') {
+    if (ui.oeffnung < 1) ui.setzeOeffnung(1);
+  } else if (ui.poseStaerke < 1) ui.setzePoseStaerke(1);
+}
+
 /** Gibt es das Ziel im Dokument? (Editor immer; eine Pose nur, wenn sie in der Liste steht) */
 const zielDa = (dok: Dokument, m: Modus) => m === 'editor' || dok.posen.some((p) => p.id === m);
 
@@ -227,6 +252,8 @@ export const useEditor = create<EditorState>((set, get) => {
     }
     if (gesteStart) set({ dok: neu, geaendert: true });
     else set({ dok: neu, geaendert: true, verlauf: [...verlauf, { dok, ziel: modus, name: schrittName(dok, neu, modus) }].slice(-MAX_VERLAUF), zukunft: [] });
+    // B7: Bearbeiten beendet eine Vorschau (das Ziel wird wieder ganz gezeigt)
+    if (vorschauLaeuft(modus)) vorschauBeenden(modus);
   };
 
   /**
@@ -250,7 +277,10 @@ export const useEditor = create<EditorState>((set, get) => {
     gesteZiel: null,
 
     beginGeste() {
-      if (!get().gesteStart) set({ gesteStart: get().dok, gesteZiel: get().modus });
+      if (get().gesteStart) return;
+      set({ gesteStart: get().dok, gesteZiel: get().modus });
+      // B1/B7: Greifen beendet eine Vorschau (im Editor-Tab die Grundform, in einer Pose die ganze Pose)
+      if (vorschauLaeuft(get().modus)) vorschauBeenden(get().modus);
     },
     endeGeste() {
       const start = get().gesteStart;
@@ -370,11 +400,13 @@ export const useEditor = create<EditorState>((set, get) => {
     },
     neu() {
       // Jedes neue Wesen startet als Kugel aus drei Kreisen (Florian, 11.10.2026); Grundform ohne Vorschau (B1)
+      useUi.getState().setzeVorschau(null);
       useUi.getState().setzeOeffnung(0);
       useUi.getState().setzePoseStaerke(1);
       set({ dok: neuesDokument(), datei: null, geaendert: false, verlauf: [], zukunft: [], gesteStart: null, gesteZiel: null, modus: 'editor' });
     },
     laden(dok, datei) {
+      useUi.getState().setzeVorschau(null);
       useUi.getState().setzeOeffnung(0);
       useUi.getState().setzePoseStaerke(1);
       set({ dok: maulFrei() ? dok : maulImUmrissSichern(dok), datei, geaendert: false, verlauf: [], zukunft: [], gesteStart: null, gesteZiel: null, modus: 'editor' });
@@ -386,8 +418,9 @@ export const useEditor = create<EditorState>((set, get) => {
       set({ modus: m });
     },
     setzeZiel(m) {
-      // erst die Gewichte, dann der Modus: kein Bau sieht den neuen Modus mit der alten Öffnung
+      // erst die Gewichte, dann der Modus: kein Bau sieht den neuen Modus mit der alten Öffnung; eine Vorschau endet (B7)
       const ui = useUi.getState();
+      ui.setzeVorschau(null);
       ui.setzeOeffnung(m === 'fressen' ? 1 : 0);
       if (m !== 'editor' && m !== 'fressen') ui.setzePoseStaerke(1);
       set({ modus: m });
@@ -396,11 +429,22 @@ export const useEditor = create<EditorState>((set, get) => {
       aendern((d) => (d.posen.some((q) => q.id === id) ? d : { ...d, posen: [...d.posen, { id, name: name ?? POSE_TITEL[id] ?? id, art: 'frei', form: [] }] }));
       get().setzeZiel(id);
     },
+    poseEinfuegen(p, nach) {
+      if (get().dok.posen.some((q) => q.id === p.id)) return;
+      aendern((d) => {
+        const i = nach ? d.posen.findIndex((q) => q.id === nach) : -1;
+        const posen = d.posen.slice();
+        posen.splice(i >= 0 ? i + 1 : posen.length, 0, p);
+        return { ...d, posen };
+      });
+      get().setzeZiel(p.id);
+    },
     poseEntfernen(id) {
       // mit der Pose verschwinden ihre Form und Stellung; Idle und Fressen bleiben immer
       if (id === 'idle' || id === 'fressen') return;
-      if (get().modus === id) get().setzeZiel('editor');
+      // erst löschen, dann wechseln: der Undo-Schritt gehört zur gelöschten Pose (B7: Undo kehrt in sie zurück)
       aendern((d) => ({ ...d, posen: d.posen.filter((q) => q.id !== id) }));
+      if (get().modus === id) get().setzeZiel('editor');
     },
     poseSetzen(id, f) {
       aendern((d) => {

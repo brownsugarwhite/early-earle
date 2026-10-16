@@ -8,7 +8,7 @@ import { type PoseBearbeitung, ankerVon, bezugAus, deltaKarte, deltaListe, formA
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { szene } from '../three/instanz';
-import { aktuellesNetz } from './kernBau';
+import { aktuellesNetz, werkzeugGesperrt } from './kernBau';
 import { useTreffer } from './treffer';
 
 type V3 = [number, number, number];
@@ -143,6 +143,8 @@ export function pinselZeiger(e: React.PointerEvent, px: number, py: number, el: 
   const ui = useUi.getState();
   const werkzeug = ui.werkzeug;
   if (werkzeug !== 'ziehen' && werkzeug !== 'aufblasen') return false;
+  // B7: während einer Vorschau beendet der Druck nur sie; der Strich rechnete sonst auf dem Körper der Vorschau
+  if (pinselStufe() && werkzeugGesperrt()) return true;
   const r = szene.aktuell;
   const n = aktuellesNetz();
   const tr = n?.netz.treffer;
