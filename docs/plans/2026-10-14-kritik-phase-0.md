@@ -338,3 +338,7 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
   nicht.
 - **Deine einfache Form hinten: nur als Kante erreichbar** (0,8 breit bei fast 0 Höhe). „mittel“ rundet eng (22,8°),
   Top-Ecken bleiben offen. → Markierung „nur als Kante“ im Blatt fehlt noch (Rest von S3).
+- **Breitenlinie als Griff (S3, zurückgestellt):** Querschnitte je Ring in der Höhe zu verziehen ist der falsche Hebel. Bei
+  geneigten Ringen wandert der Punkt längs der Sprosse auch in x (Rex/Robbe nach oben 15–20 px Rest). Starkes Verziehen
+  faltet (Robbe 36–91°), und ohne mitgehende Front widerspricht der Griff der Front-Zeichnung (Kugel). → Als
+  3D-Bedingung im Löser (Breitenlinie mit Tangente) zusammen mit S5 bauen.

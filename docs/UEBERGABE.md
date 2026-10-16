@@ -1,4 +1,4 @@
-# Übergabe (Stand 16.10.2026 abends: S2 gebaut, „glatt“ Standard; S3 Teil 1 „Front berühren“ gebaut, Halt für Florian)
+# Übergabe (Stand 16.10.2026 abends: S2 und S3 Teil 1–2 gebaut — glatte Haut und Front berühren sind Standard für neue Wesen; Halt für Florian)
 
 Branch `claude/editor-grundlayout`.
 
@@ -49,17 +49,21 @@ Gesamtplan und Kritik-Register bleiben gültig:
   [`s3-beruehren-kern-2026-10-16.jpg`](progress/editor/s3-beruehren-kern-2026-10-16.jpg). Noch offen von S3: Breitenlinie als
   Griff, Intervalle in `breite.ts`, Markierung „nur als Kante“.
 
-## Entschieden (16.10. nachmittags)
+- **S3 Teil 2:** Berühren (mittel) ist Standard für neue Wesen; das Front-Blatt markiert, was nur als Kante erreichbar ist
+  (orange) und wo die Front ein anderes Teil verlangt (violett). Bild
+  [`s3-markierung-2026-10-16.jpg`](progress/editor/s3-markierung-2026-10-16.jpg). Die Breitenlinie als Griff ist versucht
+  und zurückgestellt (Ringe verziehen ist der falsche Hebel, gehört als 3D-Bedingung zu S5; Planseite S3).
 
-- **„glatt“ ist Standard für neue Wesen** (Startkugel, „Neu“; `neuesWesen()` im Editor-Store). Gespeicherte Wesen,
-  Vorlagen und Prüfwesen behalten ihre Einstellung.
+## Entschieden (16.10. nachmittags/abends)
+
+- **„glatt“ und „Umrisse berühren: mittel“ sind Standard für neue Wesen** (Startkugel, „Neu“; `neuesWesen()` im
+  Editor-Store). Gespeicherte Wesen, Vorlagen und Prüfwesen behalten ihre Einstellung.
 
 ## Offen für Florian
 
 - **Angleichen** an alten Zeichnungen: Verhalten ok (die Ansicht mit dem Knopf führt)?
-- **S3 ansehen** (eigene Wesen ohne Maul, Tafel Körper → „Umrisse berühren: mittel“): Soll Berühren Standard für neue
-  Wesen werden (wie „glatt“)? Die kleinen Faltenzunahmen an Langhals/Drache gehen erst mit S5 weg.
-- **Danach:** Rest von S3 (Breitenlinie als Griff, Markierung „nur als Kante“) oder gleich S4/S5.
+- **Nächster Schritt nach Plan:** S4 „Teile erkennen“ (nur Anzeige; Florian bestätigt die Einordnung an eigenen
+  Zeichnungen, bevor Geometrie darauf gebaut wird), dann S5 (Mittelebenen-Baum, mit der Breitenlinie als 3D-Bedingung).
 
 ## Arbeitsregeln
 

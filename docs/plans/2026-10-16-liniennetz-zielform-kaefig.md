@@ -563,3 +563,22 @@ gemessenen Fehlanläufen am selben Tor: anhalten, Kritik-Register, Bericht.
     Front-Blatt heute | berührt), [`s3-beruehren-kern-2026-10-16.jpg`](../progress/editor/s3-beruehren-kern-2026-10-16.jpg).
   - **Nächster Schritt nach Florians Blick:** Berühren als Standard für neue Wesen? Danach Rest von S3 (Breitenlinie als
     Griff, Markierung), die Falten an Langhals/Drache und die Giraffe kommen mit S5.
+- **16.10. abends, S3 Teil 2** (Florian: „alles klar, weiter geht's“ → Berühren als Standard, dann Rest von S3):
+  - **Standard für neue Wesen:** `neuesWesen()` setzt `glatt` und `fuelle: 'mittel'` (Startkugel beim Start, „Neu“);
+    gespeicherte Wesen, Vorlagen und Prüfwesen behalten ihre Einstellung.
+  - **Markierung im Front-Blatt** (`WesenNetz.randMarken`, `View2D`): orange gestrichelt = **nur als Kante erreichbar**
+    (die Fülle der Stufe deckelt: die fertige Fläche bleibt > 1 px hinter dem Ziel); violett gepunktet = **anderes Teil**
+    (die Front verlangt mehr als × 1,35: Flosse, Flügel oder eine Vorlage, die zu geneigten Ringen nicht passt; > 2 px).
+    Geprüft gegen die fertige Fläche, nicht gegen die Vorlage — sonst meldete die Vase 13 Stellen bei 2,3 px Abweichung.
+    Bild: [`s3-markierung-2026-10-16.jpg`](../progress/editor/s3-markierung-2026-10-16.jpg) (einfache Form: Schultern
+    orange, Spitze rot; Vase: kaum; Giraffe: Hals und Bauch violett).
+  - **Breitenlinie als Griff — versucht, zurückgestellt** (nicht im Repo): Top-Knoten mit eigener Höhe (`dritte`), die
+    Querschnitte je Ring in der Höhe verzogen (breiteste Stelle auf die Linie), der breiteste Front-Knoten derselben
+    Höhe geht mit. Gemessen (18 px Zug): Ei −0,7 px, Robbe nach unten 3,3 px (aber 36° Falte), Kugel 6,6 px Rest, Rex
+    nach oben 15 px, Robbe nach oben 20 px Rest. Ursache: Bei geneigten Ringen schiebt das Verziehen den Punkt längs der
+    Sprosse auch in x — die breiteste Stelle an diesem x bleibt. Richtig wäre eine 3D-Bedingung im Löser (Punkt der
+    Breitenlinie samt Tangente), und sie gehört zu S5 (eigene Querschnitte je Teil). Ohne Front-Kopplung widerspricht
+    der Griff zudem der Front-Zeichnung.
+  - **Tore S3** (Stand): einfache Form Front 8,0–8,3 px (4,5 Widerspruch, Rest orange markiert), Top 6,3 px (Ecken hinten
+    nur als Kante), Seite 0,3 px; kein Library-Körper schlechter um > 0,5 px; Falten Langhals/Drache +1,3–3,3° (offen,
+    S5); Zug ≤ 7 ms; Breitenpunkt am Zeiger — nicht gebaut (s. o.).
