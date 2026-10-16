@@ -9,6 +9,7 @@ import { koerperDokument } from '../pruefen/koerper';
 import { dreiecke, flaechenAbstand } from '../pruefen/masse';
 import { zufall } from '../pruefen/zufall';
 import { type NetzLinie, zielUnterteilung } from './einpassen';
+import { roehrenGitter } from './gitter';
 
 export type V3 = [number, number, number];
 export const PX = 461;
@@ -303,3 +304,77 @@ export const FAELLE: Fall[] = [
     waechter: { reihe: 0.4 },
   },
 ];
+
+/** Obere und untere Kontur bei x (Seite): Bereich, in dem die Haut aus der Seite getroffen wird, etwas nach innen. */
+export function konturBei(abl: Ableitung, x: number): [number, number] | null {
+  const k = kasten(abl);
+  let lo = Infinity;
+  let hi = -Infinity;
+  const n = 400;
+  for (let s = 0; s <= n; s++) {
+    const y = k.y0 + ((k.y1 - k.y0) * s) / n;
+    if (hautZ(abl, x, y) !== null) {
+      lo = Math.min(lo, y);
+      hi = Math.max(hi, y);
+    }
+  }
+  if (!(hi > lo)) return null;
+  const rand = 0.01 * (hi - lo);
+  return [lo + rand, hi - rand];
+}
+
+/** Prüffall „Querlinie wird Ring“ (L0 Fall 4): Linie von der oberen zur unteren Kontur, Wächter für den Ring. */
+export type RingFall = { name: string; dok: () => Dokument; zug: (abl: Ableitung) => [number, number][]; waechter: { ring: number; haut?: number; normale?: number } };
+const quer = (abl: Ableitung, xo: number, xu: number, n = 12): [number, number][] => {
+  const k = kasten(abl);
+  const xOben = k.x0 + xo * (k.x1 - k.x0);
+  const xUnten = k.x0 + xu * (k.x1 - k.x0);
+  const o = konturBei(abl, xOben);
+  const u = konturBei(abl, xUnten);
+  if (!o || !u) return [];
+  const pts: [number, number][] = [];
+  for (let s = 0; s <= n; s++) {
+    const t = s / n;
+    pts.push([xOben + (xUnten - xOben) * t, o[1] + (u[0] - o[1]) * t]);
+  }
+  return pts;
+};
+export const RING_FAELLE: RingFall[] = [
+  { name: 'Kugel, senkrecht durch die Mitte', dok: () => koerperDokument('kugel', zufall(1)), zug: (a) => quer(a, 0.5, 0.5), waechter: { ring: 0.5 } },
+  { name: 'Kugel, schräg', dok: () => koerperDokument('kugel', zufall(1)), zug: (a) => quer(a, 0.42, 0.58), waechter: { ring: 1 } },
+  { name: 'Ei, Bogen', dok: () => koerperDokument('ei', zufall(3)), zug: (a) => {
+    const g = quer(a, 0.55, 0.55);
+    return g.map(([x, y], i) => [x + 0.04 * Math.sin((Math.PI * i) / (g.length - 1)), y]);
+  }, waechter: { ring: 1 } },
+  { name: 'Langhals, quer zum Hals (entlang der Sprosse eines Halsrings)', dok: () => koerperDokument('langhals', zufall(1)), zug: (a) => halsQuer(a, 0), waechter: { ring: 0.5 } },
+  { name: 'Langhals, steil (25° gegen die Sprosse gedreht)', dok: () => koerperDokument('langhals', zufall(1)), zug: (a) => halsQuer(a, 25), waechter: { ring: 1 } },
+];
+
+/** Linie quer über den Hals: Sprosse des Rings, dessen Mitte der Halsmitte (55 % der Höhe) am nächsten liegt, um `grad` gedreht. */
+function halsQuer(abl: Ableitung, grad: number): [number, number][] {
+  const { R, N } = abl.vorlage;
+  const g = roehrenGitter(abl.unterteilung, R, N, abl.kaefig.n);
+  const k = kasten(abl);
+  const yHals = k.y0 + 0.55 * (k.y1 - k.y0);
+  const P = (i: number, v: number): [number, number] => {
+    const id = g.index[Math.round(i * g.teil) * g.breiteB + Math.round(v * g.teil)]!;
+    return [abl.fein[3 * id]!, abl.fein[3 * id + 1]!];
+  };
+  let best = 1;
+  for (let i = 1; i < R - 1; i++) {
+    const o = P(i, 0);
+    const u = P(i, N / 2);
+    if (Math.abs((o[1] + u[1]) / 2 - yHals) < Math.abs((P(best, 0)[1] + P(best, N / 2)[1]) / 2 - yHals)) best = i;
+  }
+  const o = P(best, 0);
+  const u = P(best, N / 2);
+  const m: [number, number] = [(o[0] + u[0]) / 2, (o[1] + u[1]) / 2];
+  const w = (grad * Math.PI) / 180;
+  const dreh = (p: [number, number]): [number, number] => [m[0] + Math.cos(w) * (p[0] - m[0]) - Math.sin(w) * (p[1] - m[1]), m[1] + Math.sin(w) * (p[0] - m[0]) + Math.cos(w) * (p[1] - m[1])];
+  // gedreht und etwas innerhalb der Konturen
+  const a = dreh([o[0] + 0.03 * (u[0] - o[0]), o[1] + 0.03 * (u[1] - o[1])]);
+  const b = dreh([u[0] + 0.03 * (o[0] - u[0]), u[1] + 0.03 * (o[1] - u[1])]);
+  const pts: [number, number][] = [];
+  for (let s = 0; s <= 12; s++) pts.push([a[0] + ((b[0] - a[0]) * s) / 12, a[1] + ((b[1] - a[1]) * s) / 12]);
+  return pts.filter(([x, y]) => hautZ(abl, x, y) !== null);
+}

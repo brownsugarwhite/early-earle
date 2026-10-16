@@ -77,7 +77,7 @@ Alles gebaut und gemessen, **nichts abgenommen**. Bilder in `docs/progress/edito
 
 **Für dich zum Ansehen:** die Bilder oben; Entscheidungen, die anstehen: (a) L0.1 — genügen 1,4° Normalenabweichung bei schrägen Linien, oder soll die Verdichtung (eine Reihe mehr) kommen? (b) G4 — Flügel nahtlos als Ausstülpung oder als angestecktes Teil, und wie groß? (c) Mundwinkel — kleine runde Öffnung oder Spitze (Empfehlung nach Messung), Fächer, Eckregel nur mit leicht offenem Mundwinkel? (d) Übergangsreihe im äußeren Ring (Empfehlung) oder ungleiche Lippen?
 
-**Danach in dieser Nacht:** Teil L, L0 Fälle 2–6 (Kreuzung und Knick, Querschnitt aus Linien, steil und waagerecht, ohne Springen, Pose) — „besonders wichtig“ neben der Grundform.
+6. **Teil L, L0 Fall 4 „Querlinie wird Ring“** (5df19cb6; Planseite Teil L): L0.1 mit vertauschten Rollen — eine Querlinie (Kontur zu Kontur, z. B. quer zum Langhals) wird ein Ring, genau auf der Linie (0,04–0,16 px), Haut ≤ 0,22 px; Normalen nur bei der senkrechten Kugellinie unter 1°, schräge Linien 1,5–6,6° (dieselbe Grenze wie L0.1). Bild `l0-reihe-und-ring-2026-10-16.jpg`. Offen in L0: Fall 2 (Knick längs der Linie aus der Ecke im Querschnitt — braucht Querschnitte je Ring durch die Linienkreuzung, tiefer Umbau der Ableitung), Fall 3 (Querschnitt aus Linien, Tiger dreifach), Panzerrand, Fall 5 (ohne Springen), Fall 6 (Pose).
 
 ## Erledigt: Stufe 2, B1
 

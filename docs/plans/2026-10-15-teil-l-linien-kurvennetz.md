@@ -132,4 +132,4 @@ Im Planmodus wurde nur recherchiert und Code gelesen. **Die Tests sind Schritt L
   | Langhals quer zum Hals (Sprosse eines Halsrings) | 0,04 px (1,1) | 0,03 px | 2,08° | Ring ✓ Haut ✓ Normalen ✗ |
   | Langhals steil (25° gegen die Sprosse) | 0,07 px (5,9) | 0,22 px | 6,57° | Ring ✓ Haut ✓ Normalen ✗ |
 
-  Befund wie bei L0.1: Der Ring liegt immer genau auf der Linie, die Haut bleibt unter 0,25 px; die Normalen schräger Linien liegen über 1° (Auflösung des Käfigs bei gescherter Verteilung). Am Langhals hat schon A0 am Hals Seitenverhältnis 21 und Falten 23°. Offen in Fall 4: Panzerrand rundum (Längsschleife durch die Kappen).
+  Befund wie bei L0.1: Der Ring liegt immer genau auf der Linie, die Haut bleibt unter 0,25 px; die Normalen schräger Linien liegen über 1° (Auflösung des Käfigs bei gescherter Verteilung). Am Langhals hat schon A0 am Hals Seitenverhältnis 21 und Falten 23°. Offen in Fall 4: Panzerrand rundum (Längsschleife durch die Kappen). Bild mit Reihen- und Ringfällen: [`l0-reihe-und-ring-2026-10-16.jpg`](../progress/editor/l0-reihe-und-ring-2026-10-16.jpg).

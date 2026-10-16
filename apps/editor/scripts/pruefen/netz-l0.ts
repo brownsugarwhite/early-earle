@@ -9,7 +9,8 @@ import { fileURLToPath } from 'node:url';
 import { ableiten } from '../../../../packages/shape/src/kern/ableiten';
 import { reiheEinpassen, reihenPunkte } from '../../../../packages/shape/src/kern/netz/einpassen';
 import { type RoehrenGitter, roehrenGitter } from '../../../../packages/shape/src/kern/netz/gitter';
-import { FAELLE, PX, TOR, abstandZug, formMessung, kasten, linieAusSeite } from '../../../../packages/shape/src/kern/netz/pruefen';
+import { FAELLE, PX, RING_FAELLE, TOR, abstandZug, formMessung, kasten, linieAusSeite } from '../../../../packages/shape/src/kern/netz/pruefen';
+import { ringEinpassen, ringPunkte } from '../../../../packages/shape/src/kern/netz/ringEinpassen';
 import { feinesNetz } from '../../../../packages/shape/src/kern/pruefstand';
 
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
@@ -95,13 +96,40 @@ for (const fall of FAELLE) {
   zeilen.push(`${fall.name}: ${tor}`);
 }
 
+// L0 Fall 4: Querlinie wird Ring (RINGE=0 lässt sie weg)
+if (process.env.RINGE !== '0')
+  for (const fall of RING_FAELLE) {
+    const ohne = ableiten(fall.dok(), { stufen: 3 });
+    const linie = linieAusSeite(ohne, fall.zug(ohne));
+    const e = ringEinpassen(ohne, linie);
+    if (!e) continue;
+    const g = roehrenGitter(ohne.unterteilung, ohne.vorlage.R, ohne.vorlage.N, ohne.kaefig.n);
+    const ring = ringPunkte(g, e.i, e.vVon, e.vBis);
+    let auf = 0;
+    for (const f of ring) auf = Math.max(auf, abstandZug([e.fein[3 * f]!, e.fein[3 * f + 1]!, e.fein[3 * f + 2]!], linie.punkte) * PX);
+    const m = formMessung(ohne, e.xyz);
+    const linieZug: Zug = { punkte: linie.punkte.flatMap((p: V3) => p), farbe: '#1d5fd6', breite: 2.5, strich: true };
+    const ringIds: number[] = [];
+    for (let b = 0; b <= g.breiteB; b++) {
+      const id = g.index[e.i * g.teil * g.breiteB + (b % g.breiteB)]!;
+      if (id >= 0) ringIds.push(id);
+    }
+    const ringZug = (fein: Float64Array): Zug => ({ punkte: ringIds.flatMap((id) => [fein[3 * id]!, fein[3 * id + 1]!, fein[3 * id + 2]!]), farbe: '#e0222a', breite: 2.5 });
+    const tor = `${auf <= TOR.reihe ? '✓' : '✗'} Ring ${auf.toFixed(2)} px · ${m.haut <= TOR.haut ? '✓' : '✗'} Haut ${m.haut.toFixed(2)} px · ${m.normale <= TOR.normale ? '✓' : '✗'} Normalen ${m.normale.toFixed(2)}°`;
+    panels.push({
+      ansichten: [ansichtDaten('ohne Linie: Ring i* (rot) neben der Linie', ohne, ohne.fein, g, [ringZug(ohne.fein), linieZug]), ansichtDaten('mit Linie: Ring i* auf der Linie', ohne, e.fein, g, [ringZug(e.fein), linieZug])],
+      text: `<b>Querlinie wird Ring — ${fall.name}</b> · Ring i*=${e.i} · ${tor} · ${e.zeit.toFixed(0)} ms`,
+    });
+    zeilen.push(`Ring — ${fall.name}: ${tor}`);
+  }
+
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>
 body{margin:10px;font:13px/1.35 -apple-system,Helvetica,sans-serif;background:#f4efe6;color:#222}
 .fall{margin:0 0 14px}.reihe{display:flex;gap:10px}.bild{background:#fff;border:1px solid #d8cfc0}
 .bild div{padding:3px 6px;font-size:12px;color:#555}h1{font-size:16px;margin:0 0 6px}
 </style></head><body>
-<h1>Teil L, L0.1 — Linie wird Reihe („Die Fläche bleibt, das Netz gleitet“) · ${DATUM} · Abnahme offen</h1>
-<div style="margin-bottom:8px">Grenzfläche Stufe 3 mit vier Cel-Stufen (jede Normalenwelle zeigt sich an den Stufenkanten) · dunkle Linien: Käfigschleifen auf der Haut (Reihen und Ringe) · <span style="color:#e0222a">rot: Reihe j*</span> · <span style="color:#1d5fd6">blau gestrichelt: gezeichnete Linie</span> · Tor: Reihe ≤ ${TOR.reihe} px, Haut ≤ ${TOR.haut} px, Normalen ≤ ${TOR.normale}°</div>
+<h1>Teil L, L0.1 und L0 Fall 4 — Linie wird Reihe, Querlinie wird Ring („Die Fläche bleibt, das Netz gleitet“) · ${DATUM} · Abnahme offen</h1>
+<div style="margin-bottom:8px">Grenzfläche Stufe 3 mit vier Cel-Stufen (jede Normalenwelle zeigt sich an den Stufenkanten) · dunkle Linien: Käfigschleifen auf der Haut (Reihen und Ringe) · <span style="color:#e0222a">rot: Reihe j* bzw. Ring i*</span> · <span style="color:#1d5fd6">blau gestrichelt: gezeichnete Linie</span> · Tor: Reihe ≤ ${TOR.reihe} px, Haut ≤ ${TOR.haut} px, Normalen ≤ ${TOR.normale}°</div>
 ${panels.map((p, k) => `<div class="fall"><div>${p.text}</div><div class="reihe">${p.ansichten.map((a, l) => `<div class="bild"><div>${a.titel}</div><canvas id="c${k}_${l}" width="560" height="380"></canvas></div>`).join('')}</div></div>`).join('\n')}
 <script>
 const DATEN = ${JSON.stringify(panels.map((p) => p.ansichten))};
