@@ -279,3 +279,26 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
   Ansicht) machte sie in den anderen Ansichten fälschlich sichtbar (bis 176 px verdeckt), und die Verdeckung auf einer Stufe
   gröber wich an streifenden Stellen und Kehlen um 2–20 px ab — beides erst durch den Vergleich mit dem Strahltest der
   Bühne gefunden (`netz-d.mjs`) und behoben.
+- **Faltenrest im Entenhals (Nachtrag S2):** mit „glatt“ 21/3/3/6 → 7/0/0/0 Proben hinter umgeklappter Fläche
+  (Seite/Front/Back/Bottom); der Rest an der Seite verschwindet erst mit S5 (der Haken klappt die Röhre um).
+
+## Befunde aus S2 „Glatte Haut“ (Plan „Liniennetz, Zielform, Käfig“, 16.10. nachmittags, eigene Befunde)
+
+- **Tor „kein Körper schlechter um > 0,5 px“ nicht erfüllt — angehalten nach mehr als drei Anläufen:** Vase Front
+  9,1 → 13,5 px, Giraffe mit Bauch Front 15,6–16,5 → 22,0, S-Hals Top 6,6 → 7,6/8,4, Robbe aus der Startkugel Seite
+  3,1 → 4,0 (Schnauzenspitze), Fisch Top +0,6/0,7. Ursache gemessen: Die Breitenpunkte setzen die breiteste Stelle jedes
+  Rings auf das Top; auf der glatten Haut liegt sie dort, wo die Ziele sie haben, und dort ist das Top schmaler (Vase:
+  x −0,145 statt −0,08, Kreis 0,222 statt 0,253). Die Wellen der Interpolation hatten die Silhouette zufällig nach außen
+  gedrückt. Anläufe: Laplace gegen 0, relativ zur Zielform, gehobener Bezug, Breiten-/Nahtgewichte, Kappenfaktor,
+  Stufe 1. → S3 (Umrisse berühren, Breitenlinie als Griff); bis dahin entscheidet Florian, ob „glatt“ trotzdem Standard
+  wird (Top wird dabei oft deutlich besser: Robbe 20,7 → 12,3, Giraffe 18 → 9,4 px).
+- **Fernfeld örtlicher Züge (≤ 0,1 px) mit der Röhre nicht erreichbar:** unverändert wie heute (Kugel 5,1 px, einfache Form
+  83 px), weil die Ringe je Bau aus der Leiter neu gelegt werden. → S5 (örtliche Teile); das Tor gehört dorthin.
+- **Volumen:** Fisch +4,4/+4,9 % (Flossen als Querschnitte einer Röhre werden beim Glätten voller), Giraffe −2,1 %.
+  → S6 (Flossen als seitliche Teile).
+- **Mit Maul oder Beinen noch ohne Glättung:** Am alten Maulbau gemischt (Florians Kugelmaul Seite +7 px, sonst weniger
+  Hautfalten und Durchdringungen). → mit dem Maul als Einsatz (Teil A) auf der glatten Haut.
+- **Lehre:** Die Falten der Röhre kommen nicht aus Naht und Breite, sondern aus der Interpolation der Käfigziele (nur die
+  Ziele: Rex aus der Startkugel 173°); die Ziele als Käfig sind glatt, aber 5–10 % zu klein. Glätten muss deshalb relativ
+  zur Zielform sein (nur die Abweichung), sonst werden Querschnitte runder und Flossen dicker. Ein „gehobener“ Bezug
+  (Richardson-Schritte Richtung Interpolation) bringt die Wellen zurück.

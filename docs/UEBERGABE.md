@@ -1,4 +1,4 @@
-# Übergabe (Stand 16.10.2026 nachmittags: S1 Liniennetz und S1c Kopplung jedes Punkts gebaut, Florians Entscheidungen umgesetzt)
+# Übergabe (Stand 16.10.2026 nachmittags: S2 „Glatte Haut“ gebaut, Halt für Florian)
 
 Branch `claude/editor-grundlayout`.
 
@@ -11,34 +11,35 @@ darüber“, Schritte S0–S8 mit Toren, Stand je Schritt). Vorgeschichte:
 [`docs/plans/2026-10-16-einstieg-falten-wirbelsaeulen-linien.md`](plans/2026-10-16-einstieg-falten-wirbelsaeulen-linien.md).
 Gesamtplan und Kritik-Register bleiben gültig:
 [`docs/plans/2026-10-15-maul-einsatz-harmonie-posen.md`](plans/2026-10-15-maul-einsatz-harmonie-posen.md),
-[`docs/plans/2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md) (neu: „Befunde aus S1/S1c“).
+[`docs/plans/2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md) (neu: „Befunde aus S2“).
 
 ## Letzter Stand
 
-- **S0** gebaut (Widersprüche rot im Editor, genaues Δ, Faltenmaß nach Zonen).
-- **S1 und S1c gebaut, alles im Editor** (Bauweise Kern, Editor-Tab): Liniennetz in allen Blättern (fremde Umrisse als
-  3D-Linien, Knoten als Ringe, Kantenlinien und Falten auf dem echten Körper, verdeckt blass; Stil „netz ton/farbe“ in der
-  Tafel Körper), Kantenlinien auf dem Kern-Körper ohne versteckte Schreibvorgänge, derselbe Punkt mit Hover-Marke in allen
-  Blättern und auf der Bühne, fremde Knoten greifen und entlang der gemeinsamen Koordinate ziehen (⌥ wechselt),
-  **Kopplung jedes Punkts** in jeder Formgeste und „angleichen“ im Blatt-Titel bei alten Widersprüchen.
-- Tore gemessen (Tabelle auf der Planseite): derselbe Punkt 0,00 px, Sichtbarkeit 100 %, Formgeste nur Profile und ein
-  Undo-Schritt, nach jeder Geste Widerspruch ≤ 1 px (Kern: 323/325 Zufallsgesten, Rest = zu wenige Knoten in der folgenden
-  Ansicht), Worker 17–18 ms (Vierbeiner 33,5 ms).
-- Kontaktbogen: [`docs/progress/editor/s1-liniennetz-2026-10-16.jpg`](progress/editor/s1-liniennetz-2026-10-16.jpg).
-- Kern-Tests 385/385 grün, Editor-Tests 25/25, `pnpm typecheck` grün.
-
-## Entschieden (16.10. nachmittags) und umgesetzt
-
-- **Stil:** „farbig ist erstmal besser“ → „netz farbe“ ist Standard (Chips bleiben zum Vergleichen).
-- **Fehlende Knoten:** „einfügen, aber nur wenn wirklich notwendig“ → die Kopplung teilt bei einem Rest über 1 px ein
-  Segment der folgenden Ansicht (höchstens zwei je Zug, nur wenn es hilft; Spanten und Auswahl gehen mit). Kern:
-  325/325 Zufallsgesten stimmig, 2 nötige Punkte; Editor: `netz-e.mjs` grün.
+- **S0, S1, S1c** gebaut (Widersprüche rot, genaues Δ, Faltenmaß nach Zonen; Liniennetz in allen Blättern, derselbe Punkt
+  überall, Kopplung jedes Punkts, Punkte einfügen nur wenn nötig, Stil „netz farbe“).
+- **S2 „Glatte Haut“ gebaut** (Kern und Editor):
+  - Dünn besetzter Löser (`loeser/normalSystem.ts`) = dichte LU auf ≤ 3e-13.
+  - Glättungsmaß relativ zur Zielform (Laplace der Stufe 2, nur die Abweichung vom Käfig der Ziele), Kappen × 10,
+    Naht 64: Voreinstellung `GLATTE_HAUT` in `kern/ableiten.ts`.
+  - Im Editor: Tafel Körper → „Haut heute | glatt“ (`dok.ausstattung.glatt`, ein Undo-Schritt, fehlt = heute bitgleich);
+    wirkt ohne Maul und Beine, mit Maul/Beinen Hinweis in der Tafel.
+  - Ergebnis: Rex, Robbe, Langhals freie Haut 10,7–14,5° (heute bis 176°), Kappen 8–12°; Kappen der einfachen Form
+    96–99° → 14–15°, Vase 172° → 13°; kein Körper auf der freien Haut schlechter.
+  - **Nicht erfüllt** (angehalten, Kritik-Register): Front von Vase (+4,4 px) und Giraffe (+5,5–6,4 px), S-Hals-Top
+    (+1–1,8 px), Robbenschnauze aus der Startkugel (+0,9 px) — die Wellen hatten die Silhouette zufällig nach außen
+    gedrückt; gehört zu S3. Fernfeld unverändert (S5), Fisch-Volumen +4,4–4,9 % (S6).
+  - Bilder: [`s2-glatte-haut-editor-2026-10-16.jpg`](progress/editor/s2-glatte-haut-editor-2026-10-16.jpg),
+    [`s2-glatte-haut-kern-2026-10-16.jpg`](progress/editor/s2-glatte-haut-kern-2026-10-16.jpg).
+- Prüfungen: `kern/glatt.test.ts`, `loeser/normalSystem.test.ts`, Messreihe `apps/editor/scripts/pruefen/s2-glatt.ts`,
+  Editor `s2-editor.mjs` grün, `netz-d.mjs` mit `GLATT=1`; `pnpm typecheck` grün, `pnpm test` grün bis auf vier
+  Tempo-Tests unter Last (einzeln grün), `pnpm lint` ohne Fehler.
 
 ## Offen für Florian
 
+- **S2 ansehen** (Tafel Körper → „glatt“, eigene Wesen ohne Maul): Soll „glatt“ Standard für neue Wesen werden, obwohl
+  Front/Top bei manchen Körpern ein paar px wandern (bis S3)?
 - **Angleichen** an alten Zeichnungen: Verhalten ok (die Ansicht mit dem Knopf führt)?
-- **Nächster Schritt:** S2 (glatte Haut: dünn besetzter Löser, Glättungsmaß; Kappen und der Faltenrest im Entenhals sind
-  die Prüffälle).
+- **Nächster Schritt nach Plan:** S3 — zuerst die Look-Entscheidung rund / genau / Mittelweg mit Vergleichsbild.
 
 ## Arbeitsregeln
 

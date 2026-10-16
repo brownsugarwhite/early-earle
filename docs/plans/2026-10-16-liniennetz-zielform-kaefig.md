@@ -429,3 +429,51 @@ gemessenen Fehlanläufen am selben Tor: anhalten, Kritik-Register, Bericht.
     (24 Proben je Segment), Schnitte über einen Kantenindex: Zug im Mittel 0,4–8,5 ms, höchstens ≈ 14 ms.
   - Ohne Einfügen (Kern-Option) bleibt der Rest eines unerfüllbaren Zugs in der führenden Ansicht; die folgende bleibt
     stimmig. Die Front der Ente zeigt danach Kopf, Hals und Körper — der heutige Körper folgt dem erst mit S3/S5.
+- **16.10. nachmittags, S2 „Glatte Haut“ gebaut und gemessen** (Abnahme offen; Kern und Editor, Bauweise Kern):
+  - **Dünn besetzter Löser** (`packages/shape/src/loeser/normalSystem.ts`): Normalgleichungen aus dünnen Zeilen in der
+    Hülle einer Cuthill-McKee-Reihenfolge des Käfiggraphen, Cholesky; ohne Glättung gleich der dichten LU auf 1,6–3,0e-13
+    (Käfig) bzw. ≤ 8e-14 (feines Netz) für Startkugel, Rex, Langhals, Robbe (`normalSystem.test.ts`). Aufbau 2–7 ms,
+    Zerlegen 1,6–2,5 ms (die dichte LU brauchte 3–6 ms; für Teile-Käfige mit 1600–3000 Punkten ist das der Weg).
+  - **Woher die Falten kommen (gemessen):** nicht aus Naht und Breite, sondern daraus, dass die Grenzfläche durch die Ziele
+    jedes Käfigpunkts gezwungen wird (Interpolation). Nur durch die Ziele (ohne Naht/Breite): Rex aus der Startkugel 173°,
+    Vase-Kappe 179°, S-Hals 33°; die Ziele selbst als Käfig sind glatt (frei ≤ 12°, Kappen ≤ 21°), aber 5–10 % zu klein
+    (Catmull–Clark schrumpft).
+  - **Glättungsmaß:** Laplace der Fläche auf Stufe 2 in Käfigpunkten (an Falten nur längs, an Ecken keins), **relativ zur
+    Zielform**: geglättet wird nur die Abweichung vom Käfig der Ziele, nicht die Form selbst. Gegen 0 geglättet (erster
+    Anlauf) wurden Querschnitte runder und Flossen dicker (Giraffe-Front +4 px, Fisch +5 % Volumen). Dazu an den Kappen das
+    Zehnfache (größte Faltenquelle) und die Naht mit Gewicht 64 statt 16 (hält die schwarze Linie gegen die Glättung).
+    Voreinstellung `GLATTE_HAUT` (`kern/ableiten.ts`), Schalter in den Optionen `fair`, `fairBezug`, `fairKappe`.
+  - **Im Editor:** Tafel Körper → „Haut heute | glatt“ (`dok.ausstattung.glatt`, ein Undo-Schritt, wird mit dem Wesen
+    gespeichert; fehlt = heute, bitgleich). Wirkt auf den Körper ohne Maul und Beine; mit Maul oder Beinen sagt die Tafel,
+    dass dort noch der heutige Bau gilt (der alte Maulbau wird mit dem Maul als Einsatz ersetzt; an Kugel-Mäulern brachte
+    die Glättung gemischte Ergebnisse, z. B. Florians Kugelmaul Seite +7 px). Prüfung `apps/editor/scripts/pruefen/s2-editor.mjs`
+    (eigener Vite 5192): Florians Ablauf (Startkugel → Umrisse übernommen), Chip → ein Undo-Schritt, neues Netz, Stationen
+    bleiben, Undo bitgleich, Hinweis mit Maul — alles grün.
+  - **Tore** (Messreihe `apps/editor/scripts/pruefen/s2-glatt.ts`, 15 Körper × frisch/Startkugel; Zahlen heute → glatt):
+
+    | Tor | Ergebnis |
+    |---|---|
+    | Löser = LU auf 1e-9 | erfüllt (≤ 3e-13) |
+    | Robbe, Langhals, Rex freie Haut ≤ 20° | **erfüllt:** 10,7–14,5° (heute 16,1–176,4°), Kappen 8,4–12,1° (heute bis 60°); Test `kern/glatt.test.ts` |
+    | kein Körper schlechter um > 1° (freie Haut) | **erfüllt** (alle 30 Fälle gleich oder besser; Kappen: einfache Form 96–99° → 14–15°, Vase 172° → 13°, Ente frisch 171° → 23°, Giraffe 86–88° → 22°) |
+    | … oder um > 0,5 px | **nicht erfüllt:** Vase Front 9,1 → 13,5 px, Giraffe Front 15,6–16,5 → 22,0, S-Hals Top 6,6 → 7,6/8,4, Robbe aus der Kugel Seite 3,1 → 4,0 (Schnauzenspitze), Fisch Top +0,6/0,7, Ente aus der Kugel Front +0,6. Dafür besser: Robbe Top 20,7 → 12,3, Giraffe Top 17,5–18,0 → 9,4, Vase Top 19,1–19,3 → 15,6, Ente Seite 4,8 → 2,6 |
+    | Volumen ±2 % | erfüllt bis auf Fisch +4,4/+4,9 % (Flossen in einer Röhre, S6), Giraffe −2,1 %, Ente mit Haken +2,0 % |
+    | Fernfeld örtlicher Züge ≤ 0,1 px | **nicht erfüllt**, unverändert wie heute (Kugel 5,1 px, Langhals 0,9, einfache Form 83): Die Ringe werden je Bau aus der Leiter neu gelegt — gehört zu S5 (örtliche Teile), nicht zur Haut |
+    | Bau ≤ 120 ms, Zug ≤ 10 ms | Bau 98–147 ms unter Last (Illustrator 120 % CPU, Last 13–19), so schnell wie heute; Zug 3,7–7,7 ms |
+    | Faltenrest im Entenhals (`netz-d.mjs`, Proben hinter umgeklappter Fläche) | Ente mit Haken 21/3/3/6 → 7/0/0/0 (Seite/Front/Back/Bottom), Giraffe 0 → 0; ganz weg erst mit S5 |
+
+  - **Warum Front und Top wandern (gemessen an der Vase):** Die Breitenpunkte setzen je Ring die breiteste Stelle der
+    Grenzfläche auf das Top. Die gewellte Fläche hatte diese Stelle zufällig weiter vorn (x −0,08, Top-Kreis erlaubt dort
+    0,253), die glatte hat sie dort, wo die Ziele sie haben (x −0,145, Top erlaubt 0,222) — der Ring wird schmaler, die
+    Front verliert 4–6 px. Ohne Breitenpunkte trifft die glatte Vase die Front (1,7 px), aber nicht das Top (18,8); mit
+    halbem Gewicht liegt sie dazwischen. Das ist genau die Aufgabe von S3 (Umrisse berühren, Breitenlinie als Griff); die
+    Wellen der Interpolation haben die Silhouette bisher zufällig nach außen gedrückt.
+  - **Angehalten nach mehr als drei Anläufen am Tor „> 0,5 px“:** Laplace gegen 0 (Gewicht 1–100), relativ zur Zielform,
+    vorab gehobener Bezug (brachte die Wellen zurück: Rex aus der Kugel 31–71°), Breiten- und Nahtgewichte (1–16, 16–256),
+    Kappenfaktor, Stufe 1 statt 2 — keiner hält Vase- und Giraffe-Front. Eintrag im Kritik-Register.
+  - **Bilder:** [`s2-glatte-haut-kern-2026-10-16.jpg`](../progress/editor/s2-glatte-haut-kern-2026-10-16.jpg) (7 Körper aus
+    der Startkugel, heute | glatt, Seite/Front/Top/schräg mit Zonen),
+    [`s2-glatte-haut-editor-2026-10-16.jpg`](../progress/editor/s2-glatte-haut-editor-2026-10-16.jpg) (Bühne im Editor
+    heute | glatt, Earle-Look, Prüfansicht, Zebra).
+  - **Nächster Schritt nach Florians Blick:** „glatt“ als Standard für neue Wesen? Dann S3 (Look-Entscheidung rund/genau
+    zuerst), das die Front-/Top-Reste von S2 aufnimmt.
