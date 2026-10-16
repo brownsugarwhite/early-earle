@@ -40,7 +40,7 @@ export type SeitenOptionen = {
   dickeOhne: number;
 };
 
-export const SEITEN_STANDARD: SeitenOptionen = { ringe: 14, kappe: 0.1, dickeOhne: 0.25 };
+export const SEITEN_STANDARD: SeitenOptionen = { ringe: 14, kappe: 0.05, dickeOhne: 0.25 };
 
 /** Koordinate, die eine Ansicht nicht zeigt (Index in V3). */
 const fehlt = (b: BlattName): 0 | 1 | 2 => (b === 'top' ? 1 : b === 'front' ? 0 : 2);

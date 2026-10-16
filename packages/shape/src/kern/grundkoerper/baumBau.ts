@@ -1113,6 +1113,20 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
       if (ringe[s]!.spitzenEcke.anfang && topo[s]!.anfang.art === 'kappe') k.vSchaerfe[bk.kappe(s, 'anfang', c / 2, c / 2)] = opt.eckenSchaerfe;
       if (ringe[s]!.spitzenEcke.ende && topo[s]!.ende.art === 'kappe') k.vSchaerfe[bk.kappe(s, 'ende', c / 2, c / 2)] = opt.eckenSchaerfe;
     });
+    // seitliche Röhren: Liegt eine gezeichnete Ecke ihrer primären Ansicht auf der Spitze (Entenflügel, Brustflosse, Stachel),
+    // wird die Kappenmitte samt Spiegelbild eine scharfe Spitze
+    const sk = dok.skalierung;
+    ansaetze.forEach((g, q) => {
+      const s = topoMitte.length + q;
+      const b = g.teil.primaer;
+      const S = g.teil.spitze;
+      const t2 = b === 'top' ? { x: S[0], y: Math.abs(S[2]) } : b === 'front' ? { x: Math.abs(S[2]), y: S[1] } : { x: S[0], y: S[1] };
+      const ecke = dok.profile[b].knoten.some((kn) => kn.art === 'ecke' && Math.hypot(kn.p.x * sk - t2.x, (b === 'seite' ? kn.p.y * sk : Math.abs(kn.p.y * sk)) - t2.y) < 3 / 461);
+      if (!ecke) return;
+      const p = bk.kappe(s, 'ende', g.topo.N / 8, g.topo.N / 8);
+      k.vSchaerfe[p] = opt.eckenSchaerfe;
+      k.vSchaerfe[bk.spiegel[p]!] = opt.eckenSchaerfe;
+    });
   }
   // Dünne Kanten als Klinge: Ein Ring, dessen größte Halbbreite kleiner als `klinge` × halbe Sprossenlänge ist, ist eine
   // schmale Linse. Zwischen zwei solchen Ringen wird die Naht (j = 0 und N/2) zur scharfen Kante, an einem dünnen Ende auch
@@ -1210,11 +1224,80 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
     });
     return out;
   };
+  // S6.4: Säume der seitlichen Röhren (Ringpunkte bei θ = 0 und π, über die Stufen verfeinert) auf ihren gezeichneten Umriss in
+  // der primären Ansicht (fehlende Koordinate wie die aktuelle Grenzlage), die Spitze auf ihr Ziel — wie die Naht der
+  // Mittelebene. Ohne Saum zog die Glättung Spitzen und Endringe 3–15 px nach innen (Zweihals-Kopf, Beine, Entenflügel).
+  const saumFein: number[] = [];
+  const saumZug: number[] = [];
+  const saumZuege: { zug: V2[]; primaer: 'top' | 'front' | 'seite' }[] = [];
+  ansaetze.forEach((g, q) => {
+    const s = topoMitte.length + q;
+    const N = g.topo.N;
+    const R = g.topo.R;
+    const zi = saumZuege.push({ zug: [...g.teil.ketten.a, ...[...g.teil.ketten.b].reverse().slice(1)], primaer: g.teil.primaer }) - 1;
+    const j0 = (((-g.versatz * g.richtung) % N) + N) % N;
+    for (const j of [j0, (j0 + N / 2) % N]) {
+      for (let i = 1; i + 1 < R; i++) {
+        const kette = feinKette(u, k, bk.ring(s, i, j), bk.ring(s, i + 1, j));
+        for (let m = i === 1 ? 0 : 1; m < kette.length; m++) {
+          saumFein.push(kette[m]!);
+          saumZug.push(zi);
+        }
+      }
+    }
+    // Spitze (Kappenmitte) als Saumpunkt mit ihrem Ziel
+    saumFein.push(bk.kappe(s, 'ende', N / 8, N / 8));
+    saumZug.push(-1);
+  });
+  for (const p of saumFein) bedingungen.push({ zeile: p, gewicht: opt.nahtGewicht });
+  const blatt2 = (b: 'top' | 'front' | 'seite', x: number, y: number, z: number): V2 => (b === 'top' ? { x, y: z } : b === 'front' ? { x: z, y } : { x, y });
+  const aus2 = (b: 'top' | 'front' | 'seite', q: V2, x: number, y: number, z: number): [number, number, number] => (b === 'top' ? [q.x, y, q.y] : b === 'front' ? [x, q.y, q.x] : [q.x, q.y, z]);
+  const naechster = (zug: readonly V2[], P: V2): V2 => {
+    let best = zug[0]!;
+    let bd = Infinity;
+    for (let i = 0; i + 1 < zug.length; i++) {
+      const a = zug[i]!;
+      const b = zug[i + 1]!;
+      const ab = { x: b.x - a.x, y: b.y - a.y };
+      const f = Math.max(0, Math.min(1, ((P.x - a.x) * ab.x + (P.y - a.y) * ab.y) / (ab.x * ab.x + ab.y * ab.y || 1)));
+      const Q = { x: a.x + ab.x * f, y: a.y + ab.y * f };
+      const d = (Q.x - P.x) ** 2 + (Q.y - P.y) ** 2;
+      if (d < bd) {
+        bd = d;
+        best = Q;
+      }
+    }
+    return best;
+  };
+  const mitSaum = (basis: Float64Array, lagen: Float64Array): Float64Array => {
+    if (!saumFein.length) return basis;
+    const out = new Float64Array(basis.length + 3 * saumFein.length);
+    out.set(basis);
+    saumFein.forEach((p, q) => {
+      const o = basis.length + 3 * q;
+      const zi = saumZug[q]!;
+      if (zi < 0) {
+        out[o] = ziele[3 * p]!;
+        out[o + 1] = ziele[3 * p + 1]!;
+        out[o + 2] = ziele[3 * p + 2]!;
+        return;
+      }
+      const { zug, primaer } = saumZuege[zi]!;
+      const x = lagen[3 * p]!;
+      const y = lagen[3 * p + 1]!;
+      const z = lagen[3 * p + 2]!;
+      const P = aus2(primaer, naechster(zug, blatt2(primaer, x, y, z)), x, y, z);
+      out[o] = P[0];
+      out[o + 1] = P[1];
+      out[o + 2] = P[2];
+    });
+    return out;
+  };
   const loeser = ausgleichsLoeser(u.grenze, k.n, bedingungen, undefined, glaettemassFuer(u, k, opt, bk.kappeAb));
-  let xyz = kaefigAusgleich(loeser, mitFeld(ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, bz, fein), fein));
+  let xyz = kaefigAusgleich(loeser, mitSaum(mitFeld(ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, bz, fein), fein), fein));
   fein = anwenden3(u.grenze, xyz);
-  for (let d = 0; (breite || feldFein.length) && d < 2; d++) {
-    xyz = kaefigAusgleich(loeser, mitFeld(ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, bz, fein), fein));
+  for (let d = 0; (breite || feldFein.length || saumFein.length) && d < 2; d++) {
+    xyz = kaefigAusgleich(loeser, mitSaum(mitFeld(ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, bz, fein), fein), fein));
     fein = anwenden3(u.grenze, xyz);
   }
   const t5 = jetzt();
