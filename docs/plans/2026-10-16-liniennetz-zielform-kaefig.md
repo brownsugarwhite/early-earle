@@ -477,3 +477,8 @@ gemessenen Fehlanläufen am selben Tor: anhalten, Kritik-Register, Bericht.
     heute | glatt, Earle-Look, Prüfansicht, Zebra).
   - **Nächster Schritt nach Florians Blick:** „glatt“ als Standard für neue Wesen? Dann S3 (Look-Entscheidung rund/genau
     zuerst), das die Front-/Top-Reste von S2 aufnimmt.
+- **16.10. nachmittags, Florians Entscheidung zu S2:** „Ja, glatt als Standard für neue Wesen, danach weiter mit S3
+  (Look-Entscheidung zuerst).“ → Neue Wesen im Editor (Startkugel beim Start, „Neu“) haben `ausstattung.glatt`
+  (`neuesWesen()` in `apps/editor/src/state/editorStore.ts`); gespeicherte Wesen, Vorlagen und Prüfwesen behalten ihre
+  Einstellung (Chip in der Tafel Körper). Vorher geprüft: Rundmaul auf glatter Haut genauso rund, öffnet gleich weit,
+  0 Durchdringungen (Kugel, Robbe und Ei aus der Startkugel); `s2-editor.mjs` und `netz-e.mjs` grün.

@@ -243,6 +243,14 @@ function poseHinweis(): void {
   useUi.getState().zeigeHinweis('In der Pose formen Pinsel (G, I), Knochen, die schwarze Linie in der Seite und Rot/Blau (Stufe Maul). Front, Top und Reifen der Pose kommen als Nächstes (B6); bis dahin bearbeitest du sie im Editor-Tab.');
 }
 
+/**
+ * Neues Wesen im Editor: die Startkugel mit glatter Haut (Florian 16.10.: „glatt als Standard für neue Wesen“, Plan
+ * „Liniennetz, Zielform, Käfig“, S2). Gespeicherte Wesen, Vorlagen und Prüfwesen behalten ihre Einstellung.
+ */
+export function neuesWesen(): Dokument {
+  return { ...neuesDokument(), ausstattung: { glatt: true } };
+}
+
 export const useEditor = create<EditorState>((set, get) => {
   /** Änderung am Dokument; außerhalb einer Geste wird sie sofort ein Undo-Schritt. */
   const aendern = (f: (d: Dokument) => Dokument) => {
@@ -270,7 +278,7 @@ export const useEditor = create<EditorState>((set, get) => {
   };
 
   return {
-    dok: neuesDokument(),
+    dok: neuesWesen(),
     datei: null,
     geaendert: false,
     modus: 'editor',
@@ -412,7 +420,7 @@ export const useEditor = create<EditorState>((set, get) => {
       useUi.getState().setzeVorschau(null);
       useUi.getState().setzeOeffnung(0);
       useUi.getState().setzePoseStaerke(1);
-      set({ dok: neuesDokument(), datei: null, geaendert: false, verlauf: [], zukunft: [], gesteStart: null, gesteZiel: null, modus: 'editor' });
+      set({ dok: neuesWesen(), datei: null, geaendert: false, verlauf: [], zukunft: [], gesteStart: null, gesteZiel: null, modus: 'editor' });
     },
     laden(dok, datei) {
       useUi.getState().setzeVorschau(null);

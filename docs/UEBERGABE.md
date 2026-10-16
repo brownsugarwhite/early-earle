@@ -34,10 +34,13 @@ Gesamtplan und Kritik-Register bleiben gültig:
   Editor `s2-editor.mjs` grün, `netz-d.mjs` mit `GLATT=1`; `pnpm typecheck` grün, `pnpm test` grün bis auf vier
   Tempo-Tests unter Last (einzeln grün), `pnpm lint` ohne Fehler.
 
+## Entschieden (16.10. nachmittags)
+
+- **„glatt“ ist Standard für neue Wesen** (Startkugel, „Neu“; `neuesWesen()` im Editor-Store). Gespeicherte Wesen,
+  Vorlagen und Prüfwesen behalten ihre Einstellung.
+
 ## Offen für Florian
 
-- **S2 ansehen** (Tafel Körper → „glatt“, eigene Wesen ohne Maul): Soll „glatt“ Standard für neue Wesen werden, obwohl
-  Front/Top bei manchen Körpern ein paar px wandern (bis S3)?
 - **Angleichen** an alten Zeichnungen: Verhalten ok (die Ansicht mit dem Knopf führt)?
 - **Nächster Schritt nach Plan:** S3 — zuerst die Look-Entscheidung rund / genau / Mittelweg mit Vergleichsbild.
 

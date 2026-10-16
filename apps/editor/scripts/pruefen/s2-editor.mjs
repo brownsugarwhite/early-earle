@@ -102,6 +102,9 @@ for (const fall of faelle) {
   // Startkugel bauen, Stationen einfrieren
   await page.waitForFunction(() => window.__stores && window.__editor && window.__editor.vertices() > 0 && document.querySelectorAll('[data-delta]').length >= 3, null, { timeout: 90_000 });
   await page.waitForFunction(() => (window.__stores.editor.getState().dok.kaefig?.stationen?.ringe.length ?? 0) > 0, null, { timeout: 30_000 });
+  // Florian 16.10.: neue Wesen starten mit glatter Haut
+  const start = await page.evaluate(() => window.__stores.editor.getState().dok.ausstattung?.glatt ?? false);
+  pruefe(start === true, `neue Startkugel mit „glatt“ (${start})`);
   // Umrisse des Prüfkörpers übernehmen (Stationen der Kugel bleiben)
   let v = await page.evaluate(() => window.__editor.netzVersion());
   await page.evaluate(
@@ -116,7 +119,8 @@ for (const fall of faelle) {
         dok = k.koerperDokument(fall, z.zufall(1));
       }
       const st = window.__stores.editor.getState();
-      st.setzeDokument({ ...st.dok, profile: dok.profile, ...(dok.spanten ? { spanten: dok.spanten } : {}) });
+      // Vergleich von „heute“ aus: Haut-Schalter zurück auf heute, dann der Chip
+      st.setzeDokument({ ...st.dok, profile: dok.profile, ...(dok.spanten ? { spanten: dok.spanten } : {}), ausstattung: {} });
     },
     { fall, modul, koerperModul, zufallModul },
   );
