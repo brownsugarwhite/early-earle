@@ -91,6 +91,77 @@ describe('S5.1 Baum-Käfig', () => {
     expect(b.naht[b.kappe(0, 'ende', 2, 2)]).toBe(0);
   });
 
+  // S5-Reste R1: Kragen — Kindring 0 als U-Schleife auf der Elternhaut, keine besonderen Punkte auf der Naht
+  const nahtValenzen = (b: ReturnType<typeof baumKaefig>) => {
+    const k = b.kaefig;
+    const v = new Set<number>();
+    for (let p = 0; p < k.n; p++) if (b.naht[p]) v.add(k.vKStart[p + 1]! - k.vKStart[p]!);
+    return [...v].sort();
+  };
+
+  it('Kragen oben (Hals auf dem Rumpf): vier Punkte mit fünf Kanten auf den Flanken, Naht regelmäßig', () => {
+    const b = pruefe(
+      [
+        { R: 12, N: 16, anfang: { art: 'kappe' }, ende: { art: 'kappe' } },
+        { R: 6, N: 8, anfang: { art: 'kragen', eltern: 0, seite: 'a', ring: 4, tiefe: 1 }, ende: { art: 'kappe' } },
+      ],
+      { 3: 12, 5: 4 },
+    );
+    expect(nahtValenzen(b)).toEqual([4]);
+    // U: A = (4, 0), Bein hinab (4, 1), Boden (5, 1), (6, 1), B = (6, 0); links gespiegelt; keine Kopien
+    expect(b.ring(1, 0, 0)).toBe(b.ring(0, 4, 0));
+    expect(b.ring(1, 0, 1)).toBe(b.ring(0, 4, 1));
+    expect(b.ring(1, 0, 2)).toBe(b.ring(0, 5, 1));
+    expect(b.ring(1, 0, 4)).toBe(b.ring(0, 6, 0));
+    expect(b.ring(1, 0, 6)).toBe(b.ring(0, 5, 15));
+    expect(b.existiert(0, 5, 0)).toBe(false);
+    expect(b.existiert(0, 5, 1)).toBe(true);
+    for (let p = 0; p < b.kaefig.n; p++) expect(b.links(p)).toBe(p);
+  });
+
+  it('Kragen tiefer (16 Punkte, Tiefe 2) und unten', () => {
+    pruefe(
+      [
+        { R: 14, N: 16, anfang: { art: 'kappe' }, ende: { art: 'kappe' } },
+        { R: 5, N: 16, anfang: { art: 'kragen', eltern: 0, seite: 'a', ring: 3, tiefe: 2 }, ende: { art: 'kappe' } },
+        { R: 4, N: 8, anfang: { art: 'kragen', eltern: 0, seite: 'b', ring: 9, tiefe: 1 }, ende: { art: 'kappe' } },
+      ],
+      { 3: 16, 5: 8 },
+    );
+  });
+
+  it('Rücken- und Bauchflosse über denselben Ringen (Kragen oben und unten)', () => {
+    const b = pruefe(
+      [
+        { R: 16, N: 16, anfang: { art: 'kappe' }, ende: { art: 'kappe' } },
+        { R: 4, N: 8, anfang: { art: 'kragen', eltern: 0, seite: 'a', ring: 5, tiefe: 1 }, ende: { art: 'kappe' } },
+        { R: 4, N: 8, anfang: { art: 'kragen', eltern: 0, seite: 'b', ring: 5, tiefe: 1 }, ende: { art: 'kappe' } },
+      ],
+      { 3: 16, 5: 8 },
+    );
+    expect(nahtValenzen(b)).toEqual([4]);
+    // zu tief: die beiden U berühren sich
+    expect(() =>
+      baumKaefig([
+        { R: 16, N: 16, anfang: { art: 'kappe' }, ende: { art: 'kappe' } },
+        { R: 4, N: 16, anfang: { art: 'kragen', eltern: 0, seite: 'a', ring: 5, tiefe: 4 }, ende: { art: 'kappe' } },
+        { R: 4, N: 16, anfang: { art: 'kragen', eltern: 0, seite: 'b', ring: 5, tiefe: 4 }, ende: { art: 'kappe' } },
+      ]),
+    ).toThrow();
+  });
+
+  it('Kragen und Sehne gemischt, Kragen am Kind', () => {
+    pruefe(
+      [
+        { R: 14, N: 16, anfang: { art: 'kappe' }, ende: { art: 'kappe' } },
+        { R: 8, N: 8, anfang: { art: 'kragen', eltern: 0, seite: 'a', ring: 3, tiefe: 1 }, ende: { art: 'kappe' } },
+        { R: 4, N: 8, anfang: { art: 'seitlich', eltern: 0, seite: 'b', ring: 8 }, ende: { art: 'kappe' } },
+        { R: 3, N: 8, anfang: { art: 'kragen', eltern: 1, seite: 'b', ring: 2, tiefe: 1 }, ende: { art: 'kappe' } },
+      ],
+      { 3: 20, 5: 8, 6: 2 },
+    );
+  });
+
   it('Kind eines Kinds (Flosse am Hals)', () => {
     pruefe(
       [

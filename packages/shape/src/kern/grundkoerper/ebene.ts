@@ -448,8 +448,11 @@ export type StreifenRinge = {
   /** Kappenstationen an Spitzen (r = 1 … c/2 − 1, r klein = nahe der Spitze) und die Spitzen selbst */
   kappen: { anfang: { o: V2; u: V2 }[]; ende: { o: V2; u: V2 }[] };
   spitzen: { anfang: V2 | null; ende: V2 };
-  /** angesetzte Kinder: Streifen, Seite, erster Ring; Sehnenpunkte (Anteil t von A nach B) */
-  kinder: { streifen: number; seite: 'a' | 'b'; ring: number; t: number[] }[];
+  /**
+   * angesetzte Kinder: Streifen, Seite, erster Ring; Ringe des Blocks (Anteil t der Sehne von A nach B); Kragen-Tiefe m
+   * (0 = Sehne: H + 1 Ringe enden auf dem runden Kindring 0; sonst Kragen: w + 1 Ringe, H = 2m + w)
+   */
+  kinder: { streifen: number; seite: 'a' | 'b'; ring: number; t: number[]; tiefe: number }[];
   /** Ringe auf gezeichneten Ecken (Ringfalte auf der Seite der Ecke) und Ecken an den Spitzen (Punktschärfe) */
   ecken: { ring: number; seite: 'a' | 'b' | 'beide' }[];
   spitzenEcke: { anfang: boolean; ende: boolean };
@@ -468,9 +471,24 @@ export type RingOptionen = {
   maxRinge: number;
   /** Kappenanteil an einer gezeichneten Spitze (Ecke): kleine Kappe, die Ringe tragen die Krümmung (wie in der Röhre) */
   kappeSpitze: number;
+  /**
+   * Ansatz seitlicher Kinder: `sehne` (Kindring 0 auf der Sehne, Sehnenenden mit sechs Kanten auf der Naht) oder `kragen`
+   * (Kindring 0 als U-Schleife auf der Elternhaut, S5-Reste R1)
+   */
+  ansatz: 'sehne' | 'kragen';
 };
 
-export const RING_STANDARD: RingOptionen = { kappe: 0.05, abstand: 1, ringBudget: 480, maxRinge: 64, kappeSpitze: 0.025 };
+export const RING_STANDARD: RingOptionen = { kappe: 0.05, abstand: 1, ringBudget: 480, maxRinge: 64, kappeSpitze: 0.025, ansatz: 'sehne' };
+
+/**
+ * Kragen eines Kinds mit H = N/2: Breite w (gerade, 2 … H − 2) nach der Sehnenlänge in Elternkanten, Tiefe m = (H − w)/2.
+ */
+export function kragenMasse(H: number, sehne: number, kante: number): { w: number; tiefe: number } {
+  let w = 2 * Math.round(sehne / kante / 2);
+  w = Math.max(2, Math.min(H - 2, w));
+  if ((H - w) % 2) w = Math.max(2, w - 1);
+  return { w, tiefe: (H - w) / 2 };
+}
 
 /** Sehnenpunkte des ersten Kindrings: gleiche Winkel auf einem runden Ring (Anteil von A nach B). */
 export function sehnenAnteile(H: number): number[] {
@@ -532,25 +550,37 @@ export function ringeAuslegen(e: Ebene, breiten: Breiten, opt: RingOptionen = RI
     const kanteBei = (f: number) => streckung * kante[Math.min(M, Math.max(0, Math.round(f * M)))]!;
     // feste Ringe unter den Sehnen der Kinder
     type Fest = { f: number; a: number; b: number; o?: V2; u?: V2 };
-    const bloecke: { kind: number; seite: 'a' | 'b'; ringe: Fest[]; t: number[] }[] = [];
+    const bloecke: { kind: number; seite: 'a' | 'b'; ringe: Fest[]; t: number[]; tiefe: number }[] = [];
     for (const k of st.kinder) {
       const kind = e.streifen[k]!;
       const an = kind.ansatz!;
       const H = kind.N / 2;
-      const t = sehnenAnteile(H);
       const kette = an.seite === 'a' ? st.ketten.a : st.ketten.b;
       const sA = anteilAufZug(kette, an.A);
       const sB = anteilAufZug(kette, an.B);
       const gA = gegenAnteil(l, sA, an.seite);
       const gB = gegenAnteil(l, sB, an.seite);
+      // Sehne: H + 1 Ringe auf den Punkten des runden Kindrings 0. Kragen: w + 1 Ringe; der erste durch A, der letzte durch B,
+      // dazwischen an den Stellen der Kindpunkte m + 1 … m + w − 1 eines runden Rings (die Bänder Kragen → Kindring 1 bleiben
+      // so ungeschert)
+      let t = sehnenAnteile(H);
+      let tiefe = 0;
+      if (opt.ansatz === 'kragen') {
+        const fA = spineAnteilFuer(l, sA, an.seite === 'a');
+        const fB = spineAnteilFuer(l, sB, an.seite === 'a');
+        const km = kragenMasse(H, abstand(an.A, an.B), kanteBei((fA + fB) / 2));
+        tiefe = km.tiefe;
+        const rund = sehnenAnteile(H);
+        t = [0, ...Array.from({ length: km.w - 1 }, (_, q) => rund[km.tiefe + 1 + q]!), 1];
+      }
       const ringe: Fest[] = t.map((tj, j) => {
         const sj = sA + tj * (sB - sA);
-        const gj = gA + ((gB - gA) * j) / H;
+        const gj = gA + ((gB - gA) * j) / (t.length - 1);
         const P = { x: an.A.x + tj * (an.B.x - an.A.x), y: an.A.y + tj * (an.B.y - an.A.y) };
         const f = spineAnteilFuer(l, sj, an.seite === 'a');
         return an.seite === 'a' ? { f, a: sj, b: gj, o: P } : { f, a: gj, b: sj, u: P };
       });
-      bloecke.push({ kind: k, seite: an.seite, ringe, t });
+      bloecke.push({ kind: k, seite: an.seite, ringe, t, tiefe });
     }
     bloecke.sort((x, y) => x.ringe[0]!.f - y.ringe[0]!.f);
     // gezeichnete Ecken auf den Ketten dieses Streifens (nicht die Sehnenenden): an den Spitzen Punktschärfe und kleine
@@ -619,7 +649,7 @@ export function ringeAuslegen(e: Ebene, breiten: Breiten, opt: RingOptionen = RI
       // mindestens ein freier Ring zwischen Anfang und Block
       const zw = frei(fa, erster);
       for (const f of zw.length ? zw : [(fa + erster) / 2]) ringe.push(ausF(f));
-      kinderRinge.push({ streifen: bl.kind, seite: bl.seite, ring: ringe.length, t: bl.t });
+      kinderRinge.push({ streifen: bl.kind, seite: bl.seite, ring: ringe.length, t: bl.t, tiefe: bl.tiefe });
       for (const r of bl.ringe) ringe.push(r);
       fa = bl.ringe[bl.ringe.length - 1]!.f;
     }
@@ -630,7 +660,7 @@ export function ringeAuslegen(e: Ebene, breiten: Breiten, opt: RingOptionen = RI
     if (ue) ringe.push({ f: 1, a: 1, b: 1, o: ue.A, u: ue.B });
     // innere Ecken: der nächste freie Ring (nicht Anfang/Ende, nicht unter einer Sehne) rückt genau auf die Ecke
     const fest = new Set<number>([0, ringe.length - 1]);
-    for (const kr of kinderRinge) for (let j = 0; j <= e.streifen[kr.streifen]!.N / 2; j++) fest.add(kr.ring + j);
+    for (const kr of kinderRinge) for (let j = 0; j < kr.t.length; j++) fest.add(kr.ring + j);
     const eckRinge: StreifenRinge['ecken'] = [];
     for (const ec of innenEcken.sort((x, y) => x.f - y.f)) {
       // gegenüberliegende Ecken (Hinterkopf und Innenecke unter dem Kopf) teilen sich einen Ring: Falte auf beiden Seiten
@@ -665,7 +695,7 @@ export function ringeAuslegen(e: Ebene, breiten: Breiten, opt: RingOptionen = RI
     // mittleren Abstands von seinen Nachbarn hat; feste Enden (Sehnen, Ecken, Endringe) bleiben
     for (const kette of ['a', 'b'] as const) {
       const fix = new Set<number>([0, ringe.length - 1]);
-      for (const kr of kinderRinge) if (kr.seite === kette) for (let j = 0; j <= e.streifen[kr.streifen]!.N / 2; j++) fix.add(kr.ring + j);
+      for (const kr of kinderRinge) if (kr.seite === kette) for (let j = 0; j < kr.t.length; j++) fix.add(kr.ring + j);
       for (const er of eckRinge) if (er.seite === kette || er.seite === 'beide') fix.add(er.ring);
       const wert = ringe.map((r) => r[kette]);
       const abst = wert.slice(1).map((x, i) => x - wert[i]!).sort((x, y) => x - y);

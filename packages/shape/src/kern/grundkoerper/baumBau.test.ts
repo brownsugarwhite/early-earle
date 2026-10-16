@@ -60,3 +60,38 @@ describe('S5 Mittelebenen-Baum', () => {
     expect(b.ebene.streifen.some((s) => s.ansatz?.art === 'seitlich')).toBe(true);
   });
 });
+
+// S5-Reste R1 (16.10. abends): Kragen statt Sehne — Messwerte als Untergrenze (Ausgang Sehne: Giraffe 20,5°, Ente 24,6°,
+// S-Hals 23,4° im Ansatz)
+describe('S5-Reste R1: Kragen', () => {
+  const mitKragen = (name: string) => {
+    const dok = teilSatzDokument(name);
+    const b = baumAbleiten(dok, { ansatz: 'kragen' });
+    const z = faltenNachZonen(b.kaefig, b.unterteilung, b.fein, { flaechenZone: b.zone }).zonen;
+    const n = baumFeinesNetz(b);
+    const d = blattAbweichungen(n.punkte, n.flaechen, dok, 240, undefined, true, paarAusnahme(teilbaum(dok)));
+    const k = b.kaefig;
+    // keine besonderen Punkte auf der Naht
+    const nahtVal = new Set<number>();
+    for (let p = 0; p < k.n; p++) if (b.bk.naht[p]) nahtVal.add(k.vKStart[p + 1]! - k.vKStart[p]!);
+    return { b, z, d, euler: k.n - k.nE + k.nF, nahtVal: [...nahtVal] };
+  };
+
+  it('Giraffe, S-Hals, Ente: Hohlkehlen ≤ 20°, Naht ohne Sattelpunkte, Δ wie mit Sehne', () => {
+    const ziel: Record<string, { ansatz: number; seite: number; front: number; top: number }> = {
+      'giraffe-bauch': { ansatz: 14, seite: 1.5, front: 2.5, top: 2.5 },
+      's-hals': { ansatz: 16, seite: 2.2, front: 3.1, top: 6.6 },
+      ente: { ansatz: 19, seite: 3.8, front: 4.8, top: 38.5 },
+    };
+    for (const [name, g] of Object.entries(ziel)) {
+      const { z, d, euler, nahtVal } = mitKragen(name);
+      expect(euler).toBe(2);
+      expect(nahtVal).toEqual([4]);
+      expect(z.ansatz.max).toBeLessThan(g.ansatz);
+      expect(z.frei.max).toBeLessThan(20);
+      expect(d.seite.max).toBeLessThan(g.seite);
+      expect(d.front.max).toBeLessThan(g.front);
+      expect(d.top.max).toBeLessThan(g.top);
+    }
+  });
+});
