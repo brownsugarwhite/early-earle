@@ -59,6 +59,25 @@ describe('S5 Mittelebenen-Baum', () => {
     expect(b.ebene.streifen.some((s) => s.ansatz?.art === 'fortsetzung')).toBe(true);
     expect(b.ebene.streifen.some((s) => s.ansatz?.art === 'seitlich')).toBe(true);
   });
+
+  // S5-Reste R2 (16.10. abends): Rücken- und Bauchflosse über denselben Rumpfringen (Kragen oben und unten). Ausgang mit
+  // Sehne und Bauchflosse im Rumpf: frei 31,8°, Ansatz 28,7°, Δ 1,6/7,2/4,5 px
+  it('Fisch: Bauchflosse als eigener Streifen unter der Rückenflosse, genauer und glatter als mit Sehne', () => {
+    const { b, z, d, euler } = messen('fisch');
+    expect(euler).toBe(2);
+    expect(b.ebene.ueberlappt).toEqual([]);
+    // gegenseitige Partner auf verschiedenen Seiten
+    const paar = b.ebene.streifen.map((s, i) => ({ s, i })).filter(({ s }) => s.partner !== null);
+    expect(paar.length).toBe(2);
+    expect(paar[0]!.s.partner).toBe(paar[1]!.i);
+    expect(paar[1]!.s.partner).toBe(paar[0]!.i);
+    expect(paar[0]!.s.ansatz!.seite).not.toBe(paar[1]!.s.ansatz!.seite);
+    expect(z.frei.max).toBeLessThan(24);
+    expect(z.ansatz.max).toBeLessThan(24);
+    expect(d.seite.max).toBeLessThan(2);
+    expect(d.front.max).toBeLessThan(5.5);
+    expect(d.top.max).toBeLessThan(3);
+  });
 });
 
 // S5-Reste R1 (16.10. abends): Kragen statt Sehne — Messwerte als Untergrenze (Ausgang Sehne: Giraffe 20,5°, Ente 24,6°,

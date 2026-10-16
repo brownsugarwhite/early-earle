@@ -52,9 +52,11 @@ export type BaumOptionen = AbleitOptionen & {
   elternQuerschnitt: 'kreis' | 'lappen';
   /** Ansatz seitlicher Kinder: Sehne (Kindring 0 auf der Sehne) oder Kragen (U-Schleife auf der Elternhaut, S5-Reste R1) */
   ansatz: RingOptionen['ansatz'];
+  /** Mindestlänge der Kappen in Kantenlängen (0 = aus) */
+  kappeKante: number;
 };
 
-export const BAUM_STANDARD: BaumOptionen = { ...ABLEIT_STANDARD, ...GLATTE_HAUT, fuelle: 'mittel', ansatzUebergang: 0.35, elternQuerschnitt: 'lappen', ansatz: 'sehne' };
+export const BAUM_STANDARD: BaumOptionen = { ...ABLEIT_STANDARD, ...GLATTE_HAUT, fuelle: 'mittel', ansatzUebergang: 0.35, elternQuerschnitt: 'lappen', ansatz: 'kragen', kappeKante: 0.8 };
 
 export type BaumAbleitung = {
   opt: BaumOptionen;
@@ -207,9 +209,9 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
   const opt: BaumOptionen = { ...BAUM_STANDARD, ...optionen };
   const t0 = jetzt();
   const breiten = silhouettenBreite(dok);
-  const e = ebene(dok, baum, breiten);
+  const e = ebene(dok, baum, breiten, opt.ansatz);
   const t1 = jetzt();
-  const ringe = ringeAuslegen(e, breiten, { ...RING_STANDARD, ansatz: opt.ansatz });
+  const ringe = ringeAuslegen(e, breiten, { ...RING_STANDARD, ansatz: opt.ansatz, kappeKante: opt.kappeKante });
   const topo = streifenTopologie(e, ringe);
   const t2 = jetzt();
   const bk0 = baumKaefig(topo);
@@ -306,37 +308,67 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
   //    Elternring an dieser Zeile, bleibt der Punkt; weiter weg rutschend fiel er am Fisch-Schwanzstiel auf die nächste Zeile).
   //    Ohne das lag das Bein des U am S-Hals 25 px unter A, der erste Kindring 14 px darüber, und der Löser drückte die
   //    Käfigpunkte zusammen (Seitenverhältnis 86)
+  //    Die zwei Elternringe vor und hinter einem Bein rutschen anteilig mit (½, ¼): Bei dünnen Kindern lagen sonst alle
+  //    Beinpunkte dicht an der Naht und der Ring davor auf seinen alten Zeilen (Trapez 2,4 : 23,6 px, Fisch-Rückenflosse).
+  const rutschen = (sp: Sprosse, q: Querschnitt, W: number, seite: 'a' | 'b', h: number, zeile: number, zSoll: number) => {
+    const prof = Array.from({ length: Math.min(h, zeile + 1) + 1 }, (_, t) => punkt(sp, q, W, seite === 'a' ? t : h - t, bz));
+    const zBei = (t: number) => {
+      const t0 = Math.min(prof.length - 2, Math.floor(t));
+      return prof[t0]![2] + (prof[t0 + 1]![2] - prof[t0]![2]) * (t - t0);
+    };
+    const tMax = Math.min(prof.length - 1, zeile);
+    let t = Math.min(0.2, tMax);
+    while (t < tMax && zBei(t) < zSoll) t = Math.min(tMax, t + 0.01);
+    return { t, lage: (tt: number) => {
+      const t0 = Math.min(prof.length - 2, Math.floor(tt));
+      const f = tt - t0;
+      const a0 = prof[t0]!;
+      const a1 = prof[t0 + 1]!;
+      return [a0[0] + (a1[0] - a0[0]) * f, a0[1] + (a1[1] - a0[1]) * f, a0[2] + (a1[2] - a0[2]) * f] as const;
+    } };
+  };
   e.streifen.forEach((st, s) => {
     const an = topo[s]!.anfang;
     if (an.art !== 'kragen') return;
     const p = an.eltern;
-    const h = e.streifen[p]!.N / 2;
+    const Np = e.streifen[p]!.N;
+    const h = Np / 2;
     const H = st.N / 2;
     const W0 = Ws[s]![0]!;
     for (let k = 1; k < H; k++) {
       const o = kragenOrt(topo[p]!, an, st.N, k);
       const zeile = an.seite === 'a' ? o.j : h - o.j;
-      const zSoll = W0 * Math.sin((Math.PI * k) / H);
-      const sp = ringe[p]!.sprossen[o.i]!;
-      const q = qs[p]![o.i]!;
-      const W = Ws[p]![o.i]!;
-      const prof = Array.from({ length: Math.min(h, zeile + 1) + 1 }, (_, t) => punkt(sp, q, W, an.seite === 'a' ? t : h - t, bz));
-      const zBei = (t: number) => {
-        const t0 = Math.min(prof.length - 2, Math.floor(t));
-        return prof[t0]![2] + (prof[t0 + 1]![2] - prof[t0]![2]) * (t - t0);
-      };
-      const tMax = Math.min(prof.length - 1, zeile);
-      let t = 0.2;
-      while (t < tMax && zBei(t) < zSoll) t = Math.min(tMax, t + 0.01);
-      const t0 = Math.min(prof.length - 2, Math.floor(t));
-      const f = t - t0;
-      const a0 = prof[t0]!;
-      const a1 = prof[t0 + 1]!;
-      const x = a0[0] + (a1[0] - a0[0]) * f;
-      const y = a0[1] + (a1[1] - a0[1]) * f;
-      const z = a0[2] + (a1[2] - a0[2]) * f;
+      const r = rutschen(ringe[p]!.sprossen[o.i]!, qs[p]![o.i]!, Ws[p]![o.i]!, an.seite, h, zeile, W0 * Math.sin((Math.PI * k) / H));
+      const [x, y, z] = r.lage(r.t);
       setze(bk0.ring(s, 0, k), x, y, z);
       setze(bk0.ring(s, 0, st.N - k), x, y, -z);
+    }
+    // Nachbarringe der Beine anteilig mitnehmen (nur freie Ringe: keine Endringe, keine Ecken, keine Ringe eines Blocks auf
+    // derselben Seite; ein Block der Gegenseite lässt diese Zeilen frei)
+    const R = ringe[p]!.sprossen.length;
+    const belegt = new Set<number>([0, R - 1]);
+    for (const kd of ringe[p]!.kinder) if (kd.seite === an.seite) for (let j = 0; j < kd.t.length; j++) belegt.add(kd.ring + j);
+    for (const ec of ringe[p]!.ecken) belegt.add(ec.ring);
+    const w = H - 2 * an.tiefe;
+    for (const [bein, richtung] of [
+      [an.ring, -1],
+      [an.ring + w, 1],
+    ] as const) {
+      for (const [g, alpha] of [
+        [1, 0.5],
+        [2, 0.25],
+      ] as const) {
+        const i = bein + richtung * g;
+        if (belegt.has(i)) break;
+        for (let zeile = 1; zeile <= an.tiefe; zeile++) {
+          const r = rutschen(ringe[p]!.sprossen[i]!, qs[p]![i]!, Ws[p]![i]!, an.seite, h, zeile, W0 * Math.sin((Math.PI * zeile) / H));
+          const tNeu = (1 - alpha) * zeile + alpha * r.t;
+          const [x, y, z] = r.lage(tNeu);
+          const j = an.seite === 'a' ? zeile : h - zeile;
+          setze(bk0.ring(p, i, j), x, y, z);
+          setze(bk0.ring(p, i, Np - j), x, y, -z);
+        }
+      }
     }
   });
   e.streifen.forEach((st, s) => {

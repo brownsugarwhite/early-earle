@@ -1,27 +1,28 @@
 // Plan „Liniennetz, Zielform, Käfig“ (16.10.), S5.1: 2D-Auslegung der Seitenfläche je Prüfkörper — Streifen farbig (Rumpf
 // grau, Kinder farbig), Sprossen als Linien, die festen Sprossen unter einer Sehne dicker, Sehnen schwarz, Spitzen als Punkte.
 // Im Titel: Streifen, Ringe, Punkte je Ring, Käfigpunkte und -flächen (Topologie aus `baumKaefig`).
-// Aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/s5-auslegung.ts (KOERPER, NAME)
+// Aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/s5-auslegung.ts (KOERPER, NAME, ANSATZ = sehne | kragen)
 import { writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { baumKaefig } from '../../../../packages/shape/src/kaefig/baumKaefig';
 import { silhouettenBreite } from '../../../../packages/shape/src/kern/breite';
-import { ebene, ringeAuslegen } from '../../../../packages/shape/src/kern/grundkoerper/ebene';
+import { RING_STANDARD, ebene, ringeAuslegen } from '../../../../packages/shape/src/kern/grundkoerper/ebene';
 import { teilSatzDokument } from '../../../../packages/shape/src/kern/pruefen/teilsatz';
 import { streifenTopologie } from '../../../../packages/shape/src/kern/grundkoerper/baumBau';
 
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const AUSGABE = process.env.AUSGABE ?? resolve(WURZEL, 'apps/editor/pruefen-ausgabe');
 const NAME = process.env.NAME ?? 's5-auslegung';
+const ANSATZ = (process.env.ANSATZ ?? 'kragen') as 'sehne' | 'kragen';
 const liste = (process.env.KOERPER ?? 'giraffe-bauch,ente,s-hals,ueberhang,fisch,vase,langhals,drache').split(',');
 const flach = (ps: readonly { x: number; y: number }[]) => ps.flatMap((p) => [+p.x.toFixed(4), +p.y.toFixed(4)]);
 const daten = liste.map((name) => {
   const dok = teilSatzDokument(name);
   const t0 = performance.now();
-  const e = ebene(dok);
+  const e = ebene(dok, undefined, undefined, ANSATZ);
   const t1 = performance.now();
-  const ringe = ringeAuslegen(e, silhouettenBreite(dok));
+  const ringe = ringeAuslegen(e, silhouettenBreite(dok), { ...RING_STANDARD, ansatz: ANSATZ });
   const t2 = performance.now();
   let topo = '';
   try {
@@ -37,7 +38,7 @@ const daten = liste.map((name) => {
     streifen: e.streifen.map((s, i) => ({
       umriss: flach(s.umriss),
       sprossen: ringe[i]!.sprossen.map((sp) => flach([sp.o, sp.u])),
-      fest: ringe[i]!.kinder.flatMap((k) => Array.from({ length: e.streifen[k.streifen]!.N / 2 + 1 }, (_, j) => k.ring + j)),
+      fest: ringe[i]!.kinder.flatMap((k) => Array.from({ length: k.t.length }, (_, j) => k.ring + j)),
       kappen: [...ringe[i]!.kappen.anfang, ...ringe[i]!.kappen.ende].map((sp) => flach([sp.o, sp.u])),
       spitzen: flach([ringe[i]!.spitzen.anfang, ringe[i]!.spitzen.ende].filter((p): p is { x: number; y: number } => !!p)),
       sehne: s.ansatz ? flach([s.ansatz.A, s.ansatz.B]) : [],
