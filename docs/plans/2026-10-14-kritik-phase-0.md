@@ -440,12 +440,12 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
 - **Zweihals-Ring auf der Mittelebene — behoben:** Trifft eine Station die zweite Ansicht nicht (nahe der Wurzel liegt deren
   Sehne weiter außen), nimmt sie den Wert der nächsten getroffenen Station statt der Rumpfmitte (z = 0); vorher kreuzte der
   erste Halsring seinen Zwilling (167°).
-- **Beine am Bauch (Vierbeiner Ansatz 28,4°):** Die Innenkante des Beins liegt eine Rumpfzeile neben der Bauchnaht; zwischen
-  Fenster und Naht bleibt kein Platz für eine Kehle (Bauch waagerecht, Bein senkrecht). Versucht: Rumpf mit 24 Punkten je
-  Ring (Ansatz 23°, aber Kappen und Übergang 2:1 brechen), schwach gebundener Fensterrand (31,5 → 28,4°). Wege: (a) Rumpfzeilen
-  am Fenster verdichten (Querschnitt mit ungleichen Zeilen statt mehr Punkten je Ring), (b) ein Fenster für beide Beine über
-  die Bauchnaht (Bein-Paar als ein Ansatz wie ein Kragen-Paar), (c) eine Zeile Abstand zur Naht erzwingen und den Fensterrand
-  weiter rutschen lassen.
+- **Beine am Bauch — gelöst (Vierbeiner Ansatz 31,5 → 19,9°):** Die Innenkante des Beins liegt eine Rumpfzeile neben der
+  Bauchnaht; zwischen Fenster und Naht blieb kein Platz für eine Kehle (Bauch waagerecht, Bein senkrecht). Versucht: Rumpf
+  mit 24 Punkten je Ring (Kappen und Übergang 2:1 brechen), schwach gebundener Fensterrand (28,4°). Gelöst: Bei Teilen mit
+  primärer Ansicht Seite rückt der Fensterrand längs der Achse um den halben Abstand zum ersten Ring in die Ecke
+  (`fensterKehle`; Zweihals 23,3 → 14,8°). Bei Flügeln und Flossen verschlechterte derselbe Versatz Top und Front (die
+  Wurzel-Ecken sind dort gezeichnet), deshalb nur dort.
 - **Ente Front 7,8 px:** Die unteren Flanken der Glocke (Höhe 20…50 px) liegen innerhalb der Rumpf-Sichthülle (92 px), der
   Rumpf erreicht sie mit „mittel“ (weicher Kasten) aber nur bis 84 px. Der Überschuss gegen die tatsächliche Rumpfbreite
   füllte die Lücke, ließ die Flügelringe aber in Lücken über und unter dem Bauch springen (171°). Wege: Berühren „genau“ am

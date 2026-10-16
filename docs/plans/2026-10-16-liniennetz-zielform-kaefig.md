@@ -515,7 +515,9 @@ Form Top ≤ 2 px; Ansatz ≤ 20°; keine umgeklappten Flächen; Körper ohne Pa
 - **S6.4 Säume im Löser:** Die Ringpunkte bei θ = 0 und π (verfeinert über die Stufen) liegen auf dem gezeichneten Umriss der
   primären Ansicht, die Spitze auf ihrem Ziel — wie die Naht der Mittelebene. Eine gezeichnete Ecke an der Spitze macht sie
   scharf (Flügel-, Flossen-, Stachelspitze). Der Fensterrand ist nur schwach an den Fußabdruck gebunden (Gewicht 0,05): Der
-  Fußabdruck ist die Schnittlinie von Rumpf und Teil, eine Kehle läuft außen vorbei.
+  Fußabdruck ist die Schnittlinie von Rumpf und Teil, eine Kehle läuft außen vorbei. An Beinen und Hälsen (primäre Ansicht
+  Seite, Ansatz an Bauch oder Rücken) rückt der Fensterrand zusätzlich um die Hälfte des Abstands Wurzel → erster Ring längs
+  der Achse in die Ecke (`fensterKehle`); sonst dreht die Haut dort auf einer Zeile um 90°.
 - **S6.5 Editor:** Der Geist (Tafel Körper → „Teile (Geist)“) baut mit seitlichen Röhren, Titel „N Streifen + k seitlich“;
   `s5-editor.mjs` mit `SEITEN` grün (Ente 175 ms, Fisch 309, Vierbeiner 196, Zweihals 155).
 - Gezeichnete Ecken an einer Paar-Sehne sind keine Rumpffalte mehr (Vierbeiner Kante 166 → 28°).
@@ -527,14 +529,15 @@ Editor [`s6-editor-geist-2026-10-16.jpg`](../progress/editor/s6-editor-geist-202
 |---|---|---|
 | Ente | 17,5 / 15,4 / 4,1 | 3,4/3,8/37,4 → 3,4/**7,8**/**1,7** |
 | Fisch | 20,8 / 22,9 (Schwanz-Übergang, wie S5) / 9,3 | Front/Top 42,6/42,6 → **3,5/2,9** |
-| Vierbeiner | 19,8 / **28,4** / 6,3 | 11,2/52,0/5,6 → 3,2/16,2/3,4 |
-| Zweihals | 16,7 / 23,3 / 14,8 | 1,3/36,4/39,7 → 4,4/16,5/27,1 |
+| Vierbeiner | 16,5 / 19,9 / 6,3 | 11,2/52,0/5,6 → 3,2/16,2/3,4 |
+| Zweihals | 15,0 / 14,8 / 14,8 | 1,3/36,4/39,7 → 3,4/14,9/27,1 |
 | einfache Form | 26,3 / **36,2** / 11,5 | 1,9/9,7/77,3 → 2,8/19,4/17,2 |
 
 0 Selbstdurchdringungen (Stufe 2) bei allen fünf; ohne Paare bitgleich; Bau 94–346 ms.
 
 **Tore:** Ente Top 1,7 px erfüllt, Front 7,8 nicht (die unteren Flanken der Glocke erreicht der Rumpf mit „mittel“ nicht);
-Fisch-Brustflossen sichtbar, Front 3,5 (Tor 3); einfache Form Top 17,2 nicht; Ansatz ≤ 20° nur Ente; keine Durchdringungen
+Fisch-Brustflossen sichtbar, Front 3,5 (Tor 3); einfache Form Top 17,2 nicht; Ansatz ≤ 20° an Ente, Vierbeiner und Zweihals
+(Fisch 22,9° ist der Schwanz-Übergang aus S5, einfache Form 36°); keine Durchdringungen
 erfüllt; bitgleich erfüllt; Bau ≤ 300 ms bis auf den Fisch (290–346 ms). Befunde und Wege im Kritik-Register („Befunde aus
 S6“). Zwei Versuche verworfen: Rumpf mit 24 Punkten je Ring (Kappen und Übergang 2:1 brechen), Überschuss gegen die
 tatsächliche Rumpfbreite statt der Sichthülle (Flügelringe sprangen in Lücken über und unter dem Rumpfbauch, 171°).

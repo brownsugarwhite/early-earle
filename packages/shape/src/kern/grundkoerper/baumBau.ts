@@ -70,9 +70,11 @@ export type BaumOptionen = AbleitOptionen & {
   paare: boolean;
   /** S6: Gewicht der Fensterränder an ihrem Fußabdruck (1 = wie jeder Käfigpunkt) */
   fensterGewicht: number;
+  /** S6: Kehle an Beinen und Hälsen — Fensterrand längs der Achse aus der Haut (Anteil Wurzel → erster Ring) */
+  fensterKehle: number;
 };
 
-export const BAUM_STANDARD: BaumOptionen = { ...ABLEIT_STANDARD, ...GLATTE_HAUT, fuelle: 'mittel', ansatzUebergang: 0.35, elternQuerschnitt: 'lappen', ansatz: 'kragen', kappeKante: 0.8, hebung: 'ringe', feldGewicht: 1, klinge: 0.4, paare: false, fensterGewicht: 0.05 };
+export const BAUM_STANDARD: BaumOptionen = { ...ABLEIT_STANDARD, ...GLATTE_HAUT, fuelle: 'mittel', ansatzUebergang: 0.35, elternQuerschnitt: 'lappen', ansatz: 'kragen', kappeKante: 0.8, hebung: 'ringe', feldGewicht: 1, klinge: 0.4, paare: false, fensterGewicht: 0.05, fensterKehle: 0.5 };
 
 export type BaumAbleitung = {
   opt: BaumOptionen;
@@ -1032,10 +1034,18 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
       ansaetze.forEach((g) => {
         const an = g.topo.anfang;
         if (an.art !== 'fenster') return;
+        // Kehle an Beinen und Hälsen (primäre Ansicht Seite, Ansatz an Bauch oder Rücken): Der Fensterrand rückt längs der Achse
+        // um einen Teil des Abstands Wurzel → erster Ring aus der Haut in die Ecke zwischen Rumpf und Teil; sonst dreht die Haut
+        // dort auf einer Zeile um 90° (Vierbeiner 28,4 → 19,9°, Zweihals 23,3 → 14,8°). Flügel und Flossen setzen an der
+        // Silhouette an, ihre Wurzel-Ecken sind im Top gezeichnet — dort bleibt der Rand auf der Haut (Ente-Top, Fisch-Front)
+        const kehle = g.teil.primaer === 'seite' ? opt.fensterKehle : 0;
+        const r1 = g.teil.ringe[0]!;
+        const D = [r1.mitte[0] - g.teil.wurzel.mitte[0], r1.mitte[1] - g.teil.wurzel.mitte[1], r1.mitte[2] - g.teil.wurzel.mitte[2]];
         for (let k = 0; k < g.topo.N; k++) {
           const o = fensterOrt(an, k);
           const [i, u] = g.stellen[k]!;
-          setzeRumpf(o.i, o.j, haut(i, u));
+          const P = haut(i, u);
+          setzeRumpf(o.i, o.j, [P[0] + kehle * D[0]!, P[1] + kehle * D[1]!, P[2] + kehle * D[2]!]);
         }
       });
       ansaetze.forEach((g) => {

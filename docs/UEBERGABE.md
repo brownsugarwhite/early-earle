@@ -31,10 +31,11 @@ sauber. Suche immer nochmal nach eleganteren Möglichkeiten.“ Gewählte Reihen
   - Zeigt nur eine Ansicht das Teil (Entenflügel nur im Top), nimmt es Lage und Dicke aus dem Überschuss der Front über den
     Rumpf: Die Flanken der Enten-Glocke sind die Flügel.
   - Ente Top 37,4 → 1,7 px, frei/Ansatz/Kappe 17,5/15,4/4,1°; Fisch Front/Top 42,6 → 3,5/2,9 px; Vierbeiner Front 52 →
-    16 px; Zweihals Seite 3,8 px (Kopf da). 0 Durchdringungen, ohne Paare bitgleich.
-  - **Nicht erreicht** (Wege im Kritik-Register): Vierbeiner Ansatz 28,4° (Bein eine Zeile neben der Bauchnaht), Ente Front
-    7,8 px (untere Glockenflanken, Rumpf mit „mittel“), einfache Form (Stacheln sind ein großer Teil des Körpers),
-    Zweihals Top 27 px (Brust zwischen den Hälsen: Rumpf oder Hals?), Fisch 290–346 ms.
+    16 px, Ansatz 19,9° (Kehle an Bein und Hals); Zweihals Seite 3,4 px (Kopf da), Ansatz 14,8°. 0 Durchdringungen, ohne
+    Paare bitgleich.
+  - **Nicht erreicht** (Wege im Kritik-Register): Ente Front 7,8 px (untere Glockenflanken, Rumpf mit „mittel“), einfache
+    Form (Stacheln sind ein großer Teil des Körpers), Zweihals Top 27 px (Brust zwischen den Hälsen: Rumpf oder Hals?),
+    Fisch 290–346 ms.
   - Bilder: [`s6-seitenteile-2026-10-16.jpg`](progress/editor/s6-seitenteile-2026-10-16.jpg) (je Körper ohne | mit
     seitlichen Teilen, mit Zebra-Nahansicht am Ansatz), [`s6-editor-geist-2026-10-16.jpg`](progress/editor/s6-editor-geist-2026-10-16.jpg).
 - **Im Editor:** nur der Geist (Tafel Körper → „Teile (Geist)“) zeigt den Baum mit seitlichen Röhren; der eigentliche Körper
@@ -59,7 +60,6 @@ sauber. Suche immer nochmal nach eleganteren Möglichkeiten.“ Gewählte Reihen
 - **Entenflügel:** Die Front-Glocke macht die Flügel zu dicken Lappen an den Flanken (so trifft der Körper Top und Front).
   Passt das, oder sollen Flügel, die die Front nicht eigens zeigt, flach bleiben?
 - **Einfache Form:** Stacheln als Paar bauen (heute: große Lappen, Ansatz 36°) oder in den Rumpf nehmen (Top 77 px wie S5)?
-- **Beine am Bauch:** welcher Weg für die Kehle zwischen Bein und Bauchnaht (Kritik-Register, S6 a–c)?
 - **Dünne Kanten:** Klinge als Standard ok?
 - Überhang (Kopf als eigener Streifen, Gabel oder Querschnitt aus der Sichthülle), mehrdeutige Ausbuchtungen, „Angleichen“.
 
