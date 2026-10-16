@@ -16,6 +16,11 @@
 //   füllt das Feld. A und B bleiben gewöhnliche Nahtpunkte (vier Kanten), die Ecken des U haben fünf Kanten; keine Kopien.
 // - **Fortsetzung mit Übergang 2:1:** Die Endkappe des Elternstreifens bekommt ein Kind an ihrer Nahtspalte (a = c/2, von
 //   b = c oben bis b = 0 unten): Die Spalte wird Kindring 0 (N_k = 2c = N/2), ihre inneren Punkte werden verdoppelt.
+// - **Fenster** (S6, seitliche Teile): Ring 0 ist der Rand eines Rechtecks auf der rechten Flanke des Elternstreifens (Ringe
+//   ring … ring + w, Zeilen zeile … zeile + t, nicht an der Naht; N = 2(w + t)). Die Flächen und Punkte im Rechteck entfallen
+//   rechts und gespiegelt links. Die Röhre ist kein gedoppelter Streifen: alle N Punkte je Ring liegen auf einer Seite, an der
+//   Spitze eine volle Kappe; links hängt ihr Spiegelbild (Zwilling) am gespiegelten Fenster. Die Ecken des Fensters haben fünf
+//   Kanten.
 //
 // Nummerierung (ein Streifen ohne Kinder = genau `roehre(R, N)`): erst alle Ringpunkte (je Streifen, je Ring, j = 0 … N − 1;
 // angesetzte Kindringe 0 gehören dem Elternstreifen, Punkte innerhalb eines Kragens entfallen), dann die inneren Punkte der Übergangskappen, dann die linken Kopien,
@@ -29,6 +34,7 @@ export type AnfangTopo =
   | { art: 'uebergang' }
   | { art: 'seitlich'; eltern: number; seite: 'a' | 'b'; ring: number }
   | { art: 'kragen'; eltern: number; seite: 'a' | 'b'; ring: number; tiefe: number }
+  | { art: 'fenster'; eltern: number; ring: number; zeile: number; w: number; t: number }
   | { art: 'fortsetzung'; eltern: number; ende: 'anfang' | 'ende' };
 
 export type EndeTopo = { art: 'kappe' } | { art: 'uebergang' };
@@ -60,6 +66,17 @@ export type BaumKaefig = {
   flaecheRing: Int32Array;
   flaecheJ: Int32Array;
 };
+
+/** Ort eines Fensterpunkts (Ring 0 einer seitlichen Röhre, Punkt k) im Elternstreifen, rechte Seite: Ring und Spalte. */
+export function fensterOrt(a: { ring: number; zeile: number; w: number; t: number }, k: number): { i: number; j: number } {
+  const { ring, zeile, w, t } = a;
+  const N = 2 * (w + t);
+  const kk = ((k % N) + N) % N;
+  if (kk <= t) return { i: ring, j: zeile + kk };
+  if (kk <= t + w) return { i: ring + (kk - t), j: zeile + t };
+  if (kk <= 2 * t + w) return { i: ring + w, j: zeile + t - (kk - t - w) };
+  return { i: ring + w - (kk - 2 * t - w), j: zeile };
+}
 
 /** Ort eines Kragenpunkts (Kindring 0, Punkt j) im Elternstreifen: Ring und Spalte. */
 export function kragenOrt(eltern: StreifenTopo, a: { seite: 'a' | 'b'; ring: number; tiefe: number }, N: number, j: number): { i: number; j: number } {
@@ -109,6 +126,14 @@ export function baumKaefig(streifen: readonly StreifenTopo[], lagen?: (p: number
       if (a.tiefe >= p.N / 2) throw new Error('baumKaefig: Kragen tiefer als der halbe Elternring');
       if (a.ring < 1 || a.ring + w > p.R - 2) throw new Error('baumKaefig: Kragen muss zwischen den Endringen liegen');
     }
+    if (a.art === 'fenster') {
+      const p = streifen[a.eltern];
+      if (!p || a.eltern >= s) throw new Error('baumKaefig: Elternstreifen muss vorher kommen');
+      if (st.N !== 2 * (a.w + a.t) || a.w < 1 || a.t < 1) throw new Error('baumKaefig: Fenster braucht N = 2(w + t)');
+      if (a.zeile < 1 || a.zeile + a.t > p.N / 2 - 1) throw new Error('baumKaefig: Fenster darf die Naht nicht berühren');
+      if (a.ring < 1 || a.ring + a.w > p.R - 2) throw new Error('baumKaefig: Fenster muss zwischen den Endringen liegen');
+      if (st.ende.art !== 'kappe') throw new Error('baumKaefig: seitliche Röhre endet mit einer Kappe');
+    }
     if (a.art === 'fortsetzung') {
       const p = streifen[a.eltern];
       if (!p || a.eltern >= s) throw new Error('baumKaefig: Elternstreifen muss vorher kommen');
@@ -146,14 +171,37 @@ export function baumKaefig(streifen: readonly StreifenTopo[], lagen?: (p: number
       kragenPunkte[a.eltern]!.add(o.i * Np + o.j);
     }
   }
+  for (let s = 0; s < S; s++) {
+    const a = streifen[s]!.anfang;
+    if (a.art !== 'fenster') continue;
+    const Np = streifen[a.eltern]!.N;
+    for (let i = a.ring; i < a.ring + a.w; i++) {
+      for (let j = a.zeile; j < a.zeile + a.t; j++) {
+        flaecheWeg[a.eltern]!.add(i * Np + j);
+        flaecheWeg[a.eltern]!.add(i * Np + (Np - 1 - j));
+      }
+    }
+    for (let i = a.ring + 1; i < a.ring + a.w; i++) {
+      for (let j = a.zeile + 1; j < a.zeile + a.t; j++) {
+        entfernt[a.eltern]!.add(i * Np + j);
+        entfernt[a.eltern]!.add(i * Np + (Np - j));
+      }
+    }
+    for (let k = 0; k < streifen[s]!.N; k++) {
+      const o = fensterOrt(a, k);
+      kragenPunkte[a.eltern]!.add(o.i * Np + o.j);
+      kragenPunkte[a.eltern]!.add(o.i * Np + (Np - o.j));
+    }
+  }
   for (let s = 0; s < S; s++) for (const q of kragenPunkte[s]!) if (entfernt[s]!.has(q)) throw new Error('baumKaefig: Kragen überschneiden sich');
+  const seitlicheRoehre = (s: number) => streifen[s]!.anfang.art === 'fenster';
   // 1. Ringpunkte
   const eigen: Int32Array[] = [];
   let n = 0;
   for (let s = 0; s < S; s++) {
     const st = streifen[s]!;
     const t = new Int32Array(st.R * st.N).fill(-1);
-    const ab = st.anfang.art === 'seitlich' || st.anfang.art === 'fortsetzung' || st.anfang.art === 'kragen' ? 1 : 0;
+    const ab = st.anfang.art === 'seitlich' || st.anfang.art === 'fortsetzung' || st.anfang.art === 'kragen' || st.anfang.art === 'fenster' ? 1 : 0;
     for (let i = ab; i < st.R; i++) for (let j = 0; j < st.N; j++) if (!entfernt[s]!.has(i * st.N + j)) t[i * st.N + j] = n++;
     eigen.push(t);
   }
@@ -192,6 +240,13 @@ export function baumKaefig(streifen: readonly StreifenTopo[], lagen?: (p: number
     const c = c4(streifen[a.eltern]!.N);
     for (let b = 1; b < c; b++) linkeKopie.set(kappeInnen(a.eltern, a.ende, c / 2, b), n++);
   }
+  // 3b. Zwillinge der Ringpunkte seitlicher Röhren (vor den Kappenpunkten, damit das Glättungsmaß links wie rechts wirkt)
+  const zwilling = new Map<number, number>();
+  for (let s = 0; s < S; s++) {
+    if (!seitlicheRoehre(s)) continue;
+    const st = streifen[s]!;
+    for (let i = 1; i < st.R; i++) for (let j = 0; j < st.N; j++) zwilling.set(eigenerRing(s, i, j), n++);
+  }
   // 4. innere Punkte der Spitzenkappen
   const kappeAb = n;
   for (let s = 0; s < S; s++) {
@@ -202,6 +257,13 @@ export function baumKaefig(streifen: readonly StreifenTopo[], lagen?: (p: number
       kappenBasis.set(`${s}/${wo}`, n);
       n += (c - 1) * (c - 1);
     }
+  }
+  // 4b. Zwillinge der inneren Kappenpunkte seitlicher Röhren
+  for (let s = 0; s < S; s++) {
+    if (!seitlicheRoehre(s)) continue;
+    const c = c4(streifen[s]!.N);
+    const basis = kappenBasis.get(`${s}/ende`)!;
+    for (let q = 0; q < (c - 1) * (c - 1); q++) zwilling.set(basis + q, n++);
   }
   const links = (p: number) => linkeKopie.get(p) ?? p;
 
@@ -227,11 +289,24 @@ export function baumKaefig(streifen: readonly StreifenTopo[], lagen?: (p: number
       const o = kragenOrt(streifen[a.eltern]!, a, N, jj);
       return ring(a.eltern, o.i, o.j);
     }
+    if (i === 0 && a.art === 'fenster') {
+      const o = fensterOrt(a, jj);
+      return ring(a.eltern, o.i, o.j);
+    }
     return eigenerRing(s, i, jj);
+  };
+  /** Spiegelbild eines Punkts einer seitlichen Röhre (Ring 0: gespiegelter Fensterpunkt des Elternstreifens) */
+  const gespiegelt = (s: number, i: number, j: number): number => {
+    const a = streifen[s]!.anfang;
+    if (i === 0 && a.art === 'fenster') {
+      const o = fensterOrt(a, j);
+      return ring(a.eltern, o.i, streifen[a.eltern]!.N - o.j);
+    }
+    return zwilling.get(ring(s, i, j))!;
   };
   const existiert = (s: number, i: number, j: number): boolean => {
     const st = streifen[s]!;
-    if (i === 0 && (st.anfang.art === 'seitlich' || st.anfang.art === 'fortsetzung' || st.anfang.art === 'kragen')) return true;
+    if (i === 0 && (st.anfang.art === 'seitlich' || st.anfang.art === 'fortsetzung' || st.anfang.art === 'kragen' || st.anfang.art === 'fenster')) return true;
     const N = st.N;
     return (eigen[s]![i * N + (((j % N) + N) % N)] ?? -1) >= 0;
   };
@@ -259,10 +334,11 @@ export function baumKaefig(streifen: readonly StreifenTopo[], lagen?: (p: number
   for (let s = 0; s < S; s++) {
     const st = streifen[s]!;
     const N = st.N;
+    const lat = seitlicheRoehre(s);
     for (let i = 0; i + 1 < st.R; i++) {
       for (let j = 0; j < N; j++) {
         if (flaecheWeg[s]!.has(i * N + j)) continue;
-        const rechts = j < N / 2;
+        const rechts = lat || j < N / 2;
         const P = (ii: number, jj: number) => {
           const p = ring(s, ii, jj);
           return rechts ? p : links(p);
@@ -272,6 +348,14 @@ export function baumKaefig(streifen: readonly StreifenTopo[], lagen?: (p: number
         fArt.push('ring');
         fRing.push(i);
         fJ.push(j);
+        if (lat) {
+          const Z = (ii: number, jj: number) => gespiegelt(s, ii, ((jj % N) + N) % N);
+          flaechen.push([Z(i, j), Z(i, j + 1), Z(i + 1, j + 1), Z(i + 1, j)]);
+          fStreifen.push(s);
+          fArt.push('ring');
+          fRing.push(i);
+          fJ.push(j);
+        }
       }
     }
   }
@@ -281,9 +365,10 @@ export function baumKaefig(streifen: readonly StreifenTopo[], lagen?: (p: number
     for (const wo of ['anfang', 'ende'] as const) {
       const art = (wo === 'anfang' ? st.anfang : st.ende).art;
       if (art !== 'kappe' && art !== 'uebergang') continue;
+      const lat = seitlicheRoehre(s);
       for (let a = 0; a < c; a++) {
         for (let b = 0; b < c; b++) {
-          const rechts = a >= c / 2;
+          const rechts = lat || a >= c / 2;
           const K = (aa: number, bb: number) => {
             const p = kappe(s, wo, aa, bb);
             return rechts ? p : links(p);
@@ -293,6 +378,14 @@ export function baumKaefig(streifen: readonly StreifenTopo[], lagen?: (p: number
           fArt.push(art === 'kappe' ? 'kappe' : 'uebergang');
           fRing.push(-1);
           fJ.push(-1);
+          if (lat) {
+            const Z = (aa: number, bb: number) => zwilling.get(kappe(s, wo, aa, bb))!;
+            flaechen.push([Z(a, b), Z(a + 1, b), Z(a + 1, b + 1), Z(a, b + 1)]);
+            fStreifen.push(s);
+            fArt.push('kappe');
+            fRing.push(-1);
+            fJ.push(-1);
+          }
         }
       }
     }
@@ -306,7 +399,9 @@ export function baumKaefig(streifen: readonly StreifenTopo[], lagen?: (p: number
     spiegel[p] = q;
     spiegel[q] = p;
   };
+  for (const [p, q] of zwilling) paar(p, q);
   for (let s = 0; s < S; s++) {
+    if (seitlicheRoehre(s)) continue;
     const st = streifen[s]!;
     const N = st.N;
     const c = c4(N);

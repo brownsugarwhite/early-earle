@@ -162,6 +162,40 @@ describe('S5.1 Baum-Käfig', () => {
     );
   });
 
+  // S6.1: seitliche Röhre über ein Fenster in der Flanke, links gespiegelt
+  it('Flügelpaar: Fenster 2 × 2 auf der Flanke, Röhre mit voller Kappe, Zwilling links', () => {
+    const b = pruefe(
+      [
+        { R: 12, N: 16, anfang: { art: 'kappe' }, ende: { art: 'kappe' } },
+        { R: 5, N: 8, anfang: { art: 'fenster', eltern: 0, ring: 4, zeile: 3, w: 2, t: 2 }, ende: { art: 'kappe' } },
+      ],
+      { 3: 16, 5: 8 },
+    );
+    expect(nahtValenzen(b)).toEqual([4]);
+    // Ring 0 = Fensterrand rechts; Fensterinneres entfällt rechts und links
+    expect(b.ring(1, 0, 0)).toBe(b.ring(0, 4, 3));
+    expect(b.ring(1, 0, 2)).toBe(b.ring(0, 4, 5));
+    expect(b.ring(1, 0, 4)).toBe(b.ring(0, 6, 5));
+    expect(b.existiert(0, 5, 4)).toBe(false);
+    expect(b.existiert(0, 5, 12)).toBe(false);
+    // Spiegel: Röhrenpunkt ↔ Zwilling, Fensterrand ↔ gespiegelter Rand
+    const p = b.ring(1, 2, 3);
+    expect(b.spiegel[p]).not.toBe(p);
+    expect(b.spiegel[b.ring(0, 4, 3)]).toBe(b.ring(0, 4, 13));
+  });
+
+  it('zwei Paare (Vorder- und Hinterbeine) und ein Kragen-Hals am selben Rumpf', () => {
+    pruefe(
+      [
+        { R: 16, N: 16, anfang: { art: 'kappe' }, ende: { art: 'kappe' } },
+        { R: 4, N: 8, anfang: { art: 'fenster', eltern: 0, ring: 3, zeile: 4, w: 2, t: 2 }, ende: { art: 'kappe' } },
+        { R: 4, N: 8, anfang: { art: 'fenster', eltern: 0, ring: 10, zeile: 4, w: 2, t: 2 }, ende: { art: 'kappe' } },
+        { R: 6, N: 8, anfang: { art: 'kragen', eltern: 0, seite: 'a', ring: 6, tiefe: 1 }, ende: { art: 'kappe' } },
+      ],
+      { 3: 28, 5: 20 },
+    );
+  });
+
   it('Kind eines Kinds (Flosse am Hals)', () => {
     pruefe(
       [
