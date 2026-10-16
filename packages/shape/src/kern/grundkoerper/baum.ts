@@ -129,7 +129,7 @@ const innenPoly = (pts: readonly V2[], q: V2) => {
   return drin;
 };
 
-export type AstInfo = { art: 'gabel' | 'knick'; feld: { i0: number; i1: number; spalte: number; b: number }; punkteJeRing: number; ringe: number; ab: number };
+export type AstInfo = { art: 'gabel' | 'knick'; feld: { i0: number; i1: number; spalte: number; b: number }; punkteJeRing: number; ringe: number; ab: number; diagnose?: { schnitt: [V2, V2]; randNaht: V3[]; ersterRingNaht: V3[]; ringIndizes: number[][]; rand: number[] } };
 export type BaumErgebnis = Ableitung & { zerlegung: Zerlegung; astInfo: AstInfo[] };
 
 /**
@@ -230,8 +230,20 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<AbleitOptionen> = 
     const dR = Math.hypot(mitteRing(vA.R - 1).x - mitte.x, mitteRing(vA.R - 1).y - mitte.y);
     const basisVorn = d0 <= dR;
     const folge = Array.from({ length: vA.R }, (_, k) => (basisVorn ? k : vA.R - 1 - k));
+    // erster Astring: beide Nahtpunkte deutlich auf der Astseite der Sehne (die Mitte allein reichte nicht — ein schräger
+    // Ring lag vorn noch unter dem Feldrand, das Viereck dazwischen klappte um)
+    const sehneN = { x: -(B.y - A.y), y: B.x - A.x };
+    const sehneL = Math.hypot(sehneN.x, sehneN.y) || 1;
+    const spitzeA = mitteRing(folge[folge.length - 1]!);
+    const astSeite = Math.sign((spitzeA.x - A.x) * sehneN.x + (spitzeA.y - A.y) * sehneN.y) || 1;
+    const ueberSehne = (q: V3) => (astSeite * ((q[0] - A.x) * sehneN.x + (q[1] - A.y) * sehneN.y)) / sehneL;
     let kStart = 1;
-    while (kStart < folge.length - 2 && innenPoly(rumpfUmriss, mitteRing(folge[kStart]!))) kStart++;
+    while (kStart < folge.length - 2) {
+      const r = folge[kStart]!;
+      const tief = Math.min(ueberSehne(PA(vA.ringPunkt(r, 0))), ueberSehne(PA(vA.ringPunkt(r, M / 2))));
+      if (tief >= 0.15 * sehneL && !innenPoly(rumpfUmriss, mitteRing(r))) break;
+      kStart++;
+    }
     const behalten = folge.slice(kStart);
     // Ausrichtung: Nahtpunkt des Feldrands (i0, Spalte) ↔ Nahtpunkt des Astrings (0 oder M/2), Umlauf nach der z-Seite
     const iS0 = b; // Index von (i0, spalte) im Rand
@@ -260,13 +272,15 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<AbleitOptionen> = 
     const randAnteile = anteileVon(feld.rand.map((i) => P(i)));
     // neue Punkte: je behaltenem Ring M Punkte in Randreihenfolge, längs des Rings nach den Anteilen des Feldrands
     const ringeNeu: number[][] = [];
-    for (const r of behalten) {
+    const AUSLAUF = 4; // Ringe, über die die Verteilung des Feldrands in die eigene des Asts übergeht (die Spitzenkappe passt zu ihr)
+    for (const [kr, r] of behalten.entries()) {
       const roh0 = Array.from({ length: M }, (_, q) => PA(vA.ringPunkt(r, astIndex(q))));
       const eigen = anteileVon(roh0);
+      const wRand = Math.max(0, 1 - kr / AUSLAUF);
       const ring: number[] = [];
       for (let q = 0; q < M; q++) {
-        // Punkt bei Anteil randAnteile[q] auf dem geschlossenen Zug roh0 (Reihenfolge ab iS0)
-        const f = randAnteile[q]!;
+        // Punkt bei Anteil (Rand ↔ eigen überblendet) auf dem geschlossenen Zug roh0 (Reihenfolge ab iS0)
+        const f = wRand * randAnteile[q]! + (1 - wRand) * eigen[q]!;
         let k = 0;
         while (k < M - 1 && eigen[(iS0 + k + 1) % M]! <= f && eigen[(iS0 + k + 1) % M]! > 0) k++;
         const a0 = (iS0 + k) % M;
@@ -347,7 +361,7 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<AbleitOptionen> = 
     for (const f of kappenFlaechen) for (let t = 0; t < f.length; t++) if (roehrenKante.has(`${f[t]},${f[(t + 1) % f.length]}`)) gleichlaeufig = true;
     for (const f of kappenFlaechen) neueFlaechen.push(gleichlaeufig ? f.slice().reverse() : f);
     for (const { punkt } of feld.innen) ohneHaut.add(punkt);
-    astInfo.push({ art: ast.art, feld: { i0, i1, spalte, b }, punkteJeRing: M, ringe: behalten.length, ab: kStart });
+    astInfo.push({ art: ast.art, feld: { i0, i1, spalte, b }, punkteJeRing: M, ringe: behalten.length, ab: kStart, diagnose: { schnitt: [A, B], randNaht: [P(feld.rand[iS0]!), P(feld.rand[(iS0 + M / 2) % M]!)], ersterRingNaht: [zielNeu[ringeNeu[0]![iS0]! - v.kaefig.n]!, zielNeu[ringeNeu[0]![(iS0 + M / 2) % M]! - v.kaefig.n]!], ringIndizes: ringeNeu, rand: feld.rand } });
   }
   const n = naechster;
   const ziele = new Float64Array(3 * n);

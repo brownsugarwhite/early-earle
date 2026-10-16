@@ -214,3 +214,10 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
 - **Pose mit gegiertem Kiefer durchdringt sich** (heutiger Maulbau): Kugel mit Kiefer 34°, Gieren 8°, Schädel 14° → 16 Hautpaare (Überbiss: 9 zusätzlich zur erlaubten verdeckten Überlappung); die Fressen-Pose der Kugel (gleich) hat bei 100 % 2 Paare. Das Überblenden fügt keine hinzu. → B8 (extreme Posen) bzw. Teil A.
 - ~~„Aus der Vorschau“ fehlt~~ → erledigt 16.10. früh (Worker-Auftrag `mischen`, exakt). Grenze: Bei einer schiefen Pose mit Lippenkorrektur wäre die Summe nicht spiegelgleich; gespeichert wird die rechte Hälfte.
 - **Erledigt aus B6:** Aufblasen mit Betrag 0 schreibt keinen leeren Undo-Schritt mehr (Geste ohne Wirkung → kein Schritt). Offen bleibt die Entscheidung zu den Hebeln an den Knoten der Pose-Linie.
+
+## Befunde aus G4 neu, Wirbelsäulen-Baum (16.10. früh, eigene Befunde)
+
+- **Ansatz der Äste faltet** (Schritt 3, drei Anläufe, angehalten): Feld auf der Rumpfnaht lang und schmal entlang der schrägen Sehne, Hals rund → verzogene Vierecke zwischen Feldrand und erstem Astring (Langhals 553 von 759 Falten an der Sehne). Wege: (1) Übergangsringe, die den Feldrand zuerst entlang der Flächennormale anheben und dann in die Astrichtung drehen (Knoten wie in B-Mesh/SQM); (2) Feld quer so breit wie der Ast am Ansatz (aus der Front), längs nach der Sehne, beide Seiten etwa gleich lang; (3) Astringe am Ansatz senkrecht zur Astachse statt aus der Leiter des Asts.
+- **Knick im Ast fächert** (Hals → Kopf bei Ente, Giraffe, S-Hals): dieselbe Ursache wie der Fächer im Entenkörper; die Zerlegung muss auch innerhalb eines Asts greifen (Kopf als Ast am Hals oder Hals als Ast am Kopf, je nach Dicke).
+- **Entenrumpf hat Falten am Bauch** (59°): Die Front des Rumpfs trägt noch die Schultern der Flügel (der Flügel ist in der Front kein dünnes Teil); kommt mit den Flügeln als seitliche Äste.
+- **Fischflossen auf der Mittelebene reißen** (Seite 22 px): Gabel-Äste aus der Seite noch ohne eigene Front/Top-Breite (dünne Flosse); kommt nach dem Ansatz.
