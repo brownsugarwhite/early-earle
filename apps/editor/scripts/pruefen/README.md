@@ -54,3 +54,40 @@ Aus `packages/shape` starten: `npx vite-node ../../apps/editor/scripts/pruefen/<
 | `drache.mjs` | Phase 2 M6, Schritt 3: Drache mit Maul `hals` in fünf Öffnungen, schräg und von vorn, neben `rex_dragon_big mouth` |
 | `maularten-abnahme.mjs` | Abnahme M6: Fisch, Drache und Tiger zu/offen neben den vier Referenzen |
 | `schaedel-gelenk.mjs` | Plan 5.2: Schädelgelenk-Griff in der Seite ziehen (Rex, Posen & Leben), Dokument, Knochen, ohne Umbau, Undo |
+
+## Nachtrag 16.10.: Grundkörper, Linien, Maul-Einsatz, Posen, Vergleich
+
+### Kern-Skripte (aus `packages/shape` mit `npx vite-node ../../apps/editor/scripts/pruefen/<skript>.ts`)
+
+| Skript | misst / zeigt |
+|---|---|
+| `grundkoerper-g.ts` | Teil G: Kontaktbogen der Grundkörper (Seite, Front, Top, schräg; Wirbelsäule, Sprossen), Δ je Blatt, Falten, Zeit. `KOERPER`, `NAME`, `TITEL`; `BAUM=1` Rumpf und Äste getrennt, `BAUM=3` Wirbelsäulen-Baum (G4 neu Schritt 3), `TEILE=verschmolzen|angesteckt` (G4 Teile) |
+| `skelett-g4.ts`, `zerlegung-g4.ts` | Teil G, G4 neu: Mittelachsen der drei Ansichten; automatische Zerlegung der Seite in Rumpf und Äste mit Schnittsehnen |
+| `knoten-diagnose.ts` | Plan „Formgerechte Topologie“, Beweis 1: Nahaufnahme des Ast-Ansatzes (Käfigkanten, Falten > 20° rot, Sehne blau). `BAU=alt` (baum.ts) oder `knoten` (knoten.ts), `LAGEN=ziele|kaefig`, `GROESSE` |
+| `g3-querschnitte.ts` | Teil G, G3 (verworfen): Querschnitt je Ring gegen je Abschnitt |
+| `leiter-bild.ts` | Leiter eines Falls als Bild (Rücken, Bauch, Sprossen) |
+| `netz-l0.ts` | Teil L, L0: Bilder „Linie wird Reihe / Ring“ (Cel-Stufen, Käfigschleifen, Reihe rot, Linie blau) |
+| `einsatz-feld.ts`, `einsatz-topologie.ts`, `einsatz-loesen.ts`, `einsatz-vergleich.ts`, `einsatz-alt-neu.ts` | Teil A (Maul als Einsatz): Feld (A3), Topologie (A5), gelöste Haut (A7), Varianten der Lippenstellen über 54 Fälle, alter Maulbau gegen Einsatz („Bauch unter hohem Maul“) |
+| `zufallsreihe.ts`, `werkzeug-matrix.ts` | Teil V: Zufallsreihe (200 Fälle, wie im Editor gebaut), Werkzeug-Matrix H0 |
+| `posen-tempo.ts` | B7: Tempo eines Gewichtswechsels (Vorschau, Überblenden) |
+
+### Editor-Skripte (über `run-check.sh`)
+
+| Skript | prüft |
+|---|---|
+| `reihe-boegen.mjs` | Kontaktbögen der Zufallsreihe im echten Editor |
+| `tab-wechsel.mjs` | B1: Tab-Wechsel mit echten Klicks und Pinselzügen (Grundform bitgleich) |
+| `fressen-pinsel.mjs`, `posen-b3.mjs` … `posen-b7.mjs`, `posen-matrix.mjs` | Posen: jedes Werkzeug in jeder Pose, Tafel „Posen & Leben“, Undo mit Zielwechsel |
+
+### Regressionsvergleich: gleicher Ablauf, alter Stand gegen heute (`vergleich/`)
+
+So wurde am 16.10. die Regression G2 gefunden (Florians Ablauf: neue Kugel → umformen → Maul). Arbeitsbäume liegen unter `$WT_BASIS` (Standard `$TMPDIR/ee-vergleich`), Bilder unter `apps/editor/pruefen-ausgabe/vergleich/`. Aufräumen: `git worktree remove --force <pfad>`, dann `git worktree prune`.
+
+| Skript | macht |
+|---|---|
+| `vergleich/editor-lauf.sh <commit\|HEAD> <port> <skript.mjs>` | Editor eines Commits auf eigenem Port (nie 5180) starten, Skript ausführen, beenden |
+| `vergleich/kern-lauf.sh <commit\|HEAD> <skript.ts>` | Kern-Skript gegen den Code eines Commits (`ROOT`) |
+| `vergleich/buehne.mjs` | Library-Prüfwesen laden, Bühne mit gleicher Kamera fotografieren, Δ (`NUR`) |
+| `vergleich/ablauf.mjs` (+ vorher `vergleich/maul-json.ts`) | Florians Ablauf im Editor: neue Kugel (Stationen frieren ein) → Schnabel mit Kerbe → Unterbiss-Maul; neue Kugel → Vase |
+| `vergleich/ablauf-kern.ts` | derselbe Ablauf im Kern mit Δ, Falten, Enden der Wirbelsäule |
+| `vergleich/bau.ts` | Library-Prüfwesen im Kern frisch und eingefroren bauen, Falten (`WESEN`) |

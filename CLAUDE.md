@@ -4,6 +4,10 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 
 ## Stand: Prototyp 1 abgeschlossen, Produktion beginnt
 
+> **Neue Sitzung ab 16.10.2026 (Florian): Falten, Wirbelsäulen und Kantenlinien.** Einstieg mit allem aus der Exploration
+> vom 13.–16.10. (Ziele, Entscheidungen, Editor- vs. Kern-Stand, Messungen, Ursachen, Lehren, Werkzeuge, Startempfehlung):
+> [`docs/plans/2026-10-16-einstieg-falten-wirbelsaeulen-linien.md`](docs/plans/2026-10-16-einstieg-falten-wirbelsaeulen-linien.md).
+
 - **2026-10-04: Prototyp 1 ist abgeschlossen** (Archiv-Branch `prototyp-1`). Er diente zum Lernen. Florian: „Der Prototyp war sehr gut und aufschlussreich und hat bewiesen, dass die Spielidee toll ist.“ Viele Entscheidungen sind gefallen; die Gesamtdynamik und einige grafische Elemente haben ihm gefallen.
 - **Jetzt beginnt die eigentliche Produktion mit dem finalen Look.** Grundlage wird **Florians neuer Plan mit neuem Hauptprompt**: Story, Charaktere und Map arbeitet er genauer aus und trägt sie in Dokumenten und Screenshots zusammen. Es folgen mehrere Runden und Iterationen.
 - **Bis der neue Plan da ist:** keine Produktionsarbeit auf Basis der alten Pläne beginnen und den Prototyp-Code nicht eigenmächtig weiterbauen. Florian führt zwischendurch eigene Tests durch (u. a. KI-3D-Werkzeuge in der Cloud).
@@ -86,7 +90,7 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 - **2026-10-16 früh: B7 „Posen & Leben“ gebaut** (Florian vor dem Schlafen: „danach weiter mit B6, immer weiter“): Undo mit Zielwechsel, Vorschau getrennt vom Ziel (`ui.vorschau`, endet beim Bearbeiten), Tafel mit Posenliste und Fächer, Überblenden mit Abspielen, Geist und Zwischenbilder (Worker-Umrisse), Worker merkt Werte der Ruhelage (Gewichtswechsel 165 → 55 ms). `posen-b7.mjs` 43/43; nicht erreicht: flüssiges Abspielen (B10). Stand und Befunde: Planseite Teil B, Kritik-Register „Befunde aus B7“, [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
 - **2026-10-16 morgens: Regression G2 behoben** (00681e29): Florian fand im Editor einen „völlig zerrissenen“ Schnabel mit Unterbiss und eine falsche Vase aus der Kugel. Ursache: G2 fror beim ersten Bau der Startkugel die Enden der Wirbelsäule ein; nach dem Umformen lagen sie an der alten Kugelstelle. Mit Maul jetzt bitgleich wie vor G2, ohne Maul Enden nur, solange sie die Form tragen. Meine erste Prüfung hatte fälschlich „keine Regression“ gemeldet (nur frische Bauten verglichen). Regel: neue Automatiken immer mit Florians Ablauf prüfen (Kugel bauen → umformen → Maul). Alte sichtbare Falten (Langhals-Nacken, kleines Maul) stehen als Fehler im Kritik-Register.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
-- **Vor jeder Planung lesen:** [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte) und die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
+- **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
 ## Grundidee des Wesen-Editors (Florian, 15.10.2026 — über allem)
 
