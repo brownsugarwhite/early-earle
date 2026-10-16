@@ -23,6 +23,7 @@ import { ABWEICHUNG_PX, blattAbweichungen } from './abweichung';
 import { erreichbarkeit } from './grundkoerper/huelle';
 import { type NetzSicht, netzSicht } from './netzSicht';
 import { type TeilAnzeige, teilAnzeige } from './grundkoerper/teilAnsicht';
+import { baumAbleiten, baumDreiecke } from './grundkoerper/baumBau';
 import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
 import { anwenden3 } from '../subdivision/matrix';
 import { spantKasten, spantTeilProfil, vorlageBei } from '../spanten';
@@ -278,6 +279,11 @@ export type WesenNetz = {
    * genauen Bau, mit dem eingefrorenen Stand aus `kaefig.stationen.teile` (Hysterese). Wird kopiert, nicht übertragen.
    */
   teile: TeilAnzeige | null;
+  /**
+   * S5 „Mittelebenen-Baum“ (Ausstattung `koerper: 'teile'`): der Körper aus Streifen der Seitenfläche als Geist (Dreiecke ohne
+   * Index, Profil-Einheiten), mit Zahl der Streifen und Bauzeit; nur im genauen Bau, ohne Maul und Beine. Sonst null.
+   */
+  geist: { positionen: Float32Array; normalen: Float32Array; streifen: number; ms: number; fehler?: string } | null;
   /** Front/Top: Umweg der schwarzen Linie über einen breiteren Kiefer (Paare x, y; NaN trennt), sonst fehlt das Blatt */
   umweg: { front?: Float32Array; top?: Float32Array } | null;
   info: WesenInfo;
@@ -298,6 +304,8 @@ export type WesenStand = {
   randMarken?: WesenNetz['randMarken'];
   netzSicht?: NetzSicht | null;
   teile?: TeilAnzeige | null;
+  /** S5: zuletzt gebauter Geist (Schlüssel: Bauschlüssel und eingefrorene Teile) */
+  geist?: { schluessel: string; netz: NonNullable<WesenNetz['geist']> };
   umweg?: WesenNetz['umweg'];
   blatt?: WesenInfo['blatt'];
   /** B7: zuletzt gerechnete Zusatz-Umrisse mit ihrem Schlüssel (Körper, Pinsel, Posen, Anfrage) */
@@ -1263,6 +1271,24 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
       top: { max: bl.top.max, mittel: bl.top.mittel, widerspruch: er.top.max },
     };
   }
+  // S5: Mittelebenen-Baum als Geist (nur genau, ohne Maul und Beine; während Gesten der letzte Stand)
+  let geistStand = stand?.geist;
+  let geist: WesenNetz['geist'] = null;
+  if (plan.koerper === 'teile' && maul === 'aus' && beine === 'aus') {
+    const gSchluessel = JSON.stringify({ s: schluessel, t: dok.kaefig?.stationen?.teile ?? null });
+    if (!geistStand || (geistStand.schluessel !== gSchluessel && !schnell)) {
+      const t0 = jetzt();
+      try {
+        const b = baumAbleiten(dok);
+        const d = baumDreiecke(b);
+        geistStand = { schluessel: gSchluessel, netz: { ...d, streifen: b.ebene.streifen.length, ms: jetzt() - t0 } };
+      } catch (err) {
+        geistStand = { schluessel: gSchluessel, netz: { positionen: new Float32Array(0), normalen: new Float32Array(0), streifen: 0, ms: jetzt() - t0, fehler: err instanceof Error ? err.message : String(err) } };
+      }
+    }
+    // Kopie: Puffer im Netz werden übertragen, der Stand behält seine
+    geist = { ...geistStand.netz, positionen: geistStand.netz.positionen.slice(), normalen: geistStand.netz.normalen.slice() };
+  } else geistStand = undefined;
   // Lippenkanten gegen die Linien (Phase 2 M2): px je Kette in Seite und Front
   const maulAbw = ruheAlt ? ruheAlt.maulAbw : maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul && maulLinieVerwendet ? maulAbweichung(abl as MaulErgebnis, dok, maulLinieVerwendet) : undefined;
   const info: WesenInfo = { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0, ...(blatt ? { blatt } : {}), ...(maulAbw ? { maul: maulAbw } : {}), stationen: abl.gefroren && teile ? { ...abl.gefroren, teile: teile.gefroren } : abl.gefroren };
@@ -1504,17 +1530,18 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     randMarken,
     netzSicht: netz3,
     teile,
+    geist,
     umweg,
     info,
   };
-  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(randMarken ? { randMarken } : {}), ...(netz3 ? { netzSicht: netz3 } : {}), ...(teile ? { teile } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
+  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(randMarken ? { randMarken } : {}), ...(netz3 ? { netzSicht: netz3 } : {}), ...(teile ? { teile } : {}), ...(geistStand ? { geist: geistStand } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
 }
 
 /** Puffer eines Netzes (zum Übertragen aus dem Worker). */
 export function netzPuffer(netz: WesenNetz): ArrayBuffer[] {
   const out: ArrayBuffer[] = [netz.positionen.buffer as ArrayBuffer, netz.normalen.buffer as ArrayBuffer];
   const tr = netz.treffer;
-  for (const a of [netz.deskriptoren, netz.kaefigLinien, netz.kaefigFarben, netz.ruhe, netz.zaehne?.positionen, netz.zaehne?.normalen, netz.zaehne?.anteil, netz.zaehne?.zahn, netz.zaehne?.fleisch.oben, netz.zaehne?.fleisch.unten, netz.zaehne?.fleisch.uOben, netz.zaehne?.fleisch.uUnten, netz.atlas?.ecken, netz.atlas?.abstand, netz.atlas?.weich, tr?.dreieckFlaeche, tr?.flaecheVon, tr?.eckenUV, tr?.eckenZahl, tr?.kaefig.xyz, tr?.kaefig.fStart, tr?.kaefig.fVerts, netz.reifen?.ringLagen, netz.reifen?.verlauf, netz.reifen?.verlaufStart, netz.gewichtFarben]) {
+  for (const a of [netz.deskriptoren, netz.kaefigLinien, netz.kaefigFarben, netz.ruhe, netz.zaehne?.positionen, netz.zaehne?.normalen, netz.zaehne?.anteil, netz.zaehne?.zahn, netz.zaehne?.fleisch.oben, netz.zaehne?.fleisch.unten, netz.zaehne?.fleisch.uOben, netz.zaehne?.fleisch.uUnten, netz.atlas?.ecken, netz.atlas?.abstand, netz.atlas?.weich, tr?.dreieckFlaeche, tr?.flaecheVon, tr?.eckenUV, tr?.eckenZahl, tr?.kaefig.xyz, tr?.kaefig.fStart, tr?.kaefig.fVerts, netz.reifen?.ringLagen, netz.reifen?.verlauf, netz.reifen?.verlaufStart, netz.gewichtFarben, netz.geist?.positionen, netz.geist?.normalen]) {
     if (a && !out.includes(a.buffer as ArrayBuffer)) out.push(a.buffer as ArrayBuffer);
   }
   return out;

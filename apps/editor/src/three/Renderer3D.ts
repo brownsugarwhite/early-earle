@@ -149,6 +149,8 @@ export class Renderer3D {
   private readonly feuerUniforms: FeuerUniforms;
   /** Beweis 4: Zähne mit Verlauf Ansatz → Spitze (Attribut `eeTooth`) */
   private readonly zaehne: Mesh;
+  /** S5: Mittelebenen-Baum als Geist (durchscheinend über dem heutigen Körper) */
+  private readonly geist: Mesh;
   /** Zahn-Marken (Phase 2 M4): gewählter Zahn (Ocker) und störende Zähne (Glut), leicht über den Zähnen */
   private zahnMarken: { gewaehlt: Mesh; glut: Mesh } | null = null;
   private readonly wesenUniforms: CreatureMaterialUniforms;
@@ -214,6 +216,12 @@ export class Renderer3D {
     this.zaehne.castShadow = true;
     this.zaehne.frustumCulled = false;
     this.szene.add(this.zaehne);
+    // S5: Geist des Mittelebenen-Baums — durchscheinend, schreibt keine Tiefe (der heutige Körper bleibt sichtbar)
+    this.geist = new Mesh(new BufferGeometry(), new MeshMatcapNodeMaterial({ matcap: this.matcaps.normal, color: new Color(0x8fd9ff), transparent: true, opacity: 0.5, depthWrite: false }));
+    this.geist.visible = false;
+    this.geist.renderOrder = 4;
+    this.geist.frustumCulled = false;
+    this.szene.add(this.geist);
 
     const kachel = new Mesh(new PlaneGeometry(1, 1), new MeshBasicNodeMaterial({ color: 0x000000, transparent: true, opacity: 0.1, depthWrite: false }));
     kachel.rotation.x = -Math.PI / 2;
@@ -310,6 +318,24 @@ export class Renderer3D {
     nrm.needsUpdate = true;
     g.computeBoundingSphere();
     this.anfordern();
+  }
+
+  /** S5: Geist des Mittelebenen-Baums (Dreiecke ohne Index, Welt) oder null. */
+  setzeGeist(positionen: Float32Array | null, normalen: Float32Array | null) {
+    const alt = this.geist.geometry;
+    if (positionen && normalen && positionen.length) {
+      const g = new BufferGeometry();
+      g.setAttribute('position', new BufferAttribute(positionen, 3));
+      g.setAttribute('normal', new BufferAttribute(normalen, 3));
+      g.computeBoundingSphere();
+      this.geist.geometry = g;
+      this.geist.visible = true;
+    } else {
+      this.geist.geometry = new BufferGeometry();
+      this.geist.visible = false;
+    }
+    alt.dispose();
+    this.nachUebersetzen();
   }
 
   /** Zebrastreifen statt Matcap: zum Prüfen von Kanten (springen = Knick, fließen = glatt). */

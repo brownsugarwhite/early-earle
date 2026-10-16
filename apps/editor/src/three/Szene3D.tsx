@@ -29,7 +29,7 @@ import { PALETTEN } from './wesenLook';
 
 declare global {
   interface Window {
-    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number; netzLagen?: () => number[] | null; poseLippen?: () => unknown; projizieren?: (feld: 'creation' | 'seite' | 'front' | 'top', p: [number, number, number]) => [number, number] | null; netzPunkt?: (np: NetzPunkt) => [number, number, number] | null; strahlFeld?: (feld: 'creation' | 'seite' | 'front' | 'top', px: number, py: number, beideSeiten?: boolean) => { punkt: [number, number, number]; richtung: [number, number, number] } | null; netzSicht?: () => unknown; teile?: () => unknown };
+    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number; netzLagen?: () => number[] | null; poseLippen?: () => unknown; projizieren?: (feld: 'creation' | 'seite' | 'front' | 'top', p: [number, number, number]) => [number, number] | null; netzPunkt?: (np: NetzPunkt) => [number, number, number] | null; strahlFeld?: (feld: 'creation' | 'seite' | 'front' | 'top', px: number, py: number, beideSeiten?: boolean) => { punkt: [number, number, number]; richtung: [number, number, number] } | null; netzSicht?: () => unknown; teile?: () => unknown; geist?: () => unknown };
   }
 }
 
@@ -114,6 +114,11 @@ export function Szene3D() {
         teile: () => {
           const t = aktuellesNetz()?.netz.teile;
           return t ? { teile: t.teile.map((x) => ({ id: x.id, art: x.art, eltern: x.eltern, richtung: x.richtung, erkannt: x.erkannt, knoten: x.knoten.length / 3 })), zeit: t.zeit, gefroren: t.gefroren.teile.length } : null;
+        },
+        // S5: Geist des Mittelebenen-Baums (Streifen, Bauzeit, Fehler, Ecken)
+        geist: () => {
+          const g = aktuellesNetz()?.netz.geist;
+          return g ? { streifen: g.streifen, ms: g.ms, fehler: g.fehler ?? null, ecken: g.positionen.length / 3 } : null;
         },
         // B5: Rot und Blau der bearbeiteten Pose (E2E): Abweichung (px), geschlossen, Knoten, gezeigte Lippe rechts (Kern-Einheiten)
         poseLippen: () => {
@@ -225,6 +230,11 @@ export function Szene3D() {
           // Phase 2 M4: Zahnfarbe (Ausstattung) und gewählter Zahn (Stufe Zähne)
           r.setzeZahnFarbe(d.ausstattung?.zahnFarbe ?? ZAHN_FARBE);
           zahnMarkenAnzeigen(r, useZahnPruefung.getState().meldungen);
+          // S5: Mittelebenen-Baum als Geist (Ausstattung `koerper: 'teile'`)
+          if (t.geist && t.geist.positionen.length) {
+            if (s !== 1) for (let i = 0; i < t.geist.positionen.length; i++) t.geist.positionen[i]! *= s;
+            r.setzeGeist(t.geist.positionen, t.geist.normalen);
+          } else r.setzeGeist(null, null);
           // M3: Reifen (Spanten als Ringe mit Perlen) und Kieferknopf auf dem Körper
           reifenAnzeigen(r, t, s);
           griffeAnzeigen(r);

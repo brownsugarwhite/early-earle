@@ -628,6 +628,49 @@ export function paarAusnahme(b: Teilbaum, rand = 3 / 461): (a: 'seite' | 'front'
   return (a, p) => a !== 'seite' && flaechen.some((f) => f.blatt === a && nah(f.poly, p));
 }
 
+/** Dreiecke des feinen Netzes ohne Index mit gemittelten Eckennormalen (Anzeige als Geist im Editor). */
+export function baumDreiecke(b: BaumAbleitung): { positionen: Float32Array; normalen: Float32Array } {
+  const k = b.unterteilung.stufen[b.unterteilung.stufen.length - 1]!.kaefig;
+  const P = b.fein;
+  const nP = P.length / 3;
+  const nrm = new Float64Array(3 * nP);
+  const tri: number[] = [];
+  for (let f = 0; f < k.nF; f++) {
+    const a0 = k.fStart[f]!;
+    const e = k.fStart[f + 1]!;
+    for (let h = a0 + 1; h + 1 < e; h++) tri.push(k.fVerts[a0]!, k.fVerts[h]!, k.fVerts[h + 1]!);
+  }
+  for (let t = 0; t < tri.length; t += 3) {
+    const a = tri[t]!;
+    const c = tri[t + 1]!;
+    const d = tri[t + 2]!;
+    const ux = P[3 * c]! - P[3 * a]!;
+    const uy = P[3 * c + 1]! - P[3 * a + 1]!;
+    const uz = P[3 * c + 2]! - P[3 * a + 2]!;
+    const vx = P[3 * d]! - P[3 * a]!;
+    const vy = P[3 * d + 1]! - P[3 * a + 1]!;
+    const vz = P[3 * d + 2]! - P[3 * a + 2]!;
+    const nx = uy * vz - uz * vy;
+    const ny = uz * vx - ux * vz;
+    const nz = ux * vy - uy * vx;
+    for (const q of [a, c, d]) {
+      nrm[3 * q] = nrm[3 * q]! + nx;
+      nrm[3 * q + 1] = nrm[3 * q + 1]! + ny;
+      nrm[3 * q + 2] = nrm[3 * q + 2]! + nz;
+    }
+  }
+  const positionen = new Float32Array(tri.length * 3);
+  const normalen = new Float32Array(tri.length * 3);
+  tri.forEach((q, i) => {
+    const l = Math.hypot(nrm[3 * q]!, nrm[3 * q + 1]!, nrm[3 * q + 2]!) || 1;
+    for (let c = 0; c < 3; c++) {
+      positionen[3 * i + c] = P[3 * q + c]!;
+      normalen[3 * i + c] = nrm[3 * q + c]! / l;
+    }
+  });
+  return { positionen, normalen };
+}
+
 /** Punkte und Vierecke des feinen Netzes (für Maße und Bilder). */
 export function baumFeinesNetz(b: BaumAbleitung): { punkte: [number, number, number][]; flaechen: number[][] } {
   const k = b.unterteilung.stufen[b.unterteilung.stufen.length - 1]!.kaefig;

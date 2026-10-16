@@ -130,6 +130,8 @@ export const AusstattungSchema = z.object({
   glatt: z.boolean().optional(),
   // S3 „Umrisse berühren“ mit der Fülle der Stufe (rund, mittel, genau); fehlt = kein Berühren (heutiger Bau)
   fuelle: z.enum(['rund', 'mittel', 'genau']).optional(),
+  // S5 „Mittelebenen-Baum“: Körper aus Streifen der Seitenfläche (`teile`; bis S7 als Geist neben dem heutigen Körper)
+  koerper: z.enum(['roehre', 'teile']).optional(),
 });
 /** Ausstattung als Typ mit exakten Optionalen (zod-Inferenz erlaubt `undefined`, das passt nicht zu `exactOptionalPropertyTypes`). */
 export type ZonenVorlage = { ansicht: 'seite' | 'top' | 'front'; punkte: { x: number; y: number; weich: number }[] };
@@ -218,6 +220,12 @@ export type Ausstattung = {
    * Fehlt = kein Berühren (heutiger Bau, bitgleich). Mit Maul oder Beinen noch ohne Wirkung.
    */
   fuelle?: 'rund' | 'mittel' | 'genau';
+  /**
+   * Plan „Liniennetz, Zielform, Käfig“, S5 (16.10.): Körper aus dem Mittelebenen-Baum (Streifen der Seitenfläche,
+   * `kern/grundkoerper/baumBau.ts`); bis zum Einbau (S7) zeigt der Editor ihn als Geist neben dem heutigen Körper. Fehlt
+   * oder `roehre` = heutiger Bau.
+   */
+  koerper?: 'roehre' | 'teile';
 };
 
 /** Posen, die über „Neue Pose“ hinzukommen (Fressen ist immer da). */

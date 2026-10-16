@@ -1,6 +1,6 @@
 import { kernMaulAktiv, useKernAnzeige } from '../kern/kernBau';
 import { kieferAutomatik, maulOptionenDok, poseKnochen, setzeMaulOptionen, setzePoseKnochen } from '../kiefer/kieferOptionen';
-import { useNetzStand } from '../kern/netzStand';
+import { aktuellesNetz, useNetzStand } from '../kern/netzStand';
 import { type MaulOptionen, MAUL_STANDARD, RUNDMAUL_STANDARD, maulOptionenVorlage, maulVorn, pruefwesenBauplan } from '@ee/shape/kern';
 import { naechsteStufe, stufe } from '../stamm/stufen';
 import { pauspapierAusDatei } from '../viewports/Pauspapier';
@@ -986,6 +986,17 @@ function AbleitenFeld() {
     else delete aus.glatt;
     s.setzeDokument({ ...s.dok, ausstattung: aus });
   };
+  // S5 „Mittelebenen-Baum“: Körper aus Streifen der Seitenfläche, bis S7 als Geist über dem heutigen Körper (ein Undo-Schritt)
+  const setzeKoerper = (k: 'roehre' | 'teile') => {
+    const s = useEditor.getState();
+    const aus = { ...(s.dok.ausstattung ?? {}) };
+    if (k === 'teile') aus.koerper = 'teile';
+    else delete aus.koerper;
+    s.setzeDokument({ ...s.dok, ausstattung: aus });
+  };
+  useNetzStand((s) => s.version);
+  const geist = aktuellesNetz()?.netz.geist ?? null;
+  const koerper = dok.ausstattung?.koerper ?? 'roehre';
   return (
     <>
       <div className="feld">
@@ -1002,6 +1013,18 @@ function AbleitenFeld() {
       </div>
       <Chips werte={['aus', 'rund', 'mittel', 'genau'] as const} aktiv={dok.ausstattung?.fuelle ?? 'aus'} attribut="fuelle" onWahl={(f) => setzeFuelle(f)} />
       <p className="hilfe">Wo der Körper hinter der Front zurückbleibt, schiebt sich der Ring dort hinaus, bis er die Linie berührt. Die Stufe begrenzt die Form: rund (Ellipse), mittel (weicher Kasten), genau (bis zur Kante). Nur ohne Maul und Beine.</p>
+      <div className="feld">
+        <span>Körper (S5)</span>
+        <b data-geist={geist ? geist.streifen : ''}>{koerper === 'teile' ? (geist ? (geist.fehler ? 'Baum scheitert' : `${geist.streifen} Streifen · ${geist.ms.toFixed(0)} ms`) : 'wird gebaut …') : 'eine Röhre'}</b>
+      </div>
+      <Chips werte={['roehre', 'teile'] as const} aktiv={koerper} text={(k) => (k === 'roehre' ? 'Röhre' : 'Teile (Geist)')} attribut="koerper" onWahl={(k) => setzeKoerper(k)} />
+      <p className="hilfe">
+        {koerper === 'teile'
+          ? geist?.fehler
+            ? `Der Mittelebenen-Baum scheitert an diesem Wesen: ${geist.fehler}`
+            : 'Hellblau durchscheinend: der Körper aus Streifen der Seitenfläche (Rumpf, Hals, Flossen je ein Streifen, seitliche Paare noch ohne). Er ersetzt den heutigen Körper erst mit S7; ohne Maul und Beine.'
+          : '„Teile“ zeigt den Körper aus dem Mittelebenen-Baum (S5) als Geist über dem heutigen.'}
+      </p>
       <div className="feld">
         <span>Ringe</span>
         <b data-stationen={n}>{n ? `${n} eingefroren` : 'werden festgelegt …'}</b>
