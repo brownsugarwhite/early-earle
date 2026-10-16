@@ -34,6 +34,7 @@ import { WIRBEL_FARBEN, wirbelVorschlagUebernehmen } from '../wirbel/WirbelEbene
 import { useWirbelAnzeige } from '../wirbel/wirbelKoerper';
 import { schnittEcht, useSchnittAnzeige } from '../schnitte/schnittKoerper';
 import { RundBereich } from '../rund/RundBereich';
+import { TeilTafel } from '../teile/TeilTafel';
 
 const FAECHER = ['Wesen', 'Augen', 'Flügel', 'Mäuler', 'Beine', 'Schwänze', 'Ohren', 'Muster'] as const;
 type Fach = (typeof FAECHER)[number];
@@ -783,6 +784,8 @@ export function Seitenleiste() {
               {modus === 'fressen' && <PoseBereich />}
               <WesenBereich />
               <section className="leiste-bereich" data-bereich="koerper">
+                {/* S4: erkannte Teile oben (Schritt zur Bestätigung der Einordnung) */}
+                <TeilTafel />
                 <BogenFeld />
                 <PinselFeld />
                 <DarstellungFeld />

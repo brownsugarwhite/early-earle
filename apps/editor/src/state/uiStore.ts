@@ -124,6 +124,12 @@ type UiState = {
   /** S1: Punkt des Liniennetzes unter dem Zeiger (in irgendeinem Blatt); alle Blätter und die Bühne markieren ihn */
   netzHover: NetzPunkt | null;
   setzeNetzHover(p: NetzPunkt | null): void;
+  /** S4 „Teile erkennen“: Teile in den Blättern zeigen (Flächen, Wirbelsäulen, verdeckte Teilumrisse) */
+  teileSicht: 'aus' | 'an';
+  setzeTeileSicht(s: 'aus' | 'an'): void;
+  /** S4: Teil unter dem Zeiger (Kennung), in allen Blättern und in der Tafel hervorgehoben */
+  teilHover: string | null;
+  setzeTeilHover(id: string | null): void;
   /** gewählter Spant (Index in dok.spanten) und seine gewählten Punkte; bearbeitet in Front bzw. Back */
   spantAuswahl: SpantAuswahl | null;
   /** Versuch 13.10. nachmittags: gewählter Spant der Bauweise „rund“ (Index in dok.rundSpanten) und seine Punkte */
@@ -247,6 +253,14 @@ export const useUi = create<UiState>((set, get) => ({
   breitenAnzeige: null,
   kantenSicht: 'zeigen',
   netzStil: 'farbe',
+  teileSicht: 'an',
+  setzeTeileSicht(s) {
+    set({ teileSicht: s });
+  },
+  teilHover: null,
+  setzeTeilHover(id) {
+    if (get().teilHover !== id) set({ teilHover: id });
+  },
   netzHover: null,
   setzeNetzHover(p) {
     const alt = get().netzHover;
