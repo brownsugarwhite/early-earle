@@ -10,6 +10,7 @@ import { koerperDokument } from './koerper';
 import { zufall } from './zufall';
 
 declare const console: { log: (...a: unknown[]) => void };
+declare const performance: { now(): number };
 
 const FAELLE: [string, () => Dokument][] = [
   ['kugel', () => koerperDokument('kugel', zufall(1))],

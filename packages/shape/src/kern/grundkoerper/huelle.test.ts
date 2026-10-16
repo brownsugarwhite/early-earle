@@ -12,6 +12,7 @@ import { zufall } from '../pruefen/zufall';
 import { erreichbarkeit, huelle, saeulenArt } from './huelle';
 
 declare const console: { log: (...a: unknown[]) => void };
+declare const performance: { now(): number };
 
 /** Top-Profil in z gestreckt (Knoten und Griffe), Front unverändert: ein Widerspruch von bekannter Größe. */
 function topGestreckt(d: Dokument, f: number): Dokument {
