@@ -29,12 +29,22 @@ Gesamtplan und Kritik-Register bleiben gültig:
   - Messung (heute → Baum): Giraffe Falten 23 → 11°, Δ 18,8/8,5 → 1,9/1,8 px (alle Δ-Tore erfüllt); Vase Top 13,9 →
     2,2 px, alle Zonen ≤ 11°; S-Hals 27 → 12°; Überhang 58 → 28°; Fisch 145 → 32°; Langhals/Drache etwa wie heute. Tabelle,
     Tore und Grenzen auf der Planseite (S5), Befunde im Kritik-Register.
+  - **Noch nicht auf dem Baum:** P-Linien (`dok.kanten`) — der Baum faltet nur an gezeichneten Ecken der Seite; S7 braucht
+    sie mindestens als Treppenfalte (Entscheidung unten).
   - Bilder: [`s5-baum-bogen-2026-10-16.jpg`](progress/editor/s5-baum-bogen-2026-10-16.jpg),
     [`s5-baum-auslegung-2026-10-16.jpg`](progress/editor/s5-baum-auslegung-2026-10-16.jpg),
     [`s5-baum-editor-bogen-2026-10-16.jpg`](progress/editor/s5-baum-editor-bogen-2026-10-16.jpg).
 - Prüfungen: Kern-Tests `baumKaefig.test.ts`, `baumBau.test.ts`; Skripte `apps/editor/scripts/pruefen/s5-mess.ts`
   (Messreihe), `s5-bogen.ts` (Kontaktbogen), `s5-auslegung.ts` (2D-Auslegung), `s5-editor.mjs` (Editor, grün).
   `pnpm typecheck` grün, Kern-Tests 440 (drei Tempo-Tests nur unter Parallellast rot, einzeln grün), Editor-Tests 25/25.
+
+## Entschieden (16.10.)
+
+- „glatt“ und „Umrisse berühren: mittel“ sind Standard für neue Wesen.
+- **P-Linien als echte Kanten** (Florian, abends, in einer abgezweigten Sitzung; Planseite S7/S8): Reihenfolge bleibt — S8
+  „P-Linien als echte Kanten (Linien exakt)“ nach S7, jetzt in Klartext mit seinem Ablauf (P zeichnen, ⇧W Härte, ⌥-Ecke für
+  den Winkel, Bearbeiten in allen Ansichten und auf der Bühne, Posen) und zehn Toren. Bis dahin **kein Rückschritt**: Auf
+  mehrteiligen Körpern wirken P-Linien in S7 mindestens wie heute als Treppenfalte (je Streifen und über die Ansätze).
 
 ## Offen für Florian
 

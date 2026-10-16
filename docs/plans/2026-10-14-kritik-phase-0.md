@@ -391,3 +391,7 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
   hinteren Rumpf (heute 4,3/3,4) — Kopfring in der Front zu niedrig, geneigte Ringe gegen das Top.
 - **Topologie je Bau neu:** Die Auslegung wird bei jedem genauen Bau bestimmt (110–250 ms); Einfrieren und Pinsel/Posen
   auf dem Baum kommen mit S7.
+- **P-Linien fehlen auf dem Baum:** `baumBau.ts` setzt Falten nur aus gezeichneten Ecken der Seite, nicht aus `dok.kanten`.
+  Florians Entscheidung (16.10. abends, Planseite S7/S8): bis S8 kein Rückschritt — der Einbau (S7) braucht die P-Linien
+  mindestens als Treppenfalte auf der nächsten Schleife je Streifen und über die Ansätze (Prüffall Ente, Linie über den
+  Halsansatz).

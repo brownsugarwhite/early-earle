@@ -818,7 +818,9 @@ Tiger, Langhals):
   - **Ehrlich offen** (Einzelheiten im Kritik-Register „Befunde aus S5“): Gabeln brauchen ein Y-Stück (Überhang,
     Fischschwanz); überlappende Flossen; Hohlkehlen an den Sehnenenden 20–25°; Kehrtwende Hals → Kopf der Ente;
     Entenschwanz als Klinge (Widerspruch der Zeichnungen); Übergang 2:1 am Langhals zurückgestellt (S4-Sehne zu tief);
-    Käfiggüte.
+    Käfiggüte. **P-Linien (`dok.kanten`) wirken auf dem Baum noch nicht** — `baumBau.ts` setzt Falten nur aus gezeichneten
+    Ecken der Seite; nach dem Tor in S7 (kein Rückschritt bis S8) braucht der Einbau sie mindestens als Treppenfalte je
+    Streifen und über die Ansätze.
   - **Bilder:** [`s5-baum-bogen-2026-10-16.jpg`](../progress/editor/s5-baum-bogen-2026-10-16.jpg) (8 Körper, heute | Baum,
     Seite/Front/Top/schräg), [`s5-baum-auslegung-2026-10-16.jpg`](../progress/editor/s5-baum-auslegung-2026-10-16.jpg)
     (Streifen und Sprossen der Seitenfläche), [`s5-baum-editor-bogen-2026-10-16.jpg`](../progress/editor/s5-baum-editor-bogen-2026-10-16.jpg)
