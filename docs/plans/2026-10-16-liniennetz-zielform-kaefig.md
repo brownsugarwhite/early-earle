@@ -631,3 +631,20 @@ gemessenen Fehlanläufen am selben Tor: anhalten, Kritik-Register, Bericht.
     (Teile in Seite, Front, Back, Top, Bottom).
   - **Nächster Schritt:** deine Bestätigung der Einordnung an eigenen Zeichnungen (Plan: vor jeder Geometrie darauf); dann
     der Rest von S4 (verdecktes Stück als eigene Kurve) und S5 (Mittelebenen-Baum).
+- **16.10. abends, Florian zu S4:** „Die Einordnung passt. Weiter mit dem Rest von S4 (verdecktes Stück als eigene Kurve) und
+  dann S5.“ → **S4 Rest gebaut:**
+  - Kern `kern/grundkoerper/teilKurven.ts`, Dokument `dok.teile` (`TeilKurve`): Ein Klick auf ein gestricheltes Stück
+    übernimmt es als Kurve (kubischer Fit ≤ 1,5 px, mindestens ein innerer Knoten). Gespeichert im Rahmen der Stoßstellen mit
+    der schwarzen Linie (Kurvenparameter des Profils der Ansicht): zwei Stoßstellen → Ähnlichkeit über die Strecke, eine
+    Stoßstelle → Verschiebung (das zweite Ende auf der Spiegelachse oder frei), ganz verdeckt (z. B. ein Bein unter dem
+    Körper im Top) → geschlossen an ihrer Stelle. In Front und Top liegt die Kurve auf der gezeichneten Hälfte, das
+    Spiegelbild läuft blass mit; eine Kurve ersetzt das geratene Stück des Teils in dieser Ansicht.
+  - Editor: anklickbar mit dem Auswahlwerkzeug in der Stufe Körper (Knoten und Ringe gehen vor), innere Knoten ziehbar (eine
+    Geste = ein Undo-Schritt), Enden bleiben an der schwarzen Linie und wandern mit ihr; „Automatisch“ je Teil in der
+    Liste (ein Undo-Schritt). Noch ohne Wirkung auf den Körper (S5/S6 bauen damit).
+  - Prüfung `apps/editor/scripts/pruefen/teile-kurve.mjs` (eigener Vite 5192) für drei Fälle — eine Stoßstelle (Ente,
+    Front, Hals), zwei Stoßstellen (Ente, Front, Flügel: Enden 0,04/0,23 px an der Linie, auch nach Zug an der Linie),
+    geschlossen (Vierbeiner, Top, Bein): alles grün; Test `teilKurven.test.ts`. Bild
+    [`s4-teile-kurve-2026-10-16.jpg`](../progress/editor/s4-teile-kurve-2026-10-16.jpg).
+  - Grenzen: Ganz verdeckte und freie Stücke wandern nicht mit (sie haben keine Stoßstelle); Knoten einfügen/löschen und
+    Griffe ziehen gibt es an diesen Kurven noch nicht.

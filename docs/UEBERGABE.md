@@ -1,4 +1,4 @@
-# Übergabe (Stand 16.10.2026 abends: S4 „Teile erkennen“ gebaut — nur Anzeige; Halt für Florians Bestätigung der Einordnung)
+# Übergabe (Stand 16.10.2026 abends: S4 „Teile erkennen“ gebaut und von Florian bestätigt, verdeckte Stücke als eigene Kurven; S5 beginnt)
 
 Branch `claude/editor-grundlayout`.
 
@@ -32,7 +32,10 @@ Gesamtplan und Kritik-Register bleiben gültig:
   - Tore: Prüfsatz **25 von 25** wie von Hand eingeordnet (mehrdeutige Ausbuchtungen als „erlaubt“ — nachträglich
     eingetragen, Florian entscheidet sie); Züge: 17 von 1428 mit einem Wechsel, 4 hin und her, alle an kleinen Grenz-Wülsten
     (ohne Hysterese 97/75) — Tor nicht ganz erfüllt; Erkennung 7–23 ms, Ansichten weitere 13–20 ms.
-  - Nicht gebaut: verdecktes Stück per Klick als eigene Kurve (`dok.teile`) — nach Florians Bestätigung.
+  - **Florian (16.10. abends): „Die Einordnung passt.“** Danach gebaut: verdecktes Stück per Klick als eigene Kurve
+    (`kern/grundkoerper/teilKurven.ts`, `dok.teile`, Rahmen der Stoßstellen, Knoten ziehen, „Automatisch“ in der Liste;
+    Prüfung `teile-kurve.mjs` grün, Bild [`s4-teile-kurve-2026-10-16.jpg`](progress/editor/s4-teile-kurve-2026-10-16.jpg)).
+    Noch ohne Wirkung auf den Körper.
   - Bilder: [`s4-teile-editor-2026-10-16.jpg`](progress/editor/s4-teile-editor-2026-10-16.jpg),
     [`s4-teile-kern-2026-10-16.jpg`](progress/editor/s4-teile-kern-2026-10-16.jpg),
     [`s4-teile-ansichten-2026-10-16.jpg`](progress/editor/s4-teile-ansichten-2026-10-16.jpg).
@@ -47,9 +50,8 @@ Gesamtplan und Kritik-Register bleiben gültig:
 
 ## Offen für Florian
 
-- **S4 bestätigen:** Liest die Einordnung deine Zeichnungen richtig (Mitte/Paar, was ein Teil ist)? Mehrdeutige Fälle:
-  Rex-Schwanz und -Stirnwülste, Robbenkopf, Tiger-Schnauze, Vierbeiner-Kopf — Teil oder nicht?
-- Danach: Rest von S4 (verdecktes Stück als eigene Kurve) und S5 (Mittelebenen-Baum, Breitenlinie als 3D-Bedingung).
+- Mehrdeutige Ausbuchtungen (Rex-Schwanz und -Stirnwülste, Robbenkopf, Tiger-Schnauze, Vierbeiner-Kopf) — Teil oder nicht?
+- **Nächster Schritt (Florian: „dann S5“):** S5 Mittelebenen-Baum (Planseite S5).
 - **Angleichen** an alten Zeichnungen: Verhalten ok (die Ansicht mit dem Knopf führt)?
 
 ## Arbeitsregeln
