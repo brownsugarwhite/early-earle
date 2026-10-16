@@ -134,40 +134,85 @@ export function unterteilenMehrfach(netz: Netz, stufen: number): Netz {
 /**
  * Dreiecke mit Normalen je Flächenecke: über Kanten mit mehr als `glattWinkel` Knick wird nicht
  * gemittelt (wie Blenders „Auto Smooth“) – so bleiben scharfe Kanten auch im Licht scharf.
+ * B7 (16.10.): auf flachen Zahlenfeldern ohne Zwischenobjekte (Abspielen der Posen baut je Bild neu), Rechenreihenfolge
+ * wie zuvor — das Ergebnis ist bitgleich (`zuDreieckenAlt` im Test).
  */
 export function zuDreiecken(netz: Netz, glattWinkelGrad = 40): { positionen: Float32Array; normalen: Float32Array } {
   const { punkte, flaechen } = netz;
-  const fn: V3[] = flaechen.map((f) => {
-    let n: V3 = [0, 0, 0];
-    for (let i = 0; i < f.length; i++) {
+  const nF = flaechen.length;
+  const nP = punkte.length;
+  // Flächennormalen (Newell), normiert
+  const fn = new Float64Array(3 * nF);
+  for (let fi = 0; fi < nF; fi++) {
+    const f = flaechen[fi]!;
+    const m = f.length;
+    let n0 = 0;
+    let n1 = 0;
+    let n2 = 0;
+    for (let i = 0; i < m; i++) {
       const a = punkte[f[i]!]!;
-      const b = punkte[f[(i + 1) % f.length]!]!;
-      n = plus(n, [(a[1] - b[1]) * (a[2] + b[2]), (a[2] - b[2]) * (a[0] + b[0]), (a[0] - b[0]) * (a[1] + b[1])]);
+      const b = punkte[f[(i + 1) % m]!]!;
+      n0 = n0 + (a[1] - b[1]) * (a[2] + b[2]);
+      n1 = n1 + (a[2] - b[2]) * (a[0] + b[0]);
+      n2 = n2 + (a[0] - b[0]) * (a[1] + b[1]);
     }
-    const l = Math.hypot(n[0], n[1], n[2]) || 1;
-    return mal(n, 1 / l);
-  });
-  const punktFlaechen: number[][] = Array.from({ length: punkte.length }, () => []);
-  flaechen.forEach((f, fi) => f.forEach((i) => punktFlaechen[i]!.push(fi)));
+    const s = 1 / (Math.hypot(n0, n1, n2) || 1);
+    fn[3 * fi] = n0 * s;
+    fn[3 * fi + 1] = n1 * s;
+    fn[3 * fi + 2] = n2 * s;
+  }
+  // Flächen je Punkt (in Flächenreihenfolge, wie zuvor die Listen)
+  const start = new Int32Array(nP + 1);
+  let ecken = 0;
+  for (let fi = 0; fi < nF; fi++) {
+    const f = flaechen[fi]!;
+    for (const i of f) start[i + 1]!++;
+    ecken += 3 * Math.max(0, f.length - 2);
+  }
+  for (let i = 0; i < nP; i++) start[i + 1] = start[i + 1]! + start[i]!;
+  const voll = start.slice(0, nP);
+  const pf = new Int32Array(start[nP]!);
+  for (let fi = 0; fi < nF; fi++) for (const i of flaechen[fi]!) pf[voll[i]!++] = fi;
   const cosGrenze = Math.cos((glattWinkelGrad * Math.PI) / 180);
-  const ecknormale = (fi: number, v: number): V3 => {
-    let n: V3 = [0, 0, 0];
-    for (const g of punktFlaechen[v]!) {
-      const d = fn[g]![0] * fn[fi]![0] + fn[g]![1] * fn[fi]![1] + fn[g]![2] * fn[fi]![2];
-      if (d >= cosGrenze) n = plus(n, fn[g]!);
-    }
-    const l = Math.hypot(n[0], n[1], n[2]) || 1;
-    return mal(n, 1 / l);
-  };
-  const pos: number[] = [];
-  const nrm: number[] = [];
-  flaechen.forEach((f, fi) => {
-    for (let i = 1; i < f.length - 1; i++) {
-      for (const v of [f[0]!, f[i]!, f[i + 1]!]) {
-        pos.push(...punkte[v]!);
-        nrm.push(...ecknormale(fi, v));
+  const positionen = new Float32Array(3 * ecken);
+  const normalen = new Float32Array(3 * ecken);
+  let o = 0;
+  const ecke = (fi: number, v: number) => {
+    const p = punkte[v]!;
+    positionen[o] = p[0];
+    positionen[o + 1] = p[1];
+    positionen[o + 2] = p[2];
+    const f0 = fn[3 * fi]!;
+    const f1 = fn[3 * fi + 1]!;
+    const f2 = fn[3 * fi + 2]!;
+    let n0 = 0;
+    let n1 = 0;
+    let n2 = 0;
+    for (let k = start[v]!; k < start[v + 1]!; k++) {
+      const g = pf[k]!;
+      const g0 = fn[3 * g]!;
+      const g1 = fn[3 * g + 1]!;
+      const g2 = fn[3 * g + 2]!;
+      const d = g0 * f0 + g1 * f1 + g2 * f2;
+      if (d >= cosGrenze) {
+        n0 = n0 + g0;
+        n1 = n1 + g1;
+        n2 = n2 + g2;
       }
     }
-  });
-  return { positionen: new Float32Array(pos), normalen: new Float32Array(nrm) };
+    const s = 1 / (Math.hypot(n0, n1, n2) || 1);
+    normalen[o] = n0 * s;
+    normalen[o + 1] = n1 * s;
+    normalen[o + 2] = n2 * s;
+    o += 3;
+  };
+  for (let fi = 0; fi < nF; fi++) {
+    const f = flaechen[fi]!;
+    for (let i = 1; i < f.length - 1; i++) {
+      ecke(fi, f[0]!);
+      ecke(fi, f[i]!);
+      ecke(fi, f[i + 1]!);
+    }
+  }
+  return { positionen, normalen };
 }
