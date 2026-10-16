@@ -777,3 +777,52 @@ Tiger, Langhals):
   im Plan. Entscheidung: **Reihenfolge bleibt (S8 nach S7)**; präzisiert sind Kurzfassung, Bauweise 7, S7 (kein Rückschritt
   der P-Linien auf mehrteiligen Körpern bis S8) und S8 in Klartext mit seinem Ablauf, den offenen L0-Fällen, L1 und zehn
   Toren.
+- **16.10. abends/nachts, S5 „Mittelebenen-Baum“ gebaut** (Florian: „dann S5“; Abnahme offen; im Editor als Geist):
+  - **Bauweise** (`kaefig/baumKaefig.ts`, `kern/grundkoerper/ebene.ts`, `kern/grundkoerper/baumBau.ts`): Der Körper ist ein
+    verdoppeltes 2D-Vierecksnetz der Seitenfläche; je Mittelteil ein Streifen aus dem S4-Baum.
+    - **Verbindungsstück** (seitlich angesetzt), wenn die Rumpfspitzen weit von der Sehne liegen und das Kind dünn ist
+      (Median-Umfang < 50 % des Rumpfs): Giraffe, Ente, S-Hals, Rückenflosse. Die Elternsprossen unter der Sehne enden auf
+      dem runden Kindring 0 (Fächer auf der Gegenseite); ihr oberes Drittel geht per Hermite in den Kindring über und wird
+      nach Bogenlänge neu verteilt; die Ringe durch die Sehnenenden bleiben rund.
+    - **Fortsetzung:** Dicke Kinder bleiben im Rumpfstreifen, die Enden laufen durch das Kind (Vase: Rand → Boden, Ringe
+      waagerecht). Klar dünne Teile am Rumpfende (< 40 %, Fisch-Schwanzlappen) setzen mit halber Punktzahl über die
+      Übergangskappe fort (U-Ring um die Sehne).
+    - Gezeichnete Ecken als Ringfalten bzw. Spitzen; Fächer an Innenecken gespreizt; Punktzahl der Kinder aus dem Umfang;
+      Ringabstand aus der örtlichen Kantenlänge. Querschnitt Front-Lappen wie in der Röhre (rund, wenn eine Flosse ohne
+      eigenen Streifen im Rumpf steckt); Silhouetten ohne seitliche Paare, die Front und Top zeigen. Löser wie S2/S3.
+    - Ein Streifen ergibt genau die heutige Röhre (Test `baumKaefig.test.ts`); Messwerte als Untergrenze in
+      `baumBau.test.ts`.
+  - **Im Editor:** Tafel Körper → „Körper (S5): Röhre | Teile (Geist)“ (`ausstattung.koerper`, ein Undo-Schritt). Der Worker
+    baut im genauen Bau zusätzlich den Baum; Bühne und Blätter zeigen ihn hellblau durchscheinend über dem heutigen Körper
+    (106–232 ms, nur ohne Maul und Beine). Prüfung `apps/editor/scripts/pruefen/s5-editor.mjs` (eigener Vite 5192, Florians
+    Ablauf): Giraffe, Ente, S-Hals, Vase, Fisch — ein Undo-Schritt, heutiger Körper unverändert, Undo nimmt den Geist weg —
+    alles grün.
+  - **Messung** (frisch; freie Haut / Ansatz / Kappe in Grad, Δ Seite/Front/Top in px ohne seitliche Paare; heute → Baum):
+
+    | Körper | Falten heute | Falten Baum | Δ heute | Δ Baum | Streifen |
+    |---|---|---|---|---|---|
+    | Giraffe mit Bauch | 23 / – / 23 | **11 / 20,5 / 8** | 0,9 / 18,8 / 8,5 | **1,0 / 1,9 / 1,8** | 2 |
+    | Vase | 14 / – / 13 | **11 / – / 9** | 1,1 / 2,9 / 13,9 | **1,4 / 1,6 / 2,2** | 1 (Rand → Boden) |
+    | S-Hals | 27 / – / 10 | 12 / 23 / 6 | 1,5 / 1,8 / 7,4 | 1,8 / 2,6 / 6,1 | 2 |
+    | Ente | 17 / – / 24 (Kante 148) | 15 / 25 / 77 (Kante 72) | 4,2 / 2,8 / 46,5 | 2,9 / 4,3 / 37,6 (Flügelwurzel) | 2 |
+    | Überhang | 58 / – / 28 | 28 / – / 17 | 2,4 / 23,1 / 30,1 | 2,6 / 19,7 / 27,1 | 1 |
+    | Fisch | 145 / – / 51 | 32 / 29 / 14 | 2,3 / 14,2 / 3,7 | 1,6 / 7,2 / 4,5 | 4 |
+    | Langhals | 16 / – / 8 | 13 / – / 10 | 1,5 / 4,3 / 3,4 | 1,2 / 3,9 / 4,4 | 1 |
+    | Drache | 15 / – / 8 | 15 / – / 9 | 1,5 / 4,3 / 3,0 | 1,7 / 3,9 / 4,4 | 1 |
+
+  - **Tore:** einteilige Körper bitgleich — erfüllt (der heutige Körper bleibt, der Baum ist ein Geist; für den Einbau in S7:
+    Körper ohne Mittelteile bauen weiter die Röhre). Falten ≤ 20°: Giraffe, Vase, Langhals, Drache (Giraffe-Ansatz 20,5° an
+    einer Kante); **nicht** S-Hals (Ansatz 23°), Ente (Ansatz 25°, Schwanzkappe 77°), Überhang (28°), Fisch (29–32°). Käfig
+    ≥ 25° / ≤ 3: **nicht erfüllt** (z. B. Giraffe 16,5° / 3,5; heute 14,4° / 12). Δ ≤ 1,5/2/2: Giraffe erfüllt, Vase knapp
+    (Top 2,2), die anderen nicht. Bauzeit 110–250 ms ≤ 250 ms (Topologie je Bau neu).
+  - **Ehrlich offen** (Einzelheiten im Kritik-Register „Befunde aus S5“): Gabeln brauchen ein Y-Stück (Überhang,
+    Fischschwanz); überlappende Flossen; Hohlkehlen an den Sehnenenden 20–25°; Kehrtwende Hals → Kopf der Ente;
+    Entenschwanz als Klinge (Widerspruch der Zeichnungen); Übergang 2:1 am Langhals zurückgestellt (S4-Sehne zu tief);
+    Käfiggüte.
+  - **Bilder:** [`s5-baum-bogen-2026-10-16.jpg`](../progress/editor/s5-baum-bogen-2026-10-16.jpg) (8 Körper, heute | Baum,
+    Seite/Front/Top/schräg), [`s5-baum-auslegung-2026-10-16.jpg`](../progress/editor/s5-baum-auslegung-2026-10-16.jpg)
+    (Streifen und Sprossen der Seitenfläche), [`s5-baum-editor-bogen-2026-10-16.jpg`](../progress/editor/s5-baum-editor-bogen-2026-10-16.jpg)
+    (Geist im Editor).
+  - **Nächster Schritt:** Florians Blick auf den Geist an eigenen Wesen; dann nach seiner Wahl S6 (seitliche Teile) oder
+    zuerst die S5-Reste (Y-Stück für Gabeln, Hohlkehlen, Übergang höher).
+

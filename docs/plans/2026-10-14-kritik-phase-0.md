@@ -358,3 +358,36 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
   flache Wülste bilden je nach Rasterlage keinen Ast. Für S4 umgangen (Lü–Wang, seitliche Äste ohne Beschneiden, Mitnehmen
   an der eingefrorenen Sehne); die Seite nutzt noch das Beschneiden (in den Zügen stabil, aber dieselbe Anfälligkeit).
 - **Nicht gebaut:** Klick macht ein verdecktes Stück zu einer eigenen Kurve (`dok.teile`) — nach Florians Bestätigung.
+
+## Befunde aus S5 „Mittelebenen-Baum“ (16.10. abends/nachts, eigene Befunde)
+
+- **Gabeln brauchen ein Y-Stück.** Der Überhang (Kopf über der Brust, Kehle dazwischen) und der Fischschwanz sind Gabeln:
+  Ein Strang teilt sich in zwei Lappen. Als Verbindungsstück dreht sich der Kopf im Kind um ≈ 90° (Fächer, 173°); als ein
+  Streifen bleibt der Fächer von heute (28°, besser als 58°). Fisch heute: unterer Lappen über den Übergang 2:1, oberer
+  seitlich. Weg: Y-Stück (Dreieck aus Stammring und zwei Lappenringen, Mitte mit drei Kanten) oder Kopf als Streifen
+  neben dem Rumpf, beide an der Sehne geklebt (Seite an Seite).
+- **Überlappende Sehnenblöcke** (Rücken- und Bauchflosse übereinander): Ein Elternring kann nicht auf beiden Sehnen enden,
+  ohne dass beide Kinder Punktzahl und Lage teilen → das kleinere Teil bleibt im Rumpf (Fisch-Bauchflosse, frei 32°).
+  Weg: gemeinsamer Block, dessen Ringe beide Sehnen schneiden; die Kindringe 0 nehmen deren Lage.
+- **Hohlkehlen an den Sehnenenden:** Punkte mit sechs Kanten auf der Naht, quer über die Naht 20–25° (S-Hals 23,4°, Ente
+  24,6°, Giraffe 20,5°). Die Übergangslänge (0,2–0,7) ändert das nicht; die Stelle ist auch geometrisch stark gekrümmt
+  (einspringende Ecke der Seite). Weg: Hohlkehle als eigener Streifen mit Radius aus der gezeichneten Innenecke (Plan S6).
+- **Kehrtwende im Kind** (Ente: Hals nach rechts oben, Kopf zurück nach links, ~150°): Sprossen laufen an der Innenecke
+  zusammen; gespreizt und mit Ringfalte auf beiden Seiten frei 16°, aber Zone Kante 72°. Weg: Kopf als eigenes Glied am
+  Hals (S4 trennt Hals und Kopf nicht, weil nur eine Seite eine Kehle hat).
+- **Entenschwanz ist eine Klinge:** Top an den letzten 15 px 2–9 px breit und 3 px kürzer als die Seite, Seite 47 px hoch —
+  die Kappe wird eine senkrechte Klingenkante (77°). S3 rundet sie (24°) und weicht dafür ab. Widerspruch der Zeichnungen;
+  Florian entscheidet (rund oder Klinge).
+- **Übergang 2:1 am Langhals versucht, zurückgestellt:** Falten gut (≤ 18°), aber die S4-Sehne liegt tief in der Brust;
+  deren dicker Ansatz landete im Hals mit 8 Punkten (Top 4,4 → 6,8 px, Seite 1,5 → 3,0). Weg: Übergangssehne dort, wo der Hals
+  dünn ist (die Brust bleibt im Rumpf).
+- **Querschnitt der Elternstreifen:** Front-Lappen besser (Giraffe-Front 1,9 statt 8,8 px), aber mit einer Flosse im Rumpf
+  trägt jeder Ring ihren Stachel (Fisch 60°) → dort rund. Eigentlich gehört dem Rumpf nur sein eigener Front-Umriss (ohne
+  Kinder); für Paare in Front und Top gebaut (Rumpf-Silhouetten), für Mittelteile in der Front noch nicht.
+- **Käfiggüte nicht Ziel der Auslegung:** kleinster Winkel 8–36°, Seitenverhältnis 3,5–19 (heute 4–28°, 10–47). Tore ≥ 25°
+  und ≤ 3 nicht erfüllt; an verjüngten Spitzen und Sehnenenden unvermeidlich kurze Kanten (Kanten je Streifen bis 0,06 des
+  Medians).
+- **Querschnitts-Reste, die keine Topologie sind:** Langhals/Drache Front 3,9 px am obersten Kopfpunkt, Top 4,4 px am
+  hinteren Rumpf (heute 4,3/3,4) — Kopfring in der Front zu niedrig, geneigte Ringe gegen das Top.
+- **Topologie je Bau neu:** Die Auslegung wird bei jedem genauen Bau bestimmt (110–250 ms); Einfrieren und Pinsel/Posen
+  auf dem Baum kommen mit S7.

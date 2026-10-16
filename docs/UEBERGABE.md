@@ -1,57 +1,47 @@
-# Übergabe (Stand 16.10.2026 abends: S4 „Teile erkennen“ gebaut und von Florian bestätigt, verdeckte Stücke als eigene Kurven; S5 beginnt)
+# Übergabe (Stand 16.10.2026 nachts: S5 „Mittelebenen-Baum“ gebaut, im Editor als Geist; Halt für Florians Blick)
 
 Branch `claude/editor-grundlayout`.
 
 ## Einstieg
 
 Maßgeblich ist der freigegebene Plan
-**[`docs/plans/2026-10-16-liniennetz-zielform-kaefig.md`](plans/2026-10-16-liniennetz-zielform-kaefig.md)** (Befund, Antwort
-auf Florians „Denkfehler?“, Florians Klarstellung „3D-Liniennetz = einzige Wahrheit“, Bauweise „Form zuerst, dann der Käfig
-darüber“, Schritte S0–S8 mit Toren, Stand je Schritt). Vorgeschichte:
+**[`docs/plans/2026-10-16-liniennetz-zielform-kaefig.md`](plans/2026-10-16-liniennetz-zielform-kaefig.md)** (Befund,
+Florians Klarstellung „3D-Liniennetz = einzige Wahrheit“, Bauweise „Form zuerst, dann der Käfig darüber“, Schritte S0–S8
+mit Toren, Bauplan S5 im Detail, Stand je Schritt). Vorgeschichte:
 [`docs/plans/2026-10-16-einstieg-falten-wirbelsaeulen-linien.md`](plans/2026-10-16-einstieg-falten-wirbelsaeulen-linien.md).
 Gesamtplan und Kritik-Register bleiben gültig:
 [`docs/plans/2026-10-15-maul-einsatz-harmonie-posen.md`](plans/2026-10-15-maul-einsatz-harmonie-posen.md),
-[`docs/plans/2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md) (neu: „Befunde aus S4“).
+[`docs/plans/2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md) (neu: „Befunde aus S5“).
 
 ## Letzter Stand
 
-- **S0–S3** gebaut (Widersprüche rot, Liniennetz in allen Blättern, Kopplung jedes Punkts, glatte Haut, Front berühren;
-  „glatt“ und „Umrisse berühren: mittel“ sind Standard für neue Wesen). Einzelheiten und Tore auf der Planseite.
-- **S4 „Teile erkennen“ gebaut (nur Anzeige, Abnahme offen):**
-  - Kern `packages/shape/src/kern/grundkoerper/teilbaum.ts`: Rumpf = dickste Stelle der Seite; Äste der Seite als Gabel
-    (Flossen, beide Schwanzlappen), Knick (Hals) oder Stiel (Vasenhals, Augenstiele, Schwanz mit Taille); Mitte oder Paar über
-    die Säulen der Sichthülle; seitliche Paare aus Front und Top. Ein Teil braucht eine Kehle am Ansatz (Seitenäste der
-    Seite beidseitig). Hysterese 15 %, Sehnen als Kurvenparameter eingefroren (`kaefig.stationen.teile`), vom Skelett
-    verlorene Teile an der Sehne mitgenommen, Richtung aus dem Umriss der tragenden Ansicht.
-  - Ansichten `kern/grundkoerper/teilAnsicht.ts`: welches Teil man je Blatt sieht, verdeckte Teilumrisse (Seite, Front,
-    Back, Top, Bottom). Worker: `WesenNetz.teile` im genauen Bau; das Zurückschreiben des eingefrorenen Stands baut den
-    Körper nicht neu und ist kein Undo-Schritt.
-  - Editor: Tafel Körper oben „Teile (S4, nur Anzeige)“ mit Baumliste und Schalter aus | an; Flächen je Teil, verdeckte
-    Umrisse gestrichelt, Wirbelsäulen mit Knoten in allen Blättern; Zeiger hebt ein Teil überall hervor
-    (`apps/editor/src/teile/`).
-  - Tore: Prüfsatz **25 von 25** wie von Hand eingeordnet (mehrdeutige Ausbuchtungen als „erlaubt“ — nachträglich
-    eingetragen, Florian entscheidet sie); Züge: 17 von 1428 mit einem Wechsel, 4 hin und her, alle an kleinen Grenz-Wülsten
-    (ohne Hysterese 97/75) — Tor nicht ganz erfüllt; Erkennung 7–23 ms, Ansichten weitere 13–20 ms.
-  - **Florian (16.10. abends): „Die Einordnung passt.“** Danach gebaut: verdecktes Stück per Klick als eigene Kurve
-    (`kern/grundkoerper/teilKurven.ts`, `dok.teile`, Rahmen der Stoßstellen, Knoten ziehen, „Automatisch“ in der Liste;
-    Prüfung `teile-kurve.mjs` grün, Bild [`s4-teile-kurve-2026-10-16.jpg`](progress/editor/s4-teile-kurve-2026-10-16.jpg)).
-    Noch ohne Wirkung auf den Körper.
-  - Bilder: [`s4-teile-editor-2026-10-16.jpg`](progress/editor/s4-teile-editor-2026-10-16.jpg),
-    [`s4-teile-kern-2026-10-16.jpg`](progress/editor/s4-teile-kern-2026-10-16.jpg),
-    [`s4-teile-ansichten-2026-10-16.jpg`](progress/editor/s4-teile-ansichten-2026-10-16.jpg).
-- Prüfungen: `kern/grundkoerper/teilbaum.test.ts` (Prüfsatz, Einfrieren, Hysterese, kein Flackern), Prüfsatz
-  `kern/pruefen/teilsatz.ts`, Skripte `apps/editor/scripts/pruefen/teile-s4.ts` (Kandidaten), `teile-ansichten.ts`,
-  `teile-zuege.ts` (Zugprüfung, `OHNE=1` zum Vergleich), Editor `teile-editor.mjs` (grün). `pnpm typecheck` grün, Kern-Tests
-  427/427, Editor-Tests 25/25, Lint ohne Befund. Das Ausdünnen im Skelett ist bitgleich 8-mal schneller.
-
-## Entschieden (16.10.)
-
-- „glatt“ und „Umrisse berühren: mittel“ sind Standard für neue Wesen.
+- **S0–S4** gebaut (Widersprüche rot, Liniennetz in allen Blättern, Kopplung jedes Punkts, glatte Haut, Front berühren,
+  Teile erkennen; „glatt“ und „Umrisse berühren: mittel“ sind Standard für neue Wesen). **Florian zu S4: „Die Einordnung
+  passt.“** Verdeckte Stücke lassen sich per Klick als eigene Kurve übernehmen (`dok.teile`, noch ohne Wirkung).
+- **S5 „Mittelebenen-Baum“ gebaut (Abnahme offen):**
+  - Körper = verdoppeltes 2D-Vierecksnetz der Seitenfläche, ein Streifen je Mittelteil aus dem S4-Baum
+    (`packages/shape/src/kaefig/baumKaefig.ts`, `kern/grundkoerper/ebene.ts`, `kern/grundkoerper/baumBau.ts`).
+  - Dünne Teile mitten am Rumpf als Verbindungsstück (Giraffe, Ente, S-Hals, Rückenflosse), dicke Teile im Rumpfstreifen
+    mit Enden durch das Kind (Vase: Rand → Boden), klar dünne Teile am Rumpfende mit Übergang 2:1 (Fisch-Schwanzlappen).
+    Ecken als Ringfalten, Fächer gespreizt, Punktzahl aus dem Umfang.
+  - **Im Editor als Geist:** Tafel Körper → „Körper (S5): Röhre | Teile (Geist)“ (`ausstattung.koerper`, ein Undo-Schritt);
+    Bühne und Blätter zeigen den Baum hellblau durchscheinend über dem heutigen Körper (nur ohne Maul und Beine).
+  - Messung (heute → Baum): Giraffe Falten 23 → 11°, Δ 18,8/8,5 → 1,9/1,8 px (alle Δ-Tore erfüllt); Vase Top 13,9 →
+    2,2 px, alle Zonen ≤ 11°; S-Hals 27 → 12°; Überhang 58 → 28°; Fisch 145 → 32°; Langhals/Drache etwa wie heute. Tabelle,
+    Tore und Grenzen auf der Planseite (S5), Befunde im Kritik-Register.
+  - Bilder: [`s5-baum-bogen-2026-10-16.jpg`](progress/editor/s5-baum-bogen-2026-10-16.jpg),
+    [`s5-baum-auslegung-2026-10-16.jpg`](progress/editor/s5-baum-auslegung-2026-10-16.jpg),
+    [`s5-baum-editor-bogen-2026-10-16.jpg`](progress/editor/s5-baum-editor-bogen-2026-10-16.jpg).
+- Prüfungen: Kern-Tests `baumKaefig.test.ts`, `baumBau.test.ts`; Skripte `apps/editor/scripts/pruefen/s5-mess.ts`
+  (Messreihe), `s5-bogen.ts` (Kontaktbogen), `s5-auslegung.ts` (2D-Auslegung), `s5-editor.mjs` (Editor, grün).
+  `pnpm typecheck` grün, Kern-Tests 440 (drei Tempo-Tests nur unter Parallellast rot, einzeln grün), Editor-Tests 25/25.
 
 ## Offen für Florian
 
+- **S5 ansehen:** Geist an eigenen Wesen (Tafel Körper → „Teile (Geist)“). Danach: S6 (seitliche Teile) oder erst die
+  S5-Reste (Y-Stück für Gabeln wie Überhang und Fischschwanz, Hohlkehlen, Übergang 2:1 höher am Hals)?
+- **Entenschwanz:** Die Zeichnungen verlangen eine senkrechte Klinge (Top 2–9 px breit, Seite 47 px hoch) — rund oder Klinge?
 - Mehrdeutige Ausbuchtungen (Rex-Schwanz und -Stirnwülste, Robbenkopf, Tiger-Schnauze, Vierbeiner-Kopf) — Teil oder nicht?
-- **Nächster Schritt (Florian: „dann S5“):** S5 Mittelebenen-Baum (Planseite S5).
 - **Angleichen** an alten Zeichnungen: Verhalten ok (die Ansicht mit dem Knopf führt)?
 
 ## Arbeitsregeln

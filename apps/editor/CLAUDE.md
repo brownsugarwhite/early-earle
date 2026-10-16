@@ -142,6 +142,17 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   - **Zebra nur mit Matcap**, Prüfansicht über `useKernAnzeige.getState().setzeLook('matcap')`.
   - **Markierungen „nur als Kante“/„anderes Teil“** (`WesenNetz.randMarken`, nur Front, nur genauer Bau; Stand und Ruhewerte merken sie wie den Widerspruch): Kandidaten kommen aus `rand.ts`, gezeigt wird nur, was die fertige Fläche wirklich verfehlt (`randStuecke` in `wesen.ts`) — die Vorlage allein unterschätzt den Ausgleich. Prüfskript `s3-editor.mjs` zählt `[data-kante]`/`[data-teil]`.
   - **Neue Wesen berühren schon** (`neuesWesen()`: glatt + fuelle mittel): Skripte, die von „aus“ aus vergleichen, nehmen `fuelle` aus der Ausstattung.
+- **Nachtrag 16.10. nachts — S5 „Mittelebenen-Baum“ (Geist), Fallen:**
+  - **Der Baum ist ein Geist, kein Ersatz:** `ausstattung.koerper = 'teile'` lässt den Worker im genauen Bau (ohne Maul und
+    Beine) zusätzlich `baumAbleiten` rechnen (`WesenNetz.geist`, gemerkt nach Bauschlüssel und eingefrorenen Teilen; während
+    Gesten der letzte Stand). Der heutige Körper bleibt bitgleich (Prüfung `scripts/pruefen/s5-editor.mjs`: Netz-Hash gleich).
+    Maul, Augen, Posen, Material laufen weiter auf der Röhre — der Einbau ist S7.
+  - **Puffer übertragen:** Der Geist geht als Kopie ins Netz (`slice()`), der Stand behält seine (`netzPuffer` überträgt).
+  - **Anzeige:** `Renderer3D.setzeGeist` (Matcap hellblau, durchscheinend, schreibt keine Tiefe, renderOrder 4) — Bühne und
+    Blätter zeigen ihn, weil sie dieselbe Szene rendern. Test-Haken `__editor.geist()`.
+  - **Messen ohne Paare:** S5 baut seitliche Paare nicht (S6); `blattAbweichungen(…, ausnahme)` mit `paarAusnahme(teilbaum)`
+    nimmt ihre Bereiche in Front/Top aus. Faltenmaß immer mit allen Zonen ansehen (Kante, Spitze) — eine Ecke ohne Ringfalte
+    versteckt sich sonst (Ente: 128° in „frei“ bzw. „Kante“).
 - **Nachtrag 16.10. abends — S4 „Teile erkennen“ (nur Anzeige), Fallen:**
   - **Skelett:** Zhang–Suen löscht schräge, zwei Zellen breite Linien ganz (Ente-Haken verschwand jeden dritten Zug) → für S4
     `skelett(…, 'lue-wang')` bzw. `seitlicheAeste` (Lü–Wang, ohne Beschneiden, Spitze = größter Überstand, nicht Endzelle:
