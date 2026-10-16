@@ -91,3 +91,11 @@ So wurde am 16.10. die Regression G2 gefunden (Florians Ablauf: neue Kugel → u
 | `vergleich/ablauf.mjs` (+ vorher `vergleich/maul-json.ts`) | Florians Ablauf im Editor: neue Kugel (Stationen frieren ein) → Schnabel mit Kerbe → Unterbiss-Maul; neue Kugel → Vase |
 | `vergleich/ablauf-kern.ts` | derselbe Ablauf im Kern mit Δ, Falten, Enden der Wirbelsäule |
 | `vergleich/bau.ts` | Library-Prüfwesen im Kern frisch und eingefroren bauen, Falten (`WESEN`) |
+
+## Nachtrag 16.10. vormittags: S0 (Plan „Liniennetz, Zielform, Käfig“)
+
+| Werkzeug | misst / zeigt |
+|---|---|
+| `grundkoerper-g.ts` | jetzt auch die S0-Körper (`einfach`, `einfach-glatt`, `ente-haken`, `vase`, `vierbeiner`, `zweihals`, `augenstiele`, `fluegel-oben`), Widersprüche rot auf der Linie, Falten nach Zonen im Text |
+| `s0-editor.mjs` (über `run-check.sh`) | lädt Prüfkörper im echten Editor (`laden`, Stationen frieren ein), hält Δ und Widerspruch je Blatt fest, Bild je Fall; `FAELLE`, `AUSGABE` |
+| Kern: `kern/pruefen/zonen.ts`, `kern/grundkoerper/huelle.ts` | Faltenmaß nach Zonen; Erreichbarkeit der Umrisse (Widerspruch je Probe in px), Säulen der Sichthülle |

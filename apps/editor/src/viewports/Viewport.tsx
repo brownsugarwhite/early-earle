@@ -44,6 +44,7 @@ function Lippen({ id }: { id: 'seite' | 'front' }) {
 /** Abweichung Körper ↔ Kurve des Blatts (Plan 9.8: Zahl im Titel; grün ≤ 2, ocker ≤ 6, sonst pink; px bei 461 px je Kachel). */
 function Delta({ id }: { id: 'seite' | 'front' | 'top' }) {
   const d = useKernAnzeige((s) => s.info?.blatt?.[id]?.max);
+  const wid = useKernAnzeige((s) => s.info?.blatt?.[id]?.widerspruch);
   const kern = useUi((s) => s.bauweise === 'kern');
   if (!kern || d === undefined) return null;
   const stufe = d <= 2 ? 'gut' : d <= 6 ? 'mittel' : 'schlecht';
@@ -52,6 +53,11 @@ function Delta({ id }: { id: 'seite' | 'front' | 'top' }) {
       <span className={`vp-delta ${stufe}`} data-delta={d.toFixed(1)} title="größte Abweichung zwischen Körper und Kurve in diesem Blatt (px bei 461 px je Kachel)">
         Δ {px(d)} px
       </span>
+      {wid !== undefined && wid > 1 && (
+        <span className="vp-widerspruch" data-widerspruch={wid.toFixed(1)} title="Widerspruch der Zeichnungen: Die beiden anderen Ansichten erlauben die rot markierten Stücke dieser Linie nicht — kein Körper kann sie treffen (px bei 461 px je Kachel)">
+          Widerspruch {px(wid)} px
+        </span>
+      )}
       {id !== 'top' && <Lippen id={id} />}
     </>
   );

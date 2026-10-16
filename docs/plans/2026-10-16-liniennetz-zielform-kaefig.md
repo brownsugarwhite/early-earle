@@ -294,3 +294,36 @@ gemessenen Fehlanläufen am selben Tor: anhalten, Kritik-Register, Bericht.
 ## Stand
 
 - **16.10. vormittags:** Plan freigegeben und ins Repo gelegt. Nächster Schritt S0 (Ausgangslage und ehrliches Maß).
+- **16.10. vormittags, S0 „Ausgangslage und ehrliches Maß“ gebaut und gemessen** (Abnahme offen):
+  - **Prüfsatz** (`kern/pruefen/grundkoerper.ts`, `S0_KOERPER`): Florians einfache Form aus Screenshot 2/3 (mit und ohne
+    Kerbe), Ente mit Flügelhaken aus Screenshot 1 (Library-Vorlage samt Spant S1, sein Top abgelesen), Vase aus der Kugel
+    mit Kopplung, dazu für S4 Vierbeiner, Zweihals, Augenstiele, Flügel über dem Rücken (Ausdehnungen gekoppelt wie im
+    Editor). Der heutige Bau stellt die Screenshots nach (einfache Form Front 21,7 / Top 77,5 px; Ente mit Haken Front
+    22,0 / Top 49,4 px).
+  - **Faltenmaß nach Zonen** (`kern/pruefen/zonen.ts`): Tor erfüllt (Zonen + neu Ausgenommenes = altes Maß, 9 Körper).
+    Rex 93° liegt an der gezeichneten Schnauzenspitze, freie Haut 20,3°; **Kappen sind die größte Faltenquelle** (einfache
+    Form 99°, Vase 172°, Ente 171°, Ente mit Haken 138°); echte Falten auf freier Haut: Robbe 25°/68, Langhals 23°/32
+    (Knick Hals → Kopf), Ente 58°/172, Ente mit Haken 58°/875.
+  - **Δ genau** aus den Silhouettenkanten des Netzes (`kern/abweichung.ts`, Standard jetzt genau, auch im Editor): Tor
+    erfüllt (genau ≤ Raster + 1 px, 16 Körper), Unterschiede ≤ 0,6 px — das Raster war brauchbar, Tore von 1–2 px sind jetzt
+    belastbar.
+  - **Erreichbarkeit / Widersprüche** (`kern/grundkoerper/huelle.ts`): Tor erfüllt (künstlicher Widerspruch zu 100 % erkannt,
+    stimmige Kugel ohne Fehlalarm). Befunde (Widerspruch / Δ in px):
+
+    | Körper | Seite | Front | Top | Lesart |
+    |---|---|---|---|---|
+    | Ente mit Haken (Screenshot 1) | 1,2 / 2,2 | 7,1 / 22,0 | **36,7 / 49,4** | Kopf im Top breiter, als die Glocke der Front in seiner Höhe erlaubt — der „eingedrückte Kopf“ ist vor allem ein Widerspruch der Zeichnung |
+    | Einfache Form (Screenshot 2) | 1,8 / 0,4 | 7,7 / 21,7 | 0,7 / 77,5 | Front 7,7 px breiter als das Top; Raute (≈ 14 px) und Kerbe (77 px) sind Baufehler |
+    | Rex | 0,5 / 1,3 | 6,0 / 11,1 | 0,0 / 1,2 | 6 von 11 px Front sind Widerspruch |
+    | Robbe, Giraffe mit Bauch, Vierbeiner, Zweihals, Augenstiele, Flügel oben | ≈ 0 | ≈ 0 | ≈ 0 | ganzes Δ ist Baufehler |
+  - **Im Editor:** Titel „Δ … · Widerspruch … px“ und die nicht erreichbaren Stücke rot unter der schwarzen Linie
+    (`viewports/View2D.tsx`, `Viewport.tsx`, Worker `WesenNetz.widerspruch`); geprüft mit
+    `apps/editor/scripts/pruefen/s0-editor.mjs` (eigener Vite 5192): Zahlen wie im Kern.
+  - **Bilder:** [`s0-ausgangslage-2026-10-16.jpg`](../progress/editor/s0-ausgangslage-2026-10-16.jpg) (16 Körper, Widersprüche
+    rot, Zonen im Text), [`s0-editor-ente-haken-2026-10-16.jpg`](../progress/editor/s0-editor-ente-haken-2026-10-16.jpg),
+    [`s0-editor-einfach-2026-10-16.jpg`](../progress/editor/s0-editor-einfach-2026-10-16.jpg),
+    [`s0-editor-rex-2026-10-16.jpg`](../progress/editor/s0-editor-rex-2026-10-16.jpg).
+  - **Folgen für die nächsten Schritte:** S2 muss die Kappen einschließen (größte Faltenquelle); die Look-Entscheidung in S3
+    betrifft auch Widersprüche (welche Ansicht gewinnt, wenn zwei sich widersprechen); der Kopf der Ente wird erst rund und
+    zugleich genau, wenn Florian Front oder Top an dieser Stelle anpasst.
+  - Nächster Schritt nach Florians Blick: S1 (Liniennetz-Ansicht).

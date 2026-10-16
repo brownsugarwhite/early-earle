@@ -18,6 +18,7 @@ import { DESKRIPTOR_FLOATS, deskriptoren } from './deskriptoren';
 import { kastenSpanten } from './kasten';
 import { ringSegmente } from './reifen';
 import { blattAbweichungen } from './abweichung';
+import { erreichbarkeit } from './grundkoerper/huelle';
 import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
 import { anwenden3 } from '../subdivision/matrix';
 import { spantKasten, spantTeilProfil, vorlageBei } from '../spanten';
@@ -145,8 +146,11 @@ export type WesenInfo = {
   zug: number;
   ecken: number;
   schnell: boolean;
-  /** Abweichung Körper ↔ Kurve je Blatt (px bei 461 px je Kachel; Plan „Zeichnung ist Form“, Schritt 4), nach echter Ableitung */
-  blatt?: Record<'seite' | 'front' | 'top', { max: number; mittel: number }>;
+  /**
+   * Abweichung Körper ↔ Kurve je Blatt (px bei 461 px je Kachel; Plan „Zeichnung ist Form“, Schritt 4), nach echter Ableitung;
+   * `widerspruch` = größter Widerspruch der Zeichnungen in diesem Blatt (S0, 16.10.: kein Körper kann ihn unterbieten)
+   */
+  blatt?: Record<'seite' | 'front' | 'top', { max: number; mittel: number; widerspruch?: number }>;
   /** wirksame Stationen (Schritt 3): das Dokument friert sie ein, danach wird nur noch nachgezogen */
   stationen?: GefroreneStationen;
   /** Abweichung der Lippenketten von den Linien (Phase 2 M2, px): rote Oberlippe, blaue Unterkieferkante; `versatz` = versetzter Kiefer */
@@ -248,6 +252,11 @@ export type WesenNetz = {
   poseTop: PoseSeite | null;
   /** Saum je Blatt (Schritt 4): Silhouettenpunkte des Körpers (x, y, d px), (NaN, NaN, 0) trennt Züge; wird kopiert, nicht übertragen */
   saum: Record<'seite' | 'front' | 'top', Float32Array> | null;
+  /**
+   * Widersprüche der Zeichnungen je Blatt (Plan „Liniennetz, Zielform, Käfig“, S0): Tripel (x, y, w) je Probe der
+   * gezeichneten Linie in Blattkoordinaten (Welt), w = Widerspruch in px (0 = erreichbar); (NaN, NaN, 0) trennt Züge
+   */
+  widerspruch: Record<'seite' | 'front' | 'top', Float32Array> | null;
   /** Front/Top: Umweg der schwarzen Linie über einen breiteren Kiefer (Paare x, y; NaN trennt), sonst fehlt das Blatt */
   umweg: { front?: Float32Array; top?: Float32Array } | null;
   info: WesenInfo;
@@ -264,6 +273,7 @@ export type WesenStand = {
   klingen: KlingenStand | null;
   /** letzte Blatt-Abweichung (Schritt 4), während Gesten weiterverwendet */
   saum?: WesenNetz['saum'];
+  widerspruch?: WesenNetz['widerspruch'];
   umweg?: WesenNetz['umweg'];
   blatt?: WesenInfo['blatt'];
   /** B7: zuletzt gerechnete Zusatz-Umrisse mit ihrem Schlüssel (Körper, Pinsel, Posen, Anfrage) */
@@ -272,7 +282,7 @@ export type WesenStand = {
    * B7: Werte der Ruhelage, die nicht an den Gewichten hängen (Naht, Δ je Blatt, Lippenabweichung, Ruhe je Ecke) — ein
    * reiner Gewichtswechsel (Vorschau, Überblenden, Abspielen) rechnet sie nicht neu
    */
-  ruheWerte?: { schluessel: string; naht: { max: number; mittel: number }; saum: WesenNetz['saum']; umweg: WesenNetz['umweg']; blatt: WesenInfo['blatt']; maulAbw: MaulAbweichung | undefined; ruhe: Float32Array | null; desk: Float32Array | null };
+  ruheWerte?: { schluessel: string; naht: { max: number; mittel: number }; saum: WesenNetz['saum']; widerspruch?: WesenNetz['widerspruch']; umweg: WesenNetz['umweg']; blatt: WesenInfo['blatt']; maulAbw: MaulAbweichung | undefined; ruhe: Float32Array | null; desk: Float32Array | null };
 };
 
 const PX = 461;
@@ -1123,6 +1133,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
   const ab = ruheAlt ? ruheAlt.naht : nahtAbweichung(abl, dok);
   // Abweichung je Blatt (Schritt 4) aus der Ruhelage ohne Hebung, nur nach einer echten Ableitung; Züge zeigen den letzten Stand
   let saum = ruheAlt ? ruheAlt.saum : (stand?.saum ?? null);
+  let widerspruch = ruheAlt ? (ruheAlt.widerspruch ?? null) : (stand?.widerspruch ?? null);
   let umweg = ruheAlt ? ruheAlt.umweg : (stand?.umweg ?? null);
   let blatt = ruheAlt ? ruheAlt.blatt : stand?.blatt;
   if (!ruheAlt && (!schnell || !blatt)) {
@@ -1133,7 +1144,20 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     const bl = blattAbweichungen(ruheP, flaechen, dok, 240, kiefer);
     saum = { seite: bl.seite.saum, front: bl.front.saum, top: bl.top.saum };
     umweg = bl.front.umweg || bl.top.umweg ? { ...(bl.front.umweg ? { front: bl.front.umweg } : {}), ...(bl.top.umweg ? { top: bl.top.umweg } : {}) } : null;
-    blatt = { seite: { max: bl.seite.max, mittel: bl.seite.mittel }, front: { max: bl.front.max, mittel: bl.front.mittel }, top: { max: bl.top.max, mittel: bl.top.mittel } };
+    // Widersprüche der Zeichnungen (S0, 16.10.): je Probe der Linie, ob die beiden anderen Ansichten sie erlauben
+    const er = erreichbarkeit(dok);
+    const tripel = (e: (typeof er)['seite']) => {
+      const out: number[] = [];
+      e.punkte.forEach((q, i) => out.push(q.x, q.y, e.widerspruch[i]!));
+      if (e.punkte.length) out.push(e.punkte[0]!.x, e.punkte[0]!.y, e.widerspruch[0]!, NaN, NaN, 0);
+      return Float32Array.from(out);
+    };
+    widerspruch = { seite: tripel(er.seite), front: tripel(er.front), top: tripel(er.top) };
+    blatt = {
+      seite: { max: bl.seite.max, mittel: bl.seite.mittel, widerspruch: er.seite.max },
+      front: { max: bl.front.max, mittel: bl.front.mittel, widerspruch: er.front.max },
+      top: { max: bl.top.max, mittel: bl.top.mittel, widerspruch: er.top.max },
+    };
   }
   // Lippenkanten gegen die Linien (Phase 2 M2): px je Kette in Seite und Front
   const maulAbw = ruheAlt ? ruheAlt.maulAbw : maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul && maulLinieVerwendet ? maulAbweichung(abl as MaulErgebnis, dok, maulLinieVerwendet) : undefined;
@@ -1157,7 +1181,7 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     if (ruhe.length !== t.positionen.length) ruhe = null;
   }
   // Ruhewerte nur nach einem genauen Bau merken (während einer Geste sind Saum und Δ der letzte Stand, nicht der aktuelle)
-  const ruheWerte: WesenStand['ruheWerte'] = ruheAlt ?? (schnell ? undefined : { schluessel: ruheSchluessel, naht: ab, saum, umweg, blatt, maulAbw, ruhe: ruheMerkbar && ruhe ? ruhe.slice() : null, desk: deskMerkbar && desk ? desk.slice() : null });
+  const ruheWerte: WesenStand['ruheWerte'] = ruheAlt ?? (schnell ? undefined : { schluessel: ruheSchluessel, naht: ab, saum, widerspruch, umweg, blatt, maulAbw, ruhe: ruheMerkbar && ruhe ? ruhe.slice() : null, desk: deskMerkbar && desk ? desk.slice() : null });
   // Zähne am Zahnfleisch des posierten Käfigs (Phase 2 M4): aus dem Dokument oder die Automatik, Werte für offen mit der Öffnung
   let zaehne: WesenNetz['zaehne'] = null;
   if (maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul) {
@@ -1372,10 +1396,11 @@ export function wesenBauen(dokRoh: Dokument, planRoh: Partial<Bauplan>, stand: W
     poseFront,
     poseTop,
     saum,
+    widerspruch,
     umweg,
     info,
   };
-  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
+  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
 }
 
 /** Puffer eines Netzes (zum Übertragen aus dem Worker). */

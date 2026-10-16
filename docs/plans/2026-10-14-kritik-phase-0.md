@@ -226,3 +226,19 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
 
 - **Regression G2 (behoben, 00681e29):** Seit G2 (15.10. 22:35) fror der Editor beim ersten Bau der Startkugel auch die Enden der Wirbelsäule ein. Nach dem Umformen oder dem Zeichnen eines Mauls (andere Knotenzahl) wurde das alte Ende „in der Nähe“ gesucht und lag an der Kerbe statt an der Schnabelspitze: Florians Schnabel mit Unterbiss Seite Δ 32 px, Prüfreihe „Unterbiss Florian“ mit eingefrorener Startkugel Δ 20 px und 822 Durchdringungen statt Δ 0,8 px und 0; seine Vase aus der Kugel mit der Wirbelsäule quer durch den Körper. Jetzt: mit Maul wie vor G2 (bitgleich, 20 Fälle), ohne Maul Enden nur, solange sie die Form tragen. Meine erste Prüfung meldete fälschlich „keine Regression“, weil sie nur frische Bauten und Library-Körper verglich. **Regel:** Jede neue Automatik mit Florians Ablauf prüfen (Kugel bauen, Stationen frieren ein, dann umformen, Knoten einfügen, Maul zeichnen; `KUGEL0=1`, `mitStationenVon`, Editor-Ablauf `ablauf.mjs`).
 - **Sichtbare Falten, die schon vorher da waren** (gemessen am heutigen Stand, faltenMass Stufe 3, Kanten über 20°): Langhals-Nacken (Knick Hals → Kopf) 23°, 32 Kanten; Rex 93°, 77; Robbe 34°, 118; Ente/Überhang 68°, 669; Kugel mit kleinem Maul (Kiefer gleich) Haut 46° geschlossen; Schnabel mit Unterbiss (Florians Ablauf) Haut 177°, 268 Durchdringungen. Das sind Fehler, keine Ausgangswerte. Wege: Maul als Einsatz (Teil A) in den Editor, Knick als eigenes Glied (Plan „Formgerechte Topologie“).
+
+## Befunde aus S0 (Plan „Liniennetz, Zielform, Käfig“, 16.10. vormittags, eigene Befunde)
+
+- **„Rex 93°“ ist überwiegend die gezeichnete Schnauzenspitze:** Das alte Faltenmaß zählte die Kanten um eine Spitze mit
+  Punktschärfe (ein Kegel aus vier Flächen) und halbscharfe Kanten als Falten. Nach Zonen: freie Haut 20,3°, Spitze 40,6°,
+  Kappe 25,1°. → Gilt ab jetzt: Falten nach Zonen messen (`kern/pruefen/zonen.ts`), Tore auf der freien Haut.
+- **Kappen sind die größte Faltenquelle** der heutigen Röhre: einfache Form 99°, Vase 172°, Ente 171°, Ente mit Haken 138°
+  (flache oder breite Enden mit c × c-Kappe). → S2 (glatte Haut) muss die Kappen einschließen; S5 legt Enden neu aus.
+- **Der „eingedrückte Kopf“ (Florians Screenshot 1) ist vor allem ein Widerspruch der Zeichnungen:** Im Top ist der Kopf
+  gleich hinter dem Schnabel breit, die Front (Glocke aus Hals und Körper) erlaubt in dieser Höhe nur einen schmalen Kopf —
+  bis 36,7 px. Kein Körper kann beides treffen; der heutige Bau drückt den Kopf still auf die Front. → Der Editor markiert
+  Widersprüche jetzt rot; welche Ansicht gewinnt, gehört zur Look-Entscheidung in S3.
+- **Rex Front 11,1 px:** davon 6,0 px Widerspruch zwischen Front und Top (die Front ist an der Schulter breiter als das Top),
+  der Rest Baufehler. **Langhals:** Seite 3,7 px höher als die Front (Library-Vorlage ohne Kopplung), sichtbar im Front-Δ.
+- **Robbe, Giraffe mit Bauch, Vierbeiner, Zweihals, Augenstiele, Flügel oben:** kein Widerspruch — ihr ganzes Δ (10–74 px)
+  ist Baufehler der einen Röhre.

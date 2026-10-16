@@ -17,6 +17,8 @@ import { faltenMass, feinesNetz } from '../../../../packages/shape/src/kern/prue
 import { G_KOERPER, type GKoerper, S0_KOERPER, type S0Koerper, gKoerperDokument, s0KoerperDokument } from '../../../../packages/shape/src/kern/pruefen/grundkoerper';
 import { koerperDokument } from '../../../../packages/shape/src/kern/pruefen/koerper';
 import { zufall } from '../../../../packages/shape/src/kern/pruefen/zufall';
+import { faltenNachZonenRoehre } from '../../../../packages/shape/src/kern/pruefen/zonen';
+import { erreichbarkeit } from '../../../../packages/shape/src/kern/grundkoerper/huelle';
 
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const AUSGABE = process.env.AUSGABE ?? resolve(WURZEL, 'apps/editor/pruefen-ausgabe');
@@ -99,16 +101,30 @@ for (const name of liste) {
   const tri: number[] = [];
   for (const fl of flaechen) for (let k = 1; k + 1 < fl.length; k++) tri.push(fl[0]!, fl[k]!, fl[k + 1]!);
   const soll = (a: 'seite' | 'front' | 'top') => pfadAbtasten(vollerPfad(dok.profile[a]), 24).flatMap((p) => [p.x * sk, p.y * sk]);
-  const text = `<b>${name}</b> · Seite Δ ${d.seite.max.toFixed(1)} px · Front Δ ${d.front.max.toFixed(1)} px · Top Δ ${d.top.max.toFixed(1)} px · Falten ${f.max.toFixed(1)}° (über 20°: ${f.ueber20}) · ${zeit.toFixed(0)} ms`;
+  // S0 (16.10.): Widersprüche der Zeichnungen (rot auf der Linie) und Falten nach Zonen (nur die Röhre des Rumpfs)
+  const er = erreichbarkeit(dok);
+  const widerspruchZug = (a: 'seite' | 'front' | 'top') => {
+    const out: number[] = [];
+    const e = er[a];
+    e.punkte.forEach((q, i) => {
+      if (e.widerspruch[i]! > 1) out.push(q.x, a === 'top' ? -q.y : q.y);
+      else out.push(1e9, 1e9);
+    });
+    return out;
+  };
+  const zo = baumAeste.length || (abl as Partial<TeilErgebnis>).gesteckt?.length ? null : faltenNachZonenRoehre(abl);
+  const zonenText = zo ? (['frei', 'kappe', 'spitze', 'kante'] as const).filter((z) => zo.zonen[z].kanten).map((z) => `${{ frei: 'freie Haut', kappe: 'Kappe', spitze: 'Spitze', kante: 'Kante' }[z]} ${zo.zonen[z].max.toFixed(0)}°/${zo.zonen[z].ueber20}`).join(', ') : '';
+  const w = (a: 'seite' | 'front' | 'top') => (er[a].max > 1 ? ` <span style="color:#d81b43">(Widerspruch ${er[a].max.toFixed(1)})</span>` : '');
+  const text = `<b>${name}</b> · Seite Δ ${d.seite.max.toFixed(1)}${w('seite')} · Front Δ ${d.front.max.toFixed(1)}${w('front')} · Top Δ ${d.top.max.toFixed(1)}${w('top')} px · Falten ${f.max.toFixed(1)}° (über 20°: ${f.ueber20})${zonenText ? ` — nach Zonen: ${zonenText}` : ''} · ${zeit.toFixed(0)} ms`;
   zeilen.push(`${name}: Seite ${d.seite.max.toFixed(1)} px, Front ${d.front.max.toFixed(1)} px, Top ${d.top.max.toFixed(1)} px, Falten ${f.max.toFixed(1)}° (>20°: ${f.ueber20}), ${zeit.toFixed(0)} ms`);
-  faelle.push({ name, text, daten: { pos: b64(pos), tri: b64(Uint32Array.from(tri)), seite: soll('seite'), front: soll('front'), top: soll('top'), wirbel, sprossen } });
+  faelle.push({ name, text, daten: { pos: b64(pos), tri: b64(Uint32Array.from(tri)), seite: soll('seite'), front: soll('front'), top: soll('top'), wirbel, sprossen, wid: [widerspruchZug('seite'), widerspruchZug('front'), widerspruchZug('top')] } });
 }
 
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>
 body{margin:10px;font:13px/1.35 -apple-system,Helvetica,sans-serif;background:#f4efe6;color:#222}
 .fall{margin:0 0 12px}.reihe{display:flex;gap:6px}canvas{background:#fff;border:1px solid #d8cfc0}h1{font-size:16px;margin:0 0 6px}
 </style></head><body><h1>${TITEL} · Abnahme offen</h1>
-<div style="margin-bottom:8px">je Körper: Seite · Front · Top (orthografisch; schwarz = gezeichneter Umriss, grün = Wirbelsäule, grau = Sprossen der Ringe) · schräg · Δ = größte Abweichung Körper ↔ Zeichnung (px bei 461 je Kachel)</div>
+<div style="margin-bottom:8px">je Körper: Seite · Front · Top (orthografisch; schwarz = gezeichneter Umriss, rot = Widerspruch der Zeichnungen, grün = Wirbelsäule, grau = Sprossen der Ringe) · schräg · Δ = größte Abweichung Körper ↔ Zeichnung (px bei 461 je Kachel); Falten nach Zonen: größter Winkel/Kanten über 20°</div>
 ${faelle.map((f, k) => `<div class="fall"><div>${f.text}</div><div class="reihe">${[0, 1, 2, 3].map((v) => `<canvas id="c${k}_${v}" width="300" height="300"></canvas>`).join('')}</div></div>`).join('\n')}
 <script>
 const FAELLE = ${JSON.stringify(faelle.map((f) => f.daten))};
@@ -170,6 +186,7 @@ FAELLE.forEach((F, k) => {
     }
     ctx.putImageData(img, 0, 0);
     const zug = (pts, farbe, breite, zu) => { ctx.strokeStyle = farbe; ctx.lineWidth = breite; ctx.beginPath(); let neu = true; for (let i = 0; i < pts.length; i += 2) { if (!(Math.abs(pts[i]) < 1e8)) { neu = true; continue; } const x = ox + s * pts[i], y = oy - s * pts[i + 1]; if (!neu) ctx.lineTo(x, y); else ctx.moveTo(x, y); neu = false; } if (zu) ctx.closePath(); ctx.stroke(); };
+    if (v < 3 && F.wid) zug(F.wid[v], 'rgba(255,59,92,0.6)', 7, false);
     for (const z of zeich) zug(z, 'rgba(0,0,0,0.85)', 1.5, v === 0);
     if (v === 0) {
       ctx.globalAlpha = 0.5; for (const sp of F.sprossen) zug([sp[0], sp[1], sp[3], sp[4]], '#666', 1, false); ctx.globalAlpha = 1;

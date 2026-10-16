@@ -197,6 +197,14 @@ button {
 .vp-delta.schlecht {
   color: #ff5c9a;
 }
+/* Widerspruch der Zeichnungen (Plan „Liniennetz, Zielform, Käfig“, S0): Zahl im Titel, rote Stücke unter der Linie */
+.vp-widerspruch {
+  margin-left: 8px;
+  font-size: 12px;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  letter-spacing: 0.02em;
+  color: var(--widerspruch);
+}
 /* Lippenkanten gegen Rot und Blau (Phase 2 M2), nur in der Stufe Maul */
 .vp-lippen {
   margin-left: 8px;
@@ -219,6 +227,7 @@ button {
 }
 :root {
   --saum: #ffd54a;
+  --widerspruch: #ff3b5c;
 }
 .view2d .saum {
   pointer-events: none;

@@ -59,6 +59,8 @@ import { aktuellesNetz, useKernAnzeige } from '../kern/kernBau';
 
 /** Saum ab dieser Abweichung (px bei 461 px je Kachel; Plan 9.8) */
 const SAUM_AB = 2;
+/** Widerspruch der Zeichnungen ab dieser Größe markieren (px; Plan „Liniennetz, Zielform, Käfig“, S0) */
+const WIDERSPRUCH_AB = 1;
 import { abtasten3, maulAnfangIndizes, umrissMitSpalt, versetzt3 } from '@ee/shape/versuch';
 
 const PUNKT_R = 5; // Ø 10 px (Florian, 11.10.)
@@ -129,6 +131,25 @@ export function View2D({ ansicht, w, h }: Props) {
         continue;
       }
       const q = zuBild(view, w, h, spiegeln2(blick, { x, y: saum[i + 1]! }));
+      d += `${offen ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
+      offen = true;
+    }
+    return d;
+  })();
+  // Widersprüche der Zeichnungen (S0, 16.10.): Stücke der Linie, die die beiden anderen Ansichten nicht erlauben — dort
+  // kann kein Körper die Linie treffen; rot unter der schwarzen Linie
+  const widerspruch = useKernAnzeige((s) => (s.info?.blatt ? (aktuellesNetz()?.netz.widerspruch?.[ansicht] ?? null) : null));
+  const widerspruchPfad = (() => {
+    if (!widerspruch || widerspruch.length < 6) return '';
+    let d = '';
+    let offen = false;
+    for (let i = 0; i + 2 < widerspruch.length; i += 3) {
+      const x = widerspruch[i]!;
+      if (!Number.isFinite(x) || widerspruch[i + 2]! <= WIDERSPRUCH_AB) {
+        offen = false;
+        continue;
+      }
+      const q = zuBild(view, w, h, spiegeln2(blick, { x, y: widerspruch[i + 1]! }));
       d += `${offen ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
       offen = true;
     }
@@ -534,6 +555,7 @@ export function View2D({ ansicht, w, h }: Props) {
         </g>
       ) : (
         <>
+          {widerspruchPfad && !poseBlattAnzeige && <path className="widerspruch" data-widerspruch="" d={widerspruchPfad} fill="none" stroke="var(--widerspruch)" strokeWidth={9} strokeOpacity={0.5} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
           {profil.art === 'halb' && (poseBlattAnzeige ? <path d={pfad(gespiegelteSegmente(profil), false)} fill="none" stroke="var(--kurve-spiegel)" strokeOpacity={0.55} strokeWidth={1.5} strokeDasharray="5 4" pointerEvents="none" /> : <path d={pfad(gespiegelteSegmente(profil), false)} fill="none" stroke="var(--kurve-spiegel)" strokeWidth={KONTUR} strokeLinejoin="round" />)}
           {spalt && maulZu?.unten && !poseSeiteAnzeige ? (
             <g data-maulspalt="">

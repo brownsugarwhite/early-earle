@@ -1,4 +1,4 @@
-# Übergabe (Stand 16.10.2026 vormittags: Plan „Liniennetz, Zielform, Käfig“ freigegeben, S0 läuft)
+# Übergabe (Stand 16.10.2026 vormittags: Plan „Liniennetz, Zielform, Käfig“ freigegeben, S0 gebaut, Halt für Florian)
 
 Branch `claude/editor-grundlayout`.
 
@@ -19,7 +19,10 @@ Gesamtplan (Teile A, H, G, B, L) und Kritik-Register bleiben gültig:
   grün); G2-Reparatur aktiv.
 - **Im Editor** unverändert: eine Wirbelsäule je Wesen (24 × 16), alter Maulbau, Kantenlinien als Treppe (auf der alten
   Versuchsfläche S0 gesetzt — wird in S1 behoben), Reifen, Posen B1–B7.
-- **Läuft:** S0 (Prüfkörper aus Florians Fällen, Faltenmaß nach Zonen, Δ genau aus der Kontur, Widersprüche markieren).
+- **S0 gebaut und gemessen (Abnahme offen):** Prüfsatz aus Florians Screenshots (`S0_KOERPER`), Faltenmaß nach Zonen,
+  Δ genau aus den Silhouettenkanten (Standard), Erreichbarkeit/Widersprüche aus der Sichthülle; **im Editor** neu: Titel
+  „Widerspruch … px“ und rote Stücke unter der schwarzen Linie. Befunde und Bilder: Planseite, Abschnitt Stand.
+- **Nächster Schritt:** Florians Blick auf S0, dann S1 (Liniennetz-Ansicht).
 
 ## Arbeitsregeln
 
