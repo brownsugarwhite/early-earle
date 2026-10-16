@@ -38,7 +38,7 @@ export function zielUnterteilung(k: Kaefig): Unterteilung {
 }
 
 /** Zielfläche: Röhrengitter und Grenzpunkte der alten Fläche auf Stufe ZIEL_STUFE. */
-function zielFlaeche(basis: EinpassBasis): { g: RoehrenGitter; fein: Float64Array } {
+export function zielFlaeche(basis: EinpassBasis): { g: RoehrenGitter; fein: Float64Array } {
   const { R, N } = basis.vorlage;
   if (basis.unterteilung.stufen.length >= ZIEL_STUFE) return { g: roehrenGitter(basis.unterteilung, R, N, basis.kaefig.n), fein: basis.fein };
   const u = zielUnterteilung(basis.kaefig);
@@ -66,7 +66,7 @@ const jetzt = () => (uhr ? uhr.now() : Date.now());
 
 
 /** Ringe zusätzlicher Freiheit neben dem Bereich, in dem das Gleitfeld wirkt (dort bewegt sich nichts, die Punkte lösen mit) */
-const RAND_RINGE = 2;
+export const RAND_RINGE = 2;
 /** Gewicht der Reihe quer zur Linie in der Haut (gegen 1 für die Form senkrecht zur Haut) */
 const GEWICHT_REIHE = 100;
 // Gemessene Einstellung (Messreihe 15.10. nachts, Plan Teil L, Stand L0.1): Gewicht längs der Haut (die Verteilung des
@@ -94,7 +94,7 @@ const einheit = (a: V3): V3 => {
 };
 
 /** Normale der Fläche bei (u, v) aus dem Röhrengitter (Mittendifferenzen). */
-function normaleBei(g: RoehrenGitter, fein: ArrayLike<number>, u: number, v: number): V3 {
+export function normaleBei(g: RoehrenGitter, fein: ArrayLike<number>, u: number, v: number): V3 {
   const h = 0.5 / g.teil;
   const su = minus(flaecheBei(g, fein, Math.min(g.R - 1, u + h), v), flaecheBei(g, fein, Math.max(0, u - h), v));
   const sv = minus(flaecheBei(g, fein, u, v + h), flaecheBei(g, fein, u, v - h));
@@ -102,7 +102,7 @@ function normaleBei(g: RoehrenGitter, fein: ArrayLike<number>, u: number, v: num
 }
 
 /** Nächster Punkt eines Polygonzugs und die Richtung des Stücks dort. */
-function naechsterAufZug(zug: readonly V3[], p: V3): { q: V3; t: V3 } {
+export function naechsterAufZug(zug: readonly V3[], p: V3): { q: V3; t: V3 } {
   let best = Infinity;
   let q: V3 = zug[0]!;
   let t: V3 = einheit(minus(zug[1]!, zug[0]!));
@@ -123,7 +123,7 @@ function naechsterAufZug(zug: readonly V3[], p: V3): { q: V3; t: V3 } {
 }
 
 /** Gewichtsmatrix (3 × 3, zeilenweise): stark senkrecht zur Haut, schwach längs (W = λ·I + (1 − λ)·n nᵀ). */
-function formGewicht(n: V3): number[] {
+export function formGewicht(n: V3): number[] {
   const l = GEWICHT_TANGENTE;
   return [l + (1 - l) * n[0] * n[0], (1 - l) * n[0] * n[1], (1 - l) * n[0] * n[2], (1 - l) * n[1] * n[0], l + (1 - l) * n[1] * n[1], (1 - l) * n[1] * n[2], (1 - l) * n[2] * n[0], (1 - l) * n[2] * n[1], l + (1 - l) * n[2] * n[2]];
 }
@@ -132,7 +132,7 @@ function formGewicht(n: V3): number[] {
  * Gewichtsmatrix der Reihe: stark quer zur Linie in der Haut (b = n × t), senkrecht zur Haut wie die Form (die Linie liegt
  * auf der Haut; ihr Abstand zur Fläche ist Messrauschen), längs der Linie schwach: W = w·b bᵀ + n nᵀ + λ·t tᵀ.
  */
-function reihenGewicht(tRoh: V3, n: V3): number[] {
+export function reihenGewicht(tRoh: V3, n: V3): number[] {
   const tn = tRoh[0] * n[0] + tRoh[1] * n[1] + tRoh[2] * n[2];
   const t = einheit([tRoh[0] - tn * n[0], tRoh[1] - tn * n[1], tRoh[2] - tn * n[2]]);
   const b = kreuz(n, t);
@@ -143,10 +143,12 @@ function reihenGewicht(tRoh: V3, n: V3): number[] {
   return W;
 }
 
-const PUNKT_GEWICHT = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+export const PUNKT_GEWICHT = [1, 0, 0, 0, 1, 0, 0, 0, 1];
 
 /** Gewicht der Linienknoten im Gleitfeld (gegen die Glätte) */
-const GEWICHT_FELD_LINIE = 1e4;
+export const GEWICHT_FELD_LINIE = 1e4;
+/** Knoten des Gleitfelds je Käfigkante (Messreihen über `versuchSetzen`) */
+export const feldTeilung = (): number => FELD_TEILUNG;
 
 /**
  * Gleitfeld δ(u, v) der rechten Hälfte: Werte auf einem Gitter mit FELD_TEILUNG Knoten je Käfigkante (Ring u, Reihe
@@ -369,8 +371,7 @@ export function reiheEinpassen(basis: EinpassBasis, linie: NetzLinie): Einpassun
   // x/y (rechts + links) und z (rechts − links), bekannter Anteil, Art (Kappe, Reihe, Form) und Röhrenkoordinaten
   const G = basis.unterteilung.grenze;
   const nF = G.start.length - 1;
-  type Zeile = { f: number; ein: { k: number; xy: number; z: number }[]; fest: V3; art: 'kappe' | 'reihe' | 'form'; u: number; v: number; q: V3; W: number[] };
-  const zeilen: Zeile[] = [];
+  const zeilen: AusgleichZeile[] = [];
   for (let f = 0; f < nF; f++) {
     const uf = g.u[f]!;
     const vf = g.v[f]!;
@@ -400,13 +401,46 @@ export function reiheEinpassen(basis: EinpassBasis, linie: NetzLinie): Einpassun
     if (Math.abs(vf - j) < 1e-9 && uf >= uVon - 1e-9 && uf <= uBis + 1e-9) {
       const vl = vLinie(uf);
       const q = flaecheBei(gz, alt, uf, vl);
-      zeilen.push({ f, ein, fest, art: 'reihe', u: uf, v: vl, q, W: reihenGewicht(naechsterAufZug(linie.punkte, q).t, normaleBei(gz, alt, uf, vl)) });
+      zeilen.push({ f, ein, fest, art: 'linie', u: uf, v: vl, q, W: reihenGewicht(naechsterAufZug(linie.punkte, q).t, normaleBei(gz, alt, uf, vl)) });
       continue;
     }
     const v2 = vf + feld(uf, vf);
     zeilen.push({ f, ein, fest, art: 'form', u: uf, v: v2, q: flaecheBei(gz, alt, uf, v2), W: formGewicht(normaleBei(gz, alt, uf, v2)) });
   }
+  const X = ausgleichGleiten(zeilen, { D, M, nachbarn, naht, rechts, bezug }, linie, gz, alt);
+  const xyz = new Float64Array(X0);
+  for (let i = iA; i <= iB; i++)
+    for (let jj = 0; jj <= N / 2; jj++) {
+      const r = basis.vorlage.ringPunkt(i, jj);
+      const k = spalte[r]!;
+      xyz[3 * r] = X[3 * k]!;
+      xyz[3 * r + 1] = X[3 * k + 1]!;
+      if (naht[r]) continue;
+      xyz[3 * r + 2] = X[3 * k + 2]!;
+      const l = basis.vorlage.ringPunkt(i, N - jj);
+      xyz[3 * l] = X[3 * k]!;
+      xyz[3 * l + 1] = X[3 * k + 1]!;
+      xyz[3 * l + 2] = -X[3 * k + 2]!;
+    }
+  const fein = anwenden3(G, xyz);
+  return { xyz, fein, j, uVon, uBis, vLinie, feld, aufHaut, zeit: jetzt() - t0 };
+}
+
+/** Gleichung je feinem Punkt: Beiwerte je Unbekannte (x/y gemeinsam, z mit Vorzeichen der Hälfte), bekannter Anteil, Art,
+ * Röhrenkoordinaten des Ziels, Ziel und Gewichtsmatrix. */
+export type AusgleichZeile = { f: number; ein: { k: number; xy: number; z: number }[]; fest: V3; art: 'kappe' | 'linie' | 'form'; u: number; v: number; q: V3; W: number[] };
+
+/** Unbekannte des Ausgleichs: Anzahl (D = 3·M), Nachbarn je Unbekannte, Nahtpunkte, Käfigindizes, Bezugskäfig. */
+export type AusgleichSystem = { D: number; M: number; nachbarn: number[][]; naht: Uint8Array; rechts: number[]; bezug: Float64Array };
+
+/**
+ * Lösen und Gleiten (gemeinsam für Reihe und Ring): Normalgleichungen der Zeilen, Glätte als Laplace der Abweichung vom
+ * Bezugskäfig, Cholesky in der Hülle; danach GLEITEN Durchgänge mit Zielen auf dem nächsten Punkt der alten Fläche bzw. der
+ * Linie. Liefert die Unbekannten (3 je Punkt der rechten Hälfte).
+ */
+export function ausgleichGleiten(zeilen: AusgleichZeile[], s: AusgleichSystem, linie: NetzLinie, gz: RoehrenGitter, alt: Float64Array): Float64Array {
   // Normalgleichungen (dicht, Unbekannte nach Ringen geordnet → Hülle schmal) und Cholesky in der Hülle
+  const { D, M, nachbarn, naht, rechts, bezug } = s;
   const loesen = (): Float64Array => {
     const A = new Float64Array(D * D);
     const b = new Float64Array(D);
@@ -480,7 +514,7 @@ export function reiheEinpassen(basis: EinpassBasis, linie: NetzLinie): Einpassun
     }
     return y;
   };
-  const lage = (z: Zeile, X: Float64Array): V3 => {
+  const lage = (z: AusgleichZeile, X: Float64Array): V3 => {
     const p: V3 = [z.fest[0], z.fest[1], z.fest[2]];
     for (const e of z.ein) {
       p[0] += e.xy * X[3 * e.k]!;
@@ -490,12 +524,12 @@ export function reiheEinpassen(basis: EinpassBasis, linie: NetzLinie): Einpassun
     return p;
   };
   let X = loesen();
-  // Gleiten: Ziele auf den nächsten Punkt der alten Fläche (Form) bzw. der Linie (Reihe), Gewichte neu
+  // Gleiten: Ziele auf den nächsten Punkt der alten Fläche (Form) bzw. der Linie, Gewichte neu
   for (let it = 0; it < GLEITEN; it++) {
     for (const z of zeilen) {
       if (z.art === 'kappe') continue;
       const p = lage(z, X);
-      if (z.art === 'reihe') {
+      if (z.art === 'linie') {
         // nächster Linienpunkt, auf die alte Fläche gelegt; Richtung der Linie dort
         const l = naechsterAufZug(linie.punkte, p);
         const n = naechsterAb(gz, alt, l.q, z.u, z.v, 3);
@@ -513,22 +547,7 @@ export function reiheEinpassen(basis: EinpassBasis, linie: NetzLinie): Einpassun
     }
     X = loesen();
   }
-  const xyz = new Float64Array(X0);
-  for (let i = iA; i <= iB; i++)
-    for (let jj = 0; jj <= N / 2; jj++) {
-      const r = basis.vorlage.ringPunkt(i, jj);
-      const k = spalte[r]!;
-      xyz[3 * r] = X[3 * k]!;
-      xyz[3 * r + 1] = X[3 * k + 1]!;
-      if (naht[r]) continue;
-      xyz[3 * r + 2] = X[3 * k + 2]!;
-      const l = basis.vorlage.ringPunkt(i, N - jj);
-      xyz[3 * l] = X[3 * k]!;
-      xyz[3 * l + 1] = X[3 * k + 1]!;
-      xyz[3 * l + 2] = -X[3 * k + 2]!;
-    }
-  const fein = anwenden3(G, xyz);
-  return { xyz, fein, j, uVon, uBis, vLinie, feld, aufHaut, zeit: jetzt() - t0 };
+  return X;
 }
 
 /** Feine Punkte der Reihe j zwischen den Ringen i und i + 1 (Röhrengitter, v = j). */

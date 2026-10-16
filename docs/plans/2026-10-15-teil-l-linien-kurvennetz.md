@@ -122,3 +122,14 @@ Im Planmodus wurde nur recherchiert und Code gelesen. **Die Tests sind Schritt L
     3. **Sichtbar:** Hinter dem Linienende knickt die Reihe zurück in ihre Lage (schräge Kugellinie); die Fläche bleibt dabei glatt (Falten 3,7° → 3,7°).
   - **Bild:** [`docs/progress/editor/l0-linie-als-reihe-2026-10-15.jpg`](../progress/editor/l0-linie-als-reihe-2026-10-15.jpg) (Cel-Stufen wie im Earle-Look, Käfigschleifen auf der Haut, Reihe rot, Linie blau).
   - **Nächster Schritt:** Nach Florians Auftrag (Nacht 15./16.10.: „außer den Konturlinien besonders die Grundform … danach B6, immer weiter“) geht es mit Teil G weiter; L0-Fälle 2–6 (Kreuzung und Knick, Querschnitt aus Linien, steil, ohne Springen, Pose) und die Verdichtung folgen mit L1 in B6.
+- **16.10. früh, L0 Fall 4 (steil) erster Teil: „Querlinie wird Ring“ gebaut und gemessen** (Abnahme offen): `kern/netz/ringEinpassen.ts` — L0.1 mit vertauschten Rollen: Eine Linie von der oberen zur unteren Kontur ist im Röhrengitter eine Kurve u_L(v); der Ring i* gleitet in u darauf. Gleitfeld δ_u als dünne Platte, 0 an den Endringen, an den Nähten gespiegelt (der Ring läuft über die Konturen, seine Nahtpunkte gleiten längs der Kontur); Bezugskäfig gleitet längs der Reihen. Der Löser (Normalgleichungen, Glätte, Gleiten) ist aus `reiheEinpassen` herausgelöst und gemeinsam (`ausgleichGleiten`; L0.1 danach bitgleich in allen Zahlen). Gemessen (`ringEinpassen.test.ts`):
+
+  | Fall | Ring auf der Linie (vorher) | Haut | Normalen | Tor |
+  |---|---|---|---|---|
+  | Kugel senkrecht durch die Mitte | 0,16 px (5,6) | 0,05 px | 0,82° | Ring ✓ Haut ✓ Normalen ✓ |
+  | Kugel schräg | 0,14 px (25,0) | 0,17 px | 1,93° | Ring ✓ Haut ✓ Normalen ✗ |
+  | Ei, Bogen | 0,11 px (9,6) | 0,16 px | 1,48° | Ring ✓ Haut ✓ Normalen ✗ |
+  | Langhals quer zum Hals (Sprosse eines Halsrings) | 0,04 px (1,1) | 0,03 px | 2,08° | Ring ✓ Haut ✓ Normalen ✗ |
+  | Langhals steil (25° gegen die Sprosse) | 0,07 px (5,9) | 0,22 px | 6,57° | Ring ✓ Haut ✓ Normalen ✗ |
+
+  Befund wie bei L0.1: Der Ring liegt immer genau auf der Linie, die Haut bleibt unter 0,25 px; die Normalen schräger Linien liegen über 1° (Auflösung des Käfigs bei gescherter Verteilung). Am Langhals hat schon A0 am Hals Seitenverhältnis 21 und Falten 23°. Offen in Fall 4: Panzerrand rundum (Längsschleife durch die Kappen).
