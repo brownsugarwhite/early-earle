@@ -10,6 +10,7 @@ import type { Dokument } from '../../../../packages/shape/src/dokument';
 import { pfadAbtasten, vollerPfad } from '../../../../packages/shape/src/profil';
 import { ableiten, kernLeiter, zugBei } from '../../../../packages/shape/src/kern/ableiten';
 import { type TeilErgebnis, ableitenMitTeilen } from '../../../../packages/shape/src/kern/grundkoerper/teilBau';
+import { baumTeile } from '../../../../packages/shape/src/kern/grundkoerper/baum';
 import { alleFlaechen } from '../../../../packages/shape/src/kaefig/halbkanten';
 import { blattAbweichungen } from '../../../../packages/shape/src/kern/abweichung';
 import { faltenMass, feinesNetz } from '../../../../packages/shape/src/kern/pruefstand';
@@ -38,8 +39,14 @@ for (const name of liste) {
   const sk = dok.skalierung;
   const t0 = performance.now();
   let abl: ReturnType<typeof ableiten>;
+  // BAUM=1 (G4 neu, Schritt 2): Rumpf und Äste der Seite getrennt, die Äste als eigene Netze dazu
+  let baumAeste: ReturnType<typeof ableiten>[] = [];
   try {
-    abl = process.env.TEILE ? ableitenMitTeilen(dok, { stufen: 3 }, process.env.TEILE === 'angesteckt' ? 'angesteckt' : 'verschmolzen') : ableiten(dok, { stufen: 3 });
+    if (process.env.BAUM) {
+      const b = baumTeile(dok, { stufen: 3 });
+      abl = b.rumpf;
+      baumAeste = b.aeste;
+    } else abl = process.env.TEILE ? ableitenMitTeilen(dok, { stufen: 3 }, process.env.TEILE === 'angesteckt' ? 'angesteckt' : 'verschmolzen') : ableiten(dok, { stufen: 3 });
   } catch (e) {
     zeilen.push(`${name}: Bau scheitert (${(e as Error).message})`);
     faelle.push({ name, text: `<b>${name}</b> · Bau scheitert: ${(e as Error).message}`, daten: null });
@@ -49,6 +56,12 @@ for (const name of liste) {
   const netz0 = feinesNetz(abl);
   const punkte = [...netz0.punkte];
   const flaechen = [...netz0.flaechen];
+  for (const a of baumAeste) {
+    const o = punkte.length;
+    const na = feinesNetz(a);
+    for (const p of na.punkte) punkte.push(p);
+    for (const f of na.flaechen) flaechen.push(f.map((i) => i + o));
+  }
   // angesteckte Teile: ihre feinen Netze anhängen (für Δ und Bild)
   for (const g of (abl as Partial<TeilErgebnis>).gesteckt ?? []) {
     const o = punkte.length;
@@ -57,19 +70,28 @@ for (const name of liste) {
   }
   const d = blattAbweichungen(punkte, flaechen, dok);
   const f = faltenMass(abl);
-  const l = kernLeiter(dok);
-  const wirbel: number[] = [];
-  for (const p of l.paare) {
-    const o = zugBei(l.ruecken, p.a);
-    const u = zugBei(l.bauch, p.b);
-    wirbel.push((o.x + u.x) / 2, (o.y + u.y) / 2, 0);
+  for (const a of baumAeste) {
+    const fa = faltenMass(a);
+    if (fa.max > f.max) f.max = fa.max;
+    f.ueber20 += fa.ueber20;
   }
-  // Ringe der Seite (Käfig-Ringe auf der Haut, rechte Hälfte): je Station die Sprosse
-  const sprossen: number[][] = abl.stationen.map((s) => {
-    const o = zugBei(l.ruecken, s.a);
-    const u = zugBei(l.bauch, s.b);
-    return [o.x, o.y, 0, u.x, u.y, 0];
-  });
+  // Wirbelsäulen und Sprossen je Teil (Rumpf und Äste, je mit seinem eigenen Seitenumriss)
+  const wirbel: number[] = [];
+  const sprossen: number[][] = [];
+  for (const a of [abl, ...baumAeste]) {
+    const l = kernLeiter(a.dok ?? dok);
+    for (const p of l.paare) {
+      const o = zugBei(l.ruecken, p.a);
+      const u = zugBei(l.bauch, p.b);
+      wirbel.push((o.x + u.x) / 2, (o.y + u.y) / 2, 0);
+    }
+    wirbel.push(1e9, 1e9, 0); // Trenner (JSON kennt kein NaN)
+    for (const s of a.stationen) {
+      const o = zugBei(l.ruecken, s.a);
+      const u = zugBei(l.bauch, s.b);
+      sprossen.push([o.x, o.y, 0, u.x, u.y, 0]);
+    }
+  }
   const pos = new Float32Array(punkte.length * 3);
   punkte.forEach((p, i) => pos.set(p, 3 * i));
   const tri: number[] = [];
@@ -145,7 +167,7 @@ FAELLE.forEach((F, k) => {
       }
     }
     ctx.putImageData(img, 0, 0);
-    const zug = (pts, farbe, breite, zu) => { ctx.strokeStyle = farbe; ctx.lineWidth = breite; ctx.beginPath(); for (let i = 0; i < pts.length; i += 2) { const x = ox + s * pts[i], y = oy - s * pts[i + 1]; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); } if (zu) ctx.closePath(); ctx.stroke(); };
+    const zug = (pts, farbe, breite, zu) => { ctx.strokeStyle = farbe; ctx.lineWidth = breite; ctx.beginPath(); let neu = true; for (let i = 0; i < pts.length; i += 2) { if (!(Math.abs(pts[i]) < 1e8)) { neu = true; continue; } const x = ox + s * pts[i], y = oy - s * pts[i + 1]; if (!neu) ctx.lineTo(x, y); else ctx.moveTo(x, y); neu = false; } if (zu) ctx.closePath(); ctx.stroke(); };
     for (const z of zeich) zug(z, 'rgba(0,0,0,0.85)', 1.5, v === 0);
     if (v === 0) {
       ctx.globalAlpha = 0.5; for (const sp of F.sprossen) zug([sp[0], sp[1], sp[3], sp[4]], '#666', 1, false); ctx.globalAlpha = 1;
