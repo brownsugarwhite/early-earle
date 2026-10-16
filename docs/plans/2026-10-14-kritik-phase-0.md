@@ -342,3 +342,19 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
   geneigten Ringen wandert der Punkt längs der Sprosse auch in x (Rex/Robbe nach oben 15–20 px Rest). Starkes Verziehen
   faltet (Robbe 36–91°), und ohne mitgehende Front widerspricht der Griff der Front-Zeichnung (Kugel). → Als
   3D-Bedingung im Löser (Breitenlinie mit Tangente) zusammen mit S5 bauen.
+
+## Befunde aus S4 „Teile erkennen“ (16.10. abends, eigene Befunde)
+
+- **Einordnung nicht ganz zugfest:** 4 von 1428 Zügen (< 10 px, 30 Schritte) springen hin und her, 17 wechseln einmal — alle
+  an kleinen Grenz-Wülsten (Rex-Stirnwülste, Drachen-Halsverbreiterung, Vierbeiner-Schulter, Kastenkinn). Weg: Mindestgröße
+  eines Teils relativ zum Körper oder Florians Regel, was ein Teil ist (S4-Bestätigung).
+- **Mehrdeutige Ausbuchtungen als „erlaubt“ eingetragen**, nachdem die Kandidaten zu sehen waren (Rex-Schwanz und
+  -Stirnwülste, Robbenkopf, Tiger-Schnauze, Vierbeiner-Kopf, Flügelansatz der Library-Ente) — Florian entscheidet sie.
+- **Paar aus nur einer Ansicht** füllt in den anderen Ansichten die volle Hülle (Spitzen der einfachen Form decken in der
+  Seite die hintere Hälfte); die Dicke müsste aus der Form kommen (S6) oder Florian zeichnet sie (verdecktes Stück als Kurve).
+- **Mittelteile in Front/Top blockig** (Raster der Hülle, ≈ 2 px) und z. T. zu breit (die Hülle am Halsansatz ist so breit
+  wie die Glocke der Front) — Anzeige, keine Geometrie.
+- **Skelett:** Zhang–Suen löscht schräge Linien von zwei Zellen Breite; Beschneiden misst gegen den zufälligen Abzweig;
+  flache Wülste bilden je nach Rasterlage keinen Ast. Für S4 umgangen (Lü–Wang, seitliche Äste ohne Beschneiden, Mitnehmen
+  an der eingefrorenen Sehne); die Seite nutzt noch das Beschneiden (in den Zügen stabil, aber dieselbe Anfälligkeit).
+- **Nicht gebaut:** Klick macht ein verdecktes Stück zu einer eigenen Kurve (`dok.teile`) — nach Florians Bestätigung.

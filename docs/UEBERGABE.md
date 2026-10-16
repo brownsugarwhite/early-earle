@@ -1,4 +1,4 @@
-# Übergabe (Stand 16.10.2026 abends: S2 und S3 Teil 1–2 gebaut — glatte Haut und Front berühren sind Standard für neue Wesen; Halt für Florian)
+# Übergabe (Stand 16.10.2026 abends: S4 „Teile erkennen“ gebaut — nur Anzeige; Halt für Florians Bestätigung der Einordnung)
 
 Branch `claude/editor-grundlayout`.
 
@@ -11,59 +11,46 @@ darüber“, Schritte S0–S8 mit Toren, Stand je Schritt). Vorgeschichte:
 [`docs/plans/2026-10-16-einstieg-falten-wirbelsaeulen-linien.md`](plans/2026-10-16-einstieg-falten-wirbelsaeulen-linien.md).
 Gesamtplan und Kritik-Register bleiben gültig:
 [`docs/plans/2026-10-15-maul-einsatz-harmonie-posen.md`](plans/2026-10-15-maul-einsatz-harmonie-posen.md),
-[`docs/plans/2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md) (neu: „Befunde aus S2“).
+[`docs/plans/2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md) (neu: „Befunde aus S4“).
 
 ## Letzter Stand
 
-- **S0, S1, S1c** gebaut (Widersprüche rot, genaues Δ, Faltenmaß nach Zonen; Liniennetz in allen Blättern, derselbe Punkt
-  überall, Kopplung jedes Punkts, Punkte einfügen nur wenn nötig, Stil „netz farbe“).
-- **S2 „Glatte Haut“ gebaut** (Kern und Editor):
-  - Dünn besetzter Löser (`loeser/normalSystem.ts`) = dichte LU auf ≤ 3e-13.
-  - Glättungsmaß relativ zur Zielform (Laplace der Stufe 2, nur die Abweichung vom Käfig der Ziele), Kappen × 10,
-    Naht 64: Voreinstellung `GLATTE_HAUT` in `kern/ableiten.ts`.
-  - Im Editor: Tafel Körper → „Haut heute | glatt“ (`dok.ausstattung.glatt`, ein Undo-Schritt, fehlt = heute bitgleich);
-    wirkt ohne Maul und Beine, mit Maul/Beinen Hinweis in der Tafel.
-  - Ergebnis: Rex, Robbe, Langhals freie Haut 10,7–14,5° (heute bis 176°), Kappen 8–12°; Kappen der einfachen Form
-    96–99° → 14–15°, Vase 172° → 13°; kein Körper auf der freien Haut schlechter.
-  - **Nicht erfüllt** (angehalten, Kritik-Register): Front von Vase (+4,4 px) und Giraffe (+5,5–6,4 px), S-Hals-Top
-    (+1–1,8 px), Robbenschnauze aus der Startkugel (+0,9 px) — die Wellen hatten die Silhouette zufällig nach außen
-    gedrückt; gehört zu S3. Fernfeld unverändert (S5), Fisch-Volumen +4,4–4,9 % (S6).
-  - Bilder: [`s2-glatte-haut-editor-2026-10-16.jpg`](progress/editor/s2-glatte-haut-editor-2026-10-16.jpg),
-    [`s2-glatte-haut-kern-2026-10-16.jpg`](progress/editor/s2-glatte-haut-kern-2026-10-16.jpg).
-- Prüfungen: `kern/glatt.test.ts`, `loeser/normalSystem.test.ts`, Messreihe `apps/editor/scripts/pruefen/s2-glatt.ts`,
-  Editor `s2-editor.mjs` grün, `netz-d.mjs` mit `GLATT=1`; `pnpm typecheck` grün, `pnpm test` grün bis auf vier
-  Tempo-Tests unter Last (einzeln grün), `pnpm lint` ohne Fehler.
+- **S0–S3** gebaut (Widersprüche rot, Liniennetz in allen Blättern, Kopplung jedes Punkts, glatte Haut, Front berühren;
+  „glatt“ und „Umrisse berühren: mittel“ sind Standard für neue Wesen). Einzelheiten und Tore auf der Planseite.
+- **S4 „Teile erkennen“ gebaut (nur Anzeige, Abnahme offen):**
+  - Kern `packages/shape/src/kern/grundkoerper/teilbaum.ts`: Rumpf = dickste Stelle der Seite; Äste der Seite als Gabel
+    (Flossen, beide Schwanzlappen), Knick (Hals) oder Stiel (Vasenhals, Augenstiele, Schwanz mit Taille); Mitte oder Paar über
+    die Säulen der Sichthülle; seitliche Paare aus Front und Top. Ein Teil braucht eine Kehle am Ansatz (Seitenäste der
+    Seite beidseitig). Hysterese 15 %, Sehnen als Kurvenparameter eingefroren (`kaefig.stationen.teile`), vom Skelett
+    verlorene Teile an der Sehne mitgenommen, Richtung aus dem Umriss der tragenden Ansicht.
+  - Ansichten `kern/grundkoerper/teilAnsicht.ts`: welches Teil man je Blatt sieht, verdeckte Teilumrisse (Seite, Front,
+    Back, Top, Bottom). Worker: `WesenNetz.teile` im genauen Bau; das Zurückschreiben des eingefrorenen Stands baut den
+    Körper nicht neu und ist kein Undo-Schritt.
+  - Editor: Tafel Körper oben „Teile (S4, nur Anzeige)“ mit Baumliste und Schalter aus | an; Flächen je Teil, verdeckte
+    Umrisse gestrichelt, Wirbelsäulen mit Knoten in allen Blättern; Zeiger hebt ein Teil überall hervor
+    (`apps/editor/src/teile/`).
+  - Tore: Prüfsatz **25 von 25** wie von Hand eingeordnet (mehrdeutige Ausbuchtungen als „erlaubt“ — nachträglich
+    eingetragen, Florian entscheidet sie); Züge: 17 von 1428 mit einem Wechsel, 4 hin und her, alle an kleinen Grenz-Wülsten
+    (ohne Hysterese 97/75) — Tor nicht ganz erfüllt; Erkennung 7–23 ms, Ansichten weitere 13–20 ms.
+  - Nicht gebaut: verdecktes Stück per Klick als eigene Kurve (`dok.teile`) — nach Florians Bestätigung.
+  - Bilder: [`s4-teile-editor-2026-10-16.jpg`](progress/editor/s4-teile-editor-2026-10-16.jpg),
+    [`s4-teile-kern-2026-10-16.jpg`](progress/editor/s4-teile-kern-2026-10-16.jpg),
+    [`s4-teile-ansichten-2026-10-16.jpg`](progress/editor/s4-teile-ansichten-2026-10-16.jpg).
+- Prüfungen: `kern/grundkoerper/teilbaum.test.ts` (Prüfsatz, Einfrieren, Hysterese, kein Flackern), Prüfsatz
+  `kern/pruefen/teilsatz.ts`, Skripte `apps/editor/scripts/pruefen/teile-s4.ts` (Kandidaten), `teile-ansichten.ts`,
+  `teile-zuege.ts` (Zugprüfung, `OHNE=1` zum Vergleich), Editor `teile-editor.mjs` (grün). `pnpm typecheck` grün, Kern-Tests
+  427/427, Editor-Tests 25/25, Lint ohne Befund. Das Ausdünnen im Skelett ist bitgleich 8-mal schneller.
 
-- **S3 Look-Entscheidung vorbereitet (Test):** Fülle der Querschnitte rund | mittel | genau (`kern/fuelle.ts`, Option
-  `fuelle`, ohne Schalter bitgleich; im Editor Tafel Körper → „Fülle (S3-Versuch)“, nur ohne Maul/Beine). Einfache Form:
-  Front 21,9 → 9,2 (mittel) / 8,9 px (genau), 4,5 px davon Widerspruch; Rex mit „genau“ kastig (+12 % Volumen, Top +2,8 px);
-  Robbe mit „mittel“ flacher Bauch (ein Knick 21°). Empfehlung: mittel. Bilder
-  [`s3-fuelle-editor-2026-10-16.jpg`](progress/editor/s3-fuelle-editor-2026-10-16.jpg),
-  [`s3-fuelle-kern-2026-10-16.jpg`](progress/editor/s3-fuelle-kern-2026-10-16.jpg).
+## Entschieden (16.10.)
 
-- **S3 Teil 1 „Front berühren“ gebaut** (Florian: „mach weiter“ → Fülle mittel): `kern/rand.ts`, Tafel Körper → „Umrisse
-  berühren aus | rund | mittel | genau“ (`ausstattung.fuelle`, fehlt = heute). Deine Form Front 21,9 → 8,3 px (4,5
-  Widerspruch), Vase 13,7 → 2,3, Rex 10,3 → 7,3, Robbe 8,5 → 6,3; Kugel/Ei/Birne gleich. Angehalten am Falten-Tor
-  (Langhals/Drache +1,3 bis 3,3°, Ente aus der Startkugel schlechter). Bilder
-  [`s3-beruehren-editor-2026-10-16.jpg`](progress/editor/s3-beruehren-editor-2026-10-16.jpg),
-  [`s3-beruehren-kern-2026-10-16.jpg`](progress/editor/s3-beruehren-kern-2026-10-16.jpg). Noch offen von S3: Breitenlinie als
-  Griff, Intervalle in `breite.ts`, Markierung „nur als Kante“.
-
-- **S3 Teil 2:** Berühren (mittel) ist Standard für neue Wesen; das Front-Blatt markiert, was nur als Kante erreichbar ist
-  (orange) und wo die Front ein anderes Teil verlangt (violett). Bild
-  [`s3-markierung-2026-10-16.jpg`](progress/editor/s3-markierung-2026-10-16.jpg). Die Breitenlinie als Griff ist versucht
-  und zurückgestellt (Ringe verziehen ist der falsche Hebel, gehört als 3D-Bedingung zu S5; Planseite S3).
-
-## Entschieden (16.10. nachmittags/abends)
-
-- **„glatt“ und „Umrisse berühren: mittel“ sind Standard für neue Wesen** (Startkugel, „Neu“; `neuesWesen()` im
-  Editor-Store). Gespeicherte Wesen, Vorlagen und Prüfwesen behalten ihre Einstellung.
+- „glatt“ und „Umrisse berühren: mittel“ sind Standard für neue Wesen.
 
 ## Offen für Florian
 
+- **S4 bestätigen:** Liest die Einordnung deine Zeichnungen richtig (Mitte/Paar, was ein Teil ist)? Mehrdeutige Fälle:
+  Rex-Schwanz und -Stirnwülste, Robbenkopf, Tiger-Schnauze, Vierbeiner-Kopf — Teil oder nicht?
+- Danach: Rest von S4 (verdecktes Stück als eigene Kurve) und S5 (Mittelebenen-Baum, Breitenlinie als 3D-Bedingung).
 - **Angleichen** an alten Zeichnungen: Verhalten ok (die Ansicht mit dem Knopf führt)?
-- **Nächster Schritt nach Plan:** S4 „Teile erkennen“ (nur Anzeige; Florian bestätigt die Einordnung an eigenen
-  Zeichnungen, bevor Geometrie darauf gebaut wird), dann S5 (Mittelebenen-Baum, mit der Breitenlinie als 3D-Bedingung).
 
 ## Arbeitsregeln
 

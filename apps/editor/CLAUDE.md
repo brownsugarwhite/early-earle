@@ -142,6 +142,21 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   - **Zebra nur mit Matcap**, Prüfansicht über `useKernAnzeige.getState().setzeLook('matcap')`.
   - **Markierungen „nur als Kante“/„anderes Teil“** (`WesenNetz.randMarken`, nur Front, nur genauer Bau; Stand und Ruhewerte merken sie wie den Widerspruch): Kandidaten kommen aus `rand.ts`, gezeigt wird nur, was die fertige Fläche wirklich verfehlt (`randStuecke` in `wesen.ts`) — die Vorlage allein unterschätzt den Ausgleich. Prüfskript `s3-editor.mjs` zählt `[data-kante]`/`[data-teil]`.
   - **Neue Wesen berühren schon** (`neuesWesen()`: glatt + fuelle mittel): Skripte, die von „aus“ aus vergleichen, nehmen `fuelle` aus der Ausstattung.
+- **Nachtrag 16.10. abends — S4 „Teile erkennen“ (nur Anzeige), Fallen:**
+  - **Skelett:** Zhang–Suen löscht schräge, zwei Zellen breite Linien ganz (Ente-Haken verschwand jeden dritten Zug) → für S4
+    `skelett(…, 'lue-wang')` bzw. `seitlicheAeste` (Lü–Wang, ohne Beschneiden, Spitze = größter Überstand, nicht Endzelle:
+    Lü–Wang lässt zwei Zellen breite Enden). Das Beschneiden misst gegen den Abzweig, an dem das Ablaufen gerade endet — ein
+    Ast kommt und geht mit winzigen Nebenspuren. Die Versuche (baum, knoten) bleiben bei Zhang–Suen (bitgleich).
+  - **Hysterese braucht Wiederfinden ohne Skelett:** Ein flacher Wulst bildet je nach Rasterlage keinen Ast; eingefrorene
+    Teile werden deshalb an ihrer Sehne (Kurvenparameter) mitgenommen, solange sie dort 0,85 ihrer Höhe herausragen. Die
+    Richtung (oben/unten/vorn/hinten/seitlich) nur aus dem Umriss der tragenden Ansicht — gemittelt oder aus der Wirbelsäule
+    kippte sie, wenn ein Kandidat kam und ging.
+  - **Eingefrorene Teile ändern den Körper nicht:** `kaefig.stationen.teile` ist nicht im Bauschlüssel (`stationenOhneTeile`
+    in `wesen.ts`); `kernBauen` schreibt `info.stationen` samt Teilen zurück (kein Undo-Schritt), der nächste Bau ist ein
+    Treffer im Stand.
+  - **Anzeige:** `src/teile/TeilEbene.tsx` (Flächen unter allem, im Umriss beschnitten; Wirbelsäulen über der schwarzen Linie,
+    unter den Knoten, Zeiger nur auf den Wirbelsäulen — Flächen fangen keine Klicks), `TeilTafel.tsx`; nur Bauweise Kern,
+    Grundform, Stufe Körper, `ui.teileSicht` an. Test-Haken `__editor.teile()`, Prüfung `scripts/pruefen/teile-editor.mjs`.
 - **Nachtrag 16.10. nachmittags — „glatt“ Standard für neue Wesen:** `neuesWesen()` (Editor-Store, Start und „Neu“); Skripte, die von „heute“ aus vergleichen, setzen `ausstattung: {}` (siehe `s2-editor.mjs`).
 - **Nachtrag 16.10. morgens — Regression G2 (eingefrorene Enden), Falle:** Der Editor friert nach dem ersten Bau der Startkugel die Stationen samt Enden der Wirbelsäule ein. Eine neue Automatik, die eingefrorene Werte nutzt, muss mit genau diesem Ablauf geprüft werden: Kugel bauen, dann umformen, Knoten einfügen, Maul zeichnen (Prüfreihe `KUGEL0=1`, `mitStationenVon`; Editor-Ablauf per Playwright: neue Kugel abwarten, `setzeProfile`, `setzeMaul`). „Altes Ende in der Nähe suchen“ nach einer Knotenzahl-Änderung setzte das Ende an die Kerbe statt an die Schnabelspitze (Δ 34 px). Mit Maul gelten wieder vorderster/hinterster Punkt (`endenFuer`), ohne Maul eingefrorene Enden nur, solange sie die Form tragen (`endenTragen`). Regressionsverdacht: Editor-Stände über Arbeitsbäume vergleichen (eigene Ports, `node_modules` des Editors per `rsync -a` kopieren, damit `@ee/shape` auf den Arbeitsbaum zeigt).
 - **Nachtrag 16.10. früh — B7 Posen & Leben, Fallen:**

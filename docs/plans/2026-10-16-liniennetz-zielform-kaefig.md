@@ -582,3 +582,52 @@ gemessenen Fehlanläufen am selben Tor: anhalten, Kritik-Register, Bericht.
   - **Tore S3** (Stand): einfache Form Front 8,0–8,3 px (4,5 Widerspruch, Rest orange markiert), Top 6,3 px (Ecken hinten
     nur als Kante), Seite 0,3 px; kein Library-Körper schlechter um > 0,5 px; Falten Langhals/Drache +1,3–3,3° (offen,
     S5); Zug ≤ 7 ms; Breitenpunkt am Zeiger — nicht gebaut (s. o.).
+- **16.10. abends, S4 „Teile erkennen“ gebaut (nur Anzeige; Florian: „kannst weiter mit s4 machen“; Abnahme offen):**
+  - **Kern** (`kern/grundkoerper/teilbaum.ts`): Rumpf = dickste Stelle der Seite. Äste der Seite als **Gabel** des
+    Skeletts (Flossen; endet der Rumpf in einer Gabel, sind beide Schwanzlappen Äste), **Knick** der Rumpfachse (Hals auf dem
+    Körper, eine Kehle genügt) oder **Stiel** (gerade, beidseitig eine Kehle: Vasenhals, Augenstiele, Schwanz mit Taille).
+    **Mitte oder Paar** sagen die Säulen der Sichthülle längs des Asts (≥ 50 % seitlich = Paar: Beine, zwei Hälse,
+    Augenstiele, Flügel über dem Rücken). **Seitliche Paare** aus Front und Top (`seitlicheAeste`: Spitze = größter
+    Überstand aus dem Kreis der Achse), über ihre Spannen in x/y/z zu einem Teil verbunden. Ein Ast zählt nur als Teil, wenn er
+    eine Ausbuchtung ist: dünner als 0,6 des Rumpfs, mindestens so weit herausragend wie dick, mit einer Kehle (Mulde unter
+    der konvexen Hülle) am Ansatz — Seitenäste der Seite auf beiden Seiten (sonst wurde die Kinnecke der Tiger-Kastenschnauze
+    ein Teil). Elternteil = Mittelteil, dessen Umriss den Ansatz enthält.
+  - **Hysterese 15 %:** neue Teile brauchen 1,15 ihrer Schwellen, vorhandene bleiben bis 0,85; die Sehnen sind als
+    Kurvenparameter eingefroren (`kaefig.stationen.teile`, wie die Enden); wiedergefunden über Sehnenmitte oder Spitze,
+    Kennungen nach Nähe; findet das Skelett ein vorhandenes Teil gar nicht (ein flacher Wulst bildet beim Ausdünnen je nach
+    Rasterlage keinen Ast), bleibt es an seiner Sehne, solange es dort noch 0,85 seiner Höhe herausragt. Die Richtung kommt
+    aus dem Umriss der tragenden Ansicht, ebenfalls mit Hysterese. Das Zurückschreiben baut den Körper nicht neu (Bauschlüssel
+    ohne Teile) und ist kein Undo-Schritt.
+  - **Ansichten** (`kern/grundkoerper/teilAnsicht.ts`): je Blatt (Seite, Front, Back, Top, Bottom) welches Teil man sieht
+    (Strahlen durch die Hülle: ein Punkt gehört einem Paar, wenn er in allen Ansichten, die das Paar zeigen, in dessen Umriss
+    liegt, sonst dem Mittelteil seines Seitenumrisses) und wo Teilumrisse verdeckt liegen (gestrichelt, z. B. die Beine im Top,
+    der Hals unter dem Bauch im Bottom).
+  - **Im Editor:** Tafel Körper oben „Teile (S4, nur Anzeige)“ mit Baumliste (Rumpf, darunter „Mitte nach oben“, „Paar nach
+    unten“ … und in welcher Ansicht erkannt) und Schalter aus | an; in allen Blättern Flächen je Teil, verdeckte Teilumrisse
+    gestrichelt, Wirbelsäulen dünn mit Knoten; Zeiger über einer Wirbelsäule oder einem Listeneintrag hebt das Teil überall
+    hervor. Prüfung `apps/editor/scripts/pruefen/teile-editor.mjs` (eigener Vite 5192, Florians Ablauf: Startkugel →
+    Umrisse übernommen): alles grün.
+  - **Tore:**
+
+    | Tor | Ergebnis |
+    |---|---|
+    | ≥ 19 von 20 von Hand eingeordneten Körpern richtig | **25 von 25** (`kern/pruefen/teilsatz.ts`, Test `teilbaum.test.ts`): u. a. Flügel über dem Rücken = Paar, Vierbeiner = zwei Beinpaare, zwei Hälse = Paar, Augenstiele = Paar, Fisch = vier Mittelteile + Brustflossen, deine einfache Form = Spitzen als Paar, ohne Kerbe nichts. **Ehrlich:** Bei mehrdeutigen Ausbuchtungen (Rex-Schwanz und -Stirnwülste, Robbenkopf, Tiger-Schnauze, Vierbeiner-Kopf, Flügelansatz der Library-Ente) habe ich „erlaubt, keine Pflicht“ eingetragen, nachdem ich die Kandidaten gesehen hatte — die entscheidest du |
+    | kein Wechsel der Einordnung in 30-Schritt-Zügen < 10 px | **nicht ganz:** 1428 Züge (25 Körper, Knoten aller drei Zeichnungen, vier Richtungen): 17 mit einem Wechsel (1,2 %), davon 4 hin und her (0,3 %) — alle an kleinen Grenz-Wülsten (Rex-Stirnwülste, Drachen-Halsverbreiterung, Vierbeiner-Schulter, Kastenkinn), die beim Ziehen wirklich entstehen oder verschwinden. Hälse, Beine, Flügel, Flossen und Schwänze wechselten in keinem Zug. Ohne Hysterese: 97 mit Wechsel, 75 hin und her (`teile-zuege.ts`) |
+    | ≤ 30 ms | Erkennung 7–23 ms (Median 10), im Worker 12–19 ms unter Last; die Ansichten für die Anzeige kosten weitere 13–20 ms, nur im genauen Bau |
+
+  - **Noch nicht gebaut (Rest von S4):** Klick macht ein verdecktes Stück zu einer eigenen Kurve (`dok.teile`, ein
+    Undo-Schritt, „Automatisch“ nimmt es zurück) — nach deiner Bestätigung der Einordnung, weil es auf ihr aufsetzt.
+  - **Grenzen der Anzeige:** Flächen der Mittelteile in Front und Top sind blockig (Raster der Hülle, ≈ 2 px); ein Paar, das
+    nur eine Ansicht zeigt (deine Spitzen hinten, die Ente-Flügel), füllt in den anderen Ansichten die ganze Höhe bzw. Breite
+    der Hülle — die Zeichnungen sagen nichts über seine Dicke; seine Wirbelsäule läuft dort durch die Mitte der Hülle.
+  - **Unterwegs gefunden und behoben:** Zhang–Suen löscht schräge, zwei Zellen breite Linien ganz (der Flügelhaken der Ente
+    verschwand bei jedem dritten Zug) → Lü–Wang für S4; das Beschneiden der Skelettenden misst gegen den Abzweig, an dem das
+    Ablaufen gerade endet (Haken mal da, mal weg) → seitliche Äste ohne Beschneiden; Endzellen fehlen bei Lü–Wang an zwei
+    Zellen breiten Enden → Spitzen nach Überstand; das Ausdünnen ist nur noch über Randzellen (bitgleich, 8-mal schneller).
+  - **Bilder:** [`s4-teile-editor-2026-10-16.jpg`](../progress/editor/s4-teile-editor-2026-10-16.jpg) (Editor: Ente,
+    Zeiger über dem Hals, Fisch, Vierbeiner, Flügel über dem Rücken, deine einfache Form — je Seite, Front, Top und die
+    Liste), [`s4-teile-kern-2026-10-16.jpg`](../progress/editor/s4-teile-kern-2026-10-16.jpg) (alle 25 Körper: Kandidaten mit
+    Maß, rot Teil, orange Grenzfall, grau verworfen), [`s4-teile-ansichten-2026-10-16.jpg`](../progress/editor/s4-teile-ansichten-2026-10-16.jpg)
+    (Teile in Seite, Front, Back, Top, Bottom).
+  - **Nächster Schritt:** deine Bestätigung der Einordnung an eigenen Zeichnungen (Plan: vor jeder Geometrie darauf); dann
+    der Rest von S4 (verdecktes Stück als eigene Kurve) und S5 (Mittelebenen-Baum).
