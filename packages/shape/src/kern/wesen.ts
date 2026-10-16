@@ -19,6 +19,7 @@ import { kastenSpanten } from './kasten';
 import { ringSegmente } from './reifen';
 import { blattAbweichungen } from './abweichung';
 import { erreichbarkeit } from './grundkoerper/huelle';
+import { type NetzSicht, netzSicht } from './netzSicht';
 import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
 import { anwenden3 } from '../subdivision/matrix';
 import { spantKasten, spantTeilProfil, vorlageBei } from '../spanten';
@@ -257,6 +258,11 @@ export type WesenNetz = {
    * gezeichneten Linie in Blattkoordinaten (Welt), w = Widerspruch in px (0 = erreichbar); (NaN, NaN, 0) trennt Züge
    */
   widerspruch: Record<'seite' | 'front' | 'top', Float32Array> | null;
+  /**
+   * 3D-Liniennetz auf dem Körper der Ruhelage (Plan „Liniennetz, Zielform, Käfig“, S1): Konturen je Blickachse, gehobene
+   * Umrissknoten, P-Linien als Hautpunkte, Maullinien, Spantringe, Faltenlinien, je Probe die Sichtbarkeit in fünf Ansichten
+   */
+  netzSicht: NetzSicht | null;
   /** Front/Top: Umweg der schwarzen Linie über einen breiteren Kiefer (Paare x, y; NaN trennt), sonst fehlt das Blatt */
   umweg: { front?: Float32Array; top?: Float32Array } | null;
   info: WesenInfo;
@@ -274,6 +280,7 @@ export type WesenStand = {
   /** letzte Blatt-Abweichung (Schritt 4), während Gesten weiterverwendet */
   saum?: WesenNetz['saum'];
   widerspruch?: WesenNetz['widerspruch'];
+  netzSicht?: NetzSicht | null;
   umweg?: WesenNetz['umweg'];
   blatt?: WesenInfo['blatt'];
   /** B7: zuletzt gerechnete Zusatz-Umrisse mit ihrem Schlüssel (Körper, Pinsel, Posen, Anfrage) */
@@ -282,7 +289,7 @@ export type WesenStand = {
    * B7: Werte der Ruhelage, die nicht an den Gewichten hängen (Naht, Δ je Blatt, Lippenabweichung, Ruhe je Ecke) — ein
    * reiner Gewichtswechsel (Vorschau, Überblenden, Abspielen) rechnet sie nicht neu
    */
-  ruheWerte?: { schluessel: string; naht: { max: number; mittel: number }; saum: WesenNetz['saum']; widerspruch?: WesenNetz['widerspruch']; umweg: WesenNetz['umweg']; blatt: WesenInfo['blatt']; maulAbw: MaulAbweichung | undefined; ruhe: Float32Array | null; desk: Float32Array | null };
+  ruheWerte?: { schluessel: string; naht: { max: number; mittel: number }; saum: WesenNetz['saum']; widerspruch?: WesenNetz['widerspruch']; netzSicht?: NetzSicht | null; umweg: WesenNetz['umweg']; blatt: WesenInfo['blatt']; maulAbw: MaulAbweichung | undefined; ruhe: Float32Array | null; desk: Float32Array | null };
 };
 
 const PX = 461;
@@ -1139,6 +1146,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
   // Abweichung je Blatt (Schritt 4) aus der Ruhelage ohne Hebung, nur nach einer echten Ableitung; Züge zeigen den letzten Stand
   let saum = ruheAlt ? ruheAlt.saum : (stand?.saum ?? null);
   let widerspruch = ruheAlt ? (ruheAlt.widerspruch ?? null) : (stand?.widerspruch ?? null);
+  let netz3 = ruheAlt ? (ruheAlt.netzSicht ?? null) : (stand?.netzSicht ?? null);
   let umweg = ruheAlt ? ruheAlt.umweg : (stand?.umweg ?? null);
   let blatt = ruheAlt ? ruheAlt.blatt : stand?.blatt;
   if (!ruheAlt && (!schnell || !blatt)) {
@@ -1158,6 +1166,21 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
       return Float32Array.from(out);
     };
     widerspruch = { seite: tripel(er.seite), front: tripel(er.front), top: tripel(er.top) };
+    // 3D-Liniennetz (S1, 16.10.): auf der Ruhelage; Verdeckung auf dem Netz eine Stufe gröber (gleiche Grenzlagen)
+    if (beine === 'aus' && !hebung) {
+      const stufen = abl.unterteilung.stufen;
+      const verdecker = stufen.length >= 2 ? alleFlaechen(stufen[stufen.length - 2]!.kaefig) : undefined;
+      const reifenZuege = (abl.reifen ?? []).map((r) => {
+        const idx = ringSegmente(abl.unterteilung, abl.kaefig, r.ring, abl.vorlage.N);
+        const pts: V3[] = [];
+        for (let k = 0; k < idx.length; k += 2) {
+          if (k === 0) pts.push(ruheP[idx[0]!]!);
+          pts.push(ruheP[idx[k + 1]!]!);
+        }
+        return { spant: r.spant, punkte: pts };
+      });
+      netz3 = netzSicht({ dok, punkte: ruheP, flaechen, kaefig: abl.kaefig, unterteilung: abl.unterteilung, reifen: reifenZuege, ...(verdecker ? { verdecker } : {}) });
+    } else netz3 = null;
     blatt = {
       seite: { max: bl.seite.max, mittel: bl.seite.mittel, widerspruch: er.seite.max },
       front: { max: bl.front.max, mittel: bl.front.mittel, widerspruch: er.front.max },
@@ -1186,7 +1209,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     if (ruhe.length !== t.positionen.length) ruhe = null;
   }
   // Ruhewerte nur nach einem genauen Bau merken (während einer Geste sind Saum und Δ der letzte Stand, nicht der aktuelle)
-  const ruheWerte: WesenStand['ruheWerte'] = ruheAlt ?? (schnell ? undefined : { schluessel: ruheSchluessel, naht: ab, saum, widerspruch, umweg, blatt, maulAbw, ruhe: ruheMerkbar && ruhe ? ruhe.slice() : null, desk: deskMerkbar && desk ? desk.slice() : null });
+  const ruheWerte: WesenStand['ruheWerte'] = ruheAlt ?? (schnell ? undefined : { schluessel: ruheSchluessel, naht: ab, saum, widerspruch, netzSicht: netz3, umweg, blatt, maulAbw, ruhe: ruheMerkbar && ruhe ? ruhe.slice() : null, desk: deskMerkbar && desk ? desk.slice() : null });
   // Zähne am Zahnfleisch des posierten Käfigs (Phase 2 M4): aus dem Dokument oder die Automatik, Werte für offen mit der Öffnung
   let zaehne: WesenNetz['zaehne'] = null;
   if (maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul) {
@@ -1402,10 +1425,11 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     poseTop,
     saum,
     widerspruch,
+    netzSicht: netz3,
     umweg,
     info,
   };
-  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
+  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(netz3 ? { netzSicht: netz3 } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
 }
 
 /** Puffer eines Netzes (zum Übertragen aus dem Worker). */
