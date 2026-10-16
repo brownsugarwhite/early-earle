@@ -23,6 +23,8 @@ import { innenWege } from './mittelachse';
 import { type Teilbaum, teilbaum, teilenBei } from './teilbaum';
 
 export type EbenenAnsatz = {
+  /** seitlich angesetzt (Verbindungsstück) oder Fortsetzung am Ende des Elternstreifens (Übergang 2:1) */
+  art: 'seitlich' | 'fortsetzung';
   /** Elternstreifen */
   eltern: number;
   /** Kette des Elternstreifens, auf der die Sehne liegt (a: Ringpunkt 0, b: Ringpunkt N/2) */
@@ -43,8 +45,10 @@ export type EbenenStreifen = {
   leiter: Leiter;
   /** Punkte je Ring */
   N: number;
-  /** angesetzte Kindstreifen */
+  /** seitlich angesetzte Kindstreifen */
   kinder: number[];
+  /** Kindstreifen, der das Ende dieses Streifens mit halber Punktzahl fortsetzt (Übergangskappe), sonst null */
+  uebergang: number | null;
 };
 
 export type Ebene = {
@@ -170,6 +174,40 @@ function teilenInKetten(poly: readonly V2[], i: number, j: number): { a: V2[]; b
   return mittelY(vor) >= mittelY(rueck) ? { a: vor, b: rueck } : { a: rueck, b: vor };
 }
 
+/**
+ * Ketten eines Streifens, der an einer Sehne X–Y endet (Übergangskappe): Anfang ist der Punkt, der innen am weitesten von der
+ * Sehnenmitte liegt; die eine Kette läuft zu X, die andere zu Y (die obere zuerst).
+ */
+function kettenZurSehne(poly: readonly V2[], X: V2, Y: V2): { a: V2[]; b: V2[] } {
+  const n = poly.length;
+  let iX = 0;
+  let iY = 0;
+  poly.forEach((q, j) => {
+    if (abstand(q, X) < abstand(poly[iX]!, X)) iX = j;
+    if (abstand(q, Y) < abstand(poly[iY]!, Y)) iY = j;
+  });
+  const m = { x: (X.x + Y.x) / 2, y: (X.y + Y.y) / 2 };
+  const weg = innenWege(poly, m);
+  let iE = 0;
+  poly.forEach((q, j) => {
+    if (weg(q) > weg(poly[iE]!)) iE = j;
+  });
+  // vom Anfang in beiden Richtungen um den Umriss; die Richtung, die X zuerst erreicht, endet an X
+  const lauf = (schritt: 1 | -1, ziel: number, sperre: number): V2[] | null => {
+    const out: V2[] = [];
+    for (let k = iE, t = 0; t <= n; k = (k + schritt + n) % n, t++) {
+      out.push(poly[k]!);
+      if (k === ziel) return out;
+      if (k === sperre) return null;
+    }
+    return null;
+  };
+  const zuX = lauf(1, iX, iY) ?? lauf(-1, iX, iY)!;
+  const zuY = lauf(-1, iY, iX) ?? lauf(1, iY, iX)!;
+  const mittelY = (z: V2[]) => z.reduce((sum, p) => sum + p.y, 0) / z.length;
+  return mittelY(zuX) >= mittelY(zuY) ? { a: zuX, b: zuY } : { a: zuY, b: zuX };
+}
+
 /** Leiter eines Streifens aus seinen Ketten (abgetastet wie die Leiter des Kerns, an den Enden und Kehlen entfächert). */
 function streifenLeiter(a: readonly V2[], b: readonly V2[]): Leiter {
   const P = WIRBEL_STANDARD.proben;
@@ -191,8 +229,8 @@ function teilSpitze(b: Teilbaum, t: number): V2 {
   return { x: e[0], y: e[1] };
 }
 
-/** Mittlerer Umfang (Median über die Paare der Leiter): Ellipse aus halber Sprosse und Breite (Top/Front an der Sprossenmitte). */
-function mittlererUmfang(l: Leiter, breiten: Breiten): number {
+/** Umfang über die Paare der Leiter (Quantil, Standard Median): Ellipse aus halber Sprosse und Breite (Top/Front an der Sprossenmitte). */
+function mittlererUmfang(l: Leiter, breiten: Breiten, quantil = 0.5): number {
   const werte = l.paare.map((p) => {
     const o = zugBei(l.ruecken, p.a);
     const u = zugBei(l.bauch, p.b);
@@ -202,7 +240,7 @@ function mittlererUmfang(l: Leiter, breiten: Breiten): number {
     return umfang(halb, Math.min(W, 4 * halb));
   });
   werte.sort((x, y) => x - y);
-  return werte[Math.floor(werte.length / 2)] ?? 0;
+  return werte[Math.floor(werte.length * quantil)] ?? 0;
 }
 
 /** Anteile der Wirbelsäule, die eine Sehne auf ihrer Kette des Elternstreifens einnimmt. */
@@ -214,8 +252,10 @@ function sehnenBereich(l: Leiter, kette: readonly V2[], seite: 'a' | 'b', A: V2,
 
 /** Abstand, den zwei Sehnenbereiche auf der Wirbelsäule mindestens halten (Anteil): dazwischen ein freier Ring. */
 const BLOCK_ABSTAND = 0.03;
-/** Ab diesem Anteil des Rumpfumfangs ist ein Kind dick: Fortsetzung statt Verbindungsstück */
+/** Ab diesem Anteil des Rumpfumfangs (Median des Kinds) ist ein Kind dick: Fortsetzung statt Verbindungsstück */
 const DICK_ANTEIL = 0.5;
+/** Unter diesem Anteil setzt ein Teil am Rumpfende mit halber Punktzahl fort (Übergang 2:1), sonst im selben Streifen */
+const UEBERGANG_ANTEIL = 0.4;
 
 /**
  * Auslegung der Seitenfläche. Ohne seitlich angesetzte Mittelteile ein Streifen (der Rumpf); dann baut der Kern wie heute.
@@ -252,6 +292,7 @@ export function ebene(dok: Dokument, baum?: Teilbaum, breitenVorgabe?: Breiten):
   const fortsetzung: number[] = [];
   /** Fortsetzungen, die ein Ende des Rumpfstreifens bilden (Spitze am Rumpfende oder dickes Kind) */
   const endTeile: number[] = [];
+  let uebergangTeil = -1;
   for (const { i } of mitte) {
     const st = alle.stuecke.get(i);
     if (!st) {
@@ -272,8 +313,16 @@ export function ebene(dok: Dokument, baum?: Teilbaum, breitenVorgabe?: Breiten):
     const kette = st.ast;
     const kA = kette.slice(0, iT + 1);
     const kB = kette.slice(iT).reverse();
-    const dick = mittlererUmfang(streifenLeiter(kA, kB), breiten) >= DICK_ANTEIL * umfangRumpf;
-    if (nah || dick) {
+    // Median des Kind-Umfangs gegen den Rumpf (gemessen 16.10.: Giraffe 0,36, Ente 0,40, S-Hals 0,27, Überhang 0,57,
+    // Vase 0,76, Langhals und Drache 0,53, Fisch-Schwanzlappen 0,21); als ein Streifen waren Langhals, Drache und Überhang
+    // besser (mit Übergang lag die S4-Sehne tief in der Brust, Top 4,4 → 6,8 px; als Verbindungsstück faltete der
+    // überhängende Kopf, 173°)
+    const anteil = mittlererUmfang(streifenLeiter(kA, kB), breiten) / umfangRumpf;
+    const dick = anteil >= DICK_ANTEIL;
+    const sehrDuenn = anteil < UEBERGANG_ANTEIL;
+    // dünnes Teil am Rumpfende: eigener Streifen mit halber Punktzahl über die Übergangskappe (Plan S5.3); nur eines
+    if (nah && sehrDuenn && uebergangTeil < 0) uebergangTeil = i;
+    else if (nah || dick) {
       fortsetzung.push(i);
       endTeile.push(i);
     } else seitlich.push(i);
@@ -305,9 +354,13 @@ export function ebene(dok: Dokument, baum?: Teilbaum, breitenVorgabe?: Breiten):
     return poly[e1]!.x <= poly[e2]!.x ? { vorn: e1, hinten: e2 } : { vorn: e2, hinten: e1 };
   };
   for (;;) {
-    ({ rest, stuecke } = schneide(seitlich));
-    const e = rumpfEnden(rest);
-    kRumpf = teilenInKetten(rest, e.vorn, e.hinten);
+    ({ rest, stuecke } = schneide(uebergangTeil >= 0 ? [...seitlich, uebergangTeil] : seitlich));
+    const ue = uebergangTeil >= 0 ? stuecke.get(uebergangTeil) : undefined;
+    if (ue) kRumpf = kettenZurSehne(rest, ue.schnitt[0], ue.schnitt[1]);
+    else {
+      const e = rumpfEnden(rest);
+      kRumpf = teilenInKetten(rest, e.vorn, e.hinten);
+    }
     lRumpf = streifenLeiter(kRumpf.a, kRumpf.b);
     const bereiche = seitlich
       .filter((i) => stuecke.has(i))
@@ -330,7 +383,25 @@ export function ebene(dok: Dokument, baum?: Teilbaum, breitenVorgabe?: Breiten):
     ueberlappt.push(weg);
   }
   const eUmfang = mittlererUmfang(lRumpf, breiten) / 16;
-  const streifen: EbenenStreifen[] = [{ teile: [0, ...fortsetzung], ansatz: null, umriss: rest, ketten: kRumpf, leiter: lRumpf, N: 16, kinder: [] }];
+  const streifen: EbenenStreifen[] = [{ teile: [0, ...fortsetzung], ansatz: null, umriss: rest, ketten: kRumpf, leiter: lRumpf, N: 16, kinder: [], uebergang: null }];
+  // Fortsetzung mit Übergang: Ketten von den Sehnenenden zur Spitze, halbe Punktzahl
+  if (uebergangTeil >= 0 && stuecke.has(uebergangTeil)) {
+    const st = stuecke.get(uebergangTeil)!;
+    const A = kRumpf.a[kRumpf.a.length - 1]!;
+    const B = kRumpf.b[kRumpf.b.length - 1]!;
+    const m = { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 };
+    const ast = st.ast;
+    const weg = innenWege(bereinigt([...ast]), m);
+    let iT = 1;
+    for (let k = 1; k + 1 < ast.length; k++) if (weg(ast[k]!) > weg(ast[iT]!)) iT = k;
+    const vonX = ast.slice(0, iT + 1);
+    const vonY = ast.slice(iT).reverse();
+    const xIstA = abstand(ast[0]!, A) < abstand(ast[0]!, B);
+    const ka = xIstA ? vonX : vonY;
+    const kb = xIstA ? vonY : vonX;
+    streifen.push({ teile: [uebergangTeil], ansatz: { art: 'fortsetzung', eltern: 0, seite: 'a', A, B }, umriss: bereinigt([...ast]), ketten: { a: ka, b: kb }, leiter: streifenLeiter(ka, kb), N: 8, kinder: [], uebergang: null });
+    streifen[0]!.uebergang = streifen.length - 1;
+  }
   for (const i of seitlich) {
     const st = stuecke.get(i);
     if (!st) continue;
@@ -358,7 +429,7 @@ export function ebene(dok: Dokument, baum?: Teilbaum, breitenVorgabe?: Breiten):
     const lKind = streifenLeiter(ka, kb);
     // Punkte je Ring aus dem Umfang: Kanten etwa so lang wie im Rumpf (Vasenhals 16, dünne Hälse und Flossen 8)
     const N = 8 * Math.min(4, Math.max(1, Math.round(mittlererUmfang(lKind, breiten) / (8 * eUmfang))));
-    streifen.push({ teile: [i], ansatz: { eltern: 0, seite: seiteAB, A, B }, umriss, ketten: { a: ka, b: kb }, leiter: lKind, N, kinder: [] });
+    streifen.push({ teile: [i], ansatz: { art: 'seitlich', eltern: 0, seite: seiteAB, A, B }, umriss, ketten: { a: ka, b: kb }, leiter: lKind, N, kinder: [], uebergang: null });
     streifen[0]!.kinder.push(streifen.length - 1);
   }
   const sk = dok.skalierung;
@@ -382,6 +453,8 @@ export type StreifenRinge = {
   /** Ringe auf gezeichneten Ecken (Ringfalte auf der Seite der Ecke) und Ecken an den Spitzen (Punktschärfe) */
   ecken: { ring: number; seite: 'a' | 'b' | 'beide' }[];
   spitzenEcke: { anfang: boolean; ende: boolean };
+  /** Ende mit Übergangskappe: der letzte Ring ist ein U um die Sehne A–B (Tiefe in Welt-Einheiten), das Kind beginnt an ihr */
+  uebergang: { A: V2; B: V2; tiefe: number; kind: number } | null;
 };
 
 export type RingOptionen = {
@@ -501,9 +574,17 @@ export function ringeAuslegen(e: Ebene, breiten: Breiten, opt: RingOptionen = RI
     }
     const kappeAnfang = spitzenEcke.anfang ? opt.kappeSpitze : opt.kappe;
     const kappeEnde = spitzenEcke.ende ? opt.kappeSpitze : opt.kappe;
-    // Grenzen: Anfang (Kappe oder Sehne), Blöcke, Ende (Kappe)
+    // Übergang am Ende: der letzte gewöhnliche Ring liegt eine U-Tiefe (ein Viertel der Sehne) und gut eine Kantenlänge vor
+    // der Sehnenmitte; danach kommt das U (Ring R − 1) und die Übergangskappe
+    const ue = st.uebergang !== null ? (() => {
+      const k = st.uebergang!;
+      const an = e.streifen[k]!.ansatz!;
+      const tiefe = abstand(an.A, an.B) / 4;
+      return { A: an.A, B: an.B, tiefe, kind: k };
+    })() : null;
+    // Grenzen: Anfang (Kappe oder Sehne), Blöcke, Ende (Kappe oder Übergang)
     const f0 = angesetzt ? 0 : kappeAnfang;
-    const f1 = 1 - kappeEnde;
+    const f1 = ue ? Math.max(f0 + 0.05, 1 - (ue.tiefe + 0.8 * kanteBei(1)) / L) : 1 - kappeEnde;
     const frei = (fa: number, fb: number): number[] => {
       // Ringe strikt zwischen fa und fb nach der Kantenlänge
       if (!(fb > fa)) return [];
@@ -546,6 +627,7 @@ export function ringeAuslegen(e: Ebene, breiten: Breiten, opt: RingOptionen = RI
     const zw = frei(fa, f1);
     for (const f of zw.length || !bloecke.length ? zw : [(fa + f1) / 2]) ringe.push(ausF(f));
     ringe.push(ausF(f1));
+    if (ue) ringe.push({ f: 1, a: 1, b: 1, o: ue.A, u: ue.B });
     // innere Ecken: der nächste freie Ring (nicht Anfang/Ende, nicht unter einer Sehne) rückt genau auf die Ecke
     const fest = new Set<number>([0, ringe.length - 1]);
     for (const kr of kinderRinge) for (let j = 0; j <= e.streifen[kr.streifen]!.N / 2; j++) fest.add(kr.ring + j);
@@ -625,11 +707,12 @@ export function ringeAuslegen(e: Ebene, breiten: Breiten, opt: RingOptionen = RI
       stationen: ringe.map((r) => ({ a: r.a, b: r.b })),
       sprossen: ringe.map((r) => ({ o: r.o ?? zugBei(l.ruecken, r.a), u: r.u ?? zugBei(l.bauch, r.b) })),
       f: ringe.map((r) => r.f),
-      kappen: { anfang: angesetzt ? [] : kappeVon('anfang'), ende: kappeVon('ende') },
-      spitzen: { anfang: angesetzt ? null : l.ruecken[0]!, ende: l.ruecken[l.ruecken.length - 1]! },
+      kappen: { anfang: angesetzt ? [] : kappeVon('anfang'), ende: ue ? [] : kappeVon('ende') },
+      spitzen: { anfang: angesetzt ? null : l.ruecken[0]!, ende: ue ? { x: (ue.A.x + ue.B.x) / 2, y: (ue.A.y + ue.B.y) / 2 } : l.ruecken[l.ruecken.length - 1]! },
       kinder: kinderRinge,
       ecken: eckRinge,
       spitzenEcke,
+      uebergang: ue,
     });
     if (ringe.length > opt.maxRinge) throw new Error(`ringeAuslegen: Streifen ${s} mit ${ringe.length} Ringen`);
   });

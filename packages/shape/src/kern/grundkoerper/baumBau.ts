@@ -29,11 +29,13 @@ import type { Teilbaum } from './teilbaum';
 export function streifenTopologie(e: Ebene, ringe: readonly StreifenRinge[]): StreifenTopo[] {
   return e.streifen.map((st, s) => {
     const R = ringe[s]!.sprossen.length;
-    if (!st.ansatz) return { R, N: st.N, anfang: { art: 'kappe' }, ende: { art: 'kappe' } };
+    const ende: StreifenTopo['ende'] = st.uebergang !== null ? { art: 'uebergang' } : { art: 'kappe' };
+    if (!st.ansatz) return { R, N: st.N, anfang: { art: 'kappe' }, ende };
     const an = st.ansatz;
+    if (an.art === 'fortsetzung') return { R, N: st.N, anfang: { art: 'fortsetzung', eltern: an.eltern, ende: 'ende' }, ende };
     const k = ringe[an.eltern]!.kinder.find((x) => x.streifen === s);
     if (!k) throw new Error(`streifenTopologie: Kind ${s} ohne Ringe im Elternstreifen`);
-    return { R, N: st.N, anfang: { art: 'seitlich', eltern: an.eltern, seite: an.seite, ring: k.ring }, ende: { art: 'kappe' } };
+    return { R, N: st.N, anfang: { art: 'seitlich', eltern: an.eltern, seite: an.seite, ring: k.ring }, ende };
   });
 }
 
@@ -260,6 +262,7 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
     const R = ringe[s]!.sprossen.length;
     for (let i = 0; i < R; i++) {
       if (i === 0 && st.ansatz) continue;
+      if (i === R - 1 && ringe[s]!.uebergang) continue;
       const sp = ringe[s]!.sprossen[i]!;
       const q = qs[s]![i]!;
       const W = Ws[s]![i]!;
@@ -305,6 +308,62 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
       const naht = j === 0 || j === N / 2;
       setze(bk0.ring(s, 0, j), x, y, naht ? 0 : z);
       if (!naht) setze(bk0.ring(s, 0, N - j), x, y, -z);
+    }
+  });
+  // 2b. Übergang 2:1 am Ende eines Streifens: der letzte Ring ist ein U um die Sehne (Tiefe ein Viertel der Sehne), die
+  //     Quadratringe der Kappe kleinere U zwischen den Sehnenpunkten, die Mitte ist die Sehnenmitte (Kindring 0). Breite
+  //     je Winkel θ gemischt aus dem letzten gewöhnlichen Ring und dem Kindring 0 (außen ⅓ Kind, innen mehr).
+  e.streifen.forEach((st, s) => {
+    const ue = ringe[s]!.uebergang;
+    if (!ue) return;
+    const N = st.N;
+    const c = N / 4;
+    const R = ringe[s]!.sprossen.length;
+    const kind = ue.kind;
+    const Nk = e.streifen[kind]!.N;
+    const M = { x: (ue.A.x + ue.B.x) / 2, y: (ue.A.y + ue.B.y) / 2 };
+    const L2 = Math.hypot(ue.A.x - M.x, ue.A.y - M.y) || 1e-9;
+    const e1 = { x: (ue.A.x - M.x) / L2, y: (ue.A.y - M.y) / L2 };
+    // Normale in den Rumpf: zur Mitte des letzten gewöhnlichen Rings
+    const sp = ringe[s]!.sprossen[R - 2]!;
+    const mR = { x: (sp.o.x + sp.u.x) / 2, y: (sp.o.y + sp.u.y) / 2 };
+    let e2 = { x: -e1.y, y: e1.x };
+    if ((mR.x - M.x) * e2.x + (mR.y - M.y) * e2.y < 0) e2 = { x: -e2.x, y: -e2.y };
+    // Profile über den Winkel θ ∈ [0, π]: letzter gewöhnlicher Ring (N/2 Intervalle) und Kindring 0 (Nk/2 Intervalle)
+    const profil = (werte: number[]) => (th: number) => {
+      const x = (th / Math.PI) * (werte.length - 1);
+      const i0 = Math.min(werte.length - 2, Math.max(0, Math.floor(x)));
+      return werte[i0]! + (werte[i0 + 1]! - werte[i0]!) * (x - i0);
+    };
+    const zRing = profil(Array.from({ length: N / 2 + 1 }, (_, j) => Math.abs(ziele[3 * bk0.ring(s, R - 2, j) + 2]!)));
+    const zKind = profil(Array.from({ length: Nk / 2 + 1 }, (_, j) => Math.abs(ziele[3 * bk0.ring(kind, 0, j) + 2]!)));
+    const kindPunkt = (j: number): V2 => ({ x: ziele[3 * bk0.ring(kind, 0, j)]!, y: ziele[3 * bk0.ring(kind, 0, j) + 1]! });
+    const setzeU = (p: number, q: number, P: V2, z: number) => {
+      setze(p, P.x, P.y, z);
+      if (q !== p) setze(q, P.x, P.y, -z);
+    };
+    // äußeres U = Ring R − 1
+    for (let j = 0; j <= N / 2; j++) {
+      const th = (Math.PI * j) / (N / 2);
+      const P = { x: M.x + e1.x * L2 * Math.cos(th) + e2.x * ue.tiefe * Math.sin(th), y: M.y + e1.y * L2 * Math.cos(th) + e2.y * ue.tiefe * Math.sin(th) };
+      const z = j === 0 || j === N / 2 ? 0 : (2 / 3) * zRing(th) + (1 / 3) * zKind(th);
+      setzeU(bk0.ring(s, R - 1, j), bk0.ring(s, R - 1, (N - j) % N), P, z);
+    }
+    // innere U (Quadratring r) zwischen den Sehnenpunkten b = c/2 ± r (Kindring 0: j = c/2 ∓ r)
+    for (let r = 1; r < c / 2; r++) {
+      const P0 = kindPunkt(c / 2 - r);
+      const P1 = kindPunkt(c / 2 + r);
+      const Mr = { x: (P0.x + P1.x) / 2, y: (P0.y + P1.y) / 2 };
+      const wr = Math.hypot(P0.x - Mr.x, P0.y - Mr.y);
+      const tr = (ue.tiefe * r) / (c / 2);
+      const al = 1 - (2 / 3) * (r / (c / 2));
+      for (let m = 1; m < 4 * r; m++) {
+        const th = (Math.PI * m) / (4 * r);
+        const [a, b] = quadratRing(c, r, m);
+        const P = { x: Mr.x + e1.x * wr * Math.cos(th) + e2.x * tr * Math.sin(th), y: Mr.y + e1.y * wr * Math.cos(th) + e2.y * tr * Math.sin(th) };
+        const z = (1 - al) * zRing(th) + al * zKind(th);
+        setzeU(bk0.kappe(s, 'ende', a, b), bk0.kappe(s, 'ende', c - a, b), P, a === c / 2 ? 0 : z);
+      }
     }
   });
   // 3. Elternsprossen unter einer Sehne: im oberen Teil (Abstand d < U vom Sehnenende, in Anteilen der Sprosse) geht der
@@ -461,6 +520,7 @@ function baumBreite(e: Ebene, ringe: readonly StreifenRinge[], qs: readonly Quer
       const zeile = new Float64Array(N);
       breit.push(zeile);
       if (i === 0 && st.ansatz) continue;
+      if (i === R - 1 && ringe[s]!.uebergang) continue;
       const q = qs[s]![i]!;
       let wBest = 0;
       for (let j = 1; j < N / 2; j++) wBest = Math.max(wBest, q.w[j] ?? 0);
@@ -524,6 +584,7 @@ function baumZonen(e: Ebene, ringe: readonly StreifenRinge[], bk: BaumKaefig): (
     for (let i = 0; i + 1 < R; i++) {
       for (let j = 0; j < N; j++) {
         if (st.ansatz && i < 2) ansatz[f] = 1;
+        if (ringe[s]!.uebergang && i >= R - 2) ansatz[f] = 1;
         for (const b of bereiche) {
           if (i < b.von || i >= b.bis) continue;
           const oben = j < N / 4 || j >= (3 * N) / 4;
@@ -533,7 +594,7 @@ function baumZonen(e: Ebene, ringe: readonly StreifenRinge[], bk: BaumKaefig): (
       }
     }
   });
-  return (fl: number) => (bk.flaecheArt[fl] === 'kappe' ? 'kappe' : ansatz[fl] ? 'ansatz' : 'frei');
+  return (fl: number) => (bk.flaecheArt[fl] === 'kappe' ? 'kappe' : bk.flaecheArt[fl] === 'uebergang' || ansatz[fl] ? 'ansatz' : 'frei');
 }
 
 /**
