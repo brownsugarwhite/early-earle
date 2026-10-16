@@ -153,6 +153,25 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   - **Messen ohne Paare:** S5 baut seitliche Paare nicht (S6); `blattAbweichungen(…, ausnahme)` mit `paarAusnahme(teilbaum)`
     nimmt ihre Bereiche in Front/Top aus. Faltenmaß immer mit allen Zonen ansehen (Kante, Spitze) — eine Ecke ohne Ringfalte
     versteckt sich sonst (Ente: 128° in „frei“ bzw. „Kante“).
+- **Nachtrag 16.10. spätnachts — S6 seitliche Teile, Fallen:**
+  - **Fenster auf den Fußabdruck, nicht auf das Raster:** Rumpfzeilen sind gröber als jeder Ansatz; ein Fenster auf ganzen
+    Zeilen war 1,5- bis 3-mal so lang wie der erste Röhrenring und der Löser stauchte die Haut (bis 172°). Der Wurzelring
+    wird längs der Achse auf die Rumpfhaut gelegt (`rumpfHaut`, `seitenFenster` in `baumBau.ts`), die Fensterpunkte sitzen
+    genau auf diesen Stellen, Nachbarn anteilig (½, ¼). Deshalb werden Querschnitte und Maßstäbe der Ringe vor der Topologie
+    gerechnet.
+  - **Fensterrand schwach binden** (`fensterGewicht` 0,05): Der Fußabdruck ist die Schnittlinie von Rumpf und Teil; eine
+    Kehle läuft außen vorbei. Voll gebunden knickt die Grenzfläche dort.
+  - **Fehlende Koordinate je Station:** Trifft eine Station die zweite Ansicht nicht, gilt die nächste getroffene, nie die
+    Rumpfmitte (z = 0 legte den Zweihals-Ring auf die Mittelebene, er kreuzte seinen Zwilling).
+  - **Teile, die nur eine Ansicht zeigt:** Dicke aus dem Überschuss der Front über die Sichthülle des Rumpfs ohne Paare
+    (`ueberschussVon`). Gegen die tatsächliche Rumpfbreite gerechnet sprangen die Ringe in Lücken über und unter dem Bauch.
+  - **Säume der Röhren:** Ringpunkte bei θ = 0 und π (Ausrichtung `versatz`/`richtung` beachten) über die Stufen verfeinert
+    (`feinKette`) auf den Umriss der primären Ansicht; ohne Saum zieht die Glättung Spitzen bis 15 px nach innen.
+  - **Kappen-Mitte einer Röhre:** `bk.kappe(s, 'ende', N / 8, N / 8)`; N der Röhre nur 8 oder 16 (c = N/4 muss gerade sein).
+  - **Gezeichnete Ecken mit Paaren:** Ecken an einer Paar-Sehne oder im abgeschnittenen Teil gehören nicht dem Rumpf (sonst
+    Ringfalte quer über den Bauch, Vierbeiner 166°).
+  - **Δ mit gebauten Paaren ohne `paarAusnahme` messen** (`s5-bogen.ts` tut es selbst), sonst misst man die Teile nicht.
+  - **Rumpf mit 24 Punkten je Ring** bricht Kappen und den Übergang 2:1 (Kind braucht N/2) — nicht ohne Umbau der Kappen.
 - **Nachtrag 16.10. nachts — S5-Reste (Kragen, Flossen-Paare), Fallen:**
   - **Kragen statt Sehne** (`ansatz: 'kragen'`, Standard im Baum): Kindring 0 = U-Schleife aus Elternpunkten
     (`kragenOrt` in `kaefig/baumKaefig.ts`); die Elternpunkte und -flächen innerhalb des U entfallen. Deshalb nie

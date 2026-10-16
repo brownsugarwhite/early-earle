@@ -431,3 +431,32 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
   bleibt als Baustein für S6 (dünne seitliche Teile als Feld über ihrer Fläche). Aufgedeckt: Ringe, die dicht an einer
   einspringenden Ecke vorbeilaufen (Überhang-Kehle, 1,6 px), bekommen eine Taille — im Ring-Modus unsichtbar, aber ein
   Auslegungsfehler (Weg: Kopf als eigenes Teil, oder Sprossen um die Ecke biegen).
+
+## Befunde aus S6 „Seitliche Teile“ (16.10. spätnachts, eigene Befunde; Planseite „Stand S6“)
+
+- **Fenster und Fußabdruck — gelöst:** Ein Fenster auf groben Rumpfzeilen war 1,5- bis 3-mal so lang wie der erste
+  Röhrenring; der Löser stauchte die Haut (Ente Ansatz 37–68°, Zweihals 172°). Jetzt liegt der Fensterrand auf dem Fußabdruck
+  des Wurzelrings, längs der Achse auf die Rumpfhaut gelegt (Ente 15,4°, Zweihals 23,3°).
+- **Zweihals-Ring auf der Mittelebene — behoben:** Trifft eine Station die zweite Ansicht nicht (nahe der Wurzel liegt deren
+  Sehne weiter außen), nimmt sie den Wert der nächsten getroffenen Station statt der Rumpfmitte (z = 0); vorher kreuzte der
+  erste Halsring seinen Zwilling (167°).
+- **Beine am Bauch (Vierbeiner Ansatz 28,4°):** Die Innenkante des Beins liegt eine Rumpfzeile neben der Bauchnaht; zwischen
+  Fenster und Naht bleibt kein Platz für eine Kehle (Bauch waagerecht, Bein senkrecht). Versucht: Rumpf mit 24 Punkten je
+  Ring (Ansatz 23°, aber Kappen und Übergang 2:1 brechen), schwach gebundener Fensterrand (31,5 → 28,4°). Wege: (a) Rumpfzeilen
+  am Fenster verdichten (Querschnitt mit ungleichen Zeilen statt mehr Punkten je Ring), (b) ein Fenster für beide Beine über
+  die Bauchnaht (Bein-Paar als ein Ansatz wie ein Kragen-Paar), (c) eine Zeile Abstand zur Naht erzwingen und den Fensterrand
+  weiter rutschen lassen.
+- **Ente Front 7,8 px:** Die unteren Flanken der Glocke (Höhe 20…50 px) liegen innerhalb der Rumpf-Sichthülle (92 px), der
+  Rumpf erreicht sie mit „mittel“ (weicher Kasten) aber nur bis 84 px. Der Überschuss gegen die tatsächliche Rumpfbreite
+  füllte die Lücke, ließ die Flügelringe aber in Lücken über und unter dem Bauch springen (171°). Wege: Berühren „genau“ am
+  Rumpf, oder die Dicke des Flügels aus der Front je Ringpunkt (Querschnitt aus der Sichthülle statt Ellipse).
+- **Einfache Form (Ansatz 36°, Front 19,4, Top 17,2 px):** Die Stacheln hinten sind keine schlanken Teile, sondern ein großer
+  Teil des Körpers (Wurzel 91 px, Dicke aus der Front bis 186 px). Eine Röhre mit 8 Punkten trägt das nicht. Florian hat die
+  Einordnung als Paar bestätigt (S4); offen, ob sie als Paar gebaut oder in den Rumpf genommen werden (dann Top 77 px wie S5).
+- **Zweihals Top 27 px, Front 16,5 px:** Die Brust unter den Hälsen reicht in der Seite bis x = −105, das Top zeigt zwischen
+  den Hälsen aber nur bis −84 (Kerbe). Ob die Brust zum Rumpf oder zu den Hälsen gehört, sagen die Zeichnungen nicht
+  eindeutig; die S4-Sehne legt sie in den Rumpf. Zeigt der Editor als Widerspruch.
+- **Kappe mit 8 Punkten:** Eine Spitze ohne gezeichnete Ecke (Kopf oben) kann die Kappe aus einem Punkt nur rund nähern; mit
+  Saum im Löser trifft sie das Ziel (Zweihals 14,5 → 3,8 px). Spitzen mit gezeichneter Ecke sind scharf (Zone Spitze, 47–67°).
+- **Fisch-Bau 290–346 ms** über dem Tor 300 ms (5 Streifen + Röhre).
+

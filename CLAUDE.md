@@ -108,6 +108,15 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - **R3** (Übergang höher am Hals) gemessen, nicht anwendbar.
   - **R4** (Überhang) nach drei Fehlanläufen angehalten.
   - Offen für Florian: dünne Kanten Klinge oder rund; danach S6 oder Überhang. Bilder `docs/progress/editor/s5-reste-kragen-*.jpg`.
+- **2026-10-16 spätnachts: R5 Höhenfeld (Versuch), Klinge, S6 seitliche Teile gebaut** (Florian: „Mach so weiter wie es die
+  beste Reihenfolge für dich ist. Hauptsache am Ende geht alles sauber.“; Planseite „Stand S6“, Abnahme offen):
+  - R5 Höhenfeld (`hebung: 'feld'`) nur Versuch (vorn 3–7 px ungenauer); dünne Kanten als Klinge Standard im Baum.
+  - **S6:** Paare (Flügel, Beine, Brustflossen, zweiter Hals) als Röhren über ein Fenster genau auf ihrem Fußabdruck in der
+    Rumpfhaut, Säume im Löser auf dem gezeichneten Umriss; Teile, die nur eine Ansicht zeigt, nehmen ihre Dicke aus dem
+    Überschuss der Front über den Rumpf (Entenflügel = Flanken der Glocke). Ente Top 37 → 1,7 px, Fisch-Brustflossen 3,5/2,9 px.
+  - Im Editor nur der Geist (Tafel Körper → „Teile (Geist)“, Titel „N Streifen + k seitlich“); der Körper bleibt die Röhre (S7).
+  - Offen (Kritik-Register „Befunde aus S6“): Beine am Bauch 28°, Ente Front 7,8 px, einfache Form, Zweihals-Brust.
+    Bilder `docs/progress/editor/s6-*-2026-10-16.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

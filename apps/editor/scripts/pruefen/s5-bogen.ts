@@ -35,12 +35,13 @@ for (const name of liste) {
   const aus = paarAusnahme(teilbaum(dok));
   const wid = (a: 'seite' | 'front' | 'top') => er[a].punkte.flatMap((q, i) => (er[a].widerspruch[i]! > 1 ? [q.x, a === 'top' ? -q.y : q.y] : [1e9, 1e9]));
   let nah: number[] | null = null;
-  const fall = (art: string, punkte: [number, number, number][], flaechen: number[][], sprossen: number[][], wirbel: number[], zonen: string, ms: number) => {
+  const fall = (art: string, punkte: [number, number, number][], flaechen: number[][], sprossen: number[][], wirbel: number[], zonen: string, ms: number, mitPaaren = false) => {
     const pos = new Float32Array(punkte.length * 3);
     punkte.forEach((p, i) => pos.set(p, 3 * i));
     const tri: number[] = [];
     for (const fl of flaechen) for (let k = 1; k + 1 < fl.length; k++) tri.push(fl[0]!, fl[k]!, fl[k + 1]!);
-    const d = blattAbweichungen(punkte, flaechen, dok, 240, undefined, true, aus);
+    // mit gebauten seitlichen Teilen (S6) ohne Ausnahme: Ihre Umrisse gehören dann zum Körper
+    const d = blattAbweichungen(punkte, flaechen, dok, 240, undefined, true, mitPaaren ? undefined : aus);
     faelle.push({
       name: `${name} · ${art}`,
       text: `<b>${name} · ${art}</b> · Δ Seite ${d.seite.max.toFixed(1)} · Front ${d.front.max.toFixed(1)} · Top ${d.top.max.toFixed(1)} px · ${zonen} · ${ms.toFixed(0)} ms`,
@@ -71,7 +72,7 @@ for (const name of liste) {
       const nb = baumFeinesNetz(b);
       const sprossen = b.ringe.flatMap((r) => r.sprossen.map((sp) => [sp.o.x, sp.o.y, 0, sp.u.x, sp.u.y, 0]));
       const z = faltenNachZonen(b.kaefig, b.unterteilung, b.fein, { flaechenZone: b.zone }).zonen;
-      fall(`${art} (${b.ebene.streifen.length} Streifen)`, nb.punkte, nb.flaechen, sprossen, [], zonenText(z), b.zeiten.gesamt);
+      fall(`${art} (${b.ebene.streifen.length} Streifen${b.seiten.length ? ` + ${b.seiten.length} seitlich` : ''})`, nb.punkte, nb.flaechen, sprossen, [], zonenText(z), b.zeiten.gesamt, b.seiten.length > 0);
     }
     continue;
   }
