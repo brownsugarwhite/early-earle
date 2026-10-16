@@ -1,4 +1,4 @@
-# Übergabe (Stand 16.10.2026 nachmittags: S2 „Glatte Haut“ gebaut, Halt für Florian)
+# Übergabe (Stand 16.10.2026 nachmittags: S2 gebaut, „glatt“ Standard; S3-Look-Entscheidung vorbereitet, Halt für Florians Wahl)
 
 Branch `claude/editor-grundlayout`.
 
@@ -34,6 +34,13 @@ Gesamtplan und Kritik-Register bleiben gültig:
   Editor `s2-editor.mjs` grün, `netz-d.mjs` mit `GLATT=1`; `pnpm typecheck` grün, `pnpm test` grün bis auf vier
   Tempo-Tests unter Last (einzeln grün), `pnpm lint` ohne Fehler.
 
+- **S3 Look-Entscheidung vorbereitet (Test):** Fülle der Querschnitte rund | mittel | genau (`kern/fuelle.ts`, Option
+  `fuelle`, ohne Schalter bitgleich; im Editor Tafel Körper → „Fülle (S3-Versuch)“, nur ohne Maul/Beine). Einfache Form:
+  Front 21,9 → 9,2 (mittel) / 8,9 px (genau), 4,5 px davon Widerspruch; Rex mit „genau“ kastig (+12 % Volumen, Top +2,8 px);
+  Robbe mit „mittel“ flacher Bauch (ein Knick 21°). Empfehlung: mittel. Bilder
+  [`s3-fuelle-editor-2026-10-16.jpg`](progress/editor/s3-fuelle-editor-2026-10-16.jpg),
+  [`s3-fuelle-kern-2026-10-16.jpg`](progress/editor/s3-fuelle-kern-2026-10-16.jpg).
+
 ## Entschieden (16.10. nachmittags)
 
 - **„glatt“ ist Standard für neue Wesen** (Startkugel, „Neu“; `neuesWesen()` im Editor-Store). Gespeicherte Wesen,
@@ -42,7 +49,8 @@ Gesamtplan und Kritik-Register bleiben gültig:
 ## Offen für Florian
 
 - **Angleichen** an alten Zeichnungen: Verhalten ok (die Ansicht mit dem Knopf führt)?
-- **Nächster Schritt nach Plan:** S3 — zuerst die Look-Entscheidung rund / genau / Mittelweg mit Vergleichsbild.
+- **S3 Look-Entscheidung:** rund / mittel / genau (Bilder oben). Danach S3 nach Plan mit der gewählten Fülle (Berühren
+  örtlich im Höhenband, Intervalle in `breite.ts`, dritte Koordinate als Griff, Tore).
 
 ## Arbeitsregeln
 

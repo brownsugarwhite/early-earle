@@ -302,3 +302,19 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
   Ziele: Rex aus der Startkugel 173°); die Ziele als Käfig sind glatt, aber 5–10 % zu klein. Glätten muss deshalb relativ
   zur Zielform sein (nur die Abweichung), sonst werden Querschnitte runder und Flossen dicker. Ein „gehobener“ Bezug
   (Richardson-Schritte Richtung Interpolation) bringt die Wellen zurück.
+
+## Befunde aus dem S3-Versuch „Fülle“ (Plan „Liniennetz, Zielform, Käfig“, 16.10. nachmittags, eigene Befunde)
+
+- **Die Glättung relativ zur Zielform erhält Unregelmäßigkeiten der Ziele.** Fülle in Stufen von Ring zu Ring (p 3 → 3,5 →
+  4) zeichnete sich als Ringbänder auf der Flanke ab. → Alles, was Ziele je Ring verändert, muss längs der Ringe glatt
+  verlaufen (Füllverlauf geglättet; gilt auch für S3/S5).
+- **Fülle radial verschoben = Wellen:** Schulterpunkte stiegen in Höhen, in denen die Front schmaler ist, und wurden je Ring
+  anders beschnitten. → Fülle nur waagerecht auf gleicher Höhe.
+- **Geneigte Ringe:** Volle Schultern liegen an einer anderen Stelle x als die Ringmitte und ragten übers Top (Robbe Top +8 px,
+  Falten 34°). → Jeder Punkt am Top an seiner eigenen Stelle beschneiden.
+- **Widersprüche nicht „erreichen“ wollen:** Auf die ganze Front gezielt, blähte die Rex-Schulter (6 px Widerspruch) Ringe bis
+  p 24 auf. → Ziel ist die Sichthülle (erreichbarer Teil der Front), der Rest bleibt rot.
+- **Robbe mit „mittel“: flacher Bauch vorn, ein Knick 21°** (stark geneigte Ringe mit vollem Bauch fächern). → S3 füllt
+  nur im Höhenband, in dem der Ring die Front stellt, nicht den ganzen Ring.
+- **„genau“ ist kastig:** Kanten ohne Faltenmarken im Käfig (Faltenmaß 34° an der einfachen Form, Rex +12 % Volumen). →
+  Falls Florian „genau“ wählt: Kanten als Falten im Käfig, sonst bleibt es eine weiche Näherung.

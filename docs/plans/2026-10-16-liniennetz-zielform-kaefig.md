@@ -482,3 +482,37 @@ gemessenen Fehlanläufen am selben Tor: anhalten, Kritik-Register, Bericht.
   (`neuesWesen()` in `apps/editor/src/state/editorStore.ts`); gespeicherte Wesen, Vorlagen und Prüfwesen behalten ihre
   Einstellung (Chip in der Tafel Körper). Vorher geprüft: Rundmaul auf glatter Haut genauso rund, öffnet gleich weit,
   0 Durchdringungen (Kugel, Robbe und Ei aus der Startkugel); `s2-editor.mjs` und `netz-e.mjs` grün.
+- **16.10. nachmittags, S3 Look-Entscheidung vorbereitet (Test, Florian wählt):**
+  - **Versuch im Kern** (`packages/shape/src/kern/fuelle.ts`, Option `fuelle`, ohne Schalter bitgleich): Nur die Ringe, die
+    den Front-Umriss auf einer Höhe am ehesten erreichen, werden voller, und zwar so viel wie nötig. Statt einer Ellipse
+    bekommen sie eine Superellipse |w|^p + |s|^p = 1, deren Punkte waagerecht auf gleicher Höhe breiter werden; im Top
+    bleiben sie an ihrer Stelle, die Front beschneidet sie wie bisher. Gezielt wird nur auf den erreichbaren Teil der
+    Front (Sichthülle); echte Widersprüche bleiben rot und blähen keinen Ring auf. Der Verlauf der Fülle längs der Ringe
+    ist geglättet. Stufen: **mittel** bis p 4 (weicher Kasten), **genau** bis p 24 (fast Kasten).
+  - **Im Editor zum Ausprobieren:** Tafel Körper → „Fülle (S3-Versuch) rund | mittel | genau“ (`ausstattung.fuelle`, ein
+    Undo-Schritt; nur ohne Maul und Beine). Prüfung `apps/editor/scripts/pruefen/s3-editor.mjs` grün; Messreihe
+    `s3-fuelle.ts`; Test `kern/fuelle.test.ts`.
+  - **Ergebnis** (glatte Haut, aus der Startkugel; Δ Seite/Front/Top in px):
+
+    | Körper | rund | mittel | genau |
+    |---|---|---|---|
+    | deine einfache Form | 0,3 / **21,9** / 9,3 (Raute) | 0,3 / **9,2** / 8,6 (4,5 davon Widerspruch Front/Top) | 0,3 / 8,9 / 7,9 · hinten eine Kante, Falten 34° (Kanten ohne Faltenmarke) |
+    | Rex | 1,1 / 10,3 / 1,6 | 1,1 / 8,8 / 1,6 | 1,1 / 8,7 / **4,4** · kastig, +12 % Volumen |
+    | Robbe | 4,0 / 8,5 / 12,5 | 4,0 / 7,1 / 13,9 · flacher Bauch, ein Knick 21° | 4,0 / 7,1 / 13,9 · Knicke |
+    | Kugel, Langhals | unverändert | unverändert (≤ 0,1 px) | Langhals Top +0,2–0,6 |
+
+    Bau 99–124 ms, Zug 3,5–7 ms (wie ohne Fülle).
+  - **Lesart:** „mittel“ holt an deiner Form fast den ganzen Gewinn (Raute → Ellipse; der Rest ist der Widerspruch von
+    Front und Top, 4,5 px). „genau“ bringt dort nur 0,3 px mehr, macht aber gewöhnliche Wesen kastig (Rex +12 %
+    Volumen, Top +2,8 px). Saubere Kanten bräuchte „genau“ zudem als Faltenmarken im Käfig. **Empfehlung: mittel.**
+  - **Bilder:** [`s3-fuelle-editor-2026-10-16.jpg`](../progress/editor/s3-fuelle-editor-2026-10-16.jpg) (Editor, Earle-Look und
+    Prüfansicht), [`s3-fuelle-kern-2026-10-16.jpg`](../progress/editor/s3-fuelle-kern-2026-10-16.jpg) (Seite/Front/Top/schräg mit
+    schwarzer Linie und Widerspruch).
+  - **Unterwegs gemessen und verworfen:** Radial nach außen gefüllt stiegen die Schulterpunkte dorthin, wo die Front schmaler
+    ist, und wurden je Ring verschieden beschnitten (Wellen auf der Flanke); Fülle in Stufen von Ring zu Ring zeichnete sich
+    als Ringbänder ab, weil die Glättung relativ zur Zielform die Stufen der Ziele erhält; ohne Top-Beschnitt ragten die
+    vollen Schultern geneigter Ringe übers Top (Robbe Top +8 px, Falten 34°); ein echter Widerspruch (Rex-Schulter) ließ
+    Ringe bis p 24 aufblähen, solange auf die ganze Front gezielt wurde.
+  - **Nach Florians Wahl:** S3 nach Plan bauen (Berühren örtlich auf dem Höhenband des Rings statt des ganzen Rings — das
+    nimmt der Robbe den flachen Bauch —, Intervalle in `breite.ts`, dritte Koordinate als Griff, Tore), mit der gewählten
+    Fülle; bei „rund“ nur Berühren ohne Fülle.
