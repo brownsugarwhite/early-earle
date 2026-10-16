@@ -1166,10 +1166,9 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
       return Float32Array.from(out);
     };
     widerspruch = { seite: tripel(er.seite), front: tripel(er.front), top: tripel(er.top) };
-    // 3D-Liniennetz (S1, 16.10.): auf der Ruhelage; Verdeckung auf dem Netz eine Stufe gröber (gleiche Grenzlagen)
+    // 3D-Liniennetz (S1, 16.10.): auf der Ruhelage. Verdeckung auf demselben feinen Netz wie die Anzeige (eine Stufe gröber
+    // wich an streifenden Stellen und in Kehlen um 2–20 px ab, gemessen gegen den Strahltest der Bühne)
     if (beine === 'aus' && !hebung) {
-      const stufen = abl.unterteilung.stufen;
-      const verdecker = stufen.length >= 2 ? alleFlaechen(stufen[stufen.length - 2]!.kaefig) : undefined;
       const reifenZuege = (abl.reifen ?? []).map((r) => {
         const idx = ringSegmente(abl.unterteilung, abl.kaefig, r.ring, abl.vorlage.N);
         const pts: V3[] = [];
@@ -1179,7 +1178,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
         }
         return { spant: r.spant, punkte: pts };
       });
-      netz3 = netzSicht({ dok, punkte: ruheP, flaechen, kaefig: abl.kaefig, unterteilung: abl.unterteilung, reifen: reifenZuege, ...(verdecker ? { verdecker } : {}) });
+      netz3 = netzSicht({ dok, punkte: ruheP, flaechen, kaefig: abl.kaefig, unterteilung: abl.unterteilung, reifen: reifenZuege });
     } else netz3 = null;
     blatt = {
       seite: { max: bl.seite.max, mittel: bl.seite.mittel, widerspruch: er.seite.max },

@@ -251,21 +251,27 @@ export function sichtRaster(P: readonly V3[], flaechen: readonly (readonly numbe
  * näher an der Kamera. Proben auf einer Kontur werden vorher `aussen` (Welt) entlang ihrer Normalen nach außen versetzt,
  * weil ihr Strahl die Haut streift.
  */
-export function sichtbarkeit(r: SichtRaster, p: V3, toleranz = 0.6, aussen?: V3): number {
+export function sichtbarkeit(r: SichtRaster, p: V3, toleranz = 0.6, aussen?: V3, eigeneAchse?: 'seite' | 'front' | 'top'): number {
   const eps = toleranz / PX;
-  const q: V3 = aussen ? [p[0] + aussen[0], p[1] + aussen[1], p[2] + aussen[2]] : p;
+  // Der Außenversatz gilt nur für die eigene Blickachse einer Konturprobe (dort streift der Strahl die Haut); in den anderen
+  // Ansichten schöbe er die Probe über deren Umriss hinaus und machte sie fälschlich sichtbar (gemessen 16.10.)
+  const versetzt: V3 = aussen ? [p[0] + aussen[0], p[1] + aussen[1], p[2] + aussen[2]] : p;
+  const q = (a: 'seite' | 'front' | 'top'): V3 => (aussen && (!eigeneAchse || eigeneAchse === a) ? versetzt : p);
   let bits = 0;
   // Seite: Kamera bei +z, Tiefe = −z (klein = nah)
-  const s = tiefenSpanne(r.seite, q[0], q[1]);
-  if (!s || s[0] >= -q[2] - eps) bits |= SICHT.seite;
+  const qs = q('seite');
+  const s = tiefenSpanne(r.seite, qs[0], qs[1]);
+  if (!s || s[0] >= -qs[2] - eps) bits |= SICHT.seite;
   // Front: Kamera bei −x, Tiefe = x; Back: Kamera bei +x (letzter Treffer)
-  const f = tiefenSpanne(r.front, q[2], q[1]);
-  if (!f || f[0] >= q[0] - eps) bits |= SICHT.front;
-  if (!f || f[1] <= q[0] + eps) bits |= SICHT.hinten;
+  const qf = q('front');
+  const f = tiefenSpanne(r.front, qf[2], qf[1]);
+  if (!f || f[0] >= qf[0] - eps) bits |= SICHT.front;
+  if (!f || f[1] <= qf[0] + eps) bits |= SICHT.hinten;
   // Top: Kamera bei +y, Tiefe = −y; Bottom: Kamera bei −y (letzter Treffer)
-  const t = tiefenSpanne(r.top, q[0], q[2]);
-  if (!t || t[0] >= -q[1] - eps) bits |= SICHT.top;
-  if (!t || t[1] <= -q[1] + eps) bits |= SICHT.unten;
+  const qt = q('top');
+  const t = tiefenSpanne(r.top, qt[0], qt[2]);
+  if (!t || t[0] >= -qt[1] - eps) bits |= SICHT.top;
+  if (!t || t[1] <= -qt[1] + eps) bits |= SICHT.unten;
   return bits;
 }
 
@@ -355,8 +361,8 @@ export type NetzSichtEingabe = {
   /** Spantringe als Punktfolgen (Profil-Einheiten), je Spant */
   reifen?: { spant: number; punkte: V3[] }[];
   /**
-   * Flächen für den Sichttest (Standard: `flaechen`). Eine Stufe gröber (gleiche Punktnummern, deren Grenzlagen in
-   * `punkte` stehen) genügt: Die Sehne weicht < 0,1 px von der Grenzfläche ab, und es sind ein Viertel der Dreiecke.
+   * Flächen für den Sichttest (Standard: `flaechen`, dasselbe feine Netz wie die Anzeige). Eine Stufe gröber wäre ein
+   * Viertel der Dreiecke, wich aber an streifenden Stellen und in Kehlen um 2–20 px ab (gemessen 16.10.).
    */
   verdecker?: readonly (readonly number[])[];
 };
@@ -373,9 +379,10 @@ export function netzSicht(e: NetzSichtEingabe): NetzSicht {
   const zugAus = (id: string, art: NetzZugArt, pts: readonly V3[], aussen?: (i: number) => V3 | undefined, haerte?: number[] | number, knoten?: number[]): NetzZug => {
     const punkte = new Float32Array(3 * pts.length);
     const sicht = new Uint8Array(pts.length);
+    const eigen = art === 'kontur-seite' ? 'seite' : art === 'kontur-front' ? 'front' : art === 'kontur-top' ? 'top' : undefined;
     pts.forEach((p, i) => {
       punkte.set(p, 3 * i);
-      sicht[i] = sichtbarkeit(r, p, 0.6, aussen?.(i));
+      sicht[i] = sichtbarkeit(r, p, 1.5, aussen?.(i), eigen);
     });
     const z: NetzZug = { id, art, punkte, sicht };
     if (haerte !== undefined) z.haerte = Float32Array.from(pts, (_, i) => (typeof haerte === 'number' ? haerte : haerte[i] ?? 0));

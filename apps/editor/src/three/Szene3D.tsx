@@ -29,7 +29,7 @@ import { PALETTEN } from './wesenLook';
 
 declare global {
   interface Window {
-    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number; netzLagen?: () => number[] | null; poseLippen?: () => unknown; projizieren?: (feld: 'creation' | 'seite' | 'front' | 'top', p: [number, number, number]) => [number, number] | null; netzPunkt?: (np: NetzPunkt) => [number, number, number] | null };
+    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number; netzLagen?: () => number[] | null; poseLippen?: () => unknown; projizieren?: (feld: 'creation' | 'seite' | 'front' | 'top', p: [number, number, number]) => [number, number] | null; netzPunkt?: (np: NetzPunkt) => [number, number, number] | null; strahlFeld?: (feld: 'creation' | 'seite' | 'front' | 'top', px: number, py: number, beideSeiten?: boolean) => { punkt: [number, number, number]; richtung: [number, number, number] } | null; netzSicht?: () => unknown };
   }
 }
 
@@ -103,6 +103,13 @@ export function Szene3D() {
           return q[2] ? [q[0]!, q[1]!] : null;
         },
         netzPunkt: (np) => netzPunktLage(useEditor.getState().dok, np)?.p ?? null,
+        // S1: erster Treffer des Strahls eines Felds (Welt) und die Blickrichtung — Sichtbarkeit des Liniennetzes gegen die Bühne
+        strahlFeld: (feld, px, py, beideSeiten = false) => {
+          const h = r.treffen(feld, px, py, beideSeiten);
+          const d = r.blickrichtung(feld);
+          return h && d ? { punkt: h.punkt, richtung: d } : null;
+        },
+        netzSicht: () => aktuellesNetz()?.netz.netzSicht ?? null,
         // B5: Rot und Blau der bearbeiteten Pose (E2E): Abweichung (px), geschlossen, Knoten, gezeigte Lippe rechts (Kern-Einheiten)
         poseLippen: () => {
           const n = aktuellesNetz();

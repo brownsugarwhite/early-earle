@@ -17,6 +17,7 @@ import {
   Line,
   LineSegments,
   FrontSide,
+  DoubleSide,
   Matrix4,
   Mesh,
   MeshBasicNodeMaterial,
@@ -702,7 +703,7 @@ export class Renderer3D {
     return out;
   }
 
-  treffen(feld: 'creation' | Ansicht, px: number, py: number): { dreieck: number; punkt: [number, number, number]; abstand: number } | null {
+  treffen(feld: 'creation' | Ansicht, px: number, py: number, beideSeiten = false): { dreieck: number; punkt: [number, number, number]; abstand: number } | null {
     const k = this.feldKamera(feld);
     if (!k) return null;
     const { cam, r } = k;
@@ -710,7 +711,12 @@ export class Renderer3D {
     this.strahl.setFromCamera(ndc, cam);
     const ziel = [this.wesen, this.koerper, this.feuer].find((m) => m.visible && (m.geometry.getAttribute('position')?.count ?? 0) > 0);
     if (!ziel) return null;
+    // beideSeiten (Prüfungen): auch Rückseiten treffen (umgeklappte Flächen einer Falte zeichnet die Bühne nicht)
+    const mat = ziel.material as { side: number };
+    const seite = mat.side;
+    if (beideSeiten) mat.side = DoubleSide;
     const t = this.strahl.intersectObject(ziel, false)[0];
+    mat.side = seite;
     if (!t || t.faceIndex === undefined || t.faceIndex === null) return null;
     return { dreieck: t.faceIndex, punkt: [t.point.x, t.point.y, t.point.z], abstand: t.distance };
   }
