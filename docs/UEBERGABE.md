@@ -1,4 +1,4 @@
-# Übergabe (Stand 16.10.2026 mittags: S1 Liniennetz und S1c Kopplung jedes Punkts gebaut, Halt für Florian)
+# Übergabe (Stand 16.10.2026 nachmittags: S1 Liniennetz und S1c Kopplung jedes Punkts gebaut, Florians Entscheidungen umgesetzt)
 
 Branch `claude/editor-grundlayout`.
 
@@ -25,17 +25,20 @@ Gesamtplan und Kritik-Register bleiben gültig:
   Undo-Schritt, nach jeder Geste Widerspruch ≤ 1 px (Kern: 323/325 Zufallsgesten, Rest = zu wenige Knoten in der folgenden
   Ansicht), Worker 17–18 ms (Vierbeiner 33,5 ms).
 - Kontaktbogen: [`docs/progress/editor/s1-liniennetz-2026-10-16.jpg`](progress/editor/s1-liniennetz-2026-10-16.jpg).
-- Kern-Tests 383/383 grün, Editor-Tests 25/25, `pnpm typecheck` grün.
+- Kern-Tests 385/385 grün, Editor-Tests 25/25, `pnpm typecheck` grün.
+
+## Entschieden (16.10. nachmittags) und umgesetzt
+
+- **Stil:** „farbig ist erstmal besser“ → „netz farbe“ ist Standard (Chips bleiben zum Vergleichen).
+- **Fehlende Knoten:** „einfügen, aber nur wenn wirklich notwendig“ → die Kopplung teilt bei einem Rest über 1 px ein
+  Segment der folgenden Ansicht (höchstens zwei je Zug, nur wenn es hilft; Spanten und Auswahl gehen mit). Kern:
+  325/325 Zufallsgesten stimmig, 2 nötige Punkte; Editor: `netz-e.mjs` grün.
 
 ## Offen für Florian
 
-1. **Stil des Netzes:** „netz ton“ (Kurvenfarbe) oder „netz farbe“ (Seite blau, Front violett, Top grün)? Der andere fällt
-   danach weg.
-2. **Zu wenige Knoten in der folgenden Ansicht:** Darf die Kopplung dann einen Punkt am entsprechenden Ring einfügen
-   (11.10.: nie), oder setzt du ihn von Hand?
-3. **Angleichen** an alten Zeichnungen: Verhalten ok (die Ansicht mit dem Knopf führt)?
-- **Nächster Schritt nach Florians Blick:** S2 (glatte Haut: dünn besetzter Löser, Glättungsmaß; Kappen und der Faltenrest im
-  Entenhals sind die Prüffälle).
+- **Angleichen** an alten Zeichnungen: Verhalten ok (die Ansicht mit dem Knopf führt)?
+- **Nächster Schritt:** S2 (glatte Haut: dünn besetzter Löser, Glättungsmaß; Kappen und der Faltenrest im Entenhals sind
+  die Prüffälle).
 
 ## Arbeitsregeln
 

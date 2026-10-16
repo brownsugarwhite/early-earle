@@ -411,3 +411,21 @@ gemessenen Fehlanläufen am selben Tor: anhalten, Kritik-Register, Bericht.
     Ente Ton/Farbe, derselbe Punkt in allen Blättern und auf der Bühne, Ziehen im Top, Angleichen vorher/nachher).
   - **Nächster Schritt:** Florians Blick (Stil Ton/Farbe, Verhalten der Kopplung beim Zeichnen, Frage zu neuen Punkten),
     dann S2 (glatte Haut, dünn besetzter Löser).
+- **16.10. nachmittags, Florians Entscheidungen zu S1/S1c umgesetzt:** „farbig ist erstmal besser“ → Stil „netz farbe“ ist
+  Standard (die Chips bleiben zum Vergleichen). „Wenn Knoten fehlen, kannst du sie einfügen, aber nur wenn wirklich
+  notwendig“ → die Kopplung löst zuerst mit den vorhandenen Knoten; bleibt mehr als 1 px Widerspruch (mit dem Spielraum
+  der Erreichbarkeit, ±0,5 px), teilt sie das Segment der folgenden Ansicht an der Stelle des größten Rests formneutral und
+  löst neu — höchstens zwei Punkte je Zug, und ein Punkt bleibt nur, wenn er den Rest um mindestens 0,5 px verkleinert
+  (an Spitzen, Sohlen und Gabeln hilft er nicht). Im Editor bleibt ein eingefügter Punkt für den Rest der Geste, die
+  Spanten bekommen denselben Punkt (Punktstruktur der Front), die Auswahl rückt mit; ein Undo-Schritt.
+  - **Gemessen:** Kern-Zufallsreihe mit Einfügen 325 von 325 Gesten stimmig (≤ 1 px), 2 Punkte eingefügt, beide nötig
+    (ohne: 6,0 und 3,2 px), keiner unnötig; Angleichen der Ente-Haken mit führendem Top 36,3 → 0,0 px mit einem Front-Punkt;
+    stimmige Körper bekommen nie einen Punkt. Editor (`netz-e.mjs`): Angleichen im Top → Front 3 → 4 Punkte, Spant S1
+    ebenso, 0,0 px; Kopf im Top 36 px breiter → Front bekommt Kopf, Hals und Körper (2 Punkte), 0,0 px, Undo stellt alles
+    wieder her; gewöhnliche Züge an der Kugel ohne neue Punkte.
+  - **Unterwegs behoben:** Bei widersprüchlichen Forderungen an Ansichten mit mehreren Teilen sprang der Löser in eine
+    kaputte Lösung (Vierbeiner: Knoten übereinander, 300 px) → jeder Schritt gilt nur, wenn der gesamte Widerspruch kleiner
+    wird (sonst halbiert, zuletzt verworfen). Forderungen und Fehler werden so fein abgetastet wie die Erreichbarkeit
+    (24 Proben je Segment), Schnitte über einen Kantenindex: Zug im Mittel 0,4–8,5 ms, höchstens ≈ 14 ms.
+  - Ohne Einfügen (Kern-Option) bleibt der Rest eines unerfüllbaren Zugs in der führenden Ansicht; die folgende bleibt
+    stimmig. Die Front der Ente zeigt danach Kopf, Hals und Körper — der heutige Körper folgt dem erst mit S3/S5.

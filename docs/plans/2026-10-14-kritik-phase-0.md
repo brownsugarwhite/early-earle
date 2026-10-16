@@ -259,7 +259,9 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
 
 ## Befunde aus S1/S1c (Plan „Liniennetz, Zielform, Käfig“, 16.10. mittags, eigene Befunde)
 
-- **Kopplung ohne neue Punkte hat eine Grenze:** Verlangt die führende Ansicht an einer Stelle eine Breite, die die folgende
+- **Gelöst 16.10. nachmittags (Florian: „einfügen, aber nur wenn wirklich notwendig“):** Die Kopplung teilt jetzt bei einem
+  Rest über 1 px ein Segment der folgenden Ansicht (höchstens zwei je Zug, nur wenn es hilft); Zufallsreihe 325/325 stimmig,
+  2 nötige Punkte. Ursprünglicher Befund: **Kopplung ohne neue Punkte hat eine Grenze:** Verlangt die führende Ansicht an einer Stelle eine Breite, die die folgende
   nur mit einem zusätzlichen Knoten darstellen kann (Ente-Haken: Kopf im Top breit, Front mit einem einzigen freien Knoten
   am Bauch), bleibt die folgende stimmig und der Rest als Widerspruch in der führenden stehen (Kern: 2 von 325
   Zufallsgesten). → Frage an Florian: Punkt am entsprechenden Ring einfügen lassen (gegen die Regel vom 11.10.) oder von
