@@ -1,6 +1,8 @@
 // Plan „Liniennetz, Zielform, Käfig“ (16.10.), S5: Kontaktbogen Mittelebenen-Baum gegen S3 (glatt + Berühren mittel).
 // Je Körper zwei Zeilen: heute (eine Röhre) und Baum (Streifen der Seitenfläche). Umgebung: KOERPER (Komma-Liste), NAME,
-// OPT (JSON, Baum-Optionen). Aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/s5-bogen.ts
+// OPT (JSON, Baum-Optionen), VARIANTEN (JSON {Name: Baum-Optionen}: statt „heute | Baum“ je Variante eine Zeile), NAH (1:
+// fünfte Kachel nah am ersten seitlichen Ansatz mit Zebrastreifen). Aus packages/shape:
+// npx vite-node ../../apps/editor/scripts/pruefen/s5-bogen.ts
 import { writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,6 +21,7 @@ const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const AUSGABE = process.env.AUSGABE ?? resolve(WURZEL, 'apps/editor/pruefen-ausgabe');
 const NAME = process.env.NAME ?? 's5-bogen';
 const OPT = process.env.OPT ? JSON.parse(process.env.OPT) : {};
+const VARIANTEN: Record<string, object> | null = process.env.VARIANTEN ? JSON.parse(process.env.VARIANTEN) : null;
 const liste = (process.env.KOERPER ?? 'giraffe-bauch,ente,s-hals,ueberhang,fisch,vase').split(',');
 const b64 = (a: Float32Array | Uint32Array) => Buffer.from(a.buffer, a.byteOffset, a.byteLength).toString('base64');
 
@@ -30,6 +33,7 @@ for (const name of liste) {
   const er = erreichbarkeit(dok);
   const aus = paarAusnahme(teilbaum(dok));
   const wid = (a: 'seite' | 'front' | 'top') => er[a].punkte.flatMap((q, i) => (er[a].widerspruch[i]! > 1 ? [q.x, a === 'top' ? -q.y : q.y] : [1e9, 1e9]));
+  let nah: number[] | null = null;
   const fall = (art: string, punkte: [number, number, number][], flaechen: number[][], sprossen: number[][], wirbel: number[], zonen: string, ms: number) => {
     const pos = new Float32Array(punkte.length * 3);
     punkte.forEach((p, i) => pos.set(p, 3 * i));
@@ -39,7 +43,7 @@ for (const name of liste) {
     faelle.push({
       name: `${name} · ${art}`,
       text: `<b>${name} · ${art}</b> · Δ Seite ${d.seite.max.toFixed(1)} · Front ${d.front.max.toFixed(1)} · Top ${d.top.max.toFixed(1)} px · ${zonen} · ${ms.toFixed(0)} ms`,
-      daten: { pos: b64(pos), tri: b64(Uint32Array.from(tri)), seite: soll('seite'), front: soll('front'), top: soll('top'), wirbel, sprossen, wid: [wid('seite'), wid('front'), wid('top')] },
+      daten: { pos: b64(pos), tri: b64(Uint32Array.from(tri)), seite: soll('seite'), front: soll('front'), top: soll('top'), wirbel, sprossen, wid: [wid('seite'), wid('front'), wid('top')], ...(nah ? { nah } : {}) },
     });
   };
   const zonenText = (z: ReturnType<typeof faltenNachZonenRoehre>['zonen']) =>
@@ -47,6 +51,25 @@ for (const name of liste) {
       .filter((k) => z[k].kanten)
       .map((k) => `${{ frei: 'frei', ansatz: 'Ansatz', kappe: 'Kappe', kante: 'Kante', spitze: 'Spitze' }[k]} ${z[k].max.toFixed(0)}°/${z[k].ueber20}`)
       .join(', ');
+  if (process.env.NAH) {
+    // Mitte des ersten seitlichen Ansatzes (Sehne), etwas zur Seite; Ausschnitt so groß wie die Sehne
+    const e0 = baumAbleiten(dok, OPT).ebene;
+    const an = e0.streifen.find((st) => st.ansatz?.art === 'seitlich')?.ansatz;
+    if (an) {
+      const L = Math.hypot(an.B.x - an.A.x, an.B.y - an.A.y);
+      nah = [(an.A.x + an.B.x) / 2, (an.A.y + an.B.y) / 2, 0.15 * L, 0.9 * L];
+    }
+  }
+  if (VARIANTEN) {
+    for (const [art, o] of Object.entries(VARIANTEN)) {
+      const b = baumAbleiten(dok, o);
+      const nb = baumFeinesNetz(b);
+      const sprossen = b.ringe.flatMap((r) => r.sprossen.map((sp) => [sp.o.x, sp.o.y, 0, sp.u.x, sp.u.y, 0]));
+      const z = faltenNachZonen(b.kaefig, b.unterteilung, b.fein, { flaechenZone: b.zone }).zonen;
+      fall(`${art} (${b.ebene.streifen.length} Streifen)`, nb.punkte, nb.flaechen, sprossen, [], zonenText(z), b.zeiten.gesamt);
+    }
+    continue;
+  }
   // heute
   const abl = ableiten(dok, { ...GLATTE_HAUT, fuelle: 'mittel' });
   const n3 = feinesNetz(abl);

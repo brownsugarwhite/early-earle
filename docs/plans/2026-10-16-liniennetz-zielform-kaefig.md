@@ -354,6 +354,40 @@ mit Messung; ein Y-Stück nur, wenn es danach noch fehlt.
 
 Nach R1–R4: Messreihe, Kontaktbogen, Editor (Geist), Halt für Florian.
 
+**Stand S5-Reste (16.10. nachts; Abnahme offen):**
+- **R1 Kragen statt Sehne — gebaut, Standard im Baum** (`ansatz: 'kragen'`; `kaefig/baumKaefig.ts` Art `kragen`,
+  `kragenOrt`, `existiert`; `ebene.ts` `kragenMasse`; `baumBau.ts` Pass 2):
+  - Der erste Kindring ist eine U-Schleife auf der Rumpfhaut. Ihre Punkte rutschen entlang ihres Rumpfrings zur Naht hin
+    bis zur Breite des Kinds (Fußabdruck), nie von ihr weg.
+  - Die zwei Rumpfringe vor und hinter jedem Bein rutschen anteilig mit (½, ¼).
+  - Auf der Naht gibt es keine Punkte mit sechs Kanten mehr; vier Punkte mit fünf Kanten liegen auf den Flanken.
+  - Hohlkehlen (Ansatz): Giraffe 20,5 → 11,2°, S-Hals 23,4 → 13,4°, Ente 24,6 → 16,4°. Kleinster Käfigwinkel Giraffe
+    16,5 → 25,2°, S-Hals 13,0 → 28,0°. Δ wie mit Sehne (Ente Seite +0,5 px).
+  - In der Zebra-Nahansicht laufen die Streifen bei Giraffe glatt in den Hals. Bei S-Hals und Ente bündeln sie sich nur
+    noch dort eng, wo die Zeichnung selbst eine scharfe Innenecke hat.
+- **R2 überlappende Flossen — gebaut:** Kragen auf verschiedenen Seiten dürfen sich paarweise Rumpfringe teilen (jeder Block
+  bleibt zusammenhängend, `verschmelzen` in `ringeAuslegen`). Die längere Flosse eines Paars bekommt 16 Punkte und Tiefe 1;
+  die Beine der kürzeren liegen dann auf Ringen der längeren. Kappen sind mindestens 0,8 Kantenlängen lang (vorher entartete
+  die kurze Bauchflosse an der Spitze, 174°). Fisch: die Bauchflosse ist ein eigener Streifen; frei 31,8 → 21,9°, Ansatz
+  28,7 → 22,3°, Δ 1,6/7,2/4,5 → 1,5/4,7/2,3 px, kleinster Winkel 8,7 → 11,5°. Nebenbei Ente-Schwanzkappe 77 → 53°.
+- **R3 Übergang höher am Hals — gemessen, nicht anwendbar:** Über der schmalsten Halsstelle hängt der Kopf; das Stück hat
+  63 % des Rumpfumfangs (klar dünn wäre unter 40 %). Mit 8 Punkten litt der Kopf schon im ersten Versuch (Top 4,4 → 6,8 px).
+  Langhals und Drache bleiben ein Streifen (frei 13–15°, Kappe ≤ 10°).
+- **R4 Überhang — nach drei gemessenen Fehlanläufen angehalten** (Regel): Querschnitt je Ring 173°, geglättet über ±2/4/6
+  Ringe 154/91/62°, der gezeichnete Spant für alle Ringe 42,8° (die Glocke gibt 28,2°). Ursache: Ein Streifen trägt eine
+  Ringschar über den Fächer an der Kehle, und Kopf und Rumpf teilen sich die Front-Glocke. Wege im Kritik-Register.
+- **Tore:** Ansatz ≤ 20° an Giraffe, S-Hals, Ente — erfüllt. Fisch-Rückenflosse 22,3° — nicht erfüllt (dünne Flossenkante,
+  s. u.). Keine Sattelpunkte auf der Naht — erfüllt. Δ nicht schlechter um mehr als 0,5 px — erfüllt.
+- **Bilder:** [`s5-reste-kragen-bogen-2026-10-16.jpg`](../progress/editor/s5-reste-kragen-bogen-2026-10-16.jpg) (Sehne |
+  Kragen, mit Zebra-Nahansicht), [`s5-reste-kragen-zebra-2026-10-16.jpg`](../progress/editor/s5-reste-kragen-zebra-2026-10-16.jpg),
+  [`s5-reste-kragen-auslegung-2026-10-16.jpg`](../progress/editor/s5-reste-kragen-auslegung-2026-10-16.jpg),
+  [`s5-reste-kragen-editor-2026-10-16.jpg`](../progress/editor/s5-reste-kragen-editor-2026-10-16.jpg) (Geist im Editor).
+- **Editor:** Der Geist baut mit Kragen (`s5-editor.mjs` grün): Giraffe 131 ms, Ente 130, S-Hals 146, Vase 113, Fisch 262 ms
+  (über dem Tor 250 ms).
+- **Offen für Florian:** dünne Flossen- und Schwanzkanten — Klinge (scharfe Kante) oder rund? (Fisch-Rückenflosse 22–26° an
+  der Hinterkante auch oberhalb des Ansatzes, Entenschwanz). Danach S6 oder der Überhang (R4) mit einem der Wege aus dem
+  Register.
+
 ### S6 Seitliche Teile: Flügel, Flossen, Beine, Ohren
 - Neu `kern/grundkoerper/seitenteil.ts` (Streifen im geneigten Rahmen: Naht = Top-Lappen, Mittelfläche aus der
   Front-Mittelachse, Linsen-Querschnitt, N = 8, flache Kappe) und `ansatz.ts` (Fenster als Rechteck im exakt verfeinerten

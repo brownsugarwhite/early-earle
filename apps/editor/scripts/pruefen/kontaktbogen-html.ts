@@ -1,5 +1,6 @@
 // Gemeinsamer Kontaktbogen der Grundkörper-Prüfungen (Teil G, S0–S5): je Fall Seite, Front, Top (orthografisch, gezeichnete
-// Umrisse schwarz, Widerspruch rot, Wirbelsäule grün, Sprossen grau) und eine Schrägansicht mit Cel-Stufen.
+// Umrisse schwarz, Widerspruch rot, Wirbelsäule grün, Sprossen grau) und eine Schrägansicht mit Cel-Stufen; mit `daten.nah`
+// ([x, y, z, r] in Welt) eine fünfte Kachel: schräg nah um den Punkt mit Zebrastreifen (Knicke brechen die Streifen).
 export type BogenFall = { name: string; text: string; daten: unknown };
 
 export const BOGEN_LEGENDE =
@@ -11,7 +12,7 @@ body{margin:10px;font:13px/1.35 -apple-system,Helvetica,sans-serif;background:#f
 .fall{margin:0 0 12px}.reihe{display:flex;gap:6px}canvas{background:#fff;border:1px solid #d8cfc0}h1{font-size:16px;margin:0 0 6px}
 </style></head><body><h1>${titel} · Abnahme offen</h1>
 <div style="margin-bottom:8px">${legende}</div>
-${faelle.map((f, k) => `<div class="fall"><div>${f.text}</div><div class="reihe">${[0, 1, 2, 3].map((v) => `<canvas id="c${k}_${v}" width="300" height="300"></canvas>`).join('')}</div></div>`).join('\n')}
+${faelle.map((f, k) => `<div class="fall"><div>${f.text}</div><div class="reihe">${[0, 1, 2, 3, 4].filter((v) => v < 4 || (f.daten as { nah?: unknown } | null)?.nah).map((v) => `<canvas id="c${k}_${v}" width="300" height="300"></canvas>`).join('')}</div></div>`).join('\n')}
 <script>
 const FAELLE = ${JSON.stringify(faelle.map((f) => f.daten))};
 const ab = (s, T) => { const b = atob(s); const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return new T(u.buffer); };
@@ -37,7 +38,8 @@ FAELLE.forEach((F, k) => {
     const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
     for (const p of [a, b, c]) { N[3 * p] += nx; N[3 * p + 1] += ny; N[3 * p + 2] += nz; }
   }
-  ANSICHTEN.forEach((abb, v) => {
+  [...ANSICHTEN, ANSICHTEN[3]].forEach((abb, v) => {
+    if (v === 4 && !F.nah) return;
     const cv = document.getElementById('c' + k + '_' + v); const W = cv.width, H = cv.height; const ctx = cv.getContext('2d');
     const P = new Float32Array(3 * n), Q = new Float32Array(3 * n);
     let lo = [Infinity, Infinity], hi = [-Infinity, -Infinity];
@@ -45,8 +47,9 @@ FAELLE.forEach((F, k) => {
     // Zeichnung mit in den Ausschnitt
     const zeich = v === 0 ? [F.seite] : v === 1 ? [F.front, F.front.map((x, i) => (i % 2 ? x : -x))] : v === 2 ? [F.top.map((x, i) => (i % 2 ? -x : x)), F.top] : [];
     for (const z of zeich) for (let i = 0; i < z.length; i += 2) { lo = [Math.min(lo[0], z[i]), Math.min(lo[1], z[i + 1])]; hi = [Math.max(hi[0], z[i]), Math.max(hi[1], z[i + 1])]; }
-    const s = 0.9 * Math.min(W / (hi[0] - lo[0]), H / (hi[1] - lo[1]));
-    const ox = (W - s * (hi[0] - lo[0])) / 2 - s * lo[0], oy = (H + s * (hi[1] - lo[1])) / 2 + s * lo[1];
+    let s = 0.9 * Math.min(W / (hi[0] - lo[0]), H / (hi[1] - lo[1]));
+    let ox = (W - s * (hi[0] - lo[0])) / 2 - s * lo[0], oy = (H + s * (hi[1] - lo[1])) / 2 + s * lo[1];
+    if (v === 4) { const m = abb(F.nah[0], F.nah[1], F.nah[2]); s = W / (2 * F.nah[3]); ox = W / 2 - s * m[0]; oy = H / 2 + s * m[1]; }
     const img = ctx.createImageData(W, H); const zb = new Float32Array(W * H).fill(-Infinity);
     for (let i = 0; i < W * H; i++) { img.data[4 * i] = 255; img.data[4 * i + 1] = 255; img.data[4 * i + 2] = 255; img.data[4 * i + 3] = 255; }
     const X = (i) => ox + s * P[3 * i], Y = (i) => oy - s * P[3 * i + 1];
@@ -67,6 +70,7 @@ FAELLE.forEach((F, k) => {
         const L = Math.hypot(nx, ny, nz) || 1; nx /= L; ny /= L; nz /= L; if (nz < 0) { nx = -nx; ny = -ny; nz = -nz; }
         const hell = Math.max(0, nx * Lv[0] + ny * Lv[1] + nz * Lv[2]);
         const ton = TOENE[Math.min(3, Math.floor(hell * 4.2))]; const o = 4 * (y * W + x);
+        if (v === 4) { const streifen = Math.floor((Math.atan2(ny, nz) / Math.PI) * 18 + 100) % 2; const g = streifen ? 40 + 150 * hell : 225 + 30 * hell; img.data[o] = g; img.data[o + 1] = g; img.data[o + 2] = g; continue; }
         img.data[o] = ton[0]; img.data[o + 1] = ton[1]; img.data[o + 2] = ton[2];
       }
     }

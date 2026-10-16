@@ -153,6 +153,20 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   - **Messen ohne Paare:** S5 baut seitliche Paare nicht (S6); `blattAbweichungen(…, ausnahme)` mit `paarAusnahme(teilbaum)`
     nimmt ihre Bereiche in Front/Top aus. Faltenmaß immer mit allen Zonen ansehen (Kante, Spitze) — eine Ecke ohne Ringfalte
     versteckt sich sonst (Ente: 128° in „frei“ bzw. „Kante“).
+- **Nachtrag 16.10. nachts — S5-Reste (Kragen, Flossen-Paare), Fallen:**
+  - **Kragen statt Sehne** (`ansatz: 'kragen'`, Standard im Baum): Kindring 0 = U-Schleife aus Elternpunkten
+    (`kragenOrt` in `kaefig/baumKaefig.ts`); die Elternpunkte und -flächen innerhalb des U entfallen. Deshalb nie
+    `bk.ring(s, i, j)` ungeprüft für alle (i, j) aufrufen (wirft) — erst `bk.existiert(s, i, j)`. Flächen nicht in der
+    Reihenfolge (Streifen, Ring, j) abzählen, sondern `bk.flaecheRing`/`flaecheJ`/`flaecheStreifen` lesen (alte
+    Messskripte beschriften Kragen-Flächen sonst falsch).
+  - **Kragenpunkte rutschen nur zur Naht hin** (auf den Fußabdruck des Kinds), nie weg; die zwei Nachbarringe der Beine
+    rutschen anteilig mit. Ohne das drückte der Löser Käfigpunkte zusammen (Seitenverhältnis 86) bzw. fielen Punkte auf die
+    nächste Zeile (Fisch-Schwanzstiel).
+  - **Flossen-Paare:** Zwei Kragen auf verschiedenen Seiten über denselben Ringen gehen nur, wenn jeder Block zusammenhängend
+    bleibt; mit 8 Punkten je Flosse passen die Beine selten. Die längere Flosse bekommt 16 Punkte und Tiefe 1.
+  - **Kappen an kurzen Streifen:** mindestens 0,8 Kantenlängen (`kappeKante`), sonst entartet die Kappe hinter einem 3-px-Ring.
+  - **Messen:** Zebra-Nahansicht im Kontaktbogen (`s5-bogen.ts` mit `NAH=1`, `VARIANTEN`) zeigt Knicke an der Kehle, die
+    die ganze Schrägansicht verschluckt.
 - **Nachtrag 16.10. abends — S4 „Teile erkennen“ (nur Anzeige), Fallen:**
   - **Skelett:** Zhang–Suen löscht schräge, zwei Zellen breite Linien ganz (Ente-Haken verschwand jeden dritten Zug) → für S4
     `skelett(…, 'lue-wang')` bzw. `seitlicheAeste` (Lü–Wang, ohne Beschneiden, Spitze = größter Überstand, nicht Endzelle:

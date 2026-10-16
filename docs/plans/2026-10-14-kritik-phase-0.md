@@ -395,3 +395,34 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
   Florians Entscheidung (16.10. abends, Planseite S7/S8): bis S8 kein Rückschritt — der Einbau (S7) braucht die P-Linien
   mindestens als Treppenfalte auf der nächsten Schleife je Streifen und über die Ansätze (Prüffall Ente, Linie über den
   Halsansatz).
+
+## Befunde aus den S5-Resten (16.10. nachts, eigene Befunde; Planseite „S5-Reste“)
+
+- **Hohlkehlen — Ursache gefunden, für Hälse gelöst (R1 Kragen):** Die Falten an den Sehnenenden lagen schon in der Zielform,
+  auch wo die Zeichnung gerade läuft. In einem Nahtpunkt mit sechs Kanten trafen der oben runde Rumpfring (Radius ≈ 45 px)
+  und der spitz endende Kindring auf der Sehne (≈ 11 px) zusammen. Mit dem Kragen (U-Schleife auf der Rumpfhaut) gibt es
+  keine Sattelpunkte auf der Naht: Giraffe 11,2°, S-Hals 13,4°, Ente 16,4°.
+- **Überlappende Flossen — gelöst (R2):** Kragen-Paar über gemeinsamen Ringen, die längere Flosse mit 16 Punkten. Die Wege
+  „gemeinsamer Block“ aus den S5-Befunden sind damit erledigt.
+- **Dünne Flossenkanten:** Die Hinterkante der Fisch-Rückenflosse faltet 22–26° auch oberhalb des Ansatzes (Ring 1 → 2); die
+  Flosse ist eine schmale Linse. Wie der Entenschwanz: Klinge (scharfe Kante, als gewollt gezählt) oder rund? Florian
+  entscheidet; ohne Entscheidung bleibt das Ansatz-Tor am Fisch offen.
+- **Rückenflosse mit 16 Punkten:** Ihre Spitze ist eng besetzt (Seitenverhältnis 13,8, schlechtestes Viereck am Fisch). Sauber
+  wäre ein Übergang 16 → 8 im Kind (Übergangsreihe mit 3/5-Polen, wie S6 sie plant).
+- **Fisch-Geist 262 ms** (5 Streifen) über dem Tor 250 ms.
+- **Front-Lappen mit Schnittknick:** Ohne eingebaute Bauchflosse nimmt der Fischrumpf den Front-Lappen. Dessen Umriss ist an
+  den Brustflossen (Paar, S6) gerade abgeschnitten, und der Knick wird zur Falte am Schwanzstiel (25°). Rund behebt sie, kostet
+  aber vorn (Front 4,7 → 6,0 px). Weg: Schnitt der Paare im Front-Umriss glatt verlaufen lassen, oder der Rumpf bekommt in S6
+  seinen eigenen Umriss ohne die Paare.
+- **Überhang (R4) nach drei Fehlanläufen angehalten:** Querschnitt je Ring (173°), geglättet über ±2/4/6 Ringe (154/91/62°),
+  der gezeichnete Spant für alle Ringe (42,8°); die Glocke bleibt mit 28,2° das Beste. Ursache: ein Streifen mit einer
+  Ringschar über den Fächer an der Kehle; dort liegen Ringe mit ganz verschiedenen Höhenbereichen dicht beieinander, und
+  jeder eigene Querschnitt lässt sie sich kreuzen. Wege: (a) Kopf als eigener Streifen mit eigenem Querschnitt, angesetzt per
+  Kragen mit Drehung (der Kopf zeigt quer zur Sehne; bisher 173° beim Ansatz als Sehne); (b) Gabel mit Brust und Kopf als
+  Lappen (Y-Stück); (c) Querschnitt aus der Sichthülle je Punkt (min(Top bei x, Front bei y)) statt eines Lappens je Ring.
+  Zusätzlich: Gilt ein gezeichneter Spant im Baum? Heute verdrängen die Rumpf-Silhouetten eines Paars ihn (mit Spant war der
+  Überhang schlechter, weil ein Spant für alle Ringe auch den Kopf formt) → Spanten je Teil, mit S7.
+- **R3 nicht anwendbar:** Das Stück über der schmalsten Halsstelle trägt den Kopf (63 % des Rumpfumfangs). Ein Übergang 2:1
+  bräuchte am Kopf wieder 1:2. Langhals und Drache bleiben ein Streifen.
+- **Messskripte und Kragen:** Skripte, die Käfigflächen in der Reihenfolge (Streifen, Ring, j) abzählen, beschriften Flächen
+  mit Kragen falsch (Flächen im U entfallen). Richtig: `bk.flaecheRing`, `bk.flaecheJ`, `bk.flaecheStreifen`.
