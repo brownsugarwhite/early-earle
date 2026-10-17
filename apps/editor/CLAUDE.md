@@ -153,6 +153,18 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   - **Messen ohne Paare:** S5 baut seitliche Paare nicht (S6); `blattAbweichungen(…, ausnahme)` mit `paarAusnahme(teilbaum)`
     nimmt ihre Bereiche in Front/Top aus. Faltenmaß immer mit allen Zonen ansehen (Kante, Spitze) — eine Ecke ohne Ringfalte
     versteckt sich sonst (Ente: 128° in „frei“ bzw. „Kante“).
+- **Nachtrag 17.10. früh — S7 Körper aus Teilen, Fallen:**
+  - **Der Baum verlässt den Wesen-Bau früh** (`kern/wesen.ts`, Block „S7.1/S7.2“): Netz, Look, Δ und Liniennetz der Röhre
+    werden dann nicht gerechnet; die Röhre (`abl`) wird nur für den Stand mitgeführt. Neue Netzfelder müssen im Baum-Zweig
+    ebenfalls gesetzt werden (sonst fehlen sie mit „Teile“).
+  - **Puffer:** Das Netz überträgt seine Puffer aus dem Worker. Alles, was der Baum-Stand behält (Positionen, Deskriptoren,
+    Atlas, Kachelung für die Treffer), geht nur als Kopie (`slice()`) ins Netz — sonst ist der Stand beim nächsten Bau leer.
+  - **Eigene Deltas:** Pinsel auf dem Baum schreibt `kaefig.baumDeltas`, Posen `pose.baum` (nie `deltas`/`form` der Röhre),
+    je Delta die Ruhelage `lage` — nach einem Umbau des Baums gilt der Punkt an dieser Stelle (`baumDeltasUmhaengen`).
+  - **Zug:** Während Gesten (`schnell`) baut der Baum nicht neu, sondern verformt den Käfig des letzten genauen Baus
+    (`baumKaefigZiehen`); der Bezug im Stand bleibt bis zum genauen Bau. Ändert sich die Knotenzahl der Seitenlinie, kein Zug.
+  - **Winkel der Deskriptoren aus der Punktnummer**, nicht aus „oben“ je Ring (sprang an steilen Hälsen); Kinder überblenden
+    drei Ringe vom Eltern-Streifen.
 - **Nachtrag 16.10. spätnachts — S6 seitliche Teile, Fallen:**
   - **Fenster auf den Fußabdruck, nicht auf das Raster:** Rumpfzeilen sind gröber als jeder Ansatz; ein Fenster auf ganzen
     Zeilen war 1,5- bis 3-mal so lang wie der erste Röhrenring und der Löser stauchte die Haut (bis 172°). Der Wurzelring

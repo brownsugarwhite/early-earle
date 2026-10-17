@@ -55,8 +55,10 @@ sauber. Suche immer nochmal nach eleganteren Möglichkeiten.“ Gewählte Reihen
   `s7-editor.mjs` mit Pinselstrich grün.
 - **S7.3 Posen (gebaut):** Form je Pose für den Baum (`pose.baum`: Ruhe-Deltas mit Ruhelage, Bezug), Gewichte mischen,
   Pinsel, Glätten und Zurücksetzen in der Pose schreiben sie; Knochen gibt es auf dem Baum nicht (kein Maul auf Teilen).
-- **Noch nicht auf dem Baum:** Augen, Reifen, Maul, Zähne (Maul auf Teilen = Teil A), „Formen folgen“ nach dem Pinsel (die
-  Umrisse bleiben nach einem Strich, wie sie sind).
+- **Augen (gebaut):** gewählt wie auf der Röhre (Ring und Winkel bzw. gesetzter Punkt), auf die Haut des Baums gelegt;
+  Augapfel auf dem Baum als Glubschauge (die Höhle braucht den Röhren-Käfig).
+- **Noch nicht auf dem Baum:** Reifen, Maul, Zähne (Maul auf Teilen = Teil A), „Formen folgen“ nach dem Pinsel (die Umrisse
+  bleiben nach einem Strich, wie sie sind; Weg: Profile an die Silhouette, Baum-Deltas als Differenz zum neuen Baum).
 - Prüfungen: Kern-Tests `baumBau.test.ts` (neu: „S6 seitliche Teile“ für Ente, Fisch, Zweihals), `baumKaefig.test.ts`
   (Fenster-Topologie); Skripte `apps/editor/scripts/pruefen/s5-bogen.ts` (Δ mit gebauten Paaren ohne Ausnahme),
   `s5-editor.mjs` (`SEITEN=ente:1,fisch:1,vierbeiner:2,zweihals:1`). `pnpm typecheck` grün, Kern-Tests 452/453 (ein

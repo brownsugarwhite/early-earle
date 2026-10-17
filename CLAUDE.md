@@ -117,6 +117,12 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - Im Editor nur der Geist (Tafel Körper → „Teile (Geist)“, Titel „N Streifen + k seitlich“); der Körper bleibt die Röhre (S7).
   - Offen (Kritik-Register „Befunde aus S6“): Beine am Bauch 28°, Ente Front 7,8 px, einfache Form, Zweihals-Brust.
     Bilder `docs/progress/editor/s6-*-2026-10-16.jpg`.
+- **2026-10-17 früh: S7 Körper aus Teilen gebaut** (Florian: „Versuche mal noch weiter zu machen, so weit du kommst“; Planseite
+  „S7 im Detail“ und „Stand S7“, Abnahme offen): Mit Tafel Körper → „Teile“ ist der Baum mit seitlichen Teilen der Körper im
+  Editor (Earle-Look über `baumDeskriptoren`, Atlas, Δ, Augen), folgt während eines Zugs verformt (Mittelwert-Koordinaten,
+  24–62 ms), trägt P-Linien als Treppenfalte, Pinsel (`kaefig.baumDeltas`) und Posen (`pose.baum`) mit Ruhelage je Delta.
+  Noch nicht: Maul, Zähne, Reifen auf Teilen, „Formen folgen“ nach dem Pinsel, S7.5 (Standard nach Florians Blick).
+  Prüfung `apps/editor/scripts/pruefen/s7-editor.mjs`. Wochenlimit am 17.10. früh bei 100 %.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
