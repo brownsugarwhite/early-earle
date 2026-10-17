@@ -24,6 +24,7 @@ import { erreichbarkeit } from './grundkoerper/huelle';
 import { type NetzSicht, netzSicht } from './netzSicht';
 import { type TeilAnzeige, teilAnzeige } from './grundkoerper/teilAnsicht';
 import { type BaumAbleitung, baumAbleiten, baumDreiecke } from './grundkoerper/baumBau';
+import { linienExakt } from './netz/linienExakt';
 import { baumDeskriptoren } from './grundkoerper/baumDeskriptoren';
 import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
 import { type DuennMatrix, anwenden3 } from '../subdivision/matrix';
@@ -317,6 +318,8 @@ export type WesenStand = {
   geist?: { schluessel: string; netz: NonNullable<WesenNetz['geist']> };
   /** S7.1: zuletzt gebauter Baum-Körper (Schlüssel wie der Geist, dazu Look und Zonen) */
   baum?: { schluessel: string; netz: BaumKoerperNetz };
+  /** S8a: Röhre mit genau eingepassten Linien-Kanten (Schlüssel: Bau und Pinsel) */
+  linien?: { schluessel: string; abl: Ableitung };
   umweg?: WesenNetz['umweg'];
   blatt?: WesenInfo['blatt'];
   /** B7: zuletzt gerechnete Zusatz-Umrisse mit ihrem Schlüssel (Körper, Pinsel, Posen, Anfrage) */
@@ -1177,6 +1180,11 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
   // Pinsel (M3): Käfig-Deltas des Dokuments kommen nach der Ableitung auf den Käfig (gespiegelt); der Stand behält die
   // Ableitung ohne Deltas (`ablRein`), damit ein Pinselstrich keinen Umbau auslöst
   const deltas = dokRoh.kaefig?.deltas ?? [];
+  // S8a: P-Linien mit Härte genau auf der Haut als Kanten (Röhre ohne Maul und Beine). Dann baut die Röhre ohne die
+  // Treppe (Dokument ohne Kanten), und `linienExakt` legt danach je Linie eine Käfigreihe bzw. einen Ring genau auf sie
+  const linienGenau = maul === 'aus' && beine === 'aus' && plan.koerper !== 'teile' && (dok.kanten ?? []).some((k) => k.haerte.some((h) => h > 0));
+  const dokBau: Dokument = linienGenau ? { ...dok, kanten: [] } : dok;
+  let linienStand = stand?.linien;
   const mitDeltas = <T extends Ableitung>(a: T): T => (deltas.length ? deltasAnwenden(a, deltas) : a);
   let ablRein: Ableitung | null = null;
   let maulLinieVerwendet: MaulLinie | null = null;
@@ -1233,7 +1241,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     // führende Kurve des aktuellen Zugs statt der des letzten Baus
     const optOhne = { ...stand.abl.opt };
     delete optOhne.fuehrend;
-    const r = seiteZiehen({ ...stand.abl, opt: plan.fuehrend ? { ...optOhne, fuehrend: plan.fuehrend } : optOhne }, dok);
+    const r = seiteZiehen({ ...stand.abl, opt: plan.fuehrend ? { ...optOhne, fuehrend: plan.fuehrend } : optOhne }, dokBau);
     ablRein = r;
     abl = mitDeltas(r);
     zug = r.zugZeit.leiter + r.zugZeit.ziele + r.zugZeit.loeser + r.zugZeit.matrix;
@@ -1245,12 +1253,24 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     fein = abl.fein;
     xyz = abl.kaefig.xyz;
   } else {
-    ablRein = ableiten(dok, ableitOpt(dok, plan, true));
+    ablRein = ableiten(dokBau, ableitOpt(dok, plan, true));
     ableitung = ablRein.zeiten.gesamt;
     abl = mitDeltas(ablRein);
     fein = abl.fein;
     xyz = abl.kaefig.xyz;
   }
+  // S8a: Linien genau einpassen — im genauen Bau (≈ 0,7 s je Linie, gemerkt je Form, Pinsel und Linien); während einer Geste
+  // zeigt der Körper die Linien ohne Kante
+  if (linienGenau && !schnell && maul === 'aus' && beine === 'aus') {
+    const lSchluessel = `${schluessel}|${JSON.stringify(deltas)}`;
+    if (linienStand && linienStand.schluessel === lSchluessel) abl = linienStand.abl;
+    else {
+      abl = linienExakt(abl, dok.kanten ?? [], dok.skalierung, ableitOpt(dok, plan, true).eckenSchaerfe ?? 1e6).abl;
+      linienStand = { schluessel: lSchluessel, abl };
+    }
+    fein = abl.fein;
+    xyz = abl.kaefig.xyz;
+  } else if (!linienGenau) linienStand = undefined;
   // Posen ohne Schlitzmaul (Florian 15.10.: „im Fressen-Tab Rundmaul, Bohne, W-Maul, Haltung, Schädelform frei formen“):
   // keine Knochen, die Ruhe-Deltas mit den Gewichten auf alle Punkte (Kugel, Fisch mit Rundmaul, Beine)
   if (maul === 'aus') {
@@ -1911,7 +1931,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     umweg,
     info,
   };
-  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(randMarken ? { randMarken } : {}), ...(netz3 ? { netzSicht: netz3 } : {}), ...(teile ? { teile } : {}), ...(geistStand ? { geist: geistStand } : {}), ...(baumStand ? { baum: baumStand } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
+  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(randMarken ? { randMarken } : {}), ...(netz3 ? { netzSicht: netz3 } : {}), ...(teile ? { teile } : {}), ...(geistStand ? { geist: geistStand } : {}), ...(baumStand ? { baum: baumStand } : {}), ...(linienStand ? { linien: linienStand } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
 }
 
 /** Puffer eines Netzes (zum Übertragen aus dem Worker). */

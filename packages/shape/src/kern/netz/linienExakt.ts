@@ -1,0 +1,179 @@
+// Plan „Liniennetz, Zielform, Käfig“, S8a (17.10., Wochenend-Zuschnitt): P-Linien auf der Röhre als Kanten genau auf der
+// Linie. Jede Linie mit Härte wird über die L0-Maschine („Die Fläche bleibt, das Netz gleitet“) eine Käfigreihe (längs,
+// `reiheEinpassen`) bzw. ein Käfigring (quer, `ringEinpassen`) genau auf der Linie; danach werden die Käfigkanten dieser Reihe
+// bzw. dieses Rings scharf nach der Härte längs der Linie (100 % = scharf, darunter 3 × Härte wie die Treppe in
+// `kern/kanten.ts`), gespiegelt. Linien ohne Härte ändern den Körper nicht. Die Linien werden nacheinander eingepasst, jede auf
+// dem Käfig der vorigen. Ersetzt auf der Röhre ohne Maul und Beine die Treppe; dort bleibt sie (Maul, Beine, Baum).
+// Offene Enden laufen über zwei Käfigkanten weich aus (halbscharf 1, 2): Endet eine scharfe Kante mitten auf glatter Haut,
+// bildet Catmull–Clark dort eine Delle (Zebra: Haken an beiden Enden). DOM-frei.
+
+import type { Kante } from '../../dokument';
+import { type Kaefig, kanteZwischen } from '../../kaefig/halbkanten';
+import { unterteilung } from '../../subdivision/catmullClark';
+import { anwenden3 } from '../../subdivision/matrix';
+import type { Ableitung } from '../ableiten';
+import { kanteAbtasten } from '../kanten';
+import { type NetzLinie, reiheEinpassen } from './einpassen';
+import { ringEinpassen } from './ringEinpassen';
+
+export type LinienBericht = { art: 'reihe' | 'ring' | 'ohne' | 'fehlt'; index: number; ms: number };
+
+/** Härte längs der Linie bei Anteil f ∈ [0, 1] (die Proben liegen gleichmäßig über die Abschnitte). */
+function haerteBei(h: readonly number[], f: number): number {
+  if (!h.length) return 0;
+  const x = Math.min(h.length - 1, Math.max(0, f * (h.length - 1)));
+  const a = Math.floor(x);
+  const b = Math.min(h.length - 1, a + 1);
+  return h[a]! + (h[b]! - h[a]!) * (x - a);
+}
+
+/**
+ * Linien des Dokuments genau auf die Haut der Röhre legen und als Kanten schärfen. Liefert die Ableitung mit neuen
+ * Käfiglagen, Schärfen, Unterteilung und feinem Netz (sonst unverändert) und je Linie, wie sie eingepasst wurde.
+ */
+export type LinienOptionen = {
+  /** Schritte des Nachführens nach dem Schärfen (Standard 4) */
+  korrektur?: number;
+  /** Auslauf an offenen Enden: so viele Käfigkanten je Ende mit ansteigender Schärfe (Standard 2) */
+  auslauf?: number;
+};
+
+export function linienExakt<T extends Ableitung>(abl: T, kanten: readonly Kante[], sk: number, schaerfeMax: number, opt: LinienOptionen = {}): { abl: T; berichte: LinienBericht[] } {
+  const korrektur = opt.korrektur ?? 4;
+  const auslauf = opt.auslauf ?? 2;
+  const { R, N } = abl.vorlage;
+  const H = N / 2;
+  // ein Käfig-Objekt für alle Linien (die Zielfläche der Einpassung merkt sich ihre Unterteilung je Käfig-Objekt)
+  const k: Kaefig = { ...abl.kaefig, xyz: new Float64Array(abl.kaefig.xyz) };
+  let fein = abl.fein;
+  const schaerfe = new Map<number, number>();
+  const setze = (a: number, b: number, s: number) => {
+    const e = kanteZwischen(k, a, b);
+    if (e >= 0 && s > (schaerfe.get(e) ?? 0)) schaerfe.set(e, s);
+  };
+  const berichte: LinienBericht[] = [];
+  // je eingepasster Linie die Käfigpunkte der Kante (rechte Hälfte) und die Linie, zum Nachführen nach dem Schärfen
+  const kantenZuege: { punkte: number[]; linie: [number, number, number][] }[] = [];
+  kanten.forEach((ka, index) => {
+    const t0 = jetzt();
+    const roh = kanteAbtasten(ka, sk, 16);
+    if (!roh.haerte.some((h) => h > 0)) {
+      berichte.push({ art: 'ohne', index, ms: 0 });
+      return;
+    }
+    // rechte Hälfte (die linke ist das Spiegelbild)
+    const linie: NetzLinie = { punkte: roh.punkte.map((p) => [p[0], p[1], Math.abs(p[2])]), haerte: roh.haerte };
+    const basis = { kaefig: k, fein, unterteilung: abl.unterteilung, vorlage: abl.vorlage };
+    const reihe = reiheEinpassen(basis, linie);
+    const ring = reihe ? null : ringEinpassen(basis, linie);
+    if (!reihe && !ring) {
+      berichte.push({ art: 'fehlt', index, ms: jetzt() - t0 });
+      return;
+    }
+    const e = (reihe ?? ring)!;
+    k.xyz.set(e.xyz);
+    fein = e.fein;
+    const sch = (f: number) => {
+      const h = haerteBei(linie.haerte, f);
+      return h >= 1 ? schaerfeMax : 3 * h;
+    };
+    // läuft die Linie vom Anfang des Bereichs (kleines u bzw. v) zum Ende? Der erste Linienpunkt liegt näher am Anfang
+    // Auslauf: die k-te Kante vom Ende (k = 0, 1, …) ist höchstens 3 · (k + 1) / (auslauf + 1) scharf (halbscharf: scharf
+    // für so viele Stufen, dann glatt), die Kante läuft an offenen Enden weich aus
+    const auslaufGrenze = (vomAnfang: number, vomEnde: number): number => {
+      if (!auslauf) return Infinity;
+      const k = Math.min(vomAnfang, vomEnde);
+      return k >= auslauf ? Infinity : (3 * (k + 1)) / (auslauf + 1);
+    };
+    const naeher = (p0: number, p1: number) => {
+      const q = linie.punkte[0]!;
+      const d = (p: number) => Math.hypot(k.xyz[3 * p]! - q[0], k.xyz[3 * p + 1]! - q[1], Math.abs(k.xyz[3 * p + 2]!) - q[2]);
+      return d(p0) <= d(p1);
+    };
+    if (reihe) {
+      // Kanten der Reihe j (und N − j) zwischen den Ringen der Linie; die Härte nach dem Anteil längs der Linie
+      // nur Ringe innerhalb der Linie (über ihre Enden hinaus lag die Kante neben der gezeichneten Linie)
+      const i0 = Math.max(0, Math.ceil(reihe.uVon - 0.25));
+      const i1 = Math.min(R - 1, Math.floor(reihe.uBis + 0.25));
+      const L = Math.max(1e-9, reihe.uBis - reihe.uVon);
+      const vorwaerts = naeher(abl.vorlage.ringPunkt(i0, reihe.j), abl.vorlage.ringPunkt(i1, reihe.j));
+      for (let i = i0; i < i1; i++) {
+        const fRoh = (i + 0.5 - reihe.uVon) / L;
+        const s = Math.min(sch(Math.min(1, Math.max(0, vorwaerts ? fRoh : 1 - fRoh))), auslaufGrenze(i - i0, i1 - 1 - i));
+        if (!(s > 0)) continue;
+        for (const j of [reihe.j, N - reihe.j]) setze(abl.vorlage.ringPunkt(i, j), abl.vorlage.ringPunkt(i + 1, j), s);
+      }
+      kantenZuege.push({ punkte: Array.from({ length: Math.max(0, i1 - i0 + 1) }, (_, q) => abl.vorlage.ringPunkt(i0 + q, reihe.j)), linie: linie.punkte });
+    } else if (ring) {
+      const j0 = Math.max(0, Math.ceil(Math.min(ring.vVon, ring.vBis) - 0.25));
+      const j1 = Math.min(H, Math.floor(Math.max(ring.vVon, ring.vBis) + 0.25));
+      const L = Math.max(1e-9, Math.abs(ring.vBis - ring.vVon));
+      const vorwaerts = naeher(abl.vorlage.ringPunkt(ring.i, j0), abl.vorlage.ringPunkt(ring.i, j1));
+      for (let j = j0; j < j1; j++) {
+        const fRoh = (j + 0.5 - Math.min(ring.vVon, ring.vBis)) / L;
+        // Enden auf der Naht (j = 0 bzw. H) laufen nicht aus: dort geht die Linie in ihr Spiegelbild über
+        const s = Math.min(sch(Math.min(1, Math.max(0, vorwaerts ? fRoh : 1 - fRoh))), auslaufGrenze(j0 === 0 ? Infinity : j - j0, j1 === H ? Infinity : j1 - 1 - j));
+        if (!(s > 0)) continue;
+        setze(abl.vorlage.ringPunkt(ring.i, j), abl.vorlage.ringPunkt(ring.i, j + 1), s);
+        setze(abl.vorlage.ringPunkt(ring.i, N - j), abl.vorlage.ringPunkt(ring.i, N - j - 1), s);
+      }
+      kantenZuege.push({ punkte: Array.from({ length: Math.max(0, j1 - j0 + 1) }, (_, q) => abl.vorlage.ringPunkt(ring.i, j0 + q)), linie: linie.punkte });
+    }
+    berichte.push({ art: reihe ? 'reihe' : 'ring', index, ms: jetzt() - t0 });
+  });
+  if (!schaerfe.size && !berichte.some((b) => b.art === 'reihe' || b.art === 'ring')) return { abl, berichte };
+  // neuer Käfig mit den Kanten, neue Unterteilung (die Schärfe verändert die Unterteilungsmatrix), feines Netz
+  const eS = Float64Array.from(abl.kaefig.eSchaerfe);
+  for (const [e, s] of schaerfe) if (s > eS[e]!) eS[e] = s;
+  const k2: Kaefig = { ...abl.kaefig, xyz: new Float64Array(k.xyz), eSchaerfe: eS };
+  const u2 = unterteilung(k2, abl.unterteilung.stufen.length);
+  // Nachführen: Das Schärfen ändert die Grenzlage der Kantenpunkte (eine scharfe Kante folgt dem B-Spline ihrer Käfigpunkte,
+  // nicht mehr der glatten Maske) — ohne Nachführen lag die Kante 2–3 px neben der Linie. Je Schritt: Grenzlage der
+  // Kantenpunkte → nächster Punkt auf der Linie → Käfigpunkt um 1,5 × den Rest verschieben (gespiegelt), vier Schritte
+  const xyz = k2.xyz;
+  const spiegelVon = new Map<number, number>();
+  for (let i = 0; i < R; i++) for (let j = 1; j < H; j++) spiegelVon.set(abl.vorlage.ringPunkt(i, j), abl.vorlage.ringPunkt(i, N - j));
+  for (let schritt = 0; schritt < korrektur; schritt++) {
+    const f = anwenden3(u2.grenze, xyz);
+    for (const z of kantenZuege) {
+      for (const p of z.punkte) {
+        const L: [number, number, number] = [f[3 * p]!, f[3 * p + 1]!, f[3 * p + 2]!];
+        const T = naechsterPunkt(z.linie, L);
+        const d = [T[0] - L[0], T[1] - L[1], T[2] - L[2]];
+        xyz[3 * p] = xyz[3 * p]! + 1.5 * d[0]!;
+        xyz[3 * p + 1] = xyz[3 * p + 1]! + 1.5 * d[1]!;
+        xyz[3 * p + 2] = xyz[3 * p + 2]! + 1.5 * d[2]!;
+        const q = spiegelVon.get(p);
+        if (q !== undefined) {
+          xyz[3 * q] = xyz[3 * p]!;
+          xyz[3 * q + 1] = xyz[3 * p + 1]!;
+          xyz[3 * q + 2] = -xyz[3 * p + 2]!;
+        }
+      }
+    }
+  }
+  return { abl: { ...abl, kaefig: k2, unterteilung: u2, fein: anwenden3(u2.grenze, xyz) }, berichte };
+}
+
+/** Nächster Punkt auf einem Polygonzug. */
+function naechsterPunkt(zug: readonly [number, number, number][], p: readonly number[]): [number, number, number] {
+  let best: [number, number, number] = zug[0]!;
+  let bd = Infinity;
+  for (let i = 0; i + 1 < zug.length; i++) {
+    const a = zug[i]!;
+    const b = zug[i + 1]!;
+    const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const l2 = ab[0]! * ab[0]! + ab[1]! * ab[1]! + ab[2]! * ab[2]! || 1e-30;
+    const t = Math.max(0, Math.min(1, ((p[0]! - a[0]) * ab[0]! + (p[1]! - a[1]) * ab[1]! + (p[2]! - a[2]) * ab[2]!) / l2));
+    const q: [number, number, number] = [a[0] + t * ab[0]!, a[1] + t * ab[1]!, a[2] + t * ab[2]!];
+    const d = (q[0] - p[0]!) ** 2 + (q[1] - p[1]!) ** 2 + (q[2] - p[2]!) ** 2;
+    if (d < bd) {
+      bd = d;
+      best = q;
+    }
+  }
+  return best;
+}
+
+const uhr = (globalThis as { performance?: { now(): number } }).performance;
+const jetzt = () => (uhr ? uhr.now() : Date.now());
