@@ -1,4 +1,4 @@
-# Übergabe (Stand 17.10.2026 früh: S7.1, S7.2, S7.4 — der Baum ist mit „Körper: Teile“ der Körper, folgt dem Zug, trägt P-Linien)
+# Übergabe (Stand 17.10.2026 früh: S7.1–S7.4 — der Baum ist mit „Körper: Teile“ der Körper: Zug, P-Linien, Pinsel)
 
 Branch `claude/editor-grundlayout`.
 
@@ -50,7 +50,11 @@ sauber. Suche immer nochmal nach eleganteren Möglichkeiten.“ Gewählte Reihen
 - **S7.4 (gebaut):** P-Linien (`dok.kanten`) als Treppenfalte auf dem Baum (`kern/grundkoerper/baumKanten.ts`): nächster
   Käfigpunkt je Linienpunkt, kürzester Weg im Käfig über Streifen und Ansätze, Härte als Schärfe, gespiegelt. Ente, Linie
   über den Halsansatz: Knick 36,7° gegen 43,6° auf der Röhre (84 %); genau auf der Linie erst mit S8.
-- **Noch nicht auf dem Baum:** Pinsel und Posen (S7.3), Augen, Reifen, Maul, Zähne.
+- **S7.3 Pinsel (gebaut):** Treffer auf dem Baum-Käfig, eigene Versätze `kaefig.baumDeltas` mit Ruhelage `lage` (nach einem
+  Umbau trifft das Delta den Punkt an dieser Stelle), ohne Umbau angewandt; die Röhren-Deltas bleiben unberührt.
+  `s7-editor.mjs` mit Pinselstrich grün.
+- **Noch nicht auf dem Baum:** Posen (Blendshapes der Pose auf dem Baum), Augen, Reifen, Maul, Zähne, „Formen folgen“ nach
+  dem Pinsel.
 - Prüfungen: Kern-Tests `baumBau.test.ts` (neu: „S6 seitliche Teile“ für Ente, Fisch, Zweihals), `baumKaefig.test.ts`
   (Fenster-Topologie); Skripte `apps/editor/scripts/pruefen/s5-bogen.ts` (Δ mit gebauten Paaren ohne Ausnahme),
   `s5-editor.mjs` (`SEITEN=ente:1,fisch:1,vierbeiner:2,zweihals:1`). `pnpm typecheck` grün, Kern-Tests 452/453 (ein
@@ -76,8 +80,8 @@ sauber. Suche immer nochmal nach eleganteren Möglichkeiten.“ Gewählte Reihen
 
 ## Nächster Schritt
 
-S7.3 Pinsel und Posen auf dem Baum (Treffer auf dem Baum-Käfig, eigene Deltas mit Anker, ohne Umbau angewandt), dann
-S7.5 Standard; danach S8. Wochenlimit stand am 16.10. spätnachts bei 99 %.
+Posen auf dem Baum (Pose-Form je Pose für den Baum mit Ruhelage, Pinsel in der Pose), dann S7.5 Standard (Florians Blick
+und Abnahme mit eigenen Wesen zuerst); danach S8. Wochenlimit stand am 16.10. spätnachts bei 99 %.
 
 ## Arbeitsregeln
 

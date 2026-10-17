@@ -587,7 +587,8 @@ wie im Kern; Deskriptoren endlich, Winkel stetig über die Naht, Bogenlänge lä
   am genauen Neubau. Ein eingefrorener Baum (`dok.kaefig.baum`) ist damit nicht nötig.
 - **S7.4 gebaut** (596baab1): P-Linien als Treppenfalte (`baumKanten.ts`), Ente 36,7° gegen 43,6° auf der Röhre (Tor:
   mindestens gleich — zu 84 % erreicht).
-- **Offen:** S7.3 Pinsel und Posen, S7.5 Standard.
+- **S7.3 Pinsel gebaut** (b500fe7c): Treffer auf dem Baum-Käfig, `kaefig.baumDeltas` mit Ruhelage, ohne Umbau angewandt.
+- **Offen:** Posen auf dem Baum, S7.5 Standard (nach Florians Blick).
 
 ### S8 P-Linien als echte Kanten — Linien exakt (Teil L: L0-Rest und L1)
 
