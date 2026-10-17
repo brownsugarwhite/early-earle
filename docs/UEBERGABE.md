@@ -1,4 +1,4 @@
-# Übergabe (Stand 17.10.2026 früh: S7.1–S7.4 — der Baum ist mit „Körper: Teile“ der Körper: Zug, P-Linien, Pinsel)
+# Übergabe (Stand 17.10.2026 früh: S7.1–S7.4 — der Baum ist mit „Körper: Teile“ der Körper: Zug, P-Linien, Pinsel, Posen)
 
 Branch `claude/editor-grundlayout`.
 
@@ -53,8 +53,10 @@ sauber. Suche immer nochmal nach eleganteren Möglichkeiten.“ Gewählte Reihen
 - **S7.3 Pinsel (gebaut):** Treffer auf dem Baum-Käfig, eigene Versätze `kaefig.baumDeltas` mit Ruhelage `lage` (nach einem
   Umbau trifft das Delta den Punkt an dieser Stelle), ohne Umbau angewandt; die Röhren-Deltas bleiben unberührt.
   `s7-editor.mjs` mit Pinselstrich grün.
-- **Noch nicht auf dem Baum:** Posen (Blendshapes der Pose auf dem Baum), Augen, Reifen, Maul, Zähne, „Formen folgen“ nach
-  dem Pinsel.
+- **S7.3 Posen (gebaut):** Form je Pose für den Baum (`pose.baum`: Ruhe-Deltas mit Ruhelage, Bezug), Gewichte mischen,
+  Pinsel, Glätten und Zurücksetzen in der Pose schreiben sie; Knochen gibt es auf dem Baum nicht (kein Maul auf Teilen).
+- **Noch nicht auf dem Baum:** Augen, Reifen, Maul, Zähne (Maul auf Teilen = Teil A), „Formen folgen“ nach dem Pinsel (die
+  Umrisse bleiben nach einem Strich, wie sie sind).
 - Prüfungen: Kern-Tests `baumBau.test.ts` (neu: „S6 seitliche Teile“ für Ente, Fisch, Zweihals), `baumKaefig.test.ts`
   (Fenster-Topologie); Skripte `apps/editor/scripts/pruefen/s5-bogen.ts` (Δ mit gebauten Paaren ohne Ausnahme),
   `s5-editor.mjs` (`SEITEN=ente:1,fisch:1,vierbeiner:2,zweihals:1`). `pnpm typecheck` grün, Kern-Tests 452/453 (ein
@@ -80,8 +82,8 @@ sauber. Suche immer nochmal nach eleganteren Möglichkeiten.“ Gewählte Reihen
 
 ## Nächster Schritt
 
-Posen auf dem Baum (Pose-Form je Pose für den Baum mit Ruhelage, Pinsel in der Pose), dann S7.5 Standard (Florians Blick
-und Abnahme mit eigenen Wesen zuerst); danach S8. Wochenlimit stand am 16.10. spätnachts bei 99 %.
+Florians Blick auf den Körper aus Teilen an eigenen Wesen (Tafel Körper → „Teile“), dann S7.5 Standard und „Formen folgen“
+auf dem Baum; danach S8. Wochenlimit stand am 16.10. spätnachts bei 99 %.
 
 ## Arbeitsregeln
 

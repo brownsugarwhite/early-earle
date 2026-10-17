@@ -588,7 +588,10 @@ wie im Kern; Deskriptoren endlich, Winkel stetig über die Naht, Bogenlänge lä
 - **S7.4 gebaut** (596baab1): P-Linien als Treppenfalte (`baumKanten.ts`), Ente 36,7° gegen 43,6° auf der Röhre (Tor:
   mindestens gleich — zu 84 % erreicht).
 - **S7.3 Pinsel gebaut** (b500fe7c): Treffer auf dem Baum-Käfig, `kaefig.baumDeltas` mit Ruhelage, ohne Umbau angewandt.
-- **Offen:** Posen auf dem Baum, S7.5 Standard (nach Florians Blick).
+- **S7.3 Posen gebaut** (6bd5417b): Form je Pose für den Baum (`pose.baum`, Ruhelage je Delta), Gewichte mischen, Pinsel
+  und Glätten in der Pose; ohne Knochen (kein Maul auf Teilen).
+- **Offen:** S7.5 Standard (nach Florians Blick), „Formen folgen“ nach dem Pinsel auf dem Baum, Augen/Reifen auf dem Baum,
+  Maul auf Teilen (Teil A).
 
 ### S8 P-Linien als echte Kanten — Linien exakt (Teil L: L0-Rest und L1)
 
