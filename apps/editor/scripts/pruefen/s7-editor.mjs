@@ -149,6 +149,39 @@ for (const fall of faelle) {
       await nachBau(v1);
       const zurueck = await page.evaluate(() => ({ hash: window.__editor.netzHash(), baum: window.__stores.editor.getState().dok.kaefig?.baumDeltas?.length ?? 0 }));
       pruefe(zurueck.baum === vor.baum && zurueck.hash === vor.hash, 'Undo des Pinsels: Baum wie vorher');
+      // Pose auf dem Baum: in die zweite Pose wechseln, ein Strich formt `pose.baum.form`, die Grundform bleibt
+      const pid = await page.evaluate(() => window.__stores.editor.getState().dok.posen?.[1]?.id ?? null);
+      if (pid) {
+        const vG = await page.evaluate(() => window.__editor.netzVersion());
+        await page.evaluate((id) => window.__stores.editor.getState().setzeZiel(id), pid);
+        await nachBau(vG).catch(() => {});
+        await page.waitForTimeout(600);
+        const vorP = await page.evaluate((id) => ({ hash: window.__editor.netzHash(), form: window.__stores.editor.getState().dok.posen.find((p) => p.id === id)?.form?.length ?? 0, baum: window.__stores.editor.getState().dok.posen.find((p) => p.id === id)?.baum?.form?.length ?? 0, pose: window.__editor.wesen?.()?.pose ?? null }), pid);
+        await page.evaluate(() => window.__stores.ui.getState().setzeWerkzeug('aufblasen'));
+        await page.mouse.move(rc.x + ziel.px, rc.y + ziel.py);
+        await page.waitForTimeout(200);
+        const vP = await page.evaluate(() => window.__editor.netzVersion());
+        await page.mouse.down();
+        for (let i = 1; i <= 8; i++) {
+          await page.mouse.move(rc.x + ziel.px + 5 * i, rc.y + ziel.py - 2 * i);
+          await page.waitForTimeout(60);
+        }
+        await page.mouse.up();
+        await nachBau(vP);
+        await page.waitForTimeout(500);
+        const nachP = await page.evaluate((id) => ({ hash: window.__editor.netzHash(), form: window.__stores.editor.getState().dok.posen.find((p) => p.id === id)?.form?.length ?? 0, baum: window.__stores.editor.getState().dok.posen.find((p) => p.id === id)?.baum?.form?.length ?? 0, lage: !!window.__stores.editor.getState().dok.posen.find((p) => p.id === id)?.baum?.form?.[0]?.lage }), pid);
+        pruefe(nachP.baum > 0 && nachP.lage && nachP.form === vorP.form && nachP.hash !== vorP.hash, `Pose „${pid}“ auf dem Baum: ${nachP.baum} Form-Deltas mit Ruhelage, Röhren-Form unberührt (${nachP.form})`);
+        const vE = await page.evaluate(() => window.__editor.netzVersion());
+        await page.evaluate(() => window.__stores.editor.getState().setzeZiel('editor'));
+        await nachBau(vE).catch(() => {});
+        await page.waitForTimeout(500);
+        const grundP = await page.evaluate(() => window.__editor.netzHash());
+        pruefe(grundP === vor.hash, 'zurück im Editor-Tab: Grundform wie vor der Pose');
+        // die Pose-Form wieder entfernen (Undo des Strichs), damit die folgenden Undos die Schalter-Schritte treffen
+        const vU = await page.evaluate(() => window.__editor.netzVersion());
+        await page.evaluate(() => window.__stores.editor.getState().rueckgaengig());
+        await nachBau(vU).catch(() => {});
+      }
       await page.evaluate(() => window.__stores.ui.getState().setzeWerkzeug('auswahl'));
     } else pruefe(false, 'kein Treffer auf dem Baum');
   }

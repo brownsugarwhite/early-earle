@@ -77,11 +77,16 @@ function pinselZiel(): { pose: PoseBearbeitung | null; nMax: number; baum: boole
   const tr = n?.netz.treffer;
   if (!n || !tr) return null;
   const modus = useEditor.getState().modus;
-  // S7.3: Baum-Körper — Pinsel auf seinem Käfig (eigene Deltas); Posen auf dem Baum kommen noch
+  // S7.3: Baum-Körper — Pinsel auf seinem Käfig (eigene Deltas der Grundform bzw. Form der Pose auf dem Baum)
   if (n.netz.koerperBaum) {
     if (modus !== 'editor') {
-      useUi.getState().zeigeHinweis('Posen auf dem Körper aus Teilen kommen noch — Pinsel hier nur in der Grundform');
-      return null;
+      const b = n.netz.pose;
+      if (!b || b.id !== modus) {
+        useEditor.getState().setzeZiel(modus);
+        useUi.getState().zeigeHinweis('Pose wieder ganz gezeigt — jetzt formen');
+        return null;
+      }
+      return { pose: b, nMax: tr.kaefig.n, baum: true };
     }
     return { pose: null, nMax: tr.kaefig.n, baum: true };
   }
@@ -104,7 +109,7 @@ function pinselZiel(): { pose: PoseBearbeitung | null; nMax: number; baum: boole
  * aktuellen Ruhe-Käfig als Bezug. Maulpunkte tragen ihren Anker (Rolle, Reihe, Anteil): die Form überlebt eine neue
  * Maultopologie.
  */
-function poseSchreiben(b: PoseBearbeitung, zuwachs: Map<number, V3>, anker: Parameters<typeof ankerVon>[0]): void {
+function poseSchreiben(b: PoseBearbeitung, zuwachs: Map<number, V3>, anker: Parameters<typeof ankerVon>[0], baum = false): void {
   const n = b.ruhe.length / 3;
   const form = new Float64Array(b.form);
   // B3b: Zuwächse beider Hälften je Punkt mit seiner eigenen Drehung zurück (Rᵀ, 3×3), gespiegelt erst in der Ruhe — in
@@ -128,11 +133,20 @@ function poseSchreiben(b: PoseBearbeitung, zuwachs: Map<number, V3>, anker: Para
     else if (rz > 0) add(i, x, y, z);
     else if (q >= 0) add(q, x, y, -z);
   }
+  const bezug = bezugAus(b.ruhe);
+  if (baum) {
+    // Körper aus Teilen: Form der Pose auf dem Baum-Käfig, je Delta die Ruhelage (übersteht einen Umbau des Baums)
+    const deltasB: KaefigDelta[] = formAusFeld(b.ruhe, n, form).map((d) => ({ ...d, lage: [b.ruhe[3 * d.punkt]!, b.ruhe[3 * d.punkt + 1]!, b.ruhe[3 * d.punkt + 2]!] }));
+    useEditor.getState().poseSetzen(b.id, (p: Pose) => {
+      if (!deltasB.length && !p.baum?.form.length) return p;
+      return { ...p, baum: { form: deltasB, bezug } };
+    });
+    return;
+  }
   const deltas: KaefigDelta[] = formAusFeld(b.ruhe, n, form).map((d) => {
     const a = ankerVon(anker, d.punkt);
     return a ? { ...d, anker: a } : d;
   });
-  const bezug = bezugAus(b.ruhe);
   useEditor.getState().poseSetzen(b.id, (p: Pose) => {
     // ohne Form vorher und nachher nichts schreiben (sonst ein Bezug ohne Wirkung, Befund B6)
     if (!deltas.length && !p.form.length) return p;
@@ -254,7 +268,7 @@ export function pinselZeiger(e: React.PointerEvent, px: number, py: number, el: 
       }
       const s = useEditor.getState();
       if (ziel.pose) {
-        poseSchreiben(ziel.pose, alle, n.netz.anker);
+        poseSchreiben(ziel.pose, alle, n.netz.anker, ziel.baum);
         return;
       }
       const kaefig = s.dok.kaefig ?? { deltas: [] };

@@ -88,13 +88,14 @@ export function poseZuruecksetzen(id: string, was: ZuruecksetzenArt): void {
       neu.form = [];
       delete neu.bezug;
       delete neu.formAlt;
+      delete neu.baum;
     }
     if (was === 'knochen' || was === 'alles') {
       delete neu.stellung;
       delete neu.saat;
     }
     if (was === 'linien' || was === 'alles') delete neu.linien;
-    const form = (was === 'form' || was === 'alles') && (p.form.length > 0 || p.bezug !== undefined || p.formAlt !== undefined);
+    const form = (was === 'form' || was === 'alles') && (p.form.length > 0 || p.bezug !== undefined || p.formAlt !== undefined || p.baum !== undefined);
     const knochen = (was === 'knochen' || was === 'alles') && (p.stellung !== undefined || p.saat !== undefined);
     const linien = (was === 'linien' || was === 'alles') && p.linien !== undefined;
     return form || knochen || linien ? neu : p;
@@ -122,10 +123,10 @@ export function poseMenueEintraege(id: string): MenueEintrag[] {
     { label: 'Duplizieren', aktion: () => poseDuplizieren(id) },
     { label: 'Umbenennen …', aktion: () => poseUmbenennen(id) },
     'trenner',
-    { label: 'Form zurücksetzen', aus: !p.form.length, aktion: () => poseZuruecksetzen(id, 'form') },
+    { label: 'Form zurücksetzen', aus: !p.form.length && !p.baum?.form.length, aktion: () => poseZuruecksetzen(id, 'form') },
     { label: 'Knochen zurücksetzen', aus: !p.stellung && !p.saat, aktion: () => poseZuruecksetzen(id, 'knochen') },
     { label: 'Rot/Blau zurücksetzen', aus: !p.linien, aktion: () => poseZuruecksetzen(id, 'linien') },
-    { label: 'Alles zurücksetzen', aus: !p.form.length && !p.stellung && !p.saat && !p.linien, aktion: () => poseZuruecksetzen(id, 'alles') },
+    { label: 'Alles zurücksetzen', aus: !p.form.length && !p.baum?.form.length && !p.stellung && !p.saat && !p.linien, aktion: () => poseZuruecksetzen(id, 'alles') },
     'trenner',
     { label: p.spiel ? 'Spiel-Pose ✓' : 'Als Spiel-Pose markieren', aktion: () => poseSpielUmschalten(id) },
     { label: fest ? 'Löschen (Idle und Fressen bleiben)' : 'Löschen', aus: fest, aktion: () => useEditor.getState().poseEntfernen(id) },
@@ -137,12 +138,15 @@ function vorschauSetzen(id: string, w: number): void {
   useUi.getState().setzeVorschau({ ...anzeigeGewichte(), [id]: w });
 }
 
-/** Größter Versatz der Form einer Pose in px (bei 461 je Kachel). */
+/** Größter Versatz der Form einer Pose in px (bei 461 je Kachel), Röhre und Baum (S7.3). */
 function groessterVersatz(p: Pose, skalierung: number): number {
   let m = 0;
-  for (const { d } of p.form) m = Math.max(m, Math.hypot(d[0], d[1], d[2]));
+  for (const { d } of [...p.form, ...(p.baum?.form ?? [])]) m = Math.max(m, Math.hypot(d[0], d[1], d[2]));
   return m * skalierung * 461;
 }
+
+/** Zahl der geformten Käfigpunkte einer Pose (Röhre und Baum). */
+const formZahl = (p: Pose): number => p.form.length + (p.baum?.form.length ?? 0);
 
 /**
  * Form der Pose glätten (Laplace auf dem Käfig, drei Schritte, halbe Stärke): aus den Bearbeitungsdaten des Baus (Ruhe-
@@ -173,11 +177,17 @@ export function poseFormGlaetten(id: string): boolean {
     }
     D = E;
   }
+  const bezug = bezugAus(b.ruhe);
+  if (n.netz.koerperBaum) {
+    // Körper aus Teilen: Form auf dem Baum-Käfig mit Ruhelage je Delta
+    const deltasB = formAusFeld(b.ruhe, N, D).map((d) => ({ ...d, lage: [b.ruhe[3 * d.punkt]!, b.ruhe[3 * d.punkt + 1]!, b.ruhe[3 * d.punkt + 2]!] as [number, number, number] }));
+    useEditor.getState().poseSetzen(id, (p) => ({ ...p, baum: { form: deltasB, bezug } }));
+    return true;
+  }
   const deltas = formAusFeld(b.ruhe, N, D).map((d) => {
     const a = ankerVon(n.netz.anker, d.punkt);
     return a ? { ...d, anker: a } : d;
   });
-  const bezug = bezugAus(b.ruhe);
   useEditor.getState().poseSetzen(id, (p) => {
     const neu: Pose = { ...p, form: deltas, bezug };
     delete neu.formAlt;
@@ -314,9 +324,9 @@ export function PosenListe() {
           const w = g[p.id] ?? 0;
           return (
             <div key={p.id} className="pose-zeile" data-pose-zeile={p.id} onContextMenu={(e) => (e.preventDefault(), menueBei(e, p.id))}>
-              <button className={modus === p.id ? 'chip aktiv' : 'chip'} data-pose={p.id} title={`${p.name} bearbeiten${p.form.length ? ` · geformt (${p.form.length} Käfigpunkte, bis ${groessterVersatz(p, sk).toFixed(0)} px)` : ''}`} onClick={() => useEditor.getState().setzeZiel(p.id)}>
+              <button className={modus === p.id ? 'chip aktiv' : 'chip'} data-pose={p.id} title={`${p.name} bearbeiten${formZahl(p) ? ` · geformt (${formZahl(p)} Käfigpunkte, bis ${groessterVersatz(p, sk).toFixed(0)} px)` : ''}`} onClick={() => useEditor.getState().setzeZiel(p.id)}>
                 {p.name}
-                {p.form.length ? ' •' : ''}
+                {formZahl(p) ? ' •' : ''}
                 {p.spiel ? ' ★' : ''}
               </button>
               <input type="range" min={0} max={1} step={0.01} value={w} data-pose-regler={p.id} title="Vorschau: so stark wird die Pose gezeigt" onChange={(e) => vorschauSetzen(p.id, Number(e.target.value))} />
@@ -424,14 +434,14 @@ export function FormFeld({ id }: { id: Modus }) {
       </h3>
       <div className="feld">
         <span>Geformt</span>
-        <b data-pose-deltas={p.form.length}>{p.form.length ? `${p.form.length} Käfigpunkte · bis ${versatz.toFixed(0)} px` : 'noch nicht'}</b>
+        <b data-pose-deltas={formZahl(p)}>{formZahl(p) ? `${formZahl(p)} Käfigpunkte · bis ${versatz.toFixed(0)} px` : 'noch nicht'}</b>
       </div>
       {k && (p.art === 'fressen' || p.saat?.haps !== undefined) && <Regler label="Haps" wert={k.haps} min={0} max={1} schritt={0.05} anzeige={`${Math.round(k.haps * 100)} %`} onChange={(v) => setzePoseKnochen(id, { haps: v }, k)} {...geste()} />}
       <div className="umschalter">
-        <button className="chip" data-pose-glaetten="" disabled={!p.form.length} onClick={() => poseFormGlaetten(id)}>
+        <button className="chip" data-pose-glaetten="" disabled={!formZahl(p)} onClick={() => poseFormGlaetten(id)}>
           Form glätten
         </button>
-        <button className="chip" data-pose-leeren="" disabled={!p.form.length} onClick={() => poseZuruecksetzen(id, 'form')}>
+        <button className="chip" data-pose-leeren="" disabled={!p.form.length && !p.baum?.form.length} onClick={() => poseZuruecksetzen(id, 'form')}>
           Form zurücksetzen
         </button>
       </div>

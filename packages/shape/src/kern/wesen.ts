@@ -1121,8 +1121,14 @@ function baumTreffer(bn: BaumKoerperNetz, xyz: Float64Array): TrefferDaten {
  * gebaut — dem nächsten Punkt der rechten Hälfte oder Naht an dieser Stelle.
  */
 function baumDeltasAuf(xyz: Float64Array, ruhe: Float64Array, spiegel: Int32Array, deltas: readonly KaefigDelta[]): Float64Array {
-  const n = ruhe.length / 3;
   const out = new Float64Array(xyz);
+  deltasAddieren(out, spiegel, baumDeltasUmhaengen(ruhe, deltas));
+  return out;
+}
+
+/** Deltas des Baums auf die Punkte des aktuellen Käfigs (`ruhe`): Nummer, solange die Ruhelage passt, sonst der nächste Punkt. */
+function baumDeltasUmhaengen(ruhe: Float64Array, deltas: readonly KaefigDelta[]): KaefigDelta[] {
+  const n = ruhe.length / 3;
   const eps = 0.5 / 461;
   const wirksam: KaefigDelta[] = [];
   for (const d of deltas) {
@@ -1145,8 +1151,7 @@ function baumDeltasAuf(xyz: Float64Array, ruhe: Float64Array, spiegel: Int32Arra
     }
     if (p >= 0 && p < n) wirksam.push({ punkt: p, d: d.d });
   }
-  deltasAddieren(out, spiegel, wirksam);
-  return out;
+  return wirksam;
 }
 
 export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stand: WesenStand | null, schnell = false): { netz: WesenNetz; stand: WesenStand } {
@@ -1286,6 +1291,24 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
       let bn = baumNetz;
       const bDeltas = dokRoh.kaefig?.baumDeltas ?? [];
       if (bDeltas.length) kaefigB = baumDeltasAuf(kaefigB ?? bn.zug.xyz, bn.zug.xyz, bn.spiegel, bDeltas);
+      // S7.3 Posen auf dem Baum: Form je Pose (`pose.baum`) auf die Punkte dieses Käfigs umgehängt, Bezug nur bei gleicher
+      // Punktzahl; ohne Knochen (kein Maul auf Teilen) mischen die Gewichte die Formen
+      let bearbeitungB: PoseBearbeitung | null = null;
+      const posenB = (dokRoh.posen ?? []).map((p) => {
+        const f = p.baum?.form ?? [];
+        const bez = p.baum?.bezug && p.baum.bezug.length === bn.zug.xyz.length ? p.baum.bezug : undefined;
+        const q: Pose = { ...p, form: f.length ? baumDeltasUmhaengen(bn.zug.xyz, f) : [] };
+        if (bez) q.bezug = bez;
+        else delete q.bezug;
+        delete q.formAlt;
+        return q;
+      });
+      if (posenB.length && Object.values(gewichte).some((w) => w !== 0)) {
+        const A = kaefigB ?? bn.zug.xyz;
+        const r = posenAuswerten({ kaefig: { n: A.length / 3, xyz: A } }, null, null, posenB, gewichte);
+        if (r.xyz !== A) kaefigB = r.xyz;
+        bearbeitungB = r.bearbeitung;
+      }
       if (kaefigB) {
         const feinB = anwenden3(bn.zug.grenze, kaefigB);
         const tri = zuDreiecken({ punkte: punkteVon(feinB), flaechen: bn.zug.flaechen, schaerfe: new Map() }, 40);
@@ -1337,7 +1360,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
         gewichtFarben: null,
         rundmaul: null,
         anker: null,
-        pose: null,
+        pose: bearbeitungB,
         umrisse: null,
         mischung: null,
         poseSeite: null,

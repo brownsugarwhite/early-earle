@@ -86,3 +86,32 @@ describe('S7.3 Pinsel auf dem Baum', () => {
     expect(diff).toBeLessThan(1e-9);
   });
 });
+
+describe('S7.3 Posen auf dem Baum', () => {
+  it('Ente: Form der Pose auf dem Baum wirkt mit ihrem Gewicht, Bearbeitungsdaten bei Gewicht 1', () => {
+    const dok = teilSatzDokument('ente');
+    const plan = { earle: true, koerper: 'teile' as const };
+    const grund = wesenBauen(dok, plan, null).netz;
+    const tr = grund.treffer!;
+    // ein Punkt auf der Flanke, 15 px nach außen in der Pose „frei“
+    let p = 0;
+    for (let q = 0; q < tr.kaefig.n; q++) if (tr.kaefig.xyz[3 * q + 2]! > tr.kaefig.xyz[3 * p + 2]!) p = q;
+    const lage: [number, number, number] = [tr.kaefig.xyz[3 * p]!, tr.kaefig.xyz[3 * p + 1]!, tr.kaefig.xyz[3 * p + 2]!];
+    const dokP = { ...dok, posen: [{ id: 'p1', name: 'Pose', art: 'frei' as const, form: [], baum: { form: [{ punkt: p, d: [0, 0, 15 / PX] as [number, number, number], lage }] } }] };
+    const voll = wesenBauen(dokP, { ...plan, gewichte: { p1: 1 } }, null).netz;
+    const halb = wesenBauen(dokP, { ...plan, gewichte: { p1: 0.5 } }, null).netz;
+    const aus = wesenBauen(dokP, plan, null).netz;
+    const maxD = (a: Float32Array, b: Float32Array) => {
+      let m = 0;
+      for (let i = 0; i < a.length; i++) m = Math.max(m, Math.abs(a[i]! - b[i]!));
+      return m * PX;
+    };
+    expect(maxD(aus.positionen, grund.positionen)).toBeLessThan(1e-6);
+    const dv = maxD(voll.positionen, grund.positionen);
+    const dh = maxD(halb.positionen, grund.positionen);
+    expect(dv).toBeGreaterThan(3);
+    expect(Math.abs(dh - dv / 2)).toBeLessThan(0.15 * dv);
+    expect(voll.pose?.id).toBe('p1');
+    expect(halb.pose).toBeNull();
+  });
+});

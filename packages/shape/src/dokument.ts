@@ -292,6 +292,7 @@ const PoseSchema = z.object({
   saat: z.object({ haps: z.number().optional() }).optional(),
   linien: z.object({ oben: z.array(LinienKnotenSchema).min(2), unten: z.array(LinienKnotenSchema).min(2) }).optional(),
   spiel: z.boolean().optional(),
+  baum: z.object({ form: z.array(KaefigDeltaSchema), bezug: z.array(z.number()).optional() }).optional(),
 });
 /** Käfig-Deltas der Grundform und je Pose (M3: „fressen“ = offenes Maul, mit der Öffnung überblendet; Plan 5.2). */
 /**
@@ -440,6 +441,11 @@ export type Pose = {
   linien?: PoseLinien;
   /** im Spiel benutzt (Export) */
   spiel?: boolean;
+  /**
+   * S7.3 (Körper aus Teilen, `ausstattung.koerper: 'teile'`): Form der Pose auf dem Baum-Käfig — Ruhe-Deltas mit Ruhelage
+   * `lage` (nach einem Umbau gilt der Punkt an dieser Stelle) und der Bezugs-Käfig; getrennt von `form` (Röhre)
+   */
+  baum?: { form: KaefigDelta[]; bezug?: number[] };
 };
 export const POSE_TITEL: Record<string, string> = { idle: 'Idle', fressen: 'Fressen', ruhen: 'Ruhen', laufen: 'Laufen', inklusion: 'Inklusion' };
 /** Idle und Fressen sind immer da (Florian 15.10. abends: „Es wird dann noch eine Pose Idle geben, die den Normalzustand beschreibt“). */
