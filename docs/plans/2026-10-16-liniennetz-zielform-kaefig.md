@@ -593,6 +593,40 @@ wie im Kern; Deskriptoren endlich, Winkel stetig über die Naht, Bogenlänge lä
 - **Offen:** S7.5 Standard (nach Florians Blick), „Formen folgen“ nach dem Pinsel auf dem Baum, Augen/Reifen auf dem Baum,
   Maul auf Teilen (Teil A).
 
+### Zielbild (Florian, 17.10.) und was dafür noch fehlt
+
+**Florians Worte (gekürzt):** Am Ende entsteht eine vollwertige Vektorillustration aus drei Ansichten. Erst die Grundform, dann
+die Konturlinien. Alle Linien sind Teil des Netzes und in jeder Ansicht und in 3D genau abgebildet, ohne Widerspruch oder
+Abweichung: Silhouetten, verdeckte Linien wie der Bauch unter dem Langhalskopf, Arme, Brauenwulst, vier Beine. Zwischen
+Silhouettenlinie und gezeichneter Kantenlinie gibt es keinen Unterschied. Die Dicke zeigt die Kantigkeit (ganz dünn = die Linie
+liegt flach auf der Haut, 3 px = harte Kante) und verjüngt sich wie in einer Illustration. Punkte lassen sich in jeder Ansicht
+wie Vektoren bearbeiten.
+
+**Abgleich mit dem Plan:** Das ist das Ziel dieses Plans (Teil L, „ein 3D-Liniennetz ist die einzige Wahrheit“). Im Einzelnen:
+1. **Jede Linie ist eine 3D-Kurve auf der Haut** mit gemeinsamen Knoten an Kreuzungen. Ein Umriss einer Ansicht ist die Stelle,
+   an der sich die Haut von dieser Blickrichtung wegdreht; in einer anderen Ansicht ist dieselbe Kurve eine gewöhnliche Linie
+   auf dem Körper (dünn, wo die Haut rund ist). Gebaut: Anzeige in allen Ansichten (S1), derselbe Punkt überall (S1c),
+   verdeckte Teillinien (S4), Körper aus Teilen (S5–S7).
+2. **Die Linien binden den Körper genau — das fehlt noch.** Heute bindet nur die Naht der Seite genau. Front- und Top-Umriss
+   werden angenähert (Δ), verdeckte Teillinien binden nicht, P-Linien nur als Treppenfalte. **S8 umfasst deshalb alle
+   Linien**: die Umrisse aller drei Ansichten, die verdeckten Teillinien, die P-Linien und die Querschnittslinien. Jede wird
+   eine Käfigschleife genau auf der Linie (Teil L, L1); dann ist die schwarze Linie die Projektion des Netzes, also der Umriss
+   des Körpers, und Δ ist 0, weil der Körper nicht anders kann.
+3. **Zwischen den Linien** gilt die glatteste Haut, die alle Linien genau trifft (Glättungsmaß, S2). Wo eine bestimmte Form
+   gewünscht ist (kastig, flach), setzt man eine Querschnitts- oder P-Linie — mehr Information braucht es nicht.
+4. **Widersprüche gibt es dann nicht mehr:** Jeder Knoten ist ein 3D-Punkt, jede Ansicht zeigt seine Projektion, Ziehen in einer
+   Ansicht bewegt den 3D-Punkt. Nur alte, getrennt gezeichnete Kurven können sich widersprechen (rot, „angleichen“, S0/S1).
+5. **Dicke = Härte für alle Linien**, auch für Umrisse.
+6. In einer freien 3D-Ansicht ist der Umriss dort, wo sich die Haut von dieser Kamera wegdreht; auf runden Körpern ist das
+   keine der gezeichneten Linien (wie in einer Illustration hängt der Umriss vom Blickpunkt ab). Harte Kanten bleiben Linien.
+
+**Tor des Endzustands:** In jeder Ansicht liegt die schwarze Linie auf dem Umriss des Körpers (0 px); jede verdeckte Teillinie
+und jede P-Linie liegt genau auf der Haut; derselbe Punkt in allen Ansichten und in 3D; jeder Knoten wie ein Vektor bearbeitbar.
+
+**Rückmeldung 17.10. zum Körper aus Teilen:** „Es geht schon vieles.“ Entenflügel als dicke Lappen passen nicht — die Form muss
+so dargestellt werden, wie sie gezeichnet ist (Flügel flach; die Lappen aus dem Front-Überschuss werden zurückgenommen).
+Zweihals und Vierbeiner ließen sich noch nicht sauber nachstellen (an seinen Wesen nachstellen und beheben).
+
 ### S8 P-Linien als echte Kanten — Linien exakt (Teil L: L0-Rest und L1)
 
 > Nachtrag 16.10. abends, Florian: „Wird das mit den Linien, die ich mit P auf die Haut zeichne, die dann zur Kante werden
