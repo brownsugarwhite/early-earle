@@ -576,6 +576,19 @@ Der Baum wird in Teilschritten zum Körper; jeder Teilschritt lässt den Editor 
 **Tore S7.1:** ohne `koerper: 'teile'` bitgleich; Ente, Fisch, Vierbeiner, Zweihals im Editor mit Earle-Look, Δ im Blatt-Titel
 wie im Kern; Deskriptoren endlich, Winkel stetig über die Naht, Bogenlänge längs jedes Streifens steigend.
 
+**Stand S7 (17.10. früh):**
+- **S7.1 gebaut** (3d4f197f): Baum als Körper mit Earle-Look (`baumDeskriptoren`: Winkel aus der Punktnummer, stetig längs
+  jedes Streifens, Rücken oben/Nacken hinten, Röhren aus dem Ellipsenwinkel, Ansätze über drei Ringe überblendet), Atlas,
+  Δ, Saum, Liniennetz vom Baum. Spitze einer Röhre nur bei spitzer Ecke (< 80°) scharf. `s7-editor.mjs` grün; Δ im
+  Blatt-Titel wie im Kern (Ente 3,4/7,8/1,7 px).
+- **S7.2 gebaut** (19559eec), anders als oben geplant: kein Teilneubau, sondern der gelöste Käfig des letzten genauen Baus
+  folgt während der Geste der Zeichnung (Mittelwert-Koordinaten der Seitenlinie, Breitenverhältnis aus Front und Top), am
+  Gestenende genauer Neubau. Zug 24–62 ms (die Röhre allein brauchte mit Look 41–72 ms); Kern-Test: 6 px Knotenzug ≤ 2 px
+  am genauen Neubau. Ein eingefrorener Baum (`dok.kaefig.baum`) ist damit nicht nötig.
+- **S7.4 gebaut** (596baab1): P-Linien als Treppenfalte (`baumKanten.ts`), Ente 36,7° gegen 43,6° auf der Röhre (Tor:
+  mindestens gleich — zu 84 % erreicht).
+- **Offen:** S7.3 Pinsel und Posen, S7.5 Standard.
+
 ### S8 P-Linien als echte Kanten — Linien exakt (Teil L: L0-Rest und L1)
 
 > Nachtrag 16.10. abends, Florian: „Wird das mit den Linien, die ich mit P auf die Haut zeichne, die dann zur Kante werden

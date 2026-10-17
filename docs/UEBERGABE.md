@@ -1,4 +1,4 @@
-# Übergabe (Stand 17.10.2026 früh: S7.1 — der Baum mit seitlichen Teilen ist mit „Körper: Teile“ der Körper im Editor)
+# Übergabe (Stand 17.10.2026 früh: S7.1, S7.2, S7.4 — der Baum ist mit „Körper: Teile“ der Körper, folgt dem Zug, trägt P-Linien)
 
 Branch `claude/editor-grundlayout`.
 
@@ -43,7 +43,14 @@ sauber. Suche immer nochmal nach eleganteren Möglichkeiten.“ Gewählte Reihen
   Saum, Liniennetz vom Baum; kein Geist mehr). Während einer Geste folgt die Röhre dem Zug, am Gestenende kommt der Baum
   (bis S7.2). Pinsel, Augen, Reifen, Maul und Zähne wirken noch auf die Röhre und sind auf dem Baum aus (S7.3). Prüfung
   `apps/editor/scripts/pruefen/s7-editor.mjs` grün; Bild [`s7-baum-als-koerper-2026-10-17.jpg`](progress/editor/s7-baum-als-koerper-2026-10-17.jpg).
-  **Noch nicht auf dem Baum:** schneller Zug (S7.2), Pinsel/Posen (S7.3), P-Linien als Falte (S7.4).
+- **S7.2 (gebaut):** Während eines Zugs bleibt der Baum der Körper: Der Käfig des letzten genauen Baus folgt der Zeichnung
+  über Mittelwert-Koordinaten der Seitenlinie und die Breitenverhältnisse aus Front und Top (`baumZiehen` in
+  `kern/wesen.ts`), am Gestenende genauer Neubau. Zug 24–62 ms; der Baum-Körper überspringt Netz, Look und Δ der
+  unsichtbaren Röhre. `s7-editor.mjs` zieht einen Seitenknoten (alle Zwischenstände Baum, Undo bitgleich).
+- **S7.4 (gebaut):** P-Linien (`dok.kanten`) als Treppenfalte auf dem Baum (`kern/grundkoerper/baumKanten.ts`): nächster
+  Käfigpunkt je Linienpunkt, kürzester Weg im Käfig über Streifen und Ansätze, Härte als Schärfe, gespiegelt. Ente, Linie
+  über den Halsansatz: Knick 36,7° gegen 43,6° auf der Röhre (84 %); genau auf der Linie erst mit S8.
+- **Noch nicht auf dem Baum:** Pinsel und Posen (S7.3), Augen, Reifen, Maul, Zähne.
 - Prüfungen: Kern-Tests `baumBau.test.ts` (neu: „S6 seitliche Teile“ für Ente, Fisch, Zweihals), `baumKaefig.test.ts`
   (Fenster-Topologie); Skripte `apps/editor/scripts/pruefen/s5-bogen.ts` (Δ mit gebauten Paaren ohne Ausnahme),
   `s5-editor.mjs` (`SEITEN=ente:1,fisch:1,vierbeiner:2,zweihals:1`). `pnpm typecheck` grün, Kern-Tests 452/453 (ein
@@ -69,8 +76,8 @@ sauber. Suche immer nochmal nach eleganteren Möglichkeiten.“ Gewählte Reihen
 
 ## Nächster Schritt
 
-S7.2 Zug auf festem Baum (Topologie eingefroren, Zug rechnet nur Ziele und Löser), dann S7.3 Anker für Pinsel und Posen,
-S7.4 P-Linien als Treppenfalte, S7.5 Standard; danach S8. Wochenlimit stand am 16.10. spätnachts bei 99 %.
+S7.3 Pinsel und Posen auf dem Baum (Treffer auf dem Baum-Käfig, eigene Deltas mit Anker, ohne Umbau angewandt), dann
+S7.5 Standard; danach S8. Wochenlimit stand am 16.10. spätnachts bei 99 %.
 
 ## Arbeitsregeln
 
