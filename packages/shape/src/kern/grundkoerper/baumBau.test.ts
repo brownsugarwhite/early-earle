@@ -128,17 +128,19 @@ describe('S6 seitliche Teile', () => {
     return { b, z, d, euler: k.n - k.nE + k.nF };
   };
 
-  it('Ente: Flügel aus dem Überschuss der Front, Ansatz ohne Falten', () => {
+  it('Ente: Flügel flach wie im Top gezeichnet, in einer Ebene auf Rumpfhöhe (Florian 17.10.: keine Lappen)', () => {
     const { b, z, d, euler } = mitPaaren('ente');
     expect(euler).toBe(2);
     expect(b.seiten.length).toBe(1);
     expect(b.seitenAusgelassen).toEqual([]);
-    // Dicke aus der Glocke der Front (Flanken über den Rumpf hinaus), nicht ¼ der Breite
-    expect(b.seiten[0]!.ringe[0]!.r2 * 461).toBeGreaterThan(12);
-    expect(z.frei.max).toBeLessThan(20);
-    expect(z.ansatz.max).toBeLessThan(20);
-    expect(z.kappe.max).toBeLessThan(21);
-    expect(d.top.max).toBeLessThan(6);
+    // flach: Dicke ¼ der Breite, alle Ringe auf derselben Höhe
+    const r = b.seiten[0]!.ringe;
+    for (const q of r) expect(q.r2).toBeLessThan(0.3 * q.r1);
+    for (const q of r) expect(Math.abs(q.mitte[1] - r[0]!.mitte[1])).toBeLessThan(1e-9);
+    // Messwerte 17.10. als Grenze (frei 27,2°, Ansatz 24,5° an Wurzel und Spitze des dünnen Flügels)
+    expect(z.frei.max).toBeLessThan(30);
+    expect(z.ansatz.max).toBeLessThan(26);
+    expect(d.top.max).toBeLessThan(3);
   });
 
   it('Fisch: Brustflossen gebaut, Front und Top genau', () => {

@@ -175,10 +175,13 @@ export function seitenteile(baum: Teilbaum, rumpfFehlend: (b: BlattName, p: V2) 
       }
       return null;
     };
+    const fehlendWurzel = rumpfFehlend(primaer, { x: (e.schnitt[0].x + e.schnitt[1].x) / 2, y: (e.schnitt[0].y + e.schnitt[1].y) / 2 });
     const ringe: SeitenRing[] = enden.map(({ Pa, Pb }, k) => {
       const M = mitten[k]!;
       const z2 = zFuer(k);
-      const fehlend = z2 ? z2.mitte : rumpfFehlend(primaer, M);
+      // ohne zweite Ansicht: eine Ebene auf der Höhe des Rumpfs an der Wurzel (Sehnenmitte), für alle Ringe gleich — je Ring
+      // die Höhe der nächsten Rumpfsprosse sprang um 10 px und knickte den flachen Entenflügel (39°)
+      const fehlend = z2 ? z2.mitte : fehlendWurzel;
       const A = nach3(primaer, Pa, fehlend);
       const B = nach3(primaer, Pb, fehlend);
       const r1 = 0.5 * Math.hypot(Pb.x - Pa.x, Pb.y - Pa.y);

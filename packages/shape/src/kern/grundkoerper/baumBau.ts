@@ -74,9 +74,14 @@ export type BaumOptionen = AbleitOptionen & {
   fensterGewicht: number;
   /** S6: Kehle an Beinen und Hälsen — Fensterrand längs der Achse aus der Haut (Anteil Wurzel → erster Ring) */
   fensterKehle: number;
+  /**
+   * S6: Dicke von Teilen, die nur eine Ansicht zeigt (Entenflügel nur im Top): flach (¼ der Breite, Lage am Rumpf) oder aus
+   * dem Überschuss der Front über den Rumpf. Florian 17.10.: „Entenflügelchen als Lappen passen nicht“ — Standard flach
+   */
+  paarDicke: 'flach' | 'ueberschuss';
 };
 
-export const BAUM_STANDARD: BaumOptionen = { ...ABLEIT_STANDARD, ...GLATTE_HAUT, fuelle: 'mittel', ansatzUebergang: 0.35, elternQuerschnitt: 'lappen', ansatz: 'kragen', kappeKante: 0.8, hebung: 'ringe', feldGewicht: 1, klinge: 0.4, paare: false, fensterGewicht: 0.05, fensterKehle: 0.5 };
+export const BAUM_STANDARD: BaumOptionen = { ...ABLEIT_STANDARD, ...GLATTE_HAUT, fuelle: 'mittel', ansatzUebergang: 0.35, elternQuerschnitt: 'lappen', ansatz: 'kragen', kappeKante: 0.8, hebung: 'ringe', feldGewicht: 1, klinge: 0.4, paare: false, fensterGewicht: 0.05, fensterKehle: 0.5, paarDicke: 'flach' };
 
 export type BaumAbleitung = {
   opt: BaumOptionen;
@@ -714,7 +719,7 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
   const ansaetze: SeitenAnsatz[] = [];
   const rh = mitPaaren ? rumpfHaut(ringe[0]!.sprossen, qs[0]!, Ws[0]!, e.streifen[0]!.N, bz) : null;
   if (mitPaaren && rh) {
-    const geb = seitenFenster(e, ringe, topoMitte, rh, rumpf ? ueberschussVon(dok, breiten, rumpf.breiten, e.seite) : undefined);
+    const geb = seitenFenster(e, ringe, topoMitte, rh, opt.paarDicke === 'ueberschuss' && rumpf ? ueberschussVon(dok, breiten, rumpf.breiten, e.seite) : undefined);
     for (const g of geb.gebaut) {
       seiten.push(g.teil);
       seitenTopo.push(g.topo);
