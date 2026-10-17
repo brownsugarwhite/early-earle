@@ -23,7 +23,8 @@ import { ABWEICHUNG_PX, blattAbweichungen } from './abweichung';
 import { erreichbarkeit } from './grundkoerper/huelle';
 import { type NetzSicht, netzSicht } from './netzSicht';
 import { type TeilAnzeige, teilAnzeige } from './grundkoerper/teilAnsicht';
-import { baumAbleiten, baumDreiecke } from './grundkoerper/baumBau';
+import { type BaumAbleitung, baumAbleiten, baumDreiecke } from './grundkoerper/baumBau';
+import { baumDeskriptoren } from './grundkoerper/baumDeskriptoren';
 import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
 import { anwenden3 } from '../subdivision/matrix';
 import { spantKasten, spantTeilProfil, vorlageBei } from '../spanten';
@@ -82,6 +83,8 @@ export type { ZonenVorlage } from '../dokument';
  * (Structured Clone), damit der Worker ihn bekommt.
  */
 export type Bauplan = Ausstattung & {
+  /** S5-Geist (Baum durchscheinend über dem Körper) zusätzlich bauen; seit S7.1 ist der Baum mit `koerper: 'teile'` der Körper */
+  geist?: boolean;
   /** Maul-Lage (Ausstattung oder Chip) */
   maul: MaulArt;
   /**
@@ -284,6 +287,11 @@ export type WesenNetz = {
    * Index, Profil-Einheiten), mit Zahl der Streifen und Bauzeit; nur im genauen Bau, ohne Maul und Beine. Sonst null.
    */
   geist: { positionen: Float32Array; normalen: Float32Array; streifen: number; seiten?: number; ms: number; fehler?: string } | null;
+  /**
+   * S7.1: Der Baum ist der Körper (Ausstattung `koerper: 'teile'`, ohne Maul und Beine, im genauen Bau): Zahl der Streifen und
+   * seitlichen Röhren, Bauzeit, Fehler (dann zeigt das Netz die Röhre). Während Gesten null (die Röhre folgt dem Zug).
+   */
+  koerperBaum: { streifen: number; seiten: number; ms: number; fehler?: string } | null;
   /** Front/Top: Umweg der schwarzen Linie über einen breiteren Kiefer (Paare x, y; NaN trennt), sonst fehlt das Blatt */
   umweg: { front?: Float32Array; top?: Float32Array } | null;
   info: WesenInfo;
@@ -306,6 +314,8 @@ export type WesenStand = {
   teile?: TeilAnzeige | null;
   /** S5: zuletzt gebauter Geist (Schlüssel: Bauschlüssel und eingefrorene Teile) */
   geist?: { schluessel: string; netz: NonNullable<WesenNetz['geist']> };
+  /** S7.1: zuletzt gebauter Baum-Körper (Schlüssel wie der Geist, dazu Look und Zonen) */
+  baum?: { schluessel: string; netz: BaumKoerperNetz };
   umweg?: WesenNetz['umweg'];
   blatt?: WesenInfo['blatt'];
   /** B7: zuletzt gerechnete Zusatz-Umrisse mit ihrem Schlüssel (Körper, Pinsel, Posen, Anfrage) */
@@ -934,6 +944,69 @@ function ableitOpt(dok: Dokument, plan: Partial<Bauplan>, koerper = false): Part
   return { ...(g ? { stationen: g } : {}), ...(plan.fuehrend ? { fuehrend: plan.fuehrend } : {}), ...(plan.ring ? { ring: plan.ring } : {}), ...(koerper && plan.glatt ? GLATTE_HAUT : {}), ...(koerper && plan.fuelle ? { fuelle: plan.fuelle } : {}) };
 }
 
+/** S7.1: Teile des Netzes, die der Baum-Körper ersetzt. */
+type BaumKoerperNetz = Pick<WesenNetz, 'positionen' | 'normalen' | 'deskriptoren' | 'hoehe' | 'mitte' | 'atlas' | 'saum' | 'netzSicht'> & {
+  blatt: Record<'seite' | 'front' | 'top', { max: number; mittel: number }>;
+  kaefigPunkte: number;
+  feinPunkte: number;
+  info: { streifen: number; seiten: number; ms: number; fehler?: string };
+};
+
+/**
+ * S7.1 Baum als Körper: Mittelebenen-Baum mit seitlichen Teilen, Earle-Deskriptoren je Streifen, Zonen-Atlas über die
+ * allgemeine Kachelung, Δ und Saum je Blatt, Liniennetz. Bei einem Fehler null (das Netz bleibt die Röhre).
+ */
+function baumKoerper(dok: Dokument, plan: Bauplan): BaumKoerperNetz | { fehler: string; ms: number } {
+  const t0 = jetzt();
+  let b: BaumAbleitung;
+  try {
+    b = baumAbleiten(dok, { paare: true });
+  } catch (err) {
+    return { fehler: err instanceof Error ? err.message : String(err), ms: jetzt() - t0 };
+  }
+  const kb = b.unterteilung.stufen[b.unterteilung.stufen.length - 1]!.kaefig;
+  const flaechen = alleFlaechen(kb);
+  const punkte = punkteVon(b.fein);
+  const tri = zuDreiecken({ punkte, flaechen, schaerfe: new Map() }, 40);
+  const deskriptoren = plan.earle && plan.stil === 'fest' ? jeEcke(baumDeskriptoren(b), flaechen) : null;
+  let hoehe = 0;
+  for (const p of punkte) hoehe = Math.max(hoehe, p[1]);
+  const mitte: V3 = [0, 0, 0];
+  for (const p of punkte) for (let d = 0; d < 3; d++) mitte[d] = mitte[d]! + p[d]! / punkte.length;
+  let atlas: AtlasDaten | null = null;
+  if (plan.earle && plan.stil === 'fest' && (plan.atlas ?? true) && plan.zonen?.length) {
+    // die Kachelung braucht nur Käfig und Unterteilung
+    const kach = kachelung({ kaefig: b.kaefig, unterteilung: b.unterteilung } as unknown as Ableitung);
+    const rf = b.fein;
+    const g = { xMin: Infinity, xMax: -Infinity, yMin: Infinity, yMax: -Infinity, zMax: 0 };
+    for (let i = 0; i < rf.length / 3; i++) {
+      g.xMin = Math.min(g.xMin, rf[3 * i]!);
+      g.xMax = Math.max(g.xMax, rf[3 * i]!);
+      g.yMin = Math.min(g.yMin, rf[3 * i + 1]!);
+      g.yMax = Math.max(g.yMax, rf[3 * i + 1]!);
+      g.zMax = Math.max(g.zMax, Math.abs(rf[3 * i + 2]!));
+    }
+    const r = zonenRastern(kach, flaechen, rf, zonenWelt(plan.zonen, g));
+    atlas = { ecken: atlasEcken(kach), abstand: r.abstand, weich: r.weich, breite: kach.breite, hoehe: kach.hoehe };
+  }
+  const bl = blattAbweichungen(punkte, flaechen, dok, 240);
+  const netzSichtB = netzSicht({ dok, punkte, flaechen, kaefig: b.kaefig, unterteilung: b.unterteilung, reifen: [] });
+  return {
+    positionen: tri.positionen,
+    normalen: tri.normalen,
+    deskriptoren,
+    hoehe,
+    mitte,
+    atlas,
+    saum: { seite: bl.seite.saum, front: bl.front.saum, top: bl.top.saum },
+    netzSicht: netzSichtB,
+    blatt: { seite: { max: bl.seite.max, mittel: bl.seite.mittel }, front: { max: bl.front.max, mittel: bl.front.mittel }, top: { max: bl.top.max, mittel: bl.top.mittel } },
+    kaefigPunkte: b.kaefig.n,
+    feinPunkte: punkte.length,
+    info: { streifen: b.ebene.streifen.length, seiten: b.seiten.length, ms: jetzt() - t0 },
+  };
+}
+
 export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stand: WesenStand | null, schnell = false): { netz: WesenNetz; stand: WesenStand } {
   // Einheiten (Plan „Liniennetz, Zielform, Käfig“, S1, 16.10.): Der Kern rechnet immer in Profil-Einheiten; der Maßstab
   // (Größenregler) gilt nur für die Anzeige und das Spiel (× Maßstab im Editor). Vorher rechneten Leiter und Stationen in
@@ -1271,10 +1344,28 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
       top: { max: bl.top.max, mittel: bl.top.mittel, widerspruch: er.top.max },
     };
   }
-  // S5: Mittelebenen-Baum als Geist (nur genau, ohne Maul und Beine; während Gesten der letzte Stand)
+  // S7.1: Baum als Körper (Ausstattung `koerper: 'teile'`, ohne Maul und Beine). Im genauen Bau ersetzt der Baum mit
+  // seitlichen Teilen die Röhre in der Anzeige; während einer Geste folgt die Röhre dem Zug (S7.2 bringt den Zug auf den Baum)
+  let baumStand = stand?.baum;
+  let koerperBaum: WesenNetz['koerperBaum'] = null;
+  let baumNetz: BaumKoerperNetz | null = null;
+  if (plan.koerper === 'teile' && maul === 'aus' && beine === 'aus') {
+    const bSchluessel = JSON.stringify({ s: schluessel, t: dok.kaefig?.stationen?.teile ?? null, e: plan.earle, st: plan.stil, z: plan.zonen ?? null, a: plan.atlas ?? true });
+    if (baumStand && baumStand.schluessel === bSchluessel) baumNetz = baumStand.netz;
+    else if (!schnell) {
+      const r = baumKoerper(dok, plan);
+      if ('fehler' in r && !('positionen' in r)) koerperBaum = { streifen: 0, seiten: 0, ms: r.ms, fehler: r.fehler };
+      else {
+        baumNetz = r as BaumKoerperNetz;
+        baumStand = { schluessel: bSchluessel, netz: baumNetz };
+      }
+    }
+    if (baumNetz) koerperBaum = baumNetz.info;
+  } else baumStand = undefined;
+  // S5: Mittelebenen-Baum als Geist — seit S7.1 nur noch, wenn ausdrücklich verlangt (`Bauplan.geist`)
   let geistStand = stand?.geist;
   let geist: WesenNetz['geist'] = null;
-  if (plan.koerper === 'teile' && maul === 'aus' && beine === 'aus') {
+  if (plan.koerper === 'teile' && plan.geist && maul === 'aus' && beine === 'aus') {
     const gSchluessel = JSON.stringify({ s: schluessel, t: dok.kaefig?.stationen?.teile ?? null });
     if (!geistStand || (geistStand.schluessel !== gSchluessel && !schnell)) {
       const t0 = jetzt();
@@ -1498,6 +1589,62 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
   const poseSeite = bearbeitung ? poseBlattGriffe('seite', abl.fein, fein, flaechen, abl.unterteilung.grenze, dok) : null;
   const poseFront = bearbeitung ? poseBlattGriffe('front', abl.fein, fein, flaechen, abl.unterteilung.grenze, dok) : null;
   const poseTop = bearbeitung ? poseBlattGriffe('top', abl.fein, fein, flaechen, abl.unterteilung.grenze, dok) : null;
+  // S7.1: Baum-Körper ersetzt die Anzeige der Röhre; Werkzeuge auf dem Röhren-Käfig (Treffer, Augen, Reifen, Käfiglinien)
+  // sind dann aus, bis S7.3 sie auf den Baum bringt
+  if (baumNetz) {
+    const bn = baumNetz;
+    const netzB: WesenNetz = {
+      positionen: bn.positionen.slice(),
+      normalen: bn.normalen.slice(),
+      deskriptoren: stil === 'feuer' || stil === 'gas' ? null : bn.deskriptoren ? bn.deskriptoren.slice() : null,
+      hoehe: bn.hoehe,
+      augen: [],
+      kaefigLinien: null,
+      kaefigFarben: null,
+      lippenBand: 0,
+      stil,
+      mitte: bn.mitte,
+      ruhe: null,
+      gesicht: null,
+      zaehne: null,
+      zahnMeldungen: null,
+      atlas: stil === 'fest' && bn.atlas ? { ...bn.atlas, ecken: bn.atlas.ecken.slice(), abstand: bn.atlas.abstand.slice(), weich: bn.atlas.weich.slice() } : null,
+      treffer: null,
+      reifen: null,
+      maul: null,
+      gewichtFarben: null,
+      rundmaul: null,
+      anker: null,
+      pose: null,
+      umrisse: null,
+      mischung: null,
+      poseSeite: null,
+      poseFront: null,
+      poseTop: null,
+      saum: bn.saum,
+      widerspruch,
+      randMarken: null,
+      netzSicht: bn.netzSicht,
+      teile,
+      geist: null,
+      koerperBaum,
+      umweg: null,
+      info: {
+        ...info,
+        kaefigPunkte: bn.kaefigPunkte,
+        feinPunkte: bn.feinPunkte,
+        nahtMax: bn.blatt.seite.max,
+        nahtMittel: bn.blatt.seite.mittel,
+        ableitung: bn.info.ms,
+        blatt: {
+          seite: { ...bn.blatt.seite, ...(blatt?.seite.widerspruch !== undefined ? { widerspruch: blatt.seite.widerspruch } : {}) },
+          front: { ...bn.blatt.front, ...(blatt?.front.widerspruch !== undefined ? { widerspruch: blatt.front.widerspruch } : {}) },
+          top: { ...bn.blatt.top, ...(blatt?.top.widerspruch !== undefined ? { widerspruch: blatt.top.widerspruch } : {}) },
+        },
+      },
+    };
+    return { netz: netzB, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(teile ? { teile } : {}), ...(baumStand ? { baum: baumStand } : {}), ...(blatt ? { blatt } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
+  }
   const netz: WesenNetz = {
     positionen,
     normalen,
@@ -1532,10 +1679,11 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     netzSicht: netz3,
     teile,
     geist,
+    koerperBaum,
     umweg,
     info,
   };
-  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(randMarken ? { randMarken } : {}), ...(netz3 ? { netzSicht: netz3 } : {}), ...(teile ? { teile } : {}), ...(geistStand ? { geist: geistStand } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
+  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(randMarken ? { randMarken } : {}), ...(netz3 ? { netzSicht: netz3 } : {}), ...(teile ? { teile } : {}), ...(geistStand ? { geist: geistStand } : {}), ...(baumStand ? { baum: baumStand } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
 }
 
 /** Puffer eines Netzes (zum Übertragen aus dem Worker). */

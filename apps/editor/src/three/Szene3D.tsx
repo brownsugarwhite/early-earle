@@ -29,7 +29,7 @@ import { PALETTEN } from './wesenLook';
 
 declare global {
   interface Window {
-    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number; netzLagen?: () => number[] | null; poseLippen?: () => unknown; projizieren?: (feld: 'creation' | 'seite' | 'front' | 'top', p: [number, number, number]) => [number, number] | null; netzPunkt?: (np: NetzPunkt) => [number, number, number] | null; strahlFeld?: (feld: 'creation' | 'seite' | 'front' | 'top', px: number, py: number, beideSeiten?: boolean) => { punkt: [number, number, number]; richtung: [number, number, number] } | null; netzSicht?: () => unknown; teile?: () => unknown; geist?: () => unknown };
+    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number; netzLagen?: () => number[] | null; poseLippen?: () => unknown; projizieren?: (feld: 'creation' | 'seite' | 'front' | 'top', p: [number, number, number]) => [number, number] | null; netzPunkt?: (np: NetzPunkt) => [number, number, number] | null; strahlFeld?: (feld: 'creation' | 'seite' | 'front' | 'top', px: number, py: number, beideSeiten?: boolean) => { punkt: [number, number, number]; richtung: [number, number, number] } | null; netzSicht?: () => unknown; teile?: () => unknown; geist?: () => unknown; koerperBaum?: () => unknown };
   }
 }
 
@@ -115,6 +115,8 @@ export function Szene3D() {
           const t = aktuellesNetz()?.netz.teile;
           return t ? { teile: t.teile.map((x) => ({ id: x.id, art: x.art, eltern: x.eltern, richtung: x.richtung, erkannt: x.erkannt, knoten: x.knoten.length / 3 })), zeit: t.zeit, gefroren: t.gefroren.teile.length } : null;
         },
+        // S7.1: Baum als Körper (Streifen, seitliche Röhren, Bauzeit, Fehler)
+        koerperBaum: () => aktuellesNetz()?.netz.koerperBaum ?? null,
         // S5: Geist des Mittelebenen-Baums (Streifen, Bauzeit, Fehler, Ecken)
         geist: () => {
           const g = aktuellesNetz()?.netz.geist;

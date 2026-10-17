@@ -93,6 +93,8 @@ export type BaumAbleitung = {
   querschnitte: Querschnitt[][];
   /** S6: gebaute seitliche Teile (Streifen ab `ebene.streifen.length`) und ausgelassene (Fenster passte nicht) */
   seiten: Seitenteil[];
+  /** S6: je seitlicher Röhre die Ausrichtung ihrer Ringpunkte: Punkt j liegt bei θ = 2π(versatz + richtung·j)/N der Ellipse */
+  seitenAusrichtung: { versatz: number; richtung: 1 | -1 }[];
   seitenAusgelassen: number[];
   zeiten: { ebene: number; ringe: number; ziele: number; matrix: number; loeser: number; gesamt: number };
 };
@@ -1135,6 +1137,20 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
       const t2 = b === 'top' ? { x: S[0], y: Math.abs(S[2]) } : b === 'front' ? { x: Math.abs(S[2]), y: S[1] } : { x: S[0], y: S[1] };
       const ecke = dok.profile[b].knoten.some((kn) => kn.art === 'ecke' && Math.hypot(kn.p.x * sk - t2.x, (b === 'seite' ? kn.p.y * sk : Math.abs(kn.p.y * sk)) - t2.y) < 3 / 461);
       if (!ecke) return;
+      // nur eine spitze Ecke (Flügel-, Flossen-, Stachelspitze, unter 80°): ein flacher Fuß hat zwei rechte Ecken, die Röhre endet
+      // an einer davon — scharf gab das ein Läppchen am Fuß (Vierbeiner)
+      const richtungBei = (kette: readonly V2[]) => {
+        const T = kette[kette.length - 1]!;
+        let q = kette.length - 2;
+        while (q > 0 && Math.hypot(kette[q]!.x - T.x, kette[q]!.y - T.y) < 8 / 461) q--;
+        const Q = kette[Math.max(0, q)]!;
+        const l = Math.hypot(Q.x - T.x, Q.y - T.y) || 1;
+        return { x: (Q.x - T.x) / l, y: (Q.y - T.y) / l };
+      };
+      const da = richtungBei(g.teil.ketten.a);
+      const db = richtungBei(g.teil.ketten.b);
+      const winkel = (Math.acos(Math.max(-1, Math.min(1, da.x * db.x + da.y * db.y))) * 180) / Math.PI;
+      if (winkel >= 80) return;
       const p = bk.kappe(s, 'ende', g.topo.N / 8, g.topo.N / 8);
       k.vSchaerfe[p] = opt.eckenSchaerfe;
       k.vSchaerfe[bk.spiegel[p]!] = opt.eckenSchaerfe;
@@ -1325,7 +1341,7 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
   }
   const t5 = jetzt();
   const zone = baumZonen(e, ringe, bk);
-  return { opt, ebene: e, ringe, bk, kaefig: { ...k, xyz }, unterteilung: u, fein, ziele, breiten: bz, zone, querschnitte: qs, seiten, seitenAusgelassen, zeiten: { ebene: t1 - t0, ringe: t2 - t1, ziele: t3 - t2, matrix: t4 - t3, loeser: t5 - t4, gesamt: t5 - t0 } };
+  return { opt, ebene: e, ringe, bk, kaefig: { ...k, xyz }, unterteilung: u, fein, ziele, breiten: bz, zone, querschnitte: qs, seiten, seitenAusrichtung: ansaetze.map((g) => ({ versatz: g.versatz, richtung: g.richtung })), seitenAusgelassen, zeiten: { ebene: t1 - t0, ringe: t2 - t1, ziele: t3 - t2, matrix: t4 - t3, loeser: t5 - t4, gesamt: t5 - t0 } };
 }
 
 /**

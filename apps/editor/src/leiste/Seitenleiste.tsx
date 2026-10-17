@@ -986,7 +986,7 @@ function AbleitenFeld() {
     else delete aus.glatt;
     s.setzeDokument({ ...s.dok, ausstattung: aus });
   };
-  // S5 „Mittelebenen-Baum“: Körper aus Streifen der Seitenfläche, bis S7 als Geist über dem heutigen Körper (ein Undo-Schritt)
+  // Körper aus dem Mittelebenen-Baum (S5–S7.1): Streifen der Seitenfläche und seitliche Röhren statt der einen Röhre (ein Undo-Schritt)
   const setzeKoerper = (k: 'roehre' | 'teile') => {
     const s = useEditor.getState();
     const aus = { ...(s.dok.ausstattung ?? {}) };
@@ -995,8 +995,10 @@ function AbleitenFeld() {
     s.setzeDokument({ ...s.dok, ausstattung: aus });
   };
   useNetzStand((s) => s.version);
-  const geist = aktuellesNetz()?.netz.geist ?? null;
+  const baum = aktuellesNetz()?.netz.koerperBaum ?? null;
   const koerper = dok.ausstattung?.koerper ?? 'roehre';
+  // der Baum baut nur ohne Maul und Beine (Maul auf Teilen kommt mit Teil A)
+  const baumWirkt = koerper === 'teile' && !(maulChip !== 'aus' || kernMaulAktiv(dok) || beine !== 'aus');
   return (
     <>
       <div className="feld">
@@ -1014,16 +1016,18 @@ function AbleitenFeld() {
       <Chips werte={['aus', 'rund', 'mittel', 'genau'] as const} aktiv={dok.ausstattung?.fuelle ?? 'aus'} attribut="fuelle" onWahl={(f) => setzeFuelle(f)} />
       <p className="hilfe">Wo der Körper hinter der Front zurückbleibt, schiebt sich der Ring dort hinaus, bis er die Linie berührt. Die Stufe begrenzt die Form: rund (Ellipse), mittel (weicher Kasten), genau (bis zur Kante). Nur ohne Maul und Beine.</p>
       <div className="feld">
-        <span>Körper (S5)</span>
-        <b data-geist={geist ? geist.streifen : ''} data-seiten={geist?.seiten ?? ''}>{koerper === 'teile' ? (geist ? (geist.fehler ? 'Baum scheitert' : `${geist.streifen} Streifen${geist.seiten ? ` + ${geist.seiten} seitlich` : ''} · ${geist.ms.toFixed(0)} ms`) : 'wird gebaut …') : 'eine Röhre'}</b>
+        <span>Körper</span>
+        <b data-geist={baum ? baum.streifen : ''} data-seiten={baum?.seiten ?? ''}>
+          {koerper === 'teile' ? (!baumWirkt ? 'Röhre (Maul oder Beine)' : baum ? (baum.fehler ? 'Baum scheitert · Röhre' : `${baum.streifen} Streifen${baum.seiten ? ` + ${baum.seiten} seitlich` : ''} · ${baum.ms.toFixed(0)} ms`) : 'Röhre während des Zugs') : 'eine Röhre'}
+        </b>
       </div>
-      <Chips werte={['roehre', 'teile'] as const} aktiv={koerper} text={(k) => (k === 'roehre' ? 'Röhre' : 'Teile (Geist)')} attribut="koerper" onWahl={(k) => setzeKoerper(k)} />
+      <Chips werte={['roehre', 'teile'] as const} aktiv={koerper} text={(k) => (k === 'roehre' ? 'Röhre' : 'Teile')} attribut="koerper" onWahl={(k) => setzeKoerper(k)} />
       <p className="hilfe">
         {koerper === 'teile'
-          ? geist?.fehler
-            ? `Der Mittelebenen-Baum scheitert an diesem Wesen: ${geist.fehler}`
-            : 'Hellblau durchscheinend: der Körper aus Streifen der Seitenfläche (Rumpf, Hals, Flossen je ein Streifen) und seitlichen Röhren (Flügel, Beine, Brustflossen; S6). Er ersetzt den heutigen Körper erst mit S7; ohne Maul und Beine.'
-          : '„Teile“ zeigt den Körper aus dem Mittelebenen-Baum (S5) als Geist über dem heutigen.'}
+          ? baum?.fehler
+            ? `Der Baum scheitert an diesem Wesen (${baum.fehler}); gezeigt wird die Röhre.`
+            : 'Der Körper aus Teilen: Rumpf, Hals, Flossen je ein Streifen der Seitenfläche, Flügel, Beine und Brustflossen als seitliche Röhren. Noch ohne Pinsel, Augen, Reifen, Maul und Zähne (die wirken auf die Röhre); während eines Zugs folgt die Röhre, danach kommt der Baum.'
+          : '„Teile“ baut den Körper aus dem Mittelebenen-Baum mit seitlichen Teilen statt aus einer Röhre.'}
       </p>
       <div className="feld">
         <span>Ringe</span>
