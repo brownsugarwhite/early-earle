@@ -26,7 +26,8 @@ import { type TeilAnzeige, teilAnzeige } from './grundkoerper/teilAnsicht';
 import { type BaumAbleitung, baumAbleiten, baumDreiecke } from './grundkoerper/baumBau';
 import { baumDeskriptoren } from './grundkoerper/baumDeskriptoren';
 import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
-import { anwenden3 } from '../subdivision/matrix';
+import { type DuennMatrix, anwenden3 } from '../subdivision/matrix';
+import { pfadAbtasten, vollerPfad } from '../profil';
 import { spantKasten, spantTeilProfil, vorlageBei } from '../spanten';
 import { kieferSchnitt } from './kieferSpant';
 import { type AnkerFeld, ankerVon, maulAnker } from './posenAnker';
@@ -950,7 +951,93 @@ type BaumKoerperNetz = Pick<WesenNetz, 'positionen' | 'normalen' | 'deskriptoren
   kaefigPunkte: number;
   feinPunkte: number;
   info: { streifen: number; seiten: number; ms: number; fehler?: string };
+  /** S7.2: Bezug für den schnellen Zug (Dokument des Baus, gelöster Käfig, Grenzmatrix, feine Flächen) */
+  zug: { dok: Dokument; xyz: Float64Array; grenze: DuennMatrix; flaechen: number[][] };
+  /** größter Widerspruch der Zeichnungen je Blatt (aus dem genauen Bau) */
+  blattWiderspruch?: Record<'seite' | 'front' | 'top', number>;
 };
+
+/** Seitenumriss als Polygon (gleich viele Proben je Abschnitt, damit alte und neue Linie Punkt für Punkt zusammenpassen). */
+function seitenPolygon(dok: Dokument): V2[] {
+  const P = pfadAbtasten(vollerPfad(dok.profile.seite), 16);
+  if (P.length > 1 && Math.hypot(P[0]!.x - P[P.length - 1]!.x, P[0]!.y - P[P.length - 1]!.y) < 1e-12) P.pop();
+  return P;
+}
+
+/**
+ * S7.2 schneller Zug auf dem Baum: Der gelöste Käfig des letzten genauen Baus folgt der Zeichnung, ohne neu zu bauen —
+ * in der Seite über Mittelwert-Koordinaten der Seitenlinie (Floater; jeder Käfigpunkt als gewichtete Summe der Linienpunkte,
+ * die Gewichte bleiben, die Linie bewegt sich), in der Tiefe mit dem Verhältnis der Halbbreiten aus Front (bei y) und Top
+ * (bei x). Danach nur die Grenzmatrix (≈ 5–15 ms). Hat sich die Knotenzahl der Seitenlinie geändert, null (dann die Röhre).
+ */
+function baumZiehen(z: BaumKoerperNetz['zug'], dokNeu: Dokument): Float64Array | null {
+  const A = seitenPolygon(z.dok);
+  const B = seitenPolygon(dokNeu);
+  if (A.length !== B.length || A.length < 3) return null;
+  const altB = silhouettenBreite(z.dok);
+  const neuB = silhouettenBreite(dokNeu);
+  const n = z.xyz.length / 3;
+  const m = A.length;
+  const out = new Float64Array(z.xyz.length);
+  const sx = new Float64Array(m);
+  const sy = new Float64Array(m);
+  const r = new Float64Array(m);
+  const t = new Float64Array(m);
+  const verhaeltnis = (alt: number, neu: number) => (alt > 1e-6 && neu > 1e-6 ? neu / alt : 1);
+  for (let p = 0; p < n; p++) {
+    const x = z.xyz[3 * p]!;
+    const y = z.xyz[3 * p + 1]!;
+    // Mittelwert-Koordinaten (vorzeichenbehaftet, gelten auch außerhalb und in nicht konvexen Polygonen)
+    let auf = -1;
+    for (let i = 0; i < m; i++) {
+      sx[i] = A[i]!.x - x;
+      sy[i] = A[i]!.y - y;
+      r[i] = Math.hypot(sx[i]!, sy[i]!);
+      if (r[i]! < 1e-12) auf = i;
+    }
+    let nx = 0;
+    let ny = 0;
+    if (auf >= 0) {
+      nx = B[auf]!.x;
+      ny = B[auf]!.y;
+    } else {
+      let kante = -1;
+      for (let i = 0; i < m; i++) {
+        const j = (i + 1) % m;
+        const kreuz = sx[i]! * sy[j]! - sy[i]! * sx[j]!;
+        const dot = sx[i]! * sx[j]! + sy[i]! * sy[j]!;
+        if (Math.abs(kreuz) < 1e-14 * (r[i]! * r[j]! + 1e-30)) {
+          if (dot < 0) kante = i;
+          t[i] = 0;
+        } else t[i] = (r[i]! * r[j]! - dot) / kreuz;
+      }
+      if (kante >= 0) {
+        // auf einer Kante: linear zwischen ihren Enden
+        const j = (kante + 1) % m;
+        const f = r[kante]! / (r[kante]! + r[j]!);
+        nx = B[kante]!.x + f * (B[j]!.x - B[kante]!.x);
+        ny = B[kante]!.y + f * (B[j]!.y - B[kante]!.y);
+      } else {
+        let summe = 0;
+        for (let i = 0; i < m; i++) {
+          const w = (t[(i + m - 1) % m]! + t[i]!) / r[i]!;
+          summe += w;
+          nx += w * B[i]!.x;
+          ny += w * B[i]!.y;
+        }
+        if (!(Math.abs(summe) > 1e-12)) return null;
+        nx /= summe;
+        ny /= summe;
+      }
+    }
+    const zz = z.xyz[3 * p + 2]!;
+    const f = verhaeltnis(altB.front(y), neuB.front(ny)) * verhaeltnis(altB.top(x), neuB.top(nx));
+    out[3 * p] = nx;
+    out[3 * p + 1] = ny;
+    out[3 * p + 2] = zz * f;
+  }
+  return anwenden3(z.grenze, out);
+}
 
 /**
  * S7.1 Baum als Körper: Mittelebenen-Baum mit seitlichen Teilen, Earle-Deskriptoren je Streifen, Zonen-Atlas über die
@@ -1004,6 +1091,7 @@ function baumKoerper(dok: Dokument, plan: Bauplan): BaumKoerperNetz | { fehler: 
     kaefigPunkte: b.kaefig.n,
     feinPunkte: punkte.length,
     info: { streifen: b.ebene.streifen.length, seiten: b.seiten.length, ms: jetzt() - t0 },
+    zug: { dok, xyz: b.kaefig.xyz, grenze: b.unterteilung.grenze, flaechen },
   };
 }
 
@@ -1115,6 +1203,108 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     }
     bearbeitung = r.bearbeitung;
   }
+  // S7.1/S7.2: Baum als Körper (Ausstattung `koerper: 'teile'`, ohne Maul und Beine). Der Baum mit seitlichen Teilen ersetzt
+  // die Röhre in der Anzeige; die Röhre wird nur noch für den Stand mitgeführt (Werkzeuge, Zurückschalten), ihr Netz, Look
+  // und Δ entfallen. Im genauen Bau ein neuer Baum, während einer Geste der Baum des letzten genauen Baus, verformt nach der
+  // Zeichnung (`baumZiehen`). Werkzeuge auf dem Röhren-Käfig (Treffer, Augen, Reifen) sind aus, bis S7.3 sie auf den Baum bringt.
+  let baumStand = stand?.baum;
+  let koerperBaum: WesenNetz['koerperBaum'] = null;
+  if (plan.koerper === 'teile' && maul === 'aus' && beine === 'aus') {
+    let baumNetz: BaumKoerperNetz | null = null;
+    const bSchluessel = JSON.stringify({ s: schluessel, t: dok.kaefig?.stationen?.teile ?? null, e: plan.earle, st: plan.stil, z: plan.zonen ?? null, a: plan.atlas ?? true });
+    if (baumStand && baumStand.schluessel === bSchluessel) baumNetz = baumStand.netz;
+    else if (schnell && baumStand) {
+      const t0z = jetzt();
+      const feinZ = baumZiehen(baumStand.netz.zug, dok);
+      if (feinZ) {
+        const tri = zuDreiecken({ punkte: punkteVon(feinZ), flaechen: baumStand.netz.zug.flaechen, schaerfe: new Map() }, 40);
+        baumNetz = { ...baumStand.netz, positionen: tri.positionen, normalen: tri.normalen, info: { ...baumStand.netz.info, ms: jetzt() - t0z } };
+      }
+    } else if (!schnell) {
+      const r = baumKoerper(dok, plan);
+      if ('fehler' in r && !('positionen' in r)) koerperBaum = { streifen: 0, seiten: 0, ms: r.ms, fehler: r.fehler };
+      else {
+        baumNetz = r as BaumKoerperNetz;
+        baumStand = { schluessel: bSchluessel, netz: baumNetz };
+      }
+    }
+    if (baumNetz) {
+      const bn = baumNetz;
+      koerperBaum = bn.info;
+      // Widersprüche der Zeichnungen und Teile (aus den Zeichnungen, unabhängig vom Körper): genauer Bau neu, im Zug der letzte Stand
+      let widerspruchB = stand?.widerspruch ?? null;
+      let teileB = stand?.teile ?? null;
+      if (!schnell || !widerspruchB) {
+        const er = erreichbarkeit(dok);
+        const tripel = (e: (typeof er)['seite']) => {
+          const out: number[] = [];
+          e.punkte.forEach((q, i) => out.push(q.x, q.y, e.widerspruch[i]!));
+          if (e.punkte.length) out.push(e.punkte[0]!.x, e.punkte[0]!.y, e.widerspruch[0]!, NaN, NaN, 0);
+          return Float32Array.from(out);
+        };
+        widerspruchB = { seite: tripel(er.seite), front: tripel(er.front), top: tripel(er.top) };
+        teileB = teilAnzeige(dok, dok.kaefig?.stationen?.teile ?? null);
+        bn.blattWiderspruch = { seite: er.seite.max, front: er.front.max, top: er.top.max };
+      }
+      const wid = bn.blattWiderspruch ?? stand?.baum?.netz.blattWiderspruch;
+      const blattB: WesenInfo['blatt'] = {
+        seite: { ...bn.blatt.seite, ...(wid ? { widerspruch: wid.seite } : {}) },
+        front: { ...bn.blatt.front, ...(wid ? { widerspruch: wid.front } : {}) },
+        top: { ...bn.blatt.top, ...(wid ? { widerspruch: wid.top } : {}) },
+      };
+      const stilB = plan.stil;
+      const netzB: WesenNetz = {
+        positionen: bn.positionen.slice(),
+        normalen: bn.normalen.slice(),
+        deskriptoren: stilB === 'feuer' || stilB === 'gas' ? null : bn.deskriptoren ? bn.deskriptoren.slice() : null,
+        hoehe: bn.hoehe,
+        augen: [],
+        kaefigLinien: null,
+        kaefigFarben: null,
+        lippenBand: 0,
+        stil: stilB,
+        mitte: bn.mitte,
+        ruhe: null,
+        gesicht: null,
+        zaehne: null,
+        zahnMeldungen: null,
+        atlas: stilB === 'fest' && bn.atlas ? { ...bn.atlas, ecken: bn.atlas.ecken.slice(), abstand: bn.atlas.abstand.slice(), weich: bn.atlas.weich.slice() } : null,
+        treffer: null,
+        reifen: null,
+        maul: null,
+        gewichtFarben: null,
+        rundmaul: null,
+        anker: null,
+        pose: null,
+        umrisse: null,
+        mischung: null,
+        poseSeite: null,
+        poseFront: null,
+        poseTop: null,
+        saum: bn.saum,
+        widerspruch: widerspruchB,
+        randMarken: null,
+        netzSicht: bn.netzSicht,
+        teile: teileB,
+        geist: null,
+        koerperBaum,
+        umweg: null,
+        info: {
+          kaefigPunkte: bn.kaefigPunkte,
+          feinPunkte: bn.feinPunkte,
+          nahtMax: bn.blatt.seite.max,
+          nahtMittel: bn.blatt.seite.mittel,
+          ableitung: schnell ? 0 : bn.info.ms,
+          zug: schnell ? bn.info.ms : zug,
+          ecken: 0,
+          schnell,
+          blatt: blattB,
+          stationen: abl.gefroren && teileB ? { ...abl.gefroren, teile: teileB.gefroren } : abl.gefroren,
+        },
+      };
+      return { netz: netzB, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen: null, ...(widerspruchB ? { widerspruch: widerspruchB } : {}), ...(teileB ? { teile: teileB } : {}), ...(baumStand ? { baum: baumStand } : {}) } };
+    }
+  } else baumStand = undefined;
   // Rundmaul (Phase 2 M6): nur ohne Schlitzmaul und Beine; die Haut um die Spitze dehnt sich mit der Öffnung
   let hoeheRuhe = 0;
   for (let i = 1; i < abl.fein.length; i += 3) hoeheRuhe = Math.max(hoeheRuhe, abl.fein[i]!);
@@ -1344,24 +1534,6 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
       top: { max: bl.top.max, mittel: bl.top.mittel, widerspruch: er.top.max },
     };
   }
-  // S7.1: Baum als Körper (Ausstattung `koerper: 'teile'`, ohne Maul und Beine). Im genauen Bau ersetzt der Baum mit
-  // seitlichen Teilen die Röhre in der Anzeige; während einer Geste folgt die Röhre dem Zug (S7.2 bringt den Zug auf den Baum)
-  let baumStand = stand?.baum;
-  let koerperBaum: WesenNetz['koerperBaum'] = null;
-  let baumNetz: BaumKoerperNetz | null = null;
-  if (plan.koerper === 'teile' && maul === 'aus' && beine === 'aus') {
-    const bSchluessel = JSON.stringify({ s: schluessel, t: dok.kaefig?.stationen?.teile ?? null, e: plan.earle, st: plan.stil, z: plan.zonen ?? null, a: plan.atlas ?? true });
-    if (baumStand && baumStand.schluessel === bSchluessel) baumNetz = baumStand.netz;
-    else if (!schnell) {
-      const r = baumKoerper(dok, plan);
-      if ('fehler' in r && !('positionen' in r)) koerperBaum = { streifen: 0, seiten: 0, ms: r.ms, fehler: r.fehler };
-      else {
-        baumNetz = r as BaumKoerperNetz;
-        baumStand = { schluessel: bSchluessel, netz: baumNetz };
-      }
-    }
-    if (baumNetz) koerperBaum = baumNetz.info;
-  } else baumStand = undefined;
   // S5: Mittelebenen-Baum als Geist — seit S7.1 nur noch, wenn ausdrücklich verlangt (`Bauplan.geist`)
   let geistStand = stand?.geist;
   let geist: WesenNetz['geist'] = null;
@@ -1589,62 +1761,6 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
   const poseSeite = bearbeitung ? poseBlattGriffe('seite', abl.fein, fein, flaechen, abl.unterteilung.grenze, dok) : null;
   const poseFront = bearbeitung ? poseBlattGriffe('front', abl.fein, fein, flaechen, abl.unterteilung.grenze, dok) : null;
   const poseTop = bearbeitung ? poseBlattGriffe('top', abl.fein, fein, flaechen, abl.unterteilung.grenze, dok) : null;
-  // S7.1: Baum-Körper ersetzt die Anzeige der Röhre; Werkzeuge auf dem Röhren-Käfig (Treffer, Augen, Reifen, Käfiglinien)
-  // sind dann aus, bis S7.3 sie auf den Baum bringt
-  if (baumNetz) {
-    const bn = baumNetz;
-    const netzB: WesenNetz = {
-      positionen: bn.positionen.slice(),
-      normalen: bn.normalen.slice(),
-      deskriptoren: stil === 'feuer' || stil === 'gas' ? null : bn.deskriptoren ? bn.deskriptoren.slice() : null,
-      hoehe: bn.hoehe,
-      augen: [],
-      kaefigLinien: null,
-      kaefigFarben: null,
-      lippenBand: 0,
-      stil,
-      mitte: bn.mitte,
-      ruhe: null,
-      gesicht: null,
-      zaehne: null,
-      zahnMeldungen: null,
-      atlas: stil === 'fest' && bn.atlas ? { ...bn.atlas, ecken: bn.atlas.ecken.slice(), abstand: bn.atlas.abstand.slice(), weich: bn.atlas.weich.slice() } : null,
-      treffer: null,
-      reifen: null,
-      maul: null,
-      gewichtFarben: null,
-      rundmaul: null,
-      anker: null,
-      pose: null,
-      umrisse: null,
-      mischung: null,
-      poseSeite: null,
-      poseFront: null,
-      poseTop: null,
-      saum: bn.saum,
-      widerspruch,
-      randMarken: null,
-      netzSicht: bn.netzSicht,
-      teile,
-      geist: null,
-      koerperBaum,
-      umweg: null,
-      info: {
-        ...info,
-        kaefigPunkte: bn.kaefigPunkte,
-        feinPunkte: bn.feinPunkte,
-        nahtMax: bn.blatt.seite.max,
-        nahtMittel: bn.blatt.seite.mittel,
-        ableitung: bn.info.ms,
-        blatt: {
-          seite: { ...bn.blatt.seite, ...(blatt?.seite.widerspruch !== undefined ? { widerspruch: blatt.seite.widerspruch } : {}) },
-          front: { ...bn.blatt.front, ...(blatt?.front.widerspruch !== undefined ? { widerspruch: blatt.front.widerspruch } : {}) },
-          top: { ...bn.blatt.top, ...(blatt?.top.widerspruch !== undefined ? { widerspruch: blatt.top.widerspruch } : {}) },
-        },
-      },
-    };
-    return { netz: netzB, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(teile ? { teile } : {}), ...(baumStand ? { baum: baumStand } : {}), ...(blatt ? { blatt } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
-  }
   const netz: WesenNetz = {
     positionen,
     normalen,

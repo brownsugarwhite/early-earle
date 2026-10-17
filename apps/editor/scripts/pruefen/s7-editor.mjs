@@ -80,6 +80,45 @@ for (const fall of faelle) {
   pruefe(b.hash !== a.hash, 'Netz ist der Baum (anders als die Röhre)');
   pruefe(b.geist === null, 'kein Geist mehr');
   console.log(`        Δ-Titel Röhre ${a.delta.join(' | ')}  →  Baum ${b.delta.join(' | ')}`);
+  // S7.2: einen Seitenknoten ziehen — während des Zugs bleibt der Baum der Körper (verformt), danach genauer Neubau
+  const knoten = await page.evaluate(() => {
+    const svg = document.querySelector('.vp-ober[data-view="seite"] svg.view2d');
+    if (!svg) return null;
+    const r = svg.getBoundingClientRect();
+    let best = null;
+    for (const g of svg.querySelectorAll('[data-knoten]')) {
+      const c = g.querySelector('.knoten-punkt');
+      const cx = Number(c.getAttribute('cx'));
+      const cy = Number(c.getAttribute('cy'));
+      if (!best || cy < best.cy) best = { cx, cy, x: r.x + cx, y: r.y + cy };
+    }
+    return best;
+  });
+  if (knoten) {
+    const vorZug = await stand();
+    await page.mouse.move(knoten.x, knoten.y);
+    await page.mouse.down();
+    const imZug = [];
+    for (let i = 1; i <= 10; i++) {
+      await page.mouse.move(knoten.x, knoten.y - 3 * i);
+      await page.waitForTimeout(120);
+      imZug.push(await page.evaluate(() => ({ baum: window.__editor.koerperBaum(), hash: window.__editor.netzHash() })));
+    }
+    const vZug = await page.evaluate(() => window.__editor.netzVersion());
+    await page.mouse.up();
+    await nachBau(vZug);
+    await page.waitForTimeout(500);
+    const nachZug = await stand();
+    const mitBaum = imZug.filter((z) => !!z.baum).length;
+    const anders = new Set(imZug.map((z) => z.hash)).size;
+    pruefe(mitBaum === imZug.length, `Zug: Baum ist in allen ${imZug.length} Zwischenständen der Körper (${mitBaum}), ${anders} verschiedene Netze`);
+    pruefe(!!nachZug.baum && nachZug.hash !== vorZug.hash && nachZug.schritte === vorZug.schritte + 1, `nach dem Zug genauer Baum (${nachZug.baum ? nachZug.baum.ms.toFixed(0) : '–'} ms), ein Undo-Schritt`);
+    v = await page.evaluate(() => window.__editor.netzVersion());
+    await page.evaluate(() => window.__stores.editor.getState().rueckgaengig());
+    await nachBau(v);
+    const zurueck = await stand();
+    pruefe(zurueck.hash === vorZug.hash, 'Undo des Zugs: Baum wie vorher');
+  } else pruefe(false, 'kein Seitenknoten gefunden');
   await page.evaluate(() => window.__stores.ui.getState().maximieren('creation'));
   await page.waitForTimeout(1500);
   await page.mouse.move(5, 5);
