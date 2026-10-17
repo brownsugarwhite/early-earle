@@ -690,6 +690,21 @@ Tiger, Langhals):
 - Der Schritt, der am ehesten an der Abbruchregel hängt (nach drei gemessenen Fehlanläufen an derselben Stelle anhalten) —
   dann Bericht mit erreichtem Stand.
 
+#### S8a Wochenend-Zuschnitt (17.10., Florian: „kannst du mir noch S8 einbauen, dass ich die Linien testen kann bis mein Limit wieder aufgefüllt ist?“)
+
+Ziel: Florian testet am Wochenende, wie sich echte Kanten anfühlen, und sammelt Rückmeldungen für Dienstag.
+- **Auf der Röhre (Standardkörper, ohne Maul und Beine):** Jede P-Linie mit Härte wird eine Käfigreihe (längs) bzw. ein
+  Käfigring (quer) **genau auf der Linie** — die L0-Maschine („Fläche bleibt, Netz gleitet“: `kern/netz/einpassen.ts`,
+  `ringEinpassen.ts`, bisher nur im Kern). Die Härte längs der Linie wird die Schärfe dieser Käfigkanten (100 % = scharf,
+  darunter halbscharf wie heute). Keine Treppe mehr. Linien ohne Härte verändern den Körper nicht.
+- **Bedienung bleibt:** P zeichnen, ⇧W Härte, Knoten in allen Ansichten ziehen. Während einer Geste zeigt der Körper die Linie
+  ohne Kante (das genaue Einpassen dauert je Linie ≈ 0,6–0,9 s), am Gestenende kommt die Kante.
+- **Noch nicht (folgt mit dem vollen S8):** Kanten mit Maul, Beinen und auf dem Körper aus Teilen (dort bleibt die Treppe aus
+  S7.4), Umrisse und verdeckte Teillinien als bindende Linien, gemeinsame Knoten an Kreuzungen, Winkel über die ⌥-Ecke,
+  Tempo-Tor (≤ 250 ms).
+- **Tore S8a:** Kante liegt auf der Linie (Käfigreihe ≤ 0,5 px), Haut abseits ≤ 0,25 px wie ohne Linie, kein Fehler bei
+  mehreren Linien, ohne Linien bitgleich; Editor-Prüfung mit gezeichneter Linie.
+
 ## Wiederverwendet
 
 - Röhre/Streifen: `kern/ableiten.ts` (Leiter, Stationen, `zieleBerechnen`, `breitenSchleife`, `fertigstellen`),
