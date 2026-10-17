@@ -21,7 +21,9 @@ import { type Breiten, breitenAusPolygonen, silhouettenBreite } from '../breite'
 import { huellenBreite } from '../fuelle';
 import type { Zone } from '../pruefen/zonen';
 import { frontBeruehren } from '../rand';
+import { kanteAbtasten } from '../kanten';
 import { feinKette } from '../reifen';
+import { baumKantenFalten } from './baumKanten';
 import { type Ebene, RING_STANDARD, type RingOptionen, type StreifenRinge, ebene, ringeAuslegen } from './ebene';
 import { type FeldOptionen, type Hoehenfeld, hoehenfeld } from './hoehenfeld';
 import { type SeitenRing, type Seitenteil, type Ueberschuss, ringPunkt, seitenteile } from './seitenteil';
@@ -1202,6 +1204,15 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
         }
       }
     });
+  }
+  // S7.4: P-Linien (dok.kanten) als Treppenfalte über Streifen und Ansätze, wie auf der Röhre (genau auf der Linie mit S8)
+  if (dok.kanten?.length && opt.eckenSchaerfe > 0) {
+    baumKantenFalten(
+      bk,
+      ziele,
+      dok.kanten.map((ka) => kanteAbtasten(ka, dok.skalierung)),
+      opt.eckenSchaerfe,
+    );
   }
   const t3 = jetzt();
 
