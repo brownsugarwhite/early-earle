@@ -1,4 +1,4 @@
-# Übergabe (Stand 16.10.2026 spätnachts: S6 seitliche Teile gebaut — Flügel, Beine, Brustflossen als Röhren im Geist)
+# Übergabe (Stand 17.10.2026 früh: S7.1 — der Baum mit seitlichen Teilen ist mit „Körper: Teile“ der Körper im Editor)
 
 Branch `claude/editor-grundlayout`.
 
@@ -38,8 +38,12 @@ sauber. Suche immer nochmal nach eleganteren Möglichkeiten.“ Gewählte Reihen
     Fisch 290–346 ms.
   - Bilder: [`s6-seitenteile-2026-10-16.jpg`](progress/editor/s6-seitenteile-2026-10-16.jpg) (je Körper ohne | mit
     seitlichen Teilen, mit Zebra-Nahansicht am Ansatz), [`s6-editor-geist-2026-10-16.jpg`](progress/editor/s6-editor-geist-2026-10-16.jpg).
-- **Im Editor:** nur der Geist (Tafel Körper → „Teile (Geist)“) zeigt den Baum mit seitlichen Röhren; der eigentliche Körper
-  ist weiter die Röhre. **Noch nicht auf dem Baum:** P-Linien (`dok.kanten`), Maul, Posen, Pinsel — das ist S7.
+- **S7.1 (17.10. früh, Florian: „Versuche mal noch weiter zu machen, so weit du kommst“; Plan „S7 im Detail“):** Mit Tafel
+  Körper → „Teile“ ist der Baum mit seitlichen Teilen **der Körper** im Editor (Earle-Look über `baumDeskriptoren`, Atlas, Δ,
+  Saum, Liniennetz vom Baum; kein Geist mehr). Während einer Geste folgt die Röhre dem Zug, am Gestenende kommt der Baum
+  (bis S7.2). Pinsel, Augen, Reifen, Maul und Zähne wirken noch auf die Röhre und sind auf dem Baum aus (S7.3). Prüfung
+  `apps/editor/scripts/pruefen/s7-editor.mjs` grün; Bild [`s7-baum-als-koerper-2026-10-17.jpg`](progress/editor/s7-baum-als-koerper-2026-10-17.jpg).
+  **Noch nicht auf dem Baum:** schneller Zug (S7.2), Pinsel/Posen (S7.3), P-Linien als Falte (S7.4).
 - Prüfungen: Kern-Tests `baumBau.test.ts` (neu: „S6 seitliche Teile“ für Ente, Fisch, Zweihals), `baumKaefig.test.ts`
   (Fenster-Topologie); Skripte `apps/editor/scripts/pruefen/s5-bogen.ts` (Δ mit gebauten Paaren ohne Ausnahme),
   `s5-editor.mjs` (`SEITEN=ente:1,fisch:1,vierbeiner:2,zweihals:1`). `pnpm typecheck` grün, Kern-Tests 452/453 (ein
@@ -65,8 +69,8 @@ sauber. Suche immer nochmal nach eleganteren Möglichkeiten.“ Gewählte Reihen
 
 ## Nächster Schritt
 
-S7 Einbau als Standard (Schalter `koerper: 'teile'` wird der Körper statt Geist, eingefroren im Dokument, Anker für Pinsel
-und Posen, P-Linien mindestens als Treppenfalte), danach S8. Vorher nach Florians Antworten die offenen S6-Punkte.
+S7.2 Zug auf festem Baum (Topologie eingefroren, Zug rechnet nur Ziele und Löser), dann S7.3 Anker für Pinsel und Posen,
+S7.4 P-Linien als Treppenfalte, S7.5 Standard; danach S8. Wochenlimit stand am 16.10. spätnachts bei 99 %.
 
 ## Arbeitsregeln
 
