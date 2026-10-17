@@ -72,11 +72,19 @@ export function pinselRing(_px: number, _py: number): void {
  * Ziel des Strichs: Grundform (Vorlagenpunkte) oder die Pose des Tabs (alle Punkte). Eine Pose wird nur ganz gezeigt
  * geformt (Gewicht 1): Dann liefert der Bau ihre Bearbeitungsdaten (Ruhe-Käfig, Drehung je Punkt, Form als Ruhe-Deltas).
  */
-function pinselZiel(): { pose: PoseBearbeitung | null; nMax: number } | null {
+function pinselZiel(): { pose: PoseBearbeitung | null; nMax: number; baum: boolean } | null {
   const n = aktuellesNetz();
   const tr = n?.netz.treffer;
   if (!n || !tr) return null;
   const modus = useEditor.getState().modus;
+  // S7.3: Baum-Körper — Pinsel auf seinem Käfig (eigene Deltas); Posen auf dem Baum kommen noch
+  if (n.netz.koerperBaum) {
+    if (modus !== 'editor') {
+      useUi.getState().zeigeHinweis('Posen auf dem Körper aus Teilen kommen noch — Pinsel hier nur in der Grundform');
+      return null;
+    }
+    return { pose: null, nMax: tr.kaefig.n, baum: true };
+  }
   if (modus !== 'editor') {
     const b = n.netz.pose;
     if (!b || b.id !== modus) {
@@ -85,9 +93,9 @@ function pinselZiel(): { pose: PoseBearbeitung | null; nMax: number } | null {
       useUi.getState().zeigeHinweis('Pose wieder ganz gezeigt — jetzt formen');
       return null;
     }
-    return { pose: b, nMax: tr.kaefig.n };
+    return { pose: b, nMax: tr.kaefig.n, baum: false };
   }
-  return { pose: null, nMax: Math.min(tr.vorlage.n, tr.kaefig.n) };
+  return { pose: null, nMax: Math.min(tr.vorlage.n, tr.kaefig.n), baum: false };
 }
 
 /**
@@ -162,8 +170,8 @@ export function pinselZeiger(e: React.PointerEvent, px: number, py: number, el: 
   const gewichte = pinselGewichte(xyz, nMax, mitte, radius);
   if (!gewichte.length) return false;
   const ed = useEditor.getState();
-  // Grundform: gespeicherte Deltas; Pose: keine Karte (Zuwächse posiert, Form aus den Bearbeitungsdaten)
-  const basis = deltaKarte(ziel.pose ? [] : ed.dok.kaefig?.deltas);
+  // Grundform: gespeicherte Deltas (Baum: seine eigenen); Pose: keine Karte (Zuwächse posiert, Form aus den Bearbeitungsdaten)
+  const basis = deltaKarte(ziel.pose ? [] : ziel.baum ? ed.dok.kaefig?.baumDeltas : ed.dok.kaefig?.deltas);
   const spiegel = spiegelIndex(xyz, nMax);
   const normalen = werkzeug === 'aufblasen' ? kaefigNormalen(xyz, tr.kaefig.fStart, tr.kaefig.fVerts, nMax) : null;
   const nachbarn = kaefigNachbarn(tr.kaefig.fStart, tr.kaefig.fVerts, nMax);
@@ -250,6 +258,15 @@ export function pinselZeiger(e: React.PointerEvent, px: number, py: number, el: 
         return;
       }
       const kaefig = s.dok.kaefig ?? { deltas: [] };
+      if (ziel.baum) {
+        // Ruhelage je Punkt (Lage ohne die bisherigen Deltas): nach einem Umbau des Baums trifft das Delta den Punkt dort
+        const ruhe = (p: number): V3 => {
+          const b0 = basis.get(p) ?? [0, 0, 0];
+          return [xyz[3 * p]! - b0[0], xyz[3 * p + 1]! - b0[1], xyz[3 * p + 2]! - b0[2]];
+        };
+        s.setzeDokument({ ...s.dok, kaefig: { ...kaefig, baumDeltas: deltaListe(karte).map((d) => ({ ...d, lage: ruhe(d.punkt) })) } });
+        return;
+      }
       s.setzeDokument({ ...s.dok, kaefig: { ...kaefig, deltas: deltaListe(karte) } });
     },
     () => useEditor.getState().endeGeste(), // Grundform: „Formen folgen“ hängt am Gestenende (kernBau); Pose: Deltas der Pose

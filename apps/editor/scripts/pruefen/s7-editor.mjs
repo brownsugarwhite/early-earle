@@ -119,6 +119,39 @@ for (const fall of faelle) {
     const zurueck = await stand();
     pruefe(zurueck.hash === vorZug.hash, 'Undo des Zugs: Baum wie vorher');
   } else pruefe(false, 'kein Seitenknoten gefunden');
+  // S7.3: Pinselstrich (G) auf dem Baum — eigene Deltas des Baums, Deltas der Röhre unberührt, ein Undo-Schritt
+  {
+    const rc = await page.evaluate(() => window.__stores.rahmen.getState().rects.creation);
+    let ziel = null;
+    for (let iy = 3; iy <= 7 && !ziel; iy++) for (let ix = 3; ix <= 7 && !ziel; ix++) {
+      const t = await page.evaluate(([x, y]) => window.__editor.treffen(x, y), [(rc.w * ix) / 10, (rc.h * iy) / 10]);
+      if (t && t.kaefigPunkt >= 0) ziel = { px: (rc.w * ix) / 10, py: (rc.h * iy) / 10 };
+    }
+    if (ziel) {
+      const vor = await page.evaluate(() => ({ hash: window.__editor.netzHash(), baum: window.__stores.editor.getState().dok.kaefig?.baumDeltas?.length ?? 0, roehre: window.__stores.editor.getState().dok.kaefig?.deltas?.length ?? 0, schritte: window.__stores.editor.getState().verlauf.length }));
+      await page.evaluate(() => window.__stores.ui.getState().setzeWerkzeug('ziehen'));
+      await page.mouse.move(rc.x + ziel.px, rc.y + ziel.py);
+      await page.waitForTimeout(200);
+      const v0 = await page.evaluate(() => window.__editor.netzVersion());
+      await page.mouse.down();
+      for (let i = 1; i <= 8; i++) {
+        await page.mouse.move(rc.x + ziel.px + 4 * i, rc.y + ziel.py - 4 * i);
+        await page.waitForTimeout(60);
+      }
+      await page.mouse.up();
+      await nachBau(v0);
+      await page.waitForTimeout(500);
+      const nach = await page.evaluate(() => ({ hash: window.__editor.netzHash(), baum: window.__stores.editor.getState().dok.kaefig?.baumDeltas?.length ?? 0, lage: !!window.__stores.editor.getState().dok.kaefig?.baumDeltas?.[0]?.lage, roehre: window.__stores.editor.getState().dok.kaefig?.deltas?.length ?? 0, schritte: window.__stores.editor.getState().verlauf.length, koerper: !!window.__editor.koerperBaum() }));
+      pruefe(nach.baum > 0 && nach.lage && nach.roehre === vor.roehre && nach.hash !== vor.hash && nach.koerper, `Pinsel auf dem Baum: ${nach.baum} Deltas mit Ruhelage, Röhren-Deltas unberührt (${nach.roehre}), Körper geändert`);
+      pruefe(nach.schritte === vor.schritte + 1, `Pinsel: ein Undo-Schritt (${vor.schritte} → ${nach.schritte})`);
+      const v1 = await page.evaluate(() => window.__editor.netzVersion());
+      await page.evaluate(() => window.__stores.editor.getState().rueckgaengig());
+      await nachBau(v1);
+      const zurueck = await page.evaluate(() => ({ hash: window.__editor.netzHash(), baum: window.__stores.editor.getState().dok.kaefig?.baumDeltas?.length ?? 0 }));
+      pruefe(zurueck.baum === vor.baum && zurueck.hash === vor.hash, 'Undo des Pinsels: Baum wie vorher');
+      await page.evaluate(() => window.__stores.ui.getState().setzeWerkzeug('auswahl'));
+    } else pruefe(false, 'kein Treffer auf dem Baum');
+  }
   await page.evaluate(() => window.__stores.ui.getState().maximieren('creation'));
   await page.waitForTimeout(1500);
   await page.mouse.move(5, 5);

@@ -953,6 +953,10 @@ type BaumKoerperNetz = Pick<WesenNetz, 'positionen' | 'normalen' | 'deskriptoren
   info: { streifen: number; seiten: number; ms: number; fehler?: string };
   /** S7.2: Bezug für den schnellen Zug (Dokument des Baus, gelöster Käfig, Grenzmatrix, feine Flächen) */
   zug: { dok: Dokument; xyz: Float64Array; grenze: DuennMatrix; flaechen: number[][] };
+  /** S7.3: Treffer und Pinsel auf dem Baum — Kachelung der feinen Flächen, Käfigflächen, Spiegelpartner je Käfigpunkt */
+  kach: AtlasKachelung;
+  topo: { n: number; fStart: Uint32Array; fVerts: Uint32Array };
+  spiegel: Int32Array;
   /** größter Widerspruch der Zeichnungen je Blatt (aus dem genauen Bau) */
   blattWiderspruch?: Record<'seite' | 'front' | 'top', number>;
 };
@@ -968,9 +972,10 @@ function seitenPolygon(dok: Dokument): V2[] {
  * S7.2 schneller Zug auf dem Baum: Der gelöste Käfig des letzten genauen Baus folgt der Zeichnung, ohne neu zu bauen —
  * in der Seite über Mittelwert-Koordinaten der Seitenlinie (Floater; jeder Käfigpunkt als gewichtete Summe der Linienpunkte,
  * die Gewichte bleiben, die Linie bewegt sich), in der Tiefe mit dem Verhältnis der Halbbreiten aus Front (bei y) und Top
- * (bei x). Danach nur die Grenzmatrix (≈ 5–15 ms). Hat sich die Knotenzahl der Seitenlinie geändert, null (dann die Röhre).
+ * (bei x); liefert den verformten Käfig (danach nur die Grenzmatrix). Hat sich die Knotenzahl der Seitenlinie geändert,
+ * null (dann bleibt der Stand ohne Baum-Zug).
  */
-function baumZiehen(z: BaumKoerperNetz['zug'], dokNeu: Dokument): Float64Array | null {
+function baumKaefigZiehen(z: BaumKoerperNetz['zug'], dokNeu: Dokument): Float64Array | null {
   const A = seitenPolygon(z.dok);
   const B = seitenPolygon(dokNeu);
   if (A.length !== B.length || A.length < 3) return null;
@@ -1036,7 +1041,7 @@ function baumZiehen(z: BaumKoerperNetz['zug'], dokNeu: Dokument): Float64Array |
     out[3 * p + 1] = ny;
     out[3 * p + 2] = zz * f;
   }
-  return anwenden3(z.grenze, out);
+  return out;
 }
 
 /**
@@ -1061,9 +1066,9 @@ function baumKoerper(dok: Dokument, plan: Bauplan): BaumKoerperNetz | { fehler: 
   const mitte: V3 = [0, 0, 0];
   for (const p of punkte) for (let d = 0; d < 3; d++) mitte[d] = mitte[d]! + p[d]! / punkte.length;
   let atlas: AtlasDaten | null = null;
+  // die Kachelung braucht nur Käfig und Unterteilung (Treffer für den Pinsel, Atlas für Zonen)
+  const kach = kachelung({ kaefig: b.kaefig, unterteilung: b.unterteilung } as unknown as Ableitung);
   if (plan.earle && plan.stil === 'fest' && (plan.atlas ?? true) && plan.zonen?.length) {
-    // die Kachelung braucht nur Käfig und Unterteilung
-    const kach = kachelung({ kaefig: b.kaefig, unterteilung: b.unterteilung } as unknown as Ableitung);
     const rf = b.fein;
     const g = { xMin: Infinity, xMax: -Infinity, yMin: Infinity, yMax: -Infinity, zMax: 0 };
     for (let i = 0; i < rf.length / 3; i++) {
@@ -1092,7 +1097,56 @@ function baumKoerper(dok: Dokument, plan: Bauplan): BaumKoerperNetz | { fehler: 
     feinPunkte: punkte.length,
     info: { streifen: b.ebene.streifen.length, seiten: b.seiten.length, ms: jetzt() - t0 },
     zug: { dok, xyz: b.kaefig.xyz, grenze: b.unterteilung.grenze, flaechen },
+    kach,
+    topo: { n: b.kaefig.n, fStart: Uint32Array.from(b.kaefig.fStart), fVerts: Uint32Array.from(b.kaefig.fVerts) },
+    spiegel: Int32Array.from(b.bk.spiegel),
   };
+}
+
+/** S7.3: Trefferdaten des Baum-Körpers (Dreiecke im Fächer je feiner Fläche wie `zuDreiecken`, Kachelung, Käfig). */
+function baumTreffer(bn: BaumKoerperNetz, xyz: Float64Array): TrefferDaten {
+  const fl = bn.zug.flaechen;
+  let nD = 0;
+  for (const f of fl) nD += f.length - 2;
+  const dreieckFlaeche = new Int32Array(nD);
+  let d = 0;
+  for (let f = 0; f < fl.length; f++) for (let i = 1; i < fl[f]!.length - 1; i++) dreieckFlaeche[d++] = f;
+  // Kopien: das Netz überträgt seine Puffer aus dem Worker, der Stand behält die Kachelung
+  return { dreieckFlaeche, flaecheVon: bn.kach.flaecheVon.slice(), eckenUV: bn.kach.eckenUV.slice(), eckenZahl: bn.kach.eckenZahl.slice(), kaefig: { n: bn.topo.n, xyz: Float32Array.from(xyz), fStart: bn.topo.fStart.slice(), fVerts: bn.topo.fVerts.slice() }, vorlage: { R: 0, N: 0, n: bn.topo.n } };
+}
+
+/**
+ * S7.3: Pinsel-Deltas des Baums auf seinen (gelösten oder im Zug verformten) Käfig. Ein Delta gilt dem Punkt seiner
+ * Nummer, solange der dort liegt, wo der Strich ihn traf (`lage`, 0,5 px); sonst — der Baum wurde mit anderer Topologie neu
+ * gebaut — dem nächsten Punkt der rechten Hälfte oder Naht an dieser Stelle.
+ */
+function baumDeltasAuf(xyz: Float64Array, ruhe: Float64Array, spiegel: Int32Array, deltas: readonly KaefigDelta[]): Float64Array {
+  const n = ruhe.length / 3;
+  const out = new Float64Array(xyz);
+  const eps = 0.5 / 461;
+  const wirksam: KaefigDelta[] = [];
+  for (const d of deltas) {
+    let p = d.punkt;
+    if (d.lage) {
+      const passt = p < n && Math.hypot(ruhe[3 * p]! - d.lage[0], ruhe[3 * p + 1]! - d.lage[1], ruhe[3 * p + 2]! - d.lage[2]) < eps;
+      if (!passt) {
+        let best = -1;
+        let bd = Infinity;
+        for (let q = 0; q < n; q++) {
+          if (ruhe[3 * q + 2]! < -1e-9) continue;
+          const dd = Math.hypot(ruhe[3 * q]! - d.lage[0], ruhe[3 * q + 1]! - d.lage[1], ruhe[3 * q + 2]! - d.lage[2]);
+          if (dd < bd) {
+            bd = dd;
+            best = q;
+          }
+        }
+        p = best;
+      }
+    }
+    if (p >= 0 && p < n) wirksam.push({ punkt: p, d: d.d });
+  }
+  deltasAddieren(out, spiegel, wirksam);
+  return out;
 }
 
 export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stand: WesenStand | null, schnell = false): { netz: WesenNetz; stand: WesenStand } {
@@ -1206,20 +1260,20 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
   // S7.1/S7.2: Baum als Körper (Ausstattung `koerper: 'teile'`, ohne Maul und Beine). Der Baum mit seitlichen Teilen ersetzt
   // die Röhre in der Anzeige; die Röhre wird nur noch für den Stand mitgeführt (Werkzeuge, Zurückschalten), ihr Netz, Look
   // und Δ entfallen. Im genauen Bau ein neuer Baum, während einer Geste der Baum des letzten genauen Baus, verformt nach der
-  // Zeichnung (`baumZiehen`). Werkzeuge auf dem Röhren-Käfig (Treffer, Augen, Reifen) sind aus, bis S7.3 sie auf den Baum bringt.
+  // Zeichnung (`baumKaefigZiehen`). Der Pinsel wirkt mit eigenen Deltas auf den Baum-Käfig (S7.3); Augen, Reifen, Maul und
+  // Zähne hängen an der Röhre und sind auf dem Baum aus.
   let baumStand = stand?.baum;
   let koerperBaum: WesenNetz['koerperBaum'] = null;
   if (plan.koerper === 'teile' && maul === 'aus' && beine === 'aus') {
     let baumNetz: BaumKoerperNetz | null = null;
     const bSchluessel = JSON.stringify({ s: schluessel, t: dok.kaefig?.stationen?.teile ?? null, e: plan.earle, st: plan.stil, z: plan.zonen ?? null, a: plan.atlas ?? true });
+    // Käfig des Netzes: gelöst (genauer Bau) oder im Zug verformt (S7.2); darauf die Pinsel-Deltas des Baums (S7.3)
+    let kaefigB: Float64Array | null = null;
+    const t0z = jetzt();
     if (baumStand && baumStand.schluessel === bSchluessel) baumNetz = baumStand.netz;
     else if (schnell && baumStand) {
-      const t0z = jetzt();
-      const feinZ = baumZiehen(baumStand.netz.zug, dok);
-      if (feinZ) {
-        const tri = zuDreiecken({ punkte: punkteVon(feinZ), flaechen: baumStand.netz.zug.flaechen, schaerfe: new Map() }, 40);
-        baumNetz = { ...baumStand.netz, positionen: tri.positionen, normalen: tri.normalen, info: { ...baumStand.netz.info, ms: jetzt() - t0z } };
-      }
+      kaefigB = baumKaefigZiehen(baumStand.netz.zug, dok);
+      if (kaefigB) baumNetz = baumStand.netz;
     } else if (!schnell) {
       const r = baumKoerper(dok, plan);
       if ('fehler' in r && !('positionen' in r)) koerperBaum = { streifen: 0, seiten: 0, ms: r.ms, fehler: r.fehler };
@@ -1229,7 +1283,15 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
       }
     }
     if (baumNetz) {
-      const bn = baumNetz;
+      let bn = baumNetz;
+      const bDeltas = dokRoh.kaefig?.baumDeltas ?? [];
+      if (bDeltas.length) kaefigB = baumDeltasAuf(kaefigB ?? bn.zug.xyz, bn.zug.xyz, bn.spiegel, bDeltas);
+      if (kaefigB) {
+        const feinB = anwenden3(bn.zug.grenze, kaefigB);
+        const tri = zuDreiecken({ punkte: punkteVon(feinB), flaechen: bn.zug.flaechen, schaerfe: new Map() }, 40);
+        bn = { ...bn, positionen: tri.positionen, normalen: tri.normalen, info: schnell ? { ...bn.info, ms: jetzt() - t0z } : bn.info };
+      }
+      const kaefigNetz = kaefigB ?? bn.zug.xyz;
       koerperBaum = bn.info;
       // Widersprüche der Zeichnungen und Teile (aus den Zeichnungen, unabhängig vom Körper): genauer Bau neu, im Zug der letzte Stand
       let widerspruchB = stand?.widerspruch ?? null;
@@ -1269,7 +1331,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
         zaehne: null,
         zahnMeldungen: null,
         atlas: stilB === 'fest' && bn.atlas ? { ...bn.atlas, ecken: bn.atlas.ecken.slice(), abstand: bn.atlas.abstand.slice(), weich: bn.atlas.weich.slice() } : null,
-        treffer: null,
+        treffer: (plan.treffer ?? true) ? baumTreffer(bn, kaefigNetz) : null,
         reifen: null,
         maul: null,
         gewichtFarben: null,

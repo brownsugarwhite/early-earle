@@ -51,3 +51,38 @@ describe('S7 Baum als Körper', () => {
     expect((hoechst(zug.positionen) - hoechst(erst.netz.positionen)) * PX).toBeGreaterThan(2);
   });
 });
+
+describe('S7.3 Pinsel auf dem Baum', () => {
+  it('Ente: Delta mit Ruhelage beult die Flanke; falsche Nummer, gleiche Lage → derselbe Körper', () => {
+    const dok = teilSatzDokument('ente');
+    const plan = { earle: true, koerper: 'teile' as const };
+    const ohne = wesenBauen(dok, plan, null).netz;
+    const tr = ohne.treffer!;
+    expect(tr).not.toBeNull();
+    // Käfigpunkt rechts auf der Flanke, nahe der Körpermitte
+    const n = tr.kaefig.n;
+    let p = -1;
+    let best = -Infinity;
+    for (let q = 0; q < n; q++) {
+      const z = tr.kaefig.xyz[3 * q + 2]!;
+      const y = tr.kaefig.xyz[3 * q + 1]!;
+      if (y < 0.05 || y > 0.2) continue;
+      if (z > best) {
+        best = z;
+        p = q;
+      }
+    }
+    expect(p).toBeGreaterThanOrEqual(0);
+    const lage: [number, number, number] = [tr.kaefig.xyz[3 * p]!, tr.kaefig.xyz[3 * p + 1]!, tr.kaefig.xyz[3 * p + 2]!];
+    const mit = (punkt: number) => wesenBauen({ ...dok, kaefig: { deltas: [], baumDeltas: [{ punkt, d: [0, 0, 12 / PX], lage }] } }, plan, null).netz;
+    const a = mit(p);
+    let maxD = 0;
+    for (let i = 0; i < a.positionen.length; i++) maxD = Math.max(maxD, Math.abs(a.positionen[i]! - ohne.positionen[i]!));
+    expect(maxD * PX).toBeGreaterThan(3);
+    // falsche Nummer, gleiche Ruhelage: das Delta findet seinen Punkt über die Lage
+    const b = mit(p === 0 ? 1 : p - 1);
+    let diff = 0;
+    for (let i = 0; i < a.positionen.length; i++) diff = Math.max(diff, Math.abs(a.positionen[i]! - b.positionen[i]!));
+    expect(diff).toBeLessThan(1e-9);
+  });
+});

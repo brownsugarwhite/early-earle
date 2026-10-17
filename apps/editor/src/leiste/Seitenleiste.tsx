@@ -1026,7 +1026,7 @@ function AbleitenFeld() {
         {koerper === 'teile'
           ? baum?.fehler
             ? `Der Baum scheitert an diesem Wesen (${baum.fehler}); gezeigt wird die Röhre.`
-            : 'Der Körper aus Teilen: Rumpf, Hals, Flossen je ein Streifen der Seitenfläche, Flügel, Beine und Brustflossen als seitliche Röhren. Während eines Zugs folgt der Körper der Zeichnung verformt, am Ende wird er genau neu gebaut. Noch ohne Pinsel, Augen, Reifen, Maul und Zähne (die wirken auf die Röhre).'
+            : 'Der Körper aus Teilen: Rumpf, Hals, Flossen je ein Streifen der Seitenfläche, Flügel, Beine und Brustflossen als seitliche Röhren. Während eines Zugs folgt der Körper der Zeichnung verformt, am Ende wird er genau neu gebaut. Der Pinsel wirkt in der Grundform (eigene Versätze), P-Linien als Falte; noch ohne Posen, Augen, Reifen, Maul und Zähne (die wirken auf die Röhre).'
           : '„Teile“ baut den Körper aus dem Mittelebenen-Baum mit seitlichen Teilen statt aus einer Röhre.'}
       </p>
       <div className="feld">

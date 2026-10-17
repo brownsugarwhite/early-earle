@@ -191,7 +191,7 @@ export function schrittName(alt: Dokument, neu: Dokument, ziel: Modus): string {
     }
   }
   for (const a of ['seite', 'front', 'top'] as const) if (alt.profile[a] !== neu.profile[a]) return `Umriss ${BLATT_NAME[a]}`;
-  if (alt.kaefig?.deltas !== neu.kaefig?.deltas) return 'Pinsel';
+  if (alt.kaefig?.deltas !== neu.kaefig?.deltas || alt.kaefig?.baumDeltas !== neu.kaefig?.baumDeltas) return 'Pinsel';
   if (alt.maul !== neu.maul) return 'Maullinie';
   if (alt.zaehne !== neu.zaehne) return 'Zähne';
   if (alt.spanten !== neu.spanten || alt.hauptspant !== neu.hauptspant) return 'Spanten';

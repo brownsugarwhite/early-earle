@@ -267,7 +267,8 @@ const DokumentFelder = {
 export const DokumentSchemaV0 = z.object({ ...DokumentFelder, version: z.literal(0) });
 /** Käfig-Delta (M3, Pinsel): Versatz eines Käfigpunkts der Vorlage (rechte Hälfte oder Naht), Profil-Einheiten. */
 /** `anker` (Pose-Deltas auf Maulpunkten, 15.10.): Rolle, Reihe und Anteil entlang der Lippe — die Pose überlebt eine neue Maultopologie */
-const KaefigDeltaSchema = z.object({ punkt: z.number().int().min(0), d: V3, anker: z.object({ rolle: z.number().int().min(0), reihe: z.number().int().min(0), u: z.number() }).optional() });
+/** `lage` (S7.3, Baum-Körper): Ruhelage des Käfigpunkts beim Strich — nach einem Umbau des Baums gilt der Punkt, der dort liegt */
+const KaefigDeltaSchema = z.object({ punkt: z.number().int().min(0), d: V3, anker: z.object({ rolle: z.number().int().min(0), reihe: z.number().int().min(0), u: z.number() }).optional(), lage: V3.optional() });
 /**
  * Posen (Dokument v2, Plan „Maul als Einsatz, Werkzeug-Harmonie und Posen“, Teil B): Der Editor-Tab ist die Grundpose;
  * jede Pose = Knochenstellung + Florians Form als Ruhe-Deltas (vor den Knochen) + Saat. Idle (Normalzustand, im Spiel der
@@ -356,7 +357,7 @@ export type MaulStationen = { winkel: number; ringA?: number; kontur?: boolean }
 const KaefigSchemaV1 = z.object({ deltas: z.array(KaefigDeltaSchema), posen: z.record(z.string(), z.array(KaefigDeltaSchema)).optional(), stationen: GefroreneStationenSchema.optional() });
 /** Version 1 (bis 15.10.2026 abends): mit Ausstattung und (M3) Käfig-Deltas der Pinsel; Pose-Deltas in `kaefig.posen`. */
 export const DokumentSchemaV1 = z.object({ ...DokumentFelder, version: z.literal(1), ausstattung: AusstattungSchema.optional(), kaefig: KaefigSchemaV1.optional() });
-const KaefigSchema = z.object({ deltas: z.array(KaefigDeltaSchema), stationen: GefroreneStationenSchema.optional() });
+const KaefigSchema = z.object({ deltas: z.array(KaefigDeltaSchema), stationen: GefroreneStationenSchema.optional(), baumDeltas: z.array(KaefigDeltaSchema).optional() });
 /** Version 2 (B3): Posenliste mit Knochenstellung, Ruhe-Deltas und Bezugs-Käfig je Pose. */
 export const DokumentSchema = z.object({ ...DokumentFelder, posen: z.array(PoseSchema), version: z.literal(2), ausstattung: AusstattungSchema.optional(), kaefig: KaefigSchema.optional() });
 
@@ -365,7 +366,7 @@ export type Knoten3 = { p: V3T; ein: V3T; aus: V3T; art: 'glatt' | 'ecke' };
 /** Offene 3D-Bézier-Linie (Griffe relativ zum Knoten), Knoten 0 auf der Mittelebene, letzter Knoten = Mundwinkel. */
 export type Linie3 = { knoten: Knoten3[] };
 export type MaulAnker = { rolle: number; reihe: number; u: number };
-export type KaefigDelta = { punkt: number; d: [number, number, number]; anker?: MaulAnker };
+export type KaefigDelta = { punkt: number; d: [number, number, number]; anker?: MaulAnker; lage?: [number, number, number] };
 /** Lippen der rechten Hälfte; `unten` fehlt = Kiefer gleich (Florians türkise Linie). */
 export type Lippen = { oben: Linie3; unten?: Linie3 };
 export type Maul = { zu: Lippen; auf?: Lippen };
@@ -472,7 +473,15 @@ export type Dokument = {
    * M3 (Pinsel): Versätze von Käfigpunkten der Vorlage (Index < Punktzahl der Röhre; rechte Hälfte oder Naht, die linke
    * Hälfte spiegelt der Kern), Profil-Einheiten, auf den abgeleiteten Käfig addiert. Fehlt = unberührt.
    */
-  kaefig?: { deltas: KaefigDelta[]; stationen?: GefroreneStationen };
+  kaefig?: {
+    deltas: KaefigDelta[];
+    stationen?: GefroreneStationen;
+    /**
+     * S7.3 (Pinsel auf dem Baum-Körper, `ausstattung.koerper: 'teile'`): Versätze von Käfigpunkten des Baums (rechte Hälfte
+     * oder Naht, gespiegelt) mit ihrer Ruhelage `lage`; getrennt von `deltas` (die gehören zur Röhre).
+     */
+    baumDeltas?: KaefigDelta[];
+  };
   maul?: Maul;
   zaehne?: Zaehne;
   kanten?: Kante[];
