@@ -1316,6 +1316,33 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
       }
       const kaefigNetz = kaefigB ?? bn.zug.xyz;
       koerperBaum = bn.info;
+      // Augen: gewählt wie auf der Röhre (Ring und Winkel bzw. gesetzter Punkt), dann auf die Haut des Baums gelegt (nächste
+      // Ecke des gezeigten Netzes, ihre Normale). Der Augapfel braucht eine Höhle im Röhren-Käfig — auf dem Baum als Glubschauge
+      let augenB: Auge[] = [];
+      if (plan.earle || plan.stil === 'feuer' || plan.stil === 'gas') {
+        const wahl = plan.augen ?? { ring: 2, j: 2, groesse: 0.11 };
+        const flT = alleFlaechen(abl.unterteilung.stufen[abl.unterteilung.stufen.length - 1]!.kaefig);
+        const roh = augenAm(abl, flT, bn.hoehe, wahl.art === 'augapfel' ? { ...wahl, art: 'glubsch' } : wahl);
+        const P = bn.positionen;
+        const Nn = bn.normalen;
+        const aufHaut = (q: V3): { pos: V3; normale: V3 } => {
+          let best = 0;
+          let bd = Infinity;
+          for (let i = 0; i < P.length; i += 3) {
+            const d = (P[i]! - q[0]) ** 2 + (P[i + 1]! - q[1]) ** 2 + (P[i + 2]! - q[2]) ** 2;
+            if (d < bd) {
+              bd = d;
+              best = i;
+            }
+          }
+          const nl = Math.hypot(Nn[best]!, Nn[best + 1]!, Nn[best + 2]!) || 1;
+          return { pos: [P[best]!, P[best + 1]!, P[best + 2]!], normale: [Nn[best]! / nl, Nn[best + 1]! / nl, Nn[best + 2]! / nl] };
+        };
+        augenB = roh.map((a) => {
+          const h = aufHaut(a.pos);
+          return { ...a, pos: h.pos, normale: h.normale, posiert: h, ecke: -1 };
+        });
+      }
       // Widersprüche der Zeichnungen und Teile (aus den Zeichnungen, unabhängig vom Körper): genauer Bau neu, im Zug der letzte Stand
       let widerspruchB = stand?.widerspruch ?? null;
       let teileB = stand?.teile ?? null;
@@ -1343,7 +1370,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
         normalen: bn.normalen.slice(),
         deskriptoren: stilB === 'feuer' || stilB === 'gas' ? null : bn.deskriptoren ? bn.deskriptoren.slice() : null,
         hoehe: bn.hoehe,
-        augen: [],
+        augen: augenB,
         kaefigLinien: null,
         kaefigFarben: null,
         lippenBand: 0,
