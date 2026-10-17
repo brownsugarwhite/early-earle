@@ -557,6 +557,25 @@ tatsächliche Rumpfbreite statt der Sichthülle (Flügelringe sprangen in Lücke
   geänderten Zonen); `vergleich/ablauf.mjs` grün; Undo bitgleich; eine P-Linie mit Härte macht auf einem mehrteiligen Körper
   mindestens dieselbe Falte wie auf der Röhre (Ente: Linie über den Halsansatz); Florians Abnahme mit eigenen Wesen.
 
+#### S7 im Detail (Bauplan 17.10., vor dem Code; Florian: „Versuche mal noch weiter zu machen, so weit du kommst“)
+
+Der Baum wird in Teilschritten zum Körper; jeder Teilschritt lässt den Editor ganz (Schalter `koerper`, ohne ihn bitgleich).
+- **S7.1 Baum als Körper (Anzeige):** Mit `koerper: 'teile'` und ohne Maul und Beine zeigt der Editor den Baum mit seitlichen
+  Teilen als Körper statt als Geist: Earle-Look über Deskriptoren je Streifen (`baumDeskriptoren`: Bogenlänge längs der
+  Ringmitten, Kinder ab ihrem Ansatz am Eltern-Streifen, Winkel je Ringpunkt, Umfang; Kappen wie in der Röhre), Zonen-Atlas
+  über die allgemeine Kachelung, Δ, Saum und Liniennetz vom Baum. Werkzeuge, die den Röhren-Käfig brauchen (Pinsel, Augen,
+  Reifen, Maul, Zähne, Kieferknopf), sind auf dem Baum bis S7.3/Teil A aus, die Tafel sagt es. Während einer Geste zeigt
+  die Bühne die Röhre (schneller Zug), am Gestenende den Baum (bis S7.2).
+- **S7.2 Zug auf festem Baum:** Topologie, Ringanteile und Fenster eingefroren (`dok.kaefig.baum`, gültig, solange die Teile
+  dieselben sind — Lehre G2); ein Zug rechnet nur Ziele und Löser neu (wie `ziehen` der Röhre), Gestenende ≤ 250 ms, Zug ≤ 30 ms.
+- **S7.3 Anker für Pinsel und Posen:** Deltas je Käfigpunkt mit Anker (Streifen, Ringanteil, Winkel; Kappe a, b); nach einem
+  Umbau übertragen über den Anker. Danach Pinsel und Posen auf dem Baum.
+- **S7.4 P-Linien als Treppenfalte** auf dem Baum (nächster Käfigkantenzug je Linie, Härte als Schärfe), wie auf der Röhre.
+- **S7.5 Standard:** Chip „Körper: Röhre | Teile“ ohne Geist; Florians Ablauf (Kugel → umformen → Teile → Pinsel → Pose).
+
+**Tore S7.1:** ohne `koerper: 'teile'` bitgleich; Ente, Fisch, Vierbeiner, Zweihals im Editor mit Earle-Look, Δ im Blatt-Titel
+wie im Kern; Deskriptoren endlich, Winkel stetig über die Naht, Bogenlänge längs jedes Streifens steigend.
+
 ### S8 P-Linien als echte Kanten — Linien exakt (Teil L: L0-Rest und L1)
 
 > Nachtrag 16.10. abends, Florian: „Wird das mit den Linien, die ich mit P auf die Haut zeichne, die dann zur Kante werden
