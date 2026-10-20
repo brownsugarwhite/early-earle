@@ -81,6 +81,27 @@ describe('Plan 20.10., V0: Baum nach dem Zurückschreiben der Teile', () => {
   });
 });
 
+describe('Plan 20.10., V0: Auge per Klick auf dem Baum', () => {
+  // Wächter: Die Code-Prüfung vom 20.10. vermutete, Augen per Klick gingen auf dem Baum nicht — gemessen: ein gesetzter Punkt
+  // (wie `augeSetzen` ihn aus dem Treffer auf dem Baum rechnet) liegt dort, auch an der Flügelspitze
+  it('ein gesetzter Punkt am Flügel liegt auf dem Baum dort', () => {
+    const dok0 = teilSatzDokument('ente');
+    const plan = { earle: true, koerper: 'teile' as const };
+    const ohne = wesenBauen(dok0, plan, null).netz;
+    // äußerster Punkt des Baums zur Seite (Flügelspitze), in Profil-Einheiten wie `augeSetzen`
+    const P = ohne.positionen;
+    let k = 0;
+    for (let i = 2; i < P.length; i += 3) if (P[i]! > P[3 * k + 2]!) k = (i - 2) / 3;
+    const sk = dok0.skalierung;
+    const punkt: [number, number, number] = [P[3 * k]! / sk, P[3 * k + 1]! / sk, P[3 * k + 2]! / sk];
+    // wie der Editor (`bauplanAus`): die Augen der Ausstattung kommen über den Bauplan
+    const mit = wesenBauen(dok0, { ...plan, augen: { ring: 2, j: 2, groesse: 0.08, punkt } }, null).netz;
+    const a = mit.augen.find((x) => x.pos[2] > 0)!;
+    const d = Math.hypot(a.pos[0] - P[3 * k]!, a.pos[1] - P[3 * k + 1]!, a.pos[2] - P[3 * k + 2]!) * PX;
+    expect(d).toBeLessThan(2);
+  });
+});
+
 describe('S7.3 Pinsel auf dem Baum', () => {
   it('Ente: Delta mit Ruhelage beult die Flanke; falsche Nummer, gleiche Lage → derselbe Körper', () => {
     const dok = teilSatzDokument('ente');

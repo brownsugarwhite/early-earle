@@ -986,7 +986,6 @@ function AbleitenFeld() {
   const beine = useKernAnzeige((s) => s.beine);
   const maulChip = useKernAnzeige((s) => s.maul);
   const glatt = dok.ausstattung?.glatt ?? false;
-  const ohneWirkung = glatt && (maulChip !== 'aus' || kernMaulAktiv(dok) || beine !== 'aus');
   // Plan „Liniennetz, Zielform, Käfig“, S2: glatte Haut als Ausstattung des Dokuments (ein Undo-Schritt)
   // S3 „Umrisse berühren“ mit der Fülle der Stufe (ein Undo-Schritt; „aus“ = Feld weg, heutiger Bau)
   const setzeFuelle = (f: 'aus' | 'rund' | 'mittel' | 'genau') => {
@@ -1029,22 +1028,11 @@ function AbleitenFeld() {
   const koerper = dok.ausstattung?.koerper ?? 'roehre';
   // der Baum baut nur ohne Maul und Beine (Maul auf Teilen kommt mit Teil A)
   const baumWirkt = koerper === 'teile' && !(maulChip !== 'aus' || kernMaulAktiv(dok) || beine !== 'aus');
+  // Haut und Fülle (Versuche, Standard entschieden) wirken auf den Baum nicht, mit Maul oder Beinen gilt der heutige Bau
+  const maulOderBeine = maulChip !== 'aus' || kernMaulAktiv(dok) || beine !== 'aus';
+  const gesperrt = baumWirkt ? '„Teile“ baut seine eigene Haut: Haut und Fülle wirken nur auf die Röhre' : maulOderBeine ? 'Mit Maul oder Beinen gilt hier der heutige Bau (kommt mit dem Maul als Einsatz)' : undefined;
   return (
     <>
-      <div className="feld">
-        <span>Haut</span>
-      </div>
-      <Chips werte={['heute', 'glatt'] as const} aktiv={glatt ? 'glatt' : 'heute'} attribut="haut" onWahl={(h) => setzeGlatt(h === 'glatt')} />
-      <p className="hilfe">
-        {ohneWirkung
-          ? 'Glatt wirkt noch nicht mit Maul oder Beinen (kommt mit dem Maul als Einsatz) — hier gilt der heutige Bau.'
-          : '„glatt“: Der Käfig gleicht die Ziele mit einem Glättungsmaß aus, statt sie genau zu treffen — keine Wellen und Kappenfalten, die schwarze Linie bleibt.'}
-      </p>
-      <div className="feld">
-        <span>Umrisse berühren (S3)</span>
-      </div>
-      <Chips werte={['aus', 'rund', 'mittel', 'genau'] as const} aktiv={dok.ausstattung?.fuelle ?? 'aus'} attribut="fuelle" onWahl={(f) => setzeFuelle(f)} />
-      <p className="hilfe">Wo der Körper hinter der Front zurückbleibt, schiebt sich der Ring dort hinaus, bis er die Linie berührt. Die Stufe begrenzt die Form: rund (Ellipse), mittel (weicher Kasten), genau (bis zur Kante). Nur ohne Maul und Beine.</p>
       <div className="feld">
         <span>Körper</span>
         <b data-geist={baum ? baum.streifen : ''} data-seiten={baum?.seiten ?? ''}>
@@ -1052,11 +1040,11 @@ function AbleitenFeld() {
         </b>
       </div>
       <Chips werte={['roehre', 'teile'] as const} aktiv={koerper} text={(k) => (k === 'roehre' ? 'Röhre' : 'Teile')} attribut="koerper" onWahl={(k) => setzeKoerper(k)} />
-      <p className="hilfe">
+      <p className="hilfe" data-koerper-hilfe="">
         {koerper === 'teile'
           ? baum?.fehler
             ? `Der Baum scheitert an diesem Wesen (${baum.fehler}); gezeigt wird die Röhre.`
-            : 'Der Körper aus Teilen: Rumpf, Hals, Flossen je ein Streifen der Seitenfläche, Flügel, Beine und Brustflossen als seitliche Röhren. Während eines Zugs folgt der Körper der Zeichnung verformt, am Ende wird er genau neu gebaut. Der Pinsel wirkt in der Grundform (eigene Versätze), P-Linien als Falte; noch ohne Posen, Augen, Reifen, Maul und Zähne (die wirken auf die Röhre).'
+            : 'Der Körper aus Teilen: Rumpf, Hals, Flossen je ein Streifen der Seitenfläche, Flügel, Beine und Brustflossen als seitliche Röhren. Während eines Zugs folgt er der Zeichnung verformt, am Ende wird er genau neu gebaut. Es wirken Pinsel und Posen (eigene Versätze je Körperart), Augen und P-Linien (als Treppe). Noch nicht: Reifen und Spanten, Maul und Zähne, „Formen folgen“ nach dem Pinsel; Haut und Fülle wirken nur auf die Röhre.'
           : '„Teile“ baut den Körper aus dem Mittelebenen-Baum mit seitlichen Teilen statt aus einer Röhre.'}
       </p>
       <div className="feld">
@@ -1069,6 +1057,22 @@ function AbleitenFeld() {
         </button>
       </div>
       <p className="hilfe">Die Ringe liegen fest, seit das Wesen abgeleitet wurde: Kurven, Reifen und Pinsel ziehen denselben Käfig nach, nichts springt. „Neu ableiten“ verteilt die Ringe neu nach den Kurven.</p>
+      {/* Plan 20.10., V0: Versuchsschalter, deren Standard entschieden ist, eingeklappt (neue Wesen: glatt, berühren mittel) */}
+      <details className="versuche" data-versuche="">
+        <summary>Versuche · Standard: glatt, berühren mittel</summary>
+        <div className="feld">
+          <span>Haut</span>
+        </div>
+        <Chips werte={['heute', 'glatt'] as const} aktiv={glatt ? 'glatt' : 'heute'} attribut="haut" onWahl={(h) => setzeGlatt(h === 'glatt')} gesperrt={gesperrt} />
+        <p className="hilfe">
+          {gesperrt ?? '„glatt“: Der Käfig gleicht die Ziele mit einem Glättungsmaß aus, statt sie genau zu treffen — keine Wellen und Kappenfalten, die schwarze Linie bleibt.'}
+        </p>
+        <div className="feld">
+          <span>Umrisse berühren</span>
+        </div>
+        <Chips werte={['aus', 'rund', 'mittel', 'genau'] as const} aktiv={dok.ausstattung?.fuelle ?? 'aus'} attribut="fuelle" onWahl={(f) => setzeFuelle(f)} gesperrt={gesperrt} />
+        <p className="hilfe">Wo der Körper hinter der Front zurückbleibt, schiebt sich der Ring dort hinaus, bis er die Linie berührt. Die Stufe begrenzt die Form: rund (Ellipse), mittel (weicher Kasten), genau (bis zur Kante).</p>
+      </details>
     </>
   );
 }
