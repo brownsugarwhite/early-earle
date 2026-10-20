@@ -534,6 +534,80 @@ eigenen Ansicht ≤ 0,5 px auf der Silhouette, ≤ 1 px auf der Haut; Liniennetz
   das Dokument JSON-gleich, ein Undo-Schritt, ≤ 16 ms je Mausbewegung; `Meta+r` lädt nicht neu; Prüfskripte `modal-2d.mjs`,
   `proportional.mjs` mit echten Tasten und Rad.
 
+#### V3 im Detail (20.10. nachts, vor dem Bau)
+
+**Heute:** G wählt den Pinsel „Ziehen“, S das Spant-Werkzeug, R ist frei. Knoten bewegt man nur mit der Maus (wie in
+Illustrator) oder mit den Pfeiltasten; es gibt keine Achsensperre, keine Zahl, kein Abbrechen; proportional wirkt nur der
+Pinsel auf der Bühne.
+
+**Was G/S/R greifen** (Stufe Körper, Editor-Tab; das Blatt unter dem Zeiger, sonst das zuletzt bearbeitete), in dieser
+Reihenfolge:
+1. gewählte Knoten einer P-Linie (sie bleiben auf der Haut wie beim Ziehen),
+2. gewählte Punkte eines Spants (Front/Back),
+3. gewählte Knoten des eigenen Umrisses,
+4. gewählte Ringe fremder Knoten, nur in der Koordinate, die beide Ansichten teilen (Seite–Front y, Seite–Top x,
+   Front–Top z); R geht dort nicht (Hinweis).
+
+Ohne Auswahl bleibt es wie heute: G = Pinsel „Ziehen“, S = Spant-Werkzeug (bis V6 die Loops mit ⌘R auch in den Blättern
+setzt), R = Hinweis. Auf der Bühne bleibt G der Pinsel; ihre Auswahl kommt mit V6. In einer Pose gibt es einen Hinweis
+(die Pose formen Pinsel, Knochen und die schwarze Linie der Seite).
+
+**Modal wie in Blender:** Nach der Taste folgt die Auswahl dem Zeiger, ohne Maustaste. Gerechnet wird in dem Blatt, in dem
+die Operation begann, auch wenn der Zeiger es verlässt; jede Bewegung rechnet vom Anfang aus (nichts schaukelt sich auf),
+die anderen Ansichten folgen über die Kopplung wie bei einem Zug.
+- G: Versatz Zeiger − Anfang. S: Faktor = Abstand Zeiger–Mitte durch Abstand Anfang–Mitte. R: Winkel um die Mitte,
+  fortlaufend (auch über 180°).
+- Mitte = Mitte des Rahmens um die Auswahl. Berührt die Auswahl eines halben Umrisses (Front, Top) die Spiegelachse, liegt
+  die Mitte auf der Achse: Die Auswahl reicht dann über die Spiegelung, und S skaliert die ganze Form symmetrisch.
+- X, Y, Z sperren auf die Welt-Achse (Seite: X waagerecht, Y senkrecht; Front: Z waagerecht, Y senkrecht; Top: X
+  waagerecht, Z senkrecht), ein zweiter Druck hebt die Sperre auf; die Achse quer zum Blatt gibt einen Hinweis.
+  ⇧X/⇧Y/⇧Z = alles außer dieser Achse. S mit Achse skaliert nur in dieser Richtung; R dreht im Blatt immer um die
+  Blickachse. Die Achsentasten werden über `e.key` gelesen (die deutsche Tastatur tauscht Y und Z in `e.code`).
+- Zahlen: Ziffern, Komma oder Punkt, Minus (Vorzeichen), Rücktaste. G in px (461 px je Kachel wie Δ und Saum), ohne Achse
+  waagerecht im Blatt; S als Faktor; R in Grad, positiv = gegen den Uhrzeigersinn, so wie man das Blatt sieht (Vielfache
+  von 90° exakt). Solange eine Zahl steht, gilt sie statt des Zeigers.
+- G, S, R während der Operation wechseln die Art (wieder vom Anfang aus).
+- Enter oder Linksklick bestätigt: ein Undo-Schritt, danach „Formen folgen“ wie nach einem Zug. Esc, Rechtsklick oder ⌘Z
+  bricht ab: Dokument und Auswahl wie vorher, auch die von der Kopplung eingefügten Punkte sind weg (neu im Store:
+  `abbrechenGeste` = Dokument des Gestenbeginns, kein Verlaufseintrag, kein „Formen folgen“). Verliert das Fenster den
+  Fokus, bricht die Operation ebenfalls ab.
+- Während der Operation tun Zoom, Schwenken, Tab, ⌘1–9, Pfeile, Entf und die Werkzeugtasten nichts (Fenster-Listener in
+  der Erfassungsphase); das Kontextmenü wird bis zum Loslassen geschluckt (macOS meldet es schon beim Drücken).
+
+**Griffe:** Jede Griffspitze ist ein eigener Punkt mit eigenem Gewicht wie in Blender (h' = T(p+h) − T(p)); die Spitzen
+gewählter Knoten zählen als gewählt, sie gehen starr mit (h' = M·h, bei G unverändert). Bei glatten Knoten werden beide
+Griffe danach wieder auf eine Gerade gelegt (Richtung aus beiden, Längen bleiben); liegen sie schon auf einer (ganze
+Auswahl, S, R), bleibt alles exakt. Danach gelten die Achsenregeln (Achsknoten bleiben auf der Achse). Das ersetzt die
+Jacobi-Matrix aus dem Entwurf: Sie ist im Modus „nur verbunden“ nicht erklärt (dort gibt es keinen Abstand neben der
+Kurve), die Griffspitzen als Punkte sind es.
+
+**Proportional:** O schaltet, ⇧O wechselt den Abfall (glatt, Kugel, Wurzel, spitz, linear, konstant; Formeln wie Blender
+mit s = 1 − d/r), ⌥O „nur verbunden“ (Abstand längs des Kontrollpolygons der Kurve statt Luftlinie: am Langhals geht dann
+nichts in die Brust). Der Radius ist der des Pinsels (Anteil der Körperhöhe, eine Größe für Pinsel und Knoten); Mausrad
+(×1,1 je Raste, Trackpad gesammelt), [ ] und Bild↑/Bild↓ ändern ihn während G/S/R **und** während eines Knotenzugs mit der
+Maus — mit O wirkt auch der Zug proportional (er läuft dann als G mit gedrückter Taste, Loslassen bestätigt, Esc bricht
+ab). Gewichte aus den Abständen am Anfang in Blatt-Einheiten (Zoom ändert nichts), zum nächsten gewählten Punkt; Punkte
+mit Gewicht 0 bleiben bitgleich. G: p + w·d; S: c + (I + w(S−I))(p−c); R: c + Rot(w·θ)(p−c).
+Der Einfluss reicht nur auf Punkte derselben Art (eigener Umriss; P-Linien; Punkte desselben Spants) — abweichend von 4.4:
+P-Linien folgen der Haut ohnehin, und die Punkte eines Spants gehören zu einer anderen Stelle des Körpers; ein Umrisszug,
+der sie zusätzlich verschöbe, wirkte doppelt.
+
+**Anzeige:** Mitte als Kreuz, gestrichelte Linie Mitte–Zeiger (S, R), Achsenlinie durch die Mitte in Blender-Farben
+(X rot, Y grün, Z blau), Einflusskreis um die Mitte; im Dock eine Zeile wie Blenders Kopfzeile („G · Y · 12,5 px ·
+proportional glatt“) und der Zustand von O.
+
+**Prüfung** (je Test vorher rot):
+- Abbildung als Unit-Test (Editor-Paket): S 2,0 exakt an Knoten und Griffen (≤ 1e-9), R 90° exakt, glatte Griffe nach
+  S mit Achse und R kollinear (≤ 1e-9), Gewicht 0 bitgleich, Abfallformeln, Mitte auf der Achse, „nur verbunden“.
+- Store: `abbrechenGeste` stellt JSON-gleich her, ohne Verlaufseintrag.
+- Editor `modal-2d.mjs` (echte Tasten und Maus, eigener Vite 5192, dein Ablauf aus der Startkugel): G mit Y und Zahl, S 2
+  Enter über der Front, R 90 Enter über der Seite, Esc und Rechtsklick JSON-gleich, ⌘Z während G bricht ab, ein
+  Undo-Schritt, Fokusverlust, Pfeile und Tab tun nichts, Zeit je Mausbewegung ≤ 16 ms; P-Linie, Spant, fremder Ring.
+- `proportional.mjs`: O, Rad ändert den Radius (Kreis), ⇧O, ⌥O am Langhals (die Brust bleibt), Gewicht 0 bitgleich,
+  Knotenzug mit Rad.
+- Die E2E-Tests, die heute `s` drücken (`spanten.spec.ts`, `rund-spanten.spec.ts`), laufen weiter (ohne Auswahl bleibt S
+  das Spant-Werkzeug).
+
 ### V4 Exakte Umrisse (Kern, 3.1/3.2)
 - **Erst ein Beweis** auf der Röhre, nur im Kern: Kugel, Ei, Robbe, Tiger (Wände), Vase (zwei Ringe stellen die Front),
   einfache Form, dein Kegel, dazu ein künstlicher Widerspruch von 10 px. **Abbruchkriterium:** Scheitern Vase oder Robbe
