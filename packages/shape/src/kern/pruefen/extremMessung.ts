@@ -55,8 +55,8 @@ export type ExtremMessung = {
   kaefig: { punkte: number; flaechen: number; winkel: number; seiten: number };
   /**
    * Umrisslinien je Ansicht, wie der Editor sie in den fremden Blättern zeigt (`umrissLinien`): Stücke, Knicke über 45° (außer
-   * an gezeichneten Ecken) und Schleifen nach Vereinfachen auf ½ px, Abstand in der eigenen Ansicht zur Silhouette und zur
-   * Haut (px)
+   * an gezeichneten Ecken; die an Falten des Körpers getrennt) und Schleifen (Kringel bis 30 px, die sich auch in der Tiefe
+   * berühren) nach Vereinfachen auf ½ px, Abstand in der eigenen Ansicht zur Silhouette und zur Haut (px)
    */
   rauschen: Record<Blatt, LinienMass>;
   /** Bauzeit (genauer Bau ohne Stand, ms), Zugzeit (schneller Bau nach einem Zug von 2 px, ms), Zahl der Bauten bis zum Stand */
@@ -165,8 +165,11 @@ function saumLaenge(s: Float32Array | undefined): number {
   return L * PX;
 }
 
-/** Ramer–Douglas–Peucker: Zug ohne Ausschläge unter `eps` (gleiche Einheit wie die Punkte, beliebige Dimension). */
-function vereinfachen<T extends readonly number[]>(pts: readonly T[], eps: number): T[] {
+/**
+ * Ramer–Douglas–Peucker: Zug ohne Ausschläge unter `eps` (gleiche Einheit wie die Punkte, beliebige Dimension; mit `dim`
+ * zählen nur die ersten Koordinaten).
+ */
+function vereinfachen<T extends readonly number[]>(pts: readonly T[], eps: number, dim?: number): T[] {
   if (pts.length < 3) return pts.slice();
   const behalten = new Uint8Array(pts.length);
   behalten[0] = 1;
@@ -176,7 +179,8 @@ function vereinfachen<T extends readonly number[]>(pts: readonly T[], eps: numbe
     const [a, b] = stapel.pop()!;
     const A = pts[a]!;
     const B = pts[b]!;
-    const d = A.length;
+    // Abstände nur in den ersten `dim` Koordinaten (weitere fahren mit, z. B. die Tiefe zu einem Bildpunkt)
+    const d = dim ?? A.length;
     let l = 0;
     for (let k = 0; k < d; k++) l += (B[k]! - A[k]!) ** 2;
     let best = -1;
@@ -204,55 +208,133 @@ function vereinfachen<T extends readonly number[]>(pts: readonly T[], eps: numbe
 /** Projektion in ein Blatt (Seite x/y, Front z/y, Top x/z). */
 const blatt2 = (x: number, y: number, z: number, a: Blatt): [number, number] => (a === 'seite' ? [x, y] : a === 'front' ? [z, y] : [x, z]);
 
-/** Kreuzungen nicht benachbarter Strecken eines Polygonzugs (2D). */
-function kreuzungen(pts: readonly [number, number][]): number {
+/**
+ * Schleifen eines Polygonzugs im Bild (u, v) mit der Tiefe t je Punkt: Kreuzungen nicht benachbarter Strecken, zwischen
+ * denen der Zug höchstens `SCHLEIFE` lang ist und an denen sich die Linie auch in der Tiefe fast berührt (unter 1 px) —
+ * ein Kringel der Linie selbst. Keine Schleife ist es, wenn zwei Stücke einer glatten 3D-Linie nur im Bild übereinander
+ * liegen (sie liegen dort hintereinander): die obere und die untere Hälfte des Front-Umrisses im Top, Hin- und Rückweg an
+ * einer Umkehrstelle (an der breitesten Stelle läuft die Linie entlang der Blickrichtung).
+ */
+function kreuzungen(pts: readonly (readonly [number, number, number])[]): number {
   const m = pts.length;
-  const kreuz = (a: [number, number], b: [number, number], c: [number, number]) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+  const kreuz = (a: readonly number[], b: readonly number[], c: readonly number[]) => (b[0]! - a[0]!) * (c[1]! - a[1]!) - (b[1]! - a[1]!) * (c[0]! - a[0]!);
+  const bogen = [0];
+  for (let i = 1; i < m; i++) bogen.push(bogen[i - 1]! + Math.hypot(pts[i]![0] - pts[i - 1]![0], pts[i]![1] - pts[i - 1]![1]));
   let n = 0;
   for (let i = 0; i + 1 < m; i++) {
-    for (let j = i + 2; j + 1 < m; j++) {
+    for (let j = i + 2; j + 1 < m && bogen[j]! - bogen[i + 1]! <= SCHLEIFE; j++) {
       const p = pts[i]!;
       const p2 = pts[i + 1]!;
       const q = pts[j]!;
       const q2 = pts[j + 1]!;
-      if (kreuz(p, p2, q) * kreuz(p, p2, q2) < 0 && kreuz(q, q2, p) * kreuz(q, q2, p2) < 0) n++;
+      const a1 = kreuz(p, p2, q);
+      const a2 = kreuz(p, p2, q2);
+      const b1 = kreuz(q, q2, p);
+      const b2 = kreuz(q, q2, p2);
+      if (a1 * a2 >= 0 || b1 * b2 >= 0) continue;
+      // Tiefe beider Strecken am Kreuzungspunkt
+      const s = b1 / (b1 - b2);
+      const t = a1 / (a1 - a2);
+      if (Math.abs(p[2] + s * (p2[2] - p[2]) - (q[2] + t * (q2[2] - q[2]))) < BERUEHRT) n++;
     }
   }
   return n;
 }
 
-export type LinienMass = { stuecke: number; knicke: number; schleifen: number; eigen: number; haut: number };
+/** Längster Kringel, der als Schleife zählt (Bogenlänge zwischen den sich kreuzenden Strecken) */
+const SCHLEIFE = 30 / PX;
+/** Abstand in der Tiefe, unter dem sich die Linie an einer Kreuzung im Bild selbst berührt */
+const BERUEHRT = 1 / PX;
+
+/**
+ * Maß der Umrisslinien je Ansicht: `knicke` ohne gezeichnete Ecken und ohne Falten des Körpers; `falte` = Knicke dort, wo
+ * der Körper selbst knickt (Flächen über 30° gegeneinander, 3 px um den Knick) — dort muss die Linie mitknicken.
+ */
+export type LinienMass = { stuecke: number; knicke: number; falte: number; schleifen: number; eigen: number; haut: number };
+
+/** Knickstellen des Netzes (Mitten der Kanten, deren Flächen über 30° gegeneinander stehen) mit Suche im Umkreis von 3 px. */
+function faltenStellen(punkte: readonly V3[], flaechen: readonly (readonly number[])[]): (p: V3) => boolean {
+  const n = flaechen.map((f) => {
+    let x = 0;
+    let y = 0;
+    let z = 0;
+    for (let k = 0; k < f.length; k++) {
+      const a = punkte[f[k]!]!;
+      const b = punkte[f[(k + 1) % f.length]!]!;
+      x += (a[1] - b[1]) * (a[2] + b[2]);
+      y += (a[2] - b[2]) * (a[0] + b[0]);
+      z += (a[0] - b[0]) * (a[1] + b[1]);
+    }
+    const l = Math.hypot(x, y, z) || 1;
+    return [x / l, y / l, z / l] as V3;
+  });
+  const h = 3 / PX;
+  const zellen = new Map<string, V3[]>();
+  const kanten = new Map<number, number>();
+  const N = punkte.length;
+  const grenze = Math.cos((30 * Math.PI) / 180);
+  flaechen.forEach((f, fi) => {
+    for (let k = 0; k < f.length; k++) {
+      const a = f[k]!;
+      const b = f[(k + 1) % f.length]!;
+      const schl = a < b ? a * N + b : b * N + a;
+      const o = kanten.get(schl);
+      if (o === undefined) {
+        kanten.set(schl, fi);
+        continue;
+      }
+      const n0 = n[o]!;
+      const n1 = n[fi]!;
+      if (n0[0] * n1[0] + n0[1] * n1[1] + n0[2] * n1[2] > grenze) continue;
+      const m: V3 = [(punkte[a]![0] + punkte[b]![0]) / 2, (punkte[a]![1] + punkte[b]![1]) / 2, (punkte[a]![2] + punkte[b]![2]) / 2];
+      const z = `${Math.floor(m[0] / h)},${Math.floor(m[1] / h)},${Math.floor(m[2] / h)}`;
+      (zellen.get(z) ?? zellen.set(z, []).get(z)!).push(m);
+    }
+  });
+  return (p) => {
+    const [i, j, k] = [Math.floor(p[0] / h), Math.floor(p[1] / h), Math.floor(p[2] / h)];
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (let c = -1; c <= 1; c++) for (const m of zellen.get(`${i + a},${j + b},${k + c}`) ?? []) if (Math.hypot(m[0] - p[0], m[1] - p[1], m[2] - p[2]) <= h) return true;
+    return false;
+  };
+}
 
 /**
  * Die Umrisslinien, wie der Editor sie in den fremden Blättern zeigt (Plan V2: „je Umrissstück ein Zug, keine Knicke über
  * 45° außer an gezeichneten Ecken, keine Schleifen; in der eigenen Ansicht ≤ 0,5 px auf der Silhouette, ≤ 1 px auf der
  * Haut“) — ab V2 die Züge `umriss-<Ansicht>`, vorher die Randproben der Konturen (die lila Front-Linie in Seite und Top).
- * Knicke und Schleifen nach Vereinfachen auf ½ px; Knicke näher als 3 px an einer gezeichneten Ecke zählen nicht. `eigen` =
- * größter Abstand der Linie in ihrer eigenen Ansicht zu den Silhouettenkanten des Netzes, `haut` = größter Abstand zur Haut
- * (px); ohne Netz (Messung nur des Rauschens) 0.
+ * Stücke je gezeichneter Hälfte (ohne Spiegelbilder, Kennung „…s“); Knicke und Schleifen auf allen Zügen nach Vereinfachen
+ * auf ½ px, Knicke näher als 3 px an einer gezeichneten Ecke zählen nicht. `eigen` = größter Abstand der Linie in ihrer
+ * eigenen Ansicht zu den Silhouettenkanten des Netzes, `haut` = größter Abstand zur Haut (px); ohne Netz 0.
  */
 export function umrissLinien(ns: NetzSicht | null, dok?: Dokument, punkte?: readonly V3[], flaechen?: readonly (readonly number[])[]): Record<Blatt, LinienMass> {
   const out = {} as Record<Blatt, LinienMass>;
   const sk = dok?.skalierung ?? 1;
+  const anFalte = punkte && flaechen ? faltenStellen(punkte, flaechen) : () => false;
   for (const a of BLAETTER) {
     let stuecke = 0;
     let knicke = 0;
+    let falte = 0;
     let schleifen = 0;
     let eigen = 0;
     let haut = 0;
     // Läufe: die Umrisslinien (V2) bzw. zusammenhängende Randproben der Konturen
     const laeufe: V3[][] = [];
-    const neu = (ns?.zuege ?? []).filter((z) => (z.art as string) === `umriss-${a}`);
+    const spiegel: boolean[] = [];
+    const neu = (ns?.zuege ?? []).filter((z) => z.art === `umriss-${a}`);
     for (const z of neu.length ? neu : (ns?.zuege ?? []).filter((q) => q.art === `kontur-${a}`)) {
       let lauf: V3[] = [];
+      const fertig = () => {
+        if (lauf.length) {
+          laeufe.push(lauf);
+          spiegel.push(z.id.endsWith('s'));
+        }
+        lauf = [];
+      };
       for (let i = 0; i < z.sicht.length; i++) {
         if (neu.length || z.sicht[i]! & RAND) lauf.push([z.punkte[3 * i]!, z.punkte[3 * i + 1]!, z.punkte[3 * i + 2]!]);
-        else if (lauf.length) {
-          laeufe.push(lauf);
-          lauf = [];
-        }
+        else fertig();
       }
-      if (lauf.length) laeufe.push(lauf);
+      fertig();
     }
     // gezeichnete Ecken in der eigenen Ansicht (Halbprofile auch gespiegelt)
     const ecken: [number, number][] = [];
@@ -267,9 +349,10 @@ export function umrissLinien(ns: NetzSicht | null, dok?: Dokument, punkte?: read
       return ecken.some(([x, y]) => Math.hypot(x - u, y - v) * PX < 3);
     };
     const um = punkte && flaechen ? umrissStuecke(punkte, flaechen, a, 4 / PX) : null;
-    for (const roh of laeufe) {
+    for (const [li, roh] of laeufe.entries()) {
       if (roh.length < 2) continue;
-      stuecke++;
+      // Stücke je gezeichneter Hälfte (das Spiegelbild ist dasselbe Stück der anderen Seite)
+      if (!spiegel[li]) stuecke++;
       // Ausschläge unter ½ px sieht man nicht: erst vereinfachen, dann Knicke und Schleifen zählen
       const l = vereinfachen(roh, 0.5 / PX);
       for (let i = 1; i + 1 < l.length; i++) {
@@ -279,10 +362,17 @@ export function umrissLinien(ns: NetzSicht | null, dok?: Dokument, punkte?: read
         const u = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
         const v = [r[0] - q[0], r[1] - q[1], r[2] - q[2]];
         const c = (u[0]! * v[0]! + u[1]! * v[1]! + u[2]! * v[2]!) / (Math.hypot(u[0]!, u[1]!, u[2]!) * Math.hypot(v[0]!, v[1]!, v[2]!) || 1);
-        if ((Math.acos(Math.max(-1, Math.min(1, c))) * 180) / Math.PI > 45 && !anEcke(q)) knicke++;
+        if ((Math.acos(Math.max(-1, Math.min(1, c))) * 180) / Math.PI > 45 && !anEcke(q)) {
+          if (anFalte(q)) falte++;
+          else knicke++;
+        }
       }
       // Schleifen in den Blättern, in denen die Linie erscheint (die beiden anderen)
-      for (const b of BLAETTER) if (b !== a) schleifen += kreuzungen(vereinfachen(roh.map((p) => blatt2(p[0], p[1], p[2], b)), 0.5 / PX));
+      for (const b of BLAETTER) {
+        if (b === a) continue;
+        const t = b === 'seite' ? 2 : b === 'front' ? 0 : 1;
+        schleifen += kreuzungen(vereinfachen(roh.map((p) => [...blatt2(p[0], p[1], p[2], b), p[t]] as [number, number, number]), 0.5 / PX, 2));
+      }
       if (um && punkte && flaechen) {
         for (let i = 0; i < roh.length; i++) {
           const p = roh[i]!;
@@ -293,7 +383,7 @@ export function umrissLinien(ns: NetzSicht | null, dok?: Dokument, punkte?: read
         }
       }
     }
-    out[a] = { stuecke, knicke, schleifen, eigen, haut };
+    out[a] = { stuecke, knicke, falte, schleifen, eigen, haut };
   }
   return out;
 }
@@ -399,7 +489,7 @@ function abstandZug(p: ArrayLike<number>, zug: readonly V3[]): number {
 }
 
 /** Abstand eines Punkts zur Fläche (Dreiecke des feinen Netzes; nächster Punkt je Dreieck). */
-function abstandFlaeche(p: V3, punkte: readonly V3[], flaechen: readonly (readonly number[])[]): number {
+export function abstandFlaeche(p: V3, punkte: readonly V3[], flaechen: readonly (readonly number[])[]): number {
   let best = Infinity;
   const naechster = (a: V3, b: V3, c: V3): number => {
     // Ericson, „Closest point on triangle“
