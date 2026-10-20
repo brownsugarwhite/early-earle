@@ -14,6 +14,10 @@ import { pruefwesenBauplan, wesenBauen } from './wesen';
 import { ZAHN_RINGE, ZAHN_SEITEN, zaehnePruefenBei, zaehneStandard, zahnAenderungAnwenden, zahnfleischKern, zahnListe, zahnreiheVerteilen } from './zaehne';
 import { type Zahn, zahnBei, zahnGitter, zahnNetz, zahnProfil, zahnRingHoehen } from './zahnModell';
 
+declare const process: { env: Record<string, string | undefined> };
+/** CI-Rechner sind langsamer und lassen alle Pakete parallel laufen (Plan 20.10., V0): dort gilt das Doppelte der Zeitgrenze. */
+const ZEIT = process.env.CI ? 2 : 1;
+
 declare const console: { log: (...a: unknown[]) => void };
 declare const performance: { now: () => number };
 
@@ -425,7 +429,7 @@ describe('Zähne im Kern: Bau im Wesen', () => {
       best = Math.min(best, performance.now() - t0);
     }
     console.log(`Zahnfleisch und 22 Zahnnetze: beste von fünf ${best.toFixed(2)} ms`);
-    expect(best).toBeLessThan(15);
+    expect(best).toBeLessThan(15 * ZEIT);
   });
 });
 

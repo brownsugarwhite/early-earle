@@ -111,7 +111,8 @@ describe('Flächenlinie auf der Kugel (T1)', () => {
     expect(dok.profile.seite).toEqual(neuesDokument().profile.seite);
     const breit = rasterAlle(flaecheS0(dok, KUGEL));
     const b = linie3d(l, breit.seite);
-    expect(b.luecken).toEqual([]);
+    // einmal nur auf CI rot (20.10., 46 Lücken; lokal und im CI-Lauf davor grün, nicht nachstellbar): Meldung mit Befund
+    expect(b.luecken, `Lücken nach dem Verbreitern: ${b.luecken.length} von ${b.punkte.length}; Dreiecke ${breit.seite.flaeche.dreiecke.length / 3}, Front-Knoten ${dok.profile.front.knoten.map((k) => `(${k.p.x.toFixed(4)},${k.p.y.toFixed(4)})`).join(' ')}`).toEqual([]);
     expect(zuSeite(b.punkte, soll)).toBeLessThan(1e-9);
     expect(b.punkte[0]![2] === 0).toBe(true);
     const dz = b.punkte.map((p, k) => (p[2] - a.punkte[k]![2]) * PX);

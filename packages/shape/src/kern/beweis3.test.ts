@@ -10,6 +10,10 @@ import type { V3 } from '../versuch/catmullClark';
 import { alleFlaechen, pruefeKaefig } from '../kaefig/halbkanten';
 import { type BeinAnsatz, ableitenMitBeinen, beinPose } from './teil';
 
+declare const process: { env: Record<string, string | undefined> };
+/** CI-Rechner sind langsamer und lassen alle Pakete parallel laufen (Plan 20.10., V0): dort gilt das Doppelte der Zeitgrenze. */
+const ZEIT = process.env.CI ? 2 : 1;
+
 declare const console: { log: (...a: unknown[]) => void };
 declare const performance: { now(): number };
 
@@ -50,7 +54,7 @@ describe('Beweis 3: Teil nahtlos', () => {
     let best = Infinity;
     for (let w = 0; w < 3; w++) best = Math.min(best, ableitenMitBeinen(rex, [{ ring: 15, j: 6 }], 'verschmolzen').zeiten.gesamt);
     console.log(`Rex Beine Stufe 3: bester Umbau ${best.toFixed(0)} ms`);
-    expect(best).toBeLessThan(350);
+    expect(best).toBeLessThan(350 * ZEIT);
   });
   it('Kugel, zwei Beine verschmolzen am runden Bauch (45°-Flanke): Käfig sauber, keine Durchdringung bei −35/0/+35°', () => {
     // 14.10. spätabends: gleichmäßige Ringwinkel statt Bündelwinkel des Feldrands, Feldrand wandert die Achse hinab (Nachtrag Beweis 3)

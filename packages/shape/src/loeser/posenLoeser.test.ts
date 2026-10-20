@@ -9,6 +9,10 @@ import { posenAuswerten, posenFuerBau } from '../kern/posen/posen';
 import { kugelMaulDokument } from '../kern/pruefstand';
 import { posenLoeserBauen } from './posenLoeser';
 
+declare const process: { env: Record<string, string | undefined> };
+/** CI-Rechner sind langsamer und lassen alle Pakete parallel laufen (Plan 20.10., V0): dort gilt das Doppelte der Zeitgrenze. */
+const ZEIT = process.env.CI ? 2 : 1;
+
 const jetzt = () => ((globalThis as { performance?: { now(): number } }).performance ?? Date).now();
 
 const OPT = { ...MAUL_STANDARD, ...maulOptionenVorlage('vorn'), haps: 0.6 };
@@ -69,10 +73,10 @@ describe('B4: Löser im posierten Raum', () => {
     }
     expect(sp).toBeLessThan(1e-12);
     // Tempo: Zerlegen einmal je Geste, Lösen je Zugschritt
-    expect(L.zeitZerlegen).toBeLessThan(400);
+    expect(L.zeitZerlegen).toBeLessThan(400 * ZEIT);
     const t0 = jetzt();
     for (let k = 0; k < 20; k++) L.loesen([[0.001 * k, 0.002 * k]]);
-    expect((jetzt() - t0) / 20).toBeLessThan(16);
+    expect((jetzt() - t0) / 20).toBeLessThan(16 * ZEIT);
   });
 
   it('schiefe Pose (Oberkiefer gerollt): das Ziel wird im posierten Raum erreicht', () => {

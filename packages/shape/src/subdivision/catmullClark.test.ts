@@ -6,6 +6,10 @@ import { type Netz, kante, unterteilenMehrfach } from '../versuch/catmullClark';
 import { anwenden3, nichtNull } from './matrix';
 import { grenzMaske, unterteilung, verfeinern } from './catmullClark';
 
+declare const process: { env: Record<string, string | undefined> };
+/** CI-Rechner sind langsamer und lassen alle Pakete parallel laufen (Plan 20.10., V0): dort gilt das Doppelte der Zeitgrenze. */
+const ZEIT = process.env.CI ? 2 : 1;
+
 declare const console: { log: (...a: unknown[]) => void };
 const uhr = (globalThis as { performance?: { now(): number } }).performance;
 const jetzt = () => (uhr ? uhr.now() : Date.now());
@@ -141,7 +145,7 @@ describe('Catmull-Clark als Matrix gegen das Orakel', () => {
       best = Math.min(best, jetzt() - a);
     }
     console.log(`Stufe 3: ${u.grenze.zeilen} Punkte, ${nichtNull(u.grenze)} Gewichte; Aufbau ${(t1 - t0).toFixed(0)} ms, Zugschritt (Matrix · Käfig) ${best.toFixed(2)} ms`);
-    expect(best).toBeLessThan(16);
+    expect(best).toBeLessThan(16 * ZEIT);
     expect(allePunkte(k).length).toBe(k.n);
   });
 });
