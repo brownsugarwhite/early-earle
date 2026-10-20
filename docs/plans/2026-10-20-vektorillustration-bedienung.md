@@ -1162,3 +1162,34 @@ binden kämpft gegen den Käfig, statt ihn zu formen.
   aufschaukeln kann — Forschung mit offenem Ausgang.
 
 Bis zur Entscheidung bleibt im Editor alles wie heute (der Schalter ist nicht in der Tafel).
+
+#### V4 weiter: Querschnitte aus der Sichthülle (20.10. nachts, vor dem Bau)
+
+**Florian (nach dem angehaltenen Beweis):** „Du musst nicht immer nach 3 Versuchen stoppen. Es gibt für alles eine elegante
+Lösung! Wähle die elegantere Lösung aus A und B. … Wichtig ist, dass das Mesh später immer schön und smooth aussieht außer
+bei gewollten Kanten.“ (Die Regel „nach drei Fehlanläufen anhalten“ gilt damit nicht mehr starr: weiterdenken, die
+elegantere Lösung suchen, Look- und Bedienfragen bleiben bei ihm.)
+
+**Wahl: weder A noch B, sondern die Ursache.** Beim Nachlesen des Querschnitt-Baus zeigte sich, warum die Front nicht
+erreicht wird: Jeder liegende Ring nimmt die ganze Front als Vorlage und staucht sie in die Höhe seiner Sprosse
+(`lappenQuerschnitt`, „normiert“). Ein Rumpfring der Robbe bekommt so eine kleine Robben-Front mit „Kopf“ obendrauf — der
+Rücken wird zu schmal, der Bauch erreicht die Front nicht, und das Top beult, wo die gestauchte Form breiter wird. Das
+„Berühren“ (S3) flickte das nur örtlich. Eine Silhouette, die der Bau nicht liefert, lässt sich hinterher kaum erzwingen
+(das waren die Fehlanläufe).
+
+**Bauweise „Querschnitt aus der Sichthülle“** (hinter `umrisseExakt`, ohne Schalter bitgleich):
+1. Je Ring (und je Kappenring) entlang seiner Sprosse die Breite der Sichthülle: an jeder Höhe die kleinere Breite aus
+   Front (auf dieser Höhe) und Top (an diesem x). Was du gezeichnet hast, bleibt so, wie es ist — die Front wird
+   **geschnitten, nicht gestaucht**. Eine Kugel bleibt so eine Kugel (alle Schnitte Kreise), eine Robbe hat am Rumpf den
+   Rumpf ihrer Front, am Kopf den Kopf.
+2. Gerundet wird nur, wo keine Zeichnung die Form vorgibt: zur Naht hin (oben und unten) und an Wänden, die das Top setzt —
+   mit einer Superellipse um die breiteste Stelle (Fülle; ihr Scheitel liegt dort, wo das Top die Breite erreicht).
+   Übergänge zwischen Front, Top und Rundung mit einem kleinen weichen Minimum (1–2 px): keine Knicke außer an gezeichneten
+   Ecken (die bleiben Längsfalten mit ihrer Härte).
+3. Die breiteste Stelle jedes Schnitts liegt auf der Käfigreihe N/4 (Breitenlinie).
+4. Kappen: Jeder Quadratring der Kappe bekommt den Schnitt an seiner eigenen Stelle — ein Kasten endet flach, ein rundes
+   Ende rund, ohne Sonderfall.
+5. Bindungen nur, wo der Bau weiß, wer den Umriss stellt (nichts wird im Lauf gewählt): Breitenlinie (Top, gemessen gut),
+   die Punkte, an denen die Front den Schnitt bestimmt (Front), die Naht (Seite). Keine Ungleichung, keine Tangente der Front.
+6. Erstes Kriterium Glattheit (Falten nach Zonen, Bilder), dann Δ ≤ 0,5 px; gemessen an den Beweis-Körpern, danach an der
+   ganzen Extremreihe.
