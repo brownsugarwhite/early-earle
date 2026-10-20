@@ -63,3 +63,18 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with: { name: playwright-report, path: apps/game/playwright-report }
+
+  # Wesen-Editor, Plan 20.10. V1: Prüfstand „Extremreihe“ gegen seine Grundzahlen (≈ 80 Bauten, einige Minuten) — wie die
+  # E2E-Suite nur wöchentlich und auf Knopfdruck, nicht bei jedem Push; lokal nach jedem Schritt des Plans.
+  extremreihe:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @ee/shape test:extrem
+        env: { CI: '1' }

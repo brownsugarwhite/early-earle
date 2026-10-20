@@ -1,0 +1,184 @@
+// Plan „Vektorillustration aus einem Liniennetz“ (20.10.), V1: Prüfstand „Extremreihe“ — alle Körper in beiden Körperarten
+// (Röhre, Teile) frisch und in Florians Ablauf (Startkugel eingefroren), gemessen wie der Editor baut (`extremMessen`).
+// Ausgabe: Tabelle (Markdown, je Gruppe), JSON mit allen Werten, Kontaktbogen je Gruppe (Florians Ablauf: Seite, Front,
+// Top mit schwarzer und gelber Linie, Netzlinien, Widerspruch, P-Linien; schräg; Zebra). Umgebung: KOERPER (Komma-Liste),
+// GRUPPEN, OHNE_BOGEN=1, GRUNDZAHLEN=1 (schreibt `extremreihe.grundzahlen.json` für den Test), AUSGABE (Ordner).
+// Aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/v1-extremreihe.ts
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { pfadAbtasten, vollerPfad } from '../../../../packages/shape/src/profil';
+import { RAND, SICHT } from '../../../../packages/shape/src/kern/netzSicht';
+import { EXTREMREIHE, EXTREM_GRUPPEN, type ExtremGruppe, GRUPPEN_TITEL } from '../../../../packages/shape/src/kern/pruefen/extremreihe';
+import { type Ablauf, type Bauart, type ExtremMessung, extremMessen } from '../../../../packages/shape/src/kern/pruefen/extremMessung';
+import { erreichbarkeit } from '../../../../packages/shape/src/kern/grundkoerper/huelle';
+import { type BogenFall, bogenHtml } from './kontaktbogen-html';
+
+const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+const AUSGABE = process.env.AUSGABE ?? resolve(WURZEL, 'apps/editor/pruefen-ausgabe/v1');
+mkdirSync(AUSGABE, { recursive: true });
+const nur = process.env.KOERPER?.split(',');
+const gruppen = (process.env.GRUPPEN?.split(',') ?? EXTREM_GRUPPEN) as ExtremGruppe[];
+const ARTEN: Bauart[] = ['roehre', 'teile'];
+const ABLAEUFE: Ablauf[] = ['kugel', 'frisch'];
+const b64 = (a: Float32Array | Uint32Array) => Buffer.from(a.buffer, a.byteOffset, a.byteLength).toString('base64');
+const T = 1e9;
+type V3 = [number, number, number];
+/** Bild eines Punkts je Blatt wie im Kontaktbogen: Seite (x, y), Front (z, y), Top (x, −z). */
+const bild = (p: ArrayLike<number>, v: number): [number, number] => (v === 0 ? [p[0]!, p[1]!] : v === 1 ? [p[2]!, p[1]!] : [p[0]!, -p[2]!]);
+const BLICK = [SICHT.seite, SICHT.front, SICHT.top];
+const FARBE: Record<string, string> = { 'kontur-seite': '#2b50d8', 'kontur-front': '#a03cc8', 'kontur-top': '#0f9e8e' };
+const EIGEN = ['kontur-seite', 'kontur-front', 'kontur-top'];
+
+const alle: ExtremMessung[] = [];
+const boegen = new Map<ExtremGruppe, BogenFall[]>();
+const f1 = (x: number) => (Number.isFinite(x) ? x.toFixed(1) : '–');
+const f0 = (x: number) => (Number.isFinite(x) ? x.toFixed(0) : '–');
+
+for (const k of EXTREMREIHE) {
+  if (!gruppen.includes(k.gruppe) || (nur && !nur.includes(k.name))) continue;
+  for (const art of ARTEN) {
+    for (const ablauf of ABLAEUFE) {
+      const t0 = Date.now();
+      let r: ReturnType<typeof extremMessen>;
+      try {
+        r = extremMessen(k, art, ablauf);
+      } catch (err) {
+        console.log(`${k.name} ${art} ${ablauf}: Bau scheitert: ${(err as Error).message}`);
+        alle.push({ name: k.name, gruppe: k.gruppe, art, ablauf, fehler: (err as Error).message } as ExtremMessung);
+        continue;
+      }
+      const m = r.messung;
+      alle.push(m);
+      console.log(`${k.name.padEnd(19)} ${art.padEnd(6)} ${ablauf.padEnd(6)} Δ ${f1(m.delta.seite.max)}/${f1(m.delta.front.max)}/${f1(m.delta.top.max)} frei ${f0(m.falten.frei.max)}° (${m.falten.frei.ueber20}) DD ${m.durchdringungen} ${Date.now() - t0} ms${m.fehler ? ` FEHLER ${m.fehler}` : ''}`);
+      if (ablauf !== 'kugel' || process.env.OHNE_BOGEN) continue;
+      // Kontaktbogen: Florians Ablauf, mit Linien, wenn der Körper welche hat
+      const zeig = r.mitLinien ?? { bau: r.bau, gezeigt: r.gezeigt, kanten: [] };
+      const g = zeig.gezeigt;
+      const dok = zeig.bau.dok;
+      const pos = new Float32Array(g.punkte.length * 3);
+      g.punkte.forEach((p, i) => pos.set(p, 3 * i));
+      const tri: number[] = [];
+      for (const fl of g.flaechen) for (let q = 1; q + 1 < fl.length; q++) tri.push(fl[0]!, fl[q]!, fl[q + 1]!);
+      const soll = (a: 'seite' | 'front' | 'top') => pfadAbtasten(vollerPfad(dok.profile[a]), 24).flatMap((p) => [p.x, p.y]);
+      const er = erreichbarkeit(dok);
+      const wid = (a: 'seite' | 'front' | 'top') => er[a].punkte.flatMap((q, i) => (er[a].widerspruch[i]! > 1 ? [q.x, a === 'top' ? -q.y : q.y] : [T, T]));
+      // gelber Saum: Stücke > 2 px (Blattkoordinaten; Top im Bild gespiegelt wie der Körper)
+      const saum = (['seite', 'front', 'top'] as const).map((a, v) => {
+        const s = zeig.bau.netz.saum?.[a];
+        const out: number[] = [];
+        if (s) for (let i = 0; i < s.length; i += 3) out.push(...(s[i + 2]! > 2 && !Number.isNaN(s[i]!) ? [s[i]!, v === 2 ? -s[i + 1]! : s[i + 1]!] : [T, T]));
+        return out;
+      });
+      // Netzlinien wie im Editor: fremde Umrisse nur am Rand und sichtbar
+      const netz = [0, 1, 2].map((v) =>
+        (zeig.bau.netz.netzSicht?.zuege ?? [])
+          .filter((z) => FARBE[z.art] && z.art !== EIGEN[v])
+          .map((z) => {
+            const p: number[] = [];
+            for (let i = 0; i < z.sicht.length; i++) p.push(...(z.sicht[i]! & RAND && z.sicht[i]! & BLICK[v]! ? bild([z.punkte[3 * i]!, z.punkte[3 * i + 1]!, z.punkte[3 * i + 2]!], v) : [T, T]));
+            return { f: FARBE[z.art]!, p };
+          }),
+      );
+      const linien = [0, 1, 2].map((v) =>
+        zeig.kanten.map((kk) => {
+          const out: number[] = [];
+          for (let i = 0; i + 1 < kk.knoten.length; i++) {
+            const a = kk.knoten[i]!;
+            const b = kk.knoten[i + 1]!;
+            for (let q = 0; q <= 12; q++) {
+              const t = q / 12;
+              const u = 1 - t;
+              const w = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
+              const P = [0, 1, 2].map((d) => w[0]! * a.p[d]! + w[1]! * (a.p[d]! + a.aus[d]!) + w[2]! * (b.p[d]! + b.ein[d]!) + w[3]! * b.p[d]!) as V3;
+              out.push(...bild(P, v));
+            }
+          }
+          return out;
+        }),
+      );
+      const zonen = (['frei', 'kappe', 'ansatz', 'kante', 'spitze'] as const).map((z) => `${z} ${f0(m.falten[z].max)}°/${m.falten[z].ueber20}`).join(', ');
+      const rausch = (['seite', 'front', 'top'] as const).map((a) => `${a[0]!.toUpperCase()} ${m.rauschen[a].stuecke}/${m.rauschen[a].knicke}/${m.rauschen[a].schleifen}`).join(' ');
+      const lin = m.linien ? ` · P-Linien ${m.linien.arten.join(', ')}: Haut ${f1(m.linien.aufHaut)} px, Kante ${f1(m.linien.kante)} px, Kantenwinkel ${f0(m.linien.kanteMax)}°` : '';
+      const liste = boegen.get(k.gruppe) ?? [];
+      liste.push({
+        name: `${k.name} · ${art}`,
+        text: `<b>${k.name} · ${art === 'roehre' ? 'Röhre' : 'Teile'}</b>${m.baum ? ` (${m.baum.streifen} Streifen + ${m.baum.seiten} seitlich)` : ''}${m.fehler ? ` · <b style="color:#c0002a">Baum scheitert, zeigt die Röhre: ${m.fehler}</b>` : ''} · ${k.text} · Δ S ${f1(m.delta.seite.max)} · F ${f1(m.delta.front.max)} · T ${f1(m.delta.top.max)} px (Widerspruch ${f1(Math.max(m.delta.seite.widerspruch, m.delta.front.widerspruch, m.delta.top.widerspruch))}) · Falten ${zonen} · Durchdringungen ${m.durchdringungen} · Käfig ${f0(m.kaefig.winkel)}°/${f1(m.kaefig.seiten)} · Netzlinien Stücke/Knicke/Schleifen ${rausch}${lin} · ${f0(m.zeit.bau)} ms, Zug ${f0(m.zeit.zug)} ms`,
+        daten: { pos: b64(pos), tri: b64(Uint32Array.from(tri)), seite: soll('seite'), front: soll('front'), top: soll('top'), wirbel: [], sprossen: [], wid: [wid('seite'), wid('front'), wid('top')], saum, netz, linien, zebra: true },
+      });
+      boegen.set(k.gruppe, liste);
+    }
+  }
+}
+
+// Tabelle je Gruppe (Florians Ablauf), dazu die Abweichung „frisch“, wo sie mehr als 2 px bzw. 5° ausmacht
+const zeilen: string[] = [];
+const wert = (n: string, art: Bauart, ablauf: Ablauf) => alle.find((m) => m.name === n && m.art === art && m.ablauf === ablauf);
+for (const gruppe of gruppen) {
+  const namen = [...new Set(alle.filter((m) => m.gruppe === gruppe).map((m) => m.name))];
+  if (!namen.length) continue;
+  zeilen.push(`\n#### ${GRUPPEN_TITEL[gruppe]}\n`);
+  zeilen.push('| Körper | Bau | Δ S · F · T px | Saum px | frei° (> 20) · Kappe° · Ansatz° · Kante° | Durchdr. | Käfig °/↔ | Netzlinien S · F · T (Stücke/Knicke/Schleifen) | ms Bau/Zug | P-Linien (Art, Haut, Kante px) |');
+  zeilen.push('|---|---|---|---|---|---|---|---|---|---|');
+  for (const n of namen) {
+    for (const art of ARTEN) {
+      const m = wert(n, art, 'kugel');
+      if (!m) continue;
+      if (!m.delta) {
+        zeilen.push(`| ${n} | ${art === 'roehre' ? 'Röhre' : 'Teile'} | Bau scheitert: ${m.fehler} | | | | | | | |`);
+        continue;
+      }
+      const fr = wert(n, art, 'frisch');
+      const abw = fr?.delta && (Math.abs(fr.delta.front.max - m.delta.front.max) > 2 || Math.abs(fr.delta.top.max - m.delta.top.max) > 2 || Math.abs(fr.delta.seite.max - m.delta.seite.max) > 2 || Math.abs(fr.falten.frei.max - m.falten.frei.max) > 5) ? ` (frisch ${f1(fr.delta.seite.max)} · ${f1(fr.delta.front.max)} · ${f1(fr.delta.top.max)}, frei ${f0(fr.falten.frei.max)}°)` : '';
+      const r = m.rauschen;
+      zeilen.push(
+        `| ${n} | ${art === 'roehre' ? 'Röhre' : `Teile${m.baum ? ` ${m.baum.streifen}+${m.baum.seiten}` : ''}`}${m.fehler ? ' ⚠' : ''} | ${f1(m.delta.seite.max)} · ${f1(m.delta.front.max)} · ${f1(m.delta.top.max)}${abw} | ${f0(m.saum.seite)} · ${f0(m.saum.front)} · ${f0(m.saum.top)} | ${f0(m.falten.frei.max)} (${m.falten.frei.ueber20}) · ${f0(m.falten.kappe.max)} · ${f0(m.falten.ansatz.max)} · ${f0(m.falten.kante.max)} | ${m.durchdringungen} | ${f0(m.kaefig.winkel)}/${f1(m.kaefig.seiten)} | ${r.seite.stuecke}/${r.seite.knicke}/${r.seite.schleifen} · ${r.front.stuecke}/${r.front.knicke}/${r.front.schleifen} · ${r.top.stuecke}/${r.top.knicke}/${r.top.schleifen} | ${f0(m.zeit.bau)}/${f0(m.zeit.zug)} | ${m.linien ? `${m.linien.arten.join(', ')}; ${f1(m.linien.aufHaut)}; ${f1(m.linien.kante)}` : ''} |`,
+      );
+    }
+  }
+}
+const md = resolve(AUSGABE, 'v1-extremreihe.md');
+writeFileSync(md, zeilen.join('\n') + '\n');
+writeFileSync(resolve(AUSGABE, 'v1-extremreihe.json'), JSON.stringify(alle, null, 1));
+console.log(md);
+
+if (process.env.GRUNDZAHLEN) {
+  // Grundzahlen für den Test (Florians Ablauf): was „nicht schlechter als heute“ heißt
+  const grund = alle
+    .filter((m) => m.ablauf === 'kugel' && m.delta)
+    .map((m) => ({
+      name: m.name,
+      art: m.art,
+      fehler: m.fehler ?? null,
+      delta: [m.delta.seite.max, m.delta.front.max, m.delta.top.max].map((x) => Math.round(x * 100) / 100),
+      frei: Math.round(m.falten.frei.max * 10) / 10,
+      ueber20: m.falten.frei.ueber20,
+      kappe: Math.round(m.falten.kappe.max * 10) / 10,
+      ansatz: Math.round(m.falten.ansatz.max * 10) / 10,
+      durchdringungen: m.durchdringungen,
+      knicke: m.rauschen.seite.knicke + m.rauschen.front.knicke + m.rauschen.top.knicke,
+      schleifen: m.rauschen.seite.schleifen + m.rauschen.front.schleifen + m.rauschen.top.schleifen,
+      ...(m.linien ? { linien: { arten: m.linien.arten, kante: Number.isFinite(m.linien.kante) ? Math.round(m.linien.kante * 100) / 100 : null, aufHaut: Math.round(m.linien.aufHaut * 100) / 100 } } : {}),
+    }));
+  const ziel = resolve(WURZEL, 'packages/shape/src/kern/pruefen/extremreihe.grundzahlen.json');
+  writeFileSync(ziel, JSON.stringify(grund, null, 1) + '\n');
+  console.log(ziel);
+}
+
+if (!process.env.OHNE_BOGEN) {
+  for (const [gruppe, faelle] of boegen) {
+    const html = resolve(AUSGABE, `v1-bogen-${gruppe}.html`);
+    writeFileSync(
+      html,
+      bogenHtml(
+        `V1 Extremreihe · ${GRUPPEN_TITEL[gruppe]} · Florians Ablauf (Startkugel umgeformt)`,
+        faelle,
+        'je Körper und Körperart: Seite · Front · Top (orthografisch; schwarz = Zeichnung, gelb = Körper > 2 px daneben, rot = Widerspruch der Zeichnungen, blau/lila/türkis = Umrisse von Seite/Front/Top auf dem Körper wie im Editor, braun = P-Linien) · schräg · Zebra (Knicke brechen die Streifen). Δ in px bei 461 je Kachel; Falten nach Zonen: größter Winkel/Kanten über 20°; Netzlinien je Umriss: Stücke/Knicke über 45°/Schleifen.',
+      ),
+    );
+    const png = resolve(AUSGABE, `v1-bogen-${gruppe}.png`);
+    execFileSync('node', [resolve(WURZEL, 'apps/editor/scripts/pruefen/html-shot.mjs'), html, png, '1560'], { cwd: resolve(WURZEL, 'apps/editor'), stdio: 'inherit' });
+    console.log(png);
+  }
+}

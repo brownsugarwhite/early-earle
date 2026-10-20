@@ -1,0 +1,1516 @@
+[
+ {
+  "name": "kugel",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   0.26,
+   0.19,
+   0.29
+  ],
+  "frei": 2.9,
+  "ueber20": 0,
+  "kappe": 3.1,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 0,
+  "schleifen": 0,
+  "linien": {
+   "arten": [
+    "reihe",
+    "ring"
+   ],
+   "kante": 1.2,
+   "aufHaut": 1.22
+  }
+ },
+ {
+  "name": "kugel",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   0.68,
+   2.98,
+   0.69
+  ],
+  "frei": 3.7,
+  "ueber20": 0,
+  "kappe": 4,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 0,
+  "schleifen": 6,
+  "linien": {
+   "arten": [
+    "treppe",
+    "treppe"
+   ],
+   "kante": 26.07,
+   "aufHaut": 2.97
+  }
+ },
+ {
+  "name": "ei",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   0.27,
+   0.38,
+   0.41
+  ],
+  "frei": 3.5,
+  "ueber20": 0,
+  "kappe": 5,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 4,
+  "schleifen": 10,
+  "linien": {
+   "arten": [
+    "reihe",
+    "reihe"
+   ],
+   "kante": 0.72,
+   "aufHaut": 0.29
+  }
+ },
+ {
+  "name": "ei",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   0.47,
+   0.29,
+   0.44
+  ],
+  "frei": 3.5,
+  "ueber20": 0,
+  "kappe": 5.4,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 0,
+  "schleifen": 14,
+  "linien": {
+   "arten": [
+    "treppe",
+    "treppe"
+   ],
+   "kante": 17.88,
+   "aufHaut": 1.31
+  }
+ },
+ {
+  "name": "rex",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   1.07,
+   7.29,
+   1.55
+  ],
+  "frei": 14,
+  "ueber20": 0,
+  "kappe": 10.7,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 25,
+  "schleifen": 16,
+  "linien": {
+   "arten": [
+    "ring"
+   ],
+   "kante": 1.12,
+   "aufHaut": 2.38
+  }
+ },
+ {
+  "name": "rex",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   1.87,
+   6.69,
+   0.81
+  ],
+  "frei": 10.9,
+  "ueber20": 0,
+  "kappe": 16.8,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 52,
+  "schleifen": 26,
+  "linien": {
+   "arten": [
+    "treppe"
+   ],
+   "kante": 62.83,
+   "aufHaut": 3.24
+  }
+ },
+ {
+  "name": "robbe",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   3.99,
+   6.25,
+   12.5
+  ],
+  "frei": 10.8,
+  "ueber20": 0,
+  "kappe": 11.1,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 17,
+  "schleifen": 44,
+  "linien": {
+   "arten": [
+    "ohne",
+    "reihe"
+   ],
+   "kante": 1.81,
+   "aufHaut": 4.36
+  }
+ },
+ {
+  "name": "robbe",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   1.3,
+   7.21,
+   12.64
+  ],
+  "frei": 9.7,
+  "ueber20": 0,
+  "kappe": 11.8,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 13,
+  "schleifen": 59,
+  "linien": {
+   "arten": [
+    "treppe",
+    "treppe"
+   ],
+   "kante": 66.95,
+   "aufHaut": 2.11
+  }
+ },
+ {
+  "name": "vase",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   1.33,
+   2.29,
+   13.75
+  ],
+  "frei": 10.9,
+  "ueber20": 0,
+  "kappe": 9,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 16,
+  "schleifen": 44,
+  "linien": {
+   "arten": [
+    "reihe"
+   ],
+   "kante": 1.58,
+   "aufHaut": 0.89
+  }
+ },
+ {
+  "name": "vase",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   1.41,
+   1.57,
+   2.24
+  ],
+  "frei": 10.5,
+  "ueber20": 0,
+  "kappe": 8.5,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 29,
+  "schleifen": 28,
+  "linien": {
+   "arten": [
+    "treppe"
+   ],
+   "kante": 11.47,
+   "aufHaut": 0.82
+  }
+ },
+ {
+  "name": "wuerfel",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   3.16,
+   2.65,
+   2
+  ],
+  "frei": 171.9,
+  "ueber20": 34,
+  "kappe": 152.9,
+  "ansatz": 0,
+  "durchdringungen": 388,
+  "knicke": 216,
+  "schleifen": 128,
+  "linien": {
+   "arten": [
+    "reihe"
+   ],
+   "kante": 1.29,
+   "aufHaut": 0.29
+  }
+ },
+ {
+  "name": "wuerfel",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   2.44,
+   2.14,
+   1.7
+  ],
+  "frei": 16,
+  "ueber20": 0,
+  "kappe": 15.9,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 86,
+  "schleifen": 60,
+  "linien": {
+   "arten": [
+    "treppe"
+   ],
+   "kante": 23.3,
+   "aufHaut": 0.14
+  }
+ },
+ {
+  "name": "wuerfel-rund",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   0.44,
+   0.84,
+   1.51
+  ],
+  "frei": 8.5,
+  "ueber20": 0,
+  "kappe": 5.4,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 38,
+  "schleifen": 67
+ },
+ {
+  "name": "wuerfel-rund",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   1.54,
+   1.16,
+   1.88
+  ],
+  "frei": 7.7,
+  "ueber20": 0,
+  "kappe": 11.2,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 26,
+  "schleifen": 10
+ },
+ {
+  "name": "kegel",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   2.09,
+   7.26,
+   2.64
+  ],
+  "frei": 14.1,
+  "ueber20": 0,
+  "kappe": 9.7,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 13,
+  "schleifen": 32,
+  "linien": {
+   "arten": [
+    "reihe"
+   ],
+   "kante": null,
+   "aufHaut": 0.16
+  }
+ },
+ {
+  "name": "kegel",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   2.5,
+   13.11,
+   2.59
+  ],
+  "frei": 11,
+  "ueber20": 0,
+  "kappe": 10.2,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 21,
+  "schleifen": 19,
+  "linien": {
+   "arten": [
+    "treppe"
+   ],
+   "kante": 27.98,
+   "aufHaut": 0.66
+  }
+ },
+ {
+  "name": "keil",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   0.83,
+   3.04,
+   6.75
+  ],
+  "frei": 17.6,
+  "ueber20": 0,
+  "kappe": 23.4,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 129,
+  "schleifen": 109
+ },
+ {
+  "name": "keil",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   2.11,
+   5.64,
+   4.1
+  ],
+  "frei": 42.1,
+  "ueber20": 186,
+  "kappe": 25,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 98,
+  "schleifen": 65
+ },
+ {
+  "name": "pyramide",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   0.65,
+   4.53,
+   11.86
+  ],
+  "frei": 17.3,
+  "ueber20": 0,
+  "kappe": 37.8,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 54,
+  "schleifen": 47
+ },
+ {
+  "name": "pyramide",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   1.51,
+   4.9,
+   6.98
+  ],
+  "frei": 76.5,
+  "ueber20": 390,
+  "kappe": 45,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 29,
+  "schleifen": 20
+ },
+ {
+  "name": "tigerkopf",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   2.45,
+   2.08,
+   5.88
+  ],
+  "frei": 37.6,
+  "ueber20": 20,
+  "kappe": 7.9,
+  "ansatz": 0,
+  "durchdringungen": 28,
+  "knicke": 71,
+  "schleifen": 35
+ },
+ {
+  "name": "tigerkopf",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   7.27,
+   6.11,
+   4
+  ],
+  "frei": 14.9,
+  "ueber20": 0,
+  "kappe": 10,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 36,
+  "schleifen": 31
+ },
+ {
+  "name": "langhals",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   1.51,
+   3.99,
+   3.1
+  ],
+  "frei": 14.5,
+  "ueber20": 0,
+  "kappe": 8.6,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 18,
+  "schleifen": 55
+ },
+ {
+  "name": "langhals",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   1.18,
+   3.89,
+   4.44
+  ],
+  "frei": 12.6,
+  "ueber20": 0,
+  "kappe": 9.5,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 37,
+  "schleifen": 52
+ },
+ {
+  "name": "hals-1-8",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   1.22,
+   31.63,
+   2.64
+  ],
+  "frei": 23.1,
+  "ueber20": 42,
+  "kappe": 20,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 24,
+  "schleifen": 74,
+  "linien": {
+   "arten": [
+    "reihe"
+   ],
+   "kante": 0.56,
+   "aufHaut": 1.17
+  }
+ },
+ {
+  "name": "hals-1-8",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   1.13,
+   30.1,
+   2.99
+  ],
+  "frei": 23.4,
+  "ueber20": 64,
+  "kappe": 17.3,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 31,
+  "schleifen": 30,
+  "linien": {
+   "arten": [
+    "treppe"
+   ],
+   "kante": 16.2,
+   "aufHaut": 2.75
+  }
+ },
+ {
+  "name": "schlange",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   3.75,
+   3.29,
+   11.78
+  ],
+  "frei": 178.5,
+  "ueber20": 58,
+  "kappe": 170.2,
+  "ansatz": 0,
+  "durchdringungen": 508,
+  "knicke": 89,
+  "schleifen": 133,
+  "linien": {
+   "arten": [
+    "reihe"
+   ],
+   "kante": 0.23,
+   "aufHaut": 0.64
+  }
+ },
+ {
+  "name": "schlange",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   1.43,
+   2.71,
+   9.11
+  ],
+  "frei": 30.4,
+  "ueber20": 677,
+  "kappe": 10.3,
+  "ansatz": 36.4,
+  "durchdringungen": 0,
+  "knicke": 78,
+  "schleifen": 81,
+  "linien": {
+   "arten": [
+    "treppe"
+   ],
+   "kante": 27.31,
+   "aufHaut": 4.98
+  }
+ },
+ {
+  "name": "bleistift",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   1.2,
+   0.52,
+   4.77
+  ],
+  "frei": 4.1,
+  "ueber20": 0,
+  "kappe": 9.9,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 83,
+  "schleifen": 128,
+  "linien": {
+   "arten": [
+    "reihe"
+   ],
+   "kante": 0.05,
+   "aufHaut": 0.05
+  }
+ },
+ {
+  "name": "bleistift",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   1.18,
+   0.51,
+   4.9
+  ],
+  "frei": 4.1,
+  "ueber20": 0,
+  "kappe": 9.7,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 100,
+  "schleifen": 117,
+  "linien": {
+   "arten": [
+    "treppe"
+   ],
+   "kante": 6.64,
+   "aufHaut": 0.06
+  }
+ },
+ {
+  "name": "wurst",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   0.85,
+   0.2,
+   1.07
+  ],
+  "frei": 6.4,
+  "ueber20": 0,
+  "kappe": 13.6,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 38,
+  "schleifen": 23
+ },
+ {
+  "name": "wurst",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   0.71,
+   0.11,
+   0.96
+  ],
+  "frei": 6,
+  "ueber20": 0,
+  "kappe": 14.1,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 35,
+  "schleifen": 15
+ },
+ {
+  "name": "rochen",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   0.4,
+   3.16,
+   1.11
+  ],
+  "frei": 5.7,
+  "ueber20": 0,
+  "kappe": 11.2,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 6,
+  "schleifen": 9
+ },
+ {
+  "name": "rochen",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   0.57,
+   4.07,
+   3.68
+  ],
+  "frei": 26.7,
+  "ueber20": 9,
+  "kappe": 36.4,
+  "ansatz": 27,
+  "durchdringungen": 0,
+  "knicke": 11,
+  "schleifen": 26
+ },
+ {
+  "name": "blatt",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   0.57,
+   0.58,
+   1.38
+  ],
+  "frei": 4.1,
+  "ueber20": 0,
+  "kappe": 14.2,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 16,
+  "schleifen": 52
+ },
+ {
+  "name": "blatt",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   0.94,
+   0.81,
+   0.59
+  ],
+  "frei": 32.6,
+  "ueber20": 614,
+  "kappe": 13,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 13,
+  "schleifen": 11
+ },
+ {
+  "name": "flunder",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   0.31,
+   0.71,
+   0.74
+  ],
+  "frei": 13.2,
+  "ueber20": 0,
+  "kappe": 8.5,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 0,
+  "schleifen": 8
+ },
+ {
+  "name": "flunder",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   0.36,
+   0.81,
+   0.63
+  ],
+  "frei": 12.7,
+  "ueber20": 0,
+  "kappe": 8.9,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 0,
+  "schleifen": 0
+ },
+ {
+  "name": "pilz",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   5.57,
+   6.33,
+   2.03
+  ],
+  "frei": 6.2,
+  "ueber20": 0,
+  "kappe": 15.7,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 66,
+  "schleifen": 70
+ },
+ {
+  "name": "pilz",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   6.73,
+   6.29,
+   2.38
+  ],
+  "frei": 17.4,
+  "ueber20": 0,
+  "kappe": 14.8,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 42,
+  "schleifen": 26
+ },
+ {
+  "name": "giraffe-bauch",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   1.03,
+   18.94,
+   8.99
+  ],
+  "frei": 25,
+  "ueber20": 68,
+  "kappe": 21.8,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 10,
+  "schleifen": 22
+ },
+ {
+  "name": "giraffe-bauch",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   1.04,
+   1.79,
+   1.74
+  ],
+  "frei": 11.4,
+  "ueber20": 0,
+  "kappe": 7.6,
+  "ansatz": 11.2,
+  "durchdringungen": 0,
+  "knicke": 7,
+  "schleifen": 32
+ },
+ {
+  "name": "sichel",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   1.23,
+   13.66,
+   0.45
+  ],
+  "frei": 179.7,
+  "ueber20": 184,
+  "kappe": 68.8,
+  "ansatz": 0,
+  "durchdringungen": 154,
+  "knicke": 42,
+  "schleifen": 27
+ },
+ {
+  "name": "sichel",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   3.13,
+   13.7,
+   0.44
+  ],
+  "frei": 17,
+  "ueber20": 0,
+  "kappe": 27.7,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 50,
+  "schleifen": 42
+ },
+ {
+  "name": "hammerhai",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   0.76,
+   12.24,
+   9.77
+  ],
+  "frei": 14.3,
+  "ueber20": 0,
+  "kappe": 18.8,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 27,
+  "schleifen": 41
+ },
+ {
+  "name": "hammerhai",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   0.3,
+   27.45,
+   4.35
+  ],
+  "frei": 27.6,
+  "ueber20": 159,
+  "kappe": 20.7,
+  "ansatz": 24.2,
+  "durchdringungen": 0,
+  "knicke": 7,
+  "schleifen": 5
+ },
+ {
+  "name": "ueberhang",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   1.68,
+   22.71,
+   30.3
+  ],
+  "frei": 43,
+  "ueber20": 550,
+  "kappe": 28.3,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 6,
+  "schleifen": 76
+ },
+ {
+  "name": "ueberhang",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   2.6,
+   27.14,
+   28.46
+  ],
+  "frei": 29.7,
+  "ueber20": 132,
+  "kappe": 23.2,
+  "ansatz": 112,
+  "durchdringungen": 0,
+  "knicke": 7,
+  "schleifen": 29
+ },
+ {
+  "name": "ente-haken",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   1.68,
+   21.9,
+   47.89
+  ],
+  "frei": 44.9,
+  "ueber20": 742,
+  "kappe": 94.3,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 6,
+  "schleifen": 12
+ },
+ {
+  "name": "ente-haken",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   2.59,
+   13.86,
+   43.67
+  ],
+  "frei": 40.9,
+  "ueber20": 118,
+  "kappe": 16.9,
+  "ansatz": 157.7,
+  "durchdringungen": 38,
+  "knicke": 14,
+  "schleifen": 23
+ },
+ {
+  "name": "einfach",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   0.32,
+   7.66,
+   77.35
+  ],
+  "frei": 21.1,
+  "ueber20": 16,
+  "kappe": 20.7,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 2,
+  "schleifen": 76
+ },
+ {
+  "name": "einfach",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   2.36,
+   71.42,
+   17.62
+  ],
+  "frei": 23.6,
+  "ueber20": 180,
+  "kappe": 9.9,
+  "ansatz": 22,
+  "durchdringungen": 0,
+  "knicke": 17,
+  "schleifen": 42
+ },
+ {
+  "name": "vierbeiner",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   11.86,
+   49.05,
+   7.66
+  ],
+  "frei": 16.3,
+  "ueber20": 0,
+  "kappe": 44.6,
+  "ansatz": 0,
+  "durchdringungen": 1190,
+  "knicke": 103,
+  "schleifen": 24,
+  "linien": {
+   "arten": [
+    "reihe"
+   ],
+   "kante": null,
+   "aufHaut": 0.89
+  }
+ },
+ {
+  "name": "vierbeiner",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   3.26,
+   16.22,
+   4.32
+  ],
+  "frei": 16.8,
+  "ueber20": 0,
+  "kappe": 12.3,
+  "ansatz": 19.9,
+  "durchdringungen": 0,
+  "knicke": 24,
+  "schleifen": 55,
+  "linien": {
+   "arten": [
+    "treppe"
+   ],
+   "kante": 17.55,
+   "aufHaut": 3.96
+  }
+ },
+ {
+  "name": "zweihals",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   1.52,
+   62.77,
+   60.39
+  ],
+  "frei": 87.2,
+  "ueber20": 1556,
+  "kappe": 41.4,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 11,
+  "schleifen": 14
+ },
+ {
+  "name": "zweihals",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   3.4,
+   14.87,
+   27.07
+  ],
+  "frei": 15,
+  "ueber20": 0,
+  "kappe": 14.8,
+  "ansatz": 14.8,
+  "durchdringungen": 0,
+  "knicke": 17,
+  "schleifen": 23
+ },
+ {
+  "name": "ente",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   2.59,
+   14.34,
+   48
+  ],
+  "frei": 45.4,
+  "ueber20": 80,
+  "kappe": 56.8,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 60,
+  "schleifen": 30
+ },
+ {
+  "name": "ente",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   3.37,
+   12.6,
+   2.08
+  ],
+  "frei": 27.2,
+  "ueber20": 242,
+  "kappe": 4.1,
+  "ansatz": 24.5,
+  "durchdringungen": 0,
+  "knicke": 30,
+  "schleifen": 59
+ },
+ {
+  "name": "fisch",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   4.4,
+   17.8,
+   17.05
+  ],
+  "frei": 144.5,
+  "ueber20": 740,
+  "kappe": 40.3,
+  "ansatz": 0,
+  "durchdringungen": 76,
+  "knicke": 22,
+  "schleifen": 28,
+  "linien": {
+   "arten": [
+    "reihe"
+   ],
+   "kante": 0.65,
+   "aufHaut": 0.38
+  }
+ },
+ {
+  "name": "fisch",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   1.36,
+   3.48,
+   2.94
+  ],
+  "frei": 20.8,
+  "ueber20": 16,
+  "kappe": 19.6,
+  "ansatz": 22.9,
+  "durchdringungen": 0,
+  "knicke": 33,
+  "schleifen": 76,
+  "linien": {
+   "arten": [
+    "treppe"
+   ],
+   "kante": 24.98,
+   "aufHaut": 3.98
+  }
+ },
+ {
+  "name": "krabbe",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   0.38,
+   13.9,
+   82.03
+  ],
+  "frei": 4.4,
+  "ueber20": 0,
+  "kappe": 46.9,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 24,
+  "schleifen": 14
+ },
+ {
+  "name": "krabbe",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   4.47,
+   8.94,
+   10.99
+  ],
+  "frei": 178.8,
+  "ueber20": 186,
+  "kappe": 90.9,
+  "ansatz": 32.5,
+  "durchdringungen": 205,
+  "knicke": 0,
+  "schleifen": 13
+ },
+ {
+  "name": "krake",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   21.27,
+   73.8,
+   21.8
+  ],
+  "frei": 156.8,
+  "ueber20": 773,
+  "kappe": 55.3,
+  "ansatz": 0,
+  "durchdringungen": 660,
+  "knicke": 67,
+  "schleifen": 17,
+  "linien": {
+   "arten": [
+    "reihe"
+   ],
+   "kante": null,
+   "aufHaut": 0.65
+  }
+ },
+ {
+  "name": "krake",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   45.46,
+   10.63,
+   10.67
+  ],
+  "frei": 167.3,
+  "ueber20": 612,
+  "kappe": 106.4,
+  "ansatz": 26.8,
+  "durchdringungen": 657,
+  "knicke": 20,
+  "schleifen": 21,
+  "linien": {
+   "arten": [
+    "treppe"
+   ],
+   "kante": 32.24,
+   "aufHaut": 5.41
+  }
+ },
+ {
+  "name": "seestern",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   0.33,
+   3.17,
+   47.87
+  ],
+  "frei": 18.4,
+  "ueber20": 0,
+  "kappe": 59.2,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 18,
+  "schleifen": 26
+ },
+ {
+  "name": "seestern",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   0.56,
+   12.9,
+   47.3
+  ],
+  "frei": 23.9,
+  "ueber20": 685,
+  "kappe": 7.4,
+  "ansatz": 153.9,
+  "durchdringungen": 0,
+  "knicke": 12,
+  "schleifen": 28
+ },
+ {
+  "name": "fluegel-oben",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   3.82,
+   75.07,
+   12.14
+  ],
+  "frei": 55.8,
+  "ueber20": 886,
+  "kappe": 29,
+  "ansatz": 0,
+  "durchdringungen": 416,
+  "knicke": 35,
+  "schleifen": 13
+ },
+ {
+  "name": "fluegel-oben",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   3.52,
+   19.23,
+   5.37
+  ],
+  "frei": 15.2,
+  "ueber20": 0,
+  "kappe": 12.1,
+  "ansatz": 21.6,
+  "durchdringungen": 0,
+  "knicke": 8,
+  "schleifen": 29
+ },
+ {
+  "name": "katze-ohren",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   1.18,
+   56.16,
+   1.17
+  ],
+  "frei": 16.1,
+  "ueber20": 0,
+  "kappe": 9.6,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 7,
+  "schleifen": 41
+ },
+ {
+  "name": "katze-ohren",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   17.35,
+   56.65,
+   4.25
+  ],
+  "frei": 23.5,
+  "ueber20": 90,
+  "kappe": 7.5,
+  "ansatz": 25.6,
+  "durchdringungen": 0,
+  "knicke": 10,
+  "schleifen": 20
+ },
+ {
+  "name": "hoerner",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   7.53,
+   78.01,
+   11.74
+  ],
+  "frei": 145.8,
+  "ueber20": 1563,
+  "kappe": 63.4,
+  "ansatz": 0,
+  "durchdringungen": 180,
+  "knicke": 6,
+  "schleifen": 11
+ },
+ {
+  "name": "hoerner",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   2.91,
+   16.02,
+   14.2
+  ],
+  "frei": 11.2,
+  "ueber20": 0,
+  "kappe": 22.3,
+  "ansatz": 17.5,
+  "durchdringungen": 0,
+  "knicke": 27,
+  "schleifen": 36
+ },
+ {
+  "name": "augenstiele",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   5.56,
+   42.98,
+   4.9
+  ],
+  "frei": 114.3,
+  "ueber20": 559,
+  "kappe": 32.5,
+  "ansatz": 0,
+  "durchdringungen": 338,
+  "knicke": 24,
+  "schleifen": 29
+ },
+ {
+  "name": "augenstiele",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   3.17,
+   5.65,
+   2.71
+  ],
+  "frei": 11.5,
+  "ueber20": 0,
+  "kappe": 10,
+  "ansatz": 18.1,
+  "durchdringungen": 0,
+  "knicke": 12,
+  "schleifen": 59
+ },
+ {
+  "name": "widerspruch-breite",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   0.33,
+   10.23,
+   0.79
+  ],
+  "frei": 5.8,
+  "ueber20": 0,
+  "kappe": 3,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 2,
+  "schleifen": 16
+ },
+ {
+  "name": "widerspruch-breite",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   0.83,
+   10.73,
+   0.83
+  ],
+  "frei": 4.3,
+  "ueber20": 0,
+  "kappe": 4,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 6,
+  "schleifen": 15
+ },
+ {
+  "name": "widerspruch-hoehe",
+  "art": "roehre",
+  "fehler": null,
+  "delta": [
+   0.33,
+   9.98,
+   0.66
+  ],
+  "frei": 5,
+  "ueber20": 0,
+  "kappe": 3,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 21,
+  "schleifen": 17
+ },
+ {
+  "name": "widerspruch-hoehe",
+  "art": "teile",
+  "fehler": null,
+  "delta": [
+   0.83,
+   10.35,
+   0.73
+  ],
+  "frei": 4.8,
+  "ueber20": 0,
+  "kappe": 4,
+  "ansatz": 0,
+  "durchdringungen": 0,
+  "knicke": 15,
+  "schleifen": 11
+ }
+]

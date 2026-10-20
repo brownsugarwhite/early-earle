@@ -1,6 +1,8 @@
 // Gemeinsamer Kontaktbogen der Grundkörper-Prüfungen (Teil G, S0–S5): je Fall Seite, Front, Top (orthografisch, gezeichnete
 // Umrisse schwarz, Widerspruch rot, Wirbelsäule grün, Sprossen grau) und eine Schrägansicht mit Cel-Stufen; mit `daten.nah`
-// ([x, y, z, r] in Welt) eine fünfte Kachel: schräg nah um den Punkt mit Zebrastreifen (Knicke brechen die Streifen).
+// ([x, y, z, r] in Welt) eine fünfte Kachel: schräg nah um den Punkt mit Zebrastreifen (Knicke brechen die Streifen); mit
+// `daten.zebra` dieselbe Kachel für den ganzen Körper. Plan 20.10., V1: optional `saum` (gelb, je Blatt), `netz` (Netzlinien je
+// Blatt mit Farbe) und `linien` (P-Linien je Blatt) — Paare (x, y) im Bild des Blatts, 1e9 trennt Züge.
 export type BogenFall = { name: string; text: string; daten: unknown };
 
 export const BOGEN_LEGENDE =
@@ -12,7 +14,7 @@ body{margin:10px;font:13px/1.35 -apple-system,Helvetica,sans-serif;background:#f
 .fall{margin:0 0 12px}.reihe{display:flex;gap:6px}canvas{background:#fff;border:1px solid #d8cfc0}h1{font-size:16px;margin:0 0 6px}
 </style></head><body><h1>${titel} · Abnahme offen</h1>
 <div style="margin-bottom:8px">${legende}</div>
-${faelle.map((f, k) => `<div class="fall"><div>${f.text}</div><div class="reihe">${[0, 1, 2, 3, 4].filter((v) => v < 4 || (f.daten as { nah?: unknown } | null)?.nah).map((v) => `<canvas id="c${k}_${v}" width="300" height="300"></canvas>`).join('')}</div></div>`).join('\n')}
+${faelle.map((f, k) => `<div class="fall"><div>${f.text}</div><div class="reihe">${[0, 1, 2, 3, 4].filter((v) => v < 4 || (f.daten as { nah?: unknown; zebra?: unknown } | null)?.nah || (f.daten as { zebra?: unknown } | null)?.zebra).map((v) => `<canvas id="c${k}_${v}" width="300" height="300"></canvas>`).join('')}</div></div>`).join('\n')}
 <script>
 const FAELLE = ${JSON.stringify(faelle.map((f) => f.daten))};
 const ab = (s, T) => { const b = atob(s); const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return new T(u.buffer); };
@@ -39,7 +41,7 @@ FAELLE.forEach((F, k) => {
     for (const p of [a, b, c]) { N[3 * p] += nx; N[3 * p + 1] += ny; N[3 * p + 2] += nz; }
   }
   [...ANSICHTEN, ANSICHTEN[3]].forEach((abb, v) => {
-    if (v === 4 && !F.nah) return;
+    if (v === 4 && !F.nah && !F.zebra) return;
     const cv = document.getElementById('c' + k + '_' + v); const W = cv.width, H = cv.height; const ctx = cv.getContext('2d');
     const P = new Float32Array(3 * n), Q = new Float32Array(3 * n);
     let lo = [Infinity, Infinity], hi = [-Infinity, -Infinity];
@@ -49,7 +51,7 @@ FAELLE.forEach((F, k) => {
     for (const z of zeich) for (let i = 0; i < z.length; i += 2) { lo = [Math.min(lo[0], z[i]), Math.min(lo[1], z[i + 1])]; hi = [Math.max(hi[0], z[i]), Math.max(hi[1], z[i + 1])]; }
     let s = 0.9 * Math.min(W / (hi[0] - lo[0]), H / (hi[1] - lo[1]));
     let ox = (W - s * (hi[0] - lo[0])) / 2 - s * lo[0], oy = (H + s * (hi[1] - lo[1])) / 2 + s * lo[1];
-    if (v === 4) { const m = abb(F.nah[0], F.nah[1], F.nah[2]); s = W / (2 * F.nah[3]); ox = W / 2 - s * m[0]; oy = H / 2 + s * m[1]; }
+    if (v === 4 && F.nah) { const m = abb(F.nah[0], F.nah[1], F.nah[2]); s = W / (2 * F.nah[3]); ox = W / 2 - s * m[0]; oy = H / 2 + s * m[1]; }
     const img = ctx.createImageData(W, H); const zb = new Float32Array(W * H).fill(-Infinity);
     for (let i = 0; i < W * H; i++) { img.data[4 * i] = 255; img.data[4 * i + 1] = 255; img.data[4 * i + 2] = 255; img.data[4 * i + 3] = 255; }
     const X = (i) => ox + s * P[3 * i], Y = (i) => oy - s * P[3 * i + 1];
@@ -77,6 +79,9 @@ FAELLE.forEach((F, k) => {
     ctx.putImageData(img, 0, 0);
     const zug = (pts, farbe, breite, zu) => { ctx.strokeStyle = farbe; ctx.lineWidth = breite; ctx.beginPath(); let neu = true; for (let i = 0; i < pts.length; i += 2) { if (!(Math.abs(pts[i]) < 1e8)) { neu = true; continue; } const x = ox + s * pts[i], y = oy - s * pts[i + 1]; if (!neu) ctx.lineTo(x, y); else ctx.moveTo(x, y); neu = false; } if (zu) ctx.closePath(); ctx.stroke(); };
     if (v < 3 && F.wid) zug(F.wid[v], 'rgba(255,59,92,0.6)', 7, false);
+    if (v < 3 && F.saum) zug(F.saum[v], 'rgba(255,186,0,0.95)', 5, false);
+    if (v < 3 && F.netz) for (const nz of F.netz[v]) zug(nz.p, nz.f, 1.6, false);
+    if (v < 3 && F.linien) for (const l of F.linien[v]) zug(l, '#3b2a12', 2.4, false);
     for (const z of zeich) zug(z, 'rgba(0,0,0,0.85)', 1.5, v === 0);
     if (v === 0) {
       ctx.globalAlpha = 0.5; for (const sp of F.sprossen) zug([sp[0], sp[1], sp[3], sp[4]], '#666', 1, false); ctx.globalAlpha = 1;
