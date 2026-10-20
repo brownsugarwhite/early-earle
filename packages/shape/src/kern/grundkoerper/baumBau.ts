@@ -103,8 +103,15 @@ export type BaumAbleitung = {
   /** S6: je seitlicher Röhre die Ausrichtung ihrer Ringpunkte: Punkt j liegt bei θ = 2π(versatz + richtung·j)/N der Ellipse */
   seitenAusrichtung: { versatz: number; richtung: 1 | -1 }[];
   seitenAusgelassen: number[];
+  /** Käfigkanten, die die Klinge scharf gesetzt hat (nicht gezeichnet; das Faltenmaß zählt ihre Knicke mit, `baumFalten`) */
+  klingeKanten: Set<number>;
   zeiten: { ebene: number; ringe: number; ziele: number; matrix: number; loeser: number; gesamt: number };
 };
+
+/** Optionen des Faltenmaßes für einen Baum: Zonen des Baums, gewollt sind nur scharfe Kanten, die nicht die Klinge setzt. */
+export function baumFalten(b: Pick<BaumAbleitung, 'zone' | 'klingeKanten'>): { flaechenZone: BaumAbleitung['zone']; gewollt: (kaefigKante: number) => boolean } {
+  return { flaechenZone: b.zone, gewollt: (e) => !b.klingeKanten.has(e) };
+}
 
 const uhr = (globalThis as { performance?: { now(): number } }).performance;
 const jetzt = () => (uhr ? uhr.now() : Date.now());
@@ -1166,9 +1173,12 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
   // Dünne Kanten als Klinge: Ein Ring, dessen größte Halbbreite kleiner als `klinge` × halbe Sprossenlänge ist, ist eine
   // schmale Linse. Zwischen zwei solchen Ringen wird die Naht (j = 0 und N/2) zur scharfen Kante, an einem dünnen Ende auch
   // die Nahtspalte der Kappe. Rund faltete die Hinterkante der Fisch-Rückenflosse 22–26°, der Entenschwanz 53° (Kappe).
+  const klingeKanten = new Set<number>();
   if (opt.klinge > 0) {
     const scharf = (p: number, q: number) => {
       const kante = kanteZwischen(k, p, q);
+      // schon gezeichnet scharf (P-Linie, Ecke) bleibt gewollt; erst die Klinge macht sie zur Klingenkante
+      if (kante >= 0 && !(k.eSchaerfe[kante]! > 0)) klingeKanten.add(kante);
       if (kante >= 0) k.eSchaerfe[kante] = opt.eckenSchaerfe;
     };
     e.streifen.forEach((st, s) => {
@@ -1217,6 +1227,8 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
       ziele,
       dok.kanten.map((ka) => kanteAbtasten(ka, dok.skalierung)),
       opt.eckenSchaerfe,
+      // eine P-Linie auf einer Klingenkante macht sie zur gezeichneten Kante
+      (e) => klingeKanten.delete(e),
     );
   }
   const t3 = jetzt();
@@ -1357,7 +1369,7 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
   }
   const t5 = jetzt();
   const zone = baumZonen(e, ringe, bk);
-  return { opt, ebene: e, ringe, bk, kaefig: { ...k, xyz }, unterteilung: u, fein, ziele, breiten: bz, zone, querschnitte: qs, seiten, seitenAusrichtung: ansaetze.map((g) => ({ versatz: g.versatz, richtung: g.richtung })), seitenAusgelassen, zeiten: { ebene: t1 - t0, ringe: t2 - t1, ziele: t3 - t2, matrix: t4 - t3, loeser: t5 - t4, gesamt: t5 - t0 } };
+  return { opt, ebene: e, ringe, bk, kaefig: { ...k, xyz }, unterteilung: u, fein, ziele, breiten: bz, zone, querschnitte: qs, seiten, seitenAusrichtung: ansaetze.map((g) => ({ versatz: g.versatz, richtung: g.richtung })), seitenAusgelassen, klingeKanten, zeiten: { ebene: t1 - t0, ringe: t2 - t1, ziele: t3 - t2, matrix: t4 - t3, loeser: t5 - t4, gesamt: t5 - t0 } };
 }
 
 /**

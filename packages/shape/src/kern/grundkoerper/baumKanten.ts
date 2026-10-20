@@ -8,14 +8,18 @@ import type { BaumKaefig } from '../../kaefig/baumKaefig';
 import { kanteZwischen } from '../../kaefig/halbkanten';
 import type { KantenLinie } from '../kanten';
 
-/** Setzt die Falten der Linien auf den Käfig des Baums; liefert die Zahl der geschärften Käfigkanten (rechts und links). */
-export function baumKantenFalten(bk: BaumKaefig, ziele: Float64Array, linien: readonly KantenLinie[], schaerfeMax: number): number {
+/**
+ * Setzt die Falten der Linien auf den Käfig des Baums; liefert die Zahl der geschärften Käfigkanten (rechts und links).
+ * `beruehrt`: jede Käfigkante, auf die eine Linie fällt (auch wenn sie schon so scharf war — die Kante ist dann gezeichnet).
+ */
+export function baumKantenFalten(bk: BaumKaefig, ziele: Float64Array, linien: readonly KantenLinie[], schaerfeMax: number, beruehrt?: (kaefigKante: number) => void): number {
   const k = bk.kaefig;
   const n = k.n;
   const P = (p: number, d: 0 | 1 | 2) => ziele[3 * p + d]!;
   let gesetzt = 0;
   const setze = (a: number, b: number, s: number) => {
     const e = kanteZwischen(k, a, b);
+    if (e >= 0 && s > 0) beruehrt?.(e);
     if (e >= 0 && s > k.eSchaerfe[e]!) {
       k.eSchaerfe[e] = s;
       gesetzt++;

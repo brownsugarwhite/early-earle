@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import type { Kaefig } from '../../../../packages/shape/src/kaefig/halbkanten';
 import { GLATTE_HAUT, ableiten } from '../../../../packages/shape/src/kern/ableiten';
 import { blattAbweichungen } from '../../../../packages/shape/src/kern/abweichung';
-import { baumAbleiten, baumFeinesNetz, paarAusnahme } from '../../../../packages/shape/src/kern/grundkoerper/baumBau';
+import { baumAbleiten, baumFalten, baumFeinesNetz, paarAusnahme } from '../../../../packages/shape/src/kern/grundkoerper/baumBau';
 import { teilbaum } from '../../../../packages/shape/src/kern/grundkoerper/teilbaum';
 import { feinesNetz } from '../../../../packages/shape/src/kern/pruefstand';
 import { teilSatzDokument } from '../../../../packages/shape/src/kern/pruefen/teilsatz';
@@ -70,7 +70,7 @@ for (const name of liste) {
   // Baum
   try {
     const b = baumAbleiten(dok, OPT);
-    const z = faltenNachZonen(b.kaefig, b.unterteilung, b.fein, { flaechenZone: b.zone }).zonen;
+    const z = faltenNachZonen(b.kaefig, b.unterteilung, b.fein, baumFalten(b)).zonen;
     const nb = baumFeinesNetz(b);
     const d = blattAbweichungen(nb.punkte, nb.flaechen, dok, 240, undefined, true, aus);
     const g = kaefigGuete(b.kaefig);
