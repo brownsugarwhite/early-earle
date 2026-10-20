@@ -29,7 +29,7 @@ const stand = () =>
   page.evaluate(() => {
     const st = window.__stores.editor.getState();
     const delta = [...document.querySelectorAll('[data-delta]')].map((e) => e.textContent ?? '');
-    return { hash: window.__editor.netzHash(), schritte: st.verlauf.length, koerper: st.dok.ausstattung?.koerper ?? 'roehre', baum: window.__editor.koerperBaum(), geist: window.__editor.geist(), titel: document.querySelector('[data-geist]')?.textContent ?? '', delta };
+    return { hash: window.__editor.netzHash(), schritte: st.verlauf.length, koerper: st.dok.ausstattung?.koerper ?? 'roehre', baum: window.__editor.koerperBaum(), titel: document.querySelector('[data-koerper-status]')?.textContent ?? '', delta };
   });
 async function nachBau(version) {
   await page.waitForFunction((v) => window.__editor.netzVersion() > v && document.querySelectorAll('[data-delta]').length >= 3, version, { timeout: 90_000 });
@@ -68,7 +68,7 @@ for (const fall of faelle) {
   });
   await page.waitForTimeout(500);
   const a = await stand();
-  pruefe(a.koerper === 'roehre' && a.baum === null && a.geist === null, `Röhre: kein Baum (${a.titel})`);
+  pruefe(a.koerper === 'roehre' && a.baum === null, `Röhre: kein Baum (${a.titel})`);
   v = await page.evaluate(() => window.__editor.netzVersion());
   await page.locator('[data-koerper="teile"]').click();
   await nachBau(v);
@@ -78,7 +78,6 @@ for (const fall of faelle) {
   pruefe(!!b.baum && !b.baum.fehler && b.baum.streifen >= 1, `Baum ist der Körper: ${b.baum ? `${b.baum.streifen} Streifen, ${b.baum.seiten} seitlich, ${b.baum.ms.toFixed(0)} ms${b.baum.fehler ? `, Fehler ${b.baum.fehler}` : ''}` : 'fehlt'} · Tafel „${b.titel.trim()}“`);
   if (soll[fall] !== undefined) pruefe(b.baum?.seiten === Number(soll[fall]), `${b.baum?.seiten ?? 0} seitliche Röhren (erwartet ${soll[fall]})`);
   pruefe(b.hash !== a.hash, 'Netz ist der Baum (anders als die Röhre)');
-  pruefe(b.geist === null, 'kein Geist mehr');
   console.log(`        Δ-Titel Röhre ${a.delta.join(' | ')}  →  Baum ${b.delta.join(' | ')}`);
   // S7.2: einen Seitenknoten ziehen — während des Zugs bleibt der Baum der Körper (verformt), danach genauer Neubau
   const knoten = await page.evaluate(() => {

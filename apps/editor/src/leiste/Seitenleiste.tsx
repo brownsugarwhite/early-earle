@@ -1035,7 +1035,7 @@ function AbleitenFeld() {
     <>
       <div className="feld">
         <span>Körper</span>
-        <b data-geist={baum ? baum.streifen : ''} data-seiten={baum?.seiten ?? ''}>
+        <b data-koerper-status={baum ? baum.streifen : ''} data-seiten={baum?.seiten ?? ''}>
           {koerper === 'teile' ? (!baumWirkt ? 'Röhre (Maul oder Beine)' : baum ? (baum.fehler ? 'Baum scheitert · Röhre' : `${baum.streifen} Streifen${baum.seiten ? ` + ${baum.seiten} seitlich` : ''} · ${baum.ms.toFixed(0)} ms`) : 'Röhre während des Zugs') : 'eine Röhre'}
         </b>
       </div>
