@@ -6,7 +6,7 @@
 // Rumpfachse läuft durch die dickste Stelle und an jedem Abzweig in den dickeren Weg weiter; alles andere sind Äste,
 // rekursiv (jeder Ast wählt seinen eigenen Weg ebenso). DOM-frei.
 import type { V2 } from '../../bezier';
-import { type Raster, rastern } from './teile';
+import { type Raster, rastern } from './raster';
 
 /** Ein Weg im Skelett: Punkte (Welt) und Radius (Abstand zum Rand) je Punkt. */
 export type SkelettWeg = { punkte: V2[]; radius: number[] };

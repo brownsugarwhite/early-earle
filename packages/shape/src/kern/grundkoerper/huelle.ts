@@ -51,16 +51,6 @@ export function schneiden(a: Intervalle, b: Intervalle): Intervalle {
   return out;
 }
 
-/** Abstand eines Werts zu einer Intervallmenge (0 = darin). */
-export function abstandZu(iv: Intervalle, v: number): number {
-  let best = Infinity;
-  for (const [lo, hi] of iv) {
-    if (v >= lo && v <= hi) return 0;
-    best = Math.min(best, Math.abs(v - lo), Math.abs(v - hi));
-  }
-  return best;
-}
-
 export type Huelle = {
   /** Umrisse als Polygone in Kern-Einheiten (Front/Top gespiegelt): Seite (x, y), Front (z, y), Top (x, z) */
   seite: V2[];

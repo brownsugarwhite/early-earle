@@ -6,6 +6,7 @@
 // Dämpfung + gewichtete Bedingungen an Zeilen der Grenzmatrix (je Bedingung die Achsen der Ansicht: Seite x und y).
 // Einmal zerlegen je Geste (Cholesky der Normalgleichungen in einer Hülle nach Cuthill-McKee), je Zugschritt nur
 // Vorwärts- und Rückwärtseinsetzen.
+import { cuthillMcKee } from './glattLoeser';
 
 export type PosenBedingung = {
   /** Zeile der Grenzmatrix: Käfigpunkte und Gewichte (feiner Punkt = Σ w·Käfigpunkt) */
@@ -132,26 +133,8 @@ export function posenLoeserBauen(e: PosenLoeserEingabe): PosenLoeser {
   };
   for (const z of glattZeilen) koppeln(z);
   for (const bz of bedZeilen) for (const { z } of bz) koppeln(z);
-  // Reverse Cuthill-McKee
-  const reihenfolge: number[] = [];
-  const besucht = new Uint8Array(K);
-  const grad = (k: number) => adj[k]!.size;
-  const offen = Array.from({ length: K }, (_, k) => k).sort((a, b) => grad(a) - grad(b));
-  for (const s of offen) {
-    if (besucht[s]) continue;
-    besucht[s] = 1;
-    const schlange = [s];
-    while (schlange.length) {
-      const k = schlange.shift()!;
-      reihenfolge.push(k);
-      const nb = [...adj[k]!].filter((x) => !besucht[x]).sort((a, b) => grad(a) - grad(b));
-      for (const x of nb) {
-        besucht[x] = 1;
-        schlange.push(x);
-      }
-    }
-  }
-  reihenfolge.reverse();
+  // Reverse Cuthill-McKee (dieselbe Ordnung wie im glatten Löser; die Nachbarn in Einfügereihenfolge)
+  const reihenfolge = cuthillMcKee(adj.map((m) => [...m]));
   // Variablen in dieser Ordnung
   const varStart = new Int32Array(K);
   let N = 0;

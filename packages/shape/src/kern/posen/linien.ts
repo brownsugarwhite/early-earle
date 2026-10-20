@@ -9,7 +9,6 @@
 import type { Dokument, LinienKnoten, PoseLinien, V3T } from '../../dokument';
 import { type GlattLoeser, glattLoeserBauen } from '../../loeser/glattLoeser';
 import type { DuennMatrix } from '../../subdivision/matrix';
-import { abtasten3 } from '../../versuch/linie3d';
 import type { MaulErgebnis } from '../maul';
 import { kaefigNachbarn } from '../pinsel';
 import { feinKette } from '../reifen';
@@ -399,12 +398,4 @@ export function linieEinfuegen(knoten: readonly LinienKnoten[], s: number): { kn
   const out = knoten.map((q) => ({ ...q }));
   out.splice(k, 2, neuA, neuM, neuB);
   return { knoten: out, index: k + 1 };
-}
-
-/** Gerade gezeichnete Grundlinie in Kern-Einheiten (für Tests und Skripte). */
-export function grundLinieKern(dok: Dokument, name: KettenName, n = 24): V3[] {
-  const l = name === 'oben' ? dok.maul?.zu.oben : (dok.maul?.zu.unten ?? dok.maul?.zu.oben);
-  if (!l) return [];
-  const sk = dok.skalierung;
-  return abtasten3(l, n).map((p) => [p[0] * sk, p[1] * sk, p[2] * sk] as V3);
 }

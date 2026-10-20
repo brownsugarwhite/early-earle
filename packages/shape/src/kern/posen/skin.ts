@@ -53,11 +53,6 @@ export function stellungNull(s: Stellung): boolean {
   return s.winkelUnten === 0 && s.winkelOben === 0 && s.kieferZug[0] === 0 && s.kieferZug[1] === 0 && s.zugWeite === 0 && s.gierenUnten === 0 && s.rollenUnten === 0 && s.seitUnten === 0 && s.gierenOben === 0 && s.rollenOben === 0;
 }
 
-/** Ist die Stellung eben (kein Gieren, Rollen, seitlicher Versatz)? Dann bleibt eine Pose spiegelgleich. */
-export function stellungEben(s: Stellung): boolean {
-  return s.gierenUnten === 0 && s.rollenUnten === 0 && s.seitUnten === 0 && s.gierenOben === 0 && s.rollenOben === 0;
-}
-
 /** Transformation je Käfigpunkt: x' = R·x + t (R zeilenweise, 9 Werte je Punkt; t 3 Werte je Punkt). */
 export type Skin = { n: number; r: Float64Array; t: Float64Array };
 

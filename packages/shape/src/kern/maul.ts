@@ -524,11 +524,6 @@ function anteilUndHoehe(l: Leiter, p: V2): { f: number; v: number } {
   return { f: fP[k] ?? 0, v: Math.min(1, Math.max(0, spr.length ? hoeheAuf(k) : 0.5)) };
 }
 
-/** Wirbelsäulen-Anteil eines Punkts (Welt, Seitenansicht), z. B. um zu entscheiden, welche Lippenlinie weiter vorn beginnt. */
-export function maulAnteil(dok: Dokument, p: V2): number {
-  return anteilUndHoehe(kernLeiter(dok), p).f;
-}
-
 /**
  * Gezeichnete versetzte Kieferkante (Kiefer getrennt, M2: Unterkiefer beim Überbiss, Oberkiefer beim Unterbiss) →
  * Stützen (f, v, z): ihr **eigener Anfang** (der erste gezeichnete Punkt selbst, zwischen den Sprossen; kein

@@ -123,14 +123,6 @@ export function blattUmriss(fein: ArrayLike<number>, flaechen: readonly number[]
 /** Ruhe-Umriss und Kandidaten je Ableitung und Blatt merken (hängen nur an der Ruhelage). */
 const ruheMerk = new WeakMap<ArrayLike<number>, Partial<Record<Ansicht3, { kandidaten: number[] }>>>();
 
-/**
- * Griffdaten der schwarzen Linie im Seitenblatt einer Pose: posierter Umriss, Hautpunkte der Knoten des Seitenprofils,
- * Kandidaten nahe der Linie mit ihren Zeilen der Grenzmatrix.
- */
-export function poseSeiteGriffe(ruheFein: Float64Array, poseFein: ArrayLike<number>, flaechen: readonly number[][], grenze: DuennMatrix, dok: Dokument): PoseSeite {
-  return poseBlattGriffe('seite', ruheFein, poseFein, flaechen, grenze, dok);
-}
-
 /** Griffdaten der schwarzen Linie in einem Blatt der Pose (B6: Seite, Front, Top). */
 export function poseBlattGriffe(ansicht: Ansicht3, ruheFein: Float64Array, poseFein: ArrayLike<number>, flaechen: readonly number[][], grenze: DuennMatrix, dok: Dokument): PoseSeite {
   const [a0, a1] = ACHSEN[ansicht];

@@ -61,9 +61,9 @@ Aus `packages/shape` starten: `npx vite-node ../../apps/editor/scripts/pruefen/<
 
 | Skript | misst / zeigt |
 |---|---|
-| `grundkoerper-g.ts` | Teil G: Kontaktbogen der Grundkörper (Seite, Front, Top, schräg; Wirbelsäule, Sprossen), Δ je Blatt, Falten, Zeit. `KOERPER`, `NAME`, `TITEL`; `BAUM=1` Rumpf und Äste getrennt, `BAUM=3` Wirbelsäulen-Baum (G4 neu Schritt 3), `TEILE=verschmolzen|angesteckt` (G4 Teile) |
+| `grundkoerper-g.ts` | Teil G: Kontaktbogen der Grundkörper (Seite, Front, Top, schräg; Wirbelsäule, Sprossen), Δ je Blatt, Falten, Zeit. `KOERPER`, `NAME`, `TITEL`; (die Modi `BAUM` und `TEILE` des alten G4-Baus sind seit Plan 20.10., V1 entfernt) |
 | `skelett-g4.ts`, `zerlegung-g4.ts` | Teil G, G4 neu: Mittelachsen der drei Ansichten; automatische Zerlegung der Seite in Rumpf und Äste mit Schnittsehnen |
-| `knoten-diagnose.ts` | Plan „Formgerechte Topologie“, Beweis 1: Nahaufnahme des Ast-Ansatzes (Käfigkanten, Falten > 20° rot, Sehne blau). `BAU=alt` (baum.ts) oder `knoten` (knoten.ts), `LAGEN=ziele|kaefig`, `GROESSE` |
+| ~~`knoten-diagnose.ts`~~ | entfernt mit dem alten G4-Bau (Plan 20.10., V1) |
 | `g3-querschnitte.ts` | Teil G, G3 (verworfen): Querschnitt je Ring gegen je Abschnitt |
 | `leiter-bild.ts` | Leiter eines Falls als Bild (Rücken, Bauch, Sprossen) |
 | `netz-l0.ts` | Teil L, L0: Bilder „Linie wird Reihe / Ring“ (Cel-Stufen, Käfigschleifen, Reihe rot, Linie blau) |

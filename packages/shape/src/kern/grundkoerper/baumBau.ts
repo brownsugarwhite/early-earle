@@ -14,7 +14,7 @@ import { type Kaefig, kanteZwischen } from '../../kaefig/halbkanten';
 import { type Bedingung, ausgleichsLoeser, kaefigAusgleich } from '../../loeser/grenzflaeche';
 import { type Unterteilung, unterteilung } from '../../subdivision/catmullClark';
 import { anwenden3 } from '../../subdivision/matrix';
-import { ABLEIT_STANDARD, type AbleitOptionen, type Breite, GLATTE_HAUT, type Querschnitt, type Sprosse, ausgleichsZiele, breiteSoll, glaettemassFuer, kreisQuerschnitt, lappenAusZug, nahtAnteile, nahtPfad, quadratRing, querschnitteFuer, umparametrisieren, umrissDicht } from '../ableiten';
+import { ABLEIT_STANDARD, type AbleitOptionen, type Breite, GLATTE_HAUT, type Querschnitt, type Sprosse, ausgleichsZiele, breiteSoll, glaettemassFuer, kreisQuerschnitt, lappenAusZug, nahtAnteile, nahtPfad, quadratRing, querschnitteFuer, querschnittPunkt, ringMasstab, umparametrisieren, umrissDicht } from '../ableiten';
 import { punktAuf } from '../../bezier';
 import { pfadAbtasten, segmente, vollerPfad } from '../../profil';
 import { type Breiten, breitenAusPolygonen, silhouettenBreite } from '../breite';
@@ -225,38 +225,6 @@ function querschnitteAusZug(sprossen: readonly Sprosse[], frontHalb: readonly V2
     i = j + 1;
   }
   return out;
-}
-
-/** Maßstab eines Rings wie in der Röhre (Sichthülle: Top bei x, Front an der breitesten Stelle; rund ohne Zeichnung). */
-function masstab(sp: Sprosse, q: Querschnitt, breiten: Breiten, letzteW: number): number {
-  const rund = 0.5 * Math.hypot(sp.o.x - sp.u.x, sp.o.y - sp.u.y);
-  let W = breiten.top((sp.o.x + sp.u.x) / 2);
-  if (!(W > 0)) W = Math.min(rund, breiten.topMax);
-  let wMax = 0;
-  for (let j = 1; j + 1 < q.v.length; j++) wMax = Math.max(wMax, q.w[j]!);
-  let fBest = 0;
-  for (let j = 1; j + 1 < q.v.length; j++) {
-    const wj = q.w[j]!;
-    if (wj < wMax - 1e-6) continue;
-    const y = sp.u.y + (sp.o.y - sp.u.y) * q.v[j]!;
-    const fb = breiten.front(y);
-    if (fb > 0) fBest = Math.max(fBest, fb / wj);
-  }
-  if (fBest > 0) W = Math.min(W, fBest);
-  else W = Math.min(W, rund);
-  if (!(W > 1e-6)) W = letzteW || 0.01 * breiten.topMax;
-  return W;
-}
-
-/** Punkt j eines Rings (x, y auf der Sprosse, z = w · W, nie breiter als die Front auf seiner Höhe) und seine Höhe v. */
-function punkt(sp: Sprosse, q: Querschnitt, W: number, j: number, breiten: Breiten): [number, number, number, number] {
-  const hv = q.v[j]!;
-  const x = sp.u.x + (sp.o.x - sp.u.x) * hv;
-  const y = sp.u.y + (sp.o.y - sp.u.y) * hv;
-  let z = q.w[j]! * W;
-  const fb = breiten.front(y);
-  if (fb > 0 && z > fb) z = fb;
-  return [x, y, z, hv];
 }
 
 /**
@@ -486,7 +454,7 @@ function rumpfHaut(sp0: readonly Sprosse[], qs0: readonly Querschnitt[], Ws0: re
     const key = i * (h0 + 1) + j;
     let P = roh.get(key);
     if (!P) {
-      const [x, y, z] = punkt(sp0[i]!, qs0[i]!, Ws0[i]!, j, bz);
+      const [x, y, z] = querschnittPunkt(sp0[i]!, qs0[i]!, Ws0[i]!, j, bz);
       P = [x, y, j === 0 || j === h0 ? 0 : z];
       roh.set(key, P);
     }
@@ -699,7 +667,7 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
     });
     Ws = e.streifen.map((_, s) => {
       let letzte = 0;
-      return ringe[s]!.sprossen.map((sp, i) => (letzte = masstab(sp, qs[s]![i]!, breitenVon(s), letzte)));
+      return ringe[s]!.sprossen.map((sp, i) => (letzte = ringMasstab(sp, qs[s]![i]!, breitenVon(s), letzte)));
     });
     // S3 „Umrisse berühren“ über alle Ringe aller Streifen gemeinsam (je Höhe der Ring, der dort am weitesten reicht)
     if (opt.fuelle) {
@@ -768,7 +736,7 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
         const W = Ws[s]![i]!;
         for (let j = 0; j <= N / 2; j++) {
           if (!bk0.existiert(s, i, j)) continue;
-          const [x, y, z] = punkt(sp, q, W, j, bz);
+          const [x, y, z] = querschnittPunkt(sp, q, W, j, bz);
           const naht = j === 0 || j === N / 2;
           setze(bk0.ring(s, i, j), x, y, naht ? 0 : z);
           if (naht) {
@@ -786,11 +754,11 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
         for (let r = 1; r < c / 2; r++) {
           const q = umparametrisieren(q0, 4 * r);
           const sp = stK[r - 1]!;
-          const W = masstab(sp, q, bz, Ws[s]![wo === 'anfang' ? 0 : R - 1]!);
+          const W = ringMasstab(sp, q, bz, Ws[s]![wo === 'anfang' ? 0 : R - 1]!);
           for (let m = 0; m <= 4 * r; m++) {
             const [a, b] = quadratRing(c, r, m);
             const naht = m === 0 || m === 4 * r;
-            const [x, y, z] = punkt(sp, q, W, m, bz);
+            const [x, y, z] = querschnittPunkt(sp, q, W, m, bz);
             setze(bk0.kappe(s, wo, a, b), x, y, naht ? 0 : z);
             if (!naht) setze(bk0.kappe(s, wo, c - a, b), x, y, -z);
           }
@@ -806,7 +774,7 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
     //    Die zwei Elternringe vor und hinter einem Bein rutschen anteilig mit (½, ¼): Bei dünnen Kindern lagen sonst alle
     //    Beinpunkte dicht an der Naht und der Ring davor auf seinen alten Zeilen (Trapez 2,4 : 23,6 px, Fisch-Rückenflosse).
     const rutschen = (sp: Sprosse, q: Querschnitt, W: number, seite: 'a' | 'b', h: number, zeile: number, zSoll: number) => {
-      const prof = Array.from({ length: Math.min(h, zeile + 1) + 1 }, (_, t) => punkt(sp, q, W, seite === 'a' ? t : h - t, bz));
+      const prof = Array.from({ length: Math.min(h, zeile + 1) + 1 }, (_, t) => querschnittPunkt(sp, q, W, seite === 'a' ? t : h - t, bz));
       const zBei = (t: number) => {
         const t0 = Math.min(prof.length - 2, Math.floor(t));
         return prof[t0]![2] + (prof[t0 + 1]![2] - prof[t0]![2]) * (t - t0);
@@ -874,7 +842,7 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
       const q = qs[s]![0]!;
       const W = Ws[s]![0]!;
       for (let j = 0; j <= N / 2; j++) {
-        const [x, y, z] = punkt(sp, q, W, j, bz);
+        const [x, y, z] = querschnittPunkt(sp, q, W, j, bz);
         const naht = j === 0 || j === N / 2;
         setze(bk0.ring(s, 0, j), x, y, naht ? 0 : z);
         if (!naht) setze(bk0.ring(s, 0, N - j), x, y, -z);
@@ -1511,49 +1479,6 @@ export function paarAusnahme(b: Teilbaum, rand = 3 / 461): (a: 'seite' | 'front'
     return drin || d < rand;
   };
   return (a, p) => a !== 'seite' && flaechen.some((f) => f.blatt === a && nah(f.poly, p));
-}
-
-/** Dreiecke des feinen Netzes ohne Index mit gemittelten Eckennormalen (Anzeige als Geist im Editor). */
-export function baumDreiecke(b: BaumAbleitung): { positionen: Float32Array; normalen: Float32Array } {
-  const k = b.unterteilung.stufen[b.unterteilung.stufen.length - 1]!.kaefig;
-  const P = b.fein;
-  const nP = P.length / 3;
-  const nrm = new Float64Array(3 * nP);
-  const tri: number[] = [];
-  for (let f = 0; f < k.nF; f++) {
-    const a0 = k.fStart[f]!;
-    const e = k.fStart[f + 1]!;
-    for (let h = a0 + 1; h + 1 < e; h++) tri.push(k.fVerts[a0]!, k.fVerts[h]!, k.fVerts[h + 1]!);
-  }
-  for (let t = 0; t < tri.length; t += 3) {
-    const a = tri[t]!;
-    const c = tri[t + 1]!;
-    const d = tri[t + 2]!;
-    const ux = P[3 * c]! - P[3 * a]!;
-    const uy = P[3 * c + 1]! - P[3 * a + 1]!;
-    const uz = P[3 * c + 2]! - P[3 * a + 2]!;
-    const vx = P[3 * d]! - P[3 * a]!;
-    const vy = P[3 * d + 1]! - P[3 * a + 1]!;
-    const vz = P[3 * d + 2]! - P[3 * a + 2]!;
-    const nx = uy * vz - uz * vy;
-    const ny = uz * vx - ux * vz;
-    const nz = ux * vy - uy * vx;
-    for (const q of [a, c, d]) {
-      nrm[3 * q] = nrm[3 * q]! + nx;
-      nrm[3 * q + 1] = nrm[3 * q + 1]! + ny;
-      nrm[3 * q + 2] = nrm[3 * q + 2]! + nz;
-    }
-  }
-  const positionen = new Float32Array(tri.length * 3);
-  const normalen = new Float32Array(tri.length * 3);
-  tri.forEach((q, i) => {
-    const l = Math.hypot(nrm[3 * q]!, nrm[3 * q + 1]!, nrm[3 * q + 2]!) || 1;
-    for (let c = 0; c < 3; c++) {
-      positionen[3 * i + c] = P[3 * q + c]!;
-      normalen[3 * i + c] = nrm[3 * q + c]! / l;
-    }
-  });
-  return { positionen, normalen };
 }
 
 /** Punkte und Vierecke des feinen Netzes (für Maße und Bilder). */

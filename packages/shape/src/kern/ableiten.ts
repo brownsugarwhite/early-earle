@@ -29,7 +29,7 @@ import { type Unterteilung, unterteilung } from '../subdivision/catmullClark';
 import { anwenden3, multiplizieren } from '../subdivision/matrix';
 import { type Leiter, WIRBEL_STANDARD, leiter } from '../versuch/wirbelsaeule';
 import { type Breiten, silhouettenBreite } from './breite';
-import { type FuelleArt, huellenBreite } from './fuelle';
+import { type FuelleArt, huellenBreite, reichweite } from './fuelle';
 import { type RandMarke, frontBeruehren } from './rand';
 import { type Schlitz, schlitzIm, seiteFuerLeiter } from './schlitz';
 import { endenFuer, profilAnker } from './grundkoerper/enden';
@@ -1367,42 +1367,8 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
   // werden einzeln auf die Front ihrer Höhe beschnitten (`punkt`). Vorher engte die Front an jeder Höhe den ganzen Ring
   // ein: ein Kasten unter einer runden Front oder ein Brustring unter dem Hals schrumpfte als Ganzes (Tiger 21 px).
   const fuehrend = opt.fuehrend;
-  const masstab = (sp: Sprosse, q: Querschnitt) => {
-    // Rund, wo eine Zeichnung nichts sagt (14.10.): Liegt der Ring außerhalb des Tops (Seite länger als das Top) oder sein
-    // breitester Punkt außerhalb der Front, wird er höchstens so breit wie seine halbe Sprosse (runder Querschnitt). Vorher
-    // bekam er die größte Top-Breite — ein über Top oder Front hinausgezogener Schwanz wurde ein Kasten (Δ bis 135 px).
-    const rund = 0.5 * Math.hypot(sp.o.x - sp.u.x, sp.o.y - sp.u.y);
-    let W = breiten.top((sp.o.x + sp.u.x) / 2);
-    if (!(W > 0)) W = Math.min(rund, breiten.topMax);
-    let wMax = 0;
-    for (let j = 1; j + 1 < q.v.length; j++) wMax = Math.max(wMax, q.w[j]!);
-    let fBest = 0;
-    for (let j = 1; j + 1 < q.v.length; j++) {
-      const wj = q.w[j]!;
-      if (wj < wMax - 1e-6) continue;
-      const y = sp.u.y + (sp.o.y - sp.u.y) * q.v[j]!;
-      const fb = breiten.front(y);
-      if (fb > 0) fBest = Math.max(fBest, fb / wj);
-    }
-    // führendes Top: die Front engt nicht ein; sonst Sichthülle (führende Front wirkt danach örtlich, siehe unten —
-    // als alleinige Breite bekäme jeder Ring die Frontbreite seiner Höhe, Kugel-Ringe vorn 0,15 → 0,33)
-    if (fuehrend !== 'top' && fBest > 0) W = Math.min(W, fBest);
-    else if (fuehrend !== 'top' && !(fBest > 0)) W = Math.min(W, rund);
-    if (!(W > 1e-6)) W = letzteW || 0.01 * breiten.topMax;
-    letzteW = W;
-    return W;
-  };
-  const punkt = (sp: Sprosse, q: Querschnitt, W: number, j: number): [number, number, number, number] => {
-    const hv = q.v[j]!;
-    const x = sp.u.x + (sp.o.x - sp.u.x) * hv;
-    const y = sp.u.y + (sp.o.y - sp.u.y) * hv;
-    let z = q.w[j]! * W;
-    if (fuehrend !== 'top') {
-      const fb = breiten.front(y);
-      if (fb > 0 && z > fb) z = fb; // Hülle: nie breiter als die Front auf dieser Höhe
-    }
-    return [x, y, z, hv];
-  };
+  const masstab = (sp: Sprosse, q: Querschnitt) => (letzteW = ringMasstab(sp, q, breiten, letzteW, fuehrend));
+  const punkt = (sp: Sprosse, q: Querschnitt, W: number, j: number): [number, number, number, number] => querschnittPunkt(sp, q, W, j, breiten, fuehrend);
   // Kiefer-Spanten (14.10.): in Maulringen unter der Lippe der Querschnitt des Unterkiefers
   const kiefer = !!(schlitz && dok && opt.querschnitt && dok.spanten?.length && hatKieferSpanten(dok));
   const ringQNeu = ringQ.map((q, i) => {
@@ -1418,21 +1384,10 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
     // (der breiteste aller Ringe dort), wächst auf die Front dieser Höhe; die anderen Ringe bleiben bei der Sichthülle.
     // Vorher galt die Front nur als Hülle (nie breiter), ein Zug nach außen lief ins Leere, und mit der Front als
     // alleiniger Breite bekäme der Schwanz die Kopfbreite seiner Höhe.
+    // halbe Breite des Rings i auf der Höhe y, an der Front beschnitten (wie `reichweite` in fuelle.ts, ohne Top)
     const breiteBei = (i: number, y: number): number => {
-      const sp = ringSprossen[i]!;
-      const q = ringQNeu[i]!;
-      let w = 0;
-      for (let j = 0; j + 1 < q.v.length; j++) {
-        const y0 = sp.u.y + (sp.o.y - sp.u.y) * q.v[j]!;
-        const y1 = sp.u.y + (sp.o.y - sp.u.y) * q.v[j + 1]!;
-        if ((y0 - y) * (y1 - y) > 0) continue;
-        const f = Math.abs(y1 - y0) > 1e-12 ? (y - y0) / (y1 - y0) : 0;
-        let z = Wr[i]! * (q.w[j]! + (q.w[j + 1]! - q.w[j]!) * f);
-        const fb = breiten.front(y);
-        if (fb > 0 && z > fb) z = fb;
-        w = Math.max(w, z);
-      }
-      return w;
+      const fb = breiten.front(y);
+      return reichweite(ringQNeu[i]!, ringSprossen[i]!, Wr[i]!, y, fb > 0 ? fb : Infinity, () => 0);
     };
     const W0 = Wr.slice();
     for (let i = 0; i < R; i++) {
@@ -1802,6 +1757,47 @@ export function faltenSetzen(v: Roehre, st: Stationen, l: Leiter, dok: Dokument,
 
 /** Frische Ringwahl mit Rückfall (Plan 20.10., V0): ab dieser Falte der freien Haut (°) wird gestuft neu gewählt. */
 const RUECKFALL_FALTE = 60;
+/**
+ * Maßstab eines Rings (Sichthülle: Top bei x, begrenzt durch die Front an der breitesten Stelle des Querschnitts; rund, wo
+ * keine Zeichnung etwas sagt). Rund (14.10.): Liegt der Ring außerhalb des Tops (Seite länger als das Top) oder sein
+ * breitester Punkt außerhalb der Front, wird er höchstens so breit wie seine halbe Sprosse — vorher bekam er die größte
+ * Top-Breite, ein über Top oder Front hinausgezogener Schwanz wurde ein Kasten (Δ bis 135 px). Führendes Top: die Front
+ * engt nicht ein (als alleinige Breite bekäme jeder Ring die Frontbreite seiner Höhe, Kugel-Ringe vorn 0,15 → 0,33). Röhre
+ * und Baum (`baumBau.ts`) teilen sie seit Plan 20.10., V1 (vorher eine wörtliche Kopie).
+ */
+export function ringMasstab(sp: Sprosse, q: Querschnitt, breiten: Breiten, letzteW: number, fuehrend?: 'seite' | 'front' | 'top'): number {
+  const rund = 0.5 * Math.hypot(sp.o.x - sp.u.x, sp.o.y - sp.u.y);
+  let W = breiten.top((sp.o.x + sp.u.x) / 2);
+  if (!(W > 0)) W = Math.min(rund, breiten.topMax);
+  let wMax = 0;
+  for (let j = 1; j + 1 < q.v.length; j++) wMax = Math.max(wMax, q.w[j]!);
+  let fBest = 0;
+  for (let j = 1; j + 1 < q.v.length; j++) {
+    const wj = q.w[j]!;
+    if (wj < wMax - 1e-6) continue;
+    const y = sp.u.y + (sp.o.y - sp.u.y) * q.v[j]!;
+    const fb = breiten.front(y);
+    if (fb > 0) fBest = Math.max(fBest, fb / wj);
+  }
+  if (fuehrend !== 'top' && fBest > 0) W = Math.min(W, fBest);
+  else if (fuehrend !== 'top' && !(fBest > 0)) W = Math.min(W, rund);
+  if (!(W > 1e-6)) W = letzteW || 0.01 * breiten.topMax;
+  return W;
+}
+
+/** Punkt j eines Rings (x, y auf der Sprosse, z = w · W, nie breiter als die Front auf seiner Höhe — außer bei führendem Top) und seine Höhe v. */
+export function querschnittPunkt(sp: Sprosse, q: Querschnitt, W: number, j: number, breiten: Breiten, fuehrend?: 'seite' | 'front' | 'top'): [number, number, number, number] {
+  const hv = q.v[j]!;
+  const x = sp.u.x + (sp.o.x - sp.u.x) * hv;
+  const y = sp.u.y + (sp.o.y - sp.u.y) * hv;
+  let z = q.w[j]! * W;
+  if (fuehrend !== 'top') {
+    const fb = breiten.front(y);
+    if (fb > 0 && z > fb) z = fb; // Hülle: nie breiter als die Front auf dieser Höhe
+  }
+  return [x, y, z, hv];
+}
+
 /** Stufung des Rückfalls (`ringStufung`): von Ring zu Ring höchstens etwa dreimal so weit. */
 const RUECKFALL_STUFUNG = 2;
 

@@ -313,7 +313,6 @@ export type WesenStand = {
   randMarken?: WesenNetz['randMarken'];
   netzSicht?: NetzSicht | null;
   teile?: TeilAnzeige | null;
-  /** S7.1: zuletzt gebauter Baum-Körper (Schlüssel wie der Geist, dazu Look und Zonen) */
   /**
    * S7: Baum-Körper des letzten genauen Baus. `schluessel` = `basis` + Ergebnis der Teilerkennung (nicht der eingefrorene Stand
    * im Dokument: den schreibt der Editor nach jedem Bau zurück, und der Baum wurde sonst ein zweites Mal gebaut — Plan 20.10.,

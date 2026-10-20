@@ -10,7 +10,6 @@
 // Nichts davon wird ins Dokument geschrieben. DOM-frei.
 import type { Dokument, Kante } from '../dokument';
 import { type Kaefig, kanteZwischen } from '../kaefig/halbkanten';
-import { pfadAbtasten, vollerPfad } from '../profil';
 import type { Unterteilung } from '../subdivision/catmullClark';
 import type { V3 } from '../versuch/catmullClark';
 import { type Strahlraster, dreiecksFlaeche, strahlRaster } from '../versuch/flaechenlinie';
@@ -571,10 +570,4 @@ export function aufHaut(r: SichtRaster, p: V3, blick: Kante['blick']): V3 {
   if (a === 'seite') return [p[0], p[1], -best];
   if (a === 'front') return [best, p[1], p[2]];
   return [p[0], -best, p[2]];
-}
-
-/** Umrisse der Zeichnung (für Prüfungen): Proben in Profil-Einheiten. */
-export function zeichnungsProben(dok: Dokument, a: 'seite' | 'front' | 'top'): { x: number; y: number }[] {
-  const sk = dok.skalierung;
-  return pfadAbtasten(vollerPfad(dok.profile[a]), 24).map((p) => ({ x: p.x * sk, y: p.y * sk }));
 }

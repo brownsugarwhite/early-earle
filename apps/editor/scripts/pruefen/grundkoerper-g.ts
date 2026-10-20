@@ -11,9 +11,6 @@ import type { Dokument } from '../../../../packages/shape/src/dokument';
 import { neuesDokument } from '../../../../packages/shape/src/dokument';
 import { pfadAbtasten, vollerPfad } from '../../../../packages/shape/src/profil';
 import { type AbleitOptionen, ableiten, kernLeiter, zugBei } from '../../../../packages/shape/src/kern/ableiten';
-import { type TeilErgebnis, ableitenMitTeilen } from '../../../../packages/shape/src/kern/grundkoerper/teilBau';
-import { baumAbleiten, baumTeile } from '../../../../packages/shape/src/kern/grundkoerper/baum';
-import { alleFlaechen } from '../../../../packages/shape/src/kaefig/halbkanten';
 import { blattAbweichungen } from '../../../../packages/shape/src/kern/abweichung';
 import { faltenMass, feinesNetz, mitStationenVon } from '../../../../packages/shape/src/kern/pruefstand';
 import { G_KOERPER, type GKoerper, S0_KOERPER, type S0Koerper, gKoerperDokument, s0KoerperDokument } from '../../../../packages/shape/src/kern/pruefen/grundkoerper';
@@ -50,15 +47,9 @@ for (const [variante, optV] of liste.flatMap((n) => Object.entries(VARIANTEN).ma
   const sk = dok.skalierung;
   const t0 = performance.now();
   let abl: ReturnType<typeof ableiten>;
-  // BAUM=1 (G4 neu, Schritt 2): Rumpf und Äste der Seite getrennt, die Äste als eigene Netze dazu
-  let baumAeste: ReturnType<typeof ableiten>[] = [];
+  // (die Versuche BAUM= und TEILE= des alten G4-Baus sind seit Plan 20.10., V1 entfernt; den Baum misst v1-extremreihe.ts)
   try {
-    if (process.env.BAUM === '3') abl = baumAbleiten(dok, { stufen: 3 });
-    else if (process.env.BAUM) {
-      const b = baumTeile(dok, { stufen: 3 });
-      abl = b.rumpf;
-      baumAeste = b.aeste;
-    } else abl = process.env.TEILE ? ableitenMitTeilen(dok, { stufen: 3 }, process.env.TEILE === 'angesteckt' ? 'angesteckt' : 'verschmolzen') : ableiten(dok, opt);
+    abl = ableiten(dok, opt);
   } catch (e) {
     zeilen.push(`${variante}: Bau scheitert (${(e as Error).message})`);
     faelle.push({ name: variante, text: `<b>${variante}</b> · Bau scheitert: ${(e as Error).message}`, daten: null });
@@ -68,29 +59,12 @@ for (const [variante, optV] of liste.flatMap((n) => Object.entries(VARIANTEN).ma
   const netz0 = feinesNetz(abl);
   const punkte = [...netz0.punkte];
   const flaechen = [...netz0.flaechen];
-  for (const a of baumAeste) {
-    const o = punkte.length;
-    const na = feinesNetz(a);
-    for (const p of na.punkte) punkte.push(p);
-    for (const f of na.flaechen) flaechen.push(f.map((i) => i + o));
-  }
-  // angesteckte Teile: ihre feinen Netze anhängen (für Δ und Bild)
-  for (const g of (abl as Partial<TeilErgebnis>).gesteckt ?? []) {
-    const o = punkte.length;
-    for (let i = 0; i < g.fein.length / 3; i++) punkte.push([g.fein[3 * i]!, g.fein[3 * i + 1]!, g.fein[3 * i + 2]!]);
-    for (const f of alleFlaechen(g.unterteilung.stufen[g.unterteilung.stufen.length - 1]!.kaefig)) flaechen.push(f.map((i) => i + o));
-  }
   const d = blattAbweichungen(punkte, flaechen, dok);
   const f = faltenMass(abl);
-  for (const a of baumAeste) {
-    const fa = faltenMass(a);
-    if (fa.max > f.max) f.max = fa.max;
-    f.ueber20 += fa.ueber20;
-  }
-  // Wirbelsäulen und Sprossen je Teil (Rumpf und Äste, je mit seinem eigenen Seitenumriss)
+  // Wirbelsäule und Sprossen
   const wirbel: number[] = [];
   const sprossen: number[][] = [];
-  for (const a of [abl, ...baumAeste]) {
+  for (const a of [abl]) {
     const l = kernLeiter(a.dok ?? dok);
     for (const p of l.paare) {
       const o = zugBei(l.ruecken, p.a);
@@ -120,7 +94,7 @@ for (const [variante, optV] of liste.flatMap((n) => Object.entries(VARIANTEN).ma
     });
     return out;
   };
-  const zo = baumAeste.length || (abl as Partial<TeilErgebnis>).gesteckt?.length ? null : faltenNachZonenRoehre(abl);
+  const zo = faltenNachZonenRoehre(abl);
   const zonenText = zo ? (['frei', 'kappe', 'spitze', 'kante'] as const).filter((z) => zo.zonen[z].kanten).map((z) => `${{ frei: 'freie Haut', kappe: 'Kappe', spitze: 'Spitze', kante: 'Kante' }[z]} ${zo.zonen[z].max.toFixed(0)}°/${zo.zonen[z].ueber20}`).join(', ') : '';
   const w = (a: 'seite' | 'front' | 'top') => (er[a].max > 1 ? ` <span style="color:#d81b43">(Widerspruch ${er[a].max.toFixed(1)})</span>` : '');
   const text = `<b>${variante}</b> · Seite Δ ${d.seite.max.toFixed(1)}${w('seite')} · Front Δ ${d.front.max.toFixed(1)}${w('front')} · Top Δ ${d.top.max.toFixed(1)}${w('top')} px · Falten ${f.max.toFixed(1)}° (über 20°: ${f.ueber20})${zonenText ? ` — nach Zonen: ${zonenText}` : ''} · ${zeit.toFixed(0)} ms`;
