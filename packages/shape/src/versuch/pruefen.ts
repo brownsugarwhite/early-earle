@@ -92,23 +92,23 @@ export function selbstDurchdringungen(
       }
     }
   });
-  const geprueft = new Set<number>();
   const orte: V3[] = [];
   const nachBereich: Record<string, number> = {};
   const orteNachBereich: Record<string, V3[]> = {};
   let paare = 0;
-  const nD = ds.length;
-  for (const liste of raster.values()) {
+  const zellIndex = (v: number, d: 0 | 1 | 2) => Math.floor((v - lo[d]) / zelle);
+  for (const [schl, liste] of raster) {
+    const [cx, cy, cz] = schl.split(',').map(Number) as [number, number, number];
     for (let x = 0; x < liste.length; x++) {
       for (let y = x + 1; y < liste.length; y++) {
         const a = Math.min(liste[x]!, liste[y]!);
         const b = Math.max(liste[x]!, liste[y]!);
-        const id = a * nD + b;
-        if (geprueft.has(id)) continue;
-        geprueft.add(id);
         const A = ds[a]!;
         const B = ds[b]!;
         if (A.hi[0] < B.lo[0] || B.hi[0] < A.lo[0] || A.hi[1] < B.lo[1] || B.hi[1] < A.lo[1] || A.hi[2] < B.lo[2] || B.hi[2] < A.lo[2]) continue;
+        // jedes Paar nur in der Zelle der unteren Ecke seiner Kastenüberlappung (Plan 20.10., V1: die Menge aller geprüften
+        // Paare lief an dünnen, langen Körpern über die Höchstgröße eines Set — Seeschlange auf „Teile“, 45 000 Flächen)
+        if (zellIndex(Math.max(A.lo[0], B.lo[0]), 0) !== cx || zellIndex(Math.max(A.lo[1], B.lo[1]), 1) !== cy || zellIndex(Math.max(A.lo[2], B.lo[2]), 2) !== cz) continue;
         const sa = A.i.map((j) => schluessel[j]!);
         if (B.i.some((j) => sa.includes(schluessel[j]!))) continue;
         if (schneiden(A, B, eps)) {
