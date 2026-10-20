@@ -19,14 +19,23 @@ export type RoehrenGitter = {
   index: Int32Array;
   breiteA: number;
   breiteB: number;
+  /** Unterteilung und Käfigpunkte, aus denen das Gitter gebaut ist (Prüfung des Merkers) */
+  quelle: Unterteilung;
+  nKaefig: number;
 };
 
 const gitterMerk = new WeakMap<object, RoehrenGitter>();
 
-/** Röhrenkoordinaten aller feinen Punkte über die Stufen (Kantenpunkt = Mitte, Flächenpunkt = Mittel; v umlaufend). */
+/**
+ * Röhrenkoordinaten aller feinen Punkte über die Stufen (Kantenpunkt = Mitte, Flächenpunkt = Mittel; v umlaufend).
+ * Gemerkt je Unterteilung; ein gemerktes Gitter gilt nur, wenn Quelle, Maße und Punktzahl passen (CI 20.10., Node 24.22
+ * auf x86: die zweite Abfrage derselben Unterteilung lieferte ein fremdes Gitter — 11 statt 103 Reihenpunkte, sonst alles
+ * gleich; auf dem Mac nicht nachstellbar).
+ */
 export function roehrenGitter(unt: Unterteilung, R: number, N: number, nKaefig: number): RoehrenGitter {
   const gemerkt = gitterMerk.get(unt);
-  if (gemerkt) return gemerkt;
+  const nFein = unt.stufen.length ? unt.stufen[unt.stufen.length - 1]!.kaefig.n : nKaefig;
+  if (gemerkt && gemerkt.quelle === unt && gemerkt.R === R && gemerkt.N === N && gemerkt.nKaefig === nKaefig && gemerkt.u.length === nFein && gemerkt.teil === 2 ** unt.stufen.length) return gemerkt;
   let u = new Float64Array(nKaefig).fill(NaN);
   let v = new Float64Array(nKaefig).fill(NaN);
   for (let i = 0; i < R; i++)
@@ -98,7 +107,7 @@ export function roehrenGitter(unt: Unterteilung, R: number, N: number, nKaefig: 
     if (a < 0 || a >= breiteA) continue;
     index[a * breiteB + b] = p;
   }
-  const g: RoehrenGitter = { R, N, teil, u, v, index, breiteA, breiteB };
+  const g: RoehrenGitter = { R, N, teil, u, v, index, breiteA, breiteB, quelle: unt, nKaefig };
   gitterMerk.set(unt, g);
   return g;
 }
