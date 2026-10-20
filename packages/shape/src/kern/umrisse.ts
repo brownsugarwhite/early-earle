@@ -40,7 +40,24 @@ export const TANGENTEN_GEWICHT = 1e4;
 /** Ungleichung: ab so viel über der Linie (0,25 px) */
 const UEBER = 0.25 / PX;
 
-export type UmrissOptionen = { gewicht?: number; tangente?: number; durchgaenge?: number; ungleich?: number; front?: boolean; top?: boolean; umparametrisieren?: boolean; protokoll?: string[] };
+export type UmrissOptionen = {
+  gewicht?: number;
+  tangente?: number;
+  durchgaenge?: number;
+  ungleich?: number;
+  front?: boolean;
+  top?: boolean;
+  umparametrisieren?: boolean;
+  protokoll?: string[];
+  /**
+   * Querschnitt aus der Sichthülle: Käfigpunkte, deren Vorlage Front oder Top trifft — `ziel` (Standard): ihr Ziel zählt
+   * `huelleGewicht`-fach im Ausgleich; `hart`: zusätzlich quer an den Umriss gebunden (Gewicht `gewicht`); `aus`: nichts.
+   */
+  huelle?: 'ziel' | 'hart' | 'aus';
+  huelleGewicht?: number;
+  /** `blatt`: das höhere Gewicht nur in den beiden Achsen des Blatts, das die Stelle trifft (Front: y, z; Top: x, z) */
+  huelleAchsen?: 'alle' | 'blatt';
+};
 
 export type UmrissBericht = {
   breitenlinie: number;
@@ -171,6 +188,8 @@ export function umrisseLoesen(e: {
   basis: { zeilen: AchsZeile[]; ziele: Float64Array };
   gm: Glaettemass | undefined;
   opt?: UmrissOptionen;
+  /** V4 „Querschnitt aus der Sichthülle“: je Käfigpunkt 1 = Vorlage trifft die Front, 2 = das Top (statt der Breitenlinie) */
+  huelle?: Uint8Array;
 }): { xyz: Float64Array; fein: Float64Array; bericht: UmrissBericht } {
   const t0 = jetzt();
   const { v, k, u, dok, breiten } = e;
@@ -243,7 +262,32 @@ export function umrisseLoesen(e: {
 
   // ---------- Breitenlinie (Top): Reihe N/4 bzw. 3N/4, durch die Mittelreihe der Kappen ----------
   const { R, N, c } = v;
-  if (o.top !== false) {
+  // Querschnitt aus der Sichthülle: Die Vorlage weiß, wo sie Front oder Top trifft; dort bindet die Grenzlage quer (z) an
+  // diesen Umriss (begrenzt durch die andere Ansicht). Nichts wird im Lauf gewählt, die Bedingungen stimmen mit den Zielen
+  // überein (sie korrigieren nur, was die Grenzfläche zwischen den Stützstellen verliert).
+  if (e.huelle && o.huelle === 'hart') {
+    const hl = e.huelle;
+    for (let i = 0; i < n; i++) {
+      const art = hl[i]!;
+      if (!art) continue;
+      beds.push({
+        zeile: { ...grenzZeile(g, i, n), gewicht: [0, 0, W] },
+        ziel: (fein) => {
+          const x = lage(fein, i);
+          const fr = breiten.front(x[1]);
+          const tp = breiten.top(x[0]);
+          let soll = art === 1 ? fr : tp;
+          const andere = art === 1 ? tp : fr;
+          if (!(soll > 0)) soll = Math.abs(x[2]);
+          if (andere > 0) soll = Math.min(soll, andere);
+          return [x[0], x[1], (x[2] < 0 ? -1 : 1) * soll];
+        },
+      });
+      if (art === 1) bericht.frontlinie++;
+      else bericht.breitenlinie++;
+    }
+  }
+  if (o.top === true || (o.top !== false && !e.huelle)) {
     for (const rechts of [true, false]) {
       const jR = rechts ? N / 4 : (3 * N) / 4;
       const vorn: number[] = [];

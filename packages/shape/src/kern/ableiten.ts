@@ -29,7 +29,8 @@ import { type Unterteilung, unterteilung } from '../subdivision/catmullClark';
 import { anwenden3, multiplizieren } from '../subdivision/matrix';
 import { type Leiter, WIRBEL_STANDARD, leiter } from '../versuch/wirbelsaeule';
 import { type Breiten, silhouettenBreite } from './breite';
-import { type FuelleArt, huellenBreite, reichweite } from './fuelle';
+import { FUELLE_EXPONENT, type FuelleArt, huellenBreite, reichweite } from './fuelle';
+import { type FrontEcke, type HuellenSchnitt, type ZeichnungsFuelle, breitenlinieWaehlen, exponentenFuer, frontEcken, fuelleWoNoetig, huelleEntlang, huelleRunden, profilAbtasten, zeichnungsFuelle } from './huellenSchnitt';
 import { type RandMarke, frontBeruehren } from './rand';
 import { type Schlitz, schlitzIm, seiteFuerLeiter } from './schlitz';
 import { endenFuer, profilAnker } from './grundkoerper/enden';
@@ -1357,6 +1358,64 @@ export function sprossenVon(l: Leiter, st: readonly Station[]): Sprosse[] {
   return st.map((s) => ({ o: zugBei(l.ruecken, s.a), u: zugBei(l.bauch, s.b) }));
 }
 
+/** V4 „Querschnitt aus der Sichthülle“ (`umrisse: 'exakt'`): Fülle der Zeichnung und Ecken der Front, einmal je Bau. */
+type HuellenKontext = { dok: Dokument; breiten: Breiten; zf: ZeichnungsFuelle; ecken: FrontEcke[]; N: number; hoechstens: number };
+
+function huellenKontext(dok: Dokument | null, breiten: Breiten, opt: AbleitOptionen): HuellenKontext | null {
+  if (opt.umrisse !== 'exakt' || !dok || !opt.querschnitt) return null;
+  // Die eigene Fülle der Zeichnung gilt bis „genau“ (eine kastige Front gibt kastige Ringe); die Look-Wahl „Fülle“ begrenzt
+  // nur das zusätzliche Auffüllen, wo sonst kein Ring die Front erreicht (`fuelleWoNoetig`)
+  const hoechstens = FUELLE_EXPONENT[opt.fuelle ?? 'mittel'];
+  return { dok, breiten, zf: zeichnungsFuelle(dok, breiten, FUELLE_EXPONENT.genau), ecken: frontEcken(dok), N: opt.ring, hoechstens };
+}
+
+/** Gezeichnete Form an einer Sprosse (Spant, normiert auf größte Breite 1) über v; ohne Spanten keine. */
+function huellenForm(hk: HuellenKontext, sp: Sprosse): ((v: number) => number) | undefined {
+  if (!hk.dok.spanten?.length) return undefined;
+  const q = spantQuerschnitt(hk.dok, (sp.o.x + sp.u.x) / 2, hk.N);
+  let m = 0;
+  for (const w of q.w) m = Math.max(m, w);
+  return (v: number) => {
+    // q.v fällt von 1 auf 0
+    for (let j = 0; j + 1 < q.v.length; j++) {
+      const a = q.v[j]!;
+      const b = q.v[j + 1]!;
+      if (v <= a + 1e-12 && v >= b - 1e-12) {
+        const f = a - b > 1e-12 ? (a - v) / (a - b) : 0;
+        return m > 0 ? (q.w[j]! + (q.w[j + 1]! - q.w[j]!) * f) / m : 0;
+      }
+    }
+    return 0;
+  };
+}
+
+/**
+ * Schnitte der Hülle für die ganze Kette (Kappenringe vorn von der Spitze aus, Ringe, Kappenringe hinten), die Breitenlinie
+ * (Reihe N/4, in den Kappen die Mittelreihe 2r) glatt über die Kette gewählt (`breitenlinieWaehlen`).
+ */
+function huellenVorlagen(hk: HuellenKontext, l: Leiter, st: Stationen, v: { N: number; c: number }): { ringe: HuellenSchnitt[]; vorn: HuellenSchnitt[]; hinten: HuellenSchnitt[] } {
+  const { N, c } = v;
+  // Kette von der vorderen Spitze zur hinteren: Kappenringe vorn (r = 1 …), Ringe, Kappenringe hinten (… r = 1)
+  const vornSp = sprossenVon(l, st.kappen.vorn).slice(0, c / 2 - 1);
+  const ringSp = sprossenVon(l, st.ringe);
+  const hintenSp = sprossenVon(l, st.kappen.hinten).slice(0, c / 2 - 1);
+  const kette = [...vornSp, ...ringSp, ...hintenSp.slice().reverse()];
+  const huellen = kette.map((sp) => huelleEntlang(sp, hk.breiten, hk.ecken));
+  const formen = kette.map((sp) => huellenForm(hk, sp));
+  const ps = fuelleWoNoetig(huellen, kette.map((sp) => exponentenFuer(sp, hk.zf)), hk.breiten, hk.hoechstens, formen.map((f) => !!f));
+  const profile = huellen.map((h, i) => huelleRunden(h, ps[i]!, formen[i]));
+  const vr = breitenlinieWaehlen(profile);
+  const nV = vornSp.length;
+  const ringe = profile.slice(nV, nV + ringSp.length);
+  const vorn = profile.slice(0, nV);
+  const hinten = profile.slice(nV + ringSp.length).reverse();
+  return {
+    vorn: vorn.map((pr, i) => profilAbtasten(pr, 4 * (i + 1), 2 * (i + 1), vr[i]!)),
+    ringe: ringe.map((pr, i) => profilAbtasten(pr, N / 2, N / 4, vr[nV + i]!)),
+    hinten: hinten.map((pr, i) => profilAbtasten(pr, 4 * (i + 1), 2 * (i + 1), vr[nV + ringe.length + hinten.length - 1 - i]!)),
+  };
+}
+
 /**
  * Zielpunkte aller Käfigpunkte aus Leiter, Stationen, Silhouettenbreiten und Querschnitt-Form. Ein Ringpunkt liegt bei
  * der Höhe v auf seiner Sprosse und seitlich bei w · Maßstab; Maßstab = größter, der ins Top (bei x) und in die Front
@@ -1379,7 +1438,7 @@ export type SchlitzLage = {
   front?: { z: number; y: number }[];
 };
 
-export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument | null, opt: AbleitOptionen, schlitz?: SchlitzLage): { ziele: Float64Array; hoehe: Float64Array; rand?: { wachstum: number[]; nachfrage: number; vorlagen: Querschnitt[]; punkte: { i: number; j: number }[]; kante: RandMarke[]; teil: RandMarke[] } } {
+export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument | null, opt: AbleitOptionen, schlitz?: SchlitzLage): { ziele: Float64Array; hoehe: Float64Array; rand?: { wachstum: number[]; nachfrage: number; vorlagen: Querschnitt[]; punkte: { i: number; j: number }[]; kante: RandMarke[]; teil: RandMarke[] }; huelle?: Uint8Array } {
   const { R, N, c } = v;
   const ziele = new Float64Array(3 * v.kaefig.n);
   const hoehe = new Float64Array(v.kaefig.n);
@@ -1390,7 +1449,11 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
     hoehe[p] = hv;
   };
   const ringSprossen = sprossenVon(l, st.ringe);
-  const ringQ = querschnitteFuer(ringSprossen, dok, breiten, N, opt);
+  // V4 „Querschnitt aus der Sichthülle“ (ohne Maul): Vorlage und Maßstab je Ring aus dem Schnitt der Hülle
+  const hk = schlitz ? null : huellenKontext(dok, breiten, opt);
+  const hv = hk ? huellenVorlagen(hk, l, st, v) : null;
+  const ringSchnitte = hv ? hv.ringe : null;
+  const ringQ = ringSchnitte ? ringSchnitte.map((s) => s.q) : querschnitteFuer(ringSprossen, dok, breiten, N, opt);
   let letzteW = 0;
   // Sichthülle der Zeichnungen (Plan „Zeichnung ist Form“, Schritt 1): Maßstab = Top bei x, begrenzt durch die Front auf
   // der Höhe der breitesten Stützstelle(n) (die am wenigsten einengende, bei flachen Seiten). Die übrigen Stützstellen
@@ -1408,8 +1471,8 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
     const basis = kiefer ? kieferQuerschnitt(q, spantQuerschnitt(dok!, (sp.o.x + sp.u.x) / 2, N, 'unten'), vL) : q;
     return umparametrisieren(basis, N / 2, { index: schlitz.jL, v: vL });
   });
-  const Wr = ringQNeu.map((q, i) => masstab(ringSprossen[i]!, q));
-  if (fuehrend === 'front') {
+  const Wr = ringSchnitte ? ringSchnitte.map((s) => s.W) : ringQNeu.map((q, i) => masstab(ringSprossen[i]!, q));
+  if (fuehrend === 'front' && !ringSchnitte) {
     // Führende Front wirkt örtlich (Plan „Zeichnung ist Form“ 4.1): Ein Ring, der an einer Höhe die Silhouette stellt
     // (der breiteste aller Ringe dort), wächst auf die Front dieser Höhe; die anderen Ringe bleiben bei der Sichthülle.
     // Vorher galt die Front nur als Hülle (nie breiter), ein Zug nach außen lief ins Leere, und mit der Front als
@@ -1443,15 +1506,10 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
   // S3 „Umrisse berühren“ (Florian 16.10.: Fülle mittel): Wo der Körper hinter der Front zurückbleibt, schiebt sich der
   // Ring mit der größten Hülle an seinem Punkt örtlich hinaus; Form höchstens die Superellipse der Stufe. Nicht mit
   // Maulschlitz; ohne Option bitgleich.
-  const rand = opt.fuelle && !schlitz ? frontBeruehren(ringSprossen, ringQNeu, Wr, breiten, opt.fuelle, dok ? huellenBreite(dok, breiten) : undefined) : null;
+  const rand = opt.fuelle && !schlitz && !ringSchnitte ? frontBeruehren(ringSprossen, ringQNeu, Wr, breiten, opt.fuelle, dok ? huellenBreite(dok, breiten) : undefined) : null;
   if (rand) for (let i = 0; i < R; i++) ringQNeu[i] = rand.vorlagen[i] as Querschnitt;
-  // V4: die breiteste Stelle jeder Vorlage auf die Reihe N/4 (die Breitenlinie ist diese Käfigreihe)
-  if (opt.umrisse === 'exakt' && !schlitz && opt.umrisseOpt?.umparametrisieren !== false) {
-    for (let i = 0; i < R; i++) {
-      const vB = breitesteHoehe(ringQNeu[i]!);
-      if (vB !== null) ringQNeu[i] = umparametrisieren(ringQNeu[i]!, N / 2, { index: N / 4, v: vB });
-    }
-  }
+  // V4: je Käfigpunkt, ob seine Vorlage dort die Front (1) bzw. das Top (2) trifft (Bindung im Löser)
+  const huelle = hv ? new Uint8Array(v.kaefig.n) : null;
   for (let i = 0; i < R; i++) {
     const sp = ringSprossen[i]!;
     const q = ringQNeu[i]!;
@@ -1460,6 +1518,8 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
       const [x, y, z, hv] = punkt(sp, q, W, j);
       setze(v.ringPunkt(i, j), x, y, j === 0 || j === N / 2 ? 0 : z, hv);
       if (j > 0 && j < N / 2) setze(v.ringPunkt(i, N - j), x, y, -z, hv);
+      const s = ringSchnitte?.[i];
+      if (huelle && s && j > 0 && j < N / 2) huelle[v.ringPunkt(i, j)] = huelle[v.ringPunkt(i, N - j)] = s.front[j] ? 1 : s.top[j] ? 2 : 0;
     }
   }
   for (const seite of ['vorn', 'hinten'] as const) {
@@ -1486,9 +1546,11 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
       }
       // Kiefer-Spanten: auch in der Kappe unter der Lippe der Unterkiefer (Querschnitt von Ring 0)
       const q0Teil = kiefer && lippe && seite === 'vorn' ? kieferQuerschnitt(q0, spantQuerschnitt(dok!, (ringSprossen[0]!.o.x + ringSprossen[0]!.u.x) / 2, N, 'unten'), lippe.v) : q0;
-      const q = umparametrisieren(q0Teil, 4 * r, lippe);
       const sp = sprossen[r - 1]!;
-      const W = masstab(sp, q);
+      // V4: jeder Kappenring bekommt den Schnitt der Hülle an seiner eigenen Stelle (Kasten flach, rundes Ende rund)
+      const hs = hv ? (seite === 'vorn' ? hv.vorn : hv.hinten)[r - 1]! : null;
+      const q = hs ? hs.q : umparametrisieren(q0Teil, 4 * r, lippe);
+      const W = hs ? hs.W : masstab(sp, q);
       // Konturanfang: Die Bauchnaht der Lippenzeile liegt auf dem gezeichneten Anfang (statt am Fuß der Kappen-Sprosse):
       // so beginnt die Lippe an der Naht genau dort, wo die Linie die Kontur trifft (keine Kerbe)
       const anfang = seite === 'vorn' && schlitz?.anfang && r === c / 2 - schlitz.bL ? schlitz.anfang : undefined;
@@ -1503,11 +1565,14 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
         const [x, y, z, hv] = punkt(sp, q, W, m);
         setze(v.kappe(seite, a, b), x, y, naht ? 0 : z, hv);
         if (!naht) setze(v.kappe(seite, c - a, b), x, y, -z, hv);
+        if (huelle && hs && !naht) huelle[v.kappe(seite, a, b)] = huelle[v.kappe(seite, c - a, b)] = hs.front[m] ? 1 : hs.top[m] ? 2 : 0;
       }
     }
-    if (seite === 'vorn') kastenKappe(v, ziele, hoehe, spitze, schlitz, setze);
+    if (seite === 'vorn' && kastenKappe(v, ziele, hoehe, spitze, schlitz, setze) && huelle) {
+      for (let a = 0; a <= c; a++) for (let b = 0; b <= c; b++) if (a > 0 && a < c && b > 0 && b < c) huelle[v.kappe('vorn', a, b)] = 0;
+    }
   }
-  return rand ? { ziele, hoehe, rand: { wachstum: rand.wachstum, nachfrage: rand.nachfrage.length, vorlagen: ringQNeu.slice(), punkte: rand.punkte, kante: rand.kante, teil: rand.teil } } : { ziele, hoehe };
+  return rand ? { ziele, hoehe, rand: { wachstum: rand.wachstum, nachfrage: rand.nachfrage.length, vorlagen: ringQNeu.slice(), punkte: rand.punkte, kante: rand.kante, teil: rand.teil } } : { ziele, hoehe, ...(huelle ? { huelle } : {}) };
 }
 
 /**
@@ -1517,7 +1582,7 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
  * C liegt auf der Frontlinie in der Höhe der Lippe von Ring 0 (mit Schlitz; die Lippe geht dann als Mittelzeile durch die
  * Spitze, `unterSpitze` 0) oder in der Ringmitte. Spitzige Schnauzen (Rex, Kugel) bleiben unberührt.
  */
-function kastenKappe(v: Roehre, ziele: Float64Array, hoehe: Float64Array, spitze: V2, schlitz: SchlitzLage | undefined, setze: (p: number, x: number, y: number, z: number, hv: number) => void): void {
+function kastenKappe(v: Roehre, ziele: Float64Array, hoehe: Float64Array, spitze: V2, schlitz: SchlitzLage | undefined, setze: (p: number, x: number, y: number, z: number, hv: number) => void): boolean {
   const { N, c } = v;
   let cx = 0;
   let yMin = Infinity;
@@ -1529,7 +1594,7 @@ function kastenKappe(v: Roehre, ziele: Float64Array, hoehe: Float64Array, spitze
     yMax = Math.max(yMax, ziele[3 * q + 1]!);
   }
   const H0 = yMax - yMin;
-  if (!(Math.abs(cx - spitze.x) < 0.06 * H0)) return;
+  if (!(Math.abs(cx - spitze.x) < 0.06 * H0)) return false;
   const jLippe = schlitz && Number.isFinite(schlitz.vRing[0]!) ? schlitz.jL : -1;
   const cPunkt = jLippe >= 0 ? v.ringPunkt(0, jLippe) : -1;
   const Cy = cPunkt >= 0 ? ziele[3 * cPunkt + 1]! : (yMin + yMax) / 2;
@@ -1582,7 +1647,11 @@ function kastenKappe(v: Roehre, ziele: Float64Array, hoehe: Float64Array, spitze
       }
     }
   }
+  return true;
 }
+
+/** V4: Gewicht der Käfigziele, deren Vorlage Front oder Top trifft (wie die Breitenpunkte heute) */
+const HUELLE_GEWICHT = 16;
 
 /** Ziele je Bedingung: erst alle Käfigziele, dann die Nahtpunkte auf dem Umriss (z = 0). */
 /**
@@ -1763,7 +1832,9 @@ export function faltenSetzen(v: Roehre, st: Stationen, l: Leiter, dok: Dokument,
     }
   }
   const sprossen = sprossenVon(l, st.ringe);
-  const qs = querschnitteFuer(sprossen, dok, breiten, N, opt);
+  // V4: mit „Querschnitt aus der Sichthülle“ dieselben Vorlagen wie die Ziele (Ecken auf denselben Reihen)
+  const hk = huellenKontext(dok, breiten, opt);
+  const qs = hk ? huellenVorlagen(hk, l, st, v).ringe.map((s) => s.q) : querschnitteFuer(sprossen, dok, breiten, N, opt);
   // Freie Kantenlinien (M3 Punkt 2): gezeichnete Linie mit Härte je Knoten → Falte auf der nächsten Kantenschleife
   if (dok.kanten?.length && opt.eckenSchaerfe > 0) {
     kantenFalten(
@@ -1861,8 +1932,8 @@ function ableitenEinmal(dok: Dokument, optionen: Partial<AbleitOptionen>): Ablei
   const vorlage = roehre(opt.ringe, opt.ring);
   const st = stationenWaehlen(l, opt, dok);
   faltenSetzen(vorlage, st, l, dok, breiten, opt);
-  const { ziele, hoehe, rand } = zieleBerechnen(vorlage, l, st, breiten, dok, opt);
-  const abl = fertigstellen({ opt, vorlage, kaefig: vorlage.kaefig, ziele, hoehe, l, st, breiten, dok, zeiten: { t0, t1, t2 }, ...(rand ? { randVorlagen: rand.vorlagen, randPunkte: rand.punkte } : {}) });
+  const { ziele, hoehe, rand, huelle } = zieleBerechnen(vorlage, l, st, breiten, dok, opt);
+  const abl = fertigstellen({ opt, vorlage, kaefig: vorlage.kaefig, ziele, hoehe, l, st, breiten, dok, zeiten: { t0, t1, t2 }, ...(rand ? { randVorlagen: rand.vorlagen, randPunkte: rand.punkte } : {}), ...(huelle ? { huelle } : {}) });
   return rand ? { ...abl, rand: { wachstum: rand.wachstum, nachfrage: rand.nachfrage, kante: rand.kante, teil: rand.teil } } : abl;
 }
 
@@ -1890,6 +1961,8 @@ export type Rohbau = {
   /** S3 „Umrisse berühren“: gewachsene Querschnitte je Ring und die Berührpunkte (Ring, Vorlagenpunkt) — Breitenpunkte im Ausgleich */
   randVorlagen?: readonly Querschnitt[];
   randPunkte?: readonly { i: number; j: number }[];
+  /** V4 „Querschnitt aus der Sichthülle“: je Käfigpunkt 1 = Vorlage trifft dort die Front, 2 = das Top (Bindung im Löser) */
+  huelle?: Uint8Array;
   zeiten: { t0: number; t1: number; t2: number };
 };
 
@@ -1954,15 +2027,27 @@ export function fertigstellen(e: Rohbau): Ableitung {
       xyz = kaefigAusgleich(nahtLoeser, ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, breiten, fein, opt.fuehrend));
       fein = anwenden3(u.grenze, xyz);
     }
-    // V4: exakte Umrisse — dieselben Käfigziele und Naht, dazu Breitenlinie, Frontlinie und Ungleichung (Löser je Achse)
-    if (exakt) {
+    // V4: exakte Umrisse — dieselben Käfigziele und Naht, dazu Breitenlinie, Frontlinie und Ungleichung (Löser je Achse).
+    // Mit dem Querschnitt aus der Sichthülle trägt die Vorlage die Umrisse selbst; der Löser je Achse läuft nur, wenn ein
+    // Versuch etwas hinzufügt (Breitenlinie, Gewicht oder Bindung der Hüllpunkte, Frontlinie, Ungleichung) — sonst wäre er
+    // derselbe Ausgleich noch einmal (und der Zug ohne ihn bliebe gleich)
+    const uo = opt.umrisseOpt ?? {};
+    const zusatz = !e.huelle || uo.top === true || (uo.huelle ?? 'aus') !== 'aus' || uo.front === true || (uo.ungleich ?? 0) > 0;
+    if (exakt && zusatz) {
       const zeilen = [];
+      // Querschnitt aus der Sichthülle: Ziele, die laut Vorlage auf Front oder Top liegen, zählen mehr (gleiche Ziele, kein
+      // Widerspruch — sie verlieren sonst gegen die Glättung, was die Grenzfläche zwischen den Stützstellen nachgibt)
+      const hz = e.huelle && (opt.umrisseOpt?.huelle ?? 'aus') !== 'aus' ? (opt.umrisseOpt?.huelleGewicht ?? HUELLE_GEWICHT) : 1;
+      const blatt = opt.umrisseOpt?.huelleAchsen === 'blatt';
       for (let i = 0; i < k.n; i++) {
-        const w = e.zielGewicht ? e.zielGewicht[i]! : 1;
-        zeilen.push({ ...grenzZeile(u.grenze, i, k.n), gewicht: [w, w, w] as const });
+        const w0 = e.zielGewicht ? e.zielGewicht[i]! : 1;
+        const art = e.huelle?.[i] ?? 0;
+        const w = w0 * (art ? hz : 1);
+        const gewicht: [number, number, number] = !art || !blatt ? [w, w, w] : art === 1 ? [w0, w, w] : [w, w0, w];
+        zeilen.push({ ...grenzZeile(u.grenze, i, k.n), gewicht });
       }
       for (let q = 0; q < nahtFein.length; q++) zeilen.push({ ...grenzZeile(u.grenze, nahtFein[q]!, k.n), gewicht: [opt.nahtGewicht, opt.nahtGewicht, opt.nahtGewicht] as const });
-      const r = umrisseLoesen({ v: vorlage, k, u, dok, breiten, basis: { zeilen, ziele: ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil) }, gm: glaettemassFuer(u, k, opt, vorlage.R * vorlage.N), ...(opt.umrisseOpt ? { opt: opt.umrisseOpt } : {}) });
+      const r = umrisseLoesen({ v: vorlage, k, u, dok, breiten, basis: { zeilen, ziele: ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil) }, gm: glaettemassFuer(u, k, opt, vorlage.R * vorlage.N), ...(opt.umrisseOpt ? { opt: opt.umrisseOpt } : {}), ...(e.huelle ? { huelle: e.huelle } : {}) });
       xyz = r.xyz;
       fein = r.fein;
       umrisseBericht = r.bericht;
