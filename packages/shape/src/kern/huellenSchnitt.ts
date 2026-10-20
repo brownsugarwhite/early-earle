@@ -29,13 +29,31 @@ const RAND = 0.1;
 /** Plateau der größten Breite: bis so weit darunter (Anteil von W; eine Kastenwand ist nicht auf 0,1 % eben) */
 const PLATEAU = 5e-3;
 /**
- * Schärfe des weichen Maximums für die Spitze der Rundung (Gewicht (b/W)^SCHAERFE): Nahe den Enden ist eine Sprosse leicht
- * geneigt, die Breite des Tops ändert sich längs ihr um einige Prozent — die Mitte des Plateaus sprang dann ans Ende (Ei
- * hinten: 0,48 → 0,15, Falte 3,5° → 8,2°). Das weiche Maximum bleibt in der Mitte einer fast ebenen Hülle.
+ * Flaches Ende (Stielboden des Pilzes, Boden des Kegels, Basis der Pyramide): Die Hülle endet dort gerade — 0,5 px vor ihrem
+ * Ende noch so breit wie 2 px davor (eine runde Kuppe fällt dort wie eine Wurzel ab, auf etwa die Hälfte) — und die Sprosse
+ * endet (bis auf 2 px, auslaufend bis 6 px: Seite und Front sind oft um ein, zwei Pixel verschieden gezeichnet) auch dort.
+ * Dann gibt die Zeichnung den Abschluss vor: keine Rundung, eine Stützstelle an der Kante. Ein reiner Abstandstest machte die
+ * mittleren Ringe der Kugel flach (ihre Sprossen enden Bruchteile eines Pixels unter dem Pol der Front; Front 0,1 → 1,4 px),
+ * ein Vergleich der Breiten längs der Sprosse den Ring 2 px unter dem Pol (Falte 2,9 → 8,4°).
  */
-const SCHAERFE = 20;
-/** Ecken der Front, die näher als dieser Anteil an einem Nahtende liegen, sind keine Stützstellen (sie liegen auf der Naht) */
-const ECKE_RAND = 0.02;
+/** 1 px (Welt) und Reichweite der Suche hinter bzw. vor dem Ende der Sprosse (6 px) */
+const ENDE_PX = 1 / 461;
+const ENDE_SUCHE = 6 / 461;
+/** Exponent der Rundung an einem flachen Ende (praktisch keine Rundung; wie die Look-Stufe „genau“) */
+const P_FLACH = 24;
+/** Ein flaches Ende bekommt eine Stützstelle an seiner Kante, wenn die Hülle dort mindestens so breit ist (2 px) */
+const ENDE_KANTE = 2 / 461;
+/** Kennungen der Kanten flacher Enden (neben der Naht oben bzw. unten) */
+const KANTE_OBEN = -2;
+const KANTE_UNTEN = -3;
+/**
+ * Schulter einer kastigen Rundung (Exponent ab SCHULTER_P): Übergang Deckfläche → Wand bei η = 2^(−1/p). Sie ist ein Merkmal
+ * ohne Kante mit eigener Reihe — sonst verteilt jeder Ring seine Reihen nach eigener Bogenlänge, und wo sich das Seitenverhältnis
+ * längs des Körpers ändert (Keil: vorn flach, hinten hoch), rutschen die Reihen von der Deckfläche auf die Wand (Delle).
+ */
+const SCHULTER_OBEN = -4;
+const SCHULTER_UNTEN = -5;
+const SCHULTER_P = Infinity; // gemessen (20.10. nachts): Kegel 11,5 → 9,9°, Keil 31 → 27°, aber Hammerhai 16 → 46°, Seestern 24 → 61° (Schulter und Ecke nur in manchen Ringen) — aus
 
 // ---------- Fülle ----------
 
@@ -171,15 +189,20 @@ export type HuellenProfil = {
   /** z ist hier die Front bzw. das Top (gebunden) */
   front: Uint8Array;
   top: Uint8Array;
-  /** Härte einer gezeichneten Ecke der Front an dieser Probe (−1 = keine; nur, wo die Front den Schnitt trägt) */
+  /** Härte einer gezeichneten Ecke der Front an dieser Probe (−1 = keine; nur, wo der Schnitt der Hülle folgt) */
   ecke: Float64Array;
+  /** Kennung des Merkmals an dieser Probe (wie `Huelle.kennung`; −1, wo keine Ecke gilt) */
+  kennung: Int32Array;
   /** größte Breite */
   W: number;
   /** Mitte des Plateaus der größten Breite (geklemmt) */
   vBest: number;
+  /** Bereich der Breitenlinie: an einem flachen Ende bis an die Kante, sonst mit Abstand zum Runden */
+  vMin: number;
+  vMax: number;
 };
 
-type Probe = { v: number; b: number; front: boolean; top: boolean; ecke: number; drin: boolean };
+type Probe = { v: number; b: number; front: boolean; top: boolean; ecke: number; kennung: number; drin: boolean; eigen: number };
 
 /** Hülle entlang einer Sprosse (vor der Rundung): Proben von oben nach unten, Breite b, wer sie stellt, gezeichnete Ecken. */
 export type Huelle = {
@@ -192,10 +215,14 @@ export type Huelle = {
   top: Uint8Array;
   /** Härte einer gezeichneten Ecke der Front an dieser Probe (−1 = keine) */
   ecke: Float64Array;
+  /** wer sie ist: Index der Ecke der Front (≥ 0), Kante eines flachen Endes (KANTE_OBEN, KANTE_UNTEN), sonst −1 */
+  kennung: Int32Array;
   /** größte Breite der Hülle (aus Proben in beiden Umrissen) */
   W: number;
   /** Spitze der Rundung: weiches Maximum der Hülle (geklemmt) */
   vB: number;
+  /** je Nahtende: 1 = die Hülle endet hier mit der Sprosse (keine Rundung, flacher Abschluss), 0 = sie läuft weiter (gerundet) */
+  flach: { oben: number; unten: number };
 };
 
 /** Hülle entlang einer Sprosse (Kopf der Datei): an jeder Höhe die kleinere Breite aus Front und Top. */
@@ -205,25 +232,39 @@ export function huelleEntlang(sp: Sprosse, breiten: Breiten, ecken: readonly Fro
   const dy = sp.o.y - sp.u.y;
   // dichte Proben von oben nach unten, dazu die Höhen gezeichneter Ecken (genau getroffen)
   const proben: Probe[] = [];
-  for (let k = 0; k <= DICHTE; k++) proben.push({ v: 1 - k / DICHTE, b: 0, front: false, top: false, ecke: -1, drin: false });
+  for (let k = 0; k <= DICHTE; k++) proben.push({ v: 1 - k / DICHTE, b: 0, front: false, top: false, ecke: -1, kennung: -1, drin: false, eigen: 0 });
   if (Math.abs(dy) > 1e-9) {
-    for (const e of ecken) {
+    ecken.forEach((e, id) => {
       const vc = (e.y - sp.u.y) / dy;
-      if (vc > ECKE_RAND && vc < 1 - ECKE_RAND) proben.push({ v: vc, b: 0, front: false, top: false, ecke: e.haerte, drin: false });
-    }
+      // jede Ecke innerhalb der Sprosse (auch nahe einem Ende: dort ist sie die Kante eines flachen Abschlusses, Basis der
+      // Pyramide) — der Reihenplan gibt ihr in allen Ringen dieselbe Reihe
+      if (vc > 1e-4 && vc < 1 - 1e-4) proben.push({ v: vc, b: 0, front: false, top: false, ecke: e.haerte, kennung: id, drin: false, eigen: 0 });
+    });
   }
   proben.sort((a, b) => b.v - a.v);
   for (let k = proben.length - 1; k > 0; k--) {
     if (proben[k - 1]!.v - proben[k]!.v < 1e-7) {
-      proben[k - 1]!.ecke = Math.max(proben[k - 1]!.ecke, proben[k]!.ecke);
+      if (proben[k]!.ecke > proben[k - 1]!.ecke) {
+        proben[k - 1]!.ecke = proben[k]!.ecke;
+        proben[k - 1]!.kennung = proben[k]!.kennung;
+      }
       proben.splice(k, 1);
     }
   }
-  // Sichthülle je Probe; W nur aus Proben in beiden Umrissen
+  // Sichthülle je Probe. Breite W und Scheitel der Rundung kommen aus der Ansicht, die längs des Rings blickt: für liegende
+  // Ringe die Front auf der Höhe der Probe, begrenzt durch das Top in der Ringmitte; für stehende das Top an der Stelle,
+  // begrenzt durch die Front in der Ringmitte (dazwischen gemischt). Schräge Sprossen an runden Enden treffen das Top sonst an
+  // verschiedenen Stellen — der Ring wurde zu breit und schief (Wurst, Tigerschnauze); die Hülle beschneidet danach nur noch.
+  const dx = sp.o.x - sp.u.x;
+  const phi = (Math.atan2(Math.abs(dy), Math.abs(dx)) * 180) / Math.PI;
+  const tl = Math.min(1, Math.max(0, (phi - 20) / 15));
+  const liegt = tl * tl * (3 - 2 * tl);
+  let tMitte = breiten.top((sp.o.x + sp.u.x) / 2);
+  let fMitte = breiten.front((sp.o.y + sp.u.y) / 2);
   let W = 0;
   let drin = 0;
   for (const q of proben) {
-    const x = sp.u.x + (sp.o.x - sp.u.x) * q.v;
+    const x = sp.u.x + dx * q.v;
     const y = sp.u.y + dy * q.v;
     const f = breiten.front(y);
     const t = breiten.top(x);
@@ -233,11 +274,19 @@ export function huelleEntlang(sp: Sprosse, breiten: Breiten, ecken: readonly Fro
     q.front = f > 0 && f <= tw;
     q.top = t > 0 && t < fw;
     q.drin = f > 0 && t > 0;
-    if (q.drin) {
-      W = Math.max(W, q.b);
-      drin++;
-    }
+    if (q.drin) drin++;
   }
+  // Mitte außerhalb eines Umrisses: dessen größte Breite längs der Sprosse
+  if (!(tMitte > 0)) for (const q of proben) tMitte = Math.max(tMitte, breiten.top(sp.u.x + dx * q.v));
+  if (!(fMitte > 0)) for (const q of proben) fMitte = Math.max(fMitte, breiten.front(sp.u.y + dy * q.v));
+  for (const q of proben) {
+    if (!q.drin) continue;
+    const f = breiten.front(sp.u.y + dy * q.v);
+    const t = breiten.top(sp.u.x + dx * q.v);
+    q.eigen = liegt * Math.min(f, tMitte > 0 ? tMitte : Infinity) + (1 - liegt) * Math.min(t, fMitte > 0 ? fMitte : Infinity);
+    if (Number.isFinite(q.eigen)) W = Math.max(W, q.eigen);
+  }
+  if (drin && !(W > 0)) for (const q of proben) if (q.drin) W = Math.max(W, q.b);
   if (drin) {
     // Teile der Sprosse außerhalb eines Umrisses (die Spitze der Seite liegt oft knapp vor der des Tops, eine Seite ragt
     // über die Front): die Hülle stetig fortgesetzt mit der Breite des nächsten Punkts innerhalb — der Widerspruch bleibt
@@ -270,13 +319,85 @@ export function huelleEntlang(sp: Sprosse, breiten: Breiten, ecken: readonly Fro
       q.top = false;
     }
   }
-  // Spitze der Rundung: weiches Maximum der Hülle
-  let sg = 0;
-  let sv = 0;
-  for (const q of proben) {
-    const g = Math.pow(Math.min(1, q.b / W), SCHAERFE);
-    sg += g;
-    sv += g * q.v;
+  // Spitze der Rundung: Mitte des Plateaus der eigenen Ansicht (ohne sie: der Hülle). Das frühere weiche Maximum der Hülle
+  // war nur für schräge Sprossen nötig (die Hülle ändert sich längs ihrer um einige Prozent); die eigene Ansicht hängt nicht
+  // an der Neigung, und an einer spitzen, unsymmetrischen breitesten Stelle (Flügelspitze des Rochens) zog das weiche Maximum
+  // den Scheitel von der Ecke weg
+  const eigen = proben.map((q) => (q.drin && Number.isFinite(q.eigen) && q.eigen > 0 ? q.eigen : q.b));
+  let eMax = 0;
+  for (const e of eigen) eMax = Math.max(eMax, e);
+  let vScheitel = eMax > 0 ? plateauMitte(eigen, eMax, (k) => proben[k]!.v) : 0.5;
+  // Liegt eine gezeichnete Spitze auf dem Plateau, ist sie die breiteste Stelle (Flügelspitze des Rochens: die Front hat dort
+  // ihre Spitze, jeder Ring ist eine kleinere Linse mit derselben Spitze; die Mitte des unsymmetrischen Plateaus lag daneben).
+  // Nur echte Spitzen — die Front wird zu beiden Seiten schmaler; die Ecke am Ende einer geraden Wand (Boden des Keils) ist
+  // nur das Ende des Plateaus, der Scheitel bleibt in seiner Mitte (sonst zog er in einzelnen Ringen an die Ecke: Delle)
+  const spitze = (yc: number): boolean => {
+    const f0 = breiten.front(yc);
+    const fo = breiten.front(yc + 2 * ENDE_PX);
+    const fu = breiten.front(yc - 2 * ENDE_PX);
+    return f0 > 0 && !(fo > f0 * 0.995) && !(fu > f0 * 0.995);
+  };
+  let eckeGewicht = -1;
+  proben.forEach((q, k) => {
+    if (q.kennung < 0 || !(eigen[k]! >= eMax * (1 - PLATEAU)) || !spitze(sp.u.y + dy * q.v)) return;
+    const g = q.ecke - Math.abs(q.v - vScheitel);
+    if (g > eckeGewicht) {
+      eckeGewicht = g;
+      vScheitel = q.v;
+    }
+  });
+  // Enden: Wie weit läuft die Hülle hinter dem Ende der Sprosse weiter? Endet sie dort selbst, gibt die Zeichnung den Abschluss
+  // vor (flach, mit ihrer Ecke als Stützstelle); läuft sie weiter, ist er frei und wird gerundet (Kugel abseits der Mitte)
+  const drinBei = (vv: number) => breiten.front(sp.u.y + dy * vv) > 0 && breiten.top(sp.u.x + (sp.o.x - sp.u.x) * vv) > 0;
+  const breiteBei = (vv: number): number => {
+    const f = breiten.front(sp.u.y + dy * vv);
+    const t = breiten.top(sp.u.x + (sp.o.x - sp.u.x) * vv);
+    return f > 0 && t > 0 ? Math.min(f, t) : 0;
+  };
+  const flachAn = (ende: 0 | 1): number => {
+    const dir = ende === 1 ? 1 : -1;
+    const bei = (t: number) => ende + (dir * t) / L;
+    // Ende der Hülle längs der Sprosse: Abstand g vom Ende der Sprosse (> 0 dahinter, < 0 davor), Bisektion
+    let lo: number;
+    let hi: number;
+    if (drinBei(ende)) {
+      lo = 0;
+      hi = ENDE_SUCHE;
+      if (drinBei(bei(hi))) return 0;
+    } else {
+      lo = -ENDE_SUCHE;
+      hi = 0;
+      if (!drinBei(bei(lo))) return 0;
+    }
+    for (let i = 0; i < 30; i++) {
+      const m = 0.5 * (lo + hi);
+      if (drinBei(bei(m))) lo = m;
+      else hi = m;
+    }
+    const g = 0.5 * (lo + hi);
+    // gerade oder Kuppe? Breite 0,5 px vor dem Ende der Hülle gegen 2 px davor
+    const b2 = breiteBei(bei(g - 2 * ENDE_PX));
+    if (!(b2 > ENDE_KANTE)) return 0;
+    const gerade = Math.min(1, Math.max(0, (breiteBei(bei(g - 0.5 * ENDE_PX)) / b2 - 0.6) / 0.25));
+    // und endet die Sprosse dort?
+    const nah = Math.min(1, Math.max(0, 1 - (Math.abs(g) - 2 * ENDE_PX) / (4 * ENDE_PX)));
+    return gerade * nah;
+  };
+  const flach = { oben: flachAn(1), unten: flachAn(0) };
+  // flaches Ende mit Breite: Stützstelle an der Kante — eine gezeichnete Ecke nahe dem Ende ist diese Kante (ihre Kennung,
+  // ihre Härte), sonst die Probe neben der Naht
+  const n = proben.length;
+  for (const [ende, k] of [[1, 1], [0, n - 2]] as const) {
+    if ((ende === 1 ? flach.oben : flach.unten) < 0.5 || !(proben[k]!.b > ENDE_KANTE)) continue;
+    let eck = -1;
+    // (bis 6 px vor dem Ende: Seite und Front enden oft um einige Pixel verschieden — sonst gäbe es zwei Merkmale, die Ecke und
+    // eine Kante neben der Naht, je nach Ring auf verschiedenen Reihen; Pyramide 160°)
+    for (let i = 1; i + 1 < n; i++) if (proben[i]!.kennung >= 0 && Math.abs(proben[i]!.v - ende) * L <= ENDE_SUCHE) eck = eck < 0 || Math.abs(proben[i]!.v - ende) < Math.abs(proben[eck]!.v - ende) ? i : eck;
+    if (eck >= 0) proben[eck]!.ecke = Math.max(0, proben[eck]!.ecke);
+    // Ohne gezeichnete Ecke bekommt die Kante keinen eigenen Anker: Ob ein Ende flach ist, wechselt von Ring zu Ring
+    // allmählich (Bauch der Robbe), ein Anker nur in manchen Ringen ließ die Reihe springen (Falte 10 → 16°). Das flache Ende
+    // wirkt dann nur über die Rundung; die Reihen verteilen sich nach Bogenlänge auch über die flache Fläche.
+    void k;
   }
   return {
     sp,
@@ -286,8 +407,11 @@ export function huelleEntlang(sp: Sprosse, breiten: Breiten, ecken: readonly Fro
     front: Uint8Array.from(proben, (q) => (q.front ? 1 : 0)),
     top: Uint8Array.from(proben, (q) => (q.top ? 1 : 0)),
     ecke: Float64Array.from(proben, (q) => q.ecke),
+    kennung: Int32Array.from(proben, (q) => q.kennung),
     W,
-    vB: Math.min(1 - RAND, Math.max(RAND, sg > 0 ? sv / sg : 0.5)),
+    // an einem flachen Ende darf der Scheitel bis an die Kante (Basis der Pyramide); ein freies Ende braucht Platz zum Runden
+    vB: Math.min(1 - Math.max(ENDE_ABSTAND, RAND * (1 - flach.oben)), Math.max(Math.max(ENDE_ABSTAND, RAND * (1 - flach.unten)), vScheitel)),
+    flach,
   };
 }
 
@@ -297,7 +421,8 @@ export function rundungBei(h: Huelle, p: { oben: number; unten: number }, v: num
   const eta = oben ? (v - h.vB) / (1 - h.vB) : (h.vB - v) / h.vB;
   if (eta >= 1) return 0;
   if (eta <= 0) return h.W;
-  const e = oben ? p.oben : p.unten;
+  const e0 = oben ? p.oben : p.unten;
+  const e = e0 + (P_FLACH - e0) * (oben ? h.flach.oben : h.flach.unten);
   return h.W * Math.pow(1 - Math.pow(eta, e), 1 / e);
 }
 
@@ -320,10 +445,34 @@ export function huelleRunden(h: Huelle, p: { oben: number; unten: number }, form
     const traegt = z[k]! >= h.b[k]! - tol;
     front[k] = h.front[k]! && traegt ? 1 : 0;
     top[k] = h.top[k]! && traegt ? 1 : 0;
-    // Ecken nur, wo der Schnitt die Front trägt (sonst rundet die Rundung sie weg)
-    if (h.ecke[k]! >= 0 && front[k]) ecke[k] = h.ecke[k]!;
+    // Ecken nur, wo der Schnitt der Hülle folgt (sonst rundet die Rundung sie weg) — gleich, welche Ansicht dort die Breite
+    // stellt: Eine gezeichnete Ecke ist Teil der Form des Querschnitts (Flügelspitze des Rochens, Hutrand des Pilzes). Auf
+    // welche Käfigreihe sie fällt, legt der Reihenplan der ganzen Kette fest (`reihenplan`); je Ring für sich sprang sie
+    // zwischen Reihen, und die Kante lief im Zickzack (Rochen 108°, Blatt 172°)
+    if (h.ecke[k]! >= 0 && traegt) ecke[k] = h.ecke[k]!;
   }
-  return { L: h.L, v: h.v, z, b: h.b, front, top, ecke, W: Wz, vBest: Math.min(1 - RAND, Math.max(RAND, plateauMitte(z, Wz, (k) => h.v[k]!))) };
+  const kennung = Int32Array.from(h.kennung, (id, k) => (ecke[k]! >= 0 ? id : -1));
+  // Schultern kastiger Rundungen (nur, wo die Rundung die Form bestimmt und keine gezeichnete Ecke in der Nähe liegt)
+  if (!form) {
+    for (const oben of [true, false]) {
+      const e0 = oben ? p.oben : p.unten;
+      const e = e0 + (P_FLACH - e0) * (oben ? h.flach.oben : h.flach.unten);
+      if (e < SCHULTER_P) continue;
+      const eta = Math.pow(2, -1 / e);
+      const vS = oben ? h.vB + (1 - h.vB) * eta : h.vB - h.vB * eta;
+      let kS = -1;
+      for (let k = 1; k + 1 < n; k++) if (kS < 0 || Math.abs(h.v[k]! - vS) < Math.abs(h.v[kS]! - vS)) kS = k;
+      if (kS < 0 || !(z[kS]! < h.b[kS]! - tol)) continue;
+      let frei = true;
+      for (let k = Math.max(1, kS - 6); k <= Math.min(n - 2, kS + 6); k++) if (kennung[k]! !== -1) frei = false;
+      if (!frei) continue;
+      kennung[kS] = oben ? SCHULTER_OBEN : SCHULTER_UNTEN;
+      ecke[kS] = 0;
+    }
+  }
+  const vMin = Math.max(ENDE_ABSTAND, RAND * (1 - h.flach.unten));
+  const vMax = 1 - Math.max(ENDE_ABSTAND, RAND * (1 - h.flach.oben));
+  return { L: h.L, v: h.v, z, b: h.b, front, top, ecke, kennung, W: Wz, vBest: Math.min(vMax, Math.max(vMin, plateauMitte(z, Wz, (k) => h.v[k]!))), vMin, vMax };
 }
 
 /**
@@ -471,7 +620,7 @@ export function profilBei(pr: HuellenProfil, v: number): number {
 }
 
 /** Stufen der Breitenlinie zwischen RAND und 1 − RAND */
-const BREITEN_STUFEN = 81;
+const BREITEN_STUFEN = 161;
 /** Glätte der Breitenlinie: Kosten eines Sprungs Δv zwischen Nachbarn = MU · Δv² (gegen den Breitenverlust 1 − z/W) */
 const MU = 2;
 
@@ -485,8 +634,9 @@ export function breitenlinieWaehlen(profile: readonly HuellenProfil[], mu = MU):
   const n = profile.length;
   if (!n) return [];
   const K = BREITEN_STUFEN;
-  const vk = Array.from({ length: K }, (_, k) => RAND + ((1 - 2 * RAND) * k) / (K - 1));
-  const kosten = profile.map((pr) => vk.map((v) => (pr.W > 0 ? 1 - profilBei(pr, v) / pr.W : 0)));
+  // bis an die Enden (die Kosten 1 − z/W halten die Linie an der breitesten Stelle; liegt sie an einem flachen Ende, darf sie dorthin)
+  const vk = Array.from({ length: K }, (_, k) => ENDE_ABSTAND + ((1 - 2 * ENDE_ABSTAND) * k) / (K - 1));
+  const kosten = profile.map((pr) => vk.map((v) => (v < pr.vMin - 1e-9 || v > pr.vMax + 1e-9 ? 1e6 : pr.W > 0 ? 1 - profilBei(pr, v) / pr.W : 0)));
   let summe = kosten[0]!.slice();
   const zurueck: Int32Array[] = [];
   for (let i = 1; i < n; i++) {
@@ -520,79 +670,217 @@ export function breitenlinieWaehlen(profile: readonly HuellenProfil[], mu = MU):
   return out;
 }
 
+/** Anker eines Schnitts: Höhe v (1 oben … 0 unten), Käfigreihe, Härte (> 0 = gezeichnete Ecke → Längsfalte). */
+export type Anker = { v: number; reihe: number; haerte: number };
+
+/** Kumulierte Bogenlänge eines Profils in wahren Maßen (längs der Sprosse v·L, quer z), von oben. */
+function bogen(pr: HuellenProfil): Float64Array {
+  const n = pr.v.length;
+  const s = new Float64Array(n);
+  for (let k = 1; k < n; k++) s[k] = s[k - 1]! + Math.hypot((pr.v[k]! - pr.v[k - 1]!) * pr.L, pr.z[k]! - pr.z[k - 1]!);
+  return s;
+}
+
+/** Bogenlänge eines Profils bei v (linear zwischen den Proben). */
+function bogenBei(pr: HuellenProfil, s: Float64Array, v: number): number {
+  const n = pr.v.length;
+  if (v >= pr.v[0]!) return 0;
+  for (let k = 1; k < n; k++) {
+    if (v >= pr.v[k]!) {
+      const a = pr.v[k - 1]!;
+      const c = pr.v[k]!;
+      const f = a - c > 1e-15 ? (a - v) / (a - c) : 0;
+      return s[k - 1]! + (s[k]! - s[k - 1]!) * f;
+    }
+  }
+  return s[n - 1]!;
+}
+
+/** Eine eingerastete Ecke bleibt so weit von den Nähten weg (Anteil der Sprosse) — die Basis-Ecke der Pyramide liegt bei 2 % */
+const ENDE_ABSTAND = 0.005;
+/** Eine Ecke so nah an der Breitenlinie (in v) rastet auf sie ein (Rochenspitze, Hutrand: die Ecke ist die breiteste Stelle) */
+const EINRASTEN = 0.08;
+/** … und wird in Gliedern, in denen sie weiter weg liegt, bis hierhin noch mitgenommen (die Breitenlinie rückt auf die Ecke) */
+const EINRASTEN_WEIT = 0.25;
+
 /**
- * Profil abtasten: `hOut` Intervalle von der Naht oben (v = 1) zur Naht unten (v = 0), Stützstelle `iBreit` auf der Höhe
- * `vReihe` (Breitenlinie), nach Bogenlänge in wahren Maßen (längs der Sprosse v·L, quer z), gezeichnete Ecken auf Stützstellen.
+ * Reihenplan einer Kette (Plan 20.10., V4): Merkmale der Zeichnung bekommen Käfigreihen, die für alle Glieder gleich sind —
+ * die Breitenlinie (Reihe `iBreit`, Höhe je Glied aus `breitenlinieWaehlen`), gezeichnete Ecken der Front (Reihe aus dem
+ * Median ihrer natürlichen Lage nach Bogenlänge; liegt eine Ecke an der breitesten Stelle, rastet sie auf die Breitenlinie
+ * ein, für alle Glieder gleich entschieden) und die Kanten flacher Enden (neben der Naht). Dazwischen verteilen sich die
+ * Reihen je Glied nach Bogenlänge. Ohne gemeinsamen Plan sprang eine Ecke von Ring zu Ring zwischen Reihen, die Kante lief im
+ * Zickzack (Rochen 108°, Blatt 172°).
  */
-export function profilAbtasten(pr: HuellenProfil, hOut: number, iBreit: number, vReihe: number): HuellenSchnitt {
+export function reihenplan(profile: readonly HuellenProfil[], vr: readonly number[], hOut: number, iBreit: number): Anker[][] {
+  type Merkmal = { id: number; v: number; haerte: number };
+  const merkmale: Merkmal[][] = profile.map((pr) => {
+    const out: Merkmal[] = [];
+    for (let k = 1; k + 1 < pr.v.length; k++) if (pr.kennung[k]! !== -1 && pr.ecke[k]! >= 0) out.push({ id: pr.kennung[k]!, v: pr.v[k]!, haerte: pr.ecke[k]! });
+    return out;
+  });
+  const bl = vr.slice();
+  const blHaerte = vr.map(() => 0);
+  // 1. Einrasten (je Ecke für alle Glieder gleich): Liegt sie in der Mehrheit der Glieder nahe der Breitenlinie, ist sie dort
+  // die breiteste Stelle
+  const ids = new Set<number>();
+  for (const ms of merkmale) for (const m of ms) if (m.id >= 0 || m.id === SCHULTER_OBEN || m.id === SCHULTER_UNTEN) ids.add(m.id);
+  const eingerastet = new Set<number>();
+  for (const id of ids) {
+    if (id < 0) continue;
+    let da = 0;
+    let nah = 0;
+    merkmale.forEach((ms, i) => {
+      const m = ms.find((x) => x.id === id);
+      if (!m) return;
+      da++;
+      if (Math.abs(m.v - vr[i]!) <= EINRASTEN) nah++;
+    });
+    if (2 * nah >= da) eingerastet.add(id);
+  }
+  merkmale.forEach((ms, i) => {
+    for (const m of ms) {
+      if (!eingerastet.has(m.id) || Math.abs(m.v - vr[i]!) > EINRASTEN_WEIT) continue;
+      if (blHaerte[i]! > 0 && Math.abs(m.v - vr[i]!) >= Math.abs(bl[i]! - vr[i]!)) continue;
+      bl[i] = Math.min(1 - ENDE_ABSTAND, Math.max(ENDE_ABSTAND, m.v));
+      blHaerte[i] = m.haerte;
+    }
+  });
+  // 2. Reihen der übrigen Merkmale: natürliche Reihe je Glied (Anteil der Bogenlänge in seiner Hälfte), Seite nach Mehrheit,
+  // Median; Merkmale derselben Seite bekommen verschiedene Reihen in ihrer Reihenfolge (zwei Ecken auf einer Reihe — Bauch und
+  // Schritt des Vierbeiners — machten die Kante von Ring zu Ring springen)
+  const bo = profile.map(bogen);
+  const natuerlich = (i: number, v: number): number => {
+    const pr = profile[i]!;
+    const s = bo[i]!;
+    const S = s[s.length - 1]!;
+    const sB = bogenBei(pr, s, bl[i]!);
+    const sM = bogenBei(pr, s, v);
+    return v > bl[i]! ? (sB > 0 ? (sM / sB) * iBreit : 0) : iBreit + (S > sB ? ((sM - sB) / (S - sB)) * (hOut - iBreit) : 0);
+  };
+  const reihe = new Map<number, number>([
+    [KANTE_OBEN, 1],
+    [KANTE_UNTEN, hOut - 1],
+  ]);
+  const seiten: { oben: { id: number; r: number }[]; unten: { id: number; r: number }[] } = { oben: [], unten: [] };
+  for (const id of ids) {
+    if (eingerastet.has(id)) continue;
+    const oben: number[] = [];
+    const unten: number[] = [];
+    merkmale.forEach((ms, i) => {
+      const m = ms.find((x) => x.id === id);
+      if (!m) return;
+      (m.v > bl[i]! ? oben : unten).push(natuerlich(i, m.v));
+    });
+    const seiteOben = oben.length >= unten.length;
+    const liste = (seiteOben ? oben : unten).sort((a, b) => a - b);
+    if (!liste.length) continue;
+    (seiteOben ? seiten.oben : seiten.unten).push({ id, r: liste[Math.floor(liste.length / 2)]! });
+  }
+  for (const [liste, lo, hi] of [
+    [seiten.oben, 1, iBreit - 1],
+    [seiten.unten, iBreit + 1, hOut - 1],
+  ] as const) {
+    liste.sort((a, b) => a.r - b.r);
+    let letzte = lo - 1;
+    for (const m of liste) {
+      const r = Math.max(letzte + 1, Math.min(hi, Math.max(lo, Math.round(m.r))));
+      if (r > hi) continue;
+      reihe.set(m.id, r);
+      letzte = r;
+    }
+  }
+  // 3. Anker je Glied: Breitenlinie, dazu die Merkmale auf ihrer Reihe — nur, wo die Reihe höchstens um eine von der
+  // natürlichen Lage im Glied abweicht (sonst endet die Kante dort, statt quer über den Körper zu springen); je Seite monoton
+  const anker = profile.map((_, i) => {
+    const oben: Anker[] = [];
+    const unten: Anker[] = [];
+    for (const m of merkmale[i]!) {
+      if (eingerastet.has(m.id)) continue;
+      const r = reihe.get(m.id);
+      if (r === undefined) continue;
+      if ((m.id >= 0 || m.id === SCHULTER_OBEN || m.id === SCHULTER_UNTEN) && Math.abs(natuerlich(i, m.v) - r) > 1.5) continue;
+      if (r < iBreit && m.v > bl[i]! + 1e-6) oben.push({ v: m.v, reihe: r, haerte: m.haerte });
+      else if (r > iBreit && m.v < bl[i]! - 1e-6) unten.push({ v: m.v, reihe: r, haerte: m.haerte });
+    }
+    const monoton = (a: Anker[]): Anker[] => {
+      // nach Reihe; bei gleicher Reihe die härtere Ecke; v muss mit der Reihe fallen
+      a.sort((x, y) => x.reihe - y.reihe || y.haerte - x.haerte);
+      const ok: Anker[] = [];
+      for (const x of a) {
+        const p = ok[ok.length - 1];
+        if (p && (x.reihe === p.reihe || x.v >= p.v)) continue;
+        ok.push(x);
+      }
+      return ok;
+    };
+    return [...monoton(oben), { v: bl[i]!, reihe: iBreit, haerte: blHaerte[i]! }, ...monoton(unten)];
+  });
+  // Ecken nur, wo ein Nachbarglied sie auf derselben Reihe trägt (eine Ecke in einem einzelnen Ring verbog nur seine Reihen,
+  // Keil oben); Breitenlinie bleibt immer
+  const traegt = (i: number, r: number) => (anker[i] ?? []).some((a) => a.reihe === r && a.haerte > 0);
+  return anker.map((a, i) => (profile.length < 2 ? a : a.filter((x) => x.reihe === iBreit || !(x.haerte > 0) || traegt(i - 1, x.reihe) || traegt(i + 1, x.reihe))));
+}
+
+/**
+ * Profil abtasten: `hOut` Intervalle von der Naht oben (v = 1, Reihe 0) zur Naht unten (v = 0, Reihe `hOut`); jeder Anker liegt
+ * genau auf seiner Reihe, dazwischen nach Bogenlänge in wahren Maßen (längs der Sprosse v·L, quer z). Anker mit Härte werden
+ * Knoten der Vorlage (Längsfalten). `vStern` = Höhe der Breitenlinie (Anker auf Reihe `iBreit`).
+ */
+export function profilAbtastenAnker(pr: HuellenProfil, hOut: number, anker: readonly Anker[], iBreit: number): HuellenSchnitt {
   const { L } = pr;
-  // Proben mit der Reihenhöhe als eigener Probe
   const v = Array.from(pr.v);
   const z = Array.from(pr.z);
   const front = Array.from(pr.front);
   const top = Array.from(pr.top);
-  const ecke = Array.from(pr.ecke);
-  let kS = v.findIndex((x) => x <= vReihe + 1e-12);
-  if (Math.abs(v[kS]! - vReihe) > 1e-9) {
-    const f = (v[kS - 1]! - vReihe) / (v[kS - 1]! - v[kS]!);
-    v.splice(kS, 0, vReihe);
-    z.splice(kS, 0, z[kS - 1]! + (z[kS]! - z[kS - 1]!) * f);
-    front.splice(kS, 0, front[kS - 1]! & front[kS]!);
-    top.splice(kS, 0, top[kS - 1]! & top[kS]!);
-    ecke.splice(kS, 0, -1);
-  }
-  const teil = (von: number, bis: number, m: number): { v: number; z: number; ecke: number; dicht: number }[] => {
-    const cum = [0];
-    for (let k = von + 1; k <= bis; k++) cum.push(cum[cum.length - 1]! + Math.hypot((v[k]! - v[k - 1]!) * L, z[k]! - z[k - 1]!));
-    let anker = [0];
-    for (let i = 1; von + i < bis; i++) if (ecke[von + i]! >= 0) anker.push(i);
-    anker.push(bis - von);
-    // mehr Teilstücke als Intervalle: die kürzesten verschmelzen (Ecke fällt weg)
-    while (anker.length - 1 > Math.max(1, m)) {
-      let kurz = 1;
-      let kurzL = Infinity;
-      for (let t = 1; t + 1 < anker.length; t++) {
-        const l = cum[anker[t + 1]!]! - cum[anker[t - 1]!]!;
-        if (l < kurzL) {
-          kurzL = l;
-          kurz = t;
-        }
-      }
-      anker = anker.filter((_, t) => t !== kurz);
-    }
-    const laengen = anker.slice(1).map((a, t) => cum[a]! - cum[anker[t]!]!);
-    const anteile = verteilen(laengen, Math.max(1, m));
-    const out: { v: number; z: number; ecke: number; dicht: number }[] = [{ v: v[von]!, z: z[von]!, ecke: -1, dicht: von }];
-    for (let t = 0; t + 1 < anker.length; t++) {
-      const a0 = anker[t]!;
-      const a1 = anker[t + 1]!;
-      const mm = anteile[t]!;
-      for (let s = 1; s <= mm; s++) {
-        const ziel = cum[a0]! + ((cum[a1]! - cum[a0]!) * s) / mm;
-        let i = a0;
-        while (i + 1 < a1 && cum[i + 1]! < ziel) i++;
-        const d = cum[i + 1]! - cum[i]!;
-        const f = d > 1e-15 ? Math.min(1, Math.max(0, (ziel - cum[i]!) / d)) : 0;
-        const k0 = von + i;
-        const k1 = von + i + 1;
-        const ende = s === mm;
-        out.push({ v: v[k0]! + (v[k1]! - v[k0]!) * f, z: z[k0]! + (z[k1]! - z[k0]!) * f, ecke: ende && t + 2 < anker.length ? ecke[von + a1]! : -1, dicht: f < 0.5 ? k0 : k1 });
-      }
-    }
-    return out;
+  // Anker als eigene Proben (Index je Anker)
+  const einfuegen = (va: number): number => {
+    let k = v.findIndex((x) => x <= va + 1e-12);
+    if (k < 0) k = v.length - 1;
+    if (Math.abs(v[k]! - va) <= 1e-9) return k;
+    const f = (v[k - 1]! - va) / (v[k - 1]! - v[k]!);
+    v.splice(k, 0, va);
+    z.splice(k, 0, z[k - 1]! + (z[k]! - z[k - 1]!) * f);
+    front.splice(k, 0, front[k - 1]! & front[k]!);
+    top.splice(k, 0, top[k - 1]! & top[k]!);
+    return k;
   };
-  const alle = [...teil(0, kS, iBreit), ...teil(kS, v.length - 1, hOut - iBreit).slice(1)];
+  const punkte = [...anker].sort((a, b) => a.reihe - b.reihe);
+  for (const a of punkte) einfuegen(a.v);
+  const kVon = (va: number) => v.findIndex((x) => Math.abs(x - va) <= 1e-9);
+  const stuetzen: { k: number; reihe: number; haerte: number }[] = [{ k: 0, reihe: 0, haerte: 0 }, ...punkte.map((a) => ({ k: kVon(a.v), reihe: a.reihe, haerte: a.haerte })), { k: v.length - 1, reihe: hOut, haerte: 0 }];
+  const cum = [0];
+  for (let k = 1; k < v.length; k++) cum.push(cum[k - 1]! + Math.hypot((v[k]! - v[k - 1]!) * L, z[k]! - z[k - 1]!));
+  const alle: { v: number; z: number; dicht: number }[] = [{ v: v[0]!, z: z[0]!, dicht: 0 }];
+  const knoten: number[] = [];
+  const haerte: number[] = [];
+  for (let t = 0; t + 1 < stuetzen.length; t++) {
+    const a = stuetzen[t]!;
+    const b = stuetzen[t + 1]!;
+    const m = b.reihe - a.reihe;
+    for (let s2 = 1; s2 <= m; s2++) {
+      if (s2 === m) {
+        alle.push({ v: v[b.k]!, z: z[b.k]!, dicht: b.k });
+        continue;
+      }
+      const ziel = cum[a.k]! + ((cum[b.k]! - cum[a.k]!) * s2) / m;
+      let i = a.k;
+      while (i + 1 < b.k && cum[i + 1]! < ziel) i++;
+      const d = cum[i + 1]! - cum[i]!;
+      const f = d > 1e-15 ? Math.min(1, Math.max(0, (ziel - cum[i]!) / d)) : 0;
+      alle.push({ v: v[i]! + (v[i + 1]! - v[i]!) * f, z: z[i]! + (z[i + 1]! - z[i]!) * f, dicht: f < 0.5 ? i : i + 1 });
+    }
+    if (b.haerte > 0 && b.reihe < hOut) {
+      knoten.push(b.reihe);
+      haerte.push(b.haerte);
+    }
+  }
   const W = pr.W > 0 ? pr.W : 1;
-  const q: Schnittvorlage = { v: [], w: [], haerte: [], knoten: [] };
+  const q: Schnittvorlage = { v: [], w: [], haerte, knoten };
   const fr = new Uint8Array(alle.length);
   const tp = new Uint8Array(alle.length);
   alle.forEach((a, j) => {
     q.v.push(a.v);
     q.w.push(Math.max(0, a.z / W));
-    if (a.ecke > 0) {
-      q.knoten.push(j);
-      q.haerte.push(a.ecke);
-    }
     fr[j] = front[a.dicht]!;
     tp[j] = top[a.dicht]!;
   });
@@ -602,31 +890,17 @@ export function profilAbtasten(pr: HuellenProfil, hOut: number, iBreit: number, 
   q.w[q.w.length - 1] = 0;
   fr[0] = fr[fr.length - 1] = 0;
   tp[0] = tp[tp.length - 1] = 0;
-  return { q, W, vStern: vReihe, front: fr, top: tp };
+  const breit = punkte.find((a) => a.reihe === iBreit);
+  return { q, W, vStern: breit ? breit.v : NaN, front: fr, top: tp };
+}
+
+/** Profil abtasten mit der Breitenlinie auf `vReihe` und den eigenen Merkmalen (einzelner Ring; die Kette nimmt `reihenplan`). */
+export function profilAbtasten(pr: HuellenProfil, hOut: number, iBreit: number, vReihe: number): HuellenSchnitt {
+  return profilAbtastenAnker(pr, hOut, reihenplan([pr], [vReihe], hOut, iBreit)[0]!, iBreit);
 }
 
 /** Schnitt eines einzelnen Rings (Breitenlinie an seiner eigenen breitesten Stelle). */
 export function huellenSchnitt(sp: Sprosse, breiten: Breiten, p: { oben: number; unten: number }, ecken: readonly FrontEcke[], hOut: number, iBreit: number, form?: (v: number) => number): HuellenSchnitt {
   const pr = huellenProfil(sp, breiten, p, ecken, form);
   return profilAbtasten(pr, hOut, iBreit, pr.vBest);
-}
-
-/** h Intervalle auf Teilstücke nach Länge, mindestens eines je Teilstück; Rest dort, wo die Intervalle am längsten bzw. kürzesten sind. */
-function verteilen(laengen: readonly number[], h: number): number[] {
-  const summe = laengen.reduce((a, b) => a + b, 0) || 1;
-  const anteile = laengen.map((l) => Math.max(1, Math.round((h * l) / summe)));
-  let diff = anteile.reduce((a, b) => a + b, 0) - h;
-  while (diff !== 0) {
-    let wahl = -1;
-    for (let i = 0; i < anteile.length; i++) {
-      const je = laengen[i]! / anteile[i]!;
-      if (diff > 0) {
-        if (anteile[i]! > 1 && (wahl < 0 || je < laengen[wahl]! / anteile[wahl]!)) wahl = i;
-      } else if (wahl < 0 || je > laengen[wahl]! / anteile[wahl]!) wahl = i;
-    }
-    if (wahl < 0) break;
-    anteile[wahl]! += diff > 0 ? -1 : 1;
-    diff += diff > 0 ? -1 : 1;
-  }
-  return anteile;
 }

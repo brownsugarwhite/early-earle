@@ -30,7 +30,7 @@ import { anwenden3, multiplizieren } from '../subdivision/matrix';
 import { type Leiter, WIRBEL_STANDARD, leiter } from '../versuch/wirbelsaeule';
 import { type Breiten, silhouettenBreite } from './breite';
 import { FUELLE_EXPONENT, type FuelleArt, huellenBreite, reichweite } from './fuelle';
-import { type FrontEcke, type HuellenSchnitt, type ZeichnungsFuelle, breitenlinieWaehlen, exponentenFuer, frontEcken, fuelleWoNoetig, huelleEntlang, huelleRunden, profilAbtasten, zeichnungsFuelle } from './huellenSchnitt';
+import { type FrontEcke, type HuellenSchnitt, type ZeichnungsFuelle, breitenlinieWaehlen, exponentenFuer, frontEcken, fuelleWoNoetig, huelleEntlang, huelleRunden, profilAbtasten, profilAbtastenAnker, reihenplan, zeichnungsFuelle } from './huellenSchnitt';
 import { type RandMarke, frontBeruehren } from './rand';
 import { type Schlitz, schlitzIm, seiteFuerLeiter } from './schlitz';
 import { endenFuer, profilAnker } from './grundkoerper/enden';
@@ -1406,13 +1406,16 @@ function huellenVorlagen(hk: HuellenKontext, l: Leiter, st: Stationen, v: { N: n
   const profile = huellen.map((h, i) => huelleRunden(h, ps[i]!, formen[i]));
   const vr = breitenlinieWaehlen(profile);
   const nV = vornSp.length;
-  const ringe = profile.slice(nV, nV + ringSp.length);
+  const nR = ringSp.length;
+  const ringe = profile.slice(nV, nV + nR);
   const vorn = profile.slice(0, nV);
-  const hinten = profile.slice(nV + ringSp.length).reverse();
+  const hinten = profile.slice(nV + nR).reverse();
+  // Reihenplan der Ringe: Breitenlinie, gezeichnete Ecken und Kanten flacher Enden auf Reihen, die für alle Ringe gleich sind
+  const plan = reihenplan(ringe, vr.slice(nV, nV + nR), N / 2, N / 4);
   return {
     vorn: vorn.map((pr, i) => profilAbtasten(pr, 4 * (i + 1), 2 * (i + 1), vr[i]!)),
-    ringe: ringe.map((pr, i) => profilAbtasten(pr, N / 2, N / 4, vr[nV + i]!)),
-    hinten: hinten.map((pr, i) => profilAbtasten(pr, 4 * (i + 1), 2 * (i + 1), vr[nV + ringe.length + hinten.length - 1 - i]!)),
+    ringe: ringe.map((pr, i) => profilAbtastenAnker(pr, N / 2, plan[i]!, N / 4)),
+    hinten: hinten.map((pr, i) => profilAbtasten(pr, 4 * (i + 1), 2 * (i + 1), vr[nV + nR + hinten.length - 1 - i]!)),
   };
 }
 
@@ -1438,7 +1441,7 @@ export type SchlitzLage = {
   front?: { z: number; y: number }[];
 };
 
-export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument | null, opt: AbleitOptionen, schlitz?: SchlitzLage): { ziele: Float64Array; hoehe: Float64Array; rand?: { wachstum: number[]; nachfrage: number; vorlagen: Querschnitt[]; punkte: { i: number; j: number }[]; kante: RandMarke[]; teil: RandMarke[] }; huelle?: Uint8Array } {
+export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument | null, opt: AbleitOptionen, schlitz?: SchlitzLage): { ziele: Float64Array; hoehe: Float64Array; rand?: { wachstum: number[]; nachfrage: number; vorlagen: Querschnitt[]; punkte: { i: number; j: number }[]; kante: RandMarke[]; teil: RandMarke[] }; huelle?: Uint8Array; vorlagen?: Querschnitt[] } {
   const { R, N, c } = v;
   const ziele = new Float64Array(3 * v.kaefig.n);
   const hoehe = new Float64Array(v.kaefig.n);
@@ -1572,7 +1575,7 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
       for (let a = 0; a <= c; a++) for (let b = 0; b <= c; b++) if (a > 0 && a < c && b > 0 && b < c) huelle[v.kappe('vorn', a, b)] = 0;
     }
   }
-  return rand ? { ziele, hoehe, rand: { wachstum: rand.wachstum, nachfrage: rand.nachfrage.length, vorlagen: ringQNeu.slice(), punkte: rand.punkte, kante: rand.kante, teil: rand.teil } } : { ziele, hoehe, ...(huelle ? { huelle } : {}) };
+  return rand ? { ziele, hoehe, rand: { wachstum: rand.wachstum, nachfrage: rand.nachfrage.length, vorlagen: ringQNeu.slice(), punkte: rand.punkte, kante: rand.kante, teil: rand.teil } } : { ziele, hoehe, ...(huelle ? { huelle, vorlagen: ringQNeu.slice() } : {}) };
 }
 
 /**
@@ -1846,14 +1849,22 @@ export function faltenSetzen(v: Roehre, st: Stationen, l: Leiter, dok: Dokument,
       opt.eckenSchaerfe,
     );
   }
-  // Längsfalten: Ecke im Querschnitt (Front-Lappen oder Spant, Härte je Knoten) → Kante Ring i → i+1 am Ringpunkt der Ecke
+  // Längsfalten: Ecke im Querschnitt (Front-Lappen oder Spant, Härte je Knoten) → Kante Ring i → i+1 am Ringpunkt der Ecke.
+  // Mit dem Querschnitt aus der Sichthülle hat jeder Ring seine eigene Vorlage: die Falte nur, wo beide Ringe die Ecke auf
+  // derselben Reihe tragen (eine Ecke in einem einzelnen Ring gab ein loses Kantenstück, Keil 31°)
   if (!opt.querschnitt) return;
   for (let i = 0; i + 1 < R; i++) {
     const q = qs[i]!;
+    const naechste = hk ? qs[i + 1]! : null;
     q.haerte.forEach((h, kn) => {
       if (h <= 0) return;
       const j = q.knoten[kn];
       if (j === undefined || j <= 0 || j >= N / 2) return;
+      if (naechste) {
+        const kn2 = naechste.knoten.indexOf(j);
+        if (kn2 < 0 || !((naechste.haerte[kn2] ?? 0) > 0)) return;
+        h = Math.min(h, naechste.haerte[kn2]!);
+      }
       const schaerfe = h >= 1 ? opt.eckenSchaerfe : 3 * h;
       for (const jj of [j, N - j]) {
         const e = kanteZwischen(k, v.ringPunkt(i, jj), v.ringPunkt(i + 1, jj));
@@ -1932,8 +1943,10 @@ function ableitenEinmal(dok: Dokument, optionen: Partial<AbleitOptionen>): Ablei
   const vorlage = roehre(opt.ringe, opt.ring);
   const st = stationenWaehlen(l, opt, dok);
   faltenSetzen(vorlage, st, l, dok, breiten, opt);
-  const { ziele, hoehe, rand, huelle } = zieleBerechnen(vorlage, l, st, breiten, dok, opt);
-  const abl = fertigstellen({ opt, vorlage, kaefig: vorlage.kaefig, ziele, hoehe, l, st, breiten, dok, zeiten: { t0, t1, t2 }, ...(rand ? { randVorlagen: rand.vorlagen, randPunkte: rand.punkte } : {}), ...(huelle ? { huelle } : {}) });
+  const { ziele, hoehe, rand, huelle, vorlagen } = zieleBerechnen(vorlage, l, st, breiten, dok, opt);
+  // V4: Breitenpunkte aus den Querschnitten der Hülle (ihre breitesten Stellen)
+  const randV = rand ? { randVorlagen: rand.vorlagen, randPunkte: rand.punkte } : vorlagen ? { randVorlagen: vorlagen } : {};
+  const abl = fertigstellen({ opt, vorlage, kaefig: vorlage.kaefig, ziele, hoehe, l, st, breiten, dok, zeiten: { t0, t1, t2 }, ...randV, ...(huelle ? { huelle } : {}) });
   return rand ? { ...abl, rand: { wachstum: rand.wachstum, nachfrage: rand.nachfrage, kante: rand.kante, teil: rand.teil } } : abl;
 }
 
@@ -2012,7 +2025,9 @@ export function fertigstellen(e: Rohbau): Ableitung {
   const nahtFein = Uint32Array.from(geordnet);
   let nahtLoeser: AusgleichsLoeser | null = null;
   const exakt = opt.umrisse === 'exakt' && opt.nahtGewicht > 0 && !e.haut && !e.schlitz && !e.maulBau;
-  const breite = exakt ? null : breitenSchleife(vorlage, l, st, breiten, dok, opt, ziele, u, k, e.haut, e.maulBau, e.randVorlagen, e.randPunkte);
+  // V4: Mit dem Querschnitt aus der Sichthülle bleiben die Breitenpunkte (weich, nur quer; aus den Vorlagen der Hülle) — ohne
+  // sie schrumpfte die Kante flacher Körper ungleich (Rochen: Falte 6 → 51°). Der alte Beweis (Breitenlinie) kam ohne sie aus.
+  const breite = exakt && (!e.huelle || opt.umrisseOpt?.breite === false) ? null : breitenSchleife(vorlage, l, st, breiten, dok, opt, ziele, u, k, e.haut, e.maulBau, e.randVorlagen, e.randPunkte);
   let umrisseBericht: UmrissBericht | undefined;
   if (opt.nahtGewicht > 0) {
     const bedingungen: Bedingung[] = [];
@@ -2085,14 +2100,15 @@ export function fertigstellen(e: Rohbau): Ableitung {
  * Glättungsmaß der Ableitung (S2): Laplace-Zeilen der Stufe 2 in Käfigpunkten, Gewicht `fair`, an den Kappen (Käfigpunkte
  * ab `kappeAb`) × `fairKappe`; `fair < 0` = dünner Löser ohne Glättung; ohne `fair` undefined (dichter Weg).
  */
-export function glaettemassFuer(u: Unterteilung, k: Kaefig, opt: Pick<AbleitOptionen, 'fair' | 'fairBezug' | 'fairKappe'>, kappeAb = k.n): Glaettemass | undefined {
+export function glaettemassFuer(u: Unterteilung, k: Kaefig, opt: Pick<AbleitOptionen, 'fair' | 'fairBezug' | 'fairKappe'> & Partial<Pick<AbleitOptionen, 'umrisse' | 'umrisseOpt'>>, kappeAb = k.n): Glaettemass | undefined {
   const g = opt.fair ?? 0;
   if (g === 0) return undefined;
   const s = Math.min(2, u.stufen.length);
   let M = u.stufen[0]!.matrix;
   for (let i = 1; i < s; i++) M = multiplizieren(u.stufen[i]!.matrix, M);
   const zeilen = g > 0 ? glaettungsZeilen(u.stufen[s - 1]!.kaefig, M, k.n, g, opt.fairKappe && opt.fairKappe !== 1 ? { ab: kappeAb, faktor: opt.fairKappe } : undefined) : [];
-  return { zeilen, nachbarn: kaefigNachbarlisten(k), bezug: opt.fairBezug ?? 0 };
+  const hub = opt.umrisse === 'exakt' ? (opt.umrisseOpt?.hub ?? 0) : 0;
+  return { zeilen, nachbarn: kaefigNachbarlisten(k), bezug: opt.fairBezug ?? 0, ...(hub ? { hub } : {}) };
 }
 
 export type Zug = Ableitung & { zugZeit: { leiter: number; ziele: number; loeser: number; matrix: number } };

@@ -1193,3 +1193,66 @@ Rücken wird zu schmal, der Bauch erreicht die Front nicht, und das Top beult, w
    die Punkte, an denen die Front den Schnitt bestimmt (Front), die Naht (Seite). Keine Ungleichung, keine Tangente der Front.
 6. Erstes Kriterium Glattheit (Falten nach Zonen, Bilder), dann Δ ≤ 0,5 px; gemessen an den Beweis-Körpern, danach an der
    ganzen Extremreihe.
+
+#### Stand V4 — Querschnitt aus der Sichthülle (20./21.10. nachts, gebaut, Abnahme offen)
+
+**Im Editor:** Tafel Körper → „Querschnitt: heute | aus der Hülle (V4)“ (`ausstattung.umrisseExakt`; Röhre ohne Maul und
+Beine, sonst gesperrt mit Hinweis). Ohne Schalter bitgleich (Kern-Tests grün). Kern: `packages/shape/src/kern/huellenSchnitt.ts`,
+eingehängt in `zieleBerechnen` und `faltenSetzen` (`kern/ableiten.ts`).
+
+**Was der Bau tut** (je Schritt gemessen, verworfene Varianten unten):
+1. *Hülle je Sprosse:* an jeder Höhe die kleinere Breite aus Front und Top; außerhalb eines Umrisses stetig fortgesetzt
+   (Breite des nächsten Punkts innerhalb).
+2. *Breite und Scheitel aus der eigenen Ansicht* (liegende Ringe: Front auf der Höhe, begrenzt durch das Top in der
+   Ringmitte; stehende: Top, begrenzt durch die Front): Schräge Sprossen an runden Enden trafen das Top sonst an
+   verschiedenen Stellen (Wurst, Tigerschnauze). Scheitel = Mitte des Plateaus; liegt eine gezeichnete *Spitze* der Front
+   darauf (Front wird zu beiden Seiten schmaler), ist sie der Scheitel (Rochen).
+3. *Rundung nur, wo keine Zeichnung die Form vorgibt:* Superellipse um den Scheitel; ihr Exponent ist die Fülle deiner Front
+   (Fläche je Hälfte durch ihr Rechteck, für stehende Ringe das Top; mindestens Ellipse) — Kugel bleibt Kugel, Kastenfront
+   kastig. *Fülle wo nötig:* Erreicht auf einer Höhe kein Ring die Front, obwohl die Hülle es erlaubt, wird nur der Ring
+   voller, der es am leichtesten schafft (höchstens „mittel“ oder die Fülle der Zeichnung), glatt zu den Nachbarn.
+4. *Flache Enden:* Endet die Hülle dort, wo die Sprosse endet, und zwar gerade (0,5 px vor ihrem Ende noch so breit wie 2 px
+   davor — eine Kuppe fällt auf die Hälfte), wird nicht gerundet (Stielboden, Kegelboden, Pyramidenbasis).
+5. *Reihenplan der Kette:* Breitenlinie als glatter Pfad (dynamische Programmierung: so breit wie möglich, so glatt wie
+   nötig), gezeichnete Ecken auf Reihen, die für alle Ringe gleich sind (Ecke an der breitesten Stelle rastet auf die
+   Breitenlinie; sonst Median der natürlichen Lage, verschiedene Reihen in ihrer Reihenfolge; ein Ring nimmt die Ecke nur,
+   wenn ihre Reihe höchstens eine von der natürlichen Lage abweicht, und nur, wenn ein Nachbarring sie auch trägt).
+   Längsfalten nur zwischen Ringen, die die Ecke beide tragen. Kappenringe bekommen den Schnitt an ihrer Stelle.
+
+**Beweis-Körper** (Ablauf aus der Startkugel, Δ Seite/Front/Top px, Falte frei/Kappe °; heute → V4):
+
+| Körper | heute | V4 |
+|---|---|---|
+| Kugel | 0,3 / 0,2 / 0,3 · 2,9 / 3,1 | 0,3 / 0,1 / 0,3 · 2,9 / 3,1 |
+| Ei | 0,3 / 0,4 / 0,4 · 3,5 / 5,0 | 0,3 / 0,3 / 0,3 · 3,3 / 5,0 |
+| Robbe | 4,0 / 6,3 / 12,5 · 10,8 / 11,1 | 3,9 / 4,4 / 3,5 · 10,0 / 10,8 |
+| Tigerkopf | 2,4 / 2,1 / 5,9 · 37,6 / 7,9 | 2,5 / 2,9 / 5,4 · 37,3 / 8,3 |
+| Vase | 1,3 / 2,3 / 13,7 · 10,9 / 9,0 | 0,8 / 2,8 / 2,8 · 12,4 / 12,8 |
+| einfache Form | 0,3 / 7,7 / 77,4 · 21,1 / 20,7 | 0,3 / 10,1 / 77,3 · 13,8 / 13,3 |
+| Kegel | 2,1 / 7,3 / 2,6 · 14,1 / 9,7 | 2,1 / 3,0 / 2,9 · 11,5 / 9,7 |
+| Widerspruch Breite | 0,3 / 10,2 / 0,8 · 5,8 / 3,0 | 0,3 / 10,8 / 1,0 · 6,2 / 3,0 |
+
+**Extremreihe (39 Körper), im Bild geprüft** (Kontaktbögen `apps/editor/pruefen-ausgabe/v4/v4-gruppe-*.png`, nicht im Repo):
+gleich gut oder sichtbar besser bei Kugel, Ei, Rex, Robbe, Vase, Kegel, Tigerkopf, Langhals, Hals 1:8 (Front 31,6 → 1,4 px),
+Bleistift, Wurst, Rochen, Flunder, Giraffe mit Bauch (Front 18,9 → 1,6), Sichel, Überhang, Ente mit Haken, einfache Form,
+Vierbeiner (Beinblöcke statt Finnen; Top 7,7 → 1,6), Zweihals (Falte 87 → 18°), Ente (Front 14,3 → 2,6 … Kappe schlechter),
+Fisch (Top 17 → 3,5), Krabbe, Krake, Flügel oben, Katze, Hörner, Augenstiele, beiden Widersprüchen, Pyramide (schärfer).
+**Sichtbar schlechter:** Keil (wellige Wand vorn, Falte 17,6 → 30,8°), Pilz (Hutunterseite unruhig; Stiel richtig), Blatt
+(4 → 15°), Hammerhai (Kopf unruhig, Kappe 19 → 26°), Seestern (Streifen; Front 3,2 → 9,4 px). Das Faltenmaß übertreibt bei
+Mehrteilern (Vierbeiner 163°, Fisch 170°, Krake 179°: einzelne scharfe Stellen am Bein-Bauch-Übergang, im Bild glatter als
+heute). Summe der größten Abweichungen 990 → 926 px.
+
+**Gemessen und verworfen** (Zahlen im Verlauf dieser Nacht): harte Bindung der Hüllpunkte (Tiger 176°), höheres Gewicht der
+Hüllpunkte (alle Achsen oder nur im Blatt: Tiger bis 179°), angehobener Glättungsbezug 2·Ziel − Grenzlage (Tiger 125°, Rex
+29° — bestätigt S2), die alte Ungleichung (explodiert), weiches Maximum als Scheitel (Rochen, Ei), reiner Abstandstest für
+flache Enden (Kugel kastig), Kanten-Anker ohne gezeichnete Ecke (Robbe 10 → 16°), Schultern kastiger Rundungen als Anker (Kegel
+und Keil besser, Hammerhai und Seestern schlechter — abgeschaltet).
+
+**Offen (ehrlich):**
+- **Δ ≤ 0,5 px nicht erreicht** außer Kugel und Ei. Die Vorlagen liegen genau auf der Hülle; die glatte Grenzfläche wölbt
+  sich zwischen den Stützstellen hinaus (Robbe 2,9 px an der Flanke, Tiger 5,4 px an der Kerbe zwischen Schnauze und Kopf) —
+  der Ausgleich trifft die Ziele nur an Käfigpunkten, und die Glättung hält die Krümmung der Ziele fest (in Mulden liegt die
+  Fläche außen). Nächster Hebel: die Grenzfläche dicht an die Vorlagen anpassen (feine Punkte längs der Ringe), nicht nur an
+  die Käfigpunkte.
+- Ecken-Körper (Keil, Pilz, Blatt, Hammerhai, Seestern): Reihen rutschen, wo sich das Seitenverhältnis der Ringe ändert.
+- Zug während der Geste: der schnelle Weg nutzt dieselben Vorlagen (kein Sprung), die Zeit ist noch nicht gemessen.

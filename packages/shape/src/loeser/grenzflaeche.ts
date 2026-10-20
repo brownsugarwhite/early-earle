@@ -47,7 +47,7 @@ export type AusgleichsLoeser = {
    * Glättung relativ zur Zielform (S2): Zeilen, Anteil `bezug`, Bedingung des Ziels je Käfigpunkt (−1 = keine; dann aus den
    * Nachbarn gemittelt, `nachbarn` = Käfiggraph)
    */
-  bezug?: { zeilen: readonly NormalZeile[]; anteil: number; ziel: Int32Array; nachbarn: readonly (readonly number[])[] };
+  bezug?: { zeilen: readonly NormalZeile[]; anteil: number; ziel: Int32Array; nachbarn: readonly (readonly number[])[]; hub?: number };
   bedingungen: Bedingung[];
   /** Zeilen der Grenzmatrix (nur Spalten < n) je Bedingung */
   zeilen: { index: Uint32Array; wert: Float64Array }[];
@@ -66,7 +66,17 @@ export type Glaettung = { kaefig: Kaefig; gewicht: number };
  * in den heutigen Bauten kam es nicht vor). Ist die Matrix nicht positiv definit, wird sie leicht gedämpft neu zerlegt
  * (vorher brach der Bau ab).
  */
-export type Glaettemass = { zeilen: readonly NormalZeile[]; nachbarn: readonly (readonly number[])[]; bezug?: number };
+export type Glaettemass = {
+  zeilen: readonly NormalZeile[];
+  nachbarn: readonly (readonly number[])[];
+  bezug?: number;
+  /**
+   * Hub des Bezugs (Plan 20.10., V4, Querschnitt aus der Sichthülle): T ← T + hub · (Ziel − Grenzlage(T)) — der Bezug nähert
+   * den Käfig an, dessen Grenzfläche die Ziele trifft. Ohne Hub liegt die Fläche in Mulden der Ziele außen und auf Wölbungen
+   * innen (Robbe 2,9 px über der Front an der Flanke).
+   */
+  hub?: number;
+};
 
 /**
  * Normalgleichungen Σ w·aᵀa über alle Bedingungen, einmal zerlegt. Mit `glaettung` kommt je Käfigpunkt die Bedingung
@@ -158,7 +168,7 @@ function duennerAusgleich(grenze: DuennMatrix, n: number, bedingungen: readonly 
     bedingungen.forEach((b, q) => {
       if (b.zeile < n && ziel[b.zeile]! < 0) ziel[b.zeile] = q;
     });
-    l.bezug = { zeilen: gm.zeilen, anteil: gm.bezug!, ziel, nachbarn: gm.nachbarn };
+    l.bezug = { zeilen: gm.zeilen, anteil: gm.bezug!, ziel, nachbarn: gm.nachbarn, ...(gm.hub ? { hub: gm.hub } : {}) };
   }
   return l;
 }
@@ -224,6 +234,27 @@ export function kaefigAusgleich(l: AusgleichsLoeser, ziele: Float64Array): Float
       if (!neu.length) break;
       for (const i of neu) bekannt[i] = 1;
       offen -= neu.length;
+    }
+    if (l.bezug.hub) {
+      const hub = l.bezug.hub;
+      const T0 = T.slice();
+      for (let i = 0; i < n; i++) {
+        const b = ziel[i]!;
+        if (b < 0) continue;
+        const { index, wert } = l.zeilen[b]!;
+        let gx = 0;
+        let gy = 0;
+        let gz = 0;
+        for (let p = 0; p < index.length; p++) {
+          const j = 3 * index[p]!;
+          gx += wert[p]! * T0[j]!;
+          gy += wert[p]! * T0[j + 1]!;
+          gz += wert[p]! * T0[j + 2]!;
+        }
+        T[3 * i] = T0[3 * i]! + hub * (T0[3 * i]! - gx);
+        T[3 * i + 1] = T0[3 * i + 1]! + hub * (T0[3 * i + 1]! - gy);
+        T[3 * i + 2] = T0[3 * i + 2]! + hub * (T0[3 * i + 2]! - gz);
+      }
     }
     for (const z of zeilen) {
       let rx = 0;

@@ -57,6 +57,10 @@ export type UmrissOptionen = {
   huelleGewicht?: number;
   /** `blatt`: das höhere Gewicht nur in den beiden Achsen des Blatts, das die Stelle trifft (Front: y, z; Top: x, z) */
   huelleAchsen?: 'alle' | 'blatt';
+  /** Hub des Glättungsbezugs (`Glaettemass.hub`, 0 = heute) */
+  hub?: number;
+  /** Querschnitt aus der Sichthülle: Breitenpunkte aus den Vorlagen der Hülle (Standard an; `false` = ohne) */
+  breite?: boolean;
 };
 
 export type UmrissBericht = {

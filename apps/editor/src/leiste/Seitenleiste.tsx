@@ -1014,6 +1014,14 @@ function AbleitenFeld() {
     else delete aus.glatt;
     s.setzeDokument({ ...s.dok, ausstattung: aus });
   };
+  // V4 (Plan 20.10.): Querschnitt aus der Sichthülle als Ausstattung des Dokuments (ein Undo-Schritt)
+  const setzeQuerschnitt = (huelle: boolean) => {
+    const s = useEditor.getState();
+    const aus = { ...(s.dok.ausstattung ?? {}) };
+    if (huelle) aus.umrisseExakt = true;
+    else delete aus.umrisseExakt;
+    s.setzeDokument({ ...s.dok, ausstattung: aus });
+  };
   // Körper aus dem Mittelebenen-Baum (S5–S7.1): Streifen der Seitenfläche und seitliche Röhren statt der einen Röhre (ein Undo-Schritt)
   const setzeKoerper = (k: 'roehre' | 'teile') => {
     const s = useEditor.getState();
@@ -1069,6 +1077,15 @@ function AbleitenFeld() {
         </button>
       </div>
       <p className="hilfe">Die Ringe liegen fest, seit das Wesen abgeleitet wurde: Kurven, Reifen und Pinsel ziehen denselben Käfig nach, nichts springt. „Neu ableiten“ verteilt die Ringe neu nach den Kurven.</p>
+      {/* Plan 20.10., V4: Querschnitt aus der Sichthülle (Versuch zum Vergleichen; Röhre ohne Maul und Beine) */}
+      <div className="feld">
+        <span>Querschnitt</span>
+      </div>
+      <Chips werte={['heute', 'huelle'] as const} aktiv={dok.ausstattung?.umrisseExakt ? 'huelle' : 'heute'} text={(q) => (q === 'heute' ? 'heute' : 'aus der Hülle (V4)')} attribut="querschnitt" onWahl={(q) => setzeQuerschnitt(q === 'huelle')} gesperrt={gesperrt} />
+      <p className="hilfe">
+        {gesperrt ??
+          '„aus der Hülle“: Jeder Ring wird aus Front und Top an seiner eigenen Stelle geschnitten (nicht die ganze Front in ihn gestaucht), gerundet nur, wo keine Zeichnung die Form vorgibt — mit der Fülle deiner Front, an flachen Enden gar nicht. Gezeichnete Ecken laufen als Kanten auf festen Reihen durch alle Ringe.'}
+      </p>
       {/* Plan 20.10., V0: Versuchsschalter, deren Standard entschieden ist, eingeklappt (neue Wesen: glatt, berühren mittel) */}
       <details className="versuche" data-versuche="">
         <summary>Versuche · Standard: glatt, berühren mittel</summary>
