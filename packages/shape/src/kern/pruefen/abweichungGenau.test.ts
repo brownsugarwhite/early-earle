@@ -1,5 +1,8 @@
 // Plan „Liniennetz, Zielform, Käfig“, S0: Δ genau aus den Silhouettenkanten des Netzes statt aus dem Raster. Tor: genaues
 // Δ ≤ Raster-Δ + 1 px in jedem Blatt (die Lage wird genauer, nicht willkürlich größer).
+// Diese Tests prüfen das Messwerkzeug. Grenzen für die Körper selbst (Δ, Falten, Durchdringungen, Netzlinien, P-Linien),
+// so wie der Editor sie heute baut, prüft seit Plan 20.10., V1 die Extremreihe gegen ihre Grundzahlen (`extremreihe.test.ts`,
+// ganz mit `pnpm --filter @ee/shape test:extrem`).
 import { describe, expect, it } from 'vitest';
 import type { Dokument } from '../../dokument';
 import { ableiten } from '../ableiten';

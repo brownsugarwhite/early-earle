@@ -112,3 +112,15 @@ So wurde am 16.10. die Regression G2 gefunden (Florians Ablauf: neue Kugel → u
 | `kontaktbogen.mjs <spec.json> <aus.png>` | Kontaktbogen aus Bild-Ausschnitten (ohne Server, direkt mit `node`) |
 
 Kern: `kopplungPunkte.test.ts` (Angleichen der Prüfkörper, 325 Zufallsgesten, alte Widersprüche bleiben), `kern/netzSicht.test.ts`. Prüfskripte, die `@playwright/test` laden, müssen im Repo liegen (aus dem Scratchpad findet Node das Paket nicht).
+
+## Nachtrag 20.10.: Plan „Vektorillustration“, V0 und V1
+
+| Skript | misst / zeigt |
+|---|---|
+| `v0-tasten.mjs`, `v0-teile.mjs` (`FAELLE`), `v0-selbstschnitt.mjs`, `v0-bild.mjs` (über `run-check.sh`) | V0: ⌘R/[ ], Klickfang und Doppelbau auf „Teile“, Hinweis bei Selbstschnitt, Bild der Tafel |
+| `v1-extremreihe.ts` (aus `packages/shape` mit `npx vite-node`) | Prüfstand „Extremreihe“: 39 Körper × Röhre/Teile × frisch/Florians Ablauf, gemessen wie der Editor baut (`kern/pruefen/extremMessung.ts`); Tabelle, JSON, Kontaktbogen je Gruppe (Saum, Netzlinien, P-Linien, Zebra); `KOERPER`, `GRUPPEN`, `OHNE_BOGEN=1`, `GRUNDZAHLEN=1` (Grundzahlen für den Test, mit `KOERPER` nur deren Einträge), `HASH=1` (Fingerabdrücke für bitgleiches Aufräumen). Ersetzt `s5-mess.ts` (brach mit seitlichen Streifen ab; Käfiggüte jetzt in `extremMessung.ts`) |
+| `v1-zufallszuege.ts` (aus `packages/shape`) | Zufallsreihe: 200 Züge an Umrissknoten der Extremreihe, gekoppelt wie im Editor; Selbstschnitte nach der Kopplung, Bau scheitert, Umklappen, Sprung am Gestenende; `START`, `ANZAHL` |
+| `v1-ablauf.mjs` (über `run-check.sh`) | Ablauf-Szenarien mit echter Maus und Tastatur: A Kugel → Wurst in kleinen Zügen, B ⌘Z/⇧⌘Z nach eingefügten Punkten, C Körperart umschalten mit Pinsel, D ein Teil kommt und geht, E P-Linien setzen, härten, kreuzen; `SZENARIEN` |
+
+Kern: `kern/pruefen/extremreihe.test.ts` (schnelle Wächter), die ganze Reihe gegen `extremreihe.grundzahlen.json` mit
+`pnpm --filter @ee/shape test:extrem` (≈ 85 s; wöchentlich in CI).

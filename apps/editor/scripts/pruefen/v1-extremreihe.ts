@@ -2,7 +2,8 @@
 // (Röhre, Teile) frisch und in Florians Ablauf (Startkugel eingefroren), gemessen wie der Editor baut (`extremMessen`).
 // Ausgabe: Tabelle (Markdown, je Gruppe), JSON mit allen Werten, Kontaktbogen je Gruppe (Florians Ablauf: Seite, Front,
 // Top mit schwarzer und gelber Linie, Netzlinien, Widerspruch, P-Linien; schräg; Zebra). Umgebung: KOERPER (Komma-Liste),
-// GRUPPEN, OHNE_BOGEN=1, GRUNDZAHLEN=1 (schreibt `extremreihe.grundzahlen.json` für den Test; mit KOERPER/GRUPPEN nur deren
+// GRUPPEN, OHNE_BOGEN=1, HASH=1 bzw. HASH=<datei> (Fingerabdrücke der gezeigten Netze, für bitgleiches Aufräumen),
+// GRUNDZAHLEN=1 (schreibt `extremreihe.grundzahlen.json` für den Test; mit KOERPER/GRUPPEN nur deren
 // Einträge), AUSGABE (Ordner).
 // Aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/v1-extremreihe.ts
 import { execFileSync } from 'node:child_process';
@@ -33,6 +34,7 @@ const FARBE: Record<string, string> = { 'kontur-seite': '#2b50d8', 'kontur-front
 const EIGEN = ['kontur-seite', 'kontur-front', 'kontur-top'];
 
 const alle: ExtremMessung[] = [];
+const hashes: Record<string, Record<string, string>> = {};
 const boegen = new Map<ExtremGruppe, BogenFall[]>();
 const f1 = (x: number) => (Number.isFinite(x) ? x.toFixed(1) : '–');
 const f0 = (x: number) => (Number.isFinite(x) ? x.toFixed(0) : '–');
@@ -52,6 +54,16 @@ for (const k of EXTREMREIHE) {
       }
       const m = r.messung;
       alle.push(m);
+      // Fingerabdruck des gezeigten Netzes und Käfigs (Aufräumen muss bitgleich sein): FNV-1a über die Bytes
+      if (process.env.HASH) {
+        const fnv = (a: ArrayLike<number>, T: Float32ArrayConstructor | Float64ArrayConstructor) => {
+          const b = new Uint8Array(T.from(a as number[]).buffer);
+          let h = 0x811c9dc5;
+          for (let i = 0; i < b.length; i++) h = Math.imul(h ^ b[i]!, 0x01000193) >>> 0;
+          return h.toString(16);
+        };
+        hashes[`${k.name}|${art}|${ablauf}`] = { netz: fnv(r.bau.netz.positionen, Float32Array), kaefig: fnv(r.gezeigt.kaefig.xyz, Float64Array), ...(r.mitLinien ? { linien: fnv(r.mitLinien.bau.netz.positionen, Float32Array) } : {}) };
+      }
       console.log(`${k.name.padEnd(19)} ${art.padEnd(6)} ${ablauf.padEnd(6)} Δ ${f1(m.delta.seite.max)}/${f1(m.delta.front.max)}/${f1(m.delta.top.max)} frei ${f0(m.falten.frei.max)}° (${m.falten.frei.ueber20}) DD ${m.durchdringungen} ${Date.now() - t0} ms${m.fehler ? ` FEHLER ${m.fehler}` : ''}`);
       if (ablauf !== 'kugel' || process.env.OHNE_BOGEN) continue;
       // Kontaktbogen: Florians Ablauf, mit Linien, wenn der Körper welche hat
@@ -142,6 +154,7 @@ for (const gruppe of gruppen) {
 const md = resolve(AUSGABE, 'v1-extremreihe.md');
 writeFileSync(md, zeilen.join('\n') + '\n');
 writeFileSync(resolve(AUSGABE, 'v1-extremreihe.json'), JSON.stringify(alle, null, 1));
+if (process.env.HASH) writeFileSync(resolve(AUSGABE, process.env.HASH === '1' ? 'v1-hashes.json' : process.env.HASH), JSON.stringify(hashes, null, 1));
 console.log(md);
 
 if (process.env.GRUNDZAHLEN) {
