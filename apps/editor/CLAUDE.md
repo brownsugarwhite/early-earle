@@ -312,6 +312,20 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
 ## Fallen (nicht wiederholen)
 
 - **Kern:** Die Poisson-Dicke (`dickeRundBei`) ist schon die halbe Breite an dieser Stelle; nie noch mit sin θ multiplizieren (ergab Linsen statt Körper). Die Naht muss bitgenau bei z = 0 liegen (rechte Hälfte rechnen, linke spiegeln), sonst findet `nahtOrdnen` keine Naht. Die Nahtanteile monoton entlang der Schleife vergeben, nicht per Projektion (Bündelung → Lücken im Ausgleich). Die Schnittgrenzen eines Front-Lappens (Querschnitt liegender Abschnitte) auf die Enden der Front einrasten lassen (3 % der Abschnittshöhe): Front und Seite sind getrennt gezeichnet, sonst fällt eine Deckkante samt Ecken dem Zuschneiden zum Opfer (Kasten 18,9 px statt 0,7, keine Längsfalten). **Maul:** Die Maullinie in Wirbelsäulen-Koordinaten (f, v) führen, nie als 2D-Schnitt mit den Sprossen (am Hinterkopf fächern sie, der Schnitt klemmt auf v = 0, die untere Ringhälfte kollabiert). Der Nahtrundgang muss an einem Hautpunkt starten (die Spitze liegt auf der Lippe), sonst ist der Ausgleich tot. Die Rachenlinie nie hinter das Scharnier legen (die Tasche schwingt beim Öffnen durch). Ober- und Unterlippe geschlossen nicht deckungsgleich lassen (tangentialer Kontakt zählt jede Welle als Durchdringung): Rille. Kontrollpunkte sind keine Grenzlagen: Diagnosen auf den feinen Lagen rechnen.
+- **Plan 20.10., V0 (Fallen aus der Prüfung):**
+  - Merker, die nur für eine Geste gelten, hängen an `useEditor.gesteNr` (jedes `beginGeste` +1), nie am Profil- oder
+    Dokument-Objekt: ⌘Z stellt genau das Objekt des Gestenbeginns wieder her, und ein WeakMap-Merker daran kam mit der
+    nächsten Geste zurück (eingefügte Punkte der Kopplung). Aufräumen am Gestenende über `setzeVorGesteEnde`.
+  - Das Zurückschreiben des eingefrorenen Stands (`kernBau`) nur, wenn Profil **und** eingefrorener Stand noch die des
+    Auftrags sind — sonst schreibt ein laufender Bau in ein inzwischen zurückgenommenes Dokument.
+  - Cache-Schlüssel enthalten nur, was der Bau liest: Der Baum las die Ringe/Enden der Röhre im Schlüssel mit und baute nach
+    jedem Zurückschreiben ein zweites Mal.
+  - Trefferflächen (unsichtbare breite Striche) nie über die schwarze Linie, P-Linien oder Knoten legen: Ziel-basierte
+    Werkzeuge (`closest('[data-kurve]')`) sehen sonst „freie Fläche“ (der Stift begann eine P-Linie). Teile: `TeilTreffer`.
+  - `data-geist` ist der Posen-Geist (B7); die Statuszeile der Körper-Tafel heißt `data-koerper-status`.
+  - Die Versuchsschalter Haut/Fülle liegen eingeklappt in `<details data-versuche>`: Prüfskripte öffnen sie vor dem Klick.
+  - `s5-editor.mjs` gibt es nicht mehr (prüfte den entfernten Geist); der Baum als Körper steht in `s7-editor.mjs`. Neue
+    Prüfungen: `v0-tasten.mjs`, `v0-teile.mjs` (`FAELLE=…`), `v0-selbstschnitt.mjs`, erweitert `netz-e.mjs`, `s8a-editor.mjs`.
 - **vitest 5 zeigt `console.log` bestandener Tests nur mit `--reporter=verbose`** (bei Fehlern immer). Messwerte so lesen: `npx vitest run <datei> --reporter=verbose`.
 - **macOS hat kein `timeout`-Kommando**; lange Läufe über das Werkzeug-Timeout begrenzen. `pnpm -r test` lässt Pakete parallel laufen; die Laufzeit-Tests der Versuche (`kanten`, `flaechenlinie`, `wesen`) reißen dann ihre Schranken (967 ms > 600 ms), einzeln laufen sie durch.
 

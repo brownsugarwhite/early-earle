@@ -135,6 +135,8 @@ for (const fall of faelle) {
   await bilder(fall, 'heute', true);
   // „glatt“ wählen
   v = await page.evaluate(() => window.__editor.netzVersion());
+  // Plan 20.10., V0: die Versuchsschalter liegen eingeklappt unter „Versuche“
+  await page.evaluate(() => document.querySelectorAll('[data-versuche]').forEach((d) => (d.open = true)));
   await page.locator('[data-haut="glatt"]').click();
   await nachBau(v);
   const b = await stand();
@@ -159,8 +161,9 @@ await page.evaluate(() => {
   window.__stores.kernAnzeige.getState().setzeMaul('vorn');
 });
 await page.waitForTimeout(800);
-const hinweis = await page.evaluate(() => [...document.querySelectorAll('.hilfe')].map((e) => e.textContent).find((t) => t?.includes('Glatt wirkt noch nicht')) ?? null);
-pruefe(!!hinweis, `mit Maul: Hinweis in der Tafel (${hinweis ? 'da' : 'fehlt'})`);
+// Plan 20.10., V0: Hinweis in den „Versuchen“, die Chips sind dort gesperrt
+const hinweis = await page.evaluate(() => ({ text: [...document.querySelectorAll('.hilfe')].map((e) => e.textContent).find((t) => t?.includes('Mit Maul oder Beinen gilt hier der heutige Bau')) ?? null, gesperrt: !!document.querySelector('[data-haut="glatt"]')?.hasAttribute('disabled') }));
+pruefe(!!hinweis.text && hinweis.gesperrt, `mit Maul: Hinweis in der Tafel (${hinweis.text ? 'da' : 'fehlt'}), Chips gesperrt (${hinweis.gesperrt})`);
 await browser.close();
 console.log(fehler ? `${fehler} Fehler` : 'alles grün');
 process.exit(fehler ? 1 : 0);

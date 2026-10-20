@@ -1,97 +1,73 @@
-# Übergabe (Stand 17.10.2026 früh: S7.1–S7.4 — der Baum ist mit „Körper: Teile“ der Körper: Zug, P-Linien, Pinsel, Posen)
+# Übergabe (Stand 20.10.2026 abends: Plan „Vektorillustration“ freigegeben, V0 gebaut)
 
-Branch `claude/editor-grundlayout`.
+Branch `claude/editor-grundlayout`, PR mit Auto-Fix; CI grün.
 
 ## Einstieg
 
-Maßgeblich ist der freigegebene Plan
-**[`docs/plans/2026-10-16-liniennetz-zielform-kaefig.md`](plans/2026-10-16-liniennetz-zielform-kaefig.md)** (Befund,
-Florians Klarstellung „3D-Liniennetz = einzige Wahrheit“, Bauweise „Form zuerst, dann der Käfig darüber“, Schritte S0–S8
-mit Toren; Abschnitte **S5-Reste**, **R5 Höhenfeld**, **Klinge**, **S6 im Detail** und **Stand S6**). Vorgeschichte:
-[`docs/plans/2026-10-16-einstieg-falten-wirbelsaeulen-linien.md`](plans/2026-10-16-einstieg-falten-wirbelsaeulen-linien.md).
-Gesamtplan und Kritik-Register bleiben gültig:
-[`docs/plans/2026-10-15-maul-einsatz-harmonie-posen.md`](plans/2026-10-15-maul-einsatz-harmonie-posen.md),
-[`docs/plans/2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md) (neu: „Befunde aus S6“).
+Maßgeblich ist der am 20.10. freigegebene Plan
+**[`docs/plans/2026-10-20-vektorillustration-bedienung.md`](plans/2026-10-20-vektorillustration-bedienung.md)**: ehrliche
+Bestandsaufnahme S0–S8a, Zielbild als Messlatte (Vektorillustration aus einem Liniennetz), Bauweise (Umrisse als
+Käfigschleifen mit Silhouettenbedingung, Linien gleichzeitig, Härte = Rundungsbreite, Loops = Querschnittslinien), Bedienung
+nach Blender (⌘R-Loops, G/S/R, proportional), Schritte V0–V9 mit Toren. Am Ende **„Stand“** mit allem, was V0 gebracht hat,
+und den Korrekturen am Plan. Vorgeschichte: [`2026-10-16-liniennetz-zielform-kaefig.md`](plans/2026-10-16-liniennetz-zielform-kaefig.md)
+(S0–S8a; Nachträge „Stand S6“ und „Stand S8a“ vom 20.10.). Offene Kritik:
+[`2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md) (neu: „Befunde aus S7/S8a und der Prüfung vom 20.10.“,
+„Bedienung 20.10.“).
 
-## Letzter Stand
+Florians Entscheidungen 20.10.: Reihenfolge gemischt; G nach Kontext (Auswahl → Greifen, sonst Pinsel „Ziehen“; S wird
+Skalieren, Spanten/Loops setzt ⌘R); ein Loop setzt echte, formneutrale Knoten in Seite und Top.
 
-Florians Auftrag (16.10. nachts): „Mach so weiter wie es die beste Reihenfolge für dich ist. Hauptsache am Ende geht alles
-sauber. Suche immer nochmal nach eleganteren Möglichkeiten.“ Gewählte Reihenfolge: R5 Höhenfeld → dünne Kanten → S6 → S7 → S8.
+## Letzter Stand: V0 „Aufräumen, Fallen, Rückschritte“ gebaut (Abnahme offen)
 
-- **S0–S5 und S5-Reste** gebaut (Kragen statt Sehne, Flossen-Paare über denselben Rumpfringen; Florian zu S4: „Die
-  Einordnung passt.“).
-- **R5 Höhenfeld:** als Versuch gebaut, nicht Standard (Schalter `hebung: 'feld'`). Glatter an Vase und Drache, vorn 3–7 px
-  ungenauer an Giraffe, Ente und Fisch.
-- **Dünne Kanten als Klinge** (Standard im Baum `klinge: 0.4`): schmale Linsen-Ringe bekommen eine scharfe Naht, dünne Enden
-  eine scharfe Kappenspalte (Entenschwanz 53 → 4°, Fisch-Spitzen 118 → 33°).
-- **S6 seitliche Teile** (Schalter `paare`, im Editor-Geist an; Abnahme offen; Stand mit Tabelle auf der Planseite):
-  - Jedes Paar (Flügel, Beine, Brustflossen, zweiter Hals) ist eine Röhre entlang seiner Achse, angesetzt über ein Fenster
-    in der Rumpfhaut genau auf seinem Fußabdruck. Die Säume liegen im Löser auf dem gezeichneten Umriss, gezeichnete Ecken
-    an der Spitze werden scharf.
-  - Zeigt nur eine Ansicht das Teil (Entenflügel nur im Top), nimmt es Lage und Dicke aus dem Überschuss der Front über den
-    Rumpf: Die Flanken der Enten-Glocke sind die Flügel.
-  - Ente Top 37,4 → 1,7 px, frei/Ansatz/Kappe 17,5/15,4/4,1°; Fisch Front/Top 42,6 → 3,5/2,9 px; Vierbeiner Front 52 →
-    16 px, Ansatz 19,9° (Kehle an Bein und Hals); Zweihals Seite 3,4 px (Kopf da), Ansatz 14,8°. 0 Durchdringungen, ohne
-    Paare bitgleich.
-  - **Nicht erreicht** (Wege im Kritik-Register): Ente Front 7,8 px (untere Glockenflanken, Rumpf mit „mittel“), einfache
-    Form (Stacheln sind ein großer Teil des Körpers), Zweihals Top 27 px (Brust zwischen den Hälsen: Rumpf oder Hals?),
-    Fisch 290–346 ms.
-  - Bilder: [`s6-seitenteile-2026-10-16.jpg`](progress/editor/s6-seitenteile-2026-10-16.jpg) (je Körper ohne | mit
-    seitlichen Teilen, mit Zebra-Nahansicht am Ansatz), [`s6-editor-geist-2026-10-16.jpg`](progress/editor/s6-editor-geist-2026-10-16.jpg).
-- **S7.1 (17.10. früh, Florian: „Versuche mal noch weiter zu machen, so weit du kommst“; Plan „S7 im Detail“):** Mit Tafel
-  Körper → „Teile“ ist der Baum mit seitlichen Teilen **der Körper** im Editor (Earle-Look über `baumDeskriptoren`, Atlas, Δ,
-  Saum, Liniennetz vom Baum; kein Geist mehr). Während einer Geste folgt die Röhre dem Zug, am Gestenende kommt der Baum
-  (bis S7.2). Pinsel, Augen, Reifen, Maul und Zähne wirken noch auf die Röhre und sind auf dem Baum aus (S7.3). Prüfung
-  `apps/editor/scripts/pruefen/s7-editor.mjs` grün; Bild [`s7-baum-als-koerper-2026-10-17.jpg`](progress/editor/s7-baum-als-koerper-2026-10-17.jpg).
-- **S7.2 (gebaut):** Während eines Zugs bleibt der Baum der Körper: Der Käfig des letzten genauen Baus folgt der Zeichnung
-  über Mittelwert-Koordinaten der Seitenlinie und die Breitenverhältnisse aus Front und Top (`baumZiehen` in
-  `kern/wesen.ts`), am Gestenende genauer Neubau. Zug 24–62 ms; der Baum-Körper überspringt Netz, Look und Δ der
-  unsichtbaren Röhre. `s7-editor.mjs` zieht einen Seitenknoten (alle Zwischenstände Baum, Undo bitgleich).
-- **S7.4 (gebaut):** P-Linien (`dok.kanten`) als Treppenfalte auf dem Baum (`kern/grundkoerper/baumKanten.ts`): nächster
-  Käfigpunkt je Linienpunkt, kürzester Weg im Käfig über Streifen und Ansätze, Härte als Schärfe, gespiegelt. Ente, Linie
-  über den Halsansatz: Knick 36,7° gegen 43,6° auf der Röhre (84 %); genau auf der Linie erst mit S8.
-- **S7.3 Pinsel (gebaut):** Treffer auf dem Baum-Käfig, eigene Versätze `kaefig.baumDeltas` mit Ruhelage `lage` (nach einem
-  Umbau trifft das Delta den Punkt an dieser Stelle), ohne Umbau angewandt; die Röhren-Deltas bleiben unberührt.
-  `s7-editor.mjs` mit Pinselstrich grün.
-- **S7.3 Posen (gebaut):** Form je Pose für den Baum (`pose.baum`: Ruhe-Deltas mit Ruhelage, Bezug), Gewichte mischen,
-  Pinsel, Glätten und Zurücksetzen in der Pose schreiben sie; Knochen gibt es auf dem Baum nicht (kein Maul auf Teilen).
-- **Augen (gebaut):** gewählt wie auf der Röhre (Ring und Winkel bzw. gesetzter Punkt), auf die Haut des Baums gelegt;
-  Augapfel auf dem Baum als Glubschauge (die Höhle braucht den Röhren-Käfig).
-- **Noch nicht auf dem Baum:** Reifen, Maul, Zähne (Maul auf Teilen = Teil A), „Formen folgen“ nach dem Pinsel (die Umrisse
-  bleiben nach einem Strich, wie sie sind; Weg: Profile an die Silhouette, Baum-Deltas als Differenz zum neuen Baum).
-- Prüfungen: Kern-Tests `baumBau.test.ts` (neu: „S6 seitliche Teile“ für Ente, Fisch, Zweihals), `baumKaefig.test.ts`
-  (Fenster-Topologie); Skripte `apps/editor/scripts/pruefen/s5-bogen.ts` (Δ mit gebauten Paaren ohne Ausnahme),
-  `s5-editor.mjs` (`SEITEN=ente:1,fisch:1,vierbeiner:2,zweihals:1`). `pnpm typecheck` grün, Kern-Tests 452/453 (ein
-  Tempo-Test nur unter Parallellast rot, einzeln grün), Lint ohne Fehler.
+Je Korrektur ein Test, der vorher rot war; Editor-Prüfungen mit echten Zügen auf dem eigenen Vite (5192). Commits
+`155e07e0` … `8ce23fbe`.
+- **Tasten:** ⌘R lädt nicht mehr neu (Menü „Neu laden“ = ⇧⌘R), Warnung beim Verlassen mit Ungespeichertem (Web); [ ] auch
+  als ⌥5/⌥6.
+- **Kopplung:** ⌘Z bringt eingefügte Punkte nicht zurück; höchstens zwei Punkte je Geste und Ansicht; überflüssige nimmt
+  das Gestenende heraus; ein Punkt mit dem Stift gleicht alte Widersprüche nicht still an; hin und zurück = kein
+  Undo-Schritt; Maulzüge behalten die Spant-Teilung.
+- **Teile:** kein Klickfang der Wirbelsäulen an Teilspitzen; der Baum wird je Geste einmal gebaut; Seitenknoten an Beinen und
+  Flügeln liegen am Teil; Reifen/Spanten auf „Teile“ geben einen Hinweis; Umschalten Röhre ↔ Teile sagt, was auf der anderen
+  Art liegt; Δ/Saum am gepinselten Baum; toter S5-Geist entfernt.
+- **Bau:** frische Ringwahl mit Rückfall (Stadionform 138 → 6°); „berühren“ stetig um × 1,35 auf der Röhre; Baum-Wachstum je
+  Streifen; Löser ohne stilles „gegen 0“; Prüfwesen der Library wie ein neues Wesen (glatt + mittel).
+- **P-Linien (S8a):** Kreuzungen schaukeln nicht mehr auf (24 → 1 px), kurze Linien werden scharf, Linien ohne Reihe/Ring
+  behalten die Treppe; die Kantenliste zeigt je Linie „genau“ oder „Treppe“.
+- **Tafel Körper:** „Körper: Röhre | Teile“ oben mit ehrlichem Text; Haut und Fülle eingeklappt unter „Versuche“ und
+  ausgegraut, wo sie nicht wirken. „Neu ableiten“ ist ein Undo-Schritt.
+- **Ehrlich:** verfehlte Tore als bekannt rot (`it.fails`): S5/S6 ≤ 20°, S3 einfache Form ≤ 2 px, S8a Kante ≤ 0,5 px;
+  Klingenkanten zählen im Faltenmaß mit (131–164°); Selbstschnitte im Blatt-Titel („Umriss schneidet sich“).
+- **Korrekturen am Plan:** Stadionform klappt in deinem Ablauf aus der Kugel nicht um (nur frische Ringwahl, behoben);
+  Augen per Klick gehen auf dem Baum; die Kappe ist nicht die Ursache des Enten-Rückschritts (es ist die eingefrorene
+  Ringverteilung der Kugel — „Neu ableiten“ hilft).
 
-## Entschieden (16.10.)
+## Für Florian zum Ausprobieren (nach dem Pull den Dev-Server neu starten)
 
-- „glatt“ und „Umrisse berühren: mittel“ sind Standard für neue Wesen.
-- **P-Linien als echte Kanten** (Florian, abends; Planseite S7/S8): Reihenfolge bleibt — S8 „P-Linien als echte Kanten
-  (Linien exakt)“ nach S7, in Klartext mit seinem Ablauf (P zeichnen, ⇧W Härte, ⌥-Ecke für den Winkel, Bearbeiten in allen
-  Ansichten und auf der Bühne, Posen) und zehn Toren. Bis dahin **kein Rückschritt**: Auf mehrteiligen Körpern wirken
-  P-Linien in S7 mindestens wie heute als Treppenfalte (je Streifen und über die Ansätze).
+1. ⌘R im Editor: lädt nicht neu (Hinweis bzw. Reifen am Zeiger). [ und ] (⌥5/⌥6) ändern den Pinselradius.
+2. Einen Umrissknoten so ziehen, dass die Kopplung der Front einen Punkt einfügt, dann ⌘Z und einen kleinen Zug: Der Punkt
+   kommt nicht zurück. Zug hin und zurück: kein Undo-Schritt.
+3. Körper „Teile“: mit dem Stift an einer Teilspitze (Kopf) auf die schwarze Linie klicken → neuer Punkt. Tafel Körper lesen
+   (was wirkt, was nicht); Versuche aufklappen.
+4. Eine Wurst/Hals-Form („Neu ableiten“): klappt nicht mehr um.
+5. P-Linien: Kantenliste zeigt „genau“ bzw. „Treppe“; zwei gekreuzte Linien liegen jetzt auf ihren Kreuzungen.
+6. Einen Seitenumriss über Kreuz ziehen: Blatt-Titel „Umriss schneidet sich“.
 
 ## Offen für Florian
 
-- **Den Geist mit seitlichen Teilen ansehen** (Tafel Körper → „Teile (Geist)“), am besten an eigenen Wesen mit Flügeln oder
-  Beinen. Nach dem Pull den Dev-Server neu starten.
-- **Entenflügel:** Die Front-Glocke macht die Flügel zu dicken Lappen an den Flanken (so trifft der Körper Top und Front).
-  Passt das, oder sollen Flügel, die die Front nicht eigens zeigt, flach bleiben?
-- **Einfache Form:** Stacheln als Paar bauen (heute: große Lappen, Ansatz 36°) oder in den Rumpf nehmen (Top 77 px wie S5)?
-- **Dünne Kanten:** Klinge als Standard ok?
-- Überhang (Kopf als eigener Streifen, Gabel oder Querschnitt aus der Sichthülle), mehrdeutige Ausbuchtungen, „Angleichen“.
-
-## Nächster Schritt
-
-Florians Blick auf den Körper aus Teilen an eigenen Wesen (Tafel Körper → „Teile“), dann S7.5 Standard und „Formen folgen“
-auf dem Baum; danach S8. Wochenlimit stand am 16.10. spätnachts bei 99 %.
+- Abnahme V0 (oben); danach **V1 Prüfstand „Extremreihe“** (rund 30 Körper über deinen Ablauf, Kontaktbögen, Aufräumen
+  bitgleich).
+- Weiter offen (mit Vergleichsbild, wenn der Schritt sie braucht): Entenflügel flach oder Schale an der Glockenflanke (V7);
+  dünne Kanten Klinge oder rund; einfache Form — Stacheln als Paar oder im Rumpf; Überhang (Kopf als Teil mit Kragen oder
+  Y-Stück).
 
 ## Arbeitsregeln
 
-- Ein Schritt nach dem anderen; nach jedem Schritt Kontaktbogen + Editor-Bild. Keine Meldung „fertig/bestanden“ ohne
-  Florian; nach drei gemessenen Fehlanläufen an derselben Stelle anhalten.
-- Mit Florians Ablauf testen (neue Kugel → umformen → Maul; `KUGEL0=1`); sichtbare Falten über 20° sind Fehler; immer
-  sagen, was im Editor ist und was nur im Kern. Florian nach dem Pull: Dev-Server neu starten.
-- Eigener Vite auf 5192 (`run-check.sh`) bzw. eigene Ports, nie Florians 5180. Nie `assets/fonts/Hippie Movement.otf` committen.
+- Ein Schritt nach dem anderen; nach jedem Schritt Kontaktbogen + Editor-Bild und Halt. Keine Meldung „fertig/bestanden“
+  ohne Florian; nach drei gemessenen Fehlanläufen an derselben Stelle anhalten.
+- Jede Korrektur mit einem Test, der vorher rot ist (Gegenprobe mit dem alten Code); verfehlte Tore als `it.fails` mit
+  Registereintrag, nie still gelockert.
+- Mit Florians Ablauf testen (Kugel → umformen → …): `mitStationenVon` im Kern, echte Züge im Editor. Immer sagen, was im
+  Editor ist und was nur im Kern.
+- Eigener Vite auf 5192 (`apps/editor/scripts/pruefen/run-check.sh`), nie Florians 5180; neue Prüfskripte `v0-*.mjs`.
+  Nie `assets/fonts/Hippie Movement.otf` committen.
 - Nach jedem Teilschritt committen und pushen; diese Datei am Ende jedes Blocks überschreiben.

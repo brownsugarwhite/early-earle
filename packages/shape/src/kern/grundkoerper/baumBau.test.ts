@@ -153,7 +153,8 @@ describe('S6 seitliche Teile', () => {
     const r = b.seiten[0]!.ringe;
     for (const q of r) expect(q.r2).toBeLessThan(0.3 * q.r1);
     for (const q of r) expect(Math.abs(q.mitte[1] - r[0]!.mitte[1])).toBeLessThan(1e-9);
-    // Messwerte 17.10. als Grenze (frei 27,2°, Ansatz 24,5° an Wurzel und Spitze des dünnen Flügels)
+    // Messwerte 17.10. als Schutz gegen Rückschritte (frei 27,2°, Ansatz 24,5° an Wurzel und Spitze des dünnen Flügels) —
+    // KEIN Tor: Das Tor ≤ 20° ist verfehlt und steht unten als bekannt rot (Plan 20.10., V0: vorher still gelockert)
     expect(z.frei.max).toBeLessThan(30);
     expect(z.ansatz.max).toBeLessThan(26);
     expect(d.top.max).toBeLessThan(3);
@@ -175,5 +176,16 @@ describe('S6 seitliche Teile', () => {
     for (const r of b.seiten[0]!.ringe) expect(r.mitte[2] * 461).toBeGreaterThan(20);
     expect(z.frei.max).toBeLessThan(20);
     expect(z.ansatz.max).toBeLessThan(25);
+  });
+
+  // Plan 20.10., V0 „ehrliche Tore“: Die Grenzen in den Tests oben sind Messwerte gegen Rückschritte. Das Tor von S5/S6 war
+  // freie Haut und Ansätze ≤ 20° — verfehlt (Kritik-Register „Befunde aus S6“); es steht hier als bekannt rot. Wird es grün,
+  // schlägt `it.fails` an: dann zum normalen Test machen.
+  it.fails('Tor S5/S6: freie Haut und Ansätze ≤ 20° (bekannt rot: Ente, Fisch, Giraffe, Zweihals)', () => {
+    for (const name of ['ente', 'fisch', 'giraffe-bauch', 'zweihals']) {
+      const { z } = mitPaaren(name);
+      expect(z.frei.max, `${name} frei`).toBeLessThanOrEqual(20);
+      expect(z.ansatz.max, `${name} Ansatz`).toBeLessThanOrEqual(20);
+    }
   });
 });

@@ -670,3 +670,51 @@ Knoten in Seite und Top.
   Mitte) und „Proportional Editing“ (Rad/Bild↑↓ während der Transformation, ⇧O Abfall, ⌥O nur verbunden).
 - Levin: Interpolating Nets of Curves by Smooth Subdivision Surfaces (SIGGRAPH 1999); Biermann, Levin, Zorin:
   Piecewise-smooth Subdivision Surfaces with Normal Control (SIGGRAPH 2000) — Kurven genau treffen, Normalen vorgeben.
+
+## Stand
+
+### V0 „Aufräumen, Fallen, Rückschritte“ — gebaut (20.10. nachmittags/abends; Abnahme offen)
+
+Je Korrektur ein Test, der vorher rot war (Gegenprobe mit dem alten Code), dazu Editor-Prüfungen mit echten Zügen auf dem
+eigenen Vite (5192). Commits `155e07e0` … `8ce23fbe`.
+
+| Punkt | Was jetzt gilt | Prüfung |
+|---|---|---|
+| ⌘R-Falle, [ ] | ⌘R/⌃R laden nicht mehr neu (Menü „Neu laden“ auf ⇧⌘R), Warnung beim Verlassen mit Ungespeichertem (Web); [ ] auch mit ⌥ (deutsche Tastatur), Ring folgt sofort | `v0-tasten.mjs` |
+| Kopplung | Rückgängig bringt eingefügte Punkte nicht zurück (Merker je Geste, `gesteNr`); höchstens zwei Punkte je Geste und Ansicht; überflüssige Punkte nimmt das Gestenende heraus; ein Punkt mit dem Stift gleicht alte Widersprüche nicht still an; Zug hin und zurück ändert nichts und gibt keinen Undo-Schritt; Maulzüge behalten die Spant-Teilung | `kopplungPunkte.test`, `netz-e.mjs` |
+| Teile: Klickfang | Wirbelsäulen fangen keine Klicks über der schwarzen Linie (an Teilspitzen begann der Stift vorher eine neue P-Linie) | `v0-teile.mjs` |
+| Teile: Doppelbau | Baum wird nach dem Zurückschreiben der Teile nicht ein zweites Mal gebaut (Schlüssel = was er liest); Teile einmal je Bau erkannt | `baumKoerper.test`, `v0-teile.mjs` |
+| Seitenknoten | an Beinen, Flügeln, zweitem Hals am richtigen 3D-Punkt (Vierbeiner 27,9 → 3,1 px, Flügel oben 74,6 → 4,7 px neben der Haut) | `netzSicht.test`, `v0-teile.mjs` |
+| Bedienung | „Neu ableiten“ ist ein Undo-Schritt (und ein laufender Bau schreibt nicht mehr in ein zurückgenommenes Dokument); Reifen/Spanten auf „Teile“ geben einen Hinweis; Umschalten Röhre ↔ Teile sagt, was auf der anderen Art liegt | `v0-teile.mjs` |
+| Faltenmaß | Klingenkanten zählen mit (vorher ausgenommen): Messerkante dünner Teile 131–164° in der Zone Kante | `baumBau.test` |
+| Stadionform | frische Ringwahl mit Rückfall (gestuft, nur wenn er repariert): Stadion 5:1 138 → 6°, 11:1 155 → 18°; alles andere bitgleich | `ringwahl.test` |
+| CI | Zeitgrenzen auf CI × 2 (lokal unverändert), Editor-Tests 30 s Frist; CI grün | CI |
+| S8a | Kreuzungen schaukeln nicht mehr auf (24,2 → 1,0 px); kurze Linien werden scharf (0 → 66 %); Linien ohne Reihe/Ring behalten die Treppe; Naht bleibt in der Ebene; Bericht je Linie im Netz und in der Kantenliste („genau“ / „Treppe“), mehrere Linien ehrlich „noch näherungsweise“ | `linienExakt.test`, `s8a-editor.mjs` |
+| S2/S3 | Prüfwesen der Library wie ein neues Wesen (glatt + mittel); „berühren“ auf der Röhre stetig um × 1,35 (Käfigsprung 36 → 14 px), Baum hart bis V7 und Wachstum je Streifen; Löser ohne stilles „gegen 0“ und ohne Abbruch bei nicht positiv definit | `fuelle.test`, `normalSystem.test`, `s2-/s3-editor.mjs` |
+| Teile ehrlich, Tafel | Tafel Körper: „Körper“ oben mit ehrlichem Text, Versuche (Haut, Fülle) eingeklappt und auf „Teile“/mit Maul ausgegraut; Δ/Saum am gepinselten Baum; toter S5-Geist entfernt | `s7-editor.mjs`, `posen-b7.mjs` |
+| Ehrliche Tore | als bekannt rot (`it.fails`): S5/S6 ≤ 20°, S3 einfache Form ≤ 2 px, S8a Kante ≤ 0,5 px | Kern-Tests |
+| Selbstschnitte | Wächter über alle Prüfkörper; im Editor „Umriss schneidet sich“ im Blatt-Titel | `profilSelbstschnitt.test`, `v0-selbstschnitt.mjs` |
+
+**Korrekturen an diesem Plan (gemessen bei der Arbeit):**
+- **Stadionform:** In deinem Ablauf (Startkugel → umformen) klappt sie **nicht** um (5:1: 6°) — die Kugel friert eine fast
+  gleichmäßige Ringverteilung ein. Nur frische Ringwahl brach („Neu ableiten“, Laden ohne Stationen, Prüfwesen); das ist
+  behoben. Offen bleiben die sehr dünne Stadionform (11:1: Kappe 112° im Ablauf) und der Würfel mit echten Ecken (frisch
+  179°, gestuft 68°; im Ablauf 20°/Kappe 25°) — beides mit den Kappen in V4. Der „Stift mit Ecken an den Übergängen“ ist
+  sauber (6°); meine Zahl 179° vom Vormittag kam von einem anderen Aufbau.
+- **Augen per Klick auf dem Baum** gehen (gesetzter Punkt liegt an der Flügelspitze < 2 px) — die Vermutung aus der
+  Code-Prüfung stimmte nicht; ein Test wacht darüber.
+- **Kappe mit dem gewachsenen Endring** ist nicht die Ursache des Enten-Rückschritts; Ursache ist die eingefrorene
+  Ringverteilung der Kugel (Ente frisch Front 2,8 px, aus der Kugel 14,3 px). „Neu ableiten“ hilft jetzt ohne
+  Umklapp-Risiko; die Dauerlösung ist die Ringverteilung nach Front/Top (V4) und Loops (V6).
+- **`kantenFlaeche`** scheiterte auf CI zuletzt nicht mehr; die Vermutung „Testpunkt auf der Silhouette“ stimmte nicht.
+- **Löser-Bezug „gegen 0“** kam in den heutigen Bauten nie vor (0 von 41) — abgesichert, ohne Wirkung auf die Körper.
+- **„berühren“ während des Zugs neu rechnen** entfällt: V4 ersetzt „berühren“ durch Umrisse als Käfigschleifen; der stetige
+  Übergang halbiert die Sprünge schon jetzt.
+
+**Neu gefunden (im Kritik-Register):** Die Röhre wird nach jeder Geste ein zweites Mal gebaut, weil die eingefrorenen Enden
+(G2) nach dem Bau neu verankert werden — ein mögliches Nachrutschen nach dem Loslassen (in V1 messen). Die Kopplung ohne
+Einfügen ist an einer Stelle empfindlich (Vierbeiner: 0,04 px Unterschied → 47 px anderes Ergebnis); mit Einfügen, wie im
+Editor, gelöst. Ein Kern-Test (`ringEinpassen` „Kugel, schräg“) war einmal unter Volllast rot und ließ sich nicht
+wiederholen.
+
+**Nächster Schritt:** dein Blick auf V0 (Testanleitung in der Übergabe), dann V1 Prüfstand „Extremreihe“.

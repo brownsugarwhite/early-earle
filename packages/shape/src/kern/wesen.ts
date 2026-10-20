@@ -23,7 +23,7 @@ import { ABWEICHUNG_PX, blattAbweichungen } from './abweichung';
 import { erreichbarkeit } from './grundkoerper/huelle';
 import { type NetzSicht, netzSicht } from './netzSicht';
 import { type TeilAnzeige, teilAnzeige } from './grundkoerper/teilAnsicht';
-import { type BaumAbleitung, baumAbleiten, baumDreiecke } from './grundkoerper/baumBau';
+import { type BaumAbleitung, baumAbleiten } from './grundkoerper/baumBau';
 import { type Teilbaum, teilbaum } from './grundkoerper/teilbaum';
 import { type LinienBericht, linienExakt } from './netz/linienExakt';
 import { baumDeskriptoren } from './grundkoerper/baumDeskriptoren';
@@ -87,8 +87,6 @@ export type { ZonenVorlage } from '../dokument';
  * (Structured Clone), damit der Worker ihn bekommt.
  */
 export type Bauplan = Ausstattung & {
-  /** S5-Geist (Baum durchscheinend über dem Körper) zusätzlich bauen; seit S7.1 ist der Baum mit `koerper: 'teile'` der Körper */
-  geist?: boolean;
   /** Maul-Lage (Ausstattung oder Chip) */
   maul: MaulArt;
   /**
@@ -292,11 +290,6 @@ export type WesenNetz = {
    */
   teile: TeilAnzeige | null;
   /**
-   * S5 „Mittelebenen-Baum“ (Ausstattung `koerper: 'teile'`): der Körper aus Streifen der Seitenfläche als Geist (Dreiecke ohne
-   * Index, Profil-Einheiten), mit Zahl der Streifen und Bauzeit; nur im genauen Bau, ohne Maul und Beine. Sonst null.
-   */
-  geist: { positionen: Float32Array; normalen: Float32Array; streifen: number; seiten?: number; ms: number; fehler?: string } | null;
-  /**
    * S7.1: Der Baum ist der Körper (Ausstattung `koerper: 'teile'`, ohne Maul und Beine, im genauen Bau): Zahl der Streifen und
    * seitlichen Röhren, Bauzeit, Fehler (dann zeigt das Netz die Röhre). Während Gesten null (die Röhre folgt dem Zug).
    */
@@ -321,8 +314,6 @@ export type WesenStand = {
   randMarken?: WesenNetz['randMarken'];
   netzSicht?: NetzSicht | null;
   teile?: TeilAnzeige | null;
-  /** S5: zuletzt gebauter Geist (Schlüssel: Bauschlüssel und eingefrorene Teile) */
-  geist?: { schluessel: string; netz: NonNullable<WesenNetz['geist']> };
   /** S7.1: zuletzt gebauter Baum-Körper (Schlüssel wie der Geist, dazu Look und Zonen) */
   /**
    * S7: Baum-Körper des letzten genauen Baus. `schluessel` = `basis` + Ergebnis der Teilerkennung (nicht der eingefrorene Stand
@@ -1353,6 +1344,12 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
       let bn = baumNetz;
       const bDeltas = dokRoh.kaefig?.baumDeltas ?? [];
       if (bDeltas.length) kaefigB = baumDeltasAuf(kaefigB ?? bn.zug.xyz, bn.zug.xyz, bn.spiegel, bDeltas);
+      // Δ und Saum am gepinselten Baum (Grundform mit Pinsel, ohne Pose) im genauen Bau (Plan 20.10., V0 — vorher am
+      // ungepinselten Netz: der Blatt-Titel zeigte die Abweichung eines Körpers, den es nicht mehr gab)
+      if (!schnell && bDeltas.length && kaefigB) {
+        const bl = blattAbweichungen(punkteVon(anwenden3(bn.zug.grenze, kaefigB)), bn.zug.flaechen, dok, 240);
+        bn = { ...bn, saum: { seite: bl.seite.saum, front: bl.front.saum, top: bl.top.saum }, blatt: { seite: { max: bl.seite.max, mittel: bl.seite.mittel }, front: { max: bl.front.max, mittel: bl.front.mittel }, top: { max: bl.top.max, mittel: bl.top.mittel } } };
+      }
       // S7.3 Posen auf dem Baum: Form je Pose (`pose.baum`) auf die Punkte dieses Käfigs umgehängt, Bezug nur bei gleicher
       // Punktzahl; ohne Knochen (kein Maul auf Teilen) mischen die Gewichte die Formen
       let bearbeitungB: PoseBearbeitung | null = null;
@@ -1462,7 +1459,6 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
         randMarken: null,
         netzSicht: bn.netzSicht,
         teile: teileB,
-        geist: null,
         koerperBaum,
         umweg: null,
         info: {
@@ -1715,25 +1711,6 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
       top: { max: bl.top.max, mittel: bl.top.mittel, widerspruch: er.top.max },
     };
   }
-  // S5: Mittelebenen-Baum als Geist — seit S7.1 nur noch, wenn ausdrücklich verlangt (`Bauplan.geist`)
-  let geistStand = stand?.geist;
-  let geist: WesenNetz['geist'] = null;
-  if (plan.koerper === 'teile' && plan.geist && maul === 'aus' && beine === 'aus') {
-    const gSchluessel = JSON.stringify({ s: schluessel, t: dok.kaefig?.stationen?.teile ?? null });
-    if (!geistStand || (geistStand.schluessel !== gSchluessel && !schnell)) {
-      const t0 = jetzt();
-      try {
-        // S6: mit seitlichen Teilen (Flügel, Beine, Brustflossen als Röhren); Wesen ohne Paare bleiben bitgleich
-        const b = baumAbleiten(dok, { paare: true });
-        const d = baumDreiecke(b);
-        geistStand = { schluessel: gSchluessel, netz: { ...d, streifen: b.ebene.streifen.length, seiten: b.seiten.length, ms: jetzt() - t0 } };
-      } catch (err) {
-        geistStand = { schluessel: gSchluessel, netz: { positionen: new Float32Array(0), normalen: new Float32Array(0), streifen: 0, ms: jetzt() - t0, fehler: err instanceof Error ? err.message : String(err) } };
-      }
-    }
-    // Kopie: Puffer im Netz werden übertragen, der Stand behält seine
-    geist = { ...geistStand.netz, positionen: geistStand.netz.positionen.slice(), normalen: geistStand.netz.normalen.slice() };
-  } else geistStand = undefined;
   // Lippenkanten gegen die Linien (Phase 2 M2): px je Kette in Seite und Front
   const maulAbw = ruheAlt ? ruheAlt.maulAbw : maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul && maulLinieVerwendet ? maulAbweichung(abl as MaulErgebnis, dok, maulLinieVerwendet) : undefined;
   const info: WesenInfo = { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0, ...(blatt ? { blatt } : {}), ...(maulAbw ? { maul: maulAbw } : {}), ...(linienGenau && linienStand ? { linien: linienStand.berichte } : {}), stationen: abl.gefroren && teile ? { ...abl.gefroren, teile: teile.gefroren } : abl.gefroren };
@@ -1975,12 +1952,11 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     randMarken,
     netzSicht: netz3,
     teile,
-    geist,
     koerperBaum,
     umweg,
     info,
   };
-  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(randMarken ? { randMarken } : {}), ...(netz3 ? { netzSicht: netz3 } : {}), ...(teile ? { teile } : {}), ...(geistStand ? { geist: geistStand } : {}), ...(baumStand ? { baum: baumStand } : {}), ...(linienStand ? { linien: linienStand } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}), ...(zugGrundlage ? { zugGrundlage } : {}) } };
+  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(randMarken ? { randMarken } : {}), ...(netz3 ? { netzSicht: netz3 } : {}), ...(teile ? { teile } : {}), ...(baumStand ? { baum: baumStand } : {}), ...(linienStand ? { linien: linienStand } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}), ...(zugGrundlage ? { zugGrundlage } : {}) } };
 }
 
 /**
@@ -1998,7 +1974,7 @@ export function zugStencil(stand: WesenStand | null, dreieck: number, flaeche: n
 export function netzPuffer(netz: WesenNetz): ArrayBuffer[] {
   const out: ArrayBuffer[] = [netz.positionen.buffer as ArrayBuffer, netz.normalen.buffer as ArrayBuffer];
   const tr = netz.treffer;
-  for (const a of [netz.deskriptoren, netz.kaefigLinien, netz.kaefigFarben, netz.ruhe, netz.zaehne?.positionen, netz.zaehne?.normalen, netz.zaehne?.anteil, netz.zaehne?.zahn, netz.zaehne?.fleisch.oben, netz.zaehne?.fleisch.unten, netz.zaehne?.fleisch.uOben, netz.zaehne?.fleisch.uUnten, netz.atlas?.ecken, netz.atlas?.abstand, netz.atlas?.weich, tr?.dreieckFlaeche, tr?.flaecheVon, tr?.eckenUV, tr?.eckenZahl, tr?.kaefig.xyz, tr?.kaefig.fStart, tr?.kaefig.fVerts, netz.reifen?.ringLagen, netz.reifen?.verlauf, netz.reifen?.verlaufStart, netz.gewichtFarben, netz.geist?.positionen, netz.geist?.normalen]) {
+  for (const a of [netz.deskriptoren, netz.kaefigLinien, netz.kaefigFarben, netz.ruhe, netz.zaehne?.positionen, netz.zaehne?.normalen, netz.zaehne?.anteil, netz.zaehne?.zahn, netz.zaehne?.fleisch.oben, netz.zaehne?.fleisch.unten, netz.zaehne?.fleisch.uOben, netz.zaehne?.fleisch.uUnten, netz.atlas?.ecken, netz.atlas?.abstand, netz.atlas?.weich, tr?.dreieckFlaeche, tr?.flaecheVon, tr?.eckenUV, tr?.eckenZahl, tr?.kaefig.xyz, tr?.kaefig.fStart, tr?.kaefig.fVerts, netz.reifen?.ringLagen, netz.reifen?.verlauf, netz.reifen?.verlaufStart, netz.gewichtFarben]) {
     if (a && !out.includes(a.buffer as ArrayBuffer)) out.push(a.buffer as ArrayBuffer);
   }
   return out;

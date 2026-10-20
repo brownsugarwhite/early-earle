@@ -117,6 +117,8 @@ for (const fall of faelle) {
   let vorher = a;
   for (const stufe of (process.env.STUFEN ?? 'mittel,genau').split(',')) {
     v = await page.evaluate(() => window.__editor.netzVersion());
+    // Plan 20.10., V0: die Versuchsschalter liegen eingeklappt unter „Versuche“
+    await page.evaluate(() => document.querySelectorAll('[data-versuche]').forEach((d) => (d.open = true)));
     await page.locator(`[data-fuelle="${stufe}"]`).click();
     await nachBau(v);
     const b = await stand();

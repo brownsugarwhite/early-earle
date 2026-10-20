@@ -1239,3 +1239,15 @@ button {
   color: var(--widerspruch, #c0392b);
   opacity: 0.9;
 }
+/* Plan 20.10., V0: Versuchsschalter eingeklappt; Chips, die hier nicht wirken, ausgegraut */
+.versuche {
+  margin-top: 10px;
+}
+.versuche > summary {
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0.75;
+}
+.umschalter[data-gesperrt] {
+  opacity: 0.45;
+}

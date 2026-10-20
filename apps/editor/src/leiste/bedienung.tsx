@@ -22,11 +22,12 @@ export function Regler({ label, wert, min, max, schritt, anzeige, onChange, onSt
   );
 }
 
-export function Chips<T extends string>({ werte, aktiv, text, attribut, onWahl }: { werte: readonly T[]; aktiv: T; text?: (w: T) => string; attribut: string; onWahl: (w: T) => void }) {
+/** Chips einer Wahl; `gesperrt` = Grund, warum die Wahl hier nicht wirkt (ausgegraut, nicht wählbar, Grund als Tooltip). */
+export function Chips<T extends string>({ werte, aktiv, text, attribut, onWahl, gesperrt }: { werte: readonly T[]; aktiv: T; text?: (w: T) => string; attribut: string; onWahl: (w: T) => void; gesperrt?: string | undefined }) {
   return (
-    <div className="umschalter stufen" role="radiogroup">
+    <div className="umschalter stufen" role="radiogroup" {...(gesperrt ? { title: gesperrt, 'data-gesperrt': '' } : {})}>
       {werte.map((w) => (
-        <button key={w} className={aktiv === w ? 'chip aktiv' : 'chip'} {...{ [`data-${attribut}`]: w }} onClick={() => onWahl(w)}>
+        <button key={w} className={aktiv === w ? 'chip aktiv' : 'chip'} {...{ [`data-${attribut}`]: w }} disabled={!!gesperrt} onClick={() => onWahl(w)}>
           {text ? text(w) : w}
         </button>
       ))}

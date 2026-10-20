@@ -127,6 +127,14 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   24–62 ms), trägt P-Linien als Treppenfalte, Pinsel (`kaefig.baumDeltas`) und Posen (`pose.baum`) mit Ruhelage je Delta.
   Noch nicht: Maul, Zähne, Reifen auf Teilen, „Formen folgen“ nach dem Pinsel, S7.5 (Standard nach Florians Blick).
   Prüfung `apps/editor/scripts/pruefen/s7-editor.mjs`. Wochenlimit am 17.10. früh bei 100 %.
+- **2026-10-20: Plan „Vektorillustration aus einem Liniennetz“ freigegeben, V0 gebaut** (Abnahme offen; Stand am Ende der
+  Planseite [`docs/plans/2026-10-20-vektorillustration-bedienung.md`](docs/plans/2026-10-20-vektorillustration-bedienung.md),
+  Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md)). Florians Wahl: Reihenfolge gemischt, G nach Kontext, ⌘R-Loops mit
+  echten Knoten. V0: ⌘R lädt nicht mehr neu, [ ] mit ⌥; Kopplung (⌘Z bringt eingefügte Punkte nicht zurück, Punktsetzen
+  gleicht nicht still an); Teile (kein Klickfang, ein Bau je Geste, Seitenknoten am Teil); frische Ringwahl mit Rückfall
+  (Stadionform); S8a-Rückschritte (Kreuzungen 24 → 1 px); ehrliche Tafel, Tore als `it.fails`, CI grün. Korrekturen am
+  Plan: Stadionform klappt im Ablauf aus der Kugel nicht um; Augen per Klick gehen auf dem Baum; der Enten-Rückschritt
+  kommt von der eingefrorenen Ringverteilung der Kugel. Nächster Schritt: Florians Blick, dann V1 Prüfstand „Extremreihe“.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

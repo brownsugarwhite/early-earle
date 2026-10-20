@@ -38,6 +38,15 @@ describe('S3 Umrisse berühren', () => {
     expect(mittel.frei).toBeLessThanOrEqual(25);
   });
 
+  // Plan 20.10., V0 „ehrliche Tore“: Das S3-Tor verlangte für die einfache Form ohne Kerbe Front und Top ≤ 2 px — verfehlt
+  // (heute ≈ 7,7 / 6,4 px; Kritik-Register). Bekannt rot; grün erst mit V4 (Umrisse als Käfigschleifen).
+  it.fails('Tor S3: einfache Form aus der Startkugel trifft Front und Top auf 2 px (bekannt rot)', () => {
+    const dok = mitStationenVon(s0KoerperDokument('einfach-glatt'), neuesDokument());
+    const mittel = messen(dok, { ...GLATTE_HAUT, fuelle: 'mittel' });
+    expect(mittel.front).toBeLessThanOrEqual(2);
+    expect(mittel.top).toBeLessThanOrEqual(2);
+  });
+
   it('Vase aus der Startkugel berührt ihre Front wieder (Breite am eigenen Punkt der geneigten Ringe)', () => {
     const dok = mitStationenVon(s0KoerperDokument('vase'), neuesDokument());
     const heute = messen(dok, GLATTE_HAUT);
