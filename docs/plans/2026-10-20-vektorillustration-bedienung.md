@@ -476,6 +476,38 @@ dann CI grün, dann S8a- und S2/S3-Korrekturen, zuletzt Tore und Doku. Jede Korr
   keine Schleifen; Linie in ihrer eigenen Ansicht ≤ 0,5 px auf dem Umriss, ≤ 1 px auf der Haut; Worker ≤ 30 ms; Bild
   vorher/nachher.
 
+#### V2 im Detail (20.10. abends, vor dem Bau)
+
+**Befund (Ursache der wilden Linien):** Der Umriss einer Ansicht A erscheint in den anderen Blättern als die Linie auf der
+Haut, an der sie sich von der Blickrichtung wegdreht (n·d_A = 0). Ihre Lage im Blatt A selbst ist gut (das ist die
+Silhouette), unsicher ist ihre **Tiefe** entlang d_A: Wo die Haut über ein ganzes Band fast parallel zum Blick läuft (flache
+Flanken aus „mittel“, Kastenseiten, dein Kegel vorn), springen die Nullstellen der gemittelten Punktnormalen in diesem Band
+hin und her — daher Zickzack, Schleifen und viele Stücke (Kegel Front-Umriss 4 Stücke, 8 Knicke, 10 Schleifen; Würfel bis
+44/80/59).
+
+**Bauweise:**
+1. **Umrisslinie entlang der Zeichnung:** Je Umriss der Ansicht A Proben entlang der gezeichneten Kurve (≈ 1,5 px), jede
+   entlang der Normalen der Zeichnung auf die Silhouette des Körpers in A geschoben (Halbierung gegen die Projektion des
+   Körpers, Suchweite ± 40 px; wo kein Körper ist, eine Lücke). So ist die Linie geordnet und nach deinen Knoten
+   gegliedert.
+2. **Tiefe glatt:** Je Probe trifft der Strahl entlang d_A knapp innerhalb der Silhouette den Körper in Ein-/Austrittspaaren;
+   Kandidaten sind ihre Mitten (an einem runden Teil schließt sich das Paar um die Linie, in einem flachen Band ist es die
+   Mitte des Bands). Je Probe ein Kandidat mit dem kleinsten Gesamtsprung (Viterbi), danach leicht geglättet. Seite: die
+   sichtbare Hälfte (z ≥ 0), gespiegelt für die andere.
+3. **Kurven:** je gezeichnetem Segment eine kubische Bézier-Kurve in 3D (Ausgleich mit festen Enden an deinen Knoten),
+   geteilt, wo sie mehr als 0,3 px abweicht; die Knotenringe der fremden Blätter sitzen genau auf der Linie.
+4. **Innere Konturen** (eigenes Blatt) nur, wo die Haut wirklich umbiegt: keine Nullstellen in flachen Bändern
+   (|n·d| < sin 5° an allen Ecken einer Fläche), Stücke kürzer als 6 px fallen weg.
+5. **Editor:** Umrisslinien der fremden Blätter als echte Kurven (SVG, verdeckt gestrichelt und blass), Ringe auf der Linie,
+   die Teile in warmen Farben (Blau/Lila/Türkis heißen nur noch Umriss von Seite/Front/Top).
+
+**Messung:** Die Extremreihe misst künftig die Linien, die der Editor zeigt (Stücke, Knicke über 45° außer an gezeichneten
+Ecken, Schleifen), dazu Abweichung der Linie in ihrer eigenen Ansicht von der Silhouette und Abstand zur Haut; Zeit des
+Liniennetzes im Worker. Die Grundzahlen werden nach V2 neu geschrieben (der Diff zeigt die Wirkung).
+
+**Tor** (wie oben): je Umrissstück ein Zug, keine Knicke über 45° außer an gezeichneten Ecken, keine Schleifen; in der
+eigenen Ansicht ≤ 0,5 px auf der Silhouette, ≤ 1 px auf der Haut; Liniennetz im Worker ≤ 30 ms; Bilder vorher/nachher.
+
 ### V3 G/S/R und proportionales Bearbeiten in den Blättern
 - **Grundlage:** `abbrechenGeste()` im Editor-Store (Dokument = Gestenanfang, kein Verlaufseintrag, kein „Formen
   folgen“); ein fensterweiter Zeiger-Merker (Tastendrücke tragen keine Lage).
