@@ -149,3 +149,4 @@ und Store, ohne Zeichnen; `zuruecksetzen()`).
 |---|---|
 | `v4-diagnose.ts` (Kern, aus `packages/shape`) | je Beweis-Körper (Röhre wie im Editor, Florians Ablauf) und Blatt die größte Abweichung mit Ort: zu breit/zu schmal, Kappe oder Ring, 3D-Lage; je Ring die breiteste Reihe (`KOERPER`) |
 | `v4-beweis.ts` (Kern, aus `packages/shape`) | heute gegen `umrisseExakt`: Δ je Blatt, Falten (frei/Kappe), Volumen, Bauzeit, Bedingungen; `OPT` (JSON für `umrisseOpt`, z. B. `{"front":true,"ungleich":2}`), `DURCH=1` Durchdringungen, `BOGEN=1` Kontaktbogen (`NAME`, `AUSGABE`) |
+- `v4-editor.mjs` (run-check.sh): V4 „Querschnitt aus der Sichthülle“ im Editor — Florians Ablauf, Chip „aus der Hülle (V4)“, Δ vorher/nachher, ein Zug an einem Front-Knoten, Rückgängig bis vor den Schalter; Bilder je Fall (`FAELLE`).

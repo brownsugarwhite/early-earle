@@ -614,6 +614,22 @@ Bögen auf der Planseite 20.10., „Stand V2“. Je Punkt der Schritt, der ihn a
   Normalen (einseitig) oder Kurven im Käfig, an denen sie greift.
 - Gewichte: Mit 1000 erreicht eine Lagebedingung ihr Ziel nur zu 90 % (Glättung 30, Naht 64 halten dagegen); 1e5 nötig.
 
+## Befunde aus V4 zweiter Weg „Querschnitt aus der Sichthülle“ (20./21.10. nachts, gebaut, Abnahme offen)
+
+- **Δ ≤ 0,5 px nicht erreicht** (außer Kugel, Ei): Die Vorlagen liegen auf der Hülle, die Grenzfläche wölbt sich zwischen den
+  Käfigpunkten hinaus — längs der Ringe und zwischen ihnen etwa gleich (Robbe 3,3 bzw. 2,9 px über der Front an der Flanke;
+  Tiger 5,4 px an der Kerbe Schnauze/Kopf, dort gleiten die Grenzlagen um 2–3 px in x, und das Top ist steil). Bindungen,
+  höhere Gewichte und ein angehobener Glättungsbezug kosten Glätte (gemessen, Planseite) — der nächste Weg ist eine dichte
+  Anpassung an die Vorlagen (feine Punkte längs der Ringe), keine stärkere Bindung.
+- **Ecken-Körper schlechter** (Keil, Pilz, Blatt, Hammerhai, Seestern): Jeder Ring verteilt seine Reihen nach eigener
+  Bogenlänge; wo sich das Seitenverhältnis längs des Körpers ändert, rutschen Reihen von Deckflächen auf Wände. Der Reihenplan
+  hält Breitenlinie und gezeichnete Ecken fest; Schultern kastiger Rundungen als Anker helfen Kegel/Keil, schaden Hammerhai und
+  Seestern (Schulter und Ecke nur in manchen Ringen) — abgeschaltet.
+- **Faltenmaß übertreibt bei Mehrteilern** (Vierbeiner 163°, Fisch 170°, Krake 179°: einzelne scharfe Stellen am Übergang
+  Bein/Bauch; im Bild glatter als heute). Für Urteile immer die Kontaktbögen ansehen.
+- Tiger: zwei Ringe an derselben Station vorn an der Kastenschnauze (gewollt: Querfalte), dort 37° heute wie neu.
+- Zug-Zeit mit dem Schalter nicht gemessen (der schnelle Weg nutzt dieselben Vorlagen, kein Sprung am Gestenende).
+
 ## CI: nicht nachstellbare Fehler alter Versuchstests (20.10. nachts)
 
 - Zwei Tests der alten Versuchsfläche S0 (Bauweise „bisher“, nicht der Kern) waren je einmal **nur auf CI** rot, bei

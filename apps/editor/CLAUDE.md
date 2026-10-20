@@ -390,6 +390,16 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
     hinausgezogen). Ebenso tausende hart gebundene Einzelpunkte der Ungleichung.
   - Die Front-Silhouette einer Röhre liegt meist nicht auf einem Ring (Äquator zwischen Ringen, runde Enden auf der Kappe);
     die Mittelreihe der Kappen hart zu binden zerknittert kastige, stehende oder eingekerbte Enden.
+- **Plan 20.10., V4 zweiter Weg (Querschnitt aus der Sichthülle, `kern/huellenSchnitt.ts`):**
+  - Jede Regel, die je Ring für sich entscheidet (Ecke vorhanden? flaches Ende? Scheitel?), lässt Reihen springen, sobald
+    sie in Nachbarringen anders ausfällt — Kanten im Zickzack (Rochen 108°, Blatt 172°, Pyramide 160°). Merkmale bekommen
+    Reihen im **Reihenplan der Kette**, Entscheidungen fallen je Merkmal für alle Ringe gleich, Längsfalten nur zwischen Ringen,
+    die die Ecke beide tragen.
+  - Schräge Sprossen an runden Enden treffen das Top an verschiedenen Stellen: Breite und Scheitel nie aus der Hülle längs der
+    Sprosse nehmen, sondern aus der Ansicht längs des Rings (Front, begrenzt durch das Top in der Ringmitte).
+  - „Flaches Ende“ nur, wenn die Hülle dort gerade endet (0,5 px vor ihrem Ende so breit wie 2 px davor); ein Abstandstest
+    allein macht Kugelringe flach (sie enden Bruchteile eines Pixels unter dem Pol).
+  - Das Faltenmaß übertreibt bei Mehrteilern; Kontaktbögen ansehen, bevor man eine Zahl als Rückschritt wertet.
 - **vitest 5 zeigt `console.log` bestandener Tests nur mit `--reporter=verbose`** (bei Fehlern immer). Messwerte so lesen: `npx vitest run <datei> --reporter=verbose`.
 - **macOS hat kein `timeout`-Kommando**; lange Läufe über das Werkzeug-Timeout begrenzen. `pnpm -r test` lässt Pakete parallel laufen; die Laufzeit-Tests der Versuche (`kanten`, `flaechenlinie`, `wesen`) reißen dann ihre Schranken (967 ms > 600 ms), einzeln laufen sie durch.
 

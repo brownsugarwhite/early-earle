@@ -170,6 +170,17 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   A (Empfehlung) Struktur folgt den Umrissen — erst der Kern von V6 (Loop = neuer Ring), dann Ring an der breitesten Stelle
   und Kappen nach Endform; B Löser entlang der Normalen. Planseite „V4 — Beweis angehalten“, Register „Befunde aus V4“,
   Bogen `docs/progress/editor/v4-beweis-breitenlinie-2026-10-20.jpg`.
+- **2026-10-20/21 nachts: V4 weiter — „Querschnitt aus der Sichthülle“ gebaut** (Florian: „Du musst nicht immer nach 3
+  Versuchen stoppen … wähle die elegantere Lösung … Mesh immer schön und smooth außer bei gewollten Kanten“; dann vor dem
+  Schlafen: selbstständig den ganzen Plan weiter, „das Mesh muss intelligent sein“). Weder A noch B, sondern die Ursache: Jeder
+  liegende Ring staucht heute die ganze Front in seine Sprosse (Robbe: Rumpfring mit Kopf). Neu (`kern/huellenSchnitt.ts`,
+  hinter `ausstattung.umrisseExakt`, ohne bitgleich): je Ring die Sichthülle geschnitten, Breite/Scheitel aus der Ansicht längs
+  des Rings, Rundung nur ohne Zeichnung (Fülle der eigenen Front, „Fülle wo nötig“ ≤ mittel, flache Enden ohne Rundung),
+  Reihenplan der Kette (Breitenlinie per dynamischer Programmierung, gezeichnete Ecken auf gemeinsamen Reihen). **Im Editor:**
+  Tafel Körper → „Querschnitt: heute | aus der Hülle (V4)“. Robbe Δ 4,0/6,3/12,5 → 3,9/4,4/3,5 px, Giraffe Front 18,9 → 1,6,
+  Hals 1:8 31,6 → 1,4, Kegel 7,3 → 3,0; Extremreihe im Bild 34 von 39 gleich/besser, schlechter Keil, Pilz, Blatt, Hammerhai,
+  Seestern. Tor Δ ≤ 0,5 px nur bei Kugel/Ei (Fläche wölbt sich zwischen Käfigpunkten). Verworfen (gemessen): Bindungen/Gewichte
+  der Hüllpunkte, angehobener Glättungsbezug, Schultern als Anker. Planseite „Stand V4 — Querschnitt aus der Sichthülle“.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
