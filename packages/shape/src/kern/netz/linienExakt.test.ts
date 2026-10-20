@@ -4,6 +4,8 @@ import type { Kante } from '../../dokument';
 import { kanteZwischen } from '../../kaefig/halbkanten';
 import { ableiten } from '../ableiten';
 import { feinKette } from '../reifen';
+import { koerperDokument } from '../pruefen/koerper';
+import { zufall } from '../pruefen/zufall';
 import { linienExakt } from './linienExakt';
 import { FAELLE, PX, abstandZug, kasten, linieAusSeite } from './pruefen';
 
@@ -57,4 +59,60 @@ describe('S8a Linien genau auf der Haut (Röhre)', () => {
       expect(kanteZwischen(k, k.eA[neu[0]!]!, k.eB[neu[0]!]!)).toBe(neu[0]);
     }, 120_000);
   }
+});
+
+describe('Plan 20.10., V0: Rückschritte aus S8a', () => {
+  const dok = koerperDokument('kugel', zufall(1));
+  const sk = dok.skalierung;
+  const ohne = ableiten(dok, { stufen: 3 });
+  const k0 = kasten(ohne);
+  const bei = (a: number, b: number): [number, number] => [k0.x0 + a * (k0.x1 - k0.x0), k0.y0 + b * (k0.y1 - k0.y0)];
+  /** größter Abstand der neuen voll scharfen Kanten (rechte Hälfte) zur nächsten Linie und Zahl der neuen scharfen Käfigkanten */
+  const messen = (r: ReturnType<typeof linienExakt>, linien: readonly (readonly V3[])[]) => {
+    const k = r.abl.kaefig;
+    let max = 0;
+    let neu = 0;
+    for (let e = 0; e < k.nE; e++) {
+      if (!(k.eSchaerfe[e]! > 0) || ohne.kaefig.eSchaerfe[e]! > 0) continue;
+      neu++;
+      if (!(k.eSchaerfe[e]! > 1e5) || k.xyz[3 * k.eA[e]! + 2]! < 0 || k.xyz[3 * k.eB[e]! + 2]! < 0) continue;
+      for (const p of feinKette(r.abl.unterteilung, k, k.eA[e]!, k.eB[e]!)) {
+        const q: V3 = [r.abl.fein[3 * p]!, r.abl.fein[3 * p + 1]!, r.abl.fein[3 * p + 2]!];
+        max = Math.max(max, Math.min(...linien.map((l) => abstandZug(q, l))) * PX);
+      }
+    }
+    return { max, neu };
+  };
+
+  it('gekreuzte Linien: der Kreuzungspunkt schaukelt nicht auf (vorher 24 px neben der Linie)', () => {
+    const linien = [linieAusSeite(ohne, [bei(0.25, 0.6), bei(0.75, 0.6)]), linieAusSeite(ohne, [bei(0.45, 0.3), bei(0.45, 0.85)])];
+    const r = linienExakt(ohne, linien.map((l) => kanteAus(l.punkte, sk, 1)), sk, 1e6);
+    expect(r.berichte.map((b) => b.art)).toEqual(['reihe', 'ring']);
+    expect(messen(r, linien.map((l) => l.punkte)).max).toBeLessThan(2);
+  }, 120_000);
+
+  it('kurze Querlinie über vier Käfigkanten wird scharf (vorher lief sie ganz aus)', () => {
+    const l = linieAusSeite(ohne, [bei(0.45, 0.2), bei(0.45, 0.8)]);
+    const r = linienExakt(ohne, [kanteAus(l.punkte, sk, 1)], sk, 1e6);
+    const k = r.abl.kaefig;
+    let voll = 0;
+    for (let e = 0; e < k.nE; e++) if (k.eSchaerfe[e]! > 1e5 && !(ohne.kaefig.eSchaerfe[e]! > 1e5)) voll++;
+    expect(r.berichte[0]!.art).toBe('ring');
+    expect(voll).toBeGreaterThan(0);
+  }, 120_000);
+
+  it('Linie, die weder Reihe noch Ring wird, behält die Treppe (vorher gar keine Falte)', () => {
+    const l = linieAusSeite(ohne, [bei(0.4, 0.4), bei(0.6, 0.5), bei(0.5, 0.65), bei(0.35, 0.5), bei(0.45, 0.42)]);
+    const r = linienExakt(ohne, [kanteAus(l.punkte, sk, 1)], sk, 1e6);
+    expect(r.berichte[0]!.art).toBe('fehlt');
+    expect(messen(r, [l.punkte]).neu).toBeGreaterThan(4);
+  }, 120_000);
+
+  it('Querlinie bis über den Rücken: die Naht bleibt in der Spiegelebene', () => {
+    const l = linieAusSeite(ohne, [bei(0.55, 0.3), bei(0.55, 0.999)]);
+    const r = linienExakt(ohne, [kanteAus(l.punkte, sk, 1)], sk, 1e6);
+    const { R, N } = ohne.vorlage;
+    // vorher konnte das Nachführen Nahtpunkte aus der Ebene schieben (die Ableitung selbst lässt Rundungsreste ~1e-15)
+    for (let i = 0; i < R; i++) for (const j of [0, N / 2]) expect(Math.abs(r.abl.kaefig.xyz[3 * ohne.vorlage.ringPunkt(i, j) + 2]!)).toBeLessThan(1e-9);
+  }, 120_000);
 });

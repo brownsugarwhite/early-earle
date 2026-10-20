@@ -25,7 +25,7 @@ import { type NetzSicht, netzSicht } from './netzSicht';
 import { type TeilAnzeige, teilAnzeige } from './grundkoerper/teilAnsicht';
 import { type BaumAbleitung, baumAbleiten, baumDreiecke } from './grundkoerper/baumBau';
 import { type Teilbaum, teilbaum } from './grundkoerper/teilbaum';
-import { linienExakt } from './netz/linienExakt';
+import { type LinienBericht, linienExakt } from './netz/linienExakt';
 import { baumDeskriptoren } from './grundkoerper/baumDeskriptoren';
 import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
 import { type DuennMatrix, anwenden3 } from '../subdivision/matrix';
@@ -166,6 +166,11 @@ export type WesenInfo = {
   stationen?: GefroreneStationen;
   /** Abweichung der Lippenketten von den Linien (Phase 2 M2, px): rote Oberlippe, blaue Unterkieferkante; `versatz` = versetzter Kiefer */
   maul?: MaulAbweichung;
+  /**
+   * S8a (Plan 20.10., V0): je P-Linie, wie sie im letzten genauen Bau eingepasst wurde — Reihe/Ring (genau auf der Linie),
+   * `fehlt` (Treppe), `ohne` (ohne Härte). Fehlt das Feld, gilt für alle Linien die Treppe (Teile, Maul, Beine).
+   */
+  linien?: LinienBericht[];
 };
 
 /** Reifen (M3): Ringe der gezeichneten Spanten auf dem Körper, mit Perlen an den Spant-Knoten. */
@@ -325,7 +330,7 @@ export type WesenStand = {
    */
   baum?: { schluessel: string; basis: string; netz: BaumKoerperNetz };
   /** S8a: Röhre mit genau eingepassten Linien-Kanten (Schlüssel: Bau und Pinsel) */
-  linien?: { schluessel: string; abl: Ableitung };
+  linien?: { schluessel: string; abl: Ableitung; berichte: LinienBericht[] };
   umweg?: WesenNetz['umweg'];
   blatt?: WesenInfo['blatt'];
   /** B7: zuletzt gerechnete Zusatz-Umrisse mit ihrem Schlüssel (Körper, Pinsel, Posen, Anfrage) */
@@ -1271,8 +1276,9 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     const lSchluessel = `${schluessel}|${JSON.stringify(deltas)}`;
     if (linienStand && linienStand.schluessel === lSchluessel) abl = linienStand.abl;
     else {
-      abl = linienExakt(abl, dok.kanten ?? [], dok.skalierung, ableitOpt(dok, plan, true).eckenSchaerfe ?? 1e6).abl;
-      linienStand = { schluessel: lSchluessel, abl };
+      const r = linienExakt(abl, dok.kanten ?? [], dok.skalierung, ableitOpt(dok, plan, true).eckenSchaerfe ?? 1e6);
+      abl = r.abl;
+      linienStand = { schluessel: lSchluessel, abl, berichte: r.berichte };
     }
     fein = abl.fein;
     xyz = abl.kaefig.xyz;
@@ -1698,7 +1704,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
   } else geistStand = undefined;
   // Lippenkanten gegen die Linien (Phase 2 M2): px je Kette in Seite und Front
   const maulAbw = ruheAlt ? ruheAlt.maulAbw : maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul && maulLinieVerwendet ? maulAbweichung(abl as MaulErgebnis, dok, maulLinieVerwendet) : undefined;
-  const info: WesenInfo = { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0, ...(blatt ? { blatt } : {}), ...(maulAbw ? { maul: maulAbw } : {}), stationen: abl.gefroren && teile ? { ...abl.gefroren, teile: teile.gefroren } : abl.gefroren };
+  const info: WesenInfo = { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0, ...(blatt ? { blatt } : {}), ...(maulAbw ? { maul: maulAbw } : {}), ...(linienGenau && linienStand ? { linien: linienStand.berichte } : {}), stationen: abl.gefroren && teile ? { ...abl.gefroren, teile: teile.gefroren } : abl.gefroren };
   const linien = plan.kaefigLinien ? kaefigSegmente(abl, xyz) : null;
   // Lippenband nach der Kopfhöhe am Maul (nicht der ganzen Körperhöhe: beim Langhals war das Band breiter als der Kiefer)
   const maulHoehe = maul !== 'aus' ? 1.1 * ((abl as Partial<MaulErgebnis>).maul?.kopfHoehe ?? hoehe) : hoehe;
