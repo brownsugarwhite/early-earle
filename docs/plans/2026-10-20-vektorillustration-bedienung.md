@@ -1344,9 +1344,12 @@ Ende hinaus, Robbe 15 px); geglätteter statt linearer Auslauf (Reihen knicken m
 **Offen (ehrlich):**
 - **Tore nicht erreicht** (als `it.fails` in `linienSchleifen.test.ts`): Linie ≤ 0,3 px in der Zeichenansicht (heute 0,4–2,0;
   der Rest liegt an den Enden und zwischen den Ringen), Haut an der Linie ≤ 0,5 px (Robbe 1,4, Kegel 1,0, Kugel 0,7).
-- **Schräge Linien** bleiben Treppe (Vase, Würfel, Krake): Die Leiter steht dort schräg zur Linie. S8a glitt jede Linie auf die
-  nächste Reihe; der nächste Schritt ist, eine schräge Linie die Reihe (oder den Ring) wählen zu lassen, die sie mit dem
-  kleinsten Verziehen trägt, und die Grenze „höchstens 1,5 Reihen von der natürlichen Lage“ für Linien zu lockern — die Form
-  bleibt dank „Form zuerst“ dieselbe.
+- ~~Schräge Linien bleiben Treppe~~ → **Nachtrag 21.10. mittags:** Eine schräge Linie (35–55° zu den Sprossen, nirgends unter
+  25°) wird eine **verzogene Reihe**: die Grenze „höchstens 1,5 Reihen von der natürlichen Lage“ gilt für sie nicht (die Form
+  bleibt dank „Form zuerst“). Kreuzt sie die Breitenlinie, wird sie selbst die Breitenlinie (rastet ein, läuft über drei Ringe
+  aus) — eine Reihe kann keine andere kreuzen; die Breitenlinie stattdessen unter die Linie zu drücken zerriss den Käfig (Vase
+  164°). Vase: Treppe (Blick 23 px) → Reihe, Haut 1,1 px, Blick 1,9 px, Falte 13,2° (ohne Linie 12,9°), Falte deckt die ganze
+  Linie; Würfel Reihe (Blick 1,2 px; der Körper selbst bleibt kaputt). Krake bleibt Treppe (ihre Querlinie lässt sich nicht
+  drehen, Ecken-Ringe daneben). Test „Schräge Linie (Vase)“ (am Stand davor rot).
 - Härte als Rundungsbreite in Pixeln (3.4) und Grat (`Kante.tiefe`) noch nicht; Linien auf „Teile“ (V7); Zug mit Linien
   42–57 ms.

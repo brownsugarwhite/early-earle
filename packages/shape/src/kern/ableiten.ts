@@ -30,7 +30,7 @@ import { anwenden3, multiplizieren } from '../subdivision/matrix';
 import { type Leiter, WIRBEL_STANDARD, leiter } from '../versuch/wirbelsaeule';
 import { type Breiten, silhouettenBreite } from './breite';
 import { FUELLE_EXPONENT, type FuelleArt, huellenBreite, reichweite } from './fuelle';
-import { type FrontEcke, type HuellenSchnitt, LINIE_ID, type ZeichnungsFuelle, breitenlinieWaehlen, exponentenFuer, frontEcken, fuelleWoNoetig, huelleEntlang, huellenFeld, huelleRunden, linienMerkmale, profilAbtasten, profilAbtastenAnker, profilAusFeld, querLinienEnden, reihenAbstand, reihenAuslaufen, reihenplan, tabellierteBreiten, zeichnungsFuelle } from './huellenSchnitt';
+import { type Anker, type FrontEcke, type HuellenSchnitt, LINIE_ID, type ZeichnungsFuelle, breitenlinieWaehlen, exponentenFuer, frontEcken, fuelleWoNoetig, huelleEntlang, huellenFeld, huelleRunden, linienMerkmale, profilAbtasten, profilAbtastenAnker, profilAusFeld, querLinienEnden, reihenAbstand, reihenAuslaufen, reihenplan, tabellierteBreiten, zeichnungsFuelle } from './huellenSchnitt';
 import { type LinienEinordnung, type LinienRing, type LinienRolle, type LinienWunsch, linieAufSprosse, linienEinordnen, linienRingeDrehen, linienWuensche, ringKanten } from './linienSchleifen';
 import { type RandMarke, frontBeruehren } from './rand';
 import { type Schlitz, schlitzIm, seiteFuerLeiter } from './schlitz';
@@ -1522,7 +1522,8 @@ function huellenVorlagen(hk: HuellenKontext, l: Leiter, st: Stationen, v: { N: n
   const vorn = profile.slice(0, nV);
   const hinten = profile.slice(nV + nR).reverse();
   // Reihenplan der Ringe: Breitenlinie, gezeichnete Ecken und Kanten flacher Enden auf Reihen, die für alle Ringe gleich sind
-  const plan = reihenplan(ringe, vr.slice(nV, nV + nR), N / 2, N / 4);
+  const frei = new Set(einordnung.flatMap((e, i) => (e.art === 'reihe' && e.schraeg ? [LINIE_ID + i] : [])));
+  const plan = reihenplan(ringe, vr.slice(nV, nV + nR), N / 2, N / 4, frei);
   // V5: Linien, die in zwei benachbarten Ringen auf derselben Reihe liegen, sind als Reihe gebaut (sonst Treppe)
   const linienReihen = new Set<number>();
   const reihenKanten: { ring: number; j: number; linie: number }[] = [];
@@ -1538,7 +1539,9 @@ function huellenVorlagen(hk: HuellenKontext, l: Leiter, st: Stationen, v: { N: n
   // Längslinien laufen über drei Ringe zur natürlichen Lage aus, weiche Anker halten Abstand zu den Linien
   const querRinge = (st.linien ?? []).filter((r) => (r.rolle ?? 'quer') === 'quer');
   if (linienReihen.size || querRinge.length) {
-    const ohneLinien = plan.map((a) => a.filter((x) => x.id === undefined || x.id < LINIE_ID));
+    // ohne Linien: eine auf eine Linie eingerastete Breitenlinie liegt dort an ihrer natürlichen Stelle
+    const vrRinge = vr.slice(nV, nV + nR);
+    const ohneLinien = plan.map((a, i) => a.flatMap((x): Anker[] => (x.id === undefined || x.id < LINIE_ID ? [x] : x.reihe === N / 4 ? [{ v: vrRinge[i]!, reihe: N / 4, haerte: 0 }] : [])));
     const nat = new Map<number, number[]>();
     const natuerlich = (i: number, reihe: number): number => {
       let q = nat.get(i);

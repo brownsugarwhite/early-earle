@@ -24,6 +24,8 @@ export type LinienEinordnung = {
   pfeil?: number;
   /** längs: Sprossen durch Anfang und Ende der Linie (Richtung der Leiter dort) — dort endet die Kante genau */
   enden?: { anfang: LinienSprosse; ende: LinienSprosse };
+  /** längs, aber schräg zu den Ringen: die Reihe darf sich weit von ihrer natürlichen Lage entfernen */
+  schraeg?: true;
 };
 
 export type LinienRolle = 'quer' | 'anfang' | 'ende';
@@ -51,8 +53,12 @@ export function linienWuensche(einordnung: readonly LinienEinordnung[]): LinienW
 /** Winkel zur Sprosse (Grad): darunter läuft die Linie quer (längs der Sprosse), darüber längs (über die Sprossen) */
 const QUER_WINKEL = 35;
 const LAENGS_WINKEL = 55;
+/** schräg, aber sicher nicht längs einer Sprosse (Grad): eine solche Linie wird eine verzogene Reihe */
+const SCHRAEG_WINKEL = 25;
 /** so viel der Länge muss eine Art haben, sonst ist die Linie schräg */
 const ANTEIL = 0.8;
+/** so viel einer schrägen Linie muss sicher nicht längs einer Sprosse laufen, damit sie eine verzogene Reihe wird */
+const SCHRAEG_ANTEIL = 0.95;
 /** Linien näher an der Mittelebene sind Nahtlinien (2 px) */
 const NAHT = 2 / 461;
 /** kürzer (Seite) ist eine Linie zu kurz für eine Schleife (3 px) */
@@ -182,6 +188,7 @@ export function linienEinordnen(linien: readonly KantenLinie[], l: Leiter): Lini
     let laenge = 0;
     let quer = 0;
     let laengs = 0;
+    let nichtQuer = 0;
     for (let k = 0; k + 1 < p.length; k++) {
       const a = p[k]!;
       const b = p[k + 1]!;
@@ -212,14 +219,17 @@ export function linienEinordnen(linien: readonly KantenLinie[], l: Leiter): Lini
       const winkel = (Math.acos(Math.min(1, cos)) * 180) / Math.PI;
       if (winkel < QUER_WINKEL) quer += len;
       else if (winkel > LAENGS_WINKEL) laengs += len;
+      if (winkel > SCHRAEG_WINKEL) nichtQuer += len;
     }
     if (laenge < KURZ) return { art: 'kurz' };
-    if (laengs >= ANTEIL * laenge) {
+    // längs; schräge Linien, die nirgends längs einer Sprosse laufen, als verzogene Reihe (die Form bleibt: „Form zuerst“)
+    const schraeg = laengs < ANTEIL * laenge && quer < ANTEIL * laenge;
+    if (laengs >= ANTEIL * laenge || (schraeg && nichtQuer >= SCHRAEG_ANTEIL * laenge)) {
       const a = p[0]!;
       const e = p[p.length - 1]!;
       const anfang = sprosseDurchPunkt(l, { x: a[0]!, y: a[1]! });
       const ende = sprosseDurchPunkt(l, { x: e[0]!, y: e[1]! });
-      return anfang && ende ? { art: 'reihe', enden: { anfang, ende } } : { art: 'reihe' };
+      return { art: 'reihe', ...(anfang && ende ? { enden: { anfang, ende } } : {}), ...(schraeg ? { schraeg: true as const } : {}) };
     }
     if (quer < ANTEIL * laenge) return { art: 'schraeg' };
     // Sehne: Schwerpunkt und Hauptachse der Proben (Seite)

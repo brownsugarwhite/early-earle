@@ -102,6 +102,27 @@ describe('V5 Linien als Käfigschleifen (Querschnitt aus der Sichthülle)', () =
     expect(l.freiMax).toBeLessThanOrEqual(16);
   }, 60_000);
 
+  it('Schräge Linie (Vase): verzogene Reihe statt Treppe — deckt die Linie, die Form bleibt', () => {
+    const r = messen(mitLinien('vase'));
+    const l = r.messung.linien!;
+    expect(l.arten).toEqual(['reihe']);
+    expect(l.blick).toBeLessThanOrEqual(2.5);
+    expect(l.aufHaut).toBeLessThanOrEqual(1.5);
+    expect(l.freiMax).toBeLessThanOrEqual(r.messung.falten.frei.max + 1);
+    // die Falte deckt mindestens 80 % der Linie (in x; die Linie liegt waagerecht über den Bauch)
+    const abl = r.mitLinien!.bau.stand.abl;
+    const lf = abl.linienFein!;
+    let x0 = Infinity;
+    let x1 = -Infinity;
+    for (let q = 0; q < lf.fein.length; q++) {
+      x0 = Math.min(x0, abl.fein[3 * lf.fein[q]!]!);
+      x1 = Math.max(x1, abl.fein[3 * lf.fein[q]!]!);
+    }
+    const kn = r.mitLinien!.kanten[0]!.knoten;
+    const lx = kn.map((k) => k.p[0]! * r.mitLinien!.bau.dok.skalierung);
+    expect((x1 - x0) / (Math.max(...lx) - Math.min(...lx))).toBeGreaterThanOrEqual(0.8);
+  }, 60_000);
+
   it('Härte 0 ändert nichts (bitgleich mit dem Körper ohne Linie)', () => {
     const { ohne, mit } = bauMitLinien(mitLinien('ei', undefined, 0));
     const a = ohne.stand.abl.fein;

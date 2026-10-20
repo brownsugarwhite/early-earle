@@ -635,9 +635,9 @@ Bögen auf der Planseite 20.10., „Stand V2“. Je Punkt der Schritt, der ihn a
 - **Tore nicht erreicht** (`it.fails` in `kern/linienSchleifen.test.ts`): jede Linie ≤ 0,3 px in ihrer Zeichenansicht (gemessen
   0,4–2,0 px: am größten an den Enden — die Falte endet an einem Käfigpunkt, dort gilt die glatte Regel — und zwischen weit
   stehenden Ringen am Hals); Haut an der Linie ≤ 0,5 px (Robbe 1,4, Kegel 1,0, Kugel mit Kreuz 0,7 px).
-- **Schräge Linien bleiben Treppe** (Vase, Würfel, Krake): Die Leiter steht dort 35–55° zur Linie. Die Treppe ist an die Form
-  gebunden (keine Formänderung), zeigt aber im Käfig ein Zickzack. Weg: die Linie wählt Reihe oder Ring mit dem kleinsten
-  Verziehen, die Grenze „1,5 Reihen von der natürlichen Lage“ gilt für Linien nicht.
+- ~~Schräge Linien bleiben Treppe~~ (21.10. mittags behoben für Linien, die nirgends längs einer Sprosse laufen: verzogene Reihe,
+  über die Breitenlinie eingerastet). Offen: schräge Querlinien neben Ecken-Ringen (Krake) bleiben Treppe; echte Diagonalen
+  über viele Reihen bräuchten Pole im Käfig (Plan 3.3).
 - **Kreuzungen** sind Catmull–Clark-Ecken (vier scharfe Kanten). Aussetzen oder halbscharf an der Kreuzung ändert nichts
   (gemessen); die Haut liegt dank „Form zuerst“ trotzdem bei der Form (Kugel 0,7 px).
 - **Zeit:** Zug mit Linien 42–57 ms (Form ohne Linien und Körper mit Linien je ein Löser), Bau 320–400 ms (zwei Bauten).

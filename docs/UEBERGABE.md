@@ -19,17 +19,17 @@ sich jeder Form intelligent anpassen.
 
 - **Im Editor:** Tafel Körper → „Querschnitt: aus der Hülle (V4/V5)“. Dann wird jede P-Linie eine Käfigschleife: längs eine
   Reihe des Reihenplans (Enden je ein Ring durch den Endpunkt, Reihe läuft über drei Ringe aus), quer ein eigener Ring, in die
-  Linie gedreht; schräge Linien bleiben Treppe. Alle Linien zugleich genau, auch während eines Zugs. Ohne den Schalter bleibt
+  Linie gedreht; schräge Linien eine verzogene Reihe (kreuzen sie die Breitenlinie, werden sie die Breitenlinie). Alle Linien zugleich genau, auch während eines Zugs. Ohne den Schalter bleibt
   die Einpassung je Linie von S8a (bitgleich).
 - **Form zuerst:** Mit Linien wird erst der Körper ohne Linien gebaut; der Körper mit Linien bindet sich dort an ihn, wo die
   Linien den Käfig verschoben haben. Die Linie legt die Käfigschleife fest, nicht die Form (Winkel nur, wo die Form ihn
   verlangt). Gedrehte Ringe tasten das Höhenfeld der natürlichen Ringe ab.
 - **Gemessen** gegen heute (S8a): Robbe Falte 172° → 10°, Haut 4,4 → 1,4 px; Kegel vorher gar keine Kante, jetzt Ring 0,7 px;
   Rex Haut 0,7 → 0,3; Kugel mit Kreuz 1,0 → 0,7; Bau ≈ 1 s → 0,35 s; Umrisse mit Linien höchstens 0,1–0,7 px anders.
-  Schlechter: schräge Linien (Vase, Würfel, Krake: Treppe statt Schleife) und die Lage in der Zeichenansicht (0,4–2,0 px statt
-  0–0,3). Zug mit Linien 42–57 ms.
-- **Tests:** `packages/shape/src/kern/linienSchleifen.test.ts` (8 grün, am alten Code 5 davon rot; 2 Tore als `it.fails`),
-  volle Kern-Reihe 508 grün + 5 bekannt rot. Editor: `apps/editor/scripts/pruefen/v5-editor.mjs` (alles ok; Linien vorher mit
+  Schlechter: die Lage in der Zeichenansicht (0,4–2,0 px statt 0–0,3); Krake (Querlinie neben Ecken-Ringen) bleibt Treppe.
+  Zug mit Linien 42–57 ms.
+- **Tests:** `packages/shape/src/kern/linienSchleifen.test.ts` (9 grün, am alten Code 6 davon rot; 2 Tore als `it.fails`),
+  volle Kern-Reihe 509 grün + 5 bekannt rot. Editor: `apps/editor/scripts/pruefen/v5-editor.mjs` (alles ok; Linien vorher mit
   `v5-linien-vorbereiten.ts`).
 - **Bilder:** `docs/progress/editor/v5-linien-huelle-{grund,kanten,lang,mehrteiler}-2026-10-21.jpg`,
   `v5-linien-heute-grund-2026-10-21.jpg`, `v5-editor-kugel-kreuz-zebra-2026-10-21.jpg`, `v5-editor-robbe-riss-2026-10-21.jpg`.
@@ -45,12 +45,12 @@ aus.
 2. Mit P Linien auf die Haut zeichnen, mit ⇧W die Härte hochziehen: längs (über den Körper) und quer (um den Körper). Die
    Kantenliste zeigt „genau“; im Zebra (Matcap) läuft die Kante auf der Linie, die Form bleibt. Beim Ziehen an den Umrissen
    bleibt die Kante sichtbar.
-3. Schräge Linien (45° zu den Ringen) bleiben noch Treppe.
+3. Auch schräge Linien werden Schleifen (verzogene Reihe); nur Querlinien direkt neben gezeichneten Ecken bleiben Treppe.
 
 ## Offen / nächster Schritt
 
-- V5 weiter: schräge Linien als Schleife (Reihe oder Ring mit dem kleinsten Verziehen), Linienenden genauer, Härte als
-  Rundungsbreite (3.4), Grat (`Kante.tiefe`), Zug schneller.
+- V5 weiter: Lage genauer (Tor 0,3 px; Rest an den Enden und zwischen weit stehenden Ringen), Härte als Rundungsbreite (3.4),
+  Grat (`Kante.tiefe`), Zug schneller.
 - Danach V6 (⌘R-Loops, G/S/R auf der Bühne): Das Einfügen eines Rings nutzt dieselbe Maschine (Ring rastet ein, Nachbarn
   verziehen sich, die Form bleibt dank „Form zuerst“).
 - Abnahme V0, V1, V3, V4, V5; V2 nicht abgenommen.

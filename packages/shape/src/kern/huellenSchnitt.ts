@@ -1027,7 +1027,7 @@ function reihenVergeben(liste: readonly ReihenWunsch[], lo: number, hi: number):
   return out;
 }
 
-export function reihenplan(profile: readonly HuellenProfil[], vr: readonly number[], hOut: number, iBreit: number): Anker[][] {
+export function reihenplan(profile: readonly HuellenProfil[], vr: readonly number[], hOut: number, iBreit: number, frei: ReadonlySet<number> = new Set()): Anker[][] {
   type Merkmal = { id: number; v: number; haerte: number };
   const merkmale: Merkmal[][] = profile.map((pr) => {
     const out: Merkmal[] = [];
@@ -1046,17 +1046,23 @@ export function reihenplan(profile: readonly HuellenProfil[], vr: readonly numbe
     if (id < 0) continue;
     let da = 0;
     let nah = 0;
+    let ueber = 0;
+    let unter = 0;
     merkmale.forEach((ms, i) => {
       const m = ms.find((x) => x.id === id);
       if (!m) return;
       da++;
       if (Math.abs(m.v - vr[i]!) <= EINRASTEN) nah++;
+      if (m.v > vr[i]!) ueber++;
+      else unter++;
     });
-    if (2 * nah >= da) eingerastet.add(id);
+    // V5: Eine schräge Linie (`frei`), die die Breitenlinie kreuzt, wird selbst die Breitenlinie — eine Reihe kann keine
+    // andere kreuzen (die Breitenlinie unter die Linie zu drücken zerriss den Käfig, Vase 164°)
+    if (2 * nah >= da || (frei.has(id) && ueber > 0 && unter > 0)) eingerastet.add(id);
   }
   merkmale.forEach((ms, i) => {
     for (const m of ms) {
-      if (!eingerastet.has(m.id) || Math.abs(m.v - vr[i]!) > EINRASTEN_WEIT) continue;
+      if (!eingerastet.has(m.id) || (!frei.has(m.id) && Math.abs(m.v - vr[i]!) > EINRASTEN_WEIT)) continue;
       if (blHaerte[i]! > 0 && Math.abs(m.v - vr[i]!) >= Math.abs(bl[i]! - vr[i]!)) continue;
       bl[i] = Math.min(1 - ENDE_ABSTAND, Math.max(ENDE_ABSTAND, m.v));
       blHaerte[i] = m.haerte;
@@ -1114,7 +1120,8 @@ export function reihenplan(profile: readonly HuellenProfil[], vr: readonly numbe
       if (eingerastet.has(m.id)) continue;
       const r = reihe.get(m.id);
       if (r === undefined) continue;
-      if ((m.id >= 0 || m.id === SCHULTER_OBEN || m.id === SCHULTER_UNTEN) && Math.abs(natuerlich(i, m.v) - r) > 1.5) continue;
+      // V5: schräge Linien (`frei`) dürfen ihre Reihe weit von der natürlichen Lage wegziehen
+      if ((m.id >= 0 || m.id === SCHULTER_OBEN || m.id === SCHULTER_UNTEN) && !frei.has(m.id) && Math.abs(natuerlich(i, m.v) - r) > 1.5) continue;
       if (r < iBreit && m.v > bl[i]! + 1e-6) oben.push({ v: m.v, reihe: r, haerte: m.haerte, id: m.id });
       else if (r > iBreit && m.v < bl[i]! - 1e-6) unten.push({ v: m.v, reihe: r, haerte: m.haerte, id: m.id });
     }
@@ -1174,9 +1181,17 @@ export function reihenAuslaufen(plan: Anker[][], natuerlich: (i: number, reihe: 
       for (let k = 1; k <= REIHEN_AUSLAUF; k++) {
         const i = rand + schritt * k;
         if (i < 0 || i >= R) break;
-        // Ringe, die die Reihe schon führen (andere Linie, Ecke, Breitenlinie), bleiben
-        if (plan[i]!.some((y) => y.reihe === reihe)) break;
         const v = natuerlich(i, reihe) + d * auslauf(k);
+        // Ringe, die die Reihe schon führen (andere Linie, Ecke), bleiben; die weiche Breitenlinie läuft mit aus
+        const da = plan[i]!.find((y) => y.reihe === reihe);
+        if (da && (da.haerte > 0 || da.id !== undefined)) break;
+        if (da) {
+          const ueber = plan[i]!.filter((y) => y.reihe < reihe);
+          const unter = plan[i]!.filter((y) => y.reihe > reihe);
+          if (ueber.some((y) => y.v <= v + 1e-6) || unter.some((y) => y.v >= v - 1e-6)) break;
+          da.v = v;
+          continue;
+        }
         // nur zwischen den Nachbarankern des Rings (Reihen und Höhen monoton)
         const ueber = plan[i]!.filter((y) => y.reihe < reihe);
         const unter = plan[i]!.filter((y) => y.reihe > reihe);
