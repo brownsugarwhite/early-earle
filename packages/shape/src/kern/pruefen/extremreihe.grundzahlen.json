@@ -15,6 +15,10 @@
   "durchdringungen": 0,
   "knicke": 0,
   "schleifen": 0,
+  "umriss": {
+   "eigen": 0.24,
+   "haut": 0.24
+  },
   "linien": {
    "arten": [
     "reihe",
@@ -39,7 +43,11 @@
   "ansatz": 0,
   "durchdringungen": 0,
   "knicke": 0,
-  "schleifen": 6,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.28,
+   "haut": 0.27
+  },
   "linien": {
    "arten": [
     "treppe",
@@ -63,8 +71,12 @@
   "kappe": 5,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 4,
-  "schleifen": 10,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.28,
+   "haut": 0.28
+  },
   "linien": {
    "arten": [
     "reihe",
@@ -89,7 +101,11 @@
   "ansatz": 0,
   "durchdringungen": 0,
   "knicke": 0,
-  "schleifen": 14,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.26,
+   "haut": 0.26
+  },
   "linien": {
    "arten": [
     "treppe",
@@ -113,8 +129,12 @@
   "kappe": 10.7,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 25,
-  "schleifen": 16,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.28,
+   "haut": 0.28
+  },
   "linien": {
    "arten": [
     "ring"
@@ -137,8 +157,12 @@
   "kappe": 16.8,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 52,
-  "schleifen": 26,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.29,
+   "haut": 0.29
+  },
   "linien": {
    "arten": [
     "treppe"
@@ -161,8 +185,12 @@
   "kappe": 11.1,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 17,
-  "schleifen": 44,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.47,
+   "haut": 0.31
+  },
   "linien": {
    "arten": [
     "ohne",
@@ -186,8 +214,12 @@
   "kappe": 11.8,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 13,
-  "schleifen": 59,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.27,
+   "haut": 0.43
+  },
   "linien": {
    "arten": [
     "treppe",
@@ -211,8 +243,12 @@
   "kappe": 9,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 16,
-  "schleifen": 44,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.5,
+   "haut": 0.29
+  },
   "linien": {
    "arten": [
     "reihe"
@@ -235,8 +271,12 @@
   "kappe": 8.5,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 29,
-  "schleifen": 28,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.3,
+   "haut": 0.3
+  },
   "linien": {
    "arten": [
     "treppe"
@@ -259,8 +299,12 @@
   "kappe": 152.9,
   "ansatz": 0,
   "durchdringungen": 388,
-  "knicke": 216,
-  "schleifen": 128,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.29,
+   "haut": 0.33
+  },
   "linien": {
    "arten": [
     "reihe"
@@ -283,8 +327,12 @@
   "kappe": 15.9,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 86,
-  "schleifen": 60,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.3,
+   "haut": 0.3
+  },
   "linien": {
    "arten": [
     "treppe"
@@ -307,8 +355,12 @@
   "kappe": 5.4,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 38,
-  "schleifen": 67
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.31,
+   "haut": 0.38
+  }
  },
  {
   "name": "wuerfel-rund",
@@ -324,8 +376,12 @@
   "kappe": 11.2,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 26,
-  "schleifen": 10
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.29,
+   "haut": 0.29
+  }
  },
  {
   "name": "kegel",
@@ -341,8 +397,12 @@
   "kappe": 9.7,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 13,
-  "schleifen": 32,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.3,
+   "haut": 0.29
+  },
   "linien": {
    "arten": [
     "fehlt"
@@ -365,8 +425,12 @@
   "kappe": 10.2,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 21,
-  "schleifen": 19,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.28,
+   "haut": 0.3
+  },
   "linien": {
    "arten": [
     "treppe"
@@ -389,8 +453,12 @@
   "kappe": 23.4,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 129,
-  "schleifen": 109
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.29,
+   "haut": 0.33
+  }
  },
  {
   "name": "keil",
@@ -406,8 +474,12 @@
   "kappe": 25,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 98,
-  "schleifen": 65
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.32,
+   "haut": 0.81
+  }
  },
  {
   "name": "pyramide",
@@ -423,8 +495,12 @@
   "kappe": 37.8,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 54,
-  "schleifen": 47
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.25,
+   "haut": 0.26
+  }
  },
  {
   "name": "pyramide",
@@ -440,8 +516,12 @@
   "kappe": 45,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 29,
-  "schleifen": 20
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.35,
+   "haut": 0.35
+  }
  },
  {
   "name": "tigerkopf",
@@ -457,8 +537,12 @@
   "kappe": 7.9,
   "ansatz": 0,
   "durchdringungen": 28,
-  "knicke": 71,
-  "schleifen": 35
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.56,
+   "haut": 0.66
+  }
  },
  {
   "name": "tigerkopf",
@@ -474,8 +558,12 @@
   "kappe": 10,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 36,
-  "schleifen": 31
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.29,
+   "haut": 0.3
+  }
  },
  {
   "name": "langhals",
@@ -491,8 +579,12 @@
   "kappe": 8.6,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 18,
-  "schleifen": 55
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.3,
+   "haut": 0.47
+  }
  },
  {
   "name": "langhals",
@@ -508,8 +600,12 @@
   "kappe": 9.5,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 37,
-  "schleifen": 52
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.28,
+   "haut": 0.45
+  }
  },
  {
   "name": "hals-1-8",
@@ -525,8 +621,12 @@
   "kappe": 20,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 24,
-  "schleifen": 74,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.3,
+   "haut": 0.26
+  },
   "linien": {
    "arten": [
     "reihe"
@@ -549,8 +649,12 @@
   "kappe": 17.3,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 31,
-  "schleifen": 30,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.3,
+   "haut": 0.28
+  },
   "linien": {
    "arten": [
     "treppe"
@@ -573,8 +677,12 @@
   "kappe": 170.2,
   "ansatz": 0,
   "durchdringungen": 508,
-  "knicke": 89,
-  "schleifen": 133,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.31,
+   "haut": 0.99
+  },
   "linien": {
    "arten": [
     "reihe"
@@ -597,8 +705,12 @@
   "kappe": 10.3,
   "ansatz": 36.4,
   "durchdringungen": 0,
-  "knicke": 78,
-  "schleifen": 81,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.29,
+   "haut": 0.28
+  },
   "linien": {
    "arten": [
     "treppe"
@@ -621,8 +733,12 @@
   "kappe": 9.9,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 83,
-  "schleifen": 128,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.29,
+   "haut": 0.24
+  },
   "linien": {
    "arten": [
     "reihe"
@@ -645,8 +761,12 @@
   "kappe": 9.7,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 100,
-  "schleifen": 117,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.3,
+   "haut": 0.3
+  },
   "linien": {
    "arten": [
     "treppe"
@@ -669,8 +789,12 @@
   "kappe": 13.6,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 38,
-  "schleifen": 23
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.29,
+   "haut": 0.28
+  }
  },
  {
   "name": "wurst",
@@ -686,8 +810,12 @@
   "kappe": 14.1,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 35,
-  "schleifen": 15
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.28,
+   "haut": 0.28
+  }
  },
  {
   "name": "rochen",
@@ -703,8 +831,12 @@
   "kappe": 11.2,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 6,
-  "schleifen": 9
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.27,
+   "haut": 0.27
+  }
  },
  {
   "name": "rochen",
@@ -720,8 +852,12 @@
   "kappe": 36.4,
   "ansatz": 27,
   "durchdringungen": 0,
-  "knicke": 11,
-  "schleifen": 26
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.3,
+   "haut": 0.3
+  }
  },
  {
   "name": "blatt",
@@ -737,8 +873,12 @@
   "kappe": 14.2,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 16,
-  "schleifen": 52
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.29,
+   "haut": 0.29
+  }
  },
  {
   "name": "blatt",
@@ -754,8 +894,12 @@
   "kappe": 13,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 13,
-  "schleifen": 11
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.31,
+   "haut": 0.31
+  }
  },
  {
   "name": "flunder",
@@ -772,7 +916,11 @@
   "ansatz": 0,
   "durchdringungen": 0,
   "knicke": 0,
-  "schleifen": 8
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.3,
+   "haut": 0.28
+  }
  },
  {
   "name": "flunder",
@@ -789,7 +937,11 @@
   "ansatz": 0,
   "durchdringungen": 0,
   "knicke": 0,
-  "schleifen": 0
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.28,
+   "haut": 0.28
+  }
  },
  {
   "name": "pilz",
@@ -805,8 +957,12 @@
   "kappe": 15.7,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 66,
-  "schleifen": 70
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.27,
+   "haut": 0.37
+  }
  },
  {
   "name": "pilz",
@@ -822,8 +978,12 @@
   "kappe": 14.8,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 42,
-  "schleifen": 26
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.3,
+   "haut": 0.3
+  }
  },
  {
   "name": "giraffe-bauch",
@@ -839,8 +999,12 @@
   "kappe": 21.8,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 10,
-  "schleifen": 22
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.3,
+   "haut": 0.29
+  }
  },
  {
   "name": "giraffe-bauch",
@@ -856,8 +1020,12 @@
   "kappe": 7.6,
   "ansatz": 11.2,
   "durchdringungen": 0,
-  "knicke": 7,
-  "schleifen": 32
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.31,
+   "haut": 0.29
+  }
  },
  {
   "name": "sichel",
@@ -873,8 +1041,12 @@
   "kappe": 68.8,
   "ansatz": 0,
   "durchdringungen": 154,
-  "knicke": 42,
-  "schleifen": 27
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.61,
+   "haut": 0.29
+  }
  },
  {
   "name": "sichel",
@@ -890,8 +1062,12 @@
   "kappe": 27.7,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 50,
-  "schleifen": 42
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.3,
+   "haut": 0.28
+  }
  },
  {
   "name": "hammerhai",
@@ -907,8 +1083,12 @@
   "kappe": 18.8,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 27,
-  "schleifen": 41
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.27,
+   "haut": 0.27
+  }
  },
  {
   "name": "hammerhai",
@@ -924,8 +1104,12 @@
   "kappe": 20.7,
   "ansatz": 24.2,
   "durchdringungen": 0,
-  "knicke": 7,
-  "schleifen": 5
+  "knicke": 2,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.5,
+   "haut": 0.49
+  }
  },
  {
   "name": "ueberhang",
@@ -941,8 +1125,12 @@
   "kappe": 28.3,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 6,
-  "schleifen": 76
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.29,
+   "haut": 0.38
+  }
  },
  {
   "name": "ueberhang",
@@ -958,8 +1146,12 @@
   "kappe": 23.2,
   "ansatz": 112,
   "durchdringungen": 0,
-  "knicke": 7,
-  "schleifen": 29
+  "knicke": 1,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.3,
+   "haut": 0.43
+  }
  },
  {
   "name": "ente-haken",
@@ -975,8 +1167,12 @@
   "kappe": 94.3,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 6,
-  "schleifen": 12
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.29,
+   "haut": 0.31
+  }
  },
  {
   "name": "ente-haken",
@@ -992,8 +1188,12 @@
   "kappe": 16.9,
   "ansatz": 157.7,
   "durchdringungen": 38,
-  "knicke": 14,
-  "schleifen": 23
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.28,
+   "haut": 0.35
+  }
  },
  {
   "name": "einfach",
@@ -1009,8 +1209,12 @@
   "kappe": 20.7,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 2,
-  "schleifen": 76
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.28,
+   "haut": 0.28
+  }
  },
  {
   "name": "einfach",
@@ -1026,8 +1230,12 @@
   "kappe": 9.9,
   "ansatz": 22,
   "durchdringungen": 0,
-  "knicke": 17,
-  "schleifen": 42
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.5,
+   "haut": 0.3
+  }
  },
  {
   "name": "vierbeiner",
@@ -1043,8 +1251,12 @@
   "kappe": 44.6,
   "ansatz": 0,
   "durchdringungen": 1190,
-  "knicke": 103,
-  "schleifen": 24,
+  "knicke": 2,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.64,
+   "haut": 0.66
+  },
   "linien": {
    "arten": [
     "ring"
@@ -1067,8 +1279,12 @@
   "kappe": 12.3,
   "ansatz": 19.9,
   "durchdringungen": 0,
-  "knicke": 24,
-  "schleifen": 55,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.3,
+   "haut": 0.3
+  },
   "linien": {
    "arten": [
     "treppe"
@@ -1091,8 +1307,12 @@
   "kappe": 41.4,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 11,
-  "schleifen": 14
+  "knicke": 4,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.31,
+   "haut": 0.25
+  }
  },
  {
   "name": "zweihals",
@@ -1108,8 +1328,12 @@
   "kappe": 14.8,
   "ansatz": 14.8,
   "durchdringungen": 0,
-  "knicke": 17,
-  "schleifen": 23
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.27,
+   "haut": 0.3
+  }
  },
  {
   "name": "ente",
@@ -1125,8 +1349,12 @@
   "kappe": 56.8,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 60,
-  "schleifen": 30
+  "knicke": 2,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.29,
+   "haut": 0.57
+  }
  },
  {
   "name": "ente",
@@ -1142,8 +1370,12 @@
   "kappe": 4.1,
   "ansatz": 24.5,
   "durchdringungen": 0,
-  "knicke": 30,
-  "schleifen": 59
+  "knicke": 2,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.3,
+   "haut": 0.45
+  }
  },
  {
   "name": "fisch",
@@ -1159,8 +1391,12 @@
   "kappe": 40.3,
   "ansatz": 0,
   "durchdringungen": 76,
-  "knicke": 22,
-  "schleifen": 28,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.85,
+   "haut": 0.35
+  },
   "linien": {
    "arten": [
     "reihe"
@@ -1183,8 +1419,12 @@
   "kappe": 19.6,
   "ansatz": 22.9,
   "durchdringungen": 0,
-  "knicke": 33,
-  "schleifen": 76,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.31,
+   "haut": 0.29
+  },
   "linien": {
    "arten": [
     "treppe"
@@ -1207,8 +1447,12 @@
   "kappe": 46.9,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 24,
-  "schleifen": 14
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.3,
+   "haut": 0.26
+  }
  },
  {
   "name": "krabbe",
@@ -1225,7 +1469,11 @@
   "ansatz": 32.5,
   "durchdringungen": 205,
   "knicke": 0,
-  "schleifen": 13
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.28,
+   "haut": 0.28
+  }
  },
  {
   "name": "krake",
@@ -1241,8 +1489,12 @@
   "kappe": 55.3,
   "ansatz": 0,
   "durchdringungen": 660,
-  "knicke": 67,
-  "schleifen": 17,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.33,
+   "haut": 0.31
+  },
   "linien": {
    "arten": [
     "ring"
@@ -1265,8 +1517,12 @@
   "kappe": 106.4,
   "ansatz": 26.8,
   "durchdringungen": 657,
-  "knicke": 20,
-  "schleifen": 21,
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.54,
+   "haut": 0.38
+  },
   "linien": {
    "arten": [
     "treppe"
@@ -1289,8 +1545,12 @@
   "kappe": 59.2,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 18,
-  "schleifen": 26
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.48,
+   "haut": 0.44
+  }
  },
  {
   "name": "seestern",
@@ -1306,8 +1566,12 @@
   "kappe": 7.4,
   "ansatz": 153.9,
   "durchdringungen": 0,
-  "knicke": 12,
-  "schleifen": 28
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.31,
+   "haut": 0.57
+  }
  },
  {
   "name": "fluegel-oben",
@@ -1323,8 +1587,12 @@
   "kappe": 29,
   "ansatz": 0,
   "durchdringungen": 416,
-  "knicke": 35,
-  "schleifen": 13
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.28,
+   "haut": 0.42
+  }
  },
  {
   "name": "fluegel-oben",
@@ -1340,8 +1608,12 @@
   "kappe": 12.1,
   "ansatz": 21.6,
   "durchdringungen": 0,
-  "knicke": 8,
-  "schleifen": 29
+  "knicke": 1,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.32,
+   "haut": 0.32
+  }
  },
  {
   "name": "katze-ohren",
@@ -1357,8 +1629,12 @@
   "kappe": 9.6,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 7,
-  "schleifen": 41
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.43,
+   "haut": 0.29
+  }
  },
  {
   "name": "katze-ohren",
@@ -1374,8 +1650,12 @@
   "kappe": 7.5,
   "ansatz": 25.6,
   "durchdringungen": 0,
-  "knicke": 10,
-  "schleifen": 20
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.38,
+   "haut": 0.29
+  }
  },
  {
   "name": "hoerner",
@@ -1391,8 +1671,12 @@
   "kappe": 63.4,
   "ansatz": 0,
   "durchdringungen": 180,
-  "knicke": 6,
-  "schleifen": 11
+  "knicke": 1,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.28,
+   "haut": 0.27
+  }
  },
  {
   "name": "hoerner",
@@ -1408,8 +1692,12 @@
   "kappe": 22.3,
   "ansatz": 17.5,
   "durchdringungen": 0,
-  "knicke": 27,
-  "schleifen": 36
+  "knicke": 2,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.3,
+   "haut": 0.31
+  }
  },
  {
   "name": "augenstiele",
@@ -1425,8 +1713,12 @@
   "kappe": 32.5,
   "ansatz": 0,
   "durchdringungen": 338,
-  "knicke": 24,
-  "schleifen": 29
+  "knicke": 1,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.5,
+   "haut": 0.79
+  }
  },
  {
   "name": "augenstiele",
@@ -1442,8 +1734,12 @@
   "kappe": 10,
   "ansatz": 18.1,
   "durchdringungen": 0,
-  "knicke": 12,
-  "schleifen": 59
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.33,
+   "haut": 0.34
+  }
  },
  {
   "name": "widerspruch-breite",
@@ -1459,8 +1755,12 @@
   "kappe": 3,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 2,
-  "schleifen": 16
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.29,
+   "haut": 0.28
+  }
  },
  {
   "name": "widerspruch-breite",
@@ -1476,8 +1776,12 @@
   "kappe": 4,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 6,
-  "schleifen": 15
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.25,
+   "haut": 0.29
+  }
  },
  {
   "name": "widerspruch-hoehe",
@@ -1493,8 +1797,12 @@
   "kappe": 3,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 21,
-  "schleifen": 17
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.29,
+   "haut": 0.29
+  }
  },
  {
   "name": "widerspruch-hoehe",
@@ -1510,7 +1818,11 @@
   "kappe": 4,
   "ansatz": 0,
   "durchdringungen": 0,
-  "knicke": 15,
-  "schleifen": 11
+  "knicke": 0,
+  "schleifen": 0,
+  "umriss": {
+   "eigen": 0.23,
+   "haut": 0.22
+  }
  }
 ]

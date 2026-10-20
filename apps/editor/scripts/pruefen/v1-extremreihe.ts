@@ -173,6 +173,10 @@ if (process.env.GRUNDZAHLEN) {
       durchdringungen: m.durchdringungen,
       knicke: m.rauschen.seite.knicke + m.rauschen.front.knicke + m.rauschen.top.knicke,
       schleifen: m.rauschen.seite.schleifen + m.rauschen.front.schleifen + m.rauschen.top.schleifen,
+      umriss: {
+        eigen: Math.round(Math.max(m.rauschen.seite.eigen, m.rauschen.front.eigen, m.rauschen.top.eigen) * 100) / 100,
+        haut: Math.round(Math.max(m.rauschen.seite.haut, m.rauschen.front.haut, m.rauschen.top.haut) * 100) / 100,
+      },
       ...(m.linien ? { linien: { arten: m.linien.arten, kante: Number.isFinite(m.linien.kante) ? Math.round(m.linien.kante * 100) / 100 : null, aufHaut: Math.round(m.linien.aufHaut * 100) / 100 } } : {}),
     }));
   const ziel = resolve(WURZEL, 'packages/shape/src/kern/pruefen/extremreihe.grundzahlen.json');
