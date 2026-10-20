@@ -763,6 +763,17 @@ Arbeit fort, wie wir es im Plan erarbeitet haben.“ (Der Branch `claude/sweet-n
   kreuzt die eigene Linie; das Blatt meldet es), 4-mal neu in einem gekoppelten Blatt (Top von Überhang, Seestern, Pyramide,
   Hammerhai: 2–8 Kreuzungen, die du nicht gezeichnet hast).
 
+- **Aufräumen (bitgleich, Fingerabdrücke aller 156 Netze der Reihe vorher und nachher gleich):** alter G4-Teilbau entfernt
+  (`teile.ts`, `teilBau.ts`, `baum.ts`, `knoten.ts`, ihr Test, `knoten-diagnose.ts`; die Modi `BAUM`/`TEILE` in
+  `grundkoerper-g.ts`) — nur Raster und `rastern` braucht die Teilerkennung noch, sie liegen jetzt in `raster.ts`; acht
+  Funktionen ohne Aufrufer (u. a. `baumDreiecke` des S5-Geists, `mittelachse` des Versuchs G2, `zeichnungsProben`);
+  Röhre und Baum teilen Maßstab und Querschnittspunkt eines Rings (vorher wörtliche Kopie), die Breite bei einer Höhe
+  der geführten Front rechnet mit `reichweite`, der Posen-Löser mit derselben Cuthill-McKee-Ordnung wie der glatte Löser;
+  veraltete Geist-Kommentare. **Nicht zusammengelegt**, weil sie verschieden rechnen: die vier Cholesky-Löser (Abbruch
+  gegen Klemmen bei nicht positiver Diagonale, Hülle, dicht, Band), die Laplace-Masken (verschiedene Faltenregeln), die
+  Sichthüllen (24 gegen 16 Proben je Abschnitt); das gehört zu V4, wenn der Löser die Umrissbedingungen bekommt. Die
+  Teilerkennung läuft schon seit V0 einmal je Bau.
+
 **In V1 behoben (Befunde der Reihe und der Szenarien, je Test vorher rot):**
 - Stiftlinien mit wenigen Knoten lagen zwischen den Knoten als Sehne neben der Haut (Kugel, zwei Knoten: 20 px); das
   Liniennetz zeigte sie auf der Haut, das Einpassen zog den Körper auf die Sehne — im Editor mit zwei gekreuzten Linien
@@ -779,3 +790,5 @@ Sicheln und fast allen Mehrteilern und lässt Ohren, Scheren, Arme, Hörner weg;
 besser, versagt aber an Krabbe, Krake, Pyramide, Keil, Blatt und springt am Gestenende um 4–22 px; einteilige Körper
 verfehlen Front/Top weiter um 7–14 px; Netzlinien rauschen (bis 80 Knicke, 126 Schleifen); Käfiggüte weit vom Ziel; die
 Treppe auf „Teile“ liegt 6–67 px neben den Linien. Das ist die ehrliche Ausgangslage für V2–V7.
+
+**Nächster Schritt:** dein Blick auf V0 und V1 (Kontaktbögen, Testanleitung in der Übergabe), dann V2 „Saubere Linien“.
