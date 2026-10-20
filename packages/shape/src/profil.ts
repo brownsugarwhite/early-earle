@@ -99,6 +99,30 @@ export function vollerPfad(pr: Profil): Kubik[] {
   return pr.art === 'halb' ? [...segmente(pr), ...gespiegelteSegmente(pr)] : segmente(pr);
 }
 
+/**
+ * Selbstschnitte eines Umrisses (Plan 20.10., V0): Zahl der Kreuzungen nicht benachbarter Strecken des abgetasteten, ganzen
+ * Umrisses (bei Halbprofilen samt Spiegelbild). 0 = sauber. Ein sich selbst schneidender Umriss ergibt keinen Körper, der
+ * ihn trifft — der Editor zeigt das im Blatt, Prüfkörper werden vor der Messung darauf geprüft.
+ */
+export function selbstschnitte(pr: Profil, proSegment = 12): number {
+  let pts = pfadAbtasten(vollerPfad(pr), proSegment);
+  if (pts.length > 1 && Math.hypot(pts[0]!.x - pts[pts.length - 1]!.x, pts[0]!.y - pts[pts.length - 1]!.y) < 1e-12) pts = pts.slice(0, -1);
+  const m = pts.length;
+  const kreuz = (a: V2, b: V2, c: V2) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+  let n = 0;
+  for (let i = 0; i < m; i++) {
+    const p = pts[i]!;
+    const p2 = pts[(i + 1) % m]!;
+    for (let j = i + 2; j < m; j++) {
+      if (i === 0 && j === m - 1) continue;
+      const q = pts[j]!;
+      const q2 = pts[(j + 1) % m]!;
+      if (kreuz(p, p2, q) * kreuz(p, p2, q2) < 0 && kreuz(q, q2, p) * kreuz(q, q2, p2) < 0) n++;
+    }
+  }
+  return n;
+}
+
 export function pfadAbtasten(segs: readonly Kubik[], proSegment: number): V2[] {
   const out: V2[] = [];
   segs.forEach((seg, si) => {

@@ -1,4 +1,5 @@
-import type { CSSProperties } from 'react';
+import { selbstschnitte } from '@ee/shape';
+import { type CSSProperties, useMemo } from 'react';
 import { useRahmen } from '../layout/animation';
 import { poseTitel, useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
@@ -47,10 +48,18 @@ function Delta({ id }: { id: 'seite' | 'front' | 'top' }) {
   const d = useKernAnzeige((s) => s.info?.blatt?.[id]?.max);
   const wid = useKernAnzeige((s) => s.info?.blatt?.[id]?.widerspruch);
   const kern = useUi((s) => s.bauweise === 'kern');
+  // Plan 20.10., V0: Ein Umriss, der sich selbst schneidet, ergibt keinen Körper, der ihn trifft — das Blatt sagt es
+  const profil = useEditor((s) => s.dok.profile[id]);
+  const schnitte = useMemo(() => selbstschnitte(profil), [profil]);
   if (!kern || d === undefined) return null;
   const stufe = d <= 2 ? 'gut' : d <= 6 ? 'mittel' : 'schlecht';
   return (
     <>
+      {schnitte > 0 && (
+        <span className="vp-widerspruch" data-selbstschnitt={schnitte} title="Der Umriss kreuzt sich selbst — kein Körper kann ihn treffen. Knoten so ziehen, dass sich die Linie nicht mehr überschneidet.">
+          Umriss schneidet sich
+        </span>
+      )}
       <span className={`vp-delta ${stufe}`} data-delta={d.toFixed(1)} title="größte Abweichung zwischen Körper und Kurve in diesem Blatt (px bei 461 px je Kachel)">
         Δ {px(d)} px
       </span>
