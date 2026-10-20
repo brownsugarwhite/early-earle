@@ -640,6 +640,74 @@ proportional glatt“) und der Zustand von O.
   (+1° höchstens); Volumen ±2 %; 0 Durchdringungen; Bau ≤ 150 ms (Röhre) bzw. ≤ 300 ms (Baum), Zug ≤ 8 ms (Röhre); ohne
   Schalter bitgleich. Scheitert der Beweis (drei gemessene Fehlanläufe), halte ich an und zeige dir, woran.
 
+#### V4 im Detail (20.10. nachts, vor dem Bau)
+
+**Florian vorab (20.10.):** Die farbigen Umrisslinien aus V2 stören ihn; für die Bearbeitung braucht man sie nicht (reine
+Anzeige). Sie sind jetzt standardmäßig aus (Tafel Körper → „umrisse aus | an“), die Ringe der Knoten bleiben. V4 macht genau
+diese Linien zu Käfigschleifen — danach sind sie durch Bauart glatt und lassen sich bei Bedarf einschalten.
+
+**Diagnose heute** (`apps/editor/scripts/pruefen/v4-diagnose.ts`; Röhre wie im Editor, glatt + mittel, Florians Ablauf aus
+der Startkugel; größte Abweichung je Blatt mit Ort):
+
+| Körper | Seite | Front | Top |
+|---|---|---|---|
+| Kugel | 0,3 | 0,2 | 0,3 |
+| Ei | 0,3 | 0,4 | 0,4 |
+| Robbe | 3,2 zu schmal (Kappe vorn) | 6,2 zu schmal (Ring 13, unten) | 12,5 zu breit (Ringe 3/4, unten am Rumpf) |
+| Tiger | 2,4 zu schmal (Kappe vorn) | 2,1 zu schmal (Ring 9) | 4,9 zu breit (Ring 3), 3,4 (Kappe vorn) |
+| Vase | 0,5 | 2,3 zu breit (Ringe 15/20) | 13,7 zu breit (**Kappe vorn**) |
+| einfache Form | 0,3 | 7,7 zu schmal (Ringe 19/20) | 65,6 zu breit (**Kappe hinten**, Kerbe im Top) |
+| Kegel | 2,1 zu breit (Ring 15, Unterseite außerhalb der Naht) | 7,3 zu schmal (Ringe 12–17) | 2,6 zu breit (Ring 10) |
+| Widerspruch Front +10 px | 0,3 | 10,2 zu schmal (Ring 12: der Widerspruch selbst) | 0,8 |
+
+Drei Ursachen, jede mit eigenem Mittel:
+1. **Zu breit an den Ringen** (Robbe, Tiger, Kegel): Heute hält ein „Breitenpunkt“ je Ring die Breite, aber nicht, dass die
+   Haut dort am breitesten ist — darunter oder darüber wölbt sie sich hinaus. → Silhouettenbedingung an der Breitenlinie und
+   die Ungleichung „nirgends über den Umriss“.
+2. **Zu breit an den Kappen** (Vase, einfache Form, Tiger): Die Kappen haben keine Breitenpunkte. → Die Breitenlinie läuft
+   durch die Mittelreihe der Kappe bis zur Spitze; die Ungleichung gilt auch dort.
+3. **Zu schmal in der Front** (Robbe, Kegel, einfache Form, Tiger): Das „Berühren“ (S3) erreicht die Front nur weich. →
+   Frontlinie aus Ringstücken mit Lagebedingung.
+Die Seite ist bis auf zwei Fälle schon gut; dort steht die Unterseite einer kastigen Röhre unter der Naht hinaus (Kegel) bzw.
+fehlt der Kappe oben Fülle (Robbe) — die Ungleichung deckt beides.
+
+**Bauweise (Schalter `umrisse: 'exakt'` im Kern, ohne Schalter bitgleich):**
+1. **Löser je Achse:** Bedingungen bekommen Gewichte je Achse (eine Lagebedingung nur in z, eine Tangentenbedingung in x und
+   z …); drei dünn besetzte Zerlegungen (x, y, z) mit den Zeilen ihrer Achse. Käfigziele, Glättung (mit Bezug) und Naht wie
+   heute in allen drei. Bisher hielt ein Breitenpunkt x und y auf ihrem letzten Wert fest (ein Zwang, der erst nach mehreren
+   Durchgängen nachgibt).
+2. **Breitenlinie (Top):** die Käfigreihe N/4 (rechts) bzw. 3N/4 (links) über alle Ringe und weiter durch die Mittelreihe
+   beider Kappen bis zur Spitze. Die Querschnittsvorlagen werden so umparametrisiert, dass ihre breiteste Stelle auf N/4
+   liegt (Kasten: Mitte der flachen Wand; `umparametrisieren` mit festem Index). Bedingungen an allen feinen Punkten der
+   Reihe: Lage z = Sichthülle min(Top(x), Front(y)) an ihrem (x, y); Tangente: die Differenz der beiden feinen Nachbarn quer
+   zur Reihe, in die Top-Ebene projiziert, liegt parallel zur Top-Linie (Festpunkt: Ziel λ·t mit λ aus dem vorigen
+   Durchgang).
+3. **Frontlinie (Front) aus Ringstücken:** Je Höhe stellt der Ring den Umriss, der dort nach dem ersten Lösen am weitesten
+   reicht (Zuordnung danach eingefroren); auf seinen feinen Punkten Lage z = Sichthülle und Tangente längs der Wirbelsäule
+   (Differenz der Nachbarn zum vorigen und nächsten Ring, in die Front-Ebene projiziert, parallel zur Front-Linie).
+   **Richtung:** Bei stehenden Teilen (Sprosse waagerecht) tauschen Reihe und Ring die Rollen (die Reihe stellt die Front,
+   Ringstücke das Top); schräge Teile behalten bis V5 die heutigen Breitenpunkte.
+4. **Ungleichung „nirgends über den Umriss“** in allen drei Blättern: Nach dem Lösen wird jeder feine Punkt, dessen Projektion
+   mehr als 0,25 px außerhalb der Linie liegt, an den nächsten Linienpunkt gebunden (nur die beiden Achsen des Blatts, Normale
+   eingefroren); höchstens zwei weitere Durchgänge, die aktive Menge wächst nur.
+5. **Widersprüche örtlich:** Ziele sind die Sichthülle (die kleinere der beiden Breiten), deshalb verlangt keine Bedingung, was
+   eine andere Ansicht verbietet; der Unterschied ist das Rot, das der Editor schon zeigt.
+6. **Zug:** Zeilen, Zuordnung, aktive Menge und λ bleiben auf dem Stand des letzten genauen Baus; ein Zug ist nur
+   Einsetzen (drei Achsen). Beim Loslassen genau.
+7. **Gewichte:** Lage und Tangente so hoch, dass die Linien unter 0,5 px liegen (Startwert 1000 gegen Käfigziel 1, Glättung 30,
+   Naht 64), gemessen statt geschätzt.
+
+**Reihenfolge des Beweises** (nur Kern, Röhre; je Schritt messen, Diagnose-Tabelle oben vorher/nachher):
+1. Löser je Achse (ohne neue Bedingungen bitgleich zum heutigen dünnen Weg, Test).
+2. Breitenlinie mit Lage und Tangente, durch die Kappen (Robbe, Tiger, Vase, einfache Form).
+3. Frontlinie aus Ringstücken (Robbe, Kegel, einfache Form, Tiger).
+4. Ungleichung in allen drei Blättern.
+5. Widerspruch (Front +10 px), Falten, Volumen, Durchdringungen, Zeiten; danach die ganze Extremreihe gegen die Grundzahlen.
+Abbruchkriterium wie oben: Scheitern Vase oder Robbe mit Ringstücken, kommt zuerst die Zuordnung; nach drei gemessenen
+Fehlanläufen am selben Tor halte ich an. Erst nach dem Beweis und deinem Blick kommt der Schalter in den Editor (Tafel
+Körper) und das Liniennetz aus den Schleifen; Kappen nach Endform (flache Enden) nur, wenn die Messung sie danach noch als
+Ursache zeigt.
+
 ### V5 Linien exakt (S8-Kern, 3.3–3.5)
 - Bauweise 3.3: Einordnen, gemeinsames Verziehen mit Kreuzungen (zwei dünne Platten, Rückfall PCHIP), Bezugskäfig
   (Catmull–Rom über Ringe und Reihen), **ein** Lösen auf dem gefalteten Netz (Haut Punkt-zu-Ebene, Linien Punkt-zu-Kurve,
