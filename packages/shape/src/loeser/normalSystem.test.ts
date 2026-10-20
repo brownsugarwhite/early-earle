@@ -5,6 +5,8 @@ import { neuesDokument } from '../dokument';
 import { ableiten } from '../kern/ableiten';
 import { koerperDokument } from '../kern/pruefen/koerper';
 import { zufall } from '../kern/pruefen/zufall';
+import type { DuennMatrix } from '../subdivision/matrix';
+import { type Bedingung, ausgleichsLoeser, kaefigAusgleich } from './grenzflaeche';
 
 declare const console: { log: (...a: unknown[]) => void };
 
@@ -23,5 +25,33 @@ describe('dünn besetzter Ausgleich (S2)', () => {
       expect(df).toBeLessThan(1e-9);
     }
     console.log(zeilen.join('\n'));
+  });
+});
+
+describe('Ausgleich mit Glättung: Absicherungen (Plan 20.10., V0)', () => {
+  // Kette 0–1–2–3: Grenzmatrix = Einheit, Glättung je innerem Punkt (x_i − Mittel der Nachbarn)
+  const n = 4;
+  const einheit = (zeilen: number): DuennMatrix => ({ zeilen, spalten: n, start: Uint32Array.from({ length: zeilen + 1 }, (_, i) => i), index: Uint32Array.from({ length: zeilen }, (_, i) => i), wert: new Float64Array(zeilen).fill(1) });
+  const nachbarn = [[1], [0, 2], [1, 3], [2]];
+  const glatt = [1, 2].map((i) => ({ index: Uint32Array.from([i, i - 1, i + 1]), wert: Float64Array.from([1, -0.5, -0.5]), gewicht: 1 }));
+
+  it('fehlt einem Punkt die Zielbedingung, bleibt der Bezug (aus den Nachbarn) statt still gegen 0 zu glätten', () => {
+    // Punkt 2 ohne eigene Bedingung; Ziele liegen auf einer Parabel, die die Glättung „gegen 0“ abflachen würde
+    const bed: Bedingung[] = [0, 1, 3].map((zeile) => ({ zeile, gewicht: 1 }));
+    const l = ausgleichsLoeser(einheit(n), n, bed, undefined, { zeilen: glatt, nachbarn, bezug: 1 });
+    expect(l.bezug, 'Bezug vorhanden').toBeTruthy();
+    const ziele = Float64Array.from([0, 0, 0, 1, 1, 0, 3, 9, 0]);
+    const x = kaefigAusgleich(l, ziele);
+    for (const v of x) expect(Number.isFinite(v)).toBe(true);
+    // die bekannten Punkte bleiben nah an ihren Zielen (mit Bezug glättet nur die Abweichung)
+    expect(Math.abs(x[3]! - 1)).toBeLessThan(0.2);
+  });
+
+  it('nicht positiv definit (Punkt ohne Zeile, ohne Glättung): gedämpft gelöst statt Abbruch', () => {
+    const bed: Bedingung[] = [0, 1, 2].map((zeile) => ({ zeile, gewicht: 1 }));
+    const l = ausgleichsLoeser(einheit(n), n, bed, undefined, { zeilen: [], nachbarn, bezug: 0 });
+    const x = kaefigAusgleich(l, Float64Array.from([0, 0, 0, 1, 0, 0, 2, 0, 0]));
+    for (const v of x) expect(Number.isFinite(v)).toBe(true);
+    expect(Math.abs(x[3]! - 1)).toBeLessThan(1e-6);
   });
 });

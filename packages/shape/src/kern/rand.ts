@@ -24,6 +24,14 @@ const SIGMA_R = 3.0;
  * 1,35 / 1,5 / 1,6 / 2: Fisch +10 / 17 / 21 / 33 % Volumen ohne Gewinn in der Front, einfache Form Front 8,3 / 7,8 / 6,1 / 6,1 px.
  */
 const G_MAX = 1.35;
+/**
+ * Stetiger Übergang um G_MAX (Plan 20.10., V0): bis G_VOLL wächst der Ring ganz, ab G_AUS gar nicht, dazwischen weich
+ * abnehmend. Vorher entschied eine harte Schwelle — beim Ziehen sprang der Käfig an × 1,35 um bis zu 36 px bei 0,4 px
+ * Änderung der Front (einfache Form); jetzt bis 14 px. Den Rest macht die Wahl des Rings je Höhe (diskret) — V4 ersetzt
+ * „berühren“ durch Umrisse als Käfigschleifen.
+ */
+const G_VOLL = 1.25;
+const G_AUS = 1.45;
 /** Rest, ab dem ein Wunsch als „nur als Kante erreichbar“ gilt (1 px) */
 const KANTE_AB = 1 / 461;
 /** Abstand der gewachsenen Punkte zum Top (2 px bei 461 px je Einheit) */
@@ -63,7 +71,24 @@ const superellipse = (s: number, p: number) => Math.max(0, 1 - Math.min(1, Math.
 export type RandMarke = { y: number; soll: number };
 export type Beruehrung = { vorlagen: Vorlage[]; wachstum: number[]; nachfrage: Nachfrage[]; punkte: { i: number; j: number }[]; kante: RandMarke[]; teil: RandMarke[] };
 
-export function frontBeruehren(sprossen: readonly Sprosse[], vorlagen: readonly Vorlage[], W: readonly number[], breiten: Breiten, art: FuelleArt, huelle?: (y: number) => number): Beruehrung {
+/** Optionen des Berührens (Plan 20.10., V0). */
+export type BeruehrOptionen = {
+  /**
+   * Gruppe je Ring (Baum: Streifen); das Wachstum breitet sich nur innerhalb der Gruppe über die Nachbarringe aus. Vorher
+   * standen die Ringe aller Streifen in einer Liste, und die Glocke griff vom Ende eines Streifens auf den Anfang des
+   * nächsten über (dort liegen sie nicht nebeneinander). Ohne Gruppe (Röhre) wie bisher.
+   */
+  gruppe?: readonly number[];
+  /**
+   * Harte Grenze × G_MAX statt des stetigen Übergangs: Der Baum behält sie bis V7 — der Übergang verschlechterte dort die
+   * schon kaputten Ansätze von Ente-Haken (158 → 174°) und Überhang (112 → 129°), und während eines Zugs rechnet der Baum
+   * das Berühren ohnehin nicht neu.
+   */
+  hart?: boolean;
+};
+
+export function frontBeruehren(sprossen: readonly Sprosse[], vorlagen: readonly Vorlage[], W: readonly number[], breiten: Breiten, art: FuelleArt, huelle?: (y: number) => number, opt: BeruehrOptionen = {}): Beruehrung {
+  const { gruppe, hart = false } = opt;
   const R = sprossen.length;
   const kurven = vorlagen.map((q) => dicht(q));
   let y0 = Infinity;
@@ -82,7 +107,7 @@ export function frontBeruehren(sprossen: readonly Sprosse[], vorlagen: readonly 
   const nachfrage: Nachfrage[] = [];
   const teil: RandMarke[] = [];
   // je Wunsch die Höhe und das Soll (für die Prüfung „nur als Kante“ nach dem Wachsen)
-  const wunschHoehe: { y: number; soll: number }[] = [];
+  const wunschHoehe: { y: number; soll: number; teil: boolean }[] = [];
   for (let h = 0; h < HOEHEN; h++) {
     const y = y0 + ((h + 0.5) / HOEHEN) * (y1 - y0);
     const front = breiten.front(y);
@@ -125,12 +150,14 @@ export function frontBeruehren(sprossen: readonly Sprosse[], vorlagen: readonly 
     // Verlangt die Front mehr als × G_MAX, ist es keine Berührung, sondern ein anderes Teil (Flosse, Flügel; S6) oder eine
     // Vorlage, die zum geneigten Ring nicht passt (Giraffe; S5): dann bleibt der Ring (gekappt blähte es den Rumpf auf,
     // Fisch +24 %, ungekappt +44 %)
-    if (soll / w0 > G_MAX) {
-      teil.push({ y, soll });
-      continue;
-    }
-    nachfrage.push({ i: wahl, v: wahlV, g: soll / w0 });
-    wunschHoehe.push({ y, soll });
+    const g = soll / w0;
+    if (g > G_MAX) teil.push({ y, soll });
+    if (hart ? g > G_MAX : g >= G_AUS) continue;
+    const t = hart ? 0 : Math.min(1, Math.max(0, (g - G_VOLL) / (G_AUS - G_VOLL)));
+    const anteil = 1 - t * t * (3 - 2 * t);
+    nachfrage.push({ i: wahl, v: wahlV, g: 1 + (g - 1) * anteil });
+    // gedämpfte Wünsche (über G_MAX) sind als anderes Teil markiert, nicht zusätzlich als Kante
+    wunschHoehe.push({ y, soll, teil: g > G_MAX });
   }
   const pMax = FUELLE_EXPONENT[art];
   const wachstum = new Array<number>(R).fill(1);
@@ -144,6 +171,7 @@ export function frontBeruehren(sprossen: readonly Sprosse[], vorlagen: readonly 
     for (let j = 0; j < n; j++) {
       let g = 1;
       for (const d of nachfrage) {
+        if (gruppe && gruppe[i] !== gruppe[d.i]) continue;
         const dr = (i - d.i) / SIGMA_R;
         if (Math.abs(dr) > 4) continue;
         const dv = (q.v[j]! - d.v) / SIGMA_V;
@@ -178,7 +206,8 @@ export function frontBeruehren(sprossen: readonly Sprosse[], vorlagen: readonly 
   const kante: RandMarke[] = [];
   const neuKurven = new Map<number, ReturnType<typeof dicht>>();
   nachfrage.forEach((d, k) => {
-    const { y, soll } = wunschHoehe[k]!;
+    const { y, soll, teil: gedaempft } = wunschHoehe[k]!;
+    if (gedaempft) return;
     let kurve = neuKurven.get(d.i);
     if (!kurve) neuKurven.set(d.i, (kurve = dicht(neu[d.i]!)));
     const f = breiten.front(y);

@@ -258,13 +258,16 @@ function poseHinweis(): void {
   useUi.getState().zeigeHinweis('In der Pose formen Pinsel (G, I), Knochen, die schwarze Linie in der Seite und Rot/Blau (Stufe Maul). Front, Top und Reifen der Pose kommen als Nächstes (B6); bis dahin bearbeitest du sie im Editor-Tab.');
 }
 
+/** Ausstattung jedes neuen Wesens (S2/S3: glatte Haut, Umrisse berühren „mittel“); die Prüfwesen der Library bekommen sie auch. */
+export const STANDARD_AUSSTATTUNG = { glatt: true, fuelle: 'mittel' } as const satisfies NonNullable<Dokument['ausstattung']>;
+
 /**
  * Neues Wesen im Editor: die Startkugel mit glatter Haut (Florian 16.10.: „glatt als Standard für neue Wesen“, S2) und
- * „Umrisse berühren“ mit der Fülle mittel (16.10. abends, S3). Gespeicherte Wesen, Vorlagen und Prüfwesen behalten ihre
- * Einstellung.
+ * „Umrisse berühren“ mit der Fülle mittel (16.10. abends, S3). Gespeicherte Wesen und Vorlagen behalten ihre Einstellung;
+ * die Prüfwesen der Library bekommen sie beim Laden (Plan 20.10., V0: ein Standard für alle).
  */
 export function neuesWesen(): Dokument {
-  return { ...neuesDokument(), ausstattung: { glatt: true, fuelle: 'mittel' } };
+  return { ...neuesDokument(), ausstattung: { ...STANDARD_AUSSTATTUNG } };
 }
 
 export const useEditor = create<EditorState>((set, get) => {

@@ -5,7 +5,7 @@ import { angleichen, dokumentLesen, loeschenMehrere, verschiebeKnoten } from '@e
 import { bibliothekLaden, bibliothekSpeichern, useBibliothek } from './library/speicher';
 import { useKernAnzeige } from './kern/kernBau';
 import { PRUEFWESEN, pruefwesenDokument } from './schnitte/schnittVersuch';
-import { useEditor } from './state/editorStore';
+import { STANDARD_AUSSTATTUNG, useEditor } from './state/editorStore';
 import { useUi } from './state/uiStore';
 import { szene } from './three/instanz';
 
@@ -83,7 +83,9 @@ export function ladePruefwesen(id: string) {
   nachRueckfrage('Anderes Wesen laden?', () => {
     void (async () => {
       try {
-        const dok = await pruefwesenDokument(id);
+        // Plan 20.10., V0: gebaut wie ein neues Wesen (vorher ohne glatt/berühren — ein anderer Körper als Florians eigene)
+        const roh = await pruefwesenDokument(id);
+        const dok = { ...roh, ausstattung: { ...STANDARD_AUSSTATTUNG, ...roh.ausstattung } };
         useEditor.getState().laden(dok, null);
         useUi.getState().auswahlLeeren();
         const p = PRUEFWESEN.find((w) => w.id === id)?.palette;

@@ -43,8 +43,11 @@ export type AusgleichsLoeser = {
   lu?: LU;
   /** dünn besetzte Zerlegung mit Glättungsmaß (S2, Schalter `fair`) */
   duenn?: NormalSystem;
-  /** Glättung relativ zur Zielform (S2): Zeilen, Anteil `bezug`, Bedingung des Ziels je Käfigpunkt */
-  bezug?: { zeilen: readonly NormalZeile[]; anteil: number; ziel: Int32Array };
+  /**
+   * Glättung relativ zur Zielform (S2): Zeilen, Anteil `bezug`, Bedingung des Ziels je Käfigpunkt (−1 = keine; dann aus den
+   * Nachbarn gemittelt, `nachbarn` = Käfiggraph)
+   */
+  bezug?: { zeilen: readonly NormalZeile[]; anteil: number; ziel: Int32Array; nachbarn: readonly (readonly number[])[] };
   bedingungen: Bedingung[];
   /** Zeilen der Grenzmatrix (nur Spalten < n) je Bedingung */
   zeilen: { index: Uint32Array; wert: Float64Array }[];
@@ -58,7 +61,10 @@ export type Glaettung = { kaefig: Kaefig; gewicht: number };
  * Käfigpunkten); dieselben Bedingungen wie der dichte Weg. `nachbarn` = Käfiggraph für die Reihenfolge. `bezug` (0…1):
  * Anteil der Glättung, der nur die Abweichung von der Zielform glättet (Ziel der Zeile = Laplace des Käfigs aus den
  * Zielen der Käfigpunkte statt 0) — die Zielform selbst wird dann nicht runder oder kleiner, nur ihr Wellenschlag
- * verschwindet. Braucht je Käfigpunkt i eine Bedingung mit `zeile: i` (sonst wirkt nur der feste Anteil).
+ * verschwindet. Je Käfigpunkt i die Bedingung mit `zeile: i`; fehlt sie einem Punkt, nimmt er das Mittel seiner Nachbarn
+ * (Plan 20.10., V0 — vorher fiel dann der ganze Bezug still weg, und die Glättung zog gegen 0, die gemessene Faltenquelle;
+ * in den heutigen Bauten kam es nicht vor). Ist die Matrix nicht positiv definit, wird sie leicht gedämpft neu zerlegt
+ * (vorher brach der Bau ab).
  */
 export type Glaettemass = { zeilen: readonly NormalZeile[]; nachbarn: readonly (readonly number[])[]; bezug?: number };
 
@@ -137,13 +143,22 @@ function duennerAusgleich(grenze: DuennMatrix, n: number, bedingungen: readonly 
     alle.push({ ...z, gewicht: b.gewicht });
   }
   for (const z of gm.zeilen) alle.push(z);
-  const l: AusgleichsLoeser = { n, duenn: normalSystem(n, alle, gm.nachbarn), bedingungen: [...bedingungen], zeilen };
+  let duenn: NormalSystem;
+  try {
+    duenn = normalSystem(n, alle, gm.nachbarn);
+  } catch {
+    // nicht positiv definit (ein Punkt ohne Bedingung und ohne Glättungszeile): leicht gedämpft, statt den Bau abzubrechen
+    let spur = 0;
+    for (const z of alle) for (let t = 0; t < z.index.length; t++) spur += z.gewicht * z.wert[t]! * z.wert[t]!;
+    duenn = normalSystem(n, alle, gm.nachbarn, Math.max(1e-12, (1e-9 * spur) / Math.max(1, n)));
+  }
+  const l: AusgleichsLoeser = { n, duenn, bedingungen: [...bedingungen], zeilen };
   if ((gm.bezug ?? 0) > 0 && gm.zeilen.length) {
     const ziel = new Int32Array(n).fill(-1);
     bedingungen.forEach((b, q) => {
       if (b.zeile < n && ziel[b.zeile]! < 0) ziel[b.zeile] = q;
     });
-    if (ziel.every((q) => q >= 0)) l.bezug = { zeilen: gm.zeilen, anteil: gm.bezug!, ziel };
+    l.bezug = { zeilen: gm.zeilen, anteil: gm.bezug!, ziel, nachbarn: gm.nachbarn };
   }
   return l;
 }
@@ -168,14 +183,47 @@ export function kaefigAusgleich(l: AusgleichsLoeser, ziele: Float64Array): Float
   if (l.bezug) {
     // Σ g·β·Lᵀ(L·T): T = Käfig aus den Zielen der Käfigpunkte (Bezug der Glättung). Ein vorab auf die Ziele gehobener
     // Bezug (T ← T + (Ziel − G·T)) brachte den Wellenschlag der Interpolation zurück (Rex aus der Kugel 31–71°) — verworfen.
-    const { zeilen, anteil, ziel } = l.bezug;
+    const { zeilen, anteil, ziel, nachbarn } = l.bezug;
     const n = l.n;
     const T = new Float64Array(3 * n);
+    const bekannt = new Uint8Array(n);
+    let offen = 0;
     for (let i = 0; i < n; i++) {
+      if (ziel[i]! < 0) {
+        offen++;
+        continue;
+      }
       const q = 3 * ziel[i]!;
       T[3 * i] = ziele[q]!;
       T[3 * i + 1] = ziele[q + 1]!;
       T[3 * i + 2] = ziele[q + 2]!;
+      bekannt[i] = 1;
+    }
+    // Punkte ohne eigenes Ziel: Mittel der schon bekannten Nachbarn, Runde für Runde nach außen
+    for (let runde = 0; offen > 0 && runde < n; runde++) {
+      const neu: number[] = [];
+      for (let i = 0; i < n; i++) {
+        if (bekannt[i]) continue;
+        let m = 0;
+        let sx = 0;
+        let sy = 0;
+        let sz = 0;
+        for (const j of nachbarn[i] ?? []) {
+          if (j >= n || !bekannt[j]) continue;
+          m++;
+          sx += T[3 * j]!;
+          sy += T[3 * j + 1]!;
+          sz += T[3 * j + 2]!;
+        }
+        if (!m) continue;
+        T[3 * i] = sx / m;
+        T[3 * i + 1] = sy / m;
+        T[3 * i + 2] = sz / m;
+        neu.push(i);
+      }
+      if (!neu.length) break;
+      for (const i of neu) bekannt[i] = 1;
+      offen -= neu.length;
     }
     for (const z of zeilen) {
       let rx = 0;

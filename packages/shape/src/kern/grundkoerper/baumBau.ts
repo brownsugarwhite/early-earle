@@ -712,6 +712,8 @@ export function baumAbleiten(dok: Dokument, optionen: Partial<BaumOptionen> = {}
         bz,
         opt.fuelle,
         huellenBreite(dok, bz),
+        // Wachstum nur innerhalb des eigenen Streifens ausbreiten; harte Grenze bis V7 (Plan 20.10., V0)
+        { gruppe: alle.map(({ s }) => s), hart: true },
       );
       alle.forEach(({ s, i }, k) => {
         if (!(i === 0 && e.streifen[s]!.ansatz)) qs[s]![i] = rand.vorlagen[k] as Querschnitt;
