@@ -542,3 +542,37 @@ angeht.
   wurden „Reihe“ ohne scharfe Kante (Kegel, Vierbeiner, Krake); Stiftlinien mit wenigen Knoten zogen den Körper auf die
   Sehne zwischen den Knoten (Kugel mit zwei gekreuzten Linien Δ 10,7 → 1,3 px, im Editor Falten 111° → 16°); die
   Durchdringungsprüfung lief an dünnen, langen Körpern über die Höchstgröße einer Menge.
+
+## Befunde aus V2 „Saubere Linien“ (20.10. nachts, eigene Messungen)
+
+Gemessen an der ganzen Extremreihe in Florians Ablauf (alter und neuer Liniennetz-Code auf denselben Netzen); Tabelle und
+Bögen auf der Planseite 20.10., „Stand V2“. Je Punkt der Schritt, der ihn angeht.
+- **Tor V2 an 15 von 78 Fällen verfehlt** (Test `it.fails` in `extremreihe.extrem.ts`, der Stand von 63 sauberen Fällen ist
+  gesichert):
+  - **Knicke ohne gezeichnete Ecke und ohne Falte des Körpers** (18 an 10 Fällen): Zweihals Röhre Front 4, Ente Röhre und
+    Teile Front je 2, Vierbeiner Röhre Front 2, Hammerhai Teile Top 2, Hörner Teile Top 2, Überhang Teile Front 1, Flügel
+    oben Teile Top 1, Hörner und Augenstiele Röhre Seite je 1. Meist dort, wo Zeichnung und Körper weit auseinander liegen
+    (die Silhouette macht eine Ecke, die die Zeichnung nicht hat, z. B. der Hammerkopf im Top oder ein Teil, das die Röhre
+    nicht baut) oder an winzigen Spitzen der Silhouette → V4 (Umrisse binden, dann gibt es diese Ecken nicht mehr), V7.
+  - **Linie 0,5–0,85 px neben der Silhouette** (7 Fälle): Fisch Röhre Seite 0,85, Vierbeiner Röhre Top 0,64, Sichel Röhre
+    Seite 0,61, Tigerkopf Röhre Seite 0,56, Krake Teile Seite 0,54, Vase und Augenstiele Röhre 0,50 — Kerben und Spitzen der
+    Silhouette unter 2 px, meist wo die Röhre selbst faltet → V4/V7; feiner abtasten wäre teurer als das Tor wert.
+- **58 Knicke auf Falten des Körpers** (Würfel, Vierbeiner, Krake, Augenstiele u. a., fast alle Röhre): Die Silhouette
+  knickt dort selbst, die Linie folgt ihr richtig → V4 (Kappen nach Endform) und V7.
+- **Teile mit seitlichen Paaren sind nicht spiegelgleich:** Vierbeiner bis 3,5 px, Fisch 1,4 px, Ente 0,3 px zwischen
+  linker und rechter Seite (gemessen: Spiegelbild jedes 7. Punkts gegen die Fläche). Die Umrisslinien suchen deshalb an
+  Teilen die zweite Hälfte eigens (kostet die doppelte Zeit für Front und Top) → V7 (Paare einmal bauen und spiegeln).
+- **Liniennetz an 7 Fällen 31–36 ms** (Tor 30 ms; Median 18 ms; vorher bis 48 ms): an Teilen mit großen Netzen (Fisch,
+  Seeschlange, Seestern, Augenstiele 32–36 ms) kosten allein die drei Strahlraster 10–12 ms, die eigens gesuchte zweite
+  Hälfte 3–4 ms → Raster je Bau einmal für Liniennetz, Δ und Saum teilen; mit spiegelgleichen Teilen (V7) halbiert sich die
+  Linienarbeit.
+- **Der oberste Front-Knoten folgt beim Ziehen im Seitenblatt nur zur Hälfte** (12 px Zeiger → 5 px): Die Kopplung der
+  Außenmaße (S1c) bremst ihn, der Ring zeigt das richtig an (er folgt dem Knoten). Gewöhnliche Knoten folgen genau → V3
+  (G/S/R und Kopplung).
+- **Die Schleifen-Zählung aus V1 war zu grob:** Sie zählte jede kurze Kreuzung im Bild, also auch zwei Stücke einer glatten
+  3D-Linie, die in einer fremden Ansicht übereinanderliegen (Hin- und Rückweg an der breitesten Stelle). So gezählt hatte
+  der alte Code 2932 Schleifen, nach der neuen Zählung (die Linie berührt sich auch in der Tiefe) 4. Die wilden Linien waren
+  Zacken in der Tiefe (1968 Knicke → 18).
+- **In V2 behoben** (je Test vorher rot): die rauschenden Umrisslinien der fremden Blätter (Zickzack in flachen Bändern),
+  Ringe fremder Knoten bis 10,6 px neben ihrer Linie (jetzt ≤ 0,5 px).
+

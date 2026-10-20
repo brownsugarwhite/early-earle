@@ -824,3 +824,76 @@ verfehlen Front/Top weiter um 7–14 px; Netzlinien rauschen (bis 80 Knicke, 126
 Treppe auf „Teile“ liegt 6–67 px neben den Linien. Das ist die ehrliche Ausgangslage für V2–V7.
 
 **Nächster Schritt:** dein Blick auf V0 und V1 (Kontaktbögen, Testanleitung in der Übergabe), dann V2 „Saubere Linien“.
+
+### V2 „Saubere Linien“ — gebaut (20.10. nachts; Abnahme offen)
+
+**Was steht:**
+- **Umrisslinien statt Konturen** (`packages/shape/src/kern/umrissKurven.ts`, im Liniennetz als Züge `umriss-seite`,
+  `umriss-front`, `umriss-top`): Proben entlang deiner Zeichnung (≈ 2 px), jede entlang der Normalen der Zeichnung auf die
+  Silhouette des Körpers geschoben; Tiefe aus den Mitten der Ein-/Austrittspaare knapp innerhalb der Silhouette mit dem
+  kleinsten Gesamtsprung (Viterbi), im Paar geglättet (die Naht der Seite liegt exakt bei z = 0); je gezeichnetem Segment
+  kubische Kurven in 3D mit festen Enden an deinen Knoten (0,3 px, Griffe höchstens so lang wie die Sehne). An scharfen
+  Stellen der Silhouette und über Knoten (Fächer der Normalen) wird feiner abgetastet; wo deine Zeichnung über eine runde
+  Stelle des Körpers eine Ecke macht, treffen beide Seiten dieselbe Rundung — die zweite wird übersprungen; wo eine
+  Zwischenprobe ein ganz anderes Stück der Silhouette trifft (Katzenohren, die die Röhre nicht baut), bleibt eine Lücke
+  statt einer Sehne. Teile mit seitlichen Paaren sind nicht genau spiegelgleich (Vierbeiner bis 3,5 px): Dort wird die
+  zweite Hälfte jeder Linie eigens auf ihrer Seite gesucht, an der Röhre ist sie ihr Spiegelbild.
+- **Knoten auf der Linie:** Die Ringe deiner Knoten in den fremden Blättern sitzen auf ihrer Linie (an Kegel, Würfel,
+  Vierbeiner, Ente ≤ 0,5 px, vorher bis 10,6 px neben ihr, wo die Zeichnung neben dem Körper liegt), beim Ziehen folgen sie
+  dem Knoten sofort (`NetzSicht.knotenZeichnung`).
+- **Innere Konturen** (eigenes Blatt) nur, wo die Haut wirklich umbiegt: 5° auf 30 px, Stücke ab 6 px.
+- **Editor:** In jedem Blatt erscheinen die Umrisse der anderen Ansichten als echte Kurven (SVG-Kubiken, an Sichtwechseln
+  geteilt; verdeckt blass und gestrichelt), keine Konturen fremder Ansichten mehr; die Teile haben warme Farben (Blau, Lila,
+  Türkis heißen nur noch Umriss von Seite, Front, Top).
+- **Tempo:** Sichttests nur für die Blätter, die eine Linie zeigen, an jeder dritten Probe (verfeinert, wo die Sicht
+  wechselt), das Sichtraster ohne Punktnormalen. Liniennetz im Median 18 ms (vorher 17), höchstens 36 ms (vorher 48).
+
+**Gemessen** (ganze Extremreihe in deinem Ablauf, 78 Fälle, alter und neuer Code auf denselben Netzen; Tabelle
+[`docs/progress/editor/v2-linien-2026-10-20.md`](../progress/editor/v2-linien-2026-10-20.md), Kontaktbögen je Gruppe
+`docs/progress/editor/v2-linien-<gruppe>-2026-10-20.jpg`, Editor vorher/nachher `docs/progress/editor/v2-editor-<körper>-2026-10-20.jpg`):
+
+| | vorher (Konturen) | nachher (Umrisslinien) |
+|---|---|---|
+| Stücke (je gezeichneter Hälfte) | 1373 | 707 |
+| Knicke über 45° (ohne gezeichnete Ecken) | 1968 (+247 auf Falten des Körpers) | **18** (+58 auf Falten) |
+| Schleifen (die Linie berührt sich selbst) | 4 | **0** |
+| Abstand in der eigenen Ansicht zur Silhouette | bis 1,4 px | bis 0,85 px (71 von 78 Fällen ≤ 0,5 px) |
+| Abstand zur Haut | 0 (Konturen liegen auf dem Netz) | bis 0,99 px |
+| Liniennetz im Worker (Minimum aus 5 Läufen) | Median 17 ms, bis 48 ms | Median 18 ms, bis 36 ms |
+
+Dein Kegel (Röhre): Front-Umriss 4 Stücke / 8 Knicke → 2 / 0, Seite 3 / 5 → 3 / 0, auf Silhouette und Haut ≤ 0,3 px.
+Würfel (Röhre): Knicke 180 → 0 (+2 auf einer Falte des Körpers). Alle übrigen Werte der Grundzahlen (Δ, Falten,
+Durchdringungen, P-Linien) sind an allen 78 Fällen gleich geblieben — V2 ändert keine Form.
+
+**Tor:** je Umrissstück ein Zug — erfüllt (Stücke trennen nur echte Tiefensprünge, wo ein anderes Teil die Silhouette
+stellt, und Lücken, wo der Körper fehlt). Keine Schleifen — erfüllt. ≤ 1 px auf der Haut — erfüllt. Bild vorher/nachher —
+erfüllt. **Nicht ganz erfüllt** (Register „Befunde aus V2“, Test `it.fails` in `extremreihe.extrem.ts`): keine Knicke —
+18 Knicke an 10 Fällen; ≤ 0,5 px auf der Silhouette — 7 Fälle darüber (bis 0,85 px); zusammen erfüllen 63 von 78 Fällen
+das ganze Tor. Liniennetz ≤ 30 ms — 7 Fälle 31–36 ms (vorher waren es schon 7 Fälle bis 48 ms).
+
+**Test:** `umrissKurven.test.ts` (Kegel Röhre und Teile, Würfel, Vierbeiner Teile: keine Knicke und Schleifen, ≤ 0,5 px
+Silhouette, ≤ 1 px Haut, Griffe ≤ Sehne; Knoten auf ihrer Linie; zweite Hälfte der Teile auf ihrer Haut) — mit dem alten
+Liniennetz 6 von 6 rot. Editor: `apps/editor/scripts/pruefen/v2-editor.mjs` (Florians Ablauf, echte Maus: Kurven in den
+fremden Blättern, keine fremden Konturen, Ringe ≤ 1 px auf ihrer Linie, ein Ring folgt beim Ziehen, ⌘Z) — mit dem alten
+Code rot, jetzt grün. Extremreihe: neue Grundzahlen (mit dem Abstand der Linien zu Silhouette und Haut), Tor V2 über die
+ganze Reihe (mindestens 63 von 78; das volle Tor als `it.fails`).
+
+**Korrekturen am Plan (V2 im Detail):**
+- Die Regel „keine Kontur, wo |n·d| an allen Ecken einer Fläche unter sin 5° liegt“ träfe auch echte Konturen: Die Flächen
+  der Stufe 3 sind so klein, dass an runder Haut jede Ecke nahe 0 liegt. Gebaut ist die Steigung: keine Kontur, wo sich n·d
+  auf einer Fläche langsamer ändert als 5° auf 30 px.
+- „Normalen der Grenzfläche statt Flächenmittel“ ist nicht nötig geworden: Die Umrisslinien entstehen aus der Zeichnung
+  und der Silhouette, nicht aus Nullstellen.
+- Die Messung zählt **Schleifen** jetzt nur, wo sich die Linie an einer Kreuzung im Bild auch in der Tiefe berührt (unter
+  1 px, Kringel bis 30 px). Die Zählung aus V1 (jede kurze Kreuzung im Bild) traf auch zwei Stücke einer glatten 3D-Linie,
+  die in einer fremden Ansicht nur übereinanderliegen, z. B. Hin- und Rückweg des Front-Umrisses an der breitesten Stelle
+  im Top — so gezählt hatte der alte Code 2932 „Schleifen“, nach der neuen Zählung 4. Die wilden Linien waren Zacken in der
+  Tiefe; die misst die Zahl der Knicke (1968 → 18).
+- **Knicke auf Falten des Körpers** zählen getrennt (Flächen über 30° gegeneinander, 3 px um den Knick): Dort knickt die
+  Silhouette selbst, die Linie muss mitknicken (meist die Röhre, die an Würfel, Vierbeiner, Krake, Augenstielen faltet).
+- **Linienschrift** (3.8) erst teilweise: Kurven, verdeckt blass und gestrichelt, eine Farbe je Ansicht, warme Teilfarben.
+  Noch nicht: Strichstärke = Härte für Umrisse, verjüngte Enden, Gruppen in der Tafel ein/aus (→ V8).
+
+**Nächster Schritt:** dein Blick auf V2 (Testanleitung in der Übergabe), dann V3 „G/S/R und proportionales Bearbeiten in den
+Blättern“.
+

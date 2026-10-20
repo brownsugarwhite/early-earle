@@ -124,3 +124,11 @@ Kern: `kopplungPunkte.test.ts` (Angleichen der Prüfkörper, 325 Zufallsgesten, 
 
 Kern: `kern/pruefen/extremreihe.test.ts` (schnelle Wächter), die ganze Reihe gegen `extremreihe.grundzahlen.json` mit
 `pnpm --filter @ee/shape test:extrem` (≈ 85 s; wöchentlich in CI).
+
+## Nachtrag 20.10. nachts: V2 „Saubere Linien“
+
+| Skript | prüft |
+|---|---|
+| `v2-linien.ts` (Kern, aus `packages/shape`) | Umrisslinien der ganzen Extremreihe in Florians Ablauf: Stücke, Knicke (an Falten getrennt), Schleifen, Abstand zu Silhouette und Haut, Zeit des Liniennetzes (Minimum aus 5); mit `ALT=<modul>` (alter `netzSicht.ts`, Importe absolut) Tabelle und Kontaktbögen vorher/nachher auf denselben Netzen (`KOERPER`, `GRUPPEN`, `OHNE_BOGEN=1`, `AUSGABE`) |
+| `v2-editor.mjs` (Editor, `run-check.sh`) | Florians Ablauf mit Kegel, Würfel, Vierbeiner, Ente (`FAELLE`, `NAME`): Umrisse fremder Ansichten als Kurven, keine fremden Konturen, Ringe ≤ 1 px auf ihrer Linie, ein Ring folgt beim Ziehen, ⌘Z; Bilder `pruefen-ausgabe/v2/v2-editor-<körper>-<NAME>.png` |
+

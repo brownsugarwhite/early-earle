@@ -341,6 +341,28 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
     jedes Paar nur in der Zelle der unteren Ecke seiner Kastenüberlappung.
   - `__editor.treffen(px, py)` rechnet in Feldpixeln der Bühne, nicht in Seitenkoordinaten. `vite-node`-Ausgaben in eine
     Datei sind gepuffert: Fortschritt erscheint verzögert (Laufzeit mit `ps -o etime` prüfen).
+- **Plan 20.10., V2 (Fallen aus den sauberen Linien):**
+  - Die fremden Blätter zeigen nur noch die Umrisslinien (`umriss-*` mit `kurve` und `parameter`, als SVG-Kubiken), das eigene
+    Blatt nur die inneren Konturen (`kontur-*` ohne `RAND`). Konturproben tragen nur die Sicht-Bits ihres eigenen Blatts,
+    Umrisslinien nur die der fremden — wer Linien anderswo zeigen will, muss die Bits erst rechnen lassen (`zugAus`, `nur`).
+  - `NetzSicht.knoten` ist der Punkt auf der Umrisslinie (nicht die Zeichnung); `knotenZeichnung` ist die Zeichnung beim
+    Bau. Der Editor schiebt den Ring um die seither gezogene Strecke (`umrissKnotenLage`) — so sitzt er auf der Linie und
+    folgt beim Ziehen sofort.
+  - Teile mit seitlichen Paaren sind nicht spiegelgleich (bis 3,5 px): Der Baum-Zweig ruft `netzSicht` mit
+    `spiegelgleich: false`, dann wird die zweite Hälfte der Linien eigens gesucht. Ein neuer Zweig, der `netzSicht` aufruft,
+    muss das richtig setzen (die Röhre ist spiegelgleich).
+  - Umrisslinien-Bau (`umrissKurven.ts`): Zwischenproben nur, wenn sie zwischen ihren Nachbarn liegen (sonst traf die Normale
+    ein anderes Stück der Silhouette und die Kurve schlug eine 33-px-Spitze, Katze); Proben hinter der letzten oder ohne
+    Fortschritt überspringen (eine gezeichnete Ecke über einer runden Stelle trifft dieselbe Rundung zweimal); Kurvengriffe
+    höchstens Sehnenlänge (bei drei Proben schlug der Ausgleich Schleifen); feiner, wo die Probenfolge scharf dreht, über
+    Knoten mit einem Fächer der Normalen bis zum Ende des Segments.
+  - Messen: Schleifen im Bild sind nicht Schleifen der Linie (zwei Stücke einer glatten 3D-Linie liegen in einer fremden
+    Ansicht übereinander) — zählen nur, wo sich die Linie auch in der Tiefe berührt; Knicke auf Falten des Körpers getrennt
+    zählen (dort muss die Linie mitknicken). Zeiten nur als Minimum mehrerer Läufe (Last bis 26 auf dem Mac).
+  - Das Sichtraster (`sichtRaster`) hat keine Punktnormalen (`normalen` leer): nicht an Funktionen aus
+    `versuch/flaechenlinie.ts` geben, die Normalen lesen (`treffer`, `naechsterFlaechenpunkt`).
+  - Prüfungen: Kern `umrissKurven.test.ts`, Extremreihe `v2-linien.ts` (mit `ALT=<alter netzSicht>` vorher/nachher),
+    Editor `v2-editor.mjs`; Gegenprobe im Editor mit `git stash push -- <Liniennetz-Dateien>`.
 - **vitest 5 zeigt `console.log` bestandener Tests nur mit `--reporter=verbose`** (bei Fehlern immer). Messwerte so lesen: `npx vitest run <datei> --reporter=verbose`.
 - **macOS hat kein `timeout`-Kommando**; lange Läufe über das Werkzeug-Timeout begrenzen. `pnpm -r test` lässt Pakete parallel laufen; die Laufzeit-Tests der Versuche (`kanten`, `flaechenlinie`, `wesen`) reißen dann ihre Schranken (967 ms > 600 ms), einzeln laufen sie durch.
 
