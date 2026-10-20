@@ -557,6 +557,14 @@ tatsächliche Rumpfbreite statt der Sichthülle (Flügelringe sprangen in Lücke
   geänderten Zonen); `vergleich/ablauf.mjs` grün; Undo bitgleich; eine P-Linie mit Härte macht auf einem mehrteiligen Körper
   mindestens dieselbe Falte wie auf der Röhre (Ente: Linie über den Halsansatz); Florians Abnahme mit eigenen Wesen.
 
+**Nachtrag 20.10. (Plan „Vektorillustration“, V0):** Seit 17.10. (`efc20380`, Florian: „Entenflügelchen als Lappen passen
+nicht“) sind Teile, die nur eine Ansicht zeigt, wieder **flach** (¼ der Breite, in einer Ebene auf Rumpfhöhe); der Lappen
+aus dem Front-Überschuss ist nur noch Option (`paarDicke: 'ueberschuss'`). Der Text oben beschreibt den Stand davor. Zahlen
+heute (Baum mit Paaren, wie der Editor): Ente frei 27°, Ansatz 25°, Δ Front 12,6 / Top 2,1 px. **Das Tor ≤ 20° ist verfehlt**
+— nach „Flügel flach“ hatte ich die Testgrenzen still auf 30°/26° gelockert; jetzt stehen sie als Messgrenze gegen
+Rückschritte, das Tor als bekannt rot (`it.fails`, Ente, Fisch, Giraffe, Zweihals). Die Klinge-Kanten zählen im Faltenmaß
+jetzt mit (131–164° in der Zone Kante, vorher ausgenommen). Der Geist ist entfernt; der Baum ist mit „Teile“ der Körper.
+
 #### S7 im Detail (Bauplan 17.10., vor dem Code; Florian: „Versuche mal noch weiter zu machen, so weit du kommst“)
 
 Der Baum wird in Teilschritten zum Körper; jeder Teilschritt lässt den Editor ganz (Schalter `koerper`, ohne ihn bitgleich).
@@ -704,6 +712,23 @@ Ziel: Florian testet am Wochenende, wie sich echte Kanten anfühlen, und sammelt
   Tempo-Tor (≤ 250 ms).
 - **Tore S8a:** Kante liegt auf der Linie (Käfigreihe ≤ 0,5 px), Haut abseits ≤ 0,25 px wie ohne Linie, kein Fehler bei
   mehreren Linien, ohne Linien bitgleich; Editor-Prüfung mit gezeichneter Linie.
+
+#### Stand S8a (17.10., `dd1e3d2f`; Nachtrag 20.10.)
+
+- **Gebaut:** Auf der Röhre ohne Maul und Beine wird jede P-Linie mit Härte eine Käfigreihe bzw. ein Käfigring genau auf der
+  Linie (L0-Maschine) und dort nach der Härte scharf; nach dem Schärfen nachgeführt, offene Enden laufen weich aus. Eine
+  Linie allein liegt 0,25–1,15 px an der Kante. Editor-Prüfung `s8a-editor.mjs`.
+- **Tore verfehlt** (und am 17.10. ohne Vermerk eingecheckt): Kante ≤ 0,5 px (Ei 1,0–1,15 px), Haut abseits ≤ 0,25 px
+  (1–1,5 px; zwei parallele Linien 4 px), „kein Fehler bei mehreren Linien“ (gekreuzte Linien bis 24 px daneben). Das
+  Kante-Tor steht jetzt als bekannt rot (`it.fails`).
+- **Am 20.10. behoben (V0):** Kreuzungspunkte schaukeln beim Nachführen nicht mehr auf (24,2 → 1,0 px), kurze Linien werden
+  scharf (Auslauf höchstens ein Viertel der Kanten; Querlinie 0 → 66 %), Linien ohne Reihe/Ring behalten die Treppe (vorher
+  gar keine Falte), Nahtpunkte bleiben in der Spiegelebene, Bericht je Linie im Netz und in der Kantenliste („genau“ /
+  „Treppe“), mehrere Linien als „noch näherungsweise“ markiert.
+- **Offen → V5** (Plan 20.10.): alle Linien gleichzeitig, Haut abseits ≤ 0,25 px, Kante während des Zugs sichtbar,
+  ≈ 0,8 s je Linie, Härte als Rundungsbreite.
+- **S8 geht im Plan vom 20.10. auf** ([`2026-10-20-vektorillustration-bedienung.md`](2026-10-20-vektorillustration-bedienung.md),
+  V4–V5).
 
 ## Wiederverwendet
 

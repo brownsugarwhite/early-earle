@@ -460,3 +460,39 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
   Saum im Löser trifft sie das Ziel (Zweihals 14,5 → 3,8 px). Spitzen mit gezeichneter Ecke sind scharf (Zone Spitze, 47–67°).
 - **Fisch-Bau 290–346 ms** über dem Tor 300 ms (5 Streifen + Röhre).
 
+
+## Befunde aus S7/S8a und der Prüfung vom 20.10. (Plan „Vektorillustration“, eigene Befunde und sechs Code-Prüfungen)
+
+Ausführlich im Plan [`2026-10-20-vektorillustration-bedienung.md`](2026-10-20-vektorillustration-bedienung.md), Abschnitt
+„Ehrliche Bestandsaufnahme“; hier die offenen Punkte mit Schritt.
+- **Umrisse binden nicht** (Front/Top nur weiche Ziele): Δ bis 12–14 px an einteiligen, bis 27 px an mehrteiligen Körpern
+  → V4 (Umrisse als Käfigschleifen mit Silhouettenbedingung).
+- **Netzlinien roh geschnitten** (lila/blaue „wilde“ Linie, flache Bänder aus „mittel“) → V2.
+- **Linien nacheinander eingepasst** (S8a): parallele Linien verschieben die Haut abseits 4 px; Kante verschwindet im Zug;
+  ≈ 0,8 s je Linie → V5. Tor „Kante ≤ 0,5 px“ bekannt rot.
+- **Zwei Körperarten** mit verschiedenem Umfang (Reifen, Maul, Zähne, Formen folgen nur auf der Röhre) → V7.
+- **Tore S5/S6 ≤ 20°** verfehlt (Ente 27°/25°, Fisch, Giraffe, Zweihals) — bekannt rot. Tor S3 einfache Form ≤ 2 px verfehlt
+  (≈ 7,7/6,4 px) — bekannt rot. S7.2-Zug 24–62 ms über dem Tor 30 ms.
+- **Ringverteilung der Startkugel** bleibt nach starkem Umformen eingefroren und passt dann nicht (Ente frisch Front 2,8 px,
+  aus der Kugel 14,3 px) → V4 (Verteilung auch nach Front/Top) und V6 (Loops); bis dahin hilft „Neu ableiten“.
+- **Kappen:** sehr dünne Stadionform (11:1) im Ablauf Kappe 112°, Würfel mit echten Ecken frisch 179° (gestuft 68°) → V4
+  (Kappen nach Endform).
+- **Diskrete Ringwahl in „berühren“:** Nach dem stetigen Übergang springt der Käfig beim Breiterziehen der Front noch um bis
+  14 px (vorher 36 px), Ente-Haken 35 px → V4 ersetzt „berühren“.
+- **Röhre baut nach jeder Geste zweimal:** Die eingefrorenen Enden (G2) werden nach dem Bau neu verankert und
+  zurückgeschrieben; der zweite Bau hat eine leicht andere Form → in V1 messen (Nachrutschen nach dem Loslassen?).
+- **Kopplung ohne Einfügen empfindlich:** Vierbeiner, Zug 14 der Zufallsreihe — 0,04 px Unterschied im Top ergeben 47 px
+  anderes Ergebnis, die Seite wird an der Schwanzspitze unerreichbar. Mit Einfügen (Editor) gelöst → V1-Zufallsreihe.
+- **Sporadisch rot unter Volllast:** `ringEinpassen` „Kugel, schräg“ (einmal, nicht wiederholbar) und die Tempo-Tests
+  (lokal ohne Faktor) → beobachten.
+
+## Bedienung 20.10. (Florians Wünsche und eigene Befunde)
+
+- G/S/R wie Blender (G nach Kontext: Auswahl → Greifen, sonst Pinsel; S = Skalieren), proportionales Bearbeiten mit
+  Einflusskreis am Mausrad, Esc bricht jede Geste bitgenau ab → V3 (Blätter), V6 (Bühne).
+- ⌘R-Loops (einziehen, gleiten, vervielfachen) mit echten Knoten in Seite und Top → V6.
+- Am 20.10. behoben (V0): ⌘R lud das Fenster neu; [ ] auf der deutschen Tastatur nie erreichbar; Rückgängig brachte
+  eingefügte Punkte zurück; Punktsetzen glich alte Widersprüche still an; Wirbelsäulen fingen Klicks an Teilspitzen (der
+  Stift begann eine P-Linie); der Baum wurde je Geste zweimal gebaut; Seitenknoten an Beinen lagen in der Luft; „Neu
+  ableiten“ ohne Undo (samt Rennen mit einem laufenden Bau); Reifen auf „Teile“ ohne Wirkung und ohne Hinweis; Chips ohne
+  Wirkung wählbar; `data-geist` doppelt belegt (Körperstatus und Posen-Geist).
