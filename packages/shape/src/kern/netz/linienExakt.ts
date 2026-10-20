@@ -21,6 +21,8 @@ import type { BaumKaefig } from '../../kaefig/baumKaefig';
 import type { Ableitung } from '../ableiten';
 import { baumKantenFalten } from '../grundkoerper/baumKanten';
 import { type KantenLinie, kanteAbtasten } from '../kanten';
+import { alleFlaechen } from '../../kaefig/halbkanten';
+import { aufHaut, sichtRaster } from '../netzSicht';
 import { type NetzLinie, reiheEinpassen } from './einpassen';
 import { ringEinpassen } from './ringEinpassen';
 
@@ -64,9 +66,24 @@ export function linienExakt<T extends Ableitung>(abl: T, kanten: readonly Kante[
   const kantenZuege: { punkte: number[]; linie: [number, number, number][] }[] = [];
   // Linien, die weder Reihe noch Ring werden: Treppe auf dem Käfig (wie auf dem Baum)
   const treppe: KantenLinie[] = [];
+  // Plan 20.10., V1 (Befund im Editor): Eine mit dem Stift gesetzte Linie hat wenige Knoten, dazwischen läuft ihre Kurve als
+  // Sehne durch den Körper oder über ihm (Kugel, zwei Knoten: 20 px neben der Haut). Das Liniennetz zeigt sie auf der Haut
+  // (Proben aus der Zeichenansicht auf die Haut gelegt); das Einpassen zog den Körper auf die Sehne (Kugel mit zwei Linien:
+  // Top Δ 10,7 px). Jetzt liegen die Proben auch hier zuerst auf der Haut des Körpers ohne Linien.
+  let raster: ReturnType<typeof sichtRaster> | null = null;
+  const hautRaster = () => {
+    if (!raster) {
+      const kb = abl.unterteilung.stufen[abl.unterteilung.stufen.length - 1]!.kaefig;
+      const P: [number, number, number][] = [];
+      for (let i = 0; i < abl.fein.length / 3; i++) P.push([abl.fein[3 * i]!, abl.fein[3 * i + 1]!, abl.fein[3 * i + 2]!]);
+      raster = sichtRaster(P, alleFlaechen(kb));
+    }
+    return raster;
+  };
   kanten.forEach((ka, index) => {
     const t0 = jetzt();
-    const roh = kanteAbtasten(ka, sk, 16);
+    const gezeichnet = kanteAbtasten(ka, sk, 16);
+    const roh: KantenLinie = gezeichnet.haerte.some((h) => h > 0) ? { ...gezeichnet, punkte: gezeichnet.punkte.map((p) => aufHaut(hautRaster(), p, ka.blick)) } : gezeichnet;
     if (!roh.haerte.some((h) => h > 0)) {
       berichte.push({ art: 'ohne', index, ms: 0 });
       return;

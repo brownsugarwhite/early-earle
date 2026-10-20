@@ -9,7 +9,9 @@ import { zufall } from '../pruefen/zufall';
 import { linienExakt } from './linienExakt';
 import { FAELLE, PX, abstandZug, kasten, linieAusSeite } from './pruefen';
 import { extremKoerper } from '../pruefen/extremreihe';
-import { editorBauen, editorPlan, imAblauf, linieAufHaut } from '../pruefen/extremMessung';
+import { editorBauen, editorPlan, hautZ, imAblauf, linieAufHaut } from '../pruefen/extremMessung';
+import { neuesDokument } from '../../dokument';
+import { glatteLinie } from '../../versuch/linie3d';
 import { feinesNetz } from '../pruefstand';
 
 declare const console: { log: (...a: unknown[]) => void };
@@ -157,4 +159,29 @@ describe('Plan 20.10., V1: eine harte Linie bekommt immer eine Falte', () => {
       expect(neu, `eingepasst als ${r.berichte[0]!.art}`).toBeGreaterThan(0);
     }, 120_000);
   }
+});
+
+describe('Plan 20.10., V1: Linien mit wenigen Knoten (Stift) liegen beim Einpassen auf der Haut', () => {
+  // Befund im Editor (Ablauf E): Eine mit dem Stift gesetzte Linie hat wenige Knoten, dazwischen läuft die Kurve als Sehne
+  // durch den Körper (Kugel, zwei Knoten: 20 px neben der Haut). Das Liniennetz zeigte sie auf der Haut, das Einpassen zog den
+  // Körper auf die Sehne (Top Δ 0,3 → 10,7 px).
+  it('Kugel mit zwei gekreuzten Stiftlinien (3 und 2 Knoten, Härte 100 %): Körper bleibt auf den Umrissen', () => {
+    const plan = editorPlan('roehre');
+    const b0 = editorBauen(neuesDokument('kugel'), plan);
+    const n = feinesNetz(b0.stand.abl);
+    const r0 = 0.265;
+    const auf = (x: number, y: number): V3 => [x, y, hautZ(n.punkte, n.flaechen, x, y)!];
+    const y0 = 1.2 * r0;
+    const l1 = glatteLinie([auf(-0.56 * r0, y0), auf(0, y0), auf(0.56 * r0, y0)]);
+    const l2 = glatteLinie([auf(0, 1.6 * r0), auf(0, 0.5 * r0)]);
+    const kanten = [
+      { ...l1, haerte: [1, 1, 1], blick: 'seite' as const },
+      { ...l2, haerte: [1, 1], blick: 'seite' as const },
+    ];
+    const b = editorBauen({ ...b0.dok, kanten }, plan, b0.stand);
+    const bl = b.netz.info.blatt!;
+    console.log(`zwei Stiftlinien: eingepasst ${b.netz.info.linien?.map((x) => x.art).join(', ')}, Δ Seite ${bl.seite.max.toFixed(1)} · Front ${bl.front.max.toFixed(1)} · Top ${bl.top.max.toFixed(1)} px`);
+    expect(b.netz.info.linien?.map((x) => x.art)).toEqual(['reihe', 'ring']);
+    for (const a of ['seite', 'front', 'top'] as const) expect(bl[a].max, a).toBeLessThan(2);
+  }, 120_000);
 });

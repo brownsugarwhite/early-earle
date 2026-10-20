@@ -20,8 +20,8 @@
     "reihe",
     "ring"
    ],
-   "kante": 1.2,
-   "aufHaut": 1.22
+   "kante": 0.96,
+   "aufHaut": 0.97
   }
  },
  {
@@ -45,7 +45,7 @@
     "treppe",
     "treppe"
    ],
-   "kante": 26.07,
+   "kante": 26.09,
    "aufHaut": 2.97
   }
  },
@@ -71,7 +71,7 @@
     "reihe"
    ],
    "kante": 0.72,
-   "aufHaut": 0.29
+   "aufHaut": 0.21
   }
  },
  {
@@ -96,7 +96,7 @@
     "treppe"
    ],
    "kante": 17.88,
-   "aufHaut": 1.31
+   "aufHaut": 1.27
   }
  },
  {
@@ -119,8 +119,8 @@
    "arten": [
     "ring"
    ],
-   "kante": 1.12,
-   "aufHaut": 2.38
+   "kante": 0.74,
+   "aufHaut": 0.71
   }
  },
  {
@@ -144,7 +144,7 @@
     "treppe"
    ],
    "kante": 62.83,
-   "aufHaut": 3.24
+   "aufHaut": 0.3
   }
  },
  {
@@ -168,8 +168,8 @@
     "ohne",
     "reihe"
    ],
-   "kante": 1.81,
-   "aufHaut": 4.36
+   "kante": 1.68,
+   "aufHaut": 4.43
   }
  },
  {
@@ -194,7 +194,7 @@
     "treppe"
    ],
    "kante": 66.95,
-   "aufHaut": 2.11
+   "aufHaut": 1.08
   }
  },
  {
@@ -217,8 +217,8 @@
    "arten": [
     "reihe"
    ],
-   "kante": 1.58,
-   "aufHaut": 0.89
+   "kante": 1.44,
+   "aufHaut": 0.7
   }
  },
  {
@@ -242,7 +242,7 @@
     "treppe"
    ],
    "kante": 11.47,
-   "aufHaut": 0.82
+   "aufHaut": 0.35
   }
  },
  {
@@ -266,7 +266,7 @@
     "reihe"
    ],
    "kante": 1.29,
-   "aufHaut": 0.29
+   "aufHaut": 0.21
   }
  },
  {
@@ -290,7 +290,7 @@
     "treppe"
    ],
    "kante": 23.3,
-   "aufHaut": 0.14
+   "aufHaut": 0.15
   }
  },
  {
@@ -372,7 +372,7 @@
     "treppe"
    ],
    "kante": 27.98,
-   "aufHaut": 0.66
+   "aufHaut": 0.67
   }
  },
  {
@@ -531,8 +531,8 @@
    "arten": [
     "reihe"
    ],
-   "kante": 0.56,
-   "aufHaut": 1.17
+   "kante": 0.55,
+   "aufHaut": 0.39
   }
  },
  {
@@ -556,7 +556,7 @@
     "treppe"
    ],
    "kante": 16.2,
-   "aufHaut": 2.75
+   "aufHaut": 2.11
   }
  },
  {
@@ -579,8 +579,8 @@
    "arten": [
     "reihe"
    ],
-   "kante": 0.23,
-   "aufHaut": 0.64
+   "kante": 1.54,
+   "aufHaut": 1.61
   }
  },
  {
@@ -603,7 +603,7 @@
    "arten": [
     "treppe"
    ],
-   "kante": 27.31,
+   "kante": 25.98,
    "aufHaut": 4.98
   }
  },
@@ -1049,8 +1049,8 @@
    "arten": [
     "ring"
    ],
-   "kante": 0.86,
-   "aufHaut": 0.55
+   "kante": 0.88,
+   "aufHaut": 0.49
   }
  },
  {
@@ -1073,8 +1073,8 @@
    "arten": [
     "treppe"
    ],
-   "kante": 17.55,
-   "aufHaut": 3.96
+   "kante": 21.93,
+   "aufHaut": 3.73
   }
  },
  {
@@ -1165,8 +1165,8 @@
    "arten": [
     "reihe"
    ],
-   "kante": 0.65,
-   "aufHaut": 0.38
+   "kante": 1.06,
+   "aufHaut": 0.74
   }
  },
  {
@@ -1189,8 +1189,8 @@
    "arten": [
     "treppe"
    ],
-   "kante": 24.98,
-   "aufHaut": 3.98
+   "kante": 20.9,
+   "aufHaut": 0.58
   }
  },
  {
@@ -1247,8 +1247,8 @@
    "arten": [
     "ring"
    ],
-   "kante": 0.77,
-   "aufHaut": 0.73
+   "kante": 0.86,
+   "aufHaut": 0.88
   }
  },
  {
@@ -1272,7 +1272,7 @@
     "treppe"
    ],
    "kante": 32.24,
-   "aufHaut": 5.41
+   "aufHaut": 4.05
   }
  },
  {

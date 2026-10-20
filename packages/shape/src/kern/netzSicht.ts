@@ -524,8 +524,11 @@ export function netzSicht(e: NetzSichtEingabe): NetzSicht {
   return { zuege, knoten: { seite: hs.pts, front: hf.pts, top: ht.pts }, knotenSicht: { seite: hs.sicht, front: hf.sicht, top: ht.sicht }, ms: t1 - t0 };
 }
 
-/** Punkt einer Linie aus ihrer Zeichenansicht auf die Haut legen (Treffer mit der nächsten Tiefe zum Hinweis). */
-function aufHaut(r: SichtRaster, p: V3, blick: Kante['blick']): V3 {
+/**
+ * Punkt einer Linie aus ihrer Zeichenansicht auf die Haut legen (Treffer mit der nächsten Tiefe zum Hinweis). Auch das
+ * Einpassen der P-Linien (`linienExakt`) legt ihre Proben so auf die Haut — derselbe Verlauf wie im Liniennetz.
+ */
+export function aufHaut(r: SichtRaster, p: V3, blick: Kante['blick']): V3 {
   const a = blick === 'hinten' ? 'front' : blick === 'unten' ? 'top' : blick;
   const ra = r[a];
   // Ansichtskoordinaten und Tiefe wie im Strahlraster (Seite: u = x, v = y, Tiefe −z; Front: u = z, v = y, Tiefe x; Top: u = x, v = z, Tiefe −y)

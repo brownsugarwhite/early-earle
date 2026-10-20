@@ -11,7 +11,7 @@ import { selbstDurchdringungen } from '../../versuch/pruefen';
 import type { Ableitung } from '../ableiten';
 import { type BaumAbleitung, baumAbleiten, baumFalten, baumFeinesNetz } from '../grundkoerper/baumBau';
 import { teilbaum } from '../grundkoerper/teilbaum';
-import { type NetzSicht, RAND } from '../netzSicht';
+import { type NetzSicht, RAND, aufHaut as aufHautLegen, sichtRaster } from '../netzSicht';
 import { feinesNetz } from '../pruefstand';
 import { feinKette } from '../reifen';
 import { type Bauplan, type WesenNetz, type WesenStand, wesenBauen } from '../wesen';
@@ -58,7 +58,10 @@ export type ExtremMessung = {
   zeit: { bau: number; zug: number; baue: number };
   /** Teile: Streifen und seitliche Röhren des Baums */
   baum?: { streifen: number; seiten: number };
-  /** mit den P-Linien des Körpers: Art je Linie, Abstand der Linie zur Haut, der neuen Kante zur Linie (px), Falten frei/Kante, Bauzeit */
+  /**
+   * mit den P-Linien des Körpers: Art je Linie, Abstand der gezeigten Linie (auf die Haut ohne Linien gelegt, wie im
+   * Liniennetz) zur Haut mit Linien und der neuen Kante zu ihr (px), Falten frei/Kante, Bauzeit
+   */
   linien?: { anzahl: number; arten: string[]; aufHaut: number; kante: number; freiMax: number; kanteMax: number; bau: number };
 };
 
@@ -497,7 +500,10 @@ export function extremMessen(k: ExtremKoerper, art: Bauart, ablauf: Ablauf, opt:
     if (kanten.length) {
       const bauL = editorBauen({ ...bau.dok, kanten }, plan, bau.stand);
       const gL = gezeigt(bauL, art);
-      const zuege = kanten.map((kk) => kanteAbtasten(kk));
+      // die Linie, wie der Editor sie zeigt: aus der Zeichenansicht auf die Haut des Körpers ohne Linien gelegt (Liniennetz);
+      // zwischen ihren Knoten läuft die gezeichnete Kurve sonst als Sehne neben der Haut
+      const raster = sichtRaster(g.punkte, g.flaechen);
+      const zuege = kanten.map((kk) => kanteAbtasten(kk).map((p) => aufHautLegen(raster, p, kk.blick) as V3));
       let aufHaut = 0;
       for (const z of zuege) for (const p of z) aufHaut = Math.max(aufHaut, abstandFlaeche(p, gL.punkte, gL.flaechen) * PX);
       // Kante an der Linie: feine Punkte längs der neuen scharfen Käfigkanten (rechte Hälfte) gegen die nächste Linie
