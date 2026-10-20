@@ -613,3 +613,16 @@ Bögen auf der Planseite 20.10., „Stand V2“. Je Punkt der Schritt, der ihn a
 - Ungleichung mit hart gebundenen Einzelpunkten (1e5) destabilisiert den Ausgleich; braucht entweder Bindung entlang der
   Normalen (einseitig) oder Kurven im Käfig, an denen sie greift.
 - Gewichte: Mit 1000 erreicht eine Lagebedingung ihr Ziel nur zu 90 % (Glättung 30, Naht 64 halten dagegen); 1e5 nötig.
+
+## CI: nicht nachstellbare Fehler alter Versuchstests (20.10. nachts)
+
+- Zwei Tests der alten Versuchsfläche S0 (Bauweise „bisher“, nicht der Kern) waren je einmal **nur auf CI** rot, bei
+  unverändertem Code dazwischen grün (Lauf zu 7ab1bf0a):
+  - `packages/shape/src/versuch/flaechenlinie.test.ts` „Seitenlinie … folgt dem Verbreitern“: 46 von 49 Lücken (f7f9e842,
+    Node 24.21); schon einmal so aufgefallen (Kommentar im Test).
+  - `apps/editor/src/kanten/kantenFlaeche.test.ts` „folgt der Form …“: −0,168 statt −0,15 (4ed99f26, Node 24.22) — derselbe
+    Befund wie in V0.
+- Geprüft: lokal 0 von 8 Läufen rot (mit parallelen schweren Tests); die Fläche S0 bleibt gleich, wenn man die Eingabe um
+  1e-15 bis 1e-5 verwackelt; kein Merker, keine Zufallszahl, keine zeitabhängige Verzweigung auf dem Weg; Node-Version
+  erklärt es nicht (grün und rot mit 24.22). Ursache unbekannt; Code nicht geändert (keine blinde Wiederholung). Tritt es
+  wieder auf: den Lauf auf CI mit Protokoll der Rasterwerte (Zellen, Treffer je Probe) wiederholen.
