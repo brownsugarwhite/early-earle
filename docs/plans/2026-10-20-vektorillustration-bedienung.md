@@ -1256,3 +1256,20 @@ und Keil besser, Hammerhai und Seestern schlechter — abgeschaltet).
   die Käfigpunkte.
 - Ecken-Körper (Keil, Pilz, Blatt, Hammerhai, Seestern): Reihen rutschen, wo sich das Seitenverhältnis der Ringe ändert.
 - Zug während der Geste: der schnelle Weg nutzt dieselben Vorlagen (kein Sprung), die Zeit ist noch nicht gemessen.
+
+**Nachtrag 21.10. früh — dichte Anpassung, Tempo, Versuche gegen den Rest:**
+- *Dichte Anpassung* (Standard mit dem Schalter): Die feinen Punkte längs jedes Rings werden auf die dichte Kurve seines
+  Schnitts projiziert (Punkt zu Kurve, längs frei; Gewicht ⅐ je Punkt, zusammen wie die Käfigziele; auch im Zug).
+  Robbe Δ Front/Top 4,4/3,5 → 3,7/3,0 px, Vase 2,8/2,8 → 2,5/2,6, Kegel 3,0 → 2,5 (Seite 2,1 → 1,4), Falten +1°.
+- *Tempo:* Front und Top werden je Bau einmal als Tabelle angelegt (jede Polygonkante trägt sich in die Zeilen ein, die sie
+  kreuzt; 0,16 ms statt 4,7 ms), die Breitenlinie sucht Übergänge nur bis Δv = 0,3. Zug Robbe mit Schalter 49 → 18,9 ms
+  (heute 18,9), Kugel 22 → 11 (heute 7,5), Vase 26 → 15 (heute 11); Bau 119–137 ms (heute 104–115).
+- *Weiche einseitige Grenze* (`umrisseOpt.grenze`, Versuch, aus): Feine Punkte über Front oder Top quer zurück — Robbe 2,0/0,9 px,
+  Vase 0,9/0,7, Tiger 1,3/2,8, aber im Bild fleckige Flächen (Hammerhai, Ente, Seestern) und Wellen (Vase unten). Verworfen
+  als Standard.
+- *Glatte Korrektur* (`umrisseOpt.korrektur`, Versuch, aus): Überstehen je Käfigpunkt sammeln, glätten, von den Zielen abziehen —
+  Robbe besser, aber Kegel Front 2,5 → 18 px (Front und Top widersprechen sich dort leicht; die Korrektur gibt dem Top recht).
+- **Befund zum Rest (2–4 px):** Die Vorlagen liegen auf der Hülle; was fehlt, ist Freiheit der Fläche zwischen den
+  Käfigpunkten, die Umrisse exakt und zugleich glatt zu treffen. Bindungen und Grenzen erzwingen es nur mit Dellen. Der
+  elegante Weg ist strukturell: Ringe dorthin, wo Umrisse sich stark krümmen bzw. am breitesten sind (das exakte Einfügen eines
+  Rings ist der Kern von V6), und die Silhouette als Käfigkurve mit Tangente (Plan 3.1) — dann trägt die Struktur die Umrisse.

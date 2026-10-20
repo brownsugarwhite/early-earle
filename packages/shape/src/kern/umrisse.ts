@@ -61,6 +61,13 @@ export type UmrissOptionen = {
   hub?: number;
   /** Querschnitt aus der Sichthülle: Breitenpunkte aus den Vorlagen der Hülle (Standard an; `false` = ohne) */
   breite?: boolean;
+  /** Querschnitt aus der Sichthülle: feine Punkte längs der Ringe auf die dichte Kurve ihres Schnitts (Versuch) und ihr Gewicht */
+  dicht?: boolean;
+  dichtGewicht?: number;
+  /** Querschnitt aus der Sichthülle: Gewicht der weichen einseitigen Grenze (feine Punkte über Front/Top quer zurück; 0 = aus) */
+  grenze?: number;
+  /** Querschnitt aus der Sichthülle: Durchgänge der glatten Korrektur (Überstehen geglättet von den Zielen abziehen; 0 = aus) */
+  korrektur?: number;
 };
 
 export type UmrissBericht = {

@@ -30,7 +30,7 @@ import { anwenden3, multiplizieren } from '../subdivision/matrix';
 import { type Leiter, WIRBEL_STANDARD, leiter } from '../versuch/wirbelsaeule';
 import { type Breiten, silhouettenBreite } from './breite';
 import { FUELLE_EXPONENT, type FuelleArt, huellenBreite, reichweite } from './fuelle';
-import { type FrontEcke, type HuellenSchnitt, type ZeichnungsFuelle, breitenlinieWaehlen, exponentenFuer, frontEcken, fuelleWoNoetig, huelleEntlang, huelleRunden, profilAbtasten, profilAbtastenAnker, reihenplan, zeichnungsFuelle } from './huellenSchnitt';
+import { type FrontEcke, type HuellenSchnitt, type ZeichnungsFuelle, breitenlinieWaehlen, exponentenFuer, frontEcken, fuelleWoNoetig, huelleEntlang, huelleRunden, profilAbtasten, profilAbtastenAnker, reihenplan, tabellierteBreiten, zeichnungsFuelle } from './huellenSchnitt';
 import { type RandMarke, frontBeruehren } from './rand';
 import { type Schlitz, schlitzIm, seiteFuerLeiter } from './schlitz';
 import { endenFuer, profilAnker } from './grundkoerper/enden';
@@ -192,6 +192,8 @@ export type Ableitung = {
   breite: Breite | null;
   /** V4: Bericht der exakten Umrisse (nur mit `umrisse: 'exakt'`) */
   umrisse?: UmrissBericht;
+  /** V4: feine Punkte der dichten Anpassung (Zeilen nach den Breitenpunkten im Ausgleich) */
+  dicht?: DichtFein;
   zeiten: { leiter: number; breiten: number; matrix: number; loeser: number; ziele: number; gesamt: number };
 };
 
@@ -1366,7 +1368,8 @@ function huellenKontext(dok: Dokument | null, breiten: Breiten, opt: AbleitOptio
   // Die eigene Fülle der Zeichnung gilt bis „genau“ (eine kastige Front gibt kastige Ringe); die Look-Wahl „Fülle“ begrenzt
   // nur das zusätzliche Auffüllen, wo sonst kein Ring die Front erreicht (`fuelleWoNoetig`)
   const hoechstens = FUELLE_EXPONENT[opt.fuelle ?? 'mittel'];
-  return { dok, breiten, zf: zeichnungsFuelle(dok, breiten, FUELLE_EXPONENT.genau), ecken: frontEcken(dok), N: opt.ring, hoechstens };
+  const tb = tabellierteBreiten(dok, breiten);
+  return { dok, breiten: tb, zf: zeichnungsFuelle(dok, tb, FUELLE_EXPONENT.genau), ecken: frontEcken(dok), N: opt.ring, hoechstens };
 }
 
 /** Gezeichnete Form an einer Sprosse (Spant, normiert auf größte Breite 1) über v; ohne Spanten keine. */
@@ -1441,7 +1444,7 @@ export type SchlitzLage = {
   front?: { z: number; y: number }[];
 };
 
-export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument | null, opt: AbleitOptionen, schlitz?: SchlitzLage): { ziele: Float64Array; hoehe: Float64Array; rand?: { wachstum: number[]; nachfrage: number; vorlagen: Querschnitt[]; punkte: { i: number; j: number }[]; kante: RandMarke[]; teil: RandMarke[] }; huelle?: Uint8Array; vorlagen?: Querschnitt[] } {
+export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Breiten, dok: Dokument | null, opt: AbleitOptionen, schlitz?: SchlitzLage): { ziele: Float64Array; hoehe: Float64Array; rand?: { wachstum: number[]; nachfrage: number; vorlagen: Querschnitt[]; punkte: { i: number; j: number }[]; kante: RandMarke[]; teil: RandMarke[] }; huelle?: Uint8Array; vorlagen?: Querschnitt[]; dichte?: DichteVorlagen } {
   const { R, N, c } = v;
   const ziele = new Float64Array(3 * v.kaefig.n);
   const hoehe = new Float64Array(v.kaefig.n);
@@ -1575,7 +1578,29 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
       for (let a = 0; a <= c; a++) for (let b = 0; b <= c; b++) if (a > 0 && a < c && b > 0 && b < c) huelle[v.kappe('vorn', a, b)] = 0;
     }
   }
-  return rand ? { ziele, hoehe, rand: { wachstum: rand.wachstum, nachfrage: rand.nachfrage.length, vorlagen: ringQNeu.slice(), punkte: rand.punkte, kante: rand.kante, teil: rand.teil } } : { ziele, hoehe, ...(huelle ? { huelle, vorlagen: ringQNeu.slice() } : {}) };
+  // V4: dichte Kurven der Ringschnitte (rechte Hälfte, Welt) für die dichte Anpassung
+  let dichte: DichteVorlagen | undefined;
+  if (ringSchnitte) {
+    const kurven: Float64Array[] = [];
+    const zeilen: Int32Array[] = [];
+    ringSchnitte.forEach((sch, i) => {
+      const sp = ringSprossen[i]!;
+      const d = sch.dicht!;
+      const k = new Float64Array(3 * d.v.length);
+      for (let m = 0; m < d.v.length; m++) {
+        const y = sp.u.y + (sp.o.y - sp.u.y) * d.v[m]!;
+        const fb = hk!.breiten.front(y);
+        k[3 * m] = sp.u.x + (sp.o.x - sp.u.x) * d.v[m]!;
+        k[3 * m + 1] = y;
+        // wie `querschnittPunkt`: nie breiter als die Front auf dieser Höhe
+        k[3 * m + 2] = fb > 0 ? Math.min(d.z[m]!, fb) : d.z[m]!;
+      }
+      kurven.push(k);
+      zeilen.push(d.zeile);
+    });
+    dichte = { kurven, zeilen };
+  }
+  return rand ? { ziele, hoehe, rand: { wachstum: rand.wachstum, nachfrage: rand.nachfrage.length, vorlagen: ringQNeu.slice(), punkte: rand.punkte, kante: rand.kante, teil: rand.teil } } : { ziele, hoehe, ...(huelle ? { huelle, vorlagen: ringQNeu.slice() } : {}), ...(dichte ? { dichte } : {}) };
 }
 
 /**
@@ -1655,6 +1680,60 @@ function kastenKappe(v: Roehre, ziele: Float64Array, hoehe: Float64Array, spitze
 
 /** V4: Gewicht der Käfigziele, deren Vorlage Front oder Top trifft (wie die Breitenpunkte heute) */
 const HUELLE_GEWICHT = 16;
+
+/**
+ * V4 „Vorlage dicht anpassen“: je Ring die Kurve seines Schnitts (rechte Hälfte, 3D: x, y, z ≥ 0; dichte Proben von oben nach
+ * unten) und je Käfigreihe ihr Index darin. Die feinen Punkte längs eines Rings werden auf diese Kurve projiziert (Punkt zu
+ * Kurve, längs frei) — die Fläche folgt dem Schnitt zwischen den Käfigpunkten, statt sich dort hinauszuwölben.
+ */
+export type DichteVorlagen = { kurven: Float64Array[]; zeilen: Int32Array[] };
+/** feine Punkte längs der Ringe: Index, Ring, Seite (1 rechts, −1 links), Suchfenster in der Kurve (Probe von … bis) */
+export type DichtFein = { fein: Uint32Array; ring: Uint16Array; seite: Int8Array; von: Int32Array; bis: Int32Array };
+/** V4: Gewicht je feinem Punkt der dichten Anpassung (sieben je Käfigkante; zusammen etwa so stark wie die Käfigziele) */
+const DICHT_GEWICHT = 1 / 7;
+/** V4 (Versuch): weiche Grenze erst ab so viel über Front oder Top (0,25 px) */
+const GRENZE_UEBER = 0.25 / 461;
+
+/** Ziele der dichten Anpassung: je Zeile der Fußpunkt der aktuellen Lage auf der Kurve ihres Rings (Spiegel links). */
+export function dichtZiele(df: DichtFein, dv: DichteVorlagen, lagen: Float64Array): Float64Array {
+  const out = new Float64Array(3 * df.fein.length);
+  for (let q = 0; q < df.fein.length; q++) {
+    const p = df.fein[q]!;
+    const s = df.seite[q]!;
+    const px = lagen[3 * p]!;
+    const py = lagen[3 * p + 1]!;
+    const pz = s * lagen[3 * p + 2]!;
+    const k = dv.kurven[df.ring[q]!]!;
+    let best = Infinity;
+    let bx = px;
+    let by = py;
+    let bz = pz;
+    for (let i = df.von[q]!; i < df.bis[q]!; i++) {
+      const ax = k[3 * i]!;
+      const ay = k[3 * i + 1]!;
+      const az = k[3 * i + 2]!;
+      const dx = k[3 * i + 3]! - ax;
+      const dy = k[3 * i + 4]! - ay;
+      const dz = k[3 * i + 5]! - az;
+      const l2 = dx * dx + dy * dy + dz * dz;
+      const t = l2 > 0 ? Math.min(1, Math.max(0, ((px - ax) * dx + (py - ay) * dy + (pz - az) * dz) / l2)) : 0;
+      const qx = ax + t * dx;
+      const qy = ay + t * dy;
+      const qz = az + t * dz;
+      const d = (px - qx) ** 2 + (py - qy) ** 2 + (pz - qz) ** 2;
+      if (d < best) {
+        best = d;
+        bx = qx;
+        by = qy;
+        bz = qz;
+      }
+    }
+    out[3 * q] = bx;
+    out[3 * q + 1] = by;
+    out[3 * q + 2] = s * bz;
+  }
+  return out;
+}
 
 /** Ziele je Bedingung: erst alle Käfigziele, dann die Nahtpunkte auf dem Umriss (z = 0). */
 /**
@@ -1943,10 +2022,10 @@ function ableitenEinmal(dok: Dokument, optionen: Partial<AbleitOptionen>): Ablei
   const vorlage = roehre(opt.ringe, opt.ring);
   const st = stationenWaehlen(l, opt, dok);
   faltenSetzen(vorlage, st, l, dok, breiten, opt);
-  const { ziele, hoehe, rand, huelle, vorlagen } = zieleBerechnen(vorlage, l, st, breiten, dok, opt);
+  const { ziele, hoehe, rand, huelle, vorlagen, dichte } = zieleBerechnen(vorlage, l, st, breiten, dok, opt);
   // V4: Breitenpunkte aus den Querschnitten der Hülle (ihre breitesten Stellen)
   const randV = rand ? { randVorlagen: rand.vorlagen, randPunkte: rand.punkte } : vorlagen ? { randVorlagen: vorlagen } : {};
-  const abl = fertigstellen({ opt, vorlage, kaefig: vorlage.kaefig, ziele, hoehe, l, st, breiten, dok, zeiten: { t0, t1, t2 }, ...randV, ...(huelle ? { huelle } : {}) });
+  const abl = fertigstellen({ opt, vorlage, kaefig: vorlage.kaefig, ziele, hoehe, l, st, breiten, dok, zeiten: { t0, t1, t2 }, ...randV, ...(huelle ? { huelle } : {}), ...(dichte ? { dichte } : {}) });
   return rand ? { ...abl, rand: { wachstum: rand.wachstum, nachfrage: rand.nachfrage, kante: rand.kante, teil: rand.teil } } : abl;
 }
 
@@ -1976,8 +2055,42 @@ export type Rohbau = {
   randPunkte?: readonly { i: number; j: number }[];
   /** V4 „Querschnitt aus der Sichthülle“: je Käfigpunkt 1 = Vorlage trifft dort die Front, 2 = das Top (Bindung im Löser) */
   huelle?: Uint8Array;
+  /** V4: dichte Kurven der Ringschnitte (feine Punkte längs der Ringe werden auf sie projiziert) */
+  dichte?: DichteVorlagen;
   zeiten: { t0: number; t1: number; t2: number };
 };
+
+/** V4: feine Punkte längs der Ringe (innere Punkte jeder Käfigkante der Ringe, rechts und gespiegelt) mit Suchfenster. */
+function dichtFeinFuer(v: Roehre, k: Kaefig, u: Unterteilung, dv: DichteVorlagen): DichtFein {
+  const { R, N } = v;
+  const fein: number[] = [];
+  const ring: number[] = [];
+  const seite: number[] = [];
+  const von: number[] = [];
+  const bis: number[] = [];
+  for (let i = 0; i < R; i++) {
+    const z = dv.zeilen[i]!;
+    const m = dv.kurven[i]!.length / 3;
+    for (let j = 0; j < N / 2; j++) {
+      const a = Math.max(0, Math.min(z[j]!, z[j + 1]!) - 2);
+      const b = Math.min(m - 1, Math.max(z[j]!, z[j + 1]!) + 2);
+      for (const [s, p0, p1] of [
+        [1, v.ringPunkt(i, j), v.ringPunkt(i, j + 1)],
+        [-1, v.ringPunkt(i, N - j), v.ringPunkt(i, N - j - 1)],
+      ] as const) {
+        const kette = feinKette(u, k, p0, p1);
+        for (let q = 1; q + 1 < kette.length; q++) {
+          fein.push(kette[q]!);
+          ring.push(i);
+          seite.push(s);
+          von.push(a);
+          bis.push(b);
+        }
+      }
+    }
+  }
+  return { fein: Uint32Array.from(fein), ring: Uint16Array.from(ring), seite: Int8Array.from(seite), von: Int32Array.from(von), bis: Int32Array.from(bis) };
+}
 
 /**
  * Rohbau fertigstellen: Unterteilung (Matrix), Löser je Topologie, Käfig durch die Ziele, dann der Ausgleich der feinen
@@ -2029,18 +2142,124 @@ export function fertigstellen(e: Rohbau): Ableitung {
   // sie schrumpfte die Kante flacher Körper ungleich (Rochen: Falte 6 → 51°). Der alte Beweis (Breitenlinie) kam ohne sie aus.
   const breite = exakt && (!e.huelle || opt.umrisseOpt?.breite === false) ? null : breitenSchleife(vorlage, l, st, breiten, dok, opt, ziele, u, k, e.haut, e.maulBau, e.randVorlagen, e.randPunkte);
   let umrisseBericht: UmrissBericht | undefined;
+  // V4: feine Punkte längs der Ringe auf die dichten Kurven ihrer Schnitte (Zeilen nach den Breitenpunkten)
+  // (Standard mit dem Querschnitt aus der Hülle; gemessen 21.10.: Robbe Front 4,4 → 3,7 px, Kegel 3,0 → 2,5, Falten +1°)
+  const dicht = exakt && e.dichte && (opt.umrisseOpt?.dicht ?? true) ? dichtFeinFuer(vorlage, k, u, e.dichte) : null;
+  let zieleWirk = ziele;
+  let korrektur: Float64Array | null = null;
+  const zieleAlle = (lagen: Float64Array): Float64Array => {
+    const a = ausgleichsZiele(k.n, zieleWirk, umriss, nahtFein, anteil, breite, breiten, lagen, opt.fuehrend);
+    if (!dicht) return a;
+    const out = new Float64Array(a.length + 3 * dicht.fein.length);
+    out.set(a);
+    out.set(dichtZiele(dicht, e.dichte!, lagen), a.length);
+    return out;
+  };
   if (opt.nahtGewicht > 0) {
     const bedingungen: Bedingung[] = [];
     for (let i = 0; i < k.n; i++) bedingungen.push({ zeile: i, gewicht: e.zielGewicht ? e.zielGewicht[i]! : 1 });
     for (let q = 0; q < nahtFein.length; q++) bedingungen.push({ zeile: nahtFein[q]!, gewicht: opt.nahtGewicht });
     if (breite) for (let q = 0; q < breite.fein.length; q++) bedingungen.push({ zeile: breite.fein[q]!, gewicht: opt.breiteGewicht * (breite.gewicht?.[q] ?? 1) });
+    const dg = opt.umrisseOpt?.dichtGewicht ?? DICHT_GEWICHT;
+    if (dicht) for (let q = 0; q < dicht.fein.length; q++) bedingungen.push({ zeile: dicht.fein[q]!, gewicht: dg });
     nahtLoeser = ausgleichsLoeser(u.grenze, k.n, bedingungen, opt.glaettung > 0 ? { kaefig: k, gewicht: opt.glaettung } : undefined, glaettemassFuer(u, k, opt, vorlage.R * vorlage.N));
-    xyz = kaefigAusgleich(nahtLoeser, ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, breiten, fein, opt.fuehrend));
+    xyz = kaefigAusgleich(nahtLoeser, zieleAlle(fein));
     fein = anwenden3(u.grenze, xyz);
-    // Breitenziele an den tatsächlichen Grenzlagen nachrechnen (geneigte Ringe), zwei Durchgänge
-    for (let durchgang = 0; breite && durchgang < BREITE_DURCHGAENGE; durchgang++) {
-      xyz = kaefigAusgleich(nahtLoeser, ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, breiten, fein, opt.fuehrend));
+    // Breitenziele (und die Fußpunkte der dichten Anpassung) an den tatsächlichen Grenzlagen nachrechnen, zwei Durchgänge
+    for (let durchgang = 0; (breite || dicht) && durchgang < BREITE_DURCHGAENGE; durchgang++) {
+      xyz = kaefigAusgleich(nahtLoeser, zieleAlle(fein));
       fein = anwenden3(u.grenze, xyz);
+    }
+    // V4 (Versuch `umrisseOpt.korrektur`): glatte Korrektur — wo die Fläche über Front oder Top hinaussteht, das Überstehen
+    // je Käfigpunkt sammeln, über den Käfig glätten und die Ziele um dieses glatte Feld nach innen schieben (gleicher Löser,
+    // neue Ziele; ein glattes Feld kann keine Dellen machen — punktweise Grenzen machten Flächen fleckig)
+    const kr = exakt ? (opt.umrisseOpt?.korrektur ?? 0) : 0;
+    if (kr > 0) {
+      const M = u.grenze;
+      const nach = kaefigNachbarlisten(k);
+      korrektur = new Float64Array(k.n);
+      for (let runde = 0; runde < kr; runde++) {
+        const ue = new Float64Array(k.n);
+        const nF = fein.length / 3;
+        for (let p = 0; p < nF; p++) {
+          const x = fein[3 * p]!;
+          const y = fein[3 * p + 1]!;
+          const z = Math.abs(fein[3 * p + 2]!);
+          const f = breiten.front(y);
+          const t = breiten.top(x);
+          const g = Math.min(f > 0 ? f : Infinity, t > 0 ? t : Infinity);
+          if (!Number.isFinite(g) || !(z > g)) continue;
+          const ex = z - g;
+          let wMax = 0;
+          for (let q = M.start[p]!; q < M.start[p + 1]!; q++) wMax = Math.max(wMax, M.wert[q]!);
+          for (let q = M.start[p]!; q < M.start[p + 1]!; q++) {
+            const i = M.index[q]!;
+            if (i < k.n && M.wert[q]! >= 0.25 * wMax) ue[i] = Math.max(ue[i]!, ex);
+          }
+        }
+        // glätten: zwei Durchgänge Mittel mit den Nachbarn
+        let feld = ue;
+        for (let d = 0; d < 2; d++) {
+          const neu = new Float64Array(k.n);
+          for (let i = 0; i < k.n; i++) {
+            const nb = nach[i] ?? [];
+            let sm = 0;
+            for (const j of nb) sm += feld[j]!;
+            neu[i] = nb.length ? 0.5 * feld[i]! + (0.5 * sm) / nb.length : feld[i]!;
+          }
+          feld = neu;
+        }
+        let max = 0;
+        for (const x of feld) max = Math.max(max, x);
+        if (!(max > GRENZE_UEBER)) break;
+        for (let i = 0; i < k.n; i++) korrektur[i] = korrektur[i]! + 1.5 * feld[i]!;
+        const zk = Float64Array.from(ziele);
+        for (let i = 0; i < k.n; i++) {
+          const z = zk[3 * i + 2]!;
+          if (Math.abs(z) > 1e-12) zk[3 * i + 2] = z - Math.sign(z) * Math.min(korrektur[i]!, 0.5 * Math.abs(z));
+        }
+        zieleWirk = zk;
+        xyz = kaefigAusgleich(nahtLoeser, zieleAlle(fein));
+        fein = anwenden3(u.grenze, xyz);
+      }
+    }
+    // V4 (Versuch `umrisseOpt.grenze`): weiche einseitige Grenze — feine Punkte, die über Front oder Top hinausstehen, quer
+    // auf die Linie (nur die wenigen, die es tun; Gewicht mäßig, keine harte Bindung)
+    const gw = exakt ? (opt.umrisseOpt?.grenze ?? 0) : 0;
+    if (gw > 0) {
+      const aktiv = new Map<number, number>();
+      for (let runde = 0; runde < 3; runde++) {
+        const nF = fein.length / 3;
+        let neu = 0;
+        for (let p = 0; p < nF; p++) {
+          if (aktiv.has(p)) continue;
+          const x = fein[3 * p]!;
+          const y = fein[3 * p + 1]!;
+          const z = Math.abs(fein[3 * p + 2]!);
+          const f = breiten.front(y);
+          const t = breiten.top(x);
+          const g = Math.min(f > 0 ? f : Infinity, t > 0 ? t : Infinity);
+          if (Number.isFinite(g) && z > g + GRENZE_UEBER) {
+            aktiv.set(p, g);
+            neu++;
+          }
+        }
+        if (!neu) break;
+        const zeilen = [...aktiv.keys()];
+        const bed2 = [...nahtLoeser.bedingungen, ...zeilen.map((zeile) => ({ zeile, gewicht: gw }))];
+        const l2 = ausgleichsLoeser(u.grenze, k.n, bed2, opt.glaettung > 0 ? { kaefig: k, gewicht: opt.glaettung } : undefined, glaettemassFuer(u, k, opt, vorlage.R * vorlage.N));
+        const basis = zieleAlle(fein);
+        const zz = new Float64Array(basis.length + 3 * zeilen.length);
+        zz.set(basis);
+        zeilen.forEach((p, q) => {
+          const o = basis.length + 3 * q;
+          zz[o] = fein[3 * p]!;
+          zz[o + 1] = fein[3 * p + 1]!;
+          zz[o + 2] = Math.sign(fein[3 * p + 2]!) * aktiv.get(p)!;
+        });
+        xyz = kaefigAusgleich(l2, zz);
+        fein = anwenden3(u.grenze, xyz);
+      }
     }
     // V4: exakte Umrisse — dieselben Käfigziele und Naht, dazu Breitenlinie, Frontlinie und Ungleichung (Löser je Achse).
     // Mit dem Querschnitt aus der Sichthülle trägt die Vorlage die Umrisse selbst; der Löser je Achse läuft nur, wenn ein
@@ -2092,6 +2311,7 @@ export function fertigstellen(e: Rohbau): Ableitung {
     naht: { fein: nahtFein, anteil, loeser: nahtLoeser },
     breite,
     ...(umrisseBericht ? { umrisse: umrisseBericht } : {}),
+    ...(dicht ? { dicht } : {}),
     zeiten: { leiter: t1 - t0, breiten: t2 - t1, matrix: t3 - t2, loeser: t4 - t3, ziele: t5 - t4, gesamt: t5 - t0 },
   };
 }
@@ -2126,14 +2346,23 @@ export function ziehen(abl: Ableitung, dokNeu: Dokument): Zug {
   const v = abl.vorlage;
   const st: Stationen = { ringe: abl.stationen, kappen: abl.kappenStationen, ecken: abl.ecken, reifen: abl.reifen, spitzen: abl.spitzen, gefroren: abl.gefroren };
   const breiten = silhouettenBreite(dokNeu);
-  const { ziele, hoehe } = zieleBerechnen(v, l, st, breiten, dokNeu, abl.opt);
+  const { ziele, hoehe, dichte } = zieleBerechnen(v, l, st, breiten, dokNeu, abl.opt);
   const t2 = jetzt();
   const umrissNeu = umrissDicht(dokNeu);
   const anteilNeu = abl.naht.loeser ? nahtAnteile(Array.from(abl.naht.fein), v.kaefig.n, ziele, umrissNeu) : abl.naht.anteil;
-  let xyz = abl.naht.loeser ? kaefigAusgleich(abl.naht.loeser, ausgleichsZiele(v.kaefig.n, ziele, umrissNeu, abl.naht.fein, anteilNeu, abl.breite, breiten, abl.fein, abl.opt.fuehrend)) : kaefigDurchZiele(abl.loeser, ziele);
+  // dieselben Zeilen wie beim Bau (V4: mit den Fußpunkten der dichten Anpassung auf den neuen Kurven)
+  const zieleAlle = (lagen: Float64Array): Float64Array => {
+    const a = ausgleichsZiele(v.kaefig.n, ziele, umrissNeu, abl.naht.fein, anteilNeu, abl.breite, breiten, lagen, abl.opt.fuehrend);
+    if (!abl.dicht || !dichte) return a;
+    const out = new Float64Array(a.length + 3 * abl.dicht.fein.length);
+    out.set(a);
+    out.set(dichtZiele(abl.dicht, dichte, lagen), a.length);
+    return out;
+  };
+  let xyz = abl.naht.loeser ? kaefigAusgleich(abl.naht.loeser, zieleAlle(abl.fein)) : kaefigDurchZiele(abl.loeser, ziele);
   let fein = anwenden3(abl.unterteilung.grenze, xyz);
-  if (abl.naht.loeser && abl.breite) {
-    xyz = kaefigAusgleich(abl.naht.loeser, ausgleichsZiele(v.kaefig.n, ziele, umrissNeu, abl.naht.fein, anteilNeu, abl.breite, breiten, fein, abl.opt.fuehrend));
+  if (abl.naht.loeser && (abl.breite || abl.dicht)) {
+    xyz = kaefigAusgleich(abl.naht.loeser, zieleAlle(fein));
     fein = anwenden3(abl.unterteilung.grenze, xyz);
   }
   const t3 = jetzt();

@@ -139,6 +139,57 @@ export function zeichnungsFuelle(dok: Dokument, breiten: Breiten, hoechstens: nu
   return { oben: e(f.plus), unten: e(f.minus), plusX: e(t.plus), minusX: e(t.minus) };
 }
 
+/**
+ * Breiten als Tabelle (je Bau einmal): Front und Top an 2048 Stellen über ihre Ausdehnung abgetastet, dazwischen linear —
+ * eine Abfrage ist dann konstant schnell (die Hülle fragt je Bau zehntausendfach; die Polygonsuche kostete den Zug 30 ms bei
+ * der Robbe). Außerhalb der Ausdehnung −∞ wie die genaue Fassung; an einer Grenze zur Außenseite die nächste Stützstelle.
+ */
+export function tabellierteBreiten(dok: Dokument, b: Breiten, n = 2048): Breiten {
+  const s = dok.skalierung;
+  // dieselben Polygone wie `silhouettenBreite` (40 je Abschnitt); jede Kante trägt sich in die Tabellenzeilen ein, die sie
+  // kreuzt — größte |Kreuzung| je Zeile wie `schnittMax`, ohne für jede Zeile alle Kanten abzulaufen
+  const polygon = (a: 'front' | 'top') => pfadAbtasten(vollerPfad(dok.profile[a]), 40).map((p) => ({ x: p.x * s, y: p.y * s }));
+  const tabelle = (poly: { x: number; y: number }[], achse: 'x' | 'y'): ((w: number) => number) => {
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const p of poly) {
+      lo = Math.min(lo, achse === 'x' ? p.x : p.y);
+      hi = Math.max(hi, achse === 'x' ? p.x : p.y);
+    }
+    if (!(hi > lo)) return achse === 'x' ? b.top : b.front;
+    const T = new Float64Array(n + 1).fill(-Infinity);
+    const h = (hi - lo) / n;
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i]!;
+      const c = poly[(i + 1) % poly.length]!;
+      const a1 = achse === 'x' ? a.x : a.y;
+      const c1 = achse === 'x' ? c.x : c.y;
+      const a2 = achse === 'x' ? a.y : a.x;
+      const c2 = achse === 'x' ? c.y : c.x;
+      const k0 = Math.max(0, Math.ceil((Math.min(a1, c1) - lo) / h - 1e-9));
+      const k1 = Math.min(n, Math.floor((Math.max(a1, c1) - lo) / h + 1e-9));
+      for (let k = k0; k <= k1; k++) {
+        const w = lo + h * k;
+        const d = c1 - a1;
+        const t = Math.abs(d) < 1e-12 ? 0.5 : (w - a1) / d;
+        const q = Math.abs(a2 + t * (c2 - a2));
+        if (q > T[k]!) T[k] = q;
+      }
+    }
+    return (w: number) => {
+      if (!(w >= lo && w <= hi)) return -Infinity;
+      const t = (w - lo) / h;
+      const i = Math.min(n - 1, Math.floor(t));
+      const a = T[i]!;
+      const c = T[i + 1]!;
+      const f2 = t - i;
+      if (!(a > 0) || !(c > 0)) return f2 < 0.5 ? a : c;
+      return a + (c - a) * f2;
+    };
+  };
+  return { front: tabelle(polygon('front'), 'y'), top: tabelle(polygon('top'), 'x'), topMax: b.topMax, frontMax: b.frontMax };
+}
+
 /** Exponenten der Rundung eines Rings: liegend (Sprosse steil) aus der Front, stehend (Sprosse flach) aus dem Top, dazwischen gemischt. */
 export function exponentenFuer(sp: Sprosse, zf: ZeichnungsFuelle): { oben: number; unten: number } {
   const dx = sp.o.x - sp.u.x;
@@ -175,6 +226,8 @@ export type HuellenSchnitt = {
   front: Uint8Array;
   /** je Stützstelle: Hier stellt das Top die Breite (z = Top an dieser Stelle, enger als die Front) */
   top: Uint8Array;
+  /** dichte Kurve des Schnitts (v, z in Welt) und je Stützstelle ihr Index darin — zum dichten Anpassen der Fläche */
+  dicht?: { v: Float64Array; z: Float64Array; zeile: Int32Array };
 };
 
 /** Dichtes Profil eines Schnitts der Hülle, Proben von oben (v = 1) nach unten (v = 0). */
@@ -639,13 +692,15 @@ export function breitenlinieWaehlen(profile: readonly HuellenProfil[], mu = MU):
   const kosten = profile.map((pr) => vk.map((v) => (v < pr.vMin - 1e-9 || v > pr.vMax + 1e-9 ? 1e6 : pr.W > 0 ? 1 - profilBei(pr, v) / pr.W : 0)));
   let summe = kosten[0]!.slice();
   const zurueck: Int32Array[] = [];
+  // Übergänge nur bis Δv = 0,3 je Nachbar (größere Sprünge kosten mehr als jeder Breitenverlust; spart im Zug ¾ der Zeit)
+  const fenster = Math.ceil((0.3 * (K - 1)) / (1 - 2 * ENDE_ABSTAND));
   for (let i = 1; i < n; i++) {
     const neu = new Array<number>(K);
     const zr = new Int32Array(K);
     for (let k = 0; k < K; k++) {
       let best = Infinity;
       let wahl = 0;
-      for (let m = 0; m < K; m++) {
+      for (let m = Math.max(0, k - fenster); m <= Math.min(K - 1, k + fenster); m++) {
         const d = vk[k]! - vk[m]!;
         const c = summe[m]! + mu * d * d;
         if (c < best) {
@@ -891,7 +946,7 @@ export function profilAbtastenAnker(pr: HuellenProfil, hOut: number, anker: read
   fr[0] = fr[fr.length - 1] = 0;
   tp[0] = tp[tp.length - 1] = 0;
   const breit = punkte.find((a) => a.reihe === iBreit);
-  return { q, W, vStern: breit ? breit.v : NaN, front: fr, top: tp };
+  return { q, W, vStern: breit ? breit.v : NaN, front: fr, top: tp, dicht: { v: Float64Array.from(v), z: Float64Array.from(z), zeile: Int32Array.from(alle, (a) => a.dicht) } };
 }
 
 /** Profil abtasten mit der Breitenlinie auf `vReihe` und den eigenen Merkmalen (einzelner Ring; die Kette nimmt `reihenplan`). */
