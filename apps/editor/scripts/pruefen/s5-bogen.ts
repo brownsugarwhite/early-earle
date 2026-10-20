@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { pfadAbtasten, vollerPfad } from '../../../../packages/shape/src/profil';
 import { GLATTE_HAUT, ableiten, kernLeiter, zugBei } from '../../../../packages/shape/src/kern/ableiten';
 import { blattAbweichungen } from '../../../../packages/shape/src/kern/abweichung';
-import { baumAbleiten, baumFeinesNetz, paarAusnahme } from '../../../../packages/shape/src/kern/grundkoerper/baumBau';
+import { baumAbleiten, baumFalten, baumFeinesNetz, paarAusnahme } from '../../../../packages/shape/src/kern/grundkoerper/baumBau';
 import { teilbaum } from '../../../../packages/shape/src/kern/grundkoerper/teilbaum';
 import { erreichbarkeit } from '../../../../packages/shape/src/kern/grundkoerper/huelle';
 import { feinesNetz } from '../../../../packages/shape/src/kern/pruefstand';
@@ -71,7 +71,7 @@ for (const name of liste) {
       const b = baumAbleiten(dok, o);
       const nb = baumFeinesNetz(b);
       const sprossen = b.ringe.flatMap((r) => r.sprossen.map((sp) => [sp.o.x, sp.o.y, 0, sp.u.x, sp.u.y, 0]));
-      const z = faltenNachZonen(b.kaefig, b.unterteilung, b.fein, { flaechenZone: b.zone }).zonen;
+      const z = faltenNachZonen(b.kaefig, b.unterteilung, b.fein, baumFalten(b)).zonen;
       fall(`${art} (${b.ebene.streifen.length} Streifen${b.seiten.length ? ` + ${b.seiten.length} seitlich` : ''})`, nb.punkte, nb.flaechen, sprossen, [], zonenText(z), b.zeiten.gesamt, b.seiten.length > 0);
     }
     continue;
@@ -98,7 +98,7 @@ for (const name of liste) {
     const b = baumAbleiten(dok, OPT);
     const nb = baumFeinesNetz(b);
     const sprossen = b.ringe.flatMap((r) => r.sprossen.map((sp) => [sp.o.x, sp.o.y, 0, sp.u.x, sp.u.y, 0]));
-    const z = faltenNachZonen(b.kaefig, b.unterteilung, b.fein, { flaechenZone: b.zone }).zonen;
+    const z = faltenNachZonen(b.kaefig, b.unterteilung, b.fein, baumFalten(b)).zonen;
     fall(`Baum (${b.ebene.streifen.length} Streifen)`, nb.punkte, nb.flaechen, sprossen, [], zonenText(z), b.zeiten.gesamt);
   } catch (err) {
     faelle.push({ name: `${name} · Baum`, text: `<b>${name} · Baum</b> · Bau scheitert: ${(err as Error).message}`, daten: null });

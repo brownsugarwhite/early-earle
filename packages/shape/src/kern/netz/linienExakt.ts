@@ -6,13 +6,20 @@
 // dem Käfig der vorigen. Ersetzt auf der Röhre ohne Maul und Beine die Treppe; dort bleibt sie (Maul, Beine, Baum).
 // Offene Enden laufen über zwei Käfigkanten weich aus (halbscharf 1, 2): Endet eine scharfe Kante mitten auf glatter Haut,
 // bildet Catmull–Clark dort eine Delle (Zebra: Haken an beiden Enden). DOM-frei.
+// Plan 20.10., V0 (Rückschritte aus S8a behoben): Ein Kreuzungspunkt zweier Linien steht in beiden Kantenzügen — das
+// Nachführen schob ihn je Schritt zweimal um 1,5 × den Rest und schaukelte ihn auf (−2 je Schritt, gekreuzte Linien bis 24 px
+// daneben); jetzt je Punkt einmal mit dem Mittel der Reste. Nahtpunkte bleiben dabei in der Spiegelebene. Kurze Linien
+// laufen höchstens über ein Viertel ihrer Kanten aus (eine Querlinie über vier Kanten wurde sonst nie scharf). Linien, die
+// weder Reihe noch Ring werden, behalten die Treppe (vorher bekamen sie gar keine Falte).
 
 import type { Kante } from '../../dokument';
 import { type Kaefig, kanteZwischen } from '../../kaefig/halbkanten';
 import { unterteilung } from '../../subdivision/catmullClark';
 import { anwenden3 } from '../../subdivision/matrix';
+import type { BaumKaefig } from '../../kaefig/baumKaefig';
 import type { Ableitung } from '../ableiten';
-import { kanteAbtasten } from '../kanten';
+import { baumKantenFalten } from '../grundkoerper/baumKanten';
+import { type KantenLinie, kanteAbtasten } from '../kanten';
 import { type NetzLinie, reiheEinpassen } from './einpassen';
 import { ringEinpassen } from './ringEinpassen';
 
@@ -54,6 +61,8 @@ export function linienExakt<T extends Ableitung>(abl: T, kanten: readonly Kante[
   const berichte: LinienBericht[] = [];
   // je eingepasster Linie die Käfigpunkte der Kante (rechte Hälfte) und die Linie, zum Nachführen nach dem Schärfen
   const kantenZuege: { punkte: number[]; linie: [number, number, number][] }[] = [];
+  // Linien, die weder Reihe noch Ring werden: Treppe auf dem Käfig (wie auf dem Baum)
+  const treppe: KantenLinie[] = [];
   kanten.forEach((ka, index) => {
     const t0 = jetzt();
     const roh = kanteAbtasten(ka, sk, 16);
@@ -67,6 +76,7 @@ export function linienExakt<T extends Ableitung>(abl: T, kanten: readonly Kante[
     const reihe = reiheEinpassen(basis, linie);
     const ring = reihe ? null : ringEinpassen(basis, linie);
     if (!reihe && !ring) {
+      treppe.push(roh);
       berichte.push({ art: 'fehlt', index, ms: jetzt() - t0 });
       return;
     }
@@ -80,10 +90,17 @@ export function linienExakt<T extends Ableitung>(abl: T, kanten: readonly Kante[
     // läuft die Linie vom Anfang des Bereichs (kleines u bzw. v) zum Ende? Der erste Linienpunkt liegt näher am Anfang
     // Auslauf: die k-te Kante vom Ende (k = 0, 1, …) ist höchstens 3 · (k + 1) / (auslauf + 1) scharf (halbscharf: scharf
     // für so viele Stufen, dann glatt), die Kante läuft an offenen Enden weich aus
+    // Bereich der Kante: Ringe (Reihe) bzw. Spalten (Ring) innerhalb der Linie (über ihre Enden hinaus lag die Kante neben
+    // der gezeichneten Linie)
+    const [von, bis] = reihe
+      ? [Math.max(0, Math.ceil(reihe.uVon - 0.25)), Math.min(R - 1, Math.floor(reihe.uBis + 0.25))]
+      : [Math.max(0, Math.ceil(Math.min(ring!.vVon, ring!.vBis) - 0.25)), Math.min(H, Math.floor(Math.max(ring!.vVon, ring!.vBis) + 0.25))];
+    // höchstens ein Viertel der Kanten der Linie läuft aus (je Ende), sonst bliebe eine kurze Linie ganz weich
+    const aus = Math.min(auslauf, Math.floor((bis - von) / 4));
     const auslaufGrenze = (vomAnfang: number, vomEnde: number): number => {
-      if (!auslauf) return Infinity;
+      if (!aus) return Infinity;
       const k = Math.min(vomAnfang, vomEnde);
-      return k >= auslauf ? Infinity : (3 * (k + 1)) / (auslauf + 1);
+      return k >= aus ? Infinity : (3 * (k + 1)) / (aus + 1);
     };
     const naeher = (p0: number, p1: number) => {
       const q = linie.punkte[0]!;
@@ -92,9 +109,8 @@ export function linienExakt<T extends Ableitung>(abl: T, kanten: readonly Kante[
     };
     if (reihe) {
       // Kanten der Reihe j (und N − j) zwischen den Ringen der Linie; die Härte nach dem Anteil längs der Linie
-      // nur Ringe innerhalb der Linie (über ihre Enden hinaus lag die Kante neben der gezeichneten Linie)
-      const i0 = Math.max(0, Math.ceil(reihe.uVon - 0.25));
-      const i1 = Math.min(R - 1, Math.floor(reihe.uBis + 0.25));
+      const i0 = von;
+      const i1 = bis;
       const L = Math.max(1e-9, reihe.uBis - reihe.uVon);
       const vorwaerts = naeher(abl.vorlage.ringPunkt(i0, reihe.j), abl.vorlage.ringPunkt(i1, reihe.j));
       for (let i = i0; i < i1; i++) {
@@ -105,8 +121,8 @@ export function linienExakt<T extends Ableitung>(abl: T, kanten: readonly Kante[
       }
       kantenZuege.push({ punkte: Array.from({ length: Math.max(0, i1 - i0 + 1) }, (_, q) => abl.vorlage.ringPunkt(i0 + q, reihe.j)), linie: linie.punkte });
     } else if (ring) {
-      const j0 = Math.max(0, Math.ceil(Math.min(ring.vVon, ring.vBis) - 0.25));
-      const j1 = Math.min(H, Math.floor(Math.max(ring.vVon, ring.vBis) + 0.25));
+      const j0 = von;
+      const j1 = bis;
       const L = Math.max(1e-9, Math.abs(ring.vBis - ring.vVon));
       const vorwaerts = naeher(abl.vorlage.ringPunkt(ring.i, j0), abl.vorlage.ringPunkt(ring.i, j1));
       for (let j = j0; j < j1; j++) {
@@ -121,10 +137,12 @@ export function linienExakt<T extends Ableitung>(abl: T, kanten: readonly Kante[
     }
     berichte.push({ art: reihe ? 'reihe' : 'ring', index, ms: jetzt() - t0 });
   });
-  if (!schaerfe.size && !berichte.some((b) => b.art === 'reihe' || b.art === 'ring')) return { abl, berichte };
+  if (!schaerfe.size && !treppe.length && !berichte.some((b) => b.art === 'reihe' || b.art === 'ring')) return { abl, berichte };
   // neuer Käfig mit den Kanten, neue Unterteilung (die Schärfe verändert die Unterteilungsmatrix), feines Netz
   const eS = Float64Array.from(abl.kaefig.eSchaerfe);
   for (const [e, s] of schaerfe) if (s > eS[e]!) eS[e] = s;
+  // Treppe für die übrigen Linien: nächster Käfigpunkt je Linienpunkt, verbunden über den kürzesten Weg, gespiegelt
+  if (treppe.length) baumKantenFalten({ kaefig: { ...k, eSchaerfe: eS }, spiegel: spiegelPunkte(k) } as unknown as BaumKaefig, k.xyz, treppe, schaerfeMax);
   const k2: Kaefig = { ...abl.kaefig, xyz: new Float64Array(k.xyz), eSchaerfe: eS };
   const u2 = unterteilung(k2, abl.unterteilung.stufen.length);
   // Nachführen: Das Schärfen ändert die Grenzlage der Kantenpunkte (eine scharfe Kante folgt dem B-Spline ihrer Käfigpunkte,
@@ -133,26 +151,53 @@ export function linienExakt<T extends Ableitung>(abl: T, kanten: readonly Kante[
   const xyz = k2.xyz;
   const spiegelVon = new Map<number, number>();
   for (let i = 0; i < R; i++) for (let j = 1; j < H; j++) spiegelVon.set(abl.vorlage.ringPunkt(i, j), abl.vorlage.ringPunkt(i, N - j));
+  const naht = new Set<number>();
+  for (let i = 0; i < R; i++) for (const j of [0, H]) naht.add(abl.vorlage.ringPunkt(i, j));
   for (let schritt = 0; schritt < korrektur; schritt++) {
     const f = anwenden3(u2.grenze, xyz);
+    // je Punkt die Reste aller Kantenzüge, in denen er steht (Kreuzung: zwei), gemittelt und einmal angewandt
+    const rest = new Map<number, [number, number, number, number]>();
     for (const z of kantenZuege) {
       for (const p of z.punkte) {
         const L: [number, number, number] = [f[3 * p]!, f[3 * p + 1]!, f[3 * p + 2]!];
         const T = naechsterPunkt(z.linie, L);
-        const d = [T[0] - L[0], T[1] - L[1], T[2] - L[2]];
-        xyz[3 * p] = xyz[3 * p]! + 1.5 * d[0]!;
-        xyz[3 * p + 1] = xyz[3 * p + 1]! + 1.5 * d[1]!;
-        xyz[3 * p + 2] = xyz[3 * p + 2]! + 1.5 * d[2]!;
-        const q = spiegelVon.get(p);
-        if (q !== undefined) {
-          xyz[3 * q] = xyz[3 * p]!;
-          xyz[3 * q + 1] = xyz[3 * p + 1]!;
-          xyz[3 * q + 2] = -xyz[3 * p + 2]!;
-        }
+        const r = rest.get(p) ?? [0, 0, 0, 0];
+        rest.set(p, [r[0] + T[0] - L[0], r[1] + T[1] - L[1], r[2] + T[2] - L[2], r[3] + 1]);
+      }
+    }
+    for (const [p, [dx, dy, dz, n]] of rest) {
+      xyz[3 * p] = xyz[3 * p]! + (1.5 * dx) / n;
+      xyz[3 * p + 1] = xyz[3 * p + 1]! + (1.5 * dy) / n;
+      // die Naht liegt in der Spiegelebene
+      xyz[3 * p + 2] = naht.has(p) ? 0 : xyz[3 * p + 2]! + (1.5 * dz) / n;
+      const q = spiegelVon.get(p);
+      if (q !== undefined) {
+        xyz[3 * q] = xyz[3 * p]!;
+        xyz[3 * q + 1] = xyz[3 * p + 1]!;
+        xyz[3 * q + 2] = -xyz[3 * p + 2]!;
       }
     }
   }
   return { abl: { ...abl, kaefig: k2, unterteilung: u2, fein: anwenden3(u2.grenze, xyz) }, berichte };
+}
+
+/** Spiegelpunkt je Käfigpunkt (x, y, −z); der Käfig der Röhre ist spiegelgleich, Punkte der Naht sind ihr eigener Spiegel. */
+function spiegelPunkte(k: Kaefig): Int32Array {
+  const P = k.xyz;
+  const out = new Int32Array(k.n).fill(-1);
+  for (let p = 0; p < k.n; p++) {
+    let best = p;
+    let bd = Infinity;
+    for (let q = 0; q < k.n; q++) {
+      const d = (P[3 * q]! - P[3 * p]!) ** 2 + (P[3 * q + 1]! - P[3 * p + 1]!) ** 2 + (P[3 * q + 2]! + P[3 * p + 2]!) ** 2;
+      if (d < bd) {
+        bd = d;
+        best = q;
+      }
+    }
+    out[p] = best;
+  }
+  return out;
 }
 
 /** Nächster Punkt auf einem Polygonzug. */

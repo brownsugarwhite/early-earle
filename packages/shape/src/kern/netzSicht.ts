@@ -50,7 +50,8 @@ export type NetzZug = {
 export type NetzSicht = {
   zuege: NetzZug[];
   /**
-   * Knoten der gezeichneten Umrisse als 3D-Punkte (x, y, z je Knoten, NaN ohne Kontur): Seite (z = 0, Mittelebene), Front
+   * Knoten der gezeichneten Umrisse als 3D-Punkte (x, y, z je Knoten, NaN ohne Kontur): Seite (Mittelebene bzw. z des Teils
+   * neben ihr, `seitenTiefe`), Front
    * (x von der Front-Kontur), Top (y von der Top-Kontur); Front und Top: erst die gezeichnete Hälfte, dann die gespiegelte.
    */
   knoten: Record<'seite' | 'front' | 'top', Float32Array>;
@@ -276,6 +277,41 @@ export function sichtbarkeit(r: SichtRaster, p: V3, toleranz = 0.6, aussen?: V3,
 }
 
 /** Nächster Punkt einer Punktwolke in einer 2D-Projektion (Achsen a, b) — für das Heben der Umrissknoten. */
+/**
+ * Tiefe eines Knotens der Seitenzeichnung (Plan 20.10., V0): auf der Mittelebene (z = 0), außer der Seitenumriss gehört dort
+ * zu einem Teil neben ihr (Beine, Flügel, zweiter Hals) — dann z des nächsten äußeren Konturpunkts der Seite auf der
+ * sichtbaren Hälfte (Kamera bei +z). Vorher lagen alle Seitenknoten auf z = 0, bei Beinen also zwischen ihnen in der Luft.
+ * `p` = Konturpunkte (x, y, z flach); liefert z und den Index des gewählten Punkts (−1 ohne Kontur).
+ */
+export function seitenTiefe(p: ArrayLike<number>, x: number, y: number): { z: number; i: number } {
+  let best = -1;
+  let bd = Infinity;
+  let haelfte = true;
+  for (let durchgang = 0; durchgang < 2 && best < 0; durchgang++) {
+    haelfte = durchgang === 0;
+    for (let i = 0; 3 * i + 2 < p.length; i++) {
+      // erst nur die sichtbare Hälfte; gibt es dort keine Kontur, alle
+      if (haelfte && p[3 * i + 2]! < -1e-6) continue;
+      const d = (p[3 * i]! - x) ** 2 + (p[3 * i + 1]! - y) ** 2;
+      if (d < bd) {
+        bd = d;
+        best = i;
+      }
+    }
+  }
+  if (best < 0) return { z: 0, i: -1 };
+  // fast gleich nah (bis 1 px weiter): die Naht vor einem Teil daneben (am Übergang Bein → Rumpf gehört der Knoten zur Naht)
+  const grenze = (Math.sqrt(bd) + 1 / PX) ** 2;
+  for (let i = 0; 3 * i + 2 < p.length; i++) {
+    if (haelfte && p[3 * i + 2]! < -1e-6) continue;
+    const d = (p[3 * i]! - x) ** 2 + (p[3 * i + 1]! - y) ** 2;
+    if (d <= grenze && Math.abs(p[3 * i + 2]!) < Math.abs(p[3 * best + 2]!)) best = i;
+  }
+  const z = p[3 * best + 2]!;
+  // die Naht des Rumpfs liegt auf der Mittelebene (Konturproben dort streuen um Bruchteile eines Pixels)
+  return { z: Math.abs(z) < 2 / PX ? 0 : z, i: best };
+}
+
 function naechsterIn(pts: readonly V3[], a: Achse, b: Achse, u: number, v: number): V3 | null {
   let best: V3 | null = null;
   let bd = Infinity;
@@ -422,13 +458,14 @@ export function netzSicht(e: NetzSichtEingabe): NetzSicht {
   }
   // 2. Umrissknoten als 3D-Punkte (gezeichnete Hälfte, dann gespiegelt bei Front/Top)
   const sk = dok.skalierung;
+  const seitenKontur = Float64Array.from(konturPunkte.seite.flat());
   const heben = (a: 'seite' | 'front' | 'top'): { pts: Float32Array; sicht: Uint8Array } => {
     const pr = dok.profile[a];
     const lagen: V3[] = [];
     const roh = pr.knoten.map((k) => ({ x: k.p.x * sk, y: k.p.y * sk }));
     const alle = a === 'seite' ? roh : [...roh, ...roh.map((q) => (a === 'front' ? { x: -q.x, y: q.y } : { x: q.x, y: -q.y }))];
     for (const q of alle) {
-      if (a === 'seite') lagen.push([q.x, q.y, 0]);
+      if (a === 'seite') lagen.push([q.x, q.y, seitenTiefe(seitenKontur, q.x, q.y).z]);
       else if (a === 'front') {
         const k = naechsterIn(konturPunkte.front, 2, 1, q.x, q.y);
         lagen.push(k ? [k[0], q.y, q.x] : [NaN, NaN, NaN]);

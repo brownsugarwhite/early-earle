@@ -413,8 +413,9 @@ export type TeilAnzeige = {
 };
 
 /** Teile erkennen (mit dem eingefrorenen Baum) und für die Anzeige aufbereiten. */
-export function teilAnzeige(dok: Dokument, vorher?: GefrorenerTeilbaum | null): TeilAnzeige {
-  const b = teilbaum(dok, vorher);
+export function teilAnzeige(dok: Dokument, vorher?: GefrorenerTeilbaum | null, erkannt?: Teilbaum): TeilAnzeige {
+  // `erkannt`: schon erkannter Baum desselben Dokuments und Stands (der Baum-Körper erkennt nur einmal je Bau)
+  const b = erkannt ?? teilbaum(dok, vorher);
   const uhr = (globalThis as { performance?: { now(): number } }).performance;
   const t0 = uhr ? uhr.now() : Date.now();
   const ansichten = teilAnsichten(dok, b);

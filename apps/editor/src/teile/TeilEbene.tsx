@@ -87,19 +87,54 @@ function kurveAnlegen(ansicht: Ansicht, id: string, zug: V2[]) {
   st.setzeDokument({ ...st.dok, teile: [...(st.dok.teile ?? []), k] });
 }
 
-/** Flächen der sichtbaren Teile und verdeckte Teilumrisse (unter dem Liniennetz und der schwarzen Linie). */
-export function TeilFlaechen({ ansicht, bild, umriss, aktiv }: { ansicht: Ansicht; bild: (p: V2) => V2; umriss: string; aktiv: boolean }) {
+/** Verdeckte Stücke (geraten) je Teil als Bildpfade; ohne Teile mit eigener Kurve in dieser Ansicht. */
+function verdecktePfade(t: TeilAnzeige, ansicht: Ansicht, blick: Blick, bild: (p: V2) => V2, dokTeile: readonly TeilKurve[] | undefined): { teil: number; id: string; k: number; zug: V2[]; d: string }[] {
+  const a = t.ansichten[ansichtName(ansicht, blick)];
+  const out: { teil: number; id: string; k: number; zug: V2[]; d: string }[] = [];
+  for (const v of a.verdeckt) {
+    const id = t.teile[v.teil]?.id ?? '';
+    if (eigeneKurven(dokTeile, id, ansicht).length) continue;
+    zuegeVon(v.zuege).forEach((zug, k) => {
+      const d = zug.map((p, i) => {
+        const q = bild(p);
+        return `${i ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
+      }).join('');
+      out.push({ teil: v.teil, id, k, zug, d });
+    });
+  }
+  return out;
+}
+
+/** Wirbelsäulen je Teil als Bildpfade (Paare in Front/Top beidseitig) mit ihren Knoten. */
+function achsenPfade(t: TeilAnzeige, ansicht: Ansicht, bild: (p: V2) => V2): { teil: number; id: string; s: number; d: string; knoten: V2[] }[] {
+  const out: { teil: number; id: string; s: number; d: string; knoten: V2[] }[] = [];
+  t.teile.forEach((teil, i) => {
+    const seiten = teil.art === 'paar' && ansicht !== 'seite' ? [1, -1] : [1];
+    for (const s of seiten) {
+      const p = (arr: Float32Array, k: number) => bild(inAnsicht2([arr[k]!, arr[k + 1]!, arr[k + 2]! * s], ansicht));
+      let d = '';
+      for (let k = 0; k + 2 < teil.achse.length; k += 3) {
+        const q = p(teil.achse, k);
+        d += `${k ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
+      }
+      const knoten: V2[] = [];
+      for (let k = 0; k + 2 < teil.knoten.length; k += 3) knoten.push(p(teil.knoten, k));
+      out.push({ teil: i, id: teil.id, s, d, knoten });
+    }
+  });
+  return out;
+}
+
+/** Flächen der sichtbaren Teile und verdeckte Teilumrisse (unter dem Liniennetz und der schwarzen Linie; nur Anzeige). */
+export function TeilFlaechen({ ansicht, bild, umriss }: { ansicht: Ansicht; bild: (p: V2) => V2; umriss: string }) {
   const t = useTeile();
   const blick = useUi((s) => blickVon(ansicht, s.blick));
   const hover = useUi((s) => s.teilHover);
-  const werkzeug = useUi((s) => s.werkzeug);
   const dokTeile = useEditor((s) => s.dok.teile);
   if (!t) return null;
   const a = t.ansichten[ansichtName(ansicht, blick)];
   const clipId = `teile-clip-${ansicht}`;
   const idVon = (i: number) => t.teile[i]?.id ?? '';
-  // geratene verdeckte Stücke sind anklickbar (Auswahlwerkzeug in der Stufe Körper): eine eigene Kurve ersetzt sie
-  const klickbar = aktiv && werkzeug === 'auswahl';
   return (
     <g className="teile" data-teile={t.teile.length} pointerEvents="none">
       <defs>
@@ -118,40 +153,55 @@ export function TeilFlaechen({ ansicht, bild, umriss, aktiv }: { ansicht: Ansich
           );
         })}
       </g>
-      {a.verdeckt.map((v) => {
-        const id = idVon(v.teil);
-        if (eigeneKurven(dokTeile, id, ansicht).length) return null;
-        return zuegeVon(v.zuege).map((zug, k) => {
-          const d = zug.map((p, i) => {
-            const q = bild(p);
-            return `${i ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
-          }).join('');
-          return (
-            <g key={`v${v.teil}.${k}`} data-teil-verdeckt={id} data-teil-stueck={`${id}:${k}`}>
-              {klickbar && (
-                <path
-                  d={d}
-                  fill="none"
-                  stroke="transparent"
-                  strokeWidth={9}
-                  pointerEvents="stroke"
-                  style={{ cursor: 'copy' }}
-                  onPointerEnter={() => useUi.getState().setzeTeilHover(id)}
-                  onPointerLeave={() => useUi.getState().teilHover === id && useUi.getState().setzeTeilHover(null)}
-                  onPointerDown={(e) => {
-                    if (e.button !== 0) return;
-                    e.stopPropagation();
-                    kurveAnlegen(ansicht, id, zug);
-                  }}
-                >
-                  <title>Klick: als eigene Kurve übernehmen</title>
-                </path>
-              )}
-              <path d={d} fill="none" stroke={teilFarbe(v.teil)} strokeWidth={hover === id ? 2 : 1.25} strokeOpacity={hover === id ? 0.9 : 0.55} strokeDasharray="4 4" strokeLinecap="round" pointerEvents="none" />
-            </g>
-          );
-        });
-      })}
+      {verdecktePfade(t, ansicht, blick, bild, dokTeile).map(({ teil, id, k, d }) => (
+        <path key={`v${teil}.${k}`} data-teil-verdeckt={id} data-teil-stueck={`${id}:${k}`} d={d} fill="none" stroke={teilFarbe(teil)} strokeWidth={hover === id ? 2 : 1.25} strokeOpacity={hover === id ? 0.9 : 0.55} strokeDasharray="4 4" strokeLinecap="round" pointerEvents="none" />
+      ))}
+    </g>
+  );
+}
+
+/**
+ * Trefferflächen der Teile (Plan 20.10., V0): direkt unter der schwarzen Linie, den P-Linien und allen Knoten. Vorher lagen
+ * die Wirbelsäulen mit einem unsichtbaren 10-px-Streifen über allem: An Teilspitzen setzte der Stift keinen Punkt, sondern
+ * begann eine neue P-Linie, und ⇧W griff nicht. Zeiger über einer Wirbelsäule hebt das Teil hervor; ein geratenes verdecktes
+ * Stück übernimmt ein Klick (Auswahlwerkzeug, Stufe Körper) als eigene Kurve.
+ */
+export function TeilTreffer({ ansicht, bild, aktiv }: { ansicht: Ansicht; bild: (p: V2) => V2; aktiv: boolean }) {
+  const t = useTeile();
+  const blick = useUi((s) => blickVon(ansicht, s.blick));
+  const werkzeug = useUi((s) => s.werkzeug);
+  const dokTeile = useEditor((s) => s.dok.teile);
+  if (!t) return null;
+  const setze = useUi.getState().setzeTeilHover;
+  const weg = (id: string) => useUi.getState().teilHover === id && setze(null);
+  return (
+    <g className="teil-treffer">
+      {achsenPfade(t, ansicht, bild).map(({ id, s, d }) => (
+        <path key={`a${id}${s}`} data-teil-achse-treffer={id} d={d} fill="none" stroke="transparent" strokeWidth={10} onPointerEnter={() => setze(id)} onPointerLeave={() => weg(id)} />
+      ))}
+      {aktiv &&
+        werkzeug === 'auswahl' &&
+        verdecktePfade(t, ansicht, blick, bild, dokTeile).map(({ id, k, zug, d }) => (
+          <path
+            key={`v${id}.${k}`}
+            data-teil-verdeckt-treffer={`${id}:${k}`}
+            d={d}
+            fill="none"
+            stroke="transparent"
+            strokeWidth={9}
+            pointerEvents="stroke"
+            style={{ cursor: 'copy' }}
+            onPointerEnter={() => setze(id)}
+            onPointerLeave={() => weg(id)}
+            onPointerDown={(e) => {
+              if (e.button !== 0) return;
+              e.stopPropagation();
+              kurveAnlegen(ansicht, id, zug);
+            }}
+          >
+            <title>Klick: als eigene Kurve übernehmen</title>
+          </path>
+        ))}
     </g>
   );
 }
@@ -247,38 +297,28 @@ export function teilKurvenEntfernen(id: string) {
   st.setzeDokument(d);
 }
 
-/** Wirbelsäulen der Teile (über der schwarzen Linie, unter den Knoten): dünn, mit Knoten; Paare in Front/Top beidseitig. */
+/**
+ * Wirbelsäulen der Teile (über der schwarzen Linie, unter den Knoten): dünn, mit Knoten; Paare in Front/Top beidseitig. Nur
+ * Anzeige — die Trefferflächen liegen in `TeilTreffer` unter der schwarzen Linie.
+ */
 export function TeilWirbelsaeulen({ ansicht, bild }: { ansicht: Ansicht; bild: (p: V2) => V2 }) {
   const t = useTeile();
   const hover = useUi((s) => s.teilHover);
   if (!t) return null;
-  const setze = useUi.getState().setzeTeilHover;
   return (
-    <g className="teil-achsen">
-      {t.teile.map((teil, i) => {
-        const seiten = teil.art === 'paar' && ansicht !== 'seite' ? [1, -1] : [1];
-        const an = hover === teil.id;
-        return seiten.map((s) => {
-          const p = (arr: Float32Array, k: number) => bild(inAnsicht2([arr[k]!, arr[k + 1]!, arr[k + 2]! * s], ansicht));
-          let d = '';
-          for (let k = 0; k + 2 < teil.achse.length; k += 3) {
-            const q = p(teil.achse, k);
-            d += `${k ? 'L' : 'M'}${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
-          }
-          const knoten: V2[] = [];
-          for (let k = 0; k + 2 < teil.knoten.length; k += 3) knoten.push(p(teil.knoten, k));
-          return (
-            <g key={`${teil.id}${s}`} data-teil-achse={teil.id} onPointerEnter={() => setze(teil.id)} onPointerLeave={() => useUi.getState().teilHover === teil.id && setze(null)}>
-              <path d={d} fill="none" stroke="transparent" strokeWidth={10} />
-              {/* heller Saum, damit die Wirbelsäule über dem Körper lesbar bleibt */}
-              <path d={d} fill="none" stroke="#fff" strokeOpacity={0.85} strokeWidth={an ? 5 : 4} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
-              <path d={d} fill="none" stroke={teilFarbe(i)} strokeWidth={an ? 3 : 2} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
-              {knoten.map((q, k) => (
-                <circle key={k} cx={q.x} cy={q.y} r={an ? 4 : 3} fill={teilFarbe(i)} stroke="#fff" strokeWidth={1.5} pointerEvents="none" />
-              ))}
-            </g>
-          );
-        });
+    <g className="teil-achsen" pointerEvents="none">
+      {achsenPfade(t, ansicht, bild).map(({ teil, id, s, d, knoten }) => {
+        const an = hover === id;
+        return (
+          <g key={`${id}${s}`} data-teil-achse={id}>
+            {/* heller Saum, damit die Wirbelsäule über dem Körper lesbar bleibt */}
+            <path d={d} fill="none" stroke="#fff" strokeOpacity={0.85} strokeWidth={an ? 5 : 4} strokeLinecap="round" strokeLinejoin="round" />
+            <path d={d} fill="none" stroke={teilFarbe(teil)} strokeWidth={an ? 3 : 2} strokeLinecap="round" strokeLinejoin="round" />
+            {knoten.map((q, k) => (
+              <circle key={k} cx={q.x} cy={q.y} r={an ? 4 : 3} fill={teilFarbe(teil)} stroke="#fff" strokeWidth={1.5} />
+            ))}
+          </g>
+        );
       })}
     </g>
   );

@@ -49,6 +49,27 @@ describe('S3 Umrisse berühren', () => {
     expect(mittel.frei).toBeLessThanOrEqual(heute.frei + 1);
   });
 
+  it('Front schrittweise breiter: kein großer Sprung an der Wachstumsgrenze (Plan 20.10., V0)', () => {
+    // einfache Form, Ringe eingefroren wie im Editor; die Front wächst in Schritten von 0,6 % (≈ 0,4 px). Mit der harten
+    // Grenze × 1,35 sprang der Käfig dabei um bis zu 36 px, mit dem stetigen Übergang bis 14 px (der Rest: Wahl des Rings
+    // je Höhe, diskret — kommt mit V4)
+    const d0 = s0KoerperDokument('einfach');
+    const opt = { ...GLATTE_HAUT, fuelle: 'mittel' as const };
+    const stationen = ableiten(d0, opt).gefroren;
+    const breiter = (f: number): Dokument => ({
+      ...d0,
+      profile: { ...d0.profile, front: { ...d0.profile.front, knoten: d0.profile.front.knoten.map((k) => ({ ...k, p: { x: k.p.x * f, y: k.p.y }, ein: { x: k.ein.x * f, y: k.ein.y }, aus: { x: k.aus.x * f, y: k.aus.y } })) } },
+    });
+    let vorher: Float64Array | null = null;
+    let sprung = 0;
+    for (let s = 0; s <= 16; s++) {
+      const xyz = ableiten(breiter(1.05 + (0.1 * s) / 16), { ...opt, stationen }).kaefig.xyz;
+      if (vorher) for (let i = 0; i < xyz.length; i++) sprung = Math.max(sprung, Math.abs(xyz[i]! - vorher[i]!) * 461);
+      vorher = xyz;
+    }
+    expect(sprung).toBeLessThan(20);
+  });
+
   it('Kugel bleibt (nichts zu berühren)', () => {
     const dok = neuesDokument();
     const heute = messen(dok, GLATTE_HAUT);

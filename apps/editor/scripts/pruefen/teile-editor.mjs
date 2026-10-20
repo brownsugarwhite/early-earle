@@ -74,7 +74,8 @@ for (const fall of faelle) {
   const id = a.teile.teile[1]?.id;
   if (id) {
     await page.evaluate((id) => {
-      const el = document.querySelector(`[data-view="seite"] [data-teil-achse="${id}"]`);
+      // Plan 20.10., V0: Zeiger-Treffer der Wirbelsäule in der eigenen Ebene unter der schwarzen Linie
+      const el = document.querySelector(`[data-view="seite"] [data-teil-achse-treffer="${id}"]`);
       el?.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }));
       el?.dispatchEvent(new PointerEvent('pointerenter', { bubbles: false }));
     }, id);

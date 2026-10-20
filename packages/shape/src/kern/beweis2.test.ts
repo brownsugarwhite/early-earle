@@ -15,6 +15,10 @@ import { pruefwesenBauplan } from './wesen';
 import { kernLeiter } from './ableiten';
 import tigerJson from '../versuch/vorlagen/tiger.json';
 
+declare const process: { env: Record<string, string | undefined> };
+/** CI-Rechner sind langsamer und lassen alle Pakete parallel laufen (Plan 20.10., V0): dort gilt das Doppelte der Zeitgrenze. */
+const ZEIT = process.env.CI ? 2 : 1;
+
 declare const console: { log: (...a: unknown[]) => void };
 declare const performance: { now(): number };
 const PX = 461;
@@ -132,7 +136,7 @@ describe('Beweis 2: Maul mit Haps', () => {
     let best = Infinity;
     for (let w = 0; w < 3; w++) best = Math.min(best, ableitenMitMaul(rex, linie).zeiten.gesamt);
     console.log(`Rex (vorn) Stufe 3: bester Umbau ${best.toFixed(0)} ms`);
-    expect(best).toBeLessThan(500);
+    expect(best).toBeLessThan(500 * ZEIT);
   });
   it('Rex, Maul unten (tief am Kinn): Käfig sauber, Lippe auf der Linie, 0 Durchdringungen', () => {
     const r = pruefen('Rex', rex, 'unten');

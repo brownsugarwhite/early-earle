@@ -30,6 +30,12 @@ export type ZonenOptionen = {
   flaechenZone?: (f: number) => Zone | undefined;
   /** Kappenflächen der Röhre: ab dieser Käfigfläche (Röhre: (R − 1) · N) */
   kappeAb?: number;
+  /**
+   * Welche scharfen Käfigkanten gewollt sind (Standard: alle). Nur deren Abkömmlinge nimmt das Maß aus; Kanten, die ein
+   * Bauschritt selbst scharf setzt (die Klinge an dünnen Kanten), zählen sonst ihre Knicke nicht mit, und der Schritt misst
+   * sich schön (Plan 20.10., V0: Entenschwanz „53 → 4°“ war zum Teil die eigene Kante der Klinge).
+   */
+  gewollt?: (kaefigKante: number) => boolean;
 };
 
 /** Vorfahre (Käfigfläche) je Fläche der letzten Stufe: Kindflächen liegen je Elternfläche hintereinander (eine je Ecke). */
@@ -49,10 +55,13 @@ export function flaechenVorfahren(basis: Kaefig, unt: Unterteilung): Uint32Array
   return vorfahr;
 }
 
-/** Kanten der letzten Stufe, die von einer scharfen Käfigkante abstammen (jede Schärfe > 0), als Markierung je Kante. */
-export function faltenAbkoemmlinge(basis: Kaefig, unt: Unterteilung): Uint8Array {
+/**
+ * Kanten der letzten Stufe, die von einer scharfen Käfigkante abstammen (jede Schärfe > 0; mit `gewollt` nur von den
+ * gewollten), als Markierung je Kante.
+ */
+export function faltenAbkoemmlinge(basis: Kaefig, unt: Unterteilung, gewollt?: (kaefigKante: number) => boolean): Uint8Array {
   let markiert = new Uint8Array(basis.nE);
-  for (let e = 0; e < basis.nE; e++) if (basis.eSchaerfe[e]! > 0) markiert[e] = 1;
+  for (let e = 0; e < basis.nE; e++) if (basis.eSchaerfe[e]! > 0 && (!gewollt || gewollt(e))) markiert[e] = 1;
   let k = basis;
   for (const st of unt.stufen) {
     const kind = st.kaefig;
@@ -104,7 +113,7 @@ function flaechenNormalen(k: Kaefig, P: ArrayLike<number>): Float64Array {
 export function faltenNachZonen(basis: Kaefig, unt: Unterteilung, fein: ArrayLike<number>, opt: ZonenOptionen = {}): ZonenFalten {
   const fk = unt.stufen[unt.stufen.length - 1]!.kaefig;
   const vorfahr = flaechenVorfahren(basis, unt);
-  const abk = faltenAbkoemmlinge(basis, unt);
+  const abk = faltenAbkoemmlinge(basis, unt, opt.gewollt);
   // Zone je Käfigfläche
   const zoneK: Zone[] = [];
   for (let f = 0; f < basis.nF; f++) {
@@ -140,7 +149,7 @@ export function faltenNachZonen(basis: Kaefig, unt: Unterteilung, fein: ArrayLik
     const a = fk.eA[e]!;
     const b = fk.eB[e]!;
     const spitzeRadial = (a < basis.n && basis.vSchaerfe[a]! > 0) || (b < basis.n && basis.vSchaerfe[b]! > 0);
-    if (abk[e] || spitzeRadial || fk.eSchaerfe[e]! > 0) {
+    if (abk[e] || spitzeRadial || (!opt.gewollt && fk.eSchaerfe[e]! > 0)) {
       ausgenommen++;
       if (w > 20) {
         ausgenommen20++;

@@ -4,13 +4,13 @@ import { describe, expect, it } from 'vitest';
 import { blattAbweichungen } from '../abweichung';
 import { teilSatzDokument } from '../pruefen/teilsatz';
 import { faltenNachZonen } from '../pruefen/zonen';
-import { baumAbleiten, baumFeinesNetz, paarAusnahme } from './baumBau';
+import { baumAbleiten, baumFalten, baumFeinesNetz, paarAusnahme } from './baumBau';
 import { teilbaum } from './teilbaum';
 
 function messen(name: string) {
   const dok = teilSatzDokument(name);
   const b = baumAbleiten(dok);
-  const z = faltenNachZonen(b.kaefig, b.unterteilung, b.fein, { flaechenZone: b.zone }).zonen;
+  const z = faltenNachZonen(b.kaefig, b.unterteilung, b.fein, baumFalten(b)).zonen;
   const n = baumFeinesNetz(b);
   const d = blattAbweichungen(n.punkte, n.flaechen, dok, 240, undefined, true, paarAusnahme(teilbaum(dok)));
   const k = b.kaefig;
@@ -82,11 +82,27 @@ describe('S5 Mittelebenen-Baum', () => {
 
 // S5-Reste R1 (16.10. abends): Kragen statt Sehne — Messwerte als Untergrenze (Ausgang Sehne: Giraffe 20,5°, Ente 24,6°,
 // S-Hals 23,4° im Ansatz)
+describe('Plan 20.10., V0: Faltenmaß ehrlich bei der Klinge', () => {
+  it('Kanten, die die Klinge selbst scharf setzt, zählen im Maß mit (Zone Kante), gezeichnete bleiben ausgenommen', () => {
+    for (const name of ['fisch', 'ente']) {
+      const b = baumAbleiten(teilSatzDokument(name), { paare: true });
+      expect(b.klingeKanten.size, name).toBeGreaterThan(0);
+      const bisher = faltenNachZonen(b.kaefig, b.unterteilung, b.fein, { flaechenZone: b.zone });
+      const ehrlich = faltenNachZonen(b.kaefig, b.unterteilung, b.fein, baumFalten(b));
+      // die Messerkante dünner Teile (Fisch-Flossen 131°, Entenschwanz 147°) war vorher ausgenommen
+      expect(ehrlich.ausgenommen.kanten, name).toBeLessThan(bisher.ausgenommen.kanten);
+      expect(ehrlich.zonen.kante.max, name).toBeGreaterThan(bisher.zonen.kante.max + 30);
+      // die übrigen Zonen ändern sich nicht (die Flächen an der Klinge sind Zone Kante)
+      for (const z of ['frei', 'kappe', 'ansatz'] as const) expect(ehrlich.zonen[z].max, `${name} ${z}`).toBe(bisher.zonen[z].max);
+    }
+  });
+});
+
 describe('S5-Reste R1: Kragen', () => {
   const mitKragen = (name: string) => {
     const dok = teilSatzDokument(name);
     const b = baumAbleiten(dok, { ansatz: 'kragen' });
-    const z = faltenNachZonen(b.kaefig, b.unterteilung, b.fein, { flaechenZone: b.zone }).zonen;
+    const z = faltenNachZonen(b.kaefig, b.unterteilung, b.fein, baumFalten(b)).zonen;
     const n = baumFeinesNetz(b);
     const d = blattAbweichungen(n.punkte, n.flaechen, dok, 240, undefined, true, paarAusnahme(teilbaum(dok)));
     const k = b.kaefig;
@@ -121,7 +137,7 @@ describe('S6 seitliche Teile', () => {
   const mitPaaren = (name: string) => {
     const dok = teilSatzDokument(name);
     const b = baumAbleiten(dok, { paare: true });
-    const z = faltenNachZonen(b.kaefig, b.unterteilung, b.fein, { flaechenZone: b.zone }).zonen;
+    const z = faltenNachZonen(b.kaefig, b.unterteilung, b.fein, baumFalten(b)).zonen;
     const n = baumFeinesNetz(b);
     const d = blattAbweichungen(n.punkte, n.flaechen, dok, 240, undefined, true);
     const k = b.kaefig;

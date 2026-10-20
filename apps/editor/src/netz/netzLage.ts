@@ -2,7 +2,7 @@
 // Profil-Einheiten der Ruhelage) für die Blätter. Ein Netzpunkt hat genau einen 3D-Punkt; jede Ansicht zeigt ihn an seiner
 // Projektion, verdeckt blass. Ohne DOM (die Kanten-Ebene und Prüfungen lesen es).
 import type { Ansicht, Blick, Dokument, Kante, V3T } from '@ee/shape';
-import { type NetzSicht, type NetzZug, RAND, SICHT } from '@ee/shape/kern';
+import { type NetzSicht, type NetzZug, RAND, SICHT, seitenTiefe } from '@ee/shape/kern';
 import { aktuellesNetz } from '../kern/netzStand';
 import { useEditor } from '../state/editorStore';
 import { type NetzPunkt, useUi } from '../state/uiStore';
@@ -105,7 +105,8 @@ function randProben(ns: NetzSicht): Record<'seite' | 'front' | 'top', { p: Float
 /**
  * Knoten einer Umrisszeichnung als 3D-Punkt (Profil-Einheiten) mit Sichtbarkeit: die beiden Koordinaten seiner Ansicht
  * aus der Zeichnung (sie folgen dem Zeiger sofort), die dritte von der nächsten Probe des Umrisses auf dem Körper, deren
- * Sichtbarkeit gilt. Seite: auf der Mittelebene; Front: x vom Front-Umriss; Top: y vom Top-Umriss. Spiegelbild: z negiert.
+ * Sichtbarkeit gilt. Seite: auf der Mittelebene bzw. am Teil neben ihr; Front: x vom Front-Umriss; Top: y vom Top-Umriss.
+ * Spiegelbild: z negiert.
  */
 export function umrissKnotenLage(dok: Dokument, quelle: 'seite' | 'front' | 'top', index: number, spiegel: boolean, ns: NetzSicht): { p: V3T; sicht: number } | null {
   const k = dok.profile[quelle].knoten[index];
@@ -116,7 +117,12 @@ export function umrissKnotenLage(dok: Dokument, quelle: 'seite' | 'front' | 'top
   // Lage in der eigenen Ansicht (Front: u = z, v = y; Top: u = x, v = z; Seite: u = x, v = y)
   const u = quelle === 'front' && spiegel ? -k.p.x : k.p.x;
   const v = quelle === 'top' && spiegel ? -k.p.y : k.p.y;
-  const [a, b] = quelle === 'seite' ? [0, 1] : quelle === 'front' ? [2, 1] : [0, 2];
+  // Seite (Plan 20.10., V0): Mittelebene, bei Beinen/Flügeln/zweitem Hals das z des Teils (wie der Kern, `seitenTiefe`)
+  if (quelle === 'seite') {
+    const t = seitenTiefe(r.p, u, v);
+    return { p: [u, v, t.z], sicht: t.i >= 0 ? r.sicht[t.i]! : 0 };
+  }
+  const [a, b] = quelle === 'front' ? [2, 1] : [0, 2];
   let best = 0;
   let bd = Infinity;
   for (let i = 0; i < n; i++) {
@@ -127,7 +133,6 @@ export function umrissKnotenLage(dok: Dokument, quelle: 'seite' | 'front' | 'top
     }
   }
   const sicht = r.sicht[best]!;
-  if (quelle === 'seite') return { p: [u, v, 0], sicht };
   if (quelle === 'front') return { p: [r.p[3 * best]!, v, u], sicht };
   return { p: [u, r.p[3 * best + 1]!, v], sicht };
 }

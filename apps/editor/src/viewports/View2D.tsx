@@ -57,7 +57,7 @@ import { RundSpantLinien, RundSpantSchnitt, rundSpantZeiger } from '../rund/Rund
 import { istTrackpad, radFaktor, spiegeln2, verschieben, zoomUm, zuBild, zuWelt } from './ansicht2d';
 import { aktuellesNetz, useKernAnzeige } from '../kern/kernBau';
 import { NetzHoverZeichnung, NetzKnotenZeichnung, NetzZeichnung, naechsterUnter, netzKnotenGreifen } from '../netz/NetzEbene';
-import { TeilFlaechen, TeilKurvenZeichnung, TeilWirbelsaeulen } from '../teile/TeilEbene';
+import { TeilFlaechen, TeilKurvenZeichnung, TeilTreffer, TeilWirbelsaeulen } from '../teile/TeilEbene';
 
 /** Saum ab dieser Abweichung (px bei 461 px je Kachel; Plan 9.8) */
 const SAUM_AB = 2;
@@ -580,7 +580,7 @@ export function View2D({ ansicht, w, h }: Props) {
         return <image href={ueber.bild.url} x={Math.min(a.x, b.x)} y={Math.min(a.y, b.y)} width={Math.abs(b.x - a.x)} height={Math.abs(b.y - a.y)} preserveAspectRatio="none" pointerEvents="none" />;
       })()}
       {/* S4: erkannte Teile (Flächen, verdeckte Teilumrisse) unter allem */}
-      <TeilFlaechen ansicht={ansicht} bild={bild} umriss={pfad(vollerPfad(profil), true)} aktiv={formAktiv} />
+      <TeilFlaechen ansicht={ansicht} bild={bild} umriss={pfad(vollerPfad(profil), true)} />
       {/* S1: das 3D-Liniennetz (Bauweise Kern, Grundform) unter der schwarzen Linie */}
       <NetzZeichnung ansicht={ansicht} bild={bild} />
       {offen ? (
@@ -623,6 +623,8 @@ export function View2D({ ansicht, w, h }: Props) {
       {umwegPfade.spiegel && <path data-umweg="spiegel" d={umwegPfade.spiegel} fill="none" stroke="var(--kurve-spiegel)" strokeWidth={KONTUR} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
       {umwegPfade.eigen && <path data-umweg="eigen" d={umwegPfade.eigen} fill="none" stroke="var(--kurve)" strokeWidth={KONTUR} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
       {saumPfad && !poseBlattAnzeige && <path className="saum" data-saum="" d={saumPfad} fill="none" stroke="var(--saum)" strokeWidth={3} strokeOpacity={0.8} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
+      {/* S4: Trefferflächen der Teile unter der schwarzen Linie, den P-Linien und den Knoten (Plan 20.10., V0) */}
+      <TeilTreffer ansicht={ansicht} bild={bild} aktiv={formAktiv} />
       {formAktiv && <path data-kurve="" d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="transparent" strokeWidth={14} />}
       {bauweise === 'kern' && <UmrisseZeichnung ansicht={ansicht} bild={bild} skal={skal} />}
       {poseBlattAnzeige && <PoseLinieZeichnung ansicht={ansicht} bild={bild} skal={skal} aktiv={poseKern} />}

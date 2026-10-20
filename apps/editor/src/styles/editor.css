@@ -1230,3 +1230,12 @@ button {
   border-radius: 50%;
   flex: none;
 }
+/* Plan 20.10., V0: wie eine P-Linie wirkt (genau / Treppe) */
+.kanten-art {
+  font-style: normal;
+  opacity: 0.7;
+}
+.kanten-art[data-kanten-art='Treppe'] {
+  color: var(--widerspruch, #c0392b);
+  opacity: 0.9;
+}

@@ -1,6 +1,7 @@
 // Plan „Liniennetz, Zielform, Käfig“, S8a im echten Editor (eigener Vite über run-check.sh, nie 5180): Florians Startkugel,
 // eine P-Linie waagerecht auf 65 % Höhe (Seite) mit Härte 100 % → Kante genau auf der Linie; Härte 0 → Körper wie ohne Linie;
 // Undo. Bilder der Bühne (Zebra und Earle-Look) von der Seite: ohne Linie, Härte 50 %, Härte 100 %, als Bogen.
+// Plan 20.10., V0: Bericht je Linie im Netz und in der Kantenliste („genau“; auf „Teile“ „Treppe“).
 // Aufruf: apps/editor/scripts/pruefen/run-check.sh apps/editor/scripts/pruefen/s8a-editor.mjs
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -110,6 +111,10 @@ await page.evaluate(
 await nachBau(v);
 const mit = await page.evaluate(() => ({ hash: window.__editor.netzHash(), kanten: window.__stores.editor.getState().dok.kanten?.length ?? 0 }));
 pruefe(mit.kanten === 1 && mit.hash !== ohne, `Linie mit Härte 100 %: Körper hat die Kante (${((Date.now() - t0) / 1000).toFixed(1)} s bis zum Netz)`);
+// Plan 20.10., V0: der Bericht je Linie kommt im Netz an und steht in der Kantenliste der Tafel
+const bericht = await page.evaluate(() => ({ linien: window.__stores.kernAnzeige.getState().info?.linien ?? null, art: [...document.querySelectorAll('[data-kanten-art]')].map((e) => e.getAttribute('data-kanten-art')) }));
+pruefe(bericht.linien?.length === 1 && ['reihe', 'ring'].includes(bericht.linien[0].art), `Bericht im Netz: ${JSON.stringify(bericht.linien?.map((l) => l.art))}`);
+pruefe(bericht.art.length === 0 || bericht.art[0] === 'genau', `Kantenliste: ${JSON.stringify(bericht.art)} (leer = Tafel zu)`);
 await page.screenshot({ path: `${out}/s8a-editor-fenster.png` });
 await page.evaluate(() => window.__stores.ui.getState().maximieren('creation'));
 await page.waitForTimeout(1500);
@@ -137,6 +142,19 @@ await page.evaluate(() => window.__stores.editor.getState().rueckgaengig());
 await nachBau(v);
 const zurueck = await page.evaluate(() => window.__editor.netzHash());
 pruefe(zurueck === mit.hash, 'Undo: Kante wieder da (bitgleich)');
+// Körper aus Teilen: dort gilt die Treppe — die Kantenliste sagt es, das Netz meldet keine genauen Linien
+v = await page.evaluate(() => window.__editor.netzVersion());
+await page.evaluate(() => {
+  const st = window.__stores.editor.getState();
+  st.setzeDokument({ ...st.dok, ausstattung: { ...(st.dok.ausstattung ?? {}), koerper: 'teile' } });
+  window.__stores.ui.getState().setzeEbene('form');
+});
+await nachBau(v);
+await page.waitForTimeout(1500);
+const teile = await page.evaluate(() => ({ linien: window.__stores.kernAnzeige.getState().info?.linien ?? null, art: [...document.querySelectorAll('[data-kanten-art]')].map((e) => e.getAttribute('data-kanten-art')) }));
+pruefe(teile.linien === null && teile.art.every((a) => a === 'Treppe') && teile.art.length === 1, `Teile: Kantenliste ${JSON.stringify(teile.art)}, Bericht ${JSON.stringify(teile.linien)}`);
+await page.evaluate(() => window.__stores.editor.getState().rueckgaengig());
+await page.waitForTimeout(500);
 // Bogen: Spalten ohne | 50 % | 100 %, Zeilen Zebra | Earle-Look
 const reihen = [true, false].map((z) => bilder.filter((b) => b.text.endsWith(z ? 'Zebra' : 'Earle-Look')));
 const html = `<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#1b2530;color:#eee;font:13px/1.3 monospace}

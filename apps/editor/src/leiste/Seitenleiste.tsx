@@ -85,37 +85,54 @@ function KantenVorschau({ h }: { h: number }) {
 
 const BLICK_NAMEN: Record<string, string> = { seite: 'Seite', front: 'Front', hinten: 'Back', top: 'Top', unten: 'Bottom' };
 
-/** Kantenliste (Recherche 12.10.: Überblick wie Mayas Satz-Fenster): Vorschau, Ansicht, höchste Härte; Klick wählt. */
+/**
+ * Kantenliste (Recherche 12.10.: Überblick wie Mayas Satz-Fenster): Vorschau, Ansicht, höchste Härte; Klick wählt. Je Linie
+ * dazu, wie sie im letzten genauen Bau wirkt (Plan 20.10., V0): „genau“ (Käfigreihe bzw. -ring auf der Linie) oder „Treppe“
+ * (die Linie liegt nicht genau: weder Reihe noch Ring, oder Körper aus Teilen, mit Maul oder Beinen).
+ */
 function KantenListe() {
   // Selektor ohne `?? []`: ein neues leeres Array je Aufruf wäre jedes Mal ein anderer Stand (Endlosschleife)
   const kanten = useEditor((s) => s.dok.kanten);
   const gewaehlt = useUi((s) => s.kantenAuswahl?.kante ?? -1);
+  const berichte = useKernAnzeige((s) => s.info?.linien);
   if (!kanten?.length) return null;
+  const genau = berichte?.filter((b) => b.art === 'reihe' || b.art === 'ring').length ?? 0;
   return (
-    <ul className="kanten-liste">
-      {kanten.map((k, i) => {
-        const h = Math.max(...k.haerte, 0);
-        return (
-          <li key={i}>
-            <button
-              className={i === gewaehlt ? 'kanten-eintrag aktiv' : 'kanten-eintrag'}
-              data-kanteneintrag={i}
-              onClick={() => {
-                const ui = useUi.getState();
-                ui.auswahlLeeren();
-                ui.setzeKantenAuswahl({ kante: i, indizes: k.knoten.map((_, j) => j) });
-              }}
-            >
-              <KantenVorschau h={h} />
-              <span>
-                {i + 1} · {BLICK_NAMEN[k.blick] ?? k.blick}
-              </span>
-              <b>{Math.round(h * 100)} %</b>
-            </button>
-          </li>
-        );
-      })}
-    </ul>
+    <>
+      {genau > 1 && <p className="hilfe" data-linien-hinweis="">Mehrere genaue Linien: noch näherungsweise — jede wird für sich eingepasst, Nachbarn und Kreuzungen verschieben sich um bis zu einigen Pixeln (alle gleichzeitig genau kommt mit dem nächsten großen Schritt).</p>}
+      <ul className="kanten-liste">
+        {kanten.map((k, i) => {
+          const h = Math.max(...k.haerte, 0);
+          const b = berichte?.find((x) => x.index === i);
+          const art = !(h > 0) ? '' : b && (b.art === 'reihe' || b.art === 'ring') ? 'genau' : 'Treppe';
+          return (
+            <li key={i}>
+              <button
+                className={i === gewaehlt ? 'kanten-eintrag aktiv' : 'kanten-eintrag'}
+                data-kanteneintrag={i}
+                onClick={() => {
+                  const ui = useUi.getState();
+                  ui.auswahlLeeren();
+                  ui.setzeKantenAuswahl({ kante: i, indizes: k.knoten.map((_, j) => j) });
+                }}
+              >
+                <KantenVorschau h={h} />
+                <span>
+                  {i + 1} · {BLICK_NAMEN[k.blick] ?? k.blick}
+                  {art && (
+                    <em className="kanten-art" data-kanten-art={art} title={art === 'genau' ? 'Käfigkante genau auf der Linie' : 'Treppe: die Kante folgt den Käfigkanten nahe der Linie, nicht genau'}>
+                      {' '}
+                      · {art}
+                    </em>
+                  )}
+                </span>
+                <b>{Math.round(h * 100)} %</b>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </>
   );
 }
 
@@ -1000,6 +1017,19 @@ function AbleitenFeld() {
     if (k === 'teile') aus.koerper = 'teile';
     else delete aus.koerper;
     s.setzeDokument({ ...s.dok, ausstattung: aus });
+    // Plan 20.10., V0: Pinsel und Posen sind je Körperart gespeichert (bis V7 beide angleicht) — sagen, was hier nicht wirkt
+    const d = s.dok;
+    const roehre = (d.kaefig?.deltas?.length ?? 0) > 0 || (d.posen ?? []).some((p) => (p.form?.length ?? 0) > 0);
+    const baum = (d.kaefig?.baumDeltas?.length ?? 0) > 0 || (d.posen ?? []).some((p) => (p.baum?.form?.length ?? 0) > 0);
+    if (k === 'teile' && roehre) useUi.getState().zeigeHinweis('Pinsel- und Posen-Änderungen der Röhre wirken auf „Teile“ nicht — sie bleiben gespeichert und kommen mit „Röhre“ zurück');
+    else if (k === 'roehre' && baum) useUi.getState().zeigeHinweis('Pinsel- und Posen-Änderungen von „Teile“ wirken auf die Röhre nicht — sie bleiben gespeichert und kommen mit „Teile“ zurück');
+  };
+  // „Neu ableiten“ (Plan 20.10., V0): ein Undo-Schritt (vorher setzte es den eingefrorenen Stand ohne Verlaufseintrag zurück)
+  const neuAbleiten = () => {
+    const s = useEditor.getState();
+    const rest = { ...(s.dok.kaefig ?? { deltas: [] }) };
+    delete rest.stationen;
+    s.setzeDokument({ ...s.dok, kaefig: rest });
   };
   useNetzStand((s) => s.version);
   const baum = aktuellesNetz()?.netz.koerperBaum ?? null;
@@ -1041,7 +1071,7 @@ function AbleitenFeld() {
         <b data-stationen={n}>{n ? `${n} eingefroren` : 'werden festgelegt …'}</b>
       </div>
       <div className="umschalter stufen" role="group" aria-label="Ableitung">
-        <button className="chip" data-neu-ableiten="" disabled={!n} onClick={() => useEditor.getState().setzeStationen(null)}>
+        <button className="chip" data-neu-ableiten="" disabled={!n} onClick={neuAbleiten}>
           Neu ableiten
         </button>
       </div>
