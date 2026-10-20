@@ -33,6 +33,7 @@ import { type FuelleArt, huellenBreite } from './fuelle';
 import { type RandMarke, frontBeruehren } from './rand';
 import { type Schlitz, schlitzIm, seiteFuerLeiter } from './schlitz';
 import { endenFuer, profilAnker } from './grundkoerper/enden';
+import { faltenNachZonenRoehre } from './pruefen/zonen';
 
 export type AbleitOptionen = {
   ringe: number;
@@ -66,6 +67,13 @@ export type AbleitOptionen = {
   spitzenFalte: boolean;
   /** Ringe nach Krümmung verdichten: Dichte 1 + kruemmung · κ · L (0 = gleichmäßig) */
   kruemmung: number;
+  /**
+   * Stufung der Ringabstände (Plan 20.10., V0): Der Abstand darf längs der Wirbelsäule höchstens um `ringStufung` × Weg
+   * wachsen (1 = von Ring zu Ring höchstens etwa doppelt so weit). Catmull–Clark ist gleichförmig: Neben dicht stehenden
+   * Ringen an einer Rundung zieht eine große Lücke die Grenzfläche weg, und der Löser schiebt die Ringe übereinander — die
+   * Stadionform (gerader Rücken und Bauch, Halbkreis-Enden) klappte so um (138–180°). 0 = aus (bisherige Verteilung).
+   */
+  ringStufung?: number;
   /** Querschnitt-Form aus Front und Spanten (sonst die runde Form des Poisson-Körpers) */
   querschnitt: boolean;
   /** Laplace-Glattheit der Käfiglagen im Ausgleich (0 = aus); dämpft Wellen neben scharfen Falten */
@@ -548,7 +556,7 @@ function zugKruemmung(zug: readonly V2[], t: number): number {
 /** Maulbereich für die Ringverteilung: zwischen `von` und `bis` (Wirbelsäulen-Anteile) mindestens `ringe` Ringe. */
 export type MaulBereich = { von: number; bis: number; ringe: number };
 
-function ringAnteile(l: Leiter, R: number, f0: number, f1: number, lambda: number, maul?: MaulBereich, ruhig: readonly V2[] = []): number[] {
+function ringAnteile(l: Leiter, R: number, f0: number, f1: number, lambda: number, maul?: MaulBereich, ruhig: readonly V2[] = [], stufung = 0): number[] {
   if ((lambda <= 0 && !maul) || R < 3) {
     const out: number[] = [];
     for (let i = 0; i < R; i++) out.push(f0 + ((f1 - f0) * i) / (R - 1));
@@ -606,6 +614,7 @@ function ringAnteile(l: Leiter, R: number, f0: number, f1: number, lambda: numbe
       for (let k = 0; k <= M; k++) dichte[k] = dichte[k]! + w * form(k);
     }
   }
+  if (stufung > 0) ringeStufen(l, st, dichte, R, stufung);
   const cum = [0];
   for (let k = 1; k <= M; k++) cum.push(cum[k - 1]! + (dichte[k - 1]! + dichte[k]!) / 2);
   const gesamt = cum[M]!;
@@ -621,6 +630,42 @@ function ringAnteile(l: Leiter, R: number, f0: number, f1: number, lambda: numbe
   out[0] = f0;
   out[R - 1] = f1;
   return out;
+}
+
+/**
+ * Stufung der Ringabstände (Größenfeld mit beschränktem Gefälle, wie bei der Netzerzeugung): Abstand der Ringe an Probe k
+ * h_k = G · ds_k / dichte_k (G = Dichte je Ringabstand, ds_k = Bogenlänge der Sprossenmitten je Probe); verlangt wird
+ * h_k ≤ h_j + g · |s_k − s_j| für alle j (zwei Durchläufe, exakt für Abstände auf einer Linie). Wo das verletzt ist, steigt
+ * die Dichte; dadurch wächst G, deshalb wenige Runden. Proben ohne Verletzung behalten ihre Dichte bitgenau.
+ */
+function ringeStufen(l: Leiter, st: readonly Station[], dichte: number[], R: number, g: number): void {
+  const M = st.length - 1;
+  const s = new Float64Array(M + 1);
+  const mitte = st.map((q) => {
+    const o = zugBei(l.ruecken, q.a);
+    const u = zugBei(l.bauch, q.b);
+    return { x: (o.x + u.x) / 2, y: (o.y + u.y) / 2 };
+  });
+  for (let k = 1; k <= M; k++) s[k] = s[k - 1]! + Math.hypot(mitte[k]!.x - mitte[k - 1]!.x, mitte[k]!.y - mitte[k - 1]!.y);
+  // Bogenlänge je Probe (Mittel der Nachbarstrecken), nie 0
+  const ds = Array.from({ length: M + 1 }, (_, k) => Math.max(1e-9, (s[Math.min(M, k + 1)]! - s[Math.max(0, k - 1)]!) / (k === 0 || k === M ? 1 : 2)));
+  for (let runde = 0; runde < 6; runde++) {
+    let gesamt = 0;
+    for (let k = 1; k <= M; k++) gesamt += (dichte[k - 1]! + dichte[k]!) / 2;
+    const G = gesamt / (R - 1);
+    const h = dichte.map((d, k) => (G * ds[k]!) / d);
+    const roh = h.slice();
+    for (let k = 1; k <= M; k++) h[k] = Math.min(h[k]!, h[k - 1]! + g * (s[k]! - s[k - 1]!));
+    for (let k = M - 1; k >= 0; k--) h[k] = Math.min(h[k]!, h[k + 1]! + g * (s[k + 1]! - s[k]!));
+    let geaendert = false;
+    for (let k = 0; k <= M; k++) {
+      if (h[k]! < roh[k]! * (1 - 1e-9)) {
+        dichte[k] = (G * ds[k]!) / h[k]!;
+        geaendert = true;
+      }
+    }
+    if (!geaendert) break;
+  }
 }
 
 /** Nächster Anteil eines Punkts auf einem offenen Zug (gleichmäßig abgetastet). */
@@ -705,7 +750,7 @@ export function stationenWaehlen(l: Leiter, opt: AbleitOptionen, dok?: Dokument,
   const maulOk = !maul || (g ? g.ringe.filter((f) => f >= maul.von && f <= maul.bis).length >= maul.ringe - 1 : true);
   if (g && maulOk && g.ringe.length === R && g.vorn.length === c / 2 - 1 && g.hinten.length === c / 2 - 1) return stationenNachfuehren(l, opt, dok, g, eckenRoh, spitzen, kappeMin);
   const ruhig = dok ? dok.profile.seite.knoten.filter((kn) => kn.marke === 'maulOben' || kn.marke === 'maulUnten').map((kn) => ({ x: kn.p.x * dok.skalierung, y: kn.p.y * dok.skalierung })) : [];
-  const anteile = ringAnteile(l, R, kappeVorn, 1 - kappeHinten, opt.kruemmung, maul, ruhig);
+  const anteile = ringAnteile(l, R, kappeVorn, 1 - kappeHinten, opt.kruemmung, maul, ruhig, opt.ringStufung ?? 0);
   const ecken: Ecke[] = [];
   for (const e of eckenRoh) {
     if (kappeMin !== undefined && e.f < kappeVorn) continue;
@@ -1755,7 +1800,25 @@ export function faltenSetzen(v: Roehre, st: Stationen, l: Leiter, dok: Dokument,
   }
 }
 
+/** Frische Ringwahl mit Rückfall (Plan 20.10., V0): ab dieser Falte der freien Haut (°) wird gestuft neu gewählt. */
+const RUECKFALL_FALTE = 60;
+/** Stufung des Rückfalls (`ringStufung`): von Ring zu Ring höchstens etwa dreimal so weit. */
+const RUECKFALL_STUFUNG = 2;
+
 export function ableiten(dok: Dokument, optionen: Partial<AbleitOptionen> = {}): Ableitung {
+  const a = ableitenEinmal(dok, optionen);
+  // Rückfall nur bei frischer Ringwahl (eingefrorene Stationen werden nachgeführt, die Verteilung steht) und nur, wenn die
+  // freie Haut umklappt: Die Ringe verdichten sich nach der Krümmung der Seite (an Halbkreis-Enden 41-mal so dicht wie im
+  // geraden Teil), Catmull–Clark ist gleichförmig, und der Löser schob am Übergang Ringe übereinander (Stadionform 138–180°).
+  // Gestuft gewählt (Abstand wächst höchstens um das Doppelte des Wegs) und nur genommen, wenn das die Haut wirklich
+  // repariert (unter die Schwelle); alle übrigen Körper bauen bitgleich (auch die, die der Rückfall nicht rettet).
+  if (optionen.stationen || optionen.ringStufung !== undefined) return a;
+  if (faltenNachZonenRoehre(a).zonen.frei.max <= RUECKFALL_FALTE) return a;
+  const b = ableitenEinmal(dok, { ...optionen, ringStufung: RUECKFALL_STUFUNG });
+  return faltenNachZonenRoehre(b).zonen.frei.max <= RUECKFALL_FALTE ? b : a;
+}
+
+function ableitenEinmal(dok: Dokument, optionen: Partial<AbleitOptionen>): Ableitung {
   const opt = { ...ABLEIT_STANDARD, ...optionen };
   const t0 = jetzt();
   const l = kernLeiter(dok);
