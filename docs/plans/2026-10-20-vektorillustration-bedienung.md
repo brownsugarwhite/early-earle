@@ -897,3 +897,9 @@ ganze Reihe (mindestens 63 von 78; das volle Tor als `it.fails`).
 **Nächster Schritt:** dein Blick auf V2 (Testanleitung in der Übergabe), dann V3 „G/S/R und proportionales Bearbeiten in den
 Blättern“.
 
+**Florians Urteil (20.10. nachts):** „Ich finde die Linien wirken immer noch sehr sehr wild. Da müssen wir auf jeden Fall
+nochmal ran, aber vorerst weiter mit V3.“ — V2 ist damit **nicht abgenommen**; die Messung (Knicke, Schleifen) trifft offenbar
+nicht, was er sieht. Vor dem nächsten Anlauf klären, welche Linien in seinem Editor wild wirken (Umrisslinien der fremden
+Blätter, innere Konturen im eigenen Blatt, Faltenlinien, Teile-Umrisse, Linien auf Körpern, die selbst falten) und daran
+die Messung neu ausrichten (Register „Befunde aus V2“).
+

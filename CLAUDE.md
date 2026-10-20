@@ -150,8 +150,9 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   fremden Blättern, Knotenringe auf der Linie (≤ 0,5 px, folgen beim Ziehen), warme Teilfarben. Extremreihe vorher/nachher:
   Knicke 1968 → 18 (+58 auf Falten des Körpers), Schleifen 4 → 0, Haut ≤ 1 px; keine Formänderung. Tor nicht ganz (63 von 78
   sauber, 7 Fälle 0,5–0,85 px neben der Silhouette, Liniennetz Median 18 ms, an 7 Fällen 31–36 ms) — Register „Befunde aus
-  V2“, `it.fails` in `test:extrem`. Bilder `docs/progress/editor/v2-*`. Nächster Schritt: Florians Blick, dann V3 (G/S/R in
-  den Blättern).
+  V2“, `it.fails` in `test:extrem`. Bilder `docs/progress/editor/v2-*`. **Florian: „Die Linien wirken immer noch sehr sehr
+  wild. Da müssen wir auf jeden Fall nochmal ran, aber vorerst weiter mit V3.“** — V2 nicht abgenommen, später an seinem
+  Bild klären, welche Linien wild wirken.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

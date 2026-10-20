@@ -545,6 +545,12 @@ angeht.
 
 ## Befunde aus V2 „Saubere Linien“ (20.10. nachts, eigene Messungen)
 
+**Florian (20.10. nachts): „Ich finde die Linien wirken immer noch sehr sehr wild. Da müssen wir auf jeden Fall nochmal ran,
+aber vorerst weiter mit V3.“** V2 ist nicht abgenommen. Offen: welche Linien er meint (Umrisslinien in fremden Blättern,
+innere Konturen, Faltenlinien, Teile-Umrisse, Linien auf faltenden Körpern) — an seinem Editor-Bild klären und die Messung
+daran ausrichten; sie zählt Knicke und Schleifen, das genügt offenbar nicht (Kandidaten: viele kurze Stücke, Sprünge an
+Teilgrenzen, Linien über Falten der Röhre, Wellen unter 45°, Dichte der Linien).
+
 Gemessen an der ganzen Extremreihe in Florians Ablauf (alter und neuer Liniennetz-Code auf denselben Netzen); Tabelle und
 Bögen auf der Planseite 20.10., „Stand V2“. Je Punkt der Schritt, der ihn angeht.
 - **Tor V2 an 15 von 78 Fällen verfehlt** (Test `it.fails` in `extremreihe.extrem.ts`, der Stand von 63 sauberen Fällen ist

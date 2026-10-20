@@ -52,7 +52,9 @@ Körperarten, dein Ablauf; Grundzahlen-Test, Editor-Szenarien `v1-ablauf.mjs`, Z
 
 ## Offen für Florian
 
-- Abnahme V0, V1 und V2; danach **V3 „G/S/R und proportionales Bearbeiten in den Blättern“**.
+- **V2 nicht abgenommen** (Florian 20.10. nachts: „Die Linien wirken immer noch sehr sehr wild. Da müssen wir auf jeden Fall
+  nochmal ran, aber vorerst weiter mit V3.“) — vor dem nächsten Anlauf an seinem Editor-Bild klären, welche Linien er meint.
+- Abnahme V0 und V1; jetzt **V3 „G/S/R und proportionales Bearbeiten in den Blättern“**.
 - Weiter offen (mit Vergleichsbild, wenn der Schritt sie braucht): Entenflügel flach oder Schale an der Glockenflanke (V7);
   dünne Kanten Klinge oder rund; einfache Form — Stacheln als Paar oder im Rumpf; Überhang (Kopf als Teil mit Kragen oder
   Y-Stück).
