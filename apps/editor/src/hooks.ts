@@ -137,7 +137,8 @@ export function useTastatur() {
         if (!modalStarten('g')) ui.setzeWerkzeug('ziehen');
       } else if (!cmd && !e.altKey && !e.shiftKey && k === 'r') {
         // V3: R dreht die Auswahl eines Blatts
-        if (!modalStarten('r') && ui.ebene === 'form' && ui.hover !== 'creation') ui.zeigeHinweis('R dreht die Auswahl eines Blatts — erst Punkte wählen');
+        if (!modalStarten('r') && ui.ebene === 'form' && ui.hover !== 'creation')
+          ui.zeigeHinweis(useEditor.getState().modus === 'editor' ? 'R dreht die Auswahl eines Blatts — erst Punkte wählen' : 'G/S/R wirken im Editor-Tab; in der Pose formen Pinsel, Knochen und die schwarze Linie der Seite');
       } else if (!cmd && e.code === 'KeyO') {
         // V3: O proportional an/aus, ⇧O Abfall, ⌥O nur verbunden (⌥O tippt „ø“, deshalb über den Tastencode)
         proportionalTaste(e);

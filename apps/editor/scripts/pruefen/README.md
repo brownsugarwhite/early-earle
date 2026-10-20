@@ -132,3 +132,13 @@ Kern: `kern/pruefen/extremreihe.test.ts` (schnelle Wächter), die ganze Reihe ge
 | `v2-linien.ts` (Kern, aus `packages/shape`) | Umrisslinien der ganzen Extremreihe in Florians Ablauf: Stücke, Knicke (an Falten getrennt), Schleifen, Abstand zu Silhouette und Haut, Zeit des Liniennetzes (Minimum aus 5); mit `ALT=<modul>` (alter `netzSicht.ts`, Importe absolut) Tabelle und Kontaktbögen vorher/nachher auf denselben Netzen (`KOERPER`, `GRUPPEN`, `OHNE_BOGEN=1`, `AUSGABE`) |
 | `v2-editor.mjs` (Editor, `run-check.sh`) | Florians Ablauf mit Kegel, Würfel, Vierbeiner, Ente (`FAELLE`, `NAME`): Umrisse fremder Ansichten als Kurven, keine fremden Konturen, Ringe ≤ 1 px auf ihrer Linie, ein Ring folgt beim Ziehen, ⌘Z; Bilder `pruefen-ausgabe/v2/v2-editor-<körper>-<NAME>.png` |
 
+
+## Nachtrag 20.10. nachts: V3 „G/S/R und proportionales Bearbeiten in den Blättern“
+
+| Skript | prüft |
+|---|---|
+| `modal-2d.mjs` (Editor, `run-check.sh`) | Florians Ablauf mit dem Kegel, echte Tasten und Maus: G Y 20 Enter (genau 20 px, ein Undo-Schritt, ⌘Z), S 2 Enter auf der ganzen Front (Knoten und Griffe exakt um die Mitte auf der Achse), R 90 Enter auf drei Seitenknoten (exakt, glatte Griffe auf einer Geraden), Abbrechen mit Esc, Rechtsklick, ⌘Z und Fokusverlust (Dokument, Verlauf, Auswahl JSON-gleich, kein Kontextmenü), Pfeil/Tab/Entf/Rad tun während G nichts, Zeit je Mausbewegung (`__modal.max`), P-Linie G X 10, Spant S 1,5, fremder Ring G 15, ohne Auswahl G = Pinsel und R = Hinweis, ⌘R lädt nicht neu; Bilder `pruefen-ausgabe/v3/` (`NAME`) |
+| `proportional.mjs` (Editor, `run-check.sh`) | O am Langhals (`KOERPER`): Nachbarn gehen mit, Knoten außerhalb bitgleich, Kreis im Blatt; Rad während G (×1,1), ⇧O (sechs Abfälle), ⌥O „nur verbunden“ (der in Luftlinie nahe, längs der Kurve ferne Knoten bleibt), Knotenzug mit der Maus bei O (Rad im Zug, ein Undo-Schritt, Esc im Zug), P-Linie und Spant mit O |
+
+Messwerkzeug im Editor: `window.__modal` (`aktiv()`, `ziel()`, `art()`, `max`/`letzte`/`zuege` = Zeit je Mausbewegung für Rechnung
+und Store, ohne Zeichnen; `zuruecksetzen()`).

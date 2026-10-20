@@ -1,4 +1,4 @@
-# Übergabe (Stand 20.10.2026 nachts: V0, V1 und V2 gebaut)
+# Übergabe (Stand 20.10.2026 nachts: V0–V3 gebaut)
 
 Branch `claude/editor-grundlayout`, PR mit Auto-Fix.
 
@@ -8,53 +8,55 @@ Maßgeblich ist der am 20.10. freigegebene Plan
 **[`docs/plans/2026-10-20-vektorillustration-bedienung.md`](plans/2026-10-20-vektorillustration-bedienung.md)**: ehrliche
 Bestandsaufnahme S0–S8a, Zielbild als Messlatte (Vektorillustration aus einem Liniennetz), Bauweise (Umrisse als
 Käfigschleifen mit Silhouettenbedingung, Linien gleichzeitig, Härte = Rundungsbreite, Loops = Querschnittslinien), Bedienung
-nach Blender (⌘R-Loops, G/S/R, proportional), Schritte V0–V9 mit Toren. Am Ende **„Stand“** mit V0, V1 und V2. Offene
-Kritik: [`2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md) (neu: „Befunde aus V2“).
+nach Blender (⌘R-Loops, G/S/R, proportional), Schritte V0–V9 mit Toren. Am Ende **„Stand“** mit V0–V3. Offene Kritik:
+[`2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md) (neu: „Befunde aus V3“).
 
 Florians Entscheidungen 20.10.: Reihenfolge gemischt; G nach Kontext (Auswahl → Greifen, sonst Pinsel „Ziehen“; S wird
-Skalieren, Spanten/Loops setzt ⌘R); ein Loop setzt echte, formneutrale Knoten in Seite und Top. Abends: Die Cloud-Sitzung
-„Genauer Zug“ (Branch `claude/sweet-newton-w3ao60`) war ein Versehen — ignorieren, nicht zusammenführen.
+Skalieren, Spanten/Loops setzt ⌘R); ein Loop setzt echte, formneutrale Knoten in Seite und Top. Die Cloud-Sitzung „Genauer
+Zug“ (Branch `claude/sweet-newton-w3ao60`) war ein Versehen — ignorieren, nicht zusammenführen.
 
-## Letzter Stand: V2 „Saubere Linien“ gebaut (Abnahme offen)
+## Letzter Stand: V3 „G/S/R und proportionales Bearbeiten in den Blättern“ gebaut (Abnahme offen)
 
-- **Umrisslinien statt Konturen** (`packages/shape/src/kern/umrissKurven.ts`, Züge `umriss-*` im Liniennetz): entlang
-  deiner Zeichnung auf die Silhouette geschoben, Tiefe glatt aus den Strahlpaaren, kubische 3D-Kurven mit deinen Knoten als
-  Stützstellen. Im Editor erscheinen die Umrisse der anderen Ansichten als echte Kurven, die Ringe deiner Knoten sitzen
-  auf ihrer Linie (≤ 0,5 px) und folgen beim Ziehen; die Teile haben warme Farben.
-- **Gemessen an der ganzen Extremreihe** (vorher/nachher auf denselben Netzen): Knicke 1968 → 18 (+58 auf Falten des
-  Körpers, dort knickt die Silhouette selbst), Schleifen 4 → 0, Stücke 1373 → 707, Linie auf der Haut ≤ 1 px; dein Kegel
-  vorn 4 Stücke / 8 Knicke → 2 / 0. V2 ändert keine Form (Δ, Falten, Durchdringungen aller 78 Fälle gleich).
-- **Tor nicht ganz erfüllt** (Register „Befunde aus V2“): 63 von 78 Fällen ganz sauber; 18 Knicke an 10 Fällen, 7 Fälle
-  0,5–0,85 px neben der Silhouette (fast alle Röhre mit Falten oder Teile, die die Zeichnung zeigt und der Körper nicht);
-  Liniennetz im Median 18 ms, an 7 Fällen 31–36 ms (Tor 30 ms, vorher bis 48 ms).
-- **Bilder:** Editor vorher/nachher `docs/progress/editor/v2-editor-{kegel,wuerfel,vierbeiner,ente}-2026-10-20.jpg`,
-  Kontaktbögen `docs/progress/editor/v2-linien-<gruppe>-2026-10-20.jpg`, Tabelle `docs/progress/editor/v2-linien-2026-10-20.md`.
-- **Tests:** `umrissKurven.test.ts` (mit dem alten Liniennetz 6 von 6 rot), Editor `v2-editor.mjs` (alt rot, jetzt grün),
-  neue Grundzahlen und Tor V2 in `pnpm --filter @ee/shape test:extrem` (79 grün, das volle Tor als erwarteter Fehler).
+- **G, S, R wie in Blender** (`apps/editor/src/editing/modal/`): Punkte in einem Blatt wählen, Zeiger aufs Blatt, Taste —
+  die Auswahl folgt dem Zeiger ohne Maustaste. Greifen: eigene Umrissknoten, Knoten einer P-Linie (bleiben auf der Haut),
+  Spantpunkte (Front/Back), Ringe fremder Knoten (nur in der gemeinsamen Koordinate). X/Y/Z sperren, ⇧X/⇧Y/⇧Z „alles
+  außer“, Zahlen (G px, S Faktor, R Grad), Enter oder Klick übernimmt, Esc, Rechtsklick, ⌘Z oder Fokusverlust nehmen genau
+  zurück. Ohne Auswahl wie bisher: G = Pinsel, S = Spant-Werkzeug (bis V6).
+- **Proportional:** O an/aus, ⇧O Abfall, ⌥O „nur verbunden“ (längs der Kurve); Radius = Pinselradius, Mausrad und [ ]
+  ändern ihn während G/S/R und beim Ziehen eines Punkts (mit O wirkt auch der Zug proportional). Kreis im Blatt, Zeile im
+  Dock.
+- **Tore erfüllt:** S 2 und R 90° exakt (Abweichung 0), glatte Griffe auf einer Geraden, Abbrechen JSON-gleich, ein
+  Undo-Schritt, ≤ 6,4 ms je Mausbewegung (Rechnung und Store), ⌘R lädt nicht neu. Prüfskripte `modal-2d.mjs` (38) und
+  `proportional.mjs` (22) grün, Unit-Tests 38 grün.
+- **Bilder:** `docs/progress/editor/v3-g-y-kegel-2026-10-20.jpg` (G mit Y-Sperre, Achsenlinie, Dock),
+  `docs/progress/editor/v3-proportional-langhals-2026-10-20.jpg` (O am Langhals, Einflusskreis).
+- **Befunde** (Register): Spantpunkte unter deckungsgleichen Front-Knoten sind nicht greifbar (alt); `e2e/spanten.spec.ts`
+  ist rot an einer Erwartung der alten Versuchs-Bauweise, unabhängig von V3; G/S/R fehlen noch in Posen und auf der Bühne.
 
-Davor (Abnahme offen): **V0** Fallen und Bedienfehler (⌘R lädt nicht neu, [ ] mit ⌥, Rückgängig nach eingefügten Punkten,
-Klickfang der Teile, Doppelbau, Stadionform, S8a-Rückschritte, CI grün); **V1** Prüfstand „Extremreihe“ (39 Körper, beide
-Körperarten, dein Ablauf; Grundzahlen-Test, Editor-Szenarien `v1-ablauf.mjs`, Zufallsreihe; Aufräumen bitgleich).
+Davor (Abnahme offen): **V0** Fallen und Bedienfehler; **V1** Prüfstand „Extremreihe“; **V2** saubere Umrisslinien — von
+Florian **nicht abgenommen** („Die Linien wirken immer noch sehr sehr wild“), vor dem nächsten Anlauf an seinem Bild klären,
+welche Linien er meint.
 
 ## Für Florian zum Ausprobieren (nach dem Pull den Dev-Server neu starten)
 
-1. Neues Wesen, dann deinen Kegel nachziehen (oder einen Körper mit flachen Flanken): In Seite und Top läuft die lila
-   Front-Linie jetzt als ruhige Kurve über den Körper, in der Front die blaue Seiten-Linie — vorher Zickzack.
-2. Einen Knotenring einer anderen Ansicht greifen (z. B. einen Front-Knoten im Seitenblatt) und ziehen: Der Ring sitzt auf
-   der Linie und wandert mit; der oberste Front-Knoten folgt nur zur Hälfte (die Kopplung der Außenmaße bremst ihn, schon
-   vor V2 so).
-3. Körper „Teile“ mit einem Mehrteiler (Ente, Vierbeiner): Die Teile sind jetzt warm gefärbt; Blau, Lila, Türkis heißen
-   nur noch „Umriss von Seite, Front, Top“.
-4. Kontaktbögen und Editor-Bilder ansehen (oben): Wo stören dich Linien noch? Dein Urteil zu V0–V2, dann geht es mit V3
-   weiter.
-5. Weiter aus V0/V1: ⌘R lädt nicht neu; [ ] (⌥5/⌥6) Pinselradius; Rückgängig bringt eingefügte Punkte nicht zurück;
-   Stiftlinien liegen auf der Haut (zwei gekreuzte Linien beulen nicht mehr aus).
+1. Neues Wesen; in der Seite zwei, drei Punkte wählen (Klick, ⇧-Klick oder Rahmen), Zeiger aufs Blatt, **G** — die Punkte
+   folgen der Maus ohne Taste. **Y** sperrt auf die Höhe (grüne Linie), **2 0 Enter** schiebt genau 20 px. **Esc** oder
+   Rechtsklick nimmt alles zurück.
+2. In der Front alle Punkte mit einem Rahmen wählen, **S 2 Enter**: Die Front wird genau doppelt so groß (symmetrisch, die
+   Mitte liegt auf der Achse). **R 9 0 Enter** in der Seite dreht um 90°.
+3. **O** einschalten, einen Punkt am Hals greifen (mit **G** oder einfach ziehen) und das **Mausrad** drehen: Der Kreis
+   wächst, die Nachbarn gehen weich mit. **⌥O** (nur verbunden): Die Brust bleibt, auch wenn sie im Kreis liegt. **⇧O**
+   wechselt den Abfall.
+4. Einen Ring eines fremden Knotens greifen (z. B. ein Front-Knoten in der Seite), dann **G**: Er wandert nur in der
+   gemeinsamen Richtung.
+5. Dein Urteil zu V3 (und, wenn du magst, ein Bild davon, welche Linien aus V2 dir wild vorkommen), dann geht es mit V4
+   „Exakte Umrisse“ weiter.
 
 ## Offen für Florian
 
-- **V2 nicht abgenommen** (Florian 20.10. nachts: „Die Linien wirken immer noch sehr sehr wild. Da müssen wir auf jeden Fall
-  nochmal ran, aber vorerst weiter mit V3.“) — vor dem nächsten Anlauf an seinem Editor-Bild klären, welche Linien er meint.
-- Abnahme V0 und V1; jetzt **V3 „G/S/R und proportionales Bearbeiten in den Blättern“**.
+- Abnahme V0, V1, V3; **V2 nicht abgenommen** — welche Linien wirken wild?
+- Nächster Schritt nach Plan: **V4 „Exakte Umrisse“** (erst der Beweis mit Abbruchkriterium: Kugel, Ei, Robbe, Tiger,
+  Vase, einfache Form, dein Kegel, künstlicher Widerspruch).
 - Weiter offen (mit Vergleichsbild, wenn der Schritt sie braucht): Entenflügel flach oder Schale an der Glockenflanke (V7);
   dünne Kanten Klinge oder rund; einfache Form — Stacheln als Paar oder im Rumpf; Überhang (Kopf als Teil mit Kragen oder
   Y-Stück).
@@ -70,6 +72,7 @@ Körperarten, dein Ablauf; Grundzahlen-Test, Editor-Szenarien `v1-ablauf.mjs`, Z
   was im Editor ist und was nur im Kern.
 - Zeiten nur als Minimum mehrerer Läufe messen (die Maschine läuft oft unter Last bis 26); Zeittests der Suite einzeln
   nachprüfen, bevor man sie einer Änderung zuschreibt.
-- Eigener Vite auf 5192 (`apps/editor/scripts/pruefen/run-check.sh`), nie Florians 5180. Nie `assets/fonts/Hippie
-  Movement.otf` committen.
+- Eigener Vite auf 5192 (`apps/editor/scripts/pruefen/run-check.sh`), nie Florians 5180. Während eines E2E-Laufs keine
+  Dateien unter `apps/editor/src` ändern (Hot Reload); E2E-Läufe überschreiben Bilder in `docs/progress/editor/` — vor dem
+  Commit zurückholen. Nie `assets/fonts/Hippie Movement.otf` committen.
 - Nach jedem Teilschritt committen und pushen; diese Datei am Ende jedes Blocks überschreiben.

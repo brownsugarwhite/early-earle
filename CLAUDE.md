@@ -153,6 +153,15 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   V2“, `it.fails` in `test:extrem`. Bilder `docs/progress/editor/v2-*`. **Florian: „Die Linien wirken immer noch sehr sehr
   wild. Da müssen wir auf jeden Fall nochmal ran, aber vorerst weiter mit V3.“** — V2 nicht abgenommen, später an seinem
   Bild klären, welche Linien wild wirken.
+- **2026-10-20 nachts: V3 „G/S/R und proportionales Bearbeiten in den Blättern“ gebaut** (Abnahme offen; „Stand V3“ auf der
+  Planseite 20.10.). G/S/R wie Blender über einem Blatt mit Auswahl (eigene Umrissknoten, P-Linien-Knoten auf der Haut,
+  Spantpunkte, fremde Ringe nur in der gemeinsamen Koordinate), X/Y/Z, ⇧X/⇧Y/⇧Z, Zahlen (px, Faktor, Grad), Enter/Klick
+  übernimmt, Esc/Rechtsklick/⌘Z/Fokusverlust nimmt bitgleich zurück (`abbrechenGeste`); ohne Auswahl G = Pinsel, S =
+  Spant-Werkzeug (bis V6). Proportional O/⇧O/⌥O mit dem Pinselradius, Rad und [ ] auch im Knotenzug. Code
+  `apps/editor/src/editing/modal/`. Tore erfüllt (S 2 und R 90 exakt, Griffe kollinear, ≤ 6,4 ms je Mausbewegung, ein
+  Undo-Schritt); Prüfskripte `modal-2d.mjs`, `proportional.mjs`, Bilder `docs/progress/editor/v3-*`. Befunde im Register
+  (Spantpunkte unter Front-Knoten nicht greifbar; `spanten.spec.ts` rot an der alten Versuchs-Bauweise, unabhängig von V3).
+  Nächster Schritt: Florians Blick, dann V4 „Exakte Umrisse“.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

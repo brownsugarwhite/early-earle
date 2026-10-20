@@ -38,6 +38,8 @@ type Lauf = {
   /** mit gedrückter Maustaste begonnen (Knotenzug): Loslassen bestätigt */
   ziehen: boolean;
   gewichte: KnotenGewicht[][];
+  /** Körperhöhe am Anfang (der Einfluss ist ein Anteil davon; das Netz wird während der Operation neu gebaut) */
+  hoehe: number;
   radius: number;
   radSumme: number;
   /** Auswahl am Anfang (Abbrechen stellt sie wieder her) */
@@ -64,14 +66,12 @@ export const modalMessung = {
 
 export const modalAktiv = () => lauf !== null;
 
-/** Einflussradius in Profil-Einheiten: Anteil der Körperhöhe wie der Pinsel (eine Größe für Pinsel und Knoten). */
-export function einflussRadius(): number {
-  let h = aktuellesNetz()?.netz.hoehe ?? 0;
-  if (!(h > 0)) {
-    const ys = useEditor.getState().dok.profile.seite.knoten.map((k) => k.p.y);
-    h = Math.max(...ys) - Math.min(...ys);
-  }
-  return useUi.getState().pinselRadius * h;
+/** Körperhöhe in Profil-Einheiten (aus dem Netz, sonst aus der Seite); der Einfluss ist ein Anteil davon wie beim Pinsel. */
+function koerperHoehe(): number {
+  const h = aktuellesNetz()?.netz.hoehe ?? 0;
+  if (h > 0) return h;
+  const ys = useEditor.getState().dok.profile.seite.knoten.map((k) => k.p.y);
+  return Math.max(...ys) - Math.min(...ys);
 }
 
 const zahlText = (x: number, stellen: number) => x.toFixed(stellen).replace('.', ',').replace(/^-(0,0*)$/, '$1');
@@ -118,6 +118,7 @@ export function modalStarten(art: Art, opt: { ansicht?: Ansicht; ziehen?: { clie
     zahl: '',
     ziehen: !!opt.ziehen,
     gewichte: [],
+    hoehe: koerperHoehe(),
     radius: 0,
     radSumme: 0,
     ui0: { auswahl: ui.auswahl, aktiv: ui.aktiv, kantenAuswahl: ui.kantenAuswahl, spantAuswahl: ui.spantAuswahl },
@@ -133,7 +134,7 @@ function gewichteNeu(): void {
   const l = lauf;
   if (!l) return;
   const p = useUi.getState().proportional;
-  l.radius = p.an ? einflussRadius() : 0;
+  l.radius = p.an ? useUi.getState().pinselRadius * l.hoehe : 0;
   l.gewichte = gewichte(l.ziel.kurven, { an: p.an, abfall: p.abfall, radius: l.radius, verbunden: p.verbunden });
 }
 

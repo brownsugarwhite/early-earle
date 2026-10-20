@@ -977,3 +977,59 @@ nicht, was er sieht. Vor dem nächsten Anlauf klären, welche Linien in seinem E
 Blätter, innere Konturen im eigenen Blatt, Faltenlinien, Teile-Umrisse, Linien auf Körpern, die selbst falten) und daran
 die Messung neu ausrichten (Register „Befunde aus V2“).
 
+
+### V3 „G/S/R und proportionales Bearbeiten in den Blättern“ — gebaut (20.10. nachts; Abnahme offen)
+
+**Was steht** (Bauweise wie „V3 im Detail“, Code in `apps/editor/src/editing/modal/`):
+- **G, S, R wie in Blender** über einem Blatt mit Auswahl: gewählte Knoten einer P-Linie (bleiben auf der Haut), Punkte eines
+  Spants (Front/Back), eigene Umrissknoten, Ringe fremder Knoten (nur die gemeinsame Koordinate; R gibt dort einen Hinweis).
+  Ohne Auswahl wie bisher: G = Pinsel, S = Spant-Werkzeug; auf der Bühne bleibt G der Pinsel.
+- X/Y/Z sperren, ⇧X/⇧Y/⇧Z „alles außer“, Achse quer zum Blatt → Hinweis; Zahlen (G in px, S Faktor, R Grad, Komma oder
+  Punkt, Minus, Rücktaste); G/S/R wechseln während der Operation die Art.
+- Enter oder Linksklick übernimmt (ein Undo-Schritt), Esc, Rechtsklick, ⌘Z oder Fokusverlust nehmen zurück
+  (`abbrechenGeste` im Store: Dokument des Gestenbeginns, ohne Verlaufseintrag und ohne „Formen folgen“; die Auswahl kommt
+  zurück). Während der Operation tun Zoom, Schwenken, Tab, ⌘1–9, Pfeile, Entf und Werkzeugtasten nichts; das Kontextmenü
+  bleibt zu. Ein Menübefehl (Electron) bricht eine laufende Operation zuerst ab.
+- **Proportional:** O, ⇧O (glatt, Kugel, Wurzel, spitz, linear, konstant), ⌥O „nur verbunden“ (längs des Kontrollpolygons).
+  Radius = Pinselradius × Körperhöhe am Anfang der Operation; Mausrad (×1,1 je Raste, Trackpad gesammelt), [ ] und
+  Bild↑/↓ ändern ihn, auch während eines Knotenzugs mit der Maus — mit O läuft jeder Knotenzug (Umriss, fremder Ring,
+  P-Linie, Spant) als G mit gedrückter Taste (Loslassen übernimmt, Esc nimmt zurück). Ohne O bleibt der Knotenzug der alte
+  Weg (bitgleich).
+- **Anzeige:** Kreuz in der Mitte, gestrichelte Linie zum Zeiger (S, R), Achsenlinie in Blender-Farben, Einflusskreis; im
+  Dock die laufende Operation („G · Y · 20 px · proportional glatt“), sonst der Zustand von O und „G/S/R“, solange etwas
+  gewählt ist. Tafel Körper: ein Absatz zur Bedienung.
+
+**Gemessen** (Editor, echte Tasten, Maus und Rad, eigener Vite 5192, Florians Ablauf aus der Startkugel; Bilder
+`docs/progress/editor/v3-g-y-kegel-2026-10-20.jpg`, `docs/progress/editor/v3-proportional-langhals-2026-10-20.jpg`):
+
+| Tor | Ergebnis |
+|---|---|
+| S 2,0 exakt (≤ 1e-9) | ganze Front des Kegels um die Mitte auf der Achse: Knoten und Griffe Abweichung 0 |
+| R 90° exakt | drei Seitenknoten: Abweichung 0 (Vielfache von 90° mit exakten cos/sin) |
+| glatte Griffe kollinear (≤ 1e-9) | 9,8e-16; mit proportionalem Abfall (Griffspitzen mit eigenem Gewicht) im Unit-Test ≤ 1e-9 |
+| Esc und Rechtsklick JSON-gleich | ja, ebenso ⌘Z und Fokusverlust (Dokument, Verlauf, Auswahl; kein Kontextmenü) |
+| ein Undo-Schritt | ja (G, S, R, Knotenzug mit O) |
+| ≤ 16 ms je Mausbewegung | höchstens 5,8–6,4 ms über 48 Bewegungen (Rechnung und Store; Zeichnen nicht enthalten) |
+| `Meta+r` lädt nicht neu | ja |
+| Prüfskripte mit echten Tasten und Rad | `modal-2d.mjs` 38 Prüfungen, `proportional.mjs` 22 Prüfungen, alle grün |
+
+Tests: `editing/modal/abbildung.test.ts` (10: S/R exakt, G bitgleich mit dem Ziehen, glatte Griffe, Abfall, Mitte auf der
+Achse, „nur verbunden“, Achsen, Zahlen), `state/verlauf.test.ts` (+3 zu `abbrechenGeste`, mit dem alten Store rot); die
+beiden Editor-Skripte scheitern mit dem alten Code an der ersten Prüfung (G wählte den Pinsel). Die E2E-Tests, die `s` und
+`⌃R` drücken: Kern-Ablauf und Spanten „rund“ grün; `spanten.spec.ts` ist rot an einer Erwartung der alten
+Versuchs-Bauweise (Register), unabhängig von V3 — S ohne Auswahl wählt dort weiter das Spant-Werkzeug.
+
+**Korrekturen am Plan:**
+- Griffe: Griffspitzen als eigene Punkte mit eigenem Gewicht statt der Jacobi-Matrix (im Modus „nur verbunden“ gibt es
+  keinen Abstand neben der Kurve); glatte Knoten werden danach auf eine Gerade gelegt. Steht schon in „V3 im Detail“.
+- Der Einfluss reicht nur auf Punkte derselben Art (abweichend von 4.4), ebenfalls dort begründet.
+- Die Körperhöhe für den Radius wird am Anfang der Operation festgehalten: Während G baut der Worker den Körper neu, der
+  Radius sprang sonst mit (gemessen ×1,103 statt ×1,1 je Raste).
+- Mitte = Mitte des Rahmens um die Auswahl (wie Illustrator), nicht der Mittelwert der Punkte (Blenders Standard): Bei
+  Kurven mit ungleich verteilten Knoten ist der Rahmen vorhersehbarer.
+
+**Noch nicht:** G/S/R auf der Bühne und für Loops (V6), in Posen (dort G = Pinsel, S = Spant-Werkzeug, R ein Hinweis),
+Feinmodus mit ⇧ während G (Blender), Einrasten mit ⌃.
+
+**Nächster Schritt:** dein Blick auf V3 (Testanleitung in der Übergabe), dann V4 „Exakte Umrisse“ (erst der Beweis mit
+Abbruchkriterium). Offen bleibt V2: welche Linien wild wirken.

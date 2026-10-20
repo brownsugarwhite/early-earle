@@ -363,6 +363,22 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
     `versuch/flaechenlinie.ts` geben, die Normalen lesen (`treffer`, `naechsterFlaechenpunkt`).
   - Prüfungen: Kern `umrissKurven.test.ts`, Extremreihe `v2-linien.ts` (mit `ALT=<alter netzSicht>` vorher/nachher),
     Editor `v2-editor.mjs`; Gegenprobe im Editor mit `git stash push -- <Liniennetz-Dateien>`.
+- **Plan 20.10., V3 (G/S/R und proportional in den Blättern, `src/editing/modal/`):**
+  - Eine Operation rechnet jede Bewegung vom Stand am Anfang (`ModalZiel.kurven`) und schreibt über `setzen` — Umrisse
+    gekoppelt (`uebernehmenAktiv`), P-Linien zurück auf die Haut (`kantenPunktStetig`), Spanten über ihren Kasten. Abbrechen
+    ist `abbrechenGeste` (Dokument des Gestenbeginns, ohne Verlauf und ohne Haken) plus die gemerkte Auswahl.
+  - Fenster-Listener in der Erfassungsphase (`keydown`, `pointer*`, `wheel` nicht passiv) und `stopImmediatePropagation`:
+    Sie laufen nach den älteren Erfassungs-Listenern am Fenster (Maul-, Kanten-, Wirbel-Tasten — die sind während G/S/R
+    untätig), aber vor `useTastatur` (Blasenphase) und vor allen React-Handlern. Das Kontextmenü schluckt ein dauerhafter
+    Listener (`useModalKontext`): macOS meldet `contextmenu` beim Drücken, also nach dem Abbrechen per Rechtsklick.
+  - Tasten: Achsen über `e.key` (deutsche Tastatur tauscht Y/Z in `e.code`), ⌥O über `e.code` (tippt „ø“), ⌘Z über `e.key`.
+  - Der Einflussradius ist ein Anteil der Körperhöhe **am Anfang** der Operation: Während G baut der Worker neu, die Höhe
+    des Netzes ändert sich (sonst sprang der Kreis).
+  - Gewicht 0 = dasselbe Knotenobjekt; ohne O läuft der Knotenzug weiter den alten Weg (`verschiebeKnoten`), bitgleich.
+  - Deckungsgleiche Punkte: Spantpunkte unter Front-Knoten sind nicht greifbar (der Umriss liegt oben) — in Prüfungen eine
+    Stelle wählen, an der ein Spantpunkt frei liegt (`elementFromPoint`).
+  - Prüfungen: `editing/modal/abbildung.test.ts`, `state/verlauf.test.ts`, Editor `modal-2d.mjs`, `proportional.mjs`;
+    Zeit je Mausbewegung über `window.__modal`.
 - **vitest 5 zeigt `console.log` bestandener Tests nur mit `--reporter=verbose`** (bei Fehlern immer). Messwerte so lesen: `npx vitest run <datei> --reporter=verbose`.
 - **macOS hat kein `timeout`-Kommando**; lange Läufe über das Werkzeug-Timeout begrenzen. `pnpm -r test` lässt Pakete parallel laufen; die Laufzeit-Tests der Versuche (`kanten`, `flaechenlinie`, `wesen`) reißen dann ihre Schranken (967 ms > 600 ms), einzeln laufen sie durch.
 

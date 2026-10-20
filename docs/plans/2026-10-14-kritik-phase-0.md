@@ -582,3 +582,20 @@ Bögen auf der Planseite 20.10., „Stand V2“. Je Punkt der Schritt, der ihn a
 - **In V2 behoben** (je Test vorher rot): die rauschenden Umrisslinien der fremden Blätter (Zickzack in flachen Bändern),
   Ringe fremder Knoten bis 10,6 px neben ihrer Linie (jetzt ≤ 0,5 px).
 
+
+## Befunde aus V3 „G/S/R und proportionales Bearbeiten“ (20.10. nachts, eigene Befunde)
+
+- **Spantpunkte unter deckungsgleichen Front-Knoten sind nicht greifbar** (altes Verhalten seit 12.10.): Wo ein Spant
+  denselben Querschnitt hat wie die Front (an der breitesten Stelle, an der Startkugel überall), liegen seine Punkte genau
+  unter den Front-Knoten, und der Klick trifft den Umriss. Weg: ⌥-Klick schaltet auch Spantpunkte durch, oder V6 (Loops
+  ersetzen die Spanten). Das Prüfskript `proportional.mjs` sucht deshalb eine Stelle, an der ein Spantpunkt frei liegt.
+- **`e2e/spanten.spec.ts` ist rot, unabhängig von V3:** Zeile 75 erwartet auf der Bühne die Beschriftung „Versuch: Kanten im
+  Käfig“, Zeile 76 eine neue Eckenzahl nach dem ersten Spant — beides gilt nur in der alten Versuchs-Bauweise, seit der Kern
+  Standard ist (14.10.) nicht mehr (bekannt: `apps/editor/CLAUDE.md`, Arbeitsweise — die Versuchs-Specs setzen die
+  Loft-Bauweise voraus). Bis Zeile 73 (S ohne Auswahl setzt einen Spant, die Front zeigt ihn) läuft er. Nachziehen, wenn V6
+  die Spanten durch Loops ersetzt (der Test muss dann ohnehin neu).
+- Behoben: Der Einflussradius hing an der Höhe des während der Operation neu gebauten Netzes (Rad ×1,103 statt ×1,1) — die
+  Körperhöhe wird jetzt am Anfang festgehalten.
+- Gemessen ist die Zeit je Mausbewegung für Rechnung und Store (≤ 6,4 ms); das Zeichnen der Blätter und der schnelle Zug im
+  Worker sind nicht enthalten. Fokusverlust ist mit einem künstlichen `blur` geprüft, nicht mit einem echten App-Wechsel.
+- G/S/R in Posen fehlen (G und S behalten dort ihre alte Belegung, R gibt einen Hinweis) — mit B6/V6.
