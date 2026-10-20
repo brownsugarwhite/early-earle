@@ -497,3 +497,41 @@ Ausführlich im Plan [`2026-10-20-vektorillustration-bedienung.md`](2026-10-20-v
   Stift begann eine P-Linie); der Baum wurde je Geste zweimal gebaut; Seitenknoten an Beinen lagen in der Luft; „Neu
   ableiten“ ohne Undo (samt Rennen mit einem laufenden Bau); Reifen auf „Teile“ ohne Wirkung und ohne Hinweis; Chips ohne
   Wirkung wählbar; `data-geist` doppelt belegt (Körperstatus und Posen-Geist).
+
+## Befunde aus V1 „Prüfstand Extremreihe“ (20.10. abends, eigene Messungen)
+
+Gemessen wie der Editor baut (Worker-Bau mit glatt + mittel, Florians Ablauf aus der Startkugel), 39 Körper in beiden
+Körperarten; Tabelle, Kontaktbögen und Grundzahlen auf der Planseite 20.10., „Stand V1“. Je Punkt der Schritt, der ihn
+angeht.
+- **Röhre faltet und durchdringt sich** an Formen mit echten Ecken, Buckeln und Sicheln und an fast allen Mehrteilern:
+  Würfel wie mit dem Stift frei 172° (Kappe 153°, 388 Durchdringungen; als Superellipse sauber, 8°), Seeschlange 179°/508,
+  Sichel 180°/154, Vierbeiner 1190 Durchdringungen, Krake 157°/660, Flügel oben 56°/416, Hörner 146°/180, Augenstiele
+  114°/338, Fisch 145°/76, Tigerkopf 38°/28 → V4 (Kappen nach Endform, Umrisse binden) und V7 (Teile als Standard).
+- **Röhre lässt ganze Teile weg:** Katzenohren (Front 56 px), Krabbenscheren (Top 82 px), Seesternarme (Top 48 px),
+  Zweihals (Front/Top 63/60 px), Hörner (Front 78 px), Flügel oben (Front 75 px) → V7.
+- **Teile trägt die meisten Mehrteiler besser** (Hörner, Augenstiele, Flügel oben, Vierbeiner 16/4 px, Zweihals 15/27 px,
+  Giraffe 1,8/1,7 px, Vase Top 2,2 px), **versagt aber** an Krabbe (frei 179°, 205 Durchdringungen), Krake (167°, 657;
+  Seite 46 px), Pyramide (76°, 390 Kanten über 20°), Keil (42°), Blatt (33°, 614 Kanten), Seestern (Top 47 px), Ente-Haken
+  (Ansatz 158°, 38 Durchdringungen), einfache Form (Front 71 px), Katze (Seite 17 px) → V7.
+- **Einteilige Körper verfehlen Front/Top weiter:** Robbe Top 12,5, Vase Top 13,7 (Röhre), Rex Front 7,3, Florians Kegel
+  Front 7,3 px, Hals 1:8 Front 32 px (der runde Körper unter dem Hals bleibt in der Front zu schmal) → V4.
+- **Netzlinien rauschen** (Stücke/Knicke über 45°/Schleifen je Umriss, nach Vereinfachen auf ½ px): Florians Kegel Front
+  4/8/10, Würfel bis 44/80/59, Bleistift Front 29/83/126, Keil 30/45/25 → V2.
+- **Käfiggüte** weit vom Ziel (≥ 25°, ≤ 3): an vielen Körpern kleinste Winkel 1–8°, Seitenverhältnisse bis 65 (Röhre,
+  Würfel) und 276 (Teile, Rex) → V4/V7.
+- **P-Linien auf „Teile“:** Die Treppe liegt 6–67 px neben der gezeigten Linie; dort sucht sie die nächsten Käfigpunkte zur
+  ungehobenen Kurve (die Röhre legt die Linie seit V1 erst auf die Haut) → V5/V7.
+- **Sprung am Gestenende auf „Teile“:** 4–22 px je Zug (Editor-Szenario D; Grundsatz ≤ 0,5 px); die Röhre springt nicht
+  (Szenario A: 0,00 px nach zwölf Zügen, auch nach dem zweiten Bau mit den neu verankerten Enden — die Frage „Nachrutschen
+  nach dem Loslassen?“ aus V0 ist damit beantwortet: nein) → V4 (Zug ohne Neubau mit eingefrorenen Normalen) und V7.
+- **Teil kommt und geht** (Szenario D, Knoten oben vorn auf der Kugel herausgezogen): erkannt nach 10 Zügen (≈ 230 px),
+  geht beim Zurückziehen zwei Züge später, als es kam; der Baum nimmt das Teil in den Rumpfstreifen (ein Streifen) →
+  beobachten (V7).
+- **Florians Ablauf gegen frisch:** Ente Front 2,8 → 14,3 px (eingefrorene Ringe der Kugel), Würfel frei 150 → 172°,
+  Pyramide Top 7,3 → 11,9 px; umgekehrt hilft der Ablauf dem Keil (frisch frei 179°, im Ablauf 18°) → V4/V6.
+- **Kurze Querlinie am Kegel** (45 px) deckt weder eine ganze Reihe noch einen ganzen Ring: jetzt ehrlich Treppe (30 px
+  neben der Linie) statt „Reihe“ ohne Kante → V5 (Einordnen nach dem Winkel, mehr Ringe mit Loops).
+- **In V1 behoben** (je Test vorher rot): Querlinien, die eine Reihe nur auf einem Bruchteil eines Ringabstands berührten,
+  wurden „Reihe“ ohne scharfe Kante (Kegel, Vierbeiner, Krake); Stiftlinien mit wenigen Knoten zogen den Körper auf die
+  Sehne zwischen den Knoten (Kugel mit zwei gekreuzten Linien Δ 10,7 → 1,3 px, im Editor Falten 111° → 16°); die
+  Durchdringungsprüfung lief an dünnen, langen Körpern über die Höchstgröße einer Menge.

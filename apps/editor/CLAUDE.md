@@ -326,6 +326,21 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   - Die Versuchsschalter Haut/Fülle liegen eingeklappt in `<details data-versuche>`: Prüfskripte öffnen sie vor dem Klick.
   - `s5-editor.mjs` gibt es nicht mehr (prüfte den entfernten Geist); der Baum als Körper steht in `s7-editor.mjs`. Neue
     Prüfungen: `v0-tasten.mjs`, `v0-teile.mjs` (`FAELLE=…`), `v0-selbstschnitt.mjs`, erweitert `netz-e.mjs`, `s8a-editor.mjs`.
+- **Plan 20.10., V1 (Fallen aus dem Prüfstand):**
+  - P-Linien sind 3D-Bézier durch die geklickten Hautpunkte; zwischen wenigen Knoten (Stift) liegt die Kurve als Sehne neben
+    der Haut (Kugel, zwei Knoten: 20 px). Alles, was aus ihnen baut, legt die Proben erst wie das Liniennetz aus der
+    Zeichenansicht auf die Haut (`aufHaut` in `kern/netzSicht.ts`) — `linienExakt` tut es seit V1, die Treppe auf dem Baum
+    (`baumKantenFalten`) noch nicht. Messen immer gegen die gezeigte Linie, nicht gegen die gezeichnete Kurve.
+  - Eine Reihe bzw. ein Ring zählt für eine Linie nur, wenn sie eine ganze Käfigkante decken (sonst Treppe) — vorher hieß eine
+    kurze Querlinie „Reihe“, scharf wurde nichts.
+  - Prüfstand: `kern/pruefen/extremMessung.ts` baut wie der Editor (`editorBauen`: Stand zurückschreiben und neu bauen, bis er
+    sich nicht mehr ändert; Teile mit `paare: true`). Neue Bauweisen gegen `pnpm --filter @ee/shape test:extrem` prüfen; nach
+    einer Verbesserung die Grundzahlen neu schreiben (`GRUNDZAHLEN=1`, mit `KOERPER` nur deren Einträge) — der Diff zeigt die
+    Wirkung. Aufräumen bitgleich mit `HASH=1` vorher/nachher vergleichen.
+  - Die Durchdringungsprüfung (`selbstDurchdringungen`) hält keine Menge aller Paare mehr (dünne, lange Körper sprengten sie):
+    jedes Paar nur in der Zelle der unteren Ecke seiner Kastenüberlappung.
+  - `__editor.treffen(px, py)` rechnet in Feldpixeln der Bühne, nicht in Seitenkoordinaten. `vite-node`-Ausgaben in eine
+    Datei sind gepuffert: Fortschritt erscheint verzögert (Laufzeit mit `ps -o etime` prüfen).
 - **vitest 5 zeigt `console.log` bestandener Tests nur mit `--reporter=verbose`** (bei Fehlern immer). Messwerte so lesen: `npx vitest run <datei> --reporter=verbose`.
 - **macOS hat kein `timeout`-Kommando**; lange Läufe über das Werkzeug-Timeout begrenzen. `pnpm -r test` lässt Pakete parallel laufen; die Laufzeit-Tests der Versuche (`kanten`, `flaechenlinie`, `wesen`) reißen dann ihre Schranken (967 ms > 600 ms), einzeln laufen sie durch.
 

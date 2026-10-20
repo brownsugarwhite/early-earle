@@ -718,3 +718,55 @@ Editor, gelöst. Ein Kern-Test (`ringEinpassen` „Kugel, schräg“) war einmal
 wiederholen.
 
 **Nächster Schritt:** dein Blick auf V0 (Testanleitung in der Übergabe), dann V1 Prüfstand „Extremreihe“.
+
+### V1 Prüfstand „Extremreihe“ — gebaut (20.10. abends; Abnahme offen)
+
+Florian 20.10. abends: „Die andere Sitzung war ein Versehen. Ignoriere alles, was da passiert ist, und setze hier die
+Arbeit fort, wie wir es im Plan erarbeitet haben.“ (Der Branch `claude/sweet-newton-w3ao60` bleibt unberührt.)
+
+**Was steht:**
+- **39 Prüfkörper** in sieben Gruppen (`kern/pruefen/extremreihe.ts`): Grundkörper (Kugel, Ei, Rex, Robbe, Vase), Kanten und
+  Kästen (Würfel wie mit dem Stift und als Superellipse, **dein Kegel vom 20.10.**, Keil, Pyramide, Tigerkopf), lang und dünn
+  (Langhals, Hals 1:8, Seeschlange mit zwei Buckeln, Stift 1:10, Wurst 1:5), flach (Rochen 1:10, Blatt, Flunder), Überhänge
+  und Kerben (Pilz, Giraffe mit Bauch, Sichel, Hammerhai, Überhang, Ente-Haken, einfache Form), Mehrteiler (Vierbeiner,
+  Zweihals, Ente, Fisch, Krabbe, Krake, Seestern, Flügel oben, Katze mit Ohren, Hörner, Augenstiele), absichtliche
+  Widersprüche (Front 10 px breiter bzw. höher). Dein Kegel ist aus dem Bild nachgebaut, mit dem Maßstab der grauen
+  Kachel je Blatt (Seite 682, Front 821, Top 584 Bildpixel je Einheit): Länge, Höhe und Breite passen auf 2 px; er zeigt
+  Δ Front 7,3 px wie dein Bild (6,0) und die wilde lila Linie als Zahl (Front-Umriss: 4 Stücke, 8 Knicke, 10 Schleifen).
+  Alle Umrisse ohne Selbstschnitte (Test). P-Linien an 13 Körpern: längs, quer, gekreuzt, parallel, kurz, über den
+  Ansatz; Härte 0, 50, 100 %.
+- **Messung wie der Editor baut** (`kern/pruefen/extremMessung.ts`): Worker-Bau `wesenBauen` mit den Standards eines neuen
+  Wesens, Röhre und Teile, frisch und in deinem Ablauf (Startkugel gebaut, Stand zurückgeschrieben wie `kernBauen`); P-Linien
+  zeichnet sie wie der Stift im Seitenblatt (Tiefe von der gezeigten Haut). Je Körper: Δ max/mittel und gelber Saum je
+  Blatt, Widerspruch, Falten nach Zonen, Durchdringungen, Käfiggüte, Netzlinien (Stücke, Knicke, Schleifen), P-Linien
+  (Lage der gezeigten Linie auf der Haut, Kante an der Linie, Art der Einpassung), Bau- und Zugzeit.
+- **Ausgabe:** Tabelle [`docs/progress/editor/v1-extremreihe-2026-10-20.md`](../progress/editor/v1-extremreihe-2026-10-20.md),
+  Kontaktbögen je Gruppe `docs/progress/editor/v1-extremreihe-<gruppe>-2026-10-20.jpg` (Seite, Front, Top mit schwarzer und
+  gelber Linie, Netzlinien, Widerspruch, P-Linien; schräg; Zebra). Skript `apps/editor/scripts/pruefen/v1-extremreihe.ts`.
+- **Test:** schnelle Wächter im normalen Lauf (`extremreihe.test.ts`); die ganze Reihe gegen ihre Grundzahlen
+  (`extremreihe.grundzahlen.json`, „nicht schlechter als heute“, Toleranzen 0,5 px / 2° / 3 Kanten) mit
+  `pnpm --filter @ee/shape test:extrem` (78 Tests, ≈ 85 s) — nach jedem Schritt lokal, wöchentlich in CI (eigener Job,
+  damit der Check bei jedem Push nicht Minuten länger dauert). Die S0-Tests prüfen weiter die Messwerkzeuge; die Grenzen
+  für die Körper liegen jetzt in der Extremreihe.
+- **Ablauf-Szenarien im echten Editor** (`v1-ablauf.mjs`, echte Maus und Tasten, Geometrie): A Kugel → Wurst in zwölf
+  kleinen Zügen (Sprung am Gestenende 0,00 px, Δ 0,6 px), B ⌘Z/⇧⌘Z nach eingefügten Punkten (Profile und Netz gleich),
+  C Röhre mit Pinsel → Teile → Röhre (Hinweis, Netz bitgleich zurück), D auf „Teile“ ein Teil herausziehen und zurück,
+  E Stiftlinien setzen, mit ⇧W härten, kreuzen („genau, genau“). Pose beim Umschalten nur als „bleibt gespeichert“
+  geprüft, kein Pinselstrich in einer Pose.
+
+**In V1 behoben (Befunde der Reihe und der Szenarien, je Test vorher rot):**
+- Stiftlinien mit wenigen Knoten lagen zwischen den Knoten als Sehne neben der Haut (Kugel, zwei Knoten: 20 px); das
+  Liniennetz zeigte sie auf der Haut, das Einpassen zog den Körper auf die Sehne — im Editor mit zwei gekreuzten Linien
+  Δ 0,3 → 10,5 px, Falten bis 111°. Jetzt legt das Einpassen die Linie wie das Liniennetz auf die Haut: Δ 1,3 px, Falten
+  16°; Kante an der gezeigten Linie Fisch 11,2 → 1,1 px, Rex 3,2 → 0,7, Hals 1:8 2,1 → 0,6.
+- Querlinien, die eine Reihe nur auf einem Bruchteil eines Ringabstands berührten, hießen „Reihe“, scharf wurde nichts
+  (Kegel, Vierbeiner, Krake — V0-Tor „keine Linie ohne Falte“ verfehlt): jetzt Ring (Vierbeiner 0,9 px, Krake 0,8 px) bzw.
+  ehrlich Treppe (Kegel).
+- Die Durchdringungsprüfung lief an der Seeschlange auf „Teile“ über die Höchstgröße einer Menge; jetzt jedes Paar einmal
+  ohne Menge, alle übrigen 154 Messungen bitgleich.
+
+**Befunde** (ausführlich im Kritik-Register, „Befunde aus V1“): Die Röhre faltet und durchdringt sich an Ecken, Buckeln,
+Sicheln und fast allen Mehrteilern und lässt Ohren, Scheren, Arme, Hörner weg; „Teile“ trägt die meisten Mehrteiler
+besser, versagt aber an Krabbe, Krake, Pyramide, Keil, Blatt und springt am Gestenende um 4–22 px; einteilige Körper
+verfehlen Front/Top weiter um 7–14 px; Netzlinien rauschen (bis 80 Knicke, 126 Schleifen); Käfiggüte weit vom Ziel; die
+Treppe auf „Teile“ liegt 6–67 px neben den Linien. Das ist die ehrliche Ausgangslage für V2–V7.

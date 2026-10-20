@@ -135,6 +135,15 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   (Stadionform); S8a-Rückschritte (Kreuzungen 24 → 1 px); ehrliche Tafel, Tore als `it.fails`, CI grün. Korrekturen am
   Plan: Stadionform klappt im Ablauf aus der Kugel nicht um; Augen per Klick gehen auf dem Baum; der Enten-Rückschritt
   kommt von der eingefrorenen Ringverteilung der Kugel. Nächster Schritt: Florians Blick, dann V1 Prüfstand „Extremreihe“.
+- **2026-10-20 abends: V1 Prüfstand „Extremreihe“ gebaut** (Abnahme offen; „Stand V1“ auf der Planseite 20.10.).
+  Florian: Die Cloud-Sitzung „Genauer Zug“ (Branch `claude/sweet-newton-w3ao60`) war ein Versehen — ignorieren, nicht
+  zusammenführen; hier nach Plan weiter. V1: 39 Prüfkörper in sieben Gruppen (`kern/pruefen/extremreihe.ts`, sein Kegel mit
+  stimmigen Maßen), Messung wie der Editor baut (`extremMessung.ts`: Röhre/Teile, frisch/Ablauf aus der Startkugel),
+  Kontaktbögen und Tabelle in `docs/progress/editor/v1-extremreihe-*`, Grundzahlen als Test (`pnpm --filter @ee/shape
+  test:extrem`, wöchentlich in CI), Ablauf-Szenarien im Editor (`v1-ablauf.mjs`), Zufallsreihe (`v1-zufallszuege.ts`).
+  Behoben (je Test vorher rot): Stiftlinien zogen den Körper auf die Sehne zwischen ihren Knoten (Kugel mit zwei Linien
+  Δ 10,5 → 1,3 px), Querlinien „Reihe“ ohne Kante, Absturz der Durchdringungsprüfung. Befunde im Kritik-Register („Befunde
+  aus V1“). Nächster Schritt: Florians Blick, dann V2 „Saubere Linien“.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
