@@ -9,6 +9,10 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 > [`docs/plans/2026-10-16-einstieg-falten-wirbelsaeulen-linien.md`](docs/plans/2026-10-16-einstieg-falten-wirbelsaeulen-linien.md).
 > **Freigegebener Plan dieser Sitzung (16.10. vormittags):** [`docs/plans/2026-10-16-liniennetz-zielform-kaefig.md`](docs/plans/2026-10-16-liniennetz-zielform-kaefig.md)
 > (Form zuerst, dann ein Käfig darüber; Schritte S0–S8 mit Toren und Stand).
+> **Ab 20.10. gilt der Plan [`docs/plans/2026-10-20-vektorillustration-bedienung.md`](docs/plans/2026-10-20-vektorillustration-bedienung.md)**
+> (freigegeben): ehrliche Bestandsaufnahme S0–S8a mit frischen Messungen und Extremtest, Zielbild Vektorillustration,
+> Umrisse als Käfigschleifen mit Silhouettenbedingung, Linien gleichzeitig, Bedienung nach Blender (⌘R-Loops, G/S/R,
+> proportional), Schritte V0–V9; ersetzt S8 des Plans vom 16.10.
 
 - **2026-10-04: Prototyp 1 ist abgeschlossen** (Archiv-Branch `prototyp-1`). Er diente zum Lernen. Florian: „Der Prototyp war sehr gut und aufschlussreich und hat bewiesen, dass die Spielidee toll ist.“ Viele Entscheidungen sind gefallen; die Gesamtdynamik und einige grafische Elemente haben ihm gefallen.
 - **Jetzt beginnt die eigentliche Produktion mit dem finalen Look.** Grundlage wird **Florians neuer Plan mit neuem Hauptprompt**: Story, Charaktere und Map arbeitet er genauer aus und trägt sie in Dokumenten und Screenshots zusammen. Es folgen mehrere Runden und Iterationen.
