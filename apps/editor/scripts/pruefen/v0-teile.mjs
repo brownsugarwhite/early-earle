@@ -1,5 +1,6 @@
 // Plan 20.10., V0 „Teile ehrlich“ im echten Editor (eigener Vite über run-check.sh, nie 5180), Florians Ablauf: neue
 // Startkugel, Umrisse eines Prüfkörpers übernommen, Körper „Teile“.
+// 0. Seitenknoten an Beinen liegen am Bein (Ring in der Front neben der Achse), nicht auf der Mittelebene.
 // 1. Klickfang: Wo eine Wirbelsäule über der schwarzen Linie liegt (Teilspitzen), gewinnt die schwarze Linie den Treffer, und
 //    der Stift setzt dort einen Punkt (vorher fing ein unsichtbarer 10-px-Streifen der Wirbelsäule den Klick).
 // 2. Doppelbau: Nach einer Geste wird der Baum genau einmal gebaut (vorher ein zweites Mal, weil das Zurückschreiben der
@@ -69,6 +70,22 @@ for (const fall of faelle) {
   await nachBau(v);
   await page.waitForFunction(() => !!window.__editor.koerperBaum(), null, { timeout: 60_000 }).catch(() => {});
   await ruhig();
+
+  // 0. Seitenknoten am richtigen 3D-Punkt: Ring des tiefsten Seitenknotens (Fuß) in der Front — bei Beinen neben der Achse
+  const fuss = await page.evaluate(() => {
+    const kn = window.__stores.editor.getState().dok.profile.seite.knoten;
+    let i = 0;
+    kn.forEach((q, j) => {
+      if (q.p.y < kn[i].p.y) i = j;
+    });
+    const svg = document.querySelector('.vp-ober[data-view="front"] svg.view2d');
+    const ring = svg?.querySelector(`[data-netz-knoten="seite:${i}"] circle`);
+    const achse = svg?.querySelector('line.achse');
+    if (!ring || !achse) return { i, abstand: null };
+    return { i, abstand: Math.abs(Number(ring.getAttribute('cx')) - Number(achse.getAttribute('x1'))) };
+  });
+  if (fall === 'vierbeiner') pruefe(fuss.abstand !== null && fuss.abstand > 10, `Ring des Fußknotens (Seite ${fuss.i}) in der Front ${fuss.abstand?.toFixed(1)} px neben der Achse (am Bein, nicht auf der Mittelebene)`);
+  else console.log(`  (Ring des tiefsten Seitenknotens in der Front: ${fuss.abstand?.toFixed(1)} px neben der Achse)`);
 
   // 1. Klickfang: Punkte der Wirbelsäulen, die auf der schwarzen Linie liegen (Hit-Pfad der Kurve trifft), in jedem Blatt
   const kollisionen = await page.evaluate(() => {

@@ -8,6 +8,8 @@ import { feinesNetz } from './pruefstand';
 import { alleFlaechen } from '../kaefig/halbkanten';
 import { SICHT, netzSicht } from './netzSicht';
 import { gKoerperDokument, s0KoerperDokument } from './pruefen/grundkoerper';
+import { baumAbleiten, baumFeinesNetz } from './grundkoerper/baumBau';
+import { teilSatzDokument } from './pruefen/teilsatz';
 
 declare const console: { log: (...a: unknown[]) => void };
 
@@ -59,6 +61,24 @@ describe('S1: Liniennetz auf dem Kern-Körper', () => {
     for (let i = 0; i < ns.knoten.top.length; i += 3) if (Number.isFinite(ns.knoten.top[i + 1]!)) expect(Math.abs(ns.knoten.top[i + 1]! - cy) * PX).toBeLessThan(3);
     for (let i = 0; i < ns.knoten.front.length; i += 3) if (Number.isFinite(ns.knoten.front[i]!)) expect(Math.abs(ns.knoten.front[i]!) * PX).toBeLessThan(3);
   }, 60_000);
+
+  it('Seitenknoten an Beinen, Flügeln, zweitem Hals liegen auf der Haut, nicht auf der Mittelebene (Plan 20.10., V0)', () => {
+    // vorher z = 0 für jeden Seitenknoten: Vierbeiner 27,9 px, Zweihals 30,5 px, Flügel oben 74,6 px neben der Haut
+    for (const name of ['vierbeiner', 'zweihals', 'fluegel-oben', 'giraffe-bauch']) {
+      const dok = teilSatzDokument(name);
+      const b = baumAbleiten(dok, { paare: true });
+      const { punkte, flaechen } = baumFeinesNetz(b);
+      const ns = netzSicht({ dok, punkte, flaechen, kaefig: b.kaefig, unterteilung: b.unterteilung, reifen: [] });
+      const k = ns.knoten.seite;
+      let max = 0;
+      for (let i = 0; i < k.length; i += 3) {
+        let d = Infinity;
+        for (const q of punkte) d = Math.min(d, (q[0] - k[i]!) ** 2 + (q[1] - k[i + 1]!) ** 2 + (q[2] - k[i + 2]!) ** 2);
+        max = Math.max(max, Math.sqrt(d) * PX);
+      }
+      expect(max, name).toBeLessThan(6);
+    }
+  }, 120_000);
 
   it('Zeit und Umfang an komplexen Körpern (Ausgabe)', () => {
     const zeilen: string[] = [];
