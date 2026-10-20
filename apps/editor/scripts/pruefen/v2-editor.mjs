@@ -5,7 +5,8 @@
 // - im eigenen Blatt nur innere Konturstücke, keine eigene Umrisslinie;
 // - die Ringe fremder Knoten liegen auf ihrer Linie (≤ 1 px im Bild), auch wo die Zeichnung neben dem Körper liegt;
 // - am Kegel: ein Ring folgt beim Ziehen dem Zeiger (gemeinsame Koordinate), Rückgängig stellt den Umriss wieder her.
-// Bilder je Fall (Riss mit den drei Blättern und der Bühne). Umgebung: FAELLE (z. B. kegel:roehre,vierbeiner:teile), NAME
+// Die Umrisslinien sind seit dem 20.10. (nach V3) standardmäßig aus (Florian: „störend“): geprüft wird, dass sie aus sind
+// und die Ringe bleiben, danach werden sie eingeschaltet. Bilder je Fall (Riss mit den drei Blättern und der Bühne). Umgebung: FAELLE (z. B. kegel:roehre,vierbeiner:teile), NAME
 // (Zusatz im Bildnamen, z. B. „vorher“), AUSGABE.
 // Aufruf: apps/editor/scripts/pruefen/run-check.sh apps/editor/scripts/pruefen/v2-editor.mjs
 import { mkdirSync } from 'node:fs';
@@ -75,6 +76,15 @@ for (const [koerper, art] of faelle) {
     await nachBau(v);
     await ruhig();
   }
+  // Florian 20.10. (nach V3): die Umrisslinien sind Anzeige und standardmäßig aus, die Ringe bleiben — hier eingeschaltet
+  const standard = await page.evaluate(() => ({
+    linien: document.querySelectorAll('.vp-ober svg path[data-netz-zug^="u"], .vp-ober svg path[data-netz-zug^="k"]').length,
+    ringe: document.querySelectorAll('.vp-ober svg [data-netz-knoten]').length,
+    an: window.__stores.ui.getState().netzUmrisse,
+  }));
+  pruefe(standard.an === 'aus' && standard.linien === 0 && standard.ringe > 0, `Standard: Umrisslinien aus (${standard.linien} Pfade), Ringe da (${standard.ringe})`);
+  await page.evaluate(() => window.__stores.ui.setState({ netzUmrisse: 'an' }));
+  await page.waitForTimeout(300);
   const befund = await page.evaluate(() => {
     const out = {};
     for (const blatt of ['seite', 'front', 'top']) {

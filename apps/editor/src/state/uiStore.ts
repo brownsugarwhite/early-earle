@@ -130,6 +130,11 @@ type UiState = {
    * in der Kurvenfarbe, „farbe“ = je Ursprungsansicht eine Farbe
    */
   netzStil: 'ton' | 'farbe';
+  /**
+   * Plan 20.10., nach V3 (Florian: „ich empfinde sie als störend“): Umrisslinien der anderen Ansichten und innere Konturen
+   * im Liniennetz zeigen. Reine Anzeige, der Körper wird ohne sie gebaut; Standard aus. Ringe, P-Linien, Falten bleiben.
+   */
+  netzUmrisse: 'an' | 'aus';
   /** S1: Punkt des Liniennetzes unter dem Zeiger (in irgendeinem Blatt); alle Blätter und die Bühne markieren ihn */
   netzHover: NetzPunkt | null;
   setzeNetzHover(p: NetzPunkt | null): void;
@@ -267,6 +272,7 @@ export const useUi = create<UiState>((set, get) => ({
   breitenAnzeige: null,
   kantenSicht: 'zeigen',
   netzStil: 'farbe',
+  netzUmrisse: 'aus',
   teileSicht: 'an',
   setzeTeileSicht(s) {
     set({ teileSicht: s });

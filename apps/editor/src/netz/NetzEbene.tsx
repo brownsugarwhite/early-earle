@@ -159,10 +159,10 @@ const spantFarbe = (dok: Dokument, id: string): string => {
 /** Pfade eines Blatts (gemerkt je Netz, Blatt, Blick, Abbildung und Stil: Blätter rendern bei jedem Zeigerzug neu). */
 const merker = new WeakMap<NetzSicht, Map<string, ReactNode[]>>();
 
-function netzPfade(ns: NetzSicht, ansicht: Ansicht, blick: Blick, bild: (p: V2) => V2, stil: 'ton' | 'farbe', dok: Dokument): ReactNode[] {
+function netzPfade(ns: NetzSicht, ansicht: Ansicht, blick: Blick, bild: (p: V2) => V2, stil: 'ton' | 'farbe', dok: Dokument, umrisse: boolean): ReactNode[] {
   const k0 = bild({ x: 0, y: 0 });
   const k1 = bild({ x: 1, y: 1 });
-  const schluessel = `${ansicht}|${blick}|${stil}|${k0.x},${k0.y},${k1.x},${k1.y}|${dok.spanten?.map((s) => s.f).join(',') ?? ''}|${dok.hauptspant ?? ''}`;
+  const schluessel = `${ansicht}|${blick}|${stil}|${umrisse ? 'u' : '-'}|${k0.x},${k0.y},${k1.x},${k1.y}|${dok.spanten?.map((s) => s.f).join(',') ?? ''}|${dok.hauptspant ?? ''}`;
   let m = merker.get(ns);
   if (!m) {
     m = new Map();
@@ -179,6 +179,8 @@ function netzPfade(ns: NetzSicht, ansicht: Ansicht, blick: Blick, bild: (p: V2) 
     // äußere Umriss die schwarze Linie, dort zeigen sich nur die inneren Konturstücke (z. B. der Bauch unter dem Kopf im Top)
     const umriss = z.art.startsWith('umriss-');
     if (quelle && umriss === (quelle === ansicht)) continue;
+    // Umrisslinien und innere Konturen nur auf Wunsch (Tafel; Standard aus — reine Anzeige)
+    if (quelle && !umrisse) continue;
     const ls = umriss && z.kurve && z.parameter ? kurvenLaeufe(z, ansicht, bit, bild) : laeufe(z, ansicht, bit, bild, quelle ? (i) => (z.sicht[i]! & RAND) === 0 : () => true);
     ls.forEach((l, i) => {
       const key = `${z.id}.${i}`;
@@ -227,16 +229,17 @@ function netzPfade(ns: NetzSicht, ansicht: Ansicht, blick: Blick, bild: (p: V2) 
 }
 
 /** Gemeinsame Bedingungen beider Teile: Bauweise Kern, Grundform, Kanten-Schalter. */
-function useNetz(ansicht: Ansicht): { ns: NetzSicht; blick: Blick; stil: 'ton' | 'farbe'; deck: number } | null {
+function useNetz(ansicht: Ansicht): { ns: NetzSicht; blick: Blick; stil: 'ton' | 'farbe'; deck: number; umrisse: boolean } | null {
   useNetzStand((s) => s.version);
   const modus = useEditor((s) => s.modus);
   const bauweise = useUi((s) => s.bauweise);
   const schalter = useUi((s) => s.kantenSicht);
   const stil = useUi((s) => s.netzStil);
+  const umrisse = useUi((s) => s.netzUmrisse === 'an');
   const blick = useUi((s) => blickVon(ansicht, s.blick));
   if (bauweise !== 'kern' || modus !== 'editor' || schalter === 'aus') return null;
   const ns = netzJetzt();
-  return ns ? { ns, blick, stil, deck: schalter === 'blass' ? 0.35 : 1 } : null;
+  return ns ? { ns, blick, stil, deck: schalter === 'blass' ? 0.35 : 1, umrisse } : null;
 }
 
 /** Linien des Netzes (unter der schwarzen Linie). */
@@ -244,7 +247,7 @@ export function NetzZeichnung({ ansicht, bild }: { ansicht: Ansicht; bild: (p: V
   const dok = useEditor((s) => s.dok);
   const n = useNetz(ansicht);
   if (!n) return null;
-  const pfade = netzPfade(n.ns, ansicht, n.blick, bild, n.stil, dok);
+  const pfade = netzPfade(n.ns, ansicht, n.blick, bild, n.stil, dok, n.umrisse);
   return (
     <g className="netz" data-netz={n.ns.zuege.length} pointerEvents="none" opacity={n.deck}>
       {pfade}

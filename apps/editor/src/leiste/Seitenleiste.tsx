@@ -155,6 +155,7 @@ function KantenBereich() {
   const zeichnen = useUi((s) => s.kanteZeichnen);
   const sicht = useUi((s) => s.kantenSicht);
   const netzStil = useUi((s) => s.netzStil);
+  const netzUmrisse = useUi((s) => s.netzUmrisse);
   const bauweise = useUi((s) => s.bauweise);
   const modus = useEditor((s) => s.modus);
   const profil = aktiv ? (istPose(modus, aktiv) ? poseSeite(dok) : dok.profile[aktiv]) : null;
@@ -250,6 +251,16 @@ function KantenBereich() {
           {(['ton', 'farbe'] as const).map((k) => (
             <button key={k} className={netzStil === k ? 'chip aktiv' : 'chip'} data-netzstil={k} onClick={() => useUi.setState({ netzStil: k })}>
               netz {k}
+            </button>
+          ))}
+        </div>
+      )}
+      {/* Umrisslinien der anderen Ansichten und innere Konturen: reine Anzeige, Standard aus (Florian 20.10.: „störend“) */}
+      {bauweise === 'kern' && (
+        <div className="umschalter stufen" role="radiogroup" aria-label="Umrisse der anderen Ansichten" title="Umrisslinien der anderen Ansichten und innere Konturen im Liniennetz (nur Anzeige; der Körper wird ohne sie gebaut)">
+          {(['aus', 'an'] as const).map((k) => (
+            <button key={k} className={netzUmrisse === k ? 'chip aktiv' : 'chip'} data-netzumrisse={k} onClick={() => useUi.setState({ netzUmrisse: k })}>
+              umrisse {k}
             </button>
           ))}
         </div>
