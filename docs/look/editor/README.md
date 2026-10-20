@@ -20,3 +20,12 @@ Plan: [`docs/plans/2026-10-11-editor-grundlayout.md`](../../plans/2026-10-11-edi
 - `09-top-haken-3d.webp` (13.10.): Top mit Haken an der Rückseite (Umriss läuft wieder nach innen); 3D von oben füllt die Einbuchtung auf.
 
 Florians Fragen dazu (13.10. morgens): Spanten sollen die wahre Form zeigen (hier zwei Ringe für Schnauze und Bauch). Spanten dynamischer: Jeder Punkt einer Kantenlinie ist ein Punkt im Spant, in der Front knicken ergibt eine echte Kante. Überhänge ohne Wirbelsäule, Einbuchtungen im Top nicht ausblocken. „Eventuell ist das Mesh auch falsch aufgebaut? Gibt es bessere Lösungen? Vielleicht direkt in Lofts?“
+
+## Screenshots aus dem Editor (16.–20.10., gesichert am 20.10.)
+
+- `florian-2026-10-15-ente-fluegel.webp` (15.10.): Ente mit Flügeln (Vorlage des Prüfkörpers `ente` in `kern/pruefen/grundkoerper.ts`).
+- `florian-2026-10-16-ente-haken.webp` (16.10., Screenshot 1): Library-Ente mit Flügelhaken im Top; Δ Front 23 px, Top 32 px (Prüfkörper `ente-haken`).
+- `florian-2026-10-16-einfach-kerbe.webp`, `florian-2026-10-16-einfach-kerbe-2.webp` (16.10., Screenshots 2/3): einfache Form aus der Startkugel, Top als Pfeil mit S-Kurve hinten (Prüfkörper `einfach`).
+- `florian-2026-10-17-zweihals.webp` (17.10.): sein Zweihals-Versuch auf „Teile“ (Δ Seite 15,5 · Front 85,2 · Top 61,1 px), „noch nicht sauber nachzustellen“.
+- `florian-2026-10-17-ente-lappen.webp` (17.10.): Ente mit Hakenschnabel auf „Teile“, Flügelchen als Lappen — „passen nicht, die Form muss richtig dargestellt werden“.
+- `florian-2026-10-20-kegel-linien.webp` (20.10.): Kegelkörper mit der „wilden“ lila (Front-Umriss in Seite und Top) und blauen Linie (Seiten-Umriss in der Front); Δ Seite 1,2 · Front 6,0 · Top 3,0 px. Prüfkörper `kegel` der Extremreihe (Plan 20.10., V1), mit stimmigen Maßen nachgebaut.
