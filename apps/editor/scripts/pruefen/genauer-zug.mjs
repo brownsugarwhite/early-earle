@@ -2,7 +2,7 @@
 // neue Kugel, Strich von einem Hautpunkt aus, dann Abstand des gegriffenen Hautpunkts zum Zeiger (Feldpixel der Bühne),
 // vor und nach „Formen folgen“. Bilder mit Marken (Kreuz = Zeiger am Ende, Punkt = gegriffener Hautpunkt) und Käfig.
 // Aufruf: EDITOR_URL=http://localhost:5192 node apps/editor/scripts/pruefen/genauer-zug.mjs (eigener Vite, nie 5180).
-// Umgebung: CHROMIUM=<Pfad> (Cloud: /opt/pw-browsers/chromium-1194/chrome-linux/chrome), RADIEN=0.12,0.25, KOERPER=roehre|teile (Startkugel als Röhre bzw. als Körper aus Teilen)
+// Umgebung: CHROMIUM=<Pfad> (Cloud: /opt/pw-browsers/chromium-1194/chrome-linux/chrome), RADIEN=0.12,0.25, MODI=weich,genau, KOERPER=roehre|teile (Startkugel als Röhre bzw. als Körper aus Teilen)
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -14,6 +14,7 @@ mkdirSync(AUSGABE, { recursive: true });
 const url = process.env.EDITOR_URL ?? 'http://localhost:5192';
 const radien = (process.env.RADIEN ?? '0.12,0.25').split(',').map(Number);
 const koerper = process.env.KOERPER ?? 'roehre';
+const modi = (process.env.MODI ?? 'weich,genau').split(',');
 // Mac: echte GPU (Metal); Cloud (CHROMIUM gesetzt): SwiftShader, WebGL2-Rückfall des Renderers
 const browser = await chromium.launch({
   ...(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {}),
@@ -30,8 +31,9 @@ const hautpunkt = (lagen, dreieck, bary) => [0, 1, 2].map((k) => bary[0] * lagen
 
 const ergebnisse = [];
 for (const radius of radien) {
-  for (const modus of ['weich', 'genau']) {
-    await page.goto(`${url}/?bauweise=kern&look=earle&palette=blob${modus === 'genau' ? '&genau=1' : ''}`);
+  for (const modus of modi) {
+    // langsame Maschinen (SwiftShader, parallele Läufe): großzügige Frist für den ersten Aufruf
+    await page.goto(`${url}/?bauweise=kern&look=earle&palette=blob${modus === 'genau' ? '&genau=1' : ''}`, { timeout: 180_000 });
     await page.waitForFunction(() => window.__editor && window.__editor.vertices() > 0, null, { timeout: 90_000 });
     await page.waitForFunction(() => (window.__stores.editor.getState().dok.kaefig?.stationen?.ringe.length ?? 0) > 0, null, { timeout: 30_000 }).catch(() => console.log('keine Stationen nach 30 s'));
     if (koerper === 'teile') {
