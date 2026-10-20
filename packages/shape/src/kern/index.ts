@@ -27,6 +27,7 @@ export * from './atlas';
 export * from './wesen';
 export * from './reifen';
 export * from './pinsel';
+export * from './genauerZug';
 export * from './kanten';
 export * from './zahnModell';
 export * from './zaehne';

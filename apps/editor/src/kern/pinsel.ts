@@ -4,11 +4,11 @@
 // Bezugs-Käfig; posierte Zuwächse werden mit der Drehung je Punkt zurückgedreht) — ein Undo-Schritt je Strich.
 
 import type { KaefigDelta, Pose } from '@ee/shape';
-import { type PoseBearbeitung, ankerVon, bezugAus, deltaKarte, deltaListe, formAusFeld, kaefigNachbarn, kaefigNormalen, pinselGewichte, spiegelIndex } from '@ee/shape/kern';
+import { type M3, type PoseBearbeitung, type Stencil, ankerVon, baryzentrisch, bezugAus, deltaKarte, deltaListe, formAusFeld, genauerVersatz, kaefigNachbarn, kaefigNormalen, pinselGewichte, poseWirkung, spiegelIndex, spiegelWirkung, verstaerkung } from '@ee/shape/kern';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { szene } from '../three/instanz';
-import { aktuellesNetz, werkzeugGesperrt } from './kernBau';
+import { aktuellesNetz, kernStencil, werkzeugGesperrt } from './kernBau';
 import { useTreffer } from './treffer';
 
 type V3 = [number, number, number];
@@ -157,6 +157,29 @@ function poseSchreiben(b: PoseBearbeitung, zuwachs: Map<number, V3>, anker: Para
 }
 
 /**
+ * Genauer Zug (Plan 2026-10-20): Verstärkung A des Strichs — bewegt der Pinselversatz D jeden Käfigpunkt i um Wᵢ·D, wandert
+ * der Hautpunkt um A·D (Stencil aus dem Worker). Grundform: gespiegelter Pinsel wᵢ·D + wsᵢ·M·D (rechte Hälfte und Naht,
+ * links gespiegelt); Pose: posierte Zuwächse wᵢ·D, in der Ruhe gespiegelt und mit der Drehung des Partners posiert.
+ */
+function zugVerstaerkung(st: Stencil, gewichte: readonly { punkt: number; w: number; wSpiegel: number }[], pose: PoseBearbeitung | null): M3 {
+  const g = new Map(gewichte.map((x) => [x.punkt, x] as const));
+  if (!pose) {
+    return verstaerkung(st, (i) => {
+      const x = g.get(i);
+      return x ? spiegelWirkung(x.w, x.wSpiegel) : null;
+    });
+  }
+  const n = pose.ruhe.length / 3;
+  const spiegel = spiegelIndex(pose.ruhe, n);
+  return verstaerkung(st, (i) => {
+    if (i >= n) return null;
+    const q = spiegel[i]!;
+    const naht = q === i || Math.abs(pose.ruhe[3 * i + 2]!) < 1e-9;
+    return poseWirkung(pose.dreh, i, naht ? i : q, g.get(i)?.w ?? 0, q >= 0 && !naht ? (g.get(q)?.w ?? 0) : 0);
+  });
+}
+
+/**
  * Pinselstrich auf dem Körper: Treffer → Gewichte der Käfigpunkte um den Treffer und sein Spiegelbild → je Bewegung
  * neue Deltas aus der Basis des Gestenbeginns (ziehen: Versatz in der Ebene zur Kamera; aufblasen: entlang der
  * Punktnormalen, Zug nach rechts/oben = nach außen; ⇧: Glätten zum Nachbarmittel, Schritte aus dem Zugweg). Die Lagen
@@ -196,94 +219,123 @@ export function pinselZeiger(e: React.PointerEvent, px: number, py: number, el: 
   const y0 = e.clientY;
   const pos = (p: number): V3 => [xyz[3 * p]!, xyz[3 * p + 1]!, xyz[3 * p + 2]!];
   const rechts = (p: number) => xyz[3 * p + 2]! >= -1e-9;
+  // Genauer Zug: Stencil des Treffers aus dem Worker (einmal je Strich); bis er da ist, zieht der Pinsel weich, danach
+  // rechnet der letzte Zug genau nach. Ohne Stencil (angesetzte Teile, Höhle, Rundmaul offen) bleibt er weich und sagt es.
+  let A: M3 | null = null;
+  let letzte: PointerEvent | null = null;
+  let laeuft = true;
+  let gemeldet = false;
   ed.beginGeste();
-  ziehen(
-    e,
-    el,
-    (ev) => {
-      const karte = new Map<number, V3>();
-      for (const [k, v] of basis) karte.set(k, [v[0], v[1], v[2]]);
-      // Pose (B3b): Zuwächse aller getroffenen Punkte beider Hälften, posiert; gespiegelt wird erst in der Ruhe
-      const alle = new Map<number, V3>();
-      const zuPose = (p: number, d: V3) => {
-        const a = alle.get(p) ?? [0, 0, 0];
-        alle.set(p, [a[0] + d[0], a[1] + d[1], a[2] + d[2]]);
-      };
-      // Zuwachs eines Punkts (Welt, unskaliert) in die Karte: rechte Hälfte und Naht direkt, linke gespiegelt beim Partner
-      const zuwachs = (p: number, d: V3) => {
-        const q = rechts(p) ? p : spiegel[p]!;
-        if (q < 0) return;
-        const dd: V3 = rechts(p) ? d : [d[0], d[1], -d[2]];
-        const a = karte.get(q) ?? [0, 0, 0];
-        karte.set(q, [a[0] + dd[0], a[1] + dd[1], a[2] + dd[2]]);
-      };
-      if (ev.shiftKey) {
-        // Glätten: Laplace-Entspannung im Radius, Schritte aus dem Zugweg (bis 12), jeder Schritt auf dem vorigen
-        const schritte = Math.min(12, Math.ceil(Math.hypot(ev.clientX - x0, ev.clientY - y0) / 10));
-        const lagen = new Map<number, V3>();
-        const lageJetzt = (p: number): V3 => lagen.get(p) ?? pos(p);
-        for (let s = 0; s < schritte; s++) {
-          const neu = new Map<number, V3>();
-          for (const g of gewichte) {
-            const w = Math.max(g.w, g.wSpiegel) * 0.5;
-            const nb = nachbarn[g.punkt]!;
-            if (w <= 0 || !nb.length) continue;
-            const p0 = lageJetzt(g.punkt);
-            const m: V3 = [0, 0, 0];
-            for (const q of nb) {
-              const l = lageJetzt(q);
-              m[0] += l[0] / nb.length;
-              m[1] += l[1] / nb.length;
-              m[2] += l[2] / nb.length;
-            }
-            neu.set(g.punkt, [p0[0] + w * (m[0] - p0[0]), p0[1] + w * (m[1] - p0[1]), p0[2] + w * (m[2] - p0[2])]);
-          }
-          for (const [k, v] of neu) lagen.set(k, v);
-        }
+  const bewegen = (ev: PointerEvent) => {
+    letzte = ev;
+    const karte = new Map<number, V3>();
+    for (const [k, v] of basis) karte.set(k, [v[0], v[1], v[2]]);
+    // Pose (B3b): Zuwächse aller getroffenen Punkte beider Hälften, posiert; gespiegelt wird erst in der Ruhe
+    const alle = new Map<number, V3>();
+    const zuPose = (p: number, d: V3) => {
+      const a = alle.get(p) ?? [0, 0, 0];
+      alle.set(p, [a[0] + d[0], a[1] + d[1], a[2] + d[2]]);
+    };
+    // Zuwachs eines Punkts (Welt, unskaliert) in die Karte: rechte Hälfte und Naht direkt, linke gespiegelt beim Partner
+    const zuwachs = (p: number, d: V3) => {
+      const q = rechts(p) ? p : spiegel[p]!;
+      if (q < 0) return;
+      const dd: V3 = rechts(p) ? d : [d[0], d[1], -d[2]];
+      const a = karte.get(q) ?? [0, 0, 0];
+      karte.set(q, [a[0] + dd[0], a[1] + dd[1], a[2] + dd[2]]);
+    };
+    if (ev.shiftKey) {
+      // Glätten: Laplace-Entspannung im Radius, Schritte aus dem Zugweg (bis 12), jeder Schritt auf dem vorigen
+      const schritte = Math.min(12, Math.ceil(Math.hypot(ev.clientX - x0, ev.clientY - y0) / 10));
+      const lagen = new Map<number, V3>();
+      const lageJetzt = (p: number): V3 => lagen.get(p) ?? pos(p);
+      for (let s = 0; s < schritte; s++) {
+        const neu = new Map<number, V3>();
         for (const g of gewichte) {
-          const l = lagen.get(g.punkt);
-          if (!l) continue;
-          const p0 = pos(g.punkt);
-          if (ziel.pose) zuPose(g.punkt, [l[0] - p0[0], l[1] - p0[1], l[2] - p0[2]]);
-          else if (rechts(g.punkt)) zuwachs(g.punkt, [l[0] - p0[0], l[1] - p0[1], l[2] - p0[2]]);
-        }
-      } else if (werkzeug === 'ziehen') {
-        const hit = schnittMitEbene(r.strahlFuer('creation', ev.clientX - rr.left, ev.clientY - rr.top), h.punkt, ebene);
-        if (!hit) return;
-        const D: V3 = [(hit[0] - h.punkt[0]) / sk, (hit[1] - h.punkt[1]) / sk, (hit[2] - h.punkt[2]) / sk];
-        if (ziel.pose) {
-          for (const g of gewichte) if (g.w > 0) zuPose(g.punkt, [g.w * D[0], g.w * D[1], g.w * D[2]]);
-        } else for (const g of gewichte) if (rechts(g.punkt)) zuwachs(g.punkt, [(g.w + g.wSpiegel) * D[0], (g.w + g.wSpiegel) * D[1], (g.w - g.wSpiegel) * D[2]]);
-      } else {
-        const betrag = ((ev.clientX - x0 - (ev.clientY - y0)) / 300) * radius;
-        for (const g of gewichte) {
-          if (ziel.pose) {
-            if (g.w > 0) zuPose(g.punkt, [g.w * betrag * normalen![3 * g.punkt]!, g.w * betrag * normalen![3 * g.punkt + 1]!, g.w * betrag * normalen![3 * g.punkt + 2]!]);
-            continue;
+          const w = Math.max(g.w, g.wSpiegel) * 0.5;
+          const nb = nachbarn[g.punkt]!;
+          if (w <= 0 || !nb.length) continue;
+          const p0 = lageJetzt(g.punkt);
+          const m: V3 = [0, 0, 0];
+          for (const q of nb) {
+            const l = lageJetzt(q);
+            m[0] += l[0] / nb.length;
+            m[1] += l[1] / nb.length;
+            m[2] += l[2] / nb.length;
           }
-          if (!rechts(g.punkt)) continue;
-          const w = (g.w + g.wSpiegel) * betrag;
-          zuwachs(g.punkt, [w * normalen![3 * g.punkt]!, w * normalen![3 * g.punkt + 1]!, w * normalen![3 * g.punkt + 2]!]);
+          neu.set(g.punkt, [p0[0] + w * (m[0] - p0[0]), p0[1] + w * (m[1] - p0[1]), p0[2] + w * (m[2] - p0[2])]);
         }
+        for (const [k, v] of neu) lagen.set(k, v);
       }
-      const s = useEditor.getState();
+      for (const g of gewichte) {
+        const l = lagen.get(g.punkt);
+        if (!l) continue;
+        const p0 = pos(g.punkt);
+        if (ziel.pose) zuPose(g.punkt, [l[0] - p0[0], l[1] - p0[1], l[2] - p0[2]]);
+        else if (rechts(g.punkt)) zuwachs(g.punkt, [l[0] - p0[0], l[1] - p0[1], l[2] - p0[2]]);
+      }
+    } else if (werkzeug === 'ziehen') {
+      const hit = schnittMitEbene(r.strahlFuer('creation', ev.clientX - rr.left, ev.clientY - rr.top), h.punkt, ebene);
+      if (!hit) return;
+      const d: V3 = [(hit[0] - h.punkt[0]) / sk, (hit[1] - h.punkt[1]) / sk, (hit[2] - h.punkt[2]) / sk];
+      // genau: D so verstärkt, dass der Hautpunkt um d wandert (Richtungen, die der gespiegelte Körper nicht kann, bleiben)
+      const g = A ? genauerVersatz(A, d) : null;
+      const D: V3 = g ? g.D : d;
+      if (g && !gemeldet && (g.begrenzt || g.gesperrt) && Math.hypot(...d) > 1e-6) {
+        gemeldet = true;
+        ui.zeigeHinweis(g.gesperrt ? 'Auf der Mittelnaht geht der Punkt nicht zur Seite (Spiegel)' : 'Radius klein gegen den Käfig — der Punkt folgt nur zum Teil (mehr Ringe: Loops)');
+      }
       if (ziel.pose) {
-        poseSchreiben(ziel.pose, alle, n.netz.anker, ziel.baum);
-        return;
+        for (const g of gewichte) if (g.w > 0) zuPose(g.punkt, [g.w * D[0], g.w * D[1], g.w * D[2]]);
+      } else for (const g of gewichte) if (rechts(g.punkt)) zuwachs(g.punkt, [(g.w + g.wSpiegel) * D[0], (g.w + g.wSpiegel) * D[1], (g.w - g.wSpiegel) * D[2]]);
+    } else {
+      const betrag = ((ev.clientX - x0 - (ev.clientY - y0)) / 300) * radius;
+      for (const g of gewichte) {
+        if (ziel.pose) {
+          if (g.w > 0) zuPose(g.punkt, [g.w * betrag * normalen![3 * g.punkt]!, g.w * betrag * normalen![3 * g.punkt + 1]!, g.w * betrag * normalen![3 * g.punkt + 2]!]);
+          continue;
+        }
+        if (!rechts(g.punkt)) continue;
+        const w = (g.w + g.wSpiegel) * betrag;
+        zuwachs(g.punkt, [w * normalen![3 * g.punkt]!, w * normalen![3 * g.punkt + 1]!, w * normalen![3 * g.punkt + 2]!]);
       }
-      const kaefig = s.dok.kaefig ?? { deltas: [] };
-      if (ziel.baum) {
-        // Ruhelage je Punkt (Lage ohne die bisherigen Deltas): nach einem Umbau des Baums trifft das Delta den Punkt dort
-        const ruhe = (p: number): V3 => {
-          const b0 = basis.get(p) ?? [0, 0, 0];
-          return [xyz[3 * p]! - b0[0], xyz[3 * p + 1]! - b0[1], xyz[3 * p + 2]! - b0[2]];
-        };
-        s.setzeDokument({ ...s.dok, kaefig: { ...kaefig, baumDeltas: deltaListe(karte).map((d) => ({ ...d, lage: ruhe(d.punkt) })) } });
-        return;
-      }
-      s.setzeDokument({ ...s.dok, kaefig: { ...kaefig, deltas: deltaListe(karte) } });
-    },
-    () => useEditor.getState().endeGeste(), // Grundform: „Formen folgen“ hängt am Gestenende (kernBau); Pose: Deltas der Pose
-  );
+    }
+    const s = useEditor.getState();
+    if (ziel.pose) {
+      poseSchreiben(ziel.pose, alle, n.netz.anker, ziel.baum);
+      return;
+    }
+    const kaefig = s.dok.kaefig ?? { deltas: [] };
+    if (ziel.baum) {
+      // Ruhelage je Punkt (Lage ohne die bisherigen Deltas): nach einem Umbau des Baums trifft das Delta den Punkt dort
+      const ruhe = (p: number): V3 => {
+        const b0 = basis.get(p) ?? [0, 0, 0];
+        return [xyz[3 * p]! - b0[0], xyz[3 * p + 1]! - b0[1], xyz[3 * p + 2]! - b0[2]];
+      };
+      s.setzeDokument({ ...s.dok, kaefig: { ...kaefig, baumDeltas: deltaListe(karte).map((d) => ({ ...d, lage: ruhe(d.punkt) })) } });
+      return;
+    }
+    s.setzeDokument({ ...s.dok, kaefig: { ...kaefig, deltas: deltaListe(karte) } });
+  };
+  if (werkzeug === 'ziehen' && ui.pinselGenau) {
+    const f = tr.dreieckFlaeche[h.dreieck] ?? -1;
+    const P = n.netz.positionen;
+    const o = 9 * h.dreieck;
+    if (f >= 0 && o + 8 < P.length) {
+      const bary = baryzentrisch(h.punkt, [P[o]!, P[o + 1]!, P[o + 2]!], [P[o + 3]!, P[o + 4]!, P[o + 5]!], [P[o + 6]!, P[o + 7]!, P[o + 8]!]);
+      kernStencil(h.dreieck, f, bary, (st) => {
+        if (!st) {
+          ui.zeigeHinweis('Genauer Zug hier nicht möglich — der Pinsel zieht weich');
+          return;
+        }
+        A = zugVerstaerkung(st, gewichte, ziel.pose);
+        if (laeuft && letzte && !letzte.shiftKey) bewegen(letzte);
+      });
+    } else ui.zeigeHinweis('Genauer Zug auf angesetzten Teilen nicht möglich — der Pinsel zieht weich');
+  }
+  ziehen(e, el, bewegen, () => {
+    laeuft = false;
+    useEditor.getState().endeGeste(); // Grundform: „Formen folgen“ hängt am Gestenende (kernBau); Pose: Deltas der Pose
+  });
   return true;
 }

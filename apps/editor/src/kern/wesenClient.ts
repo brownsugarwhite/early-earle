@@ -2,7 +2,7 @@
 // Während ein Bau läuft, ersetzt jede neue Anfrage die wartende; nach dem Ende startet nur die letzte. Animationsbilder
 // werden nur angefordert, wenn kein Auftrag läuft (sonst verfällt das Bild). Ohne Worker (Tests) wird synchron gebaut.
 
-import { type Bauplan, type PoseMischung, type WesenNetz, type WesenStand, type ZahnMeldung, formenFolgen, wesenAnimieren, wesenBauen } from '@ee/shape/kern';
+import { type Bauplan, type PoseMischung, type Stencil, type WesenNetz, type WesenStand, type ZahnMeldung, formenFolgen, wesenAnimieren, wesenBauen, zugStencil } from '@ee/shape/kern';
 import type { Dokument } from '@ee/shape';
 import type { FolgenAntwort, WorkerAntwort, WorkerAuftrag } from './wesen.worker';
 
@@ -18,7 +18,9 @@ export class WesenClient {
   private naechsterPruefen: { dok: Dokument; plan: Partial<Bauplan>; cb: (m: ZahnMeldung[] | null) => void } | null = null;
   /** B7 „Aus der Vorschau“: wartet hinter Bau, Folgen und Prüfung; nur der neueste */
   private naechsterMischen: { dok: Dokument; plan: Partial<Bauplan>; cb: (m: PoseMischung | null) => void } | null = null;
-  private laufend: { cb: (n: WesenNetz) => void } | { animation: (b: Bild | null) => void } | { folgen: (r: FolgenAntwort | null) => void } | { pruefen: (m: ZahnMeldung[] | null) => void } | { mischen: (m: PoseMischung | null) => void } | null = null;
+  /** Genauer Zug: Stencil des Treffers (klein, vor allen anderen Aufträgen); nur der neueste */
+  private naechsterStencil: { dreieck: number; flaeche: number; bary: [number, number, number]; cb: (s: Stencil | null) => void } | null = null;
+  private laufend: { cb: (n: WesenNetz) => void } | { animation: (b: Bild | null) => void } | { folgen: (r: FolgenAntwort | null) => void } | { pruefen: (m: ZahnMeldung[] | null) => void } | { mischen: (m: PoseMischung | null) => void } | { stencil: (s: Stencil | null) => void } | null = null;
   private id = 0;
   /** ohne Worker: Stand im Hauptthread */
   private stand: WesenStand | null = null;
@@ -38,7 +40,9 @@ export class WesenClient {
           if (lauf && 'folgen' in lauf) lauf.folgen(null);
           if (lauf && 'pruefen' in lauf) lauf.pruefen(null);
           if (lauf && 'mischen' in lauf) lauf.mischen(null);
+          if (lauf && 'stencil' in lauf) lauf.stencil(null);
         } else if (m.typ === 'netz' && lauf && 'cb' in lauf) lauf.cb(m.netz);
+        else if (m.typ === 'stencil' && lauf && 'stencil' in lauf) lauf.stencil(m.stencil);
         else if (m.typ === 'mischung' && lauf && 'mischen' in lauf) lauf.mischen(m.mischung);
         else if (m.typ === 'animation' && lauf && 'animation' in lauf) lauf.animation(m.a);
         else if (m.typ === 'folgen' && lauf && 'folgen' in lauf) lauf.folgen(m.ergebnis);
@@ -50,6 +54,7 @@ export class WesenClient {
         if (this.laufend && 'folgen' in this.laufend) this.laufend.folgen(null);
         if (this.laufend && 'pruefen' in this.laufend) this.laufend.pruefen(null);
         if (this.laufend && 'mischen' in this.laufend) this.laufend.mischen(null);
+        if (this.laufend && 'stencil' in this.laufend) this.laufend.stencil(null);
         this.laufend = null;
         this.busy = false;
         this.pumpen();
@@ -128,6 +133,20 @@ export class WesenClient {
     this.pumpen();
   }
 
+  /**
+   * Genauer Zug (Plan 2026-10-20): Hautpunkt im gezeigten Körperdreieck als Mischung der Käfigpunkte; null, wenn der Stand
+   * nicht zum gezeigten Netz passt oder der Körper keine Grundlage hat. Läuft vor allen wartenden Aufträgen.
+   */
+  stencil(dreieck: number, flaeche: number, bary: [number, number, number], cb: (s: Stencil | null) => void): void {
+    if (!this.worker) {
+      cb(zugStencil(this.stand, dreieck, flaeche, bary));
+      return;
+    }
+    this.naechsterStencil?.cb(null);
+    this.naechsterStencil = { dreieck, flaeche, bary, cb };
+    this.pumpen();
+  }
+
   /** Klingen für die Zeit t; false, wenn gerade ein Auftrag läuft (Bild verfällt). */
   animieren(zeit: number, cb: (b: Bild | null) => void): boolean {
     if (!this.worker) {
@@ -148,6 +167,15 @@ export class WesenClient {
 
   private pumpen(): void {
     if (this.busy || !this.worker) return;
+    if (this.naechsterStencil) {
+      const job = this.naechsterStencil;
+      this.naechsterStencil = null;
+      this.busy = true;
+      this.laufend = { stencil: job.cb };
+      const auftrag: WorkerAuftrag = { id: ++this.id, typ: 'stencil', dreieck: job.dreieck, flaeche: job.flaeche, bary: job.bary };
+      this.worker.postMessage(auftrag);
+      return;
+    }
     if (this.naechster) {
       const job = this.naechster;
       this.naechster = null;
@@ -192,6 +220,7 @@ export class WesenClient {
     this.naechsterFolgen = null;
     this.naechsterPruefen = null;
     this.naechsterMischen = null;
+    this.naechsterStencil = null;
     this.laufend = null;
   }
 }

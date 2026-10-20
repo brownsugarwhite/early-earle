@@ -153,6 +153,12 @@ type UiState = {
   /** Pinsel (M3): Radius als Anteil der Körperhöhe (F bzw. [ ]) */
   pinselRadius: number;
   setzePinselRadius(r: number): void;
+  /**
+   * Genauer Zug (Plan 2026-10-20): Ziehen verstärkt den Pinsel so, dass der gegriffene Hautpunkt genau unter dem Zeiger
+   * bleibt (Radius und Abfall wie weich); aus = heutiger weicher Zug. Gilt für Grundform und Posen, Röhre und Teile.
+   */
+  pinselGenau: boolean;
+  setzePinselGenau(an: boolean): void;
   /** gewählte Punkte je 2D-Viewport (wie in der Vorlage: jede Ansicht zeigt ihre Griffe) */
   auswahl: Record<Ansicht, number[]>;
   /** zuletzt bearbeitete Ansicht (für Entf, wenn die Maus nicht über einem 2D-Viewport ist) */
@@ -282,6 +288,10 @@ export const useUi = create<UiState>((set, get) => ({
   pinselRadius: 0.25,
   setzePinselRadius(r) {
     set({ pinselRadius: Math.min(1, Math.max(0.03, r)) });
+  },
+  pinselGenau: new URLSearchParams(globalThis.location?.search ?? '').get('genau') === '1',
+  setzePinselGenau(pinselGenau) {
+    set({ pinselGenau });
   },
   auswahl: { seite: [], front: [], top: [] },
   aktiv: null,

@@ -869,10 +869,17 @@ export function Seitenleiste() {
 /** Tafel „Körper“: Pinsel-Radius (G ziehen, I aufblasen, ⇧ glätten, [ ] Radius). */
 function PinselFeld() {
   const radius = useUi((s) => s.pinselRadius);
+  const genau = useUi((s) => s.pinselGenau);
   return (
     <>
       <Regler label="Pinsel" wert={radius} min={0.03} max={1} schritt={0.01} anzeige={`${Math.round(radius * 100)} % der Höhe`} onChange={(v) => useUi.getState().setzePinselRadius(v)} />
-      <p className="hilfe">Auf der Bühne: G zieht den Käfig weich (gespiegelt), I bläst auf, ⇧ dabei glättet, [ und ] ändern den Radius. ⌃R setzt einen Reifen am Zeiger. Nach jedem Strich folgen die Umrisse der Blätter der neuen Form (Knoten und Ecken bleiben; Δ zeigt den Rest).</p>
+      {/* Genauer Zug (Plan 2026-10-20): Der gegriffene Hautpunkt bleibt genau unter dem Zeiger; weich = wie bisher */}
+      <div className="feld">
+        <span>Ziehen</span>
+        <b>{genau ? 'genau (Punkt unter dem Zeiger)' : 'weich'}</b>
+      </div>
+      <Chips werte={['weich', 'genau'] as const} aktiv={genau ? 'genau' : 'weich'} attribut="pinsel-genau" onWahl={(w) => useUi.getState().setzePinselGenau(w === 'genau')} />
+      <p className="hilfe">Auf der Bühne: G zieht den Käfig weich (gespiegelt), I bläst auf, ⇧ dabei glättet, [ und ] ändern den Radius. Mit „genau“ bleibt der gegriffene Punkt der Haut unter dem Zeiger (gleicher Radius, nur die Stärke stimmt); kleiner als der Käfig erlaubt wird die Beule nicht. ⌃R setzt einen Reifen am Zeiger. Nach jedem Strich folgen die Umrisse der Blätter der neuen Form (Knoten und Ecken bleiben; Δ zeigt den Rest).</p>
     </>
   );
 }

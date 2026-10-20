@@ -1,12 +1,12 @@
 // Phase 1 / M1: Wesen-Bau im Worker. Hält den letzten Stand (Ableitung, Klingen) und beantwortet „bauen“ (Netz mit
 // übertragbaren Puffern) und „animieren“ (Klingen für eine Zeit). Der Hauptthread schickt nur Dokument und Bauplan.
 
-import { type Bauplan, type FolgenErgebnis, type PoseMischung, type WesenStand, type ZahnMeldung, formenFolgen, netzPuffer, wesenAnimieren, wesenBauen } from '@ee/shape/kern';
+import { type Bauplan, type FolgenErgebnis, type PoseMischung, type Stencil, type WesenStand, type ZahnMeldung, formenFolgen, netzPuffer, wesenAnimieren, wesenBauen, zugStencil } from '@ee/shape/kern';
 import type { Dokument } from '@ee/shape';
 
 export type FolgenAntwort = Omit<FolgenErgebnis, 'stand'>;
-export type WorkerAuftrag = { id: number; typ: 'bauen'; dok: Dokument; plan: Partial<Bauplan>; schnell: boolean } | { id: number; typ: 'animieren'; zeit: number } | { id: number; typ: 'folgen'; dok: Dokument; plan: Partial<Bauplan> } | { id: number; typ: 'pruefen'; dok: Dokument; plan: Partial<Bauplan> } | { id: number; typ: 'mischen'; dok: Dokument; plan: Partial<Bauplan> };
-export type WorkerAntwort = { id: number; typ: 'netz'; netz: ReturnType<typeof wesenBauen>['netz'] } | { id: number; typ: 'animation'; a: { positionen: Float32Array; normalen: Float32Array } | null } | { id: number; typ: 'folgen'; ergebnis: FolgenAntwort } | { id: number; typ: 'pruefung'; meldungen: ZahnMeldung[] } | { id: number; typ: 'mischung'; mischung: PoseMischung | null } | { id: number; typ: 'fehler'; fehler: string };
+export type WorkerAuftrag = { id: number; typ: 'bauen'; dok: Dokument; plan: Partial<Bauplan>; schnell: boolean } | { id: number; typ: 'animieren'; zeit: number } | { id: number; typ: 'folgen'; dok: Dokument; plan: Partial<Bauplan> } | { id: number; typ: 'pruefen'; dok: Dokument; plan: Partial<Bauplan> } | { id: number; typ: 'mischen'; dok: Dokument; plan: Partial<Bauplan> } | { id: number; typ: 'stencil'; dreieck: number; flaeche: number; bary: [number, number, number] };
+export type WorkerAntwort = { id: number; typ: 'netz'; netz: ReturnType<typeof wesenBauen>['netz'] } | { id: number; typ: 'animation'; a: { positionen: Float32Array; normalen: Float32Array } | null } | { id: number; typ: 'folgen'; ergebnis: FolgenAntwort } | { id: number; typ: 'pruefung'; meldungen: ZahnMeldung[] } | { id: number; typ: 'mischung'; mischung: PoseMischung | null } | { id: number; typ: 'stencil'; stencil: Stencil | null } | { id: number; typ: 'fehler'; fehler: string };
 
 let stand: WesenStand | null = null;
 
@@ -35,6 +35,10 @@ self.onmessage = (e: MessageEvent<WorkerAuftrag>) => {
       const r = wesenBauen(m.dok, { ...m.plan, mischung: true }, stand, false);
       stand = r.stand;
       const antwort: WorkerAntwort = { id: m.id, typ: 'mischung', mischung: r.netz.mischung };
+      (self as unknown as Worker).postMessage(antwort);
+    } else if (m.typ === 'stencil') {
+      // Genauer Zug (Plan 2026-10-20): Hautpunkt unter dem Zeiger als Mischung der Käfigpunkte, aus dem gemerkten Stand
+      const antwort: WorkerAntwort = { id: m.id, typ: 'stencil', stencil: zugStencil(stand, m.dreieck, m.flaeche, m.bary) };
       (self as unknown as Worker).postMessage(antwort);
     } else {
       const a = wesenAnimieren(stand, m.zeit);

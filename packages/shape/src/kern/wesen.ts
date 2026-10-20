@@ -27,6 +27,7 @@ import { type BaumAbleitung, baumAbleiten, baumDreiecke } from './grundkoerper/b
 import { linienExakt } from './netz/linienExakt';
 import { baumDeskriptoren } from './grundkoerper/baumDeskriptoren';
 import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
+import { type Stencil, type ZugGrundlage, flaecheVonDreieck, trefferStencil } from './genauerZug';
 import { type DuennMatrix, anwenden3 } from '../subdivision/matrix';
 import { pfadAbtasten, vollerPfad } from '../profil';
 import { spantKasten, spantTeilProfil, vorlageBei } from '../spanten';
@@ -324,6 +325,12 @@ export type WesenStand = {
   blatt?: WesenInfo['blatt'];
   /** B7: zuletzt gerechnete Zusatz-Umrisse mit ihrem Schlüssel (Körper, Pinsel, Posen, Anfrage) */
   umrisse?: { schluessel: string; liste: ZusatzUmriss[] };
+  /**
+   * Genauer Zug (Plan 2026-10-20): Grenzmatrix und feine Flächen des zuletzt gebauten Körpers (Röhre, Maul, Beine, S8a,
+   * Baum) — der Editor fragt damit den Hautpunkt unter dem Zeiger als Mischung der Käfigpunkte ab. Fehlt mit Augapfel-Höhle
+   * oder offenem Rundmaul (deren Haut ist kein Bild der Grenzmatrix).
+   */
+  zugGrundlage?: ZugGrundlage;
   /**
    * B7: Werte der Ruhelage, die nicht an den Gewichten hängen (Naht, Δ je Blatt, Lippenabweichung, Ruhe je Ecke) — ein
    * reiner Gewichtswechsel (Vorschau, Überblenden, Abspielen) rechnet sie nicht neu
@@ -959,6 +966,8 @@ type BaumKoerperNetz = Pick<WesenNetz, 'positionen' | 'normalen' | 'deskriptoren
   /** S7.3: Treffer und Pinsel auf dem Baum — Kachelung der feinen Flächen, Käfigflächen, Spiegelpartner je Käfigpunkt */
   kach: AtlasKachelung;
   topo: { n: number; fStart: Uint32Array; fVerts: Uint32Array };
+  /** Käfigkanten (Punktpaare) und ob sie scharf sind — für den Chip „Käfig“ (Plan „Genauer Zug“, 20.10.) */
+  kanten: { a: Uint32Array; b: Uint32Array; scharf: Uint8Array };
   spiegel: Int32Array;
   /** größter Widerspruch der Zeichnungen je Blatt (aus dem genauen Bau) */
   blattWiderspruch?: Record<'seite' | 'front' | 'top', number>;
@@ -1102,8 +1111,24 @@ function baumKoerper(dok: Dokument, plan: Bauplan): BaumKoerperNetz | { fehler: 
     zug: { dok, xyz: b.kaefig.xyz, grenze: b.unterteilung.grenze, flaechen },
     kach,
     topo: { n: b.kaefig.n, fStart: Uint32Array.from(b.kaefig.fStart), fVerts: Uint32Array.from(b.kaefig.fVerts) },
+    kanten: { a: Uint32Array.from(b.kaefig.eA), b: Uint32Array.from(b.kaefig.eB), scharf: Uint8Array.from(b.kaefig.eSchaerfe, (x) => (x > 0 ? 1 : 0)) },
     spiegel: Int32Array.from(b.bk.spiegel),
   };
+}
+
+/** Käfig als Linien (Chip „Käfig“) auf dem Baum: scharfe Kanten dunkel, sonst grau wie auf der Röhre. */
+function baumKaefigSegmente(bn: BaumKoerperNetz, xyz: Float64Array): { punkte: Float32Array; farben: Float32Array } {
+  const { a, b, scharf } = bn.kanten;
+  const punkte = new Float32Array(6 * a.length);
+  const farben = new Float32Array(6 * a.length);
+  for (let e = 0; e < a.length; e++) {
+    const i = a[e]!;
+    const j = b[e]!;
+    punkte.set([xyz[3 * i]!, xyz[3 * i + 1]!, xyz[3 * i + 2]!, xyz[3 * j]!, xyz[3 * j + 1]!, xyz[3 * j + 2]!], 6 * e);
+    const farbe = scharf[e] ? [0.1, 0.1, 0.1] : [0.5, 0.52, 0.55];
+    farben.set([...farbe, ...farbe], 6 * e);
+  }
+  return { punkte, farben };
 }
 
 /** S7.3: Trefferdaten des Baum-Körpers (Dreiecke im Fächer je feiner Fläche wie `zuDreiecken`, Kachelung, Käfig). */
@@ -1385,14 +1410,16 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
         top: { ...bn.blatt.top, ...(wid ? { widerspruch: wid.top } : {}) },
       };
       const stilB = plan.stil;
+      // Chip „Käfig“ auch auf dem Baum: Kanten des Käfigs, den das Netz zeigt (gelöst bzw. im Zug verformt, mit Pinsel und Pose)
+      const linienB = plan.kaefigLinien ? baumKaefigSegmente(bn, kaefigNetz) : null;
       const netzB: WesenNetz = {
         positionen: bn.positionen.slice(),
         normalen: bn.normalen.slice(),
         deskriptoren: stilB === 'feuer' || stilB === 'gas' ? null : bn.deskriptoren ? bn.deskriptoren.slice() : null,
         hoehe: bn.hoehe,
         augen: augenB,
-        kaefigLinien: null,
-        kaefigFarben: null,
+        kaefigLinien: linienB ? linienB.punkte : null,
+        kaefigFarben: linienB ? linienB.farben : null,
         lippenBand: 0,
         stil: stilB,
         mitte: bn.mitte,
@@ -1434,7 +1461,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
           stationen: abl.gefroren && teileB ? { ...abl.gefroren, teile: teileB.gefroren } : abl.gefroren,
         },
       };
-      return { netz: netzB, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen: null, ...(widerspruchB ? { widerspruch: widerspruchB } : {}), ...(teileB ? { teile: teileB } : {}), ...(baumStand ? { baum: baumStand } : {}) } };
+      return { netz: netzB, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen: null, ...(widerspruchB ? { widerspruch: widerspruchB } : {}), ...(teileB ? { teile: teileB } : {}), ...(baumStand ? { baum: baumStand } : {}), zugGrundlage: { grenze: bn.zug.grenze, flaechen: bn.zug.flaechen } } };
     }
   } else baumStand = undefined;
   // Rundmaul (Phase 2 M6): nur ohne Schlitzmaul und Beine; die Haut um die Spitze dehnt sich mit der Öffnung
@@ -1524,6 +1551,11 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
   const koerperFein = hoehle ? hoehlenFein(hoehle.topo, hoehlenLagen(hoehle.topo, xyz, hoehle.augen)) : null;
   const koerperPunkte = koerperFein ? punkteVon(koerperFein) : punkte;
   const koerperFlaechen = hoehle ? hoehle.topo.feinFlaechen : flaechen;
+  // Genauer Zug: die Haut ist ein Bild der Grenzmatrix (ohne Höhle; das offene Rundmaul läuft ebenfalls über die Höhle).
+  // Die Matrix der Ableitung ohne S8a-Linien: Während eines Strichs baut der Editor schnell, ohne die genau eingepassten
+  // Kanten — der Stencil muss zu dem Netz passen, das sich beim Ziehen bewegt (gleiche Topologie, nur die Schärfen fehlen)
+  const grenzeZug = ablRein && ablRein.unterteilung.grenze.zeilen === abl.unterteilung.grenze.zeilen ? ablRein.unterteilung.grenze : abl.unterteilung.grenze;
+  const zugGrundlage: ZugGrundlage | null = hoehle ? null : { grenze: grenzeZug, flaechen };
   const t0 = zuDreiecken({ punkte: koerperPunkte, flaechen: koerperFlaechen, schaerfe: new Map() }, 40);
   // angesteckte Beine: eigene feine Netze anhängen (Deskriptoren der Hüfte)
   let t = t0;
@@ -1931,7 +1963,18 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     umweg,
     info,
   };
-  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(randMarken ? { randMarken } : {}), ...(netz3 ? { netzSicht: netz3 } : {}), ...(teile ? { teile } : {}), ...(geistStand ? { geist: geistStand } : {}), ...(baumStand ? { baum: baumStand } : {}), ...(linienStand ? { linien: linienStand } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
+  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(randMarken ? { randMarken } : {}), ...(netz3 ? { netzSicht: netz3 } : {}), ...(teile ? { teile } : {}), ...(geistStand ? { geist: geistStand } : {}), ...(baumStand ? { baum: baumStand } : {}), ...(linienStand ? { linien: linienStand } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}), ...(zugGrundlage ? { zugGrundlage } : {}) } };
+}
+
+/**
+ * Genauer Zug: der Hautpunkt im Körperdreieck `dreieck` (feine Fläche `flaeche` laut Trefferdaten des gezeigten Netzes, mit
+ * baryzentrischen Gewichten) als Mischung der Käfigpunkte, aus dem gemerkten Stand. null, wenn der Stand nicht zum gezeigten
+ * Netz passt (die Fläche des Dreiecks stimmt nicht) oder der Körper keine Grundlage hat (Höhle, offenes Rundmaul).
+ */
+export function zugStencil(stand: WesenStand | null, dreieck: number, flaeche: number, bary: [number, number, number]): Stencil | null {
+  const g = stand?.zugGrundlage;
+  if (!g || flaeche < 0 || flaecheVonDreieck(g, dreieck) !== flaeche) return null;
+  return trefferStencil(g, dreieck, bary);
 }
 
 /** Puffer eines Netzes (zum Übertragen aus dem Worker). */

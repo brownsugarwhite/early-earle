@@ -3,7 +3,7 @@
 // „neuester Auftrag gewinnt“); hier entsteht aus Dokument und Anzeige-Zustand nur der Bauplan.
 
 import type { Dokument } from '@ee/shape';
-import { type BeinArt, type Bauplan, type MaulArt, type MaulLinie, type PoseMischung, type StilArt, type WesenInfo, type WesenNetz, type ZahnMeldung, maulLinieAusDokument, pruefwesenBauplan } from '@ee/shape/kern';
+import { type BeinArt, type Bauplan, type MaulArt, type MaulLinie, type PoseMischung, type Stencil, type StilArt, type WesenInfo, type WesenNetz, type ZahnMeldung, maulLinieAusDokument, pruefwesenBauplan } from '@ee/shape/kern';
 import { create } from 'zustand';
 import { poseTitel, setzeGesteEndeHaken, useEditor, vorschauBeenden, vorschauLaeuft } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
@@ -287,6 +287,11 @@ setzeGesteEndeHaken((start, jetzt, abschliessen) => {
   kernFolgen(abschliessen);
   return true;
 });
+
+/** Genauer Zug (Plan 2026-10-20): Stencil des Hautpunkts im gezeigten Körperdreieck (Worker-Stand des letzten Baus). */
+export function kernStencil(dreieck: number, flaeche: number, bary: [number, number, number], cb: (s: Stencil | null) => void): void {
+  derClient().stencil(dreieck, flaeche, bary, cb);
+}
 
 /** Animation (Beweis 5): Klingen für die Zeit t; false, wenn der Worker beschäftigt ist. */
 export function kernAnimieren(zeit: number, cb: (a: { positionen: Float32Array; normalen: Float32Array } | null) => void): boolean {

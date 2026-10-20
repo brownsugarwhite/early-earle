@@ -62,3 +62,43 @@ Die Haut ist linear im Käfig (feine Lagen = Grenzmatrix · Käfig). Daraus:
 ## Stand
 
 - 20.10.: Plan ins Repo.
+- **20.10. Kern gebaut** (`packages/shape/src/kern/genauerZug.ts`, Test `genauerZug.test.ts`; Stand merkt `zugGrundlage`
+  in `kern/wesen.ts`, Röhre und Baum; ohne Grundlage mit Augapfel-Höhle und offenem Rundmaul):
+  - Stencil des Treffers gibt den Hautpunkt aus den Käfiglagen wieder (< 0,01 px), Summe der Gewichte 1, typisch
+    16–40 Käfigpunkte; ein veralteter Stand (falsche Fläche) liefert keinen.
+  - **Kugel, Zug wie im Editor** (Gewichte auf den Käfiglagen der Trefferdaten, Deltas der rechten Hälfte, gespiegelt
+    angewendet; Treffer seitlich rechts auf halber Höhe, Zug 14–18 px):
+
+    | Radius (Anteil der Höhe) | weich: Hautpunkt folgt | weich: Rest | genau: Rest | außerhalb des Radius weich / genau |
+    |---|---|---|---|---|
+    | 5 % | 39 % | 8,5–11,3 px | 0,000 px | 5,0–6,6 / 12,8–17,1 px |
+    | 10 % | 57 % | 5,9–7,9 px | 0,000 px | 5,8–7,7 / 10,0–13,4 px |
+    | 25 % (Standard) | 71 % | 4,1–5,4 px | 0,000 px | 2,1–2,7 / 2,9–3,9 px |
+    | 50 % | 91 % | 1,3–1,8 px | 0,000 px | 0,8–1,1 / 0,9–1,2 px |
+
+    Gleich für Züge in x, y und z. Weiter als Radius + 0,45 Höhen bleibt die Haut bei beiden bitgleich.
+  - **Ente** (Körper aus Teilen, Brust, Radius 15 %): weich 9,0 px Rest, genau 0,000 px (Verstärkung 3,2).
+  - **Naht:** Ein Treffer auf der Mittelebene bleibt in ihr (z gesperrt, Hinweis), x/y genau.
+  - **Pose** (Drehung je Punkt, auch schief): Die 3 × 3-Verstärkung stimmt mit dem Weg des Editors (Rückdrehen, Spiegeln
+    in der Ruhe, Posieren) auf 1e-9 überein; ein Ziel wird genau getroffen. Geprüft algebraisch, nicht mit Kieferknochen im
+    Editor.
+  - **Ehrlicher Befund (Tor „außerhalb des Radius“):** Die Haut bewegt sich auch außerhalb des Pinselradius — schon heute
+    beim weichen Pinsel, beim genauen um die Verstärkung mehr. Ursache ist der Käfig: Ein Käfigpunkt bewegt die Haut bis zu
+    zwei Käfigkanten weit, auf der Startkugel sind das ≈ 0,4 Höhen. Kleiner als das wird eine Beule nicht, egal wie klein der
+    Pinsel ist. Mein Satz vom 17.10. („außerhalb des Radius ≤ 0,5 px“) gilt so nicht; er gilt erst, wenn der Käfig dort
+    feiner ist (mehr Ringe, ⌘R-Loops aus V6). Gemessen und verworfen: eine Verteilung nach kleinster Norm (hält die Haut
+    außerhalb bei großem Radius ruhig, macht aber immer dieselbe kleine Beule und ignoriert den Radius).
+- **20.10. Editor gebaut:**
+  - Tafel Körper/Posen → Pinsel → Ziehen „weich | genau“ (`ui.pinselGenau`, Adresse `?genau=1`; Standard weich =
+    bitgleich wie vorher).
+  - Beim Druck fragt der Pinsel den Worker einmal nach dem Stencil (`kernStencil` → `WesenClient.stencil`, Nachricht
+    `stencil`, läuft vor allen wartenden Aufträgen); bis die Antwort da ist, zieht er weich, danach rechnet der letzte Zug
+    genau nach.
+  - Der Stencil nimmt die Matrix ohne S8a-Kanten, weil der Editor während eines Strichs schnell und ohne die eingepassten
+    Kanten baut.
+  - Grundform (Röhre und Teile) und Posen (Verstärkung mit den Drehungen je Punkt). Hinweise statt stiller Fehler:
+    angesetzte Teile/Höhle („zieht weich“), Mittelnaht („geht nicht zur Seite“), zu kleiner Radius („folgt nur zum Teil“).
+  - Chip „Käfig“ zeigt jetzt auch auf dem Körper aus Teilen die Käfigkanten (`BaumKoerperNetz.kanten`,
+    `baumKaefigSegmente`).
+  - Prüfung `apps/editor/scripts/pruefen/genauer-zug.mjs` (echte Mauszüge auf eigenem Vite, Abstand Hautpunkt → Zeiger in
+    Feldpixeln der Bühne, vor und nach „Formen folgen“, Bilder mit Marken und Käfig).
