@@ -4,8 +4,8 @@
 import { describe, expect, it } from 'vitest';
 import { type Dokument, type KaefigDelta, neuesDokument } from '../dokument';
 import { type Bauplan, type WesenNetz, type WesenStand, wesenBauen, zugStencil } from './wesen';
-import { type Stencil, baryzentrisch, genauerVersatz, poseWirkung, spiegelWirkung, stencilLage, verstaerkung } from './genauerZug';
-import { deltaListe, pinselGewichte } from './pinsel';
+import { type Stencil, baryzentrisch, genauerVersatz, poseWirkung, spiegelWirkung, stencilGewichte, stencilLage, verstaerkung, verstaerkungTraegt, zugGrenze } from './genauerZug';
+import { deltaListe, pinselGewichte, spiegelIndex } from './pinsel';
 import { enteDokument } from './pruefen/grundkoerper';
 
 declare const console: { log: (...a: unknown[]) => void };
@@ -42,7 +42,7 @@ function punktIn(netz: WesenNetz, dreieck: number, bary: readonly number[]): V3 
   return [0, 1, 2].map((k) => bary[0]! * p[o + k]! + bary[1]! * p[o + 3 + k]! + bary[2]! * p[o + 6 + k]!) as V3;
 }
 
-type Zug = { bewegung: V3; fehlerPx: number; ausserhalbPx: number; unberuehrtMax: number; gesperrt: boolean; begrenzt: boolean; verstaerkung: number };
+type Zug = { bewegung: V3; fehlerPx: number; ausserhalbPx: number; unberuehrtMax: number; gesperrt: boolean; begrenzt: boolean; verstaerkung: number; stencilPinsel: boolean; kaefigFaktor: number };
 
 /**
  * Ein Pinselstrich „Ziehen“ wie im Editor (`pinselZeiger`, Grundform): Gewichte um den Treffer und sein Spiegelbild auf den
@@ -58,7 +58,8 @@ function strich(dok: Dokument, plan: Partial<Bauplan>, vorher: { netz: WesenNetz
   const xyz = tr.kaefig.xyz;
   const nMax = baum ? tr.kaefig.n : Math.min(tr.vorlage.n, tr.kaefig.n);
   const radius = radiusAnteil * netz.hoehe;
-  const gewichte = pinselGewichte(xyz, nMax, punkt, radius);
+  let gewichte = pinselGewichte(xyz, nMax, punkt, radius);
+  let stencilPinsel = false;
   let D: V3 = [...d];
   let gesperrt = false;
   let begrenzt = false;
@@ -69,12 +70,23 @@ function strich(dok: Dokument, plan: Partial<Bauplan>, vorher: { netz: WesenNetz
     // der Stencil gibt den Treffer aus den Käfiglagen wieder (Float32 der Trefferdaten)
     const q = stencilLage(st!, xyz);
     expect(Math.hypot(q[0] - punkt[0], q[1] - punkt[1], q[2] - punkt[2]) * PX).toBeLessThan(0.01);
-    const w = new Map(gewichte.map((g) => [g.punkt, g] as const));
-    const A = verstaerkung(st!, (i) => {
-      const g = w.get(i);
-      return g ? spiegelWirkung(g.w, g.wSpiegel) : null;
-    });
-    const v = genauerVersatz(A, d);
+    const mitGewichten = (liste: typeof gewichte) => {
+      const w = new Map(liste.map((g) => [g.punkt, g] as const));
+      return verstaerkung(st!, (i) => {
+        const g = w.get(i);
+        return g ? spiegelWirkung(g.w, g.wSpiegel) : null;
+      });
+    };
+    let A = mitGewichten(gewichte);
+    let grenze = zugGrenze(gewichte);
+    if (!gewichte.length || !verstaerkungTraegt(A, { grenze })) {
+      // wie im Editor: Radius kleiner als der Käfig → der Stencil selbst als Pinsel
+      gewichte = stencilGewichte(st!, spiegelIndex(xyz, nMax), nMax);
+      grenze = zugGrenze(gewichte);
+      A = mitGewichten(gewichte);
+      stencilPinsel = true;
+    }
+    const v = genauerVersatz(A, d, { grenze });
     D = v.D;
     gesperrt = v.gesperrt;
     begrenzt = v.begrenzt;
@@ -84,6 +96,9 @@ function strich(dok: Dokument, plan: Partial<Bauplan>, vorher: { netz: WesenNetz
   const rechts = (p: number) => xyz[3 * p + 2]! >= -1e-9;
   for (const g of gewichte) if (rechts(g.punkt)) karte.set(g.punkt, [(g.w + g.wSpiegel) * D[0], (g.w + g.wSpiegel) * D[1], (g.w - g.wSpiegel) * D[2]]);
   const liste = deltaListe(karte);
+  // größter Käfigzug je Zeigerweg (die Grenze erlaubt höchstens das 4-Fache)
+  let kaefigMax = 0;
+  for (const x of liste) kaefigMax = Math.max(kaefigMax, Math.hypot(...x.d));
   const deltas: KaefigDelta[] = baum ? liste.map((x) => ({ ...x, lage: [xyz[3 * x.punkt]!, xyz[3 * x.punkt + 1]!, xyz[3 * x.punkt + 2]!] as V3 })) : liste;
   const mit = wesenBauen({ ...dok, kaefig: { ...(dok.kaefig ?? { deltas: [] }), ...(baum ? { baumDeltas: deltas } : { deltas }) } }, plan, stand);
   const neu = punktIn(mit.netz, dreieck, bary);
@@ -101,7 +116,7 @@ function strich(dok: Dokument, plan: Partial<Bauplan>, vorher: { netz: WesenNetz
     if (Math.min(a, as) > radius) ausserhalb = Math.max(ausserhalb, dd);
     if (Math.min(a, as) > radius + kante) unberuehrt = Math.max(unberuehrt, dd);
   }
-  return { bewegung, fehlerPx, ausserhalbPx: ausserhalb * PX, unberuehrtMax: unberuehrt * PX, gesperrt, begrenzt, verstaerkung: verstaerkungX };
+  return { bewegung, fehlerPx, ausserhalbPx: ausserhalb * PX, unberuehrtMax: unberuehrt * PX, gesperrt, begrenzt, verstaerkung: verstaerkungX, stencilPinsel, kaefigFaktor: kaefigMax / Math.hypot(...d) };
 }
 
 describe('Genauer Zug', () => {
@@ -135,8 +150,10 @@ describe('Genauer Zug', () => {
         const weich = strich(kugel, plan, vorher, ziel, d, r, false);
         const genau = strich(kugel, plan, vorher, ziel, d, r, true);
         const betrag = Math.hypot(...d);
-        zeilen.push(`r ${r} d ${d.join('/')}: weich folgt ${((Math.hypot(...weich.bewegung) / betrag) * 100).toFixed(0)} % (Fehler ${weich.fehlerPx.toFixed(2)} px), genau ${genau.fehlerPx.toFixed(3)} px${genau.begrenzt ? ' begrenzt' : ''}; außerhalb des Radius weich ${weich.ausserhalbPx.toFixed(2)} / genau ${genau.ausserhalbPx.toFixed(2)} px`);
-        if (!genau.begrenzt) expect(genau.fehlerPx).toBeLessThan(0.1);
+        zeilen.push(`r ${r} d ${d.join('/')}: weich folgt ${((Math.hypot(...weich.bewegung) / betrag) * 100).toFixed(0)} % (Fehler ${weich.fehlerPx.toFixed(2)} px), genau ${genau.fehlerPx.toFixed(3)} px${genau.stencilPinsel ? ' (Stencil-Pinsel)' : ''}, Käfig ${genau.kaefigFaktor.toFixed(2)}× Zug${genau.begrenzt ? ' begrenzt' : ''}; außerhalb des Radius weich ${weich.ausserhalbPx.toFixed(2)} / genau ${genau.ausserhalbPx.toFixed(2)} px`);
+        expect(genau.begrenzt).toBe(false);
+        expect(genau.fehlerPx).toBeLessThan(0.1);
+        expect(genau.kaefigFaktor).toBeLessThanOrEqual(4 + 1e-9);
         expect(genau.fehlerPx).toBeLessThanOrEqual(weich.fehlerPx + 1e-9);
         // weit weg bleibt die Haut bitgleich (Käfigpunkte außerhalb des Radius bewegen sich nicht)
         expect(genau.unberuehrtMax).toBe(0);
@@ -144,6 +161,21 @@ describe('Genauer Zug', () => {
       }
     }
     console.log(zeilen.join('\n'));
+  });
+
+  it('Kleine Radien: 3 % trifft genau mit höchstens 4-fachem Käfigzug; ohne Käfigpunkt im Radius (0,5 %) wird der Stencil der Pinsel', () => {
+    for (const r of [0.03, 0.005]) {
+      const g = strich(kugel, plan, vorher, ziel, [0.02, 0.03, 0], r, true);
+      console.log(`Radius ${r * 100} %: ${g.stencilPinsel ? 'Stencil-Pinsel' : 'Abfall'}, Rest ${g.fehlerPx.toFixed(3)} px, Käfig ${g.kaefigFaktor.toFixed(2)}× Zug, außerhalb des Radius ${g.ausserhalbPx.toFixed(1)} px`);
+      expect(g.begrenzt).toBe(false);
+      expect(g.fehlerPx).toBeLessThan(0.1);
+      expect(g.kaefigFaktor).toBeLessThanOrEqual(4 + 1e-9);
+      // weit weg (Radius + 0,45 Höhen) bitgleich; der Stencil-Pinsel greift Käfigpunkte bis zwei Käfigkanten neben dem
+      // Treffer, unabhängig vom Radius — dort klingt die Änderung erst etwas weiter aus (gemessen ≈ 0,1 px)
+      if (g.stencilPinsel) expect(g.unberuehrtMax).toBeLessThan(0.5);
+      else expect(g.unberuehrtMax).toBe(0);
+      if (r === 0.005) expect(g.stencilPinsel).toBe(true);
+    }
   });
 
   it('Naht: ein Treffer auf der Mittelebene bewegt sich nicht aus ihr heraus (gesperrt), x und y genau', () => {

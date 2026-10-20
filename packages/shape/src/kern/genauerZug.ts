@@ -177,6 +177,63 @@ export type GenauerVersatz = {
   gesperrt: boolean;
 };
 
+/**
+ * Kleinste Beule, die der Käfig kann: der Stencil selbst als Pinsel. Gewicht je Käfigpunkt = sein Anteil am Hautpunkt,
+ * Spiegelgewicht = Anteil seines Spiegelpartners (Naht: beide gleich). Mit D = A⁻¹·d ist das der kleinste Käfigzug, der den
+ * Hautpunkt genau um d bewegt — der Rückfall, wenn der Pinselradius kleiner ist, als der Käfig auflöst. Nur Punkte < nMax
+ * (die der Pinsel bewegen darf); `spiegel` = Spiegelpartner je Punkt (−1 ohne).
+ */
+export function stencilGewichte(st: Stencil, spiegel: ArrayLike<number>, nMax: number): { punkt: number; w: number; wSpiegel: number }[] {
+  const c = new Map<number, number>();
+  for (let k = 0; k < st.punkte.length; k++) if (st.punkte[k]! < nMax) c.set(st.punkte[k]!, st.gewichte[k]!);
+  const punkte = new Set<number>();
+  for (const p of c.keys()) {
+    punkte.add(p);
+    const q = spiegel[p] ?? -1;
+    if (q >= 0 && q < nMax) punkte.add(q);
+  }
+  const out: { punkt: number; w: number; wSpiegel: number }[] = [];
+  for (const p of [...punkte].sort((a, b) => a - b)) {
+    const q = spiegel[p] ?? -1;
+    const w = c.get(p) ?? 0;
+    const ws = q === p ? w : q >= 0 ? (c.get(q) ?? 0) : 0;
+    if (w > 0 || ws > 0) out.push({ punkt: p, w, wSpiegel: ws });
+  }
+  return out;
+}
+
+/** Singulärwerte von A, absteigend. */
+function singulaerwerte(A: M3): V3 {
+  const AtA: M3 = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) AtA[3 * r + c] = A[r]! * A[c]! + A[3 + r]! * A[3 + c]! + A[6 + r]! * A[6 + c]!;
+  return eigenSym(AtA)
+    .werte.map((l) => Math.sqrt(Math.max(0, l)))
+    .sort((a, b) => b - a) as V3;
+}
+
+/**
+ * Grenze der Verstärkung für einen Pinsel: Kein Käfigpunkt soll weiter wandern als `faktor` × Zeigerweg. Ein Punkt wandert
+ * höchstens um (w + ws) · |D|, und |D| ≤ |d| / σ — also σ ≥ max(w + ws) / faktor. Beim weichen Abfall ist max(w + ws) ≈ 1,
+ * beim Stencil-Pinsel nur der größte Anteil eines Käfigpunkts (≈ 0,3–0,45).
+ */
+export function zugGrenze(gewichte: readonly { w: number; wSpiegel: number }[], faktor = 4): number {
+  let m = 0;
+  for (const g of gewichte) m = Math.max(m, g.w + g.wSpiegel);
+  return Math.max(1e-9, m / faktor);
+}
+
+/**
+ * Trägt der Pinsel den Zug genau? false, wenn eine Richtung, die der Körper kann, schwächer als `grenze` ist (der Radius ist
+ * kleiner, als der Käfig dort auflöst; z auf der Mittelnaht zählt nicht, die kann der gespiegelte Körper ohnehin nicht).
+ */
+export function verstaerkungTraegt(A: M3, opt: { grenze?: number; aus?: number } = {}): boolean {
+  const grenze = opt.grenze ?? 0.25;
+  const aus = opt.aus ?? 0.02;
+  const s = singulaerwerte(A);
+  if (s[0] < grenze) return false;
+  return s.every((x) => x <= aus * s[0] || x >= grenze);
+}
+
 /** A · v */
 function mal(A: M3, v: readonly number[]): V3 {
   return [A[0] * v[0]! + A[1] * v[1]! + A[2] * v[2]!, A[3] * v[0]! + A[4] * v[1]! + A[5] * v[2]!, A[6] * v[0]! + A[7] * v[1]! + A[8] * v[2]!];

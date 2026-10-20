@@ -4,7 +4,7 @@
 // Bezugs-Käfig; posierte Zuwächse werden mit der Drehung je Punkt zurückgedreht) — ein Undo-Schritt je Strich.
 
 import type { KaefigDelta, Pose } from '@ee/shape';
-import { type M3, type PoseBearbeitung, type Stencil, ankerVon, baryzentrisch, bezugAus, deltaKarte, deltaListe, formAusFeld, genauerVersatz, kaefigNachbarn, kaefigNormalen, pinselGewichte, poseWirkung, spiegelIndex, spiegelWirkung, verstaerkung } from '@ee/shape/kern';
+import { type M3, type PoseBearbeitung, type Stencil, ankerVon, baryzentrisch, bezugAus, deltaKarte, deltaListe, formAusFeld, genauerVersatz, kaefigNachbarn, kaefigNormalen, pinselGewichte, poseWirkung, spiegelIndex, spiegelWirkung, stencilGewichte, verstaerkung, verstaerkungTraegt, zugGrenze } from '@ee/shape/kern';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { szene } from '../three/instanz';
@@ -205,7 +205,8 @@ export function pinselZeiger(e: React.PointerEvent, px: number, py: number, el: 
   const mitte: V3 = [h.punkt[0] / sk, h.punkt[1] / sk, h.punkt[2] / sk];
   const radius = ui.pinselRadius * n.netz.hoehe;
   const gewichte = pinselGewichte(xyz, nMax, mitte, radius);
-  if (!gewichte.length) return false;
+  // ohne Käfigpunkt im Radius zieht nur „genau“ (der Stencil wird der Pinsel), weich startet wie bisher nicht
+  if (!gewichte.length && !(werkzeug === 'ziehen' && ui.pinselGenau)) return false;
   const ed = useEditor.getState();
   // Grundform: gespeicherte Deltas (Baum: seine eigenen); Pose: keine Karte (Zuwächse posiert, Form aus den Bearbeitungsdaten)
   const basis = deltaKarte(ziel.pose ? [] : ziel.baum ? ed.dok.kaefig?.baumDeltas : ed.dok.kaefig?.deltas);
@@ -222,6 +223,9 @@ export function pinselZeiger(e: React.PointerEvent, px: number, py: number, el: 
   // Genauer Zug: Stencil des Treffers aus dem Worker (einmal je Strich); bis er da ist, zieht der Pinsel weich, danach
   // rechnet der letzte Zug genau nach. Ohne Stencil (angesetzte Teile, Höhle, Rundmaul offen) bleibt er weich und sagt es.
   let A: M3 | null = null;
+  // Gewichte des Zugs: die des Radius, beim Rückfall „kleinste Beule“ die des Stencils (Glätten und Aufblasen bleiben beim Radius)
+  let zugGewichte = gewichte;
+  let grenze = zugGrenze(gewichte);
   let letzte: PointerEvent | null = null;
   let laeuft = true;
   let gemeldet = false;
@@ -279,15 +283,15 @@ export function pinselZeiger(e: React.PointerEvent, px: number, py: number, el: 
       if (!hit) return;
       const d: V3 = [(hit[0] - h.punkt[0]) / sk, (hit[1] - h.punkt[1]) / sk, (hit[2] - h.punkt[2]) / sk];
       // genau: D so verstärkt, dass der Hautpunkt um d wandert (Richtungen, die der gespiegelte Körper nicht kann, bleiben)
-      const g = A ? genauerVersatz(A, d) : null;
-      const D: V3 = g ? g.D : d;
-      if (g && !gemeldet && (g.begrenzt || g.gesperrt) && Math.hypot(...d) > 1e-6) {
+      const gv = A ? genauerVersatz(A, d, { grenze }) : null;
+      const D: V3 = gv ? gv.D : d;
+      if (gv && !gemeldet && (gv.begrenzt || gv.gesperrt) && Math.hypot(...d) > 1e-6) {
         gemeldet = true;
-        ui.zeigeHinweis(g.gesperrt ? 'Auf der Mittelnaht geht der Punkt nicht zur Seite (Spiegel)' : 'Radius klein gegen den Käfig — der Punkt folgt nur zum Teil (mehr Ringe: Loops)');
+        ui.zeigeHinweis(gv.gesperrt ? 'Auf der Mittelnaht geht der Punkt nicht zur Seite (Spiegel)' : 'Radius klein gegen den Käfig — der Punkt folgt nur zum Teil (mehr Ringe: Loops)');
       }
       if (ziel.pose) {
-        for (const g of gewichte) if (g.w > 0) zuPose(g.punkt, [g.w * D[0], g.w * D[1], g.w * D[2]]);
-      } else for (const g of gewichte) if (rechts(g.punkt)) zuwachs(g.punkt, [(g.w + g.wSpiegel) * D[0], (g.w + g.wSpiegel) * D[1], (g.w - g.wSpiegel) * D[2]]);
+        for (const g of zugGewichte) if (g.w > 0) zuPose(g.punkt, [g.w * D[0], g.w * D[1], g.w * D[2]]);
+      } else for (const g of zugGewichte) if (rechts(g.punkt)) zuwachs(g.punkt, [(g.w + g.wSpiegel) * D[0], (g.w + g.wSpiegel) * D[1], (g.w - g.wSpiegel) * D[2]]);
     } else {
       const betrag = ((ev.clientX - x0 - (ev.clientY - y0)) / 300) * radius;
       for (const g of gewichte) {
@@ -329,6 +333,14 @@ export function pinselZeiger(e: React.PointerEvent, px: number, py: number, el: 
           return;
         }
         A = zugVerstaerkung(st, gewichte, ziel.pose);
+        if (!gewichte.length || !verstaerkungTraegt(A, { grenze })) {
+          // Radius kleiner, als der Käfig hier auflöst: der Stencil selbst als Pinsel (kleinster Käfigzug, Punkt genau)
+          const sp = ziel.pose ? spiegelIndex(ziel.pose.ruhe, ziel.pose.ruhe.length / 3) : spiegel;
+          zugGewichte = stencilGewichte(st, sp, nMax);
+          grenze = zugGrenze(zugGewichte);
+          A = zugVerstaerkung(st, zugGewichte, ziel.pose);
+          ui.zeigeHinweis('Pinsel kleiner als der Käfig: kleinste Beule, die der Käfig hier kann (feiner mit mehr Ringen)');
+        }
         if (laeuft && letzte && !letzte.shiftKey) bewegen(letzte);
       });
     } else ui.zeigeHinweis('Genauer Zug auf angesetzten Teilen nicht möglich — der Pinsel zieht weich');

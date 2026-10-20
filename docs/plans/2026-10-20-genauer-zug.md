@@ -97,8 +97,28 @@ Die Haut ist linear im Käfig (feine Lagen = Grenzmatrix · Käfig). Daraus:
   - Der Stencil nimmt die Matrix ohne S8a-Kanten, weil der Editor während eines Strichs schnell und ohne die eingepassten
     Kanten baut.
   - Grundform (Röhre und Teile) und Posen (Verstärkung mit den Drehungen je Punkt). Hinweise statt stiller Fehler:
-    angesetzte Teile/Höhle („zieht weich“), Mittelnaht („geht nicht zur Seite“), zu kleiner Radius („folgt nur zum Teil“).
+    angesetzte Teile/Höhle („zieht weich“), Mittelnaht („geht nicht zur Seite“), Pinsel kleiner als der Käfig (siehe unten).
   - Chip „Käfig“ zeigt jetzt auch auf dem Körper aus Teilen die Käfigkanten (`BaumKoerperNetz.kanten`,
     `baumKaefigSegmente`).
   - Prüfung `apps/editor/scripts/pruefen/genauer-zug.mjs` (echte Mauszüge auf eigenem Vite, Abstand Hautpunkt → Zeiger in
     Feldpixeln der Bühne, vor und nach „Formen folgen“, Bilder mit Marken und Käfig).
+- **20.10. Editor gemessen** (Cloud, SwiftShader; Startkugel, Zug 59,7 px auf der Bühne):
+
+  | Radius | weich: Hautpunkt → Zeiger | genau (Grenze 4-fach) |
+  |---|---|---|
+  | 25 % (Standard) | 17,1 px (folgt 71 %) | 0,00 px, auch nach „Formen folgen“ |
+  | 12 % | 48,3 px (folgt 19 %) | 14,4 px — die Verstärkung wäre 5,3-fach, die Grenze lässt 4-fach zu |
+
+  Befund: Die Grenze saß an der falschen Stelle. Sie begrenzte die Verstärkung des Versatzes D auf das 4-Fache. Gemeint war
+  aber: Kein Käfigpunkt soll weiter wandern als das 4-Fache des Zeigerwegs, sonst entstehen neben dem Treffer Spitzen, die
+  höher sind als der Zug. Ein Käfigpunkt wandert höchstens um (w + ws) · |D|, und am Treffer ist w meist deutlich kleiner
+  als 1. Die feste Grenze bremste deshalb schon dort, wo die Käfigpunkte erst das 2,6-Fache gewandert wären.
+- **20.10. Grenze nach dem Käfigzug, Rückfall „kleinste Beule“:**
+  - `zugGrenze(gewichte)` = max(w + ws) / 4 als kleinster zulässiger Singulärwert (`genauerVersatz(…, { grenze })`).
+  - Trägt der Pinsel trotzdem nicht (`verstaerkungTraegt`) oder liegt gar kein Käfigpunkt im Radius, wird der Stencil
+    selbst der Pinsel (`stencilGewichte`): der kleinste Käfigzug, der den Punkt genau trifft. Ein Hinweis sagt es
+    („Pinsel kleiner als der Käfig: kleinste Beule, die der Käfig hier kann“). „Genau“ startet auch ohne Käfigpunkt im Radius; „weich“ wie bisher nicht.
+  - Kern, Kugel: alle Radien 0,5–50 % genau (0,000 px). Der größte Käfigzug liegt beim 1,1- bis 2,3-Fachen des Zeigerwegs.
+    3 % zieht mit dem Abfall (2,3-fach), 0,5 % mit dem Stencil-Pinsel (1,8-fach).
+  - Außerhalb des Radius wandert die Haut bei kleinen Radien so weit wie eine Beule von zwei Käfigkanten Breite: 16,6 px
+    bei 3 % für einen Zug von 16,6 px. Mehr Auflösung gibt es nur mit mehr Käfig (Loops).
