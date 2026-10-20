@@ -122,3 +122,43 @@ Die Haut ist linear im Käfig (feine Lagen = Grenzmatrix · Käfig). Daraus:
     3 % zieht mit dem Abfall (2,3-fach), 0,5 % mit dem Stencil-Pinsel (1,8-fach).
   - Außerhalb des Radius wandert die Haut bei kleinen Radien so weit wie eine Beule von zwei Käfigkanten Breite: 16,6 px
     bei 3 % für einen Zug von 16,6 px. Mehr Auflösung gibt es nur mit mehr Käfig (Loops).
+- **20.10. Editor nach der Korrektur** (Cloud, SwiftShader; Startkugel, Zug 59,7 px auf der Bühne; Bogen
+  [`docs/progress/editor/genauer-zug-2026-10-20.jpg`](../progress/editor/genauer-zug-2026-10-20.jpg): blau Start, rosa
+  Kreuz Zeiger am Ende, grün der gegriffene Hautpunkt, Käfig eingeblendet):
+
+  | Körper, Radius | weich: Hautpunkt → Zeiger | genau |
+  |---|---|---|
+  | Röhre, 25 % (Standard) | 17,1 px | 0,00 px |
+  | Röhre, 12 % | 48,3 px | 0,00 px (vor der Korrektur 14,4 px) |
+  | Teile, 25 % | 30,8 px | 0,00 px |
+
+  Gemessen im Zug und nach „Formen folgen“, beide Werte gleich. Die Zeile Röhre 25 % stammt aus dem Lauf vor der
+  Korrektur; dort griff keine Grenze, gerechnet wird also dasselbe. Im Bogen sieht man den Preis bei 12 %: Die Beule ist
+  breiter als der Pinsel (Käfigauflösung, siehe oben), und einzelne Käfigpunkte wandern weiter als der Zeiger (im Kern
+  gemessen bis zum 2,3-Fachen).
+- **20.10. Rex mit Maul im Kern** (Tor „Rex-Röhre“ nachgeholt, `genauerZug.test.ts`, Maul vorn, geschlossen):
+
+  | Stelle, Radius | weich | genau |
+  |---|---|---|
+  | Rumpf, 15 % | 6,1 px | 0,000 px (Käfigzug 1,8-fach) |
+  | Wange über dem Mundwinkel, 8 % | 8,3 px | 0,000 px (2,0-fach) |
+  | Lippe, 8 % — die Haut hängt dort zu 21 % an Maulpunkten, die der Pinsel nicht bewegt | 5,0 px | 0,000 px (1,9-fach) |
+
+  Das Ei ist nicht eigens geprüft (Röhre ohne Maul wie die Kugel).
+- **Tore, Bilanz 20.10.:**
+  - Hautpunkt am Ziel ≤ 0,1 px: erreicht auf Kugel (Radien 0,5–50 %, Zug in x, y, z), Rex mit Maul, Ente (Teile) und im
+    Editor auf Röhre und Teile. Die Pose ist nur algebraisch geprüft (Verstärkung = Weg des Editors auf 1e-9), nicht mit
+    Kieferknochen im Editor gezogen.
+  - Weiter als Radius + zwei Käfigkanten: bitgleich (Kugel). Dazwischen bewegt „genau“ die Haut mehr als „weich“ (Tabelle
+    oben); bei kleinen Radien ist die Beule so breit, wie der Käfig es erzwingt. Mein Satz vom 17.10. („außerhalb des
+    Radius ≤ 0,5 px“) ist damit widerlegt, nicht erfüllt.
+  - Spiegel und Naht: erreicht.
+  - Schalter „weich“: derselbe Rechenweg wie vorher (am Diff geprüft, nicht eigens gemessen).
+  - Editor mit echten Zügen: Tabelle und Bogen oben (Cloud mit SwiftShader; auf Florians Mac noch nicht).
+- **Offen:**
+  - Pose im Editor mit echten Knochen ziehen.
+  - Mit gezeichneten Linien (S8a): Der Strich zieht auf dem Netz ohne Linien. Beim Loslassen legt der genaue Bau die
+    Linien wieder an, der Punkt kann dort um das abweichen, was die Linie verlangt (nicht gemessen).
+  - Bis die Antwort des Workers da ist (ein Auftrag, vor allen wartenden), zieht der Anfang des Strichs weich; mit der
+    Antwort rechnet der letzte Zug genau nach.
+  - Florians Urteil.

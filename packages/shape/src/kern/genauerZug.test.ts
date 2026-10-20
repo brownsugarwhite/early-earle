@@ -3,7 +3,9 @@
 // Deltas der rechten Hälfte, gespiegelt angewendet) und vergleicht weich (heute) mit genau.
 import { describe, expect, it } from 'vitest';
 import { type Dokument, type KaefigDelta, neuesDokument } from '../dokument';
-import { type Bauplan, type WesenNetz, type WesenStand, wesenBauen, zugStencil } from './wesen';
+import { type Vorlage, vorlageDokument } from '../versuch';
+import rexRoh from '../versuch/vorlagen/rex.json';
+import { type Bauplan, type WesenNetz, type WesenStand, pruefwesenBauplan, wesenBauen, zugStencil } from './wesen';
 import { type Stencil, baryzentrisch, genauerVersatz, poseWirkung, spiegelWirkung, stencilGewichte, stencilLage, verstaerkung, verstaerkungTraegt, zugGrenze } from './genauerZug';
 import { deltaListe, pinselGewichte, spiegelIndex } from './pinsel';
 import { enteDokument } from './pruefen/grundkoerper';
@@ -246,5 +248,53 @@ describe('Genauer Zug', () => {
     console.log(`Ente: weich Fehler ${weich.fehlerPx.toFixed(2)} px, genau ${genau.fehlerPx.toFixed(3)} px (Verstärkung ${genau.verstaerkung.toFixed(2)})`);
     expect(genau.fehlerPx).toBeLessThan(0.1);
     expect(weich.fehlerPx).toBeGreaterThan(genau.fehlerPx);
+  });
+
+  it('Rex (Röhre mit Maul, geschlossen): genau trifft ≤ 0,1 px am Rumpf, an der Wange und an der Lippe', () => {
+    const rex: Dokument = { ...vorlageDokument(rexRoh as unknown as Vorlage, 'zu', 'rex'), ausstattung: pruefwesenBauplan('rex') };
+    const aus = rex.ausstattung!;
+    const planR: Partial<Bauplan> = { earle: false, maul: 'vorn', gewichte: {}, ...(aus.maulLinie ? { maulLinie: aus.maulLinie as NonNullable<Bauplan['maulLinie']> } : {}), ...(aus.maulOptionen ? { maulOptionen: aus.maulOptionen } : {}) };
+    const v = wesenBauen(rex, planR, null);
+    expect(v.stand.zugGrundlage).toBeTruthy();
+    expect(v.netz.maul).toBeTruthy();
+    const P = v.netz.positionen;
+    let [xMin, xMax, yMin, yMax, zMax] = [Infinity, -Infinity, Infinity, -Infinity, 0];
+    for (let i = 0; i < P.length; i += 3) {
+      xMin = Math.min(xMin, P[i]!);
+      xMax = Math.max(xMax, P[i]!);
+      yMin = Math.min(yMin, P[i + 1]!);
+      yMax = Math.max(yMax, P[i + 1]!);
+      zMax = Math.max(zMax, P[i + 2]!);
+    }
+    // Schnauze bei kleinem x; Ziel weit draußen auf +z → der äußerste Hautpunkt der rechten Seite an dieser Stelle
+    const stellen: [string, V3, number][] = [
+      ['Rumpf', [xMin + 0.55 * (xMax - xMin), yMin + 0.5 * (yMax - yMin), 2 * zMax], 0.15],
+      ['Wange', [xMin + 0.1 * (xMax - xMin), yMin + 0.75 * (yMax - yMin), 2 * zMax], 0.08],
+    ];
+    // Lippe: Haut, die zum Teil an Maulpunkten hängt (Käfigpunkte hinter der Vorlage, die der Pinsel nicht bewegt) —
+    // Stencil-Gewicht der Maulpunkte 0,2–0,8, mindestens ¼ Maullänge vor dem Mundwinkel, der äußerste solche Hautpunkt
+    const tr = v.netz.treffer!;
+    const w = v.netz.maul!.winkel;
+    const L = v.netz.maul!.laenge;
+    let lippe: { m: V3; maul: number } | null = null;
+    for (let t = 0; t < tr.dreieckFlaeche.length; t++) {
+      if (tr.dreieckFlaeche[t]! < 0) continue;
+      const o = 9 * t;
+      const m: V3 = [(P[o]! + P[o + 3]! + P[o + 6]!) / 3, (P[o + 1]! + P[o + 4]! + P[o + 7]!) / 3, (P[o + 2]! + P[o + 5]! + P[o + 8]!) / 3];
+      if (m[0] > w[0] - 0.25 * L || Math.hypot(m[0] - w[0], m[1] - w[1], m[2] - w[2]) > 0.5 * L || (lippe && m[2] <= lippe.m[2])) continue;
+      const st = zugStencil(v.stand, t, tr.dreieckFlaeche[t]!, baryzentrisch(m, [P[o]!, P[o + 1]!, P[o + 2]!], [P[o + 3]!, P[o + 4]!, P[o + 5]!], [P[o + 6]!, P[o + 7]!, P[o + 8]!]));
+      let maul = 0;
+      for (let k = 0; st && k < st.punkte.length; k++) if (st.punkte[k]! >= tr.vorlage.n) maul += st.gewichte[k]!;
+      if (maul > 0.2 && maul < 0.8) lippe = { m, maul };
+    }
+    expect(lippe).not.toBeNull();
+    stellen.push([`Lippe (Maulpunkte ${(100 * lippe!.maul).toFixed(0)} %)`, lippe!.m, 0.08]);
+    for (const [name, ort, r] of stellen) {
+      const weich = strich(rex, planR, v, ort, [0.015, 0.015, 0], r, false);
+      const genau = strich(rex, planR, v, ort, [0.015, 0.015, 0], r, true);
+      console.log(`Rex ${name}: weich Fehler ${weich.fehlerPx.toFixed(2)} px, genau ${genau.fehlerPx.toFixed(3)} px (Verstärkung ${genau.verstaerkung.toFixed(2)}, Käfigzug ${genau.kaefigFaktor.toFixed(2)}-fach${genau.stencilPinsel ? ', Stencil-Pinsel' : ''})`);
+      expect(genau.fehlerPx).toBeLessThan(0.1);
+      expect(weich.fehlerPx).toBeGreaterThan(genau.fehlerPx);
+    }
   });
 });
