@@ -754,6 +754,15 @@ Arbeit fort, wie wir es im Plan erarbeitet haben.“ (Der Branch `claude/sweet-n
   E Stiftlinien setzen, mit ⇧W härten, kreuzen („genau, genau“). Pose beim Umschalten nur als „bleibt gespeichert“
   geprüft, kein Pinselstrich in einer Pose.
 
+- **Zufallsreihe** (`v1-zufallszuege.ts`, 200 Züge an Umrissknoten der Extremreihe, 10–40 px, gekoppelt wie im Editor, in
+  deinem Ablauf): kein Bau scheitert. **Röhre** (114 Züge): Sprung am Gestenende meist 0,0 px, aber 8-mal über 0,5 px (bis
+  21,5 px: Krake, Sichel, Vierbeiner, Vase, Tigerkopf); 7 Züge klappen einen sauberen Körper neu um (frei > 60°: Langhals,
+  Pilz, Überhang, Hals 1:8, Keil, Seestern, Flügel oben); Δ max im Median 12,7 px. **Teile** (86 Züge): Sprung am Gestenende
+  fast immer (85 von 86), Median 16,5 px, bis 65 px; 6 Züge klappen neu um (Rex zweimal, Ente-Haken, Hammerhai, Seeschlange,
+  Rochen). **Kopplung:** 13 Züge enden mit einem Umriss, der sich schneidet — 9-mal im gezogenen Blatt selbst (der Zug
+  kreuzt die eigene Linie; das Blatt meldet es), 4-mal neu in einem gekoppelten Blatt (Top von Überhang, Seestern, Pyramide,
+  Hammerhai: 2–8 Kreuzungen, die du nicht gezeichnet hast).
+
 **In V1 behoben (Befunde der Reihe und der Szenarien, je Test vorher rot):**
 - Stiftlinien mit wenigen Knoten lagen zwischen den Knoten als Sehne neben der Haut (Kugel, zwei Knoten: 20 px); das
   Liniennetz zeigte sie auf der Haut, das Einpassen zog den Körper auf die Sehne — im Editor mit zwei gekreuzten Linien

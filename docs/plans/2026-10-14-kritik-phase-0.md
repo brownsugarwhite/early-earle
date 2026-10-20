@@ -531,6 +531,13 @@ angeht.
   Pyramide Top 7,3 → 11,9 px; umgekehrt hilft der Ablauf dem Keil (frisch frei 179°, im Ablauf 18°) → V4/V6.
 - **Kurze Querlinie am Kegel** (45 px) deckt weder eine ganze Reihe noch einen ganzen Ring: jetzt ehrlich Treppe (30 px
   neben der Linie) statt „Reihe“ ohne Kante → V5 (Einordnen nach dem Winkel, mehr Ringe mit Loops).
+- **Zufallsreihe (200 Züge, 10–40 px, Florians Ablauf):** Röhre springt am Gestenende 8 von 114 Mal über 0,5 px (bis
+  21,5 px), Teile 85 von 86 Mal (Median 16,5 px, bis 65 px) → V4/V7. 13 Züge klappen einen sauberen Körper neu um (Röhre 7:
+  Langhals, Pilz, Überhang, Hals 1:8, Keil, Seestern, Flügel oben; Teile 6: Rex zweimal, Ente-Haken, Hammerhai, Seeschlange,
+  Rochen) → V4/V7.
+- **Kopplung erzeugt Selbstschnitte** in einem gekoppelten Blatt (4 von 200 Zügen; Top von Überhang, Seestern, Pyramide,
+  Hammerhai: 2–8 Kreuzungen, die niemand gezeichnet hat); 9 weitere Züge kreuzten die eigene Linie (das Blatt meldet es
+  seit V0) → V3 (Kopplung ohne Kreuzungen, Rückfall auf die nächste kreuzungsfreie Lage).
 - **In V1 behoben** (je Test vorher rot): Querlinien, die eine Reihe nur auf einem Bruchteil eines Ringabstands berührten,
   wurden „Reihe“ ohne scharfe Kante (Kegel, Vierbeiner, Krake); Stiftlinien mit wenigen Knoten zogen den Körper auf die
   Sehne zwischen den Knoten (Kugel mit zwei gekreuzten Linien Δ 10,7 → 1,3 px, im Editor Falten 111° → 16°); die
