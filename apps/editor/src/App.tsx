@@ -1,5 +1,5 @@
 import { useWirbelTasten } from './wirbel/WirbelEbene';
-import { useGrund, useLayoutSteuerung, useMenueBruecke, useTastatur, useTitel } from './hooks';
+import { useGrund, useLayoutSteuerung, useMenueBruecke, useTastatur, useTitel, useVerlassenWarnung } from './hooks';
 import { Seitenleiste } from './leiste/Seitenleiste';
 import { Stamm } from './stamm/Stamm';
 import { Dock } from './dock/Dock';
@@ -18,6 +18,7 @@ export function App() {
   useLayoutSteuerung();
   useGrund();
   useTastatur();
+  useVerlassenWarnung();
   useMenueBruecke();
   useTitel();
   useMaulTasten();

@@ -97,7 +97,8 @@ function menue() {
         eintrag('Viewport maximieren', 'maximieren', 'Ctrl+Space'),
         eintrag('Ansicht zurücksetzen', 'ansicht-zuruecksetzen', 'Home'),
         { type: 'separator' },
-        { role: 'reload', label: 'Neu laden' },
+        // ⌘R gehört dem Editor (Reifen bzw. Loop wie Blender ⌃R); neu laden nur noch mit ⇧⌘R (Plan 20.10., V0)
+        { role: 'reload', label: 'Neu laden', accelerator: 'Shift+CmdOrCtrl+R' },
         { role: 'toggleDevTools', label: 'Entwicklerwerkzeuge' },
         { type: 'separator' },
         { role: 'togglefullscreen', label: 'Vollbild' },

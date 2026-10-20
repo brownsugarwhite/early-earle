@@ -7,6 +7,7 @@ import { setzeLayoutZiel } from './layout/animation';
 import { berechneLayout } from './layout/layout';
 import { editorApi } from './library/speicher';
 import { useEditor, vorschauBeenden, vorschauLaeuft } from './state/editorStore';
+import { pinselRing } from './kern/pinsel';
 import { reifenNeuAmZeiger } from './kern/reifen';
 import { abspielenUmschalten } from './posen/ueberblenden';
 import { STUFEN } from './stamm/stufen';
@@ -110,10 +111,11 @@ export function useTastatur() {
         const pp = ui.pauspapier;
         if (pp) ui.pauspapierAendern({ sichtbar: !pp.sichtbar });
         else ui.zeigeHinweis('Kein Bogen: PNG auf ein Blatt ziehen oder in der Tafel „Bogen hinlegen“');
-      } else if (e.ctrlKey && !e.metaKey && !e.altKey && k === 'r') {
-        // M3: neuer Reifen am Zeiger auf der Bühne (Blender ⌃R)
+      } else if (cmd && !e.altKey && !e.shiftKey && k === 'r') {
+        // M3: neuer Reifen am Zeiger auf der Bühne (Blender ⌃R). Plan 20.10., V0: ⌘R genauso — vorher lud ⌘R das Fenster
+        // neu (Electron-Menü bzw. Browser) und ungespeicherte Arbeit war weg; neu laden geht mit ⇧⌘R
         e.preventDefault();
-        if (!reifenNeuAmZeiger()) ui.zeigeHinweis('⌃R: Zeiger auf den Körper in der Bühne halten');
+        if (!reifenNeuAmZeiger()) ui.zeigeHinweis('⌘R: Zeiger auf den Körper in der Bühne halten (neu laden: ⇧⌘R)');
       } else if (!cmd && !e.altKey && k === 'q') {
         // B7 (Entwurf §6): Q / ⇧Q schalten Editor und Posen der Reihe nach durch
         const ed = useEditor.getState();
@@ -132,8 +134,10 @@ export function useTastatur() {
         ui.setzeWerkzeug('ziehen');
       } else if (!cmd && !e.altKey && !e.shiftKey && k === 'i') {
         ui.setzeWerkzeug('aufblasen');
-      } else if (!cmd && !e.altKey && (e.key === '[' || e.key === ']')) {
+      } else if (!cmd && (e.key === '[' || e.key === ']')) {
+        // [ ] auch mit ⌥: Auf der deutschen Mac-Tastatur sind sie ⌥5/⌥6 (vorher nie erreichbar); der Ring folgt sofort
         ui.setzePinselRadius(ui.pinselRadius * (e.key === '[' ? 0.8 : 1.25));
+        pinselRing(0, 0);
       } else if (!cmd && !e.altKey && e.shiftKey && k === 'w') {
         // Breitenwerkzeug wie in Illustrator (⇧W): breiter = härtere Kante
         ui.setzeWerkzeug('breite');
@@ -156,6 +160,23 @@ export function useTastatur() {
     };
     window.addEventListener('keydown', taste);
     return () => window.removeEventListener('keydown', taste);
+  }, []);
+}
+
+/**
+ * Web-Modus: Warnung beim Verlassen oder Neuladen mit ungespeicherten Änderungen (Plan 20.10., V0). In Electron nicht —
+ * dort würde ein `beforeunload` das Schließen still blockieren; ⌘R lädt dort ohnehin nicht mehr neu.
+ */
+export function useVerlassenWarnung() {
+  useEffect(() => {
+    if (editorApi) return;
+    const warnen = (e: BeforeUnloadEvent) => {
+      if (!useEditor.getState().geaendert) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warnen);
+    return () => window.removeEventListener('beforeunload', warnen);
   }, []);
 }
 
