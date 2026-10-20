@@ -162,6 +162,14 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Undo-Schritt); Prüfskripte `modal-2d.mjs`, `proportional.mjs`, Bilder `docs/progress/editor/v3-*`. Befunde im Register
   (Spantpunkte unter Front-Knoten nicht greifbar; `spanten.spec.ts` rot an der alten Versuchs-Bauweise, unabhängig von V3).
   Nächster Schritt: Florians Blick, dann V4 „Exakte Umrisse“.
+- **2026-10-20 nachts: V4 „Exakte Umrisse“ — Beweis angehalten** (Florian: „weiter mit V4“; die V2-Linien stören ihn → jetzt
+  standardmäßig aus, Tafel „umrisse aus | an“). Im Kern hinter `ausstattung.umrisseExakt` (ohne ihn bitgleich): Löser je
+  Achse (`loeser/achsen.ts`), Breitenlinie (`kern/umrisse.ts`) — trägt an runden Enden (Robbe Top 12,5 → 1,2 px, Kegel
+  2,6 → 0,6), zerknittert Kappen an Kasten, stehendem Ende, Kerbe (Tiger, Vase, einfache Form). Frontlinie nach drei
+  gemessenen Fehlanläufen angehalten: Die Röhre hat an der Front-Silhouette keine Käfigkurve. Entscheidung für Florian:
+  A (Empfehlung) Struktur folgt den Umrissen — erst der Kern von V6 (Loop = neuer Ring), dann Ring an der breitesten Stelle
+  und Kappen nach Endform; B Löser entlang der Normalen. Planseite „V4 — Beweis angehalten“, Register „Befunde aus V4“,
+  Bogen `docs/progress/editor/v4-beweis-breitenlinie-2026-10-20.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

@@ -379,6 +379,17 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
     Stelle wählen, an der ein Spantpunkt frei liegt (`elementFromPoint`).
   - Prüfungen: `editing/modal/abbildung.test.ts`, `state/verlauf.test.ts`, Editor `modal-2d.mjs`, `proportional.mjs`;
     Zeit je Mausbewegung über `window.__modal`.
+- **Plan 20.10., V4 (Fallen aus dem angehaltenen Beweis, Kern `kern/umrisse.ts`, `loeser/achsen.ts`):**
+  - Optionen für Messreihen laufen über den Bauplan (`umrisseOpt`) und müssen in `ableitOpt` und im Bauschlüssel stehen —
+    sonst kommen sie im Kern nicht an (vier Messläufe waren identisch). `Bauplan.umrisse` ist schon belegt (Zusatz-Umrisse
+    aus B7), der Schalter heißt deshalb `umrisseExakt`.
+  - Lagebedingungen brauchen Gewicht ~1e5 (mit 1000 blieb an einem Punkt 10 % Rest gegen Glättung und Naht).
+  - Eine Bedingung „an den nächsten Linienpunkt“ bindet auch in der Längsrichtung: Wo die Sichthülle begrenzt, liegt der
+    Fußpunkt woanders und zieht den Punkt mit (Robbe 65 px). Bindungen je Achse nur in der Richtung, in die die Linie zeigt.
+  - Punkte jeden Durchgang neu als „äußerste“ wählen und hart binden schaukelt sich auf (Beulen werden gewählt und weiter
+    hinausgezogen). Ebenso tausende hart gebundene Einzelpunkte der Ungleichung.
+  - Die Front-Silhouette einer Röhre liegt meist nicht auf einem Ring (Äquator zwischen Ringen, runde Enden auf der Kappe);
+    die Mittelreihe der Kappen hart zu binden zerknittert kastige, stehende oder eingekerbte Enden.
 - **vitest 5 zeigt `console.log` bestandener Tests nur mit `--reporter=verbose`** (bei Fehlern immer). Messwerte so lesen: `npx vitest run <datei> --reporter=verbose`.
 - **macOS hat kein `timeout`-Kommando**; lange Läufe über das Werkzeug-Timeout begrenzen. `pnpm -r test` lässt Pakete parallel laufen; die Laufzeit-Tests der Versuche (`kanten`, `flaechenlinie`, `wesen`) reißen dann ihre Schranken (967 ms > 600 ms), einzeln laufen sie durch.
 

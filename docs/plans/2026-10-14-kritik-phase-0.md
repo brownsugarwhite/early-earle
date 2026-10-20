@@ -599,3 +599,17 @@ Bögen auf der Planseite 20.10., „Stand V2“. Je Punkt der Schritt, der ihn a
 - Gemessen ist die Zeit je Mausbewegung für Rechnung und Store (≤ 6,4 ms); das Zeichnen der Blätter und der schnelle Zug im
   Worker sind nicht enthalten. Fokusverlust ist mit einem künstlichen `blur` geprüft, nicht mit einem echten App-Wechsel.
 - G/S/R in Posen fehlen (G und S behalten dort ihre alte Belegung, R gibt einen Hinweis) — mit B6/V6.
+
+## Befunde aus V4 „Exakte Umrisse“ (20.10. nachts, Beweis angehalten)
+
+- **Frontlinie nach drei Fehlanläufen angehalten** (Planseite „V4 — Beweis angehalten“): Ringstücke tragen nur, wo die
+  breiteste Stelle auf einem Ring liegt; frei gewählte äußerste Punkte schaukeln sich auf. Ursache: Die Röhre hat keine
+  Käfigkurve an der Front-Silhouette (zwischen Ringen, auf der Kappe, an kastigen Enden). Entscheidung A (Ring an die breiteste
+  Stelle über die Loop-Maschine aus V6, Kappen nach Endform) oder B (Löser entlang der Normalen) steht aus.
+- **Breitenlinie zerknittert Kappen** an kastigen, stehenden oder eingekerbten Enden (Tiger, Vase, einfache Form; Falten bis
+  177°); an runden Enden trägt sie (Robbe Top 12,5 → 1,2 px, Kegel 2,6 → 0,6).
+- Ohne gebundene Front wird die Front einfacher Körper etwas schlechter (Kugel 0,2 → 1,7 px), weil die Breitenpunkte und das
+  Berühren von heute im exakten Weg wegfallen.
+- Ungleichung mit hart gebundenen Einzelpunkten (1e5) destabilisiert den Ausgleich; braucht entweder Bindung entlang der
+  Normalen (einseitig) oder Kurven im Käfig, an denen sie greift.
+- Gewichte: Mit 1000 erreicht eine Lagebedingung ihr Ziel nur zu 90 % (Glättung 30, Naht 64 halten dagegen); 1e5 nötig.

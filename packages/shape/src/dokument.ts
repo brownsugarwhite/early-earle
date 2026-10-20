@@ -132,6 +132,8 @@ export const AusstattungSchema = z.object({
   fuelle: z.enum(['rund', 'mittel', 'genau']).optional(),
   // S5/S7 „Mittelebenen-Baum“: Körper aus Streifen der Seitenfläche mit seitlichen Teilen (`teile`); fehlt = Röhre
   koerper: z.enum(['roehre', 'teile']).optional(),
+  // Plan 20.10., V4 „Exakte Umrisse“ (Beweis): Front und Top binden wie die Seite; fehlt = heutiger Bau
+  umrisseExakt: z.boolean().optional(),
 });
 /** Ausstattung als Typ mit exakten Optionalen (zod-Inferenz erlaubt `undefined`, das passt nicht zu `exactOptionalPropertyTypes`). */
 export type ZonenVorlage = { ansicht: 'seite' | 'top' | 'front'; punkte: { x: number; y: number; weich: number }[] };
@@ -225,6 +227,11 @@ export type Ausstattung = {
    * Teile, `kern/grundkoerper/baumBau.ts`) statt der Röhre. Fehlt oder `roehre` = Röhre.
    */
   koerper?: 'roehre' | 'teile';
+  /**
+   * Plan 20.10., V4 „Exakte Umrisse“ (Beweis): Front und Top binden den Körper so genau wie die Seite (`kern/umrisse.ts`).
+   * Fehlt = heutiger Bau (bitgleich). Nur Röhre ohne Maul und Beine.
+   */
+  umrisseExakt?: boolean;
 };
 
 /** Posen, die über „Neue Pose“ hinzukommen (Fressen ist immer da). */

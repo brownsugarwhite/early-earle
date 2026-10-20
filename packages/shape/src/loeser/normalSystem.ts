@@ -14,6 +14,8 @@ export type NormalSystem = {
   n: number;
   /** Käfiglagen für rechte Seiten (3 Werte je Punkt, verschachtelt) */
   loesen(rhs: Float64Array): Float64Array;
+  /** Plan 20.10., V4: eine Spalte (n Werte, eine Achse) — für Systeme je Achse */
+  loesenSpalte(rhs: Float64Array): Float64Array;
   /** Einträge der Hülle (Größe der Zerlegung) */
   huelle: number;
   zeitAufbau: number;
@@ -100,31 +102,42 @@ export function normalSystem(n: number, zeilen: readonly NormalZeile[], nachbarn
   }
   const t2 = jetzt();
   const b = new Float64Array(n);
+  // L·Lᵀ·x = b in der Reihenfolge (b wird überschrieben)
+  const einsetzen = () => {
+    // L·y = b
+    for (let i = 0; i < n; i++) {
+      const fi = erste[i]!;
+      const oi = start[i]! - fi;
+      let s = b[i]!;
+      for (let k = fi; k < i; k++) s -= H[oi + k]! * b[k]!;
+      b[i] = s / H[oi + i]!;
+    }
+    // Lᵀ·x = y (spaltenweise)
+    for (let i = n - 1; i >= 0; i--) {
+      const fi = erste[i]!;
+      const oi = start[i]! - fi;
+      b[i] = b[i]! / H[oi + i]!;
+      const xi = b[i]!;
+      for (let k = fi; k < i; k++) b[k] = b[k]! - H[oi + k]! * xi;
+    }
+  };
   const loesen = (rhs: Float64Array): Float64Array => {
     const x = new Float64Array(3 * n);
     for (let a = 0; a < 3; a++) {
       for (let p = 0; p < n; p++) b[p] = rhs[3 * reihenfolge[p]! + a]!;
-      // L·y = b
-      for (let i = 0; i < n; i++) {
-        const fi = erste[i]!;
-        const oi = start[i]! - fi;
-        let s = b[i]!;
-        for (let k = fi; k < i; k++) s -= H[oi + k]! * b[k]!;
-        b[i] = s / H[oi + i]!;
-      }
-      // Lᵀ·x = y (spaltenweise)
-      for (let i = n - 1; i >= 0; i--) {
-        const fi = erste[i]!;
-        const oi = start[i]! - fi;
-        b[i] = b[i]! / H[oi + i]!;
-        const xi = b[i]!;
-        for (let k = fi; k < i; k++) b[k] = b[k]! - H[oi + k]! * xi;
-      }
+      einsetzen();
       for (let p = 0; p < n; p++) x[3 * reihenfolge[p]! + a] = b[p]!;
     }
     return x;
   };
-  return { n, loesen, huelle: start[n]!, zeitAufbau: t1 - t0, zeitZerlegen: t2 - t1 };
+  const loesenSpalte = (rhs: Float64Array): Float64Array => {
+    const x = new Float64Array(n);
+    for (let p = 0; p < n; p++) b[p] = rhs[reihenfolge[p]!]!;
+    einsetzen();
+    for (let p = 0; p < n; p++) x[reihenfolge[p]!] = b[p]!;
+    return x;
+  };
+  return { n, loesen, loesenSpalte, huelle: start[n]!, zeitAufbau: t1 - t0, zeitZerlegen: t2 - t1 };
 }
 
 /**

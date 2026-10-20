@@ -1101,3 +1101,64 @@ Feinmodus mit ⇧ während G (Blender), Einrasten mit ⌃.
 
 **Nächster Schritt:** dein Blick auf V3 (Testanleitung in der Übergabe), dann V4 „Exakte Umrisse“ (erst der Beweis mit
 Abbruchkriterium). Offen bleibt V2: welche Linien wild wirken.
+
+### V4 „Exakte Umrisse“ — Beweis angehalten (20.10. nachts; drei Fehlanläufe an der Frontlinie)
+
+**Florian vorab:** Die farbigen Umrisslinien aus V2 stören ihn → standardmäßig aus, Schalter „umrisse aus | an“ in der Tafel
+Körper (Ringe, P-Linien, Falten bleiben). Für die Bearbeitung braucht man sie nicht; der Körper wird ohne sie gebaut.
+
+**Gebaut (nur Kern, hinter dem Schalter `ausstattung.umrisseExakt`; ohne ihn bitgleich — 495 Kern-Tests, Extremreihe gegen
+die Grundzahlen grün):**
+- **Löser je Achse** (`loeser/achsen.ts`): drei dünne Zerlegungen, Gewichte je Achse; mit gleichen Gewichten bitgleich wie der
+  dünne Ausgleich (Test). Lehre: Eine einzelne Lagebedingung mit Gewicht 1000 erreicht ihr Ziel nur zu 90 % (die Glättung hält
+  dagegen) — „exakt“ braucht 1e5.
+- **Breitenlinie** (`kern/umrisse.ts`): Reihe N/4 bzw. 3N/4 über alle Ringe und durch die Mittelreihe der Kappen, Lage auf dem
+  Top-Umriss (nächster Punkt, durch die Front begrenzt) und Tangente quer zur Reihe; Vorlagen mit der breitesten Stelle auf
+  N/4 (`breitesteHoehe`, `umparametrisieren`).
+- Frontlinie und Ungleichung als Versuche (nur auf Wunsch; beide schaukeln sich auf).
+- Messung `apps/editor/scripts/pruefen/v4-beweis.ts` (heute gegen exakt, `BOGEN=1` Kontaktbogen), Diagnose `v4-diagnose.ts`.
+
+**Gemessen** (Röhre wie im Editor, Florians Ablauf; Δ in px; Bogen
+`docs/progress/editor/v4-beweis-breitenlinie-2026-10-20.jpg`, je Körper oben heute, unten mit Breitenlinie):
+
+| Körper | Δ Seite | Δ Front | Δ Top | Falte frei/Kappe | Urteil |
+|---|---|---|---|---|---|
+| Kugel | 0,3 → 0,3 | 0,2 → 1,7 | 0,3 → **0,1** | 3/3 → 5/3° | Top exakt; Front ohne Bindung schlechter |
+| Ei | 0,3 → 0,3 | 0,4 → 2,8 | 0,4 → **0,2** | 4/5 → 5/5° | wie Kugel |
+| Robbe | 4,0 → 2,2 | 6,3 → 6,8 | 12,5 → **1,2** | 11/11 → 13/14° | Top trägt |
+| Kegel | 2,1 → 3,2 | 7,3 → 5,6 | 2,6 → **0,6** | 14/10 → 14/11° | Top trägt |
+| Widerspruch Front +10 px | 0,3 → 0,8 | 10,2 → 10,9 | 0,8 → **0,1** | 6/3 → 5/4° | Widerspruch bleibt örtlich |
+| Tiger | 2,4 → 26,2 | 2,1 → 8,7 | 5,9 → 30,9 | 38/8 → 158/176° | **bricht** (Schnauzenkappe zerknittert) |
+| Vase | 1,3 → 65,4 | 2,3 → 30,4 | 13,7 → 5,7 | 11/9 → 70/177° | **bricht** (obere Kappe zerknittert) |
+| einfache Form | 0,3 → 9,7 | 7,7 → 13,6 | 77,4 → 75,2 | 21/21 → 97/128° | **bricht** (Kerbe hinten, Kappe) |
+
+Gegenproben: ohne Umparametrisieren wird die Robbe schlechter (Top 15,8), Tiger, Vase und einfache Form brechen weiter; ohne
+Tangente ebenso. Die Breitenlinie trägt also, wo der Körper runde Enden hat; wo eine Kappe einen Kasten, ein stehendes Ende
+oder eine Kerbe tragen muss, zerknittert die mit 1e5 gebundene Mittelreihe der Kappe.
+
+**Die drei Fehlanläufe an der Frontlinie** (Robbe, Kegel; je gemessen):
+1. Ringstücke, gebunden an den nächsten Punkt der Front-Linie (z und y): Wo das Top schmaler ist als die Front, lag der
+   Fußpunkt oben oder unten und zog ganze Ringe aus der Höhe — Robbe Front 65 px, Falten 179°.
+2. Ringstücke, nur waagerecht gebunden (z = Breite der Front auf der Höhe): Robbe Front 27 px, Kegel 45 px. Ursache: Die
+   Front-Silhouette liegt nicht auf einem Ring — beim Kegel stellt die runde Rückseite (Kappe) die Front, an der Kugel liegt
+   der Äquator zwischen zwei Ringen, und oben und unten an der Front-Linie ist „am weitesten außen“ gar keine Breite.
+3. Je Stück der Front-Linie der Punkt, der am weitesten nach außen reicht (frei von Ringen): schaukelt sich auf — jeder
+   Durchgang bindet die Beulen des vorigen (Kugel Front 12 → 75 → 852 px).
+Die Ungleichung (alles, was über eine Linie steht, zurück) hatte dasselbe Problem: Tausende einzeln mit 1e5 festgehaltene
+Punkte kämpfen gegen den Käfig.
+
+**Befund:** Genau das Risiko aus Abschnitt 8 — die Zuordnung, welche Kurve des Körpers welchen Umriss stellt. Die Röhre hat
+Ringe nur an festen Stellen und an jedem Ende eine quadratische Kappe. Wo eine Silhouette zwischen Ringen, auf einer Kappe
+oder an einem kastigen Ende liegt, gibt es keine Käfigkurve, die man binden könnte; einzelne feine Punkte mit hohem Gewicht zu
+binden kämpft gegen den Käfig, statt ihn zu formen.
+
+**Zwei Wege (Entscheidung für Florian):**
+- **A — die Struktur folgt den Umrissen (Empfehlung):** Ein Ring wird genau dorthin gesetzt, wo der Körper in der Front am
+  breitesten ist (an der Kugel der Äquator), und die Enden bekommen eine Kappe nach ihrer Form (Kasten flach, rund mit Ringen).
+  Dafür braucht es das exakte Einfügen eines Käfigrings an einer Stelle — genau die Maschine der ⌘R-Loops aus V6. Also: zuerst
+  der Kern von V6 (Loop = neuer Ring, formneutral), dann V4 mit „Ring an der breitesten Stelle“ und Kappen nach Endform.
+- **B — der Löser bindet entlang der Normalen** (Stufe 2 aus V4: gekoppeltes System wie der Posen-Löser): Bedingungen nur
+  quer zur Linie, die Ungleichung einseitig. Allgemeiner, aber die Zuordnung bleibt eine Iteration, die sich (wie Anlauf 3)
+  aufschaukeln kann — Forschung mit offenem Ausgang.
+
+Bis zur Entscheidung bleibt im Editor alles wie heute (der Schalter ist nicht in der Tafel).

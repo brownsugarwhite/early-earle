@@ -33,6 +33,8 @@ import { type FuelleArt, huellenBreite, reichweite } from './fuelle';
 import { type RandMarke, frontBeruehren } from './rand';
 import { type Schlitz, schlitzIm, seiteFuerLeiter } from './schlitz';
 import { endenFuer, profilAnker } from './grundkoerper/enden';
+import { type UmrissBericht, type UmrissOptionen, umrisseLoesen } from './umrisse';
+import { grenzZeile } from '../loeser/achsen';
 import { faltenNachZonenRoehre } from './pruefen/zonen';
 
 export type AbleitOptionen = {
@@ -106,6 +108,14 @@ export type AbleitOptionen = {
   fuelle?: FuelleArt;
   /** S3: Anteil des Breitengewichts für Berührpunkte (Standard 0,25) */
   randGewicht?: number;
+  /**
+   * Plan 20.10., V4 „Exakte Umrisse“ (Beweis): Front und Top binden wie die Seite — Breitenlinie (Reihe N/4 durch die
+   * Kappen), Frontlinie aus Ringstücken, Ungleichung in allen Blättern, Löser je Achse (`kern/umrisse.ts`). Fehlt = heutiger
+   * Bau (bitgleich). Nur ohne Maul und Beine.
+   */
+  umrisse?: 'exakt';
+  /** V4: Gewichte und Schalter des Beweises (Messreihen) */
+  umrisseOpt?: UmrissOptionen;
 };
 
 /**
@@ -119,6 +129,24 @@ export const GLATTE_HAUT: Readonly<Pick<AbleitOptionen, 'fair' | 'fairBezug' | '
 const BREITE_DURCHGAENGE = 2;
 
 export const ABLEIT_STANDARD: AbleitOptionen = { ringe: 24, ring: 16, stufen: 3, kappe: 0.05, nahtGewicht: 16, liegendAb: 0.5, breiteGewicht: 16, eckenSchaerfe: 1e6, kappeSpitze: 0.025, spitzenFalte: false, kruemmung: 2, querschnitt: true, glaettung: 0 };
+
+/**
+ * V4: Höhe v der breitesten Stelle einer Querschnittsvorlage (Mitte des Bereichs, der bis 0,1 % an die größte Breite
+ * reicht — bei flachen Wänden die Mitte der Wand); null ohne Breite.
+ */
+export function breitesteHoehe(q: Querschnitt): number | null {
+  let wMax = 0;
+  for (let j = 1; j + 1 < q.w.length; j++) wMax = Math.max(wMax, q.w[j]!);
+  if (!(wMax > 0)) return null;
+  let vHi = -Infinity;
+  let vLo = Infinity;
+  for (let j = 1; j + 1 < q.w.length; j++) {
+    if (q.w[j]! < wMax * (1 - 1e-3)) continue;
+    vHi = Math.max(vHi, q.v[j]!);
+    vLo = Math.min(vLo, q.v[j]!);
+  }
+  return (vHi + vLo) / 2;
+}
 
 /** Station einer Sprosse: Anteile a (Rücken) und b (Bauch) entlang der Linien. */
 export type Station = { a: number; b: number };
@@ -161,6 +189,8 @@ export type Ableitung = {
   naht: { fein: Uint32Array; anteil: Float64Array; loeser: AusgleichsLoeser | null };
   /** Breitenschleife im Ausgleich: je Zeile der feine Punkt (= Käfigpunkt) und das Vorzeichen seiner z-Seite; null = aus */
   breite: Breite | null;
+  /** V4: Bericht der exakten Umrisse (nur mit `umrisse: 'exakt'`) */
+  umrisse?: UmrissBericht;
   zeiten: { leiter: number; breiten: number; matrix: number; loeser: number; ziele: number; gesamt: number };
 };
 
@@ -1415,6 +1445,13 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
   // Maulschlitz; ohne Option bitgleich.
   const rand = opt.fuelle && !schlitz ? frontBeruehren(ringSprossen, ringQNeu, Wr, breiten, opt.fuelle, dok ? huellenBreite(dok, breiten) : undefined) : null;
   if (rand) for (let i = 0; i < R; i++) ringQNeu[i] = rand.vorlagen[i] as Querschnitt;
+  // V4: die breiteste Stelle jeder Vorlage auf die Reihe N/4 (die Breitenlinie ist diese Käfigreihe)
+  if (opt.umrisse === 'exakt' && !schlitz && opt.umrisseOpt?.umparametrisieren !== false) {
+    for (let i = 0; i < R; i++) {
+      const vB = breitesteHoehe(ringQNeu[i]!);
+      if (vB !== null) ringQNeu[i] = umparametrisieren(ringQNeu[i]!, N / 2, { index: N / 4, v: vB });
+    }
+  }
   for (let i = 0; i < R; i++) {
     const sp = ringSprossen[i]!;
     const q = ringQNeu[i]!;
@@ -1901,7 +1938,9 @@ export function fertigstellen(e: Rohbau): Ableitung {
   }
   const nahtFein = Uint32Array.from(geordnet);
   let nahtLoeser: AusgleichsLoeser | null = null;
-  const breite = breitenSchleife(vorlage, l, st, breiten, dok, opt, ziele, u, k, e.haut, e.maulBau, e.randVorlagen, e.randPunkte);
+  const exakt = opt.umrisse === 'exakt' && opt.nahtGewicht > 0 && !e.haut && !e.schlitz && !e.maulBau;
+  const breite = exakt ? null : breitenSchleife(vorlage, l, st, breiten, dok, opt, ziele, u, k, e.haut, e.maulBau, e.randVorlagen, e.randPunkte);
+  let umrisseBericht: UmrissBericht | undefined;
   if (opt.nahtGewicht > 0) {
     const bedingungen: Bedingung[] = [];
     for (let i = 0; i < k.n; i++) bedingungen.push({ zeile: i, gewicht: e.zielGewicht ? e.zielGewicht[i]! : 1 });
@@ -1914,6 +1953,19 @@ export function fertigstellen(e: Rohbau): Ableitung {
     for (let durchgang = 0; breite && durchgang < BREITE_DURCHGAENGE; durchgang++) {
       xyz = kaefigAusgleich(nahtLoeser, ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil, breite, breiten, fein, opt.fuehrend));
       fein = anwenden3(u.grenze, xyz);
+    }
+    // V4: exakte Umrisse — dieselben Käfigziele und Naht, dazu Breitenlinie, Frontlinie und Ungleichung (Löser je Achse)
+    if (exakt) {
+      const zeilen = [];
+      for (let i = 0; i < k.n; i++) {
+        const w = e.zielGewicht ? e.zielGewicht[i]! : 1;
+        zeilen.push({ ...grenzZeile(u.grenze, i, k.n), gewicht: [w, w, w] as const });
+      }
+      for (let q = 0; q < nahtFein.length; q++) zeilen.push({ ...grenzZeile(u.grenze, nahtFein[q]!, k.n), gewicht: [opt.nahtGewicht, opt.nahtGewicht, opt.nahtGewicht] as const });
+      const r = umrisseLoesen({ v: vorlage, k, u, dok, breiten, basis: { zeilen, ziele: ausgleichsZiele(k.n, ziele, umriss, nahtFein, anteil) }, gm: glaettemassFuer(u, k, opt, vorlage.R * vorlage.N), ...(opt.umrisseOpt ? { opt: opt.umrisseOpt } : {}) });
+      xyz = r.xyz;
+      fein = r.fein;
+      umrisseBericht = r.bericht;
     }
   }
   const kaefig = { ...k, xyz };
@@ -1939,6 +1991,7 @@ export function fertigstellen(e: Rohbau): Ableitung {
     dokAlt: dok,
     naht: { fein: nahtFein, anteil, loeser: nahtLoeser },
     breite,
+    ...(umrisseBericht ? { umrisse: umrisseBericht } : {}),
     zeiten: { leiter: t1 - t0, breiten: t2 - t1, matrix: t3 - t2, loeser: t4 - t3, ziele: t5 - t4, gesamt: t5 - t0 },
   };
 }

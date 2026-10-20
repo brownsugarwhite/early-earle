@@ -142,3 +142,10 @@ Kern: `kern/pruefen/extremreihe.test.ts` (schnelle Wächter), die ganze Reihe ge
 
 Messwerkzeug im Editor: `window.__modal` (`aktiv()`, `ziel()`, `art()`, `max`/`letzte`/`zuege` = Zeit je Mausbewegung für Rechnung
 und Store, ohne Zeichnen; `zuruecksetzen()`).
+
+## Nachtrag 20.10. nachts: V4 „Exakte Umrisse“ (Beweis angehalten)
+
+| Skript | misst |
+|---|---|
+| `v4-diagnose.ts` (Kern, aus `packages/shape`) | je Beweis-Körper (Röhre wie im Editor, Florians Ablauf) und Blatt die größte Abweichung mit Ort: zu breit/zu schmal, Kappe oder Ring, 3D-Lage; je Ring die breiteste Reihe (`KOERPER`) |
+| `v4-beweis.ts` (Kern, aus `packages/shape`) | heute gegen `umrisseExakt`: Δ je Blatt, Falten (frei/Kappe), Volumen, Bauzeit, Bedingungen; `OPT` (JSON für `umrisseOpt`, z. B. `{"front":true,"ungleich":2}`), `DURCH=1` Durchdringungen, `BOGEN=1` Kontaktbogen (`NAME`, `AUSGABE`) |
