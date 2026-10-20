@@ -6,7 +6,7 @@
 import type { Ansicht, Dokument, Lippen, Linie3, V2, V3T } from '@ee/shape';
 import { bewegeKnoten, lippeAnHaut, maulAnfangBewegen, maulMitMarken } from '@ee/shape';
 import { abtasten3, ausAnsicht2, einfuegen3, griffZiehen3, inAnsicht2, knotenBei, knotenVerschieben3, linieDurch, loeschen3, maulAnfaengeEinbauen, maulAnfangIndizes, mundwinkelVerbinden, naechsterInAnsicht, offenVorschlag } from '@ee/shape/versuch';
-import { gekoppeltBerechnen } from '../editing/gekoppelt';
+import { gekoppeltBerechnen, gekoppeltSetzen } from '../editing/gekoppelt';
 import { poseSeite, poseSeiteSetzen, poseSpaltIndizes } from './fressenForm';
 import { useEffect } from 'react';
 import { type Modus, useEditor } from '../state/editorStore';
@@ -59,8 +59,9 @@ function setzeLippenMitAnfang(lippen: Lippen, rolle: LinienName, anfang: V2, bas
   const ed = useEditor.getState();
   const verbunden = mundwinkelVerbinden(lippen, ed.dok.maul?.zu);
   const seite = maulAnfangBewegen(basis.seite, rolle, anfang);
-  const profile = gekoppeltBerechnen('seite', seite, basis, useUi.getState().auswahl).profile;
-  ed.setzeDokument(maulMitMarken({ ...ed.dok, profile }, verbunden));
+  // mit den Spanten: Fügt die Kopplung der Front einen Punkt ein, bekommen die Spanten denselben (Plan 20.10., V0)
+  const g = gekoppeltBerechnen('seite', seite, basis, useUi.getState().auswahl);
+  ed.setzeDokument(maulMitMarken({ ...ed.dok, profile: g.profile, ...(g.spanten ? { spanten: g.spanten } : {}) }, verbunden));
 }
 
 /**
@@ -292,7 +293,7 @@ export function maulZeiger(e: React.PointerEvent, ctx: Ebene2DKontext): boolean 
             const ziel = ctx.ansicht === 'seite' ? { x: p0.x + p.x - start.x, y: p0.y + p.y - start.y } : { x: p0.x, y: p0.y + p.y - start.y };
             const eins = bewegeKnoten(basisProfile.seite, k, ziel);
             const neu = paar !== null ? bewegeKnoten(eins, paar, ziel) : eins;
-            useEditor.getState().setzeProfile(gekoppeltBerechnen('seite', neu, basisProfile, useUi.getState().auswahl).profile);
+            gekoppeltSetzen(gekoppeltBerechnen('seite', neu, basisProfile, useUi.getState().auswahl));
           },
           () => useEditor.getState().endeGeste(),
         );

@@ -13,8 +13,9 @@
 //
 // Eine folgende Ansicht wird dort, wo die führende Ansicht mehr verlangt, an der entsprechenden Stelle angepasst (die Stelle
 // ihres Umrisses, die den verlangten Punkt mit der kleinsten Bewegung einschließt), und dort, wo sie selbst mehr verlangt,
-// als die anderen zulassen, nach innen gezogen. Bewegt werden nur vorhandene Knoten samt Griffen quer zur Spiegelachse
-// (Florian 11.10.: die Kopplung fügt nie Punkte ein), so wenig wie möglich (kleinste Quadrate unter Ungleichungen).
+// als die anderen zulassen, nach innen gezogen. Bewegt werden vorhandene Knoten samt Griffen quer zur Spiegelachse, so wenig
+// wie möglich (kleinste Quadrate unter Ungleichungen); nur wenn sie nicht reichen, wird ein Punkt formneutral eingefügt
+// (Florian 16.10.: „nur wenn wirklich notwendig“; löst die Regel vom 11.10. „nie Punkte einfügen“ ab).
 // Widersprüche, die schon am Gestenbeginn bestanden (alte Zeichnungen), bleiben stehen, bis man angleicht.
 // DOM-frei.
 
@@ -353,8 +354,25 @@ function abstandMengen(f: Intervalle, t: Intervalle): { abstand: number; inF: nu
   return best;
 }
 
-/** Fehlbeträge je Probe (Front, Top, Seite) am Gestenbeginn: alte Widersprüche bleiben stehen. */
-type AlteFehler = Record<'front' | 'top' | 'seite', Float64Array>;
+/**
+ * Fehlbeträge je Probe (Front, Top, Seite) am Gestenbeginn: alte Widersprüche bleiben stehen. Dazu die Sichthülle des
+ * Gestenbeginns: Ändert sich die Probenzahl (ein Punkt mit dem Stift ändert die Knotenzahl, nicht die Kurve), wird der alte
+ * Fehlbetrag an jeder neuen Probe aus ihr gerechnet — vorher fielen die alten Werte dann ganz weg, und die folgenden
+ * Ansichten lösten alle alten Widersprüche auf (Plan 20.10., V0).
+ */
+type AlteFehler = Record<'front' | 'top' | 'seite', Float64Array> & { huelle: Huelle3 };
+
+/** Alter Fehlbetrag einer Front-/Top-Probe gegen die Hülle des Gestenbeginns. */
+function altBei(alt: AlteFehler, b: Breite, laengs: number, quer: number): number {
+  return fehlbetrag(alt.huelle.erlaubt(b, laengs), quer);
+}
+
+/** Alter Fehlbetrag eines Seitenpunkts gegen die Hülle des Gestenbeginns. */
+function altSeiteBei(alt: AlteFehler, x: number, y: number): number {
+  const zf = alt.huelle.front.bei(y);
+  const zt = alt.huelle.top.bei(x);
+  return zf.length && zt.length ? abstandMengen(zf, zt).abstand : 0;
+}
 
 const alteMerker = new WeakMap<Profile, AlteFehler | null>();
 /** gemerkt je Basis (eine Geste rechnet bei jedem Zug vom selben Gestenbeginn aus) */
@@ -374,7 +392,7 @@ function alteFehlerRechnen(pr: Profile): AlteFehler | null {
     const zt = h.top.bei(p.x);
     return zf.length && zt.length ? abstandMengen(zf, zt).abstand : 0;
   });
-  return { front: je('front'), top: je('top'), seite };
+  return { front: je('front'), top: je('top'), seite, huelle: h };
 }
 
 export type PunkteOptionen = {
@@ -384,12 +402,17 @@ export type PunkteOptionen = {
   altesBehalten?: boolean;
   /** Punkte einfügen, wo die vorhandenen Knoten nicht reichen (Rest > 1 px; Standard aus) */
   einfuegen?: boolean;
+  /**
+   * Höchstens so viele Punkte je Breitenansicht (Standard 2). Der Editor gibt den Rest seiner Geste mit: höchstens zwei je
+   * Geste und Ansicht (Plan 20.10., V0; vorher je Durchgang, bei führender Seite bis zu vier, und je Mausbewegung neu).
+   */
+  einfuegenMax?: { front: number; top: number };
 };
 
 /** Teilung eines Segments (Florian 16.10.: Punkte einfügen, „aber nur wenn wirklich notwendig“): Segment s bei t. */
 export type Teilung = [segment: number, t: number];
 
-/** Ab diesem Rest (px) nach dem Lösen mit den vorhandenen Knoten wird ein Punkt eingefügt; höchstens so viele je Zug. */
+/** Ab diesem Rest (px) nach dem Lösen mit den vorhandenen Knoten wird ein Punkt eingefügt; höchstens so viele je Ansicht. */
 const EINFUEGEN_AB = 1;
 const EINFUEGEN_MAX = 2;
 
@@ -412,10 +435,10 @@ function zurueck(s: number, u: number, teilungen: readonly Teilung[]): [number, 
  * Eine folgende Halbansicht `b` anpassen (die andere Breitenansicht und die Seite stehen fest): ihre Proben bleiben bzw.
  * werden erreichbar; führt die andere (`fuehrt`), werden deren unerreichbare Punkte an der nächsten Stelle von b möglich;
  * Seitenpunkte, für die Front und Top kein gemeinsames z haben, ebenso. `alt` = Fehlbeträge vom Gestenbeginn.
- * Mit `einfuegenErlaubt`: Bleibt nach dem Lösen mit den vorhandenen Knoten mehr als 1 px übrig, wird das Segment an der
- * Stelle des größten Rests formneutral geteilt und neu gelöst (höchstens zweimal); die Teilungen kommen mit zurück.
+ * Mit `einfuegenMax` > 0: Bleibt nach dem Lösen mit den vorhandenen Knoten mehr als 1 px übrig, wird das Segment an der
+ * Stelle des größten Rests formneutral geteilt und neu gelöst (höchstens `einfuegenMax`-mal); die Teilungen kommen mit zurück.
  */
-function folgen(profile: Profile, b: Breite, fuehrt: boolean, alt: AlteFehler | null, tol: number, einfuegenErlaubt = false): { profil: Profil; teilungen: Teilung[] } {
+function folgen(profile: Profile, b: Breite, fuehrt: boolean, alt: AlteFehler | null, tol: number, einfuegenMax = 0): { profil: Profil; teilungen: Teilung[] } {
   const pr0 = profile[b];
   const ab: Breite = b === 'front' ? 'top' : 'front';
   if (pr0.art !== 'halb' || profile[ab].art !== 'halb') return { profil: pr0, teilungen: [] };
@@ -427,9 +450,10 @@ function folgen(profile: Profile, b: Breite, fuehrt: boolean, alt: AlteFehler | 
   const altB0 = alt && alt[b].length === n0 * PROBEN_FEIN + 1 ? alt[b] : null;
   const ap = fuehrt ? proben(profile[ab], ab, PROBEN_FEIN) : [];
   const apSpanne = ap.map((q) => seiteQuer[schnittAchse(ab)].bei(q.laengs));
-  const altA = alt && alt[ab].length === ap.length ? alt[ab] : null;
+  // gleiche Probenzahl: die Werte des Gestenbeginns je Index (wie bisher); sonst an jeder Probe aus der alten Hülle
+  const altA = alt ? (alt[ab].length === ap.length ? alt[ab] : Float64Array.from(ap, (q) => altBei(alt, ab, q.laengs, q.quer))) : null;
   const sp = pfadAbtasten(vollerPfad(profile.seite), PROBEN_FEIN);
-  const altS = alt && alt.seite.length === sp.length ? alt.seite : null;
+  const altS = alt ? (alt.seite.length === sp.length ? alt.seite : Float64Array.from(sp, (p) => altSeiteBei(alt, p.x, p.y))) : null;
   const spAndere = sp.map((p) => (b === 'front' ? andere.bei(p.x) : andere.bei(p.y)));
   const teilungen: Teilung[] = [];
   let aktuell: Profil = pr0;
@@ -472,7 +496,9 @@ function folgen(profile: Profile, b: Breite, fuehrt: boolean, alt: AlteFehler | 
           const [s0, u0] = zurueck(p.s, p.u, teilungen);
           return altB0[Math.min(altB0.length - 1, s0 * PROBEN_FEIN + Math.round(u0 * PROBEN_FEIN))]!;
         })
-      : null;
+      : alt
+        ? psStruktur.map((p) => altBei(alt, b, p.laengs, p.quer))
+        : null;
     // Probe von b in den Längsbereichen, die z mit der kleinsten Bewegung einschließt
     const einschliessenBei = (ps: Probe[], bereiche: Intervalle, z: number): Bedingung | null => {
       let best: Bedingung | null = null;
@@ -595,7 +621,7 @@ function folgen(profile: Profile, b: Breite, fuehrt: boolean, alt: AlteFehler | 
       }
       if (!angenommen) break;
     }
-    if (!einfuegenErlaubt) break;
+    if (einfuegenMax <= 0) break;
     // Rest nach dem Lösen (mit dem Spielraum der Erreichbarkeit, ±0,5 px): größte unerfüllte Forderung bzw. eigene
     // Unerreichbarkeit; nur darüber wird geteilt (ps ist der Stand nach dem Lösen)
     const schlimmst = groessterRest(ps, aktuell, forderungen, eigene);
@@ -607,7 +633,7 @@ function folgen(profile: Profile, b: Breite, fuehrt: boolean, alt: AlteFehler | 
       }
       break;
     }
-    if (versuch >= EINFUEGEN_MAX || !schlimmst || schlimmst.rest * PX <= EINFUEGEN_AB) break;
+    if (versuch >= einfuegenMax || !schlimmst || schlimmst.rest * PX <= EINFUEGEN_AB) break;
     vorher = { profil: aktuell, rest: schlimmst.rest };
     const p = ps[schlimmst.j]!;
     // formneutral teilen; nicht direkt an einem vorhandenen Knoten (dort brächte ein Punkt keine Freiheit)
@@ -631,13 +657,15 @@ export type PunkteErgebnis = { profile: Profile; teilungen: { front: Teilung[]; 
 export function punkteAbgleichenMit(profile: Profile, quelle: Ansicht, basis: Profile = profile, opt: PunkteOptionen = {}): PunkteErgebnis {
   const tol = (opt.toleranz ?? 0.25) / PX;
   const alt = opt.altesBehalten === false ? null : alteFehler(basis);
-  const ein = opt.einfuegen ?? false;
+  // Punkte je Breitenansicht für den ganzen Aufruf (bei führender Seite folgen beide Ansichten bis zu zweimal)
+  const budget = opt.einfuegen ? { ...(opt.einfuegenMax ?? { front: EINFUEGEN_MAX, top: EINFUEGEN_MAX }) } : { front: 0, top: 0 };
   const out: Profile = { ...profile };
   const teilungen: PunkteErgebnis['teilungen'] = { front: [], top: [] };
   const folge = (b: Breite, fuehrt: boolean) => {
-    const r = folgen(out, b, fuehrt, alt, tol, ein);
+    const r = folgen(out, b, fuehrt, alt, tol, Math.max(0, budget[b]));
     out[b] = r.profil;
     teilungen[b].push(...r.teilungen);
+    budget[b] -= r.teilungen.length;
   };
   if (quelle === 'front') folge('top', true);
   else if (quelle === 'top') folge('front', true);
@@ -658,8 +686,13 @@ export function punkteAbgleichen(profile: Profile, quelle: Ansicht, basis: Profi
   return punkteAbgleichenMit(profile, quelle, basis, opt).profile;
 }
 
-/** Zug in `quelle` gekoppelt: Außenmaße, dann jeder Punkt (Editor: jede Formgeste, mit Einfügen). */
+/**
+ * Zug in `quelle` gekoppelt: Außenmaße, dann jeder Punkt (Editor: jede Formgeste, mit Einfügen). Ist die Quelle wie in
+ * `basis` (Zug hin und zurück), bleibt alles wie in `basis` — vorher rasteten die Außenmaße dabei Reste unter 0,05 px neu
+ * ein (nach „angleichen“ bis 0,03 px), und die Geste wurde ein Undo-Schritt ohne sichtbare Wirkung (Plan 20.10., V0).
+ */
 export function gekoppeltMit(profile: Profile, quelle: Ansicht, basis: Profile = profile, opt: PunkteOptionen = {}): PunkteErgebnis {
+  if (basis !== profile && (profile[quelle] === basis[quelle] || JSON.stringify(profile[quelle]) === JSON.stringify(basis[quelle]))) return { profile: basis, teilungen: { front: [], top: [] } };
   return punkteAbgleichenMit(abgleichen(profile, quelle, basis), quelle, basis, opt);
 }
 

@@ -50,6 +50,12 @@ type EditorState = {
   gesteStart: Dokument | null;
   /** Ziel beim Gestenbeginn (der Undo-Schritt gehört dorthin) */
   gesteZiel: Modus | null;
+  /**
+   * Zählt die Gesten (jedes `beginGeste` einer neuen Geste +1). Merker, die nur für eine Geste gelten (eingefügte Punkte der
+   * Kopplung), hängen an dieser Nummer — nicht am Dokument: Rückgängig stellt genau das Dokument des Gestenbeginns wieder
+   * her, und die nächste Geste nahm sonst den alten Merker (Plan 20.10., V0).
+   */
+  gesteNr: number;
 
   beginGeste(): void;
   endeGeste(): void;
@@ -107,6 +113,15 @@ type GesteEndeHaken = (start: Dokument, jetzt: Dokument, abschliessen: () => voi
 let gesteEndeHaken: GesteEndeHaken | null = null;
 export function setzeGesteEndeHaken(h: GesteEndeHaken | null): void {
   gesteEndeHaken = h;
+}
+
+/**
+ * Läuft am Gestenende vor allem anderen, noch innerhalb der Geste (z. B. Kopplung: eingefügte Punkte, die die Endform nicht
+ * braucht, wieder entfernen — gehört zum selben Undo-Schritt).
+ */
+let vorGesteEnde: (() => void) | null = null;
+export function setzeVorGesteEnde(h: (() => void) | null): void {
+  vorGesteEnde = h;
 }
 
 /**
@@ -287,14 +302,17 @@ export const useEditor = create<EditorState>((set, get) => {
     zukunft: [],
     gesteStart: null,
     gesteZiel: null,
+    gesteNr: 0,
 
     beginGeste() {
       if (get().gesteStart) return;
-      set({ gesteStart: get().dok, gesteZiel: get().modus });
+      set({ gesteStart: get().dok, gesteZiel: get().modus, gesteNr: get().gesteNr + 1 });
       // B1/B7: Greifen beendet eine Vorschau (im Editor-Tab die Grundform, in einer Pose die ganze Pose)
       if (vorschauLaeuft(get().modus)) vorschauBeenden(get().modus);
     },
     endeGeste() {
+      if (!get().gesteStart) return;
+      vorGesteEnde?.();
       const start = get().gesteStart;
       if (!start) return;
       const abschliessen = () => {

@@ -4,9 +4,9 @@ import { describe, expect, it } from 'vitest';
 import type { Dokument } from './dokument';
 import { erreichbarkeit } from './kern/grundkoerper/huelle';
 import { G_KOERPER, S0_KOERPER, gKoerperDokument, s0KoerperDokument } from './kern/pruefen/grundkoerper';
-import { abgleichen } from './kopplung';
+import { abgleichen, angleichen } from './kopplung';
 import { gekoppelt, gekoppeltMit, punkteAngleichen, punkteAngleichenMit } from './kopplungPunkte';
-import { type Profile, istAchsKnoten, neuesDokument, verschiebeKnoten } from './index';
+import { type Profile, einfuegen, istAchsKnoten, neuesDokument, verschiebeKnoten } from './index';
 
 declare const console: { log: (...a: unknown[]) => void };
 declare const performance: { now(): number };
@@ -168,5 +168,39 @@ describe('Kopplung jedes Punkts (S1c)', () => {
     console.log(`Ente: vorher ${vorher.max.toFixed(1)} px, nach Zug am Schwanz ${w.max.toFixed(1)} px; Top-Knoten bewegt: ${nach.top.knoten.filter((k, j) => Math.hypot(k.p.x - pr.top.knoten[j]!.p.x, k.p.y - pr.top.knoten[j]!.p.y) > 1e-9).length}`);
     expect(w.max).toBeGreaterThan(vorher.max - 1);
     expect(w.max).toBeLessThan(vorher.max + 1);
+  });
+
+  it('Zug hin und zurück (Quelle wie am Gestenbeginn) ändert nichts (Plan 20.10., V0)', () => {
+    // nach „angleichen“ (Front führt) bleiben Reste unter 0,05 px in den Außenmaßen; vorher rastete jede Geste sie neu ein
+    const pr = punkteAngleichen(s0KoerperDokument('ente-haken').profile, 'front');
+    for (const quelle of ['seite', 'front', 'top'] as const) {
+      const zurueck = JSON.parse(JSON.stringify(pr[quelle])) as typeof pr.seite;
+      const r = gekoppeltMit({ ...pr, [quelle]: zurueck }, quelle, pr, { einfuegen: true });
+      expect(JSON.stringify(r.profile), `Quelle ${quelle}`).toBe(JSON.stringify(pr));
+      expect(r.teilungen.front.length + r.teilungen.top.length).toBe(0);
+    }
+  });
+
+  it('ein Punkt mit dem Stift (Knotenzahl ändert sich) gleicht alte Widersprüche nicht still an (Plan 20.10., V0)', () => {
+    // wie der Editor beim Laden: Außenmaße angeglichen, die Widersprüche der Punkte bleiben (Ente mit Haken: 35 px)
+    const pr = angleichen(s0KoerperDokument('ente-haken').profile);
+    expect(widerspruch(pr).max).toBeGreaterThan(5);
+    const ansichten = ['seite', 'front', 'top'] as const;
+    for (const quelle of ansichten) {
+      for (let seg = 0; seg < pr[quelle].knoten.length - 1; seg++) {
+        const neu = einfuegen(pr[quelle], seg, 0.5).profil;
+        expect(neu.knoten.length).toBe(pr[quelle].knoten.length + 1);
+        const r = gekoppeltMit({ ...pr, [quelle]: neu }, quelle, pr, { einfuegen: true });
+        for (const b of ansichten.filter((x) => x !== quelle)) {
+          const a = pr[b].knoten;
+          const z = r.profile[b].knoten;
+          // vorher fügte die Kopplung hier Punkte ein und löste die alten Widersprüche auf (Top → Front, 6 von 6 Segmenten)
+          expect(z.length, `Punkt in ${quelle}, Segment ${seg}: ${b} bekam Punkte`).toBe(a.length);
+          // Rest nur aus den abgetasteten Außenmaßen (die neue Teilung tastet die gleiche Kurve an anderen Stellen ab)
+          const weg = Math.max(...z.map((k, j) => Math.hypot(k.p.x - a[j]!.p.x, k.p.y - a[j]!.p.y))) * 461;
+          expect(weg, `Punkt in ${quelle}, Segment ${seg}: ${b} bewegt`).toBeLessThan(0.05);
+        }
+      }
+    }
   });
 });

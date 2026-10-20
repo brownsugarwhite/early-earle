@@ -2,7 +2,9 @@
 // „nur wenn wirklich notwendig“). Ente-Haken (Front mit einem freien Knoten, Spant S1):
 // 1. „angleichen“ im Top (Top führt): Widerspruch → 0, die Front bekommt einen Punkt, der Spant dieselbe Punktstruktur.
 // 2. frisch geladen, Front angeglichen: Kopf im Top mit der Maus breiter ziehen → Front folgt (mit Punkt), ≤ 1 px, ein
-//    Undo-Schritt; Undo stellt die Punktzahl wieder her.
+//    Undo-Schritt; Undo stellt die Punktzahl wieder her. Plan 20.10., V0: Ein kleiner Zug nach dem Undo bringt den Punkt
+//    nicht zurück (vorher hing der Merker der Kopplung am Profil des Gestenbeginns); hin und zurück in einer Geste lässt
+//    keinen Punkt und keinen Undo-Schritt übrig (überflüssige Punkte nimmt das Gestenende heraus).
 // 3. Startkugel: gewöhnliche Züge fügen keinen Punkt ein.
 // Eigener Vite über run-check.sh (nie 5180).
 import { mkdirSync } from 'node:fs';
@@ -110,6 +112,29 @@ else {
   await page.waitForTimeout(500);
   const c = await stand();
   pruefe(c.front === a.front && c.spanten.join() === a.spanten.join(), `Undo: Front ${c.front} Knoten, Spanten ${JSON.stringify(c.spanten)}`);
+  // kleiner Zug nach dem Undo (6 px zur Achse hin, braucht keinen Punkt)
+  v = await page.evaluate(() => window.__editor.netzVersion());
+  await page.mouse.move(griff.x, griff.y);
+  await page.mouse.down();
+  for (let k = 1; k <= 3; k++) await page.mouse.move(griff.x, griff.y - griff.weg * 2 * k);
+  await page.mouse.up();
+  await nachBau(v);
+  const d = await stand();
+  pruefe(d.front === a.front && d.spanten.join() === a.spanten.join(), `kleiner Zug nach dem Undo: Front ${d.front} Knoten (Punkt nicht zurück), Spanten ${JSON.stringify(d.spanten)}, Widerspruch ${d.widJe} px`);
+  await page.evaluate(() => window.__stores.editor.getState().rueckgaengig());
+  await page.waitForTimeout(500);
+  // hin und zurück in einer Geste: unterwegs braucht die Front einen Punkt, am Ende nicht mehr
+  const e0 = await stand();
+  v = await page.evaluate(() => window.__editor.netzVersion());
+  await page.mouse.move(griff.x, griff.y);
+  await page.mouse.down();
+  for (let k = 1; k <= 12; k++) await page.mouse.move(griff.x, griff.y + griff.weg * 3 * k);
+  for (let k = 11; k >= 0; k--) await page.mouse.move(griff.x, griff.y + griff.weg * 3 * k);
+  await page.mouse.up();
+  await page.waitForTimeout(1500);
+  const e1 = await stand();
+  pruefe(e1.front === e0.front && e1.spanten.join() === e0.spanten.join(), `hin und zurück: Front ${e0.front} → ${e1.front} Knoten, Spanten ${JSON.stringify(e1.spanten)}`);
+  pruefe(e1.schritte === e0.schritte, `hin und zurück: kein Undo-Schritt (${e0.schritte} → ${e1.schritte})`);
 }
 
 // 3. Startkugel: gewöhnliche Züge ohne neue Punkte
