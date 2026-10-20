@@ -8,6 +8,9 @@ import { koerperDokument } from '../pruefen/koerper';
 import { zufall } from '../pruefen/zufall';
 import { linienExakt } from './linienExakt';
 import { FAELLE, PX, abstandZug, kasten, linieAusSeite } from './pruefen';
+import { extremKoerper } from '../pruefen/extremreihe';
+import { editorBauen, editorPlan, imAblauf, linieAufHaut } from '../pruefen/extremMessung';
+import { feinesNetz } from '../pruefstand';
 
 declare const console: { log: (...a: unknown[]) => void };
 
@@ -135,4 +138,23 @@ describe('Plan 20.10., V0: Rückschritte aus S8a', () => {
     // vorher konnte das Nachführen Nahtpunkte aus der Ebene schieben (die Ableitung selbst lässt Rundungsreste ~1e-15)
     for (let i = 0; i < R; i++) for (const j of [0, N / 2]) expect(Math.abs(r.abl.kaefig.xyz[3 * ohne.vorlage.ringPunkt(i, j) + 2]!)).toBeLessThan(1e-9);
   }, 120_000);
+});
+
+describe('Plan 20.10., V1: eine harte Linie bekommt immer eine Falte', () => {
+  // Befund der Extremreihe: Querlinien an Kegel, Vierbeiner und Krake passten auch auf eine Reihe, die sie nur auf einem
+  // Bruchteil eines Ringabstands berührten — gemeldet „Reihe“, aber keine einzige Käfigkante scharf
+  for (const name of ['kegel', 'vierbeiner']) {
+    it(`${name}: Querlinie (Editor-Bau, Florians Ablauf) — neue scharfe Käfigkanten, wie auch immer eingepasst`, () => {
+      const k = extremKoerper(name);
+      const bau = editorBauen(imAblauf(k.dok(), 'roehre', 'kugel'), editorPlan('roehre'));
+      const abl = bau.stand.abl;
+      const n = feinesNetz(abl);
+      const kante = linieAufHaut(bau.dok, k.linien![0]!, n.punkte, n.flaechen)!;
+      const r = linienExakt(abl, [kante], 1, 1e6);
+      let neu = 0;
+      for (let e = 0; e < r.abl.kaefig.nE; e++) if (r.abl.kaefig.eSchaerfe[e]! > 0 && !(abl.kaefig.eSchaerfe[e]! > 0)) neu++;
+      console.log(`${name}: eingepasst als ${r.berichte[0]!.art}, ${neu} neue scharfe Käfigkanten`);
+      expect(neu, `eingepasst als ${r.berichte[0]!.art}`).toBeGreaterThan(0);
+    }, 120_000);
+  }
 });

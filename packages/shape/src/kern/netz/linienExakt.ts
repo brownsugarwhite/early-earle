@@ -10,7 +10,8 @@
 // Nachführen schob ihn je Schritt zweimal um 1,5 × den Rest und schaukelte ihn auf (−2 je Schritt, gekreuzte Linien bis 24 px
 // daneben); jetzt je Punkt einmal mit dem Mittel der Reste. Nahtpunkte bleiben dabei in der Spiegelebene. Kurze Linien
 // laufen höchstens über ein Viertel ihrer Kanten aus (eine Querlinie über vier Kanten wurde sonst nie scharf). Linien, die
-// weder Reihe noch Ring werden, behalten die Treppe (vorher bekamen sie gar keine Falte).
+// weder Reihe noch Ring werden, behalten die Treppe (vorher bekamen sie gar keine Falte). V1: Eine Reihe bzw. ein Ring, die
+// keine ganze Käfigkante decken, zählen nicht (gemeldet war „Reihe“, scharf wurde nichts).
 
 import type { Kante } from '../../dokument';
 import { type Kaefig, kanteZwischen } from '../../kaefig/halbkanten';
@@ -73,8 +74,23 @@ export function linienExakt<T extends Ableitung>(abl: T, kanten: readonly Kante[
     // rechte Hälfte (die linke ist das Spiegelbild)
     const linie: NetzLinie = { punkte: roh.punkte.map((p) => [p[0], p[1], Math.abs(p[2])]), haerte: roh.haerte };
     const basis = { kaefig: k, fein, unterteilung: abl.unterteilung, vorlage: abl.vorlage };
-    const reihe = reiheEinpassen(basis, linie);
-    const ring = reihe ? null : ringEinpassen(basis, linie);
+    // Bereich der Kante: Ringe (Reihe) bzw. Spalten (Ring) innerhalb der Linie (über ihre Enden hinaus lag die Kante neben
+    // der gezeichneten Linie)
+    const bereichReihe = (r: { uVon: number; uBis: number }): [number, number] => [Math.max(0, Math.ceil(r.uVon - 0.25)), Math.min(R - 1, Math.floor(r.uBis + 0.25))];
+    const bereichRing = (r: { vVon: number; vBis: number }): [number, number] => [Math.max(0, Math.ceil(Math.min(r.vVon, r.vBis) - 0.25)), Math.min(H, Math.floor(Math.max(r.vVon, r.vBis) + 0.25))];
+    // Plan 20.10., V1: Eine Querlinie passt oft auch auf eine Reihe, die sie nur auf einem Bruchteil eines Ringabstands
+    // berührt — dann wurde keine Käfigkante scharf, gemeldet war trotzdem „Reihe“ (Kegel, Vierbeiner, Krake der
+    // Extremreihe). Deckt die Reihe keine ganze Kante, gilt der Ring; deckt auch er keine, die Treppe.
+    let reihe = reiheEinpassen(basis, linie);
+    if (reihe) {
+      const [a, b] = bereichReihe(reihe);
+      if (b - a < 1) reihe = null;
+    }
+    let ring = reihe ? null : ringEinpassen(basis, linie);
+    if (ring) {
+      const [a, b] = bereichRing(ring);
+      if (b - a < 1) ring = null;
+    }
     if (!reihe && !ring) {
       treppe.push(roh);
       berichte.push({ art: 'fehlt', index, ms: jetzt() - t0 });
@@ -90,11 +106,7 @@ export function linienExakt<T extends Ableitung>(abl: T, kanten: readonly Kante[
     // läuft die Linie vom Anfang des Bereichs (kleines u bzw. v) zum Ende? Der erste Linienpunkt liegt näher am Anfang
     // Auslauf: die k-te Kante vom Ende (k = 0, 1, …) ist höchstens 3 · (k + 1) / (auslauf + 1) scharf (halbscharf: scharf
     // für so viele Stufen, dann glatt), die Kante läuft an offenen Enden weich aus
-    // Bereich der Kante: Ringe (Reihe) bzw. Spalten (Ring) innerhalb der Linie (über ihre Enden hinaus lag die Kante neben
-    // der gezeichneten Linie)
-    const [von, bis] = reihe
-      ? [Math.max(0, Math.ceil(reihe.uVon - 0.25)), Math.min(R - 1, Math.floor(reihe.uBis + 0.25))]
-      : [Math.max(0, Math.ceil(Math.min(ring!.vVon, ring!.vBis) - 0.25)), Math.min(H, Math.floor(Math.max(ring!.vVon, ring!.vBis) + 0.25))];
+    const [von, bis] = reihe ? bereichReihe(reihe) : bereichRing(ring!);
     // höchstens ein Viertel der Kanten der Linie läuft aus (je Ende), sonst bliebe eine kurze Linie ganz weich
     const aus = Math.min(auslauf, Math.floor((bis - von) / 4));
     const auslaufGrenze = (vomAnfang: number, vomEnde: number): number => {

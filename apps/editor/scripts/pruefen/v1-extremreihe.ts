@@ -2,10 +2,11 @@
 // (Röhre, Teile) frisch und in Florians Ablauf (Startkugel eingefroren), gemessen wie der Editor baut (`extremMessen`).
 // Ausgabe: Tabelle (Markdown, je Gruppe), JSON mit allen Werten, Kontaktbogen je Gruppe (Florians Ablauf: Seite, Front,
 // Top mit schwarzer und gelber Linie, Netzlinien, Widerspruch, P-Linien; schräg; Zebra). Umgebung: KOERPER (Komma-Liste),
-// GRUPPEN, OHNE_BOGEN=1, GRUNDZAHLEN=1 (schreibt `extremreihe.grundzahlen.json` für den Test), AUSGABE (Ordner).
+// GRUPPEN, OHNE_BOGEN=1, GRUNDZAHLEN=1 (schreibt `extremreihe.grundzahlen.json` für den Test; mit KOERPER/GRUPPEN nur deren
+// Einträge), AUSGABE (Ordner).
 // Aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/v1-extremreihe.ts
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pfadAbtasten, vollerPfad } from '../../../../packages/shape/src/profil';
@@ -162,7 +163,13 @@ if (process.env.GRUNDZAHLEN) {
       ...(m.linien ? { linien: { arten: m.linien.arten, kante: Number.isFinite(m.linien.kante) ? Math.round(m.linien.kante * 100) / 100 : null, aufHaut: Math.round(m.linien.aufHaut * 100) / 100 } } : {}),
     }));
   const ziel = resolve(WURZEL, 'packages/shape/src/kern/pruefen/extremreihe.grundzahlen.json');
-  writeFileSync(ziel, JSON.stringify(grund, null, 1) + '\n');
+  // mit KOERPER bzw. GRUPPEN nur deren Einträge ersetzen, die übrigen bleiben
+  const bisher: typeof grund = nur || process.env.GRUPPEN ? JSON.parse(readFileSync(ziel, 'utf8')) : [];
+  const neu = new Set(grund.map((g) => `${g.name}|${g.art}`));
+  const zusammen = [...bisher.filter((g) => !neu.has(`${g.name}|${g.art}`)), ...grund];
+  const reihenfolge = (g: { name: string; art: string }) => EXTREMREIHE.findIndex((k) => k.name === g.name) * 2 + (g.art === 'teile' ? 1 : 0);
+  zusammen.sort((a, b) => reihenfolge(a) - reihenfolge(b));
+  writeFileSync(ziel, JSON.stringify(zusammen, null, 1) + '\n');
   console.log(ziel);
 }
 

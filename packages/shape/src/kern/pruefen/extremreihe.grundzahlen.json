@@ -345,10 +345,10 @@
   "schleifen": 32,
   "linien": {
    "arten": [
-    "reihe"
+    "fehlt"
    ],
-   "kante": null,
-   "aufHaut": 0.16
+   "kante": 30.09,
+   "aufHaut": 0.45
   }
  },
  {
@@ -1047,10 +1047,10 @@
   "schleifen": 24,
   "linien": {
    "arten": [
-    "reihe"
+    "ring"
    ],
-   "kante": null,
-   "aufHaut": 0.89
+   "kante": 0.86,
+   "aufHaut": 0.55
   }
  },
  {
@@ -1245,10 +1245,10 @@
   "schleifen": 17,
   "linien": {
    "arten": [
-    "reihe"
+    "ring"
    ],
-   "kante": null,
-   "aufHaut": 0.65
+   "kante": 0.77,
+   "aufHaut": 0.73
   }
  },
  {
