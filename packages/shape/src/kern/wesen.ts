@@ -24,6 +24,7 @@ import { erreichbarkeit } from './grundkoerper/huelle';
 import { type NetzSicht, netzSicht } from './netzSicht';
 import { type TeilAnzeige, teilAnzeige } from './grundkoerper/teilAnsicht';
 import { type BaumAbleitung, baumAbleiten, baumDreiecke } from './grundkoerper/baumBau';
+import { type Teilbaum, teilbaum } from './grundkoerper/teilbaum';
 import { linienExakt } from './netz/linienExakt';
 import { baumDeskriptoren } from './grundkoerper/baumDeskriptoren';
 import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
@@ -317,7 +318,12 @@ export type WesenStand = {
   /** S5: zuletzt gebauter Geist (Schlüssel: Bauschlüssel und eingefrorene Teile) */
   geist?: { schluessel: string; netz: NonNullable<WesenNetz['geist']> };
   /** S7.1: zuletzt gebauter Baum-Körper (Schlüssel wie der Geist, dazu Look und Zonen) */
-  baum?: { schluessel: string; netz: BaumKoerperNetz };
+  /**
+   * S7: Baum-Körper des letzten genauen Baus. `schluessel` = `basis` + Ergebnis der Teilerkennung (nicht der eingefrorene Stand
+   * im Dokument: den schreibt der Editor nach jedem Bau zurück, und der Baum wurde sonst ein zweites Mal gebaut — Plan 20.10.,
+   * V0); `basis` ohne Teile für den Zug (dort wird nicht erkannt).
+   */
+  baum?: { schluessel: string; basis: string; netz: BaumKoerperNetz };
   /** S8a: Röhre mit genau eingepassten Linien-Kanten (Schlüssel: Bau und Pinsel) */
   linien?: { schluessel: string; abl: Ableitung };
   umweg?: WesenNetz['umweg'];
@@ -1051,11 +1057,11 @@ function baumKaefigZiehen(z: BaumKoerperNetz['zug'], dokNeu: Dokument): Float64A
  * S7.1 Baum als Körper: Mittelebenen-Baum mit seitlichen Teilen, Earle-Deskriptoren je Streifen, Zonen-Atlas über die
  * allgemeine Kachelung, Δ und Saum je Blatt, Liniennetz. Bei einem Fehler null (das Netz bleibt die Röhre).
  */
-function baumKoerper(dok: Dokument, plan: Bauplan): BaumKoerperNetz | { fehler: string; ms: number } {
+function baumKoerper(dok: Dokument, plan: Bauplan, tb?: Teilbaum): BaumKoerperNetz | { fehler: string; ms: number } {
   const t0 = jetzt();
   let b: BaumAbleitung;
   try {
-    b = baumAbleiten(dok, { paare: true });
+    b = baumAbleiten(dok, { paare: true }, tb);
   } catch (err) {
     return { fehler: err instanceof Error ? err.message : String(err), ms: jetzt() - t0 };
   }
@@ -1291,20 +1297,25 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
   let koerperBaum: WesenNetz['koerperBaum'] = null;
   if (plan.koerper === 'teile' && maul === 'aus' && beine === 'aus') {
     let baumNetz: BaumKoerperNetz | null = null;
-    const bSchluessel = JSON.stringify({ s: schluessel, t: dok.kaefig?.stationen?.teile ?? null, e: plan.earle, st: plan.stil, z: plan.zonen ?? null, a: plan.atlas ?? true });
+    // Teile einmal je genauem Bau erkennen (Baum und Anzeige nehmen dasselbe Ergebnis); geschlüsselt wird auf das, was der
+    // Baum liest: Zeichnung, Kanten, Maßstab, Look und das Ergebnis der Erkennung — nicht Ringe und Enden der Röhre (die
+    // ändern sich nach jeder Geste beim Zurückschreiben) und nicht Haut/Fülle (wirken auf den Baum nicht)
+    const tb = schnell ? null : teilbaum(dok, dok.kaefig?.stationen?.teile ?? null);
+    const bBasis = JSON.stringify({ p: dokRoh.profile, s: dokRoh.spanten ?? null, ka: dokRoh.kanten ?? null, k: dokRoh.skalierung, e: plan.earle, st: plan.stil, z: plan.zonen ?? null, a: plan.atlas ?? true });
+    const bSchluessel = tb ? `${bBasis}|${JSON.stringify(tb.gefroren)}` : null;
     // Käfig des Netzes: gelöst (genauer Bau) oder im Zug verformt (S7.2); darauf die Pinsel-Deltas des Baums (S7.3)
     let kaefigB: Float64Array | null = null;
     const t0z = jetzt();
-    if (baumStand && baumStand.schluessel === bSchluessel) baumNetz = baumStand.netz;
+    if (baumStand && (bSchluessel ? baumStand.schluessel === bSchluessel : baumStand.basis === bBasis)) baumNetz = baumStand.netz;
     else if (schnell && baumStand) {
       kaefigB = baumKaefigZiehen(baumStand.netz.zug, dok);
       if (kaefigB) baumNetz = baumStand.netz;
-    } else if (!schnell) {
-      const r = baumKoerper(dok, plan);
+    } else if (tb && bSchluessel) {
+      const r = baumKoerper(dok, plan, tb);
       if ('fehler' in r && !('positionen' in r)) koerperBaum = { streifen: 0, seiten: 0, ms: r.ms, fehler: r.fehler };
       else {
         baumNetz = r as BaumKoerperNetz;
-        baumStand = { schluessel: bSchluessel, netz: baumNetz };
+        baumStand = { schluessel: bSchluessel, basis: bBasis, netz: baumNetz };
       }
     }
     if (baumNetz) {
@@ -1375,7 +1386,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
           return Float32Array.from(out);
         };
         widerspruchB = { seite: tripel(er.seite), front: tripel(er.front), top: tripel(er.top) };
-        teileB = teilAnzeige(dok, dok.kaefig?.stationen?.teile ?? null);
+        teileB = teilAnzeige(dok, dok.kaefig?.stationen?.teile ?? null, tb ?? undefined);
         bn.blattWiderspruch = { seite: er.seite.max, front: er.front.max, top: er.top.max };
       }
       const wid = bn.blattWiderspruch ?? stand?.baum?.netz.blattWiderspruch;

@@ -52,6 +52,35 @@ describe('S7 Baum als Körper', () => {
   });
 });
 
+describe('Plan 20.10., V0: Baum nach dem Zurückschreiben der Teile', () => {
+  it('wie im Editor: nach einer Geste schreibt er die eingefrorenen Teile zurück → der nächste Bau nimmt denselben Baum', () => {
+    for (const name of ['giraffe-bauch', 'ente']) {
+      const plan = { earle: true, koerper: 'teile' as const };
+      /** gemeldeten Stand ins Dokument schreiben (wie `kernBau`) */
+      const mitStand = (d: Dokument, st: NonNullable<ReturnType<typeof wesenBauen>['netz']['info']['stationen']>): Dokument => ({ ...d, kaefig: { ...(d.kaefig ?? { deltas: [] }), stationen: st } });
+      // erster Bau, Ringe eingefroren (wie beim Laden), dann eine Geste: Rückenknoten 8 px hoch
+      const dok0 = teilSatzDokument(name);
+      const b0 = wesenBauen(dok0, plan, null);
+      const dok1 = mitStand(dok0, b0.netz.info.stationen!);
+      const b1 = wesenBauen(dok1, plan, b0.stand);
+      const kn = dok1.profile.seite.knoten;
+      let k = 0;
+      for (let i = 0; i < kn.length; i++) if (kn[i]!.p.y > kn[k]!.p.y) k = i;
+      const dok2 = knotenZiehen(mitStand(dok1, b1.netz.info.stationen!), k, 0, 8 / PX / dok1.skalierung);
+      const b2 = wesenBauen(dok2, plan, b1.stand);
+      expect(b2.stand.baum?.netz, `${name}: nach der Geste neu gebaut`).not.toBe(b1.stand.baum?.netz);
+      // das Zurückschreiben ändert nur die eingefrorenen Teile → derselbe Baum, dasselbe Netz, derselbe gemeldete Stand
+      const dok3 = mitStand(dok2, b2.netz.info.stationen!);
+      const b3 = wesenBauen(dok3, plan, b2.stand);
+      expect(b3.stand.baum?.netz === b2.stand.baum?.netz, `${name}: Baum wiederverwendet`).toBe(true);
+      const p2 = b2.netz.positionen;
+      const p3 = b3.netz.positionen;
+      expect(p3.length === p2.length && p3.every((v, i) => v === p2[i]), `${name}: gleiches Netz`).toBe(true);
+      expect(JSON.stringify(b3.netz.info.stationen) === JSON.stringify(b2.netz.info.stationen), `${name}: gleicher Stand`).toBe(true);
+    }
+  });
+});
+
 describe('S7.3 Pinsel auf dem Baum', () => {
   it('Ente: Delta mit Ruhelage beult die Flanke; falsche Nummer, gleiche Lage → derselbe Körper', () => {
     const dok = teilSatzDokument('ente');

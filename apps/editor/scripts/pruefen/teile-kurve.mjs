@@ -87,8 +87,8 @@ const id = stueck.split(':')[0];
 const vorher = await stand();
 // eine Stelle des Stücks, an der es oben liegt (Knoten und Ringe gehen beim Klick vor)
 const ziel = await page.evaluate(({ blatt, stueck }) => {
-  const g = document.querySelector(`[data-view="${blatt}"] [data-teil-stueck="${stueck}"]`);
-  const p = g.querySelector('path');
+  // Plan 20.10., V0: die Trefferfläche liegt in der eigenen Ebene unter der schwarzen Linie
+  const p = document.querySelector(`[data-view="${blatt}"] [data-teil-verdeckt-treffer="${stueck}"]`);
   const l = p.getTotalLength();
   const m = p.getScreenCTM();
   for (let f = 0.5, k = 0; k < 40; k++, f = 0.5 + ((k % 2 ? 1 : -1) * Math.ceil(k / 2)) / 42) {
