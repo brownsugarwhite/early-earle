@@ -1187,7 +1187,9 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
   const deltas = dokRoh.kaefig?.deltas ?? [];
   // S8a: P-Linien mit Härte genau auf der Haut als Kanten (Röhre ohne Maul und Beine). Dann baut die Röhre ohne die
   // Treppe (Dokument ohne Kanten), und `linienExakt` legt danach je Linie eine Käfigreihe bzw. einen Ring genau auf sie
-  const linienGenau = maul === 'aus' && beine === 'aus' && plan.koerper !== 'teile' && (dok.kanten ?? []).some((k) => k.haerte.some((h) => h > 0));
+  // V5 (Plan 20.10.): Mit dem Querschnitt aus der Hülle (`umrisseExakt`) führt der Reihenplan die Linien als Käfigreihen —
+  // genau an jedem Ring, die Kante auch während eines Zugs; dann kein `linienExakt` (die übrigen Linien bleiben Treppe)
+  const linienGenau = maul === 'aus' && beine === 'aus' && plan.koerper !== 'teile' && !plan.umrisseExakt && (dok.kanten ?? []).some((k) => k.haerte.some((h) => h > 0));
   const dokBau: Dokument = linienGenau ? { ...dok, kanten: [] } : dok;
   let linienStand = stand?.linien;
   const mitDeltas = <T extends Ableitung>(a: T): T => (deltas.length ? deltasAnwenden(a, deltas) : a);
@@ -1684,7 +1686,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
   }
   // Lippenkanten gegen die Linien (Phase 2 M2): px je Kette in Seite und Front
   const maulAbw = ruheAlt ? ruheAlt.maulAbw : maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul && maulLinieVerwendet ? maulAbweichung(abl as MaulErgebnis, dok, maulLinieVerwendet) : undefined;
-  const info: WesenInfo = { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0, ...(blatt ? { blatt } : {}), ...(maulAbw ? { maul: maulAbw } : {}), ...(linienGenau && linienStand ? { linien: linienStand.berichte } : {}), stationen: abl.gefroren && teile ? { ...abl.gefroren, teile: teile.gefroren } : abl.gefroren };
+  const info: WesenInfo = { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0, ...(blatt ? { blatt } : {}), ...(maulAbw ? { maul: maulAbw } : {}), ...(linienGenau && linienStand ? { linien: linienStand.berichte } : abl.linienBau?.length ? { linien: abl.linienBau.map((b, index): LinienBericht => ({ art: b.schleife ? (b.art === 'reihe' ? 'reihe' : 'ring') : 'ohne', index, ms: 0, ...(b.schleife ? { schleife: true as const } : {}) })) } : {}), stationen: abl.gefroren && teile ? { ...abl.gefroren, teile: teile.gefroren } : abl.gefroren };
   const linien = plan.kaefigLinien ? kaefigSegmente(abl, xyz) : null;
   // Lippenband nach der Kopfhöhe am Maul (nicht der ganzen Körperhöhe: beim Langhals war das Band breiter als der Kiefer)
   const maulHoehe = maul !== 'aus' ? 1.1 * ((abl as Partial<MaulErgebnis>).maul?.kopfHoehe ?? hoehe) : hoehe;

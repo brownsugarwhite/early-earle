@@ -312,6 +312,7 @@ const GefroreneStationenSchema = z.object({
   hinten: z.array(z.number()),
   ecken: z.array(z.object({ ring: z.number(), seite: z.enum(['oben', 'unten', 'beide']) })),
   reifen: z.array(z.object({ spant: z.number(), ring: z.number() })),
+  linien: z.array(z.object({ linie: z.number(), ring: z.number(), rolle: z.enum(['quer', 'anfang', 'ende']).optional() })).optional(),
   spitzen: z.object({ vorn: z.boolean(), hinten: z.boolean() }),
   maul: z.object({ winkel: z.number(), ringA: z.number().optional(), kontur: z.boolean().optional() }).optional(),
   enden: z
@@ -359,7 +360,7 @@ export type EndenAnker = { k: number; t: number; p: { x: number; y: number } };
  */
 export type GefrorenesTeil = { id: string; art: 'mitte' | 'paar'; blatt: 'seite' | 'front' | 'top'; a: EndenAnker; b: EndenAnker; spitze: { x: number; y: number }; richtung?: 'oben' | 'unten' | 'vorn' | 'hinten' | 'seitlich'; hoehe?: number };
 export type GefrorenerTeilbaum = { knoten: [number, number, number]; teile: GefrorenesTeil[] };
-export type GefroreneStationen = { ringe: number[]; vorn: number[]; hinten: number[]; ecken: { ring: number; seite: 'oben' | 'unten' | 'beide' }[]; reifen: { spant: number; ring: number }[]; spitzen: { vorn: boolean; hinten: boolean }; maul?: MaulStationen; enden?: { vorn: EndenAnker; hinten: EndenAnker; knoten: number }; teile?: GefrorenerTeilbaum };
+export type GefroreneStationen = { ringe: number[]; vorn: number[]; hinten: number[]; ecken: { ring: number; seite: 'oben' | 'unten' | 'beide' }[]; reifen: { spant: number; ring: number }[]; /** V5: Ringe der Linienschleifen (Index in `kanten`): Querlinie bzw. Anfang/Ende einer Längslinie */ linien?: { linie: number; ring: number; rolle?: 'quer' | 'anfang' | 'ende' }[]; spitzen: { vorn: boolean; hinten: boolean }; maul?: MaulStationen; enden?: { vorn: EndenAnker; hinten: EndenAnker; knoten: number }; teile?: GefrorenerTeilbaum };
 export type MaulStationen = { winkel: number; ringA?: number; kontur?: boolean };
 const KaefigSchemaV1 = z.object({ deltas: z.array(KaefigDeltaSchema), posen: z.record(z.string(), z.array(KaefigDeltaSchema)).optional(), stationen: GefroreneStationenSchema.optional() });
 /** Version 1 (bis 15.10.2026 abends): mit Ausstattung und (M3) Käfig-Deltas der Pinsel; Pose-Deltas in `kaefig.posen`. */

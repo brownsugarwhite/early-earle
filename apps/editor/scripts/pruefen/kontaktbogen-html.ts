@@ -8,13 +8,13 @@ export type BogenFall = { name: string; text: string; daten: unknown };
 export const BOGEN_LEGENDE =
   'je Körper: Seite · Front · Top (orthografisch; schwarz = gezeichneter Umriss, rot = Widerspruch der Zeichnungen, grün = Wirbelsäule, grau = Sprossen der Ringe) · schräg · Δ = größte Abweichung Körper ↔ Zeichnung (px bei 461 je Kachel); Falten nach Zonen: größter Winkel/Kanten über 20°';
 
-export function bogenHtml(titel: string, faelle: readonly BogenFall[], legende = BOGEN_LEGENDE): string {
+export function bogenHtml(titel: string, faelle: readonly BogenFall[], legende = BOGEN_LEGENDE, groesse = 300): string {
   return `<!doctype html><html><head><meta charset="utf-8"><style>
 body{margin:10px;font:13px/1.35 -apple-system,Helvetica,sans-serif;background:#f4efe6;color:#222}
 .fall{margin:0 0 12px}.reihe{display:flex;gap:6px}canvas{background:#fff;border:1px solid #d8cfc0}h1{font-size:16px;margin:0 0 6px}
 </style></head><body><h1>${titel} · Abnahme offen</h1>
 <div style="margin-bottom:8px">${legende}</div>
-${faelle.map((f, k) => `<div class="fall"><div>${f.text}</div><div class="reihe">${[0, 1, 2, 3, 4].filter((v) => v < 4 || (f.daten as { nah?: unknown; zebra?: unknown } | null)?.nah || (f.daten as { zebra?: unknown } | null)?.zebra).map((v) => `<canvas id="c${k}_${v}" width="300" height="300"></canvas>`).join('')}</div></div>`).join('\n')}
+${faelle.map((f, k) => `<div class="fall"><div>${f.text}</div><div class="reihe">${[0, 1, 2, 3, 4].filter((v) => v < 4 || (f.daten as { nah?: unknown; zebra?: unknown } | null)?.nah || (f.daten as { zebra?: unknown } | null)?.zebra).map((v) => `<canvas id="c${k}_${v}" width="${groesse}" height="${groesse}"></canvas>`).join('')}</div></div>`).join('\n')}
 <script>
 const FAELLE = ${JSON.stringify(faelle.map((f) => f.daten))};
 const ab = (s, T) => { const b = atob(s); const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return new T(u.buffer); };
@@ -82,6 +82,8 @@ FAELLE.forEach((F, k) => {
     if (v < 3 && F.saum) zug(F.saum[v], 'rgba(255,186,0,0.95)', 5, false);
     if (v < 3 && F.netz) for (const nz of F.netz[v]) zug(nz.p, nz.f, 1.6, false);
     if (v < 3 && F.linien) for (const l of F.linien[v]) zug(l, '#3b2a12', 2.4, false);
+    // scharfe Käfigkanten (Grenzlagen, je Kante ein Zug) in der Seite und nah
+    if ((v === 0 || v === 4) && F.falten) { ctx.globalAlpha = 0.9; for (const z of F.falten) { const q = []; for (let i = 0; i < z.length; i += 3) { const m = abb(z[i], z[i + 1], z[i + 2]); q.push(m[0], m[1]); } zug(q, '#e0182d', 1.2, false); } ctx.globalAlpha = 1; }
     for (const z of zeich) zug(z, 'rgba(0,0,0,0.85)', 1.5, v === 0);
     if (v === 0) {
       ctx.globalAlpha = 0.5; for (const sp of F.sprossen) zug([sp[0], sp[1], sp[3], sp[4]], '#666', 1, false); ctx.globalAlpha = 1;

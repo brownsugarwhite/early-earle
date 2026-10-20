@@ -64,6 +64,13 @@ export type UmrissOptionen = {
   /** Querschnitt aus der Sichthülle: feine Punkte längs der Ringe auf die dichte Kurve ihres Schnitts (Versuch) und ihr Gewicht */
   dicht?: boolean;
   dichtGewicht?: number;
+  /** V5 (Versuch): Gewicht je feinem Punkt einer Linienschleife (Standard 16) */
+  linieGewicht?: number;
+  /**
+   * V5 „Form zuerst“: Gewicht je feinem Punkt (Stufe 2, nur wo die Linien den Käfig verschoben haben) der Bindung des Körpers
+   * mit Linien an die Form des Körpers ohne Linien (Punkt zu Ebene); Standard 16, 0 = aus
+   */
+  form?: number;
   /** Querschnitt aus der Sichthülle: Gewicht der weichen einseitigen Grenze (feine Punkte über Front/Top quer zurück; 0 = aus) */
   grenze?: number;
   /** Querschnitt aus der Sichthülle: Durchgänge der glatten Korrektur (Überstehen geglättet von den Zielen abziehen; 0 = aus) */

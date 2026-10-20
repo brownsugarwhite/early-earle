@@ -630,6 +630,20 @@ Bögen auf der Planseite 20.10., „Stand V2“. Je Punkt der Schritt, der ihn a
 - Tiger: zwei Ringe an derselben Station vorn an der Kastenschnauze (gewollt: Querfalte), dort 37° heute wie neu.
 - Zug-Zeit mit dem Schalter nicht gemessen (der schnelle Weg nutzt dieselben Vorlagen, kein Sprung am Gestenende).
 
+## Befunde aus V5 „Linien exakt“ (21.10., gebaut, Abnahme offen)
+
+- **Tore nicht erreicht** (`it.fails` in `kern/linienSchleifen.test.ts`): jede Linie ≤ 0,3 px in ihrer Zeichenansicht (gemessen
+  0,4–2,0 px: am größten an den Enden — die Falte endet an einem Käfigpunkt, dort gilt die glatte Regel — und zwischen weit
+  stehenden Ringen am Hals); Haut an der Linie ≤ 0,5 px (Robbe 1,4, Kegel 1,0, Kugel mit Kreuz 0,7 px).
+- **Schräge Linien bleiben Treppe** (Vase, Würfel, Krake): Die Leiter steht dort 35–55° zur Linie. Die Treppe ist an die Form
+  gebunden (keine Formänderung), zeigt aber im Käfig ein Zickzack. Weg: die Linie wählt Reihe oder Ring mit dem kleinsten
+  Verziehen, die Grenze „1,5 Reihen von der natürlichen Lage“ gilt für Linien nicht.
+- **Kreuzungen** sind Catmull–Clark-Ecken (vier scharfe Kanten). Aussetzen oder halbscharf an der Kreuzung ändert nichts
+  (gemessen); die Haut liegt dank „Form zuerst“ trotzdem bei der Form (Kugel 0,7 px).
+- **Zeit:** Zug mit Linien 42–57 ms (Form ohne Linien und Körper mit Linien je ein Löser), Bau 320–400 ms (zwei Bauten).
+- **Würfel, Seeschlange, Fisch, Krake** sind schon ohne Linien kaputt (Falten 170–180°); ihre Linienwerte sagen wenig.
+- Härte als Rundungsbreite (Plan 3.4), Grat (`Kante.tiefe`) und Linien auf „Teile“ fehlen noch.
+
 ## CI: nicht nachstellbare Fehler alter Versuchstests (20.10. nachts)
 
 - Zwei Tests der alten Versuchsfläche S0 (Bauweise „bisher“, nicht der Kern) waren je einmal **nur auf CI** rot, bei

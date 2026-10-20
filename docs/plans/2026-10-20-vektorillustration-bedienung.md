@@ -1273,3 +1273,80 @@ und Keil besser, Hammerhai und Seestern schlechter — abgeschaltet).
   Käfigpunkten, die Umrisse exakt und zugleich glatt zu treffen. Bindungen und Grenzen erzwingen es nur mit Dellen. Der
   elegante Weg ist strukturell: Ringe dorthin, wo Umrisse sich stark krümmen bzw. am breitesten sind (das exakte Einfügen eines
   Rings ist der Kern von V6), und die Silhouette als Käfigkurve mit Tangente (Plan 3.1) — dann trägt die Struktur die Umrisse.
+
+### V5 „Linien exakt“ — gebaut (21.10. früh bis vormittags; Abnahme offen)
+
+**Im Editor:** Mit „Querschnitt: aus der Hülle (V4/V5)“ (Tafel Körper) werden P-Linien Käfigschleifen; die Kantenliste
+zeigt „genau“, der Hinweis „mehrere genaue Linien näherungsweise“ entfällt dort. Ohne den Schalter bleibt die Einpassung je
+Linie (S8a) — bitgleich (Kern-Tests, Extremreihe-Wächter).
+
+**Bauweise** (alles hinter `ausstattung.umrisseExakt`; Kern `kern/linienSchleifen.ts`, `kern/huellenSchnitt.ts`,
+`kern/ableiten.ts`):
+1. *Einordnen* je Linie in der Seite gegen die Sprossen der Leiter: längs (mindestens 80 % der Länge über 55° zur Sprosse) →
+   Käfigreihe; quer (mindestens 80 % unter 35°) → eigener Käfigring; sonst schräg, kurz oder auf der Naht → Treppe wie
+   bisher; ohne Härte → nichts.
+2. *Längslinie* = Merkmal im Reihenplan: je Ring die Kreuzung mit seiner Sprosse; die Reihen werden optimal vergeben
+   (dynamische Programmierung — gierig drängte die zweite von zwei dicht liegenden Linien über die Breitenlinie, sie fiel auf
+   die Treppe, Ei 20 px). Jedes Ende bekommt einen Ring, der genau durch den Endpunkt läuft (wie ein Reifen; Enden näher als
+   ein halber Ringabstand teilen sich einen). Hinter dem Ende läuft die Reihe über drei Ringe linear zur natürlichen Lage
+   zurück (sie sprang in einem Ringabstand 10 px zurück → Beule im Zebra). Weiche Anker (Breitenlinie, Auslauf) halten Abstand
+   zu Linienankern (Hals: Linienanfang 1,8 px über der Breitenlinie, Falte 142° → 14°).
+3. *Querlinie* = der nächste freie Ring rastet auf ihre Stelle, seine Sprosse wird in die Sehne der Linie gedreht, die
+   Nachbarn drehen linear abnehmend mit (3, wenn nötig 5 oder 8 Ringe beiderseits; bricht die Reihenfolge auch dann, bleibt die
+   Linie Treppe). Kurze Querlinien (unter 1,5 Reihenabständen) ziehen Reihen genau auf ihre Enden (Kegel: vorher gar keine
+   Kante); lange enden auf der letzten ganz gedeckten Reihe — nie über das Linienende hinaus.
+4. *Höhenfeld:* Gedrehte Ringe tasten die Form der natürlichen Kette ab (ρ = z / b je Sprosse, dazwischen bilinear), statt
+   ihren eigenen Schnitt zu runden (Robbe: 12 px neben der Linie).
+5. *Punkt zu Linie:* feine Punkte jeder Linienfalte werden in der Zeichenansicht auf die Linie gezogen (Tiefe frei, Gewicht
+   16); Punkte einer Linienfalte sind keine Breitenpunkte (deren Soll zählte die Höhe doppelt und zog eine Linienreihe nahe der
+   breitesten Stelle 2 px nach innen).
+6. **Form zuerst:** Mit Linien wird erst der Körper ohne Linien gebaut; der Körper mit Linien bindet sich dort an ihn, wo die
+   Linien den Käfig verschoben haben (andere Käfigziele, Linien- und Treppenfalten): feine Punkte der Stufe 2, Punkt zu Ebene,
+   Gewicht 16. Die Linie legt fest, wo die Käfigschleife liegt, nicht die Form — einen Winkel gibt es nur, wo die Form ihn
+   verlangt (Regel 12.10.). Der nächste Formpunkt wird mit einem Gang über die Fläche ab dem Punkt gleichen Index gesucht.
+7. *Im Zug* bleiben Topologie und Schleifen, alle Ziele werden neu gerechnet (die Form ohne Linien zieht mit) — die Kante
+   verschwindet nicht mehr (S8a: weg während jedes Zugs).
+
+**Gemessen** (Röhre, Florians Ablauf aus der Startkugel; Haut = Linie auf der Haut ohne Linien gegen den Körper mit Linien,
+Blick = Kante zur Linie in ihrer Zeichenansicht, px; Falten frei/Kante °; Bau ms):
+
+| Körper | heute (S8a): Art · Haut · Blick · Falten · Bau | Hülle + V5 |
+|---|---|---|
+| Kugel (Kreuz) | Reihe, Ring · 1,0 · 0,1 · 3,7/7,6 · 1437 | Reihe, Ring · 0,7 · 1,0 · 4,1/4,3 · 401 |
+| Ei (zwei parallele) | Reihe, Reihe · 0,2 · 0,7 · 3,9/7,9 · 1340 | Reihe, Reihe · 0,6 · 0,9 · 5,2/6,3 · 350 |
+| Rex (quer) | Ring · 0,7 · 0,1 · 16,3/20,8 · 1343 | Ring · 0,3 · 0,6 · 14,6/11,6 · 374 |
+| Robbe (Kreuz, längs weich) | —, Reihe · 4,4 · 1,7 · **171,8**/34,2 · 992 | —, Ring · 1,4 · 0,7 · 10,5/6,0 · 374 |
+| Kegel (kurze Querlinie) | **fehlt** · 0,5 · 28,5 · 13,9/14,1 · 1316 | Ring · 1,0 · 0,7 · 14,8/3,5 · 365 |
+| Hals 1:8 (über den Ansatz) | Reihe · 0,4 · 0,1 · 22,8/13,1 · 983 | Reihe · 0,6 · 2,0 · 14,4/7,6 · 351 |
+| Bleistift | Reihe · 0,0 · 0,0 · 4,1/3,9 · 984 | Reihe · 0,1 · 0,4 · 4,3/4,3 · 318 |
+| Vierbeiner (über den Beinansatz) | Ring · 0,5 · 0,1 · 15,5/175,6 · 1078 | Ring · 0,5 · 0,6 · 159,7/163,0 · 385 |
+| Vase (schräg zur Leiter) | Reihe · 0,7 · 1,0 · **178**/9,4 · 978 | **Treppe** · 1,2 · 23,3 · 12,9/13,3 · 334 |
+| Würfel (diagonale Leiter) | Reihe · 0,2 · 1,3 · 168,6/178,4 · 950 | **Treppe** · 0,3 · 25,8 · 177,5/174,5 · 374 |
+| Krake | Ring · 0,9 · 0,6 · 156,5/174,3 · 1309 | **Treppe** · 4,8 · 32,7 · 174,2/121,2 · 393 |
+| Seeschlange, Fisch (Körper selbst kaputt) | Reihe · 1,6/0,7 · 0,3/0,6 · 177/145 | Reihe · 4,4/2,3 · 1,8/1,6 · 177/177 |
+
+Umrisse mit Linien (Δ Front gegen ohne Linien, Kern): Kugel 0,1 → 0,8, Ei 0,3 → 0,8, Robbe 3,7 → 4,2, Kegel 2,5 → 3,1 px,
+Rex und Hals unverändert. Zug mit Linien 42–57 ms (zwei Löser: die Form ohne Linien zieht mit), Bau 320–400 ms.
+
+**Im echten Editor** (`apps/editor/scripts/pruefen/v5-editor.mjs`, eigener Vite): Kugel, Ei, Robbe, Kegel, Hals 1:8 — Bericht
+je Linie „Schleife“, Umrisse mit Linien höchstens 0,1–0,7 px anders, im Zug bleiben die Linien Schleifen, Rückgängig stellt
+den Stand vor dem Zug her, keine Seitenfehler. Bilder: `docs/progress/editor/v5-linien-huelle-{grund,kanten,lang,mehrteiler}-2026-10-21.jpg`
+(Kontaktbögen mit scharfen Käfigkanten rot und Zebra nah an den Linien), `v5-linien-heute-grund-2026-10-21.jpg` (heute zum
+Vergleich), `v5-editor-kugel-kreuz-zebra-2026-10-21.jpg`, `v5-editor-robbe-riss-2026-10-21.jpg`.
+
+**Gemessen und verworfen:** Liniengewicht 64/256 (Falten: Ei 10,8°, Hals 48°); Linienende „frei“ bzw. halbscharfer Auslauf
+(kein Gewinn — die Beule kam vom Reihensprung); dichte Bindung an das Höhenfeld (wenig, Rex-Falten); Breitenpunkte mit dem
+Hüllanteil als Soll (Kegel Top 2,9 → 5,2); Formbindung nur in der Tiefe (an den Polen wirkungslos), im Raum gesucht (sprang
+an dünnen Stellen auf die Gegenseite) und über den ganzen Körper (Rex-Schnauze 35–115°); Kreuzung als aussetzende oder
+halbscharfe Linie (gleich wie die Ecke); Endreihen auch für lange Querlinien (Kugel 2 px) und halbe Deckung (Falte über das
+Ende hinaus, Robbe 15 px); geglätteter statt linearer Auslauf (Reihen knicken mehr).
+
+**Offen (ehrlich):**
+- **Tore nicht erreicht** (als `it.fails` in `linienSchleifen.test.ts`): Linie ≤ 0,3 px in der Zeichenansicht (heute 0,4–2,0;
+  der Rest liegt an den Enden und zwischen den Ringen), Haut an der Linie ≤ 0,5 px (Robbe 1,4, Kegel 1,0, Kugel 0,7).
+- **Schräge Linien** bleiben Treppe (Vase, Würfel, Krake): Die Leiter steht dort schräg zur Linie. S8a glitt jede Linie auf die
+  nächste Reihe; der nächste Schritt ist, eine schräge Linie die Reihe (oder den Ring) wählen zu lassen, die sie mit dem
+  kleinsten Verziehen trägt, und die Grenze „höchstens 1,5 Reihen von der natürlichen Lage“ für Linien zu lockern — die Form
+  bleibt dank „Form zuerst“ dieselbe.
+- Härte als Rundungsbreite in Pixeln (3.4) und Grat (`Kante.tiefe`) noch nicht; Linien auf „Teile“ (V7); Zug mit Linien
+  42–57 ms.

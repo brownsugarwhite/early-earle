@@ -400,6 +400,20 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   - „Flaches Ende“ nur, wenn die Hülle dort gerade endet (0,5 px vor ihrem Ende so breit wie 2 px davor); ein Abstandstest
     allein macht Kugelringe flach (sie enden Bruchteile eines Pixels unter dem Pol).
   - Das Faltenmaß übertreibt bei Mehrteilern; Kontaktbögen ansehen, bevor man eine Zahl als Rückschritt wertet.
+- **Plan 20.10., V5 (P-Linien als Käfigschleifen, `kern/linienSchleifen.ts`, nur mit `umrisseExakt`):**
+  - Reihen nie gierig vergeben: zwei Linien dicht beieinander verdrängen sonst die zweite über die Breitenlinie
+    (`reihenVergeben`, dynamische Programmierung).
+  - Was den Käfig verzieht (Linienreihen, Linienringe), muss auslaufen: Eine Reihe, die hinter dem Linienende in einem
+    Ringabstand zurückspringt, macht eine Beule; weiche Anker halten Abstand zu harten (sonst fallen Reihen zusammen, 142°).
+  - Ein gedrehter Ring darf seinen Schnitt nicht selbst runden (Höhenfeld der natürlichen Kette, `huellenFeld`); und die Form
+    muss vom Käfig unabhängig sein: **Form zuerst** — der Körper ohne Linien ist das Ziel, gebunden nur dort, wo sich der Käfig
+    verschoben hat (überall gebunden faltet das dünne Ringband an der Rex-Schnauze), Punkt zu Ebene (nur Tiefe wirkt an den
+    Polen nicht), nächster Punkt per Gang über die Fläche ab gleichem Index (im Raum springt er auf die Gegenseite).
+  - Breitenpunkte zählen in der Hülle die Höhe doppelt (Soll = Anteil der größten Breite × Hülle auf eigener Höhe): Punkte einer
+    Linienfalte sind deshalb keine Breitenpunkte. Achtung beim Umbau dort: `f` wird für berührte Punkte erst danach gesetzt —
+    eine vorgezogene Kopie traf den Standardbau (Kegel Front 7,3 → 8,3 px, fiel nur in den Extremreihe-Wächtern auf).
+  - Im echten Editor messen: Die Kern-Messung an der Linie zeigte nicht, dass Linien den Front-Umriss um 2–5 px verschoben;
+    `v5-editor.mjs` misst Δ ohne/mit Linien, Bericht, Zug und Rückgängig.
 - **vitest 5 zeigt `console.log` bestandener Tests nur mit `--reporter=verbose`** (bei Fehlern immer). Messwerte so lesen: `npx vitest run <datei> --reporter=verbose`.
 - **macOS hat kein `timeout`-Kommando**; lange Läufe über das Werkzeug-Timeout begrenzen. `pnpm -r test` lässt Pakete parallel laufen; die Laufzeit-Tests der Versuche (`kanten`, `flaechenlinie`, `wesen`) reißen dann ihre Schranken (967 ms > 600 ms), einzeln laufen sie durch.
 

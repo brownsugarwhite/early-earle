@@ -4,7 +4,9 @@
 // Top mit schwarzer und gelber Linie, Netzlinien, Widerspruch, P-Linien; schräg; Zebra). Umgebung: KOERPER (Komma-Liste),
 // GRUPPEN, OHNE_BOGEN=1, HASH=1 bzw. HASH=<datei> (Fingerabdrücke der gezeigten Netze, für bitgleiches Aufräumen),
 // GRUNDZAHLEN=1 (schreibt `extremreihe.grundzahlen.json` für den Test; mit KOERPER/GRUPPEN nur deren
-// Einträge), AUSGABE (Ordner).
+// Einträge), AUSGABE (Ordner), ARTEN (z. B. roehre), PLAN (JSON: Zusätze zum Bauplan, z. B. {"umrisseExakt":true}),
+// TITEL (Zusatz im Titel und Dateinamen des Bogens), NAH_LINIE=1 (Zebra nah um die P-Linien statt des ganzen Körpers;
+// NAH_LINIE=ende: nah um das Ende der ersten Linie), GROESSE (Kachel in px), FALTEN=1 (scharfe Käfigkanten rot).
 // Aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/v1-extremreihe.ts
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -16,13 +18,18 @@ import { EXTREMREIHE, EXTREM_GRUPPEN, type ExtremGruppe, GRUPPEN_TITEL } from '.
 import { type Ablauf, type Bauart, type ExtremMessung, extremMessen } from '../../../../packages/shape/src/kern/pruefen/extremMessung';
 import { erreichbarkeit } from '../../../../packages/shape/src/kern/grundkoerper/huelle';
 import { type BogenFall, bogenHtml } from './kontaktbogen-html';
+import { feinKette } from '../../../../packages/shape/src/kern/reifen';
+import type { Kaefig } from '../../../../packages/shape/src/kaefig/halbkanten';
+import type { Unterteilung } from '../../../../packages/shape/src/subdivision/catmullClark';
 
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const AUSGABE = process.env.AUSGABE ?? resolve(WURZEL, 'apps/editor/pruefen-ausgabe/v1');
 mkdirSync(AUSGABE, { recursive: true });
 const nur = process.env.KOERPER?.split(',');
 const gruppen = (process.env.GRUPPEN?.split(',') ?? EXTREM_GRUPPEN) as ExtremGruppe[];
-const ARTEN: Bauart[] = ['roehre', 'teile'];
+const ARTEN = (process.env.ARTEN?.split(',') ?? ['roehre', 'teile']) as Bauart[];
+const PLAN = process.env.PLAN ? JSON.parse(process.env.PLAN) : null;
+const TITEL = process.env.TITEL ?? '';
 const ABLAEUFE: Ablauf[] = ['kugel', 'frisch'];
 const b64 = (a: Float32Array | Uint32Array) => Buffer.from(a.buffer, a.byteOffset, a.byteLength).toString('base64');
 const T = 1e9;
@@ -32,6 +39,36 @@ const bild = (p: ArrayLike<number>, v: number): [number, number] => (v === 0 ? [
 const BLICK = [SICHT.seite, SICHT.front, SICHT.top];
 const FARBE: Record<string, string> = { 'kontur-seite': '#2b50d8', 'kontur-front': '#a03cc8', 'kontur-top': '#0f9e8e' };
 const EIGEN = ['kontur-seite', 'kontur-front', 'kontur-top'];
+
+/** Ausschnitt um alle P-Linien (Mitte und Halbmesser in Welt) für die Zebra-Nahansicht. */
+function nahUm(kanten: readonly { knoten: readonly { p: readonly number[] }[] }[]): [number, number, number, number] {
+  const lo = [Infinity, Infinity, Infinity];
+  const hi = [-Infinity, -Infinity, -Infinity];
+  for (const kk of kanten) for (const kn of kk.knoten) for (let d = 0; d < 3; d++) {
+    lo[d] = Math.min(lo[d]!, kn.p[d]!);
+    hi[d] = Math.max(hi[d]!, kn.p[d]!);
+  }
+  const r = 0.65 * Math.max(hi[0]! - lo[0]!, hi[1]! - lo[1]!, hi[2]! - lo[2]!, 0.05);
+  return [(lo[0]! + hi[0]!) / 2, (lo[1]! + hi[1]!) / 2, (lo[2]! + hi[2]!) / 2, r];
+}
+
+/** Ausschnitt um das Ende einer Linie (letzter Knoten, Halbmesser ein Sechstel ihrer Länge). */
+function nahEnde(k: { knoten: readonly { p: readonly number[] }[] }): [number, number, number, number] {
+  const a = k.knoten[0]!.p;
+  const e = k.knoten[k.knoten.length - 1]!.p;
+  return [e[0]!, e[1]!, e[2]!, Math.max(0.02, Math.hypot(e[0]! - a[0]!, e[1]! - a[1]!, e[2]! - a[2]!) / 6)];
+}
+
+/** Scharfe Käfigkanten als Züge auf der Grenzfläche (je Kante die feinen Punkte). */
+function faltenZuege(g: { kaefig: Kaefig; unterteilung: Unterteilung; fein: Float64Array }): number[][] {
+  const out: number[][] = [];
+  const k = g.kaefig;
+  for (let e = 0; e < k.nE; e++) {
+    if (!(k.eSchaerfe[e]! > 0)) continue;
+    out.push(feinKette(g.unterteilung, k, k.eA[e]!, k.eB[e]!).flatMap((p) => [g.fein[3 * p]!, g.fein[3 * p + 1]!, g.fein[3 * p + 2]!]));
+  }
+  return out;
+}
 
 const alle: ExtremMessung[] = [];
 const hashes: Record<string, Record<string, string>> = {};
@@ -46,7 +83,7 @@ for (const k of EXTREMREIHE) {
       const t0 = Date.now();
       let r: ReturnType<typeof extremMessen>;
       try {
-        r = extremMessen(k, art, ablauf);
+        r = extremMessen(k, art, ablauf, PLAN ? { plan: PLAN } : {});
       } catch (err) {
         console.log(`${k.name} ${art} ${ablauf}: Bau scheitert: ${(err as Error).message}`);
         alle.push({ name: k.name, gruppe: k.gruppe, art, ablauf, fehler: (err as Error).message } as ExtremMessung);
@@ -118,7 +155,7 @@ for (const k of EXTREMREIHE) {
       liste.push({
         name: `${k.name} · ${art}`,
         text: `<b>${k.name} · ${art === 'roehre' ? 'Röhre' : 'Teile'}</b>${m.baum ? ` (${m.baum.streifen} Streifen + ${m.baum.seiten} seitlich)` : ''}${m.fehler ? ` · <b style="color:#c0002a">Baum scheitert, zeigt die Röhre: ${m.fehler}</b>` : ''} · ${k.text} · Δ S ${f1(m.delta.seite.max)} · F ${f1(m.delta.front.max)} · T ${f1(m.delta.top.max)} px (Widerspruch ${f1(Math.max(m.delta.seite.widerspruch, m.delta.front.widerspruch, m.delta.top.widerspruch))}) · Falten ${zonen} · Durchdringungen ${m.durchdringungen} · Käfig ${f0(m.kaefig.winkel)}°/${f1(m.kaefig.seiten)} · Netzlinien Stücke/Knicke/Schleifen ${rausch}${lin} · ${f0(m.zeit.bau)} ms, Zug ${f0(m.zeit.zug)} ms`,
-        daten: { pos: b64(pos), tri: b64(Uint32Array.from(tri)), seite: soll('seite'), front: soll('front'), top: soll('top'), wirbel: [], sprossen: [], wid: [wid('seite'), wid('front'), wid('top')], saum, netz, linien, zebra: true },
+        daten: { pos: b64(pos), tri: b64(Uint32Array.from(tri)), seite: soll('seite'), front: soll('front'), top: soll('top'), wirbel: [], sprossen: [], wid: [wid('seite'), wid('front'), wid('top')], saum, netz, linien, zebra: true, ...(process.env.NAH_LINIE && zeig.kanten.length ? { nah: process.env.NAH_LINIE === 'ende' ? nahEnde(zeig.kanten[0]!) : nahUm(zeig.kanten) } : {}), ...(process.env.FALTEN ? { falten: faltenZuege(g) } : {}) },
       });
       boegen.set(k.gruppe, liste);
     }
@@ -192,16 +229,17 @@ if (process.env.GRUNDZAHLEN) {
 
 if (!process.env.OHNE_BOGEN) {
   for (const [gruppe, faelle] of boegen) {
-    const html = resolve(AUSGABE, `v1-bogen-${gruppe}.html`);
+    const html = resolve(AUSGABE, `v1-bogen-${gruppe}${TITEL ? `-${TITEL}` : ''}.html`);
     writeFileSync(
       html,
       bogenHtml(
-        `V1 Extremreihe · ${GRUPPEN_TITEL[gruppe]} · Florians Ablauf (Startkugel umgeformt)`,
+        `V1 Extremreihe · ${GRUPPEN_TITEL[gruppe]} · Florians Ablauf (Startkugel umgeformt)${TITEL ? ` · ${TITEL}` : ''}`,
         faelle,
         'je Körper und Körperart: Seite · Front · Top (orthografisch; schwarz = Zeichnung, gelb = Körper > 2 px daneben, rot = Widerspruch der Zeichnungen, blau/lila/türkis = Umrisse von Seite/Front/Top auf dem Körper wie im Editor, braun = P-Linien) · schräg · Zebra (Knicke brechen die Streifen). Δ in px bei 461 je Kachel; Falten nach Zonen: größter Winkel/Kanten über 20°; Netzlinien je Umriss: Stücke/Knicke über 45°/Schleifen.',
+        Number(process.env.GROESSE ?? 300),
       ),
     );
-    const png = resolve(AUSGABE, `v1-bogen-${gruppe}.png`);
+    const png = resolve(AUSGABE, `v1-bogen-${gruppe}${TITEL ? `-${TITEL}` : ''}.png`);
     execFileSync('node', [resolve(WURZEL, 'apps/editor/scripts/pruefen/html-shot.mjs'), html, png, '1560'], { cwd: resolve(WURZEL, 'apps/editor'), stdio: 'inherit' });
     console.log(png);
   }

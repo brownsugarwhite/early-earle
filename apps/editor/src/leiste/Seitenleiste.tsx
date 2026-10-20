@@ -96,7 +96,8 @@ function KantenListe() {
   const gewaehlt = useUi((s) => s.kantenAuswahl?.kante ?? -1);
   const berichte = useKernAnzeige((s) => s.info?.linien);
   if (!kanten?.length) return null;
-  const genau = berichte?.filter((b) => b.art === 'reihe' || b.art === 'ring').length ?? 0;
+  // V5: Käfigschleifen (Querschnitt aus der Hülle) sind alle zugleich genau; nur die Einpassung je Linie ist näherungsweise
+  const genau = berichte?.filter((b) => (b.art === 'reihe' || b.art === 'ring') && !b.schleife).length ?? 0;
   return (
     <>
       {genau > 1 && <p className="hilfe" data-linien-hinweis="">Mehrere genaue Linien: noch näherungsweise — jede wird für sich eingepasst, Nachbarn und Kreuzungen verschieben sich um bis zu einigen Pixeln (alle gleichzeitig genau kommt mit dem nächsten großen Schritt).</p>}
@@ -1081,10 +1082,10 @@ function AbleitenFeld() {
       <div className="feld">
         <span>Querschnitt</span>
       </div>
-      <Chips werte={['heute', 'huelle'] as const} aktiv={dok.ausstattung?.umrisseExakt ? 'huelle' : 'heute'} text={(q) => (q === 'heute' ? 'heute' : 'aus der Hülle (V4)')} attribut="querschnitt" onWahl={(q) => setzeQuerschnitt(q === 'huelle')} gesperrt={gesperrt} />
+      <Chips werte={['heute', 'huelle'] as const} aktiv={dok.ausstattung?.umrisseExakt ? 'huelle' : 'heute'} text={(q) => (q === 'heute' ? 'heute' : 'aus der Hülle (V4/V5)')} attribut="querschnitt" onWahl={(q) => setzeQuerschnitt(q === 'huelle')} gesperrt={gesperrt} />
       <p className="hilfe">
         {gesperrt ??
-          '„aus der Hülle“: Jeder Ring wird aus Front und Top an seiner eigenen Stelle geschnitten (nicht die ganze Front in ihn gestaucht), gerundet nur, wo keine Zeichnung die Form vorgibt — mit der Fülle deiner Front, an flachen Enden gar nicht. Gezeichnete Ecken laufen als Kanten auf festen Reihen durch alle Ringe.'}
+          '„aus der Hülle“: Jeder Ring wird aus Front und Top an seiner eigenen Stelle geschnitten (nicht die ganze Front in ihn gestaucht), gerundet nur, wo keine Zeichnung die Form vorgibt — mit der Fülle deiner Front, an flachen Enden gar nicht. Gezeichnete Ecken laufen als Kanten auf festen Reihen durch alle Ringe. P-Linien werden Käfigschleifen: längs eine Reihe, quer ein eigener Ring — alle zugleich genau, auch während eines Zugs (schräge Linien bleiben Treppe).'}
       </p>
       {/* Plan 20.10., V0: Versuchsschalter, deren Standard entschieden ist, eingeklappt (neue Wesen: glatt, berühren mittel) */}
       <details className="versuche" data-versuche="">

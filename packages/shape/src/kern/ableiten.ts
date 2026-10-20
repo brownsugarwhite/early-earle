@@ -23,14 +23,15 @@ import { glaettungsZeilen, kaefigNachbarlisten } from '../loeser/normalSystem';
 import { punktAuf } from '../bezier';
 import { pfadAbtasten, segmente, vollerPfad } from '../profil';
 import { type SpantTeil, hatKieferSpanten, spantKasten, stelleVon, vorlageBei } from '../spanten';
-import { kanteAbtasten, kantenFalten } from './kanten';
+import { type KantenLinie, kanteAbtasten, kantenFalten } from './kanten';
 import { feinKette } from './reifen';
 import { type Unterteilung, unterteilung } from '../subdivision/catmullClark';
 import { anwenden3, multiplizieren } from '../subdivision/matrix';
 import { type Leiter, WIRBEL_STANDARD, leiter } from '../versuch/wirbelsaeule';
 import { type Breiten, silhouettenBreite } from './breite';
 import { FUELLE_EXPONENT, type FuelleArt, huellenBreite, reichweite } from './fuelle';
-import { type FrontEcke, type HuellenSchnitt, type ZeichnungsFuelle, breitenlinieWaehlen, exponentenFuer, frontEcken, fuelleWoNoetig, huelleEntlang, huelleRunden, profilAbtasten, profilAbtastenAnker, reihenplan, tabellierteBreiten, zeichnungsFuelle } from './huellenSchnitt';
+import { type FrontEcke, type HuellenSchnitt, LINIE_ID, type ZeichnungsFuelle, breitenlinieWaehlen, exponentenFuer, frontEcken, fuelleWoNoetig, huelleEntlang, huellenFeld, huelleRunden, linienMerkmale, profilAbtasten, profilAbtastenAnker, profilAusFeld, querLinienEnden, reihenAbstand, reihenAuslaufen, reihenplan, tabellierteBreiten, zeichnungsFuelle } from './huellenSchnitt';
+import { type LinienEinordnung, type LinienRing, type LinienRolle, type LinienWunsch, linieAufSprosse, linienEinordnen, linienRingeDrehen, linienWuensche, ringKanten } from './linienSchleifen';
 import { type RandMarke, frontBeruehren } from './rand';
 import { type Schlitz, schlitzIm, seiteFuerLeiter } from './schlitz';
 import { endenFuer, profilAnker } from './grundkoerper/enden';
@@ -157,7 +158,17 @@ export type Ecke = { ring: number; seite: 'oben' | 'unten' | 'beide' };
 /** Reifen (M3): Käfigring, der auf die Station eines gezeichneten Spants gerastet ist (Index in `dok.spanten`). */
 export type Reifen = { spant: number; ring: number };
 
-export type Stationen = { ringe: Station[]; kappen: { vorn: Station[]; hinten: Station[] }; ecken: Ecke[]; reifen: Reifen[]; spitzen: { vorn: boolean; hinten: boolean }; gefroren: GefroreneStationen };
+/**
+ * V5 (`umrisse: 'exakt'`): `linien` = Ringe der Querlinien, `einordnung` = Art je P-Linie (Index in `dok.kanten`),
+ * `linienBau` = je P-Linie, ob sie als Käfigschleife gebaut ist (von `faltenSetzen` gesetzt)
+ */
+export type Stationen = { ringe: Station[]; kappen: { vorn: Station[]; hinten: Station[] }; ecken: Ecke[]; reifen: Reifen[]; spitzen: { vorn: boolean; hinten: boolean }; gefroren: GefroreneStationen; linien?: LinienRing[]; einordnung?: LinienEinordnung[]; linienBau?: LinienBau[]; linienKanten?: LinienKante[]; /** V5: Stationen der Ringe vor dem Drehen in die Linien (Höhenfeld der Form) */ ringeNatuerlich?: Station[]; /** V5: Käfigpunkte an Treppenfalten (an die Form gebunden) */ treppenPunkte?: number[] };
+
+/** V5: Käfigkante (rechte Hälfte) einer Linienschleife — Reihe zwischen zwei Ringen bzw. Stück eines Querlinien-Rings. */
+export type LinienKante = { linie: number; a: number; b: number };
+
+/** V5: Wie eine P-Linie im Käfig liegt — als Reihe oder Ring genau auf ihr (`schleife`), sonst als Treppe bzw. gar nicht. */
+export type LinienBau = { art: LinienEinordnung['art']; schleife: boolean };
 
 export type Ableitung = {
   /**
@@ -174,6 +185,17 @@ export type Ableitung = {
   ecken: Ecke[];
   /** Reifen (M3): Ringe auf den Stationen der gezeichneten Spanten */
   reifen: Reifen[];
+  /** V5: Ringe der Querlinien, Einordnung und Bau je P-Linie (nur mit `umrisse: 'exakt'`) */
+  linienRinge?: LinienRing[];
+  linienEinordnung?: LinienEinordnung[];
+  linienBau?: LinienBau[];
+  /** V5: feine Punkte längs der Linienschleifen (Zeilen nach der dichten Anpassung im Ausgleich) */
+  linienFein?: LinienFein;
+  /** V5: Stationen der Ringe vor dem Drehen in die Linien (die Form kommt aus ihnen, `HuellenFeld`) */
+  stationenNatuerlich?: Station[];
+  /** V5 „Form zuerst“: Körper ohne Linien und die an seine Form gebundenen feinen Punkte (Zeilen nach den Linienpunkten) */
+  form?: Ableitung;
+  formFein?: FormFein;
   spitzen: { vorn: boolean; hinten: boolean };
   /** wirksame Stationen als Wirbelsäulen-Anteile (zum Einfrieren im Dokument, Schritt 3) */
   gefroren: GefroreneStationen;
@@ -801,13 +823,78 @@ export function stationenWaehlen(l: Leiter, opt: AbleitOptionen, dok?: Dokument,
   // des Spants liegt; Ecken haben Vorrang, Ring 0 und R−1 bleiben); so ist ein Spant genau ein Ring mit Perlen.
   const reifen: Reifen[] = [];
   if (dok?.spanten?.length) dok.spanten.forEach((sp, index) => reifenZuweisen(anteile, ecken, reifen, index, spantAnteil(l, dok, sp), R));
+  // V5: je Querlinie und je Ende einer Längslinie rastet der nächste freie Ring auf ihre Stelle (nach Ecken und Reifen)
+  const lq = querLinien(l, opt, dok);
+  const linien: LinienRing[] = [];
+  if (lq) for (const x of lq.wuensche) linienRingZuweisen(anteile, ecken, reifen, linien, x.linie, x.rolle, x.f, R);
   const vorn: number[] = [];
   const hinten: number[] = [];
   for (let r = 1; r < c / 2; r++) {
     vorn.push((kappeVorn * r) / (c / 2));
     hinten.push(1 - (kappeHinten * r) / (c / 2));
   }
-  return stationenZusammensetzen(l, R, anteile, vorn, hinten, ecken, reifen, spitzen);
+  return linienAusrichten(stationenZusammensetzen(l, R, anteile, vorn, hinten, ecken, reifen, spitzen, linien), lq);
+}
+
+/** V5: P-Linien einordnen (nur mit dem Querschnitt aus der Sichthülle) und ihre Ringwünsche (Querlinien, Enden). */
+function querLinien(l: Leiter, opt: AbleitOptionen, dok: Dokument | undefined): { einordnung: LinienEinordnung[]; wuensche: LinienWunsch[] } | null {
+  if (opt.umrisse !== 'exakt' || !dok?.kanten?.length || !(opt.eckenSchaerfe > 0)) return null;
+  const einordnung = linienEinordnen(
+    dok.kanten.map((ka) => kanteAbtasten(ka, dok.skalierung)),
+    l,
+  );
+  return { einordnung, wuensche: linienWuensche(einordnung) };
+}
+
+/**
+ * V5: Ring einer Linie wie ein Reifen — der nächste freie Ring (nicht Ecke, Reifen, andere Linie; Ring 0/R−1 bleiben). Liegt
+ * schon ein belegter Ring näher als ein halber mittlerer Ringabstand, rückt kein zweiter dazu (zwei Ringe fast an derselben
+ * Stelle falten die Haut: Ei mit zwei parallelen Linien, 179°): Ein Linienende nimmt dann diesen Ring mit, eine Querlinie
+ * bleibt ohne eigenen Ring (Treppe).
+ */
+function linienRingZuweisen(anteile: number[], ecken: readonly Ecke[], reifen: readonly Reifen[], linien: LinienRing[], linie: number, rolle: LinienRolle, f: number, R: number, bevorzugt?: number): void {
+  const belegt = [...ecken.map((e) => e.ring), ...reifen.map((r) => r.ring), ...linien.map((r) => r.ring)];
+  const nah = belegt.find((i) => Math.abs(anteile[i]! - f) < 0.5 / (R - 1));
+  if (nah !== undefined) {
+    if (rolle !== 'quer' && linien.some((r) => r.ring === nah)) linien.push({ linie, ring: nah, rolle, geteilt: true });
+    return;
+  }
+  const frei = (i: number) => i > 0 && i < R - 1 && !ecken.some((e) => e.ring === i) && !reifen.some((r) => r.ring === i) && !linien.some((r) => r.ring === i);
+  let best = bevorzugt !== undefined && frei(bevorzugt) ? bevorzugt : -1;
+  if (best < 0) {
+    for (let i = 1; i < R - 1; i++) {
+      if (!frei(i)) continue;
+      if (best < 0 || Math.abs(anteile[i]! - f) < Math.abs(anteile[best]! - f)) best = i;
+    }
+  }
+  if (best < 0) return;
+  anteile[best] = f;
+  linien.push({ linie, ring: best, rolle });
+}
+
+/**
+ * V5: Ringe der Querlinien in die Sehnen ihrer Linien drehen (Nachbarn anteilig, `linienRingeDrehen`); Linien, deren Drehung
+ * die Reihenfolge der Ringe bräche, bleiben schräg (Treppe).
+ */
+function linienAusrichten(st: Stationen, lq: ReturnType<typeof querLinien>): Stationen {
+  if (!lq) return st;
+  const einordnung = lq.einordnung.map((e) => ({ ...e }));
+  const liste = (st.linien ?? []).flatMap((r) => {
+    if (r.geteilt) return [];
+    const w = lq.wuensche.find((x) => x.linie === r.linie && x.rolle === (r.rolle ?? 'quer'));
+    return w ? [{ ring: r.ring, a: w.a, b: w.b, linie: r.linie }] : [];
+  });
+  const fest = new Set<number>([...st.ecken.map((e) => e.ring), ...st.reifen.map((r) => r.ring)]);
+  const natuerlich = st.ringe.map((x) => ({ ...x }));
+  const verworfen = linienRingeDrehen(st.ringe, liste, fest);
+  const gedreht = st.ringe.some((x, i) => x.a !== natuerlich[i]!.a || x.b !== natuerlich[i]!.b);
+  // eine Querlinie, deren Ring nicht passt, wird schräg (Treppe); eine Längslinie bleibt Reihe, nur ohne genaue Enden
+  for (const li of verworfen) {
+    const e = einordnung[li]!;
+    einordnung[li] = e.art === 'reihe' ? { art: 'reihe' } : { art: 'schraeg' };
+  }
+  const linien = (st.linien ?? []).filter((r) => !verworfen.includes(r.linie));
+  return { ...st, linien, einordnung, ...(gedreht ? { ringeNatuerlich: natuerlich } : {}) };
 }
 
 /** Wirbelsäulen-Anteil der Station eines gezeichneten Spants (Sprosse, deren Mitte auf dem x des Spants liegt). */
@@ -849,9 +936,10 @@ function reifenZuweisen(anteile: number[], ecken: readonly Ecke[], reifen: Reife
 }
 
 /** Stationen sortieren (Ecken und Reifen folgen ihrem Wert), Kappenzeilen anhängen, Stationen aus der Leiter bauen. */
-function stationenZusammensetzen(l: Leiter, R: number, anteile: number[], vorn: readonly number[], hinten: readonly number[], ecken: Ecke[], reifen: Reifen[], spitzen: { vorn: boolean; hinten: boolean }): Stationen {
+function stationenZusammensetzen(l: Leiter, R: number, anteile: number[], vorn: readonly number[], hinten: readonly number[], ecken: Ecke[], reifen: Reifen[], spitzen: { vorn: boolean; hinten: boolean }, linien: LinienRing[] = []): Stationen {
   const werte = ecken.map((e) => anteile[e.ring]!);
   const reifenWerte = reifen.map((r) => anteile[r.ring]!);
+  const linienWerte = linien.map((r) => anteile[r.ring]!);
   anteile.sort((a, b) => a - b);
   ecken.forEach((e, k) => {
     e.ring = anteile.indexOf(werte[k]!);
@@ -859,9 +947,12 @@ function stationenZusammensetzen(l: Leiter, R: number, anteile: number[], vorn: 
   reifen.forEach((r, k) => {
     r.ring = anteile.indexOf(reifenWerte[k]!);
   });
+  linien.forEach((r, k) => {
+    r.ring = anteile.indexOf(linienWerte[k]!);
+  });
   const alle = stationenAusLeiter(l, [...anteile, ...vorn, ...hinten]);
-  const gefroren: GefroreneStationen = { ringe: [...anteile], vorn: [...vorn], hinten: [...hinten], ecken: ecken.map((e) => ({ ...e })), reifen: reifen.map((r) => ({ ...r })), spitzen: { ...spitzen }, ...(l.enden ? { enden: l.enden } : {}) };
-  return { ringe: alle.slice(0, R), kappen: { vorn: alle.slice(R, R + vorn.length), hinten: alle.slice(R + vorn.length) }, ecken, reifen, spitzen, gefroren };
+  const gefroren: GefroreneStationen = { ringe: [...anteile], vorn: [...vorn], hinten: [...hinten], ecken: ecken.map((e) => ({ ...e })), reifen: reifen.map((r) => ({ ...r })), ...(linien.some((r) => !r.geteilt) ? { linien: linien.filter((r) => !r.geteilt).map(({ linie, ring, rolle }) => ({ linie, ring, ...(rolle ? { rolle } : {}) })) } : {}), spitzen: { ...spitzen }, ...(l.enden ? { enden: l.enden } : {}) };
+  return { ringe: alle.slice(0, R), kappen: { vorn: alle.slice(R, R + vorn.length), hinten: alle.slice(R + vorn.length) }, ecken, reifen, spitzen, gefroren, ...(linien.length ? { linien } : {}) };
 }
 
 /**
@@ -915,7 +1006,11 @@ function stationenNachfuehren(l: Leiter, opt: AbleitOptionen, dok: Dokument | un
       reifenZuweisen(anteile, ecken, reifen, index, f, R);
     });
   }
-  return stationenZusammensetzen(l, R, anteile, vorn, hinten, ecken, reifen, spitzen);
+  // V5: Querlinien behalten ihren Ring, solange er frei ist
+  const lq = querLinien(l, opt, dok);
+  const linien: LinienRing[] = [];
+  if (lq) for (const x of lq.wuensche) linienRingZuweisen(anteile, ecken, reifen, linien, x.linie, x.rolle, x.f, R, g.linien?.find((r) => r.linie === x.linie && (r.rolle ?? 'quer') === x.rolle)?.ring);
+  return linienAusrichten(stationenZusammensetzen(l, R, anteile, vorn, hinten, ecken, reifen, spitzen, linien), lq);
 }
 
 /** Wirbelsäulen-Anteil f (0 … 1) je Station: Umkehrung von `stationenAusLeiter` über die Rückenanteile der Leiter. */
@@ -1361,7 +1456,7 @@ export function sprossenVon(l: Leiter, st: readonly Station[]): Sprosse[] {
 }
 
 /** V4 „Querschnitt aus der Sichthülle“ (`umrisse: 'exakt'`): Fülle der Zeichnung und Ecken der Front, einmal je Bau. */
-type HuellenKontext = { dok: Dokument; breiten: Breiten; zf: ZeichnungsFuelle; ecken: FrontEcke[]; N: number; hoechstens: number };
+type HuellenKontext = { dok: Dokument; breiten: Breiten; zf: ZeichnungsFuelle; ecken: FrontEcke[]; N: number; hoechstens: number; linien: KantenLinie[] };
 
 function huellenKontext(dok: Dokument | null, breiten: Breiten, opt: AbleitOptionen): HuellenKontext | null {
   if (opt.umrisse !== 'exakt' || !dok || !opt.querschnitt) return null;
@@ -1369,7 +1464,9 @@ function huellenKontext(dok: Dokument | null, breiten: Breiten, opt: AbleitOptio
   // nur das zusätzliche Auffüllen, wo sonst kein Ring die Front erreicht (`fuelleWoNoetig`)
   const hoechstens = FUELLE_EXPONENT[opt.fuelle ?? 'mittel'];
   const tb = tabellierteBreiten(dok, breiten);
-  return { dok, breiten: tb, zf: zeichnungsFuelle(dok, tb, FUELLE_EXPONENT.genau), ecken: frontEcken(dok), N: opt.ring, hoechstens };
+  // V5: P-Linien (alle Kanten des Dokuments, Index = Kennung − LINIE_ID; ohne Härte ohne Wirkung)
+  const linien = (dok.kanten ?? []).map((ka) => kanteAbtasten(ka, dok.skalierung));
+  return { dok, breiten: tb, zf: zeichnungsFuelle(dok, tb, FUELLE_EXPONENT.genau), ecken: frontEcken(dok), N: opt.ring, hoechstens, linien };
 }
 
 /** Gezeichnete Form an einer Sprosse (Spant, normiert auf größte Breite 1) über v; ohne Spanten keine. */
@@ -1396,17 +1493,28 @@ function huellenForm(hk: HuellenKontext, sp: Sprosse): ((v: number) => number) |
  * Schnitte der Hülle für die ganze Kette (Kappenringe vorn von der Spitze aus, Ringe, Kappenringe hinten), die Breitenlinie
  * (Reihe N/4, in den Kappen die Mittelreihe 2r) glatt über die Kette gewählt (`breitenlinieWaehlen`).
  */
-function huellenVorlagen(hk: HuellenKontext, l: Leiter, st: Stationen, v: { N: number; c: number }): { ringe: HuellenSchnitt[]; vorn: HuellenSchnitt[]; hinten: HuellenSchnitt[] } {
+function huellenVorlagen(hk: HuellenKontext, l: Leiter, st: Stationen, v: { N: number; c: number }): { ringe: HuellenSchnitt[]; vorn: HuellenSchnitt[]; hinten: HuellenSchnitt[]; linienReihen: Set<number>; reihenKanten: { ring: number; j: number; linie: number }[]; ringKanten: { ring: number; j: number; haerte: number; linie: number }[]; einordnung: LinienEinordnung[] } {
   const { N, c } = v;
   // Kette von der vorderen Spitze zur hinteren: Kappenringe vorn (r = 1 …), Ringe, Kappenringe hinten (… r = 1)
   const vornSp = sprossenVon(l, st.kappen.vorn).slice(0, c / 2 - 1);
   const ringSp = sprossenVon(l, st.ringe);
   const hintenSp = sprossenVon(l, st.kappen.hinten).slice(0, c / 2 - 1);
   const kette = [...vornSp, ...ringSp, ...hintenSp.slice().reverse()];
-  const huellen = kette.map((sp) => huelleEntlang(sp, hk.breiten, hk.ecken));
-  const formen = kette.map((sp) => huellenForm(hk, sp));
-  const ps = fuelleWoNoetig(huellen, kette.map((sp) => exponentenFuer(sp, hk.zf)), hk.breiten, hk.hoechstens, formen.map((f) => !!f));
-  const profile = huellen.map((h, i) => huelleRunden(h, ps[i]!, formen[i]));
+  // V5: Längslinien kreuzen die Sprossen der Ringe (nicht der Kappen) und werden Merkmale des Reihenplans; Querlinien haben
+  // ihren eigenen Ring (Stationen), schräge behalten die Treppe
+  const einordnung = st.einordnung ?? (hk.linien.length ? linienEinordnen(hk.linien, l) : []);
+  const laengs = hk.linien.map((ln, i) => (einordnung[i]?.art === 'reihe' ? ln : { ...ln, haerte: ln.haerte.map(() => 0) }));
+  const lm = laengs.some((ln) => ln.haerte.some((h) => h > 0)) ? linienMerkmale(laengs, ringSp) : null;
+  const huellen = kette.map((sp, i) => huelleEntlang(sp, hk.breiten, hk.ecken, lm && i >= vornSp.length && i < vornSp.length + ringSp.length ? lm[i - vornSp.length]! : []));
+  // V5: Sind Ringe in Linien gedreht, bestimmt die natürliche Kette die Form (Höhenfeld); die gedrehten Ringe tasten sie ab
+  const natRing = st.ringeNatuerlich ? sprossenVon(l, st.ringeNatuerlich) : null;
+  const natKette = natRing ? [...vornSp, ...natRing, ...hintenSp.slice().reverse()] : kette;
+  const natHuellen = natRing ? natKette.map((sp) => huelleEntlang(sp, hk.breiten, hk.ecken)) : huellen;
+  const formen = natKette.map((sp) => huellenForm(hk, sp));
+  const ps = fuelleWoNoetig(natHuellen, natKette.map((sp) => exponentenFuer(sp, hk.zf)), hk.breiten, hk.hoechstens, formen.map((f) => !!f));
+  const feld = natRing ? huellenFeld(natKette, natHuellen.map((h, i) => huelleRunden(h, ps[i]!, formen[i]))) : null;
+  const gleich = (a: Sprosse, b: Sprosse) => a.o.x === b.o.x && a.o.y === b.o.y && a.u.x === b.u.x && a.u.y === b.u.y;
+  const profile = huellen.map((h, i) => (feld && !gleich(kette[i]!, natKette[i]!) ? profilAusFeld(h, feld) : huelleRunden(h, ps[i]!, formen[i])));
   const vr = breitenlinieWaehlen(profile);
   const nV = vornSp.length;
   const nR = ringSp.length;
@@ -1415,10 +1523,60 @@ function huellenVorlagen(hk: HuellenKontext, l: Leiter, st: Stationen, v: { N: n
   const hinten = profile.slice(nV + nR).reverse();
   // Reihenplan der Ringe: Breitenlinie, gezeichnete Ecken und Kanten flacher Enden auf Reihen, die für alle Ringe gleich sind
   const plan = reihenplan(ringe, vr.slice(nV, nV + nR), N / 2, N / 4);
+  // V5: Linien, die in zwei benachbarten Ringen auf derselben Reihe liegen, sind als Reihe gebaut (sonst Treppe)
+  const linienReihen = new Set<number>();
+  const reihenKanten: { ring: number; j: number; linie: number }[] = [];
+  for (let i = 0; i + 1 < plan.length; i++) {
+    for (const a of plan[i]!) {
+      if (a.id === undefined || a.id < LINIE_ID || !(a.haerte > 0)) continue;
+      if (!plan[i + 1]!.some((b) => b.id === a.id && b.reihe === a.reihe)) continue;
+      linienReihen.add(a.id - LINIE_ID);
+      reihenKanten.push({ ring: i, j: a.reihe, linie: a.id - LINIE_ID });
+    }
+  }
+  // V5: Reihen an Linien verziehen (natürlich = Abtastung ohne Linienanker): Enden der Querlinien auf Reihen, Reihen der
+  // Längslinien laufen über drei Ringe zur natürlichen Lage aus, weiche Anker halten Abstand zu den Linien
+  const querRinge = (st.linien ?? []).filter((r) => (r.rolle ?? 'quer') === 'quer');
+  if (linienReihen.size || querRinge.length) {
+    const ohneLinien = plan.map((a) => a.filter((x) => x.id === undefined || x.id < LINIE_ID));
+    const nat = new Map<number, number[]>();
+    const natuerlich = (i: number, reihe: number): number => {
+      let q = nat.get(i);
+      if (!q) {
+        q = profilAbtastenAnker(ringe[i]!, N / 2, ohneLinien[i]!, N / 4).q.v;
+        nat.set(i, q);
+      }
+      return q[reihe]!;
+    };
+    const quer = querRinge.flatMap((r) => {
+      const sp = ringSp[r.ring];
+      const ln = hk.linien[r.linie];
+      const lage = sp && ln ? linieAufSprosse(ln, sp.o, sp.u) : null;
+      return lage ? [{ ring: r.ring, id: LINIE_ID + r.linie, ...lage }] : [];
+    });
+    querLinienEnden(plan, natuerlich, quer, N / 2, N / 4);
+    reihenAuslaufen(plan, natuerlich, new Set([...linienReihen].map((li) => LINIE_ID + li)));
+    reihenAbstand(plan, N / 2);
+  }
+  const ringVorlagen = ringe.map((pr, i) => profilAbtastenAnker(pr, N / 2, plan[i]!, N / 4));
+  // V5: Querlinien — Kanten längs ihres (gedrehten) Rings, soweit die Linie die Reihen deckt
+  const ringKantenListe: { ring: number; j: number; haerte: number; linie: number }[] = [];
+  for (const r of st.linien ?? []) {
+    if ((r.rolle ?? 'quer') !== 'quer') continue;
+    const sp = ringSp[r.ring];
+    const ln = hk.linien[r.linie];
+    const q = ringVorlagen[r.ring]?.q;
+    if (!sp || !ln || !q) continue;
+    for (const x of ringKanten(ln, sp.o, sp.u, q.v)) ringKantenListe.push({ ring: r.ring, j: x.j, haerte: x.haerte, linie: r.linie });
+  }
   return {
     vorn: vorn.map((pr, i) => profilAbtasten(pr, 4 * (i + 1), 2 * (i + 1), vr[i]!)),
-    ringe: ringe.map((pr, i) => profilAbtastenAnker(pr, N / 2, plan[i]!, N / 4)),
+    ringe: ringVorlagen,
     hinten: hinten.map((pr, i) => profilAbtasten(pr, 4 * (i + 1), 2 * (i + 1), vr[nV + nR + hinten.length - 1 - i]!)),
+    linienReihen,
+    reihenKanten,
+    ringKanten: ringKantenListe,
+    einordnung,
   };
 }
 
@@ -1811,6 +1969,7 @@ export function breitenSchleife(v: Roehre, l: Leiter, st: Stationen, breiten: Br
   // eigenen Ziel als Anteil der Sichthülle (die glatte Haut traf die erhöhten Ziele allein nur zu etwa zwei Dritteln)
   const qs = randVorlagen ?? roh;
   const beruehrt = new Set((randPunkte ?? []).map((p) => p.i * N + p.j));
+  const linienPunkte = new Set((st.linienKanten ?? []).flatMap((lk) => [lk.a, lk.b]));
   const fein: number[] = [];
   const vorzeichen: number[] = [];
   const faktor: number[] = [];
@@ -1845,6 +2004,10 @@ export function breitenSchleife(v: Roehre, l: Leiter, st: Stationen, breiten: Br
         if (wTop > 0 && Math.abs(ziele[3 * pz + 2]!) > 1.02 * wTop) continue;
       }
       let f = maulRing ? (zBest > 0 ? Math.abs(ziele[3 * v.ringPunkt(i, j) + 2]!) / zBest : 0) : (q.w[j] ?? 0) / wBest;
+      // V5: Punkte einer Linienfalte sind keine Breitenpunkte — ihr Soll (Anteil der größten Breite mal Hülle auf ihrer Höhe)
+      // zählte die Höhe doppelt und zog die Falte, die eine Linie nahe an die breiteste Stelle rückt, 2 px nach innen (Kugel);
+      // die Falte liegt auf ihrer Vorlage und hängt an der Linie
+      if (linienPunkte.has(v.ringPunkt(i, j))) continue;
       const beruehrPunkt = !maulRing && beruehrt.has(i * N + j);
       if (beruehrPunkt) {
         const pz = v.ringPunkt(i, j);
@@ -1916,17 +2079,44 @@ export function faltenSetzen(v: Roehre, st: Stationen, l: Leiter, dok: Dokument,
   const sprossen = sprossenVon(l, st.ringe);
   // V4: mit „Querschnitt aus der Sichthülle“ dieselben Vorlagen wie die Ziele (Ecken auf denselben Reihen)
   const hk = huellenKontext(dok, breiten, opt);
-  const qs = hk ? huellenVorlagen(hk, l, st, v).ringe.map((s) => s.q) : querschnitteFuer(sprossen, dok, breiten, N, opt);
-  // Freie Kantenlinien (M3 Punkt 2): gezeichnete Linie mit Härte je Knoten → Falte auf der nächsten Kantenschleife
-  if (dok.kanten?.length && opt.eckenSchaerfe > 0) {
+  const hv = hk ? huellenVorlagen(hk, l, st, v) : null;
+  const qs = hv ? hv.ringe.map((s) => s.q) : querschnitteFuer(sprossen, dok, breiten, N, opt);
+  // Freie Kantenlinien (M3 Punkt 2): gezeichnete Linie mit Härte je Knoten → Falte auf der nächsten Kantenschleife. V5: Linien,
+  // die der Reihenplan als Käfigreihe führt, bekommen ihre Falte dort (Längsfalten unten), die übrigen die Treppe.
+  const schleife = new Set<number>([...(hv?.linienReihen ?? []), ...(hv?.ringKanten ?? []).map((x) => x.linie)]);
+  if (hv) {
+    st.linienBau = (dok.kanten ?? []).map((_, i) => ({ art: hv.einordnung[i]?.art ?? 'schraeg', schleife: schleife.has(i) }));
+    st.linienKanten = [...hv.reihenKanten.map((x) => ({ linie: x.linie, a: v.ringPunkt(x.ring, x.j), b: v.ringPunkt(x.ring + 1, x.j) })), ...hv.ringKanten.map((x) => ({ linie: x.linie, a: v.ringPunkt(x.ring, x.j), b: v.ringPunkt(x.ring, x.j + 1) }))];
+  }
+  const treppe = (dok.kanten ?? []).filter((_, i) => !schleife.has(i));
+  // V5: Querlinien als Falte längs ihres Rings (rechts und gespiegelt); eine Kreuzung mit einer Längslinie ist eine Ecke
+  // (vier scharfe Kanten) — gemessen gleich gut wie eine Linie, die dort aussetzt oder halbscharf ist (Kugel 2,0–2,2 px)
+  for (const x of hv?.ringKanten ?? []) {
+    const schaerfe = x.haerte >= 1 ? opt.eckenSchaerfe : 3 * x.haerte;
+    for (const [ja, jb] of [
+      [x.j, x.j + 1],
+      [(N - x.j) % N, N - x.j - 1],
+    ] as const) {
+      const e = kanteZwischen(k, v.ringPunkt(x.ring, ja), v.ringPunkt(x.ring, jb));
+      if (e >= 0) k.eSchaerfe[e] = Math.max(k.eSchaerfe[e]!, schaerfe);
+    }
+  }
+  if (treppe.length && opt.eckenSchaerfe > 0) {
+    const vorher = hv ? Float64Array.from(k.eSchaerfe) : null;
     kantenFalten(
       v,
       sprossen,
       qs,
       breiten,
-      dok.kanten.map((ka) => kanteAbtasten(ka, dok.skalierung)),
+      treppe.map((ka) => kanteAbtasten(ka, dok.skalierung)),
       opt.eckenSchaerfe,
     );
+    // V5: Käfigpunkte der Treppe — auch sie binden sich an die Form ohne Linien („Form zuerst“)
+    if (vorher) {
+      const punkte = new Set<number>();
+      for (let e = 0; e < k.nE; e++) if (k.eSchaerfe[e]! > vorher[e]!) punkte.add(k.eA[e]!).add(k.eB[e]!);
+      st.treppenPunkte = [...punkte];
+    }
   }
   // Längsfalten: Ecke im Querschnitt (Front-Lappen oder Spant, Härte je Knoten) → Kante Ring i → i+1 am Ringpunkt der Ecke.
   // Mit dem Querschnitt aus der Sichthülle hat jeder Ring seine eigene Vorlage: die Falte nur, wo beide Ringe die Ecke auf
@@ -2023,9 +2213,13 @@ function ableitenEinmal(dok: Dokument, optionen: Partial<AbleitOptionen>): Ablei
   const st = stationenWaehlen(l, opt, dok);
   faltenSetzen(vorlage, st, l, dok, breiten, opt);
   const { ziele, hoehe, rand, huelle, vorlagen, dichte } = zieleBerechnen(vorlage, l, st, breiten, dok, opt);
+  // V5 „Form zuerst“: Mit Linien bindet sich der Körper an die Form des Körpers ohne Linien — die Linie legt fest, wo die
+  // Käfigschleife liegt, nicht die Form (ein Winkel nur, wo die Form ihn verlangt)
+  const formGewicht = opt.umrisse === 'exakt' ? (opt.umrisseOpt?.form ?? FORM_GEWICHT) : 0;
+  const form = formGewicht > 0 && (dok.kanten ?? []).some((ka) => ka.haerte.some((h) => h > 0)) ? ableitenEinmal({ ...dok, kanten: [] }, optionen) : null;
   // V4: Breitenpunkte aus den Querschnitten der Hülle (ihre breitesten Stellen)
   const randV = rand ? { randVorlagen: rand.vorlagen, randPunkte: rand.punkte } : vorlagen ? { randVorlagen: vorlagen } : {};
-  const abl = fertigstellen({ opt, vorlage, kaefig: vorlage.kaefig, ziele, hoehe, l, st, breiten, dok, zeiten: { t0, t1, t2 }, ...randV, ...(huelle ? { huelle } : {}), ...(dichte ? { dichte } : {}) });
+  const abl = fertigstellen({ opt, vorlage, kaefig: vorlage.kaefig, ziele, hoehe, l, st, breiten, dok, zeiten: { t0, t1, t2 }, ...randV, ...(huelle ? { huelle } : {}), ...(dichte ? { dichte } : {}), ...(form ? { form } : {}) });
   return rand ? { ...abl, rand: { wachstum: rand.wachstum, nachfrage: rand.nachfrage, kante: rand.kante, teil: rand.teil } } : abl;
 }
 
@@ -2057,8 +2251,240 @@ export type Rohbau = {
   huelle?: Uint8Array;
   /** V4: dichte Kurven der Ringschnitte (feine Punkte längs der Ringe werden auf sie projiziert) */
   dichte?: DichteVorlagen;
+  /** V5 „Form zuerst“: der Körper ohne Linien, an dessen Form sich der Körper mit Linien bindet */
+  form?: Ableitung;
   zeiten: { t0: number; t1: number; t2: number };
 };
+
+/**
+ * V5 „Punkt zu Linie“: feine Punkte längs jeder Linienschleife (Käfigpunkte und innere Punkte ihrer Käfigkanten, rechts und
+ * gespiegelt). Ziel je Punkt: in der Zeichenansicht der Linie der nächste Punkt der Linie, die dritte Koordinate bleibt die
+ * aktuelle (frei) — so liegt die Falte zwischen den Ringen und an den Enden genau auf der gezeichneten Linie.
+ */
+export type LinienFein = { fein: Uint32Array; linie: Uint16Array; seite: Int8Array };
+/** V5: Gewicht je feinem Punkt einer Linienschleife (wie die Breitenpunkte) */
+const LINIE_GEWICHT = 16;
+
+/** Spiegelpunkt eines Ringpunkts (i, j) ist (i, N − j). */
+function spiegelRingPunkt(v: Roehre, p: number): number {
+  const i = Math.floor(p / v.N);
+  return v.ringPunkt(i, (v.N - (p % v.N)) % v.N);
+}
+
+function linienFeinFuer(v: Roehre, k: Kaefig, u: Unterteilung, kanten: readonly LinienKante[]): LinienFein {
+  const fein: number[] = [];
+  const linie: number[] = [];
+  const seite: number[] = [];
+  const gesehen = new Set<number>();
+  for (const ka of kanten) {
+    for (const [s, a, b] of [
+      [1, ka.a, ka.b],
+      [-1, spiegelRingPunkt(v, ka.a), spiegelRingPunkt(v, ka.b)],
+    ] as const) {
+      const kette = feinKette(u, k, a, b);
+      for (const q of kette) {
+        if (gesehen.has(q)) continue;
+        gesehen.add(q);
+        fein.push(q);
+        linie.push(ka.linie);
+        seite.push(s);
+      }
+    }
+  }
+  return { fein: Uint32Array.from(fein), linie: Uint16Array.from(linie), seite: Int8Array.from(seite) };
+}
+
+/** Linien in ihrer Zeichenansicht (zwei Achsen) für die Ziele der Linienschleifen. */
+type LinienZug = { achsen: readonly [number, number]; punkte: Float64Array };
+function linienZuege(dok: Dokument): LinienZug[] {
+  return (dok.kanten ?? []).map((ka) => {
+    const ln = kanteAbtasten(ka, dok.skalierung, 24);
+    const achsen: readonly [number, number] = ka.blick === 'front' || ka.blick === 'hinten' ? [2, 1] : ka.blick === 'top' || ka.blick === 'unten' ? [0, 2] : [0, 1];
+    const punkte = new Float64Array(2 * ln.punkte.length);
+    ln.punkte.forEach((p, i) => {
+      punkte[2 * i] = achsen[0] === 2 ? Math.abs(p[2]!) : p[achsen[0]]!;
+      punkte[2 * i + 1] = achsen[1] === 2 ? Math.abs(p[2]!) : p[achsen[1]]!;
+    });
+    return { achsen, punkte };
+  });
+}
+
+/** Ziele der Linienschleifen: je Zeile der nächste Punkt der Linie in ihrer Zeichenansicht, die dritte Achse bleibt. */
+function linienZiele(lf: LinienFein, zuege: readonly LinienZug[], lagen: Float64Array): Float64Array {
+  const out = new Float64Array(3 * lf.fein.length);
+  for (let q = 0; q < lf.fein.length; q++) {
+    const p = lf.fein[q]!;
+    const s = lf.seite[q]!;
+    const ziel = [lagen[3 * p]!, lagen[3 * p + 1]!, lagen[3 * p + 2]!];
+    const z = zuege[lf.linie[q]!];
+    if (z) {
+      const [ax, ay] = z.achsen;
+      // links gespiegelt: z der rechten Seite
+      const wert = (d: number) => (d === 2 ? s * ziel[2]! : ziel[d]!);
+      const px = wert(ax);
+      const py = wert(ay);
+      let best = Infinity;
+      let bx = px;
+      let by = py;
+      const m = z.punkte.length / 2;
+      for (let i = 0; i + 1 < m; i++) {
+        const x0 = z.punkte[2 * i]!;
+        const y0 = z.punkte[2 * i + 1]!;
+        const dx = z.punkte[2 * i + 2]! - x0;
+        const dy = z.punkte[2 * i + 3]! - y0;
+        const l2 = dx * dx + dy * dy;
+        const t = l2 > 0 ? Math.min(1, Math.max(0, ((px - x0) * dx + (py - y0) * dy) / l2)) : 0;
+        const qx = x0 + t * dx;
+        const qy = y0 + t * dy;
+        const d = (px - qx) ** 2 + (py - qy) ** 2;
+        if (d < best) {
+          best = d;
+          bx = qx;
+          by = qy;
+        }
+      }
+      const setze = (d: number, w: number) => {
+        ziel[d] = d === 2 ? s * w : w;
+      };
+      setze(ax, bx);
+      setze(ay, by);
+    }
+    out[3 * q] = ziel[0]!;
+    out[3 * q + 1] = ziel[1]!;
+    out[3 * q + 2] = ziel[2]!;
+  }
+  return out;
+}
+
+/**
+ * V5 „Form zuerst“: feine Punkte der Stufe 2 (ohne Nahtpunkte); Ziel je Punkt ist seine Lage auf der Tangentialebene des
+ * nächsten Punkts der Form ohne Linien (Punkt zu Ebene, längs der Fläche frei). Erst nur die Tiefe in der Seite: dort, wo die
+ * Haut steil zur Seite steht (an den Polen der Front), band das nichts, und die Endreihen der Querlinien verzogen die Kugel 2 px.
+ */
+export type FormFein = { fein: Uint32Array };
+
+/**
+ * Form ohne Linien auf ihrer feinsten Stufe: Lagen und die Topologie (Nachbarn, Flächen je Punkt). Der Körper mit Linien hat
+ * dieselbe Topologie (Röhre), nur andere Lagen: Sein Punkt q sucht den nächsten Formpunkt mit einem Gang über die Fläche, der beim
+ * Formpunkt q beginnt — eine Suche im Raum sprang an dünnen Stellen auf die Gegenseite. Normalen nur an den gefundenen Punkten
+ * (im Zug zählt jede Millisekunde).
+ */
+type FormFlaeche = { punkte: ArrayLike<number>; kf: Kaefig };
+
+function formFlaeche(a: Ableitung, fein: ArrayLike<number> = a.fein): FormFlaeche {
+  return { punkte: fein, kf: a.unterteilung.stufen[a.unterteilung.stufen.length - 1]!.kaefig };
+}
+
+/** Normale der Form an Punkt p (Summe der Flächennormalen um ihn, normiert). */
+function formNormale(ff: FormFlaeche, p: number): [number, number, number] {
+  const { kf, punkte } = ff;
+  let nx = 0;
+  let ny = 0;
+  let nz = 0;
+  for (let i = kf.vFStart[p]!; i < kf.vFStart[p + 1]!; i++) {
+    const f = kf.vFlaechen[i]!;
+    const h0 = kf.fStart[f]!;
+    const m = kf.fStart[f + 1]! - h0;
+    // Ecke p in der Fläche: Kreuzprodukt der beiden Kanten an ihr
+    let k = 0;
+    while (k < m && kf.fVerts[h0 + k] !== p) k++;
+    if (k === m) continue;
+    const b = kf.fVerts[h0 + ((k + 1) % m)]!;
+    const c = kf.fVerts[h0 + ((k + m - 1) % m)]!;
+    const ux = punkte[3 * b]! - punkte[3 * p]!;
+    const uy = punkte[3 * b + 1]! - punkte[3 * p + 1]!;
+    const uz = punkte[3 * b + 2]! - punkte[3 * p + 2]!;
+    const vx = punkte[3 * c]! - punkte[3 * p]!;
+    const vy = punkte[3 * c + 1]! - punkte[3 * p + 1]!;
+    const vz = punkte[3 * c + 2]! - punkte[3 * p + 2]!;
+    nx += uy * vz - uz * vy;
+    ny += uz * vx - ux * vz;
+    nz += ux * vy - uy * vx;
+  }
+  const l = Math.hypot(nx, ny, nz) || 1;
+  return [nx / l, ny / l, nz / l];
+}
+
+/**
+ * Nächster Formpunkt zu (x, y, z): Gang über die Nachbarn ab dem Formpunkt `p`, solange einer näher liegt — nie über die Naht
+ * auf die gespiegelte Seite (an der Schnauzenspitze zog das die Haut quer, Rex 35°).
+ */
+function formNaechster(ff: FormFlaeche, x: number, y: number, z: number, p: number): number {
+  const P = ff.punkte;
+  const kf = ff.kf;
+  const d2 = (q: number) => (P[3 * q]! - x) ** 2 + (P[3 * q + 1]! - y) ** 2 + (P[3 * q + 2]! - z) ** 2;
+  let aktuell = p;
+  let bd = d2(p);
+  for (let schritt = 0; schritt < 256; schritt++) {
+    let besser = -1;
+    for (let i = kf.vKStart[aktuell]!; i < kf.vKStart[aktuell + 1]!; i++) {
+      const e = kf.vKanten[i]!;
+      const q = kf.eA[e] === aktuell ? kf.eB[e]! : kf.eA[e]!;
+      if (P[3 * q + 2]! * z < 0) continue;
+      const d = d2(q);
+      if (d < bd) {
+        bd = d;
+        besser = q;
+      }
+    }
+    if (besser < 0) return aktuell;
+    aktuell = besser;
+  }
+  return aktuell;
+}
+
+/**
+ * Feine Punkte der Stufe `stufe` (ohne Naht), die an die Form gebunden werden: nur, wo die Linien den Käfig verschoben haben —
+ * Käfigpunkte mit anderem Ziel als in der Form (gedrehte Ringe, verzogene Reihen) und Punkte an Linienfalten; überall sonst ist
+ * der Körper derselbe wie die Form. Eine Bindung über den ganzen Körper faltete das dünne Ringband an der Rex-Schnauze (35–115°).
+ */
+function formFeinFuer(u: Unterteilung, fein: Float64Array, geaendert: Uint8Array, stufe = 2): FormFein {
+  const n = u.stufen[Math.min(stufe - 1, u.stufen.length - 1)]!.kaefig.n;
+  const M = u.grenze;
+  const idx: number[] = [];
+  for (let q = 0; q < n; q++) {
+    if (Math.abs(fein[3 * q + 2]!) < 1e-5) continue;
+    let an = false;
+    for (let i = M.start[q]!; i < M.start[q + 1]! && !an; i++) if (geaendert[M.index[i]!]) an = true;
+    if (an) idx.push(q);
+  }
+  return { fein: Uint32Array.from(idx) };
+}
+
+/** Käfigpunkte, die die Linien verschoben haben: anderes Ziel als die Form (über `GEAENDERT`), an einer Linienfalte oder Treppe. */
+function formGeaendert(k: Kaefig, ziele: Float64Array, form: Ableitung, kanten: readonly LinienKante[], v: Roehre, treppe: readonly number[] = []): Uint8Array {
+  const g = new Uint8Array(k.n);
+  const n = Math.min(k.n, form.kaefig.n);
+  for (let p = 0; p < n; p++) {
+    const d = Math.hypot(ziele[3 * p]! - form.ziele[3 * p]!, ziele[3 * p + 1]! - form.ziele[3 * p + 1]!, ziele[3 * p + 2]! - form.ziele[3 * p + 2]!);
+    if (d > GEAENDERT) g[p] = 1;
+  }
+  for (const lk of kanten) for (const p of [lk.a, lk.b, spiegelRingPunkt(v, lk.a), spiegelRingPunkt(v, lk.b)]) g[p] = 1;
+  for (const p of treppe) g[p] = 1;
+  return g;
+}
+/** Käfigziele, die sich um mehr als das unterscheiden, gelten als verschoben (0,1 px) */
+const GEAENDERT = 0.1 / 461;
+/** V5: Gewicht je Formpunkt (gemessen 21.10.: 4 → 16 besser überall, Rex 0,7 → 0,3 px; ohne Falten, weil nur örtlich) */
+const FORM_GEWICHT = 16;
+
+/** Ziele der Formpunkte: Lot auf die Tangentialebene des nächsten Formpunkts (längs der Fläche bleibt der Punkt, wo er ist). */
+function formZiele(ff: FormFein, form: FormFlaeche, lagen: Float64Array): Float64Array {
+  const out = new Float64Array(3 * ff.fein.length);
+  for (let q = 0; q < ff.fein.length; q++) {
+    const p = ff.fein[q]!;
+    const x = lagen[3 * p]!;
+    const y = lagen[3 * p + 1]!;
+    const z = lagen[3 * p + 2]!;
+    const f = formNaechster(form, x, y, z, p);
+    const [nx, ny, nz] = formNormale(form, f);
+    const d = (x - form.punkte[3 * f]!) * nx + (y - form.punkte[3 * f + 1]!) * ny + (z - form.punkte[3 * f + 2]!) * nz;
+    out[3 * q] = x - d * nx;
+    out[3 * q + 1] = y - d * ny;
+    out[3 * q + 2] = z - d * nz;
+  }
+  return out;
+}
 
 /** V4: feine Punkte längs der Ringe (innere Punkte jeder Käfigkante der Ringe, rechts und gespiegelt) mit Suchfenster. */
 function dichtFeinFuer(v: Roehre, k: Kaefig, u: Unterteilung, dv: DichteVorlagen): DichtFein {
@@ -2145,14 +2571,25 @@ export function fertigstellen(e: Rohbau): Ableitung {
   // V4: feine Punkte längs der Ringe auf die dichten Kurven ihrer Schnitte (Zeilen nach den Breitenpunkten)
   // (Standard mit dem Querschnitt aus der Hülle; gemessen 21.10.: Robbe Front 4,4 → 3,7 px, Kegel 3,0 → 2,5, Falten +1°)
   const dicht = exakt && e.dichte && (opt.umrisseOpt?.dicht ?? true) ? dichtFeinFuer(vorlage, k, u, e.dichte) : null;
+  // V5: Linienschleifen — feine Punkte auf die gezeichneten Linien (Zeilen nach der dichten Anpassung)
+  const linienFein = exakt && st.linienKanten?.length ? linienFeinFuer(vorlage, k, u, st.linienKanten) : null;
+  const zuege = linienFein ? linienZuege(dok) : [];
+  // V5 „Form zuerst“: feine Punkte der Stufe 2 auf die Form des Körpers ohne Linien (Zeilen nach den Linienpunkten)
+  const formFein = exakt && e.form ? formFeinFuer(u, fein, formGeaendert(k, ziele, e.form, st.linienKanten ?? [], vorlage, st.treppenPunkte)) : null;
+  const formRaster = formFein ? formFlaeche(e.form!) : null;
+  const fg = opt.umrisseOpt?.form ?? FORM_GEWICHT;
   let zieleWirk = ziele;
   let korrektur: Float64Array | null = null;
   const zieleAlle = (lagen: Float64Array): Float64Array => {
     const a = ausgleichsZiele(k.n, zieleWirk, umriss, nahtFein, anteil, breite, breiten, lagen, opt.fuehrend);
-    if (!dicht) return a;
-    const out = new Float64Array(a.length + 3 * dicht.fein.length);
+    if (!dicht && !linienFein && !formFein) return a;
+    const nD = dicht ? 3 * dicht.fein.length : 0;
+    const nL = linienFein ? 3 * linienFein.fein.length : 0;
+    const out = new Float64Array(a.length + nD + nL + (formFein ? 3 * formFein.fein.length : 0));
     out.set(a);
-    out.set(dichtZiele(dicht, e.dichte!, lagen), a.length);
+    if (dicht) out.set(dichtZiele(dicht, e.dichte!, lagen), a.length);
+    if (linienFein) out.set(linienZiele(linienFein, zuege, lagen), a.length + nD);
+    if (formFein) out.set(formZiele(formFein, formRaster!, lagen), a.length + nD + nL);
     return out;
   };
   if (opt.nahtGewicht > 0) {
@@ -2162,11 +2599,14 @@ export function fertigstellen(e: Rohbau): Ableitung {
     if (breite) for (let q = 0; q < breite.fein.length; q++) bedingungen.push({ zeile: breite.fein[q]!, gewicht: opt.breiteGewicht * (breite.gewicht?.[q] ?? 1) });
     const dg = opt.umrisseOpt?.dichtGewicht ?? DICHT_GEWICHT;
     if (dicht) for (let q = 0; q < dicht.fein.length; q++) bedingungen.push({ zeile: dicht.fein[q]!, gewicht: dg });
+    const lg = opt.umrisseOpt?.linieGewicht ?? LINIE_GEWICHT;
+    if (linienFein) for (let q = 0; q < linienFein.fein.length; q++) bedingungen.push({ zeile: linienFein.fein[q]!, gewicht: lg });
+    if (formFein) for (let q = 0; q < formFein.fein.length; q++) bedingungen.push({ zeile: formFein.fein[q]!, gewicht: fg });
     nahtLoeser = ausgleichsLoeser(u.grenze, k.n, bedingungen, opt.glaettung > 0 ? { kaefig: k, gewicht: opt.glaettung } : undefined, glaettemassFuer(u, k, opt, vorlage.R * vorlage.N));
     xyz = kaefigAusgleich(nahtLoeser, zieleAlle(fein));
     fein = anwenden3(u.grenze, xyz);
     // Breitenziele (und die Fußpunkte der dichten Anpassung) an den tatsächlichen Grenzlagen nachrechnen, zwei Durchgänge
-    for (let durchgang = 0; (breite || dicht) && durchgang < BREITE_DURCHGAENGE; durchgang++) {
+    for (let durchgang = 0; (breite || dicht || linienFein || formFein) && durchgang < BREITE_DURCHGAENGE; durchgang++) {
       xyz = kaefigAusgleich(nahtLoeser, zieleAlle(fein));
       fein = anwenden3(u.grenze, xyz);
     }
@@ -2299,6 +2739,10 @@ export function fertigstellen(e: Rohbau): Ableitung {
     kappenStationen: st.kappen,
     ecken: st.ecken,
     reifen: st.reifen,
+    ...(st.ringeNatuerlich ? { stationenNatuerlich: st.ringeNatuerlich } : {}),
+    ...(st.linien ? { linienRinge: st.linien } : {}),
+    ...(st.einordnung ? { linienEinordnung: st.einordnung } : {}),
+    ...(st.linienBau ? { linienBau: st.linienBau } : {}),
     gefroren: st.gefroren,
     spitzen: st.spitzen,
     ziele,
@@ -2312,6 +2756,8 @@ export function fertigstellen(e: Rohbau): Ableitung {
     breite,
     ...(umrisseBericht ? { umrisse: umrisseBericht } : {}),
     ...(dicht ? { dicht } : {}),
+    ...(linienFein ? { linienFein } : {}),
+    ...(formFein ? { form: e.form!, formFein } : {}),
     zeiten: { leiter: t1 - t0, breiten: t2 - t1, matrix: t3 - t2, loeser: t4 - t3, ziele: t5 - t4, gesamt: t5 - t0 },
   };
 }
@@ -2344,24 +2790,35 @@ export function ziehen(abl: Ableitung, dokNeu: Dokument): Zug {
   const l = kernLeiter(dokNeu);
   const t1 = jetzt();
   const v = abl.vorlage;
-  const st: Stationen = { ringe: abl.stationen, kappen: abl.kappenStationen, ecken: abl.ecken, reifen: abl.reifen, spitzen: abl.spitzen, gefroren: abl.gefroren };
+  const st: Stationen = { ringe: abl.stationen, kappen: abl.kappenStationen, ecken: abl.ecken, reifen: abl.reifen, spitzen: abl.spitzen, gefroren: abl.gefroren, ...(abl.linienRinge ? { linien: abl.linienRinge } : {}), ...(abl.linienEinordnung ? { einordnung: abl.linienEinordnung } : {}), ...(abl.stationenNatuerlich ? { ringeNatuerlich: abl.stationenNatuerlich } : {}) };
   const breiten = silhouettenBreite(dokNeu);
   const { ziele, hoehe, dichte } = zieleBerechnen(v, l, st, breiten, dokNeu, abl.opt);
   const t2 = jetzt();
   const umrissNeu = umrissDicht(dokNeu);
   const anteilNeu = abl.naht.loeser ? nahtAnteile(Array.from(abl.naht.fein), v.kaefig.n, ziele, umrissNeu) : abl.naht.anteil;
   // dieselben Zeilen wie beim Bau (V4: mit den Fußpunkten der dichten Anpassung auf den neuen Kurven)
+  const lf = abl.linienFein;
+  const zuege = lf ? linienZuege(dokNeu) : [];
+  // V5 „Form zuerst“: die Form ohne Linien zieht mit (eigener Zug), der Körper mit Linien bindet sich an sie
+  const ff = abl.formFein && abl.form ? abl.formFein : null;
+  const formNeu = ff ? ziehen(abl.form!, { ...dokNeu, kanten: [] }) : null;
+  const formRaster = formNeu ? formFlaeche(formNeu) : null;
   const zieleAlle = (lagen: Float64Array): Float64Array => {
     const a = ausgleichsZiele(v.kaefig.n, ziele, umrissNeu, abl.naht.fein, anteilNeu, abl.breite, breiten, lagen, abl.opt.fuehrend);
-    if (!abl.dicht || !dichte) return a;
-    const out = new Float64Array(a.length + 3 * abl.dicht.fein.length);
+    const mitDicht = !!(abl.dicht && dichte);
+    if (!mitDicht && !lf && !ff) return a;
+    const nD = mitDicht ? 3 * abl.dicht!.fein.length : 0;
+    const nL = lf ? 3 * lf.fein.length : 0;
+    const out = new Float64Array(a.length + nD + nL + (ff ? 3 * ff.fein.length : 0));
     out.set(a);
-    out.set(dichtZiele(abl.dicht, dichte, lagen), a.length);
+    if (mitDicht) out.set(dichtZiele(abl.dicht!, dichte!, lagen), a.length);
+    if (lf) out.set(linienZiele(lf, zuege, lagen), a.length + nD);
+    if (ff) out.set(formZiele(ff, formRaster!, lagen), a.length + nD + nL);
     return out;
   };
   let xyz = abl.naht.loeser ? kaefigAusgleich(abl.naht.loeser, zieleAlle(abl.fein)) : kaefigDurchZiele(abl.loeser, ziele);
   let fein = anwenden3(abl.unterteilung.grenze, xyz);
-  if (abl.naht.loeser && (abl.breite || abl.dicht)) {
+  if (abl.naht.loeser && (abl.breite || abl.dicht || abl.linienFein || abl.formFein)) {
     xyz = kaefigAusgleich(abl.naht.loeser, zieleAlle(fein));
     fein = anwenden3(abl.unterteilung.grenze, xyz);
   }

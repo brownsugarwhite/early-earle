@@ -26,7 +26,8 @@ import { aufHaut, sichtRaster } from '../netzSicht';
 import { type NetzLinie, reiheEinpassen } from './einpassen';
 import { ringEinpassen } from './ringEinpassen';
 
-export type LinienBericht = { art: 'reihe' | 'ring' | 'ohne' | 'fehlt'; index: number; ms: number };
+/** `schleife`: V5 — die Linie ist eine Käfigschleife aus dem Reihenplan bzw. ein eigener Ring (alle Linien gleichzeitig genau). */
+export type LinienBericht = { art: 'reihe' | 'ring' | 'ohne' | 'fehlt'; index: number; ms: number; schleife?: true };
 
 /** Härte längs der Linie bei Anteil f ∈ [0, 1] (die Proben liegen gleichmäßig über die Abschnitte). */
 function haerteBei(h: readonly number[], f: number): number {

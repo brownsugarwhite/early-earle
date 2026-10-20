@@ -206,6 +206,70 @@ export function exponentenFuer(sp: Sprosse, zf: ZeichnungsFuelle): { oben: numbe
 
 // ---------- Ecken der Front ----------
 
+/**
+ * V5 (Plan 20.10.): Mit P gezeichnete Linien längs des Körpers sind Merkmale wie die Ecken der Front — in jedem Ring, den die
+ * Linie kreuzt, eine Höhe auf seiner Sprosse; der Reihenplan gibt ihr eine Käfigreihe für alle Ringe, die Kante liegt auf ihr
+ * (auch während eines Zugs). Kennung LINIE_ID + Index der Linie.
+ */
+export const LINIE_ID = 1000;
+export type LinienMerkmal = { id: number; v: number; haerte: number };
+/** Linien auf der Mittelebene (|z| darunter, 2 px) sind Nahtlinien — sie bleiben bei der Treppe */
+const LINIE_NAHT = 2 / 461;
+/** Ein Linienende so nah an einer Sprosse (1,5 px) reicht bis an ihren Ring */
+const LINIE_ENDE = 1.5 / 461;
+
+/**
+ * Kreuzungen der Linien mit den Sprossen (Seitenansicht): je Ring die Höhe v auf seiner Sprosse und die Härte der Linie dort.
+ * Linien links (z < 0) gelten gespiegelt; eine Linie kreuzt eine Sprosse höchstens einmal (die erste Kreuzung zählt).
+ */
+export function linienMerkmale(linien: readonly { punkte: readonly (readonly number[])[]; haerte: readonly number[] }[], sprossen: readonly Sprosse[]): LinienMerkmal[][] {
+  return sprossen.map((sp) => {
+    const out: LinienMerkmal[] = [];
+    const dx = sp.o.x - sp.u.x;
+    const dy = sp.o.y - sp.u.y;
+    linien.forEach((ln, li) => {
+      let gefunden = false;
+      for (let k = 0; k + 1 < ln.punkte.length; k++) {
+        const a = ln.punkte[k]!;
+        const c = ln.punkte[k + 1]!;
+        const ex = c[0]! - a[0]!;
+        const ey = c[1]! - a[1]!;
+        const det = dx * -ey - dy * -ex;
+        if (Math.abs(det) < 1e-15) continue;
+        const rx = a[0]! - sp.u.x;
+        const ry = a[1]! - sp.u.y;
+        const v = (rx * -ey - ry * -ex) / det;
+        let t = (dx * ry - dy * rx) / det;
+        // Enden mit Spiel: der Endring einer Linie läuft genau durch ihren Endpunkt (V5)
+        if (!(v > 1e-4 && v < 1 - 1e-4 && t >= -1e-6 && t <= 1 + 1e-6)) continue;
+        t = Math.min(1, Math.max(0, t));
+        const z = Math.abs(a[2]! + (c[2]! - a[2]!) * t);
+        if (z < LINIE_NAHT) break;
+        const h0 = ln.haerte[k] ?? 0;
+        const h1 = ln.haerte[k + 1] ?? h0;
+        const h = h0 + (h1 - h0) * t;
+        if (h > 0) out.push({ id: LINIE_ID + li, v, haerte: Math.min(1, h) });
+        gefunden = true;
+        break;
+      }
+      // Ende knapp vor der Sprosse (geteilter Endring einer anderen Linie): die Linie reicht bis an den Ring
+      if (gefunden || !ln.punkte.length) return;
+      const l2 = dx * dx + dy * dy;
+      if (l2 < 1e-18) return;
+      for (const k of [0, ln.punkte.length - 1]) {
+        const p = ln.punkte[k]!;
+        const v = ((p[0]! - sp.u.x) * dx + (p[1]! - sp.u.y) * dy) / l2;
+        const d = Math.abs((p[0]! - sp.u.x) * dy - (p[1]! - sp.u.y) * dx) / Math.sqrt(l2);
+        if (d > LINIE_ENDE || !(v > 1e-4 && v < 1 - 1e-4) || Math.abs(p[2]!) < LINIE_NAHT) continue;
+        const h = ln.haerte[k] ?? 0;
+        if (h > 0) out.push({ id: LINIE_ID + li, v, haerte: Math.min(1, h) });
+        break;
+      }
+    });
+    return out;
+  });
+}
+
 /** Gezeichnete Ecke der Front (rechte Hälfte, nicht auf der Achse): Höhe (Welt) und Härte. */
 export type FrontEcke = { y: number; haerte: number };
 
@@ -279,7 +343,7 @@ export type Huelle = {
 };
 
 /** Hülle entlang einer Sprosse (Kopf der Datei): an jeder Höhe die kleinere Breite aus Front und Top. */
-export function huelleEntlang(sp: Sprosse, breiten: Breiten, ecken: readonly FrontEcke[]): Huelle {
+export function huelleEntlang(sp: Sprosse, breiten: Breiten, ecken: readonly FrontEcke[], linien: readonly LinienMerkmal[] = []): Huelle {
   const L = Math.max(1e-9, Math.hypot(sp.o.x - sp.u.x, sp.o.y - sp.u.y));
   const rund = 0.5 * L;
   const dy = sp.o.y - sp.u.y;
@@ -294,6 +358,7 @@ export function huelleEntlang(sp: Sprosse, breiten: Breiten, ecken: readonly Fro
       if (vc > 1e-4 && vc < 1 - 1e-4) proben.push({ v: vc, b: 0, front: false, top: false, ecke: e.haerte, kennung: id, drin: false, eigen: 0 });
     });
   }
+  for (const m of linien) proben.push({ v: m.v, b: 0, front: false, top: false, ecke: m.haerte, kennung: m.id, drin: false, eigen: 0 });
   proben.sort((a, b) => b.v - a.v);
   for (let k = proben.length - 1; k > 0; k--) {
     if (proben[k - 1]!.v - proben[k]!.v < 1e-7) {
@@ -392,7 +457,7 @@ export function huelleEntlang(sp: Sprosse, breiten: Breiten, ecken: readonly Fro
   };
   let eckeGewicht = -1;
   proben.forEach((q, k) => {
-    if (q.kennung < 0 || !(eigen[k]! >= eMax * (1 - PLATEAU)) || !spitze(sp.u.y + dy * q.v)) return;
+    if (q.kennung < 0 || q.kennung >= LINIE_ID || !(eigen[k]! >= eMax * (1 - PLATEAU)) || !spitze(sp.u.y + dy * q.v)) return;
     const g = q.ecke - Math.abs(q.v - vScheitel);
     if (g > eckeGewicht) {
       eckeGewicht = g;
@@ -487,6 +552,12 @@ export function huelleRunden(h: Huelle, p: { oben: number; unten: number }, form
     const r = form ? h.W * Math.min(1, Math.max(0, form(h.v[k]!))) : rundungBei(h, p, h.v[k]!);
     z[k] = Math.min(h.b[k]!, r);
   }
+  return profilAusZ(h, z, form ? undefined : p);
+}
+
+/** Profil aus der Hülle und den Breiten z je Probe (Merkmale, Breitenlinie); `p` nur für die Schultern gerundeter Hälften. */
+function profilAusZ(h: Huelle, z: Float64Array, p?: { oben: number; unten: number }): HuellenProfil {
+  const n = h.v.length;
   let Wz = 0;
   for (const x of z) Wz = Math.max(Wz, x);
   if (!(Wz > 0)) Wz = h.W;
@@ -502,11 +573,12 @@ export function huelleRunden(h: Huelle, p: { oben: number; unten: number }, form
     // stellt: Eine gezeichnete Ecke ist Teil der Form des Querschnitts (Flügelspitze des Rochens, Hutrand des Pilzes). Auf
     // welche Käfigreihe sie fällt, legt der Reihenplan der ganzen Kette fest (`reihenplan`); je Ring für sich sprang sie
     // zwischen Reihen, und die Kante lief im Zickzack (Rochen 108°, Blatt 172°)
-    if (h.ecke[k]! >= 0 && traegt) ecke[k] = h.ecke[k]!;
+    // P-Linien (V5) liegen auf der Haut, wo immer sie gezeichnet sind — auch dort, wo die Rundung die Form bestimmt
+    if (h.ecke[k]! >= 0 && (traegt || h.kennung[k]! >= LINIE_ID)) ecke[k] = h.ecke[k]!;
   }
   const kennung = Int32Array.from(h.kennung, (id, k) => (ecke[k]! >= 0 ? id : -1));
   // Schultern kastiger Rundungen (nur, wo die Rundung die Form bestimmt und keine gezeichnete Ecke in der Nähe liegt)
-  if (!form) {
+  if (p) {
     for (const oben of [true, false]) {
       const e0 = oben ? p.oben : p.unten;
       const e = e0 + (P_FLACH - e0) * (oben ? h.flach.oben : h.flach.unten);
@@ -526,6 +598,133 @@ export function huelleRunden(h: Huelle, p: { oben: number; unten: number }, form
   const vMin = Math.max(ENDE_ABSTAND, RAND * (1 - h.flach.unten));
   const vMax = 1 - Math.max(ENDE_ABSTAND, RAND * (1 - h.flach.oben));
   return { L: h.L, v: h.v, z, b: h.b, front, top, ecke, kennung, W: Wz, vBest: Math.min(vMax, Math.max(vMin, plateauMitte(z, Wz, (k) => h.v[k]!))), vMin, vMax };
+}
+
+// ---------- V5: Höhenfeld der Hülle ----------
+
+/**
+ * Höhenfeld der Hülle über der Seite (rechte Hälfte): Die Form des Körpers soll nicht davon abhängen, wie die Ringe liegen.
+ * Je natürlicher Sprosse (Stationen ohne Linienringe) der Anteil ρ = z / b der gerundeten Breite an der Hülle; dazwischen
+ * bilinear im Viereck zweier benachbarter Sprossen (gleiche Höhe v auf beiden). Ein gedrehter Ring tastet dasselbe Feld ab:
+ * z = ρ · b mit der Hülle b an seinem eigenen Punkt. Ohne das rundete jeder Ring seinen eigenen Schnitt — ein um 30°
+ * gedrehter Ring (Querlinie über die Robbe) verschob die Haut neben der Linie um 12 px.
+ */
+export type HuellenFeld = { sprossen: readonly Sprosse[]; v: readonly Float64Array[]; rho: readonly Float64Array[] };
+
+export function huellenFeld(sprossen: readonly Sprosse[], profile: readonly HuellenProfil[]): HuellenFeld {
+  const rho = profile.map((pr) => {
+    const r = new Float64Array(pr.v.length);
+    let letzte = -1;
+    for (let k = 0; k < pr.v.length; k++) {
+      if (pr.b[k]! > 1e-9) {
+        r[k] = Math.min(1, Math.max(0, pr.z[k]! / pr.b[k]!));
+        if (letzte < 0) for (let q = 0; q < k; q++) r[q] = r[k]!;
+        letzte = k;
+      } else if (letzte >= 0) r[k] = r[letzte]!;
+    }
+    if (letzte < 0) r.fill(1);
+    return r;
+  });
+  return { sprossen, v: profile.map((pr) => pr.v), rho };
+}
+
+/** ρ einer Sprosse bei Höhe v (Proben von oben v = 1 nach unten v = 0, linear). */
+function rhoBei(v: Float64Array, rho: Float64Array, x: number): number {
+  const n = v.length;
+  if (x >= v[0]!) return rho[0]!;
+  if (x <= v[n - 1]!) return rho[n - 1]!;
+  let lo = 0;
+  let hi = n - 1;
+  while (hi - lo > 1) {
+    const m = (lo + hi) >> 1;
+    if (v[m]! >= x) lo = m;
+    else hi = m;
+  }
+  const a = v[lo]!;
+  const c = v[hi]!;
+  const f = a - c > 1e-15 ? (a - x) / (a - c) : 0;
+  return rho[lo]! + (rho[hi]! - rho[lo]!) * f;
+}
+
+/** Lage (t, v) eines Punkts im Viereck zweier Sprossen (bilinear, Newton); null, wenn außerhalb. */
+function imViereck(a: Sprosse, c: Sprosse, p: V2): { t: number; v: number } | null {
+  let t = 0.5;
+  let v = 0.5;
+  for (let it = 0; it < 12; it++) {
+    const ux = a.u.x + (c.u.x - a.u.x) * t;
+    const uy = a.u.y + (c.u.y - a.u.y) * t;
+    const ox = a.o.x + (c.o.x - a.o.x) * t;
+    const oy = a.o.y + (c.o.y - a.o.y) * t;
+    const fx = ux + (ox - ux) * v - p.x;
+    const fy = uy + (oy - uy) * v - p.y;
+    // ∂/∂t und ∂/∂v
+    const tx = (c.u.x - a.u.x) * (1 - v) + (c.o.x - a.o.x) * v;
+    const ty = (c.u.y - a.u.y) * (1 - v) + (c.o.y - a.o.y) * v;
+    const vx = ox - ux;
+    const vy = oy - uy;
+    const det = tx * vy - ty * vx;
+    if (Math.abs(det) < 1e-18) return null;
+    const dt = (fx * vy - fy * vx) / det;
+    const dv = (tx * fy - ty * fx) / det;
+    t -= dt;
+    v -= dv;
+    if (Math.abs(dt) + Math.abs(dv) < 1e-12) break;
+  }
+  const eps = 1e-6;
+  return t >= -eps && t <= 1 + eps && v >= -eps && v <= 1 + eps ? { t: Math.min(1, Math.max(0, t)), v: Math.min(1, Math.max(0, v)) } : null;
+}
+
+/** Ort eines Punkts im Feld: Viereck k (zwischen Sprosse k und k + 1) und Lage (t, v) darin. */
+export type FeldOrt = { k: number; t: number; v: number };
+
+/** Ort eines Punkts der Seite im Feld (Suche ab Viereck `start` nach beiden Seiten); außerhalb die nächste Sprosse. */
+export function feldOrt(f: HuellenFeld, p: V2, start = 0): FeldOrt {
+  const K = f.sprossen.length - 1;
+  const s0 = Math.min(Math.max(0, start), Math.max(0, K - 1));
+  for (let d = 0; d < K; d++) {
+    for (const k of d === 0 ? [s0] : [s0 - d, s0 + d]) {
+      if (k < 0 || k >= K) continue;
+      const q = imViereck(f.sprossen[k]!, f.sprossen[k + 1]!, p);
+      if (q) return { k, t: q.t, v: q.v };
+    }
+  }
+  let best = Infinity;
+  let ort: FeldOrt = { k: 0, t: 0, v: 0.5 };
+  f.sprossen.forEach((sp, k) => {
+    const ex = sp.o.x - sp.u.x;
+    const ey = sp.o.y - sp.u.y;
+    const l2 = ex * ex + ey * ey;
+    const v = l2 > 1e-18 ? Math.min(1, Math.max(0, ((p.x - sp.u.x) * ex + (p.y - sp.u.y) * ey) / l2)) : 0;
+    const d = Math.hypot(sp.u.x + ex * v - p.x, sp.u.y + ey * v - p.y);
+    if (d < best) {
+      best = d;
+      ort = k < K ? { k, t: 0, v } : { k: K - 1, t: 1, v };
+    }
+  });
+  return ort;
+}
+
+/** ρ des Feldes an einem Ort. */
+export function feldRhoAm(f: HuellenFeld, o: FeldOrt): number {
+  return (1 - o.t) * rhoBei(f.v[o.k]!, f.rho[o.k]!, o.v) + o.t * rhoBei(f.v[o.k + 1]!, f.rho[o.k + 1]!, o.v);
+}
+
+/** ρ des Feldes an einem Punkt der Seite; außerhalb aller Vierecke die nächste Sprosse. */
+export function feldRho(f: HuellenFeld, p: V2): number {
+  return feldRhoAm(f, feldOrt(f, p));
+}
+
+/** Profil einer (gedrehten) Sprosse aus dem Höhenfeld: z = ρ · b an jedem ihrer Punkte. */
+export function profilAusFeld(h: Huelle, f: HuellenFeld): HuellenProfil {
+  const n = h.v.length;
+  const z = new Float64Array(n);
+  const dx = h.sp.o.x - h.sp.u.x;
+  const dy = h.sp.o.y - h.sp.u.y;
+  for (let k = 1; k + 1 < n; k++) {
+    const v = h.v[k]!;
+    z[k] = feldRho(f, { x: h.sp.u.x + dx * v, y: h.sp.u.y + dy * v }) * h.b[k]!;
+  }
+  return profilAusZ(h, z);
 }
 
 /**
@@ -726,7 +925,7 @@ export function breitenlinieWaehlen(profile: readonly HuellenProfil[], mu = MU):
 }
 
 /** Anker eines Schnitts: Höhe v (1 oben … 0 unten), Käfigreihe, Härte (> 0 = gezeichnete Ecke → Längsfalte). */
-export type Anker = { v: number; reihe: number; haerte: number };
+export type Anker = { v: number; reihe: number; haerte: number; id?: number };
 
 /** Kumulierte Bogenlänge eines Profils in wahren Maßen (längs der Sprosse v·L, quer z), von oben. */
 function bogen(pr: HuellenProfil): Float64Array {
@@ -766,6 +965,68 @@ const EINRASTEN_WEIT = 0.25;
  * Reihen je Glied nach Bogenlänge. Ohne gemeinsamen Plan sprang eine Ecke von Ring zu Ring zwischen Reihen, die Kante lief im
  * Zickzack (Rochen 108°, Blatt 172°).
  */
+/** Wunsch eines Merkmals an den Reihenplan: natürliche Reihe (Median über die Glieder) und Härte (größte). */
+type ReihenWunsch = { id: number; r: number; haerte: number };
+
+/**
+ * Reihen lo … hi an Merkmale vergeben (V5): in der Reihenfolge ihrer natürlichen Reihen, jede eine eigene, mit der kleinsten
+ * Summe der quadrierten Abweichungen (dynamische Programmierung). Passen nicht alle, fällt das weichste weg (Strafe nach Härte).
+ * Vorher nahm jedes Merkmal gierig die nächste freie Reihe — zwei Linien dicht beieinander drängten die zweite über die
+ * Breitenlinie hinaus, sie fiel auf die Treppe (Ei: Kante 20 px neben der Linie).
+ */
+function reihenVergeben(liste: readonly ReihenWunsch[], lo: number, hi: number): Map<number, number> {
+  const m = [...liste].sort((a, b) => a.r - b.r);
+  const out = new Map<number, number>();
+  const K = hi - lo + 1;
+  if (!m.length || K <= 0) return out;
+  // kosten[i][k]: beste Summe für die ersten i Merkmale, wenn das letzte vergebene höchstens Reihe lo + k − 1 hat (k = 0: keine)
+  const INF = Number.POSITIVE_INFINITY;
+  const kosten: number[][] = Array.from({ length: m.length + 1 }, () => new Array<number>(K + 1).fill(INF));
+  const wahl: number[][] = Array.from({ length: m.length + 1 }, () => new Array<number>(K + 1).fill(-1));
+  kosten[0]!.fill(0);
+  for (let i = 0; i < m.length; i++) {
+    const w = m[i]!;
+    const strafe = 4 + 100 * w.haerte;
+    for (let k = 0; k <= K; k++) {
+      // weglassen
+      const weg = kosten[i]![k]! + strafe;
+      if (weg < kosten[i + 1]![k]!) {
+        kosten[i + 1]![k] = weg;
+        wahl[i + 1]![k] = -1;
+      }
+      // Reihe lo + k − 1 (k ≥ 1) nach einem Stand, der höchstens Reihe lo + k − 2 belegt
+      if (k >= 1) {
+        const r = lo + k - 1;
+        const c = kosten[i]![k - 1]! + (r - w.r) * (r - w.r);
+        if (c < kosten[i + 1]![k]!) {
+          kosten[i + 1]![k] = c;
+          wahl[i + 1]![k] = r;
+        }
+      }
+      // monoton: „höchstens Reihe k“ erbt von „höchstens k − 1“
+      if (k >= 1 && kosten[i + 1]![k - 1]! < kosten[i + 1]![k]!) {
+        kosten[i + 1]![k] = kosten[i + 1]![k - 1]!;
+        wahl[i + 1]![k] = -2;
+      }
+    }
+  }
+  // Rückweg
+  let k = K;
+  for (let i = m.length; i > 0; ) {
+    const w = wahl[i]![k]!;
+    if (w === -2) {
+      k--;
+      continue;
+    }
+    if (w >= 0) {
+      out.set(m[i - 1]!.id, w);
+      k--;
+    }
+    i--;
+  }
+  return out;
+}
+
 export function reihenplan(profile: readonly HuellenProfil[], vr: readonly number[], hOut: number, iBreit: number): Anker[][] {
   type Merkmal = { id: number; v: number; haerte: number };
   const merkmale: Merkmal[][] = profile.map((pr) => {
@@ -775,6 +1036,7 @@ export function reihenplan(profile: readonly HuellenProfil[], vr: readonly numbe
   });
   const bl = vr.slice();
   const blHaerte = vr.map(() => 0);
+  const blId: (number | undefined)[] = vr.map(() => undefined);
   // 1. Einrasten (je Ecke für alle Glieder gleich): Liegt sie in der Mehrheit der Glieder nahe der Breitenlinie, ist sie dort
   // die breiteste Stelle
   const ids = new Set<number>();
@@ -798,6 +1060,7 @@ export function reihenplan(profile: readonly HuellenProfil[], vr: readonly numbe
       if (blHaerte[i]! > 0 && Math.abs(m.v - vr[i]!) >= Math.abs(bl[i]! - vr[i]!)) continue;
       bl[i] = Math.min(1 - ENDE_ABSTAND, Math.max(ENDE_ABSTAND, m.v));
       blHaerte[i] = m.haerte;
+      blId[i] = m.id;
     }
   });
   // 2. Reihen der übrigen Merkmale: natürliche Reihe je Glied (Anteil der Bogenlänge in seiner Hälfte), Seite nach Mehrheit,
@@ -816,33 +1079,31 @@ export function reihenplan(profile: readonly HuellenProfil[], vr: readonly numbe
     [KANTE_OBEN, 1],
     [KANTE_UNTEN, hOut - 1],
   ]);
-  const seiten: { oben: { id: number; r: number }[]; unten: { id: number; r: number }[] } = { oben: [], unten: [] };
+  const seiten: { oben: ReihenWunsch[]; unten: ReihenWunsch[] } = { oben: [], unten: [] };
   for (const id of ids) {
     if (eingerastet.has(id)) continue;
     const oben: number[] = [];
     const unten: number[] = [];
+    let haerte = 0;
     merkmale.forEach((ms, i) => {
       const m = ms.find((x) => x.id === id);
       if (!m) return;
       (m.v > bl[i]! ? oben : unten).push(natuerlich(i, m.v));
+      haerte = Math.max(haerte, m.haerte);
     });
     const seiteOben = oben.length >= unten.length;
     const liste = (seiteOben ? oben : unten).sort((a, b) => a - b);
     if (!liste.length) continue;
-    (seiteOben ? seiten.oben : seiten.unten).push({ id, r: liste[Math.floor(liste.length / 2)]! });
+    (seiteOben ? seiten.oben : seiten.unten).push({ id, r: liste[Math.floor(liste.length / 2)]!, haerte });
   }
+  // Kanten flacher Enden belegen ihre Reihe (1 bzw. hOut − 1), wo es sie gibt
+  const kanteOben = merkmale.some((ms) => ms.some((m) => m.id === KANTE_OBEN));
+  const kanteUnten = merkmale.some((ms) => ms.some((m) => m.id === KANTE_UNTEN));
   for (const [liste, lo, hi] of [
-    [seiten.oben, 1, iBreit - 1],
-    [seiten.unten, iBreit + 1, hOut - 1],
+    [seiten.oben, kanteOben ? 2 : 1, iBreit - 1],
+    [seiten.unten, iBreit + 1, kanteUnten ? hOut - 2 : hOut - 1],
   ] as const) {
-    liste.sort((a, b) => a.r - b.r);
-    let letzte = lo - 1;
-    for (const m of liste) {
-      const r = Math.max(letzte + 1, Math.min(hi, Math.max(lo, Math.round(m.r))));
-      if (r > hi) continue;
-      reihe.set(m.id, r);
-      letzte = r;
-    }
+    for (const [id, r] of reihenVergeben(liste, lo, hi)) reihe.set(id, r);
   }
   // 3. Anker je Glied: Breitenlinie, dazu die Merkmale auf ihrer Reihe — nur, wo die Reihe höchstens um eine von der
   // natürlichen Lage im Glied abweicht (sonst endet die Kante dort, statt quer über den Körper zu springen); je Seite monoton
@@ -854,8 +1115,8 @@ export function reihenplan(profile: readonly HuellenProfil[], vr: readonly numbe
       const r = reihe.get(m.id);
       if (r === undefined) continue;
       if ((m.id >= 0 || m.id === SCHULTER_OBEN || m.id === SCHULTER_UNTEN) && Math.abs(natuerlich(i, m.v) - r) > 1.5) continue;
-      if (r < iBreit && m.v > bl[i]! + 1e-6) oben.push({ v: m.v, reihe: r, haerte: m.haerte });
-      else if (r > iBreit && m.v < bl[i]! - 1e-6) unten.push({ v: m.v, reihe: r, haerte: m.haerte });
+      if (r < iBreit && m.v > bl[i]! + 1e-6) oben.push({ v: m.v, reihe: r, haerte: m.haerte, id: m.id });
+      else if (r > iBreit && m.v < bl[i]! - 1e-6) unten.push({ v: m.v, reihe: r, haerte: m.haerte, id: m.id });
     }
     const monoton = (a: Anker[]): Anker[] => {
       // nach Reihe; bei gleicher Reihe die härtere Ecke; v muss mit der Reihe fallen
@@ -868,12 +1129,146 @@ export function reihenplan(profile: readonly HuellenProfil[], vr: readonly numbe
       }
       return ok;
     };
-    return [...monoton(oben), { v: bl[i]!, reihe: iBreit, haerte: blHaerte[i]! }, ...monoton(unten)];
+    const breit: Anker = { v: bl[i]!, reihe: iBreit, haerte: blHaerte[i]! };
+    if (blId[i] !== undefined) breit.id = blId[i];
+    return [...monoton(oben), breit, ...monoton(unten)];
   });
   // Ecken nur, wo ein Nachbarglied sie auf derselben Reihe trägt (eine Ecke in einem einzelnen Ring verbog nur seine Reihen,
   // Keil oben); Breitenlinie bleibt immer
   const traegt = (i: number, r: number) => (anker[i] ?? []).some((a) => a.reihe === r && a.haerte > 0);
   return anker.map((a, i) => (profile.length < 2 ? a : a.filter((x) => x.reihe === iBreit || !(x.haerte > 0) || traegt(i - 1, x.reihe) || traegt(i + 1, x.reihe))));
+}
+
+/** V5: so viele Ringe hinter dem Ende einer Linie läuft ihre Reihe zur natürlichen Lage zurück */
+export const REIHEN_AUSLAUF = 3;
+/** Anteil der Verschiebung k Ringe neben der Linie (linear; glatt gemessen knickten die Reihen stärker: 3,9 statt 2,2 px) */
+export function auslauf(k: number, weit = REIHEN_AUSLAUF): number {
+  return Math.max(0, 1 - k / (weit + 1));
+}
+
+/**
+ * V5: Reihen der Linien auslaufen lassen. Eine Linie zieht ihre Reihe in den Ringen, die sie kreuzt, auf ihre Höhe; dahinter
+ * sprang die Reihe in einem Ringabstand auf ihre natürliche Lage zurück (Ei: 10 px), die Fläche wölbte sich am Linienende.
+ * Jetzt bekommen die `REIHEN_AUSLAUF` Ringe vor dem Anfang und hinter dem Ende einen weichen Anker (ohne Härte) auf derselben
+ * Reihe, dessen Abstand zur natürlichen Lage linear abnimmt (`auslauf`). `natuerlich(i, reihe)` = Höhe der Reihe im Ring ohne die Linie.
+ */
+export function reihenAuslaufen(plan: Anker[][], natuerlich: (i: number, reihe: number) => number, linienIds: ReadonlySet<number>): void {
+  const R = plan.length;
+  for (const id of linienIds) {
+    const ringe: number[] = [];
+    let reihe = -1;
+    plan.forEach((a, i) => {
+      const x = a.find((y) => y.id === id && y.haerte > 0);
+      if (x) {
+        ringe.push(i);
+        reihe = x.reihe;
+      }
+    });
+    if (!ringe.length || reihe < 0) continue;
+    for (const [rand, schritt] of [
+      [ringe[0]!, -1],
+      [ringe[ringe.length - 1]!, 1],
+    ] as const) {
+      const a = plan[rand]!.find((y) => y.id === id)!;
+      const d = a.v - natuerlich(rand, reihe);
+      for (let k = 1; k <= REIHEN_AUSLAUF; k++) {
+        const i = rand + schritt * k;
+        if (i < 0 || i >= R) break;
+        // Ringe, die die Reihe schon führen (andere Linie, Ecke, Breitenlinie), bleiben
+        if (plan[i]!.some((y) => y.reihe === reihe)) break;
+        const v = natuerlich(i, reihe) + d * auslauf(k);
+        // nur zwischen den Nachbarankern des Rings (Reihen und Höhen monoton)
+        const ueber = plan[i]!.filter((y) => y.reihe < reihe);
+        const unter = plan[i]!.filter((y) => y.reihe > reihe);
+        if (ueber.some((y) => y.v <= v + 1e-6) || unter.some((y) => y.v >= v - 1e-6)) break;
+        plan[i]!.push({ v, reihe, haerte: 0, id });
+        plan[i]!.sort((x, y) => x.reihe - y.reihe);
+      }
+    }
+  }
+}
+
+/**
+ * V5: Enden der Querlinien auf Reihen. Eine Querlinie hat ihren eigenen Ring; ihre Falte deckt die Käfigkanten zwischen den
+ * Reihen, die sie überspannt — eine kurze Linie (Kegel: 15 % der Höhe) überspannte keine einzige. Je Ende rückt die Reihe, die
+ * ihm natürlich am nächsten liegt, im Ring der Linie genau auf das Ende (weicher Anker), in den `REIHEN_AUSLAUF` Ringen
+ * daneben anteilig. Beide Enden bekommen verschiedene Reihen; die Breitenlinie nur, wenn keine andere passt.
+ */
+export function querLinienEnden(plan: Anker[][], natuerlich: (i: number, reihe: number) => number, quer: readonly { ring: number; id: number; vMin: number; vMax: number }[], hOut: number, iBreit: number): void {
+  const R = plan.length;
+  for (const ql of quer) {
+    const i = ql.ring;
+    if (!plan[i]) continue;
+    const frei = (j: number) => j > 0 && j < hOut && !plan[i]!.some((a) => a.reihe === j && a.haerte > 0);
+    const naechste = (v: number, ausser: number) => {
+      let best = -1;
+      for (let j = 1; j < hOut; j++) {
+        if (j === ausser || !frei(j)) continue;
+        const d = Math.abs(natuerlich(i, j) - v) + (j === iBreit ? 0.05 : 0);
+        if (best < 0 || d < Math.abs(natuerlich(i, best) - v) + (best === iBreit ? 0.05 : 0)) best = j;
+      }
+      return best;
+    };
+    // nur kurze Linien (weniger als `QUER_KURZ` Reihenabstände): lange enden auf der nächsten Reihe — die gezogenen Endreihen
+    // machten nahe den Polen sehr schmale Käfigflächen, die Haut wich dort 2 px (Kugel mit Kreuz)
+    const abstand = (natuerlich(i, 1) - natuerlich(i, hOut - 1)) / (hOut - 2);
+    if (ql.vMax - ql.vMin >= QUER_KURZ * abstand) continue;
+    const oben = naechste(ql.vMax, -1);
+    const unten = naechste(ql.vMin, oben);
+    if (oben < 0 || unten < 0 || unten <= oben) continue;
+    for (const [reihe, v] of [
+      [oben, ql.vMax],
+      [unten, ql.vMin],
+    ] as const) {
+      const d = v - natuerlich(i, reihe);
+      for (let k = -REIHEN_AUSLAUF; k <= REIHEN_AUSLAUF; k++) {
+        const r = i + k;
+        if (r < 0 || r >= R) continue;
+        const vr = natuerlich(r, reihe) + d * auslauf(Math.abs(k));
+        const anker = plan[r]!;
+        const alt = anker.findIndex((a) => a.reihe === reihe);
+        if (alt >= 0) {
+          if (anker[alt]!.haerte > 0) continue;
+          anker.splice(alt, 1);
+        }
+        // nur zwischen den Nachbarankern (Reihen und Höhen monoton)
+        if (anker.some((a) => (a.reihe < reihe && a.v <= vr + 1e-6) || (a.reihe > reihe && a.v >= vr - 1e-6))) continue;
+        anker.push({ v: vr, reihe, haerte: 0, id: ql.id });
+        anker.sort((x, y) => x.reihe - y.reihe);
+      }
+    }
+  }
+}
+
+/** V5: Querlinien kürzer als so viele mittlere Reihenabstände ziehen Reihen auf ihre Enden */
+const QUER_KURZ = 1.5;
+
+/** V5: kleinster Abstand zweier Anker je Reihe Unterschied (Anteil des mittleren Reihenabstands 1/hOut) */
+const ANKER_ABSTAND = 0.5;
+
+/**
+ * V5: Abstand der Reihen an Linien. Kommt eine Linie der Breitenlinie (oder einem Auslauf-Anker) nahe, fielen zwei Reihen fast
+ * zusammen (Hals: Linienanfang 1,8 px über der Breitenlinie, Falte 142°). In Ringen mit Linienankern rücken weiche Anker
+ * (ohne Härte) von harten Ankern weg, bis je Reihe Unterschied `ANKER_ABSTAND / hOut` frei ist; harte bleiben, wo sie sind.
+ */
+export function reihenAbstand(plan: Anker[][], hOut: number): void {
+  const g = ANKER_ABSTAND / hOut;
+  for (const anker of plan) {
+    if (!anker.some((a) => a.id !== undefined && a.id >= LINIE_ID)) continue;
+    anker.sort((x, y) => x.reihe - y.reihe);
+    for (const a of anker) {
+      if (a.haerte > 0) continue;
+      // Grenzen aus den harten Ankern darüber (größeres v) und darunter
+      let hi = 1 - g * a.reihe;
+      let lo = g * (hOut - a.reihe);
+      for (const b of anker) {
+        if (b === a || !(b.haerte > 0)) continue;
+        if (b.reihe < a.reihe) hi = Math.min(hi, b.v - g * (a.reihe - b.reihe));
+        else if (b.reihe > a.reihe) lo = Math.max(lo, b.v + g * (b.reihe - a.reihe));
+      }
+      a.v = hi >= lo ? Math.min(hi, Math.max(lo, a.v)) : (hi + lo) / 2;
+    }
+  }
 }
 
 /**

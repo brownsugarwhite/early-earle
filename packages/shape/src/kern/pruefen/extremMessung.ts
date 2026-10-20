@@ -67,7 +67,11 @@ export type ExtremMessung = {
    * mit den P-Linien des Körpers: Art je Linie, Abstand der gezeigten Linie (auf die Haut ohne Linien gelegt, wie im
    * Liniennetz) zur Haut mit Linien und der neuen Kante zu ihr (px), Falten frei/Kante, Bauzeit
    */
-  linien?: { anzahl: number; arten: string[]; aufHaut: number; kante: number; freiMax: number; kanteMax: number; bau: number };
+  /**
+   * `kante`: Abstand der neuen scharfen Kanten zur Linie auf der Haut des Körpers ohne Linien (3D); `blick`: derselbe Abstand
+   * in der Ansicht, in der die Linie gezeichnet ist (was Florian dort sieht; V5)
+   */
+  linien?: { anzahl: number; arten: string[]; aufHaut: number; kante: number; blick: number; freiMax: number; kanteMax: number; bau: number; /** Δ der Blätter mit Linien (px) */ delta: Record<Blatt, number> };
 };
 
 /** Bauplan wie im Editor für ein neues Wesen (Ausstattung glatt + mittel), ohne Look und Trefferdaten. */
@@ -590,13 +594,13 @@ function neueScharfe(ohne: Kaefig, mit: Kaefig): number[] | null {
   return neu;
 }
 
-export type MessOptionen = { durchdringung?: boolean; linien?: boolean; zug?: boolean };
+export type MessOptionen = { durchdringung?: boolean; linien?: boolean; zug?: boolean; /** Zusätze zum Bauplan des Editors (z. B. `umrisseExakt`) */ plan?: Partial<Bauplan> };
 
 /** Ein Prüfkörper der Extremreihe in einer Körperart und einem Ablauf, so gemessen, wie der Editor ihn zeigt. */
 export function extremMessen(k: ExtremKoerper, art: Bauart, ablauf: Ablauf, opt: MessOptionen = {}): { messung: ExtremMessung; bau: EditorBau; gezeigt: Gezeigt; mitLinien: { bau: EditorBau; gezeigt: Gezeigt; kanten: Kante[] } | null } {
   const roh = k.dok();
   const s = extremSelbstschnitte(roh);
-  const plan = editorPlan(art);
+  const plan = { ...editorPlan(art), ...(opt.plan ?? {}) };
   const bau = editorBauen(imAblauf(roh, art, ablauf), plan);
   const g = gezeigt(bau, art);
   const blatt = bau.netz.info.blatt;
@@ -635,18 +639,29 @@ export function extremMessen(k: ExtremKoerper, art: Bauart, ablauf: Ablauf, opt:
       // Kante an der Linie: feine Punkte längs der neuen scharfen Käfigkanten (rechte Hälfte) gegen die nächste Linie
       const neu = neueScharfe(g.kaefig, gL.kaefig);
       let kante = NaN;
+      let blick = NaN;
       if (neu?.length) {
         kante = 0;
+        blick = 0;
+        // Zeichenebene je Linie: Seite (x, y), Front (z, y), Top (x, z) — die dritte Koordinate fällt weg
+        const ebene = (p: ArrayLike<number>, b: Kante['blick']): V3 => (b === 'front' || b === 'hinten' ? [0, p[1]!, p[2]!] : b === 'top' || b === 'unten' ? [p[0]!, 0, p[2]!] : [p[0]!, p[1]!, 0]);
+        const flach = zuege.map((z, li) => z.map((p) => ebene(p, kanten[li]!.blick)));
         for (const e of neu) {
           if (gL.kaefig.xyz[3 * gL.kaefig.eA[e]! + 2]! < -1e-9) continue;
           for (const p of feinKette(gL.unterteilung, gL.kaefig, gL.kaefig.eA[e]!, gL.kaefig.eB[e]!)) {
             const q = [gL.fein[3 * p]!, gL.fein[3 * p + 1]!, gL.fein[3 * p + 2]!];
-            kante = Math.max(kante, Math.min(...zuege.map((z) => abstandZug(q, z))) * PX);
+            const d = zuege.map((z) => abstandZug(q, z));
+            let li = 0;
+            d.forEach((x, k) => {
+              if (x < d[li]!) li = k;
+            });
+            kante = Math.max(kante, d[li]! * PX);
+            blick = Math.max(blick, abstandZug(ebene(q, kanten[li]!.blick), flach[li]!) * PX);
           }
         }
       }
       const zl = zonenWerte(gL.falten);
-      messung.linien = { anzahl: kanten.length, arten: (bauL.netz.info.linien ?? kanten.map(() => ({ art: 'treppe' }))).map((b) => b.art), aufHaut, kante, freiMax: zl.frei.max, kanteMax: zl.kante.max, bau: bauL.ms };
+      messung.linien = { anzahl: kanten.length, arten: (bauL.netz.info.linien ?? kanten.map(() => ({ art: 'treppe' }))).map((b) => b.art), aufHaut, kante, blick, freiMax: zl.frei.max, kanteMax: zl.kante.max, bau: bauL.ms, delta: Object.fromEntries(BLAETTER.map((a) => [a, bauL.netz.info.blatt?.[a].max ?? NaN])) as Record<Blatt, number> };
       mitLinien = { bau: bauL, gezeigt: gL, kanten };
     }
   }
