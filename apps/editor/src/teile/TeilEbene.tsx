@@ -10,7 +10,11 @@ import { useEditor } from '../state/editorStore';
 import { blickVon, useUi } from '../state/uiStore';
 
 /** Farbe je Teil (Rumpf grau, dann kräftige, gut unterscheidbare Töne) */
-export const TEIL_FARBE = ['#8e9aa6', '#e4572e', '#1f9e9e', '#e8a33d', '#7b5ea7', '#3f88c5', '#d64f9a', '#5aa469'];
+/**
+ * Teilfarben warm (Plan 20.10., V2): Blau, Lila und Türkis heißen im Blatt nur noch „Umriss von Seite, Front, Top“; der
+ * Rumpf bleibt grau.
+ */
+export const TEIL_FARBE = ['#8e9aa6', '#e4572e', '#e8a33d', '#a0522d', '#c97b2a', '#c0392b', '#b8860b', '#7a5230'];
 export const teilFarbe = (i: number) => TEIL_FARBE[i % TEIL_FARBE.length]!;
 
 /** Teile des aktuellen Netzes, wenn sie gezeigt werden sollen (Bauweise Kern, Grundform, Stufe Körper, Schalter an). */

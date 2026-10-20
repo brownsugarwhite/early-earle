@@ -2,7 +2,7 @@
 // Profil-Einheiten der Ruhelage) für die Blätter. Ein Netzpunkt hat genau einen 3D-Punkt; jede Ansicht zeigt ihn an seiner
 // Projektion, verdeckt blass. Ohne DOM (die Kanten-Ebene und Prüfungen lesen es).
 import type { Ansicht, Blick, Dokument, Kante, V3T } from '@ee/shape';
-import { type NetzSicht, type NetzZug, RAND, SICHT, seitenTiefe } from '@ee/shape/kern';
+import { type NetzSicht, type NetzZug, SICHT } from '@ee/shape/kern';
 import { aktuellesNetz } from '../kern/netzStand';
 import { useEditor } from '../state/editorStore';
 import { type NetzPunkt, useUi } from '../state/uiStore';
@@ -79,62 +79,60 @@ export function naechsterImNetz(k: Kante, ki: number, ansicht: Ansicht, q: { x: 
   return { segment: s, t: Math.min(1, Math.max(0, t)) };
 }
 
-/** Proben des äußeren Umrisses je Ansicht (Konturproben mit RAND), gemerkt je Netz. */
-const randMerker = new WeakMap<NetzSicht, Record<'seite' | 'front' | 'top', { p: Float32Array; sicht: Uint8Array }>>();
-function randProben(ns: NetzSicht): Record<'seite' | 'front' | 'top', { p: Float32Array; sicht: Uint8Array }> {
-  let m = randMerker.get(ns);
-  if (m) return m;
-  const sammeln = (a: 'seite' | 'front' | 'top') => {
-    const p: number[] = [];
-    const sicht: number[] = [];
-    for (const z of ns.zuege) {
-      if (z.art !== `kontur-${a}`) continue;
-      for (let i = 0; i < z.sicht.length; i++) {
-        if (!(z.sicht[i]! & RAND)) continue;
-        p.push(z.punkte[3 * i]!, z.punkte[3 * i + 1]!, z.punkte[3 * i + 2]!);
-        sicht.push(z.sicht[i]!);
-      }
-    }
-    return { p: Float32Array.from(p), sicht: Uint8Array.from(sicht) };
-  };
-  m = { seite: sammeln('seite'), front: sammeln('front'), top: sammeln('top') };
-  randMerker.set(ns, m);
-  return m;
-}
-
 /**
- * Knoten einer Umrisszeichnung als 3D-Punkt (Profil-Einheiten) mit Sichtbarkeit: die beiden Koordinaten seiner Ansicht
- * aus der Zeichnung (sie folgen dem Zeiger sofort), die dritte von der nächsten Probe des Umrisses auf dem Körper, deren
- * Sichtbarkeit gilt. Seite: auf der Mittelebene bzw. am Teil neben ihr; Front: x vom Front-Umriss; Top: y vom Top-Umriss.
- * Spiegelbild: z negiert.
+ * Knoten einer Umrisszeichnung als 3D-Punkt (Profil-Einheiten) mit Sichtbarkeit: der Punkt seiner Umrisslinie (Plan
+ * 20.10., V2: `NetzSicht.knoten`, der Ring sitzt auf der Linie, auch wo die Zeichnung neben dem Körper liegt), um die Strecke
+ * verschoben, die der Knoten seit dem Bau gezogen wurde (während einer Geste folgt der Ring so sofort dem Zeiger). Seite:
+ * auf der Naht bzw. am Teil neben ihr; Front und Top: das Spiegelbild hat eigene Einträge hinter der gezeichneten Hälfte.
+ * Hinkt das Netz einen Bau nach (andere Knotenzahl), gilt die Zeichnung mit der Tiefe der nächsten Probe einer
+ * Umrisslinie dieser Ansicht.
  */
 export function umrissKnotenLage(dok: Dokument, quelle: 'seite' | 'front' | 'top', index: number, spiegel: boolean, ns: NetzSicht): { p: V3T; sicht: number } | null {
   const k = dok.profile[quelle].knoten[index];
   if (!k) return null;
-  const r = randProben(ns)[quelle];
-  const n = r.sicht.length;
-  if (!n) return null;
   // Lage in der eigenen Ansicht (Front: u = z, v = y; Top: u = x, v = z; Seite: u = x, v = y)
   const u = quelle === 'front' && spiegel ? -k.p.x : k.p.x;
   const v = quelle === 'top' && spiegel ? -k.p.y : k.p.y;
-  // Seite (Plan 20.10., V0): Mittelebene, bei Beinen/Flügeln/zweitem Hals das z des Teils (wie der Kern, `seitenTiefe`)
-  if (quelle === 'seite') {
-    const t = seitenTiefe(r.p, u, v);
-    return { p: [u, v, t.z], sicht: t.i >= 0 ? r.sicht[t.i]! : 0 };
+  const t = tiefenAchse(quelle);
+  const n = dok.profile[quelle].knoten.length;
+  const lagen = ns.knoten[quelle];
+  const j = quelle !== 'seite' && spiegel ? n + index : index;
+  const passt = lagen.length === 3 * (quelle === 'seite' ? n : 2 * n) && Number.isFinite(lagen[3 * j + t]!);
+  if (passt) {
+    // Punkt der Linie, um die seit dem Bau gezogene Strecke in der eigenen Ansicht verschoben
+    const z = ns.knotenZeichnung[quelle];
+    const du = u - z[2 * j]!;
+    const dv = v - z[2 * j + 1]!;
+    const x = lagen[3 * j]!;
+    const y = lagen[3 * j + 1]!;
+    const zz = lagen[3 * j + 2]!;
+    const sicht = ns.knotenSicht[quelle][j]!;
+    if (quelle === 'seite') return { p: [x + du, y + dv, zz], sicht };
+    if (quelle === 'front') return { p: [x, y + dv, zz + du], sicht };
+    return { p: [x + du, y, zz + dv], sicht };
   }
-  const [a, b] = quelle === 'front' ? [2, 1] : [0, 2];
-  let best = 0;
+  // Das Netz hinkt nach: die Zeichnung, mit der Tiefe der nächsten Probe einer Umrisslinie dieser Ansicht
+  const [a, b] = quelle === 'seite' ? [0, 1] : quelle === 'front' ? [2, 1] : [0, 2];
+  let tiefe = Number.NaN;
+  let sicht = 0;
   let bd = Infinity;
-  for (let i = 0; i < n; i++) {
-    const d = (r.p[3 * i + a]! - u) ** 2 + (r.p[3 * i + b]! - v) ** 2;
-    if (d < bd) {
-      bd = d;
-      best = i;
+  for (const z of ns.zuege) {
+    if (z.art !== `umriss-${quelle}`) continue;
+    for (let i = 0; i < z.sicht.length; i++) {
+      // in der Seite die nahe Hälfte zuerst (der Ring eines Beins sitzt am Bein vorn)
+      const dz = quelle === 'seite' && z.punkte[3 * i + 2]! < -1e-6 ? 1e-6 : 0;
+      const d = (z.punkte[3 * i + a]! - u) ** 2 + (z.punkte[3 * i + b]! - v) ** 2 + dz;
+      if (d < bd) {
+        bd = d;
+        tiefe = z.punkte[3 * i + t]!;
+        sicht = z.sicht[i]!;
+      }
     }
   }
-  const sicht = r.sicht[best]!;
-  if (quelle === 'front') return { p: [r.p[3 * best]!, v, u], sicht };
-  return { p: [u, r.p[3 * best + 1]!, v], sicht };
+  if (!Number.isFinite(tiefe)) return null;
+  if (quelle === 'seite') return { p: [u, v, tiefe], sicht };
+  if (quelle === 'front') return { p: [tiefe, v, u], sicht };
+  return { p: [u, tiefe, v], sicht };
 }
 
 /** 3D-Punkt eines Netzpunkts (Umrissknoten oder Kantenknoten), null ohne Netz oder Knoten. */

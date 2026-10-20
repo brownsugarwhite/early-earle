@@ -24,11 +24,16 @@ import { useEditor } from '../state/editorStore';
 import { type NetzPunkt, blickVon, useUi } from '../state/uiStore';
 import { gemeinsamerZug, netzJetzt, netzPunktLage, sichtBit, umrissKnotenLage, zugPunkt } from './netzLage';
 
-/** Kontur der eigenen Blickachse (sichtbar = der Umriss, gezeigt wird nur Verdecktes) */
-const EIGENE: Record<Blick, NetzZugArt> = { seite: 'kontur-seite', front: 'kontur-front', hinten: 'kontur-front', top: 'kontur-top', unten: 'kontur-top' };
-/** Stil „farbe“: je Ursprungsansicht eine Farbe */
+/** Stil „farbe“: je Ursprungsansicht eine Farbe (Blau, Lila, Türkis heißen nur noch „Umriss von Seite, Front, Top“) */
 export const NETZ_FARBE: Record<'seite' | 'front' | 'top', string> = { seite: '#2b50d8', front: '#a03cc8', top: '#0f9e8e' };
-const ART_ANSICHT: Partial<Record<NetzZugArt, 'seite' | 'front' | 'top'>> = { 'kontur-seite': 'seite', 'kontur-front': 'front', 'kontur-top': 'top' };
+const ART_ANSICHT: Partial<Record<NetzZugArt, 'seite' | 'front' | 'top'>> = {
+  'kontur-seite': 'seite',
+  'kontur-front': 'front',
+  'kontur-top': 'top',
+  'umriss-seite': 'seite',
+  'umriss-front': 'front',
+  'umriss-top': 'top',
+};
 /** Verdeckt: blass und gestrichelt */
 const VERDECKT = 0.3;
 
@@ -79,6 +84,72 @@ function laeufe(z: NetzZug, ansicht: Ansicht, bit: number, bild: (p: V2) => V2, 
   return out;
 }
 
+/**
+ * Umrisslinie (V2) als echte Kurven: Läufe gleicher Sichtbarkeit über die Proben, je Lauf die Kubiken des Zugs zwischen den
+ * Kurvenparametern seiner Enden (de Casteljau), in die Ansicht projiziert (die Projektion ist linear, die Kontrollpunkte
+ * bleiben Kontrollpunkte).
+ */
+function kurvenLaeufe(z: NetzZug, ansicht: Ansicht, bit: number, bild: (p: V2) => V2): Lauf[] {
+  const K = z.kurve!;
+  const par = z.parameter!;
+  const n = z.sicht.length;
+  const nk = (K.length / 3 - 1) / 3;
+  const kp = (j: number): V2 => bild(inAnsicht2([K[3 * j]!, K[3 * j + 1]!, K[3 * j + 2]!], ansicht));
+  const mix = (a: V2, b: V2, t: number): V2 => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+  // Kubik s im Bild, beschnitten auf [t0, t1]
+  const stueck = (s: number, t0: number, t1: number): [V2, V2, V2, V2] => {
+    let [a, b, c, d] = [kp(3 * s), kp(3 * s + 1), kp(3 * s + 2), kp(3 * s + 3)];
+    if (t1 < 1) {
+      // vordere Hälfte bis t1
+      const ab = mix(a, b, t1);
+      const bc = mix(b, c, t1);
+      const cd = mix(c, d, t1);
+      const abc = mix(ab, bc, t1);
+      const bcd = mix(bc, cd, t1);
+      [a, b, c, d] = [a, ab, abc, mix(abc, bcd, t1)];
+    }
+    if (t0 > 0) {
+      // hintere Hälfte ab t0 (bezogen auf das schon beschnittene Stück)
+      const t = t0 / t1;
+      const ab = mix(a, b, t);
+      const bc = mix(b, c, t);
+      const cd = mix(c, d, t);
+      const abc = mix(ab, bc, t);
+      const bcd = mix(bc, cd, t);
+      [a, b, c, d] = [mix(abc, bcd, t), bcd, cd, d];
+    }
+    return [a, b, c, d];
+  };
+  const f = (p: V2) => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+  // Spiegelbilder (Kennung „…s“) im Stil „ton“ wie die Spiegelhälfte der Kurven
+  const rechts = !z.id.endsWith('s');
+  const pfad = (p0: number, p1: number): string => {
+    let d = '';
+    for (let s = Math.max(0, Math.floor(p0)); s < nk && s < p1; s++) {
+      const t0 = Math.max(0, p0 - s);
+      const t1 = Math.min(1, p1 - s);
+      if (t1 - t0 < 1e-6) continue;
+      const [a, b, c, e] = stueck(s, t0, t1);
+      d += `${d ? '' : `M${f(a)}`}C${f(b)} ${f(c)} ${f(e)}`;
+    }
+    return d;
+  };
+  const out: Lauf[] = [];
+  let anfang = 0;
+  let akt: boolean | null = null;
+  for (let i = 0; i + 1 < n; i++) {
+    const sicht = (z.sicht[i]! & bit) !== 0 && (z.sicht[i + 1]! & bit) !== 0;
+    if (akt === null) akt = sicht;
+    else if (sicht !== akt) {
+      out.push({ d: pfad(par[anfang]!, par[i]!), sicht: akt, rechts, h: 0 });
+      anfang = i;
+      akt = sicht;
+    }
+  }
+  if (akt !== null) out.push({ d: pfad(par[anfang]!, par[n - 1]!), sicht: akt, rechts, h: 0 });
+  return out.filter((l) => l.d);
+}
+
 const spantFarbe = (dok: Dokument, id: string): string => {
   const sp = dok.spanten?.[Number(id.slice(2))];
   return sp && sp.f > hauptspantStelle(dok) + 1e-9 ? SPANT_HINTEN : SPANT_VORN;
@@ -99,16 +170,15 @@ function netzPfade(ns: NetzSicht, ansicht: Ansicht, blick: Blick, bild: (p: V2) 
   const alt = m.get(schluessel);
   if (alt) return alt;
   const bit = sichtBit(blick);
-  const eigen = EIGENE[blick];
   const out: ReactNode[] = [];
   for (const z of ns.zuege) {
     if (z.art === 'maul') continue; // Maullinien zeichnet die Maulebene
     const quelle = ART_ANSICHT[z.art];
-    // Konturen: in fremden Blättern nur die Stücke, die in ihrer eigenen Ansicht den Umriss bilden (die Linie der
-    // Zeichnung in 3D); im eigenen Blatt nur die inneren (der äußere Umriss ist die schwarze Linie)
-    const rand = (i: number) => (z.sicht[i]! & RAND) !== 0;
-    const nimm = !quelle ? () => true : z.art === eigen ? (i: number) => !rand(i) : rand;
-    const ls = laeufe(z, ansicht, bit, bild, nimm);
+    // Umrisse (V2): in fremden Blättern die Umrisslinie der Zeichnung auf dem Körper als Kurve; im eigenen Blatt ist der
+    // äußere Umriss die schwarze Linie, dort zeigen sich nur die inneren Konturstücke (z. B. der Bauch unter dem Kopf im Top)
+    const umriss = z.art.startsWith('umriss-');
+    if (quelle && umriss === (quelle === ansicht)) continue;
+    const ls = umriss && z.kurve && z.parameter ? kurvenLaeufe(z, ansicht, bit, bild) : laeufe(z, ansicht, bit, bild, quelle ? (i) => (z.sicht[i]! & RAND) === 0 : () => true);
     ls.forEach((l, i) => {
       const key = `${z.id}.${i}`;
       if (quelle) {
