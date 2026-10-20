@@ -484,7 +484,8 @@ Ausführlich im Plan [`2026-10-20-vektorillustration-bedienung.md`](2026-10-20-v
 - **Kopplung ohne Einfügen empfindlich:** Vierbeiner, Zug 14 der Zufallsreihe — 0,04 px Unterschied im Top ergeben 47 px
   anderes Ergebnis, die Seite wird an der Schwanzspitze unerreichbar. Mit Einfügen (Editor) gelöst → V1-Zufallsreihe.
 - **Sporadisch rot unter Volllast:** `ringEinpassen` „Kugel, schräg“ (einmal, nicht wiederholbar) und die Tempo-Tests
-  (lokal ohne Faktor) → beobachten.
+  (lokal ohne Faktor) → beobachten. Dazu einmal nur auf CI (Lauf zu `d912d74b`): Versuch Flächenlinie, nach dem Verbreitern
+  46 Lücken — lokal in sechs Läufen und im CI-Lauf davor grün; die Prüfung meldet jetzt Dreiecke und Front-Knoten.
 
 ## Bedienung 20.10. (Florians Wünsche und eigene Befunde)
 
