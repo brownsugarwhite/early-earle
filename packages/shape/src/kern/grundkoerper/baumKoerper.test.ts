@@ -135,6 +135,27 @@ describe('S7.3 Pinsel auf dem Baum', () => {
     for (let i = 0; i < a.positionen.length; i++) diff = Math.max(diff, Math.abs(a.positionen[i]! - b.positionen[i]!));
     expect(diff).toBeLessThan(1e-9);
   });
+
+  it('Δ im Blatt-Titel misst den gepinselten Baum (Plan 20.10., V0; vorher den ungepinselten)', () => {
+    const dok = teilSatzDokument('ente');
+    const plan = { earle: true, koerper: 'teile' as const };
+    const ohne = wesenBauen(dok, plan, null).netz;
+    const tr = ohne.treffer!;
+    // Käfigpunkt rechts auf der Flanke, nahe der Körpermitte, 40 px nach außen: die Flanke steht über den Top-Umriss hinaus
+    let p = -1;
+    let best = -Infinity;
+    for (let q = 0; q < tr.kaefig.n; q++) {
+      const y = tr.kaefig.xyz[3 * q + 1]!;
+      if (y < 0.05 || y > 0.2) continue;
+      if (tr.kaefig.xyz[3 * q + 2]! > best) {
+        best = tr.kaefig.xyz[3 * q + 2]!;
+        p = q;
+      }
+    }
+    const lage: [number, number, number] = [tr.kaefig.xyz[3 * p]!, tr.kaefig.xyz[3 * p + 1]!, tr.kaefig.xyz[3 * p + 2]!];
+    const mit = wesenBauen({ ...dok, kaefig: { deltas: [], baumDeltas: [{ punkt: p, d: [0, 0, 40 / PX], lage }] } }, plan, null).netz;
+    expect(mit.info.blatt!.top.max).toBeGreaterThan(ohne.info.blatt!.top.max + 5);
+  });
 });
 
 describe('S7.3 Posen auf dem Baum', () => {

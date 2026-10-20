@@ -1319,6 +1319,12 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
       let bn = baumNetz;
       const bDeltas = dokRoh.kaefig?.baumDeltas ?? [];
       if (bDeltas.length) kaefigB = baumDeltasAuf(kaefigB ?? bn.zug.xyz, bn.zug.xyz, bn.spiegel, bDeltas);
+      // Δ und Saum am gepinselten Baum (Grundform mit Pinsel, ohne Pose) im genauen Bau (Plan 20.10., V0 — vorher am
+      // ungepinselten Netz: der Blatt-Titel zeigte die Abweichung eines Körpers, den es nicht mehr gab)
+      if (!schnell && bDeltas.length && kaefigB) {
+        const bl = blattAbweichungen(punkteVon(anwenden3(bn.zug.grenze, kaefigB)), bn.zug.flaechen, dok, 240);
+        bn = { ...bn, saum: { seite: bl.seite.saum, front: bl.front.saum, top: bl.top.saum }, blatt: { seite: { max: bl.seite.max, mittel: bl.seite.mittel }, front: { max: bl.front.max, mittel: bl.front.mittel }, top: { max: bl.top.max, mittel: bl.top.mittel } } };
+      }
       // S7.3 Posen auf dem Baum: Form je Pose (`pose.baum`) auf die Punkte dieses Käfigs umgehängt, Bezug nur bei gleicher
       // Punktzahl; ohne Knochen (kein Maul auf Teilen) mischen die Gewichte die Formen
       let bearbeitungB: PoseBearbeitung | null = null;
