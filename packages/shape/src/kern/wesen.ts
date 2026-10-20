@@ -1086,7 +1086,8 @@ function baumKoerper(dok: Dokument, plan: Bauplan, tb?: Teilbaum): BaumKoerperNe
     atlas = { ecken: atlasEcken(kach), abstand: r.abstand, weich: r.weich, breite: kach.breite, hoehe: kach.hoehe };
   }
   const bl = blattAbweichungen(punkte, flaechen, dok, 240);
-  const netzSichtB = netzSicht({ dok, punkte, flaechen, kaefig: b.kaefig, unterteilung: b.unterteilung, reifen: [] });
+  // Teile sind nicht genau spiegelgleich (seitliche Paare, bis 3,5 px): die zweite Hälfte der Umrisslinien eigens suchen
+  const netzSichtB = netzSicht({ dok, punkte, flaechen, kaefig: b.kaefig, unterteilung: b.unterteilung, reifen: [], spiegelgleich: false });
   return {
     positionen: tri.positionen,
     normalen: tri.normalen,

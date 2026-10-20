@@ -1,6 +1,7 @@
 // Plan „Liniennetz, Zielform, Käfig“, S1: das 3D-Liniennetz auf dem Kern-Körper. Tore an der Kugel (alles bekannt):
-// Konturen auf den Großkreisen (≤ 0,5 px), Sichtbarkeit von oben/unten/vorn/hinten/Seite richtig, gehobene Umrissknoten
-// in Mittelhöhe bzw. auf der Mittelebene; dazu Zeit je Bau an komplexen Körpern.
+// Umrisslinien auf den Großkreisen (≤ 0,5 px), Sichtbarkeit von oben/unten/vorn/hinten/Seite richtig, gehobene Umrissknoten
+// in Mittelhöhe bzw. auf der Mittelebene; dazu Zeit je Bau an komplexen Körpern. Seit V2 (20.10.) zeigen die fremden Blätter
+// die Umrisslinien (`umriss-*`); Konturen tragen nur die Sicht ihres eigenen Blatts.
 import { describe, expect, it } from 'vitest';
 import { neuesDokument } from '../dokument';
 import { ableiten } from './ableiten';
@@ -34,12 +35,13 @@ describe('S1: Liniennetz auf dem Kern-Körper', () => {
     let obenSichtbarVonOben = 0;
     let obenGesamt = 0;
     let untenSichtbarVonOben = 0;
+    let fremdeBits = 0;
     for (const z of ns.zuege) {
       for (let i = 0; i < z.sicht.length; i++) {
         const x = z.punkte[3 * i]!;
         const y = z.punkte[3 * i + 1]!;
         const zz = z.punkte[3 * i + 2]!;
-        if (z.art === 'kontur-seite') {
+        if (z.art === 'umriss-seite') {
           fehler.seite = Math.max(fehler.seite, Math.abs(zz) * PX);
           if (y > cy + 0.02) {
             obenGesamt++;
@@ -47,11 +49,16 @@ describe('S1: Liniennetz auf dem Kern-Körper', () => {
           }
           if (y < cy - 0.02 && z.sicht[i]! & SICHT.top) untenSichtbarVonOben++;
         }
-        if (z.art === 'kontur-top') fehler.top = Math.max(fehler.top, Math.abs(y - cy) * PX);
-        if (z.art === 'kontur-front') fehler.front = Math.max(fehler.front, Math.abs(x) * PX);
+        if (z.art === 'umriss-top') fehler.top = Math.max(fehler.top, Math.abs(y - cy) * PX);
+        if (z.art === 'umriss-front') fehler.front = Math.max(fehler.front, Math.abs(x) * PX);
+        // Konturen sieht nur ihr eigenes Blatt (Seite; Front mit Back; Top mit Bottom)
+        const eigen = z.art === 'kontur-seite' ? SICHT.seite : z.art === 'kontur-front' ? SICHT.front | SICHT.hinten : z.art === 'kontur-top' ? SICHT.top | SICHT.unten : 31;
+        fremdeBits |= z.sicht[i]! & 31 & ~eigen;
       }
     }
-    console.log(`Kugel: Konturen Seite |z| ${fehler.seite.toFixed(2)} px, Top |y−Mitte| ${fehler.top.toFixed(2)} px, Front |x| ${fehler.front.toFixed(2)} px; Seitenkontur oben von oben sichtbar ${obenSichtbarVonOben}/${obenGesamt}, unten ${untenSichtbarVonOben}; ${ns.zuege.length} Züge, ${ns.ms.toFixed(1)} ms`);
+    console.log(`Kugel: Umrisslinien Seite |z| ${fehler.seite.toFixed(2)} px, Top |y−Mitte| ${fehler.top.toFixed(2)} px, Front |x| ${fehler.front.toFixed(2)} px; Seitenlinie oben von oben sichtbar ${obenSichtbarVonOben}/${obenGesamt}, unten ${untenSichtbarVonOben}; ${ns.zuege.length} Züge, ${ns.ms.toFixed(1)} ms`);
+    expect(obenGesamt).toBeGreaterThan(50);
+    expect(fremdeBits).toBe(0);
     expect(fehler.seite).toBeLessThan(0.5);
     expect(fehler.top).toBeLessThan(2);
     expect(fehler.front).toBeLessThan(2);

@@ -212,11 +212,20 @@ export function strahlRaster(flaeche: Netz | Dreiecksflaeche, ansicht: Ansicht, 
     const i0 = D[3 * d]!;
     const i1 = D[3 * d + 1]!;
     const i2 = D[3 * d + 2]!;
-    const c0 = spalte(Math.min(u[i0]!, u[i1]!, u[i2]!) - rand);
-    const c1 = spalte(Math.max(u[i0]!, u[i1]!, u[i2]!) + rand);
-    const r0 = zeile(Math.min(v[i0]!, v[i1]!, v[i2]!) - rand);
-    const r1 = zeile(Math.max(v[i0]!, v[i1]!, v[i2]!) + rand);
-    box.set([c0, c1, r0, r1], 4 * d);
+    const u0 = u[i0]!;
+    const u1 = u[i1]!;
+    const u2 = u[i2]!;
+    const v0 = v[i0]!;
+    const v1 = v[i1]!;
+    const v2 = v[i2]!;
+    const c0 = spalte(Math.min(u0, u1, u2) - rand);
+    const c1 = spalte(Math.max(u0, u1, u2) + rand);
+    const r0 = zeile(Math.min(v0, v1, v2) - rand);
+    const r1 = zeile(Math.max(v0, v1, v2) + rand);
+    box[4 * d] = c0;
+    box[4 * d + 1] = c1;
+    box[4 * d + 2] = r0;
+    box[4 * d + 3] = r1;
     for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) start[r * n + c + 1]!++;
   }
   for (let z = 0; z < n * n; z++) start[z + 1]! += start[z]!;
