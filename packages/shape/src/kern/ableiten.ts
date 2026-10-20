@@ -2090,6 +2090,17 @@ export function faltenSetzen(v: Roehre, st: Stationen, l: Leiter, dok: Dokument,
   if (hv) {
     st.linienBau = (dok.kanten ?? []).map((_, i) => ({ art: hv.einordnung[i]?.art ?? 'schraeg', schleife: schleife.has(i) }));
     st.linienKanten = [...hv.reihenKanten.map((x) => ({ linie: x.linie, a: v.ringPunkt(x.ring, x.j), b: v.ringPunkt(x.ring + 1, x.j) })), ...hv.ringKanten.map((x) => ({ linie: x.linie, a: v.ringPunkt(x.ring, x.j), b: v.ringPunkt(x.ring, x.j + 1) }))];
+    // V5 (Versuch `linieEndSchaerfe`): Endpunkte jeder Linienfalte (nur einer Kante der Linie) mit Punktschärfe
+    const es = opt.umrisseOpt?.linieEndSchaerfe ?? 0;
+    if (es > 0) {
+      const grad = new Map<string, number>();
+      for (const lk of st.linienKanten) for (const p of [lk.a, lk.b]) grad.set(`${lk.linie}:${p}`, (grad.get(`${lk.linie}:${p}`) ?? 0) + 1);
+      for (const [sch, g] of grad) {
+        if (g !== 1) continue;
+        const p = Number(sch.split(':')[1]);
+        for (const q of [p, spiegelRingPunkt(v, p)]) k.vSchaerfe[q] = Math.max(k.vSchaerfe[q]!, es);
+      }
+    }
   }
   const treppe = (dok.kanten ?? []).filter((_, i) => !schleife.has(i));
   // V5: Querlinien als Falte längs ihres Rings (rechts und gespiegelt); eine Kreuzung mit einer Längslinie ist eine Ecke

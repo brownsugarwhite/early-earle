@@ -1353,3 +1353,8 @@ Ende hinaus, Robbe 15 px); geglätteter statt linearer Auslauf (Reihen knicken m
   drehen, Ecken-Ringe daneben). Test „Schräge Linie (Vase)“ (am Stand davor rot).
 - Härte als Rundungsbreite in Pixeln (3.4) und Grat (`Kante.tiefe`) noch nicht; Linien auf „Teile“ (V7); Zug mit Linien
   42–57 ms.
+- **Nachtrag 21.10. mittags — Lage an den Enden:** Innen liegt die Falte 0,4–0,6 px auf der Linie, an der letzten Kante jedes
+  Endes 0,8–1,0 px daneben (die Falte endet an einem glatten Käfigpunkt). Gemessen: stärkere Linienbindung (64/256) bringt
+  kaum etwas und kostet Haut (Hals 4 px); Punktschärfe am Linienende (`umrisseOpt.linieEndSchaerfe`, Versuch, aus) holt die
+  Enden heran (Ei 0,9 → 0,5 px, Hals 2,0 → 1,1, Vase 1,9 → 1,1 bei 2), kostet aber an der Kugel Form (Haut 0,7 → 1,4 px,
+  Front 0,8 → 1,5) und macht das Ende spitz — für Florians Urteil am Bild zurückgestellt.

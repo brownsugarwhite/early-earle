@@ -66,6 +66,8 @@ export type UmrissOptionen = {
   dichtGewicht?: number;
   /** V5 (Versuch): Gewicht je feinem Punkt einer Linienschleife (Standard 16) */
   linieGewicht?: number;
+  /** V5 (Versuch): Punktschärfe der Endpunkte einer Linienfalte (0 = glatt wie bisher) */
+  linieEndSchaerfe?: number;
   /**
    * V5 „Form zuerst“: Gewicht je feinem Punkt (Stufe 2, nur wo die Linien den Käfig verschoben haben) der Bindung des Körpers
    * mit Linien an die Form des Körpers ohne Linien (Punkt zu Ebene); Standard 16, 0 = aus
