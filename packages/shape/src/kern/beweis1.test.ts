@@ -16,6 +16,10 @@ import { selbstDurchdringungen } from '../versuch/pruefen';
 import { type Vorlage, vorlageDokument } from '../versuch/vorlagen';
 import { ableiten, seiteZiehen } from './ableiten';
 
+declare const process: { env: Record<string, string | undefined> };
+/** CI-Rechner sind langsamer und lassen alle Pakete parallel laufen (Plan 20.10., V0): dort gilt das Doppelte der Zeitgrenze. */
+const ZEIT = process.env.CI ? 2 : 1;
+
 declare const console: { log: (...a: unknown[]) => void };
 const PX = 461;
 
@@ -212,7 +216,7 @@ describe('Beweis 1: Kern-Tempo und Treue', () => {
     const hin = abstandZuZug(naht, profilZug(dokNeu));
     const her = abstandZuZug(profilZug(dokNeu), naht);
     console.log(`Zugschritt Rex (${ringe} Ringe): Kurve→Naht max ${(her.max * PX).toFixed(2)} px bei (${her.ort.x.toFixed(3)}, ${her.ort.y.toFixed(3)}) nahe ${naechsterKnoten(dokNeu, her.ort)}; größte Naht→Kurve bei ${naechsterKnoten(dokNeu, hin.ort)};  Leiter ${r.zugZeit.leiter.toFixed(1)} ms, Ziele ${r.zugZeit.ziele.toFixed(1)} ms, Löser ${r.zugZeit.loeser.toFixed(2)} ms, Matrix ${r.zugZeit.matrix.toFixed(2)} ms (bestes Löser+Matrix ${best.toFixed(2)} ms); Naht→neue Kurve max ${(hin.max * PX).toFixed(2)} px`);
-    expect(best).toBeLessThan(16);
+    expect(best).toBeLessThan(16 * ZEIT);
     // Während der Geste: Naht ≈ 1,6–2 px neben der neuen Kurve an einem 23-px-Sprung eines einzelnen Knotens (die
     // Ringdichte stammt von vor dem Sprung). Beim Loslassen wird neu abgeleitet (Ringe nach Krümmung): dann ≤ 0,5 px.
     expect(hin.max * PX).toBeLessThan(2.2);
