@@ -12,6 +12,7 @@ import type { Ableitung } from '../ableiten';
 import { type BaumAbleitung, baumAbleiten, baumFalten, baumFeinesNetz } from '../grundkoerper/baumBau';
 import { teilbaum } from '../grundkoerper/teilbaum';
 import { type NetzSicht, RAND, aufHaut as aufHautLegen, sichtRaster } from '../netzSicht';
+import { umrissStuecke } from '../abweichung';
 import { feinesNetz } from '../pruefstand';
 import { feinKette } from '../reifen';
 import { type Bauplan, type WesenNetz, type WesenStand, wesenBauen } from '../wesen';
@@ -52,8 +53,12 @@ export type ExtremMessung = {
   durchdringungen: number;
   /** Käfiggüte: kleinster Innenwinkel (Grad), größtes Seitenverhältnis */
   kaefig: { punkte: number; flaechen: number; winkel: number; seiten: number };
-  /** Netzlinien je Umriss-Art: Stücke am Rand (in den fremden Blättern gezeichnet), Knicke über 45° und Schleifen (Selbstkreuzungen in den Blättern, in denen sie erscheinen), beide nach Vereinfachen auf ½ px */
-  rauschen: Record<Blatt, { stuecke: number; knicke: number; schleifen: number }>;
+  /**
+   * Umrisslinien je Ansicht, wie der Editor sie in den fremden Blättern zeigt (`umrissLinien`): Stücke, Knicke über 45° (außer
+   * an gezeichneten Ecken) und Schleifen nach Vereinfachen auf ½ px, Abstand in der eigenen Ansicht zur Silhouette und zur
+   * Haut (px)
+   */
+  rauschen: Record<Blatt, LinienMass>;
   /** Bauzeit (genauer Bau ohne Stand, ms), Zugzeit (schneller Bau nach einem Zug von 2 px, ms), Zahl der Bauten bis zum Stand */
   zeit: { bau: number; zug: number; baue: number };
   /** Teile: Streifen und seitliche Röhren des Baums */
@@ -216,48 +221,79 @@ function kreuzungen(pts: readonly [number, number][]): number {
   return n;
 }
 
+export type LinienMass = { stuecke: number; knicke: number; schleifen: number; eigen: number; haut: number };
+
 /**
- * Rauschen der Netzlinien je Umriss-Art (Plan V2: „je Umrissstück ein Zug, keine Knicke über 45°, keine Schleifen“): nur die
- * Proben am Rand — die zeichnet der Editor in den fremden Blättern (die lila Front-Linie in Seite und Top).
+ * Die Umrisslinien, wie der Editor sie in den fremden Blättern zeigt (Plan V2: „je Umrissstück ein Zug, keine Knicke über
+ * 45° außer an gezeichneten Ecken, keine Schleifen; in der eigenen Ansicht ≤ 0,5 px auf der Silhouette, ≤ 1 px auf der
+ * Haut“) — ab V2 die Züge `umriss-<Ansicht>`, vorher die Randproben der Konturen (die lila Front-Linie in Seite und Top).
+ * Knicke und Schleifen nach Vereinfachen auf ½ px; Knicke näher als 3 px an einer gezeichneten Ecke zählen nicht. `eigen` =
+ * größter Abstand der Linie in ihrer eigenen Ansicht zu den Silhouettenkanten des Netzes, `haut` = größter Abstand zur Haut
+ * (px); ohne Netz (Messung nur des Rauschens) 0.
  */
-export function linienRauschen(ns: NetzSicht | null): Record<Blatt, { stuecke: number; knicke: number; schleifen: number }> {
-  const out = {} as Record<Blatt, { stuecke: number; knicke: number; schleifen: number }>;
+export function umrissLinien(ns: NetzSicht | null, dok?: Dokument, punkte?: readonly V3[], flaechen?: readonly (readonly number[])[]): Record<Blatt, LinienMass> {
+  const out = {} as Record<Blatt, LinienMass>;
+  const sk = dok?.skalierung ?? 1;
   for (const a of BLAETTER) {
     let stuecke = 0;
     let knicke = 0;
     let schleifen = 0;
-    for (const z of ns?.zuege ?? []) {
-      if (z.art !== `kontur-${a}`) continue;
-      // Stücke: zusammenhängende Läufe von Randproben
-      const laeufe: V3[][] = [];
+    let eigen = 0;
+    let haut = 0;
+    // Läufe: die Umrisslinien (V2) bzw. zusammenhängende Randproben der Konturen
+    const laeufe: V3[][] = [];
+    const neu = (ns?.zuege ?? []).filter((z) => (z.art as string) === `umriss-${a}`);
+    for (const z of neu.length ? neu : (ns?.zuege ?? []).filter((q) => q.art === `kontur-${a}`)) {
       let lauf: V3[] = [];
       for (let i = 0; i < z.sicht.length; i++) {
-        if (z.sicht[i]! & RAND) lauf.push([z.punkte[3 * i]!, z.punkte[3 * i + 1]!, z.punkte[3 * i + 2]!]);
+        if (neu.length || z.sicht[i]! & RAND) lauf.push([z.punkte[3 * i]!, z.punkte[3 * i + 1]!, z.punkte[3 * i + 2]!]);
         else if (lauf.length) {
           laeufe.push(lauf);
           lauf = [];
         }
       }
       if (lauf.length) laeufe.push(lauf);
-      for (const roh of laeufe) {
-        if (roh.length < 2) continue;
-        stuecke++;
-        // Ausschläge unter ½ px sieht man nicht: erst vereinfachen, dann Knicke und Schleifen zählen
-        const l = vereinfachen(roh, 0.5 / PX);
-        for (let i = 1; i + 1 < l.length; i++) {
-          const p = l[i - 1]!;
-          const q = l[i]!;
-          const r = l[i + 1]!;
-          const u = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
-          const v = [r[0] - q[0], r[1] - q[1], r[2] - q[2]];
-          const c = (u[0]! * v[0]! + u[1]! * v[1]! + u[2]! * v[2]!) / (Math.hypot(u[0]!, u[1]!, u[2]!) * Math.hypot(v[0]!, v[1]!, v[2]!) || 1);
-          if ((Math.acos(Math.max(-1, Math.min(1, c))) * 180) / Math.PI > 45) knicke++;
+    }
+    // gezeichnete Ecken in der eigenen Ansicht (Halbprofile auch gespiegelt)
+    const ecken: [number, number][] = [];
+    for (const k of dok?.profile[a].knoten ?? []) {
+      if (k.art !== 'ecke') continue;
+      ecken.push([k.p.x * sk, k.p.y * sk]);
+      if (a === 'front') ecken.push([-k.p.x * sk, k.p.y * sk]);
+      if (a === 'top') ecken.push([k.p.x * sk, -k.p.y * sk]);
+    }
+    const anEcke = (q: V3) => {
+      const [u, v] = blatt2(q[0], q[1], q[2], a);
+      return ecken.some(([x, y]) => Math.hypot(x - u, y - v) * PX < 3);
+    };
+    const um = punkte && flaechen ? umrissStuecke(punkte, flaechen, a, 4 / PX) : null;
+    for (const roh of laeufe) {
+      if (roh.length < 2) continue;
+      stuecke++;
+      // Ausschläge unter ½ px sieht man nicht: erst vereinfachen, dann Knicke und Schleifen zählen
+      const l = vereinfachen(roh, 0.5 / PX);
+      for (let i = 1; i + 1 < l.length; i++) {
+        const p = l[i - 1]!;
+        const q = l[i]!;
+        const r = l[i + 1]!;
+        const u = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
+        const v = [r[0] - q[0], r[1] - q[1], r[2] - q[2]];
+        const c = (u[0]! * v[0]! + u[1]! * v[1]! + u[2]! * v[2]!) / (Math.hypot(u[0]!, u[1]!, u[2]!) * Math.hypot(v[0]!, v[1]!, v[2]!) || 1);
+        if ((Math.acos(Math.max(-1, Math.min(1, c))) * 180) / Math.PI > 45 && !anEcke(q)) knicke++;
+      }
+      // Schleifen in den Blättern, in denen die Linie erscheint (die beiden anderen)
+      for (const b of BLAETTER) if (b !== a) schleifen += kreuzungen(vereinfachen(roh.map((p) => blatt2(p[0], p[1], p[2], b)), 0.5 / PX));
+      if (um && punkte && flaechen) {
+        for (let i = 0; i < roh.length; i++) {
+          const p = roh[i]!;
+          const [u, v] = blatt2(p[0], p[1], p[2], a);
+          const q = um.naechster({ x: u, y: v }, 20 / PX);
+          eigen = Math.max(eigen, q ? Math.hypot(q.x - u, q.y - v) * PX : 20);
+          if (i % 3 === 0) haut = Math.max(haut, Math.min(20, abstandFlaeche(p, punkte, flaechen) * PX));
         }
-        // Schleifen in den Blättern, in denen die Linie erscheint (die beiden anderen)
-        for (const b of BLAETTER) if (b !== a) schleifen += kreuzungen(vereinfachen(roh.map((p) => blatt2(p[0], p[1], p[2], b)), 0.5 / PX));
       }
     }
-    out[a] = { stuecke, knicke, schleifen };
+    out[a] = { stuecke, knicke, schleifen, eigen, haut };
   }
   return out;
 }
@@ -489,7 +525,7 @@ export function extremMessen(k: ExtremKoerper, art: Bauart, ablauf: Ablauf, opt:
     falten: zonenWerte(g.falten),
     durchdringungen: opt.durchdringung === false ? NaN : selbstDurchdringungen({ punkte: g.punkte, flaechen: g.flaechen, schaerfe: new Map() }, 1e-4).paare,
     kaefig: { punkte: g.kaefig.n, flaechen: g.kaefig.nF, winkel: kg.winkel, seiten: kg.seiten },
-    rauschen: linienRauschen(bau.netz.netzSicht),
+    rauschen: umrissLinien(bau.netz.netzSicht, bau.dok, g.punkte, g.flaechen),
     zeit: { bau: bau.ms, zug: opt.zug === false ? NaN : zugZeit(bau, plan), baue: bau.baue },
     ...(bau.netz.koerperBaum && !bau.netz.koerperBaum.fehler ? { baum: { streifen: bau.netz.koerperBaum.streifen, seiten: bau.netz.koerperBaum.seiten } } : {}),
   };
