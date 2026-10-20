@@ -61,6 +61,26 @@ describe('S8a Linien genau auf der Haut (Röhre)', () => {
   }
 });
 
+describe('Tore S8a (bekannt rot, Plan 20.10., V0)', () => {
+  // Das S8a-Tor verlangte die Kante ≤ 0,5 px an der Linie — verfehlt (Ei 1,0–1,15 px; Kritik-Register „Befunde aus S8a“).
+  // Grün erst mit V5 (alle Linien gleichzeitig, Kante tridiagonal genau); wird es grün, schlägt `it.fails` an.
+  it.fails('Ei, Bogen über die Flanke: Kante ≤ 0,5 px an der Linie (bekannt rot)', () => {
+    const fall = FAELLE.find((f) => f.name === 'Ei, Bogen über die Flanke')!;
+    const dok = fall.dok();
+    const ohne = ableiten(dok, { stufen: 3 });
+    const linie = linieAusSeite(ohne, fall.zug(kasten(ohne)));
+    const sk = dok.skalierung;
+    const r = linienExakt(ohne, [kanteAus(linie.punkte, sk, 1)], sk, 1e6);
+    const k = r.abl.kaefig;
+    let maxD = 0;
+    for (let e = 0; e < k.nE; e++) {
+      if (!(k.eSchaerfe[e]! > 1e5) || ohne.kaefig.eSchaerfe[e]! > 1e5 || k.xyz[3 * k.eA[e]! + 2]! < 0) continue;
+      for (const q of feinKette(r.abl.unterteilung, k, k.eA[e]!, k.eB[e]!)) maxD = Math.max(maxD, abstandZug([r.abl.fein[3 * q]!, r.abl.fein[3 * q + 1]!, r.abl.fein[3 * q + 2]!], linie.punkte) * PX);
+    }
+    expect(maxD).toBeLessThanOrEqual(0.5);
+  }, 120_000);
+});
+
 describe('Plan 20.10., V0: Rückschritte aus S8a', () => {
   const dok = koerperDokument('kugel', zufall(1));
   const sk = dok.skalierung;
