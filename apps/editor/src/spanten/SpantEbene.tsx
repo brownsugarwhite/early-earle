@@ -36,6 +36,7 @@ import {
   weltNachSpant,
 } from '@ee/shape';
 import { kieferSchnitt, knotenImTeil, mitTeilProfil, teilZug } from '@ee/shape/kern';
+import { reifenAufTeilen } from '../kern/kernBau';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 
@@ -301,6 +302,7 @@ export function spantZeiger(e: React.PointerEvent, ctx: SpantKontext): boolean {
     const spEl = ziel.closest('[data-spant]');
     const hEl = ziel.closest('[data-hauptspant]');
     if (ui.werkzeug === 'spant' && !spEl && !hEl) {
+      if (reifenAufTeilen()) return true;
       const f = stelleVon(ed.dok, q.x);
       if (f > 0.01 && f < 0.99) {
         const r = spantEinfuegen(ed.dok, f);

@@ -12,7 +12,7 @@ import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import type { Renderer3D } from '../three/Renderer3D';
 import { szene } from '../three/instanz';
-import { aktuellesNetz, werkzeugGesperrt } from './kernBau';
+import { aktuellesNetz, reifenAufTeilen, werkzeugGesperrt } from './kernBau';
 import { useTreffer } from './treffer';
 
 /** Was unter dem Zeiger liegt: eine Perle (Spant-Knoten, beim Kiefer-Spant mit Teil) oder das Band eines Reifens. */
@@ -294,6 +294,7 @@ export function reifenZeiger(e: React.PointerEvent, px: number, py: number, el: 
 
 /** Neuer Reifen an der Stelle x (Profil-Einheiten): Spant aus der Fläche (formneutral), gewählt. */
 export function reifenNeuBei(x: number): boolean {
+  if (reifenAufTeilen()) return true;
   const ed = useEditor.getState();
   const f = stelleVon(ed.dok, x);
   if (f <= 0.01 || f >= 0.99) {

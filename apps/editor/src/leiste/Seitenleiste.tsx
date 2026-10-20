@@ -993,6 +993,19 @@ function AbleitenFeld() {
     if (k === 'teile') aus.koerper = 'teile';
     else delete aus.koerper;
     s.setzeDokument({ ...s.dok, ausstattung: aus });
+    // Plan 20.10., V0: Pinsel und Posen sind je Körperart gespeichert (bis V7 beide angleicht) — sagen, was hier nicht wirkt
+    const d = s.dok;
+    const roehre = (d.kaefig?.deltas?.length ?? 0) > 0 || (d.posen ?? []).some((p) => (p.form?.length ?? 0) > 0);
+    const baum = (d.kaefig?.baumDeltas?.length ?? 0) > 0 || (d.posen ?? []).some((p) => (p.baum?.form?.length ?? 0) > 0);
+    if (k === 'teile' && roehre) useUi.getState().zeigeHinweis('Pinsel- und Posen-Änderungen der Röhre wirken auf „Teile“ nicht — sie bleiben gespeichert und kommen mit „Röhre“ zurück');
+    else if (k === 'roehre' && baum) useUi.getState().zeigeHinweis('Pinsel- und Posen-Änderungen von „Teile“ wirken auf die Röhre nicht — sie bleiben gespeichert und kommen mit „Teile“ zurück');
+  };
+  // „Neu ableiten“ (Plan 20.10., V0): ein Undo-Schritt (vorher setzte es den eingefrorenen Stand ohne Verlaufseintrag zurück)
+  const neuAbleiten = () => {
+    const s = useEditor.getState();
+    const rest = { ...(s.dok.kaefig ?? { deltas: [] }) };
+    delete rest.stationen;
+    s.setzeDokument({ ...s.dok, kaefig: rest });
   };
   useNetzStand((s) => s.version);
   const baum = aktuellesNetz()?.netz.koerperBaum ?? null;
@@ -1034,7 +1047,7 @@ function AbleitenFeld() {
         <b data-stationen={n}>{n ? `${n} eingefroren` : 'werden festgelegt …'}</b>
       </div>
       <div className="umschalter stufen" role="group" aria-label="Ableitung">
-        <button className="chip" data-neu-ableiten="" disabled={!n} onClick={() => useEditor.getState().setzeStationen(null)}>
+        <button className="chip" data-neu-ableiten="" disabled={!n} onClick={neuAbleiten}>
           Neu ableiten
         </button>
       </div>

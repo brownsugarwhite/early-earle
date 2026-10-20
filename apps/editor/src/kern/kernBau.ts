@@ -140,6 +140,17 @@ export function netzZeigtAnzeige(): boolean {
  * Vorschau, beendet der Druck nur sie (mit Hinweis); solange danach der Bau läuft, greift das Werkzeug ebenfalls nicht —
  * sonst rechnete es auf dem Körper der Vorschau. true = nicht greifen.
  */
+/**
+ * Reifen und Spanten wirken auf den Körper aus Teilen noch nicht (Plan 20.10.: kommen dort mit den Loops, V6–V7). Ist der
+ * Baum der Körper, sagt ein Hinweis das, statt still einen Spant ohne sichtbare Wirkung zu setzen; true = nichts tun.
+ */
+export function reifenAufTeilen(): boolean {
+  const baum = aktuellesNetz()?.netz.koerperBaum;
+  if (!baum || baum.fehler) return false;
+  useUi.getState().zeigeHinweis('Reifen und Spanten wirken auf „Teile“ noch nicht (kommen mit den Loops) — für Reifen in der Tafel Körper „Röhre“ wählen');
+  return true;
+}
+
 export function werkzeugGesperrt(): boolean {
   const ed = useEditor.getState();
   const m = ed.modus;
@@ -236,9 +247,11 @@ export function kernBauen(dok: Dokument, schnell: boolean, cb: (netz: KernNetz) 
     // Nur, wenn der Bau zum aktuellen Dokument gehört (14.10. spätnachts): Ein Bau, der beim Laden eines anderen Wesens
     // noch lief, schrieb sonst dessen Ringverteilung in das neue Dokument (geladener Unterbiss mit den Ringen der
     // Startkugel); die Änderung löste einen Bau mit diesen Stationen aus und verdrängte den frischen.
+    // Plan 20.10., V0: auch nur, wenn der eingefrorene Stand noch derselbe ist wie beim Auftrag — „Neu ableiten“ und gleich
+    // danach ⌘Z schrieb sonst die neue Ringverteilung in das wiederhergestellte Dokument (Rückgängig ohne Wirkung)
     const g = netz.info.stationen;
     const ed = useEditor.getState();
-    if (g && !schnell && ed.dok.profile === dok.profile) {
+    if (g && !schnell && ed.dok.profile === dok.profile && (ed.dok.kaefig?.stationen ?? null) === (dok.kaefig?.stationen ?? null)) {
       if (JSON.stringify(ed.dok.kaefig?.stationen ?? null) !== JSON.stringify(g)) ed.setzeStationen(g);
     }
   });

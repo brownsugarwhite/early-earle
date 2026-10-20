@@ -4,6 +4,8 @@
 //    der Stift setzt dort einen Punkt (vorher fing ein unsichtbarer 10-px-Streifen der Wirbelsäule den Klick).
 // 2. Doppelbau: Nach einer Geste wird der Baum genau einmal gebaut (vorher ein zweites Mal, weil das Zurückschreiben der
 //    eingefrorenen Teile seinen Schlüssel änderte).
+// 3. Spant-Werkzeug auf „Teile“: Hinweis statt stiller Spanten. 4. „Neu ableiten“ ist ein Undo-Schritt. 5. Umschalten der
+//    Körperart sagt, welche Pinsel-Änderungen auf der anderen Art liegen.
 // Umgebung: FAELLE (Komma-Liste der Teilsatz-Körper), AUSGABE.
 // Aufruf: apps/editor/scripts/pruefen/run-check.sh apps/editor/scripts/pruefen/v0-teile.mjs
 import { mkdirSync } from 'node:fs';
@@ -150,6 +152,43 @@ for (const fall of faelle) {
   const verschieden = [...new Set(baue.map((b) => b.ms))];
   pruefe(verschieden.length === 1, `nach der Geste ${baue.length} genaue Netze, ${verschieden.length} Baum-Bau(ten) (${verschieden.map((m) => (m === null ? '-' : m.toFixed(0))).join(', ')} ms)`);
   await page.screenshot({ path: `${out}/v0-teile-${fall}.png` });
+
+  // 3. Spant-Werkzeug auf „Teile“: Hinweis statt stiller Spanten
+  const sp0 = await page.evaluate(() => (window.__stores.editor.getState().dok.spanten ?? []).length);
+  const mitte = await page.evaluate(() => {
+    const svg = document.querySelector('.vp-ober[data-view="seite"] svg.view2d');
+    const kn = window.__stores.editor.getState().dok.profile.seite.knoten;
+    const r = svg.querySelector('[data-kurve]').getBoundingClientRect();
+    return { x: r.x + r.width * 0.45, y: r.y + r.height * 0.6, n: kn.length };
+  });
+  await page.evaluate(() => window.__stores.ui.getState().setzeWerkzeug('spant'));
+  await page.mouse.click(mitte.x, mitte.y);
+  await page.waitForTimeout(300);
+  const nachSpant = await page.evaluate(() => ({ n: (window.__stores.editor.getState().dok.spanten ?? []).length, hinweis: String(window.__stores.ui.getState().hinweis?.text ?? window.__stores.ui.getState().hinweis ?? '') }));
+  pruefe(nachSpant.n === sp0 && nachSpant.hinweis.includes('Teile'), `Spant-Werkzeug auf „Teile“: Spanten ${sp0} → ${nachSpant.n}, Hinweis „${nachSpant.hinweis}“`);
+  await page.evaluate(() => window.__stores.ui.getState().setzeWerkzeug('auswahl'));
+
+  // 4. „Neu ableiten“: ein Undo-Schritt, Rückgängig bringt den eingefrorenen Stand zurück
+  const vorAbl = await page.evaluate(() => ({ schritte: window.__stores.editor.getState().verlauf.length, st: JSON.stringify(window.__stores.editor.getState().dok.kaefig?.stationen ?? null) }));
+  await page.locator('[data-neu-ableiten]').click();
+  await page.waitForTimeout(300);
+  const nachAbl = await page.evaluate(() => ({ schritte: window.__stores.editor.getState().verlauf.length }));
+  await page.evaluate(() => window.__stores.editor.getState().rueckgaengig());
+  await page.waitForTimeout(300);
+  const zurueck = await page.evaluate(() => JSON.stringify(window.__stores.editor.getState().dok.kaefig?.stationen ?? null));
+  pruefe(nachAbl.schritte === vorAbl.schritte + 1 && zurueck === vorAbl.st, `„Neu ableiten“: Undo-Schritt (${vorAbl.schritte} → ${nachAbl.schritte}), Rückgängig stellt den Stand wieder her (${zurueck === vorAbl.st ? 'ja' : 'nein'})`);
+  await ruhig();
+
+  // 5. Umschalten mit Pinsel-Änderungen der anderen Körperart: Hinweis
+  await page.evaluate(() => {
+    const st = window.__stores.editor.getState();
+    st.setzeDokument({ ...st.dok, kaefig: { ...(st.dok.kaefig ?? { deltas: [] }), baumDeltas: [{ punkt: 0, d: [0, 0.001, 0] }] } });
+  });
+  await page.locator('[data-koerper="roehre"]').click();
+  await page.waitForTimeout(300);
+  const hw = await page.evaluate(() => String(window.__stores.ui.getState().hinweis?.text ?? window.__stores.ui.getState().hinweis ?? ''));
+  pruefe(hw.includes('wirken auf die Röhre nicht'), `Umschalten auf „Röhre“ mit Pinsel auf „Teile“: Hinweis „${hw}“`);
+  await ruhig();
 }
 await browser.close();
 console.log(fehler ? `${fehler} Fehler` : 'alles grün');
