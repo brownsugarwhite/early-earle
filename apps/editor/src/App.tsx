@@ -13,6 +13,8 @@ import { Glasfilter } from './ui/Glasfilter';
 import { Hinweis } from './ui/Hinweis';
 import { KontextMenue } from './ui/KontextMenue';
 import { ViewportGrund, ViewportOber } from './viewports/Viewport';
+import { useModalKontext } from './editing/modal/modal';
+import { useZeigerMerker } from './editing/modal/zeiger';
 
 export function App() {
   useLayoutSteuerung();
@@ -24,6 +26,8 @@ export function App() {
   useMaulTasten();
   useWirbelTasten();
   useKantenTasten();
+  useZeigerMerker();
+  useModalKontext();
   return (
     <>
       <Glasfilter />

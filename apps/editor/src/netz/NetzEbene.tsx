@@ -23,6 +23,7 @@ import { SPANT_HINTEN, SPANT_VORN } from '../spanten/SpantEbene';
 import { useEditor } from '../state/editorStore';
 import { type NetzPunkt, blickVon, useUi } from '../state/uiStore';
 import { gemeinsamerZug, netzJetzt, netzPunktLage, sichtBit, umrissKnotenLage, zugPunkt } from './netzLage';
+import { zugProportional } from '../editing/modal/modal';
 
 /** Stil „farbe“: je Ursprungsansicht eine Farbe (Blau, Lila, Türkis heißen nur noch „Umriss von Seite, Front, Top“) */
 export const NETZ_FARBE: Record<'seite' | 'front' | 'top', string> = { seite: '#2b50d8', front: '#a03cc8', top: '#0f9e8e' };
@@ -326,6 +327,8 @@ export function netzKnotenGreifen(e: React.PointerEvent, ansicht: Ansicht, np: E
   ui.auswahlLeeren();
   ui.waehle(quelle, [index]);
   ui.setzeNetzHover(np);
+  // V3: mit O proportional (G mit gedrückter Taste, nur die gemeinsame Koordinate)
+  if (zugProportional(e, ansicht, 'fremd')) return;
   const start = ctx.lokal(e.clientX, e.clientY);
   const basis = aktiveProfile();
   const auswahlBasis = useUi.getState().auswahl;

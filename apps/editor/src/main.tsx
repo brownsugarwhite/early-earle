@@ -13,6 +13,7 @@ import { schnittVersuchLaden } from './schnitte/schnittVersuch';
 import { useKernAnzeige } from './kern/kernBau';
 import { useZahnPruefung } from './kern/zahnPruefStand';
 import { zielAnmelden } from './werkzeuge/ziel';
+import { modalMessung } from './editing/modal/modal';
 
 // Versuche (?versuch=subd&form=…): Testform laden
 const versuch = versuchAktiv();
@@ -25,6 +26,7 @@ void schnittVersuchLaden();
 Object.assign(window, {
   __stores: { editor: useEditor, ui: useUi, rahmen: useRahmen, kernAnzeige: useKernAnzeige, zahnPruefung: useZahnPruefung },
   __pruefen: { abweichung: () => abweichung(useEditor.getState().dok.profile) },
+  __modal: modalMessung,
 });
 
 // B1: Vorschau im Editor-Tab endet beim Stufenwechsel und beim Bearbeiten

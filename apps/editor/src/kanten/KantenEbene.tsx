@@ -9,6 +9,7 @@ import type { Ansicht, Blick, Dokument, Kante, V2, V3T } from '@ee/shape';
 import { ausAnsicht2, eckKanten, einfuegen3, glatteLinie, griffZiehen3, inAnsicht2, naechsterInAnsicht } from '@ee/shape/versuch';
 import { useEffect } from 'react';
 import { useEditor } from '../state/editorStore';
+import { zugProportional } from '../editing/modal/modal';
 import { blickVon, useUi } from '../state/uiStore';
 import { spantenAnKante } from '../rund/RundSpantEbene';
 import { haerteBei, kantenProben, kantenPunkt, kantenPunktStetig, sichtbar } from './kantenFlaeche';
@@ -547,6 +548,8 @@ export function kantenZeiger(e: React.PointerEvent, ctx: KantenKontext): boolean
     ui.setzeKantenAuswahl(sel.length ? { kante: ki, indizes: sel } : null);
     const basis = kanten()[ki];
     if (!basis || !sel.length) return true;
+    // V3: mit O proportional (G mit gedrückter Taste über alle P-Linien des Blatts)
+    if (zugProportional(e, ctx.ansicht, 'kante')) return true;
     const netzBasis = netzJetzt();
     const basisLagen = basis.knoten.map((kn, i) => (netzBasis ? kantenKnotenLage(basis, ki, i, netzBasis) : kn.p));
     const start = q;

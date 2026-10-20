@@ -56,9 +56,16 @@ type EditorState = {
    * her, und die nächste Geste nahm sonst den alten Merker (Plan 20.10., V0).
    */
   gesteNr: number;
+  /** „geändert“ beim Gestenbeginn (Abbrechen stellt es wieder her) */
+  gesteGeaendert: boolean;
 
   beginGeste(): void;
   endeGeste(): void;
+  /**
+   * Plan 20.10., V3: laufende Geste abbrechen (Esc, Rechtsklick, ⌘Z während G/S/R) — das Dokument des Gestenbeginns kommt
+   * zurück, ohne Verlaufseintrag und ohne die Haken am Gestenende („Formen folgen“, Aufräumen der Kopplung).
+   */
+  abbrechenGeste(): void;
   setzeProfil(ansicht: Ansicht, profil: Profil): void;
   setzeProfile(profile: Dokument['profile']): void;
   /** Profile samt Spanten (S1c: Punkte, die die Kopplung in die Front eingefügt hat, auch in den Spanten) */
@@ -306,10 +313,11 @@ export const useEditor = create<EditorState>((set, get) => {
     gesteStart: null,
     gesteZiel: null,
     gesteNr: 0,
+    gesteGeaendert: false,
 
     beginGeste() {
       if (get().gesteStart) return;
-      set({ gesteStart: get().dok, gesteZiel: get().modus, gesteNr: get().gesteNr + 1 });
+      set({ gesteStart: get().dok, gesteZiel: get().modus, gesteNr: get().gesteNr + 1, gesteGeaendert: get().geaendert });
       // B1/B7: Greifen beendet eine Vorschau (im Editor-Tab die Grundform, in einer Pose die ganze Pose)
       if (vorschauLaeuft(get().modus)) vorschauBeenden(get().modus);
     },
@@ -334,6 +342,11 @@ export const useEditor = create<EditorState>((set, get) => {
       };
       if (gesteEndeHaken && gesteEndeHaken(start, get().dok, abschliessen)) return;
       abschliessen();
+    },
+    abbrechenGeste() {
+      const { gesteStart, gesteGeaendert } = get();
+      if (!gesteStart) return;
+      set({ dok: gesteStart, gesteStart: null, gesteZiel: null, geaendert: gesteGeaendert });
     },
     setzeProfil(ansicht, profil) {
       aendern((d) => mitFormVerbunden(d, { ...d, profile: { ...d.profile, [ansicht]: profil } }, !get().gesteStart));

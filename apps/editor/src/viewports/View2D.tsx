@@ -58,6 +58,8 @@ import { istTrackpad, radFaktor, spiegeln2, verschieben, zoomUm, zuBild, zuWelt 
 import { aktuellesNetz, useKernAnzeige } from '../kern/kernBau';
 import { NetzHoverZeichnung, NetzKnotenZeichnung, NetzZeichnung, naechsterUnter, netzKnotenGreifen } from '../netz/NetzEbene';
 import { TeilFlaechen, TeilKurvenZeichnung, TeilTreffer, TeilWirbelsaeulen } from '../teile/TeilEbene';
+import { zugProportional } from '../editing/modal/modal';
+import { ModalZeichnung } from '../editing/modal/ModalZeichnung';
 
 /** Saum ab dieser Abweichung (px bei 461 px je Kachel; Plan 9.8) */
 const SAUM_AB = 2;
@@ -415,6 +417,8 @@ export function View2D({ ansicht, w, h }: Props) {
       else sel = bisher.includes(i) ? bisher : [i];
       ui.waehle(ansicht, sel);
       if (!sel.includes(i)) return;
+      // V3: mit O wirkt der Zug proportional (als G mit gedrückter Taste: Rad ändert den Einfluss, Esc bricht ab)
+      if (zugProportional(e, ansicht, 'umriss')) return;
       const start = lokal(e.clientX, e.clientY);
       const basis = aktiveProfile();
       const auswahlBasis = useUi.getState().auswahl;
@@ -698,6 +702,7 @@ export function View2D({ ansicht, w, h }: Props) {
       {ebene === 'posen' && <KieferZeichnung ansicht={ansicht} bild={bild} w={w} h={h} />}
       {ebene === 'zaehne' && <ZahnZeichnung ansicht={ansicht} bild={bild} />}
       <BreitenKreis ansicht={ansicht} bild={bild} />
+      <ModalZeichnung ansicht={ansicht} bild={bild} w={w} h={h} />
       {/* gewählter Spant der Bauweise „rund“ als Schnitt: über allem, damit seine Punkte greifbar bleiben */}
       <RundSpantSchnitt ansicht={ansicht} bild={bild} />
       {rahmen && (

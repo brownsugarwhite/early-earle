@@ -10,6 +10,7 @@ import { useEditor, vorschauBeenden, vorschauLaeuft } from './state/editorStore'
 import { pinselRing } from './kern/pinsel';
 import { reifenNeuAmZeiger } from './kern/reifen';
 import { abspielenUmschalten } from './posen/ueberblenden';
+import { modalAbbrechen, modalAktiv, modalStarten, proportionalTaste } from './editing/modal/modal';
 import { STUFEN } from './stamm/stufen';
 import { useUi } from './state/uiStore';
 
@@ -127,11 +128,19 @@ export function useTastatur() {
       } else if (!cmd && !e.altKey && k === 'p') {
         ui.setzeWerkzeug('stift');
       } else if (!cmd && !e.altKey && !e.shiftKey && k === 's') {
-        // Spant-Werkzeug: Klick in Seite oder Top setzt einen Querschnitt
-        ui.setzeWerkzeug('spant');
+        // Plan 20.10., V3: S skaliert die Auswahl im Blatt unter dem Zeiger (Blender); ohne Auswahl bleibt S das
+        // Spant-Werkzeug (Klick in Seite oder Top setzt einen Querschnitt), bis V6 die Loops mit ⌘R auch in den Blättern setzt
+        if (!modalStarten('s')) ui.setzeWerkzeug('spant');
       } else if (!cmd && !e.altKey && !e.shiftKey && k === 'g') {
-        // Pinsel (M3, Blender auf der Bühne): G ziehen, I aufblasen, ⇧ beim Ziehen glättet, [ ] Radius
-        ui.setzeWerkzeug('ziehen');
+        // V3: G greift die Auswahl eines Blatts; ohne Auswahl und auf der Bühne der Pinsel (M3): G ziehen, I aufblasen,
+        // ⇧ beim Ziehen glättet, [ ] Radius
+        if (!modalStarten('g')) ui.setzeWerkzeug('ziehen');
+      } else if (!cmd && !e.altKey && !e.shiftKey && k === 'r') {
+        // V3: R dreht die Auswahl eines Blatts
+        if (!modalStarten('r') && ui.ebene === 'form' && ui.hover !== 'creation') ui.zeigeHinweis('R dreht die Auswahl eines Blatts — erst Punkte wählen');
+      } else if (!cmd && e.code === 'KeyO') {
+        // V3: O proportional an/aus, ⇧O Abfall, ⌥O nur verbunden (⌥O tippt „ø“, deshalb über den Tastencode)
+        proportionalTaste(e);
       } else if (!cmd && !e.altKey && !e.shiftKey && k === 'i') {
         ui.setzeWerkzeug('aufblasen');
       } else if (!cmd && (e.key === '[' || e.key === ']')) {
@@ -186,6 +195,8 @@ export function useMenueBruecke() {
     if (!editorApi) return;
     return editorApi.aufMenue((befehl) => {
       const ui = useUi.getState();
+      // V3: ein Menübefehl während G/S/R bricht die Operation zuerst ab (Rückgängig mitten in einer Geste wäre sonst halb)
+      if (modalAktiv()) modalAbbrechen();
       switch (befehl) {
         case 'neu':
           return neuesWesen();

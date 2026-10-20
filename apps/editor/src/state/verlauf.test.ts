@@ -2,7 +2,7 @@
 // mit einem Hinweis „↶ Fressen: Form“. Gesten gehören zum Ziel beim Gestenbeginn.
 import { describe, expect, it } from 'vitest';
 import { neuesDokument } from '@ee/shape';
-import { schrittName, useEditor } from './editorStore';
+import { schrittName, setzeGesteEndeHaken, useEditor } from './editorStore';
 import { useUi } from './uiStore';
 
 const ed = () => useEditor.getState();
@@ -113,5 +113,64 @@ describe('B7: Undo mit Zielwechsel', () => {
     expect(schrittName(a, b, 'editor')).toBe('Idle · Knochen');
     expect(schrittName(a, { ...a, skalierung: a.skalierung * 1.1 }, 'editor')).toBe('Größe');
     expect(schrittName(a, { ...a, kaefig: { deltas: [{ punkt: 1, d: [0, 0, 0.01] }] } }, 'editor')).toBe('Pinsel');
+  });
+});
+
+describe('V3: Geste abbrechen (Esc, Rechtsklick, ⌘Z während G/S/R)', () => {
+  it('stellt das Dokument des Gestenbeginns her, ohne Verlaufseintrag und mit dem alten „geändert“', () => {
+    ed().neu();
+    const vorher = ed().dok;
+    const json = JSON.stringify(vorher);
+    ed().beginGeste();
+    ed().setzeName('Zwischenstand');
+    ed().setzeSkalierung(1.5);
+    expect(ed().geaendert).toBe(true);
+    ed().abbrechenGeste();
+    expect(ed().dok).toBe(vorher);
+    expect(JSON.stringify(ed().dok)).toBe(json);
+    expect(ed().verlauf.length).toBe(0);
+    expect(ed().zukunft.length).toBe(0);
+    expect(ed().gesteStart).toBeNull();
+    expect(ed().geaendert).toBe(false);
+  });
+
+  it('der Haken am Gestenende („Formen folgen“) läuft nicht, die nächste Geste ist ein eigener Schritt', () => {
+    ed().neu();
+    ed().setzeName('Erster Schritt');
+    const nach1 = ed().dok;
+    let haken = 0;
+    setzeGesteEndeHaken(() => {
+      haken++;
+      return false;
+    });
+    try {
+      ed().beginGeste();
+      const nr = ed().gesteNr;
+      ed().setzeSkalierung(2);
+      ed().abbrechenGeste();
+      expect(haken).toBe(0);
+      expect(ed().dok).toBe(nach1);
+      expect(ed().verlauf.length).toBe(1);
+      expect(ed().geaendert).toBe(true);
+      ed().beginGeste();
+      expect(ed().gesteNr).toBe(nr + 1);
+      ed().setzeSkalierung(0.5);
+      ed().endeGeste();
+      expect(haken).toBe(1);
+      expect(ed().verlauf.length).toBe(2);
+      ed().rueckgaengig();
+      expect(ed().dok).toBe(nach1);
+    } finally {
+      setzeGesteEndeHaken(null);
+    }
+  });
+
+  it('ohne laufende Geste tut Abbrechen nichts', () => {
+    ed().neu();
+    ed().setzeName('bleibt');
+    const d = ed().dok;
+    ed().abbrechenGeste();
+    expect(ed().dok).toBe(d);
+    expect(ed().verlauf.length).toBe(1);
   });
 });

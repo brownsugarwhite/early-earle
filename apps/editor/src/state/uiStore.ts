@@ -3,6 +3,7 @@
 import type { Ansicht, Blick, V3T } from '@ee/shape';
 import type { SchnittRegel } from '@ee/shape/versuch';
 import { create } from 'zustand';
+import type { Abfall, Art, Sperre } from '../editing/modal/abbildung';
 import type { ViewId } from '../types';
 
 /** Augen-Zustand (Phase 2 M5, Plan 5.4): offen = Grundform, zu, Sichel („freuen“), X, Spirale, Schlitz */
@@ -31,6 +32,14 @@ export type KantenSicht = 'zeigen' | 'blass' | 'aus';
 export type NetzPunkt = { art: 'umriss'; quelle: 'seite' | 'front' | 'top'; index: number; spiegel: boolean } | { art: 'kante'; kante: number; index: number; spiegel: boolean };
 /** Breitenwerkzeug beim Ziehen: Kreis um den Punkt, Radius = Härte (Weltpunkt in der Ansicht). */
 export type BreitenAnzeige = { ansicht: Ansicht; mitte: { x: number; y: number }; h: number };
+
+/**
+ * Plan 20.10., V3: laufende Operation G/S/R in einem Blatt (zur Anzeige): Art, Blatt, Mitte und Zeiger in Blatt-Koordinaten
+ * (Profil-Einheiten), Sperre, freie Blattrichtungen (Achsenlinie), Einflussradius (0 = ohne proportional), Text fürs Dock.
+ */
+export type ModalAnzeige = { art: Art; ansicht: Ansicht; mitte: { x: number; y: number }; zeiger: { x: number; y: number }; sperre: Sperre | null; frei: { u: boolean; v: boolean } | null; radius: number; text: string };
+/** V3: proportionales Bearbeiten (O), Abfall (⇧O), nur verbunden (⌥O); der Radius ist der des Pinsels (`pinselRadius`). */
+export type Proportional = { an: boolean; abfall: Abfall; verbunden: boolean };
 
 export type Ueberblenden = { von: string; nach: string; t: number; dauer: number; spielt: boolean; zwischenbilder: boolean };
 
@@ -153,6 +162,11 @@ type UiState = {
   /** Pinsel (M3): Radius als Anteil der Körperhöhe (F bzw. [ ]) */
   pinselRadius: number;
   setzePinselRadius(r: number): void;
+  /** V3: laufende Operation G/S/R (Anzeige in Blatt und Dock), null = keine */
+  modal: ModalAnzeige | null;
+  setzeModal(m: ModalAnzeige | null): void;
+  proportional: Proportional;
+  setzeProportional(p: Partial<Proportional>): void;
   /** gewählte Punkte je 2D-Viewport (wie in der Vorlage: jede Ansicht zeigt ihre Griffe) */
   auswahl: Record<Ansicht, number[]>;
   /** zuletzt bearbeitete Ansicht (für Entf, wenn die Maus nicht über einem 2D-Viewport ist) */
@@ -282,6 +296,14 @@ export const useUi = create<UiState>((set, get) => ({
   pinselRadius: 0.25,
   setzePinselRadius(r) {
     set({ pinselRadius: Math.min(1, Math.max(0.03, r)) });
+  },
+  modal: null,
+  setzeModal(m) {
+    set({ modal: m });
+  },
+  proportional: { an: false, abfall: 'glatt', verbunden: false },
+  setzeProportional(p) {
+    set({ proportional: { ...get().proportional, ...p } });
   },
   auswahl: { seite: [], front: [], top: [] },
   aktiv: null,

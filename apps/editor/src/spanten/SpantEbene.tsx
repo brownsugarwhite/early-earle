@@ -38,6 +38,7 @@ import {
 import { kieferSchnitt, knotenImTeil, mitTeilProfil, teilZug } from '@ee/shape/kern';
 import { reifenAufTeilen } from '../kern/kernBau';
 import { useEditor } from '../state/editorStore';
+import { zugProportional } from '../editing/modal/modal';
 import { useUi } from '../state/uiStore';
 
 export const SPANT_VORN = '#0b7a5c';
@@ -418,6 +419,8 @@ export function spantZeiger(e: React.PointerEvent, ctx: SpantKontext): boolean {
     const auswahl = e.shiftKey ? (vorher.includes(j) ? vorher.filter((x) => x !== j) : [...vorher, j]) : vorher.includes(j) ? vorher : [j];
     ui.setzeSpantAuswahl({ spant: sel.spant, knoten: auswahl, teil });
     if (!auswahl.includes(j)) return true;
+    // V3: mit O proportional (G mit gedrückter Taste über die Punkte des Spants)
+    if (zugProportional(e, ctx.ansicht, 'spant')) return true;
     const basis: Profil = pr;
     ed.beginGeste();
     ctx.ziehen(
