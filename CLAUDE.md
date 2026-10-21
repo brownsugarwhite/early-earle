@@ -189,6 +189,15 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Ringe tasten das Höhenfeld der natürlichen Ringe ab. Gegen S8a: Robbe Falte 172 → 10°, Haut 4,4 → 1,4 px; Kegel-Kante neu
   (0,7 px); Bau ≈ 1 s → 0,35 s; Kante bleibt im Zug; Umrisse mit Linien ≤ 0,7 px anders (im Editor geprüft, `v5-editor.mjs`).
   Schlechter: schräge Linien (Vase, Würfel, Krake), Lage in der Zeichenansicht 0,4–2 px (Tor 0,3 als `it.fails`).
+- **2026-10-21 nachmittags/abends: V6 „Loops (⌘R)“ gebaut** (Abnahme offen; Planseite „V6 im Detail“, „Stand V6.1–V6.3“,
+  Register „Befunde aus V6“, Übergabe): ⌘R/⌃R wie Blenders „Loop Cut and Slide“ (Vorschau, Rad = Anzahl, Gleiten, ein
+  Undo-Schritt); ein Loop = Rücken-/Bauchknoten in der Seite + Breitenknoten im Top (liegender Ring) bzw. in der Front samt
+  Spanten (stehender Ring), formneutral, plus eigener Käfigring (`kern/schleifen.ts`, Option `schleifen`, Röhre ohne
+  Maul/Beine, beide Querschnitte). ⌥-Klick wählt einen Loop, G/S/R auf der Bühne formen ihn (`kern/schleifenGrs.ts`,
+  Mindest-Einfluss = 3 × Verschiebung). Mit Maul/Beinen lösen sich Loops in Knoten auf. Unterwegs behoben: formneutrale Knoten
+  änderten den Körper (Enden, Spitzenprobe, Ring-0-Ecken mit doppelten Ringen, harte Breitenpunkt-Schwelle, Breitenlinien-
+  Raster, Breiten je Segment); Loops entscheiden nichts um; Leiter an den Loops festgeheftet. Tor „Einfügen ≤ 0,1 px“ verfehlt
+  (Loop gibt Auflösung, Haut rückt am Loop zur Hülle, Langhals bis 4,5 px).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

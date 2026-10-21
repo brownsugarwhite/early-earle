@@ -414,6 +414,22 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
     eine vorgezogene Kopie traf den Standardbau (Kegel Front 7,3 → 8,3 px, fiel nur in den Extremreihe-Wächtern auf).
   - Im echten Editor messen: Die Kern-Messung an der Linie zeigte nicht, dass Linien den Front-Umriss um 2–5 px verschoben;
     `v5-editor.mjs` misst Δ ohne/mit Linien, Bericht, Zug und Rückgängig.
+- **Plan 20.10., V6 (Loops, `kern/schleifen.ts` im Kern; Editor `kern/schleifenWerkzeug.ts` ⌘R, `schleifenAuswahl.ts`,
+  `schleifenGrs.ts`):**
+  - **Formneutral prüfen:** Ein Knoten, der die Kurve nicht ändert, darf den Körper nicht ändern (Test „Formneutral eingefügte
+    Knoten“). Ursachen waren immer Entscheidungen, die an Knoten, Proben oder Ringnummern hängen: eingefrorene Enden nur bei
+    gleicher Knotenzahl, vorderste Probe an runder Spitze, Ecke an Ring 0 (beim Nachführen auf Ring 1 = zwei Ringe
+    aufeinander), harte 95-%-Schwelle der Breitenpunkte, Rasterstufe der Breitenlinie, Breiten je Segment abgetastet.
+  - **Ein neuer Ring entscheidet nichts um:** Fülle wo nötig, Breitenlinie, Reihenplan und Berühren wählen in der Kette ohne
+    Loops (`schleifenLage`, `zusatz`, `fest`); sonst kippt ein Loop die Vorlagen seiner Nachbarn (Robbe 4,2 px).
+  - **Loops liegen auf der Leiter, die Leiter auf den Loops:** neuer Loop = Leitersprosse an seiner Stelle der Wirbelsäule
+    (`ortImGeruest`); die Leiter wird an geformten Loops festgeheftet (`leiterAnLoops`), sonst kreuzen Ringe (179°).
+  - **Breitenknoten nach Lage:** liegender Ring → Top bei x, stehender (Hals) → Front auf seiner Höhe, dort mit allen Spanten
+    (`spantenPunktEinfuegen`; Spanten teilen die Punktstruktur der Front — Front-Knoten nie ohne sie einfügen).
+  - **Mindest-Einfluss:** Ein Loop auf der Bühne wirkt mindestens über 3 × seine Verschiebung (glatt längs des Umrisses);
+    dichte Loops in einer Biegung knicken sonst den Umriss. In den Blättern gilt er nicht (Knoten frei wie Illustrator).
+  - Der Hauptthread hat keine Ableitung: Ringdaten kommen mit dem Netz (`netz.ringe`), Ringnummern ohne Ableitung liest
+    `schleifenRingeAusDokument`. Hooks im Dock nie bedingt aufrufen (ein bedingter `useSchleifen…()` riss die Oberfläche ab).
 - **vitest 5 zeigt `console.log` bestandener Tests nur mit `--reporter=verbose`** (bei Fehlern immer). Messwerte so lesen: `npx vitest run <datei> --reporter=verbose`.
 - **macOS hat kein `timeout`-Kommando**; lange Läufe über das Werkzeug-Timeout begrenzen. `pnpm -r test` lässt Pakete parallel laufen; die Laufzeit-Tests der Versuche (`kanten`, `flaechenlinie`, `wesen`) reißen dann ihre Schranken (967 ms > 600 ms), einzeln laufen sie durch.
 
