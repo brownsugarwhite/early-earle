@@ -13,7 +13,7 @@ import { unterteilung } from '../../subdivision/catmullClark';
 import { anwenden3 } from '../../subdivision/matrix';
 import type { FeldSpec } from './feld';
 import { ankerVon, type FeinNetz, feinNetz } from './flaeche';
-import { lippenKurve } from './lippe';
+import { lippenKurve, lippenPunkt } from './lippe';
 import { type EinsatzTopologie, punktNormalen } from './topologie';
 
 type V3 = [number, number, number];
@@ -168,6 +168,7 @@ export function einsatzLoesen(t: EinsatzTopologie, k1: Kaefig, netz: FeinNetz, l
   const wulstBreite = (opt.wulstBreite ?? 0.03) * kopfHoehe(netz, c);
   const wulst = (opt.wulst ?? 0.4) / PX;
   const kurve = lippenKurve(lippe, 32, t.gitter === 'kernring' ? 'falte' : 'ecke');
+  const spitze = t.gitter === 'kernring' ? lippenPunkt(lippe, m, 'falte') : null;
   // Startgitter x₀ und Umbrella-Glätte der freien Punkte
   const x0 = Float64Array.from(xyz);
   const nachbarn = (p: number): number[] => {
@@ -234,7 +235,14 @@ export function einsatzLoesen(t: EinsatzTopologie, k1: Kaefig, netz: FeinNetz, l
           const dl = abstandZuZug(p, kurve);
           if (dl < wulstBreite) {
             const s = Math.sin((Math.PI * dl) / wulstBreite);
-            for (let d = 0; d < 3; d++) ziel[d] = ziel[d]! + wulst * s * s * n[d]!;
+            // Kernring: Wulst läuft zur Spitze hin aus (sonst legt das um die Spitze laufende Band eine Beule auf den
+            // Mundwinkel, gemessen 1–2° Knick)
+            let aus = 1;
+            if (spitze) {
+              const q = Math.min(1, Math.hypot(p[0] - spitze[0], p[1] - spitze[1], p[2] - spitze[2]) / (2 * wulstBreite));
+              aus = q * q * (3 - 2 * q);
+            }
+            for (let d = 0; d < 3; d++) ziel[d] = ziel[d]! + wulst * s * s * aus * n[d]!;
           }
         }
       }

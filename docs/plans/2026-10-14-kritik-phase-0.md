@@ -223,6 +223,9 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
   3. Konforme Lippenstellen passen nicht zu verwickelten Linien (Rex mittel: Lippe 5,6 px). Weg: Bogenlänge/Krümmung, nur zum
      Mundwinkel hin konform gestuft.
   4. Haut 0,6–1,3 px statt 0,25 (konforme Reihenzahl ist kleiner; schiefe Zellen außen).
+- **Knick am Mundwinkel kommt von der Lage, nicht von der Topologie** (21.10. mittags): Kissen mit idealer Lage 1,0°, 2 : 1-Zellen
+  10–16°; im Feld liegt der Fächer 3–10-mal zu nah an c und gekippt (konforme Lage ist um c parabelförmig). Sechs Lage-Varianten
+  gemessen und verworfen (Planseite „Nachtrag E1“). Weg: Quadratgitter um c als Ziel-Lage, Tutte mit Mittelwertgewichten.
 - **Kernring braucht Zellgrößen ≥ einer Kante von K1 am Mundwinkel** (gemessen): Die Karte steht auf Dreiecken der Stufe 3 von
   A0; darunter stimmt ihre Wurzelform nicht mehr, kleinere Zellen am Mundwinkel klappen. Die Lippenstellen wachsen deshalb vom
   Mundwinkel aus mindestens geometrisch (Option `eckeMin`).

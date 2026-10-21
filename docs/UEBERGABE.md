@@ -1,8 +1,25 @@
-# Übergabe (Stand 21.10.2026 früh: V0–V5 gebaut, V6 „Loops (⌘R)“ gebaut — Abnahme offen)
+# Übergabe (Stand 21.10.2026 mittags: Teil A „Maul als Einsatz“, E1 Kernring als Versuch — vorher V0–V6, Abnahme offen)
 
 Branch `claude/editor-grundlayout`, PR mit Auto-Fix.
 
-## Einstieg
+## Aktueller Block: Teil A, E1 (Florian 21.10.: „Weiter mit Teil A ‚Maul als Einsatz‘ … glatte Haut, Hülle, Linien exakt und Loops
+auch mit Maul“)
+
+- Planseite [`docs/plans/2026-10-21-maul-einsatz-weiter.md`](plans/2026-10-21-maul-einsatz-weiter.md), Abschnitte „Stand E1“ und
+  „Nachtrag E1 (mittags)“; Register [`2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md), „Befunde aus E1“.
+- **Gebaut (Kern, Versuch hinter `gitter: 'kernring'`, alter Weg bitgleich):** Mundwinkel als regulärer Gitterpunkt (Kernring),
+  Lippe endet als Falte (`lippeAnpassen(…, { ende: 'falte' })`), Lage in zwei Stufen (innen Auffaltung um c, außen Karte),
+  konforme Reihenzahl, Mindestzelle am Mundwinkel, Lippenwulst läuft zur Spitze aus. Tests `einsatz/kernring.test.ts` (Lippe als
+  Falte ≤ 1e-12, Topologie an 54 Fällen; Tor als `it.fails`).
+- **Gemessen:** Knick am Mundwinkel ≤ 12° in 29 von 39 Fällen (Schleifengitter: keiner unter 131°), Tor (A0 + 2°) in 4–5 von 15.
+  Kissen-Vorversuch: Die Kernring-Topologie selbst ist sauber (1,0° bei quadratischen, gleich großen Zellen um c); schon 2 : 1
+  gibt 10–16°. Im echten Feld ist die Startlage am Mundwinkel 3–10° (konforme Lage ist um c parabelförmig, E steht zu nah).
+- **Nächster Schritt (technisch, meine Wahl):** die Zellen um c als Quadratgitter auf der Haut legen und faltenfrei einbetten
+  (Tutte mit Mittelwertgewichten aus einer Ziel-Lage nahe c, Mundwinkelspeiche fest), Lippenstellen zum Mundwinkel hin passend
+  stufen, Feld hinter dem Mundwinkel nötigenfalls verlängern; danach schiefe Felder (Übergangsreihe) und die Lippe für
+  verwickelte Linien (Bogenlänge statt konform).
+
+## Einstieg (Plan V0–V9)
 
 Maßgeblich ist der am 20.10. freigegebene Plan
 **[`docs/plans/2026-10-20-vektorillustration-bedienung.md`](plans/2026-10-20-vektorillustration-bedienung.md)**: ehrliche

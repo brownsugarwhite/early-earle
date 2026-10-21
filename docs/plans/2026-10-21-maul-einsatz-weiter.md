@@ -128,3 +128,28 @@ Gute Fälle: Kugel/Ei/Birne „mittel“ und „hoch“ (4,4–9,8° am Mundwink
 3. Konforme Lippenstellen passen schlecht zu verwickelten Linien (Rex mittel: Lippe 5,6 px statt ≤ 1). → Stellen nach Bogenlänge
    und Krümmung, nur zum Mundwinkel hin konform gestuft.
 4. Haut 0,6–1,2 px (Tor 0,25): kleineres J als vorher (Kugel mittel J = 4 statt 7) und die schiefen Zellen der äußeren Stufe.
+
+## Nachtrag E1 (21.10. mittags): Wo der Knick am Mundwinkel herkommt
+
+- **Kissen-Vorversuch 3** (Kernring-Topologie auf einem Kissen mit idealer Lage: Reihe r = Quadratring der halben Größe r·h um
+  das Schlitzende, Dreierpole an den Ringecken): bei gleich großen Quadraten um c **1,0°** am Mundwinkel (Gitter 3,7°). Lippen-
+  spanne 2 × Reihenhöhe → 14°, Reihenhöhe 2 × Lippenspanne → 10,5°, Spanne 1 : Reihe 0,5 → 16°. Die Topologie ist also gut;
+  am Mundwinkel zählt allein, dass die vier Zellen um c etwa gleich große Quadrate sind.
+- **Fächer im echten Feld gemessen** (Winkel und Abstand von U'_m, U'_{m+1}, E, D'_{m+1}, D'_m in der Tangentialebene an c):
+  heute 3–10-mal näher an c als die letzte Lippenspanne (1–5 px gegen 7–20 px) und um 20–50° gekippt; Startlage (ohne A7) am
+  Mundwinkel 3–10°, A7 ändert ±2°. Die konforme Lage ist um c parabelförmig (Reihe 1 umrundet c wie eine Parabel mit c im
+  Brennpunkt: E im Abstand D, U'_m in 2D) — das ist die echte Konformgeometrie und begrenzt den Knick auf etwa 5–10°.
+- **Gemessen und verworfen** (je Variante an vier bis acht Fällen): Gewichte nach Hautlänge am Mundwinkel (E bleibt an c, Fächer
+  kippt nach hinten); radiale Umparametrisierung Φ (nahe c hautgleich) — Größen stimmen, Winkel gestaucht (U'_m 65° statt 90°);
+  Fächer fest als Quadrat in Φ — faltet (die Reihen dahinter passen nicht); innere Stufe in W' = ζ² − x_c — Größen stimmen, fern
+  von c verzerrt, faltet außen; Polarkoordinaten auf der Haut um c (überblendet) — Fächer symmetrisch, aber weiter gestaucht;
+  Ideallage nur in den inneren Reihen eingesetzt — faltet (Reihen dahinter widersprechen). Lehre: Tutte mit gleichen Gewichten
+  in einer winkelhalbierenden Auffaltung ist nicht das Quadratgitter; die Ziel-Lage muss als Ganzes (mit den Reihen dahinter)
+  vorgegeben und faltenfrei eingebettet werden.
+- **Lippenwulst läuft zur Spitze aus** (nur Kernring): Das Wulstband um die Lippe legte eine Beule auf den Mundwinkel (1–2°).
+  Birne mittel 6,1 → 3,6°, Kugel mittel 5,4 → 4,4°, Kugel hoch 5,7 → 5,0°.
+- **Weg (technisch entschieden):** Ziel-Lage nahe c als Quadratgitter auf der Haut (Reihe r im Abstand r·h, h = |c − U_{m−1}|)
+  samt den Reihen dahinter, übergeblendet in die heutige Lage; eingebettet nach Tutte mit Mittelwertgewichten aus der Ziel-Lage
+  (positiv, linear genau: gibt die Ziel-Lage wieder, wo sie gültig ist; faltenfrei, weil der Rand konvex bleibt). Dazu die
+  Lippenstellen zum Mundwinkel hin auf h stufen und das Feld hinter dem Mundwinkel verlängern, wo es für zwei, drei Quadrate
+  nicht reicht.
