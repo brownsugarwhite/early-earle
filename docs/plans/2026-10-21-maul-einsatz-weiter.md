@@ -534,14 +534,17 @@ Haut.
 **Offen:**
 - **Rex mittel gerade:** Knick 29,6° (A0 27,1°, Tor 29,1°). Er liegt in Reihe 1 neben der Kreuzung der Falte mit der Linie; örtlich
   hat A0 dort höchstens 11°, der Einsatz 26–30° (auch Rex mittel J, dort verdeckt der globale Vergleich mit A0s 27° an der
-  Schnauzenspitze den Unterschied). Gemessen und verworfen: halbscharfe Falte an der Lippe (keine Wirkung), Ecke der Lippe allein
-  (≈ 1°), Lippenteilung stetig an P (≈ 0°), Stück fest auf der Falte (schlechter). Vor dem nächsten Versuch die Lage der Falte von
-  A0 an der Kreuzung genau ansehen (sie läuft bei gerade 0,5 px auf der Linie).
+  Schnauzenspitze den Unterschied). Gemessen und verworfen: halbscharfe erste Faltenkante an der Lippe (gerade 30,1°), ohne Ecke
+  der Lippe (29,9°), beides (30,3°), ohne das Stück über P (30,3°), Lippenteilung stetig an P (≈ 0°), Stück fest auf der Falte
+  (30,8°) — der Standard (Ecke, scharf, Stück in natürlicher Lage) ist mit 29,6° der beste. Vor dem nächsten Versuch die Lage der
+  Falte von A0 an der Kreuzung genau ansehen (sie läuft bei gerade 0,5 px auf der Linie).
 - **Robbe hoch J:** faltet an der Engstelle (die Linie kommt der Kopfnaht bis 0,5 Feldkanten nahe, bei 30 % der Länge; dahinter
   weitet sich der Streifen wieder). Durch die Engstelle müssten sieben Holme. Weg: zwei Leitern hintereinander (vor der Engstelle
   ohne Holme, dahinter bis zur Weite) — oder die Engstelle als Grenze der Zeichnung behandeln (Florians Entscheidung).
 - E2.4 (A0 mit Hülle, P-Linien am Maul, Loops) noch nicht gemessen.
 
 **Tests:** `kernring.test.ts` — neuer Wächter „Leiter“ (Rex mittel J, Robbe hoch gerade in den Toren, ohne Fund bitgleich; ohne
-Leiter rot), Topologie mit den Polen der Leiter (Valenz 3 und 5), Lippe als Falte mit Ecke, Spitzen-Wächter an Rex mittel J;
-`kernring.extrem.ts` — offen nur noch Rex mittel gerade und Robbe hoch J.
+Leiter rot), Topologie mit den Polen der Leiter (Valenz 3 und 5), Lippe als Falte mit Ecke, Spitzen-Wächter an Rex mittel J
+(26 Tests grün); `kernring.extrem.ts` — offen nur noch Rex mittel gerade und Robbe hoch J (Extrem-Lauf grün: Haut-Tor ohne die
+offenen, Mundwinkel-Tor an allen 43, Gesamttest erwartet rot). Bild
+[`e2-leiter-2026-10-21.jpg`](../progress/editor/e2-leiter-2026-10-21.jpg).

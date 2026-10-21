@@ -849,6 +849,8 @@ export type EinsatzOptionen = {
   leiterFeld?: 'karte' | 'coons';
   /** Leiter (Versuch): Schärfe der ersten Faltenkante an der Lippe (Hals und Stück über P); fehlt: die Schärfe der Falte */
   leiterLippenSchaerfe?: number;
+  /** Leiter (Vergleich): Ecke der Lippe an der Kreuzung (Standard an) */
+  leiterLippenEcke?: boolean;
   /**
    * Leiter: Lippenstellen im Ringteil (P … Mundwinkel) nach Bogenlänge (Standard; an P so dicht wie im Leiterteil) oder konform in
    * der Ringkarte (dort sprang die Spanne an P auf das Doppelte: Rex mittel 2,8 → 5,3 px, Knick an der Kreuzung 33°)
@@ -1140,7 +1142,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
     }
     // E2.6: kreuzt eine Falte von A0 die Linie (Leiter), hat die Lippe dort eine Ecke — im Käfig laufen an P drei scharfe Kanten
     // zusammen (Lippe, Hals, Stück über P); Käfig und Lippe brauchen dieselbe Regel
-    if (ring && ring.fund.art === 'falte') lippenEcken.push(leiterQ[0]!);
+    if (ring && ring.fund.art === 'falte' && opt.leiterLippenEcke !== false) lippenEcken.push(leiterQ[0]!);
     const pk = opt.linie && opt.linie.length > 1 ? lippeAnpassen(opt.linie, m, lippenAnteile, { ende: 'falte', anfang: lippenAnfang, ecken: lippenEcken }).punkte : null;
     const cSchlitz = stelle(seiteA, lippenLaenge).p;
     let cAbstand: number;
