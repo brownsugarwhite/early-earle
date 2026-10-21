@@ -33,7 +33,15 @@ liegt bisher nur im Kern (`packages/shape/src/kern/einsatz/`); im Editor ist dav
    Klarstellungen. Sie prüft das Zielbild „ein Liniennetz, ein Löser“ kritisch: Lücken, Denkfehler, bessere unkonventionelle
    Ideen, und ob die Beweise das Richtige testen. Dann schreibt sie den Prüfplan P1–P3 mit Florians Kriterien nach `docs/plans/`.
    Florian gibt frei. Der Prüfplan nimmt zwei Anker für die Bausteine mit: eine Zahnfleischreihe im Maul-Stücknetz (P2) und einen
-   Augenumriss mit Brauenwulst als harte Linie (P3; der Brauenwulst scheiterte am 15.10. an der Topologie).
+   Augenumriss mit Brauenwulst als harte Linie (P3; der Brauenwulst scheiterte am 15.10. an der Topologie). Dazu kommen:
+   - **ein Budget-Tor in P2 und P3:** Das Spielnetz auf Brettstufe hat höchstens 8 000 Dreiecke je Wesen, samt Maul. Heute bläht der
+     Maul-Einsatz auf K2 den Käfig von 400 auf 9 500–13 000 Flächen auf; schon die Käfigflächen allein sind 19 000–26 000 Dreiecke.
+     Ein Körper ohne Maul hat auf Stufe 1 3 200 Dreiecke, ein Mehrteiler 1 700–6 300. Messung:
+     `apps/editor/scripts/pruefen/dreieck-budget.ts`.
+   - **eine Spiel-Probe P0** (1–2 Tage, dazu etwa 30 Minuten von Florian am iPhone): 36 heutige Prüfwesen auf Stufe 1 und 2 als
+     gebackene Netze mit Earle-Material, Kieferknochen, ein bis drei Morph-Zielen und Schatten, auf dem echten Brett in der echten
+     Karte. Gemessen wird in Safari (WebGPU) und in der App (WKWebView, womöglich WebGL2) nach `docs/progress/karte-perf-iphone16.md`:
+     fps, p99, Draw Calls. P0 hängt nicht vom Netz ab und kann vor oder neben P1 laufen.
 3. **Beweise P1 → P2 → P3 (etwa 2–2,5 Wochen).** Streng nach Prüfplan, im Kern hinter Schaltern, nichts im Editor umgestellt,
    Kernring eingefroren. Nach jedem Beweis gibt es Kontaktbögen und Zahlen, dann urteilt Florian; die Abbruchkriterien gelten.
 4. **Großer Plan (eine Sitzung, etwa 1 Tag).** Er baut auf den Ergebnissen auf: Bauweise, Reihenfolge des Umbaus, Einbau in den
