@@ -347,3 +347,98 @@ export function leiterKeile(netz: FeinNetz, karte: Karte, doppel: Map<number, nu
   }
   return funde;
 }
+
+/** Weg in der Leiterkarte: Bogenlänge (Lage) und Kartenlage je Punkt, für Punkte nach Bogenlänge */
+export type KartenWeg = { s: number[]; u: number[]; v: number[]; p: V3[] };
+
+/**
+ * Karte des Leiterfelds (E2.6): Lippe und Naht hinter X_1 liegen auf gegenüberliegenden Seiten (U = 0 bzw. 1), die Sprossen sind
+ * V-Linien; Naht vor X_1 und Hals die Enden (V = 0 bzw. 1, je nach Seite vertauscht). X_1 ist der Nahtpunkt nächst der
+ * Bogenlänge `sX1` ab O. Dazu die vier Wege mit Bogenlänge und Kartenlage (Lippe O → P, Hals P → Q, Naht O → Q).
+ */
+export function leiterKarte(karte: Karte, netz: FeinNetz, doppel: Map<number, number>, fund: LeiterFund, sX1: number): { karte: Karte; lippe: KartenWeg; hals: KartenWeg; naht: KartenWeg; x1: number } {
+  const T = karte.dreiecke;
+  const drin = leiterDreiecke(karte, fund);
+  const lokal = new Map<number, number>();
+  const global: number[] = [];
+  const tri: number[] = [];
+  for (const t of [...drin].sort((a, b) => a - b))
+    for (let k = 0; k < 3; k++) {
+      const g = T[3 * t + k]!;
+      if (!lokal.has(g)) {
+        lokal.set(g, global.length);
+        global.push(g);
+      }
+      tri.push(lokal.get(g)!);
+    }
+  const P = (g: number): V3 => {
+    const o = doppel.get(g) ?? g;
+    return [netz.punkte[3 * o]!, netz.punkte[3 * o + 1]!, netz.punkte[3 * o + 2]!];
+  };
+  const Pos = new Float64Array(3 * global.length);
+  global.forEach((g, i) => Pos.set(P(g), 3 * i));
+  const schlitz = karte.rand.schlitz.map((l) => karte.punkte[l]!);
+  const iW = (schlitz.length - 1) / 2;
+  const p0 = fund.hals[0]!;
+  const q0 = fund.hals[fund.hals.length - 1]!;
+  // Lippe O → P und Naht O → Q (globale Nummern)
+  const iP = schlitz.indexOf(p0);
+  const lippe = fund.seite === 0 ? schlitz.slice(0, iP + 1) : schlitz.slice(iP).reverse();
+  const nahtAlle = fund.seite === 0 ? [...karte.rand.mitteOben].reverse().map((l) => karte.punkte[l]!) : karte.rand.mitteUnten.map((l) => karte.punkte[l]!);
+  const iQ = nahtAlle.indexOf(q0);
+  if (iP < 0 || iQ < 0 || iP > (fund.seite === 0 ? iW : 2 * iW)) throw new Error('Leiter: Ränder des Leiterfelds');
+  const naht = nahtAlle.slice(0, iQ + 1);
+  const bogen = (w: number[]) => {
+    const s = [0];
+    for (let i = 1; i < w.length; i++) {
+      const a = P(w[i - 1]!);
+      const b = P(w[i]!);
+      s.push(s[i - 1]! + Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]));
+    }
+    return s;
+  };
+  const sN = bogen(naht);
+  let ix = 1;
+  for (let i = 1; i < naht.length - 1; i++) if (Math.abs(sN[i]! - sX1) < Math.abs(sN[ix]! - sX1)) ix = i;
+  ix = Math.min(naht.length - 2, Math.max(1, ix));
+  const vorX = naht.slice(0, ix + 1);
+  const nachX = naht.slice(ix);
+  const lok = (w: number[]) => w.map((g) => lokal.get(g)!);
+  const hals = fund.hals;
+  const stuecke =
+    fund.seite === 0
+      ? { schlitz: lok(lippe), mitteUnten: lok(hals), aussen: lok([...nachX].reverse()), mitteOben: lok([...vorX].reverse()) }
+      : { schlitz: lok([...lippe].reverse()), mitteUnten: lok(vorX), aussen: lok(nachX), mitteOben: lok([...hals].reverse()) };
+  const dreiecke = Int32Array.from(tri);
+  ohrenKippen(dreiecke);
+  const lk = karteAusStuecken(dreiecke, Pos, global, stuecke);
+  const weg = (w: number[]): KartenWeg => ({ s: bogen(w), u: w.map((g) => lk.u[lokal.get(g)!]!), v: w.map((g) => lk.v[lokal.get(g)!]!), p: w.map(P) });
+  return { karte: lk, lippe: weg(lippe), hals: weg(hals), naht: weg(naht), x1: sN[ix]! };
+}
+
+/** Kartenlage auf einem Weg bei Bogenlänge s (stückweise linear) */
+export function wegBei(w: KartenWeg, s: number): { u: number; v: number } {
+  let i = 0;
+  while (i + 2 < w.s.length && w.s[i + 1]! < s) i++;
+  const f = w.s[i + 1]! > w.s[i]! ? Math.min(1, Math.max(0, (s - w.s[i]!) / (w.s[i + 1]! - w.s[i]!))) : 0;
+  return { u: w.u[i]! + f * (w.u[i + 1]! - w.u[i]!), v: w.v[i]! + f * (w.v[i + 1]! - w.v[i]!) };
+}
+
+/** Bogenlänge des Fußpunkts von p auf einem Weg */
+export function wegFuss(w: KartenWeg, p: V3): number {
+  let best = 0;
+  let bd = Infinity;
+  for (let i = 0; i + 1 < w.p.length; i++) {
+    const a = w.p[i]!;
+    const b = w.p[i + 1]!;
+    const e: V3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const l2 = e[0] * e[0] + e[1] * e[1] + e[2] * e[2];
+    const t = l2 > 0 ? Math.min(1, Math.max(0, ((p[0] - a[0]) * e[0] + (p[1] - a[1]) * e[1] + (p[2] - a[2]) * e[2]) / l2)) : 0;
+    const d = Math.hypot(a[0] + t * e[0] - p[0], a[1] + t * e[1] - p[1], a[2] + t * e[2] - p[2]);
+    if (d < bd) {
+      bd = d;
+      best = w.s[i]! + t * (w.s[i + 1]! - w.s[i]!);
+    }
+  }
+  return best;
+}

@@ -1,8 +1,8 @@
 // Teil A, E1/E2 (Plan 21.10.): ganze Reihe des Kernrings auf dem Standard — A0 wie im Editor (E2), Feld auf K2 begradigt bis 1,5
 // Radien, Schlitz genau auf der Linie, Reihenzahl konform 10 … 16, Fächer um c als Halbkreis, Naht nach Bogenlänge auf einer
 // umparametrisierten Karte, ein Ausgleich der Stufennaht, Ausgleich außen, letzte Lippenspanne 0,15 Feldkante, Spitzen von A0
-// übernommen, ohne Lippenwulst. Haut-Tor und Mundwinkel-Tor an allen ausgeglichenen Fällen (Linie ≤ 1 px auf der Haut), seit E2
-// auch an Rex und Robbe. Läuft im Extrem-Lauf (`pnpm --filter @ee/shape test:extrem`, wöchentlich in CI); im normalen Lauf
+// übernommen, ohne Lippenwulst, Lippenziel auf der Haut, Leiter (E2.6). Haut-Tor und Mundwinkel-Tor an allen ausgeglichenen
+// Fällen (Linie ≤ 1 px auf der Haut), seit E2 auch an Rex und Robbe. Läuft im Extrem-Lauf (`pnpm --filter @ee/shape test:extrem`, wöchentlich in CI); im normalen Lauf
 // wachen in `kernring.test.ts` drei Fälle über die Haut, drei J-Linien über den Mundwinkel, Robbe hoch über die Lage und Robbe
 // mittel und Rex mittel über die Spitzen von A0.
 import { describe, expect, it } from 'vitest';
@@ -35,11 +35,10 @@ function ganzeReihe(): Zeile[] {
 describe('Teil A, E1: Kernring, ganze Reihe auf K2', () => {
   // Tor „genaue Haut“ (Florian 21.10.: „Mach zuerst die Haut wieder genauer (0,25 px)“; E2: an allen Körpern): ≤ 0,25 px gegen
   // A0, Knick im Feld ≤ A0 + 2° (scharfe Kanten und die Umgebung von Spitzen zählen nicht), Lippe ≤ 1 px, nirgends umgeklappt,
-  // außen bitgleich, Spiegel bitgenau. Offen (Register „Befunde aus E2“): Robbe hoch (Linie oben auf dem Kopf, spitzer
-  // Schlitzanfang: die Haut faltet in den ersten Lippenzellen), Rex mittel J (die Querfalte von A0 kreuzt den Schlitz und
-  // läuft zur Naht — im Kernring keine Gitterlinie) und Robbe tief J (die Lippe hat quer zur Haut einen Buckel, Knick 16,8° an
-  // der Lippe bei A0 11,2°).
-  const OFFEN = ['robbe/hoch/gerade', 'robbe/hoch/j', 'rex/mittel/j', 'robbe/tief/j'];
+  // außen bitgleich, Spiegel bitgenau. Seit E2.6 mit Leiter und Lippenziel auf der Haut (41 von 43). Offen (Register „Befunde
+  // aus E2“): Rex mittel gerade (an der Kreuzung der Falte mit der Linie Knick 29,6° bei A0 27,1°) und Robbe hoch J (die Linie
+  // kommt der Kopfnaht bis 0,5 Feldkanten nahe; durch die Engstelle müssen sieben Holme — braucht zwei Leitern hintereinander).
+  const OFFEN = ['rex/mittel/gerade', 'robbe/hoch/j'];
   const torFehler = (zs: Zeile[]) => {
     let fehler = '';
     for (const z of zs) {
@@ -60,7 +59,7 @@ describe('Teil A, E1: Kernring, ganze Reihe auf K2', () => {
   }, 3_600_000);
 
   // dasselbe Tor an allen Fällen — fällt dieser Test nicht mehr, sind die offenen Fälle gelöst
-  it.fails('Haut-Tor an allen Fällen (offen: Robbe hoch, Rex mittel J, Robbe tief J)', () => {
+  it.fails('Haut-Tor an allen Fällen (offen: Rex mittel gerade, Robbe hoch J)', () => {
     expect(torFehler(ganzeReihe())).toBe('');
   }, 3_600_000);
 

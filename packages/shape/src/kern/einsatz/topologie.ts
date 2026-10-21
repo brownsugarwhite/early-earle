@@ -28,7 +28,7 @@ import { ankerVon, type FeinNetz, feinNetz, punktNormalen } from './flaeche';
 import type { Karte } from './karte';
 import { bandLage, hautPunkt, zellenUmgeklappt } from './band';
 import { kruemmungsParameter, type LippenAnfang, lippeAnpassen } from './lippe';
-import { leiterFalten, leiterKeile, ringKarte } from './leiter';
+import { leiterFalten, leiterKarte, leiterKeile, ringKarte } from './leiter';
 import { type LeiterGitter, leiterGitterBauen } from './leiterGitter';
 
 type V3 = [number, number, number];
@@ -108,6 +108,8 @@ export type EinsatzTopologie = {
    * X_2 … X_q auf der Naht (X_q = Q). In `haut` fehlen die Punkte hinter den Sprossen (−1).
    */
   leiter: { seite: 0 | 1; q: number; t: number; kHals: number; X: number[] } | null;
+  /** Lippenstellen mit einer Ecke (E2.6: Kreuzung einer Falte von A0; `lippenPunkt(…, ecken)`) */
+  lippenEcken: number[];
 };
 
 const smooth = (u: number) => u * u * (3 - 2 * u);
@@ -831,13 +833,27 @@ export type EinsatzOptionen = {
   /** Kernring: Runden des Ausgleichs nach Hautlängen in der äußeren Stufe (0 = gleiche Gewichte; Standard auf K2: 6) */
   aussenRunden?: number;
   /**
-   * Kernring (E2.6, Versuch): Leiter — kreuzt eine Falte von A0 den Schlitz und läuft bis zur Naht (Rex mittel), enden die
-   * Speichen der Lippenstellen zwischen Anfang und Falte auf der Naht, die Falte ist die Halssprosse (`einsatz/leiter.ts`,
-   * `einsatz/leiterGitter.ts`). Ohne Fund bitgleich.
+   * Kernring (E2.6, Standard auf K2): Leiter — kreuzt eine Falte von A0 den Schlitz und läuft bis zur Naht (Rex mittel) oder ist
+   * der Streifen zwischen Schlitzufer und Naht ein schmaler Keil (Robbe hoch), enden die Speichen der Lippenstellen zwischen
+   * Anfang und Hals auf der Naht (`einsatz/leiter.ts`, `einsatz/leiterGitter.ts`). Ohne Fund bitgleich.
    */
   leiter?: boolean;
   /** Leiter: das Stück der Falte auf der Gegenseite auf die Speiche über P legen (Standard an; aus nur für Vergleiche) */
   leiterStueck?: boolean;
+  /**
+   * Leiter: Punkte der Speiche über P dort, wo das Gitter sie legt ('natuerlich', Standard), oder fest auf dem Stück bis zu seinem
+   * Ende ('ende'; Rex mittel: das kurze Stück zog Reihe 1 an die Lippe, Knick 30,8° statt 29,6°)
+   */
+  leiterStueckLage?: 'ende' | 'natuerlich';
+  /** Leiter: Leiterfeld als Tutte-Gitter in seiner eigenen Karte (Standard) oder als Coons-Fläche (Vergleich) */
+  leiterFeld?: 'karte' | 'coons';
+  /** Leiter (Versuch): Schärfe der ersten Faltenkante an der Lippe (Hals und Stück über P); fehlt: die Schärfe der Falte */
+  leiterLippenSchaerfe?: number;
+  /**
+   * Leiter: Lippenstellen im Ringteil (P … Mundwinkel) nach Bogenlänge (Standard; an P so dicht wie im Leiterteil) oder konform in
+   * der Ringkarte (dort sprang die Spanne an P auf das Doppelte: Rex mittel 2,8 → 5,3 px, Knick an der Kreuzung 33°)
+   */
+  leiterRingTeil?: 'bogen' | 'konform';
   /**
    * Stufe des Feldkäfigs über A0 (K1 = 1, K2 = 2; Standard 1). Kernring auf K2 (Standard der genauen Haut, Plan 21.10.):
    * Reihenzahl konform passend auf 10 … 16 begrenzt, Ausgleich außen 6 Runden; auf K1 wie bisher (3 … 8, ohne Ausgleich).
@@ -912,7 +928,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
   // auf der Naht. Jede Sprosse spart dem Feldrand eine Speiche; damit die Speichen den Feldrand (2M + 1 Punkte) genau treffen,
   // wächst die Lippe: m = M − 2 + (q − 1)/2, q ungerade, so gewählt, dass Leiter- und Ringteil der Lippe gleich dicht sind
   const leiterFunde = (() => {
-    if (!kern || opt.lage === 'band' || !opt.leiter) return [];
+    if (!kern || opt.lage === 'band' || !(opt.leiter ?? opt.stufe === 2)) return [];
     const falten = leiterFalten(k1, feld, netz, karte, doppel);
     if (falten.length) return falten.slice(0, 1);
     // Keil: Feldkante wie unten (Median der Kanten des Felds)
@@ -1032,6 +1048,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
   // Kernring: Kantenlänge des Felds (Median) — Maß für die kleinste Zelle am Mundwinkel und die Zellen am Feldrand
   let kante = 0;
   let lippenAnfang: LippenAnfang = 'naht';
+  const lippenEcken: number[] = [];
   let anfangSchaerfe = 0;
   // Lage nach Hautmaß: Spanne Δ der Lippe (Abstand der Kontrollpunkte, auch der ersten Reihe)
   let delta = 0;
@@ -1079,7 +1096,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
         const sH = ring.sHals;
         const mR = m - q;
         const LR = lippenLaenge - sH;
-        const konform = Array.from({ length: mR + 1 }, (_, j) => (j === mR ? lippenLaenge : ring.bogenBei(j / mR)));
+        const konform = Array.from({ length: mR + 1 }, (_, j) => (j === mR ? lippenLaenge : opt.leiterRingTeil === 'konform' ? ring.bogenBei(j / mR) : sH + (LR * j) / mR));
         const abstand = (h: number) => {
           const d = new Float64Array(mR + 1);
           for (let j = 1; j <= mR; j++) d[j] = Math.max(lippenLaenge - konform[mR - j]!, d[j - 1]! + Math.min(h * 1.3 ** (j - 1), (0.8 * LR) / mR));
@@ -1121,7 +1138,10 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
         }
       }
     }
-    const pk = opt.linie && opt.linie.length > 1 ? lippeAnpassen(opt.linie, m, lippenAnteile, { ende: 'falte', anfang: lippenAnfang }).punkte : null;
+    // E2.6: kreuzt eine Falte von A0 die Linie (Leiter), hat die Lippe dort eine Ecke — im Käfig laufen an P drei scharfe Kanten
+    // zusammen (Lippe, Hals, Stück über P); Käfig und Lippe brauchen dieselbe Regel
+    if (ring && ring.fund.art === 'falte') lippenEcken.push(leiterQ[0]!);
+    const pk = opt.linie && opt.linie.length > 1 ? lippeAnpassen(opt.linie, m, lippenAnteile, { ende: 'falte', anfang: lippenAnfang, ecken: lippenEcken }).punkte : null;
     const cSchlitz = stelle(seiteA, lippenLaenge).p;
     let cAbstand: number;
     if (pk) {
@@ -1295,6 +1315,14 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
         uc: ringC.uc,
         aspekt: kartenSeitenverhaeltnis(rk, netz, doppel),
         opt: { aussenRunden, naht, ...(opt.jInnen ? { jInnen: opt.jInnen } : {}), ...(faecherR ? { faecher: faecherR } : {}), ...(nahtAusgleich ? { nahtAusgleich } : {}), ...(nahtLagenR.length ? { nahtLagen: nahtLagenR } : {}) },
+        ...(opt.leiterFeld === 'coons'
+          ? {}
+          : {
+              feld: (sX1: number) => {
+                const lf = leiterKarte(karte, netz, doppel, fund, sX1);
+                return { umkehr: kartenUmkehr(lf.karte, netz, doppel), lippe: lf.lippe, hals: lf.hals, naht: lf.naht, x1: lf.x1 };
+              },
+            }),
       };
       leiterGitter = leiterGitterBauen(eingabe);
       // E2.3 a: das Stück der Falte auf der Gegenseite läuft auf der Speiche über P — ihre Punkte der Reihen 1 … n fest auf ihm
@@ -1303,8 +1331,8 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
       if (st) {
         // Lippenstelle am Anfang des Stücks (Bogenlänge auf dem Schlitz)
         const SS = 2 * Ms;
-        let kL = 0;
-        for (let k = 0; k <= m; k++) if (Math.abs(lippenAnteile[k]! * lippenLaenge - st.sAnfang) < Math.abs(lippenAnteile[kL]! * lippenLaenge - st.sAnfang)) kL = k;
+        // an der Lippenstelle des Halses: dort haben beide Lippen ihre Ecke (das Stück beginnt höchstens drei Schlitzpunkte daneben)
+        const kL = q;
         const kS = fund.seite === 1 ? kL : SS - kL;
         const lipS = fund.seite === 1 ? kL : 2 * m - kL;
         const pts = st.pfad.map((g): V3 => {
@@ -1336,7 +1364,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
           const [pu, pv] = uvBei((d[r]! * LSt) / d[n]!);
           pins.push({ r, k: kS, u: pu, v: pv });
         }
-        leiterGitter = leiterGitterBauen({ ...eingabe, pins });
+        if (opt.leiterStueckLage === 'ende') leiterGitter = leiterGitterBauen({ ...eingabe, pins });
         stummelInfo = { kS, lipS, n, schaerfe: st.schaerfe };
       }
       gitter = leiterGitter;
@@ -1594,7 +1622,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
       ] as [number, number][]) {
         const e = kanteZwischen(kaefig, a, b);
         if (e < 0) throw new Error('Leiter: Halskante fehlt');
-        kaefig.eSchaerfe[e] = ring.fund.schaerfe;
+        kaefig.eSchaerfe[e] = i === 0 && opt.leiterLippenSchaerfe !== undefined ? opt.leiterLippenSchaerfe : ring.fund.schaerfe;
       }
   }
   if (stummelInfo) {
@@ -1610,7 +1638,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
       ] as [number, number][]) {
         const e = kanteZwischen(kaefig, a, b);
         if (e < 0) throw new Error('Leiter: Kante des Faltenstücks fehlt');
-        kaefig.eSchaerfe[e] = stummelInfo.schaerfe;
+        kaefig.eSchaerfe[e] = i === 0 && opt.leiterLippenSchaerfe !== undefined ? opt.leiterLippenSchaerfe : stummelInfo.schaerfe;
       }
   }
   const lippe = [...haut[0]!, ...haut[0]!.slice(1, -1).map(sp).reverse()];
@@ -1694,6 +1722,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
     lippenAnfang,
     stufe,
     leiter: leiterL ? { seite: leiterL.seite, q: leiterL.q, t: leiterL.t, kHals: leiterL.kHals, X: leiterX } : null,
+    lippenEcken,
   };
 }
 

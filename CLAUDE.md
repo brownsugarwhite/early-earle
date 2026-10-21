@@ -16,8 +16,8 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 > **Ab 21.10. läuft Teil A „Maul als Einsatz“** (Florians Wahl vor V7; E1-Tore im Kern erreicht, Abnahme offen, als Nächstes E2) nach
 > [`docs/plans/2026-10-21-maul-einsatz-weiter.md`](docs/plans/2026-10-21-maul-einsatz-weiter.md) (Schritte E1–E6). Einstieg für
 > eine frische Sitzung mit Start-Prompt, Stand, nächsten Schritten, Skripten und Fallen: [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
-> Stand 21.10. (dritte Sitzung): E2 läuft — A0 wie im Editor, Mundwinkel-Tor 43 von 43, Haut-Tor 39 von 43 auch an Rex und
-> Robbe (Abnahme offen; Planseite „Stand E2“, offen: Robbe hoch, Rex mittel J, Robbe tief J).
+> Stand 21.10. (dritte Sitzung, abends): E2 mit Leiter — Haut-Tor 41 von 43, Mundwinkel 43 von 43 (Abnahme offen; Planseite
+> „Stand E2.6“, offen: Rex mittel gerade, Robbe hoch J).
 
 - **2026-10-04: Prototyp 1 ist abgeschlossen** (Archiv-Branch `prototyp-1`). Er diente zum Lernen. Florian: „Der Prototyp war sehr gut und aufschlussreich und hat bewiesen, dass die Spielidee toll ist.“ Viele Entscheidungen sind gefallen; die Gesamtdynamik und einige grafische Elemente haben ihm gefallen.
 - **Jetzt beginnt die eigentliche Produktion mit dem finalen Look.** Grundlage wird **Florians neuer Plan mit neuem Hauptprompt**: Story, Charaktere und Map arbeitet er genauer aus und trägt sie in Dokumenten und Screenshots zusammen. Es folgen mehrere Runden und Iterationen.
@@ -251,6 +251,17 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Ganze Reihe 43 Fälle: Mundwinkel 43 von 43, Haut-Tor 39 von 43 an allen Körpern (Rex/Robbe Haut 0,07–0,37 px statt bis 1 px).
   Offen: Robbe hoch (Haut faltet am spitzen Schlitzanfang → Eckenentfaltung), Rex mittel J (Querfalte vom Schlitz zur Naht → Kappe
   um die Spitze), Robbe tief J (Buckel der Lippe). Bild `docs/progress/editor/e2-spitzen-anfang-2026-10-21.jpg`.
+- **2026-10-21 (dritte Sitzung, abends): E2.6 Leiter** (Florians Auftrag „Rex und Robbe in die Tore“; Planseite „Nachtrag E2
+  (abends)“, „E2.6 Leiter — Bauplan“, „Stand E2.6“; Register; Übergabe). Befund: Robbe hoch ist kein spitzer Anfang, sondern ein
+  schmaler Keil zwischen Linie und Kopfnaht (dort laufen im Kernring Reihen und Speichen beide längs, in jeder Lage); Rex mittel
+  verliert eine Falte von A0, die als Ring um die Schnauzenfront die Linie kreuzt und zur Naht läuft; Robbe tief J folgte einer
+  gewellten Linie (bis 0,75 px neben der Haut). Gebaut und Standard auf K2: **Lippenziel auf der Haut** (wie der Schlitz) und die
+  **Leiter** — die Speichen der ersten q Lippenstellen enden auf der Naht (Falte als Halssprosse bzw. Hals am Ende des Keils), je
+  Hälfte ein Dreier- und ein Fünferpol, Lippe m = M − 2 + (q − 1)/2, Ringfeld L-förmig in eigener Karte, Leiterfeld Tutte in seiner
+  Karte, Ecke der Lippe an der Kreuzung, Schärfe von A0 auf Hals und Stück über P, Stufennaht nie an der Reihe einer Spitze; ohne
+  Fund bitgleich. Haut-Tor 39 → 41 von 43 (Rex mittel J 0,13 px/27,4°, Robbe hoch gerade 0,21 px/7,3°, Robbe tief J 11,2°).
+  Offen: Rex mittel gerade (Knick an der Kreuzung 29,6°, Tor 29,1°; örtlich A0 11°, Einsatz 26–30° auch bei J), Robbe hoch J
+  (Engstelle 0,5 Feldkanten — zwei Leitern hintereinander oder als Grenze). Bild `docs/progress/editor/e2-leiter-2026-10-21.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

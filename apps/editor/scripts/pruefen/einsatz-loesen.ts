@@ -8,7 +8,7 @@
 // (tutte|kreis), NAHT (bogen|karte|bogenKarte) — mit KAPPE=0 FAECHER=tutte NAHT=bogen der Stand vor der dritten Sitzung E1;
 // A0 (alt|editor), NR (Ausgleich der Stufennaht), SPITZEN (0 = aus), ANFANG=1 (Ausschnitt um den Linienanfang statt um c) —
 // mit A0=alt ECKE=0.25 NAHT=karte NR=0 SPITZEN=0 der Stand vor E2; LAH (1 = Lippenziel auf der Haut von A0), LEITER (1 = Leiter),
-// STELLE (Ausschnitt um die Lippenstelle mit diesem Index, z. B. den Hals einer Leiter).
+// STELLE (Ausschnitt um die Lippenstelle mit diesem Index, z. B. den Hals einer Leiter), MITTE (Ausschnitt um x,y,z in px).
 import { writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,7 +38,7 @@ for (const name of FAELLE) {
   const gitter = (process.env.GITTER ?? (NEU ? 'kernring' : 'schleifen')) as 'schleifen' | 'kernring';
   const ende = gitter === 'kernring' ? 'falte' : 'ecke';
   const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie, gitter, stufe: f.stufe, ...(process.env.J ? { J: Number(process.env.J) } : {}), ...(process.env.ECKE ? { eckeMin: Number(process.env.ECKE) } : {}), ...(process.env.FAECHER ? { faecher: process.env.FAECHER as 'tutte' | 'kreis' } : {}), ...(process.env.NAHT ? { naht: process.env.NAHT as 'bogen' | 'karte' | 'bogenKarte' } : {}), ...(process.env.NR ? { nahtAusgleich: Number(process.env.NR) } : {}), ...(process.env.SPITZEN ? { spitzen: process.env.SPITZEN !== '0' } : {}), ...(process.env.LAGE ? { lage: process.env.LAGE as 'karte' | 'band', feldDreiecke: f.feldDreiecke } : {}), ...(process.env.LEITER ? { leiter: process.env.LEITER !== '0' } : {}) });
-  const fit = lippeAnpassen(linie, t.m, t.lippenAnteile, { ende, anfang: t.lippenAnfang });
+  const fit = lippeAnpassen(linie, t.m, t.lippenAnteile, { ende, anfang: t.lippenAnfang, ecken: t.lippenEcken });
   const g = einsatzLoesen(t, f.v.kaefig, a0Netz(f.v.kaefig, 3 - f.stufe), fit.punkte, process.env.WULST ? { wulst: Number(process.env.WULST) } : {});
   // Bilder auf derselben Grenzfläche wie Stufe 4 von A0 (K1 auf 3, K2 auf 2)
   const STUFE = 4 - f.stufe;
@@ -60,7 +60,7 @@ for (const name of FAELLE) {
   const bereich = t.bereich;
   const block = flA.length / g.kaefig.nF;
   const waerme = new Float32Array(feinA.length / 3).fill(Number.NaN);
-  const kurve = lippenKurve(fit.punkte, 32, ende, t.lippenAnfang);
+  const kurve = lippenKurve(fit.punkte, 32, ende, t.lippenAnfang, t.lippenEcken);
   const kurveL = kurve.map((p): V3 => [p[0], p[1], -p[2]]);
   const zuZug = (p: V3, zug: V3[]) => {
     let best = Infinity;
@@ -91,7 +91,7 @@ for (const name of FAELLE) {
   const lo = [Infinity, Infinity, Infinity];
   const hi = [-Infinity, -Infinity, -Infinity];
   if (process.env.NAH) {
-    const sp = lippenPunkt(fit.punkte, process.env.STELLE ? Number(process.env.STELLE) : process.env.ANFANG ? 0 : t.m, ende, t.lippenAnfang);
+    const sp = process.env.MITTE ? (process.env.MITTE.split(',').map((x) => Number(x) / 461) as [number, number, number]) : lippenPunkt(fit.punkte, process.env.STELLE ? Number(process.env.STELLE) : process.env.ANFANG ? 0 : t.m, ende, t.lippenAnfang, t.lippenEcken);
     const k = f.v.kaefig;
     const kanten: number[] = [];
     for (const fc of f.feld.feld)

@@ -3,7 +3,7 @@
 // VERL (Feld hinter dem Mundwinkel verlängert, in Feldradien), FELD (begradigt|kompakt), KAPPE (Radien, 0 = ganz begradigt),
 // FAECHER (tutte|kreis), NAHT (bogen|karte|bogenKarte), A0 (alt|editor; Standard auf K2: editor), A0PLAN (JSON, ergänzt den Bauplan
 // von A0), NR (Ausgleich der Stufennaht, Runden), SPITZEN (0 = Spitzen von A0 nicht übernehmen), LAH (1 = Lippenziel auf der Haut
-// von A0, `lippeAufHaut`; dann zusätzlich `ziel` = größter Abstand des Ziels zur gezeichneten Linie)
+// von A0, `lippeAufHaut`; dann zusätzlich `ziel` = größter Abstand des Ziels zur gezeichneten Linie), LEITER (1 = Leiter, E2.6)
 // Ganze Reihe des Kernrings nach dem Standard (Plan 21.10.): A0 wie im Editor, Feld auf K2 begradigt bis 1,5 Radien, Schlitz
 // genau auf der Linie, Reihenzahl konform (10 … 16), Fächer um c als Halbkreis, Naht nach Bogenlänge (umparametrisierte Karte),
 // ein Ausgleich der Stufennaht, Ausgleich außen, letzte Lippenspanne 0,15 Feldkante, Spitzen von A0 übernommen, ohne
@@ -26,7 +26,7 @@ for (const [art, anfang, form] of einsatzFaelle()) {
     const t0 = performance.now();
     let z: Record<string, number | string>;
     try {
-      const { t, lippe, g, ms } = einsatzAblauf(f, { lage, ...(process.env.ECKE ? { eckeMin: Number(process.env.ECKE) } : {}), ...(process.env.FAECHER ? { faecher: process.env.FAECHER as 'tutte' | 'kreis' } : {}), ...(process.env.NAHT ? { naht: process.env.NAHT as 'bogen' | 'karte' } : {}), ...(process.env.NR ? { nahtAusgleich: Number(process.env.NR) } : {}), ...(process.env.SPITZEN ? { spitzen: process.env.SPITZEN !== '0' } : {}), ...(process.env.J ? { J: Number(process.env.J) } : lage === 'band' ? { J: 10 } : {}) }, process.env.WULST ? { wulst: Number(process.env.WULST) } : {});
+      const { t, lippe, g, ms } = einsatzAblauf(f, { lage, ...(process.env.ECKE ? { eckeMin: Number(process.env.ECKE) } : {}), ...(process.env.FAECHER ? { faecher: process.env.FAECHER as 'tutte' | 'kreis' } : {}), ...(process.env.NAHT ? { naht: process.env.NAHT as 'bogen' | 'karte' } : {}), ...(process.env.NR ? { nahtAusgleich: Number(process.env.NR) } : {}), ...(process.env.SPITZEN ? { spitzen: process.env.SPITZEN !== '0' } : {}), ...(process.env.LEITER ? { leiter: process.env.LEITER !== '0' } : {}), ...(process.env.J ? { J: Number(process.env.J) } : lage === 'band' ? { J: 10 } : {}) }, process.env.WULST ? { wulst: Number(process.env.WULST) } : {});
       let spiegel = 0;
       for (let v = t.nAlt; v < g.kaefig.n; v++) {
         const s = t.spiegel[v]!;
@@ -39,7 +39,7 @@ for (const [art, anfang, form] of einsatzFaelle()) {
       const ziel = f.lippenZiel();
       let zielLinie = 0;
       for (let i = 0; i < ziel.length; i++) zielLinie = Math.max(zielLinie, Math.hypot(ziel[i]![0] - roh[i]![0], ziel[i]![1] - roh[i]![1], ziel[i]![2] - roh[i]![2]) * 461);
-      z = { name, lage, m: t.m, M: t.M, J: t.J, ziel: zielLinie, haut: ms.hautMax, haut99: ms.hautP99, knick: ms.falten, knickA0: ms.faltenA0, ecke: ms.faltenEcke, eckeA0: ms.faltenEckeA0, umgeklappt: t.umgeklappt, winkelMin: gu.winkelMin, seitenMax: gu.seitenMax, lippe: Math.max(fe.seite, fe.front, fe.top, fe.raum), aussen: ms.aussen, spiegel, zeit: (performance.now() - t0) / 1000 };
+      z = { name, lage, m: t.m, M: t.M, J: t.J, ziel: zielLinie, leiter: t.leiter ? `${t.leiter.seite}/${t.leiter.q}/${t.leiter.t}` : '', haut: ms.hautMax, haut99: ms.hautP99, knick: ms.falten, knickA0: ms.faltenA0, ecke: ms.faltenEcke, eckeA0: ms.faltenEckeA0, umgeklappt: t.umgeklappt, winkelMin: gu.winkelMin, seitenMax: gu.seitenMax, lippe: Math.max(fe.seite, fe.front, fe.top, fe.raum), aussen: ms.aussen, spiegel, zeit: (performance.now() - t0) / 1000 };
     } catch (e) {
       z = { name, lage, fehler: (e as Error).message };
     }

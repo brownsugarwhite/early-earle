@@ -496,3 +496,52 @@ w ≈ s/2 (Robbe hoch: Keil von ≈ 22°, bei J eine Engstelle von 0,5 Kanten); 
 **Schritte:** L1 Erkennen (Skript, Bilder) → L2 Feld teilen und Ringkarte (Stauchung messen) → L3 Gitter beider Felder (Bild,
 nirgends umgeklappt) → L4 Käfig, Lippe, Lösen, Messen (Rex mittel gerade/J, Robbe hoch gerade/J in den Toren) → L5 ganze Reihe
 (alle übrigen Fälle bitgleich, keine Leiter), Lippenziel auf der Haut als Standard, Tests, Doku. Alter Weg ohne Leiter bitgleich.
+
+## Stand E2.6 (21.10., abends): Leiter gebaut (Option `leiter`), drei der vier offenen Fälle bewegt
+
+**Gebaut** (alles hinter `einsatzTopologie(…, { leiter: true })`; ohne Fund und ohne Option bitgleich, Einsatz-Tests unverändert):
+1. **Erkennen** (`einsatz/leiter.ts`): Falte von A0, die den Schlitz kreuzt und auf einer Seite bis zur Naht läuft (Rex mittel:
+   Lippenstelle 13 von 41, Hals 23–26 feine Kanten), samt dem kurzen Stück auf der Gegenseite; sonst Keil (w < s/2 zwischen 20 und
+   70 % der Linie; Hals an der ersten Stelle danach mit Platz für drei Feldkanten, kürzester Kantenweg zur Naht).
+2. **Ringkarte**: Halbfeld am Hals geteilt (`leiterDreiecke`), Karte aus vier Randstücken (Hals + Naht hinter Q als V-Rand).
+   Leiterkarte: Lippe und Naht hinter X_1 gegenüber (U = 0/1), die Sprossen V-Linien — keine Stauchung.
+3. **Gitter** (`einsatz/leiterGitter.ts`): Ringfeld L-förmig (`kernGitterL`), Leiterfeld als Tutte-Gitter in der Leiterkarte
+   (die Coons-Fläche faltete an der Engstelle von Robbe hoch J), Halszelle, Dreier- und Fünferpol. m = M − 2 + (q − 1)/2.
+4. **Lippe**: Leiterteil gleichmäßig, Ringteil nach Bogenlänge (konform sprang die Spanne an P auf das Doppelte); an einer Falte
+   eine **Ecke der Lippe** (`lippenPunkt/lippeAnpassen(…, ecken)`, Phantompunkte 2P_q − P_{q∓1}) — im Käfig laufen dort drei
+   scharfe Kanten zusammen, Käfig und Lippe brauchen dieselbe Regel.
+5. **Falte**: Schärfe von A0 auf dem Hals und auf dem Stück über P (E2.3 a, Punkte der Speiche fest auf dem Stück).
+6. **Stufennaht**: J_i nie die Reihe, die einer Spitze auf der Naht am nächsten liegt (Robbe hoch gerade: zwei Reihen 1,1 px
+   auseinander an der Spitze, Haut 0,48 → 0,21 px).
+7. **Lösen**: Unbekannte aus der Topologie; **Knickmaß** nimmt Ecken aus, an denen drei Falten zusammenlaufen.
+8. **Stück der Falte über P** in natürlicher Lage (Punkte der Speiche nicht fest; fest auf dem kurzen Stück zogen sie Reihe 1 an
+   die Lippe, Knick 30,8° statt 29,6°).
+
+**Standard auf K2** (seit diesem Stand): Leiter und Lippenziel auf der Haut. Ganze Reihe (43 Fälle) gegen den Stand E2:
+
+| | Stand E2 | E2.6 |
+|---|---|---|
+| Haut-Tor (≤ 0,25 px, Knick ≤ A0 + 2°, Lippe ≤ 1 px, nirgends umgeklappt) | 39 von 43 | **41 von 43** |
+| Mundwinkel ≤ A0 + 2° | 43 von 43 | 43 von 43 (13 Fälle genauer, z. B. Birne hoch gerade 2,9 → 1,2°) |
+| Lippe ≤ 1 px | 42 von 43 | 43 von 43 (Robbe hoch J 2,56 → 0,15 px) |
+| Rex mittel J | Haut 0,30 px, Knick 44,7° | **0,13 px, 27,4°** (A0 27,1°) |
+| Robbe hoch gerade | Haut 0,37 px, Knick 176° | **0,21 px, 7,3°** (A0 13,9°) |
+| Robbe tief J | Knick 16,8° | **11,2°** (A0 11,2°) |
+
+Eine Leiter finden nur Rex mittel (Falte) und Robbe hoch (Keil); alle anderen Fälle ändern sich nur durch das Lippenziel auf der
+Haut.
+
+**Offen:**
+- **Rex mittel gerade:** Knick 29,6° (A0 27,1°, Tor 29,1°). Er liegt in Reihe 1 neben der Kreuzung der Falte mit der Linie; örtlich
+  hat A0 dort höchstens 11°, der Einsatz 26–30° (auch Rex mittel J, dort verdeckt der globale Vergleich mit A0s 27° an der
+  Schnauzenspitze den Unterschied). Gemessen und verworfen: halbscharfe Falte an der Lippe (keine Wirkung), Ecke der Lippe allein
+  (≈ 1°), Lippenteilung stetig an P (≈ 0°), Stück fest auf der Falte (schlechter). Vor dem nächsten Versuch die Lage der Falte von
+  A0 an der Kreuzung genau ansehen (sie läuft bei gerade 0,5 px auf der Linie).
+- **Robbe hoch J:** faltet an der Engstelle (die Linie kommt der Kopfnaht bis 0,5 Feldkanten nahe, bei 30 % der Länge; dahinter
+  weitet sich der Streifen wieder). Durch die Engstelle müssten sieben Holme. Weg: zwei Leitern hintereinander (vor der Engstelle
+  ohne Holme, dahinter bis zur Weite) — oder die Engstelle als Grenze der Zeichnung behandeln (Florians Entscheidung).
+- E2.4 (A0 mit Hülle, P-Linien am Maul, Loops) noch nicht gemessen.
+
+**Tests:** `kernring.test.ts` — neuer Wächter „Leiter“ (Rex mittel J, Robbe hoch gerade in den Toren, ohne Fund bitgleich; ohne
+Leiter rot), Topologie mit den Polen der Leiter (Valenz 3 und 5), Lippe als Falte mit Ecke, Spitzen-Wächter an Rex mittel J;
+`kernring.extrem.ts` — offen nur noch Rex mittel gerade und Robbe hoch J.

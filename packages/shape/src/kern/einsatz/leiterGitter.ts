@@ -5,6 +5,7 @@
 // Ecke. Das Leiterfeld bekommt Holme (Reihen 1 … t) und Sprossen (Speichen 1 … q, auf der Naht endend) in seiner eigenen Karte.
 // Ohne Leiter bleibt `kernGitter` unberührt (bitgleich). DOM-frei.
 import { type NormalZeile, normalSystem } from '../../loeser/normalSystem';
+import { type KartenWeg, wegBei, wegFuss } from './leiter';
 import type { KernGitterOptionen } from './topologie';
 import { nahtBogen } from './topologie';
 
@@ -40,7 +41,17 @@ export function kernGitterL(umkehrKarte: (u: number, v: number) => { p: V3; n: V
   const S = 2 * m + 4;
   const M = S / 2;
   if (J < 3) throw new Error(`Kernring: J = ${J} zu klein`);
-  const Ji = Math.min(J - 1, Math.max(2, opt.jInnen ?? Math.round(J / 2)));
+  // Stufennaht J_i: nie die Reihe, die einer Spitze auf der Naht am nächsten liegt (sonst rückt die Nachbarreihe auf die Spitze
+  // und zwei Reihen liegen an der Naht dicht beieinander — Robbe hoch: 1,1 px, Haut 0,48 px)
+  const ji0 = Math.min(J - 1, Math.max(2, opt.jInnen ?? Math.round(J / 2)));
+  const naechsteReihe = (q: { seite: 0 | 1; u: number }) => {
+    const u2 = nb ? nb.hin(q.u, q.seite) : q.u;
+    let r = 1;
+    for (let w = 2; w < J; w++) if (Math.abs(uR[w]! - u2) < Math.abs(uR[r]! - u2)) r = w;
+    return r;
+  };
+  const besetzt = new Set((opt.nahtLagen ?? []).map(naechsteReihe));
+  const Ji = opt.jInnen !== undefined || !besetzt.has(ji0) ? ji0 : [ji0 + 1, ji0 - 1].find((w) => w >= 2 && w <= J - 1 && !besetzt.has(w)) ?? ji0;
   const aussenRunden = opt.aussenRunden ?? 0;
   const xc = (a * uc) ** 2;
   const wurzel = (x: number, y: number, seite: number): [number, number] => {
@@ -341,6 +352,11 @@ export function leiterGitterBauen(e: {
   opt: KernGitterOptionen;
   /** feste Punkte (Reihe, Speiche, Kartenlage der Ringkarte) — Falte auf der Gegenseite */
   pins?: readonly { r: number; k: number; u: number; v: number }[];
+  /**
+   * Karte des Leiterfelds zu X_1 bei Bogenlänge sX1 (`leiterKarte`): Holme und Sprossen dann als Tutte-Gitter in ihr (Lippe und
+   * Naht gegenüber — kein Umklappen); ohne sie die Coons-Fläche
+   */
+  feld?: (sX1: number) => { umkehr: (u: number, v: number) => { p: V3; n: V3 }; lippe: KartenWeg; hals: KartenWeg; naht: KartenWeg; x1: number };
 }): LeiterGitter {
   const m = (e.thetaIn.length - 1) / 2;
   const S = 2 * m + 4;
@@ -375,9 +391,76 @@ export function leiterGitterBauen(e: {
   const links = (r: number): V3 => (r === 0 ? lip(0) : nahtBei(r > t ? sX1 : (sX1 * r) / t));
   const oben = (j: number): V3 => (j <= 1 ? nahtBei(sX1) : j >= e.q ? ring.Q[0]!.p : nahtBei(sX1 + ((LN - sX1) * (j - 1)) / (e.q - 1)));
   const X: V3[] = [];
+  const lagen = ring.lagen.map((z) => [...z]);
+  if (e.feld) {
+    // Tutte im Leiterfeld: Lippe, Holmenden auf der Naht vor X_1, Sprossenenden dahinter, Hals fest; Holmpunkte frei
+    const lf = e.feld(sX1);
+    const q = e.q;
+    const nP = (t + 1) * (q + 1);
+    const pid = (r: number, j: number) => r * (q + 1) + j;
+    const xid = (j: number) => nP + j - 2;
+    const n = nP + Math.max(0, q - 2);
+    const U = new Float64Array(n);
+    const Vv = new Float64Array(n);
+    const fest = new Uint8Array(n);
+    const setze = (i: number, w: { u: number; v: number }) => {
+      U[i] = w.u;
+      Vv[i] = w.v;
+      fest[i] = 1;
+    };
+    for (let j = 0; j <= q; j++) setze(pid(0, j), wegBei(lf.lippe, j === 0 ? 0 : j === q ? lf.lippe.s[lf.lippe.s.length - 1]! : wegFuss(lf.lippe, lip(j))));
+    for (let r = 1; r <= t; r++) {
+      setze(pid(r, 0), wegBei(lf.naht, (lf.x1 * r) / t));
+      setze(pid(r, q), wegBei(lf.hals, wegFuss(lf.hals, hals(r))));
+    }
+    const LNk = lf.naht.s[lf.naht.s.length - 1]!;
+    for (let j = 2; j < q; j++) setze(xid(j), wegBei(lf.naht, lf.x1 + ((LNk - lf.x1) * (j - 1)) / (q - 1)));
+    const kanten: [number, number][] = [];
+    for (let r = 0; r <= t; r++) for (let j = 0; j < q; j++) kanten.push([pid(r, j), pid(r, j + 1)]);
+    for (let r = 0; r < t; r++) for (let j = 0; j <= q; j++) kanten.push([pid(r, j), pid(r + 1, j)]);
+    for (let j = 2; j < q; j++) kanten.push([pid(t, j), xid(j)]);
+    const unb = new Int32Array(n).fill(-1);
+    const liste: number[] = [];
+    for (let i = 0; i < n; i++)
+      if (!fest[i]) {
+        unb[i] = liste.length;
+        liste.push(i);
+      }
+    if (liste.length) {
+      const zeilen: NormalZeile[] = [];
+      const nachbarn: number[][] = liste.map(() => []);
+      const b0 = new Float64Array(liste.length);
+      const b1 = new Float64Array(liste.length);
+      for (const [a, b] of kanten) {
+        const i = unb[a]!;
+        const j = unb[b]!;
+        if (i >= 0 && j >= 0) {
+          zeilen.push({ index: [i, j], wert: [1, -1], gewicht: 1 });
+          nachbarn[i]!.push(j);
+          nachbarn[j]!.push(i);
+        } else if (i >= 0 || j >= 0) {
+          const f = i >= 0 ? i : j;
+          const o = i >= 0 ? b : a;
+          zeilen.push({ index: [f], wert: [1], gewicht: 1 });
+          b0[f] = b0[f]! + U[o]!;
+          b1[f] = b1[f]! + Vv[o]!;
+        }
+      }
+      const sys = normalSystem(liste.length, zeilen, nachbarn);
+      const x0 = sys.loesenSpalte(b0);
+      const x1 = sys.loesenSpalte(b1);
+      liste.forEach((i, w) => {
+        U[i] = x0[w]!;
+        Vv[i] = x1[w]!;
+      });
+    }
+    for (let r = 1; r <= t; r++) for (let j = 0; j < q; j++) lagen[r]![sp(j)] = lf.umkehr(U[pid(r, j)]!, Vv[pid(r, j)]!).p;
+    for (let j = 2; j < q; j++) X.push(lf.umkehr(U[xid(j)]!, Vv[xid(j)]!).p);
+    X.push(ring.Q[0]!.p);
+    return { u: ring.u, v: ring.v, lagen, X, seite: e.seite, q: e.q, kHals, t, kA: ring.kA, kB: ring.kB, umgeklappt: ring.umgeklappt };
+  }
   for (let j = 2; j <= e.q; j++) X.push(oben(j));
   // Coons-Fläche über (r, j) ∈ [0, t + 1] × [0, q], auf die Haut gelegt
-  const lagen = ring.lagen.map((z) => [...z]);
   const B0 = lip(0);
   const Bq = lip(e.q);
   const T0 = oben(0);

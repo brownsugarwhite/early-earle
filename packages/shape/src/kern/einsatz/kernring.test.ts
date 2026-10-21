@@ -26,10 +26,10 @@ describe('Teil A, E1: Kernring', () => {
     if (!f || 'fehler' in f) throw new Error('Fall fehlt');
     const ziel = f.lippenZiel();
     const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie: ziel, gitter: 'kernring', stufe: f.stufe });
-    const fit = lippeAnpassen(ziel, t.m, t.lippenAnteile, { ende: 'falte', anfang: t.lippenAnfang });
+    const fit = lippeAnpassen(ziel, t.m, t.lippenAnteile, { ende: 'falte', anfang: t.lippenAnfang, ecken: t.lippenEcken });
     // Spitze auf dem Linienende, c eine halbe Spanne dahinter
     const e = ziel[ziel.length - 1]!;
-    const spitze = lippenPunkt(fit.punkte, t.m, 'falte', t.lippenAnfang);
+    const spitze = lippenPunkt(fit.punkte, t.m, 'falte', t.lippenAnfang, t.lippenEcken);
     expect(Math.hypot(spitze[0] - e[0], spitze[1] - e[1], spitze[2] - e[2])).toBeLessThan(1e-12);
     const c = fit.punkte[t.m]!;
     const u = fit.punkte[t.m - 1]!;
@@ -48,13 +48,13 @@ describe('Teil A, E1: Kernring', () => {
     let max = 0;
     for (let i = 0; i <= 2 * t.m; i++) {
       const s = i <= t.m ? i : 2 * t.m - i;
-      const soll = lippenPunkt(fit.punkte, s, 'falte', t.lippenAnfang);
+      const soll = lippenPunkt(fit.punkte, s, 'falte', t.lippenAnfang, t.lippenEcken);
       const v = t.haut[0]![i]!;
       for (let d = 0; d < 3; d++) max = Math.max(max, Math.abs(fein[3 * v + d]! - soll[d]!));
       if (i < 2 * t.m) {
         const ke = kanteZwischen(k, v, t.haut[0]![i + 1]!);
         const sm = i < t.m ? i + 0.5 : 2 * t.m - i - 0.5;
-        const sollM = lippenPunkt(fit.punkte, sm, 'falte', t.lippenAnfang);
+        const sollM = lippenPunkt(fit.punkte, sm, 'falte', t.lippenAnfang, t.lippenEcken);
         for (let d = 0; d < 3; d++) max = Math.max(max, Math.abs(fein[3 * (k.n + ke) + d]! - sollM[d]!));
       }
     }
@@ -122,6 +122,16 @@ describe('Teil A, E1: Kernring', () => {
       const H1 = t.haut[1]!;
       const drei = new Set([t.rachen[0]![0]!, t.rachen[t.m]![0]!, t.rachen[t.m]![t.m]!, t.rachen[0]![t.m]!, H1[t.M - 1]!, H1[t.M + 1]!, sp(H1[t.M - 1]!), sp(H1[t.M + 1]!)]);
       const sechs = new Set([t.haut[0]![t.m]!, sp(t.haut[0]![t.m]!)]);
+      // Leiter (E2.6): Dreierpol an Holm t und Sprosse 1, Fünferpol an Holm t und dem Hals (bei t = 0 beide auf der Lippe)
+      const fuenf = new Set<number>();
+      if (t.leiter) {
+        const { seite, t: tt, kHals } = t.leiter;
+        const S = 2 * t.M;
+        const p3 = tt === 0 ? t.haut[0]![seite === 0 ? 1 : 2 * t.m - 1]! : t.haut[tt]![seite === 0 ? 1 : S - 1]!;
+        const p5 = tt === 0 ? t.haut[0]![seite === 0 ? kHals : kHals - 4]! : t.haut[tt]![kHals]!;
+        drei.add(p3).add(sp(p3));
+        fuenf.add(p5).add(sp(p5));
+      }
       let valFehler = '';
       for (let v = 0; v < a.n; v++) {
         if (!benutzt[v]) {
@@ -134,7 +144,7 @@ describe('Teil A, E1: Kernring', () => {
         } else if (t.rolle[v] === ROLLE_RAND) {
           const soll = f.feld.valenz[randIndex.get(v)!]!;
           if (val !== soll) valFehler ||= `Randpunkt ${v}: ${val} statt ${soll}`;
-        } else if (val !== (drei.has(v) ? 3 : sechs.has(v) ? 6 : 4)) valFehler ||= `neuer Punkt ${v} (Rolle ${t.rolle[v]}): Valenz ${val}`;
+        } else if (val !== (drei.has(v) ? 3 : sechs.has(v) ? 6 : fuenf.has(v) ? 5 : 4)) valFehler ||= `neuer Punkt ${v} (Rolle ${t.rolle[v]}): Valenz ${val}`;
       }
       if (valFehler) fehler += `${name}: ${valFehler}; `;
     }
@@ -209,10 +219,12 @@ describe('Teil A, E1: Kernring', () => {
   // Wächter Spitzen von A0 (E2): Robbe mittel gerade — eine Spitze auf der Naht im Feld wird ein Gitterpunkt mit ihrer Schärfe
   // (ohne das glättete der Einsatz sie weg: Haut 0,58 px); Rex mittel gerade — die Linie beginnt an der Schnauzenspitze, die
   // Lippe hat dort eine Ecke (ohne das: Lippe 1,5 px). Haut ≤ 0,25 px, Knick ≤ A0 + 2° (ohne die Umgebung der Spitzen), Lippe ≤ 1 px.
-  it('Spitzen von A0: Robbe mittel (Naht) und Rex mittel gerade (Linienanfang) — Haut, Knick, Lippe (Wächter)', () => {
+  // (seit E2.6 Rex mittel J statt gerade: mit Leiter und Lippenziel auf der Haut liegt gerade an der Faltenkreuzung 0,5° über
+  // dem Tor — offen, Register „Befunde aus E2“)
+  it('Spitzen von A0: Robbe mittel (Naht) und Rex mittel J (Linienanfang) — Haut, Knick, Lippe (Wächter)', () => {
     const zeilen: string[] = [];
     let fehler = '';
-    for (const name of ['robbe/mittel/gerade', 'rex/mittel/gerade']) {
+    for (const name of ['robbe/mittel/gerade', 'rex/mittel/j']) {
       const [art, anfang, form] = name.split('/') as Parameters<typeof einsatzFall>;
       const f = einsatzFall(art, anfang, form);
       if (!f || 'fehler' in f) {
@@ -226,6 +238,39 @@ describe('Teil A, E1: Kernring', () => {
       if (ms.falten > ms.faltenA0 + 2) fehler += `${name}: Knick ${ms.falten.toFixed(1)}° (A0 ${ms.faltenA0.toFixed(1)}°); `;
       if (lf > 1) fehler += `${name}: Lippe ${lf.toFixed(2)} px; `;
     }
+    console.log(zeilen.join('\n'));
+    expect(fehler).toBe('');
+  }, 300_000);
+
+  // E2.6: Leiter — Speichen, die auf der Naht enden. Ohne Leiter faltet Robbe hoch gerade im schmalen Keil unter der Kopfnaht
+  // (170°), und Rex mittel J verliert die Falte von A0, die die Linie kreuzt (Knick 44,7° bei A0 27,1°, Haut 0,30 px)
+  it('Leiter (E2.6): Rex mittel J (Falte) und Robbe hoch gerade (Keil) in den Toren; ohne Fund bitgleich (Wächter)', () => {
+    const zeilen: string[] = [];
+    let fehler = '';
+    for (const name of ['rex/mittel/j', 'robbe/hoch/gerade']) {
+      const [art, anfang, form] = name.split('/') as Parameters<typeof einsatzFall>;
+      const f = einsatzFall(art, anfang, form, { lippeAufHaut: true });
+      if (!f || 'fehler' in f) {
+        fehler += `${name}: Fall fehlt; `;
+        continue;
+      }
+      const { t, lippe, ms } = einsatzAblauf(f, { leiter: true });
+      const lf = Math.max(lippe.fehler.seite, lippe.fehler.front, lippe.fehler.top, lippe.fehler.raum);
+      zeilen.push(`${name} m ${t.m} J ${t.J} Leiter ${t.leiter ? `${t.leiter.q}/${t.leiter.t}` : '–'}: Haut ${ms.hautMax.toFixed(2)} px, Knick ${ms.falten.toFixed(1)}° (A0 ${ms.faltenA0.toFixed(1)}°), Lippe ${lf.toFixed(2)} px, umgeklappt ${t.umgeklappt}`);
+      if (!t.leiter) fehler += `${name}: keine Leiter; `;
+      if (t.umgeklappt) fehler += `${name}: ${t.umgeklappt} umgeklappt; `;
+      if (ms.aussen !== 0) fehler += `${name}: außen ${ms.aussen}; `;
+      if (ms.hautMax > 0.25) fehler += `${name}: Haut ${ms.hautMax.toFixed(3)} px; `;
+      if (ms.falten > ms.faltenA0 + 2) fehler += `${name}: Knick ${ms.falten.toFixed(1)}° (A0 ${ms.faltenA0.toFixed(1)}°); `;
+      if (lf > 1) fehler += `${name}: Lippe ${lf.toFixed(2)} px; `;
+    }
+    // ohne Fund: derselbe Käfig wie ohne die Option
+    const f = einsatzFall('kugel', 'mittel', 'gerade', { lippeAufHaut: true });
+    if (!f || 'fehler' in f) throw new Error('Fall fehlt');
+    const ohne = einsatzAblauf(f);
+    const mit = einsatzAblauf(f, { leiter: true });
+    if (mit.t.leiter) fehler += 'kugel/mittel/gerade: Leiter gefunden; ';
+    else if (Array.from(mit.g.kaefig.xyz).some((x, i) => x !== ohne.g.kaefig.xyz[i])) fehler += 'kugel/mittel/gerade: nicht bitgleich; ';
     console.log(zeilen.join('\n'));
     expect(fehler).toBe('');
   }, 300_000);

@@ -36,8 +36,12 @@ export type LippenEnde = 'ecke' | 'falte';
  */
 export type LippenAnfang = 'naht' | 'ecke';
 
-/** Punkt der Lippen-Grenzkurve bei s ∈ [0, m] (Spanne ⌊s⌋), Kontrollpunkte U₀ … U_{m−1}, c. */
-export function lippenPunkt(punkte: readonly V3[], s: number, ende: LippenEnde = 'ecke', anfang: LippenAnfang = 'naht'): V3 {
+/**
+ * Punkt der Lippen-Grenzkurve bei s ∈ [0, m] (Spanne ⌊s⌋), Kontrollpunkte U₀ … U_{m−1}, c. `ecken`: Lippenstellen 0 < q < m mit
+ * einer Ecke (E2.6: wo eine Falte von A0 die Linie kreuzt, laufen dort drei scharfe Kanten zusammen) — die Kurve läuft genau
+ * durch P_q, auf beiden Seiten wie an einem Ende (Phantompunkt 2P_q − P_{q∓1} in den Nachbarspannen).
+ */
+export function lippenPunkt(punkte: readonly V3[], s: number, ende: LippenEnde = 'ecke', anfang: LippenAnfang = 'naht', ecken: readonly number[] = []): V3 {
   const m = punkte.length - 1;
   const P = (k: number): V3 => {
     if (k === -1) return anfang === 'ecke' ? [2 * punkte[0]![0] - punkte[1]![0], 2 * punkte[0]![1] - punkte[1]![1], -punkte[1]![2]] : [punkte[1]![0], punkte[1]![1], -punkte[1]![2]];
@@ -49,7 +53,10 @@ export function lippenPunkt(punkte: readonly V3[], s: number, ende: LippenEnde =
   const b = basis(t);
   const out: V3 = [0, 0, 0];
   for (let j = 0; j < 4; j++) {
-    const q = P(i - 1 + j);
+    const k = i - 1 + j;
+    // Ecke q: in Spanne q − 1 ersetzt 2P_q − P_{q−1} den Punkt q + 1, in Spanne q ersetzt 2P_q − P_{q+1} den Punkt q − 1
+    const eq = ecken.length ? (ecken.includes(k - 1) && i === k - 2 ? k - 1 : ecken.includes(k + 1) && i === k + 1 ? k + 1 : -1) : -1;
+    const q: V3 = eq >= 0 ? [0, 1, 2].map((d) => 2 * punkte[eq]![d]! - punkte[2 * eq - k]![d]!) as V3 : P(k);
     for (let d = 0; d < 3; d++) out[d] = out[d]! + b[j]! * q[d]!;
   }
   return out;
@@ -63,10 +70,10 @@ function basis(t: number): [number, number, number, number] {
 }
 
 /** Grenzkurve dicht abgetastet (s = 0 … m). */
-export function lippenKurve(punkte: readonly V3[], proSpanne = 64, ende: LippenEnde = 'ecke', anfang: LippenAnfang = 'naht'): V3[] {
+export function lippenKurve(punkte: readonly V3[], proSpanne = 64, ende: LippenEnde = 'ecke', anfang: LippenAnfang = 'naht', ecken: readonly number[] = []): V3[] {
   const m = punkte.length - 1;
   const out: V3[] = [];
-  for (let i = 0; i <= m * proSpanne; i++) out.push(lippenPunkt(punkte, i / proSpanne, ende, anfang));
+  for (let i = 0; i <= m * proSpanne; i++) out.push(lippenPunkt(punkte, i / proSpanne, ende, anfang, ecken));
   return out;
 }
 
@@ -230,7 +237,8 @@ function loeseSpd(A: Float64Array, b: Float64Array, n: number): Float64Array {
  * (Kernring) liegt die Spitze (2U_{m−1} + 4c)/6 auf dem Endpunkt der Linie: c = 1,5·Ende − 0,5·U_{m−1} (affin in den
  * Unbekannten), c liegt also eine halbe letzte Spanne hinter dem gezeichneten Mundwinkel.
  */
-export function lippeAnpassen(ziel: readonly V3[], m: number, anteile?: ArrayLike<number>, opt: { runden?: number; glaette?: number; proSpanne?: number; ende?: LippenEnde; anfang?: LippenAnfang } = {}): LippenAnpassung {
+export function lippeAnpassen(ziel: readonly V3[], m: number, anteile?: ArrayLike<number>, opt: { runden?: number; glaette?: number; proSpanne?: number; ende?: LippenEnde; anfang?: LippenAnfang; ecken?: readonly number[] } = {}): LippenAnpassung {
+  const ecken = opt.ecken ?? [];
   if (m < 2) throw new Error(`Lippe: m = ${m} zu klein`);
   const falte = opt.ende === 'falte';
   const ecke = opt.anfang === 'ecke';
@@ -307,14 +315,22 @@ export function lippeAnpassen(ziel: readonly V3[], m: number, anteile?: ArrayLik
         const w = new Map<number, number>();
         let c0 = 0;
         for (let q = 0; q < 4; q++) {
-          const e = erweitert(i - 1 + q, d);
-          c0 += bs[q]! * e.c0;
-          for (const [k, x] of e.w) w.set(k, (w.get(k) ?? 0) + bs[q]! * x);
+          const k = i - 1 + q;
+          // Ecke (wie `lippenPunkt`): Phantompunkt 2P_e − P_{2e−k} in den Nachbarspannen der Ecke e
+          const eq = ecken.includes(k - 1) && i === k - 2 ? k - 1 : ecken.includes(k + 1) && i === k + 1 ? k + 1 : -1;
+          const teile: [number, number][] = eq >= 0 ? [[eq, 2], [2 * eq - k, -1]] : [[k, 1]];
+          for (const [kk, f] of teile) {
+            const e = erweitert(kk, d);
+            c0 += bs[q]! * f * e.c0;
+            for (const [k2, x] of e.w) w.set(k2, (w.get(k2) ?? 0) + bs[q]! * f * x);
+          }
         }
         zeile(w, z.bei(sigma[j]!)[d]! - c0, 1);
       });
-      // Glätte: zweite Differenzen der erweiterten Punkte k = 0 … m (an der Falte nicht: sie kehrt in c gewollt um)
+      // Glätte: zweite Differenzen der erweiterten Punkte k = 0 … m (an der Falte nicht: sie kehrt in c gewollt um; an einer
+      // Ecke nicht: dort knickt die Lippe gewollt)
       for (let k = 0; k <= (falte ? m - 1 : m); k++) {
+        if (ecken.includes(k)) continue;
         const w = new Map<number, number>();
         let c0 = 0;
         for (const [kk, f] of [
@@ -336,16 +352,16 @@ export function lippeAnpassen(ziel: readonly V3[], m: number, anteile?: ArrayLik
     // Fußpunkte nachführen (Fenster: eine Spanne)
     if (runde + 1 < runden)
       stellen.forEach((s, j) => {
-        const p = lippenPunkt(punkte, s, opt.ende, opt.anfang);
+        const p = lippenPunkt(punkte, s, opt.ende, opt.anfang, ecken);
         const i = Math.min(m - 1, Math.floor(s));
         const w = z.L * Math.max(a[i + 1]! - a[i]!, 1 / m);
         sigma[j] = z.fuss(p, sigma[j]!, w);
       });
   }
-  const kurve = lippenKurve(punkte, 64, opt.ende, opt.anfang);
+  const kurve = lippenKurve(punkte, 64, opt.ende, opt.anfang, ecken);
   const abst = kurve.map((p) => abstandZuZug(p, ziel, -1, -1) * PX).sort((x, y) => x - y);
-  const start = lippenPunkt(punkte, 0, opt.ende, opt.anfang);
-  const ende = lippenPunkt(punkte, m, opt.ende, opt.anfang);
+  const start = lippenPunkt(punkte, 0, opt.ende, opt.anfang, ecken);
+  const ende = lippenPunkt(punkte, m, opt.ende, opt.anfang, ecken);
   return {
     punkte,
     fehler: {

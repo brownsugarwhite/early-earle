@@ -197,8 +197,8 @@ export function einsatzLoesen(t: EinsatzTopologie, k1: Kaefig, netz: FeinNetz, l
   const c = lippe[lippe.length - 1]!;
   const wulstBreite = (opt.wulstBreite ?? 0.03) * kopfHoehe(netz, c);
   const wulst = (opt.wulst ?? (t.gitter === 'kernring' ? 0 : 0.4)) / PX;
-  const kurve = lippenKurve(lippe, 32, t.gitter === 'kernring' ? 'falte' : 'ecke', t.lippenAnfang);
-  const spitze = t.gitter === 'kernring' ? lippenPunkt(lippe, m, 'falte', t.lippenAnfang) : null;
+  const kurve = lippenKurve(lippe, 32, t.gitter === 'kernring' ? 'falte' : 'ecke', t.lippenAnfang, t.lippenEcken);
+  const spitze = t.gitter === 'kernring' ? lippenPunkt(lippe, m, 'falte', t.lippenAnfang, t.lippenEcken) : null;
   // Startgitter x₀ und Umbrella-Glätte der freien Punkte
   const x0 = Float64Array.from(xyz);
   const nachbarn = (p: number): number[] => {
@@ -442,7 +442,7 @@ export function einsatzMessen(g: GeloesterEinsatz, t: EinsatzTopologie, k1: Kaef
   const bezug = feinNetz(fein1, fl1);
   const nBezug = punktNormalen(bezug);
   const nA = punktNormalen(feinNetz(feinA, flA));
-  const kurve = lippenKurve(lippe, 32, t.gitter === 'kernring' ? 'falte' : 'ecke', t.lippenAnfang);
+  const kurve = lippenKurve(lippe, 32, t.gitter === 'kernring' ? 'falte' : 'ecke', t.lippenAnfang, t.lippenEcken);
   const punkte = new Set<number>();
   const imBereichA = new Uint8Array(flA.length);
   for (let f = 0; f < g.kaefig.nF; f++) {
@@ -542,7 +542,7 @@ export function einsatzMessen(g: GeloesterEinsatz, t: EinsatzTopologie, k1: Kaef
   // Mundwinkel: Spitze der Lippe, Umkreis drei Kanten des Feldkäfigs (fest, unabhängig von der Teilung der Lippe — sonst
   // schrumpfte der Messbereich mit kürzeren letzten Lippenspannen mit)
   const m = lippe.length - 1;
-  const spitze = lippenPunkt(lippe, m, t.gitter === 'kernring' ? 'falte' : 'ecke', t.lippenAnfang);
+  const spitze = lippenPunkt(lippe, m, t.gitter === 'kernring' ? 'falte' : 'ecke', t.lippenAnfang, t.lippenEcken);
   const ecke = { p: spitze, r: 3 * kante };
   const knickEcke = groessterKnick(ka, feinA, flA, (f) => imBereichA[f] === 1, ecke, ohneA);
   const faltenEcke = knickEcke.winkel;
