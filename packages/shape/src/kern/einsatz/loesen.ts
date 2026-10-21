@@ -146,15 +146,14 @@ export function einsatzLoesen(t: EinsatzTopologie, k1: Kaefig, netz: FeinNetz, l
   const frei = new Int32Array(kaefig.n).fill(-1);
   let nu = 0;
   const freie: number[] = [];
-  for (let r = 1; r < J; r++) {
-    const reihe = t.haut[r]!;
-    for (let k = 0; k < reihe.length; k++) {
-      const p = reihe[k]!;
-      frei[p] = nu;
-      freie.push(p);
-      nu += k === 0 || k === reihe.length - 1 ? 2 : 3;
-    }
-  }
+  // (Leiter, E2.6: fehlende Punkte −1 übergehen, die Sprossenenden auf der Naht dazu; Naht = eigener Spiegel)
+  const hinzu = (p: number) => {
+    frei[p] = nu;
+    freie.push(p);
+    nu += t.spiegel[p] === p ? 2 : 3;
+  };
+  for (let r = 1; r < J; r++) for (const p of t.haut[r]!) if (p >= 0) hinzu(p);
+  for (const p of t.leiter?.X ?? []) hinzu(p);
   const naht = (p: number) => t.spiegel[p] === p;
   /** Unbekannte und Faktor für Koordinate d des Käfigpunkts j; null = fest */
   const koeff = (j: number, d: number): [number, number] | null => {
@@ -517,9 +516,16 @@ export function einsatzMessen(g: GeloesterEinsatz, t: EinsatzTopologie, k1: Kaef
     if (imFeld) spitzen.push([k1.xyz[3 * v]!, k1.xyz[3 * v + 1]!, k1.xyz[3 * v + 2]!]);
   }
   const ohne = spitzen.length ? { p: spitzen, r: kante } : undefined;
-  // … beim Einsatz dazu seine eigenen Spitzen (die nachgebildeten: Nahtpunkt, Ecke der Lippe am Linienanfang)
+  // … beim Einsatz dazu seine eigenen Spitzen (die nachgebildeten: Nahtpunkt, Ecke der Lippe am Linienanfang) und die Ecken, an
+  // denen drei Falten zusammenlaufen (Leiter, E2.6: wo eine Falte von A0 die Lippe kreuzt, wird der Lippenpunkt eine Ecke)
   const eigene: V3[] = [...spitzen];
-  for (let v = t.nAlt; v < g.kaefig.n; v++) if (g.kaefig.vSchaerfe[v]! > 0) eigene.push([g.kaefig.xyz[3 * v]!, g.kaefig.xyz[3 * v + 1]!, g.kaefig.xyz[3 * v + 2]!]);
+  const faltenAm = new Uint8Array(g.kaefig.n);
+  for (let e = 0; e < g.kaefig.nE; e++)
+    if (g.kaefig.eSchaerfe[e]! > 0) {
+      faltenAm[g.kaefig.eA[e]!]!++;
+      faltenAm[g.kaefig.eB[e]!]!++;
+    }
+  for (let v = t.nAlt; v < g.kaefig.n; v++) if (g.kaefig.vSchaerfe[v]! > 0 || faltenAm[v]! >= 3) eigene.push([g.kaefig.xyz[3 * v]!, g.kaefig.xyz[3 * v + 1]!, g.kaefig.xyz[3 * v + 2]!]);
   const ohneA = eigene.length ? { p: eigene, r: kante } : undefined;
   // Knicke: Einsatz in M ∪ C (rechts) gegen A0 in den Flächen von M ∪ C (rechts)
   const knick = groessterKnick(ka, feinA, flA, (f) => imBereichA[f] === 1, undefined, ohneA);

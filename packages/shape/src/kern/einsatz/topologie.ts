@@ -28,6 +28,8 @@ import { ankerVon, type FeinNetz, feinNetz, punktNormalen } from './flaeche';
 import type { Karte } from './karte';
 import { bandLage, hautPunkt, zellenUmgeklappt } from './band';
 import { kruemmungsParameter, type LippenAnfang, lippeAnpassen } from './lippe';
+import { leiterFalten, leiterKeile, ringKarte } from './leiter';
+import { type LeiterGitter, leiterGitterBauen } from './leiterGitter';
 
 type V3 = [number, number, number];
 
@@ -101,6 +103,11 @@ export type EinsatzTopologie = {
   lippenAnfang: LippenAnfang;
   /** Stufe des Feldkäfigs über A0 (K1 = 1, K2 = 2): Lösen auf Stufe 3 − stufe, Messen auf 4 − stufe (gleiche Grenzfläche) */
   stufe: 1 | 2;
+  /**
+   * E2.6 Leiter (sonst null): Seite (nach dem Umdrehen), Lippenstellen q bis zum Hals, Holme t, Halsspeiche, Sprossenenden
+   * X_2 … X_q auf der Naht (X_q = Q). In `haut` fehlen die Punkte hinter den Sprossen (−1).
+   */
+  leiter: { seite: 0 | 1; q: number; t: number; kHals: number; X: number[] } | null;
 };
 
 const smooth = (u: number) => u * u * (3 - 2 * u);
@@ -824,6 +831,14 @@ export type EinsatzOptionen = {
   /** Kernring: Runden des Ausgleichs nach Hautlängen in der äußeren Stufe (0 = gleiche Gewichte; Standard auf K2: 6) */
   aussenRunden?: number;
   /**
+   * Kernring (E2.6, Versuch): Leiter — kreuzt eine Falte von A0 den Schlitz und läuft bis zur Naht (Rex mittel), enden die
+   * Speichen der Lippenstellen zwischen Anfang und Falte auf der Naht, die Falte ist die Halssprosse (`einsatz/leiter.ts`,
+   * `einsatz/leiterGitter.ts`). Ohne Fund bitgleich.
+   */
+  leiter?: boolean;
+  /** Leiter: das Stück der Falte auf der Gegenseite auf die Speiche über P legen (Standard an; aus nur für Vergleiche) */
+  leiterStueck?: boolean;
+  /**
    * Stufe des Feldkäfigs über A0 (K1 = 1, K2 = 2; Standard 1). Kernring auf K2 (Standard der genauen Haut, Plan 21.10.):
    * Reihenzahl konform passend auf 10 … 16 begrenzt, Ausgleich außen 6 Runden; auf K1 wie bisher (3 … 8, ohne Ausgleich).
    */
@@ -850,8 +865,6 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
   const K = opt.K ?? 5;
   const kern = opt.gitter === 'kernring';
   const M = feld.m;
-  const m = kern ? M - 2 : M;
-  if (!Number.isInteger(m) || m < 2) throw new Error(`Einsatz: Lippenauflösung m = ${m} ungültig`);
   if ((J !== 0 && J < 2) || K < 1) throw new Error(`Einsatz: J = ${J}, K = ${K} ungültig`);
   const spK1 = spiegelIndex(k1.xyz, k1.n);
   const kIdx = new Map<number, number>();
@@ -895,6 +908,65 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
     sA.push(sA[i - 1]! + Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]));
   }
   const lippenLaenge = sA[sA.length - 1]!;
+  // E2.6 Leiter: eine Falte von A0 kreuzt den Schlitz und läuft bis zur Naht — dort enden die Speichen der ersten q Lippenstellen
+  // auf der Naht. Jede Sprosse spart dem Feldrand eine Speiche; damit die Speichen den Feldrand (2M + 1 Punkte) genau treffen,
+  // wächst die Lippe: m = M − 2 + (q − 1)/2, q ungerade, so gewählt, dass Leiter- und Ringteil der Lippe gleich dicht sind
+  const leiterFunde = (() => {
+    if (!kern || opt.lage === 'band' || !opt.leiter) return [];
+    const falten = leiterFalten(k1, feld, netz, karte, doppel);
+    if (falten.length) return falten.slice(0, 1);
+    // Keil: Feldkante wie unten (Median der Kanten des Felds)
+    const kk: number[] = [];
+    for (const f of feld.feld)
+      for (let h = k1.fStart[f]!; h < k1.fStart[f + 1]!; h++) {
+        const a = k1.fVerts[h]!;
+        const b = k1.fVerts[h + 1 < k1.fStart[f + 1]! ? h + 1 : k1.fStart[f]!]!;
+        kk.push(Math.hypot(k1.xyz[3 * a]! - k1.xyz[3 * b]!, k1.xyz[3 * a + 1]! - k1.xyz[3 * b + 1]!, k1.xyz[3 * a + 2]! - k1.xyz[3 * b + 2]!));
+      }
+    kk.sort((x, y) => x - y);
+    return leiterKeile(netz, karte, doppel, kk[kk.length >> 1]!).slice(0, 1);
+  })();
+  const leiterQ = leiterFunde.map((f) => {
+    const s = f.sHals / lippenLaenge;
+    const q = Math.round((s * (M - 2.5)) / (1 - s / 2));
+    return Math.max(3, q % 2 ? q : q + 1);
+  });
+  const m = kern ? M - 2 + leiterQ.reduce((x, q) => x + (q - 1) / 2, 0) : M;
+  if (!Number.isInteger(m) || m < 2) throw new Error(`Einsatz: Lippenauflösung m = ${m} ungültig`);
+  // Speichen je Seite ab Reihe 1 (ohne Leiter = M)
+  const Ms = kern ? m + 2 : M;
+  // Ringkarte (Halbfeld ohne Leiterfeld) und ihr Schlitzparameter τ (beide Ufer, ab P): σ ↔ τ für den Ringteil der Lippe
+  const ring = leiterFunde.length
+    ? (() => {
+        const fund = leiterFunde[0]!;
+        const rk = ringKarte(karte, netz, doppel, leiterFunde);
+        const rIdx = new Map<number, number>();
+        rk.punkte.forEach((g, i) => rIdx.set(g, i));
+        const ufer = fund.seite === 0 ? seiteA : seiteB;
+        const iP = ufer.findIndex((l) => karte.punkte[l] === fund.hals[0]);
+        if (iP < 0) throw new Error('Leiter: P nicht auf dem Ufer');
+        const vR = (l: number) => {
+          const i = rIdx.get(karte.punkte[l]!);
+          if (i === undefined) throw new Error('Leiter: Schlitzpunkt nicht in der Ringkarte');
+          return rk.v[i]!;
+        };
+        const vcR = rk.vWinkel;
+        const vA0 = vR(seiteA[iP]!);
+        const vB0 = vR(seiteB[iP]!);
+        const tau = sA.map((_, i) => (i < iP ? 0 : 0.5 * ((vR(seiteA[i]!) - vA0) / (vcR - vA0) + (vR(seiteB[i]!) - vB0) / (vcR - vB0))));
+        tau[iP] = 0;
+        tau[tau.length - 1] = 1;
+        for (let i = iP + 1; i < tau.length; i++) tau[i] = Math.min(1, Math.max(tau[i]!, tau[i - 1]!));
+        const bogenBeiR = (x: number) => {
+          let i = iP;
+          while (i + 2 < tau.length && tau[i + 1]! < x) i++;
+          const dd = tau[i + 1]! - tau[i]!;
+          const f = dd > 1e-15 ? Math.min(1, Math.max(0, (x - tau[i]!) / dd)) : 0;
+          return sA[i]! + f * (sA[i + 1]! - sA[i]!);
+        };
+        return { fund, karte: rk, rIdx, sHals: sA[iP]!, iP, bogenBei: bogenBeiR, vR };
+      })()
+    : null;
   // Stelle bei Bogenlänge σ auf einer Seite: Lage (auf beiden Seiten mit denselben Rechenschritten → bitgleich) und V
   const stelle = (seite: number[], sigma: number): { p: V3; v: number } => {
     let i = 0;
@@ -963,6 +1035,9 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
   let anfangSchaerfe = 0;
   // Lage nach Hautmaß: Spanne Δ der Lippe (Abstand der Kontrollpunkte, auch der ersten Reihe)
   let delta = 0;
+  // E2.6: Bogenlängen der Lippenstellen (Fußpunkte) und c in der Ringkarte
+  const fussSigma = new Float64Array(m + 1);
+  let ringC: { umkehr: (u: number, v: number) => { p: V3; n: V3 }; vc: number; uc: number } | null = null;
   const nachBand = kern && opt.lage === 'band';
   if (kern) {
     const kanten: number[] = [];
@@ -997,17 +1072,37 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
       // Seit E2 (Fächer als Halbkreis, A0 wie im Editor) 0,15: Die letzte Spanne war noch doppelt so lang wie der Fächerradius
       // (ρ/h 0,47 → 0,66; darunter bestimmt die konforme Lage die Spanne selbst, 0,1 ändert nichts mehr); ganze Reihe 42 → 43
       // von 43 im Mundwinkel-Tor (Birne mittel S 3,5 → 2,8° bei A0 1,3°)
-      const konform = Array.from({ length: m + 1 }, (_, k) => (k === m ? lippenLaenge : bogenBei(k / m)));
-      const abstand = (h: number) => {
-        const d = new Float64Array(m + 1);
-        for (let j = 1; j <= m; j++) d[j] = Math.max(lippenLaenge - konform[m - j]!, d[j - 1]! + Math.min(h * 1.3 ** (j - 1), (0.8 * lippenLaenge) / m));
-        return d;
-      };
-      let h = (opt.eckeMin ?? (stufe === 2 ? 0.15 : 1)) * kante;
-      for (let i = 0; i < 60 && abstand(h)[m - 1]! >= lippenLaenge * (1 - 0.5 / m); i++) h *= 0.8;
-      const d = abstand(h);
-      const sigma = Array.from({ length: m + 1 }, (_, k) => (k === 0 ? 0 : k === m ? lippenLaenge : lippenLaenge - d[m - k]!));
-      stellenSetzen((k) => (k === 0 ? 0 : tauVon(sigma[k]!)));
+      if (ring) {
+        // E2.6: Leiterteil (O … P) mit q gleichen Spannen, Ringteil (P … Mundwinkel) konform in der Ringkarte mit derselben
+        // Mindestzelle am Mundwinkel
+        const q = leiterQ[0]!;
+        const sH = ring.sHals;
+        const mR = m - q;
+        const LR = lippenLaenge - sH;
+        const konform = Array.from({ length: mR + 1 }, (_, j) => (j === mR ? lippenLaenge : ring.bogenBei(j / mR)));
+        const abstand = (h: number) => {
+          const d = new Float64Array(mR + 1);
+          for (let j = 1; j <= mR; j++) d[j] = Math.max(lippenLaenge - konform[mR - j]!, d[j - 1]! + Math.min(h * 1.3 ** (j - 1), (0.8 * LR) / mR));
+          return d;
+        };
+        let h = (opt.eckeMin ?? (stufe === 2 ? 0.15 : 1)) * kante;
+        for (let i = 0; i < 60 && abstand(h)[mR - 1]! >= LR * (1 - 0.5 / mR); i++) h *= 0.8;
+        const d = abstand(h);
+        const sigma = Array.from({ length: m + 1 }, (_, k) => (k <= q ? (k * sH) / q : k === m ? lippenLaenge : lippenLaenge - d[m - k]!));
+        stellenSetzen((k) => (k === 0 ? 0 : tauVon(sigma[k]!)));
+      } else {
+        const konform = Array.from({ length: m + 1 }, (_, k) => (k === m ? lippenLaenge : bogenBei(k / m)));
+        const abstand = (h: number) => {
+          const d = new Float64Array(m + 1);
+          for (let j = 1; j <= m; j++) d[j] = Math.max(lippenLaenge - konform[m - j]!, d[j - 1]! + Math.min(h * 1.3 ** (j - 1), (0.8 * lippenLaenge) / m));
+          return d;
+        };
+        let h = (opt.eckeMin ?? (stufe === 2 ? 0.15 : 1)) * kante;
+        for (let i = 0; i < 60 && abstand(h)[m - 1]! >= lippenLaenge * (1 - 0.5 / m); i++) h *= 0.8;
+        const d = abstand(h);
+        const sigma = Array.from({ length: m + 1 }, (_, k) => (k === 0 ? 0 : k === m ? lippenLaenge : lippenLaenge - d[m - k]!));
+        stellenSetzen((k) => (k === 0 ? 0 : tauVon(sigma[k]!)));
+      }
     }
   }
   if (kern) {
@@ -1048,6 +1143,20 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
       else hi = mid;
     }
     uc = cAbstand > 0 ? 0.5 * (lo + hi) : 0;
+    if (ring) {
+      // c in der Ringkarte: gleicher Hautabstand hinter dem Schlitzende auf V = V_c der Ringkarte
+      const umR = kartenUmkehr(ring.karte, netz, doppel);
+      const vcR = ring.karte.vWinkel;
+      let lo2 = 0;
+      let hi2 = 1;
+      for (let i = 0; i < 50 && cAbstand > 0; i++) {
+        const mid = 0.5 * (lo2 + hi2);
+        const q2 = umR(mid, vcR).p;
+        if (Math.hypot(q2[0] - cSchlitz[0], q2[1] - cSchlitz[1], q2[2] - cSchlitz[2]) < cAbstand) lo2 = mid;
+        else hi2 = mid;
+      }
+      ringC = { umkehr: umR, vc: vcR, uc: cAbstand > 0 ? 0.5 * (lo2 + hi2) : 0 };
+    }
     if (pk) {
       // Fußpunkt auf dem Schlitz (Bogenlänge), monoton und vor dem Schlitzende
       const fuss = (p: V3) => {
@@ -1071,6 +1180,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
       for (let k = 1; k < m; k++) {
         const sigma = Math.min((1 - 1e-6) * lippenLaenge, Math.max(vor, fuss(pk[k]!)));
         vor = sigma;
+        fussSigma[k] = sigma;
         thetaIn[k] = stelle(seiteA, sigma).v;
         thetaIn[2 * m - k] = stelle(seiteB, sigma).v;
       }
@@ -1083,9 +1193,12 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
   }
   lippeLage[0]![2] = 0;
   lippeLage[2 * m]![2] = 0;
-  let gitter: { u: number[][]; v: number[][]; lagen: V3[][]; umgeklappt?: number };
+  let gitter: { u: number[][]; v: number[][]; lagen: (V3 | null)[][]; umgeklappt?: number };
+  let leiterGitter: LeiterGitter | null = null;
+  let stummelInfo: { kS: number; lipS: number; n: number; schaerfe: number } | null = null;
   const nahtLagen: { seite: 0 | 1; u: number }[] = [];
   const nahtSpitzen: { p: V3; s: number }[] = [];
+  const nahtSpitzenIds: number[] = [];
   if (nachBand) {
     if (!opt.feldDreiecke) throw new Error('Lage „Band“: feine Dreiecke des Felds fehlen (feldDreiecke)');
     const b = bandLage(lippeLage, m, J, opt.bandRinge ?? 2, delta, netz, opt.feldDreiecke, bogen, aussenRunden, (kk, nn) => kartenSeitenverhaeltnis(kk, nn, new Map()), (kk, nn) => kartenUmkehr(kk, nn, new Map()), opt.bandRest);
@@ -1112,15 +1225,129 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
         if (u < 1e-6) continue;
         nahtLagen.push({ seite: vv < 0.5 ? 0 : 1, u });
         nahtSpitzen.push({ p: [k1.xyz[3 * v]!, k1.xyz[3 * v + 1]!, 0], s: sv });
+        nahtSpitzenIds.push(v);
       }
     }
     const faecher = kern && (opt.faecher ?? (stufe === 2 ? 'kreis' : 'tutte')) === 'kreis' ? faecherKreis(netz, karte, doppel, umkehr(uc, vc).p, umkehr(0, thetaIn[m - 1]!).p, umkehr(0.5 * uc, thetaIn[m - 1]!).p, umkehr(0.5 * uc, thetaIn[m + 1]!).p) : undefined;
     const naht = opt.naht ?? (stufe === 2 ? 'bogenKarte' : 'bogen');
     const nahtAusgleich = opt.nahtAusgleich ?? (stufe === 2 ? 1 : 0);
-    gitter = kern ? kernGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, randLagen, vc, uc, aspekt, { aussenRunden, naht, ...(opt.jInnen ? { jInnen: opt.jInnen } : {}), ...(faecher ? { faecher } : {}), ...(nahtAusgleich ? { nahtAusgleich } : {}), ...(nahtLagen.length ? { nahtLagen } : {}) }) : hautGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, randLagen, opt.glaettung ?? 'laenge', opt.winkelReihen ?? 1, opt.winkelFaktor ?? 1);
+    if (ring && ringC) {
+      // E2.6: Ringfeld in der Ringkarte (L-Gitter), Leiterfeld als Coons-Fläche (`leiterGitterBauen`)
+      const rk = ring.karte;
+      const vRG = (g: number) => rk.v[ring.rIdx.get(g)!]!;
+      // V der Lippenstellen im Ring: auf dem eigenen Ufer zwischen zwei Schlitzpunkten der Ringkarte (am Hals ab P)
+      const stelleR = (seite: number[], sigma: number) => {
+        let i = 0;
+        while (i + 2 < sA.length && sA[i + 1]! < sigma) i++;
+        const tt = sA[i + 1]! > sA[i]! ? Math.min(1, Math.max(0, (sigma - sA[i]!) / (sA[i + 1]! - sA[i]!))) : 0;
+        const ga = karte.punkte[seite[i]!]!;
+        const gb = karte.punkte[seite[i + 1]!]!;
+        if (!ring.rIdx.has(ga)) return vRG(gb);
+        return vRG(ga) + tt * (vRG(gb) - vRG(ga));
+      };
+      const fund = ring.fund;
+      const q = leiterQ[0]!;
+      const thetaInR = new Float64Array(2 * m + 1).fill(Number.NaN);
+      for (let k = 0; k <= 2 * m; k++) {
+        const kk = k <= m ? k : 2 * m - k;
+        const inLeiter = fund.seite === 0 ? k < q : k > 2 * m - q;
+        if (inLeiter) continue;
+        if (k === m) thetaInR[k] = ringC.vc;
+        else if (kk === 0) thetaInR[k] = k === 0 ? 0 : 1;
+        else if (kk === q && (fund.seite === 0 ? k === q : k === 2 * m - q)) thetaInR[k] = fund.seite === 0 ? 0 : 1;
+        else thetaInR[k] = stelleR(k < m ? seiteA : seiteB, fussSigma[kk]!);
+      }
+      const thetaOutR = Float64Array.from(bogen, vRG);
+      const qG = fund.hals[fund.hals.length - 1]!;
+      const uQ = rk.u[ring.rIdx.get(qG)!]!;
+      // Naht vom Anfang O bis Q (Halbfeldkarte: obere Naht läuft vom Feldrand zu O, untere von O zum Feldrand)
+      const stueck = (fund.seite === 0 ? [...karte.rand.mitteOben].reverse() : karte.rand.mitteUnten).map((l) => karte.punkte[l]!);
+      const iQ = stueck.indexOf(qG);
+      if (iQ < 0) throw new Error('Leiter: Q nicht auf der Naht');
+      const nahtWeg = stueck.slice(0, iQ + 1).map((g): V3 => {
+        const o = doppel.get(g) ?? g;
+        return [netz.punkte[3 * o]!, netz.punkte[3 * o + 1]!, 0];
+      });
+      const rechts = (tr: number) => {
+        for (let j = 0; j < 3; j++) if (netz.punkte[3 * netz.dreiecke[3 * tr + j]! + 2]! < -1e-9) return false;
+        return true;
+      };
+      // scharfe Nahtpunkte im Ringfeld in der Ringkarte (im Leiterfeld: bleiben vorerst aus)
+      const nahtLagenR: { seite: 0 | 1; u: number }[] = [];
+      for (const q of nahtSpitzenIds) {
+        const ri = ring.rIdx.get(q);
+        if (ri !== undefined) nahtLagenR.push({ seite: rk.v[ri]! < 0.5 ? 0 : 1, u: rk.u[ri]! });
+      }
+      const faecherR = (opt.faecher ?? (stufe === 2 ? 'kreis' : 'tutte')) === 'kreis' ? faecherKreis(netz, rk, doppel, ringC.umkehr(ringC.uc, ringC.vc).p, ringC.umkehr(0, thetaInR[m - 1]!).p, ringC.umkehr(0.5 * ringC.uc, thetaInR[m - 1]!).p, ringC.umkehr(0.5 * ringC.uc, thetaInR[m + 1]!).p) : undefined;
+      const eingabe = {
+        umkehr: ringC.umkehr,
+        auf: (pp: V3) => ankerVon(netz, [pp[0], pp[1], Math.max(0, pp[2])], rechts).lage,
+        seite: fund.seite,
+        q,
+        uQ,
+        naht: nahtWeg,
+        uR,
+        thetaIn: thetaInR,
+        thetaOut: thetaOutR,
+        lippe: lippeLage,
+        rand: randLagen,
+        vc: ringC.vc,
+        uc: ringC.uc,
+        aspekt: kartenSeitenverhaeltnis(rk, netz, doppel),
+        opt: { aussenRunden, naht, ...(opt.jInnen ? { jInnen: opt.jInnen } : {}), ...(faecherR ? { faecher: faecherR } : {}), ...(nahtAusgleich ? { nahtAusgleich } : {}), ...(nahtLagenR.length ? { nahtLagen: nahtLagenR } : {}) },
+      };
+      leiterGitter = leiterGitterBauen(eingabe);
+      // E2.3 a: das Stück der Falte auf der Gegenseite läuft auf der Speiche über P — ihre Punkte der Reihen 1 … n fest auf ihm
+      // (gleiche Abstände wie ohne, gestreckt auf seine Länge), Punkt n an seinem Ende
+      const st = opt.leiterStueck === false ? null : fund.stummel;
+      if (st) {
+        // Lippenstelle am Anfang des Stücks (Bogenlänge auf dem Schlitz)
+        const SS = 2 * Ms;
+        let kL = 0;
+        for (let k = 0; k <= m; k++) if (Math.abs(lippenAnteile[k]! * lippenLaenge - st.sAnfang) < Math.abs(lippenAnteile[kL]! * lippenLaenge - st.sAnfang)) kL = k;
+        const kS = fund.seite === 1 ? kL : SS - kL;
+        const lipS = fund.seite === 1 ? kL : 2 * m - kL;
+        const pts = st.pfad.map((g): V3 => {
+          const o = doppel.get(g) ?? g;
+          return [netz.punkte[3 * o]!, netz.punkte[3 * o + 1]!, netz.punkte[3 * o + 2]!];
+        });
+        const sSt = [0];
+        for (let i = 1; i < pts.length; i++) sSt.push(sSt[i - 1]! + Math.hypot(pts[i]![0] - pts[i - 1]![0], pts[i]![1] - pts[i - 1]![1], pts[i]![2] - pts[i - 1]![2]));
+        const LSt = sSt[sSt.length - 1]!;
+        const d = [0];
+        let vor = lippeLage[lipS]!;
+        for (let r = 1; r < J; r++) {
+          const pp = leiterGitter.lagen[r]![kS]!;
+          d.push(d[r - 1]! + Math.hypot(pp[0] - vor[0], pp[1] - vor[1], pp[2] - vor[2]));
+          vor = pp;
+        }
+        let n = 1;
+        for (let r = 1; r < J - 1; r++) if (Math.abs(d[r]! - LSt) < Math.abs(d[n]! - LSt)) n = r;
+        const uvBei = (aa: number): [number, number] => {
+          let i = 0;
+          while (i + 2 < sSt.length && sSt[i + 1]! < aa) i++;
+          const f = sSt[i + 1]! > sSt[i]! ? Math.min(1, Math.max(0, (aa - sSt[i]!) / (sSt[i + 1]! - sSt[i]!))) : 0;
+          const ia = ring.rIdx.get(st.pfad[i]!)!;
+          const ib = ring.rIdx.get(st.pfad[i + 1]!)!;
+          return [rk.u[ia]! + f * (rk.u[ib]! - rk.u[ia]!), rk.v[ia]! + f * (rk.v[ib]! - rk.v[ia]!)];
+        };
+        const pins = [];
+        for (let r = 1; r <= n; r++) {
+          const [pu, pv] = uvBei((d[r]! * LSt) / d[n]!);
+          pins.push({ r, k: kS, u: pu, v: pv });
+        }
+        leiterGitter = leiterGitterBauen({ ...eingabe, pins });
+        stummelInfo = { kS, lipS, n, schaerfe: st.schaerfe };
+      }
+      gitter = leiterGitter;
+    } else
+      gitter = kern ? kernGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, randLagen, vc, uc, aspekt, { aussenRunden, naht, ...(opt.jInnen ? { jInnen: opt.jInnen } : {}), ...(faecher ? { faecher } : {}), ...(nahtAusgleich ? { nahtAusgleich } : {}), ...(nahtLagen.length ? { nahtLagen } : {}) }) : hautGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, randLagen, opt.glaettung ?? 'laenge', opt.winkelReihen ?? 1, opt.winkelFaktor ?? 1);
   }
-  const hautLage: V3[][] = [lippeLage];
-  for (let r = 1; r < J; r++) hautLage.push(gitter.lagen[r]!.map((p, k, z) => (k === 0 || k === z.length - 1 ? [p[0], p[1], 0] : p)));
+  const hautLage: (V3 | null)[][] = [lippeLage];
+  // Nahtpunkte je Reihe (Reihen ≥ 1): ohne Leiter k = 0 und S; mit Leiter auf der Leiterseite hinter dem Hals k = kHals ∓ 1
+  const S = 2 * Ms;
+  const nahtExtra = (r: number) => (leiterGitter && r > leiterGitter.t ? (leiterGitter.seite === 0 ? leiterGitter.kHals - 1 : leiterGitter.kHals + 1) : -1);
+  for (let r = 1; r < J; r++) hautLage.push(gitter.lagen[r]!.map((p, k, z) => (!p ? null : k === 0 || k === z.length - 1 || k === nahtExtra(r) ? [p[0], p[1], 0] : p)));
   // Oberseite = die Seite, deren Randpunkte im Mittel höher liegen; liegt sie bei V > V_c, werden die Speichen umgedreht
   let yA = 0;
   let yB = 0;
@@ -1131,6 +1358,15 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
   // (Lage „Band“ legt die Oberseite selbst fest: Speichen k < m auf der Seite, zu der die Lippensenkrechten nach oben zeigen)
   const umgedreht = !nachBand && yB > yA;
   const hautKarte = { u: gitter.u.map((z) => [...z]), v: gitter.v.map((z) => [...z]) };
+  // Leiter nach dem Umdrehen: Seite und Halsspeiche gespiegelt (k → S − k), Lippenindex des Halses
+  const leiterL = leiterGitter
+    ? (() => {
+        const lg = leiterGitter;
+        const seite: 0 | 1 = umgedreht ? ((1 - lg.seite) as 0 | 1) : lg.seite;
+        const kHals = umgedreht ? S - lg.kHals : lg.kHals;
+        return { seite, kHals, q: lg.q, t: lg.t, X: lg.X, kNaht: seite === 0 ? kHals - 1 : kHals + 1 };
+      })()
+    : null;
   if (umgedreht) {
     bogen = [...bogen].reverse();
     for (let r = 0; r < hautLage.length; r++) hautLage[r] = [...hautLage[r]!].reverse();
@@ -1150,7 +1386,8 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
     const lN = Math.hypot(...N) || 1;
     innen.push([N[0] / lN, N[1] / lN, N[2] / lN]);
     const a = hautLage[0]![k]!;
-    const b = hautLage[1]![kern ? kernUeber(k, m) : k]!;
+    // mit Leiter ohne Holme (t = 0): zum Sprossenende auf der Naht
+    const b = hautLage[1]![kern ? kernUeber(k, m) : k] ?? leiterL!.X[Math.max(0, Math.min(leiterL!.X.length - 1, (k <= m ? k : 2 * m - k) - 2))]!;
     const d: V3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
     const dn = d[0] * n[0] + d[1] * n[1] + d[2] * n[2];
     const t: V3 = [d[0] - dn * n[0], d[1] - dn * n[1], k === 0 || k === 2 * m ? 0 : d[2] - dn * n[2]];
@@ -1162,7 +1399,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
   for (let k = 0; k <= 2 * m; k++) duennste = Math.min(duennste, strahlTreffer(netz, hautLage[0]![k]!, innen[k]!, 1e-6 * lippenLaenge));
   const tiefe = Math.min(0.4 * (Number.isFinite(duennste) ? duennste : lippenLaenge), 0.6 * lippenLaenge);
   const breite = 0.25 * tiefe;
-  const taschenLage: V3[][] = [hautLage[0]!];
+  const taschenLage: V3[][] = [hautLage[0] as V3[]];
   for (let p = 1; p <= K; p++) {
     const reihe: V3[] = [];
     for (let k = 0; k <= 2 * m; k++) {
@@ -1190,10 +1427,20 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
   const amRand = (k: number, mitte = m) => k === 0 || k === 2 * mitte;
   const haut: number[][] = [];
   for (let r = 0; r < J; r++) {
-    const mitte = r === 0 ? m : M;
-    haut.push(hautLage[r]!.map((p, k) => neu(p, r === 0 ? (k === m ? ROLLE_WINKEL : ROLLE_LIPPE) : ROLLE_HAUT, seiteVon(k, mitte), k, r, amRand(k, mitte))));
+    const mitte = r === 0 ? m : Ms;
+    haut.push(hautLage[r]!.map((p, k) => (!p ? -1 : neu(p, r === 0 ? (k === m ? ROLLE_WINKEL : ROLLE_LIPPE) : ROLLE_HAUT, seiteVon(k, mitte), k, r, amRand(k, mitte) || (r > 0 && leiterL !== null && r > leiterL.t && k === leiterL.kNaht)))));
   }
-  haut.push([...bogen]);
+  // Leiter: Sprossenenden X_2 … X_q (X_q = Q) auf der Naht
+  const leiterX = leiterL ? leiterL.X.map((p, j) => neu(p, ROLLE_HAUT, leiterL.seite === 0 ? SEITE_OBEN : SEITE_UNTEN, leiterL.seite === 0 ? j + 2 : S - j - 2, leiterL.t + 1, true)) : [];
+  if (leiterL) {
+    // Feldrand: Reihe J beginnt auf der Leiterseite eine Speiche vor dem Hals
+    const zeile = new Array<number>(S + 1).fill(-1);
+    const k0 = leiterL.seite === 0 ? leiterL.kNaht : 0;
+    bogen.forEach((b, j) => {
+      zeile[k0 + j] = b;
+    });
+    haut.push(zeile);
+  } else haut.push([...bogen]);
   const tasche: number[][] = [haut[0]!];
   for (let p = 1; p <= K; p++) tasche.push(taschenLage[p]!.map((q, k) => neu(q, ROLLE_TASCHE, seiteVon(k), k, -p, amRand(k))));
   // Rachen (a, b), a, b = 0 … m: Seite b = 0 ist die letzte Taschenreihe der Oberseite (Speichen 0 … m), Seite a = m die der
@@ -1258,11 +1505,37 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
     // unten [L_k, L_{k+1}, H₁,ₖ₊₅, H₁,ₖ₊₄]; dann die Ringe ab Reihe 1 (gleicher Umlauf wie die Ringzellen)
     const L0 = haut[0]!;
     const H1 = haut[1]!;
-    for (let k = 0; k < m; k++) hautFlaechen.push([L0[k]!, L0[k + 1]!, H1[k + 1]!, H1[k]!]);
-    hautFlaechen.push([L0[m]!, H1[M]!, H1[M - 1]!, H1[M - 2]!]);
-    hautFlaechen.push([L0[m]!, H1[M + 2]!, H1[M + 1]!, H1[M]!]);
-    for (let k = m; k < 2 * m; k++) hautFlaechen.push([L0[k]!, L0[k + 1]!, H1[k + 5]!, H1[k + 4]!]);
-    for (let r = 1; r < J; r++) for (let k = 0; k < 2 * M; k++) hautFlaechen.push([haut[r]![k]!, haut[r]![k + 1]!, haut[r + 1]![k + 1]!, haut[r + 1]![k]!]);
+    // E2.6 Leiter: fehlende Punkte (−1) bilden keine Zelle; die Zelle an der Ecke des L ersetzt die Halszelle
+    const ersetzt = (r: number, k: number) => leiterL !== null && r === leiterL.t && k === (leiterL.seite === 0 ? leiterL.kHals - 1 : leiterL.kHals);
+    const voll = (f: number[]) => f.every((i) => i >= 0);
+    for (let k = 0; k < m; k++) {
+      const f = [L0[k]!, L0[k + 1]!, H1[k + 1]!, H1[k]!];
+      if (voll(f) && !ersetzt(0, k)) hautFlaechen.push(f);
+    }
+    hautFlaechen.push([L0[m]!, H1[Ms]!, H1[Ms - 1]!, H1[Ms - 2]!]);
+    hautFlaechen.push([L0[m]!, H1[Ms + 2]!, H1[Ms + 1]!, H1[Ms]!]);
+    for (let k = m; k < 2 * m; k++) {
+      const f = [L0[k]!, L0[k + 1]!, H1[k + 5]!, H1[k + 4]!];
+      if (voll(f) && !ersetzt(0, k + 4)) hautFlaechen.push(f);
+    }
+    for (let r = 1; r < J; r++)
+      for (let k = 0; k < S; k++) {
+        const f = [haut[r]![k]!, haut[r]![k + 1]!, haut[r + 1]![k + 1]!, haut[r + 1]![k]!];
+        if (voll(f) && !ersetzt(r, k)) hautFlaechen.push(f);
+      }
+    if (leiterL) {
+      // Kernzellen der Leiter (Holm t → Sprossenenden) und die Halszelle; Holm 0 ist die Lippe (Lippenindex: oben k, unten k − 4)
+      const { t, q, kHals, seite } = leiterL;
+      const punkt = (k: number) => (t === 0 ? L0[seite === 0 ? k : k - 4]! : haut[t]![k]!);
+      const X = (j: number) => (j <= 1 ? punkt(seite === 0 ? 0 : S) : leiterX[j - 2]!);
+      for (let j = 1; j < q; j++) {
+        if (seite === 0) hautFlaechen.push([punkt(j), punkt(j + 1), X(j + 1), X(j)]);
+        else hautFlaechen.push([punkt(S - j - 1), punkt(S - j), X(j), X(j + 1)]);
+      }
+      const Q = leiterX[leiterX.length - 1]!;
+      if (seite === 0) hautFlaechen.push([Q, punkt(kHals), haut[t + 1]![kHals]!, haut[t + 1]![kHals - 1]!]);
+      else hautFlaechen.push([punkt(kHals), Q, haut[t + 1]![kHals + 1]!, haut[t + 1]![kHals]!]);
+    }
   } else for (let r = 0; r < J; r++) for (let k = 0; k < 2 * m; k++) hautFlaechen.push([haut[r]![k]!, haut[r]![k + 1]!, haut[r + 1]![k + 1]!, haut[r + 1]![k]!]);
   const rechteFlaechen: number[][] = hautFlaechen.map((f) => richte(f, hautDreh));
   for (let p = 0; p < K; p++) for (let k = 0; k < 2 * m; k++) rechteFlaechen.push(richte([tasche[p]![k]!, tasche[p]![k + 1]!, tasche[p + 1]![k + 1]!, tasche[p + 1]![k]!], !hautDreh));
@@ -1307,6 +1580,38 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
   if (lippenAnfang === 'ecke') {
     kaefig.vSchaerfe[haut[0]![0]!] = anfangSchaerfe;
     kaefig.vSchaerfe[haut[0]![2 * m]!] = anfangSchaerfe;
+  }
+  // E2.6: Falte von A0 auf dem Hals (P … Q) mit ihrer Schärfe, rechts und gespiegelt
+  if (leiterL && ring && ring.fund.art === 'falte') {
+    const { t, kHals, seite } = leiterL;
+    const weg = [haut[0]![seite === 0 ? kHals : kHals - 4]!];
+    for (let r = 1; r <= t; r++) weg.push(haut[r]![kHals]!);
+    weg.push(leiterX[leiterX.length - 1]!);
+    for (let i = 0; i + 1 < weg.length; i++)
+      for (const [a, b] of [
+        [weg[i]!, weg[i + 1]!],
+        [sp(weg[i]!), sp(weg[i + 1]!)],
+      ] as [number, number][]) {
+        const e = kanteZwischen(kaefig, a, b);
+        if (e < 0) throw new Error('Leiter: Halskante fehlt');
+        kaefig.eSchaerfe[e] = ring.fund.schaerfe;
+      }
+  }
+  if (stummelInfo) {
+    // Stück der Falte auf der Speiche über P (nach dem Umdrehen gespiegelt: k → S − k, Lippenindex → 2m − Index)
+    const kS = umgedreht ? S - stummelInfo.kS : stummelInfo.kS;
+    const lipS = umgedreht ? 2 * m - stummelInfo.lipS : stummelInfo.lipS;
+    const weg = [haut[0]![lipS]!];
+    for (let r = 1; r <= stummelInfo.n; r++) weg.push(haut[r]![kS]!);
+    for (let i = 0; i + 1 < weg.length; i++)
+      for (const [a, b] of [
+        [weg[i]!, weg[i + 1]!],
+        [sp(weg[i]!), sp(weg[i + 1]!)],
+      ] as [number, number][]) {
+        const e = kanteZwischen(kaefig, a, b);
+        if (e < 0) throw new Error('Leiter: Kante des Faltenstücks fehlt');
+        kaefig.eSchaerfe[e] = stummelInfo.schaerfe;
+      }
   }
   const lippe = [...haut[0]!, ...haut[0]!.slice(1, -1).map(sp).reverse()];
   for (let i = 0; i < lippe.length; i++) {
@@ -1363,7 +1668,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
     alteFlaeche: Int32Array.from(alteFlaeche),
     gitter: kern ? 'kernring' : 'schleifen',
     m,
-    M,
+    M: Ms,
     J,
     K,
     haut,
@@ -1388,6 +1693,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
     umgeklappt: gitter.umgeklappt ?? 0,
     lippenAnfang,
     stufe,
+    leiter: leiterL ? { seite: leiterL.seite, q: leiterL.q, t: leiterL.t, kHals: leiterL.kHals, X: leiterX } : null,
   };
 }
 

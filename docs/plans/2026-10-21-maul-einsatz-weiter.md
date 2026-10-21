@@ -470,3 +470,29 @@ Leiter über die schmale Oberlippe (Sprosse = Speiche rechts + Spiegelbild), wie
   Leiterfeld liegen Lippe und Naht auf *gegenüberliegenden* Seiten, die Karte staucht dort nicht mehr; im Ringfeld wie heute
   (zwei Stufen um c), mit dem L-förmigen Gitter.
 - Robbe hoch J (Streifen 0,4 Kanten) braucht t = 0: Sprossen direkt von der Lippe zur Naht.
+
+## E2.6 Leiter — Bauplan (21.10., abends)
+
+**Gitter** (eine Seite, hier oben; unten gespiegelt über k → S − k). Lippe U₀ = O … U_q = P (Hals) … U_m = c. Leiterfeld zwischen
+Lippe, Naht und Hals:
+- Holme = Reihen 1 … t (t ≥ 0) parallel zur Lippe; ihre Nahtenden (r, 0) liegen auf der Naht nahe O.
+- Sprossen = Speichen 1 … q: U_k → (1, k) → … → (t, k) → X_k auf der Naht; X₁ = (t, 0) (das letzte Holmstück), X_q = Q.
+- Zellen: Lippenzellen [U_k, U_{k+1}, (1, k+1), (1, k)], Holmzellen, Kernzellen [(t, k), (t, k+1), X_{k+1}, X_k].
+- Dreierpol (t, 1), Fünferpol (t, q) (bei t = 0 beide auf der Lippe).
+
+Ringfeld (der Rest): Reihen 0 … t ab Speiche q (Knoten (r, q) auf dem Hals), Reihen t + 1 … J ab der Naht hinter Q (B_r), Halszelle
+[(t, q), (t + 1, q), B_{t+1}, Q]; L-förmiges Gitter. Der Feldrand trifft genau: m = M + (q_oben + q_unten − 6)/2, q ungerade.
+
+**Lage:** Ringfeld in einer eigenen Karte (Feld entlang des Halses geteilt, `karteAusStuecken`: U = 0 Lippe ab P, V = 0 Hals +
+Naht hinter Q, V = 1 untere Naht, U = 1 Feldrand) — der Hals steht senkrecht auf der Lippe, die Karte staucht dort nicht; darin
+die beiden Stufen um c wie heute, nur mit dem L-Gitter. Leiterfeld direkt auf der Haut: Sprossen als Wege von U_k zu X_k (Holme
+bei r/(t + 1)), X_k längs der Naht nach Bogenlänge, beim Hals auf der Falte.
+
+**Erkennen:** (a) Falte — eine scharfe Kantenkette von A0 im Feld kreuzt den Schlitz und erreicht auf einer Seite die Naht
+(Rex mittel: unten, Lippenstelle 5); Hals = die Falte, ihre Schärfe auf den Halskanten; ein kurzes Stück auf der Gegenseite läuft
+auf der Speiche über P (E2.3 a). (b) Keil — der Abstand w(s) zwischen Schlitzufer und Naht derselben Seite wächst langsamer als
+w ≈ s/2 (Robbe hoch: Keil von ≈ 22°, bei J eine Engstelle von 0,5 Kanten); Hals, wo der Keil Platz für t + 1 Zellen hat.
+
+**Schritte:** L1 Erkennen (Skript, Bilder) → L2 Feld teilen und Ringkarte (Stauchung messen) → L3 Gitter beider Felder (Bild,
+nirgends umgeklappt) → L4 Käfig, Lippe, Lösen, Messen (Rex mittel gerade/J, Robbe hoch gerade/J in den Toren) → L5 ganze Reihe
+(alle übrigen Fälle bitgleich, keine Leiter), Lippenziel auf der Haut als Standard, Tests, Doku. Alter Weg ohne Leiter bitgleich.
