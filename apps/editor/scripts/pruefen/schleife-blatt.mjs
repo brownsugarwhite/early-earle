@@ -288,7 +288,7 @@ pruefe(!!ggText && ggText.includes('gleitet') && Math.hypot(kNach.a.x - kVor.a.x
 await page.keyboard.press('Meta+z');
 await ruhig();
 // 10. ⇧-Klick auf einen zweiten Loop: beide gewählt; S formt dann die Punkte (V3)
-await page.evaluate((id) => window.__stores.ui.getState().setzeAuswahl({ seite: [], front: [], top: [] }, 'seite'), id);
+await page.evaluate(() => window.__stores.ui.getState().setzeAuswahl({ seite: [], front: [], top: [] }, 'seite'));
 const lpA = await linienPunkt('seite', id);
 await page.mouse.click(lpA.x, lpA.y);
 const lpB = await linienPunkt('seite', px[2].id);
