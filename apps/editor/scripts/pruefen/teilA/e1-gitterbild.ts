@@ -2,7 +2,7 @@
 // Gitter des Einsatzes als SVG: Blick längs der mittleren Normalen des Felds (rechte Hälfte), Lippe rot, Rand schwarz, Linie
 // gelb gestrichelt. Je Fall und Gitterart eine Tafel. Umgebung: FAELLE, GITTER (Liste, Standard beide), STUFE (1/2; Standard
 // wie der Fall, K2), J, AR, NAH (Ausschnitt um den Mundwinkel: Halbbreite in letzten Lippenspannen), VERL, SCHNITT (pfad/linie),
-// FELD, LAGE (karte/band), R (Ringe des Bands), P, ECKE (eckeMin).
+// FELD, KAPPE, LAGE (karte/band), R (Ringe des Bands), P, ECKE (eckeMin), FAECHER (tutte/kreis), NAHT (bogen/karte).
 import { writeFileSync } from 'node:fs';
 import { einsatzFall } from '../../../../../packages/shape/src/kern/pruefen/einsatzFall';
 import { einsatzTopologie } from '../../../../../packages/shape/src/kern/einsatz/topologie';
@@ -11,11 +11,11 @@ const AUS = process.env.AUSGABE ?? 'gitter.html';
 const tafeln: string[] = [];
 for (const name of (process.env.FAELLE ?? 'kugel/mittel/gerade').split(',')) {
   const [art, anfang, form] = name.split('/') as [never, never, never];
-  const f = einsatzFall(art, anfang, form, { verlaengerung: Number(process.env.VERL ?? 0), ...(process.env.STUFE ? { stufe: Number(process.env.STUFE) as 1 | 2 } : {}), ...(process.env.SCHNITT ? { schnitt: process.env.SCHNITT as 'pfad' | 'linie' } : {}), ...(process.env.FELD ? { feld: process.env.FELD as 'begradigt' | 'kompakt' } : {}) });
+  const f = einsatzFall(art, anfang, form, { verlaengerung: Number(process.env.VERL ?? 0), ...(process.env.STUFE ? { stufe: Number(process.env.STUFE) as 1 | 2 } : {}), ...(process.env.SCHNITT ? { schnitt: process.env.SCHNITT as 'pfad' | 'linie' } : {}), ...(process.env.FELD ? { feld: process.env.FELD as 'begradigt' | 'kompakt' } : {}), ...(process.env.KAPPE ? { kappe: Number(process.env.KAPPE) } : {}) });
   if (!f || 'fehler' in f) continue;
   const linie = f.lippenZiel();
   for (const gitter of (process.env.GITTER ?? 'schleifen,kernring').split(',') as ('schleifen' | 'kernring')[]) {
-    const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie, gitter, stufe: f.stufe, feldDreiecke: f.feldDreiecke, ...(process.env.ECKE ? { eckeMin: Number(process.env.ECKE) } : {}), ...(process.env.J ? { J: Number(process.env.J) } : {}), ...(process.env.AR ? { aussenRunden: Number(process.env.AR) } : {}), ...(process.env.LAGE ? { lage: process.env.LAGE as 'karte' | 'band', bandRinge: Number(process.env.R ?? 2), ...(process.env.P ? { bandRest: { art: 'tiefe' as const, p: Number(process.env.P) } } : {}) } : {}) });
+    const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie, gitter, stufe: f.stufe, feldDreiecke: f.feldDreiecke, ...(process.env.ECKE ? { eckeMin: Number(process.env.ECKE) } : {}), ...(process.env.FAECHER ? { faecher: process.env.FAECHER as 'tutte' | 'kreis' } : {}), ...(process.env.NAHT ? { naht: process.env.NAHT as 'bogen' | 'karte' } : {}), ...(process.env.J ? { J: Number(process.env.J) } : {}), ...(process.env.AR ? { aussenRunden: Number(process.env.AR) } : {}), ...(process.env.LAGE ? { lage: process.env.LAGE as 'karte' | 'band', bandRinge: Number(process.env.R ?? 2), ...(process.env.P ? { bandRest: { art: 'tiefe' as const, p: Number(process.env.P) } } : {}) } : {}) });
     const xyz = t.kaefig.xyz;
     const P = (i: number): V3 => [xyz[3 * i]!, xyz[3 * i + 1]!, xyz[3 * i + 2]!];
     // Ansicht: Blick längs der mittleren Normalen des Felds (rechte Hälfte), Achsen in der Bildebene

@@ -108,9 +108,10 @@ export const FALL_ALT = { stufe: 1, schnitt: 'pfad' } as const;
  * `verlaengerung`: Das Feld misst den Abstand zur Linie samt ihrer Verlängerung über den Mundwinkel hinaus (auf der Haut, in
  * Feldradien), damit hinter dem Mundwinkel so viel Haut im Feld liegt wie über und unter der Lippe. `schnitt`: Schlitz auf dem
  * Kantenpfad (wie A1) oder genau auf der Linie (Pfadpunkte auf die Linie gerückt, E1). `feld`: begradigt (A3) oder kompakt
- * (Band um die Linie, nur Kneifpunkte geschlossen, E1).
+ * (Band um die Linie, nur Kneifpunkte geschlossen, E1). `kappe`: begradigt nur bis `kappe` Radien (0 = ganz; Standard auf K2
+ * 1,5 — das Band um die Linie bleibt erhalten, die Lippenauflösung m folgt seiner Länge).
  */
-export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form, opt: { verlaengerung?: number; stufe?: 1 | 2; schnitt?: 'pfad' | 'linie'; feld?: 'begradigt' | 'kompakt' } = {}): EinsatzFall | { name: string; fehler: string } | null {
+export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form, opt: { verlaengerung?: number; stufe?: 1 | 2; schnitt?: 'pfad' | 'linie'; feld?: 'begradigt' | 'kompakt'; kappe?: number } = {}): EinsatzFall | { name: string; fehler: string } | null {
   const name = `${art}/${anfang}/${form}`;
   const stufe = opt.stufe ?? 2;
   const { dok, abl, netz, v, fein, ff, h1, hFeld } = koerperStand(art, stufe);
@@ -122,7 +123,8 @@ export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form, opt: { 
   const l = { ...roh, oben: linieAufHaut(abl, roh.oben) };
   const auf = linieAufNetz(netz, l.oben);
   const d = flaechenAbstand(fein, ff, v.kaefig.nF, opt.verlaengerung ? [...auf.lagen, ...verlaengern(netz, auf.lagen, opt.verlaengerung * 3 * h1)] : auf.lagen);
-  const feld = feldMitGerademRand(v.kaefig, d, 3 * h1, hFeld, stufe === 2 ? 2 * M_MAX : M_MAX, { kompakt: opt.feld === 'kompakt' });
+  const kappe = opt.kappe ?? (stufe === 2 && opt.feld !== 'kompakt' ? 1.5 : 0);
+  const feld = feldMitGerademRand(v.kaefig, d, 3 * h1, hFeld, kappe ? Infinity : stufe === 2 ? 2 * M_MAX : M_MAX, { kompakt: opt.feld === 'kompakt', ...(kappe ? { kappe } : {}) });
   // feine Dreiecke der rechten Hälfte von M (Blöcke der Stufe-1-Flächen; je Viereck zwei Dreiecke in `feinNetz`)
   const block = ff.length / v.kaefig.nF;
   const dreiecke: number[] = [];

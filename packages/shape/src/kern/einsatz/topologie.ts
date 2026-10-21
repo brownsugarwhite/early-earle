@@ -24,9 +24,9 @@ import { type Kaefig, kaefigAusFlaechen, kanteZwischen } from '../../kaefig/halb
 import { type NormalZeile, normalSystem } from '../../loeser/normalSystem';
 import { spiegelIndex } from '../pinsel';
 import type { FeldSpec } from './feld';
-import { type FeinNetz, punktNormalen } from './flaeche';
+import { ankerVon, type FeinNetz, feinNetz, punktNormalen } from './flaeche';
 import type { Karte } from './karte';
-import { bandLage, zellenUmgeklappt } from './band';
+import { bandLage, hautPunkt, zellenUmgeklappt } from './band';
 import { kruemmungsParameter, lippeAnpassen } from './lippe';
 
 type V3 = [number, number, number];
@@ -408,6 +408,76 @@ export function kartenSeitenverhaeltnis(karte: Karte, netz: FeinNetz, doppel: Ma
   return 1;
 }
 
+/** Einstellungen des Kernring-Gitters (`kernGitter`) */
+export type KernGitterOptionen = {
+  /** Reihen der inneren Stufe (Standard J/2, mindestens 2) */
+  jInnen?: number;
+  /** Runden des Ausgleichs nach Hautlängen in der äußeren Stufe (Standard 0 = gleiche Gewichte) */
+  aussenRunden?: number;
+  /**
+   * Fächer um c: Kartenlagen der fünf Punkte U'_m, U'_{m+1}, E, D'_{m+1}, D'_m der Reihe 1 aus ihren Lagen nach der inneren
+   * Stufe (`faecherKreis`); sie bleiben fest, die innere Stufe wird danach neu gerechnet
+   */
+  faecher?: (lagen: V3[]) => { u: number; v: number }[];
+  /**
+   * Nahtspeichen: nach Bogenlänge auf der Naht ('bogen', Standard) oder auf der Kartenlinie ihrer Reihe ('karte', U = u_r).
+   * Nach Bogenlänge passen sie nicht zu Reihe J_i, die ganz auf ihrer Kartenlinie liegt: Wo die Karte längs der Naht ungleich
+   * dehnt (Robbe hoch: Reihe J_i an der Naht bei einem Fünftel ihres U), läuft der Rand der äußeren Stufe zurück, sie ist nicht
+   * mehr konvex und Zellen klappen um. Auf den Kartenlinien bleiben beide Stufen Rechtecke (Tutte faltenfrei), und die Zellen
+   * an der Naht sind konform wie überall.
+   */
+  naht?: 'bogen' | 'karte';
+};
+
+/**
+ * Fächer um den Mundwinkel als Halbkreis (E1, „Quadratgitter um c“): Die fünf Punkte der Reihe 1 um c liegen in der
+ * Tangentialebene bei 90°, 45°, 0°, −45°, −90° gegen die Verlängerung des Schlitzes (`vorC` → `c`; +90° zur Oberseite, Richtung
+ * `oben` − `unten`), im mittleren Abstand ihrer Lagen nach der inneren Stufe, auf die Haut gelegt; die Kartenlage kommt über
+ * die Dreiecke der Karte. Die Lippe kommt von hinten (180°), die Reihen laufen symmetrisch um sie herum: c wird ein
+ * regelmäßiger Gitterpunkt. Allein aus der Karte liegt der Fächer gekippt, sobald Linie oder Feldrand um c nicht symmetrisch
+ * liegen: An J-Linien gibt die Karte den beiden Schlitzufern an der Spitze verschiedene V-Abstände (oben bis 2-mal so weit wie
+ * unten), Knick am Mundwinkel bis 2,5° über A0 (mit dem Halbkreis höchstens 0,9°). Alles auf der Haut: `c` ist die Lage von c
+ * in der Karte (U_c, V_c), nicht der Kontrollpunkt der Lippe — der liegt neben der Haut, wenn die Linie es tut (Langhals mittel
+ * bis 63 px: Der Kreis um ihn faltete 19–32 Zellen). Ein Quadrat statt des Kreises (Diagonalen × √2) faltete an einer J-Linie.
+ */
+export function faecherKreis(netz: FeinNetz, karte: Karte, doppel: Map<number, number>, c: V3, vorC: V3, oben: V3, unten: V3): (lagen: V3[]) => { u: number; v: number }[] {
+  const nrm = punktNormalen(netz);
+  const nc = hautPunkt(netz, nrm, c).n;
+  // x längs der Verlängerung des Schlitzes, y zur Oberseite (beide in der Tangentialebene an c)
+  let tx: V3 = [c[0] - vorC[0], c[1] - vorC[1], c[2] - vorC[2]];
+  const dn = tx[0] * nc[0] + tx[1] * nc[1] + tx[2] * nc[2];
+  tx = [tx[0] - dn * nc[0], tx[1] - dn * nc[1], tx[2] - dn * nc[2]];
+  const lx = Math.hypot(...tx);
+  tx = [tx[0] / lx, tx[1] / lx, tx[2] / lx];
+  let ty: V3 = [nc[1] * tx[2] - nc[2] * tx[1], nc[2] * tx[0] - nc[0] * tx[2], nc[0] * tx[1] - nc[1] * tx[0]];
+  if ((oben[0] - unten[0]) * ty[0] + (oben[1] - unten[1]) * ty[1] + (oben[2] - unten[2]) * ty[2] < 0) ty = [-ty[0], -ty[1], -ty[2]];
+  // Kartenlage eines Hautpunkts: Dreieck der Karte mit den Ursprungslagen seiner Punkte
+  const kIdx = new Map<number, number>();
+  karte.punkte.forEach((g, i) => kIdx.set(g, i));
+  const kp = new Float64Array(3 * karte.punkte.length);
+  karte.punkte.forEach((g, i) => {
+    const o = doppel.get(g) ?? g;
+    for (let d = 0; d < 3; d++) kp[3 * i + d] = netz.punkte[3 * o + d]!;
+  });
+  const kTri: number[][] = [];
+  for (let t = 0; t < karte.dreiecke.length; t += 3) kTri.push([kIdx.get(karte.dreiecke[t]!)!, kIdx.get(karte.dreiecke[t + 1]!)!, kIdx.get(karte.dreiecke[t + 2]!)!]);
+  const kNetz = feinNetz(kp, kTri);
+  const winkel = [Math.PI / 2, Math.PI / 4, 0, -Math.PI / 4, -Math.PI / 2];
+  return (lagen) => {
+    const rho = lagen.reduce((s, p) => s + Math.hypot(p[0] - c[0], p[1] - c[1], p[2] - c[2]), 0) / lagen.length;
+    return winkel.map((w) => {
+      const p = hautPunkt(netz, nrm, [c[0] + rho * (Math.cos(w) * tx[0] + Math.sin(w) * ty[0]), c[1] + rho * (Math.cos(w) * tx[1] + Math.sin(w) * ty[1]), c[2] + rho * (Math.cos(w) * tx[2] + Math.sin(w) * ty[2])]).p;
+      const an = ankerVon(kNetz, p);
+      const T = kNetz.dreiecke;
+      const i0 = T[3 * an.dreieck]!;
+      const i1 = T[3 * an.dreieck + 1]!;
+      const i2 = T[3 * an.dreieck + 2]!;
+      const w0 = 1 - an.b1 - an.b2;
+      return { u: w0 * karte.u[i0]! + an.b1 * karte.u[i1]! + an.b2 * karte.u[i2]!, v: w0 * karte.v[i0]! + an.b1 * karte.v[i1]! + an.b2 * karte.v[i2]! };
+    });
+  };
+}
+
 /**
  * Hautgitter des Kernrings, in zwei Stufen, jede für sich faltenfrei (Tutte: konvexer Rand, positive Gewichte).
  * Die Karte ist konform bis auf das Seitenverhältnis a: In ζ = a·U + i·(V_c − V) liegt die Lippe auf der imaginären Achse, nahe
@@ -421,16 +491,17 @@ export function kartenSeitenverhaeltnis(karte: Karte, netz: FeinNetz, doppel: Ma
  * 2. Außen (Reihen J_i … J) in der Karte selbst (Koordinaten a·U, V; das Rechteck U ≥ u_{J_i} ist konvex und dort regulär): Die
  *    Speichen laufen von ihrer Lage in Reihe J_i zu ihren Randpunkten — hier nimmt das Gitter den Versatz des Feldrands auf.
  * Gleiche Gewichte in beiden Stufen (je Runde exakt, dünn besetzt: Cholesky in der Hülle); fest sind außerdem die
- * Nahtspeichen (nach Bogenlänge).
+ * Nahtspeichen (`naht`) und auf Wunsch der Fächer um c (`faecher`).
  */
-export function kernGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, uR: number[], thetaIn: Float64Array, thetaOut: Float64Array, lippe: V3[], rand: V3[], vc: number, uc: number, a: number, jInnen?: number, aussenRunden = 0): { u: number[][]; v: number[][]; lagen: V3[][]; umgeklappt: number } {
+export function kernGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, uR: number[], thetaIn: Float64Array, thetaOut: Float64Array, lippe: V3[], rand: V3[], vc: number, uc: number, a: number, opt: KernGitterOptionen = {}): { u: number[][]; v: number[][]; lagen: V3[][]; umgeklappt: number } {
   const J = uR.length - 1;
   const m = (thetaIn.length - 1) / 2;
   const S = thetaOut.length - 1;
   const M = S / 2;
   if (M !== m + 2) throw new Error(`Kernring: M = ${M}, m = ${m} (erwartet M = m + 2)`);
   if (J < 3) throw new Error(`Kernring: J = ${J} zu klein (mindestens 3: eine freie Reihe innen, eine außen)`);
-  const Ji = Math.min(J - 1, Math.max(2, jInnen ?? Math.round(J / 2)));
+  const Ji = Math.min(J - 1, Math.max(2, opt.jInnen ?? Math.round(J / 2)));
+  const aussenRunden = opt.aussenRunden ?? 0;
   const xc = (a * uc) ** 2;
   // Hauptwurzel; auf der negativen reellen Achse entscheidet `seite` (Oberseite > 0)
   const wurzel = (x: number, y: number, seite: number): [number, number] => {
@@ -448,8 +519,9 @@ export function kernGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, u
     const z = wurzel(x * x - y * y + xc, 2 * x * y, y);
     return [z[0] / a, vc - z[1]];
   };
-  const uOben = nahtHoehen(umkehr, uR, 0);
-  const uUnten = nahtHoehen(umkehr, uR, 1);
+  const nachKarte = uR.map((u, r) => (r === 0 ? 0 : r === J ? 1 : u));
+  const uOben = opt.naht === 'karte' ? nachKarte : nahtHoehen(umkehr, uR, 0);
+  const uUnten = opt.naht === 'karte' ? nachKarte : nahtHoehen(umkehr, uR, 1);
   // Knoten: Reihe 0 (Lippe) k; Reihe r ≥ 1: 2m + 1 + (r − 1)(S + 1) + k. Lage in der Karte (U, V) je Knoten.
   const n0 = 2 * m + 1;
   const id = (r: number, k: number) => (r === 0 ? k : n0 + (r - 1) * (S + 1) + k);
@@ -490,10 +562,11 @@ export function kernGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, u
   for (let r = 1; r < J; r++) for (let k = 0; k <= S; k++) kanten.push([id(r, k), id(r + 1, k)]);
   const reihe = (i: number) => (i < n0 ? 0 : Math.floor((i - n0) / (S + 1)) + 1);
   const spalte = (i: number) => (i < n0 ? -1 : (i - n0) % (S + 1));
+  const gepinnt = new Set<number>();
   const frei = (i: number) => {
     const r = reihe(i);
     const k = spalte(i);
-    return r > 0 && r < J && r !== Ji && k > 0 && k < S;
+    return r > 0 && r < J && r !== Ji && k > 0 && k < S && !gepinnt.has(i);
   };
   // Tutte je Stufe in ihren Koordinaten (innen ζ', außen a·U, V), Gewicht je Kante (Index in `kanten`)
   const gewicht = new Float64Array(kanten.length).fill(1);
@@ -541,6 +614,17 @@ export function kernGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, u
     });
   };
   stufe(true);
+  // Fächer um c (Reihe 1, U'_m … D'_m) fest auf seine Ziellage, die innere Stufe danach neu
+  if (opt.faecher) {
+    const ids = [m, m + 1, M, M + 1, M + 2].map((k) => id(1, k));
+    const ziel = opt.faecher(ids.map((i) => umkehr(U[i]!, V[i]!).p));
+    ids.forEach((i, q) => {
+      U[i] = ziel[q]!.u;
+      V[i] = ziel[q]!.v;
+      gepinnt.add(i);
+    });
+    stufe(true);
+  }
   stufe(false);
   const lage3 = (i: number): V3 => L3[i] ?? umkehr(U[i]!, V[i]!).p;
   // Äußere Stufe nach Hautlängen: Die Karte staucht den Feldrand weit hinter dem Mundwinkel konform (viele Randpunkte in einem
@@ -635,6 +719,16 @@ export type EinsatzOptionen = {
   eckeMin?: number;
   /** Kernring: Reihen der inneren Stufe (Standard J/2, mindestens 2) */
   jInnen?: number;
+  /**
+   * Kernring: Fächer um c (Reihe 1, U'_m … D'_m) wie ihn die innere Stufe legt ('tutte') oder fest als Halbkreis in der
+   * Tangentialebene ('kreis', `faecherKreis`). Standard auf K2: 'kreis'.
+   */
+  faecher?: 'tutte' | 'kreis';
+  /**
+   * Kernring: Nahtspeichen nach Bogenlänge auf der Naht ('bogen') oder auf der Kartenlinie ihrer Reihe ('karte', U = u_r).
+   * Standard auf K2: 'karte'.
+   */
+  naht?: 'bogen' | 'karte';
   /** Kernring: Runden des Ausgleichs nach Hautlängen in der äußeren Stufe (0 = gleiche Gewichte; Standard auf K2: 6) */
   aussenRunden?: number;
   /**
@@ -887,7 +981,12 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
     const b = bandLage(lippeLage, m, J, opt.bandRinge ?? 2, delta, netz, opt.feldDreiecke, bogen, aussenRunden, (kk, nn) => kartenSeitenverhaeltnis(kk, nn, new Map()), (kk, nn) => kartenUmkehr(kk, nn, new Map()), opt.bandRest);
     bogen = b.rand;
     gitter = { u: b.u, v: b.v, lagen: b.lagen, umgeklappt: zellenUmgeklappt(b.lagen, m, netz) };
-  } else gitter = kern ? kernGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, randLagen, vc, uc, aspekt, opt.jInnen, aussenRunden) : hautGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, randLagen, opt.glaettung ?? 'laenge', opt.winkelReihen ?? 1, opt.winkelFaktor ?? 1);
+  } else {
+    // Kernring auf K2 (E1): Fächer um c als Halbkreis, Nahtspeichen auf den Kartenlinien ihrer Reihen
+    const faecher = kern && (opt.faecher ?? (stufe === 2 ? 'kreis' : 'tutte')) === 'kreis' ? faecherKreis(netz, karte, doppel, umkehr(uc, vc).p, umkehr(0, thetaIn[m - 1]!).p, umkehr(0.5 * uc, thetaIn[m - 1]!).p, umkehr(0.5 * uc, thetaIn[m + 1]!).p) : undefined;
+    const naht = opt.naht ?? (stufe === 2 ? 'karte' : 'bogen');
+    gitter = kern ? kernGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, randLagen, vc, uc, aspekt, { aussenRunden, naht, ...(opt.jInnen ? { jInnen: opt.jInnen } : {}), ...(faecher ? { faecher } : {}) }) : hautGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, randLagen, opt.glaettung ?? 'laenge', opt.winkelReihen ?? 1, opt.winkelFaktor ?? 1);
+  }
   const hautLage: V3[][] = [lippeLage];
   for (let r = 1; r < J; r++) hautLage.push(gitter.lagen[r]!.map((p, k, z) => (k === 0 || k === z.length - 1 ? [p[0], p[1], 0] : p)));
   // Oberseite = die Seite, deren Randpunkte im Mittel höher liegen; liegt sie bei V > V_c, werden die Speichen umgedreht

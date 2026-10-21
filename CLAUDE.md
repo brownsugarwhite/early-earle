@@ -13,7 +13,7 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 > (freigegeben): ehrliche Bestandsaufnahme S0–S8a mit frischen Messungen und Extremtest, Zielbild Vektorillustration,
 > Umrisse als Käfigschleifen mit Silhouettenbedingung, Linien gleichzeitig, Bedienung nach Blender (⌘R-Loops, G/S/R,
 > proportional), Schritte V0–V9; ersetzt S8 des Plans vom 16.10.
-> **Ab 21.10. läuft Teil A „Maul als Einsatz“** (Florians Wahl vor V7) nach
+> **Ab 21.10. läuft Teil A „Maul als Einsatz“** (Florians Wahl vor V7; E1-Tore im Kern erreicht, Abnahme offen, als Nächstes E2) nach
 > [`docs/plans/2026-10-21-maul-einsatz-weiter.md`](docs/plans/2026-10-21-maul-einsatz-weiter.md) (Schritte E1–E6). Einstieg für
 > eine frische Sitzung mit Start-Prompt, Stand, nächsten Schritten, Skripten und Fallen: [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
 > Stand 21.10. (zweite Sitzung): Haut-Tor erreicht, Mundwinkel 26 von 30; nächster Schritt: Verdrehung an J-Linien aufnehmen.
@@ -231,6 +231,16 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   30 (vorher mit Wulst 1 von 39); verfehlt nur an J-Linien — Ursache die Verdrehung (Feldrand außen am Haken länger), Weg
   Übergangsreihe mit Polpaaren. Messung des Mundwinkels jetzt mit festem Umkreis (drei Feldkanten). Dreizehn Varianten (Lage und
   Lösen) gemessen und verworfen (Liste in der Übergabe). Bild `docs/progress/editor/e1-mundwinkel-ohne-wulst-2026-10-21.jpg`.
+- **2026-10-21 (dritte Sitzung): Mundwinkel-Tor 30 von 30, auch an den J-Linien** (Florian: „mach hier mit der Verdrehung an
+  J-Linien weiter …, bis das Mundwinkel-Tor auch an den vier J-Fällen hält“; Planseite „Nachtrag E1 (dritte Sitzung)“, Register,
+  Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md)). Die Polpaare waren nicht der Hebel (die Verdrehung gibt es auch in Fällen,
+  die das Tor halten). Neuer Standard des Kernrings auf K2: Feld begradigt bis 1,5 Radien (`kappe`), Fächer um c als Halbkreis
+  auf der Haut (`faecherKreis`), Nahtspeichen auf den Kartenlinien ihrer Reihen (`naht: 'karte'`); K1 und `FALL_ALT` bitgleich.
+  Ganze Reihe: Mundwinkel ≤ A0 + 2° in 30 von 30 (J-Linien höchstens 0,9° darüber), Haut max 0,22 → 0,09 px, Lippe ≤ 0,44 px,
+  keine umgeklappte Zelle in allen 39 Fällen (vorher Robbe hoch), über alle 54 Fälle 64 → 1. Rex/Robbe bleiben bis E2 außerhalb
+  der Tore (A0-Falten im Feld; spitzer Schlitzanfang bei Robbe hoch: Zellen bis 57 : 1). Mundwinkel-Tor jetzt `it`, neue Wächter
+  in `kernring.test.ts` (am alten Code rot). Bild `docs/progress/editor/e1-mundwinkel-j-linien-2026-10-21.jpg`. Nächster Schritt:
+  E2.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

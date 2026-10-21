@@ -52,8 +52,13 @@ function flaechenSpiegel(k: Kaefig, sp: Int32Array): Int32Array {
  * die Linie. Begradigt wuchs es auf K2 bis zum Vierfachen des Radius und wurde schief (die Randpunkte hinter dem
  * Mundwinkel passten nach ihrer Nummer bis 24 Speichen versetzt zu den Lippenstellen). Im Kernring bekommt jeder Randpunkt
  * genau eine Speiche: einspringende Ecken werden Dreier-, vorspringende Fünferpole am Rand.
+ * `kappe` (Plan 21.10., E1, Standard des Kernrings auf K2: 1,5): begradigen, aber nur Flächen bis `kappe` · Radius von der
+ * Linie, dazu Kneifpunkte schließen. Kerben und einzelne Buckel des Bands verschwinden (kompakt setzte an einen Buckel zwei
+ * Fünferpole nebeneinander: Kugel hoch gerade 66° Knick in der letzten Zellreihe), und das Feld bläht sich nicht über den
+ * Kopf auf; was an der Kappe konkav bleibt, nimmt der Kernring als Dreierpol.
  */
-export function feldWaehlen(k1: Kaefig, abstand: Float64Array, radius: number, opt: { kompakt?: boolean } = {}): FeldSpec {
+export function feldWaehlen(k1: Kaefig, abstand: Float64Array, radius: number, opt: { kompakt?: boolean; kappe?: number } = {}): FeldSpec {
+  const kappe = opt.kappe ?? 0;
   const sp = spiegelIndex(k1.xyz, k1.n);
   const fsp = flaechenSpiegel(k1, sp);
   const inM = new Uint8Array(k1.nF);
@@ -147,16 +152,18 @@ export function feldWaehlen(k1: Kaefig, abstand: Float64Array, radius: number, o
   if (opt.kompakt) {
     for (; runden < 60 && kneifpunkteSchliessen(); runden++) lochFuellen();
   } else for (; runden < 60; runden++) {
+    // begradigen, mit Kappe nur bis `kappe` · Radius und Kneifpunkte geschlossen
     let neu = 0;
     for (let v = 0; v < k1.n; v++) {
       const fs = flaechenAn(v);
       const f = fs.filter((x) => inM[x]).length;
       if (f === 0 || f === fs.length) continue;
-      if (valenzVon(v) - f + 2 < 4) for (const x of fs) if (!inM[x]) {
+      if (valenzVon(v) - f + 2 < 4) for (const x of fs) if (!inM[x] && (!kappe || abstand[x]! <= kappe * radius)) {
         nimm(x);
         neu++;
       }
     }
+    if (kappe) neu += kneifpunkteSchliessen();
     if (!neu) break;
     lochFuellen();
   }
@@ -261,9 +268,9 @@ export const M_MAX = 20;
 /**
  * Feld mit gerader Kantenzahl am halben Rand (m = E/2 ganz) und m ≤ M_MAX: der Radius wächst in Vierteln einer Kante
  * (höchstens zwei Kanten mehr), dann schrumpft er (bis zwei Kanten), bis beides stimmt; sonst das erste Feld ohne konkave
- * Ecken.
+ * Ecken. Kompakte und gekappte Felder (`kappe`) dürfen konkave Ecken behalten.
  */
-export function feldMitGerademRand(k1: Kaefig, abstand: Float64Array, radius: number, kante: number, mMax = M_MAX, opt: { kompakt?: boolean } = {}): FeldSpec & { radius: number } {
+export function feldMitGerademRand(k1: Kaefig, abstand: Float64Array, radius: number, kante: number, mMax = M_MAX, opt: { kompakt?: boolean; kappe?: number } = {}): FeldSpec & { radius: number } {
   let erstes: (FeldSpec & { radius: number }) | null = null;
   // erst wachsen (bis zwei Kanten mehr), dann schrumpfen (bis zwei Kanten Radius): lange Linien (tiefer Rex-Mund) gaben
   // sonst m = 22 > M_MAX
@@ -272,7 +279,7 @@ export function feldMitGerademRand(k1: Kaefig, abstand: Float64Array, radius: nu
   for (let s = 1; radius - 0.25 * s * kante >= 2 * kante; s++) radien.push(radius - 0.25 * s * kante);
   for (const r of radien) {
     const f = feldWaehlen(k1, abstand, r, opt);
-    const gerade = opt.kompakt || f.konkav === 0;
+    const gerade = opt.kompakt || (opt.kappe ?? 0) > 0 || f.konkav === 0;
     if (!erstes && gerade) erstes = { ...f, radius: r };
     if (gerade && Number.isFinite(f.m) && f.m <= mMax) return { ...f, radius: r };
   }

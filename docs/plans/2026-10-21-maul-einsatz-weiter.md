@@ -258,3 +258,78 @@ Florian: „Weiter mit Teil A, E1 nach der Übergabe: zuerst die genaue Haut als
 Übergangsreihe mit Polpaaren (5er außen am Haken, 3er innen), sodass außen mehr Speichen zum Feldrand laufen als innen. Dann
 kann um c das Kissen liegen, der Rest nimmt die Feldform ohne Drehung auf, und die Naht der beiden Stufen entfällt.
 Alternativ ein ausgeglichenes Feld (Randpunkte oben und unten gleich verteilt). Beides erst an den vier Fällen beweisen.
+
+## Nachtrag E1 (21.10., dritte Sitzung): Mundwinkel an J-Linien — Feld, Fächer, Naht
+
+Florian: „Ja, mach hier mit der Verdrehung an J-Linien weiter (Übergangsreihe mit Polpaaren), bis das Mundwinkel-Tor auch an den
+vier J-Fällen hält.“
+
+**Ergebnis: Mundwinkel-Tor in 30 von 30** (ganze Reihe, 39 ausgeglichene Fälle, Rex/Robbe bis E2 ausgenommen):
+
+| | zweite Sitzung | jetzt |
+|---|---|---|
+| Mundwinkel ≤ A0 + 2° (ohne Rex/Robbe) | 26 von 30 | **30 von 30** |
+| größter Abstand Mundwinkel − A0 | 3,5° | 1,5° (J-Linien 0,9°) |
+| größter Knick im Feld − A0 | 4,8° | 1,9° |
+| Haut gegen A0 (ohne Rex/Robbe) | max 0,22, Median 0,12 px | max 0,09, Median 0,07 px |
+| Lippe (alle 39) | bis 2,7 px | ≤ 0,44 px |
+| umgeklappte Zellen | 2 Fälle (Robbe hoch) | keine, auch an Rex/Robbe |
+| Rex/Robbe: Knick (A0 9–105°) | bis 179° in 3 Fällen | 9–43° |
+| Rex/Robbe: Haut | 0,15–4,1 px | 0,08–1,0 px |
+
+Die vier J-Fälle am Mundwinkel: Kugel mittel J 4,4 → 1,8° (A0 1,4°), Ei mittel J 3,9 → 1,1° (1,2°), Ei tief J 4,8 → 2,0°
+(1,4°), Langhals hoch J 8,0 → 5,6° (6,0°). Bild (gleicher Ausschnitt, A0 · Einsatz · Abstand · Zebra; vorher franst das Zebra
+unter dem Mundwinkel aus): [`e1-mundwinkel-j-linien-2026-10-21.jpg`](../progress/editor/e1-mundwinkel-j-linien-2026-10-21.jpg).
+
+**Die Polpaare waren nicht der Hebel (ehrlich).** Die Verdrehung (Speiche k → Randpunkt k bis ±20 Speichen versetzt) gibt es
+auch in Fällen, die das Tor halten; sie entscheidet nicht über den Knick an c. Gebaut wurden stattdessen drei Dinge — alle im
+Kern, Standard des Kernrings auf K2, K1 und `FALL_ALT` bleiben bitgleich:
+
+1. **Feld begradigt bis 1,5 Radien** (`feldWaehlen(…, { kappe })`, `einsatzFall(…, { kappe })`, Standard auf K2 1,5): Ganz
+   begradigt wuchs das Feld auf K2 über den Kopf und lag schief zur Linie (Rex mittel: 3008 Flächen, aber nur 64 Randpunkte —
+   m = 14, die Lippe fiel auf eine grobe Auflösung zurück). Das reine Band (kompakt) setzte an Buckel zwei Fünferpole
+   nebeneinander (Kugel hoch gerade: 66° in der letzten Zellreihe). Gekappt bleibt das Band um die Linie ohne Kerben und Buckel,
+   konkave Ecken an der Kappe nimmt der Kernring als Dreierpole. Die Lippenauflösung folgt der Länge des Bands (keine Obergrenze
+   `M_MAX` mehr auf K2, m 15–58). Allein: Mundwinkel 28 von 30, J-Linien bis 2,5° über A0.
+2. **Fächer um c als Halbkreis** (`faecherKreis`, Option `faecher: 'kreis'`): Die fünf Punkte der Reihe 1 um c liegen in der
+   Tangentialebene bei 90°, 45°, 0°, −45°, −90° gegen die Verlängerung des Schlitzes, im mittleren Abstand ihrer Tutte-Lagen;
+   danach wird die innere Stufe neu gerechnet. Das ist das „Quadratgitter um c“ aus dem Nachtrag vom Mittag, als feste Vorgabe
+   nur für den Fächer — die Reihen dahinter legt Tutte. Allein aus der Karte lag der Fächer gekippt: Die Karte gibt den beiden
+   Schlitzufern an der Spitze verschiedene V-Abstände (an J-Linien oben bis 2-mal so weit wie unten; eine Eigenart der Dreiecke
+   an der Spitze, die beim Verfeinern bleibt). Der Halbkreis liegt ganz auf der Haut (Mittelpunkt = Lage von c in der Karte);
+   um den Kontrollpunkt c gebaut faltete er dort, wo die Linie neben der Haut liegt (Langhals mittel bis 63 px, 19–32 Zellen).
+   Mit 1.: 30 von 30, J-Linien höchstens 0,9° über A0.
+3. **Nahtspeichen auf den Kartenlinien ihrer Reihen** (Option `naht: 'karte'`): Nach Bogenlänge passten sie nicht zu Reihe J_i,
+   die ganz auf ihrer Kartenlinie liegt. Wo die Karte längs der Naht ungleich dehnt (Robbe hoch: Reihe J_i trifft die Naht nach
+   Bogenlänge bei einem Fünftel ihres U), läuft der Rand der äußeren Stufe zurück, sie ist nicht mehr konvex, und Zellen klappen
+   um (Robbe hoch 5–7, Rex mittel 3–4, Rex tief S 2 — mit dem gekappten Feld wurden Rex und Robbe erst echte K2-Fälle). Auf den
+   Kartenlinien bleibt jede Stufe ein Rechteck, Tutte bleibt faltenfrei. Die 30 übrigen Fälle ändern sich kaum (Mundwinkel
+   ≤ 0,02°, Haut ± 0,01 px, Knick ± 0,5°).
+
+Über alle 54 Fälle (auch die 15 mit der Linie neben der Haut): umgeklappte Zellen 64 → 1 (Langhals mittel gerade, Linie 21 px
+neben der Haut; vorher ebenfalls 1).
+
+**Gemessen und verworfen** (Code wieder ausgebaut): Übergangsreihe mit Polpaaren (Prämisse falsch, s. o.); symmetrischer
+Schlitz in der Karte (oben und unten gleiche V-Abstände um die Spitze; allein zu wenig, mit dem Fächer unnötig, Zellen bis 24 : 1);
+Auffaltung der Karte an der Spitze (Kotangensgewichte in Wurzelkoordinaten — ohne Wirkung); Ortskarte (innere Stufe in
+Abstandskoordinaten zur Lippe — faltet an c); reines Band mit geglättetem Rand (die Fünferpole bleiben); Fächer als Quadrat statt
+Kreis (faltet an einer J-Linie); Fächer hinterher drehen (Ring 1 und 2 auf die Sollwinkel — gemischt).
+
+**Tests:** Mundwinkel-Tor in `einsatz/kernring.extrem.ts` jetzt `it` (vorher `it.fails`), das Haut-Tor verlangt dort zusätzlich
+„nirgends umgeklappt“ auch an Rex/Robbe; neue Wächter in `einsatz/kernring.test.ts`: Mundwinkel an drei J-Linien und keine
+umgeklappte Zelle an Robbe hoch (beide am alten Code rot gegengeprüft: 4,42 / 4,83 / 8,01° über der Grenze, 5 Zellen).
+Skripte: `teilA/e1-reihe-k2.ts` und `einsatz-loesen.ts` mit `KAPPE`, `FAECHER`, `NAHT` (`KAPPE=0 FAECHER=tutte NAHT=bogen` = Stand
+der zweiten Sitzung), `teilA/e1-gitterbild.ts` ebenso.
+
+**Offen (Register „Befunde aus E1“):**
+- Rex/Robbe bleiben bis E2 außerhalb der Tore: Haut 0,6–1,0 px und Knick 23–43° an Rex mittel und Robbe hoch, wo A0 eigene
+  Falten im Feld trägt (Schnauzenkante 105°, Kerbe 18°); Rex tief J am Mundwinkel 8,6° (A0 4,3°).
+- Robbe hoch: Die Linie trifft die Naht spitz. Die konforme Karte drängt die Speichen über den ersten Lippenstellen an die Naht
+  (V wächst dort mit der dritten Potenz des Abstands), Reihe J_i liegt über ihnen gerade → Zellen bis 57 : 1 an Reihe J_i (vorher
+  6,5 : 1, dafür umgeklappt). Weg: Reihe J_i nahe der Naht nach Bogenlänge statt über den Lippenstellen, oder ein eigener
+  Schlitzanfang mit Polen.
+- Spitze Zellen in der letzten Zellreihe am Feldrand (Ecken des gekappten Felds, bis 1,4°; vorher an der Stufennaht bis 2,1°);
+  der Knick dort bleibt unauffällig.
+
+**Nächster Schritt nach Plan:** E2 (A0 wie im Editor; Falten von A0 im Feld laufen auf einer Spalte weiter — das betrifft genau
+Rex und Robbe).

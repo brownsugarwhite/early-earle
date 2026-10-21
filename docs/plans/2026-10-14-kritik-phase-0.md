@@ -210,18 +210,25 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
 
 ## Befunde aus E1 (21.10., Maul als Einsatz — Kernring)
 
-- [ ] **Mundwinkel-Tor verfehlt** (21.10., zweite Sitzung: `einsatz/kernring.extrem.ts`, `it.fails`, ganze Reihe): Knick im
-  Umkreis von drei Feldkanten um die Lippenspitze ≤ A0 + 2° in 26 von 30 ausgeglichenen Fällen ohne Rex/Robbe (31 von 39 mit;
-  vorher mit Lippenwulst 1 von 39). Verfehlt nur an J-Linien: Kugel mittel J 4,4°, Ei mittel J 3,9°, Ei tief J 4,8°, Langhals
-  hoch J 8,0°. Ursachen und Wege auf der Planseite [`2026-10-21-maul-einsatz-weiter.md`](2026-10-21-maul-einsatz-weiter.md),
-  „Nachtrag E1 (zweite Sitzung)“:
-  1. **Verdrehung:** Am Haken einer J-Linie ist der Feldrand außen länger als innen, Speiche k muss trotzdem zu Randpunkt k
-     (rund zehn Speichen Versatz). Harmonisch dreht das den Fächer um c, die zwei Stufen der Kartenlage knicken dafür an der
-     festen Reihe J_i (3,9–4,4°). Weg: Übergangsreihe mit Polpaaren (5er außen, 3er innen) oder ausgeglichenes Feld.
-  2. **Die Karte zeigt am Linienende nicht in die Verlängerung** (1–52°, Median ≈ 11°; auf feinerem Netz gleich): Der Fächer um
-     c liegt gegen die Lippe gekippt (Knick an c: Ei tief J, Langhals hoch J). Löst sich mit 1., wenn um c das Kissen liegt (Lage
-     „Band“ ist dort schon gut, faltet aber, solange die Verdrehung hinter dem Band aufgenommen wird).
-  3. Konforme Lippenstellen passen nicht zu verwickelten Linien (Rex mittel: Lippe 2,3–2,7 px) → mit E2.
+- [ ] **Rex und Robbe bis E2 außerhalb der Tore** (21.10., dritte Sitzung): Haut 0,6–1,0 px und Knick 23–43° an Rex mittel und
+  Robbe hoch, wo A0 eigene Falten im Feld trägt (Schnauzenkante 105°, Kerbe 18°); Rex tief J am Mundwinkel 8,6° (A0 4,3°).
+  Umgeklappt ist dort nichts mehr. → E2 („Falten von A0 im Feld laufen auf einer Spalte weiter“).
+- [ ] **Spitzer Schlitzanfang** (Robbe hoch, 21.10., dritte Sitzung): Die Linie trifft die Naht spitz; die konforme Karte drängt
+  die Speichen über den ersten Lippenstellen an die Naht (V wächst dort mit der dritten Potenz des Abstands), Reihe J_i liegt über
+  ihnen gerade → Zellen bis 57 : 1 an Reihe J_i. Wege: Reihe J_i nahe der Naht nach Bogenlänge statt über den Lippenstellen, oder
+  ein eigener Schlitzanfang mit Polen.
+- [ ] **Spitze Zellen am Feldrand** (21.10., dritte Sitzung): in der letzten Zellreihe an den Ecken des gekappten Felds bis 1,4°
+  (vorher an der Stufennaht bis 2,1°); Knick dort unauffällig (höchstens A0 + 1,9° im ganzen Feld).
+- **Erledigt (21.10., dritte Sitzung): Mundwinkel-Tor 30 von 30** (`einsatz/kernring.extrem.ts`, jetzt `it`; Wächter an drei
+  J-Linien in `kernring.test.ts`). Vorher 26 von 30, verfehlt an J-Linien (Kugel mittel J 4,4°, Ei mittel J 3,9°, Ei tief J 4,8°,
+  Langhals hoch J 8,0°; jetzt 1,8 / 1,1 / 2,0 / 5,6° bei A0 1,4 / 1,2 / 1,4 / 6,0°). Nicht die Verdrehung war es (sie gibt es auch
+  in Fällen, die das Tor halten), sondern Feld und Fächer: Feld begradigt bis 1,5 Radien (`kappe`; ganz begradigt wuchs es über
+  den Kopf, das reine Band hatte Buckel mit Fünferpolpaaren), Fächer um c als Halbkreis auf der Haut (`faecherKreis`; aus der Karte
+  allein lag er gekippt, weil sie den Schlitzufern an der Spitze verschiedene V-Abstände gibt). Dazu Nahtspeichen auf den
+  Kartenlinien ihrer Reihen (`naht: 'karte'`): Nach Bogenlänge passten sie nicht zu Reihe J_i, Robbe hoch und Rex klappten um —
+  jetzt in keinem der 39 Fälle, über alle 54 Fälle 64 → 1. Haut max 0,22 → 0,09 px, Lippe ≤ 0,44 px. Planseite „Nachtrag E1
+  (dritte Sitzung)“; verworfen: Polpaare, symmetrischer Schlitz, Auffaltung an der Spitze, Ortskarte, reines Band, Fächer als
+  Quadrat, Fächer hinterher drehen.
 - **Erledigt (21.10., zweite Sitzung):**
   - Haut ≤ 0,25 px als Standard des Kernrings (K2, Reihen 10–16, Ausgleich außen): 30 von 30 ohne Rex/Robbe, Haut-Tor in
     `kernring.extrem.ts`; Rex/Robbe 2–4 px wegen eigener Falten von A0 im Feld (E2).

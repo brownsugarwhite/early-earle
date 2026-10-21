@@ -1,11 +1,12 @@
 // Teil A, E1 (Plan 21.10.): Gitter „Kernring“ — der Mundwinkel als regulärer Gitterpunkt am Ende des Schnitts. Seit dem
-// 21.10. abends auf dem Standard des Kernrings (Feld auf K2, Schlitz genau auf der Linie, Reihenzahl konform 10 … 16,
-// Ausgleich außen). Geprüft wird (1) die Lippe als Falte: Die Grenzkurve der Lippenschleife im Käfig (c Faltenpunkt ohne
-// Punktschärfe) ist der B-Spline aus `lippenPunkt(…, 'falte')`, ihre Spitze liegt auf dem gezeichneten Mundwinkel; (2) die
-// Topologie an allen 54 Fällen: geschlossen, Spiegel exakt, außen gleich, Valenzen wie vorhergesagt (neue Punkte 4, die beiden
-// Kernecken je Hälfte 3, c mit vier Haut- und zwei Taschenflächen 6, die Rachenecken 3); (3) ein schneller Wächter der genauen
-// Haut an drei Fällen (≤ 0,25 px, faltenfrei, außen bitgleich, Spiegel bitgenau, Lippe ≤ 1 px). Die ganze Reihe (Haut-Tor und
-// Mundwinkel-Tor) läuft im Extrem-Lauf (`kernring.extrem.ts`).
+// 21.10. abends auf dem Standard des Kernrings (Feld auf K2 begradigt bis 1,5 Radien, Schlitz genau auf der Linie, Reihenzahl
+// konform 10 … 16, Fächer um c als Halbkreis, Nahtspeichen auf den Kartenlinien, Ausgleich außen). Geprüft wird (1) die Lippe
+// als Falte: Die Grenzkurve der Lippenschleife im Käfig (c Faltenpunkt ohne Punktschärfe) ist der B-Spline aus
+// `lippenPunkt(…, 'falte')`, ihre Spitze liegt auf dem gezeichneten Mundwinkel; (2) die Topologie an allen 54 Fällen:
+// geschlossen, Spiegel exakt, außen gleich, Valenzen wie vorhergesagt (neue Punkte 4, die beiden Kernecken je Hälfte 3, c mit
+// vier Haut- und zwei Taschenflächen 6, die Rachenecken 3); (3) schnelle Wächter: genaue Haut an drei Fällen (≤ 0,25 px,
+// faltenfrei, außen bitgleich, Spiegel bitgenau, Lippe ≤ 1 px), Mundwinkel an drei J-Linien (≤ A0 + 2°) und keine umgeklappte
+// Zelle an Robbe hoch. Die ganze Reihe (Haut-Tor und Mundwinkel-Tor) läuft im Extrem-Lauf (`kernring.extrem.ts`).
 import { describe, expect, it } from 'vitest';
 import { alleFlaechen, kanteZwischen, pruefeKaefig, valenz } from '../../kaefig/halbkanten';
 import { unterteilung } from '../../subdivision/catmullClark';
@@ -168,5 +169,37 @@ describe('Teil A, E1: Kernring', () => {
     }
     console.log(zeilen.join('\n'));
     expect(fehler).toBe('');
+  }, 300_000);
+
+  // Wächter Mundwinkel an J-Linien (dritte Sitzung E1): Ohne den Fächer als Halbkreis drehte die Karte den Fächer um c, sobald
+  // Linie und Feldrand um c nicht symmetrisch liegen (vorher Kugel mittel J 4,4°, Ei tief J 4,8°, Langhals hoch J 8,0° gegen A0
+  // 1,4 / 1,4 / 6,0°)
+  it('Mundwinkel an J-Linien: Knick um die Spitze ≤ A0 + 2° (Wächter, 3 Fälle)', () => {
+    const zeilen: string[] = [];
+    let fehler = '';
+    for (const name of ['kugel/mittel/j', 'ei/tief/j', 'langhals/hoch/j']) {
+      const [art, anfang, form] = name.split('/') as Parameters<typeof einsatzFall>;
+      const f = einsatzFall(art, anfang, form);
+      if (!f || 'fehler' in f) {
+        fehler += `${name}: Fall fehlt; `;
+        continue;
+      }
+      const { t, ms } = einsatzAblauf(f);
+      zeilen.push(`${name} m ${t.m} J ${t.J}: Ecke ${ms.faltenEcke.toFixed(2)}° (A0 ${ms.faltenEckeA0.toFixed(2)}°), Knick ${ms.falten.toFixed(1)}°, Haut ${ms.hautMax.toFixed(2)} px`);
+      if (ms.faltenEcke > ms.faltenEckeA0 + 2) fehler += `${name}: Ecke ${ms.faltenEcke.toFixed(2)}° > A0 + 2° (${(ms.faltenEckeA0 + 2).toFixed(2)}°); `;
+    }
+    console.log(zeilen.join('\n'));
+    expect(fehler).toBe('');
+  }, 300_000);
+
+  // Wächter Faltenfreiheit (dritte Sitzung E1): Nahtspeichen nach Bogenlänge passten nicht zu Reihe J_i auf ihrer Kartenlinie —
+  // wo die Karte längs der Naht ungleich dehnt, klappten Zellen um (Robbe hoch gerade: 5 mit dem ganz begradigten Feld, 7 mit
+  // dem gekappten); auf den Kartenlinien bleibt jede Stufe ein Rechteck
+  it('keine umgeklappte Zelle an Robbe hoch (Wächter der Nahtspeichen)', () => {
+    const f = einsatzFall('robbe', 'hoch', 'gerade');
+    if (!f || 'fehler' in f) throw new Error('Fall fehlt');
+    const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie: f.lippenZiel(), gitter: 'kernring', stufe: f.stufe });
+    console.log(`robbe/hoch/gerade m ${t.m} J ${t.J}: umgeklappt ${t.umgeklappt}`);
+    expect(t.umgeklappt).toBe(0);
   }, 300_000);
 });

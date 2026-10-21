@@ -4,7 +4,8 @@
 // Aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/einsatz-loesen.ts
 // Bild: aus apps/editor: node scripts/pruefen/html-shot.mjs <html> <jpg>
 // Umgebung: GITTER (schleifen|kernring), NEU=1 (Standard des Kernrings: K2, Schlitz auf der Linie; sonst Aufbau A1–A7),
-// LAGE (karte|band, nur mit NEU), J, ECKE (eckeMin), WULST, NAH, FAELLE.
+// LAGE (karte|band, nur mit NEU), J, ECKE (eckeMin), WULST, NAH, FAELLE; KAPPE (Feld begradigt bis … Radien, 0 = ganz), FAECHER
+// (tutte|kreis), NAHT (bogen|karte) — mit KAPPE=0 FAECHER=tutte NAHT=bogen der Stand vor der dritten Sitzung E1.
 import { writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -28,12 +29,12 @@ const daten: unknown[] = [];
 const texte: string[] = [];
 for (const name of FAELLE) {
   const [art, anfang, form] = name.split('/') as [never, never, never];
-  const f = einsatzFall(art, anfang, form, NEU ? {} : FALL_ALT);
+  const f = einsatzFall(art, anfang, form, NEU ? (process.env.KAPPE ? { kappe: Number(process.env.KAPPE) } : {}) : FALL_ALT);
   if (!f || 'fehler' in f) continue;
   const linie = f.lippenZiel();
   const gitter = (process.env.GITTER ?? (NEU ? 'kernring' : 'schleifen')) as 'schleifen' | 'kernring';
   const ende = gitter === 'kernring' ? 'falte' : 'ecke';
-  const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie, gitter, stufe: f.stufe, ...(process.env.J ? { J: Number(process.env.J) } : {}), ...(process.env.ECKE ? { eckeMin: Number(process.env.ECKE) } : {}), ...(process.env.LAGE ? { lage: process.env.LAGE as 'karte' | 'band', feldDreiecke: f.feldDreiecke } : {}) });
+  const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie, gitter, stufe: f.stufe, ...(process.env.J ? { J: Number(process.env.J) } : {}), ...(process.env.ECKE ? { eckeMin: Number(process.env.ECKE) } : {}), ...(process.env.FAECHER ? { faecher: process.env.FAECHER as 'tutte' | 'kreis' } : {}), ...(process.env.NAHT ? { naht: process.env.NAHT as 'bogen' | 'karte' } : {}), ...(process.env.LAGE ? { lage: process.env.LAGE as 'karte' | 'band', feldDreiecke: f.feldDreiecke } : {}) });
   const fit = lippeAnpassen(linie, t.m, t.lippenAnteile, { ende });
   const g = einsatzLoesen(t, f.v.kaefig, a0Netz(f.v.kaefig, 3 - f.stufe), fit.punkte, process.env.WULST ? { wulst: Number(process.env.WULST) } : {});
   // Bilder auf derselben Grenzfläche wie Stufe 4 von A0 (K1 auf 3, K2 auf 2)

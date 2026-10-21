@@ -1,8 +1,10 @@
 // Aufruf aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/teilA/e1-reihe-k2.ts
 // Umgebung: LAGE (karte|band, Liste mit Komma), J (fest; sonst Standard), FAELLE, AUS (JSON-Zeilen), WULST (px), ECKE (eckeMin),
-// VERL (Feld hinter dem Mundwinkel verlängert, in Feldradien)
-// Ganze Reihe des Kernrings nach dem Standard (Plan 21.10.): Feld auf K2, Schlitz genau auf der Linie, Reihenzahl konform
-// (10 … 16), Ausgleich außen, letzte Lippenspanne ¼ Feldkante, ohne Lippenwulst. Je ausgeglichenem Fall: Haut gegen A0 (max/99 %), Knick im Feld und am Mundwinkel (je gegen A0),
+// VERL (Feld hinter dem Mundwinkel verlängert, in Feldradien), FELD (begradigt|kompakt), KAPPE (Radien, 0 = ganz begradigt),
+// FAECHER (tutte|kreis), NAHT (bogen|karte)
+// Ganze Reihe des Kernrings nach dem Standard (Plan 21.10.): Feld auf K2 begradigt bis 1,5 Radien, Schlitz genau auf der Linie,
+// Reihenzahl konform (10 … 16), Fächer um c als Halbkreis, Nahtspeichen auf den Kartenlinien, Ausgleich außen, letzte
+// Lippenspanne ¼ Feldkante, ohne Lippenwulst. Je ausgeglichenem Fall: Haut gegen A0 (max/99 %), Knick im Feld und am Mundwinkel (je gegen A0),
 // umgeklappte Zellen, Viereckgüte, Lippe, außen, Spiegel, Zeit. Am Ende die Zusammenfassung je Lage.
 import { appendFileSync } from 'node:fs';
 import { einsatzAblauf, einsatzFaelle, einsatzFall } from '../../../../../packages/shape/src/kern/pruefen/einsatzFall';
@@ -14,13 +16,13 @@ const zeilen: Record<string, Record<string, number | string>[]> = {};
 for (const [art, anfang, form] of einsatzFaelle()) {
   const name = `${art}/${anfang}/${form}`;
   if (NUR && !NUR.includes(name)) continue;
-  const f = einsatzFall(art, anfang, form, process.env.VERL ? { verlaengerung: Number(process.env.VERL) } : {});
+  const f = einsatzFall(art, anfang, form, { ...(process.env.VERL ? { verlaengerung: Number(process.env.VERL) } : {}), ...(process.env.FELD ? { feld: process.env.FELD as 'begradigt' | 'kompakt' } : {}), ...(process.env.KAPPE ? { kappe: Number(process.env.KAPPE) } : {}) });
   if (!f || 'fehler' in f || f.hautAbstand > 1) continue;
   for (const lage of LAGEN) {
     const t0 = performance.now();
     let z: Record<string, number | string>;
     try {
-      const { t, lippe, g, ms } = einsatzAblauf(f, { lage, ...(process.env.ECKE ? { eckeMin: Number(process.env.ECKE) } : {}), ...(process.env.J ? { J: Number(process.env.J) } : lage === 'band' ? { J: 10 } : {}) }, process.env.WULST ? { wulst: Number(process.env.WULST) } : {});
+      const { t, lippe, g, ms } = einsatzAblauf(f, { lage, ...(process.env.ECKE ? { eckeMin: Number(process.env.ECKE) } : {}), ...(process.env.FAECHER ? { faecher: process.env.FAECHER as 'tutte' | 'kreis' } : {}), ...(process.env.NAHT ? { naht: process.env.NAHT as 'bogen' | 'karte' } : {}), ...(process.env.J ? { J: Number(process.env.J) } : lage === 'band' ? { J: 10 } : {}) }, process.env.WULST ? { wulst: Number(process.env.WULST) } : {});
       let spiegel = 0;
       for (let v = t.nAlt; v < g.kaefig.n; v++) {
         const s = t.spiegel[v]!;
