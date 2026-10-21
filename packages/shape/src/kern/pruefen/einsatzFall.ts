@@ -126,9 +126,11 @@ export const FALL_ALT = { stufe: 1, schnitt: 'pfad' } as const;
  * Kantenpfad (wie A1) oder genau auf der Linie (Pfadpunkte auf die Linie gerückt, E1). `feld`: begradigt (A3) oder kompakt
  * (Band um die Linie, nur Kneifpunkte geschlossen, E1). `kappe`: begradigt nur bis `kappe` Radien (0 = ganz; Standard auf K2
  * 1,5 — das Band um die Linie bleibt erhalten, die Lippenauflösung m folgt seiner Länge). `a0`: A0 wie bis E1 oder wie im
- * Editor (Standard auf K2 seit E2).
+ * Editor (Standard auf K2 seit E2). `lippeAufHaut`: das Lippenziel wie der Schlitz auf die Haut von A0 gelegt (nächster Punkt,
+ * `linieAufNetz`) statt der Linie aus Seitenlage und Tiefe — deren Tiefe wellt sich nahe der Silhouette (Robbe tief J bis 0,75 px
+ * neben der Haut, die Lippe folgte der Welle).
  */
-export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form, opt: { verlaengerung?: number; stufe?: 1 | 2; schnitt?: 'pfad' | 'linie'; feld?: 'begradigt' | 'kompakt'; kappe?: number; a0?: A0Art } = {}): EinsatzFall | { name: string; fehler: string } | null {
+export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form, opt: { verlaengerung?: number; stufe?: 1 | 2; schnitt?: 'pfad' | 'linie'; feld?: 'begradigt' | 'kompakt'; kappe?: number; a0?: A0Art; lippeAufHaut?: boolean } = {}): EinsatzFall | { name: string; fehler: string } | null {
   const name = `${art}/${anfang}/${form}`;
   const stufe = opt.stufe ?? 2;
   const { dok, abl, netz, v, fein, ff, h1, hFeld } = koerperStand(art, stufe, opt.a0 ?? (stufe === 2 ? { art: 'editor' } : { art: 'alt' }));
@@ -159,7 +161,7 @@ export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form, opt: { 
   const schnitt = aufschneiden(netzS, dreiecke, pfad);
   const karte = karteBauen({ dreiecke: schnitt.dreiecke, punkte: netzS.punkte, nPunkte: netzS.punkte.length / 3, doppel: schnitt.doppel, pfad });
   let ziel: V3[] | null = null;
-  const lippenZiel = () => (ziel ??= abtasten3(l.oben, 64) as V3[]);
+  const lippenZiel = () => (ziel ??= opt.lippeAufHaut ? linieAufNetz(netz, l.oben, 64).lagen : (abtasten3(l.oben, 64) as V3[]));
   return { name, dok, abl, netz: netzS, maulLinie: l.oben, linie: auf.lagen, lippenZiel, hautAbstand, v, stufe, feinFlaechen: ff, feinK1: Float64Array.from(fein), h1: hFeld, feld, feldDreiecke: dreiecke, pfad, schnitt, karte };
 }
 

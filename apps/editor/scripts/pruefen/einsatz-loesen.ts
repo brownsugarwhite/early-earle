@@ -7,7 +7,7 @@
 // LAGE (karte|band, nur mit NEU), J, ECKE (eckeMin), WULST, NAH, FAELLE; KAPPE (Feld begradigt bis … Radien, 0 = ganz), FAECHER
 // (tutte|kreis), NAHT (bogen|karte|bogenKarte) — mit KAPPE=0 FAECHER=tutte NAHT=bogen der Stand vor der dritten Sitzung E1;
 // A0 (alt|editor), NR (Ausgleich der Stufennaht), SPITZEN (0 = aus), ANFANG=1 (Ausschnitt um den Linienanfang statt um c) —
-// mit A0=alt ECKE=0.25 NAHT=karte NR=0 SPITZEN=0 der Stand vor E2.
+// mit A0=alt ECKE=0.25 NAHT=karte NR=0 SPITZEN=0 der Stand vor E2; LAH (1 = Lippenziel auf der Haut von A0).
 import { writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,7 +31,7 @@ const daten: unknown[] = [];
 const texte: string[] = [];
 for (const name of FAELLE) {
   const [art, anfang, form] = name.split('/') as [never, never, never];
-  const f = einsatzFall(art, anfang, form, NEU ? { ...(process.env.KAPPE ? { kappe: Number(process.env.KAPPE) } : {}), ...(process.env.A0 === 'alt' || process.env.A0 === 'editor' ? { a0: { art: process.env.A0 } } : {}) } : FALL_ALT);
+  const f = einsatzFall(art, anfang, form, NEU ? { ...(process.env.KAPPE ? { kappe: Number(process.env.KAPPE) } : {}), ...(process.env.A0 === 'alt' || process.env.A0 === 'editor' ? { a0: { art: process.env.A0 } } : {}), ...(process.env.LAH ? { lippeAufHaut: process.env.LAH !== '0' } : {}) } : FALL_ALT);
   if (!f || 'fehler' in f) continue;
   const linie = f.lippenZiel();
   const gitter = (process.env.GITTER ?? (NEU ? 'kernring' : 'schleifen')) as 'schleifen' | 'kernring';

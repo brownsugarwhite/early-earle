@@ -427,3 +427,46 @@ versetzt — viel zu viele Pole).
 `OFFEN`, dasselbe Tor über alle Fälle als `it.fails`, Mundwinkel-Tor an allen 43; `kernring.test.ts` — Lippe als Falte jetzt mit
 Ecke am Anfang (Rex mittel S, Unterteilung gegen B-Spline 1,7e-16), neuer Wächter „Spitzen von A0“ (Robbe mittel, Rex mittel
 gerade; am alten Code rot: Haut 0,64 / 0,86 px, Knick 46° bei A0 18°). Skripte mit `A0`, `NR`, `SPITZEN`, `ANFANG`.
+
+## Nachtrag E2 (21.10., abends): Befund an den drei offenen Fällen, Weg „Leiter“
+
+**Robbe tief J — gelöst (Lippenziel auf der Haut):** Die gezeichnete Linie lag zwischen 8 und 45 % ihrer Länge bis 0,75 px neben
+der Haut von A0: Ihre Tiefe kommt aus 16 Knoten mit Tiefe von der Haut (`linieAufHaut`, Teil H), dazwischen kubisch; nahe der
+Silhouette ist die Tiefe steil, die Linie wellt sich (zweite Differenz 0,5–1,2 px je 1/64). Der Schlitz liegt längst auf der Haut
+(`linieAufNetz`), die Lippe (A6) folgte aber der gewellten Linie — Kontrollpunkte abwechselnd ±0,5 px, Buckel bei Stelle 12. Neu:
+`einsatzFall(…, { lippeAufHaut })` legt das Lippenziel wie den Schlitz auf die Haut (nächster Punkt). Robbe tief J: Knick
+16,8° → 11,2° (A0 11,2°). Ein Strahl längs z (Seitenlage bleibt) klappt an Kugel tief J nahe der Silhouette um (176°) — der
+nächste Punkt ist die robuste Wahl; die Seitenlage ändert sich dabei um höchstens den Abstand zur Haut.
+Ganze Reihe (43 Fälle) mit Lippenziel auf der Haut gegen heute: Robbe tief J ins Tor; Mundwinkel genauer an 13 Fällen (Birne hoch
+gerade 2,9 → 1,2°, Kugel tief S 2,1 → 1,0°, Birne mittel S 2,8 → 1,2°), Lippe genauer an Robbe mittel (0,56 → 0,09 px); Haut
+unverändert (ohne Rex/Robbe max 0,09 px). **Aber Rex mittel gerade fällt heraus** (Knick 24,7° → 39,1° bei A0 27,1°) — dort
+sitzt der Knick an der verlorenen Falte (siehe unten), kleine Änderungen am Lippenrand kippen ihn. Deshalb vorerst nur Option
+(`LAH=1` in den Skripten); Standard zusammen mit der Leiter. Haut-Tor in beiden Fällen 39 von 43.
+
+**Robbe hoch — Ursache berichtigt:** Kein spitzer Schlitzanfang (am Anfang 78° zwischen Naht und Linie), sondern ein **schmaler
+Streifen**: Die Linie läuft fast über ihre ganze Länge 1,5 (gerade) bzw. 0,4 (J) Feldkanten unter der Kopfnaht (Seitenansicht:
+knapp unter dem oberen Umriss). Die konforme Karte staucht einen langen schmalen Streifen exponentiell (V/V_c bei 20 % der
+Linie 1,9·10⁻³ bzw. 9,9·10⁻⁶, in allen anderen 41 Fällen ≥ 0,06). Im Kernring enden die Reihen auf der Naht und die Speichen am
+Feldrand — in einem Streifen zwischen Schlitz und Naht (zwei *benachbarten* Seiten des Kartenrechtecks) laufen deshalb **beide**
+Scharen längs des Streifens, für jede Lage: Die Reihen 1–4 liegen an Speiche 3–5 nur 1–2 ‰ neben der Lippe, eine Speiche läuft
+dort über die geknickte Kontrollpolygon-Lippe → Zelle umgeklappt, 176°/179°. Keine Lage im heutigen Gitter löst das.
+
+**Rex mittel — Ursache:** Die Falte von A0 ist ein **Ring um die Schnauzenfront** (Unterkante der Frontplatte, Bild
+Front/Seite): Sie kreuzt die Linie an Lippenstelle 5 (≈ 36 px hinter der Spitze) und läuft unten bis zur Naht unter der
+Schnauze (oben nur drei Kanten weit). Der Knick 44,7° (J) bzw. 24,7° (gerade) sitzt 0,8 bzw. 2,2 px neben ihr; im Kernring ist
+sie keine Gitterlinie (eine Speiche endet am Feldrand, nicht auf der Naht) und geht verloren. Weil Rex mittel gerade mit
+24,7° knapp im Tor liegt, kippt es schon bei kleinen Änderungen am Lippenrand (Lippenziel auf der Haut: 31,0°).
+
+**Ein Weg für beide: die Leiter (Sprossen zur Naht).** Auf einer Seite enden die Speichen der ersten q Lippenstellen (vom Anfang
+O bis zur Halsstelle P) nicht am Feldrand, sondern auf der Naht; t Reihen („Holme“) laufen zwischen Lippe und Naht bis zum Hals
+und dann als gewöhnliche Reihen weiter, die Reihen t + 1 … J beginnen auf der Naht hinter dem Hals. Im ganzen Netz ist das eine
+Leiter über die schmale Oberlippe (Sprosse = Speiche rechts + Spiegelbild), wie man sie von Hand legen würde.
+- Pole: je Leiter und Hälfte ein Dreierpol (Holm t an Sprosse 1, nahe O) und ein Fünferpol (Holm t am Hals). Sonst regulär.
+- Zählung: Jede Sprosse spart dem Feldrand eine Speiche; damit die Speichen den Feldrand (2M + 1 Punkte von K1) genau treffen,
+  wächst die Lippe: m = M + (q_oben + q_unten − 6)/2 (heute q = 1 je Seite: m = M − 2). q ungerade.
+- Hals: bei der Falte die Falte selbst (Sprosse q = die Falte, Schärfe von A0 übernommen; oben läuft das kurze Stück auf der
+  Speiche über P weiter, E2.3 a); beim Streifen dort, wo er breiter wird, quer vom Schlitz zur Naht.
+- Lage: Feld entlang des Halses in Leiterfeld und Ringfeld teilen, je eine Karte aus vier Randstücken (`karteAusStuecken`) — im
+  Leiterfeld liegen Lippe und Naht auf *gegenüberliegenden* Seiten, die Karte staucht dort nicht mehr; im Ringfeld wie heute
+  (zwei Stufen um c), mit dem L-förmigen Gitter.
+- Robbe hoch J (Streifen 0,4 Kanten) braucht t = 0: Sprossen direkt von der Lippe zur Naht.

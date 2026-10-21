@@ -210,18 +210,21 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
 
 ## Befunde aus E2 (21.10., Maul als Einsatz — A0 wie im Editor, Spitzen von A0)
 
-- [ ] **Robbe hoch: Haut faltet am spitzen Schlitzanfang** (176–179° in den ersten oberen Lippenzellen, Haut 0,37 px). Die Linie
-  beginnt oben auf dem Kopf; die Oberseite des Schlitzes ist ein schmaler Streifen unter der Kopfnaht. Die konforme Karte
-  staucht an einem spitzen Schlitzanfang auch quer zur Naht (V ∝ r³): Die Ring-1-Punkte über den ersten Lippenstellen fallen in 3D
-  zusammen, die Lippenstellen nicht. Die Naht nach Bogenlänge (`bogenKarte`) behebt nur die Richtung längs der Naht. Weg:
-  Eckenentfaltung am Schlitzanfang (Potenzabbildung des Kartenwinkels auf den wahren Winkel, wie die Wurzelauffaltung um c).
-- [ ] **Rex mittel J: Querfalte von A0 im Feld** (Haut 0,30 px, Knick 44,7° bei A0 27,1°). Die Falte kreuzt den Schlitz nahe dem
-  Linienanfang und läuft schräg zur Naht unter dem Kiefer; im Kernring ist das keine Gitterlinie (Speichen enden am Feldrand,
-  Reihen an der Naht), die Falte geht im Einsatz verloren. Weg: Kappe um die Spitze — Polargitter um U₀, die Falte als äußerer
-  Ring. (Rex mittel gerade hält die Tore trotzdem: 0,18 px.)
-- [ ] **Robbe tief J: Buckel der Lippe quer zur Haut** (Knick 16,8° an der Lippe bei A0 11,2°; zweite Differenz der Kontrollpunkte
-  4,5 px bei Stelle 12, an der Kugel 0,1 px). Vermutlich zieht die gezeichnete Linie über eine Wölbung von A0; stärkere Glättung
-  (1e-3) drückt ihn auf 1,3 px, Lippe dann 0,51 px. Erst die Linie dort ansehen.
+- [ ] **Robbe hoch: Haut faltet im schmalen Streifen unter der Kopfnaht** (176–179° an Lippenstelle 4, Haut 0,37 px). Ursache
+  berichtigt (21.10. abends): kein spitzer Anfang (78°), sondern ein langer Streifen von 1,5 (gerade) bzw. 0,4 (J) Feldkanten
+  zwischen Linie und Naht; die konforme Karte staucht ihn exponentiell (V/V_c bei 20 % 1,9·10⁻³ bzw. 9,9·10⁻⁶), und weil Reihen
+  auf der Naht und Speichen am Feldrand enden, laufen im Streifen beide Scharen längs — in jeder Lage. Eckenentfaltung hilft
+  nicht. Weg: **Leiter** (Speichen der ersten q Lippenstellen enden auf der Naht, je Hälfte ein Dreier- und ein Fünferpol,
+  m = M + (q_oben + q_unten − 6)/2), Planseite „Nachtrag E2 (21.10., abends)“.
+- [ ] **Rex mittel: Falte von A0 im Feld** (J: Haut 0,30 px, Knick 44,7° bei A0 27,1°; gerade knapp im Tor mit 24,7°, kippt bei
+  kleinen Änderungen am Lippenrand auf 39°). Die Falte ist ein Ring um die Schnauzenfront (Unterkante der Frontplatte): Sie
+  kreuzt die Linie an Lippenstelle 5 und läuft unten bis zur Naht; im Kernring endet keine Speiche auf der Naht, die Falte geht
+  verloren. Weg: **Leiter** auf der unteren Seite mit der Falte als Hals-Sprosse (Schärfe übernommen), oben das kurze Stück auf
+  der Speiche über der Kreuzung (E2.3 a).
+- [ ] **Robbe tief J: Buckel der Lippe quer zur Haut** (Knick 16,8° an der Lippe bei A0 11,2°). Ursache (21.10. abends): Die
+  gezeichnete Linie lag bis 0,75 px neben der Haut (Tiefe aus 16 Knoten, nahe der Silhouette steil, die Linie wellt sich); der
+  Schlitz liegt auf der Haut, die Lippe folgte der Welle. Gelöst mit dem Lippenziel auf der Haut (`lippeAufHaut`, Knick 11,2°);
+  noch Option, Standard zusammen mit der Leiter (sonst kippt Rex mittel gerade).
 - [ ] **E2.4 offen:** A0 mit Querschnitt aus der Hülle, P-Linien am Maul (Falten, die den Schlitz kreuzen), Loops.
 - **Erledigt (21.10.):** A0 wie im Editor als Standard des Prüffalls auf K2; Mundwinkel-Tor an allen 43 Fällen auch an Rex und
   Robbe (Ausgleich der Stufennaht, letzte Lippenspanne 0,15 Feldkante); Spitzen von A0 auf der Naht (Robbe mittel 0,58 → 0,14 px)
