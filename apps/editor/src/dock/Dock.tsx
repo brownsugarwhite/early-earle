@@ -3,6 +3,7 @@
 // S für Reifen); die Tasten setzen dasselbe Werkzeug wie die Knöpfe. Plan 20.10., V3: Mit einer Auswahl im Blatt greifen
 // G/S/R sie (modal wie Blender), die Zeile zeigt dann die laufende Operation.
 
+import { useSchleife } from '../kern/schleifenAuswahl';
 import { useSchleifenVorschau } from '../kern/schleifenWerkzeug';
 import { type Ebene, type Werkzeug, useUi } from '../state/uiStore';
 import { TEXTE } from '../ui/WerkzeugHinweis';
@@ -35,6 +36,8 @@ export function Dock() {
   const schleifen = useSchleifenVorschau((s) => s.text);
   // gleitet der Loop, setzen Esc und Rechtsklick ihn in die Mitte
   const gleiten = useSchleifenVorschau((s) => s.gleiten);
+  // V6.3: G/S/R auf einem Loop (Bühne)
+  const loopGrs = useSchleife((s) => s.text);
   const prop = useUi((s) => s.proportional);
   const gewaehlt = useUi((s) => s.auswahl.seite.length + s.auswahl.front.length + s.auswahl.top.length + (s.kantenAuswahl?.indizes.length ?? 0) + (s.spantAuswahl?.knoten.length ?? 0) > 0);
   const knoepfe = DOCK[ebene] ?? [AUSWAHL];
@@ -51,7 +54,11 @@ export function Dock() {
           </button>
         ))}
       </div>
-      {schleifen ? (
+      {loopGrs ? (
+        <div className="dock-hinweis dock-modal" data-schleife-grs={loopGrs}>
+          <b>{loopGrs}</b> · X/Y/Z Achse (S: Y Höhe, Z Breite) · Zahl · O proportional · Enter oder Klick: fertig · Esc oder Rechtsklick: zurück
+        </div>
+      ) : schleifen ? (
         <div className="dock-hinweis dock-modal" data-schleifen-text={schleifen}>
           <b>{schleifen}</b> · Rad, Bild↑↓ oder Ziffer: Anzahl · Klick: setzen (ein Loop gleitet danach, zweiter Klick: fertig) · Esc oder Rechtsklick: {gleiten ? 'in die Mitte' : 'zurück'}
         </div>

@@ -18,6 +18,8 @@ import { maulUmrisseSetzen, useWirbelAnzeige, wirbelBauen } from '../wirbel/wirb
 import { schnittBauen } from '../schnitte/schnittKoerper';
 import { rundBauen } from '../rund/rundBau';
 import { schleifenMessung } from '../kern/schleifenWerkzeug';
+import { ringPunkte, schleifenAnzeigen, useSchleife } from '../kern/schleifenAuswahl';
+import { schleifeGrsMessung } from '../kern/schleifenGrs';
 import { aktuellesNetz, kernAnimieren, kernBauen, kernMaulAktiv, useKernAnzeige, weiterePose } from '../kern/kernBau';
 import { ZAHN_FARBE, zahnMarkenAnzeigen } from '../kern/zahnGriffe';
 import { useZahnPruefung } from '../kern/zahnPruefStand';
@@ -30,7 +32,7 @@ import { PALETTEN } from './wesenLook';
 
 declare global {
   interface Window {
-    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number; netzLagen?: () => number[] | null; poseLippen?: () => unknown; projizieren?: (feld: 'creation' | 'seite' | 'front' | 'top', p: [number, number, number]) => [number, number] | null; netzPunkt?: (np: NetzPunkt) => [number, number, number] | null; strahlFeld?: (feld: 'creation' | 'seite' | 'front' | 'top', px: number, py: number, beideSeiten?: boolean) => { punkt: [number, number, number]; richtung: [number, number, number] } | null; netzSicht?: () => unknown; teile?: () => unknown; koerperBaum?: () => unknown; schleifen?: () => unknown };
+    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number; netzLagen?: () => number[] | null; poseLippen?: () => unknown; projizieren?: (feld: 'creation' | 'seite' | 'front' | 'top', p: [number, number, number]) => [number, number] | null; netzPunkt?: (np: NetzPunkt) => [number, number, number] | null; strahlFeld?: (feld: 'creation' | 'seite' | 'front' | 'top', px: number, py: number, beideSeiten?: boolean) => { punkt: [number, number, number]; richtung: [number, number, number] } | null; netzSicht?: () => unknown; teile?: () => unknown; koerperBaum?: () => unknown; schleifen?: () => unknown; schleifenPixel?: () => unknown };
   }
 }
 
@@ -71,7 +73,19 @@ export function Szene3D() {
           return { vorlage: w.treffer?.vorlage ?? null, augen: w.augen, zaehne: w.zaehne !== null, lippenBand: w.lippenBand, ecken: w.positionen.length / 3, ableitung: w.info.ableitung, reifen: w.reifen ? { liste: w.reifen.liste, knoten: w.reifen.knoten } : null, maul: w.maul, lippen: w.info.maul ?? null, gewichtFarben: w.gewichtFarben !== null, rundmaul: w.rundmaul, summe: w.positionen.reduce((a, b) => a + b, 0), ringe: w.ringe ? { R: w.ringe.R, schleifen: w.ringe.schleifen, aktiv: w.ringe.aktiv } : null };
         },
         // V6.2: laufendes ⌘R (Ringpaar, Anteil, Anzahl, Gleiten) und die Zahl der Vorschau-Segmente auf der Bühne (E2E)
-        schleifen: () => ({ lauf: schleifenMessung.lauf(), vorschau: r.schleifenVorschauSegmente() }),
+        schleifen: () => ({ lauf: schleifenMessung.lauf(), vorschau: r.schleifenVorschauSegmente(), gewaehlt: useSchleife.getState().gewaehlt, hover: useSchleife.getState().hover, grs: schleifeGrsMessung.lauf() }),
+        // V6.3: je Loop sein Ring in Feldpixeln der Bühne (sichtbare Punkte) und sein Ring im Käfig (E2E)
+        schleifenPixel: () => {
+          const n = aktuellesNetz();
+          const rd = n?.netz.ringe;
+          if (!n || !rd) return [];
+          return rd.schleifen.map((s) => {
+            const q = r.projizierenViele('creation', ringPunkte(rd, s.ring, n.skalierung));
+            const punkte: [number, number][] = [];
+            for (let i = 0; i < q.length; i += 3) if (q[i + 2]) punkte.push([q[i]!, q[i + 1]!]);
+            return { id: s.id, ring: s.ring, punkte };
+          });
+        },
         // M3: Kieferknopf und Augen in Feldpixeln der Bühne (E2E)
         griffe: () => ({ kiefer: kieferPixel(), augen: augenPixel() }),
         // Phase 2 M4: je Zahn Kiefer, Index, Seite und die Mitte zwischen Fuß und Spitze in Feldpixeln der Bühne (E2E)
@@ -232,6 +246,8 @@ export function Szene3D() {
           zahnMarkenAnzeigen(r, useZahnPruefung.getState().meldungen);
           // M3: Reifen (Spanten als Ringe mit Perlen) und Kieferknopf auf dem Körper
           reifenAnzeigen(r, t, s);
+          // V6.3: Loops als Ringe (gewählt weiß, unter dem Zeiger pink)
+          schleifenAnzeigen(r, t, s);
           griffeAnzeigen(r);
           knochen3dAnzeigen(r);
           // Beweis 5: Klingen wehen (Käfig-Pose je Bild, ≈ 14 Bilder je Sekunde)

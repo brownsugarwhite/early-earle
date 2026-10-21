@@ -8,7 +8,9 @@ import { kernLeiter, schleifenStationen, ziehen } from './ableiten';
 import { abstandFlaeche, editorBauen, editorPlan, imAblauf } from './pruefen/extremMessung';
 import { extremKoerper } from './pruefen/extremreihe';
 import { feinesNetz } from './pruefstand';
-import { punktMitRing, schleifeEinfuegen, schleifeLoeschen, schleifenOrt, schleifenOrtBei } from './schleifen';
+import { punktMitRing, ringGeruest, ringSteht, schleifeEinfuegen, schleifeLoeschen, schleifenEinfuegen, schleifenOrt, schleifenOrtBei } from './schleifen';
+import { spantEinfuegen } from '../spanten';
+import { faltenNachZonenRoehre } from './pruefen/zonen';
 
 const PX = 461;
 const HEUTE = editorPlan('roehre');
@@ -213,7 +215,63 @@ describe('V6 Loops im Kern: ein Ring je Loop, Knoten formneutral', () => {
     expect(z.stationen[lr]!.a).not.toBeCloseTo(abl.stationen[lr]!.a, 6);
   }, 60_000);
 
-  // Tor des Plans (V6), nicht erreicht — Register „Befunde aus V6“: Ein Loop gibt Auflösung; wo der Körper zwischen zwei Ringen
+  it('Breitenknoten dort, wo der Ring den Umriss berührt: liegender Ring im Top, stehender (Hals) in der Front und in allen Spanten', () => {
+    const bau = ablauf('langhals', HEUTE);
+    const abl = bau.stand.abl;
+    // Bauch (liegend) und Hals (stehend)
+    const liegend = schleifenOrt(abl, 20, 0.5)!;
+    const stehend = schleifenOrt(abl, 10, 0.5)!;
+    expect(ringSteht(liegend.o, liegend.u)).toBe(false);
+    expect(ringSteht(stehend.o, stehend.u)).toBe(true);
+    const a = schleifeEinfuegen(bau.dok, liegend)!;
+    expect(a.dok.profile.top.knoten.filter((k) => k.schleife === a.id)).toHaveLength(1);
+    expect(a.dok.profile.front.knoten.filter((k) => k.schleife === a.id)).toHaveLength(0);
+    // mit einem Spant: die Front teilt ihre Punktstruktur mit ihm
+    const sp = spantEinfuegen(bau.dok, 0.3).spanten;
+    const dok: Dokument = { ...bau.dok, spanten: sp };
+    const b = schleifeEinfuegen(dok, stehend)!;
+    expect(b.dok.profile.front.knoten.filter((k) => k.schleife === b.id)).toHaveLength(1);
+    expect(b.dok.profile.top.knoten.filter((k) => k.schleife === b.id)).toHaveLength(0);
+    expect(b.dok.spanten![0]!.profil.knoten).toHaveLength(b.dok.profile.front.knoten.length);
+    expect(kurvenAbstand(dok.profile.front, b.dok.profile.front)).toBeLessThanOrEqual(1e-9);
+    expect(kurvenAbstand(dok.spanten![0]!.profil, b.dok.spanten![0]!.profil)).toBeLessThanOrEqual(1e-9);
+    const zurueck = schleifeLoeschen(b.dok, b.id);
+    const runden = (d: unknown) => JSON.stringify(d, (_k, v) => (typeof v === 'number' ? Math.round(v * 1e9) / 1e9 : v));
+    expect(runden(zurueck.profile)).toBe(runden(dok.profile));
+    expect(runden(zurueck.spanten)).toBe(runden(dok.spanten));
+  }, 60_000);
+
+  // Plan V6, Tor „Verjüngen ohne Falte > 20°“: drei Loops am Hals, der mittlere × 0,7 (Sprosse um ihre Mitte, Breite in der
+  // Front), die Nachbarn × 0,85 wie mit proportional. Vorher lag der Breitenknoten im Top — beim stehenden Hals zeigt die
+  // Front die Breite, Front und Top wichen 9–10 px ab
+  for (const [plan, name] of [
+    [HEUTE, 'heute'],
+    [HUELLE, 'Querschnitt aus der Hülle'],
+  ] as const) {
+    it(`Langhals verjüngen (${name}): Umrisse bleiben (Δ höchstens +0,5 px), keine Falte über 20°`, () => {
+      const bau = ablauf('langhals', plan);
+      const ins = schleifenEinfuegen(bau.dok, ringGeruest(bau.stand.abl), 12, 3, 0.5, true)!;
+      const bau2 = editorBauen(ins.dok, plan, bau.stand);
+      const skal = (d: Dokument, id: string, f: number): Dokument => {
+        const sk = d.profile.seite.knoten.filter((x) => x.schleife === id);
+        const m = { x: (sk[0]!.p.x + sk[1]!.p.x) / 2, y: (sk[0]!.p.y + sk[1]!.p.y) / 2 };
+        const seite = { ...d.profile.seite, knoten: d.profile.seite.knoten.map((x) => (x.schleife === id ? { ...x, p: { x: m.x + (x.p.x - m.x) * f, y: m.y + (x.p.y - m.y) * f }, ein: { x: x.ein.x * f, y: x.ein.y * f }, aus: { x: x.aus.x * f, y: x.aus.y * f } } : x)) };
+        const front = { ...d.profile.front, knoten: d.profile.front.knoten.map((x) => (x.schleife === id ? { ...x, p: { x: x.p.x * f, y: x.p.y }, ein: { x: x.ein.x * f, y: x.ein.y }, aus: { x: x.aus.x * f, y: x.aus.y } } : x)) };
+        return { ...d, profile: { ...d.profile, seite, front } };
+      };
+      let d = skal(ins.dok, ins.ids[1]!, 0.7);
+      d = skal(d, ins.ids[0]!, 0.85);
+      d = skal(d, ins.ids[2]!, 0.85);
+      expect(d.profile.front.knoten.filter((k) => k.schleife).length).toBe(3);
+      const bau3 = editorBauen(d, plan, bau2.stand);
+      const b2 = bau2.netz.info.blatt!;
+      const b3 = bau3.netz.info.blatt!;
+      for (const a of ['seite', 'front', 'top'] as const) expect(b3[a].max, a).toBeLessThanOrEqual(b2[a].max + 0.5);
+      expect(faltenNachZonenRoehre(bau3.stand.abl).zonen.frei.max).toBeLessThanOrEqual(20);
+    }, 90_000);
+  }
+
+  // Tor des Plans (V6), nicht erreicht — Register „Befunde aus V6“  // Tor des Plans (V6), nicht erreicht — Register „Befunde aus V6“: Ein Loop gibt Auflösung; wo der Körper zwischen zwei Ringen
   // von seiner Hülle abweicht (eingefrorene Ringverteilung der Startkugel), rückt die Haut am Loop zur Hülle hin
   it.fails('Tor: Einfügen formneutral (Haut ≤ 0,1 px; Langhals, Rex)', () => {
     for (const [koerper, f] of [

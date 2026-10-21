@@ -663,7 +663,11 @@ Bögen auf der Planseite 20.10., „Stand V2“. Je Punkt der Schritt, der ihn a
   (doppelte Ringe weg); schlechter: Sichel Durchdringungen 154 → 248 und Front 13,7 → 14,2 px, Schlange Kappe 170 → 178°,
   Augenstiele 1 → 4 Knicke; Flügel oben +6 Durchdringungen (von 416).
 - Loop-Ringe nur auf der Röhre ohne Maul und Beine (Maul- und Beinbau rechnen mit 24 Ringen); kommen Maul oder Beine dazu,
-  muss der Editor die Ringe herausnehmen (`ringLoeschen`) — V6.2.
+  muss der Editor die Ringe herausnehmen (`ringLoeschen`) — noch nicht gebaut (⌘R zeigt dort nur einen Hinweis).
+- **V6.3:** Der Kern selbst lässt einen allein stark skalierten Loop unter dichten Nachbarn knicken (Biegung am Langhals-Ansatz,
+  175°); der Editor verhindert es mit dem Mindest-Einfluss (dreifache Verschiebung, glatt längs des Umrisses). In den Blättern
+  (V3 auf den Loop-Knoten) gilt der Mindest-Einfluss nicht — dort kann man Knoten wie in Illustrator frei setzen.
+- Loops auf „Teile“ (Baum), mit Maul oder Beinen: offen (V7).
 
 ## CI: nicht nachstellbare Fehler alter Versuchstests (20.10. nachts)
 

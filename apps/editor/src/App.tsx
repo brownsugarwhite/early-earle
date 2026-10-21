@@ -15,6 +15,7 @@ import { KontextMenue } from './ui/KontextMenue';
 import { ViewportGrund, ViewportOber } from './viewports/Viewport';
 import { useModalKontext } from './editing/modal/modal';
 import { useSchleifenKontext } from './kern/schleifenWerkzeug';
+import { useSchleifenAuswahlAbgleich } from './kern/schleifenAuswahl';
 import { useZeigerMerker } from './editing/modal/zeiger';
 
 export function App() {
@@ -30,6 +31,7 @@ export function App() {
   useZeigerMerker();
   useModalKontext();
   useSchleifenKontext();
+  useSchleifenAuswahlAbgleich();
   return (
     <>
       <Glasfilter />

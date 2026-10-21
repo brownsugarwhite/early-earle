@@ -353,9 +353,54 @@ export function kernLeiter(dok: Dokument): Leiter {
   const roh = leiterEntfaechern(e.quelle === 'spitzen' ? leiter(d, WIRBEL_STANDARD) : leiter(d, WIRBEL_STANDARD, { vorn: e.vorn, hinten: e.hinten }, ENDEN_FANG));
   // G2b (Fächer an inneren Ecken) nicht mit Maul: Der Maulbau ist mit der Leiter von vor G2 geprüft (16.10.)
   const mitMaul = dok.profile.seite.knoten.some((k) => k.marke) || !!dok.maul || (!!dok.ausstattung?.maul && dok.ausstattung.maul !== 'aus');
-  const l = mitMaul ? roh : leiterInnenEntfaechern(roh);
+  const l = leiterAnLoops(mitMaul ? roh : leiterInnenEntfaechern(roh), dok);
   const seite = dok.profile.seite;
   return { ...l, enden: { vorn: profilAnker(seite, l.ruecken[0]!), hinten: profilAnker(seite, l.ruecken[l.ruecken.length - 1]!), knoten: seite.knoten.length } };
+}
+
+/**
+ * V6: Die Leiter an den Sprossen der Loops festheften (Rücken- und Bauchknoten) und dazwischen glatt verziehen: je Paar der
+ * Bauchanteil um die Abweichung, die zwischen den beiden benachbarten Loops (bzw. den Enden, dort 0) linear verläuft, danach
+ * monoton. Liegt ein Loop auf der Leiter (gleich nach dem Einfügen), ändert sich nichts; ist er geformt, läuft die Leiter
+ * durch ihn, und kein Ring aus der Leiter kreuzt ihn (vorher: Langhals verjüngt, Ringe gekreuzt, Fläche umgeklappt 179°).
+ */
+function leiterAnLoops(l: Leiter, dok: Dokument): Leiter {
+  const fest: { a: number; d: number }[] = [];
+  const bAn = (a: number): number => {
+    const p = l.paare;
+    let k = 0;
+    while (k + 2 < p.length && p[k + 1]!.a < a) k++;
+    const a0 = p[k]!.a;
+    const a1 = p[k + 1]!.a;
+    const t = a1 > a0 ? Math.min(1, Math.max(0, (a - a0) / (a1 - a0))) : 0;
+    return p[k]!.b + (p[k + 1]!.b - p[k]!.b) * t;
+  };
+  for (const sc of dok.schleifen ?? []) {
+    const kn = dok.profile.seite.knoten.filter((k) => k.schleife === sc.id);
+    if (kn.length !== 2) continue;
+    const p0 = { x: kn[0]!.p.x, y: kn[0]!.p.y };
+    const p1 = { x: kn[1]!.p.x, y: kn[1]!.p.y };
+    const r0 = zugAnteil(l.ruecken, p0);
+    const r1 = zugAnteil(l.ruecken, p1);
+    const [o, u] = r0.d <= r1.d ? [p0, p1] : [p1, p0];
+    const a = zugAnteil(l.ruecken, o).t;
+    const b = zugAnteil(l.bauch, u).t;
+    if (a > 0 && a < 1) fest.push({ a, d: b - bAn(a) });
+  }
+  if (!fest.length || fest.every((f) => Math.abs(f.d) < 1e-9)) return l;
+  fest.sort((x, y) => x.a - y.a);
+  const stuetzen = [{ a: 0, d: 0 }, ...fest, { a: 1, d: 0 }];
+  const versatz = (a: number): number => {
+    let k = 0;
+    while (k + 2 < stuetzen.length && stuetzen[k + 1]!.a < a) k++;
+    const s0 = stuetzen[k]!;
+    const s1 = stuetzen[k + 1]!;
+    const t = s1.a > s0.a ? Math.min(1, Math.max(0, (a - s0.a) / (s1.a - s0.a))) : 0;
+    return s0.d + (s1.d - s0.d) * t;
+  };
+  const paare = l.paare.map((p) => ({ a: p.a, b: Math.min(1, Math.max(0, p.b + versatz(p.a))) }));
+  for (let k = 1; k < paare.length; k++) paare[k]!.b = Math.max(paare[k]!.b, paare[k - 1]!.b);
+  return { ...l, paare };
 }
 
 /** Teil G: Eingefrorene Enden, die höchstens so weit (Anteil der Umriss-Abtastung) neben der Spitze liegen, rasten auf sie. */

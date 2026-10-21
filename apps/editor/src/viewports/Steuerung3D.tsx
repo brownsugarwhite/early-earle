@@ -5,6 +5,7 @@ import { knochen3dSchweben, knochen3dZeiger } from '../kiefer/knochen3d';
 import { pinselRing, pinselStufe, pinselZeiger } from '../kern/pinsel';
 import { zahnUnter, zahnZeiger } from '../kern/zahnGriffe';
 import { reifenNeu, reifenUnter, reifenZeiger, useReifen } from '../kern/reifen';
+import { schleifenSchweben, schleifenZeiger } from '../kern/schleifenAuswahl';
 import { trefferDeuten, useTreffer } from '../kern/treffer';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
@@ -136,6 +137,8 @@ export function Steuerung3D({ hoehe }: { hoehe: number }) {
       if (ebene === 'posen' && knochen3dZeiger(e, px, py, ref.current)) return;
       if (kieferZeiger(e, px, py, ref.current)) return;
       if (ebene === 'augen' && augeZeiger(e, px, py, ref.current)) return;
+      // V6.3: ⌥-Klick auf einen Loop wählt ihn (vor den Reifen: ⌥ auf einer Perle schaltet dort die Ecke)
+      if (ebene === 'form' && e.altKey && schleifenZeiger(e, px, py)) return;
       if (ebene === 'form' && reifenZeiger(e, px, py, ref.current)) return;
       // Stufe Zähne (Phase 2 M4): Zahn wählen, längs des Zahnfleischs ziehen
       if (ebene === 'zaehne' && zahnZeiger(e, px, py, ref.current)) return;
@@ -201,11 +204,13 @@ export function Steuerung3D({ hoehe }: { hoehe: number }) {
     const px = e.clientX - r.left;
     const py = e.clientY - r.top;
     pinselRing(px, py);
+    // V6.3: Loop unter dem Zeiger (pink)
+    const schleife = ui.ebene === 'form' && ui.bauweise === 'kern' && schleifenSchweben(px, py);
     const kiefer = ui.bauweise === 'kern' && kieferUnter(px, py);
     const auge = ui.bauweise === 'kern' && ui.ebene === 'augen' && augenRandUnter(px, py);
     const knochen = ui.bauweise === 'kern' && knochen3dSchweben(px, py);
     const zahn = ui.bauweise === 'kern' && ui.ebene === 'zaehne' && !kiefer && zahnUnter(px, py);
-    if (ref.current) ref.current.style.cursor = knochen ? 'grab' : kiefer ? 'ns-resize' : auge ? 'nwse-resize' : zahn ? 'grab' : h ? (h.knoten === null ? 'ew-resize' : 'pointer') : '';
+    if (ref.current) ref.current.style.cursor = knochen ? 'grab' : kiefer ? 'ns-resize' : auge ? 'nwse-resize' : zahn ? 'grab' : h ? (h.knoten === null ? 'ew-resize' : 'pointer') : schleife ? 'pointer' : '';
   };
   const verlassen = () => {
     szene.aktuell?.setzeMarke(null);

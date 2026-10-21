@@ -6,7 +6,8 @@
 import type { V2 } from '../bezier';
 import type { Dokument, KaefigDelta, Pose } from '../dokument';
 import { type Profil, einfuegen, loeschen, naechsterAufProfil, segmente } from '../profil';
-import { type Ableitung, type SchleifenRing, spineAnteile, zugBei } from './ableiten';
+import { spantenPunktEinfuegen } from '../spanten';
+import { type Ableitung, type SchleifenRing, spineAnteile, stationenAusLeiter } from './ableiten';
 
 /**
  * Ort eines neuen Loops: Sprosse in der Seitenansicht (Profil-Einheiten; Rücken o, Bauch u) und — wenn der Körper Loop-Ringe
@@ -28,7 +29,7 @@ export function neueSchleifenKennung(dok: Dokument): string {
  * Was ⌘R im Editor braucht (der Hauptthread hat keine Ableitung; der Worker schickt es mit dem Netz): Rücken- und Bauchkette
  * der Leiter (Seitenansicht, Profil-Einheiten, x und y je Punkt), die Anteile a, b je Ring, die Loop-Ringe, R und N.
  */
-export type RingGeruest = { R: number; N: number; ruecken: Float64Array; bauch: Float64Array; stationen: Float64Array; schleifen: SchleifenRing[] };
+export type RingGeruest = { R: number; N: number; ruecken: Float64Array; bauch: Float64Array; paare: Float64Array; stationen: Float64Array; schleifen: SchleifenRing[] };
 
 const flach = (z: readonly V2[]) => Float64Array.from(z.flatMap((p) => [p.x, p.y]));
 
@@ -39,6 +40,7 @@ export function ringGeruest(abl: Ableitung): RingGeruest {
     N: abl.vorlage.N,
     ruecken: flach(abl.altLeiter.ruecken),
     bauch: flach(abl.altLeiter.bauch),
+    paare: Float64Array.from(abl.altLeiter.paare.flatMap((p) => [p.a, p.b])),
     stationen: Float64Array.from(abl.stationen.flatMap((s) => [s.a, s.b])),
     schleifen: (abl.schleifenRinge ?? []).map((x) => ({ ...x })),
   };
@@ -58,13 +60,27 @@ export function ringSprosse(g: RingGeruest, i: number): { o: V2; u: V2 } {
   return { o: kettenPunkt(g.ruecken, g.stationen[2 * i]!), u: kettenPunkt(g.bauch, g.stationen[2 * i + 1]!) };
 }
 
-/** Ort zwischen Ring k − 1 und Ring k bei s (0 … 1): die Anteile der beiden Sprossen gemischt. */
+/** Leiter aus dem Gerüst (Ketten und Paare). */
+function leiterAus(g: RingGeruest) {
+  const zug = (z: Float64Array): V2[] => Array.from({ length: z.length / 2 }, (_, i) => ({ x: z[2 * i]!, y: z[2 * i + 1]! }));
+  return { ruecken: zug(g.ruecken), bauch: zug(g.bauch), paare: Array.from({ length: g.paare.length / 2 }, (_, i) => ({ a: g.paare[2 * i]!, b: g.paare[2 * i + 1]! })) };
+}
+
+/**
+ * Ort zwischen Ring k − 1 und Ring k bei s (0 … 1): die Sprosse der Leiter an der Stelle der Wirbelsäule, die zwischen den
+ * beiden Ringen bei s liegt — der neue Loop liegt genau auf der Leiter (die Anteile linear zu mischen wich in Biegungen von
+ * ihr ab, und das Festheften der Leiter an den Loops verzog dann den ganzen Körper).
+ */
 export function ortImGeruest(g: RingGeruest, k: number, s: number, ringe = true): SchleifenOrt | null {
   const R = g.stationen.length / 2;
   if (!(k >= 1 && k < R && s > 0 && s < 1)) return null;
-  const a = g.stationen[2 * (k - 1)]! + (g.stationen[2 * k]! - g.stationen[2 * (k - 1)]!) * s;
-  const b = g.stationen[2 * (k - 1) + 1]! + (g.stationen[2 * k + 1]! - g.stationen[2 * (k - 1) + 1]!) * s;
-  return { o: kettenPunkt(g.ruecken, a), u: kettenPunkt(g.bauch, b), ...(ringe ? { ring: { ring: k, R: g.R, N: g.N } } : {}) };
+  const l = leiterAus(g);
+  const [f0, f1] = spineAnteile(l, [
+    { a: g.stationen[2 * (k - 1)]!, b: g.stationen[2 * (k - 1) + 1]! },
+    { a: g.stationen[2 * k]!, b: g.stationen[2 * k + 1]! },
+  ]);
+  const st = stationenAusLeiter(l, [f0! + (f1! - f0!) * s])[0]!;
+  return { o: kettenPunkt(g.ruecken, st.a), u: kettenPunkt(g.bauch, st.b), ...(ringe ? { ring: { ring: k, R: g.R, N: g.N } } : {}) };
 }
 
 /**
@@ -85,16 +101,9 @@ export function schleifenEinfuegen(dok: Dokument, g: RingGeruest, k: number, n: 
   return { dok: d, ids };
 }
 
-/** Ort zwischen Ring k − 1 und Ring k einer Ableitung bei s (0 … 1): die Anteile der beiden Sprossen gemischt. */
+/** Ort zwischen Ring k − 1 und Ring k einer Ableitung bei s (0 … 1), wie `ortImGeruest`. */
 export function schleifenOrt(abl: Ableitung, k: number, s: number, ringe = true): SchleifenOrt | null {
-  const st = abl.stationen;
-  if (!(k >= 1 && k < st.length && s > 0 && s < 1)) return null;
-  const p = st[k - 1]!;
-  const q = st[k]!;
-  const l = abl.altLeiter;
-  const o = zugBei(l.ruecken, p.a + (q.a - p.a) * s);
-  const u = zugBei(l.bauch, p.b + (q.b - p.b) * s);
-  return { o, u, ...(ringe ? { ring: { ring: k, R: abl.vorlage.R, N: abl.vorlage.N } } : {}) };
+  return ortImGeruest(ringGeruest(abl), k, s, ringe);
 }
 
 /** Ort an Anteil f der Wirbelsäule (Prüfungen): das Ringintervall und der Anteil darin aus den Stationen. */
@@ -167,20 +176,57 @@ function topPunktBei(top: Profil, x: number): V2 | null {
   return best;
 }
 
+/** Punkt auf der Front-Kurve (rechte Hälfte, x ≥ 0) auf Höhe y mit dem größten x; null, wenn die Kurve y nicht erreicht. */
+function frontPunktBei(front: Profil, y: number): V2 | null {
+  // dieselbe Suche wie im Top, mit vertauschten Achsen
+  const tausch = (p: V2): V2 => ({ x: p.y, y: p.x });
+  const t = topPunktBei({ ...front, knoten: front.knoten.map((k) => ({ ...k, p: tausch(k.p), ein: tausch(k.ein), aus: tausch(k.aus) })) }, y);
+  return t ? tausch(t) : null;
+}
+
 /**
- * Loop einfügen: Knoten in der Seite an Rücken und Bauch der Sprosse (`ort.o`, `ort.u`), im Top bei x ihrer Mitte, alle
- * formneutral. Mit `ort.ring` (der Körper baut Loop-Ringe) rücken Pinsel- und Posen-Deltas, Bezugs-Käfige und Augen um einen
- * Ring. Null, wenn die Sprosse den Seitenumriss nicht an zwei Stellen trifft.
+ * Stehender Ring: Die Sprosse liegt eher waagerecht (Hals, Bein) — seine Breite zeigt die Front auf seiner Höhe, nicht das Top
+ * bei x (dort ist ein anderer Ring breiter). Dann sitzt der Breitenknoten des Loops in der Front.
+ */
+export function ringSteht(o: V2, u: V2): boolean {
+  return Math.abs(o.x - u.x) > Math.abs(o.y - u.y);
+}
+
+/**
+ * Loop einfügen: Knoten in der Seite an Rücken und Bauch der Sprosse (`ort.o`, `ort.u`) und ein Breitenknoten dort, wo der Ring
+ * den Umriss berührt — im Top bei x ihrer Mitte (liegender Ring) bzw. in der Front auf ihrer Höhe (stehender Ring; dort auch in
+ * allen Spanten, die die Punktstruktur der Front teilen), alle formneutral. Mit `ort.ring` (der Körper baut Loop-Ringe) rücken
+ * Pinsel- und Posen-Deltas, Bezugs-Käfige und Augen um einen Ring. Null, wenn die Sprosse den Seitenumriss nicht an zwei
+ * Stellen trifft.
  */
 export function schleifeEinfuegen(dok: Dokument, ort: SchleifenOrt, id = neueSchleifenKennung(dok)): { dok: Dokument; id: string } | null {
   const ro = knotenBei(dok.profile.seite, ort.o, id);
   const bu = knotenBei(ro.profil, ort.u, id);
   if (bu.profil.knoten.filter((k) => k.schleife === id).length !== 2) return null;
-  const tp = topPunktBei(dok.profile.top, (ort.o.x + ort.u.x) / 2);
-  const to = tp ? knotenBei(dok.profile.top, tp, id) : { profil: dok.profile.top };
-  const vorhanden = [ro.vorhanden, bu.vorhanden, to.vorhanden].filter((p): p is V2 => !!p);
+  const vorhanden = [ro.vorhanden, bu.vorhanden].filter((p): p is V2 => !!p);
+  let neu: Dokument = { ...dok, profile: { ...dok.profile, seite: bu.profil } };
+  if (ringSteht(ort.o, ort.u)) {
+    const fp = frontPunktBei(dok.profile.front, (ort.o.y + ort.u.y) / 2);
+    const tr = fp ? naechsterAufProfil(dok.profile.front, fp) : null;
+    if (tr && (tr.t < 1e-6 || tr.t > 1 - 1e-6)) {
+      // genau auf einem Front-Knoten: ihn markieren
+      const fo = knotenBei(dok.profile.front, fp!, id);
+      if (fo.vorhanden) vorhanden.push(fo.vorhanden);
+      neu = { ...neu, profile: { ...neu.profile, front: fo.profil } };
+    } else if (tr) {
+      const r = spantenPunktEinfuegen(neu, tr.segment, tr.t);
+      const knoten = r.dok.profile.front.knoten.slice();
+      if (r.index >= 0) knoten[r.index] = { ...knoten[r.index]!, schleife: id };
+      neu = { ...r.dok, profile: { ...r.dok.profile, front: { ...r.dok.profile.front, knoten } } };
+    }
+  } else {
+    const tp = topPunktBei(dok.profile.top, (ort.o.x + ort.u.x) / 2);
+    const to = tp ? knotenBei(dok.profile.top, tp, id) : { profil: dok.profile.top };
+    if (to.vorhanden) vorhanden.push(to.vorhanden);
+    neu = { ...neu, profile: { ...neu.profile, top: to.profil } };
+  }
   const eintrag = vorhanden.length ? { id, vorhanden } : { id };
-  const neu: Dokument = { ...dok, profile: { ...dok.profile, seite: bu.profil, top: to.profil }, schleifen: [...(dok.schleifen ?? []), eintrag] };
+  neu = { ...neu, schleifen: [...(dok.schleifen ?? []), eintrag] };
   return { dok: ort.ring ? ringEinfuegen(neu, ort.ring) : neu, id };
 }
 
@@ -205,10 +251,25 @@ export function schleifeLoeschen(dok: Dokument, id: string, ring?: RingPlatz): D
     }
     return p;
   };
+  // Front: derselbe Punkt auch in allen Spanten (sie teilen die Punktstruktur der Front)
+  let front = dok.profile.front;
+  let spanten = dok.spanten;
+  const fi = front.knoten.findIndex((k) => k.schleife === id);
+  if (fi >= 0) {
+    const knoten = front.knoten.slice();
+    const { schleife: _w, ...rest } = knoten[fi]!;
+    void _w;
+    knoten[fi] = rest;
+    front = { ...front, knoten };
+    if (!behalten(rest.p)) {
+      front = loeschen(front, fi);
+      spanten = spanten?.map((sp) => (sp.unten ? { ...sp, profil: loeschen(sp.profil, fi), unten: loeschen(sp.unten, fi) } : { ...sp, profil: loeschen(sp.profil, fi) }));
+    }
+  }
   const schleifen = (dok.schleifen ?? []).filter((s) => s.id !== id);
   const { schleifen: _alt, ...ohneListe } = dok;
   void _alt;
-  const neu: Dokument = { ...ohneListe, profile: { ...dok.profile, seite: ohne(dok.profile.seite), top: ohne(dok.profile.top) }, ...(schleifen.length ? { schleifen } : {}) };
+  const neu: Dokument = { ...ohneListe, profile: { ...dok.profile, seite: ohne(dok.profile.seite), top: ohne(dok.profile.top), front }, ...(spanten ? { spanten } : {}), ...(schleifen.length ? { schleifen } : {}) };
   return ring ? ringLoeschen(neu, ring) : neu;
 }
 

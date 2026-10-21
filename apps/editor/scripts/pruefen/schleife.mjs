@@ -45,7 +45,8 @@ const zeige = (d) => ['seite', 'front', 'top'].map((b) => `${b} ${(d[b] ?? NaN).
 const dokStand = () =>
   page.evaluate(() => {
     const d = window.__stores.editor.getState().dok;
-    return { schleifen: d.schleifen ?? [], seite: d.profile.seite.knoten.length, top: d.profile.top.knoten.length, markiert: d.profile.seite.knoten.filter((k) => k.schleife).length, verlauf: window.__stores.editor.getState().verlauf.length };
+    // Breitenknoten der Loops im Top (liegende Ringe) oder in der Front (stehende Ringe)
+    return { schleifen: d.schleifen ?? [], seite: d.profile.seite.knoten.length, top: d.profile.top.knoten.length, front: d.profile.front.knoten.length, breite: d.profile.top.knoten.filter((k) => k.schleife).length + d.profile.front.knoten.filter((k) => k.schleife).length, markiert: d.profile.seite.knoten.filter((k) => k.schleife).length, verlauf: window.__stores.editor.getState().verlauf.length };
   });
 const wesen = () => page.evaluate(() => window.__editor.wesen());
 const schleifen = () => page.evaluate(() => window.__editor.schleifen());
@@ -109,7 +110,7 @@ await ruhig();
 let s1 = await dokStand();
 let w1 = await wesen();
 const d1 = await deltas();
-pruefe(s1.schleifen.length === 3 && s1.seite === s0.seite + 6 && s1.top === s0.top + 3 && s1.markiert === 6, `Klick: 3 Loops (Seite ${s0.seite} → ${s1.seite}, Top ${s0.top} → ${s1.top})`);
+pruefe(s1.schleifen.length === 3 && s1.seite === s0.seite + 6 && s1.top + s1.front === s0.top + s0.front + 3 && s1.markiert === 6 && s1.breite === 3, `Klick: 3 Loops (Seite ${s0.seite} → ${s1.seite}, Top ${s0.top} → ${s1.top}, Front ${s0.front} → ${s1.front})`);
 pruefe(w1.vorlage?.R === (w0.vorlage?.R ?? 0) + 3 && w1.ringe?.schleifen?.length === 3, `Käfig R ${w0.vorlage?.R} → ${w1.vorlage?.R}, Loop-Ringe ${JSON.stringify(w1.ringe?.schleifen?.map((s) => s.ring))}`);
 pruefe(s1.verlauf === s0.verlauf + 1, `ein Undo-Schritt (Verlauf ${s0.verlauf} → ${s1.verlauf})`);
 const mehr = Math.max(...['seite', 'front', 'top'].map((a) => (d1[a] ?? 0) - (d0[a] ?? 0)));
@@ -131,7 +132,7 @@ await page.keyboard.press('Meta+z');
 await ruhig();
 let s2 = await dokStand();
 let w2 = await wesen();
-pruefe(s2.schleifen.length === 0 && s2.seite === s0.seite && s2.top === s0.top && w2.vorlage?.R === w0.vorlage?.R, `⌘Z: alles zurück (Seite ${s2.seite}, Top ${s2.top}, R ${w2.vorlage?.R})`);
+pruefe(s2.schleifen.length === 0 && s2.seite === s0.seite && s2.top === s0.top && s2.front === s0.front && w2.vorlage?.R === w0.vorlage?.R, `⌘Z: alles zurück (Seite ${s2.seite}, Top ${s2.top}, Front ${s2.front}, R ${w2.vorlage?.R})`);
 
 // 2) ein Loop: Klick, gleiten, Klick
 await page.mouse.move(ziel.x, ziel.y);

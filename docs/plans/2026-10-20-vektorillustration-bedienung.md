@@ -1430,3 +1430,29 @@ die die Zeichnung als Wahrheit behält und auf V3/V5 aufsetzt:
   grün. Bilder `docs/progress/editor/v6-schleife-{vorschau,drei-zebra,seitenblatt}-langhals-2026-10-21.jpg`.
 - **Noch nicht:** Loops nach dem Setzen auf der Bühne sehen und wählen (⌥-Klick), G/S/R auf Loops, proportional über
   Nachbar-Loops (V6.3); Loops mit Maul oder Beinen (Hinweis).
+
+### Stand V6.3 — Loops wählen und formen (21.10. abends, Abnahme offen)
+
+- **Sehen und wählen:** Jeder Loop ist auf der Bühne ein Ring auf dem Körper (orange, unter dem Zeiger pink, gewählt weiß;
+  `apps/editor/src/kern/schleifenAuswahl.ts`). ⌥-Klick auf den Ring wählt ihn — dazu seine Knoten in den Blättern, so dass
+  G/S/R dort ebenso auf ihn wirken.
+- **G/S/R auf der Bühne** (`kern/schleifenGrs.ts`, Zeiger über der Bühne, gewählter Loop): G verschiebt die Sprosse (Bildebene am
+  Ring auf Seite-x/y zurückgerechnet), S skaliert Sprosse und Breite um die Mitte (Y: nur Höhe, Z: nur Breite), R kippt die
+  Sprosse; X/Y/Z, Zahlen, O, Rad, Enter/Klick, Esc/Rechtsklick/⌘Z wie V3; ein Undo-Schritt; die anderen Ansichten folgen über
+  die Kopplung. Gemessen im Editor: S 0,8 genau (1e-9), G Y 10 genau 10 px, R 15 genau 15°, Esc stellt das Dokument her.
+- **Drei Fehler unterwegs gefunden und behoben:**
+  1. *Breitenknoten am falschen Ort:* Am stehenden Hals zeigt die Front die Breite, nicht das Top bei x — der Loop setzt seinen
+     Breitenknoten jetzt dort, wo sein Ring den Umriss berührt: im Top für liegende, in der Front (mit allen Spanten) für
+     stehende Ringe (`ringSteht`). Vorher wichen Front und Top beim Verjüngen 9–10 px ab, jetzt bleibt Δ.
+  2. *Gekreuzte Ringe:* Geformte Loops kreuzten die übrigen Ringe (die kamen aus der Leiter, die Loops von ihren Knoten) —
+     Fläche umgeklappt 179°. Die Leiter wird jetzt an den Loop-Sprossen festgeheftet und dazwischen glatt verzogen
+     (`leiterAnLoops`); liegt ein Loop auf der Leiter (gleich nach dem Einfügen; `ortImGeruest` setzt ihn genau auf sie), ändert
+     sich nichts.
+  3. *Kerben:* Ein allein skalierter Loop unter dichten Nachbarn (⌘R mit mehreren, in der Biegung am Halsansatz) setzte seine
+     Knoten 30 px tief neben Nachbarn in 3–10 px Abstand — V-Kerben, 175°. Ein Loop wirkt jetzt mindestens über das Dreifache
+     seiner größten Verschiebung, glatt längs des Umrisses (mit O der größere Einfluss): glatte Taille, Δ 1,5/2,8/4,1 px.
+- **Tor „Verjüngen ohne Falte > 20°“** (Kern-Test, drei Loops am Hals, mittlerer × 0,7, Nachbarn × 0,85): Δ höchstens +0,5 px,
+  Falten 14,5° → 14,5° (heute und Hülle); × 0,5 18,6°. In der Biegung ohne Nachbarn (Kern-Messung ohne Mindest-Einfluss) noch
+  175° — der Editor verhindert das über den Mindest-Einfluss, der Kern selbst nicht (Register).
+- **Prüfungen:** `kern/schleifen.test.ts` 16 grün + 1 Tor (`it.fails`), 525 Kern-Tests grün; Editor `schleife.mjs`,
+  `schleife-grs.mjs`, `modal-2d.mjs`, `v0-tasten.mjs` grün. Bilder `docs/progress/editor/v6-schleife-*.jpg`.
