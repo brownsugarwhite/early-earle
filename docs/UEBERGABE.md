@@ -1,4 +1,4 @@
-# Übergabe (Stand 21.10.2026 vormittags: V0–V4 gebaut, V5 „Linien exakt“ gebaut — Abnahme offen)
+# Übergabe (Stand 21.10.2026 abends: V0–V5 gebaut, V6 „Loops (⌘R)“ gebaut — Abnahme offen)
 
 Branch `claude/editor-grundlayout`, PR mit Auto-Fix.
 
@@ -7,54 +7,58 @@ Branch `claude/editor-grundlayout`, PR mit Auto-Fix.
 Maßgeblich ist der am 20.10. freigegebene Plan
 **[`docs/plans/2026-10-20-vektorillustration-bedienung.md`](plans/2026-10-20-vektorillustration-bedienung.md)**: ehrliche
 Bestandsaufnahme S0–S8a, Zielbild als Messlatte (Vektorillustration aus einem Liniennetz), Bauweise, Bedienung nach Blender,
-Schritte V0–V9. Am Ende **„Stand V4“** und **„Stand V5 — Linien exakt“** mit Zahlen, Bildern und dem, was offen ist. Offene
-Kritik: [`2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md) („Befunde aus V5“).
+Schritte V0–V9. Am Ende „Stand V4“, „Stand V5“, **„V6 im Detail“, „Stand V6.1“, „Stand V6.2“, „Stand V6.3“** mit Zahlen,
+Bildern und dem, was offen ist. Offene Kritik: [`2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md) („Befunde
+aus V5“, „Befunde aus V6“).
 
 Florian 20.10. nachts: „Du musst nicht immer nach 3 Versuchen stoppen. Es gibt für alles eine elegante Lösung! … Wichtig
 ist, dass das Mesh später immer schön und smooth aussieht außer bei gewollten Kanten.“ Danach (vor dem Schlafen):
 selbstständig weiter, hartnäckig, den ganzen Plan unter höchsten Kriterien; Usability und Ansicht herausragend; das Mesh soll
 sich jeder Form intelligent anpassen.
 
-## Letzter Stand: V5 — P-Linien als Käfigschleifen (mit „Querschnitt aus der Hülle“)
+## Letzter Stand: V6 — Loops wie in Blender
 
-- **Im Editor:** Tafel Körper → „Querschnitt: aus der Hülle (V4/V5)“. Dann wird jede P-Linie eine Käfigschleife: längs eine
-  Reihe des Reihenplans (Enden je ein Ring durch den Endpunkt, Reihe läuft über drei Ringe aus), quer ein eigener Ring, in die
-  Linie gedreht; schräge Linien eine verzogene Reihe (kreuzen sie die Breitenlinie, werden sie die Breitenlinie). Alle Linien zugleich genau, auch während eines Zugs. Ohne den Schalter bleibt
-  die Einpassung je Linie von S8a (bitgleich).
-- **Form zuerst:** Mit Linien wird erst der Körper ohne Linien gebaut; der Körper mit Linien bindet sich dort an ihn, wo die
-  Linien den Käfig verschoben haben. Die Linie legt die Käfigschleife fest, nicht die Form (Winkel nur, wo die Form ihn
-  verlangt). Gedrehte Ringe tasten das Höhenfeld der natürlichen Ringe ab.
-- **Gemessen** gegen heute (S8a): Robbe Falte 172° → 10°, Haut 4,4 → 1,4 px; Kegel vorher gar keine Kante, jetzt Ring 0,7 px;
-  Rex Haut 0,7 → 0,3; Kugel mit Kreuz 1,0 → 0,7; Bau ≈ 1 s → 0,35 s; Umrisse mit Linien höchstens 0,1–0,7 px anders.
-  Schlechter: die Lage in der Zeichenansicht (0,4–2,0 px statt 0–0,3); Krake (Querlinie neben Ecken-Ringen) bleibt Treppe.
-  Zug mit Linien 42–57 ms.
-- **Tests:** `packages/shape/src/kern/linienSchleifen.test.ts` (9 grün, am alten Code 6 davon rot; 2 Tore als `it.fails`),
-  volle Kern-Reihe 509 grün + 5 bekannt rot. Editor: `apps/editor/scripts/pruefen/v5-editor.mjs` (alles ok; Linien vorher mit
-  `v5-linien-vorbereiten.ts`).
-- **Bilder:** `docs/progress/editor/v5-linien-huelle-{grund,kanten,lang,mehrteiler}-2026-10-21.jpg`,
-  `v5-linien-heute-grund-2026-10-21.jpg`, `v5-editor-kugel-kreuz-zebra-2026-10-21.jpg`, `v5-editor-robbe-riss-2026-10-21.jpg`.
+- **⌘R oder ⌃R** (Stufe Körper, Editor-Tab, Körper „Röhre“ ohne Maul und Beine): Zeiger über die Bühne oder das Seitenblatt —
+  gelbe Vorschau der Loops (Bühne: Ringe auf dem Körper; Seite: Sprosse mit den künftigen Knoten; Top bzw. Front: Strich).
+  Mausrad / Bild↑↓ / Ziffer = Anzahl. Klick setzt mehrere gleichmäßig; ein Loop gleitet nach dem ersten Klick, der zweite setzt
+  ihn (Esc/Rechtsklick: Mitte). Ein Undo-Schritt. Die Dock-Zeile sagt, was entsteht.
+- **Ein Loop** = Rücken- und Bauchknoten in der Seite plus ein Breitenknoten dort, wo sein Ring den Umriss berührt (Top für
+  liegende, Front samt Spanten für stehende Ringe wie am Hals), alle formneutral (de Casteljau), und ein eigener Käfigring
+  durch die beiden Seitenknoten. Pinsel- und Posen-Deltas, Bezugs-Käfige und Augen rücken mit.
+- **Sehen, wählen, formen:** Loops sind orange Ringe auf der Bühne; ⌥-Klick wählt einen (seine Knoten in den Blättern sind
+  dann gewählt). Mit dem Zeiger über der Bühne: G verschieben, S skalieren (Y nur Höhe, Z nur Breite), R kippen; X/Y/Z,
+  Zahlen, O proportional, Enter/Klick, Esc/Rechtsklick/⌘Z wie in den Blättern. Ein Loop wirkt mindestens über das Dreifache
+  seiner Verschiebung (glatte Taille statt Kerbe).
+- **Mit Maul oder Beinen** lösen sich Loops in gewöhnliche Knoten auf (ein Undo-Schritt, Hinweis) — dort gibt es noch keine
+  Loop-Ringe.
+- **Unterwegs behoben (je Test vorher rot):** formneutral eingefügte Knoten (Stift, Kopplung, Loop) änderten den Körper
+  (Langhals 1,8 px, Tiger 1,2 px mit zwei aufeinanderliegenden Ringen, Vase 3,4 px, Ei 1,3 px) — jetzt ≤ 0,5 px; Loops kippten
+  kettenweite Entscheidungen (Fülle, Breitenlinie, Reihenplan, Berühren); geformte Loops kreuzten die übrigen Ringe (Leiter
+  jetzt an den Loops festgeheftet); Breitenknoten am Hals im falschen Blatt. Grundzahlen von Schlange, Sichel, Augenstiele
+  und Flügel oben nachgezogen (doppelte Ringe weg: Schlange Falten 178 → 4°, Sichel 180 → 25°).
+- **Tests:** `packages/shape/src/kern/schleifen.test.ts` (Knoten formneutral, Loops einfügen/löschen/auflösen, Deltas,
+  Breitenknoten, Hals verjüngen ohne Falte; 1 Tor als `it.fails`), 526 Kern-Tests grün. Editor: `schleife.mjs`,
+  `schleife-grs.mjs` (Florians Ablauf mit echten Tasten), dazu `v0-tasten.mjs`, `modal-2d.mjs` grün.
+- **Bilder:** `docs/progress/editor/v6-schleife-*.jpg`.
 
-Davor (Abnahme offen): **V4** Querschnitt aus der Sichthülle (Robbe Δ 4,0/6,3/12,5 → 3,9/3,7/3,0 px, Giraffe Front 18,9 →
-1,6, Hals 1:8 31,6 → 1,4; schlechter an Ecken-Körpern); **V3** G/S/R und proportional in den Blättern; **V0** Fallen und
-Bedienfehler; **V1** Prüfstand „Extremreihe“; **V2** saubere Umrisslinien — nicht abgenommen („sehr sehr wild“), standardmäßig
-aus.
+Davor (Abnahme offen): **V5** P-Linien als Käfigschleifen (mit „Querschnitt aus der Hülle“), **V4** Querschnitt aus der
+Sichthülle, **V3** G/S/R in den Blättern, **V0**, **V1** Prüfstand „Extremreihe“; **V2** nicht abgenommen („sehr sehr wild“).
 
 ## Für Florian zum Ausprobieren (nach dem Pull den Dev-Server neu starten)
 
-1. Ein Wesen öffnen (Röhre, ohne Maul), Tafel Körper → „Querschnitt: aus der Hülle (V4/V5)“.
-2. Mit P Linien auf die Haut zeichnen, mit ⇧W die Härte hochziehen: längs (über den Körper) und quer (um den Körper). Die
-   Kantenliste zeigt „genau“; im Zebra (Matcap) läuft die Kante auf der Linie, die Form bleibt. Beim Ziehen an den Umrissen
-   bleibt die Kante sichtbar.
-3. Auch schräge Linien werden Schleifen (verzogene Reihe); nur Querlinien direkt neben gezeichneten Ecken bleiben Treppe.
+1. Ein Wesen öffnen (Röhre, ohne Maul), Zeiger auf den Hals in der Bühne, ⌘R: gelber Ring. Zwei Rasten am Mausrad → drei
+   Ringe, Klick. Oder ein Loop: Klick, Maus gleiten lassen, zweiter Klick.
+2. ⌥-Klick auf den mittleren orangen Ring, Zeiger auf der Bühne lassen, S und die Maus bewegen (oder 0,7 tippen, Enter) —
+   der Hals wird dort schmaler; O vorher für einen weichen Übergang über die Nachbarn, Rad für den Einfluss.
+3. G (bzw. G, dann Y) verschiebt den Loop, R kippt ihn; ⌘Z nimmt jeden Schritt einzeln zurück.
 
 ## Offen / nächster Schritt
 
-- V5 weiter: Lage genauer (Tor 0,3 px; Rest an den Enden und zwischen weit stehenden Ringen), Härte als Rundungsbreite (3.4),
-  Grat (`Kante.tiefe`), Zug schneller.
-- Danach V6 (⌘R-Loops, G/S/R auf der Bühne): Das Einfügen eines Rings nutzt dieselbe Maschine (Ring rastet ein, Nachbarn
-  verziehen sich, die Form bleibt dank „Form zuerst“).
-- Abnahme V0, V1, V3, V4, V5; V2 nicht abgenommen.
-- Später mit Vergleichsbild: Entenflügel (V7), dünne Kanten Klinge oder rund, einfache Form (Stacheln), Überhang.
+- V6: GG (bestehenden Loop entlang der Form gleiten), jeden Käfigring per ⌥-Klick zum Loop machen, G/S/R auf Netzknoten der
+  Bühne; Loops auf „Teile“, mit Maul oder Beinen (V7). Tor „Einfügen formneutral ≤ 0,1 px“ verfehlt (Register).
+- V5 offen: Lage der Linien genauer (0,3 px), Härte als Rundungsbreite, Grat, Zug schneller.
+- Danach V7 (ein Körper), V8 (Vektor-Ausgabe), V9 (Abnahme).
+- Abnahme V0, V1, V3, V4, V5, V6; V2 nicht abgenommen.
 
 ## Arbeitsregeln
 
@@ -62,12 +66,13 @@ aus.
   nicht stur anhalten (Florian 20.10.): Ursache verstehen, die elegantere Lösung suchen; technische Wege selbst entscheiden und
   begründet auf die Planseite schreiben.
 - Jede Korrektur mit einem Test, der vorher rot ist; verfehlte Tore als `it.fails` mit Registereintrag, nie still gelockert.
-  Jede Stufe gegen `test:extrem`; Aufräumen bitgleich.
+  Jede Stufe gegen `test:extrem`; Aufräumen bitgleich. Grundzahlen nur mit Begründung nachziehen (Commit und Register).
 - Mit Florians Ablauf testen (Kugel → umformen → …). Immer sagen, was im Editor ist und was nur im Kern. **Im echten Editor
-  messen:** Die Kern-Messung „Haut an der Linie“ übersah, dass Linien den Front-Umriss um 2–5 px verschoben — erst
-  `v5-editor.mjs` zeigte es.
-- Messen und im Bild prüfen: Das Faltenmaß übertreibt bei Mehrteilern; Kontaktbögen ansehen (`v1-extremreihe.ts` mit
-  `NAH_LINIE=1 FALTEN=1 GROESSE=420` für Nahbilder der Linien).
+  messen** (eigene Prüfskripte mit echten Tasten): Die Kern-Messung allein übersah mehrfach, was der Editor zeigt (V5 Front
+  +2–5 px; V6 S am Halsansatz).
+- **Formneutral heißt formneutral:** Ein Knoten, der die Kurve nicht ändert, darf den Körper nicht ändern — Entscheidungen über
+  Ringgrenzen (harte Schwellen, Rasterstufen, Ringnummern) sind die üblichen Ursachen; stetig machen statt Schwellen
+  verschieben.
 - Eigener Vite auf 5192 (`apps/editor/scripts/pruefen/run-check.sh`), nie Florians 5180. Während eines E2E-Laufs keine
   Dateien unter `apps/editor/src` ändern; E2E-Läufe überschreiben Bilder in `docs/progress/editor/` — vor dem Commit
   zurückholen. Nie `assets/fonts/Hippie Movement.otf` committen.
