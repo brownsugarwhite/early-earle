@@ -198,6 +198,12 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   änderten den Körper (Enden, Spitzenprobe, Ring-0-Ecken mit doppelten Ringen, harte Breitenpunkt-Schwelle, Breitenlinien-
   Raster, Breiten je Segment); Loops entscheiden nichts um; Leiter an den Loops festgeheftet. Tor „Einfügen ≤ 0,1 px“ verfehlt
   (Loop gibt Auflösung, Haut rückt am Loop zur Hülle, Langhals bis 4,5 px).
+- **2026-10-21 früh: Florian wählt Teil A „Maul als Einsatz“ als nächsten Block** (damit glatte Haut, Hülle, Linien exakt und
+  Loops auch mit Maul wirken). Fortsetzungsplan [`docs/plans/2026-10-21-maul-einsatz-weiter.md`](docs/plans/2026-10-21-maul-einsatz-weiter.md):
+  Stand A1–A7 frisch gemessen (Knick am Mundwinkel 131–179° in allen Fällen), Ursache (zwei Hautflächen am Mundwinkel müssen
+  360° überdecken), Entscheidung: Mundwinkel als regulärer Gitterpunkt am Ende eines Schnitts (Feld aus zwei Rechtecken über und
+  unter der Linie samt Verlängerung; Vorversuch 7,8° statt 176°), Schritte E1–E6 (Gitter → A0 wie im Editor → Bau → Editor zu →
+  Öffnen → Rest).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

@@ -123,6 +123,10 @@ Ziel: Jede spätere Meldung stützt sich auf Hunderte reproduzierbare Fälle sta
 
 ## Teil A: Maul als Einsatz
 
+> **Fortsetzung ab 21.10.** (Florians Wahl: zuerst der Einsatz, damit glatte Haut, Hülle, Linien und Loops auch mit Maul
+> wirken): [`2026-10-21-maul-einsatz-weiter.md`](2026-10-21-maul-einsatz-weiter.md) — Mundwinkel als regulärer Gitterpunkt am
+> Ende eines Schnitts (Feld aus zwei Rechtecken statt Schleifen um den Mund), Schritte E1–E6.
+
 **Bauweise (acht Festlegungen):**
 1. **A0 sieht das Maul nie.** Der Körper ohne Maul (im Beweis C(P) + Pinsel-Deltas wie heute, ab Teil H die gespeicherten Lagen X0) wird gebaut wie heute; alle Maulzweige in `ableiten.ts` entfallen (`kappeMin`, `maulBereich`, Glättung und Breitengewicht mit Maul, offene Naht, Umverteilen der Ringe auf die Lippe, `kieferQuerschnitt`). Maul zeichnen, ändern oder entfernen lässt A0 bitgleich (behebt Befund 1, 4, 5). Alte Dokumente mit Spaltmarken bekommen ihre Brücke einmalig in die Kontur gebacken (Migration in Teil H).
 2. **Einsatz in den einmal exakt verfeinerten Käfig** (Stufe 1: gleiche Grenzfläche wie A0, ≈ 4× Punkte; A wird eine Stufe weniger unterteilt, das feine Netz bleibt so groß wie heute). Außerhalb des Felds M und eines unberührten Kragenrings C ist A bitgleich zu A0 (die Grenzfläche über einer Fläche hängt nur von ihrem Nachbarring ab; feine Blöcke werden aus A0 kopiert wie heute bei der Augenhöhle).
