@@ -635,7 +635,7 @@ Bögen auf der Planseite 20.10., „Stand V2“. Je Punkt der Schritt, der ihn a
 - **Tore nicht erreicht** (`it.fails` in `kern/linienSchleifen.test.ts`): jede Linie ≤ 0,3 px in ihrer Zeichenansicht (gemessen
   0,4–2,0 px: am größten an den Enden — die Falte endet an einem Käfigpunkt, dort gilt die glatte Regel — und zwischen weit
   stehenden Ringen am Hals); Haut an der Linie ≤ 0,5 px (Robbe 1,4, Kegel 1,0, Kugel mit Kreuz 0,7 px).
-- ~~Schräge Linien bleiben Treppe~~ (21.10. mittags behoben für Linien, die nirgends längs einer Sprosse laufen: verzogene Reihe,
+- ~~Schräge Linien bleiben Treppe~~ (21.10. nachts behoben für Linien, die nirgends längs einer Sprosse laufen: verzogene Reihe,
   über die Breitenlinie eingerastet). Offen: schräge Querlinien neben Ecken-Ringen (Krake) bleiben Treppe; echte Diagonalen
   über viele Reihen bräuchten Pole im Käfig (Plan 3.3).
 - **Kreuzungen** sind Catmull–Clark-Ecken (vier scharfe Kanten). Aussetzen oder halbscharf an der Kreuzung ändert nichts
@@ -681,7 +681,7 @@ Bögen auf der Planseite 20.10., „Stand V2“. Je Punkt der Schritt, der ihn a
   1e-15 bis 1e-5 verwackelt; kein Merker, keine Zufallszahl, keine zeitabhängige Verzweigung auf dem Weg; Node-Version
   erklärt es nicht (grün und rot mit 24.22). Ursache unbekannt; Code nicht geändert (keine blinde Wiederholung). Tritt es
   wieder auf: den Lauf auf CI mit Protokoll der Rasterwerte (Zellen, Treffer je Probe) wiederholen.
-- 21.10. abends: „Seitenlinie … folgt dem Verbreitern“ erstmals **lokal** rot, in einem vollen Lauf unter Last (98 Dateien
+- 21.10. früh: „Seitenlinie … folgt dem Verbreitern“ erstmals **lokal** rot, in einem vollen Lauf unter Last (98 Dateien
   parallel); einzeln dreimal grün, der nächste volle Lauf grün. Also kein Plattform-, sondern ein Last-Effekt — der Test hängt
   vermutlich an einer Zeitschranke oder einem zeitbegrenzten Suchschritt. Nicht geändert; beim nächsten Auftreten die
   Zeitabhängigkeit im Versuch S0 suchen.

@@ -1,4 +1,4 @@
-# Übergabe (Stand 21.10.2026 abends: V0–V5 gebaut, V6 „Loops (⌘R)“ gebaut — Abnahme offen)
+# Übergabe (Stand 21.10.2026 früh: V0–V5 gebaut, V6 „Loops (⌘R)“ gebaut — Abnahme offen)
 
 Branch `claude/editor-grundlayout`, PR mit Auto-Fix.
 

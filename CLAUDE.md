@@ -181,7 +181,7 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Hals 1:8 31,6 → 1,4, Kegel 7,3 → 3,0; Extremreihe im Bild 34 von 39 gleich/besser, schlechter Keil, Pilz, Blatt, Hammerhai,
   Seestern. Tor Δ ≤ 0,5 px nur bei Kugel/Ei (Fläche wölbt sich zwischen Käfigpunkten). Verworfen (gemessen): Bindungen/Gewichte
   der Hüllpunkte, angehobener Glättungsbezug, Schultern als Anker. Planseite „Stand V4 — Querschnitt aus der Sichthülle“.
-- **2026-10-21 früh/vormittags: V5 „Linien exakt“ gebaut** (Abnahme offen; Planseite „Stand V5“, Register „Befunde aus V5“):
+- **2026-10-21 nachts: V5 „Linien exakt“ gebaut** (Abnahme offen; Planseite „Stand V5“, Register „Befunde aus V5“):
   mit „Querschnitt aus der Hülle (V4/V5)“ werden P-Linien **Käfigschleifen** (`kern/linienSchleifen.ts`): längs = Reihe im
   Reihenplan (optimale Reihenvergabe, Endringe durch die Endpunkte, Reihe läuft über drei Ringe aus), quer = eigener Ring, in
   die Linie gedreht (Nachbarn mit), schräg = Treppe. **Form zuerst:** erst der Körper ohne Linien, der Körper mit Linien
@@ -189,7 +189,7 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Ringe tasten das Höhenfeld der natürlichen Ringe ab. Gegen S8a: Robbe Falte 172 → 10°, Haut 4,4 → 1,4 px; Kegel-Kante neu
   (0,7 px); Bau ≈ 1 s → 0,35 s; Kante bleibt im Zug; Umrisse mit Linien ≤ 0,7 px anders (im Editor geprüft, `v5-editor.mjs`).
   Schlechter: schräge Linien (Vase, Würfel, Krake), Lage in der Zeichenansicht 0,4–2 px (Tor 0,3 als `it.fails`).
-- **2026-10-21 nachmittags/abends: V6 „Loops (⌘R)“ gebaut** (Abnahme offen; Planseite „V6 im Detail“, „Stand V6.1–V6.3“,
+- **2026-10-21 früh: V6 „Loops (⌘R)“ gebaut** (Abnahme offen; Planseite „V6 im Detail“, „Stand V6.1–V6.3“,
   Register „Befunde aus V6“, Übergabe): ⌘R/⌃R wie Blenders „Loop Cut and Slide“ (Vorschau, Rad = Anzahl, Gleiten, ein
   Undo-Schritt); ein Loop = Rücken-/Bauchknoten in der Seite + Breitenknoten im Top (liegender Ring) bzw. in der Front samt
   Spanten (stehender Ring), formneutral, plus eigener Käfigring (`kern/schleifen.ts`, Option `schleifen`, Röhre ohne
