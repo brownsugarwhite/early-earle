@@ -11,6 +11,10 @@
 > Vektorillustration, Fortsetzung Teil A), Kritik-Register, Übergabe, Code und Verlauf von Teil A
 > (`packages/shape/src/kern/einsatz/`) und das Gespräch in der Nebensession. Recherchiert wurden feldgesteuerte und
 > musterbasierte Vierecksnetze; die Quellen stehen am Ende. Kein Code geändert.
+>
+> **Nachtrag (21.10. spätabends):** Weitergeführt für das ganze Netz und die Linien in
+> [`2026-10-21-netz-und-linien-gesamt.md`](2026-10-21-netz-und-linien-gesamt.md). Dort ist das Stücknetz ein Teil des
+> Zielbilds „ein Liniennetz, ein Löser“ (mit „Umriss zuerst“); die Prüfphase dort ersetzt Abschnitt 6 dieser Seite.
 
 ## Kurzantwort
 

@@ -21,7 +21,11 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 > **21.10. spätabends: Grundsatzfrage „Feldnetz statt Kernring?“** (Florian: Eleganz ist Grundvoraussetzung) — Recherche
 > [`docs/research/2026-10-21-feldnetz-oder-kernring.md`](docs/research/2026-10-21-feldnetz-oder-kernring.md): Empfehlung
 > Kernring einfrieren, Beweis F0 „Stücknetz im Maulfeld“ (Linien → Stücke → Ganzzahlen → Muster, ohne Richtungsfeld).
-> **Florians Entscheidung offen; bis dahin keine neue Sonderregel am Kernring.**
+> Weitergeführt für das ganze Netz und die Linien:
+> [`docs/research/2026-10-21-netz-und-linien-gesamt.md`](docs/research/2026-10-21-netz-und-linien-gesamt.md) — Zielbild
+> „ein Liniennetz, ein Löser“ (Umriss zuerst, Stücknetz, harte lineare Bedingungen, Daten an den Linien), Prüfphase P1 „Umriss
+> zuerst“ → P2 „Stücknetz im Maulfeld“ → P3 „Liniennetz am ganzen Körper“, je mit Abbruchkriterien.
+> **Florians Entscheidung offen; bis dahin keine neue Sonderregel am Kernring und kein Umbau.**
 
 - **2026-10-04: Prototyp 1 ist abgeschlossen** (Archiv-Branch `prototyp-1`). Er diente zum Lernen. Florian: „Der Prototyp war sehr gut und aufschlussreich und hat bewiesen, dass die Spielidee toll ist.“ Viele Entscheidungen sind gefallen; die Gesamtdynamik und einige grafische Elemente haben ihm gefallen.
 - **Jetzt beginnt die eigentliche Produktion mit dem finalen Look.** Grundlage wird **Florians neuer Plan mit neuem Hauptprompt**: Story, Charaktere und Map arbeitet er genauer aus und trägt sie in Dokumenten und Screenshots zusammen. Es folgen mehrere Runden und Iterationen.
@@ -277,6 +281,17 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   kleinste Dreier-Fünfer-Muster. Kein Werkzeug kann den festen Feldrand (QuadWild: alles neu, GPL, C++). Nicht für den ganzen
   Körper jetzt; Zielbild „Das Liniennetz ist das Netz“. Empfehlung: Kernring einfrieren, Beweis F0 (3–5 Arbeitstage), gesamt bis
   zum heutigen Stand der Tore 2–3 Wochen. Entscheidung offen.
+- **2026-10-21 spätabends (danach): Recherche „Netz und Linien im Ganzen“** ([`docs/research/2026-10-21-netz-und-linien-gesamt.md`](docs/research/2026-10-21-netz-und-linien-gesamt.md);
+  Florian: „Betrifft das nur das Maul oder das ganze Mesh und die Linien? … ich möchte nicht, dass wir die Richtung wechseln und
+  dann wieder etwas nicht funktioniert“). Fünf Recherchen (Flächen aus Kurvennetzen, Topologie aus Linien, Form aus drei
+  Ansichten, saubere Umrisslinien, Produktion/Posen/Export). Befund: zwei Wurzeln — Topologie aus festen Vorlagen (Sonderregeln
+  an Maul, Kanten, Ansätzen, Kappen, Loops, Augen) und „Körper zuerst“ bei den Umrissen (Umriss liegt, wo der Körper am
+  breitesten ist; auf flachen Flanken in der Tiefe schlecht bestimmt → wilde Linien, Front/Top verfehlt; zwei Recherchen
+  unabhängig gleich). Zielbild „ein Liniennetz, ein Löser“: Umriss zuerst (Prasad 2006, Cashman 2013: lineare Umriss-Bedingungen),
+  Stücknetz aus harten (Umrisse, Kanten, Maul, Augen, Loops) und weichen Linien (Raster), Muster (Takayama 2014, Tarini 2022),
+  Pol-Regel (Karčiauskas–Peters–Reif), Daten an Linien (Pixar Profile Mover). Verworfen: CAD-Flächen zwischen Linien (G1-Nähte
+  knicken Farbstufen), globales Feldnetz, gelernte Netzerzeuger, Sichthülle mit Neuvernetzen. Prüfphase ≈ 2–2,5 Wochen: P1 Umriss
+  zuerst → P2 Stücknetz im Maulfeld → P3 Liniennetz am ganzen Körper, je mit Abbruchkriterien. Entscheidung offen.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
