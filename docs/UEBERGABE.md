@@ -26,21 +26,39 @@ liegt bisher nur im Kern (`packages/shape/src/kern/einsatz/`); im Editor ist dav
    - Prüfwesen: drei bis fünf eigene Wesen oder Bögen, an denen die Beweise gemessen werden.
    - „Ich bin zufrieden, wenn …“: die Abnahme in seinen Worten.
    - Prioritäten und Budget: was zuerst sichtbar werden soll, Wochenlimit.
+   - **Bausteine** (Zähne, Augen, Muster und Zonen, Shader, Anhängsel, Klingen) als eigener, klar getrennter Block: nur wörtlich
+     speichern in `docs/plans/2026-10-22-bausteine-wuensche.md`. In der Gegenprüfung wird nur geprüft, was das Fundament dafür
+     bereitstellen muss; geplant und gebaut werden sie erst nach den Beweisen, als eigene Phase im großen Plan.
 2. **Gegenprüfung und Prüfplan (eine kurze Sitzung, ½–1 Tag, kein Code).** Eine frische Sitzung liest beide Recherchen und die
    Klarstellungen. Sie prüft das Zielbild „ein Liniennetz, ein Löser“ kritisch: Lücken, Denkfehler, bessere unkonventionelle
    Ideen, und ob die Beweise das Richtige testen. Dann schreibt sie den Prüfplan P1–P3 mit Florians Kriterien nach `docs/plans/`.
-   Florian gibt frei.
+   Florian gibt frei. Der Prüfplan nimmt zwei Anker für die Bausteine mit: eine Zahnfleischreihe im Maul-Stücknetz (P2) und einen
+   Augenumriss mit Brauenwulst als harte Linie (P3; der Brauenwulst scheiterte am 15.10. an der Topologie).
 3. **Beweise P1 → P2 → P3 (etwa 2–2,5 Wochen).** Streng nach Prüfplan, im Kern hinter Schaltern, nichts im Editor umgestellt,
    Kernring eingefroren. Nach jedem Beweis gibt es Kontaktbögen und Zahlen, dann urteilt Florian; die Abbruchkriterien gelten.
 4. **Großer Plan (eine Sitzung, etwa 1 Tag).** Er baut auf den Ergebnissen auf: Bauweise, Reihenfolge des Umbaus, Einbau in den
    Editor und was vom heutigen Code bleibt. Florian gibt frei.
 5. **Umbau Stück für Stück**, je mit Toren. Der heutige Stand bleibt Rückfall, bis ein Stück nachweislich besser ist.
 
+**Stand der Bausteine** (Plan „Wesen-Editor 2“, Phasen 2–5; Einzelheiten im Kritik-Register):
+
+| Baustein | gebaut | offen | hängt am Netz? |
+|---|---|---|---|
+| Earle-Material, Shader | live im Editor (Beweis 4: Tiger-Kopf, Zonen-Atlas, Ruhelage gegen schwimmende Muster) | Florians Urteil; Feuer ohne Verläufe, Gas weit von der Vorlage, Fell am weitesten vom Bogen (Beweis 5) | kaum (Deskriptoren, Atlas-Koordinaten) |
+| Muster und Zonen | Muster im Material (Streifen, Flecken, Rosetten, Schuppen), Zonen-Atlas im Kern | Zonen im Editor als Vektorformen zeichnen (Phase 4) | ja, für die Lage auf der Haut |
+| Zähne | Phase 2 M4: Zahnmodell, Zahnfleisch, Prüfung, Tafel, Ziehen | sitzen auf dem alten Maulbau; Florians Wunschliste (15.10. angekündigt: Überschneidungen erlaubt, runde Blobzähne, vor/zurück), „Setzen T“, Größe gegen die Referenz | ja, über das Zahnfleisch |
+| Augen | Phase 2 M5: gemalte Augen mit Zuständen, Glubschauge und Augapfel, Höhle im Käfig | Brauenwulst ungelöst, kein Blick, Lid ohne Muster | gemalt nein; Höhle und Braue ja |
+| Teile, Anhängsel | Beweis 3 (Säulenbein), Körper aus Teilen (S5–S7) | Teil-Bibliothek, Andocken, IK, Laufen (Phase 3) | ja, stark (Ansätze) |
+| Klingen (Fell, Kämme, Flossen) | nur Beweis 5 | Phase 4 | ja, über Ansatzlinien |
+| Posen und Rig | Teil B weitgehend gebaut | Daten hängen an Punktnummern | ja, Übertrag beim Neubau |
+| Spiel-Export | – | Phase 5 | nein (gebackenes Netz) |
+
 Start-Prompt für Schritt 2 (zum Einfügen; die eckige Klammer durch die eigenen Punkte ersetzen):
 
 > Lies `CLAUDE.md`, `docs/UEBERGABE.md` (Abschnitt „Vorgehen ab 22.10.“) und die Recherchen
 > `docs/research/2026-10-21-feldnetz-oder-kernring.md` und `docs/research/2026-10-21-netz-und-linien-gesamt.md`. Hier sind meine
-> Klarstellungen: […]. Lege sie zuerst wörtlich in `docs/plans/2026-10-22-klarstellungen.md` ab (Bilder nach `docs/look/`).
+> Klarstellungen: […]. Lege sie zuerst wörtlich in `docs/plans/2026-10-22-klarstellungen.md` ab (Bilder nach `docs/look/`),
+> den Block „Bausteine“ getrennt in `docs/plans/2026-10-22-bausteine-wuensche.md` (nur speichern, nicht planen).
 > Dann: (1) Gegenprüfung — ist „ein Liniennetz, ein Löser“ wirklich der eleganteste Weg zu meinem Zielbild? Suche Lücken,
 > Denkfehler und unkonventionelle bessere Ideen und prüfe, ob die Beweise das Richtige testen. (2) Schreib den Prüfplan P1–P3 mit
 > meinen Klarstellungen als Kriterien (Fälle, Messungen, Abbruchkriterien, Bilder je Schritt) nach `docs/plans/` und leg ihn mir
