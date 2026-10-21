@@ -1,4 +1,4 @@
-# Übergabe (Stand 21.10.2026, dritte Sitzung: Teil A „Maul als Einsatz“, E1 — Haut und Mundwinkel-Tor erreicht, weiter mit E2)
+# Übergabe (Stand 21.10.2026, dritte Sitzung: Teil A „Maul als Einsatz“, E2 läuft — A0 wie im Editor, Tore an 39 von 43 Fällen)
 
 Branch `claude/editor-grundlayout`, PR mit Auto-Fix. **Diese Datei ist der Einstieg für eine frische Sitzung.** Alles zu Teil A
 liegt bisher nur im Kern (`packages/shape/src/kern/einsatz/`); im Editor ist davon noch nichts zu sehen.
@@ -7,17 +7,17 @@ liegt bisher nur im Kern (`packages/shape/src/kern/einsatz/`); im Editor ist dav
 
 Zum Einfügen (Florian):
 
-> Lies `docs/UEBERGABE.md` und auf der Planseite `docs/plans/2026-10-21-maul-einsatz-weiter.md` den „Nachtrag E1 (dritte
-> Sitzung)“. Weiter mit Teil A, E2: A0 wie im Editor (glatt, berühren, Hülle, Linien, Loops; mein Ablauf Kugel → umformen → Maul),
-> Falten von A0 im Feld laufen auf einer Spalte weiter — damit Rex und Robbe in die Tore kommen.
+> Lies `docs/UEBERGABE.md` und auf der Planseite `docs/plans/2026-10-21-maul-einsatz-weiter.md` „E2 im Detail“ und „Stand E2“.
+> Weiter mit Teil A, E2: die offenen Fälle (Robbe hoch: Eckenentfaltung am Schlitzanfang; Rex mittel J: Kappe um die
+> Schnauzenspitze für die Querfalte; Robbe tief J: Buckel der Lippe), dann E2.4 (A0 mit Hülle, P-Linien am Maul, Loops), dann E3.
 
 Lesereihenfolge für die Sitzung:
 1. `CLAUDE.md` (lädt von selbst: Stand, Regeln, Fallen; Einträge „2026-10-21 …“ unten in der Liste).
 2. Diese Datei.
 3. Planseite [`docs/plans/2026-10-21-maul-einsatz-weiter.md`](plans/2026-10-21-maul-einsatz-weiter.md): „Ursache am Mundwinkel und
-   die Entscheidung“, „Schritte“ (E1–E6), „Stand E1“, die Nachträge E1 und vor allem **„Nachtrag E1 (dritte Sitzung)“** (Ergebnis,
-   was gebaut ist, verworfene Wege, offene Befunde).
-4. Register [`docs/plans/2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md), „Befunde aus E1“.
+   die Entscheidung“, „Schritte“ (E1–E6), „Stand E1“, die Nachträge E1, **„E2 im Detail“** und **„Stand E2“** (Ergebnis, was
+   gebaut ist, verworfene Wege, offene Fälle).
+4. Register [`docs/plans/2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md), „Befunde aus E2“ und „Befunde aus E1“.
 5. Grundlage Teil A: [`docs/plans/2026-10-15-maul-einsatz-harmonie-posen.md`](plans/2026-10-15-maul-einsatz-harmonie-posen.md)
    (Festlegungen, Schritte A1–A14).
 
@@ -28,68 +28,76 @@ auch mit Maul wirken.“ Heute schaltet ein Maul den Körper auf den alten Maulb
 dreht es um: A0 ist der Körper ohne Maul mit allem, was der Körper kann; das Maul wird in die verfeinerte Fläche von A0 eingesetzt
 (Feld um die Maullinie, Karte, Topologie, Lippe, Haut lösen = A3–A7), außerhalb des Felds bleibt der Körper bitgleich.
 
-Reihenfolge: E1 Gitter (Tore erreicht, Abnahme offen) → **E2 A0 wie im Editor** → E3 Bau → E4 Editor, Maul zu (**Florians
-Blick**) → E5 Öffnen → E6 Rest (Kiefer getrennt, Zähne, Augen, Rig, alter Maulbau raus, Abnahme).
+Reihenfolge: E1 Gitter (Tore erreicht, Abnahme offen) → **E2 A0 wie im Editor (läuft)** → E3 Bau → E4 Editor, Maul zu
+(**Florians Blick**) → E5 Öffnen → E6 Rest (Kiefer getrennt, Zähne, Augen, Rig, alter Maulbau raus, Abnahme).
 
 Florians Aufträge am 21.10.: „zuerst die genaue Haut als Standard des Kernrings …, dann den Mundwinkel (Quadratgitter um c). Es
 muss für alles eine elegante und saubere Lösung geben!“ — danach: „mach hier mit der Verdrehung an J-Linien weiter …, bis das
-Mundwinkel-Tor auch an den vier J-Fällen hält.“
+Mundwinkel-Tor auch an den vier J-Fällen hält.“ — danach: „Ja, mach hier mit E2 weiter (A0 wie im Editor, Rex und Robbe in die
+Tore).“
 
-## Stand E1
+## Stand E1/E2
 
-- **Standard des Kernrings** (`einsatzFall(art, anfang, form)` ohne Optionen, `einsatzAblauf(f)` in
-  `kern/pruefen/einsatzFall.ts`): Feld auf **K2, begradigt bis 1,5 Radien** (`kappe`), Schlitz genau auf der Linie
-  (`schnittAufLinie`), Reihenzahl konform 10 … 16, **Fächer um c als Halbkreis** (`faecherKreis`, `faecher: 'kreis'`),
-  **Nahtspeichen auf den Kartenlinien** (`naht: 'karte'`), Ausgleich außen 6 Runden, letzte Lippenspanne ¼ Feldkante, ohne
-  Lippenwulst. Dünn besetzte Normalgleichungen in Lage und A7; ein Fall ≈ 3–7 s. Schleifengitter, K1 und `FALL_ALT` (K1,
-  Kantenpfad) bleiben bitgleich.
-- **Ganze Reihe** (39 ausgeglichene Fälle): Haut ≤ 0,25 px in 30 von 30 ohne Rex/Robbe (max 0,09, Median 0,07); **Mundwinkel-Tor
-  (≤ A0 + 2°) in 30 von 30** ohne Rex/Robbe (größter Abstand 1,5°, J-Linien 0,9°); Knick im Feld höchstens A0 + 1,9°; Lippe
-  ≤ 0,44 px; keine umgeklappte Zelle in allen 39 (über alle 54 Fälle eine, Langhals mittel gerade mit der Linie 21 px neben der
-  Haut); außen bitgleich, Spiegel bitgenau. Bild der vier J-Fälle vorher/nachher:
-  `docs/progress/editor/e1-mundwinkel-j-linien-2026-10-21.jpg`.
-- **Was es brauchte** (Planseite „Nachtrag E1 (dritte Sitzung)“): Nicht die Verdrehung (die Polpaare wären der falsche Hebel
-  gewesen), sondern (1) ein Feld, das das Band um die Linie bleibt (ganz begradigt wuchs es über den Kopf, das reine Band hatte
-  Buckel mit Fünferpolpaaren), (2) der Fächer um c als Halbkreis auf der Haut (aus der Karte lag er gekippt), (3) Nahtspeichen auf
-  den Kartenlinien (nach Bogenlänge passten sie nicht zu Reihe J_i, Robbe hoch und Rex klappten um).
-- **Rex/Robbe** (bis E2 außerhalb der Tore): nichts mehr umgeklappt, Knick 9–43° statt bis 179°, Haut 0,08–1,0 px statt bis 4 px.
-  Rest an Rex mittel und Robbe hoch: A0 trägt dort eigene Falten im Feld (Schnauzenkante 105°, Kerbe 18°).
-- **Versuch „Band“** (`einsatzTopologie(…, { lage: 'band', feldDreiecke })`) bleibt als Option, ist nicht Standard.
+- **Standard des Kernrings auf K2** (`einsatzFall(art, anfang, form)` ohne Optionen, `einsatzAblauf(f)` in
+  `kern/pruefen/einsatzFall.ts`): **A0 wie im Editor** (Startkugel, eingefrorene Ringe, umgeformt, glatte Haut, „berühren
+  mittel“), Feld begradigt bis 1,5 Radien, Schlitz genau auf der Linie, Reihenzahl konform 10 … 16, Fächer um c als Halbkreis,
+  **Naht nach Bogenlänge auf einer umparametrisierten Karte** (`naht: 'bogenKarte'`, `nahtBogen`), **ein Ausgleich der
+  Stufennaht** (`nahtAusgleich`), Ausgleich außen, **letzte Lippenspanne 0,15 Feldkante**, **Spitzen von A0 übernommen**
+  (`spitzen`: auf der Naht als Nahtpunkt mit Punktschärfe, am Linienanfang als Ecke der Lippe — `lippenAnfang: 'ecke'`), ohne
+  Lippenwulst. K1 und `FALL_ALT` bitgleich.
+- **Knickmaß** (`einsatzMessen`): Kanten im Umkreis einer Feldkante um eine Spitze (von A0, beim Einsatz auch die eigenen) zählen
+  nicht — dort gibt es keinen glatten Bezug.
+- **Ganze Reihe** (43 ausgeglichene Fälle): Mundwinkel ≤ A0 + 2° in 43 von 43, Haut-Tor (≤ 0,25 px, Knick ≤ A0 + 2°, Lippe ≤ 1 px,
+  nirgends umgeklappt) in 39 von 43, auch an Rex und Robbe; ohne Rex/Robbe Haut max 0,09 px. Bild
+  `docs/progress/editor/e2-spitzen-anfang-2026-10-21.jpg` (Robbe mittel, Rex mittel am Linienanfang, vorher/nachher).
+- **Offen** (Register „Befunde aus E2“): Robbe hoch gerade/J (Haut faltet am spitzen Schlitzanfang), Rex mittel J (Querfalte von A0
+  im Feld), Robbe tief J (Buckel der Lippe quer zur Haut). E2.4 noch nicht gemessen.
 
 ## Nächste Schritte (in dieser Reihenfolge)
 
-1. **E2** (A0 wie im Editor: glatt, berühren, Hülle, Linien, Loops; Florians Ablauf Kugel → umformen → Maul). Falten von A0 im
-   Feld laufen auf einer Spalte weiter — das holt Rex und Robbe in die Tore (heute ausgenommen). Dabei der **spitze
-   Schlitzanfang** (Robbe hoch: die Linie trifft die Naht spitz, Zellen an Reihe J_i bis 57 : 1; Weg: Reihe J_i nahe der Naht nach
-   Bogenlänge statt über den Lippenstellen, oder ein eigener Schlitzanfang) und **Rex tief J** am Mundwinkel (8,6° bei A0 4,3°).
-2. **E3** (`maulEinsatzBauen`, eingefrorene Topologie im Dokument, schneller Zugweg), **E4** (Schalter „Maul: Einsatz“ im
+1. **Robbe hoch: Eckenentfaltung am Schlitzanfang.** Die Karte bildet die Ecke zwischen Schlitz und Naht immer auf 90° ab; an
+   einem spitzen Anfang (die Linie läuft knapp unter der Kopfnaht) staucht sie quer zur Naht (V ∝ r³), und die Ring-1-Punkte über
+   den ersten Lippenstellen fallen zusammen. Im Kartenwinkel um den Anfang mit der Potenz auf den wahren Winkel entfalten (wie
+   ζ' um c) und dort die innere Stufe rechnen; Kriterium: keine Faltung, Haut ≤ 0,25 px an Robbe hoch.
+2. **Rex mittel J: Kappe um die Schnauzenspitze** — die Querfalte von A0 läuft vom Schlitz zur Naht; als äußerer Ring eines
+   Polargitters um U₀ wäre sie eine Gitterlinie. Erst an Rex mittel gerade/J beweisen.
+3. **Robbe tief J:** Buckel der Lippe (Stelle 12) erst an der gezeichneten Linie verstehen (Wölbung von A0?), dann lösen.
+4. **E2.4:** A0 mit Querschnitt aus der Hülle (`A0PLAN='{"umrisseExakt":true}'`), P-Linien am Maul, Loops — je Variante die
+   ganze Reihe; Falten, die den Schlitz kreuzen, laufen auf einer Speiche (Plan E2.3 a).
+5. **E3** (`maulEinsatzBauen`, eingefrorene Topologie im Dokument, schneller Zugweg), **E4** (Schalter „Maul: Einsatz“ im
    Editor, Maul zu → Florians Blick), E5, E6.
-3. Klein, wenn es stört: spitze Zellen in der letzten Zellreihe am Feldrand (bis 1,4°, Knick unauffällig).
 
 **Nicht wiederholen** (gemessen und verworfen, Planseite „Nachtrag E1“ bis „Nachtrag E1 (dritte Sitzung)“): Gewichte nach
 Hautlänge am Mundwinkel, radiale Umparametrisierung, Ideallage nur innen, innere Stufe in W', Polarkoordinaten um c; Normalenbindung
 in A7, Zellform als Quadrate (MIPS: logarithmisch-polare Spirale um c), Zellform zur Kissen-Vorlage, Reihen nach Hautlänge auf den
 Kartenspeichen, Naht der Stufen glätten, Karte auf feinerem Netz, Feld verlängern; Übergangsreihe mit Polpaaren, symmetrischer
 Schlitz in der Karte, Auffaltung der Karte an der Spitze, Ortskarte, reines Band ohne Kappe, Fächer als Quadrat, Fächer hinterher
-drehen, Fächer um den Kontrollpunkt c (faltet, wo die Linie neben der Haut liegt).
+drehen, Fächer um den Kontrollpunkt c (faltet, wo die Linie neben der Haut liegt); (E2) eine Stufe statt zwei, Verdrehung
+anteilig in Reihe J_i, Reihe J_i weiter außen, Fächerachse aus Endtangente oder letzter Lippenkante, Fächerradius = letzte
+Lippenspanne, ganzer Ring um c fest, drei Schritte Nahtausgleich, Polpaare für die Verdrehung, Ecke am Linienanfang ohne
+passende Lippe.
 
 Je Schritt: Planseite „Stand …“ nachtragen, Register, Bilder, commit + push; nichts als „bestanden“ melden ohne Florian.
 
 ## Werkzeuge
 
 - **Tests:** `packages/shape/src/kern/einsatz/kernring.test.ts` (Lippe als Falte, Topologie an 54 Fällen auf K2, Wächter: genaue
-  Haut an drei Fällen, Mundwinkel an drei J-Linien, keine umgeklappte Zelle an Robbe hoch), `kernring.extrem.ts` (ganze Reihe:
-  Haut-Tor samt „nirgends umgeklappt“, Mundwinkel-Tor; `npx vitest run -c vitest.extrem.config.ts src/kern/einsatz/kernring.extrem.ts`
-  aus `packages/shape`, ≈ 4,5 min), dazu die übrigen `einsatz/*.test.ts` (`FALL_ALT`, bitgleich). Lauf:
+  Haut an drei Fällen, Mundwinkel an drei J-Linien, keine umgeklappte Zelle an Robbe hoch, Spitzen von A0 an Robbe mittel und Rex
+  mittel), `kernring.extrem.ts` (ganze Reihe: Haut-Tor an allen Körpern außer `OFFEN`, dasselbe über alle Fälle als `it.fails`,
+  Mundwinkel-Tor an allen; `npx vitest run -c vitest.extrem.config.ts src/kern/einsatz/kernring.extrem.ts` aus `packages/shape`,
+  ≈ 5 min), dazu die übrigen `einsatz/*.test.ts` (`FALL_ALT`, bitgleich). Lauf:
   `pnpm --filter @ee/shape test`.
 - **Messskripte** (aus `packages/shape`: `npx vite-node ../../apps/editor/scripts/pruefen/<datei>`):
   - `teilA/e1-reihe-k2.ts` — ganze Reihe nach dem Standard (≈ 4 min, im Hintergrund): je Fall Haut, Knick, Mundwinkel (je gegen
     A0), umgeklappt, Güte, Lippe; Summe am Ende. Umgebung `FAELLE`, `LAGE` (karte/band), `J`, `ECKE`, `WULST`, `VERL`, `FELD`,
-    `KAPPE`, `FAECHER`, `NAHT`, `AUS` (JSON-Zeilen). `KAPPE=0 FAECHER=tutte NAHT=bogen` = Stand der zweiten Sitzung.
+    `KAPPE`, `FAECHER`, `NAHT`, `A0` (alt|editor), `A0PLAN`, `NR`, `SPITZEN`, `AUS` (JSON-Zeilen). `A0=alt ECKE=0.25 NAHT=karte
+    NR=0 SPITZEN=0` = Stand vor E2.
   - `einsatz-loesen.ts` — Nahaufnahme des Mundwinkels (A0 · Einsatz · Abstand · Zebra): `NEU=1 NAH=3` (NAH in Feldkanten, fester
-    Ausschnitt), optional `J`, `ECKE`, `WULST`, `LAGE`, `KAPPE`, `FAECHER`, `NAHT`, `AUSGABE` (Ordner); Bild mit
+    Ausschnitt; `ANFANG=1` um den Linienanfang), optional `J`, `ECKE`, `WULST`, `LAGE`, `KAPPE`, `FAECHER`, `NAHT`, `A0`, `NR`,
+    `SPITZEN`, `AUSGABE` (Ordner); Bild mit
     `node scripts/pruefen/html-shot.mjs <html> <png> 1300` (aus `apps/editor`).
-  - `teilA/e1-gitterbild.ts` — Gitter als SVG (`AUSGABE=<datei.html>`, `NAH`, `LAGE`, `ECKE`, `KAPPE`, `FAECHER`, `NAHT`).
+  - `teilA/e1-gitterbild.ts` — Gitter als SVG (`AUSGABE=<datei.html>`, `NAH`, `ANFANG`, `LAGE`, `ECKE`, `KAPPE`, `FAECHER`,
+    `NAHT`, `A0`).
   - `teilA/e1-haut.ts`, `teilA/e1-reihe.ts`, `teilA/e1-faecher.ts`, Kissen-Vorversuche wie bisher.
 - **Fälle:** `<körper>/<anfang>/<form>` (z. B. `kugel/mittel/gerade`, `ei/tief/j`, `langhals/hoch/j`), Liste `einsatzFaelle()`;
   „ausgeglichen“ = Linie ≤ 1 px auf der Haut (`hautAbstand`), das sind 39 von 54.
@@ -115,6 +123,18 @@ Je Schritt: Planseite „Stand …“ nachtragen, Register, Bilder, commit + pus
   bricht mit „nicht positiv definit in Zeile 0 (0)“ ab.
 - Tests an der Naht: −0 gegen 0 scheitert an `toBe` — Fehler sammeln und vergleichen, nicht je Wert `toBe`.
 - Gegenproben am alten Code mit `git stash push -- <nur die Quelldateien>`, dann `git stash pop` (vorher `git diff` sichern).
+
+## Fallen aus E2
+
+- **Käfig und Lippe brauchen dieselbe Regel:** Eine Ecke an U₀ nur im Käfig (Punktschärfe) ohne die Ecke in der Lippenanpassung
+  machte die Haut schlechter (Rex mittel 0,5 → 3,8 px). Jede Regel am Lippenrand gilt in Topologie, Lippe (A6), Lösen (A7) und
+  Messen gleich (`t.lippenAnfang`).
+- **Reihenwahl in der Koordinate der Reihen:** Mit umparametrisierter Naht liegen die Reihen in U'; ein scharfer Nahtpunkt, dessen
+  Reihe noch in U gesucht wurde, landete auf der falschen Reihe, die Nahtpunkte verloren ihre Ordnung (168–179°).
+- **Knick an Spitzen nicht messen:** Der Winkel zwischen den feinen Flächen an einer Spitze hängt am Netz; der Umkreis muss den
+  Käfig-Ring der Spitze fassen (eine Feldkante, eine halbe reichte nicht).
+- **Ergebnisse doppelt prüfen:** Ein Lauf mit `SPITZEN=1` zeigte einmal keine Wirkung, der nächste schon — wichtige Zahlen mit einem
+  zweiten Weg bestätigen (Einzelskript und Reihe).
 
 ## Davor (V0–V6, Abnahme offen)
 

@@ -27,7 +27,7 @@ import type { FeldSpec } from './feld';
 import { ankerVon, type FeinNetz, feinNetz, punktNormalen } from './flaeche';
 import type { Karte } from './karte';
 import { bandLage, hautPunkt, zellenUmgeklappt } from './band';
-import { kruemmungsParameter, lippeAnpassen } from './lippe';
+import { kruemmungsParameter, type LippenAnfang, lippeAnpassen } from './lippe';
 
 type V3 = [number, number, number];
 
@@ -97,6 +97,8 @@ export type EinsatzTopologie = {
   umgedreht: boolean;
   /** Kernring: Hautzellen mit falschem Umlauf in der Ebene der Lage (0 = faltenfrei) */
   umgeklappt: number;
+  /** Anfang der Lippe auf der Naht: glatt oder Ecke (A0 hat am Linienanfang eine Spitze; U₀ und D₀ mit ihrer Punktschärfe) */
+  lippenAnfang: LippenAnfang;
   /** Stufe des Feldkäfigs über A0 (K1 = 1, K2 = 2): Lösen auf Stufe 3 − stufe, Messen auf 4 − stufe (gleiche Grenzfläche) */
   stufe: 1 | 2;
 };
@@ -408,6 +410,49 @@ export function kartenSeitenverhaeltnis(karte: Karte, netz: FeinNetz, doppel: Ma
   return 1;
 }
 
+/**
+ * Karte längs der Naht nach Bogenlänge umparametrisiert (E2): U' = Bogenlängenanteil auf der Naht (V = 0 bzw. 1), zum
+ * Mundwinkel hin quadratisch in U' = U übergehend (an V_c unverändert). U' ist für jedes V in U monoton, das Rechteck bleibt
+ * ein Rechteck. Die konforme Karte staucht die Naht an einem spitzen Schlitzanfang (Linie trifft die Naht schräg: V ∝ r³);
+ * Reihen auf ihren Kartenlinien lagen dort weit auseinander (Robbe hoch: erste Reihe 42 px vom Anfang, die übrigen 4–9 px).
+ */
+export function nahtBogen(umkehr: (u: number, v: number) => { p: V3; n: V3 }, vc: number, N = 256): { hin: (u: number, v: number) => number; zurueck: (u2: number, v: number) => number } {
+  const tabelle = (v: number) => {
+    const s = [0];
+    let vor = umkehr(0, v).p;
+    for (let i = 1; i <= N; i++) {
+      const q = umkehr(i / N, v).p;
+      s.push(s[i - 1]! + Math.hypot(q[0] - vor[0], q[1] - vor[1], q[2] - vor[2]));
+      vor = q;
+    }
+    const L = s[N]! || 1;
+    return s.map((x) => x / L);
+  };
+  const s0 = tabelle(0);
+  const s1 = tabelle(1);
+  const phi = (t: number[], u: number) => {
+    const x = Math.min(1, Math.max(0, u)) * N;
+    const i = Math.min(N - 1, Math.floor(x));
+    return t[i]! + (x - i) * (t[i + 1]! - t[i]!);
+  };
+  const hin = (u: number, v: number) => {
+    const w0 = v < vc ? (1 - v / vc) ** 2 : 0;
+    const w1 = v > vc ? ((v - vc) / (1 - vc)) ** 2 : 0;
+    return u + w0 * (phi(s0, u) - u) + w1 * (phi(s1, u) - u);
+  };
+  const zurueck = (u2: number, v: number) => {
+    let lo = 0;
+    let hi = 1;
+    for (let i = 0; i < 48; i++) {
+      const mid = 0.5 * (lo + hi);
+      if (hin(mid, v) < u2) lo = mid;
+      else hi = mid;
+    }
+    return 0.5 * (lo + hi);
+  };
+  return { hin, zurueck };
+}
+
 /** Einstellungen des Kernring-Gitters (`kernGitter`) */
 export type KernGitterOptionen = {
   /** Reihen der inneren Stufe (Standard J/2, mindestens 2) */
@@ -424,9 +469,20 @@ export type KernGitterOptionen = {
    * Nach Bogenlänge passen sie nicht zu Reihe J_i, die ganz auf ihrer Kartenlinie liegt: Wo die Karte längs der Naht ungleich
    * dehnt (Robbe hoch: Reihe J_i an der Naht bei einem Fünftel ihres U), läuft der Rand der äußeren Stufe zurück, sie ist nicht
    * mehr konvex und Zellen klappen um. Auf den Kartenlinien bleiben beide Stufen Rechtecke (Tutte faltenfrei), und die Zellen
-   * an der Naht sind konform wie überall.
+   * an der Naht sind konform wie überall. 'bogenKarte' (E2): Kartenlinien auf einer längs der Naht nach Bogenlänge
+   * umparametrisierten Karte (`nahtBogen`) — gleichmäßig auf der Naht und doch jede Stufe ein Rechteck.
    */
-  naht?: 'bogen' | 'karte';
+  naht?: 'bogen' | 'karte' | 'bogenKarte';
+  /**
+   * Runden des Ausgleichs der Stufennaht (E2, Standard 0): Reihe J_i gleitet auf ihrer Kartenlinie zum Mittel ihrer
+   * Speichennachbarn, danach beide Stufen neu. Die Verdrehung, die der Feldrand an J-Linien verlangt, nimmt die äußere Stufe
+   * harmonisch auf — gleich hinter J_i am stärksten (Rex tief J: E-Speiche dreht dort um 58°, Knick am Mundwinkel 6,6°). Ein
+   * Schritt halbiert den Knick der Speichen an der Naht (4,2°); mehr Schritte lassen die Verdrehung bis an c durch (Ei tief J
+   * klappt nach drei Schritten um), die Stufe bleibt aber ein Rechteck auf ihrer Kartenlinie.
+   */
+  nahtAusgleich?: number;
+  /** Nahtpunkte auf festen Kartenlagen U (Seite 0: V = 0, Seite 1: V = 1; je die nächste Reihe außer J_i) — scharfe Punkte von A0 */
+  nahtLagen?: { seite: 0 | 1; u: number }[];
 };
 
 /**
@@ -493,7 +549,10 @@ export function faecherKreis(netz: FeinNetz, karte: Karte, doppel: Map<number, n
  * Gleiche Gewichte in beiden Stufen (je Runde exakt, dünn besetzt: Cholesky in der Hülle); fest sind außerdem die
  * Nahtspeichen (`naht`) und auf Wunsch der Fächer um c (`faecher`).
  */
-export function kernGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, uR: number[], thetaIn: Float64Array, thetaOut: Float64Array, lippe: V3[], rand: V3[], vc: number, uc: number, a: number, opt: KernGitterOptionen = {}): { u: number[][]; v: number[][]; lagen: V3[][]; umgeklappt: number } {
+export function kernGitter(umkehrKarte: (u: number, v: number) => { p: V3; n: V3 }, uR: number[], thetaIn: Float64Array, thetaOut: Float64Array, lippe: V3[], rand: V3[], vc: number, uc: number, a: number, opt: KernGitterOptionen = {}): { u: number[][]; v: number[][]; lagen: V3[][]; umgeklappt: number } {
+  // 'bogenKarte': das ganze Gitter rechnet in U' (Naht nach Bogenlänge), die Lagen kommen über U' → U aus der Karte
+  const nb = opt.naht === 'bogenKarte' ? nahtBogen(umkehrKarte, vc) : null;
+  const umkehr = nb ? (u: number, v: number) => umkehrKarte(nb.zurueck(u, v), v) : umkehrKarte;
   const J = uR.length - 1;
   const m = (thetaIn.length - 1) / 2;
   const S = thetaOut.length - 1;
@@ -520,8 +579,16 @@ export function kernGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, u
     return [z[0] / a, vc - z[1]];
   };
   const nachKarte = uR.map((u, r) => (r === 0 ? 0 : r === J ? 1 : u));
-  const uOben = opt.naht === 'karte' ? nachKarte : nahtHoehen(umkehr, uR, 0);
-  const uUnten = opt.naht === 'karte' ? nachKarte : nahtHoehen(umkehr, uR, 1);
+  const aufKarte = opt.naht === 'karte' || opt.naht === 'bogenKarte';
+  const uOben = aufKarte ? nachKarte.slice() : nahtHoehen(umkehr, uR, 0);
+  const uUnten = aufKarte ? nachKarte.slice() : nahtHoehen(umkehr, uR, 1);
+  // scharfe Punkte von A0 auf der Naht: der Nahtpunkt der nächsten Reihe (nicht J_i; Abstand in U') genau auf sie
+  for (const q of opt.nahtLagen ?? []) {
+    const u2 = nb ? nb.hin(q.u, q.seite) : q.u;
+    let r = -1;
+    for (let w = 1; w < J; w++) if (w !== Ji && (r < 0 || Math.abs(uR[w]! - u2) < Math.abs(uR[r]! - u2))) r = w;
+    (q.seite === 0 ? uOben : uUnten)[r] = u2;
+  }
   // Knoten: Reihe 0 (Lippe) k; Reihe r ≥ 1: 2m + 1 + (r − 1)(S + 1) + k. Lage in der Karte (U, V) je Knoten.
   const n0 = 2 * m + 1;
   const id = (r: number, k: number) => (r === 0 ? k : n0 + (r - 1) * (S + 1) + k);
@@ -619,7 +686,7 @@ export function kernGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, u
     const ids = [m, m + 1, M, M + 1, M + 2].map((k) => id(1, k));
     const ziel = opt.faecher(ids.map((i) => umkehr(U[i]!, V[i]!).p));
     ids.forEach((i, q) => {
-      U[i] = ziel[q]!.u;
+      U[i] = nb ? nb.hin(ziel[q]!.u, ziel[q]!.v) : ziel[q]!.u;
       V[i] = ziel[q]!.v;
       gepinnt.add(i);
     });
@@ -658,6 +725,21 @@ export function kernGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, u
     for (let e = 0; e < kanten.length; e++) if (!Number.isNaN(neu[e]!)) gewicht[e] = Math.sqrt(gewicht[e]! * Math.min(50, Math.max(0.02, neu[e]! / med)));
     stufe(false);
   }
+  // Naht der Stufen ausgleichen: Reihe J_i gleitet auf ihrer Kartenlinie zum Mittel ihrer Speichennachbarn
+  for (let runde = 0; runde < (opt.nahtAusgleich ?? 0); runde++) {
+    const neuV: number[] = [];
+    for (let k = 1; k < S; k++) neuV.push(0.5 * (V[id(Ji - 1, k)]! + V[id(Ji + 1, k)]!));
+    // monoton halten (Ordnung der Speichen) und innerhalb (0, 1)
+    let vor = V[id(Ji, 0)]!;
+    for (let k = 1; k < S; k++) {
+      const nach = k + 1 < S ? neuV[k]! : V[id(Ji, S)]!;
+      const v = Math.min(Math.max(neuV[k - 1]!, vor + 1e-6), nach - 1e-6);
+      V[id(Ji, k)] = v;
+      vor = v;
+    }
+    stufe(true);
+    stufe(false);
+  }
   // Prüfung: Umlaufsinn aller Hautzellen (innen in ζ', außen in der Karte)
   const zellen: number[][] = [];
   for (let k = 0; k < m; k++) zellen.push([id(0, k), id(0, k + 1), id(1, k + 1), id(1, k)]);
@@ -685,7 +767,7 @@ export function kernGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, u
   const lagen: V3[][] = [];
   for (let r = 0; r <= J; r++) {
     const breite = r === 0 ? 2 * m : S;
-    u.push(Array.from({ length: breite + 1 }, (_, k) => U[id(r, k)]!));
+    u.push(Array.from({ length: breite + 1 }, (_, k) => (nb ? nb.zurueck(U[id(r, k)]!, V[id(r, k)]!) : U[id(r, k)]!)));
     v.push(Array.from({ length: breite + 1 }, (_, k) => V[id(r, k)]!));
     lagen.push(Array.from({ length: breite + 1 }, (_, k) => lage3(id(r, k))));
   }
@@ -726,9 +808,19 @@ export type EinsatzOptionen = {
   faecher?: 'tutte' | 'kreis';
   /**
    * Kernring: Nahtspeichen nach Bogenlänge auf der Naht ('bogen') oder auf der Kartenlinie ihrer Reihe ('karte', U = u_r).
-   * Standard auf K2: 'karte'.
+   * 'bogenKarte': Kartenlinien einer längs der Naht nach Bogenlänge umparametrisierten Karte (`nahtBogen`; Standard auf K2 seit
+   * E2 — an einem spitzen Schlitzanfang lagen die Reihen auf der Naht sonst weit auseinander: Robbe hoch 1,36 → 0,37 px, Rex
+   * mittel 0,51 → 0,18 px).
    */
-  naht?: 'bogen' | 'karte';
+  naht?: 'bogen' | 'karte' | 'bogenKarte';
+  /** Kernring: Runden des Ausgleichs der Stufennaht (`kernGitter`, Standard auf K2: 1) */
+  nahtAusgleich?: number;
+  /**
+   * Kernring: Spitzen von A0 im Feld übernehmen (Standard auf K2: an) — auf der Naht wird der Nahtpunkt der nächsten Reihe
+   * ein Punkt mit ihrer Schärfe (Robbe mittel: Haut 0,58 → 0,14 px), am Linienanfang bekommt die Lippe eine Ecke (Rex mittel:
+   * die Linie beginnt an der Schnauzenspitze; Lippe 1,5 → 0,7 px).
+   */
+  spitzen?: boolean;
   /** Kernring: Runden des Ausgleichs nach Hautlängen in der äußeren Stufe (0 = gleiche Gewichte; Standard auf K2: 6) */
   aussenRunden?: number;
   /**
@@ -867,6 +959,8 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
   let uc = 0;
   // Kernring: Kantenlänge des Felds (Median) — Maß für die kleinste Zelle am Mundwinkel und die Zellen am Feldrand
   let kante = 0;
+  let lippenAnfang: LippenAnfang = 'naht';
+  let anfangSchaerfe = 0;
   // Lage nach Hautmaß: Spanne Δ der Lippe (Abstand der Kontrollpunkte, auch der ersten Reihe)
   let delta = 0;
   const nachBand = kern && opt.lage === 'band';
@@ -899,14 +993,17 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
       // geometrisch von h (`eckeMin` mal eine Kante des Feldkäfigs) mit dem Faktor 1,3 bis höchstens 0,8 der mittleren Spanne.
       // Auf K2 (Plan 21.10., E1) ist h eine Viertelkante: Die Reihen liegen am Mundwinkel dicht (konform), und die vier Zellen um
       // c müssen etwa gleich groß sein — mit einer ganzen Kante war die letzte Spanne 3- bis 20-mal so lang wie Ring 1
-      // (Knick an c Ei tief J 9,4°, Langhals hoch J 14,2°; mit ¼: 4,8° und 8,0°; ganze Reihe 25 → 26 von 30 im Mundwinkel-Tor)
+      // (Knick an c Ei tief J 9,4°, Langhals hoch J 14,2°; mit ¼: 4,8° und 8,0°; ganze Reihe 25 → 26 von 30 im Mundwinkel-Tor).
+      // Seit E2 (Fächer als Halbkreis, A0 wie im Editor) 0,15: Die letzte Spanne war noch doppelt so lang wie der Fächerradius
+      // (ρ/h 0,47 → 0,66; darunter bestimmt die konforme Lage die Spanne selbst, 0,1 ändert nichts mehr); ganze Reihe 42 → 43
+      // von 43 im Mundwinkel-Tor (Birne mittel S 3,5 → 2,8° bei A0 1,3°)
       const konform = Array.from({ length: m + 1 }, (_, k) => (k === m ? lippenLaenge : bogenBei(k / m)));
       const abstand = (h: number) => {
         const d = new Float64Array(m + 1);
         for (let j = 1; j <= m; j++) d[j] = Math.max(lippenLaenge - konform[m - j]!, d[j - 1]! + Math.min(h * 1.3 ** (j - 1), (0.8 * lippenLaenge) / m));
         return d;
       };
-      let h = (opt.eckeMin ?? (stufe === 2 ? 0.25 : 1)) * kante;
+      let h = (opt.eckeMin ?? (stufe === 2 ? 0.15 : 1)) * kante;
       for (let i = 0; i < 60 && abstand(h)[m - 1]! >= lippenLaenge * (1 - 0.5 / m); i++) h *= 0.8;
       const d = abstand(h);
       const sigma = Array.from({ length: m + 1 }, (_, k) => (k === 0 ? 0 : k === m ? lippenLaenge : lippenLaenge - d[m - k]!));
@@ -918,7 +1015,18 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
     // liegt auf der Verlängerung (V = V_c) im Hautabstand |c − Linienende| hinter dem Schlitzende (ohne Linie: eine halbe
     // letzte Spanne). Sonst legte die Lippenanpassung c erst danach um eine halbe Spanne vor, und das Gitter am Mundwinkel
     // passte nicht mehr (E lag hinter c)
-    const pk = opt.linie && opt.linie.length > 1 ? lippeAnpassen(opt.linie, m, lippenAnteile, { ende: 'falte' }).punkte : null;
+    // E2.3: Spitze von A0 am Linienanfang (Rex mittel: die Linie beginnt an der Schnauzenspitze) → die Lippe hat dort eine Ecke
+    if ((opt.spitzen ?? stufe === 2) && opt.linie && opt.linie.length > 1) {
+      const a0 = opt.linie[0]!;
+      for (let v = 0; v < k1.n; v++) {
+        const sv = k1.vSchaerfe[v]!;
+        if (sv > 0 && Math.hypot(k1.xyz[3 * v]! - a0[0], k1.xyz[3 * v + 1]! - a0[1], k1.xyz[3 * v + 2]! - a0[2]) < 0.5 * kante) {
+          lippenAnfang = 'ecke';
+          anfangSchaerfe = Math.max(anfangSchaerfe, sv);
+        }
+      }
+    }
+    const pk = opt.linie && opt.linie.length > 1 ? lippeAnpassen(opt.linie, m, lippenAnteile, { ende: 'falte', anfang: lippenAnfang }).punkte : null;
     const cSchlitz = stelle(seiteA, lippenLaenge).p;
     let cAbstand: number;
     if (pk) {
@@ -976,16 +1084,40 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
   lippeLage[0]![2] = 0;
   lippeLage[2 * m]![2] = 0;
   let gitter: { u: number[][]; v: number[][]; lagen: V3[][]; umgeklappt?: number };
+  const nahtLagen: { seite: 0 | 1; u: number }[] = [];
+  const nahtSpitzen: { p: V3; s: number }[] = [];
   if (nachBand) {
     if (!opt.feldDreiecke) throw new Error('Lage „Band“: feine Dreiecke des Felds fehlen (feldDreiecke)');
     const b = bandLage(lippeLage, m, J, opt.bandRinge ?? 2, delta, netz, opt.feldDreiecke, bogen, aussenRunden, (kk, nn) => kartenSeitenverhaeltnis(kk, nn, new Map()), (kk, nn) => kartenUmkehr(kk, nn, new Map()), opt.bandRest);
     bogen = b.rand;
     gitter = { u: b.u, v: b.v, lagen: b.lagen, umgeklappt: zellenUmgeklappt(b.lagen, m, netz) };
   } else {
-    // Kernring auf K2 (E1): Fächer um c als Halbkreis, Nahtspeichen auf den Kartenlinien ihrer Reihen
+    // Kernring auf K2: Fächer um c als Halbkreis (E1), Nahtspeichen auf einer längs der Naht nach Bogenlänge umparametrisierten
+    // Karte und ein Ausgleich der Stufennaht (E2)
+    // E2.3: scharfe Punkte von A0 im Feld (alle Flächen am Punkt in M, auf der Naht): am Linienanfang U₀/D₀, sonst der
+    // Nahtpunkt der nächsten Reihe (nicht J_i) genau auf ihnen
+    if (kern && (opt.spitzen ?? stufe === 2)) {
+      const inM = new Uint8Array(k1.nF);
+      for (const f of feld.feld) inM[f] = 1;
+      for (let v = 0; v < k1.n; v++) {
+        const sv = k1.vSchaerfe[v]!;
+        if (!(sv > 0) || Math.abs(k1.xyz[3 * v + 2]!) > 1e-9) continue;
+        const fs = k1.vFlaechen.subarray(k1.vFStart[v]!, k1.vFStart[v + 1]!);
+        if (!fs.length || !Array.from(fs).every((f) => inM[f])) continue;
+        const ki = kIdx.get(v);
+        if (ki === undefined) continue;
+        const u = karte.u[ki]!;
+        const vv = karte.v[ki]!;
+        // am Linienanfang (U = 0): bleibt aus — die Lippe (A6) kennt dort keine Ecke (Rex mittel: Haut 0,5 → 3,8 px)
+        if (u < 1e-6) continue;
+        nahtLagen.push({ seite: vv < 0.5 ? 0 : 1, u });
+        nahtSpitzen.push({ p: [k1.xyz[3 * v]!, k1.xyz[3 * v + 1]!, 0], s: sv });
+      }
+    }
     const faecher = kern && (opt.faecher ?? (stufe === 2 ? 'kreis' : 'tutte')) === 'kreis' ? faecherKreis(netz, karte, doppel, umkehr(uc, vc).p, umkehr(0, thetaIn[m - 1]!).p, umkehr(0.5 * uc, thetaIn[m - 1]!).p, umkehr(0.5 * uc, thetaIn[m + 1]!).p) : undefined;
-    const naht = opt.naht ?? (stufe === 2 ? 'karte' : 'bogen');
-    gitter = kern ? kernGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, randLagen, vc, uc, aspekt, { aussenRunden, naht, ...(opt.jInnen ? { jInnen: opt.jInnen } : {}), ...(faecher ? { faecher } : {}) }) : hautGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, randLagen, opt.glaettung ?? 'laenge', opt.winkelReihen ?? 1, opt.winkelFaktor ?? 1);
+    const naht = opt.naht ?? (stufe === 2 ? 'bogenKarte' : 'bogen');
+    const nahtAusgleich = opt.nahtAusgleich ?? (stufe === 2 ? 1 : 0);
+    gitter = kern ? kernGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, randLagen, vc, uc, aspekt, { aussenRunden, naht, ...(opt.jInnen ? { jInnen: opt.jInnen } : {}), ...(faecher ? { faecher } : {}), ...(nahtAusgleich ? { nahtAusgleich } : {}), ...(nahtLagen.length ? { nahtLagen } : {}) }) : hautGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, randLagen, opt.glaettung ?? 'laenge', opt.winkelReihen ?? 1, opt.winkelFaktor ?? 1);
   }
   const hautLage: V3[][] = [lippeLage];
   for (let r = 1; r < J; r++) hautLage.push(gitter.lagen[r]!.map((p, k, z) => (k === 0 || k === z.length - 1 ? [p[0], p[1], 0] : p)));
@@ -1158,6 +1290,24 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
     else verloreneFalten++;
   }
   for (let v = 0; v < nAlt; v++) kaefig.vSchaerfe[v] = k1.vSchaerfe[v]!;
+  // E2.3: scharfe Punkte von A0 im Feld — der neue Nahtpunkt an ihrer Stelle, am Linienanfang U₀ und D₀
+  for (const q of nahtSpitzen) {
+    let best = -1;
+    let bestD = Infinity;
+    for (let v = nAlt; v < kaefig.n; v++) {
+      if (Math.abs(xyz[3 * v + 2]!) > 1e-12) continue;
+      const d = Math.hypot(xyz[3 * v]! - q.p[0], xyz[3 * v + 1]! - q.p[1]);
+      if (d < bestD) {
+        bestD = d;
+        best = v;
+      }
+    }
+    if (best >= 0) kaefig.vSchaerfe[best] = q.s;
+  }
+  if (lippenAnfang === 'ecke') {
+    kaefig.vSchaerfe[haut[0]![0]!] = anfangSchaerfe;
+    kaefig.vSchaerfe[haut[0]![2 * m]!] = anfangSchaerfe;
+  }
   const lippe = [...haut[0]!, ...haut[0]!.slice(1, -1).map(sp).reverse()];
   for (let i = 0; i < lippe.length; i++) {
     const e = kanteZwischen(kaefig, lippe[i]!, lippe[(i + 1) % lippe.length]!);
@@ -1236,6 +1386,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
     verloreneFalten,
     umgedreht,
     umgeklappt: gitter.umgeklappt ?? 0,
+    lippenAnfang,
     stufe,
   };
 }

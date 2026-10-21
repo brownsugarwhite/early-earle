@@ -208,6 +208,27 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
 - **Hautreihen nach Feldtiefe** (A5): mit Rand und Kragen fest gleicht nur die letzte Reihe die neue Verbindung an den Randpunkten aus; J = 8 statt 4 bringt die Kugel von 0,75 auf 0,26 px. J aus der Feldtiefe wählen (Reihenabstand ≈ Kantenlänge, Entwurf 2.5).
 - **Einsatzgitter feiner als die Details von A0** (A7, Robbe): Die Robbe hat an der Schnauzenspitze eine feine Kerbe, die K1 mit vielen kleinen Flächen trägt; das Einsatzgitter (m = 8) löst sie nicht auf → bis 4 px Abweichung genau dort, sonst ≤ 0,7 px. Gehört zur Frage Feldgröße / Lippenauflösung (Befunde A5/A6): kompakte Felder oder ein feineres Gitter (m vom Feldrand gelöst).
 
+## Befunde aus E2 (21.10., Maul als Einsatz — A0 wie im Editor, Spitzen von A0)
+
+- [ ] **Robbe hoch: Haut faltet am spitzen Schlitzanfang** (176–179° in den ersten oberen Lippenzellen, Haut 0,37 px). Die Linie
+  beginnt oben auf dem Kopf; die Oberseite des Schlitzes ist ein schmaler Streifen unter der Kopfnaht. Die konforme Karte
+  staucht an einem spitzen Schlitzanfang auch quer zur Naht (V ∝ r³): Die Ring-1-Punkte über den ersten Lippenstellen fallen in 3D
+  zusammen, die Lippenstellen nicht. Die Naht nach Bogenlänge (`bogenKarte`) behebt nur die Richtung längs der Naht. Weg:
+  Eckenentfaltung am Schlitzanfang (Potenzabbildung des Kartenwinkels auf den wahren Winkel, wie die Wurzelauffaltung um c).
+- [ ] **Rex mittel J: Querfalte von A0 im Feld** (Haut 0,30 px, Knick 44,7° bei A0 27,1°). Die Falte kreuzt den Schlitz nahe dem
+  Linienanfang und läuft schräg zur Naht unter dem Kiefer; im Kernring ist das keine Gitterlinie (Speichen enden am Feldrand,
+  Reihen an der Naht), die Falte geht im Einsatz verloren. Weg: Kappe um die Spitze — Polargitter um U₀, die Falte als äußerer
+  Ring. (Rex mittel gerade hält die Tore trotzdem: 0,18 px.)
+- [ ] **Robbe tief J: Buckel der Lippe quer zur Haut** (Knick 16,8° an der Lippe bei A0 11,2°; zweite Differenz der Kontrollpunkte
+  4,5 px bei Stelle 12, an der Kugel 0,1 px). Vermutlich zieht die gezeichnete Linie über eine Wölbung von A0; stärkere Glättung
+  (1e-3) drückt ihn auf 1,3 px, Lippe dann 0,51 px. Erst die Linie dort ansehen.
+- [ ] **E2.4 offen:** A0 mit Querschnitt aus der Hülle, P-Linien am Maul (Falten, die den Schlitz kreuzen), Loops.
+- **Erledigt (21.10.):** A0 wie im Editor als Standard des Prüffalls auf K2; Mundwinkel-Tor an allen 43 Fällen auch an Rex und
+  Robbe (Ausgleich der Stufennaht, letzte Lippenspanne 0,15 Feldkante); Spitzen von A0 auf der Naht (Robbe mittel 0,58 → 0,14 px)
+  und am Linienanfang als Ecke der Lippe (Rex mittel Lippe 1,5 → 0,7 px); Naht nach Bogenlänge auf umparametrisierter Karte (Robbe
+  hoch 1,36 → 0,37 px, Rex mittel 0,51 → 0,18 px); Knickmaß ohne die Umgebung von Spitzen (dort gibt es keinen glatten Bezug).
+  Haut-Tor 39 von 43 an allen Körpern. Planseite „Stand E2“.
+
 ## Befunde aus E1 (21.10., Maul als Einsatz — Kernring)
 
 - [ ] **Rex und Robbe bis E2 außerhalb der Tore** (21.10., dritte Sitzung): Haut 0,6–1,0 px und Knick 23–43° an Rex mittel und

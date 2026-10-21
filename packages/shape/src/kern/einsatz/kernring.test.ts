@@ -5,8 +5,9 @@
 // `lippenPunkt(…, 'falte')`, ihre Spitze liegt auf dem gezeichneten Mundwinkel; (2) die Topologie an allen 54 Fällen:
 // geschlossen, Spiegel exakt, außen gleich, Valenzen wie vorhergesagt (neue Punkte 4, die beiden Kernecken je Hälfte 3, c mit
 // vier Haut- und zwei Taschenflächen 6, die Rachenecken 3); (3) schnelle Wächter: genaue Haut an drei Fällen (≤ 0,25 px,
-// faltenfrei, außen bitgleich, Spiegel bitgenau, Lippe ≤ 1 px), Mundwinkel an drei J-Linien (≤ A0 + 2°) und keine umgeklappte
-// Zelle an Robbe hoch. Die ganze Reihe (Haut-Tor und Mundwinkel-Tor) läuft im Extrem-Lauf (`kernring.extrem.ts`).
+// faltenfrei, außen bitgleich, Spiegel bitgenau, Lippe ≤ 1 px), Mundwinkel an drei J-Linien (≤ A0 + 2°), keine umgeklappte
+// Zelle an Robbe hoch und die Spitzen von A0 (Robbe mittel, Rex mittel). Seit E2 auf A0 wie im Editor. Die ganze Reihe
+// (Haut-Tor und Mundwinkel-Tor) läuft im Extrem-Lauf (`kernring.extrem.ts`).
 import { describe, expect, it } from 'vitest';
 import { alleFlaechen, kanteZwischen, pruefeKaefig, valenz } from '../../kaefig/halbkanten';
 import { unterteilung } from '../../subdivision/catmullClark';
@@ -18,15 +19,17 @@ import { einsatzTopologie, ROLLE_AUSSEN, ROLLE_RAND, ROLLE_TOT } from './topolog
 declare const console: { log: (...a: unknown[]) => void };
 
 describe('Teil A, E1: Kernring', () => {
-  it('Lippe als Falte: Grenzkurve im Käfig = B-Spline mit Phantompunkt U_{m−1}, Spitze auf dem Mundwinkel', () => {
+  // Seit E2 beginnt die Linie von Rex mittel S an der Schnauzenspitze (A0 spitz): die Lippe hat dort eine Ecke (Punktschärfe an U₀
+  // und D₀, Phantompunkt 2U₀ − U₁) — der Test prüft beide Regeln zugleich
+  it('Lippe als Falte: Grenzkurve im Käfig = B-Spline mit Phantompunkt U_{m−1}, Spitze auf dem Mundwinkel, Ecke am Anfang', () => {
     const f = einsatzFall('rex', 'mittel', 's');
     if (!f || 'fehler' in f) throw new Error('Fall fehlt');
     const ziel = f.lippenZiel();
     const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie: ziel, gitter: 'kernring', stufe: f.stufe });
-    const fit = lippeAnpassen(ziel, t.m, t.lippenAnteile, { ende: 'falte' });
+    const fit = lippeAnpassen(ziel, t.m, t.lippenAnteile, { ende: 'falte', anfang: t.lippenAnfang });
     // Spitze auf dem Linienende, c eine halbe Spanne dahinter
     const e = ziel[ziel.length - 1]!;
-    const spitze = lippenPunkt(fit.punkte, t.m, 'falte');
+    const spitze = lippenPunkt(fit.punkte, t.m, 'falte', t.lippenAnfang);
     expect(Math.hypot(spitze[0] - e[0], spitze[1] - e[1], spitze[2] - e[2])).toBeLessThan(1e-12);
     const c = fit.punkte[t.m]!;
     const u = fit.punkte[t.m - 1]!;
@@ -45,17 +48,17 @@ describe('Teil A, E1: Kernring', () => {
     let max = 0;
     for (let i = 0; i <= 2 * t.m; i++) {
       const s = i <= t.m ? i : 2 * t.m - i;
-      const soll = lippenPunkt(fit.punkte, s, 'falte');
+      const soll = lippenPunkt(fit.punkte, s, 'falte', t.lippenAnfang);
       const v = t.haut[0]![i]!;
       for (let d = 0; d < 3; d++) max = Math.max(max, Math.abs(fein[3 * v + d]! - soll[d]!));
       if (i < 2 * t.m) {
         const ke = kanteZwischen(k, v, t.haut[0]![i + 1]!);
         const sm = i < t.m ? i + 0.5 : 2 * t.m - i - 0.5;
-        const sollM = lippenPunkt(fit.punkte, sm, 'falte');
+        const sollM = lippenPunkt(fit.punkte, sm, 'falte', t.lippenAnfang);
         for (let d = 0; d < 3; d++) max = Math.max(max, Math.abs(fein[3 * (k.n + ke) + d]! - sollM[d]!));
       }
     }
-    console.log(`Rex mittel/S, Kernring m ${t.m}: Unterteilung gegen B-Spline (Falte) ${max.toExponential(1)}, Lippe ${Math.max(fit.fehler.seite, fit.fehler.front, fit.fehler.top, fit.fehler.raum).toFixed(2)} px`);
+    console.log(`Rex mittel/S, Kernring m ${t.m}, Anfang ${t.lippenAnfang}: Unterteilung gegen B-Spline (Falte) ${max.toExponential(1)}, Lippe ${Math.max(fit.fehler.seite, fit.fehler.front, fit.fehler.top, fit.fehler.raum).toFixed(2)} px`);
     expect(max).toBeLessThan(1e-12);
   });
 
@@ -201,5 +204,29 @@ describe('Teil A, E1: Kernring', () => {
     const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie: f.lippenZiel(), gitter: 'kernring', stufe: f.stufe });
     console.log(`robbe/hoch/gerade m ${t.m} J ${t.J}: umgeklappt ${t.umgeklappt}`);
     expect(t.umgeklappt).toBe(0);
+  }, 300_000);
+
+  // Wächter Spitzen von A0 (E2): Robbe mittel gerade — eine Spitze auf der Naht im Feld wird ein Gitterpunkt mit ihrer Schärfe
+  // (ohne das glättete der Einsatz sie weg: Haut 0,58 px); Rex mittel gerade — die Linie beginnt an der Schnauzenspitze, die
+  // Lippe hat dort eine Ecke (ohne das: Lippe 1,5 px). Haut ≤ 0,25 px, Knick ≤ A0 + 2° (ohne die Umgebung der Spitzen), Lippe ≤ 1 px.
+  it('Spitzen von A0: Robbe mittel (Naht) und Rex mittel gerade (Linienanfang) — Haut, Knick, Lippe (Wächter)', () => {
+    const zeilen: string[] = [];
+    let fehler = '';
+    for (const name of ['robbe/mittel/gerade', 'rex/mittel/gerade']) {
+      const [art, anfang, form] = name.split('/') as Parameters<typeof einsatzFall>;
+      const f = einsatzFall(art, anfang, form);
+      if (!f || 'fehler' in f) {
+        fehler += `${name}: Fall fehlt; `;
+        continue;
+      }
+      const { t, lippe, ms } = einsatzAblauf(f);
+      const lf = Math.max(lippe.fehler.seite, lippe.fehler.front, lippe.fehler.top, lippe.fehler.raum);
+      zeilen.push(`${name} m ${t.m} J ${t.J}: Haut ${ms.hautMax.toFixed(2)} px, Knick ${ms.falten.toFixed(1)}° (A0 ${ms.faltenA0.toFixed(1)}°), Lippe ${lf.toFixed(2)} px, Anfang ${t.lippenAnfang}`);
+      if (ms.hautMax > 0.25) fehler += `${name}: Haut ${ms.hautMax.toFixed(3)} px; `;
+      if (ms.falten > ms.faltenA0 + 2) fehler += `${name}: Knick ${ms.falten.toFixed(1)}° (A0 ${ms.faltenA0.toFixed(1)}°); `;
+      if (lf > 1) fehler += `${name}: Lippe ${lf.toFixed(2)} px; `;
+    }
+    console.log(zeilen.join('\n'));
+    expect(fehler).toBe('');
   }, 300_000);
 });

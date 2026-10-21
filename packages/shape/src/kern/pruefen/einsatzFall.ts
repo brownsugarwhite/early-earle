@@ -113,8 +113,9 @@ function koerperStand(art: KoerperArt, stufe: 1 | 2 = 1, a0: A0Art = { art: 'alt
 }
 
 /**
- * Aufbau der Schritte A1–A7 wie am 16.10. (Feld auf K1, Schlitz auf dem Kantenpfad) — für die Prüfungen des Schleifengitters,
- * bitgleich. Ohne Angabe baut `einsatzFall` den Standard des Kernrings (Plan 21.10.): Feld auf K2, Schlitz genau auf der Linie.
+ * Aufbau der Schritte A1–A7 wie am 16.10. (Feld auf K1, Schlitz auf dem Kantenpfad, A0 wie bis E1) — für die Prüfungen des
+ * Schleifengitters, bitgleich. Ohne Angabe baut `einsatzFall` den Standard des Kernrings (Plan 21.10.): Feld auf K2, Schlitz
+ * genau auf der Linie, A0 wie im Editor (E2).
  */
 export const FALL_ALT = { stufe: 1, schnitt: 'pfad' } as const;
 
@@ -124,12 +125,13 @@ export const FALL_ALT = { stufe: 1, schnitt: 'pfad' } as const;
  * Feldradien), damit hinter dem Mundwinkel so viel Haut im Feld liegt wie über und unter der Lippe. `schnitt`: Schlitz auf dem
  * Kantenpfad (wie A1) oder genau auf der Linie (Pfadpunkte auf die Linie gerückt, E1). `feld`: begradigt (A3) oder kompakt
  * (Band um die Linie, nur Kneifpunkte geschlossen, E1). `kappe`: begradigt nur bis `kappe` Radien (0 = ganz; Standard auf K2
- * 1,5 — das Band um die Linie bleibt erhalten, die Lippenauflösung m folgt seiner Länge).
+ * 1,5 — das Band um die Linie bleibt erhalten, die Lippenauflösung m folgt seiner Länge). `a0`: A0 wie bis E1 oder wie im
+ * Editor (Standard auf K2 seit E2).
  */
 export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form, opt: { verlaengerung?: number; stufe?: 1 | 2; schnitt?: 'pfad' | 'linie'; feld?: 'begradigt' | 'kompakt'; kappe?: number; a0?: A0Art } = {}): EinsatzFall | { name: string; fehler: string } | null {
   const name = `${art}/${anfang}/${form}`;
   const stufe = opt.stufe ?? 2;
-  const { dok, abl, netz, v, fein, ff, h1, hFeld } = koerperStand(art, stufe, opt.a0);
+  const { dok, abl, netz, v, fein, ff, h1, hFeld } = koerperStand(art, stufe, opt.a0 ?? (stufe === 2 ? { art: 'editor' } : { art: 'alt' }));
   const vorlage = GRUNDKOERPER.includes(art) ? null : vorlageVon(art as 'rex' | 'langhals' | 'robbe');
   const roh = maulLinien(dok, art, maulBezug(art, dok, vorlage), hautAusNetz(abl), anfang, form, 'kurz', 'gleich', zufall(3));
   if ('fehler' in roh) return null;
@@ -168,7 +170,7 @@ export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form, opt: { 
 export function einsatzAblauf(f: EinsatzFall, opt: EinsatzOptionen = {}, loesen: LoesenOptionen = {}): { t: EinsatzTopologie; lippe: ReturnType<typeof lippeAnpassen>; g: GeloesterEinsatz; ms: EinsatzMasse } {
   const linie = f.lippenZiel();
   const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie, gitter: 'kernring', stufe: f.stufe, feldDreiecke: f.feldDreiecke, ...opt });
-  const lippe = lippeAnpassen(linie, t.m, t.lippenAnteile, { ende: t.gitter === 'kernring' ? 'falte' : 'ecke' });
+  const lippe = lippeAnpassen(linie, t.m, t.lippenAnteile, { ende: t.gitter === 'kernring' ? 'falte' : 'ecke', anfang: t.lippenAnfang });
   const g = einsatzLoesen(t, f.v.kaefig, a0Netz(f.v.kaefig, 3 - f.stufe), lippe.punkte, loesen);
   const ms = einsatzMessen(g, t, f.v.kaefig, f.feld, lippe.punkte);
   return { t, lippe, g, ms };

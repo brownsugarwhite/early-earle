@@ -2,7 +2,8 @@
 // Gitter des Einsatzes als SVG: Blick längs der mittleren Normalen des Felds (rechte Hälfte), Lippe rot, Rand schwarz, Linie
 // gelb gestrichelt. Je Fall und Gitterart eine Tafel. Umgebung: FAELLE, GITTER (Liste, Standard beide), STUFE (1/2; Standard
 // wie der Fall, K2), J, AR, NAH (Ausschnitt um den Mundwinkel: Halbbreite in letzten Lippenspannen), VERL, SCHNITT (pfad/linie),
-// FELD, KAPPE, LAGE (karte/band), R (Ringe des Bands), P, ECKE (eckeMin), FAECHER (tutte/kreis), NAHT (bogen/karte).
+// FELD, KAPPE, LAGE (karte/band), R (Ringe des Bands), P, ECKE (eckeMin), FAECHER (tutte/kreis), NAHT (bogen/karte/bogenKarte),
+// A0 (editor), ANFANG (Ausschnitt um den Linienanfang statt um c).
 import { writeFileSync } from 'node:fs';
 import { einsatzFall } from '../../../../../packages/shape/src/kern/pruefen/einsatzFall';
 import { einsatzTopologie } from '../../../../../packages/shape/src/kern/einsatz/topologie';
@@ -11,7 +12,7 @@ const AUS = process.env.AUSGABE ?? 'gitter.html';
 const tafeln: string[] = [];
 for (const name of (process.env.FAELLE ?? 'kugel/mittel/gerade').split(',')) {
   const [art, anfang, form] = name.split('/') as [never, never, never];
-  const f = einsatzFall(art, anfang, form, { verlaengerung: Number(process.env.VERL ?? 0), ...(process.env.STUFE ? { stufe: Number(process.env.STUFE) as 1 | 2 } : {}), ...(process.env.SCHNITT ? { schnitt: process.env.SCHNITT as 'pfad' | 'linie' } : {}), ...(process.env.FELD ? { feld: process.env.FELD as 'begradigt' | 'kompakt' } : {}), ...(process.env.KAPPE ? { kappe: Number(process.env.KAPPE) } : {}) });
+  const f = einsatzFall(art, anfang, form, { verlaengerung: Number(process.env.VERL ?? 0), ...(process.env.STUFE ? { stufe: Number(process.env.STUFE) as 1 | 2 } : {}), ...(process.env.SCHNITT ? { schnitt: process.env.SCHNITT as 'pfad' | 'linie' } : {}), ...(process.env.FELD ? { feld: process.env.FELD as 'begradigt' | 'kompakt' } : {}), ...(process.env.KAPPE ? { kappe: Number(process.env.KAPPE) } : {}), ...(process.env.A0 === 'editor' ? { a0: { art: 'editor' as const } } : {}) });
   if (!f || 'fehler' in f) continue;
   const linie = f.lippenZiel();
   for (const gitter of (process.env.GITTER ?? 'schleifen,kernring').split(',') as ('schleifen' | 'kernring')[]) {
@@ -53,9 +54,9 @@ for (const name of (process.env.FAELLE ?? 'kugel/mittel/gerade').split(',')) {
     let y0 = Math.min(...ys);
     let y1 = Math.max(...ys);
     if (process.env.NAH) {
-      // Ausschnitt um c: Halbbreite NAH letzte Lippenspannen
-      const cc = proj(P(t.haut[0]![t.m]!));
-      const u = proj(P(t.haut[0]![t.m - 1]!));
+      // Ausschnitt um c (oder mit ANFANG=1 um den Linienanfang U₀): Halbbreite NAH letzte Lippenspannen
+      const cc = proj(P(t.haut[0]![process.env.ANFANG ? 0 : t.m]!));
+      const u = proj(P(t.haut[0]![process.env.ANFANG ? 1 : t.m - 1]!));
       const h = Number(process.env.NAH) * Math.hypot(cc[0] - u[0], cc[1] - u[1]);
       x0 = cc[0] - h;
       x1 = cc[0] + h;

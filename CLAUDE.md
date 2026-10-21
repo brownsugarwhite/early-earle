@@ -16,8 +16,8 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 > **Ab 21.10. läuft Teil A „Maul als Einsatz“** (Florians Wahl vor V7; E1-Tore im Kern erreicht, Abnahme offen, als Nächstes E2) nach
 > [`docs/plans/2026-10-21-maul-einsatz-weiter.md`](docs/plans/2026-10-21-maul-einsatz-weiter.md) (Schritte E1–E6). Einstieg für
 > eine frische Sitzung mit Start-Prompt, Stand, nächsten Schritten, Skripten und Fallen: [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
-> Stand 21.10. (dritte Sitzung): Haut- und Mundwinkel-Tor im Kern erreicht (30 von 30, Abnahme offen); E2 läuft (A0 wie im
-> Editor, Rex und Robbe in die Tore; Planseite „E2 im Detail“).
+> Stand 21.10. (dritte Sitzung): E2 läuft — A0 wie im Editor, Mundwinkel-Tor 43 von 43, Haut-Tor 39 von 43 auch an Rex und
+> Robbe (Abnahme offen; Planseite „Stand E2“, offen: Robbe hoch, Rex mittel J, Robbe tief J).
 
 - **2026-10-04: Prototyp 1 ist abgeschlossen** (Archiv-Branch `prototyp-1`). Er diente zum Lernen. Florian: „Der Prototyp war sehr gut und aufschlussreich und hat bewiesen, dass die Spielidee toll ist.“ Viele Entscheidungen sind gefallen; die Gesamtdynamik und einige grafische Elemente haben ihm gefallen.
 - **Jetzt beginnt die eigentliche Produktion mit dem finalen Look.** Grundlage wird **Florians neuer Plan mit neuem Hauptprompt**: Story, Charaktere und Map arbeitet er genauer aus und trägt sie in Dokumenten und Screenshots zusammen. Es folgen mehrere Runden und Iterationen.
@@ -242,6 +242,15 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   der Tore (A0-Falten im Feld; spitzer Schlitzanfang bei Robbe hoch: Zellen bis 57 : 1). Mundwinkel-Tor jetzt `it`, neue Wächter
   in `kernring.test.ts` (am alten Code rot). Bild `docs/progress/editor/e1-mundwinkel-j-linien-2026-10-21.jpg`. Nächster Schritt:
   E2.
+- **2026-10-21 (dritte Sitzung, danach): E2 — A0 wie im Editor, Spitzen von A0, Rex und Robbe in den Toren** (Florian: „Ja, mach
+  hier mit E2 weiter (A0 wie im Editor, Rex und Robbe in die Tore)“; Planseite „E2 im Detail“ und „Stand E2“, Register „Befunde
+  aus E2“, Übergabe). Neuer Standard des Kernrings auf K2: A0 wie im Editor im Prüffall (Startkugel, eingefrorene Ringe, glatt,
+  berühren mittel), ein Ausgleich der Stufennaht (Verdrehung an J-Linien nicht mehr als Knick an Reihe J_i), letzte Lippenspanne
+  0,15 Feldkante, Spitzen von A0 übernommen (auf der Naht als Nahtpunkt mit Punktschärfe; am Linienanfang als Ecke der Lippe,
+  Phantompunkt 2U₀ − U₁), Naht nach Bogenlänge auf umparametrisierter Karte (`nahtBogen`), Knickmaß ohne die Umgebung von Spitzen.
+  Ganze Reihe 43 Fälle: Mundwinkel 43 von 43, Haut-Tor 39 von 43 an allen Körpern (Rex/Robbe Haut 0,07–0,37 px statt bis 1 px).
+  Offen: Robbe hoch (Haut faltet am spitzen Schlitzanfang → Eckenentfaltung), Rex mittel J (Querfalte vom Schlitz zur Naht → Kappe
+  um die Spitze), Robbe tief J (Buckel der Lippe). Bild `docs/progress/editor/e2-spitzen-anfang-2026-10-21.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

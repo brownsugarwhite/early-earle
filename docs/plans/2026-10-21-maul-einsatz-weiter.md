@@ -362,3 +362,68 @@ Toren, weil A0 dort eigene Schärfen im Feld trägt, die der Einsatz verliert.
 - **E2.4 A0-Varianten:** Querschnitt aus der Hülle (`umrisseExakt`), P-Linien am Maul, Loops; je Variante die ganze Reihe.
 - **E2.5 Tore an allen Körpern** (auch Rex/Robbe): Haut ≤ 0,25 px gegen A0, Mundwinkel ≤ A0 + 2°, Knick im Feld ≤ A0 + 2°,
   nirgends umgeklappt, Lippe ≤ 1 px, außen bitgleich, Spiegel bitgenau; Standard umstellen, Tests, Bilder.
+
+## Stand E2 (21.10., dritte Sitzung): A0 wie im Editor, Spitzen von A0, Tore an Rex und Robbe
+
+**Ergebnis** (ganze Reihe auf dem neuen Standard, 43 ausgeglichene Fälle — vier Robbe-Fälle mehr als auf dem alten A0, weil
+ihre Linie jetzt auf der Haut liegt):
+
+| | Stand E1 (A0 alt, ohne Rex/Robbe) | E2 (A0 wie im Editor, alle Körper) |
+|---|---|---|
+| Mundwinkel ≤ A0 + 2° | 30 von 30 | **43 von 43** (größter Abstand 1,5°) |
+| Haut-Tor (≤ 0,25 px, Knick ≤ A0 + 2°, Lippe ≤ 1 px, nirgends umgeklappt) | 30 von 30 | **39 von 43** |
+| Haut ohne Rex/Robbe | max 0,09 px | max 0,09 px, Median 0,06 |
+| Rex/Robbe Haut | 0,08–1,0 px | 0,07–0,37 px |
+
+Bild (gleicher Ausschnitt um den Linienanfang, A0 wie im Editor, vorher Stand E1, nachher E2):
+[`e2-spitzen-anfang-2026-10-21.jpg`](../progress/editor/e2-spitzen-anfang-2026-10-21.jpg).
+
+**Gebaut** (Standard des Kernrings auf K2; K1 und `FALL_ALT` bitgleich):
+1. **A0 wie im Editor** (E2.1, `einsatzFall(…, { a0 })`, Standard auf K2): Startkugel, eingefrorene Ringe, umgeformt, glatte Haut,
+   „berühren mittel“, genauer Bau mit Zurückschreiben der Stationen (`editorBauen` aus dem Prüfstand der Extremreihe).
+2. **Ausgleich der Stufennaht** (`nahtAusgleich`, ein Schritt): Reihe J_i gleitet auf ihrer Kartenlinie zum Mittel ihrer
+   Speichennachbarn, beide Stufen neu. Die Verdrehung an J-Linien nimmt die äußere Stufe harmonisch auf, gleich hinter J_i am
+   stärksten (Rex tief J: die E-Speiche dreht dort um 58°); ein Schritt halbiert den Knick der Speichen an der Naht (Rex tief J
+   am Mundwinkel 6,6 → 4,1° bei A0 3,3°).
+3. **Letzte Lippenspanne 0,15 Feldkante** (statt 0,25): Sie war noch doppelt so lang wie der Fächerradius (ρ/h Median 0,47 →
+   0,66; kürzer ändert nichts mehr, dort bestimmt die konforme Lage die Spanne). Birne mittel S 3,5 → 2,8° (A0 1,3°).
+4. **Spitzen von A0 übernehmen** (`spitzen`): Eine Spitze auf der Naht im Feld wird der Nahtpunkt der nächsten Reihe mit ihrer
+   Punktschärfe (Robbe mittel: Haut 0,58 → 0,14 px); beginnt die Linie an einer Spitze (Rex mittel: Schnauzenspitze, die Linie
+   verlässt die Naht unter 46–69°), bekommt die Lippe dort eine Ecke — U₀ und D₀ mit der Punktschärfe, in der Lippe
+   (`lippeAnpassen(…, { anfang: 'ecke' })`) der Phantompunkt 2U₀ − U₁ statt des Spiegelbilds (Lippe 1,5 → 0,7 px). Ohne die
+   passende Lippe war die Ecke schädlich (Haut 3,8 px) — Käfig und Lippe brauchen dieselbe Regel.
+5. **Naht nach Bogenlänge auf einer umparametrisierten Karte** (`naht: 'bogenKarte'`, `nahtBogen`): U' = Bogenlängenanteil auf
+   der Naht, zum Mundwinkel hin quadratisch in U' = U übergehend; jede Stufe bleibt ein Rechteck (anders als die alte Naht nach
+   Bogenlänge, die mit Reihe J_i kollidierte). An einem spitzen Schlitzanfang lagen die Reihen auf der Naht vorher weit auseinander
+   (Robbe hoch: erste Reihe 42 px vom Anfang, die übrigen 4–9 px). Rex mittel 0,51 → 0,18 px, Robbe hoch 1,36 → 0,37 px; die 30
+   übrigen Fälle ändern sich nicht messbar.
+6. **Knickmaß ohne die Umgebung von Spitzen** (`groessterKnick(…, ohne)`): Kanten im Umkreis einer Feldkante um eine Spitze von A0
+   (beim Einsatz auch um seine eigenen Spitzen) zählen nicht, bei A0 und beim Einsatz gleich. An einer Spitze gibt es keinen
+   glatten Bezug; der Winkel zwischen den feinen Flächen dort hängt allein am Netz um sie (Robbe mittel 74,7° gegen A0 71,7° bei
+   0,14 px Haut). Ein Umkreis von einer halben Feldkante reichte nicht: Eine Ecke wirkt in Catmull-Clark auf ihren ganzen
+   Käfig-Ring. Das Maß sucht Falten in glatter Haut; scharfe Kanten zählte es schon vorher nicht.
+
+**Gemessen und verworfen:** eine Stufe statt zwei (faltet an J-Linien, 160–180°); einen Teil der Verdrehung schon in Reihe J_i
+(faltet an c); Reihe J_i weiter außen (der Knick wandert mit hinaus, Feld 48–178°); Fächerachse aus der Endtangente der Linie
+bzw. aus der letzten Lippenkante (Birne mittel S 3,3°, andere schlechter); Fächerradius = letzte Lippenspanne (faltet); ganzer Ring
+um c fest (schlechter); drei Schritte Nahtausgleich (Ei tief J klappt um); Polpaare für die Verdrehung (am Haken bis 25 Randpunkte
+versetzt — viel zu viele Pole).
+
+**Offen** (Register „Befunde aus E2“; im Extrem-Lauf als `OFFEN` und `it.fails` über alle Fälle):
+- **Robbe hoch** (Linie beginnt oben auf dem Kopf, die Oberseite des Schlitzes ist ein schmaler Streifen unter der Kopfnaht): Die
+  Haut faltet in den ersten oberen Lippenzellen (176–179°). Ursache: An einem spitzen Schlitzanfang staucht die konforme Karte
+  auch quer zur Naht (V ∝ r³); die Ring-1-Punkte über den ersten Lippenstellen fallen in 3D zusammen. Weg: Eckenentfaltung am
+  Schlitzanfang (Potenzabbildung des Kartenwinkels auf den wahren Winkel, wie die Wurzelauffaltung um c).
+- **Rex mittel J** (Haut 0,30 px, Knick 44,7° bei A0 27,1°): Die Querfalte von A0 kreuzt den Schlitz nahe dem Anfang und läuft
+  schräg zur Naht unter dem Kiefer. Im Kernring ist das keine Gitterlinie (Speichen enden am Feldrand, Reihen an der Naht); die
+  Falte geht im Einsatz verloren. Weg: eine eigene Kappe um die Spitze (Polargitter um U₀, die Falte als äußerer Ring).
+- **Robbe tief J** (Knick 16,8° an der Lippe bei A0 11,2°): Die Lippe hat bei Stelle 12 einen Buckel quer zur Haut (zweite
+  Differenz 4,5 px, an der Kugel 0,1 px); vermutlich zieht die gezeichnete Linie dort über eine Wölbung von A0. Stärkere Glättung
+  der Lippe drückt ihn (1,3 px), kostet aber Lippengenauigkeit (0,51 px).
+- E2.4 (A0 mit Querschnitt aus der Hülle, P-Linien am Maul, Loops) ist noch nicht gemessen; scharfe Punkte neben der Naht und
+  Falten, die den Schlitz kreuzen und am Feldrand enden, sind vorbereitet, aber ohne Fall.
+
+**Tests:** `kernring.extrem.ts` — Haut-Tor jetzt an allen Körpern (Knick ≤ A0 + 2° statt ≤ 30° ohne Rex/Robbe) außer der Liste
+`OFFEN`, dasselbe Tor über alle Fälle als `it.fails`, Mundwinkel-Tor an allen 43; `kernring.test.ts` — Lippe als Falte jetzt mit
+Ecke am Anfang (Rex mittel S, Unterteilung gegen B-Spline 1,7e-16), neuer Wächter „Spitzen von A0“ (Robbe mittel, Rex mittel
+gerade; am alten Code rot: Haut 0,64 / 0,86 px, Knick 46° bei A0 18°). Skripte mit `A0`, `NR`, `SPITZEN`, `ANFANG`.

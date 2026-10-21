@@ -198,8 +198,8 @@ export function einsatzLoesen(t: EinsatzTopologie, k1: Kaefig, netz: FeinNetz, l
   const c = lippe[lippe.length - 1]!;
   const wulstBreite = (opt.wulstBreite ?? 0.03) * kopfHoehe(netz, c);
   const wulst = (opt.wulst ?? (t.gitter === 'kernring' ? 0 : 0.4)) / PX;
-  const kurve = lippenKurve(lippe, 32, t.gitter === 'kernring' ? 'falte' : 'ecke');
-  const spitze = t.gitter === 'kernring' ? lippenPunkt(lippe, m, 'falte') : null;
+  const kurve = lippenKurve(lippe, 32, t.gitter === 'kernring' ? 'falte' : 'ecke', t.lippenAnfang);
+  const spitze = t.gitter === 'kernring' ? lippenPunkt(lippe, m, 'falte', t.lippenAnfang) : null;
   // Startgitter x₀ und Umbrella-Glätte der freien Punkte
   const x0 = Float64Array.from(xyz);
   const nachbarn = (p: number): number[] => {
@@ -368,8 +368,9 @@ export type EinsatzMasse = {
 };
 
 /** Knickwinkel je feiner Kante (ohne Falten) zwischen zwei Flächen, die beide zum Bereich gehören; größter Wert und Mitte
- * seiner Kante. */
-function groessterKnick(k: Kaefig, fein: Float64Array, flaechen: readonly number[][], imBereich: (f: number) => boolean, nahe?: { p: V3; r: number }): { winkel: number; ort: V3 } {
+ * seiner Kante. `ohne`: Kanten nahe diesen Punkten zählen nicht (Spitzen von A0: dort gibt es keinen glatten Bezug, der Winkel
+ * zwischen den Flächen an der Spitze hängt allein am Netz um sie). */
+function groessterKnick(k: Kaefig, fein: Float64Array, flaechen: readonly number[][], imBereich: (f: number) => boolean, nahe?: { p: V3; r: number }, ohne?: { p: V3[]; r: number }): { winkel: number; ort: V3 } {
   const normalen = flaechen.map((f) => {
     let nx = 0;
     let ny = 0;
@@ -402,6 +403,7 @@ function groessterKnick(k: Kaefig, fein: Float64Array, flaechen: readonly number
       const q = k.eB[e]!;
       const o: V3 = [0.5 * (fein[3 * p]! + fein[3 * q]!), 0.5 * (fein[3 * p + 1]! + fein[3 * q + 1]!), 0.5 * (fein[3 * p + 2]! + fein[3 * q + 2]!)];
       if (nahe && Math.hypot(o[0] - nahe.p[0], o[1] - nahe.p[1], o[2] - nahe.p[2]) > nahe.r) continue;
+      if (ohne && ohne.p.some((q) => Math.hypot(o[0] - q[0], o[1] - q[1], o[2] - q[2]) < ohne.r)) continue;
       max = w;
       ort = o;
     }
@@ -441,7 +443,7 @@ export function einsatzMessen(g: GeloesterEinsatz, t: EinsatzTopologie, k1: Kaef
   const bezug = feinNetz(fein1, fl1);
   const nBezug = punktNormalen(bezug);
   const nA = punktNormalen(feinNetz(feinA, flA));
-  const kurve = lippenKurve(lippe, 32, t.gitter === 'kernring' ? 'falte' : 'ecke');
+  const kurve = lippenKurve(lippe, 32, t.gitter === 'kernring' ? 'falte' : 'ecke', t.lippenAnfang);
   const punkte = new Set<number>();
   const imBereichA = new Uint8Array(flA.length);
   for (let f = 0; f < g.kaefig.nF; f++) {
@@ -492,11 +494,35 @@ export function einsatzMessen(g: GeloesterEinsatz, t: EinsatzTopologie, k1: Kaef
     }
   }
   const q99 = (a: number[]) => (a.length ? [...a].sort((x, y) => x - y)[Math.floor(0.99 * (a.length - 1))]! : 0);
-  // Knicke: Einsatz in M ∪ C (rechts) gegen A0 in den Flächen von M ∪ C (rechts)
-  const knick = groessterKnick(ka, feinA, flA, (f) => imBereichA[f] === 1);
+  // Kantenlänge des Feldkäfigs (Median): Maß für den Umkreis am Mundwinkel und um Spitzen
+  const kanten: number[] = [];
+  for (const f of feld.feld)
+    for (let h = k1.fStart[f]!; h < k1.fStart[f + 1]!; h++) {
+      const a = k1.fVerts[h]!;
+      const b = k1.fVerts[h + 1 < k1.fStart[f + 1]! ? h + 1 : k1.fStart[f]!]!;
+      kanten.push(Math.hypot(k1.xyz[3 * a]! - k1.xyz[3 * b]!, k1.xyz[3 * a + 1]! - k1.xyz[3 * b + 1]!, k1.xyz[3 * a + 2]! - k1.xyz[3 * b + 2]!));
+    }
+  kanten.sort((a, b) => a - b);
+  const kante = kanten[kanten.length >> 1]!;
   const inMC = new Uint8Array(k1.nF);
   for (const f of feld.feld) inMC[f] = 1;
   for (const f of feld.kragen) inMC[f] = 1;
+  // Spitzen von A0 in M ∪ C: Knicke im Umkreis einer Feldkante (eine Ecke wirkt auf ihren Käfig-Ring) zählen weder beim
+  // Einsatz noch bei A0 (E2)
+  const spitzen: V3[] = [];
+  for (let v = 0; v < k1.n; v++) {
+    if (!(k1.vSchaerfe[v]! > 0)) continue;
+    let imFeld = false;
+    for (let i = k1.vFStart[v]!; i < k1.vFStart[v + 1]!; i++) if (inMC[k1.vFlaechen[i]!]) imFeld = true;
+    if (imFeld) spitzen.push([k1.xyz[3 * v]!, k1.xyz[3 * v + 1]!, k1.xyz[3 * v + 2]!]);
+  }
+  const ohne = spitzen.length ? { p: spitzen, r: kante } : undefined;
+  // … beim Einsatz dazu seine eigenen Spitzen (die nachgebildeten: Nahtpunkt, Ecke der Lippe am Linienanfang)
+  const eigene: V3[] = [...spitzen];
+  for (let v = t.nAlt; v < g.kaefig.n; v++) if (g.kaefig.vSchaerfe[v]! > 0) eigene.push([g.kaefig.xyz[3 * v]!, g.kaefig.xyz[3 * v + 1]!, g.kaefig.xyz[3 * v + 2]!]);
+  const ohneA = eigene.length ? { p: eigene, r: kante } : undefined;
+  // Knicke: Einsatz in M ∪ C (rechts) gegen A0 in den Flächen von M ∪ C (rechts)
+  const knick = groessterKnick(ka, feinA, flA, (f) => imBereichA[f] === 1, undefined, ohneA);
   const rechts1 = (f: number) => {
     let z = 0;
     for (let h = k1.fStart[f]!; h < k1.fStart[f + 1]!; h++) z += k1.xyz[3 * k1.fVerts[h]! + 2]!;
@@ -506,25 +532,17 @@ export function einsatzMessen(g: GeloesterEinsatz, t: EinsatzTopologie, k1: Kaef
   const knickA0 = groessterKnick(k1f, fein1, fl1, (f) => {
     const f0 = Math.floor(f / block1);
     return inMC[f0] === 1 && rechts1(f0);
-  });
+  }, undefined, ohne);
   // Mundwinkel: Spitze der Lippe, Umkreis drei Kanten des Feldkäfigs (fest, unabhängig von der Teilung der Lippe — sonst
   // schrumpfte der Messbereich mit kürzeren letzten Lippenspannen mit)
   const m = lippe.length - 1;
-  const spitze = lippenPunkt(lippe, m, t.gitter === 'kernring' ? 'falte' : 'ecke');
-  const kanten: number[] = [];
-  for (const f of feld.feld)
-    for (let h = k1.fStart[f]!; h < k1.fStart[f + 1]!; h++) {
-      const a = k1.fVerts[h]!;
-      const b = k1.fVerts[h + 1 < k1.fStart[f + 1]! ? h + 1 : k1.fStart[f]!]!;
-      kanten.push(Math.hypot(k1.xyz[3 * a]! - k1.xyz[3 * b]!, k1.xyz[3 * a + 1]! - k1.xyz[3 * b + 1]!, k1.xyz[3 * a + 2]! - k1.xyz[3 * b + 2]!));
-    }
-  kanten.sort((a, b) => a - b);
-  const ecke = { p: spitze, r: 3 * kanten[kanten.length >> 1]! };
-  const knickEcke = groessterKnick(ka, feinA, flA, (f) => imBereichA[f] === 1, ecke);
+  const spitze = lippenPunkt(lippe, m, t.gitter === 'kernring' ? 'falte' : 'ecke', t.lippenAnfang);
+  const ecke = { p: spitze, r: 3 * kante };
+  const knickEcke = groessterKnick(ka, feinA, flA, (f) => imBereichA[f] === 1, ecke, ohneA);
   const faltenEcke = knickEcke.winkel;
   const faltenEckeA0 = groessterKnick(k1f, fein1, fl1, (f) => {
     const f0 = Math.floor(f / block1);
     return inMC[f0] === 1 && rechts1(f0);
-  }, ecke).winkel;
+  }, ecke, ohne).winkel;
   return { aussen, hautMax, hautP99: q99(abstaende), normaleMax, normaleP99: q99(winkel), falten: knick.winkel, faltenA0: knickA0.winkel, wulst, ortHaut, ortNormale, ortKnick: knick.ort, faltenEcke, faltenEckeA0, ortKnickEcke: knickEcke.ort };
 }
