@@ -1,116 +1,153 @@
-# Übergabe (Stand 21.10.2026 mittags: Teil A „Maul als Einsatz“, E1 Kernring als Versuch — vorher V0–V6, Abnahme offen)
+# Übergabe (Stand 21.10.2026 nachmittags: Teil A „Maul als Einsatz“, E1 — Haut wieder genau, als Nächstes Standard + Mundwinkel)
 
-Branch `claude/editor-grundlayout`, PR mit Auto-Fix.
+Branch `claude/editor-grundlayout`, PR mit Auto-Fix. **Diese Datei ist der Einstieg für eine frische Sitzung.** Alles zu Teil A
+liegt bisher nur im Kern (`packages/shape/src/kern/einsatz/`), hinter Schaltern; im Editor ist davon noch nichts zu sehen.
 
-## Aktueller Block: Teil A, E1 (Florian 21.10.: „Weiter mit Teil A ‚Maul als Einsatz‘ … glatte Haut, Hülle, Linien exakt und Loops
-auch mit Maul“)
+## Start der frischen Sitzung
 
-- Planseite [`docs/plans/2026-10-21-maul-einsatz-weiter.md`](plans/2026-10-21-maul-einsatz-weiter.md), Abschnitte „Stand E1“ und
-  „Nachtrag E1 (mittags)“; Register [`2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md), „Befunde aus E1“.
-- **Gebaut (Kern, Versuch hinter `gitter: 'kernring'`, alter Weg bitgleich):** Mundwinkel als regulärer Gitterpunkt (Kernring),
-  Lippe endet als Falte (`lippeAnpassen(…, { ende: 'falte' })`), Lage in zwei Stufen (innen Auffaltung um c, außen Karte),
-  konforme Reihenzahl, Mindestzelle am Mundwinkel, Lippenwulst läuft zur Spitze aus. Tests `einsatz/kernring.test.ts` (Lippe als
-  Falte ≤ 1e-12, Topologie an 54 Fällen; Tor als `it.fails`).
-- **Gemessen:** Knick am Mundwinkel ≤ 12° in 29 von 39 Fällen (Schleifengitter: keiner unter 131°), Tor (A0 + 2°) in 4–5 von 15.
-  Kissen-Vorversuch: Die Kernring-Topologie selbst ist sauber (1,0° bei quadratischen, gleich großen Zellen um c); schon 2 : 1
-  gibt 10–16°. Im echten Feld ist die Startlage am Mundwinkel 3–10° (konforme Lage ist um c parabelförmig, E steht zu nah).
-- **Nächster Schritt (technisch, meine Wahl):** die Zellen um c als Quadratgitter auf der Haut legen und faltenfrei einbetten
-  (Tutte mit Mittelwertgewichten aus einer Ziel-Lage nahe c, Mundwinkelspeiche fest), Lippenstellen zum Mundwinkel hin passend
-  stufen, Feld hinter dem Mundwinkel nötigenfalls verlängern; danach schiefe Felder (Übergangsreihe) und die Lippe für
-  verwickelte Linien (Bogenlänge statt konform).
+Zum Einfügen (Florian):
 
-## Einstieg (Plan V0–V9)
+> Lies `docs/UEBERGABE.md` und auf der Planseite `docs/plans/2026-10-21-maul-einsatz-weiter.md` die Abschnitte ab „Ursache am
+> Mundwinkel“ (vor allem „Stand E1“ und die beiden Nachträge E1). Weiter mit Teil A, E1 nach der Übergabe: zuerst die genaue Haut
+> als Standard des Kernrings (Feld auf K2, Reihen nach Feldgröße, Ausgleich außen, dünn besetzter Löser, ganze Reihe, Haut-Tor als
+> Test), dann den Mundwinkel (Quadratgitter um c).
 
-Maßgeblich ist der am 20.10. freigegebene Plan
-**[`docs/plans/2026-10-20-vektorillustration-bedienung.md`](plans/2026-10-20-vektorillustration-bedienung.md)**: ehrliche
-Bestandsaufnahme S0–S8a, Zielbild als Messlatte (Vektorillustration aus einem Liniennetz), Bauweise, Bedienung nach Blender,
-Schritte V0–V9. Am Ende „Stand V4“, „Stand V5“, **„V6 im Detail“, „Stand V6.1“, „Stand V6.2“, „Stand V6.3“** mit Zahlen,
-Bildern und dem, was offen ist. Offene Kritik: [`2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md) („Befunde
-aus V5“, „Befunde aus V6“).
+Lesereihenfolge für die Sitzung:
+1. `CLAUDE.md` (lädt von selbst: Stand, Regeln, Fallen; Einträge „2026-10-21 …“ unten in der Liste).
+2. Diese Datei.
+3. Planseite [`docs/plans/2026-10-21-maul-einsatz-weiter.md`](plans/2026-10-21-maul-einsatz-weiter.md): „Ursache am Mundwinkel und
+   die Entscheidung“, „Schritte“ (E1–E6), „Stand E1“, „Nachtrag E1 (mittags)“, „Nachtrag E1 (nachmittags): Haut wieder genau“.
+4. Register [`docs/plans/2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md), „Befunde aus E1“.
+5. Grundlage Teil A: [`docs/plans/2026-10-15-maul-einsatz-harmonie-posen.md`](plans/2026-10-15-maul-einsatz-harmonie-posen.md)
+   (Festlegungen, Schritte A1–A14).
 
-Florian 20.10. nachts: „Du musst nicht immer nach 3 Versuchen stoppen. Es gibt für alles eine elegante Lösung! … Wichtig
-ist, dass das Mesh später immer schön und smooth aussieht außer bei gewollten Kanten.“ Danach (vor dem Schlafen):
-selbstständig weiter, hartnäckig, den ganzen Plan unter höchsten Kriterien; Usability und Ansicht herausragend; das Mesh soll
-sich jeder Form intelligent anpassen.
+## Worum es geht
 
-## Neu seit dem Morgen-Zwischenstand (21.10. früh): V6.4 — Loops in den Blättern
+Florian 21.10.: „Weiter mit Teil A ‚Maul als Einsatz‘: Damit sollen glatte Haut, Querschnitt aus der Hülle, Linien exakt und Loops
+auch mit Maul wirken.“ Heute schaltet ein Maul den Körper auf den alten Maulbau um (`ableitenMitMaul`) — ohne all das. Der Einsatz
+dreht es um: A0 ist der Körper ohne Maul mit allem, was der Körper kann; das Maul wird in die einmal verfeinerte Fläche von A0
+eingesetzt (Feld um die Maullinie, Karte, Topologie, Lippe, Haut lösen = A3–A7), außerhalb des Felds bleibt der Körper bitgleich.
 
-- Jedes Blatt zeigt die Loops, wie sie auf dem Körper liegen (Seite: von Rücken- zu Bauchknoten; Top, Front, Back, Bottom: der
-  ganze Ring, verdeckt blass gestrichelt). Farben überall gleich: orange, unter dem Zeiger pink (Bühne und alle Blätter
-  zugleich), gewählt türkis.
-- Wählen: Klick auf die Linie im Blatt oder Klick ohne Bewegung auf den Ring der Bühne (⌥-Klick geht weiter), ⇧ für weitere;
-  Klick auf der Bühne daneben hebt auf. Ziehen an der Linie im Blatt verschiebt den Loop.
-- G/S/R mit dem Zeiger über einem Blatt formen gewählte Loops als Ganzes (Seite: G x/y; Top: G längs x; Front: G in der Höhe;
-  S überall; R nur in der Seite). **Mehrere Loops:** G verschiebt alle gleich, S und R wirken je Loop um seine eigene Mitte —
-  Hals über mehrere Loops verjüngen, ohne dass sie zusammenrücken.
-- Prüfung im echten Editor: `apps/editor/scripts/pruefen/schleife-blatt.mjs` (alles grün), dazu weiter grün `schleife-grs.mjs`,
-  `schleife.mjs`, `modal-2d.mjs`, `v0-tasten.mjs`. Planseite „Stand V6.4“.
-- V5-Rest „Härte als Rundungsbreite“: gemessen und zurückgestellt (die Härte ändert die Form auf runder Haut kaum; erst der
-  Grat gibt ihr einen Winkel) — Planseite „V5-Rest Härte“.
+Reihenfolge: **E1 Gitter** (läuft) → E2 A0 wie im Editor → E3 Bau → E4 Editor, Maul zu (**Florians Blick**) → E5 Öffnen → E6 Rest
+(Kiefer getrennt, Zähne, Augen, Rig, alter Maulbau raus, Abnahme).
 
-## Letzter Stand davor: V6 — Loops wie in Blender
+**Florians letzte Wahl (21.10. nachmittags): „Mach zuerst die Haut wieder genauer (0,25 px), dann den Mundwinkel.“**
 
-- **⌘R oder ⌃R** (Stufe Körper, Editor-Tab, Körper „Röhre“ ohne Maul und Beine): Zeiger über die Bühne oder das Seitenblatt —
-  gelbe Vorschau der Loops (Bühne: Ringe auf dem Körper; Seite: Sprosse mit den künftigen Knoten; Top bzw. Front: Strich).
-  Mausrad / Bild↑↓ / Ziffer = Anzahl. Klick setzt mehrere gleichmäßig; ein Loop gleitet nach dem ersten Klick, der zweite setzt
-  ihn (Esc/Rechtsklick: Mitte). Ein Undo-Schritt. Die Dock-Zeile sagt, was entsteht.
-- **Ein Loop** = Rücken- und Bauchknoten in der Seite plus ein Breitenknoten dort, wo sein Ring den Umriss berührt (Top für
-  liegende, Front samt Spanten für stehende Ringe wie am Hals), alle formneutral (de Casteljau), und ein eigener Käfigring
-  durch die beiden Seitenknoten. Pinsel- und Posen-Deltas, Bezugs-Käfige und Augen rücken mit.
-- **Sehen, wählen, formen:** Loops sind orange Ringe auf der Bühne; ⌥-Klick wählt einen (seine Knoten in den Blättern sind
-  dann gewählt). Mit dem Zeiger über der Bühne: G verschieben, G G gleiten (entlang der Form), S skalieren (Y nur Höhe, Z nur
-  Breite), R kippen; X/Y/Z,
-  Zahlen, O proportional, Enter/Klick, Esc/Rechtsklick/⌘Z wie in den Blättern. Ein Loop wirkt mindestens über das Dreifache
-  seiner Verschiebung (glatte Taille statt Kerbe).
-- **Mit Maul oder Beinen** lösen sich Loops in gewöhnliche Knoten auf (ein Undo-Schritt, Hinweis) — dort gibt es noch keine
-  Loop-Ringe.
-- **Unterwegs behoben (je Test vorher rot):** formneutral eingefügte Knoten (Stift, Kopplung, Loop) änderten den Körper
-  (Langhals 1,8 px, Tiger 1,2 px mit zwei aufeinanderliegenden Ringen, Vase 3,4 px, Ei 1,3 px) — jetzt ≤ 0,5 px; Loops kippten
-  kettenweite Entscheidungen (Fülle, Breitenlinie, Reihenplan, Berühren); geformte Loops kreuzten die übrigen Ringe (Leiter
-  jetzt an den Loops festgeheftet); Breitenknoten am Hals im falschen Blatt. Grundzahlen von Schlange, Sichel, Augenstiele
-  und Flügel oben nachgezogen (doppelte Ringe weg: Schlange Falten 178 → 4°, Sichel 180 → 25°).
-- **Tests:** `packages/shape/src/kern/schleifen.test.ts` (Knoten formneutral, Loops einfügen/löschen/auflösen, Deltas,
-  Breitenknoten, Hals verjüngen ohne Falte; 1 Tor als `it.fails`), 526 Kern-Tests grün. Editor: `schleife.mjs`,
-  `schleife-grs.mjs` (Florians Ablauf mit echten Tasten), dazu `v0-tasten.mjs`, `modal-2d.mjs` grün.
-- **Bilder:** `docs/progress/editor/v6-schleife-*.jpg`.
+## Stand E1
 
-Davor (Abnahme offen): **V5** P-Linien als Käfigschleifen (mit „Querschnitt aus der Hülle“), **V4** Querschnitt aus der
-Sichthülle, **V3** G/S/R in den Blättern, **V0**, **V1** Prüfstand „Extremreihe“; **V2** nicht abgenommen („sehr sehr wild“).
+Commits: `903f49f6` (Plan), `80905daf` (Kernring), `93331e7d` (Wulst zur Spitze), `0dfee101` (Bilder), dazu der Commit dieser
+Übergabe (Haut genauer, Skripte).
 
-## Für Florian zum Ausprobieren (nach dem Pull den Dev-Server neu starten)
+- **Kernring** (`einsatzTopologie(…, { gitter: 'kernring' })`, `einsatz/topologie.ts`): Der Mundwinkel c ist ein regulärer
+  Gitterpunkt am Ende des Schnitts. Lippe m = M − 2 Spannen, Reihe 1 ein Ring um den Schlitz mit 2M + 1 Punkten, c Faltenpunkt mit
+  vier Hautflächen (ohne Punktschärfe), Dreierpole an den Kernecken; ab Reihe 1 laufen 2M + 1 Speichen bis zum Feldrand. Die Lippe
+  endet als Falte (`lippeAnpassen(…, { ende: 'falte' })`, `einsatz/lippe.ts`): Spitze (2U_{m−1} + 4c)/6 auf dem gezeichneten
+  Mundwinkel, c eine halbe Spanne dahinter; Reihe 0 der Topologie ist die angepasste Lippe. Lage in zwei Stufen (`kernGitter`):
+  innen Tutte in der um c zentrierten Auffaltung ζ' = √(ζ² − x_c) bis Reihe J_i, außen Tutte in der Karte. Reihenzahl konform
+  (J ≈ a·m / (2V_c(1 − V_c)), 3 … 8) oder Option `J`; Mindestzelle am Mundwinkel eine Kante von K1 (`eckeMin`); der Lippenwulst
+  läuft zur Spitze aus (`einsatz/loesen.ts`). Ohne `gitter: 'kernring'` bitgleich zum Schleifengitter.
+- **Haut genauer (neu):** `einsatzFall(…, { stufe: 2 })` (`kern/pruefen/einsatzFall.ts`) legt das Feld auf **K2** (A0 zweimal
+  exakt verfeinert; Feldradius physisch gleich, `feldMitGerademRand(…, mMax)` mit 2 · `M_MAX`); `einsatzTopologie(…, {
+  aussenRunden })` gleicht die äußere Stufe nach Hautlängen aus (Gewicht ← √(alt · Hautlänge/Kartenlänge), Median-normiert,
+  faltenfrei). Beides Schalter, ohne sie bitgleich. **Noch nicht Standard.**
+- **Ursache der groben Haut** (gemessen): konforme Reihenzahl klein (Kugel mittel J = 4); Speichenabstand = Randkante von K1
+  (≈ 24 px an der Kugel, Fehler ≈ h²/8R ≈ 0,3 px — ohne feineres Feld ist 0,25 px nicht erreichbar); große Felder: die Karte staucht
+  den Feldrand weit hinter dem Mundwinkel (Zellen bis 50 : 1 auf der Haut). Der Wulst ist es nicht.
 
-1. Ein Wesen öffnen (Röhre, ohne Maul), Zeiger auf den Hals in der Bühne, ⌘R: gelber Ring. Zwei Rasten am Mausrad → drei
-   Ringe, Klick. Oder ein Loop: Klick, Maus gleiten lassen, zweiter Klick.
-2. Klick auf den mittleren orangen Ring (Bühne) oder seine Linie in einem Blatt — er wird türkis. Zeiger auf Bühne oder Blatt,
-   S und die Maus bewegen (oder 0,7 tippen, Enter) — der Hals wird dort schmaler; O vorher für einen weichen Übergang über die
-   Nachbarn, Rad für den Einfluss. ⇧-Klick auf die beiden anderen, S: alle drei werden schmaler, jeder um seine Mitte.
-3. G (bzw. G, dann Y) verschiebt, G G gleitet, R kippt; im Seitenblatt die Linie einfach ziehen; ⌘Z nimmt jeden Schritt
-   einzeln zurück.
+| | Schleifengitter (alt, K1) | Kernring K1, J konform | **Kernring K2, J 12, Ausgleich 6** |
+|---|---|---|---|
+| Haut gegen A0 (Kugel, Ei, Birne, Langhals) | 0,16–0,49 px | 0,32–1,27 px | **0,16–0,22 px** (Kugel mittel/tief/hoch 0,16/0,22/0,20; Ei mittel S 0,16, Ei tief 0,16; Birne mittel 0,17; Langhals hoch 0,17) |
+| Knick am Mundwinkel | 131–179° (alle) | ≤ 12° in 29 von 39; Tor A0 + 2° in 4–5 von 15 | 4,4–9,9° in diesen Fällen (A0 1,7–6,0°) |
+| Viereckgüte | 1–47° / bis 10 : 1 | 1–38° / bis 18 : 1 | 2–36° / bis 11 : 1 |
 
-## Offen / nächster Schritt
+Rex und Robbe bleiben bei 2–4 px nahe der Lippe: eigene Falten bzw. feine Kerbe von A0 im Feld (gehört zu E2), keine
+Auflösungsfrage. Bilder: `docs/progress/editor/e1-mundwinkel-schleifengitter-2026-10-21.png` (Zebra reißt am Mundwinkel) gegen
+`docs/progress/editor/e1-mundwinkel-kernring-2026-10-21.png` (Streifen laufen durch).
 
-- V6: jeden Käfigring per ⌥-Klick zum Loop machen (der Grundring stimmt bei Fülle, Breitenlinie und Reihenplan mit ab — ein
-  Loop, der weiter abstimmt, wäre der saubere Weg), G/S/R auf Netzknoten der Bühne, geformte Loops gleiten lassen; Loops auf
-  „Teile“, mit Maul oder Beinen (V7). Tor „Einfügen formneutral ≤ 0,1 px“ verfehlt (Register).
-- V5 offen: Lage der Linien genauer (0,3 px), Grat (dann Härte als Rundungsbreite), Zug schneller; der Sprung, wenn eine Linie
-  zur Käfigschleife wird (Kegel 3,1 px).
-- Danach V7 (ein Körper), V8 (Vektor-Ausgabe), V9 (Abnahme).
-- Abnahme V0, V1, V3, V4, V5, V6; V2 nicht abgenommen.
+## Nächste Schritte (in dieser Reihenfolge)
+
+1. **Haut als Standard des Kernrings** (Florians Wahl zuerst):
+   1. Feld auf K2 als Standard des Kernrings (in `einsatzFall`, später im Bau E3); J nach Feldgröße (konforme Formel, Kappe 16 statt
+      8 — heute fest J = 12 über die Umgebung), `aussenRunden` 6 als Standard.
+   2. Lage (`kernGitter`) und A7 (`einsatzLoesen`) auf einen dünn besetzten Löser umstellen — heute dichte LU (`luZerlegen`/
+      `luLoesen`), bei M ≈ 35 und J = 12–16 dauert ein Fall 10–30 s. Vorbild: `loeser/normalSystem.ts` (dünn besetzte LU aus S2).
+   3. Ganze Reihe messen (`e1-haut.ts` ohne `FAELLE`, im Hintergrund), dann ein Haut-Tor als Test in `einsatz/kernring.test.ts`:
+      ≤ 0,25 px, wo A0 keine eigenen Falten im Feld trägt (Rex/Robbe bis E2 ausgenommen); verfehlt → `it.fails` + Register.
+   4. Gegenprobe auf K2: Topologie-Test an allen 54 Fällen, Spiegel exakt, außen bitgleich, Lippe ≤ 1 px, Knick nicht schlechter.
+2. **Mundwinkel** (Tor: Knick ≤ A0 + 2°): Ziel-Lage nahe c als Quadratgitter auf der Haut (Reihe r im Abstand r·h,
+   h = |c − U_{m−1}|) samt den Reihen dahinter, übergeblendet in die heutige Lage; einbetten nach Tutte mit Mittelwertgewichten aus
+   der Ziel-Lage (positiv, linear genau, faltenfrei bei konvexem Rand). Dazu Lippenstellen zum Mundwinkel hin auf h stufen und das
+   Feld hinter dem Mundwinkel verlängern, wo es für zwei, drei Quadrate nicht reicht (`einsatzFall(…, { verlaengerung })` gibt es).
+   **Nicht wiederholen** — sechs Lage-Varianten sind gemessen und verworfen (Planseite „Nachtrag E1 (mittags)“): Gewichte nach
+   Hautlänge am Mundwinkel, radiale Umparametrisierung, fester Fächer, innere Stufe in W', Polarkoordinaten um c, Ideallage nur
+   innen. Lehre: Die Ziel-Lage muss als Ganzes (mit den Reihen dahinter) vorgegeben und faltenfrei eingebettet werden.
+3. **E1-Rest:** schiefe Felder (Viereckgüte bis 2° / 11 : 1 auch auf K2; Übergangsreihe mit 3/5-Polpaaren oder ausgeglichene
+   Feldwahl, Register A5 Weg 2), Lippenstellen für verwickelte Linien (Bogenlänge/Krümmung statt konform; Rex mittel Lippe 5,6 px).
+4. Danach **E2** (A0 wie im Editor: glatt, berühren, Hülle, Linien, Loops; Florians Ablauf Kugel → umformen → Maul; Falten von A0
+   im Feld laufen auf einer Spalte weiter), **E3** (`maulEinsatzBauen`, eingefrorene Topologie im Dokument, schneller Zugweg),
+   **E4** (Schalter „Maul: Einsatz“ im Editor, Maul zu → Florians Blick), E5, E6.
+
+Je Schritt: Planseite „Stand …“ nachtragen, Register, Bilder, commit + push; nichts als „bestanden“ melden ohne Florian.
+
+## Werkzeuge
+
+- **Tests:** `packages/shape/src/kern/einsatz/kernring.test.ts` (Lippe als Falte ≤ 1e-12, Topologie an 54 Fällen mit Valenzen,
+  Tor als `it.fails`), dazu die übrigen `einsatz/*.test.ts`. Lauf: `pnpm --filter @ee/shape test` (≈ 2 min).
+- **Messskripte** (aus `packages/shape`: `npx vite-node ../../apps/editor/scripts/pruefen/<datei>`; Übersicht in
+  `apps/editor/scripts/pruefen/README.md`):
+  - `teilA/e1-haut.ts` — Haut gegen A0 je Fall: `STUFE=2 JS=12 AR=6 FAELLE=kugel/mittel/gerade,ei/mittel/s`. `JS` mehrere Werte mit
+    Komma (0 = konform), `GITTER` (Standard kernring), `WULST`. Ausgabe je Fall: Haut max/99 %, Ort (Abstand zu Lippe, Spitze,
+    Rand), Normale, Knick (A0), Viereckgüte.
+  - `teilA/e1-reihe.ts` — Kernring gegen Schleifengitter über die Reihe (Topologie, Valenzen, Lippe, Haut, Knick mit Ort):
+    `GITTER`, `VERL`, `JI`, `FAELLE`.
+  - `teilA/e1-faecher.ts` — Fächer um c (Winkel und Abstände von U'_m … D'_m in der Tangentialebene).
+  - `teilA/e1-gitterbild.ts` — Gitter als HTML (`AUSGABE=<datei.html>`), Bild mit `node scripts/pruefen/html-shot.mjs` (aus
+    `apps/editor`).
+  - `einsatz-loesen.ts` — Nahaufnahme des Mundwinkels (A0 · Einsatz · Abstand · Zebra): `GITTER=kernring NAH=4`, optional `J`.
+  - `teilA/e1-kissen-kern.ts`, `teilA/e1-kissen-zellen.ts`, `teilA/schlitz-vorversuch.ts` — Kissen-Vorversuche.
+- **Fälle:** `<körper>/<anfang>/<form>` (z. B. `kugel/mittel/gerade`, `ei/mittel/s`, `langhals/hoch/gerade`), Liste
+  `einsatzFaelle()`; „ausgeglichen“ = Linie ≤ 1 px auf der Haut (`hautAbstand`), das sind 39 von 54.
+- **Auf K2 messen:** `einsatzLoesen(t, f.v.kaefig, a0Netz(f.v.kaefig, 1), fit.punkte, { stufen: 1 })` und
+  `einsatzMessen(…, 2)` (allgemein `3 − STUFE` bzw. `4 − STUFE`: gleiche Grenzfläche wie Stufe 3 von A0).
+- Lange Läufe (ganze Reihe auf K2 mit dichter LU: weit über 10 min) im Hintergrund starten.
+
+## Fallen aus E1
+
+- Die Karte steht auf Dreiecken der Stufe 3 von A0. Zellen am Mundwinkel kleiner als eine Kante von K1 klappen (deshalb
+  `eckeMin`). Mit dem K2-Feld bleibt die Karte auf Stufe 3 (eine K2-Kante = zwei Kartendreiecke); wer noch feiner will, muss die
+  Karte mitverfeinern.
+- Topologie und Lippe müssen dieselbe Lage von c haben (die Falte legt c vor): Reihe 0 = angepasste Lippe, c auf dem Kartenstrahl.
+- Ohne Teilung in zwei Stufen dreht jeder Versatz des Feldrands den ganzen Fächer um c; Festhalten der Mundwinkelspeiche faltet.
+- Lippenstellen wachsen vom Mundwinkel aus geometrisch, das Wachstum muss gedeckelt sein (0,8 · L/m), sonst läuft der Stellenplan
+  über.
+- Rex/Robbe 2–4 px in der Haut-Messung sind A0-Falten im Feld (E2), nicht die Auflösung.
+- Tests an der Naht: −0 gegen 0 scheitert an `toBe` — Fehler sammeln und vergleichen, nicht je Wert `toBe`.
+
+## Davor (V0–V6, Abnahme offen)
+
+Maßgeblich bleibt der am 20.10. freigegebene Plan
+[`docs/plans/2026-10-20-vektorillustration-bedienung.md`](plans/2026-10-20-vektorillustration-bedienung.md) (Stände V0–V6.4 am
+Ende der Seite); Teil A ist der Block, den Florian am 21.10. früh davor gezogen hat. Gebaut und im Editor (Abnahme offen): V0
+Fallen und Bedienfehler, V1 Prüfstand „Extremreihe“, V3 G/S/R und proportional in den Blättern, V4 Querschnitt aus der Sichthülle,
+V5 P-Linien als Käfigschleifen, V6 ⌘R-Loops (Bühne und Blätter, G/S/R, mehrere Loops); V2-Linien nicht abgenommen („sehr sehr
+wild“, standardmäßig aus). Offen danach: V6-Rest (jeden Käfigring als Loop, Loops auf „Teile“/mit Maul), V5-Rest (Lage 0,3 px,
+Grat), V7 ein Körper, V8 Vektor-Ausgabe, V9 Abnahme.
+
+Zum Ausprobieren im Editor (nach dem Pull den Dev-Server neu starten): Wesen ohne Maul (Röhre), Zeiger auf den Hals, ⌘R → gelber
+Ring, Mausrad = Anzahl, Klick; Ring anklicken (türkis), S + Maus oder Zahl + Enter verjüngt, O für weichen Übergang, ⌘Z je Schritt.
 
 ## Arbeitsregeln
 
-- Ein Schritt nach dem anderen, Bild und Stand je Schritt; keine Meldung „fertig/bestanden“ ohne Florian. Nach Fehlanläufen
-  nicht stur anhalten (Florian 20.10.): Ursache verstehen, die elegantere Lösung suchen; technische Wege selbst entscheiden und
-  begründet auf die Planseite schreiben.
-- Jede Korrektur mit einem Test, der vorher rot ist; verfehlte Tore als `it.fails` mit Registereintrag, nie still gelockert.
-  Jede Stufe gegen `test:extrem`; Aufräumen bitgleich. Grundzahlen nur mit Begründung nachziehen (Commit und Register).
-- Mit Florians Ablauf testen (Kugel → umformen → …). Immer sagen, was im Editor ist und was nur im Kern. **Im echten Editor
-  messen** (eigene Prüfskripte mit echten Tasten): Die Kern-Messung allein übersah mehrfach, was der Editor zeigt (V5 Front
-  +2–5 px; V6 S am Halsansatz).
-- **Formneutral heißt formneutral:** Ein Knoten, der die Kurve nicht ändert, darf den Körper nicht ändern — Entscheidungen über
-  Ringgrenzen (harte Schwellen, Rasterstufen, Ringnummern) sind die üblichen Ursachen; stetig machen statt Schwellen
-  verschieben.
-- Eigener Vite auf 5192 (`apps/editor/scripts/pruefen/run-check.sh`), nie Florians 5180. Während eines E2E-Laufs keine
-  Dateien unter `apps/editor/src` ändern; E2E-Läufe überschreiben Bilder in `docs/progress/editor/` — vor dem Commit
-  zurückholen. Nie `assets/fonts/Hippie Movement.otf` committen.
-- Nach jedem Teilschritt committen und pushen; diese Datei am Ende jedes Blocks überschreiben.
+- Ein Schritt nach dem anderen, Bild und Stand je Schritt; keine Meldung „fertig/bestanden“ ohne Florian. Nach Fehlanläufen nicht
+  stur anhalten (Florian 20.10.): Ursache verstehen, die elegantere Lösung suchen; technische Wege selbst entscheiden und begründet
+  auf die Planseite schreiben. Maßstab: Netz immer glatt und schön außer an gewollten Kanten.
+- Jede Korrektur mit einem Test, der vorher rot ist; verfehlte Tore als `it.fails` mit Registereintrag, nie still gelockert. Neue
+  Wege hinter Schaltern, ohne sie bitgleich.
+- Mit Florians Ablauf testen (Kugel → umformen → Maul). Immer sagen, was im Editor ist und was nur im Kern (Teil A: bisher nur
+  Kern).
+- Eigener Vite auf 5192 (`apps/editor/scripts/pruefen/run-check.sh`), nie Florians 5180, seinen Dev-Server nicht starten. Während
+  eines E2E-Laufs keine Dateien unter `apps/editor/src` oder `packages/shape` ändern; E2E-Läufe überschreiben Bilder in
+  `docs/progress/editor/` — vor dem Commit zurückholen. Nie `assets/fonts/Hippie Movement.otf` committen; nie in
+  `~/Documents/early earle Editor/Bibliothek` schreiben.
+- Keine Modellnamen in Commits, Docs oder Code. Nach jedem Teilschritt committen und pushen; diese Datei am Ende jedes Blocks
+  überschreiben.

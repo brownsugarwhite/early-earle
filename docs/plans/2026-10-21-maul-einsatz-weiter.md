@@ -157,3 +157,39 @@ Gute Fälle: Kugel/Ei/Birne „mittel“ und „hoch“ (4,4–9,8° am Mundwink
   `docs/progress/editor/e1-mundwinkel-schleifengitter-2026-10-21.png` (Zebra reißt am Mundwinkel — die Falte) gegen
   `docs/progress/editor/e1-mundwinkel-kernring-2026-10-21.png` (Streifen laufen glatt durch; dafür Haut 0,7–1,3 px statt 0,2–0,5,
   weil die konforme Reihenzahl kleiner ist). Skript `apps/editor/scripts/pruefen/einsatz-loesen.ts` mit `GITTER=kernring NAH=4`.
+
+## Nachtrag E1 (21.10. nachmittags): Haut wieder genau — Florian: „Mach zuerst die Haut wieder genauer (0,25 px), dann den Mundwinkel.“
+
+**Ursache der groben Haut im Kernring:** (1) die konforme Reihenzahl ist klein (Kugel mittel J = 4), (2) die Speichen stehen so
+weit auseinander wie die Randkanten von K1 (≈ 24 px an der Kugel): Auf runder Haut gibt ein Kontrollabstand h etwa h²/8R
+(24²/(8 · 230) ≈ 0,3 px) — ohne feineres Gitter ist 0,25 px nicht erreichbar; (3) große Felder: Die Karte staucht den Feldrand
+weit hinter dem Mundwinkel konform (viele Randpunkte in einem schmalen V-Band), gleiche Gewichte in der Karte geben dort auf der
+Haut Zellen bis 50 : 1. Der Lippenwulst ist es nicht (ohne Wulst gleich).
+
+**Gebaut (Schalter, ohne sie bitgleich):**
+- `einsatzFall(…, { stufe: 2 })`: Feld auf **K2** (zweimal exakt verfeinert, gleiche Grenzfläche wie A0, alle Abstände halb so
+  groß, Lippenauflösung doppelt). Feldradius bleibt 3 Kanten von K1 (physisch gleich), `M_MAX` doppelt
+  (`feldMitGerademRand(…, mMax)`). A7 dann mit `a0Netz(k, 1)` und `{ stufen: 1 }`, Messen mit `einsatzMessen(…, 2)`.
+- `einsatzTopologie(…, { aussenRunden })`: äußere Stufe nach Hautlängen ausgeglichen (Gewicht ← √(alt · Hautlänge/Kartenlänge),
+  auf den Median normiert; positive Gewichte im konvexen Kartenrechteck, also faltenfrei).
+
+**Gemessen (Haut gegen A0, max / 99 %, px):**
+
+| Fall | K1, J konform | K1, J 8 | K2, J 8 | K2, J 12, Ausgleich 6 |
+|---|---|---|---|---|
+| Kugel mittel gerade | 0,75 / 0,66 | 0,41 / 0,23 | 0,25 / 0,16 | **0,16 / 0,10** |
+| Kugel tief gerade | 0,95 | – | 0,73 / 0,43 | **0,22 / 0,09** |
+| Kugel hoch gerade | 1,01 | – | 0,63 / 0,36 | **0,20 / 0,09** (J 12, Ausgleich 6) |
+| Ei mittel S | 1,27 / 0,58 | 0,70 / 0,27 | 0,68 / 0,43 | **0,16 / 0,10** |
+| Ei tief gerade | 0,37 | – | 0,22 / 0,15 | **0,16 / 0,07** |
+| Birne mittel gerade | 0,68 / 0,46 | 0,54 / 0,30 | 0,38 / 0,23 | **0,17 / 0,11** |
+| Langhals hoch gerade | 0,32 / 0,19 | 0,25 / 0,14 | 0,28 / 0,14 | **0,17 / 0,11** |
+
+Zum Vergleich das alte Schleifengitter (K1): 0,16–0,49 px. Rex und Robbe bleiben bei 2–4 px nahe der Lippe: Das sind die
+eigenen Falten bzw. die feine Kerbe von A0 im Feld (gehört zu E2: „Falten von A0 im Feld laufen auf einer Spalte weiter“),
+keine Frage der Auflösung. Knick am Mundwinkel unverändert 4–10° (nächster Schritt).
+
+**Offen für den nächsten Schritt (Haut):** K2 + J nach Feldgröße (Kappe 16 statt 8) + Ausgleich außen (6 Runden) als Standard des
+Kernrings; A7 auf einen dünn besetzten Löser umstellen (heute dichte LU: bei M ≈ 35 und J = 12–16 dauert ein Fall 10–30 s);
+dann die ganze Reihe und ein Haut-Tor als Test (≤ 0,25 px, wo A0 keine eigenen Falten im Feld trägt). Messskript
+`apps/editor/scripts/pruefen/teilA/e1-haut.ts` (`STUFE=2 JS=12 AR=6`).

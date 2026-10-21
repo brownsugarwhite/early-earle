@@ -221,7 +221,7 @@ export const M_MAX = 20;
  * (höchstens zwei Kanten mehr), dann schrumpft er (bis zwei Kanten), bis beides stimmt; sonst das erste Feld ohne konkave
  * Ecken.
  */
-export function feldMitGerademRand(k1: Kaefig, abstand: Float64Array, radius: number, kante: number): FeldSpec & { radius: number } {
+export function feldMitGerademRand(k1: Kaefig, abstand: Float64Array, radius: number, kante: number, mMax = M_MAX): FeldSpec & { radius: number } {
   let erstes: (FeldSpec & { radius: number }) | null = null;
   // erst wachsen (bis zwei Kanten mehr), dann schrumpfen (bis zwei Kanten Radius): lange Linien (tiefer Rex-Mund) gaben
   // sonst m = 22 > M_MAX
@@ -231,7 +231,7 @@ export function feldMitGerademRand(k1: Kaefig, abstand: Float64Array, radius: nu
   for (const r of radien) {
     const f = feldWaehlen(k1, abstand, r);
     if (!erstes && f.konkav === 0) erstes = { ...f, radius: r };
-    if (f.konkav === 0 && Number.isFinite(f.m) && f.m <= M_MAX) return { ...f, radius: r };
+    if (f.konkav === 0 && Number.isFinite(f.m) && f.m <= mMax) return { ...f, radius: r };
   }
   return erstes ?? { ...feldWaehlen(k1, abstand, radius), radius };
 }

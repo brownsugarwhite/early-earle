@@ -440,7 +440,7 @@ export function kartenSeitenverhaeltnis(karte: Karte, netz: FeinNetz, doppel: Ma
  *    Speichen laufen von ihrer Lage in Reihe J_i zu ihren Randpunkten — hier nimmt das Gitter den Versatz des Feldrands auf.
  * Gleiche Gewichte in beiden Stufen (je Runde exakt, dicht, LU); fest sind außerdem die Nahtspeichen (nach Bogenlänge).
  */
-export function kernGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, uR: number[], thetaIn: Float64Array, thetaOut: Float64Array, lippe: V3[], rand: V3[], vc: number, uc: number, a: number, jInnen?: number): { u: number[][]; v: number[][]; lagen: V3[][]; umgeklappt: number } {
+export function kernGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, uR: number[], thetaIn: Float64Array, thetaOut: Float64Array, lippe: V3[], rand: V3[], vc: number, uc: number, a: number, jInnen?: number, aussenRunden = 0): { u: number[][]; v: number[][]; lagen: V3[][]; umgeklappt: number } {
   const J = uR.length - 1;
   const m = (thetaIn.length - 1) / 2;
   const S = thetaOut.length - 1;
@@ -512,7 +512,8 @@ export function kernGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, u
     const k = spalte(i);
     return r > 0 && r < J && r !== Ji && k > 0 && k < S;
   };
-  // Tutte je Stufe in ihren Koordinaten (innen ζ', außen a·U, V)
+  // Tutte je Stufe in ihren Koordinaten (innen ζ', außen a·U, V), Gewicht je Kante (Index in `kanten`)
+  const gewicht = new Float64Array(kanten.length).fill(1);
   const stufe = (innen: boolean) => {
     const imBereich = (i: number) => (innen ? reihe(i) <= Ji : reihe(i) >= Ji);
     const koord = (i: number): [number, number] => (innen ? nachZ(U[i]!, V[i]!) : [a * U[i]!, V[i]!]);
@@ -527,24 +528,25 @@ export function kernGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, u
     if (!n) return;
     const A = new Float64Array(n * n);
     const b = new Float64Array(2 * n);
-    for (const [p0, q0] of kanten) {
-      if (!imBereich(p0) || !imBereich(q0)) continue;
+    kanten.forEach(([p0, q0], e) => {
+      if (!imBereich(p0) || !imBereich(q0)) return;
+      const w = gewicht[e]!;
       for (const [p, q] of [
         [p0, q0],
         [q0, p0],
       ] as [number, number][]) {
         const i = unb[p]!;
         if (i < 0) continue;
-        A[i * n + i] = A[i * n + i]! + 1;
+        A[i * n + i] = A[i * n + i]! + w;
         const j = unb[q]!;
-        if (j >= 0) A[i * n + j] = A[i * n + j]! - 1;
+        if (j >= 0) A[i * n + j] = A[i * n + j]! - w;
         else {
           const z = koord(q);
-          b[2 * i] = b[2 * i]! + z[0];
-          b[2 * i + 1] = b[2 * i + 1]! + z[1];
+          b[2 * i] = b[2 * i]! + w * z[0];
+          b[2 * i + 1] = b[2 * i + 1]! + w * z[1];
         }
       }
-    }
+    });
     const x = luLoesen(luZerlegen(A, n), b, 2);
     liste.forEach((p, i) => {
       const [u, v] = innen ? ausZ(x[2 * i]!, x[2 * i + 1]!) : [x[2 * i]! / a, x[2 * i + 1]!];
@@ -555,6 +557,37 @@ export function kernGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, u
   stufe(true);
   stufe(false);
   const lage3 = (i: number): V3 => L3[i] ?? umkehr(U[i]!, V[i]!).p;
+  // Äußere Stufe nach Hautlängen: Die Karte staucht den Feldrand weit hinter dem Mundwinkel konform (viele Randpunkte in einem
+  // schmalen V-Band); gleiche Gewichte in der Karte geben dort auf der Haut Zellen bis 50 : 1. Je Runde Gewicht ← √(alt · neu)
+  // mit neu = Hautlänge / Kartenlänge (auf den Median normiert): zu lange Kanten werden schwerer und ziehen sich zusammen.
+  // Positive Gewichte im konvexen Kartenrechteck — jede Runde bleibt faltenfrei (Tutte).
+  for (let runde = 0; runde < aussenRunden; runde++) {
+    const L = new Map<number, V3>();
+    const lage = (i: number) => {
+      let p = L.get(i);
+      if (!p) {
+        p = lage3(i);
+        L.set(i, p);
+      }
+      return p;
+    };
+    const neu = new Float64Array(kanten.length).fill(Number.NaN);
+    const werte: number[] = [];
+    kanten.forEach(([p0, q0], e) => {
+      if (reihe(p0) < Ji || reihe(q0) < Ji) return;
+      const p = lage(p0);
+      const q = lage(q0);
+      const l3 = Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+      const l2 = Math.hypot(a * (U[p0]! - U[q0]!), V[p0]! - V[q0]!);
+      if (!(l2 > 0)) return;
+      neu[e] = l3 / l2;
+      werte.push(l3 / l2);
+    });
+    werte.sort((x, y) => x - y);
+    const med = werte[werte.length >> 1] || 1;
+    for (let e = 0; e < kanten.length; e++) if (!Number.isNaN(neu[e]!)) gewicht[e] = Math.sqrt(gewicht[e]! * Math.min(50, Math.max(0.02, neu[e]! / med)));
+    stufe(false);
+  }
   // Prüfung: Umlaufsinn aller Hautzellen (innen in ζ', außen in der Karte)
   const zellen: number[][] = [];
   for (let k = 0; k < m; k++) zellen.push([id(0, k), id(0, k + 1), id(1, k + 1), id(1, k)]);
@@ -615,6 +648,8 @@ export type EinsatzOptionen = {
   eckeMin?: number;
   /** Kernring: Reihen der inneren Stufe (Standard J/2, mindestens 2) */
   jInnen?: number;
+  /** Kernring: Runden des Ausgleichs nach Hautlängen in der äußeren Stufe (0 = gleiche Gewichte) */
+  aussenRunden?: number;
 };
 
 /**
@@ -822,7 +857,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
   }
   lippeLage[0]![2] = 0;
   lippeLage[2 * m]![2] = 0;
-  const gitter: { u: number[][]; v: number[][]; lagen: V3[][]; umgeklappt?: number } = kern ? kernGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, randLagen, vc, uc, aspekt, opt.jInnen) : hautGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, randLagen, opt.glaettung ?? 'laenge', opt.winkelReihen ?? 1, opt.winkelFaktor ?? 1);
+  const gitter: { u: number[][]; v: number[][]; lagen: V3[][]; umgeklappt?: number } = kern ? kernGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, randLagen, vc, uc, aspekt, opt.jInnen, opt.aussenRunden ?? 0) : hautGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, randLagen, opt.glaettung ?? 'laenge', opt.winkelReihen ?? 1, opt.winkelFaktor ?? 1);
   const hautLage: V3[][] = [lippeLage];
   for (let r = 1; r < J; r++) hautLage.push(gitter.lagen[r]!.map((p, k, z) => (k === 0 || k === z.length - 1 ? [p[0], p[1], 0] : p)));
   // Oberseite = die Seite, deren Randpunkte im Mittel höher liegen; liegt sie bei V > V_c, werden die Speichen umgedreht

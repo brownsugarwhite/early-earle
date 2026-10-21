@@ -222,7 +222,12 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
      des Hautrings stimmt trotzdem), Feld über den Mundwinkel hinaus verlängern (`einsatzFall(…, { verlaengerung })`).
   3. Konforme Lippenstellen passen nicht zu verwickelten Linien (Rex mittel: Lippe 5,6 px). Weg: Bogenlänge/Krümmung, nur zum
      Mundwinkel hin konform gestuft.
-  4. Haut 0,6–1,3 px statt 0,25 (konforme Reihenzahl ist kleiner; schiefe Zellen außen).
+  4. Haut 0,6–1,3 px statt 0,25 (konforme Reihenzahl ist kleiner; schiefe Zellen außen). → 21.10. nachmittags: Mit Feld auf K2,
+     J = 12 und Ausgleich außen nach Hautlängen 0,16–0,22 px an sieben ausgeglichenen Fällen (Kugel, Ei, Birne, Langhals;
+     Planseite „Nachtrag E1 (nachmittags)“). Noch Schalter, nicht Standard; die ganze Reihe und ein Haut-Tor als Test fehlen.
+- [ ] **Einsatz zu langsam für K2** (21.10. nachmittags): Lage (`kernGitter`) und A7 (`einsatzLoesen`) lösen mit dichter LU; bei
+  M ≈ 35 und J = 12–16 dauert ein Fall 10–30 s. Weg: dünn besetzter Löser (Vorbild `loeser/normalSystem.ts`), danach Zeiten wie der
+  Körper (E3).
 - **Knick am Mundwinkel kommt von der Lage, nicht von der Topologie** (21.10. mittags): Kissen mit idealer Lage 1,0°, 2 : 1-Zellen
   10–16°; im Feld liegt der Fächer 3–10-mal zu nah an c und gekippt (konforme Lage ist um c parabelförmig). Sechs Lage-Varianten
   gemessen und verworfen (Planseite „Nachtrag E1“). Weg: Quadratgitter um c als Ziel-Lage, Tutte mit Mittelwertgewichten.

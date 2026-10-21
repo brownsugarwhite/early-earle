@@ -13,6 +13,9 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 > (freigegeben): ehrliche Bestandsaufnahme S0–S8a mit frischen Messungen und Extremtest, Zielbild Vektorillustration,
 > Umrisse als Käfigschleifen mit Silhouettenbedingung, Linien gleichzeitig, Bedienung nach Blender (⌘R-Loops, G/S/R,
 > proportional), Schritte V0–V9; ersetzt S8 des Plans vom 16.10.
+> **Ab 21.10. läuft Teil A „Maul als Einsatz“** (Florians Wahl vor V7) nach
+> [`docs/plans/2026-10-21-maul-einsatz-weiter.md`](docs/plans/2026-10-21-maul-einsatz-weiter.md) (Schritte E1–E6). Einstieg für
+> eine frische Sitzung mit Start-Prompt, Stand, nächsten Schritten, Skripten und Fallen: [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
 
 - **2026-10-04: Prototyp 1 ist abgeschlossen** (Archiv-Branch `prototyp-1`). Er diente zum Lernen. Florian: „Der Prototyp war sehr gut und aufschlussreich und hat bewiesen, dass die Spielidee toll ist.“ Viele Entscheidungen sind gefallen; die Gesamtdynamik und einige grafische Elemente haben ihm gefallen.
 - **Jetzt beginnt die eigentliche Produktion mit dem finalen Look.** Grundlage wird **Florians neuer Plan mit neuem Hauptprompt**: Story, Charaktere und Map arbeitet er genauer aus und trägt sie in Dokumenten und Screenshots zusammen. Es folgen mehrere Runden und Iterationen.
@@ -213,6 +216,13 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   symmetrisch, schiefe Felder, konforme Lippenstellen bei verwickelten Linien, Haut 0,6–1,3 px. Fallen: Topologie und Lippe
   müssen dieselbe Lage von c haben (Falte legt c vor); Dehnungsgewichte gegen eine gestufte Randlage zerdrücken den Mundwinkel;
   Festhalten der Mundwinkelspeiche faltet.
+- **2026-10-21 mittags/nachmittags: E1 weiter, Übergabe für eine frische Sitzung** ([`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit
+  Start-Prompt). Mittags: Der Knick am Mundwinkel kommt von der Lage, nicht von der Topologie (Kissen mit quadratischen Zellen um c
+  1,0°; im Feld liegt der Fächer 3–10-mal zu nah an c); sechs Lage-Varianten verworfen; Lippenwulst läuft zur Spitze aus.
+  **Florians Wahl: „Mach zuerst die Haut wieder genauer (0,25 px), dann den Mundwinkel.“** Nachmittags: Feld auf K2
+  (`einsatzFall(…, { stufe: 2 })`), J = 12, Ausgleich außen nach Hautlängen (`aussenRunden`) → Haut 0,16–0,22 px an Kugel, Ei,
+  Birne, Langhals (vorher 0,3–1,3 px); noch Schalter. Nächste Schritte: das als Standard, dünn besetzter Löser (dichte LU 10–30 s je
+  Fall), ganze Reihe + Haut-Tor, dann Mundwinkel als Quadratgitter um c (Planseite „Nachtrag E1 (nachmittags)“).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

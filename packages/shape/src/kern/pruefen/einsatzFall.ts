@@ -14,7 +14,7 @@ import { zufall } from './zufall';
 import { alleFlaechen } from '../../kaefig/halbkanten';
 import { unterteilung } from '../../subdivision/catmullClark';
 import { anwenden3 } from '../../subdivision/matrix';
-import { type FeldSpec, feldMitGerademRand, flaechenAbstand } from '../einsatz/feld';
+import { type FeldSpec, feldMitGerademRand, flaechenAbstand, M_MAX } from '../einsatz/feld';
 import { ankerVon, type Aufgeschnitten, aufschneiden, type FeinNetz, feinNetz, kantenPfad, linieAufNetz } from '../einsatz/flaeche';
 import { type Karte, karteBauen } from '../einsatz/karte';
 import { type Verfeinert, verfeinern1 } from '../einsatz/verfeinern';
@@ -36,7 +36,9 @@ export type EinsatzFall = {
   /** größter Abstand der gelegten Linie zur Haut (px; Linien entlang der Silhouette bekommen aus der Seite keine Tiefe) */
   hautAbstand: number;
   v: Verfeinert;
-  /** feine Flächen von K1 auf Stufe 2 (Blöcke je Fläche von K1) und ihre Grenzlagen */
+  /** Stufe des Feldkäfigs: 1 = K1 (Standard), 2 = K2 (zweimal exakt verfeinert, alle Abstände halb so groß) */
+  stufe: 1 | 2;
+  /** feine Flächen des Feldkäfigs auf Stufe 3 − stufe (Blöcke je Fläche) und ihre Grenzlagen (= Stufe 3 von A0) */
   feinFlaechen: number[][];
   feinK1: Float64Array;
   h1: number;
@@ -55,29 +57,39 @@ export function einsatzFaelle(): [KoerperArt, Anfang, Form][] {
   return faelle;
 }
 
-type KoerperStand = { dok: ReturnType<typeof koerperDokument>; abl: Ableitung; netz: FeinNetz; v: Verfeinert; fein: Float64Array; ff: number[][]; h1: number };
-const koerperMerk = new Map<KoerperArt, KoerperStand>();
+type KoerperStand = { dok: ReturnType<typeof koerperDokument>; abl: Ableitung; netz: FeinNetz; v: Verfeinert; fein: Float64Array; ff: number[][]; h1: number; hFeld: number };
+const koerperMerk = new Map<string, KoerperStand>();
 
-/** Körperstand je Körperart (gemerkt; die Fälle teilen ihn, keiner verändert ihn): A0, feines Netz, K1 und seine Stufe 2. */
-function koerperStand(art: KoerperArt): KoerperStand {
-  const alt = koerperMerk.get(art);
+/** Mittlere Kantenlänge eines Käfigs (Median). */
+function kantenMedian(k: Verfeinert['kaefig']): number {
+  const kanten: number[] = [];
+  for (let e = 0; e < k.nE; e++) {
+    const a = k.eA[e]!;
+    const b = k.eB[e]!;
+    kanten.push(Math.hypot(k.xyz[3 * a]! - k.xyz[3 * b]!, k.xyz[3 * a + 1]! - k.xyz[3 * b + 1]!, k.xyz[3 * a + 2]! - k.xyz[3 * b + 2]!));
+  }
+  kanten.sort((a, b) => a - b);
+  return kanten[Math.floor(kanten.length / 2)]!;
+}
+
+/**
+ * Körperstand je Körperart und Feldstufe (gemerkt; die Fälle teilen ihn, keiner verändert ihn): A0, feines Netz (Stufe 3 von
+ * A0), Feldkäfig (K1 oder K2) und seine Unterteilung bis zum feinen Netz (gleiche Nummern).
+ */
+function koerperStand(art: KoerperArt, stufe: 1 | 2 = 1): KoerperStand {
+  const schluessel = `${art}/${stufe}`;
+  const alt = koerperMerk.get(schluessel);
   if (alt) return alt;
   const dok = koerperDokument(art, zufall(1));
   const abl = ableiten(dok, { stufen: 3 });
   const netz = feinNetz(abl.fein, feinesNetz(abl).flaechen);
-  const v = verfeinern1(abl.kaefig);
-  const u = unterteilung(v.kaefig, 2);
+  const v1 = verfeinern1(abl.kaefig);
+  const v = stufe === 2 ? verfeinern1(v1.kaefig) : v1;
+  const u = unterteilung(v.kaefig, 3 - stufe);
   const fein = anwenden3(u.grenze, v.kaefig.xyz);
   const ff = alleFlaechen(u.stufen[u.stufen.length - 1]!.kaefig);
-  const kanten: number[] = [];
-  for (let e = 0; e < v.kaefig.nE; e++) {
-    const a = v.kaefig.eA[e]!;
-    const b = v.kaefig.eB[e]!;
-    kanten.push(Math.hypot(v.kaefig.xyz[3 * a]! - v.kaefig.xyz[3 * b]!, v.kaefig.xyz[3 * a + 1]! - v.kaefig.xyz[3 * b + 1]!, v.kaefig.xyz[3 * a + 2]! - v.kaefig.xyz[3 * b + 2]!));
-  }
-  kanten.sort((a, b) => a - b);
-  const stand = { dok, abl, netz, v, fein, ff, h1: kanten[Math.floor(kanten.length / 2)]! };
-  koerperMerk.set(art, stand);
+  const stand = { dok, abl, netz, v, fein, ff, h1: kantenMedian(v1.kaefig), hFeld: kantenMedian(v.kaefig) };
+  koerperMerk.set(schluessel, stand);
   return stand;
 }
 
@@ -86,9 +98,10 @@ function koerperStand(art: KoerperArt): KoerperStand {
  * `verlaengerung`: Das Feld misst den Abstand zur Linie samt ihrer Verlängerung über den Mundwinkel hinaus (auf der Haut, in
  * Feldradien), damit hinter dem Mundwinkel so viel Haut im Feld liegt wie über und unter der Lippe.
  */
-export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form, opt: { verlaengerung?: number } = {}): EinsatzFall | { name: string; fehler: string } | null {
+export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form, opt: { verlaengerung?: number; stufe?: 1 | 2 } = {}): EinsatzFall | { name: string; fehler: string } | null {
   const name = `${art}/${anfang}/${form}`;
-  const { dok, abl, netz, v, fein, ff, h1 } = koerperStand(art);
+  const stufe = opt.stufe ?? 1;
+  const { dok, abl, netz, v, fein, ff, h1, hFeld } = koerperStand(art, stufe);
   const vorlage = GRUNDKOERPER.includes(art) ? null : vorlageVon(art as 'rex' | 'langhals' | 'robbe');
   const roh = maulLinien(dok, art, maulBezug(art, dok, vorlage), hautAusNetz(abl), anfang, form, 'kurz', 'gleich', zufall(3));
   if ('fehler' in roh) return null;
@@ -97,7 +110,7 @@ export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form, opt: { 
   const l = { ...roh, oben: linieAufHaut(abl, roh.oben) };
   const auf = linieAufNetz(netz, l.oben);
   const d = flaechenAbstand(fein, ff, v.kaefig.nF, opt.verlaengerung ? [...auf.lagen, ...verlaengern(netz, auf.lagen, opt.verlaengerung * 3 * h1)] : auf.lagen);
-  const feld = feldMitGerademRand(v.kaefig, d, 3 * h1, h1);
+  const feld = feldMitGerademRand(v.kaefig, d, 3 * h1, hFeld, stufe === 2 ? 2 * M_MAX : M_MAX);
   // feine Dreiecke der rechten Hälfte von M (Blöcke der Stufe-1-Flächen; je Viereck zwei Dreiecke in `feinNetz`)
   const block = ff.length / v.kaefig.nF;
   const dreiecke: number[] = [];
@@ -115,7 +128,7 @@ export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form, opt: { 
   const karte = karteBauen({ dreiecke: schnitt.dreiecke, punkte: netz.punkte, nPunkte: netz.punkte.length / 3, doppel: schnitt.doppel, pfad });
   let ziel: V3[] | null = null;
   const lippenZiel = () => (ziel ??= abtasten3(l.oben, 64) as V3[]);
-  return { name, dok, abl, netz, maulLinie: l.oben, linie: auf.lagen, lippenZiel, hautAbstand, v, feinFlaechen: ff, feinK1: Float64Array.from(fein), h1, feld, feldDreiecke: dreiecke, pfad, schnitt, karte };
+  return { name, dok, abl, netz, maulLinie: l.oben, linie: auf.lagen, lippenZiel, hautAbstand, v, stufe, feinFlaechen: ff, feinK1: Float64Array.from(fein), h1: hFeld, feld, feldDreiecke: dreiecke, pfad, schnitt, karte };
 }
 
 /** Verlängerung einer Linie über ihr Ende hinaus auf der Haut: Schritte in der letzten Richtung, je Schritt auf das Netz gelegt. */
