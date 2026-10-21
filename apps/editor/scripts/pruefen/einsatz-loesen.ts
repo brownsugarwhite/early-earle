@@ -11,7 +11,7 @@ import { unterteilung } from '../../../../packages/shape/src/subdivision/catmull
 import { anwenden3 } from '../../../../packages/shape/src/subdivision/matrix';
 import { einsatzFall } from '../../../../packages/shape/src/kern/pruefen/einsatzFall';
 import { ankerVon, feinNetz } from '../../../../packages/shape/src/kern/einsatz/flaeche';
-import { lippeAnpassen, lippenKurve } from '../../../../packages/shape/src/kern/einsatz/lippe';
+import { lippeAnpassen, lippenKurve, lippenPunkt } from '../../../../packages/shape/src/kern/einsatz/lippe';
 import { a0Netz, einsatzLoesen, einsatzMessen } from '../../../../packages/shape/src/kern/einsatz/loesen';
 import { einsatzTopologie } from '../../../../packages/shape/src/kern/einsatz/topologie';
 
@@ -29,8 +29,10 @@ for (const name of FAELLE) {
   const f = einsatzFall(art, anfang, form);
   if (!f || 'fehler' in f) continue;
   const linie = f.lippenZiel();
-  const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie });
-  const fit = lippeAnpassen(linie, t.m, t.lippenAnteile);
+  const gitter = (process.env.GITTER ?? 'schleifen') as 'schleifen' | 'kernring';
+  const ende = gitter === 'kernring' ? 'falte' : 'ecke';
+  const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie, gitter });
+  const fit = lippeAnpassen(linie, t.m, t.lippenAnteile, { ende });
   const g = einsatzLoesen(t, f.v.kaefig, a0Netz(f.v.kaefig, 2), fit.punkte, process.env.WULST ? { wulst: Number(process.env.WULST) } : {});
   const ms = einsatzMessen(g, t, f.v.kaefig, f.feld, fit.punkte);
   // feine Netze auf Stufe 3: A0 (= K1) und A
@@ -50,7 +52,7 @@ for (const name of FAELLE) {
   const bereich = t.bereich;
   const block = flA.length / g.kaefig.nF;
   const waerme = new Float32Array(feinA.length / 3).fill(Number.NaN);
-  const kurve = lippenKurve(fit.punkte, 32);
+  const kurve = lippenKurve(fit.punkte, 32, ende);
   const kurveL = kurve.map((p): V3 => [p[0], p[1], -p[2]]);
   const zuZug = (p: V3, zug: V3[]) => {
     let best = Infinity;
@@ -76,15 +78,26 @@ for (const name of FAELLE) {
         waerme[p] = im ? -d - 1e-6 : d;
       }
   }
-  // Ausschnitt: Feld M (Käfigpunkte des Einsatzes) mit Rand
+  // Ausschnitt: Feld M (Käfigpunkte des Einsatzes) mit Rand; mit NAH = k ein Würfel um die Lippenspitze (k letzte Spannen)
   const lo = [Infinity, Infinity, Infinity];
   const hi = [-Infinity, -Infinity, -Infinity];
-  for (let i = t.nAlt; i < g.kaefig.n; i++) for (let d = 0; d < 3; d++) {
-    lo[d] = Math.min(lo[d]!, g.kaefig.xyz[3 * i + d]!);
-    hi[d] = Math.max(hi[d]!, g.kaefig.xyz[3 * i + d]!);
-  }
-  daten.push({ p1: b64(new Float32Array(fein1)), t1: b64(tri(fl1)), pA: b64(new Float32Array(feinA)), tA: b64(tri(flA)), w: b64(waerme), lo, hi, linie: linie.flat() });
-  texte.push(`<b>${name}</b> · m ${t.m} · Haut max ${ms.hautMax.toFixed(2)} px (99 % ${ms.hautP99.toFixed(2)}) · Normale max ${ms.normaleMax.toFixed(1)}° (99 % ${ms.normaleP99.toFixed(1)}°) · Knick ${ms.falten.toFixed(0)}° (A0 ${ms.faltenA0.toFixed(0)}°) · Wulst ${ms.wulst.toFixed(2)} px · Lippe ${Math.max(fit.fehler.seite, fit.fehler.front, fit.fehler.top).toFixed(2)} px`);
+  if (process.env.NAH) {
+    const sp = lippenPunkt(fit.punkte, t.m, ende);
+    const c = fit.punkte[t.m]!;
+    const u = fit.punkte[t.m - 1]!;
+    const r = Number(process.env.NAH) * Math.hypot(c[0] - u[0], c[1] - u[1], c[2] - u[2]);
+    for (let d = 0; d < 3; d++) {
+      lo[d] = sp[d]! - r;
+      hi[d] = sp[d]! + r;
+    }
+    lo[2] = Math.max(0, sp[2]! - r);
+  } else
+    for (let i = t.nAlt; i < g.kaefig.n; i++) for (let d = 0; d < 3; d++) {
+      lo[d] = Math.min(lo[d]!, g.kaefig.xyz[3 * i + d]!);
+      hi[d] = Math.max(hi[d]!, g.kaefig.xyz[3 * i + d]!);
+    }
+  daten.push({ p1: b64(new Float32Array(fein1)), t1: b64(tri(fl1)), pA: b64(new Float32Array(feinA)), tA: b64(tri(flA)), w: b64(waerme), lo, hi, nah: !!process.env.NAH, linie: linie.flat() });
+  texte.push(`<b>${name}</b> · ${gitter} · m ${t.m} · Haut max ${ms.hautMax.toFixed(2)} px (99 % ${ms.hautP99.toFixed(2)}) · Normale max ${ms.normaleMax.toFixed(1)}° (99 % ${ms.normaleP99.toFixed(1)}°) · Knick ${ms.falten.toFixed(0)}° (A0 ${ms.faltenA0.toFixed(0)}°) · Wulst ${ms.wulst.toFixed(2)} px · Lippe ${Math.max(fit.fehler.seite, fit.fehler.front, fit.fehler.top).toFixed(2)} px`);
 }
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:10px;font:12px -apple-system,Helvetica,sans-serif;background:#f4efe6}.k{margin:0 0 12px 0}canvas{background:#fff;border:1px solid #d8cfc0;margin-right:4px}h1{font-size:15px;margin:0 0 6px}</style></head><body>
 <h1>Teil A, A7 — Haut des Einsatzes gelöst (Kiefer gleich, zu) · Abnahme offen</h1><div style="margin-bottom:6px">je Fall: A0 (ohne Maul) · A (mit Einsatz) · Wärmebild |A − A0| (grün ≤ 0,25 px, gelb ≤ 0,5, orange ≤ 1, rot darüber; blau = Lippenband) · Zebra auf A · dünn blau: gezeichnete Linie</div>
@@ -102,7 +115,7 @@ function bild(cv, pos, tri, F, art, waerme) {
   for (let i = 0; i < n; i++) P.set(dreh(pos[3*i], pos[3*i+1], pos[3*i+2]), 3 * i);
   // Ausschnitt aus dem Quader des Einsatzes (gedreht)
   let lo = [Infinity, Infinity], hi = [-Infinity, -Infinity];
-  for (const x of [F.lo[0], F.hi[0]]) for (const y of [F.lo[1], F.hi[1]]) for (const z of [-F.hi[2], F.hi[2]]) { const q = dreh(x, y, z); lo = [Math.min(lo[0], q[0]), Math.min(lo[1], q[1])]; hi = [Math.max(hi[0], q[0]), Math.max(hi[1], q[1])]; }
+  for (const x of [F.lo[0], F.hi[0]]) for (const y of [F.lo[1], F.hi[1]]) for (const z of (F.nah ? [F.lo[2], F.hi[2]] : [-F.hi[2], F.hi[2]])) { const q = dreh(x, y, z); lo = [Math.min(lo[0], q[0]), Math.min(lo[1], q[1])]; hi = [Math.max(hi[0], q[0]), Math.max(hi[1], q[1])]; }
   const r = 0.1 * Math.max(hi[0] - lo[0], hi[1] - lo[1]); lo = [lo[0] - r, lo[1] - r]; hi = [hi[0] + r, hi[1] + r];
   for (let t = 0; t < tri.length; t += 3) { const a = tri[t], b = tri[t+1], c = tri[t+2]; const ux = P[3*b]-P[3*a], uy = P[3*b+1]-P[3*a+1], uz = P[3*b+2]-P[3*a+2], vx = P[3*c]-P[3*a], vy = P[3*c+1]-P[3*a+1], vz = P[3*c+2]-P[3*a+2]; const nx = uy*vz-uz*vy, ny = uz*vx-ux*vz, nz = ux*vy-uy*vx; for (const p of [a, b, c]) { N[3*p] += nx; N[3*p+1] += ny; N[3*p+2] += nz; } }
   const s = Math.min(W / (hi[0] - lo[0]), H / (hi[1] - lo[1])), ox = (W - s * (hi[0] - lo[0])) / 2 - s * lo[0], oy = (H + s * (hi[1] - lo[1])) / 2 + s * lo[1];

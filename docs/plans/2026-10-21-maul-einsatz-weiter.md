@@ -153,3 +153,7 @@ Gute Fälle: Kugel/Ei/Birne „mittel“ und „hoch“ (4,4–9,8° am Mundwink
   (positiv, linear genau: gibt die Ziel-Lage wieder, wo sie gültig ist; faltenfrei, weil der Rand konvex bleibt). Dazu die
   Lippenstellen zum Mundwinkel hin auf h stufen und das Feld hinter dem Mundwinkel verlängern, wo es für zwei, drei Quadrate
   nicht reicht.
+- **Bilder** (Nahaufnahme um die Lippenspitze, je Fall A0 · Einsatz · Abstand zu A0 · Zebra):
+  `docs/progress/editor/e1-mundwinkel-schleifengitter-2026-10-21.png` (Zebra reißt am Mundwinkel — die Falte) gegen
+  `docs/progress/editor/e1-mundwinkel-kernring-2026-10-21.png` (Streifen laufen glatt durch; dafür Haut 0,7–1,3 px statt 0,2–0,5,
+  weil die konforme Reihenzahl kleiner ist). Skript `apps/editor/scripts/pruefen/einsatz-loesen.ts` mit `GITTER=kernring NAH=4`.
