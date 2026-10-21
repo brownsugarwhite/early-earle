@@ -189,6 +189,27 @@ await page.waitForTimeout(300);
 await page.keyboard.press('Escape');
 await ruhig();
 pruefe(JSON.stringify((await dok()).profile) === vorEsc && !(await schleifen()).grs, 'S, Zeiger, Esc: Dokument wie vorher');
+// GG: Gleiten entlang der Form — der Loop wandert zwischen seinen Nachbarn, Knotenzahl und Umrisse bleiben
+const dVorGG = await deltasJetzt();
+const vGG = await verlauf();
+const kVorGG = loopKnoten(await dok(), id);
+const nSeite = (await dok()).profile.seite.knoten.length;
+await page.mouse.move(box.x + cx, box.y + cy);
+await page.keyboard.press('g');
+await page.keyboard.press('g');
+for (let i = 1; i <= 6; i++) await page.mouse.move(box.x + cx + 4 * i, box.y + cy - 4 * i, { steps: 2 });
+await page.waitForTimeout(400);
+const ggText = await page.locator('[data-schleife-grs]').getAttribute('data-schleife-grs').catch(() => null);
+pruefe(!!ggText && ggText.includes('gleitet'), `G G: „${ggText}“`);
+await page.keyboard.press('Enter');
+await ruhig();
+const kNachGG = loopKnoten(await dok(), id);
+const dNachGG = await deltasJetzt();
+const mehrGG = Math.max(...['seite', 'front', 'top'].map((a) => (dNachGG[a] ?? 0) - (dVorGG[a] ?? 0)));
+pruefe(Math.hypot(kNachGG.a.x - kVorGG.a.x, kNachGG.a.y - kVorGG.a.y) > 1e-4 && (await dok()).profile.seite.knoten.length === nSeite && (await verlauf()) === vGG + 1 && mehrGG <= 0.5, `G G, Enter: Loop geglitten (Rückenknoten ${((Math.hypot(kNachGG.a.x - kVorGG.a.x, kNachGG.a.y - kVorGG.a.y)) * PX).toFixed(1)} px), Knoten ${nSeite}, ein Schritt, Δ +${mehrGG.toFixed(2)} px`);
+pruefe((await schleifen()).gewaehlt === id, `nach dem Gleiten bleibt der Loop gewählt (${(await schleifen()).gewaehlt})`);
+await page.keyboard.press('Meta+z');
+await ruhig();
 // proportional: S 1,3 mit O — die Nachbar-Loops bewegen sich, aber weniger
 await page.keyboard.press('Escape');
 await page.mouse.move(box.x + p0[0], box.y + p0[1]);

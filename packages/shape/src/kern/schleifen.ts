@@ -5,9 +5,9 @@
 // Ringnummern: Sie rücken topologisch mit (der neue Ring bekommt das Mittel seiner Nachbarn), nie nach Lage.
 import type { V2 } from '../bezier';
 import type { Dokument, KaefigDelta, Pose } from '../dokument';
-import { type Profil, einfuegen, loeschen, naechsterAufProfil, segmente } from '../profil';
+import { type Profil, einfuegen, exaktLoeschbar, loeschen, naechsterAufProfil, segmente } from '../profil';
 import { spantenPunktEinfuegen } from '../spanten';
-import { type Ableitung, type SchleifenRing, kernLeiter, schleifenStationen, spineAnteile, stationenAusLeiter } from './ableiten';
+import { type Ableitung, type SchleifenRing, kernLeiter, schleifenStationen, spineAnteile, stationenAusLeiter, zugBei } from './ableiten';
 
 /**
  * Ort eines neuen Loops: Sprosse in der Seitenansicht (Profil-Einheiten; Rücken o, Bauch u) und — wenn der Körper Loop-Ringe
@@ -403,4 +403,44 @@ export function schleifenAufloesen(dok: Dokument, N: number): Dokument {
   const { schleifen: _alt, ...ohneListe } = d;
   void _alt;
   return { ...ohneListe, profile: { ...d.profile, seite: ohne(d.profile.seite), top: ohne(d.profile.top), front: ohne(d.profile.front) } };
+}
+
+/** Gleiten (GG) vorbereitet: das Dokument ohne den Loop, seine Leiter, die Anteile aller übrigen Ringe, Lage und Nachbarn. */
+export type Gleiten = { id: string; ohne: Dokument; ringe: number[]; R: number; N: number; f0: number; fVor: number; fNach: number };
+
+/**
+ * GG wie Blenders „Edge Slide“: Loop `id` herausnehmen (exakte Umkehrung) und zwischen seinen Nachbarringen an einer anderen
+ * Stelle der Wirbelsäule wieder einsetzen — der Umriss bleibt genau derselbe. Null für einen geformten Loop (seine Knoten
+ * lassen sich nicht exakt herausnehmen) oder ohne eingefrorene Stationen.
+ */
+export function schleifeGleitenVorbereiten(dok: Dokument, id: string, N: number): Gleiten | null {
+  // geformt? Ein Knoten, den G/S/R bewegt hat, ist kein unveränderter Teilungspunkt mehr
+  for (const pr of [dok.profile.seite, dok.profile.top, dok.profile.front]) for (let i = 0; i < pr.knoten.length; i++) if (pr.knoten[i]!.schleife === id && !exaktLoeschbar(pr, i)) return null;
+  const nr = schleifenRingeAusDokument(dok);
+  const meiner = nr?.ringe.find((r) => r.id === id);
+  if (!nr || !meiner) return null;
+  const ohne = schleifeLoeschen(dok, id, { ring: meiner.ring, R: nr.R, N });
+  const l = kernLeiter(ohne);
+  const g = ohne.kaefig?.stationen;
+  if (!g) return null;
+  const ringe = [...spineAnteile(l, stationenAusLeiter(l, g.ringe)), ...schleifenStationen(ohne, l).map((s) => s.f)].sort((a, b) => a - b);
+  const lAlt = kernLeiter(dok);
+  const f0 = schleifenStationen(dok, lAlt).find((s) => s.id === id)?.f;
+  if (f0 === undefined) return null;
+  let k = 0;
+  while (k < ringe.length && ringe[k]! < f0) k++;
+  if (k < 1 || k >= ringe.length) return null;
+  return { id, ohne, ringe, R: nr.R - 1, N, f0, fVor: ringe[k - 1]!, fNach: ringe[k]! };
+}
+
+/** Loop an Anteil f der Wirbelsäule (zwischen seinen Nachbarn; am Rand 5 % Abstand) wieder einsetzen. */
+export function schleifeGleiten(g: Gleiten, f: number): Dokument | null {
+  const rand = 0.05 * (g.fNach - g.fVor);
+  const fz = Math.min(g.fNach - rand, Math.max(g.fVor + rand, f));
+  const l = kernLeiter(g.ohne);
+  const st = stationenAusLeiter(l, [fz])[0]!;
+  let k = 0;
+  while (k < g.ringe.length && g.ringe[k]! < fz) k++;
+  const r = schleifeEinfuegen(g.ohne, { o: zugBei(l.ruecken, st.a), u: zugBei(l.bauch, st.b), ring: { ring: k, R: g.R, N: g.N } }, g.id);
+  return r?.dok ?? null;
 }

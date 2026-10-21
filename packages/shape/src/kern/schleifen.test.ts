@@ -8,7 +8,7 @@ import { kernLeiter, schleifenStationen, ziehen } from './ableiten';
 import { abstandFlaeche, editorBauen, editorPlan, imAblauf } from './pruefen/extremMessung';
 import { extremKoerper } from './pruefen/extremreihe';
 import { feinesNetz } from './pruefstand';
-import { punktMitRing, ringGeruest, ringSteht, schleifeEinfuegen, schleifeLoeschen, schleifenAufloesen, schleifenEinfuegen, schleifenOrt, schleifenOrtBei, schleifenRingeAusDokument } from './schleifen';
+import { punktMitRing, ringGeruest, ringSteht, schleifeEinfuegen, schleifeGleiten, schleifeGleitenVorbereiten, schleifeLoeschen, schleifenAufloesen, schleifenEinfuegen, schleifenOrt, schleifenOrtBei, schleifenRingeAusDokument } from './schleifen';
 import { spantEinfuegen } from '../spanten';
 import { faltenNachZonenRoehre } from './pruefen/zonen';
 
@@ -288,6 +288,39 @@ describe('V6 Loops im Kern: ein Ring je Loop, Knoten formneutral', () => {
     expect(auf.profile.seite.knoten.some((k) => k.schleife)).toBe(false);
     expect(auf.profile.seite.knoten).toHaveLength(ins.dok.profile.seite.knoten.length);
     expect(auf.kaefig!.deltas).toEqual(deltas);
+  }, 60_000);
+
+  it('GG: ein Loop gleitet zwischen seinen Nachbarn — der Umriss bleibt genau, zurück an der alten Stelle wie vorher; geformte gleiten nicht', () => {
+    const bau = ablauf('langhals', HEUTE);
+    const abl = bau.stand.abl;
+    const N = abl.vorlage.N;
+    const ins = schleifenEinfuegen(bau.dok, ringGeruest(abl), 12, 1, 0.5, true)!;
+    const bau2 = editorBauen(ins.dok, HEUTE, bau.stand);
+    const id = ins.ids[0]!;
+    const gl = schleifeGleitenVorbereiten(bau2.dok, id, N)!;
+    expect(gl).not.toBeNull();
+    expect(gl.f0).toBeGreaterThan(gl.fVor);
+    expect(gl.f0).toBeLessThan(gl.fNach);
+    // weiter nach vorn gleiten: der Umriss bleibt dieselbe Kurve, der Loop liegt dazwischen
+    const vorn = schleifeGleiten(gl, gl.fVor + 0.2 * (gl.fNach - gl.fVor))!;
+    expect(kurvenAbstand(bau.dok.profile.seite, vorn.profile.seite)).toBeLessThanOrEqual(1e-9);
+    expect(vorn.profile.seite.knoten.filter((k) => k.schleife === id)).toHaveLength(2);
+    const bau3 = editorBauen(vorn, HEUTE, bau2.stand);
+    expect(bau3.stand.abl.schleifenRinge).toEqual(bau2.stand.abl.schleifenRinge);
+    // zurück an die alte Stelle: wie vorher (Anteil der Wirbelsäule → Sprosse ist bis etwa 1e-6 umkehrbar: 0,0005 px)
+    const zurueck = schleifeGleiten(gl, gl.f0)!;
+    for (const a of ['seite', 'top', 'front'] as const) {
+      const p0 = bau2.dok.profile[a].knoten;
+      const p1 = zurueck.profile[a].knoten;
+      expect(p1, a).toHaveLength(p0.length);
+      const d = Math.max(...p0.map((k, i) => Math.max(Math.hypot(k.p.x - p1[i]!.p.x, k.p.y - p1[i]!.p.y), Math.hypot(k.ein.x - p1[i]!.ein.x, k.ein.y - p1[i]!.ein.y), Math.hypot(k.aus.x - p1[i]!.aus.x, k.aus.y - p1[i]!.aus.y))));
+      expect(d, a).toBeLessThanOrEqual(1e-6);
+    }
+    // geformt (Rückenknoten verschoben): kein Gleiten
+    const s = bau2.dok.profile.seite;
+    const i = s.knoten.findIndex((k) => k.schleife === id);
+    const geformt: Dokument = { ...bau2.dok, profile: { ...bau2.dok.profile, seite: { ...s, knoten: s.knoten.map((k, q) => (q === i ? { ...k, p: { x: k.p.x + 0.01, y: k.p.y } } : k)) } } };
+    expect(schleifeGleitenVorbereiten(geformt, id, N)).toBeNull();
   }, 60_000);
 
   // Tor des Plans (V6), nicht erreicht — Register „Befunde aus V6“: Ein Loop gibt Auflösung; wo der Körper zwischen zwei Ringen

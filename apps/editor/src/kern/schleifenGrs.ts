@@ -16,8 +16,9 @@ import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
 import { szene } from '../three/instanz';
 import { istTrackpad } from '../viewports/ansicht2d';
+import { type Gleiten, kernLeiter, schleifeGleiten, schleifeGleitenVorbereiten, stationenAusLeiter, zugBei } from '@ee/shape/kern';
 import { aktuellesNetz } from './netzStand';
-import { ringMitte, useSchleife } from './schleifenAuswahl';
+import { ringMitte, schleifeWaehlen, useSchleife } from './schleifenAuswahl';
 import { schleifenAktiv } from './schleifenWerkzeug';
 
 const PX = 461;
@@ -46,6 +47,8 @@ type Lauf = {
   radius: number;
   radSumme: number;
   hoehe: number;
+  /** GG: Gleiten entlang der Form (Loop heraus und zwischen seinen Nachbarn wieder hinein), Bildschirmrichtung je Anteil */
+  gleiten: { g: Gleiten; pro: V2 } | null;
 };
 let lauf: Lauf | null = null;
 let kontextBis = 0;
@@ -89,7 +92,7 @@ export function schleifeGrsStarten(art: Art): boolean {
   }
   const start = zeiger.bekannt ? { x: zeiger.x - rect.left, y: zeiger.y - rect.top } : { x: c.x + 40, y: c.y };
   const ys = pr.seite.knoten.map((k) => k.p.y);
-  lauf = { art, id, basis: pr, auswahl: { seite, front, top }, seite, top, front, c, j, start, vorher: start, jetzt: start, winkel: 0, sperre: null, zahl: '', radius: 0, radSumme: 0, hoehe: Math.max(...ys) - Math.min(...ys) };
+  lauf = { art, id, basis: pr, auswahl: { seite, front, top }, seite, top, front, c, j, start, vorher: start, jetzt: start, winkel: 0, sperre: null, zahl: '', radius: 0, radSumme: 0, hoehe: Math.max(...ys) - Math.min(...ys), gleiten: null };
   ui.setzeAuswahl({ seite, front, top }, 'seite');
   ed.beginGeste();
   anmelden();
@@ -185,9 +188,59 @@ function gewichteIn(pr: Profil, gewaehlt: number[], radius: number, abb: Abb | n
 /** Mindest-Einfluss eines Loops als Vielfaches seiner größten Verschiebung (längs des Umrisses) */
 const MINDEST_EINFLUSS = 3;
 
+/** GG: vom Verschieben ins Gleiten wechseln (Blender: G zweimal). false, wenn der Loop geformt ist. */
+function gleitenStarten(l: Lauf): boolean {
+  const ed = useEditor.getState();
+  const start = ed.gesteStart ?? ed.dok;
+  const N = aktuellesNetz()?.netz.ringe?.N ?? 16;
+  const g = schleifeGleitenVorbereiten(start, l.id, N);
+  if (!g) {
+    useUi.getState().zeigeHinweis('Ein geformter Loop gleitet nicht — Gleiten geht, solange er auf dem Umriss liegt (⌘Z bis dahin)');
+    return false;
+  }
+  // Richtung der Wirbelsäule am Loop auf dem Bildschirm (y nach oben), je Anteil der Wirbelsäule
+  const lt = kernLeiter(g.ohne);
+  const [a, b] = stationenAusLeiter(lt, [g.fVor, g.fNach]);
+  const mitte = (s: { a: number; b: number }) => {
+    const o = zugBei(lt.ruecken, s.a);
+    const u = zugBei(lt.bauch, s.b);
+    return { x: (o.x + u.x) / 2, y: (o.y + u.y) / 2 };
+  };
+  const m0 = mitte(a!);
+  const m1 = mitte(b!);
+  const dx = (m1.x - m0.x) / (g.fNach - g.fVor);
+  const dy = (m1.y - m0.y) / (g.fNach - g.fVor);
+  const [j0, j1, j2, j3] = l.j;
+  l.gleiten = { g, pro: { x: j0 * dx + j1 * dy, y: j2 * dx + j3 * dy } };
+  if (ed.gesteStart) ed.setzeDokument(ed.gesteStart);
+  l.start = l.jetzt;
+  l.vorher = l.jetzt;
+  l.zahl = '';
+  return true;
+}
+
+function gleitenAktualisieren(l: Lauf): void {
+  const gl = l.gleiten!;
+  const n = zahlLesen(l.zahl);
+  let f: number;
+  if (Number.isFinite(n)) f = gl.g.fVor + n * (gl.g.fNach - gl.g.fVor);
+  else {
+    const su = l.jetzt.x - l.start.x;
+    const sv = -(l.jetzt.y - l.start.y);
+    const p2 = gl.pro.x * gl.pro.x + gl.pro.y * gl.pro.y;
+    f = gl.g.f0 + (p2 > 1e-9 ? (su * gl.pro.x + sv * gl.pro.y) / p2 : 0);
+  }
+  const neu = schleifeGleiten(gl.g, f);
+  if (neu) useEditor.getState().setzeDokument(neu);
+  const rand = 0.05 * (gl.g.fNach - gl.g.fVor);
+  const anteil = (Math.min(gl.g.fNach - rand, Math.max(gl.g.fVor + rand, f)) - gl.g.fVor) / (gl.g.fNach - gl.g.fVor);
+  useSchleife.setState({ text: `G G Loop gleitet · ${l.zahl ? `${l.zahl.replace('.', ',')}▏` : `${Math.round(anteil * 100)} %`} zwischen den Nachbarn` });
+}
+
 function aktualisieren(): void {
   const l = lauf;
   if (!l) return;
+  if (l.gleiten) return gleitenAktualisieren(l);
   const ui = useUi.getState();
   l.radius = ui.proportional.an ? ui.pinselRadius * l.hoehe : 0;
   const { seite, top, front, wert } = abbildungen(l);
@@ -208,11 +261,14 @@ function aktualisieren(): void {
 }
 
 export function schleifeGrsBestaetigen(): void {
-  if (!lauf) return;
+  const l = lauf;
+  if (!l) return;
   abmelden();
   lauf = null;
   useSchleife.setState({ text: null });
   useEditor.getState().endeGeste();
+  // nach dem Gleiten stehen die Knoten des Loops an anderer Stelle der Zeichnungen: Auswahl neu
+  if (l.gleiten) schleifeWaehlen(l.id);
 }
 
 export function schleifeGrsAbbrechen(): void {
@@ -252,6 +308,12 @@ function taste(e: KeyboardEvent): void {
     return aktualisieren();
   }
   if (!e.altKey && !e.shiftKey && (k === 'g' || k === 's' || k === 'r')) {
+    // G zweimal: Gleiten entlang der Form (wie Blenders „Edge Slide“)
+    if (!e.repeat && k === 'g' && l.art === 'g' && !l.gleiten) {
+      gleitenStarten(l);
+      return aktualisieren();
+    }
+    if (l.gleiten) return;
     if (!e.repeat && k !== l.art) {
       l.art = k;
       l.start = l.jetzt;

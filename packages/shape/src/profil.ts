@@ -343,6 +343,15 @@ export function loeschen(pr: Profil, i: number): Profil {
   return achsenRegeln({ ...pr, knoten });
 }
 
+/** Ist Knoten i ein unveränderter de-Casteljau-Teilungspunkt (Löschen stellt die Kurve exakt her)? */
+export function exaktLoeschbar(pr: Profil, i: number): boolean {
+  const n = pr.knoten.length;
+  const ia = pr.art === 'geschlossen' ? (i - 1 + n) % n : i - 1;
+  const ib = pr.art === 'geschlossen' ? (i + 1) % n : i + 1;
+  if (ia < 0 || ib >= n) return false;
+  return casteljauUmkehr(pr.knoten[ia]!, pr.knoten[i]!, pr.knoten[ib]!) !== null;
+}
+
 /**
  * Umkehrung einer de-Casteljau-Teilung: Ist m der Teilungspunkt des Segments a → b bei t (unverändert), liefert sie die
  * Griffe des ungeteilten Segments; sonst null. t = |m.ein| / (|m.ein| + |m.aus|).

@@ -1456,3 +1456,9 @@ die die Zeichnung als Wahrheit behält und auf V3/V5 aufsetzt:
   175° — der Editor verhindert das über den Mindest-Einfluss, der Kern selbst nicht (Register).
 - **Prüfungen:** `kern/schleifen.test.ts` 16 grün + 1 Tor (`it.fails`), 525 Kern-Tests grün; Editor `schleife.mjs`,
   `schleife-grs.mjs`, `modal-2d.mjs`, `v0-tasten.mjs` grün. Bilder `docs/progress/editor/v6-schleife-*.jpg`.
+
+- **Nachtrag 21.10. spätabends — GG (Gleiten):** G zweimal auf einem gewählten Loop lässt ihn entlang der Form zwischen seinen
+  Nachbarn gleiten (Blender „Edge Slide“): Er wird exakt herausgenommen und an der neuen Stelle der Wirbelsäule wieder
+  eingesetzt (`schleifeGleitenVorbereiten`, `schleifeGleiten`), der Umriss bleibt genau dieselbe Kurve; zurück an der alten
+  Stelle bis 0,0003 px wie vorher. Ein geformter Loop (Knoten kein unveränderter de-Casteljau-Punkt mehr, `exaktLoeschbar`)
+  gleitet nicht (Hinweis). Editor: `schleife-grs.mjs` — Loop geglitten, Knotenzahl gleich, ein Undo-Schritt, Δ unverändert.

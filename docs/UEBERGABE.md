@@ -26,7 +26,8 @@ sich jeder Form intelligent anpassen.
   liegende, Front samt Spanten für stehende Ringe wie am Hals), alle formneutral (de Casteljau), und ein eigener Käfigring
   durch die beiden Seitenknoten. Pinsel- und Posen-Deltas, Bezugs-Käfige und Augen rücken mit.
 - **Sehen, wählen, formen:** Loops sind orange Ringe auf der Bühne; ⌥-Klick wählt einen (seine Knoten in den Blättern sind
-  dann gewählt). Mit dem Zeiger über der Bühne: G verschieben, S skalieren (Y nur Höhe, Z nur Breite), R kippen; X/Y/Z,
+  dann gewählt). Mit dem Zeiger über der Bühne: G verschieben, G G gleiten (entlang der Form), S skalieren (Y nur Höhe, Z nur
+  Breite), R kippen; X/Y/Z,
   Zahlen, O proportional, Enter/Klick, Esc/Rechtsklick/⌘Z wie in den Blättern. Ein Loop wirkt mindestens über das Dreifache
   seiner Verschiebung (glatte Taille statt Kerbe).
 - **Mit Maul oder Beinen** lösen sich Loops in gewöhnliche Knoten auf (ein Undo-Schritt, Hinweis) — dort gibt es noch keine
@@ -54,8 +55,8 @@ Sichthülle, **V3** G/S/R in den Blättern, **V0**, **V1** Prüfstand „Extremr
 
 ## Offen / nächster Schritt
 
-- V6: GG (bestehenden Loop entlang der Form gleiten), jeden Käfigring per ⌥-Klick zum Loop machen, G/S/R auf Netzknoten der
-  Bühne; Loops auf „Teile“, mit Maul oder Beinen (V7). Tor „Einfügen formneutral ≤ 0,1 px“ verfehlt (Register).
+- V6: jeden Käfigring per ⌥-Klick zum Loop machen, G/S/R auf Netzknoten der Bühne, geformte Loops gleiten lassen; Loops auf
+  „Teile“, mit Maul oder Beinen (V7). Tor „Einfügen formneutral ≤ 0,1 px“ verfehlt (Register).
 - V5 offen: Lage der Linien genauer (0,3 px), Härte als Rundungsbreite, Grat, Zug schneller.
 - Danach V7 (ein Körper), V8 (Vektor-Ausgabe), V9 (Abnahme).
 - Abnahme V0, V1, V3, V4, V5, V6; V2 nicht abgenommen.
