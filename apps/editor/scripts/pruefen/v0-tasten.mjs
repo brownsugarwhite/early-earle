@@ -31,10 +31,15 @@ const nachCmdR = await page.evaluate(() => ({ marke: window.__marke ?? null, let
 pruefe(nachCmdR.marke === 42, `⌘R: Seite nicht neu geladen (Merker ${nachCmdR.marke})`);
 pruefe(!!nachCmdR.letzte?.verhindert, `⌘R: Standardaktion verhindert (${JSON.stringify(nachCmdR.letzte)})`);
 pruefe(String(nachCmdR.hinweis?.text ?? nachCmdR.hinweis ?? '').includes('⌘R'), `⌘R ohne Körper unter dem Zeiger: Hinweis „${JSON.stringify(nachCmdR.hinweis)}“`);
+// V6: ⌘R hat die Loop-Operation gestartet (auch ohne Körper unter dem Zeiger); Esc beendet sie, dann startet ⌃R sie neu
+await page.keyboard.press('Escape');
+await page.waitForTimeout(200);
 await page.keyboard.press('Control+r');
 await page.waitForTimeout(600);
 const nachCtrlR = await page.evaluate(() => ({ marke: window.__marke ?? null, letzte: window.__letzte ?? null }));
 pruefe(nachCtrlR.marke === 42 && !!nachCtrlR.letzte?.verhindert, '⌃R: wie bisher, Seite bleibt');
+await page.keyboard.press('Escape');
+await page.waitForTimeout(200);
 // [ ] mit ⌥ wie auf der deutschen Tastatur (⌥5 = [, ⌥6 = ])
 const r0 = await page.evaluate(() => window.__stores.ui.getState().pinselRadius);
 await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: '[', code: 'Digit5', altKey: true, bubbles: true })));

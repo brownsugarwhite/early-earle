@@ -126,6 +126,7 @@ export class Renderer3D {
   private linien: LineSegments | null = null;
   /** Reifen (M3): Ringe der Spanten auf dem Körper (Segmente mit Farbe je Punkt) und Perlen an den Spant-Knoten */
   private reifen: LineSegments | null = null;
+  private schleifenVorschau: LineSegments | null = null;
   /** Rig der Stufe „Posen & Leben“ (Plan 5.2): Knochen als Linien, Griffe als Perlen, ohne Tiefentest */
   private rigLinien: LineSegments | null = null;
   private readonly rigPerlen: Mesh[] = [];
@@ -796,6 +797,28 @@ export class Renderer3D {
       this.reifen = new LineSegments(g, new LineBasicNodeMaterial({ vertexColors: true, depthTest: false, transparent: true, opacity: 0.95 }));
       this.reifen.renderOrder = 4;
       this.szene.add(this.reifen);
+    }
+    this.anfordern();
+  }
+
+  /** V6 (⌘R): Zahl der Segmente der Loop-Vorschau (Prüfskripte). */
+  schleifenVorschauSegmente(): number {
+    return (this.schleifenVorschau?.geometry.getAttribute('position')?.count ?? 0) / 2;
+  }
+
+  /** V6 (⌘R): Vorschau neuer Loops als Liniensegmente (Welt), gelb und immer sichtbar über der Fläche; null blendet aus. */
+  setzeSchleifenVorschau(punkte: Float32Array | null) {
+    if (this.schleifenVorschau) {
+      this.szene.remove(this.schleifenVorschau);
+      this.schleifenVorschau.geometry.dispose();
+      this.schleifenVorschau = null;
+    }
+    if (punkte && punkte.length) {
+      const g = new BufferGeometry();
+      g.setAttribute('position', new BufferAttribute(punkte, 3));
+      this.schleifenVorschau = new LineSegments(g, new LineBasicNodeMaterial({ color: 0xffd400, depthTest: false, transparent: true, opacity: 0.95 }));
+      this.schleifenVorschau.renderOrder = 5;
+      this.szene.add(this.schleifenVorschau);
     }
     this.anfordern();
   }

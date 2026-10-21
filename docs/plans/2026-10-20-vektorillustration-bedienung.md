@@ -1410,3 +1410,23 @@ die die Zeichnung als Wahrheit behält und auf V3/V5 aufsetzt:
 - **Nächster Schritt V6.2:** ⌘R im Editor — der Hauptthread hat keine Ableitung, deshalb liefert der Worker je Ring die
   Sprosse (Seitenansicht) und die Loop-Ringe; Vorschau, Anzahl (Rad, Bild↑↓, Ziffern), Gleiten, ein Undo-Schritt; Maul oder
   Beine nehmen die Loop-Ringe heraus (`ringLoeschen`, Hinweis).
+
+### Stand V6.2 — ⌘R im Editor (21.10. abends, Abnahme offen)
+
+- **⌘R und ⌃R** (`apps/editor/src/kern/schleifenWerkzeug.ts`) ziehen Loops ein wie Blenders „Loop Cut and Slide“: Über der Bühne
+  (Käfigfläche unter dem Zeiger → Ringpaar und Anteil) oder dem Seitenblatt (Lage längs der Sprossenmitten) zeigt eine gelbe
+  Vorschau die Loops — auf der Bühne als Ringe auf dem Körper (aus den Ringverläufen des Netzes gemischt), in der Seite die
+  Sprosse mit den beiden künftigen Knoten, im Top ein Strich. Mausrad (Trackpad gesammelt), Bild↑/↓, + / − oder eine Ziffer
+  = Anzahl 1–16. Mehrere setzt der Klick gleichmäßig; ein Loop gleitet nach dem ersten Klick zwischen seinen beiden Ringen bis
+  zum zweiten Klick (Enter ebenso), Esc/Rechtsklick setzt ihn dann in die Mitte; vorher bricht Esc/Rechtsklick ab, ebenso ⌘Z
+  und Fokusverlust. Ein Undo-Schritt. Die Dock-Zeile zeigt, was entsteht.
+- **Daten:** Der Worker schickt mit dem Netz die Ringe der Röhre (`netz.ringe`: Leiterketten, Anteile je Ring, Loop-Ringe,
+  Verlauf je Ring; 0,2 ms je Bau). Eingefügt wird im Kern (`schleifenEinfuegen`).
+- **Reifen** (Spanten auf der Bühne) setzt jetzt das Werkzeug S mit einem Klick auf den Körper (vorher ⌃R); E2E
+  `kern-ablauf.spec.ts` entsprechend umgestellt.
+- **Geprüft im Editor** (`apps/editor/scripts/pruefen/schleife.mjs`, Langhals aus der Startkugel): Vorschau 128 Segmente je Loop,
+  drei Loops → R 24 → 27, Seite 17 → 23, Top 6 → 9 Knoten, ein Undo-Schritt, Δ höchstens +0,2 px; Gleiten (Anteil folgt der
+  Maus), Esc = Mitte, Rechtsklick vorher = nichts, ⌃R, Seitenblatt; keine Seitenfehler. `v0-tasten.mjs` und `modal-2d.mjs`
+  grün. Bilder `docs/progress/editor/v6-schleife-{vorschau,drei-zebra,seitenblatt}-langhals-2026-10-21.jpg`.
+- **Noch nicht:** Loops nach dem Setzen auf der Bühne sehen und wählen (⌥-Klick), G/S/R auf Loops, proportional über
+  Nachbar-Loops (V6.3); Loops mit Maul oder Beinen (Hinweis).

@@ -8,7 +8,7 @@ import { berechneLayout } from './layout/layout';
 import { editorApi } from './library/speicher';
 import { useEditor, vorschauBeenden, vorschauLaeuft } from './state/editorStore';
 import { pinselRing } from './kern/pinsel';
-import { reifenNeuAmZeiger } from './kern/reifen';
+import { schleifenStarten } from './kern/schleifenWerkzeug';
 import { abspielenUmschalten } from './posen/ueberblenden';
 import { modalAbbrechen, modalAktiv, modalStarten, proportionalTaste } from './editing/modal/modal';
 import { STUFEN } from './stamm/stufen';
@@ -113,10 +113,11 @@ export function useTastatur() {
         if (pp) ui.pauspapierAendern({ sichtbar: !pp.sichtbar });
         else ui.zeigeHinweis('Kein Bogen: PNG auf ein Blatt ziehen oder in der Tafel „Bogen hinlegen“');
       } else if (cmd && !e.altKey && !e.shiftKey && k === 'r') {
-        // M3: neuer Reifen am Zeiger auf der Bühne (Blender ⌃R). Plan 20.10., V0: ⌘R genauso — vorher lud ⌘R das Fenster
-        // neu (Electron-Menü bzw. Browser) und ungespeicherte Arbeit war weg; neu laden geht mit ⇧⌘R
+        // Plan 20.10., V6: ⌘R und ⌃R ziehen Loops ein wie Blenders „Loop Cut and Slide“ (Vorschau, Anzahl mit dem Rad, Gleiten;
+        // `kern/schleifenWerkzeug.ts`). Einen Reifen (Spant) setzt das Werkzeug S mit einem Klick auf den Körper. V0: ⌘R lädt
+        // das Fenster nicht mehr neu (Electron-Menü bzw. Browser); neu laden geht mit ⇧⌘R
         e.preventDefault();
-        if (!reifenNeuAmZeiger()) ui.zeigeHinweis('⌘R: Zeiger auf den Körper in der Bühne halten (neu laden: ⇧⌘R)');
+        if (!schleifenStarten()) ui.zeigeHinweis('⌘R: Loops in der Stufe Körper (neu laden: ⇧⌘R)');
       } else if (!cmd && !e.altKey && k === 'q') {
         // B7 (Entwurf §6): Q / ⇧Q schalten Editor und Posen der Reihe nach durch
         const ed = useEditor.getState();

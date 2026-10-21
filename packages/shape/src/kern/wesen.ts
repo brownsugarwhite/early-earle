@@ -19,7 +19,8 @@ import { HOEHLE_STANDARD, type HoehlenAuge, type HoehlenTopologie, augapfelEcke,
 import { RUNDMAUL_STANDARD, type RundmaulLage, rundmaulAchse, rundmaulDicke, rundmaulEintrag, rundmaulKandidaten, rundmaulLage, rundmaulPose, rundmaulRegion, rundmaulSichtbar, rundmaulZaehne, rundmaulZentrum } from './rundmaul';
 import { DESKRIPTOR_FLOATS, deskriptoren } from './deskriptoren';
 import { kastenSpanten } from './kasten';
-import { ringSegmente } from './reifen';
+import { feinKette, ringSegmente } from './reifen';
+import { type RingGeruest, ringGeruest } from './schleifen';
 import { ABWEICHUNG_PX, blattAbweichungen } from './abweichung';
 import { erreichbarkeit } from './grundkoerper/huelle';
 import { type NetzSicht, netzSicht } from './netzSicht';
@@ -189,6 +190,13 @@ export type ReifenDaten = {
   knotenUnten: number[][];
 };
 
+/**
+ * V6 (⌘R): Ringe der Röhre für Loops — das Gerüst (Leiterketten, Anteile je Ring, Loop-Ringe) und je Ring sein Verlauf auf
+ * der Fläche (`proRing` Punkte, geschlossen, posiert wie das Netz). `aktiv`: Der Körper baut Loop-Ringe (Röhre ohne Maul
+ * und Beine); sonst setzt ⌘R nur Knoten.
+ */
+export type RingDaten = RingGeruest & { verlauf: Float32Array; proRing: number; aktiv: boolean };
+
 export type WesenNetz = {
   positionen: Float32Array;
   normalen: Float32Array;
@@ -214,6 +222,8 @@ export type WesenNetz = {
   atlas: AtlasDaten | null;
   treffer: TrefferDaten | null;
   reifen: ReifenDaten | null;
+  /** V6: Ringe für ⌘R (nur Röhre) */
+  ringe?: RingDaten | null;
   /**
    * Kieferknopf (M3): rechter Mundwinkel (posiert) und Maullänge (Welt) bei Maul, sonst null. `rig` (Plan 5.2) für die
    * Griffe im Fressen-Tab: Gelenk und Mundwinkel in Ruhe (Seitenansicht, mit Hebung), Schnauzenrichtung (`vorn` = Vorzeichen
@@ -1849,6 +1859,33 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     }
     reifen = { liste: abl.reifen.map((r) => ({ spant: r.spant, ring: r.ring })), ringLagen, verlauf: Float32Array.from(segs), verlaufStart: Uint32Array.from(starts), knoten, knotenUnten };
   }
+  // V6 (⌘R): Ringe der Röhre — Gerüst für den Ort neuer Loops und je Ring sein Verlauf auf der Fläche (Vorschau)
+  let ringe: RingDaten | null = null;
+  if (plan.koerper !== 'teile' && abl.vorlage.kaefig.n === abl.kaefig.n) {
+    const { R, N } = abl.vorlage;
+    const ketten: Uint32Array[] = [];
+    for (let i = 0; i < R; i++) {
+      const pkt: number[] = [];
+      for (let j = 0; j < N; j++) {
+        const k = feinKette(abl.unterteilung, abl.kaefig, i * N + j, i * N + ((j + 1) % N));
+        for (let q = 0; q + 1 < k.length; q++) pkt.push(k[q]!);
+      }
+      ketten.push(Uint32Array.from(pkt));
+    }
+    const proRing = ketten[0]?.length ?? 0;
+    if (proRing && ketten.every((k) => k.length === proRing)) {
+      const verlauf = new Float32Array(3 * R * proRing);
+      ketten.forEach((k, i) =>
+        k.forEach((p, q) => {
+          const o = 3 * (i * proRing + q);
+          verlauf[o] = fein[3 * p]!;
+          verlauf[o + 1] = fein[3 * p + 1]! + hebung;
+          verlauf[o + 2] = fein[3 * p + 2]!;
+        }),
+      );
+      ringe = { ...ringGeruest(abl), verlauf, proRing, aktiv: maul === 'aus' && beine === 'aus' };
+    }
+  }
   let maulGriff: WesenNetz['maul'] = null;
   let gewichtFarben: Float32Array | null = null;
   // Rundmaul: Ringlage für die Griffe (aus dem Aufsatz; unsichtbar: Mittelpunkt mit Radius 0)
@@ -1910,6 +1947,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     atlas: stil === 'fest' ? atlas : null,
     treffer,
     reifen,
+    ringe,
     maul: maulGriff,
     gewichtFarben,
     rundmaul: rundmaulInfo,

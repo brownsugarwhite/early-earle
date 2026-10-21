@@ -17,6 +17,7 @@ import { kantenBauen, kantenDreiecke, kantenVerlauf, mitKanten } from '../kanten
 import { maulUmrisseSetzen, useWirbelAnzeige, wirbelBauen } from '../wirbel/wirbelKoerper';
 import { schnittBauen } from '../schnitte/schnittKoerper';
 import { rundBauen } from '../rund/rundBau';
+import { schleifenMessung } from '../kern/schleifenWerkzeug';
 import { aktuellesNetz, kernAnimieren, kernBauen, kernMaulAktiv, useKernAnzeige, weiterePose } from '../kern/kernBau';
 import { ZAHN_FARBE, zahnMarkenAnzeigen } from '../kern/zahnGriffe';
 import { useZahnPruefung } from '../kern/zahnPruefStand';
@@ -29,7 +30,7 @@ import { PALETTEN } from './wesenLook';
 
 declare global {
   interface Window {
-    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number; netzLagen?: () => number[] | null; poseLippen?: () => unknown; projizieren?: (feld: 'creation' | 'seite' | 'front' | 'top', p: [number, number, number]) => [number, number] | null; netzPunkt?: (np: NetzPunkt) => [number, number, number] | null; strahlFeld?: (feld: 'creation' | 'seite' | 'front' | 'top', px: number, py: number, beideSeiten?: boolean) => { punkt: [number, number, number]; richtung: [number, number, number] } | null; netzSicht?: () => unknown; teile?: () => unknown; koerperBaum?: () => unknown };
+    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number; netzLagen?: () => number[] | null; poseLippen?: () => unknown; projizieren?: (feld: 'creation' | 'seite' | 'front' | 'top', p: [number, number, number]) => [number, number] | null; netzPunkt?: (np: NetzPunkt) => [number, number, number] | null; strahlFeld?: (feld: 'creation' | 'seite' | 'front' | 'top', px: number, py: number, beideSeiten?: boolean) => { punkt: [number, number, number]; richtung: [number, number, number] } | null; netzSicht?: () => unknown; teile?: () => unknown; koerperBaum?: () => unknown; schleifen?: () => unknown };
   }
 }
 
@@ -67,8 +68,10 @@ export function Szene3D() {
           const n = aktuellesNetz();
           if (!n) return null;
           const w = n.netz;
-          return { vorlage: w.treffer?.vorlage ?? null, augen: w.augen, zaehne: w.zaehne !== null, lippenBand: w.lippenBand, ecken: w.positionen.length / 3, ableitung: w.info.ableitung, reifen: w.reifen ? { liste: w.reifen.liste, knoten: w.reifen.knoten } : null, maul: w.maul, lippen: w.info.maul ?? null, gewichtFarben: w.gewichtFarben !== null, rundmaul: w.rundmaul, summe: w.positionen.reduce((a, b) => a + b, 0) };
+          return { vorlage: w.treffer?.vorlage ?? null, augen: w.augen, zaehne: w.zaehne !== null, lippenBand: w.lippenBand, ecken: w.positionen.length / 3, ableitung: w.info.ableitung, reifen: w.reifen ? { liste: w.reifen.liste, knoten: w.reifen.knoten } : null, maul: w.maul, lippen: w.info.maul ?? null, gewichtFarben: w.gewichtFarben !== null, rundmaul: w.rundmaul, summe: w.positionen.reduce((a, b) => a + b, 0), ringe: w.ringe ? { R: w.ringe.R, schleifen: w.ringe.schleifen, aktiv: w.ringe.aktiv } : null };
         },
+        // V6.2: laufendes ⌘R (Ringpaar, Anteil, Anzahl, Gleiten) und die Zahl der Vorschau-Segmente auf der Bühne (E2E)
+        schleifen: () => ({ lauf: schleifenMessung.lauf(), vorschau: r.schleifenVorschauSegmente() }),
         // M3: Kieferknopf und Augen in Feldpixeln der Bühne (E2E)
         griffe: () => ({ kiefer: kieferPixel(), augen: augenPixel() }),
         // Phase 2 M4: je Zahn Kiefer, Index, Seite und die Mitte zwischen Fuß und Spitze in Feldpixeln der Bühne (E2E)

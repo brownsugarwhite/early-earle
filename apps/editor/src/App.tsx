@@ -14,6 +14,7 @@ import { Hinweis } from './ui/Hinweis';
 import { KontextMenue } from './ui/KontextMenue';
 import { ViewportGrund, ViewportOber } from './viewports/Viewport';
 import { useModalKontext } from './editing/modal/modal';
+import { useSchleifenKontext } from './kern/schleifenWerkzeug';
 import { useZeigerMerker } from './editing/modal/zeiger';
 
 export function App() {
@@ -28,6 +29,7 @@ export function App() {
   useKantenTasten();
   useZeigerMerker();
   useModalKontext();
+  useSchleifenKontext();
   return (
     <>
       <Glasfilter />

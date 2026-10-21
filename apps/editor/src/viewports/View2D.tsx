@@ -60,6 +60,7 @@ import { NetzHoverZeichnung, NetzKnotenZeichnung, NetzZeichnung, naechsterUnter,
 import { TeilFlaechen, TeilKurvenZeichnung, TeilTreffer, TeilWirbelsaeulen } from '../teile/TeilEbene';
 import { zugProportional } from '../editing/modal/modal';
 import { ModalZeichnung } from '../editing/modal/ModalZeichnung';
+import { SchleifenZeichnung } from '../kern/SchleifenZeichnung';
 
 /** Saum ab dieser Abweichung (px bei 461 px je Kachel; Plan 9.8) */
 const SAUM_AB = 2;
@@ -703,6 +704,7 @@ export function View2D({ ansicht, w, h }: Props) {
       {ebene === 'zaehne' && <ZahnZeichnung ansicht={ansicht} bild={bild} />}
       <BreitenKreis ansicht={ansicht} bild={bild} />
       <ModalZeichnung ansicht={ansicht} bild={bild} w={w} h={h} />
+      <SchleifenZeichnung ansicht={ansicht} bild={bild} />
       {/* gewählter Spant der Bauweise „rund“ als Schnitt: über allem, damit seine Punkte greifbar bleiben */}
       <RundSpantSchnitt ansicht={ansicht} bild={bild} />
       {rahmen && (

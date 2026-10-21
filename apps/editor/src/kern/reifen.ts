@@ -2,7 +2,8 @@
 // Käfigring, der auf die Station des Spants gerastet ist (Kern: `stationenWaehlen`); seine Perlen sind die Ringpunkte
 // der Spant-Knoten. Anzeige, Treffer und Ziehen laufen im Hauptthread aus `WesenNetz.reifen`; jede Änderung geht in
 // `dok.spanten` — dieselben Daten, die Front/Back als Kurve zeigen. Perle ziehen = Querschnitt formen (in der Ringebene),
-// Band ziehen = Reifen entlang der Achse schieben, ⌃R oder Werkzeug S auf dem Körper = neuer Reifen an der Stelle.
+// Band ziehen = Reifen entlang der Achse schieben, Werkzeug S auf dem Körper = neuer Reifen an der Stelle (⌘R/⌃R ziehen seit
+// V6 Loops ein, `schleifenWerkzeug.ts`).
 
 import { type SpantTeil, spantEinfuegen, spantKasten, spantTeilProfil, stelleVon, umwandeln, verschiebeKnoten, weltNachSpant } from '@ee/shape';
 import { type WesenNetz, mitTeilProfil } from '@ee/shape/kern';
@@ -317,7 +318,7 @@ export function reifenNeu(px: number, py: number): boolean {
   return reifenNeuBei(t.punkt[0] / n.skalierung);
 }
 
-/** ⌃R: neuer Reifen am zuletzt getroffenen Punkt der Bühne (Hover). */
+/** Neuer Reifen am zuletzt getroffenen Punkt der Bühne (Hover; bis V6 auf ⌃R). */
 export function reifenNeuAmZeiger(): boolean {
   const t = useTreffer.getState();
   const n = aktuellesNetz();

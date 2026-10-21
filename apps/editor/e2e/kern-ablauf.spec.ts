@@ -84,11 +84,13 @@ test('Körper: Seitenknoten ziehen, zwei Reifen per ⌃R, ⌥-Ecke, Perle ziehen
   await page.waitForTimeout(900);
   const d1 = await dok(page);
   expect(Math.max(...d1.profile.seite!.knoten.map((k) => k.p.y))).toBeGreaterThan(0.56);
-  // Reifen per ⌃R an zwei Stellen
+  // Reifen mit dem Werkzeug S (ohne Auswahl) per Klick auf den Körper an zwei Stellen (⌘R/⌃R ziehen seit V6 Loops ein)
   for (const fx of [0.42, 0.56]) {
+    await page.keyboard.press('Escape');
     await page.mouse.move(c.x + c.w * fx, c.y + c.h * 0.48);
     await page.waitForTimeout(250);
-    await page.keyboard.press('Control+r');
+    await page.keyboard.press('s');
+    await page.mouse.click(c.x + c.w * fx, c.y + c.h * 0.48);
     await page.waitForTimeout(700);
   }
   expect((await dok(page)).spanten?.length).toBe(2);
