@@ -681,3 +681,7 @@ Bögen auf der Planseite 20.10., „Stand V2“. Je Punkt der Schritt, der ihn a
   1e-15 bis 1e-5 verwackelt; kein Merker, keine Zufallszahl, keine zeitabhängige Verzweigung auf dem Weg; Node-Version
   erklärt es nicht (grün und rot mit 24.22). Ursache unbekannt; Code nicht geändert (keine blinde Wiederholung). Tritt es
   wieder auf: den Lauf auf CI mit Protokoll der Rasterwerte (Zellen, Treffer je Probe) wiederholen.
+- 21.10. abends: „Seitenlinie … folgt dem Verbreitern“ erstmals **lokal** rot, in einem vollen Lauf unter Last (98 Dateien
+  parallel); einzeln dreimal grün, der nächste volle Lauf grün. Also kein Plattform-, sondern ein Last-Effekt — der Test hängt
+  vermutlich an einer Zeitschranke oder einem zeitbegrenzten Suchschritt. Nicht geändert; beim nächsten Auftreten die
+  Zeitabhängigkeit im Versuch S0 suchen.
