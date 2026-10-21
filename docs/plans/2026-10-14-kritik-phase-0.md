@@ -680,8 +680,18 @@ Bögen auf der Planseite 20.10., „Stand V2“. Je Punkt der Schritt, der ihn a
 - Geprüft: lokal 0 von 8 Läufen rot (mit parallelen schweren Tests); die Fläche S0 bleibt gleich, wenn man die Eingabe um
   1e-15 bis 1e-5 verwackelt; kein Merker, keine Zufallszahl, keine zeitabhängige Verzweigung auf dem Weg; Node-Version
   erklärt es nicht (grün und rot mit 24.22). Ursache unbekannt; Code nicht geändert (keine blinde Wiederholung). Tritt es
-  wieder auf: den Lauf auf CI mit Protokoll der Rasterwerte (Zellen, Treffer je Probe) wiederholen.
+  wieder auf: den Lauf auf CI mit Protokoll der Rasterwerte (Zellen, Treffer je Probe) wiederholen (21.10. so umgesetzt, s. u.).
 - 21.10. früh: „Seitenlinie … folgt dem Verbreitern“ erstmals **lokal** rot, in einem vollen Lauf unter Last (98 Dateien
   parallel); einzeln dreimal grün, der nächste volle Lauf grün. Also kein Plattform-, sondern ein Last-Effekt — der Test hängt
   vermutlich an einer Zeitschranke oder einem zeitbegrenzten Suchschritt. Nicht geändert; beim nächsten Auftreten die
   Zeitabhängigkeit im Versuch S0 suchen.
+- 21.10. früh, wieder auf CI rot (Lauf zu 0367771b, wieder genau 46 von 49 Lücken, dieselben Front-Knoten). Gesucht und
+  **keine Zeitabhängigkeit gefunden**: Der ganze Weg (`flaecheS0` → `tigerKaefig`/`ringKontext`/`vorlageBei`/`spantAbtasten`/
+  `anZielAnpassen`/`unterteilenMehrfach`; `rasterAlle`/`strahlRaster`; `linie3d`/`aufFlaeche`/`treffer`) hat keine Zeit,
+  keinen Zufall, keine Wiederholung bis zu einer Frist; die Merker (WeakMap) hängen an frisch erzeugten Objekten. Lokal 16
+  parallele Läufe grün. Weil jede Probe für sich gesucht wird (ohne Bezug), sind 46 Lücken kein Folgefehler, sondern eine
+  falsche Fläche oder ein falsches Raster in diesem Lauf. Übrig bleibt eine lastabhängige Ursache unterhalb unseres Codes
+  (Zeitpunkt der Optimierung im Hintergrund). **Jetzt:** Der Test wiederholt sich bis zu zweimal (das Tor bleibt 0 Lücken) und
+  schreibt beim Auftreten einen Befund ins Protokoll — Treffer mit und ohne Raster an der ersten Lücke, NaN in der Fläche,
+  Rasterwerte, dieselbe Linie noch einmal und die Fläche neu im selben Prozess. Damit ist beim nächsten Mal sichtbar, ob
+  Fläche, Raster oder Linie abweicht und ob es im Prozess wiederholbar ist.
