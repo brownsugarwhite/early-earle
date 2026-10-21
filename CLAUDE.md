@@ -18,6 +18,10 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 > eine frische Sitzung mit Start-Prompt, Stand, nächsten Schritten, Skripten und Fallen: [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
 > Stand 21.10. (dritte Sitzung, abends): E2 mit Leiter — Haut-Tor 41 von 43, Mundwinkel 43 von 43 (Abnahme offen; Planseite
 > „Stand E2.6“, offen: Rex mittel gerade, Robbe hoch J).
+> **21.10. spätabends: Grundsatzfrage „Feldnetz statt Kernring?“** (Florian: Eleganz ist Grundvoraussetzung) — Recherche
+> [`docs/research/2026-10-21-feldnetz-oder-kernring.md`](docs/research/2026-10-21-feldnetz-oder-kernring.md): Empfehlung
+> Kernring einfrieren, Beweis F0 „Stücknetz im Maulfeld“ (Linien → Stücke → Ganzzahlen → Muster, ohne Richtungsfeld).
+> **Florians Entscheidung offen; bis dahin keine neue Sonderregel am Kernring.**
 
 - **2026-10-04: Prototyp 1 ist abgeschlossen** (Archiv-Branch `prototyp-1`). Er diente zum Lernen. Florian: „Der Prototyp war sehr gut und aufschlussreich und hat bewiesen, dass die Spielidee toll ist.“ Viele Entscheidungen sind gefallen; die Gesamtdynamik und einige grafische Elemente haben ihm gefallen.
 - **Jetzt beginnt die eigentliche Produktion mit dem finalen Look.** Grundlage wird **Florians neuer Plan mit neuem Hauptprompt**: Story, Charaktere und Map arbeitet er genauer aus und trägt sie in Dokumenten und Screenshots zusammen. Es folgen mehrere Runden und Iterationen.
@@ -262,6 +266,17 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Fund bitgleich. Haut-Tor 39 → 41 von 43 (Rex mittel J 0,13 px/27,4°, Robbe hoch gerade 0,21 px/7,3°, Robbe tief J 11,2°).
   Offen: Rex mittel gerade (Knick an der Kreuzung 29,6°, Tor 29,1°; örtlich A0 11°, Einsatz 26–30° auch bei J), Robbe hoch J
   (Engstelle 0,5 Feldkanten — zwei Leitern hintereinander oder als Grenze). Bild `docs/progress/editor/e2-leiter-2026-10-21.jpg`.
+- **2026-10-21 spätabends: Recherche „Feldnetz oder Kernring?“** ([`docs/research/2026-10-21-feldnetz-oder-kernring.md`](docs/research/2026-10-21-feldnetz-oder-kernring.md);
+  Florians Zwischenfrage nach dem Vorschlag einer Nebensession). Befund: Der Kernring legt das halbe Maulfeld auf ein einziges
+  Rechteck (`einsatz/karte.ts`) — daraus folgen Wurzelverzerrung am Mundwinkel, Stauchung schmaler Streifen und fehlende
+  Merkmale im Innern; fast alle der gut 20 Sonderregel-Schalter (und ≈ 15 feste Regeln) gleichen eine dieser Folgen aus. Die
+  Richtung der Nebensession (Netz richtet sich nach Linien, Pole von selbst) stimmt; am elegantesten ist für uns aber das
+  **Stücknetz** ohne Richtungsfeld: Feldrand, Naht, Maullinie samt Verlängerung über den Mundwinkel und Falten zerlegen das Feld
+  in Stücke, Ganzzahlen mit festem Feldrand (wie QuadMixer 2019), Füllung nach bewiesenen Mustern (Takayama 2014, Tarini 2022);
+  der Mundwinkel wird regulär wie bei den „zwei Rechtecken“, die Muster lösen deren Kantenzahl-Problem, die Leiter ist das
+  kleinste Dreier-Fünfer-Muster. Kein Werkzeug kann den festen Feldrand (QuadWild: alles neu, GPL, C++). Nicht für den ganzen
+  Körper jetzt; Zielbild „Das Liniennetz ist das Netz“. Empfehlung: Kernring einfrieren, Beweis F0 (3–5 Arbeitstage), gesamt bis
+  zum heutigen Stand der Tore 2–3 Wochen. Entscheidung offen.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

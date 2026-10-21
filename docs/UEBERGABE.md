@@ -3,6 +3,13 @@
 Branch `claude/editor-grundlayout`, PR mit Auto-Fix. **Diese Datei ist der Einstieg für eine frische Sitzung.** Alles zu Teil A
 liegt bisher nur im Kern (`packages/shape/src/kern/einsatz/`); im Editor ist davon noch nichts zu sehen.
 
+> **Nachtrag 21.10. spätabends — Grundsatzfrage offen:** Florian stellt den Kernring wegen der vielen Sonderregeln in Frage
+> (Eleganz ist Grundvoraussetzung). Recherche: [`docs/research/2026-10-21-feldnetz-oder-kernring.md`](research/2026-10-21-feldnetz-oder-kernring.md)
+> — Empfehlung: Kernring einfrieren (keine neue Sonderregel, die zwei offenen Fälle bleiben offen), dann Beweis F0
+> „Stücknetz im Maulfeld“ (Linien → Stücke → Ganzzahlen → Muster; Bauplan und Kriterien in Abschnitt 6 der Recherche).
+> **Bis Florian entschieden hat, nicht an den offenen Kernring-Fällen weiterbauen;** der Start-Prompt unten gilt erst, wenn er
+> sich für den Kernring entscheidet.
+
 ## Start der frischen Sitzung
 
 Zum Einfügen (Florian):
