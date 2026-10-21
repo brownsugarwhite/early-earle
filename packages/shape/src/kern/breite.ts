@@ -4,7 +4,7 @@
 
 import type { V2 } from '../bezier';
 import type { Dokument } from '../dokument';
-import { pfadAbtasten, vollerPfad } from '../profil';
+import { pfadNachLaenge, vollerPfad } from '../profil';
 
 export type Breiten = { top: (x: number) => number; front: (y: number) => number; topMax: number; frontMax: number };
 
@@ -25,11 +25,19 @@ function schnittMax(poly: readonly V2[], achse: 'x' | 'y', wert: number): number
   return out;
 }
 
+/** Proben je Profil-Einheit der Silhouetten-Polygone (≈ 3 px Sehne bei Skalierung 1; Bogenhöhe unter 0,05 px). */
+const PROBEN_JE_EINHEIT = 160;
+
+/** Polygon einer Silhouette (Welt, mit Skalierung), nach Bogenlänge abgetastet — dasselbe für `tabellierteBreiten`. */
+export function silhouettenPolygon(dok: Dokument, ansicht: 'top' | 'front'): V2[] {
+  const s = dok.skalierung;
+  return pfadNachLaenge(vollerPfad(dok.profile[ansicht]), PROBEN_JE_EINHEIT).map((p) => ({ x: p.x * s, y: p.y * s }));
+}
+
 /** Silhouettenbreiten (Welt, mit Skalierung). Außerhalb der Silhouette: −∞ (kein Schnitt). */
 export function silhouettenBreite(dok: Dokument): Breiten {
-  const s = dok.skalierung;
-  const top = pfadAbtasten(vollerPfad(dok.profile.top), 40).map((p) => ({ x: p.x * s, y: p.y * s }));
-  const front = pfadAbtasten(vollerPfad(dok.profile.front), 40).map((p) => ({ x: p.x * s, y: p.y * s }));
+  const top = silhouettenPolygon(dok, 'top');
+  const front = silhouettenPolygon(dok, 'front');
   return breitenAusPolygonen(top, front);
 }
 

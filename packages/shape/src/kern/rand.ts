@@ -85,11 +85,19 @@ export type BeruehrOptionen = {
    * das Berühren ohnehin nicht neu.
    */
   hart?: boolean;
+  /**
+   * V6 (Plan 20.10.): Lage je Ring in der Kette ohne Loop-Ringe (Loop-Ringe gebrochen zwischen ihren Nachbarn). Loop-Ringe
+   * (nicht ganzzahlig) wählen nicht mit, wer die Front berührt, und bekommen das Wachstum der Glocke an ihrer Lage — so ändert
+   * ein eingefügter Loop die übrigen Ringe nicht. Ohne Angabe wie bisher (Lage = Index).
+   */
+  lage?: readonly number[];
 };
 
 export function frontBeruehren(sprossen: readonly Sprosse[], vorlagen: readonly Vorlage[], W: readonly number[], breiten: Breiten, art: FuelleArt, huelle?: (y: number) => number, opt: BeruehrOptionen = {}): Beruehrung {
-  const { gruppe, hart = false } = opt;
+  const { gruppe, hart = false, lage } = opt;
   const R = sprossen.length;
+  const zusatz = (i: number) => !!lage && !Number.isInteger(lage[i]!);
+  const li = (i: number) => (lage ? lage[i]! : i);
   const kurven = vorlagen.map((q) => dicht(q));
   let y0 = Infinity;
   let y1 = -Infinity;
@@ -118,7 +126,7 @@ export function frontBeruehren(sprossen: readonly Sprosse[], vorlagen: readonly 
     for (let i = 0; i < R; i++) {
       const r = reichweite(kurven[i]!, sprossen[i]!, W[i]!, y, front, breiten.top);
       reich.push(r);
-      heute = Math.max(heute, r);
+      if (!zusatz(i)) heute = Math.max(heute, r);
     }
     if (heute >= ziel - TOLERANZ) continue;
     // Plan S3: der Ring, der dort ohnehin am weitesten reicht und dessen Hülle an seinem Punkt das Ziel erlaubt; erlaubt
@@ -129,6 +137,7 @@ export function frontBeruehren(sprossen: readonly Sprosse[], vorlagen: readonly 
     let wahlV = 0.5;
     let wahlVoll = false;
     for (let i = 0; i < R; i++) {
+      if (zusatz(i)) continue;
       const sp = sprossen[i]!;
       const v = hoeheV(sp, y);
       if (v === null) continue;
@@ -172,7 +181,7 @@ export function frontBeruehren(sprossen: readonly Sprosse[], vorlagen: readonly 
       let g = 1;
       for (const d of nachfrage) {
         if (gruppe && gruppe[i] !== gruppe[d.i]) continue;
-        const dr = (i - d.i) / SIGMA_R;
+        const dr = (li(i) - li(d.i)) / SIGMA_R;
         if (Math.abs(dr) > 4) continue;
         const dv = (q.v[j]! - d.v) / SIGMA_V;
         g = Math.max(g, 1 + (d.g - 1) * Math.exp(-0.5 * (dr * dr + dv * dv)));

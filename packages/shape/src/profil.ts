@@ -27,6 +27,8 @@ export type Knoten = {
   haerte?: number;
   /** Lippenanfang (nur im Seitenumriss) */
   marke?: Marke;
+  /** V6: Knoten eines Loops (Kennung in `dok.schleifen`; Rücken und Bauch in der Seite, einer im Top) */
+  schleife?: string;
 };
 
 /** senkrecht: Spiegelung an u = 0 (Front); waagerecht: Spiegelung an v = 0 (Top). */
@@ -121,6 +123,25 @@ export function selbstschnitte(pr: Profil, proSegment = 12): number {
     }
   }
   return n;
+}
+
+/**
+ * Pfad nach Bogenlänge abgetastet: je Segment so viele gleichmäßige Schritte, wie seine Länge (Profil-Einheiten) mal
+ * `proEinheit` ergibt (mindestens `min`). Anders als `pfadAbtasten` (fest je Segment) hängt die Dichte nicht an den Knoten —
+ * ein formneutral eingefügter Knoten ändert das Polygon nur um Bruchteile eines Pixels (Plan 20.10., V6: mit 40 je Segment
+ * änderte der Top-Knoten eines Loops die Breiten des ganzen geteilten Segments).
+ */
+export function pfadNachLaenge(segs: readonly Kubik[], proEinheit: number, min = 8): V2[] {
+  const out: V2[] = [];
+  segs.forEach((seg, si) => {
+    const grob = pfadAbtasten([seg], 16);
+    let len = 0;
+    for (let i = 1; i < grob.length; i++) len += Math.hypot(grob[i]!.x - grob[i - 1]!.x, grob[i]!.y - grob[i - 1]!.y);
+    const n = Math.max(min, Math.ceil(len * proEinheit));
+    const pts = pfadAbtasten([seg], n);
+    for (let i = si === 0 ? 0 : 1; i < pts.length; i++) out.push(pts[i]!);
+  });
+  return out;
 }
 
 export function pfadAbtasten(segs: readonly Kubik[], proSegment: number): V2[] {
@@ -282,8 +303,8 @@ export function einfuegen(pr: Profil, s: number, t: number): { profil: Profil; i
 
 export function kannLoeschen(pr: Profil, i: number): boolean {
   if (istAchsKnoten(pr, i)) return false;
-  // Lippenanfänge gehören zum Maul (Maul-Tab: „Maul löschen“ bzw. Kiefer gleich)
-  if (pr.knoten[i]?.marke) return false;
+  // Lippenanfänge gehören zum Maul (Maul-Tab: „Maul löschen“ bzw. Kiefer gleich), Loop-Knoten zu ihrem Loop (V6)
+  if (pr.knoten[i]?.marke || pr.knoten[i]?.schleife) return false;
   const min = pr.art === 'geschlossen' ? MIN_KNOTEN_GESCHLOSSEN : MIN_KNOTEN_HALB;
   return pr.knoten.length > min && i >= 0 && i < pr.knoten.length;
 }
@@ -301,6 +322,16 @@ export function loeschen(pr: Profil, i: number): Profil {
   const a = pr.knoten[ia]!;
   const m = pr.knoten[i]!;
   const b = pr.knoten[ib]!;
+  // genau eingefügter Punkt (de Casteljau, unverändert): exakt umkehren — der Teilungsparameter steckt im Längenverhältnis
+  // seiner Griffe (Plan 20.10., V6: Loop einfügen + löschen stellt die Kurve her; die Näherung unten wich bis 1e-3 ab)
+  const exakt = casteljauUmkehr(a, m, b);
+  if (exakt) {
+    const knoten = pr.knoten.slice();
+    knoten[ia] = { ...a, aus: exakt.aus };
+    knoten[ib] = { ...b, ein: exakt.ein };
+    knoten.splice(i, 1);
+    return achsenRegeln({ ...pr, knoten });
+  }
   const proben = [...abtasten(segment(pr, ia), 16), ...abtasten(segment(pr, i), 16).slice(1)];
   const dA = laengeV(a.aus) > 1e-9 ? normiert(a.aus) : normiert(minus(m.p, a.p));
   const dB = laengeV(b.ein) > 1e-9 ? normiert(b.ein) : normiert(minus(m.p, b.p));
@@ -310,6 +341,26 @@ export function loeschen(pr: Profil, i: number): Profil {
   knoten[ib] = { ...b, ein: mal(dB, beta) };
   knoten.splice(i, 1);
   return achsenRegeln({ ...pr, knoten });
+}
+
+/**
+ * Umkehrung einer de-Casteljau-Teilung: Ist m der Teilungspunkt des Segments a → b bei t (unverändert), liefert sie die
+ * Griffe des ungeteilten Segments; sonst null. t = |m.ein| / (|m.ein| + |m.aus|).
+ */
+function casteljauUmkehr(a: Knoten, m: Knoten, b: Knoten): { aus: V2; ein: V2 } | null {
+  const le = laengeV(m.ein);
+  const la = laengeV(m.aus);
+  if (!(le > 1e-12 && la > 1e-12)) return null;
+  const t = le / (le + la);
+  const P0 = a.p;
+  const P3 = b.p;
+  const P1 = plus(P0, mal(a.aus, 1 / t));
+  const P2 = plus(P3, mal(b.ein, 1 / (1 - t)));
+  const [l, r] = teilen([P0, P1, P2, P3], t);
+  const tol = 1e-9 * Math.max(1, laengeV(minus(P3, P0)));
+  const gleich = (x: V2, y: V2) => Math.abs(x.x - y.x) <= tol && Math.abs(x.y - y.y) <= tol;
+  if (!gleich(l[3], m.p) || !gleich(minus(l[2], m.p), m.ein) || !gleich(minus(r[1], m.p), m.aus) || !gleich(minus(l[1], P0), a.aus) || !gleich(minus(r[2], P3), b.ein)) return null;
+  return { aus: minus(P1, P0), ein: minus(P2, P3) };
 }
 
 /** Grifflängen α, β für ein Segment p0 → p3 mit festen Richtungen, das die Proben bestmöglich trifft. */

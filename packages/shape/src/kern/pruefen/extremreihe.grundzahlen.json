@@ -668,26 +668,26 @@
   "art": "roehre",
   "fehler": null,
   "delta": [
-   3.75,
-   3.29,
+   3.68,
+   2.54,
    11.78
   ],
-  "frei": 178.5,
-  "ueber20": 58,
-  "kappe": 170.2,
+  "frei": 3.9,
+  "ueber20": 0,
+  "kappe": 177.9,
   "ansatz": 0,
-  "durchdringungen": 508,
+  "durchdringungen": 288,
   "knicke": 0,
   "schleifen": 0,
   "umriss": {
    "eigen": 0.31,
-   "haut": 0.99
+   "haut": 0.36
   },
   "linien": {
    "arten": [
     "reihe"
    ],
-   "kante": 1.54,
+   "kante": 1.57,
    "aufHaut": 1.61
   }
  },
@@ -1032,20 +1032,20 @@
   "art": "roehre",
   "fehler": null,
   "delta": [
-   1.23,
-   13.66,
+   1.33,
+   14.18,
    0.45
   ],
-  "frei": 179.7,
-  "ueber20": 184,
-  "kappe": 68.8,
+  "frei": 25.2,
+  "ueber20": 8,
+  "kappe": 15.8,
   "ansatz": 0,
-  "durchdringungen": 154,
+  "durchdringungen": 248,
   "knicke": 0,
   "schleifen": 0,
   "umriss": {
-   "eigen": 0.61,
-   "haut": 0.29
+   "eigen": 0.29,
+   "haut": 0.27
   }
  },
  {
@@ -1580,17 +1580,17 @@
   "delta": [
    3.82,
    75.07,
-   12.14
+   12.16
   ],
-  "frei": 55.8,
+  "frei": 55.5,
   "ueber20": 886,
   "kappe": 29,
   "ansatz": 0,
-  "durchdringungen": 416,
+  "durchdringungen": 422,
   "knicke": 0,
   "schleifen": 0,
   "umriss": {
-   "eigen": 0.28,
+   "eigen": 0.29,
    "haut": 0.42
   }
  },
@@ -1704,20 +1704,20 @@
   "art": "roehre",
   "fehler": null,
   "delta": [
-   5.56,
-   42.98,
+   5.42,
+   42.89,
    4.9
   ],
-  "frei": 114.3,
-  "ueber20": 559,
+  "frei": 78.3,
+  "ueber20": 449,
   "kappe": 32.5,
   "ansatz": 0,
-  "durchdringungen": 338,
-  "knicke": 1,
+  "durchdringungen": 226,
+  "knicke": 4,
   "schleifen": 0,
   "umriss": {
-   "eigen": 0.5,
-   "haut": 0.79
+   "eigen": 0.59,
+   "haut": 0.59
   }
  },
  {

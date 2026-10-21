@@ -949,7 +949,7 @@ function randStuecke(rand: { kante: readonly RandMarke[]; teil: readonly RandMar
 /** Optionen der Ableitung aus Dokument und Bauplan; `koerper`: Körper ohne Maul und Beine (nur dort wirkt `glatt`, S2). */
 function ableitOpt(dok: Dokument, plan: Partial<Bauplan>, koerper = false): Partial<AbleitOptionen> {
   const g = dok.kaefig?.stationen;
-  return { ...(g ? { stationen: g } : {}), ...(plan.fuehrend ? { fuehrend: plan.fuehrend } : {}), ...(plan.ring ? { ring: plan.ring } : {}), ...(koerper && plan.glatt ? GLATTE_HAUT : {}), ...(koerper && plan.fuelle ? { fuelle: plan.fuelle } : {}), ...(koerper && plan.umrisseExakt ? { umrisse: 'exakt' as const, ...(plan.umrisseOpt ? { umrisseOpt: plan.umrisseOpt } : {}) } : {}) };
+  return { ...(g ? { stationen: g } : {}), ...(plan.fuehrend ? { fuehrend: plan.fuehrend } : {}), ...(plan.ring ? { ring: plan.ring } : {}), ...(koerper && plan.glatt ? GLATTE_HAUT : {}), ...(koerper && plan.fuelle ? { fuelle: plan.fuelle } : {}), ...(koerper && plan.umrisseExakt ? { umrisse: 'exakt' as const, ...(plan.umrisseOpt ? { umrisseOpt: plan.umrisseOpt } : {}) } : {}), ...(koerper && dok.schleifen?.length ? { schleifen: true } : {}) };
 }
 
 /** S7.1: Teile des Netzes, die der Baum-Körper ersetzt. */
@@ -1174,7 +1174,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
   // Pose-Optionen (Winkel, Haps, Gelenk, Gewichte) bauen nicht um: sie wirken auf die gemerkte Ableitung (Fressen-Tab)
   const moEintraege = Object.entries(plan.maulOptionen ?? {}).filter(([k]) => !(MAUL_POSE_OPTIONEN as readonly string[]).includes(k));
   const moBau = moEintraege.length ? Object.fromEntries(moEintraege) : null;
-  const schluessel = JSON.stringify({ p: dokRoh.profile, s: dokRoh.spanten ?? null, ka: dokRoh.kanten ?? null, k: dokRoh.skalierung, st: stationenOhneTeile(dokRoh.kaefig?.stationen), ring: plan.ring ?? null, fu: plan.fuehrend ?? null, kasten: plan.kasten ?? null, linie: plan.maulLinie ?? null, mo: moBau, ba: plan.beinAnsaetze ?? null, gl: plan.glatt ?? false, fl: plan.fuelle ?? null, ue: plan.umrisseExakt ?? false, uo: plan.umrisseOpt ?? null });
+  const schluessel = JSON.stringify({ p: dokRoh.profile, s: dokRoh.spanten ?? null, ka: dokRoh.kanten ?? null, k: dokRoh.skalierung, st: stationenOhneTeile(dokRoh.kaefig?.stationen), ring: plan.ring ?? null, fu: plan.fuehrend ?? null, kasten: plan.kasten ?? null, linie: plan.maulLinie ?? null, mo: moBau, ba: plan.beinAnsaetze ?? null, gl: plan.glatt ?? false, fl: plan.fuelle ?? null, ue: plan.umrisseExakt ?? false, uo: plan.umrisseOpt ?? null, sl: dokRoh.schleifen ?? null });
   const gleich = stand !== null && stand.schluessel === schluessel;
   const letzte = stand && gleich ? stand : null;
   let abl: Ableitung;

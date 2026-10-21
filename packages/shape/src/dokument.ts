@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { type Knoten as ProfilKnoten, type Profil, START_RADIUS, startHalbkreis, startKreis } from './profil';
 
 const V2 = z.object({ x: z.number(), y: z.number() });
-const Knoten = z.object({ p: V2, ein: V2, aus: V2, art: z.enum(['glatt', 'ecke']), haerte: z.number().min(0).max(1).optional(), marke: z.enum(['maul', 'maulOben', 'maulUnten']).optional() });
+const Knoten = z.object({ p: V2, ein: V2, aus: V2, art: z.enum(['glatt', 'ecke']), haerte: z.number().min(0).max(1).optional(), marke: z.enum(['maul', 'maulOben', 'maulUnten']).optional(), schleife: z.string().optional() });
 
 export const ProfilSchema = z.discriminatedUnion('art', [
   z.object({ art: z.literal('geschlossen'), knoten: z.array(Knoten).min(2) }),
@@ -251,6 +251,7 @@ const DokumentFelder = {
   zaehne: z.object({ oben: ZahnreiheSchema, unten: ZahnreiheSchema }).optional(),
   kanten: z.array(KanteSchema).optional(),
   spanten: z.array(SpantSchema).optional(),
+  schleifen: z.array(z.object({ id: z.string(), vorhanden: z.array(V2).optional() })).optional(),
   hauptspant: z.number().min(0).max(1).optional(),
   wirbelsaeule: Linie3Schema.optional(),
   posenProfile: z.record(z.string(), z.object({ seite: ProfilSchema.optional() })).optional(),
@@ -499,6 +500,11 @@ export type Dokument = {
   zaehne?: Zaehne;
   kanten?: Kante[];
   spanten?: Spant[];
+  /**
+   * V6: Loops (⌘R) — je Loop eine Kennung; seine Knoten (Rücken und Bauch in der Seite, einer im Top) tragen sie (`schleife`),
+   * der Käfig bekommt je Loop einen Ring genau durch Rücken- und Bauchknoten (nur Querschnitt aus der Hülle)
+   */
+  schleifen?: { id: string; /** Knoten (Profil-Einheiten), die schon vor dem Loop da waren: Löschen nimmt ihnen nur die Kennung */ vorhanden?: { x: number; y: number }[] }[];
   /** Stelle des Hauptspants (Front); fehlt = dickste Stelle */
   hauptspant?: number;
   /** S4: eigene Kurven für verdeckte Stücke von Teilen (fehlt = die Hülle rät sie) */

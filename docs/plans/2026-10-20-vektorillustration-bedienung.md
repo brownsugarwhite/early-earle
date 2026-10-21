@@ -1358,3 +1358,55 @@ Ende hinaus, Robbe 15 px); geglätteter statt linearer Auslauf (Reihen knicken m
   kaum etwas und kostet Haut (Hals 4 px); Punktschärfe am Linienende (`umrisseOpt.linieEndSchaerfe`, Versuch, aus) holt die
   Enden heran (Ei 0,9 → 0,5 px, Hals 2,0 → 1,1, Vase 1,9 → 1,1 bei 2), kostet aber an der Kugel Form (Haut 0,7 → 1,4 px,
   Front 0,8 → 1,5) und macht das Ende spitz — für Florians Urteil am Bild zurückgestellt.
+
+### V6 im Detail (21.10. mittags, vor dem Bau)
+
+Florians Wahl 20.10.: ⌘R setzt echte, formneutral eingefügte Knoten in Seite und Top. Daraus folgt eine einfache Bauweise,
+die die Zeichnung als Wahrheit behält und auf V3/V5 aufsetzt:
+- **Ein Loop sind verknüpfte Knoten plus ein eigener Käfigring.** Einfügen bei der Stelle s längs der Wirbelsäule: die Sprosse
+  der Leiter bei s trifft Rücken und Bauch — dort je ein Knoten im Seitenumriss (de Casteljau, formneutral), im Top ein Knoten
+  bei x der Ringmitte (rechte Hälfte, formneutral). Die Knoten tragen die Kennung ihres Loops (`schleife`), so findet der Loop
+  sie auch nach anderen Änderungen. Das Dokument führt die Loops als Liste (`schleifen`: Kennung).
+- **Der Käfig bekommt je Loop einen Ring dazu** (R = 24 + Loops; nur Röhre mit „Querschnitt aus der Hülle“, ohne Maul und Beine —
+  sonst Hinweis). Die Sprosse des Loop-Rings läuft genau durch seinen Rücken- und Bauchknoten (wie die Endringe der Linien in
+  V5); die eingefrorenen Ringe der Startkugel bleiben, die Loop-Ringe werden je Bau aus ihren Knoten dazugenommen.
+  Pinsel- und Posen-Deltas sowie Augen hängen an Punkt- bzw. Ringnummern: Einfügen und Löschen verschieben sie topologisch
+  (`schleifeEinfuegen`/`schleifeLoeschen`, exakte Umkehrungen; die Deltas des neuen Rings aus den Nachbarn gemischt).
+- **Transformieren** (G/S/R, auch proportional) wirkt auf die Knoten des Loops: G verschiebt Rücken-, Bauch- und Top-Knoten, S
+  skaliert sie um die Ringmitte (Seite: Abstand Rücken–Bauch; Top: Breite), R dreht Rücken- und Bauchknoten um die Ringmitte
+  (um z; Spiegel bleibt). In den Blättern ist das die V3-Maschine auf den Loop-Knoten; auf der Bühne dieselbe Abbildung,
+  ausgewählt per ⌥-Klick auf den Ring. Proportional wirkt über die Knoten benachbarter Loops bzw. Kurvenstücke.
+- **⌘R** (und ⌃R): Zeiger über der Bühne → getroffene Käfigfläche → Ringintervall; Vorschau der n Ringe (gemischt aus den
+  Nachbarringen); Rad, Bild↑↓ oder Ziffer = n; Klick setzt (n > 1 gleichmäßig), bei n = 1 gleitet der Ring bis zum zweiten
+  Klick, Rechtsklick/Esc = Mitte. Ein Undo-Schritt.
+- **Reihenfolge:** V6.1 Kern (Knoten, Ring je Loop, Einfügen/Löschen, formneutral messen) → V6.2 ⌘R im Editor (Vorschau,
+  Anzahl, Gleiten) → V6.3 Auswahl und G/S/R (Blätter und Bühne, proportional) → V6.4 Prüfskripte `schleife.mjs`,
+  `schleife-grs.mjs`, Langhals-Fall aus dem Plan.
+
+### Stand V6.1 — Loops im Kern (21.10. nachmittags, Abnahme offen)
+
+- **Gebaut** (`packages/shape/src/kern/schleifen.ts`): `schleifenOrt(abl, k, s)` (Sprosse zwischen Ring k − 1 und k),
+  `schleifeEinfuegen(dok, ort)` setzt Rücken- und Bauchknoten in der Seite und einen Knoten im Top mit Kennung (de Casteljau,
+  die Kurven bleiben bis 1e-9 dieselben); mit `ort.ring` rücken Pinsel- und Posen-Deltas, Bezugs-Käfige und Augen
+  topologisch mit (`ringEinfuegen`; der neue Ring bekommt das Mittel seiner Nachbarn). `schleifeLoeschen` ist die Umkehrung
+  (Profile JSON-gleich bis 1e-9; `loeschen` kehrt eine de-Casteljau-Teilung jetzt exakt um). Der Käfig bekommt je Loop einen
+  Ring durch seine Knoten (Option `schleifen`, auf der Röhre ohne Maul und Beine, **in beiden Querschnitten** — das
+  Umschalten ändert die Topologie nicht); im schnellen Zug folgt der Ring seinem Knoten.
+- **Loops entscheiden nichts um:** Fülle wo nötig, Breitenlinie, Reihenplan (Hülle) und „Umrisse berühren“ (heute) wählen über
+  alle Ringe. Ein neuer Ring kippte diese Wahl (Robbe: Fülle sprang auf ihn, lief nach Ringnummern aus, 4,2 px; Vase bis
+  3 px weit weg). Jetzt entscheidet die Kette ohne Loops, die Loop-Ringe tasten ab (`schleifenLage`, `zusatz`, `fest`).
+- **Gemessen** (Florians Ablauf, beide Querschnitte): abseits des Loops (> 3 Ringe) ≤ 0,25 px; Kugel und Ei überall
+  ≤ 0,25 px; am Loop bis 1,8 px (heute) bzw. 4,5 px (Hülle, Langhals am Halsansatz) — zur Hülle hin. Tor „≤ 0,1 px“ nicht
+  erreicht (`it.fails`, Register „Befunde aus V6“): Ein Loop gibt Auflösung, wo die eingefrorene Ringverteilung der Startkugel
+  Lücken lässt. Entscheidung (elegantere Lösung): Der Loop folgt der Zeichnung wie jeder Ring; ein „neutral eingefügter“ Loop
+  müsste sich den alten Fehler merken.
+- **Unterwegs gefunden und behoben** (je Test vorher rot, `kern/schleifen.test.ts`): Ein formneutral eingefügter Knoten
+  (Stift, Kopplung, Loop) änderte den Körper — Langhals 1,8 px (eingefrorene Enden nur bei gleicher Knotenzahl; Wahl der
+  vordersten Probe an runden Spitzen kippte), Tigerkopf 1,2 px (Ecke an Ring 0 sprang auf Ring 1: zwei Ringe lagen
+  aufeinander, auch Schlange/Sichel/Augenstiele mit Falten bis 180°), Vase 3,4 px (harte Schwelle der Breitenpunkte → Gewicht
+  läuft über 95–96 % an), Ei 1,3 px (Breitenlinie zwischen den Rasterstufen stetig nachgeführt), Breiten aus Top und Front
+  nach Bogenlänge statt je Segment. Jetzt ≤ 0,5 px, meist ≤ 0,2. Extremreihe: Grundzahlen von Schlange, Sichel,
+  Augenstiele und Flügel oben nachgezogen (Register).
+- **Nächster Schritt V6.2:** ⌘R im Editor — der Hauptthread hat keine Ableitung, deshalb liefert der Worker je Ring die
+  Sprosse (Seitenansicht) und die Loop-Ringe; Vorschau, Anzahl (Rad, Bild↑↓, Ziffern), Gleiten, ein Undo-Schritt; Maul oder
+  Beine nehmen die Loop-Ringe heraus (`ringLoeschen`, Hinweis).

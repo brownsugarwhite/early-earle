@@ -118,6 +118,11 @@ export type AbleitOptionen = {
   umrisse?: 'exakt';
   /** V4: Gewichte und Schalter des Beweises (Messreihen) */
   umrisseOpt?: UmrissOptionen;
+  /**
+   * V6 (Plan 20.10.): je Loop des Dokuments (`dok.schleifen`, Knoten mit `schleife`) ein eigener Ring durch seinen Rücken-
+   * und Bauchknoten — auf der Röhre ohne Maul und Beine, in beiden Querschnitten (ohne Loops bitgleich)
+   */
+  schleifen?: boolean;
 };
 
 /**
@@ -162,7 +167,103 @@ export type Reifen = { spant: number; ring: number };
  * V5 (`umrisse: 'exakt'`): `linien` = Ringe der Querlinien, `einordnung` = Art je P-Linie (Index in `dok.kanten`),
  * `linienBau` = je P-Linie, ob sie als Käfigschleife gebaut ist (von `faltenSetzen` gesetzt)
  */
-export type Stationen = { ringe: Station[]; kappen: { vorn: Station[]; hinten: Station[] }; ecken: Ecke[]; reifen: Reifen[]; spitzen: { vorn: boolean; hinten: boolean }; gefroren: GefroreneStationen; linien?: LinienRing[]; einordnung?: LinienEinordnung[]; linienBau?: LinienBau[]; linienKanten?: LinienKante[]; /** V5: Stationen der Ringe vor dem Drehen in die Linien (Höhenfeld der Form) */ ringeNatuerlich?: Station[]; /** V5: Käfigpunkte an Treppenfalten (an die Form gebunden) */ treppenPunkte?: number[] };
+export type Stationen = { ringe: Station[]; kappen: { vorn: Station[]; hinten: Station[] }; ecken: Ecke[]; reifen: Reifen[]; spitzen: { vorn: boolean; hinten: boolean }; gefroren: GefroreneStationen; linien?: LinienRing[]; einordnung?: LinienEinordnung[]; linienBau?: LinienBau[]; linienKanten?: LinienKante[]; /** V5: Stationen der Ringe vor dem Drehen in die Linien (Höhenfeld der Form) */ ringeNatuerlich?: Station[]; /** V5: Käfigpunkte an Treppenfalten (an die Form gebunden) */ treppenPunkte?: number[]; /** V6: Ringe der Loops */ schleifen?: SchleifenRing[] };
+
+/** V6: Ring eines Loops (Kennung in `dok.schleifen`). */
+export type SchleifenRing = { id: string; ring: number };
+
+/** V6: Station eines Loops aus seinen Knoten: Anteile a (Rücken), b (Bauch) der Leiter und Anteil f der Wirbelsäule. */
+export type SchleifenStation = { id: string; a: number; b: number; f: number };
+
+/**
+ * V6: Loops des Dokuments mit ihren Stationen (nach f geordnet): Rücken- und Bauchknoten der Seite tragen die Kennung; die
+ * Sprosse des Loop-Rings läuft genau durch beide. Nur mit dem Querschnitt aus der Hülle; Loops ohne zwei Seitenknoten zählen nicht.
+ */
+export function schleifenStationen(dok: Dokument, l: Leiter): SchleifenStation[] {
+  const out: SchleifenStation[] = [];
+  // die Leiter rechnet in Profil-Einheiten wie die Knoten
+  for (const sch of dok.schleifen ?? []) {
+    const kn = dok.profile.seite.knoten.filter((k) => k.schleife === sch.id);
+    if (kn.length !== 2) continue;
+    const pa = { x: kn[0]!.p.x, y: kn[0]!.p.y };
+    const pb = { x: kn[1]!.p.x, y: kn[1]!.p.y };
+    // welcher Knoten auf dem Rücken liegt: der näher an der Rückenlinie
+    const ra = zugAnteil(l.ruecken, pa);
+    const rb = zugAnteil(l.ruecken, pb);
+    const [o, u] = ra.d <= rb.d ? [pa, pb] : [pb, pa];
+    const a = zugAnteil(l.ruecken, o).t;
+    const b = zugAnteil(l.bauch, u).t;
+    out.push({ id: sch.id, a, b, f: spineAnteile(l, [{ a, b }])[0]! });
+  }
+  return out.sort((x, y) => x.f - y.f);
+}
+
+/**
+ * V6: Loop-Ringe in die Stationen einsetzen (nach den 24 Ringen der Ringwahl, je Loop einer dazu): an der Stelle ihres
+ * Anteils f, Sprosse genau durch die Knoten; Ecken, Reifen und Linienringe rücken mit. Die eingefrorenen Anteile bleiben die
+ * der Ringwahl (ein Loop kommt und geht, ohne sie zu ändern).
+ */
+function mitSchleifen(st: Stationen, l: Leiter, schl: readonly SchleifenStation[]): Stationen {
+  if (!schl.length) return st;
+  const f = spineAnteile(l, st.ringe);
+  const ringe = st.ringe.slice();
+  const fs = f.slice();
+  const ringeNeu: number[] = [];
+  const nat = st.ringeNatuerlich?.slice();
+  for (const sc of schl) {
+    // nur zwischen dem ersten und dem letzten Ring (davor und dahinter liegen die Kappen)
+    if (!(sc.f > fs[0]! && sc.f < fs[fs.length - 1]!)) continue;
+    let k = 0;
+    while (k < fs.length && fs[k]! < sc.f) k++;
+    ringe.splice(k, 0, { a: sc.a, b: sc.b });
+    nat?.splice(k, 0, { a: sc.a, b: sc.b });
+    fs.splice(k, 0, sc.f);
+    for (let q = 0; q < ringeNeu.length; q++) if (ringeNeu[q]! >= k) ringeNeu[q] = ringeNeu[q]! + 1;
+    ringeNeu.push(k);
+  }
+  // alte Ringnummer → neue
+  const neu = (r: number): number => {
+    let n = r;
+    const eingefuegt = ringeNeu.slice().sort((x, y) => x - y);
+    for (const k of eingefuegt) if (k <= n) n++;
+    return n;
+  };
+  return {
+    ...st,
+    ringe,
+    ecken: st.ecken.map((e) => ({ ...e, ring: neu(e.ring) })),
+    reifen: st.reifen.map((r) => ({ ...r, ring: neu(r.ring) })),
+    ...(st.linien ? { linien: st.linien.map((r) => ({ ...r, ring: neu(r.ring) })) } : {}),
+    ...(nat ? { ringeNatuerlich: nat } : {}),
+    schleifen: schl.filter((sc) => sc.f > f[0]! && sc.f < f[f.length - 1]!).map((sc, q) => ({ id: sc.id, ring: ringeNeu[q]! })),
+  };
+}
+
+/**
+ * V6: Lage je Ring in der Kette ohne Loop-Ringe — ganzzahlig für die übrigen Ringe, für Loop-Ringe gebrochen zwischen ihren
+ * Nachbarn (nach dem Anteil der Wirbelsäule). Kettenweite Entscheidungen (Berühren, Fülle, Breitenlinie) treffen die übrigen
+ * Ringe, die Loop-Ringe tasten sie an ihrer Lage ab.
+ */
+export function schleifenLage(l: Leiter, st: Stationen): number[] {
+  const loops = new Set((st.schleifen ?? []).map((s) => s.ring));
+  const R = st.ringe.length;
+  const lage = new Array<number>(R);
+  let k = -1;
+  for (let i = 0; i < R; i++) if (!loops.has(i)) lage[i] = ++k;
+  if (!loops.size) return lage;
+  const f = spineAnteile(l, st.ringeNatuerlich ?? st.ringe);
+  for (let i = 0; i < R; i++) {
+    if (!loops.has(i)) continue;
+    let a = i - 1;
+    while (a >= 0 && loops.has(a)) a--;
+    let b = i + 1;
+    while (b < R && loops.has(b)) b++;
+    // Loops liegen zwischen dem ersten und dem letzten Ring; gebrochen, damit sie nie ganzzahlig sind
+    const t = f[b]! > f[a]! ? (f[i]! - f[a]!) / (f[b]! - f[a]!) : 0.5;
+    lage[i] = lage[a]! + Math.min(0.999, Math.max(0.001, t));
+  }
+  return lage;
+}
 
 /** V5: Käfigkante (rechte Hälfte) einer Linienschleife — Reihe zwischen zwei Ringen bzw. Stück eines Querlinien-Rings. */
 export type LinienKante = { linie: number; a: number; b: number };
@@ -193,6 +294,8 @@ export type Ableitung = {
   linienFein?: LinienFein;
   /** V5: Stationen der Ringe vor dem Drehen in die Linien (die Form kommt aus ihnen, `HuellenFeld`) */
   stationenNatuerlich?: Station[];
+  /** V6: Ringe der Loops */
+  schleifenRinge?: SchleifenRing[];
   /** V5 „Form zuerst“: Körper ohne Linien und die an seine Form gebundenen feinen Punkte (Zeilen nach den Linienpunkten) */
   form?: Ableitung;
   formFein?: FormFein;
@@ -833,7 +936,7 @@ export function stationenWaehlen(l: Leiter, opt: AbleitOptionen, dok?: Dokument,
     vorn.push((kappeVorn * r) / (c / 2));
     hinten.push(1 - (kappeHinten * r) / (c / 2));
   }
-  return linienAusrichten(stationenZusammensetzen(l, R, anteile, vorn, hinten, ecken, reifen, spitzen, linien), lq);
+  return mitSchleifen(linienAusrichten(stationenZusammensetzen(l, R, anteile, vorn, hinten, ecken, reifen, spitzen, linien), lq), l, opt.schleifen && dok ? schleifenStationen(dok, l) : []);
 }
 
 /** V5: P-Linien einordnen (nur mit dem Querschnitt aus der Sichthülle) und ihre Ringwünsche (Querlinien, Enden). */
@@ -976,7 +1079,9 @@ function stationenNachfuehren(l: Leiter, opt: AbleitOptionen, dok: Dokument | un
   const ecken: Ecke[] = [];
   for (const e of eckenRoh) {
     if (kappeMin !== undefined && e.f < anteile[0]!) continue;
-    const alt = g.ecken.find((x) => x.ring > 0 && x.ring < R && Math.abs(anteile[x.ring]! - e.f) < 0.5 / R);
+    // auch Ring 0: Beim ersten Bau landet eine Ecke vor allen Ringen nach dem Sortieren dort (Tigerschnauze); sie dort nicht zu
+    // suchen, setzte sie bei jeder neuen Knotenzahl auf Ring 1 um (ein eingefügter Punkt verschob den Körper um 1,2 px)
+    const alt = g.ecken.find((x) => x.ring >= 0 && x.ring < R && Math.abs(anteile[x.ring]! - e.f) < 0.5 / R);
     let ring = alt ? alt.ring : -1;
     if (ring < 0) {
       for (let i = 1; i < R; i++) {
@@ -997,11 +1102,19 @@ function stationenNachfuehren(l: Leiter, opt: AbleitOptionen, dok: Dokument | un
   if (dok?.spanten?.length) {
     dok.spanten.forEach((sp, index) => {
       const f = spantAnteil(l, dok, sp);
-      const alt = g.reifen.find((r) => r.spant === index && r.ring > 0 && r.ring < R - 1);
-      if (alt && !ecken.some((e) => e.ring === alt.ring) && !reifen.some((r) => r.ring === alt.ring)) {
-        anteile[alt.ring] = f;
-        reifen.push({ spant: index, ring: alt.ring });
-        return;
+      const alt = g.reifen.find((r) => r.spant === index && r.ring >= 0 && r.ring < R);
+      if (alt && !reifen.some((r) => r.ring === alt.ring)) {
+        const aufEcke = ecken.some((e) => e.ring === alt.ring);
+        if (!aufEcke && alt.ring > 0 && alt.ring < R - 1) {
+          anteile[alt.ring] = f;
+          reifen.push({ spant: index, ring: alt.ring });
+          return;
+        }
+        // auf dem Ring einer Ecke (wie `reifenZuweisen` ihn beim ersten Bau teilt, auch an Ring 0): bleibt dort
+        if (aufEcke && Math.abs(anteile[alt.ring]! - f) < 0.5 / R) {
+          reifen.push({ spant: index, ring: alt.ring });
+          return;
+        }
       }
       reifenZuweisen(anteile, ecken, reifen, index, f, R);
     });
@@ -1010,7 +1123,7 @@ function stationenNachfuehren(l: Leiter, opt: AbleitOptionen, dok: Dokument | un
   const lq = querLinien(l, opt, dok);
   const linien: LinienRing[] = [];
   if (lq) for (const x of lq.wuensche) linienRingZuweisen(anteile, ecken, reifen, linien, x.linie, x.rolle, x.f, R, g.linien?.find((r) => r.linie === x.linie && (r.rolle ?? 'quer') === x.rolle)?.ring);
-  return linienAusrichten(stationenZusammensetzen(l, R, anteile, vorn, hinten, ecken, reifen, spitzen, linien), lq);
+  return mitSchleifen(linienAusrichten(stationenZusammensetzen(l, R, anteile, vorn, hinten, ecken, reifen, spitzen, linien), lq), l, opt.schleifen && dok ? schleifenStationen(dok, l) : []);
 }
 
 /** Wirbelsäulen-Anteil f (0 … 1) je Station: Umkehrung von `stationenAusLeiter` über die Rückenanteile der Leiter. */
@@ -1511,19 +1624,53 @@ function huellenVorlagen(hk: HuellenKontext, l: Leiter, st: Stationen, v: { N: n
   const natKette = natRing ? [...vornSp, ...natRing, ...hintenSp.slice().reverse()] : kette;
   const natHuellen = natRing ? natKette.map((sp) => huelleEntlang(sp, hk.breiten, hk.ecken)) : huellen;
   const formen = natKette.map((sp) => huellenForm(hk, sp));
-  const ps = fuelleWoNoetig(natHuellen, natKette.map((sp) => exponentenFuer(sp, hk.zf)), hk.breiten, hk.hoechstens, formen.map((f) => !!f));
-  const feld = natRing ? huellenFeld(natKette, natHuellen.map((h, i) => huelleRunden(h, ps[i]!, formen[i]))) : null;
-  const gleich = (a: Sprosse, b: Sprosse) => a.o.x === b.o.x && a.o.y === b.o.y && a.u.x === b.u.x && a.u.y === b.u.y;
-  const profile = huellen.map((h, i) => (feld && !gleich(kette[i]!, natKette[i]!) ? profilAusFeld(h, feld) : huelleRunden(h, ps[i]!, formen[i])));
-  const vr = breitenlinieWaehlen(profile);
   const nV = vornSp.length;
   const nR = ringSp.length;
+  // V6: Loop-Ringe entscheiden nichts um — Fülle, Breitenlinie und Reihenplan kommen aus der Kette ohne sie, die Loop-Ringe
+  // tasten sie ab (Fülle linear nach dem Anteil der Wirbelsäule, Breitenlinie als Wahl zwischen den festen Nachbarn, Anker
+  // nach dem Plan der Kette). So ändert ein eingefügter Loop die Vorlagen der übrigen Ringe nicht (vorher bis 6 px: die
+  // Fülle sprang auf den neuen Ring und lief nach Ringnummern zu den Nachbarn aus).
+  const schleifenNr = new Set((st.schleifen ?? []).map((s) => s.ring));
+  const imLoop = (i: number) => i >= nV && i < nV + nR && schleifenNr.has(i - nV);
+  const basis = natKette.map((_, i) => i).filter((i) => !imLoop(i));
+  const expo = natKette.map((sp) => exponentenFuer(sp, hk.zf));
+  let ps: { oben: number; unten: number }[];
+  if (!schleifenNr.size) ps = fuelleWoNoetig(natHuellen, expo, hk.breiten, hk.hoechstens, formen.map((f) => !!f));
+  else {
+    const pb = fuelleWoNoetig(basis.map((i) => natHuellen[i]!), basis.map((i) => expo[i]!), hk.breiten, hk.hoechstens, basis.map((i) => !!formen[i]));
+    ps = expo.map((e) => ({ ...e }));
+    basis.forEach((i, q) => (ps[i] = pb[q]!));
+    const fR = spineAnteile(l, st.ringeNatuerlich ?? st.ringe);
+    for (let i = 0; i < natKette.length; i++) {
+      if (!imLoop(i) || formen[i]) continue;
+      // Loops liegen zwischen dem ersten und dem letzten Ring: die Nachbarn der Kette sind Ringe
+      let a = i - 1;
+      while (imLoop(a)) a--;
+      let b = i + 1;
+      while (imLoop(b)) b++;
+      const fa = fR[a - nV]!;
+      const fb = fR[b - nV]!;
+      const t = fb > fa ? Math.min(1, Math.max(0, (fR[i - nV]! - fa) / (fb - fa))) : 0.5;
+      ps[i] = { oben: ps[a]!.oben + (ps[b]!.oben - ps[a]!.oben) * t, unten: ps[a]!.unten + (ps[b]!.unten - ps[a]!.unten) * t };
+    }
+  }
+  const feld = natRing ? huellenFeld(basis.map((i) => natKette[i]!), basis.map((i) => huelleRunden(natHuellen[i]!, ps[i]!, formen[i]))) : null;
+  const gleich = (a: Sprosse, b: Sprosse) => a.o.x === b.o.x && a.o.y === b.o.y && a.u.x === b.u.x && a.u.y === b.u.y;
+  const profile = huellen.map((h, i) => (feld && !gleich(kette[i]!, natKette[i]!) ? profilAusFeld(h, feld) : huelleRunden(h, ps[i]!, formen[i])));
+  let vr: number[];
+  if (!schleifenNr.size) vr = breitenlinieWaehlen(profile);
+  else {
+    const vb = breitenlinieWaehlen(basis.map((i) => profile[i]!));
+    const fest: (number | undefined)[] = profile.map(() => undefined);
+    basis.forEach((i, q) => (fest[i] = vb[q]));
+    vr = breitenlinieWaehlen(profile, undefined, fest);
+  }
   const ringe = profile.slice(nV, nV + nR);
   const vorn = profile.slice(0, nV);
   const hinten = profile.slice(nV + nR).reverse();
   // Reihenplan der Ringe: Breitenlinie, gezeichnete Ecken und Kanten flacher Enden auf Reihen, die für alle Ringe gleich sind
   const frei = new Set(einordnung.flatMap((e, i) => (e.art === 'reihe' && e.schraeg ? [LINIE_ID + i] : [])));
-  const plan = reihenplan(ringe, vr.slice(nV, nV + nR), N / 2, N / 4, frei);
+  const plan = reihenplan(ringe, vr.slice(nV, nV + nR), N / 2, N / 4, frei, schleifenNr);
   // V5: Linien, die in zwei benachbarten Ringen auf derselben Reihe liegen, sind als Reihe gebaut (sonst Treppe)
   const linienReihen = new Set<number>();
   const reihenKanten: { ring: number; j: number; linie: number }[] = [];
@@ -1673,7 +1820,7 @@ export function zieleBerechnen(v: Roehre, l: Leiter, st: Stationen, breiten: Bre
   // S3 „Umrisse berühren“ (Florian 16.10.: Fülle mittel): Wo der Körper hinter der Front zurückbleibt, schiebt sich der
   // Ring mit der größten Hülle an seinem Punkt örtlich hinaus; Form höchstens die Superellipse der Stufe. Nicht mit
   // Maulschlitz; ohne Option bitgleich.
-  const rand = opt.fuelle && !schlitz && !ringSchnitte ? frontBeruehren(ringSprossen, ringQNeu, Wr, breiten, opt.fuelle, dok ? huellenBreite(dok, breiten) : undefined) : null;
+  const rand = opt.fuelle && !schlitz && !ringSchnitte ? frontBeruehren(ringSprossen, ringQNeu, Wr, breiten, opt.fuelle, dok ? huellenBreite(dok, breiten) : undefined, st.schleifen?.length ? { lage: schleifenLage(l, st) } : {}) : null;
   if (rand) for (let i = 0; i < R; i++) ringQNeu[i] = rand.vorlagen[i] as Querschnitt;
   // V4: je Käfigpunkt, ob seine Vorlage dort die Front (1) bzw. das Top (2) trifft (Bindung im Löser)
   const huelle = hv ? new Uint8Array(v.kaefig.n) : null;
@@ -1913,6 +2060,21 @@ export type Breite = {
 
 /** Stützstellen bis so weit unter der größten Breite der Vorlage zählen als Breitenpunkte (geneigte Ringe: Kastenwand) */
 const BREITE_SCHWELLE = 0.05;
+
+/** Über der Schwelle läuft das Gewicht eines Breitenpunkts über so viel (Anteil der größten Breite) glatt von 0 auf 1 an. */
+const BREITE_ANLAUF = 0.01;
+
+/**
+ * Gewicht eines Breitenpunkts nach seinem Anteil f an der größten Breite: 0 bis 1 − Schwelle, darüber über `BREITE_ANLAUF`
+ * glatt auf 1 (Smoothstep). Vorher sprang es an der Schwelle von 0 auf 1: Ein Punkt, der durch einen formneutral
+ * eingefügten Knoten von 0,9499 auf 0,9503 rückte, wurde voller Breitenpunkt und verschob die Vase um 3,4 px (Plan 20.10.,
+ * V6). Unter der Schwelle darf es nicht anlaufen: Das Soll (f mal Hülle auf der eigenen Höhe) zählt dort die Höhe doppelt
+ * (mit einem Auslauf von 0,94 bis 0,95 wurde das Ei vorn 4,9 statt 0,4 px).
+ */
+function breitenRampe(f: number): number {
+  const r = Math.min(1, Math.max(0, (f - (1 - BREITE_SCHWELLE)) / BREITE_ANLAUF));
+  return r * r * (3 - 2 * r);
+}
 /** S3: Anteil des Breitengewichts für Berührpunkte (voll gab Falten, wo die Haut zwischen Berührpunkten umbiegen muss) */
 const RAND_GEWICHT = 0.25;
 
@@ -2017,14 +2179,17 @@ export function breitenSchleife(v: Roehre, l: Leiter, st: Stationen, breiten: Br
         const B = breiteSoll(breiten, ziele[3 * pz]!, ziele[3 * pz + 1]!, ziele[3 * pz + 2]!);
         f = B > 1e-9 ? Math.min(1, Math.abs(ziele[3 * pz + 2]!) / B) : 0;
       }
-      if (f < 1 - BREITE_SCHWELLE && !(beruehrPunkt && f > 0)) continue;
+      // Gewicht stetig über die Schwelle (vorher hart bei 95 %: ein Punkt, der durch einen formneutral eingefügten Knoten von
+      // 0,9499 auf 0,9503 rückte, wurde Breitenpunkt und verschob die Vase um 3,4 px; Plan 20.10., V6)
+      const rampe = breitenRampe(f);
+      if (!(rampe > 0) && !(beruehrPunkt && f > 0)) continue;
       const p = v.ringPunkt(i, j);
       if (!(breiten.top(ziele[3 * p]!) > 0) || !(breiten.front(ziele[3 * p + 1]!) > 0)) continue;
       zeile[j] = beruehrPunkt ? 0 : f;
       fein.push(p, v.ringPunkt(i, N - j));
       vorzeichen.push(1, -1);
       faktor.push(f, f);
-      const g = beruehrPunkt ? (opt.randGewicht ?? RAND_GEWICHT) : 1;
+      const g = beruehrPunkt ? (opt.randGewicht ?? RAND_GEWICHT) : rampe;
       gewicht.push(g, g);
     }
   }
@@ -2035,19 +2200,21 @@ export function breitenSchleife(v: Roehre, l: Leiter, st: Stationen, breiten: Br
       const f0 = breit[i]![j]!;
       const f1 = breit[i + 1]![j]!;
       if (!(f0 > 0) || !(f1 > 0)) continue;
+      const g = Math.min(breitenRampe(f0), breitenRampe(f1));
+      if (!(g > 0)) continue;
       const rechts = feinKette(u, k, v.ringPunkt(i, j), v.ringPunkt(i + 1, j));
       const links = feinKette(u, k, v.ringPunkt(i, N - j), v.ringPunkt(i + 1, N - j));
       for (let q = 1; q + 1 < rechts.length; q++) {
         fein.push(rechts[q]!);
         vorzeichen.push(1);
         faktor.push(f0 + ((f1 - f0) * q) / (rechts.length - 1));
-        gewicht.push(1);
+        gewicht.push(g);
       }
       for (let q = 1; q + 1 < links.length; q++) {
         fein.push(links[q]!);
         vorzeichen.push(-1);
         faktor.push(f0 + ((f1 - f0) * q) / (links.length - 1));
-        gewicht.push(1);
+        gewicht.push(g);
       }
     }
   }
@@ -2223,8 +2390,9 @@ function ableitenEinmal(dok: Dokument, optionen: Partial<AbleitOptionen>): Ablei
   const t1 = jetzt();
   const breiten = silhouettenBreite(dok);
   const t2 = jetzt();
-  const vorlage = roehre(opt.ringe, opt.ring);
+  // V6: je Loop ein Ring mehr (nur mit dem Querschnitt aus der Hülle) — die Stationen zählen sie
   const st = stationenWaehlen(l, opt, dok);
+  const vorlage = roehre(st.ringe.length, opt.ring);
   faltenSetzen(vorlage, st, l, dok, breiten, opt);
   const { ziele, hoehe, rand, huelle, vorlagen, dichte } = zieleBerechnen(vorlage, l, st, breiten, dok, opt);
   // V5 „Form zuerst“: Mit Linien bindet sich der Körper an die Form des Körpers ohne Linien — die Linie legt fest, wo die
@@ -2755,6 +2923,7 @@ export function fertigstellen(e: Rohbau): Ableitung {
     reifen: st.reifen,
     ...(st.ringeNatuerlich ? { stationenNatuerlich: st.ringeNatuerlich } : {}),
     ...(st.linien ? { linienRinge: st.linien } : {}),
+    ...(st.schleifen ? { schleifenRinge: st.schleifen } : {}),
     ...(st.einordnung ? { linienEinordnung: st.einordnung } : {}),
     ...(st.linienBau ? { linienBau: st.linienBau } : {}),
     gefroren: st.gefroren,
@@ -2804,7 +2973,21 @@ export function ziehen(abl: Ableitung, dokNeu: Dokument): Zug {
   const l = kernLeiter(dokNeu);
   const t1 = jetzt();
   const v = abl.vorlage;
-  const st: Stationen = { ringe: abl.stationen, kappen: abl.kappenStationen, ecken: abl.ecken, reifen: abl.reifen, spitzen: abl.spitzen, gefroren: abl.gefroren, ...(abl.linienRinge ? { linien: abl.linienRinge } : {}), ...(abl.linienEinordnung ? { einordnung: abl.linienEinordnung } : {}), ...(abl.stationenNatuerlich ? { ringeNatuerlich: abl.stationenNatuerlich } : {}) };
+  const st: Stationen = { ringe: abl.stationen, kappen: abl.kappenStationen, ecken: abl.ecken, reifen: abl.reifen, spitzen: abl.spitzen, gefroren: abl.gefroren, ...(abl.linienRinge ? { linien: abl.linienRinge } : {}), ...(abl.linienEinordnung ? { einordnung: abl.linienEinordnung } : {}), ...(abl.stationenNatuerlich ? { ringeNatuerlich: abl.stationenNatuerlich } : {}), ...(abl.schleifenRinge ? { schleifen: abl.schleifenRinge } : {}) };
+  // V6: Loop-Ringe folgen im Zug ihren Knoten (dieselbe Nummer; die Reihenfolge ordnet erst der genaue Bau neu)
+  if (abl.schleifenRinge?.length) {
+    const neu = new Map(schleifenStationen(dokNeu, l).map((s) => [s.id, s] as const));
+    const ringe = st.ringe.slice();
+    const nat = st.ringeNatuerlich?.slice();
+    for (const sr of abl.schleifenRinge) {
+      const s = neu.get(sr.id);
+      if (!s) continue;
+      ringe[sr.ring] = { a: s.a, b: s.b };
+      if (nat) nat[sr.ring] = { a: s.a, b: s.b };
+    }
+    st.ringe = ringe;
+    if (nat) st.ringeNatuerlich = nat;
+  }
   const breiten = silhouettenBreite(dokNeu);
   const { ziele, hoehe, dichte } = zieleBerechnen(v, l, st, breiten, dokNeu, abl.opt);
   const t2 = jetzt();
@@ -2838,7 +3021,7 @@ export function ziehen(abl: Ableitung, dokNeu: Dokument): Zug {
   }
   const t3 = jetzt();
   const t4 = jetzt();
-  return { ...abl, ziele, hoehe, kaefig: { ...abl.kaefig, xyz }, fein, breiten, altLeiter: l, dokAlt: dokNeu, naht: { ...abl.naht, anteil: anteilNeu }, zugZeit: { leiter: t1 - t0, ziele: t2 - t1, loeser: t3 - t2, matrix: t4 - t3 } };
+  return { ...abl, ziele, hoehe, kaefig: { ...abl.kaefig, xyz }, fein, breiten, altLeiter: l, dokAlt: dokNeu, naht: { ...abl.naht, anteil: anteilNeu }, ...(abl.schleifenRinge?.length ? { stationen: st.ringe, ...(st.ringeNatuerlich ? { stationenNatuerlich: st.ringeNatuerlich } : {}) } : {}), zugZeit: { leiter: t1 - t0, ziele: t2 - t1, loeser: t3 - t2, matrix: t4 - t3 } };
 }
 
 /** Alter Name des Zugs am Seitenumriss. */

@@ -644,6 +644,27 @@ Bögen auf der Planseite 20.10., „Stand V2“. Je Punkt der Schritt, der ihn a
 - **Würfel, Seeschlange, Fisch, Krake** sind schon ohne Linien kaputt (Falten 170–180°); ihre Linienwerte sagen wenig.
 - Härte als Rundungsbreite (Plan 3.4), Grat (`Kante.tiefe`) und Linien auf „Teile“ fehlen noch.
 
+## Befunde aus V6 „Loops“, Kern (21.10., gebaut, Abnahme offen)
+
+- **Tor nicht erreicht** (`it.fails` in `kern/schleifen.test.ts`): Einfügen formneutral (Haut ≤ 0,1 px). Abseits des Loops
+  (weiter als drei Ringe) bleibt die Haut ≤ 0,25 px, Kugel und Ei ändern sich überall ≤ 0,25 px; am Loop selbst rückt die
+  Haut aber bis 1,8 px (heute) bzw. 4,5 px (Hülle, Langhals am Halsansatz) — zur Hülle hin (Hüllschnitt am Loop 3,9 → 1,0 px):
+  Der Loop gibt Auflösung, wo die eingefrorene Ringverteilung der Startkugel dem umgeformten Körper Ringe fehlen lässt.
+  Wege für Florians Urteil: so lassen (Loop = Auflösung), oder „neutral einfügen“ (der Loop merkt sich die alte Haut als
+  Abweichung, bis man ihn auf die Hülle legt).
+- **Vorher übersehen, jetzt behoben (je Test vorher rot):** Ein formneutral eingefügter Knoten — Stift, Kopplung, Loop —
+  änderte den Körper: Langhals 1,8 px (eingefrorene Enden der Wirbelsäule galten nur bei gleicher Knotenzahl; an runden
+  Spitzen kippte die Wahl der vordersten Probe), Tigerkopf 1,2 px und Schlange/Sichel/Augenstiele (eine Ecke an Ring 0 sprang
+  beim Nachführen auf Ring 1 — **zwei Ringe lagen aufeinander**, Falten bis 180°), Vase 3,4 px (harte 95-%-Schwelle der
+  Breitenpunkte), Ei 1,3 px (Breitenlinie sprang auf die Nachbarstufe ihres Rasters), Breiten aus Top/Front je Segment
+  abgetastet. Rest ≤ 0,5 px (meist ≤ 0,2). Ein Knoten in der Front ändert mit Spanten deren Punktstruktur — das ist Absicht
+  (Front und Spanten teilen die Knoten), nicht geprüft.
+- **Grundzahlen nachgezogen** (Extremreihe, Röhre): Schlange freie Falten 178 → 4°, Sichel 180 → 25°, Augenstiele 114 → 78°
+  (doppelte Ringe weg); schlechter: Sichel Durchdringungen 154 → 248 und Front 13,7 → 14,2 px, Schlange Kappe 170 → 178°,
+  Augenstiele 1 → 4 Knicke; Flügel oben +6 Durchdringungen (von 416).
+- Loop-Ringe nur auf der Röhre ohne Maul und Beine (Maul- und Beinbau rechnen mit 24 Ringen); kommen Maul oder Beine dazu,
+  muss der Editor die Ringe herausnehmen (`ringLoeschen`) — V6.2.
+
 ## CI: nicht nachstellbare Fehler alter Versuchstests (20.10. nachts)
 
 - Zwei Tests der alten Versuchsfläche S0 (Bauweise „bisher“, nicht der Kern) waren je einmal **nur auf CI** rot, bei

@@ -70,6 +70,18 @@ export function profilAnker(pr: Profil, p: V2): EndAnker {
   return { k: bk, t, p: bezier(segs[bk]!, t) };
 }
 
+/** Höchstens so weit (Profil-Einheiten) darf ein eingefrorenes Ende neben dem Umriss liegen, um neu verankert zu werden. */
+const AUF_UMRISS = 1e-7;
+
+/** Eingefrorene Enden auf einem Profil mit anderer Knotenzahl neu verankern — nur, wenn beide genau auf ihm liegen. */
+function neuVerankert(seite: Profil, g: Enden): Enden | null {
+  const vorn = profilAnker(seite, g.vorn.p);
+  const hinten = profilAnker(seite, g.hinten.p);
+  const ab = (a: EndAnker, p: V2) => Math.hypot(a.p.x - p.x, a.p.y - p.y);
+  if (!(ab(vorn, g.vorn.p) <= AUF_UMRISS && ab(hinten, g.hinten.p) <= AUF_UMRISS)) return null;
+  return { vorn, hinten, knoten: seite.knoten.length };
+}
+
 /** Umriss der Seite (Profil-Einheiten) mit Bogenlänge je Punkt. */
 function umriss(seite: Profil): { pts: V2[]; s: number[]; umfang: number } {
   const pts = pfadAbtasten(vollerPfad(seite), 40);
@@ -207,7 +219,11 @@ export function endenFuer(dok: Dokument): { vorn: V2; hinten: V2; enden: Enden; 
     });
     return { vorn: pts[iA]!, hinten: pts[iB]!, enden: anker(pts[iA]!, pts[iB]!), quelle: 'spitzen' };
   }
-  const g = dok.kaefig?.stationen?.enden;
+  const g0 = dok.kaefig?.stationen?.enden;
+  // Andere Knotenzahl: Liegen beide Enden noch genau auf dem Umriss, ist die Kurve dort dieselbe (Knoten formneutral
+  // eingefügt oder exakt gelöscht: Stift, Kopplung, Loop) — die Anker werden neu gesucht. Vorher wurden die Enden dann
+  // automatisch neu bestimmt, und schon ein eingefügter Punkt verschob den Körper (Langhals 1,8 px).
+  const g = g0 && g0.knoten !== seite.knoten.length ? neuVerankert(seite, g0) : g0;
   if (g && g.knoten === seite.knoten.length) {
     const vorn = profilPunkt(seite, g.vorn.k, g.vorn.t);
     const hinten = profilPunkt(seite, g.hinten.k, g.hinten.t);

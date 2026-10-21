@@ -143,6 +143,9 @@ function geglaettet(werte: readonly number[], halb: number): number[] {
 export type Leiter = { ruecken: V2[]; bauch: V2[]; paare: { a: number; b: number }[]; enden?: { vorn: { k: number; t: number; p: V2 }; hinten: { k: number; t: number; p: V2 }; knoten: number } };
 
 /** Seitenumriss gleichmäßig abgetastet (geschlossen, ohne doppelten Endpunkt). */
+/** Proben, deren x höchstens so viel (Profil-Einheiten, ≈ 0,05 px) hinter dem vordersten bzw. hintersten liegt, gelten als gleich weit. */
+const GLEICH_WEIT = 1e-4;
+
 function umrissSeite(dok: Dokument): V2[] {
   let roh = pfadAbtasten(vollerPfad(dok.profile.seite), 40);
   if (abstand(roh[0]!, roh[roh.length - 1]!) < 1e-9) roh = roh.slice(0, -1);
@@ -169,6 +172,15 @@ function ketten(dok: Dokument, opt: WirbelOptionen, spitzen?: { vorn: V2; hinten
     um.forEach((p, i) => {
       if (abstand(p, spitzen.vorn) < abstand(um[jv]!, spitzen.vorn)) jv = i;
       if (abstand(p, spitzen.hinten) < abstand(um[jh]!, spitzen.hinten)) jh = i;
+    });
+    // An einer runden Spitze liegen mehrere Proben fast gleich weit vorn; dort entscheidet die Nähe zur vorgegebenen Spitze.
+    // Sonst kippte die Wahl bei der kleinsten Änderung (ein formneutral eingefügter Knoten verschiebt die Proben um 0,005 px)
+    // auf die Nachbarprobe, und die ganze Leiter rückte um eine Probe (Langhals 0,9 px, Körper 2 px; Plan 20.10., V6).
+    const xv = um[iv]!.x;
+    const xh = um[ih]!.x;
+    um.forEach((p, i) => {
+      if (p.x <= xv + GLEICH_WEIT && abstand(p, spitzen.vorn) < abstand(um[iv]!, spitzen.vorn)) iv = i;
+      if (p.x >= xh - GLEICH_WEIT && abstand(p, spitzen.hinten) < abstand(um[ih]!, spitzen.hinten)) ih = i;
     });
     const nah = (a: number, b: number) => Math.min(Math.abs(a - b), um.length - Math.abs(a - b)) <= fang * um.length;
     if (!nah(jv, iv)) iv = jv;

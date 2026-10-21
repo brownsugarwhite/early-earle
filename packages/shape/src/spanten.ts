@@ -9,7 +9,7 @@
 
 import { type V2, bogenlaenge, punktAuf } from './bezier';
 import type { Dokument, Spant } from './dokument';
-import { type Knoten, type Profil, einfuegen, kannLoeschen, loeschen, pfadAbtasten, segmente, vollerPfad } from './profil';
+import { type Knoten, type Profil, einfuegen, kannLoeschen, loeschen, pfadAbtasten, pfadNachLaenge, segmente, vollerPfad } from './profil';
 
 
 /** Kasten an der Stelle f (Anteil der Länge der Seite): Höhe aus der Seite, halbe Breite aus dem Top (auf die Länge gestreckt). */
@@ -33,8 +33,9 @@ function schnittWerte(poly: readonly V2[], x: number): number[] {
 function umriss(dok: Dokument) {
   let u = umrisse.get(dok.profile);
   if (!u) {
-    const seite = pfadAbtasten(vollerPfad(dok.profile.seite), 24);
-    const top = pfadAbtasten(vollerPfad(dok.profile.top), 24);
+    // nach Bogenlänge (ein formneutral eingefügter Knoten ändert Ausdehnung und Stellen der Spanten nicht; Plan 20.10., V6)
+    const seite = pfadNachLaenge(vollerPfad(dok.profile.seite), 120);
+    const top = pfadNachLaenge(vollerPfad(dok.profile.top), 120);
     const xs = seite.map((p) => p.x);
     const ts = top.map((p) => p.x);
     u = { seite, top, xMin: Math.min(...xs), xMax: Math.max(...xs), tMin: Math.min(...ts), tMax: Math.max(...ts) };

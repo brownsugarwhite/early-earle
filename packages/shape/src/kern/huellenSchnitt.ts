@@ -15,8 +15,8 @@
 
 import type { V2 } from '../bezier';
 import type { Dokument } from '../dokument';
-import { pfadAbtasten, vollerPfad } from '../profil';
-import type { Breiten } from './breite';
+import { pfadNachLaenge, vollerPfad } from '../profil';
+import { type Breiten, silhouettenPolygon } from './breite';
 
 /** Halbe Querschnitt-Vorlage (wie `Querschnitt` in `ableiten.ts`): Höhe v (1 oben … 0 unten), halbe Breite w (0 … 1). */
 export type Schnittvorlage = { v: number[]; w: number[]; haerte: number[]; knoten: number[] };
@@ -131,8 +131,9 @@ function plateauMitte(w: ArrayLike<number>, F: number, lage: (k: number) => numb
 /** Fülle von Front und Top eines Dokuments; Exponenten zwischen 2 (Ellipse) und `hoechstens` (Look-Wahl „Fülle“). */
 export function zeichnungsFuelle(dok: Dokument, breiten: Breiten, hoechstens: number): ZeichnungsFuelle {
   const s = dok.skalierung;
-  const ys = pfadAbtasten(vollerPfad(dok.profile.front), 24).map((p) => p.y * s);
-  const xs = pfadAbtasten(vollerPfad(dok.profile.top), 24).map((p) => p.x * s);
+  // Ausdehnung nach Bogenlänge abgetastet (unabhängig von den Knoten, wie die Breiten)
+  const ys = pfadNachLaenge(vollerPfad(dok.profile.front), 160).map((p) => p.y * s);
+  const xs = pfadNachLaenge(vollerPfad(dok.profile.top), 160).map((p) => p.x * s);
   const f = haelftenFuelle(breiten.front, Math.min(...ys), Math.max(...ys));
   const t = haelftenFuelle(breiten.top, Math.min(...xs), Math.max(...xs));
   const e = (rho: number) => Math.min(hoechstens, Math.max(2, exponentAusFuelle(rho)));
@@ -145,10 +146,9 @@ export function zeichnungsFuelle(dok: Dokument, breiten: Breiten, hoechstens: nu
  * der Robbe). Außerhalb der Ausdehnung −∞ wie die genaue Fassung; an einer Grenze zur Außenseite die nächste Stützstelle.
  */
 export function tabellierteBreiten(dok: Dokument, b: Breiten, n = 2048): Breiten {
-  const s = dok.skalierung;
-  // dieselben Polygone wie `silhouettenBreite` (40 je Abschnitt); jede Kante trägt sich in die Tabellenzeilen ein, die sie
+  // dieselben Polygone wie `silhouettenBreite` (nach Bogenlänge); jede Kante trägt sich in die Tabellenzeilen ein, die sie
   // kreuzt — größte |Kreuzung| je Zeile wie `schnittMax`, ohne für jede Zeile alle Kanten abzulaufen
-  const polygon = (a: 'front' | 'top') => pfadAbtasten(vollerPfad(dok.profile[a]), 40).map((p) => ({ x: p.x * s, y: p.y * s }));
+  const polygon = (a: 'front' | 'top') => silhouettenPolygon(dok, a);
   const tabelle = (poly: { x: number; y: number }[], achse: 'x' | 'y'): ((w: number) => number) => {
     let lo = Infinity;
     let hi = -Infinity;
@@ -882,13 +882,26 @@ const MU = 2;
  * Dynamische Programmierung über die Kette. Ohne Glätte sprang die Reihe dort, wo Sprossen verschieden geneigt sind
  * (Tigerschnauze: Ring 0 am breitesten unten, Ring 2 oben), und verdrehte den Käfig (Falte 104°).
  */
-export function breitenlinieWaehlen(profile: readonly HuellenProfil[], mu = MU): number[] {
+export function breitenlinieWaehlen(profile: readonly HuellenProfil[], mu = MU, fest?: readonly (number | undefined)[]): number[] {
   const n = profile.length;
   if (!n) return [];
   const K = BREITEN_STUFEN;
   // bis an die Enden (die Kosten 1 − z/W halten die Linie an der breitesten Stelle; liegt sie an einem flachen Ende, darf sie dorthin)
   const vk = Array.from({ length: K }, (_, k) => ENDE_ABSTAND + ((1 - 2 * ENDE_ABSTAND) * k) / (K - 1));
-  const kosten = profile.map((pr) => vk.map((v) => (v < pr.vMin - 1e-9 || v > pr.vMax + 1e-9 ? 1e6 : pr.W > 0 ? 1 - profilBei(pr, v) / pr.W : 0)));
+  // V6: feste Glieder (die Kette ohne Loops hat schon gewählt) behalten ihre Höhe; die übrigen wählen zwischen ihnen
+  const kFest = (v: number) => {
+    let b = 0;
+    for (let k = 1; k < K; k++) if (Math.abs(vk[k]! - v) < Math.abs(vk[b]! - v)) b = k;
+    return b;
+  };
+  const kosten = profile.map((pr, i) => {
+    const f = fest?.[i];
+    if (f !== undefined) {
+      const kf = kFest(f);
+      return vk.map((_, k) => (k === kf ? 0 : 1e6));
+    }
+    return vk.map((v) => (v < pr.vMin - 1e-9 || v > pr.vMax + 1e-9 ? 1e6 : pr.W > 0 ? 1 - profilBei(pr, v) / pr.W : 0));
+  });
   let summe = kosten[0]!.slice();
   const zurueck: Int32Array[] = [];
   // Übergänge nur bis Δv = 0,3 je Nachbar (größere Sprünge kosten mehr als jeder Breitenverlust; spart im Zug ¾ der Zeit)
@@ -920,6 +933,36 @@ export function breitenlinieWaehlen(profile: readonly HuellenProfil[], mu = MU):
   for (let i = n - 1; i > 0; i--) {
     k = zurueck[i - 1]![k]!;
     out[i - 1] = vk[k]!;
+  }
+  if (fest) for (let i = 0; i < n; i++) if (fest[i] !== undefined) out[i] = fest[i]!;
+  // Zwischen den Rasterstufen stetig nachführen (Plan 20.10., V6): Die DP springt bei winzigen Änderungen auf die Nachbarstufe
+  // (ein formneutral eingefügter Knoten verschob das Ei so um 1,2 px); je Glied der Scheitel der Parabel durch die Kosten
+  // eine Stufe darunter, dort und darüber (bei festen Nachbarn), zwei Durchgänge vor und zurück
+  const h = vk[1]! - vk[0]!;
+  const lo = vk[0]!;
+  const hi = vk[K - 1]!;
+  const kostenBei = (i: number, v: number): number => {
+    const pr = profile[i]!;
+    if (v < pr.vMin - 1e-9 || v > pr.vMax + 1e-9 || v < lo - 1e-12 || v > hi + 1e-12) return Infinity;
+    let c = pr.W > 0 ? 1 - profilBei(pr, v) / pr.W : 0;
+    if (i > 0) c += mu * (v - out[i - 1]!) ** 2;
+    if (i + 1 < n) c += mu * (out[i + 1]! - v) ** 2;
+    return c;
+  };
+  for (let durchgang = 0; durchgang < 4; durchgang++) {
+    const vor = durchgang % 2 === 0;
+    for (let q = 0; q < n; q++) {
+      const i = vor ? q : n - 1 - q;
+      if (fest?.[i] !== undefined) continue;
+      const v = out[i]!;
+      const e0 = kostenBei(i, v);
+      const em = kostenBei(i, v - h);
+      const ep = kostenBei(i, v + h);
+      const kr = em + ep - 2 * e0;
+      if (!(Number.isFinite(e0) && Number.isFinite(em) && Number.isFinite(ep)) || !(kr > 1e-15)) continue;
+      const d = Math.max(-h, Math.min(h, (h * (em - ep)) / (2 * kr)));
+      out[i] = Math.min(hi, Math.max(lo, v + d));
+    }
   }
   return out;
 }
@@ -1027,8 +1070,11 @@ function reihenVergeben(liste: readonly ReihenWunsch[], lo: number, hi: number):
   return out;
 }
 
-export function reihenplan(profile: readonly HuellenProfil[], vr: readonly number[], hOut: number, iBreit: number, frei: ReadonlySet<number> = new Set()): Anker[][] {
+export function reihenplan(profile: readonly HuellenProfil[], vr: readonly number[], hOut: number, iBreit: number, frei: ReadonlySet<number> = new Set(), zusatz: ReadonlySet<number> = new Set()): Anker[][] {
   type Merkmal = { id: number; v: number; haerte: number };
+  // V6: Loop-Ringe (`zusatz`) stimmen nicht mit — Einrasten, Reihen und Kanten flacher Enden entscheidet die Kette ohne sie;
+  // sie bekommen ihre Anker nach diesem Plan (ein eingefügter Loop ändert die Vorlagen der übrigen Ringe nicht)
+  const zaehlt = (i: number) => !zusatz.has(i);
   const merkmale: Merkmal[][] = profile.map((pr) => {
     const out: Merkmal[] = [];
     for (let k = 1; k + 1 < pr.v.length; k++) if (pr.kennung[k]! !== -1 && pr.ecke[k]! >= 0) out.push({ id: pr.kennung[k]!, v: pr.v[k]!, haerte: pr.ecke[k]! });
@@ -1040,7 +1086,9 @@ export function reihenplan(profile: readonly HuellenProfil[], vr: readonly numbe
   // 1. Einrasten (je Ecke für alle Glieder gleich): Liegt sie in der Mehrheit der Glieder nahe der Breitenlinie, ist sie dort
   // die breiteste Stelle
   const ids = new Set<number>();
-  for (const ms of merkmale) for (const m of ms) if (m.id >= 0 || m.id === SCHULTER_OBEN || m.id === SCHULTER_UNTEN) ids.add(m.id);
+  merkmale.forEach((ms, i) => {
+    if (zaehlt(i)) for (const m of ms) if (m.id >= 0 || m.id === SCHULTER_OBEN || m.id === SCHULTER_UNTEN) ids.add(m.id);
+  });
   const eingerastet = new Set<number>();
   for (const id of ids) {
     if (id < 0) continue;
@@ -1049,7 +1097,7 @@ export function reihenplan(profile: readonly HuellenProfil[], vr: readonly numbe
     let ueber = 0;
     let unter = 0;
     merkmale.forEach((ms, i) => {
-      const m = ms.find((x) => x.id === id);
+      const m = zaehlt(i) ? ms.find((x) => x.id === id) : undefined;
       if (!m) return;
       da++;
       if (Math.abs(m.v - vr[i]!) <= EINRASTEN) nah++;
@@ -1092,7 +1140,7 @@ export function reihenplan(profile: readonly HuellenProfil[], vr: readonly numbe
     const unten: number[] = [];
     let haerte = 0;
     merkmale.forEach((ms, i) => {
-      const m = ms.find((x) => x.id === id);
+      const m = zaehlt(i) ? ms.find((x) => x.id === id) : undefined;
       if (!m) return;
       (m.v > bl[i]! ? oben : unten).push(natuerlich(i, m.v));
       haerte = Math.max(haerte, m.haerte);
@@ -1103,8 +1151,8 @@ export function reihenplan(profile: readonly HuellenProfil[], vr: readonly numbe
     (seiteOben ? seiten.oben : seiten.unten).push({ id, r: liste[Math.floor(liste.length / 2)]!, haerte });
   }
   // Kanten flacher Enden belegen ihre Reihe (1 bzw. hOut − 1), wo es sie gibt
-  const kanteOben = merkmale.some((ms) => ms.some((m) => m.id === KANTE_OBEN));
-  const kanteUnten = merkmale.some((ms) => ms.some((m) => m.id === KANTE_UNTEN));
+  const kanteOben = merkmale.some((ms, i) => zaehlt(i) && ms.some((m) => m.id === KANTE_OBEN));
+  const kanteUnten = merkmale.some((ms, i) => zaehlt(i) && ms.some((m) => m.id === KANTE_UNTEN));
   for (const [liste, lo, hi] of [
     [seiten.oben, kanteOben ? 2 : 1, iBreit - 1],
     [seiten.unten, iBreit + 1, kanteUnten ? hOut - 2 : hOut - 1],
@@ -1143,7 +1191,18 @@ export function reihenplan(profile: readonly HuellenProfil[], vr: readonly numbe
   // Ecken nur, wo ein Nachbarglied sie auf derselben Reihe trägt (eine Ecke in einem einzelnen Ring verbog nur seine Reihen,
   // Keil oben); Breitenlinie bleibt immer
   const traegt = (i: number, r: number) => (anker[i] ?? []).some((a) => a.reihe === r && a.haerte > 0);
-  return anker.map((a, i) => (profile.length < 2 ? a : a.filter((x) => x.reihe === iBreit || !(x.haerte > 0) || traegt(i - 1, x.reihe) || traegt(i + 1, x.reihe))));
+  // Nachbarglieder: für Glieder der Kette die Nachbarn ohne Loop-Ringe, für Loop-Ringe die unmittelbaren
+  const vor = (i: number) => {
+    let k = i - 1;
+    while (zaehlt(i) && k >= 0 && !zaehlt(k)) k--;
+    return k;
+  };
+  const nach = (i: number) => {
+    let k = i + 1;
+    while (zaehlt(i) && k < anker.length && !zaehlt(k)) k++;
+    return k;
+  };
+  return anker.map((a, i) => (profile.length < 2 ? a : a.filter((x) => x.reihe === iBreit || !(x.haerte > 0) || traegt(vor(i), x.reihe) || traegt(nach(i), x.reihe))));
 }
 
 /** V5: so viele Ringe hinter dem Ende einer Linie läuft ihre Reihe zur natürlichen Lage zurück */
