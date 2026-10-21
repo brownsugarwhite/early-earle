@@ -21,6 +21,8 @@ import { type Verfeinert, verfeinern1 } from '../einsatz/verfeinern';
 import { lippeAnpassen } from '../einsatz/lippe';
 import { a0Netz, type EinsatzMasse, einsatzLoesen, einsatzMessen, type GeloesterEinsatz, type LoesenOptionen } from '../einsatz/loesen';
 import { type EinsatzOptionen, type EinsatzTopologie, einsatzTopologie } from '../einsatz/topologie';
+import type { Bauplan } from '../wesen';
+import { editorBauen, editorPlan, imAblauf } from './extremMessung';
 
 type V3 = [number, number, number];
 
@@ -61,7 +63,15 @@ export function einsatzFaelle(): [KoerperArt, Anfang, Form][] {
   return faelle;
 }
 
-type KoerperStand = { dok: ReturnType<typeof koerperDokument>; abl: Ableitung; netz: FeinNetz; v: Verfeinert; fein: Float64Array; ff: number[][]; h1: number; hFeld: number };
+type KoerperStand = { dok: Dokument; abl: Ableitung; netz: FeinNetz; v: Verfeinert; fein: Float64Array; ff: number[][]; h1: number; hFeld: number };
+
+/**
+ * A0 eines Prüffalls: 'alt' wie bis E1 (`ableiten` mit frisch gewählten Ringen, ohne glatte Haut) oder 'editor' (E2): gebaut
+ * wie im Editor für ein neues Wesen — Startkugel, deren Ringe einfrieren, umgeformt zum Prüfkörper (Florians Ablauf), glatte
+ * Haut und „Umrisse berühren“ mittel (`editorPlan`), genauer Bau mit Zurückschreiben der Stationen (`editorBauen`); A0 ist die
+ * Ableitung des Körpers ohne Pinsel-Deltas (`stand.abl`). `plan` ergänzt den Bauplan (z. B. Querschnitt aus der Hülle).
+ */
+export type A0Art = { art: 'alt' } | { art: 'editor'; plan?: Partial<Bauplan> };
 const koerperMerk = new Map<string, KoerperStand>();
 
 /** Mittlere Kantenlänge eines Käfigs (Median). */
@@ -80,12 +90,17 @@ function kantenMedian(k: Verfeinert['kaefig']): number {
  * Körperstand je Körperart und Feldstufe (gemerkt; die Fälle teilen ihn, keiner verändert ihn): A0, feines Netz (Stufe 3 von
  * A0), Feldkäfig (K1 oder K2) und seine Unterteilung bis zum feinen Netz (gleiche Nummern).
  */
-function koerperStand(art: KoerperArt, stufe: 1 | 2 = 1): KoerperStand {
-  const schluessel = `${art}/${stufe}`;
+function koerperStand(art: KoerperArt, stufe: 1 | 2 = 1, a0: A0Art = { art: 'alt' }): KoerperStand {
+  const schluessel = `${art}/${stufe}/${JSON.stringify(a0)}`;
   const alt = koerperMerk.get(schluessel);
   if (alt) return alt;
-  const dok = koerperDokument(art, zufall(1));
-  const abl = ableiten(dok, { stufen: 3 });
+  let dok: Dokument = koerperDokument(art, zufall(1));
+  let abl: Ableitung;
+  if (a0.art === 'editor') {
+    const bau = editorBauen(imAblauf(dok, 'roehre', 'kugel'), { ...editorPlan('roehre'), ...(a0.plan ?? {}) });
+    dok = bau.dok;
+    abl = bau.stand.abl;
+  } else abl = ableiten(dok, { stufen: 3 });
   const netz = feinNetz(abl.fein, feinesNetz(abl).flaechen);
   const v1 = verfeinern1(abl.kaefig);
   const v = stufe === 2 ? verfeinern1(v1.kaefig) : v1;
@@ -111,10 +126,10 @@ export const FALL_ALT = { stufe: 1, schnitt: 'pfad' } as const;
  * (Band um die Linie, nur Kneifpunkte geschlossen, E1). `kappe`: begradigt nur bis `kappe` Radien (0 = ganz; Standard auf K2
  * 1,5 — das Band um die Linie bleibt erhalten, die Lippenauflösung m folgt seiner Länge).
  */
-export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form, opt: { verlaengerung?: number; stufe?: 1 | 2; schnitt?: 'pfad' | 'linie'; feld?: 'begradigt' | 'kompakt'; kappe?: number } = {}): EinsatzFall | { name: string; fehler: string } | null {
+export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form, opt: { verlaengerung?: number; stufe?: 1 | 2; schnitt?: 'pfad' | 'linie'; feld?: 'begradigt' | 'kompakt'; kappe?: number; a0?: A0Art } = {}): EinsatzFall | { name: string; fehler: string } | null {
   const name = `${art}/${anfang}/${form}`;
   const stufe = opt.stufe ?? 2;
-  const { dok, abl, netz, v, fein, ff, h1, hFeld } = koerperStand(art, stufe);
+  const { dok, abl, netz, v, fein, ff, h1, hFeld } = koerperStand(art, stufe, opt.a0);
   const vorlage = GRUNDKOERPER.includes(art) ? null : vorlageVon(art as 'rex' | 'langhals' | 'robbe');
   const roh = maulLinien(dok, art, maulBezug(art, dok, vorlage), hautAusNetz(abl), anfang, form, 'kurz', 'gleich', zufall(3));
   if ('fehler' in roh) return null;

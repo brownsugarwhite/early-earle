@@ -1,7 +1,7 @@
 // Aufruf aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/teilA/e1-reihe-k2.ts
 // Umgebung: LAGE (karte|band, Liste mit Komma), J (fest; sonst Standard), FAELLE, AUS (JSON-Zeilen), WULST (px), ECKE (eckeMin),
 // VERL (Feld hinter dem Mundwinkel verlängert, in Feldradien), FELD (begradigt|kompakt), KAPPE (Radien, 0 = ganz begradigt),
-// FAECHER (tutte|kreis), NAHT (bogen|karte)
+// FAECHER (tutte|kreis), NAHT (bogen|karte), A0 (alt|editor: A0 wie im Editor, E2), A0PLAN (JSON, ergänzt den Bauplan von A0)
 // Ganze Reihe des Kernrings nach dem Standard (Plan 21.10.): Feld auf K2 begradigt bis 1,5 Radien, Schlitz genau auf der Linie,
 // Reihenzahl konform (10 … 16), Fächer um c als Halbkreis, Nahtspeichen auf den Kartenlinien, Ausgleich außen, letzte
 // Lippenspanne ¼ Feldkante, ohne Lippenwulst. Je ausgeglichenem Fall: Haut gegen A0 (max/99 %), Knick im Feld und am Mundwinkel (je gegen A0),
@@ -16,7 +16,7 @@ const zeilen: Record<string, Record<string, number | string>[]> = {};
 for (const [art, anfang, form] of einsatzFaelle()) {
   const name = `${art}/${anfang}/${form}`;
   if (NUR && !NUR.includes(name)) continue;
-  const f = einsatzFall(art, anfang, form, { ...(process.env.VERL ? { verlaengerung: Number(process.env.VERL) } : {}), ...(process.env.FELD ? { feld: process.env.FELD as 'begradigt' | 'kompakt' } : {}), ...(process.env.KAPPE ? { kappe: Number(process.env.KAPPE) } : {}) });
+  const f = einsatzFall(art, anfang, form, { ...(process.env.VERL ? { verlaengerung: Number(process.env.VERL) } : {}), ...(process.env.FELD ? { feld: process.env.FELD as 'begradigt' | 'kompakt' } : {}), ...(process.env.KAPPE ? { kappe: Number(process.env.KAPPE) } : {}), ...(process.env.A0 === 'editor' ? { a0: { art: 'editor' as const, ...(process.env.A0PLAN ? { plan: JSON.parse(process.env.A0PLAN) } : {}) } } : {}) });
   if (!f || 'fehler' in f || f.hautAbstand > 1) continue;
   for (const lage of LAGEN) {
     const t0 = performance.now();

@@ -333,3 +333,32 @@ der zweiten Sitzung), `teilA/e1-gitterbild.ts` ebenso.
 
 **Nächster Schritt nach Plan:** E2 (A0 wie im Editor; Falten von A0 im Feld laufen auf einer Spalte weiter — das betrifft genau
 Rex und Robbe).
+
+## E2 im Detail (21.10., dritte Sitzung — Florian: „Ja, mach hier mit E2 weiter (A0 wie im Editor, Rex und Robbe in die Tore).“)
+
+**Ziel:** Der Einsatz arbeitet auf dem A0, das der Editor wirklich baut, und hält die Tore an allen Körpern, auch an Rex und
+Robbe. Bis E1 baute der Prüffall A0 mit dem alten `ableiten` (frisch gewählte Ringe, ohne glatte Haut) und ließ Rex/Robbe aus den
+Toren, weil A0 dort eigene Schärfen im Feld trägt, die der Einsatz verliert.
+
+**Befund vor dem Bau** (Feld auf K2, Standard des Kernrings):
+- Schärfen von A0 im Feld haben nur Rex mittel (32 scharfe Kanten, 26 davon praktisch unendlich, und die Schnauzenspitze als
+  scharfer Punkt) und Robbe hoch/mittel (ein scharfer Punkt an der Schnauzenfront auf der Naht). Beim Rex ist die Falte eine
+  kurze **Querfalte** aus einer Ecke im Top-Umriss: Sie kreuzt die Maullinie fast rechtwinklig und endet im Feld; die Linie
+  beginnt genau an der Schnauzenspitze. Die Topologie zählt sie heute als `verloreneFalten`.
+- **A0 wie im Editor** (Startkugel, eingefrorene Ringe, umgeformt, glatte Haut, „berühren mittel“) ändert daran nichts, bringt
+  aber vier Robbe-Fälle auf die Haut (Linie ≤ 1 px) und verschiebt die Zahlen: ganze Reihe 43 Fälle, Haut max 0,10 px ohne
+  Rex/Robbe, Mundwinkel 29 von 30 (Birne mittel S 3,47° bei A0 1,26°), Lippe > 1 px an Rex mittel (1,5 / 1,1) und Robbe hoch J
+  (2,6), Robbe hoch J faltet (172°; A0 selbst hat dort 72°), Rex tief J am Mundwinkel 6,6° (A0 3,3°).
+
+**Schritte** (je Schritt Test vorher rot, Reihe, Bild, Stand hier):
+- **E2.1 A0 wie im Editor im Prüffall** (gebaut als Option `einsatzFall(…, { a0: { art: 'editor', plan } })`, `editorBauen` aus
+  dem Prüfstand der Extremreihe; alter Weg bitgleich). Wird Standard auf K2, sobald die Tore dort halten.
+- **E2.2 Mundwinkel auf dem Editor-A0:** Birne mittel S und Rex tief J verstehen und lösen.
+- **E2.3 Schärfen von A0 im Feld:** (a) eine Falte, die den Schlitz kreuzt, läuft oben und unten auf je einer Speiche (Speiche
+  über der Lippenstelle, an der sie den Schlitz kreuzt; Gitterpunkte auf der Falte, Schärfe von A0 übernommen); (b) ein scharfer
+  Punkt im Feld wird ein Gitterpunkt mit seiner Punktschärfe (auf der Naht ein Punkt der Nahtspeiche, am Linienanfang U₀);
+  (c) Falten im Feld, die den Schlitz nicht kreuzen (P-Linien neben dem Maul), auf der Speiche oder Reihe, die ihrer Richtung folgt
+  — erst wenn ein Fall es zeigt.
+- **E2.4 A0-Varianten:** Querschnitt aus der Hülle (`umrisseExakt`), P-Linien am Maul, Loops; je Variante die ganze Reihe.
+- **E2.5 Tore an allen Körpern** (auch Rex/Robbe): Haut ≤ 0,25 px gegen A0, Mundwinkel ≤ A0 + 2°, Knick im Feld ≤ A0 + 2°,
+  nirgends umgeklappt, Lippe ≤ 1 px, außen bitgleich, Spiegel bitgenau; Standard umstellen, Tests, Bilder.

@@ -16,7 +16,8 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 > **Ab 21.10. läuft Teil A „Maul als Einsatz“** (Florians Wahl vor V7; E1-Tore im Kern erreicht, Abnahme offen, als Nächstes E2) nach
 > [`docs/plans/2026-10-21-maul-einsatz-weiter.md`](docs/plans/2026-10-21-maul-einsatz-weiter.md) (Schritte E1–E6). Einstieg für
 > eine frische Sitzung mit Start-Prompt, Stand, nächsten Schritten, Skripten und Fallen: [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
-> Stand 21.10. (zweite Sitzung): Haut-Tor erreicht, Mundwinkel 26 von 30; nächster Schritt: Verdrehung an J-Linien aufnehmen.
+> Stand 21.10. (dritte Sitzung): Haut- und Mundwinkel-Tor im Kern erreicht (30 von 30, Abnahme offen); E2 läuft (A0 wie im
+> Editor, Rex und Robbe in die Tore; Planseite „E2 im Detail“).
 
 - **2026-10-04: Prototyp 1 ist abgeschlossen** (Archiv-Branch `prototyp-1`). Er diente zum Lernen. Florian: „Der Prototyp war sehr gut und aufschlussreich und hat bewiesen, dass die Spielidee toll ist.“ Viele Entscheidungen sind gefallen; die Gesamtdynamik und einige grafische Elemente haben ihm gefallen.
 - **Jetzt beginnt die eigentliche Produktion mit dem finalen Look.** Grundlage wird **Florians neuer Plan mit neuem Hauptprompt**: Story, Charaktere und Map arbeitet er genauer aus und trägt sie in Dokumenten und Screenshots zusammen. Es folgen mehrere Runden und Iterationen.
