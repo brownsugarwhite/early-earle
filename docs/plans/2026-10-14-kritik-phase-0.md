@@ -233,6 +233,12 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
   Schlitz liegt auf der Haut, die Lippe folgte der Welle. Gelöst mit dem Lippenziel auf der Haut (`lippeAufHaut`, Knick 11,2°);
   noch Option, Standard zusammen mit der Leiter (sonst kippt Rex mittel gerade).
 - [ ] **E2.4 offen:** A0 mit Querschnitt aus der Hülle, P-Linien am Maul (Falten, die den Schlitz kreuzen), Loops.
+- [ ] **Spiel-Budget (21.10. spätabends, Florians Frage nach der Polygonzahl auf dem Handy):** Der Einsatz auf K2 verfeinert den
+  ganzen Käfig zweimal und kommt mit Lippe, Tasche und Rachen auf 9 500–13 000 Flächen (Kugel mittel gerade, Rex mittel J);
+  schon die Käfigflächen allein sind 19 000–26 000 Dreiecke, das Brett-Budget ist 8 000 je Wesen (Körper ohne Maul auf Stufe 1:
+  3 200). Messung `apps/editor/scripts/pruefen/dreieck-budget.ts`. Wege: Einsatz örtlich ohne Verfeinerung des ganzen Körpers
+  (Stücknetz mit Dichteübergang), weniger Lippenspannen (6–8 reichen für ein rundes offenes Maul), kleinerer Rachen, eigene
+  Brettstufe. Als Budget-Tor in P2/P3 der Prüfphase (Übergabe, „Vorgehen ab 22.10.“), dazu Spiel-Probe P0 auf dem iPhone.
 - **Erledigt (21.10.):** A0 wie im Editor als Standard des Prüffalls auf K2; Mundwinkel-Tor an allen 43 Fällen auch an Rex und
   Robbe (Ausgleich der Stufennaht, letzte Lippenspanne 0,15 Feldkante); Spitzen von A0 auf der Naht (Robbe mittel 0,58 → 0,14 px)
   und am Linienanfang als Ecke der Lippe (Rex mittel Lippe 1,5 → 0,7 px); Naht nach Bogenlänge auf umparametrisierter Karte (Robbe
