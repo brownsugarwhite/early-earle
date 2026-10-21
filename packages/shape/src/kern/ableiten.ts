@@ -2435,7 +2435,7 @@ function ableitenEinmal(dok: Dokument, optionen: Partial<AbleitOptionen>): Ablei
   const t1 = jetzt();
   const breiten = silhouettenBreite(dok);
   const t2 = jetzt();
-  // V6: je Loop ein Ring mehr (nur mit dem Querschnitt aus der Hülle) — die Stationen zählen sie
+  // V6: je Loop ein Ring mehr (in beiden Querschnitten) — die Stationen zählen sie
   const st = stationenWaehlen(l, opt, dok);
   const vorlage = roehre(st.ringe.length, opt.ring);
   faltenSetzen(vorlage, st, l, dok, breiten, opt);

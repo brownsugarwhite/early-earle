@@ -20,7 +20,7 @@ import { szene } from '../three/instanz';
 import { istTrackpad } from '../viewports/ansicht2d';
 import { type Gleiten, kernLeiter, schleifeGleiten, schleifeGleitenVorbereiten, stationenAusLeiter, zugBei } from '@ee/shape/kern';
 import { aktuellesNetz } from './netzStand';
-import { type SchleifenAnzeige, nurDieserLoop, ringMitte, schleifeAmZeiger, schleifeImBlattWaehlen, schleifenKnoten, schleifeWaehlen, useSchleife } from './schleifenAuswahl';
+import { type SchleifenAnzeige, gewaehlteSchleifen, nurDieseLoops, ringMitte, schleifeAmZeiger, schleifeImBlattWaehlen, schleifenKnoten, schleifeWaehlen, useSchleife } from './schleifenAuswahl';
 import { schleifenAktiv } from './schleifenWerkzeug';
 
 const PX = 461;
@@ -31,20 +31,19 @@ const BLAETTER = new Set(['seite', 'front', 'top']);
 type Art = 'g' | 's' | 'r';
 /** Wo die Operation läuft: auf der Bühne oder in einem Blatt */
 type Feld = 'creation' | Ansicht;
+/** Ein Loop der Operation: seine Knoten in Seite (Rücken, Bauch) und am Breitenknoten (Top bei liegendem, Front bei stehendem Ring). */
+type LoopTeil = { id: string; seite: number[]; top: number[]; front: number[] };
 type Lauf = {
   art: Art;
-  id: string;
+  /** die gewählten Loops; S und R wirken je Loop um seine eigene Mitte (Blender „Individual Origins“), G auf alle gleich */
+  loops: LoopTeil[];
   feld: Feld;
   /** als Ziehen an der Loop-Linie begonnen (Blatt): Loslassen bestätigt */
   ziehen: boolean;
   basis: Profile;
   auswahl: Record<'seite' | 'front' | 'top', number[]>;
-  seite: number[];
-  /** Breitenknoten: im Top (liegender Ring) oder in der Front (stehender Ring) */
-  top: number[];
-  front: number[];
   /**
-   * Mitte des Loops und Zeiger: auf der Bühne Feldpixel (y nach unten), im Blatt Blatt-Koordinaten (Profil-Einheiten, y nach
+   * Mitte der Loops und Zeiger: auf der Bühne Feldpixel (y nach unten), im Blatt Blatt-Koordinaten (Profil-Einheiten, y nach
    * oben). `j`: Abbildung Profil-x/y → Bildschirm (Spalten, y nach oben); im Blatt seine Achsen (Seite x/y, Top x, Front y).
    */
   c: V2;
@@ -66,7 +65,7 @@ let kontextBis = 0;
 
 export const schleifeGrsAktiv = () => lauf !== null;
 /** Für Prüfskripte. */
-export const schleifeGrsMessung = { lauf: () => (lauf ? { art: lauf.art, id: lauf.id, sperre: lauf.sperre, zahl: lauf.zahl } : null) };
+export const schleifeGrsMessung = { lauf: () => (lauf ? { art: lauf.art, id: lauf.loops[0]!.id, ids: lauf.loops.map((x) => x.id), sperre: lauf.sperre, zahl: lauf.zahl } : null) };
 
 function stageRect(): DOMRect | null {
   return document.querySelector<HTMLElement>('.vp-ober[data-view="creation"] .steuerung3d')?.getBoundingClientRect() ?? null;
@@ -90,25 +89,27 @@ function versatz(l: Lauf): V2 {
 }
 
 /**
- * G, S oder R auf den gewählten Loop starten: mit dem Zeiger über der Bühne, oder über einem Blatt, wenn genau dieser Loop
- * gewählt ist (sonst formen G/S/R dort die gewählten Punkte, V3). `feld` und `ziehen` setzt das Ziehen an einer Loop-Linie.
- * false: kein Loop gewählt oder es geht hier nicht.
+ * G, S oder R auf die gewählten Loops starten (gewählt = alle Knoten des Loops): mit dem Zeiger über der Bühne, oder über einem
+ * Blatt, wenn genau diese Loops gewählt sind (sonst formen G/S/R dort die gewählten Punkte, V3). `feld` und `ziehen` setzt das
+ * Ziehen an einer Loop-Linie. false: kein Loop gewählt oder es geht hier nicht.
  */
 export function schleifeGrsStarten(art: Art, opt: { feld?: Ansicht; ziehen?: { clientX: number; clientY: number } } = {}): boolean {
   if (lauf || modalAktiv() || schleifenAktiv()) return false;
-  const id = useSchleife.getState().gewaehlt;
   const ui = useUi.getState();
   const ed = useEditor.getState();
   const feld: Feld | null = opt.feld ?? (ui.hover === 'creation' ? 'creation' : ui.hover && BLAETTER.has(ui.hover) ? (ui.hover as Ansicht) : null);
-  if (!id || !feld || ui.ebene !== 'form' || ed.modus !== 'editor' || ed.gesteStart) return false;
-  if (feld !== 'creation' && !nurDieserLoop(id)) return false;
+  if (!feld || ui.ebene !== 'form' || ed.modus !== 'editor' || ed.gesteStart) return false;
   const n = aktuellesNetz();
   const rd = n?.netz.ringe;
-  const sr = rd?.schleifen.find((s) => s.id === id);
-  if (!n || !rd || !sr) return false;
+  if (!n || !rd) return false;
+  const ids = rd.schleifen.map((x) => x.id).filter((id) => gewaehlteSchleifen().has(id));
+  if (!ids.length) return false;
+  if (feld !== 'creation' && !nurDieseLoops(ids)) return false;
+  const loops: LoopTeil[] = ids.map((id) => ({ id, ...schleifenKnoten(id) })).filter((x) => x.seite.length === 2);
+  const ringe = loops.map((x) => rd.schleifen.find((sr) => sr.id === x.id)!.ring);
+  if (!loops.length) return false;
   const pr = ed.dok.profile;
-  const { seite, top, front } = schleifenKnoten(id);
-  if (seite.length !== 2) return false;
+  const mittel = (ps: [number, number, number][]): [number, number, number] => [0, 1, 2].map((c) => ps.reduce((a, p) => a + p[c]!, 0) / ps.length) as [number, number, number];
   let c: V2;
   let j: [number, number, number, number];
   let start: V2;
@@ -116,9 +117,9 @@ export function schleifeGrsStarten(art: Art, opt: { feld?: Ansicht; ziehen?: { c
     const r = szene.aktuell;
     const rect = stageRect();
     if (!r || !rect) return false;
-    // Abbildung am Ring: Bildschirmversatz je Profil-Einheit in x und y (y nach oben)
+    // Abbildung an der Mitte der Ringe: Bildschirmversatz je Profil-Einheit in x und y (y nach oben)
     const sk = n.skalierung;
-    const m = ringMitte(rd, sr.ring, sk);
+    const m = mittel(ringe.map((ring) => ringMitte(rd, ring, sk)));
     const eps = 0.01;
     const q = r.projizierenViele('creation', Float32Array.from([...m, m[0] + eps * sk, m[1], m[2], m[0], m[1] + eps * sk, m[2]]));
     c = { x: q[0]!, y: q[1]! };
@@ -134,17 +135,23 @@ export function schleifeGrsStarten(art: Art, opt: { feld?: Ansicht; ziehen?: { c
       ui.zeigeHinweis('R kippt einen Loop in der Seite oder auf der Bühne — im Top und in der Front bliebe er nicht spiegelgleich');
       return true;
     }
-    const a = pr.seite.knoten[seite[0]!]!.p;
-    const b = pr.seite.knoten[seite[1]!]!.p;
-    const m = ringMitte(rd, sr.ring, 1);
-    c = feld === 'seite' ? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } : feld === 'top' ? { x: m[0], y: 0 } : { x: 0, y: m[1] };
+    const sprossen = loops.map((x) => {
+      const a = pr.seite.knoten[x.seite[0]!]!.p;
+      const b = pr.seite.knoten[x.seite[1]!]!.p;
+      return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    });
+    const m = mittel(ringe.map((ring) => ringMitte(rd, ring, 1)));
+    const sx = sprossen.reduce((a, p) => a + p.x, 0) / sprossen.length;
+    const sy = sprossen.reduce((a, p) => a + p.y, 0) / sprossen.length;
+    c = feld === 'seite' ? { x: sx, y: sy } : feld === 'top' ? { x: m[0], y: 0 } : { x: 0, y: m[1] };
     j = feld === 'seite' ? [1, 0, 0, 1] : feld === 'top' ? [1, 0, 0, 0] : [0, 0, 0, 1];
     const client = opt.ziehen ? { x: opt.ziehen.clientX, y: opt.ziehen.clientY } : zeiger.bekannt ? { x: zeiger.x, y: zeiger.y } : null;
     start = (client && blattLokal(feld, client.x, client.y)) ?? { x: c.x + 0.1, y: c.y };
   }
   const ys = pr.seite.knoten.map((k) => k.p.y);
-  lauf = { art, id, feld, ziehen: !!opt.ziehen, basis: pr, auswahl: { seite, front, top }, seite, top, front, c, j, start, vorher: start, jetzt: start, winkel: 0, sperre: null, zahl: '', radius: 0, radSumme: 0, hoehe: Math.max(...ys) - Math.min(...ys), gleiten: null };
-  ui.setzeAuswahl({ seite, front, top }, feld === 'creation' ? 'seite' : feld);
+  const auswahl = { seite: loops.flatMap((x) => x.seite), front: loops.flatMap((x) => x.front), top: loops.flatMap((x) => x.top) };
+  lauf = { art, loops, feld, ziehen: !!opt.ziehen, basis: pr, auswahl, c, j, start, vorher: start, jetzt: start, winkel: 0, sperre: null, zahl: '', radius: 0, radSumme: 0, hoehe: Math.max(...ys) - Math.min(...ys), gleiten: null };
+  ui.setzeAuswahl(auswahl, feld === 'creation' ? 'seite' : feld);
   ed.beginGeste();
   anmelden();
   aktualisieren();
@@ -183,17 +190,24 @@ export function schleifenBlattZeiger(e: { target: EventTarget | null; clientX: n
   return true;
 }
 
-/** Abbildungen in Seite und am Breitenknoten (Top oder Front) aus Zeiger bzw. Zahl, mit dem Wert für die Anzeige. */
-function abbildungen(l: Lauf): { seite: Abb | null; top: Abb | null; front: Abb | null; wert: string } {
+type LoopAbb = { seite: Abb | null; top: Abb | null; front: Abb | null };
+
+/**
+ * Abbildungen je Loop in Seite und am Breitenknoten (Top oder Front) aus Zeiger bzw. Zahl, mit dem Wert für die Anzeige: G
+ * verschiebt alle gleich, S und R wirken je Loop um seine eigene Mitte.
+ */
+function abbildungen(l: Lauf): { je: LoopAbb[]; wert: string } {
   const pr = l.basis;
-  const a = pr.seite.knoten[l.seite[0]!]!.p;
-  const b = pr.seite.knoten[l.seite[1]!]!.p;
-  const mitte = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  const mitte = (x: LoopTeil) => {
+    const a = pr.seite.knoten[x.seite[0]!]!.p;
+    const b = pr.seite.knoten[x.seite[1]!]!.p;
+    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  };
+  const topKnoten = (x: LoopTeil) => (x.top.length ? pr.top.knoten[x.top[0]!]!.p : null);
+  const frontKnoten = (x: LoopTeil) => (x.front.length ? pr.front.knoten[x.front[0]!]!.p : null);
   const n = zahlLesen(l.zahl);
   const mitZahl = Number.isFinite(n);
   const sk = useEditor.getState().dok.skalierung;
-  const topKnoten = l.top.length ? pr.top.knoten[l.top[0]!]!.p : null;
-  const frontKnoten = l.front.length ? pr.front.knoten[l.front[0]!]!.p : null;
   if (l.art === 'g') {
     let dx: number;
     let dy: number;
@@ -233,10 +247,16 @@ function abbildungen(l: Lauf): { seite: Abb | null; top: Abb | null; front: Abb 
     }
     const wert = `${(dx * PX * sk).toFixed(1).replace('.', ',')} | ${(dy * PX * sk).toFixed(1).replace('.', ',')} px`;
     return {
-      seite: abbildungAus({ art: 'g', c: mitte, frei: { u: true, v: true }, versatz: { x: dx, y: dy } }),
-      // im Top wandert der Breitenknoten mit x, in der Front mit der Höhe
-      top: topKnoten ? abbildungAus({ art: 'g', c: topKnoten, frei: { u: true, v: false }, versatz: { x: dx, y: 0 } }) : null,
-      front: frontKnoten ? abbildungAus({ art: 'g', c: frontKnoten, frei: { u: false, v: true }, versatz: { x: 0, y: dy } }) : null,
+      je: l.loops.map((x) => {
+        const t = topKnoten(x);
+        const f = frontKnoten(x);
+        return {
+          seite: abbildungAus({ art: 'g', c: mitte(x), frei: { u: true, v: true }, versatz: { x: dx, y: dy } }),
+          // im Top wandert der Breitenknoten mit x, in der Front mit der Höhe
+          top: t ? abbildungAus({ art: 'g', c: t, frei: { u: true, v: false }, versatz: { x: dx, y: 0 } }) : null,
+          front: f ? abbildungAus({ art: 'g', c: f, frei: { u: false, v: true }, versatz: { x: 0, y: dy } }) : null,
+        };
+      }),
       wert,
     };
   }
@@ -244,16 +264,56 @@ function abbildungen(l: Lauf): { seite: Abb | null; top: Abb | null; front: Abb 
     const d0 = Math.hypot(l.start.x - l.c.x, l.start.y - l.c.y);
     const f = mitZahl ? n : d0 > 1e-6 ? Math.hypot(l.jetzt.x - l.c.x, l.jetzt.y - l.c.y) / d0 : 1;
     // Y: nur die Höhe (Sprosse), Z: nur die Breite (Top), X: die Sprosse längs x (Neigung bleibt nicht) — wie Blender je Achse
-    const seite = l.sperre === 'z' ? null : abbildungAus({ art: 's', c: mitte, frei: { u: l.sperre !== 'y', v: l.sperre !== 'x' }, faktor: f });
     const breite = l.sperre === null || l.sperre === 'z';
-    const top = topKnoten && breite ? abbildungAus({ art: 's', c: { x: topKnoten.x, y: 0 }, frei: { u: false, v: true }, faktor: f }) : null;
-    const front = frontKnoten && breite ? abbildungAus({ art: 's', c: { x: 0, y: frontKnoten.y }, frei: { u: true, v: false }, faktor: f }) : null;
-    return { seite, top, front, wert: f.toFixed(3).replace('.', ',') };
+    return {
+      je: l.loops.map((x) => {
+        const t = topKnoten(x);
+        const fr = frontKnoten(x);
+        return {
+          seite: l.sperre === 'z' ? null : abbildungAus({ art: 's', c: mitte(x), frei: { u: l.sperre !== 'y', v: l.sperre !== 'x' }, faktor: f }),
+          top: t && breite ? abbildungAus({ art: 's', c: { x: t.x, y: 0 }, frei: { u: false, v: true }, faktor: f }) : null,
+          front: fr && breite ? abbildungAus({ art: 's', c: { x: 0, y: fr.y }, frei: { u: true, v: false }, faktor: f }) : null,
+        };
+      }),
+      wert: f.toFixed(3).replace('.', ','),
+    };
   }
   // R: Kippen in der Seite um z; Drehsinn wie man die Bühne sieht (Abbildung mit negativer Determinante spiegelt)
   const spiegel = l.j[0] * l.j[3] - l.j[1] * l.j[2] < 0 ? -1 : 1;
   const theta = mitZahl ? (n * Math.PI) / 180 : spiegel * l.winkel;
-  return { seite: abbildungAus({ art: 'r', c: mitte, frei: { u: true, v: true }, winkel: theta }), top: null, front: null, wert: `${((theta * 180) / Math.PI).toFixed(1).replace('.', ',')}°` };
+  return { je: l.loops.map((x) => ({ seite: abbildungAus({ art: 'r', c: mitte(x), frei: { u: true, v: true }, winkel: theta }), top: null, front: null })), wert: `${((theta * 180) / Math.PI).toFixed(1).replace('.', ',')}°` };
+}
+
+/**
+ * Eine Zeichnung unter den Abbildungen mehrerer Loops: Jeder Bestandteil (Knoten, Griffspitzen) folgt dem Loop, dessen Gewicht
+ * dort am größten ist — die Knoten eines Loops seiner eigenen Abbildung, die Nachbarn dem nächsten Loop. Mit einem Loop genau
+ * der Weg wie bisher.
+ */
+function mehrfachAbbilden(pr: Profil, teile: { knoten: number[]; abb: Abb | null }[], radius: number): Profil {
+  const aktiv = teile.filter((t): t is { knoten: number[]; abb: Abb } => t.abb !== null && t.knoten.length > 0);
+  if (!aktiv.length) return pr;
+  const gs = aktiv.map((t) => gewichteIn(pr, t.knoten, radius, t.abb)[0]!);
+  if (aktiv.length === 1) return achsenRegeln({ ...pr, knoten: kurvenAbbilden(aktiv[0]!.abb, [pr.knoten], [gs[0]!])[0]! as Profil['knoten'] });
+  const zuteilung = aktiv.map(() => pr.knoten.map(() => ({ p: 0, ein: 0, aus: 0 })));
+  pr.knoten.forEach((_, k) => {
+    for (const teil of ['p', 'ein', 'aus'] as const) {
+      let best = 0;
+      let wahl = -1;
+      gs.forEach((g, i) => {
+        const w = g[k]?.[teil] ?? 0;
+        if (w > best) {
+          best = w;
+          wahl = i;
+        }
+      });
+      if (wahl >= 0) zuteilung[wahl]![k]![teil] = best;
+    }
+  });
+  let knoten = pr.knoten;
+  aktiv.forEach((t, i) => {
+    knoten = kurvenAbbilden(t.abb, [knoten], [zuteilung[i]!])[0]! as Profil['knoten'];
+  });
+  return achsenRegeln({ ...pr, knoten });
 }
 
 /** Gewichte (proportional) in einer Zeichnung: gewählt = die Knoten des Loops. */
@@ -282,10 +342,14 @@ const MINDEST_EINFLUSS = 3;
 
 /** GG: vom Verschieben ins Gleiten wechseln (Blender: G zweimal). false, wenn der Loop geformt ist. */
 function gleitenStarten(l: Lauf): boolean {
+  if (l.loops.length > 1) {
+    useUi.getState().zeigeHinweis('G G lässt einen Loop gleiten — mehrere verschiebt G');
+    return false;
+  }
   const ed = useEditor.getState();
   const start = ed.gesteStart ?? ed.dok;
   const N = aktuellesNetz()?.netz.ringe?.N ?? 16;
-  const g = schleifeGleitenVorbereiten(start, l.id, N);
+  const g = schleifeGleitenVorbereiten(start, l.loops[0]!.id, N);
   if (!g) {
     useUi.getState().zeigeHinweis('Ein geformter Loop gleitet nicht — Gleiten geht, solange er auf dem Umriss liegt (⌘Z bis dahin)');
     return false;
@@ -345,19 +409,30 @@ function aktualisieren(): void {
   if (l.gleiten) return gleitenAktualisieren(l);
   const ui = useUi.getState();
   l.radius = ui.proportional.an ? ui.pinselRadius * l.hoehe : 0;
-  const { seite, top, front, wert } = abbildungen(l);
+  const { je, wert } = abbildungen(l);
   const pr = l.basis;
-  const seiteNeu = seite ? achsenRegeln({ ...pr.seite, knoten: kurvenAbbilden(seite, [pr.seite.knoten], gewichteIn(pr.seite, l.seite, l.radius, seite))[0]! as Profil['knoten'] }) : pr.seite;
-  // die anderen Ansichten folgen der Seite über die Kopplung (wie bei einem Zug); dann der Loop-Knoten im Top
+  const seiteNeu = mehrfachAbbilden(pr.seite, l.loops.map((x, i) => ({ knoten: x.seite, abb: je[i]!.seite })), l.radius);
+  // die anderen Ansichten folgen der Seite über die Kopplung (wie bei einem Zug); dann die Breitenknoten der Loops
   const g = gekoppeltBerechnen('seite', seiteNeu, pr, l.auswahl);
-  const breitenknoten = (pr0: Profil, abb: Abb | null): Profil => {
-    if (!abb) return pr0;
-    const idx = pr0.knoten.flatMap((k, i) => (k.schleife === l.id ? [i] : []));
-    return idx.length ? achsenRegeln({ ...pr0, knoten: kurvenAbbilden(abb, [pr0.knoten], gewichteIn(pr0, idx, l.radius, abb))[0]! as Profil['knoten'] }) : pr0;
+  const breitenknoten = (pr0: Profil, wo: 'top' | 'front'): Profil => {
+    const neu = mehrfachAbbilden(pr0, l.loops.map((x, i) => ({ knoten: pr0.knoten.flatMap((k, q) => (k.schleife === x.id ? [q] : [])), abb: je[i]![wo] })), l.radius);
+    // die Breite eines Loops genau aus dem Stand am Anfang: Die Kopplung der Seite verschiebt Breitenknoten sonst ein wenig mit
+    // (zwei Loops: der zweite stand nach S 0,8 bei × 0,9997)
+    const breite = wo === 'front' ? 'x' : 'y';
+    let knoten = neu.knoten;
+    l.loops.forEach((x, i) => {
+      const abb = je[i]![wo];
+      const b = abb ? l.basis[wo].knoten.find((k) => k.schleife === x.id) : undefined;
+      if (!abb || !b) return;
+      const soll = punktAbbilden(abb, b.p, 1)[breite];
+      knoten = knoten.map((k) => (k.schleife === x.id && k.p[breite] !== soll ? { ...k, p: { ...k.p, [breite]: soll } } : k));
+    });
+    return knoten === neu.knoten ? neu : achsenRegeln({ ...neu, knoten });
   };
-  gekoppeltSetzen({ profile: { ...g.profile, top: breitenknoten(g.profile.top, top), front: breitenknoten(g.profile.front, front) }, ...(g.spanten ? { spanten: g.spanten } : {}) });
+  gekoppeltSetzen({ profile: { ...g.profile, top: breitenknoten(g.profile.top, 'top'), front: breitenknoten(g.profile.front, 'front') }, ...(g.spanten ? { spanten: g.spanten } : {}) });
   const sperre = l.sperre ? l.sperre.toUpperCase() : null;
-  const teile = [{ g: 'G', s: 'S', r: 'R' }[l.art] + ' Loop', ...(sperre ? [sperre] : []), l.zahl ? `${l.zahl.replace('.', ',')}▏` : wert];
+  const wen = l.loops.length > 1 ? `${l.loops.length} Loops` : 'Loop';
+  const teile = [`${{ g: 'G', s: 'S', r: 'R' }[l.art]} ${wen}`, ...(sperre ? [sperre] : []), l.zahl ? `${l.zahl.replace('.', ',')}▏` : wert];
   if (ui.proportional.an) teile.push('proportional');
   useSchleife.setState({ text: teile.join(' · '), anzeige: anzeigeVon(l) });
 }
@@ -370,7 +445,7 @@ export function schleifeGrsBestaetigen(): void {
   useSchleife.setState({ text: null, anzeige: null });
   useEditor.getState().endeGeste();
   // nach dem Gleiten stehen die Knoten des Loops an anderer Stelle der Zeichnungen: Auswahl neu
-  if (l.gleiten) schleifeWaehlen(l.id);
+  if (l.gleiten) schleifeWaehlen(l.loops[0]!.id);
 }
 
 export function schleifeGrsAbbrechen(): void {

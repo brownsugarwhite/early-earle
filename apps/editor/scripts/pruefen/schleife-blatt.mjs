@@ -9,7 +9,8 @@
 // - S, Zeiger, Esc: Dokument wie vorher; R im Top bzw. in der Front: Hinweis, keine Operation;
 // - Ziehen an der Linie im Seitenblatt: die Knoten wandern genau mit dem Zeiger, ein Undo-Schritt, Loslassen bestätigt;
 // - G G im Seitenblatt: der Loop gleitet, Knotenzahl bleibt;
-// - ⇧-Klick auf einen zweiten Loop: beide gewählt, S formt dann die Punkte (V3), nicht den Loop;
+// - ⇧-Klick auf einen zweiten Loop: beide gewählt, S 0,8 formt jeden um seine eigene Mitte; mit einem weiteren Punkt in der
+//   Auswahl formen G/S/R die Punkte (V3);
 // - Klick ohne Bewegung auf der Bühne: auf einem Ring wählt er den Loop, daneben hebt er die Wahl auf.
 // Bilder in AUSGABE. Aufruf: apps/editor/scripts/pruefen/run-check.sh apps/editor/scripts/pruefen/schleife-blatt.mjs
 import { mkdirSync } from 'node:fs';
@@ -131,14 +132,16 @@ await page.evaluate(() => {
   window.__stores.ui.getState().maximieren(null);
 });
 await ruhig();
+// wie beim Laden im Editor: Außenmaße angeglichen (sonst gleicht die erste Geste sie an, und Messungen „genau × f“ sähen das)
 await page.evaluate(
-  async ({ modul, koerper }) => {
+  async ({ modul, form, koerper }) => {
     const m = await import(modul);
+    const f = await import(form);
     const d = m.extremKoerper(koerper).dok();
     const st = window.__stores.editor.getState();
-    st.setzeDokument({ ...st.dok, profile: d.profile });
+    st.setzeDokument({ ...st.dok, profile: f.angleichen(d.profile) });
   },
-  { modul, koerper },
+  { modul, form: `/@fs${WURZEL}/packages/shape/src/index.ts`, koerper },
 );
 await ruhig();
 const box = await blattBox('creation');
@@ -295,11 +298,39 @@ await page.keyboard.up('Shift');
 await page.waitForTimeout(200);
 aw = await auswahl();
 pruefe(aw.seite.length === 4, `⇧-Klick: zwei Loops gewählt (Seite ${JSON.stringify(aw.seite)})`);
+// zwei ganze Loops: S 0,8 im Seitenblatt — jeder um seine eigene Mitte (Mitten bleiben), Breiten × 0,8, ein Schritt
+const dZwei = await dok();
+const kA0 = loopKnoten(dZwei, id);
+const kB0 = loopKnoten(dZwei, px[2].id);
+v0 = await verlauf();
+await page.mouse.move(sb.x + sb.width * 0.5, sb.y + sb.height * 0.5);
+await page.keyboard.press('s');
+await page.waitForTimeout(150);
+const grs2 = (await schleifen()).grs;
+pruefe(grs2?.art === 's' && grs2.ids?.length === 2, `S mit zwei Loops: Operation auf beiden (${JSON.stringify(grs2?.ids)})`);
+await page.keyboard.type('0.8');
+await page.keyboard.press('Enter');
+await ruhig();
+const dZwei1 = await dok();
+const kA1 = loopKnoten(dZwei1, id);
+const kB1 = loopKnoten(dZwei1, px[2].id);
+const okZwei = [[kA0, kA1], [kB0, kB1]].every(([k0x, k1x]) => Math.abs(laenge(k1x) / laenge(k0x) - 0.8) < 1e-9 && Math.abs(k1x.t.y / k0x.t.y - 0.8) < 1e-9 && Math.hypot(mitte(k1x).x - mitte(k0x).x, mitte(k1x).y - mitte(k0x).y) < 1e-12);
+pruefe(okZwei && (await verlauf()) === v0 + 1, `S 0,8: beide Sprossen × ${(laenge(kA1) / laenge(kA0)).toFixed(6)} / ${(laenge(kB1) / laenge(kB0)).toFixed(6)}, Breiten × ${(kA1.t.y / kA0.t.y).toFixed(6)} / ${(kB1.t.y / kB0.t.y).toFixed(6)}, Mitten bleiben, ein Schritt`);
+await page.screenshot({ path: resolve(out, `schleife-blatt-${koerper}-zwei-s08.jpg`), quality: 82 });
+await page.keyboard.press('Meta+z');
+await ruhig();
+// ein weiterer Punkt in der Auswahl: dann formen G/S/R die Punkte (V3)
+await page.evaluate(() => {
+  const ui = window.__stores.ui.getState();
+  const a = ui.auswahl;
+  const frei = window.__stores.editor.getState().dok.profile.seite.knoten.findIndex((k, i) => !k.schleife && !a.seite.includes(i));
+  ui.setzeAuswahl({ ...a, seite: [...a.seite, frei] }, 'seite');
+});
 await page.mouse.move(sb.x + sb.width * 0.5, sb.y + sb.height * 0.5);
 await page.keyboard.press('s');
 await page.waitForTimeout(150);
 const v3 = await page.evaluate(() => window.__stores.ui.getState().modal?.text ?? null);
-pruefe(!(await schleifen()).grs && !!v3, `S mit zwei Loops formt die Punkte (V3: „${v3}“)`);
+pruefe(!(await schleifen()).grs && !!v3, `Loops und ein weiterer Punkt: S formt die Punkte (V3: „${v3}“)`);
 await page.keyboard.press('Escape');
 await ruhig();
 // 11. Bühne: Klick ohne Bewegung auf einem Ring wählt, daneben hebt er die Wahl auf

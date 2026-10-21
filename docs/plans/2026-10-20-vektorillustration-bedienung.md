@@ -1359,6 +1359,21 @@ Ende hinaus, Robbe 15 px); geglätteter statt linearer Auslauf (Reihen knicken m
   Enden heran (Ei 0,9 → 0,5 px, Hals 2,0 → 1,1, Vase 1,9 → 1,1 bei 2), kostet aber an der Kugel Form (Haut 0,7 → 1,4 px,
   Front 0,8 → 1,5) und macht das Ende spitz — für Florians Urteil am Bild zurückgestellt.
 
+#### V5-Rest „Härte als Rundungsbreite“ — gemessen, zurückgestellt (21.10. früh)
+
+Gemessen (Rex mit Querlinie, Kegel mit kurzer Querlinie, Ei mit Längslinie; Härte 0 → 1 in Schritten, Ablauf aus der
+Startkugel; Formänderung als Abstand der Flächen in beiden Richtungen — Gleiten der Punkte längs der Haut zählt nicht):
+- **ohne Schalter:** erster Schritt 0 → 5 % höchstens 0,95 px (Rex), sonst ≤ 0,74 px je Schritt, 99 → 100 % 0,1–0,3 px; über
+  ⅔ (dort sieht die Glättung der Stufe 2 die Falte erst) kein Sprung (≤ 0,01 px);
+- **mit „aus der Hülle“:** erster Schritt (die Linie wird Käfigschleife) 0,6 / 3,1 / 1,2 px (Rex / Kegel / Ei), danach ≤ 0,22 px
+  je Schritt, 99 → 100 % ≤ 0,08 px.
+
+Folgerung: Die Härte ändert die Form auf runder Haut kaum — „Form zuerst“ (bzw. S8a) hält den Körper bei der Form ohne Linie,
+die Rundungsbreite einer Falte ohne Winkel sieht man nicht. In Pixeln gemessen wirkt die Härte erst, wo die Form einen Winkel
+hat (gezeichnete Ecken der Front, Grat über `Kante.tiefe`). Deshalb zurückgestellt bis zum Grat; offen bleibt der Sprung beim
+Entstehen der Schleife (Kegel 3,1 px), er gehört zu „Einfügen formneutral“ (ein Linienring wirkt wie ein eingefügter Loop).
+Messung: `sprung.ts` im Scratchpad (Formabstand mit Gitter-Vorfilter).
+
 ### V6 im Detail (21.10. nachts, vor dem Bau)
 
 Florians Wahl 20.10.: ⌘R setzt echte, formneutral eingefügte Knoten in Seite und Top. Daraus folgt eine einfache Bauweise,
@@ -1487,15 +1502,23 @@ Bühne. ⌥-Klick wählt ihn.“ Bis V6.3 sah man Loops in den Blättern nur als
   Blatts, soweit der Loop spiegelgleich bleibt: G in der Seite x und y, im Top nur x, in der Front nur y; S überall (Faktor aus
   dem Abstand zur Mitte im Blatt, Kreuz und gestrichelte Linie wie V3); R nur in der Seite (im Top und in der Front Hinweis);
   G G gleitet in Seite und Top. **Ziehen an der Linie** verschiebt ihn direkt (G mit gedrückter Taste, Loslassen bestätigt, Esc
-  bricht ab). Mit mehr als einem Loop oder weiteren Punkten in der Auswahl formen G/S/R wie bisher die gewählten Punkte (V3).
+  bricht ab). Mit weiteren Punkten in der Auswahl formen G/S/R wie bisher die gewählten Punkte (V3).
+- **Mehrere Loops** (⇧-Klick): G verschiebt alle gleich, S und R wirken je Loop um seine eigene Mitte (Blender „Individual
+  Origins“) — einen Hals über mehrere Loops verjüngen, ohne dass die Loops zusammenrücken; auf der Bühne und im Blatt. Jeder
+  Knoten (und jede Griffspitze) folgt dem Loop, dessen Einfluss dort am größten ist; mit einem Loop genau der bisherige Weg.
+  G G gleitet nur einen Loop (sonst Hinweis). Die Breite jedes Loops kommt genau aus dem Stand am Anfang — die Kopplung der
+  Seite schob den Breitenknoten des zweiten Loops sonst ein wenig mit (S 0,8 gab × 0,9997).
 - **Gemessen im Editor** (`scripts/pruefen/schleife-blatt.mjs`, Langhals aus der Startkugel, drei Loops mit ⌘R): drei Loops in
   jedem Blatt; Zeiger auf der Linie → pink in allen Blättern und auf der Bühne; Klick wählt (Seite 2, Front 1 Knoten), Dokument
   unverändert; S 1,25 im Front-Blatt: Sprosse und Breite genau × 1,25 (1e-9), Mitte bleibt, ein Undo-Schritt; G 10 im Top
   genau 10 px längs x; S, Zeiger, Esc: Dokument wie vorher; R im Top: Hinweis; Ziehen an der Linie: beide Knoten genau mit
   dem Zeiger (20,00 | −15,00 px), ein Schritt, Loop bleibt gewählt; G G im Seitenblatt gleitet (Knotenzahl gleich); ⇧-Klick
-  wählt zwei, S formt dann die Punkte; Klick auf den Ring der Bühne wählt, daneben hebt auf. Weiter grün: `schleife-grs.mjs`,
+  wählt zwei, S 0,8 formt beide genau um ihre eigenen Mitten (Sprossen und Breiten × 0,8, Mitten bleiben, ein Schritt); mit
+  einem weiteren Punkt formt S die Punkte (V3); Klick auf den Ring der Bühne wählt, daneben hebt auf. Weiter grün: `schleife-grs.mjs`,
   `schleife.mjs`, `modal-2d.mjs`, `v0-tasten.mjs`.
 - **Offen:** jeden vorhandenen Käfigring als Loop wählen (der eingefrorene Grundring stimmt bei Fülle, Breitenlinie und Reihenplan
   mit ab — ihn zum Loop zu machen, verschöbe diese Entscheidungen; braucht einen Ring, der weiter abstimmt, aber Knoten trägt);
-  G/S/R auf mehreren Loops zugleich (je Loop um die eigene Mitte); Loops auf „Teile“ und mit Maul/Beinen (V7).
+  Loops auf „Teile“ und mit Maul/Beinen (V7). Prüfaufbau: Körper wie beim Laden im Editor angeglichen laden — ein Körper mit
+  Widerspruch in den Außenmaßen wird bei der ersten Geste angeglichen (`abgleichen` setzt die Außenmaße der folgenden Ansicht
+  auf die der bearbeiteten), was eine Messung „genau × f“ verfälscht; im Editor sind geladene Wesen angeglichen.
 

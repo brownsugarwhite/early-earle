@@ -73,12 +73,13 @@ export function gewaehlteSchleifen(): Set<string> {
   return out;
 }
 
-/** Genau dieser Loop ist gewählt — nichts sonst (dann formen G/S/R in einem Blatt ihn als Ganzes, sonst die Punkte). */
-export function nurDieserLoop(id: string): boolean {
-  const k = schleifenKnoten(id);
+/** Genau diese Loops sind gewählt — nichts sonst (dann formen G/S/R in einem Blatt sie als Ganzes, sonst die Punkte). */
+export function nurDieseLoops(ids: readonly string[]): boolean {
+  const ks = ids.map(schleifenKnoten);
+  if (!ks.length || ks.some((k) => !k.seite.length)) return false;
   const a = useUi.getState().auswahl;
   const gleich = (x: number[], y: number[]) => x.length === y.length && x.every((i) => y.includes(i));
-  return k.seite.length > 0 && gleich(a.seite, k.seite) && gleich(a.front, k.front) && gleich(a.top, k.top);
+  return (['seite', 'front', 'top'] as const).every((v) => gleich(a[v], [...new Set(ks.flatMap((k) => k[v]))]));
 }
 
 /** Loops anzeigen (nach jedem Bau, bei Auswahl und Hover) oder ausblenden (andere Stufe, keine Loops). */

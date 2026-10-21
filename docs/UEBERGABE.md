@@ -16,7 +16,22 @@ ist, dass das Mesh später immer schön und smooth aussieht außer bei gewollten
 selbstständig weiter, hartnäckig, den ganzen Plan unter höchsten Kriterien; Usability und Ansicht herausragend; das Mesh soll
 sich jeder Form intelligent anpassen.
 
-## Letzter Stand: V6 — Loops wie in Blender
+## Neu seit dem Morgen-Zwischenstand (21.10. früh): V6.4 — Loops in den Blättern
+
+- Jedes Blatt zeigt die Loops, wie sie auf dem Körper liegen (Seite: von Rücken- zu Bauchknoten; Top, Front, Back, Bottom: der
+  ganze Ring, verdeckt blass gestrichelt). Farben überall gleich: orange, unter dem Zeiger pink (Bühne und alle Blätter
+  zugleich), gewählt türkis.
+- Wählen: Klick auf die Linie im Blatt oder Klick ohne Bewegung auf den Ring der Bühne (⌥-Klick geht weiter), ⇧ für weitere;
+  Klick auf der Bühne daneben hebt auf. Ziehen an der Linie im Blatt verschiebt den Loop.
+- G/S/R mit dem Zeiger über einem Blatt formen gewählte Loops als Ganzes (Seite: G x/y; Top: G längs x; Front: G in der Höhe;
+  S überall; R nur in der Seite). **Mehrere Loops:** G verschiebt alle gleich, S und R wirken je Loop um seine eigene Mitte —
+  Hals über mehrere Loops verjüngen, ohne dass sie zusammenrücken.
+- Prüfung im echten Editor: `apps/editor/scripts/pruefen/schleife-blatt.mjs` (alles grün), dazu weiter grün `schleife-grs.mjs`,
+  `schleife.mjs`, `modal-2d.mjs`, `v0-tasten.mjs`. Planseite „Stand V6.4“.
+- V5-Rest „Härte als Rundungsbreite“: gemessen und zurückgestellt (die Härte ändert die Form auf runder Haut kaum; erst der
+  Grat gibt ihr einen Winkel) — Planseite „V5-Rest Härte“.
+
+## Letzter Stand davor: V6 — Loops wie in Blender
 
 - **⌘R oder ⌃R** (Stufe Körper, Editor-Tab, Körper „Röhre“ ohne Maul und Beine): Zeiger über die Bühne oder das Seitenblatt —
   gelbe Vorschau der Loops (Bühne: Ringe auf dem Körper; Seite: Sprosse mit den künftigen Knoten; Top bzw. Front: Strich).
@@ -49,15 +64,19 @@ Sichthülle, **V3** G/S/R in den Blättern, **V0**, **V1** Prüfstand „Extremr
 
 1. Ein Wesen öffnen (Röhre, ohne Maul), Zeiger auf den Hals in der Bühne, ⌘R: gelber Ring. Zwei Rasten am Mausrad → drei
    Ringe, Klick. Oder ein Loop: Klick, Maus gleiten lassen, zweiter Klick.
-2. ⌥-Klick auf den mittleren orangen Ring, Zeiger auf der Bühne lassen, S und die Maus bewegen (oder 0,7 tippen, Enter) —
-   der Hals wird dort schmaler; O vorher für einen weichen Übergang über die Nachbarn, Rad für den Einfluss.
-3. G (bzw. G, dann Y) verschiebt den Loop, R kippt ihn; ⌘Z nimmt jeden Schritt einzeln zurück.
+2. Klick auf den mittleren orangen Ring (Bühne) oder seine Linie in einem Blatt — er wird türkis. Zeiger auf Bühne oder Blatt,
+   S und die Maus bewegen (oder 0,7 tippen, Enter) — der Hals wird dort schmaler; O vorher für einen weichen Übergang über die
+   Nachbarn, Rad für den Einfluss. ⇧-Klick auf die beiden anderen, S: alle drei werden schmaler, jeder um seine Mitte.
+3. G (bzw. G, dann Y) verschiebt, G G gleitet, R kippt; im Seitenblatt die Linie einfach ziehen; ⌘Z nimmt jeden Schritt
+   einzeln zurück.
 
 ## Offen / nächster Schritt
 
-- V6: jeden Käfigring per ⌥-Klick zum Loop machen, G/S/R auf Netzknoten der Bühne, geformte Loops gleiten lassen; Loops auf
+- V6: jeden Käfigring per ⌥-Klick zum Loop machen (der Grundring stimmt bei Fülle, Breitenlinie und Reihenplan mit ab — ein
+  Loop, der weiter abstimmt, wäre der saubere Weg), G/S/R auf Netzknoten der Bühne, geformte Loops gleiten lassen; Loops auf
   „Teile“, mit Maul oder Beinen (V7). Tor „Einfügen formneutral ≤ 0,1 px“ verfehlt (Register).
-- V5 offen: Lage der Linien genauer (0,3 px), Härte als Rundungsbreite, Grat, Zug schneller.
+- V5 offen: Lage der Linien genauer (0,3 px), Grat (dann Härte als Rundungsbreite), Zug schneller; der Sprung, wenn eine Linie
+  zur Käfigschleife wird (Kegel 3,1 px).
 - Danach V7 (ein Körper), V8 (Vektor-Ausgabe), V9 (Abnahme).
 - Abnahme V0, V1, V3, V4, V5, V6; V2 nicht abgenommen.
 
