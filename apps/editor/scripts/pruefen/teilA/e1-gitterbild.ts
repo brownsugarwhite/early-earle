@@ -1,6 +1,8 @@
 // Aufruf aus packages/shape: AUSGABE=<datei.html> npx vite-node ../../apps/editor/scripts/pruefen/teilA/e1-gitterbild.ts; Bild: node scripts/pruefen/html-shot.mjs <html> <png> 1100 (aus apps/editor)
-// Gitter des Einsatzes als SVG: Seitenansicht (x, y) der rechten Hälfte, Lippe rot, Reihen grau, Speichen blau, Rand schwarz;
-// dazu die Karte (U, V). Je Fall und Gitterart eine Tafel.
+// Gitter des Einsatzes als SVG: Blick längs der mittleren Normalen des Felds (rechte Hälfte), Lippe rot, Rand schwarz, Linie
+// gelb gestrichelt. Je Fall und Gitterart eine Tafel. Umgebung: FAELLE, GITTER (Liste, Standard beide), STUFE (1/2; Standard
+// wie der Fall, K2), J, AR, NAH (Ausschnitt um den Mundwinkel: Halbbreite in letzten Lippenspannen), VERL, SCHNITT (pfad/linie),
+// FELD, LAGE (karte/band), R (Ringe des Bands), P, ECKE (eckeMin).
 import { writeFileSync } from 'node:fs';
 import { einsatzFall } from '../../../../../packages/shape/src/kern/pruefen/einsatzFall';
 import { einsatzTopologie } from '../../../../../packages/shape/src/kern/einsatz/topologie';
@@ -9,11 +11,11 @@ const AUS = process.env.AUSGABE ?? 'gitter.html';
 const tafeln: string[] = [];
 for (const name of (process.env.FAELLE ?? 'kugel/mittel/gerade').split(',')) {
   const [art, anfang, form] = name.split('/') as [never, never, never];
-  const f = einsatzFall(art, anfang, form, { verlaengerung: Number(process.env.VERL ?? 0) });
+  const f = einsatzFall(art, anfang, form, { verlaengerung: Number(process.env.VERL ?? 0), ...(process.env.STUFE ? { stufe: Number(process.env.STUFE) as 1 | 2 } : {}), ...(process.env.SCHNITT ? { schnitt: process.env.SCHNITT as 'pfad' | 'linie' } : {}), ...(process.env.FELD ? { feld: process.env.FELD as 'begradigt' | 'kompakt' } : {}) });
   if (!f || 'fehler' in f) continue;
   const linie = f.lippenZiel();
-  for (const gitter of ['schleifen', 'kernring'] as const) {
-    const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie, gitter });
+  for (const gitter of (process.env.GITTER ?? 'schleifen,kernring').split(',') as ('schleifen' | 'kernring')[]) {
+    const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie, gitter, stufe: f.stufe, feldDreiecke: f.feldDreiecke, ...(process.env.ECKE ? { eckeMin: Number(process.env.ECKE) } : {}), ...(process.env.J ? { J: Number(process.env.J) } : {}), ...(process.env.AR ? { aussenRunden: Number(process.env.AR) } : {}), ...(process.env.LAGE ? { lage: process.env.LAGE as 'karte' | 'band', bandRinge: Number(process.env.R ?? 2), ...(process.env.P ? { bandRest: { art: 'tiefe' as const, p: Number(process.env.P) } } : {}) } : {}) });
     const xyz = t.kaefig.xyz;
     const P = (i: number): V3 => [xyz[3 * i]!, xyz[3 * i + 1]!, xyz[3 * i + 2]!];
     // Ansicht: Blick längs der mittleren Normalen des Felds (rechte Hälfte), Achsen in der Bildebene
@@ -46,10 +48,20 @@ for (const name of (process.env.FAELLE ?? 'kugel/mittel/gerade').split(',')) {
     const pts = alle.map((i) => proj(P(i)));
     const xs = pts.map((p) => p[0]);
     const ys = pts.map((p) => p[1]);
-    const x0 = Math.min(...xs);
-    const x1 = Math.max(...xs);
-    const y0 = Math.min(...ys);
-    const y1 = Math.max(...ys);
+    let x0 = Math.min(...xs);
+    let x1 = Math.max(...xs);
+    let y0 = Math.min(...ys);
+    let y1 = Math.max(...ys);
+    if (process.env.NAH) {
+      // Ausschnitt um c: Halbbreite NAH letzte Lippenspannen
+      const cc = proj(P(t.haut[0]![t.m]!));
+      const u = proj(P(t.haut[0]![t.m - 1]!));
+      const h = Number(process.env.NAH) * Math.hypot(cc[0] - u[0], cc[1] - u[1]);
+      x0 = cc[0] - h;
+      x1 = cc[0] + h;
+      y0 = cc[1] - h;
+      y1 = cc[1] + h;
+    }
     const W = 520;
     const s = (W - 20) / Math.max(x1 - x0, y1 - y0);
     const sx = (p: [number, number]) => `${(10 + (p[0] - x0) * s).toFixed(1)},${(10 + (y1 - p[1]) * s).toFixed(1)}`;
@@ -62,11 +74,17 @@ for (const name of (process.env.FAELLE ?? 'kugel/mittel/gerade').split(',')) {
     }
     zug(t.haut[0]!, '#d02020', 2);
     zug(t.haut[t.J]!, '#202020', 1.5);
+    // Randpunkte nummeriert (alle 5), Randpunkt M rot
+    if (process.env.NUMMERN) t.haut[t.J]!.forEach((i, k) => {
+      const [x, y] = sx(proj(P(i))).split(',');
+      if (k === t.M) linien.push(`<circle cx="${x}" cy="${y}" r="4" fill="#d02020"/>`);
+      if (k % 5 === 0) linien.push(`<text x="${x}" y="${y}" font-size="10" fill="#202020">${k}</text>`);
+    });
     const lin = linie.map((p) => sx(proj(p)));
     linien.push(`<polyline fill="none" stroke="#e0a000" stroke-width="1" stroke-dasharray="3 2" points="${lin.join(' ')}"/>`);
     const c = t.haut[0]![t.m]!;
     linien.push(`<circle cx="${sx(proj(P(c))).split(',')[0]}" cy="${sx(proj(P(c))).split(',')[1]}" r="3" fill="#d02020"/>`);
-    tafeln.push(`<div style="display:inline-block;margin:4px;vertical-align:top"><div style="font:12px sans-serif">${name} · ${gitter} · m ${t.m} M ${t.M} J ${t.J}</div><svg width="${W}" height="${W}" style="background:#fff;border:1px solid #ccc">${linien.join('')}</svg></div>`);
+    tafeln.push(`<div style="display:inline-block;margin:4px;vertical-align:top"><div style="font:12px sans-serif">${name} · ${gitter} · K${f.stufe} · m ${t.m} M ${t.M} J ${t.J}${t.umgeklappt ? ` · umgeklappt ${t.umgeklappt}` : ''}</div><svg width="${W}" height="${W}" style="background:#fff;border:1px solid #ccc;overflow:hidden">${linien.join('')}</svg></div>`);
   }
 }
 writeFileSync(AUS, `<!doctype html><html><body style="margin:8px;background:#f4efe6">${tafeln.join('')}</body></html>`);

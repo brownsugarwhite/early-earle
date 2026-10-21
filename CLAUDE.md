@@ -16,6 +16,7 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 > **Ab 21.10. läuft Teil A „Maul als Einsatz“** (Florians Wahl vor V7) nach
 > [`docs/plans/2026-10-21-maul-einsatz-weiter.md`](docs/plans/2026-10-21-maul-einsatz-weiter.md) (Schritte E1–E6). Einstieg für
 > eine frische Sitzung mit Start-Prompt, Stand, nächsten Schritten, Skripten und Fallen: [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
+> Stand 21.10. (zweite Sitzung): Haut-Tor erreicht, Mundwinkel 26 von 30; nächster Schritt: Verdrehung an J-Linien aufnehmen.
 
 - **2026-10-04: Prototyp 1 ist abgeschlossen** (Archiv-Branch `prototyp-1`). Er diente zum Lernen. Florian: „Der Prototyp war sehr gut und aufschlussreich und hat bewiesen, dass die Spielidee toll ist.“ Viele Entscheidungen sind gefallen; die Gesamtdynamik und einige grafische Elemente haben ihm gefallen.
 - **Jetzt beginnt die eigentliche Produktion mit dem finalen Look.** Grundlage wird **Florians neuer Plan mit neuem Hauptprompt**: Story, Charaktere und Map arbeitet er genauer aus und trägt sie in Dokumenten und Screenshots zusammen. Es folgen mehrere Runden und Iterationen.
@@ -223,6 +224,13 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   (`einsatzFall(…, { stufe: 2 })`), J = 12, Ausgleich außen nach Hautlängen (`aussenRunden`) → Haut 0,16–0,22 px an Kugel, Ei,
   Birne, Langhals (vorher 0,3–1,3 px); noch Schalter. Nächste Schritte: das als Standard, dünn besetzter Löser (dichte LU 10–30 s je
   Fall), ganze Reihe + Haut-Tor, dann Mundwinkel als Quadratgitter um c (Planseite „Nachtrag E1 (nachmittags)“).
+- **2026-10-21 (zweite Sitzung): Haut als Standard des Kernrings, Mundwinkel ohne Wulst** (Planseite „Nachtrag E1 (zweite
+  Sitzung)“, Register „Befunde aus E1“, Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md)). Standard: Feld auf K2, Schlitz genau
+  auf der Linie, Reihen 10–16, Ausgleich außen, dünn besetzte Löser (≈ 3–4 s je Fall), letzte Lippenspanne ¼ Feldkante, kein
+  Lippenwulst. Ganze Reihe: Haut ≤ 0,25 px in 30 von 30 (Tor als Test `einsatz/kernring.extrem.ts`), Mundwinkel ≤ A0 + 2° in 26 von
+  30 (vorher mit Wulst 1 von 39); verfehlt nur an J-Linien — Ursache die Verdrehung (Feldrand außen am Haken länger), Weg
+  Übergangsreihe mit Polpaaren. Messung des Mundwinkels jetzt mit festem Umkreis (drei Feldkanten). Dreizehn Varianten (Lage und
+  Lösen) gemessen und verworfen (Liste in der Übergabe). Bild `docs/progress/editor/e1-mundwinkel-ohne-wulst-2026-10-21.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

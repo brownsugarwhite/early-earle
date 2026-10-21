@@ -4,11 +4,16 @@
 // (Lagen von K1). Abtastpunkte sind alle feinen Grenzpunkte der Stufe L in den Hautflächen der rechten Hälfte (Ziel: nächster
 // Punkt auf A0 mit dessen Normale) und im Kragen (Ziel: der eigene feine Punkt von K1 an derselben Blockstelle). Das Residuum
 // ist anisotrop (Normale 1, tangential 0,05), dazu eine schwache Glätte |L(x − x₀)|² (Umbrella, Startgitter aus A5). Je Runde
-// linear, drei Runden mit neu gelegten Zielen (Punkt zu Ebene). Lippenwulst: Abtastpunkte im Lippenband bekommen einen
-// Zielversatz h·sin²(πd/w)·n (h ≈ 0,4 px), damit sich geschlossene Lippen nicht tangential berühren. Die Haut liest wegen
-// der unendlich scharfen Falte keine Taschenpunkte; Tasche und Rachen bleiben auf ihren Startlagen (A8). DOM-frei.
+// linear, drei Runden mit neu gelegten Zielen (Punkt zu Ebene). Lippenwulst (nur Schleifengitter; im Kernring 0, Plan 21.10.,
+// E1): Abtastpunkte im Lippenband bekommen einen Zielversatz h·sin²(πd/w)·n (h ≈ 0,4 px), damit sich geschlossene Lippen nicht
+// tangential berühren. Auf K2 löst der Käfig das schmale Band auf (Steigung bis 12°) und knickt längs der Lippe um 3–5° — im
+// Kernring war er der Hauptgrund für das verfehlte Mundwinkel-Tor (mit Wulst 1, ohne 28 von 39); dass sich die Lippen nicht
+// berühren, ist Sache der Tasche (A8), und ein geschlossenes Maul darf auf der Haut unsichtbar sein. Die Haut liest wegen der
+// unendlich scharfen Falte keine Taschenpunkte; Tasche und Rachen bleiben auf ihren Startlagen (A8). Die Normal-
+// gleichungen sind dünn besetzt (jeder Abtastpunkt koppelt nur die Käfigpunkte seiner Grenzmaske): Zeilen in der Hülle einer
+// Cuthill-McKee-Reihenfolge, Cholesky (`normalSystem`, Plan 21.10., E1 — die dichte LU brauchte auf K2 Sekunden). DOM-frei.
 import { alleFlaechen, type Kaefig } from '../../kaefig/halbkanten';
-import { luLoesen, luZerlegen } from '../../loeser/lu';
+import { type NormalZeile, normalSystem } from '../../loeser/normalSystem';
 import { unterteilung } from '../../subdivision/catmullClark';
 import { anwenden3 } from '../../subdivision/matrix';
 import type { FeldSpec } from './feld';
@@ -27,7 +32,8 @@ export type LoesenOptionen = {
   /** Glätte gegen das Startgitter */
   glaette?: number;
   runden?: number;
-  /** Lippenwulst: Höhe in px und Breite als Anteil der Kopfhöhe am Mundwinkel */
+  /** Lippenwulst: Höhe in px (Standard 0,4 im Schleifengitter, 0 im Kernring) und Breite als Anteil der Kopfhöhe am
+   * Mundwinkel (auch die Breite des Lippenbands, das die Haut-Messung auslässt) */
   wulst?: number;
   wulstBreite?: number;
 };
@@ -83,7 +89,8 @@ function abstandZuZug(p: V3, zug: readonly V3[]): number {
  * Lippenseite aus A6 (U₀ … U_{m−1}, c).
  */
 export function einsatzLoesen(t: EinsatzTopologie, k1: Kaefig, netz: FeinNetz, lippe: readonly V3[], opt: LoesenOptionen = {}): GeloesterEinsatz {
-  const L = opt.stufen ?? 2;
+  // Abtastung auf derselben Grenzfläche wie Stufe 3 von A0 (K1 auf 2, K2 auf 1)
+  const L = opt.stufen ?? 3 - t.stufe;
   const wt = opt.tangential ?? 0.05;
   const lambda = opt.glaette ?? 1e-3;
   const runden = opt.runden ?? 3;
@@ -163,10 +170,34 @@ export function einsatzLoesen(t: EinsatzTopologie, k1: Kaefig, netz: FeinNetz, l
     if (naht(p)) return null;
     return [frei[p]! + 2, sz];
   };
+  // Achse je Unbekannter und Kopplungsgraph der Unbekannten (eigene Achsen, Käfignachbarn und deren Spiegelbilder) für die
+  // Reihenfolge der Zerlegung; die Hülle selbst folgt aus den Zeilen
+  const achse = new Uint8Array(nu);
+  const nachbarnU: number[][] = Array.from({ length: nu }, () => []);
+  {
+    const unbekannteVon = (q: number): number[] => {
+      const out: number[] = [];
+      for (let d = 0; d < 3; d++) {
+        const k = koeff(q, d);
+        if (k) out.push(k[0]);
+      }
+      return out;
+    };
+    for (const p of freie) {
+      const eigene = unbekannteVon(p);
+      eigene.forEach((u, d) => (achse[u] = d));
+      const um = new Set<number>(eigene);
+      for (let i = kaefig.vKStart[p]!; i < kaefig.vKStart[p + 1]!; i++) {
+        const e = kaefig.vKanten[i]!;
+        for (const u of unbekannteVon(kaefig.eA[e] === p ? kaefig.eB[e]! : kaefig.eA[e]!)) um.add(u);
+      }
+      for (const u of eigene) for (const v of um) if (v !== u) nachbarnU[u]!.push(v);
+    }
+  }
   // Lippenband: Abstand zur Lippenkurve (rechte Hälfte) kleiner als die Wulstbreite
   const c = lippe[lippe.length - 1]!;
   const wulstBreite = (opt.wulstBreite ?? 0.03) * kopfHoehe(netz, c);
-  const wulst = (opt.wulst ?? 0.4) / PX;
+  const wulst = (opt.wulst ?? (t.gitter === 'kernring' ? 0 : 0.4)) / PX;
   const kurve = lippenKurve(lippe, 32, t.gitter === 'kernring' ? 'falte' : 'ecke');
   const spitze = t.gitter === 'kernring' ? lippenPunkt(lippe, m, 'falte') : null;
   // Startgitter x₀ und Umbrella-Glätte der freien Punkte
@@ -190,25 +221,25 @@ export function einsatzLoesen(t: EinsatzTopologie, k1: Kaefig, netz: FeinNetz, l
   }
   for (let runde = 0; runde < runden; runde++) {
     const fein = anwenden3(S, xyz);
-    const N = new Float64Array(nu * nu);
+    const zeilen: NormalZeile[] = [];
     const b = new Float64Array(nu);
     let summeAbstand = 0;
     let nAbtast = 0;
     const gD = 1 / Math.max(1, abtast.length);
     for (const i of abtast) {
-      // Zeile der Grenzmaske: affin in den Unbekannten
-      const eintraege: [number, number, number][] = []; // (Koordinate, Unbekannte, Faktor)
+      // Zeile der Grenzmaske: affin in den Unbekannten (Faktor je Unbekannter; ihre Achse steht in `achse`)
+      const koef = new Map<number, number>();
       const konst: V3 = [0, 0, 0];
       for (let z = S.start[i]!; z < S.start[i + 1]!; z++) {
         const j = S.index[z]!;
         const w = S.wert[z]!;
         for (let d = 0; d < 3; d++) {
           const k = koeff(j, d);
-          if (k) eintraege.push([d, k[0], w * k[1]]);
+          if (k) koef.set(k[0], (koef.get(k[0]) ?? 0) + w * k[1]);
           else konst[d] = konst[d]! + w * xyz[3 * j + d]!;
         }
       }
-      if (!eintraege.length) continue;
+      if (!koef.size) continue;
       const p: V3 = [fein[3 * i]!, fein[3 * i + 1]!, fein[3 * i + 2]!];
       let ziel: V3;
       let n: V3;
@@ -249,19 +280,23 @@ export function einsatzLoesen(t: EinsatzTopologie, k1: Kaefig, netz: FeinNetz, l
       summeAbstand += Math.abs((p[0] - ziel[0]) * n[0] + (p[1] - ziel[1]) * n[1] + (p[2] - ziel[2]) * n[2]);
       nAbtast++;
       // Residuum: Normalanteil n·(p − Ziel), tangential wt·|(I − nnᵀ)(p − Anker)|² (Anker = Ziel im Kragen):
-      // W = n nᵀ + wt·(I − n nᵀ), rechte Seite W_n·Ziel + W_t·Anker
-      const W = (d1: number, d2: number) => (d1 === d2 ? wt : 0) + (1 - wt) * n[d1]! * n[d2]!;
-      const Wn = (d1: number, d2: number) => n[d1]! * n[d2]!;
-      const Wt = (d1: number, d2: number) => wt * ((d1 === d2 ? 1 : 0) - n[d1]! * n[d2]!);
+      // W = (1 − wt)·n nᵀ + wt·I — als Zeilen: eine längs der Normalen, je eine je Achse; rechte Seite W_n·Ziel + W_t·Anker
       const a0 = tang ?? ziel;
       const rn: V3 = [ziel[0] - konst[0], ziel[1] - konst[1], ziel[2] - konst[2]];
       const rt: V3 = [a0[0] - konst[0], a0[1] - konst[1], a0[2] - konst[2]];
-      for (const [d1, u1, a1] of eintraege) {
-        let rechts = 0;
-        for (let d2 = 0; d2 < 3; d2++) rechts += Wn(d1, d2) * rn[d2]! + Wt(d1, d2) * rt[d2]!;
-        b[u1] = b[u1]! + gD * a1 * rechts;
-        for (const [d2, u2, a2] of eintraege) N[u1 * nu + u2] = N[u1 * nu + u2]! + gD * a1 * a2 * W(d1, d2);
+      const nrn = n[0] * rn[0] + n[1] * rn[1] + n[2] * rn[2];
+      const nrt = n[0] * rt[0] + n[1] * rt[1] + n[2] * rt[2];
+      const index = [...koef.keys()];
+      const wert = index.map((u) => koef.get(u)!);
+      zeilen.push({ index, wert: wert.map((a, q) => a * n[achse[index[q]!]!]!), gewicht: gD * (1 - wt) });
+      for (let d = 0; d < 3; d++) {
+        const auf = index.map((u, q) => (achse[u] === d ? q : -1)).filter((q) => q >= 0);
+        if (auf.length) zeilen.push({ index: auf.map((q) => index[q]!), wert: auf.map((q) => wert[q]!), gewicht: gD * wt });
       }
+      index.forEach((u, q) => {
+        const d = achse[u]!;
+        b[u] = b[u]! + gD * wert[q]! * (n[d]! * nrn + wt * (rt[d]! - n[d]! * nrt));
+      });
     }
     rest.push((summeAbstand / Math.max(1, nAbtast)) * PX);
     // Glätte: L(x − x₀) für jeden freien Punkt der rechten Hälfte
@@ -269,11 +304,11 @@ export function einsatzLoesen(t: EinsatzTopologie, k1: Kaefig, netz: FeinNetz, l
     for (const p of freie) {
       const nb = nachbarn(p);
       for (let d = 0; d < 3; d++) {
-        const eintraege: [number, number][] = [];
+        const koefG = new Map<number, number>();
         let konst = 0;
         const add = (j: number, f: number) => {
           const k = koeff(j, d);
-          if (k) eintraege.push([k[0], f * k[1]]);
+          if (k) koefG.set(k[0], (koefG.get(k[0]) ?? 0) + f * k[1]);
           else konst += f * xyz[3 * j + d]!;
         };
         add(p, 1);
@@ -281,13 +316,12 @@ export function einsatzLoesen(t: EinsatzTopologie, k1: Kaefig, netz: FeinNetz, l
         let soll = x0[3 * p + d]!;
         for (const q of nb) soll -= x0[3 * q + d]! / nb.length;
         const r0 = soll - konst;
-        for (const [u1, a1] of eintraege) {
-          b[u1] = b[u1]! + gG * a1 * r0;
-          for (const [u2, a2] of eintraege) N[u1 * nu + u2] = N[u1 * nu + u2]! + gG * a1 * a2;
-        }
+        if (!koefG.size) continue;
+        zeilen.push({ index: [...koefG.keys()], wert: [...koefG.values()], gewicht: gG });
+        for (const [u, a] of koefG) b[u] = b[u]! + gG * a * r0;
       }
     }
-    const x = luLoesen(luZerlegen(N, nu), b);
+    const x = normalSystem(nu, zeilen, nachbarnU).loesenSpalte(b);
     for (const p of freie) {
       const i0 = frei[p]!;
       xyz[3 * p] = x[i0]!;
@@ -325,10 +359,17 @@ export type EinsatzMasse = {
   wulst: number;
   ortHaut: V3;
   ortNormale: V3;
+  /** Mitte der feinen Kante mit dem größten Knick (Einsatz) */
+  ortKnick: V3;
+  /** größter Knick nahe dem Mundwinkel (feine Kanten im Abstand ≤ 3 Kanten des Feldkäfigs von der Spitze): Einsatz, A0 */
+  faltenEcke: number;
+  faltenEckeA0: number;
+  ortKnickEcke: V3;
 };
 
-/** Knickwinkel je feiner Kante (ohne Falten) zwischen zwei Flächen, die beide zum Bereich gehören; größter Wert. */
-function groessterKnick(k: Kaefig, fein: Float64Array, flaechen: readonly number[][], imBereich: (f: number) => boolean): number {
+/** Knickwinkel je feiner Kante (ohne Falten) zwischen zwei Flächen, die beide zum Bereich gehören; größter Wert und Mitte
+ * seiner Kante. */
+function groessterKnick(k: Kaefig, fein: Float64Array, flaechen: readonly number[][], imBereich: (f: number) => boolean, nahe?: { p: V3; r: number }): { winkel: number; ort: V3 } {
   const normalen = flaechen.map((f) => {
     let nx = 0;
     let ny = 0;
@@ -344,6 +385,7 @@ function groessterKnick(k: Kaefig, fein: Float64Array, flaechen: readonly number
     return [nx / l, ny / l, nz / l] as V3;
   });
   let max = 0;
+  let ort: V3 = [0, 0, 0];
   for (let e = 0; e < k.nE; e++) {
     if (k.eFlaechen[e] !== 2 || k.eSchaerfe[e]! > 0) continue;
     const h = k.eHalb[e]!;
@@ -354,13 +396,21 @@ function groessterKnick(k: Kaefig, fein: Float64Array, flaechen: readonly number
     if (!imBereich(f1) || !imBereich(f2)) continue;
     const a = normalen[f1]!;
     const b = normalen[f2]!;
-    max = Math.max(max, (Math.acos(Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]))) * 180) / Math.PI);
+    const w = (Math.acos(Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]))) * 180) / Math.PI;
+    if (w > max) {
+      const p = k.eA[e]!;
+      const q = k.eB[e]!;
+      const o: V3 = [0.5 * (fein[3 * p]! + fein[3 * q]!), 0.5 * (fein[3 * p + 1]! + fein[3 * q + 1]!), 0.5 * (fein[3 * p + 2]! + fein[3 * q + 2]!)];
+      if (nahe && Math.hypot(o[0] - nahe.p[0], o[1] - nahe.p[1], o[2] - nahe.p[2]) > nahe.r) continue;
+      max = w;
+      ort = o;
+    }
   }
-  return max;
+  return { winkel: max, ort };
 }
 
 /** Maße des gelösten Einsatzes nach Entwurf 3.5 (eine Stufe feiner als das Lösen). */
-export function einsatzMessen(g: GeloesterEinsatz, t: EinsatzTopologie, k1: Kaefig, feld: FeldSpec, lippe: readonly V3[], stufen = 3): EinsatzMasse {
+export function einsatzMessen(g: GeloesterEinsatz, t: EinsatzTopologie, k1: Kaefig, feld: FeldSpec, lippe: readonly V3[], stufen = 4 - t.stufe): EinsatzMasse {
   const ua = unterteilung(g.kaefig, stufen);
   const ka = ua.stufen[ua.stufen.length - 1]!.kaefig;
   const feinA = anwenden3(ua.grenze, g.kaefig.xyz);
@@ -443,7 +493,7 @@ export function einsatzMessen(g: GeloesterEinsatz, t: EinsatzTopologie, k1: Kaef
   }
   const q99 = (a: number[]) => (a.length ? [...a].sort((x, y) => x - y)[Math.floor(0.99 * (a.length - 1))]! : 0);
   // Knicke: Einsatz in M ∪ C (rechts) gegen A0 in den Flächen von M ∪ C (rechts)
-  const falten = groessterKnick(ka, feinA, flA, (f) => imBereichA[f] === 1);
+  const knick = groessterKnick(ka, feinA, flA, (f) => imBereichA[f] === 1);
   const inMC = new Uint8Array(k1.nF);
   for (const f of feld.feld) inMC[f] = 1;
   for (const f of feld.kragen) inMC[f] = 1;
@@ -453,9 +503,28 @@ export function einsatzMessen(g: GeloesterEinsatz, t: EinsatzTopologie, k1: Kaef
     return z > 0;
   };
   const block1 = fl1.length / k1.nF;
-  const faltenA0 = groessterKnick(k1f, fein1, fl1, (f) => {
+  const knickA0 = groessterKnick(k1f, fein1, fl1, (f) => {
     const f0 = Math.floor(f / block1);
     return inMC[f0] === 1 && rechts1(f0);
   });
-  return { aussen, hautMax, hautP99: q99(abstaende), normaleMax, normaleP99: q99(winkel), falten, faltenA0, wulst, ortHaut, ortNormale };
+  // Mundwinkel: Spitze der Lippe, Umkreis drei Kanten des Feldkäfigs (fest, unabhängig von der Teilung der Lippe — sonst
+  // schrumpfte der Messbereich mit kürzeren letzten Lippenspannen mit)
+  const m = lippe.length - 1;
+  const spitze = lippenPunkt(lippe, m, t.gitter === 'kernring' ? 'falte' : 'ecke');
+  const kanten: number[] = [];
+  for (const f of feld.feld)
+    for (let h = k1.fStart[f]!; h < k1.fStart[f + 1]!; h++) {
+      const a = k1.fVerts[h]!;
+      const b = k1.fVerts[h + 1 < k1.fStart[f + 1]! ? h + 1 : k1.fStart[f]!]!;
+      kanten.push(Math.hypot(k1.xyz[3 * a]! - k1.xyz[3 * b]!, k1.xyz[3 * a + 1]! - k1.xyz[3 * b + 1]!, k1.xyz[3 * a + 2]! - k1.xyz[3 * b + 2]!));
+    }
+  kanten.sort((a, b) => a - b);
+  const ecke = { p: spitze, r: 3 * kanten[kanten.length >> 1]! };
+  const knickEcke = groessterKnick(ka, feinA, flA, (f) => imBereichA[f] === 1, ecke);
+  const faltenEcke = knickEcke.winkel;
+  const faltenEckeA0 = groessterKnick(k1f, fein1, fl1, (f) => {
+    const f0 = Math.floor(f / block1);
+    return inMC[f0] === 1 && rechts1(f0);
+  }, ecke).winkel;
+  return { aussen, hautMax, hautP99: q99(abstaende), normaleMax, normaleP99: q99(winkel), falten: knick.winkel, faltenA0: knickA0.winkel, wulst, ortHaut, ortNormale, ortKnick: knick.ort, faltenEcke, faltenEckeA0, ortKnickEcke: knickEcke.ort };
 }

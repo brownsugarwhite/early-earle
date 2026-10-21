@@ -69,6 +69,7 @@ Aus `packages/shape` starten: `npx vite-node ../../apps/editor/scripts/pruefen/<
 | `netz-l0.ts` | Teil L, L0: Bilder „Linie wird Reihe / Ring“ (Cel-Stufen, Käfigschleifen, Reihe rot, Linie blau) |
 | `einsatz-feld.ts`, `einsatz-topologie.ts`, `einsatz-loesen.ts`, `einsatz-vergleich.ts`, `einsatz-alt-neu.ts` | Teil A (Maul als Einsatz): Feld (A3), Topologie (A5), gelöste Haut (A7), Varianten der Lippenstellen über 54 Fälle, alter Maulbau gegen Einsatz („Bauch unter hohem Maul“) |
 | `teilA/e1-reihe.ts`, `teilA/e1-haut.ts`, `teilA/e1-faecher.ts`, `teilA/e1-gitterbild.ts`, `teilA/e1-kissen-kern.ts`, `teilA/e1-kissen-zellen.ts`, `teilA/schlitz-vorversuch.ts` | Teil A, E1 (Kernring): Knick mit Ort je Fall und Gitterart, Haut gegen A0 je Reihenzahl/Feldstufe/Ausgleich, Fächer um den Mundwinkel (Winkel, Abstände), Gitterbilder, Kissen-Vorversuche (Schlitzende, Zellgrößen, Kernring ideal) |
+| `teilA/e1-reihe-k2.ts` | Teil A, E1: ganze Reihe nach dem Standard des Kernrings (K2, Schlitz auf der Linie, ohne Wulst): je Fall Haut, Knick, Mundwinkel (je gegen A0), umgeklappt, Güte, Lippe, Zeit; Summe je Lage (`LAGE` karte/band, `ECKE`, `WULST`, `VERL`, `AUS`) |
 | `zufallsreihe.ts`, `werkzeug-matrix.ts` | Teil V: Zufallsreihe (200 Fälle, wie im Editor gebaut), Werkzeug-Matrix H0 |
 | `posen-tempo.ts` | B7: Tempo eines Gewichtswechsels (Vorschau, Überblenden) |
 

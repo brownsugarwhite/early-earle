@@ -3,7 +3,7 @@
 // Normalen gegen A0, Knicke, Lippenwulst) werden je Fall ausgegeben — das Tor (0,25 px, 1°) ist noch nicht erreicht: Am
 // Mundwinkel faltet die Grenzfläche (Kritik-Register, Befunde A7).
 import { describe, expect, it } from 'vitest';
-import { einsatzFaelle, einsatzFall } from '../pruefen/einsatzFall';
+import { einsatzFaelle, einsatzFall, FALL_ALT } from '../pruefen/einsatzFall';
 import { lippeAnpassen } from './lippe';
 import { a0Netz, einsatzLoesen, einsatzMessen } from './loesen';
 import { einsatzTopologie } from './topologie';
@@ -16,7 +16,7 @@ describe('Teil A, A7: Haut lösen', () => {
     let n = 0;
     const zeilen: string[] = [];
     for (const [art, anfang, form] of einsatzFaelle()) {
-      const f = einsatzFall(art, anfang, form);
+      const f = einsatzFall(art, anfang, form, FALL_ALT);
       if (!f || 'fehler' in f || f.hautAbstand > 1) continue;
       const linie = f.lippenZiel();
       const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie });

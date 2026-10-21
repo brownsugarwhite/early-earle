@@ -15,9 +15,12 @@ import { alleFlaechen } from '../../kaefig/halbkanten';
 import { unterteilung } from '../../subdivision/catmullClark';
 import { anwenden3 } from '../../subdivision/matrix';
 import { type FeldSpec, feldMitGerademRand, flaechenAbstand, M_MAX } from '../einsatz/feld';
-import { ankerVon, type Aufgeschnitten, aufschneiden, type FeinNetz, feinNetz, kantenPfad, linieAufNetz } from '../einsatz/flaeche';
+import { ankerVon, type Aufgeschnitten, aufschneiden, type FeinNetz, feinNetz, kantenPfad, linieAufNetz, schnittAufLinie } from '../einsatz/flaeche';
 import { type Karte, karteBauen } from '../einsatz/karte';
 import { type Verfeinert, verfeinern1 } from '../einsatz/verfeinern';
+import { lippeAnpassen } from '../einsatz/lippe';
+import { a0Netz, type EinsatzMasse, einsatzLoesen, einsatzMessen, type GeloesterEinsatz, type LoesenOptionen } from '../einsatz/loesen';
+import { type EinsatzOptionen, type EinsatzTopologie, einsatzTopologie } from '../einsatz/topologie';
 
 type V3 = [number, number, number];
 
@@ -26,7 +29,8 @@ export type EinsatzFall = {
   /** Körper ohne Maul (Dokument) und seine Ableitung A0 */
   dok: Dokument;
   abl: Ableitung;
-  /** feines Netz von A0 (Stufe 3 = Stufe 2 von K1, gleiche Nummern) */
+  /** feines Netz von A0 (Stufe 3 = Stufe 2 von K1, gleiche Nummern); mit `schnitt: 'linie'` liegen die Pfadpunkte auf der
+   * Linie (`schnittAufLinie`) — das Netz, auf dem Schnitt und Karte stehen */
   netz: FeinNetz;
   /** Maullinie wie gezeichnet (Welt) und auf das feine Netz gelegt (24 je Segment) */
   maulLinie: Linie3;
@@ -36,7 +40,7 @@ export type EinsatzFall = {
   /** größter Abstand der gelegten Linie zur Haut (px; Linien entlang der Silhouette bekommen aus der Seite keine Tiefe) */
   hautAbstand: number;
   v: Verfeinert;
-  /** Stufe des Feldkäfigs: 1 = K1 (Standard), 2 = K2 (zweimal exakt verfeinert, alle Abstände halb so groß) */
+  /** Stufe des Feldkäfigs: 1 = K1, 2 = K2 (Standard des Kernrings: zweimal exakt verfeinert, alle Abstände halb so groß) */
   stufe: 1 | 2;
   /** feine Flächen des Feldkäfigs auf Stufe 3 − stufe (Blöcke je Fläche) und ihre Grenzlagen (= Stufe 3 von A0) */
   feinFlaechen: number[][];
@@ -94,13 +98,21 @@ function koerperStand(art: KoerperArt, stufe: 1 | 2 = 1): KoerperStand {
 }
 
 /**
+ * Aufbau der Schritte A1–A7 wie am 16.10. (Feld auf K1, Schlitz auf dem Kantenpfad) — für die Prüfungen des Schleifengitters,
+ * bitgleich. Ohne Angabe baut `einsatzFall` den Standard des Kernrings (Plan 21.10.): Feld auf K2, Schlitz genau auf der Linie.
+ */
+export const FALL_ALT = { stufe: 1, schnitt: 'pfad' } as const;
+
+/**
  * Einen Fall bis zur Karte bauen; null, wenn die Reihe für diese Lage keine Linie zieht; `fehler` bei einem Bruch.
  * `verlaengerung`: Das Feld misst den Abstand zur Linie samt ihrer Verlängerung über den Mundwinkel hinaus (auf der Haut, in
- * Feldradien), damit hinter dem Mundwinkel so viel Haut im Feld liegt wie über und unter der Lippe.
+ * Feldradien), damit hinter dem Mundwinkel so viel Haut im Feld liegt wie über und unter der Lippe. `schnitt`: Schlitz auf dem
+ * Kantenpfad (wie A1) oder genau auf der Linie (Pfadpunkte auf die Linie gerückt, E1). `feld`: begradigt (A3) oder kompakt
+ * (Band um die Linie, nur Kneifpunkte geschlossen, E1).
  */
-export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form, opt: { verlaengerung?: number; stufe?: 1 | 2 } = {}): EinsatzFall | { name: string; fehler: string } | null {
+export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form, opt: { verlaengerung?: number; stufe?: 1 | 2; schnitt?: 'pfad' | 'linie'; feld?: 'begradigt' | 'kompakt' } = {}): EinsatzFall | { name: string; fehler: string } | null {
   const name = `${art}/${anfang}/${form}`;
-  const stufe = opt.stufe ?? 1;
+  const stufe = opt.stufe ?? 2;
   const { dok, abl, netz, v, fein, ff, h1, hFeld } = koerperStand(art, stufe);
   const vorlage = GRUNDKOERPER.includes(art) ? null : vorlageVon(art as 'rex' | 'langhals' | 'robbe');
   const roh = maulLinien(dok, art, maulBezug(art, dok, vorlage), hautAusNetz(abl), anfang, form, 'kurz', 'gleich', zufall(3));
@@ -110,7 +122,7 @@ export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form, opt: { 
   const l = { ...roh, oben: linieAufHaut(abl, roh.oben) };
   const auf = linieAufNetz(netz, l.oben);
   const d = flaechenAbstand(fein, ff, v.kaefig.nF, opt.verlaengerung ? [...auf.lagen, ...verlaengern(netz, auf.lagen, opt.verlaengerung * 3 * h1)] : auf.lagen);
-  const feld = feldMitGerademRand(v.kaefig, d, 3 * h1, hFeld, stufe === 2 ? 2 * M_MAX : M_MAX);
+  const feld = feldMitGerademRand(v.kaefig, d, 3 * h1, hFeld, stufe === 2 ? 2 * M_MAX : M_MAX, { kompakt: opt.feld === 'kompakt' });
   // feine Dreiecke der rechten Hälfte von M (Blöcke der Stufe-1-Flächen; je Viereck zwei Dreiecke in `feinNetz`)
   const block = ff.length / v.kaefig.nF;
   const dreiecke: number[] = [];
@@ -124,11 +136,25 @@ export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form, opt: { 
   for (const p of abtasten3(l.oben, 32) as V3[]) hautAbstand = Math.max(hautAbstand, ankerVon(netz, p).abstand * 461);
   const pfad = kantenPfad(netz, dreiecke, auf.lagen);
   if (pfad.length < 2) return { name, fehler: 'kein Pfad' };
-  const schnitt = aufschneiden(netz, dreiecke, pfad);
-  const karte = karteBauen({ dreiecke: schnitt.dreiecke, punkte: netz.punkte, nPunkte: netz.punkte.length / 3, doppel: schnitt.doppel, pfad });
+  const netzS = (opt.schnitt ?? 'linie') === 'linie' ? schnittAufLinie(netz, pfad, auf.lagen).netz : netz;
+  const schnitt = aufschneiden(netzS, dreiecke, pfad);
+  const karte = karteBauen({ dreiecke: schnitt.dreiecke, punkte: netzS.punkte, nPunkte: netzS.punkte.length / 3, doppel: schnitt.doppel, pfad });
   let ziel: V3[] | null = null;
   const lippenZiel = () => (ziel ??= abtasten3(l.oben, 64) as V3[]);
-  return { name, dok, abl, netz, maulLinie: l.oben, linie: auf.lagen, lippenZiel, hautAbstand, v, stufe, feinFlaechen: ff, feinK1: Float64Array.from(fein), h1: hFeld, feld, feldDreiecke: dreiecke, pfad, schnitt, karte };
+  return { name, dok, abl, netz: netzS, maulLinie: l.oben, linie: auf.lagen, lippenZiel, hautAbstand, v, stufe, feinFlaechen: ff, feinK1: Float64Array.from(fein), h1: hFeld, feld, feldDreiecke: dreiecke, pfad, schnitt, karte };
+}
+
+/**
+ * Ablauf des Kernrings an einem Fall (Plan 21.10.): Topologie (Stufe des Felds aus dem Fall, Standard des Kernrings je Stufe),
+ * Lippe (A6, Ende „Falte“), Haut lösen (A7) auf der Grenzfläche von Stufe 3 von A0, Maße eine Stufe feiner.
+ */
+export function einsatzAblauf(f: EinsatzFall, opt: EinsatzOptionen = {}, loesen: LoesenOptionen = {}): { t: EinsatzTopologie; lippe: ReturnType<typeof lippeAnpassen>; g: GeloesterEinsatz; ms: EinsatzMasse } {
+  const linie = f.lippenZiel();
+  const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie, gitter: 'kernring', stufe: f.stufe, feldDreiecke: f.feldDreiecke, ...opt });
+  const lippe = lippeAnpassen(linie, t.m, t.lippenAnteile, { ende: t.gitter === 'kernring' ? 'falte' : 'ecke' });
+  const g = einsatzLoesen(t, f.v.kaefig, a0Netz(f.v.kaefig, 3 - f.stufe), lippe.punkte, loesen);
+  const ms = einsatzMessen(g, t, f.v.kaefig, f.feld, lippe.punkte);
+  return { t, lippe, g, ms };
 }
 
 /** Verlängerung einer Linie über ihr Ende hinaus auf der Haut: Schritte in der letzten Richtung, je Schritt auf das Netz gelegt. */

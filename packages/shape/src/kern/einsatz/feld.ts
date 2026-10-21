@@ -48,8 +48,12 @@ function flaechenSpiegel(k: Kaefig, sp: Int32Array): Int32Array {
 /**
  * Feld wählen: `abstand` je Fläche der Stufe 1 (Weg auf der Haut zur Linie, z. B. aus den feinen Blöcken), Radius; das Feld
  * enthält alle Flächen im Radius samt Spiegelbildern (die Komponente mit der Linie, Löcher gefüllt) und wird begradigt.
+ * `kompakt` (Plan 21.10., E1, für den Kernring): nicht begradigen, nur Kneifpunkte schließen — das Feld bleibt das Band um
+ * die Linie. Begradigt wuchs es auf K2 bis zum Vierfachen des Radius und wurde schief (die Randpunkte hinter dem
+ * Mundwinkel passten nach ihrer Nummer bis 24 Speichen versetzt zu den Lippenstellen). Im Kernring bekommt jeder Randpunkt
+ * genau eine Speiche: einspringende Ecken werden Dreier-, vorspringende Fünferpole am Rand.
  */
-export function feldWaehlen(k1: Kaefig, abstand: Float64Array, radius: number): FeldSpec {
+export function feldWaehlen(k1: Kaefig, abstand: Float64Array, radius: number, opt: { kompakt?: boolean } = {}): FeldSpec {
   const sp = spiegelIndex(k1.xyz, k1.n);
   const fsp = flaechenSpiegel(k1, sp);
   const inM = new Uint8Array(k1.nF);
@@ -103,8 +107,46 @@ export function feldWaehlen(k1: Kaefig, abstand: Float64Array, radius: number): 
   // Begradigen: Flächen an konkaven Randpunkten (neue Valenz < 4) dazu, spiegelgleich, bis keine mehr da sind
   const valenzVon = (v: number) => k1.vKStart[v + 1]! - k1.vKStart[v]!;
   const flaechenAn = (v: number) => Array.from(k1.vFlaechen.subarray(k1.vFStart[v]!, k1.vFStart[v + 1]!));
+  // Kompakt: nur Kneifpunkte schließen — liegen die Feldflächen an einem Punkt in mehreren Stücken (über Kanten am Punkt
+  // nicht verbunden), kommen alle Flächen am Punkt dazu (sonst ist der Rand keine einfache Schleife)
+  const kneifpunkteSchliessen = () => {
+    let neu = 0;
+    for (let v = 0; v < k1.n; v++) {
+      const fs = flaechenAn(v).filter((x) => inM[x]);
+      if (fs.length < 2 || fs.length === flaechenAn(v).length) continue;
+      const amPunkt = (f: number) => {
+        const out: number[] = [];
+        for (let h = k1.fStart[f]!; h < k1.fStart[f + 1]!; h++) {
+          const a = k1.fVerts[h]!;
+          const b = k1.fVerts[h + 1 < k1.fStart[f + 1]! ? h + 1 : k1.fStart[f]!]!;
+          if (a !== v && b !== v) continue;
+          const t = k1.hTwin[h]!;
+          if (t >= 0) out.push(k1.hFace[t]!);
+        }
+        return out;
+      };
+      const rest = new Set(fs);
+      let stuecke = 0;
+      while (rest.size) {
+        stuecke++;
+        const st = [rest.values().next().value as number];
+        rest.delete(st[0]!);
+        while (st.length) for (const g of amPunkt(st.pop()!)) if (rest.has(g)) {
+          rest.delete(g);
+          st.push(g);
+        }
+      }
+      if (stuecke > 1) for (const x of flaechenAn(v)) if (!inM[x]) {
+        nimm(x);
+        neu++;
+      }
+    }
+    return neu;
+  };
   let runden = 0;
-  for (; runden < 60; runden++) {
+  if (opt.kompakt) {
+    for (; runden < 60 && kneifpunkteSchliessen(); runden++) lochFuellen();
+  } else for (; runden < 60; runden++) {
     let neu = 0;
     for (let v = 0; v < k1.n; v++) {
       const fs = flaechenAn(v);
@@ -221,7 +263,7 @@ export const M_MAX = 20;
  * (höchstens zwei Kanten mehr), dann schrumpft er (bis zwei Kanten), bis beides stimmt; sonst das erste Feld ohne konkave
  * Ecken.
  */
-export function feldMitGerademRand(k1: Kaefig, abstand: Float64Array, radius: number, kante: number, mMax = M_MAX): FeldSpec & { radius: number } {
+export function feldMitGerademRand(k1: Kaefig, abstand: Float64Array, radius: number, kante: number, mMax = M_MAX, opt: { kompakt?: boolean } = {}): FeldSpec & { radius: number } {
   let erstes: (FeldSpec & { radius: number }) | null = null;
   // erst wachsen (bis zwei Kanten mehr), dann schrumpfen (bis zwei Kanten Radius): lange Linien (tiefer Rex-Mund) gaben
   // sonst m = 22 > M_MAX
@@ -229,9 +271,10 @@ export function feldMitGerademRand(k1: Kaefig, abstand: Float64Array, radius: nu
   for (let s = 0; s <= 8; s++) radien.push(radius + 0.25 * s * kante);
   for (let s = 1; radius - 0.25 * s * kante >= 2 * kante; s++) radien.push(radius - 0.25 * s * kante);
   for (const r of radien) {
-    const f = feldWaehlen(k1, abstand, r);
-    if (!erstes && f.konkav === 0) erstes = { ...f, radius: r };
-    if (f.konkav === 0 && Number.isFinite(f.m) && f.m <= mMax) return { ...f, radius: r };
+    const f = feldWaehlen(k1, abstand, r, opt);
+    const gerade = opt.kompakt || f.konkav === 0;
+    if (!erstes && gerade) erstes = { ...f, radius: r };
+    if (gerade && Number.isFinite(f.m) && f.m <= mMax) return { ...f, radius: r };
   }
-  return erstes ?? { ...feldWaehlen(k1, abstand, radius), radius };
+  return erstes ?? { ...feldWaehlen(k1, abstand, radius, opt), radius };
 }

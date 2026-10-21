@@ -2,12 +2,12 @@
 // nach Feldgröße (m ≤ 10 / m > 10): Hautvierecke (kleinster Winkel ohne Mundwinkel, Fälle unter 20°, Streckung über 4) und
 // die Anpassung der Lippe an die gezeichnete Linie (größter Fehler in einem Blatt, Fälle über 1 px und über 0,3 px).
 // Aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/einsatz-vergleich.ts
-import { einsatzFaelle, einsatzFall, type EinsatzFall } from '../../../../packages/shape/src/kern/pruefen/einsatzFall';
+import { einsatzFaelle, einsatzFall, type EinsatzFall, FALL_ALT } from '../../../../packages/shape/src/kern/pruefen/einsatzFall';
 import { einsatzTopologie, hautGuete, type EinsatzOptionen } from '../../../../packages/shape/src/kern/einsatz/topologie';
 import { lippeAnpassen } from '../../../../packages/shape/src/kern/einsatz/lippe';
 
 const faelle = einsatzFaelle()
-  .map(([a, b, c]) => einsatzFall(a, b, c))
+  .map(([a, b, c]) => einsatzFall(a, b, c, FALL_ALT))
   .filter((f): f is EinsatzFall => !!f && !('fehler' in f));
 const varianten: [string, EinsatzOptionen][] = [];
 for (const lippeKruemmung of [0, 0.3, 0.5, 0.7, 1]) varianten.push([`κ ${lippeKruemmung}`, { lippeKruemmung }]);

@@ -1,16 +1,17 @@
-// Teil A, E1 (Plan 21.10.): Gitter „Kernring“ — der Mundwinkel als regulärer Gitterpunkt am Ende des Schnitts. Geprüft wird
-// (1) die Lippe als Falte: Die Grenzkurve der Lippenschleife im Käfig (c Faltenpunkt ohne Punktschärfe) ist der B-Spline aus
-// `lippenPunkt(…, 'falte')`, ihre Spitze liegt auf dem gezeichneten Mundwinkel; (2) die Topologie an allen 54 Fällen: geschlossen,
-// Spiegel exakt, außen gleich, Valenzen wie vorhergesagt (neue Punkte 4, die beiden Kernecken je Hälfte 3, c mit vier Haut- und
-// zwei Taschenflächen 6, die Rachenecken 3); (3) das Tor (Knick am Mundwinkel ≤ Knick von A0 + 2°) — noch nicht erreicht
-// (Planseite „Stand E1“, Register „Befunde aus E1“), deshalb `it.fails`; die Zahlen je Fall werden ausgegeben.
+// Teil A, E1 (Plan 21.10.): Gitter „Kernring“ — der Mundwinkel als regulärer Gitterpunkt am Ende des Schnitts. Seit dem
+// 21.10. abends auf dem Standard des Kernrings (Feld auf K2, Schlitz genau auf der Linie, Reihenzahl konform 10 … 16,
+// Ausgleich außen). Geprüft wird (1) die Lippe als Falte: Die Grenzkurve der Lippenschleife im Käfig (c Faltenpunkt ohne
+// Punktschärfe) ist der B-Spline aus `lippenPunkt(…, 'falte')`, ihre Spitze liegt auf dem gezeichneten Mundwinkel; (2) die
+// Topologie an allen 54 Fällen: geschlossen, Spiegel exakt, außen gleich, Valenzen wie vorhergesagt (neue Punkte 4, die beiden
+// Kernecken je Hälfte 3, c mit vier Haut- und zwei Taschenflächen 6, die Rachenecken 3); (3) ein schneller Wächter der genauen
+// Haut an drei Fällen (≤ 0,25 px, faltenfrei, außen bitgleich, Spiegel bitgenau, Lippe ≤ 1 px). Die ganze Reihe (Haut-Tor und
+// Mundwinkel-Tor) läuft im Extrem-Lauf (`kernring.extrem.ts`).
 import { describe, expect, it } from 'vitest';
 import { alleFlaechen, kanteZwischen, pruefeKaefig, valenz } from '../../kaefig/halbkanten';
 import { unterteilung } from '../../subdivision/catmullClark';
 import { anwenden3 } from '../../subdivision/matrix';
-import { einsatzFaelle, einsatzFall } from '../pruefen/einsatzFall';
+import { einsatzAblauf, einsatzFaelle, einsatzFall } from '../pruefen/einsatzFall';
 import { lippeAnpassen, lippenPunkt } from './lippe';
-import { a0Netz, einsatzLoesen, einsatzMessen } from './loesen';
 import { einsatzTopologie, ROLLE_AUSSEN, ROLLE_RAND, ROLLE_TOT } from './topologie';
 
 declare const console: { log: (...a: unknown[]) => void };
@@ -20,7 +21,7 @@ describe('Teil A, E1: Kernring', () => {
     const f = einsatzFall('rex', 'mittel', 's');
     if (!f || 'fehler' in f) throw new Error('Fall fehlt');
     const ziel = f.lippenZiel();
-    const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie: ziel, gitter: 'kernring' });
+    const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie: ziel, gitter: 'kernring', stufe: f.stufe });
     const fit = lippeAnpassen(ziel, t.m, t.lippenAnteile, { ende: 'falte' });
     // Spitze auf dem Linienende, c eine halbe Spanne dahinter
     const e = ziel[ziel.length - 1]!;
@@ -57,7 +58,7 @@ describe('Teil A, E1: Kernring', () => {
     expect(max).toBeLessThan(1e-12);
   });
 
-  it('Topologie: geschlossen, Spiegel exakt, außen gleich, Valenzen wie vorhergesagt (54 Fälle)', () => {
+  it('Topologie: geschlossen, Spiegel exakt, außen gleich, Valenzen wie vorhergesagt (54 Fälle, K2)', () => {
     let fehler = '';
     let n = 0;
     let aussenMax = 0;
@@ -72,7 +73,7 @@ describe('Teil A, E1: Kernring', () => {
       }
       let t;
       try {
-        t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie: f.lippenZiel(), gitter: 'kernring' });
+        t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie: f.lippenZiel(), gitter: 'kernring', stufe: f.stufe });
       } catch (e) {
         fehler += `${name}: ${(e as Error).message}; `;
         continue;
@@ -95,8 +96,8 @@ describe('Teil A, E1: Kernring', () => {
           break;
         }
       }
-      // außen gleich (Stufe 2, Blöcke außerhalb von M ∪ C)
-      const uA = unterteilung(a, 2);
+      // außen gleich (Blöcke außerhalb von M ∪ C auf derselben Stufe wie `feinFlaechen`)
+      const uA = unterteilung(a, 3 - f.stufe);
       const feinA = anwenden3(uA.grenze, a.xyz);
       const ffA = alleFlaechen(uA.stufen[uA.stufen.length - 1]!.kaefig);
       const block = f.feinFlaechen.length / f.v.kaefig.nF;
@@ -133,44 +134,39 @@ describe('Teil A, E1: Kernring', () => {
       }
       if (valFehler) fehler += `${name}: ${valFehler}; `;
     }
-    console.log(`Kernring: ${n} Fälle, außen ${aussenMax.toExponential(1)}, umgeklappte Zellen gesamt ${umgeklappt}${fehler ? `; Fehler: ${fehler}` : ''}`);
+    console.log(`Kernring K2: ${n} Fälle, außen ${aussenMax.toExponential(1)}, umgeklappte Zellen gesamt ${umgeklappt}${fehler ? `; Fehler: ${fehler}` : ''}`);
     expect(n).toBeGreaterThan(40);
     expect(fehler).toBe('');
     expect(aussenMax).toBeLessThanOrEqual(1e-12);
   }, 600_000);
 
-  // Tor E1 (Plan 21.10.): Knick am Mundwinkel ≤ Knick von A0 + 2° in allen ausgeglichenen Fällen (Linie auf der Haut, m ≤ 10).
-  // Stand 21.10.: verfehlt (Planseite „Stand E1“, Register „Befunde aus E1“) — fällt dieser Test nicht mehr, ist das Tor erreicht.
-  it.fails('Tor: Knick am Mundwinkel ≤ A0 + 2°, außen bitgleich, Spiegel bitgenau (ausgeglichene Fälle, m ≤ 10)', () => {
+  // Wächter der genauen Haut (Plan 21.10.: Standard des Kernrings) an drei Fällen — die ganze Reihe im Extrem-Lauf
+  it('genaue Haut: ≤ 0,25 px gegen A0, faltenfrei, außen bitgleich, Spiegel bitgenau, Lippe ≤ 1 px (Wächter, 3 Fälle)', () => {
     const zeilen: string[] = [];
-    let verfehlt = 0;
-    let n = 0;
-    // Fehler, die nicht das Tor betreffen, lassen den Test bestehen (it.fails meldet ihn dann als Fehler)
-    let fremd = '';
-    for (const [art, anfang, form] of einsatzFaelle()) {
+    let fehler = '';
+    for (const name of ['kugel/mittel/gerade', 'ei/mittel/s', 'langhals/hoch/gerade']) {
+      const [art, anfang, form] = name.split('/') as Parameters<typeof einsatzFall>;
       const f = einsatzFall(art, anfang, form);
-      if (!f || 'fehler' in f || f.hautAbstand > 1) continue;
-      const linie = f.lippenZiel();
-      const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie, gitter: 'kernring' });
-      if (t.m > 10) continue;
-      n++;
-      const fit = lippeAnpassen(linie, t.m, t.lippenAnteile, { ende: 'falte' });
-      const g = einsatzLoesen(t, f.v.kaefig, a0Netz(f.v.kaefig, 2), fit.punkte);
-      const ms = einsatzMessen(g, t, f.v.kaefig, f.feld, fit.punkte);
-      if (ms.aussen !== 0) fremd += `${f.name}: außen ${ms.aussen}; `;
+      if (!f || 'fehler' in f) {
+        fehler += `${name}: Fall fehlt; `;
+        continue;
+      }
+      const { t, lippe, g, ms } = einsatzAblauf(f);
+      const lf = Math.max(lippe.fehler.seite, lippe.fehler.front, lippe.fehler.top, lippe.fehler.raum);
+      let spiegel = 0;
       for (let v = t.nAlt; v < g.kaefig.n; v++) {
         const s = t.spiegel[v]!;
-        if (s >= 0 && s !== v && (g.xyz[3 * s] !== g.xyz[3 * v] || g.xyz[3 * s + 2] !== -g.xyz[3 * v + 2]!)) {
-          fremd += `${f.name}: Punkt ${v} nicht gespiegelt; `;
-          break;
-        }
+        if (s >= 0 && s !== v && (g.xyz[3 * s] !== g.xyz[3 * v] || g.xyz[3 * s + 1] !== g.xyz[3 * v + 1] || g.xyz[3 * s + 2] !== -g.xyz[3 * v + 2]!)) spiegel++;
       }
-      const ok = ms.falten <= ms.faltenA0 + 2;
-      if (!ok) verfehlt++;
-      zeilen.push(`${f.name} m ${t.m} J ${t.J}: Knick ${ms.falten.toFixed(1)}° (A0 ${ms.faltenA0.toFixed(1)}°)${ok ? '' : ' ✗'}, Haut ${ms.hautMax.toFixed(2)} px, Normale ${ms.normaleMax.toFixed(1)}°`);
+      zeilen.push(`${name} m ${t.m} J ${t.J}: Haut ${ms.hautMax.toFixed(2)} px (99 % ${ms.hautP99.toFixed(2)}), Knick ${ms.falten.toFixed(1)}° (A0 ${ms.faltenA0.toFixed(1)}°), Ecke ${ms.faltenEcke.toFixed(1)}° (A0 ${ms.faltenEckeA0.toFixed(1)}°), umgeklappt ${t.umgeklappt}, Lippe ${lf.toFixed(2)} px`);
+      if (ms.hautMax > 0.25) fehler += `${name}: Haut ${ms.hautMax.toFixed(3)} px; `;
+      if (t.umgeklappt) fehler += `${name}: ${t.umgeklappt} umgeklappt; `;
+      if (ms.falten > 30) fehler += `${name}: Knick ${ms.falten.toFixed(0)}°; `;
+      if (ms.aussen !== 0) fehler += `${name}: außen ${ms.aussen}; `;
+      if (spiegel) fehler += `${name}: ${spiegel} Punkte nicht gespiegelt; `;
+      if (lf > 1) fehler += `${name}: Lippe ${lf.toFixed(2)} px; `;
     }
-    console.log(`Kernring-Tor: ${n - verfehlt} von ${n} erfüllt\n${zeilen.join('\n')}${fremd ? `\nAndere Fehler: ${fremd}` : ''}`);
-    if (fremd || n <= 5) return;
-    expect(verfehlt).toBe(0);
-  }, 900_000);
+    console.log(zeilen.join('\n'));
+    expect(fehler).toBe('');
+  }, 300_000);
 });

@@ -193,3 +193,68 @@ keine Frage der Auflösung. Knick am Mundwinkel unverändert 4–10° (nächster
 Kernrings; A7 auf einen dünn besetzten Löser umstellen (heute dichte LU: bei M ≈ 35 und J = 12–16 dauert ein Fall 10–30 s);
 dann die ganze Reihe und ein Haut-Tor als Test (≤ 0,25 px, wo A0 keine eigenen Falten im Feld trägt). Messskript
 `apps/editor/scripts/pruefen/teilA/e1-haut.ts` (`STUFE=2 JS=12 AR=6`).
+
+## Nachtrag E1 (21.10., zweite Sitzung): Haut als Standard, Mundwinkel ohne Wulst
+
+Florian: „Weiter mit Teil A, E1 nach der Übergabe: zuerst die genaue Haut als Standard des Kernrings …, dann den Mundwinkel
+(Quadratgitter um c). Es muss für alles eine elegante und saubere Lösung geben!“
+
+**Haut: Standard des Kernrings (gebaut, Tor erreicht)**
+- Dünn besetzte Normalgleichungen in A7 (`einsatzLoesen`) und in der Lage (`kernGitter`), wie im Körper (`normalSystem`). Ein
+  Fall auf K2 (Topologie, Lippe, Haut, Messen) braucht ≈ 3–4 s statt 10–30 s.
+- **Schlitz genau auf der Linie** (`schnittAufLinie` in `einsatz/flaeche.ts`): Die Punkte des Kantenpfads rücken auf die Linie
+  (Schritt halbiert, solange ein Dreieck klappen würde). Auf K2 lag der Pfad bis 2,8 px neben der Linie; Lippe (auf der Linie)
+  und Haut (am Pfad) widersprachen sich, am Mundwinkel entstanden Falten von 160–179°.
+- Der Prüffall baut jetzt den Standard: Feld auf K2, Schlitz auf der Linie. `FALL_ALT` (K1, Kantenpfad) hält die alten
+  Prüfungen bitgleich. Reihenzahl konform passend, auf K2 zwischen 10 und 16; Ausgleich außen 6 Runden.
+- **Ganze Reihe** (39 ausgeglichene Fälle): Haut ≤ 0,25 px in 30 von 30 ohne Rex/Robbe (Median 0,12, max 0,22); außen
+  bitgleich und Spiegel bitgenau in allen 39. Rex und Robbe 2–4 px: eigene Falten von A0 im Feld (E2).
+- Tests: `einsatz/kernring.extrem.ts` (ganze Reihe im Extrem-Lauf: Haut-Tor; Mundwinkel-Tor als `it.fails`), Wächter an drei
+  Fällen in `einsatz/kernring.test.ts`. Skript `apps/editor/scripts/pruefen/teilA/e1-reihe-k2.ts`.
+
+**Mundwinkel: was den Knick wirklich machte**
+- **Messung ehrlich gemacht:** Der Umkreis der Mundwinkel-Messung sind jetzt drei Kanten des Feldkäfigs (≈ 20 px). Vorher
+  waren es drei letzte Lippenspannen; der Bereich schrumpfte mit kürzeren Spannen und schönte die Zahl (gemessen).
+- **Lippenwulst raus** (im Kernring 0, Schleifengitter bitgleich): 0,4 px über ein Band von 3 % der Kopfhöhe sind auf K2 eine
+  Steigung bis 12°, die der feinere Käfig auflöst. Längs der ganzen Lippe knickte die Haut um 3–5°; am Mundwinkel war das der
+  Hauptgrund für das verfehlte Tor (alter Messbereich: mit Wulst 1 von 39, ohne 28 von 39). Dass sich geschlossene Lippen
+  nicht tangential berühren, ist Sache der Tasche (A8). Ein geschlossenes Maul darf auf der Haut unsichtbar sein (Florian
+  15.10. zum Rundmaul). Bild vorher/nachher (gleicher Ausschnitt): [`e1-mundwinkel-ohne-wulst-2026-10-21.jpg`](../progress/editor/e1-mundwinkel-ohne-wulst-2026-10-21.jpg).
+- **Letzte Lippenspanne ¼ Feldkante** (`eckeMin` auf K2 0,25 statt 1): Die konforme Lage legt Ring 1 am Mundwinkel sehr dicht
+  an c. Mit einer ganzen Kante war die letzte Lippenspanne 3- bis 20-mal so lang, die vier Zellen um c waren ungleich. Knick an
+  c: Ei tief J 9,4 → 4,8°, Langhals hoch J 14,2 → 8,0°; Rex tief gerade war gefaltet, 179,8 → 9,8°. Gemessen mit 1, 0,5, 0,25
+  und 0,1; 0,25 und 0,1 sind gleich gut.
+- **Stand** (neuer Standard, fester Messbereich): Mundwinkel-Tor (≤ A0 + 2°) in 26 von 30 ohne Rex/Robbe, 31 von 39 mit.
+  Verfehlt: Kugel mittel J 4,4° (A0 1,4°), Ei mittel J 3,9° (1,2°), Ei tief J 4,8° (1,4°), Langhals hoch J 8,0° (6,0°).
+
+**Ursachen der vier übrigen Fälle (gemessen)**
+1. **Verdrehung an J-Linien:** Am Haken ist der Feldrand außen länger als innen (um etwa 2 · Feldradius · Hakenwinkel). Die
+   Lippe hat oben und unten dieselben Stellen, Speiche k muss aber zu Randpunkt k: An J-Linien sind das rund zehn Speichen
+   Versatz. Eine harmonische Lage dreht damit den Fächer um c. Die zwei Stufen der Kartenlage halten den Fächer fest, knicken
+   dafür an der festen Reihe J_i (Kugel/Ei mittel J: 3,9–4,4° in den Zellen zwischen Reihe J_i − 1 und J_i).
+2. **Die Karte zeigt am Linienende nicht in die Verlängerung:** Ihre Linie V = V_c weicht 1–52° von der Endtangente der Linie ab
+   (Median ≈ 11°; die angepasste Lippe ≤ 0,9°). Auf einem feineren Netz (Stufe 4) bleibt das so: In einem schief liegenden Feld
+   ist die Linie V = V_c schon im Stetigen nicht die gerade Verlängerung. Der Fächer um c liegt deshalb gegen die Lippe gekippt
+   (Ei tief J, Langhals hoch J: Knick an c).
+
+**Gemessen und verworfen** (je an vier bis sieben J- und Vergleichsfällen; der Code ist wieder ausgebaut)
+- Normalenbindung in A7 (jede feine Kante in der Tangentialebene von A0): Haut gleich, Knick an c schlechter (9,4 → 11,2°,
+  14,2 → 17,8°). Der Knick an c kommt aus der Lage, nicht aus dem Lösen.
+- Zellform ausgleichen, jede Zelle ein Quadrat (MIPS mit Sperre gegen Umklappen, Newton, vorher entwirrt): Bei fester
+  Speichenzahl um c ist das konforme Gitter logarithmisch-polar, die Ringe ziehen sich spiralig auf c zusammen. Mundwinkel
+  schlechter (Kugel tief J 3,8 → 7,5°).
+- Zellform zur Kissen-Vorlage über das ganze Feld (symmetrische Dirichlet-Energie): Die Vorlage passt nicht zur Feldform,
+  Zellen bis 32 : 1, Falte 178°.
+- Reihen nach Hautlänge auf die Speichen der Karte (erste Reihe in der Lippenspanne): faltet an c (179°). Die Speichenrichtungen
+  der Karte an c sind falsch; die Stauchung hatte das nur verdeckt.
+- Naht der beiden Stufen glätten (Laplace auf der Haut): gemischt (Kugel tief J 3,2 → 2,0°, Ei mittel J 3,9 → 8,4°).
+- Feld hinter dem Mundwinkel verlängern (`verlaengerung` 0,5 und 1): gemischt; große Mäuler stoßen an die Grenze der
+  Lippenauflösung (m 34 → 14).
+- Lage „Band“ (Kissen in zwei Ringen um die Lippe, Rest in einer eigenen Karte; bleibt als Versuch `lage: 'band'`): Wo es nicht
+  faltet, ist der Mundwinkel hervorragend (Langhals hoch J 6,6° bei A0 6,0°, Birne J 0,9–1,4°). Die Kissen-Topologie stimmt
+  also. Es faltet aber dort, wo die Verdrehung (1.) dicht hinter dem Band aufgenommen wird (Zellen über 90° geschert).
+
+**Weg (Vorschlag für den nächsten Schritt):** Die Verdrehung nicht als Scherung, sondern in der Topologie aufnehmen: eine
+Übergangsreihe mit Polpaaren (5er außen am Haken, 3er innen), sodass außen mehr Speichen zum Feldrand laufen als innen. Dann
+kann um c das Kissen liegen, der Rest nimmt die Feldform ohne Drehung auf, und die Naht der beiden Stufen entfällt.
+Alternativ ein ausgeglichenes Feld (Randpunkte oben und unten gleich verteilt). Beides erst an den vier Fällen beweisen.

@@ -12,7 +12,7 @@ import { ableiten } from '../ableiten';
 import { hautAusNetz } from '../pruefstand';
 import { GRUNDKOERPER, type KoerperArt, koerperDokument, vorlageVon } from '../pruefen/koerper';
 import { type Anfang, FORMEN, maulBezug, maulLinien } from '../pruefen/linien';
-import { einsatzFaelle, einsatzFall, linieAufHaut } from '../pruefen/einsatzFall';
+import { einsatzFaelle, einsatzFall, linieAufHaut, FALL_ALT } from '../pruefen/einsatzFall';
 import { feinesNetz } from '../pruefstand';
 import { ankerVon, feinNetz } from './flaeche';
 import { zufall } from '../pruefen/zufall';
@@ -26,7 +26,7 @@ type V3 = [number, number, number];
 
 describe('Teil A, A6: Lippe exakt auf der Linie', () => {
   it('Grenzkurve der Lippenschleife im Käfig = B-Spline mit Spiegel an der Naht und Phantompunkt am Mundwinkel', () => {
-    const f = einsatzFall('rex', 'mittel', 's');
+    const f = einsatzFall('rex', 'mittel', 's', FALL_ALT);
     if (!f || 'fehler' in f) throw new Error('Fall fehlt');
     const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel);
     const ziel = f.lippenZiel();
@@ -108,7 +108,7 @@ describe('Teil A, A6: Lippe exakt auf der Linie', () => {
     let reiheKlein = 0;
     let ungueltigReihe = 0;
     for (const [art, anfang, form] of einsatzFaelle()) {
-      const f = einsatzFall(art, anfang, form);
+      const f = einsatzFall(art, anfang, form, FALL_ALT);
       if (!f || 'fehler' in f) continue;
       if (f.hautAbstand > 1) {
         ungueltigReihe++;

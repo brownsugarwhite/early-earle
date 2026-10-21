@@ -1,7 +1,7 @@
 // Teil A, Schritt A4: Karte des halben Maulfelds. Tor: 0 umgeklappte Kartendreiecke in der ganzen Reihe (Körper ×
 // Linienformen). Dazu Zahlen: CG-Schritte, Zeit.
 import { describe, expect, it } from 'vitest';
-import { einsatzFaelle, einsatzFall } from '../pruefen/einsatzFall';
+import { einsatzFaelle, einsatzFall, FALL_ALT } from '../pruefen/einsatzFall';
 
 declare const console: { log: (...a: unknown[]) => void };
 declare const performance: { now(): number };
@@ -14,7 +14,7 @@ describe('Teil A, A4: Karte', () => {
     let schritte = 0;
     for (const [art, anfang, form] of einsatzFaelle()) {
       const t0 = performance.now();
-      const f = einsatzFall(art, anfang, form);
+      const f = einsatzFall(art, anfang, form, FALL_ALT);
       if (!f) continue;
       n++;
       if ('fehler' in f) {

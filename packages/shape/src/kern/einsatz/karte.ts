@@ -41,7 +41,7 @@ export type Karte = {
  * es in der Karte Fläche null (an Feldecken: ein Viereck mit drei Randpunkten, an der falschen Diagonale geteilt). Die
  * innere Kante wird mit dem Nachbardreieck gekippt (beide Dreiecke behalten ihren Umlaufsinn).
  */
-function ohrenKippen(tri: Int32Array): number {
+export function ohrenKippen(tri: Int32Array): number {
   let gekippt = 0;
   for (let runde = 0; runde < 256; runde++) {
     const kante = new Map<string, number[]>();
@@ -140,6 +140,17 @@ export function karteBauen(e: KartenEingabe): Karte {
   const mitteUnten = [v0d, ...rest.slice(0, a1)];
   const aussen = rest.slice(Math.max(0, a1 - 1), Math.min(rest.length, a2 + 1));
   const mitteOben = [...rest.slice(a2), v0];
+  return karteAusStuecken(tri, P, global, { schlitz, mitteUnten, aussen, mitteOben }, winkel);
+}
+
+/**
+ * Karte einer Scheibe aus ihren vier Randstücken (örtliche Nummern, je in Umlaufrichtung): U = 0 auf `schlitz`, U = 1 auf
+ * `aussen`, V = 0 auf `mitteOben`, V = 1 auf `mitteUnten` (Schritt 1 konform, Schritt 2 Tutte, wie `karteBauen`). Für das
+ * Restfeld der Lage „Band“ (E1) ist `schlitz` der äußere Ring des Innenbands — ohne Spitze, ohne Doppel.
+ */
+export function karteAusStuecken(tri: Int32Array, P: Float64Array, global: readonly number[], stuecke: { schlitz: number[]; mitteUnten: number[]; aussen: number[]; mitteOben: number[] }, winkel = -1): Karte {
+  const m = global.length;
+  const { schlitz, mitteUnten, aussen, mitteOben } = stuecke;
   // Schritt 1: U und V harmonisch (Kotangens)
   const Lk = laplace(m, tri, P, 'kotangens');
   const festU = new Uint8Array(m);
@@ -203,7 +214,7 @@ export function karteBauen(e: KartenEingabe): Karte {
   // Schritt 2: Tutte mit positiven Gewichten, Rand fest
   const Lp = laplace(m, tri, P, 'positiv');
   const festR = new Uint8Array(m);
-  for (const k of reihe) festR[k] = 1;
+  for (const k of [...schlitz, ...mitteUnten, ...aussen, ...mitteOben]) festR[k] = 1;
   const U2 = cgDirichlet(Lp, festR, u, U1.x);
   const V2 = cgDirichlet(Lp, festR, v, V1.x);
   // Orientierung je Dreieck
@@ -228,7 +239,7 @@ export function karteBauen(e: KartenEingabe): Karte {
     v: V2.x,
     rand: { schlitz, mitteUnten, aussen, mitteOben },
     dreiecke: Int32Array.from(tri, (k) => global[k]!),
-    vWinkel: V2.x[winkel]!,
+    vWinkel: winkel >= 0 ? V2.x[winkel]! : Number.NaN,
     umgeklappt,
     entartet,
     schritte: U1.schritte + V1.schritte + U2.schritte + V2.schritte,

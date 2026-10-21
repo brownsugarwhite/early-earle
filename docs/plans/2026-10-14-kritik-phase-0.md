@@ -210,30 +210,34 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
 
 ## Befunde aus E1 (21.10., Maul als Einsatz — Kernring)
 
-- [ ] **Tor E1 verfehlt** (`einsatz/kernring.test.ts`, `it.fails`): Knick am Mundwinkel ≤ A0 + 2° in 5 von 15 ausgeglichenen
-  Fällen (m ≤ 10), über alle 39 ausgeglichenen Fälle ≤ 12° in 29 (vorher keiner unter 131°). Ursachen und Wege auf der Planseite
-  [`2026-10-21-maul-einsatz-weiter.md`](2026-10-21-maul-einsatz-weiter.md), „Stand E1“:
-  1. Die Karte ist um c auf der Skala der letzten Lippenspanne nicht symmetrisch (gleiche Hautweite, verschiedene V-Abstände auf
-     den beiden Schlitzseiten) → Fächer auf der Haut gedreht. Weg: örtlich auf der Haut symmetrische Auffaltung (Polarkoordinaten
-     in der Tangentialebene an c) für die innersten Reihen.
-  2. Schiefe Felder (Feldrandmitte bis 0,45 in V neben der Verlängerung) → äußere Stufe verzerrt (Viereckgüte bis 1°, 18 : 1),
-     Robbe hoch einmal gefaltet. Wege: Übergangsreihe mit 3/5-Polpaaren (A5 Weg 2), kompaktere Felder ohne Begradigen (die
-     Speichenstruktur gibt jedem Randpunkt genau zwei neue Flächen; konkave Ecken würden Dreierpole am Rand, das Gauß–Bonnet-Maß
-     des Hautrings stimmt trotzdem), Feld über den Mundwinkel hinaus verlängern (`einsatzFall(…, { verlaengerung })`).
-  3. Konforme Lippenstellen passen nicht zu verwickelten Linien (Rex mittel: Lippe 5,6 px). Weg: Bogenlänge/Krümmung, nur zum
-     Mundwinkel hin konform gestuft.
-  4. Haut 0,6–1,3 px statt 0,25 (konforme Reihenzahl ist kleiner; schiefe Zellen außen). → 21.10. nachmittags: Mit Feld auf K2,
-     J = 12 und Ausgleich außen nach Hautlängen 0,16–0,22 px an sieben ausgeglichenen Fällen (Kugel, Ei, Birne, Langhals;
-     Planseite „Nachtrag E1 (nachmittags)“). Noch Schalter, nicht Standard; die ganze Reihe und ein Haut-Tor als Test fehlen.
-- [ ] **Einsatz zu langsam für K2** (21.10. nachmittags): Lage (`kernGitter`) und A7 (`einsatzLoesen`) lösen mit dichter LU; bei
-  M ≈ 35 und J = 12–16 dauert ein Fall 10–30 s. Weg: dünn besetzter Löser (Vorbild `loeser/normalSystem.ts`), danach Zeiten wie der
-  Körper (E3).
+- [ ] **Mundwinkel-Tor verfehlt** (21.10., zweite Sitzung: `einsatz/kernring.extrem.ts`, `it.fails`, ganze Reihe): Knick im
+  Umkreis von drei Feldkanten um die Lippenspitze ≤ A0 + 2° in 26 von 30 ausgeglichenen Fällen ohne Rex/Robbe (31 von 39 mit;
+  vorher mit Lippenwulst 1 von 39). Verfehlt nur an J-Linien: Kugel mittel J 4,4°, Ei mittel J 3,9°, Ei tief J 4,8°, Langhals
+  hoch J 8,0°. Ursachen und Wege auf der Planseite [`2026-10-21-maul-einsatz-weiter.md`](2026-10-21-maul-einsatz-weiter.md),
+  „Nachtrag E1 (zweite Sitzung)“:
+  1. **Verdrehung:** Am Haken einer J-Linie ist der Feldrand außen länger als innen, Speiche k muss trotzdem zu Randpunkt k
+     (rund zehn Speichen Versatz). Harmonisch dreht das den Fächer um c, die zwei Stufen der Kartenlage knicken dafür an der
+     festen Reihe J_i (3,9–4,4°). Weg: Übergangsreihe mit Polpaaren (5er außen, 3er innen) oder ausgeglichenes Feld.
+  2. **Die Karte zeigt am Linienende nicht in die Verlängerung** (1–52°, Median ≈ 11°; auf feinerem Netz gleich): Der Fächer um
+     c liegt gegen die Lippe gekippt (Knick an c: Ei tief J, Langhals hoch J). Löst sich mit 1., wenn um c das Kissen liegt (Lage
+     „Band“ ist dort schon gut, faltet aber, solange die Verdrehung hinter dem Band aufgenommen wird).
+  3. Konforme Lippenstellen passen nicht zu verwickelten Linien (Rex mittel: Lippe 2,3–2,7 px) → mit E2.
+- **Erledigt (21.10., zweite Sitzung):**
+  - Haut ≤ 0,25 px als Standard des Kernrings (K2, Reihen 10–16, Ausgleich außen): 30 von 30 ohne Rex/Robbe, Haut-Tor in
+    `kernring.extrem.ts`; Rex/Robbe 2–4 px wegen eigener Falten von A0 im Feld (E2).
+  - Einsatz zu langsam für K2: dünn besetzte Normalgleichungen in Lage und A7, ein Fall ≈ 3–4 s statt 10–30 s.
+  - Falten 160–179° am Mundwinkel auf K2: Der Kantenpfad lag bis 2,8 px neben der Linie → Pfadpunkte auf die Linie
+    (`schnittAufLinie`).
+  - Lippenwulst knickte auf K2 längs der Lippe 3–5° (Steigung bis 12° im schmalen Band) → im Kernring 0 (Tasche A8 sorgt für den
+    Abstand der Lippen).
+  - Mundwinkel-Messung hing an der letzten Lippenspanne (schrumpfte mit ihr) → fester Umkreis von drei Feldkanten.
 - **Knick am Mundwinkel kommt von der Lage, nicht von der Topologie** (21.10. mittags): Kissen mit idealer Lage 1,0°, 2 : 1-Zellen
   10–16°; im Feld liegt der Fächer 3–10-mal zu nah an c und gekippt (konforme Lage ist um c parabelförmig). Sechs Lage-Varianten
-  gemessen und verworfen (Planseite „Nachtrag E1“). Weg: Quadratgitter um c als Ziel-Lage, Tutte mit Mittelwertgewichten.
-- **Kernring braucht Zellgrößen ≥ einer Kante von K1 am Mundwinkel** (gemessen): Die Karte steht auf Dreiecken der Stufe 3 von
-  A0; darunter stimmt ihre Wurzelform nicht mehr, kleinere Zellen am Mundwinkel klappen. Die Lippenstellen wachsen deshalb vom
-  Mundwinkel aus mindestens geometrisch (Option `eckeMin`).
+  gemessen und verworfen (Planseite „Nachtrag E1“), in der zweiten Sitzung sechs weitere (Normalenbindung, Zellform als Quadrate
+  und zur Kissen-Vorlage, Reihen nach Hautlänge, Naht glätten, Feld verlängern; Planseite „Nachtrag E1 (zweite Sitzung)“).
+- ~~Kernring braucht Zellgrößen ≥ einer Kante von K1 am Mundwinkel~~ → auf K2 widerlegt (21.10., zweite Sitzung): Kürzere letzte
+  Lippenspannen (¼ Feldkante) passen zur dichten Lage um c und sind besser (Ei tief J 9,4 → 4,8°, Rex tief gerade gefaltet →
+  9,8°); die Karte darunter stört nicht.
 
 ## Befunde aus B7 (16.10. früh, eigene Befunde)
 

@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { alleFlaechen, pruefeKaefig, valenz } from '../../kaefig/halbkanten';
 import { unterteilung } from '../../subdivision/catmullClark';
 import { anwenden3 } from '../../subdivision/matrix';
-import { einsatzFaelle, einsatzFall } from '../pruefen/einsatzFall';
+import { einsatzFaelle, einsatzFall, FALL_ALT } from '../pruefen/einsatzFall';
 import { einsatzTopologie, hautGuete, ROLLE_AUSSEN, ROLLE_RAND, ROLLE_TOT, UNENDLICH } from './topologie';
 
 declare const console: { log: (...a: unknown[]) => void };
@@ -27,7 +27,7 @@ describe('Teil A, A5: Topologie', () => {
     const klein = { n: 0, unter20: 0, ueber4: 0 };
     const gross = { n: 0, unter20: 0, ueber4: 0 };
     for (const [art, anfang, form] of einsatzFaelle()) {
-      const f = einsatzFall(art, anfang, form);
+      const f = einsatzFall(art, anfang, form, FALL_ALT);
       if (!f) continue;
       const name = `${art}/${anfang}/${form}`;
       if ('fehler' in f) {

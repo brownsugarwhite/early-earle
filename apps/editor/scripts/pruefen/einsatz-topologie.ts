@@ -7,7 +7,7 @@
 import { writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { einsatzFall } from '../../../../packages/shape/src/kern/pruefen/einsatzFall';
+import { einsatzFall, FALL_ALT } from '../../../../packages/shape/src/kern/pruefen/einsatzFall';
 import { einsatzTopologie, ROLLE_RAND } from '../../../../packages/shape/src/kern/einsatz/topologie';
 import { valenz } from '../../../../packages/shape/src/kaefig/halbkanten';
 
@@ -21,7 +21,7 @@ const daten: unknown[] = [];
 const texte: string[] = [];
 for (const name of FAELLE) {
   const [art, anfang, form] = name.split('/') as [never, never, never];
-  const f = einsatzFall(art, anfang, form);
+  const f = einsatzFall(art, anfang, form, FALL_ALT);
   if (!f || 'fehler' in f) continue;
   const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie: f.lippenZiel(), ...(process.env.LIPPE ? { lippeBogen: Number(process.env.LIPPE) } : {}), ...(process.env.GLAETTUNG ? { glaettung: process.env.GLAETTUNG as 'konform' } : {}), ...(process.env.J ? { J: Number(process.env.J) } : {}) });
   const k1 = f.v.kaefig;

@@ -40,6 +40,29 @@ export function feinNetz(punkte: ArrayLike<number>, flaechen: readonly (readonly
   return { punkte: Float64Array.from(punkte as ArrayLike<number>), dreiecke: Int32Array.from(tri) };
 }
 
+/** Normalen je Punkt des feinen Netzes (flächengewichtet, nach außen). */
+export function punktNormalen(netz: FeinNetz): Float64Array {
+  const P = netz.punkte;
+  const N = new Float64Array(P.length);
+  const T = netz.dreiecke;
+  for (let t = 0; t < T.length; t += 3) {
+    const a = T[t]!;
+    const b = T[t + 1]!;
+    const c = T[t + 2]!;
+    const u: V3 = [P[3 * b]! - P[3 * a]!, P[3 * b + 1]! - P[3 * a + 1]!, P[3 * b + 2]! - P[3 * a + 2]!];
+    const v: V3 = [P[3 * c]! - P[3 * a]!, P[3 * c + 1]! - P[3 * a + 1]!, P[3 * c + 2]! - P[3 * a + 2]!];
+    const n: V3 = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    for (const i of [a, b, c]) for (let d = 0; d < 3; d++) N[3 * i + d] = N[3 * i + d]! + n[d]!;
+  }
+  for (let i = 0; i < N.length; i += 3) {
+    const l = Math.hypot(N[i]!, N[i + 1]!, N[i + 2]!) || 1;
+    N[i] = N[i]! / l;
+    N[i + 1] = N[i + 1]! / l;
+    N[i + 2] = N[i + 2]! / l;
+  }
+  return N;
+}
+
 /** Lage eines Ankers. */
 export function ankerLage(n: FeinNetz, a: Anker): V3 {
   const t = 3 * a.dreieck;
@@ -323,7 +346,7 @@ export function feldAusschnitt(n: FeinNetz, linie: readonly V3[], ankerListe: re
  * Mundwinkel; Kosten = Kantenlänge · (1 + Abstand der Kantenmitte zur Linie / Kantenlänge²·…); andere Nahtpunkte sind
  * gesperrt (der Schnitt berührt die Naht nur am Anfang).
  */
-export function kantenPfad(n: FeinNetz, feld: readonly number[], linie: readonly V3[]): number[] {
+export function kantenPfad(n: FeinNetz, feld: readonly number[], linie: readonly V3[], opt: { endeAufNaht?: boolean; gesperrt?: (i: number) => boolean } = {}): number[] {
   const T = n.dreiecke;
   const P = n.punkte;
   const pt = (i: number): V3 => [P[3 * i]!, P[3 * i + 1]!, P[3 * i + 2]!];
@@ -351,7 +374,7 @@ export function kantenPfad(n: FeinNetz, feld: readonly number[], linie: readonly
     return best;
   };
   const s = naechster(linie[0]!, true);
-  const e = naechster(linie[linie.length - 1]!, false);
+  const e = naechster(linie[linie.length - 1]!, opt.endeAufNaht ?? false);
   let laengeSumme = 0;
   let anzahl = 0;
   for (const [a, set] of nb) for (const b of set) {
@@ -372,6 +395,7 @@ export function kantenPfad(n: FeinNetz, feld: readonly number[], linie: readonly
     const pa = pt(a);
     for (const b of nb.get(a) ?? []) {
       if (b !== e && naht(b)) continue;
+      if (opt.gesperrt?.(b)) continue;
       const pb = pt(b);
       const l = Math.hypot(pa[0] - pb[0], pa[1] - pb[1], pa[2] - pb[2]);
       const m: V3 = [(pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2, (pa[2] + pb[2]) / 2];
@@ -404,6 +428,78 @@ export function kantenPfad(n: FeinNetz, feld: readonly number[], linie: readonly
     }
   }
   return pfad;
+}
+
+/**
+ * Schnitt genau auf die Linie legen (Plan 21.10., E1): Der Kantenpfad folgt der Linie nur bis auf eine halbe Kante (auf K2
+ * gemessen 0,3–2,8 px, die Spitze im Median 1,4 px neben dem gezeichneten Mundwinkel — so groß wie ein Viertel bis die Hälfte
+ * der Zellen am Mundwinkel; dort klappte die Fläche bis 179° um). Jeder Pfadpunkt rückt deshalb auf den nächsten Punkt der
+ * auf die Haut gelegten Linie, der letzte genau auf ihr Ende, der erste bleibt auf der Naht (z = 0). Faltensicher: Kippt dabei
+ * ein anliegendes Dreieck (Normale dreht über ≈ 73° oder Fläche unter 10 %), rückt der Punkt nur so weit, wie es hält
+ * (Halbierung). Ergebnis ist eine Kopie des Netzes; die Nummern bleiben, nur die Lagen der Pfadpunkte ändern sich.
+ */
+export function schnittAufLinie(n: FeinNetz, pfad: readonly number[], linie: readonly V3[]): { netz: FeinNetz; bewegt: number; weg: number } {
+  const P = Float64Array.from(n.punkte);
+  const T = n.dreiecke;
+  const amPunkt = new Map<number, number[]>();
+  const imPfad = new Set(pfad);
+  for (let t = 0; t < T.length / 3; t++) for (let k = 0; k < 3; k++) if (imPfad.has(T[3 * t + k]!)) (amPunkt.get(T[3 * t + k]!) ?? amPunkt.set(T[3 * t + k]!, []).get(T[3 * t + k]!)!).push(t);
+  const normale = (t: number): V3 => {
+    const a = 3 * T[3 * t]!;
+    const b = 3 * T[3 * t + 1]!;
+    const c = 3 * T[3 * t + 2]!;
+    const u: V3 = [P[b]! - P[a]!, P[b + 1]! - P[a + 1]!, P[b + 2]! - P[a + 2]!];
+    const v: V3 = [P[c]! - P[a]!, P[c + 1]! - P[a + 1]!, P[c + 2]! - P[a + 2]!];
+    return [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+  };
+  const naechster = (p: V3): V3 => {
+    let best: V3 = linie[0]!;
+    let bd = Infinity;
+    for (let i = 0; i + 1 < linie.length; i++) {
+      const q = linie[i]!;
+      const r = linie[i + 1]!;
+      const e: V3 = [r[0] - q[0], r[1] - q[1], r[2] - q[2]];
+      const l2 = e[0] * e[0] + e[1] * e[1] + e[2] * e[2];
+      const t = l2 > 0 ? Math.min(1, Math.max(0, ((p[0] - q[0]) * e[0] + (p[1] - q[1]) * e[1] + (p[2] - q[2]) * e[2]) / l2)) : 0;
+      const x: V3 = [q[0] + t * e[0], q[1] + t * e[1], q[2] + t * e[2]];
+      const d = Math.hypot(x[0] - p[0], x[1] - p[1], x[2] - p[2]);
+      if (d < bd) {
+        bd = d;
+        best = x;
+      }
+    }
+    return best;
+  };
+  let bewegt = 0;
+  let weg = 0;
+  pfad.forEach((v, i) => {
+    const alt: V3 = [P[3 * v]!, P[3 * v + 1]!, P[3 * v + 2]!];
+    let ziel = i === pfad.length - 1 ? linie[linie.length - 1]! : naechster(alt);
+    if (i === 0) ziel = [ziel[0], ziel[1], 0];
+    const dreiecke = amPunkt.get(v) ?? [];
+    const vorher = dreiecke.map(normale);
+    for (let s = 1; s > 1e-3; s *= 0.5) {
+      P[3 * v] = alt[0] + s * (ziel[0] - alt[0]);
+      P[3 * v + 1] = alt[1] + s * (ziel[1] - alt[1]);
+      P[3 * v + 2] = alt[2] + s * (ziel[2] - alt[2]);
+      const haelt = dreiecke.every((t, j) => {
+        const n0 = vorher[j]!;
+        const n1 = normale(t);
+        const l0 = Math.hypot(...n0);
+        const l1 = Math.hypot(...n1);
+        return n0[0] * n1[0] + n0[1] * n1[1] + n0[2] * n1[2] > 0.3 * l0 * l1 && l1 > 0.1 * l0;
+      });
+      if (haelt) {
+        bewegt++;
+        weg = Math.max(weg, s * Math.hypot(ziel[0] - alt[0], ziel[1] - alt[1], ziel[2] - alt[2]));
+        return;
+      }
+    }
+    P[3 * v] = alt[0];
+    P[3 * v + 1] = alt[1];
+    P[3 * v + 2] = alt[2];
+  });
+  return { netz: { punkte: P, dreiecke: n.dreiecke }, bewegt, weg };
 }
 
 export type Aufgeschnitten = {

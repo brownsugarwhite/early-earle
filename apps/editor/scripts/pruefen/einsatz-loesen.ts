@@ -3,13 +3,15 @@
 // blau = Wulst) und Zebra (Spiegelstreifen) auf A. Cel-Stufen wie in den anderen Bögen.
 // Aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/einsatz-loesen.ts
 // Bild: aus apps/editor: node scripts/pruefen/html-shot.mjs <html> <jpg>
+// Umgebung: GITTER (schleifen|kernring), NEU=1 (Standard des Kernrings: K2, Schlitz auf der Linie; sonst Aufbau A1–A7),
+// LAGE (karte|band, nur mit NEU), J, ECKE (eckeMin), WULST, NAH, FAELLE.
 import { writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { alleFlaechen } from '../../../../packages/shape/src/kaefig/halbkanten';
 import { unterteilung } from '../../../../packages/shape/src/subdivision/catmullClark';
 import { anwenden3 } from '../../../../packages/shape/src/subdivision/matrix';
-import { einsatzFall } from '../../../../packages/shape/src/kern/pruefen/einsatzFall';
+import { einsatzFall, FALL_ALT } from '../../../../packages/shape/src/kern/pruefen/einsatzFall';
 import { ankerVon, feinNetz } from '../../../../packages/shape/src/kern/einsatz/flaeche';
 import { lippeAnpassen, lippenKurve, lippenPunkt } from '../../../../packages/shape/src/kern/einsatz/lippe';
 import { a0Netz, einsatzLoesen, einsatzMessen } from '../../../../packages/shape/src/kern/einsatz/loesen';
@@ -21,19 +23,21 @@ const b64 = (a: Float32Array | Uint32Array | Uint8Array) => Buffer.from(a.buffer
 type V3 = [number, number, number];
 
 const FAELLE = (process.env.FAELLE ?? 'kugel/mittel/gerade,ei/mittel/s,rex/mittel/s,robbe/mittel/j').split(',');
-const STUFE = 3;
+const NEU = !!process.env.NEU;
 const daten: unknown[] = [];
 const texte: string[] = [];
 for (const name of FAELLE) {
   const [art, anfang, form] = name.split('/') as [never, never, never];
-  const f = einsatzFall(art, anfang, form);
+  const f = einsatzFall(art, anfang, form, NEU ? {} : FALL_ALT);
   if (!f || 'fehler' in f) continue;
   const linie = f.lippenZiel();
-  const gitter = (process.env.GITTER ?? 'schleifen') as 'schleifen' | 'kernring';
+  const gitter = (process.env.GITTER ?? (NEU ? 'kernring' : 'schleifen')) as 'schleifen' | 'kernring';
   const ende = gitter === 'kernring' ? 'falte' : 'ecke';
-  const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie, gitter, ...(process.env.J ? { J: Number(process.env.J) } : {}) });
+  const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie, gitter, stufe: f.stufe, ...(process.env.J ? { J: Number(process.env.J) } : {}), ...(process.env.ECKE ? { eckeMin: Number(process.env.ECKE) } : {}), ...(process.env.LAGE ? { lage: process.env.LAGE as 'karte' | 'band', feldDreiecke: f.feldDreiecke } : {}) });
   const fit = lippeAnpassen(linie, t.m, t.lippenAnteile, { ende });
-  const g = einsatzLoesen(t, f.v.kaefig, a0Netz(f.v.kaefig, 2), fit.punkte, process.env.WULST ? { wulst: Number(process.env.WULST) } : {});
+  const g = einsatzLoesen(t, f.v.kaefig, a0Netz(f.v.kaefig, 3 - f.stufe), fit.punkte, process.env.WULST ? { wulst: Number(process.env.WULST) } : {});
+  // Bilder auf derselben Grenzfläche wie Stufe 4 von A0 (K1 auf 3, K2 auf 2)
+  const STUFE = 4 - f.stufe;
   const ms = einsatzMessen(g, t, f.v.kaefig, f.feld, fit.punkte);
   // feine Netze auf Stufe 3: A0 (= K1) und A
   const u1 = unterteilung(f.v.kaefig, STUFE);
@@ -78,14 +82,22 @@ for (const name of FAELLE) {
         waerme[p] = im ? -d - 1e-6 : d;
       }
   }
-  // Ausschnitt: Feld M (Käfigpunkte des Einsatzes) mit Rand; mit NAH = k ein Würfel um die Lippenspitze (k letzte Spannen)
+  // Ausschnitt: Feld M (Käfigpunkte des Einsatzes) mit Rand; mit NAH = k ein Würfel um die Lippenspitze (k Kanten des
+  // Feldkäfigs — fest, damit Bilder mit verschiedener Lippenteilung gleich groß sind)
   const lo = [Infinity, Infinity, Infinity];
   const hi = [-Infinity, -Infinity, -Infinity];
   if (process.env.NAH) {
     const sp = lippenPunkt(fit.punkte, t.m, ende);
-    const c = fit.punkte[t.m]!;
-    const u = fit.punkte[t.m - 1]!;
-    const r = Number(process.env.NAH) * Math.hypot(c[0] - u[0], c[1] - u[1], c[2] - u[2]);
+    const k = f.v.kaefig;
+    const kanten: number[] = [];
+    for (const fc of f.feld.feld)
+      for (let h = k.fStart[fc]!; h < k.fStart[fc + 1]!; h++) {
+        const a = k.fVerts[h]!;
+        const b = k.fVerts[h + 1 < k.fStart[fc + 1]! ? h + 1 : k.fStart[fc]!]!;
+        kanten.push(Math.hypot(k.xyz[3 * a]! - k.xyz[3 * b]!, k.xyz[3 * a + 1]! - k.xyz[3 * b + 1]!, k.xyz[3 * a + 2]! - k.xyz[3 * b + 2]!));
+      }
+    kanten.sort((x, y) => x - y);
+    const r = Number(process.env.NAH) * kanten[kanten.length >> 1]!;
     for (let d = 0; d < 3; d++) {
       lo[d] = sp[d]! - r;
       hi[d] = sp[d]! + r;

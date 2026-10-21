@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { alleFlaechen } from '../../../../packages/shape/src/kaefig/halbkanten';
 import { unterteilung } from '../../../../packages/shape/src/subdivision/catmullClark';
 import { anwenden3 } from '../../../../packages/shape/src/subdivision/matrix';
-import { einsatzFall } from '../../../../packages/shape/src/kern/pruefen/einsatzFall';
+import { einsatzFall, FALL_ALT } from '../../../../packages/shape/src/kern/pruefen/einsatzFall';
 import { mitMaulBauen } from '../../../../packages/shape/src/kern/pruefen/masse';
 import { feinesNetz } from '../../../../packages/shape/src/kern/pruefstand';
 import { ankerVon, feinNetz } from '../../../../packages/shape/src/kern/einsatz/flaeche';
@@ -29,7 +29,7 @@ const daten: unknown[] = [];
 const texte: string[] = [];
 for (const name of FAELLE) {
   const [art, anfang, form] = name.split('/') as [never, never, never];
-  const f = einsatzFall(art, anfang, form);
+  const f = einsatzFall(art, anfang, form, FALL_ALT);
   if (!f || 'fehler' in f) continue;
   // Bezug A0 auf Stufe 3 von K1 (= Stufe 4 von A0)
   const u1 = unterteilung(f.v.kaefig, 3);
