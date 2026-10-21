@@ -208,6 +208,25 @@ Bei B3 behoben: Knochen griffen in anderen Posen auf die Fressen-Öffnung (`setz
 - **Hautreihen nach Feldtiefe** (A5): mit Rand und Kragen fest gleicht nur die letzte Reihe die neue Verbindung an den Randpunkten aus; J = 8 statt 4 bringt die Kugel von 0,75 auf 0,26 px. J aus der Feldtiefe wählen (Reihenabstand ≈ Kantenlänge, Entwurf 2.5).
 - **Einsatzgitter feiner als die Details von A0** (A7, Robbe): Die Robbe hat an der Schnauzenspitze eine feine Kerbe, die K1 mit vielen kleinen Flächen trägt; das Einsatzgitter (m = 8) löst sie nicht auf → bis 4 px Abweichung genau dort, sonst ≤ 0,7 px. Gehört zur Frage Feldgröße / Lippenauflösung (Befunde A5/A6): kompakte Felder oder ein feineres Gitter (m vom Feldrand gelöst).
 
+## Befunde aus E1 (21.10., Maul als Einsatz — Kernring)
+
+- [ ] **Tor E1 verfehlt** (`einsatz/kernring.test.ts`, `it.fails`): Knick am Mundwinkel ≤ A0 + 2° in 5 von 15 ausgeglichenen
+  Fällen (m ≤ 10), über alle 39 ausgeglichenen Fälle ≤ 12° in 29 (vorher keiner unter 131°). Ursachen und Wege auf der Planseite
+  [`2026-10-21-maul-einsatz-weiter.md`](2026-10-21-maul-einsatz-weiter.md), „Stand E1“:
+  1. Die Karte ist um c auf der Skala der letzten Lippenspanne nicht symmetrisch (gleiche Hautweite, verschiedene V-Abstände auf
+     den beiden Schlitzseiten) → Fächer auf der Haut gedreht. Weg: örtlich auf der Haut symmetrische Auffaltung (Polarkoordinaten
+     in der Tangentialebene an c) für die innersten Reihen.
+  2. Schiefe Felder (Feldrandmitte bis 0,45 in V neben der Verlängerung) → äußere Stufe verzerrt (Viereckgüte bis 1°, 18 : 1),
+     Robbe hoch einmal gefaltet. Wege: Übergangsreihe mit 3/5-Polpaaren (A5 Weg 2), kompaktere Felder ohne Begradigen (die
+     Speichenstruktur gibt jedem Randpunkt genau zwei neue Flächen; konkave Ecken würden Dreierpole am Rand, das Gauß–Bonnet-Maß
+     des Hautrings stimmt trotzdem), Feld über den Mundwinkel hinaus verlängern (`einsatzFall(…, { verlaengerung })`).
+  3. Konforme Lippenstellen passen nicht zu verwickelten Linien (Rex mittel: Lippe 5,6 px). Weg: Bogenlänge/Krümmung, nur zum
+     Mundwinkel hin konform gestuft.
+  4. Haut 0,6–1,3 px statt 0,25 (konforme Reihenzahl ist kleiner; schiefe Zellen außen).
+- **Kernring braucht Zellgrößen ≥ einer Kante von K1 am Mundwinkel** (gemessen): Die Karte steht auf Dreiecken der Stufe 3 von
+  A0; darunter stimmt ihre Wurzelform nicht mehr, kleinere Zellen am Mundwinkel klappen. Die Lippenstellen wachsen deshalb vom
+  Mundwinkel aus mindestens geometrisch (Option `eckeMin`).
+
 ## Befunde aus B7 (16.10. früh, eigene Befunde)
 
 - **Abspielen nicht flüssig** (Rex ≈ 8–9 Bilder/s): Ein Gewichtswechsel kostet im Worker 55 ms (posierte Dreiecke mit Normalen ≈ 37 ms, Zähne ≈ 12 ms), dazu Übertragung und Anwenden im Hauptthread. Entwurf §7 verlangt ≤ 8 ms → gemerkte Dreieckszerlegung (Topologie fest, nur Lagen und Normalen) und ein schlanker Anwendungsweg. → B10.

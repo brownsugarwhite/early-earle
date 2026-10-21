@@ -54,7 +54,7 @@ for (const name of FAELLE) {
   const linie = f.lippenZiel();
   const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie });
   const fit = lippeAnpassen(linie, t.m, t.lippenAnteile);
-  const g = einsatzLoesen(t, f.v.kaefig, f.feld, a0Netz(f.v.kaefig, 2), fit.punkte);
+  const g = einsatzLoesen(t, f.v.kaefig, a0Netz(f.v.kaefig, 2), fit.punkte);
   const ms = einsatzMessen(g, t, f.v.kaefig, f.feld, fit.punkte);
   const ua = unterteilung(g.kaefig, 3);
   const posNeu = anwenden3(ua.grenze, g.kaefig.xyz);

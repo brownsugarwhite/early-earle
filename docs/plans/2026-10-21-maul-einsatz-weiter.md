@@ -76,3 +76,55 @@ Du siehst also zuerst das geschlossene Maul auf dem vollen Körper (E4), dann da
   sichtbar — in E5 messen.
 - **Mäuler ohne Naht** (seitlich) und das Plattenmaul (Tiger-Stern) sind Sonderfälle der Rechtecke (zwei Mundwinkel,
   Platte) — nach E4.
+
+## Stand E1 (21.10. nachmittags): Kernring statt zwei Rechtecken
+
+**Zwei Rechtecke gemessen und verworfen.** Verlängerung und Karten bauen faltenfrei (50 von 54 Fällen, 4 ohne Verlängerung zum
+Feldrand), aber die Lippe bekommt nur 1–6 Spalten: Die Spalten des Feldrands verteilen sich auf Lippe *und* Verlängerung. Der
+Versuch bleibt als `einsatz/rechteck.ts`.
+
+**Kernring (Option `gitter: 'kernring'`, `einsatz/topologie.ts`).** Reihe 0 ist die Lippe mit m = M − 2 Spannen (M = Lippen-
+auflösung des Felds), Reihe 1 ein Ring um den Schlitz mit 2M + 1 Punkten: über jedem Lippenpunkt einer, dazu um den Mundwinkel
+U'_{m+1}, E (auf der Verlängerung) und D'_{m+1}. c hat vier Hautflächen (natürlich 360°) und ist Faltenpunkt ohne Punktschärfe;
+die beiden Kernecken sind Dreierpole. Ab Reihe 1 laufen alle Reihen mit 2M + 1 Speichen bis zum Feldrand. Die Lippe endet als
+Falte (`lippeAnpassen(…, { ende: 'falte' })`): Die Spitze (2U_{m−1} + 4c)/6 liegt auf dem gezeichneten Mundwinkel, c eine halbe
+Spanne dahinter; Reihe 0 der Topologie ist gleich die angepasste Lippe (sonst passte das Gitter am Mundwinkel nicht mehr).
+
+**Lage — was gemessen wurde, was trägt:**
+- Die Karte ist konform bis auf ein Seitenverhältnis a (|∂p/∂U| = a·|∂p/∂V|, über alle Fälle ±10 %, Winkel 1–3° von 90°). Nahe
+  dem Schlitzende ist die Haut ∝ ζ² (ζ = a·U + i·(V_c − V)): Jedes in der Karte regelmäßige Gitter hat dort zwei Zellen mit 180°.
+- Lage in der um c zentrierten Auffaltung ζ' = √(ζ² − x_c) (x_c für die halbe Spanne der Falte): c ist dort der Wurzelpunkt,
+  seine drei Nachbarn verteilen sich nach Tutte über 180° in ζ', auf der Haut über 360°, und die Zellen am Mundwinkel werden so
+  groß wie die letzte Lippenspanne (beides wird quadriert).
+- Reihenzahl konform passend (J ≈ a·m / (2V_c(1 − V_c)), 3 … 8): Reihen- und Lippenabstand gleich, Zellen überall Quadrate.
+  Mit der alten Reihenzahl (aus Tiefe/Randkante) waren die Zellen am Mundwinkel im Verhältnis 4–7 : 1 — Knick 9–19°.
+- Lippenstellen konform (gleichmäßig in τ) mit einer kleinsten Zellgröße am Mundwinkel (eine Kante von K1, Wachstum 1,3): Bei
+  großem m würden die konformen Zellen sonst ≈ 1 px, kleiner als die Dreiecke der Karte — dort stimmt die Abbildung nicht mehr.
+- **Zwei Stufen, jede faltenfrei:** innen (Reihen 0 … J/2) Tutte in ζ' mit einer symmetrisch entworfenen Reihe auf der
+  Kartenlinie U = konst; außen Tutte in der Karte (konvexes Rechteck), die den Versatz des Feldrands aufnimmt. Ohne die Teilung
+  dreht jeder Versatz des Feldrands den ganzen Fächer um c (harmonisch, der Winkel klingt zum Mundwinkel hin nicht ab);
+  Festhalten der Mundwinkelspeiche (ein oder zwei Reihen) faltet.
+- Kissen-Vorversuch 2 (ungleiche Zellen am Schlitzende): Lippenspanne 2× → 1,9°, 3× → 11°, 6× → 17°; flache Zellen (1 : 3) → 12°;
+  Wachstum 1,5 je Zelle nach außen → 0,6°. Am Mundwinkel zählen also gleich große, etwa quadratische Zellen.
+
+**Messung (39 ausgeglichene Fälle, Haut-Abstand der Linie ≤ 1 px, Startgitter → A6 → A7, Knick auf Stufe 3):**
+
+| | Schleifengitter | Kernring heute |
+|---|---|---|
+| Knick ≤ A0 + 2° (Tor) | 0 | 5 |
+| Knick ≤ 12° | 0 | 29 |
+| Knick > 90° | 39 | 7 |
+| Haut gegen A0 | 0,2–0,5 px (Kugel/Ei/Langhals) | 0,2–1,3 px |
+| Viereckgüte | 1–47° / bis 10 : 1 | 1–38° / bis 18 : 1 |
+
+Gute Fälle: Kugel/Ei/Birne „mittel“ und „hoch“ (4,4–9,8° am Mundwinkel), Langhals 6,9–7,2° (A0 6°). **Offen (ehrlich):**
+1. Die Karte ist um c nicht symmetrisch, sobald die letzte Lippenspanne einige Dreiecke groß ist: Dieselbe Hautweite liegt auf
+   beiden Schlitzseiten verschieden weit von V_c (Ei tief J: 0,077 gegen 0,037) — der Fächer ist in ζ' symmetrisch, auf der Haut
+   aber gedreht. → örtliche, auf der Haut symmetrische Auffaltung um c (Polarkoordinaten in der Tangentialebene) für die innersten
+   Reihen.
+2. Schiefe Felder (Feldrandmitte bis 0,45 in V neben der Verlängerung: Robbe hoch, Rex tief, J-Linien) verzerren die äußere Stufe
+   (Viereckgüte bis 1°, 18 : 1), Robbe hoch faltet einmal. → Übergangsreihe mit 3/5-Polpaaren (Register, A5 Weg 2) oder
+   ausgeglichene Feldwahl.
+3. Konforme Lippenstellen passen schlecht zu verwickelten Linien (Rex mittel: Lippe 5,6 px statt ≤ 1). → Stellen nach Bogenlänge
+   und Krümmung, nur zum Mundwinkel hin konform gestuft.
+4. Haut 0,6–1,2 px (Tor 0,25): kleineres J als vorher (Kugel mittel J = 4 statt 7) und die schiefen Zellen der äußeren Stufe.

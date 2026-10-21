@@ -12,12 +12,21 @@
 // Indexregel (Entwurf 2.1): Punkte von K1 behalten ihre Nummern, die im Inneren von M werden tot (nicht referenziert), neue
 // Punkte hängen an; die Flächen außerhalb von M behalten ihre Reihenfolge (`alteFlaeche`), damit die feinen Blöcke außerhalb
 // von M ∪ C mit A0 vergleichbar sind (Kragen-Lemma). Spiegel und Naht sind topologisch festgelegt (nicht über z). DOM-frei.
+//
+// Gitter „Kernring“ (Plan 21.10., E1; Option `gitter: 'kernring'`): Im Schleifengitter oben liegen am Mundwinkel nur zwei
+// Hautflächen, die zusammen 360° überdecken müssen — Catmull–Clark gibt zwei Flächen 180°, die Fläche faltet dort (131–179°).
+// Im Kernring ist der Mundwinkel ein regulärer Gitterpunkt am Ende des Schnitts: Reihe 0 ist die Lippe mit m = M − 2
+// (M = Lippenauflösung des Felds), Reihe 1 ein Ring um den Schlitz mit 2M + 1 Punkten — über jedem Lippenpunkt einer, dazu um
+// den Mundwinkel U'_{m+1}, E (auf der Verlängerung der Linie) und D'_{m+1}. c hat vier Hautflächen (natürlich 360°) und ist ein
+// Faltenpunkt ohne Punktschärfe; U'_{m+1} und D'_{m+1} sind Dreierpole. Ab Reihe 1 laufen alle Reihen mit 2M + 1 Speichen
+// bis zum Feldrand. Vorversuch (Kissen mit Schlitz): größter Knick am Schlitzende 7,8° statt 176°.
 import { type Kaefig, kaefigAusFlaechen, kanteZwischen } from '../../kaefig/halbkanten';
+import { luLoesen, luZerlegen } from '../../loeser/lu';
 import { spiegelIndex } from '../pinsel';
 import type { FeldSpec } from './feld';
 import type { FeinNetz } from './flaeche';
 import type { Karte } from './karte';
-import { kruemmungsParameter } from './lippe';
+import { kruemmungsParameter, lippeAnpassen } from './lippe';
 
 type V3 = [number, number, number];
 
@@ -47,10 +56,16 @@ export type EinsatzTopologie = {
   tot: Int32Array;
   /** Flächen von K1 außerhalb von M (die ersten `alteFlaeche.length` Flächen des neuen Käfigs, in alter Reihenfolge) */
   alteFlaeche: Int32Array;
+  /** Gitterart; Lippenauflösung m (Lippenspannen je Seite) und Speichen je Seite ab Reihe 1 (M; Schleifen: M = m) */
+  gitter: 'schleifen' | 'kernring';
   m: number;
+  M: number;
   J: number;
   K: number;
-  /** rechte Hälfte: Haut[r][k] (r = 0 Lippe … J Rand), Tasche[p][k] (p = 0 Lippe … K); Rachen[a][b] ganz (beide Hälften) */
+  /**
+   * rechte Hälfte: Haut[r][k] (r = 0 Lippe mit 2m + 1 Punkten … J Rand, ab r = 1 mit 2M + 1 Punkten), Tasche[p][k] (p = 0
+   * Lippe … K); Rachen[a][b] ganz (beide Hälften)
+   */
   haut: number[][];
   tasche: number[][];
   rachen: number[][];
@@ -60,6 +75,8 @@ export type EinsatzTopologie = {
   spiegel: Int32Array;
   rolle: Uint8Array;
   seite: Uint8Array;
+  /** Bereich je Käfigfläche: 0 außen, 1 Kragen, 2 Haut rechts, 3 Haut links, 4 Tasche/Rachen */
+  bereich: Uint8Array;
   /** Speiche und Reihe je neuem Punkt (Haut: Reihe r ≥ 0, Tasche: −p; −1 sonst) */
   speiche: Int32Array;
   reihe: Int32Array;
@@ -77,6 +94,8 @@ export type EinsatzTopologie = {
   verloreneFalten: number;
   /** die Oberseite lag in der Karte bei V > V_c (Speichen umgedreht) */
   umgedreht: boolean;
+  /** Kernring: Hautzellen mit falschem Umlauf in der Ebene der Lage (0 = faltenfrei) */
+  umgeklappt: number;
 };
 
 const smooth = (u: number) => u * u * (3 - 2 * u);
@@ -166,7 +185,7 @@ export function kartenUmkehr(karte: Karte, netz: FeinNetz, doppel: Map<number, n
 }
 
 /** Erster Treffer eines Strahls mit dem feinen Netz (Möller–Trumbore), ab Abstand `tMin`. */
-function strahlTreffer(netz: FeinNetz, o: V3, r: V3, tMin: number): number {
+export function strahlTreffer(netz: FeinNetz, o: V3, r: V3, tMin: number): number {
   const P = netz.punkte;
   const T = netz.dreiecke;
   let best = Infinity;
@@ -197,7 +216,7 @@ function strahlTreffer(netz: FeinNetz, o: V3, r: V3, tMin: number): number {
  * J = Tiefe / (0,85 · Kante), auf 4 … 8 begrenzt. Rand von M und Kragen bleiben fest (Kragen-Lemma), nur die äußeren Reihen
  * gleichen die neue Verbindung an den Randpunkten aus — zu wenige, zu weite Reihen kosteten die Kugel 0,75 statt 0,26 px.
  */
-function reihenZahl(umkehr: (u: number, v: number) => { p: V3; n: V3 }, thetaOut: Float64Array, lippe: V3[], rand: V3[]): number {
+export function reihenZahl(umkehr: (u: number, v: number) => { p: V3; n: V3 }, thetaOut: Float64Array, lippe: V3[], rand: V3[]): number {
   const tiefen: number[] = [];
   for (let k = 0; k < rand.length; k++) {
     let vor = lippe[k]!;
@@ -233,33 +252,13 @@ export function reihenHoehen(J: number): number[] {
  * Rand liegt auf dem konvexen Einheitsquadrat und alle Gewichte sind positiv → nach Tutte/Floater ist jedes Zwischen- und
  * Endgitter in der Karte faltenfrei, also auch auf der Haut; die Gewichte gleichen die 3D-Abstände längs der Gitterlinien aus.
  */
-function hautGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, uR: number[], thetaIn: Float64Array, thetaOut: Float64Array, lippe: V3[], rand: V3[], glaettung: 'konform' | 'laenge' | 'keine', winkelReihen: number, winkelFaktor = 1, runden = 24, sweeps = 40): { u: number[][]; v: number[][]; lagen: V3[][] } {
+export function hautGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, uR: number[], thetaIn: Float64Array, thetaOut: Float64Array, lippe: V3[], rand: V3[], glaettung: 'konform' | 'laenge' | 'keine', winkelReihen: number, winkelFaktor = 1, runden = 24, sweeps = 40): { u: number[][]; v: number[][]; lagen: V3[][] } {
   const J = uR.length - 1;
   const S = thetaIn.length - 1;
   const mw = S / 2;
-  // Nahtspeichen: U nach Bogenlänge auf der Naht (fein abgetastet), mit denselben Anteilen wie die Reihenhöhen
-  const naht = (v: number): number[] => {
-    const N = 256;
-    const s = [0];
-    let vor = umkehr(0, v).p;
-    for (let i = 1; i <= N; i++) {
-      const q = umkehr(i / N, v).p;
-      s.push(s[i - 1]! + Math.hypot(q[0] - vor[0], q[1] - vor[1], q[2] - vor[2]));
-      vor = q;
-    }
-    const gesamt = s[N]!;
-    return uR.map((a, r) => {
-      if (r === 0) return 0;
-      if (r === J) return 1;
-      const ziel = a * gesamt;
-      let i = 0;
-      while (i + 1 < N && s[i + 1]! < ziel) i++;
-      const t = s[i + 1]! > s[i]! ? (ziel - s[i]!) / (s[i + 1]! - s[i]!) : 0;
-      return (i + t) / N;
-    });
-  };
-  const uOben = naht(0);
-  const uUnten = naht(1);
+  // Nahtspeichen: U nach Bogenlänge auf der Naht, mit denselben Anteilen wie die Reihenhöhen
+  const uOben = nahtHoehen(umkehr, uR, 0);
+  const uUnten = nahtHoehen(umkehr, uR, 1);
   // Mundwinkelspeiche: ihr Punkt in Reihe r ≤ winkelReihen liegt auf der Verlängerung des Schlitzes (V = V_c) im 3D-Abstand
   // r·winkelFaktor·s vor dem Mundwinkel (s = letzter Lippenabstand). Liegt er näher (die Karte drängt die Reihen an der
   // Spitze zusammen, Abstand ∝ U²), fällt der Kantenpunkt (c + H + F_A + F_B)/4 der Speiche hinter c und die feinen Flächen
@@ -353,6 +352,243 @@ function hautGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, uR: numb
   return { u, v, lagen };
 }
 
+/** U der Nahtspeichen nach Bogenlänge auf der Naht (V = 0 oben, 1 unten), mit denselben Anteilen wie die Reihenhöhen. */
+function nahtHoehen(umkehr: (u: number, v: number) => { p: V3; n: V3 }, uR: number[], v: number): number[] {
+  const J = uR.length - 1;
+  const N = 256;
+  const s = [0];
+  let vor = umkehr(0, v).p;
+  for (let i = 1; i <= N; i++) {
+    const q = umkehr(i / N, v).p;
+    s.push(s[i - 1]! + Math.hypot(q[0] - vor[0], q[1] - vor[1], q[2] - vor[2]));
+    vor = q;
+  }
+  const gesamt = s[N]!;
+  return uR.map((a, r) => {
+    if (r === 0) return 0;
+    if (r === J) return 1;
+    const ziel = a * gesamt;
+    let i = 0;
+    while (i + 1 < N && s[i + 1]! < ziel) i++;
+    const t = s[i + 1]! > s[i]! ? (ziel - s[i]!) / (s[i + 1]! - s[i]!) : 0;
+    return (i + t) / N;
+  });
+}
+
+/** Kernring: Speiche der Reihe 1 über dem Lippenpunkt k (k = m, der Mundwinkel, hat drei: m, M und M + 2; hier M). */
+export function kernUeber(k: number, m: number): number {
+  return k < m ? k : k === m ? m + 2 : k + 4;
+}
+
+/**
+ * Seitenverhältnis der Karte: Sie ist konform bis auf den Maßstab je Achse (U harmonisch mit U = 0 am Schlitz und 1 am Rand, V
+ * sein Gegenstück), also |∂p/∂U| = a·|∂p/∂V| mit einem festen a. Geschätzt als flächengewichteter Median über die Dreiecke.
+ */
+export function kartenSeitenverhaeltnis(karte: Karte, netz: FeinNetz, doppel: Map<number, number>): number {
+  const idx = new Map<number, number>();
+  karte.punkte.forEach((g, i) => idx.set(g, i));
+  const lage = (g: number): V3 => {
+    const o = doppel.get(g) ?? g;
+    return [netz.punkte[3 * o]!, netz.punkte[3 * o + 1]!, netz.punkte[3 * o + 2]!];
+  };
+  const werte: [number, number][] = [];
+  const T = karte.dreiecke;
+  for (let t = 0; t < T.length; t += 3) {
+    const i0 = idx.get(T[t]!)!;
+    const i1 = idx.get(T[t + 1]!)!;
+    const i2 = idx.get(T[t + 2]!)!;
+    const du1 = karte.u[i1]! - karte.u[i0]!;
+    const dv1 = karte.v[i1]! - karte.v[i0]!;
+    const du2 = karte.u[i2]! - karte.u[i0]!;
+    const dv2 = karte.v[i2]! - karte.v[i0]!;
+    const det = du1 * dv2 - du2 * dv1;
+    if (Math.abs(det) < 1e-14) continue;
+    const p0 = lage(T[t]!);
+    const p1 = lage(T[t + 1]!);
+    const p2 = lage(T[t + 2]!);
+    let lu = 0;
+    let lv = 0;
+    for (let d = 0; d < 3; d++) {
+      const e1 = p1[d]! - p0[d]!;
+      const e2 = p2[d]! - p0[d]!;
+      lu += ((e1 * dv2 - e2 * dv1) / det) ** 2;
+      lv += ((-e1 * du2 + e2 * du1) / det) ** 2;
+    }
+    if (lv > 0) werte.push([Math.sqrt(lu / lv), Math.abs(det)]);
+  }
+  werte.sort((x, y) => x[0] - y[0]);
+  const summe = werte.reduce((a, w) => a + w[1], 0);
+  let acc = 0;
+  for (const w of werte) {
+    acc += w[1];
+    if (acc >= 0.5 * summe) return w[0];
+  }
+  return 1;
+}
+
+/**
+ * Hautgitter des Kernrings, in zwei Stufen, jede für sich faltenfrei (Tutte: konvexer Rand, positive Gewichte).
+ * Die Karte ist konform bis auf das Seitenverhältnis a: In ζ = a·U + i·(V_c − V) liegt die Lippe auf der imaginären Achse, nahe
+ * dem Schlitzende ist die Haut ∝ ζ² (ein in der Karte regelmäßiges Gitter hätte an c zwei Zellen mit 180°).
+ * 1. Innen (Reihen 0 … J_i) in der um c zentrierten Auffaltung ζ' = √(ζ² − x_c), x_c = (a·U_c)² (c liegt als Faltenpunkt eine
+ *    halbe Spanne hinter dem gezeichneten Mundwinkel): c ist dort der Wurzelpunkt, die Lippe samt dem Stück bis c liegt auf der
+ *    imaginären Achse, seine drei Nachbarn U'_m, E, D'_m verteilen sich über 180° in ζ', auf der Haut über 360°, und die Zellen
+ *    am Mundwinkel werden so groß wie die letzte Lippenspanne (beides quadriert die Haut gleich). Reihe J_i liegt fest auf der
+ *    Kartenlinie U = u_{J_i}, über jeder Lippenstelle gerade (V = θ_k), der Fächer um c dazwischen mit E auf V = V_c — so ist der
+ *    Rand um c symmetrisch, und ein schiefer Feldrand dreht den Fächer nicht mehr.
+ * 2. Außen (Reihen J_i … J) in der Karte selbst (Koordinaten a·U, V; das Rechteck U ≥ u_{J_i} ist konvex und dort regulär): Die
+ *    Speichen laufen von ihrer Lage in Reihe J_i zu ihren Randpunkten — hier nimmt das Gitter den Versatz des Feldrands auf.
+ * Gleiche Gewichte in beiden Stufen (je Runde exakt, dicht, LU); fest sind außerdem die Nahtspeichen (nach Bogenlänge).
+ */
+export function kernGitter(umkehr: (u: number, v: number) => { p: V3; n: V3 }, uR: number[], thetaIn: Float64Array, thetaOut: Float64Array, lippe: V3[], rand: V3[], vc: number, uc: number, a: number, jInnen?: number): { u: number[][]; v: number[][]; lagen: V3[][]; umgeklappt: number } {
+  const J = uR.length - 1;
+  const m = (thetaIn.length - 1) / 2;
+  const S = thetaOut.length - 1;
+  const M = S / 2;
+  if (M !== m + 2) throw new Error(`Kernring: M = ${M}, m = ${m} (erwartet M = m + 2)`);
+  if (J < 3) throw new Error(`Kernring: J = ${J} zu klein (mindestens 3: eine freie Reihe innen, eine außen)`);
+  const Ji = Math.min(J - 1, Math.max(2, jInnen ?? Math.round(J / 2)));
+  const xc = (a * uc) ** 2;
+  // Hauptwurzel; auf der negativen reellen Achse entscheidet `seite` (Oberseite > 0)
+  const wurzel = (x: number, y: number, seite: number): [number, number] => {
+    const r = Math.hypot(x, y);
+    const re = Math.sqrt(Math.max(0, 0.5 * (r + x)));
+    const im = Math.sqrt(Math.max(0, 0.5 * (r - x)));
+    return [re, y < 0 || (y === 0 && seite < 0) ? -im : im];
+  };
+  const nachZ = (u: number, v: number): [number, number] => {
+    const zr = a * u;
+    const zi = vc - v;
+    return wurzel(zr * zr - zi * zi - xc, 2 * zr * zi, zi);
+  };
+  const ausZ = (x: number, y: number): [number, number] => {
+    const z = wurzel(x * x - y * y + xc, 2 * x * y, y);
+    return [z[0] / a, vc - z[1]];
+  };
+  const uOben = nahtHoehen(umkehr, uR, 0);
+  const uUnten = nahtHoehen(umkehr, uR, 1);
+  // Knoten: Reihe 0 (Lippe) k; Reihe r ≥ 1: 2m + 1 + (r − 1)(S + 1) + k. Lage in der Karte (U, V) je Knoten.
+  const n0 = 2 * m + 1;
+  const id = (r: number, k: number) => (r === 0 ? k : n0 + (r - 1) * (S + 1) + k);
+  const nK = n0 + J * (S + 1);
+  const U = new Float64Array(nK);
+  const V = new Float64Array(nK);
+  const L3 = new Array<V3 | null>(nK).fill(null);
+  const setze = (i: number, u: number, v: number, p?: V3) => {
+    U[i] = u;
+    V[i] = v;
+    if (p) L3[i] = p;
+  };
+  for (let k = 0; k <= 2 * m; k++) setze(id(0, k), k === m ? uc : 0, k === m ? vc : thetaIn[k]!, lippe[k]!);
+  for (let k = 0; k <= S; k++) setze(id(J, k), 1, thetaOut[k]!, rand[k]!);
+  for (let r = 1; r < J; r++) {
+    setze(id(r, 0), uOben[r]!, 0);
+    setze(id(r, S), uUnten[r]!, 1);
+  }
+  // Reihe J_i: über den Lippenstellen gerade, der Fächer (m … M + 2) gleichmäßig zwischen der letzten Lippenstelle und V_c
+  {
+    const ui = uR[Ji]!;
+    for (let k = 0; k <= S; k++) {
+      let v: number;
+      if (k < m) v = thetaIn[k]!;
+      else if (k > M + 2) v = thetaIn[k - 4]!;
+      else if (k <= M) v = thetaIn[m - 1]! + ((k - m + 1) / 3) * (vc - thetaIn[m - 1]!);
+      else v = vc + ((k - M) / 3) * (thetaIn[m + 1]! - vc);
+      if (k === 0 || k === S) continue;
+      setze(id(Ji, k), ui, v);
+    }
+  }
+  // Kanten (Lippe → Reihe 1, Reihen, Speichen) mit den Reihen ihrer Enden
+  const kanten: [number, number][] = [];
+  for (let k = 0; k <= m; k++) kanten.push([id(0, k), id(1, k)]);
+  for (let k = m; k <= 2 * m; k++) kanten.push([id(0, k), id(1, k + 4)]);
+  kanten.push([id(0, m), id(1, M)]);
+  for (let r = 1; r <= J; r++) for (let k = 0; k < S; k++) kanten.push([id(r, k), id(r, k + 1)]);
+  for (let r = 1; r < J; r++) for (let k = 0; k <= S; k++) kanten.push([id(r, k), id(r + 1, k)]);
+  const reihe = (i: number) => (i < n0 ? 0 : Math.floor((i - n0) / (S + 1)) + 1);
+  const spalte = (i: number) => (i < n0 ? -1 : (i - n0) % (S + 1));
+  const frei = (i: number) => {
+    const r = reihe(i);
+    const k = spalte(i);
+    return r > 0 && r < J && r !== Ji && k > 0 && k < S;
+  };
+  // Tutte je Stufe in ihren Koordinaten (innen ζ', außen a·U, V)
+  const stufe = (innen: boolean) => {
+    const imBereich = (i: number) => (innen ? reihe(i) <= Ji : reihe(i) >= Ji);
+    const koord = (i: number): [number, number] => (innen ? nachZ(U[i]!, V[i]!) : [a * U[i]!, V[i]!]);
+    const unb = new Int32Array(nK).fill(-1);
+    const liste: number[] = [];
+    for (let i = 0; i < nK; i++)
+      if (imBereich(i) && frei(i)) {
+        unb[i] = liste.length;
+        liste.push(i);
+      }
+    const n = liste.length;
+    if (!n) return;
+    const A = new Float64Array(n * n);
+    const b = new Float64Array(2 * n);
+    for (const [p0, q0] of kanten) {
+      if (!imBereich(p0) || !imBereich(q0)) continue;
+      for (const [p, q] of [
+        [p0, q0],
+        [q0, p0],
+      ] as [number, number][]) {
+        const i = unb[p]!;
+        if (i < 0) continue;
+        A[i * n + i] = A[i * n + i]! + 1;
+        const j = unb[q]!;
+        if (j >= 0) A[i * n + j] = A[i * n + j]! - 1;
+        else {
+          const z = koord(q);
+          b[2 * i] = b[2 * i]! + z[0];
+          b[2 * i + 1] = b[2 * i + 1]! + z[1];
+        }
+      }
+    }
+    const x = luLoesen(luZerlegen(A, n), b, 2);
+    liste.forEach((p, i) => {
+      const [u, v] = innen ? ausZ(x[2 * i]!, x[2 * i + 1]!) : [x[2 * i]! / a, x[2 * i + 1]!];
+      U[p] = u;
+      V[p] = v;
+    });
+  };
+  stufe(true);
+  stufe(false);
+  const lage3 = (i: number): V3 => L3[i] ?? umkehr(U[i]!, V[i]!).p;
+  // Prüfung: Umlaufsinn aller Hautzellen (innen in ζ', außen in der Karte)
+  const zellen: number[][] = [];
+  for (let k = 0; k < m; k++) zellen.push([id(0, k), id(0, k + 1), id(1, k + 1), id(1, k)]);
+  zellen.push([id(0, m), id(1, M), id(1, M - 1), id(1, M - 2)]);
+  zellen.push([id(0, m), id(1, M + 2), id(1, M + 1), id(1, M)]);
+  for (let k = m; k < 2 * m; k++) zellen.push([id(0, k), id(0, k + 1), id(1, k + 5), id(1, k + 4)]);
+  for (let r = 1; r < J; r++) for (let k = 0; k < S; k++) zellen.push([id(r, k), id(r, k + 1), id(r + 1, k + 1), id(r + 1, k)]);
+  const flaeche = (z: number[]) => {
+    const innen = z.every((i) => reihe(i) <= Ji);
+    const P = z.map((i) => (innen ? nachZ(U[i]!, V[i]!) : ([a * U[i]!, V[i]!] as [number, number])));
+    let f = 0;
+    for (let i = 0; i < P.length; i++) {
+      const p = P[i]!;
+      const q = P[(i + 1) % P.length]!;
+      f += p[0] * q[1] - q[0] * p[1];
+    }
+    // ζ' ist gegen (a·U, V) gespiegelt (Im ζ' ∝ V_c − V): Vorzeichen angleichen
+    return innen ? f : -f;
+  };
+  const vorz = zellen.map(flaeche);
+  const pos = vorz.filter((f) => f > 0).length;
+  const umgeklappt = Math.min(pos, vorz.length - pos);
+  const u: number[][] = [];
+  const v: number[][] = [];
+  const lagen: V3[][] = [];
+  for (let r = 0; r <= J; r++) {
+    const breite = r === 0 ? 2 * m : S;
+    u.push(Array.from({ length: breite + 1 }, (_, k) => U[id(r, k)]!));
+    v.push(Array.from({ length: breite + 1 }, (_, k) => V[id(r, k)]!));
+    lagen.push(Array.from({ length: breite + 1 }, (_, k) => lage3(id(r, k))));
+  }
+  return { u, v, lagen, umgeklappt };
+}
+
 /** Einstellungen des Einsatzes (Standard nach dem Vergleich in A5: β = 0, Dehnungsgewichte, eine feste Reihe am Mundwinkel) */
 export type EinsatzOptionen = {
   /** Hautreihen J (fehlt: nach der Feldtiefe, 4 … 8) und Taschenreihen K */
@@ -373,6 +609,12 @@ export type EinsatzOptionen = {
   /** gezeichnete Linie dicht abgetastet (Welt): ihre Krümmung verdichtet die Lippenstellen (Anteil `lippeKruemmung`) */
   linie?: readonly V3[];
   lippeKruemmung?: number;
+  /** Gitterart: Schleifen um den Mund (A5) oder Kernring (E1, Mundwinkel als regulärer Gitterpunkt) */
+  gitter?: 'schleifen' | 'kernring';
+  /** Kernring: kleinste Zellgröße am Mundwinkel in Kanten von K1 (Standard 1) */
+  eckeMin?: number;
+  /** Kernring: Reihen der inneren Stufe (Standard J/2, mindestens 2) */
+  jInnen?: number;
 };
 
 /**
@@ -382,7 +624,9 @@ export type EinsatzOptionen = {
 export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz: FeinNetz, doppel: Map<number, number>, opt: EinsatzOptionen = {}): EinsatzTopologie {
   let J = opt.J ?? 0;
   const K = opt.K ?? 5;
-  const m = feld.m;
+  const kern = opt.gitter === 'kernring';
+  const M = feld.m;
+  const m = kern ? M - 2 : M;
   if (!Number.isInteger(m) || m < 2) throw new Error(`Einsatz: Lippenauflösung m = ${m} ungültig`);
   if ((J !== 0 && J < 2) || K < 1) throw new Error(`Einsatz: J = ${J}, K = ${K} ungültig`);
   const spK1 = spiegelIndex(k1.xyz, k1.n);
@@ -404,7 +648,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
   let bogen = rechts(bogenA) ? bogenA : bogenB;
   if (!rechts(bogen)) throw new Error('Einsatz: kein halber Rand auf der rechten Seite');
   if (vVon(bogen[0]!) > vVon(bogen[bogen.length - 1]!)) bogen = [...bogen].reverse();
-  if (bogen.length !== 2 * m + 1) throw new Error(`Einsatz: halber Rand hat ${bogen.length - 1} Kanten, erwartet 2m = ${2 * m}`);
+  if (bogen.length !== 2 * M + 1) throw new Error(`Einsatz: halber Rand hat ${bogen.length - 1} Kanten, erwartet 2M = ${2 * M}`);
   // Lippe: Schlitz der Karte (lokale Nummern), Seite A von V = 0 zum Mundwinkel, Seite B von V = 1 zum Mundwinkel
   const schlitz = karte.rand.schlitz;
   const iW = (schlitz.length - 1) / 2;
@@ -440,7 +684,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
   // krümmungsgewichteten Parameter der gezeichneten Linie (Anteile der Bogenlänge übertragen), je Schlitzpunkt ausgewertet
   // (stückweise linear) und umgekehrt; U_k und D_k teilen die Bogenlänge s_k (bitgleiche Lage)
   const beta = opt.lippeBogen ?? 0;
-  const betaK = opt.linie ? (opt.lippeKruemmung ?? 0.5) : 0;
+  const betaK = opt.linie ? (opt.lippeKruemmung ?? (kern ? 0 : 0.5)) : 0;
   const kr = opt.linie ? kruemmungsParameter(opt.linie) : (f: number) => f;
   const vc = karte.vWinkel;
   const tauPunkte = sA.map((s, i) => (1 - betaK) * ((1 - beta) * 0.5 * (karte.v[seiteA[i]!]! / vc + (1 - karte.v[seiteB[i]!]!) / (1 - vc)) + (beta * s) / lippenLaenge) + betaK * kr(s / lippenLaenge));
@@ -458,30 +702,135 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
   const thetaOut = Float64Array.from(bogen, vVon);
   const lippeLage: V3[] = [];
   const lippenAnteile = new Float64Array(m + 1);
-  for (let k = 0; k <= m; k++) lippenAnteile[k] = k === m ? 1 : bogenBei(k / m) / lippenLaenge;
-  for (let k = 0; k <= 2 * m; k++) {
-    const kk = k <= m ? k : 2 * m - k;
-    const sigma = kk === m ? lippenLaenge : lippenAnteile[kk]! * lippenLaenge;
-    const st = k <= m ? stelle(seiteA, sigma) : stelle(seiteB, sigma);
-    thetaIn[k] = k === 0 ? 0 : k === 2 * m ? 1 : k === m ? vc : st.v;
-    lippeLage.push(st.p);
-  }
-  lippeLage[0]![2] = 0;
-  lippeLage[2 * m]![2] = 0;
+  // Lippenstellen aus Parameterwerten τ_k (k = 0 … m)
+  const stellenSetzen = (tauVon: (k: number) => number) => {
+    lippeLage.length = 0;
+    for (let k = 0; k <= m; k++) lippenAnteile[k] = k === m ? 1 : bogenBei(tauVon(k)) / lippenLaenge;
+    for (let k = 0; k <= 2 * m; k++) {
+      const kk = k <= m ? k : 2 * m - k;
+      const sigma = kk === m ? lippenLaenge : lippenAnteile[kk]! * lippenLaenge;
+      const st = k <= m ? stelle(seiteA, sigma) : stelle(seiteB, sigma);
+      thetaIn[k] = k === 0 ? 0 : k === 2 * m ? 1 : k === m ? vc : st.v;
+      lippeLage.push(st.p);
+    }
+    lippeLage[0]![2] = 0;
+    lippeLage[2 * m]![2] = 0;
+  };
+  stellenSetzen((k) => k / m);
   // Haut: Gitter in der Karte (Startlage: Speichen als Mischung von θ_in und θ_out), Nahtspeichen nach Bogenlänge, dann
   // geglättet (Tutte mit Dehnungsgewichten, Rand fest → faltenfrei), Lagen über die Umkehrung der Karte
   const umkehr = kartenUmkehr(karte, netz, doppel);
-  if (!J) J = reihenZahl(umkehr, thetaOut, lippeLage, Array.from(bogen, (b): V3 => [netz.punkte[3 * b]!, netz.punkte[3 * b + 1]!, netz.punkte[3 * b + 2]!]));
+  const randLagen = Array.from(bogen, (b): V3 => [netz.punkte[3 * b]!, netz.punkte[3 * b + 1]!, netz.punkte[3 * b + 2]!]);
+  // Kernring: Reihenzahl konform passend (J ≈ a·m/V_c: Reihenabstand in ζ = Lippenabstand in ζ, Zellen überall Quadrate —
+  // auch am Mundwinkel, wo die Haut ∝ ζ² beide Abstände quadriert)
+  const aspekt = kern ? kartenSeitenverhaeltnis(karte, netz, doppel) : 1;
+  if (!J) J = kern ? Math.min(8, Math.max(3, Math.round((aspekt * m) / (2 * vc * (1 - vc))))) : reihenZahl(umkehr, thetaOut, lippeLage, randLagen);
   const uR = reihenHoehen(J);
-  const gitter = hautGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, Array.from(bogen, (b): V3 => [netz.punkte[3 * b]!, netz.punkte[3 * b + 1]!, netz.punkte[3 * b + 2]!]), opt.glaettung ?? 'laenge', opt.winkelReihen ?? 1, opt.winkelFaktor ?? 1);
+  let uc = 0;
+  if (kern) {
+    // Kernring, Lippenstellen: konform (gleichmäßig in τ) passen sie zu den Reihen — nahe c ist die Haut ∝ ζ², beide Abstände
+    // werden quadriert. Bei großem m würden die Zellen am Mundwinkel so aber winzig (≈ 1 px), kleiner als die Dreiecke, auf
+    // denen die Karte steht; dort stimmt die Abbildung nicht mehr. Deshalb wachsen die Abstände vom Linienende aus mindestens
+    // geometrisch von h (≈ eine Kante von K1 im Feld, `eckeMin` mal) mit dem Faktor 1,3 bis höchstens 0,8 der mittleren Spanne
+    const kanten: number[] = [];
+    for (const f of feld.feld)
+      for (let h = k1.fStart[f]!; h < k1.fStart[f + 1]!; h++) {
+        const a = k1.fVerts[h]!;
+        const b = k1.fVerts[h + 1 < k1.fStart[f + 1]! ? h + 1 : k1.fStart[f]!]!;
+        kanten.push(Math.hypot(k1.xyz[3 * a]! - k1.xyz[3 * b]!, k1.xyz[3 * a + 1]! - k1.xyz[3 * b + 1]!, k1.xyz[3 * a + 2]! - k1.xyz[3 * b + 2]!));
+      }
+    kanten.sort((x, y) => x - y);
+    const kante = kanten[kanten.length >> 1]!;
+    const konform = Array.from({ length: m + 1 }, (_, k) => (k === m ? lippenLaenge : bogenBei(k / m)));
+    const abstand = (h: number) => {
+      const d = new Float64Array(m + 1);
+      for (let j = 1; j <= m; j++) d[j] = Math.max(lippenLaenge - konform[m - j]!, d[j - 1]! + Math.min(h * 1.3 ** (j - 1), (0.8 * lippenLaenge) / m));
+      return d;
+    };
+    let h = (opt.eckeMin ?? 1) * kante;
+    for (let i = 0; i < 60 && abstand(h)[m - 1]! >= lippenLaenge * (1 - 0.5 / m); i++) h *= 0.8;
+    const d = abstand(h);
+    const sigma = Array.from({ length: m + 1 }, (_, k) => (k === 0 ? 0 : k === m ? lippenLaenge : lippenLaenge - d[m - k]!));
+    // Bogenlänge → τ (Umkehrung von bogenBei, stückweise linear)
+    const tauVon = (sg: number) => {
+      let i = 0;
+      while (i + 2 < sA.length && sA[i + 1]! < sg) i++;
+      const t = sA[i + 1]! > sA[i]! ? Math.min(1, Math.max(0, (sg - sA[i]!) / (sA[i + 1]! - sA[i]!))) : 0;
+      return tauPunkte[i]! + t * (tauPunkte[i + 1]! - tauPunkte[i]!);
+    };
+    stellenSetzen((k) => (k === 0 ? 0 : tauVon(sigma[k]!)));
+  }
+  if (kern) {
+    // Reihe 0 ist gleich die angepasste Lippe (A6, Ende „Falte“): Kontrollpunkte P_k, V an ihrem Fußpunkt auf dem Schlitz; c
+    // liegt auf der Verlängerung (V = V_c) im Hautabstand |c − Linienende| hinter dem Schlitzende (ohne Linie: eine halbe
+    // letzte Spanne). Sonst legte die Lippenanpassung c erst danach um eine halbe Spanne vor, und das Gitter am Mundwinkel
+    // passte nicht mehr (E lag hinter c)
+    const pk = opt.linie && opt.linie.length > 1 ? lippeAnpassen(opt.linie, m, lippenAnteile, { ende: 'falte' }).punkte : null;
+    const cSchlitz = stelle(seiteA, lippenLaenge).p;
+    let cAbstand: number;
+    if (pk) {
+      const e = opt.linie![opt.linie!.length - 1]!;
+      cAbstand = Math.hypot(pk[m]![0] - e[0], pk[m]![1] - e[1], pk[m]![2] - e[2]);
+    } else {
+      const a = lippeLage[m - 1]!;
+      cAbstand = 0.5 * Math.hypot(cSchlitz[0] - a[0], cSchlitz[1] - a[1], cSchlitz[2] - a[2]);
+    }
+    const abstand = (u: number) => {
+      const q2 = umkehr(u, vc).p;
+      return Math.hypot(q2[0] - cSchlitz[0], q2[1] - cSchlitz[1], q2[2] - cSchlitz[2]);
+    };
+    let lo = 0;
+    let hi = 1;
+    for (let i = 0; i < 50 && cAbstand > 0; i++) {
+      const mid = 0.5 * (lo + hi);
+      if (abstand(mid) < cAbstand) lo = mid;
+      else hi = mid;
+    }
+    uc = cAbstand > 0 ? 0.5 * (lo + hi) : 0;
+    if (pk) {
+      // Fußpunkt auf dem Schlitz (Bogenlänge), monoton und vor dem Schlitzende
+      const fuss = (p: V3) => {
+        let best = 0;
+        let bestD = Infinity;
+        for (let i = 0; i + 1 < seiteA.length; i++) {
+          const a = lage(seiteA[i]!);
+          const b = lage(seiteA[i + 1]!);
+          const e: V3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+          const l2 = e[0] * e[0] + e[1] * e[1] + e[2] * e[2];
+          const t = l2 > 0 ? Math.min(1, Math.max(0, ((p[0] - a[0]) * e[0] + (p[1] - a[1]) * e[1] + (p[2] - a[2]) * e[2]) / l2)) : 0;
+          const d = Math.hypot(a[0] + t * e[0] - p[0], a[1] + t * e[1] - p[1], a[2] + t * e[2] - p[2]);
+          if (d < bestD) {
+            bestD = d;
+            best = sA[i]! + t * (sA[i + 1]! - sA[i]!);
+          }
+        }
+        return best;
+      };
+      let vor = 0;
+      for (let k = 1; k < m; k++) {
+        const sigma = Math.min((1 - 1e-6) * lippenLaenge, Math.max(vor, fuss(pk[k]!)));
+        vor = sigma;
+        thetaIn[k] = stelle(seiteA, sigma).v;
+        thetaIn[2 * m - k] = stelle(seiteB, sigma).v;
+      }
+      for (let k = 0; k < m; k++) {
+        lippeLage[k] = [...pk[k]!];
+        lippeLage[2 * m - k] = [...pk[k]!];
+      }
+      lippeLage[m] = [...pk[m]!];
+    } else lippeLage[m] = umkehr(uc, vc).p;
+  }
+  lippeLage[0]![2] = 0;
+  lippeLage[2 * m]![2] = 0;
+  const gitter: { u: number[][]; v: number[][]; lagen: V3[][]; umgeklappt?: number } = kern ? kernGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, randLagen, vc, uc, aspekt, opt.jInnen) : hautGitter(umkehr, uR, thetaIn, thetaOut, lippeLage, randLagen, opt.glaettung ?? 'laenge', opt.winkelReihen ?? 1, opt.winkelFaktor ?? 1);
   const hautLage: V3[][] = [lippeLage];
-  for (let r = 1; r < J; r++) hautLage.push(gitter.lagen[r]!.map((p, k) => (k === 0 || k === 2 * m ? [p[0], p[1], 0] : p)));
+  for (let r = 1; r < J; r++) hautLage.push(gitter.lagen[r]!.map((p, k, z) => (k === 0 || k === z.length - 1 ? [p[0], p[1], 0] : p)));
   // Oberseite = die Seite, deren Randpunkte im Mittel höher liegen; liegt sie bei V > V_c, werden die Speichen umgedreht
   let yA = 0;
   let yB = 0;
-  for (let k = 1; k < m; k++) {
+  for (let k = 1; k < M; k++) {
     yA += k1.xyz[3 * bogen[k]! + 1]!;
-    yB += k1.xyz[3 * bogen[2 * m - k]! + 1]!;
+    yB += k1.xyz[3 * bogen[2 * M - k]! + 1]!;
   }
   const umgedreht = yB > yA;
   const hautKarte = { u: gitter.u.map((z) => [...z]), v: gitter.v.map((z) => [...z]) };
@@ -504,7 +853,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
     const lN = Math.hypot(...N) || 1;
     innen.push([N[0] / lN, N[1] / lN, N[2] / lN]);
     const a = hautLage[0]![k]!;
-    const b = hautLage[1]![k]!;
+    const b = hautLage[1]![kern ? kernUeber(k, m) : k]!;
     const d: V3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
     const dn = d[0] * n[0] + d[1] * n[1] + d[2] * n[2];
     const t: V3 = [d[0] - dn * n[0], d[1] - dn * n[1], k === 0 || k === 2 * m ? 0 : d[2] - dn * n[2]];
@@ -540,10 +889,13 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
     if (aufNaht) naht.add(i);
     return i;
   };
-  const seiteVon = (k: number) => (k < m ? SEITE_OBEN : k > m ? SEITE_UNTEN : SEITE_BEIDE);
-  const amRand = (k: number) => k === 0 || k === 2 * m;
+  const seiteVon = (k: number, mitte = m) => (k < mitte ? SEITE_OBEN : k > mitte ? SEITE_UNTEN : SEITE_BEIDE);
+  const amRand = (k: number, mitte = m) => k === 0 || k === 2 * mitte;
   const haut: number[][] = [];
-  for (let r = 0; r < J; r++) haut.push(hautLage[r]!.map((p, k) => neu(p, r === 0 ? (k === m ? ROLLE_WINKEL : ROLLE_LIPPE) : ROLLE_HAUT, seiteVon(k), k, r, amRand(k))));
+  for (let r = 0; r < J; r++) {
+    const mitte = r === 0 ? m : M;
+    haut.push(hautLage[r]!.map((p, k) => neu(p, r === 0 ? (k === m ? ROLLE_WINKEL : ROLLE_LIPPE) : ROLLE_HAUT, seiteVon(k, mitte), k, r, amRand(k, mitte))));
+  }
   haut.push([...bogen]);
   const tasche: number[][] = [haut[0]!];
   for (let p = 1; p <= K; p++) tasche.push(taschenLage[p]!.map((q, k) => neu(q, ROLLE_TASCHE, seiteVon(k), k, -p, amRand(k))));
@@ -603,8 +955,19 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
   const hautDreh = randNach.get(bogen[0]!) === bogen[1]!;
   if (!hautDreh && randNach.get(bogen[1]!) !== bogen[0]!) throw new Error('Einsatz: Randkante b₀–b₁ nicht im Rand von M');
   const richte = (f: number[], drehen: boolean) => (drehen ? f.reverse() : f);
-  const rechteFlaechen: number[][] = [];
-  for (let r = 0; r < J; r++) for (let k = 0; k < 2 * m; k++) rechteFlaechen.push(richte([haut[r]![k]!, haut[r]![k + 1]!, haut[r + 1]![k + 1]!, haut[r + 1]![k]!], hautDreh));
+  const hautFlaechen: number[][] = [];
+  if (kern) {
+    // Kern: oben [U_k, U_{k+1}, U'_{k+1}, U'_k] (U_m = c), um den Mundwinkel [c, E, U'_{m+1}, U'_m] und [c, D'_m, D'_{m+1}, E],
+    // unten [L_k, L_{k+1}, H₁,ₖ₊₅, H₁,ₖ₊₄]; dann die Ringe ab Reihe 1 (gleicher Umlauf wie die Ringzellen)
+    const L0 = haut[0]!;
+    const H1 = haut[1]!;
+    for (let k = 0; k < m; k++) hautFlaechen.push([L0[k]!, L0[k + 1]!, H1[k + 1]!, H1[k]!]);
+    hautFlaechen.push([L0[m]!, H1[M]!, H1[M - 1]!, H1[M - 2]!]);
+    hautFlaechen.push([L0[m]!, H1[M + 2]!, H1[M + 1]!, H1[M]!]);
+    for (let k = m; k < 2 * m; k++) hautFlaechen.push([L0[k]!, L0[k + 1]!, H1[k + 5]!, H1[k + 4]!]);
+    for (let r = 1; r < J; r++) for (let k = 0; k < 2 * M; k++) hautFlaechen.push([haut[r]![k]!, haut[r]![k + 1]!, haut[r + 1]![k + 1]!, haut[r + 1]![k]!]);
+  } else for (let r = 0; r < J; r++) for (let k = 0; k < 2 * m; k++) hautFlaechen.push([haut[r]![k]!, haut[r]![k + 1]!, haut[r + 1]![k + 1]!, haut[r + 1]![k]!]);
+  const rechteFlaechen: number[][] = hautFlaechen.map((f) => richte(f, hautDreh));
   for (let p = 0; p < K; p++) for (let k = 0; k < 2 * m; k++) rechteFlaechen.push(richte([tasche[p]![k]!, tasche[p]![k + 1]!, tasche[p + 1]![k + 1]!, tasche[p + 1]![k]!], !hautDreh));
   const einsatzFlaechen = [...rechteFlaechen, ...rechteFlaechen.map((f) => f.map(sp).reverse())];
   for (let a = 0; a < m; a++) for (let b = 0; b < m; b++) einsatzFlaechen.push(richte([rachen[a]![b]!, rachen[a + 1]![b]!, rachen[a + 1]![b + 1]!, rachen[a]![b + 1]!], !hautDreh));
@@ -636,8 +999,23 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
     if (e < 0) throw new Error('Einsatz: Lippenkante fehlt');
     kaefig.eSchaerfe[e] = UNENDLICH;
   }
-  kaefig.vSchaerfe[haut[0]![m]!] = UNENDLICH;
-  kaefig.vSchaerfe[sp(haut[0]![m]!)] = UNENDLICH;
+  // Schleifen: Mundwinkel als Ecke; Kernring: Faltenpunkt (vier Hautflächen, die Falte läuft durch c zurück)
+  if (!kern) {
+    kaefig.vSchaerfe[haut[0]![m]!] = UNENDLICH;
+    kaefig.vSchaerfe[sp(haut[0]![m]!)] = UNENDLICH;
+  }
+  // Bereich je Fläche: alte Flächen (Kragen oder außen), Haut rechts/links, Tasche und Rachen
+  const kragenSet = new Set(feld.kragen);
+  const bereich = new Uint8Array(kaefig.nF);
+  const nHautR = hautFlaechen.length;
+  const nFlR = rechteFlaechen.length;
+  for (let f = 0; f < kaefig.nF; f++) {
+    if (f < alt.length) bereich[f] = kragenSet.has(alteFlaeche[f]!) ? 1 : 0;
+    else {
+      const e = f - alt.length;
+      bereich[f] = e < nHautR ? 2 : e >= nFlR && e < nFlR + nHautR ? 3 : 4;
+    }
+  }
   // Rollen, Seiten, Spiegel je Punkt
   const n = xyz.length / 3;
   const rolle = new Uint8Array(n);
@@ -668,7 +1046,9 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
     nAlt,
     tot: Int32Array.from(tot),
     alteFlaeche: Int32Array.from(alteFlaeche),
+    gitter: kern ? 'kernring' : 'schleifen',
     m,
+    M,
     J,
     K,
     haut,
@@ -678,6 +1058,7 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
     spiegel,
     rolle,
     seite,
+    bereich,
     speiche,
     reihe,
     lippenAnteile,
@@ -686,46 +1067,48 @@ export function einsatzTopologie(k1: Kaefig, feld: FeldSpec, karte: Karte, netz:
     thetaOut,
     reihenHoehen: uR,
     taschenTiefe: tiefe,
-    winkelVersatz: Math.abs(thetaOut[m]! - thetaIn[m]!),
+    winkelVersatz: Math.abs(thetaOut[M]! - thetaIn[m]!),
     verloreneFalten,
     umgedreht,
+    umgeklappt: gitter.umgeklappt ?? 0,
   };
 }
 
-/** Güte der Hautvierecke der rechten Hälfte (Startlagen): kleinster Winkel (ohne den Winkel am Mundwinkel, der bei einem
- * Schlitz der Breite null 180° beträgt), größte Streckung (Mittel der gegenüberliegenden Seiten), Anzahl unter 20° bzw. über
- * 4:1. */
+/** Güte der Hautvierecke der rechten Hälfte (Startlagen): kleinster Winkel (im Schleifengitter ohne den Winkel am Mundwinkel,
+ * der bei einem Schlitz der Breite null 180° beträgt), größte Streckung (Mittel der gegenüberliegenden Seiten), Anzahl unter
+ * 20° bzw. über 4:1. */
 export function hautGuete(t: EinsatzTopologie): { winkelMin: number; seitenMax: number; unter20: number; ueber4: number } {
-  const xyz = t.kaefig.xyz;
+  const k = t.kaefig;
+  const xyz = k.xyz;
   const P = (i: number): V3 => [xyz[3 * i]!, xyz[3 * i + 1]!, xyz[3 * i + 2]!];
-  const c = t.haut[0]![t.m]!;
+  const c = t.gitter === 'schleifen' ? t.haut[0]![t.m]! : -1;
   let winkelMin = 180;
   let seitenMax = 0;
   let unter20 = 0;
   let ueber4 = 0;
-  for (let r = 0; r < t.J; r++)
-    for (let k = 0; k < 2 * t.m; k++) {
-      const ecken = [t.haut[r]![k]!, t.haut[r]![k + 1]!, t.haut[r + 1]![k + 1]!, t.haut[r + 1]![k]!];
-      const q = ecken.map(P);
-      const seiten = q.map((u, i) => Math.hypot(u[0] - q[(i + 1) % 4]![0], u[1] - q[(i + 1) % 4]![1], u[2] - q[(i + 1) % 4]![2]));
-      const quer = (seiten[0]! + seiten[2]!) / 2;
-      const laengs = (seiten[1]! + seiten[3]!) / 2;
-      const sv = Math.max(quer, laengs) / Math.max(1e-15, Math.min(quer, laengs));
-      let w = 180;
-      for (let i = 0; i < 4; i++) {
-        if (ecken[i] === c) continue;
-        const o = q[i]!;
-        const a = q[(i + 1) % 4]!;
-        const b = q[(i + 3) % 4]!;
-        const d1: V3 = [a[0] - o[0], a[1] - o[1], a[2] - o[2]];
-        const d2: V3 = [b[0] - o[0], b[1] - o[1], b[2] - o[2]];
-        const cs = (d1[0] * d2[0] + d1[1] * d2[1] + d1[2] * d2[2]) / Math.max(1e-30, Math.hypot(...d1) * Math.hypot(...d2));
-        w = Math.min(w, (Math.acos(Math.max(-1, Math.min(1, cs))) * 180) / Math.PI);
-      }
-      winkelMin = Math.min(winkelMin, w);
-      seitenMax = Math.max(seitenMax, sv);
-      if (w < 20) unter20++;
-      if (sv > 4) ueber4++;
+  for (let f = 0; f < k.nF; f++) {
+    if (t.bereich[f] !== 2) continue;
+    const ecken = Array.from(k.fVerts.subarray(k.fStart[f]!, k.fStart[f + 1]!));
+    const q = ecken.map(P);
+    const seiten = q.map((u, i) => Math.hypot(u[0] - q[(i + 1) % 4]![0], u[1] - q[(i + 1) % 4]![1], u[2] - q[(i + 1) % 4]![2]));
+    const quer = (seiten[0]! + seiten[2]!) / 2;
+    const laengs = (seiten[1]! + seiten[3]!) / 2;
+    const sv = Math.max(quer, laengs) / Math.max(1e-15, Math.min(quer, laengs));
+    let w = 180;
+    for (let i = 0; i < 4; i++) {
+      if (ecken[i] === c) continue;
+      const o = q[i]!;
+      const a = q[(i + 1) % 4]!;
+      const b = q[(i + 3) % 4]!;
+      const d1: V3 = [a[0] - o[0], a[1] - o[1], a[2] - o[2]];
+      const d2: V3 = [b[0] - o[0], b[1] - o[1], b[2] - o[2]];
+      const cs = (d1[0] * d2[0] + d1[1] * d2[1] + d1[2] * d2[2]) / Math.max(1e-30, Math.hypot(...d1) * Math.hypot(...d2));
+      w = Math.min(w, (Math.acos(Math.max(-1, Math.min(1, cs))) * 180) / Math.PI);
     }
+    winkelMin = Math.min(winkelMin, w);
+    seitenMax = Math.max(seitenMax, sv);
+    if (w < 20) unter20++;
+    if (sv > 4) ueber4++;
+  }
   return { winkelMin, seitenMax, unter20, ueber4 };
 }

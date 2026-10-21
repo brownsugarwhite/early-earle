@@ -44,27 +44,6 @@ export type GeloesterEinsatz = {
   rest: number[];
 };
 
-/** Bereich je Käfigfläche des Einsatz-Käfigs: 0 außen, 1 Kragen, 2 Haut rechts, 3 Haut links, 4 Tasche/Rachen. */
-export function flaechenBereiche(t: EinsatzTopologie, feld: FeldSpec): Uint8Array {
-  const nAltF = t.alteFlaeche.length;
-  const kragen = new Set(feld.kragen);
-  const proHaelfte = (t.J + t.K) * 2 * t.m;
-  const out = new Uint8Array(t.kaefig.nF);
-  for (let f = 0; f < t.kaefig.nF; f++) {
-    if (f < nAltF) {
-      out[f] = kragen.has(t.alteFlaeche[f]!) ? 1 : 0;
-      continue;
-    }
-    const e = f - nAltF;
-    if (e >= 2 * proHaelfte) out[f] = 4;
-    else {
-      const lokal = e % proHaelfte;
-      out[f] = lokal < t.J * 2 * t.m ? (e < proHaelfte ? 2 : 3) : 4;
-    }
-  }
-  return out;
-}
-
 /** Kopfhöhe am Mundwinkel: Höhenausdehnung des feinen Netzes in einem schmalen Fenster um x des Mundwinkels. */
 function kopfHoehe(netz: FeinNetz, c: V3): number {
   let lo = Infinity;
@@ -103,7 +82,7 @@ function abstandZuZug(p: V3, zug: readonly V3[]): number {
  * Haut lösen. `netz` = feines Netz von A0 auf Stufe L + 1 (= K1 auf L, gleiche Nummern), `lippe` = Kontrollpunkte der
  * Lippenseite aus A6 (U₀ … U_{m−1}, c).
  */
-export function einsatzLoesen(t: EinsatzTopologie, k1: Kaefig, feld: FeldSpec, netz: FeinNetz, lippe: readonly V3[], opt: LoesenOptionen = {}): GeloesterEinsatz {
+export function einsatzLoesen(t: EinsatzTopologie, k1: Kaefig, netz: FeinNetz, lippe: readonly V3[], opt: LoesenOptionen = {}): GeloesterEinsatz {
   const L = opt.stufen ?? 2;
   const wt = opt.tangential ?? 0.05;
   const lambda = opt.glaette ?? 1e-3;
@@ -129,7 +108,7 @@ export function einsatzLoesen(t: EinsatzTopologie, k1: Kaefig, feld: FeldSpec, n
   const S = u.grenze;
   const flaechen = alleFlaechen(u.stufen[u.stufen.length - 1]!.kaefig);
   const block = flaechen.length / kaefig.nF;
-  const bereich = flaechenBereiche(t, feld);
+  const bereich = t.bereich;
   // K1 auf derselben Stufe: Ziele im Kragen (Blockstelle), Normalen aus dem feinen Netz von A0 (gleiche Nummern wie K1 auf L)
   const u1 = unterteilung(k1, L);
   const fein1 = anwenden3(u1.grenze, k1.xyz);
@@ -160,13 +139,15 @@ export function einsatzLoesen(t: EinsatzTopologie, k1: Kaefig, feld: FeldSpec, n
   const frei = new Int32Array(kaefig.n).fill(-1);
   let nu = 0;
   const freie: number[] = [];
-  for (let r = 1; r < J; r++)
-    for (let k = 0; k <= 2 * m; k++) {
-      const p = t.haut[r]![k]!;
+  for (let r = 1; r < J; r++) {
+    const reihe = t.haut[r]!;
+    for (let k = 0; k < reihe.length; k++) {
+      const p = reihe[k]!;
       frei[p] = nu;
       freie.push(p);
-      nu += k === 0 || k === 2 * m ? 2 : 3;
+      nu += k === 0 || k === reihe.length - 1 ? 2 : 3;
     }
+  }
   const naht = (p: number) => t.spiegel[p] === p;
   /** Unbekannte und Faktor für Koordinate d des Käfigpunkts j; null = fest */
   const koeff = (j: number, d: number): [number, number] | null => {
@@ -186,7 +167,7 @@ export function einsatzLoesen(t: EinsatzTopologie, k1: Kaefig, feld: FeldSpec, n
   const c = lippe[lippe.length - 1]!;
   const wulstBreite = (opt.wulstBreite ?? 0.03) * kopfHoehe(netz, c);
   const wulst = (opt.wulst ?? 0.4) / PX;
-  const kurve = lippenKurve(lippe, 32);
+  const kurve = lippenKurve(lippe, 32, t.gitter === 'kernring' ? 'falte' : 'ecke');
   // Startgitter x₀ und Umbrella-Glätte der freien Punkte
   const x0 = Float64Array.from(xyz);
   const nachbarn = (p: number): number[] => {
@@ -381,7 +362,7 @@ export function einsatzMessen(g: GeloesterEinsatz, t: EinsatzTopologie, k1: Kaef
   const fein1 = anwenden3(u1.grenze, k1.xyz);
   const fl1 = alleFlaechen(k1f);
   const block = flA.length / g.kaefig.nF;
-  const bereich = flaechenBereiche(t, feld);
+  const bereich = t.bereich;
   const rechtsA = (f: number) => {
     let z = 0;
     for (let h = g.kaefig.fStart[f]!; h < g.kaefig.fStart[f + 1]!; h++) z += g.kaefig.xyz[3 * g.kaefig.fVerts[h]! + 2]!;
@@ -402,7 +383,7 @@ export function einsatzMessen(g: GeloesterEinsatz, t: EinsatzTopologie, k1: Kaef
   const bezug = feinNetz(fein1, fl1);
   const nBezug = punktNormalen(bezug);
   const nA = punktNormalen(feinNetz(feinA, flA));
-  const kurve = lippenKurve(lippe, 32);
+  const kurve = lippenKurve(lippe, 32, t.gitter === 'kernring' ? 'falte' : 'ecke');
   const punkte = new Set<number>();
   const imBereichA = new Uint8Array(flA.length);
   for (let f = 0; f < g.kaefig.nF; f++) {

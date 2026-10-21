@@ -23,7 +23,7 @@ describe('Teil A, A7: Haut lösen', () => {
       if (t.m > 10) continue;
       n++;
       const fit = lippeAnpassen(linie, t.m, t.lippenAnteile);
-      const g = einsatzLoesen(t, f.v.kaefig, f.feld, a0Netz(f.v.kaefig, 2), fit.punkte);
+      const g = einsatzLoesen(t, f.v.kaefig, a0Netz(f.v.kaefig, 2), fit.punkte);
       const ms = einsatzMessen(g, t, f.v.kaefig, f.feld, fit.punkte);
       if (ms.aussen !== 0) fehler += `${f.name}: außen ${ms.aussen}; `;
       for (let v = 0; v < g.kaefig.n; v++) {

@@ -41,6 +41,8 @@ export type EinsatzFall = {
   feinK1: Float64Array;
   h1: number;
   feld: FeldSpec & { radius: number };
+  /** feine Dreiecke der rechten Hälfte von M (Indizes in `netz.dreiecke`) */
+  feldDreiecke: number[];
   pfad: number[];
   schnitt: Aufgeschnitten;
   karte: Karte;
@@ -79,8 +81,12 @@ function koerperStand(art: KoerperArt): KoerperStand {
   return stand;
 }
 
-/** Einen Fall bis zur Karte bauen; null, wenn die Reihe für diese Lage keine Linie zieht; `fehler` bei einem Bruch. */
-export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form): EinsatzFall | { name: string; fehler: string } | null {
+/**
+ * Einen Fall bis zur Karte bauen; null, wenn die Reihe für diese Lage keine Linie zieht; `fehler` bei einem Bruch.
+ * `verlaengerung`: Das Feld misst den Abstand zur Linie samt ihrer Verlängerung über den Mundwinkel hinaus (auf der Haut, in
+ * Feldradien), damit hinter dem Mundwinkel so viel Haut im Feld liegt wie über und unter der Lippe.
+ */
+export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form, opt: { verlaengerung?: number } = {}): EinsatzFall | { name: string; fehler: string } | null {
   const name = `${art}/${anfang}/${form}`;
   const { dok, abl, netz, v, fein, ff, h1 } = koerperStand(art);
   const vorlage = GRUNDKOERPER.includes(art) ? null : vorlageVon(art as 'rex' | 'langhals' | 'robbe');
@@ -90,7 +96,7 @@ export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form): Einsat
   // grob aus dem feinen Netz (Linien bis 13 px neben der Haut)
   const l = { ...roh, oben: linieAufHaut(abl, roh.oben) };
   const auf = linieAufNetz(netz, l.oben);
-  const d = flaechenAbstand(fein, ff, v.kaefig.nF, auf.lagen);
+  const d = flaechenAbstand(fein, ff, v.kaefig.nF, opt.verlaengerung ? [...auf.lagen, ...verlaengern(netz, auf.lagen, opt.verlaengerung * 3 * h1)] : auf.lagen);
   const feld = feldMitGerademRand(v.kaefig, d, 3 * h1, h1);
   // feine Dreiecke der rechten Hälfte von M (Blöcke der Stufe-1-Flächen; je Viereck zwei Dreiecke in `feinNetz`)
   const block = ff.length / v.kaefig.nF;
@@ -109,7 +115,24 @@ export function einsatzFall(art: KoerperArt, anfang: Anfang, form: Form): Einsat
   const karte = karteBauen({ dreiecke: schnitt.dreiecke, punkte: netz.punkte, nPunkte: netz.punkte.length / 3, doppel: schnitt.doppel, pfad });
   let ziel: V3[] | null = null;
   const lippenZiel = () => (ziel ??= abtasten3(l.oben, 64) as V3[]);
-  return { name, dok, abl, netz, maulLinie: l.oben, linie: auf.lagen, lippenZiel, hautAbstand, v, feinFlaechen: ff, feinK1: Float64Array.from(fein), h1, feld, pfad, schnitt, karte };
+  return { name, dok, abl, netz, maulLinie: l.oben, linie: auf.lagen, lippenZiel, hautAbstand, v, feinFlaechen: ff, feinK1: Float64Array.from(fein), h1, feld, feldDreiecke: dreiecke, pfad, schnitt, karte };
+}
+
+/** Verlängerung einer Linie über ihr Ende hinaus auf der Haut: Schritte in der letzten Richtung, je Schritt auf das Netz gelegt. */
+function verlaengern(netz: FeinNetz, linie: readonly V3[], laenge: number, schritte = 16): V3[] {
+  const n = linie.length;
+  const a = linie[Math.max(0, n - 4)]!;
+  let p = linie[n - 1]!;
+  let r: V3 = [p[0] - a[0], p[1] - a[1], p[2] - a[2]];
+  const out: V3[] = [];
+  for (let i = 0; i < schritte; i++) {
+    const l = Math.hypot(...r) || 1;
+    const q = ankerVon(netz, [p[0] + (r[0] / l) * (laenge / schritte), p[1] + (r[1] / l) * (laenge / schritte), p[2] + (r[2] / l) * (laenge / schritte)]).lage;
+    r = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
+    p = q;
+    out.push(q);
+  }
+  return out;
 }
 
 /**

@@ -204,6 +204,15 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   360° überdecken), Entscheidung: Mundwinkel als regulärer Gitterpunkt am Ende eines Schnitts (Feld aus zwei Rechtecken über und
   unter der Linie samt Verlängerung; Vorversuch 7,8° statt 176°), Schritte E1–E6 (Gitter → A0 wie im Editor → Bau → Editor zu →
   Öffnen → Rest).
+- **2026-10-21 vormittags: E1 „Kernring“ statt zwei Rechtecken** (Option `gitter: 'kernring'`, alter Weg bitgleich; Planseite
+  „Stand E1“, Register „Befunde aus E1“). Zwei Rechtecke gemessen: Lippe nur 1–6 Spalten → verworfen. Kernring: Lippe m = M − 2,
+  ein Ring um den Schlitz, c Faltenpunkt mit vier Hautflächen, Lippe endet als Falte (Spitze auf dem Mundwinkel, c eine halbe
+  Spanne dahinter). Lage: Karte ist konform bis auf ein Seitenverhältnis a; innen Tutte in der um c zentrierten Auffaltung
+  ζ' = √(ζ² − x_c), außen Tutte in der Karte; J konform passend; Zellen am Mundwinkel ≥ eine Kante von K1. Knick am Mundwinkel
+  ≤ 12° in 29 von 39 Fällen (vorher keiner unter 131°), Tor (A0 + 2°) in 5 von 15; offen: Karte um c auf der Haut nicht
+  symmetrisch, schiefe Felder, konforme Lippenstellen bei verwickelten Linien, Haut 0,6–1,3 px. Fallen: Topologie und Lippe
+  müssen dieselbe Lage von c haben (Falte legt c vor); Dehnungsgewichte gegen eine gestufte Randlage zerdrücken den Mundwinkel;
+  Festhalten der Mundwinkelspeiche faltet.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

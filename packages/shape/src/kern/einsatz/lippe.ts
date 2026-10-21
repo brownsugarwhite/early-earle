@@ -22,12 +22,19 @@ export type LippenAnpassung = {
   p95: number;
 };
 
+/**
+ * Ende der Lippe am Mundwinkel c: Ecke (Schleifengitter: c mit Punktschärfe, Phantompunkt 2c − U_{m−1}, die Kurve endet in c)
+ * oder Falte (Kernring: c ist ein Faltenpunkt, die Falte läuft über D_{m−1} = U_{m−1} zurück — Phantompunkt U_{m−1}, die Kurve
+ * endet mit der Geschwindigkeit null in der Spitze (2U_{m−1} + 4c)/6 und hat dort die Richtung c − U_{m−1}).
+ */
+export type LippenEnde = 'ecke' | 'falte';
+
 /** Punkt der Lippen-Grenzkurve bei s ∈ [0, m] (Spanne ⌊s⌋), Kontrollpunkte U₀ … U_{m−1}, c. */
-export function lippenPunkt(punkte: readonly V3[], s: number): V3 {
+export function lippenPunkt(punkte: readonly V3[], s: number, ende: LippenEnde = 'ecke'): V3 {
   const m = punkte.length - 1;
   const P = (k: number): V3 => {
     if (k === -1) return [punkte[1]![0], punkte[1]![1], -punkte[1]![2]];
-    if (k === m + 1) return [2 * punkte[m]![0] - punkte[m - 1]![0], 2 * punkte[m]![1] - punkte[m - 1]![1], 2 * punkte[m]![2] - punkte[m - 1]![2]];
+    if (k === m + 1) return ende === 'falte' ? punkte[m - 1]! : [2 * punkte[m]![0] - punkte[m - 1]![0], 2 * punkte[m]![1] - punkte[m - 1]![1], 2 * punkte[m]![2] - punkte[m - 1]![2]];
     return punkte[k]!;
   };
   const i = Math.min(m - 1, Math.max(0, Math.floor(s)));
@@ -49,10 +56,10 @@ function basis(t: number): [number, number, number, number] {
 }
 
 /** Grenzkurve dicht abgetastet (s = 0 … m). */
-export function lippenKurve(punkte: readonly V3[], proSpanne = 64): V3[] {
+export function lippenKurve(punkte: readonly V3[], proSpanne = 64, ende: LippenEnde = 'ecke'): V3[] {
   const m = punkte.length - 1;
   const out: V3[] = [];
-  for (let i = 0; i <= m * proSpanne; i++) out.push(lippenPunkt(punkte, i / proSpanne));
+  for (let i = 0; i <= m * proSpanne; i++) out.push(lippenPunkt(punkte, i / proSpanne, ende));
   return out;
 }
 
@@ -212,10 +219,13 @@ function loeseSpd(A: Float64Array, b: Float64Array, n: number): Float64Array {
 
 /**
  * Lippenseite an die Linie legen. `ziel` = gezeichnete Linie dicht abgetastet (Welt), Anfang auf der Naht (z = 0), Ende =
- * Mundwinkel; `anteile` = Bogenlängenanteile der Lippenstellen k = 0 … m (aus A5; sonst gleichmäßig).
+ * Mundwinkel; `anteile` = Bogenlängenanteile der Lippenstellen k = 0 … m (aus A5; sonst gleichmäßig). Mit dem Ende „Falte“
+ * (Kernring) liegt die Spitze (2U_{m−1} + 4c)/6 auf dem Endpunkt der Linie: c = 1,5·Ende − 0,5·U_{m−1} (affin in den
+ * Unbekannten), c liegt also eine halbe letzte Spanne hinter dem gezeichneten Mundwinkel.
  */
-export function lippeAnpassen(ziel: readonly V3[], m: number, anteile?: ArrayLike<number>, opt: { runden?: number; glaette?: number; proSpanne?: number } = {}): LippenAnpassung {
+export function lippeAnpassen(ziel: readonly V3[], m: number, anteile?: ArrayLike<number>, opt: { runden?: number; glaette?: number; proSpanne?: number; ende?: LippenEnde } = {}): LippenAnpassung {
   if (m < 2) throw new Error(`Lippe: m = ${m} zu klein`);
+  const falte = opt.ende === 'falte';
   const runden = opt.runden ?? 3;
   const proSpanne = opt.proSpanne ?? 16;
   const z = polylinie(ziel);
@@ -251,8 +261,16 @@ export function lippeAnpassen(ziel: readonly V3[], m: number, anteile?: ArrayLik
       if (n >= 1) add(0, -0.5);
       return { w, c0: 1.5 * T0[d]! };
     }
-    if (k === m) return { w, c0: c[d]! };
+    if (k === m) {
+      if (!falte) return { w, c0: c[d]! };
+      add(m - 2, -0.5);
+      return { w, c0: 1.5 * c[d]! };
+    }
     if (k === m + 1) {
+      if (falte) {
+        add(m - 2, 1);
+        return { w, c0: 0 };
+      }
       add(m - 2, -1);
       return { w, c0: 2 * c[d]! };
     }
@@ -281,8 +299,8 @@ export function lippeAnpassen(ziel: readonly V3[], m: number, anteile?: ArrayLik
         }
         zeile(w, z.bei(sigma[j]!)[d]! - c0, 1);
       });
-      // Glätte: zweite Differenzen der erweiterten Punkte k = 0 … m
-      for (let k = 0; k <= m; k++) {
+      // Glätte: zweite Differenzen der erweiterten Punkte k = 0 … m (an der Falte nicht: sie kehrt in c gewollt um)
+      for (let k = 0; k <= (falte ? m - 1 : m); k++) {
         const w = new Map<number, number>();
         let c0 = 0;
         for (const [kk, f] of [
@@ -299,20 +317,21 @@ export function lippeAnpassen(ziel: readonly V3[], m: number, anteile?: ArrayLik
       const x = loeseSpd(A, b, n);
       for (let k = 1; k < m; k++) punkte[k]![d] = x[k - 1]!;
       punkte[0]![d] = d === 2 ? 0 : 1.5 * T0[d]! - 0.5 * x[0]!;
+      if (falte) punkte[m]![d] = 1.5 * c[d]! - 0.5 * x[m - 2]!;
     }
     // Fußpunkte nachführen (Fenster: eine Spanne)
     if (runde + 1 < runden)
       stellen.forEach((s, j) => {
-        const p = lippenPunkt(punkte, s);
+        const p = lippenPunkt(punkte, s, opt.ende);
         const i = Math.min(m - 1, Math.floor(s));
         const w = z.L * Math.max(a[i + 1]! - a[i]!, 1 / m);
         sigma[j] = z.fuss(p, sigma[j]!, w);
       });
   }
-  const kurve = lippenKurve(punkte);
+  const kurve = lippenKurve(punkte, 64, opt.ende);
   const abst = kurve.map((p) => abstandZuZug(p, ziel, -1, -1) * PX).sort((x, y) => x - y);
-  const start = lippenPunkt(punkte, 0);
-  const ende = lippenPunkt(punkte, m);
+  const start = lippenPunkt(punkte, 0, opt.ende);
+  const ende = lippenPunkt(punkte, m, opt.ende);
   return {
     punkte,
     fehler: {

@@ -12,7 +12,7 @@ import { anwenden3 } from '../../../../packages/shape/src/subdivision/matrix';
 import { einsatzFall } from '../../../../packages/shape/src/kern/pruefen/einsatzFall';
 import { ankerVon, feinNetz } from '../../../../packages/shape/src/kern/einsatz/flaeche';
 import { lippeAnpassen, lippenKurve } from '../../../../packages/shape/src/kern/einsatz/lippe';
-import { a0Netz, einsatzLoesen, einsatzMessen, flaechenBereiche } from '../../../../packages/shape/src/kern/einsatz/loesen';
+import { a0Netz, einsatzLoesen, einsatzMessen } from '../../../../packages/shape/src/kern/einsatz/loesen';
 import { einsatzTopologie } from '../../../../packages/shape/src/kern/einsatz/topologie';
 
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
@@ -31,7 +31,7 @@ for (const name of FAELLE) {
   const linie = f.lippenZiel();
   const t = einsatzTopologie(f.v.kaefig, f.feld, f.karte, f.netz, f.schnitt.doppel, { linie });
   const fit = lippeAnpassen(linie, t.m, t.lippenAnteile);
-  const g = einsatzLoesen(t, f.v.kaefig, f.feld, a0Netz(f.v.kaefig, 2), fit.punkte, process.env.WULST ? { wulst: Number(process.env.WULST) } : {});
+  const g = einsatzLoesen(t, f.v.kaefig, a0Netz(f.v.kaefig, 2), fit.punkte, process.env.WULST ? { wulst: Number(process.env.WULST) } : {});
   const ms = einsatzMessen(g, t, f.v.kaefig, f.feld, fit.punkte);
   // feine Netze auf Stufe 3: A0 (= K1) und A
   const u1 = unterteilung(f.v.kaefig, STUFE);
@@ -47,7 +47,7 @@ for (const name of FAELLE) {
   };
   // Wärme je Punkt von A: Abstand zu A0 in px (Bereich M ∪ C), negativ = im Lippenband (Wulst)
   const bezug = feinNetz(fein1, fl1);
-  const bereich = flaechenBereiche(t, f.feld);
+  const bereich = t.bereich;
   const block = flA.length / g.kaefig.nF;
   const waerme = new Float32Array(feinA.length / 3).fill(Number.NaN);
   const kurve = lippenKurve(fit.punkte, 32);
