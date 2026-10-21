@@ -7,7 +7,7 @@ import type { V2 } from '../bezier';
 import type { Dokument, KaefigDelta, Pose } from '../dokument';
 import { type Profil, einfuegen, loeschen, naechsterAufProfil, segmente } from '../profil';
 import { spantenPunktEinfuegen } from '../spanten';
-import { type Ableitung, type SchleifenRing, spineAnteile, stationenAusLeiter } from './ableiten';
+import { type Ableitung, type SchleifenRing, kernLeiter, schleifenStationen, spineAnteile, stationenAusLeiter } from './ableiten';
 
 /**
  * Ort eines neuen Loops: Sprosse in der Seitenansicht (Profil-Einheiten; Rücken o, Bauch u) und — wenn der Körper Loop-Ringe
@@ -352,4 +352,55 @@ function bezugMitRing(b: readonly number[], R: number, N: number, ring: number):
 function bezugOhneRing(b: readonly number[], R: number, N: number, ring: number): number[] {
   if (b.length < 3 * R * N) return b.slice();
   return [...b.slice(0, 3 * ring * N), ...b.slice(3 * (ring + 1) * N)];
+}
+
+/**
+ * Nummern der Loop-Ringe eines Dokuments ohne Ableitung (Hauptthread): wie `mitSchleifen` aus den eingefrorenen Anteilen der
+ * übrigen Ringe und der Stelle jedes Loops auf der Wirbelsäule. Null ohne eingefrorene Stationen.
+ */
+export function schleifenRingeAusDokument(dok: Dokument): { ringe: SchleifenRing[]; R: number } | null {
+  const g = dok.kaefig?.stationen;
+  if (!g?.ringe.length || !dok.schleifen?.length) return null;
+  const l = kernLeiter(dok);
+  const fs = spineAnteile(l, stationenAusLeiter(l, g.ringe));
+  const liste = fs.slice();
+  const ringe: SchleifenRing[] = [];
+  for (const sc of schleifenStationen(dok, l)) {
+    if (!(sc.f > liste[0]! && sc.f < liste[liste.length - 1]!)) continue;
+    let k = 0;
+    while (k < liste.length && liste[k]! < sc.f) k++;
+    liste.splice(k, 0, sc.f);
+    for (const r of ringe) if (r.ring >= k) r.ring++;
+    ringe.push({ id: sc.id, ring: k });
+  }
+  return { ringe, R: liste.length };
+}
+
+/**
+ * Loops auflösen (Maul oder Beine kommen dazu — dort baut der Körper keine Loop-Ringe): ihre Ringe fallen aus Pinsel- und
+ * Posen-Deltas, Bezugs-Käfigen und Augen (`ringLoeschen`, von hinten nach vorn), ihre Knoten bleiben als gewöhnliche Knoten
+ * (die Form der Zeichnung bleibt). N = Punkte je Ring.
+ */
+export function schleifenAufloesen(dok: Dokument, N: number): Dokument {
+  const nr = schleifenRingeAusDokument(dok);
+  let d = dok;
+  if (nr) {
+    let R = nr.R;
+    for (const r of nr.ringe.slice().sort((a, b) => b.ring - a.ring)) {
+      d = ringLoeschen(d, { ring: r.ring, R, N });
+      R--;
+    }
+  }
+  const ohne = (pr: Profil): Profil => ({
+    ...pr,
+    knoten: pr.knoten.map((k) => {
+      if (!k.schleife) return k;
+      const { schleife: _w, ...rest } = k;
+      void _w;
+      return rest;
+    }),
+  });
+  const { schleifen: _alt, ...ohneListe } = d;
+  void _alt;
+  return { ...ohneListe, profile: { ...d.profile, seite: ohne(d.profile.seite), top: ohne(d.profile.top), front: ohne(d.profile.front) } };
 }

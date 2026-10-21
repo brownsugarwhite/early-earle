@@ -8,7 +8,7 @@ import { kernLeiter, schleifenStationen, ziehen } from './ableiten';
 import { abstandFlaeche, editorBauen, editorPlan, imAblauf } from './pruefen/extremMessung';
 import { extremKoerper } from './pruefen/extremreihe';
 import { feinesNetz } from './pruefstand';
-import { punktMitRing, ringGeruest, ringSteht, schleifeEinfuegen, schleifeLoeschen, schleifenEinfuegen, schleifenOrt, schleifenOrtBei } from './schleifen';
+import { punktMitRing, ringGeruest, ringSteht, schleifeEinfuegen, schleifeLoeschen, schleifenAufloesen, schleifenEinfuegen, schleifenOrt, schleifenOrtBei, schleifenRingeAusDokument } from './schleifen';
 import { spantEinfuegen } from '../spanten';
 import { faltenNachZonenRoehre } from './pruefen/zonen';
 
@@ -271,7 +271,26 @@ describe('V6 Loops im Kern: ein Ring je Loop, Knoten formneutral', () => {
     }, 90_000);
   }
 
-  // Tor des Plans (V6), nicht erreicht — Register „Befunde aus V6“  // Tor des Plans (V6), nicht erreicht — Register „Befunde aus V6“: Ein Loop gibt Auflösung; wo der Körper zwischen zwei Ringen
+  it('Maul oder Beine: Loops lösen sich auf — ihre Ringe fallen aus den Deltas (Nummern wie vor dem Einfügen), die Knoten bleiben', () => {
+    const bau = ablauf('langhals', HEUTE);
+    const N = bau.stand.abl.vorlage.N;
+    const deltas: KaefigDelta[] = [
+      { punkt: 5 * N + 3, d: [0.01, 0, 0] },
+      { punkt: 20 * N + 6, d: [0, 0.02, 0] },
+    ];
+    const dok: Dokument = { ...bau.dok, kaefig: { ...bau.dok.kaefig!, deltas } };
+    const ins = schleifenEinfuegen(dok, ringGeruest(bau.stand.abl), 12, 3, 0.5, true)!;
+    const bau2 = editorBauen(ins.dok, HEUTE, bau.stand);
+    // die Ringnummern lassen sich ohne Ableitung aus dem Dokument lesen (Hauptthread)
+    expect(schleifenRingeAusDokument(bau2.dok)!.ringe).toEqual(bau2.stand.abl.schleifenRinge);
+    const auf = schleifenAufloesen(bau2.dok, N);
+    expect(auf.schleifen).toBeUndefined();
+    expect(auf.profile.seite.knoten.some((k) => k.schleife)).toBe(false);
+    expect(auf.profile.seite.knoten).toHaveLength(ins.dok.profile.seite.knoten.length);
+    expect(auf.kaefig!.deltas).toEqual(deltas);
+  }, 60_000);
+
+  // Tor des Plans (V6), nicht erreicht — Register „Befunde aus V6“: Ein Loop gibt Auflösung; wo der Körper zwischen zwei Ringen
   // von seiner Hülle abweicht (eingefrorene Ringverteilung der Startkugel), rückt die Haut am Loop zur Hülle hin
   it.fails('Tor: Einfügen formneutral (Haut ≤ 0,1 px; Langhals, Rex)', () => {
     for (const [koerper, f] of [

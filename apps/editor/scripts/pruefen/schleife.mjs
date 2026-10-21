@@ -216,6 +216,23 @@ if (zs) {
   await page.keyboard.press('Meta+z');
   await ruhig();
 }
+// 7) Maul an: Loops werden gewöhnliche Knoten (die Knoten bleiben, die Liste ist leer), ein Undo-Schritt; Maul wieder aus
+await page.mouse.move(ziel.x, ziel.y);
+await page.waitForTimeout(200);
+await page.keyboard.press('Meta+r');
+await page.mouse.wheel(0, -120);
+await page.waitForTimeout(120);
+await page.mouse.click(ziel.x, ziel.y);
+await ruhig();
+const vorMaul = await dokStand();
+await page.evaluate(() => window.__stores.kernAnzeige.getState().setzeMaul('vorn'));
+await ruhig();
+const mitMaul = await dokStand();
+const hinweis = await page.evaluate(() => window.__stores.ui.getState().hinweis?.text ?? '');
+pruefe(vorMaul.schleifen.length === 2 && mitMaul.schleifen.length === 0 && mitMaul.seite === vorMaul.seite && mitMaul.markiert === 0 && mitMaul.verlauf === vorMaul.verlauf + 1, `Maul an: Loops aufgelöst (Liste ${vorMaul.schleifen.length} → ${mitMaul.schleifen.length}, Seite ${vorMaul.seite} → ${mitMaul.seite} Knoten, ein Schritt)`);
+pruefe(/keine Loops/.test(hinweis), `Hinweis „${hinweis}“`);
+await page.evaluate(() => window.__stores.kernAnzeige.getState().setzeMaul('aus'));
+await ruhig();
 pruefe(seitenfehler.length === 0, `keine Seitenfehler (${seitenfehler.length})`);
 await browser.close();
 console.log(fehler ? `${fehler} Fehler` : 'alles ok');

@@ -3,7 +3,7 @@
 // „neuester Auftrag gewinnt“); hier entsteht aus Dokument und Anzeige-Zustand nur der Bauplan.
 
 import type { Dokument } from '@ee/shape';
-import { type BeinArt, type Bauplan, type MaulArt, type MaulLinie, type PoseMischung, type StilArt, type WesenInfo, type WesenNetz, type ZahnMeldung, maulLinieAusDokument, pruefwesenBauplan } from '@ee/shape/kern';
+import { type BeinArt, type Bauplan, type MaulArt, type MaulLinie, type PoseMischung, type StilArt, type WesenInfo, type WesenNetz, type ZahnMeldung, maulLinieAusDokument, pruefwesenBauplan, schleifenAufloesen } from '@ee/shape/kern';
 import { create } from 'zustand';
 import { poseTitel, setzeGesteEndeHaken, useEditor, vorschauBeenden, vorschauLaeuft } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
@@ -236,6 +236,16 @@ export { aktuellesNetz } from './netzStand';
 /** Feines Netz der Bauweise „kern“ im Worker bauen; während Gesten nur Zug, sonst Ableitung. Der neueste Auftrag gewinnt. */
 export function kernBauen(dok: Dokument, schnell: boolean, cb: (netz: KernNetz) => void): void {
   const plan = bauplanAus(dok);
+  // V6: Mit Maul oder Beinen baut der Körper keine Loop-Ringe — die Loops werden gewöhnliche Knoten, ihre Ringe fallen aus
+  // Pinsel- und Posen-Deltas (ein Undo-Schritt); der neue Bau folgt aus der Änderung des Dokuments
+  if (!schnell && dok.schleifen?.length && ((plan.maul ?? 'aus') !== 'aus' || (plan.beine ?? 'aus') !== 'aus')) {
+    const ed = useEditor.getState();
+    if (ed.dok === dok && !ed.gesteStart) {
+      ed.setzeDokument(schleifenAufloesen(dok, plan.ring ?? 16));
+      useUi.getState().zeigeHinweis('Mit Maul oder Beinen gibt es keine Loops: Sie sind jetzt gewöhnliche Knoten (die Form bleibt)');
+      return;
+    }
+  }
   const gewichte = gewichteSchluessel(plan.gewichte ?? {});
   derClient().bauen(dok, plan, schnell, (netz) => {
     // erst das Netz merken, dann der Stand: Abonnenten (Saum in den Blättern) lesen `aktuellesNetz()` beim Wechsel
