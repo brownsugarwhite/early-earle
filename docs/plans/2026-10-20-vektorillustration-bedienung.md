@@ -1274,7 +1274,7 @@ und Keil besser, Hammerhai und Seestern schlechter — abgeschaltet).
   elegante Weg ist strukturell: Ringe dorthin, wo Umrisse sich stark krümmen bzw. am breitesten sind (das exakte Einfügen eines
   Rings ist der Kern von V6), und die Silhouette als Käfigkurve mit Tangente (Plan 3.1) — dann trägt die Struktur die Umrisse.
 
-### V5 „Linien exakt“ — gebaut (21.10. früh bis vormittags; Abnahme offen)
+### V5 „Linien exakt“ — gebaut (21.10. nachts, 0–2 Uhr; Abnahme offen)
 
 **Im Editor:** Mit „Querschnitt: aus der Hülle (V4/V5)“ (Tafel Körper) werden P-Linien Käfigschleifen; die Kantenliste
 zeigt „genau“, der Hinweis „mehrere genaue Linien näherungsweise“ entfällt dort. Ohne den Schalter bleibt die Einpassung je
@@ -1344,7 +1344,7 @@ Ende hinaus, Robbe 15 px); geglätteter statt linearer Auslauf (Reihen knicken m
 **Offen (ehrlich):**
 - **Tore nicht erreicht** (als `it.fails` in `linienSchleifen.test.ts`): Linie ≤ 0,3 px in der Zeichenansicht (heute 0,4–2,0;
   der Rest liegt an den Enden und zwischen den Ringen), Haut an der Linie ≤ 0,5 px (Robbe 1,4, Kegel 1,0, Kugel 0,7).
-- ~~Schräge Linien bleiben Treppe~~ → **Nachtrag 21.10. mittags:** Eine schräge Linie (35–55° zu den Sprossen, nirgends unter
+- ~~Schräge Linien bleiben Treppe~~ → **Nachtrag 21.10. nachts:** Eine schräge Linie (35–55° zu den Sprossen, nirgends unter
   25°) wird eine **verzogene Reihe**: die Grenze „höchstens 1,5 Reihen von der natürlichen Lage“ gilt für sie nicht (die Form
   bleibt dank „Form zuerst“). Kreuzt sie die Breitenlinie, wird sie selbst die Breitenlinie (rastet ein, läuft über drei Ringe
   aus) — eine Reihe kann keine andere kreuzen; die Breitenlinie stattdessen unter die Linie zu drücken zerriss den Käfig (Vase
@@ -1353,13 +1353,13 @@ Ende hinaus, Robbe 15 px); geglätteter statt linearer Auslauf (Reihen knicken m
   drehen, Ecken-Ringe daneben). Test „Schräge Linie (Vase)“ (am Stand davor rot).
 - Härte als Rundungsbreite in Pixeln (3.4) und Grat (`Kante.tiefe`) noch nicht; Linien auf „Teile“ (V7); Zug mit Linien
   42–57 ms.
-- **Nachtrag 21.10. mittags — Lage an den Enden:** Innen liegt die Falte 0,4–0,6 px auf der Linie, an der letzten Kante jedes
+- **Nachtrag 21.10. nachts — Lage an den Enden:** Innen liegt die Falte 0,4–0,6 px auf der Linie, an der letzten Kante jedes
   Endes 0,8–1,0 px daneben (die Falte endet an einem glatten Käfigpunkt). Gemessen: stärkere Linienbindung (64/256) bringt
   kaum etwas und kostet Haut (Hals 4 px); Punktschärfe am Linienende (`umrisseOpt.linieEndSchaerfe`, Versuch, aus) holt die
   Enden heran (Ei 0,9 → 0,5 px, Hals 2,0 → 1,1, Vase 1,9 → 1,1 bei 2), kostet aber an der Kugel Form (Haut 0,7 → 1,4 px,
   Front 0,8 → 1,5) und macht das Ende spitz — für Florians Urteil am Bild zurückgestellt.
 
-### V6 im Detail (21.10. mittags, vor dem Bau)
+### V6 im Detail (21.10. nachts, vor dem Bau)
 
 Florians Wahl 20.10.: ⌘R setzt echte, formneutral eingefügte Knoten in Seite und Top. Daraus folgt eine einfache Bauweise,
 die die Zeichnung als Wahrheit behält und auf V3/V5 aufsetzt:
@@ -1383,7 +1383,7 @@ die die Zeichnung als Wahrheit behält und auf V3/V5 aufsetzt:
   Anzahl, Gleiten) → V6.3 Auswahl und G/S/R (Blätter und Bühne, proportional) → V6.4 Prüfskripte `schleife.mjs`,
   `schleife-grs.mjs`, Langhals-Fall aus dem Plan.
 
-### Stand V6.1 — Loops im Kern (21.10. nachmittags, Abnahme offen)
+### Stand V6.1 — Loops im Kern (21.10. früh, Abnahme offen)
 
 - **Gebaut** (`packages/shape/src/kern/schleifen.ts`): `schleifenOrt(abl, k, s)` (Sprosse zwischen Ring k − 1 und k),
   `schleifeEinfuegen(dok, ort)` setzt Rücken- und Bauchknoten in der Seite und einen Knoten im Top mit Kennung (de Casteljau,
@@ -1411,7 +1411,7 @@ die die Zeichnung als Wahrheit behält und auf V3/V5 aufsetzt:
   Sprosse (Seitenansicht) und die Loop-Ringe; Vorschau, Anzahl (Rad, Bild↑↓, Ziffern), Gleiten, ein Undo-Schritt; Maul oder
   Beine nehmen die Loop-Ringe heraus (`ringLoeschen`, Hinweis).
 
-### Stand V6.2 — ⌘R im Editor (21.10. abends, Abnahme offen)
+### Stand V6.2 — ⌘R im Editor (21.10. früh, Abnahme offen)
 
 - **⌘R und ⌃R** (`apps/editor/src/kern/schleifenWerkzeug.ts`) ziehen Loops ein wie Blenders „Loop Cut and Slide“: Über der Bühne
   (Käfigfläche unter dem Zeiger → Ringpaar und Anteil) oder dem Seitenblatt (Lage längs der Sprossenmitten) zeigt eine gelbe
@@ -1431,9 +1431,10 @@ die die Zeichnung als Wahrheit behält und auf V3/V5 aufsetzt:
 - **Noch nicht:** Loops nach dem Setzen auf der Bühne sehen und wählen (⌥-Klick), G/S/R auf Loops, proportional über
   Nachbar-Loops (V6.3); Loops mit Maul oder Beinen (Hinweis).
 
-### Stand V6.3 — Loops wählen und formen (21.10. abends, Abnahme offen)
+### Stand V6.3 — Loops wählen und formen (21.10. früh, Abnahme offen)
 
-- **Sehen und wählen:** Jeder Loop ist auf der Bühne ein Ring auf dem Körper (orange, unter dem Zeiger pink, gewählt weiß;
+- **Sehen und wählen:** Jeder Loop ist auf der Bühne ein Ring auf dem Körper (orange, unter dem Zeiger pink, gewählt weiß — seit
+  V6.4 türkis;
   `apps/editor/src/kern/schleifenAuswahl.ts`). ⌥-Klick auf den Ring wählt ihn — dazu seine Knoten in den Blättern, so dass
   G/S/R dort ebenso auf ihn wirken.
 - **G/S/R auf der Bühne** (`kern/schleifenGrs.ts`, Zeiger über der Bühne, gewählter Loop): G verschiebt die Sprosse (Bildebene am
@@ -1457,8 +1458,44 @@ die die Zeichnung als Wahrheit behält und auf V3/V5 aufsetzt:
 - **Prüfungen:** `kern/schleifen.test.ts` 16 grün + 1 Tor (`it.fails`), 525 Kern-Tests grün; Editor `schleife.mjs`,
   `schleife-grs.mjs`, `modal-2d.mjs`, `v0-tasten.mjs` grün. Bilder `docs/progress/editor/v6-schleife-*.jpg`.
 
-- **Nachtrag 21.10. spätabends — GG (Gleiten):** G zweimal auf einem gewählten Loop lässt ihn entlang der Form zwischen seinen
+- **Nachtrag 21.10. früh — GG (Gleiten):** G zweimal auf einem gewählten Loop lässt ihn entlang der Form zwischen seinen
   Nachbarn gleiten (Blender „Edge Slide“): Er wird exakt herausgenommen und an der neuen Stelle der Wirbelsäule wieder
   eingesetzt (`schleifeGleitenVorbereiten`, `schleifeGleiten`), der Umriss bleibt genau dieselbe Kurve; zurück an der alten
   Stelle bis 0,0003 px wie vorher. Ein geformter Loop (Knoten kein unveränderter de-Casteljau-Punkt mehr, `exaktLoeschbar`)
   gleitet nicht (Hinweis). Editor: `schleife-grs.mjs` — Loop geglitten, Knotenzahl gleich, ein Undo-Schritt, Δ unverändert.
+
+### Stand V6.4 — Loops in den Blättern (21.10. früh, Abnahme offen)
+
+Plan V6: „Ein Loop ist eine Querschnittslinie und überall sichtbar: Linie in Seite/Top, Querschnitt in Front/Back, Ring auf der
+Bühne. ⌥-Klick wählt ihn.“ Bis V6.3 sah man Loops in den Blättern nur als Knoten und formte sie nur mit dem Zeiger auf der Bühne.
+
+- **Sehen** (`apps/editor/src/kern/SchleifenZeichnung.tsx`, `SchleifenLinien`; Geometrie `schleifenImBlatt` in
+  `kern/schleifenAuswahl.ts`): Jedes Blatt zeigt den Ring jedes Loops, wie er auf dem Körper liegt (`netz.ringe`, dieselben
+  Punkte wie die Bühne). Seite: die nahe Hälfte — von Rücken- zu Bauchknoten, die Enden liegen 0,03–0,09 px auf den Knoten;
+  Top, Front, Back, Bottom: der ganze Ring, verdeckte Stücke blass gestrichelt (Sichttest auf demselben Strahlraster wie das
+  Liniennetz; während einer Geste die Sichtbarkeit vom Gestenbeginn, sonst würde ein verkleinerter Loop hinter der alten Haut
+  blass und spränge beim Loslassen).
+- **Farben überall gleich:** orange, unter dem Zeiger pink (auf der Bühne und in allen Blättern zugleich), gewählt türkis — die
+  Auswahlfarbe des Editors (vorher weiß; auf Papier kaum zu sehen). Gewählt heißt: alle Knoten des Loops sind gewählt — so
+  leuchten auch zwei mit ⇧ gewählte Loops.
+- **Wählen:** im Blatt Klick auf die Linie (Werkzeug Auswahl), auf der Bühne Klick ohne Bewegung auf den Ring (Ziehen dreht weiter
+  die Kamera) oder ⌥-Klick wie bisher; ⇧ fügt hinzu bzw. nimmt heraus; Klick auf der Bühne neben die Loops hebt die Wahl auf.
+  Dicht gesetzte Loops liegen im Blatt nur wenige Pixel auseinander — es zählt die nächste Linie, nicht die zuletzt gezeichnete.
+  Die Ringe der Breitenknoten (Liniennetz) liegen auf der Loop-Linie und gehen beim Klick vor (sie greifen den Knoten).
+- **Formen im Blatt** (`kern/schleifenGrs.ts`): Ist genau ein Loop gewählt, formen G/S/R mit dem Zeiger über einem Blatt den Loop
+  als Ganzes — dieselbe Rechnung wie auf der Bühne (Sprosse, Breitenknoten, Mindest-Einfluss, Kopplung), in der Ebene des
+  Blatts, soweit der Loop spiegelgleich bleibt: G in der Seite x und y, im Top nur x, in der Front nur y; S überall (Faktor aus
+  dem Abstand zur Mitte im Blatt, Kreuz und gestrichelte Linie wie V3); R nur in der Seite (im Top und in der Front Hinweis);
+  G G gleitet in Seite und Top. **Ziehen an der Linie** verschiebt ihn direkt (G mit gedrückter Taste, Loslassen bestätigt, Esc
+  bricht ab). Mit mehr als einem Loop oder weiteren Punkten in der Auswahl formen G/S/R wie bisher die gewählten Punkte (V3).
+- **Gemessen im Editor** (`scripts/pruefen/schleife-blatt.mjs`, Langhals aus der Startkugel, drei Loops mit ⌘R): drei Loops in
+  jedem Blatt; Zeiger auf der Linie → pink in allen Blättern und auf der Bühne; Klick wählt (Seite 2, Front 1 Knoten), Dokument
+  unverändert; S 1,25 im Front-Blatt: Sprosse und Breite genau × 1,25 (1e-9), Mitte bleibt, ein Undo-Schritt; G 10 im Top
+  genau 10 px längs x; S, Zeiger, Esc: Dokument wie vorher; R im Top: Hinweis; Ziehen an der Linie: beide Knoten genau mit
+  dem Zeiger (20,00 | −15,00 px), ein Schritt, Loop bleibt gewählt; G G im Seitenblatt gleitet (Knotenzahl gleich); ⇧-Klick
+  wählt zwei, S formt dann die Punkte; Klick auf den Ring der Bühne wählt, daneben hebt auf. Weiter grün: `schleife-grs.mjs`,
+  `schleife.mjs`, `modal-2d.mjs`, `v0-tasten.mjs`.
+- **Offen:** jeden vorhandenen Käfigring als Loop wählen (der eingefrorene Grundring stimmt bei Fülle, Breitenlinie und Reihenplan
+  mit ab — ihn zum Loop zu machen, verschöbe diese Entscheidungen; braucht einen Ring, der weiter abstimmt, aber Knoten trägt);
+  G/S/R auf mehreren Loops zugleich (je Loop um die eigene Mitte); Loops auf „Teile“ und mit Maul/Beinen (V7).
+

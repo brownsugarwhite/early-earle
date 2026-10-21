@@ -36,8 +36,10 @@ export function Dock() {
   const schleifen = useSchleifenVorschau((s) => s.text);
   // gleitet der Loop, setzen Esc und Rechtsklick ihn in die Mitte
   const gleiten = useSchleifenVorschau((s) => s.gleiten);
-  // V6.3: G/S/R auf einem Loop (Bühne)
+  // V6.3/V6.4: G/S/R auf einem Loop (Bühne oder Blatt; im Blatt auch als Ziehen an der Linie) und der gewählte Loop
   const loopGrs = useSchleife((s) => s.text);
+  const loopZiehen = useSchleife((s) => s.anzeige?.ziehen ?? false);
+  const loopGewaehlt = useSchleife((s) => s.gewaehlt !== null);
   const prop = useUi((s) => s.proportional);
   const gewaehlt = useUi((s) => s.auswahl.seite.length + s.auswahl.front.length + s.auswahl.top.length + (s.kantenAuswahl?.indizes.length ?? 0) + (s.spantAuswahl?.knoten.length ?? 0) > 0);
   const knoepfe = DOCK[ebene] ?? [AUSWAHL];
@@ -56,7 +58,7 @@ export function Dock() {
       </div>
       {loopGrs ? (
         <div className="dock-hinweis dock-modal" data-schleife-grs={loopGrs}>
-          <b>{loopGrs}</b> · X/Y/Z Achse (S: Y Höhe, Z Breite) · Zahl · O proportional · Enter oder Klick: fertig · Esc oder Rechtsklick: zurück
+          <b>{loopGrs}</b> · X/Y/Z Achse (S: Y Höhe, Z Breite) · Zahl · O proportional · {loopZiehen ? 'loslassen: fertig · Esc: zurück' : 'Enter oder Klick: fertig · Esc oder Rechtsklick: zurück'}
         </div>
       ) : schleifen ? (
         <div className="dock-hinweis dock-modal" data-schleifen-text={schleifen}>
@@ -72,7 +74,7 @@ export function Dock() {
         </div>
       ) : ebene === 'form' && (gewaehlt || prop.an) ? (
         <div className="dock-hinweis" data-proportional={prop.an ? prop.abfall : 'aus'}>
-          {gewaehlt ? <><b>G/S/R</b> · Auswahl verschieben, skalieren, drehen (Zeiger über dem Blatt)</> : <b>Auswahl</b>}
+          {loopGewaehlt ? <><b>Loop</b> · G verschieben, G G gleiten, S skalieren, R kippen (Zeiger über der Bühne oder einem Blatt) · im Blatt ziehen · ⇧-Klick: weitere Loops</> : gewaehlt ? <><b>G/S/R</b> · Auswahl verschieben, skalieren, drehen (Zeiger über dem Blatt)</> : <b>Auswahl</b>}
           {propText}
         </div>
       ) : null}

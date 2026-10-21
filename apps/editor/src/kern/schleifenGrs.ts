@@ -1,16 +1,18 @@
-// Plan „Vektorillustration aus einem Liniennetz“ (20.10.), V6.3: G/S/R auf einen gewählten Loop, mit dem Zeiger auf der Bühne
-// (wie Blender: die Operation folgt dem Zeiger ohne Maustaste, Enter/Linksklick bestätigt, Esc/Rechtsklick/⌘Z bricht ab).
+// Plan „Vektorillustration aus einem Liniennetz“ (20.10.), V6.3/V6.4: G/S/R auf einen gewählten Loop, mit dem Zeiger auf der
+// Bühne oder einem Blatt (wie Blender: die Operation folgt dem Zeiger ohne Maustaste, Enter/Linksklick bestätigt,
+// Esc/Rechtsklick/⌘Z bricht ab; im Blatt auch als Ziehen an der Loop-Linie, Loslassen bestätigt).
 // Gerechnet wird in den Zeichnungen, denn ein Loop sind seine Knoten: G verschiebt Rücken- und Bauchknoten in der Seite und
 // den Knoten im Top längs x (Bildebene der Bühne am Ring auf x/y zurückgerechnet; z bleibt: Spiegel), S skaliert die Sprosse
-// um ihre Mitte und die Breite im Top, R kippt die Sprosse in der Seite (um z). X/Y/Z sperren (S mit Y: nur Höhe, mit Z: nur
-// Breite), Zahlen geben den Wert (G px, S Faktor, R Grad). Mit O proportional über die Nachbarn (Knoten und andere Loops in
-// Seite und Top, Abstand im Blatt; Rad, [ ], Bild↑/↓ ändern den Einfluss). Die anderen Ansichten folgen über die Kopplung wie
-// bei einem Zug; ein Undo-Schritt.
+// um ihre Mitte und die Breite im Top, R kippt die Sprosse in der Seite (um z). Im Blatt wirkt G in seiner Ebene, soweit der
+// Loop spiegelgleich bleibt (Seite x und y, Top nur x, Front nur y), S überall gleich (Faktor aus dem Abstand zur Mitte im
+// Blatt), R nur in der Seite. X/Y/Z sperren (S mit Y: nur Höhe, mit Z: nur Breite), Zahlen geben den Wert (G px, S Faktor,
+// R Grad). Mit O proportional über die Nachbarn (Knoten und andere Loops in Seite und Top, Abstand im Blatt; Rad, [ ],
+// Bild↑/↓ ändern den Einfluss). Die anderen Ansichten folgen über die Kopplung wie bei einem Zug; ein Undo-Schritt.
 
-import { type Profil, type Profile, type V2, achsenRegeln } from '@ee/shape';
+import { type Ansicht, type Profil, type Profile, type V2, achsenRegeln } from '@ee/shape';
 import { type Abb, type GKurve, abbildungAus, gewichte, kurvenAbbilden, punktAbbilden, zahlLesen, zahlTaste } from '../editing/modal/abbildung';
 import { modalAktiv } from '../editing/modal/modal';
-import { zeiger } from '../editing/modal/zeiger';
+import { blattLokal, zeiger } from '../editing/modal/zeiger';
 import { gekoppeltBerechnen, gekoppeltSetzen } from '../editing/gekoppelt';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
@@ -18,24 +20,33 @@ import { szene } from '../three/instanz';
 import { istTrackpad } from '../viewports/ansicht2d';
 import { type Gleiten, kernLeiter, schleifeGleiten, schleifeGleitenVorbereiten, stationenAusLeiter, zugBei } from '@ee/shape/kern';
 import { aktuellesNetz } from './netzStand';
-import { ringMitte, schleifeWaehlen, useSchleife } from './schleifenAuswahl';
+import { type SchleifenAnzeige, nurDieserLoop, ringMitte, schleifeAmZeiger, schleifeImBlattWaehlen, schleifenKnoten, schleifeWaehlen, useSchleife } from './schleifenAuswahl';
 import { schleifenAktiv } from './schleifenWerkzeug';
 
 const PX = 461;
 const RAD_SCHRITT = 40;
 const MODIFIKATOREN = new Set(['Shift', 'Alt', 'Meta', 'Control', 'CapsLock', 'Fn']);
+const BLAETTER = new Set(['seite', 'front', 'top']);
 
 type Art = 'g' | 's' | 'r';
+/** Wo die Operation läuft: auf der Bühne oder in einem Blatt */
+type Feld = 'creation' | Ansicht;
 type Lauf = {
   art: Art;
   id: string;
+  feld: Feld;
+  /** als Ziehen an der Loop-Linie begonnen (Blatt): Loslassen bestätigt */
+  ziehen: boolean;
   basis: Profile;
   auswahl: Record<'seite' | 'front' | 'top', number[]>;
   seite: number[];
   /** Breitenknoten: im Top (liegender Ring) oder in der Front (stehender Ring) */
   top: number[];
   front: number[];
-  /** Mitte des Rings (Bildschirm, Feldpixel; y nach unten) und Abbildung Profil-x/y → Bildschirm (Spalten, y nach oben) */
+  /**
+   * Mitte des Loops und Zeiger: auf der Bühne Feldpixel (y nach unten), im Blatt Blatt-Koordinaten (Profil-Einheiten, y nach
+   * oben). `j`: Abbildung Profil-x/y → Bildschirm (Spalten, y nach oben); im Blatt seine Achsen (Seite x/y, Top x, Front y).
+   */
   c: V2;
   j: [number, number, number, number];
   start: V2;
@@ -61,42 +72,114 @@ function stageRect(): DOMRect | null {
   return document.querySelector<HTMLElement>('.vp-ober[data-view="creation"] .steuerung3d')?.getBoundingClientRect() ?? null;
 }
 
-/** G, S oder R auf den gewählten Loop starten (Zeiger über der Bühne). false: kein Loop gewählt oder es geht hier nicht. */
-export function schleifeGrsStarten(art: Art): boolean {
+/** Zeigerlage im Feld: Feldpixel der Bühne bzw. Blatt-Koordinaten (null, wenn das Feld nicht da ist). */
+function punktIm(feld: Feld, clientX: number, clientY: number): V2 | null {
+  if (feld !== 'creation') return blattLokal(feld, clientX, clientY);
+  const r = stageRect();
+  return r ? { x: clientX - r.left, y: clientY - r.top } : null;
+}
+
+/** Richtung von der Mitte zu p mit y nach oben (Bühne: Bildschirm, Blatt: Profil-Einheiten). */
+function vonMitte(l: Lauf, p: V2): V2 {
+  return l.feld === 'creation' ? { x: p.x - l.c.x, y: -(p.y - l.c.y) } : { x: p.x - l.c.x, y: p.y - l.c.y };
+}
+
+/** Zeigerversatz seit dem Anfang, y nach oben. */
+function versatz(l: Lauf): V2 {
+  return l.feld === 'creation' ? { x: l.jetzt.x - l.start.x, y: -(l.jetzt.y - l.start.y) } : { x: l.jetzt.x - l.start.x, y: l.jetzt.y - l.start.y };
+}
+
+/**
+ * G, S oder R auf den gewählten Loop starten: mit dem Zeiger über der Bühne, oder über einem Blatt, wenn genau dieser Loop
+ * gewählt ist (sonst formen G/S/R dort die gewählten Punkte, V3). `feld` und `ziehen` setzt das Ziehen an einer Loop-Linie.
+ * false: kein Loop gewählt oder es geht hier nicht.
+ */
+export function schleifeGrsStarten(art: Art, opt: { feld?: Ansicht; ziehen?: { clientX: number; clientY: number } } = {}): boolean {
   if (lauf || modalAktiv() || schleifenAktiv()) return false;
   const id = useSchleife.getState().gewaehlt;
   const ui = useUi.getState();
   const ed = useEditor.getState();
-  if (!id || ui.hover !== 'creation' || ui.ebene !== 'form' || ed.modus !== 'editor' || ed.gesteStart) return false;
+  const feld: Feld | null = opt.feld ?? (ui.hover === 'creation' ? 'creation' : ui.hover && BLAETTER.has(ui.hover) ? (ui.hover as Ansicht) : null);
+  if (!id || !feld || ui.ebene !== 'form' || ed.modus !== 'editor' || ed.gesteStart) return false;
+  if (feld !== 'creation' && !nurDieserLoop(id)) return false;
   const n = aktuellesNetz();
   const rd = n?.netz.ringe;
   const sr = rd?.schleifen.find((s) => s.id === id);
-  const r = szene.aktuell;
-  const rect = stageRect();
-  if (!n || !rd || !sr || !r || !rect) return false;
+  if (!n || !rd || !sr) return false;
   const pr = ed.dok.profile;
-  const seite = pr.seite.knoten.flatMap((k, i) => (k.schleife === id ? [i] : []));
-  const top = pr.top.knoten.flatMap((k, i) => (k.schleife === id ? [i] : []));
-  const front = pr.front.knoten.flatMap((k, i) => (k.schleife === id ? [i] : []));
+  const { seite, top, front } = schleifenKnoten(id);
   if (seite.length !== 2) return false;
-  // Abbildung am Ring: Bildschirmversatz je Profil-Einheit in x und y (y nach oben)
-  const sk = n.skalierung;
-  const m = ringMitte(rd, sr.ring, sk);
-  const eps = 0.01;
-  const q = r.projizierenViele('creation', Float32Array.from([...m, m[0] + eps * sk, m[1], m[2], m[0], m[1] + eps * sk, m[2]]));
-  const c = { x: q[0]!, y: q[1]! };
-  const j: [number, number, number, number] = [(q[3]! - c.x) / eps, (q[6]! - c.x) / eps, -(q[4]! - c.y) / eps, -(q[7]! - c.y) / eps];
-  if (Math.abs(j[0] * j[3] - j[1] * j[2]) < 1e-6) {
-    ui.zeigeHinweis('Die Bühne blickt längs des Loops: Ansicht drehen oder in den Blättern formen');
-    return true;
+  let c: V2;
+  let j: [number, number, number, number];
+  let start: V2;
+  if (feld === 'creation') {
+    const r = szene.aktuell;
+    const rect = stageRect();
+    if (!r || !rect) return false;
+    // Abbildung am Ring: Bildschirmversatz je Profil-Einheit in x und y (y nach oben)
+    const sk = n.skalierung;
+    const m = ringMitte(rd, sr.ring, sk);
+    const eps = 0.01;
+    const q = r.projizierenViele('creation', Float32Array.from([...m, m[0] + eps * sk, m[1], m[2], m[0], m[1] + eps * sk, m[2]]));
+    c = { x: q[0]!, y: q[1]! };
+    j = [(q[3]! - c.x) / eps, (q[6]! - c.x) / eps, -(q[4]! - c.y) / eps, -(q[7]! - c.y) / eps];
+    if (Math.abs(j[0] * j[3] - j[1] * j[2]) < 1e-6) {
+      ui.zeigeHinweis('Die Bühne blickt längs des Loops: Ansicht drehen oder in den Blättern formen');
+      return true;
+    }
+    start = zeiger.bekannt ? { x: zeiger.x - rect.left, y: zeiger.y - rect.top } : { x: c.x + 40, y: c.y };
+  } else {
+    // R dreht in der Bildebene: im Top um y, in der Front um x — der Loop bliebe nicht spiegelgleich
+    if (art === 'r' && feld !== 'seite') {
+      ui.zeigeHinweis('R kippt einen Loop in der Seite oder auf der Bühne — im Top und in der Front bliebe er nicht spiegelgleich');
+      return true;
+    }
+    const a = pr.seite.knoten[seite[0]!]!.p;
+    const b = pr.seite.knoten[seite[1]!]!.p;
+    const m = ringMitte(rd, sr.ring, 1);
+    c = feld === 'seite' ? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } : feld === 'top' ? { x: m[0], y: 0 } : { x: 0, y: m[1] };
+    j = feld === 'seite' ? [1, 0, 0, 1] : feld === 'top' ? [1, 0, 0, 0] : [0, 0, 0, 1];
+    const client = opt.ziehen ? { x: opt.ziehen.clientX, y: opt.ziehen.clientY } : zeiger.bekannt ? { x: zeiger.x, y: zeiger.y } : null;
+    start = (client && blattLokal(feld, client.x, client.y)) ?? { x: c.x + 0.1, y: c.y };
   }
-  const start = zeiger.bekannt ? { x: zeiger.x - rect.left, y: zeiger.y - rect.top } : { x: c.x + 40, y: c.y };
   const ys = pr.seite.knoten.map((k) => k.p.y);
-  lauf = { art, id, basis: pr, auswahl: { seite, front, top }, seite, top, front, c, j, start, vorher: start, jetzt: start, winkel: 0, sperre: null, zahl: '', radius: 0, radSumme: 0, hoehe: Math.max(...ys) - Math.min(...ys), gleiten: null };
-  ui.setzeAuswahl({ seite, front, top }, 'seite');
+  lauf = { art, id, feld, ziehen: !!opt.ziehen, basis: pr, auswahl: { seite, front, top }, seite, top, front, c, j, start, vorher: start, jetzt: start, winkel: 0, sperre: null, zahl: '', radius: 0, radSumme: 0, hoehe: Math.max(...ys) - Math.min(...ys), gleiten: null };
+  ui.setzeAuswahl({ seite, front, top }, feld === 'creation' ? 'seite' : feld);
   ed.beginGeste();
   anmelden();
   aktualisieren();
+  return true;
+}
+
+/**
+ * Blatt: Zeiger auf einer Loop-Linie (Werkzeug Auswahl). Klick wählt den Loop (⇧: hinzu bzw. heraus); Ziehen verschiebt ihn —
+ * als G mit gedrückter Taste (Loslassen bestätigt, Esc bricht ab), mit derselben Rechnung wie die Taste G im Blatt.
+ */
+export function schleifenBlattZeiger(e: { target: EventTarget | null; clientX: number; clientY: number; shiftKey: boolean; button: number; stopPropagation(): void }, ansicht: Ansicht): boolean {
+  if (e.button !== 0 || useUi.getState().werkzeug !== 'auswahl') return false;
+  if (!(e.target as Element | null)?.closest?.('[data-schleife-linie]')) return false;
+  // die nächste Linie, nicht die zuletzt gezeichnete (dichte Loops überlappen)
+  const id = schleifeAmZeiger(ansicht, e.clientX, e.clientY);
+  if (!id) return false;
+  e.stopPropagation();
+  schleifeImBlattWaehlen(id, ansicht, e.shiftKey);
+  if (e.shiftKey) return true;
+  const x0 = e.clientX;
+  const y0 = e.clientY;
+  const ende = () => {
+    window.removeEventListener('pointermove', weiter, true);
+    window.removeEventListener('pointerup', ende, true);
+    window.removeEventListener('pointercancel', ende, true);
+  };
+  const weiter = (ev: PointerEvent) => {
+    if (Math.abs(ev.clientX - x0) + Math.abs(ev.clientY - y0) < 3) return;
+    ende();
+    // die Fenster-Listener der Operation sehen dieses Ereignis nicht mehr: einmal selbst nachführen
+    if (schleifeGrsStarten('g', { feld: ansicht, ziehen: { clientX: x0, clientY: y0 } })) bewegen(ev);
+  };
+  window.addEventListener('pointermove', weiter, true);
+  window.addEventListener('pointerup', ende, true);
+  window.addEventListener('pointercancel', ende, true);
   return true;
 }
 
@@ -114,10 +197,19 @@ function abbildungen(l: Lauf): { seite: Abb | null; top: Abb | null; front: Abb 
   if (l.art === 'g') {
     let dx: number;
     let dy: number;
+    // im Blatt frei: Seite x und y, Top nur x, Front nur y (sonst bliebe der Loop nicht spiegelgleich); X/Y sperren darauf
+    const xFrei = l.feld === 'creation' || l.feld === 'seite' || l.feld === 'top' ? l.sperre !== 'y' : false;
+    const yFrei = l.feld === 'creation' || l.feld === 'seite' || l.feld === 'front' ? l.sperre !== 'x' : false;
     if (mitZahl) {
+      // längs x, mit Y-Sperre (oder in der Front) längs y
       const w = n / (PX * sk);
-      dx = l.sperre === 'y' ? 0 : w;
-      dy = l.sperre === 'y' ? w : 0;
+      const nachY = l.feld === 'front' || l.sperre === 'y';
+      dx = !nachY && xFrei ? w : 0;
+      dy = nachY && yFrei ? w : 0;
+    } else if (l.feld !== 'creation') {
+      const d = versatz(l);
+      dx = xFrei ? d.x : 0;
+      dy = yFrei ? d.y : 0;
     } else {
       // Bildschirmversatz (y nach oben) → Profil-x/y über die Abbildung am Ring
       const su = l.jetzt.x - l.start.x;
@@ -211,7 +303,13 @@ function gleitenStarten(l: Lauf): boolean {
   const dx = (m1.x - m0.x) / (g.fNach - g.fVor);
   const dy = (m1.y - m0.y) / (g.fNach - g.fVor);
   const [j0, j1, j2, j3] = l.j;
-  l.gleiten = { g, pro: { x: j0 * dx + j1 * dy, y: j2 * dx + j3 * dy } };
+  const pro = { x: j0 * dx + j1 * dy, y: j2 * dx + j3 * dy };
+  // in der Front läuft ein liegender Loop quer zum Blick (die Wirbelsäule zeigt in die Tiefe)
+  if (pro.x * pro.x + pro.y * pro.y < 1e-12) {
+    useUi.getState().zeigeHinweis('Hier läuft der Loop in die Tiefe: Gleiten in der Seite, im Top oder auf der Bühne');
+    return false;
+  }
+  l.gleiten = { g, pro };
   if (ed.gesteStart) ed.setzeDokument(ed.gesteStart);
   l.start = l.jetzt;
   l.vorher = l.jetzt;
@@ -225,16 +323,20 @@ function gleitenAktualisieren(l: Lauf): void {
   let f: number;
   if (Number.isFinite(n)) f = gl.g.fVor + n * (gl.g.fNach - gl.g.fVor);
   else {
-    const su = l.jetzt.x - l.start.x;
-    const sv = -(l.jetzt.y - l.start.y);
+    const d = versatz(l);
     const p2 = gl.pro.x * gl.pro.x + gl.pro.y * gl.pro.y;
-    f = gl.g.f0 + (p2 > 1e-9 ? (su * gl.pro.x + sv * gl.pro.y) / p2 : 0);
+    f = gl.g.f0 + (p2 > 1e-12 ? (d.x * gl.pro.x + d.y * gl.pro.y) / p2 : 0);
   }
   const neu = schleifeGleiten(gl.g, f);
   if (neu) useEditor.getState().setzeDokument(neu);
   const rand = 0.05 * (gl.g.fNach - gl.g.fVor);
   const anteil = (Math.min(gl.g.fNach - rand, Math.max(gl.g.fVor + rand, f)) - gl.g.fVor) / (gl.g.fNach - gl.g.fVor);
-  useSchleife.setState({ text: `G G Loop gleitet · ${l.zahl ? `${l.zahl.replace('.', ',')}▏` : `${Math.round(anteil * 100)} %`} zwischen den Nachbarn` });
+  useSchleife.setState({ text: `G G Loop gleitet · ${l.zahl ? `${l.zahl.replace('.', ',')}▏` : `${Math.round(anteil * 100)} %`} zwischen den Nachbarn`, anzeige: anzeigeVon(l) });
+}
+
+/** Kreuz im Blatt (Mitte, Zeiger); auf der Bühne zeigt der Ring selbst, was geschieht. */
+function anzeigeVon(l: Lauf): SchleifenAnzeige | null {
+  return l.feld === 'creation' ? null : { feld: l.feld, mitte: l.c, zeiger: l.jetzt, art: l.gleiten ? 'g' : l.art, ziehen: l.ziehen };
 }
 
 function aktualisieren(): void {
@@ -257,7 +359,7 @@ function aktualisieren(): void {
   const sperre = l.sperre ? l.sperre.toUpperCase() : null;
   const teile = [{ g: 'G', s: 'S', r: 'R' }[l.art] + ' Loop', ...(sperre ? [sperre] : []), l.zahl ? `${l.zahl.replace('.', ',')}▏` : wert];
   if (ui.proportional.an) teile.push('proportional');
-  useSchleife.setState({ text: teile.join(' · ') });
+  useSchleife.setState({ text: teile.join(' · '), anzeige: anzeigeVon(l) });
 }
 
 export function schleifeGrsBestaetigen(): void {
@@ -265,7 +367,7 @@ export function schleifeGrsBestaetigen(): void {
   if (!l) return;
   abmelden();
   lauf = null;
-  useSchleife.setState({ text: null });
+  useSchleife.setState({ text: null, anzeige: null });
   useEditor.getState().endeGeste();
   // nach dem Gleiten stehen die Knoten des Loops an anderer Stelle der Zeichnungen: Auswahl neu
   if (l.gleiten) schleifeWaehlen(l.id);
@@ -276,9 +378,9 @@ export function schleifeGrsAbbrechen(): void {
   if (!l) return;
   abmelden();
   lauf = null;
-  useSchleife.setState({ text: null });
+  useSchleife.setState({ text: null, anzeige: null });
   useEditor.getState().abbrechenGeste();
-  useUi.getState().setzeAuswahl(l.auswahl, 'seite');
+  useUi.getState().setzeAuswahl(l.auswahl, l.feld === 'creation' ? 'seite' : l.feld);
 }
 
 // ---------- Ereignisse (Erfassungsphase am Fenster) ----------
@@ -332,13 +434,15 @@ function taste(e: KeyboardEvent): void {
 
 function bewegen(e: PointerEvent): void {
   const l = lauf;
-  const rect = stageRect();
-  if (!l || !rect) return;
-  const p = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  if (!l) return;
+  const p = punktIm(l.feld, e.clientX, e.clientY);
+  if (!p) return;
   if (l.art === 'r') {
-    // Winkel um die Mitte (Bildschirm, y nach oben): fortlaufend aufsummiert
-    const a0 = Math.atan2(-(l.vorher.y - l.c.y), l.vorher.x - l.c.x);
-    const a1 = Math.atan2(-(p.y - l.c.y), p.x - l.c.x);
+    // Winkel um die Mitte (y nach oben): fortlaufend aufsummiert
+    const v0 = vonMitte(l, l.vorher);
+    const v1 = vonMitte(l, p);
+    const a0 = Math.atan2(v0.y, v0.x);
+    const a1 = Math.atan2(v1.y, v1.x);
     let d = a1 - a0;
     while (d > Math.PI) d -= 2 * Math.PI;
     while (d <= -Math.PI) d += 2 * Math.PI;
@@ -360,10 +464,13 @@ function runter(e: PointerEvent): void {
   if (e.button === 0) schleifeGrsBestaetigen();
 }
 
-function schlucken(e: Event): void {
-  if (!lauf) return;
+/** Loslassen: bestätigt ein Ziehen an der Loop-Linie, sonst nur geschluckt. */
+function los(e: PointerEvent): void {
+  const l = lauf;
+  if (!l) return;
   e.preventDefault();
   e.stopImmediatePropagation();
+  if (l.ziehen && e.button === 0) schleifeGrsBestaetigen();
 }
 
 function rad(e: WheelEvent): void {
@@ -398,7 +505,7 @@ function anmelden(): void {
   window.addEventListener('keydown', taste, true);
   window.addEventListener('pointermove', bewegen, true);
   window.addEventListener('pointerdown', runter, true);
-  window.addEventListener('pointerup', schlucken, true);
+  window.addEventListener('pointerup', los, true);
   window.addEventListener('wheel', rad, { capture: true, passive: false });
   window.addEventListener('contextmenu', kontext, true);
   window.addEventListener('blur', fokusWeg);
@@ -408,7 +515,7 @@ function abmelden(): void {
   window.removeEventListener('keydown', taste, true);
   window.removeEventListener('pointermove', bewegen, true);
   window.removeEventListener('pointerdown', runter, true);
-  window.removeEventListener('pointerup', schlucken, true);
+  window.removeEventListener('pointerup', los, true);
   window.removeEventListener('wheel', rad, { capture: true });
   // das Kontextmenü kommt nach dem Rechtsklick: noch kurz schlucken
   setTimeout(() => window.removeEventListener('contextmenu', kontext, true), 1600);

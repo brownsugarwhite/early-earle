@@ -430,6 +430,12 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
     dichte Loops in einer Biegung knicken sonst den Umriss. In den Blättern gilt er nicht (Knoten frei wie Illustrator).
   - Der Hauptthread hat keine Ableitung: Ringdaten kommen mit dem Netz (`netz.ringe`), Ringnummern ohne Ableitung liest
     `schleifenRingeAusDokument`. Hooks im Dock nie bedingt aufrufen (ein bedingter `useSchleifen…()` riss die Oberfläche ab).
+  - **V6.4 Loops in den Blättern** (`SchleifenLinien`, `schleifenImBlatt`, `schleifenBlattZeiger`): Trefferlinien dicht gesetzter
+    Loops überlappen im Blatt — immer die nächste Linie nehmen (`schleifeAmZeiger`), Hover über die Gruppe statt je Linie. Die
+    Ringe der Breitenknoten (Liniennetz) liegen genau auf der Loop-Linie und gehen beim Klick vor. Sichtbarkeit der Ringpunkte
+    auf dem Strahlraster des Liniennetzes, während einer Geste die vom Gestenbeginn. Tasten G/S/R: erst `schleifeGrsStarten`
+    (Bühne mit gewähltem Loop, im Blatt nur wenn genau dieser Loop gewählt ist), dann V3 `modalStarten`. „Gewählt“ (Farbe) =
+    alle Knoten des Loops gewählt (`gewaehlteSchleifen`), `useSchleife.gewaehlt` = der Loop, den G/S/R formen.
 - **vitest 5 zeigt `console.log` bestandener Tests nur mit `--reporter=verbose`** (bei Fehlern immer). Messwerte so lesen: `npx vitest run <datei> --reporter=verbose`.
 - **macOS hat kein `timeout`-Kommando**; lange Läufe über das Werkzeug-Timeout begrenzen. `pnpm -r test` lässt Pakete parallel laufen; die Laufzeit-Tests der Versuche (`kanten`, `flaechenlinie`, `wesen`) reißen dann ihre Schranken (967 ms > 600 ms), einzeln laufen sie durch.
 

@@ -60,7 +60,8 @@ import { NetzHoverZeichnung, NetzKnotenZeichnung, NetzZeichnung, naechsterUnter,
 import { TeilFlaechen, TeilKurvenZeichnung, TeilTreffer, TeilWirbelsaeulen } from '../teile/TeilEbene';
 import { zugProportional } from '../editing/modal/modal';
 import { ModalZeichnung } from '../editing/modal/ModalZeichnung';
-import { SchleifenZeichnung } from '../kern/SchleifenZeichnung';
+import { SchleifenLinien, SchleifenZeichnung } from '../kern/SchleifenZeichnung';
+import { schleifenBlattZeiger } from '../kern/schleifenGrs';
 
 /** Saum ab dieser Abweichung (px bei 461 px je Kachel; Plan 9.8) */
 const SAUM_AB = 2;
@@ -336,6 +337,8 @@ export function View2D({ ansicht, w, h }: Props) {
     if (spantZeiger(e, { ansicht, lokal, ziehen })) return;
     // Kanten (Versuch 12.10. mittags): Zeichenstift auf freier Fläche, Kantenknoten, Breitenwerkzeug
     if (kantenZeiger(e, { ansicht, lokal, ziehen, bild })) return;
+    // V6.4: Loop-Linie (Auswahl): Klick wählt den Loop (⇧ hinzu bzw. heraus), Ziehen verschiebt ihn
+    if (schleifenBlattZeiger(e, ansicht)) return;
     const ziel = e.target as Element;
     const griffEl = ziel.closest('[data-griff]');
     const knotenEl = ziel.closest('[data-knoten]');
@@ -630,6 +633,8 @@ export function View2D({ ansicht, w, h }: Props) {
       {saumPfad && !poseBlattAnzeige && <path className="saum" data-saum="" d={saumPfad} fill="none" stroke="var(--saum)" strokeWidth={3} strokeOpacity={0.8} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
       {/* S4: Trefferflächen der Teile unter der schwarzen Linie, den P-Linien und den Knoten (Plan 20.10., V0) */}
       <TeilTreffer ansicht={ansicht} bild={bild} aktiv={formAktiv} />
+      {/* V6.4: Loops (über den Teilen, unter der Trefferlinie der schwarzen Linie, den P-Linien und den Knoten) */}
+      <SchleifenLinien ansicht={ansicht} bild={bild} aktiv={formAktiv} />
       {formAktiv && <path data-kurve="" d={pfad(segmente(profil), profil.art === 'geschlossen')} fill="none" stroke="transparent" strokeWidth={14} />}
       {bauweise === 'kern' && <UmrisseZeichnung ansicht={ansicht} bild={bild} skal={skal} />}
       {poseBlattAnzeige && <PoseLinieZeichnung ansicht={ansicht} bild={bild} skal={skal} aktiv={poseKern} />}

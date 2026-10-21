@@ -132,14 +132,14 @@ export function useTastatur() {
       } else if (!cmd && !e.altKey && !e.shiftKey && k === 's') {
         // Plan 20.10., V3: S skaliert die Auswahl im Blatt unter dem Zeiger (Blender); ohne Auswahl bleibt S das
         // Spant-Werkzeug (Klick in Seite oder Top setzt einen Querschnitt), bis V6 die Loops mit ⌘R auch in den Blättern setzt
-        if (!modalStarten('s') && !schleifeGrsStarten('s')) ui.setzeWerkzeug('spant');
+        if (!schleifeGrsStarten('s') && !modalStarten('s')) ui.setzeWerkzeug('spant');
       } else if (!cmd && !e.altKey && !e.shiftKey && k === 'g') {
         // V3: G greift die Auswahl eines Blatts; ohne Auswahl und auf der Bühne der Pinsel (M3): G ziehen, I aufblasen,
         // ⇧ beim Ziehen glättet, [ ] Radius
-        if (!modalStarten('g') && !schleifeGrsStarten('g')) ui.setzeWerkzeug('ziehen');
+        if (!schleifeGrsStarten('g') && !modalStarten('g')) ui.setzeWerkzeug('ziehen');
       } else if (!cmd && !e.altKey && !e.shiftKey && k === 'r') {
         // V3: R dreht die Auswahl eines Blatts
-        if (!modalStarten('r') && !schleifeGrsStarten('r') && ui.ebene === 'form' && ui.hover !== 'creation')
+        if (!schleifeGrsStarten('r') && !modalStarten('r') && ui.ebene === 'form' && ui.hover !== 'creation')
           ui.zeigeHinweis(useEditor.getState().modus === 'editor' ? 'R dreht die Auswahl eines Blatts — erst Punkte wählen' : 'G/S/R wirken im Editor-Tab; in der Pose formen Pinsel, Knochen und die schwarze Linie der Seite');
       } else if (!cmd && e.code === 'KeyO') {
         // V3: O proportional an/aus, ⇧O Abfall, ⌥O nur verbunden (⌥O tippt „ø“, deshalb über den Tastencode)

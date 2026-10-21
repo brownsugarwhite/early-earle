@@ -5,7 +5,7 @@ import { knochen3dSchweben, knochen3dZeiger } from '../kiefer/knochen3d';
 import { pinselRing, pinselStufe, pinselZeiger } from '../kern/pinsel';
 import { zahnUnter, zahnZeiger } from '../kern/zahnGriffe';
 import { reifenNeu, reifenUnter, reifenZeiger, useReifen } from '../kern/reifen';
-import { schleifenSchweben, schleifenZeiger } from '../kern/schleifenAuswahl';
+import { schleifenKlick, schleifenSchweben, schleifenZeiger } from '../kern/schleifenAuswahl';
 import { trefferDeuten, useTreffer } from '../kern/treffer';
 import { useEditor } from '../state/editorStore';
 import { useUi } from '../state/uiStore';
@@ -176,6 +176,11 @@ export function Steuerung3D({ hoehe }: { hoehe: number }) {
         const rr = ref.current?.getBoundingClientRect();
         if (rr) augeSetzen(ev.clientX - rr.left, ev.clientY - rr.top);
         return;
+      }
+      // V6.4: Klick ohne Bewegung auf einen Loop wählt ihn (⇧: hinzu bzw. heraus), daneben hebt er die Wahl eines Loops auf
+      if (knopf === 0 && !e.ctrlKey && weg < 4 && useUi.getState().ebene === 'form' && useUi.getState().werkzeug === 'auswahl' && useUi.getState().bauweise === 'kern') {
+        const rr = ref.current?.getBoundingClientRect();
+        if (rr && schleifenKlick(e.shiftKey, ev.clientX - rr.left, ev.clientY - rr.top)) return;
       }
       if (menueMoeglich && weg < 4) {
         useUi.getState().oeffneMenue({
