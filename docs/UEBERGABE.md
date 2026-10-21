@@ -13,7 +13,46 @@ liegt bisher nur im Kern (`packages/shape/src/kern/einsatz/`); im Editor ist dav
 > **Bis Florian entschieden hat, nicht an den offenen Kernring-Fällen weiterbauen und nichts umbauen;** der Start-Prompt unten
 > gilt erst, wenn er sich für den Kernring entscheidet.
 
-## Start der frischen Sitzung
+## Vorgehen ab 22.10. (Vorschlag vom 21.10. spätabends; Florian entscheidet)
+
+1. **Klarstellungen (Florian) kommen zuerst**, vor jedem Prüfplan, damit die Beweise das Richtige messen. Die Sitzung, die sie
+   bekommt, legt sie als Erstes wörtlich in `docs/plans/2026-10-22-klarstellungen.md` ab, Bilder sofort unter
+   `docs/look/klarstellungen-2026-10-22/`. Gliederung (Vorschlag):
+   - Was bleiben soll (gefällt, nicht anfassen).
+   - Was stört, am besten mit Bild.
+   - Klarstellungen zum Zielbild: Umrisse, Linien, Härte, Maul, Posen, Bedienung.
+   - Entscheidungen, die nur Florian treffen kann, zum Beispiel: welche Ansicht bei Widersprüchen gewinnt; Schleifen um den
+     Mund ja oder nein; dünne Kanten als Klinge oder rund; Engstellen (Linie dicht an der Naht) als Grenze der Zeichnung.
+   - Prüfwesen: drei bis fünf eigene Wesen oder Bögen, an denen die Beweise gemessen werden.
+   - „Ich bin zufrieden, wenn …“: die Abnahme in seinen Worten.
+   - Prioritäten und Budget: was zuerst sichtbar werden soll, Wochenlimit.
+2. **Gegenprüfung und Prüfplan (eine kurze Sitzung, ½–1 Tag, kein Code).** Eine frische Sitzung liest beide Recherchen und die
+   Klarstellungen. Sie prüft das Zielbild „ein Liniennetz, ein Löser“ kritisch: Lücken, Denkfehler, bessere unkonventionelle
+   Ideen, und ob die Beweise das Richtige testen. Dann schreibt sie den Prüfplan P1–P3 mit Florians Kriterien nach `docs/plans/`.
+   Florian gibt frei.
+3. **Beweise P1 → P2 → P3 (etwa 2–2,5 Wochen).** Streng nach Prüfplan, im Kern hinter Schaltern, nichts im Editor umgestellt,
+   Kernring eingefroren. Nach jedem Beweis gibt es Kontaktbögen und Zahlen, dann urteilt Florian; die Abbruchkriterien gelten.
+4. **Großer Plan (eine Sitzung, etwa 1 Tag).** Er baut auf den Ergebnissen auf: Bauweise, Reihenfolge des Umbaus, Einbau in den
+   Editor und was vom heutigen Code bleibt. Florian gibt frei.
+5. **Umbau Stück für Stück**, je mit Toren. Der heutige Stand bleibt Rückfall, bis ein Stück nachweislich besser ist.
+
+Start-Prompt für Schritt 2 (zum Einfügen; die eckige Klammer durch die eigenen Punkte ersetzen):
+
+> Lies `CLAUDE.md`, `docs/UEBERGABE.md` (Abschnitt „Vorgehen ab 22.10.“) und die Recherchen
+> `docs/research/2026-10-21-feldnetz-oder-kernring.md` und `docs/research/2026-10-21-netz-und-linien-gesamt.md`. Hier sind meine
+> Klarstellungen: […]. Lege sie zuerst wörtlich in `docs/plans/2026-10-22-klarstellungen.md` ab (Bilder nach `docs/look/`).
+> Dann: (1) Gegenprüfung — ist „ein Liniennetz, ein Löser“ wirklich der eleganteste Weg zu meinem Zielbild? Suche Lücken,
+> Denkfehler und unkonventionelle bessere Ideen und prüfe, ob die Beweise das Richtige testen. (2) Schreib den Prüfplan P1–P3 mit
+> meinen Klarstellungen als Kriterien (Fälle, Messungen, Abbruchkriterien, Bilder je Schritt) nach `docs/plans/` und leg ihn mir
+> zur Freigabe vor. Kein Code, kein Umbau.
+
+Start-Prompt für Schritt 3 (nach der Freigabe):
+
+> Lies `CLAUDE.md`, `docs/UEBERGABE.md` und den freigegebenen Prüfplan in `docs/plans/`. Führe P1 aus, streng nach Plan: im Kern
+> hinter einem Schalter, nichts im Editor, nach jedem Tag Kontaktbögen und Zahlen, Abbruchkriterien strikt, nichts als bestanden
+> melden. Danach P2, dann P3; nach jedem Beweis anhalten und mir die Bilder zeigen.
+
+## Start der frischen Sitzung (nur, falls Florian beim Kernring bleibt)
 
 Zum Einfügen (Florian):
 
