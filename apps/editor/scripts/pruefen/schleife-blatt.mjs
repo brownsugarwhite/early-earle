@@ -287,7 +287,7 @@ const kNach = loopKnoten(await dok(), id);
 pruefe(!!ggText && ggText.includes('gleitet') && Math.hypot(kNach.a.x - kVor.a.x, kNach.a.y - kVor.a.y) > 1e-4 && (await dok()).profile.seite.knoten.length === nSeite && (await verlauf()) === v0 + 1, `G G im Seitenblatt: „${ggText}“, Rückenknoten ${(Math.hypot(kNach.a.x - kVor.a.x, kNach.a.y - kVor.a.y) * PX * sk).toFixed(1)} px, Knoten ${nSeite}, ein Schritt`);
 await page.keyboard.press('Meta+z');
 await ruhig();
-// 10. ⇧-Klick auf einen zweiten Loop: beide gewählt; S formt dann die Punkte (V3)
+// 10. ⇧-Klick auf einen zweiten Loop: beide gewählt; S formt jeden um seine Mitte, mit einem weiteren Punkt die Punkte (V3)
 await page.evaluate(() => window.__stores.ui.getState().setzeAuswahl({ seite: [], front: [], top: [] }, 'seite'));
 const lpA = await linienPunkt('seite', id);
 await page.mouse.click(lpA.x, lpA.y);
