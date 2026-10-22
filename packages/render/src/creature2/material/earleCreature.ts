@@ -1,9 +1,10 @@
-import { Vector3, Vector4 } from 'three';
-import { MeshBasicNodeMaterial, type UniformNode } from 'three/webgpu';
-import { abs, attribute, clamp, cross, dFdx, dFdy, dot, exp2, float, floor, Fn, fract, fwidth, length, log2, max, min, mix, normalGeometry, normalize, normalView, positionGeometry, positionLocal, positionView, pow, select, sin, smoothstep, sqrt, step, uniform, uniformArray, vec2, vec3, vec4 } from 'three/tsl';
+import { DataTexture, HalfFloatType, LinearFilter, RGBAFormat, Vector3, Vector4 } from 'three';
+import { MeshBasicNodeMaterial, type TextureNode, type UniformNode } from 'three/webgpu';
+import { abs, attribute, clamp, cross, dFdx, dFdy, dot, exp2, float, floor, Fn, fract, fwidth, length, log2, max, min, mix, normalGeometry, normalize, normalView, positionGeometry, positionLocal, positionView, pow, select, sin, smoothstep, sqrt, step, texture, uniform, uniformArray, vec2, vec3, vec4 } from 'three/tsl';
 import type { FloatNode, Vec3Node, Vec4Node } from '../../common/tsl';
 import { STIL_STANDARD, farbRolle, type WesenStil } from './stil';
 import { createMusterUniforms, createZonenUniforms, hash3, musterMasks, ZONEN_ANZAHL, zonenMaske, type MusterUniforms, type ZonenUniforms } from './muster';
+import { augenFormAbstand } from './augenFormen';
 
 /**
  * Das Earle-Wesen-Material (erste Fassung, Look-Vertrag Regeln 1–5, 9, 10 teilweise, 12):
@@ -58,6 +59,10 @@ export interface CreatureMaterialUniforms {
   /** Schlitzaugen: Position (xyz) + Größe (w) im Körperraum; Rahmen: oben (xyz) + Blinzeln (w). */
   eyePos: ReturnType<typeof uniformArray>;
   eyeUp: ReturnType<typeof uniformArray>;
+  /** Augenformen (Phase 2 M5, nur mit `augenFormen`): Rechts-Achse (xyz) je Auge; Form, Zustand, Breite (xyz) je Auge; Zeit (Spirale) */
+  eyeRechts: ReturnType<typeof uniformArray>;
+  eyeForm: ReturnType<typeof uniformArray>;
+  augenZeit: UniformNode<'float', number>;
   eyeCount: UniformNode<'float', number>;
   /** Augenringe (dunkler Höhlenring auf der Haut um Augäpfel, Bild 10/11): Anzahl und Stärke. */
   ringCount: UniformNode<'float', number>;
@@ -72,6 +77,14 @@ export interface CreatureMaterialUniforms {
   /** Zonen (Bild 17): Form je Zone und ihre Farbrollen. */
   zonen: ZonenUniforms;
   zonenFarbe: Vec3Triple[];
+  /** Zonen-Atlas (Plan 8.2): signierter Abstand je Zone (RGB, Welt, + innen) und Weichheit je Zone (RGB, Welt) je Texel,
+   * gelesen über das Attribut `eeAtlas` (Kachelkoordinaten je Ecke); `atlasAn` 0/1 schaltet die prozeduralen Zonen ab. */
+  atlasAn: UniformNode<'float', number>;
+  atlasAbstand: TextureNode;
+  atlasWeich: TextureNode;
+  /** Gemaltes Fell (Plan 8.4): Büschelfeld in Wirbelsäulen-Koordinaten, dunkler Ansatz → helle Spitze je Büschel; Stärke 0 = aus, Büschelgröße als Anteil der Höhe */
+  fellStaerke: UniformNode<'float', number>;
+  fellGroesse: UniformNode<'float', number>;
   /** Glimmer des Wesens (Bauplan, 0…1) — wirkt mal dem Stil-Glimmer. */
   glimmerWesen: UniformNode<'float', number>;
   /** Farbe des Glimmerlichts (linear). */
@@ -128,6 +141,8 @@ const GLIMMER_STANDARD = '#f7d6a0';
 export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil = STIL_STANDARD, bodyScale = 1): CreatureMaterialUniforms {
   const eyePos = uniformArray(Array.from({ length: MAX_SLIT_EYES }, () => new Vector4(0, 0, 0, 0)), 'vec4');
   const eyeUp = uniformArray(Array.from({ length: MAX_SLIT_EYES }, () => new Vector4(0, 1, 0, 1)), 'vec4');
+  const eyeRechts = uniformArray(Array.from({ length: MAX_SLIT_EYES }, () => new Vector4(1, 0, 0, 0)), 'vec4');
+  const eyeForm = uniformArray(Array.from({ length: MAX_SLIT_EYES }, () => new Vector4(0, 0, 1, 0)), 'vec4');
   return {
     lightDir: uniform(lightDirFromStil(stil)),
     stufen: uniform(stil.stufen),
@@ -160,6 +175,9 @@ export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil =
     bauchStaerke: uniform(0),
     eyePos,
     eyeUp,
+    eyeRechts,
+    eyeForm,
+    augenZeit: uniform(0),
     eyeCount: uniform(0),
     ringCount: uniform(0),
     ringStaerke: uniform(0.5),
@@ -169,11 +187,58 @@ export function createCreatureUniforms(colors: CreatureColors, stil: WesenStil =
     spitzmund: uniform(0),
     zonen: createZonenUniforms(),
     zonenFarbe: Array.from({ length: ZONEN_ANZAHL }, (_, i) => triple(colors.zonen?.[i] ?? ZONE_STANDARD, stil)),
+    atlasAn: uniform(0),
+    atlasAbstand: texture(leereAtlasTextur()),
+    atlasWeich: texture(leereAtlasTextur()),
+    fellStaerke: uniform(0),
+    fellGroesse: uniform(0.06),
     glimmerWesen: uniform(0.6),
     glimmerFarbe: uniform(new Vector3(...farbRolle(colors.glimmer ?? GLIMMER_STANDARD, stil).base)),
     zeit: uniform(0),
     teilAn: uniform(0),
   };
+}
+
+/** 1 × 1-Platzhalter für den Zonen-Atlas (außerhalb aller Zonen). */
+function leereAtlasTextur(): DataTexture {
+  return atlasTextur(new Float32Array([-1, -1, -1, 1]), 1, 1);
+}
+
+/** Atlas-Textur aus Float-Daten (RGBA je Texel): Half-Float (in WebGPU filterbar), linear zwischen den Texelmitten, keine Mipmaps. */
+export function atlasTextur(daten: Float32Array, breite: number, hoehe: number): DataTexture {
+  const halb = new Uint16Array(daten.length);
+  for (let i = 0; i < daten.length; i++) halb[i] = halbFloat(daten[i]!);
+  const t = new DataTexture(halb, breite, hoehe, RGBAFormat, HalfFloatType);
+  t.magFilter = LinearFilter;
+  t.minFilter = LinearFilter;
+  t.generateMipmaps = false;
+  t.needsUpdate = true;
+  return t;
+}
+
+const halbPuffer = new ArrayBuffer(4);
+const halbFloat32 = new Float32Array(halbPuffer);
+const halbUint32 = new Uint32Array(halbPuffer);
+/** IEEE-754 Half-Float (wie three `DataUtils.toHalfFloat`, ohne Abhängigkeit). */
+function halbFloat(x: number): number {
+  halbFloat32[0] = Math.min(65504, Math.max(-65504, x));
+  const f = halbUint32[0]!;
+  const vorzeichen = (f >> 16) & 0x8000;
+  let exp = ((f >> 23) & 0xff) - 127 + 15;
+  let mant = f & 0x7fffff;
+  if (exp <= 0) {
+    if (exp < -10) return vorzeichen;
+    mant = (mant | 0x800000) >> (1 - exp);
+    return vorzeichen | ((mant + 0x1000) >> 13);
+  }
+  if (exp >= 31) return vorzeichen | 0x7c00;
+  mant = mant + 0x1000;
+  if (mant & 0x800000) {
+    mant = 0;
+    exp++;
+    if (exp >= 31) return vorzeichen | 0x7c00;
+  }
+  return vorzeichen | (exp << 10) | (mant >> 13);
 }
 
 export function applyStil(u: CreatureMaterialUniforms, stil: WesenStil, colors: CreatureColors): void {
@@ -218,7 +283,7 @@ function valueNoise(p: Vec3Node): FloatNode {
  * innerhalb jeder Stufe ein Verlauf mit Anteil `verlauf` (Florians Regel: Verlauf nur in der Stufe, nie über die Kante
  * hinweg — hier ist die Kante selbst weich, wie in den gemalten Bögen).
  */
-function stepShade(x: FloatNode, stufen: FloatNode, federung: FloatNode, verlauf: FloatNode): FloatNode {
+export function stepShade(x: FloatNode, stufen: FloatNode, federung: FloatNode, verlauf: FloatNode): FloatNode {
   const S1 = max(stufen.sub(1), 1);
   const g = clamp(x, 0, 0.9999).mul(S1);
   const i = floor(g);
@@ -256,7 +321,17 @@ function tupfer(p: Vec3Node, seed: number, rMin: number, rMax: number, weich: nu
   return { m: m.mul(lod), h };
 }
 
-export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNodeMaterial {
+export interface CreatureMaterialOptionen {
+  /** Ruhelage aus dem Attribut `eeRest` statt `positionGeometry` (CPU-posierte Netze im Editor: Muster, Zonen, Augen und Korn bleiben bei Posen stehen). */
+  ruheAttribut?: boolean;
+  /**
+   * Gemalte Augen mit Formen und Zuständen (Phase 2 M5, `augenFormen.ts`): Augenrahmen mit Rechts-Achse, Schlitz/Knopf/
+   * Mandel offen, zu, Sichel, X, Spirale, Schlitz; Kanten über `fwidth`. Ohne die Option das bisherige Schlitzauge (Spiel).
+   */
+  augenFormen?: boolean;
+}
+
+export function createCreatureMaterial(u: CreatureMaterialUniforms, optionen: CreatureMaterialOptionen = {}): MeshBasicNodeMaterial {
   const material = new MeshBasicNodeMaterial();
   material.name = 'ee-wesen';
   material.fog = false;
@@ -275,7 +350,7 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     const crease = extra.z;
     // Unterlippenseite (1 unten) als eigener Kanal — blendet an den Mundwinkeln weich, zeichnet nirgends eine Linie
     const unten = clamp(extra.w, 0, 1);
-    const rest = positionGeometry as unknown as Vec3Node;
+    const rest = (optionen.ruheAttribut ? (attribute('eeRest', 'vec3') as Vec3Node) : (positionGeometry as unknown as Vec3Node)).toVar();
     const H = u.bodyScale;
     // An scharfen Kanten (Maullinie, Augenwulst, Standkante) die Facettennormale nehmen: die Kante bleibt im Licht sichtbar
     const flatN = normalize(cross(dFdx(positionView as unknown as Vec3Node), dFdy(positionView as unknown as Vec3Node)));
@@ -300,6 +375,25 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     // Hell oben, dunkel unten (feste Blobs in den Bögen): Höhenverlauf unabhängig von der Normale
     const heightT = smoothstep(0, 1, rest.y.div(H));
     v.assign(clamp(v.add(heightT.sub(0.5).mul(0.22)), 0, 1));
+    // Gemaltes Fell (Bogen Fell-Reihe, Plan 8.4): versetzte Reihen flammenförmiger Büschel in Wirbelsäulen-Koordinaten
+    // (s längs, θ·Umfang quer), je Büschel dunkler Ansatz und helle Spitze, Rand weich; wirkt auf den Schattenwert, nicht
+    // auf die Farbe, bleibt in Ruhelage stehen und kostet keine Geometrie (Spiel-Budget).
+    const fellZelle = max(u.fellGroesse.mul(H), 0.001);
+    const fs = spine.x.div(fellZelle);
+    const fq = spine.y.mul(spine.z).div(fellZelle).div(6.2832);
+    const reihe = floor(fs);
+    const versetzt = fq.add(fract(reihe.mul(0.5)));
+    const zelleX = floor(versetzt);
+    const lx = fract(versetzt).sub(0.5);
+    const ly = fract(fs);
+    const jitA = hash3(vec3(zelleX, reihe, 7)).toVar();
+    const jitB = hash3(vec3(zelleX, reihe, 13)).toVar();
+    const lxj = lx.add(jitA.sub(0.5).mul(0.3));
+    // Büschelform: unten breit, oben spitz (Flamme), Spitze bei ly ≈ 1
+    const breite = float(0.5).mul(float(1).sub(smoothstep(0.55, 1.05, ly))).add(0.08);
+    const fellInnen = float(1).sub(smoothstep(breite.mul(0.6), breite, abs(lxj)));
+    const fellWert = fellInnen.mul(ly.sub(0.35)).mul(1.1).add(jitB.sub(0.5).mul(0.18));
+    v.assign(clamp(v.add(fellWert.mul(u.fellStaerke)), 0, 1));
 
     // --- Grundfläche als Farbrolle (Schatten, Grund, Licht): Grund → Bauch → helle Schnauze → Zonen -----------------
     // Alle Flächen werden erst gemischt und dann einmal schattiert: Schuppenrelief und Rim nehmen so die Farbe der Fläche,
@@ -340,8 +434,18 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
     const pS = vec3(u.muster.schatten).toVar();
     const pB = vec3(u.muster.base).toVar();
     const pL = vec3(u.muster.licht).toVar();
+    // Zonen-Atlas (Plan 8.2): signierter Abstand und Weichheit je Zone aus den Kacheln; harte Kanten pixelscharf über
+    // die Ableitung, weiche über die gerasterte Weichheit (hart → weich entlang einer Form)
+    const atlasUV = attribute('eeAtlas', 'vec2');
+    const aAbstand = (u.atlasAbstand.sample(atlasUV) as unknown as Vec4Node).toVar();
+    const aWeich = (u.atlasWeich.sample(atlasUV) as unknown as Vec4Node).toVar();
+    const atlasAn = u.atlasAn.greaterThan(0.5);
     for (let i = 0; i < ZONEN_ANZAHL; i++) {
-      const m = zonenMaske(u.zonen, i, kontext).toVar();
+      const sdf = (i === 0 ? aAbstand.x : i === 1 ? aAbstand.y : aAbstand.z) as FloatNode;
+      const wZ = (i === 0 ? aWeich.x : i === 1 ? aWeich.y : aWeich.z) as FloatNode;
+      const w = max(wZ, fwidth(sdf));
+      const mAtlas = smoothstep(w.negate(), w, sdf);
+      const m = select(atlasAn, mAtlas, zonenMaske(u.zonen, i, kontext)).toVar();
       const zt = u.zonenFarbe[i]!;
       mischen(zt, m);
       const modus = u.zonen.modus[i]!;
@@ -442,6 +546,23 @@ export function createCreatureMaterial(u: CreatureMaterialUniforms): MeshBasicNo
       const ep = (u.eyePos as unknown as { element(i: number): Vec4Node }).element(i);
       const eu = (u.eyeUp as unknown as { element(i: number): Vec4Node }).element(i);
       const active = smoothstep(float(i).sub(0.5), float(i).add(0.5), u.eyeCount.sub(0.5)).mul(min(ep.w.mul(1000), 1));
+      if (optionen.augenFormen) {
+        // Augenrahmen: x längs der Rechts-Achse, y längs der Oben-Achse (Einheit halbe Größe); Tiefe längs der Normalen
+        // begrenzt, damit die Form bei dünnen Körpern nicht auf die Rückseite durchschlägt
+        const er = (u.eyeRechts as unknown as { element(i: number): Vec4Node }).element(i);
+        const ef = (u.eyeForm as unknown as { element(i: number): Vec4Node }).element(i);
+        const dA = rest.sub(ep.xyz);
+        const hsA = max(ep.w.mul(0.5), 1e-6);
+        const xv = dot(dA, er.xyz).div(hsA);
+        const yv = dot(dA, eu.xyz).div(hsA);
+        const tiefe = abs(dot(dA, cross(er.xyz, eu.xyz))).div(hsA);
+        const offen = max(float(1).sub(u.blink).mul(eu.w), 0.08);
+        const distA = augenFormAbstand(xv, yv, ef.x, ef.y, ef.z, offen, u.augenZeit.mul(2.4));
+        const aaA = fwidth(distA).mul(0.8).add(1e-4);
+        const vorn = float(1).sub(smoothstep(0.5, 0.75, tiefe));
+        eyeMask.assign(max(eyeMask, float(1).sub(smoothstep(aaA.negate(), aaA, distA)).mul(vorn).mul(active)));
+        continue;
+      }
       const d = rest.sub(ep.xyz);
       const up = eu.xyz;
       const dy = dot(d, up);
@@ -525,6 +646,8 @@ export function createToothMaterial(u: CreatureMaterialUniforms, zahnHex: string
   const base = uniform(new Vector3(...f.base));
   const dark = uniform(new Vector3(...f.schatten));
   const light = uniform(new Vector3(...f.licht));
+  // Farbe zur Laufzeit setzbar (`setzeZahnFarbe`), ohne das Material neu zu erzeugen
+  material.userData.zahnFarbe = { base, dark, light };
   material.colorNode = Fn(() => {
     const t = attribute('eeTooth', 'float') as FloatNode;
     const N = normalize(normalView as unknown as Vec3Node);
@@ -536,6 +659,19 @@ export function createToothMaterial(u: CreatureMaterialUniforms, zahnHex: string
     return vec4(col, 1);
   })();
   return material;
+}
+
+/**
+ * Zahnfarbe zur Laufzeit (Phase 2 M4, Plan 5.3): eine Farbe für alle Zähne, Wurzel = Farbe, Spitze heller, Schattenseite
+ * dunkler und kühler (Farbrollen in OKLab wie beim Körper). Setzt nur die Uniforms von `createToothMaterial`.
+ */
+export function setzeZahnFarbe(material: MeshBasicNodeMaterial, zahnHex: string): void {
+  const u = material.userData.zahnFarbe as { base: { value: Vector3 }; dark: { value: Vector3 }; light: { value: Vector3 } } | undefined;
+  if (!u) return;
+  const f = farbRolle(zahnHex, STIL_STANDARD);
+  u.base.value.set(...f.base);
+  u.dark.value.set(...f.schatten);
+  u.light.value.set(...f.licht);
 }
 
 /** Zunge: rosa mit hellem Mittelband. */

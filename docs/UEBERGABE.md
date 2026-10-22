@@ -1,212 +1,271 @@
-# Übergabe (aktueller Stand)
+# Übergabe (Stand 21.10.2026, dritte Sitzung: Teil A „Maul als Einsatz“, E2 mit Leiter — Tore an 41 von 43 Fällen)
 
-> Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**: Wo stehen wir, was ist offen, was ist der nächste Schritt. Historie in Git.
+Branch `claude/editor-grundlayout`, PR mit Auto-Fix. **Diese Datei ist der Einstieg für eine frische Sitzung.** Alles zu Teil A
+liegt bisher nur im Kern (`packages/shape/src/kern/einsatz/`); im Editor ist davon noch nichts zu sehen.
 
-**Stand:** 2026-10-08 früh (Nachtschicht, zweiter Block), Sitzung „Wesen-Werkstatt“ (Florians Mac, Branch `main`). Pläne: [`docs/plans/2026-10-07-wesen-werkstatt.md`](plans/2026-10-07-wesen-werkstatt.md) (v1) und [`docs/plans/2026-10-07-wesen-werkstatt-v2.md`](plans/2026-10-07-wesen-werkstatt-v2.md) (Lückenliste). **Zielsystem:** [`docs/look/wesen-refs/ZIELSYSTEM.md`](look/wesen-refs/ZIELSYSTEM.md) — gemessene Zieltabelle je Wesen aus Florians 19 Bildern (`docs/look/wesen-refs/`, Ausschnitte in `crops/`, Messwerkzeug `scripts/wesen/messen.mjs`). **Nur Florians Prompt und die 19 Bilder sind Referenz.** Florian will heute gemeinsam weitermachen (Look-Abnahme Rex).
+> **Nachtrag 21.10. spätabends — Grundsatzfrage offen:** Florian stellt den Kernring wegen der vielen Sonderregeln in Frage
+> (Eleganz ist Grundvoraussetzung). Recherche: [`docs/research/2026-10-21-feldnetz-oder-kernring.md`](research/2026-10-21-feldnetz-oder-kernring.md)
+> — Empfehlung: Kernring einfrieren (keine neue Sonderregel, die zwei offenen Fälle bleiben offen), dann Beweis F0
+> „Stücknetz im Maulfeld“ (Linien → Stücke → Ganzzahlen → Muster; Bauplan und Kriterien in Abschnitt 6 der Recherche).
+> Danach für das ganze Netz weitergeführt: [`docs/research/2026-10-21-netz-und-linien-gesamt.md`](research/2026-10-21-netz-und-linien-gesamt.md)
+> — Zielbild „ein Liniennetz, ein Löser“, Prüfphase P1 „Umriss zuerst“ → P2 „Stücknetz im Maulfeld“ → P3 „Liniennetz am ganzen
+> Körper“ (Abschnitt 6 dort, je mit Abbruchkriterien).
+> **Bis Florian entschieden hat, nicht an den offenen Kernring-Fällen weiterbauen und nichts umbauen;** der Start-Prompt unten
+> gilt erst, wenn er sich für den Kernring entscheidet.
 
-## Milestone 1 (erster Block): das Maul als Lippenschnitt
+## Vorgehen ab 22.10. (Vorschlag vom 21.10. spätabends; Florian entscheidet)
 
-Haut geschlossen vermascht, entlang der Maullinie aufgeschnitten (Rand doppelt, Maultasche mit Gaumen/Rachen/Boden), Kiefergewichte hart je Seite, Rig mit Öffnungsweite (`maul.oeffnung`), geschwungene Maullinie, Zähne mit Größenprofil auf dem Rand, Zunge als Körper, Zahnfleischsaum, Lippenband als Abstandsfeld. Details: Commit feb49b0 und `packages/creature/src/mesh/mundschnitt.ts`.
+1. **Klarstellungen (Florian) kommen zuerst**, vor jedem Prüfplan, damit die Beweise das Richtige messen. Die Sitzung, die sie
+   bekommt, legt sie als Erstes wörtlich in `docs/plans/2026-10-22-klarstellungen.md` ab, Bilder sofort unter
+   `docs/look/klarstellungen-2026-10-22/`. Gliederung (Vorschlag):
+   - Was bleiben soll (gefällt, nicht anfassen).
+   - Was stört, am besten mit Bild.
+   - Klarstellungen zum Zielbild: Umrisse, Linien, Härte, Maul, Posen, Bedienung.
+   - Entscheidungen, die nur Florian treffen kann, zum Beispiel: welche Ansicht bei Widersprüchen gewinnt; Schleifen um den
+     Mund ja oder nein; dünne Kanten als Klinge oder rund; Engstellen (Linie dicht an der Naht) als Grenze der Zeichnung.
+   - Prüfwesen: drei bis fünf eigene Wesen oder Bögen, an denen die Beweise gemessen werden.
+   - „Ich bin zufrieden, wenn …“: die Abnahme in seinen Worten.
+   - Prioritäten und Budget: was zuerst sichtbar werden soll, Wochenlimit.
+   - **Bausteine** (Zähne, Augen, Muster und Zonen, Shader, Anhängsel, Klingen) als eigener, klar getrennter Block: nur wörtlich
+     speichern in `docs/plans/2026-10-22-bausteine-wuensche.md`. In der Gegenprüfung wird nur geprüft, was das Fundament dafür
+     bereitstellen muss; geplant und gebaut werden sie erst nach den Beweisen, als eigene Phase im großen Plan.
+2. **Gegenprüfung und Prüfplan (eine kurze Sitzung, ½–1 Tag, kein Code).** Eine frische Sitzung liest beide Recherchen und die
+   Klarstellungen. Sie prüft das Zielbild „ein Liniennetz, ein Löser“ kritisch: Lücken, Denkfehler, bessere unkonventionelle
+   Ideen, und ob die Beweise das Richtige testen. Dann schreibt sie den Prüfplan P1–P3 mit Florians Kriterien nach `docs/plans/`.
+   Florian gibt frei. Der Prüfplan nimmt zwei Anker für die Bausteine mit: eine Zahnfleischreihe im Maul-Stücknetz (P2) und einen
+   Augenumriss mit Brauenwulst als harte Linie (P3; der Brauenwulst scheiterte am 15.10. an der Topologie). Dazu kommen:
+   - **ein Budget-Tor in P2 und P3:** Das Spielnetz auf Brettstufe hat höchstens 8 000 Dreiecke je Wesen, samt Maul. Heute bläht der
+     Maul-Einsatz auf K2 den Käfig von 400 auf 9 500–13 000 Flächen auf; schon die Käfigflächen allein sind 19 000–26 000 Dreiecke.
+     Ein Körper ohne Maul hat auf Stufe 1 3 200 Dreiecke, ein Mehrteiler 1 700–6 300. Messung:
+     `apps/editor/scripts/pruefen/dreieck-budget.ts`.
+   - **eine Spiel-Probe P0** (1–2 Tage, dazu etwa 30 Minuten von Florian am iPhone): 36 heutige Prüfwesen auf Stufe 1 und 2 als
+     gebackene Netze mit Earle-Material, Kieferknochen, ein bis drei Morph-Zielen und Schatten, auf dem echten Brett in der echten
+     Karte. Gemessen wird in Safari (WebGPU) und in der App (WKWebView, womöglich WebGL2) nach `docs/progress/karte-perf-iphone16.md`:
+     fps, p99, Draw Calls. P0 hängt nicht vom Netz ab und kann vor oder neben P1 laufen.
+3. **Beweise P1 → P2 → P3 (etwa 2–2,5 Wochen).** Streng nach Prüfplan, im Kern hinter Schaltern, nichts im Editor umgestellt,
+   Kernring eingefroren. Nach jedem Beweis gibt es Kontaktbögen und Zahlen, dann urteilt Florian; die Abbruchkriterien gelten.
+4. **Großer Plan (eine Sitzung, etwa 1 Tag).** Er baut auf den Ergebnissen auf: Bauweise, Reihenfolge des Umbaus, Einbau in den
+   Editor und was vom heutigen Code bleibt. Florian gibt frei.
+5. **Umbau Stück für Stück**, je mit Toren. Der heutige Stand bleibt Rückfall, bis ein Stück nachweislich besser ist.
 
-## Milestone 2 (dieser Block): Körper und Kopf nach den Bildern
+**Stand der Bausteine** (Plan „Wesen-Editor 2“, Phasen 2–5; Einzelheiten im Kritik-Register):
 
-Florian: „Es geht um die Körperform … der Tiger sieht nicht zu 1 % aus wie die Vorlage.“ Befund nach Bild 2 (Florians Skizze), 5, 9, 12, 14: alle Wesen sind **eine Masse**, der Kopf ein großes Volumen vorn oben, das Kinn hängt über der Brust, die Rückenlinie läuft von der Schulter in den Hinterkopf; der Rumpf ist klein (Rex: Kopf 0,6 H auf Rumpf 0,42 H und Beinen 0,18 H), Beine sind Säulen darunter.
+| Baustein | gebaut | offen | hängt am Netz? |
+|---|---|---|---|
+| Earle-Material, Shader | live im Editor (Beweis 4: Tiger-Kopf, Zonen-Atlas, Ruhelage gegen schwimmende Muster) | Florians Urteil; Feuer ohne Verläufe, Gas weit von der Vorlage, Fell am weitesten vom Bogen (Beweis 5) | kaum (Deskriptoren, Atlas-Koordinaten) |
+| Muster und Zonen | Muster im Material (Streifen, Flecken, Rosetten, Schuppen), Zonen-Atlas im Kern | Zonen im Editor als Vektorformen zeichnen (Phase 4) | ja, für die Lage auf der Haut |
+| Zähne | Phase 2 M4: Zahnmodell, Zahnfleisch, Prüfung, Tafel, Ziehen | sitzen auf dem alten Maulbau; Florians Wunschliste (15.10. angekündigt: Überschneidungen erlaubt, runde Blobzähne, vor/zurück), „Setzen T“, Größe gegen die Referenz | ja, über das Zahnfleisch |
+| Augen | Phase 2 M5: gemalte Augen mit Zuständen, Glubschauge und Augapfel, Höhle im Käfig | Brauenwulst ungelöst, kein Blick, Lid ohne Muster | gemalt nein; Höhle und Braue ja |
+| Teile, Anhängsel | Beweis 3 (Säulenbein), Körper aus Teilen (S5–S7) | Teil-Bibliothek, Andocken, IK, Laufen (Phase 3) | ja, stark (Ansätze) |
+| Klingen (Fell, Kämme, Flossen) | nur Beweis 5 | Phase 4 | ja, über Ansatzlinien |
+| Posen und Rig | Teil B weitgehend gebaut | Daten hängen an Punktnummern | ja, Übertrag beim Neubau |
+| Spiel-Export | – | Phase 5 | nein (gebackenes Netz) |
 
-- **Zwei Kopfarten, ein Grundblob** (`sdf/build.ts`):
-  - *Kopf im Rumpf* (`hals.laenge` = 0 — Grundblob, Fisch, Aal, Drache): der Kopf ist das obere Vorderteil des Domes. `kopfImRumpf` formt das Dome-Profil mit Landmarken um die Maullinie: Schnauze (Oberkiefer, Höhe aus `maul.oberkiefer`), Kinn (Unterkiefer, `maul.unterkiefer`, `maul.biss`), Kehle (nur bei großem Kopf, `kopf.groesse`), Kopfband breiter/tiefer (`kopf.groesse`), Gesicht schmaler als die Schultern durch **Ei-Querschnitte** (`LoftStation.taper`, aus `kopf.schnauzeDicke` < 0,7), kantige Kiefer (`maul.kante`). Mit Standardwerten bleibt der Dome unverändert (PezenPez).
-  - *Eigener Kopf* (`hals.laenge` > 0 — Rex, Katze, Hund, Giraffe): Kopf-Loft am Halsende. Neu bei **kurzem Hals** (≈ 0,05): Kopfmitte knapp über den Schultern, vorn über der Brust (`hals.ansatz` wirkt jetzt auch bei kurzem Hals), weite Verschmelzung (k = 1,2 · Kopfradius: Schulter → Hinterkopf ohne Kerbe), Schädel ohne Schnauze kugelig (Abfall erst ab u ≈ 0,8, Katze), Kieferkante nur an Schnauze und Kinn. `kopf.groesse` bis 3, `koerper.hoehe` ab 0,3.
-- **Neigung** (`koerper.neigung`, jetzt bis 0,5 H): verschiebt die **waagerechten Scheiben** des Rumpfs nach vorn (vorher kippte der ganze Dome, der Bauch sank in den Boden). Standfläche bleibt flach, der Rücken wird zur geraden Schräge (Bild 2, Rex). Der Maulträger hat dafür eine **Mittellinie** (`MouthHost.center`): Maullinie, Mundwinkel, Augen und Gelenk werden von der Scheibenmitte aus gemessen.
-- **Kopfmaße im Körperträger**: `MouthHost.headHeight` (Kinn … Scheitel) für Öffnungsweite, Linienschwung und Augengröße; `MouthHost.jawDepth` = Kinnband, damit Brust und Bauch beim Öffnen nicht mitschwingen (Kiefer-Auslauf 0,95 … 1,3 statt 1,6).
-- **Lochmaul öffnet wieder** (war seit dem Lippenschnitt tot): das Spitzmund-Feld drückt die beiden Ränder **senkrecht zur Maullinie** auseinander (Halbkreisprofil, voll in der Mitte, null am Winkel; Haut läuft als Lippenring aus, Tasche mit ihrer Tiefe). Die alte radiale Weitung vom Zentrum konnte den Schlitz nicht öffnen, weil der Rand durch das Zentrum läuft. Kugelfisch: rundes O mit Lippenring; Giraffe: O/Bohne vorn an der Schnauze.
-- **W-Lippe und Nasenspiegel** (Katze, Hund — Bild 8/9): `maul.wForm` hebt die Maullinie in der Mitte an und senkt beidseits Lappen (nur beim Keilmaul), darüber sitzt ein flacher Nasenknubbel auf der Schnauze (`nase`, Ellipsoid, folgt dem Oberkiefer). Tiger zu: W-Linie, Nase, zwei Fänge außen (`wesen-vergleich-vierbeiner-zu.png`). Farbe des Nasenspiegels folgt mit dem Material (K2).
-- **Beinlage** `unterkoerper.beine.lage` (0 vorn unter der Brust — sitzende Katze; 1 hinten — Rex). Schwanz setzt in der echten Rückenfläche an.
-- **Rechtwinkliges Gitter mit Verfeinerung** (`contourDual` `refine`, Bau `verfeinerung`) gebaut, **standardmäßig aus**: ganze Achsenstreifen werden feiner, bei Kopf ≈ Körperbreite 2,5 × Vertices und Zeit (Rex 88³: 1,6 → 4,4 s) für kaum sichtbaren Gewinn.
-- **Werkzeuge**: Seitenansicht `seite` in Lab (Knopf „Seite“) und Harness (`EE_ANSICHT=seite`, Dateien `…-seite.png`); **Silhouetten-Werkzeug** `apps/game/src/lab/wesen/profil.test.ts` (ASCII-Seiten-/Vorderansicht aus dem SDF mit Lippen-, Winkel-, Augenhöhe — in Sekunden statt GPU-Render): `EE_PROFIL=keil,vierbeiner npx vitest run src/lab/wesen/profil.test.ts` in `apps/game`.
-- **Vorlagen** Rex und Tiger neu aus den Landmarken (Rex: Rumpf 0,42, Kopf 2,15, Beine 0,8 hinten; Tiger: Rumpf 0,68, Kugelkopf 1,11, Maul tief im Kopf, Pfoten vorn). Bilder: `docs/progress/wesen-vergleich-{keil,vierbeiner}-auf[-seite].png`, Kontaktbogen `wesen-lab-kontaktbogen-auf.png`.
+**Start-Prompt für Florian (Schritt 2, die Fable-Sitzung).** Zum Einfügen; die beiden Klammern durch die eigenen Punkte
+ersetzen. Die Punkte dürfen unsortiert sein und in mehreren Nachrichten kommen; dann den ersten Satz stehen lassen und erst am
+Ende „fertig“ schreiben.
 
-Prüfungen: `pnpm typecheck`, `pnpm lint`, Wesen-Tests 18/18, Game-Tests 256/256 (+1 Werkzeug übersprungen), GPU-Harness grün.
+> Lies `CLAUDE.md`, `docs/UEBERGABE.md` (Abschnitt „Vorgehen ab 22.10.“) und die Recherchen
+> `docs/research/2026-10-21-feldnetz-oder-kernring.md` und `docs/research/2026-10-21-netz-und-linien-gesamt.md`.
+>
+> Ich schicke jetzt meine Punkte in zwei Teilen, vielleicht in mehreren Nachrichten. Speichere jede Nachricht sofort
+> wörtlich, ändere nichts an meinen Sätzen, und fang mit der Arbeit erst an, wenn ich „fertig“ schreibe. Bilder legst du
+> unter `docs/look/klarstellungen-2026-10-22/` ab.
+>
+> **Teil 1 — Klarstellungen zu Netz und Linien** (Datei `docs/plans/2026-10-22-klarstellungen.md`):
+> […]
+>
+> **Teil 2 — Bausteine: Zähne, Augen, Muster und Zonen, Shader, Anhängsel, Klingen** (Datei
+> `docs/plans/2026-10-22-bausteine-wuensche.md`; nur speichern, nicht planen; prüfe nur, was das Fundament dafür bereitstellen
+> muss):
+> […]
+>
+> fertig. Jetzt: (1) Gegenprüfung — ist „ein Liniennetz, ein Löser“ wirklich der eleganteste Weg zu meinem Zielbild? Suche
+> Lücken, Denkfehler und unkonventionelle bessere Ideen, und prüfe, ob die Beweise P0–P3 das Richtige testen. (2) Schreib den
+> Prüfplan P0–P3 mit meinen Klarstellungen als Kriterien (Fälle, Messungen, Abbruchkriterien, Bilder je Schritt) nach
+> `docs/plans/` und leg ihn mir zur Freigabe vor. Kein Code, kein Umbau.
 
-## Block 3 (08.10. morgens, nach Florians erstem Blick): Übergänge, Zwischenstufen, Zähne, Beine
+Start-Prompt für Schritt 3 (nach der Freigabe):
 
-Florian: „Zähne sitzen je nach Maul nicht gut, Zwischenstufen Loch ↔ Keil sehen nicht gut aus, das Mesh geht nicht glatt in Hals und Schwanz über, Beinform und -dicke, Gesichter, W‑Maul für Hunde.“
+> Lies `CLAUDE.md`, `docs/UEBERGABE.md` und den freigegebenen Prüfplan in `docs/plans/`. Führe P1 aus, streng nach Plan: im Kern
+> hinter einem Schalter, nichts im Editor, nach jedem Tag Kontaktbögen und Zahlen, Abbruchkriterien strikt, nichts als bestanden
+> melden. Danach P2, dann P3; nach jedem Beweis anhalten und mir die Bilder zeigen.
 
-- **Reihen-Harness** `EE_REIHE=<vorlage>:<pfad>=a,b,c` (eine Vorlage, ein Regler, Stufen nebeneinander; `docs/progress/wesen-reihe-*.png`) — damit Zwischenstufen sichtbar werden: `maul.form` 0…1 und `maul.hoehe` 0,15…0,9 am Grundblob.
-- **Übergänge**: Hals‑S‑Bogen beginnt mit senkrechter Tangente (kein Knick am Rumpf); **Schwanz und Schlange setzen im Rumpfkern an** (Wirbelsäule mit 0,8 · Rumpfradius, dünner Anhang mit kleinem Trichter) und verjüngen sich außerhalb — kein Rohr aus einer Wand; Wurzelstationen im Rumpf gehören dem **Rumpfknochen** (sonst springen Gewichte und Musterkoordinaten als Zickzack auf der Flanke — war der Tiger‑Rumpf).
-- **Zähne**: Länge auf den Gegenkiefer begrenzt (Oberzähne ≤ Unterkiefertiefe, Unterzähne ≤ Oberkopf; `aussen` darf darüber), Wurzel tiefer unter der Lippe (geschlossen keine weißen Punkte mehr). Lippenband‑Vorgabe schmaler (0,15) und hell (`#c9a6d6`), Linienschwung‑Vorgabe 0,12.
-- **Beine** (Bild 12): Keule außen an der tiefen Hüfte, kleine Verschmelzung (Mulde statt Fillet — die große Verschmelzung machte Rex zum Sack), längerer Fuß, **drei Zehen** als Kapseln. Rex steht auf zwei Säulen mit Pfoten.
-- **Gesichtsregler** `kopf.wangen` (breite Backen unter den Augen, Katze) und `kopf.stirn` (hohe runde Stirn … flacher Schädel) im Kopf‑Loft; Lab‑Gruppe „Gesicht“.
-- **Drache ohne Unterkiefer** (Bild 5 rechts) als aufrechter Sack im Kopf‑im‑Rumpf‑Modus: Maullinie tief (0,36), kein Unterkiefer, das ganze Oberteil klappt am langen Hebel zurück (`oeffnungOben` 1), Riesenfänge außen, **Hauer aus der Brustkante** (untere Zähne auch ohne Unterkiefer, wenn `hauer` > 0).
-- **Schlangenkörper** (Bild 13) als dicker Bogen mit gleichmäßiger Krümmung: steigt hinter dem Kopf auf, wölbt sich nach hinten, die Spitze kommt dahinter herunter (`einrollen` = Gesamtdrehung bis ≈ 206°), seitlich ausgebaucht, nie unter den Boden; Wurzel so dick wie der Kopf (`dicke` 1 ≈ 0,8 · Kopfradius). Aal‑Vorlage danach.
-- **Auflösung** per Adresse `&res=128` (Lab) bzw. `EE_RES=128` (Harness, Dateien `-r128`) für Qualitätsvergleiche. Der helle „Absatz“ am Giraffenhals ist keine Geometrie (Stationen stetig, bei 128³ gleich), sondern die harte Cel‑Stufe auf der Schulterrundung → Stil „Kantenfederung“/Airbrush‑Vorgabe.
-- **Lider** (Bild 10): Oberlid als Halbkugel‑Kappe aus Hautmaterial (`createLidMaterial`, Stufen des Körpers) am Augapfel, in Ruhe nach hinten gekippt (nur ein Saum), beim Blinzeln nach vorn über den Augapfel (Sichel). Standbilder: `creature.blinkHold` bzw. Harness `EE_BLINK=1` (Dateien `-augenzu`).
-- **Höhlenring** (Bild 10/11): dunkler, kühler Ring auf der Haut um jeden Augapfel aus dem Abstand zum Augenzentrum im Ruheraum (`ringCount`/`ringStaerke` aus `augen.ring`; nicht bei Schlitzaugen). Halslängen‑Regler erklärt den Moduswechsel (0 = Kopf im Rumpf, ab 0,05 eigener Kopf).
-- **Silhouetten‑Überdeckung** im Harness (`scripts/wesen/iou.mjs`, ZIELSYSTEM §3.8): je Vorlage mit Referenzausschnitt steht in Konsole und Bildunterschrift „Überdeckung x,xx (B/H Render | Referenz)“ — gleiche Höhe, mittig, 256²‑Raster. Grob (Blickwinkel, fehlende Elemente wie Flügel/Fell), aber als Verlaufszahl ehrlich. **Ausgangswerte 08.10.** (Bögen‑Kamera): Rex 0,52 · Kugelfisch 0,74 · Drache 0,60 · Giraffe 0,62 · Aal 0,55 · Retriever 0,54 · Tiger 0,58. Eine seitlichere Kamera (Gier 0,95) brachte die Seitenverhältnisse näher an die Bögen, die Überdeckung aber nicht höher — Bögen‑Kamera bleibt wie sie war.
-- **Stil im Harness**: `EE_STIL=federung=1,verlauf=1,korn=0.45` setzt Werte des Licht‑&‑Shader‑Tabs für den Lauf (Dateien `-stil`). Befund: weiche Federung/Verlauf ändern die Bilder kaum (Vorgabe ist schon 0,7/0,8); der helle Streifen am Giraffenhals ist der **scharfe Eigenschatten** des Halses auf der Schulter (Schattenkarte), keine Stufe und keine Geometrie.
-- **Retriever‑Vorlage** (Bild 8): eigener Kopf mit langer Schnauze, W‑Lippe und Nase, vier Pfoten, Bogenschwanz; Fell/Ohren später als Elemente.
+## Start der frischen Sitzung (nur, falls Florian beim Kernring bleibt)
 
-## Block 4 (08.10. mittags): Grundform zurück, Maul reißt weit auf, nichts reißt
+Zum Einfügen (Florian):
 
-Florian: zu viel außerhalb der Grundform (Tatzen/Details später, er modelliert Vorlagen in Blender); kantige Katzengesichter; dicke Schenkel seitlich hoch am Rumpf; viel mehr Zähne bei Rex/Drache; **alle Tiere reißen das Maul so weit auf, dass sie ein anderes verschlingen**; Drache geschwungen mit langem Unterkiefer am Hals; Retriever‑W deutlicher; Bohne; Augengröße/Schenkel weiter einstellbar. Zweite Nachricht: **Unterkiefer darf nie durch den Körper fahren oder Lücken reißen**, am Limit öffnet der Oberkiefer weiter; der lange Unterkiefer am Hals stufenlos. Dritte: Zähne gebogen, Verlauf Beige → hell.
+> Lies `docs/UEBERGABE.md` und auf der Planseite `docs/plans/2026-10-21-maul-einsatz-weiter.md` „E2.6 Leiter — Bauplan“ und
+> „Stand E2.6“. Weiter mit Teil A, E2: die zwei offenen Fälle (Rex mittel gerade: Knick an der Kreuzung der Falte mit der Linie;
+> Robbe hoch J: Engstelle — zwei Leitern hintereinander oder als Grenze), dann E2.4 (A0 mit Hülle, P-Linien am Maul, Loops), dann
+> E3.
 
-- **Kiefergelenk auf der Mundwinkel‑Linie** (`mouth.ts`): davor sind Ober‑ und Unterkiefer starr, am Winkel selbst ist der Hebel null (nichts reißt an der Schlitzspitze). Dahinter laufen beide über **Ketten** aus: Kehlkette (`kehle0/1`, ⅔ und ⅓ des Unterkieferwinkels, unter dem Kinn nach Tiefe) und Nackenkette (`nacken0/1`, hinter dem Oberkiefer nach Lage); Gewichte je Vertex über `jawParts`/`upperParts` → `descriptors.ts` verteilt auf die Kette (keine Positions‑Blends über große Winkel mehr → Dehnung ≤ ≈ 2, Test `mouth/kette.test.ts`). Rachenwand mit Seiten‑Verlauf (mischt beide Kiefer, langer Schlund).
-- **Öffnung = Randabstand vorn** (`pose.ts`): `maul.oeffnung` 1 = 1,6 Kopfhöhen; jeder Kiefer dreht bis 72°; der Unterkiefer nur bis zur **Geometrie‑Schranke** (`lowerAngleMax`: Rand, Kinnboden und Biegezone werden abgetastet und um das Gelenk gedreht, bis ein Punkt den Boden erreicht oder in den starren Rumpf eintaucht — auch nach hinten) und bis zum **Faltbudget** (die Biegezone nimmt ≈ 60 % ihrer Länge auf, sonst schiebt sich der Kiefer durch die Haut darunter). Was fehlt, übernimmt der Oberkiefer. **`maul.kehle`** (Kehlsack 0…1) verlängert die Biegezone bis zur Brust → der Unterkiefer darf weiter und wird beim Öffnen lang (Drache).
-- **`maul.bohne`** (−1…1): Oberkiefer rollt beim Öffnen seitlich (bis ≈ 34°), Lochmaul öffnet einseitig weiter → Bohnenform (Giraffe, Retriever).
-- **Zähne**: dichter (`zaehne.dichte` bis 1,5, Abstand ≥ 0,45 Zahngröße), **gebogen** (`zaehne.biegung`, Krümmung zum Rachen — die Instanz richtet ihre Biegeseite nach innen, `Tooth.inward`), **Verlauf Beige → hell** zur Spitze (Zahnmaterial, Vorgabe `#e6d1a6`).
-- **Beine** (Grundform): dicke Schenkel seitlich am Rumpf, Hüfthöhe `unterkoerper.beine.hoehe` (bis zur Schulter, „fast aus dem Hals“), kleine Verschmelzung; Schenkel bis 1,5, Dicke bis 1,5; keine Zehen mehr. `koerper.bogen` (S‑Schwung des Rumpfs, Drache). Kantige Katze: `maul.kante` flacht die Schnauzenfront ab, Kinn als Platte, Exponent nur an Schnauze und Kinn; Kopfverschmelzung klein (`k` 0,22–0,4 · Kopfradius), damit Gesichtsformen stehen bleiben. W‑Lippe stärker, Nase höher. Augengröße bis 1,6.
+Lesereihenfolge für die Sitzung:
+1. `CLAUDE.md` (lädt von selbst: Stand, Regeln, Fallen; Einträge „2026-10-21 …“ unten in der Liste).
+2. Diese Datei.
+3. Planseite [`docs/plans/2026-10-21-maul-einsatz-weiter.md`](plans/2026-10-21-maul-einsatz-weiter.md): „Ursache am Mundwinkel und
+   die Entscheidung“, „Schritte“ (E1–E6), „Stand E1“, die Nachträge E1, **„E2 im Detail“** und **„Stand E2“** (Ergebnis, was
+   gebaut ist, verworfene Wege, offene Fälle).
+4. Register [`docs/plans/2026-10-14-kritik-phase-0.md`](plans/2026-10-14-kritik-phase-0.md), „Befunde aus E2“ und „Befunde aus E1“.
+5. Grundlage Teil A: [`docs/plans/2026-10-15-maul-einsatz-harmonie-posen.md`](plans/2026-10-15-maul-einsatz-harmonie-posen.md)
+   (Festlegungen, Schritte A1–A14).
 
-- **Nachgezogen**: Bohne stärker (bis ≈ 50°, Lochmaul‑Seite 1:1), Kopf‑Loft mit eigenem Exponenten für die **untere Hälfte** (`LoftStation.nB`): Schädel rund, Kiefer/Schnauze kantig (Tiger zu liest sich jetzt als grimmige Katze); Rex kleiner auf längeren Beinen; Kamera rahmt die Pose. Werkzeug `scripts/wesen/ausschnitt.mjs` (Nahaufnahme aus Harness‑Bildern).
+## Worum es geht
 
-## Block 5 (08.10. nachmittags): Stampfer, ω‑Lippe, organische Zahnreihen
+Florian 21.10.: „Weiter mit Teil A ‚Maul als Einsatz‘: Damit sollen glatte Haut, Querschnitt aus der Hülle, Linien exakt und Loops
+auch mit Maul wirken.“ Heute schaltet ein Maul den Körper auf den alten Maulbau um (`ableitenMitMaul`) — ohne all das. Der Einsatz
+dreht es um: A0 ist der Körper ohne Maul mit allem, was der Körper kann; das Maul wird in die verfeinerte Fläche von A0 eingesetzt
+(Feld um die Maullinie, Karte, Topologie, Lippe, Haut lösen = A3–A7), außerhalb des Felds bleibt der Körper bitgleich.
 
-Florian: W beim Goldie nicht hunde-/katzentypisch; Oberschenkel passen gar nicht, Beine viel dicker, Form und Füße wie beim Rex (Bild 12) = **Saugnapfform**; Unterkiefer soll weiter runter können oder am Hals liegen (Drache: Maul geht nach oben auf; Rex/Goldie: beide Richtungen, der Unterkörper passt sich an); Drachen‑Hauer geschlossen prüfen; Zähne organischer wie in den Referenzen.
+Reihenfolge: E1 Gitter (Tore erreicht, Abnahme offen) → **E2 A0 wie im Editor (läuft)** → E3 Bau → E4 Editor, Maul zu
+(**Florians Blick**) → E5 Öffnen → E6 Rest (Kiefer getrennt, Zähne, Augen, Rig, alter Maulbau raus, Abnahme).
 
-- **Beine** (`sdf/build.ts`): dicke Säule aus dem Rumpf (Radius 0,1 H + 0,2 · Dicke + 0,15 · Schenkel; Rex ≈ Rumpfbreite), kaum verjüngt, am Boden **Saugnapf** (weitet sich über die letzten ≈ 20 % auf den Fußradius, flache Standfläche mit runder Kante, vorn etwas länger), weiche Verschmelzung (k ≈ 0,1–0,18 H). Keine Zehen.
-- **ω‑Lippe** (`mouth.ts`): schmale Spitze unter der Nase (Philtrum), Lefzen hängen dicht daneben tief (u ≈ 0,26), zum Winkel steigt die Linie (Lächeln). Nase sitzt über der Spitze.
-- **Zahnreihen** (`mesh/build.ts`): Abstand aus Dichte **und** Zahnbreite (große Zähne nehmen mehr Platz), Fänge mit Spitze bei u ≈ 0,2, nach hinten kleiner, Wechsel groß/klein (`streuung`), vorn leicht nach vorn geneigt, Biegung nach innen.
-- **Unterkiefer‑Spielraum**: Faltbudget 1,1 · Biegezone (die Ketten biegen statt zu stauchen); Rex `kehle` 0,6, Retriever 0,5 → der Unterkörper (Kehle → Brust) folgt dem Unterkiefer; Drache `oeffnungOben` 0,5 → Maul geht nach oben auf. Zahnlängen: außen liegende Fänge dürfen bis zum Dreifachen der Kiefertiefe hinausragen (Drache geschlossen, Bild 5 rechts).
+Florians Aufträge am 21.10.: „zuerst die genaue Haut als Standard des Kernrings …, dann den Mundwinkel (Quadratgitter um c). Es
+muss für alles eine elegante und saubere Lösung geben!“ — danach: „mach hier mit der Verdrehung an J-Linien weiter …, bis das
+Mundwinkel-Tor auch an den vier J-Fällen hält.“ — danach: „Ja, mach hier mit E2 weiter (A0 wie im Editor, Rex und Robbe in die
+Tore).“
 
-## Block 6 (08.10. nachmittags): Silhouetten aus den Bildern, Kieferbreiten, Scharte, Augen
+## Stand E1/E2
 
-Florian: W nur am Oberkiefer mit **Scharte** in der Mitte, zu weich; zu viele unschöne Ecken/Übergänge; **Augen verzogen**; Ober‑/Unterkieferbreite getrennt (Platz für Zähne, die geschlossen vorbeischauen); kantiger Kopf trifft den Tiger nicht; W geschlossen mit Verbindung zur Nase; Formen müssen weicher ineinander übergehen, Kurven „nicht Earle genug“; **größere Schritte, viel näher an die Referenz**.
+- **Standard des Kernrings auf K2** (`einsatzFall(art, anfang, form)` ohne Optionen, `einsatzAblauf(f)` in
+  `kern/pruefen/einsatzFall.ts`): **A0 wie im Editor** (Startkugel, eingefrorene Ringe, umgeformt, glatte Haut, „berühren
+  mittel“), **Lippenziel auf der Haut** (wie der Schlitz, E2.6), Feld begradigt bis 1,5 Radien, Schlitz genau auf der Linie,
+  Reihenzahl konform 10 … 16, Fächer um c als Halbkreis, Naht nach Bogenlänge auf einer umparametrisierten Karte, ein Ausgleich
+  der Stufennaht, Ausgleich außen, letzte Lippenspanne 0,15 Feldkante, Spitzen von A0 übernommen, ohne Lippenwulst, **Leiter**
+  (E2.6: wo eine Falte von A0 die Linie kreuzt und zur Naht läuft oder der Streifen zur Naht ein schmaler Keil ist, enden die
+  Speichen der ersten q Lippenstellen auf der Naht). K1 und `FALL_ALT` bitgleich.
+- **Leiter** (`einsatz/leiter.ts`, `einsatz/leiterGitter.ts`): Erkennen (Falte/Keil), Halbfeld am Hals geteilt, Ringkarte und
+  Leiterkarte (Lippe und Naht gegenüber, keine Stauchung), Ringfeld als L-förmiges Kernring-Gitter (`kernGitterL`), Leiterfeld als
+  Tutte-Gitter, je Hälfte ein Dreier- und ein Fünferpol, Lippe m = M − 2 + (q − 1)/2 (Leiterteil gleichmäßig, Ringteil nach
+  Bogenlänge), an einer Falte eine Ecke der Lippe (`lippenPunkt/lippeAnpassen(…, ecken)`), Schärfe der Falte auf dem Hals und
+  dem Stück über P, Stufennaht nie an der Reihe einer Spitze. Ohne Fund bitgleich.
+- **Knickmaß** (`einsatzMessen`): Kanten im Umkreis einer Feldkante um eine Spitze (von A0, beim Einsatz auch die eigenen und Ecken,
+  an denen drei Falten zusammenlaufen) zählen nicht.
+- **Ganze Reihe** (43 ausgeglichene Fälle): Haut-Tor (≤ 0,25 px, Knick ≤ A0 + 2°, Lippe ≤ 1 px, nirgends umgeklappt) **41 von
+  43**, Mundwinkel 43 von 43, Lippe ≤ 1 px 43 von 43; ohne Rex/Robbe Haut max 0,09 px. Bilder
+  `docs/progress/editor/e2-spitzen-anfang-2026-10-21.jpg`, `docs/progress/editor/e2-leiter-2026-10-21.jpg`.
+- **Offen** (Register „Befunde aus E2“): Rex mittel gerade (Knick 29,6° an der Kreuzung, Tor 29,1°; örtlich A0 ≤ 11°, Einsatz
+  26–30°), Robbe hoch J (Engstelle 0,5 Feldkanten, faltet). E2.4 noch nicht gemessen.
 
-- **Seitenprofil aus der Referenz** (`koerper.seitenprofil` {vorn, hinten, breite?, scheitel}): **Bézier‑Kontrollwerte** (Grad 7) der Ausdehnung vorn/hinten je Höhe, aus der Pixelmaske per kleinster Quadrate angepasst (`scripts/wesen/seitenprofil.mjs <messung.json> --vorn rechts --n 8 --scheitel 0.55 [--klammer-hinten 0.7]`): glatte Earle‑Kurve statt Zacken; Anhängsel oben (Ohren) fallen weg, Flügel/Hauer per Klammer. Die **Kreiskappe** (`scheitel`) wird vor der Anpassung herausgerechnet und im Loft wieder multipliziert — so schließt der Kopf rund (eine Bézier‑Kurve kann keine senkrechte Tangente). Die Loft‑Tiefen vorn/hinten sind dann die gezeichnete Silhouette, Bauch/Buckel/Landmarken entfallen (Ei‑Verjüngung und Kieferkante bleiben). Tiger = Bild 9, Rex = Bild 5 links (Flügel geklammert), Drache = Bild 5 rechts geschlossen (`messung/drache-zu.json`). Erste Fassung ohne Kappe ergab Eimer (flacher Deckel).
-- **Kieferbreite** `maul.kieferbreite` (−1 … 1): Loft‑Stationen haben eine eigene Halbbreite der unteren Hälfte (`LoftStation.wxB`); Dome: Kinnband bzw. Kopfband schmaler, Kopf‑Loft: untere/obere Hälfte. Tiger −0,3, Drache −0,5 (Hauer außen).
-- **Scharte und Nase**: `gesicht` am Bau (Nase, Philtrum‑Strecke Lippenspitze → Nasenunterkante) → **Uniforms** (`naseMitte`, `philtrumA/B`, `gesichtAn`) → Shader zeichnet Nase (`farben.nase`: Retriever schwarz, Tiger rosa) und Scharte **pixelscharf** aus Abständen im Ruheraum (wie die Schlitzaugen; eine Vertex‑Maske war ausgefressen). Lippenband nur oben: `region.y` trägt das Vorzeichen der Seite, `lippenBandUnten` 0,25 bei ω‑Mäulern. ω schmaler (Spitze 0,08, Lefzen tiefer), Nase eine Nasenbreite über der Spitze.
-- **Augen**: Augenwulst‑Beule entfernt (machte Ecken), Höhle nur für tief liegende Typen (Drache/Schlange) oder `augen.tiefe` > 0,3; gemalte Schlitzaugen liegen glatt auf der Haut.
+## Nächste Schritte (in dieser Reihenfolge)
 
-- **Silhouetten‑Editor im Lab** (Tab Körper, `SeitenprofilEditor.tsx`): die beiden Bézier‑Kurven (vorn, hinten) über der Höhe mit **ziehbaren Kontrollpunkten** (8 je Seite, waagerecht), Scheitel‑Regler (Kreiskappe), Spiegeln, Entfernen; „Silhouette zeichnen“ legt ein Profil an. Dafür gedacht: Ansicht „Seite“ + Referenzbild‑Overlay → Florian zieht die Earle‑Kurve selbst gegen sein Bild, in Minuten statt über Regler‑Runden. Jeder Zug ist ein Verlaufsschritt (Rückgängig), Vorlagen speichern das Profil mit.
+1. **Rex mittel gerade: Knick an der Kreuzung.** Bei gerade läuft die Falte von A0 0,5 px auf der Linie (zwei Schlitzpunkte),
+   bevor sie unten zur Naht geht; der Knick sitzt in Reihe 1 neben P. Gemessen ohne Wirkung: halbscharfe Falte an der Lippe, Ecke
+   der Lippe allein, stetige Lippenteilung, Stück fest auf der Falte. Erst die Lage von Falte, Lippe und Reihe 1 an P im Bild
+   vergleichen (`kreuzung-bild`-Art: Käfig an P, Falten rot), dann lösen.
+2. **Robbe hoch J: Engstelle** — zwei Leitern hintereinander (vor der Engstelle ohne Holme, dahinter bis zur Weite), oder Florian
+   entscheidet, die Engstelle als Grenze der Zeichnung zu behandeln.
+3. **E2.4:** A0 mit Querschnitt aus der Hülle (`A0PLAN='{"umrisseExakt":true}'`), P-Linien am Maul, Loops — je Variante die
+   ganze Reihe; Falten, die den Schlitz kreuzen, sind jetzt die Leiter (E2.3 a/b gebaut).
+4. **E3** (`maulEinsatzBauen`, eingefrorene Topologie im Dokument, schneller Zugweg), **E4** (Schalter „Maul: Einsatz“ im
+   Editor, Maul zu → Florians Blick), E5, E6.
 
-- **Vorderansicht im Silhouetten‑Editor**: zweite Zeichnung (Breite über der Höhe, symmetrisch); bis zum ersten Zug folgt die Breite dem Mittel aus vorn/hinten, danach eigene Kurve (`seitenprofil.breite`), „Breite = Mittel“ setzt zurück.
-- **Maul‑Editor** (Tab Maul, `MaulEditor.tsx`): zwei Schemazeichnungen mit Griffen statt Regler — Seite (Kopf‑Oval, Maullinie: Griff vorn = Maulhöhe, Griff am Winkel = Winkel nach hinten + Neigung, Griff dazwischen = Schwung) und Vorn (Linie von Winkel zu Winkel: Spitze = W‑Form, Winkel = Breite, Griff unten = Öffnungsweite). Die Griffe setzen dieselben Bauplan‑Werte wie die Regler.
-- **Nase getrennt vom W** (`maul.nase`): Katzen haben Nase + Scharte ohne ω (Bild 9: kantig, nur kleine Striche vorn), Hunde ω + Nase (Bild 8). **Überbiss** (`maul.biss` > 0) setzt die untere Hälfte des Kopf‑Lofts vorn zurück → die Oberlippe hängt über den Unterkiefer (W nur oben, „wie in der Realität“). Tiger: `wForm` 0, `nase` 0,8, `biss` 0,5, `kante` 1, `rundung` 0,85 (offen bohnenförmig), `lippe` 0,06.
-- **Kopf wandert stufenlos** (Florian: „sofort nach oben, sobald Hals > 0“): bei Halslänge → 0 sitzt der Kopf tief im Rumpf (Halsbasis um 0,42 H abgesenkt, Tropfen aus, Verschmelzung groß) und steigt mit der Halslänge über ≈ 0,35 nach oben (`sink = 1 − smoothstep(0, 0.35, laenge)`).
+**Nicht wiederholen** (gemessen und verworfen, Planseite „Nachtrag E1“ bis „Nachtrag E1 (dritte Sitzung)“): Gewichte nach
+Hautlänge am Mundwinkel, radiale Umparametrisierung, Ideallage nur innen, innere Stufe in W', Polarkoordinaten um c; Normalenbindung
+in A7, Zellform als Quadrate (MIPS: logarithmisch-polare Spirale um c), Zellform zur Kissen-Vorlage, Reihen nach Hautlänge auf den
+Kartenspeichen, Naht der Stufen glätten, Karte auf feinerem Netz, Feld verlängern; Übergangsreihe mit Polpaaren, symmetrischer
+Schlitz in der Karte, Auffaltung der Karte an der Spitze, Ortskarte, reines Band ohne Kappe, Fächer als Quadrat, Fächer hinterher
+drehen, Fächer um den Kontrollpunkt c (faltet, wo die Linie neben der Haut liegt); (E2) eine Stufe statt zwei, Verdrehung
+anteilig in Reihe J_i, Reihe J_i weiter außen, Fächerachse aus Endtangente oder letzter Lippenkante, Fächerradius = letzte
+Lippenspanne, ganzer Ring um c fest, drei Schritte Nahtausgleich, Polpaare für die Verdrehung, Ecke am Linienanfang ohne
+passende Lippe.
 
-- **Lippenschnitt‑Fenster**: der Schnitt gilt nur für Haut nahe am Lippenradius (0,6 … 1,5 ×, als stetiges Fenster in der Mundwinkel‑Maske `G`); Schwanz, Beine oder Rumpf auf gleicher Höhe bleiben ungeschnitten (versunkener Kopf mit weit hinten liegenden Winkeln riss sonst Extraschlitze, Test `mundschnitt.test.ts`). Halsstationen, die im Rumpf liegen, entfallen im Achsen‑Loft (Monotonie, Test `stetig.test.ts`).
-- Vorlagen: Kopf auf den Schultern = Halslänge **0,18** (Rex, Tiger, Retriever); Reihe `wesen-reihe-giraffe-hals.laenge-zu-seite.png` zeigt den stufenlosen Aufstieg 0 → 0,7.
+Je Schritt: Planseite „Stand …“ nachtragen, Register, Bilder, commit + push; nichts als „bestanden“ melden ohne Florian.
 
-**Befund dieses Blocks, ehrlich:** die gemessenen Silhouetten allein machen die Tiere noch nicht erkennbar — Bild 9 (Tiger) ist eine Dreiviertelansicht, Bild 5 (Rex) enthält Flügel/Füße, und der Dome kann einen überhängenden Kopf nur als Belt‑Form. Der Tiger liest sich mit eigenem Kugelkopf über dem Rumpfprofil besser (Überdeckung 0,70), der Rex mit eigenem Kopf. Die Form‑Lücke schließt am schnellsten **Florians Hand**: Silhouetten im Editor ziehen oder Blender‑Master (Mesh → Distanzfeld, noch zu bauen).
+## Fallen aus E2.6 (Leiter)
 
-## Block 7 (08.10. abends): Linien weg, Lippenlinie als Kieferwechsel, Schädel kippt, Beine getrennt, Laufdemo
+- **Die Ursache prüfen, bevor man baut:** Robbe hoch war kein spitzer Anfang (78°), sondern ein langer schmaler Keil zwischen
+  Linie und Naht — in einem Streifen zwischen zwei *benachbarten* Seiten des Kartenrechtecks laufen Reihen und Speichen beide
+  längs, in jeder Lage. Die geplante Eckenentfaltung hätte nichts geholfen.
+- **Zählung:** Jede Sprosse spart dem Feldrand eine Speiche — die Lippe muss um (q − 1)/2 wachsen, q ungerade.
+- **Coons-Flächen tragen keine langen, eingeschnürten Streifen** (Robbe hoch J faltete) — Leiterfeld in seiner eigenen Karte
+  mit Tutte legen.
+- **Lippenteilung an P stetig halten:** konform in der Ringkarte sprang sie an P auf das Doppelte.
+- **Käfig und Lippe brauchen dieselbe Regel** (wieder): An einer Kreuzung laufen im Käfig drei scharfe Kanten zusammen (Ecke),
+  also hat auch die angepasste Lippe dort eine Ecke.
+- **Globaler gegen örtlichen Vergleich:** Das Knick-Tor vergleicht mit dem größten Knick von A0 im Feld — an der Kreuzung hat A0
+  örtlich 11°, der Einsatz 26–30°; Rex mittel J liegt nur deshalb im Tor, weil A0 an der Schnauzenspitze 27° hat.
+- **Langsame Reihe:** Läuft Florian gleichzeitig Chrome/Photoshop, braucht die ganze Reihe 30–40 min statt 5.
 
-Florians Rückmeldungen dazwischen: (a) „Beim Öffnen schiebt sich die Schnauze oft in die Stirn/den Oberkopf — mehr Geometrie muss mit dem Maul mitbewegt werden und flüssiger hinten in den Körper übergehen.“ (b) „Die Beine verschmelzen noch; im Idealfall einstellbar, ob sie verschmelzen sollen. Demo‑Laufanimation zum Testen der Beine.“
+## Werkzeuge
 
-- **Dünne helle Linien über Rumpf und Beine** (Tiger, Rex, Goldie): das Vorzeichen der Lippenseite steckte im Kantenabstand (`region.y`); zwischen Nachbarn verschiedener Seite lief der Wert durch null und der Shader zeichnete dort das Lippenband als Zickzack. Jetzt eigener Kanal `seite` (`CreatureBuild.seite`, `eeExtra.w`, Puffer 15 Floats), Band = Abstand × Seitenfaktor → keine Linien mehr. Lippenband unten bei ω‑Mäulern 0,1 (W nur oben sichtbar).
-- **Zweiter Knick auf Kopfmitte**: Breite (`wxB`), Kante (`nB`) und Überbiss (`endRoundB`) der unteren Kopfhälfte wechselten an der **Stationsmitte** der Loft‑Querschnitte, nicht an der Maullinie — darum lag beim Tiger/Goldie eine gezackte Kante über dem W. Jetzt `LoftStation.split` (Trennhöhe je Station = Lippenlinie `lipHeight(u)` aus `mouth.ts`, mit Neigung, Schwung, ω) und `band` (weicher S‑Wechsel, ⅒ Kopfradius), Vorderkante der Unterform getrennt (`wyL`): die Oberlippe hängt als Wulst über den schmaleren, kürzeren Unterkiefer, der Schädel bleibt rund. Falle: der Loft übergibt die Querschnittsrichtung als **Einheitsvektor** (cb ∈ −1…1), die Trennhöhe ist in Längeneinheiten → Höhe des Flächenpunkts ≈ cb · mittlerer Radius (gemessen mit Profil‑Bisektion, erst dann stimmte es).
-- **Schädelgelenk** (`MouthGeometry.skullHinge`, `upperLever`): der Oberkiefer kippt nicht mehr um die Mundwinkel, sondern mit Stirn und Augen als ganzer Schädel um ein Gelenk hinter dem Kopf (0,55 der Rampe hinter dem Kiefergelenk, höchstens am Hinterkopf); dahinter läuft die Drehung über die Nackenkette (Zone `wSkull`, Ausblendung max(0,35 H, 0,8 Rampe)) in Hals und Rumpf aus. Der **Unterkiefer hängt am Schädel**: sein Gelenk wandert mit der Kippung (Versatz δ = (R_o − I)(J − A)), seine Drehung um die Kieferachse bleibt absolut → die Öffnung vorn ist weiterhin 2 L sin((|θo| + θu)/2), die Mundwinkel reißen nicht. Kehlkette trägt ⅔/⅓ von Versatz und Kieferdrehung; der übrige Kippanteil der Unterseite läuft über die Nackenkette (`jawParts` liefert `f` und `ft`, alle Kettenteile eines Vertex werden in einem Zug aus Rumpf/Hals genommen, Summe ≤ 1). Dehnungstest: Drache 1,8 · Grundblob 3,1 · Rex 2,5 (< 3,2). Erste Fassungen (Gelenk ganz hinten, Kehle mit vollem Versatz) rissen am Kehlende (bis 8,3) — Diagnose über die schlimmsten Kanten mit ihren Knochengewichten.
-- **Beine getrennt**: Verschmelzgruppe im Distanzfeld (`PrimBase.blendGroup`/`kIntra`, `evalScene` und `evalSceneDetailed` vereinigen Gruppenmitglieder erst untereinander, dann die Gruppe mit `k` in den Rest). Regler `unterkoerper.beine.verschmelzen` 0 (getrennt, Standard) … 1 (ein Sockel); mit dem Rumpf verschmelzen die Schenkel immer.
-- **Demo‑Gang** (Lab‑Knopf „Laufen“, `?laufen=1`, Store `laufen`): Hüfte schwingt um die Querachse, Knie knickt im Schwung, Fuß hält die Sohle, Körper wippt; Zweibeiner gegenphasig, Vierbeiner diagonal, Achtbeiner wechselnd (`CreatureMesh.laufen`, Amplitude blendet weich ein/aus). Kein Bodenkontaktmodell — nur zum Prüfen der Beinform in Bewegung.
-- Bilder: `wesen-vergleich-{retriever,vierbeiner,keil}-{zu,auf}.png` (DPR 2), Seitenansichten `wesen-lab-{retriever,vierbeiner}-zu-seite-seite.png`.
-- **Nachtrag (später am Abend):** (1) „Reißverschluss“ am Hinterkopf des Tigers = Sprung der Musterkoordinaten an der Gruppengrenze (Bogenlänge/Winkel aus verschiedenen Mittellinien) → `computeDescriptors` mischt die Wirbelsäulen‑Koordinaten über die Gruppen der vier Knochen und legt jede Gruppe an der Wurzel an die Rumpf‑Bogenlänge an (`sOff`/`sSign`, Beine rückwärts). (2) Haarfeine helle Linie über Hinterkopf/Schulter = Sprung des Kantenabstands (Vorgabewert 1e3 außerhalb des Schnittfensters) unter der ableitungsbasierten Glättung des Lippenbands → Abstand für alle Vertices, Glättungsbreite ≤ ½ Band. (3) Florian: Schwanz flüssiger (Kanten, Knubbel) → Trichter des Anhangs ganz im Rumpf, außen sofort Schwanzdicke, Verschmelzung ≈ 3 Schwanzdicken; Verjüngung erst langsam. (4) Florian: Oberschenkel schwingt beim Laufen zu heftig (hohe Hüfte), „etwas Hüftschwung“ → Hüftamplitude 0,26 rad · (1 − 0,4 · Hüfthöhe), Becken dreht (±0,11 rad) und kippt (±0,05) mit dem hinteren linken Bein, Schultern halb dagegen, Rumpf pendelt seitlich.
+- **Tests:** `packages/shape/src/kern/einsatz/kernring.test.ts` (Lippe als Falte, Topologie an 54 Fällen auf K2, Wächter: genaue
+  Haut an drei Fällen, Mundwinkel an drei J-Linien, keine umgeklappte Zelle an Robbe hoch, Spitzen von A0 an Robbe mittel und Rex
+  mittel), `kernring.extrem.ts` (ganze Reihe: Haut-Tor an allen Körpern außer `OFFEN`, dasselbe über alle Fälle als `it.fails`,
+  Mundwinkel-Tor an allen; `npx vitest run -c vitest.extrem.config.ts src/kern/einsatz/kernring.extrem.ts` aus `packages/shape`,
+  ≈ 5 min), dazu die übrigen `einsatz/*.test.ts` (`FALL_ALT`, bitgleich). Lauf:
+  `pnpm --filter @ee/shape test`.
+- **Messskripte** (aus `packages/shape`: `npx vite-node ../../apps/editor/scripts/pruefen/<datei>`):
+  - `teilA/e1-reihe-k2.ts` — ganze Reihe nach dem Standard (≈ 4 min, im Hintergrund): je Fall Haut, Knick, Mundwinkel (je gegen
+    A0), umgeklappt, Güte, Lippe, Leiter; Summe am Ende. Umgebung `FAELLE`, `LAGE` (karte/band), `J`, `ECKE`, `WULST`, `VERL`,
+    `FELD`, `KAPPE`, `FAECHER`, `NAHT`, `A0` (alt|editor), `A0PLAN`, `NR`, `SPITZEN`, `LAH` (0 = Lippenziel aus der Linie),
+    `LEITER` (0 = ohne Leiter), `AUS` (JSON-Zeilen). `A0=alt ECKE=0.25 NAHT=karte NR=0 SPITZEN=0 LAH=0 LEITER=0` = Stand vor E2.
+  - `einsatz-loesen.ts` — Nahaufnahme des Mundwinkels (A0 · Einsatz · Abstand · Zebra): `NEU=1 NAH=3` (NAH in Feldkanten, fester
+    Ausschnitt; `ANFANG=1` um den Linienanfang), optional `J`, `ECKE`, `WULST`, `LAGE`, `KAPPE`, `FAECHER`, `NAHT`, `A0`, `NR`,
+    `SPITZEN`, `LAH`, `LEITER`, `STELLE` (Ausschnitt um eine Lippenstelle, z. B. den Hals), `AUSGABE` (Ordner); Bild mit
+    `node scripts/pruefen/html-shot.mjs <html> <png> 1300` (aus `apps/editor`).
+  - `teilA/e1-gitterbild.ts` — Gitter als SVG (`AUSGABE=<datei.html>`, `NAH`, `ANFANG`, `LAGE`, `ECKE`, `KAPPE`, `FAECHER`,
+    `NAHT`, `A0`).
+  - `teilA/e1-haut.ts`, `teilA/e1-reihe.ts`, `teilA/e1-faecher.ts`, Kissen-Vorversuche wie bisher.
+- **Fälle:** `<körper>/<anfang>/<form>` (z. B. `kugel/mittel/gerade`, `ei/tief/j`, `langhals/hoch/j`), Liste `einsatzFaelle()`;
+  „ausgeglichen“ = Linie ≤ 1 px auf der Haut (`hautAbstand`), das sind 39 von 54.
 
-**Befund, ehrlich:** Offen ist der ganze Kopf jetzt eine Masse (keine Schnauze mehr in der Stirn), aber bei Tiger/Rex trägt der Oberkiefer 72°, weil der Unterkiefer am Boden/Rumpf nur 6–16° bekommt — das Tier schaut dann senkrecht nach oben (Pez‑Look). Die Bögen zeigen eher 30–40° Schädel und 60–70° Unterkiefer; dafür müsste der Unterkiefer unter die Brust dürfen oder der Rumpf vorn Platz lassen (Rumpfprofil). Der Tiger hat hinter dem Kopf eine Rinne zwischen Hals‑Loft und Rumpfkuppel (im Seitenbild als Reißverschluss sichtbar) — nächster Punkt.
+## Fallen aus E1
 
-## Block 8 (08.10. spätabends): Lefzen als Lappen, Zähne am Rundmaul, Kieferstufe, echter Hüftschwung
+- **Mundwinkel nicht in Lippenspannen messen:** Ein Messbereich, der an der letzten Lippenspanne hängt, schrumpft mit ihr und
+  schönt jede Verkleinerung der Spanne. Fester Umkreis (drei Feldkanten) für Maß und Bilder.
+- **Lippenwulst und K2 vertragen sich nicht:** Ein schmales Band mit 0,4 px Höhe löst der feinere Käfig auf (Steigung bis 12°) —
+  3–5° Knick längs der Lippe. Wer Abstand zwischen geschlossenen Lippen will: in der Tasche (A8), nicht in der Haut.
+- **Schlitz und Linie müssen aufeinander liegen:** Ein Kantenpfad bis 2,8 px neben der Linie gibt am Mundwinkel 160–179°.
+- **Feste Ränder einer Tutte-Stufe müssen zueinander passen:** Nahtspeichen nach Bogenlänge und eine Reihe auf ihrer Kartenlinie
+  widersprechen sich, sobald die Karte längs der Naht ungleich dehnt — der Rand der äußeren Stufe läuft zurück, Zellen klappen um.
+  Alles, was in einer Stufe fest ist, in denselben Koordinaten setzen.
+- **Vorgaben auf der Haut aus Lagen der Haut bauen:** Der Kontrollpunkt c der Lippe liegt neben der Haut, wenn die Linie es tut;
+  ein Kreis um ihn faltete 19–32 Zellen. Mittelpunkt ist die Lage von c in der Karte.
+- **Ein größeres Feld macht Fälle erst echt:** Mit dem ganz begradigten Feld fielen Rex/Robbe auf eine grobe Lippe zurück (m = 14)
+  und zeigten Fehler nicht, die das Band um die Linie zeigt. Nach einer Feldänderung immer die ganze Reihe samt Rex/Robbe und die
+  15 Fälle neben der Haut ansehen (`umgeklappt` über alle 54).
+- **Konforme Lagen sind um c gestaucht** und die Karte zeigt am Linienende nicht in die Verlängerung — Lagen, die Richtungen der
+  Karte an c übernehmen, falten (Reihen nach Hautlänge: 179°).
+- Nachbarlisten für `normalSystem` ohne doppelte Einträge übergeben: Cuthill–McKee reiht sonst Punkte doppelt ein, die Zerlegung
+  bricht mit „nicht positiv definit in Zeile 0 (0)“ ab.
+- Tests an der Naht: −0 gegen 0 scheitert an `toBe` — Fehler sammeln und vergleichen, nicht je Wert `toBe`.
+- Gegenproben am alten Code mit `git stash push -- <nur die Quelldateien>`, dann `git stash pop` (vorher `git diff` sichern).
 
-Florians Rückmeldungen: (a) „Laufen ist schon besser — etwas mehr **echten Hüftschwung** mit abknickender Wirbelsäule, damit der Hintern hin und her wackelt wie bei Goldies.“ (b) „Das W‑Maul ist noch nicht gut: nur OBEN am OBERKIEFER, NICHT unten, nur die äußere Geometrie, nicht Zähne oder Maulinnenraum — wie 2 Lappen, die übers Maul drüberhängen. Die Maulkurve soll sich auch in die andere Richtung bewegen lassen (Drache). Beim Rundmaul stimmen die Zähne noch gar nicht.“ (c) „Schmalerer/kürzerer Oberkiefer soll bei der Öffnung wirklich kleiner sein und in den Unterkiefer passen (oder umgekehrt); aktuell bleibt das Maul fast bündig — kein Platz für Hauer. Zähne dürfen sich nicht durch die Kiefer bohren.“
+## Fallen aus E2
 
-- **Lefzen als eigene Lappen** (`mesh/build.ts`, nach dem Lippenschnitt): die Maullinie (Schnitt, Zahnreihen, Tasche, Trennhöhe im Kopf‑Loft) ist jetzt **glatt** (`lipHeight` ohne ω); bei `wForm` > 0 hängen zwei dünne Schalen des Oberkiefers über die Linie (`lefzenTiefe(u)`: null am Philtrum und hinten, Scheitel bei u ≈ 0,26, Tiefe 0,16 · wForm · Kopfhöhe). Gitter 13 × 6 je Seite über der Haut (Feldgradient als Normale), Außen‑ und Innenlage als Schale (Dicke 2 % H), Kanten geschlossen, Seite +1 (Oberkiefer), Lippenband an der Lefzenkante (Kantenabstand). Das W entsteht außen aus den zwei Lappen und der sichtbaren Linie am Philtrum. Nase/Scharte unverändert (Uniforms).
-- **Maulschwung in beide Richtungen**: `maul.schwung` −1 … 1 (negativ wölbt die Linie hinter der Schnauze nach oben — Drache, Bild 5 rechts); Maul‑Editor zieht den Griff entsprechend.
-- **Zähne am Rundmaul**: Die Lippen weiten sich beim Lochmaul im Shader (Spitzmund‑Feld), die Zähne blieben am geschlossenen Rand stehen (Reihe `wesen-reihe-aal-maul.form-auf.png` vorher: eine Zahnlinie quer durchs offene Loch). Jetzt trägt jeder Zahn seinen Spitzmund‑Versatz (`Tooth.pucker`, dieselbe Formel wie die Haut am Rand) und rückt mit der Öffnung (Mesh: Instanzmatrizen je Bild; CPU: `posedTeeth`); bei voller Öffnung zeigt er zur Mitte des Lochs (Mischung mit der Keilrichtung nach `form`); Fänge/Größenwechsel sind Keil‑Merkmale (× `form`), das Rundmaul bekommt eine gleichmäßige Reihe (Aal, Bild 16).
-- **Kieferstufe** (`sdf/build.ts`, Kopf‑Loft): der Breiten‑/Längenwechsel der beiden Kieferformen liegt ganz auf der Seite des **größeren** Kiefers — der Schnitt läuft an der Innenkante der Stufe, am Fuß des kleineren Kiefers (`split = Lippenlinie ± Band`, Vorzeichen aus dem Breitenunterschied, weich). Unterbiss (`biss` < 0, `kieferbreite` > 0): der Unterkiefer behält die Stufe als **Plateau**, seine Zähne/Hauer stehen darauf außerhalb des Oberkiefers; Überbiss: der Oberkiefer behält sie als **Sohle**, seine Fänge hängen außen über den Unterkiefer (`stufeBei(φ)` misst die Stufe am Feld; Versatz 0,55 … 0,9 der Stufe nach `zaehne.aussen`). `biss` < 0 verkürzt jetzt die Oberform vorn (Bulldogge).
-- **Falle Kieferstufe**: liegt der Schnitt genau auf der fast waagerechten Stufenfläche, ist die Höhe dort kaum verschieden und der Schnitt springt radial hin und her — die Ränder zerfransen (Kammzähne ohne Zähne sichtbar, `wesen-reihe-vierbeiner-zaehne.groesse-auf.png` vorher). Deshalb beginnt die Stufe erst 0,4 Band über bzw. unter der Linie (`split = Linie ± 1,4 · Band`): der Schnitt bleibt auf der steilen Fläche des kleineren Kiefers.
-- **Hüftschwung**: das Becken (`koerperUnten`) dreht um eine senkrechte Achse **an der Brust** (Drehung ±0,2 rad plus Versatz, Brust steht, Hinterteil schlägt aus), kippt ±0,06 rad zur Seite des vorschwingenden hinteren linken Beins; Mitte und Schultern drehen je zur Hälfte zurück (Wirbelsäule knickt, Kopf ruhig), der Schwanz wedelt mit. Oberschenkel‑Amplitude 0,26 · (1 − 0,4 · Hüfthöhe).
+- **Käfig und Lippe brauchen dieselbe Regel:** Eine Ecke an U₀ nur im Käfig (Punktschärfe) ohne die Ecke in der Lippenanpassung
+  machte die Haut schlechter (Rex mittel 0,5 → 3,8 px). Jede Regel am Lippenrand gilt in Topologie, Lippe (A6), Lösen (A7) und
+  Messen gleich (`t.lippenAnfang`).
+- **Reihenwahl in der Koordinate der Reihen:** Mit umparametrisierter Naht liegen die Reihen in U'; ein scharfer Nahtpunkt, dessen
+  Reihe noch in U gesucht wurde, landete auf der falschen Reihe, die Nahtpunkte verloren ihre Ordnung (168–179°).
+- **Knick an Spitzen nicht messen:** Der Winkel zwischen den feinen Flächen an einer Spitze hängt am Netz; der Umkreis muss den
+  Käfig-Ring der Spitze fassen (eine Feldkante, eine halbe reichte nicht).
+- **Ergebnisse doppelt prüfen:** Ein Lauf mit `SPITZEN=1` zeigte einmal keine Wirkung, der nächste schon — wichtige Zahlen mit einem
+  zweiten Weg bestätigen (Einzelskript und Reihe).
 
-## Block 9 (08.10. nachts): zwei Maulränder, getrennte Kiefer, Maullinie als Punkte
+## Davor (V0–V6, Abnahme offen)
 
-Florian: (1) W‑Maul macht eine Kante unter der Schnauze; (2) Giraffe: große Tropfennase über dem Maul, das sich bohnenförmig darunter öffnet, Tiger eher Lochmaul; (3) **ungleich große Kiefer dürfen nicht mehr bündig schließen** — der größere Kiefer hat das größere Maulteil, Hauer wachsen in die freie Stelle (Drache); (4) Tiger‑Gesicht nach Bild 9 am weitesten weg; (5) Maulschwung über Punkte im Editor, runder; (6) obere und untere Maulseite getrennt in Breite und Länge.
+Maßgeblich bleibt der am 20.10. freigegebene Plan
+[`docs/plans/2026-10-20-vektorillustration-bedienung.md`](plans/2026-10-20-vektorillustration-bedienung.md) (Stände V0–V6.4 am
+Ende der Seite); Teil A ist der Block, den Florian am 21.10. früh davor gezogen hat. Gebaut und im Editor (Abnahme offen): V0
+Fallen und Bedienfehler, V1 Prüfstand „Extremreihe“, V3 G/S/R und proportional in den Blättern, V4 Querschnitt aus der Sichthülle,
+V5 P-Linien als Käfigschleifen, V6 ⌘R-Loops (Bühne und Blätter, G/S/R, mehrere Loops); V2-Linien nicht abgenommen („sehr sehr
+wild“, standardmäßig aus). Offen danach: V6-Rest (jeden Käfigring als Loop, Loops auf „Teile“/mit Maul), V5-Rest (Lage 0,3 px,
+Grat), V7 ein Körper, V8 Vektor-Ausgabe, V9 Abnahme.
 
-- **Zwei Maulränder** (`mesh/mundschnitt.ts`): der Lippenschnitt schneidet bei einer Kieferstufe zweimal — Oberkieferrand auf der Oberform, Unterkieferrand auf der Unterform (Kurven `lipHObenAt`/`lipHUntenAt` = Maullinie ± Stufe aus `host.kieferStufe(u)`), die Haut der Stufe dazwischen entfällt, die Tasche spannt den Spalt auf (Unterreihe nach φ interpoliert, Reißverschluss zu den echten Unterrand‑Vertices). Geschlossen bleibt das Maul dort sichtbar offen: Rex‑Reihe `wesen-reihe-keil-maul.kieferbreite-{zu,auf}.png` zeigt bei −0,7 die Fänge außen über dem schmalen Unterkiefer, bei +0,7 die Hauer auf dem Plateau neben dem schmalen Oberkiefer. Zu den Mundwinkeln laufen beide Ränder in der Stufenmitte zusammen. Zähne stehen auf ihrem eigenen Rand (kein `stufeBei`‑Versatz mehr). Bei gleich breiten Kiefern ein Rand wie bisher.
-- **Nur Breite macht zwei Ränder**: eine Längendifferenz (`biss`, `oberkieferLaenge` > `unterkieferLaenge`) ist die Nase, die über das Maul hängt — darunter schließt das Maul bündig (Goldie, Giraffe). Falle: die Stationsbreiten werden vorn auch durch den kürzeren Kiefer kleiner und sahen wie eine Breitenstufe aus (Maul klaffte) → Stufe aus den Breitenreglern, nicht aus den Stationen; Stufe proportional zum Unterschied (voll ab ⅕ Kopfradius).
-- **Getrennte Maulseiten**: `maul.oberkieferBreite`, `unterkieferBreite` (0,4 … 1,6), `oberkieferLaenge`, `unterkieferLaenge` (0,4 … 1,3); die längere Seite bestimmt die Kopflänge vorn, die kürzere endet früher (`biss` bleibt als Zusatz, Unterbiss verkürzt jetzt die Oberform). Giraffe: Oberkiefer 1,15 lang / Unterkiefer 0,85 → Tropfennase, `form` 0,45 → Bohne darunter.
-- **Maullinie als Punkte** (`maul.linie`, Bézier‑Kontrollwerte in Kopfhöhen über u): im Maul‑Editor (Seite) vier ziehbare Punkte auf der Linie; der erste Zug übernimmt die Regler‑Form (Neigung/Schwung) als Start, „Linie zurück auf Regler“ löscht sie. `lipHeight` nimmt die Linie, wenn gesetzt (ersetzt Neigung und Schwung; Höhe und Winkel bleiben).
-- **Lefzenansatz ohne Kante**: der Lappen liegt oben bündig auf der Haut (Versatz 0) und hebt sich erst im unteren Drittel ab; Innenlage dünner zum Ansatz.
-- **Tiger nach Bild 9 (erster Durchgang):** neue Regler `kopf.backen` (Unterkieferbacken hinter den Mundwinkeln: der Kopf wird unten breiter als oben, Backenbart) und `muster.gesichtHell` (Bauchfarbe um Maul und Augen über die Gesichtsmaske: weiße Schnauze, Kinn, Backen). Vorlage: Kopf 2,2 auf sichtbarem Hals 0,3, kurze flache Front (`laenge` 0,8, `schnauze` 0, `kante` 1), Stirn 0,25, Backen 0,6, Augen klein, hoch und weit auseinander, Maul vorn kurz (`winkel` 0,15, `breite` 0,55) mit kleinem Katzen‑W (`wForm` 0,45) und großer Nase, Bauchlinie 0,42. Lesbar als Katze, aber noch weit von der Vorlage: die Front müsste eine **flache breite Platte** mit schmalen Schlitzaugen und zusammengezogenen Brauen sein, der Rumpf ein hohes Ei statt einer Kugel. Nächster Schritt: Gesichtsplatte als eigene Form (Front‑Profil im Editor zeichnen) und Schlitzaugen als schmale gelbe Mandeln.
-- **Raubkatzenkopf, zweiter Durchgang (Florians Markierung: runde Basis + klare Formen):** zwei Rundbox‑Formen im Kopfrahmen (`CustomPrim` mit `sdRoundBoxLocal`): **Nasenband** (`kopf.nasenband`, breites flaches Band von der Stirn zwischen den Augen zur Nase, ragt 0,1 Kopfradius vor) und **Kastenmaul** (`maul.kasten`, Maul und Kinn als Block vor dem Schädel, ragt 0,14 vor, Kinn markant); beide weich angeschlossen (k 0,1/0,12 Kopfradius). Geschlossen ergibt die Maullinie mit Winkeln unter der Mitte (`neigung` −0,35, `winkel` 0,12, `breite` 0,5, `wForm` 0) plus Philtrum den „Mercedes‑Stern“ mit der Nase oben; offen (`form` 0,5, `rundung` 1) wird der Schlitz ein fast rundes Maul, das Kinn geht als Block nach unten. Augen rund — Schlitzaugen als schmale gelbe Mandeln bleiben offen; Kanten der Boxen eher hart (k erhöhen, wenn Florian weicher will).
-- **Nach Florians Skizze (dritter Durchgang):** Kastenmaul ragt jetzt deutlich vor den Schädel (0,05 … 0,47 Kopfradius), reicht bis unter ihn (Kinn), große Rundung 0,17 und leichte Verjüngung zum Kinn (organischer); Nasenband als flaches **Trapez** (schmal an der Stirn, breit zur Nase). Maul‑Editor: Linienpunkte wirkten nicht (`Math.round` auf das Array ergab NaN → Änderung verworfen) — behoben; Linienpunkte kleiner, der Punkt am Mundwinkel folgt dem Winkelgriff.
-- **Aufreißen beim freien Kopf (Florian: Geometrie fuhr in Stirn und Unterkörper, der Hinterkopf stand still):** (1) der **Kopfknochen selbst** kippt und hebt sich mit (`jawTransforms` liefert `kopf = tilt(kopfFrei)`, `CreatureMesh.applyPose` setzt alle Kieferknochen als absolute Transformationen und rechnet die Kinder relativ zum bewegten Kopf: Lokal = Welt(Eltern)⁻¹ · Welt, Welt = Abs · T(pos)); alles mit Restgewicht auf dem Kopf (Hinterkopf, Augen, Mundwinkel) bewegt sich mit — die Mundwinkel rissen sonst 23‑fach. Der Kippanteil kommt aus den Knochengruppen (`fKnochen`: Kopf/Kiefer 1, Halsknochen 1 → 0, Rumpf 0) und läuft so über den Hals aus. (2) **Anheben** `lift` = 0,14 Kopfhöhen · `kopfFrei` (smoothstep der Halslänge 0,1 … 0,3) bei voller Öffnung, auch in der Unterkiefer‑Schranke mitgerechnet. (3) **Kiefergelenk am Hinterkopf** beim freien Kopf (`zHinge` = min(Mundwinkel, −0,4 · jointBack), mit `kopfFrei` geblendet): bei kurzem Katzenmaul lag das Gelenk direkt hinter den Mundwinkeln (Hebel 0,33) — beide Kiefer liefen sofort in die 72°‑Sättigung, der Schädel kippte wie ein Pez‑Spender. Jetzt Tiger: Unterkiefer 30°, Schädel 7° bei `oeffnung` 0,6 (Vorlage; 1,0 = 1,6 Kopfhöhen bleibt möglich). Versunkener Kopf (Rex) unverändert (Test `kette.test`). (4) Die **Zacken auf der Flanke** waren das Spitzmund‑Feld: Reichweite bis 1,3 Kopfhöhen vom Rand mit Wurzelkante bei den Mundwinkeln — jetzt ≤ 0,45 Kopfhöhen und weg vom Rand weicheres Profil.
-- **Kastenmaul nach Florians Zeichnung:** zur Nase hin breiter (Trapez, oben 1,35 ×, Kinn 0,65 ×), nach unten lang bis unter den Schädel; **Nase als flaches Dreieck direkt vorn auf der Oberkante des Kastens**, so breit wie der Kasten (Keil‑Form im Feld + Dreiecksmaske im Shader: Uniforms `naseOben` (xyz Oben, w Höhe), `naseRechts`; Höhe 0 = runde Nase wie bisher).
-- **Nasenband als Rampe** (Florian: „die Verbindung von Nase zur Stirn soll eine Linie sein“): eine schräge Rundbox, deren Oberseite in einer Geraden von der Schädelfläche auf Augenhöhe (am Feld abgetastet) zur Oberkante des Kastens läuft; an der Nase so breit wie der Kasten, zur Stirn halb so breit (`trapezZ`), eigener Rahmen (`rundbox` nimmt `frame`). Füllt die Stufe zwischen rundem Schädel und vorstehendem Kasten.
-- **Kasten folgt der Maulhöhe** (`maul.hoehe`): Maullinie bei 45 % der Kastenhöhe (Florian konnte das Maul über Kasten und Nase schieben); Reihe `wesen-reihe-vierbeiner-maul.hoehe-zu.png`.
-- **Schwanz**: `schwanz.spitze` (Dicke am Ende relativ zum Ansatz, 0,2 … 1,6 — Keule wie Bild 9) und `schwanz.schwung` (Bogen in der Mitte ±1); Dickenverlauf als Bogen Ansatz → leichte Taille → Spitze. Tiger: Spitze 1,3, Schwung 0,2.
-- **Maultasche glatt** (Florian: „wie eine Blume mit ausgefransten Blüten statt eines runden Lochs mit scharfen Kanten“): die Spalten der Tasche gehen nicht mehr vom je eigenen, unregelmäßigen Schnittpunkt aus, sondern von einer Gauß‑geglätteten Randkurve (σ = θ/9), die zu den Mundwinkeln hin ausläuft (dort zöge sie die Basis seitlich weg — verdrehte Vierecke, weiße Löcher); die Ränder selbst bleiben exakt (scharfe Kante). Gitternormalen (Spalte × Zeile) statt Facetten und **ein** Vorzeichen für das ganze Gitter statt je Dreieck gegen ein Zentrum (das kippte an den flachen Winkeln → weggeklappte Dreiecke). Aal und Tiger offen: runde glatte Höhle.
-- **Shader‑Agent (parallel, eigener Branch, zusammengeführt in aed8eb5):** Glimmer der festen Blobs (Bild 18), mehr Linienzonen kombinierbar mit Mustern/Schuppen, Jelly (Lavalampen‑Organ, Bläschen ohne Outline, Bodenschatten mit Abstand zum Rand). Integration durch die Leitung nach Bericht.
+## Arbeitsregeln
 
-## Block Shader (08.10., parallel, Branch `worktree-agent-aa50889d187f72b82`): Glimmer, Jelly, Zonen, Musterbibliothek
-
-Florian: „Vor allem der Glimmer meiner festen Grundwesen ist noch nicht gut, und mehr Muster-Linien … mehr als Bauch- und Rückenlinien, kombinierbar mit Mustern oder Schuppen. Jelly: die dunklere Bubble organisch wie in einer Lavalampe, die weißen Bubbles ohne Outline, der untere große Schatten immer mit etwas Abstand zum Wesenrand.“
-
-- **Glimmer** (`earleCreature.ts`, Bild 18 oben): Korn im Körperraum, das mit der Bildschirmgröße skaliert (zwei Oktaven Wertrauschen, gemischt wie Mipmaps → ein Korn ≈ 3 Pixel, nah wie auf dem Brett, zu feine Oktaven blenden aus), gegen den Ton gerastert (im Licht mehr helle, im Schatten mehr dunkle Körner). Mit Glimmer: Lichtseite warm bei gleicher Helligkeit (Lila → Rosa, Türkis → Gelbgrün), Schattenseite kühl (Blauviolett, Blautürkis), helle Körner warm, dunkle kühl, dazu wenige weiche Funken, deren Dichte mit dem Licht wächst (langsames Funkeln 9–25 s, eigene Neigung → sie wandern, wenn sich das Wesen dreht). Regler `muster.glimmer` (je Wesen, mal Stil-Glimmer) und Farbe `muster.farben.glimmer`. Vorlagen `fest` (Lila, Bild 18 links) und `grundform10` (Türkis mit Gelbglimmer, Bild 18 rechts) Glimmer 1; Tiervorlagen 0,1 (die Bögen 3/5/6/8/9 zeigen Korn, keinen Glimmer). Shader-Uhr `zeit` läuft nur beim lebenden Wesen (Standbild bleibt gleich).
-- **Jelly** (`jelly.ts`, Bild 1): der dunkle Klumpen ist eine **Lavalampe** — Abstandsfeld aus drei weich verschmolzenen Tropfen (Hauptklumpen steigt, sinkt, atmet; zwei Tropfen kreisen auf unrunden Bahnen, Perioden 50–90 s, nie hektisch), entlang des Blicks mit 28 Kugelschritten abgetastet, auch innen weiter: der kleinste Abstand längs des Strahls ist über die Kante stetig → scharf und geglättet (ein Abbruch beim ersten Treffer zeichnete Höhenlinien). **Bodenlappen** = Ellipsoid aus der gemessenen Grundfläche des Körpers (`measureJellyFloor`: 72 % der Breite bei ¼ Höhe, 11–46 % der Höhe) → hält immer Abstand zum Rand; die Randabdunklung unten und die Boden-Verdickung sind weg, der Lappen ist dunkler als der Klumpen (Bild 1 gemessen: L 106 gegen 148). **Bläschen** weiche, leicht getönte helle Scheiben ohne Ring. Der dunkle Glasrand (eine Kontur) ist einem breiten Saum gewichen (Lichtseite heller, Schattenseite satter, unten nicht). Glanz nur auf der oberen Rundung rechts (die zweite Spiegelung unten rechts ist weg).
-- **Zonen** (`muster.ts` `zonenMaske`, Schema `muster.zone1–3`, Panel-Gruppen „Zonen“ und „Zone 1–3“): **Art** (Bauch, Latz/Kehle, Rückenstreifen, Band, Augenmaske, Socken, Schwanzspitze), **Lage**, **Breite**, **Federung**, **Farbe** und **Musterbezug** (ohne Muster · Muster drüber · im Zonenton · nur hier · nur hier im Zonenton). Jede Grenze ist ein Abstand in Körpereinheiten, leicht gewellt (`muster.zittern`), weich-hart gefedert — eine Fläche, nie eine Linie. Latz: Bogen vorn vom Boden bis zur Lage; Rückenstreifen mit Pinselspitzen an beiden Enden; Band waagerecht in der Gesamthöhe; Augenmaske = Ovale um die Augen (bei großer Breite ein Band, Lage hoch = Brauenpunkte); Socken/Schwanzspitze aus der neuen **Teil-Koordinate** (`eeTeil`, Beine −t, Schwanz/Schlange +t, aus Teilgruppe und Knochenkette, `teilKoordinate`). Flächen werden erst als Farbrolle gemischt und dann einmal schattiert (Schuppenrelief und Rim nehmen die Zonenfarbe). Vorlagen: Tiger mit weißem Latz (Streifen bleiben draußen), Aal/Schlange mit hellem Bauch ohne Schuppen. Die Muster-Ergänzungen der Vorlagen stehen getrennt am Ende von `presets.ts` (`MUSTER_ERGAENZUNG`), damit Form- und Musterarbeit nicht dieselbe Zeile ändern.
-- **Muster waren größtenteils unsichtbar (Falle, behoben):** TSL rechnet einen Knoten, den mehrere `If`-Zweige nutzen, nur in dem Zweig, der ihn zuerst baut — in allen anderen Zweigen ist er 0. In `musterMasks` galten `uArc`, `vArc`, `freq`, `soft` nur im Streifen-Zweig: **Schuppen, Platten, Punkte, Rosetten und Flecken zeichneten nie** (Aal ohne Schuppen, Giraffe einfarbig). Gemeinsame Werte jetzt vor den Zweigen mit `.toVar()`. Dazu: `hash` aus three/tsl macht negative Startwerte zu 0 (alle Zellen mit negativer Kennung gleich), und die lineare Kennung x + 57y + 113z kollidiert entlang (−1, 2, −1) → Streifen und Webmuster im feinen Korn; jetzt `hashPos` und verkettetes `hash3`.
-- **Musterbibliothek überarbeitet** (Bild 3/13/17): Schuppen als gerundete Sechsecke (die alte Fuge lag bei Abstand 0,44 — größer als jeder Abstand im Gitter), zum Bauch hin kleiner; Streifen als Pinselstriche mit schwankendem Druck, an den Flanken breit; Rosetten als unterbrochene Ringe mit warmem Kern, dazwischen Punkte; Punkte dichter; Salamander länglich; Koi großflächig; alle Kanten weich-hart (pixelscharf geglättet statt verschmiert). Die Bauch-Ausblendung der Muster ist schwächer (helle Bäuche machen jetzt Zonen).
-- **Werkzeuge:** `apps/game/e2e/wesen-zonen-shots.spec.ts` — Musterzonen nach Bild 17 (Krokodil, Orca, Clownfisch, Schuppenband, Tiger, schwarz-loh, Rex, Aal), Lavalampe über die Zeit, Musterbibliothek, Panel: `EE_SHOTS=1 E2E_PORT=4485 [EE_FAELLE=krokodil,orca] [EE_SHOTS_TAG=x] node apps/game/scripts/e2e.mjs e2e/wesen-zonen-shots.spec.ts`. Tests `apps/game/src/lab/wesen/zonen.test.ts` (Schema, Panel, Vorlagen) und `packages/render/src/creature2/zonen.test.ts` (Teil-Koordinate, Uniforms).
-- **Bilder** (`docs/progress/`): `wesen-vergleich-jelly-shader[-vorher].png` und `wesen-vergleich-fest-shader[-vorher].png` (Render | Bild 1 bzw. 18, DPR 2), `wesen-lab-grundform10-shader.png` (Türkis mit Gelbglimmer), `wesen-jelly-lavalampe-shader.png` (0–60 s), `wesen-zonen-kontaktbogen-shader.png`, `wesen-musterbibliothek-shader.png`, `wesen-lab-panel-muster-shader.png`, `wesen-lab-kontaktbogen-zu-shader.png` (alle Vorlagen), `wesen-lab-kontaktbogen-brett-shader.png` (Spielgröße), Platten vorher/nachher `wesen-lab-giraffe-shader-vorher.png` / `wesen-vergleich-giraffe-zu-shader.png`.
-
-**Befund, ehrlich:** (1) Glimmer: Korn und Farbverschiebung liegen gemessen nah an Bild 18 (Lila Mitte `#a48fba` gegen `#b299ca`, Kornstreuung ≈ 10 gegen ≈ 11), aber die Türkis-Lichtseite ist grauer als das Gelbgrün der Referenz und Lila unten dunkler (L 92 gegen 126); das Licht kommt nach Stil von vorn rechts oben, in Bild 18 eher von rechts. (2) Jelly: Formen, Abstände und Bläschen stimmen; Farbe blasser und die Oberseite dunkler als Bild 1 (L 189 gegen 219); die Lavalampe bewegt sich nur im Lab (Standbilder stehen). (3) Zonen: Latz, Band, Maske, Socken und Bauch sichtbar geprüft; Rückenstreifen und Schwanzspitze liegen in der Bögen-Kamera meist auf der abgewandten Seite (Rex zeigt den Streifen auf dem Kopf, die Schwanzspitze ist nur im Test geprüft); auf Schlangenwindungen beziehen sich Bauch/Rücken noch auf den Rumpf. (4) Schuppen (und Streifen mit Drehung) haben an der Rückenmitte eine Naht, weil der Umfangswinkel bei ±π springt. (5) Rosetten noch kleiner und lichter als in Bild 17. (6) Kosten: Korn mit zwei Rauschoktaven und verkettetem Hash, Zellmuster mit dreimal so vielen Hashes — auf dem iPhone noch nicht gemessen.
-
-## Block 10 (09.10. früh): Kästen oben/unten, Bohne, Maulspalt (Drache), glatte Höhle, Zunge, Zähne beim Öffnen
-
-Florian: Zähne sitzen beim Öffnen oft nicht mehr; Tiger offen deutlich runder/bohnenförmiger, geschlossen kantig; Höhe und Dicke von Ober‑ und Unterkasten einstellbar; Maulinneres „zerfressen“; offene Mäuler immer als schöne Bohne; **Drache: das Maul erstreckt sich über den kompletten langen Hals** (längste Bohne von der Seite); Zunge nicht schön. Skizze: Maulinneres als glatte runde Höhle, Zunge als pralles Kissen.
-
-- **Zähne beim Öffnen** (Lab, Florians Bildschirmfoto ohne Zähne): zwei Ursachen. (1) Der Spitzmund‑Versatz der Zähne (`Tooth.pucker` · `spitzmund`) stand im Instanzraum **vor** der Knochendrehung, die Haut addiert ihn **nach** dem Skinning ungedreht — beim Unterkiefer (45°) wanderten die Zähne um ¼ Kopfhöhe ins Fleisch, oben um 0,1. Jetzt wird der Versatz mit der inversen absoluten Kieferdrehung (`absRot` aus `applyPose`) in den Knochenraum gedreht; CPU‑`posedTeeth` addiert ihn nach der Drehung. Nachgewiesen per Skript im Lab (Hautvertex am Rand vs. Zahnlage). (2) Florians Lab hing nach dem Shader‑Merge in einem halb geladenen Modulzustand (HMR: „does not provide an export named ZONEN_ARTEN“) — **nach dem Pull den Dev‑Server neu starten**.
-- **Kastenmaul in zwei Kästen**: `maul.kastenObenHoehe/-Tiefe`, `kastenUntenHoehe/-Tiefe` (0,3 … 2): Oberkasten von der Lippe bis zur Nasenkante (oben breiter, Trapez −0,25), Kinnkasten darunter (zum Kinn schmaler), beide überlappen an der Lippe; der Kasten folgt weiterhin `maul.hoehe`.
-- **Bohnenprofil der Öffnung** (`bohneProfil(u, side)`, Lochmaul‑Anteil): Oberlippe spitzer (Exponent 0,72), Unterlippe voll und rund (0,42) — auch für die Zahn‑Versätze. Tiger `form` 0,35: offen rund/Bohne, geschlossen kantig durch die Kästen.
-- **Maulspalt** `maul.spalt` (0 … 1): der untere Maulrand wandert als Bohne (voll vorn, null an den Winkeln) bis knapp über den Trägerboden — die Haut dazwischen wird Tasche, die Lippenränder sind dauerhaft getrennt (Drache: `hoehe` 0,55, `spalt` 0,9 → Maul über den ganzen Hals, Zähne unten auf der Brust). Dafür hat `MouthGeometry` je Rand eine eigene Radiuskurve (`lipRObenAt/UntenAt`, gemessen am Feld), der Schnitt‑Fensterradius und die Entfernung der Zwischenhaut nehmen beide Radien (der Unterrand liegt auf dem breiteren Rumpf).
-- **Glatte Höhle** (`mundschnitt.ts`). Erst drei Fallen nacheinander: (a) ein Vorzeichen fürs ganze Gitter kippte bei weiten Keilmäulern (Goldie, Rex: Tasche weiß = Rückseiten); (b) je Dreieck gegen ein Zentrum kippte an den flachen Mundwinkeln (Löcher); (c) das Spaltenvorzeichen allein ließ den Gaumenbogen vorn weiß. Dann der Drache: weißer Fächer über dem ganzen Maulboden, weil beide Dreiecke eines Vierecks unter **verschiedene** Regeln fielen (Wölbung vs. Spaltenvorzeichen) und die geometrischen Normalen der extrem gestreckten Splitter (Spaltenabstand ≈ ¼ Zelle, Zeilenabstand bis zur halben Tiefe) unzuverlässig sind — gemessen: in den Bändern zum Ober‑ und Unterrand war je ein Drittel der Vierecke gegenläufig. **Jetzt:** jedes Viereck bekommt eine **ideale Normale** aus dem glatten Gitter (Spaltenrichtung × Zeilenrichtung am Viereckmittel, Randzeilen aus den geglätteten Kurven), Vorzeichen zum **Höhlenzentrum** der Spalte (Mitte zwischen den Rändern, halbe Tiefe); entartete Vierecke (Spitzen) erben von der nächsten Spalte; die echten Dreiecke werden so gewickelt, dass ihre Normale mit der idealen übereinstimmt, Gitternormalen nach derselben Regel. Spaltenrichtung `w` zeigt vorn zur Achse und seitlich/hinten zunehmend geradeaus nach hinten (sonst faltete sich das Gitter); Spalten gehen von einer Gauß‑geglätteten Randkurve aus (σ = θ/9, zu den Winkeln auslaufend), die ersten drei Zeilen tragen das Voxel‑Zickzack des echten Rands ausklingend mit, die Ränder bleiben exakt.
-- **Weiße Zacken am Unterrand (Drache)**, per Raycast im Lab nachgewiesen: es waren die **Reißverschluss‑Dreiecke** zwischen den interpolierten Unterrand‑Vertices (Zeile m der Tasche, auf den Spalten des Oberrands) und den echten Schnittvertices. In Ruhe entartet (Fläche ≈ 0), in der Pose geöffnet, weil die interpolierten Vertices nach Kieferfeld und Gewichtsglättung um einige Prozent andere Knochengewichte bekamen als ihre Nachbarn (0,76 gegen 0,97 Kiefer bei 1,5 mm Abstand). Jetzt liefert der Schnitt je interpoliertem Vertex seine beiden Eltern und den Mischanteil (`MundSchnitt.interpEltern`); `build.ts` setzt Gewichte, Spine, AO, Dicke und Spitzmund‑Feld dieser Vertices auf die Mischung der Eltern — der Reißverschluss bleibt in jeder Pose zu. Werkzeug dafür (Browser, `__wesenLab`): Strahlen durch die Pixel, erster Treffer rückseitig und kein vorderseitiger dahinter = weißes Pixel; Drehteller vorher `turntable.spin = false`.
-- **Zunge** als pralles Kissen (geschlossene Fläche, oben gewölbt mit Rinne, unten flach, runde Spitze), breiter (0,85 Halbbreite) und länger (0,88 Tiefe), Dicke halbe Breite.
-- Offen: Pez‑Blick bei `oeffnung` 1 (Kiefer in der Sättigung), Augen als Mandeln, Drachen‑Kopf über dem Spalt (der Oberkiefer ist bei `hoehe` 0,55 noch ein halber Körper), Rex‑Rumpf.
-
-## Block 11 (09.10. vormittags): Öffnungsarten (Ziehen), weiche Wange hinter den Winkeln, Stufe nur im Maulsektor, Nasentropfen
-
-Florian: bei tiefem Maul muss der Oberkiefer beim Öffnen **nach oben fahren** statt nur nach hinten zu kippen; mehr Einstellmöglichkeiten, wie sich das Maul öffnet (Kippen oder Auseinanderziehen); die Übergänge Unter-/Oberkiefer werfen eine Kante seitlich am Oberkiefer entlang (Drache); Giraffe offen „zerrissen“, Nasentropfen deutlich größer, Kante zwischen den Kiefern weg.
-
-- **Öffnungsart** (`maul.ziehen` 0 … 1, `maul.ziehenOben` 0 … 1): Anteil der Öffnung, der durch Auseinanderziehen entlang „oben“ des Trägers statt durch Drehung geschieht; `ziehenOben` verteilt ihn auf Oberkiefer (fährt hoch) und Unterkiefer (senkt sich). Der Unterkiefer senkt sich höchstens bis zur **Bodenschranke** (`MouthGeometry.lowerDropMax`: tiefster Abtastpunkt von Kiefer und Kehlkette über dem Boden, plus Kopfhebung), den Rest übernimmt oben. Eine Formel in `pose.ts` (`JawPose.upperRise/lowerDrop`, Versätze in `jawTransforms`) und `CreatureMesh.applyPose`. Vorlage „Maul unten“: `ziehen` 0,7, `ziehenOben` 1, `oeffnung` 0,45 — der Körper hebt sich, die Unterlippe bleibt am Boden. Test `mouth/ziehen.test.ts` (reines Ziehen: Oberrand hebt sich um die Öffnung, Unterrand bleibt; hohes Maul: Unterkiefer senkt sich bis zur Schranke; Mischung).
-- **Giraffe „zerrissen“** (Lab-Messung: 46 Dreiecke dehnen sich beim Öffnen auf das 2,5-fache, alle Haut, Vertices mit **harten Gegenseiten** in einem Dreieck, 0,03 … 0,16 vom Rand): Die Seite der Hautvertices kam bis 0,6 rad hinter die Mundwinkel hart aus der Maullinie (+1/−1); seit das Kiefergelenk des freien Kopfs am Hinterkopf sitzt, hat die Wange hinter den Winkeln Hebel und riss zwischen Oberkiefer- und Unterkieferseite auf. Jetzt läuft die Seite hinter den Winkeln über 0,55 rad in die **weiche Seite nach Höhe** aus (`MouthGeometry.seiteFeld`, dieselbe S-Kurve wie `jawParts` ohne Seite), `jawParts/upperParts` mischen linear nach der Seite. Die Höhle ist jetzt eine glatte Bohne.
-- **Kante seitlich am Oberkiefer entlang**: (a) Körperträger (Drache): die Kieferbreite (`maul.kieferbreite`) verengte den Rumpf ringsum als Gürtel — jetzt gilt sie nur im **Maulsektor** (`LoftStation.wxSektor/sektor`, Winkel ab vorn, Sektor = θ − 0,15, Auslauf 0,7 rad). (b) Freier Kopf (Giraffe, Tiger): das Trennband der Kieferhälften (`splitBand`) ist jetzt je Station — an den Lippen ⅒ Kopfradius, hinter den Mundwinkeln bis 0,45 Kopfradius (die Breitenstufe wird zum weichen Verlauf über die Wange), und wo die kürzere Unterform endet, ×3,5 (die Unterseite des überhängenden Oberkiefers rundet sich). Giraffe: Kieferbreiten gleich (die Kante war die Breitenstufe), Längen 1,15/0,85 bleiben (Überhang).
-- **Nasentropfen** `kopf.nasentropfen` (0 … 2, Vorgabe 0,5 = bisherige Wölbung, wächst mit der Schnauzenlänge; ab 0,5 auch breiter). Giraffe 1,3.
-- **Wulst am Schwanzansatz** (Florian, fester Blob mit Bogenschwanz): Messung (Rumpfhaut mit Schwanz gegen das Feld ohne Schwanz) — die weiche Vereinigung mit k = 3 Schwanzdicken hob die Haut rund um die Wurzel um k/4 ≈ 4–5 % der Körperhöhe als Hügel, zusätzlich lag der breite Trichter (2,5 Dicken) bei schmalem Rumpf innerhalb k unter der Flanke und blähte sie entlang seiner Bahn auf. Jetzt: Anhang-Schwänze haben außen einen flachen **Flare** zur Wurzel (1,7 Dicken über gut ein Drittel der Länge, wie der Katzenschwanz in Bild 9), die Vereinigung ist klein (1,6 Dicken, 0,07 … 0,2 H), der Trichter innen ist fast zylindrisch und bleibt mindestens k unter der Haut (`rMinBody − k`). Aufblähung halbiert (2–3 % H, nur im Fillet), Flanke unverändert. Tiger/Retriever/Giraffe gegengeprüft. **Florians Bild war aber der Rex (Wirbelsäulenschwanz):** dort ragte ein Zylinder von 0,8 Rumpfradius hinten aus dem gerundeten Rumpf, die Vereinigung (k = 0,3 H) legte entlang der Schnittkurve den Wulst über die Flanke. Jetzt folgt der Wurzelquerschnitt des Wirbelsäulenschwanzes **Scheibe für Scheibe dem Rumpf** (Halbbreite und Höhenspanne der Rumpfscheibe in der jeweiligen Tiefe hinter der Achse, 0,9 → 1,0 knapp innen) bis zur Übernahme bei 55 % der Rumpftiefe; dahinter läuft jede Halbachse mit der dort gemessenen Steigung weiter und geht über 30 % der Länge in den eigenen Dickenverlauf (Dicke → Taille → Spitze) über; k = 0,12 H. Der Austritt ist tangential: von der Seite eine durchgehende Rückenlinie Rumpf → Schwanz (Bild 5/11), von schräg hinten keine Wulst.
-- Offen: beim reinen Ziehen ist der Rachen ein gerader Schlauch (die Taschenwand mischt beide Kiefer linear) — Mischung mit Kippen sieht besser aus; hinter dem Drachen-Mundwinkel bleibt eine kurze auslaufende Rille (Sektorauslauf); Giraffenkopf wirkt knollig (Tropfen + rundes Band), Feinschliff mit Florian.
-
-## Was noch nicht stimmt (nach Florians Bildern)
-
-1. **Rex**: dicke Stampfer mit Saugnapf‑Füßen stehen; der Rumpf ist noch ein Sack ohne Brust und der Schenkel von der Seite keine Keule — Florians Blender‑Vorlage abwarten; Flügel/Stummelarme später (eigene Elemente).
-2. **Tiger**: runder Schädel, kantige Schnauze mit W‑Lippe und Nase, Brauen über Schlitzaugen, dicke Schenkel seitlich — geschlossen jetzt eine grimmige Katze; von der Seite wirkt der Rumpf noch kastig (Buckel reduziert), Brustwulst (weißer Kragen), Nasenfarbe und kräftigere Streifen fehlen.
-3. **Kopfprofile** weiter aus Bild 11/6/9 verfeinern (Braue, Schnauzenrücken, Wangen → evtl. `kopf.wangen`).
-4. **Shading** zu glatt/„CG“ (Bögen: Airbrush, kühle gesättigte Schatten, Korn); Bauch-/Rücken-Linie hart.
-5. **Drache**: geschlossen hängen die Hauer jetzt außen (Fänge bis zum Dreifachen der Kiefertiefe), offen ein riesiges Maul nach vorn/oben; der Gürtel um den Körper ist weg (Block 11), eine kurze Rille hinter dem Winkel bleibt; der untere Lippenring bleibt flach (Kinnband), Unterkiefer dreht wegen Bauch/Boden kaum — dafür jetzt `maul.ziehen`.
-6. **Augen**: Höhlenring und Oberlid da; Unterlid, Blickrichtung und Ausdrücke (Spirale, X) fehlen; Giraffen‑Augapfel noch halb aufgesetzt.
-7. **Silhouetten‑Überdeckung** gebaut; Werte liegen um 0,5–0,75 — die großen Abweichungen sind Masseverteilung (Rumpf zu schmal/hoch gegenüber den Bögen) und fehlende Elemente.
-8. Ohren, Hörner, Flügel, dünne Schwänze, Spinnenbeine, Rückenschuppen: **eigene Elemente** (Florian), nicht Teil der Masse.
-
-## Stand jetzt (09.10. mittags)
-
-- Alles auf `main` (c99f3ac), Arbeitsbaum sauber, alle Prüfungen grün (Typen, 24 Creature-Tests, 261 Game-Tests, Lint). Zuletzt: Block 10 (Kästen, Bohne, Maulspalt, glatte Höhle, Zähne beim Öffnen), Block 11 (Öffnungsart Ziehen/Kippen, weiche Wange hinter den Winkeln, Breitenstufe nur im Maulsektor, Nasentropfen) und die Schwanzansätze (Anhang mit Flare, Wirbelsäule als Fortsetzung des Rumpfs).
-- **Florian testet jetzt den Editor ausgiebig und sammelt Feedback** (sein Wochenlimit war am 09.10. erschöpft). Nächster Block = seine gesammelte Liste abarbeiten; bis dahin nichts eigenmächtig umbauen.
-- Vor dem Testen: `git pull`, dann den Dev-Server **neu starten** (HMR ließ das Lab nach größeren Merges in halbem Modulzustand, z. B. ohne Zähne).
-- Harness für Bilder: `EE_SHOTS=1 EE_VORLAGEN=<ids> [EE_MAUL=auf|zu] [EE_ANSICHT=seite] E2E_PORT=4471 node apps/game/scripts/e2e.mjs e2e/wesen-shots.spec.ts` (vom Repo-Wurzelverzeichnis, nicht während Florian seinen Server 5173 benutzt).
-
-## Nächste Schritte
-
-0. Mit Florian: Silhouetten im Editor gegen seine Bilder ziehen (Seite + Overlay), dann Kopf/Maul darauf abstimmen; Blender‑Master als Mesh → Distanzfeld planen (K0‑Erweiterung), wenn die Kurven nicht reichen.
-0a. Kleiner Musterrest am Tigerschwanz‑Ansatz (Keil aus dichten Streifen: der Umfang der Musterkoordinaten springt von Rumpf auf dünnen Schwanz — Umfang im Ansatz vom Rumpf übernehmen oder Muster dort ausblenden); Öffnungsverteilung (Schädel ≈ 30–40°, Unterkiefer mehr) prüfen: Unterkiefer‑Schranke mit angehobenem Gelenk neu abtasten oder Rumpf vorn freiräumen; Laufdemo mit echtem Bodenkontakt (Fuß bleibt stehen) erst im Teil Spielfeld.
-
-1. Florians Blick auf Block 3 (Rex mit Beinen, Tiger mit Backen, Retriever, Drache, Aal) — Bilder in `docs/progress/wesen-vergleich-*`.
-2. Shading nach den Bögen (Airbrush‑Vorgabe: Kantenfederung, kühle satte Schatten, Korn) — betrifft jede Vorlage, mit Florian live.
-3. Augen bündig mit Ring, Lider/Blinzeln (K3); Eigene Elemente: Ohren, Hörner, Flügel, Flossen, Rückenkamm, Fell (K5/K6).
-4. Stufen‑Reihe (Größenreihe) im Lab; Überdeckung je Vorlage als Verlaufszahl mitführen.
-
-## Fallen / Hinweise
-
-- **Nur Florians 19 Bilder** sind Referenz; nichts anderes öffnen oder suchen.
-- Das Mesh ist **geschlossen** gebaut; `maul.oeffnung` = Öffnungsweite (Anteil der **Kopfhöhe**, in beiden Kopfarten); Harness `EE_MAUL=zu|auf|bau`.
-- Kopfarten: `hals.laenge` 0 → Kopf im Rumpf; > 0 → eigener Kopf (kurzer Hals ≈ 0,05 setzt ihn auf die Schultern). Mundwinkel (`maul.winkel`) und Augenlage (`augen.lage`) sind Winkel um den **Träger** — beim Körperträger die Körpermitte, beim Kopf die Kopfmitte; Vorlagen entsprechend verschieden.
-- Lofts: gerade Teile im Achsenmodus (Mittenversatz je Scheibe erlaubt), gebogene im Segmentmodus; `taper` = Ei-Verjüngung nach vorn; fast doppelte Nachbarpunkte werden verschmolzen, offene Enden ohne Kappe rund geschlossen.
-- Culling nur außerhalb des Hüllquaders (`bd > 0`), sonst Risse. Stetigkeitstest `sdf/stetig.test.ts`.
-- Kiefer-/Oberkiefergewichte: hart je Seite (`seite` aus dem Lippenschnitt), aus allen Knochen; Kiefertiefe aus `MouthHost.jawDepth`. Oberkiefer/Nacken drehen um `skullHinge`, Unterkiefer/Kehle um `jawHinge` plus Versatz des Gelenks; beim freien Kopf kippt der Kopfknochen mit (`kopfFrei`). `pose.ts` (absolut, CPU) und `CreatureMesh.applyPose` (Knochen, relativ zum Elternknochen) müssen dieselbe Formel haben — Lokal = Welt(Eltern)⁻¹ · Abs · T(pos).
-- Loft‑Querschnitt: `sectionRadius(s, ca, cb)` bekommt die **Einheitsrichtung**; Trennhöhen (`split`, `band`) sind Längen → über cb · Radius vergleichen.
-- Deskriptor-Puffer: 16 Floats (Spine 4, Region 4, Extra 4 = AO, Dicke, Kante, Unterlippenseite, Pucker 3, Teil 1 = Beine −t / Schwanz +t).
-- **TSL-Zweige:** Werte, die mehrere `If`-Zweige teilen, vor den Zweigen mit `.toVar()` festhalten — sonst rechnet TSL sie nur im ersten Zweig, der sie baut, und in den anderen sind sie 0 (so waren Schuppen, Platten, Punkte, Rosetten unsichtbar). `hash()` aus three/tsl nur mit nicht negativen Ganzzahlen füttern (`hashPos`, `hash3` in `muster.ts`).
-- Lab per Browser-Klicks ist unzuverlässig (Referenzen veralten); Bilder immer über den Harness, Formen schnell über `profil.test.ts`.
-- Vorschau der Leitung: `game-dev-http` (5174); Florians Server 5173 nicht anfassen.
+- Ein Schritt nach dem anderen, Bild und Stand je Schritt; keine Meldung „fertig/bestanden“ ohne Florian. Nach Fehlanläufen nicht
+  stur anhalten (Florian 20.10.): Ursache verstehen, die elegantere Lösung suchen; technische Wege selbst entscheiden und begründet
+  auf die Planseite schreiben. Maßstab: Netz immer glatt und schön außer an gewollten Kanten.
+- Jede Korrektur mit einem Test, der vorher rot ist; verfehlte Tore als `it.fails` mit Registereintrag, nie still gelockert. Neue
+  Wege hinter Schaltern, ohne sie bitgleich.
+- Mit Florians Ablauf testen (Kugel → umformen → Maul). Immer sagen, was im Editor ist und was nur im Kern (Teil A: bisher nur
+  Kern).
+- Eigener Vite auf 5192 (`apps/editor/scripts/pruefen/run-check.sh`), nie Florians 5180, seinen Dev-Server nicht starten. Während
+  eines E2E-Laufs keine Dateien unter `apps/editor/src` oder `packages/shape` ändern; E2E-Läufe überschreiben Bilder in
+  `docs/progress/editor/` — vor dem Commit zurückholen. Nie `assets/fonts/Hippie Movement.otf` committen; nie in
+  `~/Documents/early earle Editor/Bibliothek` schreiben.
+- Keine Modellnamen in Commits, Docs oder Code. Nach jedem Teilschritt committen und pushen; diese Datei am Ende jedes Blocks
+  überschreiben.

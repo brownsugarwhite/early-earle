@@ -1,0 +1,23 @@
+/* Farben und Maße aus Florians Vorlage (docs/look/editor/figmaScreenshot.png, 2× bei 1728×1161). */
+:root {
+  --grund: #19232b;
+  --tinte: #19232b;
+  --pille: #75005c;
+  --pille-hover: #8a0b6e;
+  --pille-aktiv: #ff0095;
+  --weiss: #ffffff;
+  --verlauf-a: #b5bb72; /* unten links */
+  --verlauf-b: #d0ff47; /* oben rechts */
+  --punkt: #00ffe1;
+  --knopf-braun: #a67f2c;
+  --knopf-blau: #0090ff;
+  --knopf-pink: #ff00ff;
+  /* Entwurf 12.10.: Rig orange, Augen weiß (vorläufig, Florian entscheidet) */
+  --knopf-orange: #ff7a00;
+  --knopf-weiss: #ffffff;
+  --schrift: 'Irish Grover', ui-rounded, system-ui, sans-serif;
+  --feder: cubic-bezier(0.34, 1.45, 0.64, 1);
+  --glas-schatten: 10px 12px 0 rgba(8, 12, 16, 0.42);
+  --glas-schatten-klein: 4px 5px 0 rgba(8, 12, 16, 0.32);
+  color-scheme: dark;
+}

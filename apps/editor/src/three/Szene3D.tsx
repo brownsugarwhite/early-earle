@@ -1,0 +1,456 @@
+import { type Dokument, loftNetz } from '@ee/shape';
+import { abtasten3, unterteilenMehrfach, zuDreiecken } from '@ee/shape/versuch';
+import { useEffect, useRef } from 'react';
+import { useRahmen } from '../layout/animation';
+import { useEditor } from '../state/editorStore';
+import { type NetzPunkt, useUi } from '../state/uiStore';
+import { netzPunktLage } from '../netz/netzLage';
+import { Renderer3D } from './Renderer3D';
+import { szene } from './instanz';
+import { versuchAktiv, versuchNetz } from '../versuch/subdivision';
+import { tigerSchritt } from '../versuch/tigerSchritte';
+import { maulVersuch } from '../versuch/maulVersuch';
+import { wirbelVersuch } from '../versuch/wirbelVersuch';
+import { maulBauen, maulDreiecke } from '../maul/maulKoerper';
+import { zahnListe, zahnMeldungen } from '../maul/zahnKoerper';
+import { kantenBauen, kantenDreiecke, kantenVerlauf, mitKanten } from '../kanten/kantenKoerper';
+import { maulUmrisseSetzen, useWirbelAnzeige, wirbelBauen } from '../wirbel/wirbelKoerper';
+import { schnittBauen } from '../schnitte/schnittKoerper';
+import { rundBauen } from '../rund/rundBau';
+import { schleifenMessung } from '../kern/schleifenWerkzeug';
+import { ringPunkte, schleifenAnzeigen, useSchleife } from '../kern/schleifenAuswahl';
+import { schleifeGrsMessung } from '../kern/schleifenGrs';
+import { aktuellesNetz, kernAnimieren, kernBauen, kernMaulAktiv, useKernAnzeige, weiterePose } from '../kern/kernBau';
+import { ZAHN_FARBE, zahnMarkenAnzeigen } from '../kern/zahnGriffe';
+import { useZahnPruefung } from '../kern/zahnPruefStand';
+import { augenPixel, griffeAnzeigen, kieferPixel } from '../kern/griffe';
+import { knochen3dAnzeigen, knochen3dPixel } from '../kiefer/knochen3d';
+import { perlenVon, reifenAnzeigen, reifenFaerben, useReifen } from '../kern/reifen';
+import { trefferDeuten } from '../kern/treffer';
+import { useNetzStand } from '../kern/netzStand';
+import { PALETTEN } from './wesenLook';
+
+declare global {
+  interface Window {
+    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number; netzLagen?: () => number[] | null; poseLippen?: () => unknown; projizieren?: (feld: 'creation' | 'seite' | 'front' | 'top', p: [number, number, number]) => [number, number] | null; netzPunkt?: (np: NetzPunkt) => [number, number, number] | null; strahlFeld?: (feld: 'creation' | 'seite' | 'front' | 'top', px: number, py: number, beideSeiten?: boolean) => { punkt: [number, number, number]; richtung: [number, number, number] } | null; netzSicht?: () => unknown; teile?: () => unknown; koerperBaum?: () => unknown; schleifen?: () => unknown; schleifenPixel?: () => unknown };
+  }
+}
+
+/** Bodenschatten je Grund (Plan 9.7): Papier warm-dunkel, Nacht schwarz und kräftiger, Grün wie Florians Vorlage. */
+function grundAnwenden(r: Renderer3D, grund: string) {
+  if (grund === 'nacht') r.setzeGrund(0x000000, 0.42);
+  else if (grund === 'gruen') r.setzeGrund(0x314206, 0.25);
+  else r.setzeGrund(0x4a4238, 0.22);
+}
+
+/** Vollfenster-Canvas zwischen Viewport-Grund und Viewport-Oberfläche (pointer-events: none). */
+export function Szene3D() {
+  const ref = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const r = new Renderer3D(canvas);
+    let aus = false;
+    const abmelden: (() => void)[] = [];
+    void r.init().then(() => {
+      if (aus) return;
+      szene.aktuell = r;
+      window.__editor = {
+        backend: r.backend,
+        vertices: () => r.vertexAnzahl,
+        // M2: Treffer in Feldpixeln (E2E): Käfigfläche, (u, v), Käfigpunkt
+        treffen: (px: number, py: number) => {
+          const n = aktuellesNetz();
+          const h = r.treffen('creation', px, py);
+          return h && n ? trefferDeuten(n.netz, h.dreieck, h.punkt, n.skalierung) : null;
+        },
+        // M3: Kennzahlen des zuletzt gebauten Netzes (E2E): Vorlage, Augen, Maul, Eckenzahl
+        wesen: () => {
+          const n = aktuellesNetz();
+          if (!n) return null;
+          const w = n.netz;
+          return { vorlage: w.treffer?.vorlage ?? null, augen: w.augen, zaehne: w.zaehne !== null, lippenBand: w.lippenBand, ecken: w.positionen.length / 3, ableitung: w.info.ableitung, reifen: w.reifen ? { liste: w.reifen.liste, knoten: w.reifen.knoten } : null, maul: w.maul, lippen: w.info.maul ?? null, gewichtFarben: w.gewichtFarben !== null, rundmaul: w.rundmaul, summe: w.positionen.reduce((a, b) => a + b, 0), ringe: w.ringe ? { R: w.ringe.R, schleifen: w.ringe.schleifen, aktiv: w.ringe.aktiv } : null };
+        },
+        // V6.2: laufendes ⌘R (Ringpaar, Anteil, Anzahl, Gleiten) und die Zahl der Vorschau-Segmente auf der Bühne (E2E)
+        schleifen: () => ({ lauf: schleifenMessung.lauf(), vorschau: r.schleifenVorschauSegmente(), gewaehlt: useSchleife.getState().gewaehlt, hover: useSchleife.getState().hover, grs: schleifeGrsMessung.lauf() }),
+        // V6.3: je Loop sein Ring in Feldpixeln der Bühne (sichtbare Punkte) und sein Ring im Käfig (E2E)
+        schleifenPixel: () => {
+          const n = aktuellesNetz();
+          const rd = n?.netz.ringe;
+          if (!n || !rd) return [];
+          return rd.schleifen.map((s) => {
+            const q = r.projizierenViele('creation', ringPunkte(rd, s.ring, n.skalierung));
+            const punkte: [number, number][] = [];
+            for (let i = 0; i < q.length; i += 3) if (q[i + 2]) punkte.push([q[i]!, q[i + 1]!]);
+            return { id: s.id, ring: s.ring, punkte };
+          });
+        },
+        // M3: Kieferknopf und Augen in Feldpixeln der Bühne (E2E)
+        griffe: () => ({ kiefer: kieferPixel(), augen: augenPixel() }),
+        // Phase 2 M4: je Zahn Kiefer, Index, Seite und die Mitte zwischen Fuß und Spitze in Feldpixeln der Bühne (E2E)
+        zahnPixel: (feld: 'creation' | 'seite' | 'front' | 'top' = 'creation') => {
+          const n = aktuellesNetz();
+          const z = n?.netz.zaehne;
+          if (!n || !z) return null;
+          const s = n.skalierung;
+          const lagen = new Float32Array(z.liste.length * 3);
+          z.liste.forEach((q, i) => lagen.set([((q.fuss[0] + q.spitze[0]) / 2) * s, ((q.fuss[1] + q.spitze[1]) / 2) * s, ((q.fuss[2] + q.spitze[2]) / 2) * s], 3 * i));
+          const px = r.projizierenViele(feld, lagen);
+          return z.liste.map((q, i) => ({ kiefer: q.kiefer, index: q.index, seite: q.seite, u: q.u, x: px[3 * i]!, y: px[3 * i + 1]! }));
+        },
+        // Phase 2 M4: Treffer auf Zahn und Körper unter einem Feldpixel (Abstände längs des Strahls; E2E und Diagnose)
+        zahnTreffer: (px: number, py: number) => ({ zahn: r.treffenZahn('creation', px, py), koerper: r.treffen('creation', px, py)?.abstand ?? null }),
+        // Rig (Plan 5.2): Gelenk und Knochen-Griffe in Feldpixeln der Bühne (E2E)
+        knochen: () => knochen3dPixel(),
+        // B1: Fingerabdruck der angezeigten Lagen (FNV-1a über die Float32-Bits) und Zähler der gebauten Netze (E2E)
+        netzHash: () => {
+          const n = aktuellesNetz();
+          if (!n) return null;
+          const bits = new Uint32Array(n.netz.positionen.buffer, n.netz.positionen.byteOffset, n.netz.positionen.length);
+          let h = 0x811c9dc5;
+          for (let i = 0; i < bits.length; i++) h = Math.imul(h ^ bits[i]!, 0x01000193) >>> 0;
+          return `${bits.length}:${h.toString(16)}`;
+        },
+        netzVersion: () => useNetzStand.getState().version,
+        // S1: Weltpunkt → Feldpixel (Bühne oder Blatt) und 3D-Lage eines Netzpunkts in Profil-Einheiten (E2E: derselbe Punkt
+        // in allen Blättern und auf der Bühne)
+        projizieren: (feld, p) => {
+          const q = r.projizierenViele(feld, Float32Array.from(p));
+          return q[2] ? [q[0]!, q[1]!] : null;
+        },
+        netzPunkt: (np) => netzPunktLage(useEditor.getState().dok, np)?.p ?? null,
+        // S1: erster Treffer des Strahls eines Felds (Welt) und die Blickrichtung — Sichtbarkeit des Liniennetzes gegen die Bühne
+        strahlFeld: (feld, px, py, beideSeiten = false) => {
+          const h = r.treffen(feld, px, py, beideSeiten);
+          const d = r.blickrichtung(feld);
+          return h && d ? { punkt: h.punkt, richtung: d } : null;
+        },
+        netzSicht: () => aktuellesNetz()?.netz.netzSicht ?? null,
+        // S4: erkannte Teile (Kennung, Art, Richtung, erkannt in) und Zeiten
+        teile: () => {
+          const t = aktuellesNetz()?.netz.teile;
+          return t ? { teile: t.teile.map((x) => ({ id: x.id, art: x.art, eltern: x.eltern, richtung: x.richtung, erkannt: x.erkannt, knoten: x.knoten.length / 3 })), zeit: t.zeit, gefroren: t.gefroren.teile.length } : null;
+        },
+        // S7.1: Baum als Körper (Streifen, seitliche Röhren, Bauzeit, Fehler)
+        koerperBaum: () => aktuellesNetz()?.netz.koerperBaum ?? null,
+        // B5: Rot und Blau der bearbeiteten Pose (E2E): Abweichung (px), geschlossen, Knoten, gezeigte Lippe rechts (Kern-Einheiten)
+        poseLippen: () => {
+          const n = aktuellesNetz();
+          const l = n?.netz.pose?.lippen;
+          if (!n || !l) return null;
+          // Lippenmitten in Feldpixeln der Bühne: Hebung aus dem Mundwinkel (posiert mit Hebung) gegen die Lippe (ohne)
+          const o = l.oben.rechts.ist;
+          const u = l.unten.rechts.ist;
+          const heb = n.netz.maul ? n.netz.maul.winkel[1] - o[o.length - 2]! : 0;
+          const mitte = (a: Float32Array) => {
+            const j = 3 * Math.floor(a.length / 6);
+            return [a[j]! * n.skalierung, (a[j + 1]! + heb) * n.skalierung, a[j + 2]! * n.skalierung];
+          };
+          const pp = r.projizierenViele('creation', Float32Array.from([...mitte(o), ...mitte(u)]));
+          return { abweichung: l.abweichung, zu: l.zu, gespeichert: l.gespeichert, knoten: l.knoten, oben: Array.from(o), unten: Array.from(u), pixel: { oben: [pp[0], pp[1]], unten: [pp[3], pp[4]] } };
+        },
+        // B2-Tor: die angezeigten Lagen selbst (Vergleich zweier Seiten auf Float32-Genauigkeit statt nur über den Fingerabdruck)
+        netzLagen: () => {
+          const n = aktuellesNetz();
+          return n ? Array.from(n.netz.positionen) : null;
+        },
+        // M3: Perlen und Bänder der Reifen in Feldpixeln der Bühne (E2E)
+        reifenPixel: () => {
+          const n = aktuellesNetz();
+          const rf = n?.netz.reifen;
+          if (!n || !rf) return null;
+          const perlen = perlenVon(n.netz, n.skalierung);
+          const lagen = new Float32Array(perlen.length * 3);
+          perlen.forEach((p, i) => lagen.set(p.pos, 3 * i));
+          const pp = r.projizierenViele('creation', lagen);
+          const verlauf = new Float32Array(rf.verlauf.length);
+          for (let i = 0; i < verlauf.length; i++) verlauf[i] = rf.verlauf[i]! * n.skalierung;
+          const vp = r.projizierenViele('creation', verlauf);
+          const baender = rf.liste.map((_, i) => {
+            const aus: [number, number][] = [];
+            for (let k = rf.verlaufStart[i]! / 3; k < rf.verlaufStart[i + 1]! / 3; k += 16) if (vp[3 * k + 2]! > 0) aus.push([vp[3 * k]!, vp[3 * k + 1]!]);
+            return aus;
+          });
+          return { perlen: perlen.map((p, i) => ({ reifen: p.reifen, spant: p.spant, knoten: p.knoten, teil: p.teil, j: p.j, px: pp[3 * i], py: pp[3 * i + 1], vorn: pp[3 * i + 2] })), baender };
+        },
+      };
+      console.info(`[editor] 3D-Backend: ${r.backend}`);
+      const versuch = versuchAktiv();
+      if (versuch?.modus === 'tigerkaefig' || versuch?.modus === 'maul' || versuch?.modus === 'wirbel') {
+        r.setzeKamera(useUi.getState().kamera);
+        r.setzeZebra(useUi.getState().zebra);
+        r.setzeRect(useRahmen.getState().rects?.creation ?? null);
+        abmelden.push(
+          useUi.subscribe((s, v) => s.kamera !== v.kamera && r.setzeKamera(s.kamera)),
+          useRahmen.subscribe((s) => r.setzeRect(s.rects?.creation ?? null)),
+        );
+        if (versuch.modus === 'maul') void maulVersuch(versuch, () => r);
+        else if (versuch.modus === 'wirbel') void wirbelVersuch(versuch, () => r);
+        else void tigerSchritt(versuch.schritt, () => r);
+        return;
+      }
+      /** Gewählte Kantenlinie im 3D nachzeichnen (türkis, immer sichtbar). */
+      const verlauf = () => {
+        const d = useEditor.getState().dok;
+        const a = useUi.getState().kantenAuswahl;
+        if (!a || d.maul || !mitKanten(d) || versuch || useUi.getState().bauweise !== 'bisher') return r.setzeLinien(null);
+        const seg = kantenVerlauf(kantenBauen(d), a.kante);
+        if (!seg) return r.setzeLinien(null);
+        if (d.skalierung !== 1) for (let i = 0; i < seg.length; i++) seg[i]! *= d.skalierung;
+        const farben = new Float32Array(seg.length);
+        for (let i = 0; i < farben.length; i += 3) farben.set([0, 1, 0.88], i);
+        r.setzeLinien(seg, farben);
+      };
+      let klingenUhr: number | null = null;
+      abmelden.push(() => {
+        if (klingenUhr !== null) window.clearInterval(klingenUhr);
+      });
+      const bauen = (dRoh: Dokument, schnell = false) => {
+        // Fressen-Tab mit eigener Seitenform (Versuch 12.10. nachts): Körper ohne Maul aus der Pose-Form; mit Maul legt
+        // sich die offene Haut im Maul-Bau an sie
+        // (nur in den Versuchs-Bauweisen; im Kern ist die Fressen-Pose ein Blendshape der Posenliste, B3)
+        const pose = dRoh.posenProfile?.fressen?.seite;
+        const d: Dokument = useUi.getState().bauweise !== 'kern' && useEditor.getState().modus === 'fressen' && !dRoh.maul && pose && pose.knoten.length === dRoh.profile.seite.knoten.length ? { ...dRoh, profile: { ...dRoh.profile, seite: pose } } : dRoh;
+        if (!versuch && useUi.getState().bauweise === 'kern') {
+          // Wesen-Editor 2: Käfig als Wahrheit, Seitenumriss als Griff; der Bau läuft im Worker (Phase 1 / M1), das
+          // Ergebnis kommt zurück, der neueste Auftrag gewinnt
+          kernBauen(d, schnell, (t) => {
+          if (aus) return;
+          const s = d.skalierung;
+          if (s !== 1) for (let i = 0; i < t.positionen.length; i++) t.positionen[i]! *= s;
+          // Ruhelage wie die Lagen in Welt (Kantenlinien legen ihre Knoten darauf, S1), in jedem Zweig
+          if (t.ruhe && s !== 1) for (let i = 0; i < t.ruhe.length; i++) t.ruhe[i]! *= s;
+          if (t.kaefigLinien) {
+            if (s !== 1) for (let i = 0; i < t.kaefigLinien.length; i++) t.kaefigLinien[i]! *= s;
+            r.setzeLinien(t.kaefigLinien, t.kaefigFarben ?? undefined);
+          } else r.setzeLinien(null);
+          const augen = t.augen.map((a) => ({ ...a, pos: [a.pos[0] * s, a.pos[1] * s, a.pos[2] * s] as [number, number, number], groesse: a.groesse * s, posiert: { pos: [a.posiert.pos[0] * s, a.posiert.pos[1] * s, a.posiert.pos[2] * s] as [number, number, number], normale: a.posiert.normale } }));
+          if (t.gewichtFarben) r.setzeDreiecke(t.positionen, t.normalen, t.gewichtFarben);
+          else if (t.stil === 'feuer' || t.stil === 'gas') r.setzeFeuer(t.positionen, t.normalen, t.hoehe * s, [t.mitte[0] * s, t.mitte[1] * s, t.mitte[2] * s], t.stil, augen);
+          else if (t.deskriptoren) {
+            r.setzePalette(PALETTEN[useKernAnzeige.getState().palette] ?? PALETTEN.tiger!);
+            const sk = (p: [number, number, number]): [number, number, number] => [p[0] * s, p[1] * s, p[2] * s];
+            const gesicht = t.gesicht ? { ...t.gesicht, nase: sk(t.gesicht.nase), philtrumA: sk(t.gesicht.philtrumA), philtrumB: sk(t.gesicht.philtrumB), radius: t.gesicht.radius * s, hoehe: t.gesicht.hoehe * s, breite: t.gesicht.breite * s } : null;
+            r.setzeFell(t.stil === 'fell' ? 0.45 : 0, 0.055);
+            r.setzeWesen(t.positionen, t.normalen, t.deskriptoren, t.hoehe * s, augen, t.lippenBand * s, t.ruhe, gesicht, t.atlas);
+            // Phase 2 M5: eigene Augenfarbe der Ausstattung überschreibt die Palette
+            if (d.ausstattung?.augen?.farbe) r.setzeAugenFarbe(d.ausstattung.augen.farbe);
+          } else r.setzeDreiecke(t.positionen, t.normalen);
+          if (t.zaehne) {
+            if (s !== 1) for (let i = 0; i < t.zaehne.positionen.length; i++) t.zaehne.positionen[i]! *= s;
+            r.setzeZaehne(t.zaehne.positionen, t.zaehne.normalen, t.zaehne.anteil);
+          } else r.setzeZaehne(null, null, null);
+          // Phase 2 M4: Zahnfarbe (Ausstattung) und gewählter Zahn (Stufe Zähne)
+          r.setzeZahnFarbe(d.ausstattung?.zahnFarbe ?? ZAHN_FARBE);
+          zahnMarkenAnzeigen(r, useZahnPruefung.getState().meldungen);
+          // M3: Reifen (Spanten als Ringe mit Perlen) und Kieferknopf auf dem Körper
+          reifenAnzeigen(r, t, s);
+          // V6.3: Loops als Ringe (gewählt weiß, unter dem Zeiger pink)
+          schleifenAnzeigen(r, t, s);
+          griffeAnzeigen(r);
+          knochen3dAnzeigen(r);
+          // Beweis 5: Klingen wehen (Käfig-Pose je Bild, ≈ 14 Bilder je Sekunde)
+          if (klingenUhr !== null) window.clearInterval(klingenUhr);
+          klingenUhr = null;
+          if (t.stil !== 'fest') {
+            const start = performance.now();
+            klingenUhr = window.setInterval(() => {
+              kernAnimieren((performance.now() - start) / 1000, (a) => {
+                if (a && !aus) r.aktualisiereNetz(a.positionen, a.normalen);
+              });
+            }, 70);
+          }
+          });
+          return;
+        }
+        if (!versuch && useUi.getState().bauweise === 'rund') {
+          // Versuch 13.10. nachmittags: Seite rund aufgeblasen, Breite aus Top und Front; Maul und Kanten fehlen hier noch
+          const rk = rundBauen(d, schnell);
+          const k = d.skalierung;
+          r.setzeFlaeche(k !== 1 ? rk.positionen.map((v) => v * k) : rk.positionen, rk.normalen, rk.indizes);
+          // Kantenlinien auf der runden Fläche (beide Seiten), türkis; leicht über der Fläche, verdeckte Teile ausgeblendet
+          const seg: number[] = [];
+          for (const kante of d.kanten ?? []) {
+            const pts = abtasten3(kante, 16);
+            for (const seite of [1, -1]) {
+              for (let i = 0; i + 1 < pts.length; i++) {
+                const a = pts[i]!;
+                const b = pts[i + 1]!;
+                const za = rk.dickeBei({ x: a[0], y: a[1] }) + 0.002;
+                const zb = rk.dickeBei({ x: b[0], y: b[1] }) + 0.002;
+                seg.push(a[0] * k, a[1] * k, seite * za * k, b[0] * k, b[1] * k, seite * zb * k);
+              }
+            }
+          }
+          if (seg.length) {
+            const farben = new Float32Array(seg.length);
+            for (let i = 0; i < farben.length; i += 3) farben.set([0, 1, 0.88], i);
+            r.setzeLinien(Float32Array.from(seg), farben, true);
+          } else r.setzeLinien(null);
+          return;
+        }
+        if (!versuch && useUi.getState().bauweise === 'schnitte') {
+          // Versuch 13.10.: echte Schnitte (Schnauze über Bauch, Acht, Haken im Top); Maul und Kanten-Härte fehlen hier noch
+          const sl = schnittBauen(d, schnell, useUi.getState().schnittRegel, useUi.getState().schnittUeberblenden);
+          const k = d.skalierung;
+          r.setzeLinien(null);
+          r.setzeFlaeche(k !== 1 ? sl.positionen.map((v) => v * k) : sl.positionen, sl.normalen, sl.indizes);
+          return;
+        }
+        if (!versuch && useUi.getState().bauweise === 'wirbel' && d.maul) {
+          // Versuch 12.10. nachts: Maul auf der Wirbelsäule (Maul-Käfig im gestreckten Raum)
+          const b = maulBauen(d, true);
+          if (b) {
+            const rot = new Set(d.zaehne ? zahnMeldungen(b.mk, b.zu, d.zaehne).flatMap((m) => m.listenIndizes) : []);
+            const t = maulDreiecke(b, useUi.getState().oeffnung, 3, zahnListe(d.zaehne).map((q) => q.zahn), rot);
+            const s = d.skalierung;
+            if (s !== 1) for (let i = 0; i < t.positionen.length; i++) t.positionen[i]! *= s;
+            r.setzeLinien(null);
+            r.setzeDreiecke(t.positionen, t.normalen, t.farben);
+            // Wirbelsäule und Sprossen in der Seite bleiben sichtbar; gestrichelt der Umriss mit Maul (nur Haut)
+            wirbelBauen(d, true, useUi.getState().wirbelBiegung);
+            if (!schnell) maulUmrisseSetzen(b.mk, t.kaefig, useUi.getState().oeffnung);
+            return;
+          }
+        }
+        if (!versuch && useUi.getState().bauweise === 'wirbel') {
+          // Versuch 12.10. abends: Wirbelsäule zum Vergleichen (Tab am 3D-Fenster); Kanten-Härte fehlt hier noch
+          const t = zuDreiecken(unterteilenMehrfach(wirbelBauen(d, schnell, useUi.getState().wirbelBiegung), schnell ? 2 : 3), 40);
+          const s = d.skalierung;
+          if (s !== 1) for (let i = 0; i < t.positionen.length; i++) t.positionen[i]! *= s;
+          r.setzeLinien(null);
+          r.setzeDreiecke(t.positionen, t.normalen);
+          return;
+        }
+        if (!d.maul && !versuch && mitKanten(d)) {
+          // Versuch 12.10.: Kanten im Käfig (Linien und Ecken der Silhouetten), Shapes → Loft → Käfig
+          const t = kantenDreiecke(kantenBauen(d, schnell));
+          const s = d.skalierung;
+          if (s !== 1) for (let i = 0; i < t.positionen.length; i++) t.positionen[i]! *= s;
+          r.setzeDreiecke(t.positionen, t.normalen);
+          verlauf();
+          return;
+        }
+        r.setzeLinien(null);
+        if (d.maul) {
+          // Versuch 12.10.: Körper mit Maul (Käfig, Naht, Tasche), Öffnung aus der Seitenleiste
+          const b = maulBauen(d);
+          if (b) {
+            // Zähne, die geschlossen stören, rot (Prüfung des Zahn-Versuchs, gemerkt je Käfig und Zahnreihen)
+            const rot = new Set(d.zaehne ? zahnMeldungen(b.mk, b.zu, d.zaehne).flatMap((m) => m.listenIndizes) : []);
+            const t = maulDreiecke(b, useUi.getState().oeffnung, 3, zahnListe(d.zaehne).map((q) => q.zahn), rot);
+            const s = d.skalierung;
+            if (s !== 1) for (let i = 0; i < t.positionen.length; i++) t.positionen[i]! *= s;
+            r.setzeDreiecke(t.positionen, t.normalen, t.farben);
+            return;
+          }
+        }
+        if (!versuch || versuch.modus !== 'subd') return r.setzeNetz(loftNetz(d));
+        const n = versuchNetz(d, versuch.fall);
+        r.setzeDreiecke(n.positionen, n.normalen);
+      };
+      bauen(useEditor.getState().dok);
+      r.setzeKamera(useUi.getState().kamera);
+      r.setzeZebra(useUi.getState().zebra);
+      r.setzeRect(useRahmen.getState().rects?.creation ?? null);
+      grundAnwenden(r, useUi.getState().grund);
+      // Blätter (M2): Seite, Front, Top zeigen denselben Körper orthografisch hinter den Kurven (nur Bauweise „kern“)
+      const blaetter = () => {
+        const rects = useRahmen.getState().rects;
+        const ui = useUi.getState();
+        if (!rects || ui.bauweise !== 'kern') return r.setzeBlaetter({});
+        r.setzeBlaetter({
+          seite: { rect: rects.seite, ansicht: ui.ansichten.seite, blick: 'seite' },
+          front: { rect: rects.front, ansicht: ui.ansichten.front, blick: ui.blick.front },
+          top: { rect: rects.top, ansicht: ui.ansichten.top, blick: ui.blick.top },
+        });
+      };
+      blaetter();
+      abmelden.push(
+        useRahmen.subscribe(blaetter),
+        useUi.subscribe((s, v) => (s.ansichten !== v.ansichten || s.blick !== v.blick || s.bauweise !== v.bauweise) && blaetter()),
+      );
+      // Phase 2 M5: Augen-Vorschau wie im Store (auch nach einem Neuaufbau des Renderers)
+      {
+        const ui0 = useUi.getState();
+        r.setzeAugenAnzeige(ui0.augenZustand, ui0.augenLid, ui0.blinzeln);
+      }
+      abmelden.push(
+        useEditor.subscribe((s, v) => {
+          const geaendert =
+            s.dok.profile !== v.dok.profile ||
+            s.dok.skalierung !== v.dok.skalierung ||
+            s.dok.maul !== v.dok.maul ||
+            s.dok.zaehne !== v.dok.zaehne ||
+            s.dok.kanten !== v.dok.kanten ||
+            s.dok.spanten !== v.dok.spanten ||
+            s.dok.hauptspant !== v.dok.hauptspant ||
+            s.dok.wirbelsaeule !== v.dok.wirbelsaeule ||
+            s.dok.posenProfile !== v.dok.posenProfile ||
+            s.dok.rundSpanten !== v.dok.rundSpanten ||
+            s.dok.kaefig !== v.dok.kaefig ||
+            s.dok.posen !== v.dok.posen ||
+            s.dok.ausstattung !== v.dok.ausstattung ||
+            s.modus !== v.modus;
+          const wirbel = useUi.getState().bauweise === 'wirbel';
+          const schnitte = useUi.getState().bauweise === 'schnitte' || useUi.getState().bauweise === 'rund' || useUi.getState().bauweise === 'kern';
+          // mit Maul dauert der Bau ≈ 0,4 s: während einer Geste nicht neu bauen, sondern beim Loslassen (Schnitte ohne Maul)
+          if (s.dok.maul && s.gesteStart && !schnitte) return;
+          // Kanten-Käfig, Wirbelsäule und Schnitte: während einer Geste schnell (gröber), beim Loslassen genau
+          if (geaendert) bauen(s.dok, !!s.gesteStart && (wirbel || schnitte || mitKanten(s.dok)));
+          else if (v.gesteStart && !s.gesteStart && (wirbel || schnitte || s.dok.maul || mitKanten(s.dok))) bauen(s.dok);
+        }),
+        useUi.subscribe((s, v) => {
+          if (s.kamera !== v.kamera) r.setzeKamera(s.kamera);
+          if (s.zebra !== v.zebra) r.setzeZebra(s.zebra);
+          // Öffnung = Gewicht der Fressen-Pose: im Kern immer neu bauen, auch ohne Maul (B1: Fressen-Deltas einer Kugel blieben
+          // sonst nach dem Wechsel in den Editor-Tab stehen)
+          if (s.oeffnung !== v.oeffnung && (useEditor.getState().dok.maul || s.bauweise === 'kern')) bauen(useEditor.getState().dok);
+          // Posenliste: Stärke der aktiven weiteren Pose (ohne Umbau, Deltas)
+          if (s.poseStaerke !== v.poseStaerke && s.bauweise === 'kern' && weiterePose()) bauen(useEditor.getState().dok);
+          // B7: Vorschau der Posenliste und Überblenden (Gewichte je Pose, ohne Umbau); Geist und Zwischenbilder (Umrisse)
+          if (s.vorschau !== v.vorschau && s.bauweise === 'kern') bauen(useEditor.getState().dok);
+          const umrisse = (x: typeof s) => `${x.ebene === 'posen'}|${x.geist}|${x.geistPose}|${x.ueberblenden.zwischenbilder}|${x.ueberblenden.von}|${x.ueberblenden.nach}`;
+          if (s.bauweise === 'kern' && umrisse(s) !== umrisse(v)) bauen(useEditor.getState().dok);
+          // Rig: Gewichtsfarben an/aus (nur in „Posen & Leben“ sichtbar)
+          const gewichte = (x: typeof s) => x.gewichteZeigen && x.ebene === 'posen';
+          if (gewichte(s) !== gewichte(v) && s.bauweise === 'kern' && kernMaulAktiv(useEditor.getState().dok)) bauen(useEditor.getState().dok);
+          if (s.bauweise !== v.bauweise) bauen(useEditor.getState().dok);
+          if ((s.schnittRegel !== v.schnittRegel || s.schnittUeberblenden !== v.schnittUeberblenden) && s.bauweise === 'schnitte') bauen(useEditor.getState().dok);
+          if (s.wirbelBiegung !== v.wirbelBiegung && s.bauweise === 'wirbel') bauen(useEditor.getState().dok, !!useEditor.getState().gesteStart || useWirbelAnzeige.getState().zieht);
+          if (s.kantenAuswahl !== v.kantenAuswahl) verlauf();
+          if (s.spantAuswahl !== v.spantAuswahl || s.ebene !== v.ebene) reifenFaerben(r);
+          if ((s.zahnAuswahl !== v.zahnAuswahl || s.ebene !== v.ebene) && s.bauweise === 'kern') zahnMarkenAnzeigen(r, useZahnPruefung.getState().meldungen);
+          if (s.grund !== v.grund) grundAnwenden(r, s.grund);
+          if (s.ebene !== v.ebene) {
+            griffeAnzeigen(r);
+            knochen3dAnzeigen(r);
+          }
+        }),
+        useRahmen.subscribe((s) => r.setzeRect(s.rects?.creation ?? null)),
+        // M3: Perle oder Band unter dem Zeiger → Farben der Reifen
+        useReifen.subscribe(() => reifenFaerben(r)),
+        // Phase 2 M4: Befunde der Zahnprüfung → Glut
+        useZahnPruefung.subscribe((s, v) => s.meldungen !== v.meldungen && zahnMarkenAnzeigen(r, s.meldungen)),
+        // Phase 2 M5: Augen-Vorschau (Zustand, Lid, Blinzeln) ohne Umbau
+        useUi.subscribe((s, v) => (s.augenZustand !== v.augenZustand || s.augenLid !== v.augenLid || s.blinzeln !== v.blinzeln) && r.setzeAugenAnzeige(s.augenZustand, s.augenLid, s.blinzeln)),
+        // Beweis 4: Look oder Palette gewechselt → Kern neu bauen
+        useKernAnzeige.subscribe((s, v) => (s.look !== v.look || s.palette !== v.palette || s.maul !== v.maul || s.kaefig !== v.kaefig || s.beine !== v.beine || s.schwung !== v.schwung || s.stil !== v.stil) && useUi.getState().bauweise === 'kern' && bauen(useEditor.getState().dok)),
+        // Biege-Regler losgelassen: genau bauen
+        useWirbelAnzeige.subscribe((s, v) => v.zieht && !s.zieht && useUi.getState().bauweise === 'wirbel' && bauen(useEditor.getState().dok)),
+      );
+      const groesse = () => r.groesseAnpassen();
+      window.addEventListener('resize', groesse);
+      abmelden.push(() => window.removeEventListener('resize', groesse));
+    });
+    return () => {
+      aus = true;
+      abmelden.forEach((f) => f());
+      if (szene.aktuell === r) szene.aktuell = null;
+      r.renderer.dispose();
+    };
+  }, []);
+
+  return <canvas ref={ref} className="szene3d" />;
+}

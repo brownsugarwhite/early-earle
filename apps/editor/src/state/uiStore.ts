@@ -1,0 +1,448 @@
+// Oberflächen-Zustand: Layout, Auswahl, Ansichten (2D-Zoom/Pan, 3D-Kamera), Menüs, Dialoge.
+
+import type { Ansicht, Blick, V3T } from '@ee/shape';
+import type { SchnittRegel } from '@ee/shape/versuch';
+import { create } from 'zustand';
+import type { Abfall, Art, Sperre } from '../editing/modal/abbildung';
+import type { ViewId } from '../types';
+
+/** Augen-Zustand (Phase 2 M5, Plan 5.4): offen = Grundform, zu, Sichel („freuen“), X, Spirale, Schlitz */
+export type AugenZustand = 'offen' | 'zu' | 'sichel' | 'x' | 'spirale' | 'schlitz';
+export type Ansicht2D = { zoom: number; cu: number; cv: number };
+export type Kamera = { azimut: number; elevation: number; distanz: number; ziel: [number, number, number] };
+
+/**
+ * Werkzeuge wie in Illustrator: Direktauswahl (A), Zeichenstift (P), Ankerpunkt hinzufügen (+) / löschen (−),
+ * Breitenwerkzeug (⇧W): Ziehen an einer Kantenlinie macht sie breiter = härter (Versuch 12.10. mittags).
+ */
+export type Werkzeug = 'auswahl' | 'stift' | 'plus' | 'minus' | 'breite' | 'spant' | 'ziehen' | 'aufblasen';
+/** Gewählte Knoten einer Kantenlinie (alle Knoten = ganze Linie). */
+export type KantenAuswahl = { kante: number; indizes: number[] };
+/** Zeichenstift auf freier Fläche: neue Kantenlinie, bis Enter/Esc/Doppelklick. */
+export type KanteZeichnen = { blick: Blick; ansicht: Ansicht; knoten: V3T[] };
+/** Gewählter Spant und seine gewählten Punkte. */
+/** `teil` (Kiefer-Spant, 14.10.): Punkte des Oberkiefers (`profil`) oder des Unterkiefers (`unten`); ohne Angabe oben. */
+export type SpantAuswahl = { spant: number; knoten: number[]; teil?: 'oben' | 'unten' };
+/** Ebenenschalter der Kanten (Recherche 12.10.): zeigen, blass (nicht greifbar) oder aus. */
+export type KantenSicht = 'zeigen' | 'blass' | 'aus';
+/**
+ * Punkt des Liniennetzes (S1): ein Knoten einer Umrisszeichnung (gezeichnete Hälfte oder Spiegelbild) oder einer
+ * Kantenlinie — derselbe 3D-Punkt in jedem Blatt.
+ */
+export type NetzPunkt = { art: 'umriss'; quelle: 'seite' | 'front' | 'top'; index: number; spiegel: boolean } | { art: 'kante'; kante: number; index: number; spiegel: boolean };
+/** Breitenwerkzeug beim Ziehen: Kreis um den Punkt, Radius = Härte (Weltpunkt in der Ansicht). */
+export type BreitenAnzeige = { ansicht: Ansicht; mitte: { x: number; y: number }; h: number };
+
+/**
+ * Plan 20.10., V3: laufende Operation G/S/R in einem Blatt (zur Anzeige): Art, Blatt, Mitte und Zeiger in Blatt-Koordinaten
+ * (Profil-Einheiten), Sperre, freie Blattrichtungen (Achsenlinie), Einflussradius (0 = ohne proportional), Text fürs Dock.
+ */
+export type ModalAnzeige = { art: Art; ansicht: Ansicht; mitte: { x: number; y: number }; zeiger: { x: number; y: number }; sperre: Sperre | null; frei: { u: boolean; v: boolean } | null; radius: number; text: string };
+/** V3: proportionales Bearbeiten (O), Abfall (⇧O), nur verbunden (⌥O); der Radius ist der des Pinsels (`pinselRadius`). */
+export type Proportional = { an: boolean; abfall: Abfall; verbunden: boolean };
+
+export type Ueberblenden = { von: string; nach: string; t: number; dauer: number; spielt: boolean; zwischenbilder: boolean };
+
+export type MenueEintrag = { label: string; aktion: () => void; aus?: boolean } | 'trenner';
+export type KontextMenue = { x: number; y: number; eintraege: MenueEintrag[] };
+
+/** Tabs über die Eckpunkte der Viewports (Florian 12.10.): Form, Maul (blau), Zähne (braun), Rig, Augen (folgt). */
+/** Stufen des Stamms (Plan 9.3): Körper, Maul, Zähne, Augen, Teile, Fell & Klingen, Haut, Posen & Leben, Spiel. */
+export type Ebene = 'form' | 'maul' | 'zaehne' | 'augen' | 'teile' | 'fell' | 'haut' | 'posen' | 'spiel';
+export type Grund = 'papier' | 'nacht' | 'gruen';
+/** Pauspapier (Plan 9.8, M4.1): ein Bogen (PNG) hinter einem Blatt — Lage und Breite in Welt-Einheiten, Deckkraft 0 … 1. */
+export type Pauspapier = { blatt: Ansicht; url: string; name: string; deckkraft: number; mitte: { x: number; y: number }; breite: number; seitenverhaeltnis: number; sichtbar: boolean };
+/** Standard-Layout je Stufe (Plan 9.2): Körper = Riss, alle anderen = Bühne. */
+export const LAYOUT_STANDARD = (e: Ebene): ViewId | null => (e === 'form' ? null : 'creation');
+/**
+ * Blickrichtung der Viewports Front und Top (Florian 12.10.): Back und Bottom zeigen dieselbe Silhouette gespiegelt,
+ * aber die abgewandte Fläche (Linien auf Rücken, Schwanz, Bauch).
+ */
+export type Blicke = { front: 'front' | 'hinten'; top: 'top' | 'unten' };
+export const blickVon = (ansicht: Ansicht, b: Blicke): Blick => (ansicht === 'seite' ? 'seite' : b[ansicht]);
+/** Gewählte Knoten einer Lippenlinie (oben = rot bzw. türkis, unten = blau). */
+export type MaulAuswahl = { linie: 'oben' | 'unten'; indizes: number[] };
+
+export type DialogKnopf = { label: string; primaer?: boolean; aktion: (wert: string) => void };
+export type Dialog = { titel: string; text?: string; eingabe?: string; knoepfe: DialogKnopf[] };
+
+/** Grundansichten: Kachel füllt 92,5 % der Höhe, Boden 4 % über der Unterkante (Seite/Front). */
+export const START_2D: Record<Ansicht, Ansicht2D> = {
+  seite: { zoom: 1, cu: 0, cv: 0.4972 },
+  front: { zoom: 1, cu: 0, cv: 0.4972 },
+  top: { zoom: 1, cu: 0, cv: 0 },
+};
+
+/** Schräg über die Kachelecke von vorn links, an die Vorlage angepasst (Kachelecken und Kugel); vorn ist −X, die linke Flanke +Z. */
+export const START_KAMERA: Kamera = { azimut: -Math.PI / 4, elevation: (15 * Math.PI) / 180, distanz: 2.15, ziel: [0, 0.18, 0] };
+
+type UiState = {
+  maximiert: ViewId | null;
+  /** Layout je Stufe gemerkt (Plan 9.2): null = „Riss“ (vier Felder), 'creation' = „Bühne“ (große Bühne, Blätter als Spalte) */
+  layoutJeStufe: Partial<Record<Ebene, ViewId | null>>;
+  /** Grund der Bühne und Blätter (Plan 9.7): Papier (Standard), Nacht, Grün (Florians Vorlage) */
+  grund: Grund;
+  setzeGrund(g: Grund): void;
+  pauspapier: Pauspapier | null;
+  setzePauspapier(p: Pauspapier | null): void;
+  pauspapierAendern(patch: Partial<Pauspapier>): void;
+  /** Library-Bereich in der (immer offenen) Seitenleiste aufgeklappt */
+  library: boolean;
+  ebene: Ebene;
+  /** Vorschau der Maulöffnung 0 … 1 im 3D (Seitenleiste) */
+  oeffnung: number;
+  /** Stärke der aktiven weiteren Pose (Posenliste: Ruhen, Laufen, …), 0 … 1; Fressen läuft über `oeffnung` */
+  poseStaerke: number;
+  /**
+   * B7 (Entwurf Posen §6): Vorschau-Gewichte je Pose (Regler der Posenliste, Überblenden). Sie überdecken die Gewichte des
+   * Ziels („was ich sehe“ getrennt von „was ich bearbeite“) und enden von selbst (Bearbeiten, Esc, Ziel- und Stufenwechsel,
+   * Laden). null = keine Vorschau; {} = die Grundform.
+   */
+  vorschau: Record<string, number> | null;
+  /**
+   * B7 (Entwurf §6): Überblenden „von → nach“ (Grundform = 'editor'), Stelle t, Dauer eines Durchlaufs in Sekunden, Abspielen
+   * im Pingpong, Zwischenbilder (Umrisse bei t = 0,2/0,4/0,6/0,8). Nicht im Dokument.
+   */
+  ueberblenden: Ueberblenden;
+  setzeUeberblenden(patch: Partial<Ueberblenden>): void;
+  /** B7: Geist im Editor-Tab (Stufe Posen & Leben): Umriss der gewählten Pose gestrichelt in allen Blättern */
+  geist: boolean;
+  /** Pose des Geists (folgt der zuletzt bearbeiteten Pose) */
+  geistPose: string;
+  setzeGeist(an: boolean, pose?: string): void;
+  /** Fressen-Tab (Plan 5.2): Unterkiefergewichte als Farbverlauf auf dem Körper */
+  gewichteZeigen: boolean;
+  /** Augen (Phase 2 M5, Vorschau wie die Öffnung): Zustand, Lid von Hand (0 offen … 1 zu), Blinzeln von selbst */
+  augenZustand: AugenZustand;
+  augenLid: number;
+  blinzeln: boolean;
+  maulAuswahl: MaulAuswahl | null;
+  /** Zeichenstift des Maul-Tabs: Knoten der neuen Linie, bis Enter/Esc */
+  maulZeichnen: [number, number, number][] | null;
+  zahnAuswahl: { kiefer: 'oben' | 'unten'; index: number } | null;
+  blick: Blicke;
+  kantenAuswahl: KantenAuswahl | null;
+  kanteZeichnen: KanteZeichnen | null;
+  breitenAnzeige: BreitenAnzeige | null;
+  kantenSicht: KantenSicht;
+  /**
+   * Plan „Liniennetz, Zielform, Käfig“, S1: Stil des Liniennetzes in den Blättern (Vergleich für Florian): „ton“ = alle Linien
+   * in der Kurvenfarbe, „farbe“ = je Ursprungsansicht eine Farbe
+   */
+  netzStil: 'ton' | 'farbe';
+  /**
+   * Plan 20.10., nach V3 (Florian: „ich empfinde sie als störend“): Umrisslinien der anderen Ansichten und innere Konturen
+   * im Liniennetz zeigen. Reine Anzeige, der Körper wird ohne sie gebaut; Standard aus. Ringe, P-Linien, Falten bleiben.
+   */
+  netzUmrisse: 'an' | 'aus';
+  /** S1: Punkt des Liniennetzes unter dem Zeiger (in irgendeinem Blatt); alle Blätter und die Bühne markieren ihn */
+  netzHover: NetzPunkt | null;
+  setzeNetzHover(p: NetzPunkt | null): void;
+  /** S4 „Teile erkennen“: Teile in den Blättern zeigen (Flächen, Wirbelsäulen, verdeckte Teilumrisse) */
+  teileSicht: 'aus' | 'an';
+  setzeTeileSicht(s: 'aus' | 'an'): void;
+  /** S4: Teil unter dem Zeiger (Kennung), in allen Blättern und in der Tafel hervorgehoben */
+  teilHover: string | null;
+  setzeTeilHover(id: string | null): void;
+  /** gewählter Spant (Index in dok.spanten) und seine gewählten Punkte; bearbeitet in Front bzw. Back */
+  spantAuswahl: SpantAuswahl | null;
+  /** Versuch 13.10. nachmittags: gewählter Spant der Bauweise „rund“ (Index in dok.rundSpanten) und seine Punkte */
+  rundSpantAuswahl: SpantAuswahl | null;
+  /** 3D mit Zebrastreifen (Prüfen der Kanten) */
+  zebra: boolean;
+  /** Versuch 12.10. abends: Bauweise des 3D zum Vergleichen (Tab am 3D-Fenster) */
+  bauweise: Bauweise;
+  /** Versuch 13.10.: Flächenregel der Schnitte für Front und Spanten (Hälften oder gerade-ungerade) */
+  schnittRegel: SchnittRegel;
+  /** Versuch 13.10.: Überblendung zwischen Spanten (Abstandsfelder oder Punkt für Punkt) */
+  schnittUeberblenden: 'feld' | 'punkte';
+  /** Wirbelsäule testweise biegen (Pose-Vorschau, nicht im Dokument): Winkel in Grad, Stelle 0 … 1 ab der Schnauze */
+  wirbelBiegung: { winkel: number; bei: number };
+  /** Wirbelsäule selbst zeichnen: gesetzte Punkte (Seite), bis Enter/Esc */
+  wirbelZeichnen: { x: number; y: number }[] | null;
+  /** liegt während Layout-Bewegungen oben */
+  oben: ViewId | null;
+  hover: ViewId | null;
+  werkzeug: Werkzeug;
+  /** Pinsel (M3): Radius als Anteil der Körperhöhe (F bzw. [ ]) */
+  pinselRadius: number;
+  setzePinselRadius(r: number): void;
+  /** V3: laufende Operation G/S/R (Anzeige in Blatt und Dock), null = keine */
+  modal: ModalAnzeige | null;
+  setzeModal(m: ModalAnzeige | null): void;
+  proportional: Proportional;
+  setzeProportional(p: Partial<Proportional>): void;
+  /** gewählte Punkte je 2D-Viewport (wie in der Vorlage: jede Ansicht zeigt ihre Griffe) */
+  auswahl: Record<Ansicht, number[]>;
+  /** zuletzt bearbeitete Ansicht (für Entf, wenn die Maus nicht über einem 2D-Viewport ist) */
+  aktiv: Ansicht | null;
+  ansichten: Record<Ansicht, Ansicht2D>;
+  kamera: Kamera;
+  menue: KontextMenue | null;
+  dialog: Dialog | null;
+  hinweis: { text: string; id: number } | null;
+
+  maximieren(id: ViewId): void;
+  libraryUmschalten(offen?: boolean): void;
+  setzeEbene(e: Ebene): void;
+  setzeOeffnung(a: number): void;
+  setzeVorschau(v: Record<string, number> | null): void;
+  setzePoseStaerke(a: number): void;
+  setzeGewichteZeigen(an: boolean): void;
+  setzeAugenZustand(z: AugenZustand): void;
+  setzeAugenLid(l: number): void;
+  setzeBlinzeln(an: boolean): void;
+  setzeMaulAuswahl(a: MaulAuswahl | null): void;
+  setzeMaulZeichnen(k: [number, number, number][] | null): void;
+  setzeZahnAuswahl(z: { kiefer: 'oben' | 'unten'; index: number } | null): void;
+  setzeBlick<A extends keyof Blicke>(ansicht: A, b: Blicke[A]): void;
+  setzeKantenAuswahl(a: KantenAuswahl | null): void;
+  setzeKanteZeichnen(z: KanteZeichnen | null): void;
+  setzeBreitenAnzeige(b: BreitenAnzeige | null): void;
+  setzeKantenSicht(k: KantenSicht): void;
+  setzeZebra(an: boolean): void;
+  setzeBauweise(b: Bauweise): void;
+  setzeSchnittRegel(r: SchnittRegel): void;
+  setzeSchnittUeberblenden(u: 'feld' | 'punkte'): void;
+  setzeWirbelBiegung(b: { winkel: number; bei: number }): void;
+  setzeWirbelZeichnen(p: { x: number; y: number }[] | null): void;
+  setzeSpantAuswahl(a: SpantAuswahl | null): void;
+  setzeRundSpantAuswahl(a: SpantAuswahl | null): void;
+  setzeHover(id: ViewId | null): void;
+  setzeWerkzeug(w: Werkzeug): void;
+  waehle(ansicht: Ansicht, indizes: number[]): void;
+  setzeAuswahl(a: Record<Ansicht, number[]>, aktiv: Ansicht): void;
+  auswahlLeeren(): void;
+  setzeAnsicht(a: Ansicht, v: Ansicht2D): void;
+  setzeKamera(k: Kamera): void;
+  ansichtZuruecksetzen(id: ViewId): void;
+  oeffneMenue(m: KontextMenue | null): void;
+  oeffneDialog(d: Dialog | null): void;
+  zeigeHinweis(text: string): void;
+};
+
+/**
+ * bisher = Platzhalter-Loft bzw. Kanten-/Maul-Käfig; wirbel = Versuch Wirbelsäule (Ringe senkrecht zur Wirbelsäule);
+ * schnitte = Versuch 13.10. Schnitt-Loft (je Stelle ein echter Schnitt mit beliebig vielen Teilen);
+ * rund = Versuch 13.10. nachmittags: Seite rund aufgeblasen, Breite aus Top und Front (Tab „rund“, Schnitt-Loft als Umschalter)
+ */
+export type Bauweise = 'bisher' | 'wirbel' | 'schnitte' | 'rund' | 'kern';
+
+export const useUi = create<UiState>((set, get) => ({
+  maximiert: null,
+  layoutJeStufe: {},
+  grund: 'papier',
+  setzeGrund(g) {
+    set({ grund: g });
+  },
+  pauspapier: null,
+  setzePauspapier(p) {
+    const alt = get().pauspapier;
+    if (alt && alt.url !== p?.url && alt.url.startsWith('blob:')) URL.revokeObjectURL(alt.url);
+    set({ pauspapier: p });
+  },
+  pauspapierAendern(patch) {
+    const alt = get().pauspapier;
+    if (alt) set({ pauspapier: { ...alt, ...patch } });
+  },
+  library: true,
+  ebene: 'form',
+  oeffnung: 0,
+  poseStaerke: 1,
+  vorschau: null,
+  ueberblenden: { von: 'idle', nach: 'fressen', t: 0, dauer: 1.2, spielt: false, zwischenbilder: false },
+  setzeUeberblenden(patch) {
+    set({ ueberblenden: { ...get().ueberblenden, ...patch } });
+  },
+  geist: true,
+  geistPose: 'fressen',
+  setzeGeist(an, pose) {
+    set({ geist: an, ...(pose ? { geistPose: pose } : {}) });
+  },
+  gewichteZeigen: false,
+  augenZustand: 'offen',
+  augenLid: 0,
+  blinzeln: true,
+  maulAuswahl: null,
+  maulZeichnen: null,
+  zahnAuswahl: null,
+  blick: { front: 'front', top: 'top' },
+  kantenAuswahl: null,
+  kanteZeichnen: null,
+  breitenAnzeige: null,
+  kantenSicht: 'zeigen',
+  netzStil: 'farbe',
+  netzUmrisse: 'aus',
+  teileSicht: 'an',
+  setzeTeileSicht(s) {
+    set({ teileSicht: s });
+  },
+  teilHover: null,
+  setzeTeilHover(id) {
+    if (get().teilHover !== id) set({ teilHover: id });
+  },
+  netzHover: null,
+  setzeNetzHover(p) {
+    const alt = get().netzHover;
+    if (alt === p || (alt && p && JSON.stringify(alt) === JSON.stringify(p))) return;
+    set({ netzHover: p });
+  },
+  zebra: false,
+  // Phase 1 / M3 (14.10. nachts): der Käfig-Kern ist die Bauweise des Editors; die Versuche bleiben als Tabs zum Vergleichen
+  bauweise: 'kern',
+  schnittRegel: 'halb',
+  schnittUeberblenden: 'feld',
+  wirbelBiegung: { winkel: 0, bei: 0.5 },
+  wirbelZeichnen: null,
+  spantAuswahl: null,
+  rundSpantAuswahl: null,
+  oben: null,
+  hover: null,
+  werkzeug: 'auswahl',
+  pinselRadius: 0.25,
+  setzePinselRadius(r) {
+    set({ pinselRadius: Math.min(1, Math.max(0.03, r)) });
+  },
+  modal: null,
+  setzeModal(m) {
+    set({ modal: m });
+  },
+  proportional: { an: false, abfall: 'glatt', verbunden: false },
+  setzeProportional(p) {
+    set({ proportional: { ...get().proportional, ...p } });
+  },
+  auswahl: { seite: [], front: [], top: [] },
+  aktiv: null,
+  ansichten: { ...START_2D },
+  kamera: START_KAMERA,
+  menue: null,
+  dialog: null,
+  hinweis: null,
+
+  maximieren(id) {
+    const m = get().maximiert;
+    const neu = m === id ? null : id;
+    set({ maximiert: neu, oben: id, layoutJeStufe: { ...get().layoutJeStufe, [get().ebene]: neu } });
+  },
+  libraryUmschalten(offen) {
+    set({ library: offen ?? !get().library });
+  },
+  setzeEbene(e) {
+    // zweiter Klick auf denselben Punkt führt zurück zur Form
+    // Stamm (Plan 9.3): Springen frei, ein Klick auf die aktive Knospe bleibt dort
+    const neu = e;
+    // Layout der Stufe (Plan 9.2): gemerkte Wahl, sonst Standard (Körper = Riss, sonst Bühne)
+    const gemerkt = get().layoutJeStufe[neu];
+    const maximiert = gemerkt !== undefined ? gemerkt : LAYOUT_STANDARD(neu);
+    set({ ebene: neu, maximiert, maulAuswahl: null, maulZeichnen: null, zahnAuswahl: null, kantenAuswahl: null, kanteZeichnen: null, werkzeug: 'auswahl' });
+  },
+  setzeOeffnung(a) {
+    set({ oeffnung: Math.min(1, Math.max(0, a)) });
+  },
+  setzePoseStaerke(a) {
+    set({ poseStaerke: Math.min(1, Math.max(0, a)) });
+  },
+  setzeVorschau(v) {
+    if (!v) {
+      if (get().vorschau) set({ vorschau: null });
+      return;
+    }
+    const neu: Record<string, number> = {};
+    for (const [id, w] of Object.entries(v)) if (w > 1e-6) neu[id] = Math.min(1, w);
+    set({ vorschau: neu });
+  },
+  setzeGewichteZeigen(an) {
+    set({ gewichteZeigen: an });
+  },
+  setzeAugenZustand(z) {
+    set({ augenZustand: z });
+  },
+  setzeAugenLid(l) {
+    set({ augenLid: Math.min(1, Math.max(0, l)) });
+  },
+  setzeBlinzeln(an) {
+    set({ blinzeln: an });
+  },
+  setzeMaulAuswahl(a) {
+    set({ maulAuswahl: a });
+  },
+  setzeMaulZeichnen(k) {
+    set({ maulZeichnen: k });
+  },
+  setzeZahnAuswahl(z) {
+    set({ zahnAuswahl: z });
+  },
+  setzeBlick(ansicht, b) {
+    set({ blick: { ...get().blick, [ansicht]: b } });
+  },
+  setzeKantenAuswahl(a) {
+    set({ kantenAuswahl: a });
+  },
+  setzeKanteZeichnen(z) {
+    set({ kanteZeichnen: z });
+  },
+  setzeBreitenAnzeige(b) {
+    set({ breitenAnzeige: b });
+  },
+  setzeBauweise(b) {
+    set({ bauweise: b });
+  },
+  setzeSchnittRegel(r) {
+    set({ schnittRegel: r });
+  },
+  setzeSchnittUeberblenden(u) {
+    set({ schnittUeberblenden: u });
+  },
+  setzeWirbelBiegung(b) {
+    set({ wirbelBiegung: b });
+  },
+  setzeWirbelZeichnen(p) {
+    set({ wirbelZeichnen: p });
+  },
+  setzeZebra(an) {
+    set({ zebra: an });
+  },
+  setzeSpantAuswahl(a) {
+    set({ spantAuswahl: a });
+  },
+  setzeRundSpantAuswahl(a) {
+    set({ rundSpantAuswahl: a });
+  },
+  setzeKantenSicht(k) {
+    set({ kantenSicht: k, kantenAuswahl: k === 'zeigen' ? get().kantenAuswahl : null });
+  },
+  setzeHover(id) {
+    set({ hover: id });
+  },
+  setzeWerkzeug(w) {
+    set({ werkzeug: w });
+  },
+  waehle(ansicht, indizes) {
+    set({ auswahl: { ...get().auswahl, [ansicht]: indizes }, aktiv: ansicht });
+  },
+  setzeAuswahl(a, aktiv) {
+    set({ auswahl: a, aktiv });
+  },
+  auswahlLeeren() {
+    set({ auswahl: { seite: [], front: [], top: [] }, kantenAuswahl: null, spantAuswahl: null });
+  },
+  setzeAnsicht(a, v) {
+    set({ ansichten: { ...get().ansichten, [a]: v } });
+  },
+  setzeKamera(k) {
+    set({ kamera: k });
+  },
+  ansichtZuruecksetzen(id) {
+    if (id === 'creation') set({ kamera: START_KAMERA });
+    else set({ ansichten: { ...get().ansichten, [id]: START_2D[id] } });
+  },
+  oeffneMenue(m) {
+    set({ menue: m });
+  },
+  oeffneDialog(d) {
+    set({ dialog: d });
+  },
+  zeigeHinweis(text) {
+    set({ hinweis: { text, id: Date.now() } });
+  },
+}));
