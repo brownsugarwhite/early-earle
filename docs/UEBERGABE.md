@@ -61,16 +61,29 @@ liegt bisher nur im Kern (`packages/shape/src/kern/einsatz/`); im Editor ist dav
 | Posen und Rig | Teil B weitgehend gebaut | Daten hängen an Punktnummern | ja, Übertrag beim Neubau |
 | Spiel-Export | – | Phase 5 | nein (gebackenes Netz) |
 
-Start-Prompt für Schritt 2 (zum Einfügen; die eckige Klammer durch die eigenen Punkte ersetzen):
+**Start-Prompt für Florian (Schritt 2, die Fable-Sitzung).** Zum Einfügen; die beiden Klammern durch die eigenen Punkte
+ersetzen. Die Punkte dürfen unsortiert sein und in mehreren Nachrichten kommen; dann den ersten Satz stehen lassen und erst am
+Ende „fertig“ schreiben.
 
 > Lies `CLAUDE.md`, `docs/UEBERGABE.md` (Abschnitt „Vorgehen ab 22.10.“) und die Recherchen
-> `docs/research/2026-10-21-feldnetz-oder-kernring.md` und `docs/research/2026-10-21-netz-und-linien-gesamt.md`. Hier sind meine
-> Klarstellungen: […]. Lege sie zuerst wörtlich in `docs/plans/2026-10-22-klarstellungen.md` ab (Bilder nach `docs/look/`),
-> den Block „Bausteine“ getrennt in `docs/plans/2026-10-22-bausteine-wuensche.md` (nur speichern, nicht planen).
-> Dann: (1) Gegenprüfung — ist „ein Liniennetz, ein Löser“ wirklich der eleganteste Weg zu meinem Zielbild? Suche Lücken,
-> Denkfehler und unkonventionelle bessere Ideen und prüfe, ob die Beweise das Richtige testen. (2) Schreib den Prüfplan P1–P3 mit
-> meinen Klarstellungen als Kriterien (Fälle, Messungen, Abbruchkriterien, Bilder je Schritt) nach `docs/plans/` und leg ihn mir
-> zur Freigabe vor. Kein Code, kein Umbau.
+> `docs/research/2026-10-21-feldnetz-oder-kernring.md` und `docs/research/2026-10-21-netz-und-linien-gesamt.md`.
+>
+> Ich schicke jetzt meine Punkte in zwei Teilen, vielleicht in mehreren Nachrichten. Speichere jede Nachricht sofort
+> wörtlich, ändere nichts an meinen Sätzen, und fang mit der Arbeit erst an, wenn ich „fertig“ schreibe. Bilder legst du
+> unter `docs/look/klarstellungen-2026-10-22/` ab.
+>
+> **Teil 1 — Klarstellungen zu Netz und Linien** (Datei `docs/plans/2026-10-22-klarstellungen.md`):
+> […]
+>
+> **Teil 2 — Bausteine: Zähne, Augen, Muster und Zonen, Shader, Anhängsel, Klingen** (Datei
+> `docs/plans/2026-10-22-bausteine-wuensche.md`; nur speichern, nicht planen; prüfe nur, was das Fundament dafür bereitstellen
+> muss):
+> […]
+>
+> fertig. Jetzt: (1) Gegenprüfung — ist „ein Liniennetz, ein Löser“ wirklich der eleganteste Weg zu meinem Zielbild? Suche
+> Lücken, Denkfehler und unkonventionelle bessere Ideen, und prüfe, ob die Beweise P0–P3 das Richtige testen. (2) Schreib den
+> Prüfplan P0–P3 mit meinen Klarstellungen als Kriterien (Fälle, Messungen, Abbruchkriterien, Bilder je Schritt) nach
+> `docs/plans/` und leg ihn mir zur Freigabe vor. Kein Code, kein Umbau.
 
 Start-Prompt für Schritt 3 (nach der Freigabe):
 
