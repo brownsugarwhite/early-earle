@@ -41,7 +41,9 @@ Arbeitstage; kalendarisch nach dem Wochenlimit. Danach der große Plan (Bauweise
 - Kern: Bauplan-Option `stufen` (1 | 2 | 3) für das angezeigte Netz; auf Stufe 1 liegen die Punkte **auf der Grenzfläche**
   (Limit-Stencil statt der rohen Stufe-1-Lagen) und tragen die **Normalen der Grenzfläche** — so bleibt die Cel-Schattierung
   glatt, nur die Silhouette ist polygonal (Blender „Use Limit Surface“, OpenSubdiv-Limit-Auswertung; Gegenprüfung 9.2). Harte
-  Falten als getrennte Normalen, halbscharfe als eine; Morph-Ziele mit Normalen-Deltas.
+  Falten als getrennte Normalen, halbscharfe als eine; Morph-Ziele mit Normalen-Deltas. Der Weg ist kurz: Die Stufenzahl ist
+  heute die Konstante `ABLEIT_STANDARD.stufen = 3`, und die Anzeige legt die Punkte schon auf die Grenzfläche
+  (`anwenden3(grenze)`) — Stufe 1 mit der Grenzmaske der Stufe 1 ist dieselbe Mechanik.
 - Editor: Umschalter **„Spiel“** auf der Bühne (und in den Blättern): Stufe 1 mit dem Earle-Material wie im Spiel; im Titel
   **Dreiecke / 8 000**, dazu die Silhouettenabweichung Stufe 1 gegen Stufe 3 in Gerätepixeln bei Spielgröße. Rot über dem Budget.
 - Messskript `spielstufe.ts` (aus der Vorbereitung dieses Plans, Abschnitt „Messungen“ der Gegenprüfung).

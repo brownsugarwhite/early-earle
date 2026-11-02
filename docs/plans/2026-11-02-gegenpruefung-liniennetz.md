@@ -196,8 +196,11 @@ Grundlage: das Inventar des heutigen Editors (Abschnitt 9.3, Dock, Tasten, Tafel
 | **⇧W** Härte (0 … 3 px) | je Knoten einer P-Linie; Umrisse ohne Härte | **bleibt, für alle Linien** | Härte = Falte und Strich in einem (K1, K7); auch Umrissschleifen bekommen sie (Kastenkante des Tigers). |
 | **G / S / R**, X/Y/Z, Zahlen, Esc, **O** proportional, Rad = Radius | V3 in den Blättern, V6 auf der Bühne | **bleibt** | Blender-Teil (20.10.). |
 | **⌘R** Loop einziehen, **⌥-Klick** Loop wählen, GG gleiten | V6, nur Röhre ohne Maul/Beine, Ring an einer Stelle längs der Wirbelsäule | **bleibt, wird allgemein** | Ein Loop ist eine gezeichnete Linie quer über den Körper in Seite oder Top; ⌘R ist die Abkürzung dafür (gerade Linie an der Zeigerstelle). Mit Maul und Teilen. |
-| **S** Spant (Werkzeug), Spanten in Front/Back, Kiefer-Spant | Querschnitt an einer Stelle, in der Front bearbeitet | **entfällt** | Ein Spant ist ein Loop; den Querschnitt eines Loops bearbeitest du in Front/Back als die Projektion desselben Loops (Plan 20.10., 3.6; Teil L). Kiefer-Spant = Loop auf dem Unterkiefer. |
-| **⌃R** Reifen | Spant als Käfigring mit Perlen auf der Bühne | **entfällt** | geht in ⌘R/Loops auf (Plan 20.10., 4.1). |
+| **S** Spant = Reifen (ein Datum unter zwei Namen: Dock sagt „Reifen“, Hinweis „Spant“; im Blatt dreifach gezeichnet), Spanten in Front/Back, Hauptspant H, Kiefer-Spant | Querschnitt an einer Stelle, rastet einen der 24 Ringe ein; **ein einziger Spant schaltet alle Ringe** auf die Spanten-Überblendung um | **entfällt** | Ein Spant ist ein Loop; den Querschnitt eines Loops bearbeitest du in Front/Back als die Projektion desselben Loops (Plan 20.10., 3.6; Teil L). Kiefer-Spant = Loop auf dem Unterkiefer. |
+| **⌃R** Reifen | ist heute schon ⌘R (Loops); der Reifen-Weg `reifenNeuAmZeiger` ist toter Code | **entfällt** (aufräumen) | geht in ⌘R/Loops auf (Plan 20.10., 4.1). |
+| P-Linien: **„Tiefe“** (Grat/Rinne), Chips glatt/weich/fest/scharf, „weich auslaufen“, Kennzeichnung genau/Treppe | „Tiefe“ ist nur Anzeige (Hof), der Kern liest sie nicht; genau/Treppe zeigt die Baugrenze | **entfällt** bis auf die Härte | Grat/Rinne kommt, wenn überhaupt, aus dem Härte-Modell (E8); „Treppe“ gibt es im Zielbild nicht. |
+| Maul: **Vorlage aus \| vorn \| unten \| hals** (Fertigmaul aus Beweis 2, nicht im Dokument) | Versuch | **entfällt** | die gezeichnete Maullinie ist die einzige Quelle. |
+| Stufe Teile ⌘5: **Beine aus \| verschmolzen \| angesteckt + Schwung** (Beweis 3, nicht im Dokument) | Versuch | **wird Ansatzlinie** | ein Bein ist ein Teil an einer gezeichneten (oder vorgeschlagenen) Ansatzlinie (P3). |
 | **G** Pinsel ziehen, **I** aufblasen, **⇧** glätten, **[ ]** | Grundform (Deltas) und Posen | **bleibt — für Relief und Posen** | Blendshapes sind deine Grundidee (15.10.). In der Grundform ist der Pinsel ein Relief über der Form aus Linien (Entscheidung 15.10.: „Relief“), er verschiebt keine Linie; in Posen formt er den Blendshape. |
 | Tafel Körper: **Haut heute \| glatt** | S2 | **entfällt** | Es gibt nur noch den einen Löser (3.4). |
 | Tafel Körper: **Umrisse berühren aus \| rund \| mittel \| genau** | S3, Standard „mittel“ | **entfällt** | Umrisse binden hart; Fülle ist „so rund wie möglich“. |
@@ -205,7 +208,8 @@ Grundlage: das Inventar des heutigen Editors (Abschnitt 9.3, Dock, Tasten, Tafel
 | Tafel Körper: **Körper Röhre \| Teile** | S7 | **entfällt** | Ein Körper (Plan 20.10., V7). |
 | Tafel Körper: **Ringe eingefroren / Neu ableiten** | Schritt 3 (15.10.) | **entfällt** | Ringe sind deine Loops; Einfrieren ist nur noch die Topologie im Dokument, ohne Knopf. |
 | Tafel Teile: Baumliste, Schalter, **Automatisch** je Teil, verdeckte Kurve per Klick | S4 | **wird „Vorschläge“** | Die Automatik schlägt verdeckte Umrissstücke und Ansatzlinien vor (Entscheidung E2); angenommen sind es Linien, sonst nichts. |
-| Tafel Körper: **Kanten zeigen \| blass \| aus**, **netz ton \| farbe** | S1 | **wird Ebenen** | wie Illustrator-Ebenen: Umrisse, Loops, Kanten, verdeckt, fremde Ansicht — ein- und ausblenden, nicht „Stil“. |
+| Tafel Körper: **Kanten zeigen \| blass \| aus**, **netz ton \| farbe** | S1; „aus“ blendet das ganze Liniennetz samt fremder Ringe | **wird Ebenen** | wie Illustrator-Ebenen: Umrisse, Loops, Kanten, verdeckt, fremde Ansicht — ein- und ausblenden, nicht „Stil“. Heute gibt es vier verschiedene Verdeckt-Stile und **weiche Käfigkanten werden gar nicht gezeichnet** — genau die Loops, die du gestrichelt sehen willst. |
+| Käfig, Zebra, Matcap (Diagnose); Fell ⌘6, Haut ⌘7 Palette/Stil (Look-Tests, nicht im Dokument) | D / Versuch | **bleibt**; Look-Werte gehören ins Dokument (Teil 2) | — |
 | Maul: Maullinie zeichnen, Chips **gleich \| getrennt**, Kieferknopf, Rig-Griffe, Rundmaul | Phase 2, Teil A/B | **bleibt** | Maullinie = Linie mit Schlitz; Kiefer getrennt = zwei Linien mit eigenem Anfang (14./15.10.). |
 | Zähne, Augen (Tafeln, Klick, Ziehen) | Phase 2 M4/M5 | **bleibt** (Teil 2) | hängen an Linien (Zahnfleischreihe, Augenschleife). |
 | Posen & Leben: Posenliste, Knochen, Überblenden, Geist | Teil B | **bleibt** | Daten an Linien statt Punktnummern. |
@@ -213,8 +217,12 @@ Grundlage: das Inventar des heutigen Editors (Abschnitt 9.3, Dock, Tasten, Tafel
 | Layouts Riss/Bühne, Grund Papier/Nacht/Grün, Stamm ⌘1–9, Library | Plan 9 | **bleibt** | — |
 | Δ im Blatt-Titel, Lichtsaum, Widerspruch rot + angleichen | Schritt 4, S0/S1c | **bleibt als Prüfung** | Δ soll 0 sein; rot bleibt die einzige Meldung über die Form. |
 
-Ergebnis: **neun** Dinge entfallen, drei werden allgemeiner (Stift, ⇧W, ⌘R), eins wird zum Vorschlag (Teile), eins zu Ebenen
-(Netzanzeige); alles andere bleibt. Kein neues Werkzeug kommt hinzu — außer dem Umschalter „Spiel“ auf der Bühne (K9).
+Ergebnis: **zwölf** Dinge entfallen (Spant/Reifen, ⌃R-Reste, Haut heute|glatt, berühren, Querschnitt heute|Hülle, umrisse
+aus|an, Körper Röhre|Teile, Neu ableiten, Teile-Automatik als Wahrheit, P-Linien-Tiefe mit Chips, Maul-Vorlage, Beine-Chips),
+drei werden allgemeiner (Stift, ⇧W, ⌘R), eins wird zum Vorschlag (Teile), eins zu Ebenen (Netzanzeige); alles andere bleibt.
+Kein neues Werkzeug kommt hinzu — außer dem Umschalter „Spiel“ auf der Bühne (K9). Was dahinter im Kern wegfallen kann, wenn
+die Beweise halten: die Silhouetten-Maschinerie aus Breite, Berühren, Fülle, Hüllenschnitt, V4-Umrisse, Formen folgen (≈ 4 700
+Zeilen) und die Teilerkennung als Bau-Grundlage (> 3 000 Zeilen) — Inventar in 9.3.
 
 ## 6. Unkonventionelle Ideen (mit Prüfstein)
 
@@ -313,7 +321,23 @@ Recherche (02.11., Quellen in `docs/research/2026-11-02-recherche-spielnetz.md`)
   Verfeinerung).
 
 ### 9.3 Inventar des Editors (Grundlage für Abschnitt 5)
-_[wird ergänzt]_
+Vollständig in `docs/research/2026-11-02-inventar-editor.md` (Dock und Tasten je Stufe, Griffe, Tafel-Chips mit dem Feld,
+das sie schalten, Spanten/Reifen/Loops, Silhouetten-Maschinerie, Spiel-Stufe, Linienschrift der Blätter, Doppelungen). Das
+Wesentliche:
+- **Spant und Reifen sind ein Datum** (`dok.spanten`, halbes Profil normiert auf den Kasten aus Seite × Top) in zwei
+  Darstellungen; der Loop (`dok.schleifen`) ist ein eigenes Konzept mit eigenem Ring, aber ohne eigenen Querschnitt. Ein
+  einziger Spant schaltet alle Ringe auf die Spanten-Überblendung um. Fünf Quellen für Ringe (Ringwahl, Ecken, Reifen,
+  Linienringe, Loops), vier Wege zum Querschnitt (Front-Lappen, Spanten, berühren, Hülle).
+- **Silhouetten-Maschinerie** ≈ 4 280 Zeilen (`breite`, `rand`, `fuelle`, `huellenSchnitt`, `umrisse` (im Editor nie aktiv),
+  `huelle`, `umrissKurven`, `netzSicht`, `abweichung`) + `folgen` 394 + Teilerkennung > 3 000 Zeilen; S4-Teile, Δ, Saum und
+  Widerspruch laufen in jedem genauen Bau.
+- **Linienschrift heute:** P-Linien und Falten nur aus scharfen Käfigkanten (1 + 2·h px, gestrichelt unter h = 0,25; verdeckt
+  Deckkraft 0,25); fremde Umrisse nur mit „umrisse an“ (Seite blau, Front lila, Top grün); Teile-Umrisse „4 4“; Loops orange;
+  vier verschiedene Verdeckt-Stile. Weiche Loops sind unsichtbar.
+- **Spiel-Stufe:** Tafel zeigt nur Kennzahlen; die Unterteilungsstufe ist die Konstante `ABLEIT_STANDARD.stufen = 3`; angezeigt
+  wird schon die **Grenzfläche** der Stufe 3 (`anwenden3(grenze)`) — Stufe 1 mit Grenzmaske ist derselbe Weg (P0a).
+- **Ohne Wirkung oder tot:** `kern/umrisse.ts`, die P-Linien-„Tiefe“, eigene Teilkurven (`dok.teile`), `reifenNeuAmZeiger`;
+  Look-Werte (Beine, Fell, Palette, Stil, Maul-Vorlage) liegen nicht im Dokument.
 
 ## 10. Entscheidungen, die nur du treffen kannst
 
