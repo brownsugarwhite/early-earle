@@ -26,6 +26,12 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 > „ein Liniennetz, ein Löser“ (Umriss zuerst, Stücknetz, harte lineare Bedingungen, Daten an den Linien), Prüfphase P1 „Umriss
 > zuerst“ → P2 „Stücknetz im Maulfeld“ → P3 „Liniennetz am ganzen Körper“, je mit Abbruchkriterien.
 > **Florians Entscheidung offen; bis dahin keine neue Sonderregel am Kernring und kein Umbau.**
+> **02.11.2026: Florians Klarstellungen Teil 1 wörtlich in [`docs/plans/2026-10-22-klarstellungen.md`](docs/plans/2026-10-22-klarstellungen.md)**
+> (Ansichten = Outline-Illustrationen je Teil, verdeckte Linien bearbeitbar, Loops als gezeichnete Linien, „so rund wie
+> möglich“, weniger Werkzeuge, Spielqualität von Anfang an). Dazu die **Gegenprüfung**
+> [`docs/plans/2026-11-02-gegenpruefung-liniennetz.md`](docs/plans/2026-11-02-gegenpruefung-liniennetz.md) und der **Prüfplan
+> P0–P3** [`docs/plans/2026-11-02-pruefplan-p0-p3.md`](docs/plans/2026-11-02-pruefplan-p0-p3.md) — **liegen Florian zur
+> Freigabe vor; bis dahin kein Code, kein Umbau.** Einstieg: [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
 
 - **2026-10-04: Prototyp 1 ist abgeschlossen** (Archiv-Branch `prototyp-1`). Er diente zum Lernen. Florian: „Der Prototyp war sehr gut und aufschlussreich und hat bewiesen, dass die Spielidee toll ist.“ Viele Entscheidungen sind gefallen; die Gesamtdynamik und einige grafische Elemente haben ihm gefallen.
 - **Jetzt beginnt die eigentliche Produktion mit dem finalen Look.** Grundlage wird **Florians neuer Plan mit neuem Hauptprompt**: Story, Charaktere und Map arbeitet er genauer aus und trägt sie in Dokumenten und Screenshots zusammen. Es folgen mehrere Runden und Iterationen.
@@ -292,6 +298,21 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Pol-Regel (Karčiauskas–Peters–Reif), Daten an Linien (Pixar Profile Mover). Verworfen: CAD-Flächen zwischen Linien (G1-Nähte
   knicken Farbstufen), globales Feldnetz, gelernte Netzerzeuger, Sichthülle mit Neuvernetzen. Prüfphase ≈ 2–2,5 Wochen: P1 Umriss
   zuerst → P2 Stücknetz im Maulfeld → P3 Liniennetz am ganzen Körper, je mit Abbruchkriterien. Entscheidung offen.
+- **2026-11-02: Gegenprüfung und Prüfplan P0–P3 (Schritt 2 des Vorgehens vom 21.10.), zur Freigabe.** Florians Klarstellungen
+  Teil 1 (wörtlich, `docs/plans/2026-10-22-klarstellungen.md`; Teil 2 kommt später): Die drei Ansichten sind Outline-Illustrationen
+  je Teil (verdeckte Stücke blass/gestrichelt und bearbeitbar, der Bauch läuft von oben unter dem Kopf durch, die zwei
+  Zusatzpunkte der Vereinigungs-Silhouette entfallen), Loops sind gezeichnete Linien („die meisten Kanten Edgeloops“), Härte =
+  Strich 0–3 px, ohne Kante „so rund wie möglich“, zu viel Fokus auf Spanten/Silhouetten, Spielqualität von Anfang an umschaltbar.
+  **Gegenprüfung** (`docs/plans/2026-11-02-gegenpruefung-liniennetz.md`): „Ein Liniennetz, ein Löser“ bleibt, wird einfacher —
+  Umrissschleifen je Teil (verdeckte Fortsetzung = Rest des Teilumrisses, wie Monster Mash), Loop = Körperschnitt über der
+  gezeichneten Kurve (Spant, Reifen, ⌘R werden eins), Fairness ohne Zielform statt Füllung aus der Sichthülle (die flachen
+  Flanken von „berühren mittel“ sind die Ursache der wilden Linien), Käfig = Spielnetz (Stufe 1 mit Grenzflächen-Lagen und
+  -Normalen, 8 · Käfigflächen ≤ 8 000 Dreiecke → Käfig ≤ 1 000 Flächen samt Maul; der Kernring auf K2 liegt beim Zehnfachen).
+  Zehn Lücken, Werkzeugtabelle (zwölf Chips/Werkzeuge entfallen), 13 Ideen, Entscheidungen E1–E8. **Prüfplan**
+  (`docs/plans/2026-11-02-pruefplan-p0-p3.md`): P0a Spielstufe im Editor → P1 „Ansichten als Illustration“ → P2 „Stücknetz im
+  Maulfeld“ mit Budget-Tor → P3 „Loops und Linien am ganzen Körper“; P0b iPhone mit Florian; 14–19 Arbeitstage. Recherchen
+  `docs/research/2026-11-02-recherche-linienzeichnung-3d.md`, `…-recherche-spielnetz.md`, Inventar `…-inventar-editor.md`,
+  Messung `docs/progress/editor/spielstufe-2026-11-02.md`. Falle: macOS kennt kein `timeout` (Exit 127, Test lief gar nicht).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
