@@ -22,8 +22,11 @@
      Zeichnung. Die Muster-Füllung („Stücknetz“) braucht es nur noch dort, wo zwischen den Linien kein Gitter aufgeht:
      Kappen, Ansätze, Mundwinkel, Augen.
    - **Zwischen den Linien gilt „so rund wie möglich“ als Maß.** Das ersetzt die Füllung aus der Sichthülle („berühren
-     rund | mittel | genau“, „Querschnitt aus der Hülle“), die flache Flanken macht — die gemessene Ursache der wilden Linien
-     (Abschnitt 8). Die Sichthülle bleibt nur, um Widersprüche rot zu zeigen.
+     rund | mittel | genau“, „Querschnitt aus der Hülle“) und die Kopie des Front-Umrisses in jeden Querschnitt (Front-Lappen,
+     Spanten). Gemessen (Abschnitt 8): Die flachen Flanken — die Ursache der wilden Linien — kommen aus diesen gezeichneten
+     Querschnitten und aus Zeichnungen, die selbst flach sind, **nicht** aus der Superellipse („mittel“ ändert das Flachband um
+     höchstens 3 Punkte). Wo die Zeichnung flach ist (Kegel), bleibt der Umriss in der Tiefe unbestimmt — genau deshalb muss er
+     eine geplante Linie sein. Die Sichthülle bleibt nur, um Widersprüche rot zu zeigen.
 2. **Die Recherchen vom 21.10. hatten vier Lücken** (Abschnitt 4): Sie nahmen den Umriss je Ansicht als *eine* Schleife mit
    berechneten Sprüngen an T-Stößen statt als gezeichnete Schleifen je Teil; sie ließen die Füllung aus der Sichthülle stehen;
    sie hatten kein Spiel-Budget und keinen Spiel-Umschalter (das Budget kam erst am 22.10. dazu); und sie prüften die Linien
@@ -124,9 +127,9 @@ Ein dünn besetztes lineares System auf dem Käfig:
   der diskrete Teil (Plan 20.10., Risiko 1): Sie wird getrennt gesucht (dynamische Programmierung mit Stetigkeitsstrafe, wie
   Cashman 2013), dazwischen wird nur linear gelöst; zwei bis drei Wechsel, nie ein Neuvernetzen;
 - **weich:** „so rund wie möglich“ — das Maß ist die Krümmungsvariation der Grenzfläche (Bi-Laplace auf dem Käfig, linear;
-  Halstead–Kass–DeRose 1993, FiberMesh 2007), **ohne Zielform**. Heute glättet S2 relativ zu einer Zielform aus der
-  Sichthülle; genau das erzeugt die flachen Flanken (Abschnitt 8). Ohne Zielform kann die Fläche zwischen den Linien nur rund
-  werden; kastig wird sie allein durch harte Linien;
+  Halstead–Kass–DeRose 1993, FiberMesh 2007), **ohne Zielform**. Heute glättet S2 relativ zu einer Zielform, deren
+  Querschnitte aus dem Front-Umriss kopiert sind (Front-Lappen, Spanten); daher die flachen Flanken (Abschnitt 8 — nicht die
+  Superellipse). Ohne Zielform kann die Fläche zwischen den Linien nur rund werden; kastig wird sie allein durch harte Linien;
 - **Prüfung statt Bedingung:** Die Sichthülle der drei Ansichten dient nur noch dazu, Widersprüche rot zu zeigen (eine
   Umrissschleife, die ein anderes Blatt nicht erlaubt; ein Loop, der breiter ist als das Top an seiner Stelle). Nichts wird
   still entschieden. Bleibt zwischen den Schleifen ein Überstand (Sattel), ist der Rückfall Rivers 2010: Berührpunkte („Rims“)
@@ -170,7 +173,7 @@ und „Fülle“, Hüllenschnitt, Teilerkennung als Bau-Grundlage, Fenster und K
 |---|---|---|---|
 | L1 | **Umriss als eine Schleife je Ansicht** mit berechneten Sprüngen an T-Stößen („springt nur an T-Stößen“). Richtig: Umrissschleifen je Teil, verdeckte Stücke gezeichnet oder vorgeschlagen; T-Stöße sind nur Anzeige. Monster Mash (2020) arbeitet genau so: Teile als überlappende Umrisse, die verdeckte Fortsetzung ist der Rest des Teilumrisses (9.1). | Recherche 21.10., 3.4 und P1 | P1 prüft Schleifen je Teil samt verdeckten Stücken (Langhals, Ente, Zweihals), nicht nur einteilige Körper. |
 | L2 | **Teilerkennung als Fundament** (S4 → S5 → S6 → S7): Jede Erkennung kann kippen (Hysterese, Ratsche, Sehnen), und jeder Kipp springt den Körper. Mit Ansatzlinien in der Zeichnung ist das Fundament fest. | Plan 16.10., S4–S7; Recherche 21.10., 3.3 („weiche Linien aus dem Raster“) | P3 baut Teile aus Ansatzlinien; die Erkennung liefert nur Vorschläge, gemessen nur als Vorschlagsgüte. |
-| L3 | **Füllung aus der Sichthülle** blieb in Kandidat C stehen („Glätte zur Fülle“, Hüllenschnitt). Sie erzeugt Bänder, in denen die Haut parallel zum Blick läuft — die Ursache der wilden Linien, von zwei Recherchen hergeleitet und in Abschnitt 8 gemessen. | Recherche 21.10., 5; Plan 20.10., V4 | P1 misst „so rund wie möglich“ (Krümmungsvariation, flache Bänder) und verlangt, dass keine Fülle-Option mehr gebraucht wird. |
+| L3 | **Füllung aus der Sichthülle und Front-Lappen** blieben in Kandidat C stehen („Glätte zur Fülle“, Hüllenschnitt). Flache Bänder (Haut parallel zum Blick) sind die Ursache der wilden Linien — in Abschnitt 8 gemessen, mit einer Korrektur an der Recherche vom 21.10.: Sie kommen aus den gezeichneten Querschnitten (Front-Umriss in jeden Ring kopiert) und aus flachen Zeichnungen, nicht aus der Superellipse „mittel“ (≤ 3 Punkte Unterschied). | Recherche 21.10., 3.6 und 5; Plan 20.10., V4 | P1 misst „so rund wie möglich“ (Flachband relativ zur Kugel, Wendepunkte, Zebra in 45°-Ansichten) und verlangt, dass keine Fülle-Option mehr gebraucht wird; wo die Zeichnung flach ist, zählt allein die geplante Linie. |
 | L4 | **Spiel-Budget und Spielstufe** fehlten in den Recherchen; das Budget-Tor kam am 22.10. dazu, ein Umschalter nirgends. Der Maul-Einsatz auf K2 liegt beim Dreifachen des Budgets. | Übergabe 22.10. | P0a baut den Umschalter zuerst; P2 und P3 haben das Budget als hartes Tor; die Käfigdichte ist Eingabe, nicht Ergebnis. |
 | L5 | **Linien nur als Zahlen geprüft** (Knicke, Schleifen): 1968 → 18 Knicke, und du sahst sie trotzdem als „sehr sehr wild“. Mit Linien als Projektion von Käfigkurven ist die Frage anders: nicht „wie glatt ist die geschnittene Kontur“, sondern „ist die Linie ruhig, wenn der Körper wackelt“ und „ist es die Linie, die du gezeichnet hast“. | Register „Befunde aus V2“ | P1, Tag 1: Jitter-Test (Käfig 0,1 px gewackelt → Linie ≤ 0,2 px), Kontaktbogen an deinen Wesen, dein Urteil. |
 | L6 | **Werkzeugfrage** fehlte: Die Recherchen prüften Bauweisen, nicht, welche Werkzeuge im Zielbild übrig bleiben. | — | Abschnitt 5; P3 misst die Werkzeug-Matrix nur noch für die verbleibenden Werkzeuge. |
@@ -231,7 +234,7 @@ Zeilen) und die Teilerkennung als Bau-Grundlage (> 3 000 Zeilen) — Inventar in
 | I1 | **Das Blatt ist das SVG.** Die Blätter zeichnen die Illustration mit genau der Schrift der Vektor-Ausgabe; „Export“ speichert, was du siehst. | Eine Linienschrift, kein zweiter Weg; was im Blatt stimmt, stimmt im SVG. | P1, Tag 1: Blatt und SVG decken sich (≤ 0,1 px). | Rendern der Verdeckung je Linie (Sichtbarkeit auf dem feinen Netz) muss ≤ 16 ms bleiben. |
 | I2 | **Teile sind überlappende Umrisse.** Wie in deinen Skizzen (Bogen 02: Kopf über Rumpf, Mähne): Jedes Teil hat seine Umrissschleife, verdeckte Stücke blass. T-Stöße sind nur Anzeige. Vorbild: SmoothSketch (Karpenko, Hughes 2006) ergänzt verdeckte Konturen an T-Stößen automatisch — bei uns zeichnest oder bestätigst du sie. | Keine Erkennung, keine Sehnen, kein Skelett; die Struktur steht in der Zeichnung. | P1: Langhals/Ente von oben mit durchlaufendem Bauch; P3: Flosse mit Ansatz-Loop. | Du musst verdeckte Stücke sehen und ziehen wollen; sonst Vorschlag (E2). |
 | I3 | **Loops zeichnen = Ringe setzen.** Ein Loop ist der Körperschnitt über der gezeichneten Kurve, also auch gebogen, schräg, um einen Hals; weich = gestrichelt, hart = Kante. | Topologie durch Zeichnen, wie Blender-Loops, aber in deiner Ansicht; ersetzt Spanten, Reifen, Ringwahl. | P3: Langhals mit drei gezeichneten Loops, Kegel mit schrägem Loop. | Dichte Loops in einer Biegung (Mindest-Einfluss wie V6). |
-| I4 | **„So rund wie möglich“ als Maß.** Krümmungsvariation ohne Zielform; kantig nur durch harte Linien. | Streicht Fülle, berühren, Hüllenschnitt; die Ursache der wilden Linien verschwindet. | P1: flache Bänder < 2 % der Fläche je Ansicht; Zebra in 45°-Ansichten ohne Bänder. | Lange Körper mit wenigen Linien sacken zwischen den Linien ab → Loops dazu (die Zeichnung sagt es). |
+| I4 | **„So rund wie möglich“ als Maß.** Krümmungsvariation ohne Zielform; kantig nur durch harte Linien. | Streicht Fülle, berühren, Hüllenschnitt und Front-Lappen; die gezeichnete Ursache der wilden Linien bleibt (flache Formen), aber dort ist die Linie dann geplant. | P1: Flachband je Ansicht ≤ 1,5 × Kugel (13 %) an runden Körpern, außerhalb gezeichneter gerader Strecken; Zebra in 45°-Ansichten ohne Bänder. | Lange Körper mit wenigen Linien sacken zwischen den Linien ab → Loops dazu (die Zeichnung sagt es). |
 | I5 | **Der Käfig ist das Spielnetz.** Dichte aus dem Budget; Stufe 1 = Spiel, Stufe 3 = Vorschau; Umschalter von Anfang an. | Keine Umwandlung, kein Reduzieren, kein zweiter Export-Weg. | P0a: Zahlen heute; P2/P3: Budget-Tor. | Lippen und Mundwinkel brauchen Dichte: das Maulfeld bekommt sie örtlich (Muster), nicht global (K2). |
 | I6 | **Härte = eine Zahl je Knoten** für Falte (Schärfe im Käfig) und Strich (0–3 px). | Eine Schrift, ein Regler (⇧W), kein „Tiefe“-Feld. | P3: Härte 0/50/100 % → Winkel und Strich gemessen. | Die sichtbare Rundung hängt an der Käfigauflösung (Plan 20.10., 3.4); ein Stützloop hilft. |
 | I7 | **Automatik nur als Vorschlagslinie.** Alles Automatische (verdeckte Stücke, Ansatz, Loop-Vorschläge, Mundwinkel-Verlängerung) erscheint als Vorschlagslinie, die du annimmst (Klick) oder ignorierst. | Passt zu deiner Regel vom 11.10. (keine automatischen Punkte) und zur Lockerung vom 16.10. (einfügen nur wenn nötig). | P1/P3: Vorschlag an deinen Wesen, Trefferquote. | — |
@@ -260,8 +263,38 @@ Die Reihenfolge bleibt P1 → P2 → P3 (P0a davor, P0b wann du kannst), aus dem
 
 ## 8. Messungen heute (02.11.)
 
-_[wird ergänzt, sobald die Messung läuft: Dreiecke je Stufe, Silhouette Stufe 1 gegen Zeichnung und gegen Stufe 3, Facettierung,
-flache Bänder je Füllung]_
+Skript `apps/editor/scripts/pruefen/spielstufe.ts` (Körper gebaut wie der Editor, Stufen frisch aus dem gelösten Käfig,
+Grenzlage mit der Halstead-Maske derselben Stufe; Gegenprobe Stufe 3 gegen `abl.fein` 0,0000 px), Bilder
+`spielstufe-bild.mjs`; Tabellen wörtlich in [`docs/progress/editor/spielstufe-2026-11-02.md`](../progress/editor/spielstufe-2026-11-02.md).
+
+| Maß | Ergebnis |
+|---|---|
+| Dreiecke Stufe 1 | Röhre 400 Käfigflächen → **3 200**; Teile 3 344 (Ente), 3 968 (Vierbeiner), 6 288 (Fisch) — ohne Maul im Budget. **Mit Maul gibt es heute keine Stufe 1:** der Einsatz sitzt auf K2; der Käfig mit Maul hat als Stufe 0 schon 18 928 (Rex) bzw. 25 958 (Kugel) Dreiecke, eine Stufe darüber 75 712 bzw. 103 832 |
+| Umriss Stufe 1 gegen Stufe 3 (px bei 461 je Kachel) | reine Catmull-Clark-Lage max 0,9–4,8 (Kasten und Kegel in der Front), Mittel 0,1–0,8; **auf der Grenzlage max 0,4–2,8, Mittel 0,1–0,6** — bei Spielgröße (300 px) sind das ≈ 0,3–1,8 Gerätepixel |
+| Δ gegen die Zeichnung | Stufe 3 reproduziert den Editor exakt (Robbe Top 12,5, Vierbeiner Front 16,2, Ente Front 12,6 px sind schon da); Stufe 1 legt auf der Grenzlage im Mittel 0,1 px darauf, als rohe Lage 0,5–0,6 |
+| Facetten Stufe 1 (Knick zwischen Nachbarflächen, 95 %) | Kugel/Ei 11–12°, Rex/Langhals/Robbe/Tigerkopf/Kegel 20–24°, Teile 29–34°; Anteil > 20°: 0 % (Kugel), 5–12 % (Röhre), 18–25 % (Teile). **Maxima abseits aller gezeichneten Falten:** Rex 133° (erstes Ringband an der Schnauze; Stufe 3 dort 14°), Tigerkopf 56°, Kegel 54° (Ecke des Dreiecks ohne Falte), Langhals 53° (oben am Hals), Teile 61–89°; auf der Grenzlage Rex 36°, Tigerkopf 30° |
+| Sichtprobe (Cel-Stufen, 480 px) | Stufe 1 mit glatten Punktnormalen ist von Stufe 3 nicht zu unterscheiden (Grenznormalen ebenso); nur flach schattiert treppen die Cel-Grenzen. Polygonaler Umriss Rex ≤ 1,5 px, Langhals ≤ 3 px — fällt nicht auf. Bilder `spielstufe-rex-…`, `spielstufe-langhals-2026-11-02.png` |
+| Flachband Stufe 3 (Anteil der Fläche, Normale < 5° zur Blickrichtung; Kugel-Bezug 8,7 %) | Seite: Rex 18,9 %, Robbe 21,8 %, Tigerkopf 17,7 %, **Kegel 34,4 %** (gezeichnetes Dreieck in der Front = gerade Flanken), Langhals 11,5 %; Front: Vierbeiner 31,0 %, Ente 20,0 %, Langhals 15,9 %, Fisch 14,8 %; Top: Vierbeiner 23,7 %. **„Berühren“ mittel gegen aus bzw. rund: höchstens 3,2 Punkte Unterschied**, bei Kugel, Ei, Tigerkopf, Kegel keiner. „mittel“ kauft dafür Δ Front (Rex 10,3 → 7,3, Robbe 8,5 → 6,2, Ente 14,3 → 12,6, Vierbeiner 21,4 → 16,2 px) |
+| Käfig mit Maul (K2 + Einsatz) ohne weitere Stufe | Haut auf Stufe-2-Niveau (95 % 5,7° Kugel, 20,4° Rex); Maxima 103–179° aus Tasche und Rachen |
+
+**Lesart:**
+1. **Stufe 1 trägt das Budget, aber nur ohne Maul;** der Einsatz auf K2 braucht das Sechs- bis Achtfache dessen, was für
+   Lippe, Tasche, Rachen und Zähne bleibt (1 700–4 800 Dreiecke). Das ist das Budget-Tor in P2.
+2. **Der Spiel-Umriss ist auf 1–3 px polygonal, nicht 5–15;** die großen Δ-Zahlen hat Stufe 3 schon. Die Grenzlage halbiert
+   den Rest und kostet nichts (eine Maske je Käfigpunkt beim Backen).
+3. **Das eigentliche Problem der Stufe 1 sind die Facetten abseits der Falten** (Rex 133° an der Schnauze, Langhals 53°,
+   Kegel 54°): Stellen, an denen der Käfig schon auf Stufe 3 Falten von 14–27° hinterlässt und die Stufe 3 verdeckt. Mit
+   „Käfig = Spielnetz“ wird die Käfiggüte (kleinster Innenwinkel, Seitenverhältnis; Rex heute 29° / 24,9) ein echtes Tor
+   (Prüfplan P0a/P1/P3).
+4. **Korrektur an der Recherche vom 21.10.:** Flache Flanken kommen aus den gezeichneten Querschnitten (Front-Umriss in jeden
+   Ring kopiert) und aus Zeichnungen, die wirklich flach sind — nicht aus der Superellipse. Die Folgerung bleibt: Wo ein Drittel
+   der Fläche in der Blickrichtung liegt, ist der Umriss in der Tiefe schlecht bestimmt, unabhängig von der Fülle-Stufe. Darum
+   muss der Umriss eine geplante Linie sein (P1) — und die runde Füllung ersetzt die Front-Lappen, nicht nur „mittel“.
+5. **Messfalle:** Δ (`blattAbweichungen`) ist an exakt achsparallelen Flächen auf 0,2 px empfindlich (Tigerkopf Front 2,29
+   gegen 2,09 im Editor: `umrissStuecke` teilt nach dem Vorzeichen der Newell-Komponente). Register-Eintrag.
+
+Nicht gemessen: Körper mit Maul auf Stufe 1/2 (gibt es heute nicht), Zähne, Augen, Beine, Posen, Earle-Material und Schatten im
+Spiel, Grenznormalen als Zahl (nur im Bild). Das ist P0a/P0b.
 
 ## 9. Recherche (02.11.)
 
@@ -362,3 +395,5 @@ Wesentliche:
 - Mehrere Loops dicht in einer Biegung, sehr spitze Keile (Robbe hoch J) und schräge Kanten über viele Reihen bleiben die
   schweren Stellen jedes Verfahrens; sie stehen als Fälle im Prüfplan, nicht als gelöst.
 - Zahlen zu Aufwand sind Schätzungen; nach jedem Beweis wird neu geschätzt.
+- Die Messung vom 02.11. gilt für den heutigen Kern ohne Maul; wie das Spiel selbst (WebGPU/TSL, Atlas) Stufe 1 schattiert,
+  zeigt erst P0a/P0b.

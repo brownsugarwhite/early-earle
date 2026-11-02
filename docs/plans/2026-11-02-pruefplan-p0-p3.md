@@ -66,6 +66,11 @@ Kugel mittel J mit Maul-Einsatz (Kernring, eingefroren); Rex in der Pose Fressen
 **Bilder:** Kontaktbogen je Fall: Stufe 3 | Stufe 1 mit Grenznormalen | Stufe 1 mit rohen Normalen (zum Vergleich), Seite und 45°,
 Earle-Look; ein Bogen aller Fälle bei Spielgröße.
 
+**Heute (Messung 02.11., [`spielstufe-2026-11-02.md`](../progress/editor/spielstufe-2026-11-02.md)):** Stufe 1 auf der
+Grenzlage gegen Stufe 3 max 0,4–2,8 px bei 461 px je Kachel (bei Spielgröße 300 px ≈ 0,3–1,8 Gerätepixel) — das Tor ist
+erreichbar; Knicke 95 % 11–34°, Maxima abseits der Falten auf der Grenzlage 30–81° — die Käfigfehler, die Stufe 3 verdeckt;
+Cel-Stufen auf Stufe 1 mit glatten Normalen bei 480 px nicht von Stufe 3 zu unterscheiden; mit Maul gibt es heute keine Stufe 1.
+
 **Abbruch/Befund:** Kein Abbruch (Messung). Verfehlt ein Körper ohne Maul die Silhouetten-Tore, ist die Käfigdichte zu gering
 oder zu ungleich verteilt (16 statt 24 Punkte je Rumpfring) — dann wird die Dichteregel (Gegenprüfung 3.6: Körper 600–700,
 Maulfeld 200–300, Zähne ≤ 100 Flächen) angepasst, bevor P2/P3 das Budget als Tor nehmen.
@@ -131,7 +136,8 @@ des Körpers (Δ = 0), und bleiben die Linien ruhig?
   | Überstand über eine Schleife | ≤ 0,5 px |
   | umgeklappte Flächen | 0 |
   | Falten freie Haut / Kappen (nach Zonen) | ≤ heutiger Wert je Körper; Kappen ≤ 15° |
-  | flache Bänder: Flächenanteil mit \|n·Blick\| < sin 5° je Ansicht | ≤ 2 % (heute mit „mittel“: Zahl aus der Messung in der Gegenprüfung, Abschnitt 8) |
+  | Flachband: Flächenanteil mit \|n·Blick\| < sin 5° je Ansicht | ≤ 13 % (1,5 × Kugel 8,7 %) an runden Körpern; an Körpern mit gezeichneten geraden Strecken (Kegel, Würfel, Tiger-Block) nur außerhalb dieser Strecken gezählt. Heute: Rex Seite 18,9 %, Robbe 21,8 %, Langhals Front 15,9 %, Kegel Seite 34,4 % (gezeichnet) |
+  | Käfiggüte auf Stufe 1 (Grenzlage), abseits gezeichneter Falten | 95 % ≤ 20°, max ≤ 30° (heute Röhre 21–24 % / Rex 36°, Langhals 45°, Kegel 47°) — der Käfig ist das Spielnetz |
   | Rundheit: Querschnitte an 10 Stationen, wo beide Umrisse konvex sind | keine Wendepunkte im Querschnitt |
   | Zebra in den Ansichten 45°/45° und 45°/−45° | keine Bänder, keine Falten, die niemand gezeichnet hat (Bild, dein Urteil) |
   | Volumen gegen heute | Hinweis, kein Tor (rund ist schmaler als „mittel“) |
@@ -226,6 +232,7 @@ Stücke und Seiten zählen. **Abbruch**, wenn mehr als jedes zehnte Stück eine 
 | Stabilität | Linie ±2 px (20 Versuche je Linie): Topologie wechselt nur, wenn eine Kreuzung wechselt; dann bleiben ≥ 95 % der Flächen außerhalb der Nachbarstücke gleich; Posen-Deltas übertragen ≤ 0,5 px |
 | Tempo | Neuplanung ≤ 150 ms, mit Lösen ≤ 300 ms bis 2 000 Käfigpunkte; Zug ohne Neuplanung ≤ 16 ms je Bewegung |
 | Budget | ganzes Wesen ≤ 1 000 Käfigflächen samt Maul (mit P2) |
+| Käfiggüte Stufe 1 | wie P1: abseits gezeichneter Falten 95 % ≤ 20°, max ≤ 30° (Grenzlage); Teile heute 29–34 % / 50–81° |
 | Werkzeug-Matrix | nur die verbleibenden Werkzeuge × Grundform/Pose: jedes wirkt auf jedem Körper gleich (keine Röhre/Teile-Unterscheidung, kein Chip ohne Wirkung) |
 | Blatt-Illustration | Loops gestrichelt, wo weich; verdeckt blass; Sichel der Flosse von oben; Blatt = SVG |
 

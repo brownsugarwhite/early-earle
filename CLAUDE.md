@@ -312,7 +312,10 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   (`docs/plans/2026-11-02-pruefplan-p0-p3.md`): P0a Spielstufe im Editor → P1 „Ansichten als Illustration“ → P2 „Stücknetz im
   Maulfeld“ mit Budget-Tor → P3 „Loops und Linien am ganzen Körper“; P0b iPhone mit Florian; 14–19 Arbeitstage. Recherchen
   `docs/research/2026-11-02-recherche-linienzeichnung-3d.md`, `…-recherche-spielnetz.md`, Inventar `…-inventar-editor.md`,
-  Messung `docs/progress/editor/spielstufe-2026-11-02.md`. Falle: macOS kennt kein `timeout` (Exit 127, Test lief gar nicht).
+  Messung `docs/progress/editor/spielstufe-2026-11-02.md` (Stufe 1 ohne Maul im Budget, Umriss auf der Grenzlage 0,4–2,8 px
+  polygonal, Facetten abseits der Falten bis 133° = verdeckte Käfigfehler; **flache Flanken kommen aus den gezeichneten
+  Querschnitten, nicht aus „berühren mittel“** — Korrektur an der Recherche vom 21.10.). Falle: macOS kennt kein `timeout`
+  (Exit 127, Test lief gar nicht).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
