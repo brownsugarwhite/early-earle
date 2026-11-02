@@ -34,8 +34,8 @@
    Pinsel für Relief und Posen, Maul, Zähne, Augen, Posen, Pauspapier. Tabelle in Abschnitt 5.
 4. **Spielqualität von Anfang an:** Die Dichte des Käfigs kommt aus dem Spiel-Budget (Stufe 1 ≤ 8 000 Dreiecke samt Maul),
    nicht umgekehrt. Ein Umschalter „Spiel“ auf der Bühne zeigt Stufe 1 mit den Normalen der glatten Fläche und die Dreieckszahl.
-   Heute: Körper ohne Maul 3 200 Dreiecke auf Stufe 1, der Maul-Einsatz auf K2 sprengt das Budget um das Dreifache
-   (Abschnitt 8). Das wird ein hartes Tor in P2 und P3.
+   Heute: Körper ohne Maul 3 200 Dreiecke auf Stufe 1; der Maul-Einsatz auf K2 liegt schon auf Stufe 0 beim Zwei- bis
+   Dreifachen des Budgets, auf Stufe 1 beim Zehnfachen (Abschnitt 8). Das wird ein hartes Tor in P2 und P3.
 5. **Die Beweise P0–P3 testen jetzt das Richtige**, wenn sie umgebaut werden wie im Prüfplan: P0 geteilt (P0a Spielstufe auf
    dem Mac, sofort; P0b iPhone, wenn du da bist), P1 „Ansichten als Illustration“ (Konturschleifen, verdeckte Linien, runde
    Füllung, schwarze Linie = Umriss), P2 „Stücknetz im Maulfeld“ mit Budget-Tor, P3 „Loops und Linien am ganzen Körper“ mit
@@ -140,10 +140,18 @@ außer an Kreuzungen. Zwischenansichten (45°) sind keine Zeichnung; dort gilt a
   Käfigfläche = 8 Dreiecke). Ein Körper hat heute 400 Käfigflächen (3 200 Dreiecke auf Stufe 1); für Maul, Augen und Ansätze
   bleiben also rund 600 Flächen. Das Maulfeld des Stücknetzes bekommt seine Dichte aus diesem Rest, nicht aus einer zweifachen
   Verfeinerung des ganzen Käfigs (heute K2: 9 500–13 000 Flächen).
-- **Umschalter „Spiel“** auf der Bühne: Stufe 1 statt 3, Normalen von der glatten Fläche (Stufe 3 an denselben Stellen), das
-  Earle-Material wie im Spiel, Dreieckszahl und Budget im Titel; dazu die Silhouettenabweichung Stufe 1 gegen Stufe 3 in px bei
-  Brettgröße. Was du dort siehst, ist, was das Spiel zeigt. Einzelheiten und heutige Zahlen in Abschnitt 8, Recherche dazu in 9.2.
-- Posen: Morph-Ziele auf Stufe 1 (gleiche Punktzahl je Pose), Kieferknochen; glTF wendet Morph vor Skinning an — unsere Reihenfolge.
+- **Umschalter „Spiel“** auf der Bühne: Stufe 1 statt 3, die Punkte **auf der Grenzfläche** (Limit-Stencil, wie Blenders „Use
+  Limit Surface“) mit den **Normalen der Grenzfläche** — die Cel-Stufen bleiben glatt, nur die Silhouette ist polygonal; harte
+  Falten als getrennte Normalen, halbscharfe als eine. Earle-Material wie im Spiel (Stufenkante mit fwidth-smoothstep),
+  Dreieckszahl und Budget im Titel, Silhouettenfehler in Gerätepixeln **gegen die Grenzfläche** (nicht gegen Stufe 3) bei
+  Spielgröße. Was du dort siehst, ist, was das Spiel zeigt. Zahlen in Abschnitt 8, Recherche in 9.2.
+- **Dichteregel aus dem Fehlermaß:** Sagitta s ≈ l²/(8r). Bei 1 Gerätepixel Toleranz darf eine Stufe-1-Kante am Rumpf
+  (r ≈ 200 px bei Spielgröße) ≈ 40 px lang sein, an der Schnauze (r ≈ 50 px) ≈ 20 px. Mit 16 Punkten je Ring liegt der Rumpf
+  heute bei ≈ 4 px Fehler auf Stufe 1 — Stufe 1 braucht deshalb Grenzflächen-Lagen und eher 24 Punkte je Rumpfring. Aufteilung
+  der 1 000 Flächen (Vorschlag): Körper 600–700, Maulfeld 200–300 (Rachen gröber), Zähne ≤ 100.
+- Posen: Käfig-Deltas auf Stufe 1 zu backen ist **exakt** (Subdivision ist bei fester Topologie linear), jedes Morph-Ziel
+  bekommt sein Normalen-Delta; Kieferknochen: „Käfig skinnen, dann unterteilen“ und umgekehrt unterscheiden sich nur im
+  Übergangsband der Gewichte (Gelenk) — der Editor zeigt beides und das Δ. glTF wendet Morph vor Skinning an — unsere Reihenfolge.
 
 ### 3.7 Was bleibt
 Löser, Catmull-Clark, Messungen (Δ, Falten nach Zonen, Durchdringung), Extremreihe, Maul-Prüffälle, Posen-Kern (Teil B),
@@ -240,7 +248,30 @@ flache Bänder je Füllung]_
 _[wird ergänzt]_
 
 ### 9.2 Spielqualität aus dem Käfig
-_[wird ergänzt]_
+Recherche (02.11., Quellen in `docs/research/2026-11-02-recherche-spielnetz.md`), das Wesentliche:
+- **Grundrechnung:** Dreiecke(Stufe L) = 2 · F · 4^L für F Käfigflächen — 400 Flächen: 3 200 / 12 800 / 51 200 (L1–L3);
+  1 000 Flächen: 8 000 auf L1. Bei ≤ 8 000 Dreiecken ist Stufe 1 die einzige Stufe, die einen Käfig mit 400–1 000 Flächen trägt.
+  Der heutige Maul-Einsatz (9 500–13 000 Flächen) liegt auf Stufe 0 bei 19 000–26 000, auf Stufe 1 bei 76 000–104 000 Dreiecken.
+- **Praxis:** Film wertet die Grenzfläche aus (OpenSubdiv); Spiele backen (Call of Duty: Ghosts tessellierte zur Laufzeit,
+  blieb Ausnahme: „at low tessellation rates, off-line subdivision outperforms hardware tessellation“). Stilisierte Figuren:
+  Guilty Gear Xrd ≈ 40 000 Dreiecke (PS4, Nahaufnahme, Normalen von Hand), Wind Waker ≈ 2 800; mobil 3 000–10 000.
+  Blender: Viewport- und Render-Stufe getrennt, „Use Limit Surface“ setzt die Punkte auf die Grenzfläche.
+- **Normalen:** Grenzflächen-Normalen auf dem Stufe-1-Netz sind das Gegenstück zum Normal-Map-Backen (Blender „Data Transfer →
+  Custom Normals“, Anime-Standard; Arc System Works setzt Normalen von Hand, weil binäre Cel-Schattierung jedes Normalenrauschen
+  zeigt). Jedes Morph-Ziel braucht ein eigenes Normalen-Delta (glTF erlaubt Targets für NORMAL; three.js lädt sie).
+- **Silhouette:** s = R(1 − cos(π/n)): 16 Segmente 1,9 % R, 32 Segmente 0,48 %; Toleranz in der Praxis 1–2 px je Kante
+  (Nanite 1 px, Unreal-Tessellation 2 px, Reyes ½ px). Bei 300–500 Gerätepixeln sind 1–2 px unsichtbar. Adaptive Verfeinerung
+  ohne Tessellierungsstufe gibt es (Compute-Bisektion, Dupuy/Deliot 2022), aber der WebGL2-Rückfall kann sie nicht, und
+  36 Wesen bei dieser Größe brauchen sie nicht: gebackene Stufen (L1 nah, L0 fern) sind Standard.
+- **Cel-Stufen auf grobem Netz:** Die Stufengrenze ist die Isolinie von N·L und knickt an jeder Dreieckskante; Abhilfe in
+  dieser Reihenfolge: Grenznormalen → fwidth-smoothstep (three.js MeshToonMaterial seit r144) → Schwellen-Offset per Malzone →
+  mehr Ringe nur dort, wo die Grenze läuft.
+- **Posen:** Subdivision ist bei fester Topologie linear → Käfig-Deltas auf Stufe 1 backen ist exakt; Knochen sind nicht
+  linear, aber Subdivision ist affin-invariant → Unterschied nur im Gewichtsband (Gelenkband ≥ 2 Käfigringe); Zahlen dazu gibt
+  es nicht, der Editor soll beides rechnen.
+- **Reduzieren hinterher** (Un-Subdivide, QuadriFlow, Maya Reduce) erhält Lippen-, Reifen- und Faltenloops nicht verlässlich —
+  Notnagel, keine Pipeline. „Weniger Stufen“ ist die exakte Reduktion; der K2-Einsatz ist davon ausgenommen (keine reine
+  Verfeinerung).
 
 ### 9.3 Inventar des Editors (Grundlage für Abschnitt 5)
 _[wird ergänzt]_

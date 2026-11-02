@@ -40,7 +40,8 @@ Arbeitstage; kalendarisch nach dem Wochenlimit. Danach der große Plan (Bauweise
 **Was gebaut wird (klein, unabhängig vom Netz):**
 - Kern: Bauplan-Option `stufen` (1 | 2 | 3) für das angezeigte Netz; auf Stufe 1 liegen die Punkte **auf der Grenzfläche**
   (Limit-Stencil statt der rohen Stufe-1-Lagen) und tragen die **Normalen der Grenzfläche** — so bleibt die Cel-Schattierung
-  glatt, nur die Silhouette ist polygonal. Harte Kanten bleiben hart (getrennte Normalen an Falten).
+  glatt, nur die Silhouette ist polygonal (Blender „Use Limit Surface“, OpenSubdiv-Limit-Auswertung; Gegenprüfung 9.2). Harte
+  Falten als getrennte Normalen, halbscharfe als eine; Morph-Ziele mit Normalen-Deltas.
 - Editor: Umschalter **„Spiel“** auf der Bühne (und in den Blättern): Stufe 1 mit dem Earle-Material wie im Spiel; im Titel
   **Dreiecke / 8 000**, dazu die Silhouettenabweichung Stufe 1 gegen Stufe 3 in Gerätepixeln bei Spielgröße. Rot über dem Budget.
 - Messskript `spielstufe.ts` (aus der Vorbereitung dieses Plans, Abschnitt „Messungen“ der Gegenprüfung).
@@ -52,18 +53,20 @@ Kugel mittel J mit Maul-Einsatz (Kernring, eingefroren); Rex in der Pose Fressen
 | Maß | Tor |
 |---|---|
 | Dreiecke auf Stufe 1 (mit Maul, Zähnen, Augen) | ≤ 8 000 (heute: Körper ohne Maul 3 200; mit Maul-Einsatz K2 ≈ 19 000–26 000 → verfehlt, erwartet; das ist der Befund für P2) |
-| Silhouette Stufe 1 (Grenzlagen) gegen Stufe 3, drei Ansichten, bei Spielgröße | max ≤ 1,5 Gerätepixel, Mittel ≤ 0,5 |
-| Silhouette Stufe 1 gegen die Zeichnung (Δ wie im Blatt) | nicht mehr als Stufe 3 + 1,5 px |
+| Silhouette Stufe 1 (Grenzlagen) **gegen die Grenzfläche** (Stufe 3 als Näherung), drei Ansichten, bei Spielgröße | max ≤ 1 Gerätepixel (Warnung ab 2), Mittel ≤ 0,5 — Sagitta s ≈ l²/(8r) |
+| Silhouette Stufe 1 gegen die Zeichnung (Δ wie im Blatt) | nicht mehr als Stufe 3 + 1 px |
 | Facettierung: Flächenwinkel benachbarter Stufe-1-Flächen abseits gezeichneter Falten | 95 % ≤ 12°, max ≤ 25° |
-| Cel-Stufen: Lage der Farbstufen-Grenzen Stufe 1 (Grenznormalen) gegen Stufe 3 im Bild | ≤ 2 Gerätepixel, keine Treppe entlang der Stufengrenze |
-| Pose (Fressen 50/100 %) auf Stufe 1 gegen Stufe 3 | ≤ 1,5 Gerätepixel an der Silhouette |
+| Cel-Stufen: Pixel, deren Farbstufe zwischen Stufe 1 (Grenznormalen) und Stufe 3 wechselt, bei Spielgröße | ≤ 1 % der Wesenpixel; Stufengrenze ohne Treppe (Overlay-Bild) |
+| Pose (Fressen 50/100 %) auf Stufe 1 (Käfig-Deltas + Normalen-Deltas) gegen Stufe 3 | ≤ 1 Gerätepixel an der Silhouette; Kieferknochen: „skinnen, dann unterteilen“ gegen „unterteilen, dann skinnen“ als Δ gezeigt |
+| Punkte je Rumpfring | Befund: reicht 16, oder braucht Stufe 1 24 (Sagitta am Rumpf)? Eingabe für die Dichteregel |
 | Umschalten im Editor | ≤ 100 ms, kein Neubau des Käfigs |
 
 **Bilder:** Kontaktbogen je Fall: Stufe 3 | Stufe 1 mit Grenznormalen | Stufe 1 mit rohen Normalen (zum Vergleich), Seite und 45°,
 Earle-Look; ein Bogen aller Fälle bei Spielgröße.
 
 **Abbruch/Befund:** Kein Abbruch (Messung). Verfehlt ein Körper ohne Maul die Silhouetten-Tore, ist die Käfigdichte zu gering
-oder zu ungleich verteilt — dann wird die Dichteregel (Gegenprüfung 3.6) angepasst, bevor P2/P3 das Budget als Tor nehmen.
+oder zu ungleich verteilt (16 statt 24 Punkte je Rumpfring) — dann wird die Dichteregel (Gegenprüfung 3.6: Körper 600–700,
+Maulfeld 200–300, Zähne ≤ 100 Flächen) angepasst, bevor P2/P3 das Budget als Tor nehmen.
 
 **Was du siehst (Tag 1):** den Umschalter „Spiel“ an deinen Wesen; Dreieckszahl im Titel; Kontaktbogen Stufe 1 gegen 3.
 
