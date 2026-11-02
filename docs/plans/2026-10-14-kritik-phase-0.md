@@ -770,3 +770,31 @@ Bögen auf der Planseite 20.10., „Stand V2“. Je Punkt der Schritt, der ihn a
   schreibt beim Auftreten einen Befund ins Protokoll — Treffer mit und ohne Raster an der ersten Lücke, NaN in der Fläche,
   Rasterwerte, dieselbe Linie noch einmal und die Fläche neu im selben Prozess. Damit ist beim nächsten Mal sichtbar, ob
   Fläche, Raster oder Linie abweicht und ob es im Prozess wiederholbar ist.
+- [x] **22.10.: Ursache gefunden und behoben — ein Fehler der JavaScript-Maschine V8, ausgelöst durch die Form von
+  `strahlRaster`.** Wieder rot auf CI (Lauf zu 772b5c27, nur Doku geändert): T2 „Raster = Suche über alle Dreiecke“ (0 statt 2
+  Treffer) und „Ziehen am Tiger“ (99,9 px); im selben Prozess baute T3 dieselbe Tiger-Fläche danach richtig.
+  - **Nachgestellt:** S0 und Raster mehrmals im selben Prozess, 16–24 Prozesse gleichzeitig (Mac, Node 25.8). In 2–5 von 72
+    bzw. 96 Prozessen kam ein Raster falsch zurück; die Fläche war jedes Mal bitgleich zur ersten Runde, u, v, t und die
+    Zelllisten stimmten, nur **Ursprung und Zellgröße (x0, y0, zb, zh) gehörten zu einer anderen Ansicht** (Seite mit den
+    Grenzen der Front: z statt x; einmal Seite und Front mit denen des Tops). `treffer` sucht dann in falschen Zellen →
+    Lücken, falsche Treffer — genau die Bilder vom 20./21.10. und wohl auch `kantenFlaeche` (−0,168 statt −0,15), das dasselbe
+    Raster nutzt.
+  - **Eingegrenzt mit Schaltern der Maschine** (je 72 Prozesse, Standard 2): ohne Maglev 0, ohne Turbofan 0, ohne On-Stack-
+    Replacement 0, ohne paralleles OSR 0, ohne paralleles Übersetzen 0. Mit `let` statt `const` ebenso falsch (5 von 96). Lesart:
+    Wird eine lange Schleife mitten im Lauf von Maglev nach Turbofan übersetzt (im Hintergrund) und tritt danach ein *anderer*
+    Aufruf in diesen Code ein, liest er den Funktionskontext des Aufrufs, für den übersetzt wurde. Im Kontext lagen x0, y0, zb,
+    zh, weil die inneren Closures `spalte`/`zeile` sie fingen. Reine Raster-Schleifen ohne den Bau der Fläche dazwischen lösten
+    es nicht aus (auch nicht mit `--always-osr`, `--stress-maglev`, Pausen) — es braucht Last und Hintergrund-Übersetzungen.
+  - **Behoben:** `rasterZelle` außerhalb von `strahlRaster` (dieselbe Rechnung, bitgleich), die Funktion hält keine Variablen
+    mehr in Closures. Gegenprobe unter gleicher Last (je Durchgang 12 Prozesse alt und 12 neu zugleich, 8 Durchgänge): **alt 5
+    von 96, neu 0 von 96** (wäre die Korrektur wirkungslos, läge die Chance auf null Fehler unter 1 %). Prüfskript
+    `apps/editor/scripts/pruefen/raster-gleichlauf.ts` (viele Prozesse, Fläche und Raster gegen Runde 0 und die wahren Grenzen);
+    T2 prüft Ursprung und Zellgröße jetzt direkt. Die Wiederholung in T1 (`retry: 2`) ist entfernt, der Befund bleibt.
+  - **Ehrlich offen:** Ein Test, der den Fehler ohne Korrektur sicher rot zeigt, war nicht zu bauen (er tritt nur unter Last
+    auf); Beleg ist die Gegenprobe. `strahlRaster` ist kein reiner Versuch: Der Kern nutzt es für das Liniennetz
+    (`netzSicht`), die Umrisslinien und die Zahnprüfung, der Editor für das Netz-Raster (`netz/netzRaster.ts`), die
+    Kantenlinien und die Maulfläche — seltene, nicht wiederholbare Fehlgriffe dort sind damit wahrscheinlich ebenfalls weg.
+  - **Gefahr anderswo:** Dieselbe Form — eine Funktion mit Closures über ihre lokalen Variablen, einer langen Schleife und
+    vielen Aufrufen kurz hintereinander — kann denselben Fehler der Maschine treffen. Weg: eine Gleichlauf-Prüfung über die
+    Hauptwege des Kerns (gleicher Bau mehrmals in einem Prozess, viele Prozesse, bitgleich), dann die gefundenen Stellen
+    umbauen (Hilfsfunktionen nach außen, Werte als Argumente).

@@ -83,11 +83,12 @@ function zufall(seed: number): () => number {
 const zuSeite = (pts: readonly V3[], soll: readonly V2[]) => Math.max(...pts.map((p, k) => abstand(inAnsicht(p, 'seite'), soll[k]!)));
 
 describe('Flächenlinie auf der Kugel (T1)', () => {
-  // Wackelt selten (21.10.: zweimal auf CI, einmal lokal unter Volllast, jedes Mal 46 von 49 Lücken nach dem Verbreitern;
-  // 16 parallele Läufe und alle Einzelläufe grün): bis zu zwei Wiederholungen, damit ein seltenes Rot den PR nicht blockiert —
-  // das Tor bleibt (0 Lücken). Tritt es auf, schreibt der Test einen Befund (Fläche, Raster, im selben Prozess wiederholbar?);
-  // Register „CI: nicht nachstellbare Fehler alter Versuchstests“.
-  it('Seitenlinie: Seite exakt wie gezeichnet, 3D auf der Kugel, Start auf z = 0, folgt dem Verbreitern', { retry: 2 }, () => {
+  // Wackelte selten (20./21.10. auf CI und einmal lokal unter Volllast, jedes Mal 46 von 49 Lücken nach dem Verbreitern).
+  // Ursache (22.10.): Das Raster kam gelegentlich mit den Grenzen einer anderen Ansicht zurück — V8 las nach einem
+  // On-Stack-Replacement den Kontext eines anderen Aufrufs von `strahlRaster`; behoben (`rasterZelle`), daher keine
+  // Wiederholung mehr. Der Befund unten bleibt für den Fall, dass es wieder auftritt; Register „CI: nicht nachstellbare
+  // Fehler alter Versuchstests“, Nachtrag 22.10.
+  it('Seitenlinie: Seite exakt wie gezeichnet, 3D auf der Kugel, Start auf z = 0, folgt dem Verbreitern', () => {
     const ras = kugelRaster();
     const start = aufMittellinie(UMRISS_150, ras.seite);
     // Mittellinie von S0 ≈ gezeichneter Umriss (Messung 12.10.: 0,43 px)
@@ -127,7 +128,7 @@ describe('Flächenlinie auf der Kugel (T1)', () => {
         `Befund Lücken: ${b.luecken.slice(0, 8).join(',')}… erste bei (${q.x.toFixed(4)}, ${q.y.toFixed(4)}): Treffer ${treffer(rs, q).length} / ohne Raster ${trefferOhneRaster(rs, q).length}; NaN in der Fläche ${nan}; Raster x0 ${rs.x0.toFixed(4)} y0 ${rs.y0.toFixed(4)} zb ${rs.zb.toFixed(5)} zh ${rs.zh.toFixed(5)} n ${rs.n}; gleiche Linie noch einmal ${nochmal}, Fläche neu ${neu} Lücken`,
       );
     }
-    // einmal nur auf CI rot (20.10., 46 Lücken; lokal und im CI-Lauf davor grün, nicht nachstellbar): Meldung mit Befund
+    // Meldung mit Befund (das seltene Rot vom 20./21.10. kam vom Raster, s. o.)
     expect(b.luecken, `Lücken nach dem Verbreitern: ${b.luecken.length} von ${b.punkte.length}; Dreiecke ${breit.seite.flaeche.dreiecke.length / 3}, Front-Knoten ${dok.profile.front.knoten.map((k) => `(${k.p.x.toFixed(4)},${k.p.y.toFixed(4)})`).join(' ')}`).toEqual([]);
     expect(zuSeite(b.punkte, soll)).toBeLessThan(1e-9);
     expect(b.punkte[0]![2] === 0).toBe(true);
@@ -168,6 +169,13 @@ describe('Strahlraster und Ziehen (T2)', () => {
     const zz = zufall(7);
     for (const a of ANSICHTEN) {
       const R = ras[a];
+      // Ursprung und Zellgröße aus den Grenzen genau dieser Ansicht (22.10.: kamen gelegentlich aus einer anderen, s. T1)
+      const P = Array.from(R.flaeche.punkte);
+      const ach = { seite: [0, 1], front: [2, 1], top: [0, 2] }[a];
+      const werte = (k: number) => P.filter((_, i) => i % 3 === ach[k]);
+      const [uMin, uMax, vMin, vMax] = [Math.min, Math.max, Math.min, Math.max].map((f, i) => werte(i >> 1).reduce((m, x) => f(m, x)));
+      const rand = 1e-9 * Math.max(1e-9, uMax! - uMin!, vMax! - vMin!);
+      expect([R.x0, R.y0, R.zb, R.zh]).toEqual([uMin! - rand, vMin! - rand, (uMax! - uMin! + 2 * rand) / R.n, (vMax! - vMin! + 2 * rand) / R.n]);
       let max = 0;
       let getroffen = 0;
       for (let k = 0; k < 1000; k++) {

@@ -170,6 +170,18 @@ const EPS_NAH = 1e-12;
 /** Start in der Seite: weiter als 1 px neben der Mittellinie von S0 gilt als Lücke. */
 const START_TOLERANZ = 1 / 461;
 
+/**
+ * Zelle einer Koordinate im Raster, an den Rand geklemmt. Bewusst außerhalb von `strahlRaster`: Als Closures darin
+ * (`spalte`, `zeile`) hielten sie x0, y0, zb, zh im Kontext der Funktion, und V8 (Node 24 und 25) las nach einem
+ * On-Stack-Replacement der Schleifen gelegentlich den Kontext eines anderen Aufrufs — das Raster der Seite kam mit den
+ * Grenzen der Front oder des Tops zurück (unter Last, 2–5 von 96 Prozessen; Kritik-Register „CI: nicht nachstellbare
+ * Fehler alter Versuchstests“, Nachtrag 22.10.).
+ */
+function rasterZelle(x: number, x0: number, z: number, n: number): number {
+  return Math.min(n - 1, Math.max(0, Math.floor((x - x0) / z)));
+}
+
+/** Raster einer Ansicht. Ohne Closures über lokale Variablen (siehe `rasterZelle`). */
 export function strahlRaster(flaeche: Netz | Dreiecksflaeche, ansicht: Ansicht, zellen = 64): Strahlraster {
   const fl = 'dreiecke' in flaeche ? flaeche : dreiecksFlaeche(flaeche);
   const a = ACHSEN[ansicht];
@@ -200,8 +212,6 @@ export function strahlRaster(flaeche: Netz | Dreiecksflaeche, ansicht: Ansicht, 
   const y0 = vMin - rand;
   const zb = (uMax - uMin + 2 * rand) / n;
   const zh = (vMax - vMin + 2 * rand) / n;
-  const spalte = (x: number) => Math.min(n - 1, Math.max(0, Math.floor((x - x0) / zb)));
-  const zeile = (y: number) => Math.min(n - 1, Math.max(0, Math.floor((y - y0) / zh)));
 
   // Dreiecke nach ihrer (leicht vergrößerten) 2D-Box in die Zellen eintragen: erst zählen, dann füllen
   const D = fl.dreiecke;
@@ -218,10 +228,10 @@ export function strahlRaster(flaeche: Netz | Dreiecksflaeche, ansicht: Ansicht, 
     const v0 = v[i0]!;
     const v1 = v[i1]!;
     const v2 = v[i2]!;
-    const c0 = spalte(Math.min(u0, u1, u2) - rand);
-    const c1 = spalte(Math.max(u0, u1, u2) + rand);
-    const r0 = zeile(Math.min(v0, v1, v2) - rand);
-    const r1 = zeile(Math.max(v0, v1, v2) + rand);
+    const c0 = rasterZelle(Math.min(u0, u1, u2) - rand, x0, zb, n);
+    const c1 = rasterZelle(Math.max(u0, u1, u2) + rand, x0, zb, n);
+    const r0 = rasterZelle(Math.min(v0, v1, v2) - rand, y0, zh, n);
+    const r1 = rasterZelle(Math.max(v0, v1, v2) + rand, y0, zh, n);
     box[4 * d] = c0;
     box[4 * d + 1] = c1;
     box[4 * d + 2] = r0;
