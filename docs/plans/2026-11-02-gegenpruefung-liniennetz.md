@@ -108,7 +108,8 @@ der Look im Spiel — dort gilt weiter „keine Konturen“ (Regel vom Prototyp)
 - **Stücke mit drei, fünf oder mehr Seiten** entstehen nur dort, wo Linien zusammenlaufen: Kappen (Nase, Schwanz), der
   Ansatz-Loop auf dem Rumpf, der Mundwinkel, die Augenschleife, Kreuzungen schräger Kanten. Sie werden nach den bewiesenen
   Mustern gefüllt (Takayama 2014, Tarini 2022; Recherche 21.10.), Pole nach der Regel „Fünfer am Sattel, Dreier auf der Kuppe,
-  fern von Linien“.
+  fern von Linien“. Prüfkriterium dazu aus Schaefer–Warren–Zorin 2004 (Lofting von Kurvennetzen mit Catmull-Clark, 9.1): nur
+  Pole mit drei oder fünf Kanten, und ein Stück mit k Rändern braucht mindestens |k − 4| davon.
 - **Teile** sind keine eigene Maschinerie mehr: Ein Teil ist ein Stück Haut, das von einer Ansatzlinie umschlossen wird
   (Flosse, Bein) oder einfach die Fortsetzung des Körpers (Hals, Kopf). Was heute S4–S7 (Erkennung, Streifen, Fenster, Kragen,
   Klinge) leisten, wird: Ansatzlinie zeichnen oder annehmen, Röhre darüber, Muster am Ansatz.
@@ -119,14 +120,17 @@ der Look im Spiel — dort gilt weiter „keine Konturen“ (Regel vom Prototyp)
 Ein dünn besetztes lineares System auf dem Käfig:
 - **hart:** die Lage jeder Linie in ihrer Ansicht (zwei Koordinaten je Knoten; die dritte ist frei, außer an Kreuzungen);
   auf Umrissschleifen zusätzlich die Silhouettenbedingung (Normale senkrecht zur Blickrichtung; linear, Prasad 2006 / Cashman
-  2013 — bei Catmull-Clark linear in den Nachbarreihen, Plan 20.10., 3.1);
+  2013 — bei Catmull-Clark linear in den Nachbarreihen, Plan 20.10., 3.1). Die **Zuordnung** Umrisspunkt ↔ Käfigkurve ist
+  der diskrete Teil (Plan 20.10., Risiko 1): Sie wird getrennt gesucht (dynamische Programmierung mit Stetigkeitsstrafe, wie
+  Cashman 2013), dazwischen wird nur linear gelöst; zwei bis drei Wechsel, nie ein Neuvernetzen;
 - **weich:** „so rund wie möglich“ — das Maß ist die Krümmungsvariation der Grenzfläche (Bi-Laplace auf dem Käfig, linear;
   Halstead–Kass–DeRose 1993, FiberMesh 2007), **ohne Zielform**. Heute glättet S2 relativ zu einer Zielform aus der
   Sichthülle; genau das erzeugt die flachen Flanken (Abschnitt 8). Ohne Zielform kann die Fläche zwischen den Linien nur rund
   werden; kastig wird sie allein durch harte Linien;
 - **Prüfung statt Bedingung:** Die Sichthülle der drei Ansichten dient nur noch dazu, Widersprüche rot zu zeigen (eine
   Umrissschleife, die ein anderes Blatt nicht erlaubt; ein Loop, der breiter ist als das Top an seiner Stelle). Nichts wird
-  still entschieden.
+  still entschieden. Bleibt zwischen den Schleifen ein Überstand (Sattel), ist der Rückfall Rivers 2010: Berührpunkte („Rims“)
+  festhalten und nur einwärts glätten — die rundeste Fläche in der Hülle, die die Umrisse berührt.
 - Mit „Umriss zuerst“ ist **Δ = 0 Bauart**: Die schwarze Linie ist die Projektion einer Käfigschleife, die hart auf ihr liegt.
 
 ### 3.5 Ansichten koppeln sich über Kreuzungen, nicht über jeden Punkt
@@ -164,7 +168,7 @@ und „Fülle“, Hüllenschnitt, Teilerkennung als Bau-Grundlage, Fenster und K
 
 | Nr. | Lücke / Denkfehler | Wo | Folge im Prüfplan |
 |---|---|---|---|
-| L1 | **Umriss als eine Schleife je Ansicht** mit berechneten Sprüngen an T-Stößen („springt nur an T-Stößen“). Richtig: Umrissschleifen je Teil, verdeckte Stücke gezeichnet oder vorgeschlagen; T-Stöße sind nur Anzeige. | Recherche 21.10., 3.4 und P1 | P1 prüft Schleifen je Teil samt verdeckten Stücken (Langhals, Ente, Zweihals), nicht nur einteilige Körper. |
+| L1 | **Umriss als eine Schleife je Ansicht** mit berechneten Sprüngen an T-Stößen („springt nur an T-Stößen“). Richtig: Umrissschleifen je Teil, verdeckte Stücke gezeichnet oder vorgeschlagen; T-Stöße sind nur Anzeige. Monster Mash (2020) arbeitet genau so: Teile als überlappende Umrisse, die verdeckte Fortsetzung ist der Rest des Teilumrisses (9.1). | Recherche 21.10., 3.4 und P1 | P1 prüft Schleifen je Teil samt verdeckten Stücken (Langhals, Ente, Zweihals), nicht nur einteilige Körper. |
 | L2 | **Teilerkennung als Fundament** (S4 → S5 → S6 → S7): Jede Erkennung kann kippen (Hysterese, Ratsche, Sehnen), und jeder Kipp springt den Körper. Mit Ansatzlinien in der Zeichnung ist das Fundament fest. | Plan 16.10., S4–S7; Recherche 21.10., 3.3 („weiche Linien aus dem Raster“) | P3 baut Teile aus Ansatzlinien; die Erkennung liefert nur Vorschläge, gemessen nur als Vorschlagsgüte. |
 | L3 | **Füllung aus der Sichthülle** blieb in Kandidat C stehen („Glätte zur Fülle“, Hüllenschnitt). Sie erzeugt Bänder, in denen die Haut parallel zum Blick läuft — die Ursache der wilden Linien, von zwei Recherchen hergeleitet und in Abschnitt 8 gemessen. | Recherche 21.10., 5; Plan 20.10., V4 | P1 misst „so rund wie möglich“ (Krümmungsvariation, flache Bänder) und verlangt, dass keine Fülle-Option mehr gebraucht wird. |
 | L4 | **Spiel-Budget und Spielstufe** fehlten in den Recherchen; das Budget-Tor kam am 22.10. dazu, ein Umschalter nirgends. Der Maul-Einsatz auf K2 liegt beim Dreifachen des Budgets. | Übergabe 22.10. | P0a baut den Umschalter zuerst; P2 und P3 haben das Budget als hartes Tor; die Käfigdichte ist Eingabe, nicht Ergebnis. |
@@ -225,7 +229,15 @@ Ergebnis: **neun** Dinge entfallen, drei werden allgemeiner (Stift, ⇧W, ⌘R),
 | I7 | **Automatik nur als Vorschlagslinie.** Alles Automatische (verdeckte Stücke, Ansatz, Loop-Vorschläge, Mundwinkel-Verlängerung) erscheint als Vorschlagslinie, die du annimmst (Klick) oder ignorierst. | Passt zu deiner Regel vom 11.10. (keine automatischen Punkte) und zur Lockerung vom 16.10. (einfügen nur wenn nötig). | P1/P3: Vorschlag an deinen Wesen, Trefferquote. | — |
 | I8 | **Fünf Ansichten als Ebenen eines Dokuments**: Unten und Hinten nur, wo sie etwas zeigen, das die drei nicht zeigen (verdeckte Linien decken viel davon ab). | Weniger Zeichnung für denselben Körper. | später, an deinen Wesen. | — |
 
-Weitere Ideen aus der Recherche: Abschnitt 9.1.
+Aus der Recherche vom 02.11. (9.1), je mit Quelle:
+
+| Nr. | Idee | Warum elegant | Prüfstein | Risiko |
+|---|---|---|---|---|
+| I9 | **Loop-Vorschlag beim Schweben** (Campen & Kobbelt 2014, Dual Strip Weaving): Über dem Blatt schlägt der Editor den biegeenergie-minimalen Loop durch die Zeigerstelle vor, der die vorhandenen Linien kreuzt; Klick setzt, Rad blättert Alternativen. ⌘R bleibt die Abkürzung. | Loops entstehen dort, wo das Netz sie braucht, mit einem Klick. | P3, Langhals: Vorschlag trifft die von Hand gezeichneten Loops ≤ 2 px. | Vorschlag muss ≤ 16 ms sein. |
+| I10 | **Härte als Energie statt Falten-Topologie** (Prasad 2006, §3.3): Quer zur Linie ersetzt die Strichbreite stufenlos die Biege- durch Membranenergie. | „weich bis scharf“ ist eine Zahl im Löser; keine Schwelle, ab der eine Falte „an“ ist. | P3, ein Fall gegen die halbscharfe Falte (OpenSubdiv-Art): Winkel und Rundungsbreite bei 0/25/50/75/100 %. | Sichtbare Rundung hängt an der Käfigdichte — wie bei Falten. |
+| I11 | **Strichbreite = Winkel der beiden Normalen** (CrossShade 2012; Halstead–Kass–DeRose 1993: Normalen sind in Catmull-Clark linear in den Kontrollpunkten): Die Breite gibt den Winkel der Normalen beiderseits der Kante vor, im selben linearen System. | Winkel direkt aus dem Strich statt aus einer Ecke im Querschnitt. | P3, Tiger-Kasten: Winkel aus Breite gegen Winkel aus Ecke. | Widerspricht der Regel vom 12.10. („Winkel aus der Form, Härte ist die Rundung“) — Look-Entscheidung, siehe E8. |
+| I12 | **Teil-Domänen mit Tiefenordnung** (Monster Mash 2020): Teile als eigene Käfigbereiche jenseits ihrer Ansatzlinie; die Ordnung vorn/hinten gilt als Ungleichung auch in Posen. | „Bauch hinter Kopf“ bleibt in jeder Pose ohne Durchdringung. | P3, Rex Fressen mit Linien: 0 Durchdringungen zwischen Teilen. | Ungleichungen machen das System nicht mehr rein linear (QP). |
+| I13 | **Zuordnung als Glättungsreserve** (Cashman 2013): Umrisspunkte dürfen diskret entlang der Käfigkanten wandern; wo Kappen heute knittern (Kasten, Kerbe, stehendes Ende), löst das Wandern der Zuordnung das Problem statt neuer Ringe. | Keine Sonderregel „Kappen nach Endform“. | P1, Würfel, Vase, Tiger-Block: Kappen ≤ 15° ohne Zusatzregel. | DP-Zuordnung muss stabil bleiben (Hysterese). |
 
 ## 7. Prüfen die Beweise P0–P3 das Richtige?
 
@@ -246,7 +258,33 @@ flache Bänder je Füllung]_
 ## 9. Recherche (02.11.)
 
 ### 9.1 Linienzeichnungen in 3D, Loops als Linien, runde Füllung
-_[wird ergänzt]_
+Recherche (02.11., Quellen in `docs/research/2026-11-02-recherche-linienzeichnung-3d.md`), das Wesentliche:
+- **Leitbefund:** Kein veröffentlichtes System deckt das geklärte Zielbild als Ganzes ab (Umrisse je Teil mit gezeichneter
+  verdeckter Fortsetzung, Kanten mit Strichbreite = Härte, Loops als Linien in Orthoansichten, dazwischen „so rund wie
+  möglich“, Ausgabe ein Viereckskäfig). Die Zutaten sind einzeln belegt und großteils linear oder bewiesen.
+- **Verdeckte Linien:** SmoothSketch (2006) vervollständigt verdeckte Konturen automatisch (lokal, Selbstdurchdringungen,
+  keine Falten); **Monster Mash (2020, Apache 2.0)** lässt den Nutzer Teile als überlappende Umrisse zeichnen — die verdeckte
+  Fortsetzung ist der Rest des Teilumrisses, die Tiefenordnung hält ein Löser mit Ungleichungen. Niemand nimmt die gezeichnete
+  verdeckte Linie als Flächenbedingung; wir wären die Ersten.
+- **Orthoansichten:** Rivers 2010 (Sichthülle als CSG, Rims festhalten, nur einwärts glätten), **Prasad 2006** (thin-plate +
+  lineare Silhouettenbedingungen = ein KKT-System, dünn besetzt, globales Optimum; Falten über Membranenergie quer zur Linie),
+  **Cashman 2013** (dasselbe auf Subdivision; Zuordnung Kontur ↔ Fläche diskret, abwechselnd mit linearem Lösen; Code).
+  **Schaefer–Warren–Zorin 2004** ist der direkteste Vorläufer: Kurvennetz → Vierecke je Stück mit nur Valenz 3 und 5
+  (Schranke Σ|val − 4| ≥ |k − 4|), Catmull-Clark interpoliert die Kurven exakt. Loops als 2D-Linien in Orthoansichten nimmt
+  keines dieser Systeme — das ist unser eigener Beitrag (V5/V6 tun es heute schon in erster Form).
+- **Runde Füllung:** Halstead–Kass–DeRose 1993 (Punkt- und Normaleninterpolation auf der Grenzfläche, Fairness als ein
+  lineares System), FiberMesh 2007 (zwei lineare Systeme, 10–15 fps bei 600–2 000 Punkten auf einem Pentium-M), Welch–Witkin,
+  Botsch–Kobbelt. „Linear + Silhouette + Fairness“ als Ganzes für Käfige hat niemand gebaut.
+- **Illustration und Rückkopplung:** ConTesse 2023 (Apache 2.0) berechnet korrekte sichtbare Konturen von
+  Subdivision-Flächen — als unabhängiger Prüfer unserer Linien brauchbar (bauen nur mit deinem OK). Blender Line Art und
+  Pencil+ zeichnen verdeckte Linien als eigene Ebene (gestrichelt), ohne Dicke nach Faltenwinkel. Kein System hält eine
+  persistente Vektorillustration mit Kanten und Loops als editierbare Wahrheit mit 3D-Rückkopplung.
+- **Loops als Primitive:** Takayama 2013 (Stückgrenzen skizzieren, patentiert), Dual Strip Weaving 2014 (Loop als
+  Atomoperation mit Vorschlag beim Schweben), Retopoflow „Contours“ (Strich quer über ein Glied → Ring). Alle auf vorhandener
+  Oberfläche.
+- **Urteil der Recherche:** Nichts schlägt „ein Liniennetz, ein Löser“; zu ergänzen sind Rims (Rivers), die getrennte
+  Zuordnungssuche (Cashman), die Schranke |k − 4| mit Valenz 3/5 (Schaefer), „verdeckte Fortsetzung = Teilumriss“ (Monster
+  Mash) und ConTesse als Prüfer — alle fünf sind in Abschnitt 3, 6 und im Prüfplan aufgenommen.
 
 ### 9.2 Spielqualität aus dem Käfig
 Recherche (02.11., Quellen in `docs/research/2026-11-02-recherche-spielnetz.md`), das Wesentliche:
@@ -288,11 +326,13 @@ _[wird ergänzt]_
 | E5 | Spiel-Umschalter: Stufe 1 fest als Spielnetz, Budget 8 000 Dreiecke samt Maul, Dreieckszahl immer sichtbar? | **ja**. |
 | E6 | Prüfwesen der Beweise: deine eigenen (Langhals, Ente, Vierbeiner, Zweihals, Kegel, Rex, Tiger) plus Extremreihe? | **ja**, deine zuerst. |
 | E7 | Loops in der Front/Back: als Projektion des Loops bearbeitbar (Querschnitt), oder nur in Seite/Top gezeichnet? | **bearbeitbar** (ersetzt den Spant). |
+| E8 | Was bedeutet die Strichbreite einer Kante: nur die Rundung (Winkel aus der Form, Regel vom 12.10.) oder auch den Winkel (I11)? | **Rundung** wie bisher; I11 nur als Versuch in P3. |
 
 ## 11. Ehrlich offen
 
 - Ein System „drei Linien-Illustrationen → eingepasster Catmull-Clark-Käfig mit Live-Bearbeitung“ hat niemand veröffentlicht
-  (Recherche 21.10. und 9.1). Die Bausteine sind erprobt; das Zusammensetzen prüfen die Beweise.
+  (Recherche 21.10. und 9.1). Die Bausteine sind erprobt; das Zusammensetzen prüfen die Beweise. Ein unabhängiger Prüfer der
+  Konturen (ConTesse, C++) wäre nützlich; ich baue fremde Programme nur mit deinem OK.
 - „So rund wie möglich“ ist als Krümmungsvariation definiert; ob das deinem Auge entspricht, zeigt erst P1 an deinen Wesen.
 - Die Härte-Rundung hängt an der Käfigauflösung (≈ 5–9 px bei drei Stufen); feinere Rundungen brauchen Stützloops.
 - Mehrere Loops dicht in einer Biegung, sehr spitze Keile (Robbe hoch J) und schräge Kanten über viele Reihen bleiben die

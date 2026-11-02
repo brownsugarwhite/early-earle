@@ -116,9 +116,12 @@ des Körpers (Δ = 0), und bleiben die Linien ruhig?
 - Die Schleifen werden Käfigkurven: Naht (Reihen 0/N·2), Breitenlinie (Reihe N/4, je Ring gleitend), Frontschleife aus
   Reihen- und Ringstücken; die Ringe, die eine Schleife braucht (Kragen am Halsansatz, Chest-Halbring beim Langhals), werden
   **von der Schleife gesetzt** (ein Loop ist eine Linie) — die Zuordnung Schleife → Kurve ist der schwierigste Teil (Plan 20.10.,
-  Risiko 1) und wird je Fall als Bild gezeigt.
+  Risiko 1): Sie wird als diskrete Suche geführt (dynamische Programmierung mit Stetigkeitsstrafe, Cashman 2013), dazwischen
+  wird nur linear gelöst, zwei bis drei Wechsel; je Fall als Bild gezeigt. Optional, nur mit deinem OK: ConTesse (Apache 2.0)
+  als unabhängiger Prüfer der Konturen.
 - Löser: hart Lage + Silhouettenbedingung auf allen Schleifen (sichtbar und verdeckt), weich Krümmungsvariation **ohne
-  Zielform**; die Sichthülle nur als Prüfung (Überstand → rot).
+  Zielform**; die Sichthülle nur als Prüfung (Überstand → rot). Bleibt ein Überstand an Sätteln: Rückfall Rivers 2010 (Rims
+  festhalten, nur einwärts glätten), gemessen als zweite Variante.
 - **Tore:**
   | Maß | Tor |
   |---|---|
@@ -215,7 +218,9 @@ Stücke und Seiten zählen. **Abbruch**, wenn mehr als jedes zehnte Stück eine 
 | Ansatz | Teil sitzt auf seinem Loop ≤ 0,5 px; Ansatzwinkel ohne Falte ≤ 15° (heute 11–16°); Flosse/Flügel so flach wie gezeichnet |
 | Umrisse mit Linien | Δ ≤ 0,5 px bleibt (heute ändern Linien die Umrisse bis 0,7 px) |
 | Falten | nicht schlechter als P1; keine Falte, die niemand gezeichnet hat |
-| Pole | nur mit drei oder fünf Kanten, abseits der Naht, nicht in der ersten Reihe um Linie, Mundwinkel, Auge; Fünfer an Sätteln, Dreier auf Kuppen (Gauß-Krümmung von A0) |
+| Pole | nur mit drei oder fünf Kanten, abseits der Naht, nicht in der ersten Reihe um Linie, Mundwinkel, Auge; Fünfer an Sätteln, Dreier auf Kuppen (Gauß-Krümmung von A0); je Stück mit k Rändern mindestens \|k − 4\| Pole (Schaefer 2004) und nicht mehr als nötig |
+| Härte-Modell (Versuch, ein Fall) | halbscharfe Falte gegen „Härte als Membranenergie“ (Prasad) und „Strichbreite = Normalenwinkel“ (I11): Winkel und Rundungsbreite bei 0/25/50/75/100 %, Bild; Entscheidung E8 |
+| Loop-Vorschlag (Versuch) | beim Schweben vorgeschlagener Loop (I9) trifft den von Hand gezeichneten ≤ 2 px; ≤ 16 ms |
 | Stabilität | Linie ±2 px (20 Versuche je Linie): Topologie wechselt nur, wenn eine Kreuzung wechselt; dann bleiben ≥ 95 % der Flächen außerhalb der Nachbarstücke gleich; Posen-Deltas übertragen ≤ 0,5 px |
 | Tempo | Neuplanung ≤ 150 ms, mit Lösen ≤ 300 ms bis 2 000 Käfigpunkte; Zug ohne Neuplanung ≤ 16 ms je Bewegung |
 | Budget | ganzes Wesen ≤ 1 000 Käfigflächen samt Maul (mit P2) |
