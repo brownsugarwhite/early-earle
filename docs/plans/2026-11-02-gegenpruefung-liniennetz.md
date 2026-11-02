@@ -98,7 +98,8 @@ die Enden laufen verjüngt aus.
 Jedes Blatt zeichnet genau diese Linien in einer Schrift: eigene Hälfte schwarz, Spiegel weiß (wie heute), Härte = Strichstärke,
 weich = gestrichelt, **verdeckt = blass** (Entscheidung E1), Enden verjüngt; fremde Linien (die Projektion eines Loops aus der
 anderen Ansicht) in der Farbe ihrer Ansicht. Das SVG der Vektor-Ausgabe (V8) ist dasselbe Bild. Der Körper liegt wie heute
-dahinter; Δ und Saum bleiben als Prüfung, sollen aber leer sein.
+dahinter; Δ und Saum bleiben als Prüfung, sollen aber leer sein. Die Linien sind die Zeichnung des Editors (Blueprint), nicht
+der Look im Spiel — dort gilt weiter „keine Konturen“ (Regel vom Prototyp), die Form trägt sich allein.
 
 ### 3.3 Topologie aus der Zeichnung
 - **Ringe** sind die Loops. **Längsreihen** sind die Umrissschleifen, wo sie längs laufen (Naht, Breitenlinie), und die

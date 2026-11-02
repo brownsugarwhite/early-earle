@@ -144,7 +144,7 @@ des Körpers (Δ = 0), und bleiben die Linien ruhig?
 
 **Tag 5 — Kontaktbögen, Zahlen, Register, Übergabe.**
 
-**Bestanden (Zahlen):** ≥ 11 von 13 Fällen alle Tore, darunter Langhals, Ente, Würfel, Stadion, Pilz; die verdeckten
+**Bestanden (Zahlen):** ≥ 11 von 12 Körpern (Fälle 1–7) alle Tore, darunter Langhals, Ente, Würfel, Stadion, Pilz; die beiden Widerspruchsfälle zählen nur für Rot; die verdeckten
 Schleifen schließen bei Langhals, Ente und Pilz ohne Teilerkennung. **Abbruch:** ein widerspruchsfreier Körper bleibt über
 1 px, oder eine Umrissschleife lässt sich nicht als Käfigkurve legen, ohne den Körper zu verzerren (Zuordnung) — dann bleibt
 Kandidat B (Umrisse wie heute, Stücknetz nur für Einsätze) und für die Anzeige die besser bestimmte Umrisswahl
