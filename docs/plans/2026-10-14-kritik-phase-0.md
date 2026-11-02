@@ -798,3 +798,21 @@ Bögen auf der Planseite 20.10., „Stand V2“. Je Punkt der Schritt, der ihn a
     vielen Aufrufen kurz hintereinander — kann denselben Fehler der Maschine treffen. Weg: eine Gleichlauf-Prüfung über die
     Hauptwege des Kerns (gleicher Bau mehrmals in einem Prozess, viele Prozesse, bitgleich), dann die gefundenen Stellen
     umbauen (Hilfsfunktionen nach außen, Werte als Argumente).
+
+## Befunde aus der Messung „Spielstufe“ (02.11., eigene Messungen; `docs/progress/editor/spielstufe-2026-11-02.md`)
+
+- [ ] **Käfigfehler, die Stufe 3 verdeckt:** Auf Stufe 1 knicken Nachbarflächen abseits aller gezeichneten Falten bis 133°
+  (Rex, erstes Ringband an der Schnauze; Stufe 3 dort 14°), Langhals 53° (oben am Hals), Kegel 54° (Ecke des
+  Dreiecks-Querschnitts ohne Falte), Teile 61–89°; auf der Grenzlage Rex 36°, Tigerkopf 30°. Mit „Käfig = Spielnetz“ wird
+  die Käfiggüte ein Tor (Prüfplan P0a/P1/P3: abseits der Falten 95 % ≤ 20°, max ≤ 30°).
+- [ ] **Mit Maul gibt es keine Stufe 1:** Der Einsatz auf K2 hat als Stufe 0 schon 18 928 (Rex) bzw. 25 958 (Kugel) Dreiecke
+  (Budget 8 000) → Budget-Tor in P2 (Maulfeld ≤ 300 Käfigflächen, Wesen ≤ 1 000).
+- [ ] **Flache Flanken kommen aus den gezeichneten Querschnitten, nicht aus „berühren mittel“:** Flachband (Normale < 5° zur
+  Blickrichtung) Rex Seite 18,9 %, Robbe 21,8 %, Kegel 34,4 % (gezeichnet), Vierbeiner Front 31 % gegen 8,7 % an der Kugel;
+  mittel | aus | rund unterscheiden sich um ≤ 3,2 Punkte. Die Erklärung der wilden Linien (Recherche 21.10., 3.6) gilt mit
+  dieser Korrektur; Folge: runde Füllung statt Front-Lappen und Umriss als geplante Linie (P1).
+- [ ] **Messfalle Δ:** `blattAbweichungen` ist an exakt achsparallelen Flächen auf 0,2 px empfindlich (Tigerkopf Front 2,29
+  gegen 2,09 im Editor): `umrissStuecke` teilt Flächen nach dem Vorzeichen der Newell-Komponente, die bei Kastenflächen mit
+  Rundungsfehlern kippt. Bei Toren um 0,5 px an Kästen eine Toleranz für die Zuordnung einbauen (P1).
+- [ ] **Stufe 1 braucht Grenzlagen:** rohe Catmull-Clark-Lagen verschieben den Umriss um 0,9–4,8 px (Mittel 0,5–0,8), die
+  Grenzlage (Halstead-Maske derselben Stufe) um 0,4–2,8 (Mittel 0,1–0,6) — eine Maske je Käfigpunkt beim Backen (P0a).
