@@ -1047,3 +1047,29 @@ bleiben offen und bekommen keine Regel mehr:
   Krümmungsgewicht der Bogenlängen, Planer-Tiefe; die Alternativen zu Naht glatt, Hülle als Obergrenze, Hüllenringen, Endstück,
   harten Endstück-Punkten, Vorlagentiefe und Vorlagenring (alle gemessen schlechter) sind keine Schalter mehr. Der Punkt
   „Kegel-Flanke unter der Krümmungsdichte“ ist damit gegenstandslos (Einteiler nach Bogenlänge), die Ursache bleibt unbekannt.
+
+## Befunde aus P2 Tag 1 „Linien → Stücke“ (03.11. nachts, eigene Messungen; `packages/shape/src/kern/einsatz/stuecke.test.ts`)
+
+Gebaut: `kern/einsatz/stuecke.ts` — Linien (Feldrand, Naht, Schlitz, Verlängerung, Falten, Schnitte) → Stücke mit Ecken und Seiten;
+alle zehn Fälle: Dreiecke je genau ein Stück, 2–5 Seiten, keine konkave Ecke, Mundwinkel in beiden Stücken glatt, Feldkanten und
+Pole stimmen (Planseite „P2 — Start, Tag 1“). Offen für Tag 2–4:
+- [ ] **Zweiecke hinter dem Haken** (J-Fälle): Schnitt + Haken + Verlängerung gegen den Feldrand, zwei Dreierpole in einer Linse.
+  Das Muster (Takayama, N = 2) und Tutte müssen die Linsenform tragen; sonst der Arm davor als Fortsetzung (Dreieck vorn, Dreieck
+  hinten — mit einem Dreierpol nahe der Lippe).
+- [ ] **Robbe hoch: Keil zwischen Lippe und Naht.** Die Biegung von 81° wird verworfen (ihr Schnitt wäre 0,6 Feldkanten); das Stück
+  Naht/Lippe/Schnitt ist ein Dreieck mit einem Dreierpol im Keil — dieselbe Stelle, an der der Kernring die Leiter brauchte.
+  Prüfen, ob der Dreierpol die Haut dort unter 0,25 px hält (E2: 0,21 px/7,3° mit Leiter).
+- [ ] **Birne S: der zweite Schnitt endet 9 px neben der Nahtecke** (er läuft dem vorderen Lippenstück voraus zur Naht). Die
+  Fortsetzung „Arm davor“ endete auf dem Feldrand; eine Wahl nach der Luft war gemessen ein Münzwurf. Erst mit Muster und Haut
+  entscheiden, ob es stört.
+- [ ] **Feldrand-Pole 1–19 je Hälfte** (Treppe des Gitters, weil die Lippe schräg durch Reihen und Ringe läuft): der Preis jedes
+  Einsatzes in ein festes Gitter — der Kernring hatte dieselben. Weg: keiner in P2; in P3 gibt es keinen Feldrand.
+- [ ] **Zahnfleischreihe** noch keine Linie (Tag 2 als Reihe innerhalb der Lippe), **Tigerkopf** fehlt in der Einsatz-Reihe
+  (`einsatzFall` kennt nur die Körper der Prüfreihe), **Bildkarte** ist die Kernring-Karte (der Haken erscheint flach; ab Tag 4
+  je Stück eigene Karte).
+- [x] **Verworfen (gemessen):** Winkelecken auf dem Feldrand (5–17 Seiten), freistehende Gitterecken als Stückecken (12–45° als
+  90°), „der kürzere Arm läuft durch“ (Keil längs der Lippe an der S-Linie), Fortsetzung nach der Luft (0,6–1,7 Feldkanten).
+- Fallen (`apps/editor/CLAUDE.md`): Drehung in der Fläche statt im Raum; Biegungen auf der gezeichneten Linie statt auf den
+  Schlitzpunkten (die springen längs der Linie); Nullvektor am Linienende; Glättung h/2 statt 2 h (der Kugel-Haken verschwand);
+  eine Biegung je Linie für beide Seiten; Doppel-Nachbar auf Ufer B; Dreiecke beiderseits der Endkante teilen; Pole am Seitenende
+  zählen.

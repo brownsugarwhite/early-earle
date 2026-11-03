@@ -12,7 +12,7 @@
 //    oben der Feldrand, links das Nahtstück. Die Ecke rechts oben wird so gewählt, dass beide Hälften gleich viele Spalten
 //    (Randkanten von K1 oben) haben und die Zellen möglichst quadratisch werden. DOM-frei.
 import { cgDirichlet, laplace } from '../../loeser/cg';
-import { type FeinNetz, aufschneiden } from './flaeche';
+import { type Aufgeschnitten, type FeinNetz, aufschneiden } from './flaeche';
 
 type V3 = [number, number, number];
 
@@ -87,11 +87,17 @@ function bogen(zug: readonly number[], lage: (i: number) => V3): number[] {
  * Zwei Rechtecke für ein halbes Maulfeld. `dreiecke` = feine Dreiecke der rechten Hälfte von M (Indizes in `netz.dreiecke`),
  * `pfad` = Kantenpfad des Schlitzes (Naht → Mundwinkel), `randK1` = Randpunkte von M in K1 (Nummern wie im feinen Netz).
  */
-export function rechteckKarten(netz: FeinNetz, dreiecke: readonly number[], pfad: readonly number[], randK1: ReadonlySet<number>): Rechtecke {
+/**
+ * Verlängerung des Schlitzes über den Mundwinkel c bis zum Feldrand (Plan 21.10., E1 „zwei Rechtecke“; P2 „Stücknetz“ nutzt sie
+ * als Stückgrenze): Auf dem am Schlitz aufgeschnittenen Halbfeld `s1` ist V harmonisch (Kotangens) mit V = 1 auf der einen
+ * Schlitzseite samt angrenzendem Nahtstück, V = 0 auf der anderen samt ihrem Nahtstück, frei am Feldrand. Die Höhenlinie V = ½
+ * beginnt in c und läuft glatt zum Feldrand — die natürliche Verlängerung der Linie, ohne Richtungsregeln. Der Kantenpfad von c
+ * zum Randpunkt von K1, an dem V am nächsten an ½ liegt (Kosten nach |V − ½|, Schlitz und Naht gesperrt), Zacken abgekürzt.
+ * Liefert den Pfad (Nummern des feinen Netzes, c zuerst) und V je Punkt des aufgeschnittenen Netzes.
+ */
+export function schlitzVerlaengerung(netz: FeinNetz, s1: Aufgeschnitten, pfad: readonly number[], randK1: ReadonlySet<number>): { verlaengerung: number[]; teilung: Map<number, number> } {
   const P = netz.punkte;
   const naht = (i: number) => Math.abs(P[3 * i + 2]!) < 1e-9;
-  // 1. Teilung auf dem am Schlitz aufgeschnittenen Halbfeld
-  const s1 = aufschneiden(netz, dreiecke, pfad);
   const lage1 = (i: number): V3 => {
     const o = s1.doppel.get(i) ?? i;
     return [P[3 * o]!, P[3 * o + 1]!, P[3 * o + 2]!];
@@ -210,6 +216,16 @@ export function rechteckKarten(netz: FeinNetz, dreiecke: readonly number[], pfad
         break;
       }
   }
+  return { verlaengerung: ext, teilung };
+}
+
+export function rechteckKarten(netz: FeinNetz, dreiecke: readonly number[], pfad: readonly number[], randK1: ReadonlySet<number>): Rechtecke {
+  const P = netz.punkte;
+  const naht = (i: number) => Math.abs(P[3 * i + 2]!) < 1e-9;
+  // 1. und 2.: Teilung und Verlängerung
+  const s1 = aufschneiden(netz, dreiecke, pfad);
+  const { verlaengerung: ext, teilung } = schlitzVerlaengerung(netz, s1, pfad, randK1);
+  const v0 = pfad[0]!;
   // 3. ganz aufschneiden: Schlitz und Verlängerung als ein Pfad (Naht → c → Feldrand)
   const ganz = [...pfad, ...ext.slice(1)];
   const s2 = aufschneiden(netz, dreiecke, ganz);

@@ -1,4 +1,4 @@
-# Übergabe (Stand 03.11.2026 nachts: P0a angesehen, P1 abgeschlossen — Prinzip bewiesen, Genauigkeit der Mehrteiler an zwei Strukturstücken offen, Versuchsschalter abgeräumt; P2 „Stücknetz im Maulfeld“ beginnt)
+# Übergabe (Stand 03.11.2026 nachts: P0a angesehen, P1 abgeschlossen — Prinzip bewiesen, Genauigkeit der Mehrteiler an zwei Strukturstücken offen, Versuchsschalter abgeräumt; P2 „Stücknetz im Maulfeld“ Tag 1 „Linien → Stücke“ gebaut, Abnahme offen)
 
 Branch `claude/editor-grundlayout`, PR mit Auto-Fix. **Diese Datei ist der Einstieg für eine frische Sitzung.** Der Kernring
 bleibt eingefroren; alles Neue liegt hinter Schaltern (`stufen`, `umrissPlan`), ohne Schalter bitgleich.
@@ -241,15 +241,34 @@ Seine Entscheidung: „Räum die gemessen schlechten Schalter ab, schließ P1 eh
 - **Lehre (Gedächtnis):** nächster Schritt nie aus dem Register ableiten; nach jedem Block Regeln zählen, ab der dritten „Struktur
   prüfen“; strukturelle Ursachen bekommen keine Regel.
 
-**Nächster Schritt: P2 „Stücknetz im Maulfeld“** nach dem Prüfplan (Fälle, Bauplan, Tore, Budget-Tor, Abbruch nach fünf
-Arbeitstagen) und der Recherche `docs/research/2026-10-21-feldnetz-oder-kernring.md` (Abschnitt 2 und 6). Stand von P2 steht
-auf der Planseite unter „P2 — Start“. Start-Prompt für eine frische Sitzung:
+**P2 „Stücknetz im Maulfeld“** läuft nach dem Prüfplan (Fälle, Bauplan, Tore, Budget-Tor, Abbruch nach fünf Arbeitstagen) und der
+Recherche `docs/research/2026-10-21-feldnetz-oder-kernring.md` (Abschnitt 2 und 6); Stand auf der Planseite unter „P2 — Start“.
 
-> Lies `CLAUDE.md`, `docs/UEBERGABE.md` und den Prüfplan `docs/plans/2026-11-02-pruefplan-p0-p3.md` („P1 — Abschluss“ und
-> „P2 — Start“). Arbeite an P2 weiter — im Kern hinter einer Option (`gitter: 'stuecke'`), ohne Option bitgleich, der Kernring
-> bleibt eingefroren; keine Regel, die einen Körper oder eine Lage nennt; Tore als Tests (verfehlte als `it.fails` mit
-> Registereintrag), Bilder je Fall (A0 | Kernring | Stücknetz | Zebra), Planseite „Stand“, Register, Übergabe, Commit und Push.
-> Nach jedem Block die neuen Regeln zählen; ab der dritten anhalten und die Struktur prüfen. Nichts als bestanden melden.
+## 03.11. nachts: P2 Tag 1 „Linien → Stücke“ gebaut (Abnahme offen)
+
+Kern `packages/shape/src/kern/einsatz/stuecke.ts` (eigener Schritt, am Bau nichts geändert, Kernring-Wächter 7/7 grün): Linien in
+der Karte (Feldrand, Naht, Schlitz beide Ufer, Verlängerung c → Feldrand, Falten von A0, Schnitte) → Stücke (Dreiecke geflutet,
+Umlauf, Löcher) → Ecken nach drei Regeln: Zusammenstöße verschiedener Linien (nicht Lippe → Verlängerung am Mundwinkel); der
+Feldrand hat keine Ecken — er ist eine Treppe auf dem Käfiggitter, je Stück eine gerade Seite, seine Stufen werden Fünfer-/Dreierpole,
+wie das Gitter außen es vorgibt (Kernring ebenso); Biegungen gezeichneter Linien in der Tangentialebene (ab 45° Gesamtdrehung:
+Innenseite Ecke, Außenseite ein Schnitt — der Arm nach der Biegung läuft als Geodäte gerade durch den Knick bis zur nächsten Linie).
+Seiten mit Feldkanten, Polen, Ufer und `frei`. Alle zehn Fälle: Dreiecke je ein Stück, 2–5 Seiten, keine konkave Ecke, Mundwinkel
+glatt, Feldkanten und Pole stimmen; J-Fälle = Viereck vorn oben, Viereck unten mit Hakenecke, Zweieck hinter dem Haken; Bau 32–86 ms.
+Tests `stuecke.test.ts` 4 grün, Tabelle `apps/editor/scripts/pruefen/p2-stuecke.ts`, Bild `docs/progress/editor/p2-stuecke-2026-11-03.jpg`.
+Verworfen (gemessen): Winkelecken auf dem Feldrand, Gitterecken als Stückecken, kürzerer Arm, Wahl nach der Luft. Offen (Register
+„Befunde aus P2 Tag 1“): Zweiecke, Robbe-hoch-Keil (Biegung verworfen), S-Schnitt neben der Nahtecke, Feldrand-Pole als Preis des
+Einsatzes, Zahnfleischreihe, Tigerkopf, Bildkarte.
+
+**Nächster Schritt: Tag 2** Ganzzahlen je Seite (Feldrand fest, Lippe A = B, gerade Summe, Dichte aus dem Budget ≤ 300 Flächen,
+Zahnfleischreihe), Stabilität ±2 px; Tag 3 Muster (Takayama 2014, 2–6 Seiten); Tag 4 Tutte je Stück, aufschneiden, Lippe (A6), Haut
+lösen (A7), Messen, Bilder A0 | Kernring | Stücknetz | Zebra. Start-Prompt für eine frische Sitzung:
+
+> Lies `CLAUDE.md`, `docs/UEBERGABE.md` und den Prüfplan `docs/plans/2026-11-02-pruefplan-p0-p3.md` („P2 — Start, Tag 1“). Arbeite
+> an P2 Tag 2 weiter (Ganzzahlen je Seite auf den Stücken aus `stuecke.ts`), dann Tag 3–4 — im Kern hinter einer Option
+> (`gitter: 'stuecke'`), ohne Option bitgleich, der Kernring bleibt eingefroren; keine Regel, die einen Körper oder eine Lage nennt;
+> Tore als Tests (verfehlte als `it.fails` mit Registereintrag), Bilder je Fall (A0 | Kernring | Stücknetz | Zebra), Planseite
+> „Stand“, Register, Übergabe, Commit und Push. Nach jedem Block die neuen Regeln zählen; ab der dritten anhalten und die Struktur
+> prüfen. Nichts als bestanden melden.
 
 ## Entscheidungen, die Florian treffen muss (Gegenprüfung, Abschnitt 10)
 

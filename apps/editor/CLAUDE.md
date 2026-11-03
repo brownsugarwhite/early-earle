@@ -553,3 +553,17 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   Naht — jede Dichte, die diese Spalten verschiebt, verschiebt das Fenster (Ente Naht 20 → 25°). Am Kegel (Einteiler) ließ die
   Krümmungsdichte eine gerade Flanke 2,0 → 7,3 px überschwingen, ohne dass die Schärfe-Regel griff — Einteiler bleiben nach
   Bogenlänge, die Ursache ist offen.
+- **P2 Tag 1 „Linien → Stücke“ (03.11. nachts, `kern/einsatz/stuecke.ts`):** Ecken nie aus der Drehung des Feldrands messen — er
+  ist eine Treppe auf dem Käfiggitter; auch über zwei Feldkanten geglättet dreht er 22–85°, die Maxima liegen zwischen Käfigpunkten
+  (5–17 Seiten je Stück). Drehung in der Fläche messen (Tangentialebene aus den Dreiecken), nie im Raum (die gerade Kugel-Lippe
+  dreht im Raum 92°); die Normale braucht auch jeder Schnittpunkt (Normalen je Durchgang aus den aktuellen Dreiecken, sonst 0°/180°).
+  Biegungen auf der gezeichneten Linie (`f.linie`, Proben) messen, nicht auf den Schlitzpunkten: `schnittAufLinie` rückt jeden
+  Pfadpunkt nur auf den nächsten Linienpunkt, die Schlitzpunkte springen längs der Linie vor und zurück (±40–75° je Punkt). Am
+  Linienende fällt der geglättete Punkt im Fensterabstand mit dem Punkt zusammen (Nullvektor → 0°): auf das letzte Stück mit Länge
+  ausweichen. Glättungsfenster für gezeichnete Linien h/2 — mit zwei Feldkanten verschwand jeder Haken, der sich innerhalb von zwei
+  Feldkanten dreht (Kugel-J: 76° in der Seite, nicht erkannt). Eine Biegung einmal je Linie für beide Seiten entscheiden
+  (Vorzeichen aus der Umlaufrichtung); je Stück gemessen fiel sie auf einer Seite unter die Schwelle (Langhals: Ecke unten, kein
+  Schnitt oben). Der Nachbar auf dem durchlaufenden Arm gilt auf Ufer B als Doppel (sonst eine Ecke mit 4° am Schnittanfang). Nach
+  einem Schnitt die Dreiecke beiderseits der Endkante teilen (T-Stoß in der Triangulierung), die Endkante in der Linienliste
+  ersetzen, dann neu fluten; Schnittpunkte ab `nBasis`, Tests nehmen `fund.dreiecke`. Pole je Seite am Endpunkt zählen (nicht am
+  Anfang): die Verlängerung endet oft auf einem Treppenpunkt (Test: Dreierpole = konkave Randpunkte / 2).

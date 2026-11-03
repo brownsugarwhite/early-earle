@@ -48,15 +48,20 @@ function nachbarnVon(netz: FeinNetz): Map<number, Set<number>> {
  * Schlitz und Falte sind beide Kantenwege im feinen Netz und kreuzen sich deshalb in einem gemeinsamen Punkt P. Von P aus läuft
  * je ein Ast in jede Seite; endet ein Ast auf der Naht (z = 0), ist er der Hals einer Leiter.
  */
-export function leiterFalten(k: Kaefig, feld: FeldSpec, netz: FeinNetz, karte: Karte, doppel: Map<number, number>): LeiterFund[] {
+const schl = (a: number, b: number) => (a < b ? `${a}:${b}` : `${b}:${a}`);
+
+/**
+ * Falten von A0 im Feld (rechte Hälfte) als Graph im feinen Netz: Die Faltenkanten des Feldkäfigs K (gleiche Nummern wie das
+ * feine Netz) werden im feinen Netz nachgezogen (Kantenpunkt = gemeinsamer Nachbar nahe der Kantenmitte). Nachbarn je Punkt
+ * und Schärfe je Kante (`schl(a, b)`). Gemeinsam für die Leiter (E2.6) und die Stücke (P2).
+ */
+export function faltenGraph(k: Kaefig, feld: FeldSpec, netz: FeinNetz): { nb: Map<number, Set<number>>; schaerfe: Map<string, number> } {
   const inM = new Uint8Array(k.nF);
   for (const f of feld.feld) inM[f] = 1;
   const P = (i: number): V3 => [netz.punkte[3 * i]!, netz.punkte[3 * i + 1]!, netz.punkte[3 * i + 2]!];
   const nb = nachbarnVon(netz);
-  // Faltenkanten im Feld (rechte Hälfte) als feine Wege
   const faltNb = new Map<number, Set<number>>();
   const faltS = new Map<string, number>();
-  const schl = (a: number, b: number) => (a < b ? `${a}:${b}` : `${b}:${a}`);
   const verbinde = (a: number, b: number, s: number) => {
     (faltNb.get(a) ?? faltNb.set(a, new Set()).get(a)!).add(b);
     (faltNb.get(b) ?? faltNb.set(b, new Set()).get(b)!).add(a);
@@ -93,6 +98,12 @@ export function leiterFalten(k: Kaefig, feld: FeldSpec, netz: FeinNetz, karte: K
     verbinde(a, best, s);
     verbinde(best, b, s);
   }
+  return { nb: faltNb, schaerfe: faltS };
+}
+
+export function leiterFalten(k: Kaefig, feld: FeldSpec, netz: FeinNetz, karte: Karte, doppel: Map<number, number>): LeiterFund[] {
+  const P = (i: number): V3 => [netz.punkte[3 * i]!, netz.punkte[3 * i + 1]!, netz.punkte[3 * i + 2]!];
+  const { nb: faltNb, schaerfe: faltS } = faltenGraph(k, feld, netz);
   if (!faltNb.size) return [];
   // Schlitz: Ufer A (Ursprungsnummern) von O zum Mundwinkel, Bogenlänge
   const schlitz = karte.rand.schlitz;

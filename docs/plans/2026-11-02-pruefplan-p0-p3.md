@@ -918,3 +918,78 @@ Richtung; Fortschritt las ich an Tor-Zahlen ab, nicht an der Regelzahl. Ab jetzt
 Florians Blick: „nicht so schlecht“), die Genauigkeit der Mehrteiler bleibt an den zwei Strukturstücken hängen. Weiter mit P2
 „Stücknetz im Maulfeld“ — der eigentliche Eleganztest, weil das Stücknetz den Kernring mit seinen Sonderregeln ersetzen soll; es
 arbeitet auf dem heutigen Käfig und braucht die Teile nicht.
+
+## P2 — Start, Tag 1 „Linien → Stücke“ (03.11.2026 nachts, gebaut; Abnahme offen)
+
+Florian: „… und starte P2 (Stücknetz im Maulfeld).“ Tag 1 nach dem Bauplan oben: Linien in der Karte → Stücke als Flächen des
+Liniengraphen, mit den Ecken und Seiten, die der Ganzzahlenschritt (Tag 2) braucht. Kern `packages/shape/src/kern/einsatz/stuecke.ts`
+(DOM-frei), ein eigener Schritt neben dem eingefrorenen Kernring: am Bau ist nichts geändert, `einsatzFall` liefert Feld, Karte und
+Schnitt wie bisher; `faltenGraph` (`leiter.ts`) und `schlitzVerlaengerung` (`rechteck.ts`) sind nur herausgelöst (Kernring-Wächter
+7 von 7 grün). Tests `stuecke.test.ts` (4 grün), Tabelle und Bild `apps/editor/scripts/pruefen/p2-stuecke.ts` →
+`docs/progress/editor/p2-stuecke-2026-11-03.jpg` (Karte des halben Felds: links der Schlitz mit beiden Ufern und dem Mundwinkel,
+rechts der Feldrand, oben und unten die Naht; es ist noch die Kernring-Karte, der Haken erscheint darin flach).
+
+**Gebaut (Linien, Stücke, Ecken):**
+- Linien: Feldrand, Naht (oben, unten), Schlitz (beide Ufer), die Verlängerung des Schlitzes vom Mundwinkel c bis zum Feldrand
+  (Kantenweg aus der harmonischen Teilung), die Falten von A0 im Feld (Stummel ohne Anbindung sind keine Grenze) und Schnitte
+  (unten). Stücke: die Dreiecke des Halbfelds über Nicht-Linienkanten geflutet, Umlauf je Komponente (Stück links), Löcher gezählt.
+- Ecken nach drei Regeln, keine nennt einen Körper oder eine Lage:
+  1. **Zusammenstöße verschiedener Linien** (Naht/Feldrand, Lippe/Naht am Schlitzanfang, Falte/Lippe; endet eine freie Linie
+     — Verlängerung, Schnitt — auf einer anderen, sind beide flankierenden Stücke dort Ecken, die durchlaufende Linie gerade).
+     Nicht: Lippe → Verlängerung am Mundwinkel, dieselbe Linie — c liegt mitten auf einer geraden Seite (die Grundidee).
+  2. **Feldrand: keine Ecken.** Er ist eine Treppe auf dem Käfiggitter (beim Rex bis 19 Stufen je Hälfte, weil die Lippe schräg
+     durch Reihen und Ringe läuft) und je Stück eine gerade Seite; was außen vorgegeben ist, legt das Innere fest: der Einsatz gibt
+     jedem Randpunkt zwei Flächen, konvexe Gitterecken werden Fünferpole, konkave Dreierpole — wie der Kernring (E1: Haut 0,09 px
+     mit genau diesen Polen). Gemessen und verworfen: Winkelecken auf dem Feldrand (auch über zwei Feldkanten geglättet dreht die
+     Treppe 22–85°, die Maxima liegen zwischen Käfigpunkten → 5–17 Seiten je Stück) und freistehende konvexe Gitterecken als
+     Stückecken (zwei Pole weniger je Ecke, aber die Grenze dreht dort oft nur 12–45° — als 90° gefüllt gäbe das gequetschte Zellen).
+  3. **Gezeichnete Linien (Lippe, Falten): Biegungen.** Drehung in der Tangentialebene der Haut (die Drehung im Raum täuscht: die
+     in der Seite gerade Kugel-Lippe dreht im Raum 92°, in der Fläche 0°), gemessen auf der gezeichneten Linie (Proben), einmal je
+     Linie für beide Seiten. Eine Biegung ist ein Lauf gleichsinniger Drehung; ab 45° Gesamtdrehung (die Hälfte von 90°) bekommt
+     die Innenseite eine Ecke und die Außenseite (270°, kein Muster füllt das) einen **Schnitt**: der Arm nach der Biegung läuft als
+     Geodäte über die Dreiecke des Stücks gerade durch den Knick bis zur nächsten Linie, der Arm davor endet dort als T. Biegungen
+     innerhalb zweier Feldkanten eines Linienendes, das Ecke ist, gehören zu dieser Ecke; Schnitte kürzer als zwei Feldkanten (zu
+     schmaler Streifen) entfallen samt Ecke. Naht (Spiegelgeodäte), Verlängerung und Schnitte (frei) tragen keine Drehungsecken.
+- Seiten mit Art, Länge, Feldkanten (fest), Polen, Ufer (A/B) und `frei` (Verlängerung, Schnitt: Kantenzahl frei) — das ist die
+  Eingabe des Ganzzahlenschritts.
+
+**Stand (zehn Fälle des Prüfplans; der Tigerkopf fehlt in der Einsatz-Reihe):**
+
+| Fall | Stücke (Seiten) | Schnitte | Feldkanten · Pole ⁵/³ am Rand | Mundwinkel | ms |
+|---|---|---|---|---|---|
+| Rex mittel gerade | 3 (3/3/4; Schnauzenfalte als Linie) | 0 | 74 · 19/19 | glatt/glatt | 83 |
+| Rex mittel J | 4 (4/3/5/2) | 1 | 72 · 16/16 | glatt/glatt | 86 |
+| Robbe hoch gerade | 2 (3/3) | 0 | 50 · 11/10 | glatt/glatt | 44 |
+| Robbe hoch J | 3 (3/4/3; Biegung 81° im Keil verworfen, 0,6 Feldkanten) | 1 | 52 · 9/8 | glatt/glatt | 54 |
+| Rex tief J | 3 (4/4/2) | 1 | 108 · 15/13 | glatt/glatt | 64 |
+| Robbe tief J | 3 (4/4/2) | 1 | 88 · 16/15 | glatt/glatt | 60 |
+| Kugel mittel J | 3 (4/4/2) | 1 | 110 · 7/5 | glatt/glatt | 77 |
+| Ei tief J | 3 (4/4/2) | 1 | 96 · 6/5 | glatt/glatt | 64 |
+| Langhals hoch J | 3 (2/4/4) | 1 | 34 · 1/0 | glatt/glatt | 32 |
+| Birne mittel S | 4 (4/3/4/3) | 2 | 88 · 12/10 | glatt/glatt | 79 |
+
+**Tore des Tags:** (1) jedes Dreieck in genau einem Stück: 10 von 10. (2) 2–6 Seiten und keine konkave Ecke: 10 von 10 (2–5 Seiten;
+vorher mit Winkelecken 5–17). (3) Mundwinkel keine Ecke: 10 von 10, beide Stücke. (4) Feldkanten der Seiten = halber Rand, Dreierpole
+= konkave Randpunkte / 2: 10 von 10. (5) Stabilität ±2 px: Tag 2. Bau 32–86 ms.
+
+**Struktur je Fall:** J-Linie → vorderes Oberlippenstück ein Viereck (Naht, Lippe, Schnitt, Feldrand) — die Lippenreihen laufen
+regulär bis zum Schnitt —, Unterlippenstück ein Viereck mit der Hakenecke, hinter dem Haken ein Zweieck (Schnitt + Haken +
+Verlängerung, Feldrand); dort sitzen die zwei Dreierpole, die die Hälfte nach Gauß–Bonnet braucht (die zwei Kappenecken von A0
+liegen im Feld). Gerade Linie → zwei Dreiecke mit je einem Dreierpol. Rex → die Schnauzenfalte als Linie (Dreieck/Fünfeck). S-Linie
+→ zwei Schnitte, vier Stücke (4/3/4/3).
+
+**Regeln gezählt:** drei Regeln (Zusammenstöße, Feldrand aus dem Gitter, Biegung mit Schnitt) und drei Maße (45°; zwei Feldkanten
+für Nähe und Mindestlänge; Glättung h/2 nur gegen das Abtastrauschen der Proben). Nach Messung verworfen: Winkelecken auf dem
+Feldrand, Gitterecken als Stückecken, „der kürzere Arm läuft durch“ (S-Linie: Keil längs der Lippe) und die Wahl der Fortsetzung
+nach der Luft (kleinster Abstand zu den übrigen Linien — ein Münzwurf, 0,6–1,7 Feldkanten je Seite).
+
+**Offen (Register „Befunde aus P2 Tag 1“):** Zweiecke hinter dem Haken (Muster mit zwei Dreierpolen in einer Linse); Robbe hoch:
+Keil zwischen Lippe und Naht (Biegung 81° verworfen, Schnitt wäre 0,6 Feldkanten — Dreieck Naht/Lippe/Schnitt, wie die Leiter des
+Kernrings); Birne S: der zweite Schnitt endet 9 px neben der Nahtecke; die Feldrand-Pole (1–19 je Hälfte) sind der Preis des
+Einsatzes im Gitter (P3 hat keinen Feldrand); Zahnfleischreihe noch keine Linie (Tag 2: eine Reihe innerhalb der Lippe); Tigerkopf;
+die Bildkarte.
+
+**Nächster Schritt (Tag 2):** Ganzzahlen je Seite (Feldrand fest, Lippe A = Lippe B, gerade Summe je Stück, Dichte aus dem Budget
+≤ 300 Maulfeld-Flächen, Zahnfleischreihe als Reihe in der Lippe), Stabilität ±2 px (20 Versuche je Linie); Tag 3 Muster (Takayama
+2014 für 2–6 Seiten, Pole nur mit drei oder fünf Kanten, nicht auf Lippe oder Feldrand); Tag 4 Tutte je Stück, aufschneiden, Lippe
+(A6), Haut lösen (A7), Messen gegen die Tore, Bilder A0 | Kernring | Stücknetz | Zebra.

@@ -437,6 +437,16 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   `KaefigOptionen` hat zwölf Felder; Tests und Messreihe bitgleich. **Lehre:** Der nächste Schritt wurde aus dem Register
   abgeleitet und als Knopf empfohlen — nie wieder; nach jedem Block Regeln zählen, ab der dritten „Struktur prüfen“, strukturelle
   Ursachen bekommen keine Regel. Nächster Schritt: P2 „Stücknetz im Maulfeld“ (Prüfplan, Recherche 21.10. Abschnitt 2 und 6).
+- **2026-11-03 (nachts): P2 Tag 1 „Linien → Stücke“ gebaut** (Florian: „… und starte P2 (Stücknetz im Maulfeld)“; Abnahme offen;
+  Planseite „P2 — Start, Tag 1“ im Prüfplan, Register „Befunde aus P2 Tag 1“, Übergabe). Kern `kern/einsatz/stuecke.ts` (eigener
+  Schritt neben dem eingefrorenen Kernring, am Bau nichts geändert): Linien in der Karte → Stücke (Flächen des Liniengraphen) →
+  Ecken nach drei Regeln ohne Körper oder Lage: Zusammenstöße verschiedener Linien (nicht Lippe → Verlängerung am Mundwinkel);
+  **der Feldrand hat keine Ecken** (Treppe auf dem Käfiggitter, je Stück gerade Seite, Stufen = Fünfer-/Dreierpole wie außen
+  vorgegeben); **Biegungen** gezeichneter Linien in der Tangentialebene (ab 45° Gesamtdrehung: Innenseite Ecke, Außenseite ein
+  Schnitt als Geodäte durch den Knick bis zur nächsten Linie). Zehn Fälle: Dreiecke je ein Stück, 2–5 Seiten, keine konkave Ecke,
+  Mundwinkel glatt, Feldkanten und Pole stimmen; J = Viereck vorn, Viereck unten mit Hakenecke, Zweieck hinter dem Haken.
+  Verworfen (gemessen): Winkelecken auf dem Feldrand (5–17 Seiten), Gitterecken als Stückecken, „kürzerer Arm“, Wahl nach Luft.
+  Tests `stuecke.test.ts` 4 grün, Bild `docs/progress/editor/p2-stuecke-2026-11-03.jpg`. Nächster Schritt Tag 2 (Ganzzahlen).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
