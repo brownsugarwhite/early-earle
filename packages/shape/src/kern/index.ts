@@ -27,6 +27,7 @@ export * from './atlas';
 export * from './wesen';
 export * from './spielstufe';
 export * from './umrissPlan';
+export * from './schleifenKaefig';
 export * from './reifen';
 export * from './schleifen';
 export * from './pinsel';

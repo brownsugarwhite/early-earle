@@ -113,7 +113,12 @@ function abtasten(segs: readonly Kubik[], sk: number): Probe2[] {
     for (let k = 0; k < n; k++) {
       const t = k / n;
       const p = punktAuf(seg, t);
-      const d = ableitung(seg, t);
+      let d = ableitung(seg, t);
+      // Knoten ohne Griff (gerade Kante): die Ableitung ist dort 0 — Richtung aus der Sehne zur nächsten Probe
+      if (Math.hypot(d.x, d.y) < 1e-9) {
+        const p2 = punktAuf(seg, Math.min(1, t + 0.5 / n));
+        d = { x: p2.x - p.x, y: p2.y - p.y };
+      }
       const l = Math.hypot(d.x, d.y) || 1;
       out.push({ q: { x: p.x * sk, y: p.y * sk }, s: si + t, tangente: { x: d.x / l, y: d.y / l }, ecke: false, konkav: false });
     }
@@ -328,7 +333,12 @@ function biegungMinimieren(lo: Float64Array, hi: Float64Array, fest: Uint8Array,
  * kleinste Biegung innerhalb der Schranken; Lücken (Widerspruch) linear aus den Nachbarn. Geschlossene Folgen werden an der
  * engsten Stelle aufgeschnitten und mit Überlappung an beiden Enden gelöst (die Überlappung trägt die Stetigkeit über den Schnitt).
  */
-function tiefeGlaetten(lo: Float64Array, hi: Float64Array, fest: Uint8Array, zyklisch: boolean, soll?: Float64Array): Float64Array {
+/**
+ * Tiefe einer Schleife mit kleinster Biegung innerhalb der Intervalle (aktive Menge); `soll` zieht zur Soll-Tiefe, sonst schwach
+ * zur Intervallmitte. Auch der Schleifen-Käfig nutzt sie (ohne `soll`: die Vorlage der berührenden Station gilt für
+ * Rotationskörper und Kästen nicht — Vase 80 px, Würfel 100 px Wanderung der Front-Tiefe).
+ */
+export function tiefeGlaetten(lo: Float64Array, hi: Float64Array, fest: Uint8Array, zyklisch: boolean, soll?: Float64Array): Float64Array {
   const n = lo.length;
   const mitte = new Float64Array(n);
   const zug = soll ? MITTE_SOLL : MITTE;
@@ -551,11 +561,21 @@ export function umrissPlan(dok: Dokument): UmrissPlan {
     const n = proben.length;
     if (n < 3) continue;
     const sg = umlauf(proben);
-    const innen = (p: Probe2): V2 => ({ x: -p.tangente.y * sg, y: p.tangente.x * sg });
-    // Intervalle eine halbe Pixel innen abgetastet: genau auf der Linie berührt die Probe die Grenzlage der anderen Ansichten
+    const innenVon = (t: V2): V2 => ({ x: -t.y * sg, y: t.x * sg });
+    // an einer Ecke die Winkelhalbierende der beiden Kanten: längs nur einer Kante nach innen gerückt bleibt die Probe auf der
+    // Grenze der anderen und bekommt ein Splitter-Intervall (scharfer Würfel: Höhe 0,006 statt 0,4; die Tiefe wanderte 100 px)
+    const innen = (p: Probe2, i: number): V2 => {
+      const n1 = innenVon(p.tangente);
+      if (!p.ecke) return n1;
+      const n0 = innenVon(proben[(i - 1 + n) % n]!.tangente);
+      const m = { x: n0.x + n1.x, y: n0.y + n1.y };
+      const l = Math.hypot(m.x, m.y);
+      return l > 1e-9 ? { x: m.x / l, y: m.y / l } : n1;
+    };
+    // Intervalle zwei Pixel innen abgetastet: genau auf der Linie berührt die Probe die Grenzlage der anderen Ansichten
     // nur tangential (Kanten eines Kastens, Scheitel), und die Intervalle zerfallen in Splitter
-    const iv = proben.map((p) => {
-      const nn = innen(p);
+    const iv = proben.map((p, i) => {
+      const nn = innen(p, i);
       return tiefen(h, a, { x: p.q.x + (nn.x * INNEN) / PX, y: p.q.y + (nn.y * INNEN) / PX });
     });
     // Seite: Tiefe 0 (Naht in der Spiegelebene) — das Intervall, das 0 enthält, sonst Widerspruch
@@ -574,7 +594,7 @@ export function umrissPlan(dok: Dokument): UmrissPlan {
       } else {
         lo[i] = NaN;
         hi[i] = NaN;
-        wid[i] = widerspruchBei(h, a, p.q, innen(p));
+        wid[i] = widerspruchBei(h, a, p.q, innen(p, i));
         widerspruchMax[a] = Math.max(widerspruchMax[a], wid[i]!);
       }
     });

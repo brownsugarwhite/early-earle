@@ -492,3 +492,93 @@ legen, ohne den Körper zu verzerren“ — beides trifft zu (Ei Front 1,1 px; u
 - **C — Mischform:** der Schleifenkörper nur dort, wo er heute hilft (Körper ohne Teile, kleine Abstände), weiche Bindung als
   Standard (keine Falten), Δ-Verbesserung sichtbar, aber keine exakten Umrisse.
 Bis zur Entscheidung bleibt der Chip ein Versuch (Standard „Körper heute“); nichts am Standardbau geändert.
+
+## Stand P1 Tag 2–3, zweiter Anlauf — Schleifen-Käfig (03.11.2026, gebaut; Abnahme offen)
+
+**Florians Klärung (03.11., auf die Entscheidung A/B/C):** „Die Linie und das Modell sind doch exakt das selbe … die aktuell gelbe
+Linie sollte eigentlich die schwarze Linie sein. … es müssen alle Informationen in Edgeloops und Linien aus den Ansichten genutzt
+werden, um die Form sinnvoll und intelligent zu füllen.“ Antwort: Er hat recht; mit Umrissen je Teil und gekoppelten
+Kreuzungspunkten gibt es praktisch keine Widersprüche, die Lücken kamen aus dem Bau (ein Schlauch mit 24 Ringen aus der Seite,
+den der erste Anlauf an die Schleifen zog). Seine Entscheidung: „ok, dann machen wir es so!“ — das Netz direkt aus den Schleifen,
+zuerst für ein Teil, hinter einem Schalter, ohne Schalter bitgleich. Die Entscheidung A/B/C ist damit erledigt.
+
+**Gebaut (Kern, `packages/shape/src/kern/schleifenKaefig.ts`, hinter `Bauplan.schleifenKaefig`; ohne Option bitgleich, Test):**
+- **Die drei Umrissschleifen sind Punktreihen des Käfigs** (Topologie bleibt die Röhre R × N + Kappen, Spielbudget unverändert): die
+  Seite ist die Naht (z = 0), die Schleife der Ansicht längs der Achse die Reihe N/4 samt Kappenmitte („Reihenschleife“), die
+  Schleife der Ansicht quer zur Achse ein Ring („Ringschleife“). Sie kreuzen sich in sechs Punkten (vorn, hinten, oben, unten,
+  rechts, links) — flache Läufe (Kasten) zählen als ein Lauf, die Kreuzung ist seine Mitte. Dazwischen liegen acht Felder.
+- **Anker beim gleichen Bogenanteil:** Jeder Ring bekommt seine drei Anker (Rücken, Seite, Bauch) beim gleichen Anteil der drei
+  Bögen ab vorn bzw. ab hinten (Würfel-Kugel-Topologie); der Ring der Ringschleife liegt so, dass die Schritte beiderseits gleich
+  lang sind. Die Form zwischen den Ankern ist die Ringschleife selbst (der gezeichnete Querschnitt), auf die Anker gestreckt;
+  ihre Verdrehung längs der Achse folgt den Ringen nach Ringbreite skaliert (`kippen`). Kappen: Quadratringe um die Spitze mit
+  denselben Ankern bei kleinen Anteilen, Ecke der Vorlage auf der Kappendiagonale.
+- **Achse** nach der längeren Ausdehnung der Seite: Ringe quer zu x (Kappen vorn/hinten) oder quer zu y (Kappen unten/oben;
+  Vase, Zylinder) — die heutige Leiter liegt bei Würfel und Vase schräg (Sprossen diagonal) und spielt hier keine Rolle.
+- **Falten aus Ecken-Knoten:** Ecke der Seite oder der Reihenschleife → scharfer Ring (Gewicht cos² wie `faltenSetzen`; Ecken
+  verschiedener Bögen beim gleichen Anteil rasten gebündelt auf einen Ring), Ecke der Ringschleife → scharfe Reihe samt
+  Kappendiagonale, Ecke an einer Spitze → Punktfalte. Faltenpunkte sind hart wie Schleifenpunkte.
+- **Tiefe der Schleifen neu geglättet** (`tiefeGlaetten` ohne den Zug zur berührenden Station): die Soll-Tiefe des Planers ließ die
+  Front von Vase und Würfel um 80–100 px wandern; mit kleinster Biegung in den Intervallen liegt sie bei Rotationskörpern und
+  Kästen auf der Mittelebene. Planer-Korrekturen (Tag 1, `umrissPlan.ts`): an Ecken rückt die Probe längs der Winkelhalbierenden
+  nach innen (sonst Splitter-Intervall, scharfer Würfel: Höhe 0,006 statt 0,4), Knoten ohne Griff bekommen die Richtung aus der
+  Sehne (Ableitung 0).
+- **Ein Löser** (gekoppelt über 3n, dünn, Cholesky): Schleifen- und Faltenpunkte hart auf ihren Grenzlagen (Gewicht 1 000),
+  Silhouettenbedingung an Reihen- und Ringschleife (Differenz der Grenzlagen der Nachbarn quer zur Schleife ⊥ Umrissnormale,
+  1 000), das Innere weich auf der Vorlage (1), Glättung der Stufe 2 nur der Abweichung von der Vorlage (30, Kappen × 10).
+  Unterteilung mit den neuen Falten je Bau (≈ 80 ms), Lösen ≈ 50–70 ms.
+- **Verworfen (gemessen):** Krümmungsverdichtung je Bogen (Ei 160 umgeklappte Flächen: die Anker der drei Bögen verschoben sich
+  gegeneinander, Ringe kreuzten sich) → gemeinsame Dichte je Seite; Krümmungsverdichtung 0,5 Schritte je Bogenmaß (Ei Front 0,4 →
+  0,8 px, Kegel Front 2,0 → 6,5) → Standard 0 (Option `kruemmung` bleibt); Extrem-Toleranz 0,5 px (gezeichnete Geraden wackeln
+  1–2 px, die Kreuzung sprang an die Ecke) → 3 px.
+
+**Gebaut (Editor):** Tafel Körper → Chips „Körper heute | Löser (P1) | Schleifen-Käfig (P1)“ (`useKernAnzeige.schleifenKaefig`,
+`?schleifen=2`) mit Achse, Ring, Rest, Silhouette, Innen, Überstand, Kippung, Falten, Bauzeit; der Worker merkt den Käfig je Form
+(`WesenStand.schleifenKaefig`, nur genauer Bau, Röhre ohne Maul und Beine; Pinsel-Deltas wirken darin nicht); Haken
+`__editor.schleifenKaefig()`. Umschalten ≈ 1,0 s (Bau 150–200 ms, dazu Liniennetz und Δ).
+
+**Prüfkörper (`kern/pruefen/einteiler.ts`):** Kugel, Ei, **scharfer Würfel** (drei Quadrate mit Ecken-Knoten), **Zylinder** (stehend,
+Achse y), **runde Vase** (Rotationskörper, Achse y, Rand mit Ecken) — Körper, bei denen drei Ansichten die Form ganz bestimmen —
+dazu Florians Kegel, der Würfel „wie mit dem Stift“ (Rundung r 14 px, Knoten als Ecken) und die Vase aus der Kugel (Front = Ei des
+Kugelstarts: der Rand ist eine Messerkante).
+
+**Tore (Tests `kern/schleifenKaefig.test.ts`, je Körper Form und Glätte; Δ mit Raster 1920, sonst kappt das Raster die Ecken um
+0,5–1 px; Register „Befunde aus P1 Tag 2–3, zweiter Anlauf“):**
+
+| Fall | Achse · Ring | Δ S/F/T heute → neu (px, Tor 0,5) | Rest / Silhouette | innen (px) | Überstand F/T | Kippung (px) | nach innen (Tor 0) | Falten frei/Kappe heute → neu | Knicke 95 %/max (Tor 20°/30°) | Flachband S/F/T (%) | Bau (ms) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Kugel ✓ ✓ | x · 12 | 0,3/0,2/0,3 → 0,1/0,1/0,1 | 0,0 / 0,1° | 3,0 | 0,0/0,0 | 0 | 0 | 2,9/3,1° → 2,9/1,0° | 11,1/11,4° | 8,8/8,7/8,8 | 200 |
+| Ei ✓ ✓ | x · 12 | 0,3/0,4/0,4 → 0,1/0,4/0,1 | 0,4 / 0,3° | 3,1 | 0,4/0,1 | 8 | 0 | 3,5/5,0° → 3,8/2,4° | 12,2/13,9° | 8,5/9,1/7,2 | 187 |
+| Würfel scharf ✓ ✓ | x · 12 | 2,2/4,8/4,8 → 0,3/0,3/0,3 | 0,0 / 0,0° | 1,0 | 0,0/0,0 | 0 | 0 | 19,9/24,6° → 0,0/0,0° | 0,0/0,0° | 66,7 (Kasten) | 156 |
+| Zylinder ✗ ✓ | y · 12 | 2,4/4,0/14,3 → **0,7/1,0**/0,0 | 0,0 / 0,0° | 3,5 | 0,0/0,0 | 0 | 0 | 16,3/14,4° → 2,9/0,0° | 11,3/11,3° | 21,1/21,1/84,2 | 168 |
+| Vase rund ✗ ✓ | y · 7 | 9,3/4,9/5,7 → **1,3/1,3**/0,1 | 0,0 / 0,1° | 4,8 | 0,8/0,0 | 4 | 0 | 173,4/11,8° → 3,2/3,2° | 11,5/12,1° | 11,8/11,8/10,4 | 183 |
+| Kegel ✗ ✗ | x · 14 | 2,1/6,7/2,6 → **4,8/2,0**/0,3 | **1,9** / 0,8° | 13,2 | **2,7**/0,4 | **84** | **492** (Kappe vorn) | 14,1/9,7° → 11,6/13,4° | **24,0/38,5°** | 33,6/8,1/4,7 | 197 |
+| Würfel Stift ✗ ✓ | x · 12 | 1,1/2,6/1,6 → **1,7/2,2/1,6** | 0,3 / 0,2° | 0,9 | **2,2/1,6** | 3 | 0 | 11,1/54,1° → 3,1/1,3° | 6,4/11,8° | 57 (Kasten) | 159 |
+| Vase aus der Kugel ✗ ✗ | y · 7 | 1,4/2,3/13,8 → **0,9/6,3**/0,1 | 0,3 / 0,4° | 4,9 | **8,7**/0,1 | 34 | 0 | 10,9/9,0° → 4,9/5,1° | 15,1/20,1° | 9,3/8,2/**18,3** | 184 |
+
+Bau ≤ 50 ms verfehlt (`it.fails`: Unterteilung mit neuen Falten ≈ 80 ms + Lösen ≈ 60 ms); Spielbudget trivial (Röhre, 400
+Käfigflächen). Wendepunkte überall 0 (Drehungen unter 2° zählen nicht: Wellenschlag ≤ 1 px an den Kappenringen des scharfen
+Würfels und die gezeichnete Bogung einer Kante). **3 von 8 halten alle Tore** (Kugel, Ei, scharfer Würfel), Zylinder und runde Vase
+halten die Glätte und liegen in der Form 0,7–1,3 px.
+
+**Im Editor gemessen** (`p1-kaefig-editor.mjs`, alle acht): dieselben Δ (Blatt-Raster 240: scharfer Würfel 1,1, Zylinder 1,6,
+runde Vase 2,0 px), Umschalten 1,0–1,06 s. Bogen `docs/progress/editor/p1-kaefig-2026-11-03.jpg` (Blätter mit Δ, Bühne Earle 45°,
+Zebra 45°; heute | Käfig), Drahtgitter `p1-kaefig-draht-<fall>-2026-11-03.jpg` (acht Fälle; `p1-koerper-bild.ts` mit
+`BAU=kaefig` + `html-shot.mjs`), Messreihe `p1-kaefig.ts`.
+
+**Lesart:**
+- Wo drei Ansichten einen Körper bestimmen, ist die gelbe Linie jetzt die schwarze: der scharfe Würfel wird aus drei Quadraten ein
+  Würfel (Falten 0°, Knicke 0°), der Zylinder und die runde Vase werden mit Achse y sauber (heute: diagonale Sprossen, gefalteter
+  Hals, Top 14 px daneben), Kugel und Ei bleiben auf 0,1–0,4 px — und das Zebra ist ruhig.
+- Die verbleibenden 0,7–1,3 px der sauberen Körper sitzen an Randecken (Zylinder: Ecke des Rands, Kappe trifft Falte) und in engen
+  Rundungen (runde Vase: Fuß und Hals) — 16 Punkte je Ring, dieselbe Dichtefrage wie in P0a.
+- Der Kegel ist der ehrliche Gegenfall: seine Kreuzungen liegen weit auseinander (oben bei x = 0,27, rechts bei x = 0,03), die
+  Bögen ab hinten sind 109/327/264 px lang — die Ringe kippen bis 84 px, die gestreckte Vorlage trägt dort nicht (innen 13 px), die
+  vordere Kappe faltet, und seine Rundungen (Kiel, Standfläche) sind nicht als Ecken gekennzeichnet (r ≈ 10 px bei 80 px je Punkt).
+  Der Stift-Würfel misst die Rundung (r 14 px) gegen die scharfe Falte am Scheitel der Rundung (1,6–2,2 px), die Vase aus der Kugel
+  ihre Messerkante (Front-Ei bei 0,95 spitz, Rand 0,25 breit).
+
+**Nächster Schritt (Florians Weg, Planseite oben: „zuerst für ein Teil, dann Teile an der Naht“):** Teile an der Naht — Langhals,
+Ente, Robbe, Pilz mit dem Flächenbaum von Tag 1 (T-Stöße, verdeckte Fortsetzung): das Kind-Teil hängt über ein Fenster im
+Eltern-Gitter (Beweis 3, S6/S7-Mechanik), seine Schleifen enden an der Naht; Abbruch, wenn eine Naht nicht glatt wird. Danach P2
+(Maul). Offen daneben: Dichte (N je Ring, Dichteregel aus P0a), Kippung (Vorlage für gekippte Ringe), Kappen bei sehr
+ungleichen Bögen, Pinsel-Deltas im Käfig, Tag 4 (Griffe an den Schleifen) und Tag 5 (Bögen in Florians Ablauf).

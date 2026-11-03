@@ -180,4 +180,12 @@ und Store, ohne Zeichnen; `zuruecksetzen()`).
 | `p1-koerper.ts` (Kern, aus `packages/shape`: `npx vite-node ../../apps/editor/scripts/pruefen/p1-koerper.ts`) | Körper aus den Schleifen gegen den heutigen Bau je Prüfkörper: Δ je Blatt, Rest an den Schleifen, Überstand, Falten frei/Kappe, Knicke Stufe 1, Flachband, Wendepunkte, umgeklappte Flächen mit Ort, Volumen, Zeit; Optionen `FAIR GEWICHT TANGENTE RUNDEN ZIEL RING REIHE LAENGS KAEFIG ANKER NUR` (Diagnose) |
 | `p1-koerper-bild.ts` (Kern) + `html-shot.mjs` (aus `apps/editor`, `[--jpg]`, `AUSGABE`) | Drahtgitter der Stufe 2 in den drei Ansichten, heute | aus den Schleifen, mit Zeichnung und geplanten Schleifen → HTML je Fall in `pruefen-ausgabe/p1/`, dann PNG/JPG |
 | `p1-koerper-editor.mjs` (Editor, über `run-check.sh`) | Chip „aus den Schleifen“ im echten Editor: Blätter mit Δ (Ausschnitt um die Schleifen), Bühne Earle 45°, Zebra 45°, heute | neu, Tafelzahlen → `docs/progress/editor/p1-koerper-<datum>.jpg`, JSON in `pruefen-ausgabe/p1/` |
-| `koerperMass.ts` (`packages/shape/src/kern/pruefen/`) | geteilte Maße: `knickeStufe1`, `flachband`, `wendepunkte`, `umgeklappt`, `punkteVon` — Skript und Test nutzen dieselben |
+| `koerperMass.ts` (`packages/shape/src/kern/pruefen/`) | geteilte Maße: `knickeStufe1`, `flachband`, `wendepunkte` (mit Achse), `umgeklappt`, `nachInnen` (absolut, gegen die Achse), `punkteVon` — Skript und Test nutzen dieselben |
+
+## Nachtrag 03.11.: P1 Tag 2–3, zweiter Anlauf — Schleifen-Käfig
+
+| Skript | misst / zeigt |
+|---|---|
+| `p1-kaefig.ts` (Kern, aus `packages/shape`: `npx vite-node ../../apps/editor/scripts/pruefen/p1-kaefig.ts`) | Käfig aus den Schleifen (`schleifenKaefig`) gegen den heutigen Bau an den Einteilern (`pruefen/einteiler.ts`: Kugel, Ei, scharfer Würfel, Zylinder, runde Vase, Kegel, Stift-Würfel, Vase aus der Kugel): Achse, Ring der Ringschleife, Bögen, Δ je Blatt (Raster 960), Rest, Silhouette, Innen, Überstand, Kippung, nach innen gekehrte Flächen, Falten, Knicke, Flachband, Wendepunkte, Falten des Käfigs, Zeit; Optionen `FAELLE ACHSE FAIR INNEN TANGENTE GEWICHT KIPPEN KRUEMMUNG TIEFE` |
+| `p1-koerper-bild.ts` mit `BAU=kaefig` (Kern) + `html-shot.mjs` | Drahtgitter der Stufe 2 heute | Schleifen-Käfig in den drei Ansichten → `pruefen-ausgabe/p1/kaefig-<fall>.html`, dann PNG/JPG; die Einteiler sind als Fälle bekannt |
+| `p1-kaefig-editor.mjs` (Editor, über `run-check.sh`) | Chip „Schleifen-Käfig (P1)“ im echten Editor: Blätter mit Δ, Bühne Earle 45°, Zebra 45°, heute | Käfig, Tafelzahlen → `docs/progress/editor/p1-kaefig-<datum>.jpg`, JSON in `pruefen-ausgabe/p1/` |

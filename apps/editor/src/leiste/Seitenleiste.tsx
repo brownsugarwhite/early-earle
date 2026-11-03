@@ -273,22 +273,34 @@ function KantenBereich() {
   );
 }
 
-/** P1 Tag 2–3: Körper aus den geplanten Umrissschleifen (Chip) mit den Zahlen des Berichts. */
+/** P1 Tag 2–3: Körper aus den geplanten Umrissschleifen (Chips: Löser erster Anlauf, Schleifen-Käfig zweiter Anlauf) mit den Zahlen des Berichts. */
 function SchleifenKoerperChips() {
   const an = useKernAnzeige((s) => s.schleifenKoerper);
+  const kaefig = useKernAnzeige((s) => s.schleifenKaefig);
   const info = useKernAnzeige((s) => s.info);
   const b = info?.schleifen;
+  const k = info?.kaefig;
   const px = (v: number) => v.toFixed(1).replace('.', ',');
+  const wahl = kaefig ? 'kaefig' : an ? 'schleifen' : 'heute';
+  const setze = (w: 'heute' | 'schleifen' | 'kaefig') => {
+    const st = useKernAnzeige.getState();
+    if (w === 'kaefig') st.setzeSchleifenKaefig(true);
+    else if (w === 'schleifen') st.setzeSchleifenKoerper(true);
+    else {
+      st.setzeSchleifenKoerper(false);
+      st.setzeSchleifenKaefig(false);
+    }
+  };
   return (
     <>
-      <div className="umschalter stufen" role="radiogroup" aria-label="Körper aus den Schleifen" title="P1 Tag 2–3: der Körper folgt den geplanten Umrissschleifen (Naht, Top und Front hart, Zielform des heutigen Baus als Füllung); Röhre ohne Maul und Beine, nur im genauen Bau">
-        {(['heute', 'schleifen'] as const).map((k) => (
-          <button key={k} className={(an ? 'schleifen' : 'heute') === k ? 'chip aktiv' : 'chip'} data-schleifenkoerper={k} onClick={() => useKernAnzeige.getState().setzeSchleifenKoerper(k === 'schleifen')}>
-            {k === 'heute' ? 'Körper heute' : 'aus den Schleifen (P1)'}
+      <div className="umschalter stufen" role="radiogroup" aria-label="Körper aus den Schleifen" title="P1 Tag 2–3: erster Anlauf = der heutige Schlauch wird an die Schleifen gezogen (Löser); zweiter Anlauf = die drei Schleifen sind Reihen des Käfigs, das Innere die gestreckte Ringschleife (Schleifen-Käfig). Röhre ohne Maul und Beine, nur im genauen Bau">
+        {(['heute', 'schleifen', 'kaefig'] as const).map((w) => (
+          <button key={w} className={wahl === w ? 'chip aktiv' : 'chip'} data-schleifenkoerper={w} onClick={() => setze(w)}>
+            {w === 'heute' ? 'Körper heute' : w === 'schleifen' ? 'Löser (P1)' : 'Schleifen-Käfig (P1)'}
           </button>
         ))}
       </div>
-      {an && b && (
+      {wahl === 'schleifen' && b && (
         <dl className="werte" data-schleifen-werte="">
           <dt>Rest an den Schleifen F/T</dt>
           <dd data-schleifen-rest={`${px(b.rest.front.max)}/${px(b.rest.top.max)}`}>{px(b.rest.front.max)} / {px(b.rest.top.max)} px</dd>
@@ -302,6 +314,35 @@ function SchleifenKoerperChips() {
           </dd>
           <dt>Lösen</dt>
           <dd data-schleifen-ms={b.ms.toFixed(0)}>{b.ms.toFixed(0)} ms ({b.runden} Runden)</dd>
+        </dl>
+      )}
+      {wahl === 'kaefig' && k && (
+        <dl className="werte" data-kaefig-werte="" data-kaefig-ok={k.ok ? '1' : '0'}>
+          {!k.ok && (
+            <>
+              <dt>nicht gebaut</dt>
+              <dd data-kaefig-grund={k.grund ?? ''}>{k.grund}</dd>
+            </>
+          )}
+          {k.ok && (
+            <>
+              <dt>Achse · Ring der Ringschleife</dt>
+              <dd data-kaefig-achse={k.achse}>{k.achse} · {k.ringF} (Kanten {k.schritte.vorn}/{k.schritte.hinten})</dd>
+              <dt>Rest an den Schleifen</dt>
+              <dd data-kaefig-rest={px(k.rest.max)}>{px(k.rest.max)} px (Mittel {px(k.rest.mittel)})</dd>
+              <dt>Silhouette · Innen</dt>
+              <dd data-kaefig-innen={px(k.innen.max)}>{px(k.silhouette)}° · {px(k.innen.max)} px</dd>
+              <dt>Überstand F/T · Kippung</dt>
+              <dd>{px(k.ueberstand.front)} / {px(k.ueberstand.top)} px · {px(k.kippung)} px</dd>
+              <dt>Falten</dt>
+              <dd>
+                Ringe {k.falten.ringe.length ? k.falten.ringe.join(', ') : '–'} · Reihen {k.falten.reihen.length ? k.falten.reihen.join(', ') : '–'}
+                {k.falten.spitzen.length ? ` · Spitzen ${k.falten.spitzen.join(', ')}` : ''}
+              </dd>
+              <dt>Bau</dt>
+              <dd data-kaefig-ms={k.ms.toFixed(0)}>{k.ms.toFixed(0)} ms (Unterteilung {k.msUnterteilung.toFixed(0)}, Lösen {k.msLoeser.toFixed(0)})</dd>
+            </>
+          )}
         </dl>
       )}
     </>

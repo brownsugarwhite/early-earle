@@ -506,3 +506,15 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
 - **Electron:** Preload muss CJS sein (Fenster mit `sandbox`), Hauptprozess ESM. electron-vite kann kein Vite 8, deshalb vite-plugin-electron. pnpm braucht `allowBuilds: electron: true`. CI setzt `ELECTRON_SKIP_BINARY_DOWNLOAD=1`. `.app` mit `identity: "-"` und `hardenedRuntime: false`, sonst Startprobleme bei Ad-hoc-Signatur.
 - **macOS:** `contextmenu` kommt beim Drücken der rechten Taste, nicht beim Loslassen. Im 3D deshalb `contextmenu` immer verhindern und das Menü beim Loslassen ohne Bewegung öffnen.
 - Irish Grover (Apache-2.0, `@fontsource/irish-grover`) hat Umlaute, aber kein ▼. Das Dreieck ist SVG.
+
+- **Schleifen-Käfig (P1 Tag 2–3, zweiter Anlauf, 03.11.):** `schleifenKaefig` tauscht Käfiglagen, Falten, `unterteilung` und
+  `loeser` der Ableitung aus (Topologie bleibt die Röhre) — alles Nachgelagerte muss `abl.unterteilung` nehmen, nicht eine gemerkte.
+  Die drei Schleifen müssen Käfigreihen **sein**: Ein Löser, der den alten Schlauch an die Schleifen zieht, faltet dort, wo der
+  Schlauch die Schleife nicht hat (erster Anlauf). Anker der drei Bögen einer Seite beim gleichen Bogenanteil, mit **einer**
+  gemeinsamen Dichte — je Bogen eigene Krümmungsgewichte verschieben die Anker gegeneinander, die Ringe kreuzen sich (Ei: 160
+  umgeklappte Flächen). Ecken verschiedener Bögen beim gleichen Anteil gebündelt auf einen Ring (sonst zwei Ringe je Kante). Flache
+  Extrem-Läufe mit 3 px Toleranz (gezeichnete Geraden wackeln 1–2 px). Schleifentiefe ohne den Soll-Zug des Planers (Vase/Würfel
+  wanderten 80–100 px). Planer: an Ecken längs der Winkelhalbierenden nach innen (sonst Splitter-Intervalle), Knoten ohne Griff
+  haben Ableitung 0 (Sehne nehmen). Δ mit Raster 240 kappt Ecken um 0,5–1 px — Tore mit 1920 messen. `wendepunkte` braucht die
+  Achse (Ringebene) und eine Winkelschwelle (2°). Prüfkörper mit exakten Knoten bauen (`kn`, `achsenRegeln`), nicht über
+  `seiteAusZug` aus Polygonen (Ecken rutschen, T-Stöße). Pinsel-Deltas wirken im Käfig nicht.

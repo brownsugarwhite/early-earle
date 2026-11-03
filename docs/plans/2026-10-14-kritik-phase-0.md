@@ -900,3 +900,31 @@ Körper, Front-Tiefe im Planer aus der berührenden Station. Tore nur an der Kug
 - [x] Was trägt: Kugel/Ei sauber, Kegel Front 7,3 → 3,9 px bei besseren Falten (14,1 → 11,6°), Robbe Front 6,2 → 1,0, Vase
   Top 13,8 → 6,5; Naht längs frei (Lehre), schrittweise Ziele (Sprünge über 10 px klappten um), weiche Bindung ferner Proben,
   Zielform als Füllung, Bezugslagen aus `abl.fein` (mit Pinsel-Deltas).
+
+## Befunde aus P1 Tag 2–3, zweiter Anlauf „Schleifen-Käfig“ (03.11., eigene Messungen; `packages/shape/src/kern/schleifenKaefig.test.ts`)
+
+Gebaut nach Florians Klärung („die gelbe Linie sollte die schwarze sein“): `kern/schleifenKaefig.ts` — die drei Umrissschleifen sind
+Käfigreihen (Naht, Reihe N/4, ein Ring), Anker beim gleichen Bogenanteil, Inneres = gestreckte Ringschleife, Achse x oder y,
+Falten aus Ecken-Knoten, ein Löser; Chip „Schleifen-Käfig (P1)“; Prüfkörper `pruefen/einteiler.ts`. Drei von acht halten alle Tore.
+- [ ] **Dichte (16 Punkte je Ring):** Zylinder 0,7/1,0 px an den Randecken, runde Vase 1,3 px an Fuß und Hals, Ei Front 0,4 px
+  (an der Grenze), Kegel-Rundungen ohne Ecken-Knoten (r ≈ 10 px bei 80 px je Punkt) — dieselbe Dichteregel wie in P0a; N je
+  Ring aus der Zeichnung wählen (Röhre neu mit `roehre(R, N)`, dann Naht-Indizes neu).
+- [ ] **Kippung:** Kegel 84 px (Bögen ab hinten 109/327/264 px), die gestreckte Vorlage trägt gekippte Ringe nicht (innen 13 px,
+  vordere Kappe 492 Flächen nach innen, Knicke 38°). Weg: Vorlage je Ring aus der transfiniten Füllung des Felds (drei Bögen)
+  statt der gestreckten Ringschleife, oder zweite Achse je Feld.
+- [ ] **Kappen bei sehr ungleichen Bögen** (Kegel hinten: Quadratringe zwischen 7 px und 23 px vom Scheitel, Ring 0 kippt).
+- [ ] **Rundung gegen Falte:** Stift-Würfel 1,7–2,2 px — Ecken-Knoten auf einer Rundung (r 14 px) legen die Falte auf den Scheitel
+  der Rundung; die Zeichnung ist dort 4 px breiter als die Kante. Regel offen: Härte aus der Strichbreite (Florian) statt aus dem
+  Knoten.
+- [ ] **Messerkanten:** Vase aus der Kugel (Front = Ei, oben spitz; Rand 0,25 breit) — Front 6,3 px, Flachband 18 %; die
+  Zeichnung verlangt eine Klinge, die Kappe kann sie nicht (Prüfkörper, keine echte Vase).
+- [ ] **Bau ≤ 50 ms verfehlt:** Unterteilung mit neuen Falten ≈ 80 ms je Bau + Lösen ≈ 60 ms (Umschalten im Editor ≈ 1 s mit
+  Liniennetz und Δ). Weg: Unterteilung nur bei geänderten Falten neu, Zerlegung je Topologie behalten.
+- [ ] **Pinsel-Deltas wirken im Käfig nicht**; die eingefrorenen Stationen des Dokuments sind die des heutigen Baus (die Leiter
+  spielt im Käfig keine Rolle). Mit dem Käfig als Standard müssen Pinsel (Relief auf dem Käfig) und „Stationen“ neu gedacht werden.
+- [ ] **Kappenringe wackeln ≤ 1 px** (scharfer Würfel, weiches Inneres + Kappenglättung × 10; mit hartem Innerem eben).
+- [ ] **Tag 4 (Griffe an den Schleifen, Widersprüche) und Tag 5 (Bögen) nicht gebaut**; Teile an der Naht als nächster Beweis.
+- [x] Was trägt: Kugel 0,1, Ei 0,1/0,4/0,1, scharfer Würfel 0,3 px bei Falten 0° und Knicken 0°; Zylinder und runde Vase mit Achse y
+  glatt (Knicke ≤ 12°, 0 nach innen) statt diagonaler Sprossen und gefaltetem Hals; Lehren: Tiefe ohne Soll-Zug (Vase/Würfel
+  wanderten 80–100 px), Winkelhalbierende an Ecken (Splitter-Intervalle), Sehne statt Ableitung 0 an grifflosen Knoten, eine
+  gemeinsame Dichte je Seite (Ringe kreuzten sich), Ecken gebündelt (sonst zwei Ringe je Kante), Extrem-Läufe 3 px.

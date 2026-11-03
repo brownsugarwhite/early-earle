@@ -355,6 +355,23 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Grenzflächen-Bindungen sehen hochfrequente Käfigmoden nicht (Käfig fliegt ohne Käfigzeilen davon); Reihenbiegung schiebt
   Ringe auf gleiche Abstände (Stationen längs verankern); Sprünge über 10 px je Runde klappen um; Stützpunkt-Regeln für die
   Front-Tiefe springen (f-Minimum nehmen). Bilder `docs/progress/editor/p1-koerper-2026-11-03.jpg`, `p1-koerper-draht-*.jpg`.
+- **2026-11-03 (spätabends): P1 Tag 2–3, zweiter Anlauf — Schleifen-Käfig gebaut** (Abnahme offen; Planseite „Stand P1 Tag 2–3,
+  zweiter Anlauf“ im Prüfplan, Register „Befunde aus P1 Tag 2–3, zweiter Anlauf“, Übergabe). Florian zur Entscheidung A/B/C: „Die
+  Linie und das Modell sind doch exakt das selbe … die gelbe Linie sollte eigentlich die schwarze Linie sein“ — stimmt; die Lücken
+  kamen aus dem Bau (Schlauch aus der Seite), nicht aus Widersprüchen; seine Wahl: „ok, dann machen wir es so!“ (Netz aus den
+  Schleifen, zuerst ein Teil). Kern `kern/schleifenKaefig.ts` hinter `Bauplan.schleifenKaefig` (bitgleich ohne): die drei
+  Umrissschleifen sind Käfigreihen (Naht, Reihe N/4 samt Kappenmitte, ein Ring), sechs Kreuzungen (flache Läufe → Mitte), Anker
+  beim gleichen Bogenanteil, Inneres = die auf die Anker gestreckte Ringschleife, Achse x oder y nach der längeren Ausdehnung,
+  Falten aus Ecken-Knoten (gebündelt je Seite), Schleifentiefe neu mit kleinster Biegung, ein gekoppelter Löser (Schleifen und
+  Falten hart, Silhouettenbedingung, Inneres weich, Glättung der Abweichung). Planer: Winkelhalbierende an Ecken, Sehne an
+  grifflosen Knoten. Editor: Chip „Schleifen-Käfig (P1)“ (`?schleifen=2`). Prüfkörper `kern/pruefen/einteiler.ts` (Kugel, Ei,
+  scharfer Würfel, Zylinder, runde Vase, Kegel, Stift-Würfel, Vase aus der Kugel): Kugel 0,1, Ei 0,1/0,4/0,1, scharfer Würfel
+  0,3 px (Falten 0°) halten alle Tore; Zylinder 0,7/1,0 und runde Vase 1,3 px halten die Glätte (Achse y; heute diagonale Sprossen,
+  Top 14 px); Kegel (Kippung 84 px, Kappe faltet), Stift-Würfel (Rundung gegen Falte), Vase aus der Kugel (Messerkante) nicht.
+  Bilder `docs/progress/editor/p1-kaefig-2026-11-03.jpg`, `p1-kaefig-draht-*`. Fallen: Krümmungsverdichtung je Bogen lässt
+  Ringe kreuzen (gemeinsame Dichte je Seite); Soll-Zug der Planer-Tiefe wandert bei Kästen/Rotationskörpern 80–100 px; Ecken-
+  Proben brauchen die Winkelhalbierende (Splitter-Intervalle); Extrem-Läufe 3 px; Δ-Raster 240 kappt Ecken um 1 px (Tests 1920).
+  Nächster Schritt: Teile an der Naht (Langhals, Ente, Robbe, Pilz), dann P2.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

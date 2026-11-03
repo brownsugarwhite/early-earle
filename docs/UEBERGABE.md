@@ -1,4 +1,4 @@
-# Übergabe (Stand 03.11.2026: P0a angesehen, P1 Tag 1 gebaut, P1 Tag 2–3 gebaut und am Abbruchkriterium — Entscheidung offen)
+# Übergabe (Stand 03.11.2026 abends: P0a angesehen, P1 Tag 1 gebaut, P1 Tag 2–3 im zweiten Anlauf als Schleifen-Käfig gebaut — Abnahme offen, als Nächstes Teile an der Naht)
 
 Branch `claude/editor-grundlayout`, PR mit Auto-Fix. **Diese Datei ist der Einstieg für eine frische Sitzung.** Der Kernring
 bleibt eingefroren; alles Neue liegt hinter Schaltern (`stufen`, `umrissPlan`), ohne Schalter bitgleich.
@@ -105,6 +105,41 @@ Stücknetz nur für Einsätze, Schleifen als ruhige Anzeige und Griffe), **B** w
 > Kontaktbögen, Planseite „Stand“, Register, Übergabe, Commit und Push. Nichts als bestanden melden; nach jedem Beweis anhalten
 > und mir die Bilder zeigen.
 
+## 03.11. abends: P1 Tag 2–3, zweiter Anlauf — Schleifen-Käfig gebaut (Abnahme offen)
+
+Florian zur Entscheidung A/B/C: „Die Linie und das Modell sind doch exakt das selbe … die aktuell gelbe Linie sollte eigentlich die
+schwarze Linie sein.“ Antwort (steht auf der Planseite): Er hat recht — mit Umrissen je Teil und gekoppelten Kreuzungen gibt es
+praktisch keine Widersprüche; die Lücken kamen aus dem Bau (Schlauch aus der Seite). Seine Entscheidung: „ok, dann machen wir es
+so!“ — das Netz direkt aus den Schleifen, zuerst für ein Teil. Planseite „Stand P1 Tag 2–3, zweiter Anlauf“, Register „Befunde aus
+P1 Tag 2–3, zweiter Anlauf“.
+- **Kern `packages/shape/src/kern/schleifenKaefig.ts`** (hinter `Bauplan.schleifenKaefig`, ohne Option bitgleich): die drei
+  Umrissschleifen sind Käfigreihen (Naht, Reihe N/4 samt Kappenmitte, ein Ring), sechs Kreuzungen (flache Läufe → Mitte), Anker beim
+  gleichen Bogenanteil, Inneres = die auf die Anker gestreckte Ringschleife (Kippen nach Ringbreite), Achse x oder y nach der
+  längeren Ausdehnung, Falten aus Ecken-Knoten (Ring, Reihe + Kappendiagonale, Spitze; gebündelt je Seite), Schleifentiefe neu mit
+  kleinster Biegung, ein gekoppelter Löser (Schleifen und Falten hart, Silhouettenbedingung, Inneres weich, Glättung der
+  Abweichung). Planer-Korrekturen: Winkelhalbierende an Ecken, Sehne an grifflosen Knoten.
+- **Editor:** Tafel Körper → „Körper heute | Löser (P1) | Schleifen-Käfig (P1)“ (`?schleifen=2`) mit Achse, Ring, Rest,
+  Silhouette, Innen, Überstand, Kippung, Falten, Bauzeit; Worker merkt den Käfig je Form; Haken `__editor.schleifenKaefig()`.
+- **Prüfkörper `kern/pruefen/einteiler.ts`:** Kugel, Ei, scharfer Würfel, Zylinder, runde Vase (saubere Einteiler), Kegel, Stift-Würfel,
+  Vase aus der Kugel. **Ergebnis:** Kugel 0,1, Ei 0,1/0,4/0,1, scharfer Würfel 0,3 px (Falten 0°, Knicke 0°) halten alle Tore;
+  Zylinder 0,7/1,0 und runde Vase 1,3 px (Randecken, enge Rundungen bei 16 Punkten je Ring) halten die Glätte; Kegel (Kippung 84 px,
+  Kappe faltet, Knicke 38°), Stift-Würfel (Rundung gegen Falte 1,7–2,2 px) und Vase aus der Kugel (Messerkante, Front 6,3) nicht.
+  Tests `kern/schleifenKaefig.test.ts` (11 grün, 8 `it.fails`), `umrissPlan.test.ts` und `schleifenKoerper.test.ts` weiter grün.
+- **Bilder:** `docs/progress/editor/p1-kaefig-2026-11-03.jpg` (acht Fälle, Blätter mit Δ, Bühne, Zebra; heute | Käfig),
+  `p1-kaefig-draht-<fall>-2026-11-03.jpg` (Drahtgitter); Skripte `p1-kaefig.ts` (Messreihe), `p1-koerper-bild.ts` mit `BAU=kaefig`,
+  `p1-kaefig-editor.mjs` (Editor-Bogen).
+
+**Nächster Schritt: Teile an der Naht** (Langhals, Ente, Robbe, Pilz) — der Flächenbaum von Tag 1 gibt Teile und Nähte, das
+Kind-Teil hängt über ein Fenster im Eltern-Gitter (Beweis 3, S6/S7), seine Schleifen enden an der Naht; Tor wie hier je Teil,
+Abbruch, wenn eine Naht nicht glatt wird. Danach P2 (Maul). Vorher Florians Blick auf die Bögen. Daneben offen (Register): Dichte
+je Ring, gekippte Ringe (Kegel), Pinsel-Deltas im Käfig, Tag 4 (Griffe an den Schleifen) und Tag 5. Start-Prompt:
+
+> Lies `CLAUDE.md`, `docs/UEBERGABE.md` und den Prüfplan `docs/plans/2026-11-02-pruefplan-p0-p3.md` („Stand P1 Tag 2–3, zweiter
+> Anlauf“). Baue den nächsten Beweis „Teile an der Naht“ (Langhals, Ente, Robbe, Pilz) auf dem Schleifen-Käfig: im Kern hinter
+> dem Schalter `schleifenKaefig`, ohne Schalter bitgleich, der Kernring bleibt eingefroren; Tore als Tests (verfehlte als `it.fails`
+> mit Registereintrag), Kontaktbögen, Planseite „Stand“, Register, Übergabe, Commit und Push. Nichts als bestanden melden; nach dem
+> Beweis anhalten und mir die Bilder zeigen.
+
 ## Entscheidungen, die Florian treffen muss (Gegenprüfung, Abschnitt 10)
 
 E1 verdeckt = blass (gestrichelt = weich) · E2 verdeckte Umrissstücke und Ansatzlinien als Vorschlagslinie, gebaut wird nur, was
@@ -114,8 +149,8 @@ E7 Loops in Front/Back als Projektion bearbeitbar · E8 Strichbreite = Rundung (
 
 ## Vorgehen (Schritt 3, seit 03.11. in Arbeit)
 
-Die Beweise streng nach Prüfplan: P0a ✓ (angesehen), P1 Tag 1 ✓ (Abnahme offen), dann P1 Tag 2–5, P2, P3. Ursprünglicher
-Start-Prompt (gilt weiter):
+Die Beweise streng nach Prüfplan: P0a ✓ (angesehen), P1 Tag 1 ✓ (Abnahme offen), P1 Tag 2–3 ✓ als Schleifen-Käfig für ein Teil
+(Abnahme offen), dann Teile an der Naht, P2, P3. Ursprünglicher Start-Prompt (gilt weiter):
 
 > Lies `CLAUDE.md`, `docs/UEBERGABE.md`, die Gegenprüfung `docs/plans/2026-11-02-gegenpruefung-liniennetz.md` und den
 > freigegebenen Prüfplan `docs/plans/2026-11-02-pruefplan-p0-p3.md`. Meine Entscheidungen E1–E8: […]. Führe P0a aus, dann
@@ -147,6 +182,9 @@ Rex mittel gerade (Knick an der Kreuzung), Robbe hoch J (Engstelle), E2.4, E3–
 - P1 Tag 2–3: `kern/schleifenKoerper.test.ts` (Tore je Körper), Messreihe `npx vite-node ../../apps/editor/scripts/pruefen/p1-koerper.ts`
   (`FAELLE`, Optionen `FAIR GEWICHT TANGENTE RUNDEN ZIEL NUR …`), Drahtgitter `p1-koerper-bild.ts` → HTML, dann aus `apps/editor`
   `node scripts/pruefen/html-shot.mjs [--jpg] <datei.html>`; Editor-Bogen `p1-koerper-editor.mjs` (run-check.sh).
+- P1 Tag 2–3, zweiter Anlauf: `kern/schleifenKaefig.test.ts` (Form und Glätte je Einteiler, `--reporter=verbose`), Messreihe
+  `npx vite-node ../../apps/editor/scripts/pruefen/p1-kaefig.ts` (`FAELLE ACHSE FAIR INNEN TANGENTE GEWICHT KIPPEN KRUEMMUNG TIEFE`),
+  Drahtgitter `p1-koerper-bild.ts` mit `BAU=kaefig`, Editor-Bogen `p1-kaefig-editor.mjs` (run-check.sh).
 - Editor-Prüfungen (Playwright, eigener Vite auf 5192): `apps/editor/scripts/pruefen/run-check.sh <skript.mjs>`; Liste in
   `apps/editor/scripts/pruefen/README.md`.
 

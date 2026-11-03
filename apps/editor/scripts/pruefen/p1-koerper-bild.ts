@@ -1,7 +1,8 @@
 // P1 Tag 2–3, Bild: Drahtgitter der Stufe 2 in den drei Ansichten, heute | aus den Schleifen, mit Zeichnung (schwarz) und
 // geplanten Schleifen (gezeichnete Proben: Top türkis, Front lila, Seite blau) → SVG je Fall in AUSGABE (Standard
 // apps/editor/pruefen-ausgabe/p1). Aufruf aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/p1-koerper-bild.ts
-// Umgebung: FAELLE, AUSGABE, FAIR/GEWICHT/TANGENTE/RUNDEN/RING/REIHE/KAEFIG/ANKER/NUR wie p1-koerper.ts.
+// Umgebung: FAELLE, AUSGABE, FAIR/GEWICHT/TANGENTE/RUNDEN/RING/REIHE/KAEFIG/ANKER/NUR wie p1-koerper.ts; BAU=kaefig zeichnet den
+// Schleifen-Käfig (zweiter Anlauf, `schleifenKaefig`; dann ACHSE, INNEN, KIPPEN) statt des Schleifenkörpers.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { alleFlaechen } from '../../../../packages/shape/src/kaefig/halbkanten';
@@ -9,7 +10,9 @@ import { anwenden3, multiplizieren } from '../../../../packages/shape/src/subdiv
 import { pfadAbtasten, vollerPfad } from '../../../../packages/shape/src/profil';
 import { editorBauen, editorPlan, imAblauf } from '../../../../packages/shape/src/kern/pruefen/extremMessung';
 import { extremKoerper } from '../../../../packages/shape/src/kern/pruefen/extremreihe';
+import { EINTEILER } from '../../../../packages/shape/src/kern/pruefen/einteiler';
 import { schleifenKoerper } from '../../../../packages/shape/src/kern/schleifenKoerper';
+import { schleifenKaefig } from '../../../../packages/shape/src/kern/schleifenKaefig';
 import { umrissPlan } from '../../../../packages/shape/src/kern/umrissPlan';
 import type { Ableitung } from '../../../../packages/shape/src/kern/ableiten';
 
@@ -18,6 +21,8 @@ const faelle = (process.env.FAELLE ?? 'robbe,kegel').split(',');
 const out = process.env.AUSGABE ?? resolve(process.cwd(), '../../apps/editor/pruefen-ausgabe/p1');
 mkdirSync(out, { recursive: true });
 const opt = { fair: Number(process.env.FAIR ?? 30), ziel: Number(process.env.ZIEL ?? 1), gewicht: Number(process.env.GEWICHT ?? 1e3), tangente: Number(process.env.TANGENTE ?? 1e3), runden: Number(process.env.RUNDEN ?? 6), kaefig: Number(process.env.KAEFIG ?? 0), ring: Number(process.env.RING ?? 0), reihe: Number(process.env.REIHE ?? 0), laengs: Number(process.env.LAENGS ?? 0), anker: Number(process.env.ANKER ?? 0), ...(process.env.NUR ? { nur: process.env.NUR.split(',') as ('naht' | 'top' | 'front')[] } : {}) };
+const kaefigBau = process.env.BAU === 'kaefig';
+const kaefigOpt = { ...(process.env.ACHSE ? { achse: process.env.ACHSE as 'x' | 'y' } : {}), fair: Number(process.env.FAIR ?? 30), innen: Number(process.env.INNEN ?? 1), tangente: Number(process.env.TANGENTE ?? 1e3), gewicht: Number(process.env.GEWICHT ?? 1e3), kippen: Number(process.env.KIPPEN ?? 1) };
 const BLATT: Record<'seite' | 'front' | 'top', [number, number]> = { seite: [0, 1], front: [2, 1], top: [0, 2] };
 
 function stufe2(abl: Ableitung, xyz: Float64Array): { p: Float64Array; flaechen: number[][] } {
@@ -101,16 +106,19 @@ function tafel(abl: Ableitung, xyz: Float64Array, dok: Parameters<typeof umrissP
 }
 
 for (const name of faelle) {
-  const dok0 = extremKoerper(name).dok();
+  const dok0 = (EINTEILER.find((e) => e.name === name) ?? extremKoerper(name)).dok();
   const bau = editorBauen(imAblauf(dok0, 'roehre', 'kugel'), editorPlan('roehre'));
   const abl = bau.stand.abl;
   const dok = { ...bau.dok, skalierung: 1 };
   const plan = umrissPlan(dok);
-  const r = schleifenKoerper(abl, plan, dok, opt);
+  const rk = kaefigBau ? schleifenKaefig(abl, plan, dok, kaefigOpt) : null;
+  const r = rk ? null : schleifenKoerper(abl, plan, dok, opt);
+  const ablNeu = rk ? rk.abl : r!.abl;
+  const titelNeu = (blatt: 'seite' | 'front' | 'top') => (rk ? `${name} · ${blatt} · Schleifen-Käfig (Achse ${rk.bericht.achse}, Ring ${rk.bericht.ringF}, Rest ${rk.bericht.rest.max.toFixed(1)} px, innen ${rk.bericht.innen.max.toFixed(1)} px, Kippung ${rk.bericht.kippung.toFixed(0)} px)` : `${name} · ${blatt} · aus den Schleifen (Rest ${blatt === 'seite' ? '–' : r!.bericht.rest[blatt].max.toFixed(1) + ' px'}, Bewegung ${r!.bericht.bewegung.toFixed(0)} px)`);
   const tafeln: { svg: string; w: number; h: number }[] = [];
   for (const blatt of ['seite', 'front', 'top'] as const) {
     tafeln.push(tafel(abl, abl.kaefig.xyz, dok, plan, blatt, `${name} · ${blatt} · heute`));
-    tafeln.push(tafel(r.abl, r.abl.kaefig.xyz, dok, plan, blatt, `${name} · ${blatt} · aus den Schleifen (Rest ${blatt === 'seite' ? '–' : r.bericht.rest[blatt].max.toFixed(1) + ' px'}, Bewegung ${r.bericht.bewegung.toFixed(0)} px)`));
+    tafeln.push(tafel(ablNeu, ablNeu.kaefig.xyz, dok, plan, blatt, titelNeu(blatt)));
   }
   // zwei Spalten (heute | neu), drei Zeilen
   const spalte = Math.max(...tafeln.map((t) => t.w));
@@ -124,7 +132,7 @@ for (const name of faelle) {
     y += zeilen[z]! + 8;
   });
   const html = `<!doctype html><meta charset="utf-8"><body style="margin:0;background:#19232b"><svg xmlns="http://www.w3.org/2000/svg" width="${2 * spalte + 8}" height="${Hges}">${inhalt.join('')}</svg></body>`;
-  const pfad = resolve(out, `koerper-${name}.html`);
+  const pfad = resolve(out, `${kaefigBau ? 'kaefig' : 'koerper'}-${name}.html`);
   writeFileSync(pfad, html);
-  console.log(`${name}: ${pfad} (Bewegung ${r.bericht.bewegung.toFixed(0)} px, Rest F/T ${r.bericht.rest.front.max.toFixed(1)}/${r.bericht.rest.top.max.toFixed(1)} px)`);
+  console.log(rk ? `${name}: ${pfad} (${rk.bericht.ok ? `Rest ${rk.bericht.rest.max.toFixed(1)} px, innen ${rk.bericht.innen.max.toFixed(1)} px` : rk.bericht.grund})` : `${name}: ${pfad} (Bewegung ${r!.bericht.bewegung.toFixed(0)} px, Rest F/T ${r!.bericht.rest.front.max.toFixed(1)}/${r!.bericht.rest.top.max.toFixed(1)} px)`);
 }
