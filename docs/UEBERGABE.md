@@ -1,4 +1,4 @@
-# Übergabe (Stand 03.11.2026 spätabends: P0a angesehen, P1 Tag 1 gebaut, P1 Tag 2–3 als Schleifen-Käfig gebaut, P1 Tag 4–5 „Teile an der Naht“ gebaut und weitergeführt — Naht weich, Hülle als Obergrenze, Flügel, Röhrenende, Robbenkopf als Endstück, Dichte je Ring; Abnahme offen, Florians Blick entscheidet)
+# Übergabe (Stand 03.11.2026 nachts: P0a angesehen, P1 abgeschlossen — Prinzip bewiesen, Genauigkeit der Mehrteiler an zwei Strukturstücken offen, Versuchsschalter abgeräumt; P2 „Stücknetz im Maulfeld“ beginnt)
 
 Branch `claude/editor-grundlayout`, PR mit Auto-Fix. **Diese Datei ist der Einstieg für eine frische Sitzung.** Der Kernring
 bleibt eingefroren; alles Neue liegt hinter Schaltern (`stufen`, `umrissPlan`), ohne Schalter bitgleich.
@@ -227,15 +227,29 @@ Florian: „Mach weiter mit der Dichte je Ring (Bauchecken und breiteste Stelle:
   Naht, Langhals-Krone, Kegel-Flanke unter der Krümmungsdichte (ungeklärt).
 - **Bilder:** `docs/progress/editor/p1-teile-dichte-2026-11-03.jpg` (Editor-Bogen), `p1-teile-dichte-draht-<fall>-2026-11-03.jpg`.
 
-**Nächster Schritt: Florians Blick auf die Bögen.** Dann entweder Schleifen je Teil mit verdeckter Fortsetzung (Kopfkrone, Rumpf
-unter dem Kopf, Ente unter den Flügeln), N 24 je Ring im Spielbudget (Bauchecke), Fächer an der inneren Ecke (Ente), Kappen der
-Kinder (Gratenden 90–176°) — oder P2 (Maul) und die Teile mit den Loops von P3 neu. Start-Prompt für eine frische Sitzung:
+## 03.11. nachts: P1 abgeschlossen, Schalter abgeräumt, P2 beginnt
 
-> Lies `CLAUDE.md`, `docs/UEBERGABE.md` und den Prüfplan `docs/plans/2026-11-02-pruefplan-p0-p3.md` („Stand P1 Tag 4–5“ samt
-> den Nachträgen vom 03.11.). Florian hat die Bögen der Teile an der Naht gesehen und entschieden: […]. Arbeite danach weiter — im
-> Kern hinter dem Schalter `schleifenKaefig`, ohne Schalter bitgleich, der Kernring bleibt eingefroren; Tore als Tests (verfehlte
-> als `it.fails` mit Registereintrag), Kontaktbögen, Planseite „Stand“, Register, Übergabe, Commit und Push. Nichts als bestanden
-> melden.
+Florian: „Bauen wir gerade wieder viele Sonderregeln? Ist der Beweis erbracht oder nicht?“ → ehrliche Bilanz auf der Planseite
+(„P1 — Abschluss“): Prinzip bewiesen (Schleifen als Käfigreihen, ein Löser, Teile ohne Nahtfalte, Spielumschalter), Genauigkeit
+der Mehrteiler nicht (Front/Top ≤ 2 px hält keiner). Die Restfehler sind strukturell: verdeckte Fortsetzung je Teil (Front und
+Top sind die Vereinigung von Rumpf und Kopf — gehört zu P3 als bearbeitbare Linie im Editor) und N je Ring aus dem Spielbudget.
+Seine Entscheidung: „Räum die gemessen schlechten Schalter ab, schließ P1 ehrlich auf der Planseite ab und starte P2.“
+- **Abgeräumt:** Scheitelschub, Rumpfkippen, feste Spaltenzahl, Spline-Dichte, Krümmungsdichte für Einteiler, Krümmungsgewicht,
+  Planer-Tiefe; die Alternativen zu Naht glatt, Hülle als Obergrenze, Hüllenringen, Endstück, harten Endstück-Punkten,
+  Vorlagentiefe und Vorlagenring sind keine Schalter mehr (Verhalten fest). `KaefigOptionen`: zwölf Felder. Tests und Messreihe
+  bitgleich (24 grün / 17 `it.fails`).
+- **Lehre (Gedächtnis):** nächster Schritt nie aus dem Register ableiten; nach jedem Block Regeln zählen, ab der dritten „Struktur
+  prüfen“; strukturelle Ursachen bekommen keine Regel.
+
+**Nächster Schritt: P2 „Stücknetz im Maulfeld“** nach dem Prüfplan (Fälle, Bauplan, Tore, Budget-Tor, Abbruch nach fünf
+Arbeitstagen) und der Recherche `docs/research/2026-10-21-feldnetz-oder-kernring.md` (Abschnitt 2 und 6). Stand von P2 steht
+auf der Planseite unter „P2 — Start“. Start-Prompt für eine frische Sitzung:
+
+> Lies `CLAUDE.md`, `docs/UEBERGABE.md` und den Prüfplan `docs/plans/2026-11-02-pruefplan-p0-p3.md` („P1 — Abschluss“ und
+> „P2 — Start“). Arbeite an P2 weiter — im Kern hinter einer Option (`gitter: 'stuecke'`), ohne Option bitgleich, der Kernring
+> bleibt eingefroren; keine Regel, die einen Körper oder eine Lage nennt; Tore als Tests (verfehlte als `it.fails` mit
+> Registereintrag), Bilder je Fall (A0 | Kernring | Stücknetz | Zebra), Planseite „Stand“, Register, Übergabe, Commit und Push.
+> Nach jedem Block die neuen Regeln zählen; ab der dritten anhalten und die Struktur prüfen. Nichts als bestanden melden.
 
 ## Entscheidungen, die Florian treffen muss (Gegenprüfung, Abschnitt 10)
 
@@ -287,11 +301,9 @@ Rex mittel gerade (Knick an der Kreuzung), Robbe hoch J (Engstelle), E2.4, E3–
   Drahtgitter `BAU=kaefig FAELLE=langhals,robbe,ente,pilz p1-koerper-bild.ts` + `html-shot.mjs --jpg`, Editor-Bogen
   `MODUL=extremreihe FAELLE=langhals,robbe,ente,pilz BOGEN=p1-teile p1-kaefig-editor.mjs` (run-check.sh). Schalter der Messreihe:
   `NAHTGLATT=0` (Naht nicht absolut glätten), `KLEMME=0` (Hülle nicht als Obergrenze), `HRING=0` (Ellipsen statt Hüllenringe),
-  `SCHUB=1` (Scheitelschub, Versuch), `RUMPFKIPPEN`, `ENDSTUECK=0` (Endstück aus: Streifen), `ENDHART=0` (Endstück-Ringe nur an Naht
-  und Seiten hart), `SPALTEN=n` (feste Spaltenzahl eines Streifens), `RINGDICHTE=0` (Ringvorlage nach Bogenlänge statt nach
-  Krümmung), `BODEN` (Grunddichte, 0,5), `RUMPFTIEFE=glatt` (Tiefe der Rumpf-Reihenschleife geglättet statt aus der Vorlage),
-  `VORLAGENRING=0` (Endstück-Ringe als Hüllenschnitt-Ellipsen; `RINGDICHTE=2` = Spline-Fehlermaß als Versuch). Die Tabelle zeigt
-  auch Δ der Spielstufe (Polygon der Stufe 1).
+  `SCHUB`, `RUMPFKIPPEN`, `ENDSTUECK`, `ENDHART`, `SPALTEN`, `RINGDICHTE`, `BODEN`, `RUMPFTIEFE`, `VORLAGENRING` gibt es seit dem
+  Abräumen am 03.11. nachts nicht mehr (Verhalten fest, Alternativen gemessen schlechter). Die Tabelle zeigt auch Δ der
+  Spielstufe (Polygon der Stufe 1).
 - Editor-Prüfungen (Playwright, eigener Vite auf 5192): `apps/editor/scripts/pruefen/run-check.sh <skript.mjs>`; Liste in
   `apps/editor/scripts/pruefen/README.md`.
 

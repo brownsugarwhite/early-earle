@@ -1035,3 +1035,15 @@ Silhouettenbedingung je Ring; Planseite „Nachtrag 03.11. abends“; `schleifen
   Kreuzungspunkte liegen in der dritten Koordinate daneben); Hüllenschnitte an Sehnen erzeugen Ecken, die keine sind (Endzonen
   höchstens Kreiskrümmung); ein steifes Inneres (`innen` 10–100) bricht die Naht; eine Dichte ohne Kappe lässt eine kleine
   Rundung alle Punkte schlucken; erst die Ziele gegen die Grenzlagen messen (Rest je Punkt), dann über die Abtastung reden.
+
+**P1 abgeschlossen (03.11. nachts, Florians Entscheidung; Planseite „P1 — Abschluss“):** Prinzip bewiesen (Schleifen als
+Käfigreihen, ein Löser, Teile ohne Nahtfalte), Genauigkeit der Mehrteiler nicht (Front/Top ≤ 2 px an keinem). Zwei Strukturstücke
+bleiben offen und bekommen keine Regel mehr:
+- [ ] **Verdeckte Fortsetzung je Teil** (Rumpf unter dem Kopf, Kopfkrone, Rumpf unter den Flügeln) — als bearbeitbare Linie im
+  Editor, mit P3. Bis dahin raten Hülle, Fenster, Endstück und Vorlagenring; die Punkte „Kopfkrone/Rückengrat“, „Ente unter den
+  Flügeln“ und „Fenster an Spaltenindizes“ oben hängen daran.
+- [ ] **N je Ring aus dem Spielbudget** (24 statt 16) — Bauchecke der Robbe 4,4 px, Stufe-1-Polygone (P0a), Kegel-Rundungen.
+- [x] **Abgeräumt:** Scheitelschub, Rumpfkippen, feste Spaltenzahl, Spline-Dichte, Krümmungsdichte für Einteiler,
+  Krümmungsgewicht der Bogenlängen, Planer-Tiefe; die Alternativen zu Naht glatt, Hülle als Obergrenze, Hüllenringen, Endstück,
+  harten Endstück-Punkten, Vorlagentiefe und Vorlagenring (alle gemessen schlechter) sind keine Schalter mehr. Der Punkt
+  „Kegel-Flanke unter der Krümmungsdichte“ ist damit gegenstandslos (Einteiler nach Bogenlänge), die Ursache bleibt unbekannt.

@@ -426,6 +426,17 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Stelle zählt doppelt; Krümmung in der Schleifenebene messen; Hüllenschnitte an Sehnen erzeugen falsche Ecken; steifes Inneres bricht
   die Naht; Dichte, die Spalten neben der Naht verschiebt, verschiebt die Fenster der Kinder. Bilder
   `docs/progress/editor/p1-teile-dichte-*-2026-11-03.jpg`.
+- **2026-11-03 (nachts): P1 abgeschlossen, Versuchsschalter abgeräumt, P2 beginnt** (Florian: „Bauen wir gerade wieder viele
+  Sonderregeln? Ist der Beweis erbracht oder nicht?“ → „Räum die gemessen schlechten Schalter ab, schließ P1 ehrlich auf der
+  Planseite ab und starte P2.“; Planseite „P1 — Abschluss“, Register, Übergabe). Bilanz: Prinzip bewiesen (Schleifen als
+  Käfigreihen, ein Löser, Teile ohne Nahtfalte), Genauigkeit der Mehrteiler nicht (Front/Top ≤ 2 px hält keiner); die Restfehler
+  sind strukturell — verdeckte Fortsetzung je Teil (Front/Top = Vereinigung von Rumpf und Kopf; mit P3 als bearbeitbare Linie im
+  Editor) und N je Ring aus dem Spielbudget — und bekommen keine Regel mehr. Abgeräumt: Scheitelschub, Rumpfkippen, feste
+  Spaltenzahl, Spline-Dichte, Krümmungsdichte für Einteiler, Krümmungsgewicht, Planer-Tiefe; die Alternativen zu Naht glatt, Hülle
+  als Obergrenze, Hüllenringen, Endstück, harten Endstück-Punkten, Vorlagentiefe und Vorlagenring sind keine Schalter mehr.
+  `KaefigOptionen` hat zwölf Felder; Tests und Messreihe bitgleich. **Lehre:** Der nächste Schritt wurde aus dem Register
+  abgeleitet und als Knopf empfohlen — nie wieder; nach jedem Block Regeln zählen, ab der dritten „Struktur prüfen“, strukturelle
+  Ursachen bekommen keine Regel. Nächster Schritt: P2 „Stücknetz im Maulfeld“ (Prüfplan, Recherche 21.10. Abschnitt 2 und 6).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

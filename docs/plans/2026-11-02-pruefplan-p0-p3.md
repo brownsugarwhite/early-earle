@@ -874,3 +874,47 @@ N 24, im Spielbudget 600–700 Flächen für den Körper), Überstand 4,7 px, En
 Fortsetzung) und Halsfenster an den Spalten neben der Naht, Langhals-Krone 4,1 (Kappe des Streifen-Kinds), Kegel-Flanke unter der
 Krümmungsdichte (ungeklärt). Bilder `docs/progress/editor/p1-teile-dichte-2026-11-03.jpg`
 (Editor-Bogen), `p1-teile-dichte-draht-<fall>-2026-11-03.jpg` (Drahtgitter).
+
+## P1 — Abschluss (03.11.2026 nachts; Florians Entscheidung: abräumen, ehrlich abschließen, P2)
+
+Florian: „Bauen wir gerade wieder viele Sonderregeln? Ist der Beweis erbracht oder nicht? … Ist jetzt der richtige Zeitpunkt,
+das im Detail zu fixen?“ — und danach: „Räum die gemessen schlechten Schalter ab, schließ P1 ehrlich auf der Planseite ab und
+starte P2.“
+
+**Was P1 bewiesen hat (Prinzip):**
+- Die gezeichneten Umrissschleifen sind Käfigreihen, ein Löser baut den Körper (Tag 2–3, zweiter Anlauf). Kugel, Ei und scharfer
+  Würfel unter 0,5 px, runde Einteiler (Zylinder, runde Vase) unter 1,3 px, Falten 0° an gezeichneten Ecken.
+- Umrissschleifen entstehen allein aus den drei Zeichnungen, ohne Jitter, mit T-Stößen als Sehnen (Tag 1, Tore a–e).
+- Teile hängen ohne Nahtfalte an einem liegenden Rumpf (Tag 4–5): Naht-Tor an allen vier Körpern (Langhals 20°, Robbe 14°, Ente
+  25°, Pilz ohne freie Kante), Robbe 0 Flächen nach innen und Glätte-Tor, Langhals Form Seite, Pilz Seite 0,7 px.
+- Der Spielumschalter (P0a) zeigt den Käfig auf Stufe 1 im Budget (ohne Maul).
+
+**Was P1 nicht bewiesen hat (Genauigkeit der Mehrteiler):** Das Front-/Top-Tor (≤ 2 px) hält an keinem Mehrteiler (Robbe
+4,4/3,3, Langhals 4,1/2,9, Ente 4,5/2,7, Pilz 0,8/2,0). Die Restfehler liegen an Stellen, die keine Zeichnung festlegt, und an
+der Ringdichte:
+1. **Front und Top sind die Vereinigung von Rumpf und Kopf.** Der Rumpf unter dem Kopf, der Kopf über dem Rücken (Kopfkrone der
+   Robbe) und der Rumpf unter den Flügeln (Ente) sind in keiner Ansicht gezeichnet. Der Planer liefert die verdeckte Fortsetzung
+   je Teil noch nicht (offen seit Tag 1), also raten Hülle, Fenster, Endstück und Vorlagenring — jedes Raten war eine Regel.
+   Weg: Schleifen je Teil mit verdeckter Fortsetzung als bearbeitbare Linie im Editor (Klarstellungen Teil 1: „verdeckte Linien
+   blass und bearbeitbar“; Monster Mash). Das gehört zu P3, wenn die Linien im Editor sind — nicht als Kern-Heuristik.
+2. **16 Punkte je Ring.** Die Bauchecke der Robbe (4,4 px) und die Stufe-1-Polygone (P0a) brauchen die Dichteregel aus dem
+   Spielbudget (Gegenprüfung 3.6: 24 Punkte je Rumpfring, 600–700 Flächen für den Körper). Weg: N aus der Zeichnung, mit der
+   Röhre neu (`roehre(R, N)`), im Budget.
+
+**Abgeräumt (03.11. nachts), weil gemessen schlechter oder nutzlos:** Scheitelschub (Robbe Seite 1,5 → 4,7 px), Rumpfkippen,
+feste Spaltenzahl (40° statt 37°), Spline-Dichte (Robbe 5,7 px, Langhals Naht 153° ohne Mindestabstand), Krümmungsdichte für
+Einteiler (Kegel 2,0 → 7,3 px), Krümmungsgewicht der Bogenlängen (`kruemmung`, Ei 0,4 → 0,8), Planer-Tiefe statt kleinster
+Biegung (Vase 80–100 px). Dazu die Schalter, deren Alternative schlechter war — ihr Verhalten ist jetzt fest: Naht absolut glatt,
+Hülle als Obergrenze, Hüllenringe, Endstück (Höhentest), alle Endstück-Punkte hart, Tiefe der Rumpf-Reihenschleife aus der
+Vorlage, Endstück-Ringe aus der Vorlage. `KaefigOptionen` hat noch zwölf Felder: Achse, fünf Lösergewichte, Kippen, Achsschwelle,
+Teile, eben, Ringdichte (Rümpfe mit Kindern). Tests unverändert: `schleifenKaefig.test.ts` 11 grün / 8 `it.fails`,
+`schleifenTeile.test.ts` 13 / 9; Messreihe `p1-teile.ts` bitgleich.
+
+**Lehre (Register, Gedächtnis):** Der nächste Schritt wurde zweimal aus dem Register abgeleitet (die „Weg“-Zeilen) statt aus der
+Richtung; Fortschritt las ich an Tor-Zahlen ab, nicht an der Regelzahl. Ab jetzt: nach jedem Block Regeln zählen, ab der dritten
+„Struktur prüfen“ statt der nächsten Regel; benennt ein Befund die Ursache als strukturell, keine Regel mehr dafür.
+
+**Entscheidung:** P1 ist für den Zweck des Prüfplans erfüllt (die Körper folgen den Zeichnungen auf etwa 1 % der Körpergröße;
+Florians Blick: „nicht so schlecht“), die Genauigkeit der Mehrteiler bleibt an den zwei Strukturstücken hängen. Weiter mit P2
+„Stücknetz im Maulfeld“ — der eigentliche Eleganztest, weil das Stücknetz den Kernring mit seinen Sonderregeln ersetzen soll; es
+arbeitet auf dem heutigen Käfig und braucht die Teile nicht.

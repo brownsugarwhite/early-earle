@@ -46,7 +46,7 @@ export function schleifenKaefig(abl: Ableitung, plan: UmrissPlan, dok: Dokument,
   const ringAnsicht: Blatt = achse === 'x' ? 'front' : 'top';
   const schleifeVon = (a: Blatt) => {
     const s0 = plan.schleifen.find((x) => x.ansicht === a)!;
-    return opt.tiefe === 'glatt' ? tiefeNeu(s0) : s0;
+    return tiefeNeu(s0);
   };
   const erg = einteilZiele(
     { seite: sl, reihe: schleifeVon(reihenAnsicht).proben.map((p) => p.p), ring: schleifeVon(ringAnsicht).proben.map((p) => p.p), rahmen, R, N, ecken: { seite: eckenKnoten(dok, 'seite'), reihe: eckenKnoten(dok, reihenAnsicht), ring: eckenKnoten(dok, ringAnsicht) }, opt },
