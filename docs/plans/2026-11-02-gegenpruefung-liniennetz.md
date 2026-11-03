@@ -10,7 +10,7 @@
 ## 0. Kurzantwort
 
 1. **Ja, die Richtung stimmt — und deine Klarstellungen machen sie einfacher, nicht schwieriger.** „Ein Liniennetz, ein
-   Löser“ bleibt das Zielbild. Drei Dinge ändern sich gegenüber den Recherchen vom 21.10., und jedes davon streicht
+   Löser“ bleibt das Zielbild (der **neue** Weg aus der Recherche vom 21.10., nicht das heutige System; Einordnung in 0a). Drei Dinge ändern sich gegenüber den Recherchen vom 21.10., und jedes davon streicht
    Maschinerie statt welche hinzuzufügen:
    - **Die Ansichten sind Illustrationen aus Linien, nicht Silhouetten des Ganzen.** Jede Umrisslinie ist eine
      geschlossene Schleife auf der Haut (die Stelle, an der die Haut von der Blickrichtung wegkippt), sichtbar oder
@@ -46,6 +46,22 @@
 6. **Unkonventionelle Ideen, die sich zu prüfen lohnen** (Abschnitt 6): das Blatt ist das SVG (Anzeige = Ausgabe); Teile
    als überlappende Umrisse; Loops zeichnen heißt Ringe setzen; Härte = eine Zahl je Knoten für Falte und Strich; der Käfig
    ist das Spielnetz; Automatik nur als Vorschlagslinie, nie als Wahrheit.
+
+## 0a. Einordnung: bleiben wir beim alten System? Hatte die Nebensession recht?
+
+Florian (03.11.): „Also bleiben wir beim alten System und die andere Session hatte unrecht? Wo gehst du darauf ein?“ — Das
+fehlte hier als eigener Absatz; es stand nur in den Recherchen vom 21.10.
+
+**Nein, wir bleiben nicht beim alten System.** Drei Dinge werden oft verwechselt:
+
+| | Was es ist | Urteil |
+|---|---|---|
+| **Altes System** (heute im Editor) | Röhre mit 24 automatisch verteilten Ringen und Sonderregeln (berühren, Fülle, Hüllenschnitt, Spanten, Treppe, Fenster, Kragen) plus das Maul als Kernring-Einsatz mit gut 20 Schaltern und einer Leiter. | **Wird ersetzt.** Es bleibt nur als Rückfall, bis ein Beweis nachweislich besser ist („Kernring eingefroren“ heißt: nichts Neues mehr darauf bauen, nicht: dabei bleiben). |
+| **Vorschlag der Nebensession** (21.10.) | Das Netz richtet sich nach den Linien (Maul, Naht, Falten), Pole entstehen von selbst; Vorbild QuadWild mit einem Richtungsfeld, das den ganzen Körper neu vernetzt. | **Richtung richtig, Werkzeug falsch.** Die Idee „Linien bestimmen das Netz, Pole automatisch“ ist genau das Zielbild. Ein globales Richtungsfeld mit Neuvernetzen taugt aber nicht für einen Körper, der ständig gezogen wird: Es springt bei kleinen Änderungen, kennt keinen festen Rand (das Netz außerhalb des Mauls muss bitgleich bleiben), garantiert keine Spiegelung und braucht Sekunden bis Minuten je Lauf (Recherche „Feldnetz oder Kernring?“, Abschnitte 1–3, Tabelle der Wege a–d; Recherche „Netz und Linien im Ganzen“, Abschnitt 4, Kandidat E). |
+| **Zielbild „ein Liniennetz, ein Löser“** (Recherche 21.10., hier bestätigt) | Dieselbe Idee ohne Richtungsfeld: Deine Linien (Umrisse je Teil, Loops, Kanten, Maul, Augen) zerlegen die Haut in Stücke; jedes Stück wird nach bewiesenen Mustern mit Vierecken gefüllt (Stücknetz, Pole nur, wo sie nötig sind); ein linearer Löser setzt die Form hart auf alle Linien und dazwischen „so rund wie möglich“. | **Das ist der neue Weg.** Er nimmt die Richtung der Nebensession und macht sie beim Ziehen stabil: Die Topologie ändert sich nur, wenn eine Linie dazukommt oder eine Kreuzung wechselt, nicht bei jedem Zug. Mit deinen Klarstellungen wird er einfacher, weil Loops und Teile in der Zeichnung stehen statt in einer Automatik (Abschnitt 0, Punkt 1). |
+
+Warum es trotzdem nach „alt“ klingen kann: Der Prüfplan baut den neuen Weg **neben** dem alten (hinter Schaltern) und
+schaltet erst um, wenn P1–P3 ihre Tore halten. Das ist Vorsicht nach dem Fehlweg am Kernring, keine Entscheidung für das Alte.
 
 ## 1. Deine Klarstellungen als prüfbare Sätze
 
