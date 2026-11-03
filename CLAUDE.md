@@ -342,6 +342,19 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Vereinigung), Schlusskontur nur interpoliert, keine ganz verdeckten Schleifen, jede konkave Ecke ein T-Stoß. Bild
   `docs/progress/editor/p1-umrissschleifen-2026-11-03.jpg`. Nächster Schritt: Florians Blick, dann Tag 2–3 (Käfig um die
   Schleifen, ein Löser).
+- **2026-11-03 (abends): P1 Tag 2–3 „Körper aus den Schleifen“ gebaut — Tore verfehlt, Abbruchkriterium des Prüfplans trifft,
+  Entscheidung A/B/C offen** (Planseite „Stand P1 Tag 2–3“, Register „Befunde aus P1 Tag 2–3“, Übergabe). Kern
+  `kern/schleifenKoerper.ts` hinter `Bauplan.schleifenKoerper` (bitgleich ohne): gekoppelter 3n-Löser — Naht quer zur Kurve,
+  Top/Front-Schleifen über die nächsten feinen Punkte (Lage längs der Umrissnormale, Silhouettenbedingung P·w stationär;
+  längs und Tiefe frei), Ziele schrittweise (4 px/Runde), ferne Proben weich, **Zielform des heutigen Baus als Füllung**
+  (ohne Zielform keine Form: Ellipsen-Vorrang → Ellipsen, Laplace → Sehnen); Planer: Front-Tiefe aus der berührenden
+  elliptischen Station. Editor: Chip „Körper heute | aus den Schleifen (P1)“ (`?schleifen=1`). Ergebnis: nur die Kugel hält alle
+  Tore; Kegel Front 7,3 → 3,9, Robbe Top 12,5 → 5,1, Vase Top 13,8 → 6,5 px, aber umgeklappte Flächen an sieben Körpern genau
+  dort, wo die Röhre die Schleife nicht hat (Flossen, Hut-Überhang, Brust unter dem Hals, Kasten-Kappen), Seite schlechter,
+  Lösen 400–670 ms. „Die Ringe werden von der Schleife gesetzt“ (Plan) ist nicht gebaut. Fallen: Naht nie längs hart binden;
+  Grenzflächen-Bindungen sehen hochfrequente Käfigmoden nicht (Käfig fliegt ohne Käfigzeilen davon); Reihenbiegung schiebt
+  Ringe auf gleiche Abstände (Stationen längs verankern); Sprünge über 10 px je Runde klappen um; Stützpunkt-Regeln für die
+  Front-Tiefe springen (f-Minimum nehmen). Bilder `docs/progress/editor/p1-koerper-2026-11-03.jpg`, `p1-koerper-draht-*.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

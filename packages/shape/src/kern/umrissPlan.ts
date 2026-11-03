@@ -18,6 +18,7 @@ import { type Kubik, type V2, ableitung, punktAuf } from '../bezier';
 import type { Dokument } from '../dokument';
 import { vollerPfad } from '../profil';
 import { type Huelle, type Intervalle, huelle } from './grundkoerper/huelle';
+import { silhouettenBreite } from './breite';
 import type { V3 } from '../versuch/catmullClark';
 
 const PX = 461;
@@ -67,6 +68,14 @@ const SPRUNG = 6 / PX;
 const WECHSEL = 3 / PX;
 /** Zug zur Intervallmitte bei der Biegeminimierung (Gewicht je Probe gegen die Biegung mit Gewicht 1) */
 const MITTE = 0.00001;
+/** Zug zur Soll-Tiefe der Front (Stützfunktion elliptischer Querschnitte) — stärker, die Lage ist dort bestimmt */
+const MITTE_SOLL = 0.1;
+/** Mittelungsfenster der Soll-Tiefe längs der Schleife (Proben, ± ) */
+const SOLL_FENSTER = 8;
+/** Plateau der Berührung: Stationen, deren f höchstens so viel über dem Minimum liegt, gelten als gleich (Kasten, Zylinder) */
+const FRONT_PLATEAU = 0.02;
+/** Stationen längs x für die Stützfunktion */
+const STATIONEN = 240;
 /** Runden der aktiven Menge (verletzte Schranken festklemmen) */
 const AKTIV_RUNDEN = 80;
 /** Gewicht einer festgeklemmten Schranke */
@@ -254,11 +263,11 @@ function pentaLoesen(d0: Float64Array, d1: Float64Array, d2: Float64Array, rhs: 
  * der Intervalle — als Ausgleich mit aktiver Menge: lösen, verletzte Schranken festklemmen, wieder lösen (höchstens
  * AKTIV_RUNDEN Runden). `fest` = Probe hat ein Intervall, `mitte` = Startwert (Intervallmitte bzw. Lückenfüllung).
  */
-function biegungMinimieren(lo: Float64Array, hi: Float64Array, fest: Uint8Array, mitte: Float64Array): Float64Array {
+function biegungMinimieren(lo: Float64Array, hi: Float64Array, fest: Uint8Array, mitte: Float64Array, zug = MITTE): Float64Array {
   const m = lo.length;
   if (m < 3) return Float64Array.from(mitte);
   // Biegematrix (1, −2, 1)ᵀ(1, −2, 1) über alle inneren Proben + Zug zur Mitte
-  const b0 = new Float64Array(m).fill(MITTE);
+  const b0 = new Float64Array(m).fill(zug);
   const b1 = new Float64Array(m);
   const b2 = new Float64Array(m);
   for (let i = 1; i + 1 < m; i++) {
@@ -276,7 +285,7 @@ function biegungMinimieren(lo: Float64Array, hi: Float64Array, fest: Uint8Array,
     const d0 = Float64Array.from(b0);
     const rhs = new Float64Array(m);
     for (let i = 0; i < m; i++) {
-      rhs[i] = MITTE * mitte[i]!;
+      rhs[i] = zug * mitte[i]!;
       if (klemme[i]) {
         d0[i] = d0[i]! + KLEMME;
         rhs[i] = rhs[i]! + KLEMME * (klemme[i]! < 0 ? lo[i]! : hi[i]!);
@@ -287,7 +296,7 @@ function biegungMinimieren(lo: Float64Array, hi: Float64Array, fest: Uint8Array,
     let geaendert = 0;
     for (let i = 0; i < m; i++) {
       if (!klemme[i]) continue;
-      let g = b0[i]! * d[i]! - MITTE * mitte[i]!;
+      let g = b0[i]! * d[i]! - zug * mitte[i]!;
       if (i >= 1) g += b1[i - 1]! * d[i - 1]!;
       if (i + 1 < m) g += b1[i]! * d[i + 1]!;
       if (i >= 2) g += b2[i - 2]! * d[i - 2]!;
@@ -319,10 +328,11 @@ function biegungMinimieren(lo: Float64Array, hi: Float64Array, fest: Uint8Array,
  * kleinste Biegung innerhalb der Schranken; Lücken (Widerspruch) linear aus den Nachbarn. Geschlossene Folgen werden an der
  * engsten Stelle aufgeschnitten und mit Überlappung an beiden Enden gelöst (die Überlappung trägt die Stetigkeit über den Schnitt).
  */
-function tiefeGlaetten(lo: Float64Array, hi: Float64Array, fest: Uint8Array, zyklisch: boolean): Float64Array {
+function tiefeGlaetten(lo: Float64Array, hi: Float64Array, fest: Uint8Array, zyklisch: boolean, soll?: Float64Array): Float64Array {
   const n = lo.length;
   const mitte = new Float64Array(n);
-  for (let i = 0; i < n; i++) mitte[i] = fest[i] ? (lo[i]! + hi[i]!) / 2 : NaN;
+  const zug = soll ? MITTE_SOLL : MITTE;
+  for (let i = 0; i < n; i++) mitte[i] = fest[i] ? (soll && Number.isFinite(soll[i]!) ? Math.min(hi[i]!, Math.max(lo[i]!, soll[i]!)) : (lo[i]! + hi[i]!) / 2) : NaN;
   for (let i = 0; i < n; i++) {
     if (fest[i]) continue;
     let a = i;
@@ -335,7 +345,7 @@ function tiefeGlaetten(lo: Float64Array, hi: Float64Array, fest: Uint8Array, zyk
     mitte[i] = fest[ia] && fest[ib] ? (lo[ia]! + hi[ia]!) / 2 + w * ((lo[ib]! + hi[ib]!) / 2 - (lo[ia]! + hi[ia]!) / 2) : 0;
   }
   if (n < 3) return mitte;
-  if (!zyklisch) return biegungMinimieren(lo, hi, fest, mitte);
+  if (!zyklisch) return biegungMinimieren(lo, hi, fest, mitte, zug);
   // geschlossen: Schnitt an der engsten festen Probe, Überlappung K an beiden Enden
   let schnitt = 0;
   let eng = Infinity;
@@ -361,10 +371,75 @@ function tiefeGlaetten(lo: Float64Array, hi: Float64Array, fest: Uint8Array, zyk
     f[k] = fest[i]!;
     mi[k] = mitte[i]!;
   }
-  const g = biegungMinimieren(l, h, f, mi);
+  const g = biegungMinimieren(l, h, f, mi, zug);
   const d = new Float64Array(n);
   for (let k = K; k < K + n; k++) d[idx(k)] = g[k]!;
   return d;
+}
+
+/** Stationen längs x für die Soll-Tiefe der Front: je Station die Seiten-Intervalle (Mitte, halbe Höhe) und die halbe Breite aus dem Top. */
+type FrontStationen = { x: Float64Array; b: Float64Array; schnitte: { c: number; h: number }[][] };
+
+function frontStationen(h: Huelle, breiten: ReturnType<typeof silhouettenBreite>, xVon: number, xBis: number): FrontStationen {
+  const x = new Float64Array(STATIONEN + 1);
+  const b = new Float64Array(STATIONEN + 1);
+  const schnitte: { c: number; h: number }[][] = [];
+  for (let k = 0; k <= STATIONEN; k++) {
+    x[k] = xVon + ((xBis - xVon) * k) / STATIONEN;
+    b[k] = breiten.top(x[k]!);
+    schnitte.push(b[k]! > 0 ? h.yBei(x[k]!, 0).map(([lo, hi]) => ({ c: (lo + hi) / 2, h: Math.max(1e-9, (hi - lo) / 2) })) : []);
+  }
+  return { x, b, schnitte };
+}
+
+/**
+ * Soll-Tiefe einer Front-Probe (Tag 2–3): die Station, deren elliptischer Querschnitt (Höhe und Mitte aus der Seite, Breite
+ * aus dem Top) die Probe berührt — f(x) = ((q_y − c)/h)² + (q_z/b)² am kleinsten (1 = Berührung), zwischen den Stationen
+ * parabolisch verfeinert; bei einem Plateau (Kasten, Zylinder: f überall gleich) die Mitte des Plateaus. Die Mitte des
+ * erlaubten Intervalls war für einen Kegel falsch (die Hülle erlaubt bei 45° jede Tiefe zwischen 71 % und 100 % der Länge;
+ * das runde Bild hat sie am Rand, wo f minimal ist). Stützpunkt-Regeln (nächster Stützpunkt; größte Stützfunktion mit
+ * Filter längs) sprangen beim Ei zwischen fast gleich nahen Stationen (±30 px) — f ist glatt in x und eindeutig.
+ */
+function frontSoll(st: FrontStationen, q: V2, iv: Intervalle): number {
+  const f = new Float64Array(STATIONEN + 1).fill(Infinity);
+  let fMin = Infinity;
+  let kMin = -1;
+  for (let k = 0; k <= STATIONEN; k++) {
+    const b = st.b[k]!;
+    for (const s of st.schnitte[k]!) {
+      const v = ((q.y - s.c) / s.h) ** 2 + (q.x / b) ** 2;
+      if (v < f[k]!) f[k] = v;
+    }
+    if (f[k]! < fMin) {
+      fMin = f[k]!;
+      kMin = k;
+    }
+  }
+  if (kMin < 0) return NaN;
+  // Plateau: alle Stationen nahe dem Minimum, davon die Mitte; sonst Parabel durch die drei Stationen um das Minimum
+  const nahe: number[] = [];
+  for (let k = 0; k <= STATIONEN; k++) if (f[k]! <= fMin * (1 + FRONT_PLATEAU)) nahe.push(k);
+  let kSoll = nahe.length > 2 ? nahe[Math.floor(nahe.length / 2)]! : kMin;
+  if (nahe.length <= 2 && kMin > 0 && kMin < STATIONEN && Number.isFinite(f[kMin - 1]!) && Number.isFinite(f[kMin + 1]!)) {
+    const a = f[kMin - 1]!;
+    const b = f[kMin]!;
+    const c = f[kMin + 1]!;
+    const nenner = a - 2 * b + c;
+    if (nenner > 1e-18) kSoll = kMin + Math.max(-0.5, Math.min(0.5, (0.5 * (a - c)) / nenner));
+  }
+  const soll = st.x[0]! + ((st.x[STATIONEN]! - st.x[0]!) * kSoll) / STATIONEN;
+  // in das Intervall der Probe klemmen (außerhalb ist die Probe dort nicht erreichbar)
+  let aus = soll;
+  let ad = Infinity;
+  for (const [lo, hi] of iv) {
+    const c = Math.min(hi, Math.max(lo, soll));
+    const d = Math.abs(c - soll);
+    if (d < ad) {
+      ad = d;
+      aus = c;
+    }
+  }
+  return aus;
 }
 
 /** Kubische Hermite-Kurve zwischen zwei Proben (Tangenten in Laufrichtung), dicht abgetastet (ohne Endpunkte). */
@@ -457,11 +532,22 @@ export function umrissPlan(dok: Dokument): UmrissPlan {
   const t0 = jetzt();
   const h = huelle(dok);
   const sk = dok.skalierung;
+  const breiten = silhouettenBreite(dok);
+  // x-Bereich der Seite (Stationen der Stützfunktion)
+  let xVon = Infinity;
+  let xBis = -Infinity;
+  for (const seg of vollerPfad(dok.profile.seite)) {
+    for (const c of seg) {
+      xVon = Math.min(xVon, c.x * sk);
+      xBis = Math.max(xBis, c.x * sk);
+    }
+  }
   const schleifen: PlanSchleife[] = [];
   const tStoesse: UmrissPlan['tStoesse'] = [];
   const widerspruchMax: Record<Blatt, number> = { seite: 0, front: 0, top: 0 };
   for (const a of ['seite', 'front', 'top'] as const) {
     const proben = abtasten(vollerPfad(dok.profile[a]), sk);
+    const stationen = a === 'front' ? frontStationen(h, breiten, xVon, xBis) : null;
     const n = proben.length;
     if (n < 3) continue;
     const sg = umlauf(proben);
@@ -570,7 +656,34 @@ export function umrissPlan(dok: Dokument): UmrissPlan {
           eckeWahl(0, 1);
           eckeWahl(m - 1, m - 2);
         }
-        const g = a === 'seite' ? new Float64Array(m) : tiefeGlaetten(l, hh, fe, !f.sehne && !f.kinder.length);
+        let soll: Float64Array | undefined;
+        if (a === 'front') {
+          const s = new Float64Array(m);
+          strecke.forEach((i, k) => {
+            const p = proben[i]!;
+            s[k] = fe[k] ? frontSoll(stationen!, p.q, [[l[k]!, hh[k]!]]) : NaN;
+          });
+          // längs der Strecke gemittelt (Fenster ± SOLL_FENSTER Proben): Wo f flach ist (Äquator des Eis), springt die
+          // berührende Station zwischen Nachbarn, die Mittelung glättet das vor dem Zug
+          const geglaettet = new Float64Array(m);
+          const zyklisch = !f.sehne && !f.kinder.length;
+          for (let k = 0; k < m; k++) {
+            let summe = 0;
+            let zahl = 0;
+            for (let d = -SOLL_FENSTER; d <= SOLL_FENSTER; d++) {
+              let j = k + d;
+              if (zyklisch) j = ((j % m) + m) % m;
+              else if (j < 0 || j >= m) continue;
+              const v = s[j]!;
+              if (!Number.isFinite(v)) continue;
+              summe += v;
+              zahl++;
+            }
+            geglaettet[k] = zahl ? summe / zahl : NaN;
+          }
+          soll = geglaettet;
+        }
+        const g = a === 'seite' ? new Float64Array(m) : tiefeGlaetten(l, hh, fe, !f.sehne && !f.kinder.length, soll);
         strecke.forEach((i, k) => d.set(i, g[k]!));
         strecke = [];
       };

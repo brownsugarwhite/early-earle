@@ -314,6 +314,16 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
     Intervallen und Tiefe — zuerst dort nachsehen, wenn eine Schleife „falsch“ liegt (Ursache war zweimal die Intervallwahl an
     einer Ecke, nie die Anzeige).
   - zsh: Wörter, die mit `=` beginnen (`echo =====`), sind Kommandos (`=cmd`-Expansion); `set -- $k` trennt nicht an Leerzeichen.
+- **Nachtrag 03.11. abends — P1 Tag 2–3 (Körper aus den Schleifen), Fallen:**
+  - Der Chip „aus den Schleifen“ läuft im Worker im genauen Bau hinter dem Linien-Block (`schleifenStand`, Schlüssel Form +
+    Pinsel + Linien); Posen, Maul, Beine und Teile lassen ihn aus. Während Gesten zeigt der Körper den heutigen Bau.
+  - Bezugslagen für die Zielform aus `abl.fein` (erste n Punkte = Grenzlagen der Käfigpunkte, mit Pinsel-Deltas), nie aus
+    `abl.ziele` — sonst zöge der Löser die Pinselstriche zurück.
+  - Drahtgitter-Bögen ohne Server: `p1-koerper-bild.ts` schreibt HTML (SVG der Stufe 2, drei Ansichten, heute | neu),
+    `html-shot.mjs [--jpg]` rendert sie; `AUSGABE` legt den Zielordner fest. Die Bilder deckten in Minuten auf, was Zahlen
+    verbargen (Ringe an Front-Schleifen zusammengeschoben, Spitzen an Bindungen).
+  - Playwright: `[data-view="…"] [data-delta]` trägt das Δ des Blatts als Attribut (`data-delta="1.2"`); `setzeZebra(true)` im
+    `ui`-Store plus `setzeLook('matcap')` fürs Zebra, danach beides zurück.
 
 ## Arbeitsweise
 

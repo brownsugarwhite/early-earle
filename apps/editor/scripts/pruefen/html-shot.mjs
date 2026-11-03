@@ -1,8 +1,19 @@
+// HTML/SVG-Dateien als PNG oder JPG (Playwright, ohne Server). Aufruf aus apps/editor:
+// node scripts/pruefen/html-shot.mjs [--jpg] <datei.html> [weitere …]; mit `--jpg` als JPEG (Qualität 86), AUSGABE = Zielordner
+import { readFileSync } from 'node:fs';
+import { basename, resolve } from 'node:path';
 import { chromium } from '@playwright/test';
-// Aufruf: node html-shot.mjs <html> <png> [breite]
-const [html, png, breite] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const jpg = args.includes('--jpg');
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: Number(breite ?? 1200), height: 700 }, deviceScaleFactor: 1 });
-await page.goto('file://' + html);
-await page.screenshot({ path: png, fullPage: true });
+for (const datei of args.filter((a) => a !== '--jpg')) {
+  const page = await browser.newPage({ viewport: { width: 1600, height: 1200 }, deviceScaleFactor: 1 });
+  await page.setContent(readFileSync(datei, 'utf8'));
+  await page.waitForTimeout(200);
+  const name = basename(datei).replace(/\.(html|svg)$/, jpg ? '.jpg' : '.png');
+  const pfad = process.env.AUSGABE ? resolve(process.env.AUSGABE, name) : datei.replace(/\.(html|svg)$/, jpg ? '.jpg' : '.png');
+  await page.screenshot({ path: pfad, fullPage: true, ...(jpg ? { type: 'jpeg', quality: 86 } : {}) });
+  console.log(pfad);
+  await page.close();
+}
 await browser.close();

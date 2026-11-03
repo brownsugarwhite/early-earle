@@ -34,6 +34,7 @@ import { type DuennMatrix, anwenden3 } from '../subdivision/matrix';
 import type { Stufe } from '../subdivision/catmullClark';
 import { type SpielAnzeige, spielNetz } from './spielstufe';
 import { type UmrissPlan, umrissPlan } from './umrissPlan';
+import { type SchleifenBericht, schleifenKoerper } from './schleifenKoerper';
 import { pfadAbtasten, vollerPfad } from '../profil';
 import { spantKasten, spantTeilProfil, vorlageBei } from '../spanten';
 import { kieferSchnitt } from './kieferSpant';
@@ -139,6 +140,8 @@ export type Bauplan = Ausstattung & {
   stufenNormalen?: 'grenze' | 'roh';
   /** P1 (Tag 1): geplante Umrissschleifen aus den Zeichnungen im Liniennetz zeigen (`plan-*`-Züge, `WesenNetz.umrissPlan`) */
   umrissPlan?: boolean;
+  /** P1 (Tag 2–3): der Körper aus den geplanten Umrissschleifen (Röhre ohne Maul und Beine; genauer Bau, gemerkt wie die Linien) */
+  schleifenKoerper?: boolean;
 };
 
 /** B7: Mischung der Gewichte als neue Pose — Form (Ruhe-Deltas auf A, rechte Hälfte und Naht), Bezug, Stellung. */
@@ -187,6 +190,8 @@ export type WesenInfo = {
   linien?: LinienBericht[];
   /** P0a: Kennzahlen der Spielstufe (nur mit `Bauplan.stufen`) */
   spiel?: SpielAnzeige;
+  /** P1 (Tag 2–3): Bericht des Schleifenkörpers (nur mit `Bauplan.schleifenKoerper`) */
+  schleifen?: SchleifenBericht;
 };
 
 /** Reifen (M3): Ringe der gezeichneten Spanten auf dem Körper, mit Perlen an den Spant-Knoten. */
@@ -338,6 +343,8 @@ export type WesenStand = {
   klingen: KlingenStand | null;
   /** P0a: Umrissvergleich der Spielstufe aus dem letzten genauen Bau (Schlüssel: Ruhewerte, Gewichte, Stufe) */
   spiel?: { schluessel: string; umriss: NonNullable<SpielAnzeige['umriss']> };
+  /** P1 (Tag 2–3): Schleifenkörper, gemerkt je Form, Pinsel und Plan */
+  schleifenKoerper?: { schluessel: string; abl: Ableitung; bericht: SchleifenBericht };
   /** letzte Blatt-Abweichung (Schritt 4), während Gesten weiterverwendet */
   saum?: WesenNetz['saum'];
   widerspruch?: WesenNetz['widerspruch'];
@@ -1220,6 +1227,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
   const linienGenau = maul === 'aus' && beine === 'aus' && plan.koerper !== 'teile' && !plan.umrisseExakt && (dok.kanten ?? []).some((k) => k.haerte.some((h) => h > 0));
   const dokBau: Dokument = linienGenau ? { ...dok, kanten: [] } : dok;
   let linienStand = stand?.linien;
+  let schleifenStand = stand?.schleifenKoerper;
   const mitDeltas = <T extends Ableitung>(a: T): T => (deltas.length ? deltasAnwenden(a, deltas) : a);
   let ablRein: Ableitung | null = null;
   let maulLinieVerwendet: MaulLinie | null = null;
@@ -1307,6 +1315,19 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     fein = abl.fein;
     xyz = abl.kaefig.xyz;
   } else if (!linienGenau) linienStand = undefined;
+  // P1 Tag 2–3: Körper aus den geplanten Umrissschleifen — im genauen Bau (≈ 0,5 s), gemerkt je Form, Pinsel und Plan; während
+  // einer Geste zeigt der Körper den heutigen Bau
+  if (plan.schleifenKoerper && !schnell && maul === 'aus' && beine === 'aus' && plan.koerper !== 'teile') {
+    const sSchluessel = `${schluessel}|${JSON.stringify(deltas)}|${linienGenau ? 'l' : ''}`;
+    if (schleifenStand && schleifenStand.schluessel === sSchluessel) abl = schleifenStand.abl;
+    else {
+      const r = schleifenKoerper(abl, umrissPlan(dok), dok);
+      abl = r.abl;
+      schleifenStand = { schluessel: sSchluessel, abl, bericht: r.bericht };
+    }
+    fein = abl.fein;
+    xyz = abl.kaefig.xyz;
+  } else if (!plan.schleifenKoerper) schleifenStand = undefined;
   // Posen ohne Schlitzmaul (Florian 15.10.: „im Fressen-Tab Rundmaul, Bohne, W-Maul, Haltung, Schädelform frei formen“):
   // keine Knochen, die Ruhe-Deltas mit den Gewichten auf alle Punkte (Kugel, Fisch mit Rundmaul, Beine)
   if (maul === 'aus') {
@@ -1622,7 +1643,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     }
   }
   // B7: Werte der Ruhelage gemerkt (Schlüssel: Ableitung, Pinsel der Grundform, Augen, Gesicht); ein reiner Gewichtswechsel nimmt sie
-  const ruheSchluessel = `${schluessel}|${JSON.stringify(deltas)}|${JSON.stringify(plan.augen ?? null)}|${JSON.stringify(plan.gesichtMaske ?? null)}|${maul}|${beine}|${earle}|${plan.umrissPlan ? 'plan' : ''}`;
+  const ruheSchluessel = `${schluessel}|${JSON.stringify(deltas)}|${JSON.stringify(plan.augen ?? null)}|${JSON.stringify(plan.gesichtMaske ?? null)}|${maul}|${beine}|${earle}|${plan.umrissPlan ? 'plan' : ''}|${plan.schleifenKoerper ? 'sk' : ''}`;
   const ruheAlt = stand?.ruheWerte && stand.ruheWerte.schluessel === ruheSchluessel ? stand.ruheWerte : null;
   // Deskriptoren hängen an der Ruhelage: ohne Aufsatz, angesteckte Teile, Wangen und Klingen gemerkt (die brauchen die
   // feinen Deskriptoren selbst); eine Kopie geht ins Netz, das überträgt sie
@@ -1726,7 +1747,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
   }
   // Lippenkanten gegen die Linien (Phase 2 M2): px je Kette in Seite und Front
   const maulAbw = ruheAlt ? ruheAlt.maulAbw : maul !== 'aus' && (abl as Partial<MaulErgebnis>).maul && maulLinieVerwendet ? maulAbweichung(abl as MaulErgebnis, dok, maulLinieVerwendet) : undefined;
-  const info: WesenInfo = { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0, ...(blatt ? { blatt } : {}), ...(maulAbw ? { maul: maulAbw } : {}), ...(linienGenau && linienStand ? { linien: linienStand.berichte } : abl.linienBau?.length ? { linien: abl.linienBau.map((b, index): LinienBericht => ({ art: b.schleife ? (b.art === 'reihe' ? 'reihe' : 'ring') : 'ohne', index, ms: 0, ...(b.schleife ? { schleife: true as const } : {}) })) } : {}), stationen: abl.gefroren && teile ? { ...abl.gefroren, teile: teile.gefroren } : abl.gefroren };
+  const info: WesenInfo = { kaefigPunkte: abl.kaefig.n, feinPunkte: punkte.length, nahtMax: ab.max, nahtMittel: ab.mittel, ableitung, zug, ecken: abl.ecken.length + (abl.spitzen.vorn ? 1 : 0) + (abl.spitzen.hinten ? 1 : 0), schnell: ableitung === 0, ...(schleifenStand ? { schleifen: schleifenStand.bericht } : {}), ...(blatt ? { blatt } : {}), ...(maulAbw ? { maul: maulAbw } : {}), ...(linienGenau && linienStand ? { linien: linienStand.berichte } : abl.linienBau?.length ? { linien: abl.linienBau.map((b, index): LinienBericht => ({ art: b.schleife ? (b.art === 'reihe' ? 'reihe' : 'ring') : 'ohne', index, ms: 0, ...(b.schleife ? { schleife: true as const } : {}) })) } : {}), stationen: abl.gefroren && teile ? { ...abl.gefroren, teile: teile.gefroren } : abl.gefroren };
   const linien = plan.kaefigLinien ? kaefigSegmente(abl, xyz) : null;
   // Lippenband nach der Kopfhöhe am Maul (nicht der ganzen Körperhöhe: beim Langhals war das Band breiter als der Kiefer)
   const maulHoehe = maul !== 'aus' ? 1.1 * ((abl as Partial<MaulErgebnis>).maul?.kopfHoehe ?? hoehe) : hoehe;
@@ -2010,7 +2031,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     netzAus = r.netz;
     if (genau && r.spiel.umriss) spielStand = { schluessel: key, umriss: r.spiel.umriss };
   }
-  return { netz: netzAus, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(spielStand ? { spiel: spielStand } : {}), ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(randMarken ? { randMarken } : {}), ...(netz3 ? { netzSicht: netz3 } : {}), ...(teile ? { teile } : {}), ...(baumStand ? { baum: baumStand } : {}), ...(linienStand ? { linien: linienStand } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
+  return { netz: netzAus, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(spielStand ? { spiel: spielStand } : {}), ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(randMarken ? { randMarken } : {}), ...(netz3 ? { netzSicht: netz3 } : {}), ...(teile ? { teile } : {}), ...(baumStand ? { baum: baumStand } : {}), ...(linienStand ? { linien: linienStand } : {}), ...(schleifenStand ? { schleifenKoerper: schleifenStand } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
 }
 
 /** Puffer eines Netzes (zum Übertragen aus dem Worker). */

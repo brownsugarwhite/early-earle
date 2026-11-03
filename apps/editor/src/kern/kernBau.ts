@@ -59,6 +59,9 @@ export const useKernAnzeige = create<{
   spielNormalen: 'grenze' | 'roh';
   setzeSpiel: (an: boolean) => void;
   setzeSpielNormalen: (n: 'grenze' | 'roh') => void;
+  /** P1 Tag 2–3: der Körper aus den geplanten Umrissschleifen (`?schleifen=1`) */
+  schleifenKoerper: boolean;
+  setzeSchleifenKoerper: (an: boolean) => void;
 }>((set) => ({
   info: null,
   look: startLook,
@@ -79,6 +82,8 @@ export const useKernAnzeige = create<{
   spielNormalen: q.get('spielnormalen') === 'roh' ? 'roh' : 'grenze',
   setzeSpiel: (spiel) => set({ spiel }),
   setzeSpielNormalen: (spielNormalen) => set({ spielNormalen }),
+  schleifenKoerper: q.get('schleifen') === '1',
+  setzeSchleifenKoerper: (schleifenKoerper) => set({ schleifenKoerper }),
 }));
 
 /**
@@ -214,8 +219,9 @@ export function bauplanAus(dok: Dokument): Partial<Bauplan> {
     atlas: atlasAn,
     // P0a: Spielstufe (Anzeige auf Stufe 1); ohne den Umschalter fehlt das Feld, der Bau ist bitgleich
     ...(s.spiel ? { stufen: 1, stufenNormalen: s.spielNormalen } : {}),
-    // P1 (Tag 1): geplante Umrissschleifen im Liniennetz
-    ...(useUi.getState().netzUmrisse === 'geplant' ? { umrissPlan: true } : {}),
+    // P1 (Tag 1): geplante Umrissschleifen im Liniennetz; Tag 2–3: der Körper aus ihnen (zeigt die Schleifen mit)
+    ...(useUi.getState().netzUmrisse === 'geplant' || s.schleifenKoerper ? { umrissPlan: true } : {}),
+    ...(s.schleifenKoerper ? { schleifenKoerper: true } : {}),
     // Rig (Plan 5.2): Unterkiefergewichte als Farbe, nur in der Stufe „Posen & Leben“
     gewichteZeigen: useUi.getState().gewichteZeigen && useUi.getState().ebene === 'posen',
     ...umrisseAnfrage(dok),

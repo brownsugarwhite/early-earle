@@ -172,3 +172,12 @@ und Store, ohne Zeichnen; `zuruecksetzen()`).
 |---|---|
 | `umriss-plan-diag.ts` (Kern, aus `packages/shape`: `npx vite-node ../../apps/editor/scripts/pruefen/umriss-plan-diag.ts <körper> [ansicht]`) | Geplante Umrissschleifen (P1): je Ansicht die Knoten mit Winkel (konkav = T-Stoß), je Schleife die Proben mit Art (0 gezeichnet, 1 verdeckt, 2 Schluss), Kurvenparameter, Tiefe, gewähltem Intervall und allen Intervallen der Hülle, Widerspruch |
 | `p1-plan.mjs` (Editor, über `run-check.sh`) | Prüfplan P1 Tag 1 im echten Editor: je Fall (Startkugel → Umrisse, Röhre) Chip „umrisse geplant“ und „an“, Zahlen des Plans (Schleifen, verdeckt/Schluss, T-Stöße, Widerspruch, Planung ms, Umschalten ms), Tor d Blatt = SVG (DOM-Pfade der eigenen Vorschläge gegen `__editor.umrissSvg` über `projizieren`), Bilder der drei Blätter als Ausschnitt um den Körper → Kontaktbogen `docs/progress/editor/p1-umrissschleifen-<datum>.jpg`, SVG je Blatt und JSON in `apps/editor/pruefen-ausgabe/p1/`. `FAELLE`, `DATUM` |
+
+## Nachtrag 03.11.: P1 Tag 2–3
+
+| Skript | misst / zeigt |
+|---|---|
+| `p1-koerper.ts` (Kern, aus `packages/shape`: `npx vite-node ../../apps/editor/scripts/pruefen/p1-koerper.ts`) | Körper aus den Schleifen gegen den heutigen Bau je Prüfkörper: Δ je Blatt, Rest an den Schleifen, Überstand, Falten frei/Kappe, Knicke Stufe 1, Flachband, Wendepunkte, umgeklappte Flächen mit Ort, Volumen, Zeit; Optionen `FAIR GEWICHT TANGENTE RUNDEN ZIEL RING REIHE LAENGS KAEFIG ANKER NUR` (Diagnose) |
+| `p1-koerper-bild.ts` (Kern) + `html-shot.mjs` (aus `apps/editor`, `[--jpg]`, `AUSGABE`) | Drahtgitter der Stufe 2 in den drei Ansichten, heute | aus den Schleifen, mit Zeichnung und geplanten Schleifen → HTML je Fall in `pruefen-ausgabe/p1/`, dann PNG/JPG |
+| `p1-koerper-editor.mjs` (Editor, über `run-check.sh`) | Chip „aus den Schleifen“ im echten Editor: Blätter mit Δ (Ausschnitt um die Schleifen), Bühne Earle 45°, Zebra 45°, heute | neu, Tafelzahlen → `docs/progress/editor/p1-koerper-<datum>.jpg`, JSON in `pruefen-ausgabe/p1/` |
+| `koerperMass.ts` (`packages/shape/src/kern/pruefen/`) | geteilte Maße: `knickeStufe1`, `flachband`, `wendepunkte`, `umgeklappt`, `punkteVon` — Skript und Test nutzen dieselben |

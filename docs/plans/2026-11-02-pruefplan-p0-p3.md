@@ -410,3 +410,85 @@ die Lage der Schlusskontur auf der Haut des anderen Teils — beides Sache von T
 - **Schlusskontur in 3D nur interpoliert** (Tiefe zwischen den Ecken, ins nächste Intervall geklemmt), nicht auf der Haut des
   anderen Teils — Tag 2–3 setzt sie als Käfigring.
 - (b) wörtlich an der Robbe von oben verfehlt (oben); Widersprüche an Scheitelproben 2,7–4,2 px.
+
+## Stand P1 Tag 2–3 — Körper aus den Schleifen (03.11.2026, gebaut; Tore verfehlt, Abnahme und Entscheidung offen)
+
+**Auftrag (Florian, 03.11.):** „Weiter mit P1 „Ansichten als Illustration“ nach dem Prüfplan.“ Tag 1 ist gebaut (oben); Tag 2–3
+hier, ehrlich: die Tore der Tabelle hält nur die Kugel, der Prüfplan nennt für diesen Fall den Abbruch (unten).
+
+**Gebaut (Kern, `packages/shape/src/kern/schleifenKoerper.ts`, hinter `Bauplan.schleifenKoerper`; ohne Option bitgleich,
+Test):** Ein gekoppelter Löser über alle 3n Käfigkoordinaten (Zeilen dürfen Achsen mischen — Skalarprodukte mit der
+Umrissnormale; dünn, Cuthill–McKee über den 3n-Graphen, Cholesky). Topologie und Ringverteilung bleiben die der heutigen
+Röhre (ihr Bau ist der Startwert); dann:
+- **Seite (Naht):** feine Punkte der Mittelebene: z = 0 hart, längs der Kurvennormale auf die gezeichnete Seitenkurve, längs
+  der Kurve frei (hart längs gebunden scherte der Löser die Ringe — Ei: 400 umgeklappte Flächen).
+- **Top und Front (hart):** je gezeichnete Probe der geplanten Schleife der nächste feine Punkt der aktuellen Fläche
+  (Zuordnung je Runde neu). Gebunden wird nur, was den Umriss ausmacht: (1) die Komponente längs der Umrissnormale w trifft die
+  Probe (Lage), (2) P·w ist quer zur Schleife stationär (Differenz der Grenzlagen des gegenüberliegenden Nachbarpaars · w = 0:
+  die Silhouette liegt an diesem Punkt). Weder die Lage längs der Schleife noch die Tiefe werden direkt gebunden — beides
+  zöge die Fläche in ihrer Ebene mit (V4: Robbe 65 px). Die Ziele rücken schrittweise (4 px je Runde, 6 Runden), ferne
+  Proben (über 6 px in Runde 1) weich (Gewicht × (6/Abstand)⁴), Proben ohne Fortschritt werden aufgegeben.
+- **Füllung:** Zielform des heutigen Baus (Grenzlage jedes Käfigpunkts, Gewicht 1) und die Glättung der Stufe 2 **relativ zur
+  Zielform** (wie `GLATTE_HAUT`). **Abweichung vom Plan** („weich Krümmungsvariation ohne Zielform“): Ohne Zielform wurden die
+  Querschnitte Ellipsen (Ellipsen-Vorrang je Ring, exakt für jedes affine Bild des regelmäßigen N-Ecks) — die Front der Robbe
+  (unten breit mit Flossen, oben schmal) widerspricht dem (Δ Front 45 px mit Naht allein), und reine Laplace-Glättung kennt
+  keine Rundung (Querschnitte sanken zu Sehnen ein, Volumen −64 %, die harten Schleifenpunkte standen als Nadeln heraus).
+  Die Schleifen binden nur die Extreme; die Form dazwischen kommt aus der Front-Zeichnung, und die steckt in der Zielform.
+- **Front-Tiefe im Planer** (`umrissPlan.ts`, `frontSoll`): nicht mehr die Mitte des erlaubten Intervalls, sondern die
+  Station, deren elliptischer Querschnitt (Höhe und Mitte aus der Seite, Breite aus dem Top) die Probe berührt (f = ((q_y −
+  c)/h)² + (q_z/b)² minimal, parabolisch verfeinert, Plateau-Mitte bei Kästen), längs der Schleife gemittelt (± 8 Proben).
+  Die Intervallmitte war für den Kegel falsch (die Hülle erlaubt bei 45° jede Tiefe zwischen 71 % und 100 % der Länge; das
+  runde Bild hat sie am Rand) — der Löser legte dann einen Ring voller Breite ins Innere des Kegels. Zwei Stützpunkt-Regeln
+  sprangen beim Ei zwischen fast gleich nahen Stationen (±30 px); f ist glatt in x und eindeutig.
+
+**Gebaut (Editor):** Tafel Körper → Chips „Körper heute | aus den Schleifen (P1)“ (`useKernAnzeige.schleifenKoerper`,
+`?schleifen=1`) mit Rest an den Schleifen, Überstand, gebundenen/aufgegebenen/weichen Proben und Lösezeit; der Worker merkt
+den Schleifenkörper je Form, Pinsel und Plan (`WesenStand.schleifenKoerper`, nur genauer Bau, Röhre ohne Maul und Beine);
+Haken `__editor.schleifenKoerper()`; der Chip zeigt die geplanten Schleifen mit.
+
+**Tore (Tests `kern/schleifenKoerper.test.ts`, zehn Körper im Editor-Ablauf; Register „Befunde aus P1 Tag 2–3“):**
+
+| Fall | Δ S/F/T heute → neu (px, Tor 0,5) | Überstand F/T (Tor 0,5) | umgeklappt (Tor 0) | Falten frei/Kappe heute → neu | Knicke Stufe 1 95 %/max (Tor 20°/30°) | Wendepunkte (Tor 0) | gebunden F · T, aufgegeben, weich |
+|---|---|---|---|---|---|---|---|
+| Kugel ✓ | 0,3/0,2/0,3 → 0,2/0,1/0,1 | 0,1/0,1 | 0 | 2,9/3,1° → 2,9/2,2° | 11,2/11,5° | 0 | 308/308 · 308/308 |
+| Ei | 0,3/0,4/0,4 → 0,2/**1,1**/0,1 | **1,1**/0,1 | 0 | 3,5/5,0° → 3,9/4,1° | 11,8/14,4° | 0 | alle |
+| Kegel | 2,1/7,3/2,6 → **2,5/3,9**/0,4 | **4,1**/0,6 | 0 | 14,1/9,7° → 11,6/5,5° | 18,7/**38,1°** | 2 | 398/452 · 462/462, 54 aufgegeben, 52 weich |
+| Würfel | 1,1/2,7/1,6 → 1,5/4,3/4,2 | 5,3/4,2 | 54 (Kappe hinten) | 11,1/54,1° → 26,7/9,9° | 20,5/77,7° | 6 | alle |
+| Pilz | 5,6/6,3/2,0 → 9,8/29,4/4,8 | 50,3/5,2 | 1 511 | 6,2/15,7° → 175,2/25,7° | 50,8/175,8° | 8 | 282/316 · 285/290 |
+| Robbe | 4,0/6,2/12,5 → 7,7/1,0/5,1 | 1,0/15,5 | 248 (Ring 14–15) | 10,8/11,1° → 178,9/16,7° | 24,7/175,7° | 6 | alle, 141 weich |
+| Rex | 1,1/7,3/1,6 → 4,6/9,0/1,8 | 7,4/1,8 | 210 (Ring 9–11) | 14,0/10,7° → 179,3/14,0° | 26,5/174,4° | 5 | 173/198 (Widerspruch 6,6 px) · 322/322, 25 aufgegeben |
+| Tigerkopf | 2,5/2,1/6,2 → 2,9/1,3/6,2 | 7,7/12,7 | 81 (Ring 13) | 24,1/4,4° → 178,2/4,7° | 16,2/145,4° | 9 | 360/364 · 412/412 |
+| Langhals | 1,5/4,0/3,1 → 4,1/4,4/2,0 | 6,7/2,0 | 148 (Ring 17–19) | 14,5/8,6° → 179,2/7,2° | 23,2/175,8° | 11 | 341/344 · 226/228, 38 weich |
+| Vase | 1,3/2,3/13,8 → 1,6/2,4/6,5 | 3,9/9,1 | 58 (Ring 2–3) | 10,9/9,0° → 78,8/12,1° | 22,7/74,7° | 4 | 404/436 · 310/310, 282 weich |
+| Lösen (Tor 50 ms) | Kugel 603 ms (Zerlegungen 387 ms; 1 206 Unbekannte, Hülle 268 305); alle 400–670 ms | | | | | | |
+
+Ente (Röhre): Top 46,6 → 43 px (Flügel) — nicht in der Liste. **Bestanden: 1 von 10** (Tor „≥ 11 von 12“). Der Prüfplan nennt
+den **Abbruch**: „ein widerspruchsfreier Körper bleibt über 1 px, oder eine Umrissschleife lässt sich nicht als Käfigkurve
+legen, ohne den Körper zu verzerren“ — beides trifft zu (Ei Front 1,1 px; umgeklappte Flächen an sieben Körpern).
+
+**Im Editor gemessen** (`p1-koerper-editor.mjs`, Kugel, Ei, Kegel, Robbe, Langhals, Vase): dieselben Δ wie im Test; Umschalten
+1,3–1,6 s (Worker: Schleifenkörper 510–650 ms, dazu Liniennetz und Δ neu). Bogen `docs/progress/editor/p1-koerper-2026-11-03.jpg`
+(je Fall Blätter mit Δ, Bühne Earle 45°, Zebra 45°, heute | aus den Schleifen); Drahtgitter heute | neu in den drei Ansichten
+`p1-koerper-draht-{kegel,robbe,langhals,pilz}-2026-11-03.jpg` (Skript `p1-koerper-bild.ts` + `html-shot.mjs`).
+
+**Lesart (was die Bilder zeigen):**
+- Wo die Röhre die Schleifen glatt erreichen kann, wirkt der Löser: Kugel und Ei bleiben sauber (Zebra ruhig), Kegel Front 7,3
+  → 3,9 px, Robbe Front 6,2 → 1,0 und Top 12,5 → 5,1, Vase Top 13,8 → 6,5 — bei weitgehend gleichen Falten (Kegel sogar besser).
+- Die umgeklappten Flächen sitzen immer dort, wo eine Schleife etwas verlangt, das die Röhre mit 16 Punkten je Ring und ihrer
+  Ringverteilung nicht hat: Flossen der Robbe (Ring 14–15, Zebra zeigt Falten am Bauch), Hut-Überhang des Pilzes (Stielringe
+  werden an die Hutschleife gezogen), Brust unter dem Hals beim Langhals (Ring 17–19), Kasten-Kappen des Würfels. Dort werden
+  Proben zwar weich gebunden oder aufgegeben, der Rest zieht den Nachbarbereich trotzdem in die Falte.
+- Die Seite wird an Robbe, Rex, Langhals schlechter (4 → 7,7; 1,1 → 4,6; 1,5 → 4,1 px): Spitzen und Falten der Front/Top-Bindung
+  stehen in der Seitenansicht über.
+- Der Weg, den der Plan vorsah — „die Ringe, die eine Schleife braucht, werden von der Schleife gesetzt“ — wurde nicht gebaut:
+  Der Löser legt nur Käfigpunkte, keine neuen Ringe und keine Teile. Genau das fehlt an Flossen, Hut und Brust.
+
+**Entscheidung für Florian (Prüfplan-Abbruch):**
+- **A — Kandidat B:** Umrisse wie heute (Zielform aus der Sichthülle, V4), Stücknetz nur für Einsätze (P2); die geplanten
+  Schleifen von Tag 1 bleiben als ruhige Anzeige und für die Bedienung (Tag 4: ziehen), der Körper folgt ihnen nicht hart.
+- **B — weiter in P1:** Struktur folgt den Schleifen (Ringe und Teile aus den Schleifen: Flossen/Flügel/Hut als Ausstülpung des
+  Baums (S6/S7), Kragen-Ringe an Hälsen), dann derselbe Löser — die eigentliche Arbeit von „die Ringe werden von der Schleife
+  gesetzt“, geschätzt 3–5 Tage, Ausgang offen.
+- **C — Mischform:** der Schleifenkörper nur dort, wo er heute hilft (Körper ohne Teile, kleine Abstände), weiche Bindung als
+  Standard (keine Falten), Δ-Verbesserung sichtbar, aber keine exakten Umrisse.
+Bis zur Entscheidung bleibt der Chip ein Versuch (Standard „Körper heute“); nichts am Standardbau geändert.

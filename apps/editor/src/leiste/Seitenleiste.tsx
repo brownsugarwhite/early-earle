@@ -266,9 +266,45 @@ function KantenBereich() {
           ))}
         </div>
       )}
+      {bauweise === 'kern' && <SchleifenKoerperChips />}
       <KantenListe />
       {inhalt}
     </section>
+  );
+}
+
+/** P1 Tag 2–3: Körper aus den geplanten Umrissschleifen (Chip) mit den Zahlen des Berichts. */
+function SchleifenKoerperChips() {
+  const an = useKernAnzeige((s) => s.schleifenKoerper);
+  const info = useKernAnzeige((s) => s.info);
+  const b = info?.schleifen;
+  const px = (v: number) => v.toFixed(1).replace('.', ',');
+  return (
+    <>
+      <div className="umschalter stufen" role="radiogroup" aria-label="Körper aus den Schleifen" title="P1 Tag 2–3: der Körper folgt den geplanten Umrissschleifen (Naht, Top und Front hart, Zielform des heutigen Baus als Füllung); Röhre ohne Maul und Beine, nur im genauen Bau">
+        {(['heute', 'schleifen'] as const).map((k) => (
+          <button key={k} className={(an ? 'schleifen' : 'heute') === k ? 'chip aktiv' : 'chip'} data-schleifenkoerper={k} onClick={() => useKernAnzeige.getState().setzeSchleifenKoerper(k === 'schleifen')}>
+            {k === 'heute' ? 'Körper heute' : 'aus den Schleifen (P1)'}
+          </button>
+        ))}
+      </div>
+      {an && b && (
+        <dl className="werte" data-schleifen-werte="">
+          <dt>Rest an den Schleifen F/T</dt>
+          <dd data-schleifen-rest={`${px(b.rest.front.max)}/${px(b.rest.top.max)}`}>{px(b.rest.front.max)} / {px(b.rest.top.max)} px</dd>
+          <dt>Überstand F/T</dt>
+          <dd data-schleifen-ueberstand={`${px(b.ueberstand.front)}/${px(b.ueberstand.top)}`}>{px(b.ueberstand.front)} / {px(b.ueberstand.top)} px</dd>
+          <dt>Proben gebunden F/T</dt>
+          <dd>
+            {b.proben.front.gebunden}/{b.proben.front.gezeichnet} · {b.proben.top.gebunden}/{b.proben.top.gezeichnet}
+            {b.aufgegeben.front + b.aufgegeben.top ? ` · aufgegeben ${b.aufgegeben.front + b.aufgegeben.top}` : ''}
+            {b.weich.front + b.weich.top ? ` · weich ${b.weich.front + b.weich.top}` : ''}
+          </dd>
+          <dt>Lösen</dt>
+          <dd data-schleifen-ms={b.ms.toFixed(0)}>{b.ms.toFixed(0)} ms ({b.runden} Runden)</dd>
+        </dl>
+      )}
+    </>
   );
 }
 

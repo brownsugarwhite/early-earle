@@ -873,3 +873,30 @@ Schlusskontur als Vorschläge, SVG), Züge `plan-*` im Liniennetz, Chip „umris
   wird neu gerechnet (Planung selbst 8–13 ms). Weg: Plan als eigenen Worker-Auftrag nachreichen.
 - [x] V2-Linien zum Vergleich gemessen (Robbe, Käfig 20-mal um 0,1 px gewackelt): Median 0,07 px, 90 % 0,48 px, max 26 px,
   20 % der Linienpunkte über 0,2 px — die geplanten Schleifen 0 px.
+
+## Befunde aus P1 Tag 2–3 „Körper aus den Schleifen“ (03.11., eigene Messungen; `packages/shape/src/kern/schleifenKoerper.test.ts`)
+
+Gebaut (Prüfplan P1, Tag 2–3): `kern/schleifenKoerper.ts` (gekoppelter 3n-Löser: Naht, Top- und Front-Schleifen hart über die
+nächsten feinen Punkte, Zielform des heutigen Baus als Füllung), Chip „Körper heute | aus den Schleifen (P1)“ in der Tafel
+Körper, Front-Tiefe im Planer aus der berührenden Station. Tore nur an der Kugel gehalten; Abbruchkriterium des Prüfplans trifft.
+- [ ] **Umgeklappte Flächen an sieben von zehn Körpern** (Robbe 248, Rex 210, Langhals 148, Tigerkopf 81, Vase 58, Würfel 54,
+  Pilz 1 511), immer dort, wo die Röhre die Schleife nicht hat: Flossen (Robbe Ring 14–15), Hut-Überhang (Pilz), Brust unter
+  dem Hals (Langhals Ring 17–19), Kasten-Kappen (Würfel). Der Plan sieht vor, dass Schleifen Ringe und Teile setzen — das ist
+  nicht gebaut (Entscheidung A/B/C auf der Planseite).
+- [ ] **Δ Seite wird schlechter** (Robbe 4,0 → 7,7, Rex 1,1 → 4,6, Langhals 1,5 → 4,1 px): Spitzen der Front/Top-Bindung
+  stehen in der Seite über.
+- [ ] **Δ ≤ 0,5 px** nur Kugel; Ei Front 1,1 (Überstand 1,1), Kegel 2,5/3,9, Vase Top 6,5 (13,8 heute), Robbe Top 5,1 (12,5).
+- [ ] **Lösen 400–670 ms** statt ≤ 50 ms: sechs Runden mit je einer Zerlegung des 3n-Systems (Kugel: 387 ms Zerlegungen,
+  Hülle 268 305). Wege: Zerlegung je Topologie behalten und nur die Zuordnung als Rang-Korrektur, weniger Runden, oder die
+  Bindungen je Achse entkoppeln (dreimal n statt 3n — kostet die Skalarprodukte).
+- [ ] **Umschalten im Editor 1,3–1,6 s** (Schleifenkörper + Liniennetz + Δ im selben Bau).
+- [ ] **Ohne Zielform keine Form:** Ellipsen-Vorrang je Ring macht die Querschnitte zu Ellipsen (Robbe Front 45 px ohne
+  Schleifen); reine Laplace-Glättung lässt sie zu Sehnen einsinken (Volumen −64 %). „Fairness ohne Zielform“ (Plan) trägt die
+  Form zwischen den Schleifen nicht — die Front-Zeichnung muss als Zielform hinein (wie heute).
+- [ ] **Front-Tiefe im Planer** jetzt aus der berührenden Station: Würfel sinkt an den gerundeten Ecken um 20 px ein
+  (Plateau-Mitte springt), Rex/Langhals/Ente/Robbe Front mit 3–7 Krümmungswechseln je Stück (Tor b wörtlich verfehlt,
+  `it.fails`); die Top-Schleifen halten (b) weiter (Robbe Top erzwungen).
+- [ ] **Tag 4 (Bedienung, Widersprüche) und Tag 5 nicht gebaut** — hängen an der Entscheidung.
+- [x] Was trägt: Kugel/Ei sauber, Kegel Front 7,3 → 3,9 px bei besseren Falten (14,1 → 11,6°), Robbe Front 6,2 → 1,0, Vase
+  Top 13,8 → 6,5; Naht längs frei (Lehre), schrittweise Ziele (Sprünge über 10 px klappten um), weiche Bindung ferner Proben,
+  Zielform als Füllung, Bezugslagen aus `abl.fein` (mit Pinsel-Deltas).

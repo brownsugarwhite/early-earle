@@ -33,7 +33,7 @@ import { PALETTEN } from './wesenLook';
 
 declare global {
   interface Window {
-    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number; netzLagen?: () => number[] | null; poseLippen?: () => unknown; projizieren?: (feld: 'creation' | 'seite' | 'front' | 'top', p: [number, number, number]) => [number, number] | null; netzPunkt?: (np: NetzPunkt) => [number, number, number] | null; strahlFeld?: (feld: 'creation' | 'seite' | 'front' | 'top', px: number, py: number, beideSeiten?: boolean) => { punkt: [number, number, number]; richtung: [number, number, number] } | null; netzSicht?: () => unknown; teile?: () => unknown; koerperBaum?: () => unknown; schleifen?: () => unknown; schleifenPixel?: () => unknown; spiel?: () => unknown; umrissPlan?: () => unknown; umrissSvg?: (blatt: 'seite' | 'front' | 'top') => string | null };
+    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number; netzLagen?: () => number[] | null; poseLippen?: () => unknown; projizieren?: (feld: 'creation' | 'seite' | 'front' | 'top', p: [number, number, number]) => [number, number] | null; netzPunkt?: (np: NetzPunkt) => [number, number, number] | null; strahlFeld?: (feld: 'creation' | 'seite' | 'front' | 'top', px: number, py: number, beideSeiten?: boolean) => { punkt: [number, number, number]; richtung: [number, number, number] } | null; netzSicht?: () => unknown; teile?: () => unknown; koerperBaum?: () => unknown; schleifen?: () => unknown; schleifenPixel?: () => unknown; spiel?: () => unknown; umrissPlan?: () => unknown; umrissSvg?: (blatt: 'seite' | 'front' | 'top') => string | null; schleifenKoerper?: () => unknown };
   }
 }
 
@@ -64,6 +64,8 @@ export function Szene3D() {
         spiel: () => ({ an: useKernAnzeige.getState().spiel, normalen: useKernAnzeige.getState().spielNormalen, info: aktuellesNetz()?.netz.info.spiel ?? null, hoehe: aktuellesNetz()?.netz.hoehe ?? null, dreiecke: r.vertexAnzahl / 3 }),
         // P1 (Tag 1): geplante Umrissschleifen des gezeigten Netzes
         umrissPlan: () => aktuellesNetz()?.netz.umrissPlan ?? null,
+        // P1 (Tag 2–3): Schleifenkörper an? und sein Bericht
+        schleifenKoerper: () => ({ an: useKernAnzeige.getState().schleifenKoerper, bericht: aktuellesNetz()?.netz.info.schleifen ?? null, blatt: aktuellesNetz()?.netz.info.blatt ?? null }),
         umrissSvg: (blatt) => {
           const n = aktuellesNetz();
           return n?.netz.umrissPlan ? umrissSvg(useEditor.getState().dok, n.netz.umrissPlan, blatt) : null;
@@ -447,7 +449,7 @@ export function Szene3D() {
         // P1: geplante Umrissschleifen an/aus → Liniennetz neu (Stand bleibt, nur der genaue Bau rechnet das Netz)
         useUi.subscribe((s, v) => s.netzUmrisse !== v.netzUmrisse && (s.netzUmrisse === 'geplant' || v.netzUmrisse === 'geplant') && useUi.getState().bauweise === 'kern' && bauen(useEditor.getState().dok)),
         // Beweis 4: Look oder Palette gewechselt → Kern neu bauen
-        useKernAnzeige.subscribe((s, v) => (s.look !== v.look || s.palette !== v.palette || s.maul !== v.maul || s.kaefig !== v.kaefig || s.beine !== v.beine || s.schwung !== v.schwung || s.stil !== v.stil || s.spiel !== v.spiel || s.spielNormalen !== v.spielNormalen) && useUi.getState().bauweise === 'kern' && bauen(useEditor.getState().dok)),
+        useKernAnzeige.subscribe((s, v) => (s.look !== v.look || s.palette !== v.palette || s.maul !== v.maul || s.kaefig !== v.kaefig || s.beine !== v.beine || s.schwung !== v.schwung || s.stil !== v.stil || s.spiel !== v.spiel || s.spielNormalen !== v.spielNormalen || s.schleifenKoerper !== v.schleifenKoerper) && useUi.getState().bauweise === 'kern' && bauen(useEditor.getState().dok)),
         // Biege-Regler losgelassen: genau bauen
         useWirbelAnzeige.subscribe((s, v) => v.zieht && !s.zieht && useUi.getState().bauweise === 'wirbel' && bauen(useEditor.getState().dok)),
       );

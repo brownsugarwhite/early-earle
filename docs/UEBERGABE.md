@@ -1,4 +1,4 @@
-# Übergabe (Stand 03.11.2026: P0a gebaut und angesehen, P1 Tag 1 „Umrissschleifen geplant“ gebaut, Abnahme offen)
+# Übergabe (Stand 03.11.2026: P0a angesehen, P1 Tag 1 gebaut, P1 Tag 2–3 gebaut und am Abbruchkriterium — Entscheidung offen)
 
 Branch `claude/editor-grundlayout`, PR mit Auto-Fix. **Diese Datei ist der Einstieg für eine frische Sitzung.** Der Kernring
 bleibt eingefroren; alles Neue liegt hinter Schaltern (`stufen`, `umrissPlan`), ohne Schalter bitgleich.
@@ -75,18 +75,35 @@ Planseite „Stand P1 Tag 1“ im Prüfplan, Register „Befunde aus P1 Tag 1“
 - **Offen:** Tiefe aus Vereinigungs-Intervallen (Hals liegt in der Mitte der Vereinigung), Schlusskontur nur interpoliert,
   keine ganz verdeckten Schleifen, jede konkave Ecke ein T-Stoß, Umschalten 0,7–0,9 s (ganzes Liniennetz neu).
 
-**Nächster Schritt:** Florian sieht den Bogen (Tag 1 verlangt „ein Bild aus dem Editor“) — dann **Tag 2–3**: die Schleifen
-werden Käfigkurven (Naht, Breitenlinie je Ring gleitend, Frontschleife aus Reihen- und Ringstücken; Ringe von der Schleife
-gesetzt, Zuordnung als dynamische Programmierung) und **ein Löser** (hart Lage + Silhouettenbedingung auf allen Schleifen,
-weich Krümmungsvariation ohne Zielform, Sichthülle nur als Prüfung), Tore der Tabelle im Prüfplan (Δ ≤ 0,5 px, Überstand,
-Falten, Flachband, Käfiggüte Stufe 1, Zebra), dann Tag 4 Bedienung/Widersprüche, Tag 5 Bögen. Start-Prompt für eine frische
-Sitzung:
+## 03.11.: P1 Tag 2–3 „Körper aus den Schleifen“ gebaut — Tore verfehlt, Abbruchkriterium trifft (Entscheidung offen)
 
-> Lies `CLAUDE.md`, `docs/UEBERGABE.md`, den Prüfplan `docs/plans/2026-11-02-pruefplan-p0-p3.md` (P1 mit „Stand P1 Tag 1“) und
-> `packages/shape/src/kern/umrissPlan.ts`. Baue P1 Tag 2–3 nach Plan: Käfig um die geplanten Schleifen und ein Löser, im Kern
-> hinter `umrissPlan`/einem neuen Schalter, ohne Schalter bitgleich, der Kernring bleibt eingefroren; Tore als Tests, verfehlte
-> als `it.fails` mit Registereintrag, Kontaktbögen, Planseite „Stand“, Register, Übergabe, Commit und Push. Nichts als bestanden
-> melden; nach dem Beweis anhalten und mir die Bilder zeigen.
+Planseite „Stand P1 Tag 2–3“ im Prüfplan (mit der Entscheidung A/B/C), Register „Befunde aus P1 Tag 2–3“.
+- **Kern `packages/shape/src/kern/schleifenKoerper.ts`** (hinter `Bauplan.schleifenKoerper`, ohne Option bitgleich): ein
+  gekoppelter 3n-Löser — Naht (z = 0, quer zur Kurve), Top- und Front-Schleifen über die nächsten feinen Punkte (Lage längs der
+  Umrissnormale, P·w stationär quer zur Schleife; längs und Tiefe frei), schrittweise Ziele, ferne Proben weich, Zielform
+  des heutigen Baus als Füllung (Abweichung vom Plan: ohne Zielform keine Form). Planer: Front-Tiefe aus der berührenden
+  elliptischen Station (`frontSoll`), nicht mehr Intervallmitte.
+- **Editor:** Tafel Körper → „Körper heute | aus den Schleifen (P1)“ (`?schleifen=1`) mit Rest/Überstand/Lösezeit; Worker
+  merkt den Körper je Form, Pinsel und Plan; Haken `__editor.schleifenKoerper()`.
+- **Ergebnis:** nur die Kugel hält alle Tore; Kegel Front 7,3 → 3,9 px, Robbe Front 6,2 → 1,0 und Top 12,5 → 5,1, Vase Top
+  13,8 → 6,5 — aber umgeklappte Flächen an sieben Körpern (Flossen, Hut, Brust, Kasten-Kappen: was die Röhre nicht hat),
+  Seite an Robbe/Rex/Langhals schlechter, Lösen 400–670 ms (Tor 50). Tests `kern/schleifenKoerper.test.ts` (Kugel `it`,
+  neun `it.fails`), `umrissPlan.test.ts` (Front-Tor b als `it.fails`).
+- **Bilder:** `docs/progress/editor/p1-koerper-2026-11-03.jpg` (Blätter mit Δ, Bühne, Zebra; heute | neu),
+  `p1-koerper-draht-{kegel,robbe,langhals,pilz}-2026-11-03.jpg` (Drahtgitter); Skripte `p1-koerper.ts` (Messreihe),
+  `p1-koerper-bild.ts` + `html-shot.mjs` (Drahtgitter), `p1-koerper-editor.mjs` (Editor-Bogen).
+
+**Nächster Schritt: Florians Entscheidung** (Planseite, Ende von „Stand P1 Tag 2–3“): **A** Kandidat B (Umrisse wie heute,
+Stücknetz nur für Einsätze, Schleifen als ruhige Anzeige und Griffe), **B** weiter in P1 mit „Struktur folgt den Schleifen“
+(Ringe und Teile aus den Schleifen, 3–5 Tage, Ausgang offen), **C** Mischform (weiche Bindung als Standard, sichtbare
+Δ-Verbesserung ohne exakte Umrisse). Bis dahin ist der Chip ein Versuch (Standard „Körper heute“). Danach je nach Wahl P1 Tag
+4–5, P2 oder P3. Start-Prompt für eine frische Sitzung:
+
+> Lies `CLAUDE.md`, `docs/UEBERGABE.md` und den Prüfplan `docs/plans/2026-11-02-pruefplan-p0-p3.md` (Stand P1 Tag 1 und Tag
+> 2–3 mit der Entscheidung A/B/C). Meine Entscheidung: […]. Arbeite danach streng nach Plan: im Kern hinter Schaltern, ohne
+> Schalter bitgleich, der Kernring bleibt eingefroren; Tore als Tests (verfehlte als `it.fails` mit Registereintrag),
+> Kontaktbögen, Planseite „Stand“, Register, Übergabe, Commit und Push. Nichts als bestanden melden; nach jedem Beweis anhalten
+> und mir die Bilder zeigen.
 
 ## Entscheidungen, die Florian treffen muss (Gegenprüfung, Abschnitt 10)
 
@@ -127,6 +144,9 @@ Rex mittel gerade (Knick an der Kreuzung), Robbe hoch J (Engstelle), E2.4, E3–
   `teilA/e1-reihe-k2.ts` (Kernring-Reihe), `einsatz-loesen.ts` (Mundwinkel nah), `raster-gleichlauf.ts` (V8-Gegenprobe unter Last).
 - P1: `kern/umrissPlan.test.ts` (Tore Tag 1, `--reporter=verbose` für die Zahlen), Diagnose
   `npx vite-node ../../apps/editor/scripts/pruefen/umriss-plan-diag.ts <körper> [ansicht]`, Editor `p1-plan.mjs` (Bogen + Tor d).
+- P1 Tag 2–3: `kern/schleifenKoerper.test.ts` (Tore je Körper), Messreihe `npx vite-node ../../apps/editor/scripts/pruefen/p1-koerper.ts`
+  (`FAELLE`, Optionen `FAIR GEWICHT TANGENTE RUNDEN ZIEL NUR …`), Drahtgitter `p1-koerper-bild.ts` → HTML, dann aus `apps/editor`
+  `node scripts/pruefen/html-shot.mjs [--jpg] <datei.html>`; Editor-Bogen `p1-koerper-editor.mjs` (run-check.sh).
 - Editor-Prüfungen (Playwright, eigener Vite auf 5192): `apps/editor/scripts/pruefen/run-check.sh <skript.mjs>`; Liste in
   `apps/editor/scripts/pruefen/README.md`.
 
