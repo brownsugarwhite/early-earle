@@ -816,3 +816,29 @@ Bögen auf der Planseite 20.10., „Stand V2“. Je Punkt der Schritt, der ihn a
   Rundungsfehlern kippt. Bei Toren um 0,5 px an Kästen eine Toleranz für die Zuordnung einbauen (P1).
 - [ ] **Stufe 1 braucht Grenzlagen:** rohe Catmull-Clark-Lagen verschieben den Umriss um 0,9–4,8 px (Mittel 0,5–0,8), die
   Grenzlage (Halstead-Maske derselben Stufe) um 0,4–2,8 (Mittel 0,1–0,6) — eine Maske je Käfigpunkt beim Backen (P0a).
+
+## Befunde aus P0a „Spielstufe im Editor“ (03.11., eigene Messungen; `packages/shape/src/kern/spielstufe.test.ts`)
+
+Gebaut (Prüfplan P0a): Bauplan-Option `stufen` (Anzeige-Stufe; 1 = Spielnetz) und `stufenNormalen` (grenze | roh) im Kern
+(`kern/spielstufe.ts`: Eckenwerte der Stufe 3 auf die Ecken der Stufe 1 umsortiert — Punkte auf der Grenzfläche, Normalen der
+glatten Fläche an denselben Punkten, Deskriptoren, Atlas, Ruhelage; ohne Option bitgleich), Umschalter „Spiel“ auf der Bühne
+und in der Tafel Spiel (Dreiecke gegen 8 000, Umriss Stufe 1 ↔ 3 in Gerätepixeln bei 300 px Höhe), Tore als Tests.
+- [ ] **Umriss-Tor (≤ 1 Gerätepixel bei 300 px Höhe) an fünf von sieben Röhren-Körpern verfehlt:** Kugel 0,7 und Ei 0,8 ✓;
+  Rex 2,8 (Seite; Höhe nur 0,356 Kacheln → Faktor 1,8), Langhals 1,1, Robbe 1,5, Tigerkopf 3,0 (Front), Kegel 3,0 (Front).
+  Ursache: 16 Punkte je Ring und 24 Ringe sind für Stufe 1 bei Spielgröße zu grob (Sagitta); Kasten und Kegel in der Front am
+  schlechtesten. Eingabe für die Dichteregel des neuen Baus (Gegenprüfung 3.6: ≥ 24 Punkte je Rumpfring, Ringe nach Krümmung
+  auch aus Front und Top). `it.fails`.
+- [ ] **Facetten-Tor (abseits gezeichneter Falten 95 % ≤ 12°, max ≤ 25°) an denselben fünf verfehlt:** Kugel 11,2°/11,6°, Ei
+  11,9°/15,9° ✓; Rex 22°/88°, Langhals 22°/45°, Robbe 23°/53°, Tigerkopf 17°/74°, Kegel 20°/47° (Grenzlage). Das sind die
+  Käfigfehler aus der Messung vom 02.11. (Rex: erstes Ringband an der Schnauze), die Stufe 3 verdeckt. `it.fails`.
+- [ ] **Pose-Tor am Rex mit Maul verfehlt** (gemalte Augen; Höhe 0,356): Fressen 50 % Umriss S/F/T 1,5 / 1,6 / 2,1, 100 %
+  1,7 / 1,7 / 2,1 Gerätepixel; 4 540 Dreiecke auf Stufe 1 (Körper samt Lippe, Tasche, Rachen des alten Maulbaus). Gleiche
+  Ursache wie am Körper. `it.fails`.
+- [ ] **Spielstufe mit Augapfel-Höhle oder Rundmaul noch nicht:** Der Aufsatz ändert die feinen Flächen (`hoehlenFein`), die
+  Umsortierung gilt nur für die reine Unterteilung → Stufe 3 bleibt, das Spiel-Feld nennt den Grund (Library-Rex hat
+  Augäpfel). Weg: Höhle auf Stufe 1 ebenfalls als Aufsatz bauen (`hoehlenTopologie` mit Stufenzahl 1) — oder im neuen Bau die
+  Augenschleife als Linie des Netzes (P3).
+- [ ] **Werkzeuge in der Spielstufe aus** (Treffer null): Anzeige, kein Pinsel, keine Augen per Klick. Für das Spiel-Bild
+  gewollt; die Tafel sagt es.
+- [x] Umschalten baut den Käfig nicht neu (gleicher Stand, Ableitung 0 ms): Rex erstes Mal 59 ms (mit Umrissvergleich),
+  danach 15 ms (Kern); Budget-Tor an allen sieben Röhren-Körpern erreicht (3 200 Dreiecke), Teile 3 344–6 288.
