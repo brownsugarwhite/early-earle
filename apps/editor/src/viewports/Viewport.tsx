@@ -10,6 +10,8 @@ import { Pauspapier, pauspapierAusDatei } from './Pauspapier';
 import { Steuerung3D } from './Steuerung3D';
 import { View2D } from './View2D';
 import { useKernAnzeige } from '../kern/kernBau';
+import { aktuellesNetz } from '../kern/netzStand';
+import { SPIEL_BUDGET, SPIEL_HOEHE_PX, spielGeraetepixel } from '@ee/shape/kern';
 import { angleichenVon } from '../editing/gekoppelt';
 import { usePoseLippen } from '../posen/poseLippen';
 import { ZielChips } from '../posen/ZielChips';
@@ -104,6 +106,35 @@ function ZebraKnopf() {
   return <button className={`eckknopf zebra${an ? ' aktiv' : ''}`} data-zebra="" title={an ? 'Zebrastreifen aus' : 'Zebrastreifen: Kanten prüfen'} tabIndex={-1} onClick={() => useUi.getState().setzeZebra(!an)} />;
 }
 
+/** P0a: Spielstufe an/aus (Stufe 1 mit Grenzlagen und Grenznormalen statt Stufe 3 — was das Spiel zeigt). */
+function SpielKnopf() {
+  const an = useKernAnzeige((s) => s.spiel);
+  return <button className={`eckknopf spiel${an ? ' aktiv' : ''}`} data-spiel-knopf="" title={an ? 'Spielstufe aus: wieder Stufe 3 (Editor)' : 'Spielstufe: der Körper auf Stufe 1, wie das Spiel ihn zeigt'} tabIndex={-1} onClick={() => useKernAnzeige.getState().setzeSpiel(!an)} />;
+}
+
+/** P0a: Kennzahlen der Spielstufe im Bühnentitel — Dreiecke gegen das Budget, Umriss der Stufe 1 gegen Stufe 3 in Gerätepixeln bei Spielgröße. */
+function SpielTitel() {
+  const an = useKernAnzeige((s) => s.spiel);
+  const sp = useKernAnzeige((s) => s.info?.spiel);
+  if (!an || !sp) return null;
+  const hoehe = aktuellesNetz()?.netz.hoehe ?? 0;
+  const budget = sp.dreiecke <= SPIEL_BUDGET ? 'gut' : 'schlecht';
+  const u = sp.umriss ? Math.max(spielGeraetepixel(sp.umriss.seite.max, hoehe), spielGeraetepixel(sp.umriss.front.max, hoehe), spielGeraetepixel(sp.umriss.top.max, hoehe)) : null;
+  const uStufe = u === null ? '' : u <= 1 ? 'gut' : u <= 2 ? 'mittel' : 'schlecht';
+  return (
+    <>
+      <span className={`vp-delta ${budget}`} data-spiel-dreiecke={sp.dreiecke} title={sp.grund ? `Spielstufe hier noch nicht: ${sp.grund}` : `Dreiecke des gezeigten Netzes auf Stufe ${sp.stufe} (Körper ${sp.koerperDreiecke}) gegen das Budget je Wesen auf dem Brett`}>
+        {sp.grund ? `Stufe ${sp.stufe} (${sp.grund})` : `Spiel · ${sp.dreiecke.toLocaleString('de-DE')} / ${SPIEL_BUDGET.toLocaleString('de-DE')} Dreiecke`}
+      </span>
+      {u !== null && (
+        <span className={`vp-delta ${uStufe}`} data-spiel-umriss={u.toFixed(2)} title={`Umriss der Stufe 1 gegen Stufe 3 (die Grenzfläche), größter Abstand in den drei Blättern, in Gerätepixeln bei ${SPIEL_HOEHE_PX} px Höhe des Wesens (px bei 461 je Kachel: Seite ${sp.umriss!.seite.max.toFixed(1)}, Front ${sp.umriss!.front.max.toFixed(1)}, Top ${sp.umriss!.top.max.toFixed(1)})`}>
+          Umriss ≤ {px(u)} px
+        </span>
+      )}
+    </>
+  );
+}
+
 /** Titel als Tab (Florian 12.10.): Front ↔ Back, Top ↔ Bottom; Seite und 3D bleiben ein Titel. */
 function Titel({ id }: { id: ViewId }) {
   const blick = useUi((s) => (id === 'front' || id === 'top' ? s.blick[id] : null));
@@ -111,7 +142,13 @@ function Titel({ id }: { id: ViewId }) {
   if (id === 'creation') {
     // Versuch 12.10. abends: Bauweise zum Vergleichen umschalten (wie „front · back“); seit M3 ist der Kern Standard,
     // die Versuchs-Tabs erscheinen nur noch mit `?versuche=1` (M4 räumt sie auf)
-    if (!VERSUCHE_ZEIGEN) return <div className="vp-titel">bühne</div>;
+    if (!VERSUCHE_ZEIGEN)
+      return (
+        <div className="vp-titel">
+          bühne
+          <SpielTitel />
+        </div>
+      );
     return (
       <div className="vp-titel blick-tabs" role="tablist">
         {(
@@ -231,6 +268,7 @@ export function ViewportOber({ id }: { id: ViewId }) {
       {/* Plan 9.3: die Stufe wählt der Stamm; am Viewport bleiben Zebra (Prüfansicht) und Vergrößern */}
       <div className="eckknoepfe">
         {id === 'creation' && <ZebraKnopf />}
+        {id === 'creation' && <SpielKnopf />}
         <button className="eckknopf pink" data-maximieren={id} title={maximiert ? 'Zurück ins Raster (⌃Leertaste)' : 'Vergrößern (⌃Leertaste)'} tabIndex={-1} onClick={() => useUi.getState().maximieren(id)} />
       </div>
     </div>

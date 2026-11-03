@@ -1,7 +1,7 @@
 import { kernMaulAktiv, useKernAnzeige } from '../kern/kernBau';
 import { kieferAutomatik, maulOptionenDok, poseKnochen, setzeMaulOptionen, setzePoseKnochen } from '../kiefer/kieferOptionen';
 import { aktuellesNetz, useNetzStand } from '../kern/netzStand';
-import { type MaulOptionen, MAUL_STANDARD, RUNDMAUL_STANDARD, maulOptionenVorlage, maulVorn, pruefwesenBauplan } from '@ee/shape/kern';
+import { type MaulOptionen, MAUL_STANDARD, RUNDMAUL_STANDARD, SPIEL_BUDGET, SPIEL_HOEHE_PX, maulOptionenVorlage, maulVorn, pruefwesenBauplan, spielGeraetepixel } from '@ee/shape/kern';
 import { naechsteStufe, stufe } from '../stamm/stufen';
 import { pauspapierAusDatei } from '../viewports/Pauspapier';
 import { nachzeichnenBlatt } from '../nachziehen/nachzeichnen';
@@ -1318,11 +1318,42 @@ function HautFeld() {
   );
 }
 
-/** Tafel „Spiel“: Kennzahlen des Kerns; Brettvorschau und Budget kommen in Phase 5. */
+/** Tafel „Spiel“: Spielstufe (P0a) und Kennzahlen des Kerns; Brettvorschau und Export kommen in Phase 5. */
 function SpielFeld() {
   const info = useKernAnzeige((s) => s.info);
+  const spiel = useKernAnzeige((s) => s.spiel);
+  const normalen = useKernAnzeige((s) => s.spielNormalen);
+  const sp = info?.spiel;
+  const hoehe = aktuellesNetz()?.netz.hoehe ?? 0;
+  const gpx = (v: number) => spielGeraetepixel(v, hoehe).toFixed(1).replace('.', ',');
   return (
     <>
+      <h3>Anzeige</h3>
+      <Chips werte={['editor', 'spiel'] as const} aktiv={spiel ? 'spiel' : 'editor'} text={(w) => (w === 'editor' ? 'Editor (Stufe 3)' : 'Spiel (Stufe 1)')} attribut="spiel" onWahl={(w) => useKernAnzeige.getState().setzeSpiel(w === 'spiel')} />
+      {spiel && <Chips werte={['grenze', 'roh'] as const} aktiv={normalen} text={(w) => (w === 'grenze' ? 'Normalen der Grenzfläche' : 'Normalen roh (Vergleich)')} attribut="spielnormalen" onWahl={(w) => useKernAnzeige.getState().setzeSpielNormalen(w)} />}
+      {spiel && sp && (
+        <dl className="werte" data-spiel-werte="">
+          <dt>Dreiecke</dt>
+          <dd data-spiel-dreiecke={sp.dreiecke}>
+            {sp.dreiecke.toLocaleString('de-DE')} von {SPIEL_BUDGET.toLocaleString('de-DE')} {sp.dreiecke > SPIEL_BUDGET ? '— über dem Budget' : ''} (Körper {sp.koerperDreiecke.toLocaleString('de-DE')}, Stufe {sp.stufe})
+          </dd>
+          {sp.umriss && (
+            <>
+              <dt>Umriss Stufe 1 ↔ 3</dt>
+              <dd data-spiel-umriss={`${gpx(sp.umriss.seite.max)}/${gpx(sp.umriss.front.max)}/${gpx(sp.umriss.top.max)}`}>
+                Seite {gpx(sp.umriss.seite.max)} · Front {gpx(sp.umriss.front.max)} · Top {gpx(sp.umriss.top.max)} Gerätepixel bei {SPIEL_HOEHE_PX} px Höhe (Tor 1, Warnung ab 2); px bei 461: {sp.umriss.seite.max.toFixed(1)} · {sp.umriss.front.max.toFixed(1)} · {sp.umriss.top.max.toFixed(1)}
+              </dd>
+            </>
+          )}
+          {sp.grund && (
+            <>
+              <dt>Hinweis</dt>
+              <dd>{sp.grund}</dd>
+            </>
+          )}
+        </dl>
+      )}
+      <p className="hilfe">Spielstufe (Prüfplan P0a): der Körper auf Stufe 1 mit den Punkten auf der Grenzfläche und den Normalen der glatten Fläche — so bäckt das Spiel ihn. Werkzeuge greifen in der Spielstufe nicht (Anzeige); Δ, Linien und Zähne bleiben wie gebaut. Mit Augapfel-Höhle oder Rundmaul noch Stufe 3.</p>
       {info && (
         <dl className="werte">
           <dt>Käfig</dt>

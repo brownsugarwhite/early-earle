@@ -53,6 +53,12 @@ export const useKernAnzeige = create<{
   setzeKaefig: (an: boolean) => void;
   setzeBeine: (b: BeinArt) => void;
   setzeSchwung: (grad: number) => void;
+  /** P0a (Prüfplan 02.11.): Spielstufe — der Körper auf Stufe 1 (Grenzlagen, Grenznormalen) statt Stufe 3; `?spiel=1` */
+  spiel: boolean;
+  /** Normalen der Spielstufe: Grenznormalen (Standard) oder roh aus den Stufe-1-Flächen (Vergleich; `?spielnormalen=roh`) */
+  spielNormalen: 'grenze' | 'roh';
+  setzeSpiel: (an: boolean) => void;
+  setzeSpielNormalen: (n: 'grenze' | 'roh') => void;
 }>((set) => ({
   info: null,
   look: startLook,
@@ -69,6 +75,10 @@ export const useKernAnzeige = create<{
   setzeKaefig: (kaefig) => set({ kaefig }),
   setzeBeine: (beine) => set({ beine }),
   setzeSchwung: (schwung) => set({ schwung: Math.max(-60, Math.min(60, schwung)) }),
+  spiel: q.get('spiel') === '1',
+  spielNormalen: q.get('spielnormalen') === 'roh' ? 'roh' : 'grenze',
+  setzeSpiel: (spiel) => set({ spiel }),
+  setzeSpielNormalen: (spielNormalen) => set({ spielNormalen }),
 }));
 
 /**
@@ -202,6 +212,8 @@ export function bauplanAus(dok: Dokument): Partial<Bauplan> {
     earle: s.look === 'earle',
     kaefigLinien: s.kaefig,
     atlas: atlasAn,
+    // P0a: Spielstufe (Anzeige auf Stufe 1); ohne den Umschalter fehlt das Feld, der Bau ist bitgleich
+    ...(s.spiel ? { stufen: 1, stufenNormalen: s.spielNormalen } : {}),
     // Rig (Plan 5.2): Unterkiefergewichte als Farbe, nur in der Stufe „Posen & Leben“
     gewichteZeigen: useUi.getState().gewichteZeigen && useUi.getState().ebene === 'posen',
     ...umrisseAnfrage(dok),

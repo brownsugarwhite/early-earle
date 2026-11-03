@@ -493,6 +493,10 @@ button {
 .eckknopf.zebra {
   background: repeating-linear-gradient(0deg, #19232b 0 3px, #ffffff 3px 6px);
 }
+/* P0a: Spielstufe (Stufe 1, wie das Spiel zeigt) — grobes Schachbrett als Zeichen für das Spielnetz */
+.eckknopf.spiel {
+  background: conic-gradient(#19232b 0 25%, #c8f560 0 50%, #19232b 0 75%, #c8f560 0);
+}
 
 /* ---------- Liquid Glass (ohne Kontur: Glanz, Brechung, harter Versatzschatten) ---------- */
 .glas {

@@ -31,6 +31,8 @@ import { type LinienBericht, linienExakt } from './netz/linienExakt';
 import { baumDeskriptoren } from './grundkoerper/baumDeskriptoren';
 import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
 import { type DuennMatrix, anwenden3 } from '../subdivision/matrix';
+import type { Stufe } from '../subdivision/catmullClark';
+import { type SpielAnzeige, spielNetz } from './spielstufe';
 import { pfadAbtasten, vollerPfad } from '../profil';
 import { spantKasten, spantTeilProfil, vorlageBei } from '../spanten';
 import { kieferSchnitt } from './kieferSpant';
@@ -127,6 +129,13 @@ export type Bauplan = Ausstattung & {
   umrisse?: { id: string; gewichte: Record<string, number> }[];
   /** B7 „Aus der Vorschau“: die gezeigte Mischung als Daten einer neuen Pose ausgeben (`WesenNetz.mischung`) */
   mischung?: boolean;
+  /**
+   * P0a (Prüfplan 02.11.): Anzeige-Stufe der Unterteilung — 1 = Spielnetz (Stufe 1 auf den Grenzlagen mit den Normalen der
+   * glatten Fläche); fehlt = Bau-Stufe (heute 3, bitgleich). `stufenNormalen: 'roh'` nimmt zum Vergleich die Normalen aus
+   * den Flächen der Spielstufe. Nur Anzeige: Treffer sind dann aus, Δ, Linien und Werkzeuge rechnen weiter auf der Bau-Stufe.
+   */
+  stufen?: number;
+  stufenNormalen?: 'grenze' | 'roh';
 };
 
 /** B7: Mischung der Gewichte als neue Pose — Form (Ruhe-Deltas auf A, rechte Hälfte und Naht), Bezug, Stellung. */
@@ -173,6 +182,8 @@ export type WesenInfo = {
    * `fehlt` (Treppe), `ohne` (ohne Härte). Fehlt das Feld, gilt für alle Linien die Treppe (Teile, Maul, Beine).
    */
   linien?: LinienBericht[];
+  /** P0a: Kennzahlen der Spielstufe (nur mit `Bauplan.stufen`) */
+  spiel?: SpielAnzeige;
 };
 
 /** Reifen (M3): Ringe der gezeichneten Spanten auf dem Körper, mit Perlen an den Spant-Knoten. */
@@ -320,6 +331,8 @@ export type WesenStand = {
   maul: MaulArt;
   beine: BeinArt;
   klingen: KlingenStand | null;
+  /** P0a: Umrissvergleich der Spielstufe aus dem letzten genauen Bau (Schlüssel: Ruhewerte, Gewichte, Stufe) */
+  spiel?: { schluessel: string; umriss: NonNullable<SpielAnzeige['umriss']> };
   /** letzte Blatt-Abweichung (Schritt 4), während Gesten weiterverwendet */
   saum?: WesenNetz['saum'];
   widerspruch?: WesenNetz['widerspruch'];
@@ -969,7 +982,7 @@ type BaumKoerperNetz = Pick<WesenNetz, 'positionen' | 'normalen' | 'deskriptoren
   feinPunkte: number;
   info: { streifen: number; seiten: number; ms: number; fehler?: string };
   /** S7.2: Bezug für den schnellen Zug (Dokument des Baus, gelöster Käfig, Grenzmatrix, feine Flächen) */
-  zug: { dok: Dokument; xyz: Float64Array; grenze: DuennMatrix; flaechen: number[][] };
+  zug: { dok: Dokument; xyz: Float64Array; grenze: DuennMatrix; flaechen: number[][]; stufen: Stufe[] };
   /** S7.3: Treffer und Pinsel auf dem Baum — Kachelung der feinen Flächen, Käfigflächen, Spiegelpartner je Käfigpunkt */
   kach: AtlasKachelung;
   topo: { n: number; fStart: Uint32Array; fVerts: Uint32Array };
@@ -1114,7 +1127,7 @@ function baumKoerper(dok: Dokument, plan: Bauplan, tb?: Teilbaum): BaumKoerperNe
     kaefigPunkte: b.kaefig.n,
     feinPunkte: punkte.length,
     info: { streifen: b.ebene.streifen.length, seiten: b.seiten.length, ms: jetzt() - t0 },
-    zug: { dok, xyz: b.kaefig.xyz, grenze: b.unterteilung.grenze, flaechen },
+    zug: { dok, xyz: b.kaefig.xyz, grenze: b.unterteilung.grenze, flaechen, stufen: b.unterteilung.stufen },
     kach,
     topo: { n: b.kaefig.n, fStart: Uint32Array.from(b.kaefig.fStart), fVerts: Uint32Array.from(b.kaefig.fVerts) },
     spiegel: Int32Array.from(b.bk.spiegel),
@@ -1462,7 +1475,18 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
           stationen: abl.gefroren && teileB ? { ...abl.gefroren, teile: teileB.gefroren } : abl.gefroren,
         },
       };
-      return { netz: netzB, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen: null, ...(widerspruchB ? { widerspruch: widerspruchB } : {}), ...(teileB ? { teile: teileB } : {}), ...(baumStand ? { baum: baumStand } : {}) } };
+      // P0a: Spielstufe auf dem Baum (Umrissvergleich nur im genauen Bau, sonst der letzte)
+      let netzAusB = netzB;
+      let spielStandB = stand?.spiel;
+      if (plan.stufen) {
+        const key = `${bSchluessel ?? bBasis}|${JSON.stringify(gewichte)}|${JSON.stringify(bDeltas)}|${plan.stufen}`;
+        const alt = spielStandB?.umriss;
+        const genau = !schnell && spielStandB?.schluessel !== key;
+        const r = spielNetz(netzB, bn.zug.stufen, plan.stufen, { normalen: plan.stufenNormalen ?? 'grenze', koerperFlaechenL: bn.zug.flaechen.length, ...(genau ? { punkteL: punkteVon(anwenden3(bn.zug.grenze, kaefigNetz)), flaechenL: bn.zug.flaechen } : {}), ...(alt ? { umrissAlt: alt } : {}) });
+        netzAusB = r.netz;
+        if (genau && r.spiel.umriss) spielStandB = { schluessel: key, umriss: r.spiel.umriss };
+      }
+      return { netz: netzAusB, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen: null, ...(widerspruchB ? { widerspruch: widerspruchB } : {}), ...(teileB ? { teile: teileB } : {}), ...(baumStand ? { baum: baumStand } : {}), ...(spielStandB ? { spiel: spielStandB } : {}) } };
     }
   } else baumStand = undefined;
   // Rundmaul (Phase 2 M6): nur ohne Schlitzmaul und Beine; die Haut um die Spitze dehnt sich mit der Öffnung
@@ -1967,7 +1991,19 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     umweg,
     info,
   };
-  return { netz, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(randMarken ? { randMarken } : {}), ...(netz3 ? { netzSicht: netz3 } : {}), ...(teile ? { teile } : {}), ...(baumStand ? { baum: baumStand } : {}), ...(linienStand ? { linien: linienStand } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
+  // P0a: Spielstufe — Eckenwerte der Bau-Stufe umsortiert (Grenzlagen, Grenznormalen); mit Aufsatz (Augapfel-Höhle,
+  // Rundmaul) bleibt die Bau-Stufe. Umrissvergleich nur im genauen Bau, während Gesten der letzte
+  let netzAus = netz;
+  let spielStand = stand?.spiel;
+  if (plan.stufen) {
+    const key = `${ruheSchluessel}|${JSON.stringify(gewichte)}|${JSON.stringify(plan.maulOptionen ?? null)}|${plan.stufen}`;
+    const alt = spielStand?.umriss;
+    const genau = !schnell && spielStand?.schluessel !== key;
+    const r = spielNetz(netz, abl.unterteilung.stufen, plan.stufen, { normalen: plan.stufenNormalen ?? 'grenze', koerperFlaechenL: koerperFlaechen.length, ...(hoehle ? { grund: 'mit Augapfel-Höhle oder Rundmaul noch die Bau-Stufe' } : {}), ...(genau && !hoehle ? { punkteL: punkte, flaechenL: flaechen } : {}), ...(alt ? { umrissAlt: alt } : {}) });
+    netzAus = r.netz;
+    if (genau && r.spiel.umriss) spielStand = { schluessel: key, umriss: r.spiel.umriss };
+  }
+  return { netz: netzAus, stand: { dok, schluessel, abl: ablRein ?? abl, maul, beine, klingen, ...(spielStand ? { spiel: spielStand } : {}), ...(saum ? { saum } : {}), ...(widerspruch ? { widerspruch } : {}), ...(randMarken ? { randMarken } : {}), ...(netz3 ? { netzSicht: netz3 } : {}), ...(teile ? { teile } : {}), ...(baumStand ? { baum: baumStand } : {}), ...(linienStand ? { linien: linienStand } : {}), ...(umweg ? { umweg } : {}), ...(blatt ? { blatt } : {}), ...(umrisseStand ? { umrisse: umrisseStand } : {}), ...(ruheWerte ? { ruheWerte } : {}) } };
 }
 
 /** Puffer eines Netzes (zum Übertragen aus dem Worker). */

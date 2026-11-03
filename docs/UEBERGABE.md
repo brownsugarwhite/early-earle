@@ -1,4 +1,4 @@
-# Übergabe (Stand 02.11.2026: Gegenprüfung und Prüfplan P0–P3 liegen Florian zur Freigabe vor)
+# Übergabe (Stand 03.11.2026: Prüfplan freigegeben, P0a „Spielstufe im Editor“ gebaut, Abnahme offen)
 
 Branch `claude/editor-grundlayout`, PR mit Auto-Fix. **Diese Datei ist der Einstieg für eine frische Sitzung.** Kein Code und
 kein Umbau seit dem 22.10.; alles Neue sind Dokumente, Recherchen und eine Messung.
@@ -33,6 +33,28 @@ kein Umbau seit dem 22.10.; alles Neue sind Dokumente, Recherchen und eine Messu
    „berühren mittel“** (≤ 3,2 Punkte) — Korrektur an der Recherche vom 21.10.
 6. Nebenbei committet: die am 22.10. liegengebliebene Korrektur des Strahlrasters (V8-Fehler, `rasterZelle`,
    `raster-gleichlauf.ts`; Test grün).
+
+## 03.11.: Freigabe und P0a gebaut (Abnahme offen)
+
+Florian (03.11.): „Die Einordnung ist klar. Gegenprüfung und Prüfplan sind freigegeben, E1–E8 wie vorgeschlagen; starte
+Schritt 3 mit P0a.“ Vorher kam der Abschnitt 0a in die Gegenprüfung (altes System wird ersetzt, Nebensession in der Richtung
+richtig, Zielbild ist der neue Weg).
+
+**P0a „Spielstufe im Editor“ ist gebaut** (Planseite „Stand P0a“ im Prüfplan, Register „Befunde aus P0a“):
+- Kern `packages/shape/src/kern/spielstufe.ts`: Bauplan-Option `stufen` (1 = Spielnetz) — Eckenwerte der Stufe 3 auf die Ecken
+  der Stufe 1 umsortiert (Punkte auf der Grenzfläche, Normalen der glatten Fläche; ohne Option bitgleich), `WesenInfo.spiel`;
+  auch auf dem Baum; mit Augapfel-Höhle/Rundmaul noch Stufe 3 (Grund im Feld).
+- Editor: Eckknopf „Spiel“ auf der Bühne (Schachbrett), Tafel Spiel (Chips Editor | Spiel, Normalen Grenzfläche | roh,
+  Dreiecke, Umriss in Gerätepixeln), Bühnentitel „Spiel · 3 200 / 8 000 Dreiecke · Umriss ≤ x px“; `?spiel=1`; Haken
+  `__editor.spiel()`.
+- Tore als Tests `kern/spielstufe.test.ts` (Budget überall ✓; Umriss- und Facetten-Tor an Rex, Langhals, Robbe, Tigerkopf,
+  Kegel verfehlt → `it.fails`, Ursache 16 Punkte je Ring und Käfigfehler unter Stufe 3; Pose-Tor am Rex verfehlt).
+- Bilder `docs/progress/editor/p0a-spielstufe-{roehre,teile,maul}-2026-11-03.jpg`, `p0a-spielgroesse-2026-11-03.jpg`
+  (Skript `apps/editor/scripts/pruefen/p0a-spielstufe.mjs`): bei 300 px Höhe ist Stufe 1 mit Grenznormalen von Stufe 3 nicht
+  zu unterscheiden, auch mit offenem Maul.
+
+**Nächster Schritt:** Florian sieht sich die Bögen an und urteilt; dann P1 „Ansichten als Illustration“ nach dem Prüfplan
+(P0b auf dem iPhone, sobald er da ist).
 
 ## Entscheidungen, die Florian treffen muss (Gegenprüfung, Abschnitt 10)
 

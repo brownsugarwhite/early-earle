@@ -262,3 +262,76 @@ gleich vielen Punkten im weit offenen Maul; dein Urteil blind an Zebra- und Matc
 E1 verdeckt = blass · E2 Vorschlagslinien ja · E3 Spanten/Reifen entfallen · E4 kantig nur durch harte Linien, sonst rot ·
 E5 Spielstufe 1, Budget 8 000 · E6 deine Wesen zuerst · E7 Loops in Front/Back bearbeitbar. Ohne deine Antwort gelten die
 Vorschläge; sie lassen sich je Beweis noch ändern.
+
+## Stand P0a — Spielstufe im Editor (03.11.2026, gebaut; Abnahme offen)
+
+**Freigabe:** Florian am 03.11.: „Gegenprüfung und Prüfplan sind freigegeben, E1–E8 wie vorgeschlagen; starte Schritt 3 mit P0a.“
+
+**Gebaut (Kern, ohne Option bitgleich):** `packages/shape/src/kern/spielstufe.ts`. Die Spielstufe ist kein neuer Bau und keine
+neue Maske: Die Punkte der Stufe 1 behalten ihren Index in jeder feineren Stufe, ihre Grenzlagen stehen also schon in den
+Lagen der Stufe 3; und jede Ecke (f, i) einer Fläche der Stufe 1 ist Ecke 0 der Stufe-3-Fläche 16·f + 4·i. Alle Eckenwerte der
+Anzeige (Lagen, Normalen, Deskriptoren, Atlas, Ruhelage, Gewichtsfarben) werden deshalb aus den Stufe-3-Werten umsortiert —
+die Normalen sind damit die der glatten Fläche an denselben Punkten („Grenznormalen“), scharfe Falten bleiben getrennt.
+Zum Vergleich die rohen Normalen aus den Flächen der Stufe 1 (`stufenNormalen: 'roh'`). Bauplan-Option `stufen` (1 | 2),
+`WesenInfo.spiel` (Stufe, Dreiecke ganz und Körper, Umriss Stufe 1 ↔ 3 je Blatt, Grund), Umrissvergleich nur im genauen Bau
+und im Stand gemerkt; mit Augapfel-Höhle oder Rundmaul bleibt die Bau-Stufe (Grund im Feld); angesetzte Teile, Wangen und
+Klingen bleiben hinter dem Körperblock unverändert. Auch auf dem Baum („Teile“).
+
+**Gebaut (Editor):** Umschalter „Spiel“ als Eckknopf der Bühne (Schachbrett) und in der Tafel Spiel (Chips Editor (Stufe 3)
+| Spiel (Stufe 1), Normalen Grenzfläche | roh); im Bühnentitel „Spiel · 3 200 / 8 000 Dreiecke · Umriss ≤ x px“ (grün ≤ 1,
+ocker ≤ 2, pink darüber; rot über dem Budget); Tafel mit Dreiecken (ganz, Körper, Stufe), Umriss je Blatt in Gerätepixeln bei
+300 px Höhe und in px bei 461; `?spiel=1`, `?spielnormalen=roh`; Haken `__editor.spiel()`. In der Spielstufe sind Treffer aus
+(Anzeige, keine Werkzeuge); Δ, Linien, Zähne und Augen bleiben wie gebaut.
+
+**Tore (Tests `kern/spielstufe.test.ts`, Röhre im Editor-Ablauf; Register „Befunde aus P0a“):**
+
+| Fall | Dreiecke Stufe 1 (≤ 8 000) | Umriss Stufe 1 ↔ 3 S/F/T, Gerätepixel bei 300 px Höhe (Tor 1, Warnung 2) | Knicke abseits der Falten 95 % / max (Tor 12° / 25°) |
+|---|---|---|---|
+| Kugel (Höhe 0,53) | 3 200 ✓ | 0,52 / 0,72 / 0,38 ✓ | 11,2° / 11,6° ✓ |
+| Ei (0,46) | 3 200 ✓ | 0,59 / 0,82 / 0,43 ✓ | 11,9° / 15,9° ✓ |
+| Rex (0,36) | 3 200 ✓ | **2,76** / 1,24 / 1,08 ✗ | **22,0° / 88,2°** ✗ |
+| Langhals (0,75) | 3 200 ✓ | **1,10** / 0,50 / 0,82 ✗ | **21,7° / 44,9°** ✗ |
+| Robbe (0,62) | 3 200 ✓ | 0,68 / **1,45** / 1,43 ✗ | **23,4° / 53,3°** ✗ |
+| Tigerkopf (0,60) | 3 200 ✓ | 0,83 / **3,02** / 0,86 ✗ | **17,5° / 73,9°** ✗ |
+| Kegel (0,61) | 3 200 ✓ | 0,92 / **3,04** / 2,20 ✗ | **20,2° / 47,0°** ✗ |
+| Rex mit Maul, Fressen 50 % / 100 % (gemalte Augen) | 4 540 ✓ | 1,50 / 1,58 / **2,06** · 1,68 / 1,67 / **2,09** ✗ | – |
+| Umschalten (Rex) | Käfig nicht neu gebaut (Ableitung 0 ms); Kern 59 ms mit Umrissvergleich, danach 15 ms ✓ | | |
+
+Lesart: Das Budget hält ohne Maul überall. **Umriss- und Facetten-Tor fallen an denselben fünf Körpern** — nicht an der
+Spielstufe, sondern am heutigen Käfig: 16 Punkte je Ring und 24 Ringe sind bei 300 px Höhe zu grob (Sagitta; Rex ist mit
+0,36 Kacheln Höhe klein, wird also am stärksten vergrößert), und abseits der Falten stecken Knicke von 45–88°, die Stufe 3
+verdeckt (Rex: erstes Ringband an der Schnauze). Beides ist Eingabe für den neuen Bau: Dichteregel ≥ 24 Punkte je Rumpfring
+und Ringe nach der Krümmung aller drei Ansichten (Gegenprüfung 3.6), Käfiggüte als Tor in P1/P3. Verfehlte Tore stehen als
+`it.fails`, nichts gelockert.
+
+**Bilder:** `docs/progress/editor/p0a-spielstufe-roehre-2026-11-03.jpg`, `…-teile-…`, `…-maul-…` (je Fall Stufe 3 | Stufe 1
+Grenznormalen | Stufe 1 roh, Seite und 45°, Earle-Look) und `p0a-spielgroesse-2026-11-03.jpg` (alle Fälle bei 300 Gerätepixeln
+Höhe); Skript `apps/editor/scripts/pruefen/p0a-spielstufe.mjs`.
+
+**Im Editor gemessen (Playwright, eigener Vite 5192, Earle-Look, Bühne):**
+
+| Fall | Spiel: Dreiecke | Umriss Stufe 1 ↔ 3 (größtes Blatt, Gerätepixel bei 300 px) | Umschalten an / roh / zurück (ms, ruhige Maschine) | Cel-Wechsel Stufe 1 ↔ 3 (Anteil der Wesenpixel; Seite / 45°; Tor 1 %) |
+|---|---|---|---|---|
+| Kugel | 3 200 | 0,7 | 121 / 65 / 43 | 0,22 % / 0,46 % ✓ |
+| Ei | 3 200 | 0,8 | 96 / 41 / 34 | 0,21 % / 0,38 % ✓ |
+| Rex | 3 200 | 2,8 | 105 / 45 / 47 | 0,17 % / 0,32 % ✓ |
+| Langhals | 3 200 | 1,1 | 100 / 41 / 48 | 0,47 % / **1,99 %** ✗ (dünner Hals) |
+| Robbe | 3 200 | 1,5 | 94 / 36 / 39 | 0,34 % / 0,38 % ✓ |
+| Tigerkopf | 3 200 | 3,0 | 144 / 75 / 65 | 0,63 % / 0,72 % ✓ |
+| Kegel | 3 200 | 3,0 | 114 / 36 / 33 | 0,24 % / 0,57 % ✓ |
+| Ente (Teile) | 3 344 | 1,5 | 157 / 65 / 65 | 0,44 % / **1,02 %** ✗ |
+| Fisch (Teile) | 6 288 | 0,7 | 165 / 83 / 89 | 0,22 % / 0,41 % ✓ |
+| Vierbeiner (Teile) | 3 968 | 1,3 | 134 / 67 / 79 | 0,37 % / 0,59 % ✓ |
+| Rex Library, Augapfel | Stufe 3 bleibt (Grund), 76 736 | – | 107 / 108 / 97 | – |
+| Rex Library, gemalte Augen, Fressen 50 % / 100 % | 4 540 | 2,1 / 2,1 | 116 / 88 / 58 | 0,44 % / 0,70 % ✓ · 0,46 % / **1,01 %** ✗ (offenes Maul, 45°) |
+
+Lesart: Das Umschalt-Tor (≤ 100 ms) hält im Editor beim ersten Mal nur an Ei, Robbe und Langhals (94–100 ms); sonst
+105–165 ms, weil der Umrissvergleich im selben Bau läuft — danach (roh, zurück) 33–89 ms (Register: Vergleich als eigenen
+Worker-Auftrag nachreichen). Die Cel-Prüfung (Pixel, deren Farbstufe zwischen Stufe 1 mit Grenznormalen und Stufe 3 wechselt,
+Bühnengröße) liegt bei 0,2–0,7 %; Langhals 45° (2,0 %), Ente 45° (1,0 %) und das offene Rex-Maul bei 45° (1,0 %) verfehlen das Tor knapp an dünnen Hälsen und Lippen — dort
+laufen die Cel-Grenzen längs über wenige Käfigpunkte. Die rohen Normalen sind im Bild kaum schlechter (0,2–0,8 %), weil die
+Käfigkanten fast überall unter 25° knicken; der Unterschied zeigt sich erst an den Knick-Maxima.
+
+**Nicht gemacht / offen:** P0b (iPhone, mit Florian); Cel-Stufen-Pixelzählung Stufe 1 ↔ 3 (Tor ≤ 1 %) nur als Bild, nicht als
+Zahl; Spielstufe mit Augapfel-Höhle und Rundmaul; Normalen-Deltas je Morph-Ziel sind im Editor nicht nötig (die Pose wird
+auf Stufe 3 gerechnet und umsortiert), fürs Backen aber einzuplanen.

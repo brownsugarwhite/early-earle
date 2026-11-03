@@ -30,8 +30,8 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 > (Ansichten = Outline-Illustrationen je Teil, verdeckte Linien bearbeitbar, Loops als gezeichnete Linien, „so rund wie
 > möglich“, weniger Werkzeuge, Spielqualität von Anfang an). Dazu die **Gegenprüfung**
 > [`docs/plans/2026-11-02-gegenpruefung-liniennetz.md`](docs/plans/2026-11-02-gegenpruefung-liniennetz.md) und der **Prüfplan
-> P0–P3** [`docs/plans/2026-11-02-pruefplan-p0-p3.md`](docs/plans/2026-11-02-pruefplan-p0-p3.md) — **liegen Florian zur
-> Freigabe vor; bis dahin kein Code, kein Umbau.** Einstieg: [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
+> P0–P3** [`docs/plans/2026-11-02-pruefplan-p0-p3.md`](docs/plans/2026-11-02-pruefplan-p0-p3.md) — **am 03.11. freigegeben;
+> P0a „Spielstufe im Editor“ gebaut (Abnahme offen), als Nächstes P1.** Einstieg: [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
 
 - **2026-10-04: Prototyp 1 ist abgeschlossen** (Archiv-Branch `prototyp-1`). Er diente zum Lernen. Florian: „Der Prototyp war sehr gut und aufschlussreich und hat bewiesen, dass die Spielidee toll ist.“ Viele Entscheidungen sind gefallen; die Gesamtdynamik und einige grafische Elemente haben ihm gefallen.
 - **Jetzt beginnt die eigentliche Produktion mit dem finalen Look.** Grundlage wird **Florians neuer Plan mit neuem Hauptprompt**: Story, Charaktere und Map arbeitet er genauer aus und trägt sie in Dokumenten und Screenshots zusammen. Es folgen mehrere Runden und Iterationen.
@@ -316,6 +316,16 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   polygonal, Facetten abseits der Falten bis 133° = verdeckte Käfigfehler; **flache Flanken kommen aus den gezeichneten
   Querschnitten, nicht aus „berühren mittel“** — Korrektur an der Recherche vom 21.10.). Falle: macOS kennt kein `timeout`
   (Exit 127, Test lief gar nicht).
+- **2026-11-03: Prüfplan freigegeben (E1–E8 wie vorgeschlagen), P0a „Spielstufe im Editor“ gebaut** (Abnahme offen; Planseite
+  „Stand P0a“ in `docs/plans/2026-11-02-pruefplan-p0-p3.md`, Register „Befunde aus P0a“). Kern `kern/spielstufe.ts`: Option
+  `stufen` (1 = Spielnetz) sortiert die Eckenwerte der Stufe 3 auf die Ecken der Stufe 1 um (Ecke (f, i) der Stufe 1 = Ecke 0
+  der Stufe-3-Fläche 16·f + 4·i; Punkte auf der Grenzfläche, Normalen der glatten Fläche), ohne Option bitgleich; Editor:
+  Eckknopf „Spiel“, Tafel Spiel, Titel mit Dreiecken/Budget und Umriss Stufe 1 ↔ 3 in Gerätepixeln bei 300 px Höhe. Befund:
+  Budget hält ohne Maul (3 200–6 288 Dreiecke), aber Umriss-Tor (≤ 1 Gerätepixel) und Facetten-Tor fallen an Rex, Langhals,
+  Robbe, Tigerkopf, Kegel — 16 Punkte je Ring sind für Stufe 1 zu grob, und abseits der Falten stecken Knicke von 45–88°, die
+  Stufe 3 verdeckt → Dichteregel und Käfiggüte als Tor im neuen Bau. Mit Augapfel-Höhle bleibt Stufe 3. Fallen: In
+  Playwright-Skripten `window.__editor` nie ohne Prüfung lesen (war kurz undefined); ein Schalter, der den Zustand nicht
+  ändert, löst keinen Bau aus (nicht darauf warten); Bühnen-Kamera Azimut 0° = Seite, −90° = Front.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

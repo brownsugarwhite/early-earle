@@ -842,3 +842,11 @@ und in der Tafel Spiel (Dreiecke gegen 8 000, Umriss Stufe 1 ↔ 3 in Gerätepix
   gewollt; die Tafel sagt es.
 - [x] Umschalten baut den Käfig nicht neu (gleicher Stand, Ableitung 0 ms): Rex erstes Mal 59 ms (mit Umrissvergleich),
   danach 15 ms (Kern); Budget-Tor an allen sieben Röhren-Körpern erreicht (3 200 Dreiecke), Teile 3 344–6 288.
+- [ ] **Cel-Tor (≤ 1 % der Wesenpixel wechseln die Farbstufe zwischen Stufe 1 und 3) an dünnen Stellen knapp verfehlt:**
+  Langhals 45° 2,0 %, Ente 45° 1,0 %, offenes Rex-Maul 45° 1,0 % (sonst 0,2–0,7 %; Bühnengröße, Earle-Look). Die Cel-Grenzen
+  laufen dort längs über wenige Käfigpunkte (Hals, Lippe); mehr Punkte je Ring an dünnen Teilen (Dichteregel).
+- [ ] **Umschalt-Tor (≤ 100 ms) im Editor beim ersten Mal verfehlt:** an 94–165 ms (Worker-Umlauf samt Umrissvergleich;
+  Fisch 165, Ente 157, Tigerkopf 144), roh und zurück 33–89 ms. Weg: den Umrissvergleich nach dem Netz als eigenen
+  Worker-Auftrag nachreichen (wie die Zahnprüfung), dann zählt nur der Umlauf.
+- [ ] **Library-Rex mit Augapfel-Höhle hat auf Stufe 3 76 736 Dreiecke** (alter Maulbau mit Lippe, Tasche, Rachen, Höhlen);
+  ohne Höhle 72 640 auf Stufe 3 → 4 540 auf Stufe 1. Die Spielstufe greift dort erst mit der Höhle auf Stufe 1 (oben).

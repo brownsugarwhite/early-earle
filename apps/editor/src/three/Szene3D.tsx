@@ -32,7 +32,7 @@ import { PALETTEN } from './wesenLook';
 
 declare global {
   interface Window {
-    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number; netzLagen?: () => number[] | null; poseLippen?: () => unknown; projizieren?: (feld: 'creation' | 'seite' | 'front' | 'top', p: [number, number, number]) => [number, number] | null; netzPunkt?: (np: NetzPunkt) => [number, number, number] | null; strahlFeld?: (feld: 'creation' | 'seite' | 'front' | 'top', px: number, py: number, beideSeiten?: boolean) => { punkt: [number, number, number]; richtung: [number, number, number] } | null; netzSicht?: () => unknown; teile?: () => unknown; koerperBaum?: () => unknown; schleifen?: () => unknown; schleifenPixel?: () => unknown };
+    __editor?: { backend: string; vertices: () => number; treffen?: (px: number, py: number) => unknown; wesen?: () => unknown; reifenPixel?: () => unknown; griffe?: () => unknown; knochen?: () => unknown; zahnPixel?: (feld?: 'creation' | 'seite' | 'front' | 'top') => unknown; zahnTreffer?: (px: number, py: number) => unknown; netzHash?: () => string | null; netzVersion?: () => number; netzLagen?: () => number[] | null; poseLippen?: () => unknown; projizieren?: (feld: 'creation' | 'seite' | 'front' | 'top', p: [number, number, number]) => [number, number] | null; netzPunkt?: (np: NetzPunkt) => [number, number, number] | null; strahlFeld?: (feld: 'creation' | 'seite' | 'front' | 'top', px: number, py: number, beideSeiten?: boolean) => { punkt: [number, number, number]; richtung: [number, number, number] } | null; netzSicht?: () => unknown; teile?: () => unknown; koerperBaum?: () => unknown; schleifen?: () => unknown; schleifenPixel?: () => unknown; spiel?: () => unknown };
   }
 }
 
@@ -59,6 +59,8 @@ export function Szene3D() {
       window.__editor = {
         backend: r.backend,
         vertices: () => r.vertexAnzahl,
+        // P0a: Spielstufe (Umschalter, Kennzahlen des gezeigten Netzes, Dreiecke des Renderers)
+        spiel: () => ({ an: useKernAnzeige.getState().spiel, normalen: useKernAnzeige.getState().spielNormalen, info: aktuellesNetz()?.netz.info.spiel ?? null, hoehe: aktuellesNetz()?.netz.hoehe ?? null, dreiecke: r.vertexAnzahl / 3 }),
         // M2: Treffer in Feldpixeln (E2E): Käfigfläche, (u, v), Käfigpunkt
         treffen: (px: number, py: number) => {
           const n = aktuellesNetz();
@@ -436,7 +438,7 @@ export function Szene3D() {
         // Phase 2 M5: Augen-Vorschau (Zustand, Lid, Blinzeln) ohne Umbau
         useUi.subscribe((s, v) => (s.augenZustand !== v.augenZustand || s.augenLid !== v.augenLid || s.blinzeln !== v.blinzeln) && r.setzeAugenAnzeige(s.augenZustand, s.augenLid, s.blinzeln)),
         // Beweis 4: Look oder Palette gewechselt → Kern neu bauen
-        useKernAnzeige.subscribe((s, v) => (s.look !== v.look || s.palette !== v.palette || s.maul !== v.maul || s.kaefig !== v.kaefig || s.beine !== v.beine || s.schwung !== v.schwung || s.stil !== v.stil) && useUi.getState().bauweise === 'kern' && bauen(useEditor.getState().dok)),
+        useKernAnzeige.subscribe((s, v) => (s.look !== v.look || s.palette !== v.palette || s.maul !== v.maul || s.kaefig !== v.kaefig || s.beine !== v.beine || s.schwung !== v.schwung || s.stil !== v.stil || s.spiel !== v.spiel || s.spielNormalen !== v.spielNormalen) && useUi.getState().bauweise === 'kern' && bauen(useEditor.getState().dok)),
         // Biege-Regler losgelassen: genau bauen
         useWirbelAnzeige.subscribe((s, v) => v.zieht && !s.zieht && useUi.getState().bauweise === 'wirbel' && bauen(useEditor.getState().dok)),
       );
