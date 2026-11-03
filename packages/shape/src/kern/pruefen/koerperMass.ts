@@ -152,16 +152,23 @@ export function nachInnen(punkte: readonly V3[], flaechen: readonly (readonly nu
  */
 export function nachInnenTeile(punkte: readonly V3[], flaechen: readonly (readonly number[])[], abl: Ableitung, achse: 'x' | 'y', teilVonFlaeche: ArrayLike<number>, kinder: readonly { fuss: V3; spitze: V3; achse?: V3[] }[]): { zahl: number; wo: string; rumpf: number; kinder: number[]; /** Flächenanteil der nach innen gekehrten Flächen je Teil (%) — Splitter an einem Fächer zählen als Zahl viel, als Fläche wenig */ anteil: { rumpf: number; kinder: number[] } } {
   const L = abl.unterteilung.stufen.length;
-  const nP = abl.vorlage.kaefig.n;
+  // Rumpfmitte aus den Punkten der Rumpfflächen (nicht aus den ersten nP Punkten: beim Endstück liegen Rumpfringe im Kopf, die
+  // verschobene Mitte zählte am Schwanz 200 Flächen falsch als nach innen)
   const mitte: V3 = [0, 0, 0];
   let z0 = 0;
-  for (let i = 0; i < Math.min(nP, punkte.length); i++) {
-    const p = punkte[i]!;
-    mitte[0] += p[0];
-    mitte[1] += p[1];
-    mitte[2] += p[2];
-    z0++;
-  }
+  const gezaehlt = new Set<number>();
+  flaechen.forEach((f, fi) => {
+    if ((teilVonFlaeche[Math.floor(fi / 4 ** L)] ?? -1) >= 0) return;
+    for (const p of f) {
+      if (gezaehlt.has(p)) continue;
+      gezaehlt.add(p);
+      const q = punkte[p]!;
+      mitte[0] += q[0];
+      mitte[1] += q[1];
+      mitte[2] += q[2];
+      z0++;
+    }
+  });
   for (let d = 0; d < 3; d++) mitte[d] = mitte[d]! / Math.max(1, z0);
   const orte = new Map<string, number>();
   let z = 0;

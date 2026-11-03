@@ -14,6 +14,11 @@
 // Langhals 4,6/2,9, Robbe 7,4/5,4 px; Nahtknick frei (ohne gezeichnete Ecken) Langhals 17,9°, Ente 20,2°, Robbe 37,0° (Falte längs
 // der Fensterflanken), Pilz ohne freie Randkante (der Stiel trifft den Hut ringsum an einer gezeichneten Kante, dort 33,9°); nach
 // innen Robbe 0, Langhals 26 (0,0 % der Fläche), Ente 284 (0,7 %, Fächer am Hals-Kopf-Knick) und 6 je Flügel, Pilz 3.
+// Stand 03.11. nachts (Endstück): Die Robbe ist kein Streifen auf dem Rücken mehr, sondern die Fortsetzung des Röhrenendes (Rand =
+// Ring 11 durch das hintere Sehnenende, Kappe und Ringe davor laufen als Ringe des Kopfs weiter, beide Seiten im gleichen
+// Bogenanteil, alle Ringpunkte hart, keine Silhouettenbänder): Seite 1,5, Front 12,4, Top 9,6 px (Bauchecken und breiteste Stelle
+// des Bauchs zwischen den 16 Ringpunkten), Naht 27,6° (vorher 37,0°), nach innen 0 / 6, Knicke max 68° (vorher 141°). Langhals,
+// Ente und Pilz unverändert (der Langhals-Hals bleibt Streifen: Ring 0,40 zu Sehne 0,16).
 // Verfehlte Tore stehen als `it.fails` (Register „Befunde aus P1 Tag 4–5“). Messwerte mit `--reporter=verbose`.
 import { describe, expect, it } from 'vitest';
 import { alleFlaechen } from '../kaefig/halbkanten';
@@ -29,7 +34,7 @@ declare const console: { log: (...a: unknown[]) => void };
 /** Körper → hält er heute (03.11. abends) Form Seite, Form Front/Top, Naht (Knick frei ≤ 30°), Glätte (0 nach innen, Knicke 95 % ≤ 20°)? */
 const HAELT: Record<string, { seite: boolean; frontTop: boolean; naht: boolean; glatt: boolean; kinder: number }> = {
   langhals: { seite: false, frontTop: false, naht: true, glatt: false, kinder: 1 },
-  robbe: { seite: false, frontTop: false, naht: false, glatt: false, kinder: 1 },
+  robbe: { seite: false, frontTop: false, naht: true, glatt: false, kinder: 1 },
   ente: { seite: false, frontTop: false, naht: true, glatt: false, kinder: 3 },
   pilz: { seite: true, frontTop: false, naht: true, glatt: false, kinder: 1 },
 };

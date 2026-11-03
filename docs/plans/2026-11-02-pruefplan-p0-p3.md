@@ -734,3 +734,60 @@ und Flügeln — am Hals-Kopf-Knick ein Fächer wie in der Röhre; Pilz unverän
 **Nächster Schritt (Florians Blick):** dann Robbe-Falte (Fenster über die Flanken: Kopf eher als Fortsetzung über die Brustkappe
 oder breiteres Fenster), Breite der Kinder aus eigenen Front-/Top-Schleifen (Planer-T-Stöße), Kappen der Kinder (Gratenden
 90–176°), Dichte je Kind; oder P2 (Maul).
+
+
+### Nachtrag 03.11. nachts — Endstück: der Robbenkopf als Fortsetzung des Röhrenendes (gebaut; Abnahme offen)
+
+Florian: „Mach weiter mit der Robbe-Falte an den Fensterflanken (Kopf als Fortsetzung über die Brustkappe oder breiteres Fenster),
+dann Breite der Kinder aus eigenen Front-/Top-Schleifen.“
+
+**Befund Robbe:** Die Zeichnung zeigt in keiner Ansicht eine Ecke (der Planer findet keinen T-Stoß), die Front ist eine glatte Birne.
+Der Kopf ist kein Abzweig vom Rücken, sondern das Ende der Körperröhre: das vordere Sehnenende liegt an der Spitze des Rumpfs (Brust),
+das hintere auf dem Rücken bei Ring 11. Als Streifen (2 Spalten über die Brustkappe) schlossen die Rumpfringe unter der Sehne zur
+Kuppel (an der Fensterflanke 30 px innerhalb der Front), und die Kopfwand stand mit 37° auf der Rumpfhaut; ein breiteres Fenster
+(4 Spalten, `spalten`) ändert daran nichts (40,2°, Front/Top 6,3/6,6 px).
+
+**Gebaut — Endstück (`kern/schleifenTeile.ts`, Option `endstueck`, Standard an; `endstueckHart`, `spalten` als Versuchsschalter):**
+- Erkennung in `planen`: beide Sehnenenden am selben Ende des Rumpfs, genau eines innerhalb 1,5 Schritten der Spitze, das andere
+  weniger als R/2 Ringe von ihr entfernt, und Ring k (durch das hintere Ende) höchstens 1,5 Sehnen hoch (Robbe 0,48 : 0,34; der
+  Langhals-Hals mit 0,40 : 0,16 bleibt Streifen — als Endstück lief er auf Seite 4,2 und Top 11,9 px). Dann `fensterKappe` mit
+  `ringeFrei`: Rand = Ring k, Kappe und Ringe 0 … k−1 sind das Fenster; die Ringreihen laufen als **freie Ringe des Kindes** weiter
+  (Hüllenschnitte, nicht Kappenstufen), nur die Quadratringe der Kappe bleiben Kappe (Nase). Art im Bericht `endstueck`, Tafel
+  „Endstück ab Ring k“.
+- Die Seite am vorderen Ende läuft vom Randpunkt (Bauchpunkt des Rings k) **am Rumpfumriss entlang** (kürzerer Weg) bis zum
+  Sehnenende und dann den Bogen hinauf; Ecken-Rasten mit dem Versatz.
+- **Paarung der Seiten im gleichen Bogenanteil** (beide Seiten rücken proportional vor, die kürzere Innenseite langsamer): vom
+  senkrechten Rand kippen die Ringe gleichmäßig in den Kopf. Gemessen und verworfen: die kürzeste Zuordnung (legt bei der dicken
+  Robbe sieben Ringe als Fächer von der Nackenkehle zum Bauch — Front 13,3, Top 12,7, Überstand 15 px); die Ringe der Röhre
+  (heutiger Bau) als Pfad (im ganzen Rumpf schräg, brechen am senkrechten Rand — Seite 8,0, Top 14,6 px, 431 Flächen nach innen).
+- **Alle Ringpunkte hart, keine Silhouettenbänder:** Die Ringe sind Hüllenschnitte quer durch den Rumpf; mit vier harten Punkten je
+  Ring wölbte der Löser die weichen über die hohle Schulter der Birne hinaus (36 px über die Front), und das Band „Nachbarn des
+  Seitenpunkts gleich hoch quer“ widerspricht an schrägen Hüllenringen (zog harte Punkte 35 px von ihren Zielen, Rest 13 px). Die
+  freien Ringreihen bekommen keine Kappenmaske.
+- **Messung berichtigt:** `nachInnenTeile` nimmt die Rumpfmitte aus den Rumpfflächen — mit der Mitte aus den ersten nP Punkten
+  (beim Endstück liegen Rumpfringe im Kopf) zählte sie am Schwanz 200 Flächen falsch als nach innen.
+
+| Fall | Fenster | Ringe × Punkte | Δ S/F/T heute → neu (px) | Rest | Überstand F/T | Nahtknick frei / Ecken | nach innen Rumpf / Kinder (Fläche) | Knicke 95 %/max |
+|---|---|---|---|---|---|---|---|---|
+| Robbe, Streifen (vorher) | λ 1…13 oben, 2 Spalten | 12 × 28 | 4,0/6,2/12,5 → 1,7/7,4/5,4 | 3,6 | 6,6/4,4 | 37,0° / – | 4 / 0 | 23,5/141° |
+| **Robbe, Endstück** | Rand Ring 11, 11 Ringreihen + Kappe | 8 × 16 (+ 11 + 1) | 4,0/6,2/12,5 → 1,5/12,4/9,6 | **0,2** | **1,1/1,1** | **27,6°** / – | **0 / 6** (0,0 %) | 22,7/**68°** |
+| Langhals | Streifen λ 1…13 oben, 2 Spalten | 24 × 28 | 1,5/4,0/3,1 → 1,0/4,6/2,9 | 1,3 | 4,2/2,8 | 17,9° / 29,5° | 86 (0,8 %) / 26 | 17,1/90° |
+| Ente | Streifen oben + Flanken | 24 × 20; 2 × (7 × 12) | 2,3/14,1/46,6 → 2,9/3,7/2,7 | 2,8 | 1,6/2,8 | 20,2° / 36,1° | 14 / 284 (0,7 %), 6, 6 | 23,0/146° |
+| Pilz | Fortsetzung über Ring 1 | 12 × 16 | 5,6/6,3/2,0 → 0,9/0,8/2,0 | 0,8 | 0,5/0,9 | – / 33,9° | 22 / 3 | 17,0/176° |
+
+**Ergebnis ehrlich:** Die Falte ist weg — die Robbe hält jetzt das Naht-Tor (27,6°, Rest an der Bauchflanke des Rands), die Fläche ist
+glatt (0 Rumpf- und 6 Kopfflächen nach innen, Knicke max 68° statt 141°, Rest 0,2 px, Überstand 1,1 px). Dafür Front 12,4 und Top
+9,6 px statt 7,4/5,4: die schrägen Ringe mit 16 Punkten treffen die Bauchecken (Front, ± 0,245/0,082) und die breiteste Stelle des
+Bauchs (Top, x −0,045) nicht — zwischen zwei Ringpunkten rundet die Fläche die Ecke ab. Tests `schleifenTeile.test.ts`: 11 grün,
+11 `it.fails` (Robbe Naht jetzt `it`).
+
+**Befund zu „Breite der Kinder aus eigenen Front-/Top-Schleifen“:** Der Planer hat Flächen nur an T-Stößen — Langhals: der Kopf in
+der Front (Sehne bei y 0,58) und im Top (x −0,098); Ente: Hals + Kopf in der Seite, der vordere Teil ab x 0,025 im Top; Pilz: der
+Stiel in Seite und Front; Robbe: keine. Überall dort misst die Sichthülle (Front bei y ∩ Top bei x) schon die Schleife des Teils,
+weil die Teile in der Ansicht übereinander liegen und in dieser Höhe bzw. bei diesem x nichts anderes steht. Die gemessenen
+Front-/Top-Fehler liegen woanders: am Rumpfboden (Langhals ± 0,117/0,054: 5,3 px; Ente ± 0,125/0,04: 3,7 px) und an den Bauchecken
+der Robbe — Abtastung der Ringe (16 Punkte, die Ecke fällt zwischen zwei Punkte), nicht die Breite der Kinder. Eigene Schleifen je
+Kind bringen an diesen Körpern nichts; der Hebel ist die Dichteregel je Ring (Befund aus P0a).
+
+**Nächster Schritt (Florians Blick):** Dichte je Ring (Bauchecken, breiteste Stelle), Fächer an der inneren Ecke (Ente), Kappen der
+Kinder (Gratenden), Langhals Rest 1,3 px — oder P2 (Maul).

@@ -343,7 +343,7 @@ function SchleifenKoerperChips() {
                 <>
                   <dt>Teile an der Naht (P1 Tag 4–5)</dt>
                   <dd data-kaefig-teile={String(k.teile.kinder.length)} data-kaefig-nahtknick={px(k.teile.nahtKnick)}>
-                    {k.teile.kinder.length ? k.teile.kinder.map((kd) => `${kd.name} (${kd.art === 'streifen' ? `Streifen ${kd.fenster.seite}, ${kd.fenster.c} Spalten` : `Fortsetzung über Ring ${kd.fenster.c}`}, ${kd.ringe} Ringe × ${kd.punkte})`).join('; ') : 'keine'} · Nahtknick {px(k.teile.nahtKnick)}°
+                    {k.teile.kinder.length ? k.teile.kinder.map((kd) => `${kd.name} (${kd.art === 'streifen' ? `Streifen ${kd.fenster.seite}, ${kd.fenster.c} Spalten` : kd.art === 'endstueck' ? `Endstück ab Ring ${kd.fenster.c}` : `Fortsetzung über Ring ${kd.fenster.c}`}, ${kd.ringe} Ringe × ${kd.punkte})`).join('; ') : 'keine'} · Nahtknick {px(k.teile.nahtKnick)}°
                     {k.teile.ausgelassen.length ? ` · ausgelassen: ${k.teile.ausgelassen.map((a) => `${a.name} (${a.grund})`).join('; ')}` : ''}
                   </dd>
                 </>

@@ -1,4 +1,4 @@
-# Übergabe (Stand 03.11.2026 abends: P0a angesehen, P1 Tag 1 gebaut, P1 Tag 2–3 als Schleifen-Käfig gebaut, P1 Tag 4–5 „Teile an der Naht“ gebaut und weitergeführt — Naht weich, Hülle als Obergrenze, Flügel, Röhrenende; Abnahme offen, Florians Blick entscheidet)
+# Übergabe (Stand 03.11.2026 nachts: P0a angesehen, P1 Tag 1 gebaut, P1 Tag 2–3 als Schleifen-Käfig gebaut, P1 Tag 4–5 „Teile an der Naht“ gebaut und weitergeführt — Naht weich, Hülle als Obergrenze, Flügel, Röhrenende, Robbenkopf als Endstück; Abnahme offen, Florians Blick entscheidet)
 
 Branch `claude/editor-grundlayout`, PR mit Auto-Fix. **Diese Datei ist der Einstieg für eine frische Sitzung.** Der Kernring
 bleibt eingefroren; alles Neue liegt hinter Schaltern (`stufen`, `umrissPlan`), ohne Schalter bitgleich.
@@ -181,9 +181,29 @@ Regel des Prüfplans) und Empfehlung Naht → Breite → Flügel; Florian: „da
 - **Verworfen (gemessen):** Scheitelschub (Robbe 1,5 → 4,7 px), Klemme in z für Paare (787 Flächen je Flügel), flacher Lauf um das
   Wirbelsäulenende (Spitze lief zurück in den Scheitel), Silhouettenbedingung je Kind in einer Ansicht (888 Flächen).
 
-**Nächster Schritt: Florians Blick auf die vier Bögen.** Dann Robbe-Falte (Kopf als Fortsetzung über die Brustkappe oder
-breiteres Fenster), Breite der Kinder aus eigenen Front-/Top-Schleifen, Kappen der Kinder (Gratenden 90–176°), Fächer an der
-inneren Ecke (Ente), Dichte je Kind — oder P2 (Maul) und die Teile mit den Loops von P3 neu. Start-Prompt für eine frische Sitzung:
+## 03.11. nachts: Robbenkopf als Endstück (Abnahme offen)
+
+Florian: „Mach weiter mit der Robbe-Falte an den Fensterflanken (Kopf als Fortsetzung über die Brustkappe oder breiteres Fenster),
+dann Breite der Kinder aus eigenen Front-/Top-Schleifen.“ Planseite „Nachtrag 03.11. nachts“, Register „Nachtrag 03.11. nachts“.
+- **Befund:** Die Robbe hat in keiner Ansicht eine gezeichnete Ecke; der Kopf ist das Ende der Körperröhre (vorderes Sehnenende an der
+  Brustspitze). Als Streifen schlossen die Rumpfringe unter der Sehne zur Kuppel → Kopfwand 37° auf der Rumpfhaut; ein breiteres
+  Fenster hilft nicht (40°).
+- **Gebaut — Endstück** (Option `endstueck`, Standard an): Rand = Ring durch das hintere Sehnenende, Kappe und Ringe davor laufen als
+  freie Kopfringe weiter; Seite am Vorderende am Rumpfumriss entlang verlängert; Paarung beider Seiten im gleichen Bogenanteil;
+  alle Ringpunkte hart, keine Silhouettenbänder, keine Kappenmaske; Höhentest Ring ≤ 1,5 Sehnen (sonst wird der Langhals-Hals zum
+  Endstück). Tafel „Endstück ab Ring k“. Messfehler „nach innen“ am Rumpf behoben (Mitte aus den Rumpfflächen).
+- **Ergebnis:** Robbe Naht 37,0 → 27,6° (hält), Knicke max 141 → 68°, nach innen 0 / 6, Rest 0,2, Überstand 1,1 px; aber Front/Top
+  12,4/9,6 px (vorher 7,4/5,4): Bauchecken und breiteste Stelle fallen zwischen die 16 Ringpunkte. Langhals, Ente, Pilz unverändert.
+  Tests 11 grün / 11 `it.fails`.
+- **„Breite der Kinder aus eigenen Front-/Top-Schleifen“ bringt nichts:** Planer-Flächen gibt es nur an T-Stößen, dort misst die Hülle
+  schon die Schleife des Teils; die Front-/Top-Fehler liegen am Rumpfboden (Abtastung). Befund auf der Planseite und im Register.
+- **Verworfen (gemessen):** kürzeste Zuordnung fürs Endstück (Fächer an der Kehle, Front 13 px), Röhrenringe als Pfad (Seite 8, Top
+  15 px), weiche Ringpunkte (36 px über die Schulter), Silhouettenbänder an Hüllenringen (Rest 13 px), breiteres Streifenfenster.
+- **Bilder:** `docs/progress/editor/p1-teile-2026-11-03.jpg`, `p1-teile-draht-<fall>-2026-11-03.jpg` (überschrieben).
+
+**Nächster Schritt: Florians Blick auf die vier Bögen.** Dann Dichte je Ring (Bauchecken, breiteste Stelle: Front/Top aller Körper),
+Fächer an der inneren Ecke (Ente), Kappen der Kinder (Gratenden 90–176°), Robbe-Naht 27,6° an der Bauchflanke, Langhals Rest 1,3 —
+oder P2 (Maul) und die Teile mit den Loops von P3 neu. Start-Prompt für eine frische Sitzung:
 
 > Lies `CLAUDE.md`, `docs/UEBERGABE.md` und den Prüfplan `docs/plans/2026-11-02-pruefplan-p0-p3.md` („Stand P1 Tag 4–5“ samt
 > „Nachtrag 03.11. abends“). Florian hat die Bögen der Teile an der Naht gesehen und entschieden: […]. Arbeite danach weiter — im
@@ -241,7 +261,8 @@ Rex mittel gerade (Knick an der Kreuzung), Robbe hoch J (Engstelle), E2.4, E3–
   Drahtgitter `BAU=kaefig FAELLE=langhals,robbe,ente,pilz p1-koerper-bild.ts` + `html-shot.mjs --jpg`, Editor-Bogen
   `MODUL=extremreihe FAELLE=langhals,robbe,ente,pilz BOGEN=p1-teile p1-kaefig-editor.mjs` (run-check.sh). Schalter der Messreihe:
   `NAHTGLATT=0` (Naht nicht absolut glätten), `KLEMME=0` (Hülle nicht als Obergrenze), `HRING=0` (Ellipsen statt Hüllenringe),
-  `SCHUB=1` (Scheitelschub, Versuch), `RUMPFKIPPEN`.
+  `SCHUB=1` (Scheitelschub, Versuch), `RUMPFKIPPEN`, `ENDSTUECK=0` (Endstück aus: Streifen), `ENDHART=0` (Endstück-Ringe nur an Naht
+  und Seiten hart), `SPALTEN=n` (feste Spaltenzahl eines Streifens).
 - Editor-Prüfungen (Playwright, eigener Vite auf 5192): `apps/editor/scripts/pruefen/run-check.sh <skript.mjs>`; Liste in
   `apps/editor/scripts/pruefen/README.md`.
 

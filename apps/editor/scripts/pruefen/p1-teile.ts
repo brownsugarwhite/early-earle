@@ -2,7 +2,7 @@
 // `schleifenTeile`) gegen den heutigen Bau an Langhals, Robbe, Ente und Pilz (Extremreihe, Florians Ablauf aus der Startkugel).
 // Je Fall: gefundene Kinder (Quelle, Rumpf längs : quer, Sehne zur Achse), Fenster (Art, Reihen λ, Seite, Spalten bzw. Ring),
 // Ringe × Punkte, Δ je Blatt (heute → neu, Raster 1920), Rest, Silhouette, Überstand, Nahtknick (Stufe 1 an den Fensterrändern; frei = die Zeichnung ist dort in jeder Ansicht glatt, Ecken = an T-Stößen der Zeichnung),
-// nach innen je Teil, Knicke Stufe 1, Zeit. Umgebung: FAELLE (Standard langhals,robbe,ente,pilz), FAIR, INNEN, TANGENTE, GEWICHT, NAHTGLATT (0 = aus), SCHUB (1 = Scheitelschub, Versuch), RUMPFKIPPEN, KLEMME (0 = Hülle nicht als Obergrenze), HRING (0 = Ellipsen statt Hüllenschnitte).
+// nach innen je Teil, Knicke Stufe 1, Zeit. Umgebung: FAELLE (Standard langhals,robbe,ente,pilz), FAIR, INNEN, TANGENTE, GEWICHT, NAHTGLATT (0 = aus), SCHUB (1 = Scheitelschub, Versuch), RUMPFKIPPEN, KLEMME (0 = Hülle nicht als Obergrenze), HRING (0 = Ellipsen statt Hüllenschnitte), ENDSTUECK (0 = Endstück aus: Streifen statt Fortsetzung des Röhrenendes), ENDHART (0 = Endstück-Ringe nur an Naht und Seiten hart), SPALTEN (feste Spaltenzahl eines Streifens, Versuch).
 // Aufruf aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/p1-teile.ts
 import { alleFlaechen } from '../../../../packages/shape/src/kaefig/halbkanten';
 import { blattAbweichungen } from '../../../../packages/shape/src/kern/abweichung';
@@ -13,7 +13,7 @@ import { schleifenKaefig, teileFinden } from '../../../../packages/shape/src/ker
 import { umrissPlan } from '../../../../packages/shape/src/kern/umrissPlan';
 
 const faelle = (process.env.FAELLE ?? 'langhals,robbe,ente,pilz').split(',');
-const opt = { fair: Number(process.env.FAIR ?? 30), innen: Number(process.env.INNEN ?? 1), tangente: Number(process.env.TANGENTE ?? 1e3), gewicht: Number(process.env.GEWICHT ?? 1e3), nahtGlatt: process.env.NAHTGLATT !== '0', scheitelSchub: process.env.SCHUB === '1', rumpfKippen: Number(process.env.RUMPFKIPPEN ?? 0), huelleKlemmt: process.env.KLEMME !== '0', huellenRing: process.env.HRING !== '0' };
+const opt = { fair: Number(process.env.FAIR ?? 30), innen: Number(process.env.INNEN ?? 1), tangente: Number(process.env.TANGENTE ?? 1e3), gewicht: Number(process.env.GEWICHT ?? 1e3), nahtGlatt: process.env.NAHTGLATT !== '0', scheitelSchub: process.env.SCHUB === '1', rumpfKippen: Number(process.env.RUMPFKIPPEN ?? 0), huelleKlemmt: process.env.KLEMME !== '0', huellenRing: process.env.HRING !== '0', endstueck: process.env.ENDSTUECK !== '0', endstueckHart: process.env.ENDHART !== '0', spalten: Number(process.env.SPALTEN ?? 0) };
 const f1 = (x: number) => x.toFixed(1);
 console.log(`Optionen ${JSON.stringify(opt)}`);
 console.log('Fall | Kinder (Quelle, Rumpf, Sehne) | ausgelassen | Achse | Fenster | Ringe × Punkte | Δ S/F/T heute → neu (px) | Rest | Silhouette | Überstand F/T | Nahtknick frei / an gezeichneten Ecken (Kanten frei/Ecken) | nach innen (Rumpf / Kinder; Zahl und Flächenanteil) | Knicke Stufe 1 95 %/max | Punkte | ms');

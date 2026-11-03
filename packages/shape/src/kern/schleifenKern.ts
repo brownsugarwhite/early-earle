@@ -84,6 +84,14 @@ export type KaefigOptionen = {
   huelleKlemmt?: boolean;
   /** Teile an der Naht (Standard an): freie Kindringe sind Hüllenschnitte längs ihrer Sehne (Dicke je Stelle) statt Ellipsen mit einer Breite */
   huellenRing?: boolean;
+  /** Endstück: ein Naht-Kind, dessen Sehne ein Ende des Rumpfs abschneidet (ein Sehnenende an der Spitze, das andere weiter hinten), wird
+   * die Fortsetzung der Röhre — Rand = Ring durch das hintere Sehnenende, Kappe und Ringe davor laufen als Ringe des Kindes weiter
+   * (Robbe: Kopf auf dem Vorderende). Aus: Streifen längs der Naht wie bisher. */
+  endstueck?: boolean;
+  /** Endstück: alle Ringpunkte hart (Hüllenschnitte quer durch den Rumpf); aus: nur Naht- und Seitenpunkte, Inneres weich */
+  endstueckHart?: boolean;
+  /** Spalten eines Streifen-Fensters fest (0 = aus der Breite des Kindes) — Versuch */
+  spalten?: number;
 };
 
 /** Bericht über die Teile (Kinder über Fenster am Eltern-Käfig), siehe `schleifenTeile.ts` */
@@ -93,7 +101,7 @@ export type TeileBericht = {
    * (Reihen λ der Sehnenenden längs der Naht: 0 = vordere Spitze, c/2 + i = Ring i; Seite; Spalten Cw bzw. Ring k), Ringe und
    * Punkte je Ring, Spitze (Welt), mittlere Seitenlänge (px), Knick des Rumpfs an den Sehnenenden (Grad)
    */
-  kinder: { name: string; quelle: 'planer' | 'baum'; art: 'streifen' | 'fortsetzung'; /** Umrissebene: Seite (Naht-Kind) oder Top (seitliches Paar) */ ebene: 'seite' | 'top'; fenster: { lamA: number; lamB: number; seite: 'oben' | 'unten' | 'rechts' | 'links'; c: number }; ringe: number; punkte: number; spitze: V3; /** Mitte der Sehne (Welt): Fuß der Kindachse */ fuss: V3; /** Kindachse: Fuß, Ringmitten, Spitze */ achse: V3[]; laenge: number; winkel: [number, number]; /** Fensterrand (Käfigpunkte ab dem A-Punkt Richtung +z) und erster Punkt des ersten neuen Rings (Ringe liegen fortlaufend dahinter) */ rand: number[]; erster: number }[];
+  kinder: { name: string; quelle: 'planer' | 'baum'; /** Streifen längs der Naht, Fortsetzung über eine Kappe (Ring ≈ Sehne) oder Endstück (Rand = Ring k hinter der Sehne, die Ringe davor laufen als Kind weiter) */ art: 'streifen' | 'fortsetzung' | 'endstueck'; /** Umrissebene: Seite (Naht-Kind) oder Top (seitliches Paar) */ ebene: 'seite' | 'top'; fenster: { lamA: number; lamB: number; seite: 'oben' | 'unten' | 'rechts' | 'links'; c: number }; ringe: number; punkte: number; spitze: V3; /** Mitte der Sehne (Welt): Fuß der Kindachse */ fuss: V3; /** Kindachse: Fuß, Ringmitten, Spitze */ achse: V3[]; laenge: number; winkel: [number, number]; /** Fensterrand (Käfigpunkte ab dem A-Punkt Richtung +z) und erster Punkt des ersten neuen Rings (Ringe liegen fortlaufend dahinter) */ rand: number[]; erster: number }[];
   /** größter Knick (Grad) an den Fensterrändern (Naht) auf Stufe 1, an Kanten, deren Zeichnung in allen Ansichten glatt ist */
   nahtKnick: number;
   /** größter Knick (Grad) an Randkanten, an denen die Zeichnung einer Ansicht selbst eine Ecke zeigt (T-Stoß); null ohne solche */
@@ -147,7 +155,7 @@ export type KaefigBericht = {
   msLoeser: number;
 };
 
-export const STANDARD: Required<KaefigOptionen> = { achse: 'auto', gewicht: 1e3, tangente: 1e3, innen: 1, fair: 30, fairKappe: 10, schaerfe: 1e6, kippen: 1, achseAb: 1.25, kruemmung: 0, tiefe: 'glatt', teile: true, eben: false, nahtGlatt: true, scheitelSchub: false, rumpfKippen: 0, huelleKlemmt: true, huellenRing: true };
+export const STANDARD: Required<KaefigOptionen> = { achse: 'auto', gewicht: 1e3, tangente: 1e3, innen: 1, fair: 30, fairKappe: 10, schaerfe: 1e6, kippen: 1, achseAb: 1.25, kruemmung: 0, tiefe: 'glatt', teile: true, eben: false, nahtGlatt: true, scheitelSchub: false, rumpfKippen: 0, huelleKlemmt: true, huellenRing: true, endstueck: true, endstueckHart: true, spalten: 0 };
 /** Ecken verschiedener Bögen einer Seite, die näher als dieser Anteil beieinander liegen, rasten auf denselben Schritt (ein Ring) */
 const ECKEN_BUENDEL = 0.08;
 /** Flache Läufe an Extremen gelten als gleich weit (Welt): eine gezeichnete Gerade wackelt um 1–2 px, die Mitte des Laufs ist die Kreuzung */

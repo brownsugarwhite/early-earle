@@ -987,4 +987,25 @@ Silhouettenbedingung je Ring; Planseite „Nachtrag 03.11. abends“; `schleifen
   der Ring faltet; die Röhre eines Naht-Kindes endet, wo die Wirbelsäule endet (nicht am von der Sehne fernsten Punkt); die
   Hüllen-Klemme klemmt die Dicke eines Paars, nicht seine seitliche Lage; Nahtknicke an gezeichneten Ecken sind kein Fehler.
 
+**Nachtrag 03.11. nachts (Endstück; Planseite „Nachtrag 03.11. nachts“; `schleifenTeile.test.ts` 11 grün, 11 `it.fails`):**
+- [x] **Robbe: Falte längs der Fensterflanken** — gelöst durch das Endstück (der Kopf ist die Fortsetzung des Röhrenendes: Rand = Ring
+  11, die Ringe davor laufen als Kopfringe weiter): Naht 37,0 → 27,6°, Knicke max 141 → 68°, nach innen 0 / 6, Rest 3,6 → 0,2 px,
+  Überstand 6,6 → 1,1 px.
+- [ ] **Robbe Front/Top 12,4/9,6 px (vorher 7,4/5,4):** die schrägen Kopfringe mit 16 Punkten treffen die Bauchecken (Front ± 0,245/0,082)
+  und die breiteste Stelle des Bauchs (Top x −0,045) nicht — zwischen zwei Ringpunkten rundet die Fläche ab. Weg: Dichteregel je Ring
+  (Befund aus P0a) oder die Ringschleife als Vorlage der Punktverteilung statt der Ellipse.
+- [ ] **„Breite der Kinder aus eigenen Front-/Top-Schleifen“ bringt an den vier Körpern nichts:** Planer-Flächen gibt es nur an
+  T-Stößen (Langhals-Kopf, Ente vorderer Teil, Pilz-Stiel), und dort misst die Sichthülle schon die Schleife des Teils. Die
+  Front-/Top-Fehler von Langhals (5,3 px) und Ente (3,7 px) liegen am Rumpfboden (Abtastung), nicht an der Kinderbreite. Der Punkt
+  „Breite der Kinder weiter aus der Hülle“ oben ist damit kein Weg mehr; offen bleibt die Dichte.
+- [ ] **Robbe Naht 27,6° an der Bauchflanke des Rands** (Ring 11 senkrecht, Ring 1 schon gekippt): Übergang über mehr Ringe oder der
+  Rand selbst leicht gekippt.
+- [x] **Messfehler „nach innen“ am Rumpf behoben:** die Rumpfmitte kommt aus den Rumpfflächen (die ersten nP Punkte liegen beim
+  Endstück zum Teil im Kopf; 200 Schwanzflächen zählten falsch). Langhals Rumpf jetzt 86 (0,8 %), Ente 14, Pilz 22, Robbe 0.
+- [x] Lehren: Ein dickes, gebogenes Röhrenende verträgt keine kürzeste Zuordnung (Fächer an der Kehle) und keine Röhrenringe als Pfad
+  (schräg im ganzen Rumpf); der gleiche Bogenanteil beider Seiten trägt. Hüllenringe durch ein hohles Profil brauchen alle Punkte
+  hart (sonst wölbt der Löser 36 px über die Schulter) und keine Silhouettenbänder (widersprechen schrägen Ringen, 35 px). Das
+  Endstück braucht den Höhentest (Ring ≤ 1,5 Sehnen), sonst wird jeder Hals am Vorderende zum Endstück (Langhals Top 11,9 px).
+
+
 

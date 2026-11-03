@@ -536,3 +536,9 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   liegt; der flache Lauf (Stielboden) darf diese Spitze nicht verschieben. Nahtknick an T-Stößen der Zeichnung getrennt
   ausweisen (`nahtKnickEcken`), das Tor gilt den freien Kanten; „nach innen“ immer mit Flächenanteil lesen (Fächer = viele
   Splitter).
+- **Endstück (03.11. nachts):** Ein Naht-Kind, dessen Sehne ein Ende des Rumpfs abschneidet (ein Ende an der Spitze, das andere weiter
+  hinten, Ring ≤ 1,5 Sehnen hoch), ist die Fortsetzung der Röhre (`art: 'endstueck'`): Rand = Ring k, die Ringreihen davor laufen als
+  freie Ringe weiter (`Reihe.ring`), nur die Quadratringe bleiben Kappe. Seiten dort am Rumpfumriss entlang verlängern; beide Seiten im
+  gleichen Bogenanteil paaren (kürzeste Zuordnung fächert, Röhrenringe brechen am senkrechten Rand); alle Ringpunkte hart und keine
+  Silhouettenbänder (Hüllenringe durch ein hohles Profil); keine Kappenmaske auf den freien Ringen. Maße „nach innen“ je Teil mit der
+  Rumpfmitte aus den Rumpfflächen (sonst zählt der Schwanz falsch).

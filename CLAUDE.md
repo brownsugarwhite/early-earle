@@ -400,6 +400,16 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   nur der Pilz (0,8/2,0). Fallen: Bänder nie in einer Ansicht, deren Blick in der Ringebene liegt (w = t × v entartet, Ringe
   falten); die Hüllen-Klemme eines Paars gilt der Dicke, nicht der seitlichen Lage; der flache Lauf um die Spitze darf das
   Wirbelsäulenende nicht verschieben; Nahtknicke an gezeichneten Ecken sind kein Fehler. Nächster Schritt: Florians Blick.
+- **2026-11-03 (nachts): Robbenkopf als Endstück** (Florian: „Mach weiter mit der Robbe-Falte … dann Breite der Kinder aus eigenen
+  Front-/Top-Schleifen.“; Planseite „Nachtrag 03.11. nachts“, Register, Übergabe). Befund: keine gezeichnete Ecke, der Kopf ist das
+  Ende der Röhre; als Streifen Kuppel unter der Sehne → 37°. Gebaut (Option `endstueck`, Standard an): Rand = Ring durch das hintere
+  Sehnenende, Kappe und Ringe davor laufen als freie Kopfringe weiter, Seite am Rumpfumriss verlängert, Paarung im gleichen
+  Bogenanteil, alle Ringpunkte hart, keine Silhouettenbänder, Höhentest Ring ≤ 1,5 Sehnen. Robbe Naht 37 → 27,6°, Knicke 141 → 68°,
+  nach innen 0 / 6, aber Front/Top 12,4/9,6 (Bauchecken zwischen den 16 Ringpunkten). „Breite aus eigenen Schleifen“ bringt an den
+  vier Körpern nichts (Planer-Flächen nur an T-Stößen, dort misst die Hülle schon das Teil; die Fehler liegen am Rumpfboden).
+  Fallen: kürzeste Zuordnung fächert bei dicken Enden; Röhrenringe als Pfad sind schräg im ganzen Rumpf; Hüllenringe brauchen alle
+  Punkte hart und keine Bänder; ohne Höhentest wird jeder Hals am Vorderende zum Endstück; „nach innen“ mit der Rumpfmitte aus den
+  Rumpfflächen messen.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
