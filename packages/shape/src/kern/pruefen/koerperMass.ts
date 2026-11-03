@@ -150,7 +150,7 @@ export function nachInnen(punkte: readonly V3[], flaechen: readonly (readonly nu
  * Nach innen gekehrte feine Flächen je Teil (Rumpf mit Kindern): Rumpfflächen gegen die Rumpfachse (Gerade durch die Mitte der
  * Rumpfpunkte, längs x oder y), Kindflächen gegen die Kindachse (Fuß → Spitze). `teilVonFlaeche` je Käfigfläche (−1 = Rumpf).
  */
-export function nachInnenTeile(punkte: readonly V3[], flaechen: readonly (readonly number[])[], abl: Ableitung, achse: 'x' | 'y', teilVonFlaeche: ArrayLike<number>, kinder: readonly { fuss: V3; spitze: V3; achse?: V3[] }[]): { zahl: number; wo: string; rumpf: number; kinder: number[] } {
+export function nachInnenTeile(punkte: readonly V3[], flaechen: readonly (readonly number[])[], abl: Ableitung, achse: 'x' | 'y', teilVonFlaeche: ArrayLike<number>, kinder: readonly { fuss: V3; spitze: V3; achse?: V3[] }[]): { zahl: number; wo: string; rumpf: number; kinder: number[]; /** Flächenanteil der nach innen gekehrten Flächen je Teil (%) — Splitter an einem Fächer zählen als Zahl viel, als Fläche wenig */ anteil: { rumpf: number; kinder: number[] } } {
   const L = abl.unterteilung.stufen.length;
   const nP = abl.vorlage.kaefig.n;
   const mitte: V3 = [0, 0, 0];
@@ -167,6 +167,10 @@ export function nachInnenTeile(punkte: readonly V3[], flaechen: readonly (readon
   let z = 0;
   let rumpf = 0;
   const jeKind = kinder.map(() => 0);
+  const flKind = kinder.map(() => 0);
+  const flKindAlle = kinder.map(() => 0);
+  let flRumpf = 0;
+  let flRumpfAlle = 0;
   flaechen.forEach((f, fi) => {
     let n0 = 0;
     let n1 = 0;
@@ -207,14 +211,22 @@ export function nachInnenTeile(punkte: readonly V3[], flaechen: readonly (readon
     const ln = Math.hypot(n0, n1, n2);
     const lr = Math.hypot(r[0], r[1], r[2]);
     if (!(ln > 1e-18) || !(lr > 1e-9)) return;
+    if (kind) flKindAlle[teil] = flKindAlle[teil]! + ln / 2;
+    else flRumpfAlle += ln / 2;
     if ((n0 * r[0] + n1 * r[1] + n2 * r[2]) / (ln * lr) >= -0.2) return;
     z++;
-    if (kind) jeKind[teil] = jeKind[teil]! + 1;
-    else rumpf++;
+    if (kind) {
+      jeKind[teil] = jeKind[teil]! + 1;
+      flKind[teil] = flKind[teil]! + ln / 2;
+    } else {
+      rumpf++;
+      flRumpf += ln / 2;
+    }
     const ort = kind ? `Kind ${teil}` : kf < (abl.vorlage.R - 1) * abl.vorlage.N ? `Ring ${Math.floor(kf / abl.vorlage.N)}` : 'Kappe';
     orte.set(ort, (orte.get(ort) ?? 0) + 1);
   });
-  return { zahl: z, wo: [...orte.entries()].sort((p, q) => q[1] - p[1]).slice(0, 5).map(([o, n]) => `${o} ${n}`).join(', '), rumpf, kinder: jeKind };
+  const prozent = (a: number, b: number) => (b > 0 ? (100 * a) / b : 0);
+  return { zahl: z, wo: [...orte.entries()].sort((p, q) => q[1] - p[1]).slice(0, 5).map(([o, n]) => `${o} ${n}`).join(', '), rumpf, kinder: jeKind, anteil: { rumpf: prozent(flRumpf, flRumpfAlle), kinder: flKind.map((a, i) => prozent(a, flKindAlle[i]!)) } };
 }
 
 /** Umgeklappte feine Flächen: Normale gegen die Normale des Bezugs (heutiger Bau); dazu ihre Lage (Ringband der Käfigfläche oder Kappe). */

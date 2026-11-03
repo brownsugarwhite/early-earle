@@ -966,3 +966,25 @@ Kappe), ein Löser. Langhals, Robbe, Ente, Pilz bauen; Seite Pilz 0,7, Langhals 
   längs der Naht (λ); Fortsetzung nur mit beiden Enden klar vor der Spitze; die Paarung der Kindseiten als kürzeste monotone
   Zuordnung (Bogenanteil, Höhenschnitt und Innennormale scheitern je an einem Körper); Maße bei mehrteiligen Körpern je Teil.
 
+**Nachtrag 03.11. abends (Naht weich, Hülle als Obergrenze, Hüllenringe, Flügel als Paar, Röhrenende am Ende der Wirbelsäule,
+Silhouettenbedingung je Ring; Planseite „Nachtrag 03.11. abends“; `schleifenTeile.test.ts` 10 grün, 12 `it.fails`):**
+- [x] **Naht** — Langhals frei 17,9°, Ente 20,2° (Tor 30°); gezeichnete Ecken getrennt gemessen (Ente Brust 36,1°, Langhals
+  Rückenansatz 29,5°, Pilz-Stiel ringsum 33,9° — dort zeigt die Zeichnung die Kante).
+- [ ] **Robbe: Falte längs der Fensterflanken 37,0°** — der Kopf sitzt als Streifen-Kind über die Brustkappe auf dem Rücken; an den
+  Flanken des Fensters (z ± 0,13) steht die Kopfwand mit 37° auf der Rumpfhaut, die Zeichnung zeigt dort in keiner Ansicht eine
+  Ecke. Weg: Kopf als Fortsetzung über die Brustkappe (passender Ring), oder Fenster breiter mit Schulter über mehr Ringe.
+- [ ] **Breite der Kinder weiter aus der Hülle** (Front/Top: Pilz 0,8/2,0 ✓, Ente 3,7/2,7, Langhals 4,6/2,9, Robbe 7,4/5,4 px;
+  Überstand über die Front bis 6,6 px bei der Robbe) — Hülle als Obergrenze und Hüllenringe helfen (Robbe Top 12,5 → 5,4), eine
+  eigene Front-/Top-Schleife je Kind fehlt. Weg unverändert: Schleifen je Teil aus den Planer-T-Stößen.
+- [x] **Ente:** Flügel als seitliches Paar gebaut (Top 57,7 → 2,7 px; Dicke aus Front bei z und Seite bei x, Klemme der Dicke);
+  Kopf mit Schnabel, weil die Röhre am Ende der Wirbelsäule endet (Seite 15,5 → 2,9 px).
+- [ ] **Fächer an der inneren Ecke Hals → Kopf (Ente):** 284 Flächen nach innen (0,7 % der Kindfläche; die Röhre heute 782, 8,2 %),
+  alle am Fächer der kürzesten Zuordnung an der konkaven Ecke (wie G2b). Weg: Fächer über einen kurzen Bogen um die Ecke
+  verteilen (Steigungsschranke der Zuordnung) oder die Ecke als Falte mit eigener Reihe; Kehrtwende Hals → Kopf bleibt offen.
+- [ ] **Langhals Rest 1,3 px** (Seite 1,0 px, Rest-Tor 1 px) und **98 Rumpfflächen nach innen (0,3 %, Kappe)** — nicht untersucht.
+- [ ] **Gratenden der Kinderkappen** weiter 90–176° auf Stufe 1 (unverändert, siehe „Kappen der Kinder“).
+- [x] Lehren: Bänder (Silhouettenbedingung) nie in einer Ansicht, deren Blickrichtung in der Ringebene liegt — w = t × v entartet,
+  der Ring faltet; die Röhre eines Naht-Kindes endet, wo die Wirbelsäule endet (nicht am von der Sehne fernsten Punkt); die
+  Hüllen-Klemme klemmt die Dicke eines Paars, nicht seine seitliche Lage; Nahtknicke an gezeichneten Ecken sind kein Fehler.
+
+

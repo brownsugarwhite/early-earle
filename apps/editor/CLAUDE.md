@@ -528,3 +528,11 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   Kindseiten als kürzeste monotone Zuordnung paaren. Maße (`nachInnen`, Kippung) sind bei mehrteiligen Körpern nur je Teil
   brauchbar (`nachInnenTeile`, `teilVonFlaeche`). Im Playwright-Bogen `MODUL=extremreihe` (Körper der Extremreihe) und `BOGEN`
   (Dateiname), sonst überschreibt der Lauf `p1-kaefig-<datum>.jpg`.
+- **Teile an der Naht, Fortsetzung (03.11. abends):** Silhouettenbänder (`Band`, w = t × Blickrichtung) je Ring in der Ansicht
+  wählen, die den Ring von der Kante sieht — liegt die Blickrichtung in der Ringebene (Kopfscheiben längs x in der Front),
+  entartet w und der Ring faltet am Seitenpunkt (888 Flächen nach innen). Die Hüllen-Klemme (`huelleKlemmt`) klemmt bei einem
+  seitlichen Paar die Dicke (y bei z), nicht z — sonst ziehen Schulterpunkte mit der Höhe des Fensterrands auf die Rumpfflanke
+  (Flügel verknotet). Die Spitze eines Naht-Kindes ist das Ende der Wirbelsäule (`gefroren.enden`), wenn es auf seinem Bogen
+  liegt; der flache Lauf (Stielboden) darf diese Spitze nicht verschieben. Nahtknick an T-Stößen der Zeichnung getrennt
+  ausweisen (`nahtKnickEcken`), das Tor gilt den freien Kanten; „nach innen“ immer mit Flächenanteil lesen (Fächer = viele
+  Splitter).

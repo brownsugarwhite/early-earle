@@ -11,19 +11,22 @@
 // am Ringmittelpunkt, Silhouettenbedingung), dazwischen Ellipsen nach dem Bogenanteil des Fensterrands; die Kappe des Kindes
 // sind die Stufen des Fensters (Rechteckringe bzw. Eltern-Ringe und Quadratringe), zuletzt ein Grat oder eine Spitze auf dem
 // Bogen. Ein Löser über alle Teile. Kinder kommen aus dem S4-Teilbaum (Mitte-Teile der Seite) und aus den Seitenflächen des
-// Planers, die kein Baum-Teil deckt (Pilz-Stiel); seitliche Paare (Flügel) bleiben im zweiten Schritt. DOM-frei.
+// Planers, die kein Baum-Teil deckt (Pilz-Stiel); seitliche Paare (Flügel) sind Kinder der Top-Ebene über ein Fenster auf der
+// Flanke (Umriss aus dem Top, Dicke aus der Front), rechts gebaut und links gespiegelt. DOM-frei.
 import type { V2 } from '../bezier';
 import type { Dokument } from '../dokument';
 import { orientieren } from '../kaefig/baumKaefig';
 import { type Kaefig, type V3, alleFlaechen, kaefigAusFlaechen, kanteZwischen, pruefeKaefig, volumen } from '../kaefig/halbkanten';
 import type { Roehre } from '../kaefig/roehre';
 import { grenzLoeser } from '../loeser/grenzflaeche';
+import { kaefigNachbarlisten } from '../loeser/normalSystem';
 import { unterteilung } from '../subdivision/catmullClark';
 import type { Ableitung } from './ableiten';
 import { type Huelle, huelle, schnittIntervalle } from './grundkoerper/huelle';
+import { endenFuer } from './grundkoerper/enden';
 import { teilbaum } from './grundkoerper/teilbaum';
 import { type Band, type Blatt, type BogenName, type KaefigAchse, type KaefigBericht, type KaefigOptionen, type SeitenLage, type TeileBericht, PX, achseWaehlen, dist, eckenKnoten, einteilZiele, faltenAnwenden, jetzt, kaefigLoesen, kaefigMasse, laengen, leer, punktBei, rahmenFuer } from './schleifenKern';
-import { type UmrissPlan, tiefeGlaetten } from './umrissPlan';
+import { type UmrissPlan, blattKoord, tiefeGlaetten } from './umrissPlan';
 
 type Probe = { q: V2; s: number; ecke: boolean };
 /** Ein Kind an der Naht: Sehne a → b auf der Seite und der gezeichnete Bogen von a über die Spitze nach b. */
@@ -39,6 +42,10 @@ export type Kind = {
   /** Rumpf ohne den Bogen: Ausdehnung längs : quer (achsenparallel) und Winkel der Sehne zur langen Achse (0 … 90°) */
   laenglich: number;
   sehneWinkel: number;
+  /** Ebene des Umrisses: `seite` (Hals, Kopf, Stiel; seitlich = z) oder `top` (seitliches Paar wie Flügel: Umriss (x, z), seitlich = y) */
+  ebene: 'seite' | 'top';
+  /** linke Hälfte eines Paars (Umriss an z gespiegelt) */
+  spiegel: boolean;
 };
 export type TeileFund = { kinder: Kind[]; /** seitliche Paare: Sehne im Top (rechte Seite), aus dem Rumpf-Umriss geschnitten */ paareTop: [V2, V2][]; ausgelassen: { name: string; grund: string }[]; ms: number };
 
@@ -92,8 +99,9 @@ function lauf(n: number, ia: number, ib: number, richtung: 1 | -1): number[] {
   return out;
 }
 
-/** Der Bogen eines Kindes auf der Zeichnung: von a nach b über die Spitze (`ref` = ein Punkt des Kindes, der den Bogen wählt). */
-function kindAus(z: readonly Probe[], name: string, quelle: Kind['quelle'], a: V2, b: V2, ref: V2 | null): Kind | null {
+/** Der Bogen eines Kindes auf der Zeichnung: von a nach b über die Spitze (`ref` = ein Punkt des Kindes, der den Bogen wählt;
+ * `enden` = die Enden der Wirbelsäule: liegt eines auf dem Bogen, endet die Röhre dort). */
+function kindAus(z: readonly Probe[], name: string, quelle: Kind['quelle'], a: V2, b: V2, ref: V2 | null, enden: readonly V2[] = []): Kind | null {
   const n = z.length;
   const qs = z.map((p) => p.q);
   const ia = naechster(qs, a);
@@ -110,7 +118,10 @@ function kindAus(z: readonly Probe[], name: string, quelle: Kind['quelle'], a: V
   const bogen = idx.map((i) => ({ ...z[i]! }));
   bogen[0] = { ...bogen[0]!, q: a, ecke: false };
   bogen[bogen.length - 1] = { ...bogen[bogen.length - 1]!, q: b, ecke: false };
-  // Spitze: größter Abstand von der Sehne; ein flacher Lauf (Stielboden) nimmt seine Mitte
+  // Spitze: das Ende der Wirbelsäule, wenn es auf dem Bogen liegt (die Ente trägt den Kopf quer auf dem Hals: der von der Sehne
+  // fernste Punkt ist der Scheitel, die Röhre endet aber am Schnabel — mit der Kappe auf dem Scheitel lagen die Kopfringe als
+  // waagerechte Sehnen übereinander, 1155 Flächen nach innen); sonst der größte Abstand von der Sehne; ein flacher Lauf
+  // (Stielboden) nimmt seine Mitte
   const d = bogen.map((p) => abstandLinie(p.q, a, b));
   let best = 1;
   for (let i = 2; i < bogen.length - 1; i++) if (d[i]! > d[best]!) best = i;
@@ -118,6 +129,13 @@ function kindAus(z: readonly Probe[], name: string, quelle: Kind['quelle'], a: V
   let hi = best;
   while (lo > 1 && d[lo - 1]! >= d[best]! - EPS_FLACH) lo--;
   while (hi < bogen.length - 2 && d[hi + 1]! >= d[best]! - EPS_FLACH) hi++;
+  for (const e of enden) {
+    const ie = naechster(
+      bogen.map((p) => p.q),
+      e,
+    );
+    if (ie >= 2 && ie <= bogen.length - 3 && d2(bogen[ie]!.q, e) <= FANG) lo = hi = ie;
+  }
   // Knick des Rumpfs an den Sehnenenden: Richtung des Rumpf-Umrisses vor a bzw. nach b gegen die Sehne
   const r = idx === vor ? -1 : 1;
   const vorA = qs[(ia + r + n) % n]!;
@@ -145,7 +163,7 @@ function kindAus(z: readonly Probe[], name: string, quelle: Kind['quelle'], a: V
   const hh = y1 - y0;
   const laenglich = Math.max(w, hh) / Math.max(1e-9, Math.min(w, hh));
   const sehneWinkel = wink(sehne, w >= hh ? { x: 1, y: 0 } : { x: 0, y: 1 });
-  return { name, quelle, a, b, bogen, spitze: Math.round((lo + hi) / 2), winkel: [wink({ x: a.x - vorA.x, y: a.y - vorA.y }, sehne), wink(sehne, { x: nachB.x - b.x, y: nachB.y - b.y })], laenglich, sehneWinkel: Math.min(sehneWinkel, 180 - sehneWinkel) };
+  return { name, quelle, a, b, bogen, spitze: Math.round((lo + hi) / 2), winkel: [wink({ x: a.x - vorA.x, y: a.y - vorA.y }, sehne), wink(sehne, { x: nachB.x - b.x, y: nachB.y - b.y })], laenglich, sehneWinkel: Math.min(sehneWinkel, 180 - sehneWinkel), ebene: 'seite', spiegel: false };
 }
 
 /** Kinder an der Naht: Mitte-Teile des Teilbaums (Seite) und Seitenflächen des Planers, die kein Baum-Teil deckt. */
@@ -157,11 +175,35 @@ export function teileFinden(dok: Dokument, plan: UmrissPlan, gefroren: Ableitung
   const ausgelassen: TeileFund['ausgelassen'] = [];
   const schnitte: [V2, V2][] = [];
   const tb = teilbaum(dok, gefroren?.teile ?? null);
+  const enden: V2[] = gefroren?.enden ? [gefroren.enden.vorn.p, gefroren.enden.hinten.p] : (() => { const e = endenFuer(dok); return [e.vorn, e.hinten]; })();
   for (const t of tb.teile) {
     if (t.art === 'rumpf') continue;
     if (t.art === 'paar') {
-      if (t.erkannt.top) paareTop.push(t.erkannt.top.schnitt);
-      ausgelassen.push({ name: t.id, grund: 'seitliches Paar (zweiter Schritt)' });
+      const e = t.erkannt.top;
+      if (!e) {
+        ausgelassen.push({ name: t.id, grund: 'seitliches Paar nur in Front oder Seite erkannt (Beine, Flossen: noch nicht gebaut)' });
+        continue;
+      }
+      paareTop.push(e.schnitt);
+      // Lobe im Top (rechte Seite, z ≥ 0): Umriss = Randstück + Sehne; der Bogen von a nach b ist das Randstück
+      const proben: Probe[] = e.umriss.map((q, i) => ({ q, s: i, ecke: false }));
+      let ref: V2 | null = null;
+      let bd = -1;
+      for (const q of e.umriss) {
+        const d = abstandLinie(q, e.schnitt[0], e.schnitt[1]);
+        if (d > bd) {
+          bd = d;
+          ref = q;
+        }
+      }
+      const kR = kindAus(proben, t.id, 'baum', e.schnitt[0], e.schnitt[1], ref);
+      if (!kR) {
+        ausgelassen.push({ name: t.id, grund: 'Lobe des Paars nicht lesbar' });
+        continue;
+      }
+      const sp = (q: V2): V2 => ({ x: q.x, y: -q.y });
+      kinder.push({ ...kR, ebene: 'top', spiegel: false });
+      kinder.push({ ...kR, name: `${t.id} links`, a: sp(kR.a), b: sp(kR.b), bogen: kR.bogen.map((pr) => ({ ...pr, q: sp(pr.q) })), ebene: 'top', spiegel: true });
       continue;
     }
     const e = t.erkannt.seite;
@@ -179,7 +221,7 @@ export function teileFinden(dok: Dokument, plan: UmrissPlan, gefroren: Ableitung
         ref = p;
       }
     }
-    const k = kindAus(z, t.id, 'baum', e.schnitt[0], e.schnitt[1], ref);
+    const k = kindAus(z, t.id, 'baum', e.schnitt[0], e.schnitt[1], ref, enden);
     if (!k) ausgelassen.push({ name: t.id, grund: 'Bogen auf der Zeichnung nicht gefunden' });
     else if (k.laenglich < LAENGLICH || k.sehneWinkel > 45) ausgelassen.push({ name: t.id, grund: `kein Abzweig längs eines liegenden Rumpfs (Rumpf ${k.laenglich.toFixed(2)} : 1, Sehne ${k.sehneWinkel.toFixed(0)}° zur Achse) — bleibt im Einteiler` });
     else kinder.push(k);
@@ -204,7 +246,7 @@ export function teileFinden(dok: Dokument, plan: UmrissPlan, gefroren: Ableitung
         ref = p.q;
       }
     }
-    const k = kindAus(z, name, 'planer', f.sehne.a, f.sehne.b, ref);
+    const k = kindAus(z, name, 'planer', f.sehne.a, f.sehne.b, ref, enden);
     if (!k) ausgelassen.push({ name, grund: 'Bogen auf der Zeichnung nicht gefunden' });
     else kinder.push(k);
   }
@@ -380,6 +422,8 @@ function huellenBreite(h: Huelle, x: number, y: number, sonst: number): number {
 
 /** Eine geschlossene Punktreihe (Fensterrand, Stufe, Kindring): Punkte im Umlauf ab dem A-Punkt Richtung +z, Viertelbruch 0 … 4 je Punkt. */
 type Reihe = { punkte: number[]; t: number[] };
+/** Seite eines Fensters: Rücken, Bauch (Naht) oder die Flanken (seitliches Paar) */
+type Fensterseite = 'oben' | 'unten' | 'rechts' | 'links';
 
 /** Viertelbrüche einer Reihe aus Längen je Kante: die Viertelpunkte (Indizes) teilen den Umlauf in vier Bögen. */
 function viertelBrueche(laengenKanten: readonly number[], viertel: readonly [number, number, number]): number[] {
@@ -421,8 +465,13 @@ type Fenster = {
  * der Punkt in Reihe λ bei Spalte u (u > 0 = +z). Ein Streifen-Fenster ist ein Rechteck in diesen Koordinaten und darf
  * über die Kappe reichen (Hals am Ende des Rückens).
  */
-function reihenPunkt(v: Roehre, seite: 'oben' | 'unten', lam: number, u: number): number {
+function reihenPunkt(v: Roehre, seite: Fensterseite, lam: number, u: number): number {
   const { R, N, c } = v;
+  if (seite === 'rechts' || seite === 'links') {
+    // Flanke: nur Ringreihen; u > 0 = nach oben (zur Naht j = 0), die seitliche Richtung eines Paars ist y
+    const i = Math.min(R - 1, Math.max(0, lam - c / 2));
+    return v.ringPunkt(i, seite === 'rechts' ? c - u : 3 * c + u);
+  }
   const a = c / 2 + u;
   if (lam <= 0) return v.kappe('vorn', a, c / 2);
   if (lam < c / 2) return v.kappe('vorn', a, seite === 'oben' ? c / 2 + lam : c / 2 - lam);
@@ -439,7 +488,7 @@ const lambdaVon = (v: Roehre, l: SeitenLage): number => (l.ende === 'vorn' ? l.s
  * Streifen-Fenster: Reihen λA (Sehnenende a) … λB (Ende b), Spalten ± Cw/2 um die Naht. Rand ab dem A-Punkt Richtung +z, innere
  * Stufen als Rechteckringe, Grat; die Fensterflächen über ihre vier Ecken in der Flächenliste gefunden (null, wenn eine fehlt).
  */
-function fensterStreifen(v: Roehre, ziele: Float64Array, seite: 'oben' | 'unten', lamA: number, lamB: number, Cw: number, flaechenIndex: Map<string, number>): Fenster | null {
+function fensterStreifen(v: Roehre, ziele: Float64Array, seite: Fensterseite, lamA: number, lamB: number, Cw: number, flaechenIndex: Map<string, number>): Fenster | null {
   const sB = lamB > lamA ? 1 : -1;
   const Rw = Math.abs(lamB - lamA);
   const P = (a: number, b: number) => reihenPunkt(v, seite, lamA + sB * b, a - Cw / 2);
@@ -537,11 +586,19 @@ function fensterKappe(v: Roehre, ziele: Float64Array, ende: 'vorn' | 'hinten', k
   return { rand, stufen, grat: { punkte: [spitze], richtung: 'punkt' }, flaechen, innen, mitte: spitze, M: k + c / 2 };
 }
 
-/** Ellipse durch die Anker A (Bruch 0), +z (1), B (2), −z (3): Punkt beim Viertelbruch t, nach Bogenlänge gleichmäßig; dazu der Winkel. */
-function ellipse(A: V3, B: V3, w: number): { bei: (t: number) => V3; winkel: (t: number) => number } {
-  const C: V3 = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2, (A[2] + B[2]) / 2];
+/**
+ * Ellipse durch die Anker A (Bruch 0), +z (1), B (2), −z (3): Punkt beim Viertelbruch t, nach Bogenlänge gleichmäßig; dazu der
+ * Winkel. `schub` verschiebt die seitlichen Scheitel längs der Sehne (Anteil der halben Sehne): dorthin, wo die Hülle am
+ * breitesten ist — die Silhouette eines Kopfs liegt selten über der Sehnenmitte.
+ */
+function ellipse(A: V3, B: V3, w: number, schub = 0, seitlich: V3 = [0, 0, 1], mitte?: V3): { bei: (t: number) => V3; winkel: (t: number) => number } {
+  const C: V3 = mitte ?? [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2, (A[2] + B[2]) / 2];
   const u: V3 = [A[0] - C[0], A[1] - C[1], A[2] - C[2]];
-  const P = (th: number): V3 => [C[0] + Math.cos(th) * u[0], C[1] + Math.cos(th) * u[1], C[2] + Math.cos(th) * u[2] + Math.sin(th) * w];
+  const P = (th: number): V3 => {
+    const cu = Math.cos(th) + Math.sin(th) * schub;
+    const sw = Math.sin(th) * w;
+    return [C[0] + cu * u[0] + sw * seitlich[0], C[1] + cu * u[1] + sw * seitlich[1], C[2] + cu * u[2] + sw * seitlich[2]];
+  };
   const M = 48;
   const S = new Float64Array(M + 1);
   for (let i = 1; i <= M; i++) S[i] = S[i - 1]! + dist(P(((i - 1) / M) * (Math.PI / 2)), P((i / M) * (Math.PI / 2)));
@@ -562,7 +619,44 @@ function ellipse(A: V3, B: V3, w: number): { bei: (t: number) => V3; winkel: (t:
   return { bei: (t) => P(winkel(t)), winkel };
 }
 
-type FensterPlan = { kind: Kind; art: 'streifen' | 'fortsetzung'; seite: 'oben' | 'unten'; ende: 'vorn' | 'hinten'; /** Reihen λ der Sehnenenden (Streifen) bzw. Ring k (Fortsetzung) */ lamA: number; lamB: number; Cw: number; k: number; lageA: SeitenLage; lageB: SeitenLage; fenster: Fenster };
+/**
+ * Ring als Hüllenschnitt: entlang der Sehne A → B (Anteil s = cos θ) die seitliche Ausdehnung der Sichthülle an jeder Stelle
+ * (`profil`: halbe Breite und Versatz der Mitte) — Naht-Kinder breit in z, Paare dick in y; der Flügel wird so zum Rand hin dünn
+ * wie die Glocke der Front. Viertel A → +seitlich → B → −seitlich je nach Bogenlänge gleichmäßig.
+ */
+function huellenRing(A: V3, B: V3, C: V3, seitRichtung: V3, profil: (p: V3) => { w: number; versatz: V3 }): { bei: (t: number) => V3; winkel: (t: number) => number } {
+  const u: V3 = [A[0] - C[0], A[1] - C[1], A[2] - C[2]];
+  const P = (th: number): V3 => {
+    const s = Math.cos(th);
+    const q: V3 = [C[0] + s * u[0], C[1] + s * u[1], C[2] + s * u[2]];
+    const { w, versatz } = profil(q);
+    const sw = Math.sin(th) * w;
+    return [q[0] + versatz[0] + sw * seitRichtung[0], q[1] + versatz[1] + sw * seitRichtung[1], q[2] + versatz[2] + sw * seitRichtung[2]];
+  };
+  const M = 32;
+  // Bogenlängen je Viertel (die Viertel sind nicht symmetrisch: die Dicke ändert sich längs der Sehne)
+  const S: Float64Array[] = [];
+  for (let Q = 0; Q < 4; Q++) {
+    const tab = new Float64Array(M + 1);
+    for (let i = 1; i <= M; i++) tab[i] = tab[i - 1]! + dist(P(((Q + (i - 1) / M) * Math.PI) / 2), P(((Q + i / M) * Math.PI) / 2));
+    S.push(tab);
+  }
+  const winkel = (t: number): number => {
+    const Q = Math.min(3, Math.max(0, Math.floor(t)));
+    const f = Math.min(1, Math.max(0, t - Q));
+    const tab = S[Q]!;
+    const L = tab[M]!;
+    if (!(L > 1e-15)) return ((Q + f) * Math.PI) / 2;
+    const ziel = f * L;
+    let i = 0;
+    while (i + 1 < M && tab[i + 1]! < ziel) i++;
+    const d = tab[i + 1]! - tab[i]!;
+    return ((Q + (i + (d > 1e-15 ? (ziel - tab[i]!) / d : 0)) / M) * Math.PI) / 2;
+  };
+  return { bei: (t) => P(winkel(t)), winkel };
+}
+
+type FensterPlan = { kind: Kind; art: 'streifen' | 'fortsetzung'; seite: Fensterseite; ende: 'vorn' | 'hinten'; /** Reihen λ der Sehnenenden (Streifen) bzw. Ring k (Fortsetzung) */ lamA: number; lamB: number; Cw: number; k: number; lageA: SeitenLage; lageB: SeitenLage; fenster: Fenster };
 
 /** Rumpf mit Kindern über Fenster; `fund` von `teileFinden`. */
 export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, opt: Required<KaefigOptionen>, fund: TeileFund): { abl: Ableitung; bericht: KaefigBericht } {
@@ -576,7 +670,7 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
   const z = plan.zeichnung.seite;
   const h = huelle(dok);
   // ---- Rumpf: Seite mit Sehnen, Front und Top auf den Rumpf beschnitten ----
-  const wurzel = wurzelSeite(z, fund.kinder);
+  const wurzel = wurzelSeite(z, fund.kinder.filter((kd) => kd.ebene === 'seite'));
   const seite3: V3[] = wurzel.map((q) => [q.x, q.y, 0]);
   let xLo = Infinity;
   let xHi = -Infinity;
@@ -588,19 +682,26 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
     yLo = Math.min(yLo, q.y);
     yHi = Math.max(yHi, q.y);
   }
-  const { front: front3, top: top3 } = rumpfSchleifen(h, wurzel, lobbenSchneiden(plan.zeichnung.top.map((p) => p.q), fund.paareTop));
+  const topOhneLobben = lobbenSchneiden(plan.zeichnung.top.map((p) => p.q), fund.paareTop);
+  const { front: front3, top: top3 } = rumpfSchleifen(h, wurzel, topOhneLobben);
+  /** Rückenpunkt des Rumpfs bei x (höchster Punkt des Rumpfpolygons) — die Reihe eines Flanken-Fensters */
+  const rueckenBei = (x: number): V2 => {
+    let best = -Infinity;
+    for (const [, hi] of schnittIntervalle(wurzel, 'x', x)) best = Math.max(best, hi);
+    return { x, y: Number.isFinite(best) ? best : yHi };
+  };
   void xLo;
   void xHi;
   void yLo;
-  void yHi;
-  const sehnenEnden = fund.kinder.flatMap((kd) => [kd.a, kd.b]);
-  const eckenSeite = eckenKnoten(dok, 'seite').filter((q) => !sehnenEnden.some((e) => d2(e, q) < FANG));
+  // Fragen an die Rumpfseite: Sehnenenden der Naht-Kinder, bei Paaren der Rückenpunkt über dem x des Sehnenendes
+  const sehnenEnden = fund.kinder.flatMap((kd) => (kd.ebene === 'seite' ? [kd.a, kd.b] : [rueckenBei(kd.a.x), rueckenBei(kd.b.x)]));
+  const eckenSeite = eckenKnoten(dok, 'seite').filter((q) => !fund.kinder.some((kd) => kd.ebene === 'seite' && (d2(kd.a, q) < FANG || d2(kd.b, q) < FANG)));
   const flaechenAlle = alleFlaechen(k);
   const flaechenIndex = new Map<string, number>();
   flaechenAlle.forEach((f, i) => flaechenIndex.set([...f].sort((x, y) => x - y).join(','), i));
   const lamMax = R + c - 1;
   // Der Rumpf baut mit ebenen Ringen (Kreuzungen oben/rechts/unten liegen bei Rümpfen mit Kindern selten auf einer Achskoordinate)
-  const optRumpf: Required<KaefigOptionen> = { ...opt, eben: true };
+  const optRumpf: Required<KaefigOptionen> = { ...opt, eben: true, kippen: opt.rumpfKippen };
   // ---- Achse und Fenster: beide Achsen planen; es gewinnt die Achse mit mehr gebauten Kindern, bei Gleichstand die Fortsetzung
   // über die Kappe mit passendem Ring (Pilz), sonst die natürliche Achse ----
   const natuerlich: KaefigAchse = opt.achse === 'auto' ? achseWaehlen(seite3, opt.achseAb) : opt.achse;
@@ -620,7 +721,7 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
   const anKreuzung = (l: SeitenLage) => l.s >= l.total - 1e-9;
   const anSpitze = (l: SeitenLage) => l.s <= 1e-9;
   /** mittlere Spaltenbreite der Reihen λ0 … λ1 (Punkt zu Nachbar ± 1) */
-  const spaltenBreite = (seite: 'oben' | 'unten', lam0: number, lam1: number): number => {
+  const spaltenBreite = (seite: Fensterseite, lam0: number, lam1: number): number => {
     let sum = 0;
     let z2 = 0;
     for (let lam = Math.min(lam0, lam1); lam <= Math.max(lam0, lam1); lam++) {
@@ -642,9 +743,50 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
     const lb = erg1.lagen[2 * q + 1]!;
     const mitte = { x: (kd.a.x + kd.b.x) / 2, y: (kd.a.y + kd.b.y) / 2 };
     const sp = kd.bogen[kd.spitze]!.q;
-    // Breite des Kindes: die Hülle ein Viertel des Wegs zur Spitze (an der Sehne selbst misst die Hülle noch den Rumpf)
-    const breiteVoll = 2 * huellenBreite(h, mitte.x + 0.25 * (sp.x - mitte.x), mitte.y + 0.25 * (sp.y - mitte.y), d2(kd.a, kd.b) / 2);
+    const viertel = { x: mitte.x + 0.25 * (sp.x - mitte.x), y: mitte.y + 0.25 * (sp.y - mitte.y) };
+    // Breite des Kindes ein Viertel des Wegs zur Spitze (an der Sehne selbst misst die Hülle noch den Rumpf): seitlich z bei
+    // Naht-Kindern, die Dicke in y bei Paaren (Front bei z ∩ Seite bei x)
+    const breiteVoll = kd.ebene === 'seite' ? 2 * huellenBreite(h, viertel.x, viertel.y, d2(kd.a, kd.b) / 2) : Math.max(1e-6, ...h.yBei(viertel.x, viertel.y).map(([lo, hi]) => hi - lo), 0);
     const ausgelassen = weg;
+    if (kd.ebene === 'top') {
+      // seitliches Paar: Reihen = Ringe bei x der Sehnenenden (über den Rücken gefragt), Fenster auf der Flanke, Spalten aus der Dicke
+      let lamA = Math.round(lambdaVon(v, la));
+      let lamB = Math.round(lambdaVon(v, lb));
+      lamA = Math.min(c / 2 + R - 1, Math.max(c / 2, lamA));
+      lamB = Math.min(c / 2 + R - 1, Math.max(c / 2, lamB));
+      let Rw = Math.abs(lamB - lamA);
+      const sg = lamB >= lamA ? 1 : -1;
+      if (Rw < 2) Rw = 2;
+      if (Rw % 2) Rw++;
+      lamB = lamA + sg * Rw;
+      if (lamB > c / 2 + R - 1 || lamB < c / 2) {
+        lamB = Math.min(c / 2 + R - 1, Math.max(c / 2, lamB));
+        lamA = lamB - sg * Rw;
+      }
+      if (lamA < c / 2 || lamA > c / 2 + R - 1) {
+        ausgelassen.push({ name: kd.name, grund: 'Paar reicht über die Kappe hinaus' });
+        return;
+      }
+      const seite: Fensterseite = kd.spiegel ? 'links' : 'rechts';
+      let Cw = 2 * Math.max(1, Math.round(breiteVoll / (2 * spaltenBreite(seite, lamA, lamB))));
+      Cw = Math.min(Cw, SPALTEN_MAX, N / 4 - 2);
+      const f = fensterStreifen(v, erg1.ziele, seite, lamA, lamB, Cw, flaechenIndex);
+      if (!f) {
+        ausgelassen.push({ name: kd.name, grund: 'Flanken-Streifen nicht im Gitter' });
+        return;
+      }
+      if (f.flaechen.some((x) => belegt.has(x))) {
+        ausgelassen.push({ name: kd.name, grund: 'Fenster überlappt ein anderes' });
+        return;
+      }
+      for (const x of f.flaechen) belegt.add(x);
+      if (!kd.spiegel) {
+        stuetze(la, lamA);
+        stuetze(lb, lamB);
+      }
+      plaene.push({ kind: kd, art: 'streifen', seite, ende: la.ende, lamA, lamB, Cw, k: 0, lageA: la, lageB: lb, fenster: f });
+      return;
+    }
     if (la.seite === lb.seite) {
       // Streifen auf Rücken oder Bauch, auch über die Kappe; Enden an der Spitze oder der Kreuzung oben/unten liegen fest
       const festA = anSpitze(la) || anKreuzung(la);
@@ -719,6 +861,19 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
   // ---- zweiter Durchgang: Rumpf mit Stützstellen ----
   const erg = einteilZiele({ ...eingabe, stuetzen }, v);
   if ('grund' in erg) return leer(abl, `Rumpf: ${erg.grund}`, t0, achse);
+  // Die Zeichnung ist Obergrenze: kein Zielpunkt liegt seitlich außerhalb der Sichthülle (Front bei y ∩ Top bei x). Die Vorlage
+  // eines Rings ist die Front-Silhouette, skaliert auf seine Anker — an Stellen, wo der Körper schmaler ist als die Silhouette
+  // über alle x (Robbe: Rücken vor dem Kopf), ragte er bis 12 px über die Zeichnung
+  const klemme = (q: V3): V3 => {
+    const w = huellenBreite(h, q[0], q[1], Math.abs(q[2]));
+    return Math.abs(q[2]) > w + 1e-12 ? [q[0], q[1], Math.sign(q[2]) * w] : q;
+  };
+  if (opt.huelleKlemmt) {
+    for (let p = 0; p < nP; p++) {
+      const q = klemme([erg.ziele[3 * p]!, erg.ziele[3 * p + 1]!, erg.ziele[3 * p + 2]!]);
+      erg.ziele[3 * p + 2] = q[2];
+    }
+  }
   // ---- Kinder bauen ----
   const flaechen = alleFlaechen(k).map((f) => [...f]);
   let nGes = nP;
@@ -738,20 +893,53 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
   const spitzenScharf: number[] = [];
   const spitzenWeg: ('vorn' | 'hinten')[] = [];
   const randKanten: [number, number][] = [];
+  /** Nahtband: Fensterrand, seine Nachbarn im Rumpf und die ersten Kindringe — dort glättet der Löser absolut (Kehle statt Falte) */
+  const nahtBand = new Set<number>();
+  const nachbarnRumpf = kaefigNachbarlisten(k);
   const kinderBericht: TeileBericht['kinder'] = [];
   const teilVonFlaeche: number[] = Array.from({ length: flaechen.length }, () => -1);
   const W = (p: number): V3 => (p < nP ? [erg.ziele[3 * p]!, erg.ziele[3 * p + 1]!, erg.ziele[3 * p + 2]!] : zieleNeu[p - nP]!);
   const lage = (p: number): V3 => zielSetz.get(p) ?? W(p);
   for (const pl of plaene) {
     const kd = pl.kind;
-    const f = (pl.art === 'streifen' ? fensterStreifen(v, erg.ziele, pl.seite, pl.lamA, pl.lamB, pl.Cw, flaechenIndex) : fensterKappe(v, erg.ziele, pl.ende, pl.k, pl.seite)) ?? pl.fenster;
+    const f = (pl.art === 'streifen' ? fensterStreifen(v, erg.ziele, pl.seite, pl.lamA, pl.lamB, pl.Cw, flaechenIndex) : fensterKappe(v, erg.ziele, pl.ende, pl.k, pl.seite as 'oben' | 'unten')) ?? pl.fenster;
     for (const p of f.innen) innenAlle.add(p);
-    // Seiten des Kindes: A von a zur Spitze, B von b zur Spitze (Welt, z = 0); ein Ende auf der Spitze des Rumpfs nimmt deren Lage
-    const zA = kd.bogen.slice(0, kd.spitze + 1).map((p): V3 => [p.q.x, p.q.y, 0]);
+    // Rahmen des Kindes: Naht-Kind (Umriss in der Seite, seitlich z) oder Paar (Umriss im Top, seitlich y = die Dicke)
+    const istPaar = kd.ebene === 'top';
+    const seitRichtung: V3 = istPaar ? [0, 1, 0] : [0, 0, 1];
+    const randLagen0 = f.rand.punkte.map((p) => W(p));
+    const randMitteY = randLagen0.reduce((sum, q) => sum + q[1], 0) / Math.max(1, randLagen0.length);
+    /** y-Intervall der Hülle bei (x, z), das dem Flankenniveau am nächsten liegt */
+    const dickeBei = (x: number, z: number, nahe: number): [number, number] | null => {
+      let best: [number, number] | null = null;
+      let bd = Infinity;
+      for (const iv of h.yBei(x, z)) {
+        const d = Math.abs((iv[0] + iv[1]) / 2 - nahe);
+        if (d < bd) {
+          bd = d;
+          best = iv;
+        }
+      }
+      return best;
+    };
+    const zu3 = (q: V2): V3 => {
+      if (!istPaar) return [q.x, q.y, 0];
+      const iv = dickeBei(q.x, q.y, randMitteY);
+      return [q.x, iv ? (iv[0] + iv[1]) / 2 : randMitteY, q.y];
+    };
+    /** Paar: die Hülle klemmt die Dicke (y bei z aus Front und Seite), nicht die seitliche Lage — die Klemme in z zog Flügelpunkte,
+     * die von der Schulter die Höhe des Fensterrands tragen, auf die schmale Front-Silhouette des Rumpfs (Ente: 787 Flächen je
+     * Flügel nach innen, Top 29,7 px) */
+    const klemmeDicke = (q: V3): V3 => {
+      const iv = dickeBei(q[0], q[2], q[1]);
+      return iv ? [q[0], Math.min(iv[1], Math.max(iv[0], q[1])), q[2]] : q;
+    };
+    // Seiten des Kindes: A von a zur Spitze, B von b zur Spitze; ein Ende auf der Spitze des Rumpfs nimmt deren Lage
+    const zA = kd.bogen.slice(0, kd.spitze + 1).map((p): V3 => zu3(p.q));
     const zB = kd.bogen
       .slice(kd.spitze)
       .reverse()
-      .map((p): V3 => [p.q.x, p.q.y, 0]);
+      .map((p): V3 => zu3(p.q));
     zA[0] = W(f.rand.punkte[0]!);
     zB[0] = W(f.rand.punkte[f.rand.punkte.findIndex((_, i) => Math.abs(f.rand.t[i]! - 2) < 1e-9)] ?? f.rand.punkte[0]!);
     const spitzeEcke = kd.bogen[kd.spitze]!.ecke;
@@ -759,7 +947,7 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
     // Ringe quer zum Kind: kürzeste monotone Zuordnung der beiden Seiten (dynamische Programmierung über die Summe der
     // Sehnenlängen) — bei parallelen Seiten senkrechte Sehnen, am S-Hals Sehnen quer zur örtlichen Richtung; die Ringe folgen
     // dem mittleren Bogenanteil des Zuordnungspfads (Paarung nach gleichem Bogenanteil kippte die Ringe der Ente um 35 px)
-    const sehneMitte: V3 = [(zA[0]![0] + zB[0]![0]) / 2, (zA[0]![1] + zB[0]![1]) / 2, 0];
+    const sehneMitte: V3 = [(zA[0]![0] + zB[0]![0]) / 2, (zA[0]![1] + zB[0]![1]) / 2, (zA[0]![2] + zB[0]![2]) / 2];
     const tippRoh: V3 = zA[zA.length - 1]!;
     void tippRoh;
     const LA = laengen(zA);
@@ -767,9 +955,9 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
     const LAt = LA[zA.length - 1]! || 1e-9;
     const LBt = LB[zB.length - 1]! || 1e-9;
     const abstandRinge = (erg.bogen.vorn[0] + erg.bogen.hinten[0]) / PX / (R + c) || d2(kd.a, kd.b) / 4;
-    const E = Math.max(M + 1, Math.min(R, Math.round((LAt + LBt) / 2 / abstandRinge)));
     const nA = zA.length;
     const nB = zB.length;
+    const E = Math.max(M + 1, Math.min(R, Math.round((kd.ebene === 'top' ? dist(zA[nA - 1]!, [(zA[0]![0] + zB[0]![0]) / 2, (zA[0]![1] + zB[0]![1]) / 2, (zA[0]![2] + zB[0]![2]) / 2]) : (LAt + LBt) / 2) / abstandRinge)));
     const D = new Float64Array(nA * nB);
     const her = new Int8Array(nA * nB);
     for (let i = 0; i < nA; i++) {
@@ -813,8 +1001,38 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
       }
       pfad.reverse();
     }
-    /** Punkte beider Seiten beim mittleren Bogenanteil f des Pfads (zwischen zwei Pfadpaaren linear) */
+    // Paare: Schnitte parallel zur Sehne (Abstand von der Sehnengeraden Richtung Spitze, zuerst erreicht) — der Fensterrand ist
+    // ein Streifen längs der Flanke, die Ringe müssen zu ihm parallel bleiben; die kürzeste Zuordnung legte sie bei einem nach
+    // hinten gepfeilten Flügel quer dazu (810 Flächen nach innen je Flügel)
+    const sehneRichtung: V3 = [zB[0]![0] - zA[0]![0], zB[0]![1] - zA[0]![1], zB[0]![2] - zA[0]![2]];
+    const sl = Math.hypot(sehneRichtung[0], sehneRichtung[2]) || 1;
+    let normale2: [number, number] = [-sehneRichtung[2] / sl, sehneRichtung[0] / sl];
+    const tippRoh2 = zA[nA - 1]!;
+    if ((tippRoh2[0] - sehneMitte[0]) * normale2[0] + (tippRoh2[2] - sehneMitte[2]) * normale2[1] < 0) normale2 = [-normale2[0], -normale2[1]];
+    const hoehe = (q: V3) => (q[0] - sehneMitte[0]) * normale2[0] + (q[2] - sehneMitte[2]) * normale2[1];
+    const hMax = Math.max(1e-9, hoehe(tippRoh2));
+    const beiHoehe = (zug: readonly V3[], L: Float64Array, hh: number): { p: V3; s: number } => {
+      let lauf = hoehe(zug[0]!);
+      for (let i = 0; i + 1 < zug.length; i++) {
+        const h1 = hoehe(zug[i + 1]!);
+        const neu2 = Math.max(lauf, h1);
+        if (neu2 >= hh && lauf < hh) {
+          const f0 = h1 > lauf ? Math.min(1, Math.max(0, (hh - lauf) / (h1 - lauf))) : 1;
+          const a0 = zug[i]!;
+          const b0 = zug[i + 1]!;
+          return { p: [a0[0] + (b0[0] - a0[0]) * f0, a0[1] + (b0[1] - a0[1]) * f0, a0[2] + (b0[2] - a0[2]) * f0], s: L[i]! + (L[i + 1]! - L[i]!) * f0 };
+        }
+        lauf = neu2;
+      }
+      return { p: zug[zug.length - 1]!, s: L[zug.length - 1]! };
+    };
+    /** Punkte beider Seiten beim mittleren Bogenanteil f des Pfads (zwischen zwei Pfadpaaren linear); Paare nach Höhe über der Sehne */
     const paarBei = (f: number): { A: V3; B: V3; sA: number; sB: number } => {
+      if (istPaar) {
+        const a1 = beiHoehe(zA, LA, f * hMax);
+        const b1 = beiHoehe(zB, LB, f * hMax);
+        return { A: a1.p, B: b1.p, sA: a1.s, sB: b1.s };
+      }
       let q = 0;
       while (q + 1 < pfad.length - 1 && pfad[q + 1]!.f <= f) q++;
       const p0 = pfad[q]!;
@@ -859,7 +1077,6 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
     Bab.punkte[E] = zB[nB - 1]!;
     const Rc = E - M + 1;
     const tipp: V3 = Aab.punkte[E]!;
-    const senkrecht = Math.abs(tipp[1] - sehneMitte[1]) >= Math.abs(tipp[0] - sehneMitte[0]);
     // Reihen: 0 = Rand (Eltern), 1 … Rc−1 neue Ringe, dann Stufen 1 … M−1 (Eltern), zuletzt der Grat
     const Nc = f.rand.punkte.length;
     const reihen: { punkte: number[]; t: number[]; schritt: number; eltern: boolean }[] = [{ ...f.rand, schritt: 0, eltern: true }];
@@ -885,10 +1102,14 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
     const randMitte: V3 = [0, 0, 0];
     for (const q of randLagen) for (let d = 0; d < 3; d++) randMitte[d] = randMitte[d]! + q[d]! / randLagen.length;
     let randBreite = 0;
-    for (const q of randLagen) randBreite = Math.max(randBreite, Math.abs(q[2]));
+    for (const q of randLagen) randBreite = Math.max(randBreite, Math.abs((q[0] - randMitte[0]) * seitRichtung[0] + (q[1] - randMitte[1]) * seitRichtung[1] + (q[2] - randMitte[2]) * seitRichtung[2]));
     let wVorher = randBreite;
+    /** Seitenverhältnis (halbe Breite : halbe Sehne) des letzten neuen Rings — die Kappenstufen behalten es (sonst kreuzt eine
+     * Stufe, deren Hüllenbreite größer ist als die Sehne, den Bodenrand: Stielboden 172°) */
+    let aspekt = 1;
     // Ringmitte noch im Rumpfpolygon? Dort misst die Hülle den Rumpf: die Breite bleibt die des Rands
     const imRumpf = (x: number, y: number): boolean => schnittIntervalle(wurzel, 'y', y).some(([a, b]) => x >= a && x <= b);
+    const imRumpfTop = (x: number, z: number): boolean => schnittIntervalle(topOhneLobben, 'x', x).some(([a, b]) => z >= a && z <= b);
     reihen.forEach((r, ri) => {
       if (ri === 0) {
         winkelJe.push([]);
@@ -896,11 +1117,51 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
       }
       const A = Aab.punkte[r.schritt]!;
       const B = Bab.punkte[r.schritt]!;
-      const C: V3 = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2, 0];
-      const w = imRumpf(C[0], C[1]) ? randBreite : huellenBreite(h, C[0], C[1], wVorher);
+      let C: V3 = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2, istPaar ? (A[2] + B[2]) / 2 : 0];
+      const halbeSehne = dist(A, B) / 2;
+      let w: number;
+      let schub = 0;
+      if (ri >= Rc) {
+        // Kappenstufe: Form des letzten Rings, nie breiter als die vorige Stufe
+        w = Math.min(wVorher, aspekt * halbeSehne);
+      } else if (istPaar) {
+        // Paar: Dicke aus Front bei z und Seite bei x, Mitte des Rings auf halber Dicke
+        const iv = imRumpfTop(C[0], C[2]) ? null : dickeBei(C[0], C[2], C[1]);
+        if (iv) {
+          w = (iv[1] - iv[0]) / 2;
+          C = [C[0], (iv[0] + iv[1]) / 2, C[2]];
+        } else w = randBreite;
+      } else if (imRumpf(C[0], C[1])) w = randBreite;
+      else {
+        // Scheitel längs der Sehne dorthin, wo die Hülle am breitesten ist (± 0,5 halbe Sehnen)
+        w = huellenBreite(h, C[0], C[1], wVorher);
+        for (let sch = -0.5; sch <= 0.5 + 1e-9; sch += 0.1) {
+          if (Math.abs(sch) < 1e-9) continue;
+          const px = C[0] + sch * (A[0] - C[0]);
+          const py = C[1] + sch * (A[1] - C[1]);
+          if (imRumpf(px, py)) continue;
+          const wb = huellenBreite(h, px, py, 0);
+          if (wb > w + 1e-9) {
+            w = wb;
+            schub = sch;
+          }
+        }
+        if (r.schritt <= SCHULTER || !opt.scheitelSchub) schub = 0;
+      }
+      if (ri === Rc - 1 && halbeSehne > 1e-9) aspekt = w / halbeSehne;
       wVorher = w;
       mitten.push(C);
-      const el = ellipse(A, B, w);
+      // freie Ringe sind Hüllenschnitte längs der Sehne; Kappenstufen und Ringe im Rumpf bleiben Ellipsen mit einer Breite
+      const frei = ri < Rc && (istPaar ? !imRumpfTop(C[0], C[2]) : !imRumpf(C[0], C[1]));
+      const wRing = w;
+      const profil = (q: V3): { w: number; versatz: V3 } => {
+        if (istPaar) {
+          const iv = dickeBei(q[0], q[2], C[1]);
+          return iv ? { w: (iv[1] - iv[0]) / 2, versatz: [0, (iv[0] + iv[1]) / 2 - q[1], 0] } : { w: wRing, versatz: [0, 0, 0] };
+        }
+        return { w: Math.min(wRing * 1.5, huellenBreite(h, q[0], q[1], wRing)), versatz: [0, 0, 0] };
+      };
+      const el = frei && opt.huellenRing ? huellenRing(A, B, C, seitRichtung, profil) : ellipse(A, B, w, schub, seitRichtung, C);
       const winkel: number[] = [];
       const schulter = !r.eltern && r.schritt <= SCHULTER ? r.schritt / (SCHULTER + 1) : 1;
       r.punkte.forEach((p, i) => {
@@ -910,6 +1171,7 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
           q = [C[0] + (rl[0] - randMitte[0]) + schulter * (q[0] - C[0] - (rl[0] - randMitte[0])), C[1] + (rl[1] - randMitte[1]) + schulter * (q[1] - C[1] - (rl[1] - randMitte[1])), C[2] + (rl[2] - randMitte[2]) + schulter * (q[2] - C[2] - (rl[2] - randMitte[2]))];
         }
         winkel.push(el.winkel(r.t[i]!));
+        if (opt.huelleKlemmt) q = istPaar ? klemmeDicke(q) : klemme(q);
         if (r.eltern) zielSetz.set(p, q);
         else zieleNeu[p - nP] = q;
       });
@@ -944,7 +1206,10 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
     gratPunkte.forEach((p, i) => {
       let q: V3;
       if (f.grat.richtung === 'laengs') q = punktBei(gratZug, gratL, ((i + 1) / (nG + 1)) * gratL[gratZug.length - 1]!);
-      else if (f.grat.richtung === 'quer') q = [tipp[0], tipp[1], ((i - (nG - 1) / 2) / ((nG + 1) / 2)) * wTipp];
+      else if (f.grat.richtung === 'quer') {
+        const s0 = ((i - (nG - 1) / 2) / ((nG + 1) / 2)) * wTipp;
+        q = [tipp[0] + s0 * seitRichtung[0], tipp[1] + s0 * seitRichtung[1], tipp[2] + s0 * seitRichtung[2]];
+      }
       else q = tipp;
       zielSetz.set(p, q);
       hartKind.add(p);
@@ -954,9 +1219,13 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
       else gratScharf.push(gratPunkte);
     }
     if (pl.art === 'fortsetzung') spitzenWeg.push(pl.ende);
-    // Silhouettenbedingung der seitlichen Punkte (Front bei stehendem, Top bei liegendem Kind)
+    // Silhouettenbedingung der seitlichen Punkte: je Ring die Ansicht, die ihn von der Kante sieht — Front (Blick längs x), wenn
+    // die Längsrichtung t eher steht (|t.y| ≥ |t.x|: Halsringe), sonst Top (Blick längs y: die Kopfscheiben des Langhalses laufen
+    // längs x; mit der Front war w = t × x fast null und zeigte in eine zufällige Richtung der y-z-Ebene, die Ringe falteten am
+    // Seitenpunkt um ± 0,014 — 888 Flächen nach innen); ein Paar immer in der Front (w = t × x ≈ y, die Dicke)
     const normale = (t: V3): V3 | null => {
-      const wk: V3 = senkrecht ? [0, t[2], -t[1]] : [t[2], 0, -t[0]];
+      const front = istPaar || Math.abs(t[1]) >= Math.abs(t[0]);
+      const wk: V3 = front ? [0, t[2], -t[1]] : [t[2], 0, -t[0]];
       const l = Math.hypot(wk[0], wk[1], wk[2]);
       return l > 1e-12 ? [wk[0] / l, wk[1] / l, wk[2] / l] : null;
     };
@@ -978,6 +1247,27 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
         baenderKind.push({ p, quer: [r.punkte[(idx - 1 + r.punkte.length) % r.punkte.length]!, r.punkte[(idx + 1) % r.punkte.length]!], w });
       }
     });
+    // Paar: die Nahtpunkte A/B liegen auf dem Umriss im Top → Silhouettenbedingung längs y (Blick von oben)
+    if (istPaar) {
+      const normaleTop = (t: V3): V3 | null => {
+        const wk: V3 = [t[2], 0, -t[0]];
+        const l = Math.hypot(wk[0], wk[1], wk[2]);
+        return l > 1e-12 ? [wk[0] / l, wk[1] / l, wk[2] / l] : null;
+      };
+      reihen.forEach((r, ri) => {
+        if (ri === 0 || ri >= Rc) return;
+        for (const Q of [0, 2]) {
+          const idx = viertelIndex(r, Q);
+          const vorher = reihen[ri - 1]!.punkte.length === r.punkte.length ? lage(reihen[ri - 1]!.punkte[idx]!) : null;
+          const nach = reihen[ri + 1] && reihen[ri + 1]!.punkte.length === r.punkte.length ? lage(reihen[ri + 1]!.punkte[idx]!) : null;
+          if (!vorher && !nach) continue;
+          const a0 = vorher ?? lage(r.punkte[idx]!);
+          const b0 = nach ?? lage(r.punkte[idx]!);
+          const wN = normaleTop([b0[0] - a0[0], b0[1] - a0[1], b0[2] - a0[2]]);
+          if (wN) baenderKind.push({ p: r.punkte[idx]!, quer: [r.punkte[(idx - 1 + r.punkte.length) % r.punkte.length]!, r.punkte[(idx + 1) % r.punkte.length]!], w: wN });
+        }
+      });
+    }
     // Falten: Ecken der Seiten → Reihe beim Schritt, auf der A- bzw. B-Hälfte
     const reiheBei = (schritt: number) => reihen.find((r) => r.schritt === schritt);
     for (const s of Aab.schritte) {
@@ -1003,7 +1293,12 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
     }
     while (teilVonFlaeche.length < flaechen.length) teilVonFlaeche.push(nrKind);
     f.rand.punkte.forEach((p, q) => randKanten.push([p, f.rand.punkte[(q + 1) % Nc]!]));
-    kinderBericht.push({ name: kd.name, quelle: kd.quelle, art: pl.art, fenster: { lamA: pl.lamA, lamB: pl.lamB, seite: pl.seite, c: pl.art === 'streifen' ? pl.Cw : pl.k }, ringe: Rc, punkte: Nc, spitze: tipp, fuss: sehneMitte, achse: [sehneMitte, ...mitten, tipp], laenge: ((LA[zA.length - 1]! + LB[zB.length - 1]!) / 2) * PX, winkel: kd.winkel, rand: f.rand.punkte, erster: reihen[1]?.punkte[0] ?? -1 });
+    for (const p of f.rand.punkte) {
+      nahtBand.add(p);
+      for (const q of nachbarnRumpf[p] ?? []) if (!f.innen.includes(q)) nahtBand.add(q);
+    }
+    for (let i = 1; i <= Math.min(SCHULTER, Rc - 1); i++) for (const p of reihen[i]!.punkte) nahtBand.add(p);
+    kinderBericht.push({ name: kd.name, quelle: kd.quelle, art: pl.art, ebene: kd.ebene, fenster: { lamA: pl.lamA, lamB: pl.lamB, seite: pl.seite, c: pl.art === 'streifen' ? pl.Cw : pl.k }, ringe: Rc, punkte: Nc, spitze: tipp, fuss: sehneMitte, achse: [sehneMitte, ...mitten, tipp], laenge: ((LA[zA.length - 1]! + LB[zB.length - 1]!) / 2) * PX, winkel: kd.winkel, rand: f.rand.punkte, erster: reihen[1]?.punkte[0] ?? -1 });
   }
   // ---- Käfig zusammensetzen ----
   const n = nGes;
@@ -1077,10 +1372,21 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
   const kappe = new Uint8Array(n);
   for (let p = R * N; p < nP; p++) kappe[p] = 1;
   for (const p of innenAlle) kappe[p] = 1;
-  const l = kaefigLoesen({ k: kNeu, u: u2, ziele, hart, baender, kappe, opt });
+  const glattAbsolut = new Uint8Array(n);
+  if (opt.nahtGlatt) for (const p of nahtBand) glattAbsolut[p] = 1;
+  const l = kaefigLoesen({ k: kNeu, u: u2, ziele, hart, baender, kappe, glattAbsolut, opt });
   const masse = kaefigMasse(kNeu, l.fein, ziele, hart, baender, abl.breiten, { R, N, ringPunkt: v.ringPunkt, K: rahmen.K });
-  // Knick an der Naht (Fensterränder) auf Stufe 1
-  const nahtKnick = knickAnKanten(u2.stufen[0]!.kaefig, l.fein, kNeu, randKanten);
+  // Knick an der Naht (Fensterränder) auf Stufe 1 — frei, wo die Zeichnung in jeder Ansicht glatt ist, und getrennt an
+  // gezeichneten Ecken (ein T-Stoß einer Ansicht liegt näher als FANG an einem Randpunkt: Pilz-Stiel unter dem Hut, Entenhals
+  // an der Brust, Robbenkopf an den Flanken der Front und des Tops — dort zeigt die Zeichnung selbst die Kante)
+  const anEcke = (p: number): boolean => {
+    const q: V3 = [ziele[3 * p]!, ziele[3 * p + 1]!, ziele[3 * p + 2]!];
+    return plan.tStoesse.some((t) => d2(blattKoord(t.ansicht, q), t.q) <= FANG);
+  };
+  const kantenFrei = randKanten.filter(([a, b]) => !anEcke(a) && !anEcke(b));
+  const kantenEcken = randKanten.filter(([a, b]) => anEcke(a) || anEcke(b));
+  const nahtKnick = knickAnKanten(u2.stufen[0]!.kaefig, l.fein, kNeu, kantenFrei);
+  const nahtKnickEcken = kantenEcken.length ? knickAnKanten(u2.stufen[0]!.kaefig, l.fein, kNeu, kantenEcken) : null;
   const bericht: KaefigBericht = {
     ok: true,
     achse,
@@ -1092,7 +1398,7 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
     ...masse,
     falten: { ringe: [...erg.faltenRinge.keys()].sort((a, b) => a - b), kappen: erg.faltenKappen.size, reihen: erg.reihenFalten, spitzen: erg.spitzen.filter((s) => !spitzenWeg.includes(s)) },
     dichte: erg.dichte,
-    teile: { kinder: kinderBericht, nahtKnick, ausgelassen, teilVonFlaeche: Int16Array.from(teilVonFlaeche), rumpf: { seite: wurzel.map((q): V3 => [q.x, q.y, 0]), front: front3, top: top3, anker: erg.anker }, lagen: plaene.map((pl) => ({ name: pl.kind.name, a: { bogen: pl.lageA.bogen, s: +pl.lageA.s.toFixed(3), schritt: +pl.lageA.schritt.toFixed(2), ring: +pl.lageA.ring.toFixed(2) }, b: { bogen: pl.lageB.bogen, s: +pl.lageB.s.toFixed(3), schritt: +pl.lageB.schritt.toFixed(2), ring: +pl.lageB.ring.toFixed(2) }, stuetzen: stuetzen.length })) },
+    teile: { kinder: kinderBericht, nahtKnick, nahtKnickEcken, nahtKanten: { frei: kantenFrei.length, ecken: kantenEcken.length }, ausgelassen, teilVonFlaeche: Int16Array.from(teilVonFlaeche), rumpf: { seite: wurzel.map((q): V3 => [q.x, q.y, 0]), front: front3, top: top3, anker: erg.anker }, lagen: plaene.map((pl) => ({ name: pl.kind.name, a: { bogen: pl.lageA.bogen, s: +pl.lageA.s.toFixed(3), schritt: +pl.lageA.schritt.toFixed(2), ring: +pl.lageA.ring.toFixed(2) }, b: { bogen: pl.lageB.bogen, s: +pl.lageB.s.toFixed(3), schritt: +pl.lageB.schritt.toFixed(2), ring: +pl.lageB.ring.toFixed(2) }, stuetzen: stuetzen.length })) },
     unbekannte: 3 * n,
     huelle: l.huelle,
     ms: jetzt() - t0,

@@ -1,4 +1,4 @@
-# Übergabe (Stand 03.11.2026 nachts: P0a angesehen, P1 Tag 1 gebaut, P1 Tag 2–3 als Schleifen-Käfig gebaut, P1 Tag 4–5 „Teile an der Naht“ gebaut — Abnahme offen, Florians Blick entscheidet)
+# Übergabe (Stand 03.11.2026 abends: P0a angesehen, P1 Tag 1 gebaut, P1 Tag 2–3 als Schleifen-Käfig gebaut, P1 Tag 4–5 „Teile an der Naht“ gebaut und weitergeführt — Naht weich, Hülle als Obergrenze, Flügel, Röhrenende; Abnahme offen, Florians Blick entscheidet)
 
 Branch `claude/editor-grundlayout`, PR mit Auto-Fix. **Diese Datei ist der Einstieg für eine frische Sitzung.** Der Kernring
 bleibt eingefroren; alles Neue liegt hinter Schaltern (`stufen`, `umrissPlan`), ohne Schalter bitgleich.
@@ -161,14 +161,35 @@ Schalter, ohne Schalter bitgleich.“ Planseite „Stand P1 Tag 4–5“, Regist
   (Ente 35 px) / Höhe (Ente 58 px) / Innennormale (Pilz 12, Robbe 29 px), ebene Ringe für Einteiler (Würfel, Zylinder 180°),
   Knick-Kriterium an den Sehnenenden (trennt Vase und Langhals nicht), Band-/Sehnen-Ausdehnung (ebenso).
 
-**Nächster Schritt: Florians Blick auf die vier Bögen.** Dann entweder Tag 4–5 zu Ende (Flügel als Paar, Kappen der Kinder mit
-mehr Stufen, Naht als eigene Reihe, Breite der Kinder aus eigenen Front-/Top-Schleifen, Dichte je Teil) oder P2 (Maul) und die
-Teile mit den Loops von P3 neu. Start-Prompt für eine frische Sitzung:
+## 03.11. abends: Tag 4–5 weitergeführt — Naht weich, Hülle als Obergrenze, Flügel, Röhrenende (Abnahme offen)
 
-> Lies `CLAUDE.md`, `docs/UEBERGABE.md` und den Prüfplan `docs/plans/2026-11-02-pruefplan-p0-p3.md` („Stand P1 Tag 4–5“). Florian
-> hat die Bögen der Teile an der Naht gesehen und entschieden: […]. Arbeite danach weiter — im Kern hinter dem Schalter
-> `schleifenKaefig`, ohne Schalter bitgleich, der Kernring bleibt eingefroren; Tore als Tests (verfehlte als `it.fails` mit
-> Registereintrag), Kontaktbögen, Planseite „Stand“, Register, Übergabe, Commit und Push. Nichts als bestanden melden.
+Florian zum Stand nachts: „Also geht es nicht? ich verstehe deine erklärungen nicht …“ → Klarstellung (es geht; der Stopp war die
+Regel des Prüfplans) und Empfehlung Naht → Breite → Flügel; Florian: „dann gerne weitere wie du empfiehlst.“ Planseite „Nachtrag
+03.11. abends“ unter „Stand P1 Tag 4–5“, Register „Nachtrag 03.11. abends“. Alles im Kern hinter dem Schalter, bitgleich ohne.
+- **Gebaut:** Naht weich (absolute Glättung am Fensterrand und an den Schulterringen, `nahtGlatt`); Hülle als Obergrenze für alle
+  Zielpunkte (`huelleKlemmt`) und Hüllenringe statt Ellipsen (`huellenRing`); **Flügel als seitliches Paar** (Kinder der Top-Ebene
+  mit Spiegel, Fenster auf der Flanke, Höhenschnitte, Dicke aus Front bei z und Seite bei x, Klemme der Dicke statt der
+  seitlichen Lage); **Röhrenende = Ende der Wirbelsäule** (die Ente trägt den Kopf quer: Schnabel statt Scheitel, Robbe Nase);
+  **Silhouettenbedingung je Ring** in der Ansicht, die ihn von der Kante sieht (Langhals-Kopfscheiben laufen längs x → Top);
+  Nahtknick getrennt frei / an gezeichneten Ecken, „nach innen“ mit Flächenanteil.
+- **Ergebnis:** Ente Seite 15,5 → 2,9, Top 57,7 → 2,7 px (Hals, Kopf, Schnabel, Flügel); Robbe Top 12,5 → 5,4, nach innen 176 → 0;
+  Langhals 1,0/4,6/2,9 px, nach innen 888 → 26; Pilz 0,9/0,8/2,0. Naht frei: Langhals 17,9°, Ente 20,2° ✓, Robbe 37,0° (Falte an den
+  Fensterflanken, echter Befund), Pilz ohne freie Kante (gezeichnete Kante ringsum, 33,9°). Front/Top hält nur der Pilz. Tests
+  `schleifenTeile.test.ts` 10 grün / 12 `it.fails`; `schleifenKaefig.test.ts` unverändert (bitgleich).
+- **Bilder:** `docs/progress/editor/p1-teile-2026-11-03.jpg` (Editor-Bogen), `p1-teile-draht-<fall>-2026-11-03.jpg` (Drahtgitter,
+  vier Fälle, heute | Teile) — beide überschrieben mit dem Abendstand.
+- **Verworfen (gemessen):** Scheitelschub (Robbe 1,5 → 4,7 px), Klemme in z für Paare (787 Flächen je Flügel), flacher Lauf um das
+  Wirbelsäulenende (Spitze lief zurück in den Scheitel), Silhouettenbedingung je Kind in einer Ansicht (888 Flächen).
+
+**Nächster Schritt: Florians Blick auf die vier Bögen.** Dann Robbe-Falte (Kopf als Fortsetzung über die Brustkappe oder
+breiteres Fenster), Breite der Kinder aus eigenen Front-/Top-Schleifen, Kappen der Kinder (Gratenden 90–176°), Fächer an der
+inneren Ecke (Ente), Dichte je Kind — oder P2 (Maul) und die Teile mit den Loops von P3 neu. Start-Prompt für eine frische Sitzung:
+
+> Lies `CLAUDE.md`, `docs/UEBERGABE.md` und den Prüfplan `docs/plans/2026-11-02-pruefplan-p0-p3.md` („Stand P1 Tag 4–5“ samt
+> „Nachtrag 03.11. abends“). Florian hat die Bögen der Teile an der Naht gesehen und entschieden: […]. Arbeite danach weiter — im
+> Kern hinter dem Schalter `schleifenKaefig`, ohne Schalter bitgleich, der Kernring bleibt eingefroren; Tore als Tests (verfehlte
+> als `it.fails` mit Registereintrag), Kontaktbögen, Planseite „Stand“, Register, Übergabe, Commit und Push. Nichts als bestanden
+> melden.
 
 ## Entscheidungen, die Florian treffen muss (Gegenprüfung, Abschnitt 10)
 
@@ -218,7 +239,9 @@ Rex mittel gerade (Knick an der Kreuzung), Robbe hoch J (Engstelle), E2.4, E3–
 - P1 Tag 4–5: `kern/schleifenTeile.test.ts` (je Körper gebaut, Form Seite, Form Front/Top, Naht, Glätte; bitgleich; Einteiler
   bleiben Einteiler), Messreihe `npx vite-node ../../apps/editor/scripts/pruefen/p1-teile.ts` (`FAELLE FAIR INNEN TANGENTE GEWICHT`),
   Drahtgitter `BAU=kaefig FAELLE=langhals,robbe,ente,pilz p1-koerper-bild.ts` + `html-shot.mjs --jpg`, Editor-Bogen
-  `MODUL=extremreihe FAELLE=langhals,robbe,ente,pilz BOGEN=p1-teile p1-kaefig-editor.mjs` (run-check.sh).
+  `MODUL=extremreihe FAELLE=langhals,robbe,ente,pilz BOGEN=p1-teile p1-kaefig-editor.mjs` (run-check.sh). Schalter der Messreihe:
+  `NAHTGLATT=0` (Naht nicht absolut glätten), `KLEMME=0` (Hülle nicht als Obergrenze), `HRING=0` (Ellipsen statt Hüllenringe),
+  `SCHUB=1` (Scheitelschub, Versuch), `RUMPFKIPPEN`.
 - Editor-Prüfungen (Playwright, eigener Vite auf 5192): `apps/editor/scripts/pruefen/run-check.sh <skript.mjs>`; Liste in
   `apps/editor/scripts/pruefen/README.md`.
 

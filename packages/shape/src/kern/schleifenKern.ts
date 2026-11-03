@@ -70,6 +70,20 @@ export type KaefigOptionen = {
    * ist dann die Vorlage der Ringform, nicht mehr selbst ein Ring. Standard aus (Einteiler bitgleich); Rümpfe mit Kindern bauen eben
    */
   eben?: boolean;
+  /** Teile an der Naht (Versuchsschalter, Standard an): Glättung an der Naht absolut (Kehle statt Falte) */
+  nahtGlatt?: boolean;
+  /**
+   * Teile an der Naht (Versuchsschalter, Standard aus): seitlicher Scheitel der Kindringe längs der Sehne dorthin, wo die Hülle am
+   * breitesten ist. Gemessen (03.11.): verschlechtert die Seite (Robbe 1,5 → 4,7 px, Pilz 0,7 → 4,1) und verdoppelt die nach innen
+   * gekehrten Flächen — die gescherten Ringe kreuzen sich; bleibt als Versuch
+   */
+  scheitelSchub?: boolean;
+  /** Teile an der Naht (Versuchsschalter, Standard 0): `kippen` des Rumpfs mit Kindern (eben gebaut) */
+  rumpfKippen?: number;
+  /** Teile an der Naht (Standard an): die Sichthülle ist Obergrenze für alle Zielpunkte von Rumpf und Kindern (Zeichnung wird nie überschritten) */
+  huelleKlemmt?: boolean;
+  /** Teile an der Naht (Standard an): freie Kindringe sind Hüllenschnitte längs ihrer Sehne (Dicke je Stelle) statt Ellipsen mit einer Breite */
+  huellenRing?: boolean;
 };
 
 /** Bericht über die Teile (Kinder über Fenster am Eltern-Käfig), siehe `schleifenTeile.ts` */
@@ -79,9 +93,13 @@ export type TeileBericht = {
    * (Reihen λ der Sehnenenden längs der Naht: 0 = vordere Spitze, c/2 + i = Ring i; Seite; Spalten Cw bzw. Ring k), Ringe und
    * Punkte je Ring, Spitze (Welt), mittlere Seitenlänge (px), Knick des Rumpfs an den Sehnenenden (Grad)
    */
-  kinder: { name: string; quelle: 'planer' | 'baum'; art: 'streifen' | 'fortsetzung'; fenster: { lamA: number; lamB: number; seite: 'oben' | 'unten'; c: number }; ringe: number; punkte: number; spitze: V3; /** Mitte der Sehne (Welt): Fuß der Kindachse */ fuss: V3; /** Kindachse: Fuß, Ringmitten, Spitze */ achse: V3[]; laenge: number; winkel: [number, number]; /** Fensterrand (Käfigpunkte ab dem A-Punkt Richtung +z) und erster Punkt des ersten neuen Rings (Ringe liegen fortlaufend dahinter) */ rand: number[]; erster: number }[];
-  /** größter Knick (Grad) an den Fensterrändern (Naht) auf Stufe 1 */
+  kinder: { name: string; quelle: 'planer' | 'baum'; art: 'streifen' | 'fortsetzung'; /** Umrissebene: Seite (Naht-Kind) oder Top (seitliches Paar) */ ebene: 'seite' | 'top'; fenster: { lamA: number; lamB: number; seite: 'oben' | 'unten' | 'rechts' | 'links'; c: number }; ringe: number; punkte: number; spitze: V3; /** Mitte der Sehne (Welt): Fuß der Kindachse */ fuss: V3; /** Kindachse: Fuß, Ringmitten, Spitze */ achse: V3[]; laenge: number; winkel: [number, number]; /** Fensterrand (Käfigpunkte ab dem A-Punkt Richtung +z) und erster Punkt des ersten neuen Rings (Ringe liegen fortlaufend dahinter) */ rand: number[]; erster: number }[];
+  /** größter Knick (Grad) an den Fensterrändern (Naht) auf Stufe 1, an Kanten, deren Zeichnung in allen Ansichten glatt ist */
   nahtKnick: number;
+  /** größter Knick (Grad) an Randkanten, an denen die Zeichnung einer Ansicht selbst eine Ecke zeigt (T-Stoß); null ohne solche */
+  nahtKnickEcken: number | null;
+  /** Zahl der Randkanten frei bzw. an gezeichneten Ecken */
+  nahtKanten: { frei: number; ecken: number };
   /** Kinder, die nicht gebaut wurden, mit Grund */
   ausgelassen: { name: string; grund: string }[];
   /** je Käfigfläche das Kind (Index in `kinder`), −1 = Rumpf; Fensterflächen gehören zum Kind (seine Spitze) */
@@ -129,7 +147,7 @@ export type KaefigBericht = {
   msLoeser: number;
 };
 
-export const STANDARD: Required<KaefigOptionen> = { achse: 'auto', gewicht: 1e3, tangente: 1e3, innen: 1, fair: 30, fairKappe: 10, schaerfe: 1e6, kippen: 1, achseAb: 1.25, kruemmung: 0, tiefe: 'glatt', teile: true, eben: false };
+export const STANDARD: Required<KaefigOptionen> = { achse: 'auto', gewicht: 1e3, tangente: 1e3, innen: 1, fair: 30, fairKappe: 10, schaerfe: 1e6, kippen: 1, achseAb: 1.25, kruemmung: 0, tiefe: 'glatt', teile: true, eben: false, nahtGlatt: true, scheitelSchub: false, rumpfKippen: 0, huelleKlemmt: true, huellenRing: true };
 /** Ecken verschiedener Bögen einer Seite, die näher als dieser Anteil beieinander liegen, rasten auf denselben Schritt (ein Ring) */
 const ECKEN_BUENDEL = 0.08;
 /** Flache Läufe an Extremen gelten als gleich weit (Welt): eine gezeichnete Gerade wackelt um 1–2 px, die Mitte des Laufs ist die Kreuzung */
@@ -614,10 +632,12 @@ export function einteilZiele(e: EinteilEingabe, v: Roehre): EinteilErgebnis | { 
   const Uh = abtasten(gS_hu, Eh, [...eH[2]!, ...stuetzen.hu], phiH);
   // Ecken-Schritte (ohne die Stützstellen der Kinder, die keine Falten sind)
   const nurEcken = (ab: { schritte: number[] }, ecken: { k: number }[]) => ab.schritte.filter((k) => ecken.some((x) => x.k === k));
-  // Ringe eben: Bauch- und Seitenanker bei der Achskoordinate des Rückenankers (Bauch vorn → unten → hinten, Reihe vorn → rechts → hinten)
+  // Ringe eben: Bauch- und Seitenanker bei der Achskoordinate des Rückenankers (Bauch vorn → unten → hinten, Reihe vorn → rechts →
+  // hinten). Die Reihenschleife roh (`rwHalb.p`), nicht mit den Kreuzungen als Enden: `mitEnden` ersetzt ihren Endpunkt durch die
+  // Spitze (z = 0) — bei einem flachen Ende (Hutunterseite, 0,075 breit) wird daraus ein V, in dem der erste Ring 0,02 breit würde
   if (opt.eben) {
     const bauch: V3[] = [...[...S_uv].reverse(), ...[...S_hu].reverse().slice(1)];
-    const reiheHalb: V3[] = [...Rw_vr, ...Rw_rh.slice(1)];
+    const reiheHalb: V3[] = rwHalb.p;
     const beiA = (zug: readonly V3[], a: number, wahl: (p: V3) => number, sonst: V3): V3 => {
       let best: V3 | null = null;
       for (let i = 0; i + 1 < zug.length; i++) {
@@ -886,6 +906,8 @@ export type LoeseEingabe = {
   baender: readonly Band[];
   /** innere Kappenpunkte (Glättung × fairKappe): Index, ab dem alle Punkte Kappe sind, oder eine Maske je Punkt */
   kappe: number | Uint8Array;
+  /** Punkte, an denen die Glättung absolut wirkt (Ziel 0 statt der Vorlage): die Naht zwischen Rumpf und Kind wird so zur Kehle statt zur Falte */
+  glattAbsolut?: Uint8Array;
   opt: Required<KaefigOptionen>;
 };
 
@@ -939,13 +961,18 @@ export function kaefigLoesen(e: LoeseEingabe): { xyz: Float64Array; fein: Float6
     let M = u.stufen[0]!.matrix;
     for (let i = 1; i < s; i++) M = multiplizieren(u.stufen[i]!.matrix, M);
     const istKappe = typeof e.kappe === 'number' ? (j: number) => j >= (e.kappe as number) : (j: number) => (e.kappe as Uint8Array)[j] === 1;
+    const absolut = e.glattAbsolut;
     for (const z of glaettungsZeilen(u.stufen[s - 1]!.kaefig, M, k.n, opt.fair)) {
       let kappeDrin = false;
-      for (let q = 0; q < z.index.length && !kappeDrin; q++) kappeDrin = istKappe(z.index[q]!);
+      let absolutDrin = false;
+      for (let q = 0; q < z.index.length; q++) {
+        if (istKappe(z.index[q]!)) kappeDrin = true;
+        if (absolut && absolut[z.index[q]!] === 1) absolutDrin = true;
+      }
       const g = opt.fairKappe && opt.fairKappe !== 1 && kappeDrin ? z.gewicht * opt.fairKappe : z.gewicht;
       for (let a = 0; a < 3; a++) {
         let lt = 0;
-        for (let q = 0; q < z.index.length; q++) lt += z.wert[q]! * ziele[3 * z.index[q]! + a]!;
+        if (!absolutDrin) for (let q = 0; q < z.index.length; q++) lt += z.wert[q]! * ziele[3 * z.index[q]! + a]!;
         achsZeile(z.index, z.wert, a as 0 | 1 | 2, g, lt);
       }
     }

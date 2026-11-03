@@ -388,6 +388,18 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Plateau-Intervalle glätten; die gerade Sehne mit Zwischenpunkten; Paarung der Kindseiten weder nach Bogenanteil noch nach
   Höhe noch nach Innennormale (je ein Körper fällt), sondern kürzeste monotone Zuordnung; ebene Ringe nicht für Einteiler
   (Plateaus); Maße bei mehrteiligen Körpern je Teil (die Achse im Mittel aller Punkte liegt im Hals).
+- **2026-11-03 (abends): Tag 4–5 weitergeführt — Naht weich, Hülle als Obergrenze, Flügel als Paar, Röhrenende am Ende der
+  Wirbelsäule** (Florian: „Also geht es nicht? …“ → Klarstellung: es geht, der Stopp war die Regel des Prüfplans; „dann gerne
+  weitere wie du empfiehlst“; Planseite „Nachtrag 03.11. abends“, Register, Übergabe). Im Kern hinter dem Schalter, bitgleich ohne:
+  absolute Glättung am Fensterrand (`nahtGlatt`), kein Zielpunkt seitlich außerhalb der Sichthülle (`huelleKlemmt`), Kindringe
+  als Hüllenschnitte (`huellenRing`), Flügel als Kinder der Top-Ebene mit Spiegel (Fenster auf der Flanke, Dicke aus Front bei z
+  und Seite bei x, Klemme der Dicke), die Röhre eines Naht-Kindes endet am Ende der Wirbelsäule (Ente: Schnabel statt Scheitel),
+  Silhouettenbedingung je Ring in der Ansicht, die ihn von der Kante sieht; Nahtknick frei / an gezeichneten Ecken, „nach innen“
+  mit Flächenanteil. Ente Seite 15,5 → 2,9, Top 57,7 → 2,7 px; Robbe Top 12,5 → 5,4, nach innen 176 → 0; Langhals nach innen
+  888 → 26; Naht frei Langhals 17,9°, Ente 20,2°, Robbe 37,0° (Falte an den Fensterflanken), Pilz ohne freie Kante. Front/Top hält
+  nur der Pilz (0,8/2,0). Fallen: Bänder nie in einer Ansicht, deren Blick in der Ringebene liegt (w = t × v entartet, Ringe
+  falten); die Hüllen-Klemme eines Paars gilt der Dicke, nicht der seitlichen Lage; der flache Lauf um die Spitze darf das
+  Wirbelsäulenende nicht verschieben; Nahtknicke an gezeichneten Ecken sind kein Fehler. Nächster Schritt: Florians Blick.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

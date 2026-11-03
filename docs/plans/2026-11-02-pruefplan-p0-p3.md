@@ -663,3 +663,74 @@ Kinder mit mehr Stufen (Cw 2 gibt nur einen Grat), Nahtknick (Fensterrand als ei
 Kinder aus ihrer eigenen Front-/Top-Schleife statt aus der Hülle, Dichte je Kind — oder nach P2 (Maul) gehen und die Teile mit den
 Loops von P3 neu aufnehmen. Daneben weiter offen: Dichte je Ring, Kippung der Einteiler, Pinsel-Deltas im Käfig, Tag 4 (Griffe).
 
+
+
+### Nachtrag 03.11. abends — Naht weich, Hülle als Obergrenze, Flügel, Röhrenende am Ende der Wirbelsäule (gebaut; Abnahme offen)
+
+Florian zum Stand nachts: „Also geht es nicht? ich verstehe deine erklärungen nicht. Ich dachte nach unserem letzten gespräch
+warst du positiv.“ — Klarstellung: Es geht, die Richtung stimmt; der Stopp war die Regel des Prüfplans (Abbruchkriterium), kein
+Urteil über die Bauweise. Empfehlung: Naht weich → Breite der Teile aus Front und Top → Flügel. Florian: „ok, danke für die
+klarstellung. dann gerne weitere wie du empfiehlst.“ Alles im Kern hinter dem Schalter, ohne Schalter bitgleich (Test).
+
+**Gebaut (`kern/schleifenTeile.ts`, Optionen in `schleifenKern.ts` `KaefigOptionen`, alle Standard an):**
+- **Naht weich** (`nahtGlatt`): Fensterrand, seine Rumpfnachbarn und die Schulterringe 1–2 werden im Löser **absolut** geglättet
+  (ohne Zielform; sonst zieht die relative Glättung die Stufe zwischen Rand und Ellipse nach). Dazu `rumpfKippen` (Kippung der
+  Rumpfringe, Standard 0) und `scheitelSchub` (Scheitel der Ellipse längs der Sehne dorthin, wo die Hülle am breitesten ist —
+  gemessen schlechter, Robbe 1,5 → 4,7 px, Standard aus).
+- **Hülle als Obergrenze** (`huelleKlemmt`): kein Zielpunkt des Rumpfs oder eines Kindes liegt seitlich außerhalb der Sichthülle
+  (Front bei y ∩ Top bei x) — vorher ragte die Robbe bis 10 px über die Zeichnung, weil die Ringvorlage die Front-Silhouette über
+  alle x ist. **Hüllenringe** (`huellenRing`): freie Kindringe sind Hüllenschnitte längs der Sehne (die Breite jedes Ringpunkts aus
+  der Hülle an seiner Stelle, höchstens das 1,5-fache der Ringbreite) statt Ellipsen mit einer Breite.
+- **Flügel als seitliches Paar:** Paare des Teilbaums mit Erkennung im Top werden Kinder der Top-Ebene (rechts und gespiegelt
+  links; der Lappen im Top ist der Bogen a → Spitze → b). Fenster = Streifen auf der Flanke des Rumpfs (Ringreihen λ 14 … 18 um die
+  Flankenmitte, 2 Spalten); Ringe aus Höhenschnitten parallel zur Sehne (die kürzeste Zuordnung legte sie beim nach hinten
+  gepfeilten Flügel quer, 810 Flächen nach innen); die **Dicke je Stelle aus Front bei z und Seite bei x** (`dickeBei`), die Mitte
+  des Rings auf halber Dicke; Silhouettenbänder der Nahtpunkte im Top; A/B-Punkte hart auf dem Lappen. Die Hüllen-Klemme klemmt
+  bei Paaren die **Dicke** (y), nicht die seitliche Lage — in z zog sie Flügelpunkte, die von der Schulter die Höhe des
+  Fensterrands tragen, auf die schmale Front-Silhouette des Rumpfs (787 Flächen je Flügel nach innen, Top 29,7 px → 6 Flächen,
+  2,7 px). Ente Top 57,7 → 2,7 px.
+- **Röhrenende = Ende der Wirbelsäule** (`teileFinden` nimmt `gefroren.enden`, sonst `endenFuer`): Liegt ein Ende der
+  Wirbelsäule auf dem Bogen eines Naht-Kindes (≤ 12 px), endet die Röhre dort — nicht am von der Sehne fernsten Punkt. Die Ente
+  trägt den Kopf quer auf dem Hals: der fernste Punkt ist der Scheitel, die Röhre gehört bis zum Schnabel. Vorher lagen die
+  Kopfringe als waagerechte Sehnen übereinander, die Kappe auf dem Scheitel (Seite 15,5 px, 1 155 Flächen nach innen); jetzt
+  Halsringe quer zum Hals, Fächer an der inneren Ecke (wie G2b in der Röhre), Kopfscheiben bis zum Schnabel: Seite 2,9 px, 284
+  Flächen (0,7 % der Fläche; die Röhre heute hat an derselben Stelle 782 Flächen, 8,2 %). Robbe: Spitze an der Nase statt am
+  Scheitel, Top 7,2 → 5,4 px, nach innen 176 → 0. Langhals: Kopf als Scheiben zum Maul hin.
+- **Silhouettenbedingung je Ring in der Ansicht, die ihn von der Kante sieht:** Front (Blick längs x), wenn die Längsrichtung t
+  eher steht (|t.y| ≥ |t.x|), sonst Top. Vorher galt je Kind eine Ansicht; die Kopfscheiben des Langhalses laufen längs x, das
+  Band w = t × x war fast null und zeigte in eine zufällige Richtung — die Ringe falteten am Seitenpunkt um ± 0,014 (888 Flächen
+  nach innen → 26; Knicke max 179° → 90°; Top 3,6 → 2,9 px).
+- **Messung ehrlicher:** Nahtknick getrennt **frei** (die Zeichnung ist dort in jeder Ansicht glatt) und **an gezeichneten Ecken**
+  (ein T-Stoß einer Ansicht liegt ≤ 12 px an einem Randpunkt: Entenhals an der Brust, Pilz-Stiel ringsum unter dem Hut, Langhals
+  am Rückenansatz); das Tor gilt für die freien Kanten. „Nach innen“ zusätzlich als Flächenanteil (Splitter an einem Fächer zählen
+  als Zahl viel, als Fläche wenig). Tafel und `p1-teile.ts` zeigen beides.
+
+| Fall | Kinder | Fenster | Ringe × Punkte | Δ S/F/T heute → neu (px) | Rest | Überstand F/T | Nahtknick frei / Ecken (Kanten) | nach innen Rumpf / Kinder (Fläche) | Knicke 95 %/max | Bau (ms) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Langhals | Hals + Kopf | x · Streifen λ 1…13 oben, 2 Spalten | 24 × 28 | 1,5/4,0/3,1 → **1,0**/4,6/2,9 | 1,3 | 4,2/2,8 | **17,9°** / 29,5° (22/6) | 98 (0,3 %) / 26 (0,0 %) | 17,1/90° | 1 250 |
+| Robbe | Kopf | x · Streifen λ 1…13 oben, 2 Spalten | 12 × 28 | 4,0/6,2/12,5 → 1,7/7,4/5,4 | 3,6 | 6,6/4,4 | 37,0° / – (28/0) | **0 / 0** | 23,5/141° | 720 |
+| Ente | Hals + Kopf, Flügel rechts/links | x · Streifen λ 11…19 oben; Flanken λ 14…18, je 2 Spalten | 24 × 20; 2 × (7 × 12) | 2,3/14,1/46,6 → 2,9/3,7/**2,7** | 2,8 | 1,6/2,8 | **20,2°** / 36,1° (26/18) | 2 / 284 (0,7 %), 6, 6 | 23,0/146° | 1 070 |
+| Pilz | Stiel | y · Fortsetzung über Ring 1 | 12 × 16 | 5,6/6,3/2,0 → **0,9/0,8/2,0** | 0,8 | 0,5/0,9 | – / 33,9° (0/16) | 22 / 3 (0,0 %) | 17,0/176° | 330 |
+
+**Ergebnis ehrlich (Tests `schleifenTeile.test.ts`: 10 grün, 12 `it.fails`; `schleifenKaefig.test.ts` unverändert 11 grün / 8 `it.fails`):** Die Ente ist
+jetzt eine Ente (Hals, Kopf mit Schnabel, zwei Flügel; Seite 15,5 → 2,9, Top 57,7 → 2,7 px). Form Seite halten Langhals (1,0 px;
+Rest 1,3 verfehlt das Rest-Tor) und Pilz; Robbe 1,7, Ente 2,9 px. Front/Top hält nur der Pilz (0,8/2,0); Ente 3,7/2,7, Langhals
+4,6/2,9, Robbe 7,4/5,4 px — die Kinder haben weiter keine eigene Front-/Top-Schleife, ihre Breite ist die Hülle. Naht frei: Langhals
+17,9°, Ente 20,2° halten; Robbe 37,0° ist ein echter Befund (Falte längs der Fensterflanken: der Kopf sitzt mit 37° auf dem Rücken,
+die Zeichnung zeigt dort in keiner Ansicht eine Ecke); der Pilz hat keine freie Randkante (Stiel unter dem Hut ringsum gezeichnete
+Kante, dort 33,9°). Nach innen: Robbe 0; Langhals 26 Kind (0,0 %) und 98 Rumpf (0,3 %, Kappe — nicht untersucht); Ente 284 am
+Fächer der inneren Ecke Hals → Kopf (0,7 %; die Röhre heute 8,2 %) und 6 je Flügel; Pilz 3. Knicke 95 %: Langhals 17,1 und Pilz
+17,0 halten, Ente 23,0, Robbe 23,5; max 90–176° an den Gratenden der Kinderkappen. **Keiner hält alle Tore;** die verfehlten
+stehen als `it.fails` mit Registereintrag.
+
+**Verworfen (gemessen):** Scheitelschub (Robbe 1,5 → 4,7 px); Klemme in z für Paare (Flügel verknotet); der flache Lauf um das
+Wirbelsäulenende (zog die Spitze zurück in den Scheitel, (0,056, 0,618)); Silhouettenbedingung je Kind in einer Ansicht (888
+Flächen).
+
+**Lesart (Drahtgitter `p1-teile-draht-*-2026-11-03.jpg`, Bogen `p1-teile-2026-11-03.jpg`):** Langhals wie die Röhre heute, der Kopf
+als Scheiben zum Maul; Robbe mit Kopf als Kind und sichtbarer Falte an den Flanken des Fensters (37°); Ente mit Hals, Kopf, Schnabel
+und Flügeln — am Hals-Kopf-Knick ein Fächer wie in der Röhre; Pilz unverändert.
+
+**Nächster Schritt (Florians Blick):** dann Robbe-Falte (Fenster über die Flanken: Kopf eher als Fortsetzung über die Brustkappe
+oder breiteres Fenster), Breite der Kinder aus eigenen Front-/Top-Schleifen (Planer-T-Stöße), Kappen der Kinder (Gratenden
+90–176°), Dichte je Kind; oder P2 (Maul).
