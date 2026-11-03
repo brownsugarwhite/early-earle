@@ -1,7 +1,7 @@
 // P1 Tag 2–3, zweiter Anlauf, Messung: der Käfig aus den Schleifen (`schleifenKaefig`) gegen den heutigen Bau an den Einteilern
 // (`pruefen/einteiler.ts`). Je Fall: Achse, Ring der Ringschleife, Bögen, Δ je Blatt (heute → neu, Raster 1920), Rest an den
 // Schleifen, Silhouette, Innen, Überstand, Kippung, nach innen gekehrte Flächen, Falten frei/Kappe, Knicke Stufe 1, Flachband,
-// Wendepunkte, Falten des Käfigs, Zeit. Umgebung: FAELLE, ACHSE, FAIR, INNEN, TANGENTE, GEWICHT, KIPPEN, KRUEMMUNG, TIEFE.
+// Wendepunkte, Falten des Käfigs, Zeit. Umgebung: FAELLE, ACHSE, FAIR, INNEN, TANGENTE, GEWICHT, KIPPEN, KRUEMMUNG, TIEFE, EBEN (1 = Ringe eben).
 // Aufruf aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/p1-kaefig.ts
 import { alleFlaechen } from '../../../../packages/shape/src/kaefig/halbkanten';
 import { blattAbweichungen } from '../../../../packages/shape/src/kern/abweichung';
@@ -22,6 +22,7 @@ const opt = {
   kippen: Number(process.env.KIPPEN ?? 1),
   kruemmung: Number(process.env.KRUEMMUNG ?? 0),
   ...(process.env.TIEFE ? { tiefe: process.env.TIEFE as 'glatt' | 'plan' } : {}),
+  ...(process.env.EBEN ? { eben: process.env.EBEN === '1' } : {}),
 };
 const f1 = (x: number) => x.toFixed(1);
 console.log(`Optionen ${JSON.stringify(opt)}`);

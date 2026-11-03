@@ -49,8 +49,21 @@ export type PlanSchleife = {
   /** mittlere Tiefe (zur Zuordnung) */
   tiefe: number;
 };
+/** Fläche der Zerlegung einer Ansicht (Tag 2–3 „Teile an der Naht“): Sehne (Blattkoordinaten, Kurvenparameter) und Elternfläche. */
+export type PlanFlaeche = {
+  ansicht: Blatt;
+  nr: number;
+  /** Elternfläche (nr), −1 bei der Wurzel */
+  eltern: number;
+  /** Sehne: Anfang a und Ende b (konkave Ecken) mit Kurvenparametern; null bei der Wurzel */
+  sehne: { a: V2; b: V2; sA: number; sB: number } | null;
+};
 export type UmrissPlan = {
   schleifen: PlanSchleife[];
+  /** Flächenbaum je Ansicht (Wurzel nr 0) */
+  flaechen: PlanFlaeche[];
+  /** die abgetastete Zeichnung je Ansicht (Blattkoordinaten, Kurvenparameter, Ecken) — für Bögen zwischen Sehnenenden */
+  zeichnung: Record<Blatt, { q: V2; s: number; ecke: boolean }[]>;
   /** T-Stöße je Ansicht (Blattkoordinaten) */
   tStoesse: { ansicht: Blatt; q: V2 }[];
   /** größter Widerspruch je Ansicht (px) */
@@ -554,9 +567,12 @@ export function umrissPlan(dok: Dokument): UmrissPlan {
   }
   const schleifen: PlanSchleife[] = [];
   const tStoesse: UmrissPlan['tStoesse'] = [];
+  const flaechenAlle: PlanFlaeche[] = [];
+  const zeichnung: UmrissPlan['zeichnung'] = { seite: [], front: [], top: [] };
   const widerspruchMax: Record<Blatt, number> = { seite: 0, front: 0, top: 0 };
   for (const a of ['seite', 'front', 'top'] as const) {
     const proben = abtasten(vollerPfad(dok.profile[a]), sk);
+    zeichnung[a] = proben.map((p) => ({ q: p.q, s: p.s, ecke: p.ecke }));
     const stationen = a === 'front' ? frontStationen(h, breiten, xVon, xBis) : null;
     const n = proben.length;
     if (n < 3) continue;
@@ -774,6 +790,7 @@ export function umrissPlan(dok: Dokument): UmrissPlan {
       return { x: d.x / l, y: d.y / l };
     };
     for (const s of sehnen) tStoesse.push({ ansicht: a, q: proben[s.a]!.q }, { ansicht: a, q: proben[s.b]!.q });
+    for (const f of flaechen) flaechenAlle.push({ ansicht: a, nr: f.nr, eltern: f.eltern ? f.eltern.nr : -1, sehne: f.sehne ? { a: proben[f.sehne.a]!.q, b: proben[f.sehne.b]!.q, sA: proben[f.sehne.a]!.s, sB: proben[f.sehne.b]!.s } : null });
     for (const f of flaechen) {
       const el = laeufe.get(f.nr)!;
       const d = tiefeJe.get(f.nr)!;
@@ -801,7 +818,7 @@ export function umrissPlan(dok: Dokument): UmrissPlan {
       schleifen.push({ ansicht: a, id: `${a}:${f.nr}`, teil: f.nr, proben: liste, tiefe: zahl ? summe / zahl : 0 });
     }
   }
-  return { schleifen, tStoesse, widerspruch: widerspruchMax, skalierung: sk, ms: jetzt() - t0 };
+  return { schleifen, flaechen: flaechenAlle, zeichnung, tStoesse, widerspruch: widerspruchMax, skalierung: sk, ms: jetzt() - t0 };
 }
 
 /** Zahl der Krümmungswechsel der Tiefe längs einer Schleife (gezeichnete Proben, geschlossen). */

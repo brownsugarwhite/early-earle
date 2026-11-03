@@ -140,10 +140,81 @@ export function nachInnen(punkte: readonly V3[], flaechen: readonly (readonly nu
     if ((n0 * r[0] + n1 * r[1] + n2 * r[2]) / (ln * lr) >= -0.2) return;
     z++;
     const kf = Math.floor(fi / 4 ** L);
-    const ort = kf < (R - 1) * N ? `Ring ${Math.floor(kf / N)}` : kf < (R - 1) * N + (N / 4) * (N / 4) ? 'Kappe vorn' : 'Kappe hinten';
+    const ort = kf < (R - 1) * N ? `Ring ${Math.floor(kf / N)}` : kf < (R - 1) * N + (N / 4) * (N / 4) ? 'Kappe vorn' : kf < (R - 1) * N + 2 * (N / 4) * (N / 4) ? 'Kappe hinten' : 'Teil';
     orte.set(ort, (orte.get(ort) ?? 0) + 1);
   });
   return { zahl: z, wo: [...orte.entries()].sort((p, q) => q[1] - p[1]).slice(0, 5).map(([o, n]) => `${o} ${n}`).join(', ') };
+}
+
+/**
+ * Nach innen gekehrte feine Flächen je Teil (Rumpf mit Kindern): Rumpfflächen gegen die Rumpfachse (Gerade durch die Mitte der
+ * Rumpfpunkte, längs x oder y), Kindflächen gegen die Kindachse (Fuß → Spitze). `teilVonFlaeche` je Käfigfläche (−1 = Rumpf).
+ */
+export function nachInnenTeile(punkte: readonly V3[], flaechen: readonly (readonly number[])[], abl: Ableitung, achse: 'x' | 'y', teilVonFlaeche: ArrayLike<number>, kinder: readonly { fuss: V3; spitze: V3; achse?: V3[] }[]): { zahl: number; wo: string; rumpf: number; kinder: number[] } {
+  const L = abl.unterteilung.stufen.length;
+  const nP = abl.vorlage.kaefig.n;
+  const mitte: V3 = [0, 0, 0];
+  let z0 = 0;
+  for (let i = 0; i < Math.min(nP, punkte.length); i++) {
+    const p = punkte[i]!;
+    mitte[0] += p[0];
+    mitte[1] += p[1];
+    mitte[2] += p[2];
+    z0++;
+  }
+  for (let d = 0; d < 3; d++) mitte[d] = mitte[d]! / Math.max(1, z0);
+  const orte = new Map<string, number>();
+  let z = 0;
+  let rumpf = 0;
+  const jeKind = kinder.map(() => 0);
+  flaechen.forEach((f, fi) => {
+    let n0 = 0;
+    let n1 = 0;
+    let n2 = 0;
+    const m: V3 = [0, 0, 0];
+    for (let i = 0; i < f.length; i++) {
+      const a = punkte[f[i]!]!;
+      const b = punkte[f[(i + 1) % f.length]!]!;
+      n0 += (a[1] - b[1]) * (a[2] + b[2]);
+      n1 += (a[2] - b[2]) * (a[0] + b[0]);
+      n2 += (a[0] - b[0]) * (a[1] + b[1]);
+      m[0] += a[0] / f.length;
+      m[1] += a[1] / f.length;
+      m[2] += a[2] / f.length;
+    }
+    const kf = Math.floor(fi / 4 ** L);
+    const teil = teilVonFlaeche[kf] ?? -1;
+    const kind = teil >= 0 ? kinder[teil] : undefined;
+    let r: V3;
+    if (kind) {
+      // radial von der Kindachse (Polygonzug Fuß → Ringmitten → Spitze): vom nächsten Achsenpunkt zum Flächenmittelpunkt
+      const achseK = kind.achse ?? [kind.fuss, kind.spitze];
+      let best: V3 = achseK[0]!;
+      let bd = Infinity;
+      for (const q of achseK) {
+        const dd = (q[0] - m[0]) ** 2 + (q[1] - m[1]) ** 2 + (q[2] - m[2]) ** 2;
+        if (dd < bd) {
+          bd = dd;
+          best = q;
+        }
+      }
+      r = [m[0] - best[0], m[1] - best[1], m[2] - best[2]];
+    } else {
+      r = [m[0] - mitte[0], m[1] - mitte[1], m[2] - mitte[2]];
+      if (achse === 'x') r[0] = 0;
+      else r[1] = 0;
+    }
+    const ln = Math.hypot(n0, n1, n2);
+    const lr = Math.hypot(r[0], r[1], r[2]);
+    if (!(ln > 1e-18) || !(lr > 1e-9)) return;
+    if ((n0 * r[0] + n1 * r[1] + n2 * r[2]) / (ln * lr) >= -0.2) return;
+    z++;
+    if (kind) jeKind[teil] = jeKind[teil]! + 1;
+    else rumpf++;
+    const ort = kind ? `Kind ${teil}` : kf < (abl.vorlage.R - 1) * abl.vorlage.N ? `Ring ${Math.floor(kf / abl.vorlage.N)}` : 'Kappe';
+    orte.set(ort, (orte.get(ort) ?? 0) + 1);
+  });
+  return { zahl: z, wo: [...orte.entries()].sort((p, q) => q[1] - p[1]).slice(0, 5).map(([o, n]) => `${o} ${n}`).join(', '), rumpf, kinder: jeKind };
 }
 
 /** Umgeklappte feine Flächen: Normale gegen die Normale des Bezugs (heutiger Bau); dazu ihre Lage (Ringband der Käfigfläche oder Kappe). */
@@ -171,7 +242,7 @@ export function umgeklappt(vor: readonly V3[], nach: readonly V3[], flaechen: re
     if (a[0] * b[0] + a[1] * b[1] + a[2] * b[2] >= 0) return;
     z++;
     const kf = Math.floor(fi / 4 ** L);
-    const ort = kf < (R - 1) * N ? `Ring ${Math.floor(kf / N)}` : kf < (R - 1) * N + (N / 4) * (N / 4) ? 'Kappe vorn' : 'Kappe hinten';
+    const ort = kf < (R - 1) * N ? `Ring ${Math.floor(kf / N)}` : kf < (R - 1) * N + (N / 4) * (N / 4) ? 'Kappe vorn' : kf < (R - 1) * N + 2 * (N / 4) * (N / 4) ? 'Kappe hinten' : 'Teil';
     orte.set(ort, (orte.get(ort) ?? 0) + 1);
   });
   return { zahl: z, wo: [...orte.entries()].sort((p, q) => q[1] - p[1]).slice(0, 5).map(([o, n]) => `${o} ${n}`).join(', ') };

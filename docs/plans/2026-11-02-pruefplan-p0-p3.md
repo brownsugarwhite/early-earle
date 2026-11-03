@@ -582,3 +582,84 @@ Ente, Robbe, Pilz mit dem Flächenbaum von Tag 1 (T-Stöße, verdeckte Fortsetzu
 Eltern-Gitter (Beweis 3, S6/S7-Mechanik), seine Schleifen enden an der Naht; Abbruch, wenn eine Naht nicht glatt wird. Danach P2
 (Maul). Offen daneben: Dichte (N je Ring, Dichteregel aus P0a), Kippung (Vorlage für gekippte Ringe), Kappen bei sehr
 ungleichen Bögen, Pinsel-Deltas im Käfig, Tag 4 (Griffe an den Schleifen) und Tag 5 (Bögen in Florians Ablauf).
+
+## Stand P1 Tag 4–5 — Teile an der Naht (03.11.2026 nachts, gebaut; Abnahme offen)
+
+**Auftrag (Florian, 03.11.):** „Ja, bau den nächsten Beweis „Teile an der Naht“ (Langhals, Ente, Robbe, Pilz) auf dem Schleifen-Käfig,
+hinter dem Schalter, ohne Schalter bitgleich.“
+
+**Gebaut (Kern, `packages/shape/src/kern/schleifenTeile.ts`, Einstieg `schleifenKaefig.ts`, Stücke in `schleifenKern.ts`; hinter
+`Bauplan.schleifenKaefig`, ohne Option bitgleich — Test):**
+- **Kinder finden** (`teileFinden`): Mitte-Teile des S4-Teilbaums (Seite) und Seitenflächen des Planers (konkave Ecken), die kein
+  Baum-Teil deckt (Pilz-Stiel). Ein Baum-Teil zählt nur als Abzweig, wenn der Rumpf länglich ist (längs : quer ≥ 1,15) und die Sehne
+  längs seiner Achse liegt (± 45°): Hals auf dem Rücken eines liegenden Rumpfs. Der Vasenhals (Sehne quer zur Achse, Rumpf 1,03 : 1)
+  bleibt im Einteiler — dort setzt der Käfig die Ringe von selbst durch den Hals fort (Test „Einteiler bleiben Einteiler“: Vase,
+  Kegel, Würfel ohne Kind; die Einteil-Tests bleiben bitgleich: 11 grün, 8 `it.fails`). Seitliche Paare (Entenflügel) bleiben im
+  zweiten Schritt; ihre Lappen werden im Top als Sehne aus dem Rumpf geschnitten.
+- **Rumpf** = Einteiler aus seinen Schleifen: die Seite ist die Zeichnung ohne die Kinder-Bögen, je Kind die gerade Sehne (mit
+  Zwischenpunkten, sonst sieht ein flacher Lauf an der Spitze nur zwei Punkte); Front und Top aus der **Sichthülle über dem
+  Rumpfpolygon** (je Höhe bzw. je x die größte seitliche Breite an Stellen im Rumpf; die Tiefe mit kleinster Biegung durch die
+  Plateau-Intervalle — beschnittene Zeichnungen taugten nicht: wo ein Kind den Rumpf in der Höhe überdeckt, gehört die Silhouette
+  dem Kind, und ihre Tiefe springt, Robbe 178 px Kippung). Der Rumpf baut mit **ebenen Ringen** (`eben`: Bauch- und Seitenanker
+  bei der Achskoordinate des Rückenankers; sonst kippen die Ringe, wo die Kreuzungen oben/rechts/unten nicht auf einer
+  Achskoordinate liegen — Langhals, Robbe: der tiefste Punkt des Bauchs nahe dem Schwanz; die Ringschleife ist dann Vorlage der
+  Ringform, kein Ring; bei Einteilern Standard aus, weil ebene Anker an Plateaus und senkrechten Stirnflächen versagen: scharfer
+  Würfel, Zylinder 180°).
+- **Fenster**: Ring 0 des Kindes ist der Fensterrand (Punkte des Rumpfs), die Fensterflächen wandern als Kappe an die Spitze des
+  Kindes — kein Punkt entfernt (Beweis 3). Zwei Arten: der **Streifen** längs der Naht (Reihen λ von der vorderen Spitze über
+  die Kappe, die Ringe und die hintere Kappe; Spalten ± Cw/2 um die Naht, Cw aus der Breite des Kindes ein Viertel zur Spitze
+  gegen die Spaltenbreite, höchstens 6, über der Kappe höchstens c = 4), auch über die Kappe hinweg (Langhals und Robbe: der Hals
+  beginnt an der Brust, λ 1 … 13); und die **Fortsetzung** über eine Kappe, wenn beide Sehnenenden gegenüber am selben Ende liegen,
+  gleich weit von der Spitze (± 1,5 Ringe) und der Ring so breit ist wie die Sehne (≤ 1,15): Kappe und Ringe 0 … k werden das Kind
+  (Pilz-Stiel, Hut mit Achse y). Die Sehnenenden sind Stützstellen des Rumpfs (Reihen laufen genau durch sie; Enden an einer
+  Spitze oder der Kreuzung oben/unten liegen fest). **Achse des Rumpfs mit Kindern:** beide Achsen werden geplant, es gewinnt die mit
+  mehr gebauten Kindern, bei Gleichstand eine passende Fortsetzung, sonst die natürliche Achse (Pilz y, die anderen x).
+- **Kindringe**: Ring i hat seine Nahtpunkte auf dem gezeichneten Bogen (Schleifenpunkte, hart), seitlich die Sichthülle am
+  Ringmittelpunkt (hart, Silhouettenbedingung in Front bzw. Top), dazwischen eine Ellipse nach dem Bogenanteil des Fensterrands;
+  liegt der Ringmittelpunkt noch im Rumpf, gilt die Randbreite. Die Paarung der beiden Bogenseiten ist die **kürzeste monotone
+  Zuordnung** (dynamische Programmierung über die Summe der Sehnenlängen): bei parallelen Seiten senkrechte Sehnen, am S-Hals
+  Sehnen quer zur örtlichen Richtung; gleiche Bogenanteile kippten die Ringe der Ente (35 px), Höhenschnitte parallel zur Sehne
+  schnitten den S-Hals diagonal (58 px), die Innennormale traf am Stiel und am Kopf daneben (Pilz 12, Robbe 29 px). Ringe 1–2
+  blenden vom verschobenen Rand zur Ellipse über (Schulter). Ringabstand = mittlerer Ringabstand des Rumpfs, höchstens R Ringe.
+  Die Kappe des Kindes sind die Stufen des Fensters (Rechteckringe, bei der Fortsetzung Rumpfringe und Quadratringe), zuletzt ein
+  Grat (Stiel: Linie auf dem flachen Boden) oder die Spitze; Ecken-Knoten der Kinderseiten werden Ringfalten (Stielboden).
+- **Ein Löser** über alle Teile: harte Punkte des Rumpfs (ohne die im Fenster), Bänder, Kindpunkte, Kappenmaske als Punktmaske
+  (Rumpfkappen und Kinderkappen × 10); `orientieren` und Volumen richten die zusammengesetzten Flächen; Herkunft neuer Punkte
+  (`teilQuelle`) für die Deskriptoren des Earle-Looks. Bericht `teile` (Kinder mit Art, Fenster, Ringen, Achse; Nahtknick auf
+  Stufe 1 an den Fensterrändern; je Käfigfläche das Teil; ausgelassene Kinder mit Grund).
+
+**Gebaut (Editor):** derselbe Chip „Schleifen-Käfig (P1)“ (mit Kindern automatisch), Tafel mit „Teile an der Naht“ (je Kind Art,
+Fenster, Ringe × Punkte, Nahtknick, ausgelassene). Bogen `docs/progress/editor/p1-teile-2026-11-03.jpg` (`p1-kaefig-editor.mjs` mit
+`MODUL=extremreihe BOGEN=p1-teile`), Drahtgitter `p1-teile-draht-<fall>-2026-11-03.jpg`, Messreihe `p1-teile.ts`.
+
+**Tore (Tests `kern/schleifenTeile.test.ts`; Register „Befunde aus P1 Tag 4–5“):** je Körper gebaut (Bericht ok, Kind, Käfig
+orientiert), Form Seite (Δ ≤ 1 px, Rest ≤ 1 px), Form Front/Top (Δ ≤ 2 px), Naht (Knick an den Fensterrändern ≤ 30°), Glätte (0 nach
+innen je Teil gegen die Teilachse, Knicke Stufe 1 95 % ≤ 20°); dazu bitgleich ohne Option und „Einteiler bleiben Einteiler“.
+
+| Fall | Kind (Quelle) | Achse · Fenster | Ringe × Punkte | Δ S/F/T heute → neu (px) | Rest / Silhouette | Nahtknick (Tor 30°) | nach innen Rumpf / Kind (Tor 0) | Knicke 95 %/max | Bau (ms) |
+|---|---|---|---|---|---|---|---|---|---|
+| Langhals | Hals + Kopf (Baum, Rumpf 1,26 : 1, Sehne 23°) | x · Streifen λ 1…13 oben, 2 Spalten (über die vordere Kappe) | 24 × 28 | 1,5/4,0/3,1 → **1,3**/4,5/4,7 | 1,0 / 2,9° | **28,9°** ✓ | 170 / 156 | 18,8/178° | 1 150 |
+| Robbe | Kopf (Baum, 1,34 : 1, 28°) | x · Streifen λ 1…13 oben, 4 Spalten | 11 × 32 | 4,0/6,2/12,5 → 4,6/8,7/7,9 | 3,6 / 7,8° | 57,9° | 8 / 143 | 23,8/178° | 610 |
+| Ente | Hals + Kopf (Baum, 1,39 : 1, 12°); Flügel ausgelassen | x · Streifen λ 11…19 oben, 2 Spalten | 24 × 20 | 2,3/14,1/46,6 → 15,5/6,9/**57,7** | 2,5 / 8,5° | 40,8° | 2 / 1 214 | 27,3/168° | 620 |
+| Pilz | Stiel (Planer, 2,11 : 1, 0°) | y · Fortsetzung über Ring 1 | 12 × 16 | 5,6/6,3/2,0 → **0,7**/31,2/2,4 | 0,1 / 0,2° | 84,8° | 22 / 122 | 16,9/178° | 290 |
+
+**Ergebnis ehrlich:** Alle vier bauen als Rumpf mit Kind, bitgleich ohne Option, die Einteiler unverändert. Die Seite trägt bei Pilz
+(0,7) und Langhals (1,3 px); Robbe 4,6 px (Kopf: Rest 3,6 px an den Schleifen, Silhouette 7,8°), Ente 15,5 px (der Schnabel steht aus
+der Zuordnung heraus). Front/Top liegen bei 2–9 px (die Breite der Kinder kommt aus der Hülle, nicht aus einer eigenen Schleife;
+Pilz Front 31 px ist die flache Hutunterseite, die der Silhouettenmessung von vorn als Kante gilt — Körperpunkt (0, 0,238), 31 px
+vom Stielrand; Ente Top 58 px sind die fehlenden Flügel). Nur der Langhals hält das Naht-Tor; Robbe 58°, Ente 41°, Pilz 85° (der
+Stiel trifft den Hut mit Flansch). Nach innen gekehrte Flächen je Kind 122–1 214 (Kappen der Kinder, der Hals der Ente), auf
+Stufe 1 überall Knicke bis 178° an den Enden des Grats. **Zwei von vier Körpern tragen in der Seite, keiner hält alle Tore** — das
+Abbruchkriterium des Prüfplans („eine Naht wird nicht glatt“) trifft an Pilz, Robbe und Ente; Florians Blick entscheidet.
+
+**Lesart (Drahtgitter):** Langhals und Pilz sehen richtig aus — Hals und Kopf als eigene Röhre mit sauberen Ringen, der Stiel als
+Fortsetzung mit konzentrischen Ringen auf der Hutunterseite und flachem Boden; die Robbe hat den Kopf als Kind mit sichtbaren Falten
+an seiner Basis (das Fenster reicht über die Brustkappe, der Kopf sitzt schräg); die Ente trägt ihren S-Hals, aber der Kopf ist
+flach und der Schnabel fehlt (16 Punkte je Kindring, Ellipsen können keinen Schnabel), und der Rumpf hat ohne Flügel den falschen
+Top-Umriss. Die Messung „nach innen“ ist bei gekrümmten Kindern unsicher (Achse = Ringmitten; Fußpunkt und Kappen zählen mit).
+
+**Nächster Schritt (Florians Blick):** entweder Tag 4–5 abschließen — seitliche Paare (Flügel) als Streifen um N/4, Kappen der
+Kinder mit mehr Stufen (Cw 2 gibt nur einen Grat), Nahtknick (Fensterrand als eigene Reihe mit Silhouettenbedingung), Breite der
+Kinder aus ihrer eigenen Front-/Top-Schleife statt aus der Hülle, Dichte je Kind — oder nach P2 (Maul) gehen und die Teile mit den
+Loops von P3 neu aufnehmen. Daneben weiter offen: Dichte je Ring, Kippung der Einteiler, Pinsel-Deltas im Käfig, Tag 4 (Griffe).
+

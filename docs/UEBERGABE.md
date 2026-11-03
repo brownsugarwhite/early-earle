@@ -1,4 +1,4 @@
-# Übergabe (Stand 03.11.2026 abends: P0a angesehen, P1 Tag 1 gebaut, P1 Tag 2–3 im zweiten Anlauf als Schleifen-Käfig gebaut — Abnahme offen, als Nächstes Teile an der Naht)
+# Übergabe (Stand 03.11.2026 nachts: P0a angesehen, P1 Tag 1 gebaut, P1 Tag 2–3 als Schleifen-Käfig gebaut, P1 Tag 4–5 „Teile an der Naht“ gebaut — Abnahme offen, Florians Blick entscheidet)
 
 Branch `claude/editor-grundlayout`, PR mit Auto-Fix. **Diese Datei ist der Einstieg für eine frische Sitzung.** Der Kernring
 bleibt eingefroren; alles Neue liegt hinter Schaltern (`stufen`, `umrissPlan`), ohne Schalter bitgleich.
@@ -140,6 +140,36 @@ je Ring, gekippte Ringe (Kegel), Pinsel-Deltas im Käfig, Tag 4 (Griffe an den S
 > mit Registereintrag), Kontaktbögen, Planseite „Stand“, Register, Übergabe, Commit und Push. Nichts als bestanden melden; nach dem
 > Beweis anhalten und mir die Bilder zeigen.
 
+## 03.11. nachts: P1 Tag 4–5 „Teile an der Naht“ gebaut (Abnahme offen; Abbruchkriterium trifft an drei von vier Körpern)
+
+Florian: „Ja, bau den nächsten Beweis „Teile an der Naht“ (Langhals, Ente, Robbe, Pilz) auf dem Schleifen-Käfig, hinter dem
+Schalter, ohne Schalter bitgleich.“ Planseite „Stand P1 Tag 4–5“, Register „Befunde aus P1 Tag 4–5“.
+- **Kern `packages/shape/src/kern/schleifenTeile.ts`** (Einstieg `schleifenKaefig.ts` entscheidet Einteiler | Teile; die Stücke des
+  Einteil-Baus liegen jetzt in `schleifenKern.ts`): Kinder aus Teilbaum (Mitte-Teile der Seite auf liegendem Rumpf) und Planer
+  (konkave Ecken); Rumpf = Einteiler aus Seite mit Sehnen und Front/Top aus der Hülle über dem Rumpfpolygon, ebene Ringe
+  (`eben`); Kinder als Röhren über ein Fenster — Streifen längs der Naht (auch über die Kappe) oder Fortsetzung über eine Kappe
+  (Pilz-Stiel, Achse y); Kindringe aus der kürzesten monotonen Zuordnung der beiden Bogenseiten, seitlich die Hülle; ein Löser;
+  Bericht `teile`. Ohne Option bitgleich, Einteiler unverändert (Tests).
+- **Ergebnis:** alle vier bauen. Seite Pilz 0,7 und Langhals 1,3 px; Robbe 4,6, Ente 15,5 px (Schnabel). Front/Top 2–9 px (Breite der
+  Kinder aus der Hülle; Pilz Front 31 px = flache Hutunterseite als Messkante; Ente Top 58 px = Flügel fehlen). Naht-Tor (≤ 30°) nur
+  Langhals (29°); Robbe 58°, Ente 41°, Pilz 85°. Nach innen je Kind 122–1 214. Tests `kern/schleifenTeile.test.ts`: 8 grün, 14
+  `it.fails`; `schleifenKaefig.test.ts` weiter 11 grün / 8 `it.fails`.
+- **Bilder:** `docs/progress/editor/p1-teile-2026-11-03.jpg` (Editor: Blätter mit Δ, Bühne, Zebra; heute | Teile),
+  `p1-teile-draht-<fall>-2026-11-03.jpg` (Drahtgitter, vier Fälle). Editor: Tafel Körper → Chip „Schleifen-Käfig (P1)“ zeigt
+  „Teile an der Naht“ (Kinder, Fenster, Nahtknick, ausgelassene).
+- **Verworfen (gemessen):** beschnittene Zeichnungsschleifen für den Rumpf (Robbe 178 px Kippung), Kinder-Paarung nach Bogenanteil
+  (Ente 35 px) / Höhe (Ente 58 px) / Innennormale (Pilz 12, Robbe 29 px), ebene Ringe für Einteiler (Würfel, Zylinder 180°),
+  Knick-Kriterium an den Sehnenenden (trennt Vase und Langhals nicht), Band-/Sehnen-Ausdehnung (ebenso).
+
+**Nächster Schritt: Florians Blick auf die vier Bögen.** Dann entweder Tag 4–5 zu Ende (Flügel als Paar, Kappen der Kinder mit
+mehr Stufen, Naht als eigene Reihe, Breite der Kinder aus eigenen Front-/Top-Schleifen, Dichte je Teil) oder P2 (Maul) und die
+Teile mit den Loops von P3 neu. Start-Prompt für eine frische Sitzung:
+
+> Lies `CLAUDE.md`, `docs/UEBERGABE.md` und den Prüfplan `docs/plans/2026-11-02-pruefplan-p0-p3.md` („Stand P1 Tag 4–5“). Florian
+> hat die Bögen der Teile an der Naht gesehen und entschieden: […]. Arbeite danach weiter — im Kern hinter dem Schalter
+> `schleifenKaefig`, ohne Schalter bitgleich, der Kernring bleibt eingefroren; Tore als Tests (verfehlte als `it.fails` mit
+> Registereintrag), Kontaktbögen, Planseite „Stand“, Register, Übergabe, Commit und Push. Nichts als bestanden melden.
+
 ## Entscheidungen, die Florian treffen muss (Gegenprüfung, Abschnitt 10)
 
 E1 verdeckt = blass (gestrichelt = weich) · E2 verdeckte Umrissstücke und Ansatzlinien als Vorschlagslinie, gebaut wird nur, was
@@ -183,8 +213,12 @@ Rex mittel gerade (Knick an der Kreuzung), Robbe hoch J (Engstelle), E2.4, E3–
   (`FAELLE`, Optionen `FAIR GEWICHT TANGENTE RUNDEN ZIEL NUR …`), Drahtgitter `p1-koerper-bild.ts` → HTML, dann aus `apps/editor`
   `node scripts/pruefen/html-shot.mjs [--jpg] <datei.html>`; Editor-Bogen `p1-koerper-editor.mjs` (run-check.sh).
 - P1 Tag 2–3, zweiter Anlauf: `kern/schleifenKaefig.test.ts` (Form und Glätte je Einteiler, `--reporter=verbose`), Messreihe
-  `npx vite-node ../../apps/editor/scripts/pruefen/p1-kaefig.ts` (`FAELLE ACHSE FAIR INNEN TANGENTE GEWICHT KIPPEN KRUEMMUNG TIEFE`),
+  `npx vite-node ../../apps/editor/scripts/pruefen/p1-kaefig.ts` (`FAELLE ACHSE FAIR INNEN TANGENTE GEWICHT KIPPEN KRUEMMUNG TIEFE EBEN`),
   Drahtgitter `p1-koerper-bild.ts` mit `BAU=kaefig`, Editor-Bogen `p1-kaefig-editor.mjs` (run-check.sh).
+- P1 Tag 4–5: `kern/schleifenTeile.test.ts` (je Körper gebaut, Form Seite, Form Front/Top, Naht, Glätte; bitgleich; Einteiler
+  bleiben Einteiler), Messreihe `npx vite-node ../../apps/editor/scripts/pruefen/p1-teile.ts` (`FAELLE FAIR INNEN TANGENTE GEWICHT`),
+  Drahtgitter `BAU=kaefig FAELLE=langhals,robbe,ente,pilz p1-koerper-bild.ts` + `html-shot.mjs --jpg`, Editor-Bogen
+  `MODUL=extremreihe FAELLE=langhals,robbe,ente,pilz BOGEN=p1-teile p1-kaefig-editor.mjs` (run-check.sh).
 - Editor-Prüfungen (Playwright, eigener Vite auf 5192): `apps/editor/scripts/pruefen/run-check.sh <skript.mjs>`; Liste in
   `apps/editor/scripts/pruefen/README.md`.
 

@@ -1,8 +1,9 @@
 // Prüfplan P1 Tag 2–3, zweiter Anlauf (03.11.2026): der Käfig aus den Schleifen im echten Editor (eigener Vite über run-check.sh).
 // Je Fall in Florians Ablauf (Startkugel → Umrisse des Körpers, Röhre): Chip „Körper heute“ → Blätter mit Δ-Titel, Bühne Earle 45°
 // und Zebra (Matcap) 45°; Chip „Schleifen-Käfig (P1)“ → dasselbe, dazu die Zahlen der Tafel (Rest, Innen, Bau). Kontaktbogen
-// `docs/progress/editor/p1-kaefig-<datum>.jpg`, Zahlen in `apps/editor/pruefen-ausgabe/p1/`. Fälle: die Einteiler (`pruefen/einteiler.ts`).
-// Umgebung: FAELLE, AUSGABE, DATUM. Aufruf: apps/editor/scripts/pruefen/run-check.sh apps/editor/scripts/pruefen/p1-kaefig-editor.mjs
+// `docs/progress/editor/p1-kaefig-<datum>.jpg`, Zahlen in `apps/editor/pruefen-ausgabe/p1/`. Fälle: die Einteiler (`pruefen/einteiler.ts`);
+// mit MODUL=extremreihe FAELLE=langhals,robbe,ente,pilz BOGEN=p1-teile die Teile an der Naht (Tag 4–5).
+// Umgebung: FAELLE, AUSGABE, DATUM, MODUL, BOGEN. Aufruf: apps/editor/scripts/pruefen/run-check.sh apps/editor/scripts/pruefen/p1-kaefig-editor.mjs
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,7 +16,15 @@ const DATUM = process.env.DATUM ?? '2026-11-03';
 const bilderOrdner = resolve(WURZEL, 'docs/progress/editor');
 mkdirSync(out, { recursive: true });
 const faelle = (process.env.FAELLE ?? 'kugel,ei,wuerfel-scharf,zylinder,vase-rund,kegel,wuerfel,vase').split(',').filter(Boolean);
-const modul = `/@fs${WURZEL}/packages/shape/src/kern/pruefen/einteiler.ts`;
+// MODUL=extremreihe nimmt die Körper der Extremreihe (Teile an der Naht: langhals,robbe,ente,pilz); BOGEN = Name des Kontaktbogens
+const modulArt = process.env.MODUL ?? 'einteiler';
+const modul = `/@fs${WURZEL}/packages/shape/src/kern/pruefen/${modulArt === 'extremreihe' ? 'extremreihe' : 'einteiler'}.ts`;
+const BOGEN = process.env.BOGEN ?? 'p1-kaefig';
+const TITEL = process.env.TITEL ?? (modulArt === 'extremreihe' ? 'P1 Tag 4–5 · Teile an der Naht auf dem Schleifen-Käfig' : 'P1 Tag 2–3, zweiter Anlauf · Schleifen-Käfig');
+const UNTERTITEL =
+  modulArt === 'extremreihe'
+    ? 'Prüfplan P1, Tag 4–5: je Fall die drei Blätter (Δ im Titel) mit den geplanten Schleifen, die Bühne im Earle-Look und als Zebra bei 45°, oben der heutige Körper, unten der Rumpf mit Kindern über Fenster (Hals, Kopf, Stiel als eigene Röhren; die Flügel der Ente fehlen noch). Abnahme offen.'
+    : 'Prüfplan P1, Tag 2–3: je Fall die drei Blätter (Δ im Titel) mit den geplanten Schleifen, die Bühne im Earle-Look und als Zebra bei 45°, oben der heutige Körper, unten der Käfig aus den Schleifen (die drei Umrisse sind Käfigreihen — Naht, Reihe N/4, ein Ring —, dazwischen die gestreckte Ringschleife; Ecken-Knoten werden Falten). Abnahme offen.';
 const BLAETTER = ['seite', 'front', 'top'];
 
 const browser = await chromium.launch({ args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] });
@@ -134,13 +143,13 @@ for (const name of faelle) {
   await ruhig();
   const v = await version();
   await page.evaluate(
-    async ({ modul, name }) => {
+    async ({ modul, name, modulArt }) => {
       const m = await import(modul);
-      const dok = m.einteiler(name).dok();
+      const dok = (modulArt === 'extremreihe' ? m.extremKoerper(name) : m.einteiler(name)).dok();
       const st = window.__stores.editor.getState();
       st.setzeDokument({ ...st.dok, profile: dok.profile, ...(dok.spanten ? { spanten: dok.spanten } : {}) });
     },
-    { modul, name },
+    { modul, name, modulArt },
   );
   await nachBau(v);
   await ruhig();
@@ -155,7 +164,7 @@ for (const name of faelle) {
   zeilen.push({ name, ms, heute: { d: heute.d, bilder: heute.bilder }, neu: { d: neu.d, bilder: neu.bilder }, tafel: { rest: t.rest, innen: t.innen, achse: t.achse, ms: t.ms }, bericht: st });
   await setzeSchleifen(false);
 }
-writeFileSync(resolve(out, `p1-kaefig-editor-${DATUM}.json`), JSON.stringify(zeilen.map((z) => ({ ...z, heute: { d: z.heute.d }, neu: { d: z.neu.d } })), null, 2));
+writeFileSync(resolve(out, `${BOGEN}-editor-${DATUM}.json`), JSON.stringify(zeilen.map((z) => ({ ...z, heute: { d: z.heute.d }, neu: { d: z.neu.d } })), null, 2));
 
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const stil = `body{margin:0;padding:18px 22px;background:#19232b;color:#f1ead9;font:13px/1.35 -apple-system,'Helvetica Neue',sans-serif;width:max-content}
@@ -170,11 +179,11 @@ const sektionen = zeilen
     return `<h2>${esc(z.name)}</h2><p class="u">${esc(text)}</p>${reihe(z.heute, 'heute', z.heute.d)}${reihe(z.neu, 'Schleifen-Käfig (P1)', z.neu.d)}`;
   })
   .join('');
-const html = `<!doctype html><meta charset="utf-8"><style>${stil}</style><h1>P1 Tag 2–3, zweiter Anlauf · Schleifen-Käfig · ${DATUM}</h1><p class="u">Prüfplan P1, Tag 2–3: je Fall die drei Blätter (Δ im Titel) mit den geplanten Schleifen, die Bühne im Earle-Look und als Zebra bei 45°, oben der heutige Körper, unten der Käfig aus den Schleifen (die drei Umrisse sind Käfigreihen — Naht, Reihe N/4, ein Ring —, dazwischen die gestreckte Ringschleife; Ecken-Knoten werden Falten). Abnahme offen.</p>${sektionen}`;
+const html = `<!doctype html><meta charset="utf-8"><style>${stil}</style><h1>${TITEL} · ${DATUM}</h1><p class="u">${UNTERTITEL}</p>${sektionen}`;
 const p2 = await browser.newPage({ viewport: { width: 1860, height: 600 }, deviceScaleFactor: 1 });
 await p2.setContent(html);
 await p2.waitForTimeout(400);
-const pfad = resolve(bilderOrdner, `p1-kaefig-${DATUM}.jpg`);
+const pfad = resolve(bilderOrdner, `${BOGEN}-${DATUM}.jpg`);
 await p2.screenshot({ path: pfad, fullPage: true, type: 'jpeg', quality: 86 });
 console.log('Bogen', pfad);
 await browser.close();

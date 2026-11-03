@@ -518,3 +518,13 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   haben Ableitung 0 (Sehne nehmen). Δ mit Raster 240 kappt Ecken um 0,5–1 px — Tore mit 1920 messen. `wendepunkte` braucht die
   Achse (Ringebene) und eine Winkelschwelle (2°). Prüfkörper mit exakten Knoten bauen (`kn`, `achsenRegeln`), nicht über
   `seiteAusZug` aus Polygonen (Ecken rutschen, T-Stöße). Pinsel-Deltas wirken im Käfig nicht.
+- **Teile an der Naht (P1 Tag 4–5, 03.11.):** `schleifenKaefig` baut bei Kindern über `schleifenTeile` einen Käfig mit **mehr Punkten
+  als die Röhre** (Kinder hängen hinten an; die Fensterflächen behalten ihre Indizes, nur ihre Randpunkte werden umindiziert) —
+  alles, was `abl.vorlage.kaefig.n === abl.kaefig.n` prüft, geht in den Maul/Beine-Zweig (⌘R-Loops lösen sich auf); Deskriptoren
+  brauchen `teilQuelle`/`teilWert` wie bei Beinen. Rumpf-Schleifen in Front/Top nie aus beschnittenen Zeichnungen (Robbe: die
+  Silhouette gehört dem Kopf, die Tiefe springt 178 px), sondern aus der Hülle über dem Rumpfpolygon mit Tiefe durch die
+  Plateau-Intervalle. Die gerade Sehne braucht Zwischenpunkte (flache Läufe an der Spitze). Fenster über die Kappe als Reihen λ
+  längs der Naht (Spitze 0, Kappenreihen, Ringe c/2 + i); eine Fortsetzung nur mit beiden Sehnenenden gleich weit vor der Spitze.
+  Kindseiten als kürzeste monotone Zuordnung paaren. Maße (`nachInnen`, Kippung) sind bei mehrteiligen Körpern nur je Teil
+  brauchbar (`nachInnenTeile`, `teilVonFlaeche`). Im Playwright-Bogen `MODUL=extremreihe` (Körper der Extremreihe) und `BOGEN`
+  (Dateiname), sonst überschreibt der Lauf `p1-kaefig-<datum>.jpg`.

@@ -31,7 +31,8 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 > möglich“, weniger Werkzeuge, Spielqualität von Anfang an). Dazu die **Gegenprüfung**
 > [`docs/plans/2026-11-02-gegenpruefung-liniennetz.md`](docs/plans/2026-11-02-gegenpruefung-liniennetz.md) und der **Prüfplan
 > P0–P3** [`docs/plans/2026-11-02-pruefplan-p0-p3.md`](docs/plans/2026-11-02-pruefplan-p0-p3.md) — **am 03.11. freigegeben;
-> P0a „Spielstufe im Editor“ gebaut (Abnahme offen), als Nächstes P1.** Einstieg: [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
+> P0a angesehen, P1 Tag 1 (Umrissschleifen), Tag 2–3 (Schleifen-Käfig, Einteiler) und Tag 4–5 (Teile an der Naht) gebaut —
+> Abnahme offen, Florians Blick auf die Bögen entscheidet.** Einstieg: [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
 
 - **2026-10-04: Prototyp 1 ist abgeschlossen** (Archiv-Branch `prototyp-1`). Er diente zum Lernen. Florian: „Der Prototyp war sehr gut und aufschlussreich und hat bewiesen, dass die Spielidee toll ist.“ Viele Entscheidungen sind gefallen; die Gesamtdynamik und einige grafische Elemente haben ihm gefallen.
 - **Jetzt beginnt die eigentliche Produktion mit dem finalen Look.** Grundlage wird **Florians neuer Plan mit neuem Hauptprompt**: Story, Charaktere und Map arbeitet er genauer aus und trägt sie in Dokumenten und Screenshots zusammen. Es folgen mehrere Runden und Iterationen.
@@ -372,6 +373,21 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Ringe kreuzen (gemeinsame Dichte je Seite); Soll-Zug der Planer-Tiefe wandert bei Kästen/Rotationskörpern 80–100 px; Ecken-
   Proben brauchen die Winkelhalbierende (Splitter-Intervalle); Extrem-Läufe 3 px; Δ-Raster 240 kappt Ecken um 1 px (Tests 1920).
   Nächster Schritt: Teile an der Naht (Langhals, Ente, Robbe, Pilz), dann P2.
+- **2026-11-03 (nachts): P1 Tag 4–5 „Teile an der Naht“ gebaut** (Abnahme offen; Planseite „Stand P1 Tag 4–5“ im Prüfplan,
+  Register „Befunde aus P1 Tag 4–5“, Übergabe). Florian: „Ja, bau den nächsten Beweis „Teile an der Naht“ (Langhals, Ente, Robbe,
+  Pilz) auf dem Schleifen-Käfig, hinter dem Schalter, ohne Schalter bitgleich.“ Kern `kern/schleifenTeile.ts` (Einstieg
+  `schleifenKaefig.ts`, Stücke `schleifenKern.ts`): Kinder aus Teilbaum (Mitte-Teile der Seite, nur auf liegendem Rumpf längs
+  seiner Achse) und Planer (konkave Ecken); Rumpf = Einteiler aus Seite mit Sehnen und Front/Top aus der Hülle über dem
+  Rumpfpolygon mit ebenen Ringen; Kinder als Röhren über ein Fenster (Streifen längs der Naht mit Reihen λ, auch über die Kappe;
+  Fortsetzung über eine Kappe für den Pilz-Stiel mit Achse y), Kindringe aus der kürzesten monotonen Zuordnung der Bogenseiten,
+  seitlich die Hülle, ein Löser; Tafel zeigt „Teile an der Naht“. Ergebnis: alle vier bauen, bitgleich ohne Option; Seite Pilz 0,7
+  und Langhals 1,3 px, Robbe 4,6, Ente 15,5 (Schnabel); Front/Top 2–9 px (Breite aus der Hülle; Ente Top 58 = Flügel fehlen);
+  Naht-Tor nur Langhals (29°; Robbe 58, Ente 41, Pilz 85°) → Abbruchkriterium trifft, Entscheidung bei Florian. Tests
+  `schleifenTeile.test.ts` (8 grün, 14 `it.fails`), Bilder `docs/progress/editor/p1-teile-2026-11-03.jpg`, `p1-teile-draht-*`.
+  Fallen: Rumpfschleifen nie aus beschnittenen Zeichnungen (Kind überdeckt den Rumpf in der Höhe, Tiefe springt); Tiefe durch
+  Plateau-Intervalle glätten; die gerade Sehne mit Zwischenpunkten; Paarung der Kindseiten weder nach Bogenanteil noch nach
+  Höhe noch nach Innennormale (je ein Körper fällt), sondern kürzeste monotone Zuordnung; ebene Ringe nicht für Einteiler
+  (Plateaus); Maße bei mehrteiligen Körpern je Teil (die Achse im Mittel aller Punkte liegt im Hals).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

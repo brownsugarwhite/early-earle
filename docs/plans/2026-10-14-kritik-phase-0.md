@@ -928,3 +928,41 @@ Falten aus Ecken-Knoten, ein Löser; Chip „Schleifen-Käfig (P1)“; Prüfkör
   glatt (Knicke ≤ 12°, 0 nach innen) statt diagonaler Sprossen und gefaltetem Hals; Lehren: Tiefe ohne Soll-Zug (Vase/Würfel
   wanderten 80–100 px), Winkelhalbierende an Ecken (Splitter-Intervalle), Sehne statt Ableitung 0 an grifflosen Knoten, eine
   gemeinsame Dichte je Seite (Ringe kreuzten sich), Ecken gebündelt (sonst zwei Ringe je Kante), Extrem-Läufe 3 px.
+
+## Befunde aus P1 Tag 4–5 „Teile an der Naht“ (03.11. nachts, eigene Messungen; `packages/shape/src/kern/schleifenTeile.test.ts`)
+
+Gebaut: `kern/schleifenTeile.ts` — Rumpf als Einteiler aus seinen Schleifen (Seite mit Sehnen, Front/Top aus der Hülle über dem
+Rumpfpolygon, ebene Ringe), Kinder als Röhren über ein Fenster (Streifen längs der Naht, auch über die Kappe; Fortsetzung über eine
+Kappe), ein Löser. Langhals, Robbe, Ente, Pilz bauen; Seite Pilz 0,7, Langhals 1,3 px; keiner hält alle Tore.
+- [ ] **Naht nicht glatt** (Tor 30° auf Stufe 1): Robbe 58°, Ente 41°, Pilz 85° (Flansch des Stiels am Hut: die Schulter blendet vom
+  Fensterrand zur Ellipse, der Rand liegt auf dem Hut, die Ellipse darunter). Weg: Fensterrand als eigene Käfigreihe mit
+  Silhouettenbedingung und Glättung über die Naht hinweg; Schulter über mehr Ringe oder keine (Rand = erster Ring).
+- [ ] **Breite der Kinder aus der Hülle** (Front/Top 4–9 px): Ein Kind hat keine eigene Front-/Top-Schleife, seine Breite ist die
+  Hülle am Ringmittelpunkt (im Rumpf: die Randbreite). Weg: Schleifen je Teil auch in Front und Top (Planer liefert sie, wo T-Stöße
+  stehen: Langhals-Kopf), Silhouettenbedingung an ihnen; sonst bleibt Florians „Umrisse je Teil“ in Front/Top unerfüllt.
+- [ ] **Ente:** S-Hals trägt (Seite 15,5 px nur am Schnabel), aber der Kopf ist flach und der Schnabel fehlt — Ellipsen mit 16–20
+  Punkten können keinen Schnabel; die Flügel (seitliches Paar) sind nicht gebaut (Top 58 px). Weg: Paare als Streifen um N/4 mit
+  Spiegel; Kopfteile mit eigener Topologie (P2/P3).
+- [ ] **Kappen der Kinder:** Mit Cw = 2 Spalten hat die Kappe nur einen Grat (Ladder), der Kopf wird ein Dach mit First; auf Stufe 1
+  Knicke bis 178° an den Gratenden. Weg: Fenster mindestens 4 Spalten breit (dann Dichteregel: N je Teil), oder die Kappe aus
+  Quadratringen um die Spitze unabhängig vom Fenster.
+- [ ] **Dichte je Kind:** Kindringe haben 2·(Rw + Cw) Punkte (Langhals 28, Robbe 32) bei bis zu R Ringen — der Hals des Langhalses
+  ist dreimal dichter als der Rumpf (1 046 Punkte statt 402; Bau 1,1 s). Dieselbe Dichteregel wie in P0a, je Teil.
+- [ ] **Ebene Ringe nur für Rümpfe mit Kindern:** `eben` setzt Bauch- und Seitenanker bei der Achskoordinate des Rückenankers; an
+  Plateaus und senkrechten Stirnflächen (scharfer Würfel, Zylinder) fällt die Zuordnung zusammen (180°). Für Einteiler bleibt die
+  Paarung nach Bogenanteil (Kippung Kegel 84 px bleibt offen). Weg: Anker nach Bogenanteil, lokal (± 1,5 Schritte) auf gleiche
+  Achskoordinate gezogen.
+- [ ] **Messungen:** Die Silhouettenmessung von vorn hält die flache Hutunterseite für eine Kante (Pilz Front 31 px an (0, 0,238));
+  „nach innen“ gegen eine Teilachse aus Ringmitten ist bei gekrümmten Kindern unsicher (Fußpunkt, Kappen); „Kippung“ zählt
+  Fensterpunkte mit (Langhals 106 px sind die Kappe des Kindes). Maße je Teil und je Zone fehlen.
+- [ ] **Baum-Kinder nur auf liegendem Rumpf** (längs : quer ≥ 1,15, Sehne ± 45° zur Achse): Ein Hals auf einem stehenden oder runden
+  Rumpf bleibt im Einteiler (Vase). Ein Kopf, der als Fortsetzung mit passendem Ring gebaut werden könnte, wird noch nicht erkannt,
+  wenn der Rumpf liegt (Robbe → Streifen über die Kappe mit 58° Naht).
+- [ ] **Tag 4 (Griffe an den Schleifen, Widersprüche rot) und Tag 5 (Bögen in Florians Ablauf) weiter nicht gebaut.**
+- [x] Was trägt: Langhals Hals + Kopf als eigene Röhre (Seite 1,3 px, Naht 29°, Front/Top 4,5/4,7); Pilz als Hut mit Achse y und Stiel
+  als Fortsetzung (Seite 0,7 px, konzentrische Ringe auf der Unterseite, flacher Boden mit Ecken als Grat); bitgleich ohne Option,
+  Einteiler unverändert (Test „Einteiler bleiben Einteiler“). Lehren: Rumpfschleifen aus der Hülle über dem Rumpfpolygon, Tiefe
+  durch Plateau-Intervalle (sonst springt sie 76 px); die gerade Sehne braucht Zwischenpunkte; Fenster über die Kappe als Reihen
+  längs der Naht (λ); Fortsetzung nur mit beiden Enden klar vor der Spitze; die Paarung der Kindseiten als kürzeste monotone
+  Zuordnung (Bogenanteil, Höhenschnitt und Innennormale scheitern je an einem Körper); Maße bei mehrteiligen Körpern je Teil.
+
