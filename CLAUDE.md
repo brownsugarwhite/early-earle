@@ -410,6 +410,22 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Fallen: kürzeste Zuordnung fächert bei dicken Enden; Röhrenringe als Pfad sind schräg im ganzen Rumpf; Hüllenringe brauchen alle
   Punkte hart und keine Bänder; ohne Höhentest wird jeder Hals am Vorderende zum Endstück; „nach innen“ mit der Rumpfmitte aus den
   Rumpfflächen messen.
+- **2026-11-03 (spätabends): Dichte je Ring — Bauchecken und breiteste Stelle** (Florian: „Mach weiter mit der Dichte je Ring (Bauchecken
+  und breiteste Stelle: Front/Top von Robbe, Langhals, Ente).“; Abnahme offen; Planseite „Nachtrag 03.11. spätabends“, Register,
+  Übergabe). Befund: Die Ziele selbst lagen innen — Langhals: die Tiefe der Top-Schleife lag auf dem Plateau zu hoch und streckte die
+  Ringvorlage senkrecht; Robbe: Endstück-Ringe als Hüllenschnitt-Ellipsen (sin θ · Hülle) und Rumpfecke zwischen zwei Abtastpunkten;
+  Ente: Rumpf-Front unter den Flügeln aus der Lobbenschnitt-Sehne (Planer). Gebaut (Optionen, Standard an, ohne Schalter bitgleich):
+  `rumpfTiefe: 'vorlage'` (Tiefe aus der Höhe der breitesten Front-Stelle je x), `ringDichteRumpf: 'kruemmung'` (`dichteKruemmung`, nur
+  Rümpfe mit Kindern: Vorlage je Viertel nach √κ, Grunddichte 0,5, Kappe 4×, in der Schleifenebene, Ecken und scharfe Rundungen
+  ausgenommen, Endzonen höchstens Kreiskrümmung; Einteiler bleiben nach Bogenlänge — der Kegel verlor 2,0 → 7,3 px, ungeklärt;
+  `'spline'` als Versuch nicht besser), `vorlagenRing` (Endstück-Ringe aus der Vorlage: Bauchhälfte Vorlage × Seitenbreite, auf dem Bauch
+  zur Hülle geblendet, Rückenhälfte → Halbellipse); Wendepunkt-Maß mit 1-px-Schwelle. Robbe 1,5/12,4/9,6 → 2,5/4,4/3,3 px (Naht 14,2°,
+  0 nach innen, Glätte hält; neu Seite 2,5 am Rand, Überstand 4,7), Langhals Bauchecke 4,5 → 1,9 (Form Seite hält), Ente 4,5/2,7 (Naht
+  25°), Pilz unverändert; Front/Top ≤ 2 px hält keiner. Offen: Kopfkrone und Rückengrat unter dem Kopf (Front-Umriss = Vereinigung von
+  Rumpf und Kopf → Schleifen je Teil mit verdeckter Fortsetzung), Bauchecke 4,4 (N 24), Überstand, Kegel. Fallen: Vorlage × Hülle je
+  Stelle zählt doppelt; Krümmung in der Schleifenebene messen; Hüllenschnitte an Sehnen erzeugen falsche Ecken; steifes Inneres bricht
+  die Naht; Dichte, die Spalten neben der Naht verschiebt, verschiebt die Fenster der Kinder. Bilder
+  `docs/progress/editor/p1-teile-dichte-*-2026-11-03.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

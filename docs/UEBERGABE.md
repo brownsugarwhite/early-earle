@@ -1,4 +1,4 @@
-# Übergabe (Stand 03.11.2026 nachts: P0a angesehen, P1 Tag 1 gebaut, P1 Tag 2–3 als Schleifen-Käfig gebaut, P1 Tag 4–5 „Teile an der Naht“ gebaut und weitergeführt — Naht weich, Hülle als Obergrenze, Flügel, Röhrenende, Robbenkopf als Endstück; Abnahme offen, Florians Blick entscheidet)
+# Übergabe (Stand 03.11.2026 spätabends: P0a angesehen, P1 Tag 1 gebaut, P1 Tag 2–3 als Schleifen-Käfig gebaut, P1 Tag 4–5 „Teile an der Naht“ gebaut und weitergeführt — Naht weich, Hülle als Obergrenze, Flügel, Röhrenende, Robbenkopf als Endstück, Dichte je Ring; Abnahme offen, Florians Blick entscheidet)
 
 Branch `claude/editor-grundlayout`, PR mit Auto-Fix. **Diese Datei ist der Einstieg für eine frische Sitzung.** Der Kernring
 bleibt eingefroren; alles Neue liegt hinter Schaltern (`stufen`, `umrissPlan`), ohne Schalter bitgleich.
@@ -201,12 +201,38 @@ dann Breite der Kinder aus eigenen Front-/Top-Schleifen.“ Planseite „Nachtra
   15 px), weiche Ringpunkte (36 px über die Schulter), Silhouettenbänder an Hüllenringen (Rest 13 px), breiteres Streifenfenster.
 - **Bilder:** `docs/progress/editor/p1-teile-2026-11-03.jpg`, `p1-teile-draht-<fall>-2026-11-03.jpg` (überschrieben).
 
-**Nächster Schritt: Florians Blick auf die vier Bögen.** Dann Dichte je Ring (Bauchecken, breiteste Stelle: Front/Top aller Körper),
-Fächer an der inneren Ecke (Ente), Kappen der Kinder (Gratenden 90–176°), Robbe-Naht 27,6° an der Bauchflanke, Langhals Rest 1,3 —
-oder P2 (Maul) und die Teile mit den Loops von P3 neu. Start-Prompt für eine frische Sitzung:
+## 03.11. spätabends: Dichte je Ring — Bauchecken und breiteste Stelle (Abnahme offen)
+
+Florian: „Mach weiter mit der Dichte je Ring (Bauchecken und breiteste Stelle: Front/Top von Robbe, Langhals, Ente).“ Planseite
+„Nachtrag 03.11. spätabends“, Register „Nachtrag 03.11. spätabends“.
+- **Befund:** Die Ziele selbst lagen innen (Ziele gegen Grenzlagen je Ring gemessen), je Körper anders: Langhals — die Tiefe der
+  Top-Schleife lag auf dem Plateau zu hoch und streckte die Ringvorlage senkrecht (Bauchecke rutscht hinauf); Robbe — die
+  Endstück-Ringe waren Hüllenschnitt-Ellipsen (sin θ · Hülle: Bauchecke 12 px, Top-Breite 10 px innen) und die Rumpfecke fiel
+  zwischen zwei Abtastpunkte; Ente — die Rumpf-Front unter den Flügeln kommt aus der Lobbenschnitt-Sehne (Planer, keine Dichte).
+- **Gebaut (Optionen, Standard an, ohne Schalter bitgleich):** `rumpfTiefe: 'vorlage'` (Tiefe der Rumpf-Reihenschleife aus der Höhe
+  der breitesten Front-Stelle je x, ins Plateau geklemmt), `ringDichteRumpf: 'kruemmung'` (`dichteKruemmung`, nur Rümpfe mit Kindern:
+  Ringvorlage je Viertel nach √κ, Grunddichte 0,5, Kappe 4×, in der Schleifenebene, Ecken und scharfe Rundungen ausgenommen,
+  Endzonen höchstens Kreiskrümmung; Einteiler bleiben nach Bogenlänge, `ringDichte: 'bogen'`, weil der Kegel 2,0 → 7,3 px verlor;
+  `'spline'` als Versuch), `vorlagenRing` (Endstück-Ringe aus der Vorlage längs der Sehne: Bauchhälfte Vorlage × Seitenbreite, auf
+  dem Bauch zur Hülle geblendet; Rückenhälfte Vorlage → Halbellipse); Wendepunkt-Maß mit 1-px-Schwelle.
+- **Ergebnis:** Robbe 1,5/12,4/9,6 → 2,5/4,4/3,3 px (Naht 27,6 → 14,2°, 0 nach innen, Knicke 95 % 19,9°: Glätte hält; neu Seite 2,5
+  am Rand und Überstand 4,7), Langhals 1,0/4,6/2,9 → 1,0/4,1/2,9 (Bauchecke 4,5 → 1,9, Rest 0,6: Form Seite hält; 4,1 an der
+  Kopfkrone des Hals-Kinds), Ente 2,9/3,7/2,7 → 2,9/4,5/2,7 (Naht 25,3°), Pilz 0,7/0,8/2,0. Front/Top ≤ 2 px hält keiner. Tests
+  13 grün / 9 `it.fails`; Einteiler 11 / 8 unverändert.
+- **Verworfen (gemessen):** Vorlage × Hülle je Stelle (doppelte Front-Breite), steifes Inneres (`innen` 10/100: Naht 29–44°),
+  Endzonen ohne Drehung, Dichte ohne Kappe, Krümmung in 3D, Glocke über eine halbe Spanne, Spline-Fehlermaß als Standard,
+  Krümmungsdichte für Einteiler (Kegel).
+- **Offen:** Kopfkrone und Rückengrat unter dem Kopf (Front-Umriss = Vereinigung von Rumpf und Kopf → Schleifen je Teil mit verdeckter
+  Fortsetzung), Bauchecke 4,4 (N 24 im Spielbudget), Überstand 4,7, Ente unter den Flügeln und Halsfenster an den Spalten neben der
+  Naht, Langhals-Krone, Kegel-Flanke unter der Krümmungsdichte (ungeklärt).
+- **Bilder:** `docs/progress/editor/p1-teile-dichte-2026-11-03.jpg` (Editor-Bogen), `p1-teile-dichte-draht-<fall>-2026-11-03.jpg`.
+
+**Nächster Schritt: Florians Blick auf die Bögen.** Dann entweder Schleifen je Teil mit verdeckter Fortsetzung (Kopfkrone, Rumpf
+unter dem Kopf, Ente unter den Flügeln), N 24 je Ring im Spielbudget (Bauchecke), Fächer an der inneren Ecke (Ente), Kappen der
+Kinder (Gratenden 90–176°) — oder P2 (Maul) und die Teile mit den Loops von P3 neu. Start-Prompt für eine frische Sitzung:
 
 > Lies `CLAUDE.md`, `docs/UEBERGABE.md` und den Prüfplan `docs/plans/2026-11-02-pruefplan-p0-p3.md` („Stand P1 Tag 4–5“ samt
-> „Nachtrag 03.11. abends“). Florian hat die Bögen der Teile an der Naht gesehen und entschieden: […]. Arbeite danach weiter — im
+> den Nachträgen vom 03.11.). Florian hat die Bögen der Teile an der Naht gesehen und entschieden: […]. Arbeite danach weiter — im
 > Kern hinter dem Schalter `schleifenKaefig`, ohne Schalter bitgleich, der Kernring bleibt eingefroren; Tore als Tests (verfehlte
 > als `it.fails` mit Registereintrag), Kontaktbögen, Planseite „Stand“, Register, Übergabe, Commit und Push. Nichts als bestanden
 > melden.
@@ -262,7 +288,10 @@ Rex mittel gerade (Knick an der Kreuzung), Robbe hoch J (Engstelle), E2.4, E3–
   `MODUL=extremreihe FAELLE=langhals,robbe,ente,pilz BOGEN=p1-teile p1-kaefig-editor.mjs` (run-check.sh). Schalter der Messreihe:
   `NAHTGLATT=0` (Naht nicht absolut glätten), `KLEMME=0` (Hülle nicht als Obergrenze), `HRING=0` (Ellipsen statt Hüllenringe),
   `SCHUB=1` (Scheitelschub, Versuch), `RUMPFKIPPEN`, `ENDSTUECK=0` (Endstück aus: Streifen), `ENDHART=0` (Endstück-Ringe nur an Naht
-  und Seiten hart), `SPALTEN=n` (feste Spaltenzahl eines Streifens).
+  und Seiten hart), `SPALTEN=n` (feste Spaltenzahl eines Streifens), `RINGDICHTE=0` (Ringvorlage nach Bogenlänge statt nach
+  Krümmung), `BODEN` (Grunddichte, 0,5), `RUMPFTIEFE=glatt` (Tiefe der Rumpf-Reihenschleife geglättet statt aus der Vorlage),
+  `VORLAGENRING=0` (Endstück-Ringe als Hüllenschnitt-Ellipsen; `RINGDICHTE=2` = Spline-Fehlermaß als Versuch). Die Tabelle zeigt
+  auch Δ der Spielstufe (Polygon der Stufe 1).
 - Editor-Prüfungen (Playwright, eigener Vite auf 5192): `apps/editor/scripts/pruefen/run-check.sh <skript.mjs>`; Liste in
   `apps/editor/scripts/pruefen/README.md`.
 

@@ -542,3 +542,14 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   gleichen Bogenanteil paaren (kürzeste Zuordnung fächert, Röhrenringe brechen am senkrechten Rand); alle Ringpunkte hart und keine
   Silhouettenbänder (Hüllenringe durch ein hohles Profil); keine Kappenmaske auf den freien Ringen. Maße „nach innen“ je Teil mit der
   Rumpfmitte aus den Rumpfflächen (sonst zählt der Schwanz falsch).
+- **Dichte je Ring (03.11. spätabends):** Erst die Ziele gegen die Grenzlagen je Ringpunkt messen (`Rest` je Punkt), bevor man über
+  die Abtastung redet — bei Langhals und Robbe lagen die Ziele selbst innen (Tiefe der Top-Schleife auf dem Plateau, Ellipse statt
+  Vorlage). Vorlage × Hülle je Stelle zählt die Front-Breite doppelt (Vorlage einheitlich mit der Seitenbreite skalieren, Hülle nur
+  als Obergrenze). Die Krümmung einer Schleife in ihrer Ebene messen — die Kreuzungspunkte an den Viertelenden liegen in der dritten
+  Koordinate daneben (Ei 0,4 → 0,8 px als 3D-Knick). Hüllenschnitte über dem Rumpfpolygon enden an Kinder-Sehnen flach (90°-Ecke,
+  die keine ist) → Endzonen der Viertel höchstens Kreiskrümmung. Eine Dichte ohne Kappe lässt eine Rundung r 0,03 alle Punkte des
+  Viertels schlucken. Ein steifes Inneres (`innen` 10–100) bricht die Naht der Kinder. Das Wendepunkt-Maß braucht eine
+  Pixel-Schwelle, keine Winkel-Schwelle (kurze Kanten an dichten Ecken). Die Fenster der Kinder hängen an Spaltenindizes neben der
+  Naht — jede Dichte, die diese Spalten verschiebt, verschiebt das Fenster (Ente Naht 20 → 25°). Am Kegel (Einteiler) ließ die
+  Krümmungsdichte eine gerade Flanke 2,0 → 7,3 px überschwingen, ohne dass die Schärfe-Regel griff — Einteiler bleiben nach
+  Bogenlänge, die Ursache ist offen.

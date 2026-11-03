@@ -87,10 +87,13 @@ export function wendepunkte(abl: Ableitung, fein: ArrayLike<number>, achse: 'x' 
       const c = p(j + 1);
       const kreuz = (b[0]! - a[0]!) * (c[1]! - b[1]!) - (b[1]! - a[1]!) * (c[0]! - b[0]!);
       // gerade Stücke (Kasten, Zylinder) zählen nicht: Drehungen unter 2° sind der Wellenschlag des Lösers (≤ 1 px an den
-      // Kappenringen des scharfen Würfels) oder die gezeichnete Bogung einer Kante, kein Wendepunkt eines Rings
+      // Kappenringen des scharfen Würfels) oder die gezeichnete Bogung einer Kante, kein Wendepunkt eines Rings; ebenso wenig ein
+      // Punkt, der weniger als 1 px neben der Sehne seiner Nachbarn liegt (mit dichteren Punkten an den Ecken des Würfels sind die
+      // Kanten kurz, und derselbe Wellenschlag von 0,8 px ergab 2° und vier „Wendepunkte“)
       const l1 = Math.hypot(b[0]! - a[0]!, b[1]! - a[1]!);
       const l2 = Math.hypot(c[0]! - b[0]!, c[1]! - b[1]!);
-      const sgn = Math.abs(kreuz) < 3.5e-2 * l1 * l2 ? 0 : Math.sign(kreuz);
+      const sehne = Math.hypot(c[0]! - a[0]!, c[1]! - a[1]!) || 1e-12;
+      const sgn = Math.abs(kreuz) < 3.5e-2 * l1 * l2 || Math.abs(kreuz) / sehne < 1 / 461 ? 0 : Math.sign(kreuz);
       if (sgn && letztes && sgn !== letztes) wechsel++;
       if (sgn) letztes = sgn;
     }

@@ -25,7 +25,7 @@ import type { Ableitung } from './ableiten';
 import { type Huelle, huelle, schnittIntervalle } from './grundkoerper/huelle';
 import { endenFuer } from './grundkoerper/enden';
 import { teilbaum } from './grundkoerper/teilbaum';
-import { type Band, type Blatt, type BogenName, type KaefigAchse, type KaefigBericht, type KaefigOptionen, type SeitenLage, type TeileBericht, PX, achseWaehlen, dist, eckenKnoten, einteilZiele, faltenAnwenden, jetzt, kaefigLoesen, kaefigMasse, laengen, leer, punktBei, rahmenFuer } from './schleifenKern';
+import { type Band, type Blatt, type BogenName, type EinteilErgebnis, type KaefigAchse, type KaefigBericht, type KaefigOptionen, type SeitenLage, type TeileBericht, PX, achseWaehlen, dist, eckenKnoten, einteilZiele, extremIndex, faltenAnwenden, jetzt, kaefigLoesen, kaefigMasse, laengen, leer, punktBei, rahmenFuer } from './schleifenKern';
 import { type UmrissPlan, blattKoord, tiefeGlaetten } from './umrissPlan';
 
 type Probe = { q: V2; s: number; ecke: boolean };
@@ -301,7 +301,7 @@ function wurzelSeite(z: readonly Probe[], kinder: readonly Kind[]): V2[] {
  * erreicht wird; seitliche Paare über das lobbenfreie Top-Polygon abgeschnitten. Beschnittene Zeichnungen taugen nicht: wo ein
  * Kind den Rumpf in der Höhe überdeckt (Robben-Kopf), gehört die Silhouette dem Kind, und ihre Tiefe springt (Ringe 178 px gekippt).
  */
-function rumpfSchleifen(h: Huelle, wurzel: readonly V2[], topOhneLobben: readonly V2[], proben = 72): { front: V3[]; top: V3[] } {
+function rumpfSchleifen(h: Huelle, wurzel: readonly V2[], topOhneLobben: readonly V2[], tiefe: 'vorlage' | 'glatt' = 'vorlage', proben = 72): { front: V3[]; top: V3[] } {
   let xLo = Infinity;
   let xHi = -Infinity;
   let yLo = Infinity;
@@ -377,7 +377,25 @@ function rumpfSchleifen(h: Huelle, wurzel: readonly V2[], topOhneLobben: readonl
     xs.push(x);
     topW.push(spalte('x', Math.min(xHi - 1e-6, Math.max(xLo + 1e-6, x)), yLo, yHi));
   }
-  const yT = glatt(topW);
+  let yT: number[];
+  if (tiefe === 'vorlage') {
+    // Tiefe aus der Vorlage: die Höhe, in der die Front am breitesten ist (Mitte des Plateaus), als Anteil zwischen Bauch und
+    // Rücken — an jeder Stelle x dieselbe relative Höhe, in das Plateau der Hülle geklemmt. Die geglättete Tiefe wanderte auf dem
+    // Plateau (Langhals bei x = 0: 0,114 statt 0,088) und streckte die Vorlage senkrecht: die Bauchecke rutschte 4,5 px hinauf
+    const iR = extremIndex(front.map((p) => p.z), true);
+    const fR = (front[iR]!.y - yLo) / Math.max(1e-9, yHi - yLo);
+    yT = topW.map((w, i) => {
+      const x = Math.min(xHi - 1e-6, Math.max(xLo + 1e-6, xs[i]!));
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (const [a, b] of schnittIntervalle(wurzel, 'x', x)) {
+        lo = Math.min(lo, a);
+        hi = Math.max(hi, b);
+      }
+      if (!Number.isFinite(lo)) return (w.lo + w.hi) / 2;
+      return Math.min(w.hi, Math.max(w.lo, lo + fR * (hi - lo)));
+    });
+  } else yT = glatt(topW);
   const top = topW.map((w, i) => ({ x: xs[i]!, z: w.z, y: yT[i]! }));
   // geschlossene Schleifen: rechte Hälfte aufwärts, linke abwärts (Enden mit z = 0 nicht doppelt)
   const frontLoop: V3[] = [];
@@ -657,6 +675,67 @@ function huellenRing(A: V3, B: V3, C: V3, seitRichtung: V3, profil: (p: V3) => {
   return { bei: (t) => P(winkel(t)), winkel };
 }
 
+/**
+ * Endstück: Ring aus der Ringvorlage des Rumpfs (Front-Umriss, je Viertel normiert) längs der Sehne A → B: Punkt i des Rings ist der
+ * Vorlagenpunkt seines Rumpf-Rings (Rand = Ring k; Umlauf ab A Richtung +z wie `fensterKappe`), die Höhe als Anteil der Sehne ab
+ * dem Bauchende (die Seite bei `seite`): Bauchhälfte = Vorlage × Hüllenbreite an der Seitenstelle (Bauchecke der Front, breiteste
+ * Stelle), Rückenhälfte = Halbellipse zum Rückenende in der Hülle (Kopf). Ein Hüllenschnitt als Ellipse blieb an der Bauchecke 12 px
+ * und an der breitesten Stelle 10 px innen.
+ */
+function vorlagenRing(vorl: EinteilErgebnis['vorlage'], A: V3, B: V3, aSeite: 'oben' | 'unten', N: number, seitRichtung: V3, breite: (q: V3) => number, bauch: { y0: number; h0: number }, kopf: number): { bei: (i: number) => V3; winkel: (i: number) => number } {
+  const c = N / 4;
+  const jA = aSeite === 'oben' ? 0 : N / 2;
+  const dir = jA === 0 ? 1 : -1;
+  const oben = aSeite === 'oben' ? A : B;
+  const unten = aSeite === 'oben' ? B : A;
+  const fR = vorl.seite;
+  let vMax = 1e-9;
+  for (const e of [...vorl.oben, ...vorl.unten]) vMax = Math.max(vMax, e.v);
+  const qSeite: V3 = [unten[0] + fR * (oben[0] - unten[0]), unten[1] + fR * (oben[1] - unten[1]), unten[2] + fR * (oben[2] - unten[2])];
+  const wSeite = breite(qSeite);
+  // Bauchecke: Steht der Ring auf dem Bauch der Front (sein Bauchende höchstens eine Eckenhöhe über dem tiefsten Punkt), ist seine
+  // untere Hälfte die Hülle selbst (Front bei y ∩ Top bei x) — die Front-Silhouette ist die Vereinigung aller Ringe, ihre Ecke
+  // ist weicher als die Ecke jedes einzelnen Rings, und nur die Hülle holt sie zurück (Vorlage: 8 px innen). Ein abgehobener Ring
+  // (Brust vor dem Kopf) ist dort verdeckt und bleibt rund (Vorlage)
+  const lam = bauch.h0 > 1e-9 ? Math.min(1, Math.max(0, (unten[1] - bauch.y0) / bauch.h0)) : 1;
+  const lamGlatt = lam * lam * (3 - 2 * lam);
+  const bei = (i: number): V3 => {
+    const j = (((jA + dir * i) % N) + N) % N;
+    const rechts = j <= N / 2;
+    const jj = rechts ? j : N - j;
+    let v: number;
+    let s: number;
+    if (jj <= c) {
+      const e = vorl.oben[jj]!;
+      v = e.v;
+      s = fR + e.u * (1 - fR);
+    } else {
+      const e = vorl.unten[jj - c]!;
+      v = e.v;
+      s = fR * (1 - e.u);
+    }
+    const q: V3 = [unten[0] + s * (oben[0] - unten[0]), unten[1] + s * (oben[1] - unten[1]), unten[2] + s * (oben[2] - unten[2])];
+    // Bauchhälfte: die Vorlage, einheitlich mit der Hüllenbreite an der Seitenstelle skaliert (wie ein Rumpfring mit seinem
+    // Seitenanker; Vorlage × Hülle je Stelle zählte die Front-Breite doppelt — Bauchecke 12 px innen). Rückenhälfte: die Vorlage
+    // ist dort die Silhouette des Kopfs über dem Rücken, nicht der Rumpfquerschnitt — also die rundeste Form in der Hülle: die
+    // Halbellipse von der Seitenstelle zum Rückenende, von der Hülle beschnitten (die Kopfkrone schließt die Hülle von selbst)
+    let z: number;
+    if (jj <= c) {
+      // Rückenhälfte: am Rand noch die Vorlage (der Rumpfring daneben hat sie), zum Kopf hin die Halbellipse (`kopf` 0 … 1)
+      const f = Math.min(1, Math.max(0, (s - fR) / Math.max(1e-9, 1 - fR)));
+      const ellipse = wSeite * Math.sqrt(Math.max(0, 1 - f * f));
+      const vorlage = (v / vMax) * wSeite;
+      z = Math.min(breite(q), (1 - kopf) * vorlage + kopf * ellipse);
+    } else {
+      const huelle = breite(q);
+      z = Math.min(huelle, (1 - lamGlatt) * huelle + lamGlatt * (v / vMax) * wSeite);
+    }
+    const w = z * (rechts ? 1 : -1);
+    return [q[0] + w * seitRichtung[0], q[1] + w * seitRichtung[1], q[2] + w * seitRichtung[2]];
+  };
+  return { bei, winkel: (i) => (2 * Math.PI * i) / N };
+}
+
 type FensterPlan = { kind: Kind; art: 'streifen' | 'fortsetzung' | 'endstueck'; seite: Fensterseite; ende: 'vorn' | 'hinten'; /** Reihen λ der Sehnenenden (Streifen) bzw. Ring k (Fortsetzung, Endstück) */ lamA: number; lamB: number; Cw: number; k: number; lageA: SeitenLage; lageB: SeitenLage; fenster: Fenster };
 
 /** Rumpf mit Kindern über Fenster; `fund` von `teileFinden`. */
@@ -684,7 +763,20 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
     yHi = Math.max(yHi, q.y);
   }
   const topOhneLobben = lobbenSchneiden(plan.zeichnung.top.map((p) => p.q), fund.paareTop);
-  const { front: front3, top: top3 } = rumpfSchleifen(h, wurzel, topOhneLobben);
+  const { front: front3, top: top3 } = rumpfSchleifen(h, wurzel, topOhneLobben, opt.rumpfTiefe);
+  /** Bauchecke der Front: Höhe über dem tiefsten Punkt, in der die rechte Hälfte der Rumpf-Front 95 % ihrer größten Breite erreicht */
+  const bauchEcke = (() => {
+    let zMax = 0;
+    for (const p of front3) zMax = Math.max(zMax, p[2]);
+    let y = yLo;
+    for (const p of [...front3].filter((q) => q[2] >= 0).sort((a, b) => a[1] - b[1])) {
+      if (p[2] >= 0.95 * zMax) {
+        y = p[1];
+        break;
+      }
+    }
+    return { y0: yLo, h0: Math.max(1e-6, y - yLo) };
+  })();
   /** Rückenpunkt des Rumpfs bei x (höchster Punkt des Rumpfpolygons) — die Reihe eines Flanken-Fensters */
   const rueckenBei = (x: number): V2 => {
     let best = -Infinity;
@@ -693,7 +785,6 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
   };
   void xLo;
   void xHi;
-  void yLo;
   // Fragen an die Rumpfseite: Sehnenenden der Naht-Kinder, bei Paaren der Rückenpunkt über dem x des Sehnenendes
   const sehnenEnden = fund.kinder.flatMap((kd) => (kd.ebene === 'seite' ? [kd.a, kd.b] : [rueckenBei(kd.a.x), rueckenBei(kd.b.x)]));
   const eckenSeite = eckenKnoten(dok, 'seite').filter((q) => !fund.kinder.some((kd) => kd.ebene === 'seite' && (d2(kd.a, q) < FANG || d2(kd.b, q) < FANG)));
@@ -702,7 +793,7 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
   flaechenAlle.forEach((f, i) => flaechenIndex.set([...f].sort((x, y) => x - y).join(','), i));
   const lamMax = R + c - 1;
   // Der Rumpf baut mit ebenen Ringen (Kreuzungen oben/rechts/unten liegen bei Rümpfen mit Kindern selten auf einer Achskoordinate)
-  const optRumpf: Required<KaefigOptionen> = { ...opt, eben: true, kippen: opt.rumpfKippen };
+  const optRumpf: Required<KaefigOptionen> = { ...opt, eben: true, kippen: opt.rumpfKippen, ringDichte: opt.ringDichteRumpf };
   // ---- Achse und Fenster: beide Achsen planen; es gewinnt die Achse mit mehr gebauten Kindern, bei Gleichstand die Fortsetzung
   // über die Kappe mit passendem Ring (Pilz), sonst die natürliche Achse ----
   const natuerlich: KaefigAchse = opt.achse === 'auto' ? achseWaehlen(seite3, opt.achseAb) : opt.achse;
@@ -1233,15 +1324,21 @@ export function schleifenTeile(abl: Ableitung, plan: UmrissPlan, dok: Dokument, 
         return { w: Math.min(wRing * 1.5, huellenBreite(h, q[0], q[1], wRing)), versatz: [0, 0, 0] };
       };
       const el = frei && opt.huellenRing ? huellenRing(A, B, C, seitRichtung, profil) : ellipse(A, B, w, schub, seitRichtung, C);
+      // Endstück: die Ringvorlage des Rumpfs längs der Sehne statt des Hüllenschnitts (Bauchecke, breiteste Stelle)
+      const kopfAnteil = (() => {
+        const x = Math.min(1, Math.max(0, (2 * r.schritt) / Math.max(1, E)));
+        return x * x * (3 - 2 * x);
+      })();
+      const vr = frei && pl.art === 'endstueck' && opt.vorlagenRing && !istPaar ? vorlagenRing(erg.vorlage, A, B, pl.seite as 'oben' | 'unten', Nc, seitRichtung, (q) => profil(q).w, bauchEcke, kopfAnteil) : null;
       const winkel: number[] = [];
       const schulter = !r.eltern && r.schritt <= SCHULTER ? r.schritt / (SCHULTER + 1) : 1;
       r.punkte.forEach((p, i) => {
-        let q = el.bei(r.t[i]!);
+        let q = vr ? vr.bei(i) : el.bei(r.t[i]!);
         if (schulter < 1) {
           const rl = randLagen[i]!;
           q = [C[0] + (rl[0] - randMitte[0]) + schulter * (q[0] - C[0] - (rl[0] - randMitte[0])), C[1] + (rl[1] - randMitte[1]) + schulter * (q[1] - C[1] - (rl[1] - randMitte[1])), C[2] + (rl[2] - randMitte[2]) + schulter * (q[2] - C[2] - (rl[2] - randMitte[2]))];
         }
-        winkel.push(el.winkel(r.t[i]!));
+        winkel.push(vr ? vr.winkel(i) : el.winkel(r.t[i]!));
         if (opt.huelleKlemmt) q = istPaar ? klemmeDicke(q) : klemme(q);
         if (r.eltern) zielSetz.set(p, q);
         else zieleNeu[p - nP] = q;

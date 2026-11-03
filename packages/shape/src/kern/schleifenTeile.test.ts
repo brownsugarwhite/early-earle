@@ -19,6 +19,12 @@
 // Bogenanteil, alle Ringpunkte hart, keine Silhouettenbänder): Seite 1,5, Front 12,4, Top 9,6 px (Bauchecken und breiteste Stelle
 // des Bauchs zwischen den 16 Ringpunkten), Naht 27,6° (vorher 37,0°), nach innen 0 / 6, Knicke max 68° (vorher 141°). Langhals,
 // Ente und Pilz unverändert (der Langhals-Hals bleibt Streifen: Ring 0,40 zu Sehne 0,16).
+// Stand 03.11. spätabends (Dichte je Ring): Ringvorlage des Rumpfs nach der Wurzel der Krümmung abgetastet (`ringDichteRumpf`), Tiefe
+// der Rumpf-Reihenschleife aus der Vorlage (`rumpfTiefe`), Endstück-Ringe aus der Vorlage mit Bauchhälfte auf der Hülle und Kopfhälfte
+// als Halbellipse (`vorlagenRing`): Robbe Seite/Front/Top 1,5/12,4/9,6 → 2,5/4,4/3,3 px (Bauchecke 12 → 4,4, breiteste Stelle 9,6 → 3,3;
+// Naht 27,6 → 14,2°, nach innen 0 / 0, Knicke 95 % 19,9°: Glätte hält; neu Seite 2,5 am Rand und Überstand 4,7 px), Langhals
+// 1,0/4,6/2,9 → 1,0/4,1/2,9 (Bauchecke 4,5 → 1,9, Rest 1,3 → 0,6: Form Seite hält; 4,1 px an der Kopfkrone des Hals-Kindes), Ente
+// 2,9/3,7/2,7 → 2,9/4,5/2,7 (Naht 25,3°), Pilz unverändert. Front/Top ≤ 2 px hält weiter keiner.
 // Verfehlte Tore stehen als `it.fails` (Register „Befunde aus P1 Tag 4–5“). Messwerte mit `--reporter=verbose`.
 import { describe, expect, it } from 'vitest';
 import { alleFlaechen } from '../kaefig/halbkanten';
@@ -31,10 +37,10 @@ import { umrissPlan } from './umrissPlan';
 
 declare const console: { log: (...a: unknown[]) => void };
 
-/** Körper → hält er heute (03.11. abends) Form Seite, Form Front/Top, Naht (Knick frei ≤ 30°), Glätte (0 nach innen, Knicke 95 % ≤ 20°)? */
+/** Körper → hält er heute (03.11. spätabends) Form Seite, Form Front/Top, Naht (Knick frei ≤ 30°), Glätte (0 nach innen, Knicke 95 % ≤ 20°)? */
 const HAELT: Record<string, { seite: boolean; frontTop: boolean; naht: boolean; glatt: boolean; kinder: number }> = {
-  langhals: { seite: false, frontTop: false, naht: true, glatt: false, kinder: 1 },
-  robbe: { seite: false, frontTop: false, naht: true, glatt: false, kinder: 1 },
+  langhals: { seite: true, frontTop: false, naht: true, glatt: false, kinder: 1 },
+  robbe: { seite: false, frontTop: false, naht: true, glatt: true, kinder: 1 },
   ente: { seite: false, frontTop: false, naht: true, glatt: false, kinder: 3 },
   pilz: { seite: true, frontTop: false, naht: true, glatt: false, kinder: 1 },
 };

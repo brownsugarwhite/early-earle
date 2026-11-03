@@ -92,6 +92,35 @@ export type KaefigOptionen = {
   endstueckHart?: boolean;
   /** Spalten eines Streifen-Fensters fest (0 = aus der Breite des Kindes) — Versuch */
   spalten?: number;
+  /**
+   * Dichte je Ring: Verteilung der Punkte der Ringvorlage (Ringschleife, je Viertel c Schritte) bei Einteilern. `bogen` (Standard)
+   * = gleichmäßig nach Bogenlänge (bisher; bei Einteilern ist die Ringschleife selbst ein Ring, und am Kegel ließ die Krümmungsdichte
+   * die gerade Flanke neben der Kielrundung 2,0 → 7,3 px überschwingen — ungeklärt, Register); `kruemmung` = nach der Wurzel der
+   * Krümmung (`dichteKruemmung`: Sagitta l²κ/8 gleich je Schritt; scharfe Rundungen und gezeichnete Ecken zählen nicht);
+   * `spline` (Versuch) = die Lage, bei der der interpolierende kubische B-Spline durch die Punkte der Schleife am nächsten kommt
+   * (`dichteSpline`, Hausdorff-Abstand, Koordinatenabstieg; gemessen 03.11.: nicht besser als `kruemmung` — Robbe Front 5,7 statt
+   * 4,5 px, Kegel 5,2 — das 2D-Maß kennt weder weiche Punkte noch die Längsrichtung)
+   */
+  ringDichte?: 'spline' | 'kruemmung' | 'bogen';
+  /**
+   * Dichte je Ring bei Rümpfen mit Kindern (Standard `kruemmung`): dort ist die Ringschleife nur Vorlage, und die Endstück-Ringe sind
+   * harte Kopien davon — die Bauchecke der Robbe braucht ihre Abtastpunkte (Front 7,1 → 4,4 px)
+   */
+  ringDichteRumpf?: 'spline' | 'kruemmung' | 'bogen';
+  /** Grunddichte gerader Stücke bei `ringDichte` (Anteil der Dichte eines Kreisbogens gleicher Länge und Drehung) */
+  ringDichteBoden?: number;
+  /**
+   * Teile an der Naht: Tiefe der Reihenschleife des Rumpfs (Höhe y der Top-Silhouette je x). `vorlage` (Standard) = die Höhe, in
+   * der die Ringvorlage (Front des Rumpfs) am breitesten ist, als Anteil zwischen Bauch und Rücken an jeder Stelle x, in das
+   * Plateau der Hülle geklemmt — so trifft die Vorlage jeden Ring ohne senkrechte Verzerrung (Langhals: die geglättete Tiefe lag 20 %
+   * zu hoch, die Bauchecke rutschte 4,5 px hinauf). `glatt` = kleinste Biegung durch die Plateaus (bisher)
+   */
+  rumpfTiefe?: 'vorlage' | 'glatt';
+  /**
+   * Endstück (Standard an): Die freien Ringe des Kopfs sind die Ringvorlage des Rumpfs längs ihrer Sehne (Bauchecke der Front, Breite
+   * je Stelle aus der Hülle) statt Hüllenschnitt-Ellipsen (die lagen an der Bauchecke 12 px und an der breitesten Stelle 10 px innen)
+   */
+  vorlagenRing?: boolean;
 };
 
 /** Bericht über die Teile (Kinder über Fenster am Eltern-Käfig), siehe `schleifenTeile.ts` */
@@ -155,7 +184,7 @@ export type KaefigBericht = {
   msLoeser: number;
 };
 
-export const STANDARD: Required<KaefigOptionen> = { achse: 'auto', gewicht: 1e3, tangente: 1e3, innen: 1, fair: 30, fairKappe: 10, schaerfe: 1e6, kippen: 1, achseAb: 1.25, kruemmung: 0, tiefe: 'glatt', teile: true, eben: false, nahtGlatt: true, scheitelSchub: false, rumpfKippen: 0, huelleKlemmt: true, huellenRing: true, endstueck: true, endstueckHart: true, spalten: 0 };
+export const STANDARD: Required<KaefigOptionen> = { achse: 'auto', gewicht: 1e3, tangente: 1e3, innen: 1, fair: 30, fairKappe: 10, schaerfe: 1e6, kippen: 1, achseAb: 1.25, kruemmung: 0, tiefe: 'glatt', teile: true, eben: false, nahtGlatt: true, scheitelSchub: false, rumpfKippen: 0, huelleKlemmt: true, huellenRing: true, endstueck: true, endstueckHart: true, spalten: 0, ringDichte: 'bogen', ringDichteRumpf: 'kruemmung', ringDichteBoden: 0.5, rumpfTiefe: 'vorlage', vorlagenRing: true };
 /** Ecken verschiedener Bögen einer Seite, die näher als dieser Anteil beieinander liegen, rasten auf denselben Schritt (ein Ring) */
 const ECKEN_BUENDEL = 0.08;
 /** Flache Läufe an Extremen gelten als gleich weit (Welt): eine gezeichnete Gerade wackelt um 1–2 px, die Mitte des Laufs ist die Kreuzung */
@@ -282,6 +311,228 @@ export function gemeinsameDichte(gs: readonly Gewichtet[], E: number): number[] 
   out[0] = 0;
   out[E] = 1;
   return out;
+}
+
+/**
+ * Dichte je Ring (P1, 04.11.): Bogenanteile φ_k (k = 0 … E) eines Zugs, nach der Wurzel der Krümmung verteilt. Zwischen zwei
+ * Punkten weicht die Fläche um ≈ l²·κ/8 von der Linie ab (Sagitta); gleicher Fehler je Schritt heißt l ∝ 1/√κ — die Punkte
+ * sammeln sich dort, wo die Linie sich dreht (Bauchecke), gerade Stücke behalten die Grunddichte `boden` (Anteil der Dichte eines
+ * Kreisbogens gleicher Länge und Drehung). Krümmung = Drehung je Bogenlänge, als Glocke über 3 % der Länge verteilt (Proben
+ * rauschen), an den Enden gespiegelt; scharfe Rundungen (über 30° innerhalb eines Sechstels der Punktspanne) zählen nicht.
+ */
+export function dichteKruemmung(zug: readonly V3[], E: number, boden = 0.5, ebene: [number, number] = [1, 2], ausnehmen: readonly number[] = [], endzone = 0.2, kappe = 4): number[] {
+  const n = zug.length;
+  const L = laengen(zug);
+  const total = L[n - 1]!;
+  const gleich = Array.from({ length: E + 1 }, (_, k) => k / E);
+  if (!(total > 1e-15) || n < 3 || E < 1) return gleich;
+  const M = 512;
+  const sigma = 0.03 * total;
+  // Rundungen, die kleiner sind als ein Drittel der Punktspanne (Kegel: r 10 px bei 80 px je Punkt), kann der Spline mit diesen
+  // Punkten nicht abbilden — sie brauchen eine Falte; die Dichte lässt sie aus wie eine gezeichnete Ecke (mit zwei Punkten in der
+  // Rundung schwang der Spline auf der geraden Flanke daneben 7 px über die Zeichnung). Die Bauchecke der Robbe (r ≈ eine Spanne) zählt
+  const kappa = new Float64Array(M + 1);
+  /** rohe Drehung je Rasterzelle (vor der Glättung) für die Erkennung scharfer Rundungen */
+  const roh = new Float64Array(M + 1);
+  let drehung = 0;
+  const [e0, e1] = ebene;
+  for (let i = 1; i + 1 < n; i++) {
+    const a = zug[i - 1]!;
+    const b = zug[i]!;
+    const c2 = zug[i + 1]!;
+    // Drehung in der Ebene der Schleife (die Kreuzungspunkte an den Enden liegen in der dritten Koordinate daneben — der Knick
+    // dorthin ist keine Krümmung der Zeichnung; am Ei lagen die Punkte sonst zu den Enden hin dichter, Front 0,4 → 0,8 px)
+    const u = [b[e0]! - a[e0]!, b[e1]! - a[e1]!];
+    const w = [c2[e0]! - b[e0]!, c2[e1]! - b[e1]!];
+    const lu = Math.hypot(u[0]!, u[1]!);
+    const lw = Math.hypot(w[0]!, w[1]!);
+    if (!(lu > 1e-15 && lw > 1e-15)) continue;
+    const dreh = Math.acos(Math.max(-1, Math.min(1, (u[0]! * w[0]! + u[1]! * w[1]!) / (lu * lw))));
+    if (!(dreh > 0)) continue;
+    const s0 = L[i]!;
+    // gezeichnete Ecken sind Stützstellen mit Falte: ihre Drehung verdichtet nicht (scharfer Würfel: sonst drängten alle Punkte in die Ecke)
+    if (ausnehmen.some((sa) => Math.abs(sa - s0) <= 2 * sigma)) continue;
+    drehung += dreh;
+    roh[Math.round((s0 / total) * M)] = roh[Math.round((s0 / total) * M)]! + dreh;
+    const norm = dreh / (sigma * Math.sqrt(2 * Math.PI));
+    for (let m = 0; m <= M; m++) {
+      const s = (m / M) * total;
+      let g = 0;
+      for (const sq of [s0, -s0, 2 * total - s0]) {
+        const d = (s - sq) / sigma;
+        if (Math.abs(d) <= 4) g += Math.exp(-0.5 * d * d);
+      }
+      kappa[m] = kappa[m]! + norm * g;
+    }
+  }
+  if (!(drehung > 1e-9)) return gleich;
+  const kreis = Math.max(drehung, Math.PI / 2) / total;
+  // Endzonen der Viertel: Die Kreuzungen sind Extrema, dort ist die Zeichnung höchstens so rund wie ein Kreisbogen — ein Knick nahe
+  // dem Ende ist ein Schnitt der Hülle (die Rumpf-Front der Ente endet flach an der Sehne des Halses: 90°, das Halsfenster rückte
+  // zusammen, Naht 20 → 29°); dort zählt höchstens die Krümmung des Kreisbogens
+  for (let m = 0; m <= M; m++) if (m < endzone * M || m > (1 - endzone) * M) kappa[m] = Math.min(kappa[m]!, kreis);
+  // scharfe Rundungen: dreht sich die Linie innerhalb eines Sechstels der Punktspanne um mehr als 30°, kann der Spline das mit diesen
+  // Punkten nicht abbilden (Kegel: r 10 px bei 120 px je Punkt — mit zwei Punkten dicht an der Rundung schwang er auf der geraden
+  // Flanke daneben 7 px über die Zeichnung); eine halbe Spanne um die Stelle zählt dann höchstens Kreiskrümmung — die Rundung
+  // braucht eine Falte, keine Dichte. Die Bauchecke der Robbe (90° über 1,5 Spannen) zählt weiter
+  const fenster = Math.max(1, Math.round(M / (6 * E)));
+  const halbeSpanne = Math.round(M / (2 * E));
+  const scharf = new Uint8Array(M + 1);
+  for (let m = 0; m <= M; m++) {
+    let summe = 0;
+    for (let q = Math.max(0, m - fenster); q <= Math.min(M, m + fenster); q++) summe += roh[q]!;
+    if (summe > Math.PI / 6) for (let q = Math.max(0, m - halbeSpanne); q <= Math.min(M, m + halbeSpanne); q++) scharf[q] = 1;
+  }
+  for (let m = 0; m <= M; m++) if (scharf[m]) kappa[m] = Math.min(kappa[m]!, kreis);
+  const k0 = boden * boden * kreis;
+  // Dichte höchstens das `kappe`-fache der Grunddichte: eine winzige Rundung (Würfel r 0,03) zöge sonst alle Punkte des Viertels an sich
+  const rhoMax = kappe * Math.sqrt(k0);
+  const rho = (m: number) => Math.min(rhoMax, Math.sqrt(kappa[m]! + k0));
+  const W = new Float64Array(M + 1);
+  for (let m = 1; m <= M; m++) W[m] = W[m - 1]! + ((rho(m - 1) + rho(m)) / 2) * (total / M);
+  const out: number[] = [];
+  for (let k = 0; k <= E; k++) {
+    const ziel = (k / E) * W[M]!;
+    let m = 0;
+    while (m + 1 < M && W[m + 1]! < ziel) m++;
+    const d = W[m + 1]! - W[m]!;
+    out.push(Math.min(1, Math.max(0, (m + (d > 1e-15 ? (ziel - W[m]!) / d : 0)) / M)));
+  }
+  out[0] = 0;
+  out[E] = 1;
+  return out;
+}
+
+/** Abstand eines Punkts von einem Polygonzug (2D) */
+function abstandZug(p: readonly [number, number], zug: readonly (readonly [number, number])[], geschlossen: boolean): number {
+  let best = Infinity;
+  const n = zug.length;
+  for (let i = 0; i + 1 < n + (geschlossen ? 1 : 0); i++) {
+    const a = zug[i]!;
+    const b = zug[(i + 1) % n]!;
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const l2 = dx * dx + dy * dy;
+    const tt = l2 > 1e-18 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2)) : 0;
+    const d = Math.hypot(p[0] - (a[0] + tt * dx), p[1] - (a[1] + tt * dy));
+    if (d < best) best = d;
+  }
+  return best;
+}
+
+/**
+ * Dichte je Ring aus dem Fehlermaß (P1, 03.11.): die Bogenanteile der c − 1 inneren Punkte je Viertel so, dass die Kurve, die
+ * der Käfig daraus macht, der gezeichneten Ringschleife am nächsten kommt. Die Grenzkurve eines Rings ist (bei harten Punkten) der
+ * interpolierende kubische B-Spline durch seine Punkte; gemessen wird der Hausdorff-Abstand zwischen dieser Kurve und der Schleife
+ * (beide Hälften, gespiegelt). Koordinatenabstieg ab der Krümmungsdichte mit Schritten 0,08 … 0,01 — so bekommt die Bauchecke der
+ * Robbe ihre Punkte, die 10-px-Rundung des Kegels nicht (dort schwingt der Spline daneben 7 px über: die Krümmungsdichte allein sah
+ * das nicht). Die Viertelenden (Kreuzungen) liegen fest.
+ */
+export function dichteSpline(obenRechts: readonly V3[], rechtsUnten: readonly V3[], c: number, ebene: [number, number], startO: readonly number[], startU: readonly number[]): { oben: number[]; unten: number[] } {
+  const [e0, e1] = ebene;
+  const zu2 = (zug: readonly V3[]): [number, number][] => zug.map((p) => [p[e0]!, p[e1]!]);
+  const O = zu2(obenRechts);
+  const U = zu2(rechtsUnten);
+  const LO = laengen(obenRechts);
+  const LU = laengen(rechtsUnten);
+  const totO = LO[LO.length - 1]!;
+  const totU = LU[LU.length - 1]!;
+  if (!(totO > 1e-15) || !(totU > 1e-15) || c < 2) return { oben: [...startO], unten: [...startU] };
+  const bei = (zug: readonly [number, number][], L: Float64Array, s: number): [number, number] => {
+    const q = punktBei(zug.map((p): V3 => [p[0], p[1], 0]), L, s);
+    return [q[0], q[1]];
+  };
+  // die ganze Schleife (rechte Hälfte oben → rechts → unten, linke gespiegelt) als Polygonzug
+  const halb: [number, number][] = [...O, ...U.slice(1)];
+  const ganz: [number, number][] = [...halb, ...halb.slice(1, -1).reverse().map(([a, b]): [number, number] => [a, -b])];
+  const N = 4 * c;
+  // periodischer interpolierender kubischer B-Spline: (P_{i−1} + 4 P_i + P_{i+1}) / 6 = S_i, dicht gelöst (N ≤ 32)
+  const kontroll = (S: readonly [number, number][]): [number, number][] => {
+    const n = S.length;
+    const A: number[][] = Array.from({ length: n }, () => new Array<number>(n + 2).fill(0));
+    for (let i = 0; i < n; i++) {
+      const zeile = A[i]!;
+      zeile[(i - 1 + n) % n] = zeile[(i - 1 + n) % n]! + 1 / 6;
+      zeile[i] = zeile[i]! + 4 / 6;
+      zeile[(i + 1) % n] = zeile[(i + 1) % n]! + 1 / 6;
+      zeile[n] = S[i]![0];
+      zeile[n + 1] = S[i]![1];
+    }
+    for (let k = 0; k < n; k++) {
+      let piv = k;
+      for (let i = k + 1; i < n; i++) if (Math.abs(A[i]![k]!) > Math.abs(A[piv]![k]!)) piv = i;
+      if (piv !== k) [A[k], A[piv]] = [A[piv]!, A[k]!];
+      const d = A[k]![k]!;
+      if (Math.abs(d) < 1e-15) continue;
+      for (let i = 0; i < n; i++) {
+        if (i === k) continue;
+        const f = A[i]![k]! / d;
+        if (!f) continue;
+        for (let j = k; j < n + 2; j++) A[i]![j] = A[i]![j]! - f * A[k]![j]!;
+      }
+    }
+    return A.map((z, i) => [z[n]! / z[i]!, z[n + 1]! / z[i]!]);
+  };
+  const kurve = (P: readonly [number, number][], je = 6): [number, number][] => {
+    const n = P.length;
+    const out: [number, number][] = [];
+    for (let i = 0; i < n; i++) {
+      const a = P[(i - 1 + n) % n]!;
+      const b = P[i]!;
+      const c2 = P[(i + 1) % n]!;
+      const d = P[(i + 2) % n]!;
+      for (let q = 0; q < je; q++) {
+        const u = q / je;
+        const w0 = ((1 - u) ** 3) / 6;
+        const w1 = (3 * u ** 3 - 6 * u * u + 4) / 6;
+        const w2 = (-3 * u ** 3 + 3 * u * u + 3 * u + 1) / 6;
+        const w3 = (u ** 3) / 6;
+        out.push([w0 * a[0] + w1 * b[0] + w2 * c2[0] + w3 * d[0], w0 * a[1] + w1 * b[1] + w2 * c2[1] + w3 * d[1]]);
+      }
+    }
+    return out;
+  };
+  const fehler = (fO: readonly number[], fU: readonly number[]): number => {
+    const S: [number, number][] = [];
+    for (let k = 0; k < c; k++) S.push(bei(O, LO, fO[k]! * totO));
+    for (let k = 0; k <= c; k++) S.push(bei(U, LU, fU[k]! * totU));
+    const halbS = S;
+    const alle: [number, number][] = [...halbS, ...halbS.slice(1, -1).reverse().map(([a, b]): [number, number] => [a, -b])];
+    if (alle.length !== N) return Infinity;
+    const K = kurve(kontroll(alle));
+    let max = 0;
+    for (const q of K) max = Math.max(max, abstandZug(q, ganz, true));
+    for (const q of ganz) max = Math.max(max, abstandZug(q, K, true));
+    return max;
+  };
+  const fO = [...startO];
+  const fU = [...startU];
+  let best = fehler(fO, fU);
+  // Mindestabstand eine halbe Punktspanne: Fenster der Kinder nehmen die Spalten neben der Naht (Langhals: ein Punkt 3 % neben
+  // der Naht ließ das Halsfenster auf 10 px zusammenrücken, Naht 153°)
+  const RAND = 0.5 / c;
+  for (const delta of [0.08, 0.04, 0.02, 0.01]) {
+    for (let runde = 0; runde < 6; runde++) {
+      let besser = false;
+      for (const [f, lo, hi] of [[fO, 0, 1] as const, [fU, 0, 1] as const]) {
+        for (let k = 1; k < c; k++) {
+          for (const sg of [-1, 1]) {
+            const alt = f[k]!;
+            const neu = alt + sg * delta;
+            if (neu <= Math.max(lo + RAND, f[k - 1]! + RAND) || neu >= Math.min(hi - RAND, f[k + 1]! - RAND)) continue;
+            f[k] = neu;
+            const e = fehler(fO, fU);
+            if (e < best - 1e-12) {
+              best = e;
+              besser = true;
+            } else f[k] = alt;
+          }
+        }
+      }
+      if (!besser) break;
+    }
+  }
+  return { oben: fO, unten: fU };
 }
 
 /** Schritt (gebrochen) eines Bogenanteils f in einer Dichte phi (Anteile je Schritt) */
@@ -473,6 +724,12 @@ export type EinteilErgebnis = {
   dichte: { vorn: number[]; hinten: number[]; oben: number[]; unten: number[] };
   /** Lagen der gefragten Punkte (`fragen`) */
   lagen: SeitenLage[];
+  /**
+   * Ringvorlage (normiert): je Viertel c + 1 Einträge, `oben` von der Rückenkreuzung zur Seite, `unten` von der Seite zur
+   * Bauchkreuzung — u = Höhenanteil ab der Seitenhöhe (0 = Seite, 1 = Rücken bzw. Bauch), v = Breite relativ zur Seitenbreite;
+   * `seite` = Höhenanteil der Seite zwischen Bauch (0) und Rücken (1)
+   */
+  vorlage: { oben: { u: number; v: number }[]; unten: { u: number; v: number }[]; seite: number };
   /** die Anker je Ring (Welt): Rücken, Seite, Bauch — für Kinder, die ihre Breite am Eltern-Ring messen */
   anker: { O: V3; S: V3; U: V3 }[];
   /** Schrittzahl je Bogen und Schritt → Ring */
@@ -678,10 +935,17 @@ export function einteilZiele(e: EinteilEingabe, v: Roehre): EinteilErgebnis | { 
   // ---- Vorlage: die Ringschleife, je Viertel c Kanten, Ecken auf Gitterpunkten; normiert auf die Anker oben/rechts/unten ----
   const gRg_or = gewichtet(Rg_or, krFuer(Rg_or, c));
   const gRg_ru = gewichtet(Rg_ru, krFuer(Rg_ru, c));
-  const phiO = gemeinsameDichte([gRg_or], c);
-  const phiU = gemeinsameDichte([gRg_ru], c);
-  const To = abtasten(gRg_or, c, eckenHalb(e.ring, rgHalb, ringAnsicht, e.ecken.ring, 0, rgRechts, Rg_or, false).map((s2) => ({ s: s2 })), phiO);
-  const Tu = abtasten(gRg_ru, c, eckenHalb(e.ring, rgHalb, ringAnsicht, e.ecken.ring, rgRechts, rgHalb.p.length - 1, Rg_ru, false).map((s2) => ({ s: s2 })), phiU);
+  const eckenO = eckenHalb(e.ring, rgHalb, ringAnsicht, e.ecken.ring, 0, rgRechts, Rg_or, false);
+  const eckenU = eckenHalb(e.ring, rgHalb, ringAnsicht, e.ecken.ring, rgRechts, rgHalb.p.length - 1, Rg_ru, false);
+  let phiO = opt.ringDichte !== 'bogen' ? dichteKruemmung(Rg_or, c, opt.ringDichteBoden, [1, 2], eckenO) : gemeinsameDichte([gRg_or], c);
+  let phiU = opt.ringDichte !== 'bogen' ? dichteKruemmung(Rg_ru, c, opt.ringDichteBoden, [1, 2], eckenU) : gemeinsameDichte([gRg_ru], c);
+  if (opt.ringDichte === 'spline' && !eckenO.length && !eckenU.length) {
+    const sp = dichteSpline(Rg_or, Rg_ru, c, [1, 2], phiO, phiU);
+    phiO = sp.oben;
+    phiU = sp.unten;
+  }
+  const To = abtasten(gRg_or, c, eckenO.map((s2) => ({ s: s2 })), phiO);
+  const Tu = abtasten(gRg_ru, c, eckenU.map((s2) => ({ s: s2 })), phiU);
   const zR = rechts[2] || 1e-9;
   const norm = (T: V3[], ende: V3) => T.map((p) => {
     const dh = ende[1] - rechts[1];
@@ -835,6 +1099,7 @@ export function einteilZiele(e: EinteilEingabe, v: Roehre): EinteilErgebnis | { 
     kreuzungen: { vorn: W(vorn), hinten: W(hinten), oben: W(oben), unten: W(unten), rechts: W(rechts) },
     dichte: { vorn: phiV, hinten: phiH, oben: phiO, unten: phiU },
     lagen,
+    vorlage: { oben: vo.map((t) => ({ u: t.u, v: t.v })), unten: vu.map((t) => ({ u: t.u, v: t.v })), seite: Math.abs(oben[1] - unten[1]) > 1e-12 ? (rechts[1] - unten[1]) / (oben[1] - unten[1]) : 0.5 },
     anker: ankerWelt,
     schrittVonRing,
     ringVonSchritt: ringVon,

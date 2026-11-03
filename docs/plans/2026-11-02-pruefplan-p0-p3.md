@@ -791,3 +791,86 @@ Kind bringen an diesen Körpern nichts; der Hebel ist die Dichteregel je Ring (B
 
 **Nächster Schritt (Florians Blick):** Dichte je Ring (Bauchecken, breiteste Stelle), Fächer an der inneren Ecke (Ente), Kappen der
 Kinder (Gratenden), Langhals Rest 1,3 px — oder P2 (Maul).
+
+### Nachtrag 03.11. spätabends — Dichte je Ring: Bauchecken und breiteste Stelle (gebaut; Abnahme offen)
+
+Florian: „Mach weiter mit der Dichte je Ring (Bauchecken und breiteste Stelle: Front/Top von Robbe, Langhals, Ente).“
+
+**Befund (Ziele gegen Grenzlagen je Ring gemessen, `diag-ringpunkte`):** Die Ziele selbst lagen innen, nicht erst die Fläche
+zwischen zwei Punkten — je Körper aus einem anderen Grund.
+- **Langhals (Front 4,5 px an der Bauchecke):** Die Tiefe der Rumpf-Reihenschleife (Höhe y der Top-Silhouette) ist auf dem
+  Plateau der breitesten Stelle (y 0,06–0,12) frei und lag nach der Glättung bei 0,106–0,114 statt bei 0,088, der Höhe, in der
+  die Front am breitesten ist. Die Ringvorlage (Front-Umriss, normiert) wird zwischen Seiten- und Bauchanker gestreckt — Faktor
+  1,2–1,3 — und die Bauchecke rutscht 0,009 hinauf.
+- **Robbe (Front 12,4, Top 9,6 px):** Die Endstück-Ringe waren Hüllenschnitt-Ellipsen z = sin θ · w(q): an der Bauchecke (y 0,08)
+  steht sin θ bei 0,37, die Hülle erlaubte das Dreifache; die Top-Breite erreicht so ein Ring nur in seinem Scheitel (0,262 statt
+  0,285). Dazu der Rumpfring 11: die Ecke fiel zwischen zwei Abtastpunkte (gleichmäßig nach Bogenlänge), und der Löser zog die
+  weichen Punkte 7–10 px ein.
+- **Ente (Front 3,7 px):** Die Rumpf-Front unter den Flügeln kommt aus dem lobbenfreien Top (die Sehne der Lobe) und ist dort
+  schmaler als die Zeichnung — kein Dichteproblem, sondern die verdeckte Fortsetzung des Rumpfumrisses unter dem Flügel (Planer).
+
+**Gebaut — drei Regeln (Optionen in `KaefigOptionen`, Standard an; ohne `schleifenKaefig` bitgleich):**
+1. **`rumpfTiefe: 'vorlage'`** (`rumpfSchleifen`): Tiefe der Rumpf-Reihenschleife = die Höhe, in der die Rumpf-Front am breitesten
+   ist (Mitte des Plateaus), als Anteil zwischen Bauch und Rücken an jeder Stelle x, in das Plateau der Hülle geklemmt. So trifft
+   die Vorlage jeden Ring ohne senkrechte Verzerrung (Langhals-Bauchecke 4,5 → 2,0 px). `'glatt'` = kleinste Biegung (bisher).
+2. **`ringDichteRumpf: 'kruemmung'`** (`dichteKruemmung` in `schleifenKern.ts`, bei Rümpfen mit Kindern): Die Ringvorlage wird je
+   Viertel nach der **Wurzel der Krümmung** abgetastet — der Spline weicht zwischen zwei Punkten um ≈ l²κ/8 ab, gleicher Fehler je
+   Schritt heißt l ∝ 1/√κ. Grunddichte 0,5 der Dichte eines Kreisbogens gleicher Länge und Drehung (gerade Stücke bleiben besetzt),
+   höchstens das Vierfache davon, Drehung in der Ebene der Schleife (die Kreuzungspunkte an den Enden liegen in der dritten
+   Koordinate daneben — als 3D-Knick gemessen wurde das Ei schlechter, 0,4 → 0,8 px), gezeichnete Ecken ausgenommen (Stützstellen
+   mit Falte), in den Endzonen (20 % je Viertel) höchstens Kreiskrümmung (der Hüllenschnitt der Ente endet an der Halssehne mit 90°,
+   das Halsfenster rückte zusammen: Naht 20 → 56°), scharfe Rundungen (über 30° innerhalb eines Sechstels der Punktspanne) zählen
+   nicht. **Für Einteiler bleibt die Vorlage nach Bogenlänge (`ringDichte: 'bogen'`):** dort ist die Ringschleife selbst ein Ring, und
+   am Kegel ließ die Krümmungsdichte die gerade Flanke neben der Kielrundung 2,0 → 7,3 px überschwingen (zwei Punkte dicht an der
+   Rundung; die Schärfe-Regel greift dort nicht, weil die Rundung über mehrere Proben läuft — ungeklärt, Register); Ei 0,4 → 0,3,
+   Würfel 2,2 → 1,7, Zylinder Seite 0,7 → 0,9, die übrigen gleich. Als Versuch daneben `'spline'` (`dichteSpline`): die Lage, bei der
+   der interpolierende kubische B-Spline durch die Punkte der Schleife am nächsten kommt (Hausdorff-Abstand, Koordinatenabstieg ab
+   der Krümmungsdichte, Mindestabstand eine halbe Spanne) — nicht besser (Robbe Front 5,7 statt 4,4 px, Kegel 5,2): das 2D-Maß kennt
+   weder die weichen Punkte noch die Längsrichtung.
+3. **`vorlagenRing`** (`schleifenTeile.ts`): Die freien Ringe des Endstücks sind die Ringvorlage des Rumpfs längs ihrer Sehne —
+   Punkt i ist der Vorlagenpunkt seines Rumpfrings (die Reihen laufen durch den Rand), die Höhe der Anteil auf der Sehne ab dem
+   Bauchende (Seite bei `vorlage.seite`). **Bauchhälfte:** Vorlage × Hüllenbreite an der Seitenstelle; steht der Ring auf dem Bauch
+   der Front (Bauchende höchstens eine Eckenhöhe über dem tiefsten Punkt), wird zur Hülle selbst geblendet — die Front-Ecke ist die
+   Vereinigung aller Ringe und weicher als die Ecke jedes einzelnen (ein Ring mit Bauch bei y 0 und Breite 0,273 muss bei y 0,04
+   schon 90 % seiner Breite haben), nur die Hülle holt sie zurück; abgehobene Ringe (Brust vor dem Kopf) sind dort verdeckt und
+   bleiben rund. **Rückenhälfte:** am Rand die Vorlage (der Rumpfring daneben hat sie), zum Kopf hin die Halbellipse in der Hülle.
+4. Maß berichtigt: `wendepunkte` zählt keinen Punkt, der unter 1 px neben der Sehne seiner Nachbarn liegt (mit dichteren Punkten
+   an den Ecken des Würfels sind die Kanten kurz, derselbe Wellenschlag von 0,8 px ergab 2° und vier „Wendepunkte“).
+
+| Fall | Δ S/F/T (px) | Δ Stufe 1 S/F/T | Rest | Überstand F/T | Nahtknick frei / Ecken | nach innen Rumpf / Kinder | Knicke 95 %/max |
+|---|---|---|---|---|---|---|---|
+| Langhals vorher | 1,0/4,6/2,9 | 1,7/4,8/2,9 | 1,3 | 4,2/2,8 | 17,9° / 29,5° | 86 / 26 | 17,1/90° |
+| **Langhals** | 1,0/**4,1**/2,9 (Bauchecke **1,9**, Rest an der Kopfkrone des Hals-Kinds) | 1,7/4,0/2,9 | **0,6** | 4,8/2,8 | 20,0° / 21,9° | 90 / 26 | 16,9/84° |
+| Robbe vorher | 1,5/12,4/9,6 | 1,3/13,2/10,6 | 0,2 | 1,1/1,1 | 27,6° / – | 0 / 6 | 22,7/68° |
+| **Robbe** | 2,5/**4,4**/**3,3** (Bauchecke 4,4 bei y 0,02, Kopfkrone 4,4 bei y 0,49) | 2,1/4,9/3,6 | 0,2 | 4,7/2,5 | **14,2°** / – | **0 / 0** | **19,9**/59° |
+| Ente vorher | 2,9/3,7/2,7 | 2,9/3,8/2,7 | 2,8 | 1,6/2,8 | 20,2° / 36,1° | 14 / 284, 6, 6 | 23,0/146° |
+| **Ente** | 2,9/4,5/2,7 | 2,9/4,7/2,7 | 2,9 | 1,6/3,0 | 25,3° / 35,9° | 20 / 277, 6, 6 | 24,3/146° |
+| Pilz | 0,7/0,8/2,0 | 0,7/0,8/2,4 | 0,8 | 0,5/0,7 | – / 35,9° | 28 / 6 | 17,7/176° |
+
+Jede Regel allein gemessen (`RINGDICHTE=0`, `RUMPFTIEFE=glatt`, `VORLAGENRING=0`): ohne Ringdichte Robbe 4,0/7,1/3,4 (Bauchecke
+8,4 px — die Ecke braucht ihre Abtastpunkte, weil die Endstück-Punkte hart sind); ohne Vorlagentiefe Langhals-Bauchecke 4,5 statt
+1,9; ohne Vorlagenring Robbe 0,7/13,8/11,1.
+
+**Ergebnis ehrlich:** Robbe Front 12,4 → 4,4 und Top 9,6 → 3,3 px, Naht 27,6 → 14,2°, 0 Flächen nach innen, Knicke 95 % 19,9°
+(Glätte-Tor hält); Langhals-Bauchecke 4,5 → 1,9 und Form Seite hält (Rest 1,3 → 0,6). Das Front-/Top-Tor (≤ 2 px) hält weiter
+keiner. Neu dazugekommen: Robbe Seite 1,5 → 2,5 px am Rand (der Rumpfring 11 hat über der Seite die Vorlage — dort ist der
+Front-Umriss die Silhouette des Kopfs, nicht der Rückengrat des Rumpfs: ein flaches Dach statt eines Grats, verdeckt hinter dem Kopf)
+und Überstand 1,1 → 4,7 px (harte Punkte auf der Hüllenecke, der Spline schwingt daneben über); Ente Front 3,7 → 4,5 und Naht
+20 → 25° (die Krümmungsdichte verschiebt die Spalten neben der Naht, an denen das Halsfenster hängt). Die Kopfkrone der Robbe
+(y 0,45–0,6) bleibt 4,4 px innen: Der Front-Umriss über dem Rumpf gehört dem Kopf allein, aber keine Ringreihe trägt ihn — die
+Halbellipse ist die rundeste Form in der Hülle, die Kugel würde sie treffen, der Kopf ist keine. Tests `schleifenTeile.test.ts`
+13 grün / 9 `it.fails` (Langhals Form Seite und Robbe Glätte jetzt `it`), `schleifenKaefig.test.ts` 11 grün / 8 `it.fails`
+(Einteiler unverändert).
+
+**Verworfen (gemessen):** Vorlage × Hülle je Stelle (zählt die Front-Breite doppelt: Bauchecke 12 px innen, Krone 11,9); steifes
+Inneres des Rumpfs (`innen` 10 und 100: Naht 29–44°, Pilz Seite 4–6 px); Endzonen ohne Drehung (Kreisviertel 0,31/0,69 statt
+0,25/0,75); Dichte ohne Kappe (scharfer Würfel: alle Punkte in der Ecke, Seite 1,9 px); Krümmung in 3D (Ei 0,4 → 0,8 px); Glocke
+über eine halbe Spanne statt 3 % (Langhals Rest 0,6 → 1,1, Kegel trotzdem 5,5); Spline-Fehlermaß als Standard (Robbe 5,7, Langhals
+Naht 153° ohne Mindestabstand); Krümmungsdichte auch für Einteiler (Kegel 2,0 → 7,3).
+
+**Offen (Register „Befunde aus P1 Tag 4–5“, Nachtrag spätabends):** Kopfkrone und Rückengrat unter dem Kopf (eigene Schleifen je
+Teil mit verdeckter Fortsetzung — der Front-Umriss ist die Vereinigung von Rumpf und Kopf), Bauchecke 4,4 px (mehr Punkte je Ring,
+N 24, im Spielbudget 600–700 Flächen für den Körper), Überstand 4,7 px, Ente unter den Flügeln (Lobbenschnitt-Sehne → verdeckte
+Fortsetzung) und Halsfenster an den Spalten neben der Naht, Langhals-Krone 4,1 (Kappe des Streifen-Kinds), Kegel-Flanke unter der
+Krümmungsdichte (ungeklärt). Bilder `docs/progress/editor/p1-teile-dichte-2026-11-03.jpg`
+(Editor-Bogen), `p1-teile-dichte-draht-<fall>-2026-11-03.jpg` (Drahtgitter).

@@ -1007,5 +1007,31 @@ Silhouettenbedingung je Ring; Planseite „Nachtrag 03.11. abends“; `schleifen
   hart (sonst wölbt der Löser 36 px über die Schulter) und keine Silhouettenbänder (widersprechen schrägen Ringen, 35 px). Das
   Endstück braucht den Höhentest (Ring ≤ 1,5 Sehnen), sonst wird jeder Hals am Vorderende zum Endstück (Langhals Top 11,9 px).
 
-
-
+**Nachtrag 03.11. spätabends (Dichte je Ring; Planseite „Nachtrag 03.11. spätabends“; `schleifenTeile.test.ts` 13 grün, 9 `it.fails`):**
+- [x] **Robbe Front/Top 12,4/9,6 → 4,4/3,3 px, Naht 27,6 → 14,2°, 0 nach innen, Knicke 95 % 19,9° (Glätte hält):** Endstück-Ringe
+  aus der Ringvorlage statt Hüllenschnitt-Ellipsen (`vorlagenRing`: Bauchhälfte Vorlage × Seitenbreite, auf dem Bauch zur Hülle
+  geblendet; Rückenhälfte Vorlage → Halbellipse), Rumpf-Vorlage nach der Wurzel der Krümmung abgetastet (`ringDichteRumpf`).
+- [x] **Langhals-Bauchecke 4,5 → 1,9 px, Form Seite hält (Rest 1,3 → 0,6):** Tiefe der Rumpf-Reihenschleife aus der Vorlage
+  (`rumpfTiefe`) statt geglättet auf dem Plateau — die Vorlage wurde senkrecht gestreckt.
+- [ ] **Front/Top-Tor (≤ 2 px) hält weiter keiner:** Robbe Bauchecke 4,4 px bei y 0,02 (die Hüllenecke liegt zwischen den
+  Abtastpunkten; mit 16 Punkten je Ring trägt der Spline sie nicht — Weg: N 24 im Spielbudget, Gegenprüfung 3.6), Kopfkrone
+  4,4 px bei y 0,49 (siehe nächster Punkt), Langhals 4,1 px an der Kopfkrone des Hals-Kinds (Kappe), Ente 4,5 px unter den
+  Flügeln (Lobbenschnitt-Sehne als Rumpfumriss; Weg: verdeckte Fortsetzung des Rumpfs unter dem Flügel im Planer) und Naht
+  20 → 25° (die Krümmungsdichte verschiebt die Spalten neben der Naht, an denen das Halsfenster hängt — Fenster nach Lage statt
+  nach Spaltenindex).
+- [ ] **Krümmungsdichte nur für Rümpfe mit Kindern:** Bei Einteilern ließ sie am Kegel die gerade Flanke neben der Kielrundung
+  2,0 → 7,3 px überschwingen (zwei Punkte dicht an der Rundung; die Schärfe-Regel greift nicht, weil die Rundung über mehrere Proben
+  läuft; mit `kippen` 0 dasselbe — Ursache ungeklärt), Zylinder Seite 0,7 → 0,9; Ei 0,4 → 0,3 und Würfel 2,2 → 1,7 besser. Einteiler
+  bleiben deshalb nach Bogenlänge (`ringDichte: 'bogen'`). Das Spline-Fehlermaß (`'spline'`, Versuch) ist nicht besser (Robbe 5,7,
+  Kegel 5,2). Weg: Dichte aus dem Fehlermaß des ganzen Baus (3D, mit weichen Punkten), oder N 24.
+- [ ] **Front-Umriss ist die Vereinigung von Rumpf und Kopf:** Über der Seite ist die Rumpf-Vorlage die Silhouette des Kopfs
+  (Robbe: der Rumpfring 11 bekommt ein flaches Rückendach statt eines Grats → Seite 1,5 → 2,5 px am Rand, verdeckt hinter dem
+  Kopf), und die Kopfkrone (y > 0,45) trägt keine Ringreihe (Halbellipse = rundeste Form in der Hülle, 4,4 px innen). Weg: Schleifen
+  je Teil mit verdeckter Fortsetzung (Monster Mash), auch für den Rumpf unter dem Kopf; der Kopf als eigener Einteiler an der Naht.
+- [ ] **Überstand 1,1 → 4,7 px (Robbe):** harte Endstück-Punkte auf der Hüllenecke, der Spline schwingt daneben über die Zeichnung.
+- [x] **Wendepunkt-Maß:** Punkte unter 1 px neben der Sehne ihrer Nachbarn zählen nicht mehr (Würfel: kurze Kanten an dichteren
+  Ecken machten aus 0,8 px Wellenschlag vier „Wendepunkte“).
+- [x] Lehren: Vorlage × Hülle je Stelle zählt die Front-Breite doppelt; die Krümmung einer Schleife in ihrer Ebene messen (die
+  Kreuzungspunkte liegen in der dritten Koordinate daneben); Hüllenschnitte an Sehnen erzeugen Ecken, die keine sind (Endzonen
+  höchstens Kreiskrümmung); ein steifes Inneres (`innen` 10–100) bricht die Naht; eine Dichte ohne Kappe lässt eine kleine
+  Rundung alle Punkte schlucken; erst die Ziele gegen die Grenzlagen messen (Rest je Punkt), dann über die Abtastung reden.
