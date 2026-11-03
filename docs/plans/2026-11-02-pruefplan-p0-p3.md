@@ -335,3 +335,78 @@ Käfigkanten fast überall unter 25° knicken; der Unterschied zeigt sich erst a
 **Nicht gemacht / offen:** P0b (iPhone, mit Florian); Cel-Stufen-Pixelzählung Stufe 1 ↔ 3 (Tor ≤ 1 %) nur als Bild, nicht als
 Zahl; Spielstufe mit Augapfel-Höhle und Rundmaul; Normalen-Deltas je Morph-Ziel sind im Editor nicht nötig (die Pose wird
 auf Stufe 3 gerechnet und umsortiert), fürs Backen aber einzuplanen.
+
+## Stand P1 Tag 1 — Umrissschleifen geplant (03.11.2026, gebaut; Abnahme offen)
+
+**Freigabe:** Florian am 03.11.: „Die P0a-Bögen passen so weit. Weiter mit P1 „Ansichten als Illustration“ nach dem Prüfplan.“
+
+**Gebaut (Kern, `packages/shape/src/kern/umrissPlan.ts`, hinter `Bauplan.umrissPlan`; ohne Option bitgleich):** Die
+Umrissschleifen jeder Ansicht werden nicht mehr aus dem fertigen Körper geschnitten („Körper zuerst“, V2), sondern allein aus
+den drei Zeichnungen geplant („Umriss zuerst“, Gegenprüfung 3.2/3.4):
+1. Zeichnung dicht abgetastet (alle 2,5 px, Kurvenparameter je Probe); je Probe die erlaubte Tiefe aus der Sichthülle
+   (Intervalle Seite × Front × Top), **2 px innen** neben der Linie abgetastet — genau auf der Linie liegen die Kanten eines
+   Kastens auf der Grenzlage der anderen Ansicht, die Intervalle zerfallen in Splitter (der Würfel bekam so acht „Teile“);
+   leer = Widerspruch (Weg nach innen in px, wie `erreichbarkeit`).
+2. Je Probe das Intervall mit den wenigsten Sprüngen (Viterbi über die Schleife), dann die Tiefe mit der **kleinsten Biegung
+   innerhalb der Intervalle** — Ausgleich mit aktiver Menge (pentadiagonale Lösung in O(n); verletzte Schranken klemmen,
+   unnötige Klemmen nach dem Vorzeichen des Gradienten wieder lösen; geschlossene Folgen an der engsten Stelle mit Überlappung
+   aufgeschnitten). „So rund wie möglich“ in der Tiefe; die gespannte Folge (Laplace mit Zug zur Mitte) knickte an jedem
+   Klemmpunkt (Robbe Front [3 2 2 3], Würfel 55 px Welle).
+3. **T-Stöße sind die konkaven Ecken der Zeichnung** (> 25°, Drehung gegen den Umlauf), nicht Tiefensprünge (die erste Fassung
+   schnitt an Sprüngen: Langhals bekam Splitter-Teile aus der Glättungsrampe, die Ente von oben keinen T-Stoß, weil die
+   Vereinigungs-Intervalle den Sprung glätten). Sehnen zwischen konkaven Ecken (kürzeste zuerst, innerhalb des Umrisses,
+   beidseits ein Bogen ≥ 1,25 × Sehne — die Seite eines Halses ist kein Teil —, ohne Kreuzung, jede Ecke einmal) zerlegen die
+   gezeichnete Fläche in einen Baum von Flächen (Wurzel, je Sehne der kürzere Bogen abzüglich der Kinder: Rumpf → Hals →
+   Kopf). **Jede Fläche wird eine geschlossene Schleife:** ihre gezeichneten Bögen, dazu über jede Sehne ein tangentenstetiger
+   Vorschlag (Hermite aus den eigenen Nachbarproben) — beim ferneren Teil die **verdeckte Fortsetzung** (Art 1, blass), beim
+   näheren die **sichtbare Schlusskontur** (Art 2, dünn; näher = Reichweite der Intervalle zum Betrachter: Top größtes y, Front
+   kleinstes x); in der Seite liegen alle Schleifen in der Spiegelebene, dort ist jeder Schluss verdeckt. Tiefe je Fläche
+   geglättet; die Ecke einer Sehne gehört beiden Flächen und nimmt je Fläche das Intervall ihres Nachbarn (der Viterbi kann an
+   der Ecke nur eine Seite bedienen — sonst eine Rampe von 68 auf 281 px). Vorschlagspunkte ohne erlaubtes Intervall in
+   Reichweite (6 px) rücken bis 12 px zur Sehne.
+Keine Zusatzpunkte der Vereinigung: die gezeichnete Linie bleibt, wie sie ist. Die Planung hängt nur an der Zeichnung — bei
+jedem Wackeln des Körpers 0 px.
+
+**Gebaut (Liniennetz und Editor):** `netzSicht` nimmt den Plan und legt je Schleife einen Zug `plan-<Ansicht>` an (Art je
+Probe, Sichtbarkeit in den fremden Blättern vom Körper). Tafel Körper → Chip **„umrisse geplant“** (`ui.netzUmrisse` neben
+aus | an; `bauplanAus` → `umrissPlan: true`, das Liniennetz wird neu gerechnet, der Stand des Körpers bleibt): im eigenen Blatt
+nur die Vorschläge (verdeckt blass 2 px / 30 %, Schluss dünn 1,25 px, beide beginnen auf der gezeichneten Nachbarprobe), in
+fremden Blättern die Schleifen auf dem Körper (verdeckt gestrichelt). Läufe (`planLaeufe`) und Strichbild (`PLAN_STIL`) liegen
+im Kern, **das SVG (`umrissSvg`: Zeichnung als kubische Kurven, Vorschläge als Linienzüge, Rahmen in Attributen) ist dasselbe
+Bild**; Haken `__editor.umrissPlan()`, `__editor.umrissSvg(blatt)`. Der Körper ist noch der heutige (Tag 2–3 bindet ihn).
+
+**Tore (Tests `kern/umrissPlan.test.ts`, elf Körper; Register „Befunde aus P1 Tag 1“):**
+
+| Tor | Ergebnis |
+|---|---|
+| (a) Jitter-Ruhe: Käfig 20-mal um 0,1 px gewackelt → jede Linie ≤ 0,2 px | geplante Schleifen **0 px** (hängen nur an der Zeichnung) ✓. V2-Linien heute an der Robbe: Median 0,07 px, 90 % 0,48 px, max 26 px (Stücke entstehen und verschwinden), **20 % der Linienpunkte über 0,2 px** — Florians „sehr sehr wild“ als Zahl |
+| (b) zwischen zwei Kreuzungen (Naht, breiteste Stelle) höchstens zwei Krümmungswechsel der Tiefe (zweite Differenz ≥ 0,05 px) | 10 von 11 Körpern in allen Stücken ≤ 2 (Kugel, Ei, Würfel, Vase, Pilz 0; Kegel, Rex, Tigerkopf, Vase ≤ 1; Ente Front 1 0 0 0; Langhals 0 1 1 0). **Robbe Top [1 0 0 3]** am Anstieg zum Kopf (Intervalle 17–50 px eng, keine konstante Tiefe passt in sie — die Zeichnung erzwingt die Welle; der Test lässt genau einen solchen Fall zu, Tor wörtlich verfehlt) |
+| (c) Schleifen geschlossen, verdeckte Stücke und Schlüsse tangentenstetig, keine Zusatzpunkte | ✓ alle. Langhals Top: Rumpf + Hals 182 Proben mit 19 verdeckt unter dem Kopf, Kopf 84 Proben mit 19 Schluss; Ente Top: Rumpf + Flügel 59 verdeckt unter dem Hals, Hals + Kopf 59 Schluss (Übergänge ≤ 20°); dazu Langhals Front (Kopf über dem Hals), Ente Seite (Hals auf dem Rumpf), Pilz Seite und Front (Hutkante sichtbar über dem Stiel, Stielschluss verdeckt), Tigerkopf Top |
+| (d) Blatt und SVG decken sich ≤ 0,1 px | ✓ Kern 0,0 px (dieselben Läufe); Editor (DOM-Pfade gegen den SVG-Export über die Projektion des Blatts): Langhals Front/Top 0,008 / 0,010 px, Ente Seite/Top 0,012 / 0,011 px (22–122 Punkte) |
+| (e) Planung ≤ 16 ms je Bau | ✓ Kern 1,3–4,7 ms (Minimum von fünf), im Editor 8,5–13 ms. Das Umschalten des Chips rechnet das ganze Liniennetz neu (0,7–0,9 s über den Worker; der Stand des Körpers bleibt) |
+
+**Widersprüche (px nach innen):** Langhals Seite 4,2, Ente Seite 2,7, Rex Front 6,6 / Seite 0,9 (unerreichbare Proben am
+Scheitel und an Flossen, trotz Innen-Abtastung); übrige 0,0.
+
+**Bilder:** `docs/progress/editor/p1-umrissschleifen-2026-11-03.jpg` (Langhals, Ente, Kegel, Robbe; je Blatt heute (V2-Linien)
+| geplant, Ausschnitt um den Körper, doppelt groß); SVG-Ausgabe je Blatt in `apps/editor/pruefen-ausgabe/p1/` (nicht in Git).
+Skripte `apps/editor/scripts/pruefen/p1-plan.mjs` (Editor), `umriss-plan-diag.ts` (Proben, Intervalle, Tiefen je Schleife).
+
+**Lesart:** Die Schleifen sind ruhig und geschlossen, weil sie nicht mehr vom Körper abhängen; die drei Prüfplan-Fälle mit
+verdeckten Stücken (Langhals, Ente, Pilz) schließen ohne Teilerkennung, allein aus den konkaven Ecken der Zeichnung. Was die
+Zeichnungen nicht hergeben, bleibt offen (unten): die Tiefe eines Teils über einem anderen aus der Vereinigung der Intervalle,
+die Lage der Schlusskontur auf der Haut des anderen Teils — beides Sache von Tag 2–3, wenn die Schleifen Käfigkurven werden.
+
+**Nicht gemacht / offen (Register „Befunde aus P1 Tag 1“):**
+- **Tiefe aus Vereinigungs-Intervallen:** Front und Top liefern die Vereinigung der Teile (Hals über dem Rumpf: ein Intervall
+  vom Bauch bis zum Kopf), die Tiefe des Halses landet in der Mitte der Vereinigung (Ente Top: Hals 54–63 px, Rumpf 66–86).
+  Weg: Intervalle je Teil aus der Zerlegung der anderen Ansichten (Seite zuerst: die verdeckte Fortsetzung der Rumpfoberseite
+  unter dem Hals ist die Unterkante des Halses).
+- **Ganz verdeckte Schleifen** (Pilz-Stiel von oben) gibt es nicht — nur Teile, die die Zeichnung berühren. Die Kragenlinie
+  (Schnitt Stiel/Hut, Hals/Rumpf) ist keine eigene Linie; der Schluss des näheren Teils steht dafür (beim senkrechten Hals
+  fällt beides zusammen).
+- **Jede konkave Ecke ist ein T-Stoß:** ein Herz von oben zerfiele in zwei Teile. Florian entscheidet an seinen Wesen; eine
+  weiche Kerbe (ohne Ecke) bleibt ein Teil.
+- **Schlusskontur in 3D nur interpoliert** (Tiefe zwischen den Ecken, ins nächste Intervall geklemmt), nicht auf der Haut des
+  anderen Teils — Tag 2–3 setzt sie als Käfigring.
+- (b) wörtlich an der Robbe von oben verfehlt (oben); Widersprüche an Scheitelproben 2,7–4,2 px.

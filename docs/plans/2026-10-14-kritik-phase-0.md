@@ -850,3 +850,26 @@ und in der Tafel Spiel (Dreiecke gegen 8 000, Umriss Stufe 1 ↔ 3 in Gerätepix
   Worker-Auftrag nachreichen (wie die Zahnprüfung), dann zählt nur der Umlauf.
 - [ ] **Library-Rex mit Augapfel-Höhle hat auf Stufe 3 76 736 Dreiecke** (alter Maulbau mit Lippe, Tasche, Rachen, Höhlen);
   ohne Höhle 72 640 auf Stufe 3 → 4 540 auf Stufe 1. Die Spielstufe greift dort erst mit der Höhle auf Stufe 1 (oben).
+
+## Befunde aus P1 Tag 1 „Umrissschleifen geplant“ (03.11., eigene Messungen; `packages/shape/src/kern/umrissPlan.test.ts`)
+
+Gebaut (Prüfplan P1, Tag 1): `kern/umrissPlan.ts` (Schleifen je Ansicht aus den drei Zeichnungen: Tiefe aus der Sichthülle, kleinste
+Biegung in den Intervallen, T-Stöße aus konkaven Ecken, Flächenbaum über Sehnen, verdeckte Fortsetzung und sichtbare
+Schlusskontur als Vorschläge, SVG), Züge `plan-*` im Liniennetz, Chip „umrisse geplant“, Haken `__editor.umrissPlan/umrissSvg`.
+- [ ] **Tiefe aus Vereinigungs-Intervallen:** Front und Top geben die Vereinigung aller Teile (Hals über dem Rumpf = ein
+  Intervall vom Bauch bis zum Kopf); die Biegeminimierung legt den Hals in die Mitte (Ente Top: Hals 54–63 px, Rumpf 66–86).
+  Die Zerlegung der anderen Ansichten (Seite zuerst) müsste die Intervalle je Teil liefern (P1 Tag 2–3 oder P3).
+- [ ] **Tor (b) an der Robbe von oben wörtlich verfehlt:** [1 0 0 3] am Anstieg zum Kopf; keine konstante Tiefe passt in die
+  17–50 px engen Intervalle, die Zeichnung erzwingt die Welle. Der Test lässt genau einen solchen Fall zu (`erzwungen ≤ 1`).
+- [ ] **Jede konkave Ecke gilt als T-Stoß** (Herz von oben → zwei Teile). Florians Urteil an eigenen Wesen; weiche Kerben
+  ohne Ecke bleiben ein Teil.
+- [ ] **Schlusskontur nur interpoliert**, nicht auf der Haut des anderen Teils; die Kragenlinie (Schnitt zweier Teile) ist
+  keine eigene Linie. Tag 2–3 (Käfigring).
+- [ ] **Keine ganz verdeckten Schleifen** (Pilz-Stiel von oben, „Kragen-Schleife unter dem Hut“ des Prüfplans): nur Teile,
+  die die Zeichnung berühren.
+- [ ] **Widerspruch an Scheitelproben** trotz 2 px Innen-Abtastung: Langhals Seite 4,2 px, Ente Seite 2,7, Rex Front 6,6
+  (Probe liegt in der anderen Ansicht außerhalb).
+- [ ] **Umschalten „umrisse geplant“ 0,7–0,9 s:** der Bauschlüssel der Ruhewerte ändert sich, das ganze Liniennetz samt Δ
+  wird neu gerechnet (Planung selbst 8–13 ms). Weg: Plan als eigenen Worker-Auftrag nachreichen.
+- [x] V2-Linien zum Vergleich gemessen (Robbe, Käfig 20-mal um 0,1 px gewackelt): Median 0,07 px, 90 % 0,48 px, max 26 px,
+  20 % der Linienpunkte über 0,2 px — die geplanten Schleifen 0 px.

@@ -134,7 +134,8 @@ type UiState = {
    * Plan 20.10., nach V3 (Florian: „ich empfinde sie als störend“): Umrisslinien der anderen Ansichten und innere Konturen
    * im Liniennetz zeigen. Reine Anzeige, der Körper wird ohne sie gebaut; Standard aus. Ringe, P-Linien, Falten bleiben.
    */
-  netzUmrisse: 'an' | 'aus';
+  /** Umrisslinien im Liniennetz: aus · an (V2, aus dem Körper geschnitten) · geplant (P1: aus den Zeichnungen geplant, mit verdeckten Stücken und Ansätzen) */
+  netzUmrisse: 'an' | 'aus' | 'geplant';
   /** S1: Punkt des Liniennetzes unter dem Zeiger (in irgendeinem Blatt); alle Blätter und die Bühne markieren ihn */
   netzHover: NetzPunkt | null;
   setzeNetzHover(p: NetzPunkt | null): void;

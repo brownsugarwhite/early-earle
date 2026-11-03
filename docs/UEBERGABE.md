@@ -1,7 +1,7 @@
-# Übergabe (Stand 03.11.2026: Prüfplan freigegeben, P0a „Spielstufe im Editor“ gebaut, Abnahme offen)
+# Übergabe (Stand 03.11.2026: P0a gebaut und angesehen, P1 Tag 1 „Umrissschleifen geplant“ gebaut, Abnahme offen)
 
-Branch `claude/editor-grundlayout`, PR mit Auto-Fix. **Diese Datei ist der Einstieg für eine frische Sitzung.** Kein Code und
-kein Umbau seit dem 22.10.; alles Neue sind Dokumente, Recherchen und eine Messung.
+Branch `claude/editor-grundlayout`, PR mit Auto-Fix. **Diese Datei ist der Einstieg für eine frische Sitzung.** Der Kernring
+bleibt eingefroren; alles Neue liegt hinter Schaltern (`stufen`, `umrissPlan`), ohne Schalter bitgleich.
 
 ## Was am 02.11. passiert ist (Schritt 2 des Vorgehens vom 21.10.)
 
@@ -53,8 +53,40 @@ richtig, Zielbild ist der neue Weg).
   (Skript `apps/editor/scripts/pruefen/p0a-spielstufe.mjs`): bei 300 px Höhe ist Stufe 1 mit Grenznormalen von Stufe 3 nicht
   zu unterscheiden, auch mit offenem Maul.
 
-**Nächster Schritt:** Florian sieht sich die Bögen an und urteilt; dann P1 „Ansichten als Illustration“ nach dem Prüfplan
-(P0b auf dem iPhone, sobald er da ist).
+Florian (03.11.): „Die P0a-Bögen passen so weit. Weiter mit P1 „Ansichten als Illustration“ nach dem Prüfplan.“ (P0b auf
+dem iPhone, sobald er da ist.)
+
+## 03.11.: P1 Tag 1 „Umrissschleifen geplant“ gebaut (Abnahme offen)
+
+Planseite „Stand P1 Tag 1“ im Prüfplan, Register „Befunde aus P1 Tag 1“.
+- **Kern `packages/shape/src/kern/umrissPlan.ts`** (hinter `Bauplan.umrissPlan`, ohne Option bitgleich): Umrissschleifen je
+  Ansicht allein aus den drei Zeichnungen — Tiefe je Probe aus der Sichthülle (2 px innen abgetastet), Intervallwahl per
+  Viterbi, Tiefe mit kleinster Biegung in den Intervallen (aktive Menge, pentadiagonal), **T-Stöße = konkave Ecken**, Sehnen
+  zerlegen die Zeichnung in einen Flächenbaum, jede Fläche eine geschlossene Schleife mit Vorschlägen über die Sehnen
+  (verdeckte Fortsetzung des ferneren Teils, sichtbare Schlusskontur des näheren; Seite: alles verdeckt). Keine Zusatzpunkte.
+- **Liniennetz und Editor:** Züge `plan-*` in `netzSicht`; Chip „umrisse geplant“ (Tafel Körper, `ui.netzUmrisse`); eigenes
+  Blatt zeigt die Vorschläge (blass / dünn), fremde Blätter die Schleifen; `umrissSvg` = dasselbe Bild als SVG (Tor d im
+  Editor 0,008–0,012 px); Haken `__editor.umrissPlan()`, `__editor.umrissSvg(blatt)`. Der Körper ist noch der heutige.
+- **Tore** (`kern/umrissPlan.test.ts`, 16 Tests grün): (a) 0 px (V2 heute: 20 % der Punkte über 0,2 px, max 26 px), (b) 10 von
+  11 Körpern, Robbe Top von der Zeichnung erzwungen, (c) Langhals/Ente/Pilz schließen ohne Teilerkennung, (d) ≤ 0,012 px,
+  (e) 1,3–4,7 ms Kern, 8,5–13 ms Editor.
+- **Bild** `docs/progress/editor/p1-umrissschleifen-2026-11-03.jpg` (Langhals, Ente, Kegel, Robbe: heute | geplant je Blatt);
+  Skripte `apps/editor/scripts/pruefen/p1-plan.mjs`, `umriss-plan-diag.ts`.
+- **Offen:** Tiefe aus Vereinigungs-Intervallen (Hals liegt in der Mitte der Vereinigung), Schlusskontur nur interpoliert,
+  keine ganz verdeckten Schleifen, jede konkave Ecke ein T-Stoß, Umschalten 0,7–0,9 s (ganzes Liniennetz neu).
+
+**Nächster Schritt:** Florian sieht den Bogen (Tag 1 verlangt „ein Bild aus dem Editor“) — dann **Tag 2–3**: die Schleifen
+werden Käfigkurven (Naht, Breitenlinie je Ring gleitend, Frontschleife aus Reihen- und Ringstücken; Ringe von der Schleife
+gesetzt, Zuordnung als dynamische Programmierung) und **ein Löser** (hart Lage + Silhouettenbedingung auf allen Schleifen,
+weich Krümmungsvariation ohne Zielform, Sichthülle nur als Prüfung), Tore der Tabelle im Prüfplan (Δ ≤ 0,5 px, Überstand,
+Falten, Flachband, Käfiggüte Stufe 1, Zebra), dann Tag 4 Bedienung/Widersprüche, Tag 5 Bögen. Start-Prompt für eine frische
+Sitzung:
+
+> Lies `CLAUDE.md`, `docs/UEBERGABE.md`, den Prüfplan `docs/plans/2026-11-02-pruefplan-p0-p3.md` (P1 mit „Stand P1 Tag 1“) und
+> `packages/shape/src/kern/umrissPlan.ts`. Baue P1 Tag 2–3 nach Plan: Käfig um die geplanten Schleifen und ein Löser, im Kern
+> hinter `umrissPlan`/einem neuen Schalter, ohne Schalter bitgleich, der Kernring bleibt eingefroren; Tore als Tests, verfehlte
+> als `it.fails` mit Registereintrag, Kontaktbögen, Planseite „Stand“, Register, Übergabe, Commit und Push. Nichts als bestanden
+> melden; nach dem Beweis anhalten und mir die Bilder zeigen.
 
 ## Entscheidungen, die Florian treffen muss (Gegenprüfung, Abschnitt 10)
 
@@ -63,10 +95,10 @@ im Dokument steht · E3 Spanten/Reifen entfallen zugunsten gezeichneter Loops ·
 Widerspruch rot · E5 Spielstufe 1, Budget 8 000 Dreiecke samt Maul, Dreieckszahl sichtbar · E6 seine Wesen als Prüfwesen zuerst ·
 E7 Loops in Front/Back als Projektion bearbeitbar · E8 Strichbreite = Rundung (nicht Winkel). Ohne Antwort gelten die Vorschläge.
 
-## Nächster Schritt
+## Vorgehen (Schritt 3, seit 03.11. in Arbeit)
 
-**Florian liest Gegenprüfung und Prüfplan und gibt frei** (oder ändert). Danach Schritt 3: die Beweise, streng nach Prüfplan,
-beginnend mit P0a. Start-Prompt zum Einfügen:
+Die Beweise streng nach Prüfplan: P0a ✓ (angesehen), P1 Tag 1 ✓ (Abnahme offen), dann P1 Tag 2–5, P2, P3. Ursprünglicher
+Start-Prompt (gilt weiter):
 
 > Lies `CLAUDE.md`, `docs/UEBERGABE.md`, die Gegenprüfung `docs/plans/2026-11-02-gegenpruefung-liniennetz.md` und den
 > freigegebenen Prüfplan `docs/plans/2026-11-02-pruefplan-p0-p3.md`. Meine Entscheidungen E1–E8: […]. Führe P0a aus, dann
@@ -93,6 +125,8 @@ Rex mittel gerade (Knick an der Kreuzung), Robbe hoch J (Engstelle), E2.4, E3–
 - Messskripte aus `packages/shape`: `npx vite-node ../../apps/editor/scripts/pruefen/<datei>.ts` — `dreieck-budget.ts`
   (Dreiecke je Stufe, Maul-Einsatz), `spielstufe.ts` (Stufe 1 gegen Grenzfläche, Facettierung, flache Bänder),
   `teilA/e1-reihe-k2.ts` (Kernring-Reihe), `einsatz-loesen.ts` (Mundwinkel nah), `raster-gleichlauf.ts` (V8-Gegenprobe unter Last).
+- P1: `kern/umrissPlan.test.ts` (Tore Tag 1, `--reporter=verbose` für die Zahlen), Diagnose
+  `npx vite-node ../../apps/editor/scripts/pruefen/umriss-plan-diag.ts <körper> [ansicht]`, Editor `p1-plan.mjs` (Bogen + Tor d).
 - Editor-Prüfungen (Playwright, eigener Vite auf 5192): `apps/editor/scripts/pruefen/run-check.sh <skript.mjs>`; Liste in
   `apps/editor/scripts/pruefen/README.md`.
 

@@ -259,8 +259,8 @@ function KantenBereich() {
       {/* Umrisslinien der anderen Ansichten und innere Konturen: reine Anzeige, Standard aus (Florian 20.10.: „störend“) */}
       {bauweise === 'kern' && (
         <div className="umschalter stufen" role="radiogroup" aria-label="Umrisse der anderen Ansichten" title="Umrisslinien der anderen Ansichten und innere Konturen im Liniennetz (nur Anzeige; der Körper wird ohne sie gebaut)">
-          {(['aus', 'an'] as const).map((k) => (
-            <button key={k} className={netzUmrisse === k ? 'chip aktiv' : 'chip'} data-netzumrisse={k} onClick={() => useUi.setState({ netzUmrisse: k })}>
+          {(['aus', 'an', 'geplant'] as const).map((k) => (
+            <button key={k} className={netzUmrisse === k ? 'chip aktiv' : 'chip'} data-netzumrisse={k} title={k === 'geplant' ? 'P1: Umrissschleifen aus den Zeichnungen geplant — im eigenen Blatt die verdeckten Stücke (blass) und Ansätze (gestrichelt), in den anderen Blättern die Schleifen auf dem Körper' : k === 'an' ? 'V2: Umrisslinien aus dem Körper geschnitten' : undefined} onClick={() => useUi.setState({ netzUmrisse: k })}>
               umrisse {k}
             </button>
           ))}

@@ -13,6 +13,8 @@ import { SPIEL_BUDGET, spielEcken, spielGeraetepixel } from './spielstufe';
 import { type Bauplan, type WesenNetz, type WesenStand, pruefwesenBauplan, wesenBauen } from './wesen';
 
 declare const console: { log: (...a: unknown[]) => void };
+const uhr = (globalThis as { performance?: { now(): number } }).performance;
+const jetzt = () => (uhr ? uhr.now() : Date.now());
 
 const koerper = (name: string) => {
   const k = EXTREMREIHE.find((e) => e.name === name);
@@ -24,9 +26,9 @@ const koerper = (name: string) => {
 function spielBau(name: string, plan: Partial<Bauplan> = {}): { stand: WesenStand; netz3: WesenNetz; netz1: WesenNetz; ms: number } {
   const dok = name === 'kugel' ? neuesDokument('kugel') : koerper(name);
   const b = editorBauen(imAblauf(dok, 'roehre', 'kugel'), { ...editorPlan('roehre'), ...plan });
-  const t0 = performance.now();
+  const t0 = jetzt();
   const r = wesenBauen(b.dok, { ...editorPlan('roehre'), ...plan, stufen: 1 }, b.stand, false);
-  return { stand: r.stand, netz3: b.netz, netz1: r.netz, ms: performance.now() - t0 };
+  return { stand: r.stand, netz3: b.netz, netz1: r.netz, ms: jetzt() - t0 };
 }
 
 /** Knicke zwischen Nachbarflächen der Stufe 1 (Grad), ohne Kanten mit Schärfe (gezeichnete Falten). */
@@ -125,9 +127,9 @@ describe('P0a Spielstufe: Umsortierung', () => {
   it('Umschalten baut den Käfig nicht neu (gleicher Stand, Ableitung 0 ms); Umrissvergleich beim zweiten Mal aus dem Stand', () => {
     const { stand, netz1, ms } = spielBau('rex');
     expect(netz1.info.ableitung).toBe(0);
-    const t0 = performance.now();
+    const t0 = jetzt();
     const r2 = wesenBauen(stand.dok, { ...editorPlan('roehre'), stufen: 1 }, stand, false);
-    const ms2 = performance.now() - t0;
+    const ms2 = jetzt() - t0;
     expect(r2.stand.abl).toBe(stand.abl);
     expect(r2.netz.info.spiel?.umriss).toEqual(netz1.info.spiel?.umriss);
     const zurueck = wesenBauen(stand.dok, editorPlan('roehre'), r2.stand, false);

@@ -33,6 +33,7 @@ import { deltasAddieren, deltasAnwenden, spiegelIndex } from './pinsel';
 import { type DuennMatrix, anwenden3 } from '../subdivision/matrix';
 import type { Stufe } from '../subdivision/catmullClark';
 import { type SpielAnzeige, spielNetz } from './spielstufe';
+import { type UmrissPlan, umrissPlan } from './umrissPlan';
 import { pfadAbtasten, vollerPfad } from '../profil';
 import { spantKasten, spantTeilProfil, vorlageBei } from '../spanten';
 import { kieferSchnitt } from './kieferSpant';
@@ -136,6 +137,8 @@ export type Bauplan = Ausstattung & {
    */
   stufen?: number;
   stufenNormalen?: 'grenze' | 'roh';
+  /** P1 (Tag 1): geplante Umrissschleifen aus den Zeichnungen im Liniennetz zeigen (`plan-*`-Züge, `WesenNetz.umrissPlan`) */
+  umrissPlan?: boolean;
 };
 
 /** B7: Mischung der Gewichte als neue Pose — Form (Ruhe-Deltas auf A, rechte Hälfte und Naht), Bezug, Stellung. */
@@ -306,6 +309,8 @@ export type WesenNetz = {
    * Umrissknoten, P-Linien als Hautpunkte, Maullinien, Spantringe, Faltenlinien, je Probe die Sichtbarkeit in fünf Ansichten
    */
   netzSicht: NetzSicht | null;
+  /** P1 (Tag 1): geplante Umrissschleifen (nur mit `Bauplan.umrissPlan`), sonst null */
+  umrissPlan: UmrissPlan | null;
   /**
    * S4 „Teile erkennen“ (nur Anzeige): Teilbaum aus den drei Zeichnungen (Rumpf, Mittelteile, seitliche Paare), je Teil die
    * Wirbelsäule mit Knoten, je Ansicht die sichtbaren Flächen und die verdeckten Teilumrisse (Profil-Einheiten); nur im
@@ -1459,6 +1464,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
         widerspruch: widerspruchB,
         randMarken: null,
         netzSicht: bn.netzSicht,
+        umrissPlan: plan.umrissPlan ? umrissPlan(dok) : null,
         teile: teileB,
         koerperBaum,
         umweg: null,
@@ -1616,7 +1622,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     }
   }
   // B7: Werte der Ruhelage gemerkt (Schlüssel: Ableitung, Pinsel der Grundform, Augen, Gesicht); ein reiner Gewichtswechsel nimmt sie
-  const ruheSchluessel = `${schluessel}|${JSON.stringify(deltas)}|${JSON.stringify(plan.augen ?? null)}|${JSON.stringify(plan.gesichtMaske ?? null)}|${maul}|${beine}|${earle}`;
+  const ruheSchluessel = `${schluessel}|${JSON.stringify(deltas)}|${JSON.stringify(plan.augen ?? null)}|${JSON.stringify(plan.gesichtMaske ?? null)}|${maul}|${beine}|${earle}|${plan.umrissPlan ? 'plan' : ''}`;
   const ruheAlt = stand?.ruheWerte && stand.ruheWerte.schluessel === ruheSchluessel ? stand.ruheWerte : null;
   // Deskriptoren hängen an der Ruhelage: ohne Aufsatz, angesteckte Teile, Wangen und Klingen gemerkt (die brauchen die
   // feinen Deskriptoren selbst); eine Kopie geht ins Netz, das überträgt sie
@@ -1710,7 +1716,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
         }
         return { spant: r.spant, punkte: pts };
       });
-      netz3 = netzSicht({ dok, punkte: ruheP, flaechen, kaefig: abl.kaefig, unterteilung: abl.unterteilung, reifen: reifenZuege });
+      netz3 = netzSicht({ dok, punkte: ruheP, flaechen, kaefig: abl.kaefig, unterteilung: abl.unterteilung, reifen: reifenZuege, ...(plan.umrissPlan ? { plan: umrissPlan(dok) } : {}) });
     } else netz3 = null;
     blatt = {
       seite: { max: bl.seite.max, mittel: bl.seite.mittel, widerspruch: er.seite.max },
@@ -1986,6 +1992,7 @@ export function wesenBauen(dokEingabe: Dokument, planRoh: Partial<Bauplan>, stan
     widerspruch,
     randMarken,
     netzSicht: netz3,
+    umrissPlan: plan.umrissPlan ? umrissPlan(dok) : null,
     teile,
     koerperBaum,
     umweg,

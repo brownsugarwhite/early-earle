@@ -326,6 +326,22 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Stufe 3 verdeckt → Dichteregel und Käfiggüte als Tor im neuen Bau. Mit Augapfel-Höhle bleibt Stufe 3. Fallen: In
   Playwright-Skripten `window.__editor` nie ohne Prüfung lesen (war kurz undefined); ein Schalter, der den Zustand nicht
   ändert, löst keinen Bau aus (nicht darauf warten); Bühnen-Kamera Azimut 0° = Seite, −90° = Front.
+- **2026-11-03 (nachmittags): P1 Tag 1 „Umrissschleifen geplant“ gebaut** (Florian: „Die P0a-Bögen passen so weit. Weiter mit
+  P1 „Ansichten als Illustration“ nach dem Prüfplan.“; Abnahme offen; Planseite „Stand P1 Tag 1“ im Prüfplan, Register „Befunde
+  aus P1 Tag 1“, Übergabe). Kern `kern/umrissPlan.ts` hinter `Bauplan.umrissPlan` (ohne Option bitgleich): Umrissschleifen je
+  Ansicht allein aus den drei Zeichnungen — Tiefe je Probe aus der Sichthülle (2 px innen abgetastet: genau auf der Linie
+  zerfallen die Intervalle an Kastenkanten in Splitter), Intervallwahl per Viterbi, Tiefe mit kleinster Biegung in den
+  Intervallen (aktive Menge, pentadiagonal; die gespannte Laplace-Folge knickte an jedem Klemmpunkt), **T-Stöße = konkave
+  Ecken** (Tiefensprünge taugen nicht — Vereinigungs-Intervalle glätten sie), Sehnen zerlegen die Zeichnung in einen Flächenbaum,
+  jede Fläche eine geschlossene Schleife mit Vorschlägen über die Sehnen (verdeckte Fortsetzung des ferneren Teils blass,
+  sichtbare Schlusskontur des näheren dünn; Seite: alles verdeckt); die Ecke einer Sehne nimmt je Fläche das Intervall ihres
+  Nachbarn. Liniennetz: Züge `plan-*`; Editor: Chip „umrisse geplant“ (Tafel Körper), `umrissSvg` = dasselbe Bild als SVG, Haken
+  `__editor.umrissPlan/umrissSvg`. Tore (`kern/umrissPlan.test.ts`): (a) 0 px Jitter (V2 heute: 20 % der Punkte über 0,2 px,
+  max 26 px), (b) 10 von 11 Körpern (Robbe Top von der Zeichnung erzwungen), (c) Langhals/Ente/Pilz schließen ohne
+  Teilerkennung, (d) ≤ 0,012 px, (e) 1,3–4,7 ms. Offen: Tiefe aus Vereinigungs-Intervallen (Hals liegt in der Mitte der
+  Vereinigung), Schlusskontur nur interpoliert, keine ganz verdeckten Schleifen, jede konkave Ecke ein T-Stoß. Bild
+  `docs/progress/editor/p1-umrissschleifen-2026-11-03.jpg`. Nächster Schritt: Florians Blick, dann Tag 2–3 (Käfig um die
+  Schleifen, ein Löser).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

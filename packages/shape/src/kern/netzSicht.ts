@@ -15,6 +15,7 @@ import type { V3 } from '../versuch/catmullClark';
 import { type Dreiecksflaeche, type Strahlraster, strahlRaster } from '../versuch/flaechenlinie';
 import { abtasten3, punktAuf3, segmente3 } from '../versuch/linie3d';
 import { umrissKurven } from './umrissKurven';
+import type { UmrissPlan } from './umrissPlan';
 
 /** px je Kachel-Einheit (Vertrag aller Messungen) */
 const PX = 461;
@@ -39,6 +40,9 @@ export type NetzZugArt =
   | 'umriss-seite'
   | 'umriss-front'
   | 'umriss-top'
+  | 'plan-seite'
+  | 'plan-front'
+  | 'plan-top'
   | 'linie'
   | 'maul'
   | 'reifen'
@@ -65,6 +69,9 @@ export type NetzZug = {
   kurve?: Float32Array;
   /** Umrisslinien (V2): Kurvenparameter je Probe (Kurve s + Anteil t, die Probe liegt genau auf der Kurve) */
   parameter?: Float32Array;
+  /** Geplante Schleifen (P1): Art je Probe — 0 gezeichnet, 1 verdeckte Fortsetzung, 2 Ansatz (weich); Teil-Nummer in `teil` */
+  plan?: Uint8Array;
+  teil?: number;
 };
 
 export type NetzSicht = {
@@ -473,6 +480,8 @@ export type NetzSichtEingabe = {
    * Paaren sind es nicht genau (gemessen bis 3,5 px); dann sucht `umrissKurven` die zweite Hälfte der Umrisslinien eigens.
    */
   spiegelgleich?: boolean;
+  /** P1 (Tag 1): geplante Umrissschleifen aus den Zeichnungen — als Züge `plan-*` mit Sichtbarkeit auf diesem Körper */
+  plan?: UmrissPlan;
 };
 
 /** Das 3D-Liniennetz auf dem Körper (S1). */
@@ -639,6 +648,43 @@ export function netzSicht(e: NetzSichtEingabe): NetzSicht {
   if (maul) {
     zuege.push(zugAus('m:oben', 'maul', abtasten3(maul.oben, 16).map((p) => [p[0] * sk, p[1] * sk, p[2] * sk] as V3)));
     if (maul.unten) zuege.push(zugAus('m:unten', 'maul', abtasten3(maul.unten, 16).map((p) => [p[0] * sk, p[1] * sk, p[2] * sk] as V3)));
+  }
+  // 4b. Geplante Umrissschleifen (P1, Tag 1): je Schleife ein Zug mit allen Proben (gezeichnet, verdeckt, Ansatz); die
+  // Sichtbarkeit in den fremden Blättern kommt vom Körper (Außenversatz in der eigenen Blattebene), das eigene Blatt zeigt
+  // nur die Vorschläge (die gezeichneten Proben sind dort die schwarze Linie)
+  if (e.plan) {
+    for (const s of e.plan.schleifen) {
+      const pts = s.proben.map((p) => p.p);
+      const t = KONTUR_ACHSE[s.ansicht];
+      const u = t === 0 ? 2 : 0;
+      const v = t === 1 ? 2 : 1;
+      let flaeche = 0;
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i]!;
+        const q = pts[(i + 1) % pts.length]!;
+        flaeche += p[u]! * q[v]! - q[u]! * p[v]!;
+      }
+      const sg = flaeche >= 0 ? 1 : -1;
+      const aussen = (i: number): V3 => {
+        const l = pts[(i - 1 + pts.length) % pts.length]!;
+        const r2 = pts[(i + 1) % pts.length]!;
+        const du = r2[u]! - l[u]!;
+        const dv = r2[v]! - l[v]!;
+        const nl = Math.hypot(du, dv) || 1;
+        // Außennormale in der Blattebene: bei positivem Umlauf rechts der Laufrichtung
+        const nu = (dv / nl) * sg;
+        const nv = (-du / nl) * sg;
+        const out: V3 = [0, 0, 0];
+        out[u] = nu * aussenW;
+        out[v] = nv * aussenW;
+        return out;
+      };
+      const fremde = 31 & ~EIGENE_BITS[s.ansicht];
+      const z = zugAus(`p${s.ansicht[0]}:${s.teil}`, `plan-${s.ansicht}`, pts, aussen, undefined, undefined, () => fremde);
+      z.plan = Uint8Array.from(s.proben, (p) => p.art);
+      z.teil = s.teil;
+      zuege.push(z);
+    }
   }
   // 5. Spantringe (echter Verlauf auf der Haut)
   for (const rf of e.reifen ?? []) zuege.push(zugAus(`r:${rf.spant}`, 'reifen', rf.punkte));

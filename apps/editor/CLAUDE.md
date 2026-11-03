@@ -301,6 +301,20 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   - Seitenleiste: Regel „Hälften“ oder „gerade-ungerade“, Überblendung „Felder“ oder „Punkte“. Die Front zeigt den echten Schnitt des gewählten Spants gestrichelt.
   - Grenzen und Messwerte: `docs/research/2026-10-13-schnitte-ueberhaenge.md`.
 
+- **Nachtrag 03.11. — P1 Tag 1 (geplante Umrissschleifen), Fallen:**
+  - `[data-view="…"]` tragen mehrere Elemente (Tabs und Viewport): Pfade eines Blatts über den ganzen Baum suchen
+    (`document.querySelectorAll('[data-view="top"] path…')`), nie unter dem ersten Treffer von `querySelector`.
+  - `__editor.projizieren(blatt, p)` liefert Feldpixel des Blatts = die Koordinaten der Blatt-SVG (Versatz 0/0): So lässt sich
+    ein SVG-Export gegen die DOM-Pfade prüfen (Tor d, ≤ 0,012 px).
+  - Der Chip „umrisse geplant“ ändert den Ruhe-Schlüssel (`|plan`) → der Worker rechnet das ganze Liniennetz samt Δ neu
+    (0,7–0,9 s); der Körper bleibt im Stand. Skripte warten nach dem Chip auf `nachBau`.
+  - Im eigenen Blatt zeichnet `NetzEbene` von einem Plan-Zug nur die Vorschläge (Art ≠ 0); Läufe und Strichbild kommen aus dem
+    Kern (`planLaeufe`, `PLAN_STIL`) — Änderungen am Strichbild dort, damit SVG und Blatt gleich bleiben.
+  - `umriss-plan-diag.ts` (vite-node aus `packages/shape`) zeigt je Ansicht Knoten mit Winkel, Schleifen und Proben mit
+    Intervallen und Tiefe — zuerst dort nachsehen, wenn eine Schleife „falsch“ liegt (Ursache war zweimal die Intervallwahl an
+    einer Ecke, nie die Anzeige).
+  - zsh: Wörter, die mit `=` beginnen (`echo =====`), sind Kommandos (`=cmd`-Expansion); `set -- $k` trennt nicht an Leerzeichen.
+
 ## Arbeitsweise
 
 - **Look-Beweis:** `node apps/editor/scripts/vergleich.mjs` (Web-Modus muss laufen) → `docs/progress/editor/vergleich-grundlayout.png` (Vorlage | Render). Render und Differenz liegen unter `apps/editor/test-results/vergleich/`.
