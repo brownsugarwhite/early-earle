@@ -72,6 +72,17 @@ Ansichten springen erst beim Loslassen.
 
 Bilder: `docs/progress/editor/form-netz-{heute,seite-fuehrt,top-fuehrt,kopf-tiefer}-2026-11-04.jpg`.
 
+**Ablauf aus der Startkugel** (`scripts/pruefen/form-netz-kugel.mjs`, Bild `form-netz-kugel-2026-11-04.jpg`):
+
+1. Die Seite oben höher ziehen: Front und Top folgen wie bisher.
+2. In der Front einen Punkt hinausziehen. Die Front führt; Seite (alle 4 Punkte bitgleich) und Top (7 neu, 2 behalten) werden
+   nachgeführt. Abstand danach: Seite 1,3, Front 1,4, Top 2,0.
+3. Im Top einen Punkt hineinziehen: Seite und Front bitgleich, Abstand 0,7 / 0,8 / 1,4.
+4. ⌘Z: 1,3 / 0,2 / 1,2.
+
+Die Linien stimmen also auch hier. Sichtbar wird aber die Form: Das Top wird ein abgerundetes Rechteck statt eines Ovals, und
+die Schattierung ist fleckig. Das ist die Vereinigung vieler Ellipsoide, die die Linien jetzt ehrlich zeigen.
+
 ## 3. Shader statt Linien: was geht und was nicht
 
 - **Umrisse:** Ja. Der Shader zeichnet genau das Mesh, pixelgenau. Griffe können aber nicht in einem Bild hängen, sie brauchen
@@ -102,10 +113,17 @@ eine Regel. Nichts davon nennt einen Körperteil oder eine Lage.
 
 **Was es nicht löst, ehrlich:**
 
-1. **Form.** Wo Teile aus verschiedenen Ansichten zusammenstoßen, hat die Vereinigung Kerben: im Top bei der Flosse
-   sichtbar, dazu kleine Shader-Kratzer. Eckige Füße, die Seite und Front beide eckig zeigen, werden im Mesh rund. Bisher
-   versteckte die gezeichnete Linie das, jetzt zeigt die Linie es. Der nächste Hebel ist eine weiche Vereinigung, also runde
-   Übergänge statt Kerben, und Ecken als Kanten im Bau.
+1. **Form — das größere Restproblem.** Der Körper ist eine Vereinigung vieler Ellipsoide. Das wird sichtbar:
+   - Wo Teile aus verschiedenen Ansichten zusammenstoßen, entstehen Kerben (im Top bei der Flosse, dazu kleine
+     Shader-Kratzer).
+   - Wenn Front und Seite verschieden breit sind, wird das Top kastig statt oval (Bild Startkugel).
+   - Die Schattierung ist fleckig.
+   - Eckige Füße, die Seite und Front beide eckig zeigen, werden im Mesh rund.
+
+   Bisher versteckte die gezeichnete Linie einen Teil davon, jetzt zeigt die Linie es. „So rund wie möglich“ heißt: die
+   rundeste Fläche, die alle Umrisse berührt, nicht die Vereinigung von Ellipsoiden. Der nächste Hebel ist eine Form, die über
+   die Ellipsoide hinweg glatt ist (weiche Vereinigung oder Glätten mit festgehaltenen Umrissen), dazu Ecken als Kanten im
+   Bau. Die Linien aus dem Netz bleiben dabei, wie sie sind: Sie zeigen dann eben die bessere Form.
 2. **Automatische Punkte.** Wo eine andere Ansicht den Umriss ändert, setzt die Automatik Punkte, im Beispiel 6 für den Kopf
    in der Front. Am 11.10. mochtest du Punkte, die sich von selbst setzen, nicht; am 16.10. hast du sie erlaubt, „wenn wirklich
    notwendig“. Hier sind sie nötig, aber ihre Lage ist Geschmackssache. Das solltest du im Fenster ansehen.
