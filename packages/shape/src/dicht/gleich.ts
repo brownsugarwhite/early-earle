@@ -32,6 +32,12 @@ export type GleichOptionen = {
   dreiecke?: number;
   /** feste Rasterweite statt der Dreieckszahl */
   zelle?: number;
+  /**
+   * Die Ansicht, die Florian gerade bearbeitet, führt (Probe 04.11.): Ihre Kreise werden auch dort gebaut, wo eine andere
+   * Ansicht keinen Platz für sie hat — eine Ansicht ohne Platz redet bei diesem Kreis nicht mit (so rund wie möglich) und zeigt
+   * danach, was entstanden ist. Ohne führende Ansicht entscheidet die kleinere Zeichnung (Schnittmenge).
+   */
+  fuehrend?: AnsichtName | null;
 };
 
 export type AnsichtName = 'seite' | 'front' | 'top';
@@ -276,17 +282,24 @@ function ellipsoideVon(
   zelle: number,
   liste: Liste,
   vorne: ((u: number, v: number) => number) | null,
+  fuehrt = false,
 ): number {
   const ax = ACHSEN[name];
   const D = ax.tiefe;
   // die beiden anderen Ansichten: welche Achse sie mit dieser teilen und wie sie längs der Tiefe geschnitten werden
-  const andere = NAMEN.filter((w) => w !== name && schnitte[w]).map((w) => {
+  const alle = NAMEN.filter((w) => w !== name && schnitte[w]).map((w) => {
     const aw = ACHSEN[w];
     const zeilen = aw.u === D;
     const geteilt = zeilen ? aw.v : aw.u;
     const s = schnitte[w]!;
     return { geteilt, schnitt: (t: number, roh = false) => (zeilen ? s.zeile(t, roh) : s.spalte(t, roh)) };
   });
+  type Andere = (typeof alle)[number];
+  /** Hat die andere Ansicht an jeder Sehne des Kreises etwas gezeichnet? */
+  const platz = (o: Andere, mitte: number, r: number, n: number): boolean => {
+    for (let j = -n; j <= n; j++) if (o.schnitt(mitte + (j / n) * 0.98 * r).length === 0) return false;
+    return true;
+  };
   let anzahl = 0;
   const c = [0, 0, 0];
   const a = [0, 0, 0];
@@ -324,6 +337,9 @@ function ellipsoideVon(
       c[ax.v] = cv;
       // spiegelgleich: nur Kreise mit z ≥ 0, die übrigen sind Spiegelbilder
       if (D !== 2 && c[2]! < -1e-9) continue;
+      const n = Math.min(24, Math.max(4, Math.ceil(r / (zelle / 2))));
+      // führt diese Ansicht, reden nur die anderen mit, die für den ganzen Kreis Platz haben
+      const andere = fuehrt && !innen ? alle.filter((o) => platz(o, c[o.geteilt]!, r, n)) : alle;
       // Abschnitte der Tiefe an der Kreismitte; eine obenauf gezeichnete Fläche liegt vorn: in den anderen Ansichten zählt
       // dort je Fläche der vorderste Abschnitt (ihr eigener Teil, nicht der Körper dahinter)
       const VORN = sv * 1e9;
@@ -336,6 +352,23 @@ function ellipsoideVon(
         }
         teile = schneiden(new Float64Array(teile), liste);
       }
+      // redet keine andere Ansicht mit, liegt der Kreis in der Tiefe dort, wo die anderen am nächsten etwas zeigen
+      let ohne = 0;
+      if (andere.length === 0 && D !== 2) {
+        let summe = 0;
+        let zahl = 0;
+        for (const o of alle) {
+          for (let s = 0; s <= 200; s++) {
+            const t = c[o.geteilt]! + (s % 2 ? 1 : -1) * Math.ceil(s / 2) * (zelle / 2);
+            const l = o.schnitt(t);
+            if (l.length === 0) continue;
+            summe += (l[0]! + l[l.length - 1]!) / 2;
+            zahl++;
+            break;
+          }
+        }
+        if (zahl > 0) ohne = summe / zahl;
+      }
       for (let k = 0; k < teile.length; k += 2) {
         const lo = teile[k]!;
         const hi = teile[k + 1]!;
@@ -347,7 +380,6 @@ function ellipsoideVon(
         let frei = true;
         for (const o of andere) {
           const mitte = c[o.geteilt]!;
-          const n = Math.min(24, Math.max(4, Math.ceil(r / (zelle / 2))));
           // von der Mitte des Kreises nach außen: je Sehne der Abschnitt, der an den der vorigen anschließt (spaltet sich die
           // Zeichnung weiter außen, bleibt das Ellipsoid in dem Teil, in dem es angefangen hat); in der Tiefe z zählt nur die
           // Hälfte z ≥ 0, die andere ist ihr Spiegelbild
@@ -384,7 +416,7 @@ function ellipsoideVon(
         let h = groessteTiefe(bed, r);
         if (h < 0.3 * zelle) continue;
         const zentral = D === 2 && lo < 0 && !innen;
-        const vorzug = zentral || !Number.isFinite(lo + hi) ? 0 : (lo + hi) / 2;
+        const vorzug = zentral ? 0 : !Number.isFinite(lo + hi) ? ohne : (lo + hi) / 2;
         let m: number;
         const [l0, u0] = lagen(bed, h);
         if (h >= r) m = Math.min(Math.max(vorzug, l0), u0);
@@ -519,7 +551,9 @@ export function formAusAnsichten(z: Zeichnungen, opt: GleichOptionen = {}): Glei
   }
   const liste = new Liste();
   const ellipsoide: Record<AnsichtName, number> = { seite: 0, front: 0, top: 0 };
-  for (const name of NAMEN) if (schnitte[name]) ellipsoide[name] = ellipsoideVon(name, umrisse[name], schnitte, zelle, liste, null);
+  for (const name of NAMEN) {
+    if (schnitte[name]) ellipsoide[name] = ellipsoideVon(name, umrisse[name], schnitte, zelle, liste, null, opt.fuehrend === name);
+  }
   // innere Konturen: vor den Körper, der aus allen äußeren Umrissen steht
   const fest = new Float64Array(liste.w);
   for (const name of NAMEN) {

@@ -6,6 +6,8 @@ export { BREITE_MAX, type Kante3D, type KantenLinie, type KantenPunkt, kantenAnw
 export { type DichtesNetz, type RundOptionen, rundAusSeite } from './rund';
 export { type AnsichtName, type GleichesNetz, type GleichOptionen, type Zeichnung, type Zeichnungen, formAusAnsichten } from './gleich';
 export { ganzerUmriss, PRUEFFAELLE, PRUEFFAELLE_HALB, type Prueffall, type PrueffallHalb } from './prueffaelle';
+export { umrisseDesKoerpers } from './silhouette';
+export { type LinienArt, type Nachfuehrung, halbeLinie, linieNachfuehren, linienAbstand, linienStueckeVon } from './folgen';
 export {
   type Ansichtsbreite,
   type BreitenPunkt,

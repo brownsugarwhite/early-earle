@@ -12,8 +12,10 @@ import {
   BREITE_MAX,
   type BreitenPunkt,
   type DichtesNetz,
+  type GleichesNetz,
   type Kante3D,
   type KantenLinie,
+  type Nachfuehrung,
   PRUEFFAELLE,
   PRUEFFAELLE_HALB,
   type Prueffall,
@@ -21,13 +23,17 @@ import {
   type Zeichnungen,
   formAusAnsichten,
   ganzerUmriss,
+  halbeLinie,
   linieAbtasten,
+  linieNachfuehren,
+  linienAbstand,
   profilAusBreite,
   punktAufStueck,
   rundAusSeite,
   streckungBei,
   umrissAbtasten,
   umrissStuecke,
+  umrisseDesKoerpers,
 } from '@ee/shape/dicht';
 import {
   BackSide,
@@ -84,6 +90,10 @@ declare global {
       fein: boolean;
       /** gleichwertige Ansichten: Ellipsoide je Ansicht (sonst null) */
       ellipsoide: Record<'seite' | 'front' | 'top', number> | null;
+      /** Probe „Linien aus dem Netz“ an (`?netz`) */
+      netz: boolean;
+      /** zuletzt nachgeführte Ansichten: neue und behaltene Punkte, Restabstand */
+      nachgefuehrt: Partial<Record<'seite' | 'front' | 'top', Omit<Nachfuehrung, 'punkte'>>>;
     };
     /** Prüfhaken: eine Zeichnung setzen (wie ein Zug, mit Rückgängig) */
     __formSetzen?: (p: UmrissPunkt[], linien?: KantenLinie[], front?: UmrissPunkt[] | null, top?: UmrissPunkt[] | null) => void;
@@ -91,6 +101,8 @@ declare global {
     __formAnsichten?: (z: Zeichnungen) => void;
     /** Prüfhaken: einen Prüffall laden (Kugel, Beine, Flossen, Lappen) */
     __formPruefall?: (name: Prueffall) => void;
+    /** Prüfhaken: größter Abstand je Ansicht zwischen ihrer Linie und dem Umriss des Körpers (nur gleichwertige Ansichten) */
+    __formAbstand?: () => Record<'seite' | 'front' | 'top', number> | null;
   }
 }
 
@@ -104,6 +116,12 @@ const DREIECKE_FEIN = 40000;
 const DREIECKE_ZUG = 6000;
 /** Strichdicke einer neu gezeichneten Linie (px) */
 const BREITE_NEU = 2;
+/**
+ * Probe „Linien aus dem Netz“ (04.11., `?netz`): Alle Umrisse zeichnet der Shader am Mesh, auch in der Seite; Florians Punkte
+ * sind Griffe darauf. Die Ansicht, die er bearbeitet, führt; die anderen zeigen danach den Umriss des Körpers, ihre Punkte
+ * bleiben, wo die Linie noch auf ihm liegt.
+ */
+const NETZ = new URLSearchParams(location.search).has('netz');
 
 const kreis = (r: number): UmrissPunkt[] => [
   { x: r, y: 0 },
@@ -128,6 +146,15 @@ const profilSvg: Record<Blatt, SVGSVGElement> = {
 // ---------- Zustand ----------
 
 let zustand: Zustand = { punkte: kreis(150), linien: [], front: null, top: null, ansichten: null };
+/** Probe „Linien aus dem Netz“: die Ansicht, die Florian gerade bearbeitet (bis zum genauen Bau nach dem Loslassen) */
+let fuehrung: 'seite' | Blatt | null = null;
+const fuehrt = (b: 'seite' | Blatt): void => {
+  if (NETZ) fuehrung = b;
+};
+/** zuletzt nachgeführte Ansichten (Prüfhaken) */
+let letzteNachfuehrung: Partial<Record<'seite' | Blatt, Omit<Nachfuehrung, 'punkte'>>> = {};
+/** der zuletzt gebaute Körper aus gleichwertigen Ansichten (Prüfhaken) */
+let letztesGleich: GleichesNetz | null = null;
 type Auswahl =
   | { art: 'umriss'; i: number }
   | { art: 'linie'; l: number }
@@ -396,10 +423,14 @@ function linienTiefe(l: number, i: number): number | null {
 const abgeleitet: Record<Blatt, UmrissPunkt[] | null> = { front: null, top: null };
 
 /** Gleichwertige Ansichten: der Körper aus allen drei Umrissen, als Netz in der Form des runden Baus (noch ohne Linien). */
-function gleichBauen(a: Ansichten, fein: boolean): { n: DichtesNetz; ellipsoide: Record<'seite' | 'front' | 'top', number> } {
+function gleichBauen(
+  a: Ansichten,
+  fein: boolean,
+  fuehrend: 'seite' | Blatt | null = null,
+): { n: DichtesNetz; ellipsoide: Record<'seite' | 'front' | 'top', number>; g: GleichesNetz } {
   const g = formAusAnsichten(
     { seite: [zustand.punkte, ...a.seite], front: a.front, top: a.top },
-    { dreiecke: fein ? DREIECKE_FEIN : DREIECKE_ZUG },
+    { dreiecke: fein ? DREIECKE_FEIN : DREIECKE_ZUG, fuehrend },
   );
   let xMin = Infinity;
   let xMax = -Infinity;
@@ -425,7 +456,31 @@ function gleichBauen(a: Ansichten, fein: boolean): { n: DichtesNetz; ellipsoide:
     tiefe: null,
     linienZ: [],
   };
-  return { n, ellipsoide: g.ellipsoide };
+  return { n, ellipsoide: g.ellipsoide, g };
+}
+
+/**
+ * Probe „Linien aus dem Netz“: Die Ansichten, die Florian nicht bearbeitet hat, zeigen danach den Umriss des Körpers. Punkte,
+ * deren Linie noch auf ihm liegt, bleiben bitgleich; nur dazwischen werden Punkte neu gesetzt.
+ */
+function ansichtenNachfuehren(g: GleichesNetz, fuehrend: 'seite' | Blatt): void {
+  const tol = Math.max(1, 0.5 * g.zelle);
+  letzteNachfuehrung = {};
+  for (const b of ['seite', 'front', 'top'] as const) {
+    if (b === fuehrend) continue;
+    const alt = b === 'seite' ? zustand.punkte : zustand[b];
+    const schleife = umrisseDesKoerpers(g.liste, b, g.zelle / 2)[0];
+    if (!alt || !schleife) continue;
+    const ziel = b === 'seite' ? schleife : halbeLinie(schleife, b);
+    if (!ziel) continue;
+    const { punkte, ...info } = linieNachfuehren(alt, ziel, b, tol);
+    letzteNachfuehrung[b] = info;
+    if (punkte === alt) continue;
+    if (b === 'seite') zustand.punkte = punkte;
+    else zustand[b] = punkte;
+    // eine gewählte Punktnummer gilt in einer nachgeführten Ansicht nicht mehr
+    if ((auswahl?.art === 'umriss' && b === 'seite') || (auswahl?.art === 'profil' && auswahl.blatt === b)) auswahl = null;
+  }
 }
 
 /**
@@ -483,11 +538,22 @@ function bauen(fein: boolean): void {
       const s = r.ansichten.seite;
       if (!front) front = abgeleitet.front = ausBreiten('front', profilAusBreite(r.ansichten.front, s.yMin, s.yMax, 3), s.yMin, s.yMax);
       if (!top) top = abgeleitet.top = ausBreiten('top', profilAusBreite(r.ansichten.top, s.xMin, s.xMax, 3), s.xMin, s.xMax);
+      // mit `?netz` übernommen: ab jetzt wird auch diese Ansicht dem Mesh nachgeführt
+      if (NETZ) {
+        zustand.front = front.map((q) => ({ ...q }));
+        zustand.top = top.map((q) => ({ ...q }));
+      }
     }
-    gleich = gleichBauen({ seite: [], front: [ganz('front', front)], top: [ganz('top', top)] }, fein);
+    gleich = gleichBauen({ seite: [], front: [ganz('front', front)], top: [ganz('top', top)] }, fein, NETZ ? fuehrung : null);
     n = gleich.n;
+    // Probe „Linien aus dem Netz“: nach dem Loslassen zeigen die anderen Ansichten das Mesh
+    if (NETZ && fein && fuehrung) {
+      ansichtenNachfuehren(gleich.g, fuehrung);
+      fuehrung = null;
+    }
   }
   const ms = performance.now() - t0;
+  letztesGleich = gleich?.g ?? null;
   geometrieSetzen(n);
   if (fein && !kameraBewegt) einrahmen();
   letzteTiefe = n.tiefe;
@@ -506,6 +572,8 @@ function bauen(fein: boolean): void {
     zelle: n.zelle,
     fein,
     ellipsoide: gleich?.ellipsoide ?? null,
+    netz: NETZ,
+    nachgefuehrt: letzteNachfuehrung,
   };
   neuZeichnen = true;
 }
@@ -543,8 +611,8 @@ function rendern(): void {
     kamera.updateProjectionMatrix();
     // in der Seite sind die gezeichneten Linien selbst zu sehen; der Shader zeichnet Umriss und Linien in den anderen Blättern
     const andere = name !== 'seite';
-    // mit gleichwertigen Ansichten zeigt auch die Seite den Umriss des Modells (über der Zeichnung)
-    umriss.visible = andere || zustand.ansichten !== null;
+    // mit gleichwertigen Ansichten zeigt auch die Seite den Umriss des Modells (über der Zeichnung), mit `?netz` immer
+    umriss.visible = andere || zustand.ansichten !== null || NETZ;
     kanten.visible = andere;
     kantenHinten.visible = andere;
     umrissMaterial.uniforms.uAufloesung!.value.set(r.width * dpr, r.height * dpr);
@@ -605,8 +673,10 @@ function svgZeichnen(): void {
   svg.replaceChildren();
   const treffer = element('path', 'treffer', { d });
   treffer.dataset.linie = '';
-  // gleichwertige Ansichten: die Zeichnung farbig, der Umriss des Modells (Shader) schwarz darüber
-  svg.append(treffer, element('path', zustand.ansichten ? 'vorgabe' : 'linie', { d }));
+  // gleichwertige Ansichten: die Zeichnung farbig, der Umriss des Modells (Shader) schwarz darüber; mit `?netz` zeichnet nur
+  // der Shader, die Punkte sind Griffe auf seiner Linie
+  svg.append(treffer);
+  if (!NETZ) svg.append(element('path', zustand.ansichten ? 'vorgabe' : 'linie', { d }));
   for (const u of zustand.ansichten?.seite ?? []) svg.append(element('path', 'vorgabe', { d: umrissPfad(u, (q) => [q.x, -q.y]) }));
   const rp = 5 / s;
   // gezeichnete Linien: Trefferband, Strich, Punkte der gewählten Linie
@@ -753,6 +823,7 @@ svg.addEventListener('pointerdown', (e) => {
   if (d.punkt !== undefined) {
     const i = Number(d.punkt);
     auswahl = { art: 'umriss', i };
+    fuehrt('seite');
     if (doppelklick(`u${i}`) || e.altKey) {
       umrissEcke(i);
       return;
@@ -770,6 +841,7 @@ svg.addEventListener('pointerdown', (e) => {
     auswahl = { art: 'linie', l: Number(d.kante) };
   } else if (d.linie !== undefined) {
     const vorher = kopie(zustand);
+    fuehrt('seite');
     const st = naechsteStelle(welt(e));
     zustand.punkte.splice(st.i + 1, 0, { x: st.x, y: st.y });
     merken(vorher);
@@ -867,12 +939,14 @@ const profilWelt = (b: Blatt, e: { clientX: number; clientY: number }): [number,
   return ausBlatt(b, (e.clientX - r.left - r.width / 2) / s, (e.clientY - r.top - r.height / 2) / s);
 };
 
-/** Die Ansicht zum Bearbeiten: folgt sie noch dem Körper, wird sie jetzt übernommen. */
+/**
+ * Die Ansicht zum Bearbeiten: folgt sie noch dem Körper, wird sie jetzt übernommen (mit `?netz` Front und Top zugleich — beide
+ * zeigen ab dann das Mesh und werden ihm nachgeführt).
+ */
 function profilFesthalten(b: Blatt): UmrissPunkt[] | null {
-  if (!zustand[b]) {
-    const a = abgeleitet[b];
-    if (!a) return null;
-    zustand[b] = a.map((q) => ({ ...q }));
+  for (const c of NETZ ? (['front', 'top'] as const) : [b]) {
+    const a = abgeleitet[c];
+    if (!zustand[c] && a) zustand[c] = a.map((q) => ({ ...q }));
   }
   return zustand[b];
 }
@@ -895,6 +969,8 @@ function ausdehnung(u: readonly UmrissPunkt[], k: 'x' | 'y'): { lo: number; hi: 
  * Füßen wäre die Wahl geraten und zöge ein Bein hoch).
  */
 function koppeln(quelle: 'seite' | Blatt, i: number): void {
+  // mit `?netz` folgen die anderen Ansichten dem Mesh selbst
+  if (NETZ) return;
   const liste = (v: 'seite' | Blatt): UmrissPunkt[] | null => (v === 'seite' ? zustand.punkte : zustand[v]);
   type Achse = ['seite' | Blatt, 'x' | 'y'];
   // gemeinsame Achsen; die Breite z nur nach außen (innen liegt die Mittelachse)
@@ -983,7 +1059,7 @@ function profilZeichnen(b: Blatt): void {
   }
   // gezeichnet: die Hälfte als Linie, die Spiegelhälfte leiser; folgt die Ansicht noch dem Körper, zeigt der Shader den Umriss
   // und hier stehen nur die Punkte
-  if (zustand[b]) {
+  if (zustand[b] && !NETZ) {
     el.append(element('path', 'spiegel', { d: pfad(halb.length - 1, stuecke.length) }));
     el.append(element('path', 'linie', { d: pfad(0, halb.length - 1) }));
   }
@@ -1058,6 +1134,7 @@ for (const b of ['front', 'top'] as const) {
     } else if (d.ppunkt !== undefined) {
       const i = Number(d.ppunkt.split(':')[1]);
       auswahl = { art: 'profil', blatt: b, i };
+      fuehrt(b);
       if (doppelklick(`${b}${i}`) || e.altKey) {
         merken(vorher);
         const q = profilFesthalten(b)!;
@@ -1071,6 +1148,7 @@ for (const b of ['front', 'top'] as const) {
     } else if (d.profil !== undefined) {
       const st = profilStelle(b, profilWelt(b, e));
       if (!st) return;
+      fuehrt(b);
       merken(vorher);
       profilFesthalten(b)!.splice(st.i + 1, 0, halbPunkt(b, st.l, st.q));
       auswahl = { art: 'profil', blatt: b, i: st.i + 1 };
@@ -1138,6 +1216,8 @@ window.addEventListener('keydown', (e) => {
     nach.push(kopie(zustand));
     zustand = stand;
     auswahl = null;
+    // ein gemerkter Stand zeigt schon das Mesh: keine Ansicht führt
+    fuehrung = null;
     geaendert();
     return;
   }
@@ -1166,12 +1246,14 @@ window.addEventListener('keydown', (e) => {
     if (a.art === 'umriss') {
       if (zustand.punkte.length <= 3) return;
       merken(kopie(zustand));
+      fuehrt('seite');
       zustand.punkte = zustand.punkte.filter((_, j) => j !== a.i);
     } else if (a.art === 'profil') {
       // Anfang und Ende auf der Achse bleiben, mindestens ein Punkt dazwischen
       const p = profilVon(a.blatt);
       if (!p || a.i === 0 || a.i === p.length - 1 || p.length <= 3) return;
       merken(kopie(zustand));
+      fuehrt(a.blatt);
       profilFesthalten(a.blatt)?.splice(a.i, 1);
     } else {
       merken(kopie(zustand));
@@ -1248,6 +1330,22 @@ window.__formPruefall = (name) => {
   auswahl = null;
   geaendert();
 };
+window.__formAbstand = () => {
+  const g = letztesGleich;
+  if (!g) return null;
+  const r = { seite: Number.NaN, front: Number.NaN, top: Number.NaN };
+  for (const b of ['seite', 'front', 'top'] as const) {
+    const linie = b === 'seite' ? zustand.punkte : profilVon(b);
+    const schleife = umrisseDesKoerpers(g.liste, b, g.zelle / 2)[0];
+    const ziel = schleife && (b === 'seite' ? schleife : halbeLinie(schleife, b));
+    if (linie && ziel) r[b] = linienAbstand(linie, b, ziel);
+  }
+  return r;
+};
+if (NETZ) {
+  const kopf = felder.seite.querySelector('header');
+  if (kopf) kopf.textContent = 'Seite · Linien aus dem Netz';
+}
 // ?fall=kugel|beine|flossen|lappen|innen öffnet einen Prüffall für gleichwertige Ansichten
 const fallAusAdresse = new URLSearchParams(location.search).get('fall');
 if (fallAusAdresse && fallAusAdresse in PRUEFFAELLE) window.__formPruefall(fallAusAdresse as Prueffall);

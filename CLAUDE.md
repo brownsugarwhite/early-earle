@@ -597,6 +597,26 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   vier gleich tiefen Füßen ein Bein hoch (deshalb nur bei genau einem); eine Ansicht, die dem Körper folgt, hat ihren untersten
   Punkt auf der Mittelachse bei den Füßen der Seite — beim Übernehmen erst hinauf an den Bauch ziehen, sonst steht dort ein
   fünftes Bein. Bilder `docs/progress/editor/form-{beine,flossen}-ziehen-2026-11-04.jpg`.
+- **2026-11-04 (nachmittags): Probe „Linien aus dem Netz“** (Florian: „… weicht stark von der Outline ab, was eigentlich nicht
+  passieren sollte, da jede Ansicht und Outline das echte Mesh zeigt. Ist es sogar möglich, die Linien und Kanten ganz gegen
+  Shader auszutauschen …? Kannst du das mal auf die Probe stellen und recherchieren und mir eine ehrliche Prognose geben …“).
+  Befund: widersprüchliche Ansichten → Schnittmenge (sein Kopf reicht in der Seite über die gezeichnete Front, die großen
+  Kreise fallen weg, Seite 41 Einheiten neben dem Mesh). Gebaut hinter `form.html?netz`: alle Umrisse vom Shader (auch die
+  Seite), seine Punkte sind Griffe darauf; die bearbeitete Ansicht führt (`GleichOptionen.fuehrend`: Ansichten ohne Platz für
+  einen Kreis reden bei ihm nicht mit, ohne Führung bitgleich), die anderen werden dem Mesh nachgeführt (`dicht/silhouette.ts`:
+  echter Umriss = Rand der Vereinigung der projizierten Ellipsen; `dicht/folgen.ts`: Punkte bleiben bitgleich, wo ihr Stück auf
+  dem Umriss liegt, sonst neue Punkte gierig + ausgedünnt, Ecken des Umrisses werden Ecken; die Kopplung äußerster Punkte ist mit
+  `?netz` aus). Mit der Maus gemessen: Seite 40,9 → 1,5, alle Ansichten danach ≤ 3,2 Einheiten (Zelle 4,76); Flosse im Top: Seite
+  bitgleich, Front 4 neue Punkte; 5 Runden ohne Änderung bitgleich, ohne Führung neu gebaut dasselbe. Kanten: Der Shader zeichnet
+  sie, findet weiche aber nicht (≤ 10° gegen 105° bei 3 px) → bleiben gespeicherte Linien. Offen: Kerben der Vereinigung (weiche
+  Vereinigung), eckige Füße werden rund, Kanten in gleichwertigen Ansichten samt Treffpunkten, Griffe auf inneren Linien, Lage der
+  automatischen Punkte (Geschmack), Nachführen ohne Beschleunigung (Loslassen 1,3–1,5 s beim großen Vierbeiner). Bericht
+  [`docs/research/2026-11-04-linien-aus-dem-netz.md`](docs/research/2026-11-04-linien-aus-dem-netz.md), Bilder
+  `docs/progress/editor/form-netz-*-2026-11-04.jpg`, Prüfungen `scripts/pruefen/form-netz-probe.mjs` (Maus im Fenster),
+  `form-netzlinien.ts` (Kern), Test `dicht/folgen.test.ts`. Fallen: Abstände Linie ↔ Umriss nie zu Probenpunkten messen (auf
+  langen Stücken liegen die Proben bis zur halben Probenweite auseinander → falsche Läufe, 53 neue Punkte statt 0), sondern zur
+  dicht abgetasteten Linie (`kurvenLinie`); Marching Squares mit dem Inneren links, jeden Fall einzeln herleiten; je Runde nur
+  einen Lauf ersetzen (danach gelten die Nummern nicht mehr).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
