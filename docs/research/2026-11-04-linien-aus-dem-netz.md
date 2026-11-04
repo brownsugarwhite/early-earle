@@ -100,7 +100,42 @@ die Schattierung ist fleckig. Das ist die Vereinigung vieler Ellipsoide, die die
 
 ## 4. Recherche
 
-(folgt aus der Recherche-Session, siehe unten)
+**Linien aus dem Netz sind Stand der Technik:**
+- Konturen, Kanten und Stoßpunkte lassen sich aus Netzen gewinnen. Für die Darstellung ist das gelöst, mit Breite nach
+  Stärke, verdeckt und gestrichelt (Bénard & Hertzmann, „Line Drawings from 3D Models“, 2019, <https://arxiv.org/abs/1810.01175>;
+  Blender Freestyle und Line Art: Kantenarten Silhouette, Crease nach Winkel und gespeicherte Edge Marks).
+- Unser Shader ist das Rückseiten-Verfahren (Raskar & Cohen 1999): genau und mit konstanter Breite, aber nur Pixel, keine
+  Kurve. Griffe brauchen eine Kurve, wie die Probe sie aus dem Körper holt.
+- Weiche Wülste lassen sich nicht finden. Kammlinien brauchen hohe Ableitungen und finden jede Wölbung (Ohtake u. a. 2004).
+  Pixar speichert die steuernden Linien deshalb auf der Fläche, statt sie zu extrahieren (de Goes u. a., „Character
+  Articulation through Profile Curves“, 2022). Das passt zu „Kanten bleiben gespeicherte Linien“.
+
+**Bearbeiten über den Umriss gibt es, aber immer nur in einer Ansicht:**
+- Belege: Nealen u. a. 2005 (Laplace, das Gleiten des Umrisses bleibt unberücksichtigt), SilSketch 2007, Pixar „Silhouette
+  Sketching on Inside Out“ 2015 (in Hunderten Einstellungen eingesetzt), FiberMesh 2007 (der gezeichnete Umriss bleibt als Griff
+  auf der Fläche).
+- Wer das Gleiten sauber löst (Kraevoy u. a. 2009, Cashman & Fitzgibbon 2013), braucht Minuten bis Stunden.
+- Unsere Lage beschreibt Rivers u. a., „3D Modeling with Silhouettes“, 2010: Bei widersprüchlichen Silhouetten setzt sich die
+  strengere durch. Das ist genau die heutige Schnittmenge. ZBrush ShadowBox macht es ebenso.
+
+**Nicht gefunden:** ein System, in dem drei gekoppelte Orthoansichten den echten Umriss mit dauerhaften Griffen zeigen und eine
+Regel sagt, welche Ansicht beim Ziehen nachgibt. Auch kein Werkzeug am Markt ändert die Form über Griffe am Umriss (Plasticity,
+Inventor, Project Neo, Spline, Womp, Gravity Sketch, Nomad). Die Probe ist in dieser Form neu.
+
+**Stabile Griffe:** Linien, die bei jedem Bau neu gefittet werden, springen; ihre Punktzahl und Ecken hängen an Schwellen (Potrace
+2003, Schneider 1990, Illustrator Image Trace). Abhilfe aus der Forschung zu Strichen: die Linien weiterführen statt neu fitten
+(Kalnins u. a. 2003, Bénard u. a., „Active Strokes“, 2012). Genau das tut das Nachführen: Punkte, deren Stück noch passt, bleiben
+bitgleich.
+
+**Risiken aus der Recherche, mit unserem Stand:**
+1. „Die Abweichung wandert nur: Griff ≠ Mauszeiger, weil der Umriss gleitet“: Bei uns ist die bearbeitete Ansicht selbst die
+   Eingabe; ihr Umriss liegt auf ihrer Linie (gemessen 1,3–3,2 Einheiten). Der Griff bleibt unter dem Zeiger.
+2. „Ansichten teilen Maße, ein Zug ändert die anderen“: gewollt, und die Regel sagt, wer nachgibt.
+3. „Griffe entstehen und verschwinden, wenn sich die Topologie ändert“: offen. Die Probe nimmt je Ansicht nur den größten
+   Umriss; ein abgetrenntes Stück oder ein Loch hat noch keine Griffe.
+4. „Weiche Kanten lassen sich nicht extrahieren“: bestätigt, deshalb gespeicherte Linien.
+5. „Surface Nets vernetzt jedes Mal neu, also gehen keine vorab gerechneten Löser; Griffe besser auf die wenigen Formgrößen
+   abbilden“: So ist es gebaut. Die Griffe sind die Zeichnungen, aus denen der Körper entsteht.
 
 ## 5. Ehrliche Prognose
 
@@ -109,7 +144,9 @@ Logik, aber als gespeicherte Linien, die der Shader zeichnet, nicht als Linien, 
 
 **Ist es die elegante Lösung?** Für „Linie und Mesh weichen ab“: ja. Widersprüche zwischen den Ansichten kann es nicht mehr
 geben, weil keine Ansicht etwas anderes zeigt als das Mesh. Statt Schnittmenge, Kopplung und „gezeichnet oder folgt“ gibt es
-eine Regel. Nichts davon nennt einen Körperteil oder eine Lage.
+eine Regel. Nichts davon nennt einen Körperteil oder eine Lage. Laut Recherche hat das in dieser Form noch niemand gebaut. Die
+Bausteine (Linien aus dem Netz, Bearbeiten am Umriss, weitergeführte statt neu gefittete Linien) sind aber jeder für sich
+erprobt.
 
 **Was es nicht löst, ehrlich:**
 
