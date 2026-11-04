@@ -12,7 +12,7 @@
 // Gezeichnete Linien bleiben danach, wo sie gezeichnet wurden, und die Form wächst zu ihnen (`kanten.ts`).
 
 import type { V2 } from '../bezier';
-import { type Ansichtsbreite, type BreitenPunkt, profilBreite, tiefeAnpassen, tiefeAnwenden } from './ansichten';
+import { type Ansichtsbreite, type BreitenPunkt, type Tiefenstreckung, profilBreite, tiefeAnpassen, tiefeAnwenden } from './ansichten';
 import { Umrissfeld } from './abstand';
 import { type Kante3D, type KantenLinie, kantenAnwenden } from './kanten';
 import { Kugeln, kugelRadien } from './kugeln';
@@ -30,6 +30,10 @@ export type DichtesNetz = {
   kanten: Kante3D[];
   /** Umrisse von Front (halbe Breite je Höhe) und Top (je Stelle längs) des Körpers ohne Wülste, und die Ausdehnung der Seite */
   ansichten: { front: Ansichtsbreite; top: Ansichtsbreite; seite: { xMin: number; xMax: number; yMin: number; yMax: number } };
+  /** Streckung der Tiefe durch Front und Top (ohne beide: null) */
+  tiefe: Tiefenstreckung | null;
+  /** je Linie: Tiefe ihrer Punkte vor der Streckung (gezogen oder auf dem Körper) */
+  linienZ: Float64Array[];
 };
 
 export type RundOptionen = {
@@ -391,7 +395,8 @@ export function rundAusSeite(punkte: readonly UmrissPunkt[], opt: RundOptionen =
   const linien = opt.linien ?? [];
   const bezug = linien.map((l) => bezugKugeln(l, punkte, zelle, kugeln));
   const hub = new Float32Array(n);
-  const kanten = kantenAnwenden(positionen, normalen, indizes, linien, kugeln, zelle, bezug, hub);
+  const linienZ: Float64Array[] = linien.map(() => new Float64Array(0));
+  const kanten = kantenAnwenden(positionen, normalen, indizes, linien, kugeln, zelle, bezug, hub, linienZ);
   if (hub.some((h) => h > 0)) hautNormalen(positionen, normalen, indizes, hub, zelle);
 
   // Front und Top: die Tiefe strecken, bis die Umrisse dort die gezeichneten Profile treffen (Seite bleibt, wie sie ist)
@@ -417,5 +422,5 @@ export function rundAusSeite(punkte: readonly UmrissPunkt[], opt: RundOptionen =
     top: { r0: x0, dr: zelle, breite: tiefe.top },
     seite: { xMin, xMax, yMin, yMax },
   };
-  return { positionen, normalen, indizes, zelle, umriss: P, kanten, ansichten };
+  return { positionen, normalen, indizes, zelle, umriss: P, kanten, ansichten, tiefe: sollFront || sollTop ? tiefe.streckung : null, linienZ };
 }

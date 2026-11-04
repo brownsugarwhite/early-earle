@@ -14,7 +14,12 @@ import type { V2 } from '../bezier';
 import type { Kugeln } from './kugeln';
 import { type UmrissPunkt, linienStuecke, punktAufStueck } from './umriss';
 
-export type KantenPunkt = UmrissPunkt & { breite: number };
+/**
+ * Ein Punkt einer Linie: Lage in der Seite (x, y), Strichbreite, und — sobald Florian ihn in einer Ansicht gezogen hat — seine
+ * Tiefe z (≥ 0, auf der Seite z ≥ 0, vor der Streckung durch Front und Top). Ohne z liegt der Punkt auf dem Körper. Jede
+ * Ansicht bewegt nur ihre beiden Achsen: die Seite x und y, die Front z und y, das Top x und z.
+ */
+export type KantenPunkt = UmrissPunkt & { breite: number; z?: number };
 export type KantenLinie = {
   punkte: KantenPunkt[];
   /**
@@ -23,8 +28,8 @@ export type KantenLinie = {
    */
   bezug?: readonly UmrissPunkt[];
 };
-/** Eine Linie im Raum (eine Seite), zum Zeichnen: Lagen (x, y, z) und Strichbreite je Probe. */
-export type Kante3D = { lagen: Float32Array; breite: Float32Array };
+/** Eine Linie im Raum (eine Seite), zum Zeichnen: Lagen (x, y, z) und Strichbreite je Probe; `linie` = Nummer der Linie. */
+export type Kante3D = { lagen: Float32Array; breite: Float32Array; linie: number };
 
 /** Strichbreite einer ganz scharfen Kante (px) */
 export const BREITE_MAX = 3;
@@ -90,13 +95,15 @@ function huelle(R: number, delta: number, rho: number, cosT: number, sinT: numbe
 
 /**
  * Die Linie als Polylinie mit Abstand ≈ s und der Strichbreite je Probe; an den Enden läuft sie aus (`roh`: wie gesetzt, ohne
- * Auslaufen).
+ * Auslaufen). `stueck` und `t`: zwischen welchen Punkten (i, i + 1) und wo dazwischen die Probe liegt.
  */
-export function linieAbtasten(l: KantenLinie, s: number): { p: V2[]; breite: number[]; roh: number[] } {
+export function linieAbtasten(l: KantenLinie, s: number): { p: V2[]; breite: number[]; roh: number[]; stueck: number[]; t: number[] } {
   const pk = l.punkte;
-  if (pk.length < 2) return { p: [], breite: [], roh: [] };
+  if (pk.length < 2) return { p: [], breite: [], roh: [], stueck: [], t: [] };
   const p: V2[] = [];
   const breite: number[] = [];
+  const stueck: number[] = [];
+  const tt: number[] = [];
   const lauf: number[] = [];
   let summe = 0;
   const st = linienStuecke(pk);
@@ -111,6 +118,8 @@ export function linieAbtasten(l: KantenLinie, s: number): { p: V2[]; breite: num
       p.push(q);
       lauf.push(summe);
       breite.push(pk[i]!.breite + ((pk[i + 1]!.breite - pk[i]!.breite) * j) / n);
+      stueck.push(i);
+      tt.push(j / n);
     }
   });
   const roh = breite.slice();
@@ -119,7 +128,7 @@ export function linieAbtasten(l: KantenLinie, s: number): { p: V2[]; breite: num
     const t = Math.min(1, lauf[i]! / ende, (summe - lauf[i]!) / ende);
     breite[i] = breite[i]! * t * (2 - t);
   }
-  return { p, breite, roh };
+  return { p, breite, roh, stueck, t: tt };
 }
 
 /** Reichweite einer Zone w mit Rundung: σ = √(s² + ε²) − ε erreicht w erst bei s = √((w + ε)² − ε²). */
@@ -182,6 +191,8 @@ export function kantenAnwenden(
   bezug: readonly Kugeln[] = [],
   /** je Punkt: wie weit die Haut ihn von der Form abgehoben hat (Wulst oder Rinne), wird hier gefüllt */
   hub?: Float32Array,
+  /** je Linie: Tiefe jedes ihrer Punkte (gezogen oder auf dem Körper), wird hier gefüllt */
+  linienZ?: Float64Array[],
 ): Kante3D[] {
   const kanten: Kante3D[] = [];
   const pr: number[] = [];
@@ -190,15 +201,39 @@ export function kantenAnwenden(
   let abseits = false;
   linien.forEach((l, li) => {
     const ref = bezug[li] ?? kugeln;
-    const { p, breite, roh } = linieAbtasten(l, zelle / 2);
+    const { p, breite, roh, stueck, t } = linieAbtasten(l, zelle / 2);
     if (p.length < 2) return;
+    // die Linie an Ort und Stelle: auf dem Körper beim Zeichnen (außerhalb von ihm auf der Mittelebene); ein gezogener Punkt
+    // hat seine eigene Tiefe, dazwischen folgt die Linie dem Körper plus dem Versatz der Punkte (glatt, an Ecken mit Knick)
+    const pk = l.punkte;
+    const n = pk.length;
+    const aufKoerper = (x: number, y: number): number => {
+      const g = ref.g(x, y);
+      return g > 0 ? Math.sqrt(g) : 0;
+    };
+    const zp = new Float64Array(n);
+    const dz = new Float64Array(n);
+    pk.forEach((q, i) => {
+      const k = aufKoerper(q.x, q.y);
+      zp[i] = q.z ?? k;
+      dz[i] = q.z === undefined ? 0 : q.z - k;
+    });
+    if (linienZ) linienZ[li] = zp;
+    const steigung = (i: number, nach: boolean): number => {
+      if (pk[i]!.ecke || i === 0 || i === n - 1) return nach ? dz[Math.min(n - 1, i + 1)]! - dz[i]! : dz[i]! - dz[Math.max(0, i - 1)]!;
+      return (dz[i + 1]! - dz[i - 1]!) / 2;
+    };
     const lagen = new Float32Array(3 * p.length);
-    p.forEach((q, i) => {
-      // die Linie an Ort und Stelle: auf dem Körper beim Zeichnen, außerhalb von ihm auf der Mittelebene
-      const g = ref.g(q.x, q.y);
-      lagen[3 * i] = q.x;
-      lagen[3 * i + 1] = q.y;
-      lagen[3 * i + 2] = g > 0 ? Math.sqrt(g) : 0;
+    p.forEach((q, k) => {
+      const i = stueck[k]!;
+      const s = t[k]!;
+      const s2 = s * s;
+      const s3 = s2 * s;
+      const versatz =
+        (2 * s3 - 3 * s2 + 1) * dz[i]! + (s3 - 2 * s2 + s) * steigung(i, true) + (-2 * s3 + 3 * s2) * dz[i + 1]! + (s3 - s2) * steigung(i + 1, false);
+      lagen[3 * k] = q.x;
+      lagen[3 * k + 1] = q.y;
+      lagen[3 * k + 2] = Math.max(0, aufKoerper(q.x, q.y) + versatz);
     });
     // für die Form reicht jede zweite Probe (die Strecken dazwischen werden genau gerechnet)
     const auswahl: number[] = [];
@@ -230,7 +265,7 @@ export function kantenAnwenden(
     const spiegel = lagen.slice();
     for (let i = 2; i < spiegel.length; i += 3) spiegel[i] = -spiegel[i]!;
     const br = new Float32Array(breite);
-    kanten.push({ lagen, breite: br }, { lagen: spiegel, breite: br });
+    kanten.push({ lagen, breite: br, linie: li }, { lagen: spiegel, breite: br, linie: li });
   });
   const np = pr.length / S;
   if (np === 0) return kanten;

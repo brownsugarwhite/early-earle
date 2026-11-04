@@ -547,6 +547,17 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Streckung a · b, als leichte Doppellinie sichtbar); Zug 14–16 ms, Loslassen 0,16 s. Falle: Ein gezogener Punkt, der über
   seinen Nachbarn rutscht, faltet das Profil — die Schleife wird über die ganze Höhe eine Kante im Körper. Bild
   `docs/progress/editor/form-zuerst-front-top-2026-11-04.jpg` (`scripts/pruefen/form-ansichten.mjs`).
+- **2026-11-04 (abends, danach): Linien in allen drei Ansichten, jede Ansicht gelockt** (Florian: „Kannst du die Linienkanten
+  auch von der Top- und Frontansicht bearbeitbar machen? … wenn ich sie seitlich nach oben bewege, rutscht sie an der
+  Topansicht zur Mitte. Sie soll aber nur in der Seitenansicht bewegt werden. … Immer die Ansicht locken … Dadurch kann ich
+  schöne Kanten und Wülste erstellen.“). Ein Linienpunkt hat, sobald er gezogen wurde, seine eigene Tiefe (`KantenPunkt.z`, vor
+  der Streckung durch Front/Top); die Seite bewegt nur x/y, die Front y/z, das Top x/z. Ungezogene Punkte liegen auf dem
+  Körper; dazwischen folgt die Linie dem Körper plus dem Versatz der Punkte (Hermite, an Ecken mit Knick). Verlässt ein Punkt
+  die Form, wächst sie zu ihm (Haut wie bei der Wulst). In Front und Top: Linie anklicken (Trefferband beider Seiten), Punkte
+  der gewählten Linie ziehen, Doppelklick Ecke, Strichdicke und ⌫ wie in der Seite. Kern liefert `linienZ` (Tiefe je Punkt) und
+  die Streckung `tiefe`; das Fenster rechnet damit zwischen den Ansichten (`streckungBei`). Gemessen: Seite hoch → z bleibt
+  137,6; Front → nur z; Top → nur x. Bild `docs/progress/editor/form-zuerst-linien-ansichten-2026-11-04.jpg`
+  (`scripts/pruefen/form-linien-ansichten.mjs`).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

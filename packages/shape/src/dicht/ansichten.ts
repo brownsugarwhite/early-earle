@@ -190,6 +190,16 @@ function kubisch(f: Float64Array, u: number, aus: [number, number]): void {
   aus[1] = 0.5 * (c1 + 2 * c2 * t + 3 * c3 * t * t);
 }
 
+/** Streckung der Tiefe an der Stelle (x, y) der Seite (ohne Front und Top: 1). */
+export function streckungBei(s: Tiefenstreckung | null, x: number, y: number): number {
+  if (!s) return 1;
+  const A: [number, number] = [0, 0];
+  const B: [number, number] = [0, 0];
+  kubisch(s.a, (x - s.x0) / s.d, A);
+  kubisch(s.b, (y - s.y0) / s.d, B);
+  return A[0] * B[0];
+}
+
 /**
  * Streckt die Tiefe: z → s · z mit s = a(x) · b(y). Normalen mit der inversen transponierten Ableitung der Abbildung:
  * n → (nx − sₓ z / s · nz, ny − s_y z / s · nz, nz / s).

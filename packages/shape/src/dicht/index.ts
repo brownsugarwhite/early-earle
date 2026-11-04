@@ -11,6 +11,7 @@ export {
   profilAusBreite,
   profilBreite,
   profilUmriss,
+  streckungBei,
   tiefeAnpassen,
   tiefeAnwenden,
 } from './ansichten';

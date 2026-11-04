@@ -18,6 +18,7 @@ import {
   profilUmriss,
   punktAufStueck,
   rundAusSeite,
+  streckungBei,
   umrissAbtasten,
   umrissStuecke,
 } from '@ee/shape/dicht';
@@ -349,6 +350,17 @@ function kantenGeometrie(liste: readonly Kante3D[]): BufferGeometry {
 
 /** Umrisse von Front und Top des letzten Baus samt Ausdehnung der Seite; daraus die Profile, solange sie dem Körper folgen */
 let ansichten: DichtesNetz['ansichten'] | null = null;
+/** aus dem letzten Bau: Streckung der Tiefe, Tiefe der Linienpunkte, Linien im Raum (für Front und Top) */
+let letzteTiefe: DichtesNetz['tiefe'] = null;
+let letzteLinienZ: Float64Array[] = [];
+let letzteKanten: readonly Kante3D[] = [];
+/** Tiefe eines Linienpunkts, wie Front und Top sie zeigen (gestreckt); unbekannt, solange die Linie noch nicht gebaut ist */
+function linienTiefe(l: number, i: number): number | null {
+  const p = zustand.linien[l]?.punkte[i];
+  if (!p) return null;
+  const z = p.z ?? letzteLinienZ[l]?.[i];
+  return z === undefined ? null : z * streckungBei(letzteTiefe, p.x, p.y);
+}
 const abgeleitet: Record<Blatt, BreitenPunkt[] | null> = { front: null, top: null };
 
 let bauGewuenscht: 'grob' | 'fein' | null = 'fein';
@@ -364,6 +376,9 @@ function bauen(fein: boolean): void {
   geometrieSetzen(n);
   if (fein && !kameraBewegt) einrahmen();
   ansichten = n.ansichten;
+  letzteTiefe = n.tiefe;
+  letzteLinienZ = n.linienZ;
+  letzteKanten = n.kanten;
   const s = n.ansichten.seite;
   // auf etwa 2 px genau, höchstens 6 Punkte: wenige Punkte zum Greifen statt einer Perlenkette
   abgeleitet.front = profilAusBreite(n.ansichten.front, s.yMin, s.yMax, 3);
@@ -595,7 +610,8 @@ function breiteSetzen(f: (b: number) => number): void {
 
 type Zug =
   | { art: 'umriss'; i: number; vorher: Zustand; bewegt: boolean }
-  | { art: 'lpunkt'; l: number; i: number; vorher: Zustand; bewegt: boolean }
+  // zEnde: Tiefe des Punkts zu Beginn (gestreckt, wie Front und Top sie zeigen); die Seite bewegt nur x und y
+  | { art: 'lpunkt'; l: number; i: number; vorher: Zustand; bewegt: boolean; zEnde: number | null }
   | { art: 'zeichnen'; spur: { x: number; y: number }[]; vorher: Zustand };
 let zug: Zug | null = null;
 // Doppelklick selbst zählen: die Punkte werden beim Drücken neu gezeichnet, das dblclick-Ziel ist dann weg
@@ -625,7 +641,7 @@ svg.addEventListener('pointerdown', (e) => {
       linienEcke(l, i);
       return;
     }
-    zug = { art: 'lpunkt', l, i, vorher: kopie(zustand), bewegt: false };
+    zug = { art: 'lpunkt', l, i, vorher: kopie(zustand), bewegt: false, zEnde: linienTiefe(l, i) };
   } else if (d.kante !== undefined) {
     auswahl = { art: 'linie', l: Number(d.kante) };
   } else if (d.linie !== undefined) {
@@ -668,7 +684,9 @@ svg.addEventListener('pointermove', (e) => {
   } else {
     const l = zustand.linien[zug.l]!;
     const p = l.punkte[zug.i]!;
-    l.punkte[zug.i] = { ...p, x: w.x, y: w.y };
+    // die Tiefe bleibt (in Front und Top steht der Punkt still in z), die Form wächst zu ihm, wo er sie verlässt
+    l.punkte[zug.i] =
+      zug.zEnde === null ? { ...p, x: w.x, y: w.y } : { ...p, x: w.x, y: w.y, z: zug.zEnde / streckungBei(letzteTiefe, w.x, w.y) };
   }
   geaendert(false);
 });
@@ -785,6 +803,17 @@ function profilZeichnen(b: Blatt): void {
   const treffer = element('path', 'treffer', { d });
   treffer.dataset.profil = b;
   el.append(treffer);
+  // gezeichnete Linien: ein Trefferband für jede, beide Seiten (die Linien selbst zeichnet der Shader)
+  for (const k of letzteKanten) {
+    let dk = '';
+    for (let i = 0; i < k.lagen.length / 3; i++) {
+      const [x, y] = zuBlatt(b, b === 'front' ? k.lagen[3 * i + 1]! : k.lagen[3 * i]!, k.lagen[3 * i + 2]!);
+      dk += `${i ? ' L' : 'M'} ${x} ${y}`;
+    }
+    const tk = element('path', 'treffer-kante', { d: dk });
+    tk.dataset.kante = String(k.linie);
+    el.append(tk);
+  }
   // gezeichnet: die Linie; folgt das Profil noch dem Körper, zeigt der Shader den Umriss und hier stehen nur die Punkte
   if (zustand[b]) el.append(element('path', 'linie', { d }));
   const rp = 5 / s;
@@ -801,6 +830,19 @@ function profilZeichnen(b: Blatt): void {
     e.dataset.ppunkt = `${b}:${i}`;
     el.append(e);
   });
+  // Punkte der gewählten Linie auf der Seite z ≥ 0
+  const li = auswahl?.art === 'linie' || auswahl?.art === 'lpunkt' ? auswahl.l : -1;
+  zustand.linien[li]?.punkte.forEach((q, i) => {
+    const z = linienTiefe(li, i);
+    if (z === null) return;
+    const [x, y] = zuBlatt(b, b === 'front' ? q.y : q.x, z);
+    const an = auswahl?.art === 'linie' || (auswahl?.art === 'lpunkt' && auswahl.i === i);
+    const e = q.ecke
+      ? element('rect', an ? 'lpunkt gewaehlt' : 'lpunkt', { x: x - 0.8 * rp, y: y - 0.8 * rp, width: 1.6 * rp, height: 1.6 * rp })
+      : element('circle', an ? 'lpunkt gewaehlt' : 'lpunkt', { cx: x, cy: y, r: 0.8 * rp });
+    e.dataset.lpunkt = `${li}:${i}`;
+    el.append(e);
+  });
 }
 function profileZeichnen(): void {
   profilZeichnen('front');
@@ -808,6 +850,8 @@ function profileZeichnen(): void {
 }
 
 let profilZug: { blatt: Blatt; i: number; vorher: Zustand; bewegt: boolean } | null = null;
+// Linienpunkt in Front oder Top ziehen: die Front bewegt nur y und z, das Top nur x und z
+let linienZug: { blatt: Blatt; l: number; i: number; vorher: Zustand; bewegt: boolean } | null = null;
 for (const b of ['front', 'top'] as const) {
   const el = profilSvg[b];
   el.addEventListener('pointerdown', (e) => {
@@ -816,7 +860,22 @@ for (const b of ['front', 'top'] as const) {
     if (!p || !achse(b)) return;
     const d = (e.target as SVGElement).dataset;
     const vorher = kopie(zustand);
-    if (d.ppunkt !== undefined) {
+    if (d.lpunkt !== undefined) {
+      const [l, i] = d.lpunkt.split(':').map(Number) as [number, number];
+      auswahl = { art: 'lpunkt', l, i };
+      if (doppelklick(`${b}l${l}:${i}`) || e.altKey) {
+        linienEcke(l, i);
+        return;
+      }
+      linienZug = { blatt: b, l, i, vorher, bewegt: false };
+      svgZeichnen();
+      profileZeichnen();
+    } else if (d.kante !== undefined) {
+      auswahl = { art: 'linie', l: Number(d.kante) };
+      svgZeichnen();
+      profileZeichnen();
+      return;
+    } else if (d.ppunkt !== undefined) {
       const i = Number(d.ppunkt.split(':')[1]);
       auswahl = { art: 'profil', blatt: b, i };
       if (doppelklick(`${b}${i}`) || e.altKey) {
@@ -848,6 +907,24 @@ for (const b of ['front', 'top'] as const) {
     el.setPointerCapture(e.pointerId);
   });
   el.addEventListener('pointermove', (e) => {
+    if (linienZug && linienZug.blatt === b) {
+      if (!linienZug.bewegt) {
+        merken(linienZug.vorher);
+        linienZug.bewegt = true;
+        letzterKlick = null;
+      }
+      // (längs, quer) = Front: (y, z), Top: (x, z); die dritte Achse bleibt, wo sie war
+      const [a, q] = profilWelt(b, e);
+      const lin = zustand.linien[linienZug.l]!;
+      const pt = lin.punkte[linienZug.i]!;
+      const zf = Math.max(0, q);
+      lin.punkte[linienZug.i] =
+        b === 'front'
+          ? { ...pt, y: a, z: zf / streckungBei(letzteTiefe, pt.x, a) }
+          : { ...pt, x: a, z: zf / streckungBei(letzteTiefe, a, pt.y) };
+      geaendert(false);
+      return;
+    }
     const ax = achse(b);
     if (!profilZug || profilZug.blatt !== b || !ax) return;
     if (!profilZug.bewegt) {
@@ -866,8 +943,9 @@ for (const b of ['front', 'top'] as const) {
     geaendert(false);
   });
   const ende = (): void => {
-    if (profilZug?.bewegt) bauGewuenscht = 'fein';
+    if (profilZug?.bewegt || linienZug?.bewegt) bauGewuenscht = 'fein';
     profilZug = null;
+    linienZug = null;
   };
   el.addEventListener('pointerup', ende);
   el.addEventListener('pointercancel', ende);

@@ -188,6 +188,36 @@ describe('runder Körper aus dem Seitenumriss', () => {
     }
   });
 
+  it('ein gezogener Linienpunkt behält seine Tiefe, die Form wächst zu ihm', () => {
+    const kugel = kreis(100);
+    // waagerechte Linie über die Flanke; den mittleren Punkt 30 aus der Form gezogen (Kugel dort: √(100² − 40²) = 91,65)
+    const tief = Math.sqrt(100 * 100 - 40 * 40) + 30;
+    const linie: KantenLinie = {
+      punkte: [
+        { x: -50, y: 40, breite: 3 },
+        { x: 0, y: 40, breite: 3, z: tief },
+        { x: 50, y: 40, breite: 3 },
+      ],
+      bezug: kugel,
+    };
+    const netz = rundAusSeite(kugel, { dreiecke: 20000, linien: [linie] });
+    expect(netz.linienZ[0]![1]).toBeCloseTo(tief, 6);
+    const l0 = netz.kanten[0]!.lagen;
+    const n = l0.length / 3;
+    // die Linie geht durch den gezogenen Punkt, ihre Enden liegen auf der Kugel
+    let mitte = 0;
+    for (let i = 0; i < n; i++) if (Math.abs(l0[3 * i]!) < Math.abs(l0[3 * mitte]!)) mitte = i;
+    expect(Math.abs(l0[3 * mitte + 2]! - tief)).toBeLessThan(0.5);
+    for (const i of [0, n - 1]) expect(Math.abs(Math.hypot(l0[3 * i]!, l0[3 * i + 1]!, l0[3 * i + 2]!) - 100)).toBeLessThan(1);
+    // die Form reicht bis zum gezogenen Punkt
+    let naechst = Infinity;
+    for (let v = 0; v < netz.positionen.length / 3; v++) {
+      naechst = Math.min(naechst, Math.hypot(netz.positionen[3 * v]!, netz.positionen[3 * v + 1]! - 40, netz.positionen[3 * v + 2]! - tief));
+    }
+    expect(naechst).toBeLessThan(netz.zelle);
+    expect(geschlossen(netz.indizes)).toBe(true);
+  });
+
   it('eine Linie bleibt an Ort und Stelle, die Form wächst zu ihr (Wulst)', () => {
     // Linie quer über den Scheitel, gezeichnet auf der Kugel; danach den oberen Punkt unter die Linie ziehen
     const kugel = kreis(100);
