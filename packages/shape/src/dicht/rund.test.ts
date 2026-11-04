@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { type BreitenPunkt, profilBreite } from './ansichten';
 import type { KantenLinie } from './kanten';
 import { rundAusSeite } from './rund';
 import type { UmrissPunkt } from './umriss';
@@ -131,6 +132,60 @@ describe('runder Körper aus dem Seitenumriss', () => {
     expect(Math.abs(r - 100)).toBeLessThan(1.5);
     expect(hart.kanten.length).toBe(2);
     expect(geschlossen(hart.indizes)).toBe(true);
+  });
+
+  it('Front und Top strecken die Tiefe, die Seite bleibt', () => {
+    // halbe Breite des Körpers je Höhe (Front) bzw. je Stelle längs (Top), aus den Netzpunkten
+    const umriss = (pos: Float32Array, achse: 0 | 1, r0: number, dr: number, n: number) => {
+      const w = new Float64Array(n);
+      for (let v = 0; v < pos.length / 3; v++) {
+        const i = Math.round((pos[3 * v + achse]! - r0) / dr);
+        if (i >= 0 && i < n) w[i] = Math.max(w[i]!, Math.abs(pos[3 * v + 2]!));
+      }
+      return w;
+    };
+    const vergleich = (pos: Float32Array, achse: 0 | 1, p: readonly BreitenPunkt[]) => {
+      // von 15 % bis 85 % der Ausdehnung (an den Spitzen ist das Netz zu grob für einen Vergleich je Zeile)
+      const soll = profilBreite(p, -100, 100, -100, 4, 51);
+      const ist = umriss(pos, achse, -100, 4, 51);
+      let f = 0;
+      for (let i = 8; i <= 42; i++) f = Math.max(f, Math.abs(ist[i]! - soll[i]!));
+      return f;
+    };
+    const ausdehnung = (pos: Float32Array): [number, number] => {
+      let x = 0;
+      let y = 0;
+      for (let v = 0; v < pos.length / 3; v++) {
+        x = Math.max(x, Math.abs(pos[3 * v]!));
+        y = Math.max(y, Math.abs(pos[3 * v + 1]!));
+      }
+      return [x, y];
+    };
+    const front: BreitenPunkt[] = [
+      { laengs: 0, quer: 0 },
+      { laengs: 0.5, quer: 60 },
+      { laengs: 1, quer: 0 },
+    ];
+    const top: BreitenPunkt[] = [
+      { laengs: 0, quer: 0 },
+      { laengs: 0.3, quer: 60 },
+      { laengs: 0.75, quer: 35 },
+      { laengs: 1, quer: 0 },
+    ];
+    const nurFront = rundAusSeite(kreis(100), { dreiecke: 30000, front });
+    expect(vergleich(nurFront.positionen, 1, front)).toBeLessThan(3);
+    const nurTop = rundAusSeite(kreis(100), { dreiecke: 30000, top });
+    expect(vergleich(nurTop.positionen, 0, top)).toBeLessThan(3);
+    const beide = rundAusSeite(kreis(100), { dreiecke: 30000, front, top });
+    expect(vergleich(beide.positionen, 1, front)).toBeLessThan(4);
+    expect(vergleich(beide.positionen, 0, top)).toBeLessThan(4);
+    // die Seite bleibt
+    for (const netz of [nurFront, nurTop, beide]) {
+      const [x, y] = ausdehnung(netz.positionen);
+      expect(Math.abs(x - 100)).toBeLessThan(1);
+      expect(Math.abs(y - 100)).toBeLessThan(1);
+      expect(geschlossen(netz.indizes)).toBe(true);
+    }
   });
 
   it('eine Linie bleibt an Ort und Stelle, die Form wächst zu ihr (Wulst)', () => {

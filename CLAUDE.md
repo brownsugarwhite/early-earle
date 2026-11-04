@@ -536,6 +536,17 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Punkt geht, hebt ihn um seinen Abstand zu weit; das Auslaufen der Härte an den Enden machte die Kuppe dort riesig — die Kuppe
   folgt der gesetzten Strichdicke; Steigungen aus dem Maximum vieler Kegel springen → Normalen dort aus der Fläche. Bilder
   `docs/progress/editor/form-zuerst-wulst-{hart,weich}-2026-11-04.jpg` (`scripts/pruefen/form-zug.mjs`).
+- **2026-11-04 (abends, danach): Front und Top als Griffe auf dasselbe Modell** (Florian: „Linien passen so. Weiter: Front und
+  Top als Griffe auf dasselbe Modell.“). Front und Top sind halbe Profile, spiegelgleich, über der Ausdehnung der Seite
+  (`BreitenPunkt`: längs 0…1, quer = halbe Breite); unberührt folgen sie dem Körper (höchstens 6 Punkte auf dem Shader-Umriss,
+  `profilAusBreite`), der erste Griff übernimmt sie. Der runde Körper wird nach den Linien in der Tiefe gestreckt,
+  z → a(x) · b(y) · z (`dicht/ansichten.ts`: abwechselnd über die breiteste Stelle je Zeile/Spalte angepasst, Catmull-Rom,
+  Normalen über die inverse transponierte Ableitung); die Seite bleibt, wie sie ist. Front und Top teilen die größte Breite:
+  ändert sie sich in einem Blatt, folgt im anderen nur der breiteste Punkt. Punkte bleiben zwischen ihren Nachbarn, die Enden
+  auf der Achse fest; Doppelklick Ecke, ⌫. Gemessen: nur Front oder nur Top ≤ 3 Einheiten, beide zusammen bis 3,3 (Grenze der
+  Streckung a · b, als leichte Doppellinie sichtbar); Zug 14–16 ms, Loslassen 0,16 s. Falle: Ein gezogener Punkt, der über
+  seinen Nachbarn rutscht, faltet das Profil — die Schleife wird über die ganze Höhe eine Kante im Körper. Bild
+  `docs/progress/editor/form-zuerst-front-top-2026-11-04.jpg` (`scripts/pruefen/form-ansichten.mjs`).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

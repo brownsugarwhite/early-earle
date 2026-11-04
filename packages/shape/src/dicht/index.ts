@@ -4,3 +4,13 @@ export { type Naechster, Umrissfeld } from './abstand';
 export { Kugeln, kugelRadien } from './kugeln';
 export { BREITE_MAX, type Kante3D, type KantenLinie, type KantenPunkt, kantenAnwenden, linieAbtasten } from './kanten';
 export { type DichtesNetz, type RundOptionen, rundAusSeite } from './rund';
+export {
+  type Ansichtsbreite,
+  type BreitenPunkt,
+  type Tiefenstreckung,
+  profilAusBreite,
+  profilBreite,
+  profilUmriss,
+  tiefeAnpassen,
+  tiefeAnwenden,
+} from './ansichten';

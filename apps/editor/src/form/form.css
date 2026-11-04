@@ -61,7 +61,7 @@ body {
   user-select: none;
 }
 
-#zeichnung {
+.blatt {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -70,7 +70,7 @@ body {
   cursor: default;
 }
 
-#zeichnung .linie {
+.blatt .linie {
   fill: none;
   stroke: var(--linie);
   stroke-width: 2.5px;
@@ -80,7 +80,7 @@ body {
   pointer-events: none;
 }
 
-#zeichnung .treffer {
+.blatt .treffer {
   fill: none;
   stroke: transparent;
   stroke-width: 16px;
@@ -88,7 +88,7 @@ body {
   cursor: copy;
 }
 
-#zeichnung .treffer-kante {
+.blatt .treffer-kante {
   fill: none;
   stroke: transparent;
   stroke-width: 14px;
@@ -96,12 +96,12 @@ body {
   cursor: pointer;
 }
 
-#zeichnung .kante {
+.blatt .kante {
   fill: var(--linie);
   pointer-events: none;
 }
 
-#zeichnung .kante-weich {
+.blatt .kante-weich {
   fill: none;
   stroke: var(--linie);
   stroke-width: 1px;
@@ -110,7 +110,7 @@ body {
   pointer-events: none;
 }
 
-#zeichnung .entwurf {
+.blatt .entwurf {
   fill: none;
   stroke: var(--linie);
   stroke-width: 2px;
@@ -121,7 +121,7 @@ body {
   pointer-events: none;
 }
 
-#zeichnung .lpunkt {
+.blatt .lpunkt {
   fill: var(--papier);
   stroke: var(--linie);
   stroke-width: 1.2px;
@@ -129,11 +129,11 @@ body {
   cursor: grab;
 }
 
-#zeichnung .lpunkt.gewaehlt {
+.blatt .lpunkt.gewaehlt {
   fill: var(--linie);
 }
 
-#zeichnung .punkt {
+.blatt .punkt {
   fill: var(--papier);
   stroke: var(--linie);
   stroke-width: 1.5px;
@@ -141,8 +141,13 @@ body {
   cursor: grab;
 }
 
-#zeichnung .punkt.gewaehlt {
+.blatt .punkt.gewaehlt {
   fill: var(--linie);
+}
+
+/* Enden eines Profils auf der Achse: liegen fest an der Ausdehnung der Seite */
+.blatt .punkt.fest {
+  cursor: default;
 }
 
 #feld-3d {

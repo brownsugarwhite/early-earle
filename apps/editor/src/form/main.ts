@@ -8,11 +8,15 @@
 
 import {
   BREITE_MAX,
+  type BreitenPunkt,
   type DichtesNetz,
   type Kante3D,
   type KantenLinie,
   type UmrissPunkt,
   linieAbtasten,
+  profilAusBreite,
+  profilUmriss,
+  punktAufStueck,
   rundAusSeite,
   umrissAbtasten,
   umrissStuecke,
@@ -41,13 +45,24 @@ import {
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-type Zustand = { punkte: UmrissPunkt[]; linien: KantenLinie[] };
+/** Front und Top: halbe Profile über der Ausdehnung der Seite; null = folgt dem runden Körper (noch nicht angefasst) */
+type Zustand = { punkte: UmrissPunkt[]; linien: KantenLinie[]; front: BreitenPunkt[] | null; top: BreitenPunkt[] | null };
+type Blatt = 'front' | 'top';
 
 declare global {
   interface Window {
-    __form?: { punkte: UmrissPunkt[]; linien: KantenLinie[]; dreiecke: number; ms: number; zelle: number; fein: boolean };
+    __form?: {
+      punkte: UmrissPunkt[];
+      linien: KantenLinie[];
+      front: BreitenPunkt[] | null;
+      top: BreitenPunkt[] | null;
+      dreiecke: number;
+      ms: number;
+      zelle: number;
+      fein: boolean;
+    };
     /** Prüfhaken: eine Zeichnung setzen (wie ein Zug, mit Rückgängig) */
-    __formSetzen?: (p: UmrissPunkt[], linien?: KantenLinie[]) => void;
+    __formSetzen?: (p: UmrissPunkt[], linien?: KantenLinie[], front?: BreitenPunkt[] | null, top?: BreitenPunkt[] | null) => void;
   }
 }
 
@@ -77,11 +92,20 @@ const feld = (id: string): HTMLElement => {
 const felder = { seite: feld('feld-seite'), front: feld('feld-front'), top: feld('feld-top'), drei: feld('feld-3d') };
 const leinwand = document.getElementById('leinwand') as HTMLCanvasElement;
 const svg = document.getElementById('zeichnung') as unknown as SVGSVGElement;
+const profilSvg: Record<Blatt, SVGSVGElement> = {
+  front: document.getElementById('profil-front') as unknown as SVGSVGElement,
+  top: document.getElementById('profil-top') as unknown as SVGSVGElement,
+};
 
 // ---------- Zustand ----------
 
-let zustand: Zustand = { punkte: kreis(150), linien: [] };
-type Auswahl = { art: 'umriss'; i: number } | { art: 'linie'; l: number } | { art: 'lpunkt'; l: number; i: number } | null;
+let zustand: Zustand = { punkte: kreis(150), linien: [], front: null, top: null };
+type Auswahl =
+  | { art: 'umriss'; i: number }
+  | { art: 'linie'; l: number }
+  | { art: 'lpunkt'; l: number; i: number }
+  | { art: 'profil'; blatt: Blatt; i: number }
+  | null;
 let auswahl: Auswahl = null;
 const zurueck: Zustand[] = [];
 const vor: Zustand[] = [];
@@ -89,6 +113,8 @@ const vor: Zustand[] = [];
 const kopie = (z: Zustand): Zustand => ({
   punkte: z.punkte.map((q) => ({ ...q })),
   linien: z.linien.map((l) => ({ ...l, punkte: l.punkte.map((q) => ({ ...q })) })),
+  front: z.front ? z.front.map((q) => ({ ...q })) : null,
+  top: z.top ? z.top.map((q) => ({ ...q })) : null,
 });
 function merken(stand: Zustand): void {
   zurueck.push(stand);
@@ -321,15 +347,30 @@ function kantenGeometrie(liste: readonly Kante3D[]): BufferGeometry {
   return g;
 }
 
+/** Umrisse von Front und Top des letzten Baus samt Ausdehnung der Seite; daraus die Profile, solange sie dem Körper folgen */
+let ansichten: DichtesNetz['ansichten'] | null = null;
+const abgeleitet: Record<Blatt, BreitenPunkt[] | null> = { front: null, top: null };
+
 let bauGewuenscht: 'grob' | 'fein' | null = 'fein';
 function bauen(fein: boolean): void {
   const t0 = performance.now();
-  const n = rundAusSeite(zustand.punkte, { dreiecke: fein ? DREIECKE_FEIN : DREIECKE_ZUG, linien: zustand.linien });
+  const n = rundAusSeite(zustand.punkte, {
+    dreiecke: fein ? DREIECKE_FEIN : DREIECKE_ZUG,
+    linien: zustand.linien,
+    front: zustand.front,
+    top: zustand.top,
+  });
   const ms = performance.now() - t0;
   geometrieSetzen(n);
   if (fein && !kameraBewegt) einrahmen();
+  ansichten = n.ansichten;
+  const s = n.ansichten.seite;
+  // auf etwa 2 px genau, höchstens 6 Punkte: wenige Punkte zum Greifen statt einer Perlenkette
+  abgeleitet.front = profilAusBreite(n.ansichten.front, s.yMin, s.yMax, 3);
+  abgeleitet.top = profilAusBreite(n.ansichten.top, s.xMin, s.xMax, 3);
+  profileZeichnen();
   const k = kopie(zustand);
-  window.__form = { punkte: k.punkte, linien: k.linien, dreiecke: n.indizes.length / 3, ms, zelle: n.zelle, fein };
+  window.__form = { punkte: k.punkte, linien: k.linien, front: k.front, top: k.top, dreiecke: n.indizes.length / 3, ms, zelle: n.zelle, fein };
   neuZeichnen = true;
 }
 
@@ -437,7 +478,7 @@ function svgZeichnen(): void {
     svg.append(t);
     if (flaeche) svg.append(element('path', 'kante', { d: flaeche }));
     else svg.append(element('path', 'kante-weich', { d: mitte }));
-    const gewaehlt = auswahl !== null && auswahl.art !== 'umriss' && auswahl.l === li;
+    const gewaehlt = auswahl !== null && (auswahl.art === 'linie' || auswahl.art === 'lpunkt') && auswahl.l === li;
     if (!gewaehlt) return;
     l.punkte.forEach((p, i) => {
       const an = auswahl?.art === 'linie' || (auswahl?.art === 'lpunkt' && auswahl.i === i);
@@ -525,6 +566,7 @@ function vereinfachen(p: readonly { x: number; y: number }[], tol: number): { x:
 
 function geaendert(fein = true): void {
   svgZeichnen();
+  profileZeichnen();
   bauGewuenscht = fein ? 'fein' : 'grob';
 }
 
@@ -543,7 +585,7 @@ function linienEcke(l: number, i: number): void {
 
 /** Strichdicke der Auswahl ändern (ganze Linie oder ein Punkt). */
 function breiteSetzen(f: (b: number) => number): void {
-  if (!auswahl || auswahl.art === 'umriss') return;
+  if (!auswahl || auswahl.art === 'umriss' || auswahl.art === 'profil') return;
   merken(kopie(zustand));
   const l = zustand.linien[auswahl.l]!;
   const a = auswahl;
@@ -654,6 +696,183 @@ const zugEnde = (): void => {
 svg.addEventListener('pointerup', zugEnde);
 svg.addEventListener('pointercancel', zugEnde);
 
+// ---------- Front und Top ----------
+// Halbe Profile (spiegelgleich zur Mittelebene) über der Ausdehnung der Seite: Front über der Höhe, Top über der Länge. Solange
+// Florian ein Profil nicht anfasst, folgt es dem Körper (nur Punkte auf dem Umriss des Shaders); der erste Griff übernimmt es.
+
+/** Achse eines Profils in Welt-Einheiten, aus dem letzten Bau */
+const achse = (b: Blatt): [number, number] | null => {
+  if (!ansichten) return null;
+  const s = ansichten.seite;
+  return b === 'front' ? [s.yMin, s.yMax] : [s.xMin, s.xMax];
+};
+/** (längs, quer) → Blatt (SVG, y nach unten): Front zeigt z nach rechts und y nach oben, Top x nach rechts und z nach unten */
+const zuBlatt = (b: Blatt, l: number, q: number): [number, number] => (b === 'front' ? [q, -l] : [l, q]);
+const ausBlatt = (b: Blatt, x: number, y: number): [number, number] => (b === 'front' ? [-y, x] : [x, y]);
+const profilVon = (b: Blatt): BreitenPunkt[] | null => zustand[b] ?? abgeleitet[b];
+
+/** Zeiger im Blatt → (längs, quer) in Welt-Einheiten */
+const profilWelt = (b: Blatt, e: { clientX: number; clientY: number }): [number, number] => {
+  const r = felder[b].getBoundingClientRect();
+  const s = skala();
+  return ausBlatt(b, (e.clientX - r.left - r.width / 2) / s, (e.clientY - r.top - r.height / 2) / s);
+};
+
+/** Das Profil zum Bearbeiten: folgt es noch dem Körper, wird es jetzt übernommen. */
+function profilFesthalten(b: Blatt): BreitenPunkt[] | null {
+  if (!zustand[b]) {
+    const a = abgeleitet[b];
+    if (!a) return null;
+    zustand[b] = a.map((q) => ({ ...q }));
+  }
+  return zustand[b];
+}
+
+/**
+ * Front und Top teilen die größte Breite des Körpers. Ändert sie sich in einem Blatt, folgt im anderen nur der breiteste
+ * Punkt (wenn es dort gezeichnet ist; sonst folgt es ohnehin dem Körper).
+ */
+function koppeln(b: Blatt): void {
+  const p = zustand[b];
+  const q = zustand[b === 'front' ? 'top' : 'front'];
+  if (!p || !q) return;
+  let m = 0;
+  for (const x of p) m = Math.max(m, x.quer);
+  let k = -1;
+  for (let i = 1; i < q.length - 1; i++) if (k < 0 || q[i]!.quer > q[k]!.quer) k = i;
+  if (k >= 0) q[k] = { ...q[k]!, quer: m };
+}
+
+/** Nächste Stelle auf der gezeichneten Hälfte (ein Klick auf die gespiegelte Hälfte zählt für sie): Stück i und Punkt. */
+function profilStelle(b: Blatt, [l, q]: [number, number]): { i: number; laengs: number; quer: number } | null {
+  const p = profilVon(b);
+  const ax = achse(b);
+  if (!p || !ax) return null;
+  const L = ax[1] - ax[0];
+  const stuecke = umrissStuecke(profilUmriss(p, ax[0], ax[1]));
+  const qa = Math.abs(q);
+  let best = Infinity;
+  let st = { i: 0, laengs: 0, quer: 0 };
+  for (let i = 0; i < p.length - 1; i++) {
+    for (let j = 1; j < 40; j++) {
+      const pt = punktAufStueck(stuecke[i]!, j / 40);
+      const d = Math.hypot(pt.x - l, pt.y - qa);
+      if (d < best) {
+        best = d;
+        st = { i, laengs: (pt.x - ax[0]) / L, quer: Math.max(0, pt.y) };
+      }
+    }
+  }
+  return st;
+}
+
+function profilZeichnen(b: Blatt): void {
+  const el = profilSvg[b];
+  const r = felder[b].getBoundingClientRect();
+  const s = skala();
+  const w = r.width / s;
+  const h = r.height / s;
+  el.setAttribute('viewBox', `${-w / 2} ${-h / 2} ${w} ${h}`);
+  el.replaceChildren();
+  const p = profilVon(b);
+  const ax = achse(b);
+  if (!p || p.length < 2 || !ax) return;
+  const pt = (q: { x: number; y: number }) => zuBlatt(b, q.x, q.y).join(' ');
+  const stuecke = umrissStuecke(profilUmriss(p, ax[0], ax[1]));
+  let d = `M ${pt(stuecke[0]![0])}`;
+  for (const k of stuecke) d += ` C ${pt(k[1])} ${pt(k[2])} ${pt(k[3])}`;
+  d += ' Z';
+  const treffer = element('path', 'treffer', { d });
+  treffer.dataset.profil = b;
+  el.append(treffer);
+  // gezeichnet: die Linie; folgt das Profil noch dem Körper, zeigt der Shader den Umriss und hier stehen nur die Punkte
+  if (zustand[b]) el.append(element('path', 'linie', { d }));
+  const rp = 5 / s;
+  const L = ax[1] - ax[0];
+  p.forEach((q, i) => {
+    const [x, y] = zuBlatt(b, ax[0] + q.laengs * L, q.quer);
+    const fest = i === 0 || i === p.length - 1;
+    const an = auswahl?.art === 'profil' && auswahl.blatt === b && auswahl.i === i;
+    const klasse = `punkt${an ? ' gewaehlt' : ''}${fest ? ' fest' : ''}`;
+    const rr = fest ? 0.7 * rp : rp;
+    const e = q.ecke
+      ? element('rect', klasse, { x: x - rr, y: y - rr, width: 2 * rr, height: 2 * rr })
+      : element('circle', klasse, { cx: x, cy: y, r: rr });
+    e.dataset.ppunkt = `${b}:${i}`;
+    el.append(e);
+  });
+}
+function profileZeichnen(): void {
+  profilZeichnen('front');
+  profilZeichnen('top');
+}
+
+let profilZug: { blatt: Blatt; i: number; vorher: Zustand; bewegt: boolean } | null = null;
+for (const b of ['front', 'top'] as const) {
+  const el = profilSvg[b];
+  el.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    const p = profilVon(b);
+    if (!p || !achse(b)) return;
+    const d = (e.target as SVGElement).dataset;
+    const vorher = kopie(zustand);
+    if (d.ppunkt !== undefined) {
+      const i = Number(d.ppunkt.split(':')[1]);
+      auswahl = { art: 'profil', blatt: b, i };
+      if (doppelklick(`${b}${i}`) || e.altKey) {
+        merken(vorher);
+        const q = profilFesthalten(b)!;
+        q[i] = { ...q[i]!, ecke: !q[i]!.ecke };
+        geaendert();
+        return;
+      }
+      svgZeichnen();
+      profileZeichnen();
+      // die Enden liegen auf der Achse fest
+      if (i === 0 || i === p.length - 1) return;
+      profilZug = { blatt: b, i, vorher, bewegt: false };
+    } else if (d.profil !== undefined) {
+      const st = profilStelle(b, profilWelt(b, e));
+      if (!st) return;
+      merken(vorher);
+      profilFesthalten(b)!.splice(st.i + 1, 0, { laengs: st.laengs, quer: st.quer });
+      auswahl = { art: 'profil', blatt: b, i: st.i + 1 };
+      profilZug = { blatt: b, i: st.i + 1, vorher: kopie(zustand), bewegt: true };
+      geaendert(false);
+    } else {
+      auswahl = null;
+      svgZeichnen();
+      profileZeichnen();
+      return;
+    }
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener('pointermove', (e) => {
+    const ax = achse(b);
+    if (!profilZug || profilZug.blatt !== b || !ax) return;
+    if (!profilZug.bewegt) {
+      merken(profilZug.vorher);
+      profilZug.bewegt = true;
+      letzterKlick = null;
+    }
+    const [l, q] = profilWelt(b, e);
+    const p = profilFesthalten(b)!;
+    const i = profilZug.i;
+    // ein Punkt bleibt zwischen seinen Nachbarn: ein Breitenprofil faltet sich nicht über sich selbst
+    const lo = p[i - 1]!.laengs + 0.01;
+    const hi = p[i + 1]!.laengs - 0.01;
+    p[i] = { ...p[i]!, laengs: Math.max(lo, Math.min(hi, (l - ax[0]) / (ax[1] - ax[0]))), quer: Math.max(0, q) };
+    koppeln(b);
+    geaendert(false);
+  });
+  const ende = (): void => {
+    if (profilZug?.bewegt) bauGewuenscht = 'fein';
+    profilZug = null;
+  };
+  el.addEventListener('pointerup', ende);
+  el.addEventListener('pointercancel', ende);
+}
+
 window.addEventListener('keydown', (e) => {
   const mod = e.metaKey || e.ctrlKey;
   if (mod && e.key.toLowerCase() === 'z') {
@@ -671,6 +890,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     auswahl = null;
     svgZeichnen();
+    profileZeichnen();
     return;
   }
   // Strichdicke: [ ] (auf deutscher Tastatur ⌥5/⌥6 oder dieselben Tasten wie dort + und ü) oder + und −
@@ -693,6 +913,13 @@ window.addEventListener('keydown', (e) => {
       if (zustand.punkte.length <= 3) return;
       merken(kopie(zustand));
       zustand.punkte = zustand.punkte.filter((_, j) => j !== a.i);
+    } else if (a.art === 'profil') {
+      // Enden auf der Achse bleiben, mindestens ein Punkt dazwischen
+      const p = profilVon(a.blatt);
+      if (!p || a.i === 0 || a.i === p.length - 1 || p.length <= 3) return;
+      merken(kopie(zustand));
+      profilFesthalten(a.blatt)?.splice(a.i, 1);
+      koppeln(a.blatt);
     } else {
       merken(kopie(zustand));
       const l = zustand.linien[a.l]!;
@@ -708,6 +935,7 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   if (!kameraBewegt) einrahmen();
   svgZeichnen();
+  profileZeichnen();
   neuZeichnen = true;
 });
 
@@ -734,9 +962,9 @@ function schleife(): void {
   },
 };
 
-window.__formSetzen = (p, linien = []) => {
+window.__formSetzen = (p, linien = [], front = null, top = null) => {
   merken(kopie(zustand));
-  zustand = kopie({ punkte: p, linien });
+  zustand = kopie({ punkte: p, linien, front, top });
   auswahl = null;
   geaendert();
 };

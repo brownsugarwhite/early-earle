@@ -11,15 +11,23 @@
     <main id="raster">
       <section class="feld" id="feld-seite">
         <header>Seite</header>
-        <svg id="zeichnung" aria-label="Seitenumriss zeichnen"></svg>
+        <svg class="blatt" id="zeichnung" aria-label="Seitenumriss zeichnen"></svg>
         <footer>
           Umriss: Punkt ziehen · Klick auf die Linie: neuer Punkt · Doppelklick: Ecke ↔ rund<br />
           Auf der Form ziehen: Linie zeichnen · Linie anklicken, dann + − oder 0–3: Strichdicke = Härte · ⌫ löschen · ⌘Z
           zurück
         </footer>
       </section>
-      <section class="feld" id="feld-front"><header>Front</header></section>
-      <section class="feld" id="feld-top"><header>Top</header></section>
+      <section class="feld" id="feld-front">
+        <header>Front</header>
+        <svg class="blatt" id="profil-front" aria-label="Front bearbeiten"></svg>
+        <footer>Punkt ziehen · Klick auf den Umriss: neuer Punkt · Doppelklick: Ecke ↔ rund · ⌫ löschen</footer>
+      </section>
+      <section class="feld" id="feld-top">
+        <header>Top</header>
+        <svg class="blatt" id="profil-top" aria-label="Top bearbeiten"></svg>
+        <footer>Punkt ziehen · Klick auf den Umriss: neuer Punkt · Doppelklick: Ecke ↔ rund · ⌫ löschen</footer>
+      </section>
       <section class="feld" id="feld-3d"><header>3D</header></section>
     </main>
     <script type="module" src="./src/form/main.ts"></script>

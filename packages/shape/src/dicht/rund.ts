@@ -12,6 +12,7 @@
 // Gezeichnete Linien bleiben danach, wo sie gezeichnet wurden, und die Form wächst zu ihnen (`kanten.ts`).
 
 import type { V2 } from '../bezier';
+import { type Ansichtsbreite, type BreitenPunkt, profilBreite, tiefeAnpassen, tiefeAnwenden } from './ansichten';
 import { Umrissfeld } from './abstand';
 import { type Kante3D, type KantenLinie, kantenAnwenden } from './kanten';
 import { Kugeln, kugelRadien } from './kugeln';
@@ -27,6 +28,8 @@ export type DichtesNetz = {
   umriss: V2[];
   /** die gezeichneten Linien auf dem Körper, beide Seiten */
   kanten: Kante3D[];
+  /** Umrisse von Front (halbe Breite je Höhe) und Top (je Stelle längs) des Körpers ohne Wülste, und die Ausdehnung der Seite */
+  ansichten: { front: Ansichtsbreite; top: Ansichtsbreite; seite: { xMin: number; xMax: number; yMin: number; yMax: number } };
 };
 
 export type RundOptionen = {
@@ -36,6 +39,10 @@ export type RundOptionen = {
   zelle?: number;
   /** in der Seite gezeichnete Linien; ihre Strichbreite ist die Härte der Kante */
   linien?: readonly KantenLinie[];
+  /** Front als halbes Profil über der Höhe der Seite (fehlt: folgt dem runden Körper) */
+  front?: readonly BreitenPunkt[] | null;
+  /** Top als halbes Profil über der Länge der Seite (fehlt: folgt dem runden Körper) */
+  top?: readonly BreitenPunkt[] | null;
 };
 
 /**
@@ -386,5 +393,29 @@ export function rundAusSeite(punkte: readonly UmrissPunkt[], opt: RundOptionen =
   const hub = new Float32Array(n);
   const kanten = kantenAnwenden(positionen, normalen, indizes, linien, kugeln, zelle, bezug, hub);
   if (hub.some((h) => h > 0)) hautNormalen(positionen, normalen, indizes, hub, zelle);
-  return { positionen, normalen, indizes, zelle, umriss: P, kanten };
+
+  // Front und Top: die Tiefe strecken, bis die Umrisse dort die gezeichneten Profile treffen (Seite bleibt, wie sie ist)
+  let xMin = Infinity;
+  let xMax = -Infinity;
+  let yMin = Infinity;
+  let yMax = -Infinity;
+  for (const q of P) {
+    xMin = Math.min(xMin, q.x);
+    xMax = Math.max(xMax, q.x);
+    yMin = Math.min(yMin, q.y);
+    yMax = Math.max(yMax, q.y);
+  }
+  const sollFront = opt.front && opt.front.length >= 2 ? profilBreite(opt.front, yMin, yMax, y0, zelle, ny) : null;
+  const sollTop = opt.top && opt.top.length >= 2 ? profilBreite(opt.top, xMin, xMax, x0, zelle, nx) : null;
+  const tiefe = tiefeAnpassen(G, nx, ny, x0, y0, zelle, sollFront, sollTop);
+  if (sollFront || sollTop) {
+    tiefeAnwenden(positionen, normalen, tiefe.streckung);
+    for (const k of kanten) tiefeAnwenden(k.lagen, null, tiefe.streckung);
+  }
+  const ansichten = {
+    front: { r0: y0, dr: zelle, breite: tiefe.front },
+    top: { r0: x0, dr: zelle, breite: tiefe.top },
+    seite: { xMin, xMax, yMin, yMax },
+  };
+  return { positionen, normalen, indizes, zelle, umriss: P, kanten, ansichten };
 }
