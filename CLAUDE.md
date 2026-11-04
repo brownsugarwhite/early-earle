@@ -447,6 +447,15 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Mundwinkel glatt, Feldkanten und Pole stimmen; J = Viereck vorn, Viereck unten mit Hakenecke, Zweieck hinter dem Haken.
   Verworfen (gemessen): Winkelecken auf dem Feldrand (5–17 Seiten), Gitterecken als Stückecken, „kürzerer Arm“, Wahl nach Luft.
   Tests `stuecke.test.ts` 4 grün, Bild `docs/progress/editor/p2-stuecke-2026-11-03.jpg`. Nächster Schritt Tag 2 (Ganzzahlen).
+- **2026-11-04: P2 Tag 2–4 „Ganzzahlen, Muster, Käfig, Haut“ gebaut** (Florian: „ja zieh durch“; Abnahme offen; Planseite „P2 —
+  Stand Tag 2–4“ im Prüfplan, Register „Befunde aus P2 Tag 2–4“, Übergabe). Kern `kern/einsatz/muster.ts` (kanonische Seiten, die
+  Schlitzufer sind eine Seite; Ganzzahlen: Feldrand fest, Dichte, Polygonungleichung, Parität; Muster Dreieck/Fünfeck mit Mittelpol,
+  Viereck als Gitter, sonst eine Teilung) und `kern/einsatz/stuecknetz.ts` (Tutte je Stück auf ein Vieleck mit den Eckwinkeln des
+  Stücks, Käfig mit Spiegel und Lippenfalte, Übergabe an Lippe, Löser und Messung des Kernrings — unverändert). **Biegungen sind
+  keine Ecken** (gemessen; Tag 1 hat zwei Regeln). K2: alle zehn Fälle bauen, Lippe ≤ 0,26 px, Haut ≤ 0,25 px 9 von 10, Mundwinkel
+  ≤ A0 + 2° 8 von 10, Flächen ein Drittel des Kernrings, 4 Pole je Feld; zwei Fälle falten je eine bis zwei Zellen von 1 px² neben
+  der Lippe (Vieleck mit geraden Seiten → formtreues Abflachen als Weg); Budget ≤ 300 hält auf K2 nicht, auf K1 fällt die
+  Genauigkeit (Entscheidung Florian). Bogen `docs/progress/editor/p2-stuecknetz-2026-11-04.jpg`, Tests `stuecknetz.test.ts`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

@@ -1073,3 +1073,30 @@ Pole stimmen (Planseite „P2 — Start, Tag 1“). Offen für Tag 2–4:
   Schlitzpunkten (die springen längs der Linie); Nullvektor am Linienende; Glättung h/2 statt 2 h (der Kugel-Haken verschwand);
   eine Biegung je Linie für beide Seiten; Doppel-Nachbar auf Ufer B; Dreiecke beiderseits der Endkante teilen; Pole am Seitenende
   zählen.
+
+## Befunde aus P2 Tag 2–4 „Stücknetz: Ganzzahlen, Muster, Käfig, Haut“ (04.11., eigene Messungen; `packages/shape/src/kern/einsatz/stuecknetz.test.ts`)
+
+Gebaut: `kern/einsatz/muster.ts` (Ganzzahlen, Muster 3/4/5 mit Teilungen) und `kern/einsatz/stuecknetz.ts` (Tutte je Stück,
+Käfig, Übergabe an Lippe, Löser und Messung des Kernrings). Alle zehn Fälle bauen (Käfig geschlossen, außen bitgleich, Lippe
+≤ 0,26 px); Haut ≤ 0,25 px 9 von 10, Mundwinkel ≤ A0 + 2° 8 von 10; Flächen ein Drittel des Kernrings (Planseite „P2 — Stand
+Tag 2–4“, Bogen `docs/progress/editor/p2-stuecknetz-2026-11-04.jpg`).
+- [ ] **Zwei Falten in der ersten Reihe neben der Lippe** (Robbe hoch J, Birne S; Zellen von 1 px², Knick 178°): Das Vieleck der
+  Lage hat gerade Seiten, die Lippe biegt dort stark bzw. trifft die Naht spitz; die erste Reihe wird auf 0,2 px gestaucht, die
+  Lippen-Kontrollpunkte (A6) kreuzen sie. Weg: formtreues Abflachen (LSCM/ARAP) statt Tutte auf das Vieleck. Keine Glättung und
+  keine Startglättung hilft (gemessen).
+- [ ] **Mundwinkel Kugel 3,7° (A0 1,3°), Langhals 7,8° (3,5°)**, Rex tief 4,9 (3,3) knapp im Tor: der Dreierpol des Dreiecks und die
+  Lage der ersten Zellen um c. Weg: mit dem Abflachen neu messen; sonst Lage des Pols (Tutte-Gewichte) prüfen.
+- [ ] **Knick am Feldrand** (Rex mittel gerade 31,5 gegen 27,1): die Treppenpole des Feldrands (19 Fünfer, 19 Dreier je Hälfte) —
+  der Preis des Einsatzes in ein festes Gitter; P3 hat keinen Feldrand.
+- [ ] **Budget und Genauigkeit treffen sich nicht:** K2 578–3 686 Flächen bei 0,07–0,46 px; K1 202–710 bei 0,16–2,95 px. Entscheidung
+  (Florian): kleineres Feld, Dichte nur an der Lippe, oder Budget anders schneiden. Keine Regel.
+- [ ] **Musterbibliothek:** Dreiecke vollständig, Vierecke die Hälfte, Fünfecke ein Sechstel der zulässigen Tupel. Reicht, solange
+  die Stücke Dreiecke sind (ohne Biegungsecken). Streifen (Fünfeck mit einer langen festen Seite) brauchen Takayamas zusätzliche
+  Dreier-Fünfer-Paare.
+- [ ] **Robbe hoch gerade Haut 0,46 px** im Keil zwischen Lippe und Naht (Kernring 0,21 mit Leiter).
+- [ ] Nicht gebaut: Stabilität ±2 px, Zahnfleischreihe, Tasche/Rachen/Öffnen, Tigerkopf, die ganze Reihe (54 Fälle).
+- [x] **Verworfen (gemessen):** Biegungsecken mit Schnitt (Tag 1; Fünfeck-Streifen ohne Muster, Zweieck mit zwei Polen am
+  Mundwinkel), Scheibe als Tutte-Gebiet, Startglättung an der Lippe.
+- Fallen (`apps/editor/CLAUDE.md`): Seiten an allen Knoten beider Ufer teilen; Rand des Musters ab der ersten Ecke; Speichen ≥ 2;
+  Feldrandpunkte = alte Käfigpunkte, Linienende auf dem Feldrand = Käfigpunkt davor; 190-MB-HTML bricht `html-shot`;
+  Faltenmaß = Zellnormale gegen A0.

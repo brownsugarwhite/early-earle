@@ -1,4 +1,4 @@
-# Übergabe (Stand 03.11.2026 nachts: P0a angesehen, P1 abgeschlossen — Prinzip bewiesen, Genauigkeit der Mehrteiler an zwei Strukturstücken offen, Versuchsschalter abgeräumt; P2 „Stücknetz im Maulfeld“ Tag 1 „Linien → Stücke“ gebaut, Abnahme offen)
+# Übergabe (Stand 04.11.2026: P1 abgeschlossen; P2 „Stücknetz im Maulfeld“ Tag 1–4 gebaut — alle zehn Fälle bauen, Haut 9 von 10, Mundwinkel 8 von 10, ein Drittel der Flächen des Kernrings, zwei Falten neben der Lippe offen; Abnahme offen)
 
 Branch `claude/editor-grundlayout`, PR mit Auto-Fix. **Diese Datei ist der Einstieg für eine frische Sitzung.** Der Kernring
 bleibt eingefroren; alles Neue liegt hinter Schaltern (`stufen`, `umrissPlan`), ohne Schalter bitgleich.
@@ -259,16 +259,30 @@ Verworfen (gemessen): Winkelecken auf dem Feldrand, Gitterecken als Stückecken,
 „Befunde aus P2 Tag 1“): Zweiecke, Robbe-hoch-Keil (Biegung verworfen), S-Schnitt neben der Nahtecke, Feldrand-Pole als Preis des
 Einsatzes, Zahnfleischreihe, Tigerkopf, Bildkarte.
 
-**Nächster Schritt: Tag 2** Ganzzahlen je Seite (Feldrand fest, Lippe A = B, gerade Summe, Dichte aus dem Budget ≤ 300 Flächen,
-Zahnfleischreihe), Stabilität ±2 px; Tag 3 Muster (Takayama 2014, 2–6 Seiten); Tag 4 Tutte je Stück, aufschneiden, Lippe (A6), Haut
-lösen (A7), Messen, Bilder A0 | Kernring | Stücknetz | Zebra. Start-Prompt für eine frische Sitzung:
+## 04.11.: P2 Tag 2–4 „Ganzzahlen, Muster, Käfig, Haut“ gebaut (Abnahme offen)
 
-> Lies `CLAUDE.md`, `docs/UEBERGABE.md` und den Prüfplan `docs/plans/2026-11-02-pruefplan-p0-p3.md` („P2 — Start, Tag 1“). Arbeite
-> an P2 Tag 2 weiter (Ganzzahlen je Seite auf den Stücken aus `stuecke.ts`), dann Tag 3–4 — im Kern hinter einer Option
-> (`gitter: 'stuecke'`), ohne Option bitgleich, der Kernring bleibt eingefroren; keine Regel, die einen Körper oder eine Lage nennt;
-> Tore als Tests (verfehlte als `it.fails` mit Registereintrag), Bilder je Fall (A0 | Kernring | Stücknetz | Zebra), Planseite
-> „Stand“, Register, Übergabe, Commit und Push. Nach jedem Block die neuen Regeln zählen; ab der dritten anhalten und die Struktur
-> prüfen. Nichts als bestanden melden.
+Florian: „ja zieh durch.“ Kern `kern/einsatz/muster.ts` (kanonische Seiten — die Schlitzufer sind eine Seite, die Lippe eine
+scharfe Falte mit gemeinsamen Punkten; Ganzzahlen: Feldrand fest, Dichte, Polygonungleichung, Parität, ±; Muster Dreieck/Fünfeck
+mit Mittelpol, Viereck als Gitter, sonst eine Teilung von Seite zu Seite) und `kern/einsatz/stuecknetz.ts` (Tutte je Stück auf ein
+Vieleck mit den Eckwinkeln des Stücks, Lage auf der Haut, Käfig mit Spiegel und Lippenfalte, `EinsatzTopologie` für den Löser und
+die Messung des Kernrings). **Biegungen sind keine Ecken mehr** (gemessen: mit Schnitt Fünfeck-Streifen ohne Muster und Zweiecke
+mit zwei Polen am Mundwinkel; ohne: jedes Stück ein Dreieck mit einem Pol) — Tag 1 hat zwei Regeln. Ergebnis K2 (Planseite „P2 —
+Stand Tag 2–4“, Bogen `docs/progress/editor/p2-stuecknetz-2026-11-04.jpg`): alle zehn Fälle bauen, Käfig geschlossen, außen
+bitgleich, Lippe ≤ 0,26 px, Haut ≤ 0,25 px 9 von 10 (Robbe hoch gerade 0,46), Mundwinkel ≤ A0 + 2° 8 von 10 (Kugel, Langhals),
+Flächen ein Drittel des Kernrings, 4 Pole je Feld; zwei Fälle (Robbe hoch J, Birne S) falten je eine bis zwei Zellen von 1 px²
+neben der Lippe — Ursache: das Vieleck hat gerade Seiten, die Lippe dort nicht (Weg: formtreues Abflachen, keine Regel). Budget
+≤ 300 hält auf K2 nirgends, auf K1 fällt die Genauigkeit (0,2–3 px) — Entscheidung für Florian. Tests `stuecknetz.test.ts` (2 grün,
+3 `it.fails`), Messreihe `p2-stuecknetz.ts` (`STUFE=1`, `KERNRING=0`, `H`), Bogen `p2-bogen.ts`.
+
+**Nächster Schritt:** Florians Blick. Dann formtreues Abflachen (zwei Falten), Budget-Entscheidung, Tasche/Rachen/Öffnen,
+Zahnfleischreihe, Stabilität ±2 px, ganze Reihe. Start-Prompt für eine frische Sitzung:
+
+> Lies `CLAUDE.md`, `docs/UEBERGABE.md` und den Prüfplan `docs/plans/2026-11-02-pruefplan-p0-p3.md` („P2 — Stand Tag 2–4“, davor
+> „P2 — Start, Tag 1“). Arbeite an P2 weiter: zuerst das formtreue Abflachen je Stück (`stuecknetz.ts`, statt Tutte auf das Vieleck)
+> gegen die zwei Falten, dann nach Florians Entscheidung zum Budget. Im Kern neben dem eingefrorenen Kernring, nichts am Bau
+> geändert; keine Regel, die einen Körper oder eine Lage nennt; Tore als Tests (`stuecknetz.test.ts`, verfehlte als `it.fails` mit
+> Registereintrag), Bogen `p2-bogen.ts` je Fall, Planseite „Stand“, Register, Übergabe, Commit und Push. Nach jedem Block die neuen
+> Regeln zählen; ab der dritten anhalten und die Struktur prüfen. Nichts als bestanden melden; Florian bekommt drei Zeilen.
 
 ## Entscheidungen, die Florian treffen muss (Gegenprüfung, Abschnitt 10)
 

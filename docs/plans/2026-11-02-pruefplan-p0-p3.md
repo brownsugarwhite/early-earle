@@ -993,3 +993,85 @@ die Bildkarte.
 ≤ 300 Maulfeld-Flächen, Zahnfleischreihe als Reihe in der Lippe), Stabilität ±2 px (20 Versuche je Linie); Tag 3 Muster (Takayama
 2014 für 2–6 Seiten, Pole nur mit drei oder fünf Kanten, nicht auf Lippe oder Feldrand); Tag 4 Tutte je Stück, aufschneiden, Lippe
 (A6), Haut lösen (A7), Messen gegen die Tore, Bilder A0 | Kernring | Stücknetz | Zebra.
+
+## P2 — Stand Tag 2–4 „Ganzzahlen, Muster, Käfig, Haut“ (04.11.2026, gebaut; Abnahme offen)
+
+Florian: „danke für die Klarstellung, ja zieh durch.“ Tag 2–4 in einem Zug, ohne Rückfrage. Kern `kern/einsatz/muster.ts`
+(Ganzzahlen je Seite, Muster je Stück) und `kern/einsatz/stuecknetz.ts` (Tutte je Stück, Lage auf der Haut, Käfig mit Spiegel
+und Lippenfalte, Übergabe an Lippe A6, Löser A7 und Messung des Kernrings — alle drei unverändert, damit die Zahlen vergleichbar
+sind). Tests `stuecknetz.test.ts` (2 grün, 3 `it.fails`), Messreihe `apps/editor/scripts/pruefen/p2-stuecknetz.ts` (K2; `STUFE=1`
+für K1, `KERNRING=0`, `H`), Bogen `p2-bogen.ts` → `docs/progress/editor/p2-stuecknetz-2026-11-04.jpg` (je Fall A0 | Kernring |
+Stücknetz | Wärmebild | Zebra, derselbe Ausschnitt, derselbe Renderer wie die Kernring-Bögen).
+
+**Gebaut:**
+- **Kanonische Seiten:** eine Seite je Linie zwischen zwei Knoten, von beiden anliegenden Stücken benutzt; die beiden
+  Schlitzufer sind eine Seite — im geschlossenen Maul ist die Lippe eine scharfe Falte mit gemeinsamen Punkten beider Kiefer,
+  der Mundwinkel ihr Ende ohne Punktschärfe, ein glatter Punkt mit vier Flächen. Seiten werden an allen Knoten beider Ufer und an
+  Linienwechseln geteilt (Lippe → Verlängerung am Mundwinkel sind zwei Teile derselben Polygonseite).
+- **Ganzzahlen:** Feldrand fest (eine Kante je Käfigkante außen), freie Seiten nach der Dichte (Länge / h); je Polygon die
+  notwendigen Bedingungen jedes Vierecksnetzes — keine Seite so lang wie alle anderen zusammen (sonst wachsen die freien Seiten
+  im Verhältnis ihrer Längen, bis zwei Kanten Luft sind) und gerade Summe —, zuletzt ±1 bis ±3 an freien Seiten des Polygons,
+  wo ein Muster fehlt.
+- **Muster** (Takayama 2014, auf das Nötige verkleinert): Dreieck und Fünfeck mit einem Pol in der Mitte (Speichen r_i, Seite
+  i = r_{i−1} + r_{i+1}; Speichen ≥ 2 — kein Pol in der ersten Reihe neben einer Linie), Viereck als Gitter; alles andere einmal
+  von Seite zu Seite geteilt, nie von Ecke zu Ecke (Zweieck → zwei Dreiecke, Sechseck → zwei Fünfecke, Viereck mit ungleichen
+  Gegenseiten → Dreieck + Fünfeck = das Dreier-Fünfer-Paar). Deckung gemessen (alle Tupel mit Seiten ≤ 9, Summe gerade, keine
+  Seite ≥ Rest): Dreiecke 154 von 154, Vierecke 1 381 von 2 761, Fünfecke 4 654 von 28 694 — Streifen mit einer langen festen
+  Seite (Fünfeck 9/7/32/19/15) haben in dieser Bibliothek kein Muster; sie bräuchten Takayamas zusätzliche Paare.
+- **Lage:** jedes Stück auf ein ebenes konvexes Vieleck mit seinen Seitenlängen und Eckwinkeln (Tutte der feinen Dreiecke, Rand
+  nach Bogenlänge), das Muster darin (Randpunkte beim gleichen Bogenanteil, innere Punkte Tutte auf dem Mustergraphen), zurück
+  auf die Haut von A0 durch das Dreieck. Feldrandpunkte des Musters sind die alten Käfigpunkte; das Ende einer freien Linie auf
+  dem Feldrand ist der Käfigpunkt davor.
+- **Käfig:** alte Flächen außerhalb von M in alter Reihenfolge, Musterflächen rechts, gespiegelt links; Schärfen von K1
+  übernommen, Lippe unendlich scharf, Falten mit ihrer Schärfe, A0-Spitzen auf der Naht und am Linienanfang wie im Kernring; die
+  `EinsatzTopologie` für `einsatzLoesen`/`einsatzMessen` (haut[0] = Lippenring, haut[1] = alle freien Punkte, Bereich Kragen /
+  Haut rechts / links).
+
+**Entscheidung unterwegs (gemessen): Biegungen sind keine Ecken.** Tag 1 machte aus Biegungen ≥ 45° eine Ecke innen und einen
+Schnitt außen. Mit Schnitt werden die Unterlippenstücke eines J-Mauls Fünfeck-Streifen ohne Muster (Rex mittel J, Robbe hoch,
+Kugel, Birne bauten nicht), und hinter dem Haken entsteht ein Zweieck mit zwei Dreierpolen am Mundwinkel (Kugel 23,7°, Ei
+12,7°, Langhals 7,6°). Ohne Biegungsecken ist jedes Stück ein Dreieck mit einem Dreierpol — je Hälfte genau die zwei Pole, die
+Gauß–Bonnet verlangt —, alle zehn Fälle bauen, der Mundwinkel hält 8 von 10. Tag 1 hat damit **zwei Regeln**: Zusammenstöße
+verschiedener Linien sind Ecken (außer Lippe → Verlängerung); der Feldrand hat keine Ecken, seine Treppenstufen sind die Pole,
+die das Gitter außen vorgibt. Der Schnittapparat bleibt im Code (Option `eckeGrad`, Standard aus) und wird nicht benutzt.
+
+**Stand (K2, wie der Kernring gemessen; S = Stücknetz, K = Kernring, Flächen = Einsatz beide Hälften):**
+
+| Fall | Stücke | m | Flächen Stücknetz / Kernring | Haut max px S / K | Mundwinkel S / K (A0) | Knick frei S (A0) | Lippe px |
+|---|---|---|---|---|---|---|---|
+| Rex mittel gerade | 3 (3/3/4) | 29 | 1 744 / 5 081 | 0,22 / 0,13 | 1,1 / 1,0 (1,2) | 31,5 (27,1) | 0,23 |
+| Rex mittel J | 3 (3/3/4) | 31 | 1 638 / 4 628 | 0,23 / 0,14 | 2,5 / 1,8 (2,0) | 27,6 (27,1) | 0,26 |
+| Robbe hoch gerade | 2 (3/3) | 23 | 1 290 / 3 809 | 0,46 / 0,21 | 2,1 / 1,6 (1,9) | 8,2 (13,9) | 0,12 |
+| Robbe hoch J | 2 (3/3) | 24 | 1 246 / 4 185 | 0,10 / 0,20 | 1,4 / 1,2 (1,1) | 178,5 Falte (13,9) | 0,18 |
+| Rex tief J | 2 (3/3) | 49 | 3 686 / 6 980 | 0,10 / 0,05 | 4,9 / 4,1 (3,3) | 11,2 (11,2) | 0,03 |
+| Robbe tief J | 2 (3/3) | 31 | 2 158 / 5 416 | 0,10 / 0,08 | 1,9 / 2,3 (2,2) | 11,2 (11,2) | 0,17 |
+| Kugel mittel J | 2 (3/3) | 36 | 2 186 / 7 165 | 0,09 / 0,05 | 3,7 / 1,2 (1,3) | 3,7 (1,6) | 0,04 |
+| Ei tief J | 2 (3/3) | 37 | 2 398 / 5 912 | 0,07 / 0,06 | 3,2 / 1,5 (1,4) | 3,2 (2,2) | 0,03 |
+| Langhals hoch J | 2 (3/3) | 8 | 578 / 1 609 | 0,08 / 0,06 | 7,8 / 3,7 (3,5) | 7,8 (3,9) | 0,07 |
+| Birne mittel S | 2 (3/3) | 37 | 2 606 / 5 064 | 0,08 / 0,08 | 1,7 / 1,2 (1,3) | 178,7 Falte (1,6) | 0,03 |
+
+**Tore:** Käfig geschlossen, außen bitgleich, Karte ohne umgeklappte Zelle, Lippe ≤ 1 px: 10 von 10. Haut ≤ 0,25 px: 9 von 10
+(Robbe hoch gerade 0,46 — der Keil zwischen Lippe und Naht, derselbe Ort wie die Leiter des Kernrings). Mundwinkel ≤ A0 + 2°:
+8 von 10 (Kugel 3,7 gegen 1,3, Langhals 7,8 gegen 3,5). Knick frei ≤ A0 + 2°: 5 von 10 — Robbe hoch J und Birne S falten je ein
+bis zwei Zellen von 1 px² in der ersten Reihe neben der Lippe (Haut sonst 0,08–0,10 px), Rex mittel gerade 31,5 gegen 27,1 am
+Feldrand (Treppenpole), Kugel und Langhals am Mundwinkel. **Budget** ≤ 300 Flächen: 0 von 10 auf K2 (578–3 686; der Kernring
+braucht bei gleicher Dichte 1 609–7 165, das Stücknetz also etwa ein Drittel); auf K1 (`STUFE=1`) 202–710 Flächen (Langhals 202,
+Robbe 294–472, Rex 540–550), aber Haut 0,16–2,95 px und Mundwinkel bis 27° — Budget und Genauigkeit treffen sich bei dieser
+Dichte nicht. Pole: 4 je Feld, nur in der Mitte der Dreiecke (Kernring: ein Fünfer- und ein Dreierpol an jeder Treppenstufe, dazu
+die Leiter). Regeln: keine nennt einen Körper oder eine Lage. Nicht gebaut: Stabilität ±2 px, Zahnfleischreihe, Tasche/Rachen/
+Öffnen (E5), Tigerkopf (fehlt in der Einsatz-Reihe).
+
+**Verworfen (gemessen):** die Einheitsscheibe als Tutte-Gebiet (Falten am spitzen Keil, Normale 49°), Biegungsecken mit Schnitt
+(oben), eine Startglättung der ersten Reihen an die Lippen-Kontrollpunkte (Robbe hoch Haut 0,46 → 0,70 px, die Falten bleiben),
+„kürzerer Arm“ und „mehr Luft“ als Wahl der Schnittfortsetzung (Tag 1).
+
+**Befund zu den zwei Falten (strukturell, keine Regel):** Die umgeklappten Zellen liegen in der ersten Reihe neben der Lippe,
+wo die Lippe stark biegt (Birne S, J-Haken) oder im spitzen Keil zwischen Lippe und Naht (Robbe hoch J). Das Vieleck hat gerade
+Seiten, die Haut dort nicht; die Abbildung staucht die erste Reihe auf 0,2 px Höhe, die Lippen-Kontrollpunkte aus A6 liegen
+neben der Kurve und kreuzen sie, der Löser klappt die Zelle um (Glätte 1e-3 bis 1e-1 ändert nichts). Weg: formtreues Abflachen des
+Stücks (LSCM/ARAP mit freiem Rand) statt Tutte auf das Vieleck — dann sind die Zellen in der Ebene so groß wie auf der Haut.
+
+**Nächster Schritt:** Florians Blick auf den Bogen. Danach in dieser Reihenfolge: formtreues Abflachen (die zwei Falten);
+Budget-Entscheidung (kleineres Feld, Dichte nur an der Lippe, oder K1 mit Genauigkeitsverlust — das ist eine Look-/Spiel-
+Entscheidung, keine Regel); Tasche, Rachen und Öffnen auf dem Stücknetz; Zahnfleischreihe; Stabilität ±2 px; die ganze Reihe
+(54 Fälle).

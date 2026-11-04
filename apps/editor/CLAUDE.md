@@ -567,3 +567,14 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   einem Schnitt die Dreiecke beiderseits der Endkante teilen (T-Stoß in der Triangulierung), die Endkante in der Linienliste
   ersetzen, dann neu fluten; Schnittpunkte ab `nBasis`, Tests nehmen `fund.dreiecke`. Pole je Seite am Endpunkt zählen (nicht am
   Anfang): die Verlängerung endet oft auf einem Treppenpunkt (Test: Dreierpole = konkave Randpunkte / 2).
+- **P2 Tag 2–4 „Stücknetz“ (04.11., `kern/einsatz/muster.ts`, `stuecknetz.ts`):** Seiten an allen Knoten beider Ufer und an
+  Linienwechseln teilen, sonst sind die Schlitzufer nicht dieselbe Seite und die Lippe bekommt zwei Punktreihen. Der Rand eines
+  Musters beginnt an der ersten Ecke des Stücks, die Bogenlänge des Umlaufs bei z[0] — ohne den Versatz lag jede Randzelle
+  umgeklappt (180°). Speichen eines Mittelpols ≥ 2 (`rMin`), sonst liegt der Pol in der ersten Reihe neben der Lippe. Feldrandpunkte
+  des Musters sind die alten Käfigpunkte, das Ende einer freien Linie auf dem Feldrand ist der Käfigpunkt davor (sonst stimmen die
+  Kantenzahlen beider Seiten nicht). Die Lage auf der Einheitsscheibe staucht schmale Keile (Normale 49°, Falten) — Vieleck mit den
+  Eckwinkeln des Stücks nehmen. Das Faltenmaß, das die Messung erklärt, ist die Zellnormale gegen die A0-Normale (Karte
+  „umgeklappt 0“ sieht es nicht). Der Kernring-Löser erwartet haut[0] als Lippenring mit 2m + 1 Punkten (U_k, D_k), haut[r ≥ 1] als
+  freie Punkte, Bereich 1 Kragen / 2 Haut rechts / 3 links; `lippeAnpassen` mit Ende „Falte“ legt c eine halbe Spanne hinter das
+  Linienende. Ein 190-MB-HTML bricht `html-shot` (`setContent`): Netze auf den Ausschnitt zuschneiden (`zuschnitt` in
+  `p2-bogen.ts`, 87 MB gehen). Deckung einer Musterbibliothek messen, bevor man Ganzzahlen sucht (Fünfecke 16 %).

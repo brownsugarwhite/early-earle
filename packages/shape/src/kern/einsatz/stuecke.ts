@@ -99,6 +99,8 @@ export type StueckeFund = {
   zusatz: Zusatz[];
   nBasis: number;
   dreiecke: Int32Array;
+  /** Lage eines Punkts (Nummer des aufgeschnittenen Netzes oder Schnittpunkt) auf der Haut */
+  lage: (i: number) => V3;
   /** Knoten und Kanten des Liniengraphen; Dreiecke ohne Stück (sollte 0 sein) */
   knoten: number;
   kanten: number;
@@ -145,8 +147,9 @@ function strahlStrecke(p: V3, d: V3, q: V3, r: V3, n: V3): { s: number; u: numbe
  * Pfadpunkt nur auf den nächsten Linienpunkt rückt). Konkave Knicke werden geschnitten (höchstens acht Schnitte), bis kein
  * Stück mehr eine konkave Ecke hat.
  */
-export function stueckeFinden(k: Kaefig, feld: FeldSpec, netz: FeinNetz, pfad: readonly number[], schnitt: Aufgeschnitten, karte: Karte, h: number, linie?: readonly V3[]): StueckeFund {
+export function stueckeFinden(k: Kaefig, feld: FeldSpec, netz: FeinNetz, pfad: readonly number[], schnitt: Aufgeschnitten, karte: Karte, h: number, linie?: readonly V3[], opt: { eckeGrad?: number } = {}): StueckeFund {
   const t0 = jetzt();
+  const eckeGrad = opt.eckeGrad ?? ECKE_GRAD;
   const T: number[] = Array.from(schnitt.dreiecke);
   let nBasis = 0;
   for (const p of T) if (p + 1 > nBasis) nBasis = p + 1;
@@ -395,7 +398,7 @@ export function stueckeFinden(k: Kaefig, feld: FeldSpec, netz: FeinNetz, pfad: r
       const dNach = transport(einheit(richtung(b, true)), punktBei(b), P);
       const gesamt = winkelIn(P, dVor, dNach);
       const bg: Biegung = { punkt: P, gesamt, dVor, dNach, nachbarVor: nachbar(P, false), nachbarNach: nachbar(P, true) };
-      if (Math.abs(gesamt) < ECKE_GRAD) bg.grund = `unter ${ECKE_GRAD}°`;
+      if (Math.abs(gesamt) < eckeGrad) bg.grund = `unter ${eckeGrad}°`;
       // dicht an einem Linienende, das eine Ecke ist: gehört zu dieser Ecke
       else if ((hartAnfang && s[i]! < 2 * h) || (hartEnde && laenge - s[i]! < 2 * h)) bg.grund = 'dicht an der Ecke am Linienende';
       biegungen.push(bg);
@@ -870,6 +873,7 @@ export function stueckeFinden(k: Kaefig, feld: FeldSpec, netz: FeinNetz, pfad: r
     zusatz,
     nBasis,
     dreiecke: Int32Array.from(T),
+    lage: P3,
     knoten: nb.size,
     kanten: kanten.size,
     ohneStueck: 0,
