@@ -1153,3 +1153,81 @@ Prüfplan folgt die Bilanz: Prinzip (Linien → Stücke → Ganzzahlen → Muste
 43 von 43, ein Drittel der Flächen, vier Pole je Feld, keine Lageregel —, die Genauigkeit liegt bei Haut 32 von 43 gegen 41 des
 Kernrings mit seinen 20 Schaltern. Offen für die Entscheidung: Budget (K2 ≈ 1 200–3 700 Flächen gegen Tor 300), Knicke auf glatten
 Körpern (a), Keil der Robbe (c), Hals-Schnitt (d), dann Tasche/Rachen/Öffnen, Zahnfleischreihe, Stabilität ±2 px.
+
+## P2 — Bilanz nach fünf Tagen (04.11.2026; Florian: „Schreib die P2-Bilanz nach Prüfplan und leg mir die Entscheidung vor.“)
+
+**Frage des Prüfplans:** Füllt ein Stücknetz (Linien → Stücke → Ganzzahlen → Muster) das Maulfeld ohne Sonderregeln, im
+Spiel-Budget, mit regulärem Mundwinkel und einer Zahnfleischreihe als Linie?
+
+**Tore gegen Stand** (zehn Fälle auf K2; Reihe = 43 ausgeglichene Fälle; K = Kernring, eingefroren seit E2.6):
+
+| Maß | Tor | Stücknetz | Kernring | Stand |
+|---|---|---|---|---|
+| Haut gegen A0 | ≤ 0,25 px; Knick ≤ A0 + 2° | zehn: Haut 8, Knick 7 · Reihe **32 von 43** | Reihe **41 von 43** | verfehlt |
+| Mundwinkel | ≤ A0 + 2° | zehn: 10 · Reihe **43 von 43** | 43 von 43 | erfüllt |
+| Lippe auf der Linie | ≤ 1 px (Ziel 0,3) | 10 von 10, **0,02–0,13 px** | ≤ 0,44 px | erfüllt, Ziel erreicht |
+| umgeklappt, außen, Spiegel | 0, bitgleich, bitgenau | außen und Spiegel 43 von 43; eine Falte (Robbe hoch J) | außen und Spiegel ja; Robbe hoch J Haut | ein Fall |
+| Regeln | keine nennt Körper oder Lage | zwei Regeln (Tag 1), drei Maße (Tag 5), kein Schalter | ≈ 20 Schalter, ≈ 15 feste Regeln | erfüllt |
+| Stabilität | Linie ±2 px, 20 Versuche | nicht gebaut | — | offen |
+| Muster | je Muster erschöpfend geprüft | Deckung gemessen (Dreiecke alle, Vierecke ½, Fünfecke ⅙); jeder Käfig geschlossen, nur Vierecke, Pole 3/5 | — | teils |
+| Budget | Maulfeld ≤ 300, Wesen ≤ 1 000 Flächen | K2 578–3 686 (Median 2 098); **K1 236–704** | K2 1 609–7 165 | verfehlt (beide) |
+| Spielstufe des Mauls | offen auf Stufe 1 rund | nicht gebaut (Öffnen fehlt) | Öffnen fehlt (E5) | offen |
+| Zahnfleischreihe | Linie ≤ 0,5 px | nicht gebaut | — | offen |
+| Öffnen (E5) | 0 Durchdringungen | nicht gebaut | nicht gebaut | offen |
+| Tigerkopf | elfter Fall | fehlt in der Einsatz-Reihe | fehlt | offen |
+
+**Bestanden** („alle Tore an ≥ 10 von 11 Fällen, Reihe nicht schlechter als der Kernring“): **nein.** **Abbruch** („nach fünf
+Tagen Tore in mehr als zwei Fällen verfehlt“): **trifft** — das Haut-Tor fällt an elf Fällen der Reihe, beim Kernring an zwei.
+Nach dem Buchstaben des Prüfplans bleibt der eingefrorene Kernring (E3/E4 darauf), und das Budget ist offen.
+
+**Prinzip (bewiesen):**
+- Linien → Stücke → Ganzzahlen → Muster → ein Löser baut jedes Maulfeld der Reihe: 43 von 43, Käfig geschlossen, außen
+  bitgleich, Spiegel bitgenau — mit zwei Regeln (Zusammenstöße verschiedener Linien sind Ecken; der Feldrand hat keine Ecken,
+  seine Treppen sind die Pole, die das Gitter außen vorgibt) und drei Maßen (ε = Haut-Tor, Keil 45°, Boden h/4). Keine Lage-
+  und keine Sonderregel; der Kernring braucht für dasselbe Feld gut 20 Schalter und 15 Regeln.
+- Der Mundwinkel ist regulär (zwei Stücke mit je 180°, ein glatter Punkt mit vier Flächen): 43 von 43 im Tor — der Kernring
+  brauchte dafür drei Sitzungen (Kissen, Halbkreisfächer, Stufennaht-Ausgleich, letzte Spanne 0,15, Leiter).
+- Die Lippe liegt genauer als je (0,02–0,13 px); ein Drittel der Flächen; vier Pole je Feld statt eines Paars je Treppenstufe.
+- Der Käfig folgt der Falte als Kontrollpolygon (Tag 5): jedes spätere Netz mit gezeichneten Falten braucht genau diese
+  Reihenfolge (Falte zuerst, Reihen am Polygon, Stationen nach Dichte).
+
+**Genauigkeit (nicht bewiesen):** Haut-Tor 32 von 43 gegen 41. Die elf Fälle in drei Gruppen mit Ursache:
+1. **Knicke 3,7–7,6° auf glatten Körpern** (sechs Fälle: Kugel hoch gerade, Kugel mittel S, Birne hoch S, mittel gerade,
+   mittel S, tief gerade; A0 1,6°). Die größte Gruppe, Ursache nicht gemessen; Vermutung: Speichen und Pol des Dreieckmusters
+   quer zur Krümmung. Ob sichtbar, entscheidet der Bogen — im Zehnerbogen sind Kugel und Birne glatt.
+2. **Robbe** (vier Fälle): hoch gerade 0,44, mittel gerade 0,58, mittel J 0,56 px — die Reihen des Dreiecks laufen am
+   Linienanfang in den Keil zwischen Lippe und Naht (der Kernring hat dort seine Leiter, eine Sonderregel); hoch J: der Pol
+   liegt im 2,3 px engen Hals des Hakens, zwei Zellen klappen um (Kernring: derselbe Fall offen).
+3. **Rex mittel gerade** 32,3° an der Falte von A0 (Kernring 29,6 bei Tor 29,1 — formal ebenso offen).
+Strukturell sind 2 und 3: ein Pol je Dreieck, seine Lage allein aus Kantenzahlen. Weg (Strukturarbeit, keine Regel): Schnitt an
+Engstellen — die Schnittmaschine von Tag 1 liegt bereit — und Muster mit Dreier-Fünfer-Paaren für die entstehenden ungleichen
+Vierecke (Takayama 2014, Tarini 2022; unsere Bibliothek deckt Vierecke nur zur Hälfte). Gruppe 1 ist zuerst zu messen.
+
+**Budget:** Das Tor (300 Flächen je Maulfeld, 1 000 je Wesen) verfehlen beide Bauweisen auf K2 weit — mit 5-px-Zellen hat
+schon eine Lippe von 25 Stationen mit zehn Reihen 250 Flächen je Hälfte. Auf K1 (Zellen doppelt so groß) liegt das Stücknetz
+heute bei 236–704 Flächen (Langhals im Tor, Kugel/Ei/Birne 500–600, Rex/Robbe 400–700) mit Haut 0,18–0,25 px an Kugel, Ei,
+Langhals und Birne, 0,6–0,9 an Rex, 1,5–2,6 an Robbe und zwei Falten am Mundwinkel (Rex tief J, Kugel mittel J); der Kernring
+auf K1: Haut 0,4–5,6 px, Mundwinkel bis 85°, Falte 179°. Das Stücknetz skaliert mit der Dichte, der Kernring nicht. Budget und
+Genauigkeit treffen sich damit auf K1 an den runden Körpern, nicht an Rex und Robbe. Die Entscheidung des Prüfplans — lokale
+Verfeinerung (Maul feiner als der Körper) oder kleineres Maulfeld — ist unabhängig von A/B zu treffen.
+
+**Offen, nicht gebaut:** Stabilität ±2 px, Zahnfleischreihe, Tasche/Rachen/Öffnen (E5), Spielstufe des Mauls, Tigerkopf,
+Ursache der Gruppe 1, Hals-Schnitt mit Paaren.
+
+**Regeln gezählt über P2:** Tag 1 zwei Regeln; Tag 2–4 keine (Ganzzahlen und Muster sind Verfahren); Tag 5 keine Regel, drei
+Maße. Verworfen nach Messung: Biegungsecken mit Schnitt, Scheibe als Tutte-Gebiet, Startglättung, Abflachen als einzige Ebene,
+γ = 4-Parameter, gleichmäßiges Verdichten. Kein Fall bekam eine eigene Regel.
+
+**Entscheidung (Vorlage, Empfehlung zuerst):**
+- **B — P2 um höchstens zwei Tage verlängern, zwei Strukturstücke, ein Tor.** Tag 1: Ursache der Knicke auf glatten Körpern
+  messen und beheben (sechs der elf Fälle). Tag 2: Schnitt an Engstellen und Dreier-Fünfer-Paare für ungleiche Vierecke
+  (Robbe, vier Fälle). Danach die Reihe: Haut-Tor ≥ 41 von 43 → das Stücknetz ersetzt den Kernring, E3/E4, Öffnen und
+  Zahnfleischreihe darauf; sonst A. Keine weitere Regel, kein Schalter. Begründung: Mundwinkel und Lippe sind schon besser als
+  der Kernring, die Fehler haben benannte strukturelle Ursachen, und P3 („Loops und Linien am ganzen Körper“: Stücke zwischen
+  den Linien, Muster, Pole nach Regel) steht auf genau dieser Maschine — ohne P2 fehlt P3 der Kern.
+- **A — nach dem Buchstaben des Prüfplans:** der Kernring bleibt (E3/E4 darauf), das Stücknetz wird Wissen für P3. Preis: die
+  20 Schalter bleiben, der Kernring kann weder Budget (K1: 0,4–5,6 px) noch Öffnen (A8/E5 seit 21.10. offen), und P3 muss die
+  Stückmaschine trotzdem fertig bauen.
+- **Budget (für A und B):** Maul auf K1-Dichte als Spielnetz, Körper nach P1 (600–700 Flächen) — zusammen 1 000–1 400 Flächen,
+  knapp über dem Tor; kleineres Maulfeld prüfen (das Feld reicht heute 1,5 Radien über die Linie hinaus, die Stücke brauchen
+  diesen Rand nicht).

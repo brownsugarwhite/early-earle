@@ -1,4 +1,4 @@
-# Übergabe (Stand 04.11.2026: P1 abgeschlossen; P2 „Stücknetz im Maulfeld“ Tag 1–5 gebaut — ganze Reihe: 43 von 43 bauen, Mundwinkel 43 von 43, Haut-Tor 32 von 43 (Kernring 41), ein Drittel der Flächen; Robbe hoch J strukturell offen; Abnahme offen)
+# Übergabe (Stand 04.11.2026: P1 abgeschlossen; P2 „Stücknetz im Maulfeld“ nach fünf Tagen bilanziert — Abbruchkriterium trifft formal (Haut-Tor 32 von 43 gegen 41), Prinzip bewiesen, Entscheidung A/B und Budget bei Florian)
 
 Branch `claude/editor-grundlayout`, PR mit Auto-Fix. **Diese Datei ist der Einstieg für eine frische Sitzung.** Der Kernring
 bleibt eingefroren; alles Neue liegt hinter Schaltern (`stufen`, `umrissPlan`), ohne Schalter bitgleich.
@@ -308,6 +308,17 @@ Hals-Schnitt), dann Tasche/Rachen/Öffnen, Zahnfleischreihe, Stabilität ±2 px.
 > Regel, die einen Körper oder eine Lage nennt; Tore als Tests (`stuecknetz.test.ts`, `stuecknetz.extrem.ts`, verfehlte als
 > `it.fails` mit Registereintrag), Bogen `p2-bogen.ts`, Planseite „Stand“, Register, Übergabe, Commit und Push. Nach jedem Block die
 > neuen Regeln zählen; ab der dritten anhalten und die Struktur prüfen. Nichts als bestanden melden; Florian bekommt drei Zeilen.
+
+## 04.11.: P2 — Bilanz nach fünf Tagen, Entscheidung vorgelegt
+
+Planseite „P2 — Bilanz nach fünf Tagen“ (Tore gegen Stand als Tabelle). Kurz: **Prinzip bewiesen** (43 von 43 bauen, Mundwinkel
+43 von 43, Lippe 0,02–0,13 px, ein Drittel der Flächen, zwei Regeln und drei Maße statt 20 Schaltern), **Genauigkeit nicht** (Haut-
+Tor 32 von 43 gegen 41 des Kernrings; drei Gruppen: Knicke 4–8° auf glatten Körpern (sechs, Ursache nicht gemessen), Robbe-Keil und
+Hals (vier, strukturell: ein Pol je Dreieck), Rex an der Falte (einer)), **Budget** verfehlen beide auf K2; auf K1 ist das
+Stücknetz mit 236–704 Flächen und 0,18–0,25 px an den runden Körpern in Reichweite, der Kernring nicht (0,4–5,6 px). Formal trifft
+das Abbruchkriterium des Prüfplans. **Vorlage:** B (Empfehlung) zwei Tage für zwei Strukturstücke — Knick-Ursache, Schnitt an
+Engstellen mit Dreier-Fünfer-Paaren — mit dem Tor Haut ≥ 41 von 43, sonst A; A nach dem Buchstaben (Kernring bleibt); Budget
+getrennt (Maul auf K1, kleineres Feld prüfen). **Nächster Schritt: Florians Entscheidung.** Bis dahin nichts bauen.
 
 ## Entscheidungen, die Florian treffen muss (Gegenprüfung, Abschnitt 10)
 

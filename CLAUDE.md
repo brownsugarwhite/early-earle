@@ -466,6 +466,12 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Offen: Knicke 3,7–7,6° auf glatten Körpern, Rex mittel gerade 32°, Robbe-Keil 0,44–0,62 px, Robbe hoch J (Pol im Hals des Hakens;
   Weg Schnitt am Hals + Muster für das ungleiche Viereck). Verworfen: γ = 4-Parameter (m verdoppelt), gleichmäßiges Verdichten.
   Keine neue Regel mit Körper oder Lage. P2 ist nach fünf Tagen am Ende → Bilanz und Florians Entscheidung.
+- **2026-11-04: P2 — Bilanz nach fünf Tagen** (Florian: „Schreib die P2-Bilanz nach Prüfplan und leg mir die Entscheidung vor.“;
+  Planseite „P2 — Bilanz nach fünf Tagen“, Übergabe). Formal trifft das Abbruchkriterium (Haut-Tor 32 von 43 gegen 41); Prinzip
+  bewiesen (43 von 43 bauen, Mundwinkel 43 von 43, Lippe 0,02–0,13 px, ⅓ Flächen, zwei Regeln + drei Maße statt 20 Schaltern),
+  Genauigkeit nicht (Knicke 4–8° auf glatten Körpern, Robbe-Keil/Hals, Rex-Falte), Budget auf K2 für beide unerreichbar, auf K1
+  Stücknetz 236–704 Flächen mit 0,18–0,25 px an runden Körpern (Kernring 0,4–5,6). Vorlage: B zwei Tage Strukturarbeit mit Tor
+  ≥ 41 von 43 (Empfehlung), A Kernring bleibt, Budget getrennt. **Entscheidung bei Florian; bis dahin nichts bauen.**
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
