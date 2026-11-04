@@ -508,6 +508,19 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   wechselt; der Outline-Schub braucht das Kippen aus der Blicknormalen (Clip-Länge hat keine Pixelbedeutung) und einen
   Polygon-Versatz statt `clip.z`; Punkte nie beim Drücken neu zeichnen und auf `dblclick` hoffen (Klicks selbst zählen).
   Bilder `docs/progress/editor/form-zuerst-{langhals,ei}-2026-11-04.jpg` (`scripts/pruefen/form-bild.mjs`).
+- **2026-11-04 (abends, danach): Linien auf der Form werden Kanten** (Florian: „Fühlt sich gut an. Weiter: Ich zeichne eine
+  Linie auf die Form, und dort wird eine Kante, deren Strichdicke die Härte ist.“). Im Fenster: auf der Form ziehen zeichnet
+  eine Linie (Freihand → wenige Punkte, Ramer–Douglas–Peucker), Linie anklicken wählt sie (Punkte ziehbar, Doppelklick Ecke),
+  `+`/`−` oder `0`–`3` setzen die Strichdicke (auch je Punkt), ⌫ löscht, ⌘Z. Kern `dicht/kanten.ts`: die Linie bleibt auf der
+  Fläche, links und rechts wird die Form in einer Zone von 1,2 Kugelradien flacher (Profil t (1 − t)², Knick an der Linie
+  ≈ 16° je Seite bei 3 px), Härte = Tiefe und Rundung des Knicks, 0 px = weiche Linie ohne Kante (gestrichelt), Enden laufen aus;
+  Normalen genau aus der Steigung des Profils. Front, Top und 3D zeichnen die Linien als Bänder mit Pixelbreite je Probe
+  (sichtbar schwarz, verdeckt blass, weich gestrichelt). Fallen: Das Profil darf keine Rinne neben dem Grat machen (Neigung
+  ≤ Zone / 4R) — sonst dreht sich die Fläche kurz von der Kamera weg und der Umriss-Shader zeichnet Kratzer; Netznormalen in der
+  Zone rauschen auf Rastergröße (zackige Farbstufen), deshalb Normalen aus dem Profil und zwei Mittelungen über die Nachbarn;
+  Vite merkt sich einen Importfehler einer Datei, die erst danach angelegt wird (Server neu starten). Offen: Die restlichen
+  feinen Stufen der Farbbänder kommen vom Toon-Material auf Eckennormalen (Sache des echten Looks). Bilder
+  `docs/progress/editor/form-zuerst-kanten-{ei,langhals}-2026-11-04.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

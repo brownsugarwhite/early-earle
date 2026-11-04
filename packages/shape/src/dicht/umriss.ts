@@ -11,10 +11,19 @@ export type UmrissPunkt = { x: number; y: number; ecke?: boolean };
 
 /** Kubische Stücke der geschlossenen Linie durch alle Punkte. */
 export function umrissStuecke(p: readonly UmrissPunkt[]): [V2, V2, V2, V2][] {
+  return stuecke(p, false);
+}
+
+/** Kubische Stücke einer offenen Linie durch die Punkte (an den Enden gerade auf den Nachbarn zu). */
+export function linienStuecke(p: readonly UmrissPunkt[]): [V2, V2, V2, V2][] {
+  return stuecke(p, true);
+}
+
+function stuecke(p: readonly UmrissPunkt[], offen: boolean): [V2, V2, V2, V2][] {
   const n = p.length;
   const tangente = (i: number): V2 | null => {
     const q = p[i]!;
-    if (q.ecke) return null;
+    if (q.ecke || (offen && (i === 0 || i === n - 1))) return null;
     const a = p[(i - 1 + n) % n]!;
     const b = p[(i + 1) % n]!;
     const tx = b.x - a.x;
@@ -30,7 +39,7 @@ export function umrissStuecke(p: readonly UmrissPunkt[]): [V2, V2, V2, V2][] {
     return { x: t.x * l, y: t.y * l };
   };
   const out: [V2, V2, V2, V2][] = [];
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < (offen ? n - 1 : n); i++) {
     const a = p[i]!;
     const b = p[(i + 1) % n]!;
     const sx = b.x - a.x;
@@ -44,7 +53,7 @@ export function umrissStuecke(p: readonly UmrissPunkt[]): [V2, V2, V2, V2][] {
   return out;
 }
 
-function punktAufStueck(k: readonly [V2, V2, V2, V2], t: number): V2 {
+export function punktAufStueck(k: readonly [V2, V2, V2, V2], t: number): V2 {
   const u = 1 - t;
   const a = u * u * u;
   const b = 3 * u * u * t;

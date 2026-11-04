@@ -9,9 +9,12 @@
 // Nahe jeder Stelle ist sie ein Stück der Kugel, die dort am weitesten reicht; am Umriss steht sie senkrecht, die beiden
 // Hälften gehen glatt ineinander über. Vernetzt wird mit Surface Nets auf einem Raster, so dicht wie gewünscht; danach liegen
 // die Punkte genau auf der Fläche, und die Normalen sind die Normalen der Kugel. Keine Topologie wird vorab festgelegt.
+// Gezeichnete Linien werden danach zu Kanten (`kanten.ts`).
 
 import type { V2 } from '../bezier';
-import { type Naechster, Umrissfeld } from './abstand';
+import { Umrissfeld } from './abstand';
+import { type Kante3D, type KantenLinie, kantenAnwenden } from './kanten';
+import { Kugeln, kugelRadien } from './kugeln';
 import { type UmrissPunkt, polygonFlaeche, umrissAbtasten } from './umriss';
 
 export type DichtesNetz = {
@@ -22,6 +25,8 @@ export type DichtesNetz = {
   zelle: number;
   /** abgetasteter Umriss (gegen den Uhrzeigersinn) */
   umriss: V2[];
+  /** die gezeichneten Linien auf dem Körper, beide Seiten */
+  kanten: Kante3D[];
 };
 
 export type RundOptionen = {
@@ -29,126 +34,42 @@ export type RundOptionen = {
   dreiecke?: number;
   /** feste Rasterweite statt der Dreieckszahl */
   zelle?: number;
+  /** in der Seite gezeichnete Linien; ihre Strichbreite ist die Härte der Kante */
+  linien?: readonly KantenLinie[];
 };
 
-const leer = (): Naechster => ({ d: 0, qx: 0, qy: 0, strecke: 0, t: 0 });
-
 /**
- * Radius der größten Kugel, die an jedem Umrisspunkt innen Platz hat (schrumpfende Kugel). `tol`: so viel darf die Kugel den
- * abgetasteten Umriss schneiden — die Sehnen zwischen den Abtastpunkten liegen etwas innen, ohne Toleranz schrumpft jede
- * Kugel an der Ecke des Polygons auf null.
+ * Normalen über die Netznachbarn mitteln. Die Normale springt zwischen benachbarten Kugeln ein wenig (die Kugeln sind eine
+ * endliche Auswahl); ungeglättet zeigen die Farbstufen davon kleine Zacken.
  */
-export function kugelRadien(feld: Umrissfeld, start: number, rMin: number, tol: number): Float64Array {
-  const P = feld.p;
-  const m = P.length;
-  const R = new Float64Array(m);
-  const nb = leer();
-  for (let i = 0; i < m; i++) {
-    const b = P[i]!;
-    const nx = feld.pn[2 * i]!;
-    const ny = feld.pn[2 * i + 1]!;
-    let r = start;
-    for (let it = 0; it < 60; it++) {
-      const cx = b.x + r * nx;
-      const cy = b.y + r * ny;
-      feld.naechster(cx, cy, nb);
-      if (Math.hypot(nb.qx - cx, nb.qy - cy) >= r - tol) break;
-      // Kugel durch b (tangential) und den näheren Punkt q
-      const vx = nb.qx - b.x;
-      const vy = nb.qy - b.y;
-      const dot = vx * nx + vy * ny;
-      if (dot <= 1e-12) break;
-      const neu = (vx * vx + vy * vy) / (2 * dot);
-      if (!(neu < r)) break;
-      r = neu;
-    }
-    R[i] = Math.max(r, rMin);
-  }
-  // leicht entlang des Umrisses glätten (Abtastrauschen)
-  const tmp = new Float64Array(m);
-  for (let k = 0; k < 3; k++) {
-    for (let i = 0; i < m; i++) tmp[i] = (R[(i - 1 + m) % m]! + 2 * R[i]! + R[(i + 1) % m]!) / 4;
-    R.set(tmp);
-  }
-  return R;
-}
-
-/** Die größten Kugeln samt Eimerraster: g(x, y) = maxᵢ (Rᵢ² − |(x, y) − cᵢ|²) und die Kugel, die dort am weitesten reicht. */
-class Kugeln {
-  private readonly cx: Float64Array;
-  private readonly cy: Float64Array;
-  private readonly r2: Float64Array;
-  private readonly x0: number;
-  private readonly y0: number;
-  private readonly e: number;
-  private readonly nx: number;
-  private readonly ny: number;
-  private readonly start: Int32Array;
-  private readonly liste: Int32Array;
-  /** Ergebnis der letzten Abfrage: Mitte der weitesten Kugel */
-  mx = 0;
-  my = 0;
-
-  constructor(feld: Umrissfeld, R: Float64Array, x0: number, y0: number, x1: number, y1: number, rand: number) {
-    const P = feld.p;
-    const m = P.length;
-    this.cx = new Float64Array(m);
-    this.cy = new Float64Array(m);
-    this.r2 = new Float64Array(m);
-    for (let i = 0; i < m; i++) {
-      this.cx[i] = P[i]!.x + R[i]! * feld.pn[2 * i]!;
-      this.cy[i] = P[i]!.y + R[i]! * feld.pn[2 * i + 1]!;
-      this.r2[i] = R[i]! * R[i]!;
-    }
-    this.e = Math.max((x1 - x0) / 48, (y1 - y0) / 48, 1e-6);
-    this.x0 = x0;
-    this.y0 = y0;
-    this.nx = Math.ceil((x1 - x0) / this.e) + 1;
-    this.ny = Math.ceil((y1 - y0) / this.e) + 1;
-    const eimer: number[][] = Array.from({ length: this.nx * this.ny }, () => []);
-    for (let i = 0; i < m; i++) {
-      const r = R[i]! + rand;
-      const i0 = this.ix(this.cx[i]! - r);
-      const i1 = this.ix(this.cx[i]! + r);
-      const j0 = this.iy(this.cy[i]! - r);
-      const j1 = this.iy(this.cy[i]! + r);
-      for (let j = j0; j <= j1; j++) for (let k = i0; k <= i1; k++) eimer[j * this.nx + k]!.push(i);
-    }
-    this.start = new Int32Array(eimer.length + 1);
-    let n = 0;
-    eimer.forEach((z, i) => {
-      this.start[i] = n;
-      n += z.length;
-    });
-    this.start[eimer.length] = n;
-    this.liste = new Int32Array(n);
-    eimer.forEach((z, i) => this.liste.set(z, this.start[i]!));
-  }
-
-  private ix(x: number): number {
-    return Math.max(0, Math.min(this.nx - 1, Math.floor((x - this.x0) / this.e)));
-  }
-
-  private iy(y: number): number {
-    return Math.max(0, Math.min(this.ny - 1, Math.floor((y - this.y0) / this.e)));
-  }
-
-  /** g an (x, y); die Mitte der weitesten Kugel steht danach in mx, my. Weit außen: −∞. */
-  g(x: number, y: number): number {
-    const z = this.iy(y) * this.nx + this.ix(x);
-    let best = -Infinity;
-    for (let q = this.start[z]!; q < this.start[z + 1]!; q++) {
-      const i = this.liste[q]!;
-      const dx = x - this.cx[i]!;
-      const dy = y - this.cy[i]!;
-      const g = this.r2[i]! - dx * dx - dy * dy;
-      if (g > best) {
-        best = g;
-        this.mx = this.cx[i]!;
-        this.my = this.cy[i]!;
+function normalenGlaetten(nor: Float32Array, ind: Uint32Array, durchgaenge: number): void {
+  const n = nor.length / 3;
+  const summe = new Float32Array(3 * n);
+  for (let d = 0; d < durchgaenge; d++) {
+    summe.set(nor);
+    for (let t = 0; t < ind.length; t += 3) {
+      const a = ind[t]!;
+      const b = ind[t + 1]!;
+      const c = ind[t + 2]!;
+      for (const [p, q] of [
+        [a, b],
+        [b, c],
+        [c, a],
+      ] as const) {
+        summe[3 * p] = summe[3 * p]! + nor[3 * q]!;
+        summe[3 * p + 1] = summe[3 * p + 1]! + nor[3 * q + 1]!;
+        summe[3 * p + 2] = summe[3 * p + 2]! + nor[3 * q + 2]!;
+        summe[3 * q] = summe[3 * q]! + nor[3 * p]!;
+        summe[3 * q + 1] = summe[3 * q + 1]! + nor[3 * p + 1]!;
+        summe[3 * q + 2] = summe[3 * q + 2]! + nor[3 * p + 2]!;
       }
     }
-    return best;
+    for (let v = 0; v < n; v++) {
+      const l = Math.hypot(summe[3 * v]!, summe[3 * v + 1]!, summe[3 * v + 2]!) || 1;
+      nor[3 * v] = summe[3 * v]! / l;
+      nor[3 * v + 1] = summe[3 * v + 1]! / l;
+      nor[3 * v + 2] = summe[3 * v + 2]! / l;
+    }
   }
 }
 
@@ -351,5 +272,8 @@ export function rundAusSeite(punkte: readonly UmrissPunkt[], opt: RundOptionen =
       indizes[t + 2] = b;
     }
   }
-  return { positionen, normalen, indizes, zelle, umriss: P };
+
+  normalenGlaetten(normalen, indizes, 2);
+  const kanten = kantenAnwenden(positionen, normalen, opt.linien ?? [], kugeln, zelle);
+  return { positionen, normalen, indizes, zelle, umriss: P, kanten };
 }

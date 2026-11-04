@@ -88,6 +88,51 @@ body {
   cursor: copy;
 }
 
+#zeichnung .treffer-kante {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14px;
+  vector-effect: non-scaling-stroke;
+  cursor: pointer;
+}
+
+#zeichnung .kante {
+  fill: var(--linie);
+  pointer-events: none;
+}
+
+#zeichnung .kante-weich {
+  fill: none;
+  stroke: var(--linie);
+  stroke-width: 1px;
+  stroke-dasharray: 5 4;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+#zeichnung .entwurf {
+  fill: none;
+  stroke: var(--linie);
+  stroke-width: 2px;
+  stroke-opacity: 0.5;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+#zeichnung .lpunkt {
+  fill: var(--papier);
+  stroke: var(--linie);
+  stroke-width: 1.2px;
+  vector-effect: non-scaling-stroke;
+  cursor: grab;
+}
+
+#zeichnung .lpunkt.gewaehlt {
+  fill: var(--linie);
+}
+
 #zeichnung .punkt {
   fill: var(--papier);
   stroke: var(--linie);

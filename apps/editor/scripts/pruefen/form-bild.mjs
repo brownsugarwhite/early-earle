@@ -1,5 +1,5 @@
 // Form zuerst (04.11.2026): Bild des kleinen Fensters mit einer gesetzten Zeichnung.
-// Aufruf aus apps/editor: node scripts/pruefen/form-bild.mjs <ausgabe.jpg> [form]
+// Aufruf aus apps/editor: node scripts/pruefen/form-bild.mjs <ausgabe.jpg> [form] [linien]
 // Erwartet den Vite-Server des Arbeitsbaums (FORM_URL, Standard http://localhost:5193/form.html).
 import { chromium } from '@playwright/test';
 
@@ -13,14 +13,27 @@ const FORMEN = {
   ],
 };
 
+const LINIEN = {
+  ei: [{ punkte: [{ x: -110, y: 75, breite: 3 }, { x: 40, y: 95, breite: 3 }, { x: 210, y: 45, breite: 3 }] }],
+  langhals: [
+    { punkte: [{ x: -250, y: 222, breite: 3 }, { x: -205, y: 228, breite: 3 }, { x: -160, y: 210, breite: 3 }] },
+    { punkte: [{ x: -60, y: -40, breite: 1 }, { x: 60, y: -60, breite: 1 }, { x: 170, y: -40, breite: 1 }] },
+  ],
+};
+
 const ausgabe = process.argv[2] ?? 'form.jpg';
-const form = FORMEN[process.argv[3] ?? 'langhals'];
+const name = process.argv[3] ?? 'langhals';
+const form = FORMEN[name];
+const linien = process.argv[4] === 'linien' ? (LINIEN[name] ?? []) : [];
 const browser = await chromium.launch();
 const seite = await browser.newPage({ viewport: { width: 1400, height: 900 }, deviceScaleFactor: 2 });
 await seite.goto(process.env.FORM_URL ?? 'http://localhost:5193/form.html');
 await seite.waitForFunction(() => window.__form?.fein === true);
-await seite.evaluate((p) => window.__formSetzen(p), form);
-await seite.waitForFunction((n) => window.__form?.fein === true && window.__form.punkte.length === n, form.length);
+await seite.evaluate(([p, l]) => window.__formSetzen(p, l), [form, linien]);
+await seite.waitForFunction(
+  ([n, k]) => window.__form?.fein === true && window.__form.punkte.length === n && window.__form.linien.length === k,
+  [form.length, linien.length],
+);
 await seite.waitForTimeout(300);
 await seite.screenshot({ path: ausgabe, type: 'jpeg', quality: 88 });
 const info = await seite.evaluate(() => ({ dreiecke: window.__form.dreiecke, ms: Math.round(window.__form.ms) }));

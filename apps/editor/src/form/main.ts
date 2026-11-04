@@ -2,9 +2,20 @@
 //
 // Ein kleines eigenes Fenster neben dem Editor (form.html). In der Seite setzt und zieht er Punkte wie Vektorpunkte (glatt oder
 // Ecke), daneben zeigen Front, Top und 3D dasselbe Modell. Deren Umrisse zeichnet ein Shader: die Rückseiten des Körpers, um
-// eine feste Pixelbreite nach außen geschoben. Keine Regler, keine Chips.
+// eine feste Pixelbreite nach außen geschoben. Auf der Form gezeichnete Linien werden Kanten; ihre Strichdicke (0–3 px) ist
+// die Härte, und Front, Top und 3D zeichnen sie mit (sichtbar schwarz, verdeckt blass). Keine Regler, keine Chips.
 
-import { type DichtesNetz, type UmrissPunkt, rundAusSeite, umrissStuecke } from '@ee/shape/dicht';
+import {
+  BREITE_MAX,
+  type DichtesNetz,
+  type Kante3D,
+  type KantenLinie,
+  type UmrissPunkt,
+  linieAbtasten,
+  rundAusSeite,
+  umrissAbtasten,
+  umrissStuecke,
+} from '@ee/shape/dicht';
 import {
   BackSide,
   BufferAttribute,
@@ -12,7 +23,9 @@ import {
   Color,
   DataTexture,
   DirectionalLight,
+  GreaterDepth,
   HemisphereLight,
+  LessEqualDepth,
   Mesh,
   MeshToonMaterial,
   NearestFilter,
@@ -27,11 +40,13 @@ import {
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
+type Zustand = { punkte: UmrissPunkt[]; linien: KantenLinie[] };
+
 declare global {
   interface Window {
-    __form?: { punkte: UmrissPunkt[]; dreiecke: number; ms: number; zelle: number; fein: boolean };
+    __form?: { punkte: UmrissPunkt[]; linien: KantenLinie[]; dreiecke: number; ms: number; zelle: number; fein: boolean };
     /** Prüfhaken: eine Zeichnung setzen (wie ein Zug, mit Rückgängig) */
-    __formSetzen?: (p: UmrissPunkt[]) => void;
+    __formSetzen?: (p: UmrissPunkt[], linien?: KantenLinie[]) => void;
   }
 }
 
@@ -43,6 +58,8 @@ const SICHT = 560;
 // Surface Nets geben etwa das 1,5-Fache der bestellten Dreiecke
 const DREIECKE_FEIN = 40000;
 const DREIECKE_ZUG = 6000;
+/** Strichdicke einer neu gezeichneten Linie (px) */
+const BREITE_NEU = 2;
 
 const kreis = (r: number): UmrissPunkt[] => [
   { x: r, y: 0 },
@@ -62,12 +79,16 @@ const svg = document.getElementById('zeichnung') as unknown as SVGSVGElement;
 
 // ---------- Zustand ----------
 
-let punkte: UmrissPunkt[] = kreis(150);
-let auswahl = -1;
-const zurueck: UmrissPunkt[][] = [];
-const vor: UmrissPunkt[][] = [];
-const kopie = (p: readonly UmrissPunkt[]): UmrissPunkt[] => p.map((q) => ({ ...q }));
-function merken(stand: UmrissPunkt[]): void {
+let zustand: Zustand = { punkte: kreis(150), linien: [] };
+type Auswahl = { art: 'umriss'; i: number } | { art: 'linie'; l: number } | { art: 'lpunkt'; l: number; i: number } | null;
+let auswahl: Auswahl = null;
+const zurueck: Zustand[] = [];
+const vor: Zustand[] = [];
+const kopie = (z: Zustand): Zustand => ({
+  punkte: z.punkte.map((q) => ({ ...q })),
+  linien: z.linien.map((l) => ({ punkte: l.punkte.map((q) => ({ ...q })) })),
+});
+function merken(stand: Zustand): void {
   zurueck.push(stand);
   if (zurueck.length > 200) zurueck.shift();
   vor.length = 0;
@@ -120,9 +141,69 @@ const umrissMaterial = new ShaderMaterial({
   polygonOffsetFactor: 2,
   polygonOffsetUnits: 2,
 });
+
+// Gezeichnete Linien in Front, Top und 3D: Bänder mit fester Pixelbreite je Probe, weiche Linien gestrichelt
+const kantenShader = (deckung: number) =>
+  new ShaderMaterial({
+    uniforms: {
+      uAufloesung: { value: new Vector2(1, 1) },
+      uDpr: { value: 1 },
+      uFarbe: { value: new Color(TINTE) },
+      uDeckung: { value: deckung },
+    },
+    vertexShader: /* glsl */ `
+      attribute vec3 aAnderer;
+      attribute float aSeite;
+      attribute float aRichtung;
+      attribute float aBreite;
+      attribute float aLauf;
+      uniform vec2 uAufloesung;
+      uniform float uDpr;
+      varying float vLauf;
+      varying float vWeich;
+      void main() {
+        vec4 a = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        vec4 b = projectionMatrix * modelViewMatrix * vec4(aAnderer, 1.0);
+        vec2 d = (b.xy / b.w - a.xy / a.w) * uAufloesung;
+        float l = length(d);
+        d = l > 1e-6 ? d / l : vec2(1.0, 0.0);
+        vec2 quer = vec2(-d.y, d.x) * aRichtung;
+        float w = max(aBreite, 1.0) * uDpr;
+        a.xy += quer * aSeite * w / uAufloesung * a.w;
+        gl_Position = a;
+        vLauf = aLauf;
+        vWeich = aBreite < 0.3 ? 1.0 : 0.0;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uFarbe;
+      uniform float uDeckung;
+      varying float vLauf;
+      varying float vWeich;
+      void main() {
+        if (vWeich > 0.5 && mod(vLauf, 10.0) > 5.0) discard;
+        gl_FragColor = vec4(uFarbe, uDeckung);
+      }
+    `,
+    transparent: deckung < 1,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -4,
+    polygonOffsetUnits: -4,
+  });
+const kanteSichtbar = kantenShader(1);
+kanteSichtbar.depthFunc = LessEqualDepth;
+const kanteVerdeckt = kantenShader(0.28);
+kanteVerdeckt.depthFunc = GreaterDepth;
+
 const koerper = new Mesh(new BufferGeometry(), koerperMaterial);
 const umriss = new Mesh(koerper.geometry, umrissMaterial);
-szene.add(koerper, umriss);
+const kanten = new Mesh(new BufferGeometry(), kanteSichtbar);
+const kantenHinten = new Mesh(kanten.geometry, kanteVerdeckt);
+umriss.renderOrder = 1;
+kanten.renderOrder = 2;
+kantenHinten.renderOrder = 3;
+szene.add(koerper, umriss, kanten, kantenHinten);
 const sonne = new DirectionalLight(0xffffff, 2.4);
 sonne.position.set(0.9, 1.4, 1.1);
 szene.add(sonne, new HemisphereLight(0xfff6e8, 0x9c8a74, 1.1));
@@ -183,16 +264,70 @@ function geometrieSetzen(n: DichtesNetz): void {
   koerper.geometry = g;
   umriss.geometry = g;
   alt.dispose();
+  const k = kantenGeometrie(n.kanten);
+  const altK = kanten.geometry;
+  kanten.geometry = k;
+  kantenHinten.geometry = k;
+  altK.dispose();
+}
+
+/** Bänder der Linien: je Strecke ein Viereck, die Breite setzt der Shader in Pixeln. */
+function kantenGeometrie(liste: readonly Kante3D[]): BufferGeometry {
+  const pos: number[] = [];
+  const anderer: number[] = [];
+  const seite: number[] = [];
+  const richtung: number[] = [];
+  const breite: number[] = [];
+  const lauf: number[] = [];
+  const ind: number[] = [];
+  for (const k of liste) {
+    let s = 0;
+    for (let i = 0; i + 1 < k.breite.length; i++) {
+      const ax = k.lagen[3 * i]!;
+      const ay = k.lagen[3 * i + 1]!;
+      const az = k.lagen[3 * i + 2]!;
+      const bx = k.lagen[3 * i + 3]!;
+      const by = k.lagen[3 * i + 4]!;
+      const bz = k.lagen[3 * i + 5]!;
+      const l = Math.hypot(bx - ax, by - ay, bz - az);
+      const v = pos.length / 3;
+      for (const [p, q, r, w, ls] of [
+        [[ax, ay, az], [bx, by, bz], 1, k.breite[i]!, s],
+        [[bx, by, bz], [ax, ay, az], -1, k.breite[i + 1]!, s + l],
+      ] as const) {
+        for (const sd of [1, -1]) {
+          pos.push(...p);
+          anderer.push(...q);
+          seite.push(sd);
+          richtung.push(r);
+          breite.push(w);
+          lauf.push(ls);
+        }
+      }
+      ind.push(v, v + 1, v + 2, v + 1, v + 3, v + 2);
+      s += l;
+    }
+  }
+  const g = new BufferGeometry();
+  g.setAttribute('position', new BufferAttribute(new Float32Array(pos), 3));
+  g.setAttribute('aAnderer', new BufferAttribute(new Float32Array(anderer), 3));
+  g.setAttribute('aSeite', new BufferAttribute(new Float32Array(seite), 1));
+  g.setAttribute('aRichtung', new BufferAttribute(new Float32Array(richtung), 1));
+  g.setAttribute('aBreite', new BufferAttribute(new Float32Array(breite), 1));
+  g.setAttribute('aLauf', new BufferAttribute(new Float32Array(lauf), 1));
+  g.setIndex(ind);
+  return g;
 }
 
 let bauGewuenscht: 'grob' | 'fein' | null = 'fein';
 function bauen(fein: boolean): void {
   const t0 = performance.now();
-  const n = rundAusSeite(punkte, { dreiecke: fein ? DREIECKE_FEIN : DREIECKE_ZUG });
+  const n = rundAusSeite(zustand.punkte, { dreiecke: fein ? DREIECKE_FEIN : DREIECKE_ZUG, linien: zustand.linien });
   const ms = performance.now() - t0;
   geometrieSetzen(n);
   if (fein && !kameraBewegt) einrahmen();
-  window.__form = { punkte: kopie(punkte), dreiecke: n.indizes.length / 3, ms, zelle: n.zelle, fein };
+  const k = kopie(zustand);
+  window.__form = { punkte: k.punkte, linien: k.linien, dreiecke: n.indizes.length / 3, ms, zelle: n.zelle, fein };
   neuZeichnen = true;
 }
 
@@ -227,10 +362,17 @@ function rendern(): void {
       kamera.aspect = r.width / r.height;
     }
     kamera.updateProjectionMatrix();
-    // in der Seite ist die gezeichnete Linie der Umriss; der Shader zeichnet ihn in den anderen Blättern
-    umriss.visible = name !== 'seite';
+    // in der Seite sind die gezeichneten Linien selbst zu sehen; der Shader zeichnet Umriss und Linien in den anderen Blättern
+    const andere = name !== 'seite';
+    umriss.visible = andere;
+    kanten.visible = andere;
+    kantenHinten.visible = andere;
     umrissMaterial.uniforms.uAufloesung!.value.set(r.width * dpr, r.height * dpr);
     umrissMaterial.uniforms.uBreite!.value = 2.5 * dpr;
+    for (const m of [kanteSichtbar, kanteVerdeckt]) {
+      m.uniforms.uAufloesung!.value.set(r.width * dpr, r.height * dpr);
+      m.uniforms.uDpr!.value = dpr;
+    }
     renderer.clearDepth();
     renderer.render(szene, kamera);
   }
@@ -239,41 +381,79 @@ function rendern(): void {
 // ---------- Seite zeichnen ----------
 
 const NS = 'http://www.w3.org/2000/svg';
+const element = (art: string, klasse: string, attr: Record<string, string | number>): SVGElement => {
+  const e = document.createElementNS(NS, art);
+  e.setAttribute('class', klasse);
+  for (const [k, v] of Object.entries(attr)) e.setAttribute(k, String(v));
+  return e;
+};
+
+/** Pfad einer gezeichneten Linie: gefüllte Fläche mit der Strichdicke je Probe, weiche Linien gestrichelt. */
+function linienPfad(l: KantenLinie, s: number): { flaeche: string | null; mitte: string } {
+  const { p, breite } = linieAbtasten(l, 2 / s);
+  let mitte = '';
+  p.forEach((q, i) => {
+    mitte += `${i ? ' L' : 'M'} ${q.x} ${-q.y}`;
+  });
+  if (Math.max(...breite) < 0.3) return { flaeche: null, mitte };
+  const links: string[] = [];
+  const rechts: string[] = [];
+  for (let i = 0; i < p.length; i++) {
+    const a = p[Math.max(0, i - 1)]!;
+    const b = p[Math.min(p.length - 1, i + 1)]!;
+    const l2 = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    const nx = -(b.y - a.y) / l2;
+    const ny = (b.x - a.x) / l2;
+    const h = Math.max(breite[i]!, 0.6) / 2 / s;
+    const q = p[i]!;
+    links.push(`${q.x + nx * h} ${-(q.y + ny * h)}`);
+    rechts.push(`${q.x - nx * h} ${-(q.y - ny * h)}`);
+  }
+  return { flaeche: `M ${links.join(' L ')} L ${rechts.reverse().join(' L ')} Z`, mitte };
+}
+
 function svgZeichnen(): void {
   const r = felder.seite.getBoundingClientRect();
   const s = skala();
   const w = r.width / s;
   const h = r.height / s;
   svg.setAttribute('viewBox', `${-w / 2} ${-h / 2} ${w} ${h}`);
-  const stuecke = umrissStuecke(punkte);
+  const stuecke = umrissStuecke(zustand.punkte);
   let d = `M ${stuecke[0]![0].x} ${-stuecke[0]![0].y}`;
   for (const k of stuecke) d += ` C ${k[1].x} ${-k[1].y} ${k[2].x} ${-k[2].y} ${k[3].x} ${-k[3].y}`;
   d += ' Z';
   svg.replaceChildren();
-  const treffer = document.createElementNS(NS, 'path');
-  treffer.setAttribute('d', d);
-  treffer.setAttribute('class', 'treffer');
+  const treffer = element('path', 'treffer', { d });
   treffer.dataset.linie = '';
-  const linie = document.createElementNS(NS, 'path');
-  linie.setAttribute('d', d);
-  linie.setAttribute('class', 'linie');
-  svg.append(treffer, linie);
+  svg.append(treffer, element('path', 'linie', { d }));
   const rp = 5 / s;
-  punkte.forEach((p, i) => {
-    let e: SVGElement;
-    if (p.ecke) {
-      e = document.createElementNS(NS, 'rect');
-      e.setAttribute('x', String(p.x - rp));
-      e.setAttribute('y', String(-p.y - rp));
-      e.setAttribute('width', String(2 * rp));
-      e.setAttribute('height', String(2 * rp));
-    } else {
-      e = document.createElementNS(NS, 'circle');
-      e.setAttribute('cx', String(p.x));
-      e.setAttribute('cy', String(-p.y));
-      e.setAttribute('r', String(rp));
-    }
-    e.setAttribute('class', i === auswahl ? 'punkt gewaehlt' : 'punkt');
+  // gezeichnete Linien: Trefferband, Strich, Punkte der gewählten Linie
+  zustand.linien.forEach((l, li) => {
+    const { flaeche, mitte } = linienPfad(l, s);
+    const t = element('path', 'treffer-kante', { d: mitte });
+    t.dataset.kante = String(li);
+    svg.append(t);
+    if (flaeche) svg.append(element('path', 'kante', { d: flaeche }));
+    else svg.append(element('path', 'kante-weich', { d: mitte }));
+    const gewaehlt = auswahl !== null && auswahl.art !== 'umriss' && auswahl.l === li;
+    if (!gewaehlt) return;
+    l.punkte.forEach((p, i) => {
+      const an = auswahl?.art === 'linie' || (auswahl?.art === 'lpunkt' && auswahl.i === i);
+      const e = p.ecke
+        ? element('rect', an ? 'lpunkt gewaehlt' : 'lpunkt', { x: p.x - 0.8 * rp, y: -p.y - 0.8 * rp, width: 1.6 * rp, height: 1.6 * rp })
+        : element('circle', an ? 'lpunkt gewaehlt' : 'lpunkt', { cx: p.x, cy: -p.y, r: 0.8 * rp });
+      e.dataset.lpunkt = `${li}:${i}`;
+      svg.append(e);
+    });
+  });
+  if (zug?.art === 'zeichnen' && zug.spur.length > 1) {
+    svg.append(element('path', 'entwurf', { d: zug.spur.map((q, i) => `${i ? 'L' : 'M'} ${q.x} ${-q.y}`).join(' ') }));
+  }
+  zustand.punkte.forEach((p, i) => {
+    const an = auswahl?.art === 'umriss' && auswahl.i === i;
+    const e = p.ecke
+      ? element('rect', an ? 'punkt gewaehlt' : 'punkt', { x: p.x - rp, y: -p.y - rp, width: 2 * rp, height: 2 * rp })
+      : element('circle', an ? 'punkt gewaehlt' : 'punkt', { cx: p.x, cy: -p.y, r: rp });
     e.dataset.punkt = String(i);
     svg.append(e);
   });
@@ -285,13 +465,13 @@ const welt = (e: { clientX: number; clientY: number }): { x: number; y: number }
   return { x: (e.clientX - r.left - r.width / 2) / s, y: -(e.clientY - r.top - r.height / 2) / s };
 };
 
-/** Nächste Stelle auf der Linie: Stück i und der Punkt darauf. */
+/** Nächste Stelle auf dem Umriss: Stück i und der Punkt darauf. */
 function naechsteStelle(q: { x: number; y: number }): { i: number; x: number; y: number } {
   let best = Infinity;
   let bi = 0;
   let bx = 0;
   let by = 0;
-  umrissStuecke(punkte).forEach((k, i) => {
+  umrissStuecke(zustand.punkte).forEach((k, i) => {
     for (let j = 1; j < 40; j++) {
       const t = j / 40;
       const u = 1 - t;
@@ -309,41 +489,114 @@ function naechsteStelle(q: { x: number; y: number }): { i: number; x: number; y:
   return { i: bi, x: bx, y: by };
 }
 
-function ecke(i: number): void {
-  merken(kopie(punkte));
-  punkte = punkte.map((p, j) => (j === i ? { x: p.x, y: p.y, ecke: !p.ecke } : p));
-  svgZeichnen();
-  bauGewuenscht = 'fein';
+/** Liegt der Punkt im gezeichneten Umriss? */
+function imUmriss(q: { x: number; y: number }): boolean {
+  const p = umrissAbtasten(zustand.punkte, 3).punkte;
+  let innen = false;
+  for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
+    const a = p[i]!;
+    const b = p[j]!;
+    if (a.y > q.y !== b.y > q.y && q.x < ((b.x - a.x) * (q.y - a.y)) / (b.y - a.y) + a.x) innen = !innen;
+  }
+  return innen;
 }
 
-let zug: { i: number; vorher: UmrissPunkt[]; bewegt: boolean } | null = null;
+/** Freihand-Spur auf wenige Punkte (Ramer–Douglas–Peucker). */
+function vereinfachen(p: readonly { x: number; y: number }[], tol: number): { x: number; y: number }[] {
+  if (p.length < 3) return [...p];
+  const a = p[0]!;
+  const b = p[p.length - 1]!;
+  const l = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  let best = -1;
+  let bi = 0;
+  for (let i = 1; i < p.length - 1; i++) {
+    const q = p[i]!;
+    const d = Math.abs((b.x - a.x) * (a.y - q.y) - (a.x - q.x) * (b.y - a.y)) / l;
+    if (d > best) {
+      best = d;
+      bi = i;
+    }
+  }
+  if (best <= tol) return [a, b];
+  return [...vereinfachen(p.slice(0, bi + 1), tol).slice(0, -1), ...vereinfachen(p.slice(bi), tol)];
+}
+
+function geaendert(fein = true): void {
+  svgZeichnen();
+  bauGewuenscht = fein ? 'fein' : 'grob';
+}
+
+function umrissEcke(i: number): void {
+  merken(kopie(zustand));
+  zustand.punkte = zustand.punkte.map((p, j) => (j === i ? { x: p.x, y: p.y, ecke: !p.ecke } : p));
+  geaendert();
+}
+
+function linienEcke(l: number, i: number): void {
+  merken(kopie(zustand));
+  const p = zustand.linien[l]!.punkte[i]!;
+  zustand.linien[l]!.punkte[i] = { ...p, ecke: !p.ecke };
+  geaendert();
+}
+
+/** Strichdicke der Auswahl ändern (ganze Linie oder ein Punkt). */
+function breiteSetzen(f: (b: number) => number): void {
+  if (!auswahl || auswahl.art === 'umriss') return;
+  merken(kopie(zustand));
+  const l = zustand.linien[auswahl.l]!;
+  const a = auswahl;
+  l.punkte = l.punkte.map((p, i) => (a.art === 'linie' || a.i === i ? { ...p, breite: Math.max(0, Math.min(BREITE_MAX, f(p.breite))) } : p));
+  geaendert();
+}
+
+type Zug =
+  | { art: 'umriss'; i: number; vorher: Zustand; bewegt: boolean }
+  | { art: 'lpunkt'; l: number; i: number; vorher: Zustand; bewegt: boolean }
+  | { art: 'zeichnen'; spur: { x: number; y: number }[]; vorher: Zustand };
+let zug: Zug | null = null;
 // Doppelklick selbst zählen: die Punkte werden beim Drücken neu gezeichnet, das dblclick-Ziel ist dann weg
-let letzterKlick: { i: number; t: number } | null = null;
+let letzterKlick: { schluessel: string; t: number } | null = null;
+const doppelklick = (schluessel: string): boolean => {
+  const jetzt = performance.now();
+  const doppelt = letzterKlick !== null && letzterKlick.schluessel === schluessel && jetzt - letzterKlick.t < 400;
+  letzterKlick = doppelt ? null : { schluessel, t: jetzt };
+  return doppelt;
+};
 
 svg.addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return;
-  const ziel = e.target as SVGElement;
-  if (ziel.dataset.punkt !== undefined) {
-    const i = Number(ziel.dataset.punkt);
-    auswahl = i;
-    const jetzt = performance.now();
-    const doppelt = letzterKlick !== null && letzterKlick.i === i && jetzt - letzterKlick.t < 400;
-    letzterKlick = doppelt ? null : { i, t: jetzt };
-    if (e.altKey || doppelt) {
-      ecke(i);
+  const d = (e.target as SVGElement).dataset;
+  if (d.punkt !== undefined) {
+    const i = Number(d.punkt);
+    auswahl = { art: 'umriss', i };
+    if (doppelklick(`u${i}`) || e.altKey) {
+      umrissEcke(i);
       return;
     }
-    zug = { i, vorher: kopie(punkte), bewegt: false };
-  } else if (ziel.dataset.linie !== undefined) {
-    const vorher = kopie(punkte);
+    zug = { art: 'umriss', i, vorher: kopie(zustand), bewegt: false };
+  } else if (d.lpunkt !== undefined) {
+    const [l, i] = d.lpunkt.split(':').map(Number) as [number, number];
+    auswahl = { art: 'lpunkt', l, i };
+    if (doppelklick(`l${l}:${i}`) || e.altKey) {
+      linienEcke(l, i);
+      return;
+    }
+    zug = { art: 'lpunkt', l, i, vorher: kopie(zustand), bewegt: false };
+  } else if (d.kante !== undefined) {
+    auswahl = { art: 'linie', l: Number(d.kante) };
+  } else if (d.linie !== undefined) {
+    const vorher = kopie(zustand);
     const st = naechsteStelle(welt(e));
-    punkte.splice(st.i + 1, 0, { x: st.x, y: st.y });
+    zustand.punkte.splice(st.i + 1, 0, { x: st.x, y: st.y });
     merken(vorher);
-    auswahl = st.i + 1;
-    zug = { i: st.i + 1, vorher: kopie(punkte), bewegt: true };
+    auswahl = { art: 'umriss', i: st.i + 1 };
+    zug = { art: 'umriss', i: st.i + 1, vorher: kopie(zustand), bewegt: true };
     bauGewuenscht = 'fein';
   } else {
-    auswahl = -1;
+    const q = welt(e);
+    auswahl = null;
+    // auf der Form zeichnen: eine neue Linie
+    if (imUmriss(q)) zug = { art: 'zeichnen', spur: [q], vorher: kopie(zustand) };
   }
   svg.setPointerCapture(e.pointerId);
   svgZeichnen();
@@ -351,19 +604,47 @@ svg.addEventListener('pointerdown', (e) => {
 
 svg.addEventListener('pointermove', (e) => {
   if (!zug) return;
+  const w = welt(e);
+  if (zug.art === 'zeichnen') {
+    const l = zug.spur[zug.spur.length - 1]!;
+    if (Math.hypot(w.x - l.x, w.y - l.y) * skala() >= 3) {
+      zug.spur.push(w);
+      svgZeichnen();
+    }
+    return;
+  }
   if (!zug.bewegt) {
     merken(zug.vorher);
     zug.bewegt = true;
     letzterKlick = null;
   }
-  const w = welt(e);
-  const p = punkte[zug.i]!;
-  punkte[zug.i] = { ...p, x: w.x, y: w.y };
-  svgZeichnen();
-  bauGewuenscht = 'grob';
+  if (zug.art === 'umriss') {
+    const p = zustand.punkte[zug.i]!;
+    zustand.punkte[zug.i] = { ...p, x: w.x, y: w.y };
+  } else {
+    const l = zustand.linien[zug.l]!;
+    const p = l.punkte[zug.i]!;
+    l.punkte[zug.i] = { ...p, x: w.x, y: w.y };
+  }
+  geaendert(false);
 });
 
 const zugEnde = (): void => {
+  if (zug?.art === 'zeichnen') {
+    const spur = zug.spur;
+    let laenge = 0;
+    for (let i = 1; i < spur.length; i++) laenge += Math.hypot(spur[i]!.x - spur[i - 1]!.x, spur[i]!.y - spur[i - 1]!.y);
+    if (laenge * skala() >= 12) {
+      const punkte = vereinfachen(spur, 3 / skala()).map((q) => ({ x: q.x, y: q.y, breite: BREITE_NEU }));
+      merken(zug.vorher);
+      zustand.linien.push({ punkte });
+      auswahl = { art: 'linie', l: zustand.linien.length - 1 };
+      bauGewuenscht = 'fein';
+    }
+    zug = null;
+    svgZeichnen();
+    return;
+  }
   if (zug?.bewegt) bauGewuenscht = 'fein';
   zug = null;
 };
@@ -378,20 +659,45 @@ window.addEventListener('keydown', (e) => {
     const nach = e.shiftKey ? zurueck : vor;
     const stand = von.pop();
     if (!stand) return;
-    nach.push(kopie(punkte));
-    punkte = stand;
-    auswahl = -1;
-    svgZeichnen();
-    bauGewuenscht = 'fein';
+    nach.push(kopie(zustand));
+    zustand = stand;
+    auswahl = null;
+    geaendert();
     return;
   }
-  if ((e.key === 'Backspace' || e.key === 'Delete') && auswahl >= 0 && punkte.length > 3) {
-    e.preventDefault();
-    merken(kopie(punkte));
-    punkte = punkte.filter((_, j) => j !== auswahl);
-    auswahl = -1;
+  if (e.key === 'Escape') {
+    auswahl = null;
     svgZeichnen();
-    bauGewuenscht = 'fein';
+    return;
+  }
+  // Strichdicke: [ ] (auf deutscher Tastatur ⌥5/⌥6 oder dieselben Tasten wie dort + und ü) oder + und −
+  const mehr = e.key === ']' || e.key === '+' || e.code === 'BracketRight';
+  const weniger = e.key === '[' || e.key === '-' || e.code === 'BracketLeft';
+  if (!mod && (mehr || weniger)) {
+    e.preventDefault();
+    const d = mehr ? 0.5 : -0.5;
+    breiteSetzen((b) => Math.round((b + d) * 2) / 2);
+    return;
+  }
+  if (!mod && ['0', '1', '2', '3'].includes(e.key)) {
+    breiteSetzen(() => Number(e.key));
+    return;
+  }
+  if ((e.key === 'Backspace' || e.key === 'Delete') && auswahl) {
+    e.preventDefault();
+    const a = auswahl;
+    if (a.art === 'umriss') {
+      if (zustand.punkte.length <= 3) return;
+      merken(kopie(zustand));
+      zustand.punkte = zustand.punkte.filter((_, j) => j !== a.i);
+    } else {
+      merken(kopie(zustand));
+      const l = zustand.linien[a.l]!;
+      if (a.art === 'lpunkt' && l.punkte.length > 2) l.punkte = l.punkte.filter((_, j) => j !== a.i);
+      else zustand.linien = zustand.linien.filter((_, j) => j !== a.l);
+    }
+    auswahl = null;
+    geaendert();
   }
 });
 
@@ -415,12 +721,21 @@ function schleife(): void {
   }
 }
 
-window.__formSetzen = (p) => {
-  merken(kopie(punkte));
-  punkte = kopie(p);
-  auswahl = -1;
-  svgZeichnen();
-  bauGewuenscht = 'fein';
+// Prüfhaken: Teile der Szene zum Ein- und Ausblenden
+(window as unknown as { __formSzene: unknown }).__formSzene = {
+  umriss,
+  kanten,
+  kantenHinten,
+  zeichnen: () => {
+    neuZeichnen = true;
+  },
+};
+
+window.__formSetzen = (p, linien = []) => {
+  merken(kopie(zustand));
+  zustand = kopie({ punkte: p, linien });
+  auswahl = null;
+  geaendert();
 };
 
 svgZeichnen();
