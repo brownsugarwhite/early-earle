@@ -12,7 +12,11 @@ import {
   type DichtesNetz,
   type Kante3D,
   type KantenLinie,
+  PRUEFFAELLE,
+  type Prueffall,
   type UmrissPunkt,
+  type Zeichnungen,
+  formAusAnsichten,
   linieAbtasten,
   profilAusBreite,
   profilUmriss,
@@ -46,8 +50,19 @@ import {
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
+/**
+ * Alle Ansichten gleichwertig (Beweis 04.11.): Front (z, y) und Top (x, z) als geschlossene Umrisse, dazu weitere Flächen der
+ * Seite neben `punkte`. Solange das fehlt, gilt der bisherige Bau (Seite rund, Front und Top als halbe Profile).
+ */
+type Ansichten = { seite: UmrissPunkt[][]; front: UmrissPunkt[][]; top: UmrissPunkt[][] };
 /** Front und Top: halbe Profile über der Ausdehnung der Seite; null = folgt dem runden Körper (noch nicht angefasst) */
-type Zustand = { punkte: UmrissPunkt[]; linien: KantenLinie[]; front: BreitenPunkt[] | null; top: BreitenPunkt[] | null };
+type Zustand = {
+  punkte: UmrissPunkt[];
+  linien: KantenLinie[];
+  front: BreitenPunkt[] | null;
+  top: BreitenPunkt[] | null;
+  ansichten: Ansichten | null;
+};
 type Blatt = 'front' | 'top';
 
 declare global {
@@ -61,9 +76,15 @@ declare global {
       ms: number;
       zelle: number;
       fein: boolean;
+      /** gleichwertige Ansichten: Ellipsoide je Ansicht (sonst null) */
+      ellipsoide: Record<'seite' | 'front' | 'top', number> | null;
     };
     /** Prüfhaken: eine Zeichnung setzen (wie ein Zug, mit Rückgängig) */
     __formSetzen?: (p: UmrissPunkt[], linien?: KantenLinie[], front?: BreitenPunkt[] | null, top?: BreitenPunkt[] | null) => void;
+    /** Prüfhaken: alle drei Ansichten als geschlossene Umrisse setzen (gleichwertig) */
+    __formAnsichten?: (z: Zeichnungen) => void;
+    /** Prüfhaken: einen Prüffall laden (Kugel, Beine, Flossen, Lappen) */
+    __formPruefall?: (name: Prueffall) => void;
   }
 }
 
@@ -100,7 +121,7 @@ const profilSvg: Record<Blatt, SVGSVGElement> = {
 
 // ---------- Zustand ----------
 
-let zustand: Zustand = { punkte: kreis(150), linien: [], front: null, top: null };
+let zustand: Zustand = { punkte: kreis(150), linien: [], front: null, top: null, ansichten: null };
 type Auswahl =
   | { art: 'umriss'; i: number }
   | { art: 'linie'; l: number }
@@ -116,6 +137,13 @@ const kopie = (z: Zustand): Zustand => ({
   linien: z.linien.map((l) => ({ ...l, punkte: l.punkte.map((q) => ({ ...q })) })),
   front: z.front ? z.front.map((q) => ({ ...q })) : null,
   top: z.top ? z.top.map((q) => ({ ...q })) : null,
+  ansichten: z.ansichten
+    ? {
+        seite: z.ansichten.seite.map((u) => u.map((q) => ({ ...q }))),
+        front: z.ansichten.front.map((u) => u.map((q) => ({ ...q }))),
+        top: z.ansichten.top.map((u) => u.map((q) => ({ ...q }))),
+      }
+    : null,
 });
 function merken(stand: Zustand): void {
   zurueck.push(stand);
@@ -363,15 +391,51 @@ function linienTiefe(l: number, i: number): number | null {
 }
 const abgeleitet: Record<Blatt, BreitenPunkt[] | null> = { front: null, top: null };
 
+/** Gleichwertige Ansichten: der Körper aus allen drei Umrissen, als Netz in der Form des runden Baus (noch ohne Linien). */
+function gleichBauen(a: Ansichten, fein: boolean): { n: DichtesNetz; ellipsoide: Record<'seite' | 'front' | 'top', number> } {
+  const g = formAusAnsichten(
+    { seite: [zustand.punkte, ...a.seite], front: a.front, top: a.top },
+    { dreiecke: fein ? DREIECKE_FEIN : DREIECKE_ZUG },
+  );
+  let xMin = Infinity;
+  let xMax = -Infinity;
+  let yMin = Infinity;
+  let yMax = -Infinity;
+  for (const P of g.umrisse.seite) {
+    for (const q of P) {
+      xMin = Math.min(xMin, q.x);
+      xMax = Math.max(xMax, q.x);
+      yMin = Math.min(yMin, q.y);
+      yMax = Math.max(yMax, q.y);
+    }
+  }
+  const leer = { r0: 0, dr: 1, breite: new Float64Array(0) };
+  const n: DichtesNetz = {
+    positionen: g.positionen,
+    normalen: g.normalen,
+    indizes: g.indizes,
+    zelle: g.zelle,
+    umriss: g.umrisse.seite[0] ?? [],
+    kanten: [],
+    ansichten: { front: leer, top: leer, seite: { xMin, xMax, yMin, yMax } },
+    tiefe: null,
+    linienZ: [],
+  };
+  return { n, ellipsoide: g.ellipsoide };
+}
+
 let bauGewuenscht: 'grob' | 'fein' | null = 'fein';
 function bauen(fein: boolean): void {
   const t0 = performance.now();
-  const n = rundAusSeite(zustand.punkte, {
-    dreiecke: fein ? DREIECKE_FEIN : DREIECKE_ZUG,
-    linien: zustand.linien,
-    front: zustand.front,
-    top: zustand.top,
-  });
+  const gleich = zustand.ansichten ? gleichBauen(zustand.ansichten, fein) : null;
+  const n =
+    gleich?.n ??
+    rundAusSeite(zustand.punkte, {
+      dreiecke: fein ? DREIECKE_FEIN : DREIECKE_ZUG,
+      linien: zustand.linien,
+      front: zustand.front,
+      top: zustand.top,
+    });
   const ms = performance.now() - t0;
   geometrieSetzen(n);
   if (fein && !kameraBewegt) einrahmen();
@@ -381,11 +445,22 @@ function bauen(fein: boolean): void {
   letzteKanten = n.kanten;
   const s = n.ansichten.seite;
   // auf etwa 2 px genau, höchstens 6 Punkte: wenige Punkte zum Greifen statt einer Perlenkette
-  abgeleitet.front = profilAusBreite(n.ansichten.front, s.yMin, s.yMax, 3);
-  abgeleitet.top = profilAusBreite(n.ansichten.top, s.xMin, s.xMax, 3);
+  abgeleitet.front = gleich ? null : profilAusBreite(n.ansichten.front, s.yMin, s.yMax, 3);
+  abgeleitet.top = gleich ? null : profilAusBreite(n.ansichten.top, s.xMin, s.xMax, 3);
   profileZeichnen();
+  svgZeichnen();
   const k = kopie(zustand);
-  window.__form = { punkte: k.punkte, linien: k.linien, front: k.front, top: k.top, dreiecke: n.indizes.length / 3, ms, zelle: n.zelle, fein };
+  window.__form = {
+    punkte: k.punkte,
+    linien: k.linien,
+    front: k.front,
+    top: k.top,
+    dreiecke: n.indizes.length / 3,
+    ms,
+    zelle: n.zelle,
+    fein,
+    ellipsoide: gleich?.ellipsoide ?? null,
+  };
   neuZeichnen = true;
 }
 
@@ -422,7 +497,8 @@ function rendern(): void {
     kamera.updateProjectionMatrix();
     // in der Seite sind die gezeichneten Linien selbst zu sehen; der Shader zeichnet Umriss und Linien in den anderen Blättern
     const andere = name !== 'seite';
-    umriss.visible = andere;
+    // mit gleichwertigen Ansichten zeigt auch die Seite den Umriss des Modells (über der Zeichnung)
+    umriss.visible = andere || zustand.ansichten !== null;
     kanten.visible = andere;
     kantenHinten.visible = andere;
     umrissMaterial.uniforms.uAufloesung!.value.set(r.width * dpr, r.height * dpr);
@@ -483,7 +559,9 @@ function svgZeichnen(): void {
   svg.replaceChildren();
   const treffer = element('path', 'treffer', { d });
   treffer.dataset.linie = '';
-  svg.append(treffer, element('path', 'linie', { d }));
+  // gleichwertige Ansichten: die Zeichnung farbig, der Umriss des Modells (Shader) schwarz darüber
+  svg.append(treffer, element('path', zustand.ansichten ? 'vorgabe' : 'linie', { d }));
+  for (const u of zustand.ansichten?.seite ?? []) svg.append(element('path', 'vorgabe', { d: umrissPfad(u, (q) => [q.x, -q.y]) }));
   const rp = 5 / s;
   // gezeichnete Linien: Trefferband, Strich, Punkte der gewählten Linie
   zustand.linien.forEach((l, li) => {
@@ -792,6 +870,11 @@ function profilZeichnen(b: Blatt): void {
   const h = r.height / s;
   el.setAttribute('viewBox', `${-w / 2} ${-h / 2} ${w} ${h}`);
   el.replaceChildren();
+  if (zustand.ansichten) {
+    // Front (z, y) → Blatt (z, −y), Top (x, z) → Blatt (x, z)
+    for (const u of zustand.ansichten[b]) el.append(element('path', 'vorgabe', { d: umrissPfad(u, (q) => (b === 'front' ? [q.x, -q.y] : [q.x, q.y])) }));
+    return;
+  }
   const p = profilVon(b);
   const ax = achse(b);
   if (!p || p.length < 2 || !ax) return;
@@ -844,6 +927,16 @@ function profilZeichnen(b: Blatt): void {
     el.append(e);
   });
 }
+/** SVG-Pfad eines geschlossenen Umrisses; `blatt` bildet seine Koordinaten auf das Blatt ab. */
+function umrissPfad(u: readonly UmrissPunkt[], blatt: (q: { x: number; y: number }) => [number, number]): string {
+  if (u.length < 3) return '';
+  const st = umrissStuecke(u);
+  const pt = (q: { x: number; y: number }) => blatt(q).join(' ');
+  let d = `M ${pt(st[0]![0])}`;
+  for (const k of st) d += ` C ${pt(k[1])} ${pt(k[2])} ${pt(k[3])}`;
+  return `${d} Z`;
+}
+
 function profileZeichnen(): void {
   profilZeichnen('front');
   profilZeichnen('top');
@@ -1042,10 +1135,29 @@ function schleife(): void {
 
 window.__formSetzen = (p, linien = [], front = null, top = null) => {
   merken(kopie(zustand));
-  zustand = kopie({ punkte: p, linien, front, top });
+  zustand = kopie({ punkte: p, linien, front, top, ansichten: null });
   auswahl = null;
   geaendert();
 };
+
+window.__formAnsichten = (z) => {
+  merken(kopie(zustand));
+  const kopien = (a: Zeichnungen['seite'] | null | undefined) => (a ?? []).map((u) => u.map((q) => ({ ...q })));
+  const seite = kopien(z.seite);
+  zustand = kopie({
+    punkte: seite[0] ?? kreis(150),
+    linien: [],
+    front: null,
+    top: null,
+    ansichten: { seite: seite.slice(1), front: kopien(z.front), top: kopien(z.top) },
+  });
+  auswahl = null;
+  geaendert();
+};
+window.__formPruefall = (name) => window.__formAnsichten?.(PRUEFFAELLE[name]);
+// ?fall=kugel|beine|flossen|lappen|innen öffnet einen Prüffall für gleichwertige Ansichten
+const fallAusAdresse = new URLSearchParams(location.search).get('fall');
+if (fallAusAdresse && fallAusAdresse in PRUEFFAELLE) window.__formPruefall(fallAusAdresse as Prueffall);
 
 svgZeichnen();
 schleife();

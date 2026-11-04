@@ -70,6 +70,16 @@ body {
   cursor: default;
 }
 
+/* gleichwertige Ansichten: die Zeichnung farbig unter dem schwarzen Umriss des Modells */
+.blatt .vorgabe {
+  fill: none;
+  stroke: #0e9f8e;
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
 .blatt .linie {
   fill: none;
   stroke: var(--linie);

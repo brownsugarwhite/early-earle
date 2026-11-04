@@ -10,18 +10,19 @@ const leer = (): Naechster => ({ d: 0, qx: 0, qy: 0, strecke: 0, t: 0 });
 /**
  * Radius der größten Kugel, die an jedem Umrisspunkt innen Platz hat (schrumpfende Kugel). `tol`: so viel darf die Kugel den
  * abgetasteten Umriss schneiden — die Sehnen zwischen den Abtastpunkten liegen etwas innen, ohne Toleranz schrumpft jede
- * Kugel an der Ecke des Polygons auf null.
+ * Kugel an der Ecke des Polygons auf null. `nachpruefen`: nach dem Glätten jede Kugel noch einmal schrumpfen lassen (an Ecken
+ * ragte sie sonst über den Umriss hinaus).
  */
-export function kugelRadien(feld: Umrissfeld, start: number, rMin: number, tol: number): Float64Array {
+export function kugelRadien(feld: Umrissfeld, start: number, rMin: number, tol: number, nachpruefen = false): Float64Array {
   const P = feld.p;
   const m = P.length;
   const R = new Float64Array(m);
   const nb = leer();
-  for (let i = 0; i < m; i++) {
+  const schrumpfen = (i: number, r0: number): number => {
     const b = P[i]!;
     const nx = feld.pn[2 * i]!;
     const ny = feld.pn[2 * i + 1]!;
-    let r = start;
+    let r = r0;
     for (let it = 0; it < 60; it++) {
       const cx = b.x + r * nx;
       const cy = b.y + r * ny;
@@ -36,14 +37,16 @@ export function kugelRadien(feld: Umrissfeld, start: number, rMin: number, tol: 
       if (!(neu < r)) break;
       r = neu;
     }
-    R[i] = Math.max(r, rMin);
-  }
+    return Math.max(r, rMin);
+  };
+  for (let i = 0; i < m; i++) R[i] = schrumpfen(i, start);
   // leicht entlang des Umrisses glätten (Abtastrauschen)
   const tmp = new Float64Array(m);
   for (let k = 0; k < 3; k++) {
     for (let i = 0; i < m; i++) tmp[i] = (R[(i - 1 + m) % m]! + 2 * R[i]! + R[(i + 1) % m]!) / 4;
     R.set(tmp);
   }
+  if (nachpruefen) for (let i = 0; i < m; i++) R[i] = schrumpfen(i, R[i]!);
   return R;
 }
 

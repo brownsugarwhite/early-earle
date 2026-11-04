@@ -558,6 +558,28 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   die Streckung `tiefe`; das Fenster rechnet damit zwischen den Ansichten (`streckungBei`). Gemessen: Seite hoch → z bleibt
   137,6; Front → nur z; Top → nur x. Bild `docs/progress/editor/form-zuerst-linien-ansichten-2026-11-04.jpg`
   (`scripts/pruefen/form-linien-ansichten.mjs`).
+- **2026-11-04 (nachts): Alle Ansichten gleichwertig — Beweis** (Florian: „Ja, beweise die Regel zuerst: außen Kugel, vier
+  Beine, Seitenflossen, Lappen; dann eine innere Kontur … Ohne Teile, ohne Sonderregeln, mit Bildern.“; Alarm davor: keine Röhre,
+  keine Teile, „das Mesh passt sich intelligent an“). Kern `dicht/gleich.ts` (`formAusAnsichten`), Prüffälle
+  `dicht/prueffaelle.ts`, Test `gleich.test.ts`; im Fenster `?fall=kugel|beine|flossen|lappen|innen` (Zeichnung türkis unter
+  dem schwarzen Umriss des Modells). Regel: Jede gezeichnete Fläche jeder Ansicht bekommt ihre größten Kreise; jeder Kreis wird
+  ein Ellipsoid — in seiner Ansicht genau der Kreis, in der Tiefe höchstens so tief wie breit (Kugel) und nur so flach, wie
+  die beiden anderen Ansichten verlangen (jede Sehne längs der Tiefe in der Zeichnung, von der Mitte nach außen dem
+  anschließenden Abschnitt folgend), in der Tiefe dort, wo es am rundesten Platz hat (Gleichstand: Mitte, für die Seite die
+  Mittelebene); Körper = Vereinigung, gespiegelt; Surface Nets, Punkte auf das weitest reichende Ellipsoid. Ohne Front/Top
+  ist es genau der runde Körper der Seite. Innere Konturen: Flächen einer Ansicht in Zeichenreihenfolge (die spätere liegt
+  obenauf); eine Kontur in einer früheren Fläche ist sichtbar → ihre Ellipsoide kommen zuletzt, nehmen in den anderen Ansichten
+  den vordersten Abschnitt und liegen vor dem, was steht. Ergebnis: Kugel auf 0,5 von 150 genau; vier runde Beine (Radius 25,0
+  in allen Richtungen) aus Seite + Front, flache Flossen aus Top + Front, Lappen aus einer Kerbe; alle Umrisse ≤ 1,6 Einheiten
+  (spitze gezeichnete Ecken rundet das Raster um gut eine Zelle); fein 0,7–1,2 s. Innere Kontur: das nahe Bein liegt vorn, das
+  ferne dahinter, aber wo Front/Top dem Oberschenkel kaum Platz vor dem Rumpf lassen, wird er dünn (kleine Umriss-Kratzer).
+  Verworfen (gemessen): Glätten des Netzes (Taubin mit Umriss-Halt; Bild gleich, Kugel schlechter), „vorderst möglich“ für
+  innere Konturen (Rumpf musste dahinter weichen → Risse). Fallen: Die nächste Zeile der Schnitt-Tabelle nahe einer Spitze lag
+  bis eine Viertelzelle daneben und drückte die Kugel um 7 Einheiten ein → zwischen zwei Zeilen linear; gespiegelte Abschnitte je
+  Sehne nicht mal so, mal so wählen (nur z ≥ 0); geglättete Kreisradien an Ecken nachprüfen (ragten über den Umriss);
+  Prüfzeichnungen müssen zueinander passen (ein Oval aus vier Punkten wölbt sich über seine Punkte, Front und Top aus der
+  gemessenen Ausdehnung bauen). Bilder `docs/progress/editor/form-gleich-{kugel,beine,flossen,lappen,innen}-2026-11-04.jpg`
+  (`scripts/pruefen/form-gleich-bild.mjs`). Front und Top sind im Fenster in diesem Modus nur Anzeige (noch nicht zeichenbar).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
