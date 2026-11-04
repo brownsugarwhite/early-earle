@@ -720,6 +720,60 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - **Offen:** Posen am ganzen Körper; das Vorderbein unter dem Mundwinkel (Kinnlinie oder Drehgewicht neu); Maße fürs Spiel
     auf dem iPhone (Bildrate mit 36 Wesen) nicht gemessen; Look (Muster, Zonen) auf dem Spielnetz noch nicht.
   - Bilder `docs/progress/editor/form-backen-{kugel,kopf,langhals,vierbeiner}-offen-2026-11-04.jpg`.
+- **2026-11-04 (nachts): Posen, getrennte Kiefer, mehrere Maulpunkte — Proben** (Florian vor dem Schlafen: „Mache alle nötigen
+  Tests und Proben … selbstständig und selbstkritisch … Verfalle dabei nicht in endlose Testreihen und vermeide weitere
+  Sonderregelungen … Teste auch bitte die getrennten Kiefer und die Bearbeitung mehrerer Maulpunkte“; vorher die Frage nach
+  Bézier-Griffen).
+  - **Bézier-Griffe:** grundsätzlich kein Problem. Der Kern liest nur abgetastete Kurven; betroffen sind Bedienung und Speichern
+    (≈ ein Tag), der alte Editor hat sie schon. Die Griffe bleiben vorerst, wie sie sind.
+  - **Posen** (`dicht/pose.ts`; im Fenster Schalter „Pose“, Regler Maul und Kopf, Pinsel in Seite, Front, Top und durch das offene
+    Maul aufs Innere, Größe mit `[ ]`):
+    - Eine Pose ist Unterkiefer und Schädel in Grad plus die Züge des Blendshapes (Mitte, Verschiebung, Radius; spiegelgleich).
+      Erst der Blendshape, dann die Knochen.
+    - Sie hängt am Raum, nicht an Punktnummern: Sie gilt nach einer Änderung der Grundform weiter und auf dem Spielnetz.
+    - Mit der Maus gemessen (`scripts/pruefen/form-pose-probe.mjs`): Knochen 0 Umklapper; Pinsel 3–4 ms je Mausbewegung ohne
+      Bild (der Testbrowser ohne Grafikkarte braucht ≈ 90 ms je Bild); ⌘Z je Strich und je Reglergriff; „Pose aus“ zeigt die
+      Grundform bitgleich; nach einer Änderung der Grundform dicht; Spielnetz mit Pose dicht und ohne Umklapper.
+  - **Gefunden und behoben:**
+    - Ein Zug am Gelenk riss die Naht hinter dem Mundwinkel auf (24–28 offene Kanten). Dort liegen Gaumen und Boden auf der
+      Gelenkachse; der Zug schob sie von ihr weg, dann drehten beide um die alte Achse in entgegengesetzte Richtungen. Jetzt
+      drehen die Knochen um die Achse, wie der Blendshape sie verschoben hat (je Punkt auf seiner Tiefe). Test in
+      `pose.test.ts`; die Gegenprobe mit fester Achse fällt durch.
+    - Ein Pinselstrich ins offene Maul traf nichts; jetzt trifft er das Innere.
+    - Ein neu geladener Körper ließ „Pose“ an (jeder Druck wurde ein Pinselstrich).
+  - **Getrennte Kiefer** (`MaulLinie.kurz`; im Fenster eine zweite Linie von außen zum selben Mundwinkel, gestrichelt):
+    - Die zweite Linie liegt im längeren Kiefer. Der kürzere ist der auf der anderen Seite der Maullinie, wie im alten Editor
+      „Unterkiefer geschlossen in den Oberkiefer geschoben“: über dem Schlitz Überbiss, darunter Unterbiss.
+    - Seine Lippe rückt vom Schlitz auf ihre Linie (gleicher Bogenanteil, am Mundwinkel nicht). Sie nimmt die Tiefe der Form an
+      der neuen Stelle an, vorn 15 % schmaler, so steckt sie geschlossen verdeckt im längeren Kiefer.
+    - Die Haut seiner Seite rückt mit, längs der Form auslaufend, und gleitet dabei auf der Form (in der Seite hält eine weiche
+      Wand am Umriss). Das Innere rückt mit demselben Feld. Die Knochengewichte bleiben die von vor dem Rücken.
+    - Gemessen: Überbiss und Unterbiss, Maullinie gerade, als S und als J, Kugel, Kopf und Langhals — geschlossen, offen (20/40°)
+      und in der Pose dicht, 0 Umklapper (Fenster `form-kiefer-probe.mjs` und Tests in `maul.test.ts`). Der kürzere Kiefer ist in
+      der Front sichtbar schmaler.
+  - **Mehrere Maulpunkte:** gewählte Maullinie anklicken = neuer Punkt (gleich ziehen), ⇧-Klick wählt mehrere, die zusammen
+    gezogen werden, ⌫ löscht Punkte bzw. die zweite Linie (Kiefer wieder gleich). Gemessen: zwei Punkte genau um dieselbe
+    Strecke, der Mundwinkel bleibt; mit S-Form und zweiter Linie dicht, 0 Umklapper.
+  - **Verworfen (gemessen):**
+    - Welcher Kiefer kürzer ist, nach der Seite des Anfangs der zweiten Linie: Eine Linie, die weit unter dem Schlitzanfang
+      beginnt, schob die Front des Kiefers aus der Form.
+    - Die Tiefe aus dem Verhältnis gemittelter √g-Rasterwerte: rauschte am Umriss und kippte Normalen. Jetzt wird g gemittelt,
+      dazu kleinere Schritte der Differenzen am Umriss.
+    - Nur die nächste Stelle der Maullinie: riss die Haut hinter den Bögen einer S-Linie auf.
+    - Mittelung über alle Proben der Linie: reichte hinter den Mundwinkel und an den Enden über die Lippe. Jetzt nah an der
+      Linie die nächste Stelle, weiter weg ein geglättetes Rasterfeld.
+    - Das Innere Spalte für Spalte mit der Lippe rücken: Die Spalten kreuzten sich an Bögen.
+  - **Offen (ehrlich):**
+    - Vierbeiner mit dem Vorderbein direkt unter dem Mundwinkel: 396 Umklapper bei 40° am Ansatz. Kommt vom Drehgewicht des
+      Unterkiefers, nicht von Posen; Weg Kinnlinie oder Drehgewicht neu.
+    - Nachtrag zum Maul: Auf dem feinen Netz (≈ 58 000 Dreiecke) mit gerader Linie klappen bei 55° 12 Dreiecke am unteren Pol
+      um, auch ohne zweite Linie (50°: 0).
+    - Pinselzüge nahe der Lippe klappen im Maulinneren einzelne Splitter um (unter 1 Einheit², unsichtbar).
+    - Kehle staucht bei großem Winkel. Der Pinsel kann nur ziehen (noch kein Glätten oder Aufblasen).
+    - Eine zweite Linie, die weit vom Schlitzanfang am Umriss beginnt, schiebt die Front des Kiefers (die Wand hält sie in der
+      Form, natürlich wirkt es nicht): am besten am Anfang der Maullinie beginnen.
+  - Prüfungen `scripts/pruefen/form-pose-probe.mjs`, `form-kiefer-probe.mjs`; Tests `dicht/pose.test.ts`, `dicht/maul.test.ts`
+    (34 grün); Bilder `docs/progress/editor/form-pose-*-2026-11-04.jpg`, `form-kiefer-*-2026-11-04.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

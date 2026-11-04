@@ -13,11 +13,16 @@
 // Topologie wird vorab festgelegt: geschnitten wird das Netz, wie es aus der Form kommt; keine Regel nennt einen Körperteil.
 
 import type { V2 } from '../bezier';
+import { type Naechster, Umrissfeld } from './abstand';
 import { type Kontur, tiefeAusKontur } from './raumlinien';
 import { type UmrissPunkt, linienStuecke, punktAufStueck } from './umriss';
 
-/** Die Maullinie in der Seite: vom Umriss (erster Punkt) in die Form bis zum Mundwinkel (letzter Punkt). */
-export type MaulLinie = { punkte: UmrissPunkt[] };
+/**
+ * Die Maullinie in der Seite: vom Umriss (erster Punkt) in die Form bis zum Mundwinkel (letzter Punkt). `kurz` (getrennte
+ * Kiefer): die Lippe des kürzeren Kiefers, vom Anfang (auf dem Umriss, am besten am Anfang der Maullinie) zum selben
+ * Mundwinkel; sie liegt im längeren Kiefer, der kürzere ist der auf der anderen Seite der Maullinie.
+ */
+export type MaulLinie = { punkte: UmrissPunkt[]; kurz?: UmrissPunkt[] | undefined };
 
 export type MaulSchnitt = {
   /** der Körper mit Schlitz, geschlossen */
@@ -35,13 +40,20 @@ export type MaulSchnitt = {
   linie: V2[];
   /** Drehsinn beim Öffnen (+1: gegen den Uhrzeigersinn in der Seite, x nach rechts, y nach oben) */
   drehsinn: number;
-  /** wie weit ein Punkt der Seite mitdreht (0 … 1) */
+  /** wie weit ein Punkt der Seite mit dem Unterkiefer dreht (0 … 1) */
   gewichtBei: (x: number, y: number) => number;
-  /** je Körperpunkt: Gewicht der Drehung und sein Gradient (x, y) */
+  /** wie weit ein Punkt der Seite mit dem Schädel (Oberkiefer) dreht (0 … 1) */
+  schaedelBei: (x: number, y: number) => number;
+  /** je Körperpunkt: Gewicht der Drehung mit dem Unterkiefer und sein Gradient (x, y) */
   gewicht: Float32Array;
   gradient: Float32Array;
+  /** je Körperpunkt: Gewicht der Drehung mit dem Schädel und sein Gradient (x, y) */
+  gewichtOben: Float32Array;
+  gradientOben: Float32Array;
   /** je Punkt des Inneren: 1 = Boden (dreht ganz mit), 0 = Gaumen */
   innenUnten: Uint8Array;
+  /** getrennte Kiefer: der kürzere (seine Lippe liegt auf `linie`, abgetastet vom Anfang zum Mundwinkel), sonst null */
+  kurz: { kiefer: 'oben' | 'unten'; linie: V2[] } | null;
 };
 
 /** Größter Öffnungswinkel (Grad): bis dahin bleibt die Drehung hinter dem Mundwinkel ohne Falte (Übergang über 90°). */
@@ -191,6 +203,7 @@ function unterlippenAbstand(
   k: Kontur,
   Q: readonly V2[],
   nahe: (x: number, y: number) => { d: number; unten: boolean },
+  roh = false,
 ): (x: number, y: number) => number {
   const { nx, ny, d } = k;
   // Rahmen um die Linie: nur darin kann ein Punkt ihr näher als zwei Rasterweiten sein
@@ -301,7 +314,8 @@ function unterlippenAbstand(
     wert = neu;
   }
   return (x: number, y: number) => {
-    if (x >= bx0 && x <= bx1 && y >= by0 && y <= by1) {
+    // roh: nur das Raster (wer selbst an der Linie überblendet)
+    if (!roh && x >= bx0 && x <= bx1 && y >= by0 && y <= by1) {
       const q = nahe(x, y);
       // dicht an der Linie: unten der gerade Abstand zu ihr (Rasterpunkte jenseits der Linie zählen nicht)
       if (q.d < 2 * d) return q.unten ? q.d : Infinity;
@@ -335,13 +349,14 @@ type Kreuzung = { u: number; v: number; t: number; s: number };
 
 /**
  * Den Körper längs der Maullinie aufschneiden und das Maulinnere einsetzen (geschlossen). `kontur` (Tiefe der Form je Stelle
- * der Seite) gibt Gewölbe und Abstand längs der Form; ohne sie wird sie aus dem Netz gerastert. Gibt null, wenn
- * die Linie zu kurz ist oder der Schnitt sich nicht schließt.
+ * der Seite) gibt Gewölbe und Abstand längs der Form; ohne sie wird sie aus dem Netz gerastert. `umriss` (der Umriss der Seite,
+ * gegen den Uhrzeigersinn) hält bei getrennten Kiefern die Haut des kürzeren in der Form. Gibt null, wenn die Linie zu kurz
+ * ist oder der Schnitt sich nicht schließt.
  */
 export function maulSchneiden(
   netz: { positionen: Float32Array; normalen: Float32Array; indizes: Uint32Array },
   linie: MaulLinie,
-  opt: { zelle: number; kontur?: Kontur | undefined },
+  opt: { zelle: number; kontur?: Kontur | undefined; umriss?: readonly V2[] | undefined },
 ): MaulSchnitt | null {
   const { zelle } = opt;
   if (linie.punkte.length < 2) return null;
@@ -699,17 +714,21 @@ export function maulSchneiden(
   const innenI: number[] = [];
   const innenUnten: number[] = [];
   const innenS: number[] = [];
+  // Punkte des Inneren auf einer Lippe: derselbe Punkt der Haut (sonst −1)
+  const innenHaut: number[] = [];
   for (const richtung of [1, -1]) {
     const basis = innenP.length / 3;
     const lokal = (i: number) => basis + i;
-    const punkt = (x: number, y: number, z: number, s: number) => {
+    const punkt = (x: number, y: number, z: number, s: number, haut = -1) => {
       innenP.push(x, y, z);
       innenUnten.push(richtung < 0 ? 1 : 0);
       innenS.push(s);
+      innenHaut.push(haut);
       return innenP.length / 3 - 1 - basis;
     };
-    const rI = R.map((k, i) => punkt(...lageVon(k), sR[i]!));
-    const lI = L.map((k, i) => punkt(...lageVon(k), sL[i]!));
+    const lippenSeite = richtung > 0 ? oben : unten;
+    const rI = R.map((k, i) => punkt(...lageVon(k), sR[i]!, kopieAuf(k, lippenSeite)));
+    const lI = L.map((k, i) => punkt(...lageVon(k), sL[i]!, kopieAuf(k, lippenSeite)));
     // Zeilen j = 1 … nZe − 1 (t von −1 links bis +1 rechts), Spalten längs der Linie
     const zeilen: number[][] = [];
     // Tiefe des Gewölbes je Spalte, längs der Linie geglättet (das letzte bleibt null: dort treffen sich Gaumen und Boden)
@@ -790,15 +809,37 @@ export function maulSchneiden(
       }
     }
   }
-  for (let t = 0; t < innenI.length; t += 3) {
-    const [fx, fy, fz] = flaechenNormale(innenP, innenI[t]!, innenI[t + 1]!, innenI[t + 2]!);
-    for (let e = 0; e < 3; e++) {
-      const v = innenI[t + e]!;
-      innenN[3 * v] = innenN[3 * v]! + fx;
-      innenN[3 * v + 1] = innenN[3 * v + 1]! + fy;
-      innenN[3 * v + 2] = innenN[3 * v + 2]! + fz;
+  const innenNormalen = () => {
+    innenN.fill(0);
+    for (let t = 0; t < innenI.length; t += 3) {
+      const [fx, fy, fz] = flaechenNormale(innenP, innenI[t]!, innenI[t + 1]!, innenI[t + 2]!);
+      for (let e = 0; e < 3; e++) {
+        const v = innenI[t + e]!;
+        innenN[3 * v] = innenN[3 * v]! + fx;
+        innenN[3 * v + 1] = innenN[3 * v + 1]! + fy;
+        innenN[3 * v + 2] = innenN[3 * v + 2]! + fz;
+      }
     }
-  }
+    normieren();
+    // zweimal über die Nachbarn mitteln: Die Dreiecke am Rand (Reißverschluss zur Lippe) sind ungleich, ihre Normalen
+    // zeichneten in den Farbstufen Zacken
+    const summeN = new Float32Array(3 * nInnen);
+    for (let runde = 0; runde < 2; runde++) {
+      summeN.set(innenN);
+      for (let t = 0; t < innenI.length; t += 3) {
+        for (let e = 0; e < 3; e++) {
+          const p = innenI[t + e]!;
+          const q = innenI[t + ((e + 1) % 3)]!;
+          for (let i = 0; i < 3; i++) {
+            summeN[3 * p + i] = summeN[3 * p + i]! + innenN[3 * q + i]!;
+            summeN[3 * q + i] = summeN[3 * q + i]! + innenN[3 * p + i]!;
+          }
+        }
+      }
+      innenN.set(summeN);
+      normieren();
+    }
+  };
   const normieren = () => {
     for (let v = 0; v < nInnen; v++) {
       const l = Math.hypot(innenN[3 * v]!, innenN[3 * v + 1]!, innenN[3 * v + 2]!) || 1;
@@ -807,25 +848,7 @@ export function maulSchneiden(
       innenN[3 * v + 2] = innenN[3 * v + 2]! / l;
     }
   };
-  normieren();
-  // zweimal über die Nachbarn mitteln: Die Dreiecke am Rand (Reißverschluss zur Lippe) sind ungleich, ihre Normalen zeichneten
-  // in den Farbstufen Zacken
-  const summeN = new Float32Array(3 * nInnen);
-  for (let runde = 0; runde < 2; runde++) {
-    summeN.set(innenN);
-    for (let t = 0; t < innenI.length; t += 3) {
-      for (let e = 0; e < 3; e++) {
-        const p = innenI[t + e]!;
-        const q = innenI[t + ((e + 1) % 3)]!;
-        for (let i = 0; i < 3; i++) {
-          summeN[3 * p + i] = summeN[3 * p + i]! + innenN[3 * q + i]!;
-          summeN[3 * q + i] = summeN[3 * q + i]! + innenN[3 * p + i]!;
-        }
-      }
-    }
-    innenN.set(summeN);
-    normieren();
-  }
+  innenNormalen();
 
   // ---------- Gewicht der Drehung ----------
   // Wie weit ein Punkt mitdreht, ist das Produkt zweier Anteile:
@@ -854,78 +877,432 @@ export function maulSchneiden(
   };
   const probe = { x: mitte.p.x - oben * mitte.n.x * 0.25 * zelle, y: mitte.p.y - oben * mitte.n.y * 0.25 * zelle };
   const vz = winkel(probe.x, probe.y) >= 0 ? 1 : -1;
-  const abstand = unterlippenAbstand(kontur, Q, (x, y) => {
-    const q = naheLinie(x, y);
-    return { d: q.d, unten: q.sg === unten };
-  });
-  // Dicke des Unterkiefers am Mundwinkel: Abstand zum nächsten Punkt außerhalb der Form unter der Linie (eine Lücke unter dem
-  // Kopf zählt wie der Umriss; senkrecht nach unten gemessen träfe man sie an ihrer Spitze nicht)
-  let best = Infinity;
-  for (let j = 0; j < kontur.ny; j++) {
-    for (let i = 0; i < kontur.nx; i++) {
-      if (kontur.Z[j * kontur.nx + i]! > 0) continue;
-      const x = kontur.x0 + i * kontur.d;
-      const y = kontur.y0 + j * kontur.d;
-      const r = Math.hypot(x - M.x, y - M.y);
-      if (r < best && naheLinie(x, y).sg === unten) best = r;
-    }
-  }
-  const dicke = Number.isFinite(best) ? Math.max(2 * zelle, best) : S / 2;
-  // der Übergang liegt jenseits des Kiefers: darin ändert sich der Abstand zur Lippe in Drehrichtung, ein Übergang dort
-  // klappte Dreiecke um (gemessen: 588 an der Kugel bei 55°)
-  const L0 = dicke;
-  const L1 = 1.5 * dicke;
+  // Dasselbe für beide Kiefer: der Unterkiefer (Winkel unter der Linie positiv) und der Schädel (darüber, gespiegelt)
   const W1 = 0.75 * Math.PI;
-  const gewichtUndGradient = (x: number, y: number, aus: [number, number, number]): void => {
-    aus[0] = 0;
-    aus[1] = 0;
-    aus[2] = 0;
-    if (x < bx0 - L1 || x > bx1 + L1 || y < by0 - L1 || y > by1 + L1) return;
-    const r2 = (x - M.x) ** 2 + (y - M.y) ** 2;
-    if (r2 < 1e-12) return;
-    const d = abstand(x, y);
-    if (!(d < L1)) return;
-    const psi = vz * winkel(x, y);
-    const a = glatt(0, W1, psi);
-    if (a === 0) return;
-    const b = 1 - glatt(L0, L1, d);
-    aus[0] = a * b;
-    // ∇ψ = ±(∇θ_M − ∇θ_fern), ∇θ_q = (q_y − y, −(q_x − x)) / |q − p|²
-    const f2 = (x - fern.x) ** 2 + (y - fern.y) ** 2 || 1;
-    const gpx = vz * ((M.y - y) / r2 - (fern.y - y) / f2);
-    const gpy = vz * (-(M.x - x) / r2 + (fern.x - x) / f2);
-    const da = glattAbl(0, W1, psi);
-    let gdx = 0;
-    let gdy = 0;
-    if (b > 0 && b < 1) {
-      const hh = zelle;
-      const dx1 = abstand(x + hh, y);
-      const dx0 = abstand(x - hh, y);
-      const dy1 = abstand(x, y + hh);
-      const dy0 = abstand(x, y - hh);
-      if (Number.isFinite(dx1 + dx0 + dy1 + dy0)) {
-        gdx = (dx1 - dx0) / (2 * hh);
-        gdy = (dy1 - dy0) / (2 * hh);
+  // je Kiefer (Seite der Linie): Abstand von seiner Lippe längs der Form und seine Dicke am Mundwinkel
+  const abstaende = new Map<number, (x: number, y: number) => number>();
+  const abstandVon = (seiteK: number): ((x: number, y: number) => number) => {
+    let f = abstaende.get(seiteK);
+    if (!f) {
+      f = unterlippenAbstand(kontur, Q, (x, y) => {
+        const q = naheLinie(x, y);
+        return { d: q.d, unten: q.sg === seiteK };
+      });
+      abstaende.set(seiteK, f);
+    }
+    return f;
+  };
+  // Dicke des Kiefers am Mundwinkel: Abstand zum nächsten Punkt außerhalb der Form auf seiner Seite der Linie (eine Lücke
+  // unter dem Kopf zählt wie der Umriss; senkrecht gemessen träfe man sie an ihrer Spitze nicht)
+  const dickeVon = (seiteK: number): number => {
+    let best = Infinity;
+    for (let j = 0; j < kontur.ny; j++) {
+      for (let i = 0; i < kontur.nx; i++) {
+        if (kontur.Z[j * kontur.nx + i]! > 0) continue;
+        const x = kontur.x0 + i * kontur.d;
+        const y = kontur.y0 + j * kontur.d;
+        const r = Math.hypot(x - M.x, y - M.y);
+        if (r < best && naheLinie(x, y).sg === seiteK) best = r;
       }
     }
-    const db = -glattAbl(L0, L1, d);
-    aus[1] = da * b * gpx + a * db * gdx;
-    aus[2] = da * b * gpy + a * db * gdy;
+    return Number.isFinite(best) ? Math.max(2 * zelle, best) : S / 2;
   };
+  const kieferGewicht = (seiteK: number) => {
+    const vzK = seiteK === unten ? vz : -vz;
+    const abstand = abstandVon(seiteK);
+    const dicke = dickeVon(seiteK);
+    // der Übergang liegt jenseits des Kiefers: darin ändert sich der Abstand zur Lippe in Drehrichtung, ein Übergang dort
+    // klappte Dreiecke um (gemessen: 588 an der Kugel bei 55°)
+    const L0 = dicke;
+    const L1 = 1.5 * dicke;
+    return (x: number, y: number, aus: [number, number, number]): void => {
+      aus[0] = 0;
+      aus[1] = 0;
+      aus[2] = 0;
+      if (x < bx0 - L1 || x > bx1 + L1 || y < by0 - L1 || y > by1 + L1) return;
+      const r2 = (x - M.x) ** 2 + (y - M.y) ** 2;
+      if (r2 < 1e-12) return;
+      const d = abstand(x, y);
+      if (!(d < L1)) return;
+      const psi = vzK * winkel(x, y);
+      const a = glatt(0, W1, psi);
+      if (a === 0) return;
+      const b = 1 - glatt(L0, L1, d);
+      aus[0] = a * b;
+      // ∇ψ = ±(∇θ_M − ∇θ_fern), ∇θ_q = (q_y − y, −(q_x − x)) / |q − p|²
+      const f2 = (x - fern.x) ** 2 + (y - fern.y) ** 2 || 1;
+      const gpx = vzK * ((M.y - y) / r2 - (fern.y - y) / f2);
+      const gpy = vzK * (-(M.x - x) / r2 + (fern.x - x) / f2);
+      const da = glattAbl(0, W1, psi);
+      let gdx = 0;
+      let gdy = 0;
+      if (b > 0 && b < 1) {
+        const hh = zelle;
+        const dx1 = abstand(x + hh, y);
+        const dx0 = abstand(x - hh, y);
+        const dy1 = abstand(x, y + hh);
+        const dy0 = abstand(x, y - hh);
+        if (Number.isFinite(dx1 + dx0 + dy1 + dy0)) {
+          gdx = (dx1 - dx0) / (2 * hh);
+          gdy = (dy1 - dy0) / (2 * hh);
+        }
+      }
+      const db = -glattAbl(L0, L1, d);
+      aus[1] = da * b * gpx + a * db * gdx;
+      aus[2] = da * b * gpy + a * db * gdy;
+    };
+  };
+  const gewichtUndGradient = kieferGewicht(unten);
+  const schaedelUndGradient = kieferGewicht(oben);
   const nP = P.length / 3;
   const gewicht = new Float32Array(nP);
   const gradient = new Float32Array(2 * nP);
+  const gewichtOben = new Float32Array(nP);
+  const gradientOben = new Float32Array(2 * nP);
   const tmp: [number, number, number] = [0, 0, 0];
   for (let v = 0; v < n0; v++) {
     gewichtUndGradient(P[3 * v]!, P[3 * v + 1]!, tmp);
     gewicht[v] = tmp[0];
     gradient[2 * v] = tmp[1];
     gradient[2 * v + 1] = tmp[2];
+    schaedelUndGradient(P[3 * v]!, P[3 * v + 1]!, tmp);
+    gewichtOben[v] = tmp[0];
+    gradientOben[2 * v] = tmp[1];
+    gradientOben[2 * v + 1] = tmp[2];
   }
-  // Lippen: oben steht, unten dreht ganz (auf der Linie selbst ist der Winkel ±π, die Seite entscheidet)
+  // Lippen: die obere dreht ganz mit dem Schädel, die untere mit dem Unterkiefer (auf der Linie selbst ist der Winkel ±π, die
+  // Seite entscheidet)
   for (let i = 0; i < weg.length; i++) {
     if (weg[i]! >= nk()) continue;
     gewicht[lippeUnten[i]!] = 1;
+    gewichtOben[lippeOben[i]!] = 1;
+  }
+
+  // ---------- Getrennte Kiefer ----------
+  // Die zweite Linie ist die Lippe des kürzeren Kiefers. Sie liegt im längeren Kiefer (geschlossen steckt der kürzere darin,
+  // verdeckt); der kürzere ist also der auf der anderen Seite der Maullinie. Seine Lippe rückt vom Schlitz auf ihre Linie,
+  // beim gleichen Bogenanteil (vorn auf ihren Anfang, am Mundwinkel gar nicht), und nimmt dort die Tiefe der Form an, zur
+  // Spitze hin etwas schmaler. Die Haut
+  // seiner Seite rückt mit, mit dem Abstand von der Lippe längs der Form weich auslaufend (so weit, wie der Kiefer am
+  // Mundwinkel dick ist, mindestens doppelt so weit, wie die Lippe rückt: so klappt nichts um), und gleitet dabei auf der Form:
+  // In der Seite bleibt sie im Umriss (am Umriss rutscht sie an ihm entlang), ihre Tiefe ist die der Form an der neuen Stelle.
+  // Sein Teil des Inneren rückt ganz mit. Die Gewichte der Knochen bleiben die der Punkte vor dem Rücken (oben gerechnet): Der
+  // kürzere Kiefer dreht wie vorher als Ganzes.
+  let kurz: MaulSchnitt['kurz'] = null;
+  const zweite = linie.kurz && linie.kurz.length >= 2 ? abtasten(linie.kurz, zelle / 2) : null;
+  const SK = zweite ? zweite.bogen[zweite.bogen.length - 1]! : 0;
+  if (zweite && SK > 2 * zelle) {
+    // das Ende liegt genau auf dem Mundwinkel (längs der Linie verteilt nachgeführt)
+    const ende = zweite.p[zweite.p.length - 1]!;
+    const K = zweite.p.map((q, i) => ({ x: q.x + ((M.x - ende.x) * zweite.bogen[i]!) / SK, y: q.y + ((M.y - ende.y) * zweite.bogen[i]!) / SK }));
+    const bK = [0];
+    for (let i = 1; i < K.length; i++) bK.push(bK[i - 1]! + Math.hypot(K[i]!.x - K[i - 1]!.x, K[i]!.y - K[i - 1]!.y));
+    const LK = bK[bK.length - 1]!;
+    const aufK = (anteil: number): V2 => {
+      const b = Math.max(0, Math.min(1, anteil)) * LK;
+      let lo = 0;
+      let hi = bK.length - 1;
+      while (hi - lo > 1) {
+        const m = (lo + hi) >> 1;
+        if (bK[m]! <= b) lo = m;
+        else hi = m;
+      }
+      const l = bK[hi]! - bK[lo]! || 1;
+      const f = (b - bK[lo]!) / l;
+      return { x: K[lo]!.x + f * (K[hi]!.x - K[lo]!.x), y: K[lo]!.y + f * (K[hi]!.y - K[lo]!.y) };
+    };
+    // welcher Kiefer: Die Linie liegt im längeren (dort steckt geschlossen die Lippe des kürzeren), der kürzere ist der auf der
+    // anderen Seite der Maullinie (gemittelt über ihre Mitte nach dem Abstand)
+    let mittel = 0;
+    for (let i = 1; i < 16; i++) {
+      const q = aufK(0.1 + (0.8 * i) / 16);
+      const n = naheLinie(q.x, q.y);
+      mittel += n.sg * n.d;
+    }
+    const seiteK = Math.abs(mittel) / 15 > zelle / 2 ? -Math.sign(mittel) : 0;
+    if (seiteK !== 0) {
+      // so viel schmaler ist die Lippe vorn (am Mundwinkel gar nicht)
+      const SCHMAL = 0.85;
+      const eps = 0.1 * zelle;
+      // Wand am Umriss: nach außen höchstens dieser Anteil des Abstands zum Umriss (weich begrenzt)
+      const wand = opt.umriss && opt.umriss.length > 2 ? new Umrissfeld(opt.umriss, 2 * zelle) : null;
+      const KAPPE = 0.8;
+      const weich = 0.5 * zelle;
+      const nae: Naechster = { d: 0, qx: 0, qy: 0, strecke: 0, t: 0 };
+      // Tiefe der Form aus dem Quadrat gemittelt: am Umriss geht z² etwa linear gegen null, z selbst wie eine Wurzel (die
+      // Mittelung der Wurzel rauschte dort auf Rastergröße und kippte Normalen)
+      const tiefeGlatt = (x: number, y: number): number => {
+        const u = (x - kontur.x0) / kontur.d;
+        const v = (y - kontur.y0) / kontur.d;
+        const i = Math.floor(u);
+        const j = Math.floor(v);
+        if (i < 0 || j < 0 || i >= kontur.nx - 1 || j >= kontur.ny - 1) return 0;
+        const t = u - i;
+        const w = v - j;
+        const q = (a: number, b: number) => kontur.Z[b * kontur.nx + a]! ** 2;
+        return Math.sqrt((1 - w) * ((1 - t) * q(i, j) + t * q(i + 1, j)) + w * ((1 - t) * q(i, j + 1) + t * q(i + 1, j + 1)));
+      };
+      // wohin die Lippe an der Stelle s rückt (vor dem Anfang wie am Anfang)
+      const rueck = (s: number): { dx: number; dy: number; anteil: number } => {
+        const sc = Math.max(0, Math.min(S, s));
+        const a = stelle(sc).p;
+        const b = aufK(sc / S);
+        return { dx: b.x - a.x, dy: b.y - a.y, anteil: sc / S };
+      };
+      let weitest = 0;
+      for (let i = 0; i <= 64; i++) {
+        const r = rueck((S * i) / 64);
+        weitest = Math.max(weitest, Math.hypot(r.dx, r.dy));
+      }
+      // nah an der Linie die nächste Stelle auf ihr (dort stetig, und die Lippen nehmen genau ihre); weiter weg das geglättete
+      // Feld unten (die nächste Stelle allein springt hinter Bögen der Linie, bei J und S riss die Haut dort auf; eine Mittelung
+      // über alle Proben der Linie reichte hinter den Mundwinkel und an den Enden über die Lippe)
+      const sAuf = (x: number, y: number): number => {
+        let best = Infinity;
+        let sb = 0;
+        for (let k = 0; k + 1 < C.length; k++) {
+          const a = C[k]!;
+          const b = C[k + 1]!;
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const l2 = dx * dx + dy * dy || 1;
+          const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / l2));
+          const d = (a.x + t * dx - x) ** 2 + (a.y + t * dy - y) ** 2;
+          if (d < best) {
+            best = d;
+            sb = bogen[k]! + t * (bogen[k + 1]! - bogen[k]!);
+          }
+        }
+        return sb;
+      };
+      const auslauf = Math.max(dickeVon(seiteK), 2 * weitest, 2 * zelle);
+      const raster = unterlippenAbstand(
+        kontur,
+        Q,
+        (x, y) => {
+          const q = naheLinie(x, y);
+          return { d: q.d, unten: q.sg === seiteK };
+        },
+        true,
+      );
+      // Verschiebung je Punkt des Rasters auf seiner Seite (so weit, wie sie wirkt): erst die der nächsten Stelle der Linie, dann
+      // geglättet, die Punkte an der Linie fest — so springt sie nicht hinter Bögen der Linie (J, S) und ist hinter dem
+      // Mundwinkel null
+      const { nx: gnx, ny: gny, d: gd } = kontur;
+      const gfeld = new Float64Array(3 * gnx * gny);
+      const gart = new Uint8Array(gnx * gny); // 0 außerhalb, 1 frei, 2 fest
+      for (let j = 0; j < gny; j++) {
+        for (let i = 0; i < gnx; i++) {
+          const x = kontur.x0 + i * gd;
+          const y = kontur.y0 + j * gd;
+          const rd = raster(x, y);
+          if (!(rd < auslauf + 3 * gd)) continue;
+          const v = j * gnx + i;
+          const r = rueck(sAuf(x, y));
+          gfeld[3 * v] = r.dx;
+          gfeld[3 * v + 1] = r.dy;
+          gfeld[3 * v + 2] = r.anteil;
+          gart[v] = naheLinie(x, y).d < 1.5 * gd ? 2 : 1;
+        }
+      }
+      const gneu = new Float64Array(gfeld.length);
+      for (let runde = 0; runde < 60; runde++) {
+        gneu.set(gfeld);
+        for (let j = 0; j < gny; j++) {
+          for (let i = 0; i < gnx; i++) {
+            const v = j * gnx + i;
+            if (gart[v] !== 1) continue;
+            let n = 0;
+            let a = 0;
+            let b = 0;
+            let c = 0;
+            for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+              const ii = i + di;
+              const jj = j + dj;
+              if (ii < 0 || jj < 0 || ii >= gnx || jj >= gny) continue;
+              const u = jj * gnx + ii;
+              if (gart[u] === 0) continue;
+              a += gfeld[3 * u]!;
+              b += gfeld[3 * u + 1]!;
+              c += gfeld[3 * u + 2]!;
+              n++;
+            }
+            if (n === 0) continue;
+            gneu[3 * v] = a / n;
+            gneu[3 * v + 1] = b / n;
+            gneu[3 * v + 2] = c / n;
+          }
+        }
+        gfeld.set(gneu);
+      }
+      // bilinear über die Punkte im Gebiet
+      const rueckGitter = (x: number, y: number): { dx: number; dy: number; anteil: number } | null => {
+        const u = (x - kontur.x0) / gd;
+        const w = (y - kontur.y0) / gd;
+        const i = Math.floor(u);
+        const j = Math.floor(w);
+        const t = u - i;
+        const sv = w - j;
+        let g = 0;
+        let a = 0;
+        let b = 0;
+        let c = 0;
+        for (const [ii, jj, f] of [
+          [i, j, (1 - t) * (1 - sv)],
+          [i + 1, j, t * (1 - sv)],
+          [i, j + 1, (1 - t) * sv],
+          [i + 1, j + 1, t * sv],
+        ] as const) {
+          if (ii < 0 || jj < 0 || ii >= gnx || jj >= gny || f <= 0) continue;
+          const v = jj * gnx + ii;
+          if (gart[v] === 0) continue;
+          g += f;
+          a += f * gfeld[3 * v]!;
+          b += f * gfeld[3 * v + 1]!;
+          c += f * gfeld[3 * v + 2]!;
+        }
+        return g > 1e-9 ? { dx: a / g, dy: b / g, anteil: c / g } : null;
+      };
+      // an der Linie der gerade Abstand ohne Seite (dort ist der Auslauf flach, die Ableitung bleibt über die Lippe hinweg
+      // stetig), weiter weg das Raster längs der Form; dazwischen stetig überblendet (ein Sprung kippte Normalen)
+      const abstandK = (x: number, y: number): number => {
+        const q = naheLinie(x, y);
+        const w = glatt(kontur.d, 3 * kontur.d, q.d);
+        if (w <= 0) return q.d;
+        const r = raster(x, y);
+        if (!Number.isFinite(r)) return w >= 1 ? Infinity : q.d / (1 - w);
+        return (1 - w) * q.d + w * r;
+      };
+      // je Stelle der Seite: Verschiebung (x, y) und Faktor der Tiefe; `s`: die genaue Stelle der Linie (Lippen, Inneres)
+      const feld = (x: number, y: number, aus: [number, number, number], s?: number): void => {
+        const d = abstandK(x, y);
+        const phi = Number.isFinite(d) ? 1 - glatt(0, auslauf, d) : 0;
+        if (phi <= 0) {
+          aus[0] = 0;
+          aus[1] = 0;
+          aus[2] = 1;
+          return;
+        }
+        let r: { dx: number; dy: number; anteil: number };
+        if (s !== undefined) r = rueck(s);
+        else {
+          const wb = glatt(gd, 3 * gd, naheLinie(x, y).d);
+          const nah = wb < 1 ? rueck(sAuf(x, y)) : null;
+          const fern = wb > 0 ? (rueckGitter(x, y) ?? rueck(sAuf(x, y))) : null;
+          r =
+            nah && fern
+              ? { dx: (1 - wb) * nah.dx + wb * fern.dx, dy: (1 - wb) * nah.dy + wb * fern.dy, anteil: (1 - wb) * nah.anteil + wb * fern.anteil }
+              : (nah ?? fern)!;
+        }
+        let ux = phi * r.dx;
+        let uy = phi * r.dy;
+        if (wand) {
+          // nach außen (Normale längs des Umrisses stetig gemittelt) höchstens KAPPE · Abstand, weich begrenzt
+          wand.naechster(x, y, nae);
+          const i = nae.strecke;
+          const j = (i + 1) % wand.p.length;
+          let ax = -((1 - nae.t) * wand.pn[2 * i]! + nae.t * wand.pn[2 * j]!);
+          let ay = -((1 - nae.t) * wand.pn[2 * i + 1]! + nae.t * wand.pn[2 * j + 1]!);
+          const al = Math.hypot(ax, ay) || 1;
+          ax /= al;
+          ay /= al;
+          // ohne Druck nach außen genau nichts; im Band um die Grenze stetig differenzierbar auf sie
+          const raus = ux * ax + uy * ay;
+          const grenze = KAPPE * Math.max(0, nae.d);
+          const a0 = Math.max(0, grenze - weich);
+          const a1 = grenze + weich;
+          if (raus > a0) {
+            const neu = raus >= a1 ? (a0 + a1) / 2 : raus - (raus - a0) ** 2 / (2 * (a1 - a0));
+            ux += (neu - raus) * ax;
+            uy += (neu - raus) * ay;
+          }
+        }
+        // zur Lippe hin die Tiefe der Form an der neuen Stelle und schmaler (weiter weg wenig verschoben: die Tiefe bleibt; das
+        // Verhältnis der Tiefen rauscht am Umriss auf Rastergröße)
+        const verh = (tiefeGlatt(x + ux, y + uy) + eps) / (tiefeGlatt(x, y) + eps);
+        const g = (1 - phi + phi * verh) * (1 - phi * (1 - (SCHMAL + (1 - SCHMAL) * r.anteil)));
+        aus[0] = ux;
+        aus[1] = uy;
+        aus[2] = g;
+      };
+      // Seite je Punkt der Haut: die Kopien der Lippen haben ihre, der Mundwinkel keine; dazu ihre Stelle auf der Linie
+      const kopieSeite = new Int8Array(nP);
+      const kopieS = new Float64Array(nP).fill(Number.NaN);
+      for (let i = 0; i < weg.length; i++) {
+        if (weg[i]! >= nk()) continue;
+        kopieSeite[lippeOben[i]!] = oben;
+        kopieSeite[lippeUnten[i]!] = unten;
+        kopieS[lippeOben[i]!] = sVon(weg[i]!);
+        kopieS[lippeUnten[i]!] = sVon(weg[i]!);
+      }
+      const kreuz = (u: number[], w: number[]) => [u[1]! * w[2]! - u[2]! * w[1]!, u[2]! * w[0]! - u[0]! * w[2]!, u[0]! * w[1]! - u[1]! * w[0]!];
+      const f0: [number, number, number] = [0, 0, 1];
+      const fa: [number, number, number] = [0, 0, 1];
+      const fb: [number, number, number] = [0, 0, 1];
+      const fc: [number, number, number] = [0, 0, 1];
+      const fd: [number, number, number] = [0, 0, 1];
+      for (let v = 0; v < nP; v++) {
+        const x = P[3 * v]!;
+        const y = P[3 * v + 1]!;
+        const sv = v < n0 ? seiteVon[v] || seite(x, y) : kopieSeite[v]!;
+        if (sv !== seiteK) continue;
+        feld(x, y, f0, Number.isNaN(kopieS[v]!) ? undefined : kopieS[v]!);
+        if (f0[0] === 0 && f0[1] === 0 && f0[2] === 1) continue;
+        const z = P[3 * v + 2]!;
+        // Normale mit der Ableitung des Felds (zentrale Differenzen in der Seite; in der Tiefe wirkt nur der Faktor). Am Umriss
+        // steigt die Tiefe wie eine Wurzel: dort kleinere Schritte (ein Viertel des Abstands zum Umriss)
+        let hh = 0.5 * zelle;
+        if (wand) hh = Math.max(0.02 * zelle, Math.min(hh, 0.25 * Math.abs(wand.naechster(x, y, nae).d)));
+        feld(x + hh, y, fa);
+        feld(x - hh, y, fb);
+        feld(x, y + hh, fc);
+        feld(x, y - hh, fd);
+        const sa = [1 + (fa[0] - fb[0]) / (2 * hh), (fa[1] - fb[1]) / (2 * hh), (z * (fa[2] - fb[2])) / (2 * hh)];
+        const sb = [(fc[0] - fd[0]) / (2 * hh), 1 + (fc[1] - fd[1]) / (2 * hh), (z * (fc[2] - fd[2])) / (2 * hh)];
+        const sc = [0, 0, f0[2]];
+        const bc = kreuz(sb, sc);
+        const ca = kreuz(sc, sa);
+        const ab = kreuz(sa, sb);
+        const n0x = N[3 * v]!;
+        const n0y = N[3 * v + 1]!;
+        const n0z = N[3 * v + 2]!;
+        let nx = bc[0]! * n0x + ca[0]! * n0y + ab[0]! * n0z;
+        let ny = bc[1]! * n0x + ca[1]! * n0y + ab[1]! * n0z;
+        let nz = bc[2]! * n0x + ca[2]! * n0y + ab[2]! * n0z;
+        if (sa[0]! * bc[0]! + sa[1]! * bc[1]! + sa[2]! * bc[2]! < 0) {
+          nx = -nx;
+          ny = -ny;
+          nz = -nz;
+        }
+        const l = Math.hypot(nx, ny, nz) || 1;
+        P[3 * v] = x + f0[0];
+        P[3 * v + 1] = y + f0[1];
+        P[3 * v + 2] = z * f0[2];
+        N[3 * v] = nx / l;
+        N[3 * v + 1] = ny / l;
+        N[3 * v + 2] = nz / l;
+      }
+      // das Innere seiner Seite rückt mit; seine Lippenpunkte sind die der Haut
+      const seineSeite = seiteK === unten ? 1 : 0;
+      for (let i = 0; i < nInnen; i++) {
+        if (innenUnten[i] !== seineSeite) continue;
+        const hv = innenHaut[i]!;
+        if (hv >= 0) {
+          innenP[3 * i] = P[3 * hv]!;
+          innenP[3 * i + 1] = P[3 * hv + 1]!;
+          innenP[3 * i + 2] = P[3 * hv + 2]!;
+          continue;
+        }
+        // mit dem Feld an seiner eigenen Stelle, wie die Haut des Kiefers (Spalte für Spalte mit der Lippe gerückt kreuzten sich
+        // die Spalten an Bögen der Linie)
+        feld(innenP[3 * i]!, innenP[3 * i + 1]!, f0);
+        innenP[3 * i] = innenP[3 * i]! + f0[0];
+        innenP[3 * i + 1] = innenP[3 * i + 1]! + f0[1];
+        innenP[3 * i + 2] = innenP[3 * i + 2]! * f0[2];
+      }
+      innenNormalen();
+      kurz = { kiefer: seiteK === unten ? 'unten' : 'oben', linie: K };
+    }
   }
 
   // Drehsinn: die Schnauzenspitze des Unterkiefers soll vom Oberkiefer weg
@@ -946,9 +1323,16 @@ export function maulSchneiden(
       gewichtUndGradient(x, y, tmp);
       return tmp[0];
     },
+    schaedelBei: (x, y) => {
+      schaedelUndGradient(x, y, tmp);
+      return tmp[0];
+    },
     gewicht,
     gradient,
+    gewichtOben,
+    gradientOben,
     innenUnten: new Uint8Array(innenUnten),
+    kurz,
   };
 }
 

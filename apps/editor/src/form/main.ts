@@ -37,10 +37,15 @@ import {
   linieAbtasten,
   linieNachfuehren,
   linienAbstand,
+  linienStuecke,
   maulBacken,
-  maulOeffnen,
-  maulPunkt,
   maulSchneiden,
+  type Pose,
+  RUHE,
+  ZUG_MAX,
+  posePunkt,
+  poseWinkel,
+  posieren,
   profilAusBreite,
   punktAufStueck,
   punktSetzen,
@@ -71,9 +76,11 @@ import {
   NearestFilter,
   OrthographicCamera,
   PerspectiveCamera,
+  Raycaster,
   RedFormat,
   Scene,
   ShaderMaterial,
+  Triangle,
   Vector2,
   Vector3,
   WebGLRenderer,
@@ -99,7 +106,10 @@ type Zustand = {
   raum: RaumLinie[];
   /** Maullinie in der Seite: erster Punkt auf dem Umriss, letzter = Mundwinkel */
   maul: MaulLinie | null;
+  /** die Pose „Fressen“: Knochen (Unterkiefer, Schädel) und Züge des Blendshapes; gezeigt, wenn „Pose“ an ist */
+  pose: Pose;
 };
+const ruhePose = (): Pose => ({ ...RUHE, zuege: [] });
 type Blatt = 'front' | 'top';
 
 declare global {
@@ -123,8 +133,11 @@ declare global {
       raum: RaumLinie[];
       /** Maullinie, Öffnung (Grad) und der Schnitt (Lippenpunkte, Dreiecke des Inneren; null = nicht geschnitten) */
       maul: MaulLinie | null;
+      /** gezeigte Öffnung des Unterkiefers (Grad; ohne Pose 0) */
       oeffnung: number;
-      schnitt: { lippe: number; innen: number } | null;
+      /** die Pose: gezeigt?, Knochen (Grad), Züge */
+      pose: Pose & { an: boolean };
+      schnitt: { lippe: number; innen: number; kurz: 'oben' | 'unten' | null } | null;
       /** Spielnetz (an): Dreiecke, Punkte, Abweichung (Welt, px bei 300 px Höhe), Dreiecke der dichten Form */
       spiel: { dreiecke: number; punkte: number; fehler: number; px: number; dicht: number } | null;
     };
@@ -134,6 +147,8 @@ declare global {
     __formMaul?: (linie: MaulLinie | null) => void;
     /** Prüfhaken: Öffnung des Mauls in Grad (wie der Regler) */
     __formOeffnen?: (winkel: number) => void;
+    /** Prüfhaken: die Pose setzen (null: behalten) und zeigen oder nicht (mit Rückgängig) */
+    __formPose?: (pose: Pose | null, an?: boolean) => void;
     /** Prüfhaken: eine Zeichnung setzen (wie ein Zug, mit Rückgängig) */
     __formSetzen?: (p: UmrissPunkt[], linien?: KantenLinie[], front?: UmrissPunkt[] | null, top?: UmrissPunkt[] | null) => void;
     /** Prüfhaken: alle drei Ansichten als geschlossene Umrisse setzen (gleichwertig) */
@@ -195,14 +210,24 @@ const profilSvg: Record<Blatt, SVGSVGElement> = {
 
 // ---------- Zustand ----------
 
-let zustand: Zustand = { punkte: kreis(150), linien: [], front: null, top: null, ansichten: null, raum: [], maul: null };
-/** Öffnung des Mauls in Grad (Regler im 3D-Blatt; eine Ansicht, kein Teil der Zeichnung) */
-let oeffnung = 0;
+let zustand: Zustand = { punkte: kreis(150), linien: [], front: null, top: null, ansichten: null, raum: [], maul: null, pose: ruhePose() };
+/** Pose gezeigt (Schalter „Pose“ im 3D-Blatt; eine Ansicht): an = die Pose samt Pinsel in den Blättern, aus = Grundform */
+let poseAn = false;
 /** der zuletzt gebaute Schnitt (null: kein Maul oder die Linie schneidet nicht) */
 let schnitt: MaulSchnitt | null = null;
-const maulOffen = (): boolean => schnitt !== null && oeffnung > 0;
+const gezeigtePose = (): Pose => (poseAn ? zustand.pose : RUHE);
+/** zeigt das Fenster eine Pose, die die Form verändert? Dann zeigt auch die Seite den Umriss des Modells */
+const posiertGezeigt = (): boolean => poseAn && (zustand.pose.zuege.length > 0 || (schnitt !== null && (zustand.pose.kiefer > 0 || zustand.pose.schaedel > 0)));
 const maulRegler = document.getElementById('maul-regler') as HTMLLabelElement;
 const maulEingabe = document.getElementById('maul-oeffnung') as HTMLInputElement;
+const kopfRegler = document.getElementById('kopf-regler') as HTMLLabelElement;
+const kopfEingabe = document.getElementById('kopf-oeffnung') as HTMLInputElement;
+const poseSchalter = document.getElementById('pose') as HTMLInputElement;
+/** ein neuer Körper beginnt in der Grundform: Schalter „Pose“ aus (sonst würde jeder Druck auf ihn ein Pinselstrich) */
+const ohnePose = (): void => {
+  poseAn = false;
+  poseSchalter.checked = false;
+};
 /**
  * Spielnetz (Probe „Backen“, 04.11.): die dichte Form auf höchstens BUDGET Dreiecke ausgedünnt, dieselben Punkte, nur weniger
  * Dreiecke; gebacken wird beim genauen Bau, beim Ziehen zeigt das Fenster die dichte Form.
@@ -229,8 +254,9 @@ type Auswahl =
   | { art: 'profil'; blatt: Blatt; i: number }
   | { art: 'raum'; l: number }
   | { art: 'rpunkt'; l: number; i: number }
-  | { art: 'maul' }
-  | { art: 'mpunkt'; i: number }
+  // Maullinie l (0: die Maullinie, 1: die Lippe des kürzeren Kiefers) bzw. Punkte auf ihr (mit ⇧ mehrere)
+  | { art: 'maul'; l: number }
+  | { art: 'mpunkt'; l: number; i: number[] }
   | null;
 let auswahl: Auswahl = null;
 const zurueck: Zustand[] = [];
@@ -249,7 +275,12 @@ const kopie = (z: Zustand): Zustand => ({
       }
     : null,
   raum: z.raum.map((l) => ({ ...l, punkte: l.punkte.map((q) => ({ ...q })) })),
-  maul: z.maul ? { punkte: z.maul.punkte.map((q) => ({ ...q })) } : null,
+  maul: z.maul ? { punkte: z.maul.punkte.map((q) => ({ ...q })), kurz: z.maul.kurz?.map((q) => ({ ...q })) } : null,
+  pose: {
+    kiefer: z.pose.kiefer,
+    schaedel: z.pose.schaedel,
+    zuege: z.pose.zuege.map((zg) => ({ c: [...zg.c] as [number, number, number], d: [...zg.d] as [number, number, number], r: zg.r })),
+  },
 });
 function merken(stand: Zustand): void {
   zurueck.push(stand);
@@ -439,9 +470,13 @@ const skala = (): number => {
   return Math.max(1e-6, Math.min(r.width, r.height) / SICHT);
 };
 
-/** Linien auf dem Körper in Ruhe (Kanten, Linien auf der Form); mit geöffnetem Maul biegt `oeffnungAnwenden` sie mit. */
+/** Linien auf dem Körper in Ruhe (Kanten, Linien auf der Form); in einer Pose biegt `poseAnwenden` sie mit. */
 let kantenRuhe: readonly Kante3D[] = [];
 let raumRuhe: readonly Kante3D[] = [];
+/** der Körper in Ruhe (mit Maul der geschnittene) und seine Lagen nach dem Blendshape, vor den Knochen (für den Pinsel) */
+let ruheKoerper: { positionen: Float32Array; normalen: Float32Array } = { positionen: new Float32Array(0), normalen: new Float32Array(0) };
+let vorKnochen = new Float32Array(0);
+let innenVorKnochen = new Float32Array(0);
 const ersetzen = (a: Mesh, b: Mesh, g: BufferGeometry): void => {
   const alt = a.geometry;
   a.geometry = g;
@@ -455,8 +490,11 @@ function geometrieSetzen(n: DichtesNetz): void {
   // mit Maul der geschnittene Körper in eigenen Puffern: die Öffnung schreibt hinein, die Ruhe bleibt im Schnitt; das Spielnetz
   // ist nur eine andere Dreiecksliste über denselben Punkten
   const sp = spielnetz;
-  g.setAttribute('position', new BufferAttribute(s ? new Float32Array(s.positionen) : n.positionen, 3));
-  g.setAttribute('normal', new BufferAttribute(s ? new Float32Array(s.normalen) : n.normalen, 3));
+  ruheKoerper = s ? { positionen: s.positionen, normalen: s.normalen } : { positionen: n.positionen, normalen: n.normalen };
+  vorKnochen = new Float32Array(ruheKoerper.positionen);
+  innenVorKnochen = s ? new Float32Array(s.innen.positionen) : new Float32Array(0);
+  g.setAttribute('position', new BufferAttribute(new Float32Array(ruheKoerper.positionen), 3));
+  g.setAttribute('normal', new BufferAttribute(new Float32Array(ruheKoerper.normalen), 3));
   g.setIndex(new BufferAttribute(sp ? sp.indizes : s ? s.indizes : n.indizes, 1));
   g.computeBoundingSphere();
   ersetzen(koerper, umriss, g);
@@ -477,33 +515,43 @@ function geometrieSetzen(n: DichtesNetz): void {
   // Linien auf der Form, auf die Fläche gelegt (Tiefe der Form an ihrer Stelle in der Seite)
   const kontur = n.kontur;
   raumRuhe = LINIEN ? raumKanten(zustand.raum, 2, kontur ? (x, y) => tiefeAusKontur(kontur, x, y) : undefined) : [];
-  oeffnungAnwenden();
+  poseAnwenden();
 }
 
-/** Das Maul so weit geöffnet zeigen, wie der Regler steht: Körper, Inneres, Lippen und die Linien auf dem Körper. */
-function oeffnungAnwenden(): void {
+/** Die Pose zeigen (oder die Grundform): Körper, Inneres, Lippen und die Linien auf dem Körper; kein neuer Bau. */
+function poseAnwenden(): void {
   const s = schnitt;
-  const w = s ? oeffnung : 0;
-  if (s) {
-    const pa = koerper.geometry.getAttribute('position') as BufferAttribute;
-    const na = koerper.geometry.getAttribute('normal') as BufferAttribute;
-    const ia = maulInnen.geometry.getAttribute('position') as BufferAttribute;
-    const ina = maulInnen.geometry.getAttribute('normal') as BufferAttribute;
-    maulOeffnen(s, w, {
-      positionen: pa.array as Float32Array,
-      normalen: na.array as Float32Array,
-      innenPositionen: ia.array as Float32Array,
-      innenNormalen: ina.array as Float32Array,
-    });
-    for (const a of [pa, na, ia, ina]) a.needsUpdate = true;
+  const pose = gezeigtePose();
+  const pa = koerper.geometry.getAttribute('position') as BufferAttribute | undefined;
+  const na = koerper.geometry.getAttribute('normal') as BufferAttribute | undefined;
+  if (pa && na) {
+    const ia = maulInnen.geometry.getAttribute('position') as BufferAttribute | undefined;
+    const ina = maulInnen.geometry.getAttribute('normal') as BufferAttribute | undefined;
+    const ziel =
+      s && ia && ina
+        ? {
+            positionen: pa.array as Float32Array,
+            normalen: na.array as Float32Array,
+            vorKnochen,
+            innenPositionen: ia.array as Float32Array,
+            innenNormalen: ina.array as Float32Array,
+            innenVorKnochen,
+          }
+        : { positionen: pa.array as Float32Array, normalen: na.array as Float32Array, vorKnochen };
+    posieren(ruheKoerper, s, pose, ziel);
+    for (const a of [pa, na, ia, ina]) if (a) a.needsUpdate = true;
+    // für den Pinsel: der Strahltest prüft zuerst die Hüllkugel
+    koerper.geometry.computeBoundingSphere();
   }
+  const ruhig = pose.zuege.length === 0 && (!s || (pose.kiefer === 0 && pose.schaedel === 0));
   const biegen = (k: Kante3D): Kante3D => {
-    if (!s || w === 0) return k;
+    if (ruhig) return k;
     const lagen = new Float32Array(k.lagen);
     for (let i = 0; i < lagen.length / 3; i++) {
-      const q = maulPunkt(s, w, lagen[3 * i]!, lagen[3 * i + 1]!);
-      lagen[3 * i] = q.x;
-      lagen[3 * i + 1] = q.y;
+      const q = posePunkt(s, pose, lagen[3 * i]!, lagen[3 * i + 1]!, lagen[3 * i + 2]!);
+      lagen[3 * i] = q[0];
+      lagen[3 * i + 1] = q[1];
+      lagen[3 * i + 2] = q[2];
     }
     return { ...k, lagen };
   };
@@ -729,14 +777,27 @@ function bauen(fein: boolean): void {
     const a = zustand.maul.punkte[0]!;
     const q = naechsterAufUmriss(a.x, a.y);
     zustand.maul.punkte[0] = { ...a, x: q.x, y: q.y };
-    schnitt = maulSchneiden(n, zustand.maul, { zelle: n.zelle, kontur: n.kontur });
+    // getrennte Kiefer: die Lippe des kürzeren beginnt auf dem Umriss und endet im selben Mundwinkel
+    const k = zustand.maul.kurz;
+    if (k && k.length >= 2) {
+      const b = k[0]!;
+      const qb = naechsterAufUmriss(b.x, b.y);
+      k[0] = { ...b, x: qb.x, y: qb.y };
+      const mw = zustand.maul.punkte[zustand.maul.punkte.length - 1]!;
+      k[k.length - 1] = { ...k[k.length - 1]!, x: mw.x, y: mw.y };
+    }
+    // der Umriss der Seite hält die Haut des kürzeren Kiefers in der Form (gleichwertige Ansichten: der Körper reicht über ihn)
+    schnitt = maulSchneiden(n, zustand.maul, { zelle: n.zelle, kontur: n.kontur, umriss: gleich ? undefined : n.umriss });
   } else {
-    // ohne Maul steht der Regler wieder auf zu: eine neue Maullinie beginnt geschlossen
     schnitt = null;
-    oeffnung = 0;
-    maulEingabe.value = '0';
   }
+  // Regler zeigen die Knochen der Pose (auch nach ⌘Z)
   maulRegler.hidden = !schnitt;
+  kopfRegler.hidden = !schnitt;
+  maulEingabe.value = String(zustand.pose.kiefer);
+  kopfEingabe.value = String(zustand.pose.schaedel);
+  poseSchalter.checked = poseAn;
+  pinselHoehe = n.ansichten.seite.yMax - n.ansichten.seite.yMin || 1;
   // Spielnetz: beim genauen Bau backen (mit Maul in geöffneter Lage, s. `maulBacken`)
   spielnetz = null;
   if (spielnetzAn && backBereit && fein) {
@@ -773,8 +834,11 @@ function bauen(fein: boolean): void {
     nachgefuehrt: letzteNachfuehrung,
     raum: k.raum,
     maul: k.maul,
-    oeffnung,
-    schnitt: schnitt ? { lippe: schnitt.lippeOben.length, innen: schnitt.innen.indizes.length / 3 } : null,
+    oeffnung: gezeigtePose().kiefer,
+    pose: { an: poseAn, ...k.pose },
+    schnitt: schnitt
+      ? { lippe: schnitt.lippeOben.length, innen: schnitt.innen.indizes.length / 3, kurz: schnitt.kurz?.kiefer ?? null }
+      : null,
     spiel: spielnetz
       ? {
           dreiecke: spielnetz.dreiecke,
@@ -878,7 +942,7 @@ function rendern(): void {
     const andere = name !== 'seite';
     // mit gleichwertigen Ansichten zeigt auch die Seite den Umriss des Modells (über der Zeichnung), mit `?netz` immer, mit
     // offenem Maul ebenso (die Zeichnung bleibt geschlossen)
-    umriss.visible = andere || zustand.ansichten !== null || NETZ || LINIEN || maulOffen();
+    umriss.visible = andere || zustand.ansichten !== null || NETZ || LINIEN || posiertGezeigt();
     kanten.visible = andere;
     kantenHinten.visible = andere;
     lippen.visible = andere;
@@ -944,7 +1008,7 @@ function svgZeichnen(): void {
   // gleichwertige Ansichten: die Zeichnung farbig, der Umriss des Modells (Shader) schwarz darüber; mit `?netz` zeichnet nur
   // der Shader, die Punkte sind Griffe auf seiner Linie
   svg.append(treffer);
-  if (!NETZ && !LINIEN) svg.append(element('path', zustand.ansichten || maulOffen() ? 'vorgabe' : 'linie', { d }));
+  if (!NETZ && !LINIEN) svg.append(element('path', zustand.ansichten || posiertGezeigt() ? 'vorgabe' : 'linie', { d }));
   for (const u of zustand.ansichten?.seite ?? []) svg.append(element('path', 'vorgabe', { d: umrissPfad(u, (q) => [q.x, -q.y]) }));
   const rp = 5 / s;
   // gezeichnete Linien: Trefferband, Strich, Punkte der gewählten Linie
@@ -966,31 +1030,43 @@ function svgZeichnen(): void {
       svg.append(e);
     });
   });
-  // Maullinie: Strich und Trefferband; mit offenem Maul daneben die Unterlippe, gedreht wie im 3D; gewählt mit ihren Punkten
+  // Maullinie: Strich und Trefferband; mit getrennten Kiefern dazu die Lippe des kürzeren (gestrichelt, geschlossen verdeckt);
+  // in der Pose beide Lippen leiser, wie sie im 3D liegen; gewählt mit ihren Punkten (mit ⇧ mehrere)
   if (zustand.maul) {
     const m = zustand.maul;
-    const p = linieAbtasten({ punkte: m.punkte.map((q) => ({ ...q, breite: LIPPE })) }, 2 / s).p;
     const pfad = (q: readonly { x: number; y: number }[]) => q.map((r, i) => `${i ? 'L' : 'M'} ${r.x} ${-r.y}`).join(' ');
-    const t = element('path', 'treffer-kante', { d: pfad(p) });
-    t.dataset.maul = '';
-    svg.append(t);
-    svg.append(element('path', schnitt ? 'maul' : 'maul fehlt', { d: pfad(p) }));
-    if (schnitt && oeffnung > 0) {
-      const a = (schnitt.drehsinn * oeffnung * Math.PI) / 180;
-      const c = Math.cos(a);
-      const sn = Math.sin(a);
-      const g = schnitt.gelenk;
-      const unten = p.map((q) => ({ x: g.x + c * (q.x - g.x) - sn * (q.y - g.y), y: g.y + sn * (q.x - g.x) + c * (q.y - g.y) }));
-      svg.append(element('path', 'maul unten', { d: pfad(unten) }));
+    const linien = m.kurz && m.kurz.length >= 2 ? [m.punkte, m.kurz] : [m.punkte];
+    linien.forEach((punkte, l) => {
+      const p = linieAbtasten({ punkte: punkte.map((q) => ({ ...q, breite: LIPPE })) }, 2 / s).p;
+      const t = element('path', 'treffer-kante', { d: pfad(p) });
+      t.dataset.maul = String(l);
+      svg.append(t);
+      const fehlt = !schnitt || (l === 1 && !schnitt.kurz);
+      svg.append(element('path', `maul${l === 1 ? ' kurz' : ''}${fehlt ? ' fehlt' : ''}`, { d: pfad(p) }));
+    });
+    if (schnitt && posiertGezeigt()) {
+      const pos = koerper.geometry.getAttribute('position')?.array as Float32Array | undefined;
+      if (pos) {
+        for (const lippe of [schnitt.lippeOben, schnitt.lippeUnten]) {
+          const rechts = Array.from(lippe)
+            .filter((v) => pos[3 * v + 2]! >= 0)
+            .map((v) => ({ x: pos[3 * v]!, y: pos[3 * v + 1]! }));
+          if (rechts.length > 1) svg.append(element('path', 'maul unten', { d: pfad(rechts) }));
+        }
+      }
     }
-    if (auswahl?.art === 'maul' || auswahl?.art === 'mpunkt') {
-      m.punkte.forEach((q, i) => {
-        const an = auswahl?.art === 'maul' || (auswahl?.art === 'mpunkt' && auswahl.i === i);
+    const a = auswahl;
+    if (!poseAn && (a?.art === 'maul' || a?.art === 'mpunkt')) {
+      const punkte = linien[a.l];
+      punkte?.forEach((q, i) => {
+        // das Ende der zweiten Linie ist der Mundwinkel der ersten
+        if (a.l === 1 && i === punkte.length - 1) return;
+        const an = a.art === 'maul' || a.i.includes(i);
         const klasse = `lpunkt${an ? ' gewaehlt' : ''}`;
         const e = q.ecke
           ? element('rect', klasse, { x: q.x - 0.8 * rp, y: -q.y - 0.8 * rp, width: 1.6 * rp, height: 1.6 * rp })
           : element('circle', klasse, { cx: q.x, cy: -q.y, r: 0.8 * rp });
-        e.dataset.mpunkt = String(i);
+        e.dataset.mpunkt = `${a.l}:${i}`;
         svg.append(e);
       });
     }
@@ -999,6 +1075,11 @@ function svgZeichnen(): void {
     svg.append(element('path', 'entwurf', { d: zug.spur.map((q, i) => `${i ? 'L' : 'M'} ${q.x} ${-q.y}`).join(' ') }));
   }
   if (LINIEN) raumZeichnen(svg, 'seite');
+  // in der Pose wirkt nur der Pinsel: keine Punkte der Grundform
+  if (poseAn) {
+    pinselKreisZeichnen(svg, 'seite');
+    return;
+  }
   zustand.punkte.forEach((p, i) => {
     const an = auswahl?.art === 'umriss' && auswahl.i === i;
     const e = p.ecke
@@ -1090,12 +1171,35 @@ function linienEcke(l: number, i: number): void {
   geaendert();
 }
 
-function maulEcke(i: number): void {
-  const m = zustand.maul;
-  if (!m) return;
+/** Die Punkte einer Maullinie (0: Maullinie, 1: Lippe des kürzeren Kiefers) */
+const maulPunkte = (l: number): UmrissPunkt[] | undefined => (l === 1 ? zustand.maul?.kurz : zustand.maul?.punkte);
+
+function maulEcke(l: number, i: number): void {
+  const p = maulPunkte(l);
+  if (!p?.[i]) return;
   merken(kopie(zustand));
-  m.punkte[i] = { ...m.punkte[i]!, ecke: !m.punkte[i]!.ecke };
+  p[i] = { ...p[i], ecke: !p[i].ecke };
   geaendert();
+}
+
+/** Die Stelle einer Maullinie, die q am nächsten liegt: Stück i (Punkt i → i + 1) und der Punkt dort. */
+function maulStelle(punkte: readonly UmrissPunkt[], q: { x: number; y: number }): { i: number; x: number; y: number } {
+  let best = Infinity;
+  let r = { i: 0, x: q.x, y: q.y };
+  linienStuecke(punkte).forEach((k, i) => {
+    for (let j = 1; j < 40; j++) {
+      const t = j / 40;
+      const u = 1 - t;
+      const x = u * u * u * k[0].x + 3 * u * u * t * k[1].x + 3 * u * t * t * k[2].x + t * t * t * k[3].x;
+      const y = u * u * u * k[0].y + 3 * u * u * t * k[1].y + 3 * u * t * t * k[2].y + t * t * t * k[3].y;
+      const d = Math.hypot(x - q.x, y - q.y);
+      if (d < best) {
+        best = d;
+        r = { i, x, y };
+      }
+    }
+  });
+  return r;
 }
 
 /**
@@ -1166,8 +1270,8 @@ type Zug =
   | { art: 'zeichnen'; spur: { x: number; y: number }[]; vorher: Zustand }
   // von außen über den Umriss in die Form: die Maullinie
   | { art: 'maul'; spur: { x: number; y: number }[]; vorher: Zustand }
-  // Punkt der Maullinie (der erste gleitet auf dem Umriss)
-  | { art: 'mpunkt'; i: number; vorher: Zustand; bewegt: boolean };
+  // Punkte einer Maullinie, gemeinsam gezogen (ein Anfang gleitet auf dem Umriss); start: Zeiger und Lagen beim Druck
+  | { art: 'mpunkt'; l: number; i: number[]; start: { x: number; y: number }; lagen: { x: number; y: number }[]; vorher: Zustand; bewegt: boolean };
 let zug: Zug | null = null;
 // Doppelklick selbst zählen: die Punkte werden beim Drücken neu gezeichnet, das dblclick-Ziel ist dann weg
 let letzterKlick: { schluessel: string; t: number } | null = null;
@@ -1178,8 +1282,117 @@ const doppelklick = (schluessel: string): boolean => {
   return doppelt;
 };
 
+// ---------- Pose: Pinsel ----------
+// In der Pose zieht ein Druck auf die Form in einem Blatt die Form dort weich mit (ein Zug des Blendshapes): die Seite bewegt
+// x und y, die Front y und z, das Top x und z. Der Zug liegt vor den Knochen: seine Mitte ist der getroffene Punkt in der Lage
+// vor den Knochen, die Verschiebung um den Drehwinkel der Stelle zurückgedreht. Spiegelgleich (gespeichert auf der Seite
+// z ≥ 0). Radius mit [ und ].
+let pinselHoehe = 300;
+let pinselRadius: number | null = null;
+const radius = (): number => pinselRadius ?? 0.22 * pinselHoehe;
+const strahl = new Raycaster();
+type PinselZug = { blatt: 'seite' | Blatt; start: [number, number]; index: number; alpha: number; spiegel: boolean; vorher: Zustand; bewegt: boolean };
+let pinsel: PinselZug | null = null;
+/** wo der Zeiger in der Pose steht (für den Kreis des Pinsels) */
+let pinselZeiger: { blatt: 'seite' | Blatt; x: number; y: number } | null = null;
+const pinselKreise: Partial<Record<'seite' | Blatt, SVGElement>> = {};
+
+function pinselStart(b: 'seite' | Blatt, e: PointerEvent): boolean {
+  const kamera = b === 'seite' ? kameras.seite : kameras[b];
+  const r = felder[b].getBoundingClientRect();
+  strahl.setFromCamera(new Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1)), kamera);
+  // die Form oder, durch das offene Maul, das Maulinnere
+  const s = schnitt;
+  const t = strahl.intersectObjects(s ? [koerper, maulInnen] : [koerper], false)[0];
+  if (!t || !t.face) return false;
+  const innen = t.object === maulInnen;
+  const pos = (innen ? maulInnen : koerper).geometry.getAttribute('position').array as Float32Array;
+  const vor = innen ? innenVorKnochen : vorKnochen;
+  const ecken = [t.face.a, t.face.b, t.face.c] as const;
+  const P = (v: number) => new Vector3(pos[3 * v]!, pos[3 * v + 1]!, pos[3 * v + 2]!);
+  const bary = new Vector3();
+  Triangle.getBarycoord(t.point, P(ecken[0]), P(ecken[1]), P(ecken[2]), bary);
+  const g = [bary.x, bary.y, bary.z];
+  const mitte = [0, 1, 2].map((i) => ecken.reduce((sum, v, k) => sum + g[k]! * vor[3 * v + i]!, 0)) as [number, number, number];
+  const alpha = s ? ecken.reduce((sum, v, k) => sum + g[k]! * poseWinkel(s, zustand.pose, v, innen), 0) : 0;
+  const vorher = kopie(zustand);
+  const spiegel = mitte[2] < 0;
+  zustand.pose.zuege.push({ c: [mitte[0], mitte[1], Math.abs(mitte[2])], d: [0, 0, 0], r: radius() });
+  pinsel = { blatt: b, start: [e.clientX, e.clientY], index: zustand.pose.zuege.length - 1, alpha, spiegel, vorher, bewegt: false };
+  return true;
+}
+
+function pinselZiehen(e: PointerEvent): void {
+  const p = pinsel;
+  const zg = p ? zustand.pose.zuege[p.index] : undefined;
+  if (!p || !zg) return;
+  const s = skala();
+  const dxs = (e.clientX - p.start[0]) / s;
+  const dys = (e.clientY - p.start[1]) / s;
+  // Blatt → Welt: Seite (x, −y), Front (z, −y), Top (x, z)
+  const w = p.blatt === 'seite' ? [dxs, -dys, 0] : p.blatt === 'front' ? [0, -dys, dxs] : [dxs, 0, dys];
+  // vor die Knochen: um den Drehwinkel der Stelle zurückdrehen
+  const c = Math.cos(p.alpha);
+  const sn = Math.sin(p.alpha);
+  let d: [number, number, number] = [c * w[0]! + sn * w[1]!, -sn * w[0]! + c * w[1]!, p.spiegel ? -w[2]! : w[2]!];
+  const l = Math.hypot(...d);
+  const max = ZUG_MAX * zg.r;
+  if (l > max) d = [(d[0] * max) / l, (d[1] * max) / l, (d[2] * max) / l];
+  if (!p.bewegt) {
+    merken(p.vorher);
+    p.bewegt = true;
+  }
+  zg.d = d;
+  poseAnwenden();
+  svgZeichnen();
+}
+
+function pinselEnde(): void {
+  const p = pinsel;
+  pinsel = null;
+  // nur geklickt: kein Zug
+  if (p && !p.bewegt) zustand.pose.zuege.splice(p.index, 1);
+  if (window.__form) window.__form.pose = { an: poseAn, ...kopie(zustand).pose };
+  svgZeichnen();
+  profileZeichnen();
+}
+
+/** Kreis des Pinsels im Blatt (Radius in Welteinheiten wie das Blatt) */
+function pinselKreisZeichnen(el: SVGSVGElement, b: 'seite' | Blatt): void {
+  const k = element('circle', 'pinsel', { cx: 0, cy: 0, r: radius() });
+  pinselKreise[b] = k;
+  if (pinselZeiger?.blatt === b) {
+    k.setAttribute('cx', String(pinselZeiger.x));
+    k.setAttribute('cy', String(pinselZeiger.y));
+  } else {
+    k.setAttribute('visibility', 'hidden');
+  }
+  el.append(k);
+}
+
+function pinselZeigen(b: 'seite' | Blatt, e: PointerEvent): void {
+  const [x, y] = blattPunkt(b, e);
+  pinselZeiger = { blatt: b, x, y };
+  for (const [name, k] of Object.entries(pinselKreise)) {
+    if (!k) continue;
+    if (name === b) {
+      k.setAttribute('cx', String(x));
+      k.setAttribute('cy', String(y));
+      k.setAttribute('r', String(radius()));
+      k.removeAttribute('visibility');
+    } else {
+      k.setAttribute('visibility', 'hidden');
+    }
+  }
+}
+
 svg.addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return;
+  // in der Pose: Pinsel statt Zeichnen
+  if (poseAn) {
+    if (pinselStart('seite', e)) svg.setPointerCapture(e.pointerId);
+    return;
+  }
   const d = (e.target as SVGElement).dataset;
   if (d.punkt !== undefined) {
     const i = Number(d.punkt);
@@ -1208,15 +1421,49 @@ svg.addEventListener('pointerdown', (e) => {
     zug = { art: 'raum', l, i, vorher: kopie(zustand), bewegt: true };
     bauGewuenscht = 'fein';
   } else if (d.mpunkt !== undefined) {
-    const i = Number(d.mpunkt);
-    auswahl = { art: 'mpunkt', i };
-    if (doppelklick(`m${i}`) || e.altKey) {
-      maulEcke(i);
+    const [l, i] = d.mpunkt.split(':').map(Number) as [number, number];
+    // ⇧: zur Auswahl hinzu oder heraus; sonst dieser Punkt (oder, wenn er schon gewählt ist, alle gewählten)
+    const vorher = auswahl?.art === 'mpunkt' && auswahl.l === l ? auswahl.i : [];
+    const liste = e.shiftKey
+      ? vorher.includes(i)
+        ? vorher.filter((j) => j !== i)
+        : [...vorher, i]
+      : vorher.includes(i)
+        ? vorher
+        : [i];
+    auswahl = { art: 'mpunkt', l, i: liste };
+    if (!e.shiftKey && (doppelklick(`m${l}:${i}`) || e.altKey)) {
+      maulEcke(l, i);
       return;
     }
-    zug = { art: 'mpunkt', i, vorher: kopie(zustand), bewegt: false };
+    const punkte = maulPunkte(l) ?? [];
+    if (liste.length > 0) {
+      zug = {
+        art: 'mpunkt',
+        l,
+        i: liste,
+        start: welt(e),
+        lagen: liste.map((j) => ({ x: punkte[j]!.x, y: punkte[j]!.y })),
+        vorher: kopie(zustand),
+        bewegt: false,
+      };
+    }
   } else if (d.maul !== undefined) {
-    auswahl = { art: 'maul' };
+    const l = Number(d.maul);
+    const punkte = maulPunkte(l);
+    if (punkte && (auswahl?.art === 'maul' || auswahl?.art === 'mpunkt') && auswahl.l === l) {
+      // Klick auf die gewählte Linie: dort ein neuer Punkt, gleich ziehen
+      const vorher = kopie(zustand);
+      const q = welt(e);
+      const st = maulStelle(punkte, q);
+      punkte.splice(st.i + 1, 0, { x: st.x, y: st.y });
+      merken(vorher);
+      auswahl = { art: 'mpunkt', l, i: [st.i + 1] };
+      zug = { art: 'mpunkt', l, i: [st.i + 1], start: q, lagen: [{ x: st.x, y: st.y }], vorher: kopie(zustand), bewegt: true };
+      bauGewuenscht = 'fein';
+    } else {
+      auswahl = { art: 'maul', l };
+    }
   } else if (d.lpunkt !== undefined) {
     const [l, i] = d.lpunkt.split(':').map(Number) as [number, number];
     auswahl = { art: 'lpunkt', l, i };
@@ -1248,6 +1495,14 @@ svg.addEventListener('pointerdown', (e) => {
 });
 
 svg.addEventListener('pointermove', (e) => {
+  if (pinsel) {
+    pinselZiehen(e);
+    return;
+  }
+  if (poseAn) {
+    pinselZeigen('seite', e);
+    return;
+  }
   if (!zug) return;
   const w = welt(e);
   if (zug.art === 'zeichnen' || zug.art === 'maul') {
@@ -1272,12 +1527,19 @@ svg.addEventListener('pointermove', (e) => {
     const p = zustand.raum[zug.l]!.punkte[zug.i]!;
     punktSetzen(zustand.raum, zug.l, zug.i, { x: w.x, y: w.y, z: p.z });
   } else if (zug.art === 'mpunkt') {
-    const m = zustand.maul;
-    if (!m) return;
-    const p = m.punkte[zug.i]!;
-    // der Anfang gleitet auf dem Umriss
-    const q = zug.i === 0 ? naechsterAufUmriss(w.x, w.y) : w;
-    m.punkte[zug.i] = { ...p, x: q.x, y: q.y };
+    const punkte = maulPunkte(zug.l);
+    if (!punkte) return;
+    // alle gewählten Punkte um dieselbe Strecke; ein Anfang gleitet auf dem Umriss
+    const zm = zug;
+    const dx = w.x - zm.start.x;
+    const dy = w.y - zm.start.y;
+    zm.i.forEach((j, k) => {
+      const p = punkte[j];
+      if (!p) return;
+      const z0 = zm.lagen[k]!;
+      const q = j === 0 ? naechsterAufUmriss(z0.x + dx, z0.y + dy) : { x: z0.x + dx, y: z0.y + dy };
+      punkte[j] = { ...p, x: q.x, y: q.y };
+    });
   } else {
     const l = zustand.linien[zug.l]!;
     const p = l.punkte[zug.i]!;
@@ -1289,12 +1551,25 @@ svg.addEventListener('pointermove', (e) => {
 });
 
 const zugEnde = (): void => {
+  if (pinsel) {
+    pinselEnde();
+    return;
+  }
   if (zug?.art === 'maul') {
     const neu = maulAusSpur(zug.spur);
     if (neu) {
       merken(zug.vorher);
-      zustand.maul = neu;
-      auswahl = { art: 'maul' };
+      // endet die Spur am Mundwinkel eines Mauls, ist sie die Lippe des kürzeren Kiefers (getrennte Kiefer); sonst ein neues Maul
+      const alt = zustand.maul;
+      const mw = alt?.punkte[alt.punkte.length - 1];
+      const ende = neu.punkte[neu.punkte.length - 1]!;
+      if (alt && mw && Math.hypot(ende.x - mw.x, ende.y - mw.y) * skala() < 16) {
+        alt.kurz = neu.punkte.map((q, i) => (i === neu.punkte.length - 1 ? { ...q, x: mw.x, y: mw.y } : q));
+        auswahl = { art: 'maul', l: 1 };
+      } else {
+        zustand.maul = neu;
+        auswahl = { art: 'maul', l: 0 };
+      }
       bauGewuenscht = 'fein';
     }
     zug = null;
@@ -1592,6 +1867,11 @@ function profilZeichnen(b: Blatt): void {
   }
   const rp = 5 / s;
   if (LINIEN) raumZeichnen(el, b);
+  // in der Pose wirkt nur der Pinsel: keine Punkte der Grundform
+  if (poseAn) {
+    pinselKreisZeichnen(el, b);
+    return;
+  }
   halb?.forEach((q, i, alle) => {
     const [x, y] = zuBlatt(b, ...laengsQuer(b, q));
     // Anfang und Ende liegen auf der Mittelachse und gleiten nur auf ihr
@@ -1643,6 +1923,11 @@ for (const b of ['front', 'top'] as const) {
   const el = profilSvg[b];
   el.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
+    // in der Pose: Pinsel (die Front bewegt y und z, das Top x und z)
+    if (poseAn) {
+      if (pinselStart(b, e)) el.setPointerCapture(e.pointerId);
+      return;
+    }
     if ((!LINIEN && !profilVon(b)) || zustand.ansichten) return;
     const d = (e.target as SVGElement).dataset;
     const vorher = kopie(zustand);
@@ -1719,6 +2004,14 @@ for (const b of ['front', 'top'] as const) {
     el.setPointerCapture(e.pointerId);
   });
   el.addEventListener('pointermove', (e) => {
+    if (pinsel) {
+      pinselZiehen(e);
+      return;
+    }
+    if (poseAn) {
+      pinselZeigen(b, e);
+      return;
+    }
     if (raumZug && raumZug.blatt === b) {
       if (!raumZug.bewegt) {
         merken(raumZug.vorher);
@@ -1768,6 +2061,10 @@ for (const b of ['front', 'top'] as const) {
     geaendert(false);
   });
   const ende = (): void => {
+    if (pinsel) {
+      pinselEnde();
+      return;
+    }
     if (profilZug?.bewegt || linienZug?.bewegt || raumZug?.bewegt) bauGewuenscht = 'fein';
     profilZug = null;
     linienZug = null;
@@ -1802,6 +2099,13 @@ window.addEventListener('keydown', (e) => {
   // Strichdicke: [ ] (auf deutscher Tastatur ⌥5/⌥6 oder dieselben Tasten wie dort + und ü) oder + und −
   const mehr = e.key === ']' || e.key === '+' || e.code === 'BracketRight';
   const weniger = e.key === '[' || e.key === '-' || e.code === 'BracketLeft';
+  // in der Pose: Radius des Pinsels
+  if (poseAn && !mod && (mehr || weniger)) {
+    e.preventDefault();
+    pinselRadius = radius() * (mehr ? 1.2 : 1 / 1.2);
+    for (const k of Object.values(pinselKreise)) k?.setAttribute('r', String(radius()));
+    return;
+  }
   if (!mod && (mehr || weniger)) {
     e.preventDefault();
     const d = mehr ? 0.5 : -0.5;
@@ -1837,12 +2141,22 @@ window.addEventListener('keydown', (e) => {
       merken(kopie(zustand));
       zustand.raum = zustand.raum.filter((_, j) => j !== a.l);
     } else if (a.art === 'maul' || a.art === 'mpunkt') {
-      // ein Punkt der Maullinie (nicht der Anfang auf dem Umriss) oder die ganze Linie
+      // Punkte einer Maullinie (nicht der Anfang auf dem Umriss, mindestens zwei bleiben) oder die ganze Linie: die erste nimmt
+      // das ganze Maul mit, die zweite nur sich (die Kiefer sind dann wieder gleich)
       const m = zustand.maul;
       if (!m) return;
+      const punkte = maulPunkte(a.l) ?? [];
+      const weg = a.art === 'mpunkt' ? a.i.filter((j) => j > 0 && !(a.l === 1 && j === punkte.length - 1)) : [];
       merken(kopie(zustand));
-      if (a.art === 'mpunkt' && a.i > 0 && m.punkte.length > 2) m.punkte = m.punkte.filter((_, j) => j !== a.i);
-      else zustand.maul = null;
+      if (a.art === 'mpunkt' && weg.length > 0 && punkte.length - weg.length >= 2) {
+        const rest = punkte.filter((_, j) => !weg.includes(j));
+        if (a.l === 1) m.kurz = rest;
+        else m.punkte = rest;
+      } else if (a.l === 1) {
+        m.kurz = undefined;
+      } else {
+        zustand.maul = null;
+      }
     } else {
       merken(kopie(zustand));
       const l = zustand.linien[a.l]!;
@@ -1888,8 +2202,9 @@ function schleife(): void {
 
 window.__formSetzen = (p, linien = [], front = null, top = null) => {
   merken(kopie(zustand));
-  zustand = kopie({ punkte: p, linien, front, top, ansichten: null, raum: [], maul: null });
+  zustand = kopie({ punkte: p, linien, front, top, ansichten: null, raum: [], maul: null, pose: ruhePose() });
   auswahl = null;
+  ohnePose();
   geaendert();
 };
 
@@ -1905,8 +2220,10 @@ window.__formAnsichten = (z) => {
     ansichten: { seite: seite.slice(1), front: kopien(z.front), top: kopien(z.top) },
     raum: [],
     maul: null,
+    pose: ruhePose(),
   });
   auswahl = null;
+  ohnePose();
   geaendert();
 };
 window.__formPruefall = (name) => {
@@ -1917,8 +2234,9 @@ window.__formPruefall = (name) => {
     return;
   }
   merken(kopie(zustand));
-  zustand = kopie({ punkte: h.seite, linien: [], front: h.front, top: h.top, ansichten: null, raum: [], maul: null });
+  zustand = kopie({ punkte: h.seite, linien: [], front: h.front, top: h.top, ansichten: null, raum: [], maul: null, pose: ruhePose() });
   auswahl = null;
+  ohnePose();
   geaendert();
 };
 window.__formAbstand = () => {
@@ -1950,14 +2268,36 @@ if (NETZ) {
 }
 // Regler „Maul“ im 3D-Blatt: nur die Ansicht, kein neuer Bau (die Drehung um den Mundwinkel ist schnell)
 maulEingabe.max = String(MAUL_WINKEL_MAX);
-const oeffnungSetzen = (w: number): void => {
-  oeffnung = Math.max(0, Math.min(MAUL_WINKEL_MAX, w));
-  maulEingabe.value = String(oeffnung);
-  oeffnungAnwenden();
-  svgZeichnen();
-  if (window.__form) window.__form.oeffnung = oeffnung;
+const KOPF_MAX = 40;
+kopfEingabe.max = String(KOPF_MAX);
+/** Knochen der Pose setzen (Regler „Maul“ und „Kopf“): zeigt die Pose, kein neuer Bau */
+const knochenSetzen = (kiefer: number | null, schaedel: number | null): void => {
+  if (kiefer !== null) zustand.pose.kiefer = Math.max(0, Math.min(MAUL_WINKEL_MAX, kiefer));
+  if (schaedel !== null) zustand.pose.schaedel = Math.max(0, Math.min(KOPF_MAX, schaedel));
+  maulEingabe.value = String(zustand.pose.kiefer);
+  kopfEingabe.value = String(zustand.pose.schaedel);
+  poseZeigen(true);
 };
-maulEingabe.addEventListener('input', () => oeffnungSetzen(Number(maulEingabe.value)));
+/** Pose zeigen oder die Grundform (Schalter „Pose“) */
+const poseZeigen = (an: boolean): void => {
+  poseAn = an;
+  poseSchalter.checked = an;
+  if (an) auswahl = null;
+  if (!an) pinselZeiger = null;
+  poseAnwenden();
+  svgZeichnen();
+  profileZeichnen();
+  if (window.__form) {
+    window.__form.pose = { an: poseAn, ...kopie(zustand).pose };
+    window.__form.oeffnung = gezeigtePose().kiefer;
+  }
+};
+const oeffnungSetzen = (w: number): void => knochenSetzen(w, null);
+// je Griff an einem Regler ein Schritt zum Rückgängigmachen
+for (const regler of [maulEingabe, kopfEingabe]) regler.addEventListener('pointerdown', () => merken(kopie(zustand)));
+maulEingabe.addEventListener('input', () => knochenSetzen(Number(maulEingabe.value), null));
+kopfEingabe.addEventListener('input', () => knochenSetzen(null, Number(kopfEingabe.value)));
+poseSchalter.addEventListener('change', () => poseZeigen(poseSchalter.checked));
 // die 3D-Steuerung soll Regler und Schalter nicht als Drehen nehmen
 const reglerLeiste = document.querySelector('.regler-leiste');
 for (const art of ['pointerdown', 'wheel'] as const) reglerLeiste?.addEventListener(art, (e) => e.stopPropagation());
@@ -1974,11 +2314,18 @@ void backenBereit.then(() => {
 });
 window.__formMaul = (linie) => {
   merken(kopie(zustand));
-  zustand.maul = linie ? { punkte: linie.punkte.map((q) => ({ ...q })) } : null;
+  zustand.maul = linie ? { punkte: linie.punkte.map((q) => ({ ...q })), kurz: linie.kurz?.map((q) => ({ ...q })) } : null;
   auswahl = null;
   geaendert();
 };
 window.__formOeffnen = oeffnungSetzen;
+window.__formPose = (pose, an = true) => {
+  merken(kopie(zustand));
+  if (pose) zustand.pose = kopie({ ...zustand, pose }).pose;
+  maulEingabe.value = String(zustand.pose.kiefer);
+  kopfEingabe.value = String(zustand.pose.schaedel);
+  poseZeigen(an);
+};
 
 // ?fall=kugel|beine|flossen|lappen|innen öffnet einen Prüffall für gleichwertige Ansichten
 const fallAusAdresse = new URLSearchParams(location.search).get('fall');

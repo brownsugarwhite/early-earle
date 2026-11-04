@@ -16,7 +16,9 @@
           Umriss: Punkt ziehen · Klick auf die Linie: neuer Punkt · Doppelklick: Ecke ↔ rund<br />
           Auf der Form ziehen: Linie zeichnen · Linie anklicken, dann + − oder 0–3: Strichdicke = Härte · ⌫ löschen · ⌘Z
           zurück<br />
-          Von außen über den Umriss in die Form ziehen: Maullinie (Ende = Mundwinkel) · öffnen mit dem Regler im 3D
+          Von außen über den Umriss in die Form ziehen: Maullinie (Ende = Mundwinkel) · noch eine zum selben Mundwinkel: getrennte
+          Kiefer · gewählte Maullinie anklicken: neuer Punkt · ⇧-Klick: mehrere Punkte<br />
+          „Pose“ im 3D: Maul und Kopf mit den Reglern, auf der Form ziehen = Pinsel (Größe mit [ ])
         </footer>
       </section>
       <section class="feld" id="feld-front">
@@ -35,8 +37,12 @@
           <label class="regler" id="spielnetz-schalter">
             <input id="spielnetz" type="checkbox" /> Spielnetz <span id="spielnetz-info"></span>
           </label>
+          <label class="regler" id="pose-schalter"><input id="pose" type="checkbox" /> Pose</label>
           <label class="regler" id="maul-regler" hidden>
-            Maul öffnen <input id="maul-oeffnung" type="range" min="0" max="55" step="0.5" value="0" />
+            Maul <input id="maul-oeffnung" type="range" min="0" max="55" step="0.5" value="0" />
+          </label>
+          <label class="regler" id="kopf-regler" hidden>
+            Kopf <input id="kopf-oeffnung" type="range" min="0" max="40" step="0.5" value="0" />
           </label>
         </div>
       </section>

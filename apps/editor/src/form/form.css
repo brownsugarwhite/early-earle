@@ -215,6 +215,12 @@ body {
   stroke-opacity: 0.45;
 }
 
+/* getrennte Kiefer: die Lippe des kürzeren (geschlossen verdeckt im längeren) */
+.blatt .maul.kurz {
+  stroke-width: 1.5px;
+  stroke-dasharray: 5 4;
+}
+
 /* die Linie schneidet nicht (zu kurz oder nicht vom Umriss in die Form) */
 .blatt .maul.fehlt {
   stroke: #b0412e;
@@ -246,8 +252,19 @@ body {
 }
 
 .regler input[type='range'] {
-  width: 180px;
+  width: 130px;
   accent-color: var(--linie);
+}
+
+/* Pose: Kreis des Pinsels */
+.blatt .pinsel {
+  fill: none;
+  stroke: var(--linie);
+  stroke-width: 1px;
+  stroke-dasharray: 4 4;
+  stroke-opacity: 0.6;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
 }
 
 .regler input[type='checkbox'] {
