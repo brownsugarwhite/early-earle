@@ -494,6 +494,20 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   ≈ 1 500 Zeilen). Sechs Tage mit den Toren der Käfig-Session (gemessen an
   den Fehlfällen des Käfigs, nicht an Kugel und Ei), Regeltabelle, Abbruch bei Regeln, die einen Körper oder eine Lage nennen.
   Gebaut wird erst nach Florians Ja.
+- **2026-11-04 (abends): „Form zuerst“ zum Anfassen, ohne Planseite und ohne Tore** (Florian: „Ja, fang so an: Seite zeichnen
+  und sofort eine runde Form sehen, ohne Planseite und ohne Tore. Zeig es mir, sobald es geht.“ Die Planseite vom Mittag ist
+  damit beiseitegelegt; der nächste Schritt kommt aus Florians Blick). Gebaut: kleines Fenster `apps/editor/form.html`
+  (`src/form/main.ts`; Start aus dem Arbeitsbaum: `EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5193`, dann
+  `/form.html`). Seite: Punkte wie Vektoren (glatt oder Ecke per Doppelklick/⌥, Klick auf die Linie setzt einen Punkt, ⌫, ⌘Z),
+  Front, Top und 3D zeigen dasselbe Modell, ihre Umrisse zeichnet ein Shader (Rückseiten mit fester Pixelbreite). Kern
+  `packages/shape/src/dicht/` (`@ee/shape/dicht`): Körper = Vereinigung der größten Kugeln im Seitenumriss (schrumpfende Kugel
+  je Umrisspunkt, g = maxᵢ(Rᵢ² − |p − cᵢ|²), Fläche z² = g), Surface Nets auf einem in z spiegelgleichen Raster, Punkte auf die
+  weiteste Kugel projiziert, Normalen der Kugel; Kreis → Kugel (0,03 von 100), Streifen → runde Röhre, keine Topologie vorab.
+  Grob beim Ziehen ≈ 15 ms (7–9 k Dreiecke), fein beim Loslassen 0,15–0,35 s (47–60 k). Fallen: Kugelradien ohne Toleranz
+  schrumpfen an jeder Polygonecke auf null; „Kugel des nächsten Umrisspunkts“ statt Vereinigung gibt Kerben, wo die Kugelgröße
+  wechselt; der Outline-Schub braucht das Kippen aus der Blicknormalen (Clip-Länge hat keine Pixelbedeutung) und einen
+  Polygon-Versatz statt `clip.z`; Punkte nie beim Drücken neu zeichnen und auf `dblclick` hoffen (Klicks selbst zählen).
+  Bilder `docs/progress/editor/form-zuerst-{langhals,ei}-2026-11-04.jpg` (`scripts/pruefen/form-bild.mjs`).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

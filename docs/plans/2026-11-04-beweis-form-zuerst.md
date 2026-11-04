@@ -1,5 +1,10 @@
 # Beweis „Form zuerst“: dichte Form aus den Ansichten, Spielnetz gebacken (04.11.2026)
 
+> **Nachtrag 04.11. abends: beiseitegelegt.** Florian: „Ja, fang so an: Seite zeichnen und sofort eine runde Form sehen, ohne
+> Planseite und ohne Tore. Zeig es mir, sobald es geht.“ Gebaut wird in kleinen Schritten zum Anfassen, der nächste Schritt
+> kommt aus seinem Blick. Diese Seite bleibt als Wissen (Bausteine, Fehlfälle des Käfigs, Messinstrumente), nicht als Auftrag.
+> Stand: `CLAUDE.md`, Eintrag „Form zuerst zum Anfassen“.
+
 > **Zur Freigabe durch Florian.** Anlass ist Florians Frage vom 04.11.: „In meiner Vision war das alles viel unkomplizierter …
 > so viele Polys wie nötig wie bei ZBrush/Sculptris, dann fürs Spiel runterbacken … Outlines per Shader … warum versteifen wir
 > uns auf feste Shapes und Grundformen, die 1000 Regeln brauchen?“ Die Antwort der Session „3D mesh workflow simplification“

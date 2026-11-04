@@ -1,0 +1,105 @@
+/* Form zuerst (04.11.2026): kleines Fenster zum Anfassen — Seite zeichnen, runde Form sehen. */
+:root {
+  --papier: #efe9dd;
+  --linie: #1f1a17;
+  --leise: #8a8072;
+  --naht: rgba(31, 26, 23, 0.1);
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--papier);
+  color: var(--linie);
+  overflow: hidden;
+}
+
+#leinwand {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
+
+#raster {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.feld {
+  position: relative;
+  background: transparent;
+  outline: 1px solid var(--naht);
+  overflow: hidden;
+}
+
+.feld header {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: var(--leise);
+  pointer-events: none;
+  user-select: none;
+}
+
+.feld footer {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 10px;
+  font-size: 12px;
+  color: var(--leise);
+  pointer-events: none;
+  user-select: none;
+}
+
+#zeichnung {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: default;
+}
+
+#zeichnung .linie {
+  fill: none;
+  stroke: var(--linie);
+  stroke-width: 2.5px;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  /* Klicks gehen an die breite Trefferlinie darunter */
+  pointer-events: none;
+}
+
+#zeichnung .treffer {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 16px;
+  vector-effect: non-scaling-stroke;
+  cursor: copy;
+}
+
+#zeichnung .punkt {
+  fill: var(--papier);
+  stroke: var(--linie);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  cursor: grab;
+}
+
+#zeichnung .punkt.gewaehlt {
+  fill: var(--linie);
+}
+
+#feld-3d {
+  cursor: grab;
+}

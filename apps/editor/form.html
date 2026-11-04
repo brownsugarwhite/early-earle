@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Form zuerst</title>
+    <link rel="stylesheet" href="./src/form/form.css" />
+  </head>
+  <body>
+    <canvas id="leinwand"></canvas>
+    <main id="raster">
+      <section class="feld" id="feld-seite">
+        <header>Seite</header>
+        <svg id="zeichnung" aria-label="Seitenumriss zeichnen"></svg>
+        <footer>Punkt ziehen · Klick auf die Linie: neuer Punkt · Doppelklick: Ecke ↔ rund · ⌫ löschen · ⌘Z zurück</footer>
+      </section>
+      <section class="feld" id="feld-front"><header>Front</header></section>
+      <section class="feld" id="feld-top"><header>Top</header></section>
+      <section class="feld" id="feld-3d"><header>3D</header></section>
+    </main>
+    <script type="module" src="./src/form/main.ts"></script>
+  </body>
+</html>

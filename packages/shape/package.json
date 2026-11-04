@@ -9,7 +9,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./versuch": "./src/versuch/index.ts",
-    "./kern": "./src/kern/index.ts"
+    "./kern": "./src/kern/index.ts",
+    "./dicht": "./src/dicht/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
