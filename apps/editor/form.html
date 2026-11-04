@@ -31,9 +31,14 @@
       </section>
       <section class="feld" id="feld-3d">
         <header>3D</header>
-        <label class="regler" id="maul-regler" hidden>
-          Maul öffnen <input id="maul-oeffnung" type="range" min="0" max="55" step="0.5" value="0" />
-        </label>
+        <div class="regler-leiste">
+          <label class="regler" id="spielnetz-schalter">
+            <input id="spielnetz" type="checkbox" /> Spielnetz <span id="spielnetz-info"></span>
+          </label>
+          <label class="regler" id="maul-regler" hidden>
+            Maul öffnen <input id="maul-oeffnung" type="range" min="0" max="55" step="0.5" value="0" />
+          </label>
+        </div>
       </section>
     </main>
     <script type="module" src="./src/form/main.ts"></script>

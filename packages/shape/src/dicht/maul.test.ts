@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { backenBereit, maulBacken } from './backen';
 import { type MaulLinie, type MaulSchnitt, maulOeffnen, maulSchneiden } from './maul';
 import { rundAusSeite } from './rund';
 import type { UmrissPunkt } from './umriss';
@@ -184,5 +185,30 @@ describe('Maul als Schnitt in der dichten Form', () => {
     }
     expect(brust).toBeLessThan(1e-3);
     expect(kopf).toBeGreaterThan(20);
+  });
+});
+
+describe('Spielnetz backen (mit Maul)', () => {
+  it('Kugel mit Maul auf höchstens 8 000 Dreiecke: dieselben Punkte, offen dicht, nichts klappt um, Abweichung klein', async () => {
+    await backenBereit;
+    const netz = rundAusSeite(kreis(150), { dreiecke: 40000 });
+    const linie: MaulLinie = { punkte: [{ x: -150, y: 0 }, { x: -80, y: -10 }, { x: -15, y: -12 }] };
+    const m = maulSchneiden(netz, linie, { zelle: netz.zelle, kontur: netz.kontur })!;
+    const sp = maulBacken(m, 8000);
+    expect(sp.dreiecke).toBeLessThanOrEqual(8000);
+    expect(sp.innenIndizes.length).toBeGreaterThan(0);
+    for (const winkel of [10, 30, 55]) {
+      const o = oeffnen(m, winkel);
+      expect(
+        dichtNachLage([
+          { p: o.positionen, i: sp.indizes },
+          { p: o.innenPositionen, i: sp.innenIndizes },
+        ]),
+      ).toEqual({ offen: 0, mehr: 0 });
+      expect(umgeklappt(o.positionen, o.normalen, sp.indizes)).toBe(0);
+      expect(umgeklappt(o.innenPositionen, o.innenNormalen, sp.innenIndizes)).toBe(0);
+    }
+    // höchstens 1 % der Höhe daneben
+    expect(sp.fehler).toBeLessThan(3);
   });
 });

@@ -19,6 +19,7 @@
     "test:extrem": "vitest run -c vitest.extrem.config.ts"
   },
   "dependencies": {
+    "meshoptimizer": "1.1.1",
     "zod": "^4.6.5"
   },
   "devDependencies": {

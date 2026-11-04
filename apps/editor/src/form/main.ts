@@ -26,14 +26,18 @@ import {
   PRUEFFAELLE,
   PRUEFFAELLE_HALB,
   type Prueffall,
+  type Spielnetz,
   type UmrissPunkt,
   type Zeichnungen,
+  backen,
+  backenBereit,
   formAusAnsichten,
   ganzerUmriss,
   halbeLinie,
   linieAbtasten,
   linieNachfuehren,
   linienAbstand,
+  maulBacken,
   maulOeffnen,
   maulPunkt,
   maulSchneiden,
@@ -62,6 +66,7 @@ import {
   HemisphereLight,
   LessEqualDepth,
   Mesh,
+  MeshBasicMaterial,
   MeshToonMaterial,
   NearestFilter,
   OrthographicCamera,
@@ -120,7 +125,11 @@ declare global {
       maul: MaulLinie | null;
       oeffnung: number;
       schnitt: { lippe: number; innen: number } | null;
+      /** Spielnetz (an): Dreiecke, Punkte, Abweichung (Welt, px bei 300 px Höhe), Dreiecke der dichten Form */
+      spiel: { dreiecke: number; punkte: number; fehler: number; px: number; dicht: number } | null;
     };
+    /** Prüfhaken: Spielnetz an oder aus (wie der Schalter) */
+    __formSpielnetz?: (an: boolean) => void;
     /** Prüfhaken: Maullinie setzen (wie ein Zug, mit Rückgängig) */
     __formMaul?: (linie: MaulLinie | null) => void;
     /** Prüfhaken: Öffnung des Mauls in Grad (wie der Regler) */
@@ -194,6 +203,16 @@ let schnitt: MaulSchnitt | null = null;
 const maulOffen = (): boolean => schnitt !== null && oeffnung > 0;
 const maulRegler = document.getElementById('maul-regler') as HTMLLabelElement;
 const maulEingabe = document.getElementById('maul-oeffnung') as HTMLInputElement;
+/**
+ * Spielnetz (Probe „Backen“, 04.11.): die dichte Form auf höchstens BUDGET Dreiecke ausgedünnt, dieselben Punkte, nur weniger
+ * Dreiecke; gebacken wird beim genauen Bau, beim Ziehen zeigt das Fenster die dichte Form.
+ */
+const BUDGET = 8000;
+let spielnetzAn = false;
+let spielnetz: Spielnetz | null = null;
+let backBereit = false;
+const spielnetzSchalter = document.getElementById('spielnetz') as HTMLInputElement;
+const spielnetzInfo = document.getElementById('spielnetz-info') as HTMLSpanElement;
 /** Probe „Linien aus dem Netz“: die Ansicht, die Florian gerade bearbeitet (bis zum genauen Bau nach dem Loslassen) */
 let fuehrung: 'seite' | Blatt | null = null;
 const fuehrt = (b: 'seite' | Blatt): void => {
@@ -358,7 +377,18 @@ raumBand.renderOrder = 2;
 raumBandHinten.renderOrder = 3;
 lippen.renderOrder = 2;
 lippenHinten.renderOrder = 3;
-szene.add(koerper, umriss, kanten, kantenHinten, raumBand, raumBandHinten, maulInnen, lippen, lippenHinten);
+// Spielnetz: seine Dreiecke als feines Drahtgitter über der Form
+const drahtMaterial = new MeshBasicMaterial({ color: TINTE, wireframe: true, transparent: true, opacity: 0.22, depthWrite: false });
+drahtMaterial.polygonOffset = true;
+drahtMaterial.polygonOffsetFactor = -1;
+drahtMaterial.polygonOffsetUnits = -1;
+const draht = new Mesh(koerper.geometry, drahtMaterial);
+const drahtInnen = new Mesh(maulInnen.geometry, drahtMaterial);
+draht.visible = false;
+drahtInnen.visible = false;
+draht.renderOrder = 2;
+drahtInnen.renderOrder = 2;
+szene.add(koerper, umriss, kanten, kantenHinten, raumBand, raumBandHinten, maulInnen, lippen, lippenHinten, draht, drahtInnen);
 const sonne = new DirectionalLight(0xffffff, 2.4);
 sonne.position.set(0.9, 1.4, 1.1);
 szene.add(sonne, new HemisphereLight(0xfff6e8, 0x9c8a74, 1.1));
@@ -422,21 +452,27 @@ const ersetzen = (a: Mesh, b: Mesh, g: BufferGeometry): void => {
 function geometrieSetzen(n: DichtesNetz): void {
   const s = schnitt;
   const g = new BufferGeometry();
-  // mit Maul der geschnittene Körper in eigenen Puffern: die Öffnung schreibt hinein, die Ruhe bleibt im Schnitt
+  // mit Maul der geschnittene Körper in eigenen Puffern: die Öffnung schreibt hinein, die Ruhe bleibt im Schnitt; das Spielnetz
+  // ist nur eine andere Dreiecksliste über denselben Punkten
+  const sp = spielnetz;
   g.setAttribute('position', new BufferAttribute(s ? new Float32Array(s.positionen) : n.positionen, 3));
   g.setAttribute('normal', new BufferAttribute(s ? new Float32Array(s.normalen) : n.normalen, 3));
-  g.setIndex(new BufferAttribute(s ? s.indizes : n.indizes, 1));
+  g.setIndex(new BufferAttribute(sp ? sp.indizes : s ? s.indizes : n.indizes, 1));
   g.computeBoundingSphere();
   ersetzen(koerper, umriss, g);
   const gi = new BufferGeometry();
   if (s) {
     gi.setAttribute('position', new BufferAttribute(new Float32Array(s.innen.positionen), 3));
     gi.setAttribute('normal', new BufferAttribute(new Float32Array(s.innen.normalen), 3));
-    gi.setIndex(new BufferAttribute(s.innen.indizes, 1));
+    gi.setIndex(new BufferAttribute(sp ? sp.innenIndizes : s.innen.indizes, 1));
   }
   const altI = maulInnen.geometry;
   maulInnen.geometry = gi;
   altI.dispose();
+  draht.geometry = g;
+  drahtInnen.geometry = gi;
+  draht.visible = sp !== null;
+  drahtInnen.visible = sp !== null && s !== null;
   kantenRuhe = n.kanten;
   // Linien auf der Form, auf die Fläche gelegt (Tiefe der Form an ihrer Stelle in der Seite)
   const kontur = n.kontur;
@@ -701,6 +737,17 @@ function bauen(fein: boolean): void {
     maulEingabe.value = '0';
   }
   maulRegler.hidden = !schnitt;
+  // Spielnetz: beim genauen Bau backen (mit Maul in geöffneter Lage, s. `maulBacken`)
+  spielnetz = null;
+  if (spielnetzAn && backBereit && fein) {
+    spielnetz = schnitt ? maulBacken(schnitt, BUDGET) : backen({ positionen: n.positionen, normalen: n.normalen, indizes: n.indizes }, null, BUDGET);
+  }
+  const hoehe = n.ansichten.seite.yMax - n.ansichten.seite.yMin || 1;
+  spielnetzInfo.textContent = spielnetz
+    ? `${spielnetz.dreiecke.toLocaleString('de-DE')} Dreiecke · ≈ ${((spielnetz.fehler / hoehe) * 300).toLocaleString('de-DE', { maximumFractionDigits: 1 })} px bei 300 px Höhe`
+    : spielnetzAn
+      ? '…'
+      : '';
   const ms = performance.now() - t0;
   letztesGleich = gleich?.g ?? null;
   letzteKontur = n.kontur ?? null;
@@ -728,6 +775,15 @@ function bauen(fein: boolean): void {
     maul: k.maul,
     oeffnung,
     schnitt: schnitt ? { lippe: schnitt.lippeOben.length, innen: schnitt.innen.indizes.length / 3 } : null,
+    spiel: spielnetz
+      ? {
+          dreiecke: spielnetz.dreiecke,
+          punkte: spielnetz.punkte,
+          fehler: spielnetz.fehler,
+          px: (spielnetz.fehler / hoehe) * 300,
+          dicht: n.indizes.length / 3 + (schnitt ? schnitt.innen.indizes.length / 3 : 0),
+        }
+      : null,
   };
   neuZeichnen = true;
 }
@@ -1822,6 +1878,7 @@ function schleife(): void {
 // Prüfhaken: Teile der Szene zum Ein- und Ausblenden
 (window as unknown as { __formSzene: unknown }).__formSzene = {
   umriss,
+  innen: maulInnen,
   kanten,
   kantenHinten,
   zeichnen: () => {
@@ -1901,8 +1958,20 @@ const oeffnungSetzen = (w: number): void => {
   if (window.__form) window.__form.oeffnung = oeffnung;
 };
 maulEingabe.addEventListener('input', () => oeffnungSetzen(Number(maulEingabe.value)));
-// die 3D-Steuerung soll den Regler nicht als Drehen nehmen
-for (const art of ['pointerdown', 'wheel'] as const) maulRegler.addEventListener(art, (e) => e.stopPropagation());
+// die 3D-Steuerung soll Regler und Schalter nicht als Drehen nehmen
+const reglerLeiste = document.querySelector('.regler-leiste');
+for (const art of ['pointerdown', 'wheel'] as const) reglerLeiste?.addEventListener(art, (e) => e.stopPropagation());
+const spielnetzSetzen = (an: boolean): void => {
+  spielnetzAn = an;
+  spielnetzSchalter.checked = an;
+  bauGewuenscht = 'fein';
+};
+spielnetzSchalter.addEventListener('change', () => spielnetzSetzen(spielnetzSchalter.checked));
+window.__formSpielnetz = spielnetzSetzen;
+void backenBereit.then(() => {
+  backBereit = true;
+  if (spielnetzAn) bauGewuenscht = 'fein';
+});
 window.__formMaul = (linie) => {
   merken(kopie(zustand));
   zustand.maul = linie ? { punkte: linie.punkte.map((q) => ({ ...q })) } : null;

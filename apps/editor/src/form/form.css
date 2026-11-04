@@ -221,10 +221,17 @@ body {
   stroke-dasharray: 6 4;
 }
 
-.regler {
+/* oben rechts im 3D-Blatt: Spielnetz und Maul */
+.regler-leiste {
   position: absolute;
   top: 8px;
   right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.regler {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -238,7 +245,15 @@ body {
   display: none;
 }
 
-.regler input {
+.regler input[type='range'] {
   width: 180px;
   accent-color: var(--linie);
+}
+
+.regler input[type='checkbox'] {
+  accent-color: var(--linie);
+}
+
+#spielnetz-info {
+  font-variant-numeric: tabular-nums;
 }

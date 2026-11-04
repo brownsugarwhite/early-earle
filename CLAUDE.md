@@ -686,6 +686,40 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
       Falten. Jeder Rasterpunkt außen bekommt deshalb den Wert des nächsten innen.
     - Das Abstandsfeld braucht 16 Nachbarn: 8 verzerren bis 8 %, und über den Hebel zum Mundwinkel wird daraus eine Falte.
   - Bilder `docs/progress/editor/form-maul-{kugel-zu,kugel-offen,kopf-offen,langhals-offen,vierbeiner-offen}-2026-11-04.jpg`.
+- **2026-11-04 (spätabends): Aufklärung und Backen — Probe.** Florian: „Machen wir das Feintuning hier? Ich dachte, hier geht es
+  nur darum, Beweise für die Methode zu finden … Ist es hier schon Beweis genug … Kläre mich erst auf und prüfe dann das Backen.“
+  Seine Sicht: Maul und Grundformen „wirken viel eleganter gelöst“; noch nicht passend: Griffe, Ansichten, die Übersetzung der
+  schwarzen Linien und Punkte, die genaue Definition der Werkzeuge.
+  - **Aufklärung (Stand):** Hier wird nicht feingetunt; jeder Schritt war eine Probe. Zwei Fragen waren in den letzten Tagen
+    vermischt:
+    - A) **Wie entsteht die Form (Methode)?** Mit „Form zuerst“ weitgehend bewiesen: Grundform, Beine und Flossen ohne Teile,
+      Kanten mit Härte, Maul, jetzt auch das Backen. Offen ist noch die Pose am ganzen Körper.
+    - B) **Wie wird bearbeitet (Bedienung)?** Offen: Griffe, Ansichten, Werkzeuge. `?netz` und `?linien` waren Erkundungen,
+      keine Beweise.
+    Der Käfig wollte A und B zugleich über eine feste Netzstruktur lösen (daher die Regelflut).
+  - **Vorgeschlagene Reihenfolge:** Backen (erledigt) → kurze Probe Posen → Entscheidung „Form zuerst“ als Grundlage, Käfig
+    archivieren → Bedienung als kurzes Dokument mit Florian festlegen, bevor gebaut wird → schrittweise in den echten Editor.
+  - **Backen (`dicht/backen.ts`, `backen`, `maulBacken`):** Kantenkollaps nach dem Quadrikenfehler (meshoptimizer 1.1.1, MIT,
+    lag über `@types/three` schon im Lockfile, jetzt Abhängigkeit von `@ee/shape`). Es bleiben Punkte der dichten Form stehen,
+    gebacken wird nur eine neue Dreiecksliste; Normalen, Drehgewicht des Mauls und später Posen gelten deshalb unverändert.
+    Mit Maul wird bei 30° Öffnung gebacken: Haut und Maulinneres treffen sich an den Lippen als Naht, und der Ausdünner nimmt
+    beide Seiten gleich mit.
+  - **Im Fenster:** Schalter „Spielnetz“ im 3D-Blatt (Drahtgitter, Dreiecke, Abweichung in px bei 300 px Höhe). Gebacken wird
+    beim genauen Bau, beim Ziehen zeigt das Fenster die dichte Form.
+  - **Gemessen** (Maus `scripts/pruefen/form-backen-probe.mjs`, Test in `maul.test.ts`):
+    - Kugel, Kopf, Langhals und Vierbeiner mit Maul von 53 700–72 900 auf 8 000 Dreiecke, rund 4 100 Punkte.
+    - Abweichung 0,2–0,6 px bei 300 px Höhe, Backen 35–40 ms.
+    - Offen sind Körper und Inneres dicht (jede Kante zwei Dreiecke).
+    - Umgeklappt: Kopf 0; Kugel 1 bei 30° und 5 bei 55° (Lippe, Kehle); Langhals 2.
+    - Vierbeiner bei 40°: 162 umgeklappt am Ansatz des Vorderbeins. Die dichte Form hat dort bei gleicher Öffnung 396, das
+      Umklappen kommt also von der Drehung (Bein direkt unter dem Mundwinkel), nicht vom Backen.
+  - **Verworfen (gemessen):**
+    - Geschlossen backen: Ober- und Unterlippe lagen aufeinander und wurden als eine Naht zugenäht (vier Kanten mit mehr als
+      zwei Dreiecken).
+    - Lippen festhalten: Der Ausdünner zog Punkte auf sie und ließ Splitterdreiecke längs der Lippe.
+  - **Offen:** Posen am ganzen Körper; das Vorderbein unter dem Mundwinkel (Kinnlinie oder Drehgewicht neu); Maße fürs Spiel
+    auf dem iPhone (Bildrate mit 36 Wesen) nicht gemessen; Look (Muster, Zonen) auf dem Spielnetz noch nicht.
+  - Bilder `docs/progress/editor/form-backen-{kugel,kopf,langhals,vierbeiner}-offen-2026-11-04.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

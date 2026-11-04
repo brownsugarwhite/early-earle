@@ -5,6 +5,7 @@ export { Kugeln, kugelRadien } from './kugeln';
 export { BREITE_MAX, type Kante3D, type KantenLinie, type KantenPunkt, kantenAnwenden, linieAbtasten } from './kanten';
 export { type DichtesNetz, type RundOptionen, rundAusSeite } from './rund';
 export { MAUL_WINKEL_MAX, type MaulLinie, type MaulSchnitt, maulOeffnen, maulPunkt, maulSchneiden } from './maul';
+export { type Netzteil, type Spielnetz, backen, backenBereit, maulBacken } from './backen';
 export { type AnsichtName, type GleichesNetz, type GleichOptionen, type Zeichnung, type Zeichnungen, formAusAnsichten } from './gleich';
 export { ganzerUmriss, PRUEFFAELLE, PRUEFFAELLE_HALB, type Prueffall, type PrueffallHalb } from './prueffaelle';
 export { umrisseDesKoerpers } from './silhouette';
