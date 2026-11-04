@@ -588,3 +588,6 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   (Langhals 7 → 28°). Python-Patches: nach jedem `replace` die Indizes neu suchen (ein stehengebliebener Index hat die Datei
   zerstört, Reparatur aus `git show HEAD:`). zsh: `echo ====` expandiert `=wort` zu einem Pfad — quoten. vitest zeigt console.log
   bestandener Tests nur mit `--reporter=verbose`; die Reihe läuft mit `npx vitest run --config vitest.extrem.config.ts <datei>`.
+- **P2 Tag 6 (04.11.):** Einen Knick immer am Startkäfig gegen gelöst messen — am Dreierpol machte ihn der Löser (Glätte 0,001 für
+  Startgitter weit von A0; das Stücknetz startet auf A0 → 0,1). Eine Punktschärfe von A0 nie auf den „nächsten“ Punkt springen
+  lassen (Robbe: 1 px daneben = 0,6–1,3 px Buckel); sie ist ein Knoten der Linie (`seitenRegister(…, weitereKnoten)`).

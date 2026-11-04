@@ -1,4 +1,4 @@
-# Übergabe (Stand 04.11.2026: P1 abgeschlossen; P2 „Stücknetz im Maulfeld“ nach fünf Tagen bilanziert — Abbruchkriterium trifft formal (Haut-Tor 32 von 43 gegen 41), Prinzip bewiesen, Entscheidung A/B und Budget bei Florian)
+# Übergabe (Stand 04.11.2026: P2 „Stücknetz im Maulfeld“ — Option B, Tag 1: Haut-Tor 41 von 43 erreicht (wie der Kernring, dieselben zwei offenen Fälle), ohne Fallregel; Tag 2 (Schnitt an Engstellen, Robbe hoch J) nach Florians Wort; Abnahme offen)
 
 Branch `claude/editor-grundlayout`, PR mit Auto-Fix. **Diese Datei ist der Einstieg für eine frische Sitzung.** Der Kernring
 bleibt eingefroren; alles Neue liegt hinter Schaltern (`stufen`, `umrissPlan`), ohne Schalter bitgleich.
@@ -319,6 +319,19 @@ Stücknetz mit 236–704 Flächen und 0,18–0,25 px an den runden Körpern in R
 das Abbruchkriterium des Prüfplans. **Vorlage:** B (Empfehlung) zwei Tage für zwei Strukturstücke — Knick-Ursache, Schnitt an
 Engstellen mit Dreier-Fünfer-Paaren — mit dem Tor Haut ≥ 41 von 43, sonst A; A nach dem Buchstaben (Kernring bleibt); Budget
 getrennt (Maul auf K1, kleineres Feld prüfen). **Nächster Schritt: Florians Entscheidung.** Bis dahin nichts bauen.
+
+## 04.11.: Option B, Tag 1 — Knicke und Robbe gemessen und behoben, Tor erreicht
+
+Florians Wahl: „Option B … Tor Haut ≥ 41 von 43, sonst A.“ Beide Ursachen gemessen, keine Fallregel: (1) Der Knick auf glatten
+Körpern entsteht erst im Löser am Dreierpol (Start 2,3–2,8°, gelöst 3,7–7,6°) — Glätte 0,1 statt 0,001 als Vorgabe des Stücknetzes
+(der Startkäfig liegt schon auf A0), alle sechs im Tor bei gleicher Haut. (2) Die Robbe hat auf der Naht 17–24 px hinter dem
+Linienanfang eine Spitze von A0 (Nase), deren Schärfe um 1 px auf den nächsten Nahtpunkt sprang — Spitzen von A0 auf der Naht
+sind jetzt Knoten der Nahtlinie (Station genau dort); Robbe 0,57–0,69 → 0,10–0,18 px. **Ganze Reihe: bauen 43 von 43, Mundwinkel
+43 von 43, Haut-Tor 41 von 43** — wie der Kernring, dieselben zwei offenen Fälle (Rex mittel gerade 0,27 px, Robbe hoch J Falte).
+Planseite „P2 — Tag 6“, Register „Befunde aus P2 Tag 6“, Bogen `p2-stuecknetz-tag6-2026-11-04.jpg`.
+
+**Nächster Schritt:** Florians Wort — Tag 2 (Schnitt an Engstellen mit Dreier-Fünfer-Paaren für Robbe hoch J) oder direkt der
+Ersatz des Kernrings (E3/E4, Öffnen, Zahnfleischreihe auf dem Stücknetz; Budget getrennt).
 
 ## Entscheidungen, die Florian treffen muss (Gegenprüfung, Abschnitt 10)
 

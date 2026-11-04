@@ -472,6 +472,12 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Genauigkeit nicht (Knicke 4–8° auf glatten Körpern, Robbe-Keil/Hals, Rex-Falte), Budget auf K2 für beide unerreichbar, auf K1
   Stücknetz 236–704 Flächen mit 0,18–0,25 px an runden Körpern (Kernring 0,4–5,6). Vorlage: B zwei Tage Strukturarbeit mit Tor
   ≥ 41 von 43 (Empfehlung), A Kernring bleibt, Budget getrennt. **Entscheidung bei Florian; bis dahin nichts bauen.**
+- **2026-11-04: Option B, Tag 1 — Tor erreicht** (Florian: „Option B … Tor Haut ≥ 41 von 43, sonst A.“; Planseite „P2 — Tag 6“,
+  Register „Befunde aus P2 Tag 6“, Übergabe). Gemessen: der Knick auf glatten Körpern entsteht am Dreierpol erst im Löser (Start
+  2,3–2,8°, gelöst 3,7–7,6°) → Glätte 0,1 statt 0,001 als Vorgabe des Stücknetzes (Startkäfig liegt auf A0); die Robbe hat eine
+  Spitze von A0 (Nase) auf der Naht, deren Schärfe um 1 px sprang → Spitzen auf der Naht sind Knoten der Nahtlinie. **Ganze Reihe
+  41 von 43 wie der Kernring, dieselben zwei offenen Fälle** (Rex mittel gerade 0,27 px, Robbe hoch J Falte). Keine Fallregel.
+  Nächster Schritt nach Florians Wort: Tag 2 (Schnitt an Engstellen + Paare) oder Ersatz des Kernrings.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

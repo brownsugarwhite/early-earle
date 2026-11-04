@@ -1231,3 +1231,44 @@ Maße. Verworfen nach Messung: Biegungsecken mit Schnitt, Scheibe als Tutte-Gebi
 - **Budget (für A und B):** Maul auf K1-Dichte als Spielnetz, Körper nach P1 (600–700 Flächen) — zusammen 1 000–1 400 Flächen,
   knapp über dem Tor; kleineres Maulfeld prüfen (das Feld reicht heute 1,5 Radien über die Linie hinaus, die Stücke brauchen
   diesen Rand nicht).
+
+## P2 — Tag 6, Option B Tag 1: Knicke und Robbe (04.11.2026, gebaut; Tor Haut ≥ 41 von 43 erreicht; Abnahme offen)
+
+Florian: „Option B: P2 um höchstens zwei Tage verlängern — Ursache der Knicke auf glatten Körpern messen, dann Schnitt an
+Engstellen mit Dreier-Fünfer-Paaren; Tor Haut ≥ 41 von 43, sonst A.“
+
+**1. Knicke auf glatten Körpern — gemessen (`diag`: Knick am Startkäfig gegen gelöst, Ort):** Der Knick liegt am Dreierpol
+(Schlüssel `I:S*:C`) und entsteht erst im Löser: Startkäfig 2,3–2,8° (im Tor), gelöst 3,7–7,6° (Birne hoch S 7,6, tief gerade 7,1).
+Das Fitten mit der Glätte des Kernrings (λ = 0,001, zugeschnitten auf dessen Startgitter aus der Karte, die weit von A0 lag)
+wellt die Fläche um jeden Pol mit Valenz 3 — Catmull–Clark hat dort ohnehin keinen glatten Krümmungsverlauf, und das
+Punkt-zu-Ebene-Residuum zieht die Kontrollpunkte in genau diese Welle (Haut dabei 0,06–0,09 px: die Welle ist unter einem
+Zehntelpixel, der Knickmaßstab sieht sie trotzdem). Der Startkäfig des Stücknetzes liegt dagegen schon auf A0 (Lage durch die
+feinen Dreiecke); der Löser muss nur die Schrumpfung der Unterteilung ausgleichen, eine glatte Verschiebung. Gemessen (zehn
+Fälle, `sweep-loeser`): tangentiales Gewicht 0,05 → 0,3 → 1 ändert nichts (3,8/3,9/3,8°); weniger Runden nichts; Glätte 0,03
+reicht nicht (Birne 4,1/4,2), **0,1 hält alle sechs im Tor** (Kugel 2,4/3,4, Birne 3,4/2,3/3,5, Ei 2,6; Haut unverändert
+0,06–0,09), 0,3 und 1 kosten Haut an Rex (0,34/0,44) und Robbe. **Stand: λ = 0,1 als Löser-Vorgabe des Stücknetzes**
+(`stuecknetzAblauf`, der Kernring behält seine 0,001). Preis: Rex mittel gerade Haut 0,19 → 0,27 px (Knick 32,3 → 28,1, jetzt im
+Tor), Robbe tief J 0,11 → 0,20, Langhals 0,06 → 0,10.
+
+**2. Robbe (drei Fälle 0,44–0,69 px) — gemessen:** nicht der Keil. Der Fehler liegt auf der Naht 17–24 px hinter dem
+Linienanfang, schon im Startkäfig (0,65–1,33 px, Normale 50–55°): dort hat A0 eine **Spitze** (die Nase der Robbe, Punktschärfe
+auf der Naht). Die Schärfe sprang bisher auf den nächsten neuen Nahtpunkt — 0,8–1,0 px neben der Spitze —, und eine verschobene
+scharfe Spitze gibt genau diesen Buckel. **Stand:** Spitzen von A0 auf der Naht im Feld (nicht am Linienanfang) sind Knoten der
+Nahtlinie (`seitenRegister(…, weitereKnoten)`): die Seite wird dort geteilt, eine Station liegt genau auf der Spitze, die Schärfe
+dazu. Robbe hoch gerade 0,57 → 0,18, mittel gerade 0,69 → 0,18, mittel J 0,64 → 0,10 px. Das ist dieselbe Idee wie die Falten
+von A0 als Linien: Merkmale von A0 gehören in den Liniengraphen; keine Regel nennt einen Körper oder eine Lage.
+
+**Zehn Fälle (K2):** Haut ≤ 0,25 px 9 von 10 (Rex mittel gerade 0,27), Mundwinkel 10 von 10, Knick frei 9 von 10 (Robbe hoch J
+Falte), Lippe ≤ 0,13 px, Karte faltenfrei 9 von 10. **Ganze Reihe:** bauen 43 von 43, Mundwinkel 43 von 43, **Haut-Tor 41 von 43
+(Kernring 41 von 43)** — und es sind dieselben zwei offenen Fälle wie beim Kernring: Rex mittel gerade (0,268 px gegen 0,25; der
+Kernring verfehlt dort den Knick, 29,6 gegen 29,1) und Robbe hoch J (Pol im Hals, Falte; Kernring: Haut und Falte). Flächen
+Median 2 098, Bau + Lösen Median 0,84 s. Bogen `docs/progress/editor/p2-stuecknetz-tag6-2026-11-04.jpg`.
+
+**Tor B erreicht: Haut ≥ 41 von 43 nach dem ersten Tag, mit zwei gemessenen Ursachen und ohne Fallregel** (Register „Befunde
+aus P2 Tag 6“). Der zweite Tag (Schnitt an Engstellen mit Dreier-Fünfer-Paaren, Robbe hoch J) ist damit nicht mehr Bedingung des
+Tors, sondern Florians Wahl: Robbe hoch J ist beim Kernring seit E2.6 offen, beim Stücknetz der einzige strukturelle Rest (ein Pol
+je Dreieck, Lage aus Kantenzahlen).
+
+**Verworfen (gemessen):** tangentiales Gewicht und Rundenzahl des Lösers (ohne Wirkung), Glätte 0,03 (zu schwach), 0,3 und 1
+(Haut an Rex und Robbe). Regeln gezählt: keine neue; eine Löser-Vorgabe (λ) und eine Erweiterung des Liniengraphen (Spitzen
+als Knoten).

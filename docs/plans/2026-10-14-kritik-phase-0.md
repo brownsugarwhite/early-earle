@@ -1124,3 +1124,20 @@ konforme Abflachung mit Rückfall aufs Vieleck; ganze Reihe als Test. Ergebnis: 
   gezeichneten Linie, nicht auf dem feinen Zickzack; Tutte in einer nicht konvexen Ebene auf Falten **und** Punkte außerhalb
   prüfen; Python-Patches nach jedem `replace` neu suchen (Datei einmal zerstört); zsh expandiert `====`; vitest zeigt console.log
   bestandener Tests nur mit `--reporter=verbose`.
+
+## Befunde aus P2 Tag 6 „Option B, Tag 1: Knicke und Robbe“ (04.11., eigene Messungen; `stuecknetz.extrem.ts`)
+
+Gebaut: Glätte 0,1 als Löser-Vorgabe des Stücknetzes (der Startkäfig liegt auf A0; Knick am Dreierpol 3,7–7,6 → 2,3–3,5°);
+Spitzen von A0 auf der Naht als Knoten der Nahtlinie (Robbe 0,57–0,69 → 0,10–0,18 px). Ganze Reihe: 41 von 43 wie der Kernring,
+dieselben zwei offenen Fälle (Planseite „P2 — Tag 6“).
+- [ ] **Rex mittel gerade Haut 0,27 px** (Tor 0,25) an der Falte von A0 nahe dem Feldrand; mit λ = 0,001 0,19 px, aber Knick 32°.
+  Ursache nicht gemessen (die Falte von A0 kreuzt die Linie und läuft zur Naht; beim Kernring derselbe Fall offen).
+- [ ] **Robbe hoch J: Pol im Hals** (unverändert; Weg: Schnitt an Engstellen + Muster mit Dreier-Fünfer-Paaren — Tag 2 von Option B,
+  nach Florians Wort).
+- [ ] **Valenz-3-Pole:** Catmull–Clark hat an ihnen keinen glatten Krümmungsverlauf; mit λ = 0,1 unter dem Tor, aber jeder Pol bleibt
+  eine Stelle, an der der Löser wenig Spielraum hat. Weniger Pole (Vierecke mit Ecke an einer konvexen Treppenstufe des
+  Feldrands) wären möglich, koppeln aber die Lippenzahl an den Feldrand — nicht gebaut.
+- [ ] Robbe tief J 0,20 und Langhals 0,10 px (vorher 0,11/0,06): Preis der Glätte, im Tor.
+- [x] Verworfen (gemessen): tangentiales Gewicht, Rundenzahl, Glätte 0,03/0,3/1.
+- Fallen (`apps/editor/CLAUDE.md`): Knick immer am Startkäfig gegen gelöst messen (zeigt, ob Lage oder Löser); eine Punktschärfe von
+  A0 darf nie auf den „nächsten“ Punkt springen — sie ist ein Knoten der Linie.

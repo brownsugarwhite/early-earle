@@ -70,25 +70,13 @@ const zeile = (z: Zeile) =>
     : `${z.name.padEnd(22)} FEHLER ${z.fehler}`;
 
 describe('P2: Stücknetz im Maulfeld, ganze Reihe auf K2', () => {
-  // Stand Tag 5 (04.11.): 43 von 43 bauen, Mundwinkel-Tor 43 von 43, Haut-Tor 32 von 43 (Kernring 41). Offen (Register „Befunde
-  // aus P2 Tag 5“): (a) Knicke von 3,7–7,6° auf glatten Körpern (A0 1,6°) an Kugel und Birne — Kanten des Dreieckmusters im Feld;
-  // (b) Rex mittel gerade 32,3° an der Falte von A0 (Kernring 29,6°, A0 27,1°); (c) Robbe: Haut 0,44–0,62 px an den Reihen, die
-  // am Linienanfang in den Keil zwischen Lippe und Naht laufen; (d) Robbe hoch J: der Pol des Dreieckmusters liegt im 2,3 px engen
-  // Hals des J-Hakens, zwei Zellen klappen um (im Kernring derselbe Fall offen). Die Tore gelten ohne diese Fälle; dieselben Tore an
-  // allen Fällen stehen als `it.fails`.
-  const OFFEN_HAUT = [
-    'kugel/hoch/gerade',
-    'kugel/mittel/s',
-    'birne/hoch/s',
-    'birne/mittel/gerade',
-    'birne/mittel/s',
-    'birne/tief/gerade',
-    'rex/mittel/gerade',
-    'robbe/hoch/gerade',
-    'robbe/hoch/j',
-    'robbe/mittel/gerade',
-    'robbe/mittel/j',
-  ];
+  // Stand Tag 6 (04.11., Option B Tag 1): 43 von 43 bauen, Mundwinkel-Tor 43 von 43, Haut-Tor 41 von 43 — wie der Kernring, mit
+  // denselben zwei offenen Fällen: Rex mittel gerade (Haut 0,27 px an der Falte von A0; Kernring Knick 29,6° bei Tor 29,1) und
+  // Robbe hoch J (der Pol des Dreieckmusters liegt im 2,3 px engen Hals des J-Hakens, zwei Zellen klappen um; Kernring derselbe
+  // Fall offen). Tag 5 fehlten noch elf: sechs Knicke von 4–8° auf glatten Körpern (Glätte des Lösers 0,001 → 0,1: der Startkäfig
+  // liegt schon auf A0) und drei Robben (die Nasenspitze von A0 auf der Naht ist jetzt ein Knoten der Nahtlinie, die Punktschärfe
+  // liegt genau auf ihr). Die Tore gelten ohne die offenen Fälle; dieselben Tore an allen Fällen stehen als `it.fails`.
+  const OFFEN_HAUT = ['rex/mittel/gerade', 'robbe/hoch/j'];
   const OFFEN_MUNDWINKEL: string[] = [];
   const torFehler = (zs: Zeile[]) => {
     let fehler = '';
@@ -131,7 +119,7 @@ describe('P2: Stücknetz im Maulfeld, ganze Reihe auf K2', () => {
     expect(torFehler(zs.filter((z) => !OFFEN_HAUT.includes(z.name)))).toBe('');
   }, 3_600_000);
 
-  it.fails('Haut-Tor an allen Fällen (offen: Knicke an Kugel und Birne, Rex mittel gerade, Robbe)', () => {
+  it.fails('Haut-Tor an allen Fällen (offen: Rex mittel gerade 0,27 px, Robbe hoch J Falte im Hals)', () => {
     expect(torFehler(ganzeReihe())).toBe('');
   }, 3_600_000);
 

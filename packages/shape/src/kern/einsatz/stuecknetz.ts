@@ -343,7 +343,21 @@ export function stuecknetzTopologie(f: EinsatzFall, opt: StuecknetzOptionen = {}
     return `P:${orig(p)}`;
   };
   const t1 = jetzt();
-  const { kanten, polygone } = seitenRegister(fund, orig, eckenSchluessel, istKaefigRand);
+  // Spitzen von A0 auf der Naht im Feld (nicht am Linienanfang) sind Knoten der Nahtlinie: die Seite bekommt dort eine Station,
+  // und die Punktschärfe landet genau auf der Spitze (gemessen 04.11., Tag 6: die Nase der Robbe liegt 17–24 px hinter dem
+  // Linienanfang; auf den nächsten Nahtpunkt verschoben — um 0,8–1,0 px — gab sie Haut 0,6–1,3 px und Normalen bis 55°)
+  const nahtSpitzen: number[] = [];
+  {
+    const inM = new Uint8Array(k.nF);
+    for (const fl of feld.feld) inM[fl] = 1;
+    for (let v = 0; v < k.n; v++) {
+      if (!(k.vSchaerfe[v]! > 0) || Math.abs(k.xyz[3 * v + 2]!) > 1e-9) continue;
+      if (Math.hypot(k.xyz[3 * v]! - f.linie[0]![0], k.xyz[3 * v + 1]! - f.linie[0]![1], k.xyz[3 * v + 2]! - f.linie[0]![2]) < 0.5 * h) continue;
+      const fs = k.vFlaechen.subarray(k.vFStart[v]!, k.vFStart[v + 1]!);
+      if (fs.length && Array.from(fs).every((fl) => inM[fl])) nahtSpitzen.push(v);
+    }
+  }
+  const { kanten, polygone } = seitenRegister(fund, orig, eckenSchluessel, istKaefigRand, nahtSpitzen);
   const xyzAlt = (id: number): V3 => [k.xyz[3 * id]!, k.xyz[3 * id + 1]!, k.xyz[3 * id + 2]!];
   // ---- Lippe: Kette der Lippenseiten von der Naht zum Mundwinkel und ihre Abschnitte auf der gezeichneten Linie ----
   const keyLage = (key: string): V3 => (key.startsWith('alt:') ? xyzAlt(Number(key.slice(4))) : P3(Number(key.slice(2))));
@@ -1041,7 +1055,12 @@ export function stuecknetzAblauf(f: EinsatzFall, opt: StuecknetzOptionen = {}, l
   const t = bau.t;
   const lippe = bau.lippe;
   const t0 = jetzt();
-  const g = einsatzLoesen(t, f.v.kaefig, a0Netz(f.v.kaefig, 3 - f.stufe), lippe.punkte, loesen);
+  // Glätte des Lösers (Tag 6, gemessen): Der Startkäfig des Stücknetzes liegt schon auf A0 (Lage durch die feinen Dreiecke), der
+  // Löser muss nur noch die Schrumpfung der Unterteilung ausgleichen — eine glatte Verschiebung. Mit der Glätte des Kernrings
+  // (λ = 0,001, für dessen Startgitter aus der Karte) wellte das Fitten die Fläche an jedem Dreierpol (Start 2,3–2,8°, gelöst
+  // 3,7–7,6° bei A0 1,6°, Haut 0,06–0,09 px): λ = 0,1 hält alle sechs glatten Fälle im Tor bei gleicher Haut; 0,03 reicht nicht,
+  // 0,3 und 1 kosten Haut an Rex und Robbe.
+  const g = einsatzLoesen(t, f.v.kaefig, a0Netz(f.v.kaefig, 3 - f.stufe), lippe.punkte, { glaette: 0.1, ...loesen });
   const msLoesen = jetzt() - t0;
   const ms = einsatzMessen(g, t, f.v.kaefig, f.feld, lippe.punkte);
   return { bau, lippe, g, ms, msLoesen };

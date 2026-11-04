@@ -95,7 +95,7 @@ describe('P2 Tag 2–4: Stücknetz im Maulfeld', () => {
     expect(fehler).toBe('');
   }, 900_000);
 
-  it.fails('Haut ≤ 0,25 px an allen Fällen (verfehlt: Robbe hoch gerade 0,44 und Robbe hoch J 0,62 — Reihen des Dreieckmusters laufen am Linienanfang in den Keil zwischen Lippe und Naht)', () => {
+  it.fails('Haut ≤ 0,25 px an allen Fällen (Tag 6: Robbe im Tor — die Nasenspitze von A0 ist ein Knoten der Naht; verfehlt: Rex mittel gerade 0,27 an der Falte von A0)', () => {
     let fehler = '';
     for (const z of alle()) if (z.erg.ms.hautMax > 0.25) fehler += `${z.name}: ${z.erg.ms.hautMax.toFixed(2)} px; `;
     expect(fehler).toBe('');
@@ -113,7 +113,7 @@ describe('P2 Tag 2–4: Stücknetz im Maulfeld', () => {
     expect(ok).toBeGreaterThanOrEqual(8);
   }, 900_000);
 
-  it.fails('Knick frei ≤ A0 + 2° und keine umgeklappte Zelle der Haut (verfehlt: Robbe hoch J faltet zwei Zellen am Pol im Hals; Rex mittel gerade 32,3 gegen 27,1 an der Falte von A0; Birne S 4,2 gegen 1,6)', () => {
+  it.fails('Knick frei ≤ A0 + 2° und keine umgeklappte Zelle der Haut (Tag 6: Glätte 0,1 hält Kugel, Birne, Rex im Tor; verfehlt: Robbe hoch J faltet zwei Zellen am Pol im Hals)', () => {
     let fehler = '';
     for (const z of alle()) {
       if (z.erg.ms.falten > z.erg.ms.faltenA0 + 2) fehler += `${z.name}: Knick ${z.erg.ms.falten.toFixed(1)}° (A0 ${z.erg.ms.faltenA0.toFixed(1)}°); `;

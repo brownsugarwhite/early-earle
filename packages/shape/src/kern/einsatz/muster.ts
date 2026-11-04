@@ -53,14 +53,16 @@ export type GanzzahlenErgebnis = {
 /**
  * Kanonische Seiten und Polygone aus den Stücken. `orig` bildet Doppelpunkte auf ihre Ursprünge ab, `eckenSchluessel` gibt
  * je Eckpunkt den Punktschlüssel (Feldrand-Ecken sind alte Käfigpunkte), `istKaefig(p)` sagt, ob p ein Käfigpunkt des
- * Feldrands ist.
+ * Feldrands ist; `weitereKnoten` teilen Seiten zusätzlich (feine Punkte, z. B. Spitzen von A0 auf der Naht).
  */
-export function seitenRegister(fund: StueckeFund, orig: (p: number) => number, eckenSchluessel: (p: number, seiteDavor: Seite | null, seiteDanach: Seite) => string, istKaefig: (p: number) => boolean): { kanten: Map<string, Kante>; polygone: Polygon[] } {
+export function seitenRegister(fund: StueckeFund, orig: (p: number) => number, eckenSchluessel: (p: number, seiteDavor: Seite | null, seiteDanach: Seite) => string, istKaefig: (p: number) => boolean, weitereKnoten: Iterable<number> = []): { kanten: Map<string, Kante>; polygone: Polygon[] } {
   const kanten = new Map<string, Kante>();
   const polygone: Polygon[] = [];
   // Knoten: Ecken aller Stücke (als Ursprung) — eine Seite wird dort geteilt, auch wenn der Knoten nur auf dem anderen Ufer liegt
   const knoten = new Set<number>();
   for (const st of fund.stuecke) for (const e of st.ecken) knoten.add(orig(st.punkte[e]!));
+  // weitere Knoten (Stücknetz: Spitzen von A0 auf der Naht — dort bekommt die Seite eine Station genau auf der Spitze)
+  for (const p of weitereKnoten) knoten.add(orig(p));
   fund.stuecke.forEach((st, sI) => {
     const seiten: SeitenBezug[] = [];
     st.seiten.forEach((se, q) => {
