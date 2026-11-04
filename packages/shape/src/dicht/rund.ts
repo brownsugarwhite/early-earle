@@ -9,7 +9,7 @@
 // Nahe jeder Stelle ist sie ein Stück der Kugel, die dort am weitesten reicht; am Umriss steht sie senkrecht, die beiden
 // Hälften gehen glatt ineinander über. Vernetzt wird mit Surface Nets auf einem Raster, so dicht wie gewünscht; danach liegen
 // die Punkte genau auf der Fläche, und die Normalen sind die Normalen der Kugel. Keine Topologie wird vorab festgelegt.
-// Gezeichnete Linien werden danach zu Kanten (`kanten.ts`).
+// Gezeichnete Linien bleiben danach, wo sie gezeichnet wurden, und die Form wächst zu ihnen (`kanten.ts`).
 
 import type { V2 } from '../bezier';
 import { Umrissfeld } from './abstand';
@@ -73,12 +73,88 @@ function normalenGlaetten(nor: Float32Array, ind: Uint32Array, durchgaenge: numb
   }
 }
 
-/** Runder Körper aus dem Seitenumriss (Punkte in Weltkoordinaten, y nach oben). */
-export function rundAusSeite(punkte: readonly UmrissPunkt[], opt: RundOptionen = {}): DichtesNetz {
-  // Rasterweite aus der Fläche: Oberfläche runder Körper ≈ 4 × Seitenfläche, zwei Dreiecke je Rasterzelle
+/**
+ * Normalen, wo die Haut einer Linie die Form abgehoben hat, aus der Fläche selbst (Dreiecke nach Fläche gewichtet, dann zweimal
+ * über die Nachbarn gemittelt). Die Höhe der Haut ist das Größte vieler Kegel längs der Linie; ihre Steigung springt, wo ein
+ * anderer Kegel der höchste wird, und zeichnete dort Zacken in Farbstufen und Umriss. Übergang nach der Höhe über eine Zelle.
+ */
+function hautNormalen(pos: Float32Array, nor: Float32Array, ind: Uint32Array, hub: Float32Array, zelle: number): void {
+  const n = pos.length / 3;
+  const flaeche = new Float32Array(3 * n);
+  for (let t = 0; t < ind.length; t += 3) {
+    const a = ind[t]!;
+    const b = ind[t + 1]!;
+    const c = ind[t + 2]!;
+    if (hub[a] === 0 && hub[b] === 0 && hub[c] === 0) continue;
+    const abx = pos[3 * b]! - pos[3 * a]!;
+    const aby = pos[3 * b + 1]! - pos[3 * a + 1]!;
+    const abz = pos[3 * b + 2]! - pos[3 * a + 2]!;
+    const acx = pos[3 * c]! - pos[3 * a]!;
+    const acy = pos[3 * c + 1]! - pos[3 * a + 1]!;
+    const acz = pos[3 * c + 2]! - pos[3 * a + 2]!;
+    const fx = aby * acz - abz * acy;
+    const fy = abz * acx - abx * acz;
+    const fz = abx * acy - aby * acx;
+    for (const p of [a, b, c]) {
+      flaeche[3 * p] = flaeche[3 * p]! + fx;
+      flaeche[3 * p + 1] = flaeche[3 * p + 1]! + fy;
+      flaeche[3 * p + 2] = flaeche[3 * p + 2]! + fz;
+    }
+  }
+  for (let v = 0; v < n; v++) {
+    if (hub[v] === 0) continue;
+    const l = Math.hypot(flaeche[3 * v]!, flaeche[3 * v + 1]!, flaeche[3 * v + 2]!);
+    if (l < 1e-12) continue;
+    const w = Math.min(1, hub[v]! / zelle);
+    const mx = (1 - w) * nor[3 * v]! + (w * flaeche[3 * v]!) / l;
+    const my = (1 - w) * nor[3 * v + 1]! + (w * flaeche[3 * v + 1]!) / l;
+    const mz = (1 - w) * nor[3 * v + 2]! + (w * flaeche[3 * v + 2]!) / l;
+    const ml = Math.hypot(mx, my, mz) || 1;
+    nor[3 * v] = mx / ml;
+    nor[3 * v + 1] = my / ml;
+    nor[3 * v + 2] = mz / ml;
+  }
+  const summe = new Float32Array(3 * n);
+  for (let d = 0; d < 2; d++) {
+    summe.set(nor);
+    for (let t = 0; t < ind.length; t += 3) {
+      for (let e = 0; e < 3; e++) {
+        const p = ind[t + e]!;
+        const q = ind[t + ((e + 1) % 3)]!;
+        if (hub[p] === 0 && hub[q] === 0) continue;
+        for (let i = 0; i < 3; i++) {
+          summe[3 * p + i] = summe[3 * p + i]! + nor[3 * q + i]!;
+          summe[3 * q + i] = summe[3 * q + i]! + nor[3 * p + i]!;
+        }
+      }
+    }
+    for (let v = 0; v < n; v++) {
+      if (hub[v] === 0) continue;
+      const l = Math.hypot(summe[3 * v]!, summe[3 * v + 1]!, summe[3 * v + 2]!) || 1;
+      nor[3 * v] = summe[3 * v]! / l;
+      nor[3 * v + 1] = summe[3 * v + 1]! / l;
+      nor[3 * v + 2] = summe[3 * v + 2]! / l;
+    }
+  }
+}
+
+/**
+ * Rasterweite aus der Fläche: Oberfläche runder Körper ≈ 4 × Seitenfläche, zwei Dreiecke je Rasterzelle. In Stufen von 4 %:
+ * Während eines Zugs bleibt sie meist gleich, und der Körper einer Linie (gebaut mit derselben Weite) deckt sich überall dort
+ * genau mit dem heutigen, wo sich der Umriss nicht geändert hat.
+ */
+function rasterweite(punkte: readonly UmrissPunkt[], opt: RundOptionen): number {
+  if (opt.zelle !== undefined) return Math.max(0.25, opt.zelle);
   const grob = umrissAbtasten(punkte, 4).punkte;
   const flaeche = Math.max(polygonFlaeche(grob), 1);
-  const zelle = Math.max(0.25, opt.zelle ?? Math.sqrt((4 * flaeche) / ((opt.dreiecke ?? 40000) / 2)));
+  const z = Math.sqrt((4 * flaeche) / ((opt.dreiecke ?? 40000) / 2));
+  return Math.max(0.25, 2 ** (Math.round(Math.log2(z) * 16) / 16));
+}
+
+type Koerper = { P: V2[]; kugeln: Kugeln; x0: number; y0: number; nx: number; ny: number };
+
+/** Die größten Kugeln des Umrisses und das Raster ihrer Spalten. */
+function koerperAus(punkte: readonly UmrissPunkt[], zelle: number): Koerper {
   const { punkte: P } = umrissAbtasten(punkte, zelle / 2);
   const feld = new Umrissfeld(P, 2 * zelle);
 
@@ -102,6 +178,37 @@ export function rundAusSeite(punkte: readonly UmrissPunkt[], opt: RundOptionen =
   const nx = Math.ceil((xMax - xMin + 2 * rand) / zelle) + 1;
   const ny = Math.ceil((yMax - yMin + 2 * rand) / zelle) + 1;
   const kugeln = new Kugeln(feld, R, x0, y0, x0 + (nx - 1) * zelle, y0 + (ny - 1) * zelle, 3 * zelle);
+  return { P, kugeln, x0, y0, nx, ny };
+}
+
+// Körper der Umrisse, auf denen Linien gezeichnet wurden, je Umriss und Rasterweite gemerkt
+const bezugsKoerper = new WeakMap<readonly UmrissPunkt[], Map<number, Kugeln>>();
+
+const gleicherUmriss = (a: readonly UmrissPunkt[], b: readonly UmrissPunkt[]): boolean =>
+  a.length === b.length && a.every((p, i) => p.x === b[i]!.x && p.y === b[i]!.y && !p.ecke === !b[i]!.ecke);
+
+/**
+ * Der Körper, auf dem eine Linie liegt: der des Umrisses beim Zeichnen, mit der heutigen Rasterweite gebaut; ohne Bezug oder
+ * bei gleichem Umriss der heutige.
+ */
+function bezugKugeln(l: KantenLinie, punkte: readonly UmrissPunkt[], zelle: number, heute: Kugeln): Kugeln {
+  const b = l.bezug;
+  if (!b || b.length < 3 || gleicherUmriss(b, punkte)) return heute;
+  let m = bezugsKoerper.get(b);
+  if (!m) bezugsKoerper.set(b, (m = new Map()));
+  let k = m.get(zelle);
+  if (!k) {
+    if (m.size > 3) m.clear();
+    k = koerperAus(b, zelle).kugeln;
+    m.set(zelle, k);
+  }
+  return k;
+}
+
+/** Runder Körper aus dem Seitenumriss (Punkte in Weltkoordinaten, y nach oben). */
+export function rundAusSeite(punkte: readonly UmrissPunkt[], opt: RundOptionen = {}): DichtesNetz {
+  const zelle = rasterweite(punkte, opt);
+  const { P, kugeln, x0, y0, nx, ny } = koerperAus(punkte, zelle);
   const G = new Float64Array(nx * ny);
   let gMax = 0;
   for (let j = 0; j < ny; j++) {
@@ -274,6 +381,10 @@ export function rundAusSeite(punkte: readonly UmrissPunkt[], opt: RundOptionen =
   }
 
   normalenGlaetten(normalen, indizes, 2);
-  const kanten = kantenAnwenden(positionen, normalen, opt.linien ?? [], kugeln, zelle);
+  const linien = opt.linien ?? [];
+  const bezug = linien.map((l) => bezugKugeln(l, punkte, zelle, kugeln));
+  const hub = new Float32Array(n);
+  const kanten = kantenAnwenden(positionen, normalen, indizes, linien, kugeln, zelle, bezug, hub);
+  if (hub.some((h) => h > 0)) hautNormalen(positionen, normalen, indizes, hub, zelle);
   return { positionen, normalen, indizes, zelle, umriss: P, kanten };
 }

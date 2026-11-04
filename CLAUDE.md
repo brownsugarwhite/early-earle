@@ -521,6 +521,21 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Vite merkt sich einen Importfehler einer Datei, die erst danach angelegt wird (Server neu starten). Offen: Die restlichen
   feinen Stufen der Farbbänder kommen vom Toon-Material auf Eckennormalen (Sache des echten Looks). Bilder
   `docs/progress/editor/form-zuerst-kanten-{ei,langhals}-2026-11-04.jpg`.
+- **2026-11-04 (abends, danach): Linien bleiben an Ort und Stelle, die Form wächst zu ihnen** (Florian: „momentan wandern beim
+  Verziehen der Seitenform die eingezeichneten Linien mit … ich habe es mir so vorgestellt, dass diese immer genau an Ort und
+  Stelle bleiben … oben bildet sich dann ein Kranz oder eine Wulst, z. B. für Augenbrauen“; „Die Härte ist dann wie in Blender
+  Edge Crease und macht einen richtigen Knick. Ohne Härte ist es eine runde Wulst.“). Eine Linie merkt sich den Umriss beim
+  Zeichnen (`KantenLinie.bezug`) und liegt fest auf dessen Körper; zieht Florian den Umriss unter sie, spannt sich die Haut von
+  der Linie zum Körper (konvexe Hülle je Kugel unter dem Punkt, Kugel geglättet und durch den Punkt gelegt), innen ebenso eine
+  Rinne. Strich 3 px = Knick an der Linie (Kuppe nur ≈ eine Rasterzelle rund), 0 px = runde Kuppe vom Radius der Höhe (höchstens
+  halbe Körperdicke); spiegelgleich über eine weiche Faltung an der Mittelebene. Rasterweite in 4-%-Stufen, damit der Körper
+  der Linie dort genau dem heutigen gleicht, wo sich der Umriss nicht geändert hat. Gemessen (Kugel, Scheitel unter die Linie):
+  Knick hart 105°, weich ≤ 10°; in der Seite höchstens 0,5 (hart) bzw. 1,8 px (weich) über der Linie; Front-Umriss glatt;
+  Zug 32–36 ms, Loslassen 0,5–0,6 s. Fallen: Normalverschiebung mit breitem Abfall schob Umrisspunkte seitlich hinaus
+  (Lappen); die Kugel unter der Linie wechselt an Mulden des Umrisses (Streifen); eine geglättete Kugel, die nicht durch den
+  Punkt geht, hebt ihn um seinen Abstand zu weit; das Auslaufen der Härte an den Enden machte die Kuppe dort riesig — die Kuppe
+  folgt der gesetzten Strichdicke; Steigungen aus dem Maximum vieler Kegel springen → Normalen dort aus der Fläche. Bilder
+  `docs/progress/editor/form-zuerst-wulst-{hart,weich}-2026-11-04.jpg` (`scripts/pruefen/form-zug.mjs`).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

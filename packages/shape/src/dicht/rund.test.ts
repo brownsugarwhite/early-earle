@@ -132,4 +132,62 @@ describe('runder Körper aus dem Seitenumriss', () => {
     expect(hart.kanten.length).toBe(2);
     expect(geschlossen(hart.indizes)).toBe(true);
   });
+
+  it('eine Linie bleibt an Ort und Stelle, die Form wächst zu ihr (Wulst)', () => {
+    // Linie quer über den Scheitel, gezeichnet auf der Kugel; danach den oberen Punkt unter die Linie ziehen
+    const kugel = kreis(100);
+    const gedrueckt: UmrissPunkt[] = kugel.map((p) => (p.y > 50 ? { x: p.x, y: 55 } : p));
+    const linie = (breite: number): KantenLinie => ({
+      punkte: [
+        { x: -45, y: 62, breite },
+        { x: 0, y: 75, breite },
+        { x: 45, y: 62, breite },
+      ],
+      bezug: kugel,
+    });
+    const hart = rundAusSeite(gedrueckt, { dreiecke: 20000, linien: [linie(3)] });
+    const weich = rundAusSeite(gedrueckt, { dreiecke: 20000, linien: [linie(0)] });
+    // die Linie liegt weiter auf der Kugel, auf der sie gezeichnet wurde
+    const l0 = hart.kanten[0]!.lagen;
+    let neben = 0;
+    for (let i = 0; i < l0.length / 3; i++) neben = Math.max(neben, Math.abs(Math.hypot(l0[3 * i]!, l0[3 * i + 1]!, l0[3 * i + 2]!) - 100));
+    expect(neben).toBeLessThan(1);
+    for (const netz of [hart, weich]) {
+      const lagen = netz.kanten[0]!.lagen;
+      const n = lagen.length / 3;
+      // die Form reicht bis zur Linie: zu jeder Probe liegt ein Netzpunkt in der Nähe
+      let weitest = 0;
+      for (let i = 0; i < n; i++) {
+        let naechst = Infinity;
+        for (let v = 0; v < netz.positionen.length / 3; v++) {
+          naechst = Math.min(
+            naechst,
+            Math.hypot(netz.positionen[3 * v]! - lagen[3 * i]!, netz.positionen[3 * v + 1]! - lagen[3 * i + 1]!, netz.positionen[3 * v + 2]! - lagen[3 * i + 2]!),
+          );
+        }
+        weitest = Math.max(weitest, naechst);
+      }
+      expect(weitest).toBeLessThan(netz.zelle);
+      // …und in der Seite nicht darüber hinaus (die Linie ist dort der Umriss)
+      let ueber = 0;
+      for (let v = 0; v < netz.positionen.length / 3; v++) {
+        const x = netz.positionen[3 * v]!;
+        if (x < lagen[0]! || x > lagen[3 * (n - 1)]!) continue;
+        let i = 0;
+        while (i < n - 2 && lagen[3 * (i + 1)]! < x) i++;
+        const t = (x - lagen[3 * i]!) / (lagen[3 * (i + 1)]! - lagen[3 * i]! || 1);
+        ueber = Math.max(ueber, netz.positionen[3 * v + 1]! - (lagen[3 * i + 1]! + t * (lagen[3 * (i + 1) + 1]! - lagen[3 * i + 1]!)));
+      }
+      expect(ueber).toBeLessThan(3);
+    }
+    // mit Härte ein Knick an der Linie, ohne eine runde Wulst
+    const naheMitte = (x: number, y: number, z: number) => Math.abs(x) < 25 && y > 40 && z > 0;
+    const knickHart = groessterKnick(hart.indizes, hart.positionen, naheMitte);
+    const knickWeich = groessterKnick(weich.indizes, weich.positionen, naheMitte);
+    // gemessen: hart 105°, weich 10° (Kuppe vom Radius der Höhe, auf Rasterweite abgetastet)
+    expect(knickHart).toBeGreaterThan(60);
+    expect(knickWeich).toBeLessThan(15);
+    expect(geschlossen(hart.indizes)).toBe(true);
+    expect(geschlossen(weich.indizes)).toBe(true);
+  });
 });

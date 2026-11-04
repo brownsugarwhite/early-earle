@@ -3,7 +3,8 @@
 // Ein kleines eigenes Fenster neben dem Editor (form.html). In der Seite setzt und zieht er Punkte wie Vektorpunkte (glatt oder
 // Ecke), daneben zeigen Front, Top und 3D dasselbe Modell. Deren Umrisse zeichnet ein Shader: die Rückseiten des Körpers, um
 // eine feste Pixelbreite nach außen geschoben. Auf der Form gezeichnete Linien werden Kanten; ihre Strichdicke (0–3 px) ist
-// die Härte, und Front, Top und 3D zeichnen sie mit (sichtbar schwarz, verdeckt blass). Keine Regler, keine Chips.
+// die Härte, und Front, Top und 3D zeichnen sie mit (sichtbar schwarz, verdeckt blass). Die Linien bleiben, wo sie gezeichnet
+// sind; zieht Florian den Umriss unter eine Linie, wächst die Form zu ihr (Wulst). Keine Regler, keine Chips.
 
 import {
   BREITE_MAX,
@@ -84,9 +85,10 @@ type Auswahl = { art: 'umriss'; i: number } | { art: 'linie'; l: number } | { ar
 let auswahl: Auswahl = null;
 const zurueck: Zustand[] = [];
 const vor: Zustand[] = [];
+// der Bezug einer Linie (Umriss beim Zeichnen) wird nie verändert und bleibt deshalb dasselbe Objekt
 const kopie = (z: Zustand): Zustand => ({
   punkte: z.punkte.map((q) => ({ ...q })),
-  linien: z.linien.map((l) => ({ punkte: l.punkte.map((q) => ({ ...q })) })),
+  linien: z.linien.map((l) => ({ ...l, punkte: l.punkte.map((q) => ({ ...q })) })),
 });
 function merken(stand: Zustand): void {
   zurueck.push(stand);
@@ -637,7 +639,8 @@ const zugEnde = (): void => {
     if (laenge * skala() >= 12) {
       const punkte = vereinfachen(spur, 3 / skala()).map((q) => ({ x: q.x, y: q.y, breite: BREITE_NEU }));
       merken(zug.vorher);
-      zustand.linien.push({ punkte });
+      // die Linie bleibt an Ort und Stelle: auf dem Körper, auf dem sie gezeichnet wurde
+      zustand.linien.push({ punkte, bezug: zustand.punkte.map((q) => ({ ...q })) });
       auswahl = { art: 'linie', l: zustand.linien.length - 1 };
       bauGewuenscht = 'fein';
     }

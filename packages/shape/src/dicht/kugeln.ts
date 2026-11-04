@@ -108,6 +108,26 @@ export class Kugeln {
     return Math.max(0, Math.min(this.ny - 1, Math.floor((y - this.y0) / this.e)));
   }
 
+  /**
+   * Abstand eines Raumpunkts zum Körper (+ außen, − innen) über die nächste Kugel: minᵢ (|p − cᵢ| − Rᵢ). Für Punkte außen ist
+   * das genau der Abstand zur Vereinigung. Mitte und Radius dieser Kugel stehen danach in mx, my, mr.
+   */
+  abstand(x: number, y: number, z: number): number {
+    let best = Infinity;
+    for (let i = 0; i < this.r.length; i++) {
+      const dx = x - this.cx[i]!;
+      const dy = y - this.cy[i]!;
+      const d = Math.sqrt(dx * dx + dy * dy + z * z) - this.r[i]!;
+      if (d < best) {
+        best = d;
+        this.mx = this.cx[i]!;
+        this.my = this.cy[i]!;
+        this.mr = this.r[i]!;
+      }
+    }
+    return best;
+  }
+
   /** g an (x, y); Mitte und Radius der weitesten Kugel stehen danach in mx, my, mr. Weit außen: −∞. */
   g(x: number, y: number): number {
     const z = this.iy(y) * this.nx + this.ix(x);
