@@ -172,6 +172,30 @@ erprobt.
 5. **Zeit.** Das Nachführen lässt sich etwa zehnfach beschleunigen (Raster statt Suche über alle Strecken); der Bau selbst
    bleibt, wie er ist.
 
-**Empfehlung:** Probier `?netz` an deinen eigenen Wesen aus. Wenn es sich richtig anfühlt, wird es der normale Weg im Fenster.
+**Nachtrag (04.11. abends), Florians nächster Screenshot:** Kugel unter dem Kopf abgelöst, Naht im Top, Zacken in der Front.
+Seine Fragen: „Also müssen wir eine Seite zur vorgebenden Form machen? … Ich bin mir nicht sicher, ob Front und Top überhaupt
+den Umriss zeigen müssen. Der Umriss soll mit Shader eingezeichnet sein, aber die echten Bearbeitungspunkte sollten auf den
+weichen bzw. harten Kanten liegen … Es geht irgendwie wieder darum, aus drei Formen eine Form zu erzwingen. Aber wir wollen ja
+direkt die Form in den Ansichten bearbeiten, nur die Darstellung ist eine andere.“
+
+Gemessen am nachgestellten Fall (Punkte aus dem Screenshot, Abstand Linie ↔ Mesh): heute Seite 74,5 / Front 66,0 / Top 3,1;
+Seite führt: Seite 2,7, aber die Front bleibt 66,0 daneben; **Front führt: unverändert 66,0.** Die Regel „wer keinen Platz hat,
+redet nicht mit“ greift nur, wo eine Ansicht gar nichts zeigt; hier zeigt das Top etwas, nur schmal. Für diesen Fall bräuchte es
+die nächste Regel. Das ist genau das Muster, das Florian sieht: Solange drei gezeichnete Flächen den Körper bestimmen, ist jede
+Widerspruchsregel ein Flicken.
+
+Sein Modell ist ein anderes: **eine Form, Linien auf ihr als Griffe, die Ansichten zeigen sie.** Jeder Linienpunkt ist ein
+3D-Punkt; jede Ansicht bewegt zwei seiner drei Koordinaten (so arbeiten die Linien seit 8d8bae88 schon). Der Umriss ist nur
+Anzeige (Shader). Damit gibt es nichts zu erzwingen und keine Widersprüche. Vorlage: FiberMesh (Nealen u. a. 2007; Linien auf der
+Fläche sind die Griffe, die Fläche ist die glatteste durch sie, weich oder scharf), Pixar-Profilkurven (de Goes u. a. 2022).
+Was dazu gehört und noch fehlt:
+
+1. Linien allein machen kein Volumen. Eine gezeichnete Fläche legt einmal Volumen an (wie heute die Seite, später auch ein Bein
+   in der Front); danach ist sie keine Bedingung mehr, ihr Umriss wird eine Linie auf der Form.
+2. Wo der Umriss keine Linie hat, legt das Anfassen der Shader-Linie dort eine weiche Linie auf die Form.
+3. Der Kern: die rundeste Fläche durch alle Linien, auch wenn eine Linie die Form nach innen zieht (heute wächst die Form nur
+   zu Linien hin).
+
+**Empfehlung (vor dem Nachtrag):** Probier `?netz` an deinen eigenen Wesen aus. Wenn es sich richtig anfühlt, wird es der normale Weg im Fenster.
 Danach kommt, was du siehst: entweder die Form (weiche Übergänge, Ecken) oder die Kanten in gleichwertigen Ansichten samt
 Treffpunkten.
