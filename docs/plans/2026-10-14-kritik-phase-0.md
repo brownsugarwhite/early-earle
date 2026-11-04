@@ -1100,3 +1100,27 @@ Tag 2–4“, Bogen `docs/progress/editor/p2-stuecknetz-2026-11-04.jpg`).
 - Fallen (`apps/editor/CLAUDE.md`): Seiten an allen Knoten beider Ufer teilen; Rand des Musters ab der ersten Ecke; Speichen ≥ 2;
   Feldrandpunkte = alte Käfigpunkte, Linienende auf dem Feldrand = Käfigpunkt davor; 190-MB-HTML bricht `html-shot`;
   Faltenmaß = Zellnormale gegen A0.
+
+## Befunde aus P2 Tag 5 „Formtreue Lage, Lippe am Kontrollpolygon, ganze Reihe“ (04.11., eigene Messungen; `packages/shape/src/kern/einsatz/stuecknetz.extrem.ts`)
+
+Gebaut: Lippe (A6) vor der Lage der inneren Punkte, Reihen am Kontrollpolygon; Stationen nach Dichte (h, √(6ε/κ), Merkmalsgröße);
+konforme Abflachung mit Rückfall aufs Vieleck; ganze Reihe als Test. Ergebnis: 43 von 43 bauen, Mundwinkel 43 von 43, Haut-Tor 32 von
+43 (Kernring 41), zehn Fälle: Haut 8, Mundwinkel 10, Knick 7, Lippe 0,02–0,13 px (Planseite „P2 — Stand Tag 5“, Bogen
+`docs/progress/editor/p2-stuecknetz-tag5-2026-11-04.jpg`).
+- [ ] **Knicke von 3,7–7,6° auf glatten Körpern** (A0 1,6°): Kugel hoch gerade, Kugel mittel S, Birne hoch S, Birne mittel gerade und S,
+  Birne tief gerade. Ursache nicht gemessen; Vermutung: Speichen des Dreieckmusters quer zur Krümmung. Erst Florians Blick, ob sichtbar.
+- [ ] **Robbe hoch J: Pol im Hals des J-Hakens** (2,3 px zur Naht; Zellen 0,1–0,9 px² klappen um, Knick 179°). Strukturell: ein Pol je
+  Dreieck, Lage aus den Kantenzahlen. Weg: Schnitt am Hals (Schnittmaschine von Tag 1) + Muster für das ungleiche Viereck (Paare
+  nach Takayama/Tarini). Kernring: derselbe Fall offen (E2.6).
+- [ ] **Robbe Haut 0,44–0,62 px am Linienanfang** (hoch gerade, mittel gerade, mittel J): die Reihen laufen in den Keil zwischen Lippe
+  und Naht; dichtere Stationen am Anfang halfen (0,16–0,19) — aber nur über die Kantenzahlen, keine Regel daraus gemacht.
+- [ ] **Rex mittel gerade 32,3°** an der Falte von A0 (A0 27,1, Kernring 29,6): mit doppelter Lippendichte 14°, Ursache nicht gemessen.
+- [ ] **Budget**: K2 578–3 686 Flächen gegen Tor 300 (ein Drittel des Kernrings); K1 war Tag 4 zu ungenau. Entscheidung (Florian).
+- [ ] **Konforme Abflachung** nur noch als Option mit Rückfall (hilft an Rex, nicht an den Faltenfällen); eine Lage des Musters, die in
+  einer nicht konvexen Ebene faltenfrei bleibt (Glätten mit Gültigkeitsprüfung), wäre der nächste Schritt — nicht gebaut.
+- [x] **Verworfen (gemessen):** γ = 4-Parameter mit Spanne ≤ h (m und Flächen verdoppelt), gleichmäßig 0,75 h und 0,5 h (Robbe faltet
+  weiter), Startglättung (Tag 4).
+- Fallen (`apps/editor/CLAUDE.md`): Reihen nie an Abtastpunkten aufhängen, wenn der Käfig Kontrollpunkte trägt; Stationen auf der
+  gezeichneten Linie, nicht auf dem feinen Zickzack; Tutte in einer nicht konvexen Ebene auf Falten **und** Punkte außerhalb
+  prüfen; Python-Patches nach jedem `replace` neu suchen (Datei einmal zerstört); zsh expandiert `====`; vitest zeigt console.log
+  bestandener Tests nur mit `--reporter=verbose`.

@@ -456,6 +456,16 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   ≤ A0 + 2° 8 von 10, Flächen ein Drittel des Kernrings, 4 Pole je Feld; zwei Fälle falten je eine bis zwei Zellen von 1 px² neben
   der Lippe (Vieleck mit geraden Seiten → formtreues Abflachen als Weg); Budget ≤ 300 hält auf K2 nicht, auf K1 fällt die
   Genauigkeit (Entscheidung Florian). Bogen `docs/progress/editor/p2-stuecknetz-2026-11-04.jpg`, Tests `stuecknetz.test.ts`.
+- **2026-11-04: P2 Tag 5 „Formtreue Lage, Lippe am Kontrollpolygon, ganze Reihe“ gebaut** (Florian: „Ja, mach das formtreue
+  Abflachen gegen die zwei Falten, dann die ganze Reihe.“; Abnahme offen; Planseite „P2 — Stand Tag 5“, Register „Befunde aus P2
+  Tag 5“, Übergabe). LSCM je Stück gebaut, aber nicht der Hebel (Faltenstücke nicht konvex → Rückfall aufs Vieleck; Option bleibt).
+  Gemessene Ursache: Reihen hingen an Abtastpunkten, der Käfig trägt das Kontrollpolygon der Lippe (1,2 px am Haken, 2,8 px am
+  Mundwinkel) → Lippe (A6) vor der Lage, Reihen am Kontrollpolygon; Stationen nach Dichte auf der Linie (h, √(6ε/κ), Merkmalsgröße
+  mit Keil < 45°, Boden h/4), Untergrenze der Lippen-Kantenzahl. Zehn Fälle: Lippe 0,02–0,13 px, Mundwinkel 10 von 10, Haut 8,
+  Knick 7; **ganze Reihe** (`stuecknetz.extrem.ts`): 43 von 43 bauen, Mundwinkel 43 von 43, Haut-Tor 32 von 43 (Kernring 41).
+  Offen: Knicke 3,7–7,6° auf glatten Körpern, Rex mittel gerade 32°, Robbe-Keil 0,44–0,62 px, Robbe hoch J (Pol im Hals des Hakens;
+  Weg Schnitt am Hals + Muster für das ungleiche Viereck). Verworfen: γ = 4-Parameter (m verdoppelt), gleichmäßiges Verdichten.
+  Keine neue Regel mit Körper oder Lage. P2 ist nach fünf Tagen am Ende → Bilanz und Florians Entscheidung.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

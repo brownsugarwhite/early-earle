@@ -1,4 +1,4 @@
-# Übergabe (Stand 04.11.2026: P1 abgeschlossen; P2 „Stücknetz im Maulfeld“ Tag 1–4 gebaut — alle zehn Fälle bauen, Haut 9 von 10, Mundwinkel 8 von 10, ein Drittel der Flächen des Kernrings, zwei Falten neben der Lippe offen; Abnahme offen)
+# Übergabe (Stand 04.11.2026: P1 abgeschlossen; P2 „Stücknetz im Maulfeld“ Tag 1–5 gebaut — ganze Reihe: 43 von 43 bauen, Mundwinkel 43 von 43, Haut-Tor 32 von 43 (Kernring 41), ein Drittel der Flächen; Robbe hoch J strukturell offen; Abnahme offen)
 
 Branch `claude/editor-grundlayout`, PR mit Auto-Fix. **Diese Datei ist der Einstieg für eine frische Sitzung.** Der Kernring
 bleibt eingefroren; alles Neue liegt hinter Schaltern (`stufen`, `umrissPlan`), ohne Schalter bitgleich.
@@ -284,6 +284,31 @@ Zahnfleischreihe, Stabilität ±2 px, ganze Reihe. Start-Prompt für eine frisch
 > Registereintrag), Bogen `p2-bogen.ts` je Fall, Planseite „Stand“, Register, Übergabe, Commit und Push. Nach jedem Block die neuen
 > Regeln zählen; ab der dritten anhalten und die Struktur prüfen. Nichts als bestanden melden; Florian bekommt drei Zeilen.
 
+## 04.11.: P2 Tag 5 „Formtreue Lage, Lippe am Kontrollpolygon, ganze Reihe“ gebaut (Abnahme offen)
+
+Florian: „Ja, mach das formtreue Abflachen gegen die zwei Falten, dann die ganze Reihe.“ Das Abflachen (LSCM) ist gebaut, war aber
+nicht der Hebel: die Faltenstücke sind nicht konvex, Tutte klappt in der konformen Ebene um → Rückfall aufs Vieleck (Option bleibt,
+hilft an Rex). Die gemessene Ursache: das Muster hängte seine Reihen an Abtastpunkten der Linie auf, der Käfig trägt an der Lippe das
+**Kontrollpolygon der Falte** (bis 1,2 px neben der Linie am J-Haken, 2,8 px am Mundwinkel), dazu Drift der Stationen auf dem feinen
+Zickzack. Umbau: Lippe (A6) vor der Lage, Reihen am Kontrollpolygon; Stationen nach Dichte auf der Linie (h, √(6ε/κ) mit ε = Haut-Tor,
+örtliche Merkmalsgröße mit Keil < 45°, Boden h/4) und daraus die Untergrenze der Lippen-Kantenzahl. Ergebnis zehn Fälle: Lippe
+0,02–0,13 px, Mundwinkel 10 von 10, Haut 8 von 10, Knick 7 von 10 (Birne S faltenfrei; Robbe hoch J faltet weiter). **Ganze Reihe**
+(`stuecknetz.extrem.ts`, `pnpm --filter @ee/shape test:extrem`): 43 von 43 bauen, Mundwinkel 43 von 43, Haut-Tor 32 von 43 (Kernring
+41) — offen: Knicke 3,7–7,6° auf glatten Körpern (Kugel, Birne), Rex mittel gerade 32,3°, Robbe-Keil 0,44–0,62 px, Robbe hoch J
+(Pol des Dreieckmusters im 2,3 px engen Hals des Hakens; Kernring derselbe Fall offen; Weg: Schnitt am Hals + Muster für das
+ungleiche Viereck). Keine neue Regel mit Körper oder Lage. Planseite „P2 — Stand Tag 5“, Register „Befunde aus P2 Tag 5“, Bogen
+`docs/progress/editor/p2-stuecknetz-tag5-2026-11-04.jpg`, Diagnosen `p2-ebenen.ts` (Ebene je Stück) und `p2-lippe.ts`.
+
+**Nächster Schritt:** Florians Blick auf den Bogen; die fünf Tage von P2 sind um → Bilanz und Entscheidung (Budget, Knicke, Keil,
+Hals-Schnitt), dann Tasche/Rachen/Öffnen, Zahnfleischreihe, Stabilität ±2 px. Start-Prompt für eine frische Sitzung:
+
+> Lies `CLAUDE.md`, `docs/UEBERGABE.md` und den Prüfplan `docs/plans/2026-11-02-pruefplan-p0-p3.md` („P2 — Stand Tag 5“, davor
+> Tag 2–4 und Tag 1). P2 ist am Ende seiner fünf Tage; arbeite nach Florians Entscheidung weiter (Budget, Knicke auf glatten
+> Körpern, Robbe-Keil, Hals-Schnitt für Robbe hoch J). Im Kern neben dem eingefrorenen Kernring, nichts am Bau geändert; keine
+> Regel, die einen Körper oder eine Lage nennt; Tore als Tests (`stuecknetz.test.ts`, `stuecknetz.extrem.ts`, verfehlte als
+> `it.fails` mit Registereintrag), Bogen `p2-bogen.ts`, Planseite „Stand“, Register, Übergabe, Commit und Push. Nach jedem Block die
+> neuen Regeln zählen; ab der dritten anhalten und die Struktur prüfen. Nichts als bestanden melden; Florian bekommt drei Zeilen.
+
 ## Entscheidungen, die Florian treffen muss (Gegenprüfung, Abschnitt 10)
 
 E1 verdeckt = blass (gestrichelt = weich) · E2 verdeckte Umrissstücke und Ansatzlinien als Vorschlagslinie, gebaut wird nur, was
@@ -315,6 +340,10 @@ Rex mittel gerade (Knick an der Kreuzung), Robbe hoch J (Engstelle), E2.4, E3–
 (Stufe 1: 76 000–104 000 Dreiecke); das müsste zuerst gelöst werden.
 
 ## Werkzeuge und Prüfskripte (Auswahl)
+
+- P2 Tag 5: `apps/editor/scripts/pruefen/p2-ebenen.ts` (Ebene je Stück, konform und benutzt, mit Musterzellen; `FALL=…`), `p2-lippe.ts`
+  (Lippe je Station: Spanne, Drehung, Kontrollpunkt und Abtastpunkt gegen das Ziel), `p2-stuecknetz.ts` (Tabelle, `KERNRING=0`, `H`,
+  `STUFE=1`), `p2-bogen.ts`; ganze Reihe `pnpm --filter @ee/shape test:extrem` (`stuecknetz.extrem.ts`, Zeilen mit `--reporter=verbose`).
 
 - Kern-Tests `pnpm --filter @ee/shape test`; Extremreihe `pnpm --filter @ee/shape test:extrem` (wöchentlich in CI);
   Kernring-Reihe `npx vitest run -c vitest.extrem.config.ts src/kern/einsatz/kernring.extrem.ts` aus `packages/shape` (≈ 5 min).

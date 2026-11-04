@@ -83,7 +83,8 @@ export function lippenKurve(punkte: readonly V3[], proSpanne = 64, ende: LippenE
  * die Linie sich biegt (runder Anfang, Haken): Der Fehler einer Spanne wächst mit κ·h², gemessen reicht γ = 4 (darüber
  * gesättigt).
  */
-export function kruemmungsParameter(ziel: readonly V3[], gamma = 4): (f: number) => number {
+/** Bogenlängen, Gesamtlänge und über neun Stützstellen geglättete Krümmung einer dicht abgetasteten Linie. */
+function kruemmungGeglaettet(ziel: readonly V3[]): { s: number[]; L: number; glatt: number[] } {
   const n = ziel.length;
   const s = [0];
   for (let i = 1; i < n; i++) s.push(s[i - 1]! + Math.hypot(ziel[i]![0] - ziel[i - 1]![0], ziel[i]![1] - ziel[i - 1]![1], ziel[i]![2] - ziel[i - 1]![2]));
@@ -114,9 +115,15 @@ export function kruemmungsParameter(ziel: readonly V3[], gamma = 4): (f: number)
     }
     return summe / z;
   });
+  return { s, L, glatt };
+}
+
+/** Kumulierte Größe über dem Bogenanteil f ∈ [0, 1] (Trapezregel über die Stützstellen), auf 1 normiert, wenn `normiert`. */
+function kumuliert(s: readonly number[], L: number, dichte: (i: number) => number, normiert: boolean): (f: number) => number {
+  const n = s.length;
   const T = [0];
-  for (let i = 1; i < n; i++) T.push(T[i - 1]! + (s[i]! - s[i - 1]!) * 0.5 * (Math.sqrt(1 + gamma * glatt[i - 1]! * L) + Math.sqrt(1 + gamma * glatt[i]! * L)));
-  const TL = T[n - 1]! || 1;
+  for (let i = 1; i < n; i++) T.push(T[i - 1]! + (s[i]! - s[i - 1]!) * 0.5 * (dichte(i - 1) + dichte(i)));
+  const TL = normiert ? T[n - 1]! || 1 : 1;
   return (f: number) => {
     const x = Math.min(1, Math.max(0, f)) * L;
     let lo = 0;
@@ -129,6 +136,48 @@ export function kruemmungsParameter(ziel: readonly V3[], gamma = 4): (f: number)
     const d = s[hi]! - s[lo]!;
     const t = d > 0 ? (x - s[lo]!) / d : 0;
     return (T[lo]! + t * (T[hi]! - T[lo]!)) / TL;
+  };
+}
+
+/** n + 1 Stellen von sA bis sB, gleichmäßig in der kumulierten Größe Φ (monoton), durch Halbierung. */
+function gleichmaessigIn(phi: (f: number) => number, n: number, sA: number, sB: number): number[] {
+  const pA = phi(sA);
+  const pB = phi(sB);
+  const out = [sA];
+  for (let k = 1; k < n; k++) {
+    const zielP = pA + ((pB - pA) * k) / n;
+    let lo = sA;
+    let hi = sB;
+    for (let i = 0; i < 50; i++) {
+      const mid = 0.5 * (lo + hi);
+      if (phi(mid) < zielP) lo = mid;
+      else hi = mid;
+    }
+    out.push(0.5 * (lo + hi));
+  }
+  out.push(sB);
+  return out;
+}
+
+export function kruemmungsParameter(ziel: readonly V3[], gamma = 4): (f: number) => number {
+  const { s, L, glatt } = kruemmungGeglaettet(ziel);
+  return kumuliert(s, L, (i) => Math.sqrt(1 + gamma * glatt[i]! * L), true);
+}
+
+/**
+ * Stationen einer Lippe nach Dichte (Stücknetz): Abstand höchstens h (je Stützstelle, z. B. die örtliche Merkmalsgröße —
+ * der Abstand zur nächsten anderen Linie — nach unten begrenzt) und höchstens √(6ε/κ) — das Kontrollpolygon einer Falte liegt
+ * ≈ h²κ/6 neben der Kurve, so bleibt es überall innerhalb ε (das Haut-Tor, 0,25 px). Φ ist die kumulierte Dichte in Stationen
+ * über dem Bogenanteil; `anzahl` die kleinste Stationenzahl eines Abschnitts, `stellen` n + 1 Stellen gleichmäßig in Φ.
+ */
+export function lippenDichte(ziel: readonly V3[], h: number | ArrayLike<number>, eps: number): { phi: (f: number) => number; anzahl: (sA?: number, sB?: number) => number; stellen: (n: number, sA?: number, sB?: number) => number[] } {
+  const { s, L, glatt } = kruemmungGeglaettet(ziel);
+  const hBei = typeof h === 'number' ? () => h : (i: number) => h[i]!;
+  const phi = kumuliert(s, L, (i) => Math.max(1 / hBei(i), Math.sqrt(Math.max(0, glatt[i]!) / (6 * eps))), false);
+  return {
+    phi,
+    anzahl: (sA = 0, sB = 1) => Math.max(1, Math.ceil(phi(sB) - phi(sA) - 1e-9)),
+    stellen: (n, sA = 0, sB = 1) => gleichmaessigIn(phi, n, sA, sB),
   };
 }
 

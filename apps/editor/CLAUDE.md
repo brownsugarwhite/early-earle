@@ -578,3 +578,13 @@ Wird geladen, sobald eine Sitzung in `apps/editor` arbeitet (zusätzlich zur Roo
   freie Punkte, Bereich 1 Kragen / 2 Haut rechts / 3 links; `lippeAnpassen` mit Ende „Falte“ legt c eine halbe Spanne hinter das
   Linienende. Ein 190-MB-HTML bricht `html-shot` (`setContent`): Netze auf den Ausschnitt zuschneiden (`zuschnitt` in
   `p2-bogen.ts`, 87 MB gehen). Deckung einer Musterbibliothek messen, bevor man Ganzzahlen sucht (Fünfecke 16 %).
+
+- **P2 Tag 5 „Lippe am Kontrollpolygon, Dichte, ganze Reihe“ (04.11., `stuecknetz.ts`, `lippe.ts`):** Innere Punkte nie an
+  Abtastpunkten einer Linie aufhängen, wenn der Käfig dort Kontrollpunkte einer Falte trägt — die liegen h²κ/6 neben der Kurve (am
+  J-Haken 1,2 px, am Mundwinkel c′ = 1,5c − 0,5U 2,8 px) und kreuzen dünne Reihen; Lippe zuerst anpassen, dann die Lage. Stationen
+  auf der gezeichneten Linie legen, nicht auf dem feinen Schlitz-Zickzack (0,7 px Drift). Der γ = 4-Krümmungsparameter des Kernrings
+  gewichtet schon die Körperkrümmung dreifach — als Dichte mit Spanne ≤ h verdoppelt er m. Tutte eines Musters in einer nicht
+  konvexen Ebene (LSCM) klappt um oder legt Punkte außerhalb — beides prüfen, sonst liegt der gehobene Punkt neben der Haut
+  (Langhals 7 → 28°). Python-Patches: nach jedem `replace` die Indizes neu suchen (ein stehengebliebener Index hat die Datei
+  zerstört, Reparatur aus `git show HEAD:`). zsh: `echo ====` expandiert `=wort` zu einem Pfad — quoten. vitest zeigt console.log
+  bestandener Tests nur mit `--reporter=verbose`; die Reihe läuft mit `npx vitest run --config vitest.extrem.config.ts <datei>`.

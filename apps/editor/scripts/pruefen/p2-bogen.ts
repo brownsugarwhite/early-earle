@@ -143,7 +143,7 @@ for (const [art, anfang, form] of faelle) {
   console.log(text.replace(/<[^>]+>/g, ''));
 }
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:10px;font:12px -apple-system,Helvetica,sans-serif;background:#f4efe6}.k{margin:0 0 12px 0}canvas{background:#fff;border:1px solid #d8cfc0;margin-right:4px}h1{font-size:15px;margin:0 0 6px}</style></head><body>
-<h1>P2 Tag 4 — Stücknetz im Maulfeld (K${stufe}, Maul zu) · Abnahme offen · ${new Date().toISOString().slice(0, 10)}</h1><div style="margin-bottom:6px">je Fall: A0 (ohne Maul) · Kernring · Stücknetz · Wärmebild |Stücknetz − A0| (grün ≤ 0,25 px, gelb ≤ 0,5, orange ≤ 1, rot darüber; blau = Lippenband) · Zebra auf dem Stücknetz · dünn blau: gezeichnete Linie</div>
+<h1>P2 Tag 5 — Stücknetz im Maulfeld (K${stufe}, Maul zu) · Abnahme offen · ${new Date().toISOString().slice(0, 10)}</h1><div style="margin-bottom:6px">je Fall: A0 (ohne Maul) · Kernring · Stücknetz · Wärmebild |Stücknetz − A0| (grün ≤ 0,25 px, gelb ≤ 0,5, orange ≤ 1, rot darüber; blau = Lippenband) · Zebra auf dem Stücknetz · dünn blau: gezeichnete Linie</div>
 ${texte.map((t, i) => `<div class="k"><div>${t}</div>${daten[i] ? ['a', 'k', 'b', 'c', 'd'].map((x) => `<canvas id="${x}${i}" width="290" height="260"></canvas>`).join('') : ''}</div>`).join('')}
 <script>
 const D = ${JSON.stringify(daten)};

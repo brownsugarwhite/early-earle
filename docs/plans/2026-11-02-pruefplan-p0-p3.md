@@ -1075,3 +1075,81 @@ Stücks (LSCM/ARAP mit freiem Rand) statt Tutte auf das Vieleck — dann sind di
 Budget-Entscheidung (kleineres Feld, Dichte nur an der Lippe, oder K1 mit Genauigkeitsverlust — das ist eine Look-/Spiel-
 Entscheidung, keine Regel); Tasche, Rachen und Öffnen auf dem Stücknetz; Zahnfleischreihe; Stabilität ±2 px; die ganze Reihe
 (54 Fälle).
+
+## P2 — Stand Tag 5 „Formtreue Lage, Lippe am Kontrollpolygon, ganze Reihe“ (04.11.2026, gebaut; Abnahme offen)
+
+Florian: „Ja, mach das formtreue Abflachen gegen die zwei Falten, dann die ganze Reihe.“ Kern `kern/einsatz/stuecknetz.ts`,
+`lippe.ts` (Dichte der Lippenstationen), `muster.ts` (Untergrenze je Seite); Tests `stuecknetz.test.ts` (3 grün, 3 `it.fails`),
+**ganze Reihe** `stuecknetz.extrem.ts` (`pnpm --filter @ee/shape test:extrem`; 3 grün, 1 `it.fails`), Messreihe `p2-stuecknetz.ts`,
+Bogen `p2-bogen.ts` → `docs/progress/editor/p2-stuecknetz-tag5-2026-11-04.jpg`, Diagnosen `p2-ebenen.ts` (Ebene je Stück mit
+Musterzellen) und `p2-lippe.ts` (Lippe je Station: Spanne, Drehung, Kontrollpunkt gegen Ziel).
+
+**1. Formtreues Abflachen (LSCM, freier Rand, zwei Punkte fest) — gebaut, aber nicht der Hebel.** In beiden Faltenfällen ist das
+Stück nicht konvex (Robbe: der Hals des J-Hakens, Birne: der S-Bogen), und Tuttes Lage des Musters klappt in der konformen Ebene um
+(Robbe 48 Zellen, 78 Punkte außerhalb; Birne 12 / 22) → Rückfall aufs Vieleck, die Falten blieben. Am Langhals rutschten Musterpunkte
+aus der konformen Fläche (Mundwinkel 7,4 → 27,6°). Stand: konform, wenn faltenfrei und alle Punkte innen, sonst das Vieleck —
+gemessen nützt es an Rex (Haut 0,26 → 0,19 px) und schadet nirgends mehr.
+
+**2. Die gemessene Ursache der Falten (Station für Station, `p2-lippe.ts`):** Das Muster hängte seine Reihen an Abtastpunkten der
+Linie auf; der Käfig trägt an der Lippe aber das **Kontrollpolygon der Falte** (A6), und das liegt am J-Haken der Robbe 1,2 px
+neben der Linie (58° Drehung je Station), am Mundwinkel 2,8 px (c′ = 1,5·c − 0,5·U_{m−1}, gewollt), dazu 0,5–0,7 px Drift längs,
+weil die Stationen nach gleichen Bogenlängen des feinen Schlitz-Zickzacks lagen statt auf der Linie. Im 0,4 px hohen Keil kreuzte
+das Polygon die erste Reihe. **Umbau (keine Regel, eine Reihenfolge):** die Lippe wird vor der Lage der inneren Punkte angepasst,
+die Reihen hängen am Kontrollpolygon (Kontrollpunkte auf das Stück projiziert, `naechsterImDreieck`). Birne S faltenfrei
+(178,7 → 4,2°), Langhals 7,4 → 5,0°.
+
+**3. Stationen der Lippe nach Dichte auf der gezeichneten Linie** (`lippenDichte`): Abstand höchstens h, höchstens √(6ε/κ) — das
+Kontrollpolygon einer Falte liegt ≈ h²κ/6 neben der Kurve, ε = Haut-Tor 0,25 px — und höchstens die **örtliche Merkmalsgröße**
+(Abstand zur nächsten anderen Linie, die Sizing-Regel der Netzgeneratoren; eine Linie, die an die Lippe stößt, zählt nur im Keil
+unter 45°, Ruppert; Boden h/4). Daraus die Untergrenze der Kantenzahl der Lippenseite in den Ganzzahlen (`mindestJeKante`). Lippe
+0,02–0,13 px (vorher 0,03–0,26), Mundwinkel 10 von 10 (vorher 8). Verworfen (gemessen): der γ = 4-Krümmungsparameter des Kernrings
+mit Spanne ≤ h hielt alle Tore der zehn Fälle, verdoppelte aber m und die Flächen (er gewichtet schon die Körperkrümmung dreifach);
+gleichmäßig 0,75 h und 0,5 h (Robbe hoch J faltet weiter, Rex-Knick 23°/19°).
+
+**Stand der zehn Fälle (K2; S = Stücknetz, K = Kernring, Flächen = Einsatz beide Hälften):**
+
+| Fall | m | Flächen S / K | Haut max px S / K | Mundwinkel S / K (A0) | Knick frei S (A0) | Lippe px |
+|---|---|---|---|---|---|---|
+| Rex mittel gerade | 34 | 1 814 / 5 081 | 0,19 / 0,13 | 1,2 / 1,0 (1,2) | 32,3 (27,1) | 0,13 |
+| Rex mittel J | 37 | 1 828 / 4 628 | 0,23 / 0,14 | 2,4 / 1,8 (2,0) | 28,9 (27,1) | 0,11 |
+| Robbe hoch gerade | 24 | 1 290 / 3 809 | 0,44 / 0,21 | 2,1 / 1,6 (1,9) | 7,8 (13,9) | 0,05 |
+| Robbe hoch J | 26 | 1 220 / 4 185 | 0,62 / 0,20 | 1,3 / 1,2 (1,1) | 179,2 Falte (13,9) | 0,10 |
+| Rex tief J | 49 | 3 686 / 6 980 | 0,10 / 0,05 | 4,9 / 4,1 (3,3) | 11,2 (11,2) | 0,03 |
+| Robbe tief J | 33 | 2 168 / 5 416 | 0,11 / 0,08 | 1,6 / 2,3 (2,2) | 11,2 (11,2) | 0,07 |
+| Kugel mittel J | 37 | 2 208 / 7 165 | 0,06 / 0,05 | 2,9 / 1,2 (1,3) | 2,9 (1,6) | 0,04 |
+| Ei tief J | 38 | 2 392 / 5 912 | 0,07 / 0,06 | 3,0 / 1,5 (1,4) | 3,0 (2,2) | 0,03 |
+| Langhals hoch J | 9 | 578 / 1 609 | 0,06 / 0,06 | 4,8 / 3,7 (3,5) | 5,0 (3,9) | 0,09 |
+| Birne mittel S | 38 | 2 606 / 5 064 | 0,08 / 0,08 | 1,6 / 1,2 (1,3) | 4,2 (1,6) | 0,02 |
+
+Tore der zehn: bauen (Käfig geschlossen, außen bitgleich, Lippe ≤ 1 px) 10 von 10; Karte faltenfrei 9 von 10; Haut ≤ 0,25 px
+8 von 10 (Robbe hoch gerade 0,44, Robbe hoch J 0,62); Mundwinkel ≤ A0 + 2° 10 von 10 (vorher 8); Knick frei ≤ A0 + 2° 7 von 10
+(vorher 5: Rex mittel gerade 32,3 gegen 27,1, Robbe hoch J Falte, Birne 4,2 gegen 3,6). Flächen unverändert ≈ ein Drittel des Kernrings.
+
+**4. Ganze Reihe** (6 Körper × 3 Anfänge × 3 Formen, 43 ausgeglichene Fälle, dieselben Tore und dieselbe Messung wie
+`kernring.extrem.ts`): **bauen 43 von 43** (Käfig geschlossen, außen bitgleich, Spiegel bitgenau), **Mundwinkel-Tor 43 von 43**
+(Kernring 43), **Haut-Tor 32 von 43** (Kernring 41); Flächen des Einsatzes Median 2 098, höchstens 3 686; Bau + Lösen Median
+1,0 s, höchstens 5,1 s; 4 Pole je Feld (8 mit Falte von A0). Verfehlt: (a) Knicke von 3,7–7,6° auf glatten Körpern mit A0 1,6° — Kugel hoch
+gerade 3,8, Kugel mittel S 3,7, Birne hoch S 7,6, Birne mittel gerade 4,2, Birne mittel S 4,2, Birne tief gerade 7,1 (sichtbar?
+Florians Bogen entscheidet; Ursache nicht gemessen — Vermutung: die Speichen des Dreieckmusters laufen quer zur Krümmung, der
+Kernring hat dort Reihen längs); (b) Rex mittel gerade 32,3° an der Falte von A0 (Kernring 29,6, A0 27,1); (c) Robbe hoch gerade
+0,44, mittel gerade 0,58, mittel J 0,56 px — die Reihen, die am Linienanfang in den Keil zwischen Lippe und Naht laufen (mit
+dichteren Stationen am Anfang 0,16–0,19, aber nur durch Zufall der Kantenzahlen); (d) Robbe hoch J: Falte (unten).
+
+**Befund Robbe hoch J (strukturell, beide Bauweisen):** Der J-Haken kommt der Kopfnaht auf 2,3 px nahe und schnürt das Stück in
+einen Anfangslappen und den Rest (`p2-ebenen.ts`: die konforme Ebene zeigt den Hals). Das Dreieckmuster hat genau einen Pol, und
+seine Lage auf den Seiten folgt allein den Kantenzahlen (Seite i = r_{i−1} + r_{i+1}) — hier 11 Kanten vom Linienanfang, genau im
+Hals; dort laufen 13 Reihen und die Speiche hindurch, die Zellen um den Pol sind 0,1–0,9 px² und klappen um (im Vieleck wie in der
+konformen Ebene). Der Kernring hat an derselben Stelle seit E2.6 denselben offenen Fall. Weg (keine Regel, Strukturarbeit): ein
+Schnitt am Hals — die Schnittmaschine von Tag 1 (`spur`/`schneiden`) kann ihn legen —, danach ein Dreieck (Anfangslappen) und ein
+ungleiches Viereck, das in unserer Musterbibliothek nur zur Hälfte gedeckt ist (Takayamas bzw. Tarinis Paare fehlen). Das ist der
+erste konkrete Bedarf für mehr Muster; nach Tag 5 nicht mehr angefangen.
+
+**Regeln gezählt (Tag 5):** keine neue Regel, die einen Körper oder eine Lage nennt. Drei Maße der Netzerzeugung: ε = Haut-Tor,
+Keil < 45° (Ruppert), Auflösungsboden h/4. Der Umbau „Lippe zuerst, Reihen am Kontrollpolygon“ ist eine Reihenfolge, die
+Merkmalsgröße die Standardregel jedes Netzgenerators.
+
+**Nächster Schritt:** Florians Blick auf den Bogen (`p2-stuecknetz-tag5-2026-11-04.jpg`). Die fünf Tage von P2 sind um; nach dem
+Prüfplan folgt die Bilanz: Prinzip (Linien → Stücke → Ganzzahlen → Muster → ein Löser) trägt — 43 von 43 bauen, Mundwinkel
+43 von 43, ein Drittel der Flächen, vier Pole je Feld, keine Lageregel —, die Genauigkeit liegt bei Haut 32 von 43 gegen 41 des
+Kernrings mit seinen 20 Schaltern. Offen für die Entscheidung: Budget (K2 ≈ 1 200–3 700 Flächen gegen Tor 300), Knicke auf glatten
+Körpern (a), Keil der Robbe (c), Hals-Schnitt (d), dann Tasche/Rachen/Öffnen, Zahnfleischreihe, Stabilität ±2 px.

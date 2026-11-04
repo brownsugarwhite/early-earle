@@ -229,20 +229,22 @@ export function musterFlaechen(s: readonly number[], w: MusterWahl): number {
 }
 
 /**
- * Kantenzahlen je kanonischer Seite: Feldrand fest, freie Seiten nach der Dichte h (Länge / h, mindestens `mindest`). Dann je
+ * Kantenzahlen je kanonischer Seite: Feldrand fest, freie Seiten nach der Dichte h (Länge / h, mindestens `mindest` bzw. die
+ * Untergrenze der Seite in `mindestJeKante`). Dann je
  * Polygon die notwendigen Bedingungen jedes Vierecksnetzes: keine Seite so lang wie alle anderen zusammen (sonst wachsen die
  * freien Seiten des Polygons im Verhältnis ihrer Längen, bis zwei Kanten Luft sind) und gerade Summe (sonst eine Kante mehr auf
  * der längsten freien Seite); zuletzt, wo die Muster trotzdem nicht reichen, ein kleiner Abstieg mit ±1/±2 an den freien
  * Seiten des Polygons (nur die betroffenen Polygone werden neu geprüft).
  */
-export function anzahlenWaehlen(kanten: Map<string, Kante>, polygone: Polygon[], h: number, mindest = 1, maxSchritte = 60): GanzzahlenErgebnis {
+export function anzahlenWaehlen(kanten: Map<string, Kante>, polygone: Polygon[], h: number, mindest = 1, maxSchritte = 60, mindestJeKante?: ReadonlyMap<string, number>): GanzzahlenErgebnis {
+  const untergrenze = (id: string) => Math.max(mindest, mindestJeKante?.get(id) ?? 0);
   const anzahl = new Map<string, number>();
   const ziel = new Map<string, number>();
   for (const k of kanten.values()) {
     const fest = anzahlFest(k);
     if (fest !== null) anzahl.set(k.id, fest);
     else {
-      const z = Math.max(mindest, Math.round(k.laenge / h));
+      const z = Math.max(untergrenze(k.id), Math.round(k.laenge / h));
       ziel.set(k.id, z);
       anzahl.set(k.id, z);
     }
@@ -313,7 +315,7 @@ export function anzahlenWaehlen(kanten: Map<string, Kante>, polygone: Polygon[],
       const betroffen = polygoneAn.get(teil.kante)!;
       for (const delta of [1, -1, 2, -2, 3, -3]) {
         const neu = alt + delta;
-        if (neu < mindest) continue;
+        if (neu < untergrenze(teil.kante)) continue;
         anzahl.set(teil.kante, neu);
         const o = vorher - betroffen.filter((q) => offen.includes(q)).length + betroffen.filter((q) => !musterWahl(zahlenVon(q))).length;
         const abw = abweichung();
