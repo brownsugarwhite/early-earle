@@ -478,6 +478,14 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Spitze von A0 (Nase) auf der Naht, deren Schärfe um 1 px sprang → Spitzen auf der Naht sind Knoten der Nahtlinie. **Ganze Reihe
   41 von 43 wie der Kernring, dieselben zwei offenen Fälle** (Rex mittel gerade 0,27 px, Robbe hoch J Falte). Keine Fallregel.
   Nächster Schritt nach Florians Wort: Tag 2 (Schnitt an Engstellen + Paare) oder Ersatz des Kernrings.
+- **2026-11-04 mittags: Käfig-Arbeit angehalten.** Florian (maximal verunsichert) holte in der Session „3D mesh workflow
+  simplification“ eine Zweitmeinung: Seine Vision ist „Form zuerst“ — die Ansichten zeigen dasselbe Netz (keine Widersprüche),
+  so rund wie möglich, Loops mit Dicke = Härte, so viele Polygone wie nötig, fürs Spiel backen. Die Wurzel unserer Regelflut:
+  Käfig als einzige Wahrheit (13.10.) und Käfig = Spielnetz (02.11.) → Topologie vor der Form. Alle vier Käfig-Wege sind dieselbe
+  Reihenfolge; das Stücknetz ist nur die eleganteste Lösung innerhalb davon. Beweis „Form zuerst“ (drei Tage, eigener Arbeitsbaum)
+  läuft dort; Kriterien und Messinstrumente von hier geschickt (Übergabe). **Hier nichts weiterbauen, bis der Beweis entschieden
+  ist.** Lehre: „Der Käfig ist die Wahrheit“ war eine Entscheidung ohne Test; Florians Sculptris-Frage (16.10.) wurde mit
+  Argumenten statt Messung abgewiesen.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

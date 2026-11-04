@@ -1,4 +1,4 @@
-# Übergabe (Stand 04.11.2026: P2 „Stücknetz im Maulfeld“ — Option B, Tag 1: Haut-Tor 41 von 43 erreicht (wie der Kernring, dieselben zwei offenen Fälle), ohne Fallregel; Tag 2 (Schnitt an Engstellen, Robbe hoch J) nach Florians Wort; Abnahme offen)
+# Übergabe (Stand 04.11.2026: Käfig-Arbeit angehalten — Florian lässt in der Session „3D mesh workflow simplification“ den Beweis „Form zuerst“ (dichtes Netz aus den Ansichten, Linien als Kanten, fürs Spiel backen) prüfen; P2 Stücknetz steht bei 41 von 43 wie der Kernring; nichts weiterbauen, bis der Beweis entschieden ist)
 
 Branch `claude/editor-grundlayout`, PR mit Auto-Fix. **Diese Datei ist der Einstieg für eine frische Sitzung.** Der Kernring
 bleibt eingefroren; alles Neue liegt hinter Schaltern (`stufen`, `umrissPlan`), ohne Schalter bitgleich.
@@ -319,6 +319,23 @@ Stücknetz mit 236–704 Flächen und 0,18–0,25 px an den runden Körpern in R
 das Abbruchkriterium des Prüfplans. **Vorlage:** B (Empfehlung) zwei Tage für zwei Strukturstücke — Knick-Ursache, Schnitt an
 Engstellen mit Dreier-Fünfer-Paaren — mit dem Tor Haut ≥ 41 von 43, sonst A; A nach dem Buchstaben (Kernring bleibt); Budget
 getrennt (Maul auf K1, kleineres Feld prüfen). **Nächster Schritt: Florians Entscheidung.** Bis dahin nichts bauen.
+
+## 04.11. mittags: Käfig-Arbeit angehalten — Beweis „Form zuerst“ in einer anderen Session
+
+Florian (verunsichert, Zweitmeinung in der Session „3D mesh workflow simplification“): Seine Vision war immer „Form zuerst“ —
+die Halbansichten zeigen dasselbe Netz (also keine Widersprüche), die Form wird so rund wie möglich, gezeichnete Loops geben
+mit ihrer Dicke die Kantigkeit, so viele Polygone wie nötig wie bei ZBrush/Sculptris, fürs Spiel wird gebacken; Outlines auch
+per Shader. Die Zweitmeinung benennt die Wurzel unserer Regelflut: Käfig als einzige Wahrheit (13.10.) und Käfig = Spielnetz
+(02.11.) → Topologie vor der Form, automatische Retopologie live. Meine Einschätzung (Florian zugestimmt): Das trifft. Alle
+vier Käfig-Wege (Röhre, Schleifen-Käfig, Kernring, Stücknetz) sind dieselbe Reihenfolge; das Stücknetz ist die eleganteste
+Lösung innerhalb des Käfig-Wegs, der Käfig-Weg selbst wahrscheinlich nicht der richtige. Die Recherche vom 16.10. („Sculptris
+oder Käfig? Nein“) war Argument, keine Messung. **Hier wird nichts weitergebaut (kein Hals-Schnitt, kein Ersatz des
+Kernrings), bis der Beweis entschieden ist.** Ich habe der anderen Session die geschärften Kriterien (die Fehlfälle des Käfigs:
+Mehrteiler Front/Top ≤ 2 px, Kegel/Stift-Würfel/Vase aus der Kugel, Umriss-Tor Stufe 1 beim Backen, Maul offen mit Mundwinkel
+an Robbe hoch J, Rex mittel gerade, Tigerkopf; Regeln gezählt) und die Messinstrumente (Prüfkörper, Extremreihe, Umrissplan,
+Δ je Blatt, Spielstufe, Bögen, Extrem-Tests, alte implizite Pipeline in `packages/creature`) geschickt. Was so oder so bleibt:
+Umrissplan, Messreihe und Bögen, Posen als Knochen + Blendshape, Look, Editor-Oberfläche. Gedächtnis:
+`feedback-florian-form-zuerst-dicht`.
 
 ## 04.11.: Option B, Tag 1 — Knicke und Robbe gemessen und behoben, Tor erreicht
 
