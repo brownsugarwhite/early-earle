@@ -14,8 +14,11 @@ export type BreitenPunkt = { laengs: number; quer: number; ecke?: boolean };
 /** Umriss einer Ansicht als halbe Breite auf einem gleichmäßigen Raster längs der gemeinsamen Achse (ab r0, Schritt dr). */
 export type Ansichtsbreite = { r0: number; dr: number; breite: Float64Array };
 
-/** Streckung der Tiefe: Faktor a je Rasterspalte (x), b je Rasterzeile (y). */
-export type Tiefenstreckung = { a: Float64Array; b: Float64Array; x0: number; y0: number; d: number };
+/**
+ * Streckung der Tiefe: Faktor a je Rasterspalte (x), b je Rasterzeile (y); dazu wahlweise ein Feld je Rasterpunkt (nx × ny,
+ * Probe „Linien auf der Form“), das mit a · b multipliziert wird.
+ */
+export type Tiefenstreckung = { a: Float64Array; b: Float64Array; x0: number; y0: number; d: number; feld?: { s: Float64Array; nx: number; ny: number } };
 
 /** Das ganze Profil (beide Hälften) als geschlossener Umriss: x = längs (a0 … a1, Welt-Einheiten), y = quer. */
 export function profilUmriss(p: readonly BreitenPunkt[], a0: number, a1: number): UmrissPunkt[] {
@@ -190,14 +193,67 @@ function kubisch(f: Float64Array, u: number, aus: [number, number]): void {
   aus[1] = 0.5 * (c1 + 2 * c2 * t + 3 * c3 * t * t);
 }
 
-/** Streckung der Tiefe an der Stelle (x, y) der Seite (ohne Front und Top: 1). */
-export function streckungBei(s: Tiefenstreckung | null, x: number, y: number): number {
-  if (!s) return 1;
+/** Catmull-Rom durch vier Werte: Wert und Ableitung bei t ∈ [0, 1] zwischen p1 und p2. */
+function cr(p0: number, p1: number, p2: number, p3: number, t: number, aus: [number, number]): void {
+  const c1 = -p0 + p2;
+  const c2 = 2 * p0 - 5 * p1 + 4 * p2 - p3;
+  const c3 = -p0 + 3 * p1 - 3 * p2 + p3;
+  aus[0] = 0.5 * (2 * p1 + c1 * t + c2 * t * t + c3 * t * t * t);
+  aus[1] = 0.5 * (c1 + 2 * c2 * t + 3 * c3 * t * t);
+}
+
+/** Feld bikubisch an (u, v) in Rasterschritten: Wert, Ableitung nach u und nach v. */
+function feldBei(f: { s: Float64Array; nx: number; ny: number }, u: number, v: number, aus: [number, number, number]): void {
+  const uu = Math.max(0, Math.min(f.nx - 1, u));
+  const vv = Math.max(0, Math.min(f.ny - 1, v));
+  const i = Math.min(f.nx - 2, Math.floor(uu));
+  const j = Math.min(f.ny - 2, Math.floor(vv));
+  const t = uu - i;
+  const s = vv - j;
+  const w = (a: number, b: number) => f.s[Math.max(0, Math.min(f.ny - 1, b)) * f.nx + Math.max(0, Math.min(f.nx - 1, a))]!;
+  const r: [number, number] = [0, 0];
+  const werte = [0, 0, 0, 0];
+  const ableitungen = [0, 0, 0, 0];
+  for (let k = 0; k < 4; k++) {
+    const jj = j - 1 + k;
+    cr(w(i - 1, jj), w(i, jj), w(i + 1, jj), w(i + 2, jj), t, r);
+    werte[k] = r[0];
+    ableitungen[k] = r[1];
+  }
+  cr(werte[0]!, werte[1]!, werte[2]!, werte[3]!, s, r);
+  aus[0] = r[0];
+  aus[2] = r[1];
+  cr(ableitungen[0]!, ableitungen[1]!, ableitungen[2]!, ableitungen[3]!, s, r);
+  aus[1] = r[0];
+}
+
+/** Faktor f und seine Ableitungen fₓ, f_y (je Welteinheit) an (x, y). */
+function faktorBei(s: Tiefenstreckung, x: number, y: number, aus: [number, number, number]): void {
   const A: [number, number] = [0, 0];
   const B: [number, number] = [0, 0];
   kubisch(s.a, (x - s.x0) / s.d, A);
   kubisch(s.b, (y - s.y0) / s.d, B);
-  return A[0] * B[0];
+  let f = A[0] * B[0];
+  let fx = (A[1] / s.d) * B[0];
+  let fy = (A[0] * B[1]) / s.d;
+  if (s.feld) {
+    const F: [number, number, number] = [1, 0, 0];
+    feldBei(s.feld, (x - s.x0) / s.d, (y - s.y0) / s.d, F);
+    fx = fx * F[0] + (f * F[1]) / s.d;
+    fy = fy * F[0] + (f * F[2]) / s.d;
+    f *= F[0];
+  }
+  aus[0] = f;
+  aus[1] = fx;
+  aus[2] = fy;
+}
+
+/** Streckung der Tiefe an der Stelle (x, y) der Seite (ohne Front und Top: 1). */
+export function streckungBei(s: Tiefenstreckung | null, x: number, y: number): number {
+  if (!s) return 1;
+  const F: [number, number, number] = [1, 0, 0];
+  faktorBei(s, x, y, F);
+  return F[0];
 }
 
 /**
@@ -205,19 +261,15 @@ export function streckungBei(s: Tiefenstreckung | null, x: number, y: number): n
  * n → (nx − sₓ z / s · nz, ny − s_y z / s · nz, nz / s).
  */
 export function tiefeAnwenden(pos: Float32Array, nor: Float32Array | null, s: Tiefenstreckung): void {
-  const A: [number, number] = [0, 0];
-  const B: [number, number] = [0, 0];
+  const F: [number, number, number] = [1, 0, 0];
   for (let v = 0; v < pos.length / 3; v++) {
     const x = pos[3 * v]!;
     const y = pos[3 * v + 1]!;
     const z = pos[3 * v + 2]!;
-    kubisch(s.a, (x - s.x0) / s.d, A);
-    kubisch(s.b, (y - s.y0) / s.d, B);
-    const f = A[0] * B[0];
+    faktorBei(s, x, y, F);
+    const [f, fx, fy] = F;
     pos[3 * v + 2] = f * z;
     if (!nor) continue;
-    const fx = (A[1] / s.d) * B[0];
-    const fy = (A[0] * B[1]) / s.d;
     const nz = nor[3 * v + 2]!;
     const mx = nor[3 * v]! - ((fx * z) / f) * nz;
     const my = nor[3 * v + 1]! - ((fy * z) / f) * nz;

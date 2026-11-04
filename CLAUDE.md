@@ -617,6 +617,37 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   langen Stücken liegen die Proben bis zur halben Probenweite auseinander → falsche Läufe, 53 neue Punkte statt 0), sondern zur
   dicht abgetasteten Linie (`kurvenLinie`); Marching Squares mit dem Inneren links, jeden Fall einzeln herleiten; je Runde nur
   einen Lauf ersetzen (danach gelten die Nummern nicht mehr).
+- **2026-11-04 (abends): Florians Modell und die Probe dazu (`form.html?linien`)** (Florian nach `?netz`: „… die echten
+  Bearbeitungspunkte sollten auf den weichen bzw. harten Kanten liegen … Es geht irgendwie wieder darum, aus drei Formen eine
+  Form zu erzwingen“; nachgestellt: selbst die führende Front blieb 66 Einheiten neben dem Mesh → drei gezeichnete Flächen sind
+  der falsche Ausgangspunkt; dann: „Bau eine Probe nach meinem Modell …“).
+  - **Das Modell:** eine Form, Linien auf ihr als Griffe, der Umriss nur Shader.
+  - **Volumen:** Die Seite legt es an wie bisher.
+  - **Umriss anfassen:** In Front oder Top wird die Linie, wo die Form von dort am breitesten ist, eine Raumlinie mit wenigen
+    Punkten (Kugel: 3).
+  - **Raumlinien:** Punkte im Raum; die Seite bewegt x/y, die Front y/z, das Top x/z. Gespeichert ist die Hälfte z ≥ 0, die
+    Enden liegen auf dem Umriss der Seite und gehen mit ihm.
+  - **Knoten:** Kreuzungen in der Seite werden gemeinsame Punkte.
+  - **Form:** z = s(x, y) · √g. An den Linien ist s = z / √g, dazwischen ein nach Abstand gewichtetes Mittel, das zwischen
+    den Linienwerten bleibt.
+  - **Code:** `dicht/raumlinien.ts`; Option `raumlinien` in `rundAusSeite` (Kern), `Tiefenstreckung.feld` für die Streckung je
+    Rasterpunkt (bikubisch, Normalen über die inverse transponierte Ableitung), `DichtesNetz.kontur` (wo am breitesten, Tiefe je
+    Stelle).
+  - **Mit der Maus gemessen:** Kugel → Ellipsoid (Front 150 → 210, Seite bleibt); Top vorn schmaler mit Knoten; Seite höher,
+    die Linien bleiben; Birne in der Front über die Spiegelhälfte; ⌘Z exakt; Bau ≈ 150 ms.
+  - **Verworfen (gemessen):** dünne Platte (Überschwingen an Spitzen auf das Doppelte, Kippen quer zu einer Achse); Strecken je
+    Kugel (Startkugel nur gleichmäßig, keine Birne); 16 Punkte je angelegter Linie (ein Zug machte eine Spitze).
+  - **Offen:** Volumen aus Front/Top zeichnen, Linien über den Seitenumriss hinaus (die Seite ist noch keine Linie wie die
+    anderen), Härte der Raumlinien als Kante, rundere Füllung zwischen weit entfernten Linien (Front-Linie allein: schmaler
+    Buckel im Top), kleine Nasen am Umriss.
+  - **Bericht und Prüfung:** Nachträge in `docs/research/2026-11-04-linien-aus-dem-netz.md`, Bilder
+    `docs/progress/editor/form-linien-*-2026-11-04.jpg`, Prüfung `scripts/pruefen/form-linien-probe.mjs`, Test
+    `dicht/raumlinien.test.ts`.
+  - **Fallen:**
+    - Wer auf der Spiegelhälfte zieht, braucht den Betrag der Tiefe (mit `max(0, q)` kniff der Punkt die Form bei z = 0 ein).
+    - Enden einer angelegten Linie nicht eine feste Zelle weiter setzen, sondern aus z² verlängern; sonst braucht ein Kreis acht
+      statt drei Punkte.
+    - Ein gewichtetes Mittel braucht zusammengefasste Proben je Zelle; doppelte Proben verschieben die Gewichte.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

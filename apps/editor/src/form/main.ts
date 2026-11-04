@@ -15,7 +15,9 @@ import {
   type GleichesNetz,
   type Kante3D,
   type KantenLinie,
+  type Kontur,
   type Nachfuehrung,
+  type RaumLinie,
   PRUEFFAELLE,
   PRUEFFAELLE_HALB,
   type Prueffall,
@@ -29,11 +31,17 @@ import {
   linienAbstand,
   profilAusBreite,
   punktAufStueck,
+  punktSetzen,
+  raumAbtasten,
+  raumKanten,
   rundAusSeite,
   streckungBei,
+  tiefeAusKontur,
   umrissAbtasten,
+  umrissLinie,
   umrissStuecke,
   umrisseDesKoerpers,
+  verbinden,
 } from '@ee/shape/dicht';
 import {
   BackSide,
@@ -74,6 +82,8 @@ type Zustand = {
   front: UmrissPunkt[] | null;
   top: UmrissPunkt[] | null;
   ansichten: Ansichten | null;
+  /** Linien im Raum (`?linien`): Hälfte z ≥ 0, Anfang und Ende auf dem Umriss der Seite */
+  raum: RaumLinie[];
 };
 type Blatt = 'front' | 'top';
 
@@ -94,6 +104,8 @@ declare global {
       netz: boolean;
       /** zuletzt nachgeführte Ansichten: neue und behaltene Punkte, Restabstand */
       nachgefuehrt: Partial<Record<'seite' | 'front' | 'top', Omit<Nachfuehrung, 'punkte'>>>;
+      /** Linien auf der Form (`?linien`) */
+      raum: RaumLinie[];
     };
     /** Prüfhaken: eine Zeichnung setzen (wie ein Zug, mit Rückgängig) */
     __formSetzen?: (p: UmrissPunkt[], linien?: KantenLinie[], front?: UmrissPunkt[] | null, top?: UmrissPunkt[] | null) => void;
@@ -122,6 +134,13 @@ const BREITE_NEU = 2;
  * bleiben, wo die Linie noch auf ihm liegt.
  */
 const NETZ = new URLSearchParams(location.search).has('netz');
+/**
+ * Probe „Linien auf der Form“ (04.11., `?linien`, Florians Modell): eine Form, Linien auf ihr als Griffe, die Ansichten zeigen
+ * sie. Front und Top sind keine Zeichenflächen; der Umriss ist nur Shader. Wer ihn in Front oder Top anfasst, legt dort eine
+ * Linie auf die Form (Raumlinie) und zieht sie; die Form ist die rundeste Fläche durch alle Linien. Die Seite legt das Volumen
+ * an wie bisher.
+ */
+const LINIEN = new URLSearchParams(location.search).has('linien');
 
 const kreis = (r: number): UmrissPunkt[] => [
   { x: r, y: 0 },
@@ -145,7 +164,7 @@ const profilSvg: Record<Blatt, SVGSVGElement> = {
 
 // ---------- Zustand ----------
 
-let zustand: Zustand = { punkte: kreis(150), linien: [], front: null, top: null, ansichten: null };
+let zustand: Zustand = { punkte: kreis(150), linien: [], front: null, top: null, ansichten: null, raum: [] };
 /** Probe „Linien aus dem Netz“: die Ansicht, die Florian gerade bearbeitet (bis zum genauen Bau nach dem Loslassen) */
 let fuehrung: 'seite' | Blatt | null = null;
 const fuehrt = (b: 'seite' | Blatt): void => {
@@ -160,6 +179,8 @@ type Auswahl =
   | { art: 'linie'; l: number }
   | { art: 'lpunkt'; l: number; i: number }
   | { art: 'profil'; blatt: Blatt; i: number }
+  | { art: 'raum'; l: number }
+  | { art: 'rpunkt'; l: number; i: number }
   | null;
 let auswahl: Auswahl = null;
 const zurueck: Zustand[] = [];
@@ -177,6 +198,7 @@ const kopie = (z: Zustand): Zustand => ({
         top: z.ansichten.top.map((u) => u.map((q) => ({ ...q }))),
       }
     : null,
+  raum: z.raum.map((l) => ({ ...l, punkte: l.punkte.map((q) => ({ ...q })) })),
 });
 function merken(stand: Zustand): void {
   zurueck.push(stand);
@@ -290,10 +312,15 @@ const koerper = new Mesh(new BufferGeometry(), koerperMaterial);
 const umriss = new Mesh(koerper.geometry, umrissMaterial);
 const kanten = new Mesh(new BufferGeometry(), kanteSichtbar);
 const kantenHinten = new Mesh(kanten.geometry, kanteVerdeckt);
+// Linien auf der Form (`?linien`): in allen vier Ansichten, sichtbar schwarz, verdeckt blass
+const raumBand = new Mesh(new BufferGeometry(), kanteSichtbar);
+const raumBandHinten = new Mesh(raumBand.geometry, kanteVerdeckt);
 umriss.renderOrder = 1;
 kanten.renderOrder = 2;
 kantenHinten.renderOrder = 3;
-szene.add(koerper, umriss, kanten, kantenHinten);
+raumBand.renderOrder = 2;
+raumBandHinten.renderOrder = 3;
+szene.add(koerper, umriss, kanten, kantenHinten, raumBand, raumBandHinten);
 const sonne = new DirectionalLight(0xffffff, 2.4);
 sonne.position.set(0.9, 1.4, 1.1);
 szene.add(sonne, new HemisphereLight(0xfff6e8, 0x9c8a74, 1.1));
@@ -359,6 +386,13 @@ function geometrieSetzen(n: DichtesNetz): void {
   kanten.geometry = k;
   kantenHinten.geometry = k;
   altK.dispose();
+  // Linien auf der Form, auf die Fläche gelegt (Tiefe der Form an ihrer Stelle in der Seite)
+  const kontur = n.kontur;
+  const r = kantenGeometrie(LINIEN ? raumKanten(zustand.raum, 2, kontur ? (x, y) => tiefeAusKontur(kontur, x, y) : undefined) : []);
+  const altR = raumBand.geometry;
+  raumBand.geometry = r;
+  raumBandHinten.geometry = r;
+  altR.dispose();
 }
 
 /** Bänder der Linien: je Strecke ein Viereck, die Breite setzt der Shader in Pixeln. */
@@ -409,6 +443,8 @@ function kantenGeometrie(liste: readonly Kante3D[]): BufferGeometry {
   return g;
 }
 
+/** aus dem letzten Bau: wo der Körper von vorn und oben am breitesten ist, Tiefe je Stelle (`?linien`: Umriss anfassen) */
+let letzteKontur: Kontur | null = null;
 /** aus dem letzten Bau: Streckung der Tiefe, Tiefe der Linienpunkte, Linien im Raum (für Front und Top) */
 let letzteTiefe: DichtesNetz['tiefe'] = null;
 let letzteLinienZ: Float64Array[] = [];
@@ -513,7 +549,11 @@ function bauen(fein: boolean): void {
   let n: DichtesNetz;
   abgeleitet.front = null;
   abgeleitet.top = null;
-  if (zustand.ansichten) {
+  if (LINIEN) {
+    // Florians Modell: die Seite legt das Volumen an, die Linien auf der Form formen es (Front und Top nur Ansicht)
+    raumEndenAufUmriss();
+    n = rundAusSeite(zustand.punkte, { dreiecke: fein ? DREIECKE_FEIN : DREIECKE_ZUG, linien: zustand.linien, raumlinien: zustand.raum });
+  } else if (zustand.ansichten) {
     gleich = gleichBauen(zustand.ansichten, fein);
     n = gleich.n;
   } else if (!zustand.front && !zustand.top) {
@@ -554,6 +594,7 @@ function bauen(fein: boolean): void {
   }
   const ms = performance.now() - t0;
   letztesGleich = gleich?.g ?? null;
+  letzteKontur = n.kontur ?? null;
   geometrieSetzen(n);
   if (fein && !kameraBewegt) einrahmen();
   letzteTiefe = n.tiefe;
@@ -574,8 +615,43 @@ function bauen(fein: boolean): void {
     ellipsoide: gleich?.ellipsoide ?? null,
     netz: NETZ,
     nachgefuehrt: letzteNachfuehrung,
+    raum: k.raum,
   };
   neuZeichnen = true;
+}
+
+/**
+ * Anfang und Ende einer Raumlinie liegen auf dem Umriss der Seite (dort treffen sich die Linie und der Umriss); zieht Florian
+ * die Seite, gehen sie mit auf den nächsten Punkt des Umrisses.
+ */
+function raumEndenAufUmriss(): void {
+  if (zustand.raum.length === 0) return;
+  const u = umrissAbtasten(zustand.punkte, 2).punkte;
+  const naechster = (x: number, y: number): { x: number; y: number } => {
+    let best = Infinity;
+    let q = { x, y };
+    for (let i = 0; i < u.length; i++) {
+      const a = u[i]!;
+      const b = u[(i + 1) % u.length]!;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const l2 = dx * dx + dy * dy;
+      const t = l2 > 0 ? Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / l2)) : 0;
+      const d = Math.hypot(a.x + t * dx - x, a.y + t * dy - y);
+      if (d < best) {
+        best = d;
+        q = { x: a.x + t * dx, y: a.y + t * dy };
+      }
+    }
+    return q;
+  };
+  for (const l of zustand.raum) {
+    for (const i of [0, l.punkte.length - 1]) {
+      const p = l.punkte[i]!;
+      const q = naechster(p.x, p.y);
+      l.punkte[i] = { ...p, x: q.x, y: q.y, z: 0 };
+    }
+  }
 }
 
 function rendern(): void {
@@ -612,7 +688,7 @@ function rendern(): void {
     // in der Seite sind die gezeichneten Linien selbst zu sehen; der Shader zeichnet Umriss und Linien in den anderen Blättern
     const andere = name !== 'seite';
     // mit gleichwertigen Ansichten zeigt auch die Seite den Umriss des Modells (über der Zeichnung), mit `?netz` immer
-    umriss.visible = andere || zustand.ansichten !== null || NETZ;
+    umriss.visible = andere || zustand.ansichten !== null || NETZ || LINIEN;
     kanten.visible = andere;
     kantenHinten.visible = andere;
     umrissMaterial.uniforms.uAufloesung!.value.set(r.width * dpr, r.height * dpr);
@@ -676,7 +752,7 @@ function svgZeichnen(): void {
   // gleichwertige Ansichten: die Zeichnung farbig, der Umriss des Modells (Shader) schwarz darüber; mit `?netz` zeichnet nur
   // der Shader, die Punkte sind Griffe auf seiner Linie
   svg.append(treffer);
-  if (!NETZ) svg.append(element('path', zustand.ansichten ? 'vorgabe' : 'linie', { d }));
+  if (!NETZ && !LINIEN) svg.append(element('path', zustand.ansichten ? 'vorgabe' : 'linie', { d }));
   for (const u of zustand.ansichten?.seite ?? []) svg.append(element('path', 'vorgabe', { d: umrissPfad(u, (q) => [q.x, -q.y]) }));
   const rp = 5 / s;
   // gezeichnete Linien: Trefferband, Strich, Punkte der gewählten Linie
@@ -701,6 +777,7 @@ function svgZeichnen(): void {
   if (zug?.art === 'zeichnen' && zug.spur.length > 1) {
     svg.append(element('path', 'entwurf', { d: zug.spur.map((q, i) => `${i ? 'L' : 'M'} ${q.x} ${-q.y}`).join(' ') }));
   }
+  if (LINIEN) raumZeichnen(svg, 'seite');
   zustand.punkte.forEach((p, i) => {
     const an = auswahl?.art === 'umriss' && auswahl.i === i;
     const e = p.ecke
@@ -795,6 +872,14 @@ function linienEcke(l: number, i: number): void {
 /** Strichdicke der Auswahl ändern (ganze Linie oder ein Punkt). */
 function breiteSetzen(f: (b: number) => number): void {
   if (!auswahl || auswahl.art === 'umriss' || auswahl.art === 'profil') return;
+  if (auswahl.art === 'raum' || auswahl.art === 'rpunkt') {
+    // Linie auf der Form: Strich der ganzen Linie (die Form selbst bleibt noch rund, gezeichnet wird er wie bei den Kanten)
+    merken(kopie(zustand));
+    const r = zustand.raum[auswahl.l]!;
+    r.breite = Math.max(0, Math.min(BREITE_MAX, f(r.breite)));
+    geaendert();
+    return;
+  }
   merken(kopie(zustand));
   const l = zustand.linien[auswahl.l]!;
   const a = auswahl;
@@ -804,6 +889,8 @@ function breiteSetzen(f: (b: number) => number): void {
 
 type Zug =
   | { art: 'umriss'; i: number; vorher: Zustand; bewegt: boolean }
+  // Punkt einer Linie auf der Form (`?linien`); die Seite bewegt x und y
+  | { art: 'raum'; l: number; i: number; vorher: Zustand; bewegt: boolean }
   // zEnde: Tiefe des Punkts zu Beginn (gestreckt, wie Front und Top sie zeigen); die Seite bewegt nur x und y
   | { art: 'lpunkt'; l: number; i: number; vorher: Zustand; bewegt: boolean; zEnde: number | null }
   | { art: 'zeichnen'; spur: { x: number; y: number }[]; vorher: Zustand };
@@ -829,6 +916,23 @@ svg.addEventListener('pointerdown', (e) => {
       return;
     }
     zug = { art: 'umriss', i, vorher: kopie(zustand), bewegt: false };
+  } else if (d.rpunkt !== undefined) {
+    const [l, i] = d.rpunkt.split(':').map(Number) as [number, number];
+    auswahl = { art: 'rpunkt', l, i };
+    if (doppelklick(`r${l}:${i}`) || e.altKey) {
+      raumEcke(l, i);
+      return;
+    }
+    zug = { art: 'raum', l, i, vorher: kopie(zustand), bewegt: false };
+  } else if (d.raum !== undefined) {
+    // Klick auf eine Linie auf der Form: dort ein neuer Punkt, gleich ziehen
+    const l = Number(d.raum);
+    const vorher = kopie(zustand);
+    const i = raumEinfuegen(l, 'seite', ...blattPunkt('seite', e));
+    merken(vorher);
+    auswahl = { art: 'rpunkt', l, i };
+    zug = { art: 'raum', l, i, vorher: kopie(zustand), bewegt: true };
+    bauGewuenscht = 'fein';
   } else if (d.lpunkt !== undefined) {
     const [l, i] = d.lpunkt.split(':').map(Number) as [number, number];
     auswahl = { art: 'lpunkt', l, i };
@@ -878,6 +982,10 @@ svg.addEventListener('pointermove', (e) => {
     const p = zustand.punkte[zug.i]!;
     zustand.punkte[zug.i] = { ...p, x: w.x, y: w.y };
     koppeln('seite', zug.i);
+  } else if (zug.art === 'raum') {
+    // die Seite bewegt x und y, die Tiefe bleibt; ein Knoten zieht die andere Linie mit
+    const p = zustand.raum[zug.l]!.punkte[zug.i]!;
+    punktSetzen(zustand.raum, zug.l, zug.i, { x: w.x, y: w.y, z: p.z });
   } else {
     const l = zustand.linien[zug.l]!;
     const p = l.punkte[zug.i]!;
@@ -1021,6 +1129,118 @@ function profilStelle(b: Blatt, [l, q]: [number, number]): { i: number; l: numbe
   return st;
 }
 
+/** Raumpunkt → Blatt (SVG, y nach unten): Seite (x, −y), Front (z, −y), Top (x, z). */
+const raumImBlatt = (b: 'seite' | Blatt, p: { x: number; y: number; z: number }): [number, number] =>
+  b === 'seite' ? [p.x, -p.y] : b === 'front' ? [p.z, -p.y] : [p.x, p.z];
+
+/**
+ * Linien auf der Form in einem Blatt (`?linien`): Trefferband (in Front und Top auch die Spiegelhälfte), die Punkte der Hälfte
+ * z ≥ 0 — auch verdeckte, sie sind greifbar. Anfang und Ende liegen auf dem Umriss der Seite und gehen mit ihm.
+ */
+function raumZeichnen(el: SVGSVGElement, b: 'seite' | Blatt): void {
+  const rp = 5 / skala();
+  zustand.raum.forEach((l, li) => {
+    const { p } = raumAbtasten(l, 2);
+    const haelften = b === 'seite' ? [p] : [p, p.map((q) => ({ ...q, z: -q.z }))];
+    for (const h of haelften) {
+      const t = element('path', 'treffer-kante', { d: h.map((q, i) => `${i ? 'L' : 'M'} ${raumImBlatt(b, q).join(' ')}`).join(' ') });
+      t.dataset.raum = String(li);
+      el.append(t);
+    }
+    const gewaehlt = (auswahl?.art === 'raum' || auswahl?.art === 'rpunkt') && auswahl.l === li;
+    l.punkte.forEach((q, i) => {
+      const [x, y] = raumImBlatt(b, q);
+      const ende = i === 0 || i === l.punkte.length - 1;
+      const an = gewaehlt && (auswahl?.art === 'raum' || (auswahl?.art === 'rpunkt' && auswahl.i === i));
+      const klasse = `rpunkt${an ? ' gewaehlt' : ''}${ende ? ' ende' : ''}${q.knoten !== undefined ? ' knoten' : ''}`;
+      const r = ende ? 0.55 * rp : 0.85 * rp;
+      const e = q.ecke ? element('rect', klasse, { x: x - r, y: y - r, width: 2 * r, height: 2 * r }) : element('circle', klasse, { cx: x, cy: y, r });
+      if (!ende) e.dataset.rpunkt = `${li}:${i}`;
+      el.append(e);
+    });
+  });
+}
+
+/** Zeiger → Koordinaten eines Blatts (SVG, Ursprung in der Mitte, y nach unten). */
+const blattPunkt = (b: 'seite' | Blatt, e: { clientX: number; clientY: number }): [number, number] => {
+  const r = felder[b].getBoundingClientRect();
+  const s = skala();
+  return [(e.clientX - r.left - r.width / 2) / s, (e.clientY - r.top - r.height / 2) / s];
+};
+
+/**
+ * Ein Punkt auf Linie l an der Stelle, die dem Zeiger im Blatt am nächsten liegt (in Front und Top zählt auch die Spiegelhälfte);
+ * liegt dort schon ein Punkt, wird er genommen. Gibt seine Nummer zurück.
+ */
+function raumEinfuegen(l: number, b: 'seite' | Blatt, sx: number, sy: number): number {
+  const linie = zustand.raum[l]!;
+  const { p, stueck } = raumAbtasten(linie, 1);
+  let best = Infinity;
+  let bi = 0;
+  p.forEach((q, i) => {
+    for (const z of b === 'seite' ? [q.z] : [q.z, -q.z]) {
+      const [x, y] = raumImBlatt(b, { ...q, z });
+      const d = Math.hypot(x - sx, y - sy);
+      if (d < best) {
+        best = d;
+        bi = i;
+      }
+    }
+  });
+  const q = p[bi]!;
+  const [qx, qy] = raumImBlatt(b, q);
+  const nah = 6 / skala();
+  const vorhanden = linie.punkte.findIndex((r, i) => {
+    if (i === 0 || i === linie.punkte.length - 1) return false;
+    const [rx, ry] = raumImBlatt(b, r);
+    return Math.hypot(rx - qx, ry - qy) < nah;
+  });
+  if (vorhanden >= 0) return vorhanden;
+  const k = Math.min(stueck[bi]!, linie.punkte.length - 2);
+  linie.punkte.splice(k + 1, 0, { x: q.x, y: q.y, z: q.z });
+  return k + 1;
+}
+
+function raumEcke(l: number, i: number): void {
+  merken(kopie(zustand));
+  const p = zustand.raum[l]!.punkte[i]!;
+  zustand.raum[l]!.punkte[i] = { ...p, ecke: !p.ecke };
+  geaendert();
+}
+
+/** Liegt der Zeiger in Front oder Top auf dem Umriss des Körpers (8 px)? */
+function umrissNah(b: Blatt, e: { clientX: number; clientY: number }): boolean {
+  const k = letzteKontur;
+  if (!k) return false;
+  const [lg, q] = profilWelt(b, e);
+  const qa = Math.abs(q);
+  const tol = 8 / skala();
+  if (b === 'front') {
+    for (let j = 0; j < k.ny; j++) if (k.frontZ[j]! > 0 && Math.hypot(k.frontZ[j]! - qa, k.y0 + j * k.d - lg) < tol) return true;
+  } else {
+    for (let i = 0; i < k.nx; i++) if (k.topZ[i]! > 0 && Math.hypot(k.topZ[i]! - qa, k.x0 + i * k.d - lg) < tol) return true;
+  }
+  return false;
+}
+
+/**
+ * Den Umriss in Front oder Top angefasst: Die Linie, die er auf der Form zeigt (wo der Körper von dort gesehen am breitesten
+ * ist), wird eine Raumlinie; wo sie eine andere kreuzt, teilen beide einen Punkt. Gibt Linie und Punkt unter dem Zeiger zurück.
+ */
+function umrissAnfassen(b: Blatt, e: { clientX: number; clientY: number }): { l: number; i: number } | null {
+  const k = letzteKontur;
+  if (!k) return null;
+  // auf etwa 3 Einheiten genau: wenige Punkte zum Greifen (Punkte auf einem Kreis geben einen Kreis)
+  const linie = umrissLinie(k, b, 3);
+  if (!linie) return null;
+  let n = 0;
+  for (const l of zustand.raum) for (const p of l.punkte) n = Math.max(n, p.knoten ?? 0);
+  for (const alt of zustand.raum) verbinden(linie, alt, () => ++n, 3 * k.d);
+  zustand.raum.push(linie);
+  const l = zustand.raum.length - 1;
+  return { l, i: raumEinfuegen(l, b, ...blattPunkt(b, e)) };
+}
+
 function profilZeichnen(b: Blatt): void {
   const el = profilSvg[b];
   const r = felder[b].getBoundingClientRect();
@@ -1034,18 +1254,21 @@ function profilZeichnen(b: Blatt): void {
     for (const u of zustand.ansichten[b]) el.append(element('path', 'vorgabe', { d: umrissPfad(u, (q) => (b === 'front' ? [q.x, -q.y] : [q.x, q.y])) }));
     return;
   }
-  const halb = profilVon(b);
-  if (!halb || halb.length < 2) return;
+  // `?linien`: Front und Top sind keine Zeichenflächen, nur die Linien auf der Form und ihre Punkte
+  const halb = LINIEN ? null : profilVon(b);
+  if (!LINIEN && (!halb || halb.length < 2)) return;
   const pt = (q: { x: number; y: number }) => zuBlatt(b, ...laengsQuer(b, q)).join(' ');
-  const stuecke = umrissStuecke(ganz(b, halb));
+  const stuecke = halb ? umrissStuecke(ganz(b, halb)) : [];
   const pfad = (von: number, bis: number): string => {
     let d = `M ${pt(stuecke[von]![0])}`;
     for (let k = von; k < bis; k++) d += ` C ${pt(stuecke[k]![1])} ${pt(stuecke[k]![2])} ${pt(stuecke[k]![3])}`;
     return d;
   };
-  const treffer = element('path', 'treffer', { d: `${pfad(0, stuecke.length)} Z` });
-  treffer.dataset.profil = b;
-  el.append(treffer);
+  if (halb) {
+    const treffer = element('path', 'treffer', { d: `${pfad(0, stuecke.length)} Z` });
+    treffer.dataset.profil = b;
+    el.append(treffer);
+  }
   // gezeichnete Linien: ein Trefferband für jede, beide Seiten (die Linien selbst zeichnet der Shader)
   for (const k of letzteKanten) {
     let dk = '';
@@ -1059,15 +1282,16 @@ function profilZeichnen(b: Blatt): void {
   }
   // gezeichnet: die Hälfte als Linie, die Spiegelhälfte leiser; folgt die Ansicht noch dem Körper, zeigt der Shader den Umriss
   // und hier stehen nur die Punkte
-  if (zustand[b] && !NETZ) {
+  if (halb && zustand[b] && !NETZ) {
     el.append(element('path', 'spiegel', { d: pfad(halb.length - 1, stuecke.length) }));
     el.append(element('path', 'linie', { d: pfad(0, halb.length - 1) }));
   }
   const rp = 5 / s;
-  halb.forEach((q, i) => {
+  if (LINIEN) raumZeichnen(el, b);
+  halb?.forEach((q, i, alle) => {
     const [x, y] = zuBlatt(b, ...laengsQuer(b, q));
     // Anfang und Ende liegen auf der Mittelachse und gleiten nur auf ihr
-    const achsig = i === 0 || i === halb.length - 1;
+    const achsig = i === 0 || i === alle.length - 1;
     const an = auswahl?.art === 'profil' && auswahl.blatt === b && auswahl.i === i;
     const klasse = `punkt${an ? ' gewaehlt' : ''}${achsig ? ' achse' : ''}`;
     const rr = achsig ? 0.8 * rp : rp;
@@ -1109,14 +1333,42 @@ function profileZeichnen(): void {
 let profilZug: { blatt: Blatt; i: number; vorher: Zustand; bewegt: boolean } | null = null;
 // Linienpunkt in Front oder Top ziehen: die Front bewegt nur y und z, das Top nur x und z
 let linienZug: { blatt: Blatt; l: number; i: number; vorher: Zustand; bewegt: boolean } | null = null;
+// Punkt einer Linie auf der Form (`?linien`) in Front oder Top ziehen: die Front bewegt y und z, das Top x und z
+let raumZug: { blatt: Blatt; l: number; i: number; vorher: Zustand; bewegt: boolean } | null = null;
 for (const b of ['front', 'top'] as const) {
   const el = profilSvg[b];
   el.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
-    if (!profilVon(b) || zustand.ansichten) return;
+    if ((!LINIEN && !profilVon(b)) || zustand.ansichten) return;
     const d = (e.target as SVGElement).dataset;
     const vorher = kopie(zustand);
-    if (d.lpunkt !== undefined) {
+    if (d.rpunkt !== undefined) {
+      const [l, i] = d.rpunkt.split(':').map(Number) as [number, number];
+      auswahl = { art: 'rpunkt', l, i };
+      if (doppelklick(`${b}r${l}:${i}`) || e.altKey) {
+        raumEcke(l, i);
+        return;
+      }
+      raumZug = { blatt: b, l, i, vorher, bewegt: false };
+      svgZeichnen();
+      profileZeichnen();
+    } else if (d.raum !== undefined) {
+      // Klick auf eine Linie auf der Form: dort ein neuer Punkt, gleich ziehen
+      const l = Number(d.raum);
+      const i = raumEinfuegen(l, b, ...blattPunkt(b, e));
+      merken(vorher);
+      auswahl = { art: 'rpunkt', l, i };
+      raumZug = { blatt: b, l, i, vorher: kopie(zustand), bewegt: true };
+      geaendert(false);
+    } else if (LINIEN && d.lpunkt === undefined && d.kante === undefined && umrissNah(b, e)) {
+      // den Umriss angefasst: dort eine Linie auf die Form legen (die Linie, die der Umriss zeigt) und ihren Punkt ziehen
+      const neu = umrissAnfassen(b, e);
+      if (!neu) return;
+      merken(vorher);
+      auswahl = { art: 'rpunkt', l: neu.l, i: neu.i };
+      raumZug = { blatt: b, l: neu.l, i: neu.i, vorher: kopie(zustand), bewegt: true };
+      geaendert(false);
+    } else if (d.lpunkt !== undefined) {
       const [l, i] = d.lpunkt.split(':').map(Number) as [number, number];
       auswahl = { art: 'lpunkt', l, i };
       if (doppelklick(`${b}l${l}:${i}`) || e.altKey) {
@@ -1163,6 +1415,21 @@ for (const b of ['front', 'top'] as const) {
     el.setPointerCapture(e.pointerId);
   });
   el.addEventListener('pointermove', (e) => {
+    if (raumZug && raumZug.blatt === b) {
+      if (!raumZug.bewegt) {
+        merken(raumZug.vorher);
+        raumZug.bewegt = true;
+        letzterKlick = null;
+      }
+      // (längs, quer) = Front: (y, z), Top: (x, z); die dritte Achse bleibt, ein Knoten zieht die andere Linie mit
+      const [a, q] = profilWelt(b, e);
+      const p = zustand.raum[raumZug.l]!.punkte[raumZug.i]!;
+      // auf der Spiegelhälfte gegriffen zieht dieselbe Linie (gespeichert ist die Hälfte z ≥ 0)
+      const z = Math.abs(q);
+      punktSetzen(zustand.raum, raumZug.l, raumZug.i, b === 'front' ? { x: p.x, y: a, z } : { x: a, y: p.y, z });
+      geaendert(false);
+      return;
+    }
     if (linienZug && linienZug.blatt === b) {
       if (!linienZug.bewegt) {
         merken(linienZug.vorher);
@@ -1197,9 +1464,10 @@ for (const b of ['front', 'top'] as const) {
     geaendert(false);
   });
   const ende = (): void => {
-    if (profilZug?.bewegt || linienZug?.bewegt) bauGewuenscht = 'fein';
+    if (profilZug?.bewegt || linienZug?.bewegt || raumZug?.bewegt) bauGewuenscht = 'fein';
     profilZug = null;
     linienZug = null;
+    raumZug = null;
   };
   el.addEventListener('pointerup', ende);
   el.addEventListener('pointercancel', ende);
@@ -1255,6 +1523,15 @@ window.addEventListener('keydown', (e) => {
       merken(kopie(zustand));
       fuehrt(a.blatt);
       profilFesthalten(a.blatt)?.splice(a.i, 1);
+    } else if (a.art === 'rpunkt') {
+      // Linie auf der Form: Anfang und Ende bleiben, mindestens ein Punkt dazwischen
+      const r = zustand.raum[a.l]!;
+      if (a.i === 0 || a.i === r.punkte.length - 1 || r.punkte.length <= 3) return;
+      merken(kopie(zustand));
+      r.punkte = r.punkte.filter((_, j) => j !== a.i);
+    } else if (a.art === 'raum') {
+      merken(kopie(zustand));
+      zustand.raum = zustand.raum.filter((_, j) => j !== a.l);
     } else {
       merken(kopie(zustand));
       const l = zustand.linien[a.l]!;
@@ -1299,7 +1576,7 @@ function schleife(): void {
 
 window.__formSetzen = (p, linien = [], front = null, top = null) => {
   merken(kopie(zustand));
-  zustand = kopie({ punkte: p, linien, front, top, ansichten: null });
+  zustand = kopie({ punkte: p, linien, front, top, ansichten: null, raum: [] });
   auswahl = null;
   geaendert();
 };
@@ -1314,6 +1591,7 @@ window.__formAnsichten = (z) => {
     front: null,
     top: null,
     ansichten: { seite: seite.slice(1), front: kopien(z.front), top: kopien(z.top) },
+    raum: [],
   });
   auswahl = null;
   geaendert();
@@ -1326,7 +1604,7 @@ window.__formPruefall = (name) => {
     return;
   }
   merken(kopie(zustand));
-  zustand = kopie({ punkte: h.seite, linien: [], front: h.front, top: h.top, ansichten: null });
+  zustand = kopie({ punkte: h.seite, linien: [], front: h.front, top: h.top, ansichten: null, raum: [] });
   auswahl = null;
   geaendert();
 };
@@ -1342,6 +1620,17 @@ window.__formAbstand = () => {
   }
   return r;
 };
+if (LINIEN) {
+  const kopf = felder.seite.querySelector('header');
+  if (kopf) kopf.textContent = 'Seite · Linien auf der Form';
+  for (const b of ['front', 'top'] as const) {
+    const fuss = felder[b].querySelector('footer');
+    if (fuss) {
+      fuss.textContent =
+        'Umriss anfassen: Linie auf die Form legen und ziehen · Klick auf eine Linie: neuer Punkt · Doppelklick: Ecke ↔ rund · ⌫ löschen';
+    }
+  }
+}
 if (NETZ) {
   const kopf = felder.seite.querySelector('header');
   if (kopf) kopf.textContent = 'Seite · Linien aus dem Netz';

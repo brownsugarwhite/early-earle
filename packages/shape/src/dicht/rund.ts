@@ -16,6 +16,7 @@ import { type Ansichtsbreite, type BreitenPunkt, type Tiefenstreckung, profilBre
 import { Umrissfeld } from './abstand';
 import { type Kante3D, type KantenLinie, kantenAnwenden } from './kanten';
 import { Kugeln, kugelRadien } from './kugeln';
+import { type Kontur, type RaumLinie, konturAusTiefe, streckungAusLinien } from './raumlinien';
 import { type UmrissPunkt, polygonFlaeche, umrissAbtasten } from './umriss';
 
 export type DichtesNetz = {
@@ -34,6 +35,8 @@ export type DichtesNetz = {
   tiefe: Tiefenstreckung | null;
   /** je Linie: Tiefe ihrer Punkte vor der Streckung (gezogen oder auf dem Körper) */
   linienZ: Float64Array[];
+  /** wo der Körper von vorn und von oben am breitesten ist (Probe „Linien auf der Form“: der Umriss als Linie auf der Form) */
+  kontur?: Kontur;
 };
 
 export type RundOptionen = {
@@ -47,6 +50,8 @@ export type RundOptionen = {
   front?: readonly BreitenPunkt[] | null;
   /** Top als halbes Profil über der Länge der Seite (fehlt: folgt dem runden Körper) */
   top?: readonly BreitenPunkt[] | null;
+  /** Linien im Raum (Probe „Linien auf der Form“): Die Form geht durch sie, dazwischen so rund wie möglich */
+  raumlinien?: readonly RaumLinie[];
 };
 
 /**
@@ -413,7 +418,11 @@ export function rundAusSeite(punkte: readonly UmrissPunkt[], opt: RundOptionen =
   const sollFront = opt.front && opt.front.length >= 2 ? profilBreite(opt.front, yMin, yMax, y0, zelle, ny) : null;
   const sollTop = opt.top && opt.top.length >= 2 ? profilBreite(opt.top, xMin, xMax, x0, zelle, nx) : null;
   const tiefe = tiefeAnpassen(G, nx, ny, x0, y0, zelle, sollFront, sollTop);
-  if (sollFront || sollTop) {
+  // Linien im Raum: die Tiefe so strecken, dass die Form durch sie geht, dazwischen so rund wie möglich
+  const raster = { G, nx, ny, x0, y0, d: zelle };
+  const feld = opt.raumlinien && opt.raumlinien.length > 0 ? streckungAusLinien(raster, opt.raumlinien) : null;
+  if (feld) tiefe.streckung.feld = { s: feld, nx, ny };
+  if (sollFront || sollTop || feld) {
     tiefeAnwenden(positionen, normalen, tiefe.streckung);
     for (const k of kanten) tiefeAnwenden(k.lagen, null, tiefe.streckung);
   }
@@ -422,5 +431,17 @@ export function rundAusSeite(punkte: readonly UmrissPunkt[], opt: RundOptionen =
     top: { r0: x0, dr: zelle, breite: tiefe.top },
     seite: { xMin, xMax, yMin, yMax },
   };
-  return { positionen, normalen, indizes, zelle, umriss: P, kanten, ansichten, tiefe: sollFront || sollTop ? tiefe.streckung : null, linienZ };
+  const gestreckt = sollFront || sollTop || feld;
+  return {
+    positionen,
+    normalen,
+    indizes,
+    zelle,
+    umriss: P,
+    kanten,
+    ansichten,
+    tiefe: gestreckt ? tiefe.streckung : null,
+    linienZ,
+    kontur: konturAusTiefe(raster, feld),
+  };
 }

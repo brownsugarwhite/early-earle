@@ -199,3 +199,55 @@ Was dazu gehört und noch fehlt:
 **Empfehlung (vor dem Nachtrag):** Probier `?netz` an deinen eigenen Wesen aus. Wenn es sich richtig anfühlt, wird es der normale Weg im Fenster.
 Danach kommt, was du siehst: entweder die Form (weiche Übergänge, Ecken) oder die Kanten in gleichwertigen Ansichten samt
 Treffpunkten.
+
+## Nachtrag 2 (04.11. abends): Probe nach Florians Modell (`form.html?linien`)
+
+Florian: „Bau eine Probe nach meinem Modell: Front und Top zeigen nur die Form, bearbeitet wird über Linien auf der Form (auch
+verdeckte), der Umriss ist nur Shader; Anfassen des Umrisses legt dort eine Linie an; die Form ist die rundeste Fläche durch
+alle Linien.“
+
+**So geht es:**
+- **Volumen:** Die Seite legt das Volumen an wie bisher (runde Form aus der Zeichnung). Front und Top sind keine Zeichenflächen
+  mehr, alle Umrisse zeichnet der Shader.
+- **Umriss anfassen:** In Front oder Top wird die Linie, die der Umriss dort auf der Form zeigt (wo sie von dort am breitesten
+  ist), eine Linie auf der Form. Sie bekommt wenige Punkte, an der Kugel drei, und Punkte auf einem Kreis geben einen Kreis.
+  Florian zieht sofort an ihr.
+- **Linien im Raum:** Jeder Punkt ist ein Punkt im Raum; die Seite bewegt x und y, die Front y und z, das Top x und z.
+  Gespeichert ist die Hälfte z ≥ 0, gezogen werden darf auch an der Spiegelhälfte. Anfang und Ende liegen auf dem Umriss der
+  Seite und gehen mit ihm.
+- **Knoten:** Wo sich zwei Linien in der Seite kreuzen, teilen sie einen Punkt (grau). Wer ihn zieht, zieht beide.
+- **Darstellung:** Klick auf eine Linie setzt einen Punkt, Doppelklick macht eine Ecke, ⌫ löscht, ⌘Z nimmt zurück. Die Linien
+  sind in allen vier Ansichten zu sehen, sichtbar schwarz, verdeckt blass. Ihre Punkte sind auch verdeckt greifbar.
+- **Die Form:** z = s(x, y) · √g. An den Linien ist s = z / √g, dazwischen ein glattes, nach Abstand gewichtetes Mittel, das
+  immer zwischen den Werten der Linien bleibt (`dicht/raumlinien.ts`, Option `raumlinien` in `rundAusSeite`, Test
+  `raumlinien.test.ts`).
+
+**Mit der Maus aus der Startkugel** (`scripts/pruefen/form-linien-probe.mjs`, Bilder `docs/progress/editor/form-linien-*`):
+
+| Schritt | Ergebnis |
+|---|---|
+| Front-Umriss rechts angefasst, von 150 auf 210 gezogen | Linie mit 3 Punkten; aus der Kugel wird ein Ellipsoid (Front oval, Seite unverändert) |
+| Top-Umriss vorn angefasst, 60 hinein | zweite Linie, Knoten mit der ersten; vorn schmaler |
+| Seite oben 60 höher | Volumen aus der Seite, die Linien bleiben, ihre Enden gehen mit |
+| Front links unten (Spiegelhälfte) hinaus | unten breiter bis 233, spiegelgleich: Birnenform in der Front |
+| dreimal ⌘Z | genau der Stand davor |
+
+Ein Bau beim Loslassen dauert etwa 150 ms.
+
+**Verworfen (gemessen):**
+- **Dünne Platte (Thin-Plate-Spline)** für die Füllung: Sie schoss an den Spitzen auf das Doppelte und kippte quer zu Linien,
+  die alle auf einer Achse liegen.
+- **Strecken je Kugel des runden Körpers:** Die Querschnitte blieben zwar sicher Kreise, aber die Startkugel konnte sich nur
+  gleichmäßig strecken, eine Birnenform in der Front war unmöglich.
+- **16 Punkte je angelegter Linie:** Ein Zug machte daraus eine Spitze. Die Enden lagen eine feste Zelle neben dem Umriss; jetzt
+  werden sie aus z² verlängert.
+
+**Noch nicht, ehrlich:**
+1. Volumen nur aus der Seite. Ein Bein oder eine Flosse in Front oder Top zu zeichnen fehlt noch.
+2. Linien in Front und Top ändern nur die Tiefe. Über den Umriss der Seite hinaus kann eine Linie die Form nicht ziehen; die
+   Seite bleibt die Zeichnung, die das Volumen anlegt, und ist noch keine Linie wie die anderen.
+3. Die Härte einer Raumlinie ist bisher nur Strich, noch keine Kante. Die Kanten, die in der Seite gezeichnet werden,
+   funktionieren wie bisher.
+4. Die Füllung zwischen weit auseinanderliegenden Linien ist noch nicht die rundeste: Wirkt die Front-Linie allein, macht sie
+   im Top einen schmalen Buckel.
+5. Kleine Nasen am Umriss, wo eine Linie auf ihm einen Punkt hat.

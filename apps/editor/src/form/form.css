@@ -166,6 +166,31 @@ body {
   fill: var(--linie);
 }
 
+/* Linien auf der Form (?linien): Punkte wie die des Umrisses; Knoten (geteilt mit einer anderen Linie) grau gefüllt, Anfang und
+   Ende auf dem Umriss der Seite klein und fest */
+.blatt .rpunkt {
+  fill: var(--papier);
+  stroke: var(--linie);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  cursor: grab;
+}
+
+.blatt .rpunkt.knoten {
+  fill: var(--leise);
+}
+
+.blatt .rpunkt.gewaehlt {
+  fill: var(--linie);
+}
+
+.blatt .rpunkt.ende {
+  fill: var(--linie);
+  stroke: none;
+  cursor: default;
+  pointer-events: none;
+}
+
 /* Enden eines Profils auf der Achse: liegen fest an der Ausdehnung der Seite */
 .blatt .punkt.fest {
   cursor: default;

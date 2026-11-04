@@ -7,6 +7,19 @@ export { type DichtesNetz, type RundOptionen, rundAusSeite } from './rund';
 export { type AnsichtName, type GleichesNetz, type GleichOptionen, type Zeichnung, type Zeichnungen, formAusAnsichten } from './gleich';
 export { ganzerUmriss, PRUEFFAELLE, PRUEFFAELLE_HALB, type Prueffall, type PrueffallHalb } from './prueffaelle';
 export { umrisseDesKoerpers } from './silhouette';
+export {
+  type Kontur,
+  type RaumLinie,
+  type RaumPunkt,
+  kreuzungen,
+  punktSetzen,
+  raumAbtasten,
+  raumKanten,
+  raumStuecke,
+  tiefeAusKontur,
+  umrissLinie,
+  verbinden,
+} from './raumlinien';
 export { type LinienArt, type Nachfuehrung, halbeLinie, linieNachfuehren, linienAbstand, linienStueckeVon } from './folgen';
 export {
   type Ansichtsbreite,
