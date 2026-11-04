@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "editor-web",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["EDITOR_WEB=1", "pnpm", "--filter", "@ee/editor", "exec", "vite", "--port", "5180", "--strictPort"],
+      "port": 5180
+    },
+    {
       "name": "game-dev",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@ee/game", "exec", "vite", "--port", "5173", "--strictPort"],

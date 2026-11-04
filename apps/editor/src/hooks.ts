@@ -1,0 +1,243 @@
+import { useEffect } from 'react';
+import { ansichtUnterMausZuruecksetzen, gewaehltePunkteLoeschen, gewaehltePunkteVerschieben, maximiereUnterMaus, neuesWesen, speichern } from './aktionen';
+import { kantenKnotenLoeschen } from './kanten/KantenEbene';
+import { spantLoeschen } from './spanten/SpantEbene';
+import { rundSpantLoeschen } from './rund/RundSpantEbene';
+import { setzeLayoutZiel } from './layout/animation';
+import { berechneLayout } from './layout/layout';
+import { editorApi } from './library/speicher';
+import { useEditor, vorschauBeenden, vorschauLaeuft } from './state/editorStore';
+import { pinselRing } from './kern/pinsel';
+import { schleifeGrsStarten } from './kern/schleifenGrs';
+import { schleifenStarten } from './kern/schleifenWerkzeug';
+import { abspielenUmschalten } from './posen/ueberblenden';
+import { modalAbbrechen, modalAktiv, modalStarten, proportionalTaste } from './editing/modal/modal';
+import { STUFEN } from './stamm/stufen';
+import { useUi } from './state/uiStore';
+
+/** Fenstergröße + Maximieren → Ziel-Layout (animiert, bei Fenstergröße sofort). */
+export function useLayoutSteuerung() {
+  useEffect(() => {
+    const ziel = (sofort: boolean) => {
+      const { maximiert } = useUi.getState();
+      setzeLayoutZiel(berechneLayout({ breite: window.innerWidth, hoehe: window.innerHeight, maximiert }), sofort);
+    };
+    ziel(true);
+    const groesse = () => ziel(true);
+    window.addEventListener('resize', groesse);
+    const ab = useUi.subscribe((s, v) => {
+      if (s.maximiert !== v.maximiert) ziel(false);
+    });
+    return () => {
+      window.removeEventListener('resize', groesse);
+      ab();
+    };
+  }, []);
+}
+
+/** Grund der Bühne (Plan 9.7) als Attribut am Dokument: CSS-Variablen für Verlauf und Kurvenfarben. */
+export function useGrund() {
+  useEffect(() => {
+    const anwenden = (g: string) => {
+      document.documentElement.dataset.grund = g;
+    };
+    anwenden(useUi.getState().grund);
+    return useUi.subscribe((s, v) => s.grund !== v.grund && anwenden(s.grund));
+  }, []);
+}
+
+const PFEILE: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
+
+/** Regler und Haken behalten nach dem Klick den Fokus: ⌘-Kürzel (⌘Z) wirken dort trotzdem, Pfeiltasten bleiben beim Regler. */
+const KEIN_TEXT = new Set(['range', 'checkbox', 'radio', 'button']);
+const istRegler = (t: EventTarget | null) => t instanceof HTMLInputElement && KEIN_TEXT.has(t.type);
+const istEingabe = (t: EventTarget | null) => (t instanceof HTMLInputElement && !KEIN_TEXT.has(t.type)) || t instanceof HTMLTextAreaElement;
+
+/** Tastenkürzel (wirken auf den Viewport unter der Maus, wie in Blender). */
+export function useTastatur() {
+  useEffect(() => {
+    const taste = (e: KeyboardEvent) => {
+      const ui = useUi.getState();
+      const cmd = e.metaKey || e.ctrlKey;
+      if (e.key === 'Escape') {
+        const modus = useEditor.getState().modus;
+        if (ui.menue) ui.oeffneMenue(null);
+        else if (ui.dialog) ui.oeffneDialog(null);
+        // B7: Esc beendet eine Vorschau (Posenliste, Überblenden, Kieferknopf)
+        else if (vorschauLaeuft(modus)) vorschauBeenden(modus);
+        else if (ui.werkzeug !== 'auswahl') ui.setzeWerkzeug('auswahl');
+        else ui.auswahlLeeren();
+        return;
+      }
+      if (istEingabe(e.target) || ui.dialog) return;
+      if (istRegler(e.target) && !cmd) return;
+      const k = e.key.toLowerCase();
+      // Layout (Plan 9.2): Tab wechselt zwischen „Riss“ (vier Felder) und „Bühne“ (große Bühne)
+      if (e.key === 'Tab' && !cmd && !e.altKey) {
+        e.preventDefault();
+        ui.maximieren('creation');
+        return;
+      }
+      // Stamm (Plan 9.3): ⌘1 … ⌘9, ⌘0 springen zur Stufe (Taste der Stufe)
+      if (cmd && !e.shiftKey && !e.altKey && e.key >= '0' && e.key <= '9') {
+        const st = STUFEN.find((x) => String(x.taste) === e.key);
+        if (st) {
+          e.preventDefault();
+          ui.setzeEbene(st.id);
+        }
+        return;
+      }
+      if (e.ctrlKey && e.code === 'Space') {
+        e.preventDefault();
+        maximiereUnterMaus();
+      } else if (e.shiftKey && !cmd && !e.altKey && e.code === 'Space') {
+        // B7: Überblenden abspielen/anhalten (Pingpong)
+        e.preventDefault();
+        abspielenUmschalten();
+      } else if (cmd && k === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) useEditor.getState().wiederholen();
+        else useEditor.getState().rueckgaengig();
+      } else if (cmd && k === 's') {
+        e.preventDefault();
+        speichern();
+      } else if (cmd && k === 'n') {
+        e.preventDefault();
+        neuesWesen();
+      } else if (cmd && k === 'l') {
+        e.preventDefault();
+        ui.libraryUmschalten();
+      } else if (e.altKey && !cmd && e.code === 'KeyB') {
+        // Pauspapier (Plan 9.8): ⌥B blendet den Bogen aus und ein
+        e.preventDefault();
+        const pp = ui.pauspapier;
+        if (pp) ui.pauspapierAendern({ sichtbar: !pp.sichtbar });
+        else ui.zeigeHinweis('Kein Bogen: PNG auf ein Blatt ziehen oder in der Tafel „Bogen hinlegen“');
+      } else if (cmd && !e.altKey && !e.shiftKey && k === 'r') {
+        // Plan 20.10., V6: ⌘R und ⌃R ziehen Loops ein wie Blenders „Loop Cut and Slide“ (Vorschau, Anzahl mit dem Rad, Gleiten;
+        // `kern/schleifenWerkzeug.ts`). Einen Reifen (Spant) setzt das Werkzeug S mit einem Klick auf den Körper. V0: ⌘R lädt
+        // das Fenster nicht mehr neu (Electron-Menü bzw. Browser); neu laden geht mit ⇧⌘R
+        e.preventDefault();
+        if (!schleifenStarten()) ui.zeigeHinweis('⌘R: Loops in der Stufe Körper (neu laden: ⇧⌘R)');
+      } else if (!cmd && !e.altKey && k === 'q') {
+        // B7 (Entwurf §6): Q / ⇧Q schalten Editor und Posen der Reihe nach durch
+        const ed = useEditor.getState();
+        const ziele = ['editor', ...ed.dok.posen.map((p) => p.id)];
+        const i = Math.max(0, ziele.indexOf(ed.modus));
+        ed.setzeZiel(ziele[(i + (e.shiftKey ? ziele.length - 1 : 1)) % ziele.length]!);
+      } else if (!cmd && !e.altKey && (k === 'a' || k === 'v')) {
+        ui.setzeWerkzeug('auswahl');
+      } else if (!cmd && !e.altKey && k === 'p') {
+        ui.setzeWerkzeug('stift');
+      } else if (!cmd && !e.altKey && !e.shiftKey && k === 's') {
+        // Plan 20.10., V3: S skaliert die Auswahl im Blatt unter dem Zeiger (Blender); ohne Auswahl bleibt S das
+        // Spant-Werkzeug (Klick in Seite oder Top setzt einen Querschnitt), bis V6 die Loops mit ⌘R auch in den Blättern setzt
+        if (!schleifeGrsStarten('s') && !modalStarten('s')) ui.setzeWerkzeug('spant');
+      } else if (!cmd && !e.altKey && !e.shiftKey && k === 'g') {
+        // V3: G greift die Auswahl eines Blatts; ohne Auswahl und auf der Bühne der Pinsel (M3): G ziehen, I aufblasen,
+        // ⇧ beim Ziehen glättet, [ ] Radius
+        if (!schleifeGrsStarten('g') && !modalStarten('g')) ui.setzeWerkzeug('ziehen');
+      } else if (!cmd && !e.altKey && !e.shiftKey && k === 'r') {
+        // V3: R dreht die Auswahl eines Blatts
+        if (!schleifeGrsStarten('r') && !modalStarten('r') && ui.ebene === 'form' && ui.hover !== 'creation')
+          ui.zeigeHinweis(useEditor.getState().modus === 'editor' ? 'R dreht die Auswahl eines Blatts — erst Punkte wählen' : 'G/S/R wirken im Editor-Tab; in der Pose formen Pinsel, Knochen und die schwarze Linie der Seite');
+      } else if (!cmd && e.code === 'KeyO') {
+        // V3: O proportional an/aus, ⇧O Abfall, ⌥O nur verbunden (⌥O tippt „ø“, deshalb über den Tastencode)
+        proportionalTaste(e);
+      } else if (!cmd && !e.altKey && !e.shiftKey && k === 'i') {
+        ui.setzeWerkzeug('aufblasen');
+      } else if (!cmd && (e.key === '[' || e.key === ']')) {
+        // [ ] auch mit ⌥: Auf der deutschen Mac-Tastatur sind sie ⌥5/⌥6 (vorher nie erreichbar); der Ring folgt sofort
+        ui.setzePinselRadius(ui.pinselRadius * (e.key === '[' ? 0.8 : 1.25));
+        pinselRing(0, 0);
+      } else if (!cmd && !e.altKey && e.shiftKey && k === 'w') {
+        // Breitenwerkzeug wie in Illustrator (⇧W): breiter = härtere Kante
+        ui.setzeWerkzeug('breite');
+      } else if (!cmd && !e.altKey && (e.key === '+' || e.key === '=')) {
+        ui.setzeWerkzeug('plus');
+      } else if (!cmd && !e.altKey && (e.key === '-' || e.key === '–')) {
+        ui.setzeWerkzeug('minus');
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        ansichtUnterMausZuruecksetzen();
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        if (!rundSpantLoeschen() && !spantLoeschen() && !kantenKnotenLoeschen()) gewaehltePunkteLoeschen();
+      } else if (!cmd && e.key.startsWith('Arrow')) {
+        // Pfeiltasten verschieben die gewählten Punkte wie in Illustrator, ⇧ = zehnfach
+        e.preventDefault();
+        const r = PFEILE[e.key];
+        if (r) gewaehltePunkteVerschieben(r[0]!, r[1]!, e.shiftKey);
+      }
+    };
+    window.addEventListener('keydown', taste);
+    return () => window.removeEventListener('keydown', taste);
+  }, []);
+}
+
+/**
+ * Web-Modus: Warnung beim Verlassen oder Neuladen mit ungespeicherten Änderungen (Plan 20.10., V0). In Electron nicht —
+ * dort würde ein `beforeunload` das Schließen still blockieren; ⌘R lädt dort ohnehin nicht mehr neu.
+ */
+export function useVerlassenWarnung() {
+  useEffect(() => {
+    if (editorApi) return;
+    const warnen = (e: BeforeUnloadEvent) => {
+      if (!useEditor.getState().geaendert) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warnen);
+    return () => window.removeEventListener('beforeunload', warnen);
+  }, []);
+}
+
+/** App-Menü von Electron → dieselben Befehle wie die Kürzel. */
+export function useMenueBruecke() {
+  useEffect(() => {
+    if (!editorApi) return;
+    return editorApi.aufMenue((befehl) => {
+      const ui = useUi.getState();
+      // V3: ein Menübefehl während G/S/R bricht die Operation zuerst ab (Rückgängig mitten in einer Geste wäre sonst halb)
+      if (modalAktiv()) modalAbbrechen();
+      switch (befehl) {
+        case 'neu':
+          return neuesWesen();
+        case 'speichern':
+          return speichern();
+        case 'rueckgaengig':
+          return useEditor.getState().rueckgaengig();
+        case 'wiederholen':
+          return useEditor.getState().wiederholen();
+        case 'library':
+          return ui.libraryUmschalten();
+        case 'maximieren':
+          return maximiereUnterMaus();
+        case 'ansicht-zuruecksetzen':
+          return ansichtUnterMausZuruecksetzen();
+        case 'werkzeug-auswahl':
+          return ui.setzeWerkzeug('auswahl');
+        case 'werkzeug-stift':
+          return ui.setzeWerkzeug('stift');
+        case 'werkzeug-plus':
+          return ui.setzeWerkzeug('plus');
+        case 'werkzeug-minus':
+          return ui.setzeWerkzeug('minus');
+        case 'werkzeug-breite':
+          return ui.setzeWerkzeug('breite');
+      }
+    });
+  }, []);
+}
+
+/** Ungespeicherte Änderungen im Fenstertitel zeigen (macOS-Konvention: Punkt im Schließknopf). */
+export function useTitel() {
+  useEffect(() => {
+    const setze = () => {
+      const { dok, geaendert } = useEditor.getState();
+      document.title = `${geaendert ? '• ' : ''}${dok.name} – early earle Editor`;
+    };
+    setze();
+    return useEditor.subscribe(setze);
+  }, []);
+}
