@@ -80,6 +80,17 @@ body {
   pointer-events: none;
 }
 
+/* Front und Top: die gespiegelte Hälfte leiser als die gezeichnete */
+.blatt .spiegel {
+  fill: none;
+  stroke: var(--linie);
+  stroke-width: 1.5px;
+  stroke-opacity: 0.35;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
 .blatt .linie {
   fill: none;
   stroke: var(--linie);

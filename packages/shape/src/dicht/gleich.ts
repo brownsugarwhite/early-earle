@@ -433,6 +433,62 @@ function vorderste(L: Float64Array, name: AnsichtName): (u: number, v: number) =
   };
 }
 
+// Richtungen, in denen geprüft wird, ob ein Ellipsoid in einem anderen liegt: Achsen, Flächen- und Raumdiagonalen
+const RICHTUNGEN: readonly (readonly [number, number, number])[] = (() => {
+  const r: [number, number, number][] = [];
+  for (let i = -1; i <= 1; i++) {
+    for (let j = -1; j <= 1; j++) {
+      for (let k = -1; k <= 1; k++) {
+        const l = Math.hypot(i, j, k);
+        if (l > 0) r.push([i / l, j / l, k / l]);
+      }
+    }
+  }
+  return r;
+})();
+
+/**
+ * Ellipsoide, die (bis auf eine Viertelzelle) ganz in einem größeren liegen, tragen nichts zur Vereinigung bei — benachbarte
+ * Kreise einer Zeichnung geben oft fast dasselbe Ellipsoid (an der Kugel dreihundertmal dasselbe).
+ */
+function beschneiden(L: Float64Array, zelle: number): Float64Array {
+  const n = L.length / 6;
+  const ord = Array.from({ length: n }, (_, i) => i).sort(
+    (p, q) => L[6 * q + 3]! * L[6 * q + 4]! * L[6 * q + 5]! - L[6 * p + 3]! * L[6 * p + 4]! * L[6 * p + 5]!,
+  );
+  const tol = 0.25 * zelle;
+  const behalten: number[] = [];
+  for (const i of ord) {
+    const o = 6 * i;
+    let drin = false;
+    for (const j of behalten) {
+      const u = 6 * j;
+      // Hüllquader zuerst
+      let quader = true;
+      for (let k = 0; k < 3 && quader; k++) {
+        if (L[o + k]! - L[o + 3 + k]! < L[u + k]! - L[u + 3 + k]! - tol) quader = false;
+        else if (L[o + k]! + L[o + 3 + k]! > L[u + k]! + L[u + 3 + k]! + tol) quader = false;
+      }
+      if (!quader) continue;
+      drin = true;
+      for (const d of RICHTUNGEN) {
+        const x = L[o]! + L[o + 3]! * d[0];
+        const y = L[o + 1]! + L[o + 4]! * d[1];
+        const z = L[o + 2]! + L[o + 5]! * d[2];
+        if (abstandZu(L, j, x, y, z) < -tol) {
+          drin = false;
+          break;
+        }
+      }
+      if (drin) break;
+    }
+    if (!drin) behalten.push(i);
+  }
+  const aus = new Float64Array(6 * behalten.length);
+  behalten.forEach((i, k) => aus.set(L.subarray(6 * i, 6 * i + 6), 6 * k));
+  return aus;
+}
+
 /** Vorzeichenbehafteter Abstand (genähert, innen positiv) eines Punkts zum Ellipsoid e. */
 function abstandZu(L: Float64Array, e: number, x: number, y: number, z: number): number {
   const o = 6 * e;
@@ -470,7 +526,7 @@ export function formAusAnsichten(z: Zeichnungen, opt: GleichOptionen = {}): Glei
     if (!schnitte[name] || umrisse[name].length < 2) continue;
     ellipsoide[name] += ellipsoideVon(name, umrisse[name], schnitte, zelle, liste, vorderste(fest, name));
   }
-  const L = new Float64Array(liste.w);
+  const L = beschneiden(new Float64Array(liste.w), zelle);
   const { positionen, normalen, indizes } = vernetzen(L, zelle);
   return { positionen, normalen, indizes, zelle, ellipsoide, umrisse, liste: L };
 }

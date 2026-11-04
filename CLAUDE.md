@@ -580,6 +580,23 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Prüfzeichnungen müssen zueinander passen (ein Oval aus vier Punkten wölbt sich über seine Punkte, Front und Top aus der
   gemessenen Ausdehnung bauen). Bilder `docs/progress/editor/form-gleich-{kugel,beine,flossen,lappen,innen}-2026-11-04.jpg`
   (`scripts/pruefen/form-gleich-bild.mjs`). Front und Top sind im Fenster in diesem Modus nur Anzeige (noch nicht zeichenbar).
+- **2026-11-04 (nachts, danach): Front und Top zeichenbar wie die Seite** (Florian: „Mach Front und Top im Fenster zeichenbar wie
+  die Seite (geschlossene Umrisse, gespiegelt), damit ich Beine und Flossen selbst ziehen kann.“). Front und Top sind halbe
+  Umrisse auf der Seite z ≥ 0 (Front rechts, Top unten; Anfang und Ende auf der Mittelachse, sie gleiten nur auf ihr), gespiegelt
+  geschlossen (`ganzerUmriss` im Kern); Punkt ziehen, Klick auf die Linie setzt einen Punkt (auch auf der Spiegelhälfte), Doppelklick
+  Ecke, ⌫, ⌘Z wie in der Seite; die Spiegelhälfte leiser. Unberührt folgt eine Ansicht dem Körper, der erste Griff übernimmt sie.
+  Bau: nur die Seite → der runde Körper samt Linien wie bisher; Front oder Top gezeichnet → alle Ansichten gleichwertig
+  (`formAusAnsichten`), die nicht gezeichnete folgt dem runden Körper aus Seite und gezeichneter Ansicht (Breite je Stelle).
+  Kopplung: Zieht Florian einen Punkt, der in seiner Ansicht ganz außen liegt, folgt in der anderen deren äußerster Punkt — nur
+  wenn es dort genau einen gibt (Höhe Seite ↔ Front, Länge Seite ↔ Top, Breite Front ↔ Top). Kern schneller: Ellipsoide, die in
+  einem größeren liegen, fallen weg (Kugel 300 → 1), Zug 32–51 ms, Loslassen 0,2–0,75 s. Gemessen mit der Maus aus der
+  Startkugel (`scripts/pruefen/form-beine-ziehen.mjs`): zwei Beine in der Seite, eines in der Front → vier runde Beine, nichts
+  dazwischen; Seite oben höher → Front folgt (150 → 190); Top und Front nach außen → Flossen bis 253 (gezeichnet 250); Linien
+  unverändert (Seite → z bleibt 137,6). Offen: Linien formen den Körper noch nicht, sobald Front oder Top gezeichnet sind; mehrere
+  Flächen je Ansicht (innere Konturen) nur über `?fall=innen` zum Ansehen. Fallen: Die Kopplung „äußerster Punkt folgt“ zog bei
+  vier gleich tiefen Füßen ein Bein hoch (deshalb nur bei genau einem); eine Ansicht, die dem Körper folgt, hat ihren untersten
+  Punkt auf der Mittelachse bei den Füßen der Seite — beim Übernehmen erst hinauf an den Bauch ziehen, sonst steht dort ein
+  fünftes Bein. Bilder `docs/progress/editor/form-{beine,flossen}-ziehen-2026-11-04.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

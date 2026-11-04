@@ -4,7 +4,9 @@
 // Ecke), daneben zeigen Front, Top und 3D dasselbe Modell. Deren Umrisse zeichnet ein Shader: die Rückseiten des Körpers, um
 // eine feste Pixelbreite nach außen geschoben. Auf der Form gezeichnete Linien werden Kanten; ihre Strichdicke (0–3 px) ist
 // die Härte, und Front, Top und 3D zeichnen sie mit (sichtbar schwarz, verdeckt blass). Die Linien bleiben, wo sie gezeichnet
-// sind; zieht Florian den Umriss unter eine Linie, wächst die Form zu ihr (Wulst). Keine Regler, keine Chips.
+// sind; zieht Florian den Umriss unter eine Linie, wächst die Form zu ihr (Wulst). Front und Top zeichnet er genauso, als halbe
+// Umrisse (gespiegelt); sobald eine davon gezeichnet ist, sind alle Ansichten gleichwertig (`formAusAnsichten`) — die andere
+// folgt bis zum ersten Griff dem runden Körper. Keine Regler, keine Chips.
 
 import {
   BREITE_MAX,
@@ -13,13 +15,14 @@ import {
   type Kante3D,
   type KantenLinie,
   PRUEFFAELLE,
+  PRUEFFAELLE_HALB,
   type Prueffall,
   type UmrissPunkt,
   type Zeichnungen,
   formAusAnsichten,
+  ganzerUmriss,
   linieAbtasten,
   profilAusBreite,
-  profilUmriss,
   punktAufStueck,
   rundAusSeite,
   streckungBei,
@@ -55,12 +58,15 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
  * Seite neben `punkte`. Solange das fehlt, gilt der bisherige Bau (Seite rund, Front und Top als halbe Profile).
  */
 type Ansichten = { seite: UmrissPunkt[][]; front: UmrissPunkt[][]; top: UmrissPunkt[][] };
-/** Front und Top: halbe Profile über der Ausdehnung der Seite; null = folgt dem runden Körper (noch nicht angefasst) */
+/**
+ * Front und Top: halbe Umrisse auf der Seite z ≥ 0 in den Koordinaten ihres Blatts (Front x = z, y = y; Top x = x, y = z),
+ * Anfang und Ende auf der Mittelachse, gespiegelt geschlossen; null = folgt dem Körper (noch nicht angefasst).
+ */
 type Zustand = {
   punkte: UmrissPunkt[];
   linien: KantenLinie[];
-  front: BreitenPunkt[] | null;
-  top: BreitenPunkt[] | null;
+  front: UmrissPunkt[] | null;
+  top: UmrissPunkt[] | null;
   ansichten: Ansichten | null;
 };
 type Blatt = 'front' | 'top';
@@ -70,8 +76,8 @@ declare global {
     __form?: {
       punkte: UmrissPunkt[];
       linien: KantenLinie[];
-      front: BreitenPunkt[] | null;
-      top: BreitenPunkt[] | null;
+      front: UmrissPunkt[] | null;
+      top: UmrissPunkt[] | null;
       dreiecke: number;
       ms: number;
       zelle: number;
@@ -80,7 +86,7 @@ declare global {
       ellipsoide: Record<'seite' | 'front' | 'top', number> | null;
     };
     /** Prüfhaken: eine Zeichnung setzen (wie ein Zug, mit Rückgängig) */
-    __formSetzen?: (p: UmrissPunkt[], linien?: KantenLinie[], front?: BreitenPunkt[] | null, top?: BreitenPunkt[] | null) => void;
+    __formSetzen?: (p: UmrissPunkt[], linien?: KantenLinie[], front?: UmrissPunkt[] | null, top?: UmrissPunkt[] | null) => void;
     /** Prüfhaken: alle drei Ansichten als geschlossene Umrisse setzen (gleichwertig) */
     __formAnsichten?: (z: Zeichnungen) => void;
     /** Prüfhaken: einen Prüffall laden (Kugel, Beine, Flossen, Lappen) */
@@ -376,8 +382,6 @@ function kantenGeometrie(liste: readonly Kante3D[]): BufferGeometry {
   return g;
 }
 
-/** Umrisse von Front und Top des letzten Baus samt Ausdehnung der Seite; daraus die Profile, solange sie dem Körper folgen */
-let ansichten: DichtesNetz['ansichten'] | null = null;
 /** aus dem letzten Bau: Streckung der Tiefe, Tiefe der Linienpunkte, Linien im Raum (für Front und Top) */
 let letzteTiefe: DichtesNetz['tiefe'] = null;
 let letzteLinienZ: Float64Array[] = [];
@@ -389,7 +393,7 @@ function linienTiefe(l: number, i: number): number | null {
   const z = p.z ?? letzteLinienZ[l]?.[i];
   return z === undefined ? null : z * streckungBei(letzteTiefe, p.x, p.y);
 }
-const abgeleitet: Record<Blatt, BreitenPunkt[] | null> = { front: null, top: null };
+const abgeleitet: Record<Blatt, UmrissPunkt[] | null> = { front: null, top: null };
 
 /** Gleichwertige Ansichten: der Körper aus allen drei Umrissen, als Netz in der Form des runden Baus (noch ohne Linien). */
 function gleichBauen(a: Ansichten, fein: boolean): { n: DichtesNetz; ellipsoide: Record<'seite' | 'front' | 'top', number> } {
@@ -424,29 +428,71 @@ function gleichBauen(a: Ansichten, fein: boolean): { n: DichtesNetz; ellipsoide:
   return { n, ellipsoide: g.ellipsoide };
 }
 
+/**
+ * Breite je Stelle eines gezeichneten halben Umrisses als halbes Profil über [a0, a1] — für den runden Körper, dem die nicht
+ * gezeichnete Ansicht folgt.
+ */
+function breitenAus(b: Blatt, h: readonly UmrissPunkt[], a0: number, a1: number): BreitenPunkt[] {
+  const n = 64;
+  const dr = (a1 - a0) / n;
+  const breite = new Float64Array(n + 1);
+  for (const q of umrissAbtasten(ganz(b, h), Math.max(0.5, dr / 2)).punkte) {
+    const [l, w] = laengsQuer(b, q);
+    const k = Math.round((l - a0) / dr);
+    if (k >= 0 && k <= n) breite[k] = Math.max(breite[k]!, Math.abs(w));
+  }
+  return profilAusBreite({ r0: a0, dr, breite }, a0, a1, 2, 8);
+}
+
+/** Halbes Profil (längs 0…1 über [a0, a1], quer) → halber Umriss: so folgen Front und Top dem Körper, bis Florian sie anfasst. */
+const ausBreiten = (b: Blatt, p: readonly BreitenPunkt[], a0: number, a1: number): UmrissPunkt[] =>
+  p.map((q) => {
+    const pt = halbPunkt(b, a0 + q.laengs * (a1 - a0), q.quer);
+    return q.ecke ? { ...pt, ecke: true } : pt;
+  });
+
 let bauGewuenscht: 'grob' | 'fein' | null = 'fein';
 function bauen(fein: boolean): void {
   const t0 = performance.now();
-  const gleich = zustand.ansichten ? gleichBauen(zustand.ansichten, fein) : null;
-  const n =
-    gleich?.n ??
-    rundAusSeite(zustand.punkte, {
-      dreiecke: fein ? DREIECKE_FEIN : DREIECKE_ZUG,
-      linien: zustand.linien,
-      front: zustand.front,
-      top: zustand.top,
-    });
+  let gleich: ReturnType<typeof gleichBauen> | null = null;
+  let n: DichtesNetz;
+  abgeleitet.front = null;
+  abgeleitet.top = null;
+  if (zustand.ansichten) {
+    gleich = gleichBauen(zustand.ansichten, fein);
+    n = gleich.n;
+  } else if (!zustand.front && !zustand.top) {
+    // nur die Seite: der runde Körper samt Linien; Front und Top folgen ihm
+    n = rundAusSeite(zustand.punkte, { dreiecke: fein ? DREIECKE_FEIN : DREIECKE_ZUG, linien: zustand.linien });
+    const s = n.ansichten.seite;
+    // auf etwa 2 px genau, höchstens 6 Punkte: wenige Punkte zum Greifen statt einer Perlenkette
+    abgeleitet.front = ausBreiten('front', profilAusBreite(n.ansichten.front, s.yMin, s.yMax, 3), s.yMin, s.yMax);
+    abgeleitet.top = ausBreiten('top', profilAusBreite(n.ansichten.top, s.xMin, s.xMax, 3), s.xMin, s.xMax);
+  } else {
+    // alle Ansichten gleichwertig; die nicht gezeichnete folgt dem runden Körper aus der Seite und der gezeichneten
+    let front = zustand.front;
+    let top = zustand.top;
+    if (!front || !top) {
+      const sx = ausdehnung(zustand.punkte, 'x');
+      const sy = ausdehnung(zustand.punkte, 'y');
+      const r = rundAusSeite(zustand.punkte, {
+        dreiecke: DREIECKE_ZUG,
+        front: front ? breitenAus('front', front, sy.lo, sy.hi) : null,
+        top: top ? breitenAus('top', top, sx.lo, sx.hi) : null,
+      });
+      const s = r.ansichten.seite;
+      if (!front) front = abgeleitet.front = ausBreiten('front', profilAusBreite(r.ansichten.front, s.yMin, s.yMax, 3), s.yMin, s.yMax);
+      if (!top) top = abgeleitet.top = ausBreiten('top', profilAusBreite(r.ansichten.top, s.xMin, s.xMax, 3), s.xMin, s.xMax);
+    }
+    gleich = gleichBauen({ seite: [], front: [ganz('front', front)], top: [ganz('top', top)] }, fein);
+    n = gleich.n;
+  }
   const ms = performance.now() - t0;
   geometrieSetzen(n);
   if (fein && !kameraBewegt) einrahmen();
-  ansichten = n.ansichten;
   letzteTiefe = n.tiefe;
   letzteLinienZ = n.linienZ;
   letzteKanten = n.kanten;
-  const s = n.ansichten.seite;
-  // auf etwa 2 px genau, höchstens 6 Punkte: wenige Punkte zum Greifen statt einer Perlenkette
-  abgeleitet.front = gleich ? null : profilAusBreite(n.ansichten.front, s.yMin, s.yMax, 3);
-  abgeleitet.top = gleich ? null : profilAusBreite(n.ansichten.top, s.xMin, s.xMax, 3);
   profileZeichnen();
   svgZeichnen();
   const k = kopie(zustand);
@@ -759,6 +805,7 @@ svg.addEventListener('pointermove', (e) => {
   if (zug.art === 'umriss') {
     const p = zustand.punkte[zug.i]!;
     zustand.punkte[zug.i] = { ...p, x: w.x, y: w.y };
+    koppeln('seite', zug.i);
   } else {
     const l = zustand.linien[zug.l]!;
     const p = l.punkte[zug.i]!;
@@ -793,19 +840,25 @@ svg.addEventListener('pointerup', zugEnde);
 svg.addEventListener('pointercancel', zugEnde);
 
 // ---------- Front und Top ----------
-// Halbe Profile (spiegelgleich zur Mittelebene) über der Ausdehnung der Seite: Front über der Höhe, Top über der Länge. Solange
-// Florian ein Profil nicht anfasst, folgt es dem Körper (nur Punkte auf dem Umriss des Shaders); der erste Griff übernimmt es.
+// Halbe Umrisse auf der Seite z ≥ 0 (Front rechts, Top unten), gespiegelt geschlossen. Florian setzt und zieht Punkte wie in
+// der Seite; Anfang und Ende gleiten auf der Mittelachse. Solange er eine Ansicht nicht anfasst, folgt sie dem Körper (nur
+// Punkte auf dem Umriss des Shaders); der erste Griff übernimmt sie.
 
-/** Achse eines Profils in Welt-Einheiten, aus dem letzten Bau */
-const achse = (b: Blatt): [number, number] | null => {
-  if (!ansichten) return null;
-  const s = ansichten.seite;
-  return b === 'front' ? [s.yMin, s.yMax] : [s.xMin, s.xMax];
-};
 /** (längs, quer) → Blatt (SVG, y nach unten): Front zeigt z nach rechts und y nach oben, Top x nach rechts und z nach unten */
 const zuBlatt = (b: Blatt, l: number, q: number): [number, number] => (b === 'front' ? [q, -l] : [l, q]);
 const ausBlatt = (b: Blatt, x: number, y: number): [number, number] => (b === 'front' ? [-y, x] : [x, y]);
-const profilVon = (b: Blatt): BreitenPunkt[] | null => zustand[b] ?? abgeleitet[b];
+/** (längs, quer) ↔ Punkt des halben Umrisses: Front x = quer (z), y = längs (y); Top x = längs (x), y = quer (z) */
+function halbPunkt(b: Blatt, l: number, q: number): { x: number; y: number } {
+  return b === 'front' ? { x: q, y: l } : { x: l, y: q };
+}
+function laengsQuer(b: Blatt, p: { x: number; y: number }): [number, number] {
+  return b === 'front' ? [p.y, p.x] : [p.x, p.y];
+}
+/** halber Umriss → geschlossen, an der Mittelachse gespiegelt */
+function ganz(b: Blatt, h: readonly UmrissPunkt[]): UmrissPunkt[] {
+  return ganzerUmriss(h, b === 'front' ? 'x' : 'y');
+}
+const profilVon = (b: Blatt): UmrissPunkt[] | null => zustand[b] ?? abgeleitet[b];
 
 /** Zeiger im Blatt → (längs, quer) in Welt-Einheiten */
 const profilWelt = (b: Blatt, e: { clientX: number; clientY: number }): [number, number] => {
@@ -814,8 +867,8 @@ const profilWelt = (b: Blatt, e: { clientX: number; clientY: number }): [number,
   return ausBlatt(b, (e.clientX - r.left - r.width / 2) / s, (e.clientY - r.top - r.height / 2) / s);
 };
 
-/** Das Profil zum Bearbeiten: folgt es noch dem Körper, wird es jetzt übernommen. */
-function profilFesthalten(b: Blatt): BreitenPunkt[] | null {
+/** Die Ansicht zum Bearbeiten: folgt sie noch dem Körper, wird sie jetzt übernommen. */
+function profilFesthalten(b: Blatt): UmrissPunkt[] | null {
   if (!zustand[b]) {
     const a = abgeleitet[b];
     if (!a) return null;
@@ -824,38 +877,68 @@ function profilFesthalten(b: Blatt): BreitenPunkt[] | null {
   return zustand[b];
 }
 
-/**
- * Front und Top teilen die größte Breite des Körpers. Ändert sie sich in einem Blatt, folgt im anderen nur der breiteste
- * Punkt (wenn es dort gezeichnet ist; sonst folgt es ohnehin dem Körper).
- */
-function koppeln(b: Blatt): void {
-  const p = zustand[b];
-  const q = zustand[b === 'front' ? 'top' : 'front'];
-  if (!p || !q) return;
-  let m = 0;
-  for (const x of p) m = Math.max(m, x.quer);
-  let k = -1;
-  for (let i = 1; i < q.length - 1; i++) if (k < 0 || q[i]!.quer > q[k]!.quer) k = i;
-  if (k >= 0) q[k] = { ...q[k]!, quer: m };
+/** Ausdehnung eines geschlossenen Umrisses in einer seiner Koordinaten */
+function ausdehnung(u: readonly UmrissPunkt[], k: 'x' | 'y'): { lo: number; hi: number } {
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (const q of umrissAbtasten(u, 1).punkte) {
+    lo = Math.min(lo, q[k]);
+    hi = Math.max(hi, q[k]);
+  }
+  return { lo, hi };
 }
 
-/** Nächste Stelle auf der gezeichneten Hälfte (ein Klick auf die gespiegelte Hälfte zählt für sie): Stück i und Punkt. */
-function profilStelle(b: Blatt, [l, q]: [number, number]): { i: number; laengs: number; quer: number } | null {
-  const p = profilVon(b);
-  const ax = achse(b);
-  if (!p || !ax) return null;
-  const L = ax[1] - ax[0];
-  const stuecke = umrissStuecke(profilUmriss(p, ax[0], ax[1]));
+/**
+ * Was zwei Ansichten gemeinsam zeigen, bleibt gleich groß: die Höhe in Seite und Front, die Länge in Seite und Top, die Breite
+ * in Front und Top. Zieht Florian einen Punkt, der in seiner Ansicht ganz außen liegt, folgt in der anderen deren äußerster
+ * Punkt — nur wenn sie gezeichnet ist (sonst folgt sie ohnehin dem Körper) und es dort genau einen gibt (an vier gleich tiefen
+ * Füßen wäre die Wahl geraten und zöge ein Bein hoch).
+ */
+function koppeln(quelle: 'seite' | Blatt, i: number): void {
+  const liste = (v: 'seite' | Blatt): UmrissPunkt[] | null => (v === 'seite' ? zustand.punkte : zustand[v]);
+  type Achse = ['seite' | Blatt, 'x' | 'y'];
+  // gemeinsame Achsen; die Breite z nur nach außen (innen liegt die Mittelachse)
+  const paare: [Achse, Achse, boolean][] = [
+    [['seite', 'y'], ['front', 'y'], true],
+    [['seite', 'x'], ['top', 'x'], true],
+    [['front', 'x'], ['top', 'y'], false],
+  ];
+  const u = liste(quelle);
+  const p = u?.[i];
+  if (!u || !p) return;
+  for (const [a, b, beide] of paare) {
+    const [von, nach] = a[0] === quelle ? [a, b] : b[0] === quelle ? [b, a] : [null, null];
+    if (!von || !nach) continue;
+    const ziel = liste(nach[0]);
+    if (!ziel || ziel.length === 0) continue;
+    const k = von[1];
+    const kz = nach[1];
+    for (const s of beide ? ([1, -1] as const) : ([1] as const)) {
+      // liegt der gezogene Punkt in seiner Ansicht ganz außen?
+      if (u.some((q, j) => j !== i && s * q[k] > s * p[k])) continue;
+      let best = 0;
+      for (let j = 1; j < ziel.length; j++) if (s * ziel[j]![kz] > s * ziel[best]![kz]) best = j;
+      if (ziel.some((q, j) => j !== best && Math.abs(q[kz] - ziel[best]![kz]) < 1)) continue;
+      ziel[best] = { ...ziel[best]!, [kz]: p[k] };
+    }
+  }
+}
+
+/** Nächste Stelle auf der gezeichneten Hälfte (ein Klick auf die Spiegelhälfte zählt für sie): Stück i und (längs, quer). */
+function profilStelle(b: Blatt, [l, q]: [number, number]): { i: number; l: number; q: number } | null {
+  const h = profilVon(b);
+  if (!h || h.length < 2) return null;
+  const stuecke = umrissStuecke(ganz(b, h));
   const qa = Math.abs(q);
   let best = Infinity;
-  let st = { i: 0, laengs: 0, quer: 0 };
-  for (let i = 0; i < p.length - 1; i++) {
+  let st = { i: 0, l: 0, q: 0 };
+  for (let i = 0; i < h.length - 1; i++) {
     for (let j = 1; j < 40; j++) {
-      const pt = punktAufStueck(stuecke[i]!, j / 40);
-      const d = Math.hypot(pt.x - l, pt.y - qa);
+      const [pl, pq] = laengsQuer(b, punktAufStueck(stuecke[i]!, j / 40));
+      const d = Math.hypot(pl - l, pq - qa);
       if (d < best) {
         best = d;
-        st = { i, laengs: (pt.x - ax[0]) / L, quer: Math.max(0, pt.y) };
+        st = { i, l: pl, q: Math.max(0, pq) };
       }
     }
   }
@@ -875,15 +958,16 @@ function profilZeichnen(b: Blatt): void {
     for (const u of zustand.ansichten[b]) el.append(element('path', 'vorgabe', { d: umrissPfad(u, (q) => (b === 'front' ? [q.x, -q.y] : [q.x, q.y])) }));
     return;
   }
-  const p = profilVon(b);
-  const ax = achse(b);
-  if (!p || p.length < 2 || !ax) return;
-  const pt = (q: { x: number; y: number }) => zuBlatt(b, q.x, q.y).join(' ');
-  const stuecke = umrissStuecke(profilUmriss(p, ax[0], ax[1]));
-  let d = `M ${pt(stuecke[0]![0])}`;
-  for (const k of stuecke) d += ` C ${pt(k[1])} ${pt(k[2])} ${pt(k[3])}`;
-  d += ' Z';
-  const treffer = element('path', 'treffer', { d });
+  const halb = profilVon(b);
+  if (!halb || halb.length < 2) return;
+  const pt = (q: { x: number; y: number }) => zuBlatt(b, ...laengsQuer(b, q)).join(' ');
+  const stuecke = umrissStuecke(ganz(b, halb));
+  const pfad = (von: number, bis: number): string => {
+    let d = `M ${pt(stuecke[von]![0])}`;
+    for (let k = von; k < bis; k++) d += ` C ${pt(stuecke[k]![1])} ${pt(stuecke[k]![2])} ${pt(stuecke[k]![3])}`;
+    return d;
+  };
+  const treffer = element('path', 'treffer', { d: `${pfad(0, stuecke.length)} Z` });
   treffer.dataset.profil = b;
   el.append(treffer);
   // gezeichnete Linien: ein Trefferband für jede, beide Seiten (die Linien selbst zeichnet der Shader)
@@ -897,16 +981,20 @@ function profilZeichnen(b: Blatt): void {
     tk.dataset.kante = String(k.linie);
     el.append(tk);
   }
-  // gezeichnet: die Linie; folgt das Profil noch dem Körper, zeigt der Shader den Umriss und hier stehen nur die Punkte
-  if (zustand[b]) el.append(element('path', 'linie', { d }));
+  // gezeichnet: die Hälfte als Linie, die Spiegelhälfte leiser; folgt die Ansicht noch dem Körper, zeigt der Shader den Umriss
+  // und hier stehen nur die Punkte
+  if (zustand[b]) {
+    el.append(element('path', 'spiegel', { d: pfad(halb.length - 1, stuecke.length) }));
+    el.append(element('path', 'linie', { d: pfad(0, halb.length - 1) }));
+  }
   const rp = 5 / s;
-  const L = ax[1] - ax[0];
-  p.forEach((q, i) => {
-    const [x, y] = zuBlatt(b, ax[0] + q.laengs * L, q.quer);
-    const fest = i === 0 || i === p.length - 1;
+  halb.forEach((q, i) => {
+    const [x, y] = zuBlatt(b, ...laengsQuer(b, q));
+    // Anfang und Ende liegen auf der Mittelachse und gleiten nur auf ihr
+    const achsig = i === 0 || i === halb.length - 1;
     const an = auswahl?.art === 'profil' && auswahl.blatt === b && auswahl.i === i;
-    const klasse = `punkt${an ? ' gewaehlt' : ''}${fest ? ' fest' : ''}`;
-    const rr = fest ? 0.7 * rp : rp;
+    const klasse = `punkt${an ? ' gewaehlt' : ''}${achsig ? ' achse' : ''}`;
+    const rr = achsig ? 0.8 * rp : rp;
     const e = q.ecke
       ? element('rect', klasse, { x: x - rr, y: y - rr, width: 2 * rr, height: 2 * rr })
       : element('circle', klasse, { cx: x, cy: y, r: rr });
@@ -949,8 +1037,7 @@ for (const b of ['front', 'top'] as const) {
   const el = profilSvg[b];
   el.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
-    const p = profilVon(b);
-    if (!p || !achse(b)) return;
+    if (!profilVon(b) || zustand.ansichten) return;
     const d = (e.target as SVGElement).dataset;
     const vorher = kopie(zustand);
     if (d.lpunkt !== undefined) {
@@ -980,14 +1067,12 @@ for (const b of ['front', 'top'] as const) {
       }
       svgZeichnen();
       profileZeichnen();
-      // die Enden liegen auf der Achse fest
-      if (i === 0 || i === p.length - 1) return;
       profilZug = { blatt: b, i, vorher, bewegt: false };
     } else if (d.profil !== undefined) {
       const st = profilStelle(b, profilWelt(b, e));
       if (!st) return;
       merken(vorher);
-      profilFesthalten(b)!.splice(st.i + 1, 0, { laengs: st.laengs, quer: st.quer });
+      profilFesthalten(b)!.splice(st.i + 1, 0, halbPunkt(b, st.l, st.q));
       auswahl = { art: 'profil', blatt: b, i: st.i + 1 };
       profilZug = { blatt: b, i: st.i + 1, vorher: kopie(zustand), bewegt: true };
       geaendert(false);
@@ -1018,21 +1103,19 @@ for (const b of ['front', 'top'] as const) {
       geaendert(false);
       return;
     }
-    const ax = achse(b);
-    if (!profilZug || profilZug.blatt !== b || !ax) return;
+    if (!profilZug || profilZug.blatt !== b) return;
     if (!profilZug.bewegt) {
       merken(profilZug.vorher);
       profilZug.bewegt = true;
       letzterKlick = null;
     }
     const [l, q] = profilWelt(b, e);
-    const p = profilFesthalten(b)!;
+    const h = profilFesthalten(b)!;
     const i = profilZug.i;
-    // ein Punkt bleibt zwischen seinen Nachbarn: ein Breitenprofil faltet sich nicht über sich selbst
-    const lo = p[i - 1]!.laengs + 0.01;
-    const hi = p[i + 1]!.laengs - 0.01;
-    p[i] = { ...p[i]!, laengs: Math.max(lo, Math.min(hi, (l - ax[0]) / (ax[1] - ax[0]))), quer: Math.max(0, q) };
-    koppeln(b);
+    // Anfang und Ende gleiten auf der Mittelachse, alle anderen bleiben auf ihrer Seite (z ≥ 0)
+    const pt = halbPunkt(b, l, i === 0 || i === h.length - 1 ? 0 : Math.max(0, q));
+    h[i] = h[i]!.ecke ? { ...pt, ecke: true } : pt;
+    koppeln(b, i);
     geaendert(false);
   });
   const ende = (): void => {
@@ -1085,12 +1168,11 @@ window.addEventListener('keydown', (e) => {
       merken(kopie(zustand));
       zustand.punkte = zustand.punkte.filter((_, j) => j !== a.i);
     } else if (a.art === 'profil') {
-      // Enden auf der Achse bleiben, mindestens ein Punkt dazwischen
+      // Anfang und Ende auf der Achse bleiben, mindestens ein Punkt dazwischen
       const p = profilVon(a.blatt);
       if (!p || a.i === 0 || a.i === p.length - 1 || p.length <= 3) return;
       merken(kopie(zustand));
       profilFesthalten(a.blatt)?.splice(a.i, 1);
-      koppeln(a.blatt);
     } else {
       merken(kopie(zustand));
       const l = zustand.linien[a.l]!;
@@ -1154,7 +1236,18 @@ window.__formAnsichten = (z) => {
   auswahl = null;
   geaendert();
 };
-window.__formPruefall = (name) => window.__formAnsichten?.(PRUEFFAELLE[name]);
+window.__formPruefall = (name) => {
+  // mit einer Fläche je Ansicht: zum Bearbeiten (Front und Top als halbe Umrisse); sonst nur zum Ansehen
+  const h = PRUEFFAELLE_HALB[name];
+  if (!h) {
+    window.__formAnsichten?.(PRUEFFAELLE[name]);
+    return;
+  }
+  merken(kopie(zustand));
+  zustand = kopie({ punkte: h.seite, linien: [], front: h.front, top: h.top, ansichten: null });
+  auswahl = null;
+  geaendert();
+};
 // ?fall=kugel|beine|flossen|lappen|innen öffnet einen Prüffall für gleichwertige Ansichten
 const fallAusAdresse = new URLSearchParams(location.search).get('fall');
 if (fallAusAdresse && fallAusAdresse in PRUEFFAELLE) window.__formPruefall(fallAusAdresse as Prueffall);
