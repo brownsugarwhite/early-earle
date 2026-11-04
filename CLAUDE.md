@@ -487,9 +487,11 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   ist.** Lehre: „Der Käfig ist die Wahrheit“ war eine Entscheidung ohne Test; Florians Sculptris-Frage (16.10.) wurde mit
   Argumenten statt Messung abgewiesen.
 - **2026-11-04 (danach): Plan „Beweis Form zuerst“ zur Freigabe** ([`docs/plans/2026-11-04-beweis-form-zuerst.md`](docs/plans/2026-11-04-beweis-form-zuerst.md),
-  Branch `claude/form-zuerst`, Arbeitsbaum `.claude/worktrees/form-zuerst`). Sieben Bausteine: Sichthülle als Grenze, Umrisse
+  Branch `claude/form-zuerst`, Arbeitsbaum `.claude/worktrees/form-zuerst`). Acht Bausteine: Sichthülle als Grenze, Umrisse
   als Berührkurven (Umrissplan), Linien ins Netz schneiden, „so rund wie möglich“ (FiberMesh), Härte = Kopplung über die Linie,
-  Teile als eigene Körper weich vereinigt, Backen auf ≤ 8 000 Dreiecke. Sechs Tage mit den Toren der Käfig-Session (gemessen an
+  Teile als eigene Körper weich vereinigt, Backen auf ≤ 8 000 Dreiecke, **Ansichten = Outlines des Modells per Shader**
+  (Florians Idee; ab Tag 1 im Editor, verdeckte Fortsetzungen blass von selbst, ersetzt die Umrissberechnung für die Anzeige
+  ≈ 1 500 Zeilen). Sechs Tage mit den Toren der Käfig-Session (gemessen an
   den Fehlfällen des Käfigs, nicht an Kugel und Ei), Regeltabelle, Abbruch bei Regeln, die einen Körper oder eine Lage nennen.
   Gebaut wird erst nach Florians Ja.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.

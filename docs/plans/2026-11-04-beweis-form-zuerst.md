@@ -11,12 +11,16 @@
 
 - **Was geprüft wird:** Aus Florians drei Zeichnungen und seinen Linien entsteht ohne vorab festgelegte Topologie ein dichter,
   runder Körper, der die Zeichnungen trifft. Geprüft wird an genau den Fällen, an denen die Käfig-Wege gescheitert sind. Das
-  Spielnetz wird am Ende gebacken. Die Ansichten zeichnet ein Outline-Shader aus dem 3D-Modell (nur im Editor, die Spielgrafik
-  bleibt davon unberührt).
-- **Sieben Bausteine, sonst nichts** (Abschnitt 2). Alles, was darüber hinausgeht, ist eine Regel. Sie kommt mit Grund in die
+  Spielnetz wird am Ende gebacken. **Die Ansichten sind die Outlines des Modells, gezeichnet von einem Shader** (Florians Idee,
+  Baustein 8, ab Tag 1): Es gibt keine eigene Umrissberechnung mehr für die Anzeige.
+- **Acht Bausteine, sonst nichts** (Abschnitt 2). Alles, was darüber hinausgeht, ist eine Regel. Sie kommt mit Grund in die
   Regeltabelle (Abschnitt 5) und wird gezählt.
-- **Sechs Tage:** Einteiler → Mehrteiler → Linien und Outline-Shader im Editor → Backen mit Pose → Maul (zwei Tage). Jeder Tag
-  hat Tore, einen Bogen zum Vergleich mit dem Käfig und ein Abbruchkriterium (Abschnitt 3).
+- **Sechs Tage:** Einteiler im Editor mit Outline-Ansichten → Mehrteiler mit verdeckten Linien → Linien mit Härte → Backen mit
+  Pose → Maul (zwei Tage). Jeder Tag hat Tore, einen Bogen zum Vergleich mit dem Käfig und ein Abbruchkriterium (Abschnitt 3).
+- **Nachtrag 04.11. (Florian: „Was ist mit meiner Shader-als-Outline-Idee?“):** In der ersten Fassung stand der Shader nur als
+  Teil von Tag 3 und nicht als Baustein. Das war falsch gewichtet, denn er erspart eine ganze Maschinerie und zeigt Florian das
+  Ergebnis so, wie er es beurteilt. Jetzt ist er Baustein 8 und ab Tag 1 im Editor; damit hält der Plan auch unsere eigene
+  Lehre L10 ein („am ersten Tag ein Bild aus dem Editor“).
 - **Nicht Teil des Beweises:** Tempo beim Ziehen (wird gemessen, ist aber kein Tor), Muster und Zonen, Zähne, Augen,
   Feuer/Gas/Fell und der Umbau des Editors. Der Käfig bleibt unverändert Standard und Rückfall.
 
@@ -44,7 +48,7 @@
   - Monster Mash 2020: Teile als überlappende Umrisse, weich vereinigt.
   - Fürs Backen mit Posen: Landreneau/Schaefer 2009 und DeCoro/Rusinkiewicz 2005.
 
-## 2. Bauweise: sieben Bausteine
+## 2. Bauweise: acht Bausteine
 
 Das Netz ist ein Dreiecksnetz der rechten Hälfte, gespiegelt. Die Kantenlänge beträgt 1–2 px bei 461 px je Blatt (die
 Messgröße von `abweichung.ts`). Die Topologie trägt keine Bedeutung: Sie entsteht beim Vernetzen und darf sich bei jeder
@@ -75,6 +79,26 @@ Messgröße von `abweichung.ts`). Die Topologie trägt keine Bedeutung: Sie ents
 7. **Backen.** Das dichte Netz wird auf ≤ 8 000 Dreiecke ausgedünnt. Der Fehler wird dabei über Ruhe- und Posenlage zugleich
    gemessen; gezeichnete Linien und Mittelebene sind geschützt. Die Normalen kommen von der dichten Fläche. Kandidat ist der
    Vereinfacher von meshoptimizer (läuft in JavaScript), sonst ein eigener Kantenkollaps nach Fehlerquadriken.
+8. **Ansichten = Outlines des Modells, gezeichnet von einem Shader** (Florians Idee). Die Blätter zeigen keine nachgerechneten
+   Kurven mehr, sondern das Modell selbst als Illustration:
+   - **Umriss:** In den drei Blättern ist die Blickrichtung fest. Je Blatt und Bau wird die Kontur des dichten Netzes einmal
+     bestimmt, als glatte Kontur aus den Normalen (Hertzmann/Zorin 2000), und zwar je Teil getrennt.
+   - **Linien:** Dazu kommen die gezeichneten Linien und die Ansatzlinien, also die Stellen, an denen zwei Teile sich treffen.
+   - **Strich:** Der Umriss hat einen festen Strich. Gezeichnete Linien haben 0–3 px nach ihrer Härte, verjüngte Enden und sind
+     weich gestrichelt. Ansatzlinien sind gestrichelt.
+   - **Sichtbarkeit:** Der Shader vergleicht jede Linie mit der Tiefe des Körpers: sichtbar voll, verdeckt blass
+     (Entscheidung E1).
+   - **Verdeckte Fortsetzungen entstehen von selbst:** Jedes Teil ist ein eigener Körper (Baustein 6). Sein Umriss läuft hinter
+     dem anderen Teil weiter und erscheint dort blass, etwa der Bauch unter dem Kopf oder der Rumpf unter den Flügeln. Genau an
+     dieser Stelle (Front/Top als Vereinigung von Rumpf und Kopf) scheiterte P1.
+   - **Bühne:** Mit freier Kamera gilt dieselbe Kontur je Bild oder ein Kantenfilter auf Tiefe und Normale.
+   - **SVG:** Dieselben Linien ergeben das SVG (Idee I1: das Blatt ist das SVG).
+   - **Florians Kurvenpunkte** liegen als Griffe darüber. Wo Modell und Zeichnung auseinandergehen, sieht er es sofort.
+   - **Was entfällt:** Die eigene Umrissberechnung für die Anzeige (`umrissKurven.ts` und `netzSicht.ts`, zusammen ≈ 1 500
+     Zeilen, dazu der Chip „umrisse aus | an“) wird nicht mehr gebraucht. Die „sehr sehr wilden“ Linien von V2 waren solche
+     nachgerechneten Kurven auf dem groben Käfig.
+   - **Spiel:** Dort gilt bisher Florians Regel vom 30.09.: keine dünnen Konturen, nur keine oder eine absurd fette
+     Verlaufskontur. Derselbe Shader kann das später auch; entschieden wird es nicht in diesem Beweis.
 
 Vernetzt wird mit den Surface Nets der alten Werkstatt (`packages/creature/src/mesh/surfaceNets.ts`: `contour`,
 `projectAndNormals`, `largestComponent`). Ob sie als Abhängigkeit eingebunden oder herausgelöst werden, entscheidet der erste
@@ -108,9 +132,9 @@ die Zeichnung, Knick, Umriss-Tor des Spielnetzes, Mundwinkel im Zebra und die Re
 
 | Tag | Inhalt | Körper | Tore |
 |---|---|---|---|
-| 1 | Einteiler: Bausteine 1–4 | Kugel, Ei, scharfer Würfel, Zylinder, runde Vase, Kegel, Stift-Würfel, Vase aus der Kugel (`EINTEILER`) | Umrisse in allen drei Blättern ≤ 0,5 px; keine Falte, die niemand gezeichnet hat (Knick ≤ 3°); Zebra unter 45° rund; Bauzeit gemessen (kein Tor) |
-| 2 | Mehrteiler: Baustein 6 | Langhals, Ente, Robbe, Pilz | Seite ≤ 1 px, Front/Top ≤ 2 px; Ansatz ohne Falte ≤ 15° |
-| 3 | Linien mit Härte, Outline-Shader im Editor | Kegel-Kante, Stift-Würfel, Tigerkopf | Kante ≤ 0,3 px auf der Linie; Faltenwinkel steigt mit der Härte 0/50/100 %; Strich 0 → 3 px, Enden verjüngt; Outline im Blatt = Linie ≤ 0,5 px, verdeckte Linien blass; Linie um ±2 px verschoben → Form ändert sich nur örtlich; im Editor sichtbar (Chip „Körper: Käfig \| dicht“) |
+| 1 | Einteiler im Editor: Bausteine 1–4 und 8 | Kugel, Ei, scharfer Würfel, Zylinder, runde Vase, Kegel, Stift-Würfel, Vase aus der Kugel (`EINTEILER`) | Umrisse in allen drei Blättern ≤ 0,5 px; keine Falte, die niemand gezeichnet hat (Knick ≤ 3°); Zebra unter 45° rund; Outline im Blatt = Umriss des Modells, ruhig (Netz um 0,1 px gestört → Linie ≤ 0,2 px, Lehre L5); Zeichnen ≤ 16 ms je Bild; im Editor sichtbar (Chip „Körper: Käfig \| dicht“); Bauzeit gemessen (kein Tor) |
+| 2 | Mehrteiler: Baustein 6 | Langhals, Ente, Robbe, Pilz | Seite ≤ 1 px, Front/Top ≤ 2 px; Ansatz ohne Falte ≤ 15°; verdeckte Fortsetzungen blass im Blatt (Bauch unter dem Kopf, Rumpf unter den Flügeln), Ansatzlinien gestrichelt |
+| 3 | Linien mit Härte: Bausteine 3, 5, 8 | Kegel-Kante, Stift-Würfel, Tigerkopf | Kante ≤ 0,3 px auf der Linie; Faltenwinkel steigt mit der Härte 0/50/100 %; Strich im Blatt 0 → 3 px, Enden verjüngt, weich gestrichelt; Linie um ±2 px verschoben → Form ändert sich nur örtlich |
 | 4 | Backen mit Pose: Baustein 7 | Rex, Langhals, Robbe, Tigerkopf, Kegel | ≤ 8 000 Dreiecke; Umriss ≤ 1 Gerätepixel bei 300 px Höhe; eine Pose (Knochen + Formdelta als Verschiebung im Raum) durch das gebackene Netz ohne sichtbare Durchdringung; Cel-Stufen ohne Treppen (Florians Blick) |
 | 5–6 | Maul als Schnitt | Robbe hoch J, Rex mittel gerade, Tigerkopf (Mercedesstern auf der Frontplatte), Langhals hoch J | Lippen exakt auf der Linie (Schnitt); geöffnet bei 50 und 100 %: Mundwinkel glatt im Zebra, 0 Durchdringungen auf sichtbarer Haut; samt Tasche und Rachen ≤ 8 000 Dreiecke |
 
@@ -121,8 +145,8 @@ die Zeichnung, Knick, Umriss-Tor des Spielnetzes, Mundwinkel im Zebra und die Re
 - Ab der dritten neuen Regel wird angehalten: Struktur prüfen, Florian fragen.
 - „Bestanden“ sagt Florian, nachdem er den Bogen gesehen hat.
 
-**Was du siehst:** jeden Tag einen Bogen neben dem Käfig, ab Tag 3 den dichten Körper im Editor mit dem Outline-Shader in den
-Blättern.
+**Was du siehst:** ab Tag 1 den dichten Körper im Editor, die drei Blätter als Outline-Illustration des Modells mit deinen
+Kurven darüber, und jeden Tag einen Bogen neben dem Käfig.
 
 ## 4. Messinstrumente (vorhanden, werden wiederverwendet)
 
@@ -170,6 +194,9 @@ Blättern.
   Tag 2 zeigt, ob Teile als eigene Körper sie lösen.
 - **Muster und Pinsel:** Muster brauchen Flächenkoordinaten, Pinsel ein Verschiebungsfeld im Raum statt Punktnummern. Im Beweis
   wird das nur für eine Pose gezeigt.
+- **Editor am ersten Tag:** Der Worker baut den dichten Körper neben dem Käfig, die Blätter bekommen den Outline-Shader. Dauert
+  die Einbindung länger, zeigt Tag 1 zuerst den Bogen mit denselben Linien (gleiche Kontur-Rechnung), und der Editor folgt an
+  Tag 2. Das wird dann ausdrücklich gemeldet.
 - **Das Maul** bleibt das schwerste Stück. Der Schnitt macht die Lippen exakt; wie der Mundwinkel beim Öffnen aussieht, ist
   offen.
 
@@ -181,8 +208,11 @@ Blättern.
   - `schneiden.ts`: Linien einsetzen
   - `glaetten.ts`: rund wie möglich, Härte
   - `teile.ts`: Teile vereinigen
+  - `kontur.ts`: Konturen je Blatt und Teil, Ansatzlinien, SVG
   - `backen.ts`, `messen.ts`
   - Tests `dicht/*.test.ts`, Tore `dicht/form.extrem.ts`
+- Editor: dichter Bau im Worker als zweite Bauweise neben dem Käfig, Outline-Durchgang für die Blätter in
+  `apps/editor/src/three/` (Linien mit Breite, Tiefenvergleich: sichtbar voll, verdeckt blass), Chip „Körper: Käfig | dicht“.
 - Skripte `apps/editor/scripts/pruefen/dicht-*.ts`, Bögen `docs/progress/editor/dicht-*.jpg`.
 - Den Stand je Tag schreibt der Beweis an das Ende dieser Seite.
 
