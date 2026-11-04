@@ -199,3 +199,46 @@ body {
 #feld-3d {
   cursor: grab;
 }
+
+/* Maul (Probe 04.11.): Linie wie eine harte Kante, die Unterlippe beim Öffnen leiser daneben */
+.blatt .maul {
+  fill: none;
+  stroke: var(--linie);
+  stroke-width: 2.5px;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.blatt .maul.unten {
+  stroke-opacity: 0.45;
+}
+
+/* die Linie schneidet nicht (zu kurz oder nicht vom Umriss in die Form) */
+.blatt .maul.fehlt {
+  stroke: #b0412e;
+  stroke-dasharray: 6 4;
+}
+
+.regler {
+  position: absolute;
+  top: 8px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--leise);
+  cursor: default;
+  user-select: none;
+}
+
+.regler[hidden] {
+  display: none;
+}
+
+.regler input {
+  width: 180px;
+  accent-color: var(--linie);
+}

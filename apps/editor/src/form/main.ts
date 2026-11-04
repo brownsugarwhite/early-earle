@@ -7,6 +7,8 @@
 // sind; zieht Florian den Umriss unter eine Linie, wächst die Form zu ihr (Wulst). Front und Top zeichnet er genauso, als halbe
 // Umrisse (gespiegelt); sobald eine davon gezeichnet ist, sind alle Ansichten gleichwertig (`formAusAnsichten`) — die andere
 // folgt bis zum ersten Griff dem runden Körper. Keine Regler, keine Chips.
+// Maul (Probe 04.11.): Wer in der Seite von außen über den Umriss in die Form zieht, zeichnet die Maullinie; dort wird die Form
+// aufgeschnitten (geschlossen nur die Linie), der Regler im 3D-Blatt öffnet sie (der Unterkiefer dreht um den Mundwinkel).
 
 import {
   BREITE_MAX,
@@ -16,6 +18,9 @@ import {
   type Kante3D,
   type KantenLinie,
   type Kontur,
+  MAUL_WINKEL_MAX,
+  type MaulLinie,
+  type MaulSchnitt,
   type Nachfuehrung,
   type RaumLinie,
   PRUEFFAELLE,
@@ -29,6 +34,9 @@ import {
   linieAbtasten,
   linieNachfuehren,
   linienAbstand,
+  maulOeffnen,
+  maulPunkt,
+  maulSchneiden,
   profilAusBreite,
   punktAufStueck,
   punktSetzen,
@@ -84,6 +92,8 @@ type Zustand = {
   ansichten: Ansichten | null;
   /** Linien im Raum (`?linien`): Hälfte z ≥ 0, Anfang und Ende auf dem Umriss der Seite */
   raum: RaumLinie[];
+  /** Maullinie in der Seite: erster Punkt auf dem Umriss, letzter = Mundwinkel */
+  maul: MaulLinie | null;
 };
 type Blatt = 'front' | 'top';
 
@@ -106,7 +116,15 @@ declare global {
       nachgefuehrt: Partial<Record<'seite' | 'front' | 'top', Omit<Nachfuehrung, 'punkte'>>>;
       /** Linien auf der Form (`?linien`) */
       raum: RaumLinie[];
+      /** Maullinie, Öffnung (Grad) und der Schnitt (Lippenpunkte, Dreiecke des Inneren; null = nicht geschnitten) */
+      maul: MaulLinie | null;
+      oeffnung: number;
+      schnitt: { lippe: number; innen: number } | null;
     };
+    /** Prüfhaken: Maullinie setzen (wie ein Zug, mit Rückgängig) */
+    __formMaul?: (linie: MaulLinie | null) => void;
+    /** Prüfhaken: Öffnung des Mauls in Grad (wie der Regler) */
+    __formOeffnen?: (winkel: number) => void;
     /** Prüfhaken: eine Zeichnung setzen (wie ein Zug, mit Rückgängig) */
     __formSetzen?: (p: UmrissPunkt[], linien?: KantenLinie[], front?: UmrissPunkt[] | null, top?: UmrissPunkt[] | null) => void;
     /** Prüfhaken: alle drei Ansichten als geschlossene Umrisse setzen (gleichwertig) */
@@ -121,6 +139,10 @@ declare global {
 const PAPIER = 0xefe9dd;
 const KOERPER = 0xe2b98e;
 const TINTE = 0x1f1a17;
+/** Maulinneres */
+const MAULFARBE = 0x7a3431;
+/** Strichdicke der Lippen (px) */
+const LIPPE = 2.5;
 /** So viele Welteinheiten passen in die kürzere Seite eines Blatts. */
 const SICHT = 560;
 // Surface Nets geben etwa das 1,5-Fache der bestellten Dreiecke
@@ -164,7 +186,14 @@ const profilSvg: Record<Blatt, SVGSVGElement> = {
 
 // ---------- Zustand ----------
 
-let zustand: Zustand = { punkte: kreis(150), linien: [], front: null, top: null, ansichten: null, raum: [] };
+let zustand: Zustand = { punkte: kreis(150), linien: [], front: null, top: null, ansichten: null, raum: [], maul: null };
+/** Öffnung des Mauls in Grad (Regler im 3D-Blatt; eine Ansicht, kein Teil der Zeichnung) */
+let oeffnung = 0;
+/** der zuletzt gebaute Schnitt (null: kein Maul oder die Linie schneidet nicht) */
+let schnitt: MaulSchnitt | null = null;
+const maulOffen = (): boolean => schnitt !== null && oeffnung > 0;
+const maulRegler = document.getElementById('maul-regler') as HTMLLabelElement;
+const maulEingabe = document.getElementById('maul-oeffnung') as HTMLInputElement;
 /** Probe „Linien aus dem Netz“: die Ansicht, die Florian gerade bearbeitet (bis zum genauen Bau nach dem Loslassen) */
 let fuehrung: 'seite' | Blatt | null = null;
 const fuehrt = (b: 'seite' | Blatt): void => {
@@ -181,6 +210,8 @@ type Auswahl =
   | { art: 'profil'; blatt: Blatt; i: number }
   | { art: 'raum'; l: number }
   | { art: 'rpunkt'; l: number; i: number }
+  | { art: 'maul' }
+  | { art: 'mpunkt'; i: number }
   | null;
 let auswahl: Auswahl = null;
 const zurueck: Zustand[] = [];
@@ -199,6 +230,7 @@ const kopie = (z: Zustand): Zustand => ({
       }
     : null,
   raum: z.raum.map((l) => ({ ...l, punkte: l.punkte.map((q) => ({ ...q })) })),
+  maul: z.maul ? { punkte: z.maul.punkte.map((q) => ({ ...q })) } : null,
 });
 function merken(stand: Zustand): void {
   zurueck.push(stand);
@@ -315,12 +347,18 @@ const kantenHinten = new Mesh(kanten.geometry, kanteVerdeckt);
 // Linien auf der Form (`?linien`): in allen vier Ansichten, sichtbar schwarz, verdeckt blass
 const raumBand = new Mesh(new BufferGeometry(), kanteSichtbar);
 const raumBandHinten = new Mesh(raumBand.geometry, kanteVerdeckt);
+// Maul: das Innere (Gaumen und Boden) dunkel, die Lippen als Linien wie die Kanten
+const maulInnen = new Mesh(new BufferGeometry(), new MeshToonMaterial({ color: MAULFARBE, gradientMap: stufen }));
+const lippen = new Mesh(new BufferGeometry(), kanteSichtbar);
+const lippenHinten = new Mesh(lippen.geometry, kanteVerdeckt);
 umriss.renderOrder = 1;
 kanten.renderOrder = 2;
 kantenHinten.renderOrder = 3;
 raumBand.renderOrder = 2;
 raumBandHinten.renderOrder = 3;
-szene.add(koerper, umriss, kanten, kantenHinten, raumBand, raumBandHinten);
+lippen.renderOrder = 2;
+lippenHinten.renderOrder = 3;
+szene.add(koerper, umriss, kanten, kantenHinten, raumBand, raumBandHinten, maulInnen, lippen, lippenHinten);
 const sonne = new DirectionalLight(0xffffff, 2.4);
 sonne.position.set(0.9, 1.4, 1.1);
 szene.add(sonne, new HemisphereLight(0xfff6e8, 0x9c8a74, 1.1));
@@ -371,28 +409,86 @@ const skala = (): number => {
   return Math.max(1e-6, Math.min(r.width, r.height) / SICHT);
 };
 
-function geometrieSetzen(n: DichtesNetz): void {
-  const g = new BufferGeometry();
-  g.setAttribute('position', new BufferAttribute(n.positionen, 3));
-  g.setAttribute('normal', new BufferAttribute(n.normalen, 3));
-  g.setIndex(new BufferAttribute(n.indizes, 1));
-  g.computeBoundingSphere();
-  const alt = koerper.geometry;
-  koerper.geometry = g;
-  umriss.geometry = g;
+/** Linien auf dem Körper in Ruhe (Kanten, Linien auf der Form); mit geöffnetem Maul biegt `oeffnungAnwenden` sie mit. */
+let kantenRuhe: readonly Kante3D[] = [];
+let raumRuhe: readonly Kante3D[] = [];
+const ersetzen = (a: Mesh, b: Mesh, g: BufferGeometry): void => {
+  const alt = a.geometry;
+  a.geometry = g;
+  b.geometry = g;
   alt.dispose();
-  const k = kantenGeometrie(n.kanten);
-  const altK = kanten.geometry;
-  kanten.geometry = k;
-  kantenHinten.geometry = k;
-  altK.dispose();
+};
+
+function geometrieSetzen(n: DichtesNetz): void {
+  const s = schnitt;
+  const g = new BufferGeometry();
+  // mit Maul der geschnittene Körper in eigenen Puffern: die Öffnung schreibt hinein, die Ruhe bleibt im Schnitt
+  g.setAttribute('position', new BufferAttribute(s ? new Float32Array(s.positionen) : n.positionen, 3));
+  g.setAttribute('normal', new BufferAttribute(s ? new Float32Array(s.normalen) : n.normalen, 3));
+  g.setIndex(new BufferAttribute(s ? s.indizes : n.indizes, 1));
+  g.computeBoundingSphere();
+  ersetzen(koerper, umriss, g);
+  const gi = new BufferGeometry();
+  if (s) {
+    gi.setAttribute('position', new BufferAttribute(new Float32Array(s.innen.positionen), 3));
+    gi.setAttribute('normal', new BufferAttribute(new Float32Array(s.innen.normalen), 3));
+    gi.setIndex(new BufferAttribute(s.innen.indizes, 1));
+  }
+  const altI = maulInnen.geometry;
+  maulInnen.geometry = gi;
+  altI.dispose();
+  kantenRuhe = n.kanten;
   // Linien auf der Form, auf die Fläche gelegt (Tiefe der Form an ihrer Stelle in der Seite)
   const kontur = n.kontur;
-  const r = kantenGeometrie(LINIEN ? raumKanten(zustand.raum, 2, kontur ? (x, y) => tiefeAusKontur(kontur, x, y) : undefined) : []);
-  const altR = raumBand.geometry;
-  raumBand.geometry = r;
-  raumBandHinten.geometry = r;
-  altR.dispose();
+  raumRuhe = LINIEN ? raumKanten(zustand.raum, 2, kontur ? (x, y) => tiefeAusKontur(kontur, x, y) : undefined) : [];
+  oeffnungAnwenden();
+}
+
+/** Das Maul so weit geöffnet zeigen, wie der Regler steht: Körper, Inneres, Lippen und die Linien auf dem Körper. */
+function oeffnungAnwenden(): void {
+  const s = schnitt;
+  const w = s ? oeffnung : 0;
+  if (s) {
+    const pa = koerper.geometry.getAttribute('position') as BufferAttribute;
+    const na = koerper.geometry.getAttribute('normal') as BufferAttribute;
+    const ia = maulInnen.geometry.getAttribute('position') as BufferAttribute;
+    const ina = maulInnen.geometry.getAttribute('normal') as BufferAttribute;
+    maulOeffnen(s, w, {
+      positionen: pa.array as Float32Array,
+      normalen: na.array as Float32Array,
+      innenPositionen: ia.array as Float32Array,
+      innenNormalen: ina.array as Float32Array,
+    });
+    for (const a of [pa, na, ia, ina]) a.needsUpdate = true;
+  }
+  const biegen = (k: Kante3D): Kante3D => {
+    if (!s || w === 0) return k;
+    const lagen = new Float32Array(k.lagen);
+    for (let i = 0; i < lagen.length / 3; i++) {
+      const q = maulPunkt(s, w, lagen[3 * i]!, lagen[3 * i + 1]!);
+      lagen[3 * i] = q.x;
+      lagen[3 * i + 1] = q.y;
+    }
+    return { ...k, lagen };
+  };
+  ersetzen(kanten, kantenHinten, kantenGeometrie(kantenRuhe.map(biegen)));
+  ersetzen(raumBand, raumBandHinten, kantenGeometrie(raumRuhe.map(biegen)));
+  // Lippen: oben und unten aus den Punkten des Körpers, je vom einen Mundwinkel um die Schnauze zum anderen
+  const lp: Kante3D[] = [];
+  if (s) {
+    const pos = koerper.geometry.getAttribute('position').array as Float32Array;
+    for (const lippe of [s.lippeOben, s.lippeUnten]) {
+      const lagen = new Float32Array(3 * lippe.length);
+      lippe.forEach((v, i) => {
+        lagen[3 * i] = pos[3 * v]!;
+        lagen[3 * i + 1] = pos[3 * v + 1]!;
+        lagen[3 * i + 2] = pos[3 * v + 2]!;
+      });
+      lp.push({ lagen, breite: new Float32Array(lippe.length).fill(LIPPE), linie: -1 });
+    }
+  }
+  ersetzen(lippen, lippenHinten, kantenGeometrie(lp));
+  neuZeichnen = true;
 }
 
 /** Bänder der Linien: je Strecke ein Viereck, die Breite setzt der Shader in Pixeln. */
@@ -592,6 +688,19 @@ function bauen(fein: boolean): void {
       fuehrung = null;
     }
   }
+  // Maul: der Anfang der Linie bleibt auf dem Umriss; geschnitten wird das fertige Netz
+  if (zustand.maul) {
+    const a = zustand.maul.punkte[0]!;
+    const q = naechsterAufUmriss(a.x, a.y);
+    zustand.maul.punkte[0] = { ...a, x: q.x, y: q.y };
+    schnitt = maulSchneiden(n, zustand.maul, { zelle: n.zelle, kontur: n.kontur });
+  } else {
+    // ohne Maul steht der Regler wieder auf zu: eine neue Maullinie beginnt geschlossen
+    schnitt = null;
+    oeffnung = 0;
+    maulEingabe.value = '0';
+  }
+  maulRegler.hidden = !schnitt;
   const ms = performance.now() - t0;
   letztesGleich = gleich?.g ?? null;
   letzteKontur = n.kontur ?? null;
@@ -616,8 +725,32 @@ function bauen(fein: boolean): void {
     netz: NETZ,
     nachgefuehrt: letzteNachfuehrung,
     raum: k.raum,
+    maul: k.maul,
+    oeffnung,
+    schnitt: schnitt ? { lippe: schnitt.lippeOben.length, innen: schnitt.innen.indizes.length / 3 } : null,
   };
   neuZeichnen = true;
+}
+
+/** Nächster Punkt auf dem gezeichneten Seitenumriss. */
+function naechsterAufUmriss(x: number, y: number): { x: number; y: number } {
+  const u = umrissAbtasten(zustand.punkte, 1).punkte;
+  let best = Infinity;
+  let q = { x, y };
+  for (let i = 0; i < u.length; i++) {
+    const a = u[i]!;
+    const b = u[(i + 1) % u.length]!;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const l2 = dx * dx + dy * dy;
+    const t = l2 > 0 ? Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / l2)) : 0;
+    const d = Math.hypot(a.x + t * dx - x, a.y + t * dy - y);
+    if (d < best) {
+      best = d;
+      q = { x: a.x + t * dx, y: a.y + t * dy };
+    }
+  }
+  return q;
 }
 
 /**
@@ -687,10 +820,13 @@ function rendern(): void {
     kamera.updateProjectionMatrix();
     // in der Seite sind die gezeichneten Linien selbst zu sehen; der Shader zeichnet Umriss und Linien in den anderen Blättern
     const andere = name !== 'seite';
-    // mit gleichwertigen Ansichten zeigt auch die Seite den Umriss des Modells (über der Zeichnung), mit `?netz` immer
-    umriss.visible = andere || zustand.ansichten !== null || NETZ || LINIEN;
+    // mit gleichwertigen Ansichten zeigt auch die Seite den Umriss des Modells (über der Zeichnung), mit `?netz` immer, mit
+    // offenem Maul ebenso (die Zeichnung bleibt geschlossen)
+    umriss.visible = andere || zustand.ansichten !== null || NETZ || LINIEN || maulOffen();
     kanten.visible = andere;
     kantenHinten.visible = andere;
+    lippen.visible = andere;
+    lippenHinten.visible = andere;
     umrissMaterial.uniforms.uAufloesung!.value.set(r.width * dpr, r.height * dpr);
     umrissMaterial.uniforms.uBreite!.value = 2.5 * dpr;
     for (const m of [kanteSichtbar, kanteVerdeckt]) {
@@ -752,7 +888,7 @@ function svgZeichnen(): void {
   // gleichwertige Ansichten: die Zeichnung farbig, der Umriss des Modells (Shader) schwarz darüber; mit `?netz` zeichnet nur
   // der Shader, die Punkte sind Griffe auf seiner Linie
   svg.append(treffer);
-  if (!NETZ && !LINIEN) svg.append(element('path', zustand.ansichten ? 'vorgabe' : 'linie', { d }));
+  if (!NETZ && !LINIEN) svg.append(element('path', zustand.ansichten || maulOffen() ? 'vorgabe' : 'linie', { d }));
   for (const u of zustand.ansichten?.seite ?? []) svg.append(element('path', 'vorgabe', { d: umrissPfad(u, (q) => [q.x, -q.y]) }));
   const rp = 5 / s;
   // gezeichnete Linien: Trefferband, Strich, Punkte der gewählten Linie
@@ -774,7 +910,36 @@ function svgZeichnen(): void {
       svg.append(e);
     });
   });
-  if (zug?.art === 'zeichnen' && zug.spur.length > 1) {
+  // Maullinie: Strich und Trefferband; mit offenem Maul daneben die Unterlippe, gedreht wie im 3D; gewählt mit ihren Punkten
+  if (zustand.maul) {
+    const m = zustand.maul;
+    const p = linieAbtasten({ punkte: m.punkte.map((q) => ({ ...q, breite: LIPPE })) }, 2 / s).p;
+    const pfad = (q: readonly { x: number; y: number }[]) => q.map((r, i) => `${i ? 'L' : 'M'} ${r.x} ${-r.y}`).join(' ');
+    const t = element('path', 'treffer-kante', { d: pfad(p) });
+    t.dataset.maul = '';
+    svg.append(t);
+    svg.append(element('path', schnitt ? 'maul' : 'maul fehlt', { d: pfad(p) }));
+    if (schnitt && oeffnung > 0) {
+      const a = (schnitt.drehsinn * oeffnung * Math.PI) / 180;
+      const c = Math.cos(a);
+      const sn = Math.sin(a);
+      const g = schnitt.gelenk;
+      const unten = p.map((q) => ({ x: g.x + c * (q.x - g.x) - sn * (q.y - g.y), y: g.y + sn * (q.x - g.x) + c * (q.y - g.y) }));
+      svg.append(element('path', 'maul unten', { d: pfad(unten) }));
+    }
+    if (auswahl?.art === 'maul' || auswahl?.art === 'mpunkt') {
+      m.punkte.forEach((q, i) => {
+        const an = auswahl?.art === 'maul' || (auswahl?.art === 'mpunkt' && auswahl.i === i);
+        const klasse = `lpunkt${an ? ' gewaehlt' : ''}`;
+        const e = q.ecke
+          ? element('rect', klasse, { x: q.x - 0.8 * rp, y: -q.y - 0.8 * rp, width: 1.6 * rp, height: 1.6 * rp })
+          : element('circle', klasse, { cx: q.x, cy: -q.y, r: 0.8 * rp });
+        e.dataset.mpunkt = String(i);
+        svg.append(e);
+      });
+    }
+  }
+  if ((zug?.art === 'zeichnen' || zug?.art === 'maul') && zug.spur.length > 1) {
     svg.append(element('path', 'entwurf', { d: zug.spur.map((q, i) => `${i ? 'L' : 'M'} ${q.x} ${-q.y}`).join(' ') }));
   }
   if (LINIEN) raumZeichnen(svg, 'seite');
@@ -869,9 +1034,58 @@ function linienEcke(l: number, i: number): void {
   geaendert();
 }
 
+function maulEcke(i: number): void {
+  const m = zustand.maul;
+  if (!m) return;
+  merken(kopie(zustand));
+  m.punkte[i] = { ...m.punkte[i]!, ecke: !m.punkte[i]!.ecke };
+  geaendert();
+}
+
+/**
+ * Eine Spur von außen in die Form → Maullinie: Sie beginnt, wo die Spur zuletzt über den Umriss hinein ging, und endet am
+ * Mundwinkel (dem Ende der Spur, innen); dazwischen wenige Punkte. Null, wenn die Spur nicht innen endet oder zu kurz ist.
+ */
+function maulAusSpur(spur: readonly { x: number; y: number }[]): MaulLinie | null {
+  const poly = umrissAbtasten(zustand.punkte, 2).punkte;
+  const drin = (q: { x: number; y: number }): boolean => {
+    let innen = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const a = poly[i]!;
+      const b = poly[j]!;
+      if (a.y > q.y !== b.y > q.y && q.x < ((b.x - a.x) * (q.y - a.y)) / (b.y - a.y) + a.x) innen = !innen;
+    }
+    return innen;
+  };
+  const innen = spur.map(drin);
+  if (!innen[innen.length - 1]) return null;
+  let k = innen.length - 1;
+  while (k > 0 && innen[k - 1]) k--;
+  if (k === 0) return null;
+  // genau auf den Umriss: zwischen dem letzten Punkt außen und dem ersten innen halbieren
+  let a = spur[k - 1]!;
+  let b = spur[k]!;
+  for (let i = 0; i < 24; i++) {
+    const m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    if (drin(m)) b = m;
+    else a = m;
+  }
+  const anfang = naechsterAufUmriss(b.x, b.y);
+  const rest = spur.slice(k);
+  let laenge = 0;
+  let vorher = anfang;
+  for (const q of rest) {
+    laenge += Math.hypot(q.x - vorher.x, q.y - vorher.y);
+    vorher = q;
+  }
+  if (laenge * skala() < 20) return null;
+  const punkte = vereinfachen([anfang, ...rest], 3 / skala());
+  return { punkte: punkte.map((q) => ({ x: q.x, y: q.y })) };
+}
+
 /** Strichdicke der Auswahl ändern (ganze Linie oder ein Punkt). */
 function breiteSetzen(f: (b: number) => number): void {
-  if (!auswahl || auswahl.art === 'umriss' || auswahl.art === 'profil') return;
+  if (!auswahl || auswahl.art === 'umriss' || auswahl.art === 'profil' || auswahl.art === 'maul' || auswahl.art === 'mpunkt') return;
   if (auswahl.art === 'raum' || auswahl.art === 'rpunkt') {
     // Linie auf der Form: Strich der ganzen Linie (die Form selbst bleibt noch rund, gezeichnet wird er wie bei den Kanten)
     merken(kopie(zustand));
@@ -893,7 +1107,11 @@ type Zug =
   | { art: 'raum'; l: number; i: number; vorher: Zustand; bewegt: boolean }
   // zEnde: Tiefe des Punkts zu Beginn (gestreckt, wie Front und Top sie zeigen); die Seite bewegt nur x und y
   | { art: 'lpunkt'; l: number; i: number; vorher: Zustand; bewegt: boolean; zEnde: number | null }
-  | { art: 'zeichnen'; spur: { x: number; y: number }[]; vorher: Zustand };
+  | { art: 'zeichnen'; spur: { x: number; y: number }[]; vorher: Zustand }
+  // von außen über den Umriss in die Form: die Maullinie
+  | { art: 'maul'; spur: { x: number; y: number }[]; vorher: Zustand }
+  // Punkt der Maullinie (der erste gleitet auf dem Umriss)
+  | { art: 'mpunkt'; i: number; vorher: Zustand; bewegt: boolean };
 let zug: Zug | null = null;
 // Doppelklick selbst zählen: die Punkte werden beim Drücken neu gezeichnet, das dblclick-Ziel ist dann weg
 let letzterKlick: { schluessel: string; t: number } | null = null;
@@ -933,6 +1151,16 @@ svg.addEventListener('pointerdown', (e) => {
     auswahl = { art: 'rpunkt', l, i };
     zug = { art: 'raum', l, i, vorher: kopie(zustand), bewegt: true };
     bauGewuenscht = 'fein';
+  } else if (d.mpunkt !== undefined) {
+    const i = Number(d.mpunkt);
+    auswahl = { art: 'mpunkt', i };
+    if (doppelklick(`m${i}`) || e.altKey) {
+      maulEcke(i);
+      return;
+    }
+    zug = { art: 'mpunkt', i, vorher: kopie(zustand), bewegt: false };
+  } else if (d.maul !== undefined) {
+    auswahl = { art: 'maul' };
   } else if (d.lpunkt !== undefined) {
     const [l, i] = d.lpunkt.split(':').map(Number) as [number, number];
     auswahl = { art: 'lpunkt', l, i };
@@ -955,8 +1183,9 @@ svg.addEventListener('pointerdown', (e) => {
   } else {
     const q = welt(e);
     auswahl = null;
-    // auf der Form zeichnen: eine neue Linie
+    // auf der Form zeichnen: eine neue Linie; von außen über den Umriss hinein: die Maullinie
     if (imUmriss(q)) zug = { art: 'zeichnen', spur: [q], vorher: kopie(zustand) };
+    else zug = { art: 'maul', spur: [q], vorher: kopie(zustand) };
   }
   svg.setPointerCapture(e.pointerId);
   svgZeichnen();
@@ -965,7 +1194,7 @@ svg.addEventListener('pointerdown', (e) => {
 svg.addEventListener('pointermove', (e) => {
   if (!zug) return;
   const w = welt(e);
-  if (zug.art === 'zeichnen') {
+  if (zug.art === 'zeichnen' || zug.art === 'maul') {
     const l = zug.spur[zug.spur.length - 1]!;
     if (Math.hypot(w.x - l.x, w.y - l.y) * skala() >= 3) {
       zug.spur.push(w);
@@ -986,6 +1215,13 @@ svg.addEventListener('pointermove', (e) => {
     // die Seite bewegt x und y, die Tiefe bleibt; ein Knoten zieht die andere Linie mit
     const p = zustand.raum[zug.l]!.punkte[zug.i]!;
     punktSetzen(zustand.raum, zug.l, zug.i, { x: w.x, y: w.y, z: p.z });
+  } else if (zug.art === 'mpunkt') {
+    const m = zustand.maul;
+    if (!m) return;
+    const p = m.punkte[zug.i]!;
+    // der Anfang gleitet auf dem Umriss
+    const q = zug.i === 0 ? naechsterAufUmriss(w.x, w.y) : w;
+    m.punkte[zug.i] = { ...p, x: q.x, y: q.y };
   } else {
     const l = zustand.linien[zug.l]!;
     const p = l.punkte[zug.i]!;
@@ -997,6 +1233,18 @@ svg.addEventListener('pointermove', (e) => {
 });
 
 const zugEnde = (): void => {
+  if (zug?.art === 'maul') {
+    const neu = maulAusSpur(zug.spur);
+    if (neu) {
+      merken(zug.vorher);
+      zustand.maul = neu;
+      auswahl = { art: 'maul' };
+      bauGewuenscht = 'fein';
+    }
+    zug = null;
+    svgZeichnen();
+    return;
+  }
   if (zug?.art === 'zeichnen') {
     const spur = zug.spur;
     let laenge = 0;
@@ -1532,6 +1780,13 @@ window.addEventListener('keydown', (e) => {
     } else if (a.art === 'raum') {
       merken(kopie(zustand));
       zustand.raum = zustand.raum.filter((_, j) => j !== a.l);
+    } else if (a.art === 'maul' || a.art === 'mpunkt') {
+      // ein Punkt der Maullinie (nicht der Anfang auf dem Umriss) oder die ganze Linie
+      const m = zustand.maul;
+      if (!m) return;
+      merken(kopie(zustand));
+      if (a.art === 'mpunkt' && a.i > 0 && m.punkte.length > 2) m.punkte = m.punkte.filter((_, j) => j !== a.i);
+      else zustand.maul = null;
     } else {
       merken(kopie(zustand));
       const l = zustand.linien[a.l]!;
@@ -1576,7 +1831,7 @@ function schleife(): void {
 
 window.__formSetzen = (p, linien = [], front = null, top = null) => {
   merken(kopie(zustand));
-  zustand = kopie({ punkte: p, linien, front, top, ansichten: null, raum: [] });
+  zustand = kopie({ punkte: p, linien, front, top, ansichten: null, raum: [], maul: null });
   auswahl = null;
   geaendert();
 };
@@ -1592,6 +1847,7 @@ window.__formAnsichten = (z) => {
     top: null,
     ansichten: { seite: seite.slice(1), front: kopien(z.front), top: kopien(z.top) },
     raum: [],
+    maul: null,
   });
   auswahl = null;
   geaendert();
@@ -1604,7 +1860,7 @@ window.__formPruefall = (name) => {
     return;
   }
   merken(kopie(zustand));
-  zustand = kopie({ punkte: h.seite, linien: [], front: h.front, top: h.top, ansichten: null, raum: [] });
+  zustand = kopie({ punkte: h.seite, linien: [], front: h.front, top: h.top, ansichten: null, raum: [], maul: null });
   auswahl = null;
   geaendert();
 };
@@ -1635,6 +1891,26 @@ if (NETZ) {
   const kopf = felder.seite.querySelector('header');
   if (kopf) kopf.textContent = 'Seite · Linien aus dem Netz';
 }
+// Regler „Maul“ im 3D-Blatt: nur die Ansicht, kein neuer Bau (die Drehung um den Mundwinkel ist schnell)
+maulEingabe.max = String(MAUL_WINKEL_MAX);
+const oeffnungSetzen = (w: number): void => {
+  oeffnung = Math.max(0, Math.min(MAUL_WINKEL_MAX, w));
+  maulEingabe.value = String(oeffnung);
+  oeffnungAnwenden();
+  svgZeichnen();
+  if (window.__form) window.__form.oeffnung = oeffnung;
+};
+maulEingabe.addEventListener('input', () => oeffnungSetzen(Number(maulEingabe.value)));
+// die 3D-Steuerung soll den Regler nicht als Drehen nehmen
+for (const art of ['pointerdown', 'wheel'] as const) maulRegler.addEventListener(art, (e) => e.stopPropagation());
+window.__formMaul = (linie) => {
+  merken(kopie(zustand));
+  zustand.maul = linie ? { punkte: linie.punkte.map((q) => ({ ...q })) } : null;
+  auswahl = null;
+  geaendert();
+};
+window.__formOeffnen = oeffnungSetzen;
+
 // ?fall=kugel|beine|flossen|lappen|innen öffnet einen Prüffall für gleichwertige Ansichten
 const fallAusAdresse = new URLSearchParams(location.search).get('fall');
 if (fallAusAdresse && fallAusAdresse in PRUEFFAELLE) window.__formPruefall(fallAusAdresse as Prueffall);

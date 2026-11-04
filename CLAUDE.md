@@ -648,6 +648,44 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     - Enden einer angelegten Linie nicht eine feste Zelle weiter setzen, sondern aus z² verlängern; sonst braucht ein Kreis acht
       statt drei Punkte.
     - Ein gewichtetes Mittel braucht zusammengefasste Proben je Zelle; doppelte Proben verschieben die Gewichte.
+  - **Florians Urteil:** „der Ansatz ist nicht schlecht“, braucht viel Feintuning; Kopf und Bauch müssen im Top getrennt greifbar
+    sein. Heute springt die angelegte Linie am Hals durch die Luft, weil sie je Stelle die breiteste Stelle der ganzen Form
+    nimmt (daher auch die Lappen im Top); richtig wäre die örtlich breiteste Stelle des angefassten Stücks. Noch nicht gebaut.
+- **2026-11-04 (nachts): Maul in der neuen Form — Probe** (Florian: „Ja, probier das Maul in der neuen Form: Maullinie in der
+  Seite auf die Form zeichnen, dort aufschneiden, mit einem Regler öffnen.“; davor die Empfehlung: das Maul vor dem Feintuning,
+  weil der schwerste Fall die Richtung entscheidet; der Käfig-Einsatz passt nicht in die dichte Form und bleibt eingefroren).
+  - **Bedienung** (alle Modi des Fensters): In der Seite von außen über den Umriss in die Form ziehen = Maullinie (Anfang auf
+    dem Umriss, gleitet mit ihm; Ende = Mundwinkel). Linie anklicken zeigt ihre Punkte (ziehen, Doppelklick Ecke, ⌫). Regler
+    „Maul öffnen“ im 3D-Blatt (0–55°, nur Ansicht, kein Neubau); offen zeigt auch die Seite den Umriss des Modells, die
+    Zeichnung türkis, die Unterlippe leiser daneben.
+  - **Kern `dicht/maul.ts`** (`maulSchneiden`, `maulOeffnen`, `maulPunkt`): Das fertige Netz wird längs der Fläche
+    aufgeschnitten, die die Linie in der Tiefe überstreicht. Kanten, die die Linie in der Seite kreuzen, werden geteilt (je
+    Kreuzung zwei Punkte, der Mundwinkel ein Punkt je Seite); vorn läuft der Schnitt gerade über den Umriss hinaus und
+    verbindet rechts und links. Lippen genau auf der Linie, geschlossen ist der Körper unverändert.
+  - **Maulinneres:** Gaumen und Boden als Gewölbe in ihren Kiefer (40 % der Kieferdicke, in der Tiefe so breit, wie der Körper
+    an der Stelle ist), am Mundwinkel treffen sie sich; Farbe dunkelrot.
+  - **Öffnen:** Drehung um den Mundwinkel in der Seite (z bleibt). Gewicht = Winkel, unter dem der Punkt die Linie sieht (springt
+    genau über der Linie, Übergang über 135° hinter und unter dem Mundwinkel) × Reichweite nach dem Abstand von der Unterlippe
+    längs der Form (Dijkstra auf dem Tiefenraster, nie über die Linie, Lücken umgehend; Übergang von der Kieferdicke am
+    Mundwinkel bis zum 1,5-Fachen). Normalen über die inverse transponierte Jacobi-Matrix. Ohne Kontur (alle Ansichten
+    gleichwertig) wird das Tiefenraster aus dem Netz gerastert.
+  - **Gemessen** (Test `dicht/maul.test.ts`, Maus `scripts/pruefen/form-maul-probe.mjs`): Lippen ≤ 0,001 neben der Linie; offen
+    sind Körper und Inneres zusammen dicht, 0 umgeklappte Dreiecke bei 20/40/55°; Unterkiefer starr (≤ 0,001), Oberkiefer steht
+    (0); Langhals: Brust jenseits der Lücke 0,000 bewegt; Schnitt 25 ms grob, 39 ms fein; Öffnen ohne Neubau.
+  - **Verworfen (gemessen):** Übergang hinter dem Mundwinkel über 90° (bei 55° auf 8 % gestaucht, 20 umgeklappt); Reichweite
+    nach dem Abstand zum Mundwinkel (die Brust unter dem Kopf drehte mit); Kieferdicke senkrecht unter dem Mundwinkel gemessen
+    (trifft eine Lücke an ihrer Spitze nicht: 280 statt 37); Übergang im Kiefer selbst (588 umgeklappt).
+  - **Offen:** Bei großem Winkel staucht sich die Kehle hinter dem Mundwinkel sichtbar. Ein Bein oder eine Brust direkt unter
+    dem Mundwinkel verdreht sich am Ansatz; ein möglicher Weg ist eine Kinnlinie als Griff, die festlegt, wo der Unterkiefer
+    endet. Von der Seite sieht man durch das offene Maul. Lippen ohne Rundung. Getrennte Kiefer (Über-/Unterbiss), Zähne,
+    Posen und Backen fürs Spiel fehlen noch.
+  - **Fallen:**
+    - Gewölbetiefe nie in Rasterschritten messen: Das zeichnete Sägezähne in die Farbstufen. Bis zum Rand halbieren und längs
+      glätten.
+    - Das Abstandsfeld muss über den Umriss hinaus stetig sein; sonst mitteln Punkte am Umriss innen und außen, und das gab
+      Falten. Jeder Rasterpunkt außen bekommt deshalb den Wert des nächsten innen.
+    - Das Abstandsfeld braucht 16 Nachbarn: 8 verzerren bis 8 %, und über den Hebel zum Mundwinkel wird daraus eine Falte.
+  - Bilder `docs/progress/editor/form-maul-{kugel-zu,kugel-offen,kopf-offen,langhals-offen,vierbeiner-offen}-2026-11-04.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
