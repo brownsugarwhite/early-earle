@@ -483,8 +483,28 @@ body {
 }
 
 .blatt.loop,
-.blatt.loop * {
+.blatt.loop *,
+.blatt.form,
+.blatt.form * {
   cursor: crosshair;
+}
+
+/* Nur Loops: breite unsichtbare Linie zum Greifen eines ganzen Loops, Kreuzungen als gefüllte Punkte */
+.blatt .kurve-treffer {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 12px;
+  vector-effect: non-scaling-stroke;
+  cursor: pointer;
+}
+
+.blatt .kpunkt.kreuz {
+  fill: #9fd8cf;
+  stroke-width: 2px;
+}
+
+.blatt .kpunkt.kreuz.gewaehlt {
+  fill: #0a5f56;
 }
 
 #status {

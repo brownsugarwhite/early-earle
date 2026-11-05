@@ -906,6 +906,32 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - Fallen: Eine Bindung auf der Mittelebene an nur einem Dreieck macht den Körper beim Ziehen schief (Gegenprobe 0,7 Einheiten);
     schief **wirkende** Front kann die Schattierung sein (erst `__kurven.symmetrie()` messen); vitest-Logs nur mit `--reporter=verbose`.
     Bilder `docs/progress/editor/form-kurven-*-2026-11-05.jpg`.
+- **2026-11-05 (nachts): Schritt 1 „Nur Loops“** (Florian nach drei Fragen: „Kugel ohne Loops, Loops schneiden in allen drei
+  Ansichten, geschlossene Formen zeichnen, auf jeder Linie Punkte setzen und löschen wie in Illustrator, Kreuzungen als automatische
+  Punkte, ganzen Loop wählen und mit G/S/R und O formen. Härte danach.“; seine Regeln: keine offenen Linien, Brauen = Loop ums Auge
+  oben hart, Mund = Loop; Griffe entstehen an Kreuzungen oder als gesetzte Punkte). `kurven.html` ist jetzt dieses Fenster (der
+  Beweis davor steht in bb0c837d).
+  - **Kern `dicht/loops.ts`:** Ein Loop sind Proben auf der Haut (Dreieck + baryzentrisch), `mitte` (Mittelebene), `ring` (Hälfte z ≥ 0,
+    Enden auf der Mitte), `paar` (eine Seite, Spiegelzwilling). `loopAusSchnitt`: Ebene durch die gezogene Linie und die Blickrichtung,
+    Schnitt durch Ablaufen der Dreiecke (`schnittLinien`); Seite immer Ring, Front/Top nah an der Mitte = `mitte`, quer über die Mitte
+    = Ring (Ebene spiegelgleich gemacht), sonst `paar`; von mehreren Schnittlinien die nächste zur Linie, dann die vorderste.
+    `formAusZeichnung`: geschlossene Form per Strahl auf die vorderste Haut, über die Mitte gezeichnet ein Ring. `kreuzungenZwischen`
+    (nächste Punkte der Strecken). `verschiebungLaengs`: Punkte verschieben den Loop zwischen ihren Nachbarn (Hermite längs s; ein Punkt
+    auf einem geschlossenen Loop bewegt ihn ganz; Ringenden spiegelgleich). `LoopZug`/`festlegen`: Bindungen samt Spiegel, nach jedem
+    Zug Ruhe = Lagen auf der Haut. Löser verallgemeinert: `HautZiele` (Ziele je Bindung), `HautLoeser` darüber; neu die Drehung um die
+    Normale je Punkt (2D-Procrustes der Nachbarn).
+  - **Fenster:** L schneidet (in allen Ansichten), F zeichnet eine Form (Freihand → wenige Punkte, Ramer–Douglas–Peucker), Punkt oder
+    Linie anklicken (⇧ mehrere) und ziehen, Doppelklick auf eine Linie = Punkt (Klicks selbst gezählt), ⌫ löscht eigene Punkte bzw.
+    Loops (Kreuzungen nicht), G/S/R modal mit X/Y/Z, O mit [ ], ⌘Z. Einflussbereich je Zug aus den Proben, die sich bewegen.
+  - **Gemessen** (Maus `scripts/pruefen/form-kurven-probe.mjs`, Tests `dicht/loops.test.ts`): drei Schnitte → Ring, Ring, Mitte mit
+    5 Kreuzungen (6 mit Spiegel), Haut unverändert; Kreuzung vorn im Top 150 → 100: Tiefe 100,1, Höhe und Länge 150,2 bleiben,
+    spiegelgleich, 0 umgeklappt, 11–15 ms je Mausbewegung (Bereich fast die ganze Kugel, Zerlegen 113–130 ms); Form ums Auge mit 4
+    Punkten, Doppelklick 4 → 5, ⌫ → 4, Haut unverändert; Mitte als Ganzes auf 1,2 in der Höhe → Ei 180 hoch, Tiefe bleibt 150 (die
+    anderen Loops halten sie); O (80) oben 40 hoch: 0 umgeklappt; ⌘Z bis zum Anfang bitgleich.
+  - **Offen (ehrlich):** Ohne O wirkt ein ganzer Loop nur auf die Haut um ihn: S ×1,3 drückt den Ring daneben zusammen (Wulst), R 30°
+    klappt 22 Dreiecke um (vorher 34, mit der Drehung um die Normale). Mit O weich (0 bzw. 2), dafür gehen Loops in der Nähe mit wie in
+    Blender. Keine Härte, keine Bézier-Griffe an Punkten (Punkte verschieben, Form zwischen ihnen glatt), Kreuzungen nur beim
+    Entstehen und nach Zügen gesucht, Netz fest (keine örtliche Verdichtung). Bilder `docs/progress/editor/form-loops-*-2026-11-05.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

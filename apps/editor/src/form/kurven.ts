@@ -1,28 +1,30 @@
-// Form zuerst (05.11.2026), Beweis „Kurven als Wahrheit“ (Fenster `kurven.html`, Florians Klarstellung Nachricht 3): ein dichtes
-// Netz, das sich selbst erzeugt; bearbeitet werden nur Kurven auf der Form — der Startumriss als erster Loop, Loops um Kopf und
-// Bauch —, ihre Punkte als Bézier-Punkte, mit Einflusskreis wie O in Blender. Der Umriss ist in allen Ansichten nur Ergebnis
-// (Shader). Die Haut löst `HautLoeser` im Einflussbereich; außerhalb bleibt sie, wo sie ist. Start: `?form=kugel|bohne`.
+// Form zuerst (05.11.2026), Schritt 1 „Nur Loops“ (Fenster `kurven.html`, Florian): Die Kugel hat am Anfang keine Loops. Loops
+// werden quer über den Körper geschnitten (in Seite, Front und Top) oder als geschlossene Form gezeichnet; es gibt keine offenen
+// Linien. Griffe sind Kreuzungen von Loops (entstehen von selbst) und Punkte, die er auf eine Linie setzt (Doppelklick) oder mit
+// einer Form zeichnet; sie lassen sich löschen. Ein ganzer Loop wird angeklickt und gezogen oder mit G/S/R geformt, mit O
+// (Einflusskreis) wie in Blender. Der Umriss ist nur Shader. Die Haut löst `LoopZug` im Einflussbereich. Start: `?form=kugel|bohne`.
+// (Der Beweis davor, „Kurven als Wahrheit“ mit dem Startumriss als Loop 0, steht in Commit bb0c837d.)
 
 import {
-  type Anheftung,
-  type Haut,
-  HautLoeser,
+  type Ansicht,
   type Kurve,
+  type Loop,
+  LoopZug,
   type UmrissPunkt,
   type V3,
-  aufStueck,
+  bereichUm,
   einfluss,
-  einflussBereich,
+  festlegen,
+  formAusZeichnung,
   hautAus,
   hautNormalen,
+  kreuzungenZwischen,
   kurveAbtasten,
-  kurveAnheften,
-  kurveGanz,
-  kurvenGriffe,
-  kurvenStuecke,
-  ringAusSchnitt,
+  loopAusSchnitt,
+  mittlereKante,
+  punktEinfuegen,
   rundAusSeite,
-  stelleAufKurve,
+  verschiebungLaengs,
 } from '@ee/shape/dicht';
 import {
   BackSide,
@@ -48,17 +50,8 @@ import {
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-type Ansicht = 'seite' | 'front' | 'top';
-/** Stelle auf dem Startumriss (Stück, Parameter): dort liegt ein Ende eines Loops */
-type Stelle = { stueck: number; t: number };
-type Zustand = {
-  /** Kurve 0: der Startumriss (Mittelebene), danach Loops (Hälfte z ≥ 0) */
-  kurven: Kurve[];
-  /** je Loop: wo seine Enden auf dem Startumriss liegen (sie gehen mit ihm) */
-  enden: ({ a: Stelle; b: Stelle } | null)[];
-  anheftungen: { kurve: number; a: Anheftung }[];
-};
-type Wahl = { k: number; i: number };
+/** Auswahl: ein Punkt (i ≥ 0) oder ein ganzer Loop (i = −1), Loop über seine Kennung */
+type Wahl = { l: number; i: number };
 
 const PAPIER = 0xefe9dd;
 const KOERPER = 0xe2b98e;
@@ -69,10 +62,6 @@ const KURVE_WAHL = 0x0a5f56;
 const SICHT = 560;
 /** bestellte Dreiecke der Haut (Surface Nets geben etwa das 1,5-Fache) */
 const DREIECKE = 6000;
-/** Abstand der Proben einer Kurve auf der Haut */
-const PROBE = 4;
-/** so genau folgt ein neuer Loop dem Schnitt (wenige Punkte) */
-const RING_TOL = 2;
 /** Runden je Mausbewegung und beim Loslassen */
 const RUNDEN_ZUG = 2;
 const RUNDEN_ENDE = 4;
@@ -102,127 +91,69 @@ const BOHNE: UmrissPunkt[] = [
 const FORMEN: Record<string, UmrissPunkt[]> = { kugel: kreis(150), bohne: BOHNE };
 const startUmriss = FORMEN[new URLSearchParams(location.search).get('form') ?? 'kugel'] ?? kreis(150);
 
-// ---------- Haut und Kurven ----------
+// ---------- Haut und Loops ----------
 
 const netz = rundAusSeite(startUmriss, { dreiecke: DREIECKE });
-const haut: Haut = hautAus(netz.positionen, netz.indizes);
-const startLagen = Float64Array.from(haut.pos);
-const mitte: Kurve = { art: 'mitte', punkte: startUmriss.map((q) => ({ x: q.x, y: q.y, z: 0 })) };
-const z: Zustand = { kurven: [mitte], enden: [null], anheftungen: [{ kurve: 0, a: kurveAnheften(haut, mitte, PROBE) }] };
+const haut = hautAus(netz.positionen, netz.indizes);
+const MK = mittlereKante(haut);
+/** so nah müssen sich zwei Loops kommen, damit sie sich kreuzen */
+const TOL = 0.25 * MK;
 
+let loops: Loop[] = [];
+let naechsteId = 1;
+let naechsteKreuzung = 1;
 let auswahl: Wahl[] = [];
+let modus: 'frei' | 'loop' | 'form' = 'frei';
 let oAn = false;
 let radius = 90;
-let loopAn = false;
+let meldung = '';
 
-type Schnappschuss = { z: Zustand; pos: Float64Array; auswahl: Wahl[] };
+type Schnappschuss = { loops: Loop[]; pos: Float64Array; auswahl: Wahl[]; ids: [number, number] };
 const zurueck: Schnappschuss[] = [];
-const kopieKurve = (k: Kurve): Kurve => ({ art: k.art, punkte: k.punkte.map((p) => ({ ...p })) });
+const kopieLoop = (l: Loop): Loop => ({
+  ...l,
+  ruhe: Float64Array.from(l.ruhe),
+  punkte: l.punkte.map((p) => ({ ...p, ref: { ...p.ref }, cur: { ...p.cur } })),
+});
 const schnappschuss = (): Schnappschuss => ({
-  z: { kurven: z.kurven.map(kopieKurve), enden: [...z.enden], anheftungen: [...z.anheftungen] },
+  loops: loops.map(kopieLoop),
   pos: Float64Array.from(haut.pos),
   auswahl: [...auswahl],
+  ids: [naechsteId, naechsteKreuzung],
 });
 function wiederherstellen(s: Schnappschuss): void {
-  z.kurven = s.z.kurven;
-  z.enden = s.z.enden;
-  z.anheftungen = s.z.anheftungen;
+  loops = s.loops;
   haut.pos.set(s.pos);
   auswahl = s.auswahl;
+  [naechsteId, naechsteKreuzung] = s.ids;
   allesZeigen();
 }
 
-/** Die Enden der Loops auf den Startumriss legen (sie gehen mit ihm). */
-function endenNachfuehren(): void {
-  const st = kurvenStuecke(z.kurven[0]!);
-  z.enden.forEach((e, k) => {
-    const ring = z.kurven[k];
-    if (!e || !ring) return;
-    const a = aufStueck(st[e.a.stueck]!, e.a.t);
-    const b = aufStueck(st[e.b.stueck]!, e.b.t);
-    const n = ring.punkte.length;
-    ring.punkte[0] = { ...ring.punkte[0]!, x: a.x, y: a.y, z: 0 };
-    ring.punkte[n - 1] = { ...ring.punkte[n - 1]!, x: b.x, y: b.y, z: 0 };
-  });
-}
+const loopNr = (id: number): number => loops.findIndex((l) => l.id === id);
+const lageAus = (L: Float64Array, i: number): V3 => ({ x: L[3 * i]!, y: L[3 * i + 1]!, z: L[3 * i + 2]! });
+const spiegeln = (p: V3): V3 => ({ ...p, z: -p.z });
+const abstand = (a: V3, b: V3): number => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+const abstandSym = (a: V3, b: V3): number => Math.min(abstand(a, b), abstand(a, spiegeln(b)));
 
-const istEnde = (k: number, i: number): boolean => {
-  const c = z.kurven[k];
-  return !!c && c.art === 'ring' && (i === 0 || i === c.punkte.length - 1);
-};
-const abstandSym = (p: V3, q: V3): number => Math.min(Math.hypot(p.x - q.x, p.y - q.y, p.z - q.z), Math.hypot(p.x - q.x, p.y - q.y, p.z + q.z));
-
-/** Gewicht je Punkt: gewählte 1, mit O die anderen nach dem Abstand zum nächsten gewählten (Blender „glatt“). */
-function gewichteFuer(wahl: readonly Wahl[]): Map<string, number> {
-  const g = new Map<string, number>();
-  const sel = wahl.map((w) => z.kurven[w.k]!.punkte[w.i]!);
-  z.kurven.forEach((c, k) =>
-    c.punkte.forEach((p, i) => {
-      if (istEnde(k, i)) return;
-      let w = wahl.some((s) => s.k === k && s.i === i) ? 1 : 0;
-      if (w === 0 && oAn) for (const q of sel) w = Math.max(w, einfluss(abstandSym(p, q), radius));
-      if (w > 0) g.set(`${k}:${i}`, w);
-    }),
-  );
-  return g;
-}
-
-/** Stücke, die sich ändern, wenn sich diese Punkte bewegen (Loops, deren Ende auf einem davon liegt, ebenso). */
-function geaenderteStuecke(punkte: Iterable<string>): Map<number, Set<number>> {
-  const m = new Map<number, Set<number>>();
-  const dazu = (k: number, s: number) => {
-    const set = m.get(k) ?? new Set<number>();
-    set.add(s);
-    m.set(k, set);
-  };
-  for (const key of punkte) {
-    const [k, i] = key.split(':').map(Number) as [number, number];
-    const c = z.kurven[k]!;
-    const n = c.punkte.length;
-    if (c.art === 'mitte') {
-      dazu(k, (i - 1 + n) % n);
-      dazu(k, i);
-    } else {
-      if (i > 0) dazu(k, i - 1);
-      if (i < n - 1) dazu(k, i);
+/** Kreuzungen suchen (nur mit `nur`, sonst alle Paare); neue werden Punkte auf beiden Loops */
+function kreuzungenSuchen(nur?: Loop): number {
+  let zahl = 0;
+  for (let i = 0; i < loops.length; i++) {
+    for (let j = i + 1; j < loops.length; j++) {
+      const A = loops[i]!;
+      const B = loops[j]!;
+      if (nur && A !== nur && B !== nur) continue;
+      for (const f of kreuzungenZwischen(A, A.ruhe, B, B.ruhe, TOL)) {
+        const schon = A.punkte.some((p) => p.kreuzung !== undefined && abstand(p.ref, f.p) < 8 * TOL && B.punkte.some((q) => q.kreuzung === p.kreuzung));
+        if (schon) continue;
+        const k = naechsteKreuzung++;
+        punktEinfuegen(A, f.sa, k);
+        punktEinfuegen(B, f.sb, k);
+        zahl++;
+      }
     }
   }
-  const m0 = m.get(0);
-  if (m0) {
-    z.enden.forEach((e, k) => {
-      if (!e) return;
-      const n = z.kurven[k]!.punkte.length;
-      if (m0.has(e.a.stueck)) dazu(k, 0);
-      if (m0.has(e.b.stueck)) dazu(k, n - 2);
-    });
-  }
-  return m;
-}
-
-/**
- * Einflussbereich auf der Haut: um die Stücke, die sich ändern, so weit wie der Einflusskreis (mit O) bzw. so weit, wie die
- * gezogenen Punkte von ihren Nachbarn entfernt sind (ohne O; so weit ändert sich ihre Kurve).
- */
-function bereichFuer(punkte: Iterable<string>, stuecke: Map<number, Set<number>>): { bereich: Uint8Array; r: number } {
-  const zentren: V3[] = [];
-  let r = 0;
-  for (const key of punkte) {
-    const [k, i] = key.split(':').map(Number) as [number, number];
-    const c = z.kurven[k]!;
-    const p = c.punkte[i]!;
-    zentren.push(p);
-    const n = c.punkte.length;
-    for (const j of [i - 1, i + 1]) {
-      const q = c.art === 'mitte' ? c.punkte[(j + n) % n] : c.punkte[j];
-      if (q) r = Math.max(r, Math.hypot(q.x - p.x, q.y - p.y, q.z - p.z));
-    }
-  }
-  if (oAn) r = Math.max(r, radius);
-  for (const [k, set] of stuecke) {
-    const st = kurvenStuecke(z.kurven[k]!);
-    for (const s of set) for (let j = 0; j <= 8; j++) zentren.push(aufStueck(st[s]!, j / 8));
-  }
-  return { bereich: einflussBereich(haut, zentren, r, z.anheftungen, stuecke), r };
+  return zahl;
 }
 
 // ---------- Darstellung ----------
@@ -432,13 +363,29 @@ function bandGeometrie(linien: readonly { p: readonly V3[]; breite: number }[]):
   return g;
 }
 
-const gewaehlteKurven = (): Set<number> => new Set(auswahl.map((w) => w.k));
+const knopfForm = document.getElementById('knopf-form') as HTMLButtonElement;
+/** Blattkoordinaten → (u, v) des Kerns: Seite (x, y), Front (z, y), Top (x, z) */
+const uvAus = (a: Ansicht, X: number, Y: number): [number, number] => (a === 'top' ? [X, Y] : [X, -Y]);
+
+/** Linien eines Loops zum Zeichnen: Ring = gespeicherte Hälfte und Spiegelhälfte, Paar = Loop und Zwilling, Mitte geschlossen */
+function linienVon(l: Loop, L: Float64Array): V3[][] {
+  const p = Array.from({ length: l.proben.length }, (_, i) => lageAus(L, i));
+  if (l.art === 'ring') return [p, p.map(spiegeln)];
+  if (l.art === 'mitte') return [[...p, p[0]!]];
+  const zu = [...p, p[0]!];
+  return [zu, zu.map(spiegeln)];
+}
+
+const aktuelleLagen = (): Float64Array[] => (zug ? zug.lagen : loops.map((l) => l.ruhe));
 
 function baenderZeigen(): void {
-  const wahl = gewaehlteKurven();
+  const lagen = aktuelleLagen();
   const normal: { p: V3[]; breite: number }[] = [];
   const gewaehlt: { p: V3[]; breite: number }[] = [];
-  z.kurven.forEach((k, i) => (wahl.has(i) ? gewaehlt : normal).push({ p: kurveGanz(k, 3), breite: wahl.has(i) ? 3 : 2 }));
+  loops.forEach((l, li) => {
+    const gew = auswahl.some((w) => w.l === l.id);
+    for (const p of linienVon(l, lagen[li]!)) (gew ? gewaehlt : normal).push({ p, breite: gew ? 3 : 2 });
+  });
   const gN = bandGeometrie(normal);
   const gW = bandGeometrie(gewaehlt);
   for (const [i, g] of [gN, gN, gW, gW].entries()) {
@@ -455,17 +402,35 @@ const element = (art: string, klasse: string, attr: Record<string, string | numb
   for (const [k, v] of Object.entries(attr)) e.setAttribute(k, String(v));
   return e;
 };
-const pfad = (a: Ansicht, p: readonly V3[], spiegel = false): string =>
+const pfad = (a: Ansicht, p: readonly V3[]): string =>
   p
     .map((q, i) => {
-      const [x, y] = imBlatt(a, spiegel ? { ...q, z: -q.z } : q);
+      const [x, y] = imBlatt(a, q);
       return `${i ? 'L' : 'M'} ${x.toFixed(2)} ${y.toFixed(2)}`;
     })
     .join(' ');
 
-/** gezogene Punkte (für die Anzeige: mit O hell gefüllt, wie stark sie mitgehen) */
-let bewegtAnzeige = new Map<string, number>();
-let entwurf: [number, number, number, number] | null = null;
+/** Mitte der Auswahl (für den Einflusskreis) */
+function auswahlMitte(): V3 | null {
+  const q: V3[] = [];
+  for (const w of auswahl) {
+    const l = loops[loopNr(w.l)];
+    if (!l) continue;
+    if (w.i >= 0) {
+      const p = l.punkte[w.i];
+      if (p) q.push(zug ? p.cur : p.ref);
+    } else {
+      const L = aktuelleLagen()[loopNr(w.l)]!;
+      for (let j = 0; j < l.proben.length; j++) q.push(lageAus(L, j));
+    }
+  }
+  if (q.length === 0) return null;
+  const m = q.reduce((s, p) => ({ x: s.x + p.x, y: s.y + p.y, z: s.z + p.z }), { x: 0, y: 0, z: 0 });
+  return { x: m.x / q.length, y: m.y / q.length, z: m.z / q.length };
+}
+
+let entwurf: { a: Ansicht; x0: number; y0: number; x1: number; y1: number } | null = null;
+let spur: { a: Ansicht; p: [number, number][] } | null = null;
 
 function blattZeichnen(a: Ansicht): void {
   const el = blaetter[a];
@@ -474,70 +439,60 @@ function blattZeichnen(a: Ansicht): void {
   const w = r.width / s;
   const h = r.height / s;
   el.setAttribute('viewBox', `${-w / 2} ${-h / 2} ${w} ${h}`);
-  el.classList.toggle('loop', loopAn && a === 'seite');
+  el.classList.toggle('loop', modus === 'loop');
+  el.classList.toggle('form', modus === 'form');
   el.replaceChildren();
-  const wahl = gewaehlteKurven();
   const rp = 4.5 / s;
-  // Kurven: die gespeicherte Hälfte und (in Front und Top) ihr Spiegelbild
-  z.kurven.forEach((k, ki) => {
-    const p = kurveAbtasten(k, 3).p;
-    if (k.art === 'mitte') p.push(p[0]!);
-    const klasse = wahl.has(ki) ? 'kurve gewaehlt' : 'kurve';
-    el.append(element('path', klasse, { d: pfad(a, p) }));
-    if (k.art === 'ring' && a !== 'seite') el.append(element('path', `${klasse} spiegel`, { d: pfad(a, p, true) }));
+  const lagen = aktuelleLagen();
+  loops.forEach((l, li) => {
+    const gew = auswahl.some((x) => x.l === l.id);
+    linienVon(l, lagen[li]!).forEach((pts, m) => {
+      // in der Seite liegen Spiegelhälfte und Zwilling genau hinter dem Gespeicherten
+      if (m === 1 && a === 'seite') return;
+      const d = pfad(a, pts);
+      el.append(element('path', `kurve${gew ? ' gewaehlt' : ''}${m ? ' spiegel' : ''}`, { d }));
+      const t = element('path', 'kurve-treffer', { d });
+      t.setAttribute('data-l', String(l.id));
+      if (m) t.setAttribute('data-m', '1');
+      el.append(t);
+    });
   });
-  // Punkte (in Front und Top auch gespiegelt), Enden der Loops fest
-  z.kurven.forEach((k, ki) =>
-    k.punkte.forEach((q, i) => {
-      for (const m of a === 'seite' || q.z === 0 ? [false] : [false, true]) {
-        const [x, y] = imBlatt(a, m ? { ...q, z: -q.z } : q);
-        if (istEnde(ki, i)) {
-          el.append(element('circle', 'kende', { cx: x, cy: y, r: rp * 0.6 }));
-          continue;
-        }
-        const gew = auswahl.some((s2) => s2.k === ki && s2.i === i);
-        const bew = !gew && bewegtAnzeige.has(`${ki}:${i}`);
-        const c = element('circle', `kpunkt${gew ? ' gewaehlt' : bew ? ' bewegt' : ''}${m ? ' spiegel' : ''}`, { cx: x, cy: y, r: rp });
-        c.setAttribute('data-k', String(ki));
+  loops.forEach((l) =>
+    l.punkte.forEach((p, i) => {
+      const q = zug ? p.cur : p.ref;
+      for (const m of a === 'seite' || Math.abs(q.z) < 1e-6 ? [false] : [false, true]) {
+        const [x, y] = imBlatt(a, m ? spiegeln(q) : q);
+        const gew = auswahl.some((x2) => x2.l === l.id && x2.i === i);
+        const kreuz = p.kreuzung !== undefined;
+        const c = element('circle', `kpunkt${kreuz ? ' kreuz' : ''}${gew ? ' gewaehlt' : ''}${m ? ' spiegel' : ''}`, {
+          cx: x,
+          cy: y,
+          r: kreuz ? rp * 1.2 : rp,
+        });
+        c.setAttribute('data-l', String(l.id));
         c.setAttribute('data-i', String(i));
         if (m) c.setAttribute('data-m', '1');
         el.append(c);
       }
     }),
   );
-  // Griffe des einen gewählten Punkts (Bézier)
-  const w0 = auswahl.length === 1 ? auswahl[0]! : null;
-  if (w0 && !istEnde(w0.k, w0.i)) {
-    const k = z.kurven[w0.k]!;
-    const q = k.punkte[w0.i]!;
-    const g = kurvenGriffe(k)[w0.i]!;
-    const [qx, qy] = imBlatt(a, q);
-    for (const welcher of ['ein', 'aus'] as const) {
-      const v = g[welcher];
-      if (Math.hypot(v.x, v.y, v.z) < 1e-6) continue;
-      const [x, y] = imBlatt(a, { x: q.x + v.x, y: q.y + v.y, z: q.z + v.z });
-      el.append(element('line', 'griff-linie', { x1: qx, y1: qy, x2: x, y2: y }));
-      const gr = element('rect', 'griff', { x: x - rp * 0.7, y: y - rp * 0.7, width: rp * 1.4, height: rp * 1.4 });
-      gr.setAttribute('data-g', welcher);
-      el.append(gr);
+  if (oAn) {
+    const c = zug?.mitte ?? auswahlMitte();
+    if (c) {
+      const [x, y] = imBlatt(a, c);
+      el.append(element('circle', 'einfluss', { cx: x, cy: y, r: radius }));
     }
   }
-  // Einflusskreis um den gezogenen bzw. gewählten Punkt
-  if (oAn && w0) {
-    const q = z.kurven[w0.k]!.punkte[w0.i]!;
-    const [x, y] = imBlatt(a, zug?.mitte ?? q);
-    el.append(element('circle', 'einfluss', { cx: x, cy: y, r: radius }));
-  }
-  if (entwurf && a === 'seite') {
-    el.append(element('line', 'entwurf', { x1: entwurf[0], y1: entwurf[1], x2: entwurf[2], y2: entwurf[3] }));
-  }
+  if (entwurf && entwurf.a === a) el.append(element('line', 'entwurf', { x1: entwurf.x0, y1: entwurf.y0, x2: entwurf.x1, y2: entwurf.y1 }));
+  if (spur && spur.a === a) el.append(element('polyline', 'entwurf', { points: spur.p.map((q) => q.join(',')).join(' ') }));
 }
 
 function allesZeigen(): void {
   hautZeigen();
   baenderZeigen();
   for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
-  knopfLoop.setAttribute('aria-pressed', String(loopAn));
+  knopfLoop.setAttribute('aria-pressed', String(modus === 'loop'));
+  knopfForm.setAttribute('aria-pressed', String(modus === 'form'));
   knopfO.setAttribute('aria-pressed', String(oAn));
   knopfO.textContent = oAn ? `Einfluss O · ${Math.round(radius)}` : 'Einfluss O';
   statusZeigen();
@@ -549,227 +504,538 @@ const zeiten: number[] = [];
 let letzteZerlegung = 0;
 let letzterBereich = 0;
 function statusZeigen(): void {
-  const zug = zeiten.slice(-20);
-  const ms = zug.length ? zug.reduce((s, v) => s + v, 0) / zug.length : 0;
+  const z = zeiten.slice(-20);
+  const ms = z.length ? z.reduce((s, v) => s + v, 0) / z.length : 0;
+  const punkte = loops.reduce((s, l) => s + l.punkte.length, 0);
+  const kreuz = new Set(loops.flatMap((l) => l.punkte.filter((p) => p.kreuzung !== undefined).map((p) => p.kreuzung))).size;
   statusZeile.textContent =
-    `${z.kurven.length - 1} Loops · ${haut.tri.length / 3} Dreiecke · Zug ${ms.toFixed(1)} ms · zerlegen ${letzteZerlegung} ms · ` +
-    `Bereich ${letzterBereich} von ${haut.n}`;
+    meldung ||
+    `${loops.length} Loops · ${punkte} Punkte (${kreuz} Kreuzungen) · Zug ${ms.toFixed(1)} ms · zerlegen ${letzteZerlegung} ms · ` +
+      `Bereich ${letzterBereich} von ${haut.n}`;
 }
 
-// ---------- Ziehen ----------
+// ---------- Ziehen und G/S/R ----------
 
 type Zug = {
+  /** null: direkt gezogen (wie G) */
+  modal: 'g' | 's' | 'r' | null;
+  achse: 'x' | 'y' | 'z' | null;
   ansicht: Ansicht;
-  /** auf dem Spiegelbild gegriffen: die Tiefe läuft umgekehrt */
+  /** auf einer Spiegelhälfte gegriffen: die Tiefe läuft umgekehrt */
   spiegel: boolean;
   x0: number;
   y0: number;
-  start: Kurve[];
-  gewichte: Map<string, number>;
-  griff: { k: number; i: number; welcher: 'ein' | 'aus'; ein: V3; aus: V3 } | null;
-  loeser: HautLoeser;
-  bewegt: boolean;
+  pivot: V3;
   vorher: Schnappschuss;
-  /** Mitte des Einflusskreises (der gegriffene Punkt, wie er gerade liegt) */
+  loeser: LoopZug;
+  /** ganz bewegte Loops (Index) */
+  ganze: Set<number>;
+  /** mit O: Gewicht je Probe der anderen Loops */
+  probenW: (Float64Array | null)[];
+  /** Gewicht je Punkt („Loop:Punkt“) */
+  punktW: Map<string, number>;
+  lagen: Float64Array[];
+  versch: (Float64Array | null)[];
+  bewegt: boolean;
   mitte: V3 | null;
 };
 let zug: Zug | null = null;
 
-function loeserFuer(punkte: Iterable<string>): HautLoeser {
-  const liste = [...punkte];
-  const stuecke = geaenderteStuecke(liste);
-  const { bereich } = bereichFuer(liste, stuecke);
-  const l = new HautLoeser(haut, z.anheftungen, z.kurven, bereich);
-  letzteZerlegung = l.zeitZerlegen;
-  letzterBereich = l.anzahl;
-  return l;
+/** Abbildung des Zugs für die Maus an (X, Y) im Blatt: Verschieben, Skalieren (um die Mitte der Auswahl) oder Drehen (um die Blickachse) */
+function abbildung(z: Zug, X: number, Y: number): (p: V3) => V3 {
+  const a = z.ansicht;
+  const [cx, cy] = imBlatt(a, z.pivot);
+  if (z.modal === 's') {
+    const k = Math.hypot(X - cx, Y - cy) / Math.max(1e-6, Math.hypot(z.x0 - cx, z.y0 - cy));
+    const c = z.pivot;
+    return (p) => ({
+      x: !z.achse || z.achse === 'x' ? c.x + k * (p.x - c.x) : p.x,
+      y: !z.achse || z.achse === 'y' ? c.y + k * (p.y - c.y) : p.y,
+      z: !z.achse || z.achse === 'z' ? c.z + k * (p.z - c.z) : p.z,
+    });
+  }
+  if (z.modal === 'r') {
+    const phi = Math.atan2(Y - cy, X - cx) - Math.atan2(z.y0 - cy, z.x0 - cx);
+    const co = Math.cos(phi);
+    const si = Math.sin(phi);
+    return (p) => {
+      const [px, py] = imBlatt(a, p);
+      const nx = cx + (px - cx) * co - (py - cy) * si;
+      const ny = cy + (px - cx) * si + (py - cy) * co;
+      const d = inWelt(a, nx - px, ny - py);
+      return { x: p.x + d.x, y: p.y + d.y, z: p.z + d.z };
+    };
+  }
+  const d = inWelt(a, X - z.x0, Y - z.y0);
+  if (z.spiegel) d.z = -d.z;
+  if (z.achse) for (const k of ['x', 'y', 'z'] as const) if (k !== z.achse) d[k] = 0;
+  // spiegelgleiche Loops als Ganzes nicht aus der Mitte schieben
+  if ([...z.ganze].some((li) => loops[li]!.art !== 'paar')) d.z = 0;
+  return (p) => ({ x: p.x + d.x, y: p.y + d.y, z: p.z + d.z });
 }
 
-function loesen(runden: number): void {
-  if (!zug) return;
+/** Punkt einer Linie in der Mittelebene bzw. am Ende eines Rings: z bleibt 0; Ringe nicht unter die Mitte */
+function zFest(l: Loop, s: number): boolean {
+  return l.art === 'mitte' || (l.art === 'ring' && (s <= 1e-6 || s >= l.laenge - 1e-6));
+}
+
+function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spiegel: boolean): boolean {
+  if (auswahl.length === 0) return false;
+  const ganze = new Set<number>();
+  const punktW = new Map<string, number>();
+  const kreuzWahl = new Set<number>();
+  const zentren: V3[] = [];
+  for (const w of auswahl) {
+    const li = loopNr(w.l);
+    const l = loops[li];
+    if (!l) continue;
+    if (w.i < 0) {
+      ganze.add(li);
+      l.punkte.forEach((p, i) => {
+        punktW.set(`${li}:${i}`, 1);
+        if (p.kreuzung !== undefined) kreuzWahl.add(p.kreuzung);
+      });
+      for (let j = 0; j < l.proben.length; j += 2) zentren.push(lageAus(l.ruhe, j));
+    } else {
+      const p = l.punkte[w.i];
+      if (!p) continue;
+      punktW.set(`${li}:${w.i}`, 1);
+      zentren.push(p.ref);
+      if (p.kreuzung !== undefined) kreuzWahl.add(p.kreuzung);
+    }
+  }
+  if (zentren.length === 0) return false;
+  if (modal === 'r' && a !== 'seite' && [...ganze].some((li) => loops[li]!.art !== 'paar')) {
+    meldung = 'Spiegelgleiche Loops dreht man in der Seite';
+    statusZeigen();
+    return false;
+  }
+  // an einer Kreuzung geht der Punkt im anderen Loop ganz mit
+  loops.forEach((l, li) =>
+    l.punkte.forEach((p, i) => {
+      if (p.kreuzung !== undefined && kreuzWahl.has(p.kreuzung)) punktW.set(`${li}:${i}`, 1);
+    }),
+  );
+  const probenW: (Float64Array | null)[] = loops.map(() => null);
+  if (oAn) {
+    loops.forEach((l, li) => {
+      if (ganze.has(li)) return;
+      const w = new Float64Array(l.proben.length);
+      let irgend = false;
+      for (let j = 0; j < l.proben.length; j++) {
+        const q = lageAus(l.ruhe, j);
+        let d = Infinity;
+        for (const c of zentren) d = Math.min(d, abstandSym(q, c));
+        w[j] = einfluss(d, radius);
+        if (w[j]! > 0) irgend = true;
+      }
+      if (irgend) probenW[li] = w;
+      l.punkte.forEach((p, i) => {
+        const k = `${li}:${i}`;
+        if (punktW.has(k)) return;
+        let d = Infinity;
+        for (const c of zentren) d = Math.min(d, abstandSym(p.ref, c));
+        const g = einfluss(d, radius);
+        if (g > 0) punktW.set(k, g);
+      });
+    });
+  }
+  // was sich bewegt: ganze Loops, mit O die Proben im Kreis, sonst die Stücke um die bewegten Punkte bis zu ihren Nachbarn
+  const bewegt: V3[] = [];
+  const ecken = new Set<number>();
+  let r = oAn ? radius : 2 * MK;
+  loops.forEach((l, li) => {
+    const n = l.proben.length;
+    const mark = new Uint8Array(n);
+    const ausdehnung = () => {
+      let m = 0;
+      for (let j = 0; j < n; j += 4) m = Math.max(m, abstand(lageAus(l.ruhe, j), lageAus(l.ruhe, 0)));
+      return m;
+    };
+    // ein ganzer Loop nimmt sein Inneres mit (Bereich über seine Mitte hinaus), sonst verdreht sich die Haut auf kurzem Weg
+    if (ganze.has(li)) {
+      mark.fill(1);
+      if (!oAn) r = Math.max(r, 0.6 * ausdehnung());
+    } else if (probenW[li]) {
+      for (let j = 0; j < n; j++) if (probenW[li]![j]! > 0) mark[j] = 1;
+    } else if (!oAn) {
+      const P = l.punkte;
+      P.forEach((p, k) => {
+        if (!punktW.has(`${li}:${k}`)) return;
+        const zu = l.art !== 'ring';
+        if (zu && P.length === 1) {
+          mark.fill(1);
+          r = Math.max(r, 0.6 * ausdehnung());
+          return;
+        }
+        const s0 = k > 0 ? P[k - 1]!.s : zu ? P[P.length - 1]!.s - l.laenge : 0;
+        const s1 = k < P.length - 1 ? P[k + 1]!.s : zu ? P[0]!.s + l.laenge : l.laenge;
+        for (let j = 0; j < n; j++) {
+          const s = l.s[j]!;
+          if ((s > s0 && s < s1) || (zu && (s - l.laenge > s0 || s + l.laenge < s1))) mark[j] = 1;
+        }
+        const nach = [k > 0 ? P[k - 1]!.ref : lageAus(l.ruhe, 0), k < P.length - 1 ? P[k + 1]!.ref : lageAus(l.ruhe, n - 1)];
+        for (const q of nach) r = Math.max(r, 0.5 * abstand(p.ref, q));
+      });
+    }
+    for (let j = 0; j < n; j++) {
+      if (!mark[j]) continue;
+      if (j % 2 === 0) bewegt.push(lageAus(l.ruhe, j));
+      for (const v of l.proben[j]!.ecken) ecken.add(v);
+    }
+  });
+  const loeser = new LoopZug(haut, loops, bereichUm(haut, bewegt, r, ecken));
+  const pivot = zentren.reduce((s, p) => ({ x: s.x + p.x / zentren.length, y: s.y + p.y / zentren.length, z: s.z + p.z / zentren.length }), { x: 0, y: 0, z: 0 });
+  if (ganze.size > 0 && [...ganze].every((li) => loops[li]!.art !== 'paar')) pivot.z = 0;
+  zug = {
+    modal,
+    achse: null,
+    ansicht: a,
+    spiegel,
+    x0: X,
+    y0: Y,
+    pivot,
+    vorher: schnappschuss(),
+    loeser,
+    ganze,
+    probenW,
+    punktW,
+    lagen: loeser.start,
+    versch: loops.map(() => null),
+    bewegt: false,
+    mitte: zentren.length === 1 ? { ...zentren[0]! } : pivot,
+  };
+  letzteZerlegung = loeser.loeser.zeitZerlegen;
+  letzterBereich = loeser.loeser.anzahl;
+  meldung = '';
+  return true;
+}
+
+/** Verschiebung je Probe je Loop für die Abbildung f */
+function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
+  return loops.map((l, li) => {
+    const n = l.proben.length;
+    const S = z.loeser.start[li]!;
+    let d: Float64Array | null = null;
+    if (z.ganze.has(li) || z.probenW[li]) {
+      const w = z.probenW[li];
+      d = new Float64Array(3 * n);
+      for (let j = 0; j < n; j++) {
+        const g = w ? w[j]! : 1;
+        if (!g) continue;
+        const p = lageAus(S, j);
+        const q = f(p);
+        d[3 * j] = g * (q.x - p.x);
+        d[3 * j + 1] = g * (q.y - p.y);
+        d[3 * j + 2] = g * (q.z - p.z);
+      }
+    } else {
+      let irgend = false;
+      const D = l.punkte.map((p, i) => {
+        const g = z.punktW.get(`${li}:${i}`);
+        if (!g) return { x: 0, y: 0, z: 0 };
+        irgend = true;
+        const q = f(p.ref);
+        return { x: g * (q.x - p.ref.x), y: g * (q.y - p.ref.y), z: g * (q.z - p.ref.z) };
+      });
+      if (irgend) d = verschiebungLaengs(l, D);
+    }
+    if (d) {
+      for (let j = 0; j < n; j++) {
+        if (l.art === 'mitte' || (l.art === 'ring' && (j === 0 || j === n - 1))) d[3 * j + 2] = 0;
+        else if (l.art === 'ring') d[3 * j + 2] = Math.max(d[3 * j + 2]!, -S[3 * j + 2]!);
+      }
+    }
+    return d;
+  });
+}
+
+function zugBewegen(X: number, Y: number): void {
+  const z = zug;
+  if (!z) return;
+  if (!z.bewegt && Math.hypot(X - z.x0, Y - z.y0) * skala() < 2) return;
+  z.bewegt = true;
+  const f = abbildung(z, X, Y);
+  z.versch = verschiebungen(z, f);
+  loops.forEach((l, li) =>
+    l.punkte.forEach((p, i) => {
+      const g = z.punktW.get(`${li}:${i}`) ?? 0;
+      if (!g) {
+        p.cur = { ...p.ref };
+        return;
+      }
+      const q = f(p.ref);
+      const c = { x: p.ref.x + g * (q.x - p.ref.x), y: p.ref.y + g * (q.y - p.ref.y), z: p.ref.z + g * (q.z - p.ref.z) };
+      if (zFest(l, p.s)) c.z = 0;
+      else if (l.art === 'ring') c.z = Math.max(0, c.z);
+      p.cur = c;
+    }),
+  );
+  z.lagen = z.loeser.lagen(z.versch);
+  if (z.mitte) z.mitte = f(z.pivot);
   const t0 = performance.now();
-  endenNachfuehren();
-  zug.loeser.schritt(z.kurven, runden);
+  z.loeser.schritt(z.versch, RUNDEN_ZUG);
   zeiten.push(performance.now() - t0);
   if (zeiten.length > 200) zeiten.shift();
   hautZeigen();
   baenderZeigen();
-}
-
-function zugBeginnen(a: Ansicht, e: PointerEvent): void {
-  const ziel = e.target as SVGElement;
-  const [x0, y0] = blattPunkt(a, e);
-  if (loopAn && a === 'seite') {
-    entwurf = [x0, y0, x0, y0];
-    blaetter[a].setPointerCapture(e.pointerId);
-    return;
-  }
-  const g = ziel.getAttribute('data-g');
-  const k = ziel.getAttribute('data-k');
-  const vorher = schnappschuss();
-  if (g && auswahl.length === 1) {
-    const w = auswahl[0]!;
-    const gr = kurvenGriffe(z.kurven[w.k]!)[w.i]!;
-    const key = `${w.k}:${w.i}`;
-    zug = {
-      ansicht: a,
-      spiegel: false,
-      x0,
-      y0,
-      start: z.kurven.map(kopieKurve),
-      gewichte: new Map(),
-      griff: { k: w.k, i: w.i, welcher: g === 'ein' ? 'ein' : 'aus', ein: gr.ein, aus: gr.aus },
-      loeser: loeserFuer([key]),
-      bewegt: false,
-      vorher,
-      mitte: null,
-    };
-  } else if (k !== null) {
-    const w = { k: Number(k), i: Number(ziel.getAttribute('data-i')) };
-    const drin = auswahl.some((s) => s.k === w.k && s.i === w.i);
-    if (e.shiftKey) auswahl = drin ? auswahl.filter((s) => s.k !== w.k || s.i !== w.i) : [...auswahl, w];
-    else if (!drin) auswahl = [w];
-    if (auswahl.length === 0) {
-      allesZeigen();
-      return;
-    }
-    const gewichte = gewichteFuer(auswahl);
-    bewegtAnzeige = gewichte;
-    const q = z.kurven[w.k]!.punkte[w.i]!;
-    zug = {
-      ansicht: a,
-      spiegel: ziel.getAttribute('data-m') === '1',
-      x0,
-      y0,
-      start: z.kurven.map(kopieKurve),
-      gewichte,
-      griff: null,
-      loeser: loeserFuer(gewichte.keys()),
-      bewegt: false,
-      vorher,
-      mitte: { ...q },
-    };
-  } else {
-    auswahl = [];
-    bewegtAnzeige = new Map();
-    allesZeigen();
-    return;
-  }
-  blaetter[a].setPointerCapture(e.pointerId);
-  allesZeigen();
-}
-
-function zugWeiter(a: Ansicht, e: PointerEvent): void {
-  const [x, y] = blattPunkt(a, e);
-  if (entwurf) {
-    entwurf = [entwurf[0], entwurf[1], x, y];
-    blattZeichnen('seite');
-    return;
-  }
-  if (!zug || zug.ansicht !== a) return;
-  const d = inWelt(a, x - zug.x0, y - zug.y0);
-  if (zug.spiegel) d.z = -d.z;
-  if (!zug.bewegt && Math.hypot(d.x, d.y, d.z) * skala() < 2) return;
-  zug.bewegt = true;
-  if (zug.griff) {
-    const { k, i, welcher } = zug.griff;
-    const c = z.kurven[k]!;
-    const alt = zug.griff[welcher];
-    const neu = { x: alt.x + d.x, y: alt.y + d.y, z: c.art === 'mitte' ? 0 : alt.z + d.z };
-    const anderer = welcher === 'ein' ? zug.griff.aus : zug.griff.ein;
-    const ln = Math.hypot(neu.x, neu.y, neu.z) || 1;
-    const la = Math.hypot(anderer.x, anderer.y, anderer.z);
-    const gegen = { x: (-neu.x / ln) * la, y: (-neu.y / ln) * la, z: (-neu.z / ln) * la };
-    c.punkte[i] = { ...c.punkte[i]!, ein: welcher === 'ein' ? neu : gegen, aus: welcher === 'aus' ? neu : gegen };
-  } else {
-    for (const [key, w] of zug.gewichte) {
-      const [k, i] = key.split(':').map(Number) as [number, number];
-      const s = zug.start[k]!.punkte[i]!;
-      const c = z.kurven[k]!;
-      // Punkte des Startumrisses bleiben in der Mittelebene; Loops nicht unter sie
-      const nz = c.art === 'mitte' ? 0 : Math.max(0, s.z + w * d.z);
-      c.punkte[i] = { ...c.punkte[i]!, x: s.x + w * d.x, y: s.y + w * d.y, z: nz };
-    }
-    const w0 = auswahl[0];
-    if (w0) zug.mitte = { ...z.kurven[w0.k]!.punkte[w0.i]! };
-  }
-  loesen(RUNDEN_ZUG);
-  for (const b of ['seite', 'front', 'top'] as const) blattZeichnen(b);
+  for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
   statusZeigen();
 }
 
-function zugEnde(a: Ansicht): void {
-  if (entwurf) {
-    const [x0, y0, x1, y1] = entwurf;
-    entwurf = null;
-    loopAn = false;
-    if (Math.hypot(x1 - x0, y1 - y0) * skala() > 6) loopSchneiden({ x: x0, y: -y0 }, { x: x1, y: -y1 });
+function zugEnde(ok: boolean): void {
+  const z = zug;
+  if (!z) return;
+  zug = null;
+  if (!ok) {
+    wiederherstellen(z.vorher);
+    return;
+  }
+  if (z.bewegt) {
+    z.loeser.schritt(z.versch, RUNDEN_ENDE);
+    for (const l of loops) festlegen(haut, l);
+    kreuzungenSuchen();
+    zurueck.push(z.vorher);
+  } else {
+    for (const l of loops) for (const p of l.punkte) p.cur = { ...p.ref };
+  }
+  allesZeigen();
+}
+
+// ---------- Loops schneiden, Formen zeichnen, Punkte setzen und löschen ----------
+
+function loopSchneiden(a: Ansicht, A: [number, number], B: [number, number]): void {
+  const l = loopAusSchnitt(haut, a, A, B, naechsteId, 10 / skala());
+  if (!l) {
+    meldung = 'Kein Loop: die Linie quer über den Körper ziehen';
+    return;
+  }
+  if (l.art === 'mitte' && loops.some((x) => x.art === 'mitte')) {
+    meldung = 'Den Loop in der Mitte gibt es schon';
+    return;
+  }
+  naechsteId++;
+  zurueck.push(schnappschuss());
+  loops.push(l);
+  kreuzungenSuchen(l);
+  auswahl = [{ l: l.id, i: -1 }];
+  meldung = '';
+}
+
+/** Ramer–Douglas–Peucker: Nummern der Punkte, die bleiben */
+function vereinfachen(p: readonly [number, number][], tol: number): number[] {
+  const bleibt = new Uint8Array(p.length);
+  bleibt[0] = 1;
+  bleibt[p.length - 1] = 1;
+  const stapel: [number, number][] = [[0, p.length - 1]];
+  while (stapel.length) {
+    const [a, b] = stapel.pop()!;
+    const [ax, ay] = p[a]!;
+    const [bx, by] = p[b]!;
+    const L = Math.hypot(bx - ax, by - ay) || 1;
+    let best = -1;
+    let wo = -1;
+    for (let i = a + 1; i < b; i++) {
+      const d = Math.abs((bx - ax) * (ay - p[i]![1]) - (ax - p[i]![0]) * (by - ay)) / L;
+      if (d > best) {
+        best = d;
+        wo = i;
+      }
+    }
+    if (best > tol) {
+      bleibt[wo] = 1;
+      stapel.push([a, wo], [wo, b]);
+    }
+  }
+  return [...bleibt.keys()].filter((i) => bleibt[i]);
+}
+
+function formErstellen(a: Ansicht, roh: [number, number][]): void {
+  if (roh.length < 8) return;
+  const s = skala();
+  let idx = vereinfachen([...roh, roh[0]!], 4 / s).filter((i) => i < roh.length);
+  if (idx.length < 4) idx = [0, 1, 2, 3].map((k) => Math.floor((k * roh.length) / 4));
+  const k: Kurve = {
+    art: 'mitte',
+    punkte: idx.map((i) => {
+      const [u, v] = uvAus(a, roh[i]![0], roh[i]![1]);
+      return { x: u, y: v, z: 0 };
+    }),
+  };
+  const { p, t } = kurveAbtasten(k, 0.6 * MK);
+  const uv = p.map((q): [number, number] => [q.x, q.y]);
+  const knoten = t.map((x, i) => (x === 0 ? i : -1)).filter((i) => i >= 0);
+  const l = formAusZeichnung(haut, a, uv, knoten, naechsteId);
+  if (!l) {
+    meldung = 'Keine Form: ganz auf dem Körper zeichnen (über die Mitte nur in Front oder Top)';
+    return;
+  }
+  naechsteId++;
+  zurueck.push(schnappschuss());
+  loops.push(l);
+  kreuzungenSuchen(l);
+  auswahl = [{ l: l.id, i: -1 }];
+  meldung = '';
+}
+
+/** Doppelklick auf eine Linie: dort ein Punkt */
+function punktAmKlick(a: Ansicht, id: number, X: number, Y: number, m: boolean): void {
+  const l = loops[loopNr(id)];
+  if (!l) return;
+  const n = l.proben.length;
+  let best = Infinity;
+  let bs = 0;
+  for (let j = 0; j < (l.art === 'ring' ? n - 1 : n); j++) {
+    const k = (j + 1) % n;
+    const p = lageAus(l.ruhe, j);
+    const q = lageAus(l.ruhe, k);
+    const [x0, y0] = imBlatt(a, m ? spiegeln(p) : p);
+    const [x1, y1] = imBlatt(a, m ? spiegeln(q) : q);
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const t = Math.max(0, Math.min(1, ((X - x0) * dx + (Y - y0) * dy) / (dx * dx + dy * dy || 1)));
+    const d = Math.hypot(X - x0 - t * dx, Y - y0 - t * dy);
+    if (d < best) {
+      best = d;
+      bs = l.s[j]! + t * ((k > j ? l.s[k]! : l.laenge) - l.s[j]!);
+    }
+  }
+  if (l.punkte.some((p) => Math.abs(p.s - bs) < 2 * MK)) return;
+  zurueck.push(schnappschuss());
+  const p = punktEinfuegen(l, bs);
+  auswahl = [{ l: id, i: l.punkte.indexOf(p) }];
+  allesZeigen();
+}
+
+function loeschen(): void {
+  const punkte = auswahl.filter((w) => w.i >= 0).map((w) => loops[loopNr(w.l)]?.punkte[w.i]);
+  const ganz = new Set(auswahl.filter((w) => w.i < 0).map((w) => w.l));
+  const eigene = new Set(punkte.filter((p) => p && p.kreuzung === undefined));
+  if (eigene.size === 0 && ganz.size === 0) {
+    if (punkte.length) meldung = 'Kreuzungen bleiben, solange sich die Loops kreuzen';
+    statusZeigen();
+    return;
+  }
+  zurueck.push(schnappschuss());
+  for (const l of loops) l.punkte = l.punkte.filter((p) => !eigene.has(p));
+  const wegKreuz = new Set<number>();
+  for (const l of loops) if (ganz.has(l.id)) for (const p of l.punkte) if (p.kreuzung !== undefined) wegKreuz.add(p.kreuzung);
+  loops = loops.filter((l) => !ganz.has(l.id));
+  for (const l of loops) l.punkte = l.punkte.filter((p) => p.kreuzung === undefined || !wegKreuz.has(p.kreuzung));
+  auswahl = [];
+  allesZeigen();
+}
+
+// ---------- Maus und Tasten ----------
+
+let maus: { a: Ansicht; X: number; Y: number } | null = null;
+
+/** Doppelklick selbst zählen: das Blatt wird beim Drücken neu gezeichnet, `dblclick` kommt dann nicht an */
+const letzterKlick = { t: 0, X: 0, Y: 0, was: '' };
+function doppelklick(was: string, X: number, Y: number): boolean {
+  const jetzt = performance.now();
+  const ja = was === letzterKlick.was && jetzt - letzterKlick.t < 400 && Math.hypot(X - letzterKlick.X, Y - letzterKlick.Y) * skala() < 6;
+  Object.assign(letzterKlick, { t: ja ? 0 : jetzt, X, Y, was });
+  return ja;
+}
+
+function druecken(a: Ansicht, e: PointerEvent): void {
+  const [X, Y] = blattPunkt(a, e);
+  if (zug && zug.modal) {
+    zugEnde(e.button === 0);
+    return;
+  }
+  if (e.button !== 0) return;
+  if (modus === 'loop') {
+    entwurf = { a, x0: X, y0: Y, x1: X, y1: Y };
+    blaetter[a].setPointerCapture(e.pointerId);
+    return;
+  }
+  if (modus === 'form') {
+    spur = { a, p: [[X, Y]] };
+    blaetter[a].setPointerCapture(e.pointerId);
+    return;
+  }
+  const ziel = e.target as SVGElement;
+  const l = ziel.getAttribute('data-l');
+  if (l === null) {
+    auswahl = [];
+    meldung = '';
     allesZeigen();
     return;
   }
-  if (!zug || zug.ansicht !== a) return;
-  if (zug.bewegt) {
-    loesen(RUNDEN_ENDE);
-    zurueck.push(zug.vorher);
+  const i = Number(ziel.getAttribute('data-i') ?? -1);
+  const m = ziel.getAttribute('data-m') === '1';
+  if (i < 0 && doppelklick(`${l}:${m}`, X, Y)) {
+    punktAmKlick(a, Number(l), X, Y, m);
+    return;
   }
-  zug = null;
-  bewegtAnzeige = new Map();
+  const w = { l: Number(l), i };
+  const drin = auswahl.some((x) => x.l === w.l && x.i === w.i);
+  if (e.shiftKey) auswahl = drin ? auswahl.filter((x) => x.l !== w.l || x.i !== w.i) : [...auswahl, w];
+  else if (!drin) auswahl = [w];
   allesZeigen();
+  if (auswahl.length && zugStarten(null, a, X, Y, m)) blaetter[a].setPointerCapture(e.pointerId);
 }
 
-/** Loop schneiden: Ebene durch die gezogene Linie, senkrecht zur Seite; seine Enden auf den Startumriss. */
-function loopSchneiden(a: { x: number; y: number }, b: { x: number; y: number }): void {
-  const ring = ringAusSchnitt(haut, a, b, RING_TOL);
-  if (!ring || ring.punkte.length < 3) return;
-  const n = ring.punkte.length;
-  const ea = stelleAufKurve(z.kurven[0]!, ring.punkte[0]!);
-  const eb = stelleAufKurve(z.kurven[0]!, ring.punkte[n - 1]!);
-  ring.punkte[0] = { x: ea.p.x, y: ea.p.y, z: 0 };
-  ring.punkte[n - 1] = { x: eb.p.x, y: eb.p.y, z: 0 };
-  zurueck.push(schnappschuss());
-  const k = z.kurven.length;
-  z.kurven.push(ring);
-  z.enden.push({ a: { stueck: ea.stueck, t: ea.t }, b: { stueck: eb.stueck, t: eb.t } });
-  z.anheftungen.push({ kurve: k, a: kurveAnheften(haut, ring, PROBE) });
-  // den tiefsten Punkt wählen: von vorn und oben gleich greifbar
-  let iMax = 1;
-  ring.punkte.forEach((q, i) => {
-    if (q.z > ring.punkte[iMax]!.z) iMax = i;
-  });
-  auswahl = [{ k, i: iMax }];
+function bewegen(a: Ansicht, e: PointerEvent): void {
+  const [X, Y] = blattPunkt(a, e);
+  maus = { a, X, Y };
+  if (entwurf && entwurf.a === a) {
+    entwurf = { ...entwurf, x1: X, y1: Y };
+    blattZeichnen(a);
+    return;
+  }
+  if (spur && spur.a === a) {
+    const [lx, ly] = spur.p[spur.p.length - 1]!;
+    if (Math.hypot(X - lx, Y - ly) * skala() > 2) spur.p.push([X, Y]);
+    blattZeichnen(a);
+    return;
+  }
+  if (zug && !zug.modal && zug.ansicht === a) zugBewegen(X, Y);
 }
 
-/** Doppelklick auf einen Punkt: Griffe wieder automatisch (rund aus den Nachbarn). */
-function griffeAutomatisch(w: Wahl): void {
-  const c = z.kurven[w.k]!;
-  const p = c.punkte[w.i]!;
-  if (!p.ein && !p.aus) return;
-  zurueck.push(schnappschuss());
-  const loeser = loeserFuer([`${w.k}:${w.i}`]);
-  c.punkte[w.i] = { x: p.x, y: p.y, z: p.z };
-  endenNachfuehren();
-  loeser.schritt(z.kurven, RUNDEN_ENDE + RUNDEN_ZUG);
-  allesZeigen();
+function loslassen(a: Ansicht): void {
+  if (entwurf && entwurf.a === a) {
+    const { x0, y0, x1, y1 } = entwurf;
+    entwurf = null;
+    modus = 'frei';
+    if (Math.hypot(x1 - x0, y1 - y0) * skala() > 6) loopSchneiden(a, uvAus(a, x0, y0), uvAus(a, x1, y1));
+    allesZeigen();
+    return;
+  }
+  if (spur && spur.a === a) {
+    const p = spur.p;
+    spur = null;
+    modus = 'frei';
+    formErstellen(a, p);
+    allesZeigen();
+    return;
+  }
+  if (zug && !zug.modal) zugEnde(true);
 }
 
 for (const a of ['seite', 'front', 'top'] as const) {
   const el = blaetter[a];
-  el.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0) return;
-    zugBeginnen(a, e);
-  });
-  el.addEventListener('pointermove', (e) => zugWeiter(a, e));
-  el.addEventListener('pointerup', () => zugEnde(a));
-  el.addEventListener('pointercancel', () => zugEnde(a));
-  el.addEventListener('dblclick', (e) => {
-    const t = e.target as SVGElement;
-    const k = t.getAttribute('data-k');
-    if (k !== null) griffeAutomatisch({ k: Number(k), i: Number(t.getAttribute('data-i')) });
-  });
+  el.addEventListener('pointerdown', (e) => druecken(a, e));
+  el.addEventListener('pointermove', (e) => bewegen(a, e));
+  el.addEventListener('pointerup', () => loslassen(a));
+  el.addEventListener('pointercancel', () => loslassen(a));
+  el.addEventListener('contextmenu', (e) => e.preventDefault());
 }
+// G/S/R folgt der Maus überall im Fenster
+window.addEventListener('pointermove', (e) => {
+  if (!zug || !zug.modal) return;
+  const [X, Y] = blattPunkt(zug.ansicht, e);
+  zugBewegen(X, Y);
+});
 
 knopfLoop.addEventListener('click', () => {
-  loopAn = !loopAn;
+  modus = modus === 'loop' ? 'frei' : 'loop';
+  allesZeigen();
+});
+knopfForm.addEventListener('click', () => {
+  modus = modus === 'form' ? 'frei' : 'form';
   allesZeigen();
 });
 knopfO.addEventListener('click', () => {
@@ -778,14 +1044,29 @@ knopfO.addEventListener('click', () => {
 });
 
 window.addEventListener('keydown', (e) => {
-  if (zug) return;
   const k = e.key.toLowerCase();
+  if (zug && zug.modal) {
+    if (e.key === 'Escape') zugEnde(false);
+    else if (e.key === 'Enter') zugEnde(true);
+    else if (k === 'x' || k === 'y' || k === 'z') {
+      zug.achse = zug.achse === k ? null : k;
+      if (maus) zugBewegen(maus.X, maus.Y);
+    }
+    e.preventDefault();
+    return;
+  }
+  if (zug) return;
   if ((e.metaKey || e.ctrlKey) && k === 'z') {
     const s = zurueck.pop();
     if (s) wiederherstellen(s);
     e.preventDefault();
+  } else if (k === 'g' || k === 's' || k === 'r') {
+    if (maus && zugStarten(k, maus.a, maus.X, maus.Y, false)) allesZeigen();
   } else if (k === 'l') {
-    loopAn = !loopAn;
+    modus = modus === 'loop' ? 'frei' : 'loop';
+    allesZeigen();
+  } else if (k === 'f') {
+    modus = modus === 'form' ? 'frei' : 'form';
     allesZeigen();
   } else if (k === 'o') {
     oAn = !oAn;
@@ -794,22 +1075,14 @@ window.addEventListener('keydown', (e) => {
     radius = Math.max(10, Math.min(600, radius * (e.key === ']' ? 1.2 : 1 / 1.2)));
     allesZeigen();
   } else if (e.key === 'Escape') {
-    loopAn = false;
+    modus = 'frei';
     entwurf = null;
+    spur = null;
     auswahl = [];
+    meldung = '';
     allesZeigen();
   } else if (e.key === 'Backspace' || e.key === 'Delete') {
-    // einen Loop löschen (der Startumriss bleibt)
-    const ks = [...gewaehlteKurven()].filter((k2) => k2 > 0).sort((p, q) => q - p);
-    if (ks.length === 0) return;
-    zurueck.push(schnappschuss());
-    for (const k2 of ks) {
-      z.kurven.splice(k2, 1);
-      z.enden.splice(k2, 1);
-      z.anheftungen = z.anheftungen.filter((h) => h.kurve !== k2).map((h) => (h.kurve > k2 ? { ...h, kurve: h.kurve - 1 } : h));
-    }
-    auswahl = [];
-    allesZeigen();
+    loeschen();
   }
 });
 
@@ -874,22 +1147,22 @@ window.addEventListener('resize', () => {
 allesZeigen();
 schleife();
 
-// Prüfhaken für Skripte: Zustand, Zeiten, Lagen, Bildschirmpunkte
+// Prüfhaken für Skripte: Loops, Lagen, Bildschirmpunkte, Zeiten
 (window as unknown as { __kurven: unknown }).__kurven = {
-  stand: () => ({
-    kurven: z.kurven.map(kopieKurve),
-    enden: z.enden,
-    punkte: haut.n,
-    dreiecke: haut.tri.length / 3,
-    auswahl,
-    oAn,
-    radius,
-  }),
+  loops: () =>
+    loops.map((l) => ({
+      id: l.id,
+      art: l.art,
+      proben: l.proben.length,
+      laenge: l.laenge,
+      punkte: l.punkte.map((p) => ({ s: p.s, ref: p.ref, kreuzung: p.kreuzung ?? null })),
+      ruhe: Array.from(l.ruhe),
+    })),
+  auswahl: () => auswahl,
   zeiten: () => ({ zug: [...zeiten], zerlegen: letzteZerlegung, bereich: letzterBereich }),
   lagen: () => Array.from(haut.pos),
-  startLagen: () => Array.from(startLagen),
   dreiecke: () => Array.from(haut.tri),
-  /** Bildschirmpunkt eines Weltpunkts in einem Blatt */
+  meldung: () => meldung,
   bild: (a: Ansicht, p: V3): { x: number; y: number } => {
     const r = felder[a].getBoundingClientRect();
     const s = skala();
@@ -907,18 +1180,15 @@ schleife();
     radius = r;
     allesZeigen();
   },
-  /** größte Abweichung eines Punkts vom Spiegelbild seines Partners (z → −z) */
   symmetrie: (): number => {
     let m = 0;
+    const P = haut.pos;
     for (let v = 0; v < haut.n; v++) {
       const w = haut.spiegel[v]!;
-      if (w < 0) continue;
-      const P = haut.pos;
-      m = Math.max(m, Math.hypot(P[3 * v]! - P[3 * w]!, P[3 * v + 1]! - P[3 * w + 1]!, P[3 * v + 2]! + P[3 * w + 2]!));
+      if (w >= 0) m = Math.max(m, Math.hypot(P[3 * v]! - P[3 * w]!, P[3 * v + 1]! - P[3 * w + 1]!, P[3 * v + 2]! + P[3 * w + 2]!));
     }
     return m;
   },
-  /** Ausdehnung je Achse */
   masse: (): number[] => {
     const m = [Infinity, -Infinity, Infinity, -Infinity, Infinity, -Infinity];
     for (let v = 0; v < haut.n; v++) {

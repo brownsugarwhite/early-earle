@@ -308,13 +308,17 @@ export function kurveAnheften(h: Haut, k: Kurve, s: number): Anheftung {
   };
 }
 
+/** Bindungen der Haut an Linien: je Bindung ein Punkt eines Dreiecks (drei Ecken, baryzentrisch). */
+export type Bindungen = { ecken: Int32Array; b: Float64Array };
+
 /**
- * Löser der Haut für feste Anheftungen und einen Einflussbereich: einmal zerlegt (nur die Punkte im Bereich sind Unbekannte, die
- * anderen bleiben, wo sie sind), je Zug nur Einsetzen. Bezug sind die Haut und die Kurven beim Anlegen: Ohne Änderung bleibt
- * alles genau so. Gleichmäßiger Laplace (Mittel der Nachbarn); als Normalgleichungen ist das biharmonisch, der Übergang an den
- * Rand des Bereichs bleibt glatt.
+ * Löser der Haut für feste Bindungen und einen Einflussbereich: einmal zerlegt (nur die Punkte im Bereich sind Unbekannte, die
+ * anderen bleiben, wo sie sind), je Zug nur Einsetzen. Jede Bindung hat ein Ziel; der Punkt der Haut macht die Verschiebung
+ * seines Ziels seit dem Anlegen mit. Bezug sind die Haut und die Ziele beim Anlegen: Ohne Änderung bleibt alles genau so.
+ * Gleichmäßiger Laplace (Mittel der Nachbarn); als Normalgleichungen ist das biharmonisch, der Übergang an den Rand des Bereichs
+ * bleibt glatt.
  */
-export class HautLoeser {
+export class HautZiele {
   private readonly sys: NormalSystem;
   /** Unbekannte → Punkt der Haut */
   private readonly frei: Int32Array;
@@ -322,15 +326,17 @@ export class HautLoeser {
   private readonly nr: Int32Array;
   /** Punkte, deren Laplace-Zeile eine Unbekannte enthält */
   private readonly zeilen: Int32Array;
-  /** Proben mit einer Unbekannten: Kurve, Anheftung, Probe, Punkt der Haut und Probe der Kurve beim Anlegen */
-  private readonly proben: { kurve: number; a: Anheftung; j: Int32Array; haut0: Float64Array; kurve0: Float64Array }[];
+  /** Bindungen mit einer Unbekannten, ihr Punkt der Haut und ihr Ziel beim Anlegen */
+  private readonly js: Int32Array;
+  private readonly haut0: Float64Array;
+  private readonly ziel0: Float64Array;
   private readonly ruhe: Vermessung;
   readonly zeitZerlegen: number;
 
   constructor(
     private readonly h: Haut,
-    anheftungen: readonly { kurve: number; a: Anheftung }[],
-    kurven: readonly Kurve[],
+    private readonly bind: Bindungen,
+    ziele0: Float64Array,
     /** 1 = darf sich bewegen; fehlt: die ganze Haut */
     bereich: Uint8Array | null = null,
     private readonly gewicht = 100,
@@ -367,45 +373,41 @@ export class HautLoeser {
       zeilen.push({ index, wert, gewicht: 1 });
     }
     this.zeilen = Int32Array.from(lapZeilen);
-    this.proben = [];
-    for (const { kurve, a } of anheftungen) {
-      const k = kurven[kurve];
-      if (!k) continue;
-      const st = kurvenStuecke(k);
-      const js: number[] = [];
-      for (let j = 0; j < a.stueck.length; j++) {
-        const index: number[] = [];
-        const wert: number[] = [];
-        for (let e = 0; e < 3; e++) {
-          const v = a.ecken[3 * j + e]!;
-          if (nr[v]! < 0) continue;
-          index.push(nr[v]!);
-          wert.push(a.b[3 * j + e]!);
-        }
-        if (index.length === 0) continue;
-        js.push(j);
-        zeilen.push({ index, wert, gewicht });
+    const js: number[] = [];
+    const m = bind.ecken.length / 3;
+    for (let j = 0; j < m; j++) {
+      const index: number[] = [];
+      const wert: number[] = [];
+      for (let e = 0; e < 3; e++) {
+        const v = bind.ecken[3 * j + e]!;
+        if (nr[v]! < 0 || bind.b[3 * j + e] === 0) continue;
+        index.push(nr[v]!);
+        wert.push(bind.b[3 * j + e]!);
       }
-      const haut0 = new Float64Array(3 * js.length);
-      const kurve0 = new Float64Array(3 * js.length);
-      js.forEach((j, u) => {
-        const q = aufStueck(st[a.stueck[j]!]!, a.t[j]!);
-        kurve0[3 * u] = q.x;
-        kurve0[3 * u + 1] = q.y;
-        kurve0[3 * u + 2] = q.z;
-        for (let e = 0; e < 3; e++) {
-          const v = a.ecken[3 * j + e]!;
-          for (let c = 0; c < 3; c++) haut0[3 * u + c] = haut0[3 * u + c]! + a.b[3 * j + e]! * P[3 * v + c]!;
-        }
-      });
-      this.proben.push({ kurve, a, j: Int32Array.from(js), haut0, kurve0 });
+      if (index.length === 0) continue;
+      js.push(j);
+      zeilen.push({ index, wert, gewicht });
     }
+    this.js = Int32Array.from(js);
+    this.haut0 = new Float64Array(3 * js.length);
+    this.ziel0 = new Float64Array(3 * js.length);
+    js.forEach((j, u) => {
+      for (let c = 0; c < 3; c++) this.ziel0[3 * u + c] = ziele0[3 * j + c]!;
+      for (let e = 0; e < 3; e++) {
+        const v = bind.ecken[3 * j + e]!;
+        for (let c = 0; c < 3; c++) this.haut0[3 * u + c] = this.haut0[3 * u + c]! + bind.b[3 * j + e]! * P[3 * v + c]!;
+      }
+    });
     const nachbarn = frei.map((v) => h.nachbarn[v]!.filter((j) => nr[j]! >= 0).map((j) => nr[j]!));
     const t0 = Date.now();
     this.sys = normalSystem(frei.length, zeilen, nachbarn, 1e-9);
     this.zeitZerlegen = Date.now() - t0;
     this.ruhe = vermessen(h);
+    this.pos0 = Float64Array.from(P);
   }
+
+  /** Lagen beim Anlegen (für die Drehung um die Normale) */
+  private readonly pos0: Float64Array;
 
   /** Anzahl der Punkte, die sich bewegen dürfen */
   get anzahl(): number {
@@ -413,16 +415,15 @@ export class HautLoeser {
   }
 
   /**
-   * Lagen neu: `iterationen` Runden; die Kurven geben die Ziele ihrer Proben (der Punkt der Haut macht die Verschiebung seiner
-   * Probe seit dem Anlegen mit). Je Punkt: Laplace = Verteilung beim Anlegen (mit der Normale gedreht, mit den Kanten gestreckt)
-   * + Krümmung beim Anlegen · Kantenlänge² längs der Normale.
+   * Lagen neu: `iterationen` Runden mit den Zielen (3 Werte je Bindung). Je Punkt: Laplace = Verteilung beim Anlegen (mit der
+   * Normale gedreht, mit den Kanten gestreckt) + Krümmung beim Anlegen, ebenso gestreckt, längs der Normale.
    */
-  schritt(kurven: readonly Kurve[], iterationen = 2): void {
+  schritt(ziele: Float64Array, iterationen = 2): void {
     const h = this.h;
     const P = h.pos;
+    const P0 = this.pos0;
     const nr = this.nr;
     const r = this.ruhe;
-    const stuecke = kurven.map((k) => kurvenStuecke(k));
     const nf = this.frei.length;
     for (let it = 0; it < iterationen; it++) {
       const m = vermessen(h);
@@ -430,7 +431,33 @@ export class HautLoeser {
       for (const i of this.zeilen) {
         const nb = h.nachbarn[i]!;
         const d = nb.length || 1;
-        const t = drehen(r.nor, m.nor, i, r.tang);
+        let t = drehen(r.nor, m.nor, i, r.tang);
+        // dazu die Drehung um die Normale (aus den Nachbarn, 2D-Procrustes in der Tangentialebene): ohne sie wehrt sich die
+        // Haut gegen jedes Verdrehen in der Fläche (ein gedrehter Loop klappte 20–34 Dreiecke um)
+        const nx = m.nor[3 * i]!;
+        const ny = m.nor[3 * i + 1]!;
+        const nz = m.nor[3 * i + 2]!;
+        let sDot = 0;
+        let sKreuz = 0;
+        for (const j of nb) {
+          const e = drehenVektor(r.nor, m.nor, i, P0[3 * j]! - P0[3 * i]!, P0[3 * j + 1]! - P0[3 * i + 1]!, P0[3 * j + 2]! - P0[3 * i + 2]!);
+          const cx = P[3 * j]! - P[3 * i]!;
+          const cy = P[3 * j + 1]! - P[3 * i + 1]!;
+          const cz = P[3 * j + 2]! - P[3 * i + 2]!;
+          sDot += e[0] * cx + e[1] * cy + e[2] * cz - (e[0] * nx + e[1] * ny + e[2] * nz) * (cx * nx + cy * ny + cz * nz);
+          sKreuz += (e[1] * cz - e[2] * cy) * nx + (e[2] * cx - e[0] * cz) * ny + (e[0] * cy - e[1] * cx) * nz;
+        }
+        const th = Math.atan2(sKreuz, sDot);
+        if (Math.abs(th) > 1e-9) {
+          const co = Math.cos(th);
+          const si = Math.sin(th);
+          const nt = nx * t[0] + ny * t[1] + nz * t[2];
+          t = [
+            t[0] * co + (ny * t[2] - nz * t[1]) * si + nx * nt * (1 - co),
+            t[1] * co + (nz * t[0] - nx * t[2]) * si + ny * nt * (1 - co),
+            t[2] * co + (nx * t[1] - ny * t[0]) * si + nz * nt * (1 - co),
+          ];
+        }
         const s = Math.sqrt(m.kante2[i]! / r.kante2[i]!);
         // wie die Verteilung nur mit der Kante gestreckt (nicht mit ihrem Quadrat): eine gleichmäßig vergrößerte Kugel bleibt so
         // genau eine Kugel; mit Kante² blähte sich die höher gezogene Kugel in der Tiefe auf (150 → 186)
@@ -464,33 +491,28 @@ export class HautLoeser {
           rhs[3 * w + 2] = rhs[3 * w + 2]! - dz / d;
         }
       }
-      for (const { kurve, a, j: js, haut0, kurve0 } of this.proben) {
-        const st = stuecke[kurve];
-        if (!st) continue;
-        for (let u = 0; u < js.length; u++) {
-          const j = js[u]!;
-          const q = aufStueck(st[a.stueck[j]!]!, a.t[j]!);
-          let zx = haut0[3 * u]! + q.x - kurve0[3 * u]!;
-          let zy = haut0[3 * u + 1]! + q.y - kurve0[3 * u + 1]!;
-          let zz = haut0[3 * u + 2]! + (a.spiegel[j] ? -1 : 1) * (q.z - kurve0[3 * u + 2]!);
-          for (let e = 0; e < 3; e++) {
-            const v = a.ecken[3 * j + e]!;
-            if (nr[v]! >= 0) continue;
-            const b = a.b[3 * j + e]!;
-            zx -= b * P[3 * v]!;
-            zy -= b * P[3 * v + 1]!;
-            zz -= b * P[3 * v + 2]!;
-          }
-          for (let e = 0; e < 3; e++) {
-            const v = nr[a.ecken[3 * j + e]!]!;
-            if (v < 0) continue;
-            const w = this.gewicht * a.b[3 * j + e]!;
-            rhs[3 * v] = rhs[3 * v]! + w * zx;
-            rhs[3 * v + 1] = rhs[3 * v + 1]! + w * zy;
-            rhs[3 * v + 2] = rhs[3 * v + 2]! + w * zz;
-          }
+      const { ecken, b } = this.bind;
+      this.js.forEach((j, u) => {
+        let zx = this.haut0[3 * u]! + ziele[3 * j]! - this.ziel0[3 * u]!;
+        let zy = this.haut0[3 * u + 1]! + ziele[3 * j + 1]! - this.ziel0[3 * u + 1]!;
+        let zz = this.haut0[3 * u + 2]! + ziele[3 * j + 2]! - this.ziel0[3 * u + 2]!;
+        for (let e = 0; e < 3; e++) {
+          const v = ecken[3 * j + e]!;
+          if (nr[v]! >= 0) continue;
+          const w = b[3 * j + e]!;
+          zx -= w * P[3 * v]!;
+          zy -= w * P[3 * v + 1]!;
+          zz -= w * P[3 * v + 2]!;
         }
-      }
+        for (let e = 0; e < 3; e++) {
+          const v = nr[ecken[3 * j + e]!]!;
+          if (v < 0) continue;
+          const w = this.gewicht * b[3 * j + e]!;
+          rhs[3 * v] = rhs[3 * v]! + w * zx;
+          rhs[3 * v + 1] = rhs[3 * v + 1]! + w * zy;
+          rhs[3 * v + 2] = rhs[3 * v + 2]! + w * zz;
+        }
+      });
       const x = this.sys.loesen(rhs);
       for (let u = 0; u < nf; u++) {
         const v = this.frei[u]!;
@@ -499,6 +521,58 @@ export class HautLoeser {
         P[3 * v + 2] = x[3 * u + 2]!;
       }
     }
+  }
+}
+
+/** Löser der Haut für Bézier-Kurven (Beweis „Kurven als Wahrheit“): die Proben der Kurven sind die Ziele ihrer Bindungen. */
+export class HautLoeser {
+  private readonly ziele: HautZiele;
+  readonly zeitZerlegen: number;
+
+  constructor(
+    h: Haut,
+    private readonly anheftungen: readonly { kurve: number; a: Anheftung }[],
+    kurven: readonly Kurve[],
+    bereich: Uint8Array | null = null,
+    gewicht = 100,
+  ) {
+    const ecken: number[] = [];
+    const b: number[] = [];
+    for (const { a } of anheftungen) {
+      ecken.push(...a.ecken);
+      b.push(...a.b);
+    }
+    this.ziele = new HautZiele(h, { ecken: Int32Array.from(ecken), b: Float64Array.from(b) }, this.zieleAus(kurven), bereich, gewicht);
+    this.zeitZerlegen = this.ziele.zeitZerlegen;
+  }
+
+  get anzahl(): number {
+    return this.ziele.anzahl;
+  }
+
+  /** Proben der Kurven (gespiegelte mit −z) als Ziele, in der Reihenfolge der Bindungen */
+  private zieleAus(kurven: readonly Kurve[]): Float64Array {
+    let m = 0;
+    for (const { a } of this.anheftungen) m += a.stueck.length;
+    const z = new Float64Array(3 * m);
+    let j = 0;
+    for (const { kurve, a } of this.anheftungen) {
+      const k = kurven[kurve];
+      const st = k ? kurvenStuecke(k) : [];
+      for (let i = 0; i < a.stueck.length; i++, j++) {
+        const s = st[a.stueck[i]!];
+        if (!s) continue;
+        const q = aufStueck(s, a.t[i]!);
+        z[3 * j] = q.x;
+        z[3 * j + 1] = q.y;
+        z[3 * j + 2] = a.spiegel[i] ? -q.z : q.z;
+      }
+    }
+    return z;
+  }
+
+  schritt(kurven: readonly Kurve[], iterationen = 2): void {
+    this.ziele.schritt(this.zieleAus(kurven), iterationen);
   }
 }
 
@@ -636,15 +710,17 @@ type Vermessung = { nor: Float64Array; kap: Float64Array; kante2: Float64Array; 
 
 /** Vektor v (Punkt i) mit der kleinsten Drehung, die die Normale a in die Normale b überführt (Rodrigues). */
 function drehen(a: Float64Array, b: Float64Array, i: number, v: Float64Array): [number, number, number] {
+  return drehenVektor(a, b, i, v[3 * i]!, v[3 * i + 1]!, v[3 * i + 2]!);
+}
+
+/** wie `drehen`, für einen beliebigen Vektor (vx, vy, vz) */
+function drehenVektor(a: Float64Array, b: Float64Array, i: number, vx: number, vy: number, vz: number): [number, number, number] {
   const ax = a[3 * i]!;
   const ay = a[3 * i + 1]!;
   const az = a[3 * i + 2]!;
   const bx = b[3 * i]!;
   const by = b[3 * i + 1]!;
   const bz = b[3 * i + 2]!;
-  const vx = v[3 * i]!;
-  const vy = v[3 * i + 1]!;
-  const vz = v[3 * i + 2]!;
   let kx = ay * bz - az * by;
   let ky = az * bx - ax * bz;
   let kz = ax * by - ay * bx;
