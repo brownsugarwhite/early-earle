@@ -1002,6 +1002,31 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     Folge der Loop-Probe dreht die ganze Augen-Form ohne O jetzt 38 statt 30 Dreiecke um (Dreh-Code unverändert, die Haut darunter ist
     nach Schritt 2 anders; Drehen ohne O war schon offen).
   - Bilder `docs/progress/editor/form-punkte-*-2026-11-05.jpg`.
+- **2026-11-05 (nachts, danach): Netz verdichtet sich selbst, Bereich wächst mit dem Zug** (Florian mit Bild
+  `docs/progress/editor/form-kopf-florian-2026-11-05.png`: „wenn ich jetzt aber einen Kopf rausziehe, habe ich das Gefühl, dieser hat
+  kaum Polygone … Sollte das Mesh nicht dynamisch verdichten, dass immer genug Polygone für eine runde Form da sind?“).
+  - **Befund:** Das Netz entsteht einmal aus der Kugel (Kante im Mittel 8,6, höchstens 14,4) und wurde danach nur verformt. Ein
+    nachgestellter Kopf: Kanten bis 3,8-mal so lang; zwei weite Züge: bis 63,6 lang, 50 umgeschlagene Dreiecke (die dunklen Kratzer).
+  - **Kern `dicht/verdichten.ts`:** Kanten länger als 1,75 × mittlere Startkante werden geteilt (längste zuerst, mit Spiegelbild; ein
+    Dreieck über der Mittelebene bekommt einen Mittelpunkt). Neue Punkte liegen rund: auf einem Loop nach Catmull–Rom längs der Kette,
+    in der Fläche in der Mitte der Kurve nach den Normalen der Enden (wie PN-Dreiecke; an harten Loops die Normale der Seite). Danach
+    Kanten drehen zur Wertigkeit 6 (nur wenn kürzer und ohne tiefere Falte) und neue Punkte in der Fläche entspannen. Loops bleiben
+    Ketten, ihre Punkte bleiben. Der Löser hält die Haut jetzt genau spiegelgleich (`HautZiele.schritt`; vorher wuchsen
+    Rundungsfehler in großen Bereichen bis 10⁻³, dann fand die Spiegelzuordnung Punkte nicht mehr).
+  - **Fenster:** verdichtet nach jedem Zug. Weite Züge laufen in Stufen: Reicht der Zug über den halben Bereich, wird der Stand
+    festgehalten, verdichtet und mit einem Bereich weitergeführt, der mindestens so weit reicht wie gezogen (wie das Abziehen in
+    FiberMesh). Ohne das blieb die Kappe vor einem Ring 44 Einheiten zurück und faltete sich ein. ⌘Z und Esc nehmen den ganzen Zug
+    zurück; `?verdichten=0` zum Vergleich.
+  - **Gemessen** (Maus `scripts/pruefen/form-verdichten-probe.mjs`, Tests `verdichten.test.ts` 3): Kopf aus einem Ring, zwei weite
+    Züge: längste Kante 15,1 (ohne 63,6), umgeschlagen 0 und 12 (ohne 2 und 50), Netz 4 918 → 9 407 Punkte, Verdichten 35–40 ms, eine
+    Stufe 73–98 ms, 9–11 ms je Mausbewegung. Im Kern: 95 % der Knicke im Kopf 7,7° → 5,7°, geschlossen, Dreiecke spiegelgleich, Ketten
+    heil. Die anderen Proben unverändert; die Augen-Form ×1,3 skaliert: 0 umgeschlagen; ganz gedreht ohne O: 10 (offen).
+  - **Verworfen (gemessen):** Kanten drehen ohne Längenprüfung (lange Kanten, ein Knick von 63°); Stufen schon bei Dehnung der Haut
+    (18–20 Falten statt 12: Jede Stufe nimmt Ansätze von Falten als neue Ruhe).
+  - **Offen:** Die 12 Restfalten entstehen im Löser beim zweiten weiten Zug (der Hals wird längs gedehnt, die Haut hält ihre Krümmung
+    mit einem Maß für alle Richtungen fest). Zu kurze Kanten werden noch nicht zusammengelegt (gestauchte Stellen bleiben fein). Große
+    Bereiche zerlegen langsamer (ganze Kugel 140–220 ms beim Greifen).
+  - Bilder `docs/progress/editor/form-verdichten-{fest,verdichtet}-{seite,3d}-2026-11-05.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

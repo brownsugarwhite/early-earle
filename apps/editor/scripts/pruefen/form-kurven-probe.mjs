@@ -27,10 +27,12 @@ const lagen = () => K('lagen');
 const bild = (a, p) => K('bild', a, p);
 const foto = (name) => seite.screenshot({ path: `${ordner}/form-loops-${name}-2026-11-05.jpg`, type: 'jpeg', quality: 86 });
 const xy = (p) => [p.x, p.y];
+// (nur vergleichbar, solange das Netz nicht verdichtet wurde; sonst zählt `umgeschlagen` aus dem Fenster)
 const umgeklappt = (vorher) =>
   seite.evaluate((v) => {
     const p = window.__kurven.lagen();
     const t = window.__kurven.dreiecke();
+    if (p.length !== v.length) return 'n. v.';
     const n = (q, a, b, c) => {
       const ab = [q[3 * b] - q[3 * a], q[3 * b + 1] - q[3 * a + 1], q[3 * b + 2] - q[3 * a + 2]];
       const ac = [q[3 * c] - q[3 * a], q[3 * c + 1] - q[3 * a + 1], q[3 * c + 2] - q[3 * a + 2]];
@@ -158,7 +160,7 @@ for (let i = 1; i <= 8; i++) {
 await seite.mouse.down();
 await seite.mouse.up();
 await seite.waitForTimeout(200);
-console.log('4 S ×1,3:', await zeitenText(), '· umgeklappt', await umgeklappt(pos4), '· schief', (await K('symmetrie')).toExponential(1));
+console.log('4 S ×1,3:', await zeitenText(), '· umgeklappt', await umgeklappt(pos4), '· umgeschlagen', await K('umgeschlagen'), '· Punkte', (await K('zeiten')).punkte, '· schief', (await K('symmetrie')).toExponential(1));
 const winkel = Math.PI / 6;
 const dx = pDoppel.x - cAuge.x;
 const dy = pDoppel.y - cAuge.y;
@@ -171,7 +173,7 @@ for (let i = 1; i <= 8; i++) {
 }
 await seite.keyboard.press('Enter');
 await seite.waitForTimeout(200);
-console.log('  R 30°:', await zeitenText(), '· umgeklappt', await umgeklappt(pos4));
+console.log('  R 30°:', await zeitenText(), '· umgeklappt', await umgeklappt(pos4), '· umgeschlagen', await K('umgeschlagen'), '· Punkte', (await K('zeiten')).punkte);
 await foto(process.env.O_FORM ? 'form-ganz-o' : 'form-ganz');
 
 // 5. O an (Radius 80): obere Kreuzung in der Seite 40 hoch

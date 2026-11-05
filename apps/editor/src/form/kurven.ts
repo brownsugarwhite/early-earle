@@ -9,6 +9,7 @@
 // die Kreuzung mit einem harten Loop wird von selbst eine Ecke. Die Härte bleibt eine eigene Einstellung (Tasten 0–3). Wie in
 // Illustrator gehen die Griffe mit ihrem Punkt (S/R drehen und skalieren sie mit), ein Punkt ändert nur die zwei Stücke bis zu
 // seinen Nachbarn. Jedes Blatt hat einen eigenen Ausschnitt (Rad/Pinch zoomt, zwei Finger/mittlere Taste verschieben, Pos1).
+// Das Netz verdichtet sich selbst (`verdichten`): nach jedem Zug, und bei weiten Zügen in Stufen, in denen der Bereich mitwächst.
 
 import {
   type Ansicht,
@@ -41,6 +42,7 @@ import {
   mittlereKante,
   punktEinfuegen,
   rundAusSeite,
+  verdichten,
   verschiebungLaengs,
 } from '@ee/shape/dicht';
 import {
@@ -126,6 +128,9 @@ let modus: 'frei' | 'loop' | 'form' = 'frei';
 let oAn = false;
 let radius = 90;
 let meldung = '';
+/** nach jedem Zug verdichten (`?verdichten=0` schaltet es zum Vergleich ab) */
+const VERDICHTEN = new URLSearchParams(location.search).get('verdichten') !== '0';
+let letzteVerdichtung: { neu: number; ms: number } | null = null;
 
 type Schnappschuss = { haut: Haut; loops: Loop[]; pos: Float64Array; auswahl: Wahl[]; ids: [number, number] };
 const zurueck: Schnappschuss[] = [];
@@ -796,7 +801,8 @@ function statusZeigen(): void {
   statusZeile.textContent =
     meldung ||
     `${loops.length} Loops · ${punkte} Punkte (${kreuz} Kreuzungen) · Zug ${ms.toFixed(1)} ms · zerlegen ${letzteZerlegung} ms · ` +
-      `Bereich ${letzterBereich} von ${haut.n}`;
+      `Bereich ${letzterBereich} von ${haut.n}` +
+      (letzteVerdichtung ? ` · verdichtet +${letzteVerdichtung.neu} (${letzteVerdichtung.ms} ms)` : '');
 }
 
 // ---------- Ziehen und G/S/R ----------
@@ -828,6 +834,10 @@ type Zug = {
   griffVersatz: GriffVersatz;
   /** Faktor der gezeigten Griffe beim Anfang des Zugs (die Spitze bleibt unter der Maus) */
   griffFaktor: number;
+  /** Radius des Bereichs beim Anfang; wie weit schon gezogen wurde (vor dieser Stufe, insgesamt) */
+  radius: number;
+  weite0: number;
+  weite: number;
 };
 let zug: Zug | null = null;
 
@@ -959,6 +969,9 @@ function griffZugStarten(a: Ansicht, X: number, Y: number, spiegel: boolean, li:
     griff: { li, i, seite },
     griffVersatz: {},
     griffFaktor: griffFaktor(griffeBei(loops[li]!, loeser.start[li]!, i), a),
+    radius: 0,
+    weite0: 0,
+    weite: 0,
   };
   letzteZerlegung = loeser.loeser.zeitZerlegen;
   letzterBereich = loeser.loeser.anzahl;
@@ -999,7 +1012,7 @@ function eckeUmschalten(id: number, i: number): void {
   allesZeigen();
 }
 
-function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spiegel: boolean): boolean {
+function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spiegel: boolean, rMin = 0): boolean {
   if (auswahl.length === 0) return false;
   const ganze = new Set<number>();
   const punktW = new Map<string, number>();
@@ -1063,7 +1076,7 @@ function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spieg
   // was sich bewegt: ganze Loops, mit O die Proben im Kreis, sonst die Stücke um die bewegten Punkte bis zu ihren Nachbarn
   const bewegt: V3[] = [];
   const ecken = new Set<number>();
-  let r = oAn ? radius : 2 * MK;
+  let r = oAn ? radius : Math.max(2 * MK, rMin);
   loops.forEach((l, li) => {
     const n = l.proben.length;
     const mark = new Uint8Array(n);
@@ -1107,6 +1120,9 @@ function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spieg
     griff: null,
     griffVersatz: {},
     griffFaktor: 1,
+    radius: r,
+    weite0: 0,
+    weite: 0,
   };
   letzteZerlegung = loeser.loeser.zeitZerlegen;
   letzterBereich = loeser.loeser.anzahl;
@@ -1196,11 +1212,48 @@ function zugBewegen(X: number, Y: number): void {
   z.loeser.schritt(z.versch, RUNDEN_ZUG);
   zeiten.push(performance.now() - t0);
   if (zeiten.length > 200) zeiten.shift();
+  // wie weit die Loops in diesem Zug schon gezogen sind (über alle Stufen)
+  let weit = 0;
+  for (const d of z.versch) if (d) for (let j = 0; j < d.length; j += 3) weit = Math.max(weit, Math.hypot(d[j]!, d[j + 1]!, d[j + 2]!));
+  z.weite = z.weite0 + weit;
+  // reicht der Zug über den halben Bereich hinaus, eine neue Stufe: der Bereich wächst mit, dabei wird verdichtet
+  if (!z.griff && !oAn && weit > 0.5 * z.radius) zugStufe(z, X, Y);
   hautZeigen();
   baenderZeigen();
   for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
   statusZeigen();
 }
+
+/**
+ * Zug in Stufen: Reicht der Zug über den halben Bereich hinaus, wird der Stand festgehalten, verdichtet und der Zug von hier aus
+ * weitergeführt (Verschieben, Skalieren und Drehen setzen sich so zusammen), mit einem Bereich, der mindestens so weit reicht, wie
+ * schon gezogen wurde (wie das Abziehen in FiberMesh). Sonst hielte der feste Rand des Bereichs, was mitgehen soll (gemessen: die
+ * Kappe vor einem Ring blieb 44 Einheiten zurück und faltete sich ein), und die Dehnung läge auf den alten Dreiecken. Stufen schon
+ * bei Dehnung der Haut machten es schlechter (jede Stufe nimmt den Stand als neue Ruhe, Ansätze von Falten blieben). ⌘Z und Esc
+ * nehmen den ganzen Zug zurück.
+ */
+function zugStufe(z: Zug, X: number, Y: number): void {
+  const t0 = performance.now();
+  for (const l of loops) festlegen(haut, l);
+  nachVerdichten();
+  zug = null;
+  // der Bereich wächst mit dem Zug (wie das Abziehen in FiberMesh): mindestens so weit, wie schon gezogen wurde
+  if (!zugStarten(z.modal, z.ansicht, X, Y, z.spiegel, z.weite)) {
+    zug = z;
+    return;
+  }
+  const neu = zug as Zug | null;
+  if (!neu) return;
+  neu.vorher = z.vorher;
+  neu.bewegt = true;
+  neu.achse = z.achse;
+  neu.weite0 = z.weite;
+  neu.weite = z.weite;
+  zugStufen++;
+  letzteStufeMs = Math.round(performance.now() - t0);
+}
+let zugStufen = 0;
+let letzteStufeMs = 0;
 
 function zugEnde(ok: boolean): void {
   const z = zug;
@@ -1214,11 +1267,27 @@ function zugEnde(ok: boolean): void {
     z.loeser.schritt(z.versch, RUNDEN_ENDE);
     for (const l of loops) festlegen(haut, l);
     kreuzungenSuchen();
+    nachVerdichten();
     zurueck.push(z.vorher);
   } else {
     for (const l of loops) for (const p of l.punkte) p.cur = { ...p.ref };
   }
   allesZeigen();
+}
+
+/**
+ * Nach einem Zug: Wo Kanten länger als 1,75 Kanten des Startnetzes geworden sind (dort ist die Haut gedehnt), wird das Netz feiner,
+ * die neuen Punkte liegen rund (`verdichten`). Im unberührten Netz ist keine Kante so lang (Startkugel höchstens 1,67).
+ */
+function nachVerdichten(): void {
+  if (!VERDICHTEN) return;
+  const t0 = performance.now();
+  const v = verdichten(haut, loops, 1.75 * MK);
+  if (!v) return;
+  haut = v.haut;
+  loops = v.loops;
+  geometrieNeu();
+  letzteVerdichtung = { neu: v.neu, ms: Math.round(performance.now() - t0) };
 }
 
 // ---------- Loops schneiden, Formen zeichnen, Punkte setzen und löschen ----------
@@ -1708,7 +1777,29 @@ schleife();
     const l = loops[loopNr(id)];
     return l ? Array.from(knickWinkel(haut, l)) : [];
   },
-  zeiten: () => ({ zug: [...zeiten], zerlegen: letzteZerlegung, bereich: letzterBereich }),
+  /** umgeschlagene Dreiecke (Normale gegen die mittlere Normale ihrer Ecken) */
+  umgeschlagen: (): number => {
+    const P = haut.pos;
+    const t = haut.tri;
+    const vn = new Float64Array(P.length);
+    const fn: number[][] = [];
+    for (let i = 0; i < t.length; i += 3) {
+      const [a, b, c] = [t[i]!, t[i + 1]!, t[i + 2]!];
+      const ab = [P[3 * b]! - P[3 * a]!, P[3 * b + 1]! - P[3 * a + 1]!, P[3 * b + 2]! - P[3 * a + 2]!];
+      const ac = [P[3 * c]! - P[3 * a]!, P[3 * c + 1]! - P[3 * a + 1]!, P[3 * c + 2]! - P[3 * a + 2]!];
+      const f = [ab[1]! * ac[2]! - ab[2]! * ac[1]!, ab[2]! * ac[0]! - ab[0]! * ac[2]!, ab[0]! * ac[1]! - ab[1]! * ac[0]!];
+      fn.push(f);
+      for (const v of [a, b, c]) for (let k = 0; k < 3; k++) vn[3 * v + k] = vn[3 * v + k]! + f[k]!;
+    }
+    let z = 0;
+    for (let i = 0; i < t.length; i += 3) {
+      const f = fn[i / 3]!;
+      const m = [0, 1, 2].map((k) => vn[3 * t[i]! + k]! + vn[3 * t[i + 1]! + k]! + vn[3 * t[i + 2]! + k]!);
+      if (f[0]! * m[0]! + f[1]! * m[1]! + f[2]! * m[2]! < 0) z++;
+    }
+    return z;
+  },
+  zeiten: () => ({ zug: [...zeiten], zerlegen: letzteZerlegung, bereich: letzterBereich, verdichtung: letzteVerdichtung, punkte: haut.n, stufen: zugStufen, stufeMs: letzteStufeMs }),
   lagen: () => Array.from(haut.pos),
   dreiecke: () => Array.from(haut.tri),
   meldung: () => meldung,

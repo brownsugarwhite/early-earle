@@ -88,6 +88,7 @@ export {
   zieleAus,
 } from './loops';
 export { loopEinsetzen } from './einsetzen';
+export { type Verdichtet, verdichten } from './verdichten';
 export {
   type Ansichtsbreite,
   type BreitenPunkt,

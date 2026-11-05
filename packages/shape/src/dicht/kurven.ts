@@ -527,6 +527,27 @@ export class HautZiele {
         P[3 * v + 1] = x[3 * u + 1]!;
         P[3 * v + 2] = x[3 * u + 2]!;
       }
+      // genau spiegelgleich halten: Die Aufgabe ist es, aber in großen, kaum gehaltenen Bereichen wuchsen Rundungsfehler über
+      // die Stufen eines Zugs bis 10⁻³, dann fand die Spiegelzuordnung einzelne Punkte nicht mehr
+      for (let u = 0; u < nf; u++) {
+        const v = this.frei[u]!;
+        const w = h.spiegel[v]!;
+        if (w < 0 || w < v) continue;
+        if (w === v) {
+          P[3 * v + 2] = 0;
+          continue;
+        }
+        if (nr[w]! < 0) continue;
+        const mx = 0.5 * (P[3 * v]! + P[3 * w]!);
+        const my = 0.5 * (P[3 * v + 1]! + P[3 * w + 1]!);
+        const mz = 0.5 * (P[3 * v + 2]! - P[3 * w + 2]!);
+        P[3 * v] = mx;
+        P[3 * v + 1] = my;
+        P[3 * v + 2] = mz;
+        P[3 * w] = mx;
+        P[3 * w + 1] = my;
+        P[3 * w + 2] = -mz;
+      }
     }
   }
 }
