@@ -9,6 +9,8 @@
 // folgt bis zum ersten Griff dem runden Körper. Keine Regler, keine Chips.
 // Maul (Probe 04.11.): Wer in der Seite von außen über den Umriss in die Form zieht, zeichnet die Maullinie; dort wird die Form
 // aufgeschnitten (geschlossen nur die Linie), der Regler im 3D-Blatt öffnet sie (der Unterkiefer dreht um den Mundwinkel).
+// Getrennte Kiefer (05.11.): Der Knopf „Kiefer trennen“ macht aus der Maullinie Ober- und Unterlippe (rot, blau); jede ist eine
+// Linie im Raum (die Seite bewegt ihre Lage, Front und Top ihre Breite), und jeder Kiefer folgt seiner Lippe.
 
 import {
   BREITE_MAX,
@@ -20,6 +22,7 @@ import {
   type Kontur,
   MAUL_WINKEL_MAX,
   type MaulLinie,
+  type MaulPunkt,
   type MaulSchnitt,
   type Nachfuehrung,
   type RaumLinie,
@@ -137,7 +140,7 @@ declare global {
       oeffnung: number;
       /** die Pose: gezeigt?, Knochen (Grad), Züge */
       pose: Pose & { an: boolean };
-      schnitt: { lippe: number; innen: number; kurz: 'oben' | 'unten' | null } | null;
+      schnitt: { lippe: number; innen: number; getrennt: boolean } | null;
       /** Spielnetz (an): Dreiecke, Punkte, Abweichung (Welt, px bei 300 px Höhe), Dreiecke der dichten Form */
       spiel: { dreiecke: number; punkte: number; fehler: number; px: number; dicht: number } | null;
     };
@@ -167,6 +170,11 @@ const TINTE = 0x1f1a17;
 const MAULFARBE = 0x7a3431;
 /** Strichdicke der Lippen (px) */
 const LIPPE = 2.5;
+/** getrennte Kiefer: Oberlippe rot, Unterlippe blau (wie im Editor) */
+const OBERLIPPE = 0xc8372d;
+const UNTERLIPPE = 0x2f5fc4;
+/** Breite der Unterlippe gegen die Form, sobald die Kiefer getrennt werden: etwas schmaler, so liegt sie geschlossen innen */
+const UNTEN_SCHMAL = 0.85;
 /** So viele Welteinheiten passen in die kürzere Seite eines Blatts. */
 const SICHT = 560;
 // Surface Nets geben etwa das 1,5-Fache der bestellten Dreiecke
@@ -223,6 +231,18 @@ const maulEingabe = document.getElementById('maul-oeffnung') as HTMLInputElement
 const kopfRegler = document.getElementById('kopf-regler') as HTMLLabelElement;
 const kopfEingabe = document.getElementById('kopf-oeffnung') as HTMLInputElement;
 const poseSchalter = document.getElementById('pose') as HTMLInputElement;
+const kieferKnopf = document.getElementById('kiefer-knopf') as HTMLButtonElement;
+const kieferWahl = document.getElementById('kiefer-wahl') as HTMLSpanElement;
+/** Knopf und Wahl der Kiefer: nur mit Maul und nicht in der Pose (dort wirkt nur der Pinsel) */
+function kieferAnzeigen(): void {
+  const m = zustand.maul;
+  const getrennt = !!m?.unten;
+  kieferKnopf.hidden = !m || poseAn;
+  kieferKnopf.textContent = getrennt ? 'Kiefer zusammen' : 'Kiefer trennen';
+  kieferWahl.hidden = !getrennt || poseAn;
+  const l = auswahl?.art === 'maul' || auswahl?.art === 'mpunkt' ? auswahl.l : -1;
+  for (const k of kieferWahl.querySelectorAll<HTMLButtonElement>('button')) k.setAttribute('aria-pressed', String(Number(k.dataset.kiefer) === l));
+}
 /** ein neuer Körper beginnt in der Grundform: Schalter „Pose“ aus (sonst würde jeder Druck auf ihn ein Pinselstrich) */
 const ohnePose = (): void => {
   poseAn = false;
@@ -275,7 +295,7 @@ const kopie = (z: Zustand): Zustand => ({
       }
     : null,
   raum: z.raum.map((l) => ({ ...l, punkte: l.punkte.map((q) => ({ ...q })) })),
-  maul: z.maul ? { punkte: z.maul.punkte.map((q) => ({ ...q })), kurz: z.maul.kurz?.map((q) => ({ ...q })) } : null,
+  maul: z.maul ? { punkte: z.maul.punkte.map((q) => ({ ...q })), unten: z.maul.unten?.map((q) => ({ ...q })) } : null,
   pose: {
     kiefer: z.pose.kiefer,
     schaedel: z.pose.schaedel,
@@ -397,17 +417,27 @@ const kantenHinten = new Mesh(kanten.geometry, kanteVerdeckt);
 // Linien auf der Form (`?linien`): in allen vier Ansichten, sichtbar schwarz, verdeckt blass
 const raumBand = new Mesh(new BufferGeometry(), kanteSichtbar);
 const raumBandHinten = new Mesh(raumBand.geometry, kanteVerdeckt);
-// Maul: das Innere (Gaumen und Boden) dunkel, die Lippen als Linien wie die Kanten
+// Maul: das Innere (Gaumen und Boden) dunkel, die Lippen als Linien wie die Kanten (getrennt: oben rot, unten blau)
 const maulInnen = new Mesh(new BufferGeometry(), new MeshToonMaterial({ color: MAULFARBE, gradientMap: stufen }));
-const lippen = new Mesh(new BufferGeometry(), kanteSichtbar);
-const lippenHinten = new Mesh(lippen.geometry, kanteVerdeckt);
+const lippenMaterial = { oben: [kantenShader(1), kantenShader(0.28)], unten: [kantenShader(1), kantenShader(0.28)] } as const;
+for (const [sichtbar, verdeckt] of Object.values(lippenMaterial)) {
+  sichtbar.depthFunc = LessEqualDepth;
+  verdeckt.depthFunc = GreaterDepth;
+}
+const lippeOben = new Mesh(new BufferGeometry(), lippenMaterial.oben[0]);
+const lippeObenHinten = new Mesh(lippeOben.geometry, lippenMaterial.oben[1]);
+const lippeUnten = new Mesh(new BufferGeometry(), lippenMaterial.unten[0]);
+const lippeUntenHinten = new Mesh(lippeUnten.geometry, lippenMaterial.unten[1]);
+const lippenMeshes = [lippeOben, lippeObenHinten, lippeUnten, lippeUntenHinten];
 umriss.renderOrder = 1;
 kanten.renderOrder = 2;
 kantenHinten.renderOrder = 3;
 raumBand.renderOrder = 2;
 raumBandHinten.renderOrder = 3;
-lippen.renderOrder = 2;
-lippenHinten.renderOrder = 3;
+lippeOben.renderOrder = 2;
+lippeObenHinten.renderOrder = 3;
+lippeUnten.renderOrder = 2;
+lippeUntenHinten.renderOrder = 3;
 // Spielnetz: seine Dreiecke als feines Drahtgitter über der Form
 const drahtMaterial = new MeshBasicMaterial({ color: TINTE, wireframe: true, transparent: true, opacity: 0.22, depthWrite: false });
 drahtMaterial.polygonOffset = true;
@@ -419,7 +449,7 @@ draht.visible = false;
 drahtInnen.visible = false;
 draht.renderOrder = 2;
 drahtInnen.renderOrder = 2;
-szene.add(koerper, umriss, kanten, kantenHinten, raumBand, raumBandHinten, maulInnen, lippen, lippenHinten, draht, drahtInnen);
+szene.add(koerper, umriss, kanten, kantenHinten, raumBand, raumBandHinten, maulInnen, ...lippenMeshes, draht, drahtInnen);
 const sonne = new DirectionalLight(0xffffff, 2.4);
 sonne.position.set(0.9, 1.4, 1.1);
 szene.add(sonne, new HemisphereLight(0xfff6e8, 0x9c8a74, 1.1));
@@ -557,7 +587,7 @@ function poseAnwenden(): void {
   };
   ersetzen(kanten, kantenHinten, kantenGeometrie(kantenRuhe.map(biegen)));
   ersetzen(raumBand, raumBandHinten, kantenGeometrie(raumRuhe.map(biegen)));
-  // Lippen: oben und unten aus den Punkten des Körpers, je vom einen Mundwinkel um die Schnauze zum anderen
+  // Lippen: oben und unten aus den Punkten des Körpers, je vom einen Mundwinkel um die Schnauze zum anderen; getrennt farbig
   const lp: Kante3D[] = [];
   if (s) {
     const pos = koerper.geometry.getAttribute('position').array as Float32Array;
@@ -571,7 +601,11 @@ function poseAnwenden(): void {
       lp.push({ lagen, breite: new Float32Array(lippe.length).fill(LIPPE), linie: -1 });
     }
   }
-  ersetzen(lippen, lippenHinten, kantenGeometrie(lp));
+  ersetzen(lippeOben, lippeObenHinten, kantenGeometrie(lp.slice(0, 1)));
+  ersetzen(lippeUnten, lippeUntenHinten, kantenGeometrie(lp.slice(1, 2)));
+  const getrennt = s?.unten != null;
+  for (const m of lippenMaterial.oben) m.uniforms.uFarbe!.value.set(getrennt ? OBERLIPPE : TINTE);
+  for (const m of lippenMaterial.unten) m.uniforms.uFarbe!.value.set(getrennt ? UNTERLIPPE : TINTE);
   neuZeichnen = true;
 }
 
@@ -777,8 +811,8 @@ function bauen(fein: boolean): void {
     const a = zustand.maul.punkte[0]!;
     const q = naechsterAufUmriss(a.x, a.y);
     zustand.maul.punkte[0] = { ...a, x: q.x, y: q.y };
-    // getrennte Kiefer: die Lippe des kürzeren beginnt auf dem Umriss und endet im selben Mundwinkel
-    const k = zustand.maul.kurz;
+    // getrennte Kiefer: die Unterlippe beginnt auf dem Umriss und endet im selben Mundwinkel
+    const k = zustand.maul.unten;
     if (k && k.length >= 2) {
       const b = k[0]!;
       const qb = naechsterAufUmriss(b.x, b.y);
@@ -786,7 +820,8 @@ function bauen(fein: boolean): void {
       const mw = zustand.maul.punkte[zustand.maul.punkte.length - 1]!;
       k[k.length - 1] = { ...k[k.length - 1]!, x: mw.x, y: mw.y };
     }
-    // der Umriss der Seite hält die Haut des kürzeren Kiefers in der Form (gleichwertige Ansichten: der Körper reicht über ihn)
+    // der Umriss der Seite hält die Haut eines Kiefers, der seiner Lippe folgt, in der Form (gleichwertige Ansichten: der Körper
+    // reicht über ihn)
     schnitt = maulSchneiden(n, zustand.maul, { zelle: n.zelle, kontur: n.kontur, umriss: gleich ? undefined : n.umriss });
   } else {
     schnitt = null;
@@ -837,7 +872,7 @@ function bauen(fein: boolean): void {
     oeffnung: gezeigtePose().kiefer,
     pose: { an: poseAn, ...k.pose },
     schnitt: schnitt
-      ? { lippe: schnitt.lippeOben.length, innen: schnitt.innen.indizes.length / 3, kurz: schnitt.kurz?.kiefer ?? null }
+      ? { lippe: schnitt.lippeOben.length, innen: schnitt.innen.indizes.length / 3, getrennt: schnitt.unten !== null }
       : null,
     spiel: spielnetz
       ? {
@@ -942,14 +977,13 @@ function rendern(): void {
     const andere = name !== 'seite';
     // mit gleichwertigen Ansichten zeigt auch die Seite den Umriss des Modells (über der Zeichnung), mit `?netz` immer, mit
     // offenem Maul ebenso (die Zeichnung bleibt geschlossen)
-    umriss.visible = andere || zustand.ansichten !== null || NETZ || LINIEN || posiertGezeigt();
+    umriss.visible = andere || zustand.ansichten !== null || NETZ || LINIEN || posiertGezeigt() || getrenntGezeigt();
     kanten.visible = andere;
     kantenHinten.visible = andere;
-    lippen.visible = andere;
-    lippenHinten.visible = andere;
+    for (const l of lippenMeshes) l.visible = andere;
     umrissMaterial.uniforms.uAufloesung!.value.set(r.width * dpr, r.height * dpr);
     umrissMaterial.uniforms.uBreite!.value = 2.5 * dpr;
-    for (const m of [kanteSichtbar, kanteVerdeckt]) {
+    for (const m of [kanteSichtbar, kanteVerdeckt, ...lippenMaterial.oben, ...lippenMaterial.unten]) {
       m.uniforms.uAufloesung!.value.set(r.width * dpr, r.height * dpr);
       m.uniforms.uDpr!.value = dpr;
     }
@@ -1008,7 +1042,7 @@ function svgZeichnen(): void {
   // gleichwertige Ansichten: die Zeichnung farbig, der Umriss des Modells (Shader) schwarz darüber; mit `?netz` zeichnet nur
   // der Shader, die Punkte sind Griffe auf seiner Linie
   svg.append(treffer);
-  if (!NETZ && !LINIEN) svg.append(element('path', zustand.ansichten || posiertGezeigt() ? 'vorgabe' : 'linie', { d }));
+  if (!NETZ && !LINIEN) svg.append(element('path', zustand.ansichten || posiertGezeigt() || getrenntGezeigt() ? 'vorgabe' : 'linie', { d }));
   for (const u of zustand.ansichten?.seite ?? []) svg.append(element('path', 'vorgabe', { d: umrissPfad(u, (q) => [q.x, -q.y]) }));
   const rp = 5 / s;
   // gezeichnete Linien: Trefferband, Strich, Punkte der gewählten Linie
@@ -1030,20 +1064,27 @@ function svgZeichnen(): void {
       svg.append(e);
     });
   });
-  // Maullinie: Strich und Trefferband; mit getrennten Kiefern dazu die Lippe des kürzeren (gestrichelt, geschlossen verdeckt);
-  // in der Pose beide Lippen leiser, wie sie im 3D liegen; gewählt mit ihren Punkten (mit ⇧ mehrere)
+  // Maullinie: Strich und Trefferband; mit getrennten Kiefern Oberlippe (rot) und Unterlippe (blau), die gewählte obenauf (geschlossen
+  // liegen sie oft aufeinander, ein Klick trifft dann sie); in der Pose beide Lippen leiser, wie sie im 3D liegen; gewählt mit
+  // ihren Punkten (mit ⇧ mehrere)
+  kieferAnzeigen();
+  // die Punkte der gewählten Lippe kommen über die Punkte des Umrisses (ihr Anfang liegt oft auf einem)
+  const lippenPunkte: SVGElement[] = [];
   if (zustand.maul) {
     const m = zustand.maul;
     const pfad = (q: readonly { x: number; y: number }[]) => q.map((r, i) => `${i ? 'L' : 'M'} ${r.x} ${-r.y}`).join(' ');
-    const linien = m.kurz && m.kurz.length >= 2 ? [m.punkte, m.kurz] : [m.punkte];
-    linien.forEach((punkte, l) => {
-      const p = linieAbtasten({ punkte: punkte.map((q) => ({ ...q, breite: LIPPE })) }, 2 / s).p;
+    const getrennt = !!m.unten && m.unten.length >= 2;
+    const linien = getrennt ? [m.punkte, m.unten!] : [m.punkte];
+    const gl = auswahl?.art === 'maul' || auswahl?.art === 'mpunkt' ? auswahl.l : -1;
+    const farbe = (l: number): string => (getrennt ? (l === 0 ? ' lippe-oben' : ' lippe-unten') : '');
+    for (const l of linien.map((_, k) => k).sort((a, b) => Number(a === gl) - Number(b === gl))) {
+      const p = linieAbtasten({ punkte: linien[l]!.map((q) => ({ ...q, breite: LIPPE })) }, 2 / s).p;
       const t = element('path', 'treffer-kante', { d: pfad(p) });
       t.dataset.maul = String(l);
       svg.append(t);
-      const fehlt = !schnitt || (l === 1 && !schnitt.kurz);
-      svg.append(element('path', `maul${l === 1 ? ' kurz' : ''}${fehlt ? ' fehlt' : ''}`, { d: pfad(p) }));
-    });
+      const fehlt = !schnitt || (l === 1 && !schnitt.unten);
+      svg.append(element('path', `maul${farbe(l)}${fehlt ? ' fehlt' : ''}`, { d: pfad(p) }));
+    }
     if (schnitt && posiertGezeigt()) {
       const pos = koerper.geometry.getAttribute('position')?.array as Float32Array | undefined;
       if (pos) {
@@ -1059,15 +1100,15 @@ function svgZeichnen(): void {
     if (!poseAn && (a?.art === 'maul' || a?.art === 'mpunkt')) {
       const punkte = linien[a.l];
       punkte?.forEach((q, i) => {
-        // das Ende der zweiten Linie ist der Mundwinkel der ersten
+        // das Ende der Unterlippe ist der Mundwinkel der Oberlippe
         if (a.l === 1 && i === punkte.length - 1) return;
         const an = a.art === 'maul' || a.i.includes(i);
-        const klasse = `lpunkt${an ? ' gewaehlt' : ''}`;
+        const klasse = `lpunkt${farbe(a.l)}${an ? ' gewaehlt' : ''}`;
         const e = q.ecke
           ? element('rect', klasse, { x: q.x - 0.8 * rp, y: -q.y - 0.8 * rp, width: 1.6 * rp, height: 1.6 * rp })
           : element('circle', klasse, { cx: q.x, cy: -q.y, r: 0.8 * rp });
         e.dataset.mpunkt = `${a.l}:${i}`;
-        svg.append(e);
+        lippenPunkte.push(e);
       });
     }
   }
@@ -1088,6 +1129,7 @@ function svgZeichnen(): void {
     e.dataset.punkt = String(i);
     svg.append(e);
   });
+  svg.append(...lippenPunkte);
 }
 
 const welt = (e: { clientX: number; clientY: number }): { x: number; y: number } => {
@@ -1171,8 +1213,37 @@ function linienEcke(l: number, i: number): void {
   geaendert();
 }
 
-/** Die Punkte einer Maullinie (0: Maullinie, 1: Lippe des kürzeren Kiefers) */
-const maulPunkte = (l: number): UmrissPunkt[] | undefined => (l === 1 ? zustand.maul?.kurz : zustand.maul?.punkte);
+/** Die Punkte einer Maullinie (0: Maullinie bzw. Oberlippe, 1: Unterlippe bei getrennten Kiefern) */
+const maulPunkte = (l: number): MaulPunkt[] | undefined => (l === 1 ? zustand.maul?.unten : zustand.maul?.punkte);
+/** Sind die Kiefer getrennt (und geschnitten)? Dann zeigt auch die Seite den Umriss des Modells: der Unterkiefer folgt seiner Lippe. */
+const getrenntGezeigt = (): boolean => !!zustand.maul?.unten && !!schnitt?.unten;
+const ohneBreite = (q: MaulPunkt): MaulPunkt => (q.ecke ? { x: q.x, y: q.y, ecke: true } : { x: q.x, y: q.y });
+
+/**
+ * Kiefer trennen: Die Maullinie wird die Oberlippe, die Unterlippe eine eigene Linie, zuerst an derselben Stelle und etwas
+ * schmaler (geschlossen liegt sie so innen); jede bewegt ab jetzt ihren Kiefer. Wieder zusammen: Die Oberlippe bleibt die
+ * Maullinie, ohne Breiten.
+ */
+function kieferUmschalten(): void {
+  const m = zustand.maul;
+  if (!m) return;
+  merken(kopie(zustand));
+  if (m.unten) {
+    m.unten = undefined;
+    m.punkte = m.punkte.map(ohneBreite);
+    auswahl = { art: 'maul', l: 0 };
+  } else {
+    // eine Linie aus zwei Punkten ist gerade: ihre Mitte dazu ändert nichts und gibt der Breite einen Griff
+    if (m.punkte.length === 2) {
+      const a = m.punkte[0]!;
+      const e = m.punkte[1]!;
+      m.punkte.splice(1, 0, { x: (a.x + e.x) / 2, y: (a.y + e.y) / 2 });
+    }
+    m.unten = m.punkte.map((q, i, alle) => (i === 0 || i === alle.length - 1 ? ohneBreite(q) : { ...ohneBreite(q), b: UNTEN_SCHMAL }));
+    auswahl = { art: 'maul', l: 1 };
+  }
+  geaendert();
+}
 
 function maulEcke(l: number, i: number): void {
   const p = maulPunkte(l);
@@ -1539,6 +1610,9 @@ svg.addEventListener('pointermove', (e) => {
       const z0 = zm.lagen[k]!;
       const q = j === 0 ? naechsterAufUmriss(z0.x + dx, z0.y + dy) : { x: z0.x + dx, y: z0.y + dy };
       punkte[j] = { ...p, x: q.x, y: q.y };
+      // der Mundwinkel gehört beiden Lippen
+      const u = zustand.maul?.unten;
+      if (zm.l === 0 && j === punkte.length - 1 && u) u[u.length - 1] = { ...u[u.length - 1]!, x: q.x, y: q.y };
     });
   } else {
     const l = zustand.linien[zug.l]!;
@@ -1559,17 +1633,9 @@ const zugEnde = (): void => {
     const neu = maulAusSpur(zug.spur);
     if (neu) {
       merken(zug.vorher);
-      // endet die Spur am Mundwinkel eines Mauls, ist sie die Lippe des kürzeren Kiefers (getrennte Kiefer); sonst ein neues Maul
-      const alt = zustand.maul;
-      const mw = alt?.punkte[alt.punkte.length - 1];
-      const ende = neu.punkte[neu.punkte.length - 1]!;
-      if (alt && mw && Math.hypot(ende.x - mw.x, ende.y - mw.y) * skala() < 16) {
-        alt.kurz = neu.punkte.map((q, i) => (i === neu.punkte.length - 1 ? { ...q, x: mw.x, y: mw.y } : q));
-        auswahl = { art: 'maul', l: 1 };
-      } else {
-        zustand.maul = neu;
-        auswahl = { art: 'maul', l: 0 };
-      }
+      // ein neues Maul (getrennt wird mit dem Knopf „Kiefer trennen“)
+      zustand.maul = neu;
+      auswahl = { art: 'maul', l: 0 };
       bauGewuenscht = 'fein';
     }
     zug = null;
@@ -1859,6 +1925,7 @@ function profilZeichnen(b: Blatt): void {
     tk.dataset.kante = String(k.linie);
     el.append(tk);
   }
+  lippenBaender(el, b);
   // gezeichnet: die Hälfte als Linie, die Spiegelhälfte leiser; folgt die Ansicht noch dem Körper, zeigt der Shader den Umriss
   // und hier stehen nur die Punkte
   if (halb && zustand[b] && !NETZ) {
@@ -1885,6 +1952,7 @@ function profilZeichnen(b: Blatt): void {
     e.dataset.ppunkt = `${b}:${i}`;
     el.append(e);
   });
+  lippenPunkteImBlatt(el, b);
   // Punkte der gewählten Linie auf der Seite z ≥ 0
   const li = auswahl?.art === 'linie' || auswahl?.art === 'lpunkt' ? auswahl.l : -1;
   zustand.linien[li]?.punkte.forEach((q, i) => {
@@ -1899,6 +1967,48 @@ function profilZeichnen(b: Blatt): void {
     el.append(e);
   });
 }
+/** Lippen in Front und Top: Trefferbänder, beide Hälften (die Lippen selbst zeichnet der Shader); ein Klick wählt den Kiefer. */
+function lippenBaender(el: SVGSVGElement, b: Blatt): void {
+  const s = schnitt;
+  const m = zustand.maul;
+  if (!s || !m) return;
+  const getrennt = !!m.unten && s.unten !== null;
+  [s.lippeOben, s.lippeUnten].forEach((lippe, k) => {
+    let d = '';
+    lippe.forEach((v, i) => {
+      const [x, y] = raumImBlatt(b, { x: s.positionen[3 * v]!, y: s.positionen[3 * v + 1]!, z: s.positionen[3 * v + 2]! });
+      d += `${i ? ' L' : 'M'} ${x} ${y}`;
+    });
+    const t = element('path', 'treffer-kante', { d });
+    t.dataset.maul = String(getrennt ? k : 0);
+    el.append(t);
+  });
+}
+
+/**
+ * Mit getrennten Kiefern die Punkte der gewählten Lippe in Front und Top, auf der Seite z ≥ 0: so weit außen, wie die Form dort
+ * tief ist, mal der Breite der Lippe.
+ */
+function lippenPunkteImBlatt(el: SVGSVGElement, b: Blatt): void {
+  const s = schnitt;
+  const m = zustand.maul;
+  if (!s || !m || !m.unten || s.unten === null) return;
+  const a = auswahl;
+  if (a?.art !== 'maul' && a?.art !== 'mpunkt') return;
+  const punkte = maulPunkte(a.l);
+  const rp = 5 / skala();
+  punkte?.forEach((q, i) => {
+    // der Mundwinkel gehört beiden: gezeigt an der Oberlippe
+    if (a.l === 1 && i === punkte.length - 1) return;
+    const z = (i === punkte.length - 1 ? 1 : (q.b ?? 1)) * s.tiefe(q.x, q.y);
+    const [x, y] = raumImBlatt(b, { x: q.x, y: q.y, z });
+    const an = a.art === 'maul' || a.i.includes(i);
+    const e = element('circle', `lpunkt ${a.l === 0 ? 'lippe-oben' : 'lippe-unten'}${an ? ' gewaehlt' : ''}`, { cx: x, cy: y, r: 0.8 * rp });
+    e.dataset.mpunkt = `${a.l}:${i}`;
+    el.append(e);
+  });
+}
+
 /** SVG-Pfad eines geschlossenen Umrisses; `blatt` bildet seine Koordinaten auf das Blatt ab. */
 function umrissPfad(u: readonly UmrissPunkt[], blatt: (q: { x: number; y: number }) => [number, number]): string {
   if (u.length < 3) return '';
@@ -1919,6 +2029,8 @@ let profilZug: { blatt: Blatt; i: number; vorher: Zustand; bewegt: boolean } | n
 let linienZug: { blatt: Blatt; l: number; i: number; vorher: Zustand; bewegt: boolean } | null = null;
 // Punkt einer Linie auf der Form (`?linien`) in Front oder Top ziehen: die Front bewegt y und z, das Top x und z
 let raumZug: { blatt: Blatt; l: number; i: number; vorher: Zustand; bewegt: boolean } | null = null;
+// Punkt einer Lippe (getrennte Kiefer) in Front oder Top ziehen: die Front bewegt y und die Breite, das Top x und die Breite
+let lippenZug: { blatt: Blatt; l: number; i: number; vorher: Zustand; bewegt: boolean } | null = null;
 for (const b of ['front', 'top'] as const) {
   const el = profilSvg[b];
   el.addEventListener('pointerdown', (e) => {
@@ -1931,7 +2043,24 @@ for (const b of ['front', 'top'] as const) {
     if ((!LINIEN && !profilVon(b)) || zustand.ansichten) return;
     const d = (e.target as SVGElement).dataset;
     const vorher = kopie(zustand);
-    if (d.rpunkt !== undefined) {
+    if (d.mpunkt !== undefined) {
+      // Punkt einer Lippe: Lage und Breite ziehen
+      const [l, i] = d.mpunkt.split(':').map(Number) as [number, number];
+      auswahl = { art: 'mpunkt', l, i: [i] };
+      if (doppelklick(`${b}m${l}:${i}`) || e.altKey) {
+        maulEcke(l, i);
+        return;
+      }
+      lippenZug = { blatt: b, l, i, vorher, bewegt: false };
+      svgZeichnen();
+      profileZeichnen();
+    } else if (d.maul !== undefined) {
+      // eine Lippe anklicken wählt ihren Kiefer
+      auswahl = { art: 'maul', l: Number(d.maul) };
+      svgZeichnen();
+      profileZeichnen();
+      return;
+    } else if (d.rpunkt !== undefined) {
       const [l, i] = d.rpunkt.split(':').map(Number) as [number, number];
       auswahl = { art: 'rpunkt', l, i };
       if (doppelklick(`${b}r${l}:${i}`) || e.altKey) {
@@ -2027,6 +2156,32 @@ for (const b of ['front', 'top'] as const) {
       geaendert(false);
       return;
     }
+    if (lippenZug && lippenZug.blatt === b) {
+      if (!lippenZug.bewegt) {
+        merken(lippenZug.vorher);
+        lippenZug.bewegt = true;
+        letzterKlick = null;
+      }
+      // (längs, quer) = Front: (y, z), Top: (x, z); die dritte Achse bleibt, die Breite ist z gegen die Tiefe der Form
+      const [a, q] = profilWelt(b, e);
+      const lz = lippenZug;
+      const punkte = maulPunkte(lz.l);
+      const p = punkte?.[lz.i];
+      if (!punkte || !p || !schnitt) return;
+      const letzter = lz.i === punkte.length - 1;
+      let x = b === 'front' ? p.x : a;
+      let y = b === 'front' ? a : p.y;
+      // der Anfang gleitet auf dem Umriss (dort hat die Form keine Tiefe, also auch keine Breite)
+      if (lz.i === 0) ({ x, y } = naechsterAufUmriss(x, y));
+      const t = schnitt.tiefe(x, y);
+      // am Mundwinkel treffen sich die Lippen: dort keine eigene Breite
+      const breite = lz.i === 0 || letzter || t < 1e-3 ? p.b : Math.max(0.2, Math.min(4, Math.abs(q) / t));
+      punkte[lz.i] = { ...p, x, y, b: breite };
+      const u = zustand.maul?.unten;
+      if (letzter && lz.l === 0 && u) u[u.length - 1] = { ...u[u.length - 1]!, x, y };
+      geaendert(false);
+      return;
+    }
     if (linienZug && linienZug.blatt === b) {
       if (!linienZug.bewegt) {
         merken(linienZug.vorher);
@@ -2065,10 +2220,11 @@ for (const b of ['front', 'top'] as const) {
       pinselEnde();
       return;
     }
-    if (profilZug?.bewegt || linienZug?.bewegt || raumZug?.bewegt) bauGewuenscht = 'fein';
+    if (profilZug?.bewegt || linienZug?.bewegt || raumZug?.bewegt || lippenZug?.bewegt) bauGewuenscht = 'fein';
     profilZug = null;
     linienZug = null;
     raumZug = null;
+    lippenZug = null;
   };
   el.addEventListener('pointerup', ende);
   el.addEventListener('pointercancel', ende);
@@ -2141,8 +2297,8 @@ window.addEventListener('keydown', (e) => {
       merken(kopie(zustand));
       zustand.raum = zustand.raum.filter((_, j) => j !== a.l);
     } else if (a.art === 'maul' || a.art === 'mpunkt') {
-      // Punkte einer Maullinie (nicht der Anfang auf dem Umriss, mindestens zwei bleiben) oder die ganze Linie: die erste nimmt
-      // das ganze Maul mit, die zweite nur sich (die Kiefer sind dann wieder gleich)
+      // Punkte einer Lippe (nicht der Anfang auf dem Umriss, mindestens zwei bleiben) oder die ganze Linie: die Maullinie nimmt
+      // das ganze Maul mit, die Unterlippe nur sich (die Kiefer sind dann wieder zusammen)
       const m = zustand.maul;
       if (!m) return;
       const punkte = maulPunkte(a.l) ?? [];
@@ -2150,10 +2306,11 @@ window.addEventListener('keydown', (e) => {
       merken(kopie(zustand));
       if (a.art === 'mpunkt' && weg.length > 0 && punkte.length - weg.length >= 2) {
         const rest = punkte.filter((_, j) => !weg.includes(j));
-        if (a.l === 1) m.kurz = rest;
+        if (a.l === 1) m.unten = rest;
         else m.punkte = rest;
       } else if (a.l === 1) {
-        m.kurz = undefined;
+        m.unten = undefined;
+        m.punkte = m.punkte.map(ohneBreite);
       } else {
         zustand.maul = null;
       }
@@ -2198,6 +2355,9 @@ function schleife(): void {
   zeichnen: () => {
     neuZeichnen = true;
   },
+  // getrennte Kiefer: Lippenpunkte im Körper (je vom einen Mundwinkel um die Schnauze zum anderen) und die Tiefe der Form
+  lippen: () => (schnitt ? { oben: Array.from(schnitt.lippeOben), unten: Array.from(schnitt.lippeUnten) } : null),
+  tiefe: (x: number, y: number) => schnitt?.tiefe(x, y) ?? null,
 };
 
 window.__formSetzen = (p, linien = [], front = null, top = null) => {
@@ -2266,6 +2426,15 @@ if (NETZ) {
   const kopf = felder.seite.querySelector('header');
   if (kopf) kopf.textContent = 'Seite · Linien aus dem Netz';
 }
+// Knopf „Kiefer trennen“ und die Wahl des Kiefers (Ober / Unter) im 3D-Blatt
+kieferKnopf.addEventListener('click', kieferUmschalten);
+for (const k of kieferWahl.querySelectorAll<HTMLButtonElement>('button')) {
+  k.addEventListener('click', () => {
+    auswahl = { art: 'maul', l: Number(k.dataset.kiefer) };
+    svgZeichnen();
+    profileZeichnen();
+  });
+}
 // Regler „Maul“ im 3D-Blatt: nur die Ansicht, kein neuer Bau (die Drehung um den Mundwinkel ist schnell)
 maulEingabe.max = String(MAUL_WINKEL_MAX);
 const KOPF_MAX = 40;
@@ -2314,7 +2483,7 @@ void backenBereit.then(() => {
 });
 window.__formMaul = (linie) => {
   merken(kopie(zustand));
-  zustand.maul = linie ? { punkte: linie.punkte.map((q) => ({ ...q })), kurz: linie.kurz?.map((q) => ({ ...q })) } : null;
+  zustand.maul = linie ? { punkte: linie.punkte.map((q) => ({ ...q })), unten: linie.unten?.map((q) => ({ ...q })) } : null;
   auswahl = null;
   geaendert();
 };

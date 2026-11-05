@@ -4,6 +4,8 @@
   --linie: #1f1a17;
   --leise: #8a8072;
   --naht: rgba(31, 26, 23, 0.1);
+  --oberlippe: #c8372d;
+  --unterlippe: #2f5fc4;
   font-family: ui-sans-serif, system-ui, -apple-system, 'Helvetica Neue', sans-serif;
 }
 
@@ -215,10 +217,29 @@ body {
   stroke-opacity: 0.45;
 }
 
-/* getrennte Kiefer: die Lippe des kürzeren (geschlossen verdeckt im längeren) */
-.blatt .maul.kurz {
-  stroke-width: 1.5px;
-  stroke-dasharray: 5 4;
+/* getrennte Kiefer: Oberlippe rot, Unterlippe blau, ihre Punkte ebenso */
+.blatt .maul.lippe-oben {
+  stroke: var(--oberlippe);
+}
+
+.blatt .maul.lippe-unten {
+  stroke: var(--unterlippe);
+}
+
+.blatt .lpunkt.lippe-oben {
+  stroke: var(--oberlippe);
+}
+
+.blatt .lpunkt.lippe-oben.gewaehlt {
+  fill: var(--oberlippe);
+}
+
+.blatt .lpunkt.lippe-unten {
+  stroke: var(--unterlippe);
+}
+
+.blatt .lpunkt.lippe-unten.gewaehlt {
+  fill: var(--unterlippe);
 }
 
 /* die Linie schneidet nicht (zu kurz oder nicht vom Umriss in die Form) */
@@ -232,9 +253,50 @@ body {
   position: absolute;
   top: 8px;
   right: 14px;
+  max-width: calc(100% - 28px);
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
-  gap: 22px;
+  gap: 8px 22px;
+}
+
+/* Knopf „Kiefer trennen“ und die Wahl Ober / Unter */
+.regler.knopf,
+.kiefer-wahl button {
+  font: inherit;
+  font-size: 13px;
+  color: var(--linie);
+  background: transparent;
+  border: 1px solid var(--leise);
+  border-radius: 12px;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+
+.kiefer-wahl {
+  gap: 0;
+}
+
+.kiefer-wahl button:first-child {
+  border-radius: 12px 0 0 12px;
+  border-right: none;
+}
+
+.kiefer-wahl button:last-child {
+  border-radius: 0 12px 12px 0;
+}
+
+.kiefer-wahl button[data-kiefer='0'][aria-pressed='true'] {
+  background: var(--oberlippe);
+  border-color: var(--oberlippe);
+  color: var(--papier);
+}
+
+.kiefer-wahl button[data-kiefer='1'][aria-pressed='true'] {
+  background: var(--unterlippe);
+  border-color: var(--unterlippe);
+  color: var(--papier);
 }
 
 .regler {

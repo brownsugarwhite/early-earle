@@ -16,15 +16,20 @@
           Umriss: Punkt ziehen · Klick auf die Linie: neuer Punkt · Doppelklick: Ecke ↔ rund<br />
           Auf der Form ziehen: Linie zeichnen · Linie anklicken, dann + − oder 0–3: Strichdicke = Härte · ⌫ löschen · ⌘Z
           zurück<br />
-          Von außen über den Umriss in die Form ziehen: Maullinie (Ende = Mundwinkel) · noch eine zum selben Mundwinkel: getrennte
-          Kiefer · gewählte Maullinie anklicken: neuer Punkt · ⇧-Klick: mehrere Punkte<br />
+          Von außen über den Umriss in die Form ziehen: Maullinie (Ende = Mundwinkel) · gewählte Maullinie anklicken: neuer Punkt ·
+          ⇧-Klick: mehrere Punkte<br />
+          „Kiefer trennen“ im 3D: Oberlippe rot, Unterlippe blau · Lippe anklicken (oder Ober/Unter) wählt den Kiefer · in der Seite
+          ihre Lage, in Front und Top ihre Breite ziehen<br />
           „Pose“ im 3D: Maul und Kopf mit den Reglern, auf der Form ziehen = Pinsel (Größe mit [ ])
         </footer>
       </section>
       <section class="feld" id="feld-front">
         <header>Front</header>
         <svg class="blatt" id="profil-front" aria-label="Front bearbeiten"></svg>
-        <footer>Punkt ziehen · Klick auf den Umriss: neuer Punkt · Doppelklick: Ecke ↔ rund · ⌫ löschen</footer>
+        <footer>
+          Punkt ziehen · Klick auf den Umriss: neuer Punkt · Doppelklick: Ecke ↔ rund · ⌫ löschen<br />
+          Getrennte Kiefer: Punkte der gewählten Lippe nach außen oder innen = breiter oder schmaler
+        </footer>
       </section>
       <section class="feld" id="feld-top">
         <header>Top</header>
@@ -44,6 +49,10 @@
           <label class="regler" id="kopf-regler" hidden>
             Kopf <input id="kopf-oeffnung" type="range" min="0" max="40" step="0.5" value="0" />
           </label>
+          <button class="regler knopf" id="kiefer-knopf" type="button" hidden>Kiefer trennen</button>
+          <span class="regler kiefer-wahl" id="kiefer-wahl" hidden>
+            <button type="button" data-kiefer="0">Ober</button><button type="button" data-kiefer="1">Unter</button>
+          </span>
         </div>
       </section>
     </main>

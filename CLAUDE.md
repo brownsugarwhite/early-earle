@@ -774,6 +774,30 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
       Form, natürlich wirkt es nicht): am besten am Anfang der Maullinie beginnen.
   - Prüfungen `scripts/pruefen/form-pose-probe.mjs`, `form-kiefer-probe.mjs`; Tests `dicht/pose.test.ts`, `dicht/maul.test.ts`
     (34 grün); Bilder `docs/progress/editor/form-pose-*-2026-11-04.jpg`, `form-kiefer-*-2026-11-04.jpg`.
+- **2026-11-05: Kiefer trennen — Probe** (Florian: „sieht alles recht gut aus bis auf Über- und Unterbiss. Ich will Ober- bzw.
+  Unterkiefer wirklich separat bearbeiten können … deutlich länger oder breiter … Platz für riesige Vampirzähne oder Hauer, die
+  nicht durch die Lippe durchstoßen, sondern genau in der Lücke liegen“; wie im alten Editor: Lippen erst zusammen, ein Knopf
+  trennt).
+  - **Bedienung:** Knopf „Kiefer trennen“ im 3D-Blatt. Die Maullinie wird die Oberlippe (rot), die Unterlippe (blau) eine eigene
+    Linie, zuerst an derselben Stelle und 0,85 so breit. Kiefer wählen mit Ober/Unter oder per Klick auf die Lippe; die Seite zieht
+    die Lage der Punkte, Front und Top ihre Breite (nach außen breiter, nach innen schmaler). Der Anfang gleitet auf dem Umriss,
+    der Mundwinkel gehört beiden. „Kiefer zusammen“ (oder ⌫ auf der Unterlippe) ist bitgleich zum Maul vor dem Trennen.
+  - **Kern** (`dicht/maul.ts`): `MaulLinie.unten`, `MaulPunkt.b` (Breite gegen die Form; monoton kubisch durch die Punkte, am
+    Mundwinkel 1, der Anfang nimmt die des zweiten Punkts). Geschnitten wird an der Oberlippe; jeder Kiefer folgt seiner Lippe
+    (`kieferFolgen`): die Lage in der Seite mit Auslauf 3 × Verschiebung (der gezeichnete Umriss bleibt), die Breite über den ganzen
+    Kiefer (so weit, wie er am Mundwinkel dick ist). `MaulSchnitt.unten`, `.tiefe`; ersetzt `kurz` (zweite Linie im längeren Kiefer).
+  - **Gemessen** (Maus, `scripts/pruefen/form-kiefer-trennen.mjs`): Breiten wie gezogen (oben 1,24, unten 0,67 → zwischen den Lippen
+    42–70 Einheiten Platz an der Kugel mit Radius 150, am Kopf 32–51); offen dicht, 0 umgeklappt geschlossen und bis 55°; Unterkiefer
+    kürzer (Anfang 33 Einheiten zurück) 10 Splitter unter 1 Einheit²; Bau fein 0,44–0,76 s (zusammen 0,31 s).
+  - **Fallen:** Die Wand am Umriss muss am neuen Ort messen. An der alten Stelle gemessen glitt die Haut an runden Umrissen um τ²κ/2
+    hinaus (bis 773 Punkte draußen), zurückgedrückt falteten die steilen Dreiecke am Rand. Und sie darf Punkte, die bleiben, nie
+    berühren (Band relativ zum Abstand). Gleiten längs des Umrisses (Bogenlänge) faltete in der Überblendung zum Geradeaus
+    (gemessen, verworfen). Punkte einer gewählten Lippe über den Umrisspunkten zeichnen (ihr Anfang liegt oft auf einem). Die
+    Regler der Pose legen Rückgängig-Schritte an.
+  - **Offen:** ein Kiefer sehr viel kürzer (Anfang 78 Einheiten zurück) lässt am Rand 2 Dreiecke umklappen; im S-Fall auf feinem
+    Netz klappt 1 Dreieck im Maulinneren um (älter, unabhängig vom Auslauf); eine Oberlippe breiter als die Form macht an der Kugel
+    einen Wulst (in der Front „Ohren“). Zähne fehlen noch.
+  - Bilder `docs/progress/editor/form-trennen-*-2026-11-05.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

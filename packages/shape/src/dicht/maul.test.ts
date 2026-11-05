@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { backenBereit, maulBacken } from './backen';
-import { type MaulLinie, type MaulSchnitt, maulOeffnen, maulSchneiden } from './maul';
+import { type MaulLinie, type MaulPunkt, type MaulSchnitt, maulOeffnen, maulSchneiden } from './maul';
 import { posieren } from './pose';
 import { tiefeAusKontur } from './raumlinien';
 import { rundAusSeite } from './rund';
@@ -215,93 +215,154 @@ describe('Spielnetz backen (mit Maul)', () => {
   });
 });
 
-describe('getrennte Kiefer: die Lippe des kürzeren auf ihrer eigenen Linie', () => {
+describe('getrennte Kiefer: jeder folgt seiner Lippe (Lage in der Seite, Breite gegen die Form)', () => {
   const netz = rundAusSeite(kreis(150), { dreiecke: 16000 });
-  const schlitz = [{ x: -150, y: 0 }, { x: -80, y: -10 }, { x: -15, y: -12 }];
-  // Überbiss: die Unterlippe beginnt an der Spitze und läuft über dem Schlitz im Oberkiefer zum Mundwinkel
-  const ueber: MaulLinie = { punkte: schlitz, kurz: [{ x: -150, y: 0 }, { x: -110, y: 4 }, { x: -60, y: 0 }, { x: -15, y: -12 }] };
-  const m = maulSchneiden(netz, ueber, { zelle: netz.zelle, kontur: netz.kontur, umriss: netz.umriss })!;
-
-  it('der kürzere ist der Unterkiefer; seine Lippe liegt in der Seite auf ihrer Linie und geschlossen im Oberkiefer', () => {
-    expect(m.kurz?.kiefer).toBe('unten');
-    const k = m.kurz!.linie;
+  const opt = { zelle: netz.zelle, kontur: netz.kontur, umriss: netz.umriss };
+  const tiefe = (x: number, y: number) => tiefeAusKontur(netz.kontur!, x, y);
+  const schlitz: MaulPunkt[] = [{ x: -150, y: 0 }, { x: -80, y: -10 }, { x: -15, y: -12 }];
+  /** Lippenpunkte abseits von Spitze und Mundwinkel: Abstand zur Linie (Seite) und Tiefe gegen die Form an ihrer Stelle */
+  function lippe(m: MaulSchnitt, liste: Uint32Array, linie: readonly { x: number; y: number }[], x0: number, x1: number) {
     let weit = 0;
-    let versteckt = 0;
-    let zaehlen = 0;
-    for (let i = 0; i < m.lippeUnten.length; i++) {
-      const u = m.lippeUnten[i]!;
-      const x = m.positionen[3 * u]!;
-      const y = m.positionen[3 * u + 1]!;
-      const z = m.positionen[3 * u + 2]!;
-      // abseits der Spitze und des Mundwinkels
-      if (x < -130 || x > -30) continue;
-      weit = Math.max(weit, abstandZu(k, x, y));
-      zaehlen++;
-      // liegt die Linie dort über dem Schlitz, steckt die Lippe im Oberkiefer: weniger tief als die Form an ihrer Stelle
-      if (abstandZu(schlitz, x, y) > 3 && Math.abs(z) < 0.95 * tiefeAusKontur(netz.kontur!, x, y)) versteckt++;
+    let lo = Infinity;
+    let hi = 0;
+    let n = 0;
+    for (const v of liste) {
+      const x = m.positionen[3 * v]!;
+      const y = m.positionen[3 * v + 1]!;
+      const z = Math.abs(m.positionen[3 * v + 2]!);
+      if (x < x0 || x > x1) continue;
+      weit = Math.max(weit, abstandZu(linie, x, y));
+      const t = tiefe(x, y);
+      if (t < 20) continue;
+      lo = Math.min(lo, z / t);
+      hi = Math.max(hi, z / t);
+      n++;
     }
-    expect(zaehlen).toBeGreaterThan(20);
-    expect(weit).toBeLessThan(0.05);
-    expect(versteckt).toBeGreaterThan(0.5 * zaehlen);
-    // die Oberlippe bleibt auf dem Schlitz
-    for (let i = 0; i < m.lippeOben.length; i++) {
-      const o = m.lippeOben[i]!;
-      if (m.positionen[3 * o]! > -150 + 3 * netz.zelle) expect(abstandZu(m.linie, m.positionen[3 * o]!, m.positionen[3 * o + 1]!)).toBeLessThan(1e-3);
+    return { weit, lo, hi, n };
+  }
+  // Überbiss: die Unterlippe läuft über dem Schlitz (im Oberkiefer) und ist schmaler: geschlossen steckt sie verdeckt darin
+  const ueber: MaulLinie = {
+    punkte: schlitz,
+    unten: [{ x: -150, y: 0 }, { x: -110, y: 6, b: 0.75 }, { x: -60, y: 2, b: 0.75 }, { x: -15, y: -12 }],
+  };
+  const m = maulSchneiden(netz, ueber, opt)!;
+
+  it('getrennt, aber gleich (dieselbe Linie, Breite 1): bitgleich zum Maul ohne Trennung', () => {
+    const zusammen = maulSchneiden(netz, { punkte: schlitz }, opt)!;
+    const gleich = maulSchneiden(netz, { punkte: schlitz, unten: schlitz.map((q) => ({ ...q })) }, opt)!;
+    expect(gleich.unten).not.toBeNull();
+    expect(zusammen.unten).toBeNull();
+    expect(Array.from(gleich.positionen)).toEqual(Array.from(zusammen.positionen));
+    expect(Array.from(gleich.innen.positionen)).toEqual(Array.from(zusammen.innen.positionen));
+  });
+
+  it('Überbiss: die Unterlippe liegt in der Seite auf ihrer Linie und in der Tiefe bei ¾ der Form, die Oberlippe auf der Form', () => {
+    const u = lippe(m, m.lippeUnten, m.unten!, -135, -70);
+    expect(u.n).toBeGreaterThan(10);
+    expect(u.weit).toBeLessThan(0.05);
+    expect(u.lo).toBeGreaterThan(0.7);
+    expect(u.hi).toBeLessThan(0.8);
+    const o = lippe(m, m.lippeOben, m.linie, -135, -30);
+    expect(o.weit).toBeLessThan(1e-3);
+    expect(o.lo).toBeGreaterThan(0.95);
+    expect(o.hi).toBeLessThan(1.05);
+  });
+
+  it('Oberlippe breiter (1,3) über schmaler Unterlippe (0,7): dazwischen ist Platz', () => {
+    const breit: MaulLinie = {
+      punkte: [{ x: -150, y: 0 }, { x: -80, y: -10, b: 1.3 }, { x: -15, y: -12 }],
+      unten: [{ x: -150, y: 0 }, { x: -80, y: -10, b: 0.7 }, { x: -15, y: -12 }],
+    };
+    const mb = maulSchneiden(netz, breit, opt)!;
+    const o = lippe(mb, mb.lippeOben, mb.linie, -135, -80);
+    const u = lippe(mb, mb.lippeUnten, mb.unten!, -135, -80);
+    expect(o.lo).toBeGreaterThan(1.25);
+    expect(o.hi).toBeLessThan(1.35);
+    expect(u.lo).toBeGreaterThan(0.65);
+    expect(u.hi).toBeLessThan(0.75);
+  });
+
+  it('Unterlippe unter dem Schlitz: sie liegt auf ihrer Linie, zwischen den Lippen eine Lücke', () => {
+    const luecke: MaulLinie = { punkte: schlitz, unten: [{ x: -150, y: 0 }, { x: -105, y: -26 }, { x: -60, y: -22 }, { x: -15, y: -12 }] };
+    const ml = maulSchneiden(netz, luecke, opt)!;
+    const u = lippe(ml, ml.lippeUnten, ml.unten!, -120, -60);
+    expect(u.weit).toBeLessThan(0.05);
+    // die Unterlippe liegt dort deutlich unter der Oberlippe
+    for (const v of ml.lippeUnten) {
+      const x = ml.positionen[3 * v]!;
+      if (x < -110 || x > -70) continue;
+      expect(abstandZu(ml.linie, x, ml.positionen[3 * v + 1]!)).toBeGreaterThan(8);
     }
   });
 
-  it('geschlossen und offen dicht, nichts klappt um', () => {
-    for (const winkel of [0, 20, 40, 55]) {
-      const o = oeffnen(m, winkel);
-      expect(
-        dichtNachLage([
-          { p: o.positionen, i: m.indizes },
-          { p: o.innenPositionen, i: m.innen.indizes },
-        ]),
-      ).toEqual({ offen: 0, mehr: 0 });
-      expect(umgeklappt(o.positionen, o.normalen, m.indizes)).toBe(0);
-      expect(umgeklappt(o.innenPositionen, o.innenNormalen, m.innen.indizes)).toBe(0);
-    }
-  });
-
-  it('Unterbiss: die zweite Linie läuft unter dem Schlitz im Unterkiefer, der Oberkiefer ist der kürzere', () => {
-    const unter: MaulLinie = { punkte: schlitz, kurz: [{ x: -150, y: 0 }, { x: -105, y: -26 }, { x: -60, y: -22 }, { x: -15, y: -12 }] };
-    const mu = maulSchneiden(netz, unter, { zelle: netz.zelle, kontur: netz.kontur, umriss: netz.umriss })!;
-    expect(mu.kurz?.kiefer).toBe('oben');
-    const o = oeffnen(mu, 40);
-    expect(
-      dichtNachLage([
-        { p: o.positionen, i: mu.indizes },
-        { p: o.innenPositionen, i: mu.innen.indizes },
-      ]),
-    ).toEqual({ offen: 0, mehr: 0 });
-    expect(umgeklappt(o.positionen, o.normalen, mu.indizes)).toBe(0);
-  });
-
-  it('Maullinie als S und als J mit getrennten Kiefern: dicht, nichts klappt um (vorher riss die Haut hinter den Bögen)', () => {
+  // geschlossen liegen die Lippen am Anfang aufeinander (verschweißt nach Lage wären das Kanten mit vier Dreiecken): dicht wird
+  // offen geprüft; der J bei 55° klappt hinter dem Mundwinkel zwei Dreiecke um, auch ohne getrennte Kiefer (bekannt)
+  it('offen dicht, geschlossen und offen klappt nichts um (Überbiss, Lücke, breit, S, J)', () => {
     const faelle: MaulLinie[] = [
+      ueber,
+      { punkte: schlitz, unten: [{ x: -150, y: 0 }, { x: -105, y: -26 }, { x: -60, y: -22 }, { x: -15, y: -12 }] },
+      {
+        punkte: [{ x: -150, y: 0 }, { x: -80, y: -10, b: 1.3 }, { x: -15, y: -12 }],
+        unten: [{ x: -150, y: 0 }, { x: -80, y: -10, b: 0.7 }, { x: -15, y: -12 }],
+      },
       {
         punkte: [{ x: -150, y: 0 }, { x: -85, y: -21 }, { x: -53, y: -7 }, { x: -20, y: -8 }],
-        kurz: [{ x: -150, y: 1 }, { x: -110, y: 8 }, { x: -60, y: 4 }, { x: -20, y: -8 }],
+        unten: [{ x: -150, y: 1 }, { x: -110, y: 8, b: 0.8 }, { x: -60, y: 4, b: 0.8 }, { x: -20, y: -8 }],
       },
       {
         punkte: [{ x: -150, y: 0 }, { x: -70, y: -6 }, { x: -35, y: -20 }, { x: -30, y: -45 }],
-        kurz: [{ x: -150, y: 1 }, { x: -80, y: 4 }, { x: -27, y: -18 }, { x: -30, y: -45 }],
+        unten: [{ x: -150, y: 1 }, { x: -80, y: 4, b: 0.8 }, { x: -27, y: -18, b: 0.8 }, { x: -30, y: -45 }],
       },
     ];
-    for (const l of faelle) {
-      const mm = maulSchneiden(netz, l, { zelle: netz.zelle, kontur: netz.kontur, umriss: netz.umriss })!;
-      expect(mm.kurz?.kiefer).toBe('unten');
-      for (const winkel of [0, 40]) {
+    faelle.forEach((l, k) => {
+      const mm = maulSchneiden(netz, l, opt)!;
+      expect(mm.unten).not.toBeNull();
+      for (const winkel of k === 4 ? [0, 20, 40] : [0, 20, 40, 55]) {
         const o = oeffnen(mm, winkel);
-        expect(
-          dichtNachLage([
-            { p: o.positionen, i: mm.indizes },
-            { p: o.innenPositionen, i: mm.innen.indizes },
-          ]),
-        ).toEqual({ offen: 0, mehr: 0 });
+        if (winkel > 0) {
+          expect(
+            dichtNachLage([
+              { p: o.positionen, i: mm.indizes },
+              { p: o.innenPositionen, i: mm.innen.indizes },
+            ]),
+          ).toEqual({ offen: 0, mehr: 0 });
+        }
         expect(umgeklappt(o.positionen, o.normalen, mm.indizes)).toBe(0);
         expect(umgeklappt(o.innenPositionen, o.innenNormalen, mm.innen.indizes)).toBe(0);
+      }
+    });
+  });
+
+  it('kürzerer Unterkiefer (Anfang der Unterlippe am Umriss zurück): die Haut bleibt in der Form, nichts klappt um', () => {
+    // vorher glitt die Haut am runden Umriss auf der Tangente hinaus (bis 3,6 Einheiten), und zurückgedrückt falteten die steilen
+    // Dreiecke am Rand; übrig sind Splitter unter 1 Einheit² am Anfang der Unterlippe
+    const gross = (p: Float32Array, n: Float32Array, ind: Uint32Array): number => {
+      let z = 0;
+      for (let t = 0; t < ind.length; t += 3) {
+        const a = ind[t]!;
+        const b = ind[t + 1]!;
+        const c = ind[t + 2]!;
+        const ab = [p[3 * b]! - p[3 * a]!, p[3 * b + 1]! - p[3 * a + 1]!, p[3 * b + 2]! - p[3 * a + 2]!];
+        const ac = [p[3 * c]! - p[3 * a]!, p[3 * c + 1]! - p[3 * a + 1]!, p[3 * c + 2]! - p[3 * a + 2]!];
+        const f = [ab[1]! * ac[2]! - ab[2]! * ac[1]!, ab[2]! * ac[0]! - ab[0]! * ac[2]!, ab[0]! * ac[1]! - ab[1]! * ac[0]!];
+        const s = [0, 1, 2].map((k) => n[3 * a + k]! + n[3 * b + k]! + n[3 * c + k]!);
+        if (f[0]! * s[0]! + f[1]! * s[1]! + f[2]! * s[2]! < 0 && Math.hypot(f[0]!, f[1]!, f[2]!) / 2 >= 1) z++;
+      }
+      return z;
+    };
+    for (const unten of [
+      [{ x: -146.5, y: -32.6 }, { x: -80, y: -10, b: 0.67 }, { x: -15, y: -12 }],
+      [{ x: -129.9, y: -75 }, { x: -70, y: -30, b: 0.8 }, { x: -15, y: -12 }],
+    ]) {
+      const mk = maulSchneiden(netz, { punkte: schlitz, unten }, opt)!;
+      let aussen = 0;
+      for (let v = 0; v < mk.positionen.length / 3; v++) if (Math.hypot(mk.positionen[3 * v]!, mk.positionen[3 * v + 1]!) > 150.5) aussen++;
+      expect(aussen).toBe(0);
+      for (const winkel of [0, 40]) {
+        const o = oeffnen(mk, winkel);
+        // um 33 Einheiten verkürzt: nichts; um 78 (der halbe Kugelradius): zwei am Rand, wo die Haut zusammengeschoben wird
+        expect(gross(o.positionen, o.normalen, mk.indizes)).toBeLessThanOrEqual(unten[0]!.y < -50 ? 2 : 0);
+        expect(gross(o.innenPositionen, o.innenNormalen, mk.innen.indizes)).toBe(0);
       }
     }
   });

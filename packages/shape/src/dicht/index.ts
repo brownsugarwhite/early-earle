@@ -4,7 +4,7 @@ export { type Naechster, Umrissfeld } from './abstand';
 export { Kugeln, kugelRadien } from './kugeln';
 export { BREITE_MAX, type Kante3D, type KantenLinie, type KantenPunkt, kantenAnwenden, linieAbtasten } from './kanten';
 export { type DichtesNetz, type RundOptionen, rundAusSeite } from './rund';
-export { MAUL_WINKEL_MAX, type MaulLinie, type MaulSchnitt, maulOeffnen, maulPunkt, maulSchneiden } from './maul';
+export { MAUL_WINKEL_MAX, type MaulLinie, type MaulPunkt, type MaulSchnitt, maulOeffnen, maulPunkt, maulSchneiden } from './maul';
 export { type Netzteil, type Spielnetz, backen, backenBereit, maulBacken } from './backen';
 export { type Pose, type PoseZiel, type PoseZug, RUHE, ZUG_MAX, posePunkt, poseWinkel, posieren } from './pose';
 export { dichtNachLage, umgeklappt } from './netzpruefung';
