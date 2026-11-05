@@ -1077,6 +1077,18 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     Kreuzung mit einem harten Loop knickt der kreuzende Loop mit seiner Ecke von selbst (15°) jetzt stärker als die Haut daneben (8°).
     Ein Feld nur aus harten Loops behält seine Krümmung (nichts sagt dort „flach“). Bilder `docs/progress/editor/form-boden-{alt,neu}-*`,
     `form-kruemmung-ring-{alt,neu}-3d-2026-11-05.jpg`.
+- **2026-11-05 (nachts, danach): Eine Kreuzung ist ein Punkt** (Florian mit Bild `docs/progress/editor/form-kreuzung-griff-florian-2026-11-05.png`:
+  „In der Front kann ich den seitlichen Griff nicht knicken, obwohl er als harter Punkt ausgewählt ist. Wenn ich einen Loop im unteren
+  Bereich platziere, geht es.“).
+  - **Ursache (nachgestellt, hing an der Reihenfolge der Loops):** An einer Kreuzung liegen die Punkte zweier Loops übereinander, jeder
+    mit eigenem Zustand. Die 3 macht den angeklickten Loop dort hart, der andere wird dort von selbst eine Ecke. Die sichtbaren Griffe
+    gehörten je nach Reihenfolge dem glatten Punkt (knickte nicht, 0,5°) oder der Ecke (knickte, 41°).
+  - **Jetzt (Fenster):** Eine Kreuzung ist als Ecke ◆ zu sehen, sobald einer ihrer Loops dort eine hat (`eckeGezeigt`). Ein Griff an
+    einem Punkt, der so zu sehen ist, knickt (der Punkt seines Loops wird beim ersten Zug eine Ecke von Hand). Doppelklick auf Punkt oder
+    Griff schaltet alle Loops an der Kreuzung um (`punkteAnKreuzung`).
+  - **Gemessen** (Maus `scripts/pruefen/form-kreuzung-probe.mjs`, beide Reihenfolgen): nach der 3 als Ecke zu sehen, Griff des Umrisses
+    60 px seitlich → Knick 41,1°, 0 umgeschlagen; Doppelklick → beide glatt, 0,0°; ⌘Z bitgleich. Ältere Proben mit denselben Zahlen.
+    Bilder `form-kreuzung-{geknickt,glatt}-2026-11-05.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

@@ -755,7 +755,7 @@ function blattZeichnen(a: Ansicht): void {
       el.append(g);
     }
   }
-  loops.forEach((l) =>
+  loops.forEach((l, li) =>
     l.punkte.forEach((p, i) => {
       const q = zug ? p.cur : p.ref;
       for (const m of a === 'seite' || Math.abs(q.z) < 1e-6 ? [false] : [false, true]) {
@@ -764,8 +764,8 @@ function blattZeichnen(a: Ansicht): void {
         const kreuz = p.kreuzung !== undefined;
         const klasse = `kpunkt${kreuz ? ' kreuz' : ''}${gew ? ' gewaehlt' : ''}${m ? ' spiegel' : ''}`;
         const r = kreuz ? rp * 1.2 : rp;
-        // Ecke als Raute, glatt als Kreis
-        const c = istEcke(p)
+        // Ecke als Raute, glatt als Kreis (an einer Kreuzung: Ecke, sobald einer ihrer Loops dort eine hat)
+        const c = eckeGezeigt(li, i)
           ? element('polygon', `${klasse} ecke`, { points: `${x},${y - 1.35 * r} ${x + 1.35 * r},${y} ${x},${y + 1.35 * r} ${x - 1.35 * r},${y}` })
           : element('circle', klasse, { cx: x, cy: y, r });
         c.setAttribute('data-l', String(l.id));
@@ -990,32 +990,60 @@ function griffZugStarten(a: Ansicht, X: number, Y: number, spiegel: boolean, li:
   return true;
 }
 
+/** Punkte an derselben Kreuzung wie Punkt i von Loop li, samt ihm (Loop-Index, Punkt); ohne Kreuzung nur er */
+function punkteAnKreuzung(li: number, i: number): [number, number][] {
+  const p = loops[li]?.punkte[i];
+  if (!p) return [];
+  if (p.kreuzung === undefined) return [[li, i]];
+  const out: [number, number][] = [];
+  loops.forEach((l, lj) =>
+    l.punkte.forEach((q, j) => {
+      if (q.kreuzung === p.kreuzung) out.push([lj, j]);
+    }),
+  );
+  return out;
+}
+
 /**
- * Glatt ↔ Ecke umschalten (von Hand; zweimal = wieder automatisch). Wird eine Ecke mit Knick glatt, kommen ihre Griffe auf eine
- * Gerade und die Haut folgt.
+ * Wie der Punkt gezeigt wird: An einer Kreuzung liegen die Punkte der Loops übereinander, für Florian ist es ein Punkt. Er ist eine
+ * Ecke ◆, sobald einer seiner Loops dort eine hat (z. B. von selbst, wo der andere hart ist), und dann knicken alle seine Griffe.
+ */
+function eckeGezeigt(li: number, i: number): boolean {
+  return punkteAnKreuzung(li, i).some(([lj, j]) => istEcke(loops[lj]!.punkte[j]!));
+}
+
+/**
+ * Glatt ↔ Ecke umschalten (von Hand; zweimal = wieder automatisch), an einer Kreuzung für alle ihre Loops (gemessen: die 3 auf der
+ * Kreuzung macht den angeklickten Loop hart, der andere wird dort von selbst eine Ecke; die sichtbaren Griffe gehörten oft dem
+ * glatten, er knickte nicht). Wird eine Ecke mit Knick glatt, kommen ihre Griffe auf eine Gerade und die Haut folgt.
  */
 function eckeUmschalten(id: number, i: number): void {
-  const li = loopNr(id);
-  const l = loops[li];
-  const p = l?.punkte[i];
-  if (!l || !p) return;
+  const li0 = loopNr(id);
+  if (!loops[li0]?.punkte[i]) return;
   const vorher = schnappschuss();
-  const neu = !istEcke(p);
-  if (neu === (p.autoEcke ?? false)) delete p.ecke;
-  else p.ecke = neu;
+  const alle = punkteAnKreuzung(li0, i);
+  const neu = !eckeGezeigt(li0, i);
+  for (const [lj, j] of alle) {
+    const q = loops[lj]!.punkte[j]!;
+    if (neu === (q.autoEcke ?? false)) delete q.ecke;
+    else q.ecke = neu;
+  }
   // gemessen: ein Schritt bringt 58° auf 0,4°; ein zweiter nur, falls die Haut weit vom Ziel blieb. Unter 4° nichts tun: So
   // fein ist die Linie im Netz selbst gezackt (frische Linien bis 3,4°), glatte Linien bleiben beim Umschalten unberührt.
   let ausgerichtet = false;
-  for (let runde = 0; runde < 2 && !neu; runde++) {
-    const v = griffeAusrichten(l, l.ruhe, i);
-    if (!v) break;
-    const loeser = stueckLoeser(li, i);
-    const d = griffVerschiebung(l, loeser.start[li]!, i, v);
-    for (let s = 1; s <= 3; s++) loeser.schritt(loops.map((_, k) => (k === li ? d.map((x) => (x * s) / 3) : null)), RUNDEN_ZUG);
-    loeser.schritt(loops.map((_, k) => (k === li ? d : null)), RUNDEN_ENDE);
-    loeser.kruemmungFestlegen(loops);
-    for (const x of loops) festlegen(haut, x);
-    ausgerichtet = true;
+  for (const [li, j] of neu ? [] : alle) {
+    const l = loops[li]!;
+    for (let runde = 0; runde < 2; runde++) {
+      const v = griffeAusrichten(l, l.ruhe, j);
+      if (!v) break;
+      const loeser = stueckLoeser(li, j);
+      const d = griffVerschiebung(l, loeser.start[li]!, j, v);
+      for (let s = 1; s <= 3; s++) loeser.schritt(loops.map((_, k) => (k === li ? d.map((x) => (x * s) / 3) : null)), RUNDEN_ZUG);
+      loeser.schritt(loops.map((_, k) => (k === li ? d : null)), RUNDEN_ENDE);
+      loeser.kruemmungFestlegen(loops);
+      for (const x of loops) festlegen(haut, x);
+      ausgerichtet = true;
+    }
   }
   if (ausgerichtet) kreuzungenSuchen();
   zurueck.push(vorher);
@@ -1197,7 +1225,8 @@ function zugBewegen(X: number, Y: number): void {
     const { li, i, seite } = z.griff;
     const l = loops[li]!;
     const p = l.punkte[i]!;
-    if (istVektorEcke(p) || (ringEnde(l, i) && !istEcke(p))) p.ecke = true;
+    // ein glatter Punkt wird eine Ecke, wenn er als Ecke zu sehen ist (an einer Kreuzung mit einer Ecke) oder am Spiegelpunkt liegt
+    if (istVektorEcke(p) || (!istEcke(p) && (ringEnde(l, i) || eckeGezeigt(li, i)))) p.ecke = true;
     const d = inWelt(z.ansicht, (X - z.x0) / z.griffFaktor, (Y - z.y0) / z.griffFaktor);
     if (z.spiegel) d.z = -d.z;
     z.griffVersatz = griffZiehen(l, z.loeser.start[li]!, i, seite, d);
