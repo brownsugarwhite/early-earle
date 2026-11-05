@@ -16,11 +16,15 @@ import {
   einfluss,
   festlegen,
   formAusZeichnung,
+  type Haut,
+  haerteBei,
   hautAus,
   hautNormalen,
+  knickWinkel,
   kreuzungenZwischen,
   kurveAbtasten,
   loopAusSchnitt,
+  loopEinsetzen,
   mittlereKante,
   punktEinfuegen,
   rundAusSeite,
@@ -94,7 +98,8 @@ const startUmriss = FORMEN[new URLSearchParams(location.search).get('form') ?? '
 // ---------- Haut und Loops ----------
 
 const netz = rundAusSeite(startUmriss, { dreiecke: DREIECKE });
-const haut = hautAus(netz.positionen, netz.indizes);
+/** die Haut; jeder neue Loop wird als Kette von Kanten eingesetzt (die Haut wird dabei ersetzt) */
+let haut: Haut = hautAus(netz.positionen, netz.indizes);
 const MK = mittlereKante(haut);
 /** so nah müssen sich zwei Loops kommen, damit sie sich kreuzen */
 const TOL = 0.25 * MK;
@@ -108,7 +113,7 @@ let oAn = false;
 let radius = 90;
 let meldung = '';
 
-type Schnappschuss = { loops: Loop[]; pos: Float64Array; auswahl: Wahl[]; ids: [number, number] };
+type Schnappschuss = { haut: Haut; loops: Loop[]; pos: Float64Array; auswahl: Wahl[]; ids: [number, number] };
 const zurueck: Schnappschuss[] = [];
 const kopieLoop = (l: Loop): Loop => ({
   ...l,
@@ -117,13 +122,16 @@ const kopieLoop = (l: Loop): Loop => ({
 });
 const schnappschuss = (): Schnappschuss => ({
   loops: loops.map(kopieLoop),
+  haut,
   pos: Float64Array.from(haut.pos),
   auswahl: [...auswahl],
   ids: [naechsteId, naechsteKreuzung],
 });
 function wiederherstellen(s: Schnappschuss): void {
   loops = s.loops;
+  haut = s.haut;
   haut.pos.set(s.pos);
+  geometrieNeu();
   auswahl = s.auswahl;
   [naechsteId, naechsteKreuzung] = s.ids;
   allesZeigen();
@@ -247,16 +255,100 @@ const bandMaterial = (farbe: number, deckung: number): ShaderMaterial =>
     polygonOffsetFactor: -4,
     polygonOffsetUnits: -4,
   });
-const bandMaterialien = [bandMaterial(KURVE, 1), bandMaterial(KURVE, 0.25), bandMaterial(KURVE_WAHL, 1), bandMaterial(KURVE_WAHL, 0.3)];
+// Kurven türkis, gewählte dunkler, harte Stücke schwarz (Breite = Härte)
+const bandMaterialien = [
+  bandMaterial(KURVE, 1),
+  bandMaterial(KURVE, 0.25),
+  bandMaterial(KURVE_WAHL, 1),
+  bandMaterial(KURVE_WAHL, 0.3),
+  bandMaterial(TINTE, 1),
+  bandMaterial(TINTE, 0.3),
+];
 
-const hautGeometrie = new BufferGeometry();
-const hautLagen = new Float32Array(haut.pos.length);
-const hautNormalenPuffer = new Float32Array(haut.pos.length);
-hautGeometrie.setAttribute('position', new BufferAttribute(hautLagen, 3));
-hautGeometrie.setAttribute('normal', new BufferAttribute(hautNormalenPuffer, 3));
-hautGeometrie.setIndex(new BufferAttribute(haut.tri, 1));
+let hautGeometrie = new BufferGeometry();
+let hautLagen = new Float32Array(0);
+let hautNormalenPuffer = new Float32Array(0);
 const koerper = new Mesh(hautGeometrie, new MeshToonMaterial({ color: KOERPER, gradientMap: stufen }));
 const umriss = new Mesh(hautGeometrie, umrissMaterial);
+/**
+ * Anzeige wie Edge Crease mit Auto Smooth: Ein Netzpunkt auf einer harten Linie wird doppelt gezeigt, jede Seite der Linie mit
+ * eigener Normale (nach der Härte mit der gemeinsamen gemischt). Sonst mittelt die Schattierung über den Knick hinweg.
+ */
+let anzeigeQuelle = new Int32Array(0);
+let anzeigeHaerte = new Float32Array(0);
+let anzeigeIndex = new Uint32Array(0);
+function teilungNeu(): void {
+  const n = haut.n;
+  const tri = haut.tri;
+  const um: number[][] = Array.from({ length: n }, () => []);
+  for (let f = 0; f < tri.length / 3; f++) for (let e = 0; e < 3; e++) um[tri[3 * f + e]!]!.push(f);
+  const index = Uint32Array.from(tri);
+  const quelle = Array.from({ length: n }, (_, i) => i);
+  const haerte: number[] = new Array<number>(n).fill(0);
+  const hat = (f: number, x: number) => tri[3 * f] === x || tri[3 * f + 1] === x || tri[3 * f + 2] === x;
+  /** Fächer um w von der Kante (w, vor) bis zur Kante (w, nach) = eine Seite; die andere Seite bekommt den Doppelpunkt */
+  const teilen = (w: number, vor: number, nach: number, h: number) => {
+    const faecher = um[w]!;
+    const start = faecher.find((g) => hat(g, vor));
+    if (start === undefined) return;
+    let f: number = start;
+    const seite = new Set<number>();
+    let kommt = vor;
+    for (let k = 0; k < faecher.length; k++) {
+      seite.add(f);
+      if (hat(f, nach)) break;
+      const jetzt: number = f;
+      const weiter: number = [tri[3 * jetzt]!, tri[3 * jetzt + 1]!, tri[3 * jetzt + 2]!].find((x) => x !== w && x !== kommt)!;
+      const g: number | undefined = faecher.find((x) => x !== jetzt && hat(x, weiter));
+      if (g === undefined) return;
+      kommt = weiter;
+      f = g;
+    }
+    if (seite.size === faecher.length) return;
+    const d = quelle.length;
+    quelle.push(w);
+    haerte.push(h);
+    haerte[w] = Math.max(haerte[w]!, h);
+    for (const g of faecher) if (!seite.has(g)) for (let e = 0; e < 3; e++) if (index[3 * g + e] === w) index[3 * g + e] = d;
+  };
+  for (const l of loops) {
+    if (!l.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2])) continue;
+    const hd = haerteBei(l);
+    const kette = l.proben.map((p) => p.ecken[0]);
+    const m = kette.length;
+    const zu = l.art !== 'ring';
+    for (let j = 0; j < m; j++) {
+      const h = hd[j]! / 3;
+      if (h < 0.02) continue;
+      const w = kette[j]!;
+      // an den Enden eines Rings geht die Linie in ihre Spiegelhälfte über
+      const vor = j > 0 ? kette[j - 1]! : zu ? kette[m - 1]! : haut.spiegel[kette[1]!]!;
+      const nach = j < m - 1 ? kette[j + 1]! : zu ? kette[0]! : haut.spiegel[kette[m - 2]!]!;
+      teilen(w, vor, nach, h);
+      const ws = haut.spiegel[w]!;
+      if (l.art !== 'mitte' && ws >= 0 && ws !== w) teilen(ws, haut.spiegel[vor]!, haut.spiegel[nach]!, h);
+    }
+  }
+  anzeigeQuelle = Int32Array.from(quelle);
+  anzeigeHaerte = Float32Array.from(haerte);
+  anzeigeIndex = index;
+}
+
+/** Puffer für eine neue Haut oder neue harte Linien (nach dem Einsetzen eines Loops, der Härte oder ⌘Z) */
+function geometrieNeu(): void {
+  teilungNeu();
+  const alt = hautGeometrie;
+  hautGeometrie = new BufferGeometry();
+  hautLagen = new Float32Array(3 * anzeigeQuelle.length);
+  hautNormalenPuffer = new Float32Array(3 * anzeigeQuelle.length);
+  hautGeometrie.setAttribute('position', new BufferAttribute(hautLagen, 3));
+  hautGeometrie.setAttribute('normal', new BufferAttribute(hautNormalenPuffer, 3));
+  hautGeometrie.setIndex(new BufferAttribute(anzeigeIndex, 1));
+  koerper.geometry = hautGeometrie;
+  umriss.geometry = hautGeometrie;
+  alt.dispose();
+}
+geometrieNeu();
 umriss.renderOrder = 1;
 const baender = bandMaterialien.map((m, i) => {
   const b = new Mesh(new BufferGeometry(), m);
@@ -316,9 +408,46 @@ const blattPunkt = (a: Ansicht, e: { clientX: number; clientY: number }): [numbe
 
 function hautZeigen(): void {
   const nor = hautNormalen(haut);
-  for (let i = 0; i < haut.pos.length; i++) {
-    hautLagen[i] = haut.pos[i]!;
-    hautNormalenPuffer[i] = nor[i]!;
+  const P = haut.pos;
+  const N = anzeigeQuelle.length;
+  // Normale je gezeigtem Punkt aus seinen Dreiecken (bei doppelten nur die seiner Seite), nach der Härte gemischt
+  const eigen = new Float64Array(3 * N);
+  const I = anzeigeIndex;
+  for (let f = 0; f < I.length / 3; f++) {
+    const [a, b, c] = [anzeigeQuelle[I[3 * f]!]!, anzeigeQuelle[I[3 * f + 1]!]!, anzeigeQuelle[I[3 * f + 2]!]!];
+    const abx = P[3 * b]! - P[3 * a]!;
+    const aby = P[3 * b + 1]! - P[3 * a + 1]!;
+    const abz = P[3 * b + 2]! - P[3 * a + 2]!;
+    const acx = P[3 * c]! - P[3 * a]!;
+    const acy = P[3 * c + 1]! - P[3 * a + 1]!;
+    const acz = P[3 * c + 2]! - P[3 * a + 2]!;
+    const fx = aby * acz - abz * acy;
+    const fy = abz * acx - abx * acz;
+    const fz = abx * acy - aby * acx;
+    for (let e = 0; e < 3; e++) {
+      const d = I[3 * f + e]!;
+      eigen[3 * d] = eigen[3 * d]! + fx;
+      eigen[3 * d + 1] = eigen[3 * d + 1]! + fy;
+      eigen[3 * d + 2] = eigen[3 * d + 2]! + fz;
+    }
+  }
+  for (let d = 0; d < N; d++) {
+    const q = anzeigeQuelle[d]!;
+    const h = anzeigeHaerte[d]!;
+    const el = Math.hypot(eigen[3 * d]!, eigen[3 * d + 1]!, eigen[3 * d + 2]!) || 1;
+    let nx = (1 - h) * nor[3 * q]! + (h * eigen[3 * d]!) / el;
+    let ny = (1 - h) * nor[3 * q + 1]! + (h * eigen[3 * d + 1]!) / el;
+    let nz = (1 - h) * nor[3 * q + 2]! + (h * eigen[3 * d + 2]!) / el;
+    const nl = Math.hypot(nx, ny, nz) || 1;
+    nx /= nl;
+    ny /= nl;
+    nz /= nl;
+    hautLagen[3 * d] = P[3 * q]!;
+    hautLagen[3 * d + 1] = P[3 * q + 1]!;
+    hautLagen[3 * d + 2] = P[3 * q + 2]!;
+    hautNormalenPuffer[3 * d] = nx;
+    hautNormalenPuffer[3 * d + 1] = ny;
+    hautNormalenPuffer[3 * d + 2] = nz;
   }
   hautGeometrie.attributes.position!.needsUpdate = true;
   hautGeometrie.attributes.normal!.needsUpdate = true;
@@ -386,9 +515,25 @@ function baenderZeigen(): void {
     const gew = auswahl.some((w) => w.l === l.id);
     for (const p of linienVon(l, lagen[li]!)) (gew ? gewaehlt : normal).push({ p, breite: gew ? 3 : 2 });
   });
+  // harte Stücke: je Strecke ein Band, so breit wie die Härte (Spiegelhälfte und Zwilling ebenso)
+  const hart: { p: V3[]; breite: number }[] = [];
+  loops.forEach((l, li) => {
+    const hd = haerteBei(l);
+    const L = lagen[li]!;
+    const n = l.proben.length;
+    for (let j = 0; j < (l.art === 'ring' ? n - 1 : n); j++) {
+      const k = (j + 1) % n;
+      const b = 0.5 * (hd[j]! + hd[k]!);
+      if (b < 0.05) continue;
+      const seg = [lageAus(L, j), lageAus(L, k)];
+      hart.push({ p: seg, breite: b + 1 });
+      if (l.art !== 'mitte') hart.push({ p: seg.map(spiegeln), breite: b + 1 });
+    }
+  });
   const gN = bandGeometrie(normal);
   const gW = bandGeometrie(gewaehlt);
-  for (const [i, g] of [gN, gN, gW, gW].entries()) {
+  const gH = bandGeometrie(hart);
+  for (const [i, g] of [gN, gN, gW, gW, gH, gH].entries()) {
     baender[i]!.geometry.dispose();
     baender[i]!.geometry = g;
   }
@@ -456,6 +601,26 @@ function blattZeichnen(a: Ansicht): void {
       if (m) t.setAttribute('data-m', '1');
       el.append(t);
     });
+  });
+  // harte Stücke schwarz, so breit wie die Härte (wie die Strichdicke einer Kante)
+  loops.forEach((l, li) => {
+    const hd = haerteBei(l);
+    const L = lagen[li]!;
+    const n = l.proben.length;
+    for (const m of a === 'seite' || l.art === 'mitte' ? [false] : [false, true]) {
+      for (let j = 0; j < (l.art === 'ring' ? n - 1 : n); j++) {
+        const k = (j + 1) % n;
+        const b = 0.5 * (hd[j]! + hd[k]!);
+        if (b < 0.05) continue;
+        const p = lageAus(L, j);
+        const q = lageAus(L, k);
+        const [x1, y1] = imBlatt(a, m ? spiegeln(p) : p);
+        const [x2, y2] = imBlatt(a, m ? spiegeln(q) : q);
+        const s2 = element('line', `kante-hart${m ? ' spiegel' : ''}`, { x1, y1, x2, y2 });
+        s2.setAttribute('style', `stroke-width:${b.toFixed(2)}px`);
+        el.append(s2);
+      }
+    }
   });
   loops.forEach((l) =>
     l.punkte.forEach((p, i) => {
@@ -817,9 +982,48 @@ function loopSchneiden(a: Ansicht, A: [number, number], B: [number, number]): vo
   naechsteId++;
   zurueck.push(schnappschuss());
   loops.push(l);
-  kreuzungenSuchen(l);
+  einsetzenLetzten();
   auswahl = [{ l: l.id, i: -1 }];
-  meldung = '';
+}
+
+/**
+ * Den neuesten Loop als Kette von Kanten ins Netz einsetzen (dann kann er hart werden), danach seine Kreuzungen suchen. Geht der
+ * Weg nicht auf, bleibt er auf der Haut liegen.
+ */
+function einsetzenLetzten(): void {
+  const r = loopEinsetzen(haut, loops, loops.length - 1);
+  if (r) {
+    haut = r.haut;
+    loops = r.loops;
+    geometrieNeu();
+    meldung = '';
+  } else meldung = 'Loop liegt nur auf der Haut (nicht ins Netz eingesetzt): Härte wirkt dort kaum';
+  kreuzungenSuchen(loops[loops.length - 1]);
+}
+
+/** Härte der Auswahl: 0–3 setzen, + / − um 0,5 (ein ganzer Loop samt seinen Punkten) */
+function haerteSetzen(taste: string): void {
+  if (auswahl.length === 0) return;
+  zurueck.push(schnappschuss());
+  const neu = (alt: number) => Math.max(0, Math.min(3, taste === '+' ? alt + 0.5 : taste === '-' ? alt - 0.5 : Number(taste)));
+  let zuletzt = 0;
+  for (const w of auswahl) {
+    const l = loops[loopNr(w.l)];
+    if (!l) continue;
+    if (w.i < 0) {
+      l.haerte = neu(l.haerte ?? 0);
+      zuletzt = l.haerte;
+      for (const p of l.punkte) p.haerte = l.haerte;
+    } else {
+      const p = l.punkte[w.i];
+      if (!p) continue;
+      p.haerte = neu(p.haerte ?? l.haerte ?? 0);
+      zuletzt = p.haerte;
+    }
+  }
+  meldung = `Härte ${zuletzt}`;
+  geometrieNeu();
+  allesZeigen();
 }
 
 /** Ramer–Douglas–Peucker: Nummern der Punkte, die bleiben */
@@ -853,7 +1057,15 @@ function vereinfachen(p: readonly [number, number][], tol: number): number[] {
 function formErstellen(a: Ansicht, roh: [number, number][]): void {
   if (roh.length < 8) return;
   const s = skala();
-  let idx = vereinfachen([...roh, roh[0]!], 4 / s).filter((i) => i < roh.length);
+  // geschlossen: in zwei Hälften vereinfachen (Anfang bis zum fernsten Punkt und zurück), sonst fällt die erste Strecke auf
+  // Länge null und es bleiben keine Punkte
+  let fern = 0;
+  roh.forEach((q, i) => {
+    if (Math.hypot(q[0] - roh[0]![0], q[1] - roh[0]![1]) > Math.hypot(roh[fern]![0] - roh[0]![0], roh[fern]![1] - roh[0]![1])) fern = i;
+  });
+  const vorn = vereinfachen(roh.slice(0, fern + 1), 4 / s);
+  const hinten = vereinfachen([...roh.slice(fern), roh[0]!], 4 / s).map((i) => i + fern);
+  let idx = [...new Set([...vorn, ...hinten])].filter((i) => i < roh.length).sort((a, b) => a - b);
   if (idx.length < 4) idx = [0, 1, 2, 3].map((k) => Math.floor((k * roh.length) / 4));
   const k: Kurve = {
     art: 'mitte',
@@ -873,9 +1085,8 @@ function formErstellen(a: Ansicht, roh: [number, number][]): void {
   naechsteId++;
   zurueck.push(schnappschuss());
   loops.push(l);
-  kreuzungenSuchen(l);
+  einsetzenLetzten();
   auswahl = [{ l: l.id, i: -1 }];
-  meldung = '';
 }
 
 /** Doppelklick auf eine Linie: dort ein Punkt */
@@ -900,7 +1111,7 @@ function punktAmKlick(a: Ansicht, id: number, X: number, Y: number, m: boolean):
       bs = l.s[j]! + t * ((k > j ? l.s[k]! : l.laenge) - l.s[j]!);
     }
   }
-  if (l.punkte.some((p) => Math.abs(p.s - bs) < 2 * MK)) return;
+  if (l.punkte.some((p) => Math.abs(p.s - bs) < MK)) return;
   zurueck.push(schnappschuss());
   const p = punktEinfuegen(l, bs);
   auswahl = [{ l: id, i: l.punkte.indexOf(p) }];
@@ -1083,6 +1294,8 @@ window.addEventListener('keydown', (e) => {
     allesZeigen();
   } else if (e.key === 'Backspace' || e.key === 'Delete') {
     loeschen();
+  } else if (/^[0-3]$/.test(e.key) || e.key === '+' || e.key === '-') {
+    haerteSetzen(e.key);
   }
 });
 
@@ -1159,6 +1372,11 @@ schleife();
       ruhe: Array.from(l.ruhe),
     })),
   auswahl: () => auswahl,
+  /** Knick quer über einen Loop je Probe (Grad) */
+  knick: (id: number): number[] => {
+    const l = loops[loopNr(id)];
+    return l ? Array.from(knickWinkel(haut, l)) : [];
+  },
   zeiten: () => ({ zug: [...zeiten], zerlegen: letzteZerlegung, bereich: letzterBereich }),
   lagen: () => Array.from(haut.pos),
   dreiecke: () => Array.from(haut.tri),

@@ -498,6 +498,18 @@ body {
   cursor: pointer;
 }
 
+/* harte Stücke eines Loops: schwarz, Breite = Härte (px) */
+.blatt .kante-hart {
+  stroke: var(--linie);
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.blatt .kante-hart.spiegel {
+  stroke-opacity: 0.4;
+}
+
 .blatt .kpunkt.kreuz {
   fill: #9fd8cf;
   stroke-width: 2px;

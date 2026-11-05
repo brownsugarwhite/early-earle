@@ -331,6 +331,8 @@ export class HautZiele {
   private readonly haut0: Float64Array;
   private readonly ziel0: Float64Array;
   private readonly ruhe: Vermessung;
+  /** Gewichte je Punkt und Nachbar (normiert; über harte Linien kleiner) */
+  private readonly gew: Float64Array[];
   readonly zeitZerlegen: number;
 
   constructor(
@@ -340,6 +342,8 @@ export class HautZiele {
     /** 1 = darf sich bewegen; fehlt: die ganze Haut */
     bereich: Uint8Array | null = null,
     private readonly gewicht = 100,
+    /** Gewicht je Kante über eine harte Linie (Schlüssel `kantenSchluessel`); fehlt: 1 */
+    kanten: ReadonlyMap<number, number> | null = null,
   ) {
     const n = h.n;
     const P = h.pos;
@@ -354,20 +358,21 @@ export class HautZiele {
     this.frei = Int32Array.from(frei);
     const zeilen: NormalZeile[] = [];
     const lapZeilen: number[] = [];
+    this.gew = gewichteAus(h, kanten);
     for (let i = 0; i < n; i++) {
       const nb = h.nachbarn[i]!;
-      const d = nb.length || 1;
+      const g = this.gew[i]!;
       const index: number[] = [];
       const wert: number[] = [];
       if (nr[i]! >= 0) {
         index.push(nr[i]!);
         wert.push(1);
       }
-      for (const j of nb) {
-        if (nr[j]! < 0) continue;
+      nb.forEach((j, k) => {
+        if (nr[j]! < 0 || g[k] === 0) return;
         index.push(nr[j]!);
-        wert.push(-1 / d);
-      }
+        wert.push(-g[k]!);
+      });
       if (index.length === 0) continue;
       lapZeilen.push(i);
       zeilen.push({ index, wert, gewicht: 1 });
@@ -402,7 +407,7 @@ export class HautZiele {
     const t0 = Date.now();
     this.sys = normalSystem(frei.length, zeilen, nachbarn, 1e-9);
     this.zeitZerlegen = Date.now() - t0;
-    this.ruhe = vermessen(h);
+    this.ruhe = vermessen(h, this.gew);
     this.pos0 = Float64Array.from(P);
   }
 
@@ -426,11 +431,11 @@ export class HautZiele {
     const r = this.ruhe;
     const nf = this.frei.length;
     for (let it = 0; it < iterationen; it++) {
-      const m = vermessen(h);
+      const m = vermessen(h, this.gew);
       const rhs = new Float64Array(3 * nf);
       for (const i of this.zeilen) {
         const nb = h.nachbarn[i]!;
-        const d = nb.length || 1;
+        const g = this.gew[i]!;
         let t = drehen(r.nor, m.nor, i, r.tang);
         // dazu die Drehung um die Normale (aus den Nachbarn, 2D-Procrustes in der Tangentialebene): ohne sie wehrt sich die
         // Haut gegen jedes Verdrehen in der Fläche (ein gedrehter Loop klappte 20–34 Dreiecke um)
@@ -439,14 +444,16 @@ export class HautZiele {
         const nz = m.nor[3 * i + 2]!;
         let sDot = 0;
         let sKreuz = 0;
-        for (const j of nb) {
+        nb.forEach((j, kk) => {
+          const gk = g[kk]!;
+          if (gk === 0) return;
           const e = drehenVektor(r.nor, m.nor, i, P0[3 * j]! - P0[3 * i]!, P0[3 * j + 1]! - P0[3 * i + 1]!, P0[3 * j + 2]! - P0[3 * i + 2]!);
           const cx = P[3 * j]! - P[3 * i]!;
           const cy = P[3 * j + 1]! - P[3 * i + 1]!;
           const cz = P[3 * j + 2]! - P[3 * i + 2]!;
-          sDot += e[0] * cx + e[1] * cy + e[2] * cz - (e[0] * nx + e[1] * ny + e[2] * nz) * (cx * nx + cy * ny + cz * nz);
-          sKreuz += (e[1] * cz - e[2] * cy) * nx + (e[2] * cx - e[0] * cz) * ny + (e[0] * cy - e[1] * cx) * nz;
-        }
+          sDot += gk * (e[0] * cx + e[1] * cy + e[2] * cz - (e[0] * nx + e[1] * ny + e[2] * nz) * (cx * nx + cy * ny + cz * nz));
+          sKreuz += gk * ((e[1] * cz - e[2] * cy) * nx + (e[2] * cx - e[0] * cz) * ny + (e[0] * cy - e[1] * cx) * nz);
+        });
         const th = Math.atan2(sKreuz, sDot);
         if (Math.abs(th) > 1e-9) {
           const co = Math.cos(th);
@@ -471,25 +478,25 @@ export class HautZiele {
           dy -= P[3 * i + 1]!;
           dz -= P[3 * i + 2]!;
         }
-        for (const j of nb) {
-          if (nr[j]! >= 0) continue;
-          dx += P[3 * j]! / d;
-          dy += P[3 * j + 1]! / d;
-          dz += P[3 * j + 2]! / d;
-        }
+        nb.forEach((j, kk) => {
+          if (nr[j]! >= 0) return;
+          dx += g[kk]! * P[3 * j]!;
+          dy += g[kk]! * P[3 * j + 1]!;
+          dz += g[kk]! * P[3 * j + 2]!;
+        });
         const u = nr[i]!;
         if (u >= 0) {
           rhs[3 * u] = rhs[3 * u]! + dx;
           rhs[3 * u + 1] = rhs[3 * u + 1]! + dy;
           rhs[3 * u + 2] = rhs[3 * u + 2]! + dz;
         }
-        for (const j of nb) {
+        nb.forEach((j, kk) => {
           const w = nr[j]!;
-          if (w < 0) continue;
-          rhs[3 * w] = rhs[3 * w]! - dx / d;
-          rhs[3 * w + 1] = rhs[3 * w + 1]! - dy / d;
-          rhs[3 * w + 2] = rhs[3 * w + 2]! - dz / d;
-        }
+          if (w < 0) return;
+          rhs[3 * w] = rhs[3 * w]! - g[kk]! * dx;
+          rhs[3 * w + 1] = rhs[3 * w + 1]! - g[kk]! * dy;
+          rhs[3 * w + 2] = rhs[3 * w + 2]! - g[kk]! * dz;
+        });
       }
       const { ecken, b } = this.bind;
       this.js.forEach((j, u) => {
@@ -580,7 +587,7 @@ export class HautLoeser {
  * Je Punkt der Laplace (Punkt − Mittel der Nachbarn): sein Anteil längs der Normale ist Krümmung · Kantenlänge², der Rest liegt
  * in der Fläche und sagt nur, wie die Punkte verteilt sind (beim Netz aus Surface Nets ist er viel größer).
  */
-function vermessen(h: Haut): Vermessung {
+function vermessen(h: Haut, gew: readonly Float64Array[]): Vermessung {
   const n = h.n;
   const P = h.pos;
   const nor = hautNormalen(h);
@@ -589,28 +596,45 @@ function vermessen(h: Haut): Vermessung {
   const tang = new Float64Array(3 * n);
   for (let i = 0; i < n; i++) {
     const nb = h.nachbarn[i]!;
+    const g = gew[i]!;
     let sx = 0;
     let sy = 0;
     let sz = 0;
     let e2 = 0;
-    for (const j of nb) {
-      sx += P[3 * j]!;
-      sy += P[3 * j + 1]!;
-      sz += P[3 * j + 2]!;
-      e2 += (P[3 * j]! - P[3 * i]!) ** 2 + (P[3 * j + 1]! - P[3 * i + 1]!) ** 2 + (P[3 * j + 2]! - P[3 * i + 2]!) ** 2;
-    }
-    const d = nb.length || 1;
-    const lx = P[3 * i]! - sx / d;
-    const ly = P[3 * i + 1]! - sy / d;
-    const lz = P[3 * i + 2]! - sz / d;
+    nb.forEach((j, k) => {
+      sx += g[k]! * P[3 * j]!;
+      sy += g[k]! * P[3 * j + 1]!;
+      sz += g[k]! * P[3 * j + 2]!;
+      e2 += g[k]! * ((P[3 * j]! - P[3 * i]!) ** 2 + (P[3 * j + 1]! - P[3 * i + 1]!) ** 2 + (P[3 * j + 2]! - P[3 * i + 2]!) ** 2);
+    });
+    const lx = P[3 * i]! - sx;
+    const ly = P[3 * i + 1]! - sy;
+    const lz = P[3 * i + 2]! - sz;
     const k = lx * nor[3 * i]! + ly * nor[3 * i + 1]! + lz * nor[3 * i + 2]!;
-    kante2[i] = Math.max(e2 / d, 1e-9);
+    kante2[i] = Math.max(e2, 1e-9);
     kap[i] = k / kante2[i]!;
     tang[3 * i] = lx - k * nor[3 * i]!;
     tang[3 * i + 1] = ly - k * nor[3 * i + 1]!;
     tang[3 * i + 2] = lz - k * nor[3 * i + 2]!;
   }
   return { nor, kap, kante2, tang };
+}
+
+/** Schlüssel einer Kante (a, b) für Kantengewichte */
+/** gerichtet: Gewicht des Nachbarn `zu` in der Zeile von `von` */
+export const kantenSchluessel = (h: Haut, von: number, zu: number): number => von * h.n + zu;
+
+/** Gewichte je Punkt und Nachbar, normiert; ohne harte Kanten gleich (Mittel der Nachbarn) */
+function gewichteAus(h: Haut, kanten: ReadonlyMap<number, number> | null): Float64Array[] {
+  return h.nachbarn.map((nb, i) => {
+    const w = nb.map((j) => (kanten ? (kanten.get(kantenSchluessel(h, i, j)) ?? 1) : 1));
+    let s = w.reduce((a, b) => a + b, 0);
+    if (s < 1e-9) {
+      w.fill(1);
+      s = nb.length || 1;
+    }
+    return Float64Array.from(w, (x) => x / s);
+  });
 }
 
 /** Einfluss wie O in Blender („glatt“): 1 in der Mitte, 0 am Rand des Kreises. */

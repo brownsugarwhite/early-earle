@@ -932,6 +932,28 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     klappt 22 Dreiecke um (vorher 34, mit der Drehung um die Normale). Mit O weich (0 bzw. 2), dafür gehen Loops in der Nähe mit wie in
     Blender. Keine Härte, keine Bézier-Griffe an Punkten (Punkte verschieben, Form zwischen ihnen glatt), Kreuzungen nur beim
     Entstehen und nach Zügen gesucht, Netz fest (keine örtliche Verdichtung). Bilder `docs/progress/editor/form-loops-*-2026-11-05.jpg`.
+- **2026-11-05 (nachts, danach): Härte, Loops als Kanten im Netz** (Florian: „Weiter mit der Härte: Härte je Punkt entlang des Loops,
+  Braue als Augen-Form oben hart und hochgezogen.“).
+  - **Bedienung:** Punkte oder ganze Loops wählen, Taste 0–3 setzt die Härte, + / − ändern um 0,5; zwischen den Punkten läuft sie
+    linear längs des Loops (`haerteBei`). Harte Stücke sind schwarz, so breit wie die Härte (Blätter und 3D).
+  - **Befund zuerst:** Gewichte über die Linie allein wirken nicht (hart und weich 0,6 Einheiten auseinander), solange die Linie nur
+    auf Dreiecken liegt: Mehrere Proben je Dreieck halten einen Streifen Dreiecke fest, darin kann nichts knicken.
+  - **Kern `dicht/einsetzen.ts` (`loopEinsetzen`):** Jeder neue Loop wird eine Kette von Kanten: über die Dreiecke abgelaufen,
+    je gekreuzte Kante ein neuer Punkt, jedes Dreieck dreigeteilt (Viereck an der kürzeren Diagonale, spiegelgleiche Vierecke mit
+    Mittelpunkt, sonst wird das Netz schief), der Ring als ganzer Ring, das Paar samt Zwilling; die Mitte läuft schon über Punkte
+    auf z = 0 (die Kugel hat welche, sonst wäre sie nicht spiegelgleich zu triangulieren); andere Loops bekommen die Punkte auf ihren
+    geteilten Kanten; danach die Splitter neben der Linie in der Fläche entspannt. Schnittebenen genau durch Netzpunkte werden um
+    10⁻³ verschoben.
+  - **Härte im Löser:** gerichtete Gewichte (`kantenSchluessel` von → zu): Die Punkte einer harten Linie glätten nur längs, nicht über
+    sie hinweg; die Seiten hängen weiter an ihr. **Anzeige wie Auto Smooth:** Netzpunkte auf harten Linien doppelt, je Seite eine
+    Normale, nach der Härte gemischt (sonst mittelt die Schattierung über den Knick).
+  - **Gemessen** (Tests `loops.test.ts` 6, Maus `scripts/pruefen/form-loops-braue.mjs`): Braue (obere drei Punkte, O 45, 12 nach außen,
+    5 hoch) Knick quer über die Linie hart 42,7° gegen weich 29,8°, unten 6–7°; im Bild bricht die Lichtstufe hart an der Linie ab,
+    weich läuft sie darüber. Einsetzen spiegelgleich (0 Dreiecke ohne Spiegelbild), Länge bleibt; drei Achsen-Loops, Schmaler, O,
+    ⌘Z wie vorher.
+  - **Offen (ehrlich):** Der Unterschied hart/weich ist bei dieser Netzdichte (Kante ≈ 6,5 bei Radius 150) mäßig; eine runde Wulst
+    ist auch nur 1–2 Zellen breit (örtlich verdichten fehlt). Ein ganzer Loop ohne O gedreht klappt 30 Dreiecke um (vor dem Einsetzen
+    22), skaliert 2. Härte ändert eine schon gezogene Form erst beim nächsten Zug. Bilder `docs/progress/editor/form-loops-braue-*`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

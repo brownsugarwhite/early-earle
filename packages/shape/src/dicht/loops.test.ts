@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { loopEinsetzen } from './einsetzen';
 import { hautAus } from './kurven';
 import {
   type Loop,
@@ -6,6 +7,8 @@ import {
   bereichUm,
   festlegen,
   formAusZeichnung,
+  kantenGewichte,
+  knickWinkel,
   kreuzungenZwischen,
   loopAusSchnitt,
   mittlereKante,
@@ -146,6 +149,76 @@ describe('Nur Loops: Griffe an Kreuzungen', () => {
     log(`Auge: ${auge.proben.length} Proben, Hebung am Punkt ${hebung.toFixed(1)}, hinten ${fern}`);
     expect(hebung).toBeGreaterThan(9);
     expect(fern).toBe(0);
+  });
+
+  it('Braue: Augen-Form oben hart (3) und hinausgezogen gibt einen Knick, weich (0) eine runde Wulst', () => {
+    const lauf = (hart: number) => {
+      const h0 = kugel();
+      const uv: [number, number][] = Array.from({ length: 64 }, (_, i) => [-60 + 35 * Math.cos((2 * Math.PI * i) / 64), 40 + 35 * Math.sin((2 * Math.PI * i) / 64)]);
+      // die Form wird eine Kette von Kanten des Netzes (sonst kann sie sich nicht knicken)
+      const r = loopEinsetzen(h0, [formAusZeichnung(h0, 'seite', uv, Array.from({ length: 8 }, (_, i) => 8 * i), 9)!], 0)!;
+      const h = r.haut;
+      const auge = r.loops[0]!;
+      // obere Hälfte hart, die oberen drei Punkte 10 nach außen
+      for (const p of auge.punkte) p.haerte = p.ref.y > 45 ? hart : 0;
+      const D = auge.punkte.map((p) => {
+        if (p.ref.y <= 60) return { x: 0, y: 0, z: 0 };
+        const r = Math.hypot(p.ref.x, p.ref.y, p.ref.z);
+        return { x: (10 * p.ref.x) / r, y: (10 * p.ref.y) / r, z: (10 * p.ref.z) / r };
+      });
+      const versch = verschiebungLaengs(auge, D);
+      const zentren = Array.from({ length: auge.proben.length }, (_, i) => ({ x: auge.ruhe[3 * i]!, y: auge.ruhe[3 * i + 1]!, z: auge.ruhe[3 * i + 2]! }));
+      const zug = new LoopZug(h, [auge], bereichUm(h, zentren, 30, []));
+      for (let s = 1; s <= 4; s++) zug.schritt([versch.map((x) => (x * s) / 4)], 2);
+      zug.schritt([versch], 4);
+      festlegen(h, auge);
+      const kn = knickWinkel(h, auge);
+      let oben = 0;
+      let unten = 0;
+      for (let j = 0; j < auge.proben.length; j++) {
+        const y = auge.ruhe[3 * j + 1]!;
+        if (y > 65) oben = Math.max(oben, kn[j]!);
+        if (y < 20) unten = Math.max(unten, kn[j]!);
+      }
+      return { oben, unten, kanten: kantenGewichte(h, [auge]).size };
+    };
+    const hart = lauf(3);
+    const weich = lauf(0);
+    log(
+      `Braue: hart oben ${hart.oben.toFixed(1)}° (unten ${hart.unten.toFixed(1)}°, ${hart.kanten} harte Kanten), ` +
+        `weich oben ${weich.oben.toFixed(1)}° (unten ${weich.unten.toFixed(1)}°)`,
+    );
+    expect(hart.oben).toBeGreaterThan(weich.oben + 8);
+    expect(hart.unten).toBeLessThan(hart.oben / 2);
+  });
+
+  it('Einsetzen: Ring, Mitte und Form werden Ketten von Kanten, spiegelgleich, die Länge bleibt', () => {
+    const h0 = kugel();
+    const faelle: [string, Loop][] = [
+      ['Ring', loopAusSchnitt(h0, 'seite', [0, 200], [0, -200], 1, 8)!],
+      ['Mitte', loopAusSchnitt(h0, 'top', [-200, 0], [200, 0], 2, 8)!],
+      [
+        'Form',
+        formAusZeichnung(
+          h0,
+          'seite',
+          Array.from({ length: 64 }, (_, i): [number, number] => [-60 + 35 * Math.cos((2 * Math.PI * i) / 64), 40 + 35 * Math.sin((2 * Math.PI * i) / 64)]),
+          Array.from({ length: 8 }, (_, i) => 8 * i),
+          3,
+        )!,
+      ],
+    ];
+    for (const [name, l] of faelle) {
+      const r = loopEinsetzen(h0, [l], 0)!;
+      expect(r, name).not.toBeNull();
+      const ln = r.loops[0]!;
+      let ohne = 0;
+      for (let v = 0; v < r.haut.n; v++) if (r.haut.spiegel[v]! < 0) ohne++;
+      log(`${name}: ${h0.n} → ${r.haut.n} Punkte, ${ln.proben.length} Proben, Länge ${l.laenge.toFixed(1)} → ${ln.laenge.toFixed(1)}`);
+      expect(ohne).toBe(0);
+      expect(ln.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2])).toBe(true);
+      expect(Math.abs(ln.laenge - l.laenge)).toBeLessThan(1);
+    }
   });
 
   it('Mitte als Ganzes in der Höhe auf 1,2 skaliert: die Kugel wird ein Ei, Länge bleibt', () => {

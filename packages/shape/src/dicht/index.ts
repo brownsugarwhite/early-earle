@@ -63,6 +63,9 @@ export {
   festlegen,
   formAusZeichnung,
   hautLagen,
+  haerteBei,
+  kantenGewichte,
+  knickWinkel,
   kreuzungenZwischen,
   loopAusSchnitt,
   mittlereKante,
@@ -75,6 +78,7 @@ export {
   verschiebungLaengs,
   zieleAus,
 } from './loops';
+export { loopEinsetzen } from './einsetzen';
 export {
   type Ansichtsbreite,
   type BreitenPunkt,

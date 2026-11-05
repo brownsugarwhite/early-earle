@@ -8,13 +8,16 @@
 // folgt nur den Verschiebungen seiner Proben (`HautZiele`). Punkte (Griffe) liegen an einer Stelle s längs des Loops; zwischen
 // ihnen verteilt sich ihre Verschiebung glatt (Hermite längs s).
 
-import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich } from './kurven';
+import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich, kantenSchluessel } from './kurven';
 
 export type Ansicht = 'seite' | 'front' | 'top';
 /** Ein Punkt der Haut: drei Ecken eines Dreiecks und baryzentrische Gewichte */
 export type Probe = { ecken: [number, number, number]; b: [number, number, number] };
-/** Griff auf einem Loop: Stelle s (Bogenlänge beim Anlegen), Lage beim letzten Festlegen und jetzt; Kreuzung: Kennung */
-export type LoopPunkt = { s: number; ref: V3; cur: V3; kreuzung?: number };
+/**
+ * Griff auf einem Loop: Stelle s (Bogenlänge beim Anlegen), Lage beim letzten Festlegen und jetzt; Kreuzung: Kennung; Härte 0–3
+ * (wie die Strichdicke in px: 0 weich, 3 ein Knick wie Edge Crease in Blender; fehlt: die des Loops)
+ */
+export type LoopPunkt = { s: number; ref: V3; cur: V3; kreuzung?: number; haerte?: number };
 export type Loop = {
   id: number;
   art: 'mitte' | 'ring' | 'paar';
@@ -27,6 +30,8 @@ export type Loop = {
   ruhe: Float64Array;
   /** nach s sortiert */
   punkte: LoopPunkt[];
+  /** Härte des Loops, wo seine Punkte keine eigene haben (fehlt: 0) */
+  haerte?: number;
 };
 
 /** Blattkoordinaten (u, v) und Tiefe zum Betrachter: Seite von +z, Front von −x, Top von +y */
@@ -288,6 +293,16 @@ export function loopAusSchnitt(
       n = { x: roh.x / L, y: roh.y / L, z: roh.z / L };
       const A3 = ausUV(a, A[0], A[1], 0);
       d = n.x * A3.x + n.y * A3.y + n.z * A3.z;
+    }
+  }
+  // geht die Ebene genau durch Netzpunkte (die Kugel hat welche auf den Achsenebenen), minimal verschieben: sonst liegen
+  // Proben auf Punkten statt auf Kanten, und die Linie lässt sich nicht als Kette von Kanten einsetzen (die Mitte ausgenommen)
+  if (art !== 'mitte') {
+    for (let v = 0; v < h.n; v++) {
+      if (Math.abs(n.x * h.pos[3 * v]! + n.y * h.pos[3 * v + 1]! + n.z * h.pos[3 * v + 2]! - d) < 1e-6) {
+        d += 1e-3;
+        break;
+      }
     }
   }
   const linien = schnittLinien(h, n, d);
@@ -661,7 +676,7 @@ export class LoopZug {
   constructor(h: Haut, loops: readonly Loop[], bereich: Uint8Array | null) {
     this.plan = bindungenAus(h, loops);
     this.start = loops.map((l) => Float64Array.from(l.ruhe));
-    this.loeser = new HautZiele(h, this.plan.bind, zieleAus(this.plan, this.start), bereich);
+    this.loeser = new HautZiele(h, this.plan.bind, zieleAus(this.plan, this.start), bereich, 100, kantenGewichte(h, loops));
   }
 
   /** Lagen je Loop: Anfang + Verschiebung */
@@ -689,6 +704,188 @@ export function festlegen(h: Haut, l: Loop): void {
     p.ref = q;
     p.cur = { ...q };
   }
+}
+
+/** Härte je Probe (0–3): zwischen den Punkten linear längs s, vor dem ersten und nach dem letzten Punkt eines Rings wie dieser */
+export function haerteBei(l: Loop): Float64Array {
+  const n = l.proben.length;
+  const basis = l.haerte ?? 0;
+  const out = new Float64Array(n).fill(basis);
+  const K = l.punkte.map((p) => ({ s: p.s, h: p.haerte ?? basis }));
+  if (K.length === 0) return out;
+  const zu = geschlossen(l);
+  for (let j = 0; j < n; j++) {
+    const s = l.s[j]!;
+    let i = K.findIndex((k) => k.s > s);
+    if (i < 0) i = K.length;
+    if (!zu && (i === 0 || i === K.length)) {
+      out[j] = K[i === 0 ? 0 : K.length - 1]!.h;
+      continue;
+    }
+    const a = i === 0 ? { s: K[K.length - 1]!.s - l.laenge, h: K[K.length - 1]!.h } : K[i - 1]!;
+    const b = i === K.length ? { s: K[0]!.s + l.laenge, h: K[0]!.h } : K[i]!;
+    const t = b.s > a.s ? (s - a.s) / (b.s - a.s) : 0;
+    out[j] = a.h + t * (b.h - a.h);
+  }
+  return out;
+}
+
+/** Normale der Haut an einer Probe (Dreieck der Probe; bei einem Punkt des Netzes die Dreiecke um ihn) */
+function probenNormale(h: Haut, p: Probe): V3 {
+  if (p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2]) {
+    const v = p.ecken[0];
+    const s = { x: 0, y: 0, z: 0 };
+    for (let t = 0; t < h.tri.length / 3; t++) {
+      const e: [number, number, number] = [h.tri[3 * t]!, h.tri[3 * t + 1]!, h.tri[3 * t + 2]!];
+      if (!e.includes(v)) continue;
+      const q = probenNormale(h, { ecken: e, b: [1, 0, 0] });
+      s.x += q.x;
+      s.y += q.y;
+      s.z += q.z;
+    }
+    const L = Math.hypot(s.x, s.y, s.z) || 1;
+    return { x: s.x / L, y: s.y / L, z: s.z / L };
+  }
+  const [a, b, c] = p.ecken.map((v) => lage(h.pos, v));
+  const ab = { x: b!.x - a!.x, y: b!.y - a!.y, z: b!.z - a!.z };
+  const ac = { x: c!.x - a!.x, y: c!.y - a!.y, z: c!.z - a!.z };
+  const n = { x: ab.y * ac.z - ab.z * ac.y, y: ab.z * ac.x - ab.x * ac.z, z: ab.x * ac.y - ab.y * ac.x };
+  const L = Math.hypot(n.x, n.y, n.z) || 1;
+  return { x: n.x / L, y: n.y / L, z: n.z / L };
+}
+
+/**
+ * Kanten des Netzes, die einen harten Loop kreuzen, und ihr Gewicht 1 − Härte/3 (0 = ganz getrennt): Über eine harte Linie
+ * hinweg glättet der Löser nicht, beim Ziehen entsteht dort ein Knick. Spiegelbilder (Ring, Paar) ebenso.
+ */
+export function kantenGewichte(h: Haut, loops: readonly Loop[]): Map<number, number> {
+  const out = new Map<number, number>();
+  const mk = mittlereKante(h);
+  const gerichtet = (von: number, zu: number, w: number) => {
+    const k = kantenSchluessel(h, von, zu);
+    out.set(k, Math.min(out.get(k) ?? 1, w));
+  };
+  const setze = (a: number, b: number, w: number) => {
+    gerichtet(a, b, w);
+    gerichtet(b, a, w);
+  };
+  for (const l of loops) {
+    const hd = haerteBei(l);
+    if (!hd.some((x) => x > 0)) continue;
+    const n = l.proben.length;
+    const zu = geschlossen(l);
+    // eingesetzt: Die Punkte der Linie glätten nicht über sie hinweg (nur längs); die Seiten hängen weiter an der Linie
+    if (l.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2])) {
+      const kette = l.proben.map((p) => p.ecken[0]);
+      for (let j = 0; j < n; j++) {
+        const w = 1 - Math.min(1, hd[j]! / 3);
+        if (w >= 1) continue;
+        const v = kette[j]!;
+        const laengs = new Set<number>();
+        if (j > 0 || zu) laengs.add(kette[(j - 1 + n) % n]!);
+        if (j < n - 1 || zu) laengs.add(kette[(j + 1) % n]!);
+        const vs = h.spiegel[v]!;
+        for (const x of h.nachbarn[v]!) {
+          // an den Enden eines Rings geht die Linie in ihr Spiegelbild über
+          if (laengs.has(x) || (l.art === 'ring' && h.spiegel[x] !== undefined && laengs.has(h.spiegel[x]!))) continue;
+          gerichtet(v, x, w);
+          if (l.art !== 'mitte' && vs >= 0 && vs !== v && h.spiegel[x]! >= 0) gerichtet(vs, h.spiegel[x]!, w);
+        }
+      }
+      continue;
+    }
+    for (let j = 0; j < (zu ? n : n - 1); j++) {
+      const j2 = (j + 1) % n;
+      const hh = Math.min(1, Math.max(hd[j]!, hd[j2]!) / 3);
+      if (hh <= 0) continue;
+      const w = 1 - hh;
+      const a = lage(l.ruhe, j);
+      const b = lage(l.ruhe, j2);
+      const t = { x: b.x - a.x, y: b.y - a.y, z: b.z - a.z };
+      const L2 = t.x * t.x + t.y * t.y + t.z * t.z;
+      if (L2 < 1e-12) continue;
+      const nv = probenNormale(h, l.proben[j]!);
+      let bn = { x: t.y * nv.z - t.z * nv.y, y: t.z * nv.x - t.x * nv.z, z: t.x * nv.y - t.y * nv.x };
+      const bl = Math.hypot(bn.x, bn.y, bn.z) || 1;
+      bn = { x: bn.x / bl, y: bn.y / bl, z: bn.z / bl };
+      const kand = new Set<number>();
+      for (const v of [...l.proben[j]!.ecken, ...l.proben[j2]!.ecken]) {
+        kand.add(v);
+        for (const u of h.nachbarn[v]!) kand.add(u);
+      }
+      for (const v of kand) {
+        const pv = lage(h.pos, v);
+        const sv = (pv.x - a.x) * bn.x + (pv.y - a.y) * bn.y + (pv.z - a.z) * bn.z;
+        for (const u of h.nachbarn[v]!) {
+          const pu = lage(h.pos, u);
+          const su = (pu.x - a.x) * bn.x + (pu.y - a.y) * bn.y + (pu.z - a.z) * bn.z;
+          if (sv * su >= 0) continue;
+          const f = sv / (sv - su);
+          const c = { x: pv.x + f * (pu.x - pv.x) - a.x, y: pv.y + f * (pu.y - pv.y) - a.y, z: pv.z + f * (pu.z - pv.z) - a.z };
+          const laengs = (c.x * t.x + c.y * t.y + c.z * t.z) / L2;
+          if (laengs < -0.05 || laengs > 1.05) continue;
+          if (Math.abs(c.x * nv.x + c.y * nv.y + c.z * nv.z) > mk) continue;
+          setze(v, u, w);
+          if (l.art === 'mitte') continue;
+          const vs = h.spiegel[v]!;
+          const us = h.spiegel[u]!;
+          if (vs >= 0 && us >= 0) setze(vs, us, w);
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Knick der Haut quer über den Loop je Probe (Grad): mittlere Flächennormale links und rechts der Linie, im Abstand 0,1–1,5
+ * Kantenlängen, gegeneinander.
+ */
+export function knickWinkel(h: Haut, l: Loop): Float64Array {
+  const n = l.proben.length;
+  const out = new Float64Array(n);
+  const mk = mittlereKante(h);
+  const zu = geschlossen(l);
+  const L = hautLagen(h, l);
+  for (let j = 0; j < n; j++) {
+    const a = lage(L, j);
+    const v0 = lage(L, j > 0 ? j - 1 : zu ? n - 1 : 0);
+    const v1 = lage(L, j < n - 1 ? j + 1 : zu ? 0 : n - 1);
+    const t = { x: v1.x - v0.x, y: v1.y - v0.y, z: v1.z - v0.z };
+    const tl = Math.hypot(t.x, t.y, t.z) || 1;
+    const nv = probenNormale(h, l.proben[j]!);
+    let bn = { x: t.y * nv.z - t.z * nv.y, y: t.z * nv.x - t.x * nv.z, z: t.x * nv.y - t.y * nv.x };
+    const bl = Math.hypot(bn.x, bn.y, bn.z) || 1;
+    bn = { x: bn.x / bl, y: bn.y / bl, z: bn.z / bl };
+    // Dreiecke in der Nähe: zwei Ringe um die Ecken der Probe
+    const ecken = new Set<number>(l.proben[j]!.ecken);
+    for (let r = 0; r < 3; r++) for (const v of [...ecken]) for (const u of h.nachbarn[v]!) ecken.add(u);
+    const seiten = [
+      { x: 0, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0 },
+    ];
+    for (let f = 0; f < h.tri.length / 3; f++) {
+      const e = [h.tri[3 * f]!, h.tri[3 * f + 1]!, h.tri[3 * f + 2]!];
+      if (!e.every((v) => ecken.has(v))) continue;
+      const q = e.map((v) => lage(h.pos, v));
+      const c = { x: (q[0]!.x + q[1]!.x + q[2]!.x) / 3 - a.x, y: (q[0]!.y + q[1]!.y + q[2]!.y) / 3 - a.y, z: (q[0]!.z + q[1]!.z + q[2]!.z) / 3 - a.z };
+      const quer = c.x * bn.x + c.y * bn.y + c.z * bn.z;
+      const laengs = (c.x * t.x + c.y * t.y + c.z * t.z) / tl;
+      if (Math.abs(quer) < 0.1 * mk || Math.abs(quer) > 1.5 * mk || Math.abs(laengs) > 1.5 * mk) continue;
+      const nf = probenNormale(h, { ecken: e as [number, number, number], b: [1, 0, 0] });
+      const s = seiten[quer > 0 ? 0 : 1]!;
+      s.x += nf.x;
+      s.y += nf.y;
+      s.z += nf.z;
+    }
+    const [p, q] = seiten;
+    const lp = Math.hypot(p!.x, p!.y, p!.z);
+    const lq = Math.hypot(q!.x, q!.y, q!.z);
+    if (lp < 1e-9 || lq < 1e-9) continue;
+    const cos = (p!.x * q!.x + p!.y * q!.y + p!.z * q!.z) / (lp * lq);
+    out[j] = (Math.acos(Math.max(-1, Math.min(1, cos))) * 180) / Math.PI;
+  }
+  return out;
 }
 
 /** Einen Punkt an der Stelle s einfügen (formneutral: er liegt auf dem Loop) */
