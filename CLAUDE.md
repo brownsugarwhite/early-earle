@@ -872,6 +872,13 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     gibt eine Spitze (Linien allgemein, nicht Teile); Maul und Kantenlinien mit Teilen noch nicht. Weg für Kehle und runde Naht: Härte
     an der Naht.
   - Bilder `docs/progress/editor/form-teile-linien-*-2026-11-05.jpg`.
+- **2026-11-05 (abends): Florians Klarstellung zu Outlines und Edgeloops** (wörtlich in `docs/plans/2026-10-22-klarstellungen.md`,
+  Nachricht 2): Teile sind keine gute Lösung. Outlines sind keine Grifflinien mehr; Griffe sind die Netzpunkte, die sich aus dem
+  Startumriss und den gezeichneten Linien und Kanten ergeben, wie bei einem 3D-Modell. Edgeloops sind Werkzeug und später
+  Leitlinien der Topologie. Kein Verschmelzen zum Donut: ein Ende steckt im anderen (auch bei getrennten Kiefern), alles ein Netz.
+  Alle Ansichten gleichwertig, Bézier-Griffe. Einschätzung: Mit dem heutigen Bau (Volumen bei jeder Änderung neu aus dem Umriss)
+  geht das nicht, ein Volumen verschmilzt bei Berührung immer. Nötig: Nach dem Start ist das Netz die Wahrheit, Linien und Loops
+  verformen es (wie FiberMesh, Nealen u. a. 2007). Startform, Maulschnitt, Posen und Backen bleiben. Florians Entscheidung offen.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
