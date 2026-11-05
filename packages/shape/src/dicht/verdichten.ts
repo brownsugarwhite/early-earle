@@ -21,12 +21,17 @@ export type Verdichtet = { haut: Haut; loops: Loop[]; neu: number; gedreht: numb
 /**
  * Teilt alle Kanten länger als `maxKante` (spiegelgleich, höchstens `runden` Durchgänge), dreht danach Kanten zur Wertigkeit 6 und
  * entspannt die neuen Punkte. Ergebnis: neue Haut und Loops (Reihenfolge wie vorher), null, wenn keine Kante zu lang war.
+ *
+ * Mit `winkel` (Grad) wird auch geteilt, wo sich die Fläche über eine Kante stärker dreht (Winkel zwischen den Normalen ihrer
+ * Enden, an harten Loops die Normale der Seite), solange die Kante länger als `minKante` ist: Ein schmaler Lappen oder eine
+ * Spitze hat kurze, aber stark gedrehte Kanten, der Umriss dort war eckig (Florian: „das mit dem Verdichten klappt bei Details
+ * noch nicht“). Ein Kreis bekommt so mindestens 360°/`winkel` Kanten.
  */
 export function verdichten(
   h: Haut,
   loops: readonly Loop[],
   maxKante: number,
-  opt: { runden?: number; drehen?: boolean; entspannen?: boolean } = {},
+  opt: { runden?: number; drehen?: boolean; entspannen?: boolean; winkel?: number; minKante?: number } = {},
 ): Verdichtet | null {
   const runden = opt.runden ?? 8;
   const pos: number[] = Array.from(h.pos);
@@ -250,18 +255,40 @@ export function verdichten(
     s.splice(j + 1, 0, (s[j]! + s1) / 2);
   };
 
+  /** Winkel zwischen den Normalen der Enden einer Kante (cos), an harten Loops die Normale der Seite der Kante */
+  const drehungCos = (a: number, b: number, nor: Float64Array): number => {
+    const ha = hart.has(a);
+    const hb = hart.has(b);
+    let seite: V3 | null = null;
+    if (ha || hb)
+      seite = norm(
+        (kanten.get(schluessel(a, b)) ?? []).reduce(
+          (s, t) => {
+            const n = norm(flaechenNormale(t));
+            return { x: s.x + n.x, y: s.y + n.y, z: s.z + n.z };
+          },
+          { x: 0, y: 0, z: 0 },
+        ),
+      );
+    const na = ha ? seite! : { x: nor[3 * a]!, y: nor[3 * a + 1]!, z: nor[3 * a + 2]! };
+    const nb = hb ? seite! : { x: nor[3 * b]!, y: nor[3 * b + 1]!, z: nor[3 * b + 2]! };
+    return na.x * nb.x + na.y * nb.y + na.z * nb.z;
+  };
+  const cosMax = opt.winkel !== undefined ? Math.cos((opt.winkel * Math.PI) / 180) : 2;
+  const minKante = opt.minKante ?? 0;
+
   const neu0 = pos.length / 3;
   for (let runde = 0; runde < runden; runde++) {
     const lang: { a: number; b: number; l: number }[] = [];
+    const nor = punktNormalen();
     for (const k of kanten.keys()) {
       const a = Math.floor(k / KEY);
       const b = k % KEY;
       const l = laengeVon(a, b);
-      if (l > maxKante) lang.push({ a, b, l });
+      if (l > maxKante || (cosMax <= 1 && l > minKante && drehungCos(a, b, nor) < cosMax)) lang.push({ a, b, l });
     }
     if (lang.length === 0) break;
     lang.sort((p, q) => q.l - p.l);
-    const nor = punktNormalen();
     for (const { a, b } of lang) {
       if (!kanten.has(schluessel(a, b))) continue;
       const sa = spiegel[a]!;

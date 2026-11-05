@@ -1049,6 +1049,34 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - **Offen:** Ausrichten behält die Länge des Griffs: Nach weiten Zügen wird die Spitze glatt, aber stumpf (dann den Griff längs
     kürzen). In der Seite liegen ein senkrechter Griff und sein Spiegelbild genau auf dem Punkt (dort nicht zu greifen, er zeigt in die
     Tiefe). Bilder `docs/progress/editor/form-spiegelpunkt-*-2026-11-05.jpg`.
+- **2026-11-05 (nachts, danach): Die Krümmung der Haut folgt den Loops** (Florian mit zwei Bildern: Fischschwanz-Lappen „das mit dem
+  Verdichten klappt bei Details noch nicht 100%ig“ (`docs/progress/editor/form-detail-florian-2026-11-05.png`) und ein Boden mit vier
+  Höckern „Ich verstehe, dass das Mesh sich immer versucht aufzublasen, aber kann es bei sowas erkennen, dass eine Fläche gefordert
+  ist?“ (`form-boden-florian-2026-11-05.webp`)).
+  - **Befund (nachgestellt, Höcker 19,8):** Der Löser hielt je Punkt die Krümmung beim Anfassen fest. Werden die Loops um ein Feld
+    flach, wölbt es sich weiter wie die Kugel. Dazu das Gedächtnis: Jeder Zug startet vom Stand davor. Im Ablauf „Mittelpunkt hoch
+    (die Arme werden S-förmig, die Ecke am Ring behält die Richtung der Kugel), dann die Griffe an den Ecken waagerecht“ blieben die
+    Höcker des ersten Zugs stehen (16,6).
+  - **Jetzt (`dicht/kruemmung.ts`, Prinzip FiberMesh):** Jeder Loop trägt die Krümmung der Haut an seinen Proben (`Loop.kap`,
+    `kapS`; beim ersten Zug an den Nachbarn neben dem Loop gemessen, am Ende jedes Zugs um die Änderung seiner Krümmung längs des
+    Loops in Richtung der Normale weitergeschrieben, `LoopZug.kruemmungFestlegen`). Die Felder dazwischen werden in jedem Zug neu
+    harmonisch daraus verteilt (`KruemmungsFeld`), am Rand des Bereichs aus der Haut, die bleibt. Ein harter Loop und Punkte mit Ecke
+    geben nichts weiter, über sie hinweg fließt nichts; die Messung längs des Loops endet an Ecken. Fenster: `?kruemmung=0` zum
+    Vergleich. Doppelklick zählt jetzt die Zeit des Ereignisses (der Löser zerlegt beim ersten Klick).
+  - **Gemessen** (Kern `loops.test.ts` „Krümmung folgt den Loops“, Maus `scripts/pruefen/form-boden-probe.mjs`): Florians Ablauf im
+    Fenster: tiefster Punkt unter der Ebene 16,55 → **0,25**, 0 umgeschlagen; im Kern in zwei Zügen 2,46 → 0,26. Harter Ring um den
+    Äquator ×1,15: Die Kuppe liegt höchstens 2,5 neben dem abgeplatteten Ellipsoid (vorher bis 10,6), der Grat am Rand 14,7° → 8,4°.
+    Ältere Proben (Griffe, Punkte und Zoom, Spiegelpunkt, Verdichten) mit denselben Zahlen; Kopf zwei weite Züge 0/14 statt 0/12
+    umgeschlagen.
+  - **Verworfen (gemessen):** nur die Änderung je Zug (Felder behalten ihr Gedächtnis: Boden 12,8 statt flach); harte Loops sagen jeder
+    Seite die Krümmung mit der Normale dieser Seite (schaukelt über die erste Reihe Dreiecke auf, Kuppen zu flach, Grat 27°); Startwert
+    an den Punkten des Loops gemessen (die liegen auf Sehnen innen, die Kugel wurde ein Viertel flacher, Grat 43°); Verdichten auch
+    nach der Drehung der Normalen je Kante (`verdichten`-Option `winkel`, im Fenster `?winkel=1`: am langen Lappen 14 statt 4
+    umgeschlagen, am dicken gleich).
+  - **Offen:** Florians eckige Lappen konnte ich nicht nachstellen (meine Lappen: Drehung je Kante 95 % ≈ 10°, glatter Umriss); an der
+    Kreuzung mit einem harten Loop knickt der kreuzende Loop mit seiner Ecke von selbst (15°) jetzt stärker als die Haut daneben (8°).
+    Ein Feld nur aus harten Loops behält seine Krümmung (nichts sagt dort „flach“). Bilder `docs/progress/editor/form-boden-{alt,neu}-*`,
+    `form-kruemmung-ring-{alt,neu}-3d-2026-11-05.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

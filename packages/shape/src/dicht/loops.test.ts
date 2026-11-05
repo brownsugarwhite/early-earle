@@ -581,3 +581,99 @@ describe('Bézier-Griffe und Ecken', () => {
     expect(schiefe(h)).toBeLessThan(1e-6);
   });
 });
+
+describe('Krümmung folgt den Loops', () => {
+  /** Loops nacheinander einsetzen wie im Fenster, dann alle Kreuzungen als Punkte */
+  const aufbauen = (schnitte: [Parameters<typeof loopAusSchnitt>[1], [number, number], [number, number]][]) => {
+    let h = kugel();
+    let loops: Loop[] = [];
+    schnitte.forEach(([a, p, q], i) => {
+      const r = loopEinsetzen(h, [...loops, loopAusSchnitt(h, a, p, q, i + 1, 8)!], loops.length)!;
+      h = r.haut;
+      loops = r.loops;
+    });
+    let k = 1;
+    for (let i = 0; i < loops.length; i++)
+      for (let j = i + 1; j < loops.length; j++)
+        for (const f of kreuzungenZwischen(loops[i]!, loops[i]!.ruhe, loops[j]!, loops[j]!.ruhe, 0.25 * mittlereKante(h))) {
+          punktEinfuegen(loops[i]!, f.sa, k);
+          punktEinfuegen(loops[j]!, f.sb, k);
+          k++;
+        }
+    return { h, loops };
+  };
+  /** ein Zug wie im Fenster: in Stufen, am Ende tragen die Loops ihre Krümmung weiter und liegen fest */
+  const ziehen = (h: ReturnType<typeof kugel>, loops: Loop[], versch: Float64Array[], bereich: Uint8Array | null, kr: boolean) => {
+    const z = new LoopZug(h, loops, bereich, kr);
+    for (let s = 1; s <= 4; s++) z.schritt(versch.map((d) => d.map((x) => (x * s) / 4)), 2);
+    z.schritt(versch, 6);
+    z.kruemmungFestlegen(loops);
+    loops.forEach((l) => festlegen(h, l));
+  };
+
+  it('Boden in zwei Zügen (Mittelpunkt hoch, dann die Arme gerade in die Ebene des harten Rings): flach, gleich in welcher Folge', () => {
+    const Y0 = -105;
+    const lauf = (kr: boolean) => {
+      const { h, loops } = aufbauen([
+        ['seite', [-200, Y0], [200, Y0]],
+        ['seite', [0, 200], [0, -200]],
+        ['top', [-200, 0], [200, 0]],
+      ]);
+      loops[0]!.haerte = 3;
+      eckenAuto(loops);
+      let tiefst: { k: number; y: number } | null = null;
+      for (const l of loops) for (const p of l.punkte) if (p.kreuzung !== undefined && (!tiefst || p.ref.y < tiefst.y)) tiefst = { k: p.kreuzung, y: p.ref.y };
+      const bereich = Uint8Array.from({ length: h.n }, (_, v) => (h.pos[3 * v + 1]! < -40 ? 1 : 0));
+      // 1. Mittelpunkt auf die Höhe des Rings: die Arme werden S-förmig (die Ecken am Ring behalten die Richtung der Kugel)
+      ziehen(h, loops, loops.map((l) => verschiebungLaengs(l, l.punkte.map((p) => ({ x: 0, y: p.kreuzung === tiefst!.k ? Y0 - tiefst!.y : 0, z: 0 })))), bereich, kr);
+      // 2. Arme gerade in die Ebene
+      ziehen(
+        h,
+        loops,
+        loops.map((l, li) => Float64Array.from({ length: l.ruhe.length }, (_, k) => (li > 0 && k % 3 === 1 && l.ruhe[k]! < Y0 ? Y0 - l.ruhe[k]! : 0))),
+        bereich,
+        kr,
+      );
+      let tief = 0;
+      for (let v = 0; v < h.n; v++) tief = Math.max(tief, Y0 - h.pos[3 * v + 1]!);
+      return { tief, schief: schiefe(h) };
+    };
+    const alt = lauf(false);
+    const neu = lauf(true);
+    log(`Boden in zwei Zügen: tiefster Punkt unter der Ebene, Krümmung aus den Loops ${neu.tief.toFixed(2)}, wie beim Anfassen ${alt.tief.toFixed(2)}`);
+    expect(neu.tief).toBeLessThan(0.6);
+    expect(alt.tief).toBeGreaterThan(2);
+    expect(neu.schief).toBeLessThan(1e-6);
+  });
+
+  it('harter Ring um den Äquator ×1,15: die Kuppen folgen dem kreuzenden Ring (fast ein abgeplattetes Ellipsoid)', () => {
+    const { h, loops } = aufbauen([
+      ['front', [-200, 0], [200, 0]],
+      ['seite', [0, 200], [0, -200]],
+    ]);
+    const [waag, quer] = loops as [Loop, Loop];
+    waag.haerte = 3;
+    eckenAuto(loops);
+    const kq = quer.punkte.find((p) => p.kreuzung !== undefined)!;
+    const dw = Float64Array.from(waag.ruhe, (x, k) => (k % 3 === 1 ? 0 : 0.15 * x));
+    const dq = verschiebungLaengs(quer, quer.punkte.map((p) => (p === kq ? { x: 0.15 * p.ref.x, y: 0, z: 0.15 * p.ref.z } : { x: 0, y: 0, z: 0 })));
+    ziehen(h, loops, [dw, dq], null, true);
+    // Höhe der oberen Kuppe bei Radius r (auf der x-Achse) gegen das Ellipsoid mit Halbachsen 172,5 (Rand) und 150 (Pol)
+    const abw: number[] = [];
+    for (const r of [160, 140, 120, 100, 60]) {
+      let best = Infinity;
+      let y = 0;
+      for (let v = 0; v < h.n; v++) {
+        if (h.pos[3 * v + 1]! < 0) continue;
+        const d = Math.abs(h.pos[3 * v]! - r) + Math.abs(h.pos[3 * v + 2]!);
+        if (d < best) {
+          best = d;
+          y = h.pos[3 * v + 1]!;
+        }
+      }
+      abw.push(y - 150 * Math.sqrt(1 - (r / 172.5) ** 2));
+    }
+    log(`Ring ×1,15: Kuppe gegen das abgeplattete Ellipsoid ${abw.map((x) => x.toFixed(1)).join(' ')}`);
+    expect(Math.max(...abw.map(Math.abs))).toBeLessThan(4);
+  });
+});

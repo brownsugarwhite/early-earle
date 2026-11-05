@@ -10,7 +10,8 @@
 // hält sie gegenüber, an einer Ecke darf die Linie knicken (von Hand oder von selbst an der Kreuzung mit einem harten Loop). Wie in
 // Illustrator gehen die Griffe mit ihrem Punkt: Ein Punkt ändert nur die zwei Stücke bis zu seinen Nachbarn.
 
-import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich, kantenSchluessel } from './kurven';
+import { KETTE_K, type KruemmungsKetten, hautKruemmung } from './kruemmung';
+import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich, hautNormalen, kantenSchluessel } from './kurven';
 
 export type Ansicht = 'seite' | 'front' | 'top';
 /** Ein Punkt der Haut: drei Ecken eines Dreiecks und baryzentrische Gewichte */
@@ -54,7 +55,39 @@ export type Loop = {
   punkte: LoopPunkt[];
   /** Härte des Loops, wo seine Punkte keine eigene haben (fehlt: 0) */
   haerte?: number;
+  /**
+   * Krümmung der Haut, die der Loop trägt (Maß des Lösers), an den Stellen `kapS` längs des Loops (beim ersten Zug gemessen, danach
+   * je Zug weitergeschrieben; `KruemmungsFeld`). Nie an Ort und Stelle ändern, nur ersetzen (Schnappschüsse teilen die Felder).
+   */
+  kap?: Float64Array;
+  kapS?: Float64Array;
 };
+
+/** Krümmung, die der Loop an der Stelle s trägt (zwischen den gespeicherten Stellen linear; NaN, wenn keine da ist) */
+export function kruemmungAn(l: Loop, s: number): number {
+  const K = l.kap;
+  const S = l.kapS;
+  if (!K || !S || K.length === 0) return NaN;
+  const n = S.length;
+  const zu = l.art !== 'ring';
+  if (s <= S[0]! || s >= S[n - 1]!) {
+    if (!zu) return s <= S[0]! ? K[0]! : K[n - 1]!;
+    // geschlossen: zwischen der letzten und der ersten Stelle über das Schlussstück
+    const a = S[n - 1]!;
+    const b = S[0]! + l.laenge;
+    const t = b - a > 1e-9 ? (((s < S[0]! ? s + l.laenge : s) - a) / (b - a)) : 0;
+    return K[n - 1]! + Math.max(0, Math.min(1, t)) * (K[0]! - K[n - 1]!);
+  }
+  let lo = 0;
+  let hi = n - 1;
+  while (hi - lo > 1) {
+    const m = (lo + hi) >> 1;
+    if (S[m]! <= s) lo = m;
+    else hi = m;
+  }
+  const t = S[hi]! - S[lo]! > 1e-9 ? (s - S[lo]!) / (S[hi]! - S[lo]!) : 0;
+  return K[lo]! + t * (K[hi]! - K[lo]!);
+}
 
 /** Blattkoordinaten (u, v) und Tiefe zum Betrachter: Seite von +z, Front von −x, Top von +y */
 export const blickUV = (a: Ansicht, p: V3): [number, number] => (a === 'seite' ? [p.x, p.y] : a === 'front' ? [p.z, p.y] : [p.x, p.z]);
@@ -701,18 +734,142 @@ export function bereichUm(h: Haut, zentren: readonly V3[], r: number, ecken: Ite
 }
 
 /**
+ * Ketten für die Krümmung (`KruemmungsFeld`): je Bindung die Bindungen desselben Loops davor und dahinter (geschlossene Loops
+ * ringsum, ein Ring über sein Ende hinaus in seine Spiegelhälfte), dazu die Härte und ob dort ein Punkt mit Ecke liegt. Nur
+ * eingesetzte Loops (Proben auf Punkten).
+ */
+export function kruemmungsKetten(plan: BindungsPlan, loops: readonly Loop[]): KruemmungsKetten {
+  const m = plan.loop.length;
+  const finde = new Map<string, number>();
+  for (let j = 0; j < m; j++) finde.set(`${plan.loop[j]}:${plan.probe[j]}:${plan.spiegel[j]}`, j);
+  const kette: Int32Array[] = new Array<Int32Array>(m);
+  const haerte = new Float64Array(m);
+  const ecke = new Uint8Array(m);
+  const wert = new Float64Array(m).fill(NaN);
+  const hd = loops.map((l) => haerteBei(l));
+  const eingesetzt = loops.map((l) => l.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2]));
+  // Proben mit einem Punkt, der eine Ecke ist (die nächste Probe zu seiner Stelle)
+  const eckProben = loops.map((l) => {
+    const out = new Set<number>();
+    for (const p of l.punkte) {
+      if (!istEcke(p)) continue;
+      let best = 0;
+      for (let i = 1; i < l.s.length; i++) if (Math.abs(l.s[i]! - p.s) < Math.abs(l.s[best]! - p.s)) best = i;
+      out.add(best);
+    }
+    return out;
+  });
+  for (let j = 0; j < m; j++) {
+    const li = plan.loop[j]!;
+    const pi = plan.probe[j]!;
+    const sp = plan.spiegel[j]!;
+    const l = loops[li]!;
+    haerte[j] = hd[li]![pi]!;
+    ecke[j] = eckProben[li]!.has(pi) ? 1 : 0;
+    wert[j] = kruemmungAn(l, l.s[pi]!);
+    if (!eingesetzt[li]) continue;
+    const n = l.proben.length;
+    const k = new Int32Array(2 * KETTE_K + 1).fill(-1);
+    for (let d = -KETTE_K; d <= KETTE_K; d++) {
+      let q = pi + d;
+      let s2 = sp;
+      if (l.art === 'ring') {
+        if (q < 0) {
+          q = -q;
+          s2 = 1 - sp;
+        } else if (q > n - 1) {
+          q = 2 * (n - 1) - q;
+          s2 = 1 - sp;
+        }
+        if (q < 0 || q > n - 1) continue;
+      } else q = ((q % n) + n) % n;
+      // auf der Mittelebene gibt es nur die gespeicherte Bindung
+      const j2 = finde.get(`${li}:${q}:${s2}`) ?? finde.get(`${li}:${q}:0`);
+      if (j2 !== undefined) k[d + KETTE_K] = j2;
+    }
+    kette[j] = k;
+  }
+  return { kette, haerte, ecke, wert };
+}
+
+/**
+ * Krümmung, die ein eingesetzter Loop trägt, aus der Haut gemessen (beim ersten Zug): je Probe das Mittel der Krümmung an den
+ * Nachbarn ihres Punkts, die auf keinem Loop liegen (`aufLoop`; die Punkte einer eingesetzten Kette liegen auf Sehnen etwas innerhalb
+ * der Haut, an ihnen gemessen war die Kugel ein Viertel flacher), dazu über zwei Proben davor und dahinter gemittelt.
+ */
+export function kruemmungMessen(h: Haut, l: Loop, kap: Float64Array, aufLoop: ReadonlySet<number>): void {
+  if (!l.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2])) return;
+  const n = l.proben.length;
+  const roh = l.proben.map((p) => {
+    const v = p.ecken[0];
+    const nb = h.nachbarn[v]!.filter((w) => !aufLoop.has(w));
+    return nb.length ? nb.reduce((s, w) => s + kap[w]!, 0) / nb.length : kap[v]!;
+  });
+  const werte = new Float64Array(n);
+  for (let j = 0; j < n; j++) {
+    let s = 0;
+    let k = 0;
+    for (let d = -2; d <= 2; d++) {
+      let q = j + d;
+      // Ring: über das Ende hinaus spiegelgleich (dieselben Werte), geschlossen ringsum
+      if (l.art === 'ring') q = q < 0 ? -q : q > n - 1 ? 2 * (n - 1) - q : q;
+      else q = ((q % n) + n) % n;
+      if (q < 0 || q > n - 1) continue;
+      s += roh[q]!;
+      k++;
+    }
+    werte[j] = s / k;
+  }
+  l.kap = werte;
+  l.kapS = Float64Array.from(l.s);
+}
+
+/**
  * Ein Zug: Löser für den Einflussbereich, Lagen der Loops beim Anfang. Je Schritt die Verschiebung je Probe (je Loop, null:
- * bleibt); am Ende `festlegen`.
+ * bleibt); am Ende `festlegen`. `kruemmung`: die Krümmung der Haut folgt den Loops (sonst behält jeder Punkt seine).
  */
 export class LoopZug {
   readonly plan: BindungsPlan;
   readonly start: Float64Array[];
   readonly loeser: HautZiele;
 
-  constructor(h: Haut, loops: readonly Loop[], bereich: Uint8Array | null) {
+  constructor(h: Haut, loops: readonly Loop[], bereich: Uint8Array | null, kruemmung = true) {
     this.plan = bindungenAus(h, loops);
     this.start = loops.map((l) => Float64Array.from(l.ruhe));
-    this.loeser = new HautZiele(h, this.plan.bind, zieleAus(this.plan, this.start), bereich, 100, kantenGewichte(h, loops));
+    // Loops ohne getragene Krümmung (neu) messen sie an der Haut, wie sie jetzt ist
+    if (kruemmung && loops.some((l) => !l.kap)) {
+      const kap = hautKruemmung(h, hautNormalen(h));
+      const aufLoop = new Set<number>();
+      for (const l of loops) for (const p of l.proben) if (p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2]) aufLoop.add(p.ecken[0]);
+      for (const v of [...aufLoop]) if (h.spiegel[v]! >= 0) aufLoop.add(h.spiegel[v]!);
+      for (const l of loops) if (!l.kap) kruemmungMessen(h, l, kap, aufLoop);
+    }
+    this.ketten = kruemmung ? kruemmungsKetten(this.plan, loops) : null;
+    this.loeser = new HautZiele(h, this.plan.bind, zieleAus(this.plan, this.start), bereich, 100, kantenGewichte(h, loops), this.ketten);
+  }
+
+  private readonly ketten: KruemmungsKetten | null;
+
+  /**
+   * Am Ende des Zugs: Jeder Loop trägt seine Krümmung weiter, um die Änderung dieses Zugs (Stellen ohne Messung, Ecken, behalten
+   * ihren Wert). Vor `festlegen` aufrufen.
+   */
+  kruemmungFestlegen(loops: readonly Loop[]): void {
+    const feld = this.loeser.feld;
+    if (!feld || !this.ketten) return;
+    const neu = loops.map((l) => (l.kap ? l.proben.map((_, j) => kruemmungAn(l, l.s[j]!)) : null));
+    for (const [j, d] of feld.aenderung) {
+      if (this.plan.spiegel[j]) continue;
+      const w = neu[this.plan.loop[j]!];
+      const pi = this.plan.probe[j]!;
+      if (w && Number.isFinite(this.ketten.wert[j]!)) w[pi] = this.ketten.wert[j]! + d;
+    }
+    loops.forEach((l, li) => {
+      const w = neu[li];
+      if (!w) return;
+      l.kap = Float64Array.from(w);
+      l.kapS = Float64Array.from(l.s);
+    });
   }
 
   /** Lagen je Loop: Anfang + Verschiebung */

@@ -15,6 +15,7 @@
 // Krümmung allein ohne die Verteilung in der Fläche lässt die Kugel zusammenfallen (Radius 52–157).
 
 import { type NormalSystem, type NormalZeile, normalSystem } from '../loeser/normalSystem';
+import { KruemmungsFeld, type KruemmungsKetten } from './kruemmung';
 
 export type V3 = { x: number; y: number; z: number };
 
@@ -344,6 +345,8 @@ export class HautZiele {
     private readonly gewicht = 100,
     /** Gewicht je Kante über eine harte Linie (Schlüssel `kantenSchluessel`); fehlt: 1 */
     kanten: ReadonlyMap<number, number> | null = null,
+    /** Ketten der Loops: die Krümmung der Haut folgt ihnen (`KruemmungsFeld`); fehlt: jeder Punkt behält seine Krümmung */
+    ketten: KruemmungsKetten | null = null,
   ) {
     const n = h.n;
     const P = h.pos;
@@ -406,13 +409,22 @@ export class HautZiele {
     const nachbarn = frei.map((v) => h.nachbarn[v]!.filter((j) => nr[j]! >= 0).map((j) => nr[j]!));
     const t0 = Date.now();
     this.sys = normalSystem(frei.length, zeilen, nachbarn, 1e-9);
-    this.zeitZerlegen = Date.now() - t0;
     this.ruhe = vermessen(h, this.gew);
     this.pos0 = Float64Array.from(P);
+    this.feld = ketten ? new KruemmungsFeld(h, bind, ketten, ziele0, nr, this.gew, this.ruhe.nor, this.ruhe.kap) : null;
+    this.zeitZerlegen = Date.now() - t0;
   }
 
   /** Lagen beim Anlegen (für die Drehung um die Normale) */
   private readonly pos0: Float64Array;
+  /** Krümmung aus den Loops (null: jeder Punkt behält seine) */
+  readonly feld: KruemmungsFeld | null;
+  /** Krümmung je Punkt aus den Loops in der letzten Runde (NaN: die beim Anlegen; zum Messen) */
+  letzteKruemmung: Float64Array | null = null;
+  /** Krümmung je Punkt beim Anlegen (Maß des Lösers, zum Messen) */
+  get ruheKruemmung(): Float64Array {
+    return this.ruhe.kap;
+  }
 
   /** Anzahl der Punkte, die sich bewegen dürfen */
   get anzahl(): number {
@@ -421,7 +433,8 @@ export class HautZiele {
 
   /**
    * Lagen neu: `iterationen` Runden mit den Zielen (3 Werte je Bindung). Je Punkt: Laplace = Verteilung beim Anlegen (mit der
-   * Normale gedreht, mit den Kanten gestreckt) + Krümmung beim Anlegen, ebenso gestreckt, längs der Normale.
+   * Normale gedreht, mit den Kanten gestreckt) + Krümmung längs der Normale, ebenso gestreckt: mit Ketten die Krümmung, die die
+   * Loops vorgeben (`KruemmungsFeld`), sonst die beim Anlegen.
    */
   schritt(ziele: Float64Array, iterationen = 2): void {
     const h = this.h;
@@ -432,6 +445,8 @@ export class HautZiele {
     const nf = this.frei.length;
     for (let it = 0; it < iterationen; it++) {
       const m = vermessen(h, this.gew);
+      const zKap = this.feld ? this.feld.ziel(ziele, m.nor) : null;
+      this.letzteKruemmung = zKap;
       const rhs = new Float64Array(3 * nf);
       for (const i of this.zeilen) {
         const nb = h.nachbarn[i]!;
@@ -468,7 +483,8 @@ export class HautZiele {
         const s = Math.sqrt(m.kante2[i]! / r.kante2[i]!);
         // wie die Verteilung nur mit der Kante gestreckt (nicht mit ihrem Quadrat): eine gleichmäßig vergrößerte Kugel bleibt so
         // genau eine Kugel; mit Kante² blähte sich die höher gezogene Kugel in der Tiefe auf (150 → 186)
-        const k = r.kap[i]! * r.kante2[i]! * s;
+        const kz = zKap ? zKap[i]! : NaN;
+        const k = (Number.isFinite(kz) ? kz : r.kap[i]!) * r.kante2[i]! * s;
         let dx = s * t[0] + k * m.nor[3 * i]!;
         let dy = s * t[1] + k * m.nor[3 * i + 1]!;
         let dz = s * t[2] + k * m.nor[3 * i + 2]!;

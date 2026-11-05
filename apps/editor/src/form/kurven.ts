@@ -134,6 +134,13 @@ let radius = 90;
 let meldung = '';
 /** nach jedem Zug verdichten (`?verdichten=0` schaltet es zum Vergleich ab) */
 const VERDICHTEN = new URLSearchParams(location.search).get('verdichten') !== '0';
+/** die Krümmung der Haut folgt den Loops (`?kruemmung=0`: jeder Punkt behält seine, zum Vergleich) */
+const KRUEMMUNG = new URLSearchParams(location.search).get('kruemmung') !== '0';
+/**
+ * auch verdichten, wo sich die Fläche stark dreht (`?winkel=1`, Versuch): an einem langen Lappen gemessen schlechter (14 statt 4
+ * umgeschlagene Dreiecke), an einem dicken gleich; deshalb aus
+ */
+const WINKEL = new URLSearchParams(location.search).get('winkel') === '1';
 let letzteVerdichtung: { neu: number; ms: number } | null = null;
 
 type Schnappschuss = { haut: Haut; loops: Loop[]; pos: Float64Array; auswahl: Wahl[]; ids: [number, number] };
@@ -925,7 +932,7 @@ function stueckLoeser(li: number, k: number): LoopZug {
     if (j % 2 === 0) bewegt.push(lageAus(l.ruhe, j));
     for (const v of l.proben[j]!.ecken) ecken.add(v);
   }
-  return new LoopZug(haut, loops, bereichUm(haut, bewegt, r, ecken));
+  return new LoopZug(haut, loops, bereichUm(haut, bewegt, r, ecken), KRUEMMUNG);
 }
 
 /** Verschiebung je Probe eines Loops aus dem Versatz der Griffe von Punkt k (die Punkte bleiben) */
@@ -1006,6 +1013,7 @@ function eckeUmschalten(id: number, i: number): void {
     const d = griffVerschiebung(l, loeser.start[li]!, i, v);
     for (let s = 1; s <= 3; s++) loeser.schritt(loops.map((_, k) => (k === li ? d.map((x) => (x * s) / 3) : null)), RUNDEN_ZUG);
     loeser.schritt(loops.map((_, k) => (k === li ? d : null)), RUNDEN_ENDE);
+    loeser.kruemmungFestlegen(loops);
     for (const x of loops) festlegen(haut, x);
     ausgerichtet = true;
   }
@@ -1101,7 +1109,7 @@ function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spieg
       for (const v of l.proben[j]!.ecken) ecken.add(v);
     }
   });
-  const loeser = new LoopZug(haut, loops, bereichUm(haut, bewegt, r, ecken));
+  const loeser = new LoopZug(haut, loops, bereichUm(haut, bewegt, r, ecken), KRUEMMUNG);
   const pivot = zentren.reduce((s, p) => ({ x: s.x + p.x / zentren.length, y: s.y + p.y / zentren.length, z: s.z + p.z / zentren.length }), { x: 0, y: 0, z: 0 });
   if (ganze.size > 0 && [...ganze].every((li) => loops[li]!.art !== 'paar')) pivot.z = 0;
   zug = {
@@ -1240,6 +1248,8 @@ function zugBewegen(X: number, Y: number): void {
  */
 function zugStufe(z: Zug, X: number, Y: number): void {
   const t0 = performance.now();
+  // die Loops tragen ihre Krümmung weiter (sonst ginge die Änderung dieser Stufe verloren)
+  z.loeser.kruemmungFestlegen(loops);
   for (const l of loops) festlegen(haut, l);
   nachVerdichten();
   zug = null;
@@ -1271,6 +1281,7 @@ function zugEnde(ok: boolean): void {
   }
   if (z.bewegt) {
     z.loeser.schritt(z.versch, RUNDEN_ENDE);
+    z.loeser.kruemmungFestlegen(loops);
     for (const l of loops) festlegen(haut, l);
     kreuzungenSuchen();
     nachVerdichten();
@@ -1283,12 +1294,13 @@ function zugEnde(ok: boolean): void {
 
 /**
  * Nach einem Zug: Wo Kanten länger als 1,75 Kanten des Startnetzes geworden sind (dort ist die Haut gedehnt), wird das Netz feiner,
- * die neuen Punkte liegen rund (`verdichten`). Im unberührten Netz ist keine Kante so lang (Startkugel höchstens 1,67).
+ * die neuen Punkte liegen rund (`verdichten`). Im unberührten Netz ist keine Kante so lang (Startkugel höchstens 1,67). Mit
+ * `?winkel=1` auch, wo sich die Fläche über eine Kante um mehr als 25° dreht (bis ⅓ Startkante; Versuch).
  */
 function nachVerdichten(): void {
   if (!VERDICHTEN) return;
   const t0 = performance.now();
-  const v = verdichten(haut, loops, 1.75 * MK);
+  const v = verdichten(haut, loops, 1.75 * MK, WINKEL ? { winkel: 25, minKante: MK / 3 } : {});
   if (!v) return;
   haut = v.haut;
   loops = v.loops;
@@ -1470,10 +1482,14 @@ function loeschen(): void {
 
 let maus: { a: Ansicht; X: number; Y: number } | null = null;
 
-/** Doppelklick selbst zählen: das Blatt wird beim Drücken neu gezeichnet, `dblclick` kommt dann nicht an */
+/**
+ * Doppelklick selbst zählen: das Blatt wird beim Drücken neu gezeichnet, `dblclick` kommt dann nicht an. Gezählt wird die Zeit des
+ * Ereignisses (`t`), nicht die der Bearbeitung: Der erste Klick startet einen Zug, dessen Löser bis einige Hundert Millisekunden
+ * zerlegt, der zweite käme sonst zu spät an.
+ */
 const letzterKlick = { t: 0, X: 0, Y: 0, was: '' };
-function doppelklick(a: Ansicht, was: string, X: number, Y: number): boolean {
-  const jetzt = performance.now();
+function doppelklick(a: Ansicht, was: string, X: number, Y: number, t: number): boolean {
+  const jetzt = t;
   const ja = was === letzterKlick.was && jetzt - letzterKlick.t < 400 && Math.hypot(X - letzterKlick.X, Y - letzterKlick.Y) * skala(a) < 6;
   Object.assign(letzterKlick, { t: ja ? 0 : jetzt, X, Y, was });
   return ja;
@@ -1518,19 +1534,19 @@ function druecken(a: Ansicht, e: PointerEvent): void {
   const g = ziel.getAttribute('data-g');
   if (g === 'ein' || g === 'aus') {
     // Doppelklick auf einen Griff: sein Punkt Ecke ↔ glatt (an einer Kreuzung liegt oft der Punkt des anderen Loops obenauf)
-    if (doppelklick(a, `g${l}:${i}`, X, Y)) {
+    if (doppelklick(a, `g${l}:${i}`, X, Y, e.timeStamp)) {
       eckeUmschalten(Number(l), i);
       return;
     }
     if (griffZugStarten(a, X, Y, m, loopNr(Number(l)), i, g)) blaetter[a].setPointerCapture(e.pointerId);
     return;
   }
-  if (i < 0 && doppelklick(a, `${l}:${m}`, X, Y)) {
+  if (i < 0 && doppelklick(a, `${l}:${m}`, X, Y, e.timeStamp)) {
     punktAmKlick(a, Number(l), X, Y, m);
     return;
   }
   // Doppelklick oder ⌥-Klick auf einen Punkt: Ecke ↔ glatt
-  if (i >= 0 && (doppelklick(a, `p${l}:${i}`, X, Y) || e.altKey)) {
+  if (i >= 0 && (doppelklick(a, `p${l}:${i}`, X, Y, e.timeStamp) || e.altKey)) {
     eckeUmschalten(Number(l), i);
     return;
   }
