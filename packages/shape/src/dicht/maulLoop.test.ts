@@ -157,9 +157,8 @@ describe('Maul als Loop', () => {
         const runter = m.positionen[3 * vorne + 1]! - o.positionen[3 * vorne + 1]!;
         zeilen.push(`${w}°: offen ${offenK}, umgeschlagen Haut ${umH} / innen ${umI}, Unterlippe ${unten.toExponential(1)}, Oberlippe ${oben.toExponential(1)}, schief ${schief.toExponential(1)}, vorn ${runter.toFixed(1)} runter`);
         expect(offenK).toBe(0);
-        // Bei 55° klappen an der Kugel mit dem Maul vorn ein paar Dreiecke am Kinn um: Dort läuft die Drehung nach dem Abstand von
-        // der Unterlippe aus (wie bei der ersten Probe, `kieferFeld`), auf einer Kugel liegt das mitten im Kinn
-        if (w <= 40) expect(umH).toBe(0);
+        // Vor dem Auslauf nach dem Hebel (`kieferFeld` mit `hebel`) klappten bei 55° am Maul vorn Dreiecke am Kinn um
+        expect(umH).toBe(0);
         expect(umI).toBe(0);
         expect(unten).toBeLessThan(1e-3);
         expect(oben).toBeLessThan(1e-3);

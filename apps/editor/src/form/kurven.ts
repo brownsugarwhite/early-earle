@@ -15,7 +15,11 @@
 // Doppelklick auf einen Griff schaltet seinen Punkt um (an Kreuzungen liegt oft der Punkt des anderen Loops obenauf).
 // Maul (Florian: „Mund = Loop“): eine schmale Form ums Maul (F, vorn über den Umriss oder über die Mitte) wird mit dem Regler „Maul“
 // im 3D-Blatt das Maul. Ihr Inneres ist die Öffnung, ihr fernster Punkt der Mundwinkel ◆; die Lippen bleiben Loops wie die anderen.
-// Geöffnet ist nur die Ansicht (das Netz bleibt geschlossen), die Blätter zeigen den Umriss des offenen Modells und die Zeichnung.
+// Das Netz bleibt geschlossen (die Öffnung wird nicht gezeigt), die Grundform zeigt das Maul zu, so wie es gezeichnet ist.
+// Fressen-Pose (Florian: „in der Pose ganz normal die Bézier-Punkte bearbeiten und den Blendshape erstellen“): Knopf „Fressen“ oder
+// die Regler Maul und Kopf (Unterkiefer und Schädel als Knochen) zeigen die Pose. Darin wirken alle Werkzeuge wie in der Grundform
+// auf das, was zu sehen ist; gespeichert wird der Unterschied zur Grundform vor den Knochen (Blendshape, `poseLoop.ts`). Grundform
+// und Pose haben dasselbe Netz; neue Punkte oder Loops gibt es in beiden, die Grundform ändern sie nicht.
 
 import {
   type Ansicht,
@@ -30,6 +34,7 @@ import {
   bereichUm,
   eckenAuto,
   einfluss,
+  ergaenzen,
   festlegen,
   formAusZeichnung,
   griffeAbbilden,
@@ -42,13 +47,15 @@ import {
   istVektorEcke,
   hautAus,
   hautNormalen,
+  innenPosieren,
   knickWinkel,
+  knochenDrehen,
+  knochenWinkel,
   kreuzungenZwischen,
   kurveAbtasten,
   loopAusSchnitt,
   loopEinsetzen,
   maulAmLoop,
-  maulOeffnen,
   mittlereKante,
   mundwinkelProbe,
   punktEinfuegen,
@@ -80,6 +87,7 @@ import {
   WebGLRenderer,
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import type { V2 } from '@ee/shape';
 import { istTrackpad, radFaktor } from '../viewports/ansicht2d';
 
 /** Auswahl: ein Punkt (i ≥ 0) oder ein ganzer Loop (i = −1), Loop über seine Kennung */
@@ -142,12 +150,17 @@ let modus: 'frei' | 'loop' | 'form' = 'frei';
 let oAn = false;
 let radius = 90;
 let meldung = '';
-/**
- * Das Maul: der Loop, dessen schmale Form die Öffnung ist, und wie weit es offen steht (Grad, nur Ansicht). Der Mundwinkel ist ein
- * Punkt dieses Loops (`mundwinkel`).
- */
-type MaulZustand = { id: number; winkel: number } | null;
+/** Das Maul: der Loop, dessen schmale Form die Öffnung ist. Der Mundwinkel ist ein Punkt dieses Loops (`mundwinkel`). */
+type MaulZustand = { id: number } | null;
 let maul: MaulZustand = null;
+/**
+ * Die Fressen-Pose: Knochen (Grad) und Blendshape, je Punkt der Haut die Verschiebung gegen die Grundform vor den Knochen (null:
+ * keiner), dazu die Krümmung, die jeder Loop in der Pose trägt (nach seiner Kennung).
+ */
+type PoseStand = { kiefer: number; schaedel: number; delta: Float64Array | null; kap: Map<number, { kap: Float64Array; kapS: Float64Array }> };
+let pose: PoseStand = { kiefer: 30, schaedel: 0, delta: null, kap: new Map() };
+/** In der Pose: die Grundform. `haut` und `loops` sind dann die Pose, wie sie zu sehen ist (dasselbe Netz, posierte Lagen). */
+let grund: { haut: Haut; loops: Loop[] } | null = null;
 /** nach jedem Zug verdichten (`?verdichten=0` schaltet es zum Vergleich ab) */
 const VERDICHTEN = new URLSearchParams(location.search).get('verdichten') !== '0';
 /** die Krümmung der Haut folgt den Loops (`?kruemmung=0`: jeder Punkt behält seine, zum Vergleich) */
@@ -159,13 +172,23 @@ const KRUEMMUNG = new URLSearchParams(location.search).get('kruemmung') !== '0';
 const WINKEL = new URLSearchParams(location.search).get('winkel') === '1';
 let letzteVerdichtung: { neu: number; ms: number } | null = null;
 
-type Schnappschuss = { haut: Haut; loops: Loop[]; pos: Float64Array; auswahl: Wahl[]; ids: [number, number]; maul: MaulZustand };
+type Schnappschuss = {
+  haut: Haut;
+  loops: Loop[];
+  pos: Float64Array;
+  auswahl: Wahl[];
+  ids: [number, number];
+  maul: MaulZustand;
+  pose: PoseStand;
+  grund: { haut: Haut; pos: Float64Array; loops: Loop[] } | null;
+};
 const zurueck: Schnappschuss[] = [];
 const kopieLoop = (l: Loop): Loop => ({
   ...l,
   ruhe: Float64Array.from(l.ruhe),
   punkte: l.punkte.map((p) => ({ ...p, ref: { ...p.ref }, cur: { ...p.cur } })),
 });
+const poseKopie = (p: PoseStand): PoseStand => ({ ...p, delta: p.delta ? Float64Array.from(p.delta) : null, kap: new Map(p.kap) });
 const schnappschuss = (): Schnappschuss => ({
   loops: loops.map(kopieLoop),
   haut,
@@ -173,16 +196,24 @@ const schnappschuss = (): Schnappschuss => ({
   auswahl: [...auswahl],
   ids: [naechsteId, naechsteKreuzung],
   maul: maul ? { ...maul } : null,
+  pose: poseKopie(pose),
+  grund: grund ? { haut: grund.haut, pos: Float64Array.from(grund.haut.pos), loops: grund.loops.map(kopieLoop) } : null,
 });
+/** Wiederherstellen samt Ziel: ein Schritt aus der Pose führt in die Pose zurück, einer aus der Grundform in die Grundform */
 function wiederherstellen(s: Schnappschuss): void {
   loops = s.loops;
   haut = s.haut;
   haut.pos.set(s.pos);
+  if (s.grund) {
+    s.grund.haut.pos.set(s.grund.pos);
+    grund = { haut: s.grund.haut, loops: s.grund.loops };
+  } else grund = null;
+  pose = s.pose;
   geometrieNeu();
   auswahl = s.auswahl;
   [naechsteId, naechsteKreuzung] = s.ids;
   maul = s.maul;
-  maulRegler.value = String(maul?.winkel ?? 0);
+  reglerZeigen();
   allesZeigen();
 }
 
@@ -502,10 +533,15 @@ function ausschnittGeaendert(a: Ansicht): void {
 
 const maulRegler = document.getElementById('maul-oeffnung') as HTMLInputElement;
 maulRegler.max = String(MAUL_WINKEL_MAX);
-/** zuletzt geschnittenes Maul: gilt für diese Haut, diese Kette und diesen Mundwinkel, bei dieser Lage der Haut (`fp`) */
+const kopfRegler = document.getElementById('kopf-oeffnung') as HTMLInputElement;
+const knopfPose = document.getElementById('knopf-pose') as HTMLButtonElement;
+/** zuletzt geschnittenes Maul der Grundform: gilt für diese Haut, diese Kette und diesen Mundwinkel, bei dieser Lage der Haut (`fp`) */
 let maulStand: { haut: Haut; proben: Loop['proben']; ecke: number; fp: number; m: MaulAmLoop } | null = null;
-/** das Maul, geöffnet (Lagen und Normalen je Punkt der Haut, Inneres), zum Zeigen */
-let maulOffen: { m: MaulAmLoop; positionen: Float32Array; normalen: Float32Array; innenPositionen: Float32Array; innenNormalen: Float32Array } | null = null;
+/**
+ * Das Maul, wie es gezeigt wird: der Schnitt der Grundform (Öffnung, Gewichte) und das Innere — in der Grundform zu, in der Pose aus
+ * der Ruhe der Pose geschnitten und mit den Knochen gedreht.
+ */
+let maulGezeigt: { m: MaulAmLoop; innenPositionen: Float32Array; innenNormalen: Float32Array; innenIndizes: Uint32Array } | null = null;
 let maulIndex: { aus: Uint32Array; offen: Uint8Array; index: Uint32Array } | null = null;
 
 /** Fingerabdruck der Lagen: ändert sich die Haut, wird das Maul neu geschnitten */
@@ -532,21 +568,24 @@ function mundwinkelVon(l: Loop): number {
 }
 
 /**
- * Das Maul zur Haut, wie sie jetzt ist. Neu geschnitten wird nur, wenn sich Haut, Kette, Mundwinkel oder Lagen geändert haben; im
- * Zug gelten die Gewichte der Drehung vom Anfang weiter (nur Lagen und Inneres neu), danach wird ganz neu geschnitten.
+ * Der Maulschnitt der Grundform (in der Pose die gemerkte Grundform): Öffnung und Gewichte der Knochen. Neu geschnitten wird nur,
+ * wenn sich Haut, Kette, Mundwinkel oder Lagen geändert haben; in einem Zug in der Grundform gelten die Gewichte vom Anfang weiter
+ * (nur Lagen und Inneres neu), danach wird ganz neu geschnitten.
  */
-function maulAktuell(nor: Float64Array): MaulAmLoop | null {
+function maulAktuell(): MaulAmLoop | null {
   if (!maul) return null;
-  const l = loops[loopNr(maul.id)];
+  const id = maul.id;
+  const h = grund ? grund.haut : haut;
+  const l = (grund ? grund.loops : loops).find((x) => x.id === id);
   if (!l || l.art !== 'ring') return null;
   const ecke = mundwinkelVon(l);
-  const fp = fingerabdruck(haut.pos);
+  const fp = fingerabdruck(h.pos);
   const st = maulStand;
-  const gleich = st !== null && st.haut === haut && st.proben === l.proben && st.ecke === ecke;
+  const gleich = st !== null && st.haut === h && st.proben === l.proben && st.ecke === ecke;
   if (gleich && st.fp === fp) return st.m;
-  const imZug = gleich && zug !== null;
-  const m = maulAmLoop(haut, l, ecke, { zelle: MK / 2, normalen: nor, wieVorher: imZug ? st.m : null });
-  maulStand = m ? { haut, proben: l.proben, ecke, fp: imZug ? st.fp : fp, m } : null;
+  const imZug = gleich && zug !== null && !grund;
+  const m = maulAmLoop(h, l, ecke, { zelle: MK / 2, wieVorher: imZug ? st.m : null });
+  maulStand = m ? { haut: h, proben: l.proben, ecke, fp: imZug ? st.fp : fp, m } : null;
   return m;
 }
 
@@ -562,13 +601,13 @@ function indexOhneOeffnung(offen: Uint8Array): Uint32Array {
 
 /** Inneres zeigen (oder verstecken) */
 function innenZeigen(): void {
-  const o = maulOffen;
+  const o = maulGezeigt;
   maulInnen.visible = o !== null;
   if (!o) return;
   const g = new BufferGeometry();
   g.setAttribute('position', new BufferAttribute(o.innenPositionen, 3));
   g.setAttribute('normal', new BufferAttribute(o.innenNormalen, 3));
-  g.setIndex(new BufferAttribute(o.m.innen.indizes, 1));
+  g.setIndex(new BufferAttribute(o.innenIndizes, 1));
   g.computeBoundingSphere();
   maulInnen.geometry.dispose();
   maulInnen.geometry = g;
@@ -591,50 +630,199 @@ function maulAnlegen(): boolean {
   const p = l.punkte.find((q) => Math.abs(q.s - s) < MK) ?? punktEinfuegen(l, s);
   p.mundwinkel = true;
   if (p.ecke === undefined) p.ecke = true;
-  maul = { id: l.id, winkel: 0 };
+  maul = { id: l.id };
   meldung = '';
   return true;
 }
 
-let vorRegler: Schnappschuss | null = null;
-maulRegler.addEventListener('pointerdown', () => {
-  vorRegler = schnappschuss();
-});
-maulRegler.addEventListener('input', () => {
-  if (!maulAnlegen()) {
-    maulRegler.value = '0';
-    statusZeigen();
-    return;
+// ---------- Fressen-Pose ----------
+
+/** Krümmung, die ein Loop trägt, setzen oder löschen */
+function kapSetzen(l: Loop, k: { kap?: Float64Array | undefined; kapS?: Float64Array | undefined } | undefined): void {
+  if (k?.kap && k.kapS) {
+    l.kap = k.kap;
+    l.kapS = k.kapS;
+  } else {
+    delete l.kap;
+    delete l.kapS;
   }
-  maul!.winkel = Number(maulRegler.value);
-  hautZeigen(true);
-  baenderZeigen();
-  statusZeigen();
-});
-maulRegler.addEventListener('change', () => {
-  if (vorRegler && JSON.stringify(vorRegler.maul) !== JSON.stringify(maul)) zurueck.push(vorRegler);
-  vorRegler = null;
+}
+
+/**
+ * Knochen der Pose: der Maulschnitt der Grundform (seine Gewichte), der Drehwinkel je Punkt und das Gelenk. Das Gelenk ist der
+ * Mundwinkel, wie er jetzt liegt (er dreht selbst nicht mit: in der Pose liegt er dort, wo in ihrer Ruhe).
+ */
+function poseKnochen(): { m: MaulAmLoop; theta: Float64Array; G: V2; l: Loop; ecke: number } | null {
+  const m = maulAktuell();
+  if (!m || !maul) return null;
+  const l = loops[loopNr(maul.id)];
+  if (!l) return null;
+  const ecke = mundwinkelVon(l);
+  const v = l.proben[ecke]!.ecken[0];
+  return { m, theta: knochenWinkel(m, pose), G: { x: haut.pos[3 * v]!, y: haut.pos[3 * v + 1]! }, l, ecke };
+}
+
+/**
+ * In die Pose: Die Grundform wird gemerkt; gezeigt und bearbeitet wird die Pose, wie sie zu sehen ist (Grundform + Blendshape, mit
+ * den Knochen gedreht). Die Loops sind Kopien mit derselben Kette, ihre Krümmung ist die der Pose.
+ */
+function poseBetreten(): boolean {
+  if (grund) return true;
+  if (!maulAnlegen()) return false;
+  const m = maulAktuell();
+  const l = maul ? loops[loopNr(maul.id)] : undefined;
+  if (!m || !l) {
+    meldung = 'Das Maul schneidet nicht (ist die Form als Kette ins Netz eingesetzt?)';
+    return false;
+  }
+  const v = l.proben[mundwinkelVon(l)]!.ecken[0];
+  const d = pose.delta && pose.delta.length === haut.pos.length ? pose.delta : null;
+  const ruhe = d ? Float64Array.from(haut.pos, (x, i) => x + d[i]!) : Float64Array.from(haut.pos);
+  const g = { haut, loops };
+  grund = g;
+  haut = { ...g.haut, pos: knochenDrehen(ruhe, knochenWinkel(m, pose), { x: ruhe[3 * v]!, y: ruhe[3 * v + 1]! }) };
+  loops = g.loops.map((x) => {
+    const c = kopieLoop(x);
+    kapSetzen(c, pose.kap.get(x.id) ?? x);
+    festlegen(haut, c);
+    return c;
+  });
+  geometrieNeu();
+  meldung = '';
+  return true;
+}
+
+/** Nach einem Schritt in der Pose: Blendshape (zurückgedreht minus Grundform) und die Krümmung der Loops merken */
+function poseSichern(): void {
+  if (!grund) return;
+  const k = poseKnochen();
+  if (!k) return;
+  const ruhe = knochenDrehen(haut.pos, k.theta, k.G, true);
+  const d = new Float64Array(ruhe.length);
+  for (let i = 0; i < d.length; i++) d[i] = ruhe[i]! - grund.haut.pos[i]!;
+  pose.delta = d;
+  pose.kap = new Map(loops.filter((l) => l.kap && l.kapS).map((l) => [l.id, { kap: l.kap!, kapS: l.kapS! }]));
+}
+
+/** Loops der Grundform aus denen der Pose: dieselbe Kette und dieselben Punkte, Lagen und Krümmung der Grundform */
+function grundLoopsAus(h: Haut, alt: readonly Loop[]): Loop[] {
+  const vorher = new Map(alt.map((l) => [l.id, l]));
+  return loops.map((l) => {
+    const c = kopieLoop(l);
+    kapSetzen(c, vorher.get(l.id));
+    festlegen(h, c);
+    return c;
+  });
+}
+
+/** Zurück in die Grundform: Was in der Pose an Punkten, Ecken, Härte oder Loops dazukam, gilt dort auch (die Form bleibt). */
+function poseVerlassen(): void {
+  if (!grund) return;
+  poseSichern();
+  const basis = grund.haut;
+  loops = grundLoopsAus(basis, grund.loops);
+  haut = basis;
+  grund = null;
+  geometrieNeu();
+}
+
+/**
+ * Das Netz ist gewachsen (verdichtet, Loop eingesetzt; neue Punkte ab `nAlt`): In der Pose bekommt die Grundform dieselben Punkte —
+ * die alten bleiben, wo sie sind, die neuen liegen dort, wo sie in der Pose liegen, zurückgedreht und um den Blendshape ihrer
+ * Nachbarn verschoben. In der Grundform bekommt der Blendshape Werte für die neuen Punkte. `vorher`: Knochen vor dem Wachsen.
+ */
+function netzGewachsen(nAlt: number, vorher: { theta: Float64Array; G: V2 } | null): void {
+  const g = grund;
+  if (g && vorher) {
+    const theta = ergaenzen(haut, vorher.theta, nAlt, 1);
+    const ruhe = knochenDrehen(haut.pos, theta, vorher.G, true);
+    const dAlt = new Float64Array(3 * nAlt);
+    for (let i = 0; i < dAlt.length; i++) dAlt[i] = ruhe[i]! - g.haut.pos[i]!;
+    const d = ergaenzen(haut, dAlt, nAlt, 3, true);
+    const basis = Float64Array.from(ruhe, (x, i) => x - d[i]!);
+    const gh: Haut = { pos: basis, tri: haut.tri, n: haut.n, nachbarn: haut.nachbarn, spiegel: haut.spiegel };
+    grund = { haut: gh, loops: grundLoopsAus(gh, g.loops) };
+    pose.delta = d;
+    // die Gewichte gelten für das neue Netz (neu geschnitten); die Pose daraus neu gedreht
+    const k = poseKnochen();
+    if (k) haut.pos.set(knochenDrehen(ruhe, k.theta, k.G));
+    for (const l of loops) festlegen(haut, l);
+  } else if (pose.delta && pose.delta.length === 3 * nAlt) pose.delta = ergaenzen(haut, pose.delta, nAlt, 3, true);
+}
+
+/** Knochen setzen (Grad); in die Pose, falls nötig. Die Ruhe der Pose bleibt, die Pose wird neu gedreht. */
+function knochenSetzen(kiefer: number, schaedel: number): boolean {
+  if (!poseBetreten()) return false;
+  const vor = poseKnochen();
+  if (!vor) return false;
+  const ruhe = knochenDrehen(haut.pos, vor.theta, vor.G, true);
+  pose.kiefer = kiefer;
+  pose.schaedel = schaedel;
+  haut.pos.set(knochenDrehen(ruhe, knochenWinkel(vor.m, pose), vor.G));
+  for (const l of loops) festlegen(haut, l);
+  return true;
+}
+
+/** Regler und Knopf nach dem Stand der Pose */
+function reglerZeigen(): void {
+  maulRegler.value = String(pose.kiefer);
+  kopfRegler.value = String(pose.schaedel);
+  knopfPose.setAttribute('aria-pressed', String(grund !== null));
+}
+
+let vorRegler: Schnappschuss | null = null;
+for (const r of [maulRegler, kopfRegler]) {
+  r.addEventListener('pointerdown', () => {
+    vorRegler = schnappschuss();
+  });
+  r.addEventListener('input', () => {
+    vorRegler ??= schnappschuss();
+    if (!knochenSetzen(Number(maulRegler.value), Number(kopfRegler.value))) {
+      reglerZeigen();
+      statusZeigen();
+      return;
+    }
+    reglerZeigen();
+    hautZeigen();
+    baenderZeigen();
+    for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
+    statusZeigen();
+  });
+  r.addEventListener('change', () => {
+    const v = vorRegler;
+    vorRegler = null;
+    const anders = v && (v.pose.kiefer !== pose.kiefer || v.pose.schaedel !== pose.schaedel || (v.grund === null) !== (grund === null) || JSON.stringify(v.maul) !== JSON.stringify(maul));
+    if (v && anders) zurueck.push(v);
+    allesZeigen();
+  });
+}
+knopfPose.addEventListener('click', () => {
+  if (zug) return;
+  if (grund) poseVerlassen();
+  else poseBetreten();
+  reglerZeigen();
   allesZeigen();
 });
 
-/** `nurWinkel`: nur die Öffnung hat sich geändert (das Maul wird nicht neu geschnitten) */
-function hautZeigen(nurWinkel = false): void {
-  const norRuhe = hautNormalen(haut);
-  const m = nurWinkel && maulStand ? maulStand.m : maulAktuell(norRuhe);
+function hautZeigen(): void {
+  const m = maulAktuell();
+  maulGezeigt = null;
   if (m && maul) {
-    maulOffen = {
-      m,
-      positionen: new Float32Array(m.positionen.length),
-      normalen: new Float32Array(m.normalen.length),
-      innenPositionen: new Float32Array(m.innen.positionen.length),
-      innenNormalen: new Float32Array(m.innen.normalen.length),
-    };
-    maulOeffnen(m, maul.winkel, maulOffen);
-  } else maulOffen = null;
+    if (grund) {
+      // das Innere aus der Ruhe der Pose geschnitten (die Gewichte der Grundform gelten weiter), dann mit den Knochen gedreht
+      const k = poseKnochen();
+      const mr = k ? maulAmLoop({ ...haut, pos: knochenDrehen(haut.pos, k.theta, k.G, true) }, k.l, k.ecke, { zelle: MK / 2, wieVorher: m }) : null;
+      if (mr) {
+        mr.drehsinn = m.drehsinn;
+        const innen = innenPosieren(mr, pose);
+        maulGezeigt = { m, innenPositionen: innen.positionen, innenNormalen: innen.normalen, innenIndizes: mr.innen.indizes };
+      }
+    } else maulGezeigt = { m, innenPositionen: m.innen.positionen, innenNormalen: m.innen.normalen, innenIndizes: m.innen.indizes };
+  }
   innenZeigen();
-  const nor: ArrayLike<number> = maulOffen ? maulOffen.normalen : norRuhe;
-  const P: ArrayLike<number> = maulOffen ? maulOffen.positionen : haut.pos;
-  const I = maulOffen ? indexOhneOeffnung(maulOffen.m.offen) : anzeigeIndex;
+  const nor = hautNormalen(haut);
+  const P = haut.pos;
+  const I = maulGezeigt ? indexOhneOeffnung(maulGezeigt.m.offen) : anzeigeIndex;
   if (hautGeometrie.index?.array !== I) hautGeometrie.setIndex(new BufferAttribute(I, 1));
   const N = anzeigeQuelle.length;
   // Normale je gezeigtem Punkt aus seinen Dreiecken (bei doppelten nur die seiner Seite), nach der Härte gemischt
@@ -733,28 +921,15 @@ function linienVon(l: Loop, L: Float64Array): V3[][] {
 
 const aktuelleLagen = (): Float64Array[] => (zug ? zug.lagen : loops.map((l) => l.ruhe));
 
-/** Lage einer Probe zum Zeigen: bei offenem Maul gedreht wie die Haut; `sp`: Spiegelhälfte bzw. Zwilling */
-function zeigeLage(l: Loop, L: Float64Array, i: number, sp: boolean): V3 {
+/** Lage einer Probe zum Zeigen (Grundform und Pose liegen so, wie sie zu sehen sind); `sp`: Spiegelhälfte bzw. Zwilling */
+function zeigeLage(L: Float64Array, i: number, sp: boolean): V3 {
   const p = lageAus(L, i);
-  const q = sp ? spiegeln(p) : p;
-  const o = maulOffen;
-  if (!o || !maul) return q;
-  const pr = l.proben[i]!;
-  if (pr.ecken[0] === pr.ecken[1] && pr.ecken[1] === pr.ecken[2]) {
-    const v = sp ? haut.spiegel[pr.ecken[0]]! : pr.ecken[0];
-    if (v >= 0) return { x: o.positionen[3 * v]!, y: o.positionen[3 * v + 1]!, z: o.positionen[3 * v + 2]! };
-  }
-  // eine Probe im Dreieck: um den Mundwinkel gedreht nach dem Gewicht an ihrer Stelle
-  const w = o.m.gewichtBei(q.x, q.y);
-  const a = (o.m.drehsinn * Math.min(MAUL_WINKEL_MAX, maul.winkel) * Math.PI * w) / 180;
-  const dx = q.x - o.m.gelenk.x;
-  const dy = q.y - o.m.gelenk.y;
-  return { x: o.m.gelenk.x + Math.cos(a) * dx - Math.sin(a) * dy, y: o.m.gelenk.y + Math.sin(a) * dx + Math.cos(a) * dy, z: q.z };
+  return sp ? spiegeln(p) : p;
 }
 
 /** Liegt die Strecke zwischen zwei Proben in der Öffnung des Mauls (dann wird sie nicht gezeigt)? */
 function streckeOffen(l: Loop, j: number, k: number, sp: boolean): boolean {
-  const o = maulOffen;
+  const o = maulGezeigt;
   if (!o) return false;
   const a = l.proben[j]!;
   const b = l.proben[k]!;
@@ -780,7 +955,7 @@ function baenderZeigen(): void {
     const n = l.proben.length;
     // Ring: gespeicherte Hälfte und Spiegelhälfte, Paar: Loop und Zwilling, Mitte geschlossen
     for (const sp of l.art === 'mitte' ? [false] : [false, true]) {
-      const pkt = Array.from({ length: n }, (_, i) => zeigeLage(l, L, i, sp));
+      const pkt = Array.from({ length: n }, (_, i) => zeigeLage(L, i, sp));
       let lauf: V3[] = [];
       const schluss = () => {
         if (lauf.length > 1) ziel.push({ p: lauf, breite: gew ? 3 : 2 });
@@ -991,8 +1166,9 @@ function blattZeichnen(a: Ansicht): void {
 function allesZeigen(): void {
   // ist der Loop des Mauls gelöscht, ist auch das Maul weg
   if (maul && loopNr(maul.id) < 0) {
+    poseVerlassen();
     maul = null;
-    maulRegler.value = '0';
+    reglerZeigen();
   }
   // Ecken an Kreuzungen mit harten Loops folgen der Härte und den Kreuzungen
   eckenAuto(loops);
@@ -1021,7 +1197,7 @@ function statusZeigen(): void {
     `${loops.length} Loops · ${punkte} Punkte (${kreuz} Kreuzungen) · Zug ${ms.toFixed(1)} ms · zerlegen ${letzteZerlegung} ms · ` +
       `Bereich ${letzterBereich} von ${haut.n}` +
       (letzteVerdichtung ? ` · verdichtet +${letzteVerdichtung.neu} (${letzteVerdichtung.ms} ms)` : '') +
-      (maul ? (maulOffen ? ` · Maul ${maul.winkel}°` : ' · Maul: Loop schneidet nicht (als Kette eingesetzt?)') : '');
+      (maul ? (!maulGezeigt ? ' · Maul: Loop schneidet nicht (als Kette eingesetzt?)' : grund ? ` · Fressen: Maul ${pose.kiefer}°, Kopf ${pose.schaedel}°` : ' · Grundform') : '');
 }
 
 // ---------- Ziehen und G/S/R ----------
@@ -1128,6 +1304,47 @@ function stueckUm(l: Loop, k: number, mark: Uint8Array): number {
   return 0.5 * Math.max(abstand(P[k]!.ref, vor), abstand(P[k]!.ref, nach));
 }
 
+/**
+ * Haut für den Löser: in der Pose ohne die Öffnung des Mauls (dieselben Lagen, dieselbe Spiegelung). Die verborgene Fläche der
+ * Öffnung überspannt in der Pose das offene Maul und klappt um, wo sich die Lippen weit trennen; mit ihr schaukelte sich der Löser
+ * bei einem Maul aus der Front auf (gemessen: ein Punkt 10 000 Einheiten weit). `aus`: Punkte nur in der Öffnung (bleiben stehen).
+ */
+let loeserHautStand: { haut: Haut; offen: Uint8Array; h: Haut; aus: Uint8Array } | null = null;
+function loeserHaut(): { h: Haut; aus: Uint8Array | null } {
+  const m = grund ? maulAktuell() : null;
+  if (!m || m.offen.length !== haut.tri.length / 3) return { h: haut, aus: null };
+  const st = loeserHautStand;
+  if (st && st.haut === haut && st.offen === m.offen) return { h: { ...st.h, pos: haut.pos }, aus: st.aus };
+  const tri: number[] = [];
+  for (let t = 0; t < haut.tri.length / 3; t++) if (!m.offen[t]) tri.push(haut.tri[3 * t]!, haut.tri[3 * t + 1]!, haut.tri[3 * t + 2]!);
+  const nachbarn: number[][] = Array.from({ length: haut.n }, () => []);
+  const aus = new Uint8Array(haut.n).fill(1);
+  for (let t = 0; t < tri.length; t += 3) {
+    for (let e = 0; e < 3; e++) {
+      const a = tri[t + e]!;
+      const b = tri[t + ((e + 1) % 3)]!;
+      aus[a] = 0;
+      if (!nachbarn[a]!.includes(b)) nachbarn[a]!.push(b);
+      if (!nachbarn[b]!.includes(a)) nachbarn[b]!.push(a);
+    }
+  }
+  const h: Haut = { pos: haut.pos, tri: Uint32Array.from(tri), n: haut.n, nachbarn, spiegel: haut.spiegel };
+  loeserHautStand = { haut, offen: m.offen, h, aus };
+  return { h, aus };
+}
+
+/**
+ * Löser eines Zugs: Einflussbereich um die bewegten Stellen (Radius r) samt den Ecken ihrer Proben. In der Pose behält jeder Punkt
+ * seine Krümmung (die Krümmung, die die Loops tragen, gilt für die geschlossene Grundform; am Rand der Öffnung passt sie nicht, die
+ * Haut unter einem Maul aus der Front verknitterte, gemessen: ein Punkt 146 Einheiten weit, 16 Dreiecke umgeklappt).
+ */
+function loeserFuer(bewegt: readonly V3[], r: number, ecken: Iterable<number>): LoopZug {
+  const { h, aus } = loeserHaut();
+  const bereich = bereichUm(h, bewegt, r, ecken);
+  if (aus) for (let v = 0; v < h.n; v++) if (aus[v]) bereich[v] = 0;
+  return new LoopZug(h, loops, bereich, KRUEMMUNG && !grund);
+}
+
 /** Löser für die Stücke um Punkt k des Loops li (Griff ziehen oder ausrichten) */
 function stueckLoeser(li: number, k: number): LoopZug {
   const l = loops[li]!;
@@ -1140,7 +1357,7 @@ function stueckLoeser(li: number, k: number): LoopZug {
     if (j % 2 === 0) bewegt.push(lageAus(l.ruhe, j));
     for (const v of l.proben[j]!.ecken) ecken.add(v);
   }
-  return new LoopZug(haut, loops, bereichUm(haut, bewegt, r, ecken), KRUEMMUNG);
+  return loeserFuer(bewegt, r, ecken);
 }
 
 /** Verschiebung je Probe eines Loops aus dem Versatz der Griffe von Punkt k (die Punkte bleiben) */
@@ -1253,7 +1470,10 @@ function eckeUmschalten(id: number, i: number): void {
       ausgerichtet = true;
     }
   }
-  if (ausgerichtet) kreuzungenSuchen();
+  if (ausgerichtet) {
+    kreuzungenSuchen();
+    poseSichern();
+  }
   zurueck.push(vorher);
   auswahl = [{ l: id, i }];
   meldung = neu ? 'Ecke: die Linie darf hier knicken' : ausgerichtet ? 'glatt: Griffe auf einer Geraden' : 'glatt';
@@ -1345,7 +1565,7 @@ function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spieg
       for (const v of l.proben[j]!.ecken) ecken.add(v);
     }
   });
-  const loeser = new LoopZug(haut, loops, bereichUm(haut, bewegt, r, ecken), KRUEMMUNG);
+  const loeser = loeserFuer(bewegt, r, ecken);
   const pivot = zentren.reduce((s, p) => ({ x: s.x + p.x / zentren.length, y: s.y + p.y / zentren.length, z: s.z + p.z / zentren.length }), { x: 0, y: 0, z: 0 });
   if (ganze.size > 0 && [...ganze].every((li) => loops[li]!.art !== 'paar')) pivot.z = 0;
   zug = {
@@ -1522,6 +1742,7 @@ function zugEnde(ok: boolean): void {
     for (const l of loops) festlegen(haut, l);
     kreuzungenSuchen();
     nachVerdichten();
+    poseSichern();
     zurueck.push(z.vorher);
   } else {
     for (const l of loops) for (const p of l.punkte) p.cur = { ...p.ref };
@@ -1537,10 +1758,16 @@ function zugEnde(ok: boolean): void {
 function nachVerdichten(): void {
   if (!VERDICHTEN) return;
   const t0 = performance.now();
-  const v = verdichten(haut, loops, 1.75 * MK, WINKEL ? { winkel: 25, minKante: MK / 3 } : {});
+  const vorher = grund ? poseKnochen() : null;
+  const nAlt = haut.n;
+  // die Öffnung des Mauls wird nicht gezeigt und nicht verdichtet (in der Pose überspannt sie das offene Maul)
+  const m = maulAktuell();
+  const verborgen = m && m.offen.length === haut.tri.length / 3 ? m.offen : null;
+  const v = verdichten(haut, loops, 1.75 * MK, WINKEL ? { winkel: 25, minKante: MK / 3, verborgen } : { verborgen });
   if (!v) return;
   haut = v.haut;
   loops = v.loops;
+  netzGewachsen(nAlt, vorher);
   geometrieNeu();
   letzteVerdichtung = { neu: v.neu, ms: Math.round(performance.now() - t0) };
 }
@@ -1569,10 +1796,13 @@ function loopSchneiden(a: Ansicht, A: [number, number], B: [number, number]): vo
  * Weg nicht auf, bleibt er auf der Haut liegen.
  */
 function einsetzenLetzten(): void {
+  const vorher = grund ? poseKnochen() : null;
+  const nAlt = haut.n;
   const r = loopEinsetzen(haut, loops, loops.length - 1);
   if (r) {
     haut = r.haut;
     loops = r.loops;
+    netzGewachsen(nAlt, vorher);
     geometrieNeu();
     meldung = '';
   } else meldung = 'Loop liegt nur auf der Haut (nicht ins Netz eingesetzt): Härte wirkt dort kaum';
@@ -1870,6 +2100,10 @@ window.addEventListener('pointermove', (e) => {
   zugBewegen(X, Y);
 });
 
+// Knöpfe und Regler im 3D-Blatt: Die Kamerasteuerung des Blatts fängt sonst den Zeiger (der Klick kam nie am Knopf an)
+const reglerLeiste = document.querySelector('.regler-leiste');
+for (const art of ['pointerdown', 'wheel'] as const) reglerLeiste?.addEventListener(art, (e) => e.stopPropagation());
+
 knopfLoop.addEventListener('click', () => {
   modus = modus === 'loop' ? 'frei' : 'loop';
   allesZeigen();
@@ -1994,6 +2228,7 @@ window.addEventListener('resize', () => {
   allesZeigen();
 });
 
+reglerZeigen();
 allesZeigen();
 schleife();
 
@@ -2065,8 +2300,9 @@ schleife();
   },
   /** das Maul: Loop, Öffnung, Dreiecke der Öffnung und des Inneren, umgeschlagene Dreiecke und offene Kanten wie gezeigt */
   maul: (orte = false) => {
-    const o = maulOffen;
-    if (!maul || !o) return maul ? { ...maul, geschnitten: false } : null;
+    const g = maulGezeigt;
+    if (!maul || !g) return maul ? { ...maul, geschnitten: false } : null;
+    const o = { m: g.m, positionen: Float32Array.from(haut.pos), innenPositionen: g.innenPositionen };
     const wo: number[][] = [];
     const umg = (P: Float32Array, I: Uint32Array, ruhe: Float32Array): number => {
       const vn = new Float64Array(P.length);
@@ -2089,16 +2325,30 @@ schleife();
       }
       return z;
     };
-    // Kanten mit mehr oder weniger als zwei Dreiecken (Haut und Inneres, Punkte nach Lage zusammengefasst)
-    const id = new Map<string, number>();
+    // Kanten mit mehr oder weniger als zwei Dreiecken (Haut und Inneres). Punkte innerhalb eines Hundertstels gelten als einer: Die
+    // Haut wird in Float64 gedreht, das Innere in Float32, gerundet fielen gleiche Punkte an Rundungsgrenzen auseinander
+    const zellen = new Map<string, { x: number; y: number; z: number; id: number }[]>();
+    let ids = 0;
+    const nr = (x: number, y: number, z: number): number => {
+      const cx = Math.floor(x / 0.05);
+      const cy = Math.floor(y / 0.05);
+      const cz = Math.floor(z / 0.05);
+      for (let a = -1; a <= 1; a++)
+        for (let b = -1; b <= 1; b++)
+          for (let c = -1; c <= 1; c++)
+            for (const q of zellen.get(`${cx + a},${cy + b},${cz + c}`) ?? []) if (Math.hypot(q.x - x, q.y - y, q.z - z) < 0.01) return q.id;
+      const k = `${cx},${cy},${cz}`;
+      const liste = zellen.get(k) ?? [];
+      zellen.set(k, liste);
+      liste.push({ x, y, z, id: ids });
+      return ids++;
+    };
     const zahl = new Map<string, number>();
     const dazu = (P: Float32Array, I: Uint32Array) => {
       for (let i = 0; i < I.length; i += 3) {
         const e = [0, 1, 2].map((k) => {
           const v = I[i + k]!;
-          const key = `${Math.round(P[3 * v]! * 1e4)},${Math.round(P[3 * v + 1]! * 1e4)},${Math.round(P[3 * v + 2]! * 1e4)}`;
-          if (!id.has(key)) id.set(key, id.size);
-          return id.get(key)!;
+          return nr(P[3 * v]!, P[3 * v + 1]!, P[3 * v + 2]!);
         });
         for (let k = 0; k < 3; k++) {
           const a = Math.min(e[k]!, e[(k + 1) % 3]!);
@@ -2108,14 +2358,14 @@ schleife();
       }
     };
     dazu(o.positionen, o.m.indizes);
-    dazu(o.innenPositionen, o.m.innen.indizes);
+    dazu(o.innenPositionen, g.innenIndizes);
     return {
       ...maul,
       geschnitten: true,
       oeffnung: o.m.offen.reduce((a, b) => a + b, 0),
-      innen: o.m.innen.indizes.length / 3,
+      innen: g.innenIndizes.length / 3,
       umgeschlagenHaut: umg(o.positionen, o.m.indizes, o.m.positionen),
-      umgeschlagenInnen: umg(o.innenPositionen, o.m.innen.indizes, o.m.innen.positionen),
+      umgeschlagenInnen: umg(o.innenPositionen, g.innenIndizes, o.innenPositionen),
       offeneKanten: [...zahl.values()].filter((z) => z !== 2).length,
       gelenk: o.m.gelenk,
       ...(orte ? { umgeschlagenWo: wo } : {}),
@@ -2123,6 +2373,15 @@ schleife();
   },
   zeiten: () => ({ zug: [...zeiten], zerlegen: letzteZerlegung, bereich: letzterBereich, verdichtung: letzteVerdichtung, punkte: haut.n, stufen: zugStufen, stufeMs: letzteStufeMs }),
   lagen: () => Array.from(haut.pos),
+  /** Lagen der Grundform (in der Pose die gemerkte) */
+  grundLagen: () => Array.from((grund ? grund.haut : haut).pos),
+  /** Stand der Pose: an, Knochen, größte Verschiebung des Blendshapes */
+  pose: () => {
+    let max = 0;
+    const d = pose.delta;
+    if (d) for (let i = 0; i < d.length; i += 3) max = Math.max(max, Math.hypot(d[i]!, d[i + 1]!, d[i + 2]!));
+    return { an: grund !== null, kiefer: pose.kiefer, schaedel: pose.schaedel, blendshape: max, punkte: haut.n };
+  },
   dreiecke: () => Array.from(haut.tri),
   meldung: () => meldung,
   bild: (a: Ansicht, p: V3): { x: number; y: number } => {

@@ -13,7 +13,7 @@ import type { V2 } from '../bezier';
 import { kieferFeld, lippeAus } from './kiefer';
 import { type Haut, type V3, hautNormalen } from './kurven';
 import type { Loop } from './loops';
-import type { MaulSchnitt } from './maul';
+import { MAUL_WINKEL_MAX, type MaulSchnitt } from './maul';
 import { flaechenNormale, konturAusNetz } from './maulGrund';
 import { tiefeAusKontur } from './raumlinien';
 import type { UmrissPunkt } from './umriss';
@@ -186,8 +186,10 @@ export function maulAmLoop(
 
   // ---------- Gewicht der Drehung ----------
   const tmp: [number, number, number] = [0, 0, 0];
-  const unterFeld = alt ? null : kieferFeld(LD, M, kontur, zelle, true);
-  const schaedelFeld = alt ? null : kieferFeld(LU, M, kontur, zelle, false);
+  // der Auslauf nach dem Abstand vom Mundwinkel (`hebel`): sonst knickte die Haut, wo der Kiefer weit vom Gelenk endet
+  const hebel = (MAUL_WINKEL_MAX * Math.PI) / 180;
+  const unterFeld = alt ? null : kieferFeld(LD, M, kontur, zelle, true, hebel);
+  const schaedelFeld = alt ? null : kieferFeld(LU, M, kontur, zelle, false, hebel);
   const gewicht = alt ? alt.gewicht : new Float32Array(n);
   const gradient = alt ? alt.gradient : new Float32Array(2 * n);
   const gewichtOben = alt ? alt.gewichtOben : new Float32Array(n);

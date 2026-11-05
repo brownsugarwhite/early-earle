@@ -16,7 +16,7 @@ const KEY = 2 ** 22;
 const schluessel = (a: number, b: number): number => (a < b ? a * KEY + b : b * KEY + a);
 const punktProbe = (w: number): Probe => ({ ecken: [w, w, w], b: [1, 0, 0] });
 
-export type Verdichtet = { haut: Haut; loops: Loop[]; neu: number; gedreht: number };
+export type Verdichtet = { haut: Haut; loops: Loop[]; neu: number; gedreht: number; verborgen: Uint8Array | null };
 
 /**
  * Teilt alle Kanten länger als `maxKante` (spiegelgleich, höchstens `runden` Durchgänge), dreht danach Kanten zur Wertigkeit 6 und
@@ -26,17 +26,22 @@ export type Verdichtet = { haut: Haut; loops: Loop[]; neu: number; gedreht: numb
  * Enden, an harten Loops die Normale der Seite), solange die Kante länger als `minKante` ist: Ein schmaler Lappen oder eine
  * Spitze hat kurze, aber stark gedrehte Kanten, der Umriss dort war eckig (Florian: „das mit dem Verdichten klappt bei Details
  * noch nicht“). Ein Kreis bekommt so mindestens 360°/`winkel` Kanten.
+ *
+ * `verborgen` (je Dreieck 1: wird nicht gezeigt, etwa die Öffnung des Mauls): Kanten, an denen nur verborgene Dreiecke liegen,
+ * werden nicht geteilt, und was aus einem verborgenen Dreieck entsteht, bleibt verborgen (Ergebnis `verborgen`). Sonst verdichtete
+ * sich in der Fressen-Pose die Fläche, die das offene Maul überspannt (gemessen 2 300 neue Punkte nach einem Zug an der Lippe).
  */
 export function verdichten(
   h: Haut,
   loops: readonly Loop[],
   maxKante: number,
-  opt: { runden?: number; drehen?: boolean; entspannen?: boolean; winkel?: number; minKante?: number } = {},
+  opt: { runden?: number; drehen?: boolean; entspannen?: boolean; winkel?: number; minKante?: number; verborgen?: Uint8Array | null } = {},
 ): Verdichtet | null {
   const runden = opt.runden ?? 8;
   const pos: number[] = Array.from(h.pos);
   const tri: number[] = Array.from(h.tri);
   const spiegel: number[] = Array.from(h.spiegel);
+  const verborgen: number[] | null = opt.verborgen ? Array.from(opt.verborgen) : null;
   const lage = (v: number): V3 => ({ x: pos[3 * v]!, y: pos[3 * v + 1]!, z: pos[3 * v + 2]! });
   const laengeVon = (a: number, b: number) => Math.hypot(pos[3 * a]! - pos[3 * b]!, pos[3 * a + 1]! - pos[3 * b + 1]!, pos[3 * a + 2]! - pos[3 * b + 2]!);
 
@@ -190,6 +195,7 @@ export function verdichten(
       tri[3 * t + 2] = w;
       const t2 = tri.length / 3;
       tri.push(v, y, w);
+      if (verborgen) verborgen.push(verborgen[t]!);
       dazu(x, v, t);
       dazu(v, w, t);
       weg(y, w, t);
@@ -235,6 +241,7 @@ export function verdichten(
       for (const t of [tq, tp]) for (let e = 0; e < 3; e++) weg(tri[3 * t + e]!, tri[3 * t + ((e + 1) % 3)]!, t);
       const neueT = [tq, tp, tri.length / 3, tri.length / 3 + 1];
       tri.push(0, 0, 0, 0, 0, 0);
+      if (verborgen) verborgen.push(verborgen[tq]!, verborgen[tp]!);
       for (let k = 0; k < 4; k++) {
         const t = neueT[k]!;
         tri[3 * t] = umlauf[k]!;
@@ -284,6 +291,7 @@ export function verdichten(
     for (const k of kanten.keys()) {
       const a = Math.floor(k / KEY);
       const b = k % KEY;
+      if (verborgen && kanten.get(k)!.every((t) => verborgen[t] === 1)) continue;
       const l = laengeVon(a, b);
       if (l > maxKante || (cosMax <= 1 && l > minKante && drehungCos(a, b, nor) < cosMax)) lang.push({ a, b, l });
     }
@@ -346,6 +354,7 @@ export function verdichten(
     const c = dritter(ts[0]!, a, b);
     const d = dritter(ts[1]!, a, b);
     if (c < 0 || d < 0 || c === d || kanten.has(schluessel(c, d))) return null;
+    if (verborgen && verborgen[ts[0]!] !== verborgen[ts[1]!]) return null;
     return { t1: ts[0]!, t2: ts[1]! , c, d };
   };
   const besser = (a: number, b: number, c: number, d: number): boolean => {
@@ -486,5 +495,5 @@ export function verdichten(
     }
     return { ...l, proben: k.map(punktProbe), s: Float64Array.from(sWerte[li]!), ruhe, punkte: l.punkte.map((p) => ({ ...p })) };
   });
-  return { haut, loops: neueLoops, neu, gedreht };
+  return { haut, loops: neueLoops, neu, gedreht, verborgen: verborgen ? Uint8Array.from(verborgen) : null };
 }

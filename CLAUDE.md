@@ -1122,6 +1122,39 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     Winkel um das Gelenk knicken nicht, solange sie breiter sind als der Öffnungswinkel). Keine Kinnlinie: Wo der Unterkiefer endet,
     entscheiden die Gewichte der Pose (Kiefer gegen den Rest des Körpers), den Rest bei großem Winkel der Pinsel; Gewichte malen nur,
     wenn das nicht reicht. Dasselbe gilt für das Vorderbein unter dem Mundwinkel aus der ersten Maul-Probe.
+- **2026-11-05 (nachts): Fressen-Pose auf dem dichten Netz, Kiefergewichte ohne Knick** (Florian: „ja baue mal die Fressen-Pose“;
+  davor: „Warum kann man in der Pose nicht einfach ganz normal die Bézier-Punkte bearbeiten und den Blendshape erstellen? Der Pinsel
+  ist nice to have, aber erstmal mit niedrigerer Prio“).
+  - **Bedienung (`kurven.html`):** Knopf „Fressen“ im 3D-Blatt oder die Regler Maul (Unterkiefer 0–55°) und Kopf (Schädel 0–40°)
+    zeigen die Pose (das Maul anlegen wie bisher: schmale Form mit F, wählen). In der Pose wirken alle Werkzeuge wie in der Grundform
+    (Punkte, Griffe, G/S/R, O, neue Punkte und Loops) auf das, was zu sehen ist; die Grundform bleibt. „Fressen“ noch einmal: zurück.
+    ⌘Z nimmt Schritte samt Ziel zurück. Die Grundform zeigt das Maul zu, so wie es gezeichnet ist. Der Pinsel kommt später.
+  - **Kern `dicht/poseLoop.ts`:** `knochenWinkel` (je Punkt ein Winkel aus den Gewichten des Maulschnitts der Grundform),
+    `knochenDrehen` (je Punkt starr um den Mundwinkel, genau umkehrbar; der Mundwinkel dreht nicht, das Gelenk bleibt beim Bearbeiten
+    gültig), `innenPosieren`, `ergaenzen` (Werte für neue Netzpunkte aus den Nachbarn, spiegelgleich). Bearbeitet wird die posierte
+    Haut; nach jedem Schritt zurückgedreht ist Ruhe der Pose − Grundform der Blendshape (`pose.delta`). Grundform und Pose haben
+    dasselbe Netz: Verdichtet die Pose oder bekommt sie einen Loop, bekommt die Grundform dieselben Punkte (`netzGewachsen`), und
+    neue Punkte der Grundform bekommen Werte im Blendshape. Punkte, Ecken, Härte und Loops aus der Pose gelten danach auch in der
+    Grundform (formneutral).
+  - **Gewichte ohne Knick** (`kieferFeld` mit `hebel`, nur beim Maul am Loop): Der Kiefer läuft so lang aus, wie die Haut dort beim
+    größten Winkel wandert (1,5 × Abstand vom Mundwinkel × Winkel), höchstens zwei Kieferdicken. Knick bei 40°: Kugel Seite p99 10,1 →
+    1,0°, größter 49 → 12° (am Mundwinkel); Kugel Front p99 15 → 7°, größter 117 → 21°; Bohne: der Bauch geht höchstens 4 Einheiten
+    mit (mit vier Kieferdicken 13, unbegrenzt 23). Test `kiefergewichte.test.ts`.
+  - **Nebenbei:** Die Knöpfe im 3D-Blatt nahmen keinen Mausklick an (die Kamerasteuerung fing den Zeiger; Loop, Form, Einfluss) →
+    die Leiste hält Zeigerereignisse an wie in `form.html`. Verdichten lässt die Öffnung des Mauls aus (`verdichten`, `verborgen`).
+  - **Gemessen** (Maus `scripts/pruefen/form-fressen-pose.mjs`, auch `FALL=front`; Kern `poseLoop.test.ts`): Pose dicht, 0 umgeklappt;
+    Unterlippe in der Pose 25 nach unten: Blendshape genau 25, Grundform bitgleich, dicht, Haut 0 umgeklappt (Front 6 Splitter an der
+    Unterlippe, wie schon im offenen Maul der Grundform), Inneres 3; 1,8–2,3 ms je Bewegung. Maul 45°/Kopf 10° und zurück: wie vorher
+    (10⁻¹³). Loop in der Grundform 30 hoch, die Pose folgt an derselben Stelle, der Blendshape bleibt. ⌘Z ×12 bis zum Anfang.
+  - **Fallen:** In der Pose überspannt die verborgene Fläche der Öffnung das offene Maul und klappt um; mit ihr schaukelte sich der
+    Löser auf (ein Punkt 10 000 Einheiten weit) → in der Pose löst er ohne die Öffnung (`loeserHaut`) und ohne die Krümmung der Loops
+    (sie gehört zur geschlossenen Grundform; am Rand der Öffnung verknitterte die Haut, 146 Einheiten, 16 umgeklappt), jeder Punkt
+    behält seine Krümmung. Prüfskripte: vor dem Ziehen nicht klicken (der zweite Druck war ein Doppelklick: neuer Punkt statt Zug);
+    nach dem Zeichnen mit F ist F schon aus (ein zweites F zeichnete bei jedem Zug eine neue Form); offene Kanten mit Toleranz zählen
+    (Haut Float64, Inneres Float32: Runden trennte gleiche Punkte, 16 falsche „offene Kanten“).
+  - **Offen:** Pinsel in der Pose; weitere Posen und Überblenden; Speichern/Laden (gibt es im Fenster noch nicht); in der Pose folgt
+    die Krümmung nicht den Loops (flacher Boden zwischen geraden Loops gilt dort nicht); die Gewichte sind automatisch (wo der Kiefer
+    endet, malen oder an Knochen des Körpers festmachen, wenn es nötig wird). Bilder `docs/progress/editor/form-fressen-*-2026-11-05.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

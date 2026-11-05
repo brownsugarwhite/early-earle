@@ -1172,6 +1172,11 @@ export function dickeAmMundwinkel(L: Lippe, M: V2, kontur: Kontur, zelle: number
  * Gewicht der Drehung eines Kiefers um den Mundwinkel M nach seiner Lippe L (und sein Gradient in der Seite), wie beim Maul mit
  * zusammenliegenden Lippen (maul.ts): der Winkel, unter dem ein Punkt die Lippe samt Verlängerung sieht, mal der Abstand von
  * der Lippe längs der Form. `unterkiefer`: der Kiefer unter der Lippe (sonst der Schädel darüber).
+ *
+ * `hebel` (größter Öffnungswinkel, Bogenmaß; Maul am Loop): Der Abstand läuft nicht auf einer festen halben Kieferdicke aus,
+ * sondern mindestens so lang, wie die Haut dort beim größten Winkel wandert (1,5 × Abstand vom Mundwinkel × Winkel), höchstens
+ * zwei Kieferdicken. Fest und kurz lag der Übergang auf einer Kugel mitten im Kinn, weit vom Gelenk: Das Kinn drehte ganz, der
+ * Bauch dahinter gar nicht, und dazwischen knickte die Haut (gemessen bis 117°; die Falle vom 14.10.: Hebel × Gefälle × Winkel > 1).
  */
 export function kieferFeld(
   L: Lippe,
@@ -1179,6 +1184,7 @@ export function kieferFeld(
   kontur: Kontur,
   zelle: number,
   unterkiefer: boolean,
+  hebel?: number,
 ): (x: number, y: number, aus: [number, number, number]) => void {
   const rand = 3 * zelle;
   const seiteK = unterkiefer ? -L.oben : L.oben;
@@ -1205,14 +1211,21 @@ export function kieferFeld(
   });
   const dicke = dickeAmMundwinkel(L, M, kontur, zelle, seiteK);
   const L0 = dicke;
-  const L1 = 1.5 * dicke;
+  // Länge des Auslaufs: fest eine halbe Kieferdicke, mit `hebel` nach dem Abstand vom Mundwinkel (höchstens zwei Kieferdicken)
+  const kurz = 0.5 * dicke;
+  const lang = 2 * dicke;
+  const auslauf = (r: number): number => (hebel === undefined ? kurz : Math.min(lang, Math.max(kurz, 1.5 * hebel * r)));
+  const LMax = L0 + (hebel === undefined ? kurz : lang);
   return (x: number, y: number, aus: [number, number, number]): void => {
     aus[0] = 0;
     aus[1] = 0;
     aus[2] = 0;
-    if (x < L.x0 - L1 || x > L.x1 + L1 || y < L.y0 - L1 || y > L.y1 + L1) return;
+    if (x < L.x0 - LMax || x > L.x1 + LMax || y < L.y0 - LMax || y > L.y1 + LMax) return;
     const r2 = (x - M.x) ** 2 + (y - M.y) ** 2;
     if (r2 < 1e-12) return;
+    const r = Math.sqrt(r2);
+    const ell = auslauf(r);
+    const L1 = L0 + ell;
     const d = abstand(x, y);
     if (!(d < L1)) return;
     const psi = vzK * winkel(x, y);
@@ -1238,8 +1251,16 @@ export function kieferFeld(
       }
     }
     const db = -glattAbl(L0, L1, d);
-    aus[1] = da * b * gpx + a * db * gdx;
-    aus[2] = da * b * gpy + a * db * gdy;
+    // der Auslauf hängt am Abstand vom Mundwinkel: b = 1 − glatt((d − L0) / ℓ(r)) → ∇b = db · (∇d − t ∇ℓ)
+    let lx = 0;
+    let ly = 0;
+    if (hebel !== undefined && 1.5 * hebel * r > kurz && 1.5 * hebel * r < lang) {
+      const t = (d - L0) / ell;
+      lx = (t * 1.5 * hebel * (x - M.x)) / r;
+      ly = (t * 1.5 * hebel * (y - M.y)) / r;
+    }
+    aus[1] = da * b * gpx + a * db * (gdx - lx);
+    aus[2] = da * b * gpy + a * db * (gdy - ly);
   };
 }
 
