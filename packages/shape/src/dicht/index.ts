@@ -80,6 +80,7 @@ export {
   mittlereKante,
   probenLage,
   punktEinfuegen,
+  ringEnde,
   schnittLinien,
   spiegelProbe,
   stelleBei,

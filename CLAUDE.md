@@ -1027,6 +1027,28 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     mit einem Maß für alle Richtungen fest). Zu kurze Kanten werden noch nicht zusammengelegt (gestauchte Stellen bleiben fein). Große
     Bereiche zerlegen langsamer (ganze Kugel 140–220 ms beim Greifen).
   - Bilder `docs/progress/editor/form-verdichten-{fest,verdichtet}-{seite,3d}-2026-11-05.jpg`.
+- **2026-11-05 (nachts, danach): Griffe an Spiegelpunkten** (Florian mit Bild `docs/progress/editor/form-ringende-florian-2026-11-05.png`:
+  „Das Handle unten kann ich nicht bewegen. Hier ist immer ein Knick. Auch bei den Spiegelpunkten soll das Handle bewegbar und knickbar
+  sein.“).
+  - **Ursache:** Am Ende eines Rings (Punkt auf der Mittelebene) gab es nur den Griff nach innen. Glatt hieß dort „senkrecht zur
+    Mittelebene“, deshalb ließ der Zug nur die Tiefe zu (im Top senkrecht), seitlich bewegte sich nichts. Ausrichten brauchte zwei
+    Griffe und tat dort nichts: Ein geknicktes Ende ließ sich nie glätten. Dazu liegt an der Spitze der Punkt der Mitte obenauf, ein
+    Doppelklick traf ihn und nicht das Ende des Rings.
+  - **Jetzt (Kern `dicht/loops.ts`, `ringEnde`):** Ein Spiegelpunkt hat zwei Griffe, der zweite ist das Spiegelbild des inneren
+    (`griffeBei`, immer wie sie sind). Beide sind frei ziehbar (`griffZiehen`; am Spiegelbild gezogen wirkt der Zug gespiegelt), der
+    innere bleibt auf seiner Seite der Mittelebene. Schräg zur Mittelebene knickt die Linie spiegelgleich; das Fenster macht den Punkt
+    beim ersten Zug zur Ecke. Glatt ausrichten stellt den Griff senkrecht zur Mittelebene, Länge bleibt (`griffeAusrichten`).
+    S/R: das Spiegelbild folgt dem inneren Griff (`griffeAbbilden`).
+  - **Fenster:** Doppelklick auf einen Griff schaltet seinen Punkt um (Ecke ↔ glatt), auch an Kreuzungen, an denen der Punkt des
+    anderen Loops obenauf liegt.
+  - **Gemessen** (Test `loops.test.ts` 14, neu „Spiegelpunkt“; Maus `scripts/pruefen/form-spiegelpunkt-probe.mjs` in Florians Aufbau:
+    Ring waagerecht, Mitte, Ring senkrecht, Nase 80 vor): im Top unterer Griff 70 px seitlich, er folgt um 70 px (vorher 0), Knick an
+    der Spitze 96,9°, 0 umgeschlagen, spiegelgleich auf 3·10⁻¹⁴, 2,9–6,2 ms je Mausbewegung; oberer (gespiegelter) Griff 40 px, der
+    untere geht um 40 px mit, Knick 121°; Doppelklick auf den Griff: glatt, Knick 0,1°; ⌘Z bitgleich. Im Kern: Griff (Länge 157)
+    40 seitlich → Knick 28,1° (Soll 28,5°), ausgerichtet 0,0°. Ältere Proben (Griffe, Punkte und Zoom) mit denselben Zahlen.
+  - **Offen:** Ausrichten behält die Länge des Griffs: Nach weiten Zügen wird die Spitze glatt, aber stumpf (dann den Griff längs
+    kürzen). In der Seite liegen ein senkrechter Griff und sein Spiegelbild genau auf dem Punkt (dort nicht zu greifen, er zeigt in die
+    Tiefe). Bilder `docs/progress/editor/form-spiegelpunkt-*-2026-11-05.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

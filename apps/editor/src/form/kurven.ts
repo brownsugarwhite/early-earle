@@ -10,6 +10,9 @@
 // Illustrator gehen die Griffe mit ihrem Punkt (S/R drehen und skalieren sie mit), ein Punkt ändert nur die zwei Stücke bis zu
 // seinen Nachbarn. Jedes Blatt hat einen eigenen Ausschnitt (Rad/Pinch zoomt, zwei Finger/mittlere Taste verschieben, Pos1).
 // Das Netz verdichtet sich selbst (`verdichten`): nach jedem Zug, und bei weiten Zügen in Stufen, in denen der Bereich mitwächst.
+// Spiegelpunkte (Ende eines Rings auf der Mittelebene) zeigen beide Griffe, der zweite ist das Spiegelbild; beide sind frei
+// ziehbar (die Linie knickt dort spiegelgleich, der Punkt wird eine Ecke), glatt steht der Griff senkrecht zur Mittelebene.
+// Doppelklick auf einen Griff schaltet seinen Punkt um (an Kreuzungen liegt oft der Punkt des anderen Loops obenauf).
 
 import {
   type Ansicht,
@@ -41,6 +44,7 @@ import {
   loopEinsetzen,
   mittlereKante,
   punktEinfuegen,
+  ringEnde,
   rundAusSeite,
   verdichten,
   verschiebungLaengs,
@@ -1180,10 +1184,12 @@ function zugBewegen(X: number, Y: number): void {
   z.bewegt = true;
   if (z.griff) {
     // Griff: in der Ebene des Blatts verschoben (die Tiefe bleibt), nur sein Loop bewegt sich. Eine Ecke von selbst wird dabei
-    // eine Ecke von Hand (ihre Griffe sind dann frei, wie in Blender ein „Vector“-Griff, den man anfasst)
+    // eine Ecke von Hand (ihre Griffe sind dann frei, wie in Blender ein „Vector“-Griff, den man anfasst). Am Spiegelpunkt geht
+    // das Spiegelbild des Griffs mit; schräg zur Mittelebene knickt die Linie dort, der Punkt wird eine Ecke.
     const { li, i, seite } = z.griff;
     const l = loops[li]!;
-    if (istVektorEcke(l.punkte[i]!)) l.punkte[i]!.ecke = true;
+    const p = l.punkte[i]!;
+    if (istVektorEcke(p) || (ringEnde(l, i) && !istEcke(p))) p.ecke = true;
     const d = inWelt(z.ansicht, (X - z.x0) / z.griffFaktor, (Y - z.y0) / z.griffFaktor);
     if (z.spiegel) d.z = -d.z;
     z.griffVersatz = griffZiehen(l, z.loeser.start[li]!, i, seite, d);
@@ -1511,6 +1517,11 @@ function druecken(a: Ansicht, e: PointerEvent): void {
   const m = ziel.getAttribute('data-m') === '1';
   const g = ziel.getAttribute('data-g');
   if (g === 'ein' || g === 'aus') {
+    // Doppelklick auf einen Griff: sein Punkt Ecke ↔ glatt (an einer Kreuzung liegt oft der Punkt des anderen Loops obenauf)
+    if (doppelklick(a, `g${l}:${i}`, X, Y)) {
+      eckeUmschalten(Number(l), i);
+      return;
+    }
     if (griffZugStarten(a, X, Y, m, loopNr(Number(l)), i, g)) blaetter[a].setPointerCapture(e.pointerId);
     return;
   }

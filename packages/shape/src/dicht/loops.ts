@@ -862,20 +862,32 @@ function steigungSeite(l: Loop, L: Float64Array, s: number, k: 1 | -1, w: number
   return { x: (k * C[1]![0]!) / w, y: (k * C[1]![1]!) / w, z: (k * C[1]![2]!) / w };
 }
 
+/** Punkt i liegt am Ende eines Rings, auf der Mittelebene (Spiegelpunkt): 'anfang' (s = 0), 'ende' (s = Länge) oder null */
+export function ringEnde(l: Loop, i: number): 'anfang' | 'ende' | null {
+  const p = l.punkte[i];
+  if (l.art !== 'ring' || !p) return null;
+  return p.s <= 1e-6 ? 'anfang' : p.s >= l.laenge - 1e-6 ? 'ende' : null;
+}
+
+const gespiegelt = (v: V3): V3 => ({ x: v.x, y: v.y, z: -v.z });
+
 /**
  * Bézier-Griffe eines Punkts, abgelesen am Verlauf der Linie (Lagen `L`, 3 je Probe), relativ zum Punkt: Steigung je Seite
  * (`steigungSeite`, bis kurz vor den Nachbarpunkt) mal ⅓ des Abstands zum Nachbarpunkt längs s, wie bei einer Bézier-Strecke
  * zwischen beiden. Glatt: beide Griffe auf der Winkelhalbierenden (gegenüber); Ecke (`einseitig`): je Seite, wie sie sind. Am Ende
- * eines Rings (auf der Mittelebene) gibt es nur den Griff nach innen; der andere ist sein Spiegelbild.
+ * eines Rings (Spiegelpunkt, auf der Mittelebene) läuft die Linie in ihre Spiegelhälfte weiter: Der Griff dorthin ist das
+ * Spiegelbild des Griffs nach innen. Beide sind, wie sie sind (die Winkelhalbierende wäre immer senkrecht zur Mittelebene und
+ * verdeckte einen Knick dort).
  */
 export function griffeBei(l: Loop, L: Float64Array, i: number, einseitig = istEcke(l.punkte[i]!)): { ein: V3 | null; aus: V3 | null } {
   const p = l.punkte[i]!;
   const [dl, dr] = nachbarAbstaende(l, i);
-  const anfang = l.art === 'ring' && p.s <= 1e-6;
-  const ende = l.art === 'ring' && p.s >= l.laenge - 1e-6;
+  const rand = ringEnde(l, i);
   const mal = (v: V3, f: number): V3 => ({ x: f * v.x, y: f * v.y, z: f * v.z });
-  const ein = anfang ? null : mal(steigungSeite(l, L, p.s, -1, Math.min(0.95 * dl, 0.25 * l.laenge)), -dl / 3);
-  const aus = ende ? null : mal(steigungSeite(l, L, p.s, 1, Math.min(0.95 * dr, 0.25 * l.laenge)), dr / 3);
+  const ein = rand === 'anfang' ? null : mal(steigungSeite(l, L, p.s, -1, Math.min(0.95 * dl, 0.25 * l.laenge)), -dl / 3);
+  const aus = rand === 'ende' ? null : mal(steigungSeite(l, L, p.s, 1, Math.min(0.95 * dr, 0.25 * l.laenge)), dr / 3);
+  if (rand === 'anfang') return { ein: gespiegelt(aus!), aus };
+  if (rand === 'ende') return { ein, aus: gespiegelt(ein!) };
   if (einseitig || !ein || !aus) return { ein, aus };
   const le = Math.hypot(ein.x, ein.y, ein.z);
   const la = Math.hypot(aus.x, aus.y, aus.z);
@@ -887,8 +899,10 @@ export function griffeBei(l: Loop, L: Float64Array, i: number, einseitig = istEc
 
 /**
  * Griff `seite` des Punkts i um δ (Welt) ziehen; Ergebnis: Versatz beider Griffe gegen ihre Lage in Ruhe (`L`). Glatt: der
- * andere Griff bleibt gegenüber (dreht mit, behält seine Länge); Ecke: nur dieser. In der Mittelebene bleibt z = 0; am Ende eines
- * Rings bleibt ein glatter Punkt glatt (nur die Länge längs z ändert sich), eine Ecke knickt dort spiegelgleich.
+ * andere Griff bleibt gegenüber (dreht mit, behält seine Länge); Ecke: nur dieser. In der Mittelebene bleibt z = 0. Am Ende eines
+ * Rings (Spiegelpunkt) ist der Griff frei, sein Spiegelbild geht mit (beide Griffe dort sind ziehbar): Schräg zur Mittelebene
+ * knickt die Linie spiegelgleich, eine Ecke; glatt ist sie dort nur mit dem Griff senkrecht zur Mittelebene. Der Griff nach innen
+ * bleibt auf seiner Seite der Mittelebene (sonst liefe die Linie durch ihr Spiegelbild).
  */
 export function griffZiehen(l: Loop, L: Float64Array, i: number, seite: 'ein' | 'aus', delta: V3): GriffVersatz {
   const p = l.punkte[i]!;
@@ -898,9 +912,14 @@ export function griffZiehen(l: Loop, L: Float64Array, i: number, seite: 'ein' | 
   if (!alt) return {};
   const d = { ...delta };
   if (l.art === 'mitte') d.z = 0;
-  if (l.art === 'ring' && !ecke && (p.s <= 1e-6 || p.s >= l.laenge - 1e-6)) {
-    d.x = 0;
-    d.y = 0;
+  const rand = ringEnde(l, i);
+  if (rand) {
+    // innen: der Griff, der in die gespeicherte Hälfte zeigt (am Anfang „aus“, am Ende „ein“)
+    const innen = rand === 'anfang' ? 'aus' : 'ein';
+    const di = seite === innen ? d : gespiegelt(d);
+    const gi = g[innen]!;
+    di.z = Math.max(di.z, -gi.z);
+    return innen === 'aus' ? { aus: di, ein: gespiegelt(di) } : { ein: di, aus: gespiegelt(di) };
   }
   const out: GriffVersatz = seite === 'ein' ? { ein: d } : { aus: d };
   const andere = seite === 'ein' ? 'aus' : 'ein';
@@ -932,12 +951,17 @@ export function griffeAbbilden(l: Loop, L: Float64Array, i: number, f: (p: V3) =
   const aus = neu(r.aus);
   if (ein) out.ein = ein;
   if (aus) out.aus = aus;
+  // am Spiegelpunkt gilt der Griff nach innen, der andere ist sein Spiegelbild
+  const rand = ringEnde(l, i);
+  if (rand === 'anfang' && aus) out.ein = gespiegelt(aus);
+  if (rand === 'ende' && ein) out.aus = gespiegelt(ein);
   return out;
 }
 
 /**
  * Versatz, der die Griffe eines Punkts auf eine Gerade bringt (Winkelhalbierende, Längen bleiben): aus einer Ecke mit Knick wird ein
- * glatter Punkt. Ohne Knick (unter `minGrad`) null; frisch eingesetzte Linien sind im Netz selbst bis 3,4° gezackt.
+ * glatter Punkt. Ohne Knick (unter `minGrad`) null; frisch eingesetzte Linien sind im Netz selbst bis 3,4° gezackt. Am Spiegelpunkt
+ * (Ende eines Rings) ist die Gerade senkrecht zur Mittelebene: Die Linie läuft dort rund in ihre Spiegelhälfte.
  */
 export function griffeAusrichten(l: Loop, L: Float64Array, i: number, minGrad = 4): GriffVersatz | null {
   const g = griffeBei(l, L, i, true);
@@ -945,11 +969,18 @@ export function griffeAusrichten(l: Loop, L: Float64Array, i: number, minGrad = 
   const le = Math.hypot(g.ein.x, g.ein.y, g.ein.z);
   const la = Math.hypot(g.aus.x, g.aus.y, g.aus.z);
   if (le < 1e-9 || la < 1e-9) return null;
-  const t = { x: g.aus.x / la - g.ein.x / le, y: g.aus.y / la - g.ein.y / le, z: g.aus.z / la - g.ein.z / le };
-  const lt = Math.hypot(t.x, t.y, t.z);
   const cos = -(g.ein.x * g.aus.x + g.ein.y * g.aus.y + g.ein.z * g.aus.z) / (le * la);
-  if (lt < 1e-9 || (Math.acos(Math.max(-1, Math.min(1, cos))) * 180) / Math.PI < minGrad) return null;
-  const u = { x: t.x / lt, y: t.y / lt, z: t.z / lt };
+  if ((Math.acos(Math.max(-1, Math.min(1, cos))) * 180) / Math.PI < minGrad) return null;
+  // Richtung der Linie durch den Punkt (von „ein“ nach „aus“); am Spiegelpunkt zeigt der Griff nach innen in die gespeicherte Hälfte
+  const rand = ringEnde(l, i);
+  let u: V3;
+  if (rand) u = { x: 0, y: 0, z: rand === 'anfang' ? 1 : -1 };
+  else {
+    const t = { x: g.aus.x / la - g.ein.x / le, y: g.aus.y / la - g.ein.y / le, z: g.aus.z / la - g.ein.z / le };
+    const lt = Math.hypot(t.x, t.y, t.z);
+    if (lt < 1e-9) return null;
+    u = { x: t.x / lt, y: t.y / lt, z: t.z / lt };
+  }
   if (l.art === 'mitte') u.z = 0;
   return {
     ein: { x: -u.x * le - g.ein.x, y: -u.y * le - g.ein.y, z: -u.z * le - g.ein.z },

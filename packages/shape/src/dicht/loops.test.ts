@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { loopEinsetzen } from './einsetzen';
-import { hautAus } from './kurven';
+import { type V3, hautAus } from './kurven';
 import {
+  type GriffVersatz,
   type Loop,
   LoopZug,
   bereichUm,
@@ -20,6 +21,7 @@ import {
   loopAusSchnitt,
   mittlereKante,
   punktEinfuegen,
+  ringEnde,
   stelleBei,
   verschiebungLaengs,
 } from './loops';
@@ -496,5 +498,86 @@ describe('Bézier-Griffe und Ecken', () => {
     );
     expect(mit.anKreuzung).toBeGreaterThan(ohne.anKreuzung + 3);
     expect(mit.anKreuzung).toBeGreaterThan(0.6 * mit.sonst);
+  });
+
+  it('Spiegelpunkt (Ende eines Rings auf der Mittelebene): beide Griffe, frei ziehbar mit Knick spiegelgleich, Ausrichten macht ihn rund', () => {
+    const h0 = kugel();
+    const r1 = loopEinsetzen(h0, [loopAusSchnitt(h0, 'seite', [-200, 0], [200, 0], 1, 8)!], 0)!;
+    const r2 = loopEinsetzen(r1.haut, [...r1.loops, loopAusSchnitt(r1.haut, 'top', [-200, 0], [200, 0], 2, 8)!], 1)!;
+    const h = r2.haut;
+    const [ring, mitte] = r2.loops as [Loop, Loop];
+    expect([ring.art, mitte.art]).toEqual(['ring', 'mitte']);
+    let k = 1;
+    for (const f of kreuzungenZwischen(ring, ring.ruhe, mitte, mitte.ruhe, 0.25 * mittlereKante(h))) {
+      punktEinfuegen(ring, f.sa, k);
+      punktEinfuegen(mitte, f.sb, k++);
+    }
+    // die Spitze vorn: Ende des Rings, Kreuzung mit der Mitte
+    const i = ring.punkte.findIndex((p) => p.ref.x < -100);
+    const rand = ringEnde(ring, i);
+    expect(rand).not.toBeNull();
+    const innen = rand === 'anfang' ? 'aus' : 'ein';
+    const aussen = innen === 'aus' ? 'ein' : 'aus';
+    const weg = (a: V3 | undefined | null, b: V3) => (a ? Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y), Math.abs(a.z - b.z)) : Infinity);
+    const knick = () => {
+      const g = griffeBei(ring, ring.ruhe, i);
+      const c = -(g.ein!.x * g.aus!.x + g.ein!.y * g.aus!.y + g.ein!.z * g.aus!.z) / (betrag(g.ein!) * betrag(g.aus!));
+      return { g, grad: (Math.acos(Math.max(-1, Math.min(1, c))) * 180) / Math.PI };
+    };
+    const tip = ring.punkte[i]!.ref;
+    const loesen = (v: GriffVersatz) => {
+      const d = verschiebungLaengs(
+        ring,
+        ring.punkte.map(() => ({ x: 0, y: 0, z: 0 })),
+        ring.punkte.map((_, j) => (j === i ? v : undefined)),
+      );
+      for (let j = 0; j < ring.proben.length; j++) d[3 * j + 2] = Math.max(d[3 * j + 2]!, -ring.ruhe[3 * j + 2]!);
+      const zug = new LoopZug(h, [ring, mitte], bereichUm(h, [tip], 160, []));
+      for (let s = 1; s <= 3; s++) zug.schritt([d.map((x) => (x * s) / 3), null], 2);
+      zug.schritt([d, null], 6);
+      festlegen(h, ring);
+      festlegen(h, mitte);
+    };
+    // beide Griffe: der innere zeigt in die gespeicherte Hälfte, der andere ist sein Spiegelbild; an der Kugel ohne Knick
+    const vorher = knick();
+    const gi = vorher.g[innen]!;
+    expect(gi.z).toBeGreaterThan(0);
+    expect(weg(vorher.g[aussen], { x: gi.x, y: gi.y, z: -gi.z })).toBe(0);
+    // frei: seitlich gezogen geht der Griff mit (vorher nur längs z), sein Spiegelbild ebenso; am Spiegelbild gezogen dasselbe
+    const v = griffZiehen(ring, ring.ruhe, i, innen, { x: 40, y: 0, z: 0 });
+    expect(weg(v[innen], { x: 40, y: 0, z: 0 })).toBe(0);
+    expect(weg(v[aussen], { x: 40, y: 0, z: 0 })).toBe(0);
+    expect(weg(griffZiehen(ring, ring.ruhe, i, aussen, { x: 40, y: 0, z: -10 })[innen], { x: 40, y: 0, z: 10 })).toBe(0);
+    // nicht durch die Mittelebene: höchstens bis in sie hinein
+    expect(gi.z + griffZiehen(ring, ring.ruhe, i, innen, { x: 0, y: 0, z: -1000 })[innen]!.z).toBeCloseTo(0, 9);
+    // gezogen und gelöst: die Linie knickt an der Spitze spiegelgleich
+    loesen(v);
+    const geknickt = knick();
+    const schiefGeknickt = schiefe(h);
+    // Ausrichten: Griff senkrecht zur Mittelebene, Länge bleibt; gelöst läuft die Linie rund durch die Spitze
+    const a = griffeAusrichten(ring, ring.ruhe, i)!;
+    expect(a).not.toBeNull();
+    const g2 = geknickt.g[innen]!;
+    const neu = { x: g2.x + a[innen]!.x, y: g2.y + a[innen]!.y, z: g2.z + a[innen]!.z };
+    expect(Math.hypot(neu.x, neu.y)).toBeLessThan(1e-9);
+    expect(neu.z).toBeCloseTo(betrag(g2), 9);
+    expect(weg(a[aussen], { x: a[innen]!.x, y: a[innen]!.y, z: -a[innen]!.z })).toBe(0);
+    loesen(a);
+    const rund = knick();
+    // Drehen über die Punkte: das Spiegelbild des Griffs dreht spiegelgleich mit
+    const dreh = griffeAbbilden(ring, ring.ruhe, i, (p) => ({ x: p.x * Math.cos(0.3) + p.z * Math.sin(0.3), y: p.y, z: -p.x * Math.sin(0.3) + p.z * Math.cos(0.3) }));
+    expect(weg(dreh[aussen], { x: dreh[innen]!.x, y: dreh[innen]!.y, z: -dreh[innen]!.z })).toBe(0);
+    // Soll: der Griff steht nach dem Zug um atan(40 / Länge) schräg, die Linie knickt um das Doppelte (Griff und Spiegelbild)
+    const soll = (2 * Math.atan2(40, gi.z) * 180) / Math.PI;
+    log(
+      `Spiegelpunkt: Knick an der Kugel ${vorher.grad.toFixed(1)}°, Griff (Länge ${betrag(gi).toFixed(0)}) 40 seitlich gezogen ` +
+        `${geknickt.grad.toFixed(1)}° (Soll ${soll.toFixed(1)}°, schief ${schiefGeknickt.toExponential(1)}), ausgerichtet ` +
+        `${rund.grad.toFixed(1)}° (schief ${schiefe(h).toExponential(1)})`,
+    );
+    expect(vorher.grad).toBeLessThan(4);
+    expect(Math.abs(geknickt.grad - soll)).toBeLessThan(3);
+    expect(rund.grad).toBeLessThan(2);
+    expect(schiefGeknickt).toBeLessThan(1e-6);
+    expect(schiefe(h)).toBeLessThan(1e-6);
   });
 });
