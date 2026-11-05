@@ -238,6 +238,38 @@ await fertig();
 const anfangZurueck = await seite.evaluate(() => window.__form.maul.unten[0]);
 console.log(`  Anfang der Unterlippe: gezogen (${anfangKurz.x.toFixed(1)}, ${anfangKurz.y.toFixed(1)}), nach 3 × ⌘Z (${anfangZurueck.x.toFixed(1)}, ${anfangZurueck.y.toFixed(1)})`);
 
+// ---------- Maulpunkte der Oberlippe: einfügen (Klick auf die gewählte Lippe), zwei mit ⇧ gemeinsam ziehen, einen löschen ----------
+await waehlen(0);
+const vorEinfuegen = await seite.evaluate(() => window.__form.maul.punkte.map((q) => ({ ...q })));
+{
+  const a = vorEinfuegen[0];
+  const b = vorEinfuegen[1];
+  const [lx, ly] = await ort((a.x + b.x) / 2, (a.y + b.y) / 2);
+  await seite.mouse.click(lx, ly);
+  await fertig();
+}
+const nachEinfuegen = await seite.evaluate(() => window.__form.maul.punkte.map((q) => ({ ...q })));
+const p1 = await punktIn('zeichnung', 0, 1);
+const p2 = await punktIn('zeichnung', 0, 2);
+await seite.mouse.click(p1[0], p1[1]);
+await seite.waitForTimeout(450);
+await seite.keyboard.down('Shift');
+await seite.mouse.click(p2[0], p2[1]);
+await seite.keyboard.up('Shift');
+await seite.waitForTimeout(450);
+await lippeZiehen('zeichnung', 0, 1, -8, 10);
+const nachZiehen = await seite.evaluate(() => window.__form.maul.punkte.map((q) => ({ ...q })));
+const um = (j) => [nachZiehen[j].x - nachEinfuegen[j].x, nachZiehen[j].y - nachEinfuegen[j].y].map((v) => v.toFixed(1)).join(', ');
+console.log(`  Oberlippe: Punkte ${vorEinfuegen.length} → ${nachEinfuegen.length}; mit ⇧ gezogen: Punkt 1 um (${um(1)}), Punkt 2 um (${um(2)}), Mundwinkel um (${um(nachZiehen.length - 1)})`);
+await stand('kugel-punkte-gezogen', { bild: false });
+const p3 = await punktIn('zeichnung', 0, 2);
+await seite.mouse.click(p3[0], p3[1]);
+await seite.waitForTimeout(450);
+await seite.keyboard.press('Backspace');
+await fertig();
+console.log(`  gelöscht: ${await seite.evaluate(() => window.__form.maul.punkte.length)} Punkte, Unterlippe ${await seite.evaluate(() => window.__form.maul.unten?.length ?? 0)}`);
+await stand('kugel-punkt-geloescht', { bild: false });
+
 // ---------- Unterbiss: Unterlippe breiter und vorn über der Oberlippe ----------
 await seite.evaluate(() => window.__formMaul(null));
 await fertig();
