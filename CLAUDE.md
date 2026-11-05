@@ -798,6 +798,32 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     Netz klappt 1 Dreieck im Maulinneren um (älter, unabhängig vom Auslauf); eine Oberlippe breiter als die Form macht an der Kugel
     einen Wulst (in der Front „Ohren“). Zähne fehlen noch.
   - Bilder `docs/progress/editor/form-trennen-*-2026-11-05.jpg`.
+- **2026-11-05 (vormittags): Echte Trennung — Kieferanfänge als Punkte des Umrisses, zwei Schnitte (Probe)** (Florian: „man soll die
+  einzelnen Kiefer wirklich frei verschieben können, nicht nur entlang der Konturlinie … Es soll eine echte Trennung sein. Wo Kiefer
+  und Outline sich treffen, entsteht ein echter Punkt, die Kiefer sind dann echter Teil der Outline“).
+  - **Bedienung:** Der Anfang jeder Lippe ist ein Punkt des Umrisses (`UmrissPunkt.lippe`, getrennt rot/blau), frei zu ziehen (Seite
+    x/y, Front die Höhe, Top die Länge); der Umriss geht mit. Zusammen ein Punkt, getrennt zwei nebeneinander, dazwischen ein gerades
+    Stück (die Front des Mauls, leise gestrichelt, keine neuen Punkte darauf). Ein neuer Maulanfang rastet auf einen Umrisspunkt in
+    6 px ein. Getrennt behalten beide Punkte die Richtung der Linie beim Trennen (`UmrissPunkt.richtung`).
+  - **Kern** (`dicht/kiefer.ts`, Hilfen `maulGrund.ts`): geschnitten an beiden Lippen, dazwischen die Linse (Unterlippe unter der
+    Oberlippe = Lücke, fällt weg; darüber = Überdeckung, gehört beiden Kiefern). Kreuzen sich die Sehnen in einem Dreieck, liegt ein
+    Kreuzpunkt in beiden Wegen; Stücke werden gegen die Sehnen im Dreieck eingeordnet (gegen die Kurven fehlte ein hauchdünnes Stück).
+    Eine Lippe schneidet erst, wo sie ¼ Rasterweite tief in der Form liegt; ihr Winkel für das Drehgewicht läuft gegen die Linie
+    hinaus, an einer einspringenden Ecke oder gekürzt längs der Außennormale.
+  - **Allgemein:** Richtung durch einen Umrisspunkt nach den Abständen (Parabel durch drei Punkte; ein Punkt dicht neben einem anderen
+    lag mit „Nachbar zu Nachbar“ bis 26 Einheiten neben dem Kreis). Kugelradien nach dem Glätten noch einmal schrumpfen (an einer
+    einspringenden Ecke ragten sie 27 Einheiten über den Umriss, das Raster schnitt die Form auf). Backen mit den Knochengewichten
+    (ein großes Dreieck über dem Übergang klappte in der Pose um).
+  - **Gemessen:** Kern 42 Tests grün (Überbiss, Lücke, breit, S, J, kürzer, darüber; freie Anfänge: Oberkiefer vor, Lücke vorn,
+    Unterbiss; „getrennt, aber gleich“ öffnet wie zusammen). Maus (`form-kiefer-trennen.mjs`): freie Anfänge dicht, 0 umgeklappt bis
+    40°. **Ungelöst:** Überdeckung durch gezogene Lippenpunkte 8–16 offene Kanten (kugel-ueberbiss 20–55°, kugel-unterbiss 40°), nach
+    einem Zug zweier Punkte 34 umgeklappt geschlossen.
+  - **Florians Einwurf:** Ein Über- oder Unterbiss ist dasselbe wie ein Kopf über einem Bauch. Kopf und Bauch (und die Kiefer)
+    brauchen in der Top-Ansicht je einen eigenen Umriss, getrennt bearbeitbar, die nicht verschmelzen; der vorstehende Kiefer „fest“
+    mit eigenem Umriss von oben wie beim Langhals. Ursache: Der Körper ist die Vereinigung der Kugeln eines einzigen Seitenumrisses,
+    das Maul nur ein Schnitt darin; Lappen, die sich berühren, verschmelzen, und das gerade Stück zwischen den Anfängen schließt den
+    Unterkiefer. Nächster Schritt nach Florians Wort: Teile.
+  - Bilder `docs/progress/editor/form-kiefer-frei-*-2026-11-05.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

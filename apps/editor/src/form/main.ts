@@ -759,6 +759,8 @@ const ausBreiten = (b: Blatt, p: readonly BreitenPunkt[], a0: number, a1: number
 let bauGewuenscht: 'grob' | 'fein' | null = 'fein';
 function bauen(fein: boolean): void {
   const t0 = performance.now();
+  // vor dem Körper: ein fehlender Punkt einer Lippe ändert den Umriss
+  maulKnotenSichern();
   let gleich: ReturnType<typeof gleichBauen> | null = null;
   let n: DichtesNetz;
   abgeleitet.front = null;
@@ -806,22 +808,9 @@ function bauen(fein: boolean): void {
       fuehrung = null;
     }
   }
-  // Maul: der Anfang der Linie bleibt auf dem Umriss; geschnitten wird das fertige Netz
+  // Maul: geschnitten wird das fertige Netz; die Lippen beginnen an ihren Punkten des Umrisses (`maulKnotenSichern`)
   if (zustand.maul) {
-    const a = zustand.maul.punkte[0]!;
-    const q = naechsterAufUmriss(a.x, a.y);
-    zustand.maul.punkte[0] = { ...a, x: q.x, y: q.y };
-    // getrennte Kiefer: die Unterlippe beginnt auf dem Umriss und endet im selben Mundwinkel
-    const k = zustand.maul.unten;
-    if (k && k.length >= 2) {
-      const b = k[0]!;
-      const qb = naechsterAufUmriss(b.x, b.y);
-      k[0] = { ...b, x: qb.x, y: qb.y };
-      const mw = zustand.maul.punkte[zustand.maul.punkte.length - 1]!;
-      k[k.length - 1] = { ...k[k.length - 1]!, x: mw.x, y: mw.y };
-    }
-    // der Umriss der Seite hält die Haut eines Kiefers, der seiner Lippe folgt, in der Form (gleichwertige Ansichten: der Körper
-    // reicht über ihn)
+    // der Umriss der Seite sagt, wo die Schnitte die Form vorn verlassen (gleichwertige Ansichten: der Körper reicht über ihn)
     schnitt = maulSchneiden(n, zustand.maul, { zelle: n.zelle, kontur: n.kontur, umriss: gleich ? undefined : n.umriss });
   } else {
     schnitt = null;
@@ -908,6 +897,145 @@ function naechsterAufUmriss(x: number, y: number): { x: number; y: number } {
   return q;
 }
 
+// Wo eine Lippe auf den Umriss trifft, ist ein echter Punkt des Umrisses (05.11., Florian: „die Kiefer sind dann echter Teil der
+// Outline“): Er bewegt den Anfang der Lippe und den Umriss zugleich, frei, nicht nur entlang der Linie. Mit getrennten Kiefern
+// liegen die Punkte von Ober- und Unterlippe nebeneinander; das Stück dazwischen ist die Front des Mauls (gerade).
+
+const ohneLippe = (q: UmrissPunkt): UmrissPunkt => (q.ecke ? { x: q.x, y: q.y, ecke: true } : { x: q.x, y: q.y });
+/** Nummer des Umrisspunkts, an dem eine Lippe beginnt (−1: keiner). */
+const lippenKnoten = (l: 'oben' | 'unten'): number => zustand.punkte.findIndex((q) => q.lippe === l);
+
+/** Liegt zwischen Umrisspunkt i und i + 1 die Front des Mauls (die Anfänge von Ober- und Unterlippe nebeneinander)? */
+function istMaulFront(i: number): boolean {
+  const p = zustand.punkte;
+  const a = p[i]?.lippe;
+  const b = p[(i + 1) % p.length]?.lippe;
+  return !!a && !!b && a !== b;
+}
+
+/** So nah (Bildpunkte) rastet der Anfang einer Lippe auf einen Punkt des Umrisses ein, statt dicht daneben einen zu setzen. */
+const EINRASTEN_PX = 6;
+
+/** Ein Punkt des Umrisses bei q (q liegt auf ihm): ein vorhandener ohne Lippe, wenn er nah liegt, sonst ein neuer; seine Nummer. */
+function umrissPunktBei(q: { x: number; y: number }): number {
+  let nah = -1;
+  let best = EINRASTEN_PX / skala();
+  zustand.punkte.forEach((p, i) => {
+    const d = Math.hypot(p.x - q.x, p.y - q.y);
+    if (!p.lippe && d < best) {
+      best = d;
+      nah = i;
+    }
+  });
+  if (nah >= 0) return nah;
+  const st = naechsteStelle(q);
+  zustand.punkte.splice(st.i + 1, 0, { x: q.x, y: q.y });
+  return st.i + 1;
+}
+
+/** Richtung der Linie durch Umrisspunkt i, wie sie gerade läuft (die Griffe der Stücke an ihm liegen auf ihr). */
+function richtungAm(i: number): { x: number; y: number } | undefined {
+  const st = umrissStuecke(zustand.punkte);
+  const n = st.length;
+  const k = st[i]!;
+  let r = { x: k[1].x - k[0].x, y: k[1].y - k[0].y };
+  if (Math.hypot(r.x, r.y) < 1e-9) {
+    const v = st[(i - 1 + n) % n]!;
+    r = { x: v[3].x - v[2].x, y: v[3].y - v[2].y };
+  }
+  const l = Math.hypot(r.x, r.y);
+  return l > 1e-9 && !zustand.punkte[i]!.ecke ? { x: r.x / l, y: r.y / l } : undefined;
+}
+
+/**
+ * Liegt der Unterkiefer am Umrisspunkt i in Richtung der Nummern? Die Seite des Oberkiefers ist wie im Kern die, auf die die
+ * linke Normale der Lippe (Anfang → Mundwinkel) nach oben zeigt.
+ */
+function unterkieferNachVorn(i: number, lippe: readonly MaulPunkt[]): boolean {
+  const u = zustand.punkte;
+  const n = u.length;
+  const a = u[(i - 1 + n) % n]!;
+  const b = u[(i + 1) % n]!;
+  const s = lippe[0]!;
+  const e = lippe[lippe.length - 1]!;
+  const vz = e.x - s.x >= 0 ? 1 : -1;
+  return (b.x - a.x) * -(e.y - s.y) * vz + (b.y - a.y) * (e.x - s.x) * vz < 0;
+}
+
+/**
+ * Hält Umriss und Maul zusammen: je Lippe ein Punkt des Umrisses (fehlt er, kommt er dorthin, wo der Anfang der Lippe auf dem
+ * Umriss liegt, auf einen nahen Punkt eingerastet; die Unterlippe zuerst neben den der Oberlippe, auf die Seite des
+ * Unterkiefers), und die Lippen beginnen genau dort. Getrennt behalten beide Punkte die Richtung der Linie beim Trennen: Ein Kiefer
+ * wächst dann so nach vorn, wie die Linie dort lief (sonst richtete sie sich nach dem nächsten Punkt, und ein naher machte eine
+ * Spitze). Ohne Unterlippe fällt ihr Punkt weg, ohne Maul ist der Punkt der Maullinie ein gewöhnlicher Punkt.
+ */
+function maulKnotenSichern(): void {
+  const u = zustand.punkte;
+  const m = zustand.maul;
+  // je Lippe höchstens ein Punkt
+  for (const l of ['oben', 'unten'] as const) {
+    const erster = u.findIndex((q) => q.lippe === l);
+    for (let i = 0; i < u.length; i++) if (i !== erster && u[i]!.lippe === l) u[i] = ohneLippe(u[i]!);
+  }
+  const unten = m?.unten && m.unten.length >= 2 ? m.unten : null;
+  if (!unten) {
+    const iu = lippenKnoten('unten');
+    if (iu >= 0) u.splice(iu, 1);
+  }
+  if (!m) {
+    const io = lippenKnoten('oben');
+    if (io >= 0) u[io] = ohneLippe(u[io]!);
+    return;
+  }
+  let io = lippenKnoten('oben');
+  if (io < 0) {
+    io = umrissPunktBei(naechsterAufUmriss(m.punkte[0]!.x, m.punkte[0]!.y));
+    u[io] = { ...ohneLippe(u[io]!), lippe: 'oben' };
+  }
+  // zusammen läuft die Linie durch den Anfang wie durch jeden Punkt
+  if (!unten && u[io]!.richtung) u[io] = { ...ohneLippe(u[io]!), lippe: 'oben' };
+  if (unten && lippenKnoten('unten') < 0) {
+    const a = unten[0]!;
+    const o = u[io]!;
+    if (Math.hypot(a.x - o.x, a.y - o.y) < EINRASTEN_PX / skala()) {
+      const richtung = richtungAm(io);
+      u.splice(unterkieferNachVorn(io, m.punkte) ? io + 1 : io, 0, { x: o.x, y: o.y, lippe: 'unten', ...(richtung ? { richtung } : {}) });
+      io = lippenKnoten('oben');
+      if (richtung) u[io] = { ...u[io]!, richtung };
+    } else {
+      const iu = umrissPunktBei(naechsterAufUmriss(a.x, a.y));
+      io = lippenKnoten('oben');
+      // beide Richtungen, bevor die Punkte Nachbarn mit der geraden Front dazwischen werden
+      const ru = richtungAm(iu);
+      const ro = richtungAm(io);
+      u[iu] = { ...ohneLippe(u[iu]!), lippe: 'unten', ...(ru ? { richtung: ru } : {}) };
+      if (ro) u[io] = { ...u[io]!, richtung: ro };
+    }
+  }
+  const o = u[io]!;
+  m.punkte[0] = { ...m.punkte[0]!, x: o.x, y: o.y };
+  if (unten) {
+    const d = u[lippenKnoten('unten')]!;
+    unten[0] = { ...unten[0]!, x: d.x, y: d.y };
+    // die Unterlippe endet im Mundwinkel der Oberlippe
+    const mw = m.punkte[m.punkte.length - 1]!;
+    unten[unten.length - 1] = { ...unten[unten.length - 1]!, x: mw.x, y: mw.y };
+  }
+}
+
+/** Ein neues Maul: Die Punkte der alten Lippen werden gewöhnliche Punkte des Umrisses (der der Unterlippe fällt weg). */
+function lippenLoesen(): void {
+  zustand.punkte = zustand.punkte.filter((q) => q.lippe !== 'unten').map((q) => (q.lippe ? ohneLippe(q) : q));
+}
+
+/** Der Anfang einer Lippe ist ein Punkt des Umrisses: Er zieht den Umriss mit (die anderen Ansichten folgen wie bei jedem Punkt). */
+function anfangZiehen(l: number, q: { x: number; y: number }): void {
+  const k = lippenKnoten(l === 1 ? 'unten' : 'oben');
+  if (k < 0) return;
+  zustand.punkte[k] = { ...zustand.punkte[k]!, x: q.x, y: q.y };
+  koppeln('seite', k);
+}
+
 /**
  * Anfang und Ende einer Raumlinie liegen auf dem Umriss der Seite (dort treffen sich die Linie und der Umriss); zieht Florian
  * die Seite, gehen sie mit auf den nächsten Punkt des Umrisses.
@@ -977,7 +1105,7 @@ function rendern(): void {
     const andere = name !== 'seite';
     // mit gleichwertigen Ansichten zeigt auch die Seite den Umriss des Modells (über der Zeichnung), mit `?netz` immer, mit
     // offenem Maul ebenso (die Zeichnung bleibt geschlossen)
-    umriss.visible = andere || zustand.ansichten !== null || NETZ || LINIEN || posiertGezeigt() || getrenntGezeigt();
+    umriss.visible = andere || zustand.ansichten !== null || NETZ || LINIEN || posiertGezeigt();
     kanten.visible = andere;
     kantenHinten.visible = andere;
     for (const l of lippenMeshes) l.visible = andere;
@@ -1033,16 +1161,24 @@ function svgZeichnen(): void {
   const h = r.height / s;
   svg.setAttribute('viewBox', `${-w / 2} ${-h / 2} ${w} ${h}`);
   const stuecke = umrissStuecke(zustand.punkte);
-  let d = `M ${stuecke[0]![0].x} ${-stuecke[0]![0].y}`;
-  for (const k of stuecke) d += ` C ${k[1].x} ${-k[1].y} ${k[2].x} ${-k[2].y} ${k[3].x} ${-k[3].y}`;
-  d += ' Z';
+  // mit getrennten Kiefern ohne die Front des Mauls (zwischen den Anfängen der Lippen): Sie ist kein Rand der Form, nur leise
+  // gezeichnet (und kein Ort für neue Punkte)
+  const front = stuecke.findIndex((_, i) => istMaulFront(i));
+  const reihe = front < 0 ? stuecke : [...stuecke.slice(front + 1), ...stuecke.slice(0, front)];
+  let d = `M ${reihe[0]![0].x} ${-reihe[0]![0].y}`;
+  for (const k of reihe) d += ` C ${k[1].x} ${-k[1].y} ${k[2].x} ${-k[2].y} ${k[3].x} ${-k[3].y}`;
+  if (front < 0) d += ' Z';
   svg.replaceChildren();
   const treffer = element('path', 'treffer', { d });
   treffer.dataset.linie = '';
   // gleichwertige Ansichten: die Zeichnung farbig, der Umriss des Modells (Shader) schwarz darüber; mit `?netz` zeichnet nur
   // der Shader, die Punkte sind Griffe auf seiner Linie
   svg.append(treffer);
-  if (!NETZ && !LINIEN) svg.append(element('path', zustand.ansichten || posiertGezeigt() || getrenntGezeigt() ? 'vorgabe' : 'linie', { d }));
+  if (!NETZ && !LINIEN) {
+    svg.append(element('path', zustand.ansichten || posiertGezeigt() ? 'vorgabe' : 'linie', { d }));
+    const k = stuecke[front];
+    if (k) svg.append(element('path', 'maulfront', { d: `M ${k[0].x} ${-k[0].y} L ${k[3].x} ${-k[3].y}` }));
+  }
   for (const u of zustand.ansichten?.seite ?? []) svg.append(element('path', 'vorgabe', { d: umrissPfad(u, (q) => [q.x, -q.y]) }));
   const rp = 5 / s;
   // gezeichnete Linien: Trefferband, Strich, Punkte der gewählten Linie
@@ -1121,11 +1257,14 @@ function svgZeichnen(): void {
     pinselKreisZeichnen(svg, 'seite');
     return;
   }
+  // die Anfänge der Lippen sind Punkte des Umrisses, mit getrennten Kiefern in deren Farbe
+  const getrennt = !!zustand.maul?.unten;
   zustand.punkte.forEach((p, i) => {
     const an = auswahl?.art === 'umriss' && auswahl.i === i;
+    const klasse = `punkt${getrennt && p.lippe ? ` lippe-${p.lippe}` : ''}${an ? ' gewaehlt' : ''}`;
     const e = p.ecke
-      ? element('rect', an ? 'punkt gewaehlt' : 'punkt', { x: p.x - rp, y: -p.y - rp, width: 2 * rp, height: 2 * rp })
-      : element('circle', an ? 'punkt gewaehlt' : 'punkt', { cx: p.x, cy: -p.y, r: rp });
+      ? element('rect', klasse, { x: p.x - rp, y: -p.y - rp, width: 2 * rp, height: 2 * rp })
+      : element('circle', klasse, { cx: p.x, cy: -p.y, r: rp });
     e.dataset.punkt = String(i);
     svg.append(e);
   });
@@ -1145,6 +1284,8 @@ function naechsteStelle(q: { x: number; y: number }): { i: number; x: number; y:
   let bx = 0;
   let by = 0;
   umrissStuecke(zustand.punkte).forEach((k, i) => {
+    // die Front des Mauls bekommt keine Punkte (die Anfänge der Lippen bleiben Nachbarn)
+    if (istMaulFront(i)) return;
     for (let j = 1; j < 40; j++) {
       const t = j / 40;
       const u = 1 - t;
@@ -1195,6 +1336,7 @@ function vereinfachen(p: readonly { x: number; y: number }[], tol: number): { x:
 }
 
 function geaendert(fein = true): void {
+  maulKnotenSichern();
   svgZeichnen();
   profileZeichnen();
   bauGewuenscht = fein ? 'fein' : 'grob';
@@ -1202,7 +1344,7 @@ function geaendert(fein = true): void {
 
 function umrissEcke(i: number): void {
   merken(kopie(zustand));
-  zustand.punkte = zustand.punkte.map((p, j) => (j === i ? { x: p.x, y: p.y, ecke: !p.ecke } : p));
+  zustand.punkte = zustand.punkte.map((p, j) => (j === i ? { ...p, ecke: !p.ecke } : p));
   geaendert();
 }
 
@@ -1215,8 +1357,6 @@ function linienEcke(l: number, i: number): void {
 
 /** Die Punkte einer Maullinie (0: Maullinie bzw. Oberlippe, 1: Unterlippe bei getrennten Kiefern) */
 const maulPunkte = (l: number): MaulPunkt[] | undefined => (l === 1 ? zustand.maul?.unten : zustand.maul?.punkte);
-/** Sind die Kiefer getrennt (und geschnitten)? Dann zeigt auch die Seite den Umriss des Modells: der Unterkiefer folgt seiner Lippe. */
-const getrenntGezeigt = (): boolean => !!zustand.maul?.unten && !!schnitt?.unten;
 const ohneBreite = (q: MaulPunkt): MaulPunkt => (q.ecke ? { x: q.x, y: q.y, ecke: true } : { x: q.x, y: q.y });
 
 /**
@@ -1600,7 +1740,7 @@ svg.addEventListener('pointermove', (e) => {
   } else if (zug.art === 'mpunkt') {
     const punkte = maulPunkte(zug.l);
     if (!punkte) return;
-    // alle gewählten Punkte um dieselbe Strecke; ein Anfang gleitet auf dem Umriss
+    // alle gewählten Punkte um dieselbe Strecke; ein Anfang ist ein Punkt des Umrisses und zieht ihn mit
     const zm = zug;
     const dx = w.x - zm.start.x;
     const dy = w.y - zm.start.y;
@@ -1608,8 +1748,9 @@ svg.addEventListener('pointermove', (e) => {
       const p = punkte[j];
       if (!p) return;
       const z0 = zm.lagen[k]!;
-      const q = j === 0 ? naechsterAufUmriss(z0.x + dx, z0.y + dy) : { x: z0.x + dx, y: z0.y + dy };
+      const q = { x: z0.x + dx, y: z0.y + dy };
       punkte[j] = { ...p, x: q.x, y: q.y };
+      if (j === 0) anfangZiehen(zm.l, q);
       // der Mundwinkel gehört beiden Lippen
       const u = zustand.maul?.unten;
       if (zm.l === 0 && j === punkte.length - 1 && u) u[u.length - 1] = { ...u[u.length - 1]!, x: q.x, y: q.y };
@@ -1633,7 +1774,8 @@ const zugEnde = (): void => {
     const neu = maulAusSpur(zug.spur);
     if (neu) {
       merken(zug.vorher);
-      // ein neues Maul (getrennt wird mit dem Knopf „Kiefer trennen“)
+      // ein neues Maul (getrennt wird mit dem Knopf „Kiefer trennen“); sein Anfang wird ein Punkt des Umrisses
+      lippenLoesen();
       zustand.maul = neu;
       auswahl = { art: 'maul', l: 0 };
       bauGewuenscht = 'fein';
@@ -2169,10 +2311,11 @@ for (const b of ['front', 'top'] as const) {
       const p = punkte?.[lz.i];
       if (!punkte || !p || !schnitt) return;
       const letzter = lz.i === punkte.length - 1;
-      let x = b === 'front' ? p.x : a;
-      let y = b === 'front' ? a : p.y;
-      // der Anfang gleitet auf dem Umriss (dort hat die Form keine Tiefe, also auch keine Breite)
-      if (lz.i === 0) ({ x, y } = naechsterAufUmriss(x, y));
+      const x = b === 'front' ? p.x : a;
+      const y = b === 'front' ? a : p.y;
+      // der Anfang ist ein Punkt des Umrisses (dort hat die Form keine Tiefe, also auch keine Breite): Die Front zieht ihn in
+      // der Höhe, das Top in der Länge, der Umriss geht mit
+      if (lz.i === 0) anfangZiehen(lz.l, { x, y });
       const t = schnitt.tiefe(x, y);
       // am Mundwinkel treffen sich die Lippen: dort keine eigene Breite
       const breite = lz.i === 0 || letzter || t < 1e-3 ? p.b : Math.max(0.2, Math.min(4, Math.abs(q) / t));
@@ -2276,7 +2419,8 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
     const a = auswahl;
     if (a.art === 'umriss') {
-      if (zustand.punkte.length <= 3) return;
+      // der Anfang einer Lippe gehört zum Maul (mit ihm löschen)
+      if (zustand.punkte.length <= 3 || zustand.punkte[a.i]?.lippe) return;
       merken(kopie(zustand));
       fuehrt('seite');
       zustand.punkte = zustand.punkte.filter((_, j) => j !== a.i);
@@ -2483,6 +2627,7 @@ void backenBereit.then(() => {
 });
 window.__formMaul = (linie) => {
   merken(kopie(zustand));
+  lippenLoesen();
   zustand.maul = linie ? { punkte: linie.punkte.map((q) => ({ ...q })), unten: linie.unten?.map((q) => ({ ...q })) } : null;
   auswahl = null;
   geaendert();

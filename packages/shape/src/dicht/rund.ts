@@ -185,7 +185,9 @@ function koerperAus(punkte: readonly UmrissPunkt[], zelle: number): Koerper {
     yMax = Math.max(yMax, q.y);
   }
   const diag = Math.hypot(xMax - xMin, yMax - yMin);
-  const R = kugelRadien(feld, diag, 0.75 * zelle, 0.05 * zelle);
+  // nach dem Glätten noch einmal schrumpfen: An einer einspringenden Ecke (etwa wo die Unterlippe getrennter Kiefer beginnt) ist
+  // die Kugel groß, geglättet ragten ihre Nachbarn bis 27 Einheiten über den Umriss (und das Raster schnitt die Form auf)
+  const R = kugelRadien(feld, diag, 0.75 * zelle, 0.05 * zelle, true);
 
   // Spalten des Rasters: g je (x, y)
   const rand = 2 * zelle;
@@ -201,7 +203,16 @@ function koerperAus(punkte: readonly UmrissPunkt[], zelle: number): Koerper {
 const bezugsKoerper = new WeakMap<readonly UmrissPunkt[], Map<number, Kugeln>>();
 
 const gleicherUmriss = (a: readonly UmrissPunkt[], b: readonly UmrissPunkt[]): boolean =>
-  a.length === b.length && a.every((p, i) => p.x === b[i]!.x && p.y === b[i]!.y && !p.ecke === !b[i]!.ecke);
+  a.length === b.length &&
+  a.every(
+    (p, i) =>
+      p.x === b[i]!.x &&
+      p.y === b[i]!.y &&
+      !p.ecke === !b[i]!.ecke &&
+      p.lippe === b[i]!.lippe &&
+      p.richtung?.x === b[i]!.richtung?.x &&
+      p.richtung?.y === b[i]!.richtung?.y,
+  );
 
 /**
  * Der Körper, auf dem eine Linie liegt: der des Umrisses beim Zeichnen, mit der heutigen Rasterweite gebaut; ohne Bezug oder

@@ -16,7 +16,8 @@ import { type MaulSchnitt, maulOeffnen } from './maul';
 /** Der Ausdünner lädt sein WebAssembly einmal; vorher kann nicht gebacken werden. */
 export const backenBereit: Promise<void> = MeshoptSimplifier.ready;
 
-export type Netzteil = { positionen: Float32Array; normalen: Float32Array; indizes: Uint32Array };
+/** `knochen`: je Punkt die Gewichte von Unterkiefer und Schädel (zwei Zahlen); mit ihnen gebacken trägt das Netz jede Pose. */
+export type Netzteil = { positionen: Float32Array; normalen: Float32Array; indizes: Uint32Array; knochen?: Float32Array };
 
 export type Spielnetz = {
   /** Dreiecke des Körpers (Nummern der dichten Punkte) */
@@ -32,6 +33,12 @@ export type Spielnetz = {
 
 /** Gewicht der Normalen beim Ausdünnen: hält Knicke und Farbstufen, wo die Fläche sich schnell dreht */
 const NORMALEN_GEWICHT = 0.5;
+/**
+ * Gewicht der Knochengewichte beim Ausdünnen: Ein großes Dreieck über einem Übergang dreht in einer Pose an seinen Ecken
+ * verschieden weit und klappt um (gemessen: oben auf dem Kopf beim Kippen des Schädels). Ein Fehler δ im Gewicht verschiebt
+ * einen Punkt um δ · Winkel · Hebel, also bis etwa δ · Ausdehnung bei 40° bis 55°.
+ */
+const KNOCHEN_GEWICHT = 1;
 /** Öffnung beim Backen (Grad): weit genug, dass die Lippen sicher auseinander liegen */
 const BACK_WINKEL = 30;
 
@@ -42,25 +49,38 @@ const BACK_WINKEL = 30;
 export function backen(koerper: Netzteil, innen: Netzteil | null, budget = 8000): Spielnetz {
   const nK = koerper.positionen.length / 3;
   const nI = innen ? innen.positionen.length / 3 : 0;
+  const mitKnochen = !!koerper.knochen && (!innen || !!innen.knochen);
+  // je Punkt die Normale und (wenn da) die Knochengewichte
+  const na = mitKnochen ? 5 : 3;
   const P = new Float32Array(3 * (nK + nI));
-  const N = new Float32Array(3 * (nK + nI));
+  const A = new Float32Array(na * (nK + nI));
+  const merkmale = (t: Netzteil, v0: number, n: number): void => {
+    for (let v = 0; v < n; v++) {
+      for (let k = 0; k < 3; k++) A[na * (v0 + v) + k] = t.normalen[3 * v + k]!;
+      if (mitKnochen) {
+        A[na * (v0 + v) + 3] = t.knochen![2 * v]!;
+        A[na * (v0 + v) + 4] = t.knochen![2 * v + 1]!;
+      }
+    }
+  };
   P.set(koerper.positionen);
-  N.set(koerper.normalen);
+  merkmale(koerper, 0, nK);
   const I = new Uint32Array(koerper.indizes.length + (innen ? innen.indizes.length : 0));
   I.set(koerper.indizes);
   if (innen) {
     P.set(innen.positionen, 3 * nK);
-    N.set(innen.normalen, 3 * nK);
+    merkmale(innen, nK, nI);
     for (let i = 0; i < innen.indizes.length; i++) I[koerper.indizes.length + i] = innen.indizes[i]! + nK;
   }
+  const gewichte = [NORMALEN_GEWICHT, NORMALEN_GEWICHT, NORMALEN_GEWICHT, ...(mitKnochen ? [KNOCHEN_GEWICHT, KNOCHEN_GEWICHT] : [])];
   // das Budget zählt, nicht der Fehler (er wird gemeldet)
   const [neu, fehler] = MeshoptSimplifier.simplifyWithAttributes(
     I,
     P,
     3,
-    N,
-    3,
-    [NORMALEN_GEWICHT, NORMALEN_GEWICHT, NORMALEN_GEWICHT],
+    A,
+    na,
+    gewichte,
     null,
     Math.min(I.length, 3 * budget),
     1e9,
@@ -95,9 +115,20 @@ export function maulBacken(m: MaulSchnitt, budget = 8000): Spielnetz {
     innenNormalen: new Float32Array(m.innen.normalen.length),
   };
   maulOeffnen(m, BACK_WINKEL, offen);
+  // Knochen: der Körper nach seinen Gewichten, das Innere starr (der Boden mit dem Unterkiefer, der Gaumen mit dem Schädel)
+  const knochen = new Float32Array(2 * m.gewicht.length);
+  for (let v = 0; v < m.gewicht.length; v++) {
+    knochen[2 * v] = m.gewicht[v]!;
+    knochen[2 * v + 1] = m.gewichtOben[v]!;
+  }
+  const innenKnochen = new Float32Array(2 * m.innenUnten.length);
+  for (let v = 0; v < m.innenUnten.length; v++) {
+    innenKnochen[2 * v] = m.innenUnten[v]!;
+    innenKnochen[2 * v + 1] = 1 - m.innenUnten[v]!;
+  }
   return backen(
-    { positionen: offen.positionen, normalen: offen.normalen, indizes: m.indizes },
-    { positionen: offen.innenPositionen, normalen: offen.innenNormalen, indizes: m.innen.indizes },
+    { positionen: offen.positionen, normalen: offen.normalen, indizes: m.indizes, knochen },
+    { positionen: offen.innenPositionen, normalen: offen.innenNormalen, indizes: m.innen.indizes, knochen: innenKnochen },
     budget,
   );
 }

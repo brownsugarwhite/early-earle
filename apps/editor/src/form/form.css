@@ -226,8 +226,32 @@ body {
   stroke: var(--unterlippe);
 }
 
-.blatt .lpunkt.lippe-oben {
+.blatt .lpunkt.lippe-oben,
+.blatt .punkt.lippe-oben {
   stroke: var(--oberlippe);
+}
+
+.blatt .punkt.lippe-oben.gewaehlt {
+  fill: var(--oberlippe);
+}
+
+.blatt .punkt.lippe-unten {
+  stroke: var(--unterlippe);
+}
+
+.blatt .punkt.lippe-unten.gewaehlt {
+  fill: var(--unterlippe);
+}
+
+/* die Front des Mauls zwischen den Anfängen der Lippen: kein Rand der Form */
+.blatt .maulfront {
+  fill: none;
+  stroke: var(--linie);
+  stroke-width: 1.5px;
+  stroke-opacity: 0.35;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
 }
 
 .blatt .lpunkt.lippe-oben.gewaehlt {

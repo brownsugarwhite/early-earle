@@ -1,9 +1,11 @@
 // Form zuerst (05.11.2026), Probe „Kiefer trennen“, mit der Maus.
 // Maullinie ziehen, Knopf „Kiefer trennen“: Ober- und Unterlippe (rot, blau). Dann wie Florian: in der Front die Unterlippe schmaler
-// und die Oberlippe breiter ziehen, in der Seite die Oberlippe über den Unterkiefer, den Anfang der Unterlippe am Umriss zurück
-// (kürzerer Unterkiefer), Unterbiss (Unterlippe breiter und vorn hoch). Gemessen je Stand: dicht nach Lage (Körper und Inneres,
-// offen), umgeklappte Dreiecke (sichtbar ≥ 1 Einheit², sonst Splitter), Breite der Lippen gegen die Form (Mitte der Lippe) und der
-// Abstand zwischen ihnen in der Tiefe (Platz für Zähne); Bauzeit. Am Anfang: trennen und wieder zusammen ist bitgleich.
+// und die Oberlippe breiter ziehen, in der Seite die Oberlippe über den Unterkiefer, den Anfang der Unterlippe nach unten (kürzerer
+// Unterkiefer), Unterbiss (Unterlippe breiter und vorn hoch). Die Anfänge der Lippen sind Punkte des Umrisses und frei (05.11.
+// nachmittags): den Oberkiefer nach vorn ziehen (Überbiss), dazu den Unterkiefer zurück (Lücke vorn), den Unterkiefer nach vorn
+// (Unterbiss). Gemessen je Stand: dicht nach Lage (Körper und Inneres, offen), umgeklappte Dreiecke (sichtbar ≥ 1 Einheit², sonst
+// Splitter), Breite der Lippen gegen die Form (Mitte der Lippe) und der Abstand zwischen ihnen in der Tiefe (Platz für Zähne);
+// Bauzeit. Am Anfang: trennen und wieder zusammen ist bitgleich.
 // Aufruf aus apps/editor: node scripts/pruefen/form-kiefer-trennen.mjs <ordner>
 import { chromium } from '@playwright/test';
 
@@ -224,7 +226,7 @@ for (const w of [20, 40, 55]) {
   await stand(`kugel-ueberbiss-${w}`, { bild: w === 40, geschlossen: false });
 }
 await pose(0, false);
-// Unterkiefer kürzer: den Anfang der Unterlippe am Umriss nach unten
+// Unterkiefer kürzer: den Anfang der Unterlippe nach unten (er ist ein Punkt des Umrisses: der Umriss geht mit)
 await waehlen(1);
 await lippeZiehen('zeichnung', 1, 0, 6, 34);
 await stand('kugel-unterkiefer-kurz');
@@ -269,6 +271,65 @@ await seite.keyboard.press('Backspace');
 await fertig();
 console.log(`  gelöscht: ${await seite.evaluate(() => window.__form.maul.punkte.length)} Punkte, Unterlippe ${await seite.evaluate(() => window.__form.maul.unten?.length ?? 0)}`);
 await stand('kugel-punkt-geloescht', { bild: false });
+
+// ---------- Freie Anfänge: Wo Kiefer und Umriss sich treffen, ist ein echter Punkt (05.11. nachmittags) ----------
+const kieferPunkte = () =>
+  seite.evaluate(() =>
+    window.__form.punkte
+      .map((q, i) => (q.lippe ? `${q.lippe} ${i} (${q.x.toFixed(1)}, ${q.y.toFixed(1)})` : null))
+      .filter(Boolean)
+      .join(', '),
+  );
+await seite.evaluate(() => window.__formMaul(null));
+await fertig();
+await strich([
+  [-225, 6],
+  [-150, 2],
+  [-80, -4],
+  [-20, -8],
+]);
+console.log(`  Maul gezeichnet: ${await kieferPunkte()} · Umriss ${await seite.evaluate(() => window.__form.punkte.length)} Punkte`);
+await trennen();
+console.log(`  getrennt: ${await kieferPunkte()}`);
+// Überbiss: den Anfang der Oberlippe 30 nach vorn, die Form wächst mit
+await waehlen(0);
+await lippeZiehen('zeichnung', 0, 0, -30, 0);
+console.log(`  Oberkiefer vor: ${await kieferPunkte()}`);
+await stand('frei-oberkiefer-vor');
+for (const w of [20, 40]) {
+  await pose(w);
+  await stand(`frei-oberkiefer-vor-${w}`, { bild: w === 40, geschlossen: false });
+}
+await pose(0, false);
+// dazu der Unterkiefer zurück und tiefer: vorn eine Lücke (Platz für Zähne)
+await waehlen(1);
+await lippeZiehen('zeichnung', 1, 0, 12, 25);
+console.log(`  Unterkiefer zurück: ${await kieferPunkte()}`);
+await stand('frei-luecke');
+for (const w of [20, 40]) {
+  await pose(w);
+  await stand(`frei-luecke-${w}`, { bild: w === 40, geschlossen: false });
+}
+await pose(0, false);
+// ⌘Z: der Anfang der Unterlippe und der Umriss wieder wie vorher
+const vorUndo = await seite.evaluate(() => window.__form.punkte.length);
+await seite.keyboard.press('Meta+z');
+await fertig();
+console.log(`  ⌘Z: ${await kieferPunkte()} (Umriss ${vorUndo} → ${await seite.evaluate(() => window.__form.punkte.length)} Punkte)`);
+// Kiefer zusammen: der Punkt der Unterlippe fällt weg
+await trennen();
+console.log(`  zusammen: ${await kieferPunkte()}`);
+// Unterbiss mit freiem Anfang: der Unterkiefer 30 nach vorn und etwas tiefer, breiter
+await trennen();
+await lippeZiehen('zeichnung', 1, 0, -30, 12);
+await lippeZiehen('profil-front', 1, 1, 14, 0);
+console.log(`  Unterkiefer vor: ${await kieferPunkte()}`);
+await stand('frei-unterbiss');
+for (const w of [20, 40]) {
+  await pose(w);
+  await stand(`frei-unterbiss-${w}`, { bild: w === 40, geschlossen: false });
+}
+await pose(0, false);
 
 // ---------- Unterbiss: Unterlippe breiter und vorn über der Oberlippe ----------
 await seite.evaluate(() => window.__formMaul(null));
