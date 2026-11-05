@@ -258,11 +258,13 @@ export function streckungBei(s: Tiefenstreckung | null, x: number, y: number): n
 
 /**
  * Streckt die Tiefe: z → s · z mit s = a(x) · b(y). Normalen mit der inversen transponierten Ableitung der Abbildung:
- * n → (nx − sₓ z / s · nz, ny − s_y z / s · nz, nz / s).
+ * n → (nx − sₓ z / s · nz, ny − s_y z / s · nz, nz / s). Mit `nur` nur diese Punkte.
  */
-export function tiefeAnwenden(pos: Float32Array, nor: Float32Array | null, s: Tiefenstreckung): void {
+export function tiefeAnwenden(pos: Float32Array, nor: Float32Array | null, s: Tiefenstreckung, nur?: readonly number[]): void {
   const F: [number, number, number] = [1, 0, 0];
-  for (let v = 0; v < pos.length / 3; v++) {
+  const anzahl = nur ? nur.length : pos.length / 3;
+  for (let q = 0; q < anzahl; q++) {
+    const v = nur ? nur[q]! : q;
     const x = pos[3 * v]!;
     const y = pos[3 * v + 1]!;
     const z = pos[3 * v + 2]!;

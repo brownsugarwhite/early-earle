@@ -126,6 +126,17 @@ body {
   stroke-opacity: 0.8;
 }
 
+/* beim Ziehen: hier würde beim Loslassen geteilt */
+.blatt .naht-vorschau {
+  fill: none;
+  stroke: #0e9f8e;
+  stroke-width: 2.5px;
+  stroke-dasharray: 7 4;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
 .blatt .treffer {
   fill: none;
   stroke: transparent;

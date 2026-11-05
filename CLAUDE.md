@@ -851,6 +851,27 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     noch einmal); ein Hilfspunkt neben der Spitze mit der alten Richtung beulte den Bogen (Deckung verfehlt) — die Ecke mit Richtung
     ersetzt ihn. Abgeleitete Umrisse (≤ 6 Punkte) liegen bis einige Pixel neben dem Shader: sichtbar nicht zeichnen (Doppellinien).
   - Bilder `docs/progress/editor/form-teile-*-2026-11-05.jpg`.
+- **2026-11-05 (nachmittags): Teile in `?linien`** (Florian nach seinem Test: „Ich kann es nicht nachstellen … beim Ziehen entstehen die
+  Linien ganz woanders … wirkt sehr instabil. Warum sind wir jetzt nicht mehr bei ?linien?“ — Antwort: meine Entscheidung ohne ihn zu
+  fragen; seine Bohne hatte eine Einbuchtung 0,1 bei Schwelle 1,0, geteilt wurde nur beim Loslassen; im normalen Fenster verlängern
+  Front/Top die Form nicht über die Seite. Dann: „Ja, bau die Teile in ?linien ein: eigener Seitenumriss und eigene Linien je Teil, im
+  Top und in der Front die Linie je Teil, Naht schon beim Ziehen sichtbar, Naht von Hand bleibt.“).
+  - **Bedienung** (`form.html?linien`, auch im normalen Fenster): Beim Ziehen eines Umrisspunkts zeigt die Seite die Naht türkis
+    gestrichelt, sobald die Einbuchtung die Schwelle erreicht; beim Loslassen wird geteilt. Schwelle jetzt 0,5 (Regler 0,2–3). In Front
+    und Top fasst ein Druck auf den Umriss die Linie des nächsten Teils (auch verdeckt, dort gestrichelt); die neue Linie gehört diesem
+    Teil und formt nur es. Beim Teilen gehen die Linien zum Teil, in dem sie überwiegend liegen; Knoten zwischen Teilen lösen sich.
+  - **Kern** (`rundAusTeilen` in `dicht/rund.ts`): jedes Teil der runde Körper seiner Seite, gestreckt durch seine Linien (sₖ · √gₖ),
+    auf einem gemeinsamen Raster; zusammen die größte Tiefe (Tiefe² = max sₖ² gₖ), vernetzt wird die gestreckte Fläche; jeder Punkt
+    auf das Teil, das an seiner Stelle am tiefsten ist (vor dessen Streckung auf seine Kugel, dann gestreckt); `konturen` je Teil.
+    `rundAusSeite` unverändert (Vernetzung, Kugelprojektion und Ausrichtung herausgezogen, gegen die alte Fassung bitgleich geprüft).
+  - **Gemessen** (Maus `scripts/pruefen/form-teile-linien.mjs`, Kern 46 Tests grün): Naht beim Ziehen sichtbar, Teilung beim
+    Loslassen; Kopf im Top 48,4 → 41,5 schmaler, Bauch 100,6 → 117,5 breiter, das andere Teil je unverändert; ⌘Z zurück ohne Linien;
+    Zug mit Teilen 1,9 ms Zeichnen + 8,9 ms grober Bau; das normale Fenster wie vorher (gleiche Zahlen).
+  - **Offen:** In der Kehle zwischen Teilen 2 doppelt belegte Kanten (zwei Punkte auf derselben Stelle), mit schmalem Kopf zeitweise 2
+    umgeklappte Dreiecke; die Naht durch eine runde Form deckt in `?linien` ebenso fast alles; ein einzelner weit gezogener Linienpunkt
+    gibt eine Spitze (Linien allgemein, nicht Teile); Maul und Kantenlinien mit Teilen noch nicht. Weg für Kehle und runde Naht: Härte
+    an der Naht.
+  - Bilder `docs/progress/editor/form-teile-linien-*-2026-11-05.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

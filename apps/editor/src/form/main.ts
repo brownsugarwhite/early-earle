@@ -60,6 +60,7 @@ import {
   raumAbtasten,
   raumKanten,
   rundAusSeite,
+  rundAusTeilen,
   streckungBei,
   tiefeAusKontur,
   umrissAbtasten,
@@ -110,8 +111,8 @@ type Zustand = {
   front: UmrissPunkt[] | null;
   top: UmrissPunkt[] | null;
   ansichten: Ansichten | null;
-  /** Linien im Raum (`?linien`): Hälfte z ≥ 0, Anfang und Ende auf dem Umriss der Seite */
-  raum: RaumLinie[];
+  /** Linien im Raum (`?linien`): Hälfte z ≥ 0, Anfang und Ende auf dem Umriss der Seite (ihres Teils) */
+  raum: RaumLinieT[];
   /** Maullinie in der Seite: erster Punkt auf dem Umriss, letzter = Mundwinkel */
   maul: MaulLinie | null;
   /** die Pose „Fressen“: Knochen (Unterkiefer, Schädel) und Züge des Blendshapes; gezeigt, wenn „Pose“ an ist */
@@ -124,6 +125,10 @@ type Zustand = {
  * gezogenen Naht; Teile verschmelzen nicht, sie werden zu einem Netz vereinigt. Front und Top: null = folgt dem Teil.
  */
 type Teil = { punkte: UmrissPunkt[]; front: UmrissPunkt[] | null; top: UmrissPunkt[] | null };
+/** Eine Linie auf der Form (`?linien`); sie gehört einem Teil (`teil`; fehlt: dem Körper) und formt nur dieses. */
+type RaumLinieT = RaumLinie & { teil?: number };
+/** Teil einer Linie auf der Form (−1: der Körper) */
+const teilDer = (l: RaumLinieT): number => l.teil ?? -1;
 const ruhePose = (): Pose => ({ ...RUHE, zuege: [] });
 type Blatt = 'front' | 'top';
 
@@ -174,6 +179,11 @@ declare global {
     __formPruefall?: (name: Prueffall) => void;
     /** Prüfhaken: größter Abstand je Ansicht zwischen ihrer Linie und dem Umriss des Körpers (nur gleichwertige Ansichten) */
     __formAbstand?: () => Record<'seite' | 'front' | 'top', number> | null;
+    /**
+     * Prüfhaken (`?linien`): Tiefe der Linie, wo Umriss `nr` (0: Körper, sonst Teil + 1) von vorn bzw. oben am breitesten ist, an
+     * der Stelle `l` längs (Front: Höhe y, Top: x); null, wo er nicht reicht
+     */
+    __formKontur?: (nr: number, blatt: 'front' | 'top', l: number) => number | null;
   }
 }
 
@@ -562,9 +572,13 @@ function geometrieSetzen(n: DichtesNetz): void {
   draht.visible = sp !== null;
   drahtInnen.visible = sp !== null && s !== null;
   kantenRuhe = n.kanten;
-  // Linien auf der Form, auf die Fläche gelegt (Tiefe der Form an ihrer Stelle in der Seite)
-  const kontur = n.kontur;
-  raumRuhe = LINIEN ? raumKanten(zustand.raum, 2, kontur ? (x, y) => tiefeAusKontur(kontur, x, y) : undefined) : [];
+  // Linien auf der Form, auf die Fläche gelegt (Tiefe der Form an ihrer Stelle in der Seite); mit Teilen auf die ihres Teils
+  raumRuhe = LINIEN
+    ? zustand.raum.map((l, i) => {
+        const kontur = letzteKonturen[teilDer(l) + 1] ?? n.kontur;
+        return { ...raumKanten([l], 2, kontur ? (x, y) => tiefeAusKontur(kontur, x, y) : undefined)[0]!, linie: i };
+      })
+    : [];
   poseAnwenden();
 }
 
@@ -678,7 +692,8 @@ function kantenGeometrie(liste: readonly Kante3D[]): BufferGeometry {
 }
 
 /** aus dem letzten Bau: wo der Körper von vorn und oben am breitesten ist, Tiefe je Stelle (`?linien`: Umriss anfassen) */
-let letzteKontur: Kontur | null = null;
+/** `?linien`: je Umriss (Körper, dann die Teile), wo er von vorn und von oben am breitesten ist */
+let letzteKonturen: Kontur[] = [];
 /** aus dem letzten Bau: Streckung der Tiefe, Tiefe der Linienpunkte, Linien im Raum (für Front und Top) */
 let letzteTiefe: DichtesNetz['tiefe'] = null;
 let letzteLinienZ: Float64Array[] = [];
@@ -829,9 +844,20 @@ function bauen(fein: boolean): void {
   abgeleitet.front = null;
   abgeleitet.top = null;
   if (LINIEN) {
-    // Florians Modell: die Seite legt das Volumen an, die Linien auf der Form formen es (Front und Top nur Ansicht)
+    // Florians Modell: die Seite legt das Volumen an, die Linien auf der Form formen es (Front und Top nur Ansicht). Mit Teilen
+    // jedes Teil aus seiner Seite und seinen eigenen Linien, zusammen die größte Tiefe
     raumEndenAufUmriss();
-    n = rundAusSeite(zustand.punkte, { dreiecke: fein ? DREIECKE_FEIN : DREIECKE_ZUG, linien: zustand.linien, raumlinien: zustand.raum });
+    if (zustand.teile.length > 0) {
+      const r = rundAusTeilen(
+        alleUmrisse().map((k) => ({ punkte: umrissVon(k), raumlinien: zustand.raum.filter((l) => teilDer(l) === k) })),
+        { dreiecke: fein ? DREIECKE_FEIN : DREIECKE_ZUG },
+      );
+      letzteKonturen = r.konturen;
+      n = r;
+    } else {
+      n = rundAusSeite(zustand.punkte, { dreiecke: fein ? DREIECKE_FEIN : DREIECKE_ZUG, linien: zustand.linien, raumlinien: zustand.raum });
+      letzteKonturen = n.kontur ? [n.kontur] : [];
+    }
   } else if (zustand.ansichten) {
     gleich = gleichBauen(zustand.ansichten, fein);
     n = gleich.n;
@@ -905,7 +931,6 @@ function bauen(fein: boolean): void {
       : '';
   const ms = performance.now() - t0;
   letztesGleich = gleich?.g ?? null;
-  letzteKontur = n.kontur ?? null;
   geometrieSetzen(n);
   if (fein && !kameraBewegt) einrahmen();
   letzteTiefe = n.tiefe;
@@ -1116,7 +1141,8 @@ function anfangZiehen(l: number, q: { x: number; y: number }): void {
  */
 function raumEndenAufUmriss(): void {
   if (zustand.raum.length === 0) return;
-  const u = umrissAbtasten(zustand.punkte, 2).punkte;
+  const umrisse = new Map<number, { x: number; y: number }[]>();
+  let u: { x: number; y: number }[] = [];
   const naechster = (x: number, y: number): { x: number; y: number } => {
     let best = Infinity;
     let q = { x, y };
@@ -1136,6 +1162,10 @@ function raumEndenAufUmriss(): void {
     return q;
   };
   for (const l of zustand.raum) {
+    // auf den Umriss ihres Teils
+    const k = teilDer(l);
+    if (!umrisse.has(k)) umrisse.set(k, umrissAbtasten(umrissVon(k), 2).punkte);
+    u = umrisse.get(k)!;
     for (const i of [0, l.punkte.length - 1]) {
       const p = l.punkte[i]!;
       const q = naechster(p.x, p.y);
@@ -1207,6 +1237,8 @@ const teileWert = document.getElementById('teile-wert') as HTMLSpanElement;
 const nahtKnopf = document.getElementById('naht-knopf') as HTMLButtonElement;
 /** Naht ziehen: der nächste Zug in der Seite ist eine Naht */
 let nahtAn = false;
+/** beim Ziehen eines Umrisspunkts: die Naht, an der beim Loslassen geteilt würde */
+let nahtVorschau: [V, V] | null = null;
 const schwelle = (): number => Number(teileSchwelle.value);
 /** Körper (−1) und alle Teile */
 const alleUmrisse = (): number[] => [-1, ...zustand.teile.map((_, k) => k)];
@@ -1216,10 +1248,10 @@ function umrissSetzen(k: number, p: UmrissPunkt[]): void {
   if (k < 0) zustand.punkte = p;
   else zustand.teile[k]!.punkte = p;
 }
-/** Mit Teilen zeigt jede Ansicht jeden Umriss für sich (nicht in den Proben `?netz`, `?linien` und gleichwertigen Ansichten) */
-const mitTeilen = (): boolean => zustand.teile.length > 0 && !zustand.ansichten && !NETZ && !LINIEN;
-/** Teilen geht ohne Maul (getrennte Kiefer als Teile sind die nächste Probe) und nicht in den anderen Proben */
-const teilenMoeglich = (): boolean => !zustand.maul && !zustand.ansichten && !NETZ && !LINIEN;
+/** Mit Teilen zeigt jede Ansicht jeden Umriss für sich (nicht in der Probe `?netz` und mit gleichwertigen Ansichten) */
+const mitTeilen = (): boolean => zustand.teile.length > 0 && !zustand.ansichten && !NETZ;
+/** Teilen geht ohne Maul (getrennte Kiefer als Teile sind die nächste Probe), nicht in `?netz` und gleichwertigen Ansichten */
+const teilenMoeglich = (): boolean => !zustand.maul && !zustand.ansichten && !NETZ;
 
 function innenPoly(P: readonly V[], q: V): boolean {
   let drin = false;
@@ -1328,10 +1360,40 @@ function laeufe(p: readonly V[], verdeckt: readonly boolean[], blatt: (q: V) => 
   return aus;
 }
 
-/** Umriss k wird an seiner Teilung zum größeren Teil, der kleinere ein neues Teil (folgt in Front und Top sich selbst). */
+/**
+ * Umriss k wird an seiner Teilung zum größeren Teil, der kleinere ein neues Teil (folgt in Front und Top sich selbst). Seine
+ * Linien auf der Form gehören danach dem Teil, in dem sie überwiegend liegen; Knoten zwischen Linien verschiedener Teile lösen
+ * sich (die Teile verschmelzen nicht).
+ */
 function teilungUebernehmen(k: number, t: Teilung): void {
   umrissSetzen(k, t.koerper);
   zustand.teile.push({ punkte: t.teil, front: null, top: null });
+  const neu = zustand.teile.length - 1;
+  const A = umrissAbtasten(t.koerper, 3).punkte;
+  const B = umrissAbtasten(t.teil, 3).punkte;
+  for (const l of zustand.raum) {
+    if (teilDer(l) !== k) continue;
+    let a = 0;
+    let b = 0;
+    for (const q of raumAbtasten(l, 4).p) {
+      if (innenPoly(A, q)) a++;
+      if (innenPoly(B, q)) b++;
+    }
+    if (b > a) l.teil = neu;
+  }
+  const teileJeKnoten = new Map<number, Set<number>>();
+  for (const l of zustand.raum) {
+    for (const p of l.punkte) {
+      if (p.knoten === undefined) continue;
+      if (!teileJeKnoten.has(p.knoten)) teileJeKnoten.set(p.knoten, new Set());
+      teileJeKnoten.get(p.knoten)!.add(teilDer(l));
+    }
+  }
+  for (const l of zustand.raum) {
+    l.punkte = l.punkte.map((p) =>
+      p.knoten !== undefined && teileJeKnoten.get(p.knoten)!.size > 1 ? (p.ecke ? { x: p.x, y: p.y, z: p.z, ecke: true } : { x: p.x, y: p.y, z: p.z }) : p,
+    );
+  }
   auswahl = null;
 }
 
@@ -1433,7 +1495,10 @@ function linienPfad(l: KantenLinie, s: number): { flaeche: string | null; mitte:
   return { flaeche: `M ${links.join(' L ')} L ${rechts.reverse().join(' L ')} Z`, mitte };
 }
 
-/** Mit Teilen in der Seite: Trefferlinien der Teile, dann jeder Umriss sichtbar durchgezogen und verdeckt gestrichelt. */
+/**
+ * Mit Teilen in der Seite: Trefferlinien der Teile, dann jeder Umriss sichtbar durchgezogen und verdeckt gestrichelt (in
+ * `?linien` zeichnet den sichtbaren Umriss der Shader, hier nur die verdeckten Stücke).
+ */
 function teileInDerSeite(s: number): void {
   const zuege = new Map<number, V[]>();
   for (const k of alleUmrisse()) zuege.set(k, umrissAbtasten(umrissVon(k), 3).punkte);
@@ -1446,7 +1511,9 @@ function teileInDerSeite(s: number): void {
   for (const k of alleUmrisse()) {
     const p = umrissAbtasten(umrissVon(k), Math.max(1, 2 / s)).punkte;
     const v = verdecktMarken('seite', k, p, zuege, zuege, 3 / s);
-    for (const l of laeufe(p, v, (q) => [q.x, -q.y])) svg.append(element('path', l.verdeckt ? 'verdeckt' : 'linie', { d: l.d }));
+    for (const l of laeufe(p, v, (q) => [q.x, -q.y])) {
+      if (l.verdeckt || !LINIEN) svg.append(element('path', l.verdeckt ? 'verdeckt' : 'linie', { d: l.d }));
+    }
   }
 }
 
@@ -1551,6 +1618,10 @@ function svgZeichnen(): void {
     svg.append(element('path', 'entwurf', { d: zug.spur.map((q, i) => `${i ? 'L' : 'M'} ${q.x} ${-q.y}`).join(' ') }));
   }
   if (zug?.art === 'naht') svg.append(element('path', 'entwurf naht', { d: `M ${zug.a.x} ${-zug.a.y} L ${zug.b.x} ${-zug.b.y}` }));
+  if (nahtVorschau) {
+    const [a, b] = nahtVorschau;
+    svg.append(element('path', 'naht-vorschau', { d: `M ${a.x} ${-a.y} L ${b.x} ${-b.y}` }));
+  }
   if (LINIEN) raumZeichnen(svg, 'seite');
   // in der Pose wirkt nur der Pinsel: keine Punkte der Grundform
   if (poseAn) {
@@ -2048,6 +2119,8 @@ svg.addEventListener('pointermove', (e) => {
     const p = u[zug.i]!;
     u[zug.i] = { ...p, x: w.x, y: w.y };
     koppeln('seite', zug.i, zug.k);
+    // die Naht zeigen, sobald die Einbuchtung tief genug ist (geteilt wird beim Loslassen)
+    nahtVorschau = teileAuto.checked && teilenMoeglich() ? (anEinbuchtungTeilen(u, schwelle())?.naht ?? null) : null;
   } else if (zug.art === 'raum') {
     // die Seite bewegt x und y, die Tiefe bleibt; ein Knoten zieht die andere Linie mit
     const p = zustand.raum[zug.l]!.punkte[zug.i]!;
@@ -2129,6 +2202,7 @@ const zugEnde = (): void => {
     return;
   }
   // ein gezogener Umriss: ist eine Einbuchtung jetzt tief genug, wird sie eine Naht (Rückgängig nimmt den Zug mit)
+  nahtVorschau = null;
   if (zug?.art === 'umriss' && zug.bewegt && teileVonSelbst(zug.k)) {
     svgZeichnen();
     profileZeichnen();
@@ -2339,34 +2413,45 @@ function raumEcke(l: number, i: number): void {
   geaendert();
 }
 
-/** Liegt der Zeiger in Front oder Top auf dem Umriss des Körpers (8 px)? */
-function umrissNah(b: Blatt, e: { clientX: number; clientY: number }): boolean {
-  const k = letzteKontur;
-  if (!k) return false;
+/**
+ * Liegt der Zeiger in Front oder Top auf der Linie, wo ein Umriss von dort am breitesten ist (8 px)? Mit Teilen hat jedes seine
+ * eigene, auch wo sie verdeckt ist. Gibt die Nummer der nächsten zurück (0: der Körper, sonst Teil + 1), sonst −1.
+ */
+function umrissNah(b: Blatt, e: { clientX: number; clientY: number }): number {
   const [lg, q] = profilWelt(b, e);
   const qa = Math.abs(q);
-  const tol = 8 / skala();
-  if (b === 'front') {
-    for (let j = 0; j < k.ny; j++) if (k.frontZ[j]! > 0 && Math.hypot(k.frontZ[j]! - qa, k.y0 + j * k.d - lg) < tol) return true;
-  } else {
-    for (let i = 0; i < k.nx; i++) if (k.topZ[i]! > 0 && Math.hypot(k.topZ[i]! - qa, k.x0 + i * k.d - lg) < tol) return true;
-  }
-  return false;
+  let best = 8 / skala();
+  let wahl = -1;
+  letzteKonturen.forEach((k, nr) => {
+    const n = b === 'front' ? k.ny : k.nx;
+    for (let i = 0; i < n; i++) {
+      const z = b === 'front' ? k.frontZ[i]! : k.topZ[i]!;
+      if (!(z > 0)) continue;
+      const d = Math.hypot(z - qa, (b === 'front' ? k.y0 : k.x0) + i * k.d - lg);
+      if (d < best) {
+        best = d;
+        wahl = nr;
+      }
+    }
+  });
+  return wahl;
 }
 
 /**
- * Den Umriss in Front oder Top angefasst: Die Linie, die er auf der Form zeigt (wo der Körper von dort gesehen am breitesten
- * ist), wird eine Raumlinie; wo sie eine andere kreuzt, teilen beide einen Punkt. Gibt Linie und Punkt unter dem Zeiger zurück.
+ * Den Umriss in Front oder Top angefasst: Die Linie, die er auf der Form zeigt (wo der Körper bzw. das Teil `nr` von dort
+ * gesehen am breitesten ist), wird eine Raumlinie dieses Teils; wo sie eine andere des Teils kreuzt, teilen beide einen Punkt.
+ * Gibt Linie und Punkt unter dem Zeiger zurück.
  */
-function umrissAnfassen(b: Blatt, e: { clientX: number; clientY: number }): { l: number; i: number } | null {
-  const k = letzteKontur;
+function umrissAnfassen(b: Blatt, e: { clientX: number; clientY: number }, nr: number): { l: number; i: number } | null {
+  const k = letzteKonturen[nr];
   if (!k) return null;
   // auf etwa 3 Einheiten genau: wenige Punkte zum Greifen (Punkte auf einem Kreis geben einen Kreis)
-  const linie = umrissLinie(k, b, 3);
+  const linie: RaumLinieT | null = umrissLinie(k, b, 3);
   if (!linie) return null;
+  if (nr > 0) linie.teil = nr - 1;
   let n = 0;
   for (const l of zustand.raum) for (const p of l.punkte) n = Math.max(n, p.knoten ?? 0);
-  for (const alt of zustand.raum) verbinden(linie, alt, () => ++n, 3 * k.d);
+  for (const alt of zustand.raum) if (teilDer(alt) === teilDer(linie)) verbinden(linie, alt, () => ++n, 3 * k.d);
   zustand.raum.push(linie);
   const l = zustand.raum.length - 1;
   return { l, i: raumEinfuegen(l, b, ...blattPunkt(b, e)) };
@@ -2431,6 +2516,7 @@ function profilZeichnen(b: Blatt): void {
     el.append(element('path', 'linie', { d: pfad(0, halb.length - 1) }));
   }
   const rp = 5 / s;
+  if (LINIEN && mitTeilen()) konturenImBlatt(el, b, s);
   if (LINIEN) raumZeichnen(el, b);
   // in der Pose wirkt nur der Pinsel: keine Punkte der Grundform
   if (poseAn) {
@@ -2489,6 +2575,66 @@ function teileImBlatt(el: SVGSVGElement, b: Blatt, s: number): void {
       if (l.verdeckt || gezeichnet) el.append(element('path', l.verdeckt ? 'verdeckt' : 'linie', { d: l.d }));
     }
   }
+}
+
+/**
+ * `?linien` mit Teilen in Front und Top: die Linie jedes Teils, wo es von dort am breitesten ist (beide Hälften), blass
+ * gestrichelt, wo ein anderes Teil davor liegt (sichtbar zeichnet sie der Shader). Verdeckt heißt: Auf dem Blickstrahl reicht
+ * ein anderes Teil mindestens so tief und liegt näher am Betrachter (Front: kleineres x, Top: größeres y).
+ */
+function konturenImBlatt(el: SVGSVGElement, b: Blatt, s: number): void {
+  const K = letzteKonturen;
+  if (K.length < 2) return;
+  const tol = 3 / s;
+  K.forEach((k, nr) => {
+    const n = b === 'front' ? k.ny : k.nx;
+    let lauf: [number, number][] = [];
+    const ausgeben = () => {
+      if (lauf.length > 1) {
+        for (const vz of [1, -1]) {
+          const d = lauf.map(([l, z], i) => `${i ? 'L' : 'M'} ${zuBlatt(b, l, vz * z).join(' ')}`).join(' ');
+          el.append(element('path', 'verdeckt', { d }));
+        }
+      }
+      lauf = [];
+    };
+    for (let i = 0; i < n; i++) {
+      const z = b === 'front' ? k.frontZ[i]! : k.topZ[i]!;
+      if (!(z > 0)) {
+        ausgeben();
+        continue;
+      }
+      let verdeckt = false;
+      for (let o = 0; o < K.length && !verdeckt; o++) {
+        if (o === nr) continue;
+        const Z = K[o]!.Z;
+        if (b === 'front') {
+          // vorderster Punkt des anderen Teils auf dieser Höhe, der so tief reicht
+          for (let ii = 0; ii < k.nx; ii++) {
+            if (Z[i * k.nx + ii]! >= z) {
+              verdeckt = k.x0 + ii * k.d < k.frontX[i]! - tol;
+              break;
+            }
+          }
+        } else {
+          for (let jj = k.ny - 1; jj >= 0; jj--) {
+            if (Z[jj * k.nx + i]! >= z) {
+              verdeckt = k.y0 + jj * k.d > k.topY[i]! + tol;
+              break;
+            }
+          }
+        }
+      }
+      const l = (b === 'front' ? k.y0 : k.x0) + i * k.d;
+      if (verdeckt) lauf.push([l, z]);
+      else {
+        // der Lauf endet am ersten sichtbaren Punkt (so berühren sich gestrichelt und Shader)
+        if (lauf.length > 0) lauf.push([l, z]);
+        ausgeben();
+      }
+    }
+    ausgeben();
+  });
 }
 
 /** Lippen in Front und Top: Trefferbänder, beide Hälften (die Lippen selbst zeichnet der Shader); ein Klick wählt den Kiefer. */
@@ -2567,6 +2713,9 @@ for (const b of ['front', 'top'] as const) {
     if ((!LINIEN && !profilVon(b)) || zustand.ansichten) return;
     const d = (e.target as SVGElement).dataset;
     const vorher = kopie(zustand);
+    // `?linien`: am Umriss (eines Teils) angefasst, wenn nichts anderes unter dem Zeiger liegt
+    const frei = [d.mpunkt, d.maul, d.rpunkt, d.raum, d.lpunkt, d.kante].every((v) => v === undefined);
+    const nahAm = LINIEN && frei ? umrissNah(b, e) : -1;
     if (d.mpunkt !== undefined) {
       // Punkt einer Lippe: Lage und Breite ziehen
       const [l, i] = d.mpunkt.split(':').map(Number) as [number, number];
@@ -2602,9 +2751,9 @@ for (const b of ['front', 'top'] as const) {
       auswahl = { art: 'rpunkt', l, i };
       raumZug = { blatt: b, l, i, vorher: kopie(zustand), bewegt: true };
       geaendert(false);
-    } else if (LINIEN && d.lpunkt === undefined && d.kante === undefined && umrissNah(b, e)) {
+    } else if (nahAm >= 0) {
       // den Umriss angefasst: dort eine Linie auf die Form legen (die Linie, die der Umriss zeigt) und ihren Punkt ziehen
-      const neu = umrissAnfassen(b, e);
+      const neu = umrissAnfassen(b, e, nahAm);
       if (!neu) return;
       merken(vorher);
       auswahl = { art: 'rpunkt', l: neu.l, i: neu.i };
@@ -2933,6 +3082,13 @@ window.__formPruefall = (name) => {
   ohnePose();
   geaendert();
 };
+window.__formKontur = (nr, blatt, l) => {
+  const k = letzteKonturen[nr];
+  if (!k) return null;
+  const i = Math.round((l - (blatt === 'front' ? k.y0 : k.x0)) / k.d);
+  const z = (blatt === 'front' ? k.frontZ : k.topZ)[i];
+  return z !== undefined && z > 0 ? z : null;
+};
 window.__formAbstand = () => {
   const g = letztesGleich;
   if (!g) return null;
@@ -2952,7 +3108,7 @@ if (LINIEN) {
     const fuss = felder[b].querySelector('footer');
     if (fuss) {
       fuss.textContent =
-        'Umriss anfassen: Linie auf die Form legen und ziehen · Klick auf eine Linie: neuer Punkt · Doppelklick: Ecke ↔ rund · ⌫ löschen';
+        'Umriss anfassen: Linie auf die Form legen und ziehen (mit Teilen die des nächsten Teils, verdeckt gestrichelt) · Klick auf eine Linie: neuer Punkt · Doppelklick: Ecke ↔ rund · ⌫ löschen';
     }
   }
 }

@@ -12,7 +12,7 @@
 // Gezeichnete Linien bleiben danach, wo sie gezeichnet wurden, und die Form wächst zu ihnen (`kanten.ts`).
 
 import type { V2 } from '../bezier';
-import { type Ansichtsbreite, type BreitenPunkt, type Tiefenstreckung, profilBreite, tiefeAnpassen, tiefeAnwenden } from './ansichten';
+import { type Ansichtsbreite, type BreitenPunkt, type Tiefenstreckung, profilBreite, streckungBei, tiefeAnpassen, tiefeAnwenden } from './ansichten';
 import { Umrissfeld } from './abstand';
 import { type Kante3D, type KantenLinie, kantenAnwenden } from './kanten';
 import { Kugeln, kugelRadien } from './kugeln';
@@ -160,17 +160,33 @@ function hautNormalen(pos: Float32Array, nor: Float32Array, ind: Uint32Array, hu
  * genau mit dem heutigen, wo sich der Umriss nicht geändert hat.
  */
 function rasterweite(punkte: readonly UmrissPunkt[], opt: RundOptionen): number {
+  return rasterweiteAus(polygonFlaeche(umrissAbtasten(punkte, 4).punkte), opt);
+}
+
+function rasterweiteAus(flaeche: number, opt: { dreiecke?: number; zelle?: number }): number {
   if (opt.zelle !== undefined) return Math.max(0.25, opt.zelle);
-  const grob = umrissAbtasten(punkte, 4).punkte;
-  const flaeche = Math.max(polygonFlaeche(grob), 1);
-  const z = Math.sqrt((4 * flaeche) / ((opt.dreiecke ?? 40000) / 2));
+  const z = Math.sqrt((4 * Math.max(flaeche, 1)) / ((opt.dreiecke ?? 40000) / 2));
   return Math.max(0.25, 2 ** (Math.round(Math.log2(z) * 16) / 16));
 }
 
-type Koerper = { P: V2[]; kugeln: Kugeln; x0: number; y0: number; nx: number; ny: number };
+/** Raster der Seite: Ursprung, Punktzahl je Richtung (Abstand = Rasterweite). */
+type Rahmen = { x0: number; y0: number; nx: number; ny: number };
 
-/** Die größten Kugeln des Umrisses und das Raster ihrer Spalten. */
-function koerperAus(punkte: readonly UmrissPunkt[], zelle: number): Koerper {
+/** Rahmen um eine Ausdehnung, zwei Zellen Rand. */
+function rahmenUm(xMin: number, yMin: number, xMax: number, yMax: number, zelle: number): Rahmen {
+  const rand = 2 * zelle;
+  return {
+    x0: xMin - rand,
+    y0: yMin - rand,
+    nx: Math.ceil((xMax - xMin + 2 * rand) / zelle) + 1,
+    ny: Math.ceil((yMax - yMin + 2 * rand) / zelle) + 1,
+  };
+}
+
+type Koerper = { P: V2[]; kugeln: Kugeln } & Rahmen;
+
+/** Die größten Kugeln des Umrisses und das Raster ihrer Spalten (ohne `rahmen` um den Umriss). */
+function koerperAus(punkte: readonly UmrissPunkt[], zelle: number, rahmen?: Rahmen): Koerper {
   const { punkte: P } = umrissAbtasten(punkte, zelle / 2);
   const feld = new Umrissfeld(P, 2 * zelle);
 
@@ -190,65 +206,16 @@ function koerperAus(punkte: readonly UmrissPunkt[], zelle: number): Koerper {
   const R = kugelRadien(feld, diag, 0.75 * zelle, 0.05 * zelle, true);
 
   // Spalten des Rasters: g je (x, y)
-  const rand = 2 * zelle;
-  const x0 = xMin - rand;
-  const y0 = yMin - rand;
-  const nx = Math.ceil((xMax - xMin + 2 * rand) / zelle) + 1;
-  const ny = Math.ceil((yMax - yMin + 2 * rand) / zelle) + 1;
+  const { x0, y0, nx, ny } = rahmen ?? rahmenUm(xMin, yMin, xMax, yMax, zelle);
   const kugeln = new Kugeln(feld, R, x0, y0, x0 + (nx - 1) * zelle, y0 + (ny - 1) * zelle, 3 * zelle);
   return { P, kugeln, x0, y0, nx, ny };
 }
 
-// Körper der Umrisse, auf denen Linien gezeichnet wurden, je Umriss und Rasterweite gemerkt
-const bezugsKoerper = new WeakMap<readonly UmrissPunkt[], Map<number, Kugeln>>();
-
-const gleicherUmriss = (a: readonly UmrissPunkt[], b: readonly UmrissPunkt[]): boolean =>
-  a.length === b.length &&
-  a.every(
-    (p, i) =>
-      p.x === b[i]!.x &&
-      p.y === b[i]!.y &&
-      !p.ecke === !b[i]!.ecke &&
-      p.lippe === b[i]!.lippe &&
-      !p.naht === !b[i]!.naht &&
-      p.richtung?.x === b[i]!.richtung?.x &&
-      p.richtung?.y === b[i]!.richtung?.y,
-  );
-
 /**
- * Der Körper, auf dem eine Linie liegt: der des Umrisses beim Zeichnen, mit der heutigen Rasterweite gebaut; ohne Bezug oder
- * bei gleichem Umriss der heutige.
+ * Surface Nets für die Fläche z² = G(x, y) auf einem in z spiegelgleichen Raster (keine Ebene bei z = 0): Punkte je Zelle mit
+ * Vorzeichenwechsel, Vierecke je Rasterkante, geteilt an der kürzeren Diagonale.
  */
-function bezugKugeln(l: KantenLinie, punkte: readonly UmrissPunkt[], zelle: number, heute: Kugeln): Kugeln {
-  const b = l.bezug;
-  if (!b || b.length < 3 || gleicherUmriss(b, punkte)) return heute;
-  let m = bezugsKoerper.get(b);
-  if (!m) bezugsKoerper.set(b, (m = new Map()));
-  let k = m.get(zelle);
-  if (!k) {
-    if (m.size > 3) m.clear();
-    k = koerperAus(b, zelle).kugeln;
-    m.set(zelle, k);
-  }
-  return k;
-}
-
-/** Runder Körper aus dem Seitenumriss (Punkte in Weltkoordinaten, y nach oben). */
-export function rundAusSeite(punkte: readonly UmrissPunkt[], opt: RundOptionen = {}): DichtesNetz {
-  const zelle = rasterweite(punkte, opt);
-  const { P, kugeln, x0, y0, nx, ny } = koerperAus(punkte, zelle);
-  const G = new Float64Array(nx * ny);
-  let gMax = 0;
-  for (let j = 0; j < ny; j++) {
-    for (let i = 0; i < nx; i++) {
-      const g = kugeln.g(x0 + i * zelle, y0 + j * zelle);
-      // weit außen kennt keine Kugel den Punkt: sicher außen
-      G[j * nx + i] = g === -Infinity ? -1e12 : g;
-      if (g > gMax) gMax = g;
-    }
-  }
-
-  // Surface Nets auf einem in z spiegelgleichen Raster (keine Ebene bei z = 0)
+function oberflaeche(G: Float64Array, nx: number, ny: number, x0: number, y0: number, zelle: number, gMax: number): { pos: number[]; ind: number[] } {
   const zMax = Math.sqrt(gMax) + 2 * zelle;
   const nz = 2 * Math.ceil(zMax / zelle) + 2;
   const kc = (nz - 1) / 2;
@@ -328,7 +295,6 @@ export function rundAusSeite(punkte: readonly UmrissPunkt[], opt: RundOptionen =
     }
   }
 
-  // Vierecke je Rasterkante mit Vorzeichenwechsel, geteilt an der kürzeren Diagonale
   const ind: number[] = [];
   const viereck = (a: number | undefined, b: number | undefined, c: number | undefined, d: number | undefined) => {
     if (a === undefined || b === undefined || c === undefined || d === undefined) return;
@@ -346,46 +312,45 @@ export function rundAusSeite(punkte: readonly UmrissPunkt[], opt: RundOptionen =
     if (i >= 1 && k >= 1 && f0 !== F(i, j + 1, k) < 0) viereck(p(i - 1, j, k - 1), p(i, j, k - 1), p(i, j, k), p(i - 1, j, k));
     if (i >= 1 && j >= 1 && f0 !== F(i, j, k + 1) < 0) viereck(p(i - 1, j - 1, k), p(i, j - 1, k), p(i, j, k), p(i - 1, j, k));
   }
+  return { pos, ind };
+}
 
-  // Punkte genau auf die Fläche: auf die Kugel, die dort am weitesten reicht; Normale = Normale dieser Kugel
-  const n = pos.length / 3;
-  const positionen = new Float32Array(pos);
-  const normalen = new Float32Array(3 * n);
-  for (let v = 0; v < n; v++) {
-    let x = positionen[3 * v]!;
-    let y = positionen[3 * v + 1]!;
-    let z = positionen[3 * v + 2]!;
-    for (let it = 0; it < 4; it++) {
-      const g = kugeln.g(x, y);
-      if (g === -Infinity) break;
-      // F = |(x, y, z) − (m, 0)|² − R²; Newton längs ∇F = 2 ((x, y) − m, z)
-      const gx = 2 * (x - kugeln.mx);
-      const gy = 2 * (y - kugeln.my);
-      const gz = 2 * z;
-      const f = z * z - g;
-      const gg = gx * gx + gy * gy + gz * gz;
-      if (gg < 1e-18) break;
-      let s = f / gg;
-      const schritt = Math.abs(s) * Math.sqrt(gg);
-      if (schritt > zelle) s *= zelle / schritt;
-      x -= s * gx;
-      y -= s * gy;
-      z -= s * gz;
-    }
-    kugeln.g(x, y);
-    const ax = x - kugeln.mx;
-    const ay = y - kugeln.my;
-    const l = Math.hypot(ax, ay, z) || 1;
-    positionen[3 * v] = x;
-    positionen[3 * v + 1] = y;
-    positionen[3 * v + 2] = z;
-    normalen[3 * v] = ax / l;
-    normalen[3 * v + 1] = ay / l;
-    normalen[3 * v + 2] = z / l;
+/** Einen Punkt auf die Kugel legen, die an seiner Stelle am weitesten reicht (Newton); seine Normale ist die dieser Kugel. */
+function aufKugel(kugeln: Kugeln, positionen: Float32Array, normalen: Float32Array, v: number, zelle: number): void {
+  let x = positionen[3 * v]!;
+  let y = positionen[3 * v + 1]!;
+  let z = positionen[3 * v + 2]!;
+  for (let it = 0; it < 4; it++) {
+    const g = kugeln.g(x, y);
+    if (g === -Infinity) break;
+    // F = |(x, y, z) − (m, 0)|² − R²; Newton längs ∇F = 2 ((x, y) − m, z)
+    const gx = 2 * (x - kugeln.mx);
+    const gy = 2 * (y - kugeln.my);
+    const gz = 2 * z;
+    const f = z * z - g;
+    const gg = gx * gx + gy * gy + gz * gz;
+    if (gg < 1e-18) break;
+    let s = f / gg;
+    const schritt = Math.abs(s) * Math.sqrt(gg);
+    if (schritt > zelle) s *= zelle / schritt;
+    x -= s * gx;
+    y -= s * gy;
+    z -= s * gz;
   }
+  kugeln.g(x, y);
+  const ax = x - kugeln.mx;
+  const ay = y - kugeln.my;
+  const l = Math.hypot(ax, ay, z) || 1;
+  positionen[3 * v] = x;
+  positionen[3 * v + 1] = y;
+  positionen[3 * v + 2] = z;
+  normalen[3 * v] = ax / l;
+  normalen[3 * v + 1] = ay / l;
+  normalen[3 * v + 2] = z / l;
+}
 
-  // Dreiecke nach außen drehen
-  const indizes = new Uint32Array(ind);
+/** Dreiecke nach außen drehen (gegen die Summe der Eckennormalen). */
+function nachAussen(positionen: Float32Array, normalen: Float32Array, indizes: Uint32Array): void {
   for (let t = 0; t < indizes.length; t += 3) {
     const a = indizes[t]!;
     const b = indizes[t + 1]!;
@@ -407,7 +372,67 @@ export function rundAusSeite(punkte: readonly UmrissPunkt[], opt: RundOptionen =
       indizes[t + 2] = b;
     }
   }
+}
 
+// Körper der Umrisse, auf denen Linien gezeichnet wurden, je Umriss und Rasterweite gemerkt
+const bezugsKoerper = new WeakMap<readonly UmrissPunkt[], Map<number, Kugeln>>();
+
+const gleicherUmriss = (a: readonly UmrissPunkt[], b: readonly UmrissPunkt[]): boolean =>
+  a.length === b.length &&
+  a.every(
+    (p, i) =>
+      p.x === b[i]!.x &&
+      p.y === b[i]!.y &&
+      !p.ecke === !b[i]!.ecke &&
+      p.lippe === b[i]!.lippe &&
+      !p.naht === !b[i]!.naht &&
+      p.richtung?.x === b[i]!.richtung?.x &&
+      p.richtung?.y === b[i]!.richtung?.y,
+  );
+
+/**
+ * Der Körper, auf dem eine Linie liegt: der des Umrisses beim Zeichnen, mit der heutigen Rasterweite gebaut; ohne Bezug oder
+ * bei gleichem Umriss der heutige.
+ */
+function bezugKugeln(l: KantenLinie, punkte: readonly UmrissPunkt[], zelle: number, heute: Kugeln): Kugeln {
+  const b = l.bezug;
+  if (!b || b.length < 3 || gleicherUmriss(b, punkte)) return heute;
+  let m = bezugsKoerper.get(b);
+  if (!m) bezugsKoerper.set(b, (m = new Map()));
+  let k = m.get(zelle);
+  if (!k) {
+    if (m.size > 3) m.clear();
+    k = koerperAus(b, zelle).kugeln;
+    m.set(zelle, k);
+  }
+  return k;
+}
+
+/** Runder Körper aus dem Seitenumriss (Punkte in Weltkoordinaten, y nach oben). */
+export function rundAusSeite(punkte: readonly UmrissPunkt[], opt: RundOptionen = {}): DichtesNetz {
+  const zelle = rasterweite(punkte, opt);
+  const { P, kugeln, x0, y0, nx, ny } = koerperAus(punkte, zelle);
+  const G = new Float64Array(nx * ny);
+  let gMax = 0;
+  for (let j = 0; j < ny; j++) {
+    for (let i = 0; i < nx; i++) {
+      const g = kugeln.g(x0 + i * zelle, y0 + j * zelle);
+      // weit außen kennt keine Kugel den Punkt: sicher außen
+      G[j * nx + i] = g === -Infinity ? -1e12 : g;
+      if (g > gMax) gMax = g;
+    }
+  }
+
+  const { pos, ind } = oberflaeche(G, nx, ny, x0, y0, zelle, gMax);
+
+  // Punkte genau auf die Fläche: auf die Kugel, die dort am weitesten reicht; Normale = Normale dieser Kugel
+  const n = pos.length / 3;
+  const positionen = new Float32Array(pos);
+  const normalen = new Float32Array(3 * n);
+  for (let v = 0; v < n; v++) aufKugel(kugeln, positionen, normalen, v, zelle);
+
+  const indizes = new Uint32Array(ind);
+  nachAussen(positionen, normalen, indizes);
   normalenGlaetten(normalen, indizes, 2);
   const linien = opt.linien ?? [];
   const bezug = linien.map((l) => bezugKugeln(l, punkte, zelle, kugeln));
@@ -455,5 +480,125 @@ export function rundAusSeite(punkte: readonly UmrissPunkt[], opt: RundOptionen =
     tiefe: gestreckt ? tiefe.streckung : null,
     linienZ,
     kontur: konturAusTiefe(raster, feld),
+  };
+}
+
+/** Ein Teil des runden Körpers: sein Seitenumriss und seine Linien im Raum. */
+export type RundTeil = { punkte: readonly UmrissPunkt[]; raumlinien?: readonly RaumLinie[] };
+
+/** Der Körper aus Teilen, dazu je Teil (in der Reihenfolge der Eingabe), wo es von vorn und von oben am breitesten ist. */
+export type RundeTeile = DichtesNetz & { konturen: Kontur[] };
+
+/**
+ * Runder Körper aus Teilen (05.11., Probe „Linien auf der Form“ mit Teilen): Jedes Teil ist für sich der runde Körper seines
+ * Seitenumrisses, durch seine eigenen Linien gestreckt (Tiefe sₖ · √gₖ, wie `rundAusSeite`). Zusammen gilt an jeder Stelle die
+ * größte Tiefe: ein Netz, die Teile verschmelzen nicht (wo eines dicker ist, verdeckt es das andere; wo sie sich treffen, eine
+ * Kehle). Jeder Punkt liegt danach auf dem Teil, das an seiner Stelle am tiefsten ist.
+ */
+export function rundAusTeilen(teile: readonly RundTeil[], opt: { dreiecke?: number; zelle?: number } = {}): RundeTeile {
+  const zelle = rasterweiteAus(
+    teile.reduce((f, t) => f + polygonFlaeche(umrissAbtasten(t.punkte, 4).punkte), 0),
+    opt,
+  );
+  // ein Raster für alle Teile
+  let xMin = Infinity;
+  let yMin = Infinity;
+  let xMax = -Infinity;
+  let yMax = -Infinity;
+  for (const t of teile) {
+    for (const q of umrissAbtasten(t.punkte, zelle / 2).punkte) {
+      xMin = Math.min(xMin, q.x);
+      yMin = Math.min(yMin, q.y);
+      xMax = Math.max(xMax, q.x);
+      yMax = Math.max(yMax, q.y);
+    }
+  }
+  const rahmen = rahmenUm(xMin, yMin, xMax, yMax, zelle);
+  const { x0, y0, nx, ny } = rahmen;
+  const koerper = teile.map((t) => koerperAus(t.punkte, zelle, rahmen));
+  // je Teil g und die Streckung durch seine Linien auf dem gemeinsamen Raster
+  const Gs = koerper.map((k) => {
+    const G = new Float64Array(nx * ny);
+    for (let j = 0; j < ny; j++) {
+      for (let i = 0; i < nx; i++) {
+        const g = k.kugeln.g(x0 + i * zelle, y0 + j * zelle);
+        G[j * nx + i] = g === -Infinity ? -1e12 : g;
+      }
+    }
+    return G;
+  });
+  const felder = teile.map((t, k) =>
+    t.raumlinien && t.raumlinien.length > 0 ? streckungAusLinien({ G: Gs[k]!, nx, ny, x0, y0, d: zelle }, t.raumlinien) : null,
+  );
+  const streckungen: (Tiefenstreckung | null)[] = felder.map((s) =>
+    s ? { a: new Float64Array(nx).fill(1), b: new Float64Array(ny).fill(1), x0, y0, d: zelle, feld: { s, nx, ny } } : null,
+  );
+  // die Vereinigung: Tiefe² = max sₖ² gₖ
+  const G = new Float64Array(nx * ny).fill(-1e12);
+  let gMax = 0;
+  for (let k = 0; k < teile.length; k++) {
+    const Gk = Gs[k]!;
+    const s = felder[k];
+    for (let c = 0; c < nx * ny; c++) {
+      const g = s ? s[c]! * s[c]! * Gk[c]! : Gk[c]!;
+      if (g > G[c]!) G[c] = g;
+    }
+  }
+  for (let c = 0; c < nx * ny; c++) gMax = Math.max(gMax, G[c]!);
+
+  const { pos, ind } = oberflaeche(G, nx, ny, x0, y0, zelle, gMax);
+  const n = pos.length / 3;
+  const positionen = new Float32Array(pos);
+  const normalen = new Float32Array(3 * n);
+  // Punkte auf das Teil, das dort am tiefsten ist: vor dessen Streckung auf seine Kugel, dann gestreckt
+  const jeTeil: number[][] = teile.map(() => []);
+  for (let v = 0; v < n; v++) {
+    const x = positionen[3 * v]!;
+    const y = positionen[3 * v + 1]!;
+    let best = -1;
+    let tief = -Infinity;
+    let sBest = 1;
+    for (let k = 0; k < teile.length; k++) {
+      const g = koerper[k]!.kugeln.g(x, y);
+      if (g === -Infinity) continue;
+      const s = streckungBei(streckungen[k] ?? null, x, y);
+      if (s * s * g > tief) {
+        tief = s * s * g;
+        best = k;
+        sBest = s;
+      }
+    }
+    if (best < 0) continue;
+    positionen[3 * v + 2] = positionen[3 * v + 2]! / sBest;
+    aufKugel(koerper[best]!.kugeln, positionen, normalen, v, zelle);
+    jeTeil[best]!.push(v);
+  }
+  streckungen.forEach((s, k) => {
+    if (s) tiefeAnwenden(positionen, normalen, s, jeTeil[k]);
+  });
+  const indizes = new Uint32Array(ind);
+  nachAussen(positionen, normalen, indizes);
+  normalenGlaetten(normalen, indizes, 2);
+
+  // Umrisse von Front und Top (breiteste Stelle je Zeile und Spalte), wo jedes Teil und die Vereinigung am breitesten sind
+  const raster = { G, nx, ny, x0, y0, d: zelle };
+  const kontur = konturAusTiefe(raster, null);
+  const konturen = teile.map((_, k) => konturAusTiefe({ G: Gs[k]!, nx, ny, x0, y0, d: zelle }, felder[k] ?? null));
+  return {
+    positionen,
+    normalen,
+    indizes,
+    zelle,
+    umriss: koerper[0]?.P ?? [],
+    kanten: [],
+    ansichten: {
+      front: { r0: y0, dr: zelle, breite: kontur.frontZ },
+      top: { r0: x0, dr: zelle, breite: kontur.topZ },
+      seite: { xMin, xMax, yMin, yMax },
+    },
+    tiefe: null,
+    linienZ: [],
+    kontur,
+    konturen,
   };
 }

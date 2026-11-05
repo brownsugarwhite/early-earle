@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { formAusAnsichten, formAusTeilen } from './gleich';
+import { umrissLinie } from './raumlinien';
+import { rundAusSeite, rundAusTeilen } from './rund';
 import { dichtNachLage } from './netzpruefung';
 import { anEinbuchtungTeilen, anNahtTeilen, einbuchtungen } from './teile';
 import { type UmrissPunkt, umrissAbtasten, umrissStuecke } from './umriss';
@@ -145,5 +147,56 @@ describe('Teile: an Einbuchtung oder Naht geteilt, zu einem Netz vereinigt', () 
     };
     expect(rMax(g.positionen)).toBeLessThan(rMax(ganz.positionen) + 1);
     expect(rMin(g.positionen)).toBeGreaterThan(rMin(ganz.positionen) - 0.15 * 150);
+  });
+});
+
+describe('Teile in „Linien auf der Form“: jedes Teil mit eigenen Linien, zusammen die größte Tiefe', () => {
+  it('ein einziges Teil ist der runde Körper der Seite (ohne Linien bitgleich, mit Linien dieselbe Fläche)', () => {
+    const a = rundAusTeilen([{ punkte: kopfUeberBauch }], { dreiecke: 6000 });
+    const b = rundAusSeite(kopfUeberBauch, { dreiecke: 6000 });
+    expect(a.positionen).toEqual(b.positionen);
+    expect(a.indizes).toEqual(b.indizes);
+    expect(a.normalen).toEqual(b.normalen);
+    // mit Linien wird die gestreckte Fläche selbst vernetzt (jedes Teil hat seine eigene Streckung): andere Punkte, dieselbe Tiefe
+    const linie = umrissLinie(b.kontur!, 'top', 3)!;
+    linie.punkte = linie.punkte.map((q) => ({ ...q, z: 1.3 * q.z }));
+    const c = rundAusTeilen([{ punkte: kopfUeberBauch, raumlinien: [linie] }], { dreiecke: 6000 });
+    const d = rundAusSeite(kopfUeberBauch, { dreiecke: 6000, raumlinien: [linie] });
+    expect(c.konturen[0]!.Z).toEqual(d.kontur!.Z);
+    const zMax = (p: Float32Array) => p.reduce((m, v, i) => (i % 3 === 2 ? Math.max(m, Math.abs(v)) : m), 0);
+    expect(Math.abs(zMax(c.positionen) - zMax(d.positionen))).toBeLessThan(0.01 * zMax(d.positionen));
+    expect(dichtNachLage([{ p: c.positionen, i: c.indizes }])).toEqual({ offen: 0, mehr: 0 });
+  });
+
+  it('Kopf über Bauch: dicht, der Kopf mit eigener Linie schmaler, der Bauch bleibt', () => {
+    const t = anEinbuchtungTeilen(kopfUeberBauch, 1)!;
+    const rund = rundAusTeilen([{ punkte: t.koerper }, { punkte: t.teil }], { dreiecke: 16000 });
+    expect(dichtNachLage([{ p: rund.positionen, i: rund.indizes }])).toEqual({ offen: 0, mehr: 0 });
+    expect(rund.konturen).toHaveLength(2);
+    // die Linie, die der Kopf von oben zeigt, auf 60 % seiner Tiefe
+    const linie = umrissLinie(rund.konturen[1]!, 'top', 3)!;
+    linie.punkte = linie.punkte.map((q) => ({ ...q, z: 0.6 * q.z }));
+    const schmal = rundAusTeilen([{ punkte: t.koerper }, { punkte: t.teil, raumlinien: [linie] }], { dreiecke: 16000 });
+    expect(dichtNachLage([{ p: schmal.positionen, i: schmal.indizes }])).toEqual({ offen: 0, mehr: 0 });
+    const tiefe = (g: { positionen: Float32Array }, sel: (x: number, y: number) => boolean) => {
+      let z = 0;
+      for (let v = 0; v < g.positionen.length / 3; v++) {
+        if (sel(g.positionen[3 * v]!, g.positionen[3 * v + 1]!)) z = Math.max(z, Math.abs(g.positionen[3 * v + 2]!));
+      }
+      return z;
+    };
+    const kopf = (x: number, y: number) => x < -150 && y > 40;
+    const bauch = (x: number, y: number) => x < -100 && y < -60;
+    expect(tiefe(schmal, kopf)).toBeLessThan(0.7 * tiefe(rund, kopf));
+    expect(Math.abs(tiefe(schmal, bauch) - tiefe(rund, bauch))).toBeLessThan(0.5);
+    // die Seite zeigt weiter die Form beider Teile: kein Punkt weiter als eine Rasterweite außerhalb
+    const alt = umrissAbtasten(kopfUeberBauch, 1).punkte;
+    let draussen = 0;
+    for (let v = 0; v < schmal.positionen.length / 3; v++) {
+      const x = schmal.positionen[3 * v]!;
+      const y = schmal.positionen[3 * v + 1]!;
+      if (!innen(alt, x, y) && alt.every((q) => Math.hypot(q.x - x, q.y - y) > schmal.zelle)) draussen++;
+    }
+    expect(draussen).toBe(0);
   });
 });
