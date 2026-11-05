@@ -9,9 +9,11 @@ import type { V2 } from '../bezier';
 /**
  * Ein Punkt des Umrisses. `lippe`: Hier beginnt die Maullinie bzw. Oberlippe (`oben`) oder die Unterlippe (`unten`); der Kiefer
  * ist dort ein echter Punkt des Umrisses (getrennte Kiefer, 05.11.). `richtung`: Die Linie läuft in dieser Richtung durch den
- * Punkt, wohin er auch gezogen wird (die Anfänge getrennter Kiefer: die Richtung beim Trennen).
+ * Punkt, wohin er auch gezogen wird (die Anfänge getrennter Kiefer: die Richtung beim Trennen). `naht`: Hier endet eine Naht
+ * (Teile, 05.11.); ist der Punkt eine Ecke mit `richtung`, läuft die Linie zu glatten Nachbarn in dieser Richtung weiter (die
+ * alte Linie bleibt genau) und nur zur Ecke am anderen Ende der Naht gerade.
  */
-export type UmrissPunkt = { x: number; y: number; ecke?: boolean; lippe?: 'oben' | 'unten'; richtung?: V2 };
+export type UmrissPunkt = { x: number; y: number; ecke?: boolean; lippe?: 'oben' | 'unten'; richtung?: V2; naht?: boolean };
 
 /** Kubische Stücke der geschlossenen Linie durch alle Punkte. */
 export function umrissStuecke(p: readonly UmrissPunkt[]): [V2, V2, V2, V2][] {
@@ -37,9 +39,20 @@ function stuecke(p: readonly UmrissPunkt[], offen: boolean): [V2, V2, V2, V2][] 
     }
     return -1;
   };
-  const tangente = (i: number): V2 | null => {
+  // Richtung bei Punkt i im Sinn der Nummern für das Stück zum Nachbarn `nach`
+  const tangente = (i: number, nach: number): V2 | null => {
     const q = p[i]!;
-    if (q.ecke || (offen && (i === 0 || i === n - 1))) return null;
+    if (offen && (i === 0 || i === n - 1)) return null;
+    if (q.ecke) {
+      // das Ende einer Naht: zu einem glatten Nachbarn in der festen Richtung, zur Ecke am anderen Ende gerade
+      const r = q.richtung;
+      const rl = r ? Math.hypot(r.x, r.y) : 0;
+      const m = p[nach]!;
+      if (!q.naht || !r || rl < 1e-12 || m.ecke) return null;
+      const zum = nach === (i + 1) % n;
+      const s = r.x * (zum ? m.x - q.x : q.x - m.x) + r.y * (zum ? m.y - q.y : q.y - m.y) < 0 ? -1 : 1;
+      return { x: (s * r.x) / rl, y: (s * r.y) / rl };
+    }
     const pa = partner(i);
     let ia = (i - 1 + n) % n;
     let ib = (i + 1) % n;
@@ -83,8 +96,8 @@ function stuecke(p: readonly UmrissPunkt[], offen: boolean): [V2, V2, V2, V2][] 
     const sy = b.y - a.y;
     const c = Math.hypot(sx, sy);
     const front = partner(i) === (i + 1) % n;
-    const ga = griff(front ? null : tangente(i), sx, sy, c);
-    const gb = griff(front ? null : tangente((i + 1) % n), sx, sy, c);
+    const ga = griff(front ? null : tangente(i, (i + 1) % n), sx, sy, c);
+    const gb = griff(front ? null : tangente((i + 1) % n, i), sx, sy, c);
     out.push([{ x: a.x, y: a.y }, { x: a.x + ga.x, y: a.y + ga.y }, { x: b.x - gb.x, y: b.y - gb.y }, { x: b.x, y: b.y }]);
   }
   return out;

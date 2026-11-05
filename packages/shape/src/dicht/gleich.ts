@@ -541,6 +541,46 @@ function abstandZu(L: Float64Array, e: number, x: number, y: number, z: number):
 /** Körper aus allen drei Ansichten, keine bevorzugt. */
 export function formAusAnsichten(z: Zeichnungen, opt: GleichOptionen = {}): GleichesNetz {
   const zelle = rasterweite(z.seite, opt);
+  const liste = new Liste();
+  const { ellipsoide, umrisse } = ellipsoideAus(z, zelle, opt, liste);
+  const L = beschneiden(new Float64Array(liste.w), zelle);
+  const { positionen, normalen, indizes } = vernetzen(L, zelle);
+  return { positionen, normalen, indizes, zelle, ellipsoide, umrisse, liste: L };
+}
+
+/**
+ * Teile (Form zuerst, 05.11.): Jedes Teil bekommt seine Ellipsoide nur aus seinen eigenen Zeichnungen (Seite, Front, Top), und
+ * alle zusammen werden ein Netz. So verschmilzt ein Kopf, der über dem Bauch hängt oder auf ihm liegt, nicht mit ihm: Die
+ * größten Kreise eines Umrisses reichen nie über einen anderen; wo Teile ineinander stecken, ist das innere verdeckt.
+ * `umrisse` gilt für alle Teile zusammen (die Flächen in der Reihenfolge der Teile).
+ */
+export function formAusTeilen(teile: readonly Zeichnungen[], opt: GleichOptionen = {}): GleichesNetz {
+  const zelle = rasterweite(
+    teile.flatMap((t) => t.seite),
+    opt,
+  );
+  const liste = new Liste();
+  const ellipsoide: Record<AnsichtName, number> = { seite: 0, front: 0, top: 0 };
+  const umrisse: Record<AnsichtName, V2[][]> = { seite: [], front: [], top: [] };
+  for (const t of teile) {
+    const e = ellipsoideAus(t, zelle, opt, liste);
+    for (const name of NAMEN) {
+      ellipsoide[name] += e.ellipsoide[name];
+      umrisse[name].push(...e.umrisse[name]);
+    }
+  }
+  const L = beschneiden(new Float64Array(liste.w), zelle);
+  const { positionen, normalen, indizes } = vernetzen(L, zelle);
+  return { positionen, normalen, indizes, zelle, ellipsoide, umrisse, liste: L };
+}
+
+/** Die Ellipsoide eines Körpers aus seinen Zeichnungen (in `liste`), samt seinen abgetasteten Flächen. */
+function ellipsoideAus(
+  z: Zeichnungen,
+  zelle: number,
+  opt: GleichOptionen,
+  liste: Liste,
+): { ellipsoide: Record<AnsichtName, number>; umrisse: Record<AnsichtName, V2[][]> } {
   const umrisse: Record<AnsichtName, V2[][]> = { seite: [], front: [], top: [] };
   const schnitte: Record<AnsichtName, Schnitte | null> = { seite: null, front: null, top: null };
   for (const name of NAMEN) {
@@ -549,7 +589,6 @@ export function formAusAnsichten(z: Zeichnungen, opt: GleichOptionen = {}): Glei
     umrisse[name] = zeichnung.filter((p) => p.length >= 3).map((p) => umrissAbtasten(p, zelle / 2).punkte);
     if (umrisse[name].length > 0) schnitte[name] = new Schnitte(umrisse[name], zelle / 4);
   }
-  const liste = new Liste();
   const ellipsoide: Record<AnsichtName, number> = { seite: 0, front: 0, top: 0 };
   for (const name of NAMEN) {
     if (schnitte[name]) ellipsoide[name] = ellipsoideVon(name, umrisse[name], schnitte, zelle, liste, null, opt.fuehrend === name);
@@ -560,9 +599,7 @@ export function formAusAnsichten(z: Zeichnungen, opt: GleichOptionen = {}): Glei
     if (!schnitte[name] || umrisse[name].length < 2) continue;
     ellipsoide[name] += ellipsoideVon(name, umrisse[name], schnitte, zelle, liste, vorderste(fest, name));
   }
-  const L = beschneiden(new Float64Array(liste.w), zelle);
-  const { positionen, normalen, indizes } = vernetzen(L, zelle);
-  return { positionen, normalen, indizes, zelle, ellipsoide, umrisse, liste: L };
+  return { ellipsoide, umrisse };
 }
 
 /** Eimer über (x, y): je Eimer die Ellipsoide, deren Grundriss (mit Rand) ihn berührt. */

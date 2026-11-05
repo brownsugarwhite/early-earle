@@ -12,8 +12,16 @@
       <section class="feld" id="feld-seite">
         <header>Seite</header>
         <svg class="blatt" id="zeichnung" aria-label="Seitenumriss zeichnen"></svg>
+        <div class="regler-leiste" id="teile-leiste">
+          <label class="regler"><input id="teile-auto" type="checkbox" checked /> Teile von selbst</label>
+          <label class="regler" id="teile-ab">
+            ab <input id="teile-schwelle" type="range" min="0.3" max="3" step="0.1" value="1" /> <span id="teile-wert"></span>
+          </label>
+          <button class="regler knopf" id="naht-knopf" type="button" aria-pressed="false">Naht ziehen</button>
+        </div>
         <footer>
           Umriss: Punkt ziehen · Klick auf die Linie: neuer Punkt · Doppelklick: Ecke ↔ rund<br />
+          Teile: Einbuchtung tiefer als „ab“ × Öffnung oder „Naht ziehen“ → eigenes Teil · verdeckt gestrichelt, greifbar<br />
           Auf der Form ziehen: Linie zeichnen · Linie anklicken, dann + − oder 0–3: Strichdicke = Härte · ⌫ löschen · ⌘Z
           zurück<br />
           Von außen über den Umriss in die Form ziehen: Maullinie (Ende = Mundwinkel) · gewählte Maullinie anklicken: neuer Punkt ·

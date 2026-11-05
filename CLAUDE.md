@@ -824,6 +824,33 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     das Maul nur ein Schnitt darin; Lappen, die sich berühren, verschmelzen, und das gerade Stück zwischen den Anfängen schließt den
     Unterkiefer. Nächster Schritt nach Florians Wort: Teile.
   - Bilder `docs/progress/editor/form-kiefer-frei-*-2026-11-05.jpg`.
+- **2026-11-05 (mittags): Teile — Probe 1 „Kopf über Bauch“** (Konzept `docs/plans/2026-11-05-teile-konzept.md`; Florian: „Teile
+  entstehen von selbst an Einbuchtungen, oder nur, wenn du eine Naht ziehst. Das würde ich beides gerne testen … Härte kommt von der
+  Naht“; kein fester Käfig, es bleibt „Form zuerst“).
+  - **Bedienung** (Leiste in der Seite): „Teile von selbst“ an, dann wird eine Einbuchtung beim Loslassen ein eigenes Teil, wenn sie
+    „ab“-mal so tief wie breit ist (Regler 0,3–3, daneben die tiefste noch ungeteilte; der Regler teilt beim Loslassen sofort). „Naht
+    ziehen“: ein Strich quer durch die Form teilt sie. Jedes Teil hat in Seite, Front und Top seinen eigenen Umriss mit eigenen
+    Punkten (ziehen, einfügen, Doppelklick Ecke, ⌫); verdeckte Stücke blass gestrichelt und greifbar; sichtbare Umrisse in Front und
+    Top zeichnet der Shader (auch den Kopf vor dem Körper). ⌘Z nimmt Zug und Teilung in einem Schritt zurück. Mit Teilen noch kein
+    Maul und keine Linien (wirken im Bau aus Teilen noch nicht).
+  - **Kern** (`dicht/teile.ts`, `formAusTeilen` in `gleich.ts`): Einbuchtung = Tasche gegen die Hülle; die Naht ist die kürzeste
+    Sehne von der Spitze quer durch die Form. Liegt ein gesetzter Punkt (fast) so tief wie die Spitze, ist er die Spitze. Jedes Teil
+    ist ein Bogen des alten Umrisses; am Gegenpunkt läuft es am alten Umriss weiter und schließt gerade durch das andere Teil (keine
+    Rille). An der Spitze enden beide als Ecke, die zu ihrer Flanke die alte Richtung behält (`UmrissPunkt.naht`; die Linie bleibt dort
+    bitgleich, die geteilte Einbuchtung teilt nicht noch einmal). Jedes Teil wird aus seinen eigenen Umrissen gebaut, alle
+    Ellipsoide zusammen ein Netz (harte Vereinigung).
+  - **Gemessen** (Maus `scripts/pruefen/form-teile-probe.mjs`, Tests `dicht/teile.test.ts`, Kern 44 grün): Kopf über Bauch teilt
+    beim Loslassen, dicht, 0 umgeklappt; der Kopf im Top schmaler gezogen ändert nur den Kopf; Kopf auf den Bauch gezogen bleibt ein
+    eigener Lappen (Falte statt Verschmelzen); ⌘Z bitgleich; Zug ≈ 28 ms statt 10 ms (Front/Top der Teile gemerkt je Zeichnung).
+  - **Offen (ehrlich):** Eine Naht quer durch eine runde Form (Kugel) gibt zwei Teile, die fast die ganze Form decken: Damit an der
+    Naht keine Rille entsteht, muss jedes Teil etwa eine Körperdicke über die Naht reichen. Ein Teil dort schmaler zu ziehen ändert
+    deshalb kaum etwas (der andere deckt es). Weg: Härte an der Naht (weich = die Tiefe läuft über die Naht weiter, dann reicht ein
+    schmaler Saum); Florians Entscheidung. Berührt ein Teil die Haut eines anderen, gibt die harte Vereinigung Berührstellen (Kopf auf
+    Bauch: 6 Kanten mit 4 Dreiecken, mit schmalem Kopf 4 umgeklappt) und dunkle Kerben in engen Falten; auch dafür die weiche Naht.
+  - Fallen: Die Fortsetzung an der Spitze die andere Flanke entlang behält die Einbuchtung im Teil (bei kleiner Schwelle teilte es
+    noch einmal); ein Hilfspunkt neben der Spitze mit der alten Richtung beulte den Bogen (Deckung verfehlt) — die Ecke mit Richtung
+    ersetzt ihn. Abgeleitete Umrisse (≤ 6 Punkte) liegen bis einige Pixel neben dem Shader: sichtbar nicht zeichnen (Doppellinien).
+  - Bilder `docs/progress/editor/form-teile-*-2026-11-05.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

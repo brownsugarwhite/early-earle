@@ -210,6 +210,7 @@ const gleicherUmriss = (a: readonly UmrissPunkt[], b: readonly UmrissPunkt[]): b
       p.y === b[i]!.y &&
       !p.ecke === !b[i]!.ecke &&
       p.lippe === b[i]!.lippe &&
+      !p.naht === !b[i]!.naht &&
       p.richtung?.x === b[i]!.richtung?.x &&
       p.richtung?.y === b[i]!.richtung?.y,
   );

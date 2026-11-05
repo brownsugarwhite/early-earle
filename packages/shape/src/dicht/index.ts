@@ -8,7 +8,8 @@ export { MAUL_WINKEL_MAX, type MaulLinie, type MaulPunkt, type MaulSchnitt, maul
 export { type Netzteil, type Spielnetz, backen, backenBereit, maulBacken } from './backen';
 export { type Pose, type PoseZiel, type PoseZug, RUHE, ZUG_MAX, posePunkt, poseWinkel, posieren } from './pose';
 export { dichtNachLage, umgeklappt } from './netzpruefung';
-export { type AnsichtName, type GleichesNetz, type GleichOptionen, type Zeichnung, type Zeichnungen, formAusAnsichten } from './gleich';
+export { type AnsichtName, type GleichesNetz, type GleichOptionen, type Zeichnung, type Zeichnungen, formAusAnsichten, formAusTeilen } from './gleich';
+export { type Einbuchtung, type Teilung, anEinbuchtungTeilen, anNahtTeilen, einbuchtungen } from './teile';
 export { ganzerUmriss, PRUEFFAELLE, PRUEFFAELLE_HALB, type Prueffall, type PrueffallHalb } from './prueffaelle';
 export { umrisseDesKoerpers } from './silhouette';
 export {
