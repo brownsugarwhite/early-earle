@@ -23,3 +23,13 @@ Wichtig ist auch dass ich von beginn umstellen kann um den character auch in spi
 Ich bin jetzt einihge Stunden auf reisen. Mache alle aufgaben und notwendigen tests selbstständg und so ausführlich wie möglich um den weg ehrlich bestätigen zu können und prüfe meine klarstellungen nochmal gegen die aktuellen pläne und den bisherigen projektverlauf. Versuche immer die eleganteste und beste lösung zu findnen und gib alles, nimm dir die Zeit die es braucht und gehe keine abkürzungen.
 
 Klarstellungen zu teil 2 sind jetzt noch nicht relevant und kommen dann irgendwann später
+
+## Nachricht 2 (05.11.2026, Form zuerst: Outlines, Edgeloops, kein Verschmelzen)
+
+> Wörtlich gespeichert am 05.11.2026 im Arbeitsbaum `form-zuerst`, nach den Proben „Teile“ (normales Fenster und `?linien`).
+
+Das mit den teilen halte ich für keine gute Lösung. Vorher war es ein teil verschmilz und jetzt sind es zwei. Die form hat es ja zuvor schon gut getroffen. Die querschnitte von kopf und bauch sind in den anderen ansichten dann noch nicht gutzu bearbeiten und es wirkt sehr instabil, was aber an dem zusammenspiel der ganzen  linien und outline liegt.
+
+Ich habe grundsetzlich ein gutes gefühl bei der methode, da das mesh sehr organisch wirkt. Das gefällt mir. Die bedeutung der outlines muss noch anders werden und ich möchte das prinzip von edgeloops mehr vertiefen. Ich verstehe deine aussage dazu, aber sie sollen mehr als bearbeitungstool dienen und sind später zusätzlich guidelines für die topologie. Die Outlines dürfen nichtmehr in dem sinn als grifflinie gesehen werden. das mag bei der kugel so sein, aber die outline selbst soll letzt endlich nicht bearbeitet werden sondern wie bei einem 3d model die netzpunkte die sich aus der anfänglichen outline und den erstellten linien und kanten ergeben. Das mesh soll nicht zu einem "donut" verschmelzen können sondern ein ende steckt dann in dem anderen. das gleiche prinzip gilt bei getrennten kieferern. Es ist alles mit dem netz verbunden. Edgloops macht man gerne selbst aber die seiten sollen auch am ende alle gleichwertig sein, dass ich überall alles machen kann. Macht meine klarstellung sinn?
+
+Wenn es nch keinen sinn macht, brauchen wir das nicht direkt so umsetzen, aber sind wir auf demweg dahin bzw ist das mit dieser methode so umsetzbar und weche tests bauchen wir noch um das zu beweisen? Bezier-Hanles wären glaube ich auch die bessere wahl. du meintest das macht keine probleme.
