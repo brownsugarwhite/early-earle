@@ -168,6 +168,40 @@ function wegAus(L: Lauf, orte: readonly Ort[]): Kantenpunkt[] | null {
 }
 
 /**
+ * Offener Weg von der ersten zur letzten Probe (die Hälfte eines Rings, Enden auf der Mittelebene), sonst wie `wegAus`. Die
+ * Spiegelhälfte wird nicht abgelaufen, sondern gespiegelt: Rückwärts abgelaufen kreuzte sie andere Kanten (die Richtung wird in
+ * jedem Dreieck neu zum Ziel genommen), ihre Punkte hätten keine Spiegelpartner.
+ */
+function wegOffen(L: Lauf, orte: readonly Ort[]): Kantenpunkt[] | null {
+  const weg: Kantenpunkt[] = [];
+  for (let i = 0; i + 1 < orte.length; i++) {
+    const a = orte[i]!;
+    if (a.kante) weg.push(a.kante);
+    const zw = laufen(L, a, orte[i + 1]!);
+    if (!zw) return null;
+    weg.push(...zw);
+  }
+  const z = orte[orte.length - 1]!;
+  if (z.kante) weg.push(z.kante);
+  // derselbe Punkt zweimal (ein Ende des Schnitts liegt auf dem ersten Kantenpunkt) bleibt einmal; über dieselbe Kante hin und
+  // zurück fällt weg, die Enden bleiben
+  const n = L.h.n;
+  const gleicheKante = (a: Kantenpunkt, b: Kantenpunkt) => schluessel(n, a.u, a.v) === schluessel(n, b.u, b.v);
+  const f = (k: Kantenpunkt) => (k.u < k.v ? k.f : 1 - k.f);
+  for (let i = 0; i + 1 < weg.length; ) {
+    if (gleicheKante(weg[i]!, weg[i + 1]!) && Math.abs(f(weg[i]!) - f(weg[i + 1]!)) < 1e-9) weg.splice(i + 1, 1);
+    else i++;
+  }
+  for (let i = 1; i + 2 < weg.length; ) {
+    if (gleicheKante(weg[i]!, weg[i + 1]!)) {
+      weg.splice(i, 2);
+      i = Math.max(1, i - 1);
+    } else i++;
+  }
+  return weg.length >= 2 ? weg : null;
+}
+
+/**
  * Einen geschlossenen Weg einsetzen: je gekreuzte Kante ein neuer Punkt, jedes Dreieck zwischen zwei Wegpunkten in drei geteilt.
  * Jede Kante und jedes Dreieck höchstens einmal, sonst null.
  */
@@ -339,6 +373,9 @@ export function loopEinsetzen(h: Haut, loops: readonly Loop[], nr: number): { ha
     if (orte.some((o) => !o)) return null;
     const weg = wegAus(L, orte as Ort[]);
     if (!weg) return null;
+    return einsetzenWeg(L, weg);
+  };
+  function einsetzenWeg(L: Lauf, weg: readonly Kantenpunkt[]): number[] | null {
     const r = wegEinsetzen(L, weg);
     if (!r) return null;
     haut = hautAus(r.pos, r.tri);
@@ -358,7 +395,7 @@ export function loopEinsetzen(h: Haut, loops: readonly Loop[], nr: number): { ha
     });
     alleNeu.push(...r.neu);
     return r.neu;
-  };
+  }
   if (l.art === 'mitte') {
     // Das Netz hat Punkte genau auf der Mittelebene (sonst wäre es nicht spiegelgleich zu triangulieren): Die Mitte läuft schon
     // über Kanten. Ihre Kette: die Punkte auf z = 0, der Reihe nach über ihre Kanten.
@@ -385,23 +422,20 @@ export function loopEinsetzen(h: Haut, loops: readonly Loop[], nr: number): { ha
     return { haut, loops: liste };
   }
   if (l.art === 'ring') {
-    // ganzer Ring: die Hälfte und ihr Spiegelbild zurück (ohne die Enden auf der Mitte)
-    const sp = l.proben.slice(1, -1).map((p) => spiegelProbe(h, p));
-    if (sp.some((p) => !p)) return null;
-    const neu = einsetzen([...l.proben, ...(sp as Probe[]).reverse()]);
+    // ganzer Ring: die Hälfte von Ende zu Ende abgelaufen, dazu ihr Spiegelbild zurück (ohne die Enden auf der Mitte)
+    const L = laufVon(haut);
+    const orte = l.proben.map((p) => ortVon(L, p));
+    if (orte.some((o) => !o)) return null;
+    const halb = wegOffen(L, orte as Ort[]);
+    if (!halb) return null;
+    const sp = (w: number) => haut.spiegel[w]!;
+    const innen = halb.slice(1, -1);
+    if (innen.some((k) => sp(k.u) < 0 || sp(k.v) < 0)) return null;
+    const neu = einsetzenWeg(L, [...halb, ...innen.reverse().map((k) => ({ u: sp(k.u), v: sp(k.v), f: k.f }))]);
     if (!neu) return null;
-    // die Hälfte z ≥ 0: von einem Ende auf der Mitte zum anderen (die Punkte auf den Kanten, die die Mitte kreuzen, liegen auf z = 0)
-    const z = neu.map((w) => haut.pos[3 * w + 2]!);
-    const m = neu.length;
-    const enden = neu.map((_, i) => i).filter((i) => Math.abs(z[i]!) < 0.5);
-    if (enden.length !== 2) return null;
-    const [a, b] = [enden[0]!, enden[1]!];
-    const vorwaerts: number[] = [];
-    for (let k = a; ; k = (k + 1) % m) {
-      vorwaerts.push(neu[k]!);
-      if (k === b) break;
-    }
-    const kette = vorwaerts.slice(1, -1).every((w) => haut.pos[3 * w + 2]! >= 0) ? vorwaerts : [...neu.slice(b), ...neu.slice(0, a + 1)].reverse();
+    // die Hälfte z ≥ 0: die ersten Punkte des Wegs, ihre Enden genau auf der Mitte
+    const kette = neu.slice(0, halb.length);
+    if (kette.slice(1, -1).some((w) => haut.pos[3 * w + 2]! < -1e-6)) return null;
     for (const w of [kette[0]!, kette[kette.length - 1]!]) haut.pos[3 * w + 2] = 0;
     liste[nr] = loopNeu(haut, l, kette);
   } else {

@@ -31,6 +31,8 @@ export type LoopPunkt = {
   ecke?: boolean;
   /** Kreuzung mit einem harten Loop (gesetzt von `eckenAuto`): dort knickt die Haut, also darf auch die Linie knicken */
   autoEcke?: boolean;
+  /** der Mundwinkel, wenn der Loop das Maul ist (dort treffen sich Ober- und Unterlippe, um ihn dreht der Unterkiefer) */
+  mundwinkel?: boolean;
 };
 /** Ecke: die Linie darf am Punkt knicken (Griffe unabhängig); sonst glatt (Griffe gegenüber) */
 export const istEcke = (p: LoopPunkt): boolean => p.ecke ?? p.autoEcke ?? false;
@@ -449,7 +451,8 @@ export function strahl(h: Haut, a: Ansicht, u: number, v: number): { probe: Prob
 
 /**
  * Eine gezeichnete geschlossene Form auf die Haut legen (dicht abgetastet, `knoten` = Stellen, die Punkte werden). In Front und
- * Top über die Mittelachse gezeichnet wird sie spiegelgleich (ihre Hälfte z ≥ 0), sonst ein Loop auf einer Seite.
+ * Top über die Mittelachse gezeichnet wird sie spiegelgleich (ihre Hälfte z ≥ 0), ebenso in der Seite über den Umriss (vorn aus
+ * dem Körper hinaus, etwa ums Maul); sonst ein Loop auf einer Seite.
  */
 export function formAusZeichnung(h: Haut, a: Ansicht, uv: readonly [number, number][], knoten: readonly number[], id: number): Loop | null {
   const m = uv.length;
@@ -461,8 +464,9 @@ export function formAusZeichnung(h: Haut, a: Ansicht, uv: readonly [number, numb
   const proben: Probe[] = [];
   const p: V3[] = [];
   const marken: number[] = [];
-  const dazu = (q: readonly [number, number], knoten: boolean) => {
-    const t = strahl(h, a, q[0], q[1]);
+  // in der Seite je Probe der Treffer auf der Haut (null: außerhalb des Umrisses)
+  const treffer = a === 'seite' ? uv.map((q) => strahl(h, a, q[0], q[1])) : null;
+  const dazu = (q: readonly [number, number], knoten: boolean, t = strahl(h, a, q[0], q[1])) => {
     if (!t) return;
     if (knoten) marken.push(p.length);
     proben.push(t.probe);
@@ -494,9 +498,16 @@ export function formAusZeichnung(h: Haut, a: Ansicht, uv: readonly [number, numb
     if (p.length < 3) return null;
     p[0] = { ...p[0]!, z: 0 };
     p[p.length - 1] = { ...p[p.length - 1]!, z: 0 };
+  } else if (treffer && treffer.some((t) => !t)) {
+    const r = ringUeberUmriss(h, uv, treffer, knotenMenge);
+    if (!r) return null;
+    art = 'ring';
+    proben.push(...r.proben);
+    p.push(...r.p);
+    marken.push(...r.marken);
   } else if (wechsel.length === 0) {
     art = 'paar';
-    uv.forEach((q, i) => dazu(q, knotenMenge.has(i)));
+    uv.forEach((q, i) => dazu(q, knotenMenge.has(i), treffer ? treffer[i] : undefined));
     if (p.length < 0.7 * m) return null;
     if (p.every((q) => q.z < 0)) {
       const sp = proben.map((q) => spiegelProbe(h, q));
@@ -508,6 +519,91 @@ export function formAusZeichnung(h: Haut, a: Ansicht, uv: readonly [number, numb
   const l = loopAus(id, art, proben, p);
   l.punkte = marken.map((i) => ({ s: l.s[i]!, ref: { ...p[i]! }, cur: { ...p[i]! } }));
   return l;
+}
+
+/**
+ * In der Seite über den Umriss gezeichnet: Die Proben auf dem Körper (ein einziger Lauf) sind die Hälfte z ≥ 0 eines Rings, seine
+ * Enden liegen dort, wo die Zeichnung den Umriss kreuzt, genau auf Kanten der Mittelebene (in der Seite ist sie der Umriss). Null,
+ * wenn die Zeichnung den Körper mehr als einmal verlässt oder der Umriss dort keine Kante der Mittelebene hat.
+ */
+function ringUeberUmriss(
+  h: Haut,
+  uv: readonly [number, number][],
+  treffer: readonly ({ probe: Probe; p: V3 } | null)[],
+  knoten: ReadonlySet<number>,
+): { proben: Probe[]; p: V3[]; marken: number[] } | null {
+  const m = uv.length;
+  const drauf = (i: number) => treffer[((i % m) + m) % m] !== null;
+  const rein: number[] = [];
+  const raus: number[] = [];
+  for (let i = 0; i < m; i++) {
+    if (!drauf(i - 1) && drauf(i)) rein.push(i);
+    if (drauf(i) && !drauf(i + 1)) raus.push(i);
+  }
+  if (rein.length !== 1 || raus.length !== 1) return null;
+  const P = h.pos;
+  const aufMitte = (v: number) => Math.abs(P[3 * v + 2]!) < 1e-9;
+  // die Kante der Mittelebene, die die Strecke vom Treffer q0 hinaus nach q1 zuerst kreuzt
+  const ende = (q0: readonly [number, number], q1: readonly [number, number]): { probe: Probe; p: V3 } | null => {
+    const rx = q1[0] - q0[0];
+    const ry = q1[1] - q0[1];
+    let best: { v: number; w: number; f: number } | null = null;
+    let bestT = Infinity;
+    for (let v = 0; v < h.n; v++) {
+      if (!aufMitte(v)) continue;
+      for (const w of h.nachbarn[v]!) {
+        if (w < v || !aufMitte(w)) continue;
+        const sx = P[3 * w]! - P[3 * v]!;
+        const sy = P[3 * w + 1]! - P[3 * v + 1]!;
+        const nenner = rx * sy - ry * sx;
+        if (Math.abs(nenner) < 1e-12) continue;
+        const qx = P[3 * v]! - q0[0];
+        const qy = P[3 * v + 1]! - q0[1];
+        const t = (qx * sy - qy * sx) / nenner;
+        const f = (qx * ry - qy * rx) / nenner;
+        if (t < 0 || t > 1 || f < 0 || f > 1 || t >= bestT) continue;
+        bestT = t;
+        best = { v, w, f };
+      }
+    }
+    if (!best) return null;
+    // ein Dreieck an der Kante (auf der Seite z ≥ 0)
+    let tri = -1;
+    for (let t = 0; t < h.tri.length / 3; t++) {
+      const e = [h.tri[3 * t]!, h.tri[3 * t + 1]!, h.tri[3 * t + 2]!];
+      if (!e.includes(best.v) || !e.includes(best.w)) continue;
+      tri = t;
+      const dritte = e.find((x) => x !== best!.v && x !== best!.w)!;
+      if (P[3 * dritte + 2]! >= 0) break;
+    }
+    if (tri < 0) return null;
+    const e: [number, number, number] = [h.tri[3 * tri]!, h.tri[3 * tri + 1]!, h.tri[3 * tri + 2]!];
+    const b: [number, number, number] = [0, 0, 0];
+    b[e.indexOf(best.v)] = 1 - best.f;
+    b[e.indexOf(best.w)] = best.f;
+    const a = lage(P, best.v);
+    const c = lage(P, best.w);
+    return { probe: { ecken: e, b }, p: { x: a.x + best.f * (c.x - a.x), y: a.y + best.f * (c.y - a.y), z: 0 } };
+  };
+  const i0 = rein[0]!;
+  const i1 = raus[0]!;
+  const anfang = ende(uv[i0]!, uv[(i0 - 1 + m) % m]!);
+  const schluss = ende(uv[i1]!, uv[(i1 + 1) % m]!);
+  if (!anfang || !schluss) return null;
+  const proben: Probe[] = [anfang.probe];
+  const p: V3[] = [anfang.p];
+  const marken: number[] = [];
+  for (let k = 0; k < m; k++) {
+    const i = (i0 + k) % m;
+    const t = treffer[i]!;
+    if (knoten.has(i)) marken.push(p.length);
+    proben.push(t.probe);
+    p.push(t.p);
+    if (i === i1) break;
+  }
+  proben.push(schluss.probe);
+  p.push(schluss.p);
+  return p.length >= 4 ? { proben, p, marken } : null;
 }
 
 /** Abstand zweier Strecken und die Parameter der nächsten Punkte */

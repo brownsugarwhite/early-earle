@@ -16,7 +16,7 @@ import { type Kontur, tiefeAusKontur } from './raumlinien';
 import type { UmrissPunkt } from './umriss';
 
 /** Eine Lippe in der Seite: abgetastet vom Umriss zum Mundwinkel, vorn über den Umriss hinaus verlängert. */
-type Lippe = {
+export type Lippe = {
   C: V2[];
   bogen: number[];
   /** Bogenanteil (0 … 1) jedes Punkts der gezeichneten Linie (für ihre Breite) */
@@ -53,7 +53,7 @@ type Weg = {
   auf: Set<number>;
 };
 
-function lippeAus(
+export function lippeAus(
   punkte: readonly UmrissPunkt[],
   zelle: number,
   rausAm: (q: V2) => V2 | null,
@@ -141,7 +141,7 @@ function lippeAus(
 }
 
 /** Abstand eines Punkts der Seite zur Lippe und seine Seite: Vorzeichen am nächsten Stück (hinter dem Mundwinkel dessen Gerade). */
-function nahe(L: Lippe, x: number, y: number): { d: number; sg: number } {
+export function nahe(L: Lippe, x: number, y: number): { d: number; sg: number } {
   let best = Infinity;
   let sg = 1;
   for (let k = 0; k + 1 < L.Q.length; k++) {
@@ -161,7 +161,7 @@ function nahe(L: Lippe, x: number, y: number): { d: number; sg: number } {
 }
 
 /** Stelle der Lippe bei Bogenlänge s: Punkt, Tangente, linke Normale (vor dem Anfang auf der Verlängerung nach außen). */
-function stelle(L: Lippe, s: number): { p: V2; t: V2; n: V2 } {
+export function stelle(L: Lippe, s: number): { p: V2; t: V2; n: V2 } {
   const sc = Math.max(0, Math.min(L.S, s));
   let lo = 0;
   let hi = L.bogen.length - 1;
@@ -181,13 +181,13 @@ function stelle(L: Lippe, s: number): { p: V2; t: V2; n: V2 } {
 }
 
 /** Normale der Lippe zum Oberkiefer hin. */
-function nOben(L: Lippe, s: number): V2 {
+export function nOben(L: Lippe, s: number): V2 {
   const n = stelle(L, s).n;
   return { x: L.oben * n.x, y: L.oben * n.y };
 }
 
 /** Bogenlänge der nächsten Stelle der Lippe. */
-function sAuf(L: Lippe, x: number, y: number): number {
+export function sAuf(L: Lippe, x: number, y: number): number {
   let best = Infinity;
   let sb = 0;
   for (let k = 0; k + 1 < L.C.length; k++) {
@@ -896,84 +896,9 @@ export function maulGetrennt(
   // ---------- Gewicht der Drehung ----------
   // Wie beim Maul mit zusammenliegenden Lippen (maul.ts), nur je Kiefer nach seiner eigenen Lippe: der Unterkiefer nach der
   // Unterlippe, der Schädel nach der Oberlippe. Die Linse und die Lippen gehören dem Kiefer, dessen Teil sie sind.
-  const W1 = 0.75 * Math.PI;
-  const dickeVon = (L: Lippe, seiteK: number): number => {
-    let best = Infinity;
-    for (let j = 0; j < kontur.ny; j++) {
-      for (let i = 0; i < kontur.nx; i++) {
-        if (kontur.Z[j * kontur.nx + i]! > 0) continue;
-        const x = kontur.x0 + i * kontur.d;
-        const y = kontur.y0 + j * kontur.d;
-        const r = Math.hypot(x - M.x, y - M.y);
-        if (r < best && nahe(L, x, y).sg === seiteK) best = r;
-      }
-    }
-    return Number.isFinite(best) ? Math.max(2 * zelle, best) : L.S / 2;
-  };
-  const gewichtsFeld = (L: Lippe, unterkiefer: boolean) => {
-    const seiteK = unterkiefer ? -L.oben : L.oben;
-    const winkel = (x: number, y: number): number => {
-      const nahDran = x >= L.x0 - rand && x <= L.x1 + rand && y >= L.y0 - rand && y <= L.y1 + rand;
-      const Lz = nahDran ? L.QW : L.QG;
-      let summe = 0;
-      for (let k = 0; k + 1 < Lz.length; k++) {
-        const ux = Lz[k]!.x - x;
-        const uy = Lz[k]!.y - y;
-        const vx = Lz[k + 1]!.x - x;
-        const vy = Lz[k + 1]!.y - y;
-        summe += Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy);
-      }
-      return summe;
-    };
-    const mitte = stelle(L, L.S / 2);
-    const probe = { x: mitte.p.x - L.oben * mitte.n.x * 0.25 * zelle, y: mitte.p.y - L.oben * mitte.n.y * 0.25 * zelle };
-    const vz = winkel(probe.x, probe.y) >= 0 ? 1 : -1;
-    const vzK = unterkiefer ? vz : -vz;
-    const abstand = unterlippenAbstand(kontur, L.Q, (x, y) => {
-      const q = nahe(L, x, y);
-      return { d: q.d, unten: q.sg === seiteK };
-    });
-    const dicke = dickeVon(L, seiteK);
-    const L0 = dicke;
-    const L1 = 1.5 * dicke;
-    return (x: number, y: number, aus: [number, number, number]): void => {
-      aus[0] = 0;
-      aus[1] = 0;
-      aus[2] = 0;
-      if (x < L.x0 - L1 || x > L.x1 + L1 || y < L.y0 - L1 || y > L.y1 + L1) return;
-      const r2 = (x - M.x) ** 2 + (y - M.y) ** 2;
-      if (r2 < 1e-12) return;
-      const d = abstand(x, y);
-      if (!(d < L1)) return;
-      const psi = vzK * winkel(x, y);
-      const a = glatt(0, W1, psi);
-      if (a === 0) return;
-      const b = 1 - glatt(L0, L1, d);
-      aus[0] = a * b;
-      const f2 = (x - L.fernW.x) ** 2 + (y - L.fernW.y) ** 2 || 1;
-      const gpx = vzK * ((M.y - y) / r2 - (L.fernW.y - y) / f2);
-      const gpy = vzK * (-(M.x - x) / r2 + (L.fernW.x - x) / f2);
-      const da = glattAbl(0, W1, psi);
-      let gdx = 0;
-      let gdy = 0;
-      if (b > 0 && b < 1) {
-        const hh = zelle;
-        const dx1 = abstand(x + hh, y);
-        const dx0 = abstand(x - hh, y);
-        const dy1 = abstand(x, y + hh);
-        const dy0 = abstand(x, y - hh);
-        if (Number.isFinite(dx1 + dx0 + dy1 + dy0)) {
-          gdx = (dx1 - dx0) / (2 * hh);
-          gdy = (dy1 - dy0) / (2 * hh);
-        }
-      }
-      const db = -glattAbl(L0, L1, d);
-      aus[1] = da * b * gpx + a * db * gdx;
-      aus[2] = da * b * gpy + a * db * gdy;
-    };
-  };
-  const unterFeld = gewichtsFeld(LD, true);
-  const schaedelFeld = gewichtsFeld(LU, false);
+  const dickeVon = (L: Lippe, seiteK: number): number => dickeAmMundwinkel(L, M, kontur, zelle, seiteK);
+  const unterFeld = kieferFeld(LD, M, kontur, zelle, true);
+  const schaedelFeld = kieferFeld(LU, M, kontur, zelle, false);
   const nP = P.length / 3;
   // welcher Kiefer: 1 Oberkiefer, −1 Unterkiefer, 0 keiner (Mundwinkel); Punkte des Netzes nach ihrer Seite der Oberlippe
   const kiefer = new Int8Array(nP);
@@ -1223,6 +1148,98 @@ export function maulGetrennt(
     innenUnten: new Uint8Array(innenUnten),
     unten: LD.C,
     tiefe,
+  };
+}
+
+const W1 = 0.75 * Math.PI;
+
+/** Dicke des Kiefers am Mundwinkel M: Abstand zum nächsten Punkt außerhalb der Form auf seiner Seite der Lippe (`seiteK`). */
+export function dickeAmMundwinkel(L: Lippe, M: V2, kontur: Kontur, zelle: number, seiteK: number): number {
+  let best = Infinity;
+  for (let j = 0; j < kontur.ny; j++) {
+    for (let i = 0; i < kontur.nx; i++) {
+      if (kontur.Z[j * kontur.nx + i]! > 0) continue;
+      const x = kontur.x0 + i * kontur.d;
+      const y = kontur.y0 + j * kontur.d;
+      const r = Math.hypot(x - M.x, y - M.y);
+      if (r < best && nahe(L, x, y).sg === seiteK) best = r;
+    }
+  }
+  return Number.isFinite(best) ? Math.max(2 * zelle, best) : L.S / 2;
+}
+
+/**
+ * Gewicht der Drehung eines Kiefers um den Mundwinkel M nach seiner Lippe L (und sein Gradient in der Seite), wie beim Maul mit
+ * zusammenliegenden Lippen (maul.ts): der Winkel, unter dem ein Punkt die Lippe samt Verlängerung sieht, mal der Abstand von
+ * der Lippe längs der Form. `unterkiefer`: der Kiefer unter der Lippe (sonst der Schädel darüber).
+ */
+export function kieferFeld(
+  L: Lippe,
+  M: V2,
+  kontur: Kontur,
+  zelle: number,
+  unterkiefer: boolean,
+): (x: number, y: number, aus: [number, number, number]) => void {
+  const rand = 3 * zelle;
+  const seiteK = unterkiefer ? -L.oben : L.oben;
+  const winkel = (x: number, y: number): number => {
+    const nahDran = x >= L.x0 - rand && x <= L.x1 + rand && y >= L.y0 - rand && y <= L.y1 + rand;
+    const Lz = nahDran ? L.QW : L.QG;
+    let summe = 0;
+    for (let k = 0; k + 1 < Lz.length; k++) {
+      const ux = Lz[k]!.x - x;
+      const uy = Lz[k]!.y - y;
+      const vx = Lz[k + 1]!.x - x;
+      const vy = Lz[k + 1]!.y - y;
+      summe += Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy);
+    }
+    return summe;
+  };
+  const mitte = stelle(L, L.S / 2);
+  const probe = { x: mitte.p.x - L.oben * mitte.n.x * 0.25 * zelle, y: mitte.p.y - L.oben * mitte.n.y * 0.25 * zelle };
+  const vz = winkel(probe.x, probe.y) >= 0 ? 1 : -1;
+  const vzK = unterkiefer ? vz : -vz;
+  const abstand = unterlippenAbstand(kontur, L.Q, (x, y) => {
+    const q = nahe(L, x, y);
+    return { d: q.d, unten: q.sg === seiteK };
+  });
+  const dicke = dickeAmMundwinkel(L, M, kontur, zelle, seiteK);
+  const L0 = dicke;
+  const L1 = 1.5 * dicke;
+  return (x: number, y: number, aus: [number, number, number]): void => {
+    aus[0] = 0;
+    aus[1] = 0;
+    aus[2] = 0;
+    if (x < L.x0 - L1 || x > L.x1 + L1 || y < L.y0 - L1 || y > L.y1 + L1) return;
+    const r2 = (x - M.x) ** 2 + (y - M.y) ** 2;
+    if (r2 < 1e-12) return;
+    const d = abstand(x, y);
+    if (!(d < L1)) return;
+    const psi = vzK * winkel(x, y);
+    const a = glatt(0, W1, psi);
+    if (a === 0) return;
+    const b = 1 - glatt(L0, L1, d);
+    aus[0] = a * b;
+    const f2 = (x - L.fernW.x) ** 2 + (y - L.fernW.y) ** 2 || 1;
+    const gpx = vzK * ((M.y - y) / r2 - (L.fernW.y - y) / f2);
+    const gpy = vzK * (-(M.x - x) / r2 + (L.fernW.x - x) / f2);
+    const da = glattAbl(0, W1, psi);
+    let gdx = 0;
+    let gdy = 0;
+    if (b > 0 && b < 1) {
+      const hh = zelle;
+      const dx1 = abstand(x + hh, y);
+      const dx0 = abstand(x - hh, y);
+      const dy1 = abstand(x, y + hh);
+      const dy0 = abstand(x, y - hh);
+      if (Number.isFinite(dx1 + dx0 + dy1 + dy0)) {
+        gdx = (dx1 - dx0) / (2 * hh);
+        gdy = (dy1 - dy0) / (2 * hh);
+      }
+    }
+    const db = -glattAbl(L0, L1, d);
+    aus[1] = da * b * gpx + a * db * gdx;
+    aus[2] = da * b * gpy + a * db * gdy;
   };
 }
 

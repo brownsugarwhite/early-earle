@@ -217,8 +217,22 @@ describe('Nur Loops: Griffe an Kreuzungen', () => {
           3,
         )!,
       ],
+      // schmale Form über die Mitte (Front) bzw. vorn über den Umriss (Seite): ein Ring, die Spiegelhälfte gespiegelt eingesetzt
+      ...(['front', 'seite'] as const).map((a): [string, Loop] => [
+        `Form über die Mitte (${a})`,
+        formAusZeichnung(
+          h0,
+          a,
+          Array.from({ length: 64 }, (_, i): [number, number] =>
+            a === 'front' ? [90 * Math.cos((2 * Math.PI * i) / 64), -20 + 10 * Math.sin((2 * Math.PI * i) / 64)] : [-115 + 60 * Math.cos((2 * Math.PI * i) / 64), -20 + 9 * Math.sin((2 * Math.PI * i) / 64)],
+          ),
+          Array.from({ length: 8 }, (_, i) => 8 * i),
+          4,
+        )!,
+      ]),
     ];
     for (const [name, l] of faelle) {
+      expect(l, name).toBeTruthy();
       const r = loopEinsetzen(h0, [l], 0)!;
       expect(r, name).not.toBeNull();
       const ln = r.loops[0]!;
@@ -227,7 +241,8 @@ describe('Nur Loops: Griffe an Kreuzungen', () => {
       log(`${name}: ${h0.n} → ${r.haut.n} Punkte, ${ln.proben.length} Proben, Länge ${l.laenge.toFixed(1)} → ${ln.laenge.toFixed(1)}`);
       expect(ohne).toBe(0);
       expect(ln.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2])).toBe(true);
-      expect(Math.abs(ln.laenge - l.laenge)).toBeLessThan(1);
+      // die Kette läuft gerade durch die Dreiecke: an der Spitze einer schmalen Form etwas kürzer
+      expect(Math.abs(ln.laenge - l.laenge)).toBeLessThan(Math.max(1, 0.01 * l.laenge));
     }
   });
 

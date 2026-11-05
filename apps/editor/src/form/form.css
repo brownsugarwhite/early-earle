@@ -429,6 +429,11 @@ body {
   stroke-opacity: 0.4;
 }
 
+/* Maul als Loop (05.11.): der Loop des Mauls in Lippenfarbe */
+.blatt .kurve.maul {
+  stroke: #b0413a;
+}
+
 .blatt .kpunkt {
   fill: var(--papier);
   stroke: #0a5f56;

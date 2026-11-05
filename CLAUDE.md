@@ -1089,6 +1089,33 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - **Gemessen** (Maus `scripts/pruefen/form-kreuzung-probe.mjs`, beide Reihenfolgen): nach der 3 als Ecke zu sehen, Griff des Umrisses
     60 px seitlich → Knick 41,1°, 0 umgeschlagen; Doppelklick → beide glatt, 0,0°; ⌘Z bitgleich. Ältere Proben mit denselben Zahlen.
     Bilder `form-kreuzung-{geknickt,glatt}-2026-11-05.jpg`.
+- **2026-11-05 (abends): Maul als Loop** (Florian: „Ja, fang mit dem Maul als Loop an: mit F als schmale Form ums Maul zeichnen,
+  Mundwinkel als Punkte, ein Regler öffnet es.“).
+  - **Bedienung (`kurven.html`):** Mit F eine schmale Form ums Maul zeichnen, in der Seite vorn über den Umriss hinaus (neu: wird ein Ring,
+    Enden genau auf Kanten der Mittelebene, `ringUeberUmriss`) oder in Front/Top über die Mitte. Die neue Form ist gewählt; der Regler
+    „Maul“ im 3D-Blatt (0–55°) macht den gewählten Ring zum Maul: Sein Inneres ist die Öffnung, die Hälften sind Ober- und Unterlippe,
+    der Punkt am weitesten von der Mitte seiner Enden wird der Mundwinkel (`LoopPunkt.mundwinkel`, Ecke ◆, sonst ein neuer Punkt). Der
+    Loop des Mauls ist rot. Offen ist nur die Ansicht: Das Netz bleibt geschlossen, die Lippen sind Loops wie die anderen (Punkte ziehen
+    geht auch bei offenem Maul), die Blätter zeigen den Umriss des offenen Modells und die Zeichnung in Ruhe. Bei 0° zeigt das Maul die
+    Form, wie gezeichnet (schmal = Spalt). ⌘Z nimmt Öffnen und Anlegen schrittweise zurück (gemessen bis zum Anfang).
+  - **Kern `dicht/maulLoop.ts` (`maulAmLoop`, `mundwinkelProbe`):** geschnitten genau längs der Kette des Loops im Netz (die kleinere
+    Seite des Rings fällt weg). Gaumen und Boden: von jedem Punkt der Lippe ein Bogen quer zu seinem Spiegelpunkt, gewölbt in den Kiefer
+    (eine Richtung für das ganze Maul, quer zu Mundwinkel → Mitte vorn), am Mundwinkel treffen sie sich. Gewichte der Drehung wie bei
+    den getrennten Kiefern (`kieferFeld`/`dickeAmMundwinkel` aus `kiefer.ts` herausgelöst, dort bitgleich), Öffnen mit `maulOeffnen`.
+    Im Zug gelten die Gewichte vom Anfang weiter (`wieVorher`): 2–3 ms statt 40 ms.
+  - **Nebenbei behoben:** Mit F über die Mitte gezeichnete Ringe wurden beim Einsetzen in der Spiegelhälfte rückwärts abgelaufen und
+    kreuzten andere Kanten: 20 Punkte ohne Spiegelpartner. Jetzt wird die Hälfte abgelaufen und gespiegelt (`wegOffen`); geschnittene
+    Ringe bleiben bitgleich (Test „Einsetzen … spiegelgleich“ mit beiden Formen).
+  - **Gemessen** (Kern `maulLoop.test.ts`, Maus `scripts/pruefen/form-maul-loop.mjs`, `FALL=front`): zu genau wie vorher, offen 20/40/55°
+    dicht (0 offene Kanten), Unterlippe genau gedreht, Oberlippe steht, spiegelgleich; Seite 0 umgeschlagen bis 55°. Front im Fenster:
+    Haut 0 bis 20°, 10 bei 40° (Kinn), Gaumen 4 sehr kleine. Unterlippe bei offenem Maul 12 nach unten gezogen: dicht, 2–6 umgeschlagen
+    am Mundwinkel bzw. vorn, ⌘Z bitgleich; Zug 2,5–3,5 ms je Bewegung.
+  - **Fallen:** Das Innere nie an der Lippe in der Seitenansicht aufhängen (eine Lippe vorn am Gesicht faltet sich in der Seite: 48 offene
+    Kanten); die Richtung in den Kiefer nicht je Punkt quer zum Mundwinkel nehmen (kippt hinter dem Mundwinkel: 47 umgeschlagen); der
+    Gaumen darf an der Lippe nicht breiter werden als sie (höchstens ×1,5, sonst nicht monoton).
+  - **Offen:** Beim Öffnen knickt die Haut unten am Körper (dort läuft die Kieferdrehung nach dem Abstand von der Unterlippe aus, wie in
+    der ersten Maul-Probe; auf einer Kugel liegt das mitten im Kinn). Weg im Loop-Modell: eine Kinnlinie als Loop, wo der Unterkiefer
+    endet. Lippen ohne Rundung, Zähne, getrennte Kiefer am Loop, Posen. Bilder `docs/progress/editor/form-maul-loop-*-2026-11-05.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

@@ -13,6 +13,9 @@
 // Spiegelpunkte (Ende eines Rings auf der Mittelebene) zeigen beide Griffe, der zweite ist das Spiegelbild; beide sind frei
 // ziehbar (die Linie knickt dort spiegelgleich, der Punkt wird eine Ecke), glatt steht der Griff senkrecht zur Mittelebene.
 // Doppelklick auf einen Griff schaltet seinen Punkt um (an Kreuzungen liegt oft der Punkt des anderen Loops obenauf).
+// Maul (Florian: „Mund = Loop“): eine schmale Form ums Maul (F, vorn über den Umriss oder über die Mitte) wird mit dem Regler „Maul“
+// im 3D-Blatt das Maul. Ihr Inneres ist die Öffnung, ihr fernster Punkt der Mundwinkel ◆; die Lippen bleiben Loops wie die anderen.
+// Geöffnet ist nur die Ansicht (das Netz bleibt geschlossen), die Blätter zeigen den Umriss des offenen Modells und die Zeichnung.
 
 import {
   type Ansicht,
@@ -20,6 +23,8 @@ import {
   type Kurve,
   type Loop,
   LoopZug,
+  MAUL_WINKEL_MAX,
+  type MaulAmLoop,
   type UmrissPunkt,
   type V3,
   bereichUm,
@@ -42,7 +47,10 @@ import {
   kurveAbtasten,
   loopAusSchnitt,
   loopEinsetzen,
+  maulAmLoop,
+  maulOeffnen,
   mittlereKante,
+  mundwinkelProbe,
   punktEinfuegen,
   ringEnde,
   rundAusSeite,
@@ -82,6 +90,8 @@ const KOERPER = 0xe2b98e;
 const TINTE = 0x1f1a17;
 const KURVE = 0x0e9f8e;
 const KURVE_WAHL = 0x0a5f56;
+const LIPPE = 0xb0413a;
+const MAULFARBE = 0x7a3431;
 /** So viele Welteinheiten passen in die kürzere Seite eines Blatts. */
 const SICHT = 560;
 /** bestellte Dreiecke der Haut (Surface Nets geben etwa das 1,5-Fache) */
@@ -132,6 +142,12 @@ let modus: 'frei' | 'loop' | 'form' = 'frei';
 let oAn = false;
 let radius = 90;
 let meldung = '';
+/**
+ * Das Maul: der Loop, dessen schmale Form die Öffnung ist, und wie weit es offen steht (Grad, nur Ansicht). Der Mundwinkel ist ein
+ * Punkt dieses Loops (`mundwinkel`).
+ */
+type MaulZustand = { id: number; winkel: number } | null;
+let maul: MaulZustand = null;
 /** nach jedem Zug verdichten (`?verdichten=0` schaltet es zum Vergleich ab) */
 const VERDICHTEN = new URLSearchParams(location.search).get('verdichten') !== '0';
 /** die Krümmung der Haut folgt den Loops (`?kruemmung=0`: jeder Punkt behält seine, zum Vergleich) */
@@ -143,7 +159,7 @@ const KRUEMMUNG = new URLSearchParams(location.search).get('kruemmung') !== '0';
 const WINKEL = new URLSearchParams(location.search).get('winkel') === '1';
 let letzteVerdichtung: { neu: number; ms: number } | null = null;
 
-type Schnappschuss = { haut: Haut; loops: Loop[]; pos: Float64Array; auswahl: Wahl[]; ids: [number, number] };
+type Schnappschuss = { haut: Haut; loops: Loop[]; pos: Float64Array; auswahl: Wahl[]; ids: [number, number]; maul: MaulZustand };
 const zurueck: Schnappschuss[] = [];
 const kopieLoop = (l: Loop): Loop => ({
   ...l,
@@ -156,6 +172,7 @@ const schnappschuss = (): Schnappschuss => ({
   pos: Float64Array.from(haut.pos),
   auswahl: [...auswahl],
   ids: [naechsteId, naechsteKreuzung],
+  maul: maul ? { ...maul } : null,
 });
 function wiederherstellen(s: Schnappschuss): void {
   loops = s.loops;
@@ -164,6 +181,8 @@ function wiederherstellen(s: Schnappschuss): void {
   geometrieNeu();
   auswahl = s.auswahl;
   [naechsteId, naechsteKreuzung] = s.ids;
+  maul = s.maul;
+  maulRegler.value = String(maul?.winkel ?? 0);
   allesZeigen();
 }
 
@@ -293,6 +312,8 @@ const bandMaterialien = [
   bandMaterial(KURVE_WAHL, 0.3),
   bandMaterial(TINTE, 1),
   bandMaterial(TINTE, 0.3),
+  bandMaterial(LIPPE, 1),
+  bandMaterial(LIPPE, 0.3),
 ];
 
 let hautGeometrie = new BufferGeometry();
@@ -385,7 +406,9 @@ const baender = bandMaterialien.map((m, i) => {
   b.renderOrder = 2 + i;
   return b;
 });
-szene.add(koerper, umriss, ...baender);
+const maulInnen = new Mesh(new BufferGeometry(), new MeshToonMaterial({ color: MAULFARBE, gradientMap: stufen }));
+maulInnen.visible = false;
+szene.add(koerper, umriss, maulInnen, ...baender);
 const sonne = new DirectionalLight(0xffffff, 2.4);
 sonne.position.set(0.9, 1.4, 1.1);
 szene.add(sonne, new HemisphereLight(0xfff6e8, 0x9c8a74, 1.1));
@@ -475,13 +498,147 @@ function ausschnittGeaendert(a: Ansicht): void {
   neuZeichnen = true;
 }
 
-function hautZeigen(): void {
-  const nor = hautNormalen(haut);
-  const P = haut.pos;
+// ---------- Maul ----------
+
+const maulRegler = document.getElementById('maul-oeffnung') as HTMLInputElement;
+maulRegler.max = String(MAUL_WINKEL_MAX);
+/** zuletzt geschnittenes Maul: gilt für diese Haut, diese Kette und diesen Mundwinkel, bei dieser Lage der Haut (`fp`) */
+let maulStand: { haut: Haut; proben: Loop['proben']; ecke: number; fp: number; m: MaulAmLoop } | null = null;
+/** das Maul, geöffnet (Lagen und Normalen je Punkt der Haut, Inneres), zum Zeigen */
+let maulOffen: { m: MaulAmLoop; positionen: Float32Array; normalen: Float32Array; innenPositionen: Float32Array; innenNormalen: Float32Array } | null = null;
+let maulIndex: { aus: Uint32Array; offen: Uint8Array; index: Uint32Array } | null = null;
+
+/** Fingerabdruck der Lagen: ändert sich die Haut, wird das Maul neu geschnitten */
+function fingerabdruck(P: Float64Array): number {
+  let f = 0;
+  for (let i = 0; i < P.length; i++) f += P[i]! * ((i % 7) + 1);
+  return f;
+}
+
+/** Probe des Mundwinkels: am Punkt `mundwinkel` (fehlt er, dort, wo der Loop am weitesten von der Mitte seiner Enden liegt) */
+function mundwinkelVon(l: Loop): number {
+  const p = l.punkte.find((q) => q.mundwinkel);
+  if (!p) return mundwinkelProbe(l);
+  let best = Infinity;
+  let wo = -1;
+  for (let i = 1; i < l.proben.length - 1; i++) {
+    const d = Math.abs(l.s[i]! - p.s);
+    if (d < best) {
+      best = d;
+      wo = i;
+    }
+  }
+  return wo;
+}
+
+/**
+ * Das Maul zur Haut, wie sie jetzt ist. Neu geschnitten wird nur, wenn sich Haut, Kette, Mundwinkel oder Lagen geändert haben; im
+ * Zug gelten die Gewichte der Drehung vom Anfang weiter (nur Lagen und Inneres neu), danach wird ganz neu geschnitten.
+ */
+function maulAktuell(nor: Float64Array): MaulAmLoop | null {
+  if (!maul) return null;
+  const l = loops[loopNr(maul.id)];
+  if (!l || l.art !== 'ring') return null;
+  const ecke = mundwinkelVon(l);
+  const fp = fingerabdruck(haut.pos);
+  const st = maulStand;
+  const gleich = st !== null && st.haut === haut && st.proben === l.proben && st.ecke === ecke;
+  if (gleich && st.fp === fp) return st.m;
+  const imZug = gleich && zug !== null;
+  const m = maulAmLoop(haut, l, ecke, { zelle: MK / 2, normalen: nor, wieVorher: imZug ? st.m : null });
+  maulStand = m ? { haut, proben: l.proben, ecke, fp: imZug ? st.fp : fp, m } : null;
+  return m;
+}
+
+/** Die gezeigten Dreiecke ohne die Öffnung (je Dreieck des Netzes eins in `anzeigeIndex`) */
+function indexOhneOeffnung(offen: Uint8Array): Uint32Array {
+  if (maulIndex && maulIndex.aus === anzeigeIndex && maulIndex.offen === offen) return maulIndex.index;
+  const I = anzeigeIndex;
+  const neu: number[] = [];
+  for (let f = 0; f < I.length / 3; f++) if (!offen[f]) neu.push(I[3 * f]!, I[3 * f + 1]!, I[3 * f + 2]!);
+  maulIndex = { aus: anzeigeIndex, offen, index: new Uint32Array(neu) };
+  return maulIndex.index;
+}
+
+/** Inneres zeigen (oder verstecken) */
+function innenZeigen(): void {
+  const o = maulOffen;
+  maulInnen.visible = o !== null;
+  if (!o) return;
+  const g = new BufferGeometry();
+  g.setAttribute('position', new BufferAttribute(o.innenPositionen, 3));
+  g.setAttribute('normal', new BufferAttribute(o.innenNormalen, 3));
+  g.setIndex(new BufferAttribute(o.m.innen.indizes, 1));
+  g.computeBoundingSphere();
+  maulInnen.geometry.dispose();
+  maulInnen.geometry = g;
+}
+
+/**
+ * Das Maul anlegen, falls es noch keins gibt: am gewählten Ring (eine schmale Form, mit F über die Mitte oder vorn über den Umriss
+ * gezeichnet). Sein Mundwinkel wird ein Punkt (Ecke ◆): der vorhandene an der Stelle, die am weitesten von der Mitte der beiden
+ * Enden liegt, sonst ein neuer.
+ */
+function maulAnlegen(): boolean {
+  if (maul && loops[loopNr(maul.id)]?.art === 'ring') return true;
+  const l = auswahl.map((w) => loops[loopNr(w.l)]).find((x) => x?.art === 'ring');
+  if (!l) {
+    meldung = 'Kein Maul: erst mit F eine schmale Form ums Maul zeichnen (vorn über den Umriss oder über die Mitte) und wählen';
+    maul = null;
+    return false;
+  }
+  const s = l.s[mundwinkelProbe(l)]!;
+  const p = l.punkte.find((q) => Math.abs(q.s - s) < MK) ?? punktEinfuegen(l, s);
+  p.mundwinkel = true;
+  if (p.ecke === undefined) p.ecke = true;
+  maul = { id: l.id, winkel: 0 };
+  meldung = '';
+  return true;
+}
+
+let vorRegler: Schnappschuss | null = null;
+maulRegler.addEventListener('pointerdown', () => {
+  vorRegler = schnappschuss();
+});
+maulRegler.addEventListener('input', () => {
+  if (!maulAnlegen()) {
+    maulRegler.value = '0';
+    statusZeigen();
+    return;
+  }
+  maul!.winkel = Number(maulRegler.value);
+  hautZeigen(true);
+  baenderZeigen();
+  statusZeigen();
+});
+maulRegler.addEventListener('change', () => {
+  if (vorRegler && JSON.stringify(vorRegler.maul) !== JSON.stringify(maul)) zurueck.push(vorRegler);
+  vorRegler = null;
+  allesZeigen();
+});
+
+/** `nurWinkel`: nur die Öffnung hat sich geändert (das Maul wird nicht neu geschnitten) */
+function hautZeigen(nurWinkel = false): void {
+  const norRuhe = hautNormalen(haut);
+  const m = nurWinkel && maulStand ? maulStand.m : maulAktuell(norRuhe);
+  if (m && maul) {
+    maulOffen = {
+      m,
+      positionen: new Float32Array(m.positionen.length),
+      normalen: new Float32Array(m.normalen.length),
+      innenPositionen: new Float32Array(m.innen.positionen.length),
+      innenNormalen: new Float32Array(m.innen.normalen.length),
+    };
+    maulOeffnen(m, maul.winkel, maulOffen);
+  } else maulOffen = null;
+  innenZeigen();
+  const nor: ArrayLike<number> = maulOffen ? maulOffen.normalen : norRuhe;
+  const P: ArrayLike<number> = maulOffen ? maulOffen.positionen : haut.pos;
+  const I = maulOffen ? indexOhneOeffnung(maulOffen.m.offen) : anzeigeIndex;
+  if (hautGeometrie.index?.array !== I) hautGeometrie.setIndex(new BufferAttribute(I, 1));
   const N = anzeigeQuelle.length;
   // Normale je gezeigtem Punkt aus seinen Dreiecken (bei doppelten nur die seiner Seite), nach der Härte gemischt
   const eigen = new Float64Array(3 * N);
-  const I = anzeigeIndex;
   for (let f = 0; f < I.length / 3; f++) {
     const [a, b, c] = [anzeigeQuelle[I[3 * f]!]!, anzeigeQuelle[I[3 * f + 1]!]!, anzeigeQuelle[I[3 * f + 2]!]!];
     const abx = P[3 * b]! - P[3 * a]!;
@@ -576,33 +733,78 @@ function linienVon(l: Loop, L: Float64Array): V3[][] {
 
 const aktuelleLagen = (): Float64Array[] => (zug ? zug.lagen : loops.map((l) => l.ruhe));
 
+/** Lage einer Probe zum Zeigen: bei offenem Maul gedreht wie die Haut; `sp`: Spiegelhälfte bzw. Zwilling */
+function zeigeLage(l: Loop, L: Float64Array, i: number, sp: boolean): V3 {
+  const p = lageAus(L, i);
+  const q = sp ? spiegeln(p) : p;
+  const o = maulOffen;
+  if (!o || !maul) return q;
+  const pr = l.proben[i]!;
+  if (pr.ecken[0] === pr.ecken[1] && pr.ecken[1] === pr.ecken[2]) {
+    const v = sp ? haut.spiegel[pr.ecken[0]]! : pr.ecken[0];
+    if (v >= 0) return { x: o.positionen[3 * v]!, y: o.positionen[3 * v + 1]!, z: o.positionen[3 * v + 2]! };
+  }
+  // eine Probe im Dreieck: um den Mundwinkel gedreht nach dem Gewicht an ihrer Stelle
+  const w = o.m.gewichtBei(q.x, q.y);
+  const a = (o.m.drehsinn * Math.min(MAUL_WINKEL_MAX, maul.winkel) * Math.PI * w) / 180;
+  const dx = q.x - o.m.gelenk.x;
+  const dy = q.y - o.m.gelenk.y;
+  return { x: o.m.gelenk.x + Math.cos(a) * dx - Math.sin(a) * dy, y: o.m.gelenk.y + Math.sin(a) * dx + Math.cos(a) * dy, z: q.z };
+}
+
+/** Liegt die Strecke zwischen zwei Proben in der Öffnung des Mauls (dann wird sie nicht gezeigt)? */
+function streckeOffen(l: Loop, j: number, k: number, sp: boolean): boolean {
+  const o = maulOffen;
+  if (!o) return false;
+  const a = l.proben[j]!;
+  const b = l.proben[k]!;
+  if (a.ecken[0] !== a.ecken[1] || a.ecken[1] !== a.ecken[2] || b.ecken[0] !== b.ecken[1] || b.ecken[1] !== b.ecken[2]) return false;
+  const u = sp ? haut.spiegel[a.ecken[0]]! : a.ecken[0];
+  const v = sp ? haut.spiegel[b.ecken[0]]! : b.ecken[0];
+  if (u < 0 || v < 0) return false;
+  return o.m.kantenOffen.has(u < v ? u * haut.n + v : v * haut.n + u);
+}
+
 function baenderZeigen(): void {
   const lagen = aktuelleLagen();
   const normal: { p: V3[]; breite: number }[] = [];
   const gewaehlt: { p: V3[]; breite: number }[] = [];
-  loops.forEach((l, li) => {
-    const gew = auswahl.some((w) => w.l === l.id);
-    for (const p of linienVon(l, lagen[li]!)) (gew ? gewaehlt : normal).push({ p, breite: gew ? 3 : 2 });
-  });
+  const lippe: { p: V3[]; breite: number }[] = [];
   // harte Stücke: je Strecke ein Band, so breit wie die Härte (Spiegelhälfte und Zwilling ebenso)
   const hart: { p: V3[]; breite: number }[] = [];
   loops.forEach((l, li) => {
-    const hd = haerteBei(l);
     const L = lagen[li]!;
+    const gew = auswahl.some((w) => w.l === l.id);
+    const ziel = gew ? gewaehlt : maul?.id === l.id ? lippe : normal;
+    const hd = haerteBei(l);
     const n = l.proben.length;
-    for (let j = 0; j < (l.art === 'ring' ? n - 1 : n); j++) {
-      const k = (j + 1) % n;
-      const b = 0.5 * (hd[j]! + hd[k]!);
-      if (b < 0.05) continue;
-      const seg = [lageAus(L, j), lageAus(L, k)];
-      hart.push({ p: seg, breite: b + 1 });
-      if (l.art !== 'mitte') hart.push({ p: seg.map(spiegeln), breite: b + 1 });
+    // Ring: gespeicherte Hälfte und Spiegelhälfte, Paar: Loop und Zwilling, Mitte geschlossen
+    for (const sp of l.art === 'mitte' ? [false] : [false, true]) {
+      const pkt = Array.from({ length: n }, (_, i) => zeigeLage(l, L, i, sp));
+      let lauf: V3[] = [];
+      const schluss = () => {
+        if (lauf.length > 1) ziel.push({ p: lauf, breite: gew ? 3 : 2 });
+        lauf = [];
+      };
+      for (let j = 0; j < (l.art === 'ring' ? n - 1 : n); j++) {
+        const k = (j + 1) % n;
+        if (streckeOffen(l, j, k, sp)) {
+          schluss();
+          continue;
+        }
+        if (lauf.length === 0) lauf.push(pkt[j]!);
+        lauf.push(pkt[k]!);
+        const b = 0.5 * (hd[j]! + hd[k]!);
+        if (b >= 0.05) hart.push({ p: [pkt[j]!, pkt[k]!], breite: b + 1 });
+      }
+      schluss();
     }
   });
   const gN = bandGeometrie(normal);
   const gW = bandGeometrie(gewaehlt);
   const gH = bandGeometrie(hart);
-  for (const [i, g] of [gN, gN, gW, gW, gH, gH].entries()) {
+  const gL = bandGeometrie(lippe);
+  for (const [i, g] of [gN, gN, gW, gW, gH, gH, gL, gL].entries()) {
     baender[i]!.geometry.dispose();
     baender[i]!.geometry = g;
   }
@@ -708,7 +910,7 @@ function blattZeichnen(a: Ansicht): void {
       // in der Seite liegen Spiegelhälfte und Zwilling genau hinter dem Gespeicherten
       if (m === 1 && a === 'seite') return;
       const d = pfad(a, pts);
-      el.append(element('path', `kurve${gew ? ' gewaehlt' : ''}${m ? ' spiegel' : ''}`, { d }));
+      el.append(element('path', `kurve${gew ? ' gewaehlt' : ''}${maul?.id === l.id ? ' maul' : ''}${m ? ' spiegel' : ''}`, { d }));
       const t = element('path', 'kurve-treffer', { d });
       t.setAttribute('data-l', String(l.id));
       if (m) t.setAttribute('data-m', '1');
@@ -787,6 +989,11 @@ function blattZeichnen(a: Ansicht): void {
 }
 
 function allesZeigen(): void {
+  // ist der Loop des Mauls gelöscht, ist auch das Maul weg
+  if (maul && loopNr(maul.id) < 0) {
+    maul = null;
+    maulRegler.value = '0';
+  }
   // Ecken an Kreuzungen mit harten Loops folgen der Härte und den Kreuzungen
   eckenAuto(loops);
   hautZeigen();
@@ -813,7 +1020,8 @@ function statusZeigen(): void {
     meldung ||
     `${loops.length} Loops · ${punkte} Punkte (${kreuz} Kreuzungen) · Zug ${ms.toFixed(1)} ms · zerlegen ${letzteZerlegung} ms · ` +
       `Bereich ${letzterBereich} von ${haut.n}` +
-      (letzteVerdichtung ? ` · verdichtet +${letzteVerdichtung.neu} (${letzteVerdichtung.ms} ms)` : '');
+      (letzteVerdichtung ? ` · verdichtet +${letzteVerdichtung.neu} (${letzteVerdichtung.ms} ms)` : '') +
+      (maul ? (maulOffen ? ` · Maul ${maul.winkel}°` : ' · Maul: Loop schneidet nicht (als Kette eingesetzt?)') : '');
 }
 
 // ---------- Ziehen und G/S/R ----------
@@ -1449,7 +1657,7 @@ function formErstellen(a: Ansicht, roh: [number, number][]): void {
   const knoten = t.map((x, i) => (x === 0 ? i : -1)).filter((i) => i >= 0);
   const l = formAusZeichnung(haut, a, uv, knoten, naechsteId);
   if (!l) {
-    meldung = 'Keine Form: ganz auf dem Körper zeichnen (über die Mitte nur in Front oder Top)';
+    meldung = 'Keine Form: ganz auf dem Körper zeichnen oder einmal über die Mitte (Front, Top) bzw. vorn über den Umriss (Seite)';
     return;
   }
   naechsteId++;
@@ -1797,7 +2005,7 @@ schleife();
       art: l.art,
       proben: l.proben.length,
       laenge: l.laenge,
-      punkte: l.punkte.map((p) => ({ s: p.s, ref: p.ref, kreuzung: p.kreuzung ?? null, ecke: istEcke(p), autoEcke: p.autoEcke ?? false, haerte: p.haerte ?? null })),
+      punkte: l.punkte.map((p) => ({ s: p.s, ref: p.ref, kreuzung: p.kreuzung ?? null, ecke: istEcke(p), autoEcke: p.autoEcke ?? false, haerte: p.haerte ?? null, mundwinkel: p.mundwinkel ?? false })),
       haerte: l.haerte ?? null,
       ruhe: Array.from(l.ruhe),
     })),
@@ -1854,6 +2062,64 @@ schleife();
       if (f[0]! * m[0]! + f[1]! * m[1]! + f[2]! * m[2]! < 0) z++;
     }
     return z;
+  },
+  /** das Maul: Loop, Öffnung, Dreiecke der Öffnung und des Inneren, umgeschlagene Dreiecke und offene Kanten wie gezeigt */
+  maul: (orte = false) => {
+    const o = maulOffen;
+    if (!maul || !o) return maul ? { ...maul, geschnitten: false } : null;
+    const wo: number[][] = [];
+    const umg = (P: Float32Array, I: Uint32Array, ruhe: Float32Array): number => {
+      const vn = new Float64Array(P.length);
+      const fn: number[][] = [];
+      for (let i = 0; i < I.length; i += 3) {
+        const [a, b, c] = [I[i]!, I[i + 1]!, I[i + 2]!];
+        const ab = [0, 1, 2].map((k) => P[3 * b + k]! - P[3 * a + k]!);
+        const ac = [0, 1, 2].map((k) => P[3 * c + k]! - P[3 * a + k]!);
+        const f = [ab[1]! * ac[2]! - ab[2]! * ac[1]!, ab[2]! * ac[0]! - ab[0]! * ac[2]!, ab[0]! * ac[1]! - ab[1]! * ac[0]!];
+        fn.push(f);
+        for (const v of [a, b, c]) for (let k = 0; k < 3; k++) vn[3 * v + k] = vn[3 * v + k]! + f[k]!;
+      }
+      let z = 0;
+      for (let i = 0; i < I.length; i += 3) {
+        const f = fn[i / 3]!;
+        const mm = [0, 1, 2].map((k) => vn[3 * I[i]! + k]! + vn[3 * I[i + 1]! + k]! + vn[3 * I[i + 2]! + k]!);
+        if (f[0]! * mm[0]! + f[1]! * mm[1]! + f[2]! * mm[2]! >= 0) continue;
+        z++;
+        if (orte) wo.push([0, 1, 2].map((k) => Math.round((ruhe[3 * I[i]! + k]! + ruhe[3 * I[i + 1]! + k]! + ruhe[3 * I[i + 2]! + k]!) / 3)));
+      }
+      return z;
+    };
+    // Kanten mit mehr oder weniger als zwei Dreiecken (Haut und Inneres, Punkte nach Lage zusammengefasst)
+    const id = new Map<string, number>();
+    const zahl = new Map<string, number>();
+    const dazu = (P: Float32Array, I: Uint32Array) => {
+      for (let i = 0; i < I.length; i += 3) {
+        const e = [0, 1, 2].map((k) => {
+          const v = I[i + k]!;
+          const key = `${Math.round(P[3 * v]! * 1e4)},${Math.round(P[3 * v + 1]! * 1e4)},${Math.round(P[3 * v + 2]! * 1e4)}`;
+          if (!id.has(key)) id.set(key, id.size);
+          return id.get(key)!;
+        });
+        for (let k = 0; k < 3; k++) {
+          const a = Math.min(e[k]!, e[(k + 1) % 3]!);
+          const b = Math.max(e[k]!, e[(k + 1) % 3]!);
+          if (a !== b) zahl.set(`${a},${b}`, (zahl.get(`${a},${b}`) ?? 0) + 1);
+        }
+      }
+    };
+    dazu(o.positionen, o.m.indizes);
+    dazu(o.innenPositionen, o.m.innen.indizes);
+    return {
+      ...maul,
+      geschnitten: true,
+      oeffnung: o.m.offen.reduce((a, b) => a + b, 0),
+      innen: o.m.innen.indizes.length / 3,
+      umgeschlagenHaut: umg(o.positionen, o.m.indizes, o.m.positionen),
+      umgeschlagenInnen: umg(o.innenPositionen, o.m.innen.indizes, o.m.innen.positionen),
+      offeneKanten: [...zahl.values()].filter((z) => z !== 2).length,
+      gelenk: o.m.gelenk,
+      ...(orte ? { umgeschlagenWo: wo } : {}),
+    };
   },
   zeiten: () => ({ zug: [...zeiten], zerlegen: letzteZerlegung, bereich: letzterBereich, verdichtung: letzteVerdichtung, punkte: haut.n, stufen: zugStufen, stufeMs: letzteStufeMs }),
   lagen: () => Array.from(haut.pos),
