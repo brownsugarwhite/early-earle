@@ -879,6 +879,33 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Alle Ansichten gleichwertig, Bézier-Griffe. Einschätzung: Mit dem heutigen Bau (Volumen bei jeder Änderung neu aus dem Umriss)
   geht das nicht, ein Volumen verschmilzt bei Berührung immer. Nötig: Nach dem Start ist das Netz die Wahrheit, Linien und Loops
   verformen es (wie FiberMesh, Nealen u. a. 2007). Startform, Maulschnitt, Posen und Backen bleiben. Florians Entscheidung offen.
+- **2026-11-05 (abends, danach): Beweis „Kurven als Wahrheit“** (Florian nach Nachricht 3: „Startumriss als erster Loop mit
+  Bézier-Punkten, Loops um Kopf und Bauch, im Top schmaler ohne Höhenverlust, Einflusskreis wie O, Kopf in den Bauch ohne
+  Verschmelzen, Umrisse glatt, Tempo messen“). Eigenes Fenster `apps/editor/kurven.html` (`src/form/kurven.ts`, `?form=kugel|bohne`).
+  - **Modell:** Die Haut ist ein festes dichtes Netz (einmal aus dem Startumriss, `rundAusSeite`, ≈ 7–9 k Dreiecke); bearbeitet werden
+    nur Kurven auf ihr. Kurve 0 ist der Startumriss (Bézier-Punkte, Griffe automatisch rund oder gezogen), Loops sind die Hälfte
+    z ≥ 0 eines Rings (Schnitt quer über den Körper, L in der Seite, wenige Punkte), ihre Enden liegen auf dem Startumriss und gehen
+    mit ihm. Der Umriss ist in allen Ansichten nur Shader.
+  - **Kern `dicht/kurven.ts`:** `HautLoeser` = Laplace in Normalgleichungen (biharmonisch), je Punkt die Lage beim Anlegen (mit der
+    Normale gedreht, mit der Kante gestreckt) plus die Kurven als Bindungen (baryzentrisch, Verschiebung seit dem Anlegen).
+    Gelöst wird nur im **Einflussbereich** (`einflussBereich`: so weit wie O bzw. so weit, wie die gezogenen Punkte von ihren
+    Nachbarn entfernt sind, um die Stücke, die sich ändern); außerhalb bleibt jeder Punkt bitgleich. Je Zug neu angelegt (Bezug =
+    Stand davor). O: `einfluss` wie Blender „glatt“. Proben auf der Mittelebene hängen an beiden Hälften (`Haut.spiegel`).
+  - **Gemessen** (Maus `scripts/pruefen/form-kurven-probe.mjs`, Tests `dicht/kurven.test.ts`): Loop schneiden ändert die Haut nicht
+    (0); Kopf-Loop im Top auf 60 %: Kopf 48,5 → 30,3 tief, Höhe unten 1,9 höher (2 %), Bauch bitgleich; O (Radius 90): Nachbarn
+    gehen anteilig mit, ⌘Z bitgleich; Bézier-Griff gezogen 0 umgeklappt; Kopf in den Bauch (5 Punkte gewählt, 50 nach unten): ein
+    Netz, kein Verschmelzen, 38–40 Dreiecke in der zugedrückten Kerbe umgeklappt (innen), außerhalb des Bereichs 0. Tempo: örtlich
+    1–3,3 ms je Mausbewegung, Zerlegen 1–11 ms je Zug (Bereich 600–1750 Punkte); ganze Kugel (4 Punkte, Bereich = alles) 12 ms je
+    Bewegung, 120–160 ms Zerlegen beim Greifen. Spiegelgleich auf 10⁻⁸.
+  - **Verworfen (gemessen):** Krümmung zwischen den Kurven nach FiberMesh nachführen (schaukelt sich auf dem Netz aus Surface Nets
+    auf), Krümmung allein ohne die Verteilung in der Fläche (Kugel fällt zusammen), ganze Haut ohne Bereich lösen (Kopf 50 runter →
+    Rücken 6–8 Einheiten anders, 20–30 geglitten), Krümmung mit Kante² strecken (höher gezogene Kugel 150 → 186 tief).
+  - **Offen:** Höher ziehen macht noch etwas tiefer (Kugel oben +60: Tiefe 162–166 bei Breite 153; ein affiner Bezug je Punkt würde
+    das trennen, ungetestet); keine Punkte einfügen/löschen, Loops nur in der Seite schneiden, keine Härte (Kanten) und keine Kiefer
+    in diesem Fenster; Netzauflösung fest.
+  - Fallen: Eine Bindung auf der Mittelebene an nur einem Dreieck macht den Körper beim Ziehen schief (Gegenprobe 0,7 Einheiten);
+    schief **wirkende** Front kann die Schattierung sein (erst `__kurven.symmetrie()` messen); vitest-Logs nur mit `--reporter=verbose`.
+    Bilder `docs/progress/editor/form-kurven-*-2026-11-05.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

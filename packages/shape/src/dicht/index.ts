@@ -27,6 +27,27 @@ export {
 } from './raumlinien';
 export { type LinienArt, type Nachfuehrung, halbeLinie, linieNachfuehren, linienAbstand, linienStueckeVon } from './folgen';
 export {
+  type Anheftung,
+  type Haut,
+  type Kurve,
+  type KurvenPunkt,
+  type Stueck3,
+  type V3,
+  HautLoeser,
+  aufStueck,
+  einfluss,
+  einflussBereich,
+  hautAus,
+  hautNormalen,
+  kurveAbtasten,
+  kurveAnheften,
+  kurveGanz,
+  kurvenGriffe,
+  kurvenStuecke,
+  ringAusSchnitt,
+  stelleAufKurve,
+} from './kurven';
+export {
   type Ansichtsbreite,
   type BreitenPunkt,
   type Tiefenstreckung,

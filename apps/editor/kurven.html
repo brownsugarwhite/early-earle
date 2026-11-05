@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kurven als Wahrheit</title>
+    <link rel="stylesheet" href="./src/form/form.css" />
+  </head>
+  <body>
+    <canvas id="leinwand"></canvas>
+    <main id="raster">
+      <section class="feld" id="feld-seite">
+        <header>Seite</header>
+        <svg class="blatt" id="blatt-seite" aria-label="Seite"></svg>
+        <footer>
+          Punkt ziehen · ⇧-Klick: mehrere · Griffe des gewählten Punkts ziehen (Bézier) · Doppelklick: Griffe automatisch<br />
+          L: Loop schneiden (eine Linie quer über den Körper ziehen) · O: Einflusskreis an/aus, [ ] Größe · ⌫ gewählten Loop löschen
+          · ⌘Z zurück
+        </footer>
+      </section>
+      <section class="feld" id="feld-front">
+        <header>Front</header>
+        <svg class="blatt" id="blatt-front" aria-label="Front"></svg>
+        <footer>Loops von vorn: Punkte nach außen oder innen = breiter oder schmaler (die Höhe bleibt)</footer>
+      </section>
+      <section class="feld" id="feld-top">
+        <header>Top</header>
+        <svg class="blatt" id="blatt-top" aria-label="Top"></svg>
+        <footer>Loops von oben: Punkte nach außen oder innen = breiter oder schmaler</footer>
+      </section>
+      <section class="feld" id="feld-3d">
+        <header>3D</header>
+        <div class="regler-leiste">
+          <button class="regler knopf" id="knopf-loop" type="button" aria-pressed="false">Loop (L)</button>
+          <button class="regler knopf" id="knopf-o" type="button" aria-pressed="false">Einfluss O</button>
+          <span class="regler" id="status"></span>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="./src/form/kurven.ts"></script>
+  </body>
+</html>

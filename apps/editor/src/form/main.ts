@@ -691,8 +691,7 @@ function kantenGeometrie(liste: readonly Kante3D[]): BufferGeometry {
   return g;
 }
 
-/** aus dem letzten Bau: wo der Körper von vorn und oben am breitesten ist, Tiefe je Stelle (`?linien`: Umriss anfassen) */
-/** `?linien`: je Umriss (Körper, dann die Teile), wo er von vorn und von oben am breitesten ist */
+/** `?linien`: je Umriss (Körper, dann die Teile), wo er von vorn und von oben am breitesten ist (Umriss anfassen) */
 let letzteKonturen: Kontur[] = [];
 /** aus dem letzten Bau: Streckung der Tiefe, Tiefe der Linienpunkte, Linien im Raum (für Front und Top) */
 let letzteTiefe: DichtesNetz['tiefe'] = null;
