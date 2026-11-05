@@ -522,3 +522,8 @@ body {
 #status {
   font-variant-numeric: tabular-nums;
 }
+
+/* Ecke als Raute (glatt bleibt der Kreis) */
+.blatt .kpunkt.ecke {
+  stroke-linejoin: round;
+}

@@ -5,8 +5,9 @@
 // quer über den Körper (Ebene durch die gezogene Linie und die Blickrichtung) oder als gezeichnete Form, auf die Haut gelegt.
 // Spiegelgleich: `mitte` liegt ganz in der Mittelebene, `ring` ist die Hälfte z ≥ 0 eines Loops um den Körper (Enden auf der
 // Mittelebene), `paar` liegt auf einer Seite und hat ein Spiegelbild. Ein Loop ändert die Form nicht, wenn er entsteht; die Haut
-// folgt nur den Verschiebungen seiner Proben (`HautZiele`). Punkte (Griffe) liegen an einer Stelle s längs des Loops; zwischen
-// ihnen verteilt sich ihre Verschiebung glatt (Hermite längs s).
+// folgt nur den Verschiebungen seiner Proben (`HautZiele`). Punkte liegen an einer Stelle s längs des Loops; zwischen ihnen
+// verläuft die Linie wie eine Bézier-Strecke (Hermite längs s): Die Griffe eines Punkts liest man am Verlauf ab, ein glatter Punkt
+// hält sie gegenüber, an einer Ecke darf die Linie knicken (von Hand oder von selbst an der Kreuzung mit einem harten Loop).
 
 import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich, kantenSchluessel } from './kurven';
 
@@ -15,9 +16,24 @@ export type Ansicht = 'seite' | 'front' | 'top';
 export type Probe = { ecken: [number, number, number]; b: [number, number, number] };
 /**
  * Griff auf einem Loop: Stelle s (Bogenlänge beim Anlegen), Lage beim letzten Festlegen und jetzt; Kreuzung: Kennung; Härte 0–3
- * (wie die Strichdicke in px: 0 weich, 3 ein Knick wie Edge Crease in Blender; fehlt: die des Loops)
+ * (wie die Strichdicke in px: 0 weich, 3 ein Knick wie Edge Crease in Blender; fehlt: die des Loops). Glatt oder Ecke betrifft
+ * nur den Verlauf der Linie (ihre Bézier-Griffe), die Härte die Haut quer über die Linie.
  */
-export type LoopPunkt = { s: number; ref: V3; cur: V3; kreuzung?: number; haerte?: number };
+export type LoopPunkt = {
+  s: number;
+  ref: V3;
+  cur: V3;
+  kreuzung?: number;
+  haerte?: number;
+  /** von Hand: Ecke (true) oder glatt (false); fehlt: wie `autoEcke` */
+  ecke?: boolean;
+  /** Kreuzung mit einem harten Loop (gesetzt von `eckenAuto`): dort knickt die Haut, also darf auch die Linie knicken */
+  autoEcke?: boolean;
+};
+/** Ecke: die Linie darf am Punkt knicken (Griffe unabhängig); sonst glatt (Griffe gegenüber) */
+export const istEcke = (p: LoopPunkt): boolean => p.ecke ?? p.autoEcke ?? false;
+/** Versatz der Bézier-Griffe eines Punkts gegen ihre Lage in Ruhe: `ein` zum vorigen Stück, `aus` zum nächsten */
+export type GriffVersatz = { ein?: V3; aus?: V3 };
 export type Loop = {
   id: number;
   art: 'mitte' | 'ring' | 'paar';
@@ -522,68 +538,81 @@ export function kreuzungenZwischen(A: Loop, la: Float64Array, B: Loop, lb: Float
   return out;
 }
 
+const NULL: V3 = { x: 0, y: 0, z: 0 };
+
 /**
- * Verschiebung je Probe aus den Verschiebungen der Punkte (`D` je Punkt): zwischen zwei Punkten glatt (Hermite längs s, Steigung
- * aus den Nachbarn). Ein geschlossener Loop mit einem Punkt bewegt sich als Ganzes. Ein Ring hält seine Enden auf der Mittelebene
- * (ohne Punkt dort bleiben sie stehen) und läuft spiegelgleich in seine andere Hälfte.
+ * Verschiebung je Probe aus den Verschiebungen der Punkte (`D` je Punkt) und dem Versatz ihrer Griffe: zwischen zwei Punkten wie
+ * eine Bézier-Strecke (Hermite längs s). Ein glatter Punkt nimmt die Steigung aus beiden Nachbarn, eine Ecke je Seite aus dem
+ * Nachbarn dieser Seite (zieht man sie heraus, knickt die Linie dort). Ein Griff biegt nur sein Stück (Bernstein-Gewicht
+ * 3t(1 − t)² bzw. 3t²(1 − t)), die Punkte bleiben. Ein geschlossener Loop mit einem Punkt bewegt sich als Ganzes. Ein Ring hält
+ * seine Enden auf der Mittelebene (ohne Punkt dort bleiben sie stehen) und läuft spiegelgleich in seine andere Hälfte.
  */
-export function verschiebungLaengs(l: Loop, D: readonly V3[]): Float64Array {
+export function verschiebungLaengs(l: Loop, D: readonly V3[], griffe?: readonly (GriffVersatz | undefined)[]): Float64Array {
   const n = l.proben.length;
   const out = new Float64Array(3 * n);
-  const K = l.punkte.map((q, i) => ({ s: q.s, d: D[i]! }));
+  type Knoten = { s: number; d: V3; ecke: boolean; ein: V3; aus: V3 };
+  const K: Knoten[] = l.punkte.map((q, i) => ({
+    s: q.s,
+    d: D[i] ?? NULL,
+    ecke: istEcke(q),
+    ein: griffe?.[i]?.ein ?? NULL,
+    aus: griffe?.[i]?.aus ?? NULL,
+  }));
   if (K.length === 0) return out;
   const zu = geschlossen(l);
-  if (zu && K.length === 1) {
-    for (let j = 0; j < n; j++) {
-      out[3 * j] = K[0]!.d.x;
-      out[3 * j + 1] = K[0]!.d.y;
-      out[3 * j + 2] = K[0]!.d.z;
-    }
-    return out;
-  }
-  // Stützstellen: geschlossen zyklisch; Ring mit festen Enden und gespiegelten Nachbarn dahinter
-  let S: { s: number; d: V3 }[];
+  // Stützstellen: geschlossen zyklisch (je zwei Wiederholungen davor und dahinter); Ring mit festen Enden und gespiegelten
+  // Nachbarn dahinter. Die Stücke laufen von S[erster] bis S[letzter].
+  let S: Knoten[];
+  let erster: number;
+  let letzter: number;
   if (zu) {
-    S = [
-      ...K.slice(-2).map((k) => ({ s: k.s - l.laenge, d: k.d })),
-      ...K,
-      ...K.slice(0, 2).map((k) => ({ s: k.s + l.laenge, d: k.d })),
-    ];
+    const m = K.length;
+    S = [];
+    for (let j = -2; j < m + 2; j++) {
+      const k = K[((j % m) + m) % m]!;
+      S.push({ ...k, s: k.s + Math.floor(j / m) * l.laenge });
+    }
+    erster = 2;
+    letzter = m + 2;
   } else {
     const L = l.laenge;
     const innen = K.filter((k) => k.s > 1e-6 && k.s < L - 1e-6);
-    const a = K.find((k) => k.s <= 1e-6) ?? { s: 0, d: { x: 0, y: 0, z: 0 } };
-    const b = K.find((k) => k.s >= L - 1e-6) ?? { s: L, d: { x: 0, y: 0, z: 0 } };
-    const kern = [{ s: 0, d: { ...a.d, z: 0 } }, ...innen, { s: L, d: { ...b.d, z: 0 } }];
-    const spiegel = (k: { s: number; d: V3 }, um: number) => ({ s: 2 * um - k.s, d: { ...k.d, z: -k.d.z } });
-    const vor = kern[1] ? spiegel(kern[1], 0) : { s: -L, d: { x: 0, y: 0, z: 0 } };
-    const nach = kern[kern.length - 2] ? spiegel(kern[kern.length - 2]!, L) : { s: 2 * L, d: { x: 0, y: 0, z: 0 } };
-    S = [vor, ...kern, nach];
+    const ende = (k: Knoten | undefined, s: number): Knoten =>
+      k ? { ...k, s, d: { ...k.d, z: 0 } } : { s, d: NULL, ecke: false, ein: NULL, aus: NULL };
+    const kern = [ende(K.find((k) => k.s <= 1e-6), 0), ...innen, ende(K.find((k) => k.s >= L - 1e-6), L)];
+    const spiegel = (k: Knoten, um: number): Knoten => ({ ...k, s: 2 * um - k.s, d: { ...k.d, z: -k.d.z } });
+    S = [spiegel(kern[1]!, 0), ...kern, spiegel(kern[kern.length - 2]!, L)];
+    erster = 1;
+    letzter = S.length - 2;
   }
-  const steigung = (i: number): V3 => {
-    const a = S[i - 1]!;
-    const b = S[i + 1]!;
+  /** Steigung der Verschiebung an S[i] auf der Seite −1 (davor) bzw. +1 (dahinter) */
+  const steigung = (i: number, seite: -1 | 1): V3 => {
+    const k = S[i]!;
+    const a = k.ecke && seite > 0 ? k : S[i - 1]!;
+    const b = k.ecke && seite < 0 ? k : S[i + 1]!;
     const ds = b.s - a.s || 1;
     return { x: (b.d.x - a.d.x) / ds, y: (b.d.y - a.d.y) / ds, z: (b.d.z - a.d.z) / ds };
   };
   for (let j = 0; j < n; j++) {
     let s = l.s[j]!;
-    if (zu) s = ((s - S[1]!.s) % l.laenge + l.laenge) % l.laenge + S[1]!.s;
-    let i = 1;
-    while (i < S.length - 2 && S[i + 1]!.s < s) i++;
+    if (zu) s = (((s - S[erster]!.s) % l.laenge) + l.laenge) % l.laenge + S[erster]!.s;
+    let i = erster;
+    while (i < letzter - 1 && S[i + 1]!.s < s) i++;
     const a = S[i]!;
     const b = S[i + 1]!;
     const hgt = b.s - a.s;
     const t = hgt > 1e-9 ? Math.max(0, Math.min(1, (s - a.s) / hgt)) : 0;
-    const ma = steigung(i);
-    const mb = steigung(i + 1);
+    const ma = steigung(i, 1);
+    const mb = steigung(i + 1, -1);
     const h00 = 2 * t * t * t - 3 * t * t + 1;
     const h10 = t * t * t - 2 * t * t + t;
     const h01 = -2 * t * t * t + 3 * t * t;
     const h11 = t * t * t - t * t;
-    out[3 * j] = h00 * a.d.x + h10 * hgt * ma.x + h01 * b.d.x + h11 * hgt * mb.x;
-    out[3 * j + 1] = h00 * a.d.y + h10 * hgt * ma.y + h01 * b.d.y + h11 * hgt * mb.y;
-    out[3 * j + 2] = h00 * a.d.z + h10 * hgt * ma.z + h01 * b.d.z + h11 * hgt * mb.z;
+    const b1 = 3 * t * (1 - t) * (1 - t);
+    const b2 = 3 * t * t * (1 - t);
+    out[3 * j] = h00 * a.d.x + h10 * hgt * ma.x + h01 * b.d.x + h11 * hgt * mb.x + b1 * a.aus.x + b2 * b.ein.x;
+    out[3 * j + 1] = h00 * a.d.y + h10 * hgt * ma.y + h01 * b.d.y + h11 * hgt * mb.y + b1 * a.aus.y + b2 * b.ein.y;
+    out[3 * j + 2] = h00 * a.d.z + h10 * hgt * ma.z + h01 * b.d.z + h11 * hgt * mb.z + b1 * a.aus.z + b2 * b.ein.z;
   }
   if (l.art === 'mitte') for (let j = 0; j < n; j++) out[3 * j + 2] = 0;
   if (l.art === 'ring') {
@@ -706,28 +735,198 @@ export function festlegen(h: Haut, l: Loop): void {
   }
 }
 
-/** Härte je Probe (0–3): zwischen den Punkten linear längs s, vor dem ersten und nach dem letzten Punkt eines Rings wie dieser */
-export function haerteBei(l: Loop): Float64Array {
-  const n = l.proben.length;
+/**
+ * Stützstellen der Härte: Punkte mit eigener Härte, dazu gesetzte Punkte ohne (mit der des Loops). Kreuzungen ohne eigene Härte
+ * nehmen den Verlauf an, sonst unterbräche jeder kreuzende Loop eine harte Linie.
+ */
+function haerteKnoten(l: Loop): { s: number; h: number }[] {
   const basis = l.haerte ?? 0;
-  const out = new Float64Array(n).fill(basis);
-  const K = l.punkte.map((p) => ({ s: p.s, h: p.haerte ?? basis }));
-  if (K.length === 0) return out;
-  const zu = geschlossen(l);
-  for (let j = 0; j < n; j++) {
-    const s = l.s[j]!;
-    let i = K.findIndex((k) => k.s > s);
-    if (i < 0) i = K.length;
-    if (!zu && (i === 0 || i === K.length)) {
-      out[j] = K[i === 0 ? 0 : K.length - 1]!.h;
-      continue;
+  return l.punkte.filter((p) => p.haerte !== undefined || p.kreuzung === undefined).map((p) => ({ s: p.s, h: p.haerte ?? basis }));
+}
+
+/** Härte an der Stelle s (0–3): zwischen den Stützstellen linear längs s, vor der ersten und nach der letzten eines Rings wie diese */
+export function haerteAn(l: Loop, s: number, K: readonly { s: number; h: number }[] = haerteKnoten(l)): number {
+  if (K.length === 0) return l.haerte ?? 0;
+  let i = K.findIndex((k) => k.s > s);
+  if (i < 0) i = K.length;
+  if (!geschlossen(l) && (i === 0 || i === K.length)) return K[i === 0 ? 0 : K.length - 1]!.h;
+  const a = i === 0 ? { s: K[K.length - 1]!.s - l.laenge, h: K[K.length - 1]!.h } : K[i - 1]!;
+  const b = i === K.length ? { s: K[0]!.s + l.laenge, h: K[0]!.h } : K[i]!;
+  const t = b.s > a.s ? (s - a.s) / (b.s - a.s) : 0;
+  return a.h + t * (b.h - a.h);
+}
+
+/** Härte je Probe (0–3) */
+export function haerteBei(l: Loop): Float64Array {
+  const K = haerteKnoten(l);
+  return Float64Array.from(l.s, (s) => haerteAn(l, s, K));
+}
+
+/**
+ * Automatische Ecken: Ein Punkt an der Kreuzung mit einem harten Loop wird eine Ecke (dort knickt die Haut quer über den harten
+ * Loop, also auch die Linie, die ihn kreuzt); sonst nicht. Was von Hand gesetzt ist (`ecke`), gilt vor.
+ */
+export function eckenAuto(loops: readonly Loop[]): void {
+  const an = new Map<number, { l: Loop; s: number }[]>();
+  for (const l of loops) {
+    for (const p of l.punkte) {
+      if (p.kreuzung === undefined) continue;
+      const liste = an.get(p.kreuzung) ?? [];
+      liste.push({ l, s: p.s });
+      an.set(p.kreuzung, liste);
     }
-    const a = i === 0 ? { s: K[K.length - 1]!.s - l.laenge, h: K[K.length - 1]!.h } : K[i - 1]!;
-    const b = i === K.length ? { s: K[0]!.s + l.laenge, h: K[0]!.h } : K[i]!;
-    const t = b.s > a.s ? (s - a.s) / (b.s - a.s) : 0;
-    out[j] = a.h + t * (b.h - a.h);
   }
+  for (const l of loops) {
+    for (const p of l.punkte) {
+      const hart = p.kreuzung !== undefined && (an.get(p.kreuzung) ?? []).some((x) => x.l !== l && haerteAn(x.l, x.s) > 0);
+      if (hart) p.autoEcke = true;
+      else delete p.autoEcke;
+    }
+  }
+}
+
+/** Abstand längs s zum vorigen und zum nächsten Punkt (geschlossen ringsum; Ring: bis zu seinen Enden) */
+function nachbarAbstaende(l: Loop, i: number): [number, number] {
+  const P = l.punkte;
+  const s = P[i]!.s;
+  if (geschlossen(l)) {
+    const m = P.length;
+    const vor = P[(i - 1 + m) % m]!.s;
+    const nach = P[(i + 1) % m]!.s;
+    return [((s - vor + l.laenge) % l.laenge) || l.laenge, ((nach - s + l.laenge) % l.laenge) || l.laenge];
+  }
+  return [s - (i > 0 ? P[i - 1]!.s : 0), (i < P.length - 1 ? P[i + 1]!.s : l.laenge) - s];
+}
+
+/**
+ * Steigung der Linie (nach s) an der Stelle s zur Seite k (+1 dahinter, −1 davor): Ausgleichspolynom dritten Grades in s durch die
+ * Proben bis w weit (nicht durch die Lage bei s). Die Linie ist im Netz eine Kette von Kantenpunkten, streckenweise eine Sehne durch
+ * ein großes Dreieck; ein Punkt mitten auf einer Sehne liegt bis 0,3 Einheiten innen (gemessen an einer Augen-Form: Differenzen über
+ * wenige Proben sahen dort Knicke bis 13°, eine Bézier-Strecke durch das Stück 5–11°, weil sie einen Bogen nicht nach Bogenlänge
+ * laufen lassen kann). Genau ist der Ausgleich für die Stücke eines Zugs: Die sind kubisch in s, und er ist linear in den Lagen.
+ */
+function steigungSeite(l: Loop, L: Float64Array, s: number, k: 1 | -1, w: number): V3 {
+  const daten: { t: number; q: V3 }[] = [];
+  for (let j = 0; j < l.proben.length; j++) {
+    let u = k * (l.s[j]! - s);
+    if (geschlossen(l)) u = ((u % l.laenge) + l.laenge) % l.laenge;
+    if (u > 1e-9 && u <= w) daten.push({ t: u / w, q: lage(L, j) });
+  }
+  // zu wenige Proben: der Punkt selbst zählt mit, der Grad sinkt
+  if (daten.length < 4) daten.push({ t: 0, q: stelleBei(l, L, s) });
+  const m = Math.min(4, daten.length - 1);
+  if (m < 2) {
+    const a = daten[daten.length - 1]!;
+    const b = daten[0]!;
+    const d = (b.t - a.t) * w || 1;
+    return { x: (k * (b.q.x - a.q.x)) / d, y: (k * (b.q.y - a.q.y)) / d, z: (k * (b.q.z - a.q.z)) / d };
+  }
+  // Normalgleichungen m × m in t^0 … t^(m−1) (je Koordinate dieselbe Matrix), Gauß mit Spaltenpivot
+  const A = Array.from({ length: m }, () => new Float64Array(m));
+  const R = Array.from({ length: m }, () => new Float64Array(3));
+  for (const { t, q } of daten) {
+    const phi = Array.from({ length: m }, (_, e) => t ** e);
+    for (let r = 0; r < m; r++) {
+      for (let c = 0; c < m; c++) A[r]![c] = A[r]![c]! + phi[r]! * phi[c]!;
+      R[r]![0] = R[r]![0]! + phi[r]! * q.x;
+      R[r]![1] = R[r]![1]! + phi[r]! * q.y;
+      R[r]![2] = R[r]![2]! + phi[r]! * q.z;
+    }
+  }
+  for (let c = 0; c < m; c++) {
+    let piv = c;
+    for (let r = c + 1; r < m; r++) if (Math.abs(A[r]![c]!) > Math.abs(A[piv]![c]!)) piv = r;
+    [A[c], A[piv]] = [A[piv]!, A[c]!];
+    [R[c], R[piv]] = [R[piv]!, R[c]!];
+    for (let r = c + 1; r < m; r++) {
+      const f = A[r]![c]! / A[c]![c]!;
+      for (let e = c; e < m; e++) A[r]![e] = A[r]![e]! - f * A[c]![e]!;
+      for (let e = 0; e < 3; e++) R[r]![e] = R[r]![e]! - f * R[c]![e]!;
+    }
+  }
+  const C = Array.from({ length: m }, () => new Float64Array(3));
+  for (let r = m - 1; r >= 0; r--) {
+    for (let e = 0; e < 3; e++) {
+      let v = R[r]![e]!;
+      for (let c = r + 1; c < m; c++) v -= A[r]![c]! * C[c]![e]!;
+      C[r]![e] = v / A[r]![r]!;
+    }
+  }
+  return { x: (k * C[1]![0]!) / w, y: (k * C[1]![1]!) / w, z: (k * C[1]![2]!) / w };
+}
+
+/**
+ * Bézier-Griffe eines Punkts, abgelesen am Verlauf der Linie (Lagen `L`, 3 je Probe), relativ zum Punkt: Steigung je Seite
+ * (`steigungSeite`, bis kurz vor den Nachbarpunkt) mal ⅓ des Abstands zum Nachbarpunkt längs s, wie bei einer Bézier-Strecke
+ * zwischen beiden. Glatt: beide Griffe auf der Winkelhalbierenden (gegenüber); Ecke (`einseitig`): je Seite, wie sie sind. Am Ende
+ * eines Rings (auf der Mittelebene) gibt es nur den Griff nach innen; der andere ist sein Spiegelbild.
+ */
+export function griffeBei(l: Loop, L: Float64Array, i: number, einseitig = istEcke(l.punkte[i]!)): { ein: V3 | null; aus: V3 | null } {
+  const p = l.punkte[i]!;
+  const [dl, dr] = nachbarAbstaende(l, i);
+  const anfang = l.art === 'ring' && p.s <= 1e-6;
+  const ende = l.art === 'ring' && p.s >= l.laenge - 1e-6;
+  const mal = (v: V3, f: number): V3 => ({ x: f * v.x, y: f * v.y, z: f * v.z });
+  const ein = anfang ? null : mal(steigungSeite(l, L, p.s, -1, Math.min(0.95 * dl, 0.25 * l.laenge)), -dl / 3);
+  const aus = ende ? null : mal(steigungSeite(l, L, p.s, 1, Math.min(0.95 * dr, 0.25 * l.laenge)), dr / 3);
+  if (einseitig || !ein || !aus) return { ein, aus };
+  const le = Math.hypot(ein.x, ein.y, ein.z);
+  const la = Math.hypot(aus.x, aus.y, aus.z);
+  const t = { x: aus.x / la - ein.x / le, y: aus.y / la - ein.y / le, z: aus.z / la - ein.z / le };
+  const lt = Math.hypot(t.x, t.y, t.z);
+  if (!(le > 1e-9 && la > 1e-9 && lt > 1e-9)) return { ein, aus };
+  return { ein: mal(t, -le / lt), aus: mal(t, la / lt) };
+}
+
+/**
+ * Griff `seite` des Punkts i um δ (Welt) ziehen; Ergebnis: Versatz beider Griffe gegen ihre Lage in Ruhe (`L`). Glatt: der
+ * andere Griff bleibt gegenüber (dreht mit, behält seine Länge); Ecke: nur dieser. In der Mittelebene bleibt z = 0; am Ende eines
+ * Rings bleibt ein glatter Punkt glatt (nur die Länge längs z ändert sich), eine Ecke knickt dort spiegelgleich.
+ */
+export function griffZiehen(l: Loop, L: Float64Array, i: number, seite: 'ein' | 'aus', delta: V3): GriffVersatz {
+  const p = l.punkte[i]!;
+  const ecke = istEcke(p);
+  const g = griffeBei(l, L, i, ecke);
+  const alt = g[seite];
+  if (!alt) return {};
+  const d = { ...delta };
+  if (l.art === 'mitte') d.z = 0;
+  if (l.art === 'ring' && !ecke && (p.s <= 1e-6 || p.s >= l.laenge - 1e-6)) {
+    d.x = 0;
+    d.y = 0;
+  }
+  const out: GriffVersatz = seite === 'ein' ? { ein: d } : { aus: d };
+  const andere = seite === 'ein' ? 'aus' : 'ein';
+  const ga = g[andere];
+  if (ecke || !ga) return out;
+  const neu = { x: alt.x + d.x, y: alt.y + d.y, z: alt.z + d.z };
+  const ln = Math.hypot(neu.x, neu.y, neu.z);
+  if (ln < 1e-9) return out;
+  const k = -Math.hypot(ga.x, ga.y, ga.z) / ln;
+  out[andere] = { x: k * neu.x - ga.x, y: k * neu.y - ga.y, z: k * neu.z - ga.z };
   return out;
+}
+
+/**
+ * Versatz, der die Griffe eines Punkts auf eine Gerade bringt (Winkelhalbierende, Längen bleiben): aus einer Ecke mit Knick wird ein
+ * glatter Punkt. Ohne Knick (unter `minGrad`) null; frisch eingesetzte Linien sind im Netz selbst bis 3,4° gezackt.
+ */
+export function griffeAusrichten(l: Loop, L: Float64Array, i: number, minGrad = 4): GriffVersatz | null {
+  const g = griffeBei(l, L, i, true);
+  if (!g.ein || !g.aus) return null;
+  const le = Math.hypot(g.ein.x, g.ein.y, g.ein.z);
+  const la = Math.hypot(g.aus.x, g.aus.y, g.aus.z);
+  if (le < 1e-9 || la < 1e-9) return null;
+  const t = { x: g.aus.x / la - g.ein.x / le, y: g.aus.y / la - g.ein.y / le, z: g.aus.z / la - g.ein.z / le };
+  const lt = Math.hypot(t.x, t.y, t.z);
+  const cos = -(g.ein.x * g.aus.x + g.ein.y * g.aus.y + g.ein.z * g.aus.z) / (le * la);
+  if (lt < 1e-9 || (Math.acos(Math.max(-1, Math.min(1, cos))) * 180) / Math.PI < minGrad) return null;
+  const u = { x: t.x / lt, y: t.y / lt, z: t.z / lt };
+  if (l.art === 'mitte') u.z = 0;
+  return {
+    ein: { x: -u.x * le - g.ein.x, y: -u.y * le - g.ein.y, z: -u.z * le - g.ein.z },
+    aus: { x: u.x * la - g.aus.x, y: u.y * la - g.aus.y, z: u.z * la - g.aus.z },
+  };
 }
 
 /** Normale der Haut an einer Probe (Dreieck der Probe; bei einem Punkt des Netzes die Dreiecke um ihn) */
@@ -888,10 +1087,12 @@ export function knickWinkel(h: Haut, l: Loop): Float64Array {
   return out;
 }
 
-/** Einen Punkt an der Stelle s einfügen (formneutral: er liegt auf dem Loop) */
+/** Einen Punkt an der Stelle s einfügen (formneutral: er liegt auf dem Loop und behält dort die Härte des Verlaufs) */
 export function punktEinfuegen(l: Loop, s: number, kreuzung?: number): LoopPunkt {
   const q = stelleBei(l, l.ruhe, s);
   const p: LoopPunkt = kreuzung === undefined ? { s, ref: q, cur: { ...q } } : { s, ref: q, cur: { ...q }, kreuzung };
+  const h = haerteAn(l, s);
+  if (kreuzung === undefined && Math.abs(h - (l.haerte ?? 0)) > 1e-9) p.haerte = h;
   l.punkte.push(p);
   l.punkte.sort((a, b) => a.s - b.s);
   return p;

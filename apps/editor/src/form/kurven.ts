@@ -4,20 +4,29 @@
 // einer Form zeichnet; sie lassen sich löschen. Ein ganzer Loop wird angeklickt und gezogen oder mit G/S/R geformt, mit O
 // (Einflusskreis) wie in Blender. Der Umriss ist nur Shader. Die Haut löst `LoopZug` im Einflussbereich. Start: `?form=kugel|bohne`.
 // (Der Beweis davor, „Kurven als Wahrheit“ mit dem Startumriss als Loop 0, steht in Commit bb0c837d.)
+// Griffe (Florian, 05.11.): Jeder gewählte Punkt zeigt seine Bézier-Griffe (am Verlauf der Linie abgelesen); ein Griff biegt nur
+// sein Stück. Glatt ● hält die Griffe gegenüber, an einer Ecke ◆ darf die Linie knicken (Doppelklick oder ⌥-Klick schaltet um);
+// die Kreuzung mit einem harten Loop wird von selbst eine Ecke. Die Härte bleibt eine eigene Einstellung (Tasten 0–3).
 
 import {
   type Ansicht,
+  type GriffVersatz,
   type Kurve,
   type Loop,
   LoopZug,
   type UmrissPunkt,
   type V3,
   bereichUm,
+  eckenAuto,
   einfluss,
   festlegen,
   formAusZeichnung,
+  griffeAusrichten,
+  griffeBei,
+  griffZiehen,
   type Haut,
   haerteBei,
+  istEcke,
   hautAus,
   hautNormalen,
   knickWinkel,
@@ -574,6 +583,46 @@ function auswahlMitte(): V3 | null {
   return { x: m.x / q.length, y: m.y / q.length, z: m.z / q.length };
 }
 
+/** so lang zeigt das Blatt einen Griff mindestens (px): kurze Stücke hätten sonst Griffe unter dem Punkt */
+const GRIFF_PX = 28;
+/** Faktor, mit dem die Griffe eines Punkts gezeigt werden (≥ 1); ein Zug an der Spitze wirkt im selben Verhältnis feiner */
+function griffFaktor(g: { ein: V3 | null; aus: V3 | null }): number {
+  const kurz = Math.min(...[g.ein, g.aus].filter((v): v is V3 => !!v).map((v) => Math.hypot(v.x, v.y, v.z)));
+  return Number.isFinite(kurz) && kurz > 1e-9 ? Math.max(1, GRIFF_PX / (skala() * kurz)) : 1;
+}
+
+/**
+ * Griffe zum Zeigen: die der gewählten Punkte, an einer gewählten Kreuzung auch die des anderen Loops (relativ zum Punkt, dazu
+ * der Faktor fürs Blatt). Am Verlauf der gezeigten Linie abgelesen; den gerade gezogenen Griff genau (Ruhe + Versatz).
+ */
+function griffeZumZeigen(lagen: readonly Float64Array[]): { li: number; i: number; ein: V3 | null; aus: V3 | null; f: number }[] {
+  const wahl: { li: number; i: number }[] = [];
+  const kreuz = new Set<number>();
+  for (const w of auswahl) {
+    const li = loopNr(w.l);
+    const p = loops[li]?.punkte[w.i];
+    if (w.i < 0 || !p) continue;
+    wahl.push({ li, i: w.i });
+    if (p.kreuzung !== undefined) kreuz.add(p.kreuzung);
+  }
+  loops.forEach((l, li) =>
+    l.punkte.forEach((p, i) => {
+      if (p.kreuzung !== undefined && kreuz.has(p.kreuzung) && !wahl.some((x) => x.li === li && x.i === i)) wahl.push({ li, i });
+    }),
+  );
+  const plus = (a: V3 | null, b: V3 | undefined): V3 | null => (a && b ? { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z } : a);
+  return wahl.map(({ li, i }) => {
+    const l = loops[li]!;
+    const g = zug?.griff;
+    if (g && g.li === li && g.i === i) {
+      const r = griffeBei(l, zug!.loeser.start[li]!, i);
+      return { li, i, ein: plus(r.ein, zug!.griffVersatz.ein), aus: plus(r.aus, zug!.griffVersatz.aus), f: zug!.griffFaktor };
+    }
+    const r = griffeBei(l, lagen[li]!, i);
+    return { li, i, ...r, f: griffFaktor(r) };
+  });
+}
+
 let entwurf: { a: Ansicht; x0: number; y0: number; x1: number; y1: number } | null = null;
 let spur: { a: Ansicht; p: [number, number][] } | null = null;
 
@@ -622,6 +671,26 @@ function blattZeichnen(a: Ansicht): void {
       }
     }
   });
+  // Griffe der gewählten Punkte: Linie vom Punkt zur Spitze, Spitze als kleines Quadrat (unter den Punkten)
+  for (const { li, i, ein, aus, f } of griffeZumZeigen(lagen)) {
+    const l = loops[li]!;
+    const p = l.punkte[i]!;
+    const q = zug && !zug.griff ? p.cur : p.ref;
+    const [px, py] = imBlatt(a, q);
+    for (const [seite, v] of [
+      ['ein', ein],
+      ['aus', aus],
+    ] as const) {
+      if (!v) continue;
+      const [gx, gy] = imBlatt(a, { x: q.x + f * v.x, y: q.y + f * v.y, z: q.z + f * v.z });
+      el.append(element('line', 'griff-linie', { x1: px, y1: py, x2: gx, y2: gy }));
+      const g = element('rect', 'griff', { x: gx - rp * 0.75, y: gy - rp * 0.75, width: rp * 1.5, height: rp * 1.5 });
+      g.setAttribute('data-l', String(l.id));
+      g.setAttribute('data-i', String(i));
+      g.setAttribute('data-g', seite);
+      el.append(g);
+    }
+  }
   loops.forEach((l) =>
     l.punkte.forEach((p, i) => {
       const q = zug ? p.cur : p.ref;
@@ -629,11 +698,12 @@ function blattZeichnen(a: Ansicht): void {
         const [x, y] = imBlatt(a, m ? spiegeln(q) : q);
         const gew = auswahl.some((x2) => x2.l === l.id && x2.i === i);
         const kreuz = p.kreuzung !== undefined;
-        const c = element('circle', `kpunkt${kreuz ? ' kreuz' : ''}${gew ? ' gewaehlt' : ''}${m ? ' spiegel' : ''}`, {
-          cx: x,
-          cy: y,
-          r: kreuz ? rp * 1.2 : rp,
-        });
+        const klasse = `kpunkt${kreuz ? ' kreuz' : ''}${gew ? ' gewaehlt' : ''}${m ? ' spiegel' : ''}`;
+        const r = kreuz ? rp * 1.2 : rp;
+        // Ecke als Raute, glatt als Kreis
+        const c = istEcke(p)
+          ? element('polygon', `${klasse} ecke`, { points: `${x},${y - 1.35 * r} ${x + 1.35 * r},${y} ${x},${y + 1.35 * r} ${x - 1.35 * r},${y}` })
+          : element('circle', klasse, { cx: x, cy: y, r });
         c.setAttribute('data-l', String(l.id));
         c.setAttribute('data-i', String(i));
         if (m) c.setAttribute('data-m', '1');
@@ -653,6 +723,8 @@ function blattZeichnen(a: Ansicht): void {
 }
 
 function allesZeigen(): void {
+  // Ecken an Kreuzungen mit harten Loops folgen der Härte und den Kreuzungen
+  eckenAuto(loops);
   hautZeigen();
   baenderZeigen();
   for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
@@ -703,6 +775,11 @@ type Zug = {
   versch: (Float64Array | null)[];
   bewegt: boolean;
   mitte: V3 | null;
+  /** ein Griff wird gezogen (statt Punkte): Loop (Index), Punkt, Seite; dazu der Versatz der Griffe des Punkts */
+  griff: { li: number; i: number; seite: 'ein' | 'aus' } | null;
+  griffVersatz: GriffVersatz;
+  /** Faktor der gezeigten Griffe beim Anfang des Zugs (die Spitze bleibt unter der Maus) */
+  griffFaktor: number;
 };
 let zug: Zug | null = null;
 
@@ -742,6 +819,136 @@ function abbildung(z: Zug, X: number, Y: number): (p: V3) => V3 {
 /** Punkt einer Linie in der Mittelebene bzw. am Ende eines Rings: z bleibt 0; Ringe nicht unter die Mitte */
 function zFest(l: Loop, s: number): boolean {
   return l.art === 'mitte' || (l.art === 'ring' && (s <= 1e-6 || s >= l.laenge - 1e-6));
+}
+
+/** größter Abstand der Proben eines Loops von seiner ersten */
+function ausdehnung(l: Loop): number {
+  let m = 0;
+  for (let j = 0; j < l.proben.length; j += 4) m = Math.max(m, abstand(lageAus(l.ruhe, j), lageAus(l.ruhe, 0)));
+  return m;
+}
+
+/**
+ * Die zwei Stücke um Punkt k (bis zum vorigen und zum nächsten Punkt) in `mark` setzen; Ergebnis: Mindestradius des
+ * Einflussbereichs (halber Abstand zum ferneren Nachbarpunkt, ein Punkt allein auf einem geschlossenen Loop: der ganze Loop).
+ */
+function stueckUm(l: Loop, k: number, mark: Uint8Array): number {
+  const P = l.punkte;
+  const n = l.proben.length;
+  const zu = l.art !== 'ring';
+  if (zu && P.length === 1) {
+    mark.fill(1);
+    return 0.6 * ausdehnung(l);
+  }
+  const s0 = k > 0 ? P[k - 1]!.s : zu ? P[P.length - 1]!.s - l.laenge : 0;
+  const s1 = k < P.length - 1 ? P[k + 1]!.s : zu ? P[0]!.s + l.laenge : l.laenge;
+  for (let j = 0; j < n; j++) {
+    const s = l.s[j]!;
+    if ((s > s0 && s < s1) || (zu && (s - l.laenge > s0 || s + l.laenge < s1))) mark[j] = 1;
+  }
+  const vor = k > 0 ? P[k - 1]!.ref : zu ? P[P.length - 1]!.ref : lageAus(l.ruhe, 0);
+  const nach = k < P.length - 1 ? P[k + 1]!.ref : zu ? P[0]!.ref : lageAus(l.ruhe, n - 1);
+  return 0.5 * Math.max(abstand(P[k]!.ref, vor), abstand(P[k]!.ref, nach));
+}
+
+/** Löser für die Stücke um Punkt k des Loops li (Griff ziehen oder ausrichten) */
+function stueckLoeser(li: number, k: number): LoopZug {
+  const l = loops[li]!;
+  const mark = new Uint8Array(l.proben.length);
+  const r = Math.max(2 * MK, stueckUm(l, k, mark));
+  const bewegt: V3[] = [];
+  const ecken = new Set<number>();
+  for (let j = 0; j < mark.length; j++) {
+    if (!mark[j]) continue;
+    if (j % 2 === 0) bewegt.push(lageAus(l.ruhe, j));
+    for (const v of l.proben[j]!.ecken) ecken.add(v);
+  }
+  return new LoopZug(haut, loops, bereichUm(haut, bewegt, r, ecken));
+}
+
+/** Verschiebung je Probe eines Loops aus dem Versatz der Griffe von Punkt k (die Punkte bleiben) */
+function griffVerschiebung(l: Loop, S: Float64Array, k: number, v: GriffVersatz): Float64Array {
+  const d = verschiebungLaengs(
+    l,
+    l.punkte.map(() => ({ x: 0, y: 0, z: 0 })),
+    l.punkte.map((_, i) => (i === k ? v : undefined)),
+  );
+  zGrenzen(l, S, d);
+  return d;
+}
+
+/** Mittelebene und Enden eines Rings bleiben auf z = 0, ein Ring geht nicht unter die Mittelebene */
+function zGrenzen(l: Loop, S: Float64Array, d: Float64Array): void {
+  const n = l.proben.length;
+  for (let j = 0; j < n; j++) {
+    if (l.art === 'mitte' || (l.art === 'ring' && (j === 0 || j === n - 1))) d[3 * j + 2] = 0;
+    else if (l.art === 'ring') d[3 * j + 2] = Math.max(d[3 * j + 2]!, -S[3 * j + 2]!);
+  }
+}
+
+/** Griff `seite` von Punkt i des Loops li ziehen */
+function griffZugStarten(a: Ansicht, X: number, Y: number, spiegel: boolean, li: number, i: number, seite: 'ein' | 'aus'): boolean {
+  const p = loops[li]?.punkte[i];
+  if (!p) return false;
+  const loeser = stueckLoeser(li, i);
+  zug = {
+    modal: null,
+    achse: null,
+    ansicht: a,
+    spiegel,
+    x0: X,
+    y0: Y,
+    pivot: p.ref,
+    vorher: schnappschuss(),
+    loeser,
+    ganze: new Set(),
+    probenW: loops.map(() => null),
+    punktW: new Map(),
+    lagen: loeser.start,
+    versch: loops.map(() => null),
+    bewegt: false,
+    mitte: null,
+    griff: { li, i, seite },
+    griffVersatz: {},
+    griffFaktor: griffFaktor(griffeBei(loops[li]!, loeser.start[li]!, i)),
+  };
+  letzteZerlegung = loeser.loeser.zeitZerlegen;
+  letzterBereich = loeser.loeser.anzahl;
+  meldung = '';
+  return true;
+}
+
+/**
+ * Glatt ↔ Ecke umschalten (von Hand; zweimal = wieder automatisch). Wird eine Ecke mit Knick glatt, kommen ihre Griffe auf eine
+ * Gerade und die Haut folgt.
+ */
+function eckeUmschalten(id: number, i: number): void {
+  const li = loopNr(id);
+  const l = loops[li];
+  const p = l?.punkte[i];
+  if (!l || !p) return;
+  const vorher = schnappschuss();
+  const neu = !istEcke(p);
+  if (neu === (p.autoEcke ?? false)) delete p.ecke;
+  else p.ecke = neu;
+  // gemessen: ein Schritt bringt 58° auf 0,4°; ein zweiter nur, falls die Haut weit vom Ziel blieb. Unter 4° nichts tun: So
+  // fein ist die Linie im Netz selbst gezackt (frische Linien bis 3,4°), glatte Linien bleiben beim Umschalten unberührt.
+  let ausgerichtet = false;
+  for (let runde = 0; runde < 2 && !neu; runde++) {
+    const v = griffeAusrichten(l, l.ruhe, i);
+    if (!v) break;
+    const loeser = stueckLoeser(li, i);
+    const d = griffVerschiebung(l, loeser.start[li]!, i, v);
+    for (let s = 1; s <= 3; s++) loeser.schritt(loops.map((_, k) => (k === li ? d.map((x) => (x * s) / 3) : null)), RUNDEN_ZUG);
+    loeser.schritt(loops.map((_, k) => (k === li ? d : null)), RUNDEN_ENDE);
+    for (const x of loops) festlegen(haut, x);
+    ausgerichtet = true;
+  }
+  if (ausgerichtet) kreuzungenSuchen();
+  zurueck.push(vorher);
+  auswahl = [{ l: id, i }];
+  meldung = neu ? 'Ecke: die Linie darf hier knicken' : ausgerichtet ? 'glatt: Griffe auf einer Geraden' : 'glatt';
+  allesZeigen();
 }
 
 function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spiegel: boolean): boolean {
@@ -812,35 +1019,15 @@ function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spieg
   loops.forEach((l, li) => {
     const n = l.proben.length;
     const mark = new Uint8Array(n);
-    const ausdehnung = () => {
-      let m = 0;
-      for (let j = 0; j < n; j += 4) m = Math.max(m, abstand(lageAus(l.ruhe, j), lageAus(l.ruhe, 0)));
-      return m;
-    };
     // ein ganzer Loop nimmt sein Inneres mit (Bereich über seine Mitte hinaus), sonst verdreht sich die Haut auf kurzem Weg
     if (ganze.has(li)) {
       mark.fill(1);
-      if (!oAn) r = Math.max(r, 0.6 * ausdehnung());
+      if (!oAn) r = Math.max(r, 0.6 * ausdehnung(l));
     } else if (probenW[li]) {
       for (let j = 0; j < n; j++) if (probenW[li]![j]! > 0) mark[j] = 1;
     } else if (!oAn) {
-      const P = l.punkte;
-      P.forEach((p, k) => {
-        if (!punktW.has(`${li}:${k}`)) return;
-        const zu = l.art !== 'ring';
-        if (zu && P.length === 1) {
-          mark.fill(1);
-          r = Math.max(r, 0.6 * ausdehnung());
-          return;
-        }
-        const s0 = k > 0 ? P[k - 1]!.s : zu ? P[P.length - 1]!.s - l.laenge : 0;
-        const s1 = k < P.length - 1 ? P[k + 1]!.s : zu ? P[0]!.s + l.laenge : l.laenge;
-        for (let j = 0; j < n; j++) {
-          const s = l.s[j]!;
-          if ((s > s0 && s < s1) || (zu && (s - l.laenge > s0 || s + l.laenge < s1))) mark[j] = 1;
-        }
-        const nach = [k > 0 ? P[k - 1]!.ref : lageAus(l.ruhe, 0), k < P.length - 1 ? P[k + 1]!.ref : lageAus(l.ruhe, n - 1)];
-        for (const q of nach) r = Math.max(r, 0.5 * abstand(p.ref, q));
+      l.punkte.forEach((_, k) => {
+        if (punktW.has(`${li}:${k}`)) r = Math.max(r, stueckUm(l, k, mark));
       });
     }
     for (let j = 0; j < n; j++) {
@@ -869,6 +1056,9 @@ function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spieg
     versch: loops.map(() => null),
     bewegt: false,
     mitte: zentren.length === 1 ? { ...zentren[0]! } : pivot,
+    griff: null,
+    griffVersatz: {},
+    griffFaktor: 1,
   };
   letzteZerlegung = loeser.loeser.zeitZerlegen;
   letzterBereich = loeser.loeser.anzahl;
@@ -905,12 +1095,7 @@ function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
       });
       if (irgend) d = verschiebungLaengs(l, D);
     }
-    if (d) {
-      for (let j = 0; j < n; j++) {
-        if (l.art === 'mitte' || (l.art === 'ring' && (j === 0 || j === n - 1))) d[3 * j + 2] = 0;
-        else if (l.art === 'ring') d[3 * j + 2] = Math.max(d[3 * j + 2]!, -S[3 * j + 2]!);
-      }
-    }
+    if (d) zGrenzen(l, S, d);
     return d;
   });
 }
@@ -920,24 +1105,34 @@ function zugBewegen(X: number, Y: number): void {
   if (!z) return;
   if (!z.bewegt && Math.hypot(X - z.x0, Y - z.y0) * skala() < 2) return;
   z.bewegt = true;
-  const f = abbildung(z, X, Y);
-  z.versch = verschiebungen(z, f);
-  loops.forEach((l, li) =>
-    l.punkte.forEach((p, i) => {
-      const g = z.punktW.get(`${li}:${i}`) ?? 0;
-      if (!g) {
-        p.cur = { ...p.ref };
-        return;
-      }
-      const q = f(p.ref);
-      const c = { x: p.ref.x + g * (q.x - p.ref.x), y: p.ref.y + g * (q.y - p.ref.y), z: p.ref.z + g * (q.z - p.ref.z) };
-      if (zFest(l, p.s)) c.z = 0;
-      else if (l.art === 'ring') c.z = Math.max(0, c.z);
-      p.cur = c;
-    }),
-  );
+  if (z.griff) {
+    // Griff: in der Ebene des Blatts verschoben (die Tiefe bleibt), nur sein Loop bewegt sich
+    const { li, i, seite } = z.griff;
+    const l = loops[li]!;
+    const d = inWelt(z.ansicht, (X - z.x0) / z.griffFaktor, (Y - z.y0) / z.griffFaktor);
+    if (z.spiegel) d.z = -d.z;
+    z.griffVersatz = griffZiehen(l, z.loeser.start[li]!, i, seite, d);
+    z.versch = loops.map((_, k) => (k === li ? griffVerschiebung(l, z.loeser.start[li]!, i, z.griffVersatz) : null));
+  } else {
+    const f = abbildung(z, X, Y);
+    z.versch = verschiebungen(z, f);
+    loops.forEach((l, li) =>
+      l.punkte.forEach((p, i) => {
+        const g = z.punktW.get(`${li}:${i}`) ?? 0;
+        if (!g) {
+          p.cur = { ...p.ref };
+          return;
+        }
+        const q = f(p.ref);
+        const c = { x: p.ref.x + g * (q.x - p.ref.x), y: p.ref.y + g * (q.y - p.ref.y), z: p.ref.z + g * (q.z - p.ref.z) };
+        if (zFest(l, p.s)) c.z = 0;
+        else if (l.art === 'ring') c.z = Math.max(0, c.z);
+        p.cur = c;
+      }),
+    );
+    if (z.mitte) z.mitte = f(z.pivot);
+  }
   z.lagen = z.loeser.lagen(z.versch);
-  if (z.mitte) z.mitte = f(z.pivot);
   const t0 = performance.now();
   z.loeser.schritt(z.versch, RUNDEN_ZUG);
   zeiten.push(performance.now() - t0);
@@ -1177,8 +1372,18 @@ function druecken(a: Ansicht, e: PointerEvent): void {
   }
   const i = Number(ziel.getAttribute('data-i') ?? -1);
   const m = ziel.getAttribute('data-m') === '1';
+  const g = ziel.getAttribute('data-g');
+  if (g === 'ein' || g === 'aus') {
+    if (griffZugStarten(a, X, Y, m, loopNr(Number(l)), i, g)) blaetter[a].setPointerCapture(e.pointerId);
+    return;
+  }
   if (i < 0 && doppelklick(`${l}:${m}`, X, Y)) {
     punktAmKlick(a, Number(l), X, Y, m);
+    return;
+  }
+  // Doppelklick oder ⌥-Klick auf einen Punkt: Ecke ↔ glatt
+  if (i >= 0 && (doppelklick(`p${l}:${i}`, X, Y) || e.altKey)) {
+    eckeUmschalten(Number(l), i);
     return;
   }
   const w = { l: Number(l), i };
@@ -1368,10 +1573,37 @@ schleife();
       art: l.art,
       proben: l.proben.length,
       laenge: l.laenge,
-      punkte: l.punkte.map((p) => ({ s: p.s, ref: p.ref, kreuzung: p.kreuzung ?? null })),
+      punkte: l.punkte.map((p) => ({ s: p.s, ref: p.ref, kreuzung: p.kreuzung ?? null, ecke: istEcke(p), autoEcke: p.autoEcke ?? false, haerte: p.haerte ?? null })),
+      haerte: l.haerte ?? null,
       ruhe: Array.from(l.ruhe),
     })),
   auswahl: () => auswahl,
+  /** Knick der Linie an einem Punkt (Grad): Richtung hinein gegen hinaus, je Seite für sich gemessen */
+  knickAm: (id: number, i: number): number => {
+    const l = loops[loopNr(id)];
+    if (!l?.punkte[i]) return NaN;
+    const g = griffeBei(l, l.ruhe, i, true);
+    if (!g.ein || !g.aus) return NaN;
+    const c = -(g.ein.x * g.aus.x + g.ein.y * g.aus.y + g.ein.z * g.aus.z) / (Math.hypot(g.ein.x, g.ein.y, g.ein.z) * Math.hypot(g.aus.x, g.aus.y, g.aus.z));
+    return (Math.acos(Math.max(-1, Math.min(1, c))) * 180) / Math.PI;
+  },
+  /** Griffspitzen eines Punkts in der Welt, wie gezeigt (mit dem Faktor fürs Blatt) */
+  griffe: (id: number, i: number): { ein: V3 | null; aus: V3 | null; faktor: number } => {
+    const l = loops[loopNr(id)];
+    const p = l?.punkte[i];
+    if (!l || !p) return { ein: null, aus: null, faktor: 1 };
+    const g = griffeBei(l, l.ruhe, i);
+    const f = griffFaktor(g);
+    const spitze = (v: V3 | null) => (v ? { x: p.ref.x + f * v.x, y: p.ref.y + f * v.y, z: p.ref.z + f * v.z } : null);
+    return { ein: spitze(g.ein), aus: spitze(g.aus), faktor: f };
+  },
+  /** 3D-Kamera setzen (für Nahbilder) */
+  kamera: (pos: V3, ziel: V3) => {
+    dreiKamera.position.set(pos.x, pos.y, pos.z);
+    steuerung.target.set(ziel.x, ziel.y, ziel.z);
+    steuerung.update();
+    neuZeichnen = true;
+  },
   /** Knick quer über einen Loop je Probe (Grad) */
   knick: (id: number): number[] => {
     const l = loops[loopNr(id)];

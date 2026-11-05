@@ -5,14 +5,21 @@ import {
   type Loop,
   LoopZug,
   bereichUm,
+  eckenAuto,
   festlegen,
   formAusZeichnung,
+  griffeAusrichten,
+  griffeBei,
+  griffZiehen,
+  haerteAn,
+  istEcke,
   kantenGewichte,
   knickWinkel,
   kreuzungenZwischen,
   loopAusSchnitt,
   mittlereKante,
   punktEinfuegen,
+  stelleBei,
   verschiebungLaengs,
 } from './loops';
 import { rundAusSeite } from './rund';
@@ -249,5 +256,191 @@ describe('Nur Loops: Griffe an Kreuzungen', () => {
     expect(Math.abs(m[3]! - 180)).toBeLessThan(3);
     expect(Math.abs(m[1]! - 150)).toBeLessThan(3);
     expect(schiefe(h)).toBeLessThan(1e-6);
+  });
+});
+
+/** Kreis um ein Auge auf der Seite der Kugel, acht Punkte */
+const augenForm = (h: ReturnType<typeof kugel>) =>
+  formAusZeichnung(
+    h,
+    'seite',
+    Array.from({ length: 64 }, (_, i): [number, number] => [-60 + 35 * Math.cos((2 * Math.PI * i) / 64), 40 + 35 * Math.sin((2 * Math.PI * i) / 64)]),
+    Array.from({ length: 8 }, (_, i) => 8 * i),
+    9,
+  )!;
+const betrag = (v: { x: number; y: number; z: number }) => Math.hypot(v.x, v.y, v.z);
+/**
+ * Sprung der Steigung von `d` (3 je Probe, nach s) an der Probe j eines geschlossenen Loops: Steigung je Seite aus der Parabel
+ * durch die Probe und ihre zwei Nachbarn dieser Seite, dann der Abstand beider.
+ */
+const steigungsSprung = (l: Loop, d: Float64Array, j: number) => {
+  const n = l.proben.length;
+  const s = (k: number) => l.s[((k % n) + n) % n]! + Math.floor(k / n) * l.laenge;
+  const seite = (r: 1 | -1) => {
+    const x1 = s(j + r) - s(j);
+    const x2 = s(j + 2 * r) - s(j);
+    return [0, 1, 2].map((c) => {
+      const f = (k: number) => d[3 * ((((j + k) % n) + n) % n) + c]!;
+      return (f(0) * (-x1 - x2)) / (x1 * x2) + (f(r) * x2) / (x1 * (x2 - x1)) - (f(2 * r) * x1) / (x2 * (x2 - x1));
+    });
+  };
+  const a = seite(1);
+  const b = seite(-1);
+  return Math.hypot(a[0]! - b[0]!, a[1]! - b[1]!, a[2]! - b[2]!);
+};
+
+describe('Bézier-Griffe und Ecken', () => {
+  it('Ein Griff biegt nur sein Stück wie eine Bézier-Strecke (größter Ausschlag 4/9 bei t = 1/3), die Punkte bleiben', () => {
+    const auge = augenForm(kugel());
+    const i = 2;
+    const s0 = auge.punkte[i]!.s;
+    const s1 = auge.punkte[i + 1]!.s;
+    const griffe = auge.punkte.map((_, k) => (k === i ? { aus: { x: 0, y: 9, z: 0 } } : undefined));
+    const d = verschiebungLaengs(auge, auge.punkte.map(() => ({ x: 0, y: 0, z: 0 })), griffe);
+    let ausserhalb = 0;
+    let groesst = 0;
+    let wo = 0;
+    for (let j = 0; j < auge.proben.length; j++) {
+      const v = Math.hypot(d[3 * j]!, d[3 * j + 1]!, d[3 * j + 2]!);
+      const s = auge.s[j]!;
+      if (s <= s0 + 1e-9 || s >= s1 - 1e-9) ausserhalb = Math.max(ausserhalb, v);
+      else if (v > groesst) {
+        groesst = v;
+        wo = (s - s0) / (s1 - s0);
+      }
+    }
+    log(`Griff 9 nach oben: außerhalb des Stücks ${ausserhalb}, größter Ausschlag ${groesst.toFixed(2)} bei t = ${wo.toFixed(2)}`);
+    expect(ausserhalb).toBeLessThan(1e-9);
+    expect(Math.abs(groesst - 4)).toBeLessThan(0.15);
+    expect(Math.abs(wo - 1 / 3)).toBeLessThan(0.1);
+  });
+
+  it('Griffe ablesen und ziehen: glatt bleibt der andere Griff gegenüber (gleiche Länge), an einer Ecke bleibt er stehen', () => {
+    const auge = augenForm(kugel());
+    const g = griffeBei(auge, auge.ruhe, 2);
+    // Richtung längs der Linie, Länge ⅓ des Wegs zum Nachbarpunkt
+    const ds = auge.punkte[3]!.s - auge.punkte[2]!.s;
+    const zuNachbar = stelleBei(auge, auge.ruhe, auge.punkte[3]!.s);
+    const p = auge.punkte[2]!.ref;
+    const sehne = { x: zuNachbar.x - p.x, y: zuNachbar.y - p.y, z: zuNachbar.z - p.z };
+    const cosSehne = (g.aus!.x * sehne.x + g.aus!.y * sehne.y + g.aus!.z * sehne.z) / (betrag(g.aus!) * betrag(sehne));
+    expect(Math.abs(betrag(g.aus!) - ds / 3)).toBeLessThan(0.05 * ds);
+    expect(cosSehne).toBeGreaterThan(0.85);
+    const delta = { x: 0, y: 6, z: 0 };
+    const glatt = griffZiehen(auge, auge.ruhe, 2, 'aus', delta);
+    const aus = { x: g.aus!.x + glatt.aus!.x, y: g.aus!.y + glatt.aus!.y, z: g.aus!.z + glatt.aus!.z };
+    const ein = { x: g.ein!.x + glatt.ein!.x, y: g.ein!.y + glatt.ein!.y, z: g.ein!.z + glatt.ein!.z };
+    const kreuz = betrag({ x: aus.y * ein.z - aus.z * ein.y, y: aus.z * ein.x - aus.x * ein.z, z: aus.x * ein.y - aus.y * ein.x });
+    expect(kreuz / (betrag(aus) * betrag(ein))).toBeLessThan(1e-9);
+    expect(aus.x * ein.x + aus.y * ein.y + aus.z * ein.z).toBeLessThan(0);
+    expect(Math.abs(betrag(ein) - betrag(g.ein!))).toBeLessThan(1e-9);
+    auge.punkte[2]!.ecke = true;
+    const ecke = griffZiehen(auge, auge.ruhe, 2, 'aus', delta);
+    expect(ecke.ein).toBeUndefined();
+    expect(ecke.aus).toEqual(delta);
+  });
+
+  it('Ecke: hinausgezogen knickt die Linie am Punkt, glatt läuft sie rund hindurch; Ausrichten macht aus dem Knick wieder glatt', () => {
+    const h = kugel();
+    const auge = augenForm(h);
+    const i = 2;
+    const j = auge.s.findIndex((s) => Math.abs(s - auge.punkte[i]!.s) < 1e-9);
+    const p = auge.punkte[i]!.ref;
+    const r = Math.hypot(p.x - -60, p.y - 40);
+    const D = auge.punkte.map((_, k) => (k === i ? { x: (10 * (p.x + 60)) / r, y: (10 * (p.y - 40)) / r, z: 0 } : { x: 0, y: 0, z: 0 }));
+    const glatt = steigungsSprung(auge, verschiebungLaengs(auge, D), j);
+    auge.punkte[i]!.ecke = true;
+    const ecke = steigungsSprung(auge, verschiebungLaengs(auge, D), j);
+    log(`Sprung der Steigung am gezogenen Punkt: glatt ${glatt.toFixed(3)}, Ecke ${ecke.toFixed(3)}`);
+    expect(glatt).toBeLessThan(0.1);
+    expect(ecke).toBeGreaterThan(0.4);
+    expect(ecke).toBeGreaterThan(5 * glatt);
+    // eine Ecke mit Knick: Lage = Ruhe + Verschiebung; Ausrichten gibt Griffe auf einer Geraden
+    const L = Float64Array.from(auge.ruhe, (x, k) => x + verschiebungLaengs(auge, D)[k]!);
+    const v = griffeAusrichten(auge, L, i)!;
+    expect(v).not.toBeNull();
+    const g = griffeBei(auge, L, i, true);
+    const ein = { x: g.ein!.x + v.ein!.x, y: g.ein!.y + v.ein!.y, z: g.ein!.z + v.ein!.z };
+    const aus = { x: g.aus!.x + v.aus!.x, y: g.aus!.y + v.aus!.y, z: g.aus!.z + v.aus!.z };
+    const cos = -(ein.x * aus.x + ein.y * aus.y + ein.z * aus.z) / (betrag(ein) * betrag(aus));
+    expect(cos).toBeGreaterThan(1 - 1e-9);
+    // ohne Knick nichts zu tun, auch nicht auf der eingesetzten Form (die Kette ist im Netz selbst gezackt): Umschalten lässt
+    // glatte Linien in Ruhe
+    expect(griffeAusrichten(auge, auge.ruhe, 5)).toBeNull();
+    const eingesetzt = loopEinsetzen(h, [augenForm(h)], 0)!.loops[0]!;
+    const schein = eingesetzt.punkte.map((_, k) => {
+      const g = griffeBei(eingesetzt, eingesetzt.ruhe, k, true);
+      const c = -(g.ein!.x * g.aus!.x + g.ein!.y * g.aus!.y + g.ein!.z * g.aus!.z) / (betrag(g.ein!) * betrag(g.aus!));
+      return (Math.acos(Math.min(1, c)) * 180) / Math.PI;
+    });
+    log(`Knick je Punkt der eingesetzten Form (Zacken des Netzes): ${schein.map((x) => x.toFixed(1)).join(' ')}°`);
+    expect(eingesetzt.punkte.every((_, k) => griffeAusrichten(eingesetzt, eingesetzt.ruhe, k) === null)).toBe(true);
+  });
+
+  it('Härte läuft durch Kreuzungen; die Kreuzung mit einem harten Loop wird von selbst eine Ecke, weich wieder glatt', () => {
+    const h = kugel();
+    const { loops, quer, waag, mitte } = dreiLoops(h);
+    const k1 = quer.punkte.find((p) => p.kreuzung !== undefined && waag.punkte.some((q) => q.kreuzung === p.kreuzung))!;
+    const w1 = waag.punkte.find((p) => p.kreuzung === k1.kreuzung)!;
+    // zwei gesetzte harte Punkte links und rechts der Kreuzung: die Kreuzung dazwischen bleibt hart
+    for (const ds of [-25, 25]) punktEinfuegen(waag, w1.s + ds).haerte = 3;
+    expect(haerteAn(waag, w1.s)).toBeCloseTo(3, 9);
+    eckenAuto(loops);
+    expect(istEcke(k1)).toBe(true);
+    expect(istEcke(w1)).toBe(false);
+    // ein eingefügter Punkt behält die Härte des Verlaufs
+    const neu = punktEinfuegen(waag, w1.s + 12);
+    expect(neu.haerte).toBeCloseTo(3, 9);
+    // weich: wieder glatt; von Hand gesetzt gilt vor
+    for (const p of waag.punkte) p.haerte = 0;
+    eckenAuto(loops);
+    expect(istEcke(k1)).toBe(false);
+    k1.ecke = true;
+    eckenAuto(loops);
+    expect(istEcke(k1)).toBe(true);
+    // die Mitte kreuzt den weichen Ring: glatt
+    expect(mitte.punkte.every((p) => !istEcke(p))).toBe(true);
+  });
+
+  it('Harter Ring als Ganzes hinausgeschoben: der kreuzende Ring folgt dem Grat mit einer Ecke, glatt flacht er ihn ab', () => {
+    const lauf = (ecke: boolean) => {
+      const h0 = kugel();
+      const r1 = loopEinsetzen(h0, [loopAusSchnitt(h0, 'front', [-200, 0], [200, 0], 1, 8)!], 0)!;
+      const r2 = loopEinsetzen(r1.haut, [...r1.loops, loopAusSchnitt(r1.haut, 'seite', [0, 200], [0, -200], 2, 8)!], 1)!;
+      const h = r2.haut;
+      const [waag, quer] = r2.loops as [Loop, Loop];
+      const funde = kreuzungenZwischen(waag, waag.ruhe, quer, quer.ruhe, 0.25 * mittlereKante(h));
+      expect(funde.length).toBe(1);
+      punktEinfuegen(waag, funde[0]!.sa, 1);
+      const kq = punktEinfuegen(quer, funde[0]!.sb, 1);
+      waag.haerte = 3;
+      eckenAuto([waag, quer]);
+      expect(istEcke(kq)).toBe(true);
+      if (!ecke) kq.ecke = false;
+      // der harte Ring wird in x und z um 15 % größer, der Punkt des anderen an der Kreuzung geht mit
+      const dw = new Float64Array(waag.ruhe.length);
+      for (let j = 0; j < waag.proben.length; j++) {
+        dw[3 * j] = 0.15 * waag.ruhe[3 * j]!;
+        dw[3 * j + 2] = 0.15 * waag.ruhe[3 * j + 2]!;
+      }
+      const dq = verschiebungLaengs(quer, quer.punkte.map((p) => (p === kq ? { x: 0.15 * p.ref.x, y: 0, z: 0.15 * p.ref.z } : { x: 0, y: 0, z: 0 })));
+      const zug = new LoopZug(h, [waag, quer], null);
+      for (let s = 1; s <= 4; s++) zug.schritt([dw.map((x) => (x * s) / 4), dq.map((x) => (x * s) / 4)], 2);
+      zug.schritt([dw, dq], 6);
+      festlegen(h, waag);
+      festlegen(h, quer);
+      const kn = knickWinkel(h, waag);
+      const jk = waag.s.reduce((b, s, j) => (Math.abs(s - funde[0]!.sa) < Math.abs(waag.s[b]! - funde[0]!.sa) ? j : b), 0);
+      const sonst = [...kn].filter((_, j) => Math.abs(waag.s[j]! - funde[0]!.sa) > 60 && j > 3 && j < kn.length - 4).sort((a, b) => a - b);
+      return { anKreuzung: kn[jk]!, sonst: sonst[sonst.length >> 1]! };
+    };
+    const mit = lauf(true);
+    const ohne = lauf(false);
+    log(
+      `Grat des harten Rings an der Kreuzung: Ecke ${mit.anKreuzung.toFixed(1)}° (sonst ${mit.sonst.toFixed(1)}°), ` +
+        `glatt ${ohne.anKreuzung.toFixed(1)}° (sonst ${ohne.sonst.toFixed(1)}°)`,
+    );
+    expect(mit.anKreuzung).toBeGreaterThan(ohne.anKreuzung + 3);
+    expect(mit.anKreuzung).toBeGreaterThan(0.6 * mit.sonst);
   });
 });

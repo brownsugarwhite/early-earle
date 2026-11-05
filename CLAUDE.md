@@ -954,6 +954,34 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - **Offen (ehrlich):** Der Unterschied hart/weich ist bei dieser Netzdichte (Kante ≈ 6,5 bei Radius 150) mäßig; eine runde Wulst
     ist auch nur 1–2 Zellen breit (örtlich verdichten fehlt). Ein ganzer Loop ohne O gedreht klappt 30 Dreiecke um (vor dem Einsetzen
     22), skaliert 2. Härte ändert eine schon gezogene Form erst beim nächsten Zug. Bilder `docs/progress/editor/form-loops-braue-*`.
+- **2026-11-05 (nachts, danach): Bézier-Griffe, Ecke und glatt, Ecke von selbst an harten Kreuzungen** (Florian: „Bau Bézier-Griffe an
+  die Punkte (glatt oder Ecke, für den Verlauf der Linie) und lass die Härte als eigene Einstellung; wo ein Loop einen harten kreuzt,
+  wird sein Punkt dort automatisch eine Ecke.“).
+  - **Bedienung:** Ein gewählter Punkt zeigt seine zwei Griffe (an einer gewählten Kreuzung auch die des anderen Loops). Ein Griff biegt
+    nur die zwei Stücke am Punkt, die Punkte bleiben. Glatt ● hält die Griffe gegenüber (der andere dreht mit), an einer Ecke ◆ sind sie
+    getrennt. Doppelklick oder ⌥-Klick auf einen Punkt schaltet um (zweimal = wieder automatisch); wird eine Ecke mit Knick glatt, kommen
+    ihre Griffe auf die Winkelhalbierende und die Haut folgt. Härte bleibt Taste 0–3.
+  - **Kern (`dicht/loops.ts`):** Griffe werden nicht gespeichert, sondern am Verlauf der Linie abgelesen (`griffeBei`): Steigung je Seite
+    aus einem kubischen Ausgleichspolynom in s über die Proben bis zum Nachbarpunkt (`steigungSeite`), Länge ⅓ des Abstands. Ein
+    Griffzug wirkt mit den Bernstein-Gewichten 3t(1 − t)² bzw. 3t²(1 − t) (`verschiebungLaengs(l, D, griffe)`, `griffZiehen`,
+    `griffeAusrichten`); beim Verschieben nimmt eine Ecke die Steigung je Seite vom Nachbarn dieser Seite (sie knickt), glatt wie bisher
+    aus beiden. `eckenAuto`: Kreuzung mit einem Loop, der dort Härte > 0 hat → `autoEcke`; von Hand (`ecke`) gilt vor. Härte: Kreuzungen
+    ohne eigene Härte sind keine Stützstellen mehr (ein kreuzender Loop unterbrach sonst eine harte Linie), eingefügte Punkte behalten
+    die Härte des Verlaufs.
+  - **Gemessen** (Tests `loops.test.ts` 11, davon 5 neu; Maus `scripts/pruefen/form-griffe-probe.mjs`): Griff biegt nur sein Stück
+    (größter Ausschlag 3,92 von 4 bei t ≈ 0,4); glatter Griffzug 1,2–1,4 ms je Mausbewegung, 12 von 57 Proben bewegt, Knick am Punkt
+    1,9°, 0 umgeklappt; Ecke, Griff um 40° gedreht: Knick 36°, 0 umgeklappt; zurück auf glatt 0,1°; ⌘Z bitgleich. Harter Ring mit S ×1,15:
+    der Punkt des kreuzenden Rings wird von selbst eine Ecke, der Grat quer über den harten Ring hält an der Kreuzung 14,1° (sonst 13,3°),
+    von Hand glatt sackt er dort auf 4,6° (im Nahbild läuft die Lichtkante unter den Ring). Ältere Proben (Loops, Braue) unverändert.
+  - **Fallen:** Steigungen einer eingesetzten Linie nie aus wenigen Proben oder mit festem Endpunkt messen: Die Kette ist streckenweise
+    eine Sehne durch ein großes Dreieck, ein Punkt mitten darauf liegt 0,3 innen. Differenzen sahen Scheinknicke bis 13°, eine angepasste
+    Bézier-Strecke 5–11° (sie kann einen Bogen nicht nach Bogenlänge laufen lassen), das Polynom je Seite ohne den Punkt 0,7–3,2°
+    (Zacken des Netzes) → Ausrichten erst ab 4°. Ein Prüfzug, der einen Griff am Punkt vorbei nach hinten dreht, schlägt eine Schleife
+    (umgeklappte Dreiecke), wie in Illustrator.
+  - **Offen (ehrlich):** Die Blätter haben keinen Zoom; auf kleinen Formen wären die Griffe ≈ 8 px lang, sie werden mindestens 28 px lang
+    gezeigt und wirken dann im selben Verhältnis feiner (Hebel). Mit O wirkt ein Zug über Gewichte je Probe, dort spielt die Ecke keine
+    Rolle (der kreuzende Loop bleibt rund). Die Ecke am harten Ring gibt der kreuzenden Linie ein Zelt bis zu ihren Nachbarpunkten (weit
+    entfernte Nachbarn = flaches Zelt). Bilder `docs/progress/editor/form-griffe-*-2026-11-05.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
