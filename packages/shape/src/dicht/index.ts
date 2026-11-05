@@ -71,6 +71,8 @@ export {
   haerteAn,
   haerteBei,
   istEcke,
+  istVektorEcke,
+  griffeAbbilden,
   kantenGewichte,
   knickWinkel,
   kreuzungenZwischen,

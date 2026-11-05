@@ -7,7 +7,8 @@
 // Mittelebene), `paar` liegt auf einer Seite und hat ein Spiegelbild. Ein Loop ändert die Form nicht, wenn er entsteht; die Haut
 // folgt nur den Verschiebungen seiner Proben (`HautZiele`). Punkte liegen an einer Stelle s längs des Loops; zwischen ihnen
 // verläuft die Linie wie eine Bézier-Strecke (Hermite längs s): Die Griffe eines Punkts liest man am Verlauf ab, ein glatter Punkt
-// hält sie gegenüber, an einer Ecke darf die Linie knicken (von Hand oder von selbst an der Kreuzung mit einem harten Loop).
+// hält sie gegenüber, an einer Ecke darf die Linie knicken (von Hand oder von selbst an der Kreuzung mit einem harten Loop). Wie in
+// Illustrator gehen die Griffe mit ihrem Punkt: Ein Punkt ändert nur die zwei Stücke bis zu seinen Nachbarn.
 
 import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich, kantenSchluessel } from './kurven';
 
@@ -32,6 +33,11 @@ export type LoopPunkt = {
 };
 /** Ecke: die Linie darf am Punkt knicken (Griffe unabhängig); sonst glatt (Griffe gegenüber) */
 export const istEcke = (p: LoopPunkt): boolean => p.ecke ?? p.autoEcke ?? false;
+/**
+ * Ecke von selbst (Kreuzung mit einem harten Loop, nicht von Hand gesetzt): Ihre Griffe zeigen längs der Sehnen zu den
+ * Nachbarpunkten (wie „Vector“-Griffe in Blender), damit die Linie dem Knick der Haut quer über den harten Loop folgt.
+ */
+export const istVektorEcke = (p: LoopPunkt): boolean => p.ecke === undefined && !!p.autoEcke;
 /** Versatz der Bézier-Griffe eines Punkts gegen ihre Lage in Ruhe: `ein` zum vorigen Stück, `aus` zum nächsten */
 export type GriffVersatz = { ein?: V3; aus?: V3 };
 export type Loop = {
@@ -541,23 +547,23 @@ export function kreuzungenZwischen(A: Loop, la: Float64Array, B: Loop, lb: Float
 const NULL: V3 = { x: 0, y: 0, z: 0 };
 
 /**
- * Verschiebung je Probe aus den Verschiebungen der Punkte (`D` je Punkt) und dem Versatz ihrer Griffe: zwischen zwei Punkten wie
- * eine Bézier-Strecke (Hermite längs s). Ein glatter Punkt nimmt die Steigung aus beiden Nachbarn, eine Ecke je Seite aus dem
- * Nachbarn dieser Seite (zieht man sie heraus, knickt die Linie dort). Ein Griff biegt nur sein Stück (Bernstein-Gewicht
- * 3t(1 − t)² bzw. 3t²(1 − t)), die Punkte bleiben. Ein geschlossener Loop mit einem Punkt bewegt sich als Ganzes. Ein Ring hält
- * seine Enden auf der Mittelebene (ohne Punkt dort bleiben sie stehen) und läuft spiegelgleich in seine andere Hälfte.
+ * Verschiebung je Probe aus den Verschiebungen der Punkte (`D` je Punkt) und dem Versatz ihrer Griffe, zwischen zwei Punkten wie
+ * eine Bézier-Strecke (Hermite längs s). Wie in Illustrator gehen die Griffe mit ihrem Punkt (ohne Versatz bleibt die Richtung
+ * der Linie an jedem Punkt, wie sie war): Ein Punkt ändert nur die zwei Stücke bis zu seinen Nachbarpunkten, nie mehr (vorher
+ * drehten die Nachbarn ihre Richtung mit, das Stück dahinter bog sich, und wo es endete, entstand ein Knick). Gedreht oder
+ * skaliert wird mit dem Versatz der Griffe (`griffe`), ein Griff biegt nur sein Stück (Bernstein-Gewicht 3t(1 − t)² bzw.
+ * 3t²(1 − t)). Eine Ecke von selbst (`istVektorEcke`) nimmt die Steigung je Seite aus der Sehne zum Nachbarn: Zieht man sie
+ * heraus, knickt die Linie dort. Ein geschlossener Loop mit einem Punkt bewegt sich als Ganzes. Ein Ring hält seine Enden auf der
+ * Mittelebene (ohne Punkt dort bleiben sie stehen) und läuft spiegelgleich in seine andere Hälfte.
  */
 export function verschiebungLaengs(l: Loop, D: readonly V3[], griffe?: readonly (GriffVersatz | undefined)[]): Float64Array {
   const n = l.proben.length;
   const out = new Float64Array(3 * n);
-  type Knoten = { s: number; d: V3; ecke: boolean; ein: V3; aus: V3 };
-  const K: Knoten[] = l.punkte.map((q, i) => ({
-    s: q.s,
-    d: D[i] ?? NULL,
-    ecke: istEcke(q),
-    ein: griffe?.[i]?.ein ?? NULL,
-    aus: griffe?.[i]?.aus ?? NULL,
-  }));
+  type Knoten = { s: number; d: V3; vektor: boolean; ein: V3; aus: V3 };
+  const K: Knoten[] = l.punkte.map((q, i) => {
+    const vektor = istVektorEcke(q);
+    return { s: q.s, d: D[i] ?? NULL, vektor, ein: vektor ? NULL : (griffe?.[i]?.ein ?? NULL), aus: vektor ? NULL : (griffe?.[i]?.aus ?? NULL) };
+  });
   if (K.length === 0) return out;
   const zu = geschlossen(l);
   // Stützstellen: geschlossen zyklisch (je zwei Wiederholungen davor und dahinter); Ring mit festen Enden und gespiegelten
@@ -578,18 +584,19 @@ export function verschiebungLaengs(l: Loop, D: readonly V3[], griffe?: readonly 
     const L = l.laenge;
     const innen = K.filter((k) => k.s > 1e-6 && k.s < L - 1e-6);
     const ende = (k: Knoten | undefined, s: number): Knoten =>
-      k ? { ...k, s, d: { ...k.d, z: 0 } } : { s, d: NULL, ecke: false, ein: NULL, aus: NULL };
+      k ? { ...k, s, d: { ...k.d, z: 0 } } : { s, d: NULL, vektor: false, ein: NULL, aus: NULL };
     const kern = [ende(K.find((k) => k.s <= 1e-6), 0), ...innen, ende(K.find((k) => k.s >= L - 1e-6), L)];
     const spiegel = (k: Knoten, um: number): Knoten => ({ ...k, s: 2 * um - k.s, d: { ...k.d, z: -k.d.z } });
     S = [spiegel(kern[1]!, 0), ...kern, spiegel(kern[kern.length - 2]!, L)];
     erster = 1;
     letzter = S.length - 2;
   }
-  /** Steigung der Verschiebung an S[i] auf der Seite −1 (davor) bzw. +1 (dahinter) */
+  /** Steigung der Verschiebung an S[i] auf der Seite −1 (davor) bzw. +1 (dahinter): null, nur eine Ecke von selbst die Sehne */
   const steigung = (i: number, seite: -1 | 1): V3 => {
     const k = S[i]!;
-    const a = k.ecke && seite > 0 ? k : S[i - 1]!;
-    const b = k.ecke && seite < 0 ? k : S[i + 1]!;
+    if (!k.vektor) return NULL;
+    const a = seite > 0 ? k : S[i - 1]!;
+    const b = seite < 0 ? k : S[i + 1]!;
     const ds = b.s - a.s || 1;
     return { x: (b.d.x - a.d.x) / ds, y: (b.d.y - a.d.y) / ds, z: (b.d.z - a.d.z) / ds };
   };
@@ -904,6 +911,27 @@ export function griffZiehen(l: Loop, L: Float64Array, i: number, seite: 'ein' | 
   if (ln < 1e-9) return out;
   const k = -Math.hypot(ga.x, ga.y, ga.z) / ln;
   out[andere] = { x: k * neu.x - ga.x, y: k * neu.y - ga.y, z: k * neu.z - ga.z };
+  return out;
+}
+
+/**
+ * Versatz der Griffe von Punkt i, wenn sein Ort mit der Abbildung f gedreht oder skaliert wird (Gewicht g wie beim Punkt): Die Griffe
+ * gehen mit wie in Illustrator, neuer Griff = f(p + Griff) − f(p) (Ruhe-Lagen `L`). Für eine Verschiebung null.
+ */
+export function griffeAbbilden(l: Loop, L: Float64Array, i: number, f: (p: V3) => V3, g = 1): GriffVersatz {
+  const p = l.punkte[i]!.ref;
+  const fp = f(p);
+  const r = griffeBei(l, L, i);
+  const neu = (v: V3 | null): V3 | undefined => {
+    if (!v) return undefined;
+    const q = f({ x: p.x + v.x, y: p.y + v.y, z: p.z + v.z });
+    return { x: g * (q.x - fp.x - v.x), y: g * (q.y - fp.y - v.y), z: g * (q.z - fp.z - v.z) };
+  };
+  const out: GriffVersatz = {};
+  const ein = neu(r.ein);
+  const aus = neu(r.aus);
+  if (ein) out.ein = ein;
+  if (aus) out.aus = aus;
   return out;
 }
 

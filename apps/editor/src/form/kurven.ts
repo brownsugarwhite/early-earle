@@ -6,7 +6,9 @@
 // (Der Beweis davor, „Kurven als Wahrheit“ mit dem Startumriss als Loop 0, steht in Commit bb0c837d.)
 // Griffe (Florian, 05.11.): Jeder gewählte Punkt zeigt seine Bézier-Griffe (am Verlauf der Linie abgelesen); ein Griff biegt nur
 // sein Stück. Glatt ● hält die Griffe gegenüber, an einer Ecke ◆ darf die Linie knicken (Doppelklick oder ⌥-Klick schaltet um);
-// die Kreuzung mit einem harten Loop wird von selbst eine Ecke. Die Härte bleibt eine eigene Einstellung (Tasten 0–3).
+// die Kreuzung mit einem harten Loop wird von selbst eine Ecke. Die Härte bleibt eine eigene Einstellung (Tasten 0–3). Wie in
+// Illustrator gehen die Griffe mit ihrem Punkt (S/R drehen und skalieren sie mit), ein Punkt ändert nur die zwei Stücke bis zu
+// seinen Nachbarn. Jedes Blatt hat einen eigenen Ausschnitt (Rad/Pinch zoomt, zwei Finger/mittlere Taste verschieben, Pos1).
 
 import {
   type Ansicht,
@@ -21,12 +23,14 @@ import {
   einfluss,
   festlegen,
   formAusZeichnung,
+  griffeAbbilden,
   griffeAusrichten,
   griffeBei,
   griffZiehen,
   type Haut,
   haerteBei,
   istEcke,
+  istVektorEcke,
   hautAus,
   hautNormalen,
   knickWinkel,
@@ -62,6 +66,7 @@ import {
   WebGLRenderer,
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { istTrackpad, radFaktor } from '../viewports/ansicht2d';
 
 /** Auswahl: ein Punkt (i ≥ 0) oder ein ganzer Loop (i = −1), Loop über seine Kennung */
 type Wahl = { l: number; i: number };
@@ -399,9 +404,22 @@ steuerung.addEventListener('change', () => {
   neuZeichnen = true;
 });
 
-const skala = (): number => {
+/**
+ * Ausschnitt je Blatt: Mitte in Blattkoordinaten und Zoom (1 = SICHT Welteinheiten auf der kürzeren Seite der Seitenansicht, so
+ * zeigen alle Blätter ungezoomt denselben Maßstab). Rad und Pinch zoomen zum Zeiger, zwei Finger und die mittlere Taste
+ * verschieben, Pos1 setzt zurück.
+ */
+const ausschnitt: Record<Ansicht, { cx: number; cy: number; zoom: number }> = {
+  seite: { cx: 0, cy: 0, zoom: 1 },
+  front: { cx: 0, cy: 0, zoom: 1 },
+  top: { cx: 0, cy: 0, zoom: 1 },
+};
+const ZOOM_MIN = 0.25;
+const ZOOM_MAX = 40;
+/** Bildpunkte je Welteinheit im Blatt */
+const skala = (a: Ansicht): number => {
   const r = felder.seite.getBoundingClientRect();
-  return Math.max(1e-6, Math.min(r.width, r.height) / SICHT);
+  return Math.max(1e-6, Math.min(r.width, r.height) / SICHT) * ausschnitt[a].zoom;
 };
 
 /** Weltpunkt → Blattkoordinaten (Welteinheiten, y nach unten) */
@@ -411,9 +429,35 @@ const inWelt = (a: Ansicht, dx: number, dy: number): V3 =>
   a === 'seite' ? { x: dx, y: -dy, z: 0 } : a === 'front' ? { x: 0, y: -dy, z: dx } : { x: dx, y: 0, z: dy };
 const blattPunkt = (a: Ansicht, e: { clientX: number; clientY: number }): [number, number] => {
   const r = felder[a].getBoundingClientRect();
-  const s = skala();
-  return [(e.clientX - r.left - r.width / 2) / s, (e.clientY - r.top - r.height / 2) / s];
+  const s = skala(a);
+  return [(e.clientX - r.left - r.width / 2) / s + ausschnitt[a].cx, (e.clientY - r.top - r.height / 2) / s + ausschnitt[a].cy];
 };
+
+/** Zoom um den Faktor k, der Blattpunkt unter (clientX, clientY) bleibt stehen */
+function zoomen(a: Ansicht, k: number, clientX: number, clientY: number): void {
+  const v = ausschnitt[a];
+  const vorher = blattPunkt(a, { clientX, clientY });
+  v.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, v.zoom * k));
+  const nachher = blattPunkt(a, { clientX, clientY });
+  v.cx += vorher[0] - nachher[0];
+  v.cy += vorher[1] - nachher[1];
+  ausschnittGeaendert(a);
+}
+/** Verschieben um Bildpunkte (wie das Papier unter dem Zeiger) */
+function schieben(a: Ansicht, dx: number, dy: number): void {
+  const s = skala(a);
+  ausschnitt[a].cx -= dx / s;
+  ausschnitt[a].cy -= dy / s;
+  ausschnittGeaendert(a);
+}
+const NAMEN: Record<Ansicht, string> = { seite: 'Seite', front: 'Front', top: 'Top' };
+function ausschnittGeaendert(a: Ansicht): void {
+  const kopf = felder[a].querySelector('header');
+  const z = ausschnitt[a].zoom;
+  if (kopf) kopf.textContent = Math.abs(z - 1) < 1e-3 ? NAMEN[a] : `${NAMEN[a]} · ${Math.round(z * 100)} %`;
+  blattZeichnen(a);
+  neuZeichnen = true;
+}
 
 function hautZeigen(): void {
   const nor = hautNormalen(haut);
@@ -586,16 +630,16 @@ function auswahlMitte(): V3 | null {
 /** so lang zeigt das Blatt einen Griff mindestens (px): kurze Stücke hätten sonst Griffe unter dem Punkt */
 const GRIFF_PX = 28;
 /** Faktor, mit dem die Griffe eines Punkts gezeigt werden (≥ 1); ein Zug an der Spitze wirkt im selben Verhältnis feiner */
-function griffFaktor(g: { ein: V3 | null; aus: V3 | null }): number {
+function griffFaktor(g: { ein: V3 | null; aus: V3 | null }, a: Ansicht): number {
   const kurz = Math.min(...[g.ein, g.aus].filter((v): v is V3 => !!v).map((v) => Math.hypot(v.x, v.y, v.z)));
-  return Number.isFinite(kurz) && kurz > 1e-9 ? Math.max(1, GRIFF_PX / (skala() * kurz)) : 1;
+  return Number.isFinite(kurz) && kurz > 1e-9 ? Math.max(1, GRIFF_PX / (skala(a) * kurz)) : 1;
 }
 
 /**
  * Griffe zum Zeigen: die der gewählten Punkte, an einer gewählten Kreuzung auch die des anderen Loops (relativ zum Punkt, dazu
  * der Faktor fürs Blatt). Am Verlauf der gezeigten Linie abgelesen; den gerade gezogenen Griff genau (Ruhe + Versatz).
  */
-function griffeZumZeigen(lagen: readonly Float64Array[]): { li: number; i: number; ein: V3 | null; aus: V3 | null; f: number }[] {
+function griffeZumZeigen(lagen: readonly Float64Array[], a: Ansicht): { li: number; i: number; ein: V3 | null; aus: V3 | null; f: number }[] {
   const wahl: { li: number; i: number }[] = [];
   const kreuz = new Set<number>();
   for (const w of auswahl) {
@@ -616,10 +660,13 @@ function griffeZumZeigen(lagen: readonly Float64Array[]): { li: number; i: numbe
     const g = zug?.griff;
     if (g && g.li === li && g.i === i) {
       const r = griffeBei(l, zug!.loeser.start[li]!, i);
-      return { li, i, ein: plus(r.ein, zug!.griffVersatz.ein), aus: plus(r.aus, zug!.griffVersatz.aus), f: zug!.griffFaktor };
+      const ein = plus(r.ein, zug!.griffVersatz.ein);
+      const aus = plus(r.aus, zug!.griffVersatz.aus);
+      // im Blatt des Zugs bleibt der Faktor vom Anfang (die Spitze bleibt unter der Maus)
+      return { li, i, ein, aus, f: a === zug!.ansicht ? zug!.griffFaktor : griffFaktor({ ein, aus }, a) };
     }
     const r = griffeBei(l, lagen[li]!, i);
-    return { li, i, ...r, f: griffFaktor(r) };
+    return { li, i, ...r, f: griffFaktor(r, a) };
   });
 }
 
@@ -629,10 +676,11 @@ let spur: { a: Ansicht; p: [number, number][] } | null = null;
 function blattZeichnen(a: Ansicht): void {
   const el = blaetter[a];
   const r = felder[a].getBoundingClientRect();
-  const s = skala();
+  const s = skala(a);
   const w = r.width / s;
   const h = r.height / s;
-  el.setAttribute('viewBox', `${-w / 2} ${-h / 2} ${w} ${h}`);
+  const { cx, cy } = ausschnitt[a];
+  el.setAttribute('viewBox', `${cx - w / 2} ${cy - h / 2} ${w} ${h}`);
   el.classList.toggle('loop', modus === 'loop');
   el.classList.toggle('form', modus === 'form');
   el.replaceChildren();
@@ -672,7 +720,7 @@ function blattZeichnen(a: Ansicht): void {
     }
   });
   // Griffe der gewählten Punkte: Linie vom Punkt zur Spitze, Spitze als kleines Quadrat (unter den Punkten)
-  for (const { li, i, ein, aus, f } of griffeZumZeigen(lagen)) {
+  for (const { li, i, ein, aus, f } of griffeZumZeigen(lagen, a)) {
     const l = loops[li]!;
     const p = l.punkte[i]!;
     const q = zug && !zug.griff ? p.cur : p.ref;
@@ -910,7 +958,7 @@ function griffZugStarten(a: Ansicht, X: number, Y: number, spiegel: boolean, li:
     mitte: null,
     griff: { li, i, seite },
     griffVersatz: {},
-    griffFaktor: griffFaktor(griffeBei(loops[li]!, loeser.start[li]!, i)),
+    griffFaktor: griffFaktor(griffeBei(loops[li]!, loeser.start[li]!, i), a),
   };
   letzteZerlegung = loeser.loeser.zeitZerlegen;
   letzterBereich = loeser.loeser.anzahl;
@@ -1093,7 +1141,16 @@ function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
         const q = f(p.ref);
         return { x: g * (q.x - p.ref.x), y: g * (q.y - p.ref.y), z: g * (q.z - p.ref.z) };
       });
-      if (irgend) d = verschiebungLaengs(l, D);
+      // wie in Illustrator: Beim Drehen und Skalieren drehen und skalieren die Griffe der Punkte mit (beim Verschieben gehen sie
+      // nur mit, ohne Versatz)
+      const griffe =
+        z.modal === 's' || z.modal === 'r'
+          ? l.punkte.map((_, i) => {
+              const g = z.punktW.get(`${li}:${i}`);
+              return g ? griffeAbbilden(l, S, i, f, g) : undefined;
+            })
+          : undefined;
+      if (irgend) d = verschiebungLaengs(l, D, griffe);
     }
     if (d) zGrenzen(l, S, d);
     return d;
@@ -1103,12 +1160,14 @@ function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
 function zugBewegen(X: number, Y: number): void {
   const z = zug;
   if (!z) return;
-  if (!z.bewegt && Math.hypot(X - z.x0, Y - z.y0) * skala() < 2) return;
+  if (!z.bewegt && Math.hypot(X - z.x0, Y - z.y0) * skala(z.ansicht) < 2) return;
   z.bewegt = true;
   if (z.griff) {
-    // Griff: in der Ebene des Blatts verschoben (die Tiefe bleibt), nur sein Loop bewegt sich
+    // Griff: in der Ebene des Blatts verschoben (die Tiefe bleibt), nur sein Loop bewegt sich. Eine Ecke von selbst wird dabei
+    // eine Ecke von Hand (ihre Griffe sind dann frei, wie in Blender ein „Vector“-Griff, den man anfasst)
     const { li, i, seite } = z.griff;
     const l = loops[li]!;
+    if (istVektorEcke(l.punkte[i]!)) l.punkte[i]!.ecke = true;
     const d = inWelt(z.ansicht, (X - z.x0) / z.griffFaktor, (Y - z.y0) / z.griffFaktor);
     if (z.spiegel) d.z = -d.z;
     z.griffVersatz = griffZiehen(l, z.loeser.start[li]!, i, seite, d);
@@ -1165,7 +1224,7 @@ function zugEnde(ok: boolean): void {
 // ---------- Loops schneiden, Formen zeichnen, Punkte setzen und löschen ----------
 
 function loopSchneiden(a: Ansicht, A: [number, number], B: [number, number]): void {
-  const l = loopAusSchnitt(haut, a, A, B, naechsteId, 10 / skala());
+  const l = loopAusSchnitt(haut, a, A, B, naechsteId, 10 / skala(a));
   if (!l) {
     meldung = 'Kein Loop: die Linie quer über den Körper ziehen';
     return;
@@ -1251,7 +1310,7 @@ function vereinfachen(p: readonly [number, number][], tol: number): number[] {
 
 function formErstellen(a: Ansicht, roh: [number, number][]): void {
   if (roh.length < 8) return;
-  const s = skala();
+  const s = skala(a);
   // geschlossen: in zwei Hälften vereinfachen (Anfang bis zum fernsten Punkt und zurück), sonst fällt die erste Strecke auf
   // Länge null und es bleiben keine Punkte
   let fern = 0;
@@ -1338,17 +1397,26 @@ let maus: { a: Ansicht; X: number; Y: number } | null = null;
 
 /** Doppelklick selbst zählen: das Blatt wird beim Drücken neu gezeichnet, `dblclick` kommt dann nicht an */
 const letzterKlick = { t: 0, X: 0, Y: 0, was: '' };
-function doppelklick(was: string, X: number, Y: number): boolean {
+function doppelklick(a: Ansicht, was: string, X: number, Y: number): boolean {
   const jetzt = performance.now();
-  const ja = was === letzterKlick.was && jetzt - letzterKlick.t < 400 && Math.hypot(X - letzterKlick.X, Y - letzterKlick.Y) * skala() < 6;
+  const ja = was === letzterKlick.was && jetzt - letzterKlick.t < 400 && Math.hypot(X - letzterKlick.X, Y - letzterKlick.Y) * skala(a) < 6;
   Object.assign(letzterKlick, { t: ja ? 0 : jetzt, X, Y, was });
   return ja;
 }
+
+/** mittlere Taste gedrückt: das Blatt verschieben (wie in Blender) */
+let schwenk: { a: Ansicht; x: number; y: number } | null = null;
 
 function druecken(a: Ansicht, e: PointerEvent): void {
   const [X, Y] = blattPunkt(a, e);
   if (zug && zug.modal) {
     zugEnde(e.button === 0);
+    return;
+  }
+  if (e.button === 1) {
+    schwenk = { a, x: e.clientX, y: e.clientY };
+    blaetter[a].setPointerCapture(e.pointerId);
+    e.preventDefault();
     return;
   }
   if (e.button !== 0) return;
@@ -1377,12 +1445,12 @@ function druecken(a: Ansicht, e: PointerEvent): void {
     if (griffZugStarten(a, X, Y, m, loopNr(Number(l)), i, g)) blaetter[a].setPointerCapture(e.pointerId);
     return;
   }
-  if (i < 0 && doppelklick(`${l}:${m}`, X, Y)) {
+  if (i < 0 && doppelklick(a, `${l}:${m}`, X, Y)) {
     punktAmKlick(a, Number(l), X, Y, m);
     return;
   }
   // Doppelklick oder ⌥-Klick auf einen Punkt: Ecke ↔ glatt
-  if (i >= 0 && (doppelklick(`p${l}:${i}`, X, Y) || e.altKey)) {
+  if (i >= 0 && (doppelklick(a, `p${l}:${i}`, X, Y) || e.altKey)) {
     eckeUmschalten(Number(l), i);
     return;
   }
@@ -1395,6 +1463,11 @@ function druecken(a: Ansicht, e: PointerEvent): void {
 }
 
 function bewegen(a: Ansicht, e: PointerEvent): void {
+  if (schwenk && schwenk.a === a) {
+    schieben(a, e.clientX - schwenk.x, e.clientY - schwenk.y);
+    schwenk = { a, x: e.clientX, y: e.clientY };
+    return;
+  }
   const [X, Y] = blattPunkt(a, e);
   maus = { a, X, Y };
   if (entwurf && entwurf.a === a) {
@@ -1404,7 +1477,7 @@ function bewegen(a: Ansicht, e: PointerEvent): void {
   }
   if (spur && spur.a === a) {
     const [lx, ly] = spur.p[spur.p.length - 1]!;
-    if (Math.hypot(X - lx, Y - ly) * skala() > 2) spur.p.push([X, Y]);
+    if (Math.hypot(X - lx, Y - ly) * skala(a) > 2) spur.p.push([X, Y]);
     blattZeichnen(a);
     return;
   }
@@ -1412,11 +1485,15 @@ function bewegen(a: Ansicht, e: PointerEvent): void {
 }
 
 function loslassen(a: Ansicht): void {
+  if (schwenk && schwenk.a === a) {
+    schwenk = null;
+    return;
+  }
   if (entwurf && entwurf.a === a) {
     const { x0, y0, x1, y1 } = entwurf;
     entwurf = null;
     modus = 'frei';
-    if (Math.hypot(x1 - x0, y1 - y0) * skala() > 6) loopSchneiden(a, uvAus(a, x0, y0), uvAus(a, x1, y1));
+    if (Math.hypot(x1 - x0, y1 - y0) * skala(a) > 6) loopSchneiden(a, uvAus(a, x0, y0), uvAus(a, x1, y1));
     allesZeigen();
     return;
   }
@@ -1438,6 +1515,20 @@ for (const a of ['seite', 'front', 'top'] as const) {
   el.addEventListener('pointerup', () => loslassen(a));
   el.addEventListener('pointercancel', () => loslassen(a));
   el.addEventListener('contextmenu', (e) => e.preventDefault());
+  // Rad und Pinch zoomen zum Zeiger, zwei Finger auf dem Trackpad verschieben (wie im Editor); nicht passiv, sonst zoomt die Seite
+  el.addEventListener(
+    'wheel',
+    (e) => {
+      e.preventDefault();
+      if (istTrackpad(e)) schieben(a, -e.deltaX, -e.deltaY);
+      else zoomen(a, radFaktor(e), e.clientX, e.clientY);
+    },
+    { passive: false },
+  );
+  // die mittlere Taste soll nicht das automatische Rollen des Browsers starten
+  el.addEventListener('mousedown', (e) => {
+    if (e.button === 1) e.preventDefault();
+  });
 }
 // G/S/R folgt der Maus überall im Fenster
 window.addEventListener('pointermove', (e) => {
@@ -1487,6 +1578,12 @@ window.addEventListener('keydown', (e) => {
   } else if (k === 'o') {
     oAn = !oAn;
     allesZeigen();
+  } else if (e.key === 'Home') {
+    // Pos1: alle Blätter wieder ganz zeigen
+    for (const a of ['seite', 'front', 'top'] as const) {
+      Object.assign(ausschnitt[a], { cx: 0, cy: 0, zoom: 1 });
+      ausschnittGeaendert(a);
+    }
   } else if (e.key === '[' || e.key === ']') {
     radius = Math.max(10, Math.min(600, radius * (e.key === ']' ? 1.2 : 1 / 1.2)));
     allesZeigen();
@@ -1513,7 +1610,6 @@ function rendern(): void {
   renderer.setClearColor(PAPIER, 1);
   renderer.clear();
   renderer.setScissorTest(true);
-  const s = skala();
   const liste: [keyof typeof felder, OrthographicCamera | PerspectiveCamera][] = [
     ['seite', kameras.seite],
     ['front', kameras.front],
@@ -1526,14 +1622,17 @@ function rendern(): void {
     const y = hoehe - r.bottom;
     renderer.setViewport(r.left, y, r.width, r.height);
     renderer.setScissor(r.left, y, r.width, r.height);
-    if (kamera instanceof OrthographicCamera) {
+    if (kamera instanceof OrthographicCamera && name !== 'drei') {
+      // Blattkoordinaten (x, y nach unten) und Kamera: rechts = Blatt-x, oben = −Blatt-y, in allen drei Ansichten
+      const s = skala(name);
       const w = r.width / s / 2;
       const h = r.height / s / 2;
-      kamera.left = -w;
-      kamera.right = w;
-      kamera.top = h;
-      kamera.bottom = -h;
-    } else {
+      const { cx, cy } = ausschnitt[name];
+      kamera.left = cx - w;
+      kamera.right = cx + w;
+      kamera.top = -cy + h;
+      kamera.bottom = -cy - h;
+    } else if (kamera instanceof PerspectiveCamera) {
       kamera.aspect = r.width / r.height;
     }
     kamera.updateProjectionMatrix();
@@ -1593,7 +1692,7 @@ schleife();
     const p = l?.punkte[i];
     if (!l || !p) return { ein: null, aus: null, faktor: 1 };
     const g = griffeBei(l, l.ruhe, i);
-    const f = griffFaktor(g);
+    const f = griffFaktor(g, 'seite');
     const spitze = (v: V3 | null) => (v ? { x: p.ref.x + f * v.x, y: p.ref.y + f * v.y, z: p.ref.z + f * v.z } : null);
     return { ein: spitze(g.ein), aus: spitze(g.aus), faktor: f };
   },
@@ -1615,9 +1714,17 @@ schleife();
   meldung: () => meldung,
   bild: (a: Ansicht, p: V3): { x: number; y: number } => {
     const r = felder[a].getBoundingClientRect();
-    const s = skala();
+    const s = skala(a);
     const [x, y] = imBlatt(a, p);
-    return { x: r.left + r.width / 2 + x * s, y: r.top + r.height / 2 + y * s };
+    return { x: r.left + r.width / 2 + (x - ausschnitt[a].cx) * s, y: r.top + r.height / 2 + (y - ausschnitt[a].cy) * s };
+  },
+  /** Ausschnitt eines Blatts setzen bzw. lesen (Mitte in Blattkoordinaten, Zoom) */
+  ausschnitt: (a: Ansicht, v?: { cx: number; cy: number; zoom: number }) => {
+    if (v) {
+      Object.assign(ausschnitt[a], v);
+      ausschnittGeaendert(a);
+    }
+    return { ...ausschnitt[a] };
   },
   felder: () =>
     Object.fromEntries(

@@ -982,6 +982,26 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     gezeigt und wirken dann im selben Verhältnis feiner (Hebel). Mit O wirkt ein Zug über Gewichte je Probe, dort spielt die Ecke keine
     Rolle (der kreuzende Loop bleibt rund). Die Ecke am harten Ring gibt der kreuzenden Linie ein Zelt bis zu ihren Nachbarpunkten (weit
     entfernte Nachbarn = flaches Zelt). Bilder `docs/progress/editor/form-griffe-*-2026-11-05.jpg`.
+- **2026-11-05 (nachts, danach): Punkte wie in Illustrator, Zoom in den Blättern** (Florian: „Bei den Punkten fällt mir auf, dass sie
+  sich noch nicht wie bei Illustrator verhalten. Die Bewegung eines Punktes hat Einfluss über den nächsten Punkt hinaus, dadurch
+  entstehen teilweise komische Kanten.“ und „Zoom in den Blättern gerne“).
+  - **Ursache:** `verschiebungLaengs` nahm die Steigung an jedem Punkt aus seinen Nachbarn (Catmull-Rom). Ein gezogener Punkt drehte
+    damit die Richtung seiner Nachbarpunkte mit, das Stück dahinter bog sich (oberer Punkt 40 hoch: 2,96 Einheiten jenseits der
+    Nachbarn, an Kreuzungen gegen den anderen Loop, am Rand des Bereichs abgeschnitten → Knick).
+  - **Jetzt:** Die Griffe gehen mit ihrem Punkt (Steigung der Verschiebung 0 an jedem Punkt), ein Punkt ändert nur die zwei Stücke bis
+    zu seinen Nachbarn (gemessen 0,00 jenseits). S/R drehen und skalieren die Griffe mit (`griffeAbbilden`: f(p + Griff) − f(p)); über
+    die Punkte skaliert wird die Form ums Auge auf 0,03 genau größer (vorher 1,01). Ecken von Hand behalten ihre Griffe; nur Ecken von
+    selbst (`istVektorEcke`, Kreuzung mit hartem Loop) nehmen die Sehne zum Nachbarn (wie Blenders „Vector“), damit die Linie dem Grat
+    folgt (Grat an der Kreuzung 14,8° gegen 14,6° sonst, glatt 4,4°); fasst man ihren Griff an, wird sie eine Ecke von Hand.
+  - **Zoom:** Jedes Blatt hat einen Ausschnitt (Mitte, Zoom 0,25–40); Rad und Pinch zoomen zum Zeiger, zwei Finger und die mittlere
+    Taste verschieben, Pos1 zeigt alles, der Kopf zeigt den Zoom („Seite · 182 %“). Kameras, SVG, Hilfslinien und der Haken `bild`
+    rechnen mit dem Ausschnitt (Punkte im Blatt gegen die Abbildung 0,00 px); Griffe werden mit wachsendem Zoom echt lang (Faktor 3,5 →
+    1,9 bei 182 %). Haken `__kurven.ausschnitt(a, v?)`.
+  - **Gemessen** (Tests 13 in `loops.test.ts`, Maus `scripts/pruefen/form-punkte-zoom-probe.mjs`, ältere Proben): obere Kreuzung 40
+    hoch → Ring und Mitte jenseits der Nachbarn 0,00, Ei glatt, 0 umgeklappt, spiegelgleich; Braue unverändert (42,7° / 29,8°); in der
+    Folge der Loop-Probe dreht die ganze Augen-Form ohne O jetzt 38 statt 30 Dreiecke um (Dreh-Code unverändert, die Haut darunter ist
+    nach Schritt 2 anders; Drehen ohne O war schon offen).
+  - Bilder `docs/progress/editor/form-punkte-*-2026-11-05.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

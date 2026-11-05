@@ -8,6 +8,7 @@ import {
   eckenAuto,
   festlegen,
   formAusZeichnung,
+  griffeAbbilden,
   griffeAusrichten,
   griffeBei,
   griffZiehen,
@@ -340,7 +341,56 @@ describe('Bézier-Griffe und Ecken', () => {
     expect(ecke.aus).toEqual(delta);
   });
 
-  it('Ecke: hinausgezogen knickt die Linie am Punkt, glatt läuft sie rund hindurch; Ausrichten macht aus dem Knick wieder glatt', () => {
+  it('Punkt ziehen wie in Illustrator: nur die zwei Stücke bis zu den Nachbarpunkten, die Richtung am Punkt bleibt', () => {
+    const auge = augenForm(kugel());
+    const i = 2;
+    const p = auge.punkte[i]!.ref;
+    const D = auge.punkte.map((_, k) => (k === i ? { x: 0, y: 12, z: 0 } : { x: 0, y: 0, z: 0 }));
+    const d = verschiebungLaengs(auge, D);
+    const s0 = auge.punkte[i - 1]!.s;
+    const s1 = auge.punkte[i + 1]!.s;
+    let jenseits = 0;
+    for (let j = 0; j < auge.proben.length; j++) {
+      if (auge.s[j]! > s0 + 1e-9 && auge.s[j]! < s1 - 1e-9) continue;
+      jenseits = Math.max(jenseits, Math.hypot(d[3 * j]!, d[3 * j + 1]!, d[3 * j + 2]!));
+    }
+    const j = auge.s.findIndex((s) => Math.abs(s - auge.punkte[i]!.s) < 1e-9);
+    const L = Float64Array.from(auge.ruhe, (x, k) => x + d[k]!);
+    const vorher = griffeBei(auge, auge.ruhe, i);
+    const nachher = griffeBei(auge, L, i);
+    log(`Punkt 12 hoch: jenseits der Nachbarn ${jenseits}, am Punkt ${Math.hypot(d[3 * j]!, d[3 * j + 1]! - 12, d[3 * j + 2]!)}, p ${JSON.stringify(p)}`);
+    expect(jenseits).toBeLessThan(1e-9);
+    expect(Math.abs(d[3 * j + 1]! - 12)).toBeLessThan(1e-9);
+    // die Griffe gehen mit: gleiche Richtung vorher und nachher
+    const c = (vorher.aus!.x * nachher.aus!.x + vorher.aus!.y * nachher.aus!.y + vorher.aus!.z * nachher.aus!.z) / (betrag(vorher.aus!) * betrag(nachher.aus!));
+    expect((Math.acos(Math.min(1, c)) * 180) / Math.PI).toBeLessThan(1.5);
+  });
+
+  it('Skalieren über die Punkte: die Griffe skalieren mit (griffeAbbilden), die Form wird genau größer', () => {
+    const auge = augenForm(kugel());
+    const c = { x: -60, y: 40, z: 0 };
+    const f = (q: { x: number; y: number; z: number }) => ({ x: c.x + 1.3 * (q.x - c.x), y: c.y + 1.3 * (q.y - c.y), z: q.z });
+    const D = auge.punkte.map((p) => {
+      const q = f(p.ref);
+      return { x: q.x - p.ref.x, y: q.y - p.ref.y, z: 0 };
+    });
+    const g = auge.punkte.map((_, i) => griffeAbbilden(auge, auge.ruhe, i, f));
+    const mit = verschiebungLaengs(auge, D, g);
+    const ohne = verschiebungLaengs(auge, D);
+    let fehlerMit = 0;
+    let fehlerOhne = 0;
+    for (let j = 0; j < auge.proben.length; j++) {
+      const q = { x: auge.ruhe[3 * j]!, y: auge.ruhe[3 * j + 1]!, z: auge.ruhe[3 * j + 2]! };
+      const soll = f(q);
+      fehlerMit = Math.max(fehlerMit, Math.hypot(q.x + mit[3 * j]! - soll.x, q.y + mit[3 * j + 1]! - soll.y));
+      fehlerOhne = Math.max(fehlerOhne, Math.hypot(q.x + ohne[3 * j]! - soll.x, q.y + ohne[3 * j + 1]! - soll.y));
+    }
+    log(`Form ums Auge × 1,3 über ihre 8 Punkte: Abweichung mit Griffen ${fehlerMit.toFixed(2)}, ohne ${fehlerOhne.toFixed(2)} (Radius 35 → 45,5)`);
+    expect(fehlerMit).toBeLessThan(0.6);
+    expect(fehlerOhne).toBeGreaterThan(3 * fehlerMit);
+  });
+
+  it('Ecke: von Hand behält sie ihre Griffe, von selbst (an einem harten Loop) knickt sie hinausgezogen; Ausrichten macht wieder glatt', () => {
     const h = kugel();
     const auge = augenForm(h);
     const i = 2;
@@ -350,9 +400,13 @@ describe('Bézier-Griffe und Ecken', () => {
     const D = auge.punkte.map((_, k) => (k === i ? { x: (10 * (p.x + 60)) / r, y: (10 * (p.y - 40)) / r, z: 0 } : { x: 0, y: 0, z: 0 }));
     const glatt = steigungsSprung(auge, verschiebungLaengs(auge, D), j);
     auge.punkte[i]!.ecke = true;
+    const vonHand = steigungsSprung(auge, verschiebungLaengs(auge, D), j);
+    delete auge.punkte[i]!.ecke;
+    auge.punkte[i]!.autoEcke = true;
     const ecke = steigungsSprung(auge, verschiebungLaengs(auge, D), j);
-    log(`Sprung der Steigung am gezogenen Punkt: glatt ${glatt.toFixed(3)}, Ecke ${ecke.toFixed(3)}`);
+    log(`Sprung der Steigung am gezogenen Punkt: glatt ${glatt.toFixed(3)}, Ecke von Hand ${vonHand.toFixed(3)}, Ecke von selbst ${ecke.toFixed(3)}`);
     expect(glatt).toBeLessThan(0.1);
+    expect(vonHand).toBeLessThan(0.1);
     expect(ecke).toBeGreaterThan(0.4);
     expect(ecke).toBeGreaterThan(5 * glatt);
     // eine Ecke mit Knick: Lage = Ruhe + Verschiebung; Ausrichten gibt Griffe auf einer Geraden
