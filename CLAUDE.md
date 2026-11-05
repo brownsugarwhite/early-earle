@@ -1116,6 +1116,12 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - **Offen:** Beim Öffnen knickt die Haut unten am Körper (dort läuft die Kieferdrehung nach dem Abstand von der Unterlippe aus, wie in
     der ersten Maul-Probe; auf einer Kugel liegt das mitten im Kinn). Weg im Loop-Modell: eine Kinnlinie als Loop, wo der Unterkiefer
     endet. Lippen ohne Rundung, Zähne, getrennte Kiefer am Loop, Posen. Bilder `docs/progress/editor/form-maul-loop-*-2026-11-05.jpg`.
+  - **Nachtrag (Florian: „ich bin nicht sicher mit der Kinnlinie. Machen das nicht später die Bones und die Weights?“):** Ja. Der
+    Regler ist schon ein Kieferknochen mit automatischen Gewichten (`kieferFeld`: Winkel × Abstand von der Unterlippe, Abfall von einer
+    bis anderthalb Kieferdicken); der Knick ist dieser Abfall weit vom Gelenk (Falle 14.10.: Hebel × Gefälle × Winkel > 1; Übergänge im
+    Winkel um das Gelenk knicken nicht, solange sie breiter sind als der Öffnungswinkel). Keine Kinnlinie: Wo der Unterkiefer endet,
+    entscheiden die Gewichte der Pose (Kiefer gegen den Rest des Körpers), den Rest bei großem Winkel der Pinsel; Gewichte malen nur,
+    wenn das nicht reicht. Dasselbe gilt für das Vorderbein unter dem Mundwinkel aus der ersten Maul-Probe.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
