@@ -371,3 +371,28 @@ neuer Punkt genau auf dem Bézier-Stück (`pfadBei`), dazu der kleine Abstand, d
 Ganz gleich ist das Netz danach trotzdem nicht: Es hat mehr Punkte und andere Dreiecke, die Form aber ist dieselbe. Test
 `weiterZug.test.ts` E (mit Catmull–Rom rot). Etwas schlechter wurde die absichtlich verdrehte Schlaufe (40/12 statt 34/10), wo die
 Linie selbst verkehrt läuft.
+
+**Nachtrag (06.11. spätabends): Biegung zwischen zwei Punkten, Abwägung.** Florian: Die Griffe fühlen sich nicht ganz wie in
+Illustrator an; nach mehrfachem Ziehen entstehen zwischen zwei Punkten Biegungen, die sich mit den Griffen nicht glätten lassen
+(Bild `docs/progress/editor/form-biegung-florian-2026-11-06.webp`). Gemessen mit der Maus (`scripts/pruefen/form-restversatz.mjs`,
+Kugel, drei Loops):
+
+- Die Linie ist nicht genau ihr Bézier-Pfad. Sie ist der Schnitt durch die Haut beim Anlegen, die Griffe werden ihr angepasst, der
+  Rest bleibt je Stelle als fester Versatz an der Linie. An gleicher Stelle bis 7,2 Einheiten (meist längs der Linie), neben der
+  Kurve 2,0 an den beiden ersten Loops (beim Anlegen nur zwei Kreuzungen, ein Halbkreis als ein Stück; spätere Kreuzungen teilen
+  den Pfad formtreu und erben das), 0,7 am dritten.
+- Der Versatz ist eine feste Richtung im Raum und dreht sich nicht mit dem Stück: Wird ein Punkt woandershin gezogen, steht quer,
+  was längs lag (neben der Kurve 2,0 → 3,3 / 3,2 / 4,3, zurück am alten Ort wieder 2,0). Er sammelt sich nicht an (dreimal hinaus
+  und zurück gleich, der Punkt 0,00 neben seinem Ort). Griff gegen Linie 1,2°, nach einem neuen Punkt 3,1° (der Punkt liegt auf
+  der Linie, seine Griffe auf dem Pfad). In Florians Bild zeigt der linke Griff am oberen Punkt fast waagerecht, die Linie läuft
+  gut 10° schräg weg.
+- Örtlich (`scripts/pruefen/form-oertlich.mjs`, oben 60 hinauf): Unter dem unveränderten Ring ändert sich die Form um höchstens
+  0,6 (Abstand zur Kugel 0,23 → 0,85), mit Gedächtnis 0,5 (→ 0,77). Die Punkte gleiten aus den Kurven bis 2,2 längs der Fläche
+  (Gedächtnis 0,6); das sieht man nicht.
+- Vorschlag: Die Linie ist der Bézier-Pfad, die Haut folgt ihm. Dann steuern die Griffe alles, und Verdichten und Zusammenlegen
+  ändern die Linie nie. Preis beim Anlegen: Ein Halbkreis als ein Stück liegt etwa 1,4 % neben dem Kreis (an der Kugel 2
+  Einheiten). Entweder ändert sich die Haut beim Anlegen so weit, oder der neue Loop bekommt so viele Punkte wie nötig
+  (in Illustrator hat ein Kreis vier). Entscheidung bei Florian.
+- Was die Käfig-Verfahren besser konnten (Vierecke mit Kantenloops auf den Linien, feste Punktzahl für Posen und Muster, Glätte
+  und scharfe Falten per Unterteilung, wenige hundert Punkte), betrifft das Netz fürs Spiel. Das lässt sich als letzter Schritt
+  aus den fertigen Loops bauen (Stücknetz aus P2), statt die Form daran zu binden.
