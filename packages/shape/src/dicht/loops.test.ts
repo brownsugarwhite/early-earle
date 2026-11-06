@@ -3,6 +3,7 @@ import { loopEinsetzen } from './einsetzen';
 import { type V3, hautAus } from './kurven';
 import {
   type GriffVersatz,
+  type HautArt,
   type Loop,
   LoopZug,
   bereichUm,
@@ -30,6 +31,9 @@ import {
 import { rundAusSeite } from './rund';
 import type { UmrissPunkt } from './umriss';
 
+declare const process: { env: Record<string, string | undefined> };
+/** Löser der Haut für die Krümmung aus den Loops: wie im Fenster; mit HAUT=kurven der aus Beweis B (zum Vergleich) */
+const HAUT = (process.env.HAUT ?? 'gedaechtnis') as HautArt;
 const log = (...a: unknown[]) => (globalThis as unknown as { console: { log: (...x: unknown[]) => void } }).console.log(...a);
 const kreis = (r: number): UmrissPunkt[] => [
   { x: r, y: 0 },
@@ -660,7 +664,7 @@ describe('Krümmung folgt den Loops', () => {
   };
   /** ein Zug wie im Fenster: in Stufen, am Ende liegen die Loops fest */
   const ziehen = (h: ReturnType<typeof kugel>, loops: Loop[], versch: Float64Array[], bereich: Uint8Array | null, kr: boolean) => {
-    const z = new LoopZug(h, loops, bereich, kr);
+    const z = new LoopZug(h, loops, bereich, kr, kr ? HAUT : 'gedaechtnis');
     for (let s = 1; s <= 4; s++) z.schritt(versch.map((d) => d.map((x) => (x * s) / 4)), 2);
     z.schritt(versch, 6);
     loops.forEach((l) => festlegen(h, l));

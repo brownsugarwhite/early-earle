@@ -533,35 +533,7 @@ export class HautZiele {
       for (const i of this.zeilen) {
         const nb = h.nachbarn[i]!;
         const g = this.gew[i]!;
-        let t = drehen(r.nor, m.nor, i, r.tang);
-        // dazu die Drehung um die Normale (aus den Nachbarn, 2D-Procrustes in der Tangentialebene): ohne sie wehrt sich die
-        // Haut gegen jedes Verdrehen in der Fläche (ein gedrehter Loop klappte 20–34 Dreiecke um)
-        const nx = m.nor[3 * i]!;
-        const ny = m.nor[3 * i + 1]!;
-        const nz = m.nor[3 * i + 2]!;
-        let sDot = 0;
-        let sKreuz = 0;
-        nb.forEach((j, kk) => {
-          const gk = g[kk]!;
-          if (gk === 0) return;
-          const e = drehenVektor(r.nor, m.nor, i, P0[3 * j]! - P0[3 * i]!, P0[3 * j + 1]! - P0[3 * i + 1]!, P0[3 * j + 2]! - P0[3 * i + 2]!);
-          const cx = P[3 * j]! - P[3 * i]!;
-          const cy = P[3 * j + 1]! - P[3 * i + 1]!;
-          const cz = P[3 * j + 2]! - P[3 * i + 2]!;
-          sDot += gk * (e[0] * cx + e[1] * cy + e[2] * cz - (e[0] * nx + e[1] * ny + e[2] * nz) * (cx * nx + cy * ny + cz * nz));
-          sKreuz += gk * ((e[1] * cz - e[2] * cy) * nx + (e[2] * cx - e[0] * cz) * ny + (e[0] * cy - e[1] * cx) * nz);
-        });
-        const th = Math.atan2(sKreuz, sDot);
-        if (Math.abs(th) > 1e-9) {
-          const co = Math.cos(th);
-          const si = Math.sin(th);
-          const nt = nx * t[0] + ny * t[1] + nz * t[2];
-          t = [
-            t[0] * co + (ny * t[2] - nz * t[1]) * si + nx * nt * (1 - co),
-            t[1] * co + (nz * t[0] - nx * t[2]) * si + ny * nt * (1 - co),
-            t[2] * co + (nx * t[1] - ny * t[0]) * si + nz * nt * (1 - co),
-          ];
-        }
+        const t = verteilungGedreht(h, r, m, P0, g, i);
         // Die Krümmung beim Anfassen mit der Dehnung gestreckt (die Haut wird gleichmäßig größer, ihre Krümmung kleiner: Kante² ×
         // Krümmung wächst wie die Dehnung; mit ihrem Quadrat blähte sich die höher gezogene Kugel in der Tiefe auf, 150 → 186); die
         // Krümmung aus den Loops ist die, die die Haut jetzt haben soll (Kante² wächst mit dem Quadrat, das Feld hat ihr Gedächtnis
@@ -707,7 +679,7 @@ export class HautLoeser {
  * Je Punkt der Laplace (Punkt − Mittel der Nachbarn): sein Anteil längs der Normale ist Krümmung · Kantenlänge², der Rest liegt
  * in der Fläche und sagt nur, wie die Punkte verteilt sind (beim Netz aus Surface Nets ist er viel größer).
  */
-function vermessen(h: Haut, gew: readonly Float64Array[]): Vermessung {
+export function vermessen(h: Haut, gew: readonly Float64Array[]): Vermessung {
   const n = h.n;
   const P = h.pos;
   const nor = hautNormalen(h);
@@ -745,7 +717,7 @@ function vermessen(h: Haut, gew: readonly Float64Array[]): Vermessung {
 export const kantenSchluessel = (h: Haut, von: number, zu: number): number => von * h.n + zu;
 
 /** Gewichte je Punkt und Nachbar, normiert; ohne harte Kanten gleich (Mittel der Nachbarn) */
-function gewichteAus(h: Haut, kanten: ReadonlyMap<number, number> | null): Float64Array[] {
+export function gewichteAus(h: Haut, kanten: ReadonlyMap<number, number> | null): Float64Array[] {
   return h.nachbarn.map((nb, i) => {
     const w = nb.map((j) => (kanten ? (kanten.get(kantenSchluessel(h, i, j)) ?? 1) : 1));
     let s = w.reduce((a, b) => a + b, 0);
@@ -850,11 +822,55 @@ export function stelleAufKurve(k: Kurve, q: V3): { stueck: number; t: number; p:
   return { stueck: bs, t: bt, p: aufStueck(st[bs]!, bt) };
 }
 
-type Vermessung = { nor: Float64Array; kap: Float64Array; kante2: Float64Array; tang: Float64Array };
+export type Vermessung = { nor: Float64Array; kap: Float64Array; kante2: Float64Array; tang: Float64Array };
 
 /** Vektor v (Punkt i) mit der kleinsten Drehung, die die Normale a in die Normale b überführt (Rodrigues). */
 function drehen(a: Float64Array, b: Float64Array, i: number, v: Float64Array): [number, number, number] {
   return drehenVektor(a, b, i, v[3 * i]!, v[3 * i + 1]!, v[3 * i + 2]!);
+}
+
+/**
+ * Anteil des Laplace von Punkt i in der Fläche, wie er beim Anlegen war (`ruhe`, Lagen `P0`), mit der Normale gedreht (`m`: jetzt)
+ * und dazu um sie: die Drehung in der Tangentialebene aus den Nachbarn (2D-Procrustes). Ohne sie wehrt sich die Haut gegen jedes
+ * Verdrehen in der Fläche (ein gedrehter Loop klappte 20–34 Dreiecke um).
+ */
+function verteilungGedreht(
+  h: Haut,
+  ruhe: Vermessung,
+  m: Vermessung,
+  P0: Float64Array,
+  g: Float64Array,
+  i: number,
+): [number, number, number] {
+  const P = h.pos;
+  let t = drehen(ruhe.nor, m.nor, i, ruhe.tang);
+  const nx = m.nor[3 * i]!;
+  const ny = m.nor[3 * i + 1]!;
+  const nz = m.nor[3 * i + 2]!;
+  let sDot = 0;
+  let sKreuz = 0;
+  h.nachbarn[i]!.forEach((j, kk) => {
+    const gk = g[kk]!;
+    if (gk === 0) return;
+    const e = drehenVektor(ruhe.nor, m.nor, i, P0[3 * j]! - P0[3 * i]!, P0[3 * j + 1]! - P0[3 * i + 1]!, P0[3 * j + 2]! - P0[3 * i + 2]!);
+    const cx = P[3 * j]! - P[3 * i]!;
+    const cy = P[3 * j + 1]! - P[3 * i + 1]!;
+    const cz = P[3 * j + 2]! - P[3 * i + 2]!;
+    sDot += gk * (e[0] * cx + e[1] * cy + e[2] * cz - (e[0] * nx + e[1] * ny + e[2] * nz) * (cx * nx + cy * ny + cz * nz));
+    sKreuz += gk * ((e[1] * cz - e[2] * cy) * nx + (e[2] * cx - e[0] * cz) * ny + (e[0] * cy - e[1] * cx) * nz);
+  });
+  const th = Math.atan2(sKreuz, sDot);
+  if (Math.abs(th) > 1e-9) {
+    const co = Math.cos(th);
+    const si = Math.sin(th);
+    const nt = nx * t[0] + ny * t[1] + nz * t[2];
+    t = [
+      t[0] * co + (ny * t[2] - nz * t[1]) * si + nx * nt * (1 - co),
+      t[1] * co + (nz * t[0] - nx * t[2]) * si + ny * nt * (1 - co),
+      t[2] * co + (nx * t[1] - ny * t[0]) * si + nz * nt * (1 - co),
+    ];
+  }
+  return t;
 }
 
 /** wie `drehen`, für einen beliebigen Vektor (vx, vy, vz) */

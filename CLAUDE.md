@@ -1310,6 +1310,25 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     Bézier-Pfade mit gespeicherten Griffen, Stift P, Löschen und Einfügen wie Illustrator (die Schwellen aus abgelesenen Griffen
     fallen weg), danach B Fläche aus den Kurven als Beweis mit Abbruchkriterien. Entscheidung bei Florian.
   - Bilder `docs/progress/editor/form-haerte-{pilz-hart,linse-hart,linse-weich}-2026-11-06.jpg`.
+- **2026-11-06 (nachmittags, danach): Beweis B „Haut aus den Kurven“** (Florian: „Ja, beweis zuerst B … A danach.“; Ergebnis
+  Abschnitt 4 in [`docs/plans/2026-11-06-kurven-als-wahrheit.md`](docs/plans/2026-11-06-kurven-als-wahrheit.md)).
+  - **Gebaut:** `dicht/ausKurven.ts` (`HautAusKurven`): Haut im Bereich ohne Gedächtnis aus den Loops (Krümmung harmonisch aus den
+    Loops, wie sie gerade gemessen sind, und dem Rand des Bereichs; über harte Linien und Ecken nichts; Verteilung, wie die Punkte
+    liegen). `LoopZug(…, art)` mit `HautArt` `gedaechtnis` | `kurven`; im Fenster `?haut=kurven` (Standard bleibt der heutige).
+    Neu für beide: nach Härte und Löschen rechnet die ganze Haut neu (`hautNeuRechnen`, 0,2–0,4 s). Prüffälle `dicht/kurvenFaelle.ts`,
+    Test `dicht/ausKurven.test.ts`, Bilder über `scripts/pruefen/form-b-bild.ts`; `HAUT=kurven` lässt `weiterZug.test.ts` und den
+    Boden in `loops.test.ts` mit dem neuen Löser laufen; `form-haerte-probe.mjs` hat den Fall `loeschen`.
+  - **Befund:** Die Kante kommt aus den Linien, nicht aus der Haut: Knicken die Querlinien am harten Rand (Griff zum Nachbarpunkt),
+    machen beide Löser die volle Kante (Pilz 77° bzw. 78°, Soll ≈ 78°); knicken sie nicht, keiner. Heute knickt eine Ecke von selbst
+    nur die Verschiebung, nicht die Linie — deshalb wirkte Härte bei Florian kaum. Die Vermutung „das Gedächtnis ist schuld“ war falsch.
+  - **Neuer Löser allein kein Gewinn:** besser am Überhang (28/10 → 4/0), Boden (0,23 → 0,00), Löschen (Beule 24,9 → 0,7 statt
+    7,2), schneller je Bewegung; schlechter, wo wenige Linien ein Feld spannen (Lappen unter dem Pilzrand, 12 umgeklappt; Hammer
+    7/0 → 18/6). Verworfen (gemessen): Krümmung aus den Kurven mit der Verteilung beim Anfassen (Haut verknittert).
+  - **Vorschlag:** A mit dem Knick zuerst (Ecke knickt die Linie, harte Kreuzung → Griffe zu den Nachbarpunkten, dann neu rechnen).
+  - Fallen: Ein Löser, der die Krümmung an den Linien misst und harmonisch verteilt, hat zwischen weit entfernten Linien viele
+    Gleichgewichte (die Linien messen die Wölbung, die sie halten) — Flächen zwischen wenigen Linien bleiben gewölbt. Kern-Prüfungen
+    über die ganze Haut ohne Verdichten zeigen andere Falten als das Fenster (Bereiche, Stufen, Verdichten): beides messen. Bilder
+    `docs/progress/editor/form-b-{kern,fenster}-*-2026-11-06.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

@@ -2,6 +2,9 @@
 
 Stand 06.11.2026, zur Freigabe. Noch nichts gebaut.
 
+Nachtrag 06.11. nachmittags: Beweis B gebaut und gemessen, Ergebnis in Abschnitt 4. Die Ursache in Abschnitt 1 war falsch vermutet:
+Nicht das Gedächtnis der Haut verhindert die Kante, sondern die Linien knicken an der harten Linie nicht.
+
 ## Anlass (Florian, 06.11.)
 
 - „die härte hat bei mir noch nicht die erwartete wirkung … Ich glaube die härte funktioniert noch nicht wie sie soll.“
@@ -90,3 +93,58 @@ das Paper verlangt: gleichmäßiges Netz und Kantenlängen-Ziele. Das ist ein ei
 
 **Empfehlung:** A zuerst. Es ist dein Wunsch, es ist vorhersehbar, und es nimmt die Schwellen heraus, nach denen du gefragt hast.
 B danach als Beweis mit den Kriterien oben.
+
+## 4. Ergebnis Beweis B (06.11. nachmittags)
+
+Florian: „Ja, beweis zuerst B: Haut im Einflussbereich bei jedem Zug neu aus den Kurven rechnen (wie FiberMesh, gleichmäßiges
+Netz), mit den Kriterien aus dem Dokument. A danach.“
+
+**Gebaut.** `HautAusKurven` (`packages/shape/src/dicht/ausKurven.ts`): Die Haut im Bereich jedes Zugs wird aus den Loops neu
+gerechnet, ohne Gedächtnis (wie FiberMesh). Die Krümmung kommt harmonisch aus den Loops (dort gemessen, wie die Haut gerade ist)
+und aus dem Rand des Bereichs; über harte Linien und Ecken fließt nichts; die Punkte bleiben in der Fläche verteilt, wie sie gerade
+liegen. Im Fenster ist das der Schalter `?haut=kurven`, Standard bleibt der heutige Löser. Neu für beide Löser: Nach einer Änderung
+der Härte und nach dem Löschen von Loops oder Punkten rechnet die Haut neu (ganze Haut, 0,2–0,4 s).
+
+**Gemessen** (Kern: `ausKurven.test.ts` mit den Prüffällen `kurvenFaelle.ts`; Fenster mit der Maus: `form-haerte-probe.mjs`,
+`form-explosion-probe.mjs`):
+
+| Fall | heute (Gedächtnis) | aus den Kurven |
+|---|---|---|
+| Kugel, nichts gezogen (größter Abstand, Radius 150) | 0,77 | 0,71 |
+| Linse, Querlinien am Rand geknickt, hart (Soll ≈ 67°) | 64° | 70° |
+| Linse, weich | 24° | 16° |
+| Pilz, Querlinien am Rand geknickt (Soll ≈ 78°), Kern | 77°, 0 umgeklappt | 78°, 0 umgeklappt |
+| Pilz mit geknickten Linien im Fenster | Kante, glatt | Kante, darunter Lappen, 12 umgeklappt |
+| Pilz wie bei dir (Rand hart, unten hinauf), Fenster | 3,3°, glatt | 13,6°, Lappen, 12 umgeklappt |
+| Härte nachträglich, dann neu gerechnet, Fenster | 4,2° → 5,8° | 6,6° → 18,7° |
+| Form hinausgezogen, dann gelöscht, Fenster (Beule) | 24,9 → 7,2 | 23,9 → 0,7 |
+| Überhang (Knicke über 60° / umgeklappt), Fenster | 28 / 10 | 4 / 0 |
+| langer Hammer, Fenster | 7 / 0 | 18 / 6 |
+| Rüssel, Griff um −45° gedreht, Fenster | 13 / 0 | 17 / 0 |
+| flacher Boden, Kern (tiefster Punkt unter der Ebene) | 0,23 | 0,00 |
+| je Mausbewegung beim Überhang | 24–31 ms | 15–20 ms |
+
+**Was das heißt.**
+
+1. **Die Kante kommt aus den Linien, nicht aus der Haut.** Knicken die Querlinien an der harten Linie, machen beide Löser die Kante,
+   die die Form verlangt (Pilz 77° bzw. 78°, Soll ≈ 78°). Knicken sie nicht, macht keiner eine. Bei deinem Pilz knicken sie nicht:
+   Eine Ecke von selbst an einer harten Kreuzung knickt heute nur die Verschiebung beim Ziehen, nicht die Linie. Die Querlinie läuft
+   nach dem Zug weiter glatt und senkrecht über den Rand. Das ist der Grund für „die Härte hat noch nicht die erwartete Wirkung“.
+2. **B allein ist kein Gewinn.** Ohne Gedächtnis ist die Haut besser beim Überhang, beim Boden und beim Löschen, und sie ist
+   schneller je Mausbewegung. Schlechter ist sie, wo wenige Linien ein Feld spannen: Zwischen weit entfernten Linien behält sie die
+   Krümmung, die die Linien an sich messen, also die alte (Lappen unter dem Pilzrand, Hammer). Das ist eine bekannte Eigenschaft
+   von FiberMesh: Dort zeichnet man mehr Linien.
+3. **Neu rechnen nach Härte und Löschen** gehört dazu, gleich mit welchem Löser: Ohne Zug blieb die Haut bisher, wie sie war. Das
+   ist jetzt für beide gebaut.
+
+**Vorschlag: A, mit dem Knick als erstem Schritt.** Eine Ecke knickt die Linie wirklich (Griffe gespeichert, an einer Ecke getrennt).
+Wird eine Linie hart, werden die Punkte der Linien, die sie kreuzen, Ecken mit Griffen zu ihren Nachbarpunkten (wie Blenders
+„Vector“), und die Haut rechnet neu. Was dann herauskommt, zeigt `form-b-kern-pilz-geknickt`. Der Löser bleibt der heutige;
+„aus den Kurven“ bleibt als Schalter zum Vergleichen.
+
+Bilder: `docs/progress/editor/form-b-kern-{linse-hart,pilz-hart,pilz-geknickt,loeschen}-2026-11-06.jpg` (Kern, beide Löser, Seite
+und schräg von unten; `apps/editor/scripts/pruefen/form-b-bild.ts`), `form-b-fenster-pilz-{heute,kurven}-2026-11-06.jpg` (Pilz wie
+bei dir), `form-b-fenster-pilz-geknickt-{heute,kurven}-2026-11-06.jpg` (Pilz mit geknickten Linien).
+
+Gemessen und verworfen: die Krümmung aus den Kurven, aber die Punkte verteilt wie beim Anfassen (wie der heutige Löser). Die Haut
+verknittert, weil die gemessene Krümmung an den Linien und die alte Verteilung nicht zueinander passen.

@@ -13,6 +13,7 @@ import { loopEinsetzen } from './einsetzen';
 import { type Haut, type V3, hautAus } from './kurven';
 import {
   type GriffVersatz,
+  type HautArt,
   type Loop,
   LoopZug,
   bereichUm,
@@ -28,6 +29,9 @@ import {
 import { rundAusSeite } from './rund';
 import { verdichten } from './verdichten';
 
+declare const process: { env: Record<string, string | undefined> };
+/** Löser der Haut: wie im Fenster (`gedaechtnis`); mit HAUT=kurven der aus Beweis B (zum Vergleich) */
+const HAUT = (process.env.HAUT ?? 'gedaechtnis') as HautArt;
 const log = (...a: unknown[]) => (globalThis as unknown as { console: { log: (...x: unknown[]) => void } }).console.log(...a);
 const kugel = () =>
   hautAus(
@@ -129,7 +133,7 @@ function zug(
   let a0 = 0;
   let weite = 0;
   let { b, r } = bereich(st, punkte(st.loops), 0, MK);
-  let z = new LoopZug(st.h, st.loops, b);
+  let z = new LoopZug(st.h, st.loops, b, true, HAUT);
   let d: (Float64Array | null)[] = [];
   for (let k = 1; k <= SCHRITTE; k++) {
     d = verschiebung(st.loops, k / SCHRITTE - a0);
@@ -141,7 +145,7 @@ function zug(
       weite += weit;
       a0 = k / SCHRITTE;
       ({ b, r } = bereich(st, punkte(st.loops), weite, MK));
-      z = new LoopZug(st.h, st.loops, b);
+      z = new LoopZug(st.h, st.loops, b, true, HAUT);
       d = verschiebung(st.loops, 0);
     }
   }

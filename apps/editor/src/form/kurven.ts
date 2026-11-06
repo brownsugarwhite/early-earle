@@ -24,6 +24,7 @@
 import {
   type Ansicht,
   type GriffVersatz,
+  type HautArt,
   type Kurve,
   type Loop,
   LoopZug,
@@ -165,6 +166,14 @@ let grund: { haut: Haut; loops: Loop[] } | null = null;
 const VERDICHTEN = new URLSearchParams(location.search).get('verdichten') !== '0';
 /** die Krümmung der Haut folgt den Loops (`?kruemmung=0`: jeder Punkt behält seine, zum Vergleich) */
 const KRUEMMUNG = new URLSearchParams(location.search).get('kruemmung') !== '0';
+/**
+ * Wie die Haut zwischen den Loops entsteht (Beweis B, 06.11.): `?haut=kurven` = im Bereich jedes Zugs neu aus den Loops gerechnet,
+ * ohne Gedächtnis (`HautAusKurven`); sonst behält jeder Punkt die Krümmung beim Anfassen, so weit die Loops sie nicht vorgeben. In
+ * der Pose immer mit Gedächtnis.
+ */
+const HAUT: HautArt = new URLSearchParams(location.search).get('haut') === 'kurven' ? 'kurven' : 'gedaechtnis';
+/** Runden, wenn die Haut ohne Zug neu gerechnet wird (nach Härte oder Löschen) */
+const RUNDEN_NEU = 12;
 /**
  * auch verdichten, wo sich die Fläche stark dreht (`?winkel=1`, Versuch): an einem langen Lappen gemessen schlechter (14 statt 4
  * umgeschlagene Dreiecke), an einem dicken gleich; deshalb aus
@@ -1348,7 +1357,7 @@ function loeserFuer(bewegt: readonly V3[], r: number, ecken: Iterable<number>): 
   const { h, aus } = loeserHaut();
   const bereich = bereichUm(h, bewegt, r, ecken);
   if (aus) for (let v = 0; v < h.n; v++) if (aus[v]) bereich[v] = 0;
-  return new LoopZug(h, loops, bereich, KRUEMMUNG && !grund);
+  return new LoopZug(h, loops, bereich, KRUEMMUNG && !grund, grund ? 'gedaechtnis' : HAUT);
 }
 
 /** Löser für die Stücke um Punkt k des Loops li (Griff ziehen oder ausrichten) */
@@ -1834,9 +1843,33 @@ function haerteSetzen(taste: string): void {
     }
   }
   meldung = `Härte ${zuletzt}`;
+  hautNeuRechnen();
   geometrieNeu();
   allesZeigen();
 }
+
+/**
+ * Nach einer Änderung der Härte oder dem Löschen von Loops oder Punkten die Haut neu rechnen, über die ganze Haut, bis sie steht:
+ * Ohne Zug blieb sie, wie sie war (Härte wirkte erst beim nächsten Zug, eine gelöschte Linie hinterließ ihre Form). Nicht in der
+ * Pose.
+ */
+function hautNeuRechnen(): void {
+  if (grund) return;
+  eckenAuto(loops);
+  const t0 = performance.now();
+  const z = new LoopZug(haut, loops, null, KRUEMMUNG, HAUT);
+  z.schritt(
+    loops.map(() => null),
+    RUNDEN_NEU,
+  );
+  for (const l of loops) festlegen(haut, l);
+  kreuzungenSuchen();
+  nachVerdichten();
+  letzteZerlegung = z.loeser.zeitZerlegen;
+  letzterBereich = z.loeser.anzahl;
+  letztesNeuRechnen = Math.round(performance.now() - t0);
+}
+let letztesNeuRechnen = 0;
 
 /** Ramer–Douglas–Peucker: Nummern der Punkte, die bleiben */
 function vereinfachen(p: readonly [number, number][], tol: number): number[] {
@@ -1946,6 +1979,7 @@ function loeschen(): void {
   loops = loops.filter((l) => !ganz.has(l.id));
   for (const l of loops) l.punkte = l.punkte.filter((p) => p.kreuzung === undefined || !wegKreuz.has(p.kreuzung));
   auswahl = [];
+  hautNeuRechnen();
   allesZeigen();
 }
 
@@ -2376,7 +2410,16 @@ schleife();
       ...(orte ? { umgeschlagenWo: wo } : {}),
     };
   },
-  zeiten: () => ({ zug: [...zeiten], zerlegen: letzteZerlegung, bereich: letzterBereich, verdichtung: letzteVerdichtung, punkte: haut.n, stufen: zugStufen, stufeMs: letzteStufeMs }),
+  zeiten: () => ({
+    zug: [...zeiten],
+    zerlegen: letzteZerlegung,
+    bereich: letzterBereich,
+    verdichtung: letzteVerdichtung,
+    punkte: haut.n,
+    stufen: zugStufen,
+    stufeMs: letzteStufeMs,
+    neuRechnen: letztesNeuRechnen,
+  }),
   lagen: () => Array.from(haut.pos),
   /** Lagen der Grundform (in der Pose die gemerkte) */
   grundLagen: () => Array.from((grund ? grund.haut : haut).pos),

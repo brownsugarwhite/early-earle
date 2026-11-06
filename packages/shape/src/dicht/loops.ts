@@ -10,6 +10,7 @@
 // hält sie gegenüber, an einer Ecke darf die Linie knicken (von Hand oder von selbst an der Kreuzung mit einem harten Loop). Wie in
 // Illustrator gehen die Griffe mit ihrem Punkt: Ein Punkt ändert nur die zwei Stücke bis zu seinen Nachbarn.
 
+import { HautAusKurven } from './ausKurven';
 import { KETTE_K, type KruemmungsKetten } from './kruemmung';
 import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich, kantenSchluessel } from './kurven';
 
@@ -855,20 +856,32 @@ export function kruemmungsKetten(plan: BindungsPlan, loops: readonly Loop[]): Kr
 }
 
 /**
+ * Wie die Haut zwischen den Loops entsteht: `gedaechtnis` = jeder Punkt behält die Krümmung beim Anfassen, so weit die Loops sie
+ * nicht vorgeben (`HautZiele`, das Fenster); `kurven` = die Haut im Bereich wird aus den Loops neu gerechnet, ohne Gedächtnis
+ * (`HautAusKurven`, Beweis B vom 06.11., zum Vergleich).
+ */
+export type HautArt = 'gedaechtnis' | 'kurven';
+
+/**
  * Ein Zug: Löser für den Einflussbereich, Lagen der Loops beim Anfang. Je Schritt die Verschiebung je Probe (je Loop, null:
- * bleibt); am Ende `festlegen`. `kruemmung`: die Krümmung der Haut folgt den Loops (sonst behält jeder Punkt seine).
+ * bleibt); am Ende `festlegen`. `kruemmung`: die Krümmung der Haut folgt den Loops (sonst behält jeder Punkt seine; nur mit
+ * Gedächtnis).
  */
 export class LoopZug {
   readonly plan: BindungsPlan;
   readonly start: Float64Array[];
-  readonly loeser: HautZiele;
+  readonly loeser: HautZiele | HautAusKurven;
 
-  constructor(h: Haut, loops: readonly Loop[], bereich: Uint8Array | null, kruemmung = true) {
+  constructor(h: Haut, loops: readonly Loop[], bereich: Uint8Array | null, kruemmung = true, art: HautArt = 'gedaechtnis') {
     this.plan = bindungenAus(h, loops);
     this.start = loops.map((l) => Float64Array.from(l.ruhe));
     // die Ketten tragen die Dehnung der Loops immer, die Krümmung (mit Richtung) nur mit `kruemmung`
     const ketten = kruemmungsKetten(this.plan, loops);
-    this.loeser = new HautZiele(h, this.plan.bind, zieleAus(this.plan, this.start), bereich, 100, kantenGewichte(h, loops), ketten, kruemmung);
+    const ziele = zieleAus(this.plan, this.start);
+    this.loeser =
+      art === 'kurven'
+        ? new HautAusKurven(h, this.plan.bind, ziele, bereich, 100, kantenGewichte(h, loops), ketten)
+        : new HautZiele(h, this.plan.bind, ziele, bereich, 100, kantenGewichte(h, loops), ketten, kruemmung);
   }
 
   /** Lagen je Loop: Anfang + Verschiebung */

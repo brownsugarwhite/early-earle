@@ -127,7 +127,7 @@ for (const fall of faelle) {
     await untenHinauf(senkrecht, 120);
     console.log(`  weich, unten +120: ${await messen(rand.id)}`);
     console.log(`  ${await haerte(rand, '3')}`);
-    console.log(`  danach Rand hart: ${await messen(rand.id)}`);
+    console.log(`  danach Rand hart (neu gerechnet in ${(await K('zeiten')).neuRechnen} ms): ${await messen(rand.id)}`);
     await foto('nachher-hart');
     await untenHinauf(senkrecht, 2);
     console.log(`  und unten +2: ${await messen(rand.id)}`);
@@ -138,6 +138,42 @@ for (const fall of faelle) {
     await untenHinauf(senkrecht, 70);
     console.log(`  oben −70, unten +70: ${await messen(rand.id)}`);
     await foto(fall);
+  } else if (fall === 'loeschen') {
+    // eine Form auf der Seite (Kreis um (−60, 70), mit Abstand zu den anderen Loops), mit G in der Front 20 nach außen, dann löschen
+    await seite.keyboard.press('f');
+    const kreis = [];
+    for (let i = 0; i <= 64; i++) kreis.push(xy(await bild('seite', { x: -60 + 35 * Math.cos((2 * Math.PI * i) / 64), y: 70 + 35 * Math.sin((2 * Math.PI * i) / 64), z: 0 })));
+    await seite.mouse.move(...kreis[0]);
+    await seite.mouse.down();
+    for (const p of kreis.slice(1)) await seite.mouse.move(...p);
+    await seite.mouse.up();
+    await seite.waitForTimeout(400);
+    const z0 = Math.sqrt(150 ** 2 - 60 ** 2 - 70 ** 2);
+    const [ax, ay] = xy(await bild('front', { x: -60, y: 70, z: z0 }));
+    const [bx, by] = xy(await bild('front', { x: -60, y: 70, z: z0 + 20 }));
+    await seite.mouse.move(ax, ay);
+    await seite.keyboard.press('g');
+    for (let i = 1; i <= 20; i++) await seite.mouse.move(ax + ((bx - ax) * i) / 20, ay + ((by - ay) * i) / 20);
+    await seite.mouse.click(bx, by);
+    await seite.waitForTimeout(300);
+    /** größter Abstand zur Kugel (Radius 150) um die Form */
+    const beule = () =>
+      seite.evaluate(() => {
+        const P = window.__kurven.lagen();
+        let m = 0;
+        for (let v = 0; v < P.length / 3; v++) {
+          const [x, y, z] = [P[3 * v], P[3 * v + 1], P[3 * v + 2]];
+          if (z > 0 && Math.hypot(x + 60, y - 70) < 45) m = Math.max(m, Math.abs(Math.hypot(x, y, z) - 150));
+        }
+        return m;
+      });
+    const vorher = await beule();
+    const n0 = (await loops()).length;
+    await seite.keyboard.press('Backspace');
+    await seite.waitForTimeout(300);
+    const z = await K('zeiten');
+    console.log(`  Form 20 hinaus: Beule ${vorher.toFixed(1)} · gelöscht (${n0} → ${(await loops()).length} Loops): Beule ${(await beule()).toFixed(1)} · neu gerechnet in ${z.neuRechnen} ms (zerlegen ${z.zerlegen} ms, ${z.bereich} Punkte) · ${await messen(rand.id)}`);
+    await foto('loeschen');
   }
 }
 console.log('Fehler im Fenster:', fehler.length ? fehler.slice(0, 5) : 'keine');

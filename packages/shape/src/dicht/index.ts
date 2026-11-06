@@ -55,6 +55,7 @@ export {
   type Ansicht,
   type BindungsPlan,
   type GriffVersatz,
+  type HautArt,
   type Loop,
   type LoopPunkt,
   type Probe,
