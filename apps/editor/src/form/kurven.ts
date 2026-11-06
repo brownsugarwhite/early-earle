@@ -161,7 +161,7 @@ let loops: Loop[] = [];
 let naechsteId = 1;
 let naechsteKreuzung = 1;
 let auswahl: Wahl[] = [];
-let modus: 'frei' | 'loop' | 'form' = 'frei';
+let modus: 'frei' | 'loop' | 'form' | 'stift' = 'frei';
 let oAn = false;
 let radius = 90;
 let meldung = '';
@@ -975,6 +975,7 @@ function bandGeometrie(linien: readonly { p: readonly V3[]; breite: number }[]):
 }
 
 const knopfForm = document.getElementById('knopf-form') as HTMLButtonElement;
+const knopfStift = document.getElementById('knopf-stift') as HTMLButtonElement;
 /** Blattkoordinaten → (u, v) des Kerns: Seite (x, y), Front (z, y), Top (x, z) */
 const uvAus = (a: Ansicht, X: number, Y: number): [number, number] => (a === 'top' ? [X, Y] : [X, -Y]);
 
@@ -1234,6 +1235,7 @@ function blattZeichnen(a: Ansicht): void {
   }
   if (entwurf && entwurf.a === a) el.append(element('line', 'entwurf', { x1: entwurf.x0, y1: entwurf.y0, x2: entwurf.x1, y2: entwurf.y1 }));
   if (spur && spur.a === a) el.append(element('polyline', 'entwurf', { points: spur.p.map((q) => q.join(',')).join(' ') }));
+  if (stift && stift.a === a) stiftZeichnen(el, a, rp);
 }
 
 function allesZeigen(): void {
@@ -1250,6 +1252,7 @@ function allesZeigen(): void {
   for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
   knopfLoop.setAttribute('aria-pressed', String(modus === 'loop'));
   knopfForm.setAttribute('aria-pressed', String(modus === 'form'));
+  knopfStift.setAttribute('aria-pressed', String(modus === 'stift'));
   knopfO.setAttribute('aria-pressed', String(oAn));
   knopfO.textContent = oAn ? `Einfluss O · ${Math.round(radius)}` : 'Einfluss O';
   statusZeigen();
@@ -2190,6 +2193,169 @@ function loeschen(): void {
   allesZeigen();
 }
 
+// ---------- Stift P ----------
+
+/**
+ * Stift P (Teil A, 06.11.; Florian: „danach A mit echten Griffen und Stift P“): wie in Illustrator, in einem Blatt. Ein Klick setzt
+ * eine Ecke, Klicken und Ziehen einen glatten Punkt (der Griff folgt der Maus, sein Gegenüber zeigt zurück), ein Klick auf den ersten
+ * Punkt oder ⏎ schließt die Form; ⌫ nimmt den letzten Punkt zurück, Esc bricht ab. Die geschlossene Form wird wie mit F auf die Haut
+ * gelegt (über die Mitte gezeichnet ein Ring, in der Seite vorn über den Umriss auch); ihre Punkte sind die geklickten. Die Linie liegt
+ * auf der Haut, wie sie im Blatt gezeichnet ist; die Griffe der glatten Punkte sind die gezogenen, in die Fläche gehoben (im Blatt
+ * genau, wie gezeichnet).
+ */
+type StiftAnker = { X: number; Y: number; aus: [number, number] | null };
+let stift: { a: Ansicht; anker: StiftAnker[]; zieht: boolean } | null = null;
+
+/** Druck mit dem Stift: neuer Punkt, oder am ersten Punkt die Form schließen. Wahr, solange gezogen wird */
+function stiftDruecken(a: Ansicht, X: number, Y: number): boolean {
+  if (stift && stift.a !== a) return false;
+  if (!stift) stift = { a, anker: [], zieht: false };
+  const erster = stift.anker[0];
+  if (erster && stift.anker.length >= 3 && Math.hypot(X - erster.X, Y - erster.Y) * skala(a) < 8) {
+    stiftFertig();
+    return false;
+  }
+  stift.anker.push({ X, Y, aus: null });
+  stift.zieht = true;
+  blattZeichnen(a);
+  return true;
+}
+
+/** Ziehen nach dem Druck: der Griff des neuen Punkts (unter 3 px eine Ecke) */
+function stiftBewegen(X: number, Y: number): void {
+  const st = stift;
+  if (!st?.zieht) return;
+  const p = st.anker[st.anker.length - 1]!;
+  const dx = X - p.X;
+  const dy = Y - p.Y;
+  p.aus = Math.hypot(dx, dy) * skala(st.a) > 3 ? [dx, dy] : null;
+}
+
+/** Bézier-Stück von Anker p zu q im Blatt: die vier Kontrollpunkte (eine Ecke ohne Griff) */
+const stiftStueck = (p: StiftAnker, q: StiftAnker): [number, number][] => [
+  [p.X, p.Y],
+  [p.X + (p.aus?.[0] ?? 0), p.Y + (p.aus?.[1] ?? 0)],
+  [q.X - (q.aus?.[0] ?? 0), q.Y - (q.aus?.[1] ?? 0)],
+  [q.X, q.Y],
+];
+
+function stiftZeichnen(el: SVGElement, a: Ansicht, rp: number): void {
+  const st = stift!;
+  const A = st.anker;
+  let d = '';
+  A.forEach((p, i) => {
+    if (i === 0) d += `M ${p.X} ${p.Y}`;
+    else {
+      const c = stiftStueck(A[i - 1]!, p);
+      d += ` C ${c[1]![0]} ${c[1]![1]} ${c[2]![0]} ${c[2]![1]} ${p.X} ${p.Y}`;
+    }
+  });
+  // Gummiband zur Maus, solange nicht gezogen wird (wie in Illustrator)
+  const letzt = A[A.length - 1];
+  if (letzt && !st.zieht && maus && maus.a === a) d += ` C ${letzt.X + (letzt.aus?.[0] ?? 0)} ${letzt.Y + (letzt.aus?.[1] ?? 0)} ${maus.X} ${maus.Y} ${maus.X} ${maus.Y}`;
+  if (d) el.append(element('path', 'entwurf stift', { d }));
+  if (letzt?.aus) {
+    for (const k of [1, -1]) {
+      const gx = letzt.X + k * letzt.aus[0];
+      const gy = letzt.Y + k * letzt.aus[1];
+      el.append(element('line', 'griff-linie', { x1: letzt.X, y1: letzt.Y, x2: gx, y2: gy }));
+      el.append(element('rect', 'griff', { x: gx - rp * 0.75, y: gy - rp * 0.75, width: rp * 1.5, height: rp * 1.5 }));
+    }
+  }
+  A.forEach((p, i) => el.append(element('rect', `stift-anker${i === 0 ? ' erster' : ''}`, { x: p.X - rp, y: p.Y - rp, width: 2 * rp, height: 2 * rp })));
+}
+
+/**
+ * Griff eines Blatts in die Fläche heben: Verschiebung im Blatt plus so viel Tiefe, dass er in der Tangentialebene liegt (Normale
+ * `n`), höchstens so viel wie seine Länge im Blatt (am Umriss stünde er sonst fast senkrecht in die Tiefe).
+ */
+function inFlaeche(a: Ansicht, d: [number, number], n: V3): V3 {
+  const w = inWelt(a, d[0], d[1]);
+  const t: V3 = a === 'seite' ? { x: 0, y: 0, z: 1 } : a === 'front' ? { x: 1, y: 0, z: 0 } : { x: 0, y: 1, z: 0 };
+  const nt = n.x * t.x + n.y * t.y + n.z * t.z;
+  const nw = n.x * w.x + n.y * w.y + n.z * w.z;
+  const lw = Math.hypot(w.x, w.y, w.z);
+  const k = Math.abs(nt) > 1e-6 ? Math.max(-lw, Math.min(lw, -nw / nt)) : 0;
+  return { x: w.x + k * t.x, y: w.y + k * t.y, z: w.z + k * t.z };
+}
+
+/** Form des Stifts schließen: abtasten, auf die Haut legen (wie F), Punkte an den Ankern; Griffe wie gezogen, Ecken als Ecken */
+function stiftFertig(): void {
+  const st = stift;
+  stift = null;
+  modus = 'frei';
+  if (!st || st.anker.length < 3) {
+    meldung = 'Stift: mindestens drei Punkte, dann den ersten anklicken (oder ⏎)';
+    allesZeigen();
+    return;
+  }
+  const a = st.a;
+  const A = st.anker;
+  const uv: [number, number][] = [];
+  const knoten: number[] = [];
+  for (let i = 0; i < A.length; i++) {
+    const c = stiftStueck(A[i]!, A[(i + 1) % A.length]!);
+    let lang = 0;
+    for (let k = 0; k < 3; k++) lang += Math.hypot(c[k + 1]![0] - c[k]![0], c[k + 1]![1] - c[k]![1]);
+    const n = Math.max(4, Math.ceil(lang / (0.6 * MK)));
+    knoten.push(uv.length);
+    for (let k = 0; k < n; k++) {
+      const t = k / n;
+      const u = 1 - t;
+      const b = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
+      const x = b[0]! * c[0]![0] + b[1]! * c[1]![0] + b[2]! * c[2]![0] + b[3]! * c[3]![0];
+      const y = b[0]! * c[0]![1] + b[1]! * c[1]![1] + b[2]! * c[2]![1] + b[3]! * c[3]![1];
+      uv.push(uvAus(a, x, y));
+    }
+  }
+  const l = formAusZeichnung(haut, a, uv, knoten, naechsteId);
+  if (!l) {
+    meldung = 'Keine Form: ganz auf dem Körper zeichnen oder einmal über die Mitte (Front, Top) bzw. vorn über den Umriss (Seite)';
+    allesZeigen();
+    return;
+  }
+  naechsteId++;
+  zurueck.push(schnappschuss());
+  loops.push(l);
+  einsetzenLetzten();
+  const neu = loops.find((x) => x.id === l.id);
+  if (neu && hatGriffe(neu)) {
+    const nor = hautNormalen(haut);
+    const s = skala(a);
+    for (const p of neu.punkte) {
+      if (!istSichtbar(p) || p.kreuzung !== undefined) continue;
+      // der geklickte Anker an dieser Stelle (ein Loop auf der Seite z < 0 ist als sein Spiegelbild gespeichert)
+      let best: { k: StiftAnker; spiegel: boolean; d: number } | null = null;
+      for (const sp of [false, true]) {
+        const [x, y] = imBlatt(a, sp ? spiegeln(p.ref) : p.ref);
+        for (const k of A) {
+          const d = Math.hypot(x - k.X, y - k.Y) * s;
+          if (d < 3 && (!best || d < best.d)) best = { k, spiegel: sp, d };
+        }
+      }
+      if (!best) continue;
+      if (!best.k.aus) {
+        p.ecke = true;
+        continue;
+      }
+      // Normale an der Stelle des Punkts (nächste Probe der Kette)
+      let j = 0;
+      for (let i = 1; i < neu.s.length; i++) if (Math.abs(neu.s[i]! - p.s) < Math.abs(neu.s[j]! - p.s)) j = i;
+      const v = neu.proben[j]!.ecken[0];
+      const n = { x: nor[3 * v]!, y: nor[3 * v + 1]!, z: nor[3 * v + 2]! };
+      const ln = Math.hypot(n.x, n.y, n.z) || 1;
+      const nn = best.spiegel ? { x: n.x / ln, y: n.y / ln, z: -n.z / ln } : { x: n.x / ln, y: n.y / ln, z: n.z / ln };
+      const aus = inFlaeche(a, best.k.aus, nn);
+      p.aus = best.spiegel ? spiegeln(aus) : aus;
+      p.ein = { x: -p.aus.x, y: -p.aus.y, z: -p.aus.z };
+      delete p.ecke;
+    }
+  }
+  auswahl = [{ l: l.id, i: -1 }];
+  meldung = '';
+  allesZeigen();
+}
+
 // ---------- Maus und Tasten ----------
 
 let maus: { a: Ansicht; X: number; Y: number } | null = null;
@@ -2231,6 +2397,10 @@ function druecken(a: Ansicht, e: PointerEvent): void {
   if (modus === 'form') {
     spur = { a, p: [[X, Y]] };
     blaetter[a].setPointerCapture(e.pointerId);
+    return;
+  }
+  if (modus === 'stift') {
+    if (stiftDruecken(a, X, Y)) blaetter[a].setPointerCapture(e.pointerId);
     return;
   }
   const ziel = e.target as SVGElement;
@@ -2289,6 +2459,11 @@ function bewegen(a: Ansicht, e: PointerEvent): void {
     blattZeichnen(a);
     return;
   }
+  if (stift && stift.a === a) {
+    stiftBewegen(X, Y);
+    blattZeichnen(a);
+    return;
+  }
   if (zug && !zug.modal && zug.ansicht === a) zugBewegen(X, Y);
 }
 
@@ -2311,6 +2486,11 @@ function loslassen(a: Ansicht): void {
     modus = 'frei';
     formErstellen(a, p);
     allesZeigen();
+    return;
+  }
+  if (stift && stift.a === a && stift.zieht) {
+    stift.zieht = false;
+    blattZeichnen(a);
     return;
   }
   if (zug && !zug.modal) zugEnde(true);
@@ -2357,6 +2537,11 @@ knopfForm.addEventListener('click', () => {
   modus = modus === 'form' ? 'frei' : 'form';
   allesZeigen();
 });
+knopfStift.addEventListener('click', () => {
+  modus = modus === 'stift' ? 'frei' : 'stift';
+  stift = null;
+  allesZeigen();
+});
 knopfO.addEventListener('click', () => {
   oAn = !oAn;
   allesZeigen();
@@ -2375,6 +2560,21 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (zug) return;
+  // beim Zeichnen mit dem Stift: ⏎ schließt, ⌫ nimmt den letzten Punkt zurück, Esc bricht ab
+  if (stift) {
+    if (e.key === 'Enter') {
+      stiftFertig();
+      e.preventDefault();
+      return;
+    }
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      stift.anker.pop();
+      if (stift.anker.length === 0) stift = null;
+      allesZeigen();
+      e.preventDefault();
+      return;
+    }
+  }
   if ((e.metaKey || e.ctrlKey) && k === 'z') {
     const s = zurueck.pop();
     if (s) wiederherstellen(s);
@@ -2386,6 +2586,10 @@ window.addEventListener('keydown', (e) => {
     allesZeigen();
   } else if (k === 'f') {
     modus = modus === 'form' ? 'frei' : 'form';
+    allesZeigen();
+  } else if (k === 'p') {
+    modus = modus === 'stift' ? 'frei' : 'stift';
+    stift = null;
     allesZeigen();
   } else if (k === 'o') {
     oAn = !oAn;
@@ -2403,6 +2607,7 @@ window.addEventListener('keydown', (e) => {
     modus = 'frei';
     entwurf = null;
     spur = null;
+    stift = null;
     auswahl = [];
     meldung = '';
     allesZeigen();

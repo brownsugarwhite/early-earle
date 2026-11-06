@@ -295,5 +295,13 @@ werden statt neu abgelesen).
   Rüsselspitze wurden die Griffe 600 Einheiten lang); Ecke von selbst, wo die Linie über 15° knickt (Ecken sperren die Krümmung im
   Löser: Rüsselspitze 30 statt 6 Knicke).
 
-Nächster Schritt: Stift P (Schritt 3), dann der Knick an Kanten (Schritt 4).
+**Schritt 3, Stift P** (gebaut): wie Illustrator in einem Blatt. Klick = Ecke, Klicken und Ziehen = glatter Punkt (Griff folgt der
+Maus, das Gegenüber zeigt zurück), Klick auf den ersten Punkt oder ⏎ schließt, ⌫ nimmt den letzten Punkt zurück, Esc bricht ab. Die
+Form wird wie mit F auf die Haut gelegt (über die Mitte ein Ring, in der Seite vorn über den Umriss auch), ihre Punkte sind die
+geklickten, die Griffe der glatten Punkte die gezogenen, in die Fläche gehoben. Gemessen mit der Maus (`form-stift-probe.mjs`): vier
+Anker ums Auge, die Linie liegt im Blatt höchstens 0,35 px neben der gezeichneten Form, die Griffe zeigen im Blatt genau wie
+gezogen (22/0, −22/0, 0/22), die geklickte Ecke ist eine Ecke, die Haut bleibt unverändert, 0 umgeklappt; oberen Punkt 20 hoch:
+0 umgeklappt; ⌘Z genau; in der Front quer über die Mitte ein Ring mit den zwei Punkten der vorderen Hälfte. Bilder
+`docs/progress/editor/form-stift-{zeichnen,fertig}-2026-11-06.jpg`.
 
+Nächster Schritt: der Knick an Kanten (Schritt 4).
