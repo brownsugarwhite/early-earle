@@ -487,9 +487,10 @@ describe('Weite Züge: die Haut verknittert nicht und fliegt nicht auseinander',
     // 60°, mit 20 und 2 umgeklappt (je nach Reihenfolge des Zusammenlegens 8–20); umgestülpt war die Spitze mit 166 und 30. Aus den
     // Kurven über die ganze Haut 28 und 6 (ohne das Setzen des verdichteten Netzes 26 und 0, mit 12 Runden 42 und 10; wie A, offen).
     // Mit gespeicherten Griffen (Teil A) 34 und 2: Der Griff an der Spitze zeigt nach den Zügen noch, wie er auf der Kugel lag (er geht
-    // mit seinem Punkt), gedreht wird er von dort aus (vorher von der abgelesenen Richtung); im Fenster 8 und 0
+    // mit seinem Punkt), gedreht wird er von dort aus (vorher von der abgelesenen Richtung); im Fenster 8 und 0. Seit neue Punkte der
+    // Linien auf dem Bézier-Pfad liegen (Test E), 37 und 6: Die verdrehte Spitze läuft eng, die neuen Punkte folgen ihr genau.
     expect(m.umgeklappt).toBeLessThanOrEqual(HAUT === 'kurven' ? 8 : 4);
-    expect(m.ueber60).toBeLessThanOrEqual(HAUT === 'kurven' ? 36 : 24);
+    expect(m.ueber60).toBeLessThanOrEqual(HAUT === 'kurven' ? 40 : 24);
   });
 
   it('D: Hammer, der Kopf weit vorn (Oberkante und Vorderkante gerade): der Kopf schnürt sich nicht zur Mitte ein', () => {
@@ -532,5 +533,50 @@ describe('Weite Züge: die Haut verknittert nicht und fliegt nicht auseinander',
     expect(m.umgeklappt).toBeLessThanOrEqual(2);
     expect(m.ueber60).toBeLessThanOrEqual(12);
     expect(rund).toBeGreaterThan(0.6);
+  });
+
+  it('E: einen Punkt weit hinaus und genau zurück: die Linie liegt wieder auf sich, ohne Welle', () => {
+    // Florian (06.11.): „wenn ich einen Punkt rausziehe und dann wieder zurücksetze, ist das Mesh nicht gleich“ (Bild: Wellen an der
+    // Linie). Beim Hinausziehen bekommt die Linie neue Punkte (Verdichten); lagen sie neben ihrer Stelle s, blieb zurückgezogen eine
+    // Welle. Im Fenster (`form-hin-zurueck.mjs`): nach Sehnenlänge 0,38 (220 hinaus), Catmull–Rom nach s 0,18 bzw. 0,56 (400), auf
+    // dem Bézier-Pfad 0,07 wie vor dem Zug.
+    const MK = mittlereKante(kugel());
+    const st: Stand = dreiLoops();
+    /** Welle der Mitte in der Seite: Abstand jeder Probe zur Sehne ihrer Nachbarn gegen das Mittel bei den Nachbarn, größter */
+    const welle = (l: Loop): number => {
+      const n = l.proben.length;
+      const P = (j: number): [number, number] => {
+        const k = ((j % n) + n) % n;
+        return [l.ruhe[3 * k]!, l.ruhe[3 * k + 1]!];
+      };
+      const d = Array.from({ length: n }, (_, j) => {
+        const [ax, ay] = P(j - 1);
+        const [bx, by] = P(j + 1);
+        const [px, py] = P(j);
+        return ((bx - ax) * (py - ay) - (by - ay) * (px - ax)) / (Math.hypot(bx - ax, by - ay) || 1);
+      });
+      return Math.max(...d.map((x, j) => Math.abs(x - (d[(j + n - 1) % n]! + d[(j + 1) % n]!) / 2)));
+    };
+    const mitte = () => st.loops.find((l) => l.art === 'mitte')!;
+    const s0 = mittePunkt(st, { x: -106, y: 106 });
+    const vorher = welle(mitte());
+    const alt = new Map(Array.from(mitte().s, (s, j) => [s.toFixed(6), [mitte().ruhe[3 * j]!, mitte().ruhe[3 * j + 1]!] as const]));
+    const D = { x: -0.7071 * 300, y: 0.7071 * 300 };
+    mitteZiehen(st, (l) => punktAn(l, s0), D, MK);
+    const proben = mitte().proben.length;
+    mitteZiehen(st, (l) => punktAn(l, s0), { x: -D.x, y: -D.y }, MK);
+    const nachher = welle(mitte());
+    let gewandert = 0;
+    Array.from(mitte().s).forEach((s, j) => {
+      const a = alt.get(s.toFixed(6));
+      if (a) gewandert = Math.max(gewandert, Math.hypot(mitte().ruhe[3 * j]! - a[0], mitte().ruhe[3 * j + 1]! - a[1]));
+    });
+    log(
+      `E hin und zurück: Mitte ${alt.size} → ${proben} → ${mitte().proben.length} Proben; Welle vorher ${vorher.toFixed(3)}, ` +
+        `nachher ${nachher.toFixed(3)}; alte Proben bis ${gewandert.toFixed(3)} neben ihrem Ort`,
+    );
+    expect(proben).toBeGreaterThan(alt.size);
+    expect(nachher).toBeLessThan(vorher + 0.05);
+    expect(gewandert).toBeLessThan(0.1);
   });
 });

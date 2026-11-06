@@ -5,12 +5,12 @@
 // Kanten gedreht, wo das die Zahl der Nachbarn näher an 6 bringt, und die neuen Punkte in der Fläche entspannt.
 //
 // Neue Punkte liegen nicht auf der Sehne, sondern auf der runden Fläche durch die Enden: auf einem Loop nach der Kurve längs des
-// Loops (Catmull–Rom nach Sehnenlänge), sonst auf der kubischen Kurve, die die Normalen der Enden vorgeben (wie PN-Dreiecke; an einer
+// Loops auf ihrem Bézier-Pfad (ohne Griffe Catmull–Rom nach der Stelle s), sonst auf der kubischen Kurve, die die Normalen der Enden vorgeben (wie PN-Dreiecke; an einer
 // Kugel genau der Bogen bis auf die vierte Ordnung); an einem harten Loop zählt die Normale der Seite, auf der die Kante liegt.
 // Loops bleiben Ketten von Kanten (eine geteilte Kante eines Loops bekommt den neuen Punkt in die Kette), ihre Punkte bleiben.
 
 import { type Haut, type V3, hautAus } from './kurven';
-import { type Loop, type Probe, kanteBei } from './loops';
+import { type Loop, type Probe, kanteBei, pfadBei } from './loops';
 
 const KEY = 2 ** 22;
 const schluessel = (a: number, b: number): number => (a < b ? a * KEY + b : b * KEY + a);
@@ -142,24 +142,54 @@ export function verdichten(
     return null;
   };
 
-  /** neuer Punkt auf der Kante (a, b) eines Loops: Catmull–Rom nach Sehnenlänge mit den Nachbarn in der Kette */
+  /**
+   * neuer Punkt auf der Kante (a, b) eines Loops, an der Stelle s in ihrer Mitte (`inKette`). Mit gespeicherten Griffen genau auf dem
+   * Bézier-Stück, dazu der Abstand der Linie von ihrem Pfad (beim Anlegen klein und gleichmäßig, ein Zug ändert ihn nicht), zwischen
+   * den Enden der Kante gemittelt; sonst Catmull–Rom nach s. Florian, 06.11.: „rausziehen und wieder zurücksetzen ist nicht gleich“
+   * — nach Sehnenlänge lag ein neuer Punkt nach einem weiten Zug neben seiner Stelle (Welle 0,38 nach 220 hinaus und zurück, ohne
+   * Verdichten 0,07); Catmull–Rom nach s trifft dort, wo der Zug im Stück quadratisch anwächst (neben dem festen Nachbarpunkt), um
+   * 0,67 daneben (nachgerechnet und gemessen 0,65).
+   */
   const aufLoop = (li: number, j: number): V3 => {
     const k = ketten[li]!;
+    const s = sWerte[li]!;
     const l = loops[li]!;
     const m = k.length;
+    const L = l.laenge;
     const zu = l.art !== 'ring';
-    const a = lage(k[j]!);
-    const jb = (j + 1) % m;
-    const b = lage(k[jb]!);
     const spiegelLage = (v: number) => ({ ...lage(v), z: -pos[3 * v + 2]! });
-    const p = j > 0 ? lage(k[j - 1]!) : zu ? lage(k[m - 1]!) : spiegelLage(k[1]!);
-    const q = jb + 1 < m ? lage(k[jb + 1]!) : zu ? lage(k[(jb + 1) % m]!) : spiegelLage(k[m - 2]!);
-    const L = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
-    const lp = Math.hypot(a.x - p.x, a.y - p.y, a.z - p.z);
-    const lq = Math.hypot(q.x - b.x, q.y - b.y, q.z - b.z);
-    const ta = { x: (b.x - p.x) / (L + lp || 1), y: (b.y - p.y) / (L + lp || 1), z: (b.z - p.z) / (L + lp || 1) };
-    const tb = { x: (q.x - a.x) / (L + lq || 1), y: (q.y - a.y) / (L + lq || 1), z: (q.z - a.z) / (L + lq || 1) };
-    return begrenzt(a, b, { x: (L * (ta.x - tb.x)) / 8, y: (L * (ta.y - tb.y)) / 8, z: (L * (ta.z - tb.z)) / 8 });
+    // Stelle i der Kette mit ihrem s: geschlossen ringsum (über das Ende hinaus um die Länge weiter), hinter den Enden eines Rings
+    // das Spiegelbild des inneren Nachbarn
+    const bei = (i: number): { p: V3; s: number } => {
+      if (zu) {
+        const w = ((i % m) + m) % m;
+        return { p: lage(k[w]!), s: s[w]! + Math.floor(i / m) * L };
+      }
+      if (i < 0) return { p: spiegelLage(k[-i]!), s: -s[-i]! };
+      if (i >= m) return { p: spiegelLage(k[2 * (m - 1) - i]!), s: 2 * L - s[2 * (m - 1) - i]! };
+      return { p: lage(k[i]!), s: s[i]! };
+    };
+    const A = bei(j);
+    const B = bei(j + 1);
+    const pa = pfadBei(l, A.s);
+    const pb = pfadBei(l, B.s);
+    const pm = pfadBei(l, (A.s + B.s) / 2);
+    if (pa && pb && pm) {
+      const m = {
+        x: pm.x + (A.p.x - pa.x + B.p.x - pb.x) / 2,
+        y: pm.y + (A.p.y - pa.y + B.p.y - pb.y) / 2,
+        z: pm.z + (A.p.z - pa.z + B.p.z - pb.z) / 2,
+      };
+      return begrenzt(A.p, B.p, { x: m.x - (A.p.x + B.p.x) / 2, y: m.y - (A.p.y + B.p.y) / 2, z: m.z - (A.p.z + B.p.z) / 2 });
+    }
+    const P = bei(j - 1);
+    const Q = bei(j + 2);
+    const dp = B.s - P.s || 1;
+    const dq = Q.s - A.s || 1;
+    const h = B.s - A.s;
+    const ma = { x: (B.p.x - P.p.x) / dp, y: (B.p.y - P.p.y) / dp, z: (B.p.z - P.p.z) / dp };
+    const mb = { x: (Q.p.x - A.p.x) / dq, y: (Q.p.y - A.p.y) / dq, z: (Q.p.z - A.p.z) / dq };
+    return begrenzt(A.p, B.p, { x: (h * (ma.x - mb.x)) / 8, y: (h * (ma.y - mb.y)) / 8, z: (h * (ma.z - mb.z)) / 8 });
   };
   /** Mitte der Sehne plus Versatz, der Versatz höchstens ¼ der Sehne */
   const begrenzt = (a: V3, b: V3, d: V3): V3 => {

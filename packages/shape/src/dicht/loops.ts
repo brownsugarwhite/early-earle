@@ -1054,6 +1054,24 @@ function probenIn(l: Loop, st: { s0: number; s1: number }): { j: number; t: numb
   return out;
 }
 
+/**
+ * Lage des Bézier-Pfads (Punkte und gespeicherte Griffe) an der Stelle s; null ohne angelegte Griffe. Die Linie weicht davon nur um
+ * das ab, was sie beim Anlegen neben ihrem Pfad lag: Ein Zug ändert genau den Pfad (`verschiebungLaengs`), dieser Abstand bleibt.
+ */
+export function pfadBei(l: Loop, s: number): V3 | null {
+  if (!hatGriffe(l)) return null;
+  for (const st of stuecke(l)) {
+    const x = imStueck(l, st, s);
+    if (x === null) continue;
+    const a = l.punkte[st.a]!;
+    const b = l.punkte[st.b]!;
+    if (!a.aus || !b.ein) return null;
+    const h = st.s1 - st.s0;
+    return stueckPunkt(a.ref, a.aus, b.ein, b.ref, h > 1e-9 ? (x - st.s0) / h : 0);
+  }
+  return null;
+}
+
 /** Mittelebene: Griffe flach; Ende eines Rings: der Griff nach außen ist das Spiegelbild des inneren */
 function griffeSpiegeln(l: Loop): void {
   l.punkte.forEach((p, i) => {

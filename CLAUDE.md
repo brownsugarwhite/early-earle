@@ -1412,6 +1412,22 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     `griffeAnlegen`); ein Zug am Griff übernimmt ihn am Ende (`griffeUebernehmen`), sonst sieht der nächste Griffzug den alten. Die
     ganze Testreihe von `@ee/shape` auf einmal reißt die Zeit- und Lasttests des Käfigs (Minuten je Test, ohne Bezug zu `dicht/`) —
     für die dichte Form `npx vitest run src/dicht/`.
+- **2026-11-06 (nachts, danach): Punkt hinaus und zurück gibt wieder dieselbe Linie** (Florian: „wenn ich einen Punkt rausziehe
+  und dann wieder zurücksetze, ist das Mesh nicht gleich. Warum?“, mit Bild der Wellen; Planseite Abschnitt 7, „Nachtrag“).
+  - **Ursache gemessen** (`scripts/pruefen/form-hin-zurueck.mjs`): Ohne Verdichten kommt die Linie genau zurück; wo sie sich beim
+    Hinausziehen nicht ändert, wandert sie auch nicht (0,00). Die Wellen kommen von den neuen Punkten, die das Verdichten beim
+    Hinausziehen in die Linie setzt: Sie bekommen ihre Stelle s in der Mitte, lagen aber nach Sehnenlänge (Welle 0,38 nach 220
+    hinaus und zurück) bzw. nach Catmull–Rom in s (0,18; 0,56 nach 400) daneben. Neben dem festen Nachbarpunkt wächst der Zug im
+    Stück quadratisch an; dort trifft Catmull–Rom 0,67 daneben (nachgerechnet; gemessen 0,65). Ein Zug zurück rechnet nach s, der
+    Fehler bleibt als Buckel.
+  - **Jetzt** (`verdichten.ts`, `aufLoop`; `pfadBei` in `loops.ts`): Ein neuer Punkt einer Linie mit Griffen liegt genau auf dem
+    Bézier-Stück, dazu der Abstand der Linie von ihrem Pfad (beim Anlegen klein und gleichmäßig, ein Zug ändert ihn nicht),
+    zwischen den Enden der Kante gemittelt; ohne Griffe Catmull–Rom nach s. Im Fenster nach 100, 220 und 400 hinaus und zurück
+    Welle 0,07 wie vor dem Zug. Test `weiterZug.test.ts` E (Gegenprobe mit Catmull–Rom rot: 0,645).
+  - **Nicht geändert:** Ganz gleich ist das Netz danach nicht (mehr Punkte, andere Dreiecke); die Form bleibt, wo sie war.
+  - **Schlechter:** die absichtlich verdrehte Schlaufe (Explosion c, letzter Schritt) 40/12 statt 34/10 Knicke über 60°/umgeklappt,
+    im Kern-Test C (Rüssel, Griff 45°) 37/6 statt 34/2 — die neuen Punkte folgen dort einer verkehrt laufenden Linie genau. Die
+    anderen Proben wie vorher.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

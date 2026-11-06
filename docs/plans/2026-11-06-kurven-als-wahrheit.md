@@ -354,3 +354,20 @@ Braue, Kreuzung, Griffe, Boden 0,25, Zoom, Verdichten, Maul, Fressen-Pose 25 fü
 dem Knick und wölbt sich dann. Zwei Kugelkappen gäben 67°, die Linse hat 83° und an der Kante 8 sehr kleine umgeklappte Dreiecke.
 Im Kern-Test C (Rüssel, Griff gedreht) 34 Knicke über 60° und 2 umgeklappt statt 28 und 6: Der Griff an der Spitze zeigt nach den
 Zügen noch, wie er auf der Kugel lag, gedreht wird er von dort aus; im Fenster 8 und 0.
+
+**Nachtrag (06.11. nachts): Punkt hinaus und zurück gibt wieder dieselbe Linie.** Florian: „wenn ich einen Punkt rausziehe und
+dann wieder zurücksetze, ist das Mesh nicht gleich. Warum?“ (Bild mit Wellen an der Linie). Gemessen mit der Maus
+(`scripts/pruefen/form-hin-zurueck.mjs`: neuer Punkt auf der Mitte, weit hinaus, genau zurück): Ohne Verdichten kommt die Linie
+genau zurück. Die Wellen kamen von den Punkten, die das Verdichten beim Hinausziehen in die Linie setzt. Sie bekommen ihre Stelle s
+in der Mitte ihrer Kante, lagen aber nach Sehnenlänge bzw. Catmull–Rom daneben, und ein Zug zurück rechnet nach s. Jetzt liegt ein
+neuer Punkt genau auf dem Bézier-Stück (`pfadBei`), dazu der kleine Abstand, den die Linie beim Anlegen von ihrem Pfad hatte.
+
+| Welle der Linie nach hinaus und zurück (vor dem Zug 0,07) | nach Sehnenlänge (vorher) | Catmull–Rom nach s | auf dem Pfad |
+| --- | --- | --- | --- |
+| 100 hinaus | 0,16 | 0,10 | 0,07 |
+| 220 hinaus | 0,38 | 0,18 | 0,07 |
+| 400 hinaus | — | 0,56 | 0,07 |
+
+Ganz gleich ist das Netz danach trotzdem nicht: Es hat mehr Punkte und andere Dreiecke, die Form aber ist dieselbe. Test
+`weiterZug.test.ts` E (mit Catmull–Rom rot). Etwas schlechter wurde die absichtlich verdrehte Schlaufe (40/12 statt 34/10), wo die
+Linie selbst verkehrt läuft.
