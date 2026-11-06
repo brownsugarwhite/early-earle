@@ -7,6 +7,9 @@
 // FALL=d: Stauchen. FALL=e: Rüssel mit Ring, Spitze weiter hinaus, mit GRIFF=<Grad> (in der Seite, wie mit der Maus) der Griff an
 // der Spitze gedreht (Florians Bild: die Spitze stülpte sich um). FALL=f: Rüssel kurz, Ring um den Ansatz, Spitze weit hinaus.
 // FALL=g: Hammer, nur in der Seite gezogen (Ecken oben vorn und vorn unten, Unterkante hohl); HAMMER=lang: der Kopf weit vorn.
+// FALL=p: Pilz (Florians Bild vom 06.11.): Ecken an den vier Kreuzungen des Rands, dort knicken die kreuzenden Linien (KNICK=0: nur
+// Ecken, ohne Knick), dann die Unterseite hinauf. Vorher blähte sich der Rand zwischen den Ecken zu Polstern auf.
+// Zusammenlegen zu kurzer Kanten zum Vergleich aus: KURVEN_URL='http://localhost:5193/kurven.html?kurz=0'.
 // Ohne Verdichten: KURVEN_URL='http://localhost:5193/kurven.html?verdichten=0'. WO=1 nennt die Orte der Knicke über 60°. NAH=x,y,zoom
 // mit NAH_BEI=<Bildname>: Seite und Top beim Bild auf diese Stelle.
 // Je Zug: Dauer, Punkte, Stufen, Zerlegen, Bereich, größter Knick, Knicke über 60°, umgeklappte Dreiecke, Ausdehnung.
@@ -298,6 +301,65 @@ if (fall === 'a') {
   await K('ausschnitt', 'top', { cx: lang ? -150 : -60, cy: 0, zoom: lang ? 0.7 : 0.9 });
   await K('ausschnitt', 'seite', { cx: lang ? -150 : -60, cy: 0, zoom: lang ? 0.7 : 0.9 });
   await foto(lang ? 'lang' : '1');
+} else if (fall === 'p') {
+  // Pilz (Florians Bild vom 06.11.): Ecken an den vier Kreuzungen des waagerechten Rings (Rand des Huts), dann die untere Kreuzung
+  // hinauf (die Unterseite wird flach). Zwischen den vier Ecken blähte sich der Rand zu Polstern auf.
+  const eckeBei = async (a, p) => {
+    await seite.keyboard.down('Alt');
+    await seite.mouse.click(...xy(await bild(a, p)));
+    await seite.keyboard.up('Alt');
+    await seite.waitForTimeout(200);
+    await seite.keyboard.press('Escape');
+  };
+  const rand = (await loops()).find((l) => l.id === waagerecht.id);
+  for (const p of rand.punkte.filter((q) => q.kreuzung !== null)) {
+    const a = Math.abs(p.ref.z) > 50 ? 'top' : 'seite';
+    await eckeBei(a, p.ref);
+  }
+  const r2 = (await loops()).find((l) => l.id === waagerecht.id);
+  console.log(`Rand: ${r2.punkte.map((p) => `${p.ecke ? '◆' : '●'}(${p.ref.x.toFixed(0)},${p.ref.y.toFixed(0)},${p.ref.z.toFixed(0)})`).join(' ')}`);
+  // an jeder Ecke den unteren Griff der Linie, die den Rand kreuzt, waagerecht nach innen drehen: dort knickt die Linie wirklich
+  // (wie in Florians Bild); Mitte in der Seite (vorn, hinten), der senkrechte Ring in der Front (seitlich)
+  const griffPos = async (blatt, id, i, g) =>
+    seite.evaluate(
+      ([b2, id2, i2, g2]) => {
+        const e = document.querySelector(`#blatt-${b2} rect.griff[data-l="${id2}"][data-i="${i2}"][data-g="${g2}"]`);
+        if (!e) return null;
+        const r = e.getBoundingClientRect();
+        return [r.left + r.width / 2, r.top + r.height / 2];
+      },
+      [blatt, id, i, g],
+    );
+  if (process.env.KNICK !== '0') {
+    const mitte = L0.find((l) => l.art === 'mitte');
+    for (const [blatt, id, ziel] of [
+      ['seite', mitte.id, { x: -150, y: 0, z: 0 }],
+      ['seite', mitte.id, { x: 150, y: 0, z: 0 }],
+      ['front', senkrecht.id, { x: 10, y: 0, z: 150 }],
+    ]) {
+      const l = (await loops()).find((q) => q.id === id);
+      const i = l.punkte.reduce((b, r, k) => (Math.hypot(r.ref.x - ziel.x, r.ref.y - ziel.y, r.ref.z - ziel.z) < Math.hypot(l.punkte[b].ref.x - ziel.x, l.punkte[b].ref.y - ziel.y, l.punkte[b].ref.z - ziel.z) ? k : b), 0);
+      const pp = xy(await bild(blatt, l.punkte[i].ref));
+      await seite.mouse.click(...pp);
+      await seite.waitForTimeout(450);
+      const ein = await griffPos(blatt, id, i, 'ein');
+      const aus = await griffPos(blatt, id, i, 'aus');
+      const unten = [ein, aus].filter(Boolean).sort((a, b) => b[1] - a[1])[0];
+      if (!unten) {
+        console.log(`kein Griff an Punkt ${i} von Loop ${id}`);
+        continue;
+      }
+      const len = Math.hypot(unten[0] - pp[0], unten[1] - pp[1]);
+      const mitteBild = xy(await bild(blatt, { x: 10, y: 0, z: 0 }));
+      const innen = Math.sign(mitteBild[0] - pp[0]);
+      await schnell(`Griff ${blatt} Loop ${id} nach innen`, async () => ziehen(unten, [pp[0] + innen * len, pp[1]]));
+      await seite.keyboard.press('Escape');
+    }
+  }
+  let p = await punktVon(senkrecht.id, (r) => -r.y);
+  await schnell('unten +120', async () => ziehen(xy(await bild('seite', p.ref)), xy(await bild('seite', { ...p.ref, y: p.ref.y + 120 }))));
+  await seite.keyboard.press('Escape');
+  await foto('1');
 } else if (fall === 'd') {
   // Stauchen: die untere Kreuzung weit nach oben in den Körper, dann die obere nach unten (die Haut dazwischen wird gestaucht)
   let p = await punktVon(senkrecht.id, (r) => -r.y);

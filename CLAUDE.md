@@ -1250,6 +1250,50 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     falschen Punkt (Punkte über ihre Stelle s festhalten). Im Browser kosten viele kleine Arrays je Punkt und Schritt mehr als die
     Rechnung (Müllsammeln). `NAH` im Probe-Skript nur beim letzten Bild (sonst zielen die folgenden Züge daneben).
   - Bilder `docs/progress/editor/form-richtung-{ruessel,hammer}-{vorher,nachher}-2026-11-06.jpg`.
+- **2026-11-06 (mittags): Pilz-Rand knickt zwischen den Ecken, zu kurze Kanten werden zusammengelegt** (Florian: „Viel besser...
+  Ja kanten zusammenlegen und schau dir das noch an: wenn ich z.B einen solchen Pilz baue, versucht das mesh sich zwischen den 4
+  knckpunkten "aufzublasen". Kann man es so machen dass die linie den knick zwischen den zwei punkten interpoliert?“; Bild
+  `docs/progress/editor/form-pilz-florian-2026-11-06.webp`).
+  - **Knick wird Härte (`dicht/loops.ts`, `knickAm`, `haerteBei(l, loops)`):** Knickt eine Linie an einer Ecke (◆) über einen Loop
+    wirklich (Winkel ihrer Griffe, wie die Linie sie zeigt), wird der gekreuzte Loop dort hart: ab 5° beginnt es, ab 30° Härte 3.
+    Zwischen seinen Kreuzungen läuft die Härte linear (eine Kreuzung ohne Knick: 0), mit der eigenen Härte gilt das Größere. Alle
+    Aufrufer geben die Loops mit (Löser, Verdichten, im Fenster Normalen und Bänder). Der Pilz-Rand knickt rundum, keine Polster.
+  - **Zusammenlegen (`dicht/verdichten.ts`, Option `kurz`; im Fenster ½ Startkante, `?kurz=0` zum Vergleich):** nach dem Teilen; ein
+    Punkt der Kante fällt weg, der andere bleibt, wo er ist (die Form ändert sich nur um die Sehne), spiegelgleich (auf der Mitte nur
+    in einen Punkt der Mitte, nie über die Mitte in sein Spiegelbild). Kreuzungen, je Punkt eines Loops die nächste Probe, Enden der
+    Ringe und Ecken verborgener Dreiecke bleiben. Auf einer Linie (Kette) nur längs und nur unter `kurzKette` (Standard ½ `kurz`).
+    Geprüft wird: Verbindungsbedingung (genau zwei gemeinsame Nachbarn), die Gegenpunkte behalten mindestens drei Nachbarn, kein
+    Dreieck kippt über 60°, keine Kante über `maxKante`; das Spiegelbild wird über ein Journal je Dreieck zurückgenommen, wenn es nicht geht.
+    Danach neu nummeriert: alte Punkte vorn in ihrer Reihenfolge, Ergebnis `alt` (je neuer Punkt die alte Nummer, −1 neu); das
+    Fenster ordnet Blendshape und Knochenwinkel damit um (`netzGewachsen(nAlt, alt, vorher)`), die Punkte, in die gelegt wurde,
+    werden mit den neuen entspannt.
+  - **Gemessen im Kern** (`weiterZug.test.ts`, Knicke über 60°/umgeklappt): B Schlaufe 124/42 → 18/2 (jetzt `it`), A Überhangspitze
+    20/6 → 6/2 (jetzt `it` mit Abstand), D Hammer 28/6 → 8/0, C Rüssel mit gedrehtem Griff 12/0 → 20/2 (an der Spitze des flachen
+    Rüssels). Die Fälle sind empfindlich gegen die Reihenfolge des Zusammenlegens: Bei gleichem Rang zuerst den älteren statt den
+    neueren Punkt wegzulegen gab A 14/4, B 10/0, C 10/0 — die Grenzen der Tests haben deshalb Abstand. Neu `verdichten.test.ts`
+    „Gestaucht“ (1 362 → 217 Kanten unter ½, geschlossen, spiegelgleich, Ketten und Kreuzungen an Ort, 40–60 ms) und `loops.test.ts`
+    „Pilz“ (Knick 63° → Härte 3,0 an der Ecke, 1,5 halbwegs, 0 an der nächsten Kreuzung).
+  - **Gemessen im Fenster** (`form-explosion-probe.mjs`, mit der Maus, ohne → mit; Knicke über 60°/umgeklappt): langer Hammer
+    79/26 → 7/0 (die Kratzer weg), Schlaufe 46/16 → 14/2, Rüssel mit Griff −45° 36/6 → 13/0, Pilz (neu `FALL=p`) 0 umgeklappt, der
+    Rand knickt rundum; Überhang (A) in den letzten Schritten 0/0 und 8/4 → 12/4 und 28/10 (zwei kleine Kratzer an der Unterseite
+    der Spitze; Draufsicht und Front runder als ohne). Verdichten samt Zusammenlegen 15–36 ms. Ältere Proben gleich oder besser
+    (Boden 0,22 → 0,15, Fressen-Pose Front 10 → 6 umgeschlagen, Braue 36,8°/28,2°, Griffe 2,3°/36,0°, Grundform in der Pose: alle
+    gebliebenen Punkte genau an Ort); ein Punktzug bewegt die Linie jenseits der Nachbarpunkte jetzt bis 0,1 (zusammengelegte
+    Linienproben: die Sehne liegt minimal neben der alten Probe).
+  - **Linien nicht ausdünnen (gemessen):** Mit allen Linienstücken unter ½ blieben einer Augenform 30 von 57 Proben; die Griffe werden
+    aus den Proben abgelesen (Ausgleichspolynom je Seite), der glatte Punkt las danach 23° Knick statt 2°, ein Eckzug 5° statt 36°.
+    Ohne Linienpunkte blieben schmale Dreiecke an den Linien (Schnabel 8 statt 0 Knicke über 60°, Hammer 24). Mit ¼ an Linien: Griffe
+    wie vorher (glatt 2,3° statt 1,8°, Ecke 36,0° statt 35,9°), Ergebnisse fast wie mit allem.
+  - **Offen (ehrlich):** Spitzen, an denen sich zwei Loops kreuzen oder ein Griff gedreht wird (A, C), falten weiter ein wenig (dort
+    sind die Dreiecke nicht gestaucht, das Zusammenlegen trifft die Ursache nicht). Ein aus der Kugel gezogener Rüssel ist ein flaches
+    Paddel (Breite : Höhe ≈ 3,5 : 1; so schon seit der Krümmung mit Richtung, quer gilt das Gedächtnis der Kugel); mit Zusammenlegen
+    geht der Löser über die Stufen einen anderen Weg (im Kern Breite ±5 %, im Fenster sichtbar schmaler).
+  - **Fallen:** Wer Werte je Netzpunkt hält, muss nach dem Verdichten umordnen (`alt`); „das Netz wächst nur“ gilt nicht mehr. Die
+    Proben `form-griffe`, `form-punkte-zoom`, `form-fressen-pose` verglichen Lagen über Nummern (zählten nach dem Zusammenlegen fast
+    alle Dreiecke als umgeklappt) → jetzt umgeklappt gegen die Normalen der Ecken, Linien über die Stelle s (neu `s` im Haken
+    `loops`), Grundform über gleiche Lagen. Fenster-Proben nie parallel zu `vitest` laufen lassen: Unter Last kommen weniger
+    Mausschritte an (140 ms je Bewegung), der Zug geht einen anderen Weg.
+  - Bilder `docs/progress/editor/form-pilz-{vorher,nachher}-2026-11-06.jpg`, `form-kurz-hammer-{vorher,nachher}-2026-11-06.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

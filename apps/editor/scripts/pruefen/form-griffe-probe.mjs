@@ -24,26 +24,47 @@ await laden();
 
 const K = (f, ...a) => seite.evaluate(([f2, a2]) => window.__kurven[f2](...a2), [f, a]);
 const loops = () => K('loops');
-const lagen = () => K('lagen');
 const bild = (a, p) => K('bild', a, p);
 const xy = (p) => [p.x, p.y];
-const umgeklappt = (vorher) =>
-  seite.evaluate((v) => {
+/**
+ * Umgeklappte Dreiecke: Normale gegen die Normalen ihrer Ecken (Mittel der Nachbardreiecke). Seit dem Zusammenlegen zu kurzer Kanten
+ * (06.11.) nummeriert das Verdichten die Punkte neu; ein Vergleich mit den Lagen vor dem Zug über die Nummern zählte dann fast alle.
+ */
+const umgeklappt = () =>
+  seite.evaluate(() => {
     const p = window.__kurven.lagen();
     const t = window.__kurven.dreiecke();
-    const n = (q, a, b, c) => {
-      const ab = [q[3 * b] - q[3 * a], q[3 * b + 1] - q[3 * a + 1], q[3 * b + 2] - q[3 * a + 2]];
-      const ac = [q[3 * c] - q[3 * a], q[3 * c + 1] - q[3 * a + 1], q[3 * c + 2] - q[3 * a + 2]];
-      return [ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]];
-    };
+    const fn = [];
+    const vn = new Float64Array(p.length);
+    for (let i = 0; i < t.length; i += 3) {
+      const [a, b, c] = [t[i], t[i + 1], t[i + 2]];
+      const ab = [p[3 * b] - p[3 * a], p[3 * b + 1] - p[3 * a + 1], p[3 * b + 2] - p[3 * a + 2]];
+      const ac = [p[3 * c] - p[3 * a], p[3 * c + 1] - p[3 * a + 1], p[3 * c + 2] - p[3 * a + 2]];
+      const f = [ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]];
+      fn.push(f);
+      for (const v of [a, b, c]) for (let k = 0; k < 3; k++) vn[3 * v + k] += f[k];
+    }
     let z = 0;
     for (let i = 0; i < t.length; i += 3) {
-      const a = n(v, t[i], t[i + 1], t[i + 2]);
-      const b = n(p, t[i], t[i + 1], t[i + 2]);
-      if (a[0] * b[0] + a[1] * b[1] + a[2] * b[2] < 0) z++;
+      const f = fn[i / 3];
+      const m = [0, 1, 2].map((k) => vn[3 * t[i] + k] + vn[3 * t[i + 1] + k] + vn[3 * t[i + 2] + k]);
+      if (f[0] * m[0] + f[1] * m[1] + f[2] * m[2] < 0) z++;
     }
     return z;
-  }, vorher);
+  });
+/** Lage einer Linie an der Stelle s (zwischen ihren Proben linear; das Verdichten kann Proben zusammenlegen, die Stellen bleiben) */
+const lageBeiS = (l, s) => {
+  const n = l.s.length;
+  const zu = l.art !== 'ring';
+  const t = zu ? ((s % l.laenge) + l.laenge) % l.laenge : Math.max(0, Math.min(l.laenge, s));
+  let i = 0;
+  while (i + 1 < n && l.s[i + 1] <= t) i++;
+  const j = i + 1 < n ? i + 1 : zu ? 0 : i;
+  const s0 = l.s[i];
+  const s1 = j > i ? l.s[j] : zu ? l.laenge : s0;
+  const f = s1 > s0 ? (t - s0) / (s1 - s0) : 0;
+  return [0, 1, 2].map((c) => l.ruhe[3 * i + c] + f * (l.ruhe[3 * j + c] - l.ruhe[3 * i + c]));
+};
 const weg = (a, b) => {
   let m = 0;
   for (let i = 0; i < a.length; i++) m = Math.max(m, Math.abs(a[i] - b[i]));
@@ -131,16 +152,20 @@ console.log(`  gewählt: Griffe zu sehen ${await seite.locator('#blatt-seite .gr
 // Griff „aus“ 14 nach oben ziehen (glatt)
 let g = await K('griffe', auge.id, oi);
 const ruhe0 = auge.ruhe.slice();
+const s0 = auge.s.slice();
 const punkte0 = auge.punkte.map((p) => p.ref);
-let pos = await lagen();
 await ziehen(xy(await bild('seite', g.aus)), xy(await bild('seite', { ...g.aus, y: g.aus.y + 60 })));
 auge = (await loops()).find((l) => l.id === auge.id);
 const pBewegt = Math.max(...auge.punkte.map((p, i) => Math.hypot(p.ref.x - punkte0[i].x, p.ref.y - punkte0[i].y, p.ref.z - punkte0[i].z)));
+// je alte Probe die Lage der Linie an ihrer Stelle s jetzt (Proben können zusammengelegt sein)
 let bewegteProben = 0;
-for (let j = 0; j < ruhe0.length / 3; j++) if (Math.hypot(auge.ruhe[3 * j] - ruhe0[3 * j], auge.ruhe[3 * j + 1] - ruhe0[3 * j + 1], auge.ruhe[3 * j + 2] - ruhe0[3 * j + 2]) > 0.3) bewegteProben++;
+for (let j = 0; j < s0.length; j++) {
+  const q = lageBeiS(auge, s0[j]);
+  if (Math.hypot(q[0] - ruhe0[3 * j], q[1] - ruhe0[3 * j + 1], q[2] - ruhe0[3 * j + 2]) > 0.3) bewegteProben++;
+}
 console.log(
   `A1 Griff glatt 60 hoch (Faktor ${g.faktor.toFixed(2)}): ${await zeitenText()} · Punkte bewegt ${pBewegt.toFixed(2)} · Proben > 0,3 bewegt ${bewegteProben} von ${ruhe0.length / 3} · ` +
-    `Linie am Punkt danach ${(await K('knickAm', auge.id, oi)).toFixed(1)}° · umgeklappt ${await umgeklappt(pos)} · schief ${(await K('symmetrie')).toExponential(1)}`,
+    `Linie am Punkt danach ${(await K('knickAm', auge.id, oi)).toFixed(1)}° · umgeklappt ${await umgeklappt()} · schief ${(await K('symmetrie')).toExponential(1)}`,
 );
 await ausschnitt('a2-glatt-gezogen', 'seite', mitteAuge, 170);
 
@@ -151,7 +176,6 @@ await doppelklick(xy(await bild('seite', auge.punkte[oi].ref)));
 auge = (await loops()).find((l) => l.id === auge.id);
 console.log(`A2 Doppelklick: Ecke ${auge.punkte[oi].ecke} · Meldung ${JSON.stringify(await K('meldung'))}`);
 g = await K('griffe', auge.id, oi);
-pos = await lagen();
 {
   // den Griff um 40° im Uhrzeigersinn drehen (in der Seite um den Punkt): Die Form läuft gegen den Uhrzeigersinn, nach außen
   const p0 = auge.punkte[oi].ref;
@@ -164,18 +188,17 @@ pos = await lagen();
 auge = (await loops()).find((l) => l.id === auge.id);
 const knickEcke = await griffKnick(auge.id, oi);
 console.log(
-  `  Ecke, Griff gezogen: Knick der Griffe ${knickEcke.toFixed(1)}° · Linie am Punkt ${(await K('knickAm', auge.id, oi)).toFixed(1)}° · umgeklappt ${await umgeklappt(pos)}`,
+  `  Ecke, Griff gezogen: Knick der Griffe ${knickEcke.toFixed(1)}° · Linie am Punkt ${(await K('knickAm', auge.id, oi)).toFixed(1)}° · umgeklappt ${await umgeklappt()}`,
 );
 await ausschnitt('a3-ecke-gezogen', 'seite', mitteAuge, 170);
 await nah3d('a3-ecke-3d', auge.punkte[oi].ref, { x: -0.3, y: 0.4, z: 1 }, 170);
 
 // Doppelklick: wieder glatt (Griffe ausgerichtet, die Haut folgt)
-pos = await lagen();
 await doppelklick(xy(await bild('seite', auge.punkte[oi].ref)));
 auge = (await loops()).find((l) => l.id === auge.id);
 console.log(
   `A3 Doppelklick: Ecke ${auge.punkte[oi].ecke} · Meldung ${JSON.stringify(await K('meldung'))} · ` +
-    `Linie am Punkt ${(await K('knickAm', auge.id, oi)).toFixed(1)}° · umgeklappt ${await umgeklappt(pos)}`,
+    `Linie am Punkt ${(await K('knickAm', auge.id, oi)).toFixed(1)}° · umgeklappt ${await umgeklappt()}`,
 );
 await ausschnitt('a4-wieder-glatt', 'seite', mitteAuge, 170);
 for (let i = 0; i < 3; i++) await seite.keyboard.press('Meta+z');
@@ -204,7 +227,6 @@ console.log(`  waagerecht hart (${L[0].haerte}): Punkt des senkrechten an der Kr
 await ausschnitt('b1-auto-ecke', 'seite', L[1].punkte[kB].ref, 200);
 
 const groesser = async (name) => {
-  const p0 = await lagen();
   const a0 = await bild('front', { x: 0, y: 0, z: 100 });
   const ziel = await bild('front', { x: 0, y: 0, z: 115 });
   await seite.mouse.click(aufA.x, aufA.y);
@@ -228,7 +250,7 @@ const groesser = async (name) => {
   const sonst = kn.filter((_, j) => Math.hypot(P(j).x - q.x, P(j).z - q.z) > 60 && j > 3 && j < n - 4).sort((a, b) => a - b);
   console.log(
     `  ${name}: S ×1,15 · ${await zeitenText()} · Grat an der Kreuzung ${kn[jk].toFixed(1)}° (sonst Median ${sonst[sonst.length >> 1].toFixed(1)}°) · ` +
-      `senkrechter Ring knickt dort ${(await K('knickAm', LL[1].id, kB)).toFixed(1)}° · umgeklappt ${await umgeklappt(p0)} · schief ${(await K('symmetrie')).toExponential(1)}`,
+      `senkrechter Ring knickt dort ${(await K('knickAm', LL[1].id, kB)).toFixed(1)}° · umgeklappt ${await umgeklappt()} · schief ${(await K('symmetrie')).toExponential(1)}`,
   );
   await seite.keyboard.press('Escape');
   await nah3d(`b-${name}`, q, { x: -0.45, y: 0.55, z: 1 }, 230);

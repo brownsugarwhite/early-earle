@@ -16,7 +16,19 @@ const KEY = 2 ** 22;
 const schluessel = (a: number, b: number): number => (a < b ? a * KEY + b : b * KEY + a);
 const punktProbe = (w: number): Probe => ({ ecken: [w, w, w], b: [1, 0, 0] });
 
-export type Verdichtet = { haut: Haut; loops: Loop[]; neu: number; gedreht: number; verborgen: Uint8Array | null };
+/**
+ * `alt`: je Punkt der neuen Haut seine Nummer in der alten (−1: neu). Die alten Punkte, die bleiben, stehen vorn in ihrer
+ * Reihenfolge, die neuen dahinter: Werte je Punkt (Blendshape, Knochenwinkel) lassen sich so übertragen und für die neuen ergänzen.
+ */
+export type Verdichtet = {
+  haut: Haut;
+  loops: Loop[];
+  neu: number;
+  gelegt: number;
+  gedreht: number;
+  verborgen: Uint8Array | null;
+  alt: Int32Array;
+};
 
 /**
  * Teilt alle Kanten länger als `maxKante` (spiegelgleich, höchstens `runden` Durchgänge), dreht danach Kanten zur Wertigkeit 6 und
@@ -30,12 +42,31 @@ export type Verdichtet = { haut: Haut; loops: Loop[]; neu: number; gedreht: numb
  * `verborgen` (je Dreieck 1: wird nicht gezeigt, etwa die Öffnung des Mauls): Kanten, an denen nur verborgene Dreiecke liegen,
  * werden nicht geteilt, und was aus einem verborgenen Dreieck entsteht, bleibt verborgen (Ergebnis `verborgen`). Sonst verdichtete
  * sich in der Fressen-Pose die Fläche, die das offene Maul überspannt (gemessen 2 300 neue Punkte nach einem Zug an der Lippe).
+ *
+ * Mit `kurz` werden nach dem Teilen Kanten kürzer als `kurz` zusammengelegt (Florian: „Ja, Kanten zusammenlegen“): Wo die Haut
+ * gestaucht wurde, liegen die Punkte quer zur Stauchung dicht, die Dreiecke werden schmal, und ihr Ring um einen Punkt sieht nur
+ * noch eine Richtung. Ein Punkt der Kante fällt weg, der andere bleibt, wo er ist (die Form ändert sich nur um die Sehne); spiegel-
+ * gleich mit seinem Spiegelbild. Kreuzungen, Punkte der Loops, die Enden der Ringe und Ecken verborgener Dreiecke bleiben; auf einer
+ * Kette fällt ein Punkt nur längs der Kette weg (in seinen Nachbarn auf derselben Kette) und nur, wo das Stück kürzer als
+ * `kurzKette` ist (Standard ½ `kurz`): Die Proben einer Kette sind die Linie, an ihnen werden die Griffe abgelesen (mit allen
+ * Ketten unter `kurz` blieben einer Augenform 30 von 57 Proben, der Griff am Punkt las 23° Knick statt 2°; ohne Ketten blieben
+ * schmale Dreiecke an den Linien, Schnabel 8 statt 0 Knicke über 60°). Nicht, wo das Netz dabei nicht mehr geschlossen wäre
+ * (Verbindungsbedingung), Dreiecke um mehr als 60° kippten oder Kanten länger als `maxKante` würden.
  */
 export function verdichten(
   h: Haut,
   loops: readonly Loop[],
   maxKante: number,
-  opt: { runden?: number; drehen?: boolean; entspannen?: boolean; winkel?: number; minKante?: number; verborgen?: Uint8Array | null } = {},
+  opt: {
+    runden?: number;
+    drehen?: boolean;
+    entspannen?: boolean;
+    winkel?: number;
+    minKante?: number;
+    verborgen?: Uint8Array | null;
+    kurz?: number;
+    kurzKette?: number;
+  } = {},
 ): Verdichtet | null {
   const runden = opt.runden ?? 8;
   const pos: number[] = Array.from(h.pos);
@@ -89,7 +120,7 @@ export function verdichten(
   loops.forEach((l, li) => {
     const k = ketten[li];
     if (!k) return;
-    const hd = haerteBei(l);
+    const hd = haerteBei(l, loops);
     k.forEach((v, j) => {
       if (hd[j]! <= 0.05) return;
       hart.add(v);
@@ -157,9 +188,12 @@ export function verdichten(
     const wb = (pa.x - pb.x) * nb.x + (pa.y - pb.y) * nb.y + (pa.z - pb.z) * nb.z;
     return begrenzt(pa, pb, { x: -(wa * na.x + wb * nb.x) / 8, y: -(wa * na.y + wb * nb.y) / 8, z: -(wa * na.z + wb * nb.z) / 8 });
   };
+  /** weggefallene Dreiecke (beim Zusammenlegen; ihre Ecken stehen noch in `tri`) */
+  let totT: Uint8Array | null = null;
   const punktNormalen = (): Float64Array => {
     const nor = new Float64Array(pos.length);
     for (let t = 0; t < tri.length / 3; t++) {
+      if (totT && totT[t]) continue;
       const n = flaechenNormale(t);
       for (let e = 0; e < 3; e++) {
         const v = tri[3 * t + e]!;
@@ -327,7 +361,228 @@ export function verdichten(
     }
   }
   const neu = pos.length / 3 - neu0;
-  if (neu === 0) return null;
+
+  // Zusammenlegen: Kanten kürzer als `kurz`, die kürzesten zuerst; ein Punkt fällt weg (`tot`, in `ersatz` gelegt)
+  const nGesamt = pos.length / 3;
+  const tot = new Uint8Array(nGesamt);
+  const ersatz = new Int32Array(nGesamt).fill(-1);
+  /** Punkte, in die gelegt wurde (werden mit den neuen entspannt) */
+  const gelegtIn = new Set<number>();
+  let gelegt = 0;
+  const kurz = opt.kurz ?? 0;
+  const kurzKette = Math.min(kurz, opt.kurzKette ?? kurz / 2);
+  if (kurz > 0) {
+    totT = new Uint8Array(tri.length / 3);
+    const tT = totT;
+    const umT: number[][] = Array.from({ length: nGesamt }, () => []);
+    for (let t = 0; t < tri.length / 3; t++) for (let e = 0; e < 3; e++) umT[tri[3 * t + e]!]!.push(t);
+    // je Punkt die Ketten, auf denen er liegt: li (gespeicherte Hälfte) oder −1 − li (ihr Spiegelbild)
+    const aufKetten = new Map<number, number[]>();
+    const eintragen = (v: number, code: number) => {
+      const l = aufKetten.get(v);
+      if (l) l.push(code);
+      else aufKetten.set(v, [code]);
+    };
+    ketten.forEach((k, li) =>
+      k?.forEach((v) => {
+        eintragen(v, li);
+        if (spiegel[v]! >= 0 && spiegel[v] !== v) eintragen(spiegel[v]!, -1 - li);
+      }),
+    );
+    // was bleiben muss: Kreuzungen, je Punkt eines Loops die nächste Probe, Enden der Ringe, Ecken der Proben nicht eingesetzter
+    // Loops, Ecken verborgener Dreiecke, Punkte ohne Spiegelbild
+    const fest = new Uint8Array(nGesamt);
+    const festMitSpiegel = (v: number) => {
+      fest[v] = 1;
+      if (spiegel[v]! >= 0) fest[spiegel[v]!] = 1;
+    };
+    for (const [v, l] of aufKetten) if (l.length > 1) fest[v] = 1;
+    loops.forEach((l, li) => {
+      const k = ketten[li];
+      if (!k) {
+        for (const p of l.proben) for (const v of p.ecken) festMitSpiegel(v);
+        return;
+      }
+      const s = sWerte[li]!;
+      const zu = l.art !== 'ring';
+      if (!zu) {
+        festMitSpiegel(k[0]!);
+        festMitSpiegel(k[k.length - 1]!);
+      }
+      for (const p of l.punkte) {
+        const ab = (j: number) => {
+          const d = Math.abs(s[j]! - p.s);
+          return zu ? Math.min(d, l.laenge - d) : d;
+        };
+        let best = 0;
+        for (let j = 1; j < s.length; j++) if (ab(j) < ab(best)) best = j;
+        festMitSpiegel(k[best]!);
+      }
+    });
+    if (verborgen) for (let t = 0; t < tri.length / 3; t++) if (verborgen[t]) for (let e = 0; e < 3; e++) fest[tri[3 * t + e]!] = 1;
+    for (let v = 0; v < nGesamt; v++) if (spiegel[v]! < 0) fest[v] = 1;
+
+    const ecken3 = (t: number): [number, number, number] => [tri[3 * t]!, tri[3 * t + 1]!, tri[3 * t + 2]!];
+    const nachbarnVon = (v: number): Set<number> => {
+      const s = new Set<number>();
+      for (const t of umT[v]!) for (let e = 0; e < 3; e++) if (tri[3 * t + e] !== v) s.add(tri[3 * t + e]!);
+      return s;
+    };
+    const austragen = (t: number) => {
+      const [a, b, c] = ecken3(t);
+      weg(a, b, t);
+      weg(b, c, t);
+      weg(c, a, t);
+      for (const v of [a, b, c]) {
+        const l = umT[v]!;
+        const i = l.indexOf(t);
+        if (i >= 0) l.splice(i, 1);
+      }
+    };
+    const eintragenT = (t: number) => {
+      const [a, b, c] = ecken3(t);
+      dazu(a, b, t);
+      dazu(b, c, t);
+      dazu(c, a, t);
+      for (const v of [a, b, c]) umT[v]!.push(t);
+    };
+    // Journal, damit das Spiegelbild eines Zusammenlegens zurückgenommen werden kann, wenn es selbst nicht geht
+    const journal: { t: number; alt: [number, number, number]; lebte: boolean }[] = [];
+    const setzen = (t: number, neuE: [number, number, number] | null) => {
+      journal.push({ t, alt: ecken3(t), lebte: !tT[t] });
+      if (!tT[t]) austragen(t);
+      if (!neuE) {
+        tT[t] = 1;
+        return;
+      }
+      tri[3 * t] = neuE[0];
+      tri[3 * t + 1] = neuE[1];
+      tri[3 * t + 2] = neuE[2];
+      tT[t] = 0;
+      eintragenT(t);
+    };
+    const zuruecknehmen = () => {
+      while (journal.length) {
+        const j = journal.pop()!;
+        if (!tT[j.t]) austragen(j.t);
+        tri[3 * j.t] = j.alt[0];
+        tri[3 * j.t + 1] = j.alt[1];
+        tri[3 * j.t + 2] = j.alt[2];
+        tT[j.t] = j.lebte ? 0 : 1;
+        if (j.lebte) eintragenT(j.t);
+      }
+    };
+    /** v in q legen (v fällt weg, q bleibt, wo er ist); false (nichts geändert), wenn das Netz nicht geschlossen bliebe, Dreiecke kippten oder Kanten zu lang würden */
+    const legen = (v: number, q: number): boolean => {
+      const ts = kanten.get(schluessel(v, q));
+      if (!ts || ts.length !== 2) return false;
+      const c = dritter(ts[0]!, v, q);
+      const d = dritter(ts[1]!, v, q);
+      if (c < 0 || d < 0 || c === d) return false;
+      const nq = nachbarnVon(q);
+      let gemeinsam = 0;
+      for (const w of nachbarnVon(v)) {
+        if (!nq.has(w)) continue;
+        if (w !== c && w !== d) return false;
+        gemeinsam++;
+      }
+      if (gemeinsam !== 2 || nachbarnVon(c).size <= 3 || nachbarnVon(d).size <= 3) return false;
+      const Q = lage(q);
+      for (const t of umT[v]!) {
+        if (t === ts[0] || t === ts[1]) continue;
+        const e = ecken3(t);
+        const n0 = norm(flaechenNormale(t));
+        const [A, B, C] = e.map((w) => (w === v ? Q : lage(w))) as [V3, V3, V3];
+        const ab = { x: B.x - A.x, y: B.y - A.y, z: B.z - A.z };
+        const ac = { x: C.x - A.x, y: C.y - A.y, z: C.z - A.z };
+        const n1 = { x: ab.y * ac.z - ab.z * ac.y, y: ab.z * ac.x - ab.x * ac.z, z: ab.x * ac.y - ab.y * ac.x };
+        const l1 = Math.hypot(n1.x, n1.y, n1.z);
+        if (!(l1 > 1e-12) || (n0.x * n1.x + n0.y * n1.y + n0.z * n1.z) / l1 < 0.5) return false;
+        for (const w of e) if (w !== v && laengeVon(q, w) > maxKante) return false;
+      }
+      for (const t of [...umT[v]!]) {
+        const e = ecken3(t);
+        setzen(t, e.includes(q) ? null : (e.map((w) => (w === v ? q : w)) as [number, number, number]));
+      }
+      return true;
+    };
+    /** auf einer Kette nur längs der Kette: v und q Nachbarn auf derselben Kette (v auf keiner: in jeden Punkt) */
+    const laengsKette = (v: number, q: number): { li: number; j: number } | null | false => {
+      const kv = aufKetten.get(v);
+      if (!kv) return null;
+      if (kv.length !== 1 || laengeVon(v, q) >= kurzKette) return false;
+      const code = kv[0]!;
+      if (!aufKetten.get(q)?.includes(code)) return false;
+      const li = code >= 0 ? code : -1 - code;
+      const k = ketten[li]!;
+      const j = k.indexOf(code >= 0 ? v : spiegel[v]!);
+      const i = k.indexOf(code >= 0 ? q : spiegel[q]!);
+      const zu = loops[li]!.art !== 'ring';
+      return j >= 0 && i >= 0 && (Math.abs(i - j) === 1 || (zu && Math.abs(i - j) === k.length - 1)) ? { li, j } : false;
+    };
+    /** v in q legen samt Spiegelbild: v auf der Mitte nur in einen Punkt auf der Mitte, nie über die Mitte in sein Spiegelbild */
+    const versuchen = (v: number, q: number): boolean => {
+      const sv = spiegel[v]!;
+      const sq = spiegel[q]!;
+      if (sv === v) return sq === q && legen(v, q);
+      if (q === sv) return false;
+      if (!legen(v, q)) return false;
+      if (!legen(sv, sq === q ? q : sq)) {
+        zuruecknehmen();
+        return false;
+      }
+      return true;
+    };
+    const rang = (v: number) => (fest[v] ? 3 : aufKetten.has(v) ? 2 : spiegel[v] === v ? 1 : 0);
+    for (let runde = 0; runde < 3; runde++) {
+      const kand: { a: number; b: number; l: number }[] = [];
+      for (const k of kanten.keys()) {
+        const a = Math.floor(k / KEY);
+        const b = k % KEY;
+        const l = laengeVon(a, b);
+        if (l < kurz) kand.push({ a, b, l });
+      }
+      kand.sort((p, q) => p.l - q.l);
+      let diesmal = 0;
+      for (const { a, b } of kand) {
+        if (tot[a] || tot[b] || !kanten.has(schluessel(a, b)) || laengeVon(a, b) >= kurz) continue;
+        // zuerst fällt der unwichtigere weg, bei gleichem Rang der neuere (a < b): der ältere hat in der Pose die genaue Grundform
+        const [x, y] = rang(a) < rang(b) ? [a, b] : [b, a];
+        for (const [v, q] of [
+          [x, y],
+          [y, x],
+        ] as const) {
+          if (fest[v]) continue;
+          const k = laengsKette(v, q);
+          if (k === false) continue;
+          journal.length = 0;
+          if (!versuchen(v, q)) continue;
+          journal.length = 0;
+          const sv = spiegel[v]!;
+          const ziel = sv === v || spiegel[q] === q ? q : spiegel[q]!;
+          tot[v] = 1;
+          ersatz[v] = q;
+          if (!fest[q] && !aufKetten.has(q)) gelegtIn.add(q);
+          if (sv !== v) {
+            tot[sv] = 1;
+            ersatz[sv] = ziel;
+            if (!fest[ziel] && !aufKetten.has(ziel)) gelegtIn.add(ziel);
+          }
+          if (k) {
+            ketten[k.li]!.splice(k.j, 1);
+            sWerte[k.li]!.splice(k.j, 1);
+          }
+          aufKetten.delete(v);
+          aufKetten.delete(sv);
+          diesmal++;
+          break;
+        }
+      }
+      gelegt += diesmal;
+      if (diesmal === 0) break;
+    }
+  }
+  if (neu === 0 && gelegt === 0) return null;
 
   // Kanten drehen: Wertigkeit näher an 6, nie Kanten eines Loops (samt Spiegelbild), nie über eine Falte
   const gesperrt = new Set<number>();
@@ -439,7 +694,10 @@ export function verdichten(
     if (diesmal === 0) break;
   }
 
-  // neue Punkte (nicht auf Loops) in der Fläche entspannen: halber Weg zur Mitte ihrer Nachbarn, nur längs der Fläche
+  // neue Punkte und die, in die gelegt wurde (nicht auf Loops), in der Fläche entspannen: halber Weg zur Mitte ihrer Nachbarn,
+  // nur längs der Fläche
+  const entspannen: number[] = [];
+  for (let v = 0; v < pos.length / 3; v++) if (!tot[v] && (v >= neu0 || gelegtIn.has(v))) entspannen.push(v);
   const aufKette = new Set<number>();
   ketten.forEach((k) => k?.forEach((v) => {
     aufKette.add(v);
@@ -455,9 +713,10 @@ export function verdichten(
   for (let it = 0; it < (opt.entspannen === false ? 0 : 2); it++) {
     const nor = punktNormalen();
     const neuPos = pos.slice();
-    for (let v = neu0; v < pos.length / 3; v++) {
+    for (const v of entspannen) {
       if (aufKette.has(v) || spiegel[v]! < v) continue;
       const nb = nachbarn[v]!;
+      if (nb.length === 0) continue;
       const c = { x: 0, y: 0, z: 0 };
       for (const w of nb) {
         c.x += pos[3 * w]! / nb.length;
@@ -479,10 +738,41 @@ export function verdichten(
     for (let i = 0; i < pos.length; i++) pos[i] = neuPos[i]!;
   }
 
-  const haut = hautAus(pos, tri);
+  // neu nummerieren: die gebliebenen Punkte in ihrer Reihenfolge (die alten vorn), weggefallene Dreiecke heraus
+  const nAlt = h.n;
+  const neuNr = new Int32Array(nGesamt).fill(-1);
+  let m = 0;
+  for (let v = 0; v < nGesamt; v++) if (!tot[v]) neuNr[v] = m++;
+  const alt = new Int32Array(m);
+  const pos2 = new Float64Array(3 * m);
+  for (let v = 0; v < nGesamt; v++) {
+    const w = neuNr[v]!;
+    if (w < 0) continue;
+    alt[w] = v < nAlt ? v : -1;
+    pos2[3 * w] = pos[3 * v]!;
+    pos2[3 * w + 1] = pos[3 * v + 1]!;
+    pos2[3 * w + 2] = pos[3 * v + 2]!;
+  }
+  const tri2: number[] = [];
+  const verborgen2: number[] | null = verborgen ? [] : null;
+  for (let t = 0; t < tri.length / 3; t++) {
+    if (totT && totT[t]) continue;
+    tri2.push(neuNr[tri[3 * t]!]!, neuNr[tri[3 * t + 1]!]!, neuNr[tri[3 * t + 2]!]!);
+    verborgen2?.push(verborgen![t]!);
+  }
+  /** ein weggefallener Punkt: der, in den er (über Stufen) gelegt wurde */
+  const wohin = (v: number): number => {
+    let w = v;
+    while (tot[w]) w = ersatz[w]!;
+    return neuNr[w]!;
+  };
+  const haut = hautAus(pos2, tri2);
   const neueLoops = loops.map((l, li) => {
     const k = ketten[li];
-    if (!k) return { ...l, punkte: l.punkte.map((p) => ({ ...p })) };
+    if (!k) {
+      const proben = l.proben.map((p): Probe => ({ ecken: p.ecken.map(wohin) as [number, number, number], b: [...p.b] }));
+      return { ...l, proben, punkte: l.punkte.map((p) => ({ ...p })) };
+    }
     const ruhe = new Float64Array(3 * k.length);
     k.forEach((v, j) => {
       ruhe[3 * j] = pos[3 * v]!;
@@ -493,7 +783,13 @@ export function verdichten(
       ruhe[2] = 0;
       ruhe[3 * k.length - 1] = 0;
     }
-    return { ...l, proben: k.map(punktProbe), s: Float64Array.from(sWerte[li]!), ruhe, punkte: l.punkte.map((p) => ({ ...p })) };
+    return {
+      ...l,
+      proben: k.map((v) => punktProbe(neuNr[v]!)),
+      s: Float64Array.from(sWerte[li]!),
+      ruhe,
+      punkte: l.punkte.map((p) => ({ ...p })),
+    };
   });
-  return { haut, loops: neueLoops, neu, gedreht, verborgen: verborgen ? Uint8Array.from(verborgen) : null };
+  return { haut, loops: neueLoops, neu, gelegt, gedreht, verborgen: verborgen2 ? Uint8Array.from(verborgen2) : null, alt };
 }

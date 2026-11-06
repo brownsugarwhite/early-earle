@@ -41,11 +41,31 @@ const regler = async (id, w) => {
   );
   await seite.waitForTimeout(250);
 };
+/**
+ * Größte Abweichung zweier Lagenlisten. Hat das Verdichten Punkte zusammengelegt (neu nummeriert), über die Lage: die alten Punkte,
+ * die es noch gibt, genau an Ort (gleiche Lage), wie viele weggefallen sind, und wie weit die übrigen neuen vom nächsten alten liegen.
+ */
 const unterschied = (a, b) => {
-  if (a.length !== b.length) return `Länge ${a.length} gegen ${b.length}`;
-  let d = 0;
-  for (let i = 0; i < a.length; i++) d = Math.max(d, Math.abs(a[i] - b[i]));
-  return d;
+  if (a.length === b.length) {
+    let d = 0;
+    for (let i = 0; i < a.length; i++) d = Math.max(d, Math.abs(a[i] - b[i]));
+    return d;
+  }
+  const schl = (p, i) => `${p[3 * i]},${p[3 * i + 1]},${p[3 * i + 2]}`;
+  const alt = new Set();
+  for (let i = 0; i < b.length / 3; i++) alt.add(schl(b, i));
+  let gleich = 0;
+  let neuWeit = 0;
+  for (let i = 0; i < a.length / 3; i++) {
+    if (alt.has(schl(a, i))) {
+      gleich++;
+      continue;
+    }
+    let m = Infinity;
+    for (let j = 0; j < b.length / 3; j++) m = Math.min(m, Math.hypot(a[3 * i] - b[3 * j], a[3 * i + 1] - b[3 * j + 1], a[3 * i + 2] - b[3 * j + 2]));
+    neuWeit = Math.max(neuWeit, m);
+  }
+  return `neu nummeriert: ${gleich} von ${b.length / 3} alten Punkten genau an Ort, ${b.length / 3 - gleich} weggefallen, ${a.length / 3 - gleich} neue bis ${neuWeit.toFixed(2)} vom nächsten alten`;
 };
 const ziehen = async (a, von, nach, schritte = 12) => {
   const p = await bild(a, von);

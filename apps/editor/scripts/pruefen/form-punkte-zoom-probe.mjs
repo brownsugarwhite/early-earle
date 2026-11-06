@@ -33,23 +33,61 @@ const ziehen = async ([x, y], [x2, y2], schritte = 12) => {
   await seite.mouse.up();
   await seite.waitForTimeout(250);
 };
-const umgeklappt = (vorher) =>
-  seite.evaluate((v) => {
+/**
+ * Umgeklappte Dreiecke: Normale gegen die Normalen ihrer Ecken (Mittel der Nachbardreiecke). Seit dem Zusammenlegen zu kurzer Kanten
+ * (06.11.) nummeriert das Verdichten die Punkte neu; ein Vergleich mit den Lagen vor dem Zug über die Nummern zählte dann fast alle.
+ */
+const umgeklappt = () =>
+  seite.evaluate(() => {
     const p = window.__kurven.lagen();
     const t = window.__kurven.dreiecke();
-    const n = (q, a, b, c) => {
-      const ab = [q[3 * b] - q[3 * a], q[3 * b + 1] - q[3 * a + 1], q[3 * b + 2] - q[3 * a + 2]];
-      const ac = [q[3 * c] - q[3 * a], q[3 * c + 1] - q[3 * a + 1], q[3 * c + 2] - q[3 * a + 2]];
-      return [ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]];
-    };
+    const fn = [];
+    const vn = new Float64Array(p.length);
+    for (let i = 0; i < t.length; i += 3) {
+      const [a, b, c] = [t[i], t[i + 1], t[i + 2]];
+      const ab = [p[3 * b] - p[3 * a], p[3 * b + 1] - p[3 * a + 1], p[3 * b + 2] - p[3 * a + 2]];
+      const ac = [p[3 * c] - p[3 * a], p[3 * c + 1] - p[3 * a + 1], p[3 * c + 2] - p[3 * a + 2]];
+      const f = [ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]];
+      fn.push(f);
+      for (const v of [a, b, c]) for (let k = 0; k < 3; k++) vn[3 * v + k] += f[k];
+    }
     let z = 0;
     for (let i = 0; i < t.length; i += 3) {
-      const a = n(v, t[i], t[i + 1], t[i + 2]);
-      const b = n(p, t[i], t[i + 1], t[i + 2]);
-      if (a[0] * b[0] + a[1] * b[1] + a[2] * b[2] < 0) z++;
+      const f = fn[i / 3];
+      const m = [0, 1, 2].map((k) => vn[3 * t[i] + k] + vn[3 * t[i + 1] + k] + vn[3 * t[i + 2] + k]);
+      if (f[0] * m[0] + f[1] * m[1] + f[2] * m[2] < 0) z++;
     }
     return z;
-  }, vorher);
+  });
+/** Abstand eines Punkts zur Linie (Strecken zwischen ihren Proben) */
+const abstandZurLinie = (l, p) => {
+  const n = l.ruhe.length / 3;
+  const zu = l.art !== 'ring';
+  let m = Infinity;
+  for (let j = 0; j < (zu ? n : n - 1); j++) {
+    const a = [0, 1, 2].map((c) => l.ruhe[3 * j + c]);
+    const b = [0, 1, 2].map((c) => l.ruhe[3 * ((j + 1) % n) + c]);
+    const ab = [0, 1, 2].map((c) => b[c] - a[c]);
+    const ap = [0, 1, 2].map((c) => p[c] - a[c]);
+    const ll = ab[0] * ab[0] + ab[1] * ab[1] + ab[2] * ab[2] || 1;
+    const t = Math.max(0, Math.min(1, (ap[0] * ab[0] + ap[1] * ab[1] + ap[2] * ab[2]) / ll));
+    m = Math.min(m, Math.hypot(ap[0] - t * ab[0], ap[1] - t * ab[1], ap[2] - t * ab[2]));
+  }
+  return m;
+};
+/** Lage einer Linie an der Stelle s (zwischen ihren Proben linear; das Verdichten kann Proben zusammenlegen, die Stellen bleiben) */
+const lageBeiS = (l, s) => {
+  const n = l.s.length;
+  const zu = l.art !== 'ring';
+  const t = zu ? ((s % l.laenge) + l.laenge) % l.laenge : Math.max(0, Math.min(l.laenge, s));
+  let i = 0;
+  while (i + 1 < n && l.s[i + 1] <= t) i++;
+  const j = i + 1 < n ? i + 1 : zu ? 0 : i;
+  const s0 = l.s[i];
+  const s1 = j > i ? l.s[j] : zu ? l.laenge : s0;
+  const f = s1 > s0 ? (t - s0) / (s1 - s0) : 0;
+  return [0, 1, 2].map((c) => l.ruhe[3 * i + c] + f * (l.ruhe[3 * j + c] - l.ruhe[3 * i + c]));
+};
 const foto = async (name, a, mitte, breite) => {
   if (!a) {
     await seite.screenshot({ path: `${ordner}/form-punkte-${name}-2026-11-05.jpg`, type: 'jpeg', quality: 88 });
@@ -74,33 +112,41 @@ await ziehen(xy(await bild('top', { x: -200, y: 0, z: 0 })), xy(await bild('top'
 let L = await loops();
 console.log(`A drei Loops: ${L.map((l) => `${l.art} ${l.punkte.length} P`).join(', ')}`);
 const oben = L.flatMap((l) => l.punkte).find((p) => p.kreuzung !== null && p.ref.y > 100);
-const vorher = L.map((l) => l.ruhe.slice());
-const pos0 = await K('lagen');
+const vorher = L.map((l) => ({ ruhe: l.ruhe.slice(), s: l.s.slice() }));
 await ziehen(xy(await bild('seite', oben.ref)), xy(await bild('seite', { ...oben.ref, y: oben.ref.y + 40 })));
 L = await loops();
 // je Loop: Bewegung der Proben jenseits der Nachbarpunkte des gezogenen Punkts (längs s)
 for (const [li, l] of L.entries()) {
   const k = l.punkte.findIndex((p) => p.kreuzung === oben.kreuzung);
   if (k < 0) continue;
-  const n = l.ruhe.length / 3;
-  const s = [0];
-  for (let j = 1; j < n; j++) s.push(s[j - 1] + Math.hypot(...[0, 1, 2].map((c) => vorher[li][3 * j + c] - vorher[li][3 * j - 3 + c])));
+  // je alte Probe die Lage der Linie an ihrer Stelle s jetzt (Proben können zusammengelegt sein)
+  const { ruhe: alt, s } = vorher[li];
+  const n = s.length;
   const P = l.punkte;
   const zu = l.art !== 'ring';
   const s0 = k > 0 ? P[k - 1].s : zu ? P[P.length - 1].s - l.laenge : 0;
   const s1 = k < P.length - 1 ? P[k + 1].s : zu ? P[0].s + l.laenge : l.laenge;
   let jenseits = 0;
+  let jenseitsLinie = 0;
   let innen = 0;
   for (let j = 0; j < n; j++) {
-    const d = Math.hypot(...[0, 1, 2].map((c) => l.ruhe[3 * j + c] - vorher[li][3 * j + c]));
+    const q = lageBeiS(l, s[j]);
+    const d = Math.hypot(...[0, 1, 2].map((c) => q[c] - alt[3 * j + c]));
     const t = s[j];
     const drin = (t >= s0 - 1e-6 && t <= s1 + 1e-6) || (zu && (t - l.laenge >= s0 - 1e-6 || t + l.laenge <= s1 + 1e-6));
     if (drin) innen = Math.max(innen, d);
-    else jenseits = Math.max(jenseits, d);
+    else {
+      jenseits = Math.max(jenseits, d);
+      jenseitsLinie = Math.max(jenseitsLinie, abstandZurLinie(l, [alt[3 * j], alt[3 * j + 1], alt[3 * j + 2]]));
+    }
   }
-  console.log(`  ${l.art}: zwischen den Nachbarpunkten bis ${innen.toFixed(1)}, jenseits bis ${jenseits.toFixed(2)}`);
+  // an derselben Stelle s; „zur Linie“: Abstand der alten Probe zur Linie jetzt (wo Proben zusammengelegt wurden, liegt an ihrer
+  // Stelle die Sehne zwischen den Nachbarproben, die Linie selbst ist nicht gewandert)
+  console.log(
+    `  ${l.art}: zwischen den Nachbarpunkten bis ${innen.toFixed(1)}, jenseits bis ${jenseits.toFixed(2)} (zur Linie ${jenseitsLinie.toFixed(2)})`,
+  );
 }
-console.log(`  Maße ${JSON.stringify(await K('masse'))} · umgeklappt ${await umgeklappt(pos0)} · schief ${(await K('symmetrie')).toExponential(1)}`);
+console.log(`  Maße ${JSON.stringify(await K('masse'))} · umgeklappt ${await umgeklappt()} · schief ${(await K('symmetrie')).toExponential(1)}`);
 await foto('a-oben-hoch-seite', 'seite', { x: 0, y: 120, z: 0 }, 420);
 const f3 = (await K('felder')).drei;
 await seite.screenshot({
@@ -160,9 +206,8 @@ await seite.waitForTimeout(200);
 const g = await K('griffe', auge.id, oi);
 console.log(`  Griffe gezoomt: Faktor ${g.faktor.toFixed(2)} (ungezoomt 3,5)`);
 await foto('b-zoom-griffe', 'seite', { x: -60, y: 45, z: 0 }, 560);
-const pos = await K('lagen');
 await ziehen(xy(await bild('seite', g.aus)), xy(await bild('seite', { ...g.aus, y: g.aus.y + 12 })));
-console.log(`  Griff gezogen gezoomt: Linie am Punkt ${(await K('knickAm', auge.id, oi)).toFixed(1)}°, umgeklappt ${await umgeklappt(pos)}`);
+console.log(`  Griff gezogen gezoomt: Linie am Punkt ${(await K('knickAm', auge.id, oi)).toFixed(1)}°, umgeklappt ${await umgeklappt()}`);
 await foto('b-zoom-griff-gezogen', 'seite', { x: -60, y: 45, z: 0 }, 560);
 // mittlere Taste: 150 px nach rechts, 60 hoch
 const vor = await K('ausschnitt', 'seite');

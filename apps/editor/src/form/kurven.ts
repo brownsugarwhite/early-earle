@@ -170,7 +170,14 @@ const KRUEMMUNG = new URLSearchParams(location.search).get('kruemmung') !== '0';
  * umgeschlagene Dreiecke), an einem dicken gleich; deshalb aus
  */
 const WINKEL = new URLSearchParams(location.search).get('winkel') === '1';
-let letzteVerdichtung: { neu: number; ms: number } | null = null;
+/**
+ * Kanten kürzer als dieser Anteil der Startkante werden nach einem Zug zusammengelegt, auf einer Linie (Kette) nur unter der
+ * Hälfte davon (`?kurz=0` schaltet es zum Vergleich ab). Gemessen mit der Maus (`form-explosion-probe.mjs`, Knicke über 60° /
+ * umgeklappt): langer Hammer 79/26 → 7/0, Schlaufe 46/16 → 14/2, Rüssel mit gedrehtem Griff 36/6 → 13/0; mit ⅓ bzw. 0,4 im Kern
+ * schwächer.
+ */
+const KURZ = Number(new URLSearchParams(location.search).get('kurz') ?? 0.5);
+let letzteVerdichtung: { neu: number; gelegt: number; ms: number } | null = null;
 
 type Schnappschuss = {
   haut: Haut;
@@ -395,7 +402,7 @@ function teilungNeu(): void {
   };
   for (const l of loops) {
     if (!l.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2])) continue;
-    const hd = haerteBei(l);
+    const hd = haerteBei(l, loops);
     const kette = l.proben.map((p) => p.ecken[0]);
     const m = kette.length;
     const zu = l.art !== 'ring';
@@ -711,19 +718,31 @@ function poseVerlassen(): void {
   geometrieNeu();
 }
 
+/** Zuordnung für ein Netz, das nur gewachsen ist: die alten Punkte bleiben vorn, neue ab `nAlt` */
+const nurGewachsen = (n: number, nAlt: number): Int32Array => Int32Array.from({ length: n }, (_, i) => (i < nAlt ? i : -1));
+
 /**
- * Das Netz ist gewachsen (verdichtet, Loop eingesetzt; neue Punkte ab `nAlt`): In der Pose bekommt die Grundform dieselben Punkte —
+ * Das Netz hat sich geändert (verdichtet, zu kurze Kanten zusammengelegt, Loop eingesetzt). `alt`: je neuer Punkt seine Nummer im
+ * alten Netz (−1: neu); die gebliebenen alten stehen vorn in ihrer Reihenfolge. In der Pose bekommt die Grundform dieselben Punkte —
  * die alten bleiben, wo sie sind, die neuen liegen dort, wo sie in der Pose liegen, zurückgedreht und um den Blendshape ihrer
- * Nachbarn verschoben. In der Grundform bekommt der Blendshape Werte für die neuen Punkte. `vorher`: Knochen vor dem Wachsen.
+ * Nachbarn verschoben. In der Grundform bekommt der Blendshape Werte für die neuen Punkte. `vorher`: Knochen vor der Änderung.
  */
-function netzGewachsen(nAlt: number, vorher: { theta: Float64Array; G: V2 } | null): void {
+function netzGewachsen(nAlt: number, alt: Int32Array, vorher: { theta: Float64Array; G: V2 } | null): void {
+  let m = 0;
+  while (m < alt.length && alt[m]! >= 0) m++;
+  /** Werte je alter Punkt (k je Punkt) in der neuen Reihenfolge der gebliebenen */
+  const umordnen = (w: ArrayLike<number>, k: number): Float64Array => {
+    const out = new Float64Array(k * m);
+    for (let i = 0; i < m; i++) for (let c = 0; c < k; c++) out[k * i + c] = w[k * alt[i]! + c]!;
+    return out;
+  };
   const g = grund;
   if (g && vorher) {
-    const theta = ergaenzen(haut, vorher.theta, nAlt, 1);
+    const theta = ergaenzen(haut, umordnen(vorher.theta, 1), m, 1);
     const ruhe = knochenDrehen(haut.pos, theta, vorher.G, true);
-    const dAlt = new Float64Array(3 * nAlt);
-    for (let i = 0; i < dAlt.length; i++) dAlt[i] = ruhe[i]! - g.haut.pos[i]!;
-    const d = ergaenzen(haut, dAlt, nAlt, 3, true);
+    const dAlt = umordnen(g.haut.pos, 3);
+    for (let i = 0; i < dAlt.length; i++) dAlt[i] = ruhe[i]! - dAlt[i]!;
+    const d = ergaenzen(haut, dAlt, m, 3, true);
     const basis = Float64Array.from(ruhe, (x, i) => x - d[i]!);
     const gh: Haut = { pos: basis, tri: haut.tri, n: haut.n, nachbarn: haut.nachbarn, spiegel: haut.spiegel };
     grund = { haut: gh, loops: grundLoopsAus(gh) };
@@ -732,7 +751,7 @@ function netzGewachsen(nAlt: number, vorher: { theta: Float64Array; G: V2 } | nu
     const k = poseKnochen();
     if (k) haut.pos.set(knochenDrehen(ruhe, k.theta, k.G));
     for (const l of loops) festlegen(haut, l);
-  } else if (pose.delta && pose.delta.length === 3 * nAlt) pose.delta = ergaenzen(haut, pose.delta, nAlt, 3, true);
+  } else if (pose.delta && pose.delta.length === 3 * nAlt) pose.delta = ergaenzen(haut, umordnen(pose.delta, 3), m, 3, true);
 }
 
 /** Knochen setzen (Grad); in die Pose, falls nötig. Die Ruhe der Pose bleibt, die Pose wird neu gedreht. */
@@ -936,7 +955,7 @@ function baenderZeigen(): void {
     const L = lagen[li]!;
     const gew = auswahl.some((w) => w.l === l.id);
     const ziel = gew ? gewaehlt : maul?.id === l.id ? lippe : normal;
-    const hd = haerteBei(l);
+    const hd = haerteBei(l, loops);
     const n = l.proben.length;
     // Ring: gespeicherte Hälfte und Spiegelhälfte, Paar: Loop und Zwilling, Mitte geschlossen
     for (const sp of l.art === 'mitte' ? [false] : [false, true]) {
@@ -1079,7 +1098,7 @@ function blattZeichnen(a: Ansicht): void {
   });
   // harte Stücke schwarz, so breit wie die Härte (wie die Strichdicke einer Kante)
   loops.forEach((l, li) => {
-    const hd = haerteBei(l);
+    const hd = haerteBei(l, loops);
     const L = lagen[li]!;
     const n = l.proben.length;
     for (const m of a === 'seite' || l.art === 'mitte' ? [false] : [false, true]) {
@@ -1181,7 +1200,9 @@ function statusZeigen(): void {
     meldung ||
     `${loops.length} Loops · ${punkte} Punkte (${kreuz} Kreuzungen) · Zug ${ms.toFixed(1)} ms · zerlegen ${letzteZerlegung} ms · ` +
       `Bereich ${letzterBereich} von ${haut.n}` +
-      (letzteVerdichtung ? ` · verdichtet +${letzteVerdichtung.neu} (${letzteVerdichtung.ms} ms)` : '') +
+      (letzteVerdichtung
+        ? ` · verdichtet +${letzteVerdichtung.neu}${letzteVerdichtung.gelegt ? ` −${letzteVerdichtung.gelegt}` : ''} (${letzteVerdichtung.ms} ms)`
+        : '') +
       (maul ? (!maulGezeigt ? ' · Maul: Loop schneidet nicht (als Kette eingesetzt?)' : grund ? ` · Fressen: Maul ${pose.kiefer}°, Kopf ${pose.schaedel}°` : ' · Grundform') : '');
 }
 
@@ -1733,8 +1754,10 @@ function zugEnde(ok: boolean): void {
 
 /**
  * Nach einem Zug: Wo Kanten länger als 1,75 Kanten des Startnetzes geworden sind (dort ist die Haut gedehnt), wird das Netz feiner,
- * die neuen Punkte liegen rund (`verdichten`). Im unberührten Netz ist keine Kante so lang (Startkugel höchstens 1,67). Mit
- * `?winkel=1` auch, wo sich die Fläche über eine Kante um mehr als 25° dreht (bis ⅓ Startkante; Versuch).
+ * die neuen Punkte liegen rund (`verdichten`); wo Kanten kürzer als ½ geworden sind (dort ist sie gestaucht), werden sie
+ * zusammengelegt. Im unberührten Netz ist keine Kante so lang (Startkugel höchstens 1,67) und kaum eine so kurz (0,1 % unter ½).
+ * Mit `?winkel=1` auch, wo sich die Fläche über eine Kante um mehr als 25° dreht (bis ⅓ Startkante; Versuch, dann ohne
+ * Zusammenlegen).
  */
 function nachVerdichten(): void {
   if (!VERDICHTEN) return;
@@ -1744,13 +1767,13 @@ function nachVerdichten(): void {
   // die Öffnung des Mauls wird nicht gezeigt und nicht verdichtet (in der Pose überspannt sie das offene Maul)
   const m = maulAktuell();
   const verborgen = m && m.offen.length === haut.tri.length / 3 ? m.offen : null;
-  const v = verdichten(haut, loops, 1.75 * MK, WINKEL ? { winkel: 25, minKante: MK / 3, verborgen } : { verborgen });
+  const v = verdichten(haut, loops, 1.75 * MK, WINKEL ? { winkel: 25, minKante: MK / 3, verborgen } : { verborgen, kurz: KURZ * MK });
   if (!v) return;
   haut = v.haut;
   loops = v.loops;
-  netzGewachsen(nAlt, vorher);
+  netzGewachsen(nAlt, v.alt, vorher);
   geometrieNeu();
-  letzteVerdichtung = { neu: v.neu, ms: Math.round(performance.now() - t0) };
+  letzteVerdichtung = { neu: v.neu, gelegt: v.gelegt, ms: Math.round(performance.now() - t0) };
 }
 
 // ---------- Loops schneiden, Formen zeichnen, Punkte setzen und löschen ----------
@@ -1783,7 +1806,7 @@ function einsetzenLetzten(): void {
   if (r) {
     haut = r.haut;
     loops = r.loops;
-    netzGewachsen(nAlt, vorher);
+    netzGewachsen(nAlt, nurGewachsen(haut.n, nAlt), vorher);
     geometrieNeu();
     meldung = '';
   } else meldung = 'Loop liegt nur auf der Haut (nicht ins Netz eingesetzt): Härte wirkt dort kaum';
@@ -2224,6 +2247,7 @@ schleife();
       punkte: l.punkte.map((p) => ({ s: p.s, ref: p.ref, kreuzung: p.kreuzung ?? null, ecke: istEcke(p), autoEcke: p.autoEcke ?? false, haerte: p.haerte ?? null, mundwinkel: p.mundwinkel ?? false })),
       haerte: l.haerte ?? null,
       ruhe: Array.from(l.ruhe),
+      s: Array.from(l.s),
     })),
   auswahl: () => auswahl,
   /** Knick der Linie an einem Punkt (Grad): Richtung hinein gegen hinaus, je Seite für sich gemessen */

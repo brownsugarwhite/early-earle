@@ -809,7 +809,7 @@ export function kruemmungsKetten(plan: BindungsPlan, loops: readonly Loop[]): Kr
   const kette: Int32Array[] = new Array<Int32Array>(m);
   const haerte = new Float64Array(m);
   const ecke = new Uint8Array(m);
-  const hd = loops.map((l) => haerteBei(l));
+  const hd = loops.map((l) => haerteBei(l, loops));
   const eingesetzt = loops.map((l) => l.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2]));
   // Proben mit einem Punkt, der eine Ecke ist (die nächste Probe zu seiner Stelle)
   const eckProben = loops.map((l) => {
@@ -919,10 +919,57 @@ export function haerteAn(l: Loop, s: number, K: readonly { s: number; h: number 
   return a.h + t * (b.h - a.h);
 }
 
-/** Härte je Probe (0–3) */
-export function haerteBei(l: Loop): Float64Array {
+/** Ab diesem Knick (Grad) einer kreuzenden Linie knickt die Haut quer über den Loop (darunter misst man das Netz), ab KNICK_HART ganz */
+const KNICK_GLATT = 5;
+const KNICK_HART = 30;
+
+/** Knick der Linie an ihrem Punkt i (Grad): Richtung hinein gegen hinaus, je Seite gemessen; 0 an einem glatten Punkt */
+export function knickAm(l: Loop, i: number): number {
+  if (!istEcke(l.punkte[i]!)) return 0;
+  const g = griffeBei(l, l.ruhe, i, true);
+  if (!g.ein || !g.aus) return 0;
+  const le = Math.hypot(g.ein.x, g.ein.y, g.ein.z);
+  const la = Math.hypot(g.aus.x, g.aus.y, g.aus.z);
+  if (!(le > 1e-9 && la > 1e-9)) return 0;
+  const c = -(g.ein.x * g.aus.x + g.ein.y * g.aus.y + g.ein.z * g.aus.z) / (le * la);
+  return (Math.acos(Math.max(-1, Math.min(1, c))) * 180) / Math.PI;
+}
+
+/**
+ * Härte aus Knicken (Florian, 06.11.: „dass die Linie den Knick zwischen den zwei Punkten interpoliert“). Knickt eine Linie dort,
+ * wo sie diesen Loop kreuzt, knickt die Haut quer über diesen Loop; längs des Loops läuft das linear bis zur nächsten Kreuzung,
+ * bis zu einem Knick weiter, bis zu einer glatten Kreuzung auf 0. Stützstellen sind deshalb alle Kreuzungen des Loops (gesetzte
+ * Punkte ohne Kreuzung unterbrechen nicht). Der eigene Knick eines Loops zählt hier nicht: Ein Ring, der an einer Ecke weiter rund
+ * läuft, sagt quer über die Linie, die ihn kreuzt, nichts.
+ */
+function knickKnoten(l: Loop, loops: readonly Loop[]): { s: number; h: number }[] {
+  const out: { s: number; h: number }[] = [];
+  for (const p of l.punkte) {
+    if (p.kreuzung === undefined) continue;
+    let w = 0;
+    for (const q of loops) {
+      if (q === l) continue;
+      q.punkte.forEach((r, k) => {
+        if (r.kreuzung === p.kreuzung) w = Math.max(w, knickAm(q, k));
+      });
+    }
+    out.push({ s: p.s, h: 3 * Math.max(0, Math.min(1, (w - KNICK_GLATT) / (KNICK_HART - KNICK_GLATT))) });
+  }
+  return out;
+}
+
+/**
+ * Härte je Probe (0–3): die gesetzte, mit `loops` dazu die aus den Knicken der kreuzenden Linien (die größere gilt). Ein Pilzhut mit
+ * Ecken an den vier Kreuzungen seines Rands bekommt so einen Knick rundum statt Polstern zwischen den Ecken.
+ */
+export function haerteBei(l: Loop, loops?: readonly Loop[]): Float64Array {
   const K = haerteKnoten(l);
-  return Float64Array.from(l.s, (s) => haerteAn(l, s, K));
+  const h = Float64Array.from(l.s, (s) => haerteAn(l, s, K));
+  if (!loops) return h;
+  const KK = knickKnoten(l, loops);
+  if (!KK.some((k) => k.h > 0)) return h;
+  for (let j = 0; j < h.length; j++) h[j] = Math.max(h[j]!, haerteAn(l, l.s[j]!, KK));
+  return h;
 }
 
 /**
@@ -1184,7 +1231,7 @@ export function kantenGewichte(h: Haut, loops: readonly Loop[]): Map<number, num
     gerichtet(b, a, w);
   };
   for (const l of loops) {
-    const hd = haerteBei(l);
+    const hd = haerteBei(l, loops);
     if (!hd.some((x) => x > 0)) continue;
     const n = l.proben.length;
     const zu = geschlossen(l);

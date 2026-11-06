@@ -14,8 +14,10 @@ import {
   griffeBei,
   griffZiehen,
   haerteAn,
+  haerteBei,
   istEcke,
   kantenGewichte,
+  knickAm,
   knickWinkel,
   kreuzungenZwischen,
   loopAusSchnitt,
@@ -471,6 +473,45 @@ describe('Bézier-Griffe und Ecken', () => {
     expect(istEcke(k1)).toBe(true);
     // die Mitte kreuzt den weichen Ring: glatt
     expect(mitte.punkte.every((p) => !istEcke(p))).toBe(true);
+  });
+
+  it('Pilz: knickt eine Linie an einer Ecke über einen Loop, wird dieser dort hart, bis zur nächsten Kreuzung läuft es aus', () => {
+    // Florian (06.11.): „versucht das Mesh sich zwischen den 4 Knickpunkten aufzublasen. Kann man es so machen, dass die Linie den
+    // Knick zwischen den zwei Punkten interpoliert?“
+    const h = kugel();
+    const { loops, quer, waag, mitte } = dreiLoops(h);
+    const i = mitte.punkte.findIndex((p) => p.ref.x < -100);
+    const m = mitte.punkte[i]!;
+    const w = waag.punkte.find((p) => p.kreuzung === m.kreuzung)!;
+    const q = waag.punkte.find((p) => p.kreuzung !== undefined && quer.punkte.some((r) => r.kreuzung === p.kreuzung))!;
+    const naechste = (l: Loop, s: number) => l.s.reduce((b, x, j) => (Math.abs(x - s) < Math.abs(l.s[b]! - s) ? j : b), 0);
+    // eine Ecke ohne Knick macht nichts hart (die Linie liegt auf Dreiecken, kleine Zacken unter 5° zählen nicht)
+    m.ecke = true;
+    expect(knickAm(mitte, i)).toBeLessThan(5);
+    expect(Math.max(...haerteBei(waag, loops))).toBe(0);
+    // den Griff „aus“ in der Seite um 60° drehen: die Mitte knickt dort
+    const g = griffeBei(mitte, mitte.ruhe, i).aus!;
+    const c = Math.cos(Math.PI / 3);
+    const s = Math.sin(Math.PI / 3);
+    const v = griffZiehen(mitte, mitte.ruhe, i, 'aus', { x: c * g.x - s * g.y - g.x, y: s * g.x + c * g.y - g.y, z: 0 });
+    const d = verschiebungLaengs(
+      mitte,
+      mitte.punkte.map(() => ({ x: 0, y: 0, z: 0 })),
+      mitte.punkte.map((_, k) => (k === i ? v : undefined)),
+    );
+    for (let j = 0; j < d.length; j++) mitte.ruhe[j] = mitte.ruhe[j]! + d[j]!;
+    const knick = knickAm(mitte, i);
+    const hd = haerteBei(waag, loops);
+    log(
+      `Pilz: Knick ${knick.toFixed(1)}°, Härte des Rings an der Ecke ${hd[naechste(waag, w.s)]!.toFixed(2)}, halbwegs ` +
+        `${hd[naechste(waag, (w.s + q.s) / 2)]!.toFixed(2)}, an der nächsten Kreuzung ${hd[naechste(waag, q.s)]!.toFixed(2)}`,
+    );
+    expect(knick).toBeGreaterThan(50);
+    expect(hd[naechste(waag, w.s)]!).toBeGreaterThan(2.8);
+    expect(hd[naechste(waag, (w.s + q.s) / 2)]!).toBeCloseTo(1.5, 0);
+    expect(hd[naechste(waag, q.s)]!).toBeLessThan(0.2);
+    // ohne die anderen Loops gilt nur die eigene Härte
+    expect(Math.max(...haerteBei(waag))).toBe(0);
   });
 
   it('Harter Ring als Ganzes hinausgeschoben: der kreuzende Ring folgt dem Grat mit einer Ecke, glatt flacht er ihn ab', () => {
