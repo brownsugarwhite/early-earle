@@ -50,6 +50,7 @@ import {
   type Haut,
   hatGriffe,
   kanteBei,
+  kantenKnicken,
   istEcke,
   istSichtbar,
   istVektorEcke,
@@ -207,6 +208,11 @@ const KURZ = Number(new URLSearchParams(location.search).get('kurz') ?? 0.5);
  * Griffe werden am Verlauf der Linie abgelesen.
  */
 const GRIFFE = new URLSearchParams(location.search).get('griffe') !== '0';
+/**
+ * Wie eine Linie an einer neuen Kante knickt (Teil A, Schritt 4): 'natur' = jede Seite so rund wie möglich (natürliches Ende),
+ * `?knick=vektor` zum Vergleich = Griffe zu den Nachbarpunkten (Blenders „Vector“; der Pilzhut wird eine Glocke).
+ */
+const KNICK_ART: 'vektor' | 'natur' = new URLSearchParams(location.search).get('knick') === 'vektor' ? 'vektor' : 'natur';
 let letzteVerdichtung: { neu: number; gelegt: number; ms: number } | null = null;
 
 type Schnappschuss = {
@@ -2010,6 +2016,8 @@ function kanteSetzen(): void {
   };
   const an = !auswahl.every(ist);
   zurueck.push(schnappschuss());
+  // Ecken von selbst vorher: Wer eine wird, knickt (Griffe zu den Nachbarpunkten), wer keine mehr ist, wird wieder glatt
+  const vorher = new Set(loops.flatMap((l) => l.punkte.filter(istVektorEcke)));
   for (const w of auswahl) {
     const l = loops[loopNr(w.l)];
     if (!l) continue;
@@ -2022,7 +2030,8 @@ function kanteSetzen(): void {
     }
   }
   meldung = an ? 'Kante' : 'keine Kante';
-  hautNeuRechnen();
+  eckenAuto(loops);
+  hautNeuRechnen(kantenKnicken(loops, vorher, KNICK_ART));
   geometrieNeu();
   allesZeigen();
 }

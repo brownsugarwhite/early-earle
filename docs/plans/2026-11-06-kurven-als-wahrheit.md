@@ -304,4 +304,22 @@ gezogen (22/0, −22/0, 0/22), die geklickte Ecke ist eine Ecke, die Haut bleibt
 0 umgeklappt; ⌘Z genau; in der Front quer über die Mitte ein Ring mit den zwei Punkten der vorderen Hälfte. Bilder
 `docs/progress/editor/form-stift-{zeichnen,fertig}-2026-11-06.jpg`.
 
-Nächster Schritt: der Knick an Kanten (Schritt 4).
+**Schritt 4, Kante knickt die Linie** (gebaut): Wird eine Linie zur Kante (Taste K), bekommen die Punkte der Linien, die sie
+kreuzen, neue Griffe, und die Linie knickt dort wirklich, die Haut mit ihr. Kante aus: Die Griffe liegen wieder auf einer Geraden.
+Abweichung vom Plan: nicht „Vector“ (Griffe zu den Nachbarpunkten), sondern **jede Seite so rund wie möglich** (natürliches Ende:
+das Stück zum Nachbarn hat am Knick keine Krümmung). Mit „Vector“ wird ein Pilzhut eine Glocke, die sich am Rand nach außen biegt,
+und schon eine Kugel bekommt am Äquator einen Grat von 71°; rund wird der Hut eine Kuppel. `?knick=vektor` zeigt zum Vergleich die
+Regel aus dem Plan.
+
+| Knick quer über den Rand (Median), im Fenster | bisher | rund | „Vector“ |
+| --- | --- | --- | --- |
+| Kugel, Kante am Äquator gesetzt | 5° | 27° | 71° |
+| Kante, dann die Unterseite 120 hinauf | 37° | 81° | 110° |
+| Unterseite 120 hinauf, dann Kante | 15° | 92° | 109° |
+| Linse (oben und unten zur Mitte), Kante vorher | 24° | 73° | — |
+
+Am harten Ring knickt der kreuzende Ring an der Kreuzung 57° statt 11°. 0 umgeklappt bis auf die Linse (2). Im Kern-Test
+(`pfad.test.ts`): nachträglich 12° → 87°, wieder aus 14°. Bild `docs/progress/editor/form-kante-knick-vergleich-2026-11-06.jpg`.
+**Das ist eine Look-Entscheidung für Florian:** Ob eine Kante die Form so stark ändern soll, sieht man im Bild.
+
+Nächster Schritt: Pose, Maul und Verdichten durchprüfen, dann die alte Ableselogik entfernen.

@@ -8,8 +8,12 @@ import {
   griffeAnlegen,
   griffeBei,
   griffeUebernehmen,
+  LoopZug,
+  festlegen,
   griffZiehen,
   hatGriffe,
+  istVektorEcke,
+  kantenKnicken,
   kreuzungenZwischen,
   loopAusSchnitt,
   mittlereKante,
@@ -18,6 +22,8 @@ import {
   ringEnde,
   verschiebungLaengs,
 } from './loops';
+import { dreiLoops as kugelMitRand, falten, knick, randHart, ziehen } from './kurvenFaelle';
+import { verdichten } from './verdichten';
 import { stueckAnpassen, stueckPunkt, stueckTeilen } from './pfad';
 import { rundAusSeite } from './rund';
 import type { UmrissPunkt } from './umriss';
@@ -239,3 +245,68 @@ describe('Gespeicherte Griffe am Loop', () => {
     expect(punkteLoeschen(ring, new Set([kreuz]))).toBeNull();
   });
 });
+
+describe('Kante knickt die Linie (Schritt 4)', () => {
+  /** Kugel mit Rand (Ring waagerecht), Mitte, Ring senkrecht; der unterste Punkt 120 hinauf (Pilz), Griffe gespeichert */
+  const pilz = (): { h: ReturnType<typeof kugel>; loops: Loop[] } => {
+    const { h, loops } = kugelMitRand();
+    for (const l of loops) griffeAnlegen(l);
+    const k = loops[2]!.punkte.reduce((b, p) => (p.ref.y < b.ref.y ? p : b)).kreuzung!;
+    const D = loops.map((l) => l.punkte.map((p) => (p.kreuzung === k ? v(0, 120, 0) : v(0, 0, 0))));
+    ziehen(
+      h,
+      loops,
+      loops.map((l, i) => (l.punkte.some((p) => p.kreuzung === k) ? verschiebungLaengs(l, D[i]!) : null)),
+      'kurven',
+    );
+    loops.forEach((l, i) => griffeUebernehmen(l, D[i]!));
+    return { h, loops };
+  };
+
+  it('Kante nachträglich an: die kreuzenden Linien knicken am Rand (jede Seite so rund wie möglich), die Haut mit; wieder aus: glatt', () => {
+    // ohne Knicken (wie bisher): nur die Haut darf knicken
+    const a = pilz();
+    randHart(a.loops, true);
+    ziehen(a.h, a.loops, a.loops.map(() => null), 'kurven', 1, 20);
+    const ohne = knick(a.h, a.loops[0]!);
+    // mit: die Ecken von selbst bekommen „Vector“-Griffe
+    const b = pilz();
+    const vorher = new Set(b.loops.flatMap((l) => l.punkte.filter(istVektorEcke)));
+    randHart(b.loops, true);
+    const versch = kantenKnicken(b.loops, vorher);
+    const geknickt = versch.filter((d) => d).length;
+    ziehen(b.h, b.loops, versch, 'kurven');
+    // wie im Fenster: danach verdichten und setzen (ohne: 16 umgeklappt am Rand, wo die Linien scharf knicken)
+    const mk = mittlereKante(b.h);
+    const vd = verdichten(b.h, b.loops, 1.75 * mk, { kurz: 0.5 * mk });
+    if (vd) {
+      b.h = vd.haut;
+      b.loops = vd.loops;
+      new LoopZug(b.h, b.loops, null, true, 'kurven').schritt(
+        b.loops.map(() => null),
+        4,
+      );
+      for (const l of b.loops) festlegen(b.h, l);
+    }
+    const mit = knick(b.h, b.loops[0]!);
+    const f = falten(b.h);
+    // wieder aus: glatt (Griffe auf einer Geraden)
+    const vorher2 = new Set(b.loops.flatMap((l) => l.punkte.filter(istVektorEcke)));
+    randHart(b.loops, false);
+    ziehen(b.h, b.loops, kantenKnicken(b.loops, vorher2), 'kurven');
+    const aus = knick(b.h, b.loops[0]!);
+    const glatt = b.loops.flatMap((l) => l.punkte.filter((p) => vorher2.has(p)).map((p) => 180 - winkel(p.ein!, p.aus!)));
+    log(
+      `Rand nachträglich Kante: Knick quer (Median/größter) ohne Knicken ${ohne.median.toFixed(1)}°/${ohne.max.toFixed(1)}°, ` +
+        `mit ${mit.median.toFixed(1)}°/${mit.max.toFixed(1)}° (${geknickt} Linien geknickt, über 60° ${f.ueber60}, umgeklappt ${f.umgeklappt}); ` +
+        `wieder aus ${aus.median.toFixed(1)}°/${aus.max.toFixed(1)}°, Griffe bis ${Math.max(...glatt).toFixed(4)}° neben einer Geraden`,
+    );
+    expect(geknickt).toBeGreaterThan(0);
+    expect(mit.median).toBeGreaterThan(ohne.median + 10);
+    // gemessen: 4 am Rand, wo die Linien scharf knicken (im Fenster mit der Maus 0: `form-haerte-probe.mjs`, Fall „nachher“)
+    expect(f.umgeklappt).toBeLessThanOrEqual(4);
+    expect(Math.max(...glatt)).toBeLessThan(1e-4);
+    expect(aus.median).toBeLessThan(mit.median);
+  });
+});
+

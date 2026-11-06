@@ -1328,6 +1328,97 @@ export function griffeUebernehmen(l: Loop, D: readonly V3[], griffe?: readonly (
 }
 
 /**
+ * Griffe von Punkt i neu setzen (`ein`, `aus`: Vektoren vom Punkt aus; am Ende eines Rings zählt der Griff nach innen) und die
+ * Verschiebung je Probe, mit der die Linie ihnen folgt: das Stück davor um 3t²(1 − t)·Δein, das danach um 3t(1 − t)²·Δaus
+ * (Bernstein), die Punkte bleiben.
+ */
+export function griffeSetzen(l: Loop, i: number, ein: V3, aus: V3): Float64Array {
+  const d = new Float64Array(3 * l.proben.length);
+  const p = l.punkte[i]!;
+  const de = { x: ein.x - (p.ein?.x ?? 0), y: ein.y - (p.ein?.y ?? 0), z: ein.z - (p.ein?.z ?? 0) };
+  const da = { x: aus.x - (p.aus?.x ?? 0), y: aus.y - (p.aus?.y ?? 0), z: aus.z - (p.aus?.z ?? 0) };
+  for (const st of stuecke(l)) {
+    const vor = st.b === i;
+    const nach = st.a === i;
+    if (!vor && !nach) continue;
+    for (const { j, t } of probenIn(l, st)) {
+      // ein Punkt allein auf einem geschlossenen Loop: sein Stück läuft zu ihm zurück, beide Griffe wirken
+      const w1 = nach ? 3 * t * (1 - t) * (1 - t) : 0;
+      const w2 = vor ? 3 * t * t * (1 - t) : 0;
+      d[3 * j] = d[3 * j]! + w1 * da.x + w2 * de.x;
+      d[3 * j + 1] = d[3 * j + 1]! + w1 * da.y + w2 * de.y;
+      d[3 * j + 2] = d[3 * j + 2]! + w1 * da.z + w2 * de.z;
+    }
+  }
+  if (l.art === 'mitte') for (let j = 0; j < l.proben.length; j++) d[3 * j + 2] = 0;
+  if (l.art === 'ring' && l.proben.length) {
+    d[2] = 0;
+    d[3 * l.proben.length - 1] = 0;
+  }
+  p.ein = { ...ein };
+  p.aus = { ...aus };
+  griffeSpiegeln(l);
+  return d;
+}
+
+/**
+ * Kante an oder aus (Teil A, Schritt 4; Florian: „Kante an/aus wirkt dann sofort mit Knick“): Ein Punkt, der eine Ecke von selbst
+ * geworden ist (Kreuzung mit einer Kante), bekommt neue Griffe: Die Linie knickt dort wirklich, und die Haut mit ihr. War er eine
+ * und ist es nicht mehr, liegen seine Griffe wieder auf einer Geraden (glatt, die Längen bleiben). `vorher`: die Ecken von selbst vor
+ * der Änderung. Ergebnis je Loop die Verschiebung seiner Linie (null: unverändert).
+ *
+ * `art` 'natur' (Standard): Jede Seite bleibt so rund wie möglich, das Stück zum Nachbarn bekommt am Knick keine Krümmung
+ * (natürliches Ende: der Griff zeigt halb zum Griffende des Nachbarn). 'vektor' (zum Vergleich, so im Plan): Griffe zu den
+ * Nachbarpunkten, ein Drittel der Sehne, wie Blenders „Vector“. Gemessen im Fenster (Knick quer über den Rand, Median): Kugel mit
+ * Kante am Äquator 27° gegen 71°, Pilz nachträglich 92° gegen 109°; mit „Vector“ wird der Hut eine Glocke (er biegt sich am Rand
+ * nach außen), rund eine Kuppel.
+ */
+export function kantenKnicken(loops: readonly Loop[], vorher: ReadonlySet<LoopPunkt>, art: 'vektor' | 'natur' = 'natur'): (Float64Array | null)[] {
+  return loops.map((l) => {
+    if (!hatGriffe(l)) return null;
+    let d: Float64Array | null = null;
+    const plus = (x: Float64Array) => {
+      if (!d) d = x;
+      else for (let k = 0; k < x.length; k++) d[k] = d[k]! + x[k]!;
+    };
+    const m = l.punkte.length;
+    l.punkte.forEach((p, i) => {
+      const jetzt = istVektorEcke(p);
+      if (jetzt === vorher.has(p)) return;
+      const rand = ringEnde(l, i);
+      if (jetzt) {
+        // zum Nachbarpunkt der Seite k (am Ende eines Rings: innen der Nachbar, außen sein Spiegelbild): „Vector“ ein Drittel der
+        // Sehne; „natur“ halb zum Ende seines Griffs zu diesem Punkt hin
+        const nach = (k: -1 | 1): V3 => {
+          const j = geschlossen(l) ? (i + k + m) % m : i + k;
+          const q = j >= 0 && j < m ? l.punkte[j]! : null;
+          const r = q ? q.ref : gespiegelt(l.punkte[i - k]!.ref);
+          if (art === 'vektor') return { x: (r.x - p.ref.x) / 3, y: (r.y - p.ref.y) / 3, z: (r.z - p.ref.z) / 3 };
+          // Griff des Nachbarn, der zu Punkt i zeigt (vom Nachbarn davor: sein `aus`, danach: sein `ein`)
+          const g0 = q ? (k < 0 ? q.aus : q.ein) : l.punkte[i - k]![k < 0 ? 'ein' : 'aus'];
+          const g = q ? (g0 ?? NULL) : gespiegelt(g0 ?? NULL);
+          return { x: (r.x + g.x - p.ref.x) / 2, y: (r.y + g.y - p.ref.y) / 2, z: (r.z + g.z - p.ref.z) / 2 };
+        };
+        plus(griffeSetzen(l, i, nach(-1), nach(1)));
+        return;
+      }
+      // keine Ecke mehr: auf eine Gerade (Winkelhalbierende; am Spiegelpunkt senkrecht zur Mittelebene)
+      const e = p.ein!;
+      const a = p.aus!;
+      const le = Math.hypot(e.x, e.y, e.z);
+      const la = Math.hypot(a.x, a.y, a.z);
+      if (le < 1e-9 || la < 1e-9) return;
+      const u = rand
+        ? { x: 0, y: 0, z: rand === 'anfang' ? 1 : -1 }
+        : einheit({ x: a.x / la - e.x / le, y: a.y / la - e.y / le, z: a.z / la - e.z / le });
+      if (!u) return;
+      plus(griffeSetzen(l, i, { x: -u.x * le, y: -u.y * le, z: -u.z * le }, { x: u.x * la, y: u.y * la, z: u.z * la }));
+    });
+    return d;
+  });
+}
+
+/**
  * Punkte löschen wie in Illustrator: Die Nachbarn verbinden sich über ihre eigenen Griffe; deren Richtung bleibt, ihre Längen werden
  * so angepasst, dass das neue Stück dem alten Verlauf am nächsten kommt (kleinste Quadrate über beide alten Stücke). Kreuzungen, die
  * Enden eines Rings und die letzten zwei Punkte eines geschlossenen Loops bleiben. Ergebnis: Verschiebung je Probe (3 je Probe), um
