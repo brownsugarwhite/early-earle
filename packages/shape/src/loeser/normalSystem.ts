@@ -16,6 +16,8 @@ export type NormalSystem = {
   loesen(rhs: Float64Array): Float64Array;
   /** Plan 20.10., V4: eine Spalte (n Werte, eine Achse) — für Systeme je Achse */
   loesenSpalte(rhs: Float64Array): Float64Array;
+  /** Form zuerst (06.11.): k Spalten auf einmal (k Werte je Punkt, verschachtelt), die Zerlegung wird dabei nur einmal gelesen */
+  loesenSpalten(rhs: Float64Array, k: number): Float64Array;
   /** Einträge der Hülle (Größe der Zerlegung) */
   huelle: number;
   zeitAufbau: number;
@@ -137,7 +139,40 @@ export function normalSystem(n: number, zeilen: readonly NormalZeile[], nachbarn
     for (let p = 0; p < n; p++) x[reihenfolge[p]!] = b[p]!;
     return x;
   };
-  return { n, loesen, loesenSpalte, huelle: start[n]!, zeitAufbau: t1 - t0, zeitZerlegen: t2 - t1 };
+  const loesenSpalten = (rhs: Float64Array, k: number): Float64Array => {
+    const B = new Float64Array(k * n);
+    for (let p = 0; p < n; p++) for (let c = 0; c < k; c++) B[k * p + c] = rhs[k * reihenfolge[p]! + c]!;
+    for (let i = 0; i < n; i++) {
+      const fi = erste[i]!;
+      const oi = start[i]! - fi;
+      const bi = k * i;
+      for (let q = fi; q < i; q++) {
+        const h = H[oi + q]!;
+        if (h === 0) continue;
+        const bq = k * q;
+        for (let c = 0; c < k; c++) B[bi + c] = B[bi + c]! - h * B[bq + c]!;
+      }
+      const d = H[oi + i]!;
+      for (let c = 0; c < k; c++) B[bi + c] = B[bi + c]! / d;
+    }
+    for (let i = n - 1; i >= 0; i--) {
+      const fi = erste[i]!;
+      const oi = start[i]! - fi;
+      const bi = k * i;
+      const d = H[oi + i]!;
+      for (let c = 0; c < k; c++) B[bi + c] = B[bi + c]! / d;
+      for (let q = fi; q < i; q++) {
+        const h = H[oi + q]!;
+        if (h === 0) continue;
+        const bq = k * q;
+        for (let c = 0; c < k; c++) B[bq + c] = B[bq + c]! - h * B[bi + c]!;
+      }
+    }
+    const x = new Float64Array(k * n);
+    for (let p = 0; p < n; p++) for (let c = 0; c < k; c++) x[k * reihenfolge[p]! + c] = B[k * p + c]!;
+    return x;
+  };
+  return { n, loesen, loesenSpalte, loesenSpalten, huelle: start[n]!, zeitAufbau: t1 - t0, zeitZerlegen: t2 - t1 };
 }
 
 /**

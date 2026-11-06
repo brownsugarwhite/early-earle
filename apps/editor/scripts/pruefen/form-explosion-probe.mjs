@@ -4,7 +4,11 @@
 // FALL=a: hintere Kreuzung weit nach hinten und Ecke, vordere nach vorn, obere weit nach vorn (Bild „Ei mit Überhang“).
 // FALL=b: neuer Punkt auf der Mitte zwischen oben und vorn, weit nach vorn gezogen, dann der Rücken nach hinten (Bild „Schnabel“).
 // FALL=c: Schnabel wie b, dann die Griffe an der Spitze herumgedreht: die Linie schlägt eine Schlaufe (erstes Bild, Explosion).
-// Ohne Verdichten: KURVEN_URL='http://localhost:5193/kurven.html?verdichten=0'. WO=1 nennt die Orte der Knicke über 60°.
+// FALL=d: Stauchen. FALL=e: Rüssel mit Ring, Spitze weiter hinaus, mit GRIFF=<Grad> (in der Seite, wie mit der Maus) der Griff an
+// der Spitze gedreht (Florians Bild: die Spitze stülpte sich um). FALL=f: Rüssel kurz, Ring um den Ansatz, Spitze weit hinaus.
+// FALL=g: Hammer, nur in der Seite gezogen (Ecken oben vorn und vorn unten, Unterkante hohl); HAMMER=lang: der Kopf weit vorn.
+// Ohne Verdichten: KURVEN_URL='http://localhost:5193/kurven.html?verdichten=0'. WO=1 nennt die Orte der Knicke über 60°. NAH=x,y,zoom
+// mit NAH_BEI=<Bildname>: Seite und Top beim Bild auf diese Stelle.
 // Je Zug: Dauer, Punkte, Stufen, Zerlegen, Bereich, größter Knick, Knicke über 60°, umgeklappte Dreiecke, Ausdehnung.
 // Aufruf aus apps/editor: node scripts/pruefen/form-explosion-probe.mjs <ordner>
 import { chromium } from '@playwright/test';
@@ -103,6 +107,12 @@ const schnell = async (name, f) => {
   await zeile(name, Date.now() - t0);
 };
 const foto = async (name) => {
+  // NAH=x,y,zoom: Seite und Top auf diese Stelle (Top bei z = 0), nur beim Bild NAH_BEI (sonst zielen die folgenden Züge daneben)
+  if (process.env.NAH && name === (process.env.NAH_BEI ?? name)) {
+    const [nx, ny, nz] = process.env.NAH.split(',').map(Number);
+    await K('ausschnitt', 'seite', { cx: nx, cy: -ny, zoom: nz });
+    await K('ausschnitt', 'top', { cx: nx, cy: 0, zoom: nz });
+  }
   await seite.screenshot({ path: `${ordner}/form-explosion-${fall}-${name}-2026-11-06.jpg`, type: 'jpeg', quality: 85 });
 };
 
@@ -238,6 +248,56 @@ if (fall === 'a') {
   await K('ausschnitt', 'seite', { cx: 300, cy: -60, zoom: 0.9 });
   await K('ausschnitt', 'top', { cx: 300, cy: 0, zoom: 0.9 });
   await foto('1');
+} else if (fall === 'g') {
+  // Hammer (Florians Bild vom 06.11.): nur in der Seite gezogen — Oberkante und Vorderkante gerade (Ecken), Unterkante hohl. Im Top
+  // schnürte sich der Kopf zur Mittelachse ein und stülpte sich vorn um, ohne dass dort etwas gezogen wurde. HAMMER=lang: der Kopf
+  // weit vor dem Körper (lange gerade Kanten, die Ringe reichen nicht hin).
+  const lang = process.env.HAMMER === 'lang';
+  const mitte = L0.find((l) => l.art === 'mitte');
+  // zwei neue Punkte auf der Mitte, oben vorn und unten vorn (am Anfang: auf großem Bereich zerlegt der erste Klick so lange,
+  // dass Playwright den zweiten zu spät schickt)
+  const neuerPunkt = async (q) => {
+    const [cx, cy] = xy(await bild('seite', q));
+    await seite.mouse.click(cx, cy);
+    await seite.waitForTimeout(60);
+    await seite.mouse.click(cx, cy);
+    await seite.waitForTimeout(300);
+    await seite.keyboard.press('Escape');
+  };
+  const oben = { x: -150 * Math.SQRT1_2, y: 150 * Math.SQRT1_2, z: 0 };
+  const unten = { x: -150 * Math.SQRT1_2, y: -150 * Math.SQRT1_2, z: 0 };
+  await neuerPunkt(oben);
+  await neuerPunkt(unten);
+  const nah = (z) => (r) => -Math.hypot(r.x - z.x, r.y - z.y);
+  const ecke = async (p) => {
+    await seite.keyboard.down('Alt');
+    await seite.mouse.click(...xy(await bild('seite', p.ref)));
+    await seite.keyboard.up('Alt');
+    await seite.waitForTimeout(150);
+    await seite.keyboard.press('Escape');
+  };
+  // Ecke oben vorn weit nach vorn, Oberkante gerade
+  let p = await punktVon(mitte.id, nah(oben));
+  console.log(`Punkte: oben vorn (${p.ref.x.toFixed(0)}, ${p.ref.y.toFixed(0)}), unten vorn (${(await punktVon(mitte.id, nah(unten))).ref.x.toFixed(0)}, ${(await punktVon(mitte.id, nah(unten))).ref.y.toFixed(0)})`);
+  const obenZiel = { x: p.ref.x - (lang ? 300 : 130), y: p.ref.y + (lang ? 10 : 20), z: 0 };
+  await schnell('oben vorn', async () => ziehen(xy(await bild('seite', p.ref)), xy(await bild('seite', obenZiel))));
+  await ecke(await punktVon(mitte.id, nah(obenZiel)));
+  // vordere Kreuzung nach vorn und etwas hinunter (Vorderkante gerade)
+  p = await punktVon(mitte.id, nah({ x: -150, y: 0 }));
+  const vornZiel = { x: p.ref.x - (lang ? 260 : 90), y: p.ref.y - 30, z: 0 };
+  await schnell('vorn', async () => ziehen(xy(await bild('seite', p.ref)), xy(await bild('seite', vornZiel))));
+  await ecke(await punktVon(mitte.id, nah(vornZiel)));
+  if (lang) {
+    await K('ausschnitt', 'top', { cx: -150, cy: 0, zoom: 0.7 });
+    await K('ausschnitt', 'seite', { cx: -150, cy: 0, zoom: 0.7 });
+    await foto('lang-vorn');
+  }
+  // der Punkt unten vorn hinauf (und mit dem Kopf nach vorn): die Unterkante unter dem Kopf wird hohl
+  p = await punktVon(mitte.id, nah(unten));
+  await schnell('unten vorn hinauf', async () => ziehen(xy(await bild('seite', p.ref)), xy(await bild('seite', { x: lang ? -200 : -120, y: -40, z: 0 }))));
+  await K('ausschnitt', 'top', { cx: lang ? -150 : -60, cy: 0, zoom: lang ? 0.7 : 0.9 });
+  await K('ausschnitt', 'seite', { cx: lang ? -150 : -60, cy: 0, zoom: lang ? 0.7 : 0.9 });
+  await foto(lang ? 'lang' : '1');
 } else if (fall === 'd') {
   // Stauchen: die untere Kreuzung weit nach oben in den Körper, dann die obere nach unten (die Haut dazwischen wird gestaucht)
   let p = await punktVon(senkrecht.id, (r) => -r.y);

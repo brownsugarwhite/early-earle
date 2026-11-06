@@ -523,9 +523,11 @@ export class HautZiele {
     const nf = this.frei.length;
     const sig = this.dehnung(ziele);
     this.letzteDehnung = sig;
+    let zKap: Float64Array | null = null;
     for (let it = 0; it < iterationen; it++) {
       const m = vermessen(h, this.gew);
-      const zKap = this.feld ? this.feld.ziel(ziele, m.nor) : null;
+      // das Krümmungsfeld einmal je Schritt (die Ziele ändern sich in den Runden nicht)
+      if (it === 0 && this.feld) zKap = this.feld.ziel(ziele, m.nor, sig);
       this.letzteKruemmung = zKap;
       const rhs = new Float64Array(3 * nf);
       for (const i of this.zeilen) {
@@ -560,10 +562,12 @@ export class HautZiele {
             t[2] * co + (nx * t[1] - ny * t[0]) * si + nz * nt * (1 - co),
           ];
         }
-        // die Krümmung mit der Dehnung gestreckt (nicht mit ihrem Quadrat: mit Kante² blähte sich die höher gezogene Kugel in der
-        // Tiefe auf, 150 → 186), die Verteilung in der Fläche nicht
+        // Die Krümmung beim Anfassen mit der Dehnung gestreckt (die Haut wird gleichmäßig größer, ihre Krümmung kleiner: Kante² ×
+        // Krümmung wächst wie die Dehnung; mit ihrem Quadrat blähte sich die höher gezogene Kugel in der Tiefe auf, 150 → 186); die
+        // Krümmung aus den Loops ist die, die die Haut jetzt haben soll (Kante² wächst mit dem Quadrat, das Feld hat ihr Gedächtnis
+        // schon durch die Dehnung geteilt). Die Verteilung in der Fläche nicht.
         const kz = zKap ? zKap[i]! : NaN;
-        const k = (Number.isFinite(kz) ? kz : r.kap[i]!) * r.kante2[i]! * sig[i]!;
+        const k = Number.isFinite(kz) ? kz * r.kante2[i]! * sig[i]! * sig[i]! : r.kap[i]! * r.kante2[i]! * sig[i]!;
         let dx = t[0] + k * m.nor[3 * i]!;
         let dy = t[1] + k * m.nor[3 * i + 1]!;
         let dz = t[2] + k * m.nor[3 * i + 2]!;

@@ -617,12 +617,11 @@ describe('Krümmung folgt den Loops', () => {
         }
     return { h, loops };
   };
-  /** ein Zug wie im Fenster: in Stufen, am Ende tragen die Loops ihre Krümmung weiter und liegen fest */
+  /** ein Zug wie im Fenster: in Stufen, am Ende liegen die Loops fest */
   const ziehen = (h: ReturnType<typeof kugel>, loops: Loop[], versch: Float64Array[], bereich: Uint8Array | null, kr: boolean) => {
     const z = new LoopZug(h, loops, bereich, kr);
     for (let s = 1; s <= 4; s++) z.schritt(versch.map((d) => d.map((x) => (x * s) / 4)), 2);
     z.schritt(versch, 6);
-    z.kruemmungFestlegen(loops);
     loops.forEach((l) => festlegen(h, l));
   };
 

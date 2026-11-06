@@ -1209,9 +1209,47 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
       der Seite gezogen (Oberkante und Vorderkante gerade, Unterkante hohl), im Top schnürt sich der Kopf zur Mittelachse ein und
       stülpt sich vorn um — dieselbe Ursache. Ein Ausweg nur mit Gedächtnis quer (der Loop ändert nur seine Hälfte) brächte die
       Höcker im flachen Boden zurück (sein Fall vom 05.11.); richtig ist eine Krümmung mit Richtung (jeder Loop sagt seine Richtung,
-      quer kommt sie von den Loops, die quer laufen, sonst bleibt die Haut, wie sie ist). Entscheidung bei Florian.
+      quer kommt sie von den Loops, die quer laufen, sonst bleibt die Haut, wie sie ist). Entscheidung bei Florian (gefallen und
+      gebaut: Eintrag darunter).
   - **Falle:** `git apply` aus einem Unterordner lässt Pfade außerhalb still aus (Gegenproben vom Wurzelordner aus).
   - Bilder `docs/progress/editor/form-explosion-{a,b,c}-{vorher,nachher}-2026-11-06.jpg`.
+- **2026-11-06 (vormittags): Krümmung mit Richtung** (Florian: „Ja, bau die Krümmung mit Richtung: jeder Loop sagt nur seine
+  Richtung, quer kommt sie von den Loops, die quer laufen, sonst bleibt die Haut, wie sie ist. Boden muss flach bleiben, Rüssel und
+  Hammer dürfen nicht kollabieren.“).
+  - **Kern `dicht/kruemmung.ts`:** Ein Loop sagt an jedem Punkt zwei Tensoren im Raum: N = t tᵀ (welche Richtung er bedeckt) und
+    M = κ·t tᵀ (seine Krümmung längs). Beide werden harmonisch in die Felder verteilt; der Rand des Bereichs gibt die ganze Krümmung
+    der Haut, die stehen bleibt. Je Punkt K = (N + b)⁻¹(M + b·Gedächtnis) in seiner Tangentialebene, die Zahl des Lösers ½·Spur(K·E)
+    mit der Verteilung E der Kanten. Wo Loops beide Richtungen bedecken (gekreuzte Arme eines Bodens), kommt die Krümmung ganz aus
+    ihnen; ein Ring um einen Rüssel sagt sie quer längs des Rüssels; wo nichts quer läuft, gilt das Gedächtnis.
+    - Gedächtnis = Krümmung beim Anfassen mit Richtung (je Kante gemessen, kleinste Quadrate, so verschoben, dass es genau die Zahl
+      des Lösers gibt: ohne Loops bleibt die Haut genau); an Loop-Punkten das der Nachbarn ohne Loop; b = 0,02.
+    - Gerechnet im Material beim Anfassen (die Loops hängen an der Haut, ihre Richtung darin bleibt): N einmal je Zug, M einmal je
+      Schritt, sechs Spalten in einem Durchgang (`loesenSpalten` im Normalsystem).
+    - Die Loops sagen die Krümmung, wie sie jetzt ist: `Loop.kap`, das Messen beim ersten Zug und `kruemmungFestlegen` sind weg (im
+      Kern, im Fenster und in der Pose).
+    - Die Krümmung aus den Loops geht mit Dehnung² in den Löser, das Gedächtnis mit Dehnung (alles mit Dehnung machte die absolute
+      Krümmung zu flach: Ring ×1,15 7,8 zu tief, jetzt 2,7). Die Auflösungsgrenze misst den Abstand der Proben jetzt.
+  - **Gemessen (Fenster, `form-explosion-probe.mjs`, alt → neu):** Rüssel, Griff an der Spitze 20°: 49 Knicke über 60°/14 umgeklappt
+    → 2/0; −45°: die Spitze stülpte sich schwarz um (105/28) → dünne Spitze, nicht umgestülpt (57/24, winzige Dreiecke ganz vorn).
+    Langer Hammer (neu `FALL=g HAMMER=lang`): nach der geraden Vorderkante 111/42 → 24/8, der Kopf bleibt in Front und Top rund.
+    Kurzer Hammer 0/0. Boden 0,26 → 0,22; Kopf aus einem Ring zwei weite Züge 0/0; Braue, Kreuzung, Spiegelpunkt, Griffe, Punkte und
+    Zoom, Maul, Fressen-Pose wie vorher. Je Mausbewegung auf der ganzen Kugel 21 → 23 ms (erst 35: Zwischenfelder je Punkt
+    verursachten Müllsammeln, jetzt ohne).
+  - **Kern** (`dicht/weiterZug.test.ts`): Zug jetzt wie das Fenster in Mausschritten mit Stufen (vorher gleiche Stufen; dabei suchte
+    der Test den gezogenen Punkt neu und zog in späteren Stufen an der falschen Kreuzung). Neu C (Rüssel, Griff 45°): alt 166/30 →
+    neu 12/0. Neu D (Hammer, Kopf weit vorn): alt 32/14 → 28/6, Kopf rund.
+  - **Rückschritt (ehrlich, als offenes Ziel `it.fails`):** Überhangspitze (A) 0/0 → 20/6, im Fenster 0/0 → 24/8 (kleine Rille längs
+    der Mitte an der Spitze); Schlaufe (B, die Spitze stülpt sich in beiden um) 17/2 → 124/42. Ursache gemessen: An solchen Spitzen
+    sind die Dreiecke stark gestaucht (93 % der Kanten in einer Richtung), quer dazu sagen die Loops ihre Krümmung, der Laplace sieht
+    diese Richtung nicht. Weg: zu kurze Kanten zusammenlegen (offen seit 05.11.). Augenform ohne O um 30° gedreht: 4 → 12 umgeklappt.
+  - **Verworfen (gemessen):** nur die Spur (¼·Spur K): an Spitzen robuster, aber ein lang gedehnter Rüssel wurde ein breites Paddel
+    (±172 statt ±40); alles im Raum, wie es jetzt liegt (Richtungen jetzt, je Punkt mit Normale und Drehung in der Fläche gedreht):
+    teurer, nicht besser; isotropes Gedächtnis (halbiert die Krümmung quer an jedem Loop); Gedächtnis 0,005–0,1, Auflösungsgrenze
+    zwei/drei Probenabstände, Mindestanteil jeder Richtung in E: nichts Wesentliches.
+  - Fallen: Ein Test, der den gezogenen Punkt in jeder Stufe neu als nächsten zum Startort sucht, zieht nach ein paar Stufen am
+    falschen Punkt (Punkte über ihre Stelle s festhalten). Im Browser kosten viele kleine Arrays je Punkt und Schritt mehr als die
+    Rechnung (Müllsammeln). `NAH` im Probe-Skript nur beim letzten Bild (sonst zielen die folgenden Züge daneben).
+  - Bilder `docs/progress/editor/form-richtung-{ruessel,hammer}-{vorher,nachher}-2026-11-06.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

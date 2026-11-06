@@ -155,10 +155,10 @@ type MaulZustand = { id: number } | null;
 let maul: MaulZustand = null;
 /**
  * Die Fressen-Pose: Knochen (Grad) und Blendshape, je Punkt der Haut die Verschiebung gegen die Grundform vor den Knochen (null:
- * keiner), dazu die Krümmung, die jeder Loop in der Pose trägt (nach seiner Kennung).
+ * keiner).
  */
-type PoseStand = { kiefer: number; schaedel: number; delta: Float64Array | null; kap: Map<number, { kap: Float64Array; kapS: Float64Array }> };
-let pose: PoseStand = { kiefer: 30, schaedel: 0, delta: null, kap: new Map() };
+type PoseStand = { kiefer: number; schaedel: number; delta: Float64Array | null };
+let pose: PoseStand = { kiefer: 30, schaedel: 0, delta: null };
 /** In der Pose: die Grundform. `haut` und `loops` sind dann die Pose, wie sie zu sehen ist (dasselbe Netz, posierte Lagen). */
 let grund: { haut: Haut; loops: Loop[] } | null = null;
 /** nach jedem Zug verdichten (`?verdichten=0` schaltet es zum Vergleich ab) */
@@ -188,7 +188,7 @@ const kopieLoop = (l: Loop): Loop => ({
   ruhe: Float64Array.from(l.ruhe),
   punkte: l.punkte.map((p) => ({ ...p, ref: { ...p.ref }, cur: { ...p.cur } })),
 });
-const poseKopie = (p: PoseStand): PoseStand => ({ ...p, delta: p.delta ? Float64Array.from(p.delta) : null, kap: new Map(p.kap) });
+const poseKopie = (p: PoseStand): PoseStand => ({ ...p, delta: p.delta ? Float64Array.from(p.delta) : null });
 const schnappschuss = (): Schnappschuss => ({
   loops: loops.map(kopieLoop),
   haut,
@@ -637,17 +637,6 @@ function maulAnlegen(): boolean {
 
 // ---------- Fressen-Pose ----------
 
-/** Krümmung, die ein Loop trägt, setzen oder löschen */
-function kapSetzen(l: Loop, k: { kap?: Float64Array | undefined; kapS?: Float64Array | undefined } | undefined): void {
-  if (k?.kap && k.kapS) {
-    l.kap = k.kap;
-    l.kapS = k.kapS;
-  } else {
-    delete l.kap;
-    delete l.kapS;
-  }
-}
-
 /**
  * Knochen der Pose: der Maulschnitt der Grundform (seine Gewichte), der Drehwinkel je Punkt und das Gelenk. Das Gelenk ist der
  * Mundwinkel, wie er jetzt liegt (er dreht selbst nicht mit: in der Pose liegt er dort, wo in ihrer Ruhe).
@@ -664,7 +653,7 @@ function poseKnochen(): { m: MaulAmLoop; theta: Float64Array; G: V2; l: Loop; ec
 
 /**
  * In die Pose: Die Grundform wird gemerkt; gezeigt und bearbeitet wird die Pose, wie sie zu sehen ist (Grundform + Blendshape, mit
- * den Knochen gedreht). Die Loops sind Kopien mit derselben Kette, ihre Krümmung ist die der Pose.
+ * den Knochen gedreht). Die Loops sind Kopien mit derselben Kette.
  */
 function poseBetreten(): boolean {
   if (grund) return true;
@@ -683,7 +672,6 @@ function poseBetreten(): boolean {
   haut = { ...g.haut, pos: knochenDrehen(ruhe, knochenWinkel(m, pose), { x: ruhe[3 * v]!, y: ruhe[3 * v + 1]! }) };
   loops = g.loops.map((x) => {
     const c = kopieLoop(x);
-    kapSetzen(c, pose.kap.get(x.id) ?? x);
     festlegen(haut, c);
     return c;
   });
@@ -692,7 +680,7 @@ function poseBetreten(): boolean {
   return true;
 }
 
-/** Nach einem Schritt in der Pose: Blendshape (zurückgedreht minus Grundform) und die Krümmung der Loops merken */
+/** Nach einem Schritt in der Pose: Blendshape (zurückgedreht minus Grundform) merken */
 function poseSichern(): void {
   if (!grund) return;
   const k = poseKnochen();
@@ -701,15 +689,12 @@ function poseSichern(): void {
   const d = new Float64Array(ruhe.length);
   for (let i = 0; i < d.length; i++) d[i] = ruhe[i]! - grund.haut.pos[i]!;
   pose.delta = d;
-  pose.kap = new Map(loops.filter((l) => l.kap && l.kapS).map((l) => [l.id, { kap: l.kap!, kapS: l.kapS! }]));
 }
 
-/** Loops der Grundform aus denen der Pose: dieselbe Kette und dieselben Punkte, Lagen und Krümmung der Grundform */
-function grundLoopsAus(h: Haut, alt: readonly Loop[]): Loop[] {
-  const vorher = new Map(alt.map((l) => [l.id, l]));
+/** Loops der Grundform aus denen der Pose: dieselbe Kette und dieselben Punkte, Lagen der Grundform */
+function grundLoopsAus(h: Haut): Loop[] {
   return loops.map((l) => {
     const c = kopieLoop(l);
-    kapSetzen(c, vorher.get(l.id));
     festlegen(h, c);
     return c;
   });
@@ -720,7 +705,7 @@ function poseVerlassen(): void {
   if (!grund) return;
   poseSichern();
   const basis = grund.haut;
-  loops = grundLoopsAus(basis, grund.loops);
+  loops = grundLoopsAus(basis);
   haut = basis;
   grund = null;
   geometrieNeu();
@@ -741,7 +726,7 @@ function netzGewachsen(nAlt: number, vorher: { theta: Float64Array; G: V2 } | nu
     const d = ergaenzen(haut, dAlt, nAlt, 3, true);
     const basis = Float64Array.from(ruhe, (x, i) => x - d[i]!);
     const gh: Haut = { pos: basis, tri: haut.tri, n: haut.n, nachbarn: haut.nachbarn, spiegel: haut.spiegel };
-    grund = { haut: gh, loops: grundLoopsAus(gh, g.loops) };
+    grund = { haut: gh, loops: grundLoopsAus(gh) };
     pose.delta = d;
     // die Gewichte gelten für das neue Netz (neu geschnitten); die Pose daraus neu gedreht
     const k = poseKnochen();
@@ -1465,7 +1450,6 @@ function eckeUmschalten(id: number, i: number): void {
       const d = griffVerschiebung(l, loeser.start[li]!, j, v);
       for (let s = 1; s <= 3; s++) loeser.schritt(loops.map((_, k) => (k === li ? d.map((x) => (x * s) / 3) : null)), RUNDEN_ZUG);
       loeser.schritt(loops.map((_, k) => (k === li ? d : null)), RUNDEN_ENDE);
-      loeser.kruemmungFestlegen(loops);
       for (const x of loops) festlegen(haut, x);
       ausgerichtet = true;
     }
@@ -1705,8 +1689,6 @@ function zugBewegen(X: number, Y: number): void {
  */
 function zugStufe(z: Zug, X: number, Y: number): void {
   const t0 = performance.now();
-  // die Loops tragen ihre Krümmung weiter (sonst ginge die Änderung dieser Stufe verloren)
-  z.loeser.kruemmungFestlegen(loops);
   for (const l of loops) festlegen(haut, l);
   nachVerdichten();
   zug = null;
@@ -1738,7 +1720,6 @@ function zugEnde(ok: boolean): void {
   }
   if (z.bewegt) {
     z.loeser.schritt(z.versch, RUNDEN_ENDE);
-    z.loeser.kruemmungFestlegen(loops);
     for (const l of loops) festlegen(haut, l);
     kreuzungenSuchen();
     nachVerdichten();
