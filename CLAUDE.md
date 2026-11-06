@@ -1196,6 +1196,16 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
       (verschachtelte Zerlegung statt der Hülle).
     - Im Kern-Test der Pose (mit der Öffnung im Löser) geht ein Punkt unter der Lippe 35,7 statt 20 mit; im Fenster (ohne Öffnung)
       genau 25 für 25.
+    - **Rüssel (Florian, danach: „was ist das? … wenn du am Rüssel den Handle bewegst, passiert das“):** Langer dünner Rüssel, Ring
+      um den Ansatz, dann den Griff an der Spitze gedreht → die Spitze stülpt sich um (schwarz, im Top eine Blase hinter einer
+      Einschnürung). Nachgestellt mit `form-explosion-probe.mjs` `FALL=e GRIFF=<Grad>` und `FALL=f`: schon 20° Drehung knickt, −45°
+      105 Knicke über 60°, 28 umgeklappt; ohne Krümmungsfeld (`?kruemmung=0`) 23 und 0. Ursache: Das Krümmungsfeld gibt die
+      Krümmungsänderung eines Loops in alle Richtungen weiter. Die Ränder eines Rüssels sind fast gerade oder nach innen gebogen,
+      also sagt das Feld „flach“ oder „hohl“ auch quer über den Rüssel; der dünne Querschnitt wird zusammengezogen, bis die Seiten
+      durcheinander gehen. Beim Flachen Boden ist genau das gewollt. Weg: Ein Loop sagt nur die Krümmung längs seiner selbst, quer
+      dazu misst die Haut selbst (wie FiberMesh, aber nur für die Querrichtung). Der alte Löser explodierte in Fall f (333 000
+      Punkte, 15 s); dreht der Griff so weit, dass sich die Linie kreuzt (90°), stülpt sich das Stück hinter der Kreuzung um wie bei
+      jeder Schlaufe.
   - **Falle:** `git apply` aus einem Unterordner lässt Pfade außerhalb still aus (Gegenproben vom Wurzelordner aus).
   - Bilder `docs/progress/editor/form-explosion-{a,b,c}-{vorher,nachher}-2026-11-06.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.

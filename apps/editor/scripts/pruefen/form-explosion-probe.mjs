@@ -149,6 +149,95 @@ if (fall === 'a') {
   p = await punktVon(senkrecht.id, (q) => q.y);
   await schnell('oben −150', async () => ziehen(xy(await bild('seite', p.ref)), xy(await bild('seite', { ...p.ref, x: p.ref.x - 150, y: p.ref.y + 30 }))));
   await foto('2');
+} else if (fall === 'e') {
+  // Rüssel (Florians Bild vom 06.11.): neuer Punkt auf der Mitte zwischen oben und vorn, weit nach vorn gezogen (lang und dünn),
+  // dann ein Ring quer um den Rüssel. Im Top zeigte sich ein schwarzes, umgestülptes Ende.
+  const mitte = L0.find((l) => l.art === 'mitte');
+  const q = { x: 150 * Math.SQRT1_2, y: 150 * Math.SQRT1_2, z: 0 };
+  const [cx, cy] = xy(await bild('seite', q));
+  await seite.mouse.click(cx, cy);
+  await seite.waitForTimeout(60);
+  await seite.mouse.click(cx, cy);
+  await seite.waitForTimeout(300);
+  await seite.keyboard.press('Escape');
+  const p = await punktVon(mitte.id, (r) => -Math.hypot(r.x - q.x, r.y - q.y));
+  await schnell('Rüssel +320/−70', async () => ziehen(xy(await bild('seite', p.ref)), xy(await bild('seite', { ...p.ref, x: p.ref.x + 320, y: p.ref.y - 70 }))));
+  await foto('1');
+  await seite.keyboard.press('l');
+  await schnell('Ring um den Rüssel', async () => ziehen(xy(await bild('seite', { x: 230, y: 160, z: 0 })), xy(await bild('seite', { x: 220, y: -60, z: 0 })), 6));
+  await seite.keyboard.press('Escape');
+  await foto('2');
+  // danach die Spitze weiter hinaus und den Rüssel unten flach (wie in Florians Bild: Unterkante gerade bis zur Spitze)
+  let s = await punktVon(mitte.id, (r) => r.x);
+  await schnell('Spitze +120', async () => ziehen(xy(await bild('seite', s.ref)), xy(await bild('seite', { ...s.ref, x: s.ref.x + 120, y: s.ref.y - 20 }))));
+  s = await punktVon(mitte.id, (r) => r.x);
+  await schnell('Spitze +80/−20', async () => ziehen(xy(await bild('seite', s.ref)), xy(await bild('seite', { ...s.ref, x: s.ref.x + 80, y: s.ref.y - 20 }))));
+  await foto('3');
+  // die Griffe an der Spitze senkrecht stellen (wie in Florians Bild): Punkt wählen, den Griff „aus“ nach oben drehen
+  if (process.env.GRIFF) {
+    await K('ausschnitt', 'seite', { cx: 380, cy: -60, zoom: 1.6 });
+    const m1 = (await loops()).find((l) => l.id === mitte.id);
+    const i = m1.punkte.reduce((b, r, k) => (r.ref.x > m1.punkte[b].ref.x ? k : b), 0);
+    await seite.mouse.click(...xy(await bild('seite', m1.punkte[i].ref)));
+    await seite.waitForTimeout(450);
+    for (const g of ['aus', 'ein']) {
+      const pos = await seite.evaluate(
+        ([id2, i2, g2]) => {
+          const e = document.querySelector(`#blatt-seite rect.griff[data-l="${id2}"][data-i="${i2}"][data-g="${g2}"]`);
+          if (!e) return null;
+          const r = e.getBoundingClientRect();
+          return [r.left + r.width / 2, r.top + r.height / 2];
+        },
+        [mitte.id, i, g],
+      );
+      console.log(`Griff ${g} an der Spitze: ${pos ? pos.map((v) => v.toFixed(0)).join(', ') : 'fehlt'}`);
+    }
+    const tip = xy(await bild('seite', m1.punkte[i].ref));
+    const aus = await seite.evaluate(
+      ([id2, i2]) => {
+        const e = document.querySelector(`#blatt-seite rect.griff[data-l="${id2}"][data-i="${i2}"][data-g="aus"]`);
+        if (!e) return null;
+        const r = e.getBoundingClientRect();
+        return [r.left + r.width / 2, r.top + r.height / 2];
+      },
+      [mitte.id, i],
+    );
+    if (aus) {
+      const len = Math.hypot(aus[0] - tip[0], aus[1] - tip[1]);
+      // GRIFF=oben|unten: senkrecht nach oben bzw. herumgeklappt nach unten; GRIFF=<Grad>: um so viel gedreht (wie mit der Maus)
+      const grad = Number(process.env.GRIFF);
+      let ziel;
+      if (Number.isFinite(grad)) {
+        const a = Math.atan2(aus[1] - tip[1], aus[0] - tip[0]) + (grad * Math.PI) / 180;
+        ziel = [tip[0] + len * Math.cos(a), tip[1] + len * Math.sin(a)];
+      } else ziel = process.env.GRIFF === 'oben' ? [tip[0], tip[1] - len] : [tip[0], tip[1] + len];
+      await schnell(`Griff aus ${process.env.GRIFF}`, async () => ziehen(aus, ziel));
+      const L2 = (await loops()).find((l) => l.id === mitte.id);
+      console.log(`  Mitte: ${L2.punkte.length} Punkte`);
+    }
+    await foto('4');
+  }
+} else if (fall === 'f') {
+  // Rüssel anders herum: erst kurz herausziehen, dann der Ring um den Ansatz, dann die Spitze weit hinaus (die Haut zwischen Ring
+  // und Spitze wird lang gedehnt)
+  const mitte = L0.find((l) => l.art === 'mitte');
+  const q = { x: 150 * Math.SQRT1_2, y: 150 * Math.SQRT1_2, z: 0 };
+  const [cx, cy] = xy(await bild('seite', q));
+  await seite.mouse.click(cx, cy);
+  await seite.waitForTimeout(60);
+  await seite.mouse.click(cx, cy);
+  await seite.waitForTimeout(300);
+  await seite.keyboard.press('Escape');
+  let p = await punktVon(mitte.id, (r) => -Math.hypot(r.x - q.x, r.y - q.y));
+  await schnell('Rüssel kurz +120/−50', async () => ziehen(xy(await bild('seite', p.ref)), xy(await bild('seite', { ...p.ref, x: p.ref.x + 120, y: p.ref.y - 50 }))));
+  await seite.keyboard.press('l');
+  await schnell('Ring um den Ansatz', async () => ziehen(xy(await bild('seite', { x: 175, y: 140, z: 0 })), xy(await bild('seite', { x: 170, y: -40, z: 0 })), 6));
+  await seite.keyboard.press('Escape');
+  p = await punktVon(mitte.id, (r) => r.x);
+  await schnell('Spitze weit +330/−10', async () => ziehen(xy(await bild('seite', p.ref)), xy(await bild('seite', { ...p.ref, x: p.ref.x + 330, y: p.ref.y - 10 }))));
+  await K('ausschnitt', 'seite', { cx: 300, cy: -60, zoom: 0.9 });
+  await K('ausschnitt', 'top', { cx: 300, cy: 0, zoom: 0.9 });
+  await foto('1');
 } else if (fall === 'd') {
   // Stauchen: die untere Kreuzung weit nach oben in den Körper, dann die obere nach unten (die Haut dazwischen wird gestaucht)
   let p = await punktVon(senkrecht.id, (r) => -r.y);
