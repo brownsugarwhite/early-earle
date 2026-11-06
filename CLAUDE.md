@@ -1329,6 +1329,16 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     Gleichgewichte (die Linien messen die Wölbung, die sie halten) — Flächen zwischen wenigen Linien bleiben gewölbt. Kern-Prüfungen
     über die ganze Haut ohne Verdichten zeigen andere Falten als das Fenster (Bereiche, Stufen, Verdichten): beides messen. Bilder
     `docs/progress/editor/form-b-{kern,fenster}-*-2026-11-06.jpg`.
+  - **Nachtrag abends, Korrektur** (Florian: „Die härte des knicks entsteht doch automatisch und kann im grunde nur ganz oder garnicht
+    sein … Variante B scheint in fast allem besser zu sein“; Abschnitt 5 der Planseite): Die Lappen und der Hammer kamen vom
+    **Bereich** des Zugs — sein Rand trug die alte Wölbung ins Feld. Über die ganze Haut gelöst (wie FiberMesh; `?haut=kurven` rechnet
+    jetzt immer so) ist B überall gleich oder besser: Pilz geknickt 0 umgeklappt, Pilz wie bei Florian Kante 34° (heute 3°), Überhang
+    28/10 → 6/0, Hammer 7/0 → 0/0, Rüssel 13/0 → 14/0, Boden 0,14 → 0,11; je Bewegung 11–23 ms, Zerlegen beim Greifen 0,1–0,35 s (bei
+    10 000 Punkten 0,6 s, 18 000 2 s — offen, bevor B Standard wird). Härte: Florian hat recht, ein Knick ist da oder nicht; die Zahl
+    0–3 schwächte nur die Glättung quer über die Linie (Zwischenwerte = Rundung über ein, zwei Dreiecke, netzabhängig). Vorschlag:
+    Ecken knicken, „Kante“ an/aus je Linie oder Stück, Rundung über die Griffe, Zahl weg. Bilder
+    `docs/progress/editor/form-b-fenster-pilz{,-geknickt}-ganz-2026-11-06.jpg`. Falle: Ein Löser ohne Gedächtnis darf nicht nur in
+    einem Bereich rechnen — der Rand des Bereichs ist dann sein Gedächtnis.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

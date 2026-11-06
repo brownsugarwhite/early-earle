@@ -1351,13 +1351,16 @@ function loeserHaut(): { h: Haut; aus: Uint8Array | null } {
 /**
  * Löser eines Zugs: Einflussbereich um die bewegten Stellen (Radius r) samt den Ecken ihrer Proben. In der Pose behält jeder Punkt
  * seine Krümmung (die Krümmung, die die Loops tragen, gilt für die geschlossene Grundform; am Rand der Öffnung passt sie nicht, die
- * Haut unter einem Maul aus der Front verknitterte, gemessen: ein Punkt 146 Einheiten weit, 16 Dreiecke umgeklappt).
+ * Haut unter einem Maul aus der Front verknitterte, gemessen: ein Punkt 146 Einheiten weit, 16 Dreiecke umgeklappt). Aus den Kurven
+ * (`?haut=kurven`) immer über die ganze Haut, wie FiberMesh: Mit einem Bereich trug dessen Rand die alte Wölbung als Krümmung ins
+ * Feld (gemessen: Lappen unter einem Pilzrand, 12 umgeklappt; über die ganze Haut keine).
  */
 function loeserFuer(bewegt: readonly V3[], r: number, ecken: Iterable<number>): LoopZug {
   const { h, aus } = loeserHaut();
-  const bereich = bereichUm(h, bewegt, r, ecken);
-  if (aus) for (let v = 0; v < h.n; v++) if (aus[v]) bereich[v] = 0;
-  return new LoopZug(h, loops, bereich, KRUEMMUNG && !grund, grund ? 'gedaechtnis' : HAUT);
+  const art: HautArt = grund ? 'gedaechtnis' : HAUT;
+  const bereich = art === 'kurven' ? null : bereichUm(h, bewegt, r, ecken);
+  if (aus && bereich) for (let v = 0; v < h.n; v++) if (aus[v]) bereich[v] = 0;
+  return new LoopZug(h, loops, bereich, KRUEMMUNG && !grund, art);
 }
 
 /** Löser für die Stücke um Punkt k des Loops li (Griff ziehen oder ausrichten) */

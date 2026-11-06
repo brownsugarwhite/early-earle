@@ -148,3 +148,48 @@ bei dir), `form-b-fenster-pilz-geknickt-{heute,kurven}-2026-11-06.jpg` (Pilz mit
 
 Gemessen und verworfen: die Krümmung aus den Kurven, aber die Punkte verteilt wie beim Anfassen (wie der heutige Löser). Die Haut
 verknittert, weil die gemessene Krümmung an den Linien und die alte Verteilung nicht zueinander passen.
+
+## 5. Nachtrag (06.11. abends): Korrektur zu B, und was Härte sein soll
+
+Florian: „das mit der härte verstehe ich bis heute nicht. Die härte des knicks entsteht doch automatisch und kann im grunde nur ganz
+oder garnicht sein. Alles dazwischen ist rund mit verschiedenen handlelängen oder nicht? … Variante B scheint in fast allem besser
+zu sein. Erkläre mir deine Empfehlung nochmal genauer“.
+
+**Korrektur zu B.** Im Fenster rechnete B nur in einem Bereich um den Zug. Der Rand dieses Bereichs gab die Haut, die stehen bleibt,
+mit ihrer alten Wölbung als Krümmung ins Feld; daher kamen die Lappen und der schlechtere Hammer. FiberMesh rechnet immer die ganze
+Haut. So gemessen (Fenster, mit der Maus; Knicke über 60° / umgeklappt):
+
+| Fall | heute | B im Bereich | B über die ganze Haut |
+|---|---|---|---|
+| Pilz mit geknickten Linien | Kante, 0 | Kante, Lappen, 12 | Kante, 0 |
+| Pilz wie bei dir (Rand hart, unten hinauf) | 3,3°, keine Kante | 13,6°, Lappen, 12 | 34°, Kante, 2 |
+| Überhang | 28 / 10 | 4 / 0 | 6 / 0 |
+| langer Hammer | 7 / 0 | 18 / 6 | 0 / 0 |
+| Rüssel, Griff −45° | 13 / 0 | 17 / 0 | 14 / 0 |
+| Boden (tiefster Punkt unter der Ebene) | 0,14 | – | 0,11 |
+| Form gelöscht (Rest der Beule) | 7,2 | – | 0,7 |
+| je Mausbewegung | 6–32 ms | 3–20 ms | 11–23 ms |
+| beim Greifen (Zerlegen) | 20–310 ms | 15–320 ms | 90–350 ms |
+
+B über die ganze Haut ist überall gleich oder besser. Im Fenster rechnet `?haut=kurven` jetzt immer so. Kosten: Beim Greifen wird die
+ganze Haut zerlegt (bei 4 000–7 000 Punkten 0,1–0,35 s; bei 10 000 Punkten gemessen 0,6 s, bei 18 000 2 s). Das ist der offene Punkt,
+bevor B Standard wird (schneller zerlegen).
+
+**Härte: ganz oder gar nicht.** Florian hat recht. Ein Knick ist da oder nicht. Wie rund eine Stelle ist, sagen die Griffe (kurze
+Griffe = enge Rundung). Die Zahl 0–3 tat bisher etwas Drittes: Sie schwächte nur die Glättung quer über die Linie ab. Eine
+Zwischenhärte war deshalb eine Rundung über ein, zwei Dreiecke, also abhängig vom Netz und nicht gestaltbar. Vorschlag:
+
+- **Ecke (◆) an einem Punkt:** Die Linie knickt dort. Läuft sie dabei über eine andere Linie, knickt die Haut entlang dieser Linie
+  (zwischen den Kreuzungen übergeblendet; so ist es seit dem Pilz schon gebaut).
+- **„Kante“ an einer Linie (an/aus, auch nur für ein Stück):** Die Haut darf quer über die Linie knicken; jede Seite rundet sich für
+  sich, der Winkel ergibt sich aus der Form. Nötig für Linien ohne Querlinien (Braue, Lippe, Pilzrand). Dick schwarz = Kante, dünn =
+  weich.
+- **Rundung:** über die Griffe der Linien, keine Zahl.
+- Die Zahl 0–3 entfällt.
+
+**Empfehlung jetzt:** (1) B über die ganze Haut als Standard, sobald das Zerlegen beim Greifen auch bei 10 000+ Punkten schnell ist;
+bis dahin `?haut=kurven` zum Ausprobieren. (2) Härte als An/Aus „Kante“ statt 0–3. (3) Danach A: Griffe gespeichert, eine Ecke knickt
+die Linie wirklich, Stift P, Löschen und Einfügen wie in Illustrator.
+
+Bilder: `docs/progress/editor/form-b-fenster-pilz-ganz-2026-11-06.jpg` (Pilz wie bei dir), `form-b-fenster-pilz-geknickt-ganz-2026-11-06.jpg`.
+
