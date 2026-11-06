@@ -82,7 +82,7 @@ for (const w of [0, 20, 40, 55]) {
 // 3. offen: einen Punkt der Unterlippe in der Seite nach unten ziehen (verglichen wird bei derselben Öffnung)
 await regler(30);
 const vorZug = await K('lagen');
-const unten = (await K('loops')).find((l) => l.id === form.id).punkte.filter((p) => !p.mundwinkel && p.kreuzung === null);
+const unten = (await K('loops')).find((l) => l.id === form.id).punkte.filter((p) => !p.mundwinkel && p.kreuzung === null && p.sichtbar !== false);
 const tiefster = [...unten].sort((a, b) => a.ref.y - b.ref.y)[0];
 const a = await bild('seite', tiefster.ref);
 const b = await bild('seite', { ...tiefster.ref, y: tiefster.ref.y - 12 });

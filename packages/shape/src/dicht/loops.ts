@@ -13,7 +13,7 @@
 import { HautAusKurven } from './ausKurven';
 import { KETTE_K, type KruemmungsKetten } from './kruemmung';
 import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich, kantenSchluessel } from './kurven';
-import { stueckAnpassen, stueckPunkt } from './pfad';
+import { stueckAnpassen, stueckPunkt, stueckTeilen } from './pfad';
 
 export type Ansicht = 'seite' | 'front' | 'top';
 /** Ein Punkt der Haut: drei Ecken eines Dreiecks und baryzentrische Gewichte */
@@ -43,7 +43,14 @@ export type LoopPunkt = {
    */
   ein?: V3;
   aus?: V3;
+  /**
+   * Ende eines Rings, das `griffeAnlegen` gesetzt hat: hält dort nur die Griffe; nicht zu sehen, nicht zu greifen, keine Stützstelle
+   * der Kante (wie vorher, als dort kein Punkt war). Fällt eine Kreuzung darauf, wird es ein gewöhnlicher Spiegelpunkt.
+   */
+  vonSelbst?: boolean;
 };
+/** Ein Punkt, den Florian sieht und greifen kann (nicht ein Ende eines Rings, das nur Griffe hält) */
+export const istSichtbar = (p: LoopPunkt): boolean => !p.vonSelbst;
 /** Ecke: die Linie darf am Punkt knicken (Griffe unabhängig); sonst glatt (Griffe gegenüber) */
 export const istEcke = (p: LoopPunkt): boolean => p.ecke ?? p.autoEcke ?? false;
 /**
@@ -928,7 +935,7 @@ export function festlegen(h: Haut, l: Loop): void {
  */
 function kanteKnoten(l: Loop): { s: number; k: boolean }[] {
   const basis = l.kante ?? false;
-  return l.punkte.filter((p) => p.kante !== undefined || p.kreuzung === undefined).map((p) => ({ s: p.s, k: p.kante ?? basis }));
+  return l.punkte.filter((p) => !p.vonSelbst && (p.kante !== undefined || p.kreuzung === undefined)).map((p) => ({ s: p.s, k: p.kante ?? basis }));
 }
 
 /**
@@ -1198,24 +1205,18 @@ function griffeAusLinie(l: Loop, L: Float64Array, neu: ReadonlySet<number> | nul
   }
   const rEin: (V3 | null)[] = ein.map(einheit);
   const rAus: (V3 | null)[] = aus.map(einheit);
-  // neue Punkte: glatt (beide Griffe auf einer Geraden, am Spiegelpunkt senkrecht zur Mittelebene), außer die Linie knickt dort um
-  // mehr als KNICK: dann eine Ecke, die Griffe wie abgelesen (gemessen an der Kugel: der Griff am Spiegelpunkt steht 2,7° schräg,
-  // abgelesen aus der Kette im Netz). Was von Hand gesetzt ist, gilt; eine Ecke von selbst bleibt eine. Ein geschlossener Loop mit
-  // weniger als drei Punkten sagt über Knicke nichts (sein einziges Stück läuft vom Punkt um den ganzen Loop zu ihm zurück).
-  const knickSagt = !geschlossen(l) || P.length >= 3;
+  // neue glatte Punkte: beide Griffe auf einer Geraden (am Spiegelpunkt senkrecht zur Mittelebene; gemessen an der Kugel: abgelesen
+  // aus der Kette im Netz steht er 2,7° schräg). Ecken (von Hand oder von selbst an einer Kante) wie abgelesen. Eine Ecke, wo die
+  // Linie knickt, entsteht nicht von selbst (gemessen: an einer weit gezogenen Rüsselspitze wurden so Punkte zu Ecken, über die die
+  // Haut keine Krümmung mehr trägt, 30 statt 6 Knicke über 60°).
   P.forEach((p, i) => {
-    if (!ist(i)) return;
+    // ein Ende von selbst hält nur die Griffe, wie die Linie sie zeigt (es bewegt sich nicht)
+    if (!ist(i) || p.vonSelbst || istEcke(p)) return;
     const rand = ringEnde(l, i);
     // am Spiegelpunkt ist der Griff nach außen das Spiegelbild des inneren
     const a = rand === 'ende' && rEin[i] ? gespiegelt(rEin[i]!) : rAus[i];
     const e = rand === 'anfang' && rAus[i] ? gespiegelt(rAus[i]!) : rEin[i];
     if (!e || !a) return;
-    const knick = (Math.acos(Math.max(-1, Math.min(1, -(e.x * a.x + e.y * a.y + e.z * a.z)))) * 180) / Math.PI;
-    const glatt = p.ecke === false || (p.ecke === undefined && !p.autoEcke && (knick <= KNICK || !knickSagt));
-    if (!glatt) {
-      if (p.ecke === undefined && !p.autoEcke) p.ecke = true;
-      return;
-    }
     const u = rand ? { x: 0, y: 0, z: rand === 'anfang' ? 1 : -1 } : einheit({ x: a.x - e.x, y: a.y - e.y, z: a.z - e.z });
     if (!u) return;
     rAus[i] = u;
@@ -1246,11 +1247,11 @@ export function griffeAnlegen(l: Loop, L: Float64Array = l.ruhe): void {
     const ende = (j: number): V3 => ({ ...lage(L, j), z: 0 });
     if (!l.punkte.some((p) => p.s <= 1e-6)) {
       const q = ende(0);
-      l.punkte.unshift({ s: 0, ref: q, cur: { ...q } });
+      l.punkte.unshift({ s: 0, ref: q, cur: { ...q }, vonSelbst: true });
     }
     if (!l.punkte.some((p) => p.s >= l.laenge - 1e-6)) {
       const q = ende(n - 1);
-      l.punkte.push({ s: l.laenge, ref: q, cur: { ...q } });
+      l.punkte.push({ s: l.laenge, ref: q, cur: { ...q }, vonSelbst: true });
     }
   }
   l.punkte.forEach((p, i) => {
@@ -1267,6 +1268,12 @@ export function griffeAnlegen(l: Loop, L: Float64Array = l.ruhe): void {
   griffeAusLinie(l, L, null);
 }
 
+/** Griffe nur für die Punkte `punkte` (Index) aus der Linie, die anderen behalten ihre (Richtung); danach speichert der Loop sie */
+export function griffeErgaenzen(l: Loop, L: Float64Array, punkte: ReadonlySet<number>): void {
+  l.pfad = true;
+  griffeAusLinie(l, L, punkte);
+}
+
 /** Verschiebung des Nachbarpunkts (k = −1 davor, +1 dahinter); am Ende eines Rings das Spiegelbild des inneren Nachbarn */
 function nachbarD(l: Loop, D: readonly V3[], i: number, k: -1 | 1): V3 {
   const m = l.punkte.length;
@@ -1277,13 +1284,12 @@ function nachbarD(l: Loop, D: readonly V3[], i: number, k: -1 | 1): V3 {
 }
 
 /**
- * Nach einem Zug: Die gespeicherten Griffe übernehmen, was der Zug mit der Linie gemacht hat, genau wie `verschiebungLaengs` mit den
- * Verschiebungen `D` je Punkt und dem Versatz `griffe`: Griffe gehen mit ihrem Punkt, der Versatz kommt dazu; eine Ecke von selbst
- * nimmt die Änderung der Sehnen zu ihren Nachbarn mit (wie Blenders „Vector“-Griffe).
+ * Griffe nach einem Zug, genau wie `verschiebungLaengs` die Linie mit den Verschiebungen `D` je Punkt und dem Versatz `griffe`
+ * verschoben hat: Griffe gehen mit ihrem Punkt, der Versatz kommt dazu; eine Ecke von selbst nimmt die Änderung der Sehnen zu ihren
+ * Nachbarn mit (wie Blenders „Vector“-Griffe). Gesetzt wird nichts (zum Zeigen während des Zugs; `griffeUebernehmen` setzt sie).
  */
-export function griffeUebernehmen(l: Loop, D: readonly V3[], griffe?: readonly (GriffVersatz | undefined)[]): void {
-  if (!hatGriffe(l)) return;
-  l.punkte.forEach((p, i) => {
+export function griffeNach(l: Loop, D: readonly V3[], griffe?: readonly (GriffVersatz | undefined)[]): { ein: V3; aus: V3 }[] {
+  const out = l.punkte.map((p, i) => {
     const d = D[i] ?? NULL;
     let de: V3;
     let da: V3;
@@ -1296,10 +1302,29 @@ export function griffeUebernehmen(l: Loop, D: readonly V3[], griffe?: readonly (
       de = griffe?.[i]?.ein ?? NULL;
       da = griffe?.[i]?.aus ?? NULL;
     }
-    p.ein = { x: p.ein!.x + de.x, y: p.ein!.y + de.y, z: p.ein!.z + de.z };
-    p.aus = { x: p.aus!.x + da.x, y: p.aus!.y + da.y, z: p.aus!.z + da.z };
+    const e = p.ein ?? NULL;
+    const a = p.aus ?? NULL;
+    let ein = { x: e.x + de.x, y: e.y + de.y, z: e.z + de.z };
+    let aus = { x: a.x + da.x, y: a.y + da.y, z: a.z + da.z };
+    if (l.art === 'mitte') {
+      ein = { ...ein, z: 0 };
+      aus = { ...aus, z: 0 };
+    }
+    const rand = ringEnde(l, i);
+    if (rand === 'anfang') ein = gespiegelt(aus);
+    if (rand === 'ende') aus = gespiegelt(ein);
+    return { ein, aus };
   });
-  griffeSpiegeln(l);
+  return out;
+}
+
+/** Nach einem Zug die Griffe setzen, die `griffeNach` ergibt */
+export function griffeUebernehmen(l: Loop, D: readonly V3[], griffe?: readonly (GriffVersatz | undefined)[]): void {
+  if (!hatGriffe(l)) return;
+  griffeNach(l, D, griffe).forEach((g, i) => {
+    l.punkte[i]!.ein = g.ein;
+    l.punkte[i]!.aus = g.aus;
+  });
 }
 
 /**
@@ -1654,15 +1679,21 @@ export function knickWinkel(h: Haut, l: Loop): Float64Array {
 
 /**
  * Einen Punkt an der Stelle s einfügen (formneutral: er liegt auf dem Loop und behält dort die Kante des Verlaufs). Liegt dort schon
- * ein Punkt (eine Kreuzung am Ende eines Rings trifft seinen Spiegelpunkt), wird er es selbst. Mit gespeicherten Griffen bekommt der
- * neue Punkt seine Griffe aus dem Verlauf der Linie, die Nachbarn behalten die Richtung ihrer Griffe (wie beim Teilen in Illustrator;
- * gemessen: das Teilen des alten Stücks (de Casteljau) erbte dessen Abstand zur Linie, ein halber Ring als ein Stück liegt bis
- * 6 Einheiten neben dem Kreis, seine Hälften danach ebenso; aus der Linie 0,1).
+ * ein Punkt (eine Kreuzung am Ende eines Rings trifft sein Ende), wird er es selbst. Mit gespeicherten Griffen teilt er sein Stück
+ * wie in Illustrator (de Casteljau): Die Hälften sind zusammen genau das alte Stück, die Nachbargriffe werden kürzer, der neue Punkt
+ * ist glatt. Gemessen und verworfen: seine Griffe aus der Linie und die Längen der Nachbargriffe dazu neu angepasst — an einer weit
+ * gezogenen Rüsselspitze wurden die Griffe der Spitze 600 Einheiten lang (ein Stück aus langer Geraden und Bogen lässt sich mit
+ * festen Richtungen nicht anpassen). Nur ein geschlossener Loop mit höchstens einem Punkt hatte noch kein Stück, das die Linie
+ * beschreibt: Dort werden alle Griffe aus der Linie abgelesen.
  */
 export function punktEinfuegen(l: Loop, s: number, kreuzung?: number): LoopPunkt {
   const da = l.punkte.find((q) => Math.abs(q.s - s) <= 1e-6 * Math.max(1, l.laenge) && (kreuzung === undefined || q.kreuzung === undefined));
   if (da) {
     if (kreuzung !== undefined) da.kreuzung = kreuzung;
+    if (da.vonSelbst && kreuzung !== undefined) {
+      delete da.vonSelbst;
+      if (hatGriffe(l)) griffeAusLinie(l, l.ruhe, new Set([l.punkte.indexOf(da)]));
+    }
     return da;
   }
   const q = stelleBei(l, l.ruhe, s);
@@ -1673,9 +1704,22 @@ export function punktEinfuegen(l: Loop, s: number, kreuzung?: number): LoopPunkt
   l.punkte.push(p);
   l.punkte.sort((a, b) => a.s - b.s);
   if (hatGriffe(l)) {
-    // ein geschlossener Loop mit höchstens einem Punkt hatte kein Stück, das die Linie beschreibt: alle Griffe neu
     if (geschlossen(l) && vorher <= 1) griffeAusLinie(l, l.ruhe, null);
-    else griffeAusLinie(l, l.ruhe, new Set([l.punkte.indexOf(p)]));
+    else {
+      const i = l.punkte.indexOf(p);
+      const m = l.punkte.length;
+      const a = l.punkte[(i - 1 + m) % m]!;
+      const b = l.punkte[(i + 1) % m]!;
+      const s0 = a.s;
+      const s1 = b.s > s0 ? b.s : b.s + l.laenge;
+      const x = s < s0 ? s + l.laenge : s;
+      const r = stueckTeilen(a.ref, a.aus!, b.ein!, b.ref, s1 > s0 ? (x - s0) / (s1 - s0) : 0.5);
+      a.aus = r.a1;
+      b.ein = r.b2;
+      p.ein = r.ein;
+      p.aus = r.aus;
+      griffeSpiegeln(l);
+    }
   }
   return p;
 }

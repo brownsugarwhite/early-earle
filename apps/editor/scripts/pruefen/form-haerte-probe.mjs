@@ -102,7 +102,7 @@ const haerte = async (rand, an) => {
 };
 const punktVon = async (id, wahl) => {
   const l = (await loops()).find((q) => q.id === id);
-  return l.punkte.reduce((b, p) => (wahl(p.ref) > wahl(b.ref) ? p : b));
+  return l.punkte.filter((p) => p.sichtbar !== false).reduce((b, p) => (wahl(p.ref) > wahl(b.ref) ? p : b));
 };
 const untenHinauf = async (senkrecht, d) => {
   const p = await punktVon(senkrecht.id, (r) => -r.y);

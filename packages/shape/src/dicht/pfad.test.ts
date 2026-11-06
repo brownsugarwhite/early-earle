@@ -74,7 +74,7 @@ function dreiLoops() {
     const r = loopEinsetzen(h, loops, loops.length - 1)!;
     h = r.haut;
     loops = r.loops;
-    griffeAnlegen(loops[loops.length - 1]!);
+    // wie im Fenster: erst die Kreuzungen (in den alten Loops geteilt), dann liest der neue Loop seine Griffe aus der Linie
     const tol = 0.25 * mittlereKante(h);
     const neu = loops[loops.length - 1]!;
     for (const x of loops.slice(0, -1)) {
@@ -84,6 +84,7 @@ function dreiLoops() {
         k++;
       }
     }
+    griffeAnlegen(neu);
   });
   return { h, loops };
 }
@@ -152,7 +153,7 @@ describe('Gespeicherte Griffe am Loop', () => {
     }
   });
 
-  it('Einfügen: die Linie bleibt, der neue Punkt ist glatt, die Nachbarn behalten die Richtung ihrer Griffe', () => {
+  it('Einfügen teilt das Stück (de Casteljau): die Linie bleibt, der neue Punkt ist glatt, die Nachbargriffe behalten ihre Richtung', () => {
     const { loops } = dreiLoops();
     const l = loops[0]!;
     const ruhe = Float64Array.from(l.ruhe);
@@ -173,8 +174,9 @@ describe('Gespeicherte Griffe am Loop', () => {
     expect(180 - winkel(p.ein!, p.aus!)).toBeLessThan(1e-4);
     expect(winkel(ra, a.aus!)).toBeLessThan(1e-4);
     expect(winkel(rb, b.ein!)).toBeLessThan(1e-4);
+    // der Punkt liegt auf der Linie, die geteilten Stücke beschreiben sie so gut wie das alte (bis auf dessen Abstand an der Stelle)
     log(`eingefügt bei ${s.toFixed(0)}: Pfad neben der Linie ${f0.toFixed(2)} → ${fehler().toFixed(2)}`);
-    expect(fehler()).toBeLessThanOrEqual(f0 + 1e-3);
+    expect(fehler()).toBeLessThan(f0 + 0.5);
   });
 
   it('Ein Zug und Übernehmen: der Pfad danach ist genau Ruhe + Verschiebung (Punkt, Griff, Ecke von selbst)', () => {

@@ -27,6 +27,7 @@ import {
   type HautArt,
   type Kurve,
   type Loop,
+  type LoopPunkt,
   LoopZug,
   MAUL_WINKEL_MAX,
   type MaulAmLoop,
@@ -39,12 +40,18 @@ import {
   festlegen,
   formAusZeichnung,
   griffeAbbilden,
+  griffeAnlegen,
   griffeAusrichten,
   griffeBei,
+  griffeErgaenzen,
+  griffeNach,
+  griffeUebernehmen,
   griffZiehen,
   type Haut,
+  hatGriffe,
   kanteBei,
   istEcke,
+  istSichtbar,
   istVektorEcke,
   hautAus,
   hautNormalen,
@@ -60,6 +67,7 @@ import {
   mittlereKante,
   mundwinkelProbe,
   punktEinfuegen,
+  punkteLoeschen,
   ringEnde,
   rundAusSeite,
   verdichten,
@@ -194,6 +202,11 @@ const WINKEL = new URLSearchParams(location.search).get('winkel') === '1';
  * schwächer.
  */
 const KURZ = Number(new URLSearchParams(location.search).get('kurz') ?? 0.5);
+/**
+ * Teil A (06.11.): Loops speichern ihre Bézier-Griffe (`griffeAnlegen`, beim Entstehen). `?griffe=0` zum Vergleich: wie vorher, die
+ * Griffe werden am Verlauf der Linie abgelesen.
+ */
+const GRIFFE = new URLSearchParams(location.search).get('griffe') !== '0';
 let letzteVerdichtung: { neu: number; gelegt: number; ms: number } | null = null;
 
 type Schnappschuss = {
@@ -210,7 +223,12 @@ const zurueck: Schnappschuss[] = [];
 const kopieLoop = (l: Loop): Loop => ({
   ...l,
   ruhe: Float64Array.from(l.ruhe),
-  punkte: l.punkte.map((p) => ({ ...p, ref: { ...p.ref }, cur: { ...p.cur } })),
+  punkte: l.punkte.map((p) => {
+    const q = { ...p, ref: { ...p.ref }, cur: { ...p.cur } };
+    if (p.ein) q.ein = { ...p.ein };
+    if (p.aus) q.aus = { ...p.aus };
+    return q;
+  }),
 });
 const poseKopie = (p: PoseStand): PoseStand => ({ ...p, delta: p.delta ? Float64Array.from(p.delta) : null });
 const schnappschuss = (): Schnappschuss => ({
@@ -697,6 +715,8 @@ function poseBetreten(): boolean {
   loops = g.loops.map((x) => {
     const c = kopieLoop(x);
     festlegen(haut, c);
+    // die Griffe der gedrehten Linien (ohne neue Ecken: was in der Pose knickt, gehört der Pose)
+    if (hatGriffe(c)) griffeAnlegen(c, c.ruhe);
     return c;
   });
   geometrieNeu();
@@ -715,11 +735,34 @@ function poseSichern(): void {
   pose.delta = d;
 }
 
-/** Loops der Grundform aus denen der Pose: dieselbe Kette und dieselben Punkte, Lagen der Grundform */
-function grundLoopsAus(h: Haut): Loop[] {
+/**
+ * Loops der Grundform aus denen der Pose: dieselbe Kette und dieselben Punkte, Lagen der Grundform. Griffe: wo der Punkt in der
+ * Grundform schon war, seine (`alt`); neue Punkte und die Nachbarn gelöschter lesen sie aus der Linie der Grundform ab.
+ */
+function grundLoopsAus(h: Haut, alt: readonly Loop[]): Loop[] {
   return loops.map((l) => {
     const c = kopieLoop(l);
     festlegen(h, c);
+    if (!hatGriffe(c)) return c;
+    const vorher = alt.find((x) => x.id === c.id);
+    const eps = 1e-6 * Math.max(1, c.laenge);
+    const neu = new Set<number>();
+    c.punkte.forEach((p, i) => {
+      const q = vorher?.punkte.find((x) => Math.abs(x.s - p.s) <= eps && x.ein && x.aus);
+      if (q) {
+        p.ein = { ...q.ein! };
+        p.aus = { ...q.aus! };
+      } else neu.add(i);
+    });
+    // in der Pose gelöschte Punkte: ihre Nachbarn neu
+    for (const q of vorher?.punkte ?? []) {
+      if (c.punkte.some((p) => Math.abs(p.s - q.s) <= eps)) continue;
+      const nach = c.punkte.findIndex((p) => p.s > q.s);
+      const m = c.punkte.length;
+      if (nach >= 0) neu.add(nach);
+      neu.add(nach > 0 ? nach - 1 : m - 1);
+    }
+    if (neu.size) griffeErgaenzen(c, c.ruhe, neu);
     return c;
   });
 }
@@ -729,7 +772,7 @@ function poseVerlassen(): void {
   if (!grund) return;
   poseSichern();
   const basis = grund.haut;
-  loops = grundLoopsAus(basis);
+  loops = grundLoopsAus(basis, grund.loops);
   haut = basis;
   grund = null;
   geometrieNeu();
@@ -762,7 +805,7 @@ function netzGewachsen(nAlt: number, alt: Int32Array, vorher: { theta: Float64Ar
     const d = ergaenzen(haut, dAlt, m, 3, true);
     const basis = Float64Array.from(ruhe, (x, i) => x - d[i]!);
     const gh: Haut = { pos: basis, tri: haut.tri, n: haut.n, nachbarn: haut.nachbarn, spiegel: haut.spiegel };
-    grund = { haut: gh, loops: grundLoopsAus(gh) };
+    grund = { haut: gh, loops: grundLoopsAus(gh, g.loops) };
     pose.delta = d;
     // die Gewichte gelten für das neue Netz (neu geschnitten); die Pose daraus neu gedreht
     const k = poseKnochen();
@@ -780,7 +823,11 @@ function knochenSetzen(kiefer: number, schaedel: number): boolean {
   pose.kiefer = kiefer;
   pose.schaedel = schaedel;
   haut.pos.set(knochenDrehen(ruhe, knochenWinkel(vor.m, pose), vor.G));
-  for (const l of loops) festlegen(haut, l);
+  for (const l of loops) {
+    festlegen(haut, l);
+    // die Linien sind mitgedreht: ihre Griffe auch (neu abgelesen)
+    if (hatGriffe(l)) griffeAnlegen(l, l.ruhe);
+  }
   return true;
 }
 
@@ -1071,6 +1118,13 @@ function griffeZumZeigen(lagen: readonly Float64Array[], a: Ansicht): { li: numb
   return wahl.map(({ li, i }) => {
     const l = loops[li]!;
     const g = zug?.griff;
+    // gespeicherte Griffe: während eines Zugs, wie sie danach sind
+    const neu = zug?.griffeNeu[li]?.[i];
+    if (neu && hatGriffe(l)) {
+      const r = { ein: neu.ein, aus: neu.aus };
+      const f = g && g.li === li && g.i === i && a === zug!.ansicht ? zug!.griffFaktor : griffFaktor(r, a);
+      return { li, i, ...r, f };
+    }
     if (g && g.li === li && g.i === i) {
       const r = griffeBei(l, zug!.loeser.start[li]!, i);
       const ein = plus(r.ein, zug!.griffVersatz.ein);
@@ -1151,6 +1205,8 @@ function blattZeichnen(a: Ansicht): void {
   }
   loops.forEach((l, li) =>
     l.punkte.forEach((p, i) => {
+      // ein Ende von selbst (Ring ohne Kreuzung dort) hält nur Griffe: nicht zu sehen, nicht zu greifen
+      if (!istSichtbar(p)) return;
       const q = zug ? p.cur : p.ref;
       for (const m of a === 'seite' || Math.abs(q.z) < 1e-6 ? [false] : [false, true]) {
         const [x, y] = imBlatt(a, m ? spiegeln(q) : q);
@@ -1292,6 +1348,10 @@ type Zug = {
   radius: number;
   weite0: number;
   weite: number;
+  /** je Loop die Griffe seiner Punkte, wie sie nach dem Zug sind (null: unverändert); gesetzt erst beim Übernehmen */
+  griffeNeu: ({ ein: V3; aus: V3 }[] | null)[];
+  /** mit O verschobene Loops (je Probe, nicht über ihre Punkte): ihre Griffe werden danach aus der Linie neu abgelesen */
+  neuAblesen: Set<number>;
 };
 let zug: Zug | null = null;
 
@@ -1470,6 +1530,8 @@ function griffZugStarten(a: Ansicht, X: number, Y: number, spiegel: boolean, li:
     radius: 0,
     weite0: 0,
     weite: 0,
+    griffeNeu: loops.map(() => null),
+    neuAblesen: new Set(),
   };
   letzteZerlegung = loeser.loeser.zeitZerlegen;
   letzterBereich = loeser.loeser.anzahl;
@@ -1527,6 +1589,11 @@ function eckeUmschalten(id: number, i: number): void {
       const d = griffVerschiebung(l, loeser.start[li]!, j, v);
       for (let s = 1; s <= 3; s++) loeser.schritt(loops.map((_, k) => (k === li ? d.map((x) => (x * s) / 3) : null)), RUNDEN_ZUG);
       loeser.schritt(loops.map((_, k) => (k === li ? d : null)), RUNDEN_ENDE);
+      griffeUebernehmen(
+        l,
+        l.punkte.map(() => ({ x: 0, y: 0, z: 0 })),
+        l.punkte.map((_, k) => (k === j ? v : undefined)),
+      );
       for (const x of loops) festlegen(haut, x);
       ausgerichtet = true;
     }
@@ -1594,7 +1661,7 @@ function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spieg
       if (irgend) probenW[li] = w;
       l.punkte.forEach((p, i) => {
         const k = `${li}:${i}`;
-        if (punktW.has(k)) return;
+        if (punktW.has(k) || !istSichtbar(p)) return;
         let d = Infinity;
         for (const c of zentren) d = Math.min(d, abstandSym(p.ref, c));
         const g = einfluss(d, radius);
@@ -1652,6 +1719,8 @@ function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spieg
     radius: r,
     weite0: 0,
     weite: 0,
+    griffeNeu: loops.map(() => null),
+    neuAblesen: new Set(),
   };
   letzteZerlegung = loeser.loeser.zeitZerlegen;
   letzterBereich = loeser.loeser.anzahl;
@@ -1659,12 +1728,27 @@ function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spieg
   return true;
 }
 
-/** Verschiebung je Probe je Loop für die Abbildung f */
+/**
+ * Verschiebung je Probe je Loop für die Abbildung f; dazu je Loop die Griffe, wie sie danach sind (`z.griffeNeu`): Ein ganzer Loop
+ * dreht und skaliert sie mit wie seine Proben, gezogene Punkte nehmen sie mit (`griffeNach`).
+ */
 function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
   return loops.map((l, li) => {
     const n = l.proben.length;
     const S = z.loeser.start[li]!;
     let d: Float64Array | null = null;
+    z.griffeNeu[li] = null;
+    if (z.ganze.has(li) && hatGriffe(l)) {
+      const D = l.punkte.map((p) => {
+        const q = f(p.ref);
+        return { x: q.x - p.ref.x, y: q.y - p.ref.y, z: q.z - p.ref.z };
+      });
+      z.griffeNeu[li] = griffeNach(
+        l,
+        D,
+        l.punkte.map((_, i) => griffeAbbilden(l, S, i, f, 1)),
+      );
+    } else if (z.probenW[li]) z.neuAblesen.add(li);
     if (z.ganze.has(li) || z.probenW[li]) {
       const w = z.probenW[li];
       d = new Float64Array(3 * n);
@@ -1695,7 +1779,10 @@ function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
               return g ? griffeAbbilden(l, S, i, f, g) : undefined;
             })
           : undefined;
-      if (irgend) d = verschiebungLaengs(l, D, griffe);
+      if (irgend) {
+        d = verschiebungLaengs(l, D, griffe);
+        if (hatGriffe(l)) z.griffeNeu[li] = griffeNach(l, D, griffe);
+      }
     }
     if (d) zGrenzen(l, S, d);
     return d;
@@ -1720,6 +1807,8 @@ function zugBewegen(X: number, Y: number): void {
     if (z.spiegel) d.z = -d.z;
     z.griffVersatz = griffZiehen(l, z.loeser.start[li]!, i, seite, d);
     z.versch = loops.map((_, k) => (k === li ? griffVerschiebung(l, z.loeser.start[li]!, i, z.griffVersatz) : null));
+    const versatz = l.punkte.map((_, k) => (k === i ? z.griffVersatz : undefined));
+    z.griffeNeu = loops.map((_, k) => (k === li && hatGriffe(l) ? griffeNach(l, l.punkte.map(() => ({ x: 0, y: 0, z: 0 })), versatz) : null));
   } else {
     const f = abbildung(z, X, Y);
     z.versch = verschiebungen(z, f);
@@ -1771,7 +1860,9 @@ function zugBewegen(X: number, Y: number): void {
  */
 function zugStufe(z: Zug, X: number, Y: number): void {
   const t0 = performance.now();
+  zugGriffeUebernehmen(z);
   for (const l of loops) festlegen(haut, l);
+  zugGriffeAblesen(z);
   nachVerdichten();
   zug = null;
   // der Bereich wächst mit dem Zug (wie das Abziehen in FiberMesh): mindestens so weit, wie schon gezogen wurde
@@ -1792,6 +1883,26 @@ function zugStufe(z: Zug, X: number, Y: number): void {
 let zugStufen = 0;
 let letzteStufeMs = 0;
 
+/** Die Griffe übernehmen, wie der Zug sie verändert hat (vor dem Festlegen der Linien) */
+function zugGriffeUebernehmen(z: Zug): void {
+  loops.forEach((l, li) => {
+    const g = z.griffeNeu[li];
+    if (!g || !hatGriffe(l) || g.length !== l.punkte.length) return;
+    l.punkte.forEach((p, i) => {
+      p.ein = g[i]!.ein;
+      p.aus = g[i]!.aus;
+    });
+  });
+}
+
+/** Mit O je Probe verschobene Loops: ihre Griffe aus der neuen Linie ablesen (nach dem Festlegen) */
+function zugGriffeAblesen(z: Zug): void {
+  for (const li of z.neuAblesen) {
+    const l = loops[li];
+    if (l && hatGriffe(l)) griffeAnlegen(l, l.ruhe);
+  }
+}
+
 function zugEnde(ok: boolean): void {
   const z = zug;
   if (!z) return;
@@ -1802,7 +1913,9 @@ function zugEnde(ok: boolean): void {
   }
   if (z.bewegt) {
     z.loeser.schritt(z.versch, RUNDEN_ENDE);
+    zugGriffeUebernehmen(z);
     for (const l of loops) festlegen(haut, l);
+    zugGriffeAblesen(z);
     kreuzungenSuchen();
     const vorVerdichten = haut;
     nachVerdichten();
@@ -1875,7 +1988,10 @@ function einsetzenLetzten(): void {
     geometrieNeu();
     meldung = '';
   } else meldung = 'Loop liegt nur auf der Haut (nicht ins Netz eingesetzt): eine Kante wirkt dort kaum';
+  // erst die Kreuzungen (in den anderen Loops teilen sie ein Stück), dann liest der neue Loop alle seine Griffe aus der Linie;
+  // ab jetzt speichert er sie
   kreuzungenSuchen(loops[loops.length - 1]);
+  if (GRIFFE) griffeAnlegen(loops[loops.length - 1]!);
 }
 
 /**
@@ -1910,19 +2026,39 @@ function kanteSetzen(): void {
 
 /**
  * Nach einer Kante an oder aus oder dem Löschen von Loops oder Punkten die Haut neu rechnen, über die ganze Haut, bis sie steht:
- * Ohne Zug blieb sie, wie sie war (eine Kante wirkte erst beim nächsten Zug, eine gelöschte Linie hinterließ ihre Form). Nicht in der
- * Pose.
+ * Ohne Zug blieb sie, wie sie war (eine Kante wirkte erst beim nächsten Zug, eine gelöschte Linie hinterließ ihre Form). `versch`: um
+ * so viel bewegen sich die Linien dabei (gelöschte Punkte, je Loop 3 je Probe). In der Pose nur, wenn sich Linien bewegen.
  */
-function hautNeuRechnen(): void {
-  if (grund) return;
+function hautNeuRechnen(versch: readonly (Float64Array | null)[] = loops.map(() => null)): void {
+  if (grund) {
+    // in der Pose nur, wenn Linien sich bewegt haben (gelöschte Punkte): um sie herum
+    if (!versch.some((d) => d)) return;
+    const bewegt: V3[] = [];
+    const ecken = new Set<number>();
+    let weit = 0;
+    loops.forEach((l, li) => {
+      const d = versch[li];
+      if (!d) return;
+      for (let j = 0; j < l.proben.length; j++) {
+        const w = Math.hypot(d[3 * j]!, d[3 * j + 1]!, d[3 * j + 2]!);
+        if (w < 1e-9) continue;
+        weit = Math.max(weit, w);
+        bewegt.push(lageAus(l.ruhe, j));
+        for (const v of l.proben[j]!.ecken) ecken.add(v);
+      }
+    });
+    const z = loeserFuer(bewegt, Math.max(2 * MK, 3 * weit), ecken);
+    z.schritt(versch, RUNDEN_NEU);
+    for (const l of loops) festlegen(haut, l);
+    kreuzungenSuchen();
+    poseSichern();
+    return;
+  }
   vorrechnenAus();
   eckenAuto(loops);
   const t0 = performance.now();
   const z = new LoopZug(haut, loops, null, KRUEMMUNG, HAUT);
-  z.schritt(
-    loops.map(() => null),
-    RUNDEN_NEU,
-  );
+  z.schritt(versch, RUNDEN_NEU);
   for (const l of loops) festlegen(haut, l);
   kreuzungenSuchen();
   nachVerdichten();
@@ -2034,13 +2170,23 @@ function loeschen(): void {
     return;
   }
   zurueck.push(schnappschuss());
-  for (const l of loops) l.punkte = l.punkte.filter((p) => !eigene.has(p));
+  // wie in Illustrator: Die Nachbarn verbinden sich über ihre Griffe, die Linie folgt (ohne gespeicherte Griffe fällt der Punkt nur weg)
+  const versch = loops.map((l) => (ganz.has(l.id) ? null : punkteLoeschen(l, eigene as Set<LoopPunkt>)));
   const wegKreuz = new Set<number>();
   for (const l of loops) if (ganz.has(l.id)) for (const p of l.punkte) if (p.kreuzung !== undefined) wegKreuz.add(p.kreuzung);
-  loops = loops.filter((l) => !ganz.has(l.id));
-  for (const l of loops) l.punkte = l.punkte.filter((p) => p.kreuzung === undefined || !wegKreuz.has(p.kreuzung));
+  const bleiben = loops.map((l) => !ganz.has(l.id));
+  loops = loops.filter((_, i) => bleiben[i]);
+  const verschBleiben = versch.filter((_, i) => bleiben[i]);
+  // Kreuzungen mit einem gelöschten Loop werden gewöhnliche Punkte: Die anderen Loops behalten ihre Linie und ihre Griffe
+  for (const l of loops) {
+    for (const p of l.punkte) {
+      if (p.kreuzung === undefined || !wegKreuz.has(p.kreuzung)) continue;
+      if (hatGriffe(l)) delete p.kreuzung;
+    }
+    if (!hatGriffe(l)) l.punkte = l.punkte.filter((p) => p.kreuzung === undefined || !wegKreuz.has(p.kreuzung));
+  }
   auswahl = [];
-  hautNeuRechnen();
+  hautNeuRechnen(verschBleiben);
   allesZeigen();
 }
 
@@ -2339,7 +2485,19 @@ schleife();
       art: l.art,
       proben: l.proben.length,
       laenge: l.laenge,
-      punkte: l.punkte.map((p) => ({ s: p.s, ref: p.ref, kreuzung: p.kreuzung ?? null, ecke: istEcke(p), autoEcke: p.autoEcke ?? false, kante: p.kante ?? null, mundwinkel: p.mundwinkel ?? false })),
+      punkte: l.punkte.map((p) => ({
+        s: p.s,
+        ref: p.ref,
+        sichtbar: istSichtbar(p),
+        kreuzung: p.kreuzung ?? null,
+        ecke: istEcke(p),
+        autoEcke: p.autoEcke ?? false,
+        kante: p.kante ?? null,
+        mundwinkel: p.mundwinkel ?? false,
+        ein: p.ein ?? null,
+        aus: p.aus ?? null,
+      })),
+      pfad: hatGriffe(l),
       kante: l.kante ?? null,
       ruhe: Array.from(l.ruhe),
       s: Array.from(l.s),

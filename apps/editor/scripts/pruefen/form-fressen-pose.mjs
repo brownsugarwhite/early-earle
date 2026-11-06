@@ -113,7 +113,8 @@ await aufnahme('1-pose-seite', 'seite');
 
 // 2. in der Pose: untersten Punkt der Unterlippe nach unten
 const mund = (await K('loops')).find((l) => l.punkte.some((p) => p.mundwinkel));
-const unten = [...mund.punkte].filter((p) => !p.mundwinkel).sort((a, b) => a.ref.y - b.ref.y)[0];
+// nur Punkte, die man sieht (die Enden eines Rings ohne Kreuzung halten nur Griffe)
+const unten = [...mund.punkte].filter((p) => !p.mundwinkel && p.sichtbar !== false).sort((a, b) => a.ref.y - b.ref.y)[0];
 await ziehen('seite', unten.ref, { ...unten.ref, y: unten.ref.y - 25 });
 const z = await K('zeiten');
 const ms = z.zug.slice(-10);

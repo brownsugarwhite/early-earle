@@ -265,3 +265,35 @@ sich aus den Pfaden (B).
 Was wegfällt: Griffe aus Proben ablesen (`griffeBei` mit Polynom), Ausrichten ab 4°, Linienproben nur unter ¼ zusammenlegen, die
 Hermite-Verschiebung. Aufwand wie geschätzt etwa 2–3 Tage.
 
+### Stand Teil A (06.11. abends): Schritte 1 und 2 gebaut
+
+**Entscheidung beim Bauen: Die Linie behält ihre Form, die Griffe steuern ihre Verformung.** Der Plan oben wollte die Linie genau
+auf den Pfad legen. Dann änderte schon das Anlegen die Haut (ein halber Ring als ein Bézier-Stück liegt bis 6 Einheiten neben dem
+Kreis, und eine mit dem Stift gezeichnete Form läge zwischen ihren Punkten nicht mehr auf der Haut). Jetzt speichert jeder Punkt
+seine Griffe, die Linie bleibt beim Anlegen genau, wie sie auf der Haut liegt. Jeder Zug verformt sie genau so, wie sich das
+Bézier-Stück aus Punkten und Griffen ändert (das tat `verschiebungLaengs` schon; neu ist, dass die Griffe danach gespeichert
+werden statt neu abgelesen).
+
+- **Anlegen** (`griffeAnlegen`): je Stück das Bézier-Stück durch die Linie nach kleinsten Quadraten, glatte Punkte mit beiden
+  Griffen auf einer Geraden, Spiegelpunkte senkrecht zur Mittelebene. Ein Ring bekommt an seinen Enden Punkte, die nur Griffe
+  halten (unsichtbar, nicht greifbar, wie vorher; fällt eine Kreuzung darauf, wird es ein Spiegelpunkt). Ein neuer Loop liest seine
+  Griffe erst, nachdem seine Kreuzungen eingesetzt sind.
+- **Einfügen** (Doppelklick, Kreuzungen): teilt das Stück wie Illustrator (de Casteljau). Die Linie bleibt genau, der neue Punkt
+  ist glatt, die Nachbargriffe behalten ihre Richtung und werden kürzer.
+- **Löschen** (⌫, `punkteLoeschen`): Die Nachbarn verbinden sich über ihre eigenen Griffe (Richtung bleibt, Länge angepasst), die
+  Linie folgt dem neuen Stück. Kreuzungen mit einem gelöschten Loop werden gewöhnliche Punkte (die anderen Loops bleiben, wie sie
+  sind).
+- **Gemessen mit der Maus** (`form-pfad-probe.mjs`): Augen-Form mit 8 Punkten, alle glatt auf 0,0000°. Doppelklick: Linie 0
+  bewegt, neuer Punkt glatt, Nachbargriffe 0,0000° gedreht und halb so lang. Oberen Punkt gelöscht: Linie zwischen den Nachbarn
+  0,17 bewegt, 0 umgeklappt, Nachbargriffe 0,0000° gedreht. ⌘Z genau. Bilder
+  `docs/progress/editor/form-pfad-loeschen-{vorher,nachher}-2026-11-06.jpg`.
+- **Die anderen Proben** gleich oder besser: Griffe zeigen am glatten Punkt 0,0° statt 2,8° Zacken, Fressen-Pose 25 für 25, Maul
+  und Kopf-Zug wie vorher, Rüssel mit gedrehtem Griff 8/0 statt 12/2 (Knicke über 60°/umgeklappt). Etwas schlechter: Boden
+  0,25 statt 0,11 Einheiten unter der Ebene (die Griffe an den Ecken sind jetzt die gespeicherten). `?griffe=0` zeigt zum
+  Vergleich das Ablesen wie vorher.
+- **Verworfen (gemessen):** neue Punkte und die Längen der Nachbargriffe aus der Linie neu angepasst (an einer weit gezogenen
+  Rüsselspitze wurden die Griffe 600 Einheiten lang); Ecke von selbst, wo die Linie über 15° knickt (Ecken sperren die Krümmung im
+  Löser: Rüsselspitze 30 statt 6 Knicke).
+
+Nächster Schritt: Stift P (Schritt 3), dann der Knick an Kanten (Schritt 4).
+

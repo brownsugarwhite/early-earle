@@ -139,7 +139,8 @@ const waagerecht = L0.find((l) => l.art === 'ring' && l.punkte.every((p) => Math
 const senkrecht = L0.find((l) => l.art === 'ring' && l !== waagerecht);
 const punktVon = async (id, wahl) => {
   const l = (await loops()).find((q) => q.id === id);
-  return l.punkte.reduce((b, p) => (wahl(p.ref) > wahl(b.ref) ? p : b));
+  // nur Punkte, die man sieht (die Enden eines Rings ohne Kreuzung halten nur Griffe)
+  return l.punkte.filter((p) => p.sichtbar !== false).reduce((b, p) => (wahl(p.ref) > wahl(b.ref) ? p : b));
 };
 
 if (fall === 'a') {
@@ -195,7 +196,7 @@ if (fall === 'a') {
   if (process.env.GRIFF) {
     await K('ausschnitt', 'seite', { cx: 380, cy: -60, zoom: 1.6 });
     const m1 = (await loops()).find((l) => l.id === mitte.id);
-    const i = m1.punkte.reduce((b, r, k) => (r.ref.x > m1.punkte[b].ref.x ? k : b), 0);
+    const i = m1.punkte.reduce((b, r, k) => (r.sichtbar !== false && (b < 0 || r.ref.x > m1.punkte[b].ref.x) ? k : b), -1);
     await seite.mouse.click(...xy(await bild('seite', m1.punkte[i].ref)));
     await seite.waitForTimeout(450);
     for (const g of ['aus', 'ein']) {
@@ -399,7 +400,7 @@ if (fall === 'a') {
     ['ein', -60, 160],
   ]) {
     const m1 = (await loops()).find((l) => l.id === mitte.id);
-    const i = m1.punkte.reduce((b, r, k) => (r.ref.x < m1.punkte[b].ref.x ? k : b), 0);
+    const i = m1.punkte.reduce((b, r, k) => (r.sichtbar !== false && (b < 0 || r.ref.x < m1.punkte[b].ref.x) ? k : b), -1);
     await seite.mouse.click(...xy(await bild('seite', m1.punkte[i].ref)));
     await seite.waitForTimeout(450);
     const pos = await griffMitte(mitte.id, i, g);
