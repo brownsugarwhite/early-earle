@@ -1366,6 +1366,36 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     Fenster-Probe zwei Züge später; „0/0 im Fenster“ war ein anderer Schritt). `RUHE=<ms>` in `form-explosion-probe.mjs` misst nach dem
     Setzen noch einmal. Die Probe `form-maul-loop.mjs` hatte drei Fehler (ein zweites F zeichnete neu, ein Klick vor dem Zug kam als
     Doppelklick an, ⌘Z wurde gegen 55° statt 30° verglichen) — daher das frühere „⌘Z 4,2e+1“; jetzt genau.
+- **2026-11-06 (spätabends): Teil A — gespeicherte Griffe, Löschen wie Illustrator, Stift P, Kante knickt** (Florian: „Ja, fang
+  mit A an: Linien als Bézier-Pfade mit echten Griffen, dann Stift P, nach Abschnitt 7 der Planseite.“; „Stand Teil A“ in
+  [`docs/plans/2026-11-06-kurven-als-wahrheit.md`](docs/plans/2026-11-06-kurven-als-wahrheit.md)).
+  - **Entscheidung beim Bauen:** Die Linie behält beim Anlegen genau ihre Form auf der Haut, jeder Punkt speichert seine Griffe
+    (`LoopPunkt.ein/aus`, `Loop.pfad`), jeder Zug verformt die Linie genau wie das Bézier-Stück aus Punkten und Griffen
+    (`verschiebungLaengs` war das schon; neu: danach `griffeUebernehmen` statt neu ablesen). Den Pfad als Linie zu nehmen (Plan)
+    hätte schon das Anlegen die Haut ändern lassen (ein halber Ring als ein Stück liegt bis 6 Einheiten neben dem Kreis).
+  - **Kern:** `dicht/pfad.ts` (Bézier-Stück: Punkt, Teilen, Anpassen nach kleinsten Quadraten mit oder ohne feste Richtungen);
+    `loops.ts`: `griffeAnlegen` (aus der Linie, glatte Punkte auf einer Geraden, Spiegelpunkte senkrecht), `punktEinfuegen` teilt
+    (de Casteljau), `punkteLoeschen` (Nachbarn über ihre Griffe, Längen angepasst, Linie folgt), `griffeNach`/`griffeUebernehmen`,
+    `griffeSetzen`, `kantenKnicken`, `griffeErgaenzen`. Ringe halten an ihren Enden Griffe in Punkten `vonSelbst` (unsichtbar, nicht
+    greifbar, keine Stützstelle der Kante; eine Kreuzung darauf macht sie zum Spiegelpunkt). Tests `dicht/pfad.test.ts` (6).
+  - **Fenster:** Ein neuer Loop liest seine Griffe nach seinen Kreuzungen; Züge, Ecke/glatt, Löschen und Pose tragen sie mit;
+    **Stift P** (Klick = Ecke, Ziehen = glatter Punkt, erster Punkt oder ⏎ schließt, ⌫ letzter Punkt zurück; Griffe in die Fläche
+    gehoben); **Kante (K) knickt** die kreuzenden Linien (jede Seite so rund wie möglich; `?knick=vektor` = Blenders „Vector“ aus
+    dem Plan, macht den Pilzhut zur Glocke). `?griffe=0` zeigt das Ablesen wie vorher.
+  - **Gemessen mit der Maus:** Einfügen lässt die Linie genau stehen, Löschen bewegt sie zwischen den Nachbarn 0,17 (Augen-Form),
+    ⌘Z genau (`form-pfad-probe.mjs`); Stift: Linie im Blatt ≤ 0,35 px neben der Zeichnung, Griffe genau wie gezogen, Haut
+    unverändert (`form-stift-probe.mjs`); Kante nachträglich am Pilz 15° → 92°, Kugel mit Kante 5° → 27° (Vector 71°), Linse
+    24° → 73°. Ältere Proben gleich oder besser (Griffe ohne 2,8° Zacken, Rüssel mit gedrehtem Griff 8/0 statt 12/2, Fressen-Pose
+    25 für 25); etwas schlechter der Boden (0,25 statt 0,11 unter der Ebene). Bilder
+    `docs/progress/editor/form-{pfad-loeschen,stift,kante-knick-vergleich}-*-2026-11-06.jpg`.
+  - **Verworfen (gemessen):** neue Punkte und Nachbarlängen beim Einfügen aus der Linie neu anpassen (Rüsselspitze: Griffe 600 lang);
+    Ecke von selbst, wo die Linie über 15° knickt (Ecken sperren die Krümmung im Löser: 30 statt 6 Knicke über 60°); sichtbare
+    Punkte an jedem Ringende (der Kopf-Zug griff den Endpunkt statt des Rings).
+  - **Fallen:** Proben, die Punkte nach ihrer Lage wählen, müssen unsichtbare Ringenden auslassen (`sichtbar` im Prüfhaken; sonst
+    greift der Zug ins Leere). Ein neuer Punkt liegt auf der Linie, nicht auf dem gespeicherten Stück (beide weichen um den Abstand
+    des Stücks zur Linie voneinander ab); Tests vergleichen deshalb die Linie, nicht den Pfad. Kern-Tests ohne Verdichten falten an
+    scharfen Knicken mehr als das Fenster (16 gegen 0) — wie das Fenster verdichten und setzen.
+  - **Offen:** die alte Ableselogik entfernen (wenn der Knick entschieden ist); Florians Blick auf Stift, Löschen und Knick.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
