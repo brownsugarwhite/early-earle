@@ -14,8 +14,8 @@ import {
   griffeAusrichten,
   griffeBei,
   griffZiehen,
-  haerteAn,
-  haerteBei,
+  kanteAn,
+  kanteBei,
   istEcke,
   kantenGewichte,
   knickAm,
@@ -32,8 +32,8 @@ import { rundAusSeite } from './rund';
 import type { UmrissPunkt } from './umriss';
 
 declare const process: { env: Record<string, string | undefined> };
-/** Löser der Haut für die Krümmung aus den Loops: wie im Fenster; mit HAUT=kurven der aus Beweis B (zum Vergleich) */
-const HAUT = (process.env.HAUT ?? 'gedaechtnis') as HautArt;
+/** Löser der Haut: wie im Fenster aus den Kurven über die ganze Haut; mit HAUT=gedaechtnis der bisherige (zum Vergleich) */
+const HAUT = (process.env.HAUT ?? 'kurven') as HautArt;
 const log = (...a: unknown[]) => (globalThis as unknown as { console: { log: (...x: unknown[]) => void } }).console.log(...a);
 const kreis = (r: number): UmrissPunkt[] => [
   { x: r, y: 0 },
@@ -168,15 +168,15 @@ describe('Nur Loops: Griffe an Kreuzungen', () => {
   });
 
   it('Braue: Augen-Form oben hart (3) und hinausgezogen gibt einen Knick, weich (0) eine runde Wulst', () => {
-    const lauf = (hart: number) => {
+    const lauf = (hart: boolean, art: HautArt = HAUT) => {
       const h0 = kugel();
       const uv: [number, number][] = Array.from({ length: 64 }, (_, i) => [-60 + 35 * Math.cos((2 * Math.PI * i) / 64), 40 + 35 * Math.sin((2 * Math.PI * i) / 64)]);
       // die Form wird eine Kette von Kanten des Netzes (sonst kann sie sich nicht knicken)
       const r = loopEinsetzen(h0, [formAusZeichnung(h0, 'seite', uv, Array.from({ length: 8 }, (_, i) => 8 * i), 9)!], 0)!;
       const h = r.haut;
       const auge = r.loops[0]!;
-      // obere Hälfte hart, die oberen drei Punkte 10 nach außen
-      for (const p of auge.punkte) p.haerte = p.ref.y > 45 ? hart : 0;
+      // obere Hälfte Kante, die oberen drei Punkte 10 nach außen
+      for (const p of auge.punkte) p.kante = hart && p.ref.y > 45;
       const D = auge.punkte.map((p) => {
         if (p.ref.y <= 60) return { x: 0, y: 0, z: 0 };
         const r = Math.hypot(p.ref.x, p.ref.y, p.ref.z);
@@ -184,7 +184,7 @@ describe('Nur Loops: Griffe an Kreuzungen', () => {
       });
       const versch = verschiebungLaengs(auge, D);
       const zentren = Array.from({ length: auge.proben.length }, (_, i) => ({ x: auge.ruhe[3 * i]!, y: auge.ruhe[3 * i + 1]!, z: auge.ruhe[3 * i + 2]! }));
-      const zug = new LoopZug(h, [auge], bereichUm(h, zentren, 30, []));
+      const zug = new LoopZug(h, [auge], art === 'kurven' ? null : bereichUm(h, zentren, 30, []), true, art);
       for (let s = 1; s <= 4; s++) zug.schritt([versch.map((x) => (x * s) / 4)], 2);
       zug.schritt([versch], 4);
       festlegen(h, auge);
@@ -198,8 +198,8 @@ describe('Nur Loops: Griffe an Kreuzungen', () => {
       }
       return { oben, unten, kanten: kantenGewichte(h, [auge]).size };
     };
-    const hart = lauf(3);
-    const weich = lauf(0);
+    const hart = lauf(true);
+    const weich = lauf(false);
     log(
       `Braue: hart oben ${hart.oben.toFixed(1)}° (unten ${hart.unten.toFixed(1)}°, ${hart.kanten} harte Kanten), ` +
         `weich oben ${weich.oben.toFixed(1)}° (unten ${weich.unten.toFixed(1)}°)`,
@@ -454,22 +454,29 @@ describe('Bézier-Griffe und Ecken', () => {
     expect(eingesetzt.punkte.every((_, k) => griffeAusrichten(eingesetzt, eingesetzt.ruhe, k) === null)).toBe(true);
   });
 
-  it('Härte läuft durch Kreuzungen; die Kreuzung mit einem harten Loop wird von selbst eine Ecke, weich wieder glatt', () => {
+  it('Kante läuft durch Kreuzungen; die Kreuzung mit einer Kante wird von selbst eine Ecke, ohne Kante wieder glatt', () => {
     const h = kugel();
     const { loops, quer, waag, mitte } = dreiLoops(h);
     const k1 = quer.punkte.find((p) => p.kreuzung !== undefined && waag.punkte.some((q) => q.kreuzung === p.kreuzung))!;
     const w1 = waag.punkte.find((p) => p.kreuzung === k1.kreuzung)!;
-    // zwei gesetzte harte Punkte links und rechts der Kreuzung: die Kreuzung dazwischen bleibt hart
-    for (const ds of [-25, 25]) punktEinfuegen(waag, w1.s + ds).haerte = 3;
-    expect(haerteAn(waag, w1.s)).toBeCloseTo(3, 9);
+    // zwei gesetzte Punkte mit Kante links und rechts der Kreuzung: die Kreuzung dazwischen liegt auf der Kante
+    for (const ds of [-25, 25]) punktEinfuegen(waag, w1.s + ds).kante = true;
+    expect(kanteAn(waag, w1.s)).toBe(true);
+    // die Kante reicht bis zum nächsten Punkt ohne Kante (dort läuft der Knick aus), dahinter keine; ohne solche Punkte liefe sie bis
+    // zum Ende des Rings und im Spiegelbild weiter
+    expect(kanteAn(waag, w1.s + 40)).toBe(true);
+    punktEinfuegen(waag, w1.s + 60).kante = false;
+    punktEinfuegen(waag, w1.s + 100).kante = false;
+    expect(kanteAn(waag, w1.s + 40)).toBe(true);
+    expect(kanteAn(waag, w1.s + 80)).toBe(false);
     eckenAuto(loops);
     expect(istEcke(k1)).toBe(true);
     expect(istEcke(w1)).toBe(false);
-    // ein eingefügter Punkt behält die Härte des Verlaufs
+    // ein eingefügter Punkt behält die Kante des Verlaufs
     const neu = punktEinfuegen(waag, w1.s + 12);
-    expect(neu.haerte).toBeCloseTo(3, 9);
-    // weich: wieder glatt; von Hand gesetzt gilt vor
-    for (const p of waag.punkte) p.haerte = 0;
+    expect(neu.kante).toBe(true);
+    // ohne Kante: wieder glatt; von Hand gesetzt gilt vor
+    for (const p of waag.punkte) p.kante = false;
     eckenAuto(loops);
     expect(istEcke(k1)).toBe(false);
     k1.ecke = true;
@@ -479,7 +486,7 @@ describe('Bézier-Griffe und Ecken', () => {
     expect(mitte.punkte.every((p) => !istEcke(p))).toBe(true);
   });
 
-  it('Pilz: knickt eine Linie an einer Ecke über einen Loop, wird dieser dort hart, bis zur nächsten Kreuzung läuft es aus', () => {
+  it('Pilz: knickt eine Linie an einer Ecke über einen Loop, wird dieser dort Kante, bis zu den nächsten Kreuzungen', () => {
     // Florian (06.11.): „versucht das Mesh sich zwischen den 4 Knickpunkten aufzublasen. Kann man es so machen, dass die Linie den
     // Knick zwischen den zwei Punkten interpoliert?“
     const h = kugel();
@@ -489,10 +496,10 @@ describe('Bézier-Griffe und Ecken', () => {
     const w = waag.punkte.find((p) => p.kreuzung === m.kreuzung)!;
     const q = waag.punkte.find((p) => p.kreuzung !== undefined && quer.punkte.some((r) => r.kreuzung === p.kreuzung))!;
     const naechste = (l: Loop, s: number) => l.s.reduce((b, x, j) => (Math.abs(x - s) < Math.abs(l.s[b]! - s) ? j : b), 0);
-    // eine Ecke ohne Knick macht nichts hart (die Linie liegt auf Dreiecken, kleine Zacken unter 5° zählen nicht)
+    // eine Ecke ohne Knick macht keine Kante (die Linie liegt auf Dreiecken, kleine Zacken zählen nicht)
     m.ecke = true;
     expect(knickAm(mitte, i)).toBeLessThan(5);
-    expect(Math.max(...haerteBei(waag, loops))).toBe(0);
+    expect(Math.max(...kanteBei(waag, loops))).toBe(0);
     // den Griff „aus“ in der Seite um 60° drehen: die Mitte knickt dort
     const g = griffeBei(mitte, mitte.ruhe, i).aus!;
     const c = Math.cos(Math.PI / 3);
@@ -505,17 +512,20 @@ describe('Bézier-Griffe und Ecken', () => {
     );
     for (let j = 0; j < d.length; j++) mitte.ruhe[j] = mitte.ruhe[j]! + d[j]!;
     const knick = knickAm(mitte, i);
-    const hd = haerteBei(waag, loops);
+    const hd = kanteBei(waag, loops);
+    // die Kreuzung hinter der nächsten (dorthin keine Kante mehr: beide Enden glatt)
+    const r = waag.punkte.find((p) => p.kreuzung !== undefined && p !== w && p !== q)!;
     log(
-      `Pilz: Knick ${knick.toFixed(1)}°, Härte des Rings an der Ecke ${hd[naechste(waag, w.s)]!.toFixed(2)}, halbwegs ` +
-        `${hd[naechste(waag, (w.s + q.s) / 2)]!.toFixed(2)}, an der nächsten Kreuzung ${hd[naechste(waag, q.s)]!.toFixed(2)}`,
+      `Pilz: Knick ${knick.toFixed(1)}°, Kante des Rings an der Ecke ${hd[naechste(waag, w.s)]}, halbwegs ` +
+        `${hd[naechste(waag, (w.s + q.s) / 2)]}, an der nächsten Kreuzung ${hd[naechste(waag, q.s)]}, dahinter ${hd[naechste(waag, (q.s + r.s) / 2)]}`,
     );
     expect(knick).toBeGreaterThan(50);
-    expect(hd[naechste(waag, w.s)]!).toBeGreaterThan(2.8);
-    expect(hd[naechste(waag, (w.s + q.s) / 2)]!).toBeCloseTo(1.5, 0);
-    expect(hd[naechste(waag, q.s)]!).toBeLessThan(0.2);
-    // ohne die anderen Loops gilt nur die eigene Härte
-    expect(Math.max(...haerteBei(waag))).toBe(0);
+    expect(hd[naechste(waag, w.s)]).toBe(1);
+    expect(hd[naechste(waag, (w.s + q.s) / 2)]).toBe(1);
+    expect(hd[naechste(waag, q.s)]).toBe(1);
+    expect(hd[naechste(waag, (q.s + r.s) / 2)]).toBe(0);
+    // ohne die anderen Loops gilt nur die eigene Kante
+    expect(Math.max(...kanteBei(waag))).toBe(0);
   });
 
   it('Harter Ring als Ganzes hinausgeschoben: der kreuzende Ring folgt dem Grat mit einer Ecke, glatt flacht er ihn ab', () => {
@@ -529,7 +539,7 @@ describe('Bézier-Griffe und Ecken', () => {
       expect(funde.length).toBe(1);
       punktEinfuegen(waag, funde[0]!.sa, 1);
       const kq = punktEinfuegen(quer, funde[0]!.sb, 1);
-      waag.haerte = 3;
+      waag.kante = true;
       eckenAuto([waag, quer]);
       expect(istEcke(kq)).toBe(true);
       if (!ecke) kq.ecke = false;
@@ -664,7 +674,8 @@ describe('Krümmung folgt den Loops', () => {
   };
   /** ein Zug wie im Fenster: in Stufen, am Ende liegen die Loops fest */
   const ziehen = (h: ReturnType<typeof kugel>, loops: Loop[], versch: Float64Array[], bereich: Uint8Array | null, kr: boolean) => {
-    const z = new LoopZug(h, loops, bereich, kr, kr ? HAUT : 'gedaechtnis');
+    const art: HautArt = kr ? HAUT : 'gedaechtnis';
+    const z = new LoopZug(h, loops, art === 'kurven' ? null : bereich, kr, art);
     for (let s = 1; s <= 4; s++) z.schritt(versch.map((d) => d.map((x) => (x * s) / 4)), 2);
     z.schritt(versch, 6);
     loops.forEach((l) => festlegen(h, l));
@@ -678,7 +689,7 @@ describe('Krümmung folgt den Loops', () => {
         ['seite', [0, 200], [0, -200]],
         ['top', [-200, 0], [200, 0]],
       ]);
-      loops[0]!.haerte = 3;
+      loops[0]!.kante = true;
       eckenAuto(loops);
       let tiefst: { k: number; y: number } | null = null;
       for (const l of loops) for (const p of l.punkte) if (p.kreuzung !== undefined && (!tiefst || p.ref.y < tiefst.y)) tiefst = { k: p.kreuzung, y: p.ref.y };
@@ -711,7 +722,7 @@ describe('Krümmung folgt den Loops', () => {
       ['seite', [0, 200], [0, -200]],
     ]);
     const [waag, quer] = loops as [Loop, Loop];
-    waag.haerte = 3;
+    waag.kante = true;
     eckenAuto(loops);
     const kq = quer.punkte.find((p) => p.kreuzung !== undefined)!;
     const dw = Float64Array.from(waag.ruhe, (x, k) => (k % 3 === 1 ? 0 : 0.15 * x));

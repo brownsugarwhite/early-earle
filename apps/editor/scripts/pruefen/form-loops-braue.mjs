@@ -1,6 +1,7 @@
-// Form zuerst (05.11.2026), Härte: Braue als Augen-Form, oben hart und hochgezogen (`kurven.html`), mit der Maus.
-// 1. F: Form ums Auge (Seite). 2. Oberen Punkt wählen, Taste 3 (hart). 3. In der Front den Punkt nach außen und etwas hoch ziehen.
-// Bild, Knick quer über die Linie oben und unten. Dann ⌘Z (Zug und Härte), Taste 0 (weich), derselbe Zug: Bild, Knick.
+// Form zuerst (05.11.2026), Kante: Braue als Augen-Form, oben Kante und hochgezogen (`kurven.html`), mit der Maus.
+// 1. F: Form ums Auge (Seite). 2. Die oberen drei Punkte wählen, Taste K (Kante; bis 06.11. Härte 3). 3. In der Front den obersten
+// Punkt nach außen und etwas hoch ziehen. Bild, Knick quer über die Linie oben und unten. Dann ⌘Z (Zug und Kante), ohne Kante
+// derselbe Zug: Bild, Knick.
 // Aufruf aus apps/editor: node scripts/pruefen/form-loops-braue.mjs <ordner>
 import { chromium } from '@playwright/test';
 
@@ -50,7 +51,7 @@ const versuch = async (taste, name) => {
     if (k > 0) await seite.keyboard.up('Shift');
     await seite.waitForTimeout(80);
   }
-  await seite.keyboard.press(taste);
+  if (taste) await seite.keyboard.press(taste);
   await seite.waitForTimeout(100);
   // in der Front nach außen (z) und etwas hoch (y)
   const a = await bild('front', oben.ref);
@@ -99,10 +100,10 @@ const versuch = async (taste, name) => {
   for (let i = 0; i < 5; i++) await seite.mouse.wheel(0, 120);
 };
 
-await versuch('3', 'hart');
+await versuch('k', 'hart');
 await seite.keyboard.press('Meta+z');
 await seite.keyboard.press('Meta+z');
 await seite.waitForTimeout(200);
-await versuch('0', 'weich');
+await versuch(null, 'weich');
 console.log('Fehler im Fenster:', fehler.length ? fehler : 'keine');
 await browser.close();

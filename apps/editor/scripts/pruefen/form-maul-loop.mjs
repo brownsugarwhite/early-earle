@@ -54,7 +54,7 @@ for (const p of pkt.slice(1)) {
 }
 await seite.mouse.up();
 await seite.waitForTimeout(400);
-await seite.keyboard.press('f');
+// nach dem Zeichnen ist F schon aus (ein zweites F schaltete es wieder an, der Zug an der Unterlippe zeichnete dann eine neue Form)
 const form = (await K('loops')).at(-1);
 console.log(`${fall}: Form als ${form.art}, ${form.punkte.length} Punkte, ${form.proben} Proben · Meldung ${JSON.stringify(await K('meldung'))}`);
 
@@ -79,16 +79,14 @@ for (const w of [0, 20, 40, 55]) {
     await aufnahme(`${w}-${fall === 'front' ? 'front' : 'seite'}`, fall === 'front' ? 'front' : 'seite');
   }
 }
-const vorZug = await K('lagen');
-
-// 3. offen: einen Punkt der Unterlippe in der Seite nach unten ziehen
+// 3. offen: einen Punkt der Unterlippe in der Seite nach unten ziehen (verglichen wird bei derselben Öffnung)
 await regler(30);
+const vorZug = await K('lagen');
 const unten = (await K('loops')).find((l) => l.id === form.id).punkte.filter((p) => !p.mundwinkel && p.kreuzung === null);
 const tiefster = [...unten].sort((a, b) => a.ref.y - b.ref.y)[0];
 const a = await bild('seite', tiefster.ref);
 const b = await bild('seite', { ...tiefster.ref, y: tiefster.ref.y - 12 });
-await seite.mouse.click(a.x, a.y);
-await seite.waitForTimeout(150);
+// vor dem Ziehen nicht klicken: der zweite Druck käme als Doppelklick an (Ecke/glatt statt Zug)
 await seite.mouse.move(a.x, a.y);
 await seite.mouse.down();
 for (let i = 1; i <= 10; i++) {
@@ -109,7 +107,7 @@ await seite.waitForTimeout(400);
 const nach = await K('lagen');
 let d = nach.length === vorZug.length ? 0 : Infinity;
 for (let i = 0; i < nach.length && Number.isFinite(d); i++) d = Math.max(d, Math.abs(nach[i] - vorZug[i]));
-console.log(`  ⌘Z: Haut wie vor dem Zug ${d.toExponential(1)}, Maul ${JSON.stringify(await K('maul').then((m) => m && m.winkel))}°`);
+console.log(`  ⌘Z: Haut wie vor dem Zug ${d.toExponential(1)}, Maul ${(await K('maul')) ? 'da' : 'weg'}`);
 // weiter zurück: die Regler-Schritte (30, 55, 40, 20) und das Anlegen (0)
 for (let k = 0; k < 5; k++) {
   await seite.keyboard.press('Meta+z');

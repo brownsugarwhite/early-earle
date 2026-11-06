@@ -56,7 +56,7 @@ for (const folge of ['waagerecht zuerst', 'senkrecht zuerst']) {
   const q = await bild('front', { x: 0, y: 0, z: 150 });
   await seite.mouse.click(q.x, q.y);
   await seite.waitForTimeout(450);
-  await seite.keyboard.press('3');
+  await seite.keyboard.press('k');
   await seite.waitForTimeout(450);
   const nach3 = await K('lagen');
   console.log(`${folge}: nach 3 an der Kreuzung zu sehen als ${(await oben(q)) === 'polygon' ? 'Ecke ◆' : 'glatt ●'}`);

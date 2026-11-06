@@ -193,3 +193,75 @@ die Linie wirklich, Stift P, Löschen und Einfügen wie in Illustrator.
 
 Bilder: `docs/progress/editor/form-b-fenster-pilz-ganz-2026-11-06.jpg` (Pilz wie bei dir), `form-b-fenster-pilz-geknickt-ganz-2026-11-06.jpg`.
 
+## 6. Stand (06.11. abends): B über die ganze Haut ist Standard, Kante an/aus
+
+- **B ist Standard im Fenster** (`kurven.html`; `?haut=gedaechtnis` zum Vergleich): In jedem Zug rechnet sich die ganze Haut aus den
+  Kurven, ohne Stufen. Hat ein Zug verdichtet, setzt sich das neue Netz gleich danach in der Ruhe (4 Runden).
+- **Greifen schnell:** dünn besetzte Zerlegung mit verschachtelter Ordnung (`loeser/zerlegung.ts`), gemerkt je Netz und Loops und in
+  der Ruhe vorgerechnet. Gemessen mit der Maus (`form-greifen-probe.mjs`):
+
+  | Punkte | Drücken | je Mausbewegung | Loslassen | Setzen danach (Ruhe) |
+  | --- | --- | --- | --- | --- |
+  | 5 200 | 84–101 ms | 14–16 ms | 71–80 ms | 0,13 s |
+  | 15 400 | 134–156 ms | 26–28 ms | 200 ms | 0,6 s |
+
+  Vorher kostete allein das Zerlegen beim Greifen 0,3–1,5 s.
+- **Kante an/aus statt Härte 0–3** (Taste K, für gewählte Punkte oder den ganzen Loop): Zwischen zwei Stützstellen ist die Linie Kante,
+  wenn eine von beiden Kante ist; der Knick läuft zum nächsten weichen Punkt aus. Kreuzt eine Linie, die dort mindestens 15° knickt,
+  wirkt die Kreuzung wie eine Kante. Über eine Kante fließt keine Krümmung, jede Seite rundet sich aus ihren eigenen Kurven.
+- **Gemessen im Fenster** (Knick quer über die Linie, Median; `form-haerte-probe.mjs`, `form-loops-braue.mjs`):
+
+  | Fall | Kante | weich |
+  | --- | --- | --- |
+  | Pilz-Rand | 37° | 10° |
+  | Linse | 24° | 9° |
+  | Braue (oben) | 48° | 13° |
+
+  Nachträglich zur Kante gemacht: nur 10° → 15° (größter 31°), neu gerechnet in 0,2 s. Die kreuzenden Linien laufen dort glatt über
+  den Rand, und die Haut folgt ihnen. Den Knick bringt erst A (Schritt 4 unten: Ecke von selbst mit Griffen zu den Nachbarn).
+- **Die anderen Proben:** Boden 0,11 unter der Ebene, 0 umgeschlagen. Kreuzung 41° bzw. 0°, Griffe 36°, Spiegelpunkt 97°/121°/0°.
+  Maul dicht bis 55°, ⌘Z genau. Fressen-Pose 25 für 25. Hammer 0/0 (Knicke über 60°/umgeklappt), Rüssel mit Griff −45° 8/0.
+  Überhang nach den letzten beiden Zügen 0/0 und 0/0 (vorher 12/4 und 28/10).
+- **Schlechter (offen):**
+  - Am Überhang direkt nach dem weiten Zug („oben −300“) 30 Knicke und 6 umgeklappt, im Kern-Test und im Fenster gleich; die
+    nächsten Züge glätten es. Ohne das Setzen des verdichteten Netzes 4/0, mit mehr Runden schlechter: Die Falten sind die Form,
+    die die Kurven an dieser Spitze sagen.
+  - Rüssel im Kern-Test (Griff 45° gedreht) 28/6 statt 20/2.
+  - Schlaufe (die Linie kreuzt sich selbst) 38/12 statt 14/2.
+
+  Die Grenzen der Kern-Tests stehen jetzt bei diesen Werten (`weiterZug.test.ts`, mit Begründung).
+
+## 7. Plan für A: Linien als Bézier-Pfade (06.11. abends)
+
+Florian: „Ja: B über die ganze Haut als Standard (Greifen auch bei vielen Punkten schnell machen), Härte als Kante an/aus statt 0–3,
+danach A mit echten Griffen und Stift P.“
+
+**Heute.** Ein Loop sind Proben auf der Haut (eine Kette von Kanten im Netz) mit Punkten darauf. Die Griffe werden nicht gespeichert,
+sondern am Verlauf der Proben abgelesen (Ausgleichspolynom je Seite); ein Zug verschiebt die Proben mit Hermite-Stücken. Daher die
+Schwellen (Ausrichten ab 4°, Knick ab 15°), daher bleibt beim Löschen eines Punkts die Linie, wie sie ist, und eine Ecke von selbst
+knickt nur die Verschiebung, nicht die Linie.
+
+**Ziel.** Jeder Loop hat einen Pfad: Punkte mit gespeicherten Griffen (ein, aus), glatt (Griffe auf einer Geraden) oder Ecke (frei).
+Zwischen zwei Punkten liegt genau das kubische Bézier-Stück aus ihnen und ihren Griffen. Der Pfad ist die Wahrheit; die Kette im Netz
+ist nur seine Abtastung, jede Probe hat ihre Stelle auf dem Pfad (Stück, t), ihr Ziel ist der Pfad an dieser Stelle. Die Haut rechnet
+sich aus den Pfaden (B).
+
+**Schritte** (je Schritt Tests im Kern, dann im Fenster mit der Maus):
+
+1. **Pfad im Kern** (`dicht/pfad.ts`): Punkte, Griffe, Arten (Ring mit Enden auf der Mittelebene, Mitte, Paar), Auswerten, Länge,
+   nächste Stelle. Aus einem heutigen Loop formtreu angelegt (Bézier-Anpassung je Stück zwischen seinen Punkten, `fit.ts`). Ziele der
+   Bindungen aus dem Pfad; ein Zug ändert Punkte und Griffe, nicht mehr die Proben.
+2. **Bearbeiten wie Illustrator:** Punkt ziehen (Griffe gehen mit), Griff ziehen (glatt: der andere dreht mit, Ecke: frei), Punkt
+   löschen (die Nachbarn verbinden sich über ihre eigenen Griffe), Punkt einfügen per Doppelklick (de Casteljau, die Form bleibt),
+   Ecke/glatt per Doppelklick oder ⌥.
+3. **Stift P** in Seite, Front und Top: Klick setzt eine Ecke, Klicken und Ziehen einen glatten Punkt mit Griffen, Klick auf den ersten
+   Punkt schließt; die Punkte liegen auf der Haut, die Griffe in ihrer Tangentialebene; über die Mitte gezeichnet ein Ring. L und F
+   bleiben (sie legen den Pfad durch Anpassung an).
+4. **Kante und Knick:** Eine Ecke von selbst an einer Kante bekommt Griffe zu ihren Nachbarpunkten („Vector“), die Linie knickt dort
+   wirklich; Kante an/aus wirkt dann sofort mit Knick.
+5. **Nachziehen:** Kreuzungen (gemeinsamer Punkt zweier Pfade), Spiegelpunkte, Maul und Mundwinkel, Fressen-Pose, Verdichten (neue
+   Kettenpunkte bekommen ihre Stelle auf dem Pfad); alle Fenster-Proben.
+
+Was wegfällt: Griffe aus Proben ablesen (`griffeBei` mit Polynom), Ausrichten ab 4°, Linienproben nur unter ¼ zusammenlegen, die
+Hermite-Verschiebung. Aufwand wie geschätzt etwa 2–3 Tage.
+

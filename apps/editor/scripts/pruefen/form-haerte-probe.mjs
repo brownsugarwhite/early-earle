@@ -1,6 +1,6 @@
-// Form zuerst (06.11.2026), Härte (Florian: „die Härte hat bei mir noch nicht die erwartete Wirkung … Ich glaube, die Härte
+// Form zuerst (06.11.2026), Kante (bis zum Abend Härte 0–3; Florian: „die Härte hat bei mir noch nicht die erwartete Wirkung … Ich glaube, die Härte
 // funktioniert noch nicht, wie sie soll.“). Mit der Maus wie er: Kugel, drei Loops (Rand = Ring waagerecht, Mitte, Ring senkrecht),
-// den Rand anklicken und mit 0–3 die Härte setzen.
+// den Rand anklicken und mit K die Kante an- oder ausschalten.
 // pilz-hart: Rand hart (3), dann die Unterseite hinauf (Pilz ohne Ecken). pilz-weich: dasselbe weich.
 // nachher: erst die Unterseite hinauf, dann der Rand hart, dann ein winziger Zug.
 // linse-hart / linse-weich: Rand hart bzw. weich, oben und unten zur Mitte gedrückt (eine Linse mit Kante am Rand).
@@ -87,17 +87,18 @@ const aufbau = async () => {
   const senkrecht = L.find((l) => l.art === 'ring' && l !== rand);
   return { rand, senkrecht };
 };
-/** den Rand anklicken (in der Seite auf der Linie zwischen zwei Kreuzungen) und die Härte setzen */
-const haerte = async (rand, taste) => {
+/** den Rand anklicken (in der Seite auf der Linie zwischen zwei Kreuzungen) und die Kante an (`an`) oder aus stellen */
+const haerte = async (rand, an) => {
   await seite.keyboard.press('Escape');
   await seite.mouse.click(...xy(await bild('seite', { x: -80, y: 0, z: 120 })));
   await seite.waitForTimeout(450);
   const a = await K('auswahl');
-  await seite.keyboard.press(taste);
+  const vorher = (await loops()).find((q) => q.id === rand.id);
+  if (!!vorher.kante !== an) await seite.keyboard.press('k');
   await seite.waitForTimeout(150);
   const l = (await loops()).find((q) => q.id === rand.id);
   await seite.keyboard.press('Escape');
-  return `Auswahl ${JSON.stringify(a)}, Härte des Rands ${l.haerte} (Punkte ${l.punkte.map((p) => p.haerte ?? '–').join(' ')})`;
+  return `Auswahl ${JSON.stringify(a)}, Kante des Rands ${l.kante} (Punkte ${l.punkte.map((p) => p.kante ?? '–').join(' ')})`;
 };
 const punktVon = async (id, wahl) => {
   const l = (await loops()).find((q) => q.id === id);
@@ -118,7 +119,7 @@ for (const fall of faelle) {
   console.log(`######## ${fall}`);
   const { rand, senkrecht } = await aufbau();
   if (fall === 'pilz-hart' || fall === 'pilz-weich') {
-    console.log(`  ${await haerte(rand, fall === 'pilz-hart' ? '3' : '0')}`);
+    console.log(`  ${await haerte(rand, fall === 'pilz-hart')}`);
     console.log(`  vorher: ${await messen(rand.id)}`);
     await untenHinauf(senkrecht, 120);
     console.log(`  unten +120: ${await messen(rand.id)}`);
@@ -126,14 +127,14 @@ for (const fall of faelle) {
   } else if (fall === 'nachher') {
     await untenHinauf(senkrecht, 120);
     console.log(`  weich, unten +120: ${await messen(rand.id)}`);
-    console.log(`  ${await haerte(rand, '3')}`);
+    console.log(`  ${await haerte(rand, true)}`);
     console.log(`  danach Rand hart (neu gerechnet in ${(await K('zeiten')).neuRechnen} ms): ${await messen(rand.id)}`);
     await foto('nachher-hart');
     await untenHinauf(senkrecht, 2);
     console.log(`  und unten +2: ${await messen(rand.id)}`);
     await foto('nachher-zug');
   } else if (fall === 'linse-hart' || fall === 'linse-weich') {
-    console.log(`  ${await haerte(rand, fall === 'linse-hart' ? '3' : '0')}`);
+    console.log(`  ${await haerte(rand, fall === 'linse-hart')}`);
     await obenHinab(senkrecht, 70);
     await untenHinauf(senkrecht, 70);
     console.log(`  oben −70, unten +70: ${await messen(rand.id)}`);

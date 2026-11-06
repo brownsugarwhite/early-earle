@@ -39,7 +39,7 @@ const unten = L.find((l) => l.art === 'ring' && Math.abs(l.punkte[0].ref.y - Y0)
   const p = await bild('front', { x: 0, y: Y0, z: 70 });
   await seite.mouse.click(p.x, p.y);
   await seite.waitForTimeout(200);
-  await seite.keyboard.press('3');
+  await seite.keyboard.press('k');
   await seite.waitForTimeout(200);
   await seite.keyboard.press('Escape');
   await seite.waitForTimeout(450);

@@ -10,7 +10,7 @@
 // Loops bleiben Ketten von Kanten (eine geteilte Kante eines Loops bekommt den neuen Punkt in die Kette), ihre Punkte bleiben.
 
 import { type Haut, type V3, hautAus } from './kurven';
-import { type Loop, type Probe, haerteBei } from './loops';
+import { type Loop, type Probe, kanteBei } from './loops';
 
 const KEY = 2 ** 22;
 const schluessel = (a: number, b: number): number => (a < b ? a * KEY + b : b * KEY + a);
@@ -120,9 +120,9 @@ export function verdichten(
   loops.forEach((l, li) => {
     const k = ketten[li];
     if (!k) return;
-    const hd = haerteBei(l, loops);
+    const hd = kanteBei(l, loops);
     k.forEach((v, j) => {
-      if (hd[j]! <= 0.05) return;
+      if (!hd[j]) return;
       hart.add(v);
       if (spiegel[v]! >= 0) hart.add(spiegel[v]!);
     });

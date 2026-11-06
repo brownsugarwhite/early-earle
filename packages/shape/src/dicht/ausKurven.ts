@@ -154,7 +154,7 @@ export class HautAusKurven {
       for (let j = 0; j < m; j++) {
         const v = bind.ecken[3 * j]!;
         if (bind.ecken[3 * j + 1] !== v || bind.ecken[3 * j + 2] !== v || !ketten.kette[j]) continue;
-        const w = ketten.ecke[j] ? 0 : 1 - Math.min(3, Math.max(0, ketten.haerte[j]!)) / 3;
+        const w = ketten.ecke[j] || ketten.kante[j] ? 0 : 1;
         quelle[v] = quelle[v]! < 0 ? w : Math.min(quelle[v]!, w);
       }
     for (let v = 0; v < n; v++) if (nr[v]! < 0 && quelle[v]! < 0) quelle[v] = 1;

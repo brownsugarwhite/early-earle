@@ -47,9 +47,9 @@ import type { Bindungen, Haut } from './kurven';
 
 /**
  * Je Bindung die Bindungen ihres Loops davor und dahinter (−K … K, Mitte = die Bindung selbst; −1 jenseits eines offenen Endes),
- * die Härte (0–3) und ob dort ein Punkt mit Ecke liegt.
+ * ob dort eine Kante ist und ob dort ein Punkt mit Ecke liegt.
  */
-export type KruemmungsKetten = { kette: readonly Int32Array[]; haerte: Float64Array; ecke: Uint8Array };
+export type KruemmungsKetten = { kette: readonly Int32Array[]; kante: Uint8Array; ecke: Uint8Array };
 
 /** Bindungen davor und dahinter, deren Lagen die Krümmung längs des Loops ergeben */
 export const KETTE_K = 3;
@@ -134,7 +134,7 @@ export class KruemmungsFeld {
       this.gc.set(j, g.c);
       this.gb.set(j, g.b);
       // gemessen wird an jedem weichen Loop; ein harter gibt nichts weiter (sein Punkt behält die Krümmung beim Anfassen)
-      const w = 1 - Math.min(3, Math.max(0, ketten.haerte[j]!)) / 3;
+      const w = ketten.kante[j] ? 0 : 1;
       const r0 = kruemmungUndRichtung(k, g.c, g.b, ziele0);
       if (w <= 1e-6 || !r0) continue;
       const l = this.messend.get(v);

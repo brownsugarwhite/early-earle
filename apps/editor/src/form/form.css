@@ -503,9 +503,10 @@ body {
   cursor: pointer;
 }
 
-/* harte Stücke eines Loops: schwarz, Breite = Härte (px) */
+/* Kanten eines Loops: schwarz und breit */
 .blatt .kante-hart {
   stroke: var(--linie);
+  stroke-width: 3px;
   stroke-linecap: round;
   vector-effect: non-scaling-stroke;
   pointer-events: none;

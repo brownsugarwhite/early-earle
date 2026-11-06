@@ -1339,6 +1339,33 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     Ecken knicken, „Kante“ an/aus je Linie oder Stück, Rundung über die Griffe, Zahl weg. Bilder
     `docs/progress/editor/form-b-fenster-pilz{,-geknickt}-ganz-2026-11-06.jpg`. Falle: Ein Löser ohne Gedächtnis darf nicht nur in
     einem Bereich rechnen — der Rand des Bereichs ist dann sein Gedächtnis.
+- **2026-11-06 (abends): B über die ganze Haut ist Standard, Greifen schnell, Kante an/aus statt Härte 0–3** (Florian: „Ja: B über
+  die ganze Haut als Standard (Greifen auch bei vielen Punkten schnell machen), Härte als Kante an/aus statt 0–3, danach A mit echten
+  Griffen und Stift P.“; Abschnitt 6 der Planseite [`docs/plans/2026-11-06-kurven-als-wahrheit.md`](docs/plans/2026-11-06-kurven-als-wahrheit.md),
+  Plan für A in Abschnitt 7).
+  - **Standard:** `kurven.html` rechnet in jedem Zug die ganze Haut aus den Kurven, ohne Stufen und ohne Bereich (`?haut=gedaechtnis`
+    zum Vergleich; in der Pose wie bisher). Hat ein Zug verdichtet, setzt sich das neue Netz in der Ruhe (`nachLoesenOffen`, 4 Runden).
+    Je Mausbewegung eine zweite Runde nur, wenn die erste unter 12 ms blieb.
+  - **Zerlegung** (`loeser/zerlegung.ts`, `normalSystemZerlegt`): Cholesky wie CSparse (Eliminationsbaum, Zeilenmuster, Spaltenzahlen)
+    mit verschachtelter Ordnung (BFS-Ebenen als Trenner, Blätter ≤ 16), gemerkt nach einem Fingerabdruck der Zeilen; das Fenster
+    rechnet sie nach jeder Änderung in der Ruhe vor. Zerlegen 7 900 Punkte 0,37 → 0,23 s, 15 400 1,3 → 0,5 s, 27 800 4,1 → 1,2 s;
+    Greifen danach 7–31 ms. Mit der Maus (`form-greifen-probe.mjs`): 5 200 Punkte Drücken 84–101 ms, je Bewegung 14–16 ms, Loslassen
+    71–80 ms; 15 400 Punkte 134–156 ms, 26–28 ms, 200 ms, Setzen in der Ruhe 0,6 s.
+  - **Kante an/aus** (`LoopPunkt.kante`, `Loop.kante`, `kanteAn`, `kanteBei`; Taste K für gewählte Punkte oder den ganzen Loop):
+    Stützstellen sind Punkte mit eigener Kante und Punkte, die keine Kreuzung sind; ein Stück ist Kante, wenn eines seiner Enden Kante
+    ist (der Knick läuft zum nächsten weichen Punkt aus). Eine Kreuzung, an der die andere Linie mindestens 15° knickt, zählt als Kante.
+    Über eine Kante fließt nichts (Gewicht 0), die Anzeige trennt die Normalen, das Band ist schwarz. Im Fenster (Knick quer, Median):
+    Pilz-Rand 37° gegen weich 10°, Linse 24° gegen 9°, Braue 48° gegen 13°. Nachträglich zur Kante gemacht nur 10° → 15°: Die kreuzenden
+    Linien laufen glatt über den Rand, die Haut folgt ihnen; den Knick bringt A (Ecke von selbst mit Griffen zu den Nachbarn).
+  - **Die anderen Proben** gleich oder besser (Boden 0,11, Kreuzung, Griffe, Spiegelpunkt, Maul dicht und ⌘Z genau, Fressen-Pose 25 für
+    25, Hammer 0/0, Rüssel −45° 8/0, Überhang nach den letzten Zügen 0/0). **Schlechter:** Überhang direkt nach dem weiten Zug 30
+    Knicke über 60° und 6 umgeklappt (Kern-Test und Fenster gleich, die nächsten Züge glätten es; ohne das Setzen 4/0, mit mehr Runden
+    schlechter — die Kurven sagen dort diese Form), Rüssel im Kern-Test 28/6 statt 20/2, Schlaufe 38/12 statt 14/2. Die Grenzen der
+    Kern-Tests stehen dort, mit Begründung.
+  - Fallen: Vor einer Grenze im Kern-Test prüfen, ob das Fenster am selben Schritt misst (der Überhang-Test endet nach „oben −300“, die
+    Fenster-Probe zwei Züge später; „0/0 im Fenster“ war ein anderer Schritt). `RUHE=<ms>` in `form-explosion-probe.mjs` misst nach dem
+    Setzen noch einmal. Die Probe `form-maul-loop.mjs` hatte drei Fehler (ein zweites F zeichnete neu, ein Klick vor dem Zug kam als
+    Doppelklick an, ⌘Z wurde gegen 55° statt 30° verglichen) — daher das frühere „⌘Z 4,2e+1“; jetzt genau.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

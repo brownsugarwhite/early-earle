@@ -220,10 +220,10 @@ console.log(`B Ringe: ${A.art} ${A.punkte.length} P, ${B.art} ${B.punkte.length}
 const aufA = await bild('front', { x: 0, y: 0, z: 70 });
 await seite.mouse.click(aufA.x, aufA.y);
 await seite.waitForTimeout(150);
-await seite.keyboard.press('3');
+await seite.keyboard.press('k');
 await seite.waitForTimeout(200);
 L = await loops();
-console.log(`  waagerecht hart (${L[0].haerte}): Punkt des senkrechten an der Kreuzung Ecke ${L[1].punkte[kB].ecke} (von selbst ${L[1].punkte[kB].autoEcke})`);
+console.log(`  waagerecht Kante (${L[0].kante}): Punkt des senkrechten an der Kreuzung Ecke ${L[1].punkte[kB].ecke} (von selbst ${L[1].punkte[kB].autoEcke})`);
 await ausschnitt('b1-auto-ecke', 'seite', L[1].punkte[kB].ref, 200);
 
 const groesser = async (name) => {

@@ -241,11 +241,11 @@ export function untenHinaufGeknickt(loops: Loop[], dy: number): (Float64Array | 
   });
 }
 
-/** den Rand (Ring waagerecht) hart oder weich setzen; Ecken von selbst an seinen Kreuzungen wie im Fenster */
-export function randHart(loops: Loop[], hart: number): void {
+/** den Rand (Ring waagerecht) zur Kante machen oder nicht; Ecken von selbst an seinen Kreuzungen wie im Fenster */
+export function randHart(loops: Loop[], kante: boolean): void {
   const rand = loops[0]!;
-  rand.haerte = hart;
-  for (const p of rand.punkte) p.haerte = hart;
+  rand.kante = kante;
+  for (const p of rand.punkte) p.kante = kante;
   eckenAuto(loops);
 }
 
@@ -287,11 +287,11 @@ export function bFall(fall: BFall, art: HautArt): { h: Haut; loops: Loop[]; vorh
   if (fall === 'nachtraeglich') {
     ziehen(h, loops, untenHinauf(loops, 120), art);
     const vorher = { ...h, pos: Float64Array.from(h.pos) };
-    randHart(loops, 3);
+    randHart(loops, true);
     neuRechnen(h, loops, art);
     return { h, loops, vorher };
   }
-  randHart(loops, fall.endsWith('weich') ? 0 : 3);
+  randHart(loops, !fall.endsWith('weich'));
   const versch =
     fall === 'pilz-geknickt' ? untenHinaufGeknickt(loops, 120) : fall.startsWith('linse') ? linsenVerschiebung(loops, 80) : untenHinauf(loops, 120);
   ziehen(h, loops, versch, art);

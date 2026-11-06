@@ -1,16 +1,16 @@
 // Form zuerst (06.11.2026), Beweis B: Bilder der Prüffälle aus `packages/shape/src/dicht/kurvenFaelle.ts`, je Fall eine Seite mit
-// einer Spalte je Löser (gedaechtnis | kurven | kurven-jetzt) und zwei Blicken (Seite, schräg von unten vorn). Flächen flach
-// schattiert (Kanten sieht man als Sprung im Licht), Loops schwarz (hart dick), gelöschte bzw. vorherige Form nicht.
+// einer Spalte je Löser (gedaechtnis | kurven) und zwei Blicken (Seite, schräg von unten vorn). Flächen flach
+// schattiert (Kanten sieht man als Sprung im Licht), Loops (Kante schwarz und dick), gelöschte bzw. vorherige Form nicht.
 // Aufruf aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/form-b-bild.ts; dann aus apps/editor
 // AUSGABE=<ordner> node scripts/pruefen/html-shot.mjs --jpg <ordner>/form-b-*.html
 // Umgebung: FAELLE (Komma-Liste, Standard alle), ARTEN, AUSGABE (Standard apps/editor/pruefen-ausgabe/form-b).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { type BFall, B_FAELLE, bFall } from '../../../../packages/shape/src/dicht/kurvenFaelle';
-import { type HautArt, haerteBei, hautLagen } from '../../../../packages/shape/src/dicht/loops';
+import { type HautArt, hautLagen, kanteBei } from '../../../../packages/shape/src/dicht/loops';
 
 const faelle = (process.env.FAELLE ? process.env.FAELLE.split(',') : B_FAELLE) as BFall[];
-const arten = (process.env.ARTEN ? process.env.ARTEN.split(',') : ['gedaechtnis', 'kurven', 'kurven-jetzt']) as HautArt[];
+const arten = (process.env.ARTEN ? process.env.ARTEN.split(',') : ['gedaechtnis', 'kurven']) as HautArt[];
 const out = process.env.AUSGABE ?? resolve(process.cwd(), '../../apps/editor/pruefen-ausgabe/form-b');
 mkdirSync(out, { recursive: true });
 
@@ -26,7 +26,7 @@ for (const fall of faelle) {
       // je Loop seine Linie und (Ring, Paar) ihr Spiegelbild
       linien: loops.flatMap((l) => {
         const L = hautLagen(h, l);
-        const hart = Math.max(...haerteBei(l, loops));
+        const hart = Math.max(...kanteBei(l, loops));
         const zu = l.art !== 'ring';
         const p = runden(L);
         if (l.art === 'mitte') return [{ p, zu, hart }];

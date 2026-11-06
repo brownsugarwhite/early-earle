@@ -6,7 +6,7 @@
 // (Der Beweis davor, „Kurven als Wahrheit“ mit dem Startumriss als Loop 0, steht in Commit bb0c837d.)
 // Griffe (Florian, 05.11.): Jeder gewählte Punkt zeigt seine Bézier-Griffe (am Verlauf der Linie abgelesen); ein Griff biegt nur
 // sein Stück. Glatt ● hält die Griffe gegenüber, an einer Ecke ◆ darf die Linie knicken (Doppelklick oder ⌥-Klick schaltet um);
-// die Kreuzung mit einem harten Loop wird von selbst eine Ecke. Die Härte bleibt eine eigene Einstellung (Tasten 0–3). Wie in
+// die Kreuzung mit einer Kante wird von selbst eine Ecke. Kante an/aus ist eine eigene Einstellung (Taste K). Wie in
 // Illustrator gehen die Griffe mit ihrem Punkt (S/R drehen und skalieren sie mit), ein Punkt ändert nur die zwei Stücke bis zu
 // seinen Nachbarn. Jedes Blatt hat einen eigenen Ausschnitt (Rad/Pinch zoomt, zwei Finger/mittlere Taste verschieben, Pos1).
 // Das Netz verdichtet sich selbst (`verdichten`): nach jedem Zug, und bei weiten Zügen in Stufen, in denen der Bereich mitwächst.
@@ -43,7 +43,7 @@ import {
   griffeBei,
   griffZiehen,
   type Haut,
-  haerteBei,
+  kanteBei,
   istEcke,
   istVektorEcke,
   hautAus,
@@ -180,7 +180,7 @@ const KRUEMMUNG = new URLSearchParams(location.search).get('kruemmung') !== '0';
 const HAUT: HautArt = new URLSearchParams(location.search).get('haut') === 'gedaechtnis' ? 'gedaechtnis' : 'kurven';
 /** Der Zug löst nur einen Bereich um die bewegten Stellen (mit Gedächtnis und in der Pose); aus den Kurven die ganze Haut */
 const mitBereich = (): boolean => grund !== null || HAUT !== 'kurven';
-/** Runden, wenn die Haut ohne Zug neu gerechnet wird (nach Härte oder Löschen) */
+/** Runden, wenn die Haut ohne Zug neu gerechnet wird (nach einer Kante oder dem Löschen) */
 const RUNDEN_NEU = 12;
 /**
  * auch verdichten, wo sich die Fläche stark dreht (`?winkel=1`, Versuch): an einem langen Lappen gemessen schlechter (14 statt 4
@@ -359,7 +359,7 @@ const bandMaterial = (farbe: number, deckung: number): ShaderMaterial =>
     polygonOffsetFactor: -4,
     polygonOffsetUnits: -4,
   });
-// Kurven türkis, gewählte dunkler, harte Stücke schwarz (Breite = Härte)
+// Kurven türkis, gewählte dunkler, Kanten schwarz und breit
 const bandMaterialien = [
   bandMaterial(KURVE, 1),
   bandMaterial(KURVE, 0.25),
@@ -378,10 +378,10 @@ const koerper = new Mesh(hautGeometrie, new MeshToonMaterial({ color: KOERPER, g
 const umriss = new Mesh(hautGeometrie, umrissMaterial);
 /**
  * Anzeige wie Edge Crease mit Auto Smooth: Ein Netzpunkt auf einer harten Linie wird doppelt gezeigt, jede Seite der Linie mit
- * eigener Normale (nach der Härte mit der gemeinsamen gemischt). Sonst mittelt die Schattierung über den Knick hinweg.
+ * eigener Normale. Sonst mittelt die Schattierung über den Knick hinweg.
  */
 let anzeigeQuelle = new Int32Array(0);
-let anzeigeHaerte = new Float32Array(0);
+let anzeigeKante = new Float32Array(0);
 let anzeigeIndex = new Uint32Array(0);
 function teilungNeu(): void {
   const n = haut.n;
@@ -390,7 +390,7 @@ function teilungNeu(): void {
   for (let f = 0; f < tri.length / 3; f++) for (let e = 0; e < 3; e++) um[tri[3 * f + e]!]!.push(f);
   const index = Uint32Array.from(tri);
   const quelle = Array.from({ length: n }, (_, i) => i);
-  const haerte: number[] = new Array<number>(n).fill(0);
+  const kante: number[] = new Array<number>(n).fill(0);
   const hat = (f: number, x: number) => tri[3 * f] === x || tri[3 * f + 1] === x || tri[3 * f + 2] === x;
   /** Fächer um w von der Kante (w, vor) bis zur Kante (w, nach) = eine Seite; die andere Seite bekommt den Doppelpunkt */
   const teilen = (w: number, vor: number, nach: number, h: number) => {
@@ -413,19 +413,19 @@ function teilungNeu(): void {
     if (seite.size === faecher.length) return;
     const d = quelle.length;
     quelle.push(w);
-    haerte.push(h);
-    haerte[w] = Math.max(haerte[w]!, h);
+    kante.push(h);
+    kante[w] = Math.max(kante[w]!, h);
     for (const g of faecher) if (!seite.has(g)) for (let e = 0; e < 3; e++) if (index[3 * g + e] === w) index[3 * g + e] = d;
   };
   for (const l of loops) {
     if (!l.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2])) continue;
-    const hd = haerteBei(l, loops);
+    const hd = kanteBei(l, loops);
     const kette = l.proben.map((p) => p.ecken[0]);
     const m = kette.length;
     const zu = l.art !== 'ring';
     for (let j = 0; j < m; j++) {
-      const h = hd[j]! / 3;
-      if (h < 0.02) continue;
+      if (!hd[j]) continue;
+      const h = 1;
       const w = kette[j]!;
       // an den Enden eines Rings geht die Linie in ihre Spiegelhälfte über
       const vor = j > 0 ? kette[j - 1]! : zu ? kette[m - 1]! : haut.spiegel[kette[1]!]!;
@@ -436,11 +436,11 @@ function teilungNeu(): void {
     }
   }
   anzeigeQuelle = Int32Array.from(quelle);
-  anzeigeHaerte = Float32Array.from(haerte);
+  anzeigeKante = Float32Array.from(kante);
   anzeigeIndex = index;
 }
 
-/** Puffer für eine neue Haut oder neue harte Linien (nach dem Einsetzen eines Loops, der Härte oder ⌘Z) */
+/** Puffer für eine neue Haut oder neue Kanten (nach dem Einsetzen eines Loops, einer Kante oder ⌘Z) */
 function geometrieNeu(): void {
   teilungNeu();
   const alt = hautGeometrie;
@@ -724,7 +724,7 @@ function grundLoopsAus(h: Haut): Loop[] {
   });
 }
 
-/** Zurück in die Grundform: Was in der Pose an Punkten, Ecken, Härte oder Loops dazukam, gilt dort auch (die Form bleibt). */
+/** Zurück in die Grundform: Was in der Pose an Punkten, Ecken, Kanten oder Loops dazukam, gilt dort auch (die Form bleibt). */
 function poseVerlassen(): void {
   if (!grund) return;
   poseSichern();
@@ -846,7 +846,7 @@ function hautZeigen(): void {
   const I = maulGezeigt ? indexOhneOeffnung(maulGezeigt.m.offen) : anzeigeIndex;
   if (hautGeometrie.index?.array !== I) hautGeometrie.setIndex(new BufferAttribute(I, 1));
   const N = anzeigeQuelle.length;
-  // Normale je gezeigtem Punkt aus seinen Dreiecken (bei doppelten nur die seiner Seite), nach der Härte gemischt
+  // Normale je gezeigtem Punkt aus seinen Dreiecken (bei doppelten nur die seiner Seite)
   const eigen = new Float64Array(3 * N);
   for (let f = 0; f < I.length / 3; f++) {
     const [a, b, c] = [anzeigeQuelle[I[3 * f]!]!, anzeigeQuelle[I[3 * f + 1]!]!, anzeigeQuelle[I[3 * f + 2]!]!];
@@ -868,7 +868,7 @@ function hautZeigen(): void {
   }
   for (let d = 0; d < N; d++) {
     const q = anzeigeQuelle[d]!;
-    const h = anzeigeHaerte[d]!;
+    const h = anzeigeKante[d]!;
     const el = Math.hypot(eigen[3 * d]!, eigen[3 * d + 1]!, eigen[3 * d + 2]!) || 1;
     let nx = (1 - h) * nor[3 * q]! + (h * eigen[3 * d]!) / el;
     let ny = (1 - h) * nor[3 * q + 1]! + (h * eigen[3 * d + 1]!) / el;
@@ -966,13 +966,13 @@ function baenderZeigen(): void {
   const normal: { p: V3[]; breite: number }[] = [];
   const gewaehlt: { p: V3[]; breite: number }[] = [];
   const lippe: { p: V3[]; breite: number }[] = [];
-  // harte Stücke: je Strecke ein Band, so breit wie die Härte (Spiegelhälfte und Zwilling ebenso)
+  // Kanten: je Strecke ein breites Band (Spiegelhälfte und Zwilling ebenso)
   const hart: { p: V3[]; breite: number }[] = [];
   loops.forEach((l, li) => {
     const L = lagen[li]!;
     const gew = auswahl.some((w) => w.l === l.id);
     const ziel = gew ? gewaehlt : maul?.id === l.id ? lippe : normal;
-    const hd = haerteBei(l, loops);
+    const hd = kanteBei(l, loops);
     const n = l.proben.length;
     // Ring: gespeicherte Hälfte und Spiegelhälfte, Paar: Loop und Zwilling, Mitte geschlossen
     for (const sp of l.art === 'mitte' ? [false] : [false, true]) {
@@ -990,8 +990,7 @@ function baenderZeigen(): void {
         }
         if (lauf.length === 0) lauf.push(pkt[j]!);
         lauf.push(pkt[k]!);
-        const b = 0.5 * (hd[j]! + hd[k]!);
-        if (b >= 0.05) hart.push({ p: [pkt[j]!, pkt[k]!], breite: b + 1 });
+        if (hd[j] && hd[k]) hart.push({ p: [pkt[j]!, pkt[k]!], breite: 4 });
       }
       schluss();
     }
@@ -1113,23 +1112,20 @@ function blattZeichnen(a: Ansicht): void {
       el.append(t);
     });
   });
-  // harte Stücke schwarz, so breit wie die Härte (wie die Strichdicke einer Kante)
+  // Kanten schwarz und breit
   loops.forEach((l, li) => {
-    const hd = haerteBei(l, loops);
+    const hd = kanteBei(l, loops);
     const L = lagen[li]!;
     const n = l.proben.length;
     for (const m of a === 'seite' || l.art === 'mitte' ? [false] : [false, true]) {
       for (let j = 0; j < (l.art === 'ring' ? n - 1 : n); j++) {
         const k = (j + 1) % n;
-        const b = 0.5 * (hd[j]! + hd[k]!);
-        if (b < 0.05) continue;
+        if (!hd[j] || !hd[k]) continue;
         const p = lageAus(L, j);
         const q = lageAus(L, k);
         const [x1, y1] = imBlatt(a, m ? spiegeln(p) : p);
         const [x2, y2] = imBlatt(a, m ? spiegeln(q) : q);
-        const s2 = element('line', `kante-hart${m ? ' spiegel' : ''}`, { x1, y1, x2, y2 });
-        s2.setAttribute('style', `stroke-width:${b.toFixed(2)}px`);
-        el.append(s2);
+        el.append(element('line', `kante-hart${m ? ' spiegel' : ''}`, { x1, y1, x2, y2 }));
       }
     }
   });
@@ -1191,7 +1187,7 @@ function allesZeigen(): void {
     maul = null;
     reglerZeigen();
   }
-  // Ecken an Kreuzungen mit harten Loops folgen der Härte und den Kreuzungen
+  // Ecken an Kreuzungen mit Kanten folgen den Kanten und den Kreuzungen
   eckenAuto(loops);
   hautZeigen();
   baenderZeigen();
@@ -1878,39 +1874,43 @@ function einsetzenLetzten(): void {
     netzGewachsen(nAlt, nurGewachsen(haut.n, nAlt), vorher);
     geometrieNeu();
     meldung = '';
-  } else meldung = 'Loop liegt nur auf der Haut (nicht ins Netz eingesetzt): Härte wirkt dort kaum';
+  } else meldung = 'Loop liegt nur auf der Haut (nicht ins Netz eingesetzt): eine Kante wirkt dort kaum';
   kreuzungenSuchen(loops[loops.length - 1]);
 }
 
-/** Härte der Auswahl: 0–3 setzen, + / − um 0,5 (ein ganzer Loop samt seinen Punkten) */
-function haerteSetzen(taste: string): void {
+/**
+ * Kante der Auswahl an oder aus (Taste K): ein ganzer Loop samt seinen Punkten, sonst die gewählten Punkte. Eine Kante reicht von
+ * einem Punkt bis zu seinen Nachbarpunkten, dort läuft der Knick in der Form aus. Sind schon alle gewählten an, gehen sie aus.
+ */
+function kanteSetzen(): void {
   if (auswahl.length === 0) return;
+  const ist = (w: Wahl): boolean => {
+    const l = loops[loopNr(w.l)];
+    if (!l) return false;
+    return w.i < 0 ? !!l.kante && l.punkte.every((p) => p.kante !== false) : (l.punkte[w.i]?.kante ?? l.kante ?? false);
+  };
+  const an = !auswahl.every(ist);
   zurueck.push(schnappschuss());
-  const neu = (alt: number) => Math.max(0, Math.min(3, taste === '+' ? alt + 0.5 : taste === '-' ? alt - 0.5 : Number(taste)));
-  let zuletzt = 0;
   for (const w of auswahl) {
     const l = loops[loopNr(w.l)];
     if (!l) continue;
     if (w.i < 0) {
-      l.haerte = neu(l.haerte ?? 0);
-      zuletzt = l.haerte;
-      for (const p of l.punkte) p.haerte = l.haerte;
+      l.kante = an;
+      for (const p of l.punkte) p.kante = an;
     } else {
       const p = l.punkte[w.i];
-      if (!p) continue;
-      p.haerte = neu(p.haerte ?? l.haerte ?? 0);
-      zuletzt = p.haerte;
+      if (p) p.kante = an;
     }
   }
-  meldung = `Härte ${zuletzt}`;
+  meldung = an ? 'Kante' : 'keine Kante';
   hautNeuRechnen();
   geometrieNeu();
   allesZeigen();
 }
 
 /**
- * Nach einer Änderung der Härte oder dem Löschen von Loops oder Punkten die Haut neu rechnen, über die ganze Haut, bis sie steht:
- * Ohne Zug blieb sie, wie sie war (Härte wirkte erst beim nächsten Zug, eine gelöschte Linie hinterließ ihre Form). Nicht in der
+ * Nach einer Kante an oder aus oder dem Löschen von Loops oder Punkten die Haut neu rechnen, über die ganze Haut, bis sie steht:
+ * Ohne Zug blieb sie, wie sie war (eine Kante wirkte erst beim nächsten Zug, eine gelöschte Linie hinterließ ihre Form). Nicht in der
  * Pose.
  */
 function hautNeuRechnen(): void {
@@ -2262,8 +2262,8 @@ window.addEventListener('keydown', (e) => {
     allesZeigen();
   } else if (e.key === 'Backspace' || e.key === 'Delete') {
     loeschen();
-  } else if (/^[0-3]$/.test(e.key) || e.key === '+' || e.key === '-') {
-    haerteSetzen(e.key);
+  } else if (k === 'k') {
+    kanteSetzen();
   }
 });
 
@@ -2339,8 +2339,8 @@ schleife();
       art: l.art,
       proben: l.proben.length,
       laenge: l.laenge,
-      punkte: l.punkte.map((p) => ({ s: p.s, ref: p.ref, kreuzung: p.kreuzung ?? null, ecke: istEcke(p), autoEcke: p.autoEcke ?? false, haerte: p.haerte ?? null, mundwinkel: p.mundwinkel ?? false })),
-      haerte: l.haerte ?? null,
+      punkte: l.punkte.map((p) => ({ s: p.s, ref: p.ref, kreuzung: p.kreuzung ?? null, ecke: istEcke(p), autoEcke: p.autoEcke ?? false, kante: p.kante ?? null, mundwinkel: p.mundwinkel ?? false })),
+      kante: l.kante ?? null,
       ruhe: Array.from(l.ruhe),
       s: Array.from(l.s),
     })),

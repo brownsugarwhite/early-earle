@@ -18,19 +18,21 @@ export type Ansicht = 'seite' | 'front' | 'top';
 /** Ein Punkt der Haut: drei Ecken eines Dreiecks und baryzentrische Gewichte */
 export type Probe = { ecken: [number, number, number]; b: [number, number, number] };
 /**
- * Griff auf einem Loop: Stelle s (Bogenlänge beim Anlegen), Lage beim letzten Festlegen und jetzt; Kreuzung: Kennung; Härte 0–3
- * (wie die Strichdicke in px: 0 weich, 3 ein Knick wie Edge Crease in Blender; fehlt: die des Loops). Glatt oder Ecke betrifft
- * nur den Verlauf der Linie (ihre Bézier-Griffe), die Härte die Haut quer über die Linie.
+ * Griff auf einem Loop: Stelle s (Bogenlänge beim Anlegen), Lage beim letzten Festlegen und jetzt; Kreuzung: Kennung; Kante an
+ * diesem Punkt (fehlt: wie der Loop; sie reicht bis zu den Nachbarpunkten, dort läuft der Knick in der Form aus). Glatt oder Ecke
+ * betrifft nur den Verlauf der Linie (ihre Bézier-Griffe), die Kante die Haut quer über die Linie: Dort darf sie knicken, jede Seite
+ * rundet sich für sich, der Winkel ergibt sich aus der Form (Florian, 06.11.: „kann im Grunde nur ganz oder gar nicht sein“; bis dahin
+ * eine Härte 0–3).
  */
 export type LoopPunkt = {
   s: number;
   ref: V3;
   cur: V3;
   kreuzung?: number;
-  haerte?: number;
+  kante?: boolean;
   /** von Hand: Ecke (true) oder glatt (false); fehlt: wie `autoEcke` */
   ecke?: boolean;
-  /** Kreuzung mit einem harten Loop (gesetzt von `eckenAuto`): dort knickt die Haut, also darf auch die Linie knicken */
+  /** Kreuzung mit einer Kante (gesetzt von `eckenAuto`): dort knickt die Haut, also darf auch die Linie knicken */
   autoEcke?: boolean;
   /** der Mundwinkel, wenn der Loop das Maul ist (dort treffen sich Ober- und Unterlippe, um ihn dreht der Unterkiefer) */
   mundwinkel?: boolean;
@@ -38,7 +40,7 @@ export type LoopPunkt = {
 /** Ecke: die Linie darf am Punkt knicken (Griffe unabhängig); sonst glatt (Griffe gegenüber) */
 export const istEcke = (p: LoopPunkt): boolean => p.ecke ?? p.autoEcke ?? false;
 /**
- * Ecke von selbst (Kreuzung mit einem harten Loop, nicht von Hand gesetzt): Ihre Griffe zeigen längs der Sehnen zu den
+ * Ecke von selbst (Kreuzung mit einer Kante, nicht von Hand gesetzt): Ihre Griffe zeigen längs der Sehnen zu den
  * Nachbarpunkten (wie „Vector“-Griffe in Blender), damit die Linie dem Knick der Haut quer über den harten Loop folgt.
  */
 export const istVektorEcke = (p: LoopPunkt): boolean => p.ecke === undefined && !!p.autoEcke;
@@ -56,8 +58,8 @@ export type Loop = {
   ruhe: Float64Array;
   /** nach s sortiert */
   punkte: LoopPunkt[];
-  /** Härte des Loops, wo seine Punkte keine eigene haben (fehlt: 0) */
-  haerte?: number;
+  /** Kante des Loops, wo seine Punkte keine eigene Angabe haben (fehlt: keine) */
+  kante?: boolean;
 };
 
 /** Blattkoordinaten (u, v) und Tiefe zum Betrachter: Seite von +z, Front von −x, Top von +y */
@@ -800,7 +802,7 @@ export function bereichUm(h: Haut, zentren: readonly V3[], r: number, ecken: Ite
 
 /**
  * Ketten für die Krümmung (`KruemmungsFeld`): je Bindung die Bindungen desselben Loops davor und dahinter (geschlossene Loops
- * ringsum, ein Ring über sein Ende hinaus in seine Spiegelhälfte), dazu die Härte und ob dort ein Punkt mit Ecke liegt. Nur
+ * ringsum, ein Ring über sein Ende hinaus in seine Spiegelhälfte), dazu, ob dort eine Kante ist und ob ein Punkt mit Ecke liegt. Nur
  * eingesetzte Loops (Proben auf Punkten).
  */
 export function kruemmungsKetten(plan: BindungsPlan, loops: readonly Loop[]): KruemmungsKetten {
@@ -808,9 +810,9 @@ export function kruemmungsKetten(plan: BindungsPlan, loops: readonly Loop[]): Kr
   const finde = new Map<string, number>();
   for (let j = 0; j < m; j++) finde.set(`${plan.loop[j]}:${plan.probe[j]}:${plan.spiegel[j]}`, j);
   const kette: Int32Array[] = new Array<Int32Array>(m);
-  const haerte = new Float64Array(m);
+  const kante = new Uint8Array(m);
   const ecke = new Uint8Array(m);
-  const hd = loops.map((l) => haerteBei(l, loops));
+  const hd = loops.map((l) => kanteBei(l, loops));
   const eingesetzt = loops.map((l) => l.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2]));
   // Proben mit einem Punkt, der eine Ecke ist (die nächste Probe zu seiner Stelle)
   const eckProben = loops.map((l) => {
@@ -828,7 +830,7 @@ export function kruemmungsKetten(plan: BindungsPlan, loops: readonly Loop[]): Kr
     const pi = plan.probe[j]!;
     const sp = plan.spiegel[j]!;
     const l = loops[li]!;
-    haerte[j] = hd[li]![pi]!;
+    kante[j] = hd[li]![pi]!;
     ecke[j] = eckProben[li]!.has(pi) ? 1 : 0;
     if (!eingesetzt[li]) continue;
     const n = l.proben.length;
@@ -852,7 +854,7 @@ export function kruemmungsKetten(plan: BindungsPlan, loops: readonly Loop[]): Kr
     }
     kette[j] = k;
   }
-  return { kette, haerte, ecke };
+  return { kette, kante, ecke };
 }
 
 /**
@@ -912,29 +914,40 @@ export function festlegen(h: Haut, l: Loop): void {
 }
 
 /**
- * Stützstellen der Härte: Punkte mit eigener Härte, dazu gesetzte Punkte ohne (mit der des Loops). Kreuzungen ohne eigene Härte
- * nehmen den Verlauf an, sonst unterbräche jeder kreuzende Loop eine harte Linie.
+ * Stützstellen der Kante: Punkte mit eigener Angabe, dazu gesetzte Punkte ohne (mit der des Loops). Kreuzungen ohne eigene Angabe
+ * gehören zum Stück, in dem sie liegen (sonst unterbräche jeder kreuzende Loop eine Kante).
  */
-function haerteKnoten(l: Loop): { s: number; h: number }[] {
-  const basis = l.haerte ?? 0;
-  return l.punkte.filter((p) => p.haerte !== undefined || p.kreuzung === undefined).map((p) => ({ s: p.s, h: p.haerte ?? basis }));
+function kanteKnoten(l: Loop): { s: number; k: boolean }[] {
+  const basis = l.kante ?? false;
+  return l.punkte.filter((p) => p.kante !== undefined || p.kreuzung === undefined).map((p) => ({ s: p.s, k: p.kante ?? basis }));
 }
 
-/** Härte an der Stelle s (0–3): zwischen den Stützstellen linear längs s, vor der ersten und nach der letzten eines Rings wie diese */
-export function haerteAn(l: Loop, s: number, K: readonly { s: number; h: number }[] = haerteKnoten(l)): number {
-  if (K.length === 0) return l.haerte ?? 0;
+/**
+ * Kante an der Stelle s: Ein Stück zwischen zwei Stützstellen ist Kante, wenn eine von beiden es ist; der Knick läuft dann im Stück
+ * zur nächsten Stützstelle ohne Kante in der Form aus (bis zum 06.11. lief dort die Härte linear auf 0). Gemessen und verworfen: nur
+ * zwischen zwei Stützstellen mit Kante (wie in Blender zwischen zwei gewählten Punkten): Der Knick musste genau an den äußeren
+ * Punkten enden, eine Braue aus drei Punkten knickte 40° statt 50°. Vor der ersten und nach der letzten Stützstelle eines Rings wie
+ * diese (dort setzt er sich im Spiegelbild fort).
+ */
+export function kanteAn(l: Loop, s: number, K: readonly { s: number; k: boolean }[] = kanteKnoten(l)): boolean {
+  if (K.length === 0) return l.kante ?? false;
+  const zu = geschlossen(l);
+  const auf = K.findIndex((k) => Math.abs(k.s - s) <= 1e-6);
+  if (auf >= 0) {
+    const vor = auf > 0 ? K[auf - 1]! : zu ? K[K.length - 1]! : null;
+    const nach = auf < K.length - 1 ? K[auf + 1]! : zu ? K[0]! : null;
+    return K[auf]!.k || !!vor?.k || !!nach?.k;
+  }
   let i = K.findIndex((k) => k.s > s);
   if (i < 0) i = K.length;
-  if (!geschlossen(l) && (i === 0 || i === K.length)) return K[i === 0 ? 0 : K.length - 1]!.h;
-  const a = i === 0 ? { s: K[K.length - 1]!.s - l.laenge, h: K[K.length - 1]!.h } : K[i - 1]!;
-  const b = i === K.length ? { s: K[0]!.s + l.laenge, h: K[0]!.h } : K[i]!;
-  const t = b.s > a.s ? (s - a.s) / (b.s - a.s) : 0;
-  return a.h + t * (b.h - a.h);
+  if (!zu && (i === 0 || i === K.length)) return K[i === 0 ? 0 : K.length - 1]!.k;
+  const a = i === 0 ? K[K.length - 1]! : K[i - 1]!;
+  const b = i === K.length ? K[0]! : K[i]!;
+  return a.k || b.k;
 }
 
-/** Ab diesem Knick (Grad) einer kreuzenden Linie knickt die Haut quer über den Loop (darunter misst man das Netz), ab KNICK_HART ganz */
-const KNICK_GLATT = 5;
-const KNICK_HART = 30;
+/** Ab diesem Knick (Grad) ist eine kreuzende Linie geknickt (darunter misst man die Zacken des Netzes) */
+const KNICK = 15;
 
 /** Knick der Linie an ihrem Punkt i (Grad): Richtung hinein gegen hinaus, je Seite gemessen; 0 an einem glatten Punkt */
 export function knickAm(l: Loop, i: number): number {
@@ -949,14 +962,12 @@ export function knickAm(l: Loop, i: number): number {
 }
 
 /**
- * Härte aus Knicken (Florian, 06.11.: „dass die Linie den Knick zwischen den zwei Punkten interpoliert“). Knickt eine Linie dort,
- * wo sie diesen Loop kreuzt, knickt die Haut quer über diesen Loop; längs des Loops läuft das linear bis zur nächsten Kreuzung,
- * bis zu einem Knick weiter, bis zu einer glatten Kreuzung auf 0. Stützstellen sind deshalb alle Kreuzungen des Loops (gesetzte
- * Punkte ohne Kreuzung unterbrechen nicht). Der eigene Knick eines Loops zählt hier nicht: Ein Ring, der an einer Ecke weiter rund
- * läuft, sagt quer über die Linie, die ihn kreuzt, nichts.
+ * Kreuzungen dieses Loops, an denen eine kreuzende Linie geknickt ist (Florian, 06.11.: „dass die Linie den Knick zwischen den zwei
+ * Punkten interpoliert“). Stützstellen sind alle Kreuzungen (gesetzte Punkte ohne Kreuzung unterbrechen nicht). Der eigene Knick eines
+ * Loops zählt hier nicht: Ein Ring, der an einer Ecke weiter rund läuft, sagt quer über die Linie, die ihn kreuzt, nichts.
  */
-function knickKnoten(l: Loop, loops: readonly Loop[]): { s: number; h: number }[] {
-  const out: { s: number; h: number }[] = [];
+function knickKnoten(l: Loop, loops: readonly Loop[]): { s: number; k: boolean }[] {
+  const out: { s: number; k: boolean }[] = [];
   for (const p of l.punkte) {
     if (p.kreuzung === undefined) continue;
     let w = 0;
@@ -966,28 +977,29 @@ function knickKnoten(l: Loop, loops: readonly Loop[]): { s: number; h: number }[
         if (r.kreuzung === p.kreuzung) w = Math.max(w, knickAm(q, k));
       });
     }
-    out.push({ s: p.s, h: 3 * Math.max(0, Math.min(1, (w - KNICK_GLATT) / (KNICK_HART - KNICK_GLATT))) });
+    out.push({ s: p.s, k: w >= KNICK });
   }
   return out;
 }
 
 /**
- * Härte je Probe (0–3): die gesetzte, mit `loops` dazu die aus den Knicken der kreuzenden Linien (die größere gilt). Ein Pilzhut mit
- * Ecken an den vier Kreuzungen seines Rands bekommt so einen Knick rundum statt Polstern zwischen den Ecken.
+ * Kante je Probe (1 = Kante): die gesetzte; mit `loops` dazu überall, wo eine kreuzende Linie geknickt ist, bis zu den nächsten
+ * Kreuzungen auf beiden Seiten (an einer glatten Kreuzung läuft der Knick in der Form aus). Ein Pilzhut mit Ecken an den vier
+ * Kreuzungen seines Rands bekommt so eine Kante rundum statt Polstern zwischen den Ecken.
  */
-export function haerteBei(l: Loop, loops?: readonly Loop[]): Float64Array {
-  const K = haerteKnoten(l);
-  const h = Float64Array.from(l.s, (s) => haerteAn(l, s, K));
-  if (!loops) return h;
+export function kanteBei(l: Loop, loops?: readonly Loop[]): Uint8Array {
+  const K = kanteKnoten(l);
+  const k = Uint8Array.from(l.s, (s) => (kanteAn(l, s, K) ? 1 : 0));
+  if (!loops) return k;
   const KK = knickKnoten(l, loops);
-  if (!KK.some((k) => k.h > 0)) return h;
-  for (let j = 0; j < h.length; j++) h[j] = Math.max(h[j]!, haerteAn(l, l.s[j]!, KK));
-  return h;
+  if (!KK.some((x) => x.k)) return k;
+  for (let j = 0; j < k.length; j++) if (!k[j] && kanteAn(l, l.s[j]!, KK)) k[j] = 1;
+  return k;
 }
 
 /**
- * Automatische Ecken: Ein Punkt an der Kreuzung mit einem harten Loop wird eine Ecke (dort knickt die Haut quer über den harten
- * Loop, also auch die Linie, die ihn kreuzt); sonst nicht. Was von Hand gesetzt ist (`ecke`), gilt vor.
+ * Automatische Ecken: Ein Punkt an der Kreuzung mit einer Kante wird eine Ecke (dort knickt die Haut quer über die Kante, also auch
+ * die Linie, die sie kreuzt); sonst nicht. Was von Hand gesetzt ist (`ecke`), gilt vor.
  */
 export function eckenAuto(loops: readonly Loop[]): void {
   const an = new Map<number, { l: Loop; s: number }[]>();
@@ -1001,7 +1013,7 @@ export function eckenAuto(loops: readonly Loop[]): void {
   }
   for (const l of loops) {
     for (const p of l.punkte) {
-      const hart = p.kreuzung !== undefined && (an.get(p.kreuzung) ?? []).some((x) => x.l !== l && haerteAn(x.l, x.s) > 0);
+      const hart = p.kreuzung !== undefined && (an.get(p.kreuzung) ?? []).some((x) => x.l !== l && kanteAn(x.l, x.s));
       if (hart) p.autoEcke = true;
       else delete p.autoEcke;
     }
@@ -1229,8 +1241,8 @@ function probenNormale(h: Haut, p: Probe): V3 {
 }
 
 /**
- * Kanten des Netzes, die einen harten Loop kreuzen, und ihr Gewicht 1 − Härte/3 (0 = ganz getrennt): Über eine harte Linie
- * hinweg glättet der Löser nicht, beim Ziehen entsteht dort ein Knick. Spiegelbilder (Ring, Paar) ebenso.
+ * Kanten des Netzes, die eine Kante (Loop) kreuzen, mit Gewicht 0: Über sie hinweg glättet der Löser nicht, die Haut darf dort
+ * knicken. Spiegelbilder (Ring, Paar) ebenso.
  */
 export function kantenGewichte(h: Haut, loops: readonly Loop[]): Map<number, number> {
   const out = new Map<number, number>();
@@ -1244,7 +1256,7 @@ export function kantenGewichte(h: Haut, loops: readonly Loop[]): Map<number, num
     gerichtet(b, a, w);
   };
   for (const l of loops) {
-    const hd = haerteBei(l, loops);
+    const hd = kanteBei(l, loops);
     if (!hd.some((x) => x > 0)) continue;
     const n = l.proben.length;
     const zu = geschlossen(l);
@@ -1252,8 +1264,8 @@ export function kantenGewichte(h: Haut, loops: readonly Loop[]): Map<number, num
     if (l.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2])) {
       const kette = l.proben.map((p) => p.ecken[0]);
       for (let j = 0; j < n; j++) {
-        const w = 1 - Math.min(1, hd[j]! / 3);
-        if (w >= 1) continue;
+        if (!hd[j]) continue;
+        const w = 0;
         const v = kette[j]!;
         const laengs = new Set<number>();
         if (j > 0 || zu) laengs.add(kette[(j - 1 + n) % n]!);
@@ -1270,9 +1282,8 @@ export function kantenGewichte(h: Haut, loops: readonly Loop[]): Map<number, num
     }
     for (let j = 0; j < (zu ? n : n - 1); j++) {
       const j2 = (j + 1) % n;
-      const hh = Math.min(1, Math.max(hd[j]!, hd[j2]!) / 3);
-      if (hh <= 0) continue;
-      const w = 1 - hh;
+      if (!hd[j] && !hd[j2]) continue;
+      const w = 0;
       const a = lage(l.ruhe, j);
       const b = lage(l.ruhe, j2);
       const t = { x: b.x - a.x, y: b.y - a.y, z: b.z - a.z };
@@ -1362,12 +1373,12 @@ export function knickWinkel(h: Haut, l: Loop): Float64Array {
   return out;
 }
 
-/** Einen Punkt an der Stelle s einfügen (formneutral: er liegt auf dem Loop und behält dort die Härte des Verlaufs) */
+/** Einen Punkt an der Stelle s einfügen (formneutral: er liegt auf dem Loop und behält dort die Kante des Verlaufs) */
 export function punktEinfuegen(l: Loop, s: number, kreuzung?: number): LoopPunkt {
   const q = stelleBei(l, l.ruhe, s);
   const p: LoopPunkt = kreuzung === undefined ? { s, ref: q, cur: { ...q } } : { s, ref: q, cur: { ...q }, kreuzung };
-  const h = haerteAn(l, s);
-  if (kreuzung === undefined && Math.abs(h - (l.haerte ?? 0)) > 1e-9) p.haerte = h;
+  const k = kanteAn(l, s);
+  if (kreuzung === undefined && k !== (l.kante ?? false)) p.kante = k;
   l.punkte.push(p);
   l.punkte.sort((a, b) => a.s - b.s);
   return p;

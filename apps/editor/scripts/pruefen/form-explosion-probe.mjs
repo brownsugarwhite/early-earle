@@ -108,6 +108,11 @@ const schnell = async (name, f) => {
   const t0 = Date.now();
   await f();
   await zeile(name, Date.now() - t0);
+  // RUHE=<ms>: danach noch einmal messen, wenn sich das verdichtete Netz in der Ruhe gesetzt hat
+  if (process.env.RUHE) {
+    await seite.waitForTimeout(Number(process.env.RUHE));
+    await zeile(`  nach ${process.env.RUHE} ms Ruhe (setzen ${(await K('zeiten')).nachLoesen} ms)`, 0);
+  }
 };
 const foto = async (name) => {
   // NAH=x,y,zoom: Seite und Top auf diese Stelle (Top bei z = 0), nur beim Bild NAH_BEI (sonst zielen die folgenden Züge daneben)
