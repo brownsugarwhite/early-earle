@@ -30,7 +30,8 @@
 // Gemessen und verworfen: die Krümmung aus den Kurven, die Verteilung wie beim Anlegen (wie `HautZiele`): Die Haut verknittert
 // (Linse und Pilz voller Beulen), weil die gemessene Krümmung an den Loops und die alte Verteilung nicht zueinander passen.
 
-import { type NormalSystem, type NormalZeile, normalSystem } from '../loeser/normalSystem';
+import type { NormalSystem, NormalZeile } from '../loeser/normalSystem';
+import { normalSystemZerlegt } from '../loeser/zerlegung';
 import type { KruemmungsKetten } from './kruemmung';
 import { type Bindungen, type Haut, type Vermessung, gewichteAus, vermessen } from './kurven';
 
@@ -141,12 +142,10 @@ export class HautAusKurven {
       }
     });
     const t0 = Date.now();
-    this.sys = normalSystem(
-      frei.length,
-      zeilen,
-      frei.map((v) => h.nachbarn[v]!.filter((j) => nr[j]! >= 0).map((j) => nr[j]!)),
-      1e-9,
-    );
+    // über die ganze Haut hängt die Matrix nur am Netz, an den Gewichten und an den Bindungen: gemerkt, damit das nächste Greifen sie
+    // nicht noch einmal zerlegt (das Fenster rechnet sie nach jeder Änderung schon vor)
+    const merken = bereich === null;
+    this.sys = normalSystemZerlegt(frei.length, zeilen, 1e-9, merken);
     this.ruhe = vermessen(h, this.gew);
     // Quellen der Krümmung: Punkte eingesetzter Loops (so weich, wie der Loop dort ist; an einer Kreuzung der härteste; an einer Ecke
     // nichts), die Haut, die stehen bleibt (ganz)
@@ -191,14 +190,7 @@ export class HautAusKurven {
       zc.push({ index, wert, gewicht: 1 });
       zc.push({ index: [u], wert: [1], gewicht: HALT });
     });
-    this.sysC = cFrei.length
-      ? normalSystem(
-          cFrei.length,
-          zc,
-          cFrei.map((v) => h.nachbarn[v]!.filter((w) => cNr[w]! >= 0).map((w) => cNr[w]!)),
-          1e-12,
-        )
-      : null;
+    this.sysC = cFrei.length ? normalSystemZerlegt(cFrei.length, zc, 1e-12, merken) : null;
     this.zeitZerlegen = Date.now() - t0;
   }
 

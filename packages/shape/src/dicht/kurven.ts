@@ -24,7 +24,8 @@
 // zum Stauchen (beim Schnabel faltete die gestauchte Haut weiter), ganz ohne Verteilung (auf dem Netz aus Surface Nets wird die
 // Kugel ohne Änderung uneben, 145–158).
 
-import { type NormalSystem, type NormalZeile, normalSystem } from '../loeser/normalSystem';
+import type { NormalSystem, NormalZeile } from '../loeser/normalSystem';
+import { normalSystemZerlegt } from '../loeser/zerlegung';
 import { KruemmungsFeld, type KruemmungsKetten } from './kruemmung';
 
 export type V3 = { x: number; y: number; z: number };
@@ -418,9 +419,8 @@ export class HautZiele {
         for (let c = 0; c < 3; c++) this.haut0[3 * u + c] = this.haut0[3 * u + c]! + bind.b[3 * j + e]! * P[3 * v + c]!;
       }
     });
-    const nachbarn = frei.map((v) => h.nachbarn[v]!.filter((j) => nr[j]! >= 0).map((j) => nr[j]!));
     const t0 = Date.now();
-    this.sys = normalSystem(frei.length, zeilen, nachbarn, 1e-9);
+    this.sys = normalSystemZerlegt(frei.length, zeilen, 1e-9);
     this.ruhe = vermessen(h, this.gew);
     this.pos0 = Float64Array.from(P);
     this.feld = ketten && kruemmung ? new KruemmungsFeld(h, bind, ketten, ziele0, nr, this.gew, this.ruhe.nor, this.ruhe.kap) : null;

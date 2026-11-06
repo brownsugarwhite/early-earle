@@ -41,7 +41,8 @@
 // verworfen: Ein harter Loop, der jeder Seite die Krümmung mit der Normale dieser Seite sagt, schaukelt sich über die erste Reihe
 // Dreiecke auf (ein hinausgeschobener harter Ring machte die Kuppen zu flach, Grat 27° statt 15°).
 
-import { type NormalSystem, type NormalZeile, normalSystem } from '../loeser/normalSystem';
+import type { NormalSystem, NormalZeile } from '../loeser/normalSystem';
+import { normalSystemZerlegt } from '../loeser/zerlegung';
 import type { Bindungen, Haut } from './kurven';
 
 /**
@@ -218,14 +219,7 @@ export class KruemmungsFeld {
       zeilen.push({ index: [u], wert: [1], gewicht: HALT });
     });
     const t0 = Date.now();
-    this.sys = frei.length
-      ? normalSystem(
-          frei.length,
-          zeilen,
-          frei.map((v) => h.nachbarn[v]!.filter((w) => nrFeld[w]! >= 0).map((w) => nrFeld[w]!)),
-          1e-12,
-        )
-      : null;
+    this.sys = frei.length ? normalSystemZerlegt(frei.length, zeilen, 1e-12) : null;
     this.zeitZerlegen = Date.now() - t0;
 
     // Bedeckung: einmal je Zug (die Richtungen der Loops im Material ändern sich nicht); am Rand und im Halt die Tangentialebene

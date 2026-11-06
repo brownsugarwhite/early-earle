@@ -103,11 +103,17 @@ const LIPPE = 0xb0413a;
 const MAULFARBE = 0x7a3431;
 /** So viele Welteinheiten passen in die kürzere Seite eines Blatts. */
 const SICHT = 560;
-/** bestellte Dreiecke der Haut (Surface Nets geben etwa das 1,5-Fache) */
-const DREIECKE = 6000;
+/** bestellte Dreiecke der Haut (Surface Nets geben etwa das 1,5-Fache); `?dreiecke=` für Messungen mit feineren Netzen */
+const DREIECKE = Number(new URLSearchParams(location.search).get('dreiecke') ?? 6000);
 /** Runden je Mausbewegung und beim Loslassen */
 const RUNDEN_ZUG = 2;
 const RUNDEN_ENDE = 4;
+/**
+ * Aus den Kurven (über die ganze Haut) gibt es die zweite Runde je Mausbewegung nur, wenn die erste schneller war als das: Kleine
+ * Netze bekommen zwei, große eine (gemessen, eine Runde gegen zwei: Form fast gleich, je Bewegung halb so lang, bei 15 000 Punkten
+ * ≈ 30 statt 57 ms).
+ */
+const RUNDE_MS = 12;
 
 const kreis = (r: number): UmrissPunkt[] => [
   { x: r, y: 0 },
@@ -167,11 +173,13 @@ const VERDICHTEN = new URLSearchParams(location.search).get('verdichten') !== '0
 /** die Krümmung der Haut folgt den Loops (`?kruemmung=0`: jeder Punkt behält seine, zum Vergleich) */
 const KRUEMMUNG = new URLSearchParams(location.search).get('kruemmung') !== '0';
 /**
- * Wie die Haut zwischen den Loops entsteht (Beweis B, 06.11.): `?haut=kurven` = im Bereich jedes Zugs neu aus den Loops gerechnet,
- * ohne Gedächtnis (`HautAusKurven`); sonst behält jeder Punkt die Krümmung beim Anfassen, so weit die Loops sie nicht vorgeben. In
- * der Pose immer mit Gedächtnis.
+ * Wie die Haut zwischen den Loops entsteht (Beweis B, 06.11.): aus den Kurven = bei jedem Zug über die ganze Haut neu aus den Loops
+ * gerechnet, ohne Gedächtnis (`HautAusKurven`, wie FiberMesh); `?haut=gedaechtnis` = jeder Punkt behält die Krümmung beim Anfassen, so
+ * weit die Loops sie nicht vorgeben, gelöst im Bereich des Zugs (bis 06.11., zum Vergleich). In der Pose immer mit Gedächtnis.
  */
-const HAUT: HautArt = new URLSearchParams(location.search).get('haut') === 'kurven' ? 'kurven' : 'gedaechtnis';
+const HAUT: HautArt = new URLSearchParams(location.search).get('haut') === 'gedaechtnis' ? 'gedaechtnis' : 'kurven';
+/** Der Zug löst nur einen Bereich um die bewegten Stellen (mit Gedächtnis und in der Pose); aus den Kurven die ganze Haut */
+const mitBereich = (): boolean => grund !== null || HAUT !== 'kurven';
 /** Runden, wenn die Haut ohne Zug neu gerechnet wird (nach Härte oder Löschen) */
 const RUNDEN_NEU = 12;
 /**
@@ -1193,7 +1201,47 @@ function allesZeigen(): void {
   knopfO.setAttribute('aria-pressed', String(oAn));
   knopfO.textContent = oAn ? `Einfluss O · ${Math.round(radius)}` : 'Einfluss O';
   statusZeigen();
+  vorrechnenPlanen();
 }
+
+/**
+ * Über die ganze Haut hängt die Matrix des Lösers nur am Netz, an den Gewichten und an den Loops, nicht an den Lagen. Nach jeder
+ * Änderung wird sie deshalb schon vorgerechnet, sobald nichts gezogen wird (der Kern merkt sie sich): Das nächste Greifen findet
+ * sie fertig (gemessen 7–31 ms statt 0,3–1,5 s bei 5 000–28 000 Punkten). Greift man, bevor sie fertig ist, wartet das Greifen
+ * nur noch den Rest. Hat ein Zug verdichtet, setzt sich das neue Netz dabei auch gleich (`nachLoesenOffen`).
+ */
+let vorrechnenUhr: ReturnType<typeof setTimeout> | null = null;
+/** das verdichtete Netz des letzten Zugs, das sich noch setzen soll */
+let nachLoesenOffen: Haut | null = null;
+function vorrechnenPlanen(): void {
+  vorrechnenAus();
+  if (mitBereich() || zug) return;
+  vorrechnenUhr = setTimeout(() => {
+    vorrechnenUhr = null;
+    if (mitBereich() || zug) return;
+    const t0 = performance.now();
+    const z = new LoopZug(haut, loops, null, KRUEMMUNG, 'kurven');
+    letztesVorrechnen = Math.round(performance.now() - t0);
+    if (nachLoesenOffen !== haut) return;
+    nachLoesenOffen = null;
+    z.schritt(
+      loops.map(() => null),
+      RUNDEN_ENDE,
+    );
+    for (const l of loops) festlegen(haut, l);
+    letztesNachLoesen = Math.round(performance.now() - t0);
+    hautZeigen();
+    baenderZeigen();
+    for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
+    statusZeigen();
+  }, 30);
+}
+function vorrechnenAus(): void {
+  if (vorrechnenUhr) clearTimeout(vorrechnenUhr);
+  vorrechnenUhr = null;
+}
+let letztesVorrechnen = 0;
+let letztesNachLoesen = 0;
 
 // ---------- Messen ----------
 
@@ -1357,8 +1405,8 @@ function loeserHaut(): { h: Haut; aus: Uint8Array | null } {
  */
 function loeserFuer(bewegt: readonly V3[], r: number, ecken: Iterable<number>): LoopZug {
   const { h, aus } = loeserHaut();
-  const art: HautArt = grund ? 'gedaechtnis' : HAUT;
-  const bereich = art === 'kurven' ? null : bereichUm(h, bewegt, r, ecken);
+  const art: HautArt = mitBereich() ? 'gedaechtnis' : 'kurven';
+  const bereich = mitBereich() ? bereichUm(h, bewegt, r, ecken) : null;
   if (aus && bereich) for (let v = 0; v < h.n; v++) if (aus[v]) bereich[v] = 0;
   return new LoopZug(h, loops, bereich, KRUEMMUNG && !grund, art);
 }
@@ -1697,15 +1745,20 @@ function zugBewegen(X: number, Y: number): void {
   }
   z.lagen = z.loeser.lagen(z.versch);
   const t0 = performance.now();
-  z.loeser.schritt(z.versch, RUNDEN_ZUG);
+  if (mitBereich()) z.loeser.schritt(z.versch, RUNDEN_ZUG);
+  else {
+    z.loeser.schritt(z.versch, 1);
+    if (performance.now() - t0 < RUNDE_MS) z.loeser.schritt(z.versch, 1);
+  }
   zeiten.push(performance.now() - t0);
   if (zeiten.length > 200) zeiten.shift();
   // wie weit die Loops in diesem Zug schon gezogen sind (über alle Stufen)
   let weit = 0;
   for (const d of z.versch) if (d) for (let j = 0; j < d.length; j += 3) weit = Math.max(weit, Math.hypot(d[j]!, d[j + 1]!, d[j + 2]!));
   z.weite = z.weite0 + weit;
-  // reicht der Zug über den halben Bereich hinaus, eine neue Stufe: der Bereich wächst mit, dabei wird verdichtet
-  if (!z.griff && !oAn && weit > 0.5 * z.radius) zugStufe(z, X, Y);
+  // reicht der Zug über den halben Bereich hinaus, eine neue Stufe: der Bereich wächst mit, dabei wird verdichtet. Über die ganze
+  // Haut gibt es keinen Bereich, der wachsen müsste; verdichtet wird dann am Ende (jede Stufe hieße: alles neu zerlegen, mitten im Zug)
+  if (!z.griff && !oAn && mitBereich() && weit > 0.5 * z.radius) zugStufe(z, X, Y);
   hautZeigen();
   baenderZeigen();
   for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
@@ -1755,7 +1808,11 @@ function zugEnde(ok: boolean): void {
     z.loeser.schritt(z.versch, RUNDEN_ENDE);
     for (const l of loops) festlegen(haut, l);
     kreuzungenSuchen();
+    const vorVerdichten = haut;
     nachVerdichten();
+    // aus den Kurven: das verdichtete Netz setzt sich gleich danach in der Ruhe (die neuen Punkte liegen erst nur rund zwischen den
+    // alten); beim Loslassen zu lösen hieß, dort auf das Zerlegen des neuen Netzes zu warten (0,6 s bei 15 000 Punkten)
+    if (!mitBereich() && haut !== vorVerdichten) nachLoesenOffen = haut;
     poseSichern();
     zurueck.push(z.vorher);
   } else {
@@ -1858,6 +1915,7 @@ function haerteSetzen(taste: string): void {
  */
 function hautNeuRechnen(): void {
   if (grund) return;
+  vorrechnenAus();
   eckenAuto(loops);
   const t0 = performance.now();
   const z = new LoopZug(haut, loops, null, KRUEMMUNG, HAUT);
@@ -2422,6 +2480,8 @@ schleife();
     stufen: zugStufen,
     stufeMs: letzteStufeMs,
     neuRechnen: letztesNeuRechnen,
+    vorrechnen: letztesVorrechnen,
+    nachLoesen: letztesNachLoesen,
   }),
   lagen: () => Array.from(haut.pos),
   /** Lagen der Grundform (in der Pose die gemerkte) */
