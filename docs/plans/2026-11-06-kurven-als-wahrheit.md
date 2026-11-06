@@ -396,3 +396,26 @@ Kugel, drei Loops):
 - Was die Käfig-Verfahren besser konnten (Vierecke mit Kantenloops auf den Linien, feste Punktzahl für Posen und Muster, Glätte
   und scharfe Falten per Unterteilung, wenige hundert Punkte), betrifft das Netz fürs Spiel. Das lässt sich als letzter Schritt
   aus den fertigen Loops bauen (Stücknetz aus P2), statt die Form daran zu binden.
+
+**Nachtrag (06.11. nachts): Gedächtnis gegen „aus den Kurven“, gemessen.** Florian: „ist gedächtnis dann nicht besser?“ Beide
+Löser im Fenster mit der Maus, gleicher Ablauf (Kugel, drei Loops; `?haut=gedaechtnis` zum Vergleich). Netze mit 5 200 bzw.
+15 400 Punkten:
+
+| | Gedächtnis | aus den Kurven (Standard) |
+| --- | --- | --- |
+| Punkt 120 hinaus und genau zurück: Haut neben der Kugel (vorher 0,23) | 1,84 (ohne Verdichten 2,05) | 0,65 (0,74) |
+| großer Zug (Kreuzung vorn), je Mausbewegung | 19–21 / 65–70 ms | 15–16 / 27–29 ms |
+| großer Zug, Drücken | 185–249 / 503–537 ms | 71–73 / 137 ms |
+| kleiner Zug (Punkt einer Augen-Form, 15 hinauf), je Mausbewegung | 1,5–1,6 / 3,6–3,7 ms | 14,5–16,5 / 26,5–28,3 ms |
+| kleiner Zug, Drücken | 67–86 / 134–150 ms | 59–84 / 134 ms |
+
+- Das Gedächtnis ist nur bei kleinen Zügen schneller, dort etwa zehnmal: Es rechnet nur im Bereich um den Zug. Bei großen Zügen ist
+  es langsamer (der große Bereich wird beim Greifen zerlegt, nicht in der Ruhe vorgerechnet). Die Aussage vom Abend „große Netze
+  sind mit B langsamer“ gilt also nur für kleine Züge.
+- In der Form ist „aus den Kurven“ in allen gemessenen Fällen gleich oder besser (Abschnitt 5: Überhang, Hammer, Boden, gelöschte
+  Form, Pilzkante). Nach einem Hin und Zurück bleibt mit Gedächtnis fast dreimal so viel stehen: Was ein Zug geformt hat, merkt sich
+  die Haut, auch wenn die Linie wieder am alten Ort ist. Dasselbe lässt eine gelöschte Form als Beule zurück (7,2 gegen 0,7).
+- Ganz ohne Geschichte ist auch „aus den Kurven“ nicht: Die Krümmung an den Loops wird an der Haut gemessen, wie sie gerade ist
+  (wie in FiberMesh), daher 0,74 statt 0,23 nach dem Hin und Zurück.
+- Prüfungen: `scripts/pruefen/form-hin-zurueck.mjs`, `form-greifen-probe.mjs` (großer Zug), neu `form-tempo-oertlich.mjs` (kleiner
+  Zug), je mit `KURVEN_URL`.
