@@ -19,7 +19,9 @@ import {
   bereichUm,
   festlegen,
   griffZiehen,
+  griffeAnlegen,
   griffeBei,
+  griffeUebernehmen,
   kreuzungenZwischen,
   loopAusSchnitt,
   mittlereKante,
@@ -62,15 +64,18 @@ function dreiLoops(): { h: Haut; loops: Loop[] } {
     h = r.haut;
     loops = r.loops;
   }
+  // wie im Fenster: Jeder neue Loop kreuzt die älteren (ihre Stücke teilen sich), danach legt er seine Griffe an
   const tol = 0.25 * mittlereKante(h);
   let k = 1;
-  for (let i = 0; i < loops.length; i++)
-    for (let j = i + 1; j < loops.length; j++)
+  for (let j = 0; j < loops.length; j++) {
+    for (let i = 0; i < j; i++)
       for (const f of kreuzungenZwischen(loops[i]!, loops[i]!.ruhe, loops[j]!, loops[j]!.ruhe, tol)) {
         punktEinfuegen(loops[i]!, f.sa, k);
         punktEinfuegen(loops[j]!, f.sb, k);
         k++;
       }
+    griffeAnlegen(loops[j]!);
+  }
   return { h, loops };
 }
 
@@ -125,6 +130,7 @@ function zug(
   verschiebung: (loops: Loop[], anteil: number) => (Float64Array | null)[],
   MK: number,
   stufen = true,
+  griffe?: (loops: Loop[]) => void,
 ): void {
   const weiter = () => {
     for (const l of st.loops) festlegen(st.h, l);
@@ -155,6 +161,7 @@ function zug(
     }
   }
   z.schritt(d, 4);
+  griffe?.(st.loops);
   const vorher = st.h;
   weiter();
   if (ganz && st.h !== vorher) {
@@ -225,6 +232,7 @@ function loopDazu(st: Stand, A: [number, number], B: [number, number]): void {
       punktEinfuegen(q, f.sb, k);
       k++;
     }
+  griffeAnlegen(l);
 }
 
 /** Index des Punkts eines Loops, der q am nächsten liegt */
@@ -346,7 +354,7 @@ describe('Weite Züge: die Haut verknittert nicht und fliegt nicht auseinander',
     ] as const) {
       const l = st.loops.find((q) => q.art === 'mitte')!;
       const i = spitze(l);
-      const v: GriffVersatz = griffZiehen(l, l.ruhe, i, seite, D);
+      const v: GriffVersatz = griffZiehen(l, i, seite, D);
       zug(
         st,
         (loops) => [{ li: mitteNr(loops), k: spitze(loops[mitteNr(loops)]!) }],
@@ -368,6 +376,15 @@ describe('Weite Züge: die Haut verknittert nicht und fliegt nicht auseinander',
           }),
         MK,
         false,
+        // wie im Fenster: Der gezogene Griff bleibt (der nächste Griffzug sieht ihn)
+        (loops) => {
+          const q = loops[mitteNr(loops)]!;
+          griffeUebernehmen(
+            q,
+            q.punkte.map(() => ({ x: 0, y: 0, z: 0 })),
+            q.punkte.map((_, k) => (k === spitze(q) ? v : undefined)),
+          );
+        },
       );
     }
     const m = vermessen(st.h);
@@ -424,10 +441,10 @@ describe('Weite Züge: die Haut verknittert nicht und fliegt nicht auseinander',
     // der Griff „aus“ an der Spitze in der Seite um 45° gedreht
     const l = st.loops.find((q) => q.art === 'mitte')!;
     const i = spitze(l);
-    const g = griffeBei(l, l.ruhe, i).aus!;
+    const g = griffeBei(l, i).aus!;
     const c = Math.cos(Math.PI / 4);
     const s = Math.sin(Math.PI / 4);
-    const v = griffZiehen(l, l.ruhe, i, 'aus', { x: c * g.x - s * g.y - g.x, y: s * g.x + c * g.y - g.y, z: 0 });
+    const v = griffZiehen(l, i, 'aus', { x: c * g.x - s * g.y - g.x, y: s * g.x + c * g.y - g.y, z: 0 });
     zug(
       st,
       (loops) => {
@@ -452,6 +469,14 @@ describe('Weite Züge: die Haut verknittert nicht und fliegt nicht auseinander',
         }),
       MK,
       false,
+      (loops) => {
+        const q = loops.find((x) => x.art === 'mitte')!;
+        griffeUebernehmen(
+          q,
+          q.punkte.map(() => ({ x: 0, y: 0, z: 0 })),
+          q.punkte.map((_, k) => (k === spitze(q) ? v : undefined)),
+        );
+      },
     );
     const m = vermessen(st.h);
     log(
@@ -460,9 +485,11 @@ describe('Weite Züge: die Haut verknittert nicht und fliegt nicht auseinander',
     );
     // die Knicke liegen an der Spitze des flachen Rüssels (dort dreht der Griff): ohne Zusammenlegen zu kurzer Kanten 12 Knicke über
     // 60°, mit 20 und 2 umgeklappt (je nach Reihenfolge des Zusammenlegens 8–20); umgestülpt war die Spitze mit 166 und 30. Aus den
-    // Kurven über die ganze Haut 28 und 6 (ohne das Setzen des verdichteten Netzes 26 und 0, mit 12 Runden 42 und 10; wie A, offen)
+    // Kurven über die ganze Haut 28 und 6 (ohne das Setzen des verdichteten Netzes 26 und 0, mit 12 Runden 42 und 10; wie A, offen).
+    // Mit gespeicherten Griffen (Teil A) 34 und 2: Der Griff an der Spitze zeigt nach den Zügen noch, wie er auf der Kugel lag (er geht
+    // mit seinem Punkt), gedreht wird er von dort aus (vorher von der abgelesenen Richtung); im Fenster 8 und 0
     expect(m.umgeklappt).toBeLessThanOrEqual(HAUT === 'kurven' ? 8 : 4);
-    expect(m.ueber60).toBeLessThanOrEqual(HAUT === 'kurven' ? 32 : 24);
+    expect(m.ueber60).toBeLessThanOrEqual(HAUT === 'kurven' ? 36 : 24);
   });
 
   it('D: Hammer, der Kopf weit vorn (Oberkante und Vorderkante gerade): der Kopf schnürt sich nicht zur Mitte ein', () => {

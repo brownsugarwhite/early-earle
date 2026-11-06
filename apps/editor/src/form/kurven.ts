@@ -4,7 +4,7 @@
 // einer Form zeichnet; sie lassen sich löschen. Ein ganzer Loop wird angeklickt und gezogen oder mit G/S/R geformt, mit O
 // (Einflusskreis) wie in Blender. Der Umriss ist nur Shader. Die Haut löst `LoopZug` im Einflussbereich. Start: `?form=kugel|bohne`.
 // (Der Beweis davor, „Kurven als Wahrheit“ mit dem Startumriss als Loop 0, steht in Commit bb0c837d.)
-// Griffe (Florian, 05.11.): Jeder gewählte Punkt zeigt seine Bézier-Griffe (am Verlauf der Linie abgelesen); ein Griff biegt nur
+// Griffe (Florian, 05.11.): Jeder gewählte Punkt zeigt seine Bézier-Griffe (gespeichert, Teil A 06.11.); ein Griff biegt nur
 // sein Stück. Glatt ● hält die Griffe gegenüber, an einer Ecke ◆ darf die Linie knicken (Doppelklick oder ⌥-Klick schaltet um);
 // die Kreuzung mit einer Kante wird von selbst eine Ecke. Kante an/aus ist eine eigene Einstellung (Taste K). Wie in
 // Illustrator gehen die Griffe mit ihrem Punkt (S/R drehen und skalieren sie mit), ein Punkt ändert nur die zwei Stücke bis zu
@@ -53,7 +53,7 @@ import {
   kantenKnicken,
   istEcke,
   istSichtbar,
-  istVektorEcke,
+  istEckeVonSelbst,
   hautAus,
   hautNormalen,
   innenPosieren,
@@ -203,16 +203,6 @@ const WINKEL = new URLSearchParams(location.search).get('winkel') === '1';
  * schwächer.
  */
 const KURZ = Number(new URLSearchParams(location.search).get('kurz') ?? 0.5);
-/**
- * Teil A (06.11.): Loops speichern ihre Bézier-Griffe (`griffeAnlegen`, beim Entstehen). `?griffe=0` zum Vergleich: wie vorher, die
- * Griffe werden am Verlauf der Linie abgelesen.
- */
-const GRIFFE = new URLSearchParams(location.search).get('griffe') !== '0';
-/**
- * Wie eine Linie an einer neuen Kante knickt (Teil A, Schritt 4): 'natur' = jede Seite so rund wie möglich (natürliches Ende),
- * `?knick=vektor` zum Vergleich = Griffe zu den Nachbarpunkten (Blenders „Vector“; der Pilzhut wird eine Glocke).
- */
-const KNICK_ART: 'vektor' | 'natur' = new URLSearchParams(location.search).get('knick') === 'vektor' ? 'vektor' : 'natur';
 let letzteVerdichtung: { neu: number; gelegt: number; ms: number } | null = null;
 
 type Schnappschuss = {
@@ -1104,9 +1094,10 @@ function griffFaktor(g: { ein: V3 | null; aus: V3 | null }, a: Ansicht): number 
 
 /**
  * Griffe zum Zeigen: die der gewählten Punkte, an einer gewählten Kreuzung auch die des anderen Loops (relativ zum Punkt, dazu
- * der Faktor fürs Blatt). Am Verlauf der gezeigten Linie abgelesen; den gerade gezogenen Griff genau (Ruhe + Versatz).
+ * der Faktor fürs Blatt). Die gespeicherten; während eines Zugs, wie sie danach sind, den gerade gezogenen Griff genau (gespeichert
+ * + Versatz).
  */
-function griffeZumZeigen(lagen: readonly Float64Array[], a: Ansicht): { li: number; i: number; ein: V3 | null; aus: V3 | null; f: number }[] {
+function griffeZumZeigen(a: Ansicht): { li: number; i: number; ein: V3 | null; aus: V3 | null; f: number }[] {
   const wahl: { li: number; i: number }[] = [];
   const kreuz = new Set<number>();
   for (const w of auswahl) {
@@ -1133,13 +1124,13 @@ function griffeZumZeigen(lagen: readonly Float64Array[], a: Ansicht): { li: numb
       return { li, i, ...r, f };
     }
     if (g && g.li === li && g.i === i) {
-      const r = griffeBei(l, zug!.loeser.start[li]!, i);
+      const r = griffeBei(l, i);
       const ein = plus(r.ein, zug!.griffVersatz.ein);
       const aus = plus(r.aus, zug!.griffVersatz.aus);
       // im Blatt des Zugs bleibt der Faktor vom Anfang (die Spitze bleibt unter der Maus)
       return { li, i, ein, aus, f: a === zug!.ansicht ? zug!.griffFaktor : griffFaktor({ ein, aus }, a) };
     }
-    const r = griffeBei(l, lagen[li]!, i);
+    const r = griffeBei(l, i);
     return { li, i, ...r, f: griffFaktor(r, a) };
   });
 }
@@ -1191,7 +1182,7 @@ function blattZeichnen(a: Ansicht): void {
     }
   });
   // Griffe der gewählten Punkte: Linie vom Punkt zur Spitze, Spitze als kleines Quadrat (unter den Punkten)
-  for (const { li, i, ein, aus, f } of griffeZumZeigen(lagen, a)) {
+  for (const { li, i, ein, aus, f } of griffeZumZeigen(a)) {
     const l = loops[li]!;
     const p = l.punkte[i]!;
     const q = zug && !zug.griff ? p.cur : p.ref;
@@ -1535,7 +1526,7 @@ function griffZugStarten(a: Ansicht, X: number, Y: number, spiegel: boolean, li:
     mitte: null,
     griff: { li, i, seite },
     griffVersatz: {},
-    griffFaktor: griffFaktor(griffeBei(loops[li]!, loeser.start[li]!, i), a),
+    griffFaktor: griffFaktor(griffeBei(loops[li]!, i), a),
     radius: 0,
     weite0: 0,
     weite: 0,
@@ -1581,18 +1572,22 @@ function eckeUmschalten(id: number, i: number): void {
   const vorher = schnappschuss();
   const alle = punkteAnKreuzung(li0, i);
   const neu = !eckeGezeigt(li0, i);
+  const vorherEcken = new Set(loops.flatMap((l) => l.punkte.filter(istEckeVonSelbst)));
   for (const [lj, j] of alle) {
     const q = loops[lj]!.punkte[j]!;
     if (neu === (q.autoEcke ?? false)) delete q.ecke;
     else q.ecke = neu;
   }
-  // gemessen: ein Schritt bringt 58° auf 0,4°; ein zweiter nur, falls die Haut weit vom Ziel blieb. Unter 4° nichts tun: So
-  // fein ist die Linie im Netz selbst gezackt (frische Linien bis 3,4°), glatte Linien bleiben beim Umschalten unberührt.
+  // wird ein Punkt wieder eine Ecke von selbst, knickt er wie bei K (jede Seite rund); hört er auf, eine zu sein, wird er glatt
+  const knick = kantenKnicken(loops, vorherEcken);
+  if (knick.some((d) => d)) hautNeuRechnen(knick);
+  // gemessen: ein Schritt bringt 58° auf 0,4°; ein zweiter nur, falls die Haut weit vom Ziel blieb. Liegen die Griffe schon auf
+  // einer Geraden, nichts tun: glatte Linien bleiben beim Umschalten unberührt.
   let ausgerichtet = false;
   for (const [li, j] of neu ? [] : alle) {
     const l = loops[li]!;
     for (let runde = 0; runde < 2; runde++) {
-      const v = griffeAusrichten(l, l.ruhe, j);
+      const v = griffeAusrichten(l, j);
       if (!v) break;
       const loeser = stueckLoeser(li, j);
       const d = griffVerschiebung(l, loeser.start[li]!, j, v);
@@ -1755,7 +1750,7 @@ function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
       z.griffeNeu[li] = griffeNach(
         l,
         D,
-        l.punkte.map((_, i) => griffeAbbilden(l, S, i, f, 1)),
+        l.punkte.map((_, i) => griffeAbbilden(l, i, f, 1)),
       );
     } else if (z.probenW[li]) z.neuAblesen.add(li);
     if (z.ganze.has(li) || z.probenW[li]) {
@@ -1785,7 +1780,7 @@ function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
         z.modal === 's' || z.modal === 'r'
           ? l.punkte.map((_, i) => {
               const g = z.punktW.get(`${li}:${i}`);
-              return g ? griffeAbbilden(l, S, i, f, g) : undefined;
+              return g ? griffeAbbilden(l, i, f, g) : undefined;
             })
           : undefined;
       if (irgend) {
@@ -1805,16 +1800,16 @@ function zugBewegen(X: number, Y: number): void {
   z.bewegt = true;
   if (z.griff) {
     // Griff: in der Ebene des Blatts verschoben (die Tiefe bleibt), nur sein Loop bewegt sich. Eine Ecke von selbst wird dabei
-    // eine Ecke von Hand (ihre Griffe sind dann frei, wie in Blender ein „Vector“-Griff, den man anfasst). Am Spiegelpunkt geht
+    // eine Ecke von Hand (ihre Griffe sind dann frei, wie in Blender ein automatischer Griff, den man anfasst). Am Spiegelpunkt geht
     // das Spiegelbild des Griffs mit; schräg zur Mittelebene knickt die Linie dort, der Punkt wird eine Ecke.
     const { li, i, seite } = z.griff;
     const l = loops[li]!;
     const p = l.punkte[i]!;
     // ein glatter Punkt wird eine Ecke, wenn er als Ecke zu sehen ist (an einer Kreuzung mit einer Ecke) oder am Spiegelpunkt liegt
-    if (istVektorEcke(p) || (!istEcke(p) && (ringEnde(l, i) || eckeGezeigt(li, i)))) p.ecke = true;
+    if (istEckeVonSelbst(p) || (!istEcke(p) && (ringEnde(l, i) || eckeGezeigt(li, i)))) p.ecke = true;
     const d = inWelt(z.ansicht, (X - z.x0) / z.griffFaktor, (Y - z.y0) / z.griffFaktor);
     if (z.spiegel) d.z = -d.z;
-    z.griffVersatz = griffZiehen(l, z.loeser.start[li]!, i, seite, d);
+    z.griffVersatz = griffZiehen(l, i, seite, d);
     z.versch = loops.map((_, k) => (k === li ? griffVerschiebung(l, z.loeser.start[li]!, i, z.griffVersatz) : null));
     const versatz = l.punkte.map((_, k) => (k === i ? z.griffVersatz : undefined));
     z.griffeNeu = loops.map((_, k) => (k === li && hatGriffe(l) ? griffeNach(l, l.punkte.map(() => ({ x: 0, y: 0, z: 0 })), versatz) : null));
@@ -1997,10 +1992,11 @@ function einsetzenLetzten(): void {
     geometrieNeu();
     meldung = '';
   } else meldung = 'Loop liegt nur auf der Haut (nicht ins Netz eingesetzt): eine Kante wirkt dort kaum';
-  // erst die Kreuzungen (in den anderen Loops teilen sie ein Stück), dann liest der neue Loop alle seine Griffe aus der Linie;
-  // ab jetzt speichert er sie
+  // erst die Kreuzungen (in den anderen Loops teilen sie ein Stück), dann liest der neue Loop alle seine Griffe aus der Linie (wo
+  // er eine Kante kreuzt, als Ecke je Seite, wie die Linie dort verläuft); ab jetzt speichert er sie. Die Form ändert sich nicht.
   kreuzungenSuchen(loops[loops.length - 1]);
-  if (GRIFFE) griffeAnlegen(loops[loops.length - 1]!);
+  eckenAuto(loops);
+  griffeAnlegen(loops[loops.length - 1]!);
 }
 
 /**
@@ -2016,8 +2012,8 @@ function kanteSetzen(): void {
   };
   const an = !auswahl.every(ist);
   zurueck.push(schnappschuss());
-  // Ecken von selbst vorher: Wer eine wird, knickt (Griffe zu den Nachbarpunkten), wer keine mehr ist, wird wieder glatt
-  const vorher = new Set(loops.flatMap((l) => l.punkte.filter(istVektorEcke)));
+  // Ecken von selbst vorher: Wer eine wird, knickt (jede Seite so rund wie möglich), wer keine mehr ist, wird wieder glatt
+  const vorher = new Set(loops.flatMap((l) => l.punkte.filter(istEckeVonSelbst)));
   for (const w of auswahl) {
     const l = loops[loopNr(w.l)];
     if (!l) continue;
@@ -2031,7 +2027,7 @@ function kanteSetzen(): void {
   }
   meldung = an ? 'Kante' : 'keine Kante';
   eckenAuto(loops);
-  hautNeuRechnen(kantenKnicken(loops, vorher, KNICK_ART));
+  hautNeuRechnen(kantenKnicken(loops, vorher));
   geometrieNeu();
   allesZeigen();
 }
@@ -2182,7 +2178,9 @@ function loeschen(): void {
     return;
   }
   zurueck.push(schnappschuss());
-  // wie in Illustrator: Die Nachbarn verbinden sich über ihre Griffe, die Linie folgt (ohne gespeicherte Griffe fällt der Punkt nur weg)
+  // Ecken von selbst vorher: Geht eine Kante mit ihrem Loop, werden ihre Kreuzungen in den anderen wieder glatt (wie Kante aus)
+  const vorherEcken = new Set(loops.flatMap((l) => l.punkte.filter(istEckeVonSelbst)));
+  // wie in Illustrator: Die Nachbarn verbinden sich über ihre Griffe, die Linie folgt
   const versch = loops.map((l) => (ganz.has(l.id) ? null : punkteLoeschen(l, eigene as Set<LoopPunkt>)));
   const wegKreuz = new Set<number>();
   for (const l of loops) if (ganz.has(l.id)) for (const p of l.punkte) if (p.kreuzung !== undefined) wegKreuz.add(p.kreuzung);
@@ -2190,13 +2188,14 @@ function loeschen(): void {
   loops = loops.filter((_, i) => bleiben[i]);
   const verschBleiben = versch.filter((_, i) => bleiben[i]);
   // Kreuzungen mit einem gelöschten Loop werden gewöhnliche Punkte: Die anderen Loops behalten ihre Linie und ihre Griffe
-  for (const l of loops) {
-    for (const p of l.punkte) {
-      if (p.kreuzung === undefined || !wegKreuz.has(p.kreuzung)) continue;
-      if (hatGriffe(l)) delete p.kreuzung;
-    }
-    if (!hatGriffe(l)) l.punkte = l.punkte.filter((p) => p.kreuzung === undefined || !wegKreuz.has(p.kreuzung));
-  }
+  for (const l of loops) for (const p of l.punkte) if (p.kreuzung !== undefined && wegKreuz.has(p.kreuzung)) delete p.kreuzung;
+  eckenAuto(loops);
+  kantenKnicken(loops, vorherEcken).forEach((d, li) => {
+    if (!d) return;
+    const v = verschBleiben[li];
+    if (!v) verschBleiben[li] = d;
+    else for (let k = 0; k < d.length; k++) v[k] = v[k]! + d[k]!;
+  });
   auswahl = [];
   hautNeuRechnen(verschBleiben);
   allesZeigen();
@@ -2721,7 +2720,7 @@ schleife();
   knickAm: (id: number, i: number): number => {
     const l = loops[loopNr(id)];
     if (!l?.punkte[i]) return NaN;
-    const g = griffeBei(l, l.ruhe, i, true);
+    const g = griffeBei(l, i);
     if (!g.ein || !g.aus) return NaN;
     const c = -(g.ein.x * g.aus.x + g.ein.y * g.aus.y + g.ein.z * g.aus.z) / (Math.hypot(g.ein.x, g.ein.y, g.ein.z) * Math.hypot(g.aus.x, g.aus.y, g.aus.z));
     return (Math.acos(Math.max(-1, Math.min(1, c))) * 180) / Math.PI;
@@ -2731,7 +2730,7 @@ schleife();
     const l = loops[loopNr(id)];
     const p = l?.punkte[i];
     if (!l || !p) return { ein: null, aus: null, faktor: 1 };
-    const g = griffeBei(l, l.ruhe, i);
+    const g = griffeBei(l, i);
     const f = griffFaktor(g, 'seite');
     const spitze = (v: V3 | null) => (v ? { x: p.ref.x + f * v.x, y: p.ref.y + f * v.y, z: p.ref.z + f * v.z } : null);
     return { ein: spitze(g.ein), aus: spitze(g.aus), faktor: f };

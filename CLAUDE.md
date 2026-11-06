@@ -1396,6 +1396,22 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     des Stücks zur Linie voneinander ab); Tests vergleichen deshalb die Linie, nicht den Pfad. Kern-Tests ohne Verdichten falten an
     scharfen Knicken mehr als das Fenster (16 gegen 0) — wie das Fenster verdichten und setzen.
   - **Offen:** die alte Ableselogik entfernen (wenn der Knick entschieden ist); Florians Blick auf Stift, Löschen und Knick.
+- **2026-11-06 (nachts): Kante knickt rund, auch beim Ziehen; altes Ablesen entfernt** (Florian nach dem Vergleich Kuppel/Glocke:
+  „ja dann rund“; Planseite Abschnitt 7, „Schritt 5“).
+  - **Regel:** Eine Ecke von selbst (Kreuzung mit einer Kante) hält jede Seite so rund wie möglich (natürliches Ende). K setzt es
+    (`kantenKnicken`), jeder Zug hält es (`griffVersatzImZug` in `verschiebungLaengs` und `griffeNach`: Griff + ½ · (Nachbarpunkt +
+    dessen Griff − Punkt), nebeneinanderliegende Ecken in Runden). Ebenso: ein gelöschter Kanten-Loop macht seine Kreuzungen glatt,
+    ein Doppelklick zurück zur Ecke von selbst knickt rund, ein neuer Loop über einer Kante liest dort seine Griffe je Seite (`eckenAuto`
+    vor `griffeAnlegen`), ohne die Form zu ändern.
+  - **Entfernt:** das Ablesen am Verlauf (`steigungSeite`), `?griffe=0`, `?knick=vektor`; `istVektorEcke` heißt `istEckeVonSelbst`;
+    `griffeBei`, `griffZiehen`, `griffeAbbilden`, `griffeAusrichten` ohne Lagen.
+  - **Gemessen mit der Maus:** Pilz erst Kante, dann Unterseite hinauf 92° (vorher 81°), umgekehrt 92° — die Reihenfolge ist egal;
+    Kugel 27°; Linse 83° mit 8 kleinen umgeklappten Dreiecken (vorher 73°/2; zwei Kugelkappen wären 67°); die anderen Proben wie
+    vorher. Bild `docs/progress/editor/form-kante-rund-reihenfolge-2026-11-06.jpg`.
+  - **Fallen:** Kern-Tests, die Griffe brauchen, legen sie wie das Fenster an (jeder neue Loop nach seinen Kreuzungen
+    `griffeAnlegen`); ein Zug am Griff übernimmt ihn am Ende (`griffeUebernehmen`), sonst sieht der nächste Griffzug den alten. Die
+    ganze Testreihe von `@ee/shape` auf einmal reißt die Zeit- und Lasttests des Käfigs (Minuten je Test, ohne Bezug zu `dicht/`) —
+    für die dichte Form `npx vitest run src/dicht/`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

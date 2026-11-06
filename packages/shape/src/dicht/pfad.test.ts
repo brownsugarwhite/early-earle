@@ -12,7 +12,7 @@ import {
   festlegen,
   griffZiehen,
   hatGriffe,
-  istVektorEcke,
+  istEckeVonSelbst,
   kantenKnicken,
   kreuzungenZwischen,
   loopAusSchnitt,
@@ -153,7 +153,7 @@ describe('Gespeicherte Griffe am Loop', () => {
       expect(f).toBeLessThan(1.5);
       // glatte Punkte: Griffe auf einer Geraden; Spiegelpunkte senkrecht zur Mittelebene (die Kugel ist dort rund)
       l.punkte.forEach((p, i) => {
-        const g = griffeBei(l, l.ruhe, i);
+        const g = griffeBei(l, i);
         expect(180 - winkel(g.ein!, g.aus!)).toBeLessThan(1e-4);
       });
     }
@@ -192,7 +192,7 @@ describe('Gespeicherte Griffe am Loop', () => {
     const vorher = Array.from({ length: l.proben.length }, (_, j) => aufPfad(l, l.s[j]!));
     const i = l.punkte.findIndex((p) => !ringEnde(l, l.punkte.indexOf(p)));
     const D = l.punkte.map((_, k) => (k === i ? v(0, 25, 10) : v(0, 0, 0)));
-    const g = l.punkte.map((_, k) => (k === i ? griffZiehen(l, l.ruhe, i, 'aus', v(5, -12, 3)) : undefined));
+    const g = l.punkte.map((_, k) => (k === i ? griffZiehen(l, i, 'aus', v(5, -12, 3)) : undefined));
     // eine Ecke von selbst daneben (wie an der Kreuzung mit einer Kante)
     const j2 = (i + 1) % l.punkte.length;
     if (!ringEnde(l, j2)) l.punkte[j2]!.autoEcke = true;
@@ -269,9 +269,9 @@ describe('Kante knickt die Linie (Schritt 4)', () => {
     randHart(a.loops, true);
     ziehen(a.h, a.loops, a.loops.map(() => null), 'kurven', 1, 20);
     const ohne = knick(a.h, a.loops[0]!);
-    // mit: die Ecken von selbst bekommen „Vector“-Griffe
+    // mit: die Ecken von selbst bekommen neue Griffe, jede Seite so rund wie möglich
     const b = pilz();
-    const vorher = new Set(b.loops.flatMap((l) => l.punkte.filter(istVektorEcke)));
+    const vorher = new Set(b.loops.flatMap((l) => l.punkte.filter(istEckeVonSelbst)));
     randHart(b.loops, true);
     const versch = kantenKnicken(b.loops, vorher);
     const geknickt = versch.filter((d) => d).length;
@@ -291,7 +291,7 @@ describe('Kante knickt die Linie (Schritt 4)', () => {
     const mit = knick(b.h, b.loops[0]!);
     const f = falten(b.h);
     // wieder aus: glatt (Griffe auf einer Geraden)
-    const vorher2 = new Set(b.loops.flatMap((l) => l.punkte.filter(istVektorEcke)));
+    const vorher2 = new Set(b.loops.flatMap((l) => l.punkte.filter(istEckeVonSelbst)));
     randHart(b.loops, false);
     ziehen(b.h, b.loops, kantenKnicken(b.loops, vorher2), 'kurven');
     const aus = knick(b.h, b.loops[0]!);

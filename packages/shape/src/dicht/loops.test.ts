@@ -11,8 +11,10 @@ import {
   festlegen,
   formAusZeichnung,
   griffeAbbilden,
+  griffeAnlegen,
   griffeAusrichten,
   griffeBei,
+  griffeUebernehmen,
   griffZiehen,
   kanteAn,
   kanteBei,
@@ -74,8 +76,9 @@ function dreiLoops(h: ReturnType<typeof kugel>) {
   const tol = 0.25 * mittlereKante(h);
   let k = 1;
   const kreuzungen: number[] = [];
-  for (let i = 0; i < loops.length; i++) {
-    for (let j = i + 1; j < loops.length; j++) {
+  // wie im Fenster: Jeder neue Loop kreuzt die älteren (ihre Stücke teilen sich), danach legt er seine Griffe an
+  for (let j = 0; j < loops.length; j++) {
+    for (let i = 0; i < j; i++) {
       const funde = kreuzungenZwischen(loops[i]!, loops[i]!.ruhe, loops[j]!, loops[j]!.ruhe, tol);
       kreuzungen.push(funde.length);
       for (const f of funde) {
@@ -84,6 +87,7 @@ function dreiLoops(h: ReturnType<typeof kugel>) {
         k++;
       }
     }
+    griffeAnlegen(loops[j]!);
   }
   return { loops, quer, waag, mitte, kreuzungen };
 }
@@ -292,6 +296,18 @@ const augenForm = (h: ReturnType<typeof kugel>) =>
     Array.from({ length: 8 }, (_, i) => 8 * i),
     9,
   )!;
+/** wie im Fenster: Ein neuer Loop legt seine Griffe an (aus seiner Linie) */
+const mitGriffen = (l: Loop): Loop => {
+  griffeAnlegen(l);
+  return l;
+};
+/** Griffe von Punkt i, wie man sie an der Linie `L` abläse (eine Kopie des Loops legt sie dort an) */
+const abgelesen = (l: Loop, L: Float64Array, i: number) => {
+  const k: Loop = { ...l, ruhe: Float64Array.from(L), punkte: l.punkte.map((p) => ({ ...p })) };
+  griffeAnlegen(k);
+  return griffeBei(k, i);
+};
+const NULL3 = { x: 0, y: 0, z: 0 };
 const betrag = (v: { x: number; y: number; z: number }) => Math.hypot(v.x, v.y, v.z);
 /**
  * Sprung der Steigung von `d` (3 je Probe, nach s) an der Probe j eines geschlossenen Loops: Steigung je Seite aus der Parabel
@@ -315,7 +331,7 @@ const steigungsSprung = (l: Loop, d: Float64Array, j: number) => {
 
 describe('Bézier-Griffe und Ecken', () => {
   it('Ein Griff biegt nur sein Stück wie eine Bézier-Strecke (größter Ausschlag 4/9 bei t = 1/3), die Punkte bleiben', () => {
-    const auge = augenForm(kugel());
+    const auge = mitGriffen(augenForm(kugel()));
     const i = 2;
     const s0 = auge.punkte[i]!.s;
     const s1 = auge.punkte[i + 1]!.s;
@@ -339,10 +355,10 @@ describe('Bézier-Griffe und Ecken', () => {
     expect(Math.abs(wo - 1 / 3)).toBeLessThan(0.1);
   });
 
-  it('Griffe ablesen und ziehen: glatt bleibt der andere Griff gegenüber (gleiche Länge), an einer Ecke bleibt er stehen', () => {
-    const auge = augenForm(kugel());
-    const g = griffeBei(auge, auge.ruhe, 2);
-    // Richtung längs der Linie, Länge ⅓ des Wegs zum Nachbarpunkt
+  it('Griffe ziehen: glatt bleibt der andere Griff gegenüber (gleiche Länge), an einer Ecke bleibt er stehen', () => {
+    const auge = mitGriffen(augenForm(kugel()));
+    const g = griffeBei(auge, 2);
+    // angelegt aus der Linie: Richtung längs der Linie, Länge etwa ⅓ des Wegs zum Nachbarpunkt
     const ds = auge.punkte[3]!.s - auge.punkte[2]!.s;
     const zuNachbar = stelleBei(auge, auge.ruhe, auge.punkte[3]!.s);
     const p = auge.punkte[2]!.ref;
@@ -351,7 +367,7 @@ describe('Bézier-Griffe und Ecken', () => {
     expect(Math.abs(betrag(g.aus!) - ds / 3)).toBeLessThan(0.05 * ds);
     expect(cosSehne).toBeGreaterThan(0.85);
     const delta = { x: 0, y: 6, z: 0 };
-    const glatt = griffZiehen(auge, auge.ruhe, 2, 'aus', delta);
+    const glatt = griffZiehen(auge, 2, 'aus', delta);
     const aus = { x: g.aus!.x + glatt.aus!.x, y: g.aus!.y + glatt.aus!.y, z: g.aus!.z + glatt.aus!.z };
     const ein = { x: g.ein!.x + glatt.ein!.x, y: g.ein!.y + glatt.ein!.y, z: g.ein!.z + glatt.ein!.z };
     const kreuz = betrag({ x: aus.y * ein.z - aus.z * ein.y, y: aus.z * ein.x - aus.x * ein.z, z: aus.x * ein.y - aus.y * ein.x });
@@ -359,13 +375,13 @@ describe('Bézier-Griffe und Ecken', () => {
     expect(aus.x * ein.x + aus.y * ein.y + aus.z * ein.z).toBeLessThan(0);
     expect(Math.abs(betrag(ein) - betrag(g.ein!))).toBeLessThan(1e-9);
     auge.punkte[2]!.ecke = true;
-    const ecke = griffZiehen(auge, auge.ruhe, 2, 'aus', delta);
+    const ecke = griffZiehen(auge, 2, 'aus', delta);
     expect(ecke.ein).toBeUndefined();
     expect(ecke.aus).toEqual(delta);
   });
 
   it('Punkt ziehen wie in Illustrator: nur die zwei Stücke bis zu den Nachbarpunkten, die Richtung am Punkt bleibt', () => {
-    const auge = augenForm(kugel());
+    const auge = mitGriffen(augenForm(kugel()));
     const i = 2;
     const p = auge.punkte[i]!.ref;
     const D = auge.punkte.map((_, k) => (k === i ? { x: 0, y: 12, z: 0 } : { x: 0, y: 0, z: 0 }));
@@ -379,25 +395,25 @@ describe('Bézier-Griffe und Ecken', () => {
     }
     const j = auge.s.findIndex((s) => Math.abs(s - auge.punkte[i]!.s) < 1e-9);
     const L = Float64Array.from(auge.ruhe, (x, k) => x + d[k]!);
-    const vorher = griffeBei(auge, auge.ruhe, i);
-    const nachher = griffeBei(auge, L, i);
+    const vorher = griffeBei(auge, i);
+    const nachher = abgelesen(auge, L, i);
     log(`Punkt 12 hoch: jenseits der Nachbarn ${jenseits}, am Punkt ${Math.hypot(d[3 * j]!, d[3 * j + 1]! - 12, d[3 * j + 2]!)}, p ${JSON.stringify(p)}`);
     expect(jenseits).toBeLessThan(1e-9);
     expect(Math.abs(d[3 * j + 1]! - 12)).toBeLessThan(1e-9);
-    // die Griffe gehen mit: gleiche Richtung vorher und nachher
+    // die Griffe gehen mit: Die gezogene Linie zeigt am Punkt dieselbe Richtung wie vorher
     const c = (vorher.aus!.x * nachher.aus!.x + vorher.aus!.y * nachher.aus!.y + vorher.aus!.z * nachher.aus!.z) / (betrag(vorher.aus!) * betrag(nachher.aus!));
     expect((Math.acos(Math.min(1, c)) * 180) / Math.PI).toBeLessThan(1.5);
   });
 
   it('Skalieren über die Punkte: die Griffe skalieren mit (griffeAbbilden), die Form wird genau größer', () => {
-    const auge = augenForm(kugel());
+    const auge = mitGriffen(augenForm(kugel()));
     const c = { x: -60, y: 40, z: 0 };
     const f = (q: { x: number; y: number; z: number }) => ({ x: c.x + 1.3 * (q.x - c.x), y: c.y + 1.3 * (q.y - c.y), z: q.z });
     const D = auge.punkte.map((p) => {
       const q = f(p.ref);
       return { x: q.x - p.ref.x, y: q.y - p.ref.y, z: 0 };
     });
-    const g = auge.punkte.map((_, i) => griffeAbbilden(auge, auge.ruhe, i, f));
+    const g = auge.punkte.map((_, i) => griffeAbbilden(auge, i, f));
     const mit = verschiebungLaengs(auge, D, g);
     const ohne = verschiebungLaengs(auge, D);
     let fehlerMit = 0;
@@ -413,9 +429,9 @@ describe('Bézier-Griffe und Ecken', () => {
     expect(fehlerOhne).toBeGreaterThan(3 * fehlerMit);
   });
 
-  it('Ecke: von Hand behält sie ihre Griffe, von selbst (an einem harten Loop) knickt sie hinausgezogen; Ausrichten macht wieder glatt', () => {
+  it('Ecke: von Hand behält sie ihre Griffe, von selbst (an einer Kante) bleibt jede Seite rund und knickt hinausgezogen; Ausrichten macht wieder glatt', () => {
     const h = kugel();
-    const auge = augenForm(h);
+    const auge = mitGriffen(augenForm(h));
     const i = 2;
     const j = auge.s.findIndex((s) => Math.abs(s - auge.punkte[i]!.s) < 1e-9);
     const p = auge.punkte[i]!.ref;
@@ -432,26 +448,32 @@ describe('Bézier-Griffe und Ecken', () => {
     expect(vonHand).toBeLessThan(0.1);
     expect(ecke).toBeGreaterThan(0.4);
     expect(ecke).toBeGreaterThan(5 * glatt);
-    // eine Ecke mit Knick: Lage = Ruhe + Verschiebung; Ausrichten gibt Griffe auf einer Geraden
-    const L = Float64Array.from(auge.ruhe, (x, k) => x + verschiebungLaengs(auge, D)[k]!);
-    const v = griffeAusrichten(auge, L, i)!;
+    // von selbst: Jede Seite bleibt rund, der Griff folgt um die Hälfte (natürliches Ende); der Punkt ging 10 hinaus, also gehen
+    // beide Griffe 5 zurück
+    const vorZug = griffeBei(auge, i);
+    griffeUebernehmen(auge, D);
+    const nachZug = griffeBei(auge, i);
+    expect(betrag({ x: nachZug.aus!.x - vorZug.aus!.x + D[i]!.x / 2, y: nachZug.aus!.y - vorZug.aus!.y + D[i]!.y / 2, z: nachZug.aus!.z - vorZug.aus!.z })).toBeLessThan(1e-9);
+    expect(betrag({ x: nachZug.ein!.x - vorZug.ein!.x + D[i]!.x / 2, y: nachZug.ein!.y - vorZug.ein!.y + D[i]!.y / 2, z: nachZug.ein!.z - vorZug.ein!.z })).toBeLessThan(1e-9);
+    // eine Ecke mit Knick: Ausrichten gibt Griffe auf einer Geraden
+    const v = griffeAusrichten(auge, i)!;
     expect(v).not.toBeNull();
-    const g = griffeBei(auge, L, i, true);
+    const g = griffeBei(auge, i);
     const ein = { x: g.ein!.x + v.ein!.x, y: g.ein!.y + v.ein!.y, z: g.ein!.z + v.ein!.z };
     const aus = { x: g.aus!.x + v.aus!.x, y: g.aus!.y + v.aus!.y, z: g.aus!.z + v.aus!.z };
     const cos = -(ein.x * aus.x + ein.y * aus.y + ein.z * aus.z) / (betrag(ein) * betrag(aus));
     expect(cos).toBeGreaterThan(1 - 1e-9);
-    // ohne Knick nichts zu tun, auch nicht auf der eingesetzten Form (die Kette ist im Netz selbst gezackt): Umschalten lässt
-    // glatte Linien in Ruhe
-    expect(griffeAusrichten(auge, auge.ruhe, 5)).toBeNull();
-    const eingesetzt = loopEinsetzen(h, [augenForm(h)], 0)!.loops[0]!;
+    // ohne Knick nichts zu tun, auch nicht auf der eingesetzten Form (die Kette ist im Netz gezackt, die angelegten Griffe nicht):
+    // Umschalten lässt glatte Linien in Ruhe
+    expect(griffeAusrichten(auge, 5)).toBeNull();
+    const eingesetzt = mitGriffen(loopEinsetzen(h, [augenForm(h)], 0)!.loops[0]!);
     const schein = eingesetzt.punkte.map((_, k) => {
-      const g = griffeBei(eingesetzt, eingesetzt.ruhe, k, true);
+      const g = griffeBei(eingesetzt, k);
       const c = -(g.ein!.x * g.aus!.x + g.ein!.y * g.aus!.y + g.ein!.z * g.aus!.z) / (betrag(g.ein!) * betrag(g.aus!));
       return (Math.acos(Math.min(1, c)) * 180) / Math.PI;
     });
     log(`Knick je Punkt der eingesetzten Form (Zacken des Netzes): ${schein.map((x) => x.toFixed(1)).join(' ')}°`);
-    expect(eingesetzt.punkte.every((_, k) => griffeAusrichten(eingesetzt, eingesetzt.ruhe, k) === null)).toBe(true);
+    expect(eingesetzt.punkte.every((_, k) => griffeAusrichten(eingesetzt, k) === null)).toBe(true);
   });
 
   it('Kante läuft durch Kreuzungen; die Kreuzung mit einer Kante wird von selbst eine Ecke, ohne Kante wieder glatt', () => {
@@ -501,16 +523,21 @@ describe('Bézier-Griffe und Ecken', () => {
     expect(knickAm(mitte, i)).toBeLessThan(5);
     expect(Math.max(...kanteBei(waag, loops))).toBe(0);
     // den Griff „aus“ in der Seite um 60° drehen: die Mitte knickt dort
-    const g = griffeBei(mitte, mitte.ruhe, i).aus!;
+    const g = griffeBei(mitte, i).aus!;
     const c = Math.cos(Math.PI / 3);
     const s = Math.sin(Math.PI / 3);
-    const v = griffZiehen(mitte, mitte.ruhe, i, 'aus', { x: c * g.x - s * g.y - g.x, y: s * g.x + c * g.y - g.y, z: 0 });
+    const v = griffZiehen(mitte, i, 'aus', { x: c * g.x - s * g.y - g.x, y: s * g.x + c * g.y - g.y, z: 0 });
     const d = verschiebungLaengs(
       mitte,
       mitte.punkte.map(() => ({ x: 0, y: 0, z: 0 })),
       mitte.punkte.map((_, k) => (k === i ? v : undefined)),
     );
     for (let j = 0; j < d.length; j++) mitte.ruhe[j] = mitte.ruhe[j]! + d[j]!;
+    griffeUebernehmen(
+      mitte,
+      mitte.punkte.map(() => NULL3),
+      mitte.punkte.map((_, k) => (k === i ? v : undefined)),
+    );
     const knick = knickAm(mitte, i);
     const hd = kanteBei(waag, loops);
     // die Kreuzung hinter der nächsten (dorthin keine Kante mehr: beide Enden glatt)
@@ -532,6 +559,7 @@ describe('Bézier-Griffe und Ecken', () => {
     const lauf = (ecke: boolean) => {
       const h0 = kugel();
       const r1 = loopEinsetzen(h0, [loopAusSchnitt(h0, 'front', [-200, 0], [200, 0], 1, 8)!], 0)!;
+      griffeAnlegen(r1.loops[0]!);
       const r2 = loopEinsetzen(r1.haut, [...r1.loops, loopAusSchnitt(r1.haut, 'seite', [0, 200], [0, -200], 2, 8)!], 1)!;
       const h = r2.haut;
       const [waag, quer] = r2.loops as [Loop, Loop];
@@ -539,6 +567,7 @@ describe('Bézier-Griffe und Ecken', () => {
       expect(funde.length).toBe(1);
       punktEinfuegen(waag, funde[0]!.sa, 1);
       const kq = punktEinfuegen(quer, funde[0]!.sb, 1);
+      griffeAnlegen(quer);
       waag.kante = true;
       eckenAuto([waag, quer]);
       expect(istEcke(kq)).toBe(true);
@@ -573,6 +602,7 @@ describe('Bézier-Griffe und Ecken', () => {
   it('Spiegelpunkt (Ende eines Rings auf der Mittelebene): beide Griffe, frei ziehbar mit Knick spiegelgleich, Ausrichten macht ihn rund', () => {
     const h0 = kugel();
     const r1 = loopEinsetzen(h0, [loopAusSchnitt(h0, 'seite', [-200, 0], [200, 0], 1, 8)!], 0)!;
+    griffeAnlegen(r1.loops[0]!);
     const r2 = loopEinsetzen(r1.haut, [...r1.loops, loopAusSchnitt(r1.haut, 'top', [-200, 0], [200, 0], 2, 8)!], 1)!;
     const h = r2.haut;
     const [ring, mitte] = r2.loops as [Loop, Loop];
@@ -582,6 +612,7 @@ describe('Bézier-Griffe und Ecken', () => {
       punktEinfuegen(ring, f.sa, k);
       punktEinfuegen(mitte, f.sb, k++);
     }
+    griffeAnlegen(mitte);
     // die Spitze vorn: Ende des Rings, Kreuzung mit der Mitte
     const i = ring.punkte.findIndex((p) => p.ref.x < -100);
     const rand = ringEnde(ring, i);
@@ -590,7 +621,7 @@ describe('Bézier-Griffe und Ecken', () => {
     const aussen = innen === 'aus' ? 'ein' : 'aus';
     const weg = (a: V3 | undefined | null, b: V3) => (a ? Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y), Math.abs(a.z - b.z)) : Infinity);
     const knick = () => {
-      const g = griffeBei(ring, ring.ruhe, i);
+      const g = griffeBei(ring, i);
       const c = -(g.ein!.x * g.aus!.x + g.ein!.y * g.aus!.y + g.ein!.z * g.aus!.z) / (betrag(g.ein!) * betrag(g.aus!));
       return { g, grad: (Math.acos(Math.max(-1, Math.min(1, c))) * 180) / Math.PI };
     };
@@ -605,6 +636,11 @@ describe('Bézier-Griffe und Ecken', () => {
       const zug = new LoopZug(h, [ring, mitte], bereichUm(h, [tip], 160, []));
       for (let s = 1; s <= 3; s++) zug.schritt([d.map((x) => (x * s) / 3), null], 2);
       zug.schritt([d, null], 6);
+      griffeUebernehmen(
+        ring,
+        ring.punkte.map(() => NULL3),
+        ring.punkte.map((_, j) => (j === i ? v : undefined)),
+      );
       festlegen(h, ring);
       festlegen(h, mitte);
     };
@@ -614,18 +650,18 @@ describe('Bézier-Griffe und Ecken', () => {
     expect(gi.z).toBeGreaterThan(0);
     expect(weg(vorher.g[aussen], { x: gi.x, y: gi.y, z: -gi.z })).toBe(0);
     // frei: seitlich gezogen geht der Griff mit (vorher nur längs z), sein Spiegelbild ebenso; am Spiegelbild gezogen dasselbe
-    const v = griffZiehen(ring, ring.ruhe, i, innen, { x: 40, y: 0, z: 0 });
+    const v = griffZiehen(ring, i, innen, { x: 40, y: 0, z: 0 });
     expect(weg(v[innen], { x: 40, y: 0, z: 0 })).toBe(0);
     expect(weg(v[aussen], { x: 40, y: 0, z: 0 })).toBe(0);
-    expect(weg(griffZiehen(ring, ring.ruhe, i, aussen, { x: 40, y: 0, z: -10 })[innen], { x: 40, y: 0, z: 10 })).toBe(0);
+    expect(weg(griffZiehen(ring, i, aussen, { x: 40, y: 0, z: -10 })[innen], { x: 40, y: 0, z: 10 })).toBe(0);
     // nicht durch die Mittelebene: höchstens bis in sie hinein
-    expect(gi.z + griffZiehen(ring, ring.ruhe, i, innen, { x: 0, y: 0, z: -1000 })[innen]!.z).toBeCloseTo(0, 9);
+    expect(gi.z + griffZiehen(ring, i, innen, { x: 0, y: 0, z: -1000 })[innen]!.z).toBeCloseTo(0, 9);
     // gezogen und gelöst: die Linie knickt an der Spitze spiegelgleich
     loesen(v);
     const geknickt = knick();
     const schiefGeknickt = schiefe(h);
     // Ausrichten: Griff senkrecht zur Mittelebene, Länge bleibt; gelöst läuft die Linie rund durch die Spitze
-    const a = griffeAusrichten(ring, ring.ruhe, i)!;
+    const a = griffeAusrichten(ring, i)!;
     expect(a).not.toBeNull();
     const g2 = geknickt.g[innen]!;
     const neu = { x: g2.x + a[innen]!.x, y: g2.y + a[innen]!.y, z: g2.z + a[innen]!.z };
@@ -635,7 +671,7 @@ describe('Bézier-Griffe und Ecken', () => {
     loesen(a);
     const rund = knick();
     // Drehen über die Punkte: das Spiegelbild des Griffs dreht spiegelgleich mit
-    const dreh = griffeAbbilden(ring, ring.ruhe, i, (p) => ({ x: p.x * Math.cos(0.3) + p.z * Math.sin(0.3), y: p.y, z: -p.x * Math.sin(0.3) + p.z * Math.cos(0.3) }));
+    const dreh = griffeAbbilden(ring, i, (p) => ({ x: p.x * Math.cos(0.3) + p.z * Math.sin(0.3), y: p.y, z: -p.x * Math.sin(0.3) + p.z * Math.cos(0.3) }));
     expect(weg(dreh[aussen], { x: dreh[innen]!.x, y: dreh[innen]!.y, z: -dreh[innen]!.z })).toBe(0);
     // Soll: der Griff steht nach dem Zug um atan(40 / Länge) schräg, die Linie knickt um das Doppelte (Griff und Spiegelbild)
     const soll = (2 * Math.atan2(40, gi.z) * 180) / Math.PI;

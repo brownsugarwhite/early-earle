@@ -323,3 +323,34 @@ Am harten Ring knickt der kreuzende Ring an der Kreuzung 57° statt 11°. 0 umge
 **Das ist eine Look-Entscheidung für Florian:** Ob eine Kante die Form so stark ändern soll, sieht man im Bild.
 
 Nächster Schritt: Pose, Maul und Verdichten durchprüfen, dann die alte Ableselogik entfernen.
+
+**Schritt 5 (06.11. nachts): Kante „rund“ festgelegt, auch beim Ziehen; altes Ablesen entfernt.** Florian nach dem Vergleich
+(Kuppel gegen Glocke): „ja dann rund“.
+
+- **Rund auch beim Ziehen** (`griffVersatzImZug` in `loops.ts`, benutzt von `verschiebungLaengs` und `griffeNach`): Eine Ecke von
+  selbst folgt in jedem Zug ihren Nachbarn so, dass jede Seite rund bleibt. Ihr Griff verschiebt sich um die Hälfte dessen, was
+  Nachbarpunkt und dessen Griff zu ihr hin sich gegen sie verschieben; das natürliche Ende, das K setzt, bleibt so erhalten. Vorher
+  folgte sie beim Ziehen „Vector“ (ein Drittel der Sehne), deshalb hing der Knick an der Reihenfolge. Zwei Ecken von selbst
+  nebeneinander stimmen sich in einigen Runden ab (das Stück zwischen ihnen wird gerade). Dreht oder skaliert ein Zug ihre Griffe
+  selbst (S/R mit ihr in der Auswahl), gilt das.
+- **Wie bei K:** Ein gelöschter Kanten-Loop macht seine Kreuzungen in den anderen wieder glatt; ein Doppelklick, der eine Kreuzung
+  wieder zur Ecke von selbst macht, knickt sie rund; ein neuer Loop, der eine Kante kreuzt, liest dort seine Griffe je Seite (als
+  Ecke) und ändert die Form nicht.
+- **Altes Ablesen entfernt:** das Ausgleichspolynom je Seite (`steigungSeite`) samt Lesezweig in `griffeBei`, die 4°-Schwelle in
+  `griffeAusrichten`, `?griffe=0` und `?knick=vektor`. `griffeBei`, `griffZiehen`, `griffeAbbilden` und `griffeAusrichten` brauchen
+  keine Lagen mehr; `istVektorEcke` heißt jetzt `istEckeVonSelbst`. Die Kern-Tests legen die Griffe an wie das Fenster (jeder neue
+  Loop nach seinen Kreuzungen).
+
+| Knick quer über den Rand (Median), im Fenster | rund bei K, „Vector“ beim Ziehen | jetzt |
+| --- | --- | --- |
+| Kugel, Kante am Äquator gesetzt | 27° | 27° |
+| Kante, dann die Unterseite 120 hinauf | 81° | 92° |
+| Unterseite 120 hinauf, dann Kante | 92° | 92° |
+| Linse (Kante, dann oben und unten 70 zur Mitte) | 73° (2 umgeklappt) | 83° (8 umgeklappt) |
+
+Am harten Ring knickt der kreuzende Ring an der Kreuzung 48° (Grat 50°), glatt 0°. Die anderen Proben wie vorher (Pfad, Stift,
+Braue, Kreuzung, Griffe, Boden 0,25, Zoom, Verdichten, Maul, Fressen-Pose 25 für 25, Explosion a/c/e/g/Pilz). Bild
+`docs/progress/editor/form-kante-rund-reihenfolge-2026-11-06.jpg`. Ehrlich zur Linse: Rund heißt hier, jede Seite läuft gerade aus
+dem Knick und wölbt sich dann. Zwei Kugelkappen gäben 67°, die Linse hat 83° und an der Kante 8 sehr kleine umgeklappte Dreiecke.
+Im Kern-Test C (Rüssel, Griff gedreht) 34 Knicke über 60° und 2 umgeklappt statt 28 und 6: Der Griff an der Spitze zeigt nach den
+Zügen noch, wie er auf der Kugel lag, gedreht wird er von dort aus; im Fenster 8 und 0.
