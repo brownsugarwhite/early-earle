@@ -67,9 +67,12 @@ export {
   eckenAuto,
   festlegen,
   formAusZeichnung,
+  griffeAnlegen,
   griffeAusrichten,
   griffeBei,
+  griffeUebernehmen,
   griffZiehen,
+  hatGriffe,
   hautLagen,
   kanteAn,
   kanteBei,
@@ -83,6 +86,7 @@ export {
   mittlereKante,
   probenLage,
   punktEinfuegen,
+  punkteLoeschen,
   ringEnde,
   schnittLinien,
   spiegelProbe,
@@ -92,6 +96,7 @@ export {
   zieleAus,
 } from './loops';
 export { loopEinsetzen } from './einsetzen';
+export { bernstein, stueckAnpassen, stueckPunkt, stueckTeilen } from './pfad';
 export { type Verdichtet, verdichten } from './verdichten';
 export {
   type Ansichtsbreite,
