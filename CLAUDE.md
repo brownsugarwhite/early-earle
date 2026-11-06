@@ -1205,7 +1205,11 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
       durcheinander gehen. Beim Flachen Boden ist genau das gewollt. Weg: Ein Loop sagt nur die Krümmung längs seiner selbst, quer
       dazu misst die Haut selbst (wie FiberMesh, aber nur für die Querrichtung). Der alte Löser explodierte in Fall f (333 000
       Punkte, 15 s); dreht der Griff so weit, dass sich die Linie kreuzt (90°), stülpt sich das Stück hinter der Kreuzung um wie bei
-      jeder Schlaufe.
+      jeder Schlaufe. Zweiter Fall (Florian: „es kollabiert zur Mittelachse on top, ohne dass ich da etwas mache“): Hammerform nur in
+      der Seite gezogen (Oberkante und Vorderkante gerade, Unterkante hohl), im Top schnürt sich der Kopf zur Mittelachse ein und
+      stülpt sich vorn um — dieselbe Ursache. Ein Ausweg nur mit Gedächtnis quer (der Loop ändert nur seine Hälfte) brächte die
+      Höcker im flachen Boden zurück (sein Fall vom 05.11.); richtig ist eine Krümmung mit Richtung (jeder Loop sagt seine Richtung,
+      quer kommt sie von den Loops, die quer laufen, sonst bleibt die Haut, wie sie ist). Entscheidung bei Florian.
   - **Falle:** `git apply` aus einem Unterordner lässt Pfade außerhalb still aus (Gegenproben vom Wurzelordner aus).
   - Bilder `docs/progress/editor/form-explosion-{a,b,c}-{vorher,nachher}-2026-11-06.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
