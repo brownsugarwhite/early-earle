@@ -1155,6 +1155,49 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - **Offen:** Pinsel in der Pose; weitere Posen und Überblenden; Speichern/Laden (gibt es im Fenster noch nicht); in der Pose folgt
     die Krümmung nicht den Loops (flacher Boden zwischen geraden Loops gilt dort nicht); die Gewichte sind automatisch (wo der Kiefer
     endet, malen oder an Knochen des Körpers festmachen, wenn es nötig wird). Bilder `docs/progress/editor/form-fressen-*-2026-11-05.jpg`.
+- **2026-11-06: Explosion behoben, die Dehnung der Haut kommt aus den Loops** (Florian mit Bildern: „teilweise passiert bei den
+  einfachsten Formen schon das. Das Mesh "explodiert" und die Seite hängt sich auf.“).
+  - **Nachgestellt** (Maus `scripts/pruefen/form-explosion-probe.mjs`, `FALL=a|b|c|d`, Kugel mit drei Loops):
+    - a: hinten weit nach hinten (Ecke), vorn nach vorn, oben weit über vorn hinaus (Ei mit Überhang): bis 104 Knicke über 60°,
+      28 umgeklappt.
+    - b: Schnabel aus einem neuen Punkt der Mitte: 46–104 Knicke.
+    - c: dann die Griffe an der Spitze herumgedreht, bis die Linie eine Schlaufe schlägt: Haut bis 10⁴⁰, 1,7 Millionen Punkte, die
+      Seite hing 118 s (Florians erstes Bild).
+  - **Zwei Ursachen:**
+    - Der Löser streckte jeden Punkt mit der Dehnung seiner eigenen Kanten (Verteilung und Krümmung). Das ist eine Rückkopplung: Eine
+      Falte hat lange Kanten, also größere Ziele, also eine tiefere Falte. Ohne Verdichten flog die Haut schon in Fall a auf 10¹⁴⁷.
+    - An einer Schlaufe oder Spitze eines Loops misst die Parabel eine beliebig große Krümmung (kaum Steigung), das Krümmungsfeld
+      verteilt sie in die Haut.
+  - **Jetzt:**
+    - `HautZiele.dehnung` (`dicht/kurven.ts`): je Bindung, wie weit ihr Loop dort gedehnt ist (Abstand zu den Nachbarn in der Kette
+      jetzt gegen beim Anlegen), feste Punkte 1, dazwischen glatt mit derselben Zerlegung wie der Löser (eine Spalte). Sie streckt
+      nur die Krümmung; die Verteilung in der Fläche wird gedreht, nicht gestreckt.
+    - Ein Loop gibt höchstens die Krümmung weiter, die seine Proben auflösen (Radius ≥ Probenabstand, `dicht/kruemmung.ts`).
+    - `LoopZug` baut die Ketten immer (auch in der Pose), das Krümmungsfeld nur mit `kruemmung`.
+  - **Gemessen** (Maus, alt → neu):
+    - a: 78/104 → 0/4 Knicke über 60°, 14/28 → 0/0 umgeklappt.
+    - b: 46/68/104 → 0/0/0 Knicke.
+    - c: 6 416 Punkte statt 1,7 Millionen, Maße wie gezogen, 0,8 s. Die Schlaufe selbst faltet die Haut (19 Knicke), das Stück in der
+      Schlaufe stülpt sich um (die Linie läuft dort verkehrt herum).
+    - Stauchen (d) sauber wie vorher.
+    - Ältere Proben gleich oder fast gleich: Boden, Maul, Kreuzung, Spiegelpunkt, Griffe, Zoom, Fressen-Pose (25 für 25); Braue
+      34,8°/25,9° statt 34,3°/25,7°.
+    - Kern: 79 Tests grün, neu `dicht/weiterZug.test.ts` (am alten Löser rot: Überhang 150 Knicke, 22 umgeklappt).
+  - **Verworfen (gemessen):**
+    - Drehung je Punkt aus dem ganzen Ring der Nachbarn (Procrustes): nicht besser.
+    - Dehnung aus den Loops auch für die Verteilung: am weit gezogenen Kopf eine Falte von 148° (längs des Loops gedehnt heißt nicht
+      quer dazu).
+    - Die eigene Dehnung nur zum Stauchen: Beim Schnabel faltete die gestauchte Haut weiter.
+    - Ganz ohne Verteilung: Auf dem Netz aus Surface Nets wird die Kugel ohne Änderung uneben (145–158).
+    - Dehnung² für die Krümmung: Kuppen am harten Ring bis 11 zu hoch.
+  - **Offen:**
+    - Das Zerlegen wächst stark mit der Punktzahl (5 000 Punkte 0,23 s, 10 000 0,6 s, 18 000 2 s), ein weiter Zug zerlegt in seinen
+      Stufen bis zu fünfmal. Mit Florians 11 000 Punkten ruckelt ein weiter Zug deshalb weiter. Weg: schneller zerlegen
+      (verschachtelte Zerlegung statt der Hülle).
+    - Im Kern-Test der Pose (mit der Öffnung im Löser) geht ein Punkt unter der Lippe 35,7 statt 20 mit; im Fenster (ohne Öffnung)
+      genau 25 für 25.
+  - **Falle:** `git apply` aus einem Unterordner lässt Pfade außerhalb still aus (Gegenproben vom Wurzelordner aus).
+  - Bilder `docs/progress/editor/form-explosion-{a,b,c}-{vorher,nachher}-2026-11-06.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

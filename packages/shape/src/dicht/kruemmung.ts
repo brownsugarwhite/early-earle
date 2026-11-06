@@ -83,6 +83,8 @@ export class KruemmungsFeld {
   private readonly kap0 = new Map<number, V>();
   /** Änderung je Bindung in der letzten Runde (Maß des Lösers), zum Weiterschreiben am Ende des Zugs */
   readonly aenderung = new Map<number, number>();
+  /** je Bindung die größte Krümmung, die die Kette dort auflöst (Maß des Lösers) */
+  private readonly grenze = new Map<number, number>();
   /** Punkt der Haut je Bindung (−1: Bindung in einem Dreieck) */
   private readonly bindPunkt: Int32Array;
   readonly zeitZerlegen: number;
@@ -127,6 +129,9 @@ export class KruemmungsFeld {
       this.gc.set(j, g.c);
       this.gb.set(j, g.b);
       this.kap0.set(j, kruemmungVektor(k, g.c, g.b, ziele0));
+      // Auflösung: kein Krümmungsradius unter dem Abstand der Proben (Haut-Krümmung höchstens 1/(2h))
+      const h = Math.max(Math.abs(u[mitte - 1] ?? NaN) || 0, Math.abs(u[mitte + 1] ?? NaN) || 0);
+      if (h > 1e-9) this.grenze.set(j, 1 / (2 * h));
       // gemessen wird an jedem Loop (auch harten, damit sein Wert stimmt, wenn er weich wird); weiter gibt nur der weiche
       const w = 1 - Math.min(3, Math.max(0, ketten.haerte[j]!)) / 3;
       if (w <= 1e-6 || !Number.isFinite(ketten.wert[j]!)) continue;
@@ -198,7 +203,12 @@ export class KruemmungsFeld {
       const d =
         -(k1[0] * nor[3 * p]! + k1[1] * nor[3 * p + 1]! + k1[2] * nor[3 * p + 2]!) +
         (k0[0] * this.nor0[3 * p]! + k0[1] * this.nor0[3 * p + 1]! + k0[2] * this.nor0[3 * p + 2]!);
-      this.aenderung.set(j, LAMBDA * d);
+      // An einer Schlaufe oder Spitze des Loops wird die gemessene Krümmung beliebig groß (die Parabel hat dort kaum Steigung);
+      // weitergegeben wird höchstens, was die Proben auflösen. Sonst blähte sich die Haut ins Unendliche (gemessen: 10⁴⁰).
+      const w = this.ketten.wert[j]!;
+      const g = this.grenze.get(j);
+      const neu = w + LAMBDA * d;
+      this.aenderung.set(j, g !== undefined && Number.isFinite(w) ? Math.max(-g, Math.min(g, neu)) - w : LAMBDA * d);
     }
     for (const [v, js] of this.messend) {
       let s = 0;

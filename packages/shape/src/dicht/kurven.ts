@@ -13,6 +13,16 @@
 // Verworfen (gemessen): die Krümmung zwischen den Kurven nach FiberMesh neu verteilen (Rückkopplung mit der gelösten Krümmung) —
 // auf dem ungleichmäßigen Netz aus Surface Nets schaukelt sie sich auf (Schritte 0,13 → 0,28 → 0,69 ohne jede Änderung); die
 // Krümmung allein ohne die Verteilung in der Fläche lässt die Kugel zusammenfallen (Radius 52–157).
+//
+// 06.11.2026 (Florian: „teilweise passiert bei den einfachsten Formen schon das. Das Mesh explodiert und die Seite hängt sich
+// auf“): Bis hier wurde jeder Punkt mit der Dehnung seiner eigenen Kanten gestreckt. Das ist eine Rückkopplung: Eine Falte hat
+// lange Kanten, also größere Ziele, also eine tiefere Falte. Bei weiten Zügen an Kreuzungen verknitterte die Haut (bis 104 Knicke
+// über 60°), ohne Verdichten flog sie auseinander (10¹⁴⁷). Jetzt kommt die Dehnung aus den Loops (wie weit sie selbst gedehnt sind,
+// dazwischen glatt verteilt, am Rand des Bereichs 1), die Verteilung in der Fläche wird nur gedreht, nicht gestreckt. Gemessen und
+// verworfen: Drehung je Punkt aus dem ganzen Ring der Nachbarn (Procrustes; nicht besser), die Dehnung aus den Loops auch für die
+// Verteilung (am weit gezogenen Kopf eine Falte von 148°: längs des Loops gedehnt heißt nicht quer dazu), die eigene Dehnung nur
+// zum Stauchen (beim Schnabel faltete die gestauchte Haut weiter), ganz ohne Verteilung (auf dem Netz aus Surface Nets wird die
+// Kugel ohne Änderung uneben, 145–158).
 
 import { type NormalSystem, type NormalZeile, normalSystem } from '../loeser/normalSystem';
 import { KruemmungsFeld, type KruemmungsKetten } from './kruemmung';
@@ -317,7 +327,7 @@ export type Bindungen = { ecken: Int32Array; b: Float64Array };
  * anderen bleiben, wo sie sind), je Zug nur Einsetzen. Jede Bindung hat ein Ziel; der Punkt der Haut macht die Verschiebung
  * seines Ziels seit dem Anlegen mit. Bezug sind die Haut und die Ziele beim Anlegen: Ohne Änderung bleibt alles genau so.
  * Gleichmäßiger Laplace (Mittel der Nachbarn); als Normalgleichungen ist das biharmonisch, der Übergang an den Rand des Bereichs
- * bleibt glatt.
+ * bleibt glatt. Mit `ketten` (Nachbarn je Bindung in ihrem Loop) folgt die Dehnung der Haut den Loops, ohne sie bleibt sie 1.
  */
 export class HautZiele {
   private readonly sys: NormalSystem;
@@ -345,8 +355,10 @@ export class HautZiele {
     private readonly gewicht = 100,
     /** Gewicht je Kante über eine harte Linie (Schlüssel `kantenSchluessel`); fehlt: 1 */
     kanten: ReadonlyMap<number, number> | null = null,
-    /** Ketten der Loops: die Krümmung der Haut folgt ihnen (`KruemmungsFeld`); fehlt: jeder Punkt behält seine Krümmung */
+    /** Ketten der Loops: die Dehnung der Haut folgt ihnen, mit `kruemmung` auch die Krümmung (`KruemmungsFeld`) */
     ketten: KruemmungsKetten | null = null,
+    /** die Krümmung folgt den Loops; sonst behält jeder Punkt seine */
+    kruemmung = true,
   ) {
     const n = h.n;
     const P = h.pos;
@@ -411,8 +423,74 @@ export class HautZiele {
     this.sys = normalSystem(frei.length, zeilen, nachbarn, 1e-9);
     this.ruhe = vermessen(h, this.gew);
     this.pos0 = Float64Array.from(P);
-    this.feld = ketten ? new KruemmungsFeld(h, bind, ketten, ziele0, nr, this.gew, this.ruhe.nor, this.ruhe.kap) : null;
+    this.feld = ketten && kruemmung ? new KruemmungsFeld(h, bind, ketten, ziele0, nr, this.gew, this.ruhe.nor, this.ruhe.kap) : null;
     this.zeitZerlegen = Date.now() - t0;
+    this.ketten = ketten;
+    this.ziele0alle = Float64Array.from(ziele0);
+  }
+
+  private readonly ketten: KruemmungsKetten | null;
+  /** Ziele aller Bindungen beim Anlegen (für die Dehnung der Loops) */
+  private readonly ziele0alle: Float64Array;
+  /** Dehnung je Punkt im letzten Schritt (zum Messen) */
+  letzteDehnung: Float64Array | null = null;
+
+  /**
+   * Dehnung je Punkt aus den Loops: an jeder Bindung, wie weit ihr Loop dort gedehnt ist (Abstand zu den Nachbarn in der Kette
+   * jetzt gegen beim Anlegen), feste Punkte 1, dazwischen so glatt wie die Haut selbst (dieselben Zeilen und dieselbe Zerlegung
+   * wie der Löser, eine Spalte). Ohne Änderung genau 1.
+   */
+  private dehnung(ziele: Float64Array): Float64Array {
+    const h = this.h;
+    const nr = this.nr;
+    const nf = this.frei.length;
+    const sig = new Float64Array(h.n).fill(1);
+    const k = this.ketten;
+    if (!k || nf === 0) return sig;
+    const Z0 = this.ziele0alle;
+    const abstand = (X: Float64Array, a: number, b: number) =>
+      Math.hypot(X[3 * a]! - X[3 * b]!, X[3 * a + 1]! - X[3 * b + 1]!, X[3 * a + 2]! - X[3 * b + 2]!);
+    const rhs = new Float64Array(nf);
+    // Laplace-Zeilen: Ziel 0, feste Punkte mit Dehnung 1 auf die rechte Seite
+    for (const i of this.zeilen) {
+      const nb = h.nachbarn[i]!;
+      const g = this.gew[i]!;
+      let d = nr[i]! < 0 ? -1 : 0;
+      nb.forEach((j, kk) => {
+        if (nr[j]! < 0) d += g[kk]!;
+      });
+      const u = nr[i]!;
+      if (u >= 0) rhs[u] = rhs[u]! + d;
+      nb.forEach((j, kk) => {
+        const w = nr[j]!;
+        if (w >= 0) rhs[w] = rhs[w]! - g[kk]! * d;
+      });
+    }
+    // Bindungen: die Dehnung ihres Loops
+    const { ecken, b } = this.bind;
+    this.js.forEach((j) => {
+      const kt = k.kette[j];
+      let z = 1;
+      if (kt) {
+        const mitte = kt.length >> 1;
+        let jetzt = 0;
+        let anfang = 0;
+        for (const q of [kt[mitte - 1]!, kt[mitte + 1]!]) {
+          if (q === undefined || q < 0) continue;
+          jetzt += abstand(ziele, j, q);
+          anfang += abstand(Z0, j, q);
+        }
+        if (anfang > 1e-9) z = jetzt / anfang;
+      }
+      for (let e = 0; e < 3; e++) if (nr[ecken[3 * j + e]!]! < 0) z -= b[3 * j + e]!;
+      for (let e = 0; e < 3; e++) {
+        const v = nr[ecken[3 * j + e]!]!;
+        if (v >= 0) rhs[v] = rhs[v]! + this.gewicht * b[3 * j + e]! * z;
+      }
+    });
+    const x = this.sys.loesenSpalte(rhs);
+    for (let u = 0; u < nf; u++) sig[this.frei[u]!] = x[u]!;
+    return sig;
   }
 
   /** Lagen beim Anlegen (für die Drehung um die Normale) */
@@ -433,8 +511,8 @@ export class HautZiele {
 
   /**
    * Lagen neu: `iterationen` Runden mit den Zielen (3 Werte je Bindung). Je Punkt: Laplace = Verteilung beim Anlegen (mit der
-   * Normale gedreht, mit den Kanten gestreckt) + Krümmung längs der Normale, ebenso gestreckt: mit Ketten die Krümmung, die die
-   * Loops vorgeben (`KruemmungsFeld`), sonst die beim Anlegen.
+   * Normale gedreht) + Krümmung längs der Normale, mit der Dehnung aus den Loops gestreckt: mit dem Krümmungsfeld die Krümmung,
+   * die die Loops vorgeben (`KruemmungsFeld`), sonst die beim Anlegen. Nichts davon hängt an der Dehnung der Haut selbst.
    */
   schritt(ziele: Float64Array, iterationen = 2): void {
     const h = this.h;
@@ -443,6 +521,8 @@ export class HautZiele {
     const nr = this.nr;
     const r = this.ruhe;
     const nf = this.frei.length;
+    const sig = this.dehnung(ziele);
+    this.letzteDehnung = sig;
     for (let it = 0; it < iterationen; it++) {
       const m = vermessen(h, this.gew);
       const zKap = this.feld ? this.feld.ziel(ziele, m.nor) : null;
@@ -480,14 +560,13 @@ export class HautZiele {
             t[2] * co + (nx * t[1] - ny * t[0]) * si + nz * nt * (1 - co),
           ];
         }
-        const s = Math.sqrt(m.kante2[i]! / r.kante2[i]!);
-        // wie die Verteilung nur mit der Kante gestreckt (nicht mit ihrem Quadrat): eine gleichmäßig vergrößerte Kugel bleibt so
-        // genau eine Kugel; mit Kante² blähte sich die höher gezogene Kugel in der Tiefe auf (150 → 186)
+        // die Krümmung mit der Dehnung gestreckt (nicht mit ihrem Quadrat: mit Kante² blähte sich die höher gezogene Kugel in der
+        // Tiefe auf, 150 → 186), die Verteilung in der Fläche nicht
         const kz = zKap ? zKap[i]! : NaN;
-        const k = (Number.isFinite(kz) ? kz : r.kap[i]!) * r.kante2[i]! * s;
-        let dx = s * t[0] + k * m.nor[3 * i]!;
-        let dy = s * t[1] + k * m.nor[3 * i + 1]!;
-        let dz = s * t[2] + k * m.nor[3 * i + 2]!;
+        const k = (Number.isFinite(kz) ? kz : r.kap[i]!) * r.kante2[i]! * sig[i]!;
+        let dx = t[0] + k * m.nor[3 * i]!;
+        let dy = t[1] + k * m.nor[3 * i + 1]!;
+        let dz = t[2] + k * m.nor[3 * i + 2]!;
         // was fest bleibt, auf die rechte Seite
         if (nr[i]! < 0) {
           dx -= P[3 * i]!;

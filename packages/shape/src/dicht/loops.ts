@@ -940,11 +940,12 @@ export class LoopZug {
       for (const v of [...aufLoop]) if (h.spiegel[v]! >= 0) aufLoop.add(h.spiegel[v]!);
       for (const l of loops) if (!l.kap) kruemmungMessen(h, l, kap, aufLoop);
     }
-    this.ketten = kruemmung ? kruemmungsKetten(this.plan, loops) : null;
-    this.loeser = new HautZiele(h, this.plan.bind, zieleAus(this.plan, this.start), bereich, 100, kantenGewichte(h, loops), this.ketten);
+    // die Ketten tragen die Dehnung der Loops immer, die Krümmung nur mit `kruemmung`
+    this.ketten = kruemmungsKetten(this.plan, loops);
+    this.loeser = new HautZiele(h, this.plan.bind, zieleAus(this.plan, this.start), bereich, 100, kantenGewichte(h, loops), this.ketten, kruemmung);
   }
 
-  private readonly ketten: KruemmungsKetten | null;
+  private readonly ketten: KruemmungsKetten;
 
   /**
    * Am Ende des Zugs: Jeder Loop trägt seine Krümmung weiter, um die Änderung dieses Zugs (Stellen ohne Messung, Ecken, behalten
@@ -952,7 +953,7 @@ export class LoopZug {
    */
   kruemmungFestlegen(loops: readonly Loop[]): void {
     const feld = this.loeser.feld;
-    if (!feld || !this.ketten) return;
+    if (!feld) return;
     const neu = loops.map((l) => (l.kap ? l.proben.map((_, j) => kruemmungAn(l, l.s[j]!)) : null));
     for (const [j, d] of feld.aenderung) {
       if (this.plan.spiegel[j]) continue;

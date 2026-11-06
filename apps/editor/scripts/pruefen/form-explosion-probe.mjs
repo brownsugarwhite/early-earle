@@ -1,0 +1,220 @@
+// Form zuerst (06.11.2026), Florians Explosion (`kurven.html`): Bei einfachen Formen verknittert die Haut, „explodiert“, und die Seite
+// hängt sich auf. Nachgestellt mit der Maus: Kugel, drei Loops (Ring waagerecht, Mitte, Ring senkrecht), dann weite Züge an den
+// Kreuzungen wie in seinen Bildern, mit vielen Mausschritten (jede Bewegung ist ein Schritt des Lösers).
+// FALL=a: hintere Kreuzung weit nach hinten und Ecke, vordere nach vorn, obere weit nach vorn (Bild „Ei mit Überhang“).
+// FALL=b: neuer Punkt auf der Mitte zwischen oben und vorn, weit nach vorn gezogen, dann der Rücken nach hinten (Bild „Schnabel“).
+// FALL=c: Schnabel wie b, dann die Griffe an der Spitze herumgedreht: die Linie schlägt eine Schlaufe (erstes Bild, Explosion).
+// Ohne Verdichten: KURVEN_URL='http://localhost:5193/kurven.html?verdichten=0'. WO=1 nennt die Orte der Knicke über 60°.
+// Je Zug: Dauer, Punkte, Stufen, Zerlegen, Bereich, größter Knick, Knicke über 60°, umgeklappte Dreiecke, Ausdehnung.
+// Aufruf aus apps/editor: node scripts/pruefen/form-explosion-probe.mjs <ordner>
+import { chromium } from '@playwright/test';
+
+const ordner = process.argv[2] ?? '.';
+const fall = process.env.FALL ?? 'a';
+const schritte = Number(process.env.SCHRITTE ?? 60);
+const basis = process.env.KURVEN_URL ?? 'http://localhost:5193/kurven.html';
+const browser = await chromium.launch();
+const seite = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1 });
+const fehler = [];
+seite.on('console', (m) => {
+  if (m.type() === 'error') fehler.push(m.text());
+});
+seite.on('pageerror', (e) => fehler.push(String(e)));
+await seite.goto(basis);
+await seite.waitForFunction(() => window.__kurven !== undefined);
+await seite.waitForTimeout(400);
+
+const K = (f, ...a) => seite.evaluate(([f2, a2]) => window.__kurven[f2](...a2), [f, a]);
+const loops = () => K('loops');
+const bild = (a, p) => K('bild', a, p);
+const xy = (p) => [p.x, p.y];
+const ziehen = async ([x, y], [x2, y2], n = schritte) => {
+  await seite.mouse.move(x, y);
+  await seite.mouse.down();
+  for (let i = 1; i <= n; i++) await seite.mouse.move(x + ((x2 - x) * i) / n, y + ((y2 - y) * i) / n);
+  await seite.mouse.up();
+  await seite.waitForTimeout(100);
+};
+
+/** Knicke zwischen Nachbardreiecken (Grad): größter, 99 %, Zahl über 60°; dazu umgeklappte Dreiecke und Ausdehnung */
+const vermessen = () =>
+  seite.evaluate(() => {
+    const k = window.__kurven;
+    const P = k.lagen();
+    const T = k.dreiecke();
+    const n = [];
+    for (let i = 0; i < T.length; i += 3) {
+      const [a, b, c] = [T[i], T[i + 1], T[i + 2]];
+      const ab = [P[3 * b] - P[3 * a], P[3 * b + 1] - P[3 * a + 1], P[3 * b + 2] - P[3 * a + 2]];
+      const ac = [P[3 * c] - P[3 * a], P[3 * c + 1] - P[3 * a + 1], P[3 * c + 2] - P[3 * a + 2]];
+      const f = [ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]];
+      const l = Math.hypot(...f) || 1;
+      n.push(f.map((x) => x / l));
+    }
+    const kanten = new Map();
+    for (let t = 0; t < T.length / 3; t++) {
+      for (let e = 0; e < 3; e++) {
+        const a = T[3 * t + e];
+        const b = T[3 * t + ((e + 1) % 3)];
+        const s = a < b ? `${a},${b}` : `${b},${a}`;
+        const l = kanten.get(s);
+        if (l) l.push(t);
+        else kanten.set(s, [t]);
+      }
+    }
+    const w = [];
+    const wo = [];
+    for (const ts of kanten.values()) {
+      if (ts.length !== 2) continue;
+      const [p, q] = [n[ts[0]], n[ts[1]]];
+      const g = (Math.acos(Math.max(-1, Math.min(1, p[0] * q[0] + p[1] * q[1] + p[2] * q[2]))) * 180) / Math.PI;
+      w.push(g);
+      if (g > 60) {
+        const t = T.slice(3 * ts[0], 3 * ts[0] + 3);
+        wo.push(t.reduce((s2, v) => [s2[0] + P[3 * v] / 3, s2[1] + P[3 * v + 1] / 3, s2[2] + Math.abs(P[3 * v + 2]) / 3], [0, 0, 0]).map((x) => Math.round(x / 20) * 20));
+      }
+    }
+    w.sort((x, y) => x - y);
+    return {
+      max: w[w.length - 1],
+      p99: w[Math.floor(0.99 * (w.length - 1))],
+      ueber60: w.filter((x) => x > 60).length,
+      umgeschlagen: k.umgeschlagen(),
+      masse: k.masse(),
+      wo: [...new Set(wo.map((q) => q.join(',')))].slice(0, 12),
+    };
+  });
+
+const zeile = async (name, ms) => {
+  const z = await K('zeiten');
+  const m = await vermessen();
+  const zug = z.zug.slice(-schritte);
+  const mittel = zug.reduce((s, v) => s + v, 0) / Math.max(1, zug.length);
+  console.log(
+    `${name}: ${ms} ms gesamt · Punkte ${z.punkte} · Stufen ${z.stufen} (letzte ${z.stufeMs} ms) · zerlegen ${z.zerlegen} ms · Bereich ${z.bereich} · ` +
+      `je Bewegung ${mittel.toFixed(1)} ms (max ${Math.max(...zug).toFixed(0)}) · Knick max ${m.max.toFixed(0)}°, p99 ${m.p99.toFixed(1)}°, über 60° ${m.ueber60} · ` +
+      `umgeklappt ${m.umgeschlagen} · Maße ${m.masse.join('/')}`,
+  );
+  if (process.env.WO && m.wo.length) console.log(`  Knicke über 60° bei (x, y, |z|, auf 20 gerundet): ${m.wo.join(' | ')}`);
+};
+const schnell = async (name, f) => {
+  const t0 = Date.now();
+  await f();
+  await zeile(name, Date.now() - t0);
+};
+const foto = async (name) => {
+  await seite.screenshot({ path: `${ordner}/form-explosion-${fall}-${name}-2026-11-06.jpg`, type: 'jpeg', quality: 85 });
+};
+
+// ---------- Aufbau: Ring waagerecht (Seite), Mitte (Top), Ring senkrecht (Seite) ----------
+await seite.keyboard.press('l');
+await ziehen(xy(await bild('seite', { x: -200, y: 0, z: 0 })), xy(await bild('seite', { x: 200, y: 0, z: 0 })), 6);
+await seite.keyboard.press('l');
+await ziehen(xy(await bild('top', { x: -200, y: 0, z: 0 })), xy(await bild('top', { x: 200, y: 0, z: 0 })), 6);
+await seite.keyboard.press('l');
+await ziehen(xy(await bild('seite', { x: 10, y: 200, z: 0 })), xy(await bild('seite', { x: 10, y: -200, z: 0 })), 6);
+await seite.keyboard.press('Escape');
+await zeile('Aufbau', 0);
+
+const L0 = await loops();
+const waagerecht = L0.find((l) => l.art === 'ring' && l.punkte.every((p) => Math.abs(p.ref.y) < 30));
+const senkrecht = L0.find((l) => l.art === 'ring' && l !== waagerecht);
+const punktVon = async (id, wahl) => {
+  const l = (await loops()).find((q) => q.id === id);
+  return l.punkte.reduce((b, p) => (wahl(p.ref) > wahl(b.ref) ? p : b));
+};
+
+if (fall === 'a') {
+  // hintere Kreuzung (+x) weit nach hinten, dann Ecke
+  let p = await punktVon(waagerecht.id, (q) => q.x);
+  await schnell('hinten +150', async () => ziehen(xy(await bild('seite', p.ref)), xy(await bild('seite', { ...p.ref, x: p.ref.x + 150 }))));
+  p = await punktVon(waagerecht.id, (q) => q.x);
+  await seite.keyboard.down('Alt');
+  await seite.mouse.click(...xy(await bild('seite', p.ref)));
+  await seite.keyboard.up('Alt');
+  await seite.waitForTimeout(150);
+  await seite.keyboard.press('Escape');
+  await zeile('hinten Ecke', 0);
+  // vordere Kreuzung (−x) nach vorn
+  p = await punktVon(waagerecht.id, (q) => -q.x);
+  await schnell('vorn −100', async () => ziehen(xy(await bild('seite', p.ref)), xy(await bild('seite', { ...p.ref, x: p.ref.x - 100 }))));
+  await seite.keyboard.press('Escape');
+  // obere Kreuzung weit nach vorn (über die vordere hinaus)
+  p = await punktVon(senkrecht.id, (q) => q.y);
+  await schnell('oben −300', async () => ziehen(xy(await bild('seite', p.ref)), xy(await bild('seite', { ...p.ref, x: p.ref.x - 300, y: p.ref.y - 20 }))));
+  await foto('1');
+  // und noch einmal zurück und wieder hin (Florian zieht mehrmals)
+  p = await punktVon(senkrecht.id, (q) => q.y);
+  await schnell('oben +120', async () => ziehen(xy(await bild('seite', p.ref)), xy(await bild('seite', { ...p.ref, x: p.ref.x + 120 }))));
+  p = await punktVon(senkrecht.id, (q) => q.y);
+  await schnell('oben −150', async () => ziehen(xy(await bild('seite', p.ref)), xy(await bild('seite', { ...p.ref, x: p.ref.x - 150, y: p.ref.y + 30 }))));
+  await foto('2');
+} else if (fall === 'd') {
+  // Stauchen: die untere Kreuzung weit nach oben in den Körper, dann die obere nach unten (die Haut dazwischen wird gestaucht)
+  let p = await punktVon(senkrecht.id, (r) => -r.y);
+  await schnell('unten +150', async () => ziehen(xy(await bild('seite', p.ref)), xy(await bild('seite', { ...p.ref, y: p.ref.y + 150 }))));
+  p = await punktVon(senkrecht.id, (r) => r.y);
+  await schnell('oben −100', async () => ziehen(xy(await bild('seite', p.ref)), xy(await bild('seite', { ...p.ref, y: p.ref.y - 100 }))));
+  await foto('1');
+} else if (fall === 'c') {
+  // Schnabel wie b, dann die Griffe an der Spitze weit herumdrehen: die Linie schlägt eine Schlaufe (Florians erstes Bild)
+  const mitte = L0.find((l) => l.art === 'mitte');
+  const q = { x: -150 * Math.SQRT1_2, y: 150 * Math.SQRT1_2, z: 0 };
+  const [cx, cy] = xy(await bild('seite', q));
+  await seite.mouse.click(cx, cy);
+  await seite.waitForTimeout(60);
+  await seite.mouse.click(cx, cy);
+  await seite.waitForTimeout(300);
+  await seite.keyboard.press('Escape');
+  const p = await punktVon(mitte.id, (r) => -Math.hypot(r.x - q.x, r.y - q.y));
+  await schnell('Schnabel −200/−50', async () => ziehen(xy(await bild('seite', p.ref)), xy(await bild('seite', { ...p.ref, x: p.ref.x - 200, y: p.ref.y - 50 }))));
+  const griffMitte = async (id, i, g) =>
+    seite.evaluate(
+      ([id2, i2, g2]) => {
+        const e = document.querySelector(`#blatt-seite rect.griff[data-l="${id2}"][data-i="${i2}"][data-g="${g2}"]`);
+        if (!e) return null;
+        const r = e.getBoundingClientRect();
+        return [r.left + r.width / 2, r.top + r.height / 2];
+      },
+      [id, i, g],
+    );
+  for (const [g, dx, dy] of [
+    ['aus', 160, 140],
+    ['ein', -60, 160],
+  ]) {
+    const m1 = (await loops()).find((l) => l.id === mitte.id);
+    const i = m1.punkte.reduce((b, r, k) => (r.ref.x < m1.punkte[b].ref.x ? k : b), 0);
+    await seite.mouse.click(...xy(await bild('seite', m1.punkte[i].ref)));
+    await seite.waitForTimeout(450);
+    const pos = await griffMitte(mitte.id, i, g);
+    if (!pos) {
+      console.log(`Griff ${g} an Punkt ${i} nicht gefunden`);
+      continue;
+    }
+    await schnell(`Griff ${g} herum`, async () => ziehen(pos, [pos[0] + dx, pos[1] + dy]));
+    await seite.waitForTimeout(450);
+  }
+  await foto('1');
+} else {
+  // neuer Punkt auf der Mitte zwischen oben und vorn (Doppelklick auf die Linie), weit nach vorn und unten gezogen
+  const mitte = L0.find((l) => l.art === 'mitte');
+  const q = { x: -150 * Math.SQRT1_2, y: 150 * Math.SQRT1_2, z: 0 };
+  const [cx, cy] = xy(await bild('seite', q));
+  await seite.mouse.click(cx, cy);
+  await seite.waitForTimeout(60);
+  await seite.mouse.click(cx, cy);
+  await seite.waitForTimeout(300);
+  await seite.keyboard.press('Escape');
+  let p = await punktVon(mitte.id, (r) => -Math.hypot(r.x - q.x, r.y - q.y));
+  console.log(`neuer Punkt auf der Mitte bei (${p.ref.x.toFixed(0)}, ${p.ref.y.toFixed(0)})`);
+  await schnell('Schnabel −200/−50', async () => ziehen(xy(await bild('seite', p.ref)), xy(await bild('seite', { ...p.ref, x: p.ref.x - 200, y: p.ref.y - 50 }))));
+  await foto('1');
+  p = await punktVon(mitte.id, (r) => -r.x);
+  await schnell('Schnabel −60/+40', async () => ziehen(xy(await bild('seite', p.ref)), xy(await bild('seite', { ...p.ref, x: p.ref.x - 60, y: p.ref.y + 40 }))));
+  // hintere Kreuzung oben (Rücken) nach hinten
+  p = await punktVon(senkrecht.id, (r) => r.y);
+  await schnell('oben +120', async () => ziehen(xy(await bild('seite', p.ref)), xy(await bild('seite', { ...p.ref, x: p.ref.x + 120 }))));
+  await foto('2');
+}
+console.log(fehler.length ? `Fehler: ${fehler.slice(0, 3).join(' | ')}` : 'keine Fehler in der Konsole');
+await browser.close();
