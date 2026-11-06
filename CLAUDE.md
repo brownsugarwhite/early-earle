@@ -1294,6 +1294,22 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     `loops`), Grundform über gleiche Lagen. Fenster-Proben nie parallel zu `vitest` laufen lassen: Unter Last kommen weniger
     Mausschritte an (140 ms je Bewegung), der Zug geht einen anderen Weg.
   - Bilder `docs/progress/editor/form-pilz-{vorher,nachher}-2026-11-06.jpg`, `form-kurz-hammer-{vorher,nachher}-2026-11-06.jpg`.
+- **2026-11-06 (nachmittags): Härte geprüft, FiberMesh gelesen, Konzept „Kurven als Wahrheit“ zur Freigabe** (Florian: „machen wir
+  wieder sonderregeln gerade?“ → teilweise; dann „die härte hat bei mir noch nicht die erwartete wirkung … Was macht z.B FiberMesh
+  anders? … ein Werkzeug wie P bei Illustrator … Punkte löschen … wie bei Illustrator?“).
+  - **Härte gemessen** (`scripts/pruefen/form-haerte-probe.mjs`): Pilz mit hartem Rand 3,3° Knick quer über den Rand gegen weich
+    4,2°; nachträglich hart gesetzt keine Wirkung, auch nach einem Zug; Linse (oben und unten zur Mitte) ohne Kante, zwei runde
+    Kappen gäben ≈ 67°. Wirkung nur, wo die Linie selbst gegen die Haut bewegt wird (Braue 37° gegen 28°). Ursache: Das Gedächtnis
+    der Haut hält die alte runde Krümmung beider Seiten; Härte erlaubt den Knick nur, nichts erzeugt ihn, und ohne Zug rechnet sich
+    nichts neu.
+  - **FiberMesh** (Nealen u. a. 2007): rechnet die Fläche nach jeder Änderung aus den Kurven neu (Glättung bis zum Stillstand, Ziele
+    nur in Normalenrichtung, Kantenlängen an den Kurven, nach dem Zug neu vernetzt); scharf = nur Lage (C0); Kurvenart ändern oder
+    Kurve löschen formt sofort neu. Grenzen laut Paper: netzabhängig, kleine Netze. Kurzversuch auf unserem Netz (nicht im Code):
+    die unberührte Kugel bleibt nicht rund (9 %), Kante noch klein — braucht ein gleichmäßiges Netz, also einen eigenen Beweis.
+  - **Vorschlag** [`docs/plans/2026-11-06-kurven-als-wahrheit.md`](docs/plans/2026-11-06-kurven-als-wahrheit.md): A Linien als
+    Bézier-Pfade mit gespeicherten Griffen, Stift P, Löschen und Einfügen wie Illustrator (die Schwellen aus abgelesenen Griffen
+    fallen weg), danach B Fläche aus den Kurven als Beweis mit Abbruchkriterien. Entscheidung bei Florian.
+  - Bilder `docs/progress/editor/form-haerte-{pilz-hart,linse-hart,linse-weich}-2026-11-06.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
