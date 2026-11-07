@@ -30,6 +30,39 @@ export function stueckPunkt(P0: V3, a: V3, b: V3, P3: V3, t: number): V3 {
   };
 }
 
+/** Erste und zweite Ableitung des Stücks bei t */
+function ableitungen(P0: V3, a: V3, b: V3, P3: V3, t: number): { d1: V3; d2: V3 } {
+  const C1 = plus(P0, a);
+  const C2 = plus(P3, b);
+  const u = 1 - t;
+  const q0 = minus(C1, P0);
+  const q1 = minus(C2, C1);
+  const q2 = minus(P3, C2);
+  const d1 = plus(plus(mal(q0, 3 * u * u), mal(q1, 6 * u * t)), mal(q2, 3 * t * t));
+  const d2 = plus(mal(minus(q1, q0), 6 * u), mal(minus(q2, q1), 6 * t));
+  return { d1, d2 };
+}
+
+/**
+ * Stelle des Punkts auf dem Stück, der q am nächsten liegt (Newton ab t0, in [0, 1]): Wo eine Linie neben ihrem Pfad liegt, ist das
+ * der Ort quer zur Linie, nicht der bei gleicher Bogenlänge (dort lag sie bis 7 Einheiten längs daneben).
+ */
+export function stueckNaechstes(P0: V3, a: V3, b: V3, P3: V3, q: V3, t0: number): number {
+  let t = Math.max(0, Math.min(1, t0));
+  for (let k = 0; k < 12; k++) {
+    const r = minus(stueckPunkt(P0, a, b, P3, t), q);
+    const { d1, d2 } = ableitungen(P0, a, b, P3, t);
+    const f1 = skalar(d1, r);
+    const n2 = skalar(d1, d1);
+    const f2 = n2 + skalar(d2, r);
+    const dt = (f2 > 1e-12 * Math.max(1, n2) ? f1 / f2 : f1 / (n2 || 1)) || 0;
+    const neu = Math.max(0, Math.min(1, t - dt));
+    if (Math.abs(neu - t) < 1e-12) return neu;
+    t = neu;
+  }
+  return t;
+}
+
 /**
  * Das Stück bei t teilen (de Casteljau): Die beiden Hälften zusammen sind genau das alte Stück. Ergebnis: der Griff an P0 für die
  * erste Hälfte, der neue Punkt F mit seinen Griffen (`ein` zurück, `aus` nach vorn) und der Griff an P3 für die zweite.

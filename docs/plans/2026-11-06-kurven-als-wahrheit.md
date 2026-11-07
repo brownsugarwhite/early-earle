@@ -419,3 +419,79 @@ Löser im Fenster mit der Maus, gleicher Ablauf (Kugel, drei Loops; `?haut=gedae
   (wie in FiberMesh), daher 0,74 statt 0,23 nach dem Hin und Zurück.
 - Prüfungen: `scripts/pruefen/form-hin-zurueck.mjs`, `form-greifen-probe.mjs` (großer Zug), neu `form-tempo-oertlich.mjs` (kleiner
   Zug), je mit `KURVEN_URL`.
+
+**Nachtrag (07.11.): Die Linie ist ihr Pfad, gebaut.** Florian: „ja genau zur Bézier-Kurve machen“. Eine Variante hat er nicht
+gewählt; gebaut ist meine Empfehlung „ohne Zusatzpunkte“, „Punkte wo nötig“ liegt zum Vergleich hinter `?punkte=noetig`.
+
+- **Was jetzt gilt (Grundform):**
+  - Jede Probe einer Linie hat ihren Platz auf dem Pfad (t in ihrem Stück). Ihr Ziel ist genau der Pfad dort (`pfadLagen`). Im Zug
+    kommt zur Änderung des Pfads hinzu, was der Linie beim Anfang noch fehlte (`mitRest`). Die Punkte bleiben, wohin sie gezogen
+    wurden: `festlegen` liest sie nicht mehr von der Haut ab.
+  - **Anlegen:** Die Griffe werden nach dem nächsten Punkt angepasst (drei Runden wie bei Schneider). Jede Probe kommt an die Stelle
+    des nächsten Punkts auf ihrem Pfad (`pfadParameter`), damit sie nur quer zur Linie springt; vorher lag sie an gleicher Stelle bis
+    7,2 längs daneben. Dann springt die Linie örtlich und mit Gedächtnis auf den Pfad (`linienAufPfad`).
+  - **Kreuzungen:** Ein neuer Loop lässt den Proben der Loops, die er kreuzt, ihre Stelle (`loopErgaenzt`). Vorher wurde sie neu als
+    Bogenlänge vermessen, und eine Kreuzung lag dann längs neben der wirklichen. Eine Kreuzung ist ein Ort auf beiden Pfaden.
+  - **Ringenden:** Ein Ende eines Rings, das nur Griffe hält, ist glatt und steht senkrecht zur Mittelebene.
+  - **O** formt Loops mit Pfad wie Blender eine Kurve: Punkte und Griffspitzen gehen je mit ihrem Gewicht mit, glatte Punkte bleiben
+    glatt (`griffeProportional`). Vorher ging O je Probe, und danach wurden die Griffe neu abgelesen.
+  - **Stift:** Eine geklickte Ecke hat im Blatt keinen Griff. Ein gerade gezeichnetes Stück bekommt ein Drittel der Sehne, es bleibt
+    gerade. In der Tiefe folgt die Ecke der Haut (`eckenTiefe`).
+    - Mit angepassten Griffen lag die Linie im Blatt bis 2,4 px neben der Zeichnung.
+    - Ganz ohne Griff schnitt ein Rechteck quer über die Kugel als Sehne durch die Haut: 32 umgeklappte Dreiecke, mit Tiefe allein
+      noch 20, jetzt 0.
+    - Wird eine Ecke ohne Griffe per Doppelklick glatt, bekommt sie Griffe von je einem Drittel des Abstands zu ihren Nachbarn.
+  - **Pose:** In der Pose bleibt alles wie bisher; dort folgen die Linien der Änderung ihres Pfads.
+- **Gemessen im Fenster mit der Maus** (Kugel, drei Loops; `form-restversatz.mjs`, `form-hin-zurueck.mjs` mit neu `ZYKLEN`):
+
+| | bis 06.11. | jetzt |
+| --- | --- | --- |
+| Linie ↔ Pfad an gleicher Stelle | bis 7,2 (neben der Kurve 2,0) | 0,00 |
+| Griff ↔ Linie am Punkt | bis 3,1° | 0,0° |
+| Kugel nach dem Anlegen, höchstens / Mittel | 0,23 / 0,15 | 2,23 / 0,39 |
+| nach dem ersten Zug (der Löser rechnet die ganze Haut) | 0,65 / 0,22 | 2,35 / 1,09 |
+| Hin und zurück, 2. und 3. Mal gegen das vorige (Form längs der Normale) | 0,15 / 0,13 | 0,19 / 0,18 |
+
+  Der Punkt kommt in beiden Fällen genau zurück (0,00), die Linie jetzt auch (die Mitte liegt danach wieder bis 2,23 neben dem
+  Kreis wie vor dem Zug).
+- **Der Preis „ohne Zusatzpunkte“:**
+  - Ein Halbkreis als ein Stück liegt bis 1,4 % neben dem Kreis, und seine Krümmung schwankt längs des Stücks um etwa 15 %.
+  - Die Haut entsteht aus der Krümmung der Linien. Deshalb weicht nach dem ersten Zug die ganze Kugel ab, nicht nur an den Linien.
+  - Im Kern bis zum Stillstand gerechnet (`scripts/pruefen/form-gleichgewicht.ts`, 60 Runden), höchstens / Mittel:
+    - bisher 0,70 / 0,24;
+    - genau ohne Zusatzpunkte 2,49 / 1,15;
+    - Punkte wo nötig (0,43, wie `?punkte=noetig`) 0,67 / 0,22, mit 4 / 6 / 3 statt 3 / 4 / 3 Punkten: Der halbe Ring bekommt einen
+      Punkt, die Mitte zwei, wie ein Kreis in Illustrator vier hat.
+  - Bilder (`scripts/pruefen/form-linie-pfad-bild.mjs`: drei Loops, dann die obere Kreuzung 80 hinauf):
+    `docs/progress/editor/form-linie-pfad-{ohne,noetig}-2026-11-07.jpg`.
+    - Ohne Zusatzpunkte: ein sauberes Ei, unten bis 2,20 neben der Kugel.
+    - Mit Punkten wo nötig: unten 1,61, aber die Mitte bekam ihre Punkte oben und unten genau dort, wo der senkrechte Ring sie danach
+      kreuzt (10 Einheiten daneben). Die obere Kreuzung zieht deshalb nur das kurze Stück bis zu diesem Punkt: oben ein spitzer Zipfel.
+      So ginge das erst mit einer weiteren Regel (eine Kreuzung ersetzt einen nahen Punkt, der von selbst kam).
+- **Verworfen (gemessen):**
+  - Beim Anlegen mit dem Löser über die ganze Haut auf den Pfad: Mit nur einem Loop hält nichts die Kugel rund. Schon der erste Ring
+    zog sie bis 10,6 weg, nach drei Loops 8,9, im Mittel 3,5. Örtlich mit Gedächtnis sind es 2,2, im Mittel 0,4.
+  - Punkte wo nötig mit 0,1: Wegen des Rauschens der Linie im Netz kamen 13 / 10 / 5 Punkte heraus.
+- **Die anderen Proben:**
+  - Pfad: Einfügen genau, Löschen bewegt die Linie zwischen den Nachbarn 0,10 statt 0,17.
+  - Stift: die Linie im Blatt höchstens 0,33 px neben der Zeichnung, vorher 0,35.
+  - Boden: 0,01 unter der Ebene, vorher 0,25.
+  - Braue: 49° gegen 11°.
+  - Pilz: Kante 89,5° bzw. 90,2°, die Reihenfolge ist egal; weich 9°.
+  - Linse: 80° mit 6 umgeklappten statt 83° mit 8.
+  - Augen-Form ohne O um 30° gedreht: 4 umgeklappt statt 10.
+  - Wie vorher: Maul dicht bis 55°, Fressen-Pose 25 für 25, Zoom, Spiegelpunkt, Hammer 0/0, Greifen 14,6 ms je Mausbewegung.
+- **Anders oder schlechter:**
+  - Kugel mit Kante am Äquator: knickt 42,5° statt 27°.
+  - Kreuzung, Griff 60 px seitlich gezogen: knickt 38,8° bzw. 11,3° je nach Reihenfolge der Loops, vorher 41°; den Grund habe ich
+    nicht nachgeprüft.
+  - Überhang (`form-explosion-probe.mjs`, Fall a), nach dem letzten Zug: 6 bis 12 Knicke über 60° und 2 umgeklappte Dreiecke an der
+    Schnabelspitze, vorher 0 / 0. Die Linien liegen dabei nach jedem Schritt genau auf ihrem Pfad (0,00). Es springt also nichts nach;
+    die Form kommt aus den Pfaden selbst. Der senkrechte Ring verlässt die weit vorgezogene Spitze mit seinem alten Griff.
+- **Prüfungen:** Kern `dicht/linieAufPfad.test.ts` (4 Tests), alle 101 Tests unter `src/dicht/` grün; im Fenster neu der Haken
+  `pfadRest` und `PFAD=1` in `form-explosion-probe.mjs`.
+- **Fallen:**
+  - Dateien im Vite-Root nie ändern, während Fenster-Proben laufen: Das Fenster lädt neu, und die laufende Probe misst Unsinn
+    (die Härte-Probe brach so ab).
+  - Proben, die eine Stelle s als Bogenlänge der Linie lesen, liegen daneben: s ist jetzt der Platz auf dem Pfad. Die Kurven-Probe
+    traf deshalb mit dem Doppelklick einen Punkt statt der Linie; jetzt sucht sie die Probe nach ihrem s.

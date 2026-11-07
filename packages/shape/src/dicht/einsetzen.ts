@@ -357,6 +357,48 @@ function loopNeu(h: Haut, l: Loop, kette: readonly number[]): Loop {
 }
 
 /**
+ * Ein anderer Loop, dessen Kette beim Einsetzen neue Punkte bekam (je geteilte Kante einer): Die alten Proben behalten ihre Stelle
+ * s, eine neue liegt auf ihrer Kante dazwischen (s nach dem Anteil), die Punkte bleiben. Bis zum 07.11. wurde s neu als Bogenlänge
+ * vermessen; seit die Linie genau ihr Pfad ist, hat jede Probe dort ihren festen Platz (t im Stück), und neu vermessen rutschten die
+ * Proben auf dem Pfad längs, eine Kreuzung lag dann bis einige Einheiten neben der Stelle, an der sich die Linien wirklich kreuzen.
+ */
+function loopErgaenzt(h: Haut, l: Loop, kette: readonly number[]): Loop {
+  const alt = new Map<number, number>();
+  l.proben.forEach((p, i) => alt.set(p.ecken[0], i));
+  const n = kette.length;
+  const p = kette.map((w) => lage(h.pos, w));
+  if (l.art === 'mitte') p.forEach((q) => (q.z = 0));
+  if (l.art === 'ring') {
+    p[0]!.z = 0;
+    p[n - 1]!.z = 0;
+  }
+  const s = new Float64Array(n);
+  for (let k = 0; k < n; k++) {
+    const i = alt.get(kette[k]!);
+    if (i !== undefined) {
+      s[k] = l.s[i]!;
+      continue;
+    }
+    // neu: zwischen der alten Probe davor und der danach (beim geschlossenen Loop hinter der letzten die erste, eine Länge weiter)
+    const ia = alt.get(kette[k - 1]!)!;
+    const ib = k + 1 < n ? alt.get(kette[k + 1]!)! : 0;
+    const sa = l.s[ia]!;
+    const sb = k + 1 < n ? l.s[ib]! : l.s[0]! + l.laenge;
+    const a = p[k - 1]!;
+    const ab = minus(p[(k + 1) % n]!, a);
+    const f = Math.max(0, Math.min(1, punktProd(minus(p[k]!, a), ab) / (punktProd(ab, ab) || 1)));
+    s[k] = sa + f * (sb - sa);
+  }
+  const ruhe = new Float64Array(3 * n);
+  p.forEach((q, i) => {
+    ruhe[3 * i] = q.x;
+    ruhe[3 * i + 1] = q.y;
+    ruhe[3 * i + 2] = q.z;
+  });
+  return { ...l, proben: kette.map(punktProbe), s, ruhe };
+}
+
+/**
  * Einen Loop ins Netz einsetzen (samt Spiegelbild: der Ring als ganzer Ring, das Paar mit seinem Zwilling). Danach ist jede
  * seiner Proben ein Punkt des Netzes. Andere eingesetzte Loops bekommen die Punkte auf ihren geteilten Kanten dazu. Ergebnis:
  * die neue Haut und alle Loops (in derselben Reihenfolge), null, wenn der Weg nicht aufgeht (dann bleibt alles, wie es war).
@@ -391,7 +433,7 @@ export function loopEinsetzen(h: Haut, loops: readonly Loop[], nr: number): { ha
         const w = r.geteilt.get(schluessel(L.h.n, alt[k]!, alt[(k + 1) % m]!));
         if (w !== undefined) kette.push(w);
       }
-      return kette.length === m ? x : loopNeu(haut, x, kette);
+      return kette.length === m ? x : loopErgaenzt(haut, x, kette);
     });
     alleNeu.push(...r.neu);
     return r.neu;

@@ -103,6 +103,8 @@ const zeile = async (name, ms) => {
       `umgeklappt ${m.umgeschlagen} · Maße ${m.masse.join('/')}`,
   );
   if (process.env.WO && m.wo.length) console.log(`  Knicke über 60° bei (x, y, |z|, auf 20 gerundet): ${m.wo.join(' | ')}`);
+  // PFAD=1 (07.11.): wie weit jede Linie danach höchstens neben ihrem Pfad liegt
+  if (process.env.PFAD) console.log(`  Linie ↔ Pfad je Loop: ${(await K('pfadRest')).map((x) => x.toFixed(2)).join(' / ')}`);
 };
 const schnell = async (name, f) => {
   const t0 = Date.now();

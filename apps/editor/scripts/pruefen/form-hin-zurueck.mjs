@@ -3,6 +3,8 @@
 // senkrecht), der oberste Punkt der Mitte HOCH Einheiten hinauf, loslassen, warten, dann genau zurück auf seinen alten Ort.
 // Gemessen: wie weit die Mitte (der Umriss in der Seite) und die Haut danach von der Kugel abweichen (|r − 150|), und wie wellig die
 // Mitte ist (größter Ausschlag gegen ihre Nachbarn längs der Linie). Zum Vergleich KURVEN_URL mit ?verdichten=0 oder ?kurz=0.
+// ZYKLEN=n (07.11.): n-mal hinaus und zurück; ab dem zweiten Mal auch, wie weit die Haut gegen das vorige Mal liegt (je Punkt Abstand
+// längs der Normale zum nächsten Punkt des vorigen Mals; so zählt nur die Form, nicht das Gleiten der Punkte in der Fläche).
 // Aufruf aus apps/editor: node scripts/pruefen/form-hin-zurueck.mjs <ordner> [name]
 import { chromium } from '@playwright/test';
 
@@ -160,17 +162,72 @@ const finde = (LL) => {
   const m = LL.find((l) => l.art === 'mitte');
   return (neu ? m.punkte.find((p) => Math.abs(p.s - oben.s) < 1e-6) : m.punkte.find((p) => p.kreuzung === oben.kreuzung))?.ref;
 };
-await ziehen(xy(await bild('seite', p0)), xy(await bild('seite', ziel)));
-const draussen = await messen();
-console.log(`${name} ${hoch} hinaus: ${draussen.punkte} Punkte, Mitte ${draussen.proben} Proben, umgeschlagen ${draussen.umgeschlagen}`);
-console.log(`  ${wellenZeile(await wellen(sAlt))}`);
-const p1 = finde(await loops());
-await ziehen(xy(await bild('seite', p1)), xy(await bild('seite', p0)));
-const p2 = finde(await loops());
-const zurueck = await messen();
-console.log(`${name} zurück (Punkt ${Math.hypot(p2.x - p0.x, p2.y - p0.y, p2.z - p0.z).toFixed(2)} neben dem alten Ort): ${zeile(zurueck)}`);
-console.log(`  ${wellenZeile(await wellen(sAlt))}`);
-console.log(`  ${await gewandert()}`);
+/** Haut (Lagen, Dreiecke) für den Vergleich zweier Durchgänge */
+const hautJetzt = async () => ({ P: await K('lagen'), T: await K('dreiecke') });
+/** je Punkt von b: Abstand zum nächsten Punkt von a, längs dessen Normale; größter und Mittel */
+const formAbstand = (a, b) => {
+  const na = new Float64Array(a.P.length);
+  for (let i = 0; i < a.T.length; i += 3) {
+    const [u, v, w] = [a.T[i], a.T[i + 1], a.T[i + 2]];
+    const e1 = [0, 1, 2].map((c) => a.P[3 * v + c] - a.P[3 * u + c]);
+    const e2 = [0, 1, 2].map((c) => a.P[3 * w + c] - a.P[3 * u + c]);
+    const n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+    for (const x of [u, v, w]) for (let c = 0; c < 3; c++) na[3 * x + c] += n[c];
+  }
+  // Raster für die Suche nach dem nächsten Punkt
+  const zelle = 12;
+  const raster = new Map();
+  const key = (x, y, z) => `${Math.floor(x / zelle)},${Math.floor(y / zelle)},${Math.floor(z / zelle)}`;
+  for (let i = 0; i < a.P.length / 3; i++) {
+    const k = key(a.P[3 * i], a.P[3 * i + 1], a.P[3 * i + 2]);
+    if (!raster.has(k)) raster.set(k, []);
+    raster.get(k).push(i);
+  }
+  let max = 0;
+  let summe = 0;
+  const m = b.P.length / 3;
+  for (let j = 0; j < m; j++) {
+    const [x, y, z] = [b.P[3 * j], b.P[3 * j + 1], b.P[3 * j + 2]];
+    let best = -1;
+    let bd = Infinity;
+    const [cx, cy, cz] = [Math.floor(x / zelle), Math.floor(y / zelle), Math.floor(z / zelle)];
+    for (let dx = -1; dx <= 1; dx++)
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dz = -1; dz <= 1; dz++)
+          for (const i of raster.get(`${cx + dx},${cy + dy},${cz + dz}`) ?? []) {
+            const d = Math.hypot(a.P[3 * i] - x, a.P[3 * i + 1] - y, a.P[3 * i + 2] - z);
+            if (d < bd) {
+              bd = d;
+              best = i;
+            }
+          }
+    if (best < 0) continue;
+    const n = [na[3 * best], na[3 * best + 1], na[3 * best + 2]];
+    const l = Math.hypot(...n) || 1;
+    const d = Math.abs(((x - a.P[3 * best]) * n[0] + (y - a.P[3 * best + 1]) * n[1] + (z - a.P[3 * best + 2]) * n[2]) / l);
+    max = Math.max(max, d);
+    summe += d;
+  }
+  return `Haut gegen das vorige Mal bis ${max.toFixed(2)} (Mittel ${(summe / m).toFixed(3)})`;
+};
+let vorige = null;
+let p2 = null;
+for (let zyklus = 1; zyklus <= Number(process.env.ZYKLEN ?? 1); zyklus++) {
+  await ziehen(xy(await bild('seite', finde(await loops()) ?? p0)), xy(await bild('seite', ziel)));
+  const draussen = await messen();
+  console.log(`${name} ${hoch} hinaus (${zyklus}): ${draussen.punkte} Punkte, Mitte ${draussen.proben} Proben, umgeschlagen ${draussen.umgeschlagen}`);
+  console.log(`  ${wellenZeile(await wellen(sAlt))}`);
+  const p1 = finde(await loops());
+  await ziehen(xy(await bild('seite', p1)), xy(await bild('seite', p0)));
+  p2 = finde(await loops());
+  const zurueck = await messen();
+  console.log(`${name} zurück (${zyklus}, Punkt ${Math.hypot(p2.x - p0.x, p2.y - p0.y, p2.z - p0.z).toFixed(2)} neben dem alten Ort): ${zeile(zurueck)}`);
+  console.log(`  ${wellenZeile(await wellen(sAlt))}`);
+  console.log(`  ${await gewandert()}`);
+  const jetzt = await hautJetzt();
+  if (vorige) console.log(`  ${formAbstand(vorige, jetzt)}`);
+  vorige = jetzt;
+}
 // DETAIL=x,y: die Proben der Mitte um diese Stelle (s, Lage, Radius − 150, alt/neu)
 if (process.env.DETAIL) {
   const [dx, dy] = process.env.DETAIL.split(',').map(Number);

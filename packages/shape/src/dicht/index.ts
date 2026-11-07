@@ -77,6 +77,7 @@ export {
   griffeUebernehmen,
   griffZiehen,
   hatGriffe,
+  hatPfad,
   hautLagen,
   kanteAn,
   kanteBei,
@@ -85,11 +86,16 @@ export {
   istSichtbar,
   istEckeVonSelbst,
   griffeAbbilden,
+  griffeProportional,
   kantenGewichte,
   knickWinkel,
   kreuzungenZwischen,
   loopAusSchnitt,
   mittlereKante,
+  pfadAbweichung,
+  pfadLagen,
+  pfadParameter,
+  pfadVersatz,
   probenLage,
   punktEinfuegen,
   punkteLoeschen,
@@ -98,11 +104,12 @@ export {
   spiegelProbe,
   stelleBei,
   strahl,
+  eckenTiefe,
   verschiebungLaengs,
   zieleAus,
 } from './loops';
 export { loopEinsetzen } from './einsetzen';
-export { bernstein, stueckAnpassen, stueckPunkt, stueckTeilen } from './pfad';
+export { bernstein, stueckAnpassen, stueckNaechstes, stueckPunkt, stueckTeilen } from './pfad';
 export { type Verdichtet, verdichten } from './verdichten';
 export {
   type Ansichtsbreite,

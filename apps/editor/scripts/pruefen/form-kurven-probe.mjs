@@ -121,16 +121,13 @@ L = await loops();
 const auge = L[L.length - 1];
 console.log('3 Form:', await ueberblick(), '· Meldung', JSON.stringify(await K('meldung')));
 await foto('form');
-// Doppelklick zwischen zwei Punkten
+// Doppelklick zwischen zwei Punkten (die Probe mit der Stelle s dazwischen; s ist seit 07.11. der Platz auf dem Pfad, nicht mehr die
+// Bogenlänge)
 const sMitte = (auge.punkte[0].s + auge.punkte[1].s) / 2;
-const j = auge.ruhe.length / 3;
 let bestJ = 0;
-let ss = 0;
-for (let k = 1; k < j; k++) {
-  ss += Math.hypot(auge.ruhe[3 * k] - auge.ruhe[3 * k - 3], auge.ruhe[3 * k + 1] - auge.ruhe[3 * k - 2], auge.ruhe[3 * k + 2] - auge.ruhe[3 * k - 1]);
-  if (Math.abs(ss - sMitte) < Math.abs(0)) bestJ = k;
-  if (ss <= sMitte) bestJ = k;
-}
+auge.s.forEach((s, k) => {
+  if (Math.abs(s - sMitte) < Math.abs(auge.s[bestJ] - sMitte)) bestJ = k;
+});
 const pDoppel = await bild('seite', { x: auge.ruhe[3 * bestJ], y: auge.ruhe[3 * bestJ + 1], z: auge.ruhe[3 * bestJ + 2] });
 const vorPunkt = await lagen();
 await seite.mouse.dblclick(pDoppel.x, pDoppel.y);

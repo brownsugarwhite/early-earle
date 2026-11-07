@@ -13,7 +13,7 @@
 import { HautAusKurven } from './ausKurven';
 import { KETTE_K, type KruemmungsKetten } from './kruemmung';
 import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich, kantenSchluessel } from './kurven';
-import { stueckAnpassen, stueckPunkt, stueckTeilen } from './pfad';
+import { stueckAnpassen, stueckNaechstes, stueckPunkt, stueckTeilen } from './pfad';
 
 export type Ansicht = 'seite' | 'front' | 'top';
 /** Ein Punkt der Haut: drei Ecken eines Dreiecks und baryzentrische Gewichte */
@@ -888,11 +888,16 @@ export class LoopZug {
   }
 }
 
-/** Nach einem Zug: Ruhe = Lagen der Proben auf der Haut, jeder Punkt an seiner Stelle darauf. */
-export function festlegen(h: Haut, l: Loop): void {
+/**
+ * Nach einem Zug: Ruhe = Lagen der Proben auf der Haut, jeder Punkt an seiner Stelle darauf. Liegt die Linie genau auf ihrem Pfad
+ * (`punkteLesen` falsch, 07.11.), sind die Punkte die Wahrheit: Sie bleiben, wohin sie gezogen wurden (`cur`), statt von der Haut
+ * zurückgelesen zu werden (sonst wanderten sie um das, was der Löser die Linie verfehlt, und zwei Loops an einer Kreuzung läsen
+ * verschiedene Orte).
+ */
+export function festlegen(h: Haut, l: Loop, punkteLesen = true): void {
   l.ruhe = hautLagen(h, l);
   for (const p of l.punkte) {
-    const q = stelleBei(l, l.ruhe, p.s);
+    const q = punkteLesen ? stelleBei(l, l.ruhe, p.s) : { ...p.cur };
     if (l.art === 'mitte' || (l.art === 'ring' && (p.s <= 1e-6 || p.s >= l.laenge - 1e-6))) q.z = 0;
     p.ref = q;
     p.cur = { ...q };
@@ -1072,6 +1077,187 @@ export function pfadBei(l: Loop, s: number): V3 | null {
   return null;
 }
 
+// ---------- Die Linie ist ihr Pfad (07.11.2026) ----------
+//
+// Florian: „ja genau zur Bézier-Kurve machen“ (nach dem Befund vom 06.11.: Die Linie lag bis 2 Einheiten neben ihrem Pfad, an gleicher
+// Stelle bis 7, und dieser Rest ließ sich mit den Griffen nicht glätten). Jede Probe hat ihren Platz auf dem Pfad, t = (s − s0)/(s1 − s0)
+// in ihrem Stück; in der Grundform ist ihr Ziel genau der Pfad dort, die Haut folgt. Beim Anlegen bekommt jede Probe die Stelle des
+// nächsten Punkts auf dem Pfad (`pfadParameter`), damit sie nur quer zur Linie springt; danach behält sie ihr t (Züge, Teilen beim
+// Einfügen, Verdichten, eingesetzte Loops). Ohne Zusatzpunkte (Florians Wahl): Wo ein Stück einen Bogen nicht genau beschreibt, folgt
+// die Haut dem Stück (ein Halbkreis als ein Stück liegt bis 1,4 % neben dem Kreis).
+
+/** Der Loop hat einen Pfad: gespeicherte Griffe und mindestens zwei Punkte (ein geschlossener Loop mit einem Punkt hat kein Stück, das ihn beschreibt) */
+export const hatPfad = (l: Loop): boolean => hatGriffe(l) && l.punkte.length >= 2 && l.punkte.every((p) => p.ein && p.aus);
+
+/**
+ * Lage je Probe auf dem Pfad (3 je Probe): an ihrer Stelle t in ihrem Stück, aus den Punkten `P` (sonst ihren Lagen) und den Griffen
+ * `G` (sonst den gespeicherten); null ohne Pfad. Mittelebene und Enden eines Rings genau auf z = 0.
+ */
+export function pfadLagen(l: Loop, P?: readonly V3[], G?: readonly { ein: V3; aus: V3 }[]): Float64Array | null {
+  if (!hatPfad(l)) return null;
+  const n = l.proben.length;
+  const out = new Float64Array(3 * n);
+  const gesetzt = new Uint8Array(n);
+  const ort = (i: number): V3 => P?.[i] ?? l.punkte[i]!.ref;
+  for (const st of stuecke(l)) {
+    const h = st.s1 - st.s0;
+    const A = ort(st.a);
+    const B = ort(st.b);
+    const a = G?.[st.a]?.aus ?? l.punkte[st.a]!.aus!;
+    const b = G?.[st.b]?.ein ?? l.punkte[st.b]!.ein!;
+    for (let j = 0; j < n; j++) {
+      if (gesetzt[j]) continue;
+      const x = imStueck(l, st, l.s[j]!);
+      if (x === null) continue;
+      const q = stueckPunkt(A, a, b, B, h > 1e-9 ? (x - st.s0) / h : 0);
+      out[3 * j] = q.x;
+      out[3 * j + 1] = q.y;
+      out[3 * j + 2] = q.z;
+      gesetzt[j] = 1;
+    }
+  }
+  if (l.art === 'mitte') for (let j = 0; j < n; j++) out[3 * j + 2] = 0;
+  if (l.art === 'ring') {
+    out[2] = 0;
+    out[3 * n - 1] = 0;
+  }
+  return out;
+}
+
+/** Was die Linie (`L`, 3 je Probe) zu ihrem Pfad fehlt, je Probe; null ohne Pfad */
+export function pfadVersatz(l: Loop, L: Float64Array = l.ruhe): Float64Array | null {
+  const p = pfadLagen(l);
+  if (!p) return null;
+  for (let k = 0; k < p.length; k++) p[k] = p[k]! - L[k]!;
+  return p;
+}
+
+/** Größter Abstand der Linie zu ihrem Pfad an gleicher Stelle (0 ohne Pfad) */
+export function pfadAbweichung(l: Loop, L: Float64Array = l.ruhe): number {
+  const d = pfadVersatz(l, L);
+  let m = 0;
+  if (d) for (let j = 0; j < d.length; j += 3) m = Math.max(m, Math.hypot(d[j]!, d[j + 1]!, d[j + 2]!));
+  return m;
+}
+
+/**
+ * Stelle jeder Probe auf dem Pfad: t des nächsten Punkts ihres Stücks (Newton ab ihrer heutigen Stelle), im Stück streng steigend.
+ * Ergebnis je Probe t (NaN: liegt auf einem Punkt) und das neue s, fortlaufend in der Reihenfolge der Proben (eine Probe hinter dem
+ * Ende eines geschlossenen Loops, die über die Naht von s rutscht, bekommt ein s unter 0).
+ */
+function pfadStellen(l: Loop, L: Float64Array): { t: Float64Array; s: Float64Array } {
+  const n = l.proben.length;
+  const t = new Float64Array(n).fill(Number.NaN);
+  const s = Float64Array.from(l.s);
+  for (const st of stuecke(l)) {
+    const A = l.punkte[st.a]!;
+    const B = l.punkte[st.b]!;
+    if (!A.aus || !B.ein) continue;
+    const h = st.s1 - st.s0;
+    const pr = probenIn(l, st).sort((p, q) => p.t - q.t);
+    const u = pr.map((x) => stueckNaechstes(A.ref, A.aus!, B.ein!, B.ref, lage(L, x.j), x.t));
+    const eps = 1e-6;
+    for (let k = 0; k < u.length; k++) u[k] = Math.min(1 - eps * (u.length - k), Math.max(u[k]!, k > 0 ? u[k - 1]! + eps : eps));
+    pr.forEach((x, k) => {
+      t[x.j] = u[k]!;
+      // die Probe lag hinter dem Ende des geschlossenen Loops (im letzten Stück über die Naht von s gezählt): dort bleibt sie
+      s[x.j] = st.s0 + u[k]! * h - (geschlossen(l) && l.s[x.j]! < st.s0 ? l.laenge : 0);
+    });
+  }
+  return { t, s };
+}
+
+/**
+ * Jede Probe an die Stelle des nächsten Punkts auf ihrem Pfad (neues s). Ein geschlossener Loop wird so verschoben, dass seine erste
+ * Probe wieder bei s = 0 liegt (Punkte und Proben um dasselbe, ihre Reihenfolge bleibt). Die Lagen ändern sich nicht; wohin die Linie
+ * danach gezogen wird (`pfadVersatz`), ist nur noch quer zu ihr.
+ */
+export function pfadParameter(l: Loop, L: Float64Array = l.ruhe): void {
+  if (!hatPfad(l)) return;
+  const { s } = pfadStellen(l, L);
+  if (geschlossen(l) && s[0] !== 0) {
+    const d = s[0]!;
+    for (let j = 0; j < s.length; j++) s[j] = s[j]! - d;
+    for (const p of l.punkte) p.s -= d;
+  }
+  l.s = s;
+}
+
+/**
+ * Griffe der Punkte `ecken` (Index; mit dem Stift geklickt, wie in Illustrator ohne Griff) so, dass der Pfad im Blatt genau die
+ * Zeichnung ist und in der Tiefe der Haut folgt (`tiefe`: Einheitsrichtung der Blickachse des Blatts, in dem gezeichnet wurde): im
+ * Blatt keiner (ein gerade gezeichnetes Stück: ein Drittel der Sehne, es bleibt gerade), in der Tiefe nach kleinsten Quadraten über
+ * die Stücke an ihnen (die Stelle jeder Probe aus dem Blatt). Ganz ohne Griff wäre ein Stück zwischen zwei Ecken im Raum gerade und
+ * schnitte als Sehne durch die gewölbte Haut (gemessen: ein Rechteck aus vier Ecken quer über die Kugel zog die Haut bis 1,6 nach
+ * innen, 32 umgeklappte Dreiecke); mit angepassten Griffen im Raum lag die Linie im Blatt bis 2,4 px neben der Zeichnung.
+ */
+export function eckenTiefe(l: Loop, ecken: ReadonlySet<number>, tiefe: V3, L: Float64Array = l.ruhe): void {
+  if (!hatPfad(l) || ecken.size === 0) return;
+  const P = l.punkte;
+  const auf = (v: V3): number => v.x * tiefe.x + v.y * tiefe.y + v.z * tiefe.z;
+  const flach = (v: V3): V3 => {
+    const d = auf(v);
+    return { x: v.x - d * tiefe.x, y: v.y - d * tiefe.y, z: v.z - d * tiefe.z };
+  };
+  const neu = new Map<string, V3>();
+  for (const st of stuecke(l)) {
+    const ea = ecken.has(st.a);
+    const eb = ecken.has(st.b);
+    if (!ea && !eb) continue;
+    const A = P[st.a]!;
+    const B = P[st.b]!;
+    // im Blatt: Ist das Stück gerade gezeichnet (der Griff am anderen Ende liegt auf der Sehne), liegen die Griffe der Ecken auf der
+    // Sehne (ein Drittel; das Stück bleibt gerade, läuft aber gleichmäßig, sonst kann es der Wölbung in der Tiefe nicht folgen: an
+    // einer Ecke beulte es aus, 20 umgeklappte Dreiecke). Sonst haben die Ecken im Blatt keinen Griff, die anderen bleiben, wie sie sind.
+    const sehne = flach({ x: B.ref.x - A.ref.x, y: B.ref.y - A.ref.y, z: B.ref.z - A.ref.z });
+    const ls = abstand(sehne, NULL);
+    const aufSehne = (v: V3): boolean => {
+      const w = flach(v);
+      const lw = abstand(w, NULL);
+      const k = { x: w.y * sehne.z - w.z * sehne.y, y: w.z * sehne.x - w.x * sehne.z, z: w.x * sehne.y - w.y * sehne.x };
+      return lw < 1e-9 || abstand(k, NULL) <= 1e-3 * lw * ls;
+    };
+    const gerade = ls > 1e-9 && (ea || aufSehne(A.aus!)) && (eb || aufSehne(B.ein!));
+    const drittel = (f: number): V3 => (gerade ? { x: (f * sehne.x) / 3, y: (f * sehne.y) / 3, z: (f * sehne.z) / 3 } : { ...NULL });
+    const a0 = ea ? drittel(1) : A.aus!;
+    const b0 = eb ? drittel(-1) : B.ein!;
+    let s11 = 0;
+    let s12 = 0;
+    let s22 = 0;
+    let r1 = 0;
+    let r2 = 0;
+    for (const x of probenIn(l, st)) {
+      const q = lage(L, x.j);
+      // Stelle im Blatt (Tiefe weg), dann der Rest der Tiefe bei Griffen ohne Tiefe
+      const t = stueckNaechstes(flach(A.ref), flach(a0), flach(b0), flach(B.ref), flach(q), x.t);
+      const r = auf(q) - auf(stueckPunkt(A.ref, a0, b0, B.ref, t));
+      const u = 1 - t;
+      const w1 = ea ? 3 * u * u * t : 0;
+      const w2 = eb ? 3 * u * t * t : 0;
+      s11 += w1 * w1;
+      s12 += w1 * w2;
+      s22 += w2 * w2;
+      r1 += w1 * r;
+      r2 += w2 * r;
+    }
+    let al = 0;
+    let be = 0;
+    const det = s11 * s22 - s12 * s12;
+    if (ea && eb && Math.abs(det) > 1e-12 * Math.max(1e-30, s11 * s22)) {
+      al = (s22 * r1 - s12 * r2) / det;
+      be = (s11 * r2 - s12 * r1) / det;
+    } else if (ea && s11 > 1e-12) al = r1 / s11;
+    else if (eb && s22 > 1e-12) be = r2 / s22;
+    if (ea) neu.set(`${st.a}:aus`, { x: a0.x + al * tiefe.x, y: a0.y + al * tiefe.y, z: a0.z + al * tiefe.z });
+    if (eb) neu.set(`${st.b}:ein`, { x: b0.x + be * tiefe.x, y: b0.y + be * tiefe.y, z: b0.z + be * tiefe.z });
+  }
+  for (const [k, g] of neu) {
+    const [i, seite] = k.split(':') as [string, 'ein' | 'aus'];
+    P[Number(i)]![seite] = g;
+  }
+  griffeSpiegeln(l);
+}
+
 /** Mittelebene: Griffe flach; Ende eines Rings: der Griff nach außen ist das Spiegelbild des inneren */
 function griffeSpiegeln(l: Loop): void {
   l.punkte.forEach((p, i) => {
@@ -1098,18 +1284,20 @@ const einheit = (v: V3): V3 | null => {
  * anderen Punkte behalten ihre Richtung (an den Stücken zu einem neuen Punkt passt sich nur ihre Länge an, wie beim Teilen in
  * Illustrator). Die Linie ändert sich nicht.
  */
-function griffeAusLinie(l: Loop, L: Float64Array, neu: ReadonlySet<number> | null): void {
+function griffeAusLinie(l: Loop, L: Float64Array, neu: ReadonlySet<number> | null, opt: { t?: Float64Array; genau?: boolean } = {}): void {
   const P = l.punkte;
   if (P.length === 0) return;
   const ist = (i: number) => neu === null || neu.has(i);
   const ein: V3[] = P.map((p) => p.ein ?? { ...NULL });
   const aus: V3[] = P.map((p) => p.aus ?? { ...NULL });
+  // t je Probe: aus ihrer Stelle s, oder (genau) die Stelle des nächsten Punkts auf dem Stück der vorigen Anpassung
+  const tVon = (x: { j: number; t: number }) => (opt.t && !Number.isNaN(opt.t[x.j]!) ? opt.t[x.j]! : x.t);
   const passen = (st: { a: number; b: number; s0: number; s1: number }, r?: readonly [V3 | null, V3 | null]) => {
     const pr = probenIn(l, st);
     return stueckAnpassen(
       P[st.a]!.ref,
       P[st.b]!.ref,
-      pr.map((x) => x.t),
+      pr.map(tVon),
       pr.map((x) => lage(L, x.j)),
       r,
     );
@@ -1128,8 +1316,9 @@ function griffeAusLinie(l: Loop, L: Float64Array, neu: ReadonlySet<number> | nul
   // Linie knickt, entsteht nicht von selbst (gemessen: an einer weit gezogenen Rüsselspitze wurden so Punkte zu Ecken, über die die
   // Haut keine Krümmung mehr trägt, 30 statt 6 Knicke über 60°).
   P.forEach((p, i) => {
-    // ein Ende von selbst hält nur die Griffe, wie die Linie sie zeigt (es bewegt sich nicht)
-    if (!ist(i) || p.vonSelbst || istEcke(p)) return;
+    // ein Ende von selbst hält nur die Griffe, wie die Linie sie zeigt (es bewegt sich nicht); liegt die Linie genau auf dem Pfad,
+    // läuft sie dort rund in ihre Spiegelhälfte (senkrecht zur Mittelebene; sonst bekäme die Haut an der Mittelebene einen Grat)
+    if (!ist(i) || (p.vonSelbst && !opt.genau) || istEcke(p)) return;
     const rand = ringEnde(l, i);
     // am Spiegelpunkt ist der Griff nach außen das Spiegelbild des inneren
     const a = rand === 'ende' && rEin[i] ? gespiegelt(rEin[i]!) : rAus[i];
@@ -1158,8 +1347,13 @@ function griffeAusLinie(l: Loop, L: Float64Array, neu: ReadonlySet<number> | nul
  * Griffe aller Punkte aus dem Verlauf der Linie (`L`, 3 je Probe), wenn der Loop entsteht (oder in eine Pose kommt); von da an
  * speichert er sie. Ein Ring bekommt an seinen Enden Punkte (Spiegelpunkte), falls dort keine sind; wie vorher bleiben sie dort
  * stehen, solange man sie nicht zieht. Die Linie ändert sich nicht.
+ *
+ * `genau` (die Linie wird danach genau ihr Pfad, 07.11.): Die Punkte bleiben, wo sie sind (an einer Kreuzung liegen sie schon auf dem
+ * Pfad des anderen Loops); jedes Stück wird nach dem nächsten Punkt angepasst statt nach gleicher Bogenlänge (drei Runden wie bei
+ * Schneider: anpassen, jede Probe auf ihr Stück projizieren, neu anpassen), und jede Probe bekommt ihre Stelle auf dem Pfad
+ * (`pfadParameter`), damit sie beim Anlegen nur quer zur Linie springen. `punkteBis` (> 0, nur zum Vergleich): Punkte wo nötig.
  */
-export function griffeAnlegen(l: Loop, L: Float64Array = l.ruhe): void {
+export function griffeAnlegen(l: Loop, L: Float64Array = l.ruhe, genau = false, punkteBis = 0): void {
   const n = l.proben.length;
   if (l.art === 'ring' && n > 1) {
     const ende = (j: number): V3 => ({ ...lage(L, j), z: 0 });
@@ -1173,7 +1367,7 @@ export function griffeAnlegen(l: Loop, L: Float64Array = l.ruhe): void {
     }
   }
   l.punkte.forEach((p, i) => {
-    const q = stelleBei(l, L, p.s);
+    const q = genau ? { ...p.ref } : stelleBei(l, L, p.s);
     if (l.art === 'mitte' || ringEnde(l, i)) q.z = 0;
     p.ref = q;
     p.cur = { ...q };
@@ -1183,7 +1377,46 @@ export function griffeAnlegen(l: Loop, L: Float64Array = l.ruhe): void {
     delete p.ein;
     delete p.aus;
   }
-  griffeAusLinie(l, L, null);
+  griffeAusLinie(l, L, null, { genau });
+  if (!genau || !hatPfad(l)) return;
+  const anpassen = () => {
+    for (let runde = 0; runde < 3; runde++) griffeAusLinie(l, L, null, { genau, t: pfadStellen(l, L).t });
+  };
+  anpassen();
+  // Punkte wo nötig (Vergleich zu Florians Wahl „ohne Zusatzpunkte“): Liegt die Linie weiter als `punkteBis` neben ihrem Pfad, kommt in
+  // die Mitte dieses Stücks ein Punkt (auf der Linie), und alles wird neu angepasst
+  for (let k = 0; punkteBis > 0 && k < 12; k++) {
+    if (!hatPfad(l)) break;
+    const { t } = pfadStellen(l, L);
+    let fern = -1;
+    let weit = punkteBis;
+    for (const st of stuecke(l)) {
+      const A = l.punkte[st.a]!;
+      const B = l.punkte[st.b]!;
+      for (const x of probenIn(l, st)) {
+        const q = stueckPunkt(A.ref, A.aus!, B.ein!, B.ref, t[x.j]!);
+        const d = abstand(q, lage(L, x.j));
+        if (d > weit) {
+          weit = d;
+          fern = x.j;
+        }
+      }
+    }
+    if (fern < 0) break;
+    const st = stuecke(l).find((x) => imStueck(l, x, l.s[fern]!) !== null)!;
+    const s = ((st.s0 + st.s1) / 2) % l.laenge;
+    const q = stelleBei(l, L, s);
+    if (l.art === 'mitte') q.z = 0;
+    l.punkte.push({ s, ref: q, cur: { ...q } });
+    l.punkte.sort((a, b) => a.s - b.s);
+    for (const p of l.punkte) {
+      delete p.ein;
+      delete p.aus;
+    }
+    griffeAusLinie(l, L, null, { genau });
+    anpassen();
+  }
+  pfadParameter(l, L);
 }
 
 /** Griffe nur für die Punkte `punkte` (Index) aus der Linie, die anderen behalten ihre (Richtung); danach speichert der Loop sie */
@@ -1549,6 +1782,46 @@ export function griffeAbbilden(l: Loop, i: number, f: (p: V3) => V3, g = 1): Gri
 }
 
 /**
+ * Versatz der Griffe von Punkt i beim proportionalen Bearbeiten (O, wie in Blender bei Kurven): Punkt und Griffspitzen gehen je mit
+ * ihrem eigenen Gewicht mit (`gPunkt`, `gEin`, `gAus`), der Griff ist danach Spitze − Punkt. Ein glatter Punkt behält seine Griffe auf
+ * einer Geraden (Winkelhalbierende, Längen wie danach; am Spiegelpunkt senkrecht zur Mittelebene), sonst knickte die Linie überall, wo
+ * die zwei Spitzen verschieden weit vom Zug liegen. Eine Ecke von selbst folgt ihren Nachbarn (`griffVersatzImZug`): undefined.
+ * Seit die Linie genau ihr Pfad ist (07.11.), formt O die Linien über ihre Punkte und Griffe; vorher je Probe (eine Linie bekam eine
+ * Beule, die ihr Pfad nicht hatte, und danach wurden ihre Griffe neu abgelesen).
+ */
+export function griffeProportional(l: Loop, i: number, f: (p: V3) => V3, gPunkt: number, gEin: number, gAus: number): GriffVersatz | undefined {
+  const p = l.punkte[i]!;
+  if (istEckeVonSelbst(p)) return undefined;
+  const r = griffeBei(l, i);
+  const P = p.ref;
+  const fP = f(P);
+  const dP = { x: gPunkt * (fP.x - P.x), y: gPunkt * (fP.y - P.y), z: gPunkt * (fP.z - P.z) };
+  const neu = (v: V3 | null, g: number): V3 | null => {
+    if (!v) return null;
+    const T = { x: P.x + v.x, y: P.y + v.y, z: P.z + v.z };
+    const fT = f(T);
+    return { x: v.x + g * (fT.x - T.x) - dP.x, y: v.y + g * (fT.y - T.y) - dP.y, z: v.z + g * (fT.z - T.z) - dP.z };
+  };
+  let e = neu(r.ein, gEin);
+  let a = neu(r.aus, gAus);
+  if (e && a && !istEcke(p)) {
+    const g = aufGerade(l, i, e, a);
+    if (g) {
+      e = g.ein;
+      a = g.aus;
+    }
+  }
+  const out: GriffVersatz = {};
+  if (e && r.ein) out.ein = { x: e.x - r.ein.x, y: e.y - r.ein.y, z: e.z - r.ein.z };
+  if (a && r.aus) out.aus = { x: a.x - r.aus.x, y: a.y - r.aus.y, z: a.z - r.aus.z };
+  // am Spiegelpunkt gilt der Griff nach innen, der andere ist sein Spiegelbild
+  const rand = ringEnde(l, i);
+  if (rand === 'anfang' && out.aus) out.ein = gespiegelt(out.aus);
+  if (rand === 'ende' && out.ein) out.aus = gespiegelt(out.ein);
+  return out;
+}
+
+/**
  * Versatz, der die Griffe eines Punkts auf eine Gerade bringt (Winkelhalbierende, Längen bleiben): aus einer Ecke mit Knick wird ein
  * glatter Punkt; liegen sie schon (bis auf 0,01°) auf einer, null. Am Spiegelpunkt (Ende eines Rings) ist die Gerade senkrecht zur
  * Mittelebene: Die Linie läuft dort rund in ihre Spiegelhälfte.
@@ -1558,7 +1831,30 @@ export function griffeAusrichten(l: Loop, i: number): GriffVersatz | null {
   if (!g.ein || !g.aus) return null;
   const le = Math.hypot(g.ein.x, g.ein.y, g.ein.z);
   const la = Math.hypot(g.aus.x, g.aus.y, g.aus.z);
-  if (le < 1e-9 || la < 1e-9) return null;
+  if (le < 1e-9 || la < 1e-9) {
+    // ein Punkt ohne Griffe (mit dem Stift geklickt, wie in Illustrator) bekommt beim Glätten welche: auf der Geraden zwischen seinen
+    // Nachbarpunkten, je ein Drittel des Abstands zu ihnen (wie Illustrator beim Umwandeln in einen glatten Punkt)
+    const p = l.punkte[i]!.ref;
+    const ort = (k: -1 | 1): V3 | null => {
+      const n = nachbar(l, i, k);
+      if (!n) return null;
+      const q = l.punkte[n.j]!.ref;
+      return n.gespiegelt ? gespiegelt(q) : q;
+    };
+    const vor = ort(-1);
+    const nach = ort(1);
+    if (!vor || !nach) return null;
+    const lv = le < 1e-9 ? abstand(p, vor) / 3 : le;
+    const ln = la < 1e-9 ? abstand(p, nach) / 3 : la;
+    const r = aufGerade(l, i, { x: vor.x - p.x, y: vor.y - p.y, z: vor.z - p.z }, { x: nach.x - p.x, y: nach.y - p.y, z: nach.z - p.z });
+    if (!r) return null;
+    const ue = einheit(r.ein)!;
+    const ua = einheit(r.aus)!;
+    return {
+      ein: { x: ue.x * lv - g.ein.x, y: ue.y * lv - g.ein.y, z: ue.z * lv - g.ein.z },
+      aus: { x: ua.x * ln - g.aus.x, y: ua.y * ln - g.aus.y, z: ua.z * ln - g.aus.z },
+    };
+  }
   const cos = -(g.ein.x * g.aus.x + g.ein.y * g.aus.y + g.ein.z * g.aus.z) / (le * la);
   if ((Math.acos(Math.max(-1, Math.min(1, cos))) * 180) / Math.PI < 0.01) return null;
   const r = aufGerade(l, i, g.ein, g.aus);
@@ -1733,15 +2029,17 @@ export function knickWinkel(h: Haut, l: Loop): Float64Array {
  * ist glatt. Gemessen und verworfen: seine Griffe aus der Linie und die Längen der Nachbargriffe dazu neu angepasst — an einer weit
  * gezogenen Rüsselspitze wurden die Griffe der Spitze 600 Einheiten lang (ein Stück aus langer Geraden und Bogen lässt sich mit
  * festen Richtungen nicht anpassen). Nur ein geschlossener Loop mit höchstens einem Punkt hatte noch kein Stück, das die Linie
- * beschreibt: Dort werden alle Griffe aus der Linie abgelesen.
+ * beschreibt: Dort werden alle Griffe aus der Linie abgelesen. `aufPfad` (die Linie ist ihr Pfad): Der Punkt liegt genau am
+ * Teilungspunkt des Stücks (sonst auf der Linie).
  */
-export function punktEinfuegen(l: Loop, s: number, kreuzung?: number): LoopPunkt {
+export function punktEinfuegen(l: Loop, s: number, kreuzung?: number, aufPfad = false): LoopPunkt {
   const da = l.punkte.find((q) => Math.abs(q.s - s) <= 1e-6 * Math.max(1, l.laenge) && (kreuzung === undefined || q.kreuzung === undefined));
   if (da) {
     if (kreuzung !== undefined) da.kreuzung = kreuzung;
     if (da.vonSelbst && kreuzung !== undefined) {
       delete da.vonSelbst;
-      if (hatGriffe(l)) griffeAusLinie(l, l.ruhe, new Set([l.punkte.indexOf(da)]));
+      // liegt die Linie genau auf ihrem Pfad, hat das Ende schon die Griffe eines glatten Spiegelpunkts (sie bleiben, die Linie auch)
+      if (hatGriffe(l) && !aufPfad) griffeAusLinie(l, l.ruhe, new Set([l.punkte.indexOf(da)]));
     }
     return da;
   }
@@ -1767,6 +2065,11 @@ export function punktEinfuegen(l: Loop, s: number, kreuzung?: number): LoopPunkt
       b.ein = r.b2;
       p.ein = r.ein;
       p.aus = r.aus;
+      // liegt die Linie genau auf ihrem Pfad, sitzt der Punkt genau dort, wo das Stück geteilt wird
+      if (aufPfad) {
+        p.ref = { ...r.F };
+        p.cur = { ...r.F };
+      }
       griffeSpiegeln(l);
     }
   }

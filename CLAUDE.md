@@ -1428,6 +1428,36 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - **Schlechter:** die absichtlich verdrehte Schlaufe (Explosion c, letzter Schritt) 40/12 statt 34/10 Knicke über 60°/umgeklappt,
     im Kern-Test C (Rüssel, Griff 45°) 37/6 statt 34/2 — die neuen Punkte folgen dort einer verkehrt laufenden Linie genau. Die
     anderen Proben wie vorher.
+- **2026-11-06 (nachts, danach): Gedächtnis gegen „aus den Kurven“ gemessen** (Florian: „ist gedächtnis dann nicht besser?“; Planseite
+  „Kurven als Wahrheit“, Nachtrag): Das Gedächtnis ist nur bei kleinen Zügen schneller (etwa zehnmal), bei großen langsamer. In der
+  Form ist „aus den Kurven“ überall gleich oder besser; nach Hin und Zurück bleibt mit Gedächtnis fast dreimal so viel stehen. Es
+  bleibt „aus den Kurven“. Probe `scripts/pruefen/form-tempo-oertlich.mjs`.
+- **2026-11-07: Die Linie ist ihr Pfad** (Florian: „ja genau zur Bézier-Kurve machen“; gebaut ohne Zusatzpunkte, meine Empfehlung,
+  `?punkte=noetig` zum Vergleich; Planseite „Kurven als Wahrheit“, Nachtrag 07.11.).
+  - **Was gilt:**
+    - In der Grundform liegt jede Linie genau auf dem Bézier-Pfad aus ihren Punkten und Griffen: an gleicher Stelle 0,00 statt bis
+      7,2, Griff ↔ Linie 0,0°. Die Haut folgt, die Punkte bleiben, wohin sie gezogen werden.
+    - Jede Probe hat ihren Platz auf dem Pfad (t im Stück). Beim Anlegen kommt sie an den nächsten Punkt des Pfads
+      (`pfadParameter`), danach behält sie ihn; ein kreuzender Loop vermisst sie nicht mehr neu (`loopErgaenzt` in `einsetzen.ts`).
+    - Eine Kreuzung ist ein Ort auf beiden Pfaden. O formt über Punkte und Griffspitzen (`griffeProportional`).
+    - Stift: Eine geklickte Ecke hat im Blatt keinen Griff, in der Tiefe folgt sie der Haut (`eckenTiefe`). Ein gerade gezeichnetes
+      Stück bekommt ein Drittel der Sehne, es bleibt gerade.
+    - Ein neuer Loop springt beim Anlegen örtlich mit Gedächtnis auf seinen Pfad (`linienAufPfad` im Fenster).
+    - In der Pose bleibt alles wie bisher.
+  - **Preis ohne Zusatzpunkte:** Ein Halbkreis als ein Stück liegt bis 1,4 % neben dem Kreis, seine Krümmung schwankt um etwa 15 %,
+    und die Haut entsteht aus der Krümmung der Linien. Die Kugel mit drei Loops nach dem ersten Zug weicht deshalb bis 2,35 ab, im
+    Mittel 1,09 (bisher 0,65 / 0,22). Mit Punkten wo nötig: 4 / 6 / 3 statt 3 / 4 / 3 Punkte, so rund wie bisher (0,67 / 0,22, Kern
+    `form-gleichgewicht.ts`), aber ein Zusatzpunkt landete 10 Einheiten neben einer späteren Kreuzung, und deren Zug machte oben
+    einen Zipfel (Bilder `docs/progress/editor/form-linie-pfad-{ohne,noetig}-2026-11-07.jpg`). Florians Wahl steht aus.
+  - **Gemessen:** Hin und zurück kommen Punkt und Linie genau wieder, die Haut beim 2. und 3. Mal bis 0,19 / 0,18. Stift 0,33 px neben
+    der Zeichnung, Boden 0,01, Pilz 90°, Löschen 0,10 statt 0,17. Schlechter: Überhang (Explosion a) nach dem letzten Zug 6 bis 12
+    Knicke über 60° und 2 umgeklappt an der Schnabelspitze (vorher 0 / 0). Kugel mit Kante knickt 42,5° statt 27°.
+  - **Fallen:** Mit dem Löser über die ganze Haut zog schon ein einzelner Ring die Kugel 10,6 weg (mit nur einem Loop hält nichts sie
+    rund), deshalb örtlich mit Gedächtnis. Nie Dateien im Vite-Root ändern, während Fenster-Proben laufen (das Fenster lädt neu, die
+    Probe misst Unsinn). Die Stelle s einer Probe ist nicht mehr die Bogenlänge, sondern der Platz auf dem Pfad (Proben suchen nach s).
+    Ein geschlossener Loop mit weniger als zwei Punkten hat keinen Pfad und folgt weiter je Probe.
+  - Kern-Test `dicht/linieAufPfad.test.ts`, Haken `__kurven.pfadRest()`, `form-hin-zurueck.mjs` mit `ZYKLEN`,
+    `form-explosion-probe.mjs` mit `PFAD=1`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

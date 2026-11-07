@@ -16,6 +16,9 @@
 // Maul (Florian: „Mund = Loop“): eine schmale Form ums Maul (F, vorn über den Umriss oder über die Mitte) wird mit dem Regler „Maul“
 // im 3D-Blatt das Maul. Ihr Inneres ist die Öffnung, ihr fernster Punkt der Mundwinkel ◆; die Lippen bleiben Loops wie die anderen.
 // Das Netz bleibt geschlossen (die Öffnung wird nicht gezeigt), die Grundform zeigt das Maul zu, so wie es gezeichnet ist.
+// Die Linie ist ihr Pfad (07.11., Florian: „ja genau zur Bézier-Kurve machen“): In der Grundform liegt jede Linie genau auf dem
+// Bézier-Pfad aus ihren Punkten und Griffen, die Haut folgt; ein neuer Loop springt beim Anlegen örtlich darauf (ohne Zusatzpunkte;
+// `?punkte=noetig` zum Vergleich), eine Kreuzung ist ein Ort, O formt über Punkte und Griffspitzen.
 // Fressen-Pose (Florian: „in der Pose ganz normal die Bézier-Punkte bearbeiten und den Blendshape erstellen“): Knopf „Fressen“ oder
 // die Regler Maul und Kopf (Unterkiefer und Schädel als Knochen) zeigen die Pose. Darin wirken alle Werkzeuge wie in der Grundform
 // auf das, was zu sehen ist; gespeichert wird der Unterschied zur Grundform vor den Knochen (Blendshape, `poseLoop.ts`). Grundform
@@ -47,8 +50,10 @@ import {
   griffeNach,
   griffeUebernehmen,
   griffZiehen,
+  griffeProportional,
   type Haut,
   hatGriffe,
+  hatPfad,
   kanteBei,
   kantenKnicken,
   istEcke,
@@ -67,10 +72,14 @@ import {
   maulAmLoop,
   mittlereKante,
   mundwinkelProbe,
+  pfadAbweichung,
+  pfadParameter,
+  pfadVersatz,
   punktEinfuegen,
   punkteLoeschen,
   ringEnde,
   rundAusSeite,
+  eckenTiefe,
   verdichten,
   verschiebungLaengs,
 } from '@ee/shape/dicht';
@@ -189,6 +198,21 @@ const KRUEMMUNG = new URLSearchParams(location.search).get('kruemmung') !== '0';
 const HAUT: HautArt = new URLSearchParams(location.search).get('haut') === 'gedaechtnis' ? 'gedaechtnis' : 'kurven';
 /** Der Zug löst nur einen Bereich um die bewegten Stellen (mit Gedächtnis und in der Pose); aus den Kurven die ganze Haut */
 const mitBereich = (): boolean => grund !== null || HAUT !== 'kurven';
+/**
+ * Die Linie ist ihr Pfad (07.11., Florian: „ja genau zur Bézier-Kurve machen“): In der Grundform ist das Ziel jeder Probe eines Loops
+ * mit Pfad genau der Pfad an ihrer Stelle, die Haut folgt, und die Punkte bleiben, wohin sie gezogen werden. In der Pose (ihre Linien
+ * sind gedrehte Linien der Grundform, die Griffe daran abgelesen) folgen die Linien wie bisher den Änderungen ihres Pfads.
+ */
+const exakt = (l: Loop): boolean => grund === null && hatPfad(l);
+/**
+ * Zum Vergleich (`?punkte=noetig`): Ein geschnittener oder mit F gezeichneter Loop bekommt beim Anlegen Punkte, bis seine Linie höchstens
+ * 0,05 Kanten (≈ 0,4) neben ihrem Pfad liegt. Florians Wahl ist ohne Zusatzpunkte.
+ */
+const PUNKTE_NOETIG = new URLSearchParams(location.search).get('punkte') === 'noetig';
+/** Nach einem Schritt: Ruhe der Linien; die Punkte bleiben (Grundform) oder werden von der Linie abgelesen (Pose) */
+function festlegenAlle(): void {
+  for (const l of loops) festlegen(haut, l, !exakt(l));
+}
 /** Runden, wenn die Haut ohne Zug neu gerechnet wird (nach einer Kante oder dem Löschen) */
 const RUNDEN_NEU = 12;
 /**
@@ -261,7 +285,11 @@ const spiegeln = (p: V3): V3 => ({ ...p, z: -p.z });
 const abstand = (a: V3, b: V3): number => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
 const abstandSym = (a: V3, b: V3): number => Math.min(abstand(a, b), abstand(a, spiegeln(b)));
 
-/** Kreuzungen suchen (nur mit `nur`, sonst alle Paare); neue werden Punkte auf beiden Loops */
+/**
+ * Kreuzungen suchen (nur mit `nur`, sonst alle Paare); neue werden Punkte auf beiden Loops. In der Grundform ist eine Kreuzung genau
+ * ein Ort: Hat ein Loop schon einen Pfad, liegt der Punkt dort, wo er geteilt wird, und der andere bekommt denselben Ort (haben beide
+ * einen, die Mitte; sonst kreuzten sich die zwei Pfade nicht genau, und die Haut an der Kreuzung hätte zwei Ziele).
+ */
 function kreuzungenSuchen(nur?: Loop): number {
   let zahl = 0;
   for (let i = 0; i < loops.length; i++) {
@@ -273,8 +301,17 @@ function kreuzungenSuchen(nur?: Loop): number {
         const schon = A.punkte.some((p) => p.kreuzung !== undefined && abstand(p.ref, f.p) < 8 * TOL && B.punkte.some((q) => q.kreuzung === p.kreuzung));
         if (schon) continue;
         const k = naechsteKreuzung++;
-        punktEinfuegen(A, f.sa, k);
-        punktEinfuegen(B, f.sb, k);
+        const ea = exakt(A);
+        const eb = exakt(B);
+        const pa = punktEinfuegen(A, f.sa, k, ea);
+        const pb = punktEinfuegen(B, f.sb, k, eb);
+        if (ea || eb) {
+          const c = ea && eb ? { x: (pa.ref.x + pb.ref.x) / 2, y: (pa.ref.y + pb.ref.y) / 2, z: (pa.ref.z + pb.ref.z) / 2 } : ea ? pa.ref : pb.ref;
+          for (const p of [pa, pb]) {
+            p.ref = { ...c };
+            p.cur = { ...c };
+          }
+        }
         zahl++;
       }
     }
@@ -665,7 +702,7 @@ function maulAnlegen(): boolean {
     return false;
   }
   const s = l.s[mundwinkelProbe(l)]!;
-  const p = l.punkte.find((q) => Math.abs(q.s - s) < MK) ?? punktEinfuegen(l, s);
+  const p = l.punkte.find((q) => Math.abs(q.s - s) < MK) ?? punktEinfuegen(l, s, undefined, exakt(l));
   p.mundwinkel = true;
   if (p.ecke === undefined) p.ecke = true;
   maul = { id: l.id };
@@ -748,6 +785,9 @@ function grundLoopsAus(h: Haut, alt: readonly Loop[]): Loop[] {
       if (q) {
         p.ein = { ...q.ein! };
         p.aus = { ...q.aus! };
+        // und ihren Ort (die Linie der Grundform liegt genau auf ihrem Pfad; von ihr abgelesen wanderte er um den Rest des Lösers)
+        p.ref = { ...q.ref };
+        p.cur = { ...q.ref };
       } else neu.add(i);
     });
     // in der Pose gelöschte Punkte: ihre Nachbarn neu
@@ -772,6 +812,8 @@ function poseVerlassen(): void {
   haut = basis;
   grund = null;
   geometrieNeu();
+  // was in der Pose an Punkten oder Loops dazukam, liest seine Griffe an der Linie der Grundform ab: auch diese Linien genau auf ihren Pfad
+  linienAufPfad();
 }
 
 /** Zuordnung für ein Netz, das nur gewachsen ist: die alten Punkte bleiben vorn, neue ab `nAlt` */
@@ -1191,7 +1233,8 @@ function blattZeichnen(a: Ansicht): void {
       ['ein', ein],
       ['aus', aus],
     ] as const) {
-      if (!v) continue;
+      // ein Griff der Länge null (Ecke, mit dem Stift geklickt) ist nicht zu sehen
+      if (!v || Math.hypot(v.x, v.y, v.z) < 1e-9) continue;
       const [gx, gy] = imBlatt(a, { x: q.x + f * v.x, y: q.y + f * v.y, z: q.z + f * v.z });
       el.append(element('line', 'griff-linie', { x1: px, y1: py, x2: gx, y2: gy }));
       const g = element('rect', 'griff', { x: gx - rp * 0.75, y: gy - rp * 0.75, width: rp * 1.5, height: rp * 1.5 });
@@ -1277,10 +1320,10 @@ function vorrechnenPlanen(): void {
     if (nachLoesenOffen !== haut) return;
     nachLoesenOffen = null;
     z.schritt(
-      loops.map(() => null),
+      loops.map((l, li) => (exakt(l) ? pfadVersatz(l, z.start[li]!) : null)),
       RUNDEN_ENDE,
     );
-    for (const l of loops) festlegen(haut, l);
+    festlegenAlle();
     letztesNachLoesen = Math.round(performance.now() - t0);
     hautZeigen();
     baenderZeigen();
@@ -1331,10 +1374,14 @@ type Zug = {
   loeser: LoopZug;
   /** ganz bewegte Loops (Index) */
   ganze: Set<number>;
-  /** mit O: Gewicht je Probe der anderen Loops */
+  /** mit O: Gewicht je Probe der anderen Loops (für den Bereich; Loops ohne Pfad bewegen sich danach je Probe) */
   probenW: (Float64Array | null)[];
   /** Gewicht je Punkt („Loop:Punkt“) */
   punktW: Map<string, number>;
+  /** mit O: Gewichte der Griffspitzen der Punkte, die nicht gewählt sind (Loops mit Pfad; Blender: jede Spitze für sich) */
+  griffW: Map<string, { ein: number; aus: number }>;
+  /** in der Grundform je Loop mit Pfad, was seiner Linie beim Anfang zu ihrem Pfad fehlte (kommt zu jeder Verschiebung dazu) */
+  rest: (Float64Array | null)[];
   lagen: Float64Array[];
   versch: (Float64Array | null)[];
   bewegt: boolean;
@@ -1493,6 +1540,24 @@ function griffVerschiebung(l: Loop, S: Float64Array, k: number, v: GriffVersatz)
   return d;
 }
 
+/** In der Grundform je Loop mit Pfad: was seiner Linie beim Anfang eines Zugs (`start`) zu ihrem Pfad fehlt; sonst null */
+function restZumPfad(z: LoopZug): (Float64Array | null)[] {
+  return loops.map((l, li) => (exakt(l) ? pfadVersatz(l, z.start[li]!) : null));
+}
+
+/**
+ * Verschiebung je Probe im Zug, mit dem Rest zum Pfad: Die Verschiebungen sind die Änderung des Pfads (`verschiebungLaengs`), mit dem
+ * Rest liegt das Ziel jeder Probe genau auf dem neuen Pfad (auch für Loops, die sich nicht bewegen).
+ */
+function mitRest(z: Zug, li: number, d: Float64Array | null): Float64Array | null {
+  const r = z.rest[li];
+  if (!r) return d;
+  const out = new Float64Array(r.length);
+  for (let k = 0; k < r.length; k++) out[k] = r[k]! + (d ? d[k]! : 0);
+  zGrenzen(loops[li]!, z.loeser.start[li]!, out);
+  return out;
+}
+
 /** Mittelebene und Enden eines Rings bleiben auf z = 0, ein Ring geht nicht unter die Mittelebene */
 function zGrenzen(l: Loop, S: Float64Array, d: Float64Array): void {
   const n = l.proben.length;
@@ -1520,6 +1585,8 @@ function griffZugStarten(a: Ansicht, X: number, Y: number, spiegel: boolean, li:
     ganze: new Set(),
     probenW: loops.map(() => null),
     punktW: new Map(),
+    griffW: new Map(),
+    rest: restZumPfad(loeser),
     lagen: loeser.start,
     versch: loops.map(() => null),
     bewegt: false,
@@ -1591,14 +1658,17 @@ function eckeUmschalten(id: number, i: number): void {
       if (!v) break;
       const loeser = stueckLoeser(li, j);
       const d = griffVerschiebung(l, loeser.start[li]!, j, v);
-      for (let s = 1; s <= 3; s++) loeser.schritt(loops.map((_, k) => (k === li ? d.map((x) => (x * s) / 3) : null)), RUNDEN_ZUG);
-      loeser.schritt(loops.map((_, k) => (k === li ? d : null)), RUNDEN_ENDE);
+      // in der Grundform dazu, was der Linie noch zu ihrem Pfad fehlt
+      const rest = exakt(l) ? pfadVersatz(l, loeser.start[li]!) : null;
+      const stufe = (f: number) => d.map((x, k) => f * x + (rest ? rest[k]! : 0));
+      for (let s = 1; s <= 3; s++) loeser.schritt(loops.map((_, k) => (k === li ? stufe(s / 3) : null)), RUNDEN_ZUG);
+      loeser.schritt(loops.map((_, k) => (k === li ? stufe(1) : null)), RUNDEN_ENDE);
       griffeUebernehmen(
         l,
         l.punkte.map(() => ({ x: 0, y: 0, z: 0 })),
         l.punkte.map((_, k) => (k === j ? v : undefined)),
       );
-      for (const x of loops) festlegen(haut, x);
+      festlegenAlle();
       ausgerichtet = true;
     }
   }
@@ -1650,26 +1720,36 @@ function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spieg
     }),
   );
   const probenW: (Float64Array | null)[] = loops.map(() => null);
+  const griffW = new Map<string, { ein: number; aus: number }>();
   if (oAn) {
+    const gewicht = (q: V3): number => {
+      let d = Infinity;
+      for (const c of zentren) d = Math.min(d, abstandSym(q, c));
+      return einfluss(d, radius);
+    };
     loops.forEach((l, li) => {
       if (ganze.has(li)) return;
       const w = new Float64Array(l.proben.length);
       let irgend = false;
       for (let j = 0; j < l.proben.length; j++) {
-        const q = lageAus(l.ruhe, j);
-        let d = Infinity;
-        for (const c of zentren) d = Math.min(d, abstandSym(q, c));
-        w[j] = einfluss(d, radius);
+        w[j] = gewicht(lageAus(l.ruhe, j));
         if (w[j]! > 0) irgend = true;
       }
       if (irgend) probenW[li] = w;
+      // Loops mit Pfad formt O wie Blender eine Kurve: Punkte (auch die Enden eines Rings) und Griffspitzen je nach ihrem Abstand; ein
+      // gewählter Punkt geht ganz mit, seine Griffe mit ihm
+      const pfad = hatPfad(l);
       l.punkte.forEach((p, i) => {
         const k = `${li}:${i}`;
-        if (punktW.has(k) || !istSichtbar(p)) return;
-        let d = Infinity;
-        for (const c of zentren) d = Math.min(d, abstandSym(p.ref, c));
-        const g = einfluss(d, radius);
+        if (punktW.has(k) || (!istSichtbar(p) && !pfad)) return;
+        const g = gewicht(p.ref);
         if (g > 0) punktW.set(k, g);
+        if (!pfad) return;
+        const r = griffeBei(l, i);
+        const spitze = (v: V3 | null) => (v ? gewicht({ x: p.ref.x + v.x, y: p.ref.y + v.y, z: p.ref.z + v.z }) : 0);
+        const ge = spitze(r.ein);
+        const ga = spitze(r.aus);
+        if (g > 0 || ge > 0 || ga > 0) griffW.set(k, { ein: ge, aus: ga });
       });
     });
   }
@@ -1713,6 +1793,8 @@ function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spieg
     ganze,
     probenW,
     punktW,
+    griffW,
+    rest: restZumPfad(loeser),
     lagen: loeser.start,
     versch: loops.map(() => null),
     bewegt: false,
@@ -1732,9 +1814,20 @@ function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spieg
   return true;
 }
 
+/** Wohin Punkt p mit dem Gewicht g unter der Abbildung f geht (Mittelebene und Enden eines Rings auf z = 0, ein Ring nicht darunter) */
+function punktNach(l: Loop, p: LoopPunkt, g: number, f: (p: V3) => V3): V3 {
+  const q = f(p.ref);
+  const c = { x: p.ref.x + g * (q.x - p.ref.x), y: p.ref.y + g * (q.y - p.ref.y), z: p.ref.z + g * (q.z - p.ref.z) };
+  if (zFest(l, p.s)) c.z = 0;
+  else if (l.art === 'ring') c.z = Math.max(0, c.z);
+  return c;
+}
+
 /**
- * Verschiebung je Probe je Loop für die Abbildung f; dazu je Loop die Griffe, wie sie danach sind (`z.griffeNeu`): Ein ganzer Loop
- * dreht und skaliert sie mit wie seine Proben, gezogene Punkte nehmen sie mit (`griffeNach`).
+ * Verschiebung je Probe je Loop für die Abbildung f (die Änderung seines Pfads; `mitRest` legt das Ziel in der Grundform genau auf
+ * den neuen Pfad); dazu je Loop die Griffe, wie sie danach sind (`z.griffeNeu`). Ein Loop mit Pfad bewegt sich über seine Punkte und
+ * Griffe: Ein ganzer Loop dreht und skaliert sie mit, gezogene Punkte nehmen sie mit (`griffeNach`), mit O gehen Punkte und
+ * Griffspitzen je mit ihrem Gewicht (`griffeProportional`). Ein Loop ohne Pfad (geschlossen, höchstens ein Punkt) folgt je Probe.
  */
 function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
   return loops.map((l, li) => {
@@ -1742,19 +1835,20 @@ function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
     const S = z.loeser.start[li]!;
     let d: Float64Array | null = null;
     z.griffeNeu[li] = null;
-    if (z.ganze.has(li) && hatGriffe(l)) {
-      const D = l.punkte.map((p) => {
-        const q = f(p.ref);
-        return { x: q.x - p.ref.x, y: q.y - p.ref.y, z: q.z - p.ref.z };
-      });
-      z.griffeNeu[li] = griffeNach(
-        l,
-        D,
-        l.punkte.map((_, i) => griffeAbbilden(l, i, f, 1)),
-      );
-    } else if (z.probenW[li]) z.neuAblesen.add(li);
-    if (z.ganze.has(li) || z.probenW[li]) {
-      const w = z.probenW[li];
+    const ganz = z.ganze.has(li);
+    if (!hatPfad(l) && (ganz || z.probenW[li])) {
+      if (ganz && hatGriffe(l)) {
+        const D = l.punkte.map((p) => {
+          const q = f(p.ref);
+          return { x: q.x - p.ref.x, y: q.y - p.ref.y, z: q.z - p.ref.z };
+        });
+        z.griffeNeu[li] = griffeNach(
+          l,
+          D,
+          l.punkte.map((_, i) => griffeAbbilden(l, i, f, 1)),
+        );
+      } else if (!ganz) z.neuAblesen.add(li);
+      const w = ganz ? null : z.probenW[li];
       d = new Float64Array(3 * n);
       for (let j = 0; j < n; j++) {
         const g = w ? w[j]! : 1;
@@ -1771,18 +1865,21 @@ function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
         const g = z.punktW.get(`${li}:${i}`);
         if (!g) return { x: 0, y: 0, z: 0 };
         irgend = true;
-        const q = f(p.ref);
-        return { x: g * (q.x - p.ref.x), y: g * (q.y - p.ref.y), z: g * (q.z - p.ref.z) };
+        const q = punktNach(l, p, g, f);
+        return { x: q.x - p.ref.x, y: q.y - p.ref.y, z: q.z - p.ref.z };
       });
       // wie in Illustrator: Beim Drehen und Skalieren drehen und skalieren die Griffe der Punkte mit (beim Verschieben gehen sie
-      // nur mit, ohne Versatz)
-      const griffe =
-        z.modal === 's' || z.modal === 'r'
-          ? l.punkte.map((_, i) => {
-              const g = z.punktW.get(`${li}:${i}`);
-              return g ? griffeAbbilden(l, i, f, g) : undefined;
-            })
-          : undefined;
+      // nur mit, ohne Versatz); mit O jede Griffspitze nach ihrem eigenen Gewicht
+      const griffe = l.punkte.map((_, i) => {
+        const k = `${li}:${i}`;
+        const o = z.griffW.get(k);
+        if (o) {
+          irgend = true;
+          return griffeProportional(l, i, f, z.punktW.get(k) ?? 0, o.ein, o.aus);
+        }
+        const g = z.punktW.get(k);
+        return g && (ganz || z.modal === 's' || z.modal === 'r') ? griffeAbbilden(l, i, f, g) : undefined;
+      });
       if (irgend) {
         d = verschiebungLaengs(l, D, griffe);
         if (hatGriffe(l)) z.griffeNeu[li] = griffeNach(l, D, griffe);
@@ -1810,24 +1907,16 @@ function zugBewegen(X: number, Y: number): void {
     const d = inWelt(z.ansicht, (X - z.x0) / z.griffFaktor, (Y - z.y0) / z.griffFaktor);
     if (z.spiegel) d.z = -d.z;
     z.griffVersatz = griffZiehen(l, i, seite, d);
-    z.versch = loops.map((_, k) => (k === li ? griffVerschiebung(l, z.loeser.start[li]!, i, z.griffVersatz) : null));
+    z.versch = loops.map((_, k) => mitRest(z, k, k === li ? griffVerschiebung(l, z.loeser.start[li]!, i, z.griffVersatz) : null));
     const versatz = l.punkte.map((_, k) => (k === i ? z.griffVersatz : undefined));
     z.griffeNeu = loops.map((_, k) => (k === li && hatGriffe(l) ? griffeNach(l, l.punkte.map(() => ({ x: 0, y: 0, z: 0 })), versatz) : null));
   } else {
     const f = abbildung(z, X, Y);
-    z.versch = verschiebungen(z, f);
+    z.versch = verschiebungen(z, f).map((d, li) => mitRest(z, li, d));
     loops.forEach((l, li) =>
       l.punkte.forEach((p, i) => {
         const g = z.punktW.get(`${li}:${i}`) ?? 0;
-        if (!g) {
-          p.cur = { ...p.ref };
-          return;
-        }
-        const q = f(p.ref);
-        const c = { x: p.ref.x + g * (q.x - p.ref.x), y: p.ref.y + g * (q.y - p.ref.y), z: p.ref.z + g * (q.z - p.ref.z) };
-        if (zFest(l, p.s)) c.z = 0;
-        else if (l.art === 'ring') c.z = Math.max(0, c.z);
-        p.cur = c;
+        p.cur = g ? punktNach(l, p, g, f) : { ...p.ref };
       }),
     );
     if (z.mitte) z.mitte = f(z.pivot);
@@ -1865,7 +1954,7 @@ function zugBewegen(X: number, Y: number): void {
 function zugStufe(z: Zug, X: number, Y: number): void {
   const t0 = performance.now();
   zugGriffeUebernehmen(z);
-  for (const l of loops) festlegen(haut, l);
+  festlegenAlle();
   zugGriffeAblesen(z);
   nachVerdichten();
   zug = null;
@@ -1918,7 +2007,7 @@ function zugEnde(ok: boolean): void {
   if (z.bewegt) {
     z.loeser.schritt(z.versch, RUNDEN_ENDE);
     zugGriffeUebernehmen(z);
-    for (const l of loops) festlegen(haut, l);
+    festlegenAlle();
     zugGriffeAblesen(z);
     kreuzungenSuchen();
     const vorVerdichten = haut;
@@ -1926,6 +2015,8 @@ function zugEnde(ok: boolean): void {
     // aus den Kurven: das verdichtete Netz setzt sich gleich danach in der Ruhe (die neuen Punkte liegen erst nur rund zwischen den
     // alten); beim Loslassen zu lösen hieß, dort auf das Zerlegen des neuen Netzes zu warten (0,6 s bei 15 000 Punkten)
     if (!mitBereich() && haut !== vorVerdichten) nachLoesenOffen = haut;
+    // ein geschlossener Loop, der durch eine neue Kreuzung seinen zweiten Punkt (und damit einen Pfad) bekam: genau auf ihn
+    linienAufPfad();
     poseSichern();
     zurueck.push(z.vorher);
   } else {
@@ -1973,7 +2064,8 @@ function loopSchneiden(a: Ansicht, A: [number, number], B: [number, number]): vo
   naechsteId++;
   zurueck.push(schnappschuss());
   loops.push(l);
-  einsetzenLetzten();
+  einsetzenLetzten(PUNKTE_NOETIG);
+  linienAufPfad(loops[loops.length - 1]);
   auswahl = [{ l: l.id, i: -1 }];
 }
 
@@ -1981,7 +2073,7 @@ function loopSchneiden(a: Ansicht, A: [number, number], B: [number, number]): vo
  * Den neuesten Loop als Kette von Kanten ins Netz einsetzen (dann kann er hart werden), danach seine Kreuzungen suchen. Geht der
  * Weg nicht auf, bleibt er auf der Haut liegen.
  */
-function einsetzenLetzten(): void {
+function einsetzenLetzten(punkteNoetig = false): void {
   const vorher = grund ? poseKnochen() : null;
   const nAlt = haut.n;
   const r = loopEinsetzen(haut, loops, loops.length - 1);
@@ -1993,10 +2085,12 @@ function einsetzenLetzten(): void {
     meldung = '';
   } else meldung = 'Loop liegt nur auf der Haut (nicht ins Netz eingesetzt): eine Kante wirkt dort kaum';
   // erst die Kreuzungen (in den anderen Loops teilen sie ein Stück), dann liest der neue Loop alle seine Griffe aus der Linie (wo
-  // er eine Kante kreuzt, als Ecke je Seite, wie die Linie dort verläuft); ab jetzt speichert er sie. Die Form ändert sich nicht.
+  // er eine Kante kreuzt, als Ecke je Seite, wie die Linie dort verläuft); ab jetzt speichert er sie. In der Grundform genau
+  // (`griffeAnlegen` mit `genau`): Danach legt `linienAufPfad` die Linie auf ihren Pfad, die Haut folgt; in der Pose ändert sich nichts.
   kreuzungenSuchen(loops[loops.length - 1]);
   eckenAuto(loops);
-  griffeAnlegen(loops[loops.length - 1]!);
+  const neu = loops[loops.length - 1]!;
+  griffeAnlegen(neu, neu.ruhe, !grund, punkteNoetig && !grund ? 0.05 * MK : 0);
 }
 
 /**
@@ -2057,7 +2151,7 @@ function hautNeuRechnen(versch: readonly (Float64Array | null)[] = loops.map(() 
     });
     const z = loeserFuer(bewegt, Math.max(2 * MK, 3 * weit), ecken);
     z.schritt(versch, RUNDEN_NEU);
-    for (const l of loops) festlegen(haut, l);
+    festlegenAlle();
     kreuzungenSuchen();
     poseSichern();
     return;
@@ -2066,15 +2160,59 @@ function hautNeuRechnen(versch: readonly (Float64Array | null)[] = loops.map(() 
   eckenAuto(loops);
   const t0 = performance.now();
   const z = new LoopZug(haut, loops, null, KRUEMMUNG, HAUT);
-  z.schritt(versch, RUNDEN_NEU);
-  for (const l of loops) festlegen(haut, l);
+  // Punkte und Griffe sind schon die neuen: Das Ziel jeder Linie mit Pfad ist genau ihr Pfad
+  z.schritt(
+    loops.map((l, li) => (exakt(l) ? pfadVersatz(l, z.start[li]!) : versch[li]!)),
+    RUNDEN_NEU,
+  );
+  festlegenAlle();
   kreuzungenSuchen();
+  const vorVerdichten = haut;
   nachVerdichten();
+  if (!mitBereich() && haut !== vorVerdichten) nachLoesenOffen = haut;
   letzteZerlegung = z.loeser.zeitZerlegen;
   letzterBereich = z.loeser.anzahl;
   letztesNeuRechnen = Math.round(performance.now() - t0);
 }
 let letztesNeuRechnen = 0;
+
+/**
+ * In der Grundform liegt jede Linie genau auf ihrem Pfad. Ein neuer Loop (`neu`) und jeder, dessen Linie spürbar neben ihrem Pfad liegt
+ * (ein geschlossener Loop, der gerade seinen zweiten Punkt bekam; Punkte oder Loops aus der Pose), bekommt seine Stellen auf dem Pfad
+ * (`pfadParameter`, dann springen die Proben nur quer zur Linie), und die Haut folgt (Florian, 07.11.: ohne Zusatzpunkte, die Haut darf
+ * sich beim Anlegen leicht ändern). Örtlich und mit Gedächtnis (jeder Punkt behält seine Krümmung): Aus den Kurven über die ganze Haut
+ * gerechnet zog schon der erste Ring die Kugel um 10 Einheiten weg (mit einem Loop hält nichts sie rund; gemessen an der Kugel nach drei
+ * Loops: so bis 2,2, im Mittel 0,4; aus den Kurven bis 8,9, im Mittel 3,5). Was nur um den Rest des Lösers daneben liegt, holt der
+ * nächste Zug.
+ */
+function linienAufPfad(neu?: Loop): void {
+  if (grund) return;
+  const versch: (Float64Array | null)[] = loops.map(() => null);
+  const bewegt: V3[] = [];
+  const ecken = new Set<number>();
+  let weit = 0;
+  loops.forEach((l, li) => {
+    if (!exakt(l) || (l !== neu && pfadAbweichung(l) < 0.05 * MK)) return;
+    pfadParameter(l);
+    const d = pfadVersatz(l)!;
+    versch[li] = d;
+    for (let j = 0; j < l.proben.length; j++) {
+      const w = Math.hypot(d[3 * j]!, d[3 * j + 1]!, d[3 * j + 2]!);
+      if (w < 1e-9) continue;
+      weit = Math.max(weit, w);
+      bewegt.push(lageAus(l.ruhe, j));
+      for (const v of l.proben[j]!.ecken) ecken.add(v);
+    }
+  });
+  if (bewegt.length === 0) return;
+  vorrechnenAus();
+  const t0 = performance.now();
+  const z = new LoopZug(haut, loops, bereichUm(haut, bewegt, Math.max(2 * MK, 3 * weit), ecken), false, 'gedaechtnis');
+  z.schritt(versch, RUNDEN_NEU);
+  festlegenAlle();
+  kreuzungenSuchen();
+  letztesNeuRechnen = Math.round(performance.now() - t0);
+}
 
 /** Ramer–Douglas–Peucker: Nummern der Punkte, die bleiben */
 function vereinfachen(p: readonly [number, number][], tol: number): number[] {
@@ -2135,7 +2273,8 @@ function formErstellen(a: Ansicht, roh: [number, number][]): void {
   naechsteId++;
   zurueck.push(schnappschuss());
   loops.push(l);
-  einsetzenLetzten();
+  einsetzenLetzten(PUNKTE_NOETIG);
+  linienAufPfad(loops[loops.length - 1]);
   auswahl = [{ l: l.id, i: -1 }];
 }
 
@@ -2163,7 +2302,8 @@ function punktAmKlick(a: Ansicht, id: number, X: number, Y: number, m: boolean):
   }
   if (l.punkte.some((p) => Math.abs(p.s - bs) < MK)) return;
   zurueck.push(schnappschuss());
-  const p = punktEinfuegen(l, bs);
+  const p = punktEinfuegen(l, bs, undefined, exakt(l));
+  linienAufPfad();
   auswahl = [{ l: id, i: l.punkte.indexOf(p) }];
   allesZeigen();
 }
@@ -2330,7 +2470,8 @@ function stiftFertig(): void {
   if (neu && hatGriffe(neu)) {
     const nor = hautNormalen(haut);
     const s = skala(a);
-    for (const p of neu.punkte) {
+    const ecken = new Set<number>();
+    for (const [pi, p] of neu.punkte.entries()) {
       if (!istSichtbar(p) || p.kreuzung !== undefined) continue;
       // der geklickte Anker an dieser Stelle (ein Loop auf der Seite z < 0 ist als sein Spiegelbild gespeichert)
       let best: { k: StiftAnker; spiegel: boolean; d: number } | null = null;
@@ -2343,7 +2484,9 @@ function stiftFertig(): void {
       }
       if (!best) continue;
       if (!best.k.aus) {
+        // geklickt: eine Ecke, im Blatt ohne Griffe wie gezeichnet, in der Tiefe der Haut nach (`eckenTiefe`)
         p.ecke = true;
+        ecken.add(pi);
         continue;
       }
       // Normale an der Stelle des Punkts (nächste Probe der Kette)
@@ -2358,7 +2501,10 @@ function stiftFertig(): void {
       p.ein = { x: -p.aus.x, y: -p.aus.y, z: -p.aus.z };
       delete p.ecke;
     }
+    eckenTiefe(neu, ecken, a === 'seite' ? { x: 0, y: 0, z: 1 } : a === 'front' ? { x: -1, y: 0, z: 0 } : { x: 0, y: 1, z: 0 });
   }
+  // die Linie genau auf den Pfad mit den gezogenen Griffen (im Blatt ist er genau die gezeichnete Form)
+  if (neu) linienAufPfad(neu);
   auswahl = [{ l: l.id, i: -1 }];
   meldung = '';
   allesZeigen();
@@ -2716,6 +2862,8 @@ schleife();
       s: Array.from(l.s),
     })),
   auswahl: () => auswahl,
+  /** je Loop: wie weit seine Linie höchstens neben ihrem Pfad liegt (an gleicher Stelle; 0 ohne Pfad) */
+  pfadRest: (): number[] => loops.map((l) => pfadAbweichung(l)),
   /** Knick der Linie an einem Punkt (Grad): Richtung hinein gegen hinaus, je Seite für sich gemessen */
   knickAm: (id: number, i: number): number => {
     const l = loops[loopNr(id)];
