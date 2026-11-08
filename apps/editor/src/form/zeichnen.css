@@ -1,0 +1,203 @@
+/* Prüffenster „Zeichnen“ (08.11.2026): Werkzeugleiste wie in Illustrator, Bleistift mit Faden, Formen, Startform.
+   Ergänzt form.css (unverändert) nur um eigene Klassen. */
+
+.werkzeugleiste {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  border-radius: 10px;
+  background: rgba(239, 233, 221, 0.86);
+  box-shadow:
+    0 1px 2px rgba(31, 26, 23, 0.1),
+    0 6px 18px rgba(31, 26, 23, 0.08);
+  z-index: 2;
+}
+
+.werkzeugleiste button {
+  width: 30px;
+  height: 30px;
+  padding: 5px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--linie);
+  cursor: pointer;
+}
+
+.werkzeugleiste button svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.werkzeugleiste button:hover {
+  background: rgba(31, 26, 23, 0.07);
+}
+
+.werkzeugleiste button[aria-pressed='true'] {
+  background: var(--linie);
+  color: var(--papier);
+}
+
+.werkzeugleiste .trenner {
+  width: 18px;
+  height: 1px;
+  margin: 3px 0;
+  background: rgba(31, 26, 23, 0.18);
+}
+
+.werkzeug-optionen {
+  position: absolute;
+  top: 8px;
+  right: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px 18px;
+  z-index: 2;
+}
+
+.werkzeug-optionen[hidden] {
+  display: none;
+}
+
+.werkzeug-optionen input[type='range'] {
+  width: 96px;
+}
+
+.werkzeug-optionen .wahl {
+  gap: 0;
+}
+
+.werkzeug-optionen .wahl .knopf:first-child {
+  border-radius: 12px 0 0 12px;
+}
+
+.werkzeug-optionen .wahl .knopf:last-child {
+  border-radius: 0 12px 12px 0;
+  border-left: none;
+}
+
+#glaettung-wert,
+#treue-wert,
+#status {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Blatt: Zeiger je Werkzeug */
+.blatt.w-bleistift,
+.blatt.w-stift,
+.blatt.w-ellipse,
+.blatt.w-rechteck {
+  cursor: crosshair;
+}
+
+/* die Form: der Vektorpfad türkis unter dem schwarzen Umriss des Modells (Shader), Anker ◆ Ecke / ● glatt, Griffe wie beim Stift */
+.blatt .z-linie {
+  fill: none;
+  stroke: #0e9f8e;
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.blatt .z-treffer {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14px;
+  vector-effect: non-scaling-stroke;
+}
+
+.blatt .z-anker {
+  fill: var(--papier);
+  stroke: var(--linie);
+  stroke-width: 1.4px;
+  vector-effect: non-scaling-stroke;
+  cursor: grab;
+}
+
+.blatt .z-anker.gewaehlt {
+  fill: var(--linie);
+}
+
+.blatt .z-griff {
+  fill: var(--papier);
+  stroke: #0a5f56;
+  stroke-width: 1.2px;
+  vector-effect: non-scaling-stroke;
+  cursor: grab;
+}
+
+.blatt .z-griff-linie {
+  stroke: #0a5f56;
+  stroke-width: 1px;
+  stroke-opacity: 0.7;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+/* Bleistift: harter Strich am Pinsel, Faden leise zum Zeiger */
+.blatt .z-strich {
+  fill: none;
+  stroke: var(--linie);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.blatt .z-faden {
+  stroke: #c25a7c;
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.blatt .z-fadenkreis {
+  fill: none;
+  stroke: #c25a7c;
+  stroke-width: 1px;
+  stroke-opacity: 0.45;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.blatt .z-entwurf {
+  fill: none;
+  stroke: #0a5f56;
+  stroke-width: 1.6px;
+  stroke-opacity: 0.85;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.blatt .z-stift-anker {
+  fill: var(--papier);
+  stroke: #0a5f56;
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.blatt .z-stift-anker.erster {
+  fill: #0a5f56;
+}
+
+.blatt .z-hinweis {
+  fill: var(--leise);
+  font-size: 13px;
+  pointer-events: none;
+  user-select: none;
+}

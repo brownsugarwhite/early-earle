@@ -14,6 +14,6 @@ export {
   stuecke,
   umrissPunkte,
 } from './bezierPfad';
-export { Faden, type Glaettung, Nachlauf } from './faden';
+export { Faden, type Glaettung, Nachlauf, fadenRund } from './faden';
 export { type AnpassOptionen, type Anpassung, anpassen, gleichabstaendig } from './anpassen';
 export { type Aufzug, KAPPA, ellipse, rahmen, rechteck } from './formen';

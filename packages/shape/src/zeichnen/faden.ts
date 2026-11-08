@@ -119,3 +119,18 @@ export class Nachlauf implements Glaettung {
     return aus;
   }
 }
+
+/**
+ * Faden über einen geschlossenen Strich ohne Naht: Beim Zeichnen beginnt der Pinsel am Anfang und holt am Schluss gerade auf; an
+ * dieser Naht knickt eine runde Form (am Blob als Ecke erkannt). Hier läuft der Faden erst eine Runde zum Einschwingen, die Spur
+ * der zweiten Runde ist die Form — überall gleich geglättet, auch an der Naht.
+ */
+export function fadenRund(zeiger: readonly V2[], laenge: number): V2[] {
+  if (zeiger.length < 3) return zeiger.map((p) => ({ x: p.x, y: p.y }));
+  const f = new Faden(laenge);
+  f.anfang(zeiger[0]!);
+  for (const p of zeiger) f.folge(p);
+  const spur: V2[] = [f.pinsel!];
+  for (const p of zeiger) spur.push(...f.folge(p));
+  return spur;
+}

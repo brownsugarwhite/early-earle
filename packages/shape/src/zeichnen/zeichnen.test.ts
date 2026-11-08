@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { V2 } from '../bezier';
 import { rundAusSeite } from '../dicht/rund';
 import { type Pfad, abtasten, ankerEinfuegen, stuecke, umrissPunkte } from './bezierPfad';
-import { Faden } from './faden';
+import { Faden, fadenRund } from './faden';
 import { anpassen } from './anpassen';
 import { KAPPA, ellipse, rahmen, rechteck } from './formen';
 
@@ -101,6 +101,20 @@ describe('Bleistift: Faden und Anpassen', () => {
     expect(abstandZurForm(a.pfad, spur)).toBeLessThanOrEqual(4.5);
     expect(armZuSehne(a.pfad)).toBeLessThanOrEqual(0.65 + 1e-9);
     expect(knickGlatt(a.pfad)).toBeLessThan(0.5);
+  });
+
+  it('Faden rundum (geschlossener Strich): keine Naht, keine Ecke, vier Anker auch an einer Beule', () => {
+    const zeiger = hand((t) => {
+      const w = 2 * Math.PI * t;
+      const r = 150 + 34 * Math.cos(2 * w) + 26 * Math.sin(3 * w + 0.6) + 10 * Math.cos(5 * w);
+      return { x: r * Math.cos(w) * 1.15, y: r * Math.sin(w) * 0.85 };
+    }, 1200, 500, 0.6, 21);
+    const mitNaht = anpassen(mitFaden(zeiger, 24), { treue: 4, schritt: 2, geschlossen: true });
+    const rund = anpassen(fadenRund(zeiger, 24), { treue: 4, schritt: 2, geschlossen: true });
+    log(`Blob: mit Naht ${mitNaht.pfad.anker.length} Anker / ${mitNaht.ecken} Ecken, rundum ${rund.pfad.anker.length} / ${rund.ecken}`);
+    expect(rund.ecken).toBe(0);
+    expect(rund.pfad.anker.length).toBeLessThanOrEqual(mitNaht.pfad.anker.length);
+    expect(knickGlatt(rund.pfad)).toBeLessThan(0.5);
   });
 
   it('Zittern ohne Faden zerfällt nicht in viele Stücke, wenn der Faden davor liegt', () => {
