@@ -776,3 +776,91 @@ mit). 106 Tests unter `src/dicht/` grün.
 - Das Verdichten beim Auslösen könnte ebenfalls in den Worker (dann ≈ 10 statt 35–52 ms).
 - Griff-Züge verfeinern noch nicht.
 - Florians Wahl, ob der Löser nach der Geometrie Standard wird.
+
+## 11. Florians drei Fälle (08.11. abends): nachgestellt, gemessen, Vorschlag für den Löser-Schritt
+
+Florian: „Ja, stell meine drei Fälle nach und miss sie: Hörner mit Griffspiel bis schwarz, Aufblasen in Stufen, grobes kleines Detail.
+Danach schlag mir den Löser-Schritt mit Kriterien vor.“ Seine Bilder: `docs/progress/editor/form-ohren-aufblasen-florian-2026-11-08.webp`
+(Hörner, Aufblasen), `form-detail-grob-florian-2026-11-08.webp` (grobes Detail); das Bild mit den schwarzen Stellen (26 284 Punkte,
+126 ms je Zug) liegt nur im Chat.
+
+**Probe:** `apps/editor/scripts/pruefen/form-drei-faelle.mjs` (Fenster, mit der Maus; `FALL=hoerner|detail`, `DICK=1` breite Hörner mit
+Einfluss O, `KURVEN_URL` für Varianten). Je Zug: Zeit je Mausbewegung, Punkte, Knicke über 60°, umgeklappte Dreiecke und **umgestülpte**
+(neu: die Außenseite zeigt ins Innere, Strahl-Parität längs der drei Achsen; das sind die schwarzen Stellen), ob die Linie selbst faltet,
+und jede Änderung nach dem Loslassen (wie weit, wo, Volumen). 0,89 px je Einheit bei 100 %.
+
+### Fall 1: Hörner, mit dem Griff gespielt, bis schwarz
+
+Aufbau: Kugel, drei Loops, auf dem senkrechten Ring zwei Punkte 170 nach oben außen (mit O, breite Hörner wie in Florians Bild), dann elf
+Züge am Griff der Spitze (länger, hin und her gedreht, in Front und Seite), jeder einzeln losgelassen. Bilder
+`docs/progress/editor/form-drei-hoerner-{1-hinaus,2-griff10,3-griff11-schwarz}-2026-11-08.jpg`.
+
+- Die ersten neun Züge (Griff bis 71 lang): nichts Schwarzes, nach dem Loslassen bewegt sich die Haut noch 0,5–5,6 Einheiten.
+- **Griff 10** (Front, Griff 71 → 107 lang, −120° gedreht): Die Linie kehrt an der Spitze um (Knick 144° von einer Probe zur nächsten)
+  und kreuzt sich in der Front selbst.
+- **Griff 11** (Seite, −90° gedreht): Die Haut springt im Zug bis 142 Einheiten. 648 Dreiecke sind umgestülpt (2,9 % der Fläche), am
+  hinteren Teil der Hörner (x 120–160, y 160–200), wie in Florians Bild.
+- **Nach dem Loslassen** wächst die schwarze Stelle in drei Schritten weiter (18,2 → 2,1 → 1,2 Einheiten; 2,9 → 6,1 % der Fläche,
+  Volumen −6,3 %), und das Verdichten setzt dort auf einmal 900 Punkte dazu (6 556 → 7 474). Je Mausbewegung blieb es hier bei 20 ms;
+  Florians 26 000 Punkte kamen mit weiteren Zügen.
+- **Gegenprobe ohne Verdichten** (`?verdichten=0`): Die Falte entsteht genauso (290 Dreiecke, 2,2 %), und beim Loslassen bewegt sich die
+  Haut trotzdem um 28 Einheiten, das Volumen fällt um 8,7 %. Die umgestülpte Stelle wächst also schon durch die Rechenrunden selbst.
+- **Ursache:** (a) Ein sehr langer, gedrehter Griff biegt die Linie an der Spitze zurück; einer Linie, die umkehrt, kann die Haut nur
+  gefaltet folgen. (b) Der Löser nimmt die Krümmung an den Linien so, wie die Haut sie gerade hat, und drückt längs der Normale, die die
+  Haut gerade hat. Für eine umgestülpte Stelle sind beide „richtig“: Sie bestätigt sich selbst und wächst mit jeder Runde. (c) Das
+  Verdichten teilt in der verzerrten Falte weiter: daher die vielen Punkte und das Tempo.
+- Mit `?gewichte=geometrie` faltete die Linie in diesem Ablauf nicht (größter Knick 98°) und es wurde nichts schwarz; die Züge laufen
+  dort aber anders, das ist kein Vergleich Zug für Zug.
+
+### Fall 2: Aufblasen in Stufen
+
+- **Ohne Griffspiel** (Hörner 170 hinaus, Standard): Nach dem Loslassen bewegt sich die Haut in zwei Schritten 17,9–20,0 und 1,5–3,3
+  Einheiten (rund 0,6 s danach), das Volumen fällt um 5 % (die Hörner werden etwas kleiner). **Ohne Verdichten nur 1,5.** Die Stufen sind
+  also das Verfeinern nach dem Loslassen: Beim heutigen Löser hängt die Form vom Netz ab.
+- **Mit `?gewichte=geometrie`:** 11,4 Einheiten nach dem Loslassen, hier vor allem Nachhinken (170 Einheiten in 30 Mausschritten).
+- **Mit Falte:** siehe Fall 1, die schwarze Stelle wächst in drei Schritten.
+
+### Fall 3: grobes kleines Detail
+
+Ohr aus dem senkrechten Ring (70 hinaus), dann schmaler gezogen. Am Ohr gegen den Rumpf, nach dem Loslassen:
+
+| | Punkte am Ohr | Kante im Mittel (Rumpf 8,3) | Drehung der Normale je Kante: 90 % / größte (Rumpf 4° / 6°) |
+| --- | --- | --- | --- |
+| Standard | 186 | 9,0 | 22,5° / 46,7° |
+| schmaler gezogen | 179 | 8,9 | 22,6° / 41,8° |
+| `?genauHaut=1` | 549 | 5,4 | 12,3° / 27,5° |
+| `?gewichte=geometrie` | 280 | 9,7 | 16,1° / 34,6° |
+
+- Am Ohr sind die Kanten so lang wie am Rumpf (sogar etwas länger), obwohl es viel stärker gebogen ist: Jede Kante dreht die Fläche dort
+  fünfmal so stark. Das sind die Facetten und zackigen Farbstufen. Das Verdichten richtet sich nur nach der Länge.
+- Schmaler gezogen legt das Zusammenlegen am Ohr ein paar Punkte zusammen (186 → 179).
+- `genauHaut` halbiert die Drehung je Kante nur am Ohr (Rumpf unverändert); weite Züge wurden damit am 08.11. schlechter (Rüssel 108
+  statt 31 Knicke, 46 statt 0 umgeklappt), weil sich die Form beim heutigen Löser mit dem Netz ändert. Bilder
+  `docs/progress/editor/form-drei-ohr-nah-{standard,genauhaut}-2026-11-08.jpg`.
+
+### Vorschlag: Löser-Schritt „Form unabhängig vom Netz, sofort, dicht wo nötig, nie umgestülpt“
+
+**Teil 1 — Form unabhängig vom Netz und sofort** (der unsichere Teil, als Beweis):
+- Weg: Die Krümmung wird weiter nach der Geometrie gemessen und verteilt (bewiesen: gleiche Form auf grobem und feinem Netz). Neu: Auch die
+  Matrix, mit der gelöst wird, kommt aus der Geometrie und wird im Hintergrund nachgeführt (der Worker aus Schritt 3). Der Löser sollte
+  dann wie heute in ein, zwei Runden ankommen statt in vielen (das ist das Nachhinken). Zu beweisen.
+- Kriterien: Nachjustieren nach dem Loslassen ≤ ½ px (Hals, Ohr, Rüssel, Hörner 170; heute 4,9 / 6,0 / 33,9 / 19,4 Einheiten); kein
+  Nachhinken: zwei Bilder nach der letzten Mausbewegung steht die Form auf ½ px; je Mausbewegung ≤ 16 ms, kein Halt über 33 ms.
+- Abbruch: Hält das Nachhinken nach zwei Arbeitstagen nicht bei ≤ 16 ms, wird angehalten und berichtet (dann wird die Frage nach einem
+  schnelleren Kern, WebAssembly oder nativ, echt).
+
+**Teil 2 — dicht, wo es gebraucht wird** (erst nach Teil 1):
+- Weg: Eine Regel für die Dichte: Eine Kante wird geteilt, wo die Fläche zwischen ihren Enden weiter als eine feste Toleranz von der Sehne
+  abweicht, und zusammengelegt, wo sie danach höchstens halb so weit abweicht. Sie ersetzt die drei Regeln von heute (Teilen über 1,75,
+  Zusammenlegen unter ½ Startkante, Linien genau).
+- Kriterien: Drehung der Normale je Kante überall ≤ 8° (Ohr heute 22,5°, Rumpf 4°); an den Prüfformen höchstens 1,5-mal so viele Punkte
+  wie heute; Rüssel, Überhang und Fressen-Pose nicht schlechter als heute.
+
+**Teil 3 — nichts bleibt umgestülpt:**
+- Weg: Die Richtung, in die die Haut gewölbt wird, kommt von den Linien (sie wissen, wo außen ist), nicht von der Haut selbst; eine
+  umgestülpte Stelle kann sich dann nicht mehr bestätigen. Dazu eine Entscheidung für Florian: Wenn ein Griff die Linie zum Umkehren
+  bringt, wird die Linie rot, oder der Griff lässt sich nicht so weit ziehen.
+- Kriterien: Hörner mit Griffspiel (diese Probe): keine umgestülpte Fläche außer genau dort, wo sich eine Linie selbst kreuzt; nach den
+  elf Griffzügen höchstens 1,5-mal so viele Punkte wie vorher; je Mausbewegung ≤ 16 ms.
+
+**Nicht schlechter** (vorhandene Proben): Boden, Pilz, Linse, Überhang, Rüssel, Hin und zurück, Stift-Form, Maul, Fressen-Pose.

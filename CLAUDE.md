@@ -1524,6 +1524,22 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - **Fallen:** Beim Einwechseln die Punkte der Linien aus dem Stand von jetzt übernehmen (`verdichten` kopiert sie beim Auslösen). Den
     Versatz der Einbettung im Rahmen des Dreiecks speichern, nicht längs der gemittelten Normale (Rückweg nur 0,009 genau). Längengewichte
     ohne Begrenzung lassen den Löser auf gestreckten Netzen auseinanderlaufen.
+- **2026-11-08 (abends): Florians drei Fälle nachgestellt und gemessen, Vorschlag Löser-Schritt** (Florian: „stell meine drei Fälle nach und
+  miss sie … Danach schlag mir den Löser-Schritt mit Kriterien vor“; Planseite „Kurven als Wahrheit“, Abschnitt 11; Probe
+  `scripts/pruefen/form-drei-faelle.mjs`, neu gezählt „umgestülpt“ = Außenseite zeigt ins Innere, Strahl-Parität).
+  - **Schwarze Stellen:** Ein sehr langer, gedrehter Griff biegt die Linie an der Hornspitze zurück (Knick 144°, Selbstkreuzung); die Haut
+    faltet, 2,9 % der Fläche umgestülpt am hinteren Teil der Hörner. Nach dem Loslassen wächst die Stelle in drei Schritten auf 6,1 %, das
+    Verdichten setzt 900 Punkte dazu. Auch ohne Verdichten wächst sie (28 Einheiten): Der Löser misst die Krümmung an der Haut und drückt
+    längs ihrer Normale, eine umgestülpte Stelle bestätigt sich selbst.
+  - **Aufblasen in Stufen ohne Falte:** Hörner 170 hinaus → nach dem Loslassen 19,4 Einheiten, ohne Verdichten 1,5 (die Form hängt vom Netz ab).
+  - **Grobes Detail:** Am Ohr sind die Kanten so lang wie am Rumpf (9,0 gegen 8,3), die Normale dreht je Kante 22,5° statt 4° (verdichtet
+    wird nur nach Länge); `genauHaut` 12,3°.
+  - **Vorschlag:** Teil 1 Form netzunabhängig und sofort (Matrix nach der Geometrie, im Hintergrund nachgeführt; Beweis mit Abbruch nach zwei
+    Tagen), Teil 2 Dichte nach Abweichung (eine Regel statt drei), Teil 3 nie umgestülpt (Richtung von den Linien; Linie rot oder Griff
+    begrenzt = Florians Wahl). Entscheidung bei Florian.
+  - **Fallen:** „umgeklappt“ (Dreieck gegen seine Ecken) sieht eine ganz umgestülpte Stelle nicht, dafür die Strahl-Parität; lange Griffe
+    ragen aus dem Blatt (Proben zoomen dann heraus); in der Seite liegt die Hornspitze auf dem Umriss (in der Front wählen); Schritte
+    zwischen Fenster-Läufen mit und ohne `geometrie` nicht Zug für Zug vergleichen (die Züge laufen anders).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
