@@ -218,10 +218,15 @@ Recherche festgelegt; Entwurf:)*
   Neu im Kern: `bereiche(haut, loops)` → je Dreieck eine Bereichsnummer, dazu der Spiegelbereich.
 - **Wählen** (V): Klick auf die Haut (nicht auf Linie oder Punkt) wählt den Bereich, ⇧ fügt hinzu, Esc hebt auf; Schwebe tönt ihn
   leicht, gewählt deutlich (Farbe je Dreieck im 3D und in den Blättern). Das Spiegelbild ist immer dabei.
-- **Löschen** (⌫): Die Dreiecke des Bereichs fallen weg. Jeder Rand ist eine Loop-Kette und wird **Kante**. Das Loch bekommt einen
-  **Deckel**: Kette auf ihre Ausgleichsebene legen, innen Punkte im Abstand der mittleren Kante, Dreiecke mit fester Randkette,
-  zurück in die Ebene, danach `verdichten`. Über eine Kante fließt keine Krümmung, also bleibt der Deckel eben (Teddys Schnitt), bei
-  einer gewölbten Randkette so glatt wie möglich. Wölben durch Ziehen (Entscheidung 7.4).
+- **Löschen** (⌫): Die Dreiecke des Bereichs fallen weg. Jeder Rand ist eine Loop-Kette und wird **Kante** (FiberMesh: ein Schnitt
+  erzeugt eine scharfe Kurve). Das Loch bekommt einen **Deckel** wie bei FiberMesh („flattens the intersection … and generates a 2D
+  mesh inside“) und Teddy (stückweise eben): Kette auf ihre Ausgleichsebene legen, die Hälfte z ≥ 0 mit der vorhandenen Delaunay-
+  Triangulierung mit erzwungenen Kanten (`versuch/dreiecke2d.ts`) im Abstand der mittleren Kante füllen, spiegeln, danach
+  `verdichten`. Über eine Kante fließt keine Krümmung, also bleibt der Deckel eben, bei einer gewölbten Randkette so glatt wie
+  möglich. Wölben durch Ziehen (Entscheidung 7.4).
+- **Linien im Bereich:** Was ganz im Bereich liegt, fällt weg. Ein Loop, der den Bereich nur kreuzt, läuft gerade über den Deckel
+  weiter und bleibt geschlossen (Florians Regel „keine offenen Linien“); der Umriss-Loop ist dann genau der Schnitt der Form mit der
+  Mittelebene, samt Deckelkante. Fällt das Maul in den Bereich, ist es weg (mit Hinweis, ⌘Z holt es zurück).
 - **Danach:** Werte je Punkt umordnen (Blendshape der Fressen-Pose, Knochenwinkel, Proben der Loops), Spiegel neu, Löser neu zerlegen.
 - **Schere** (später, optional): eine Linie quer über den Körper ziehen = Ring schneiden und kleinere Seite löschen in einem Schritt.
 
@@ -229,25 +234,39 @@ Recherche festgelegt; Entwurf:)*
 
 - **Auslöser** (Modus „Aufblasen“): N oder P beginnt an Punkt A eines Loops und endet an Punkt B desselben Loops (beide gefangen).
   Die Zeichnung und die Ansicht des Loops zwischen A und B (auf der Seite der Zeichnung) schließen die Fläche des neuen Teils.
-- **Geometrie** (wie Teddys Extrusion, rund wie die Startform): Achse = Mittelachse der neuen Fläche vom Mittelpunkt des Loops zur
-  Spitze; Querschnitte längs der Achse, am Ansatz genau die Kette des Loops (dieselben Netzpunkte), nach außen ein Kreis mit der
-  halben Breite der Zeichnung als Radius, dazwischen überblendet, am Ende eine runde Kappe. Teile auf der Mittelebene liegen
-  spiegelgleich (z = 0), Paare in der Tiefe des Loops.
+- **Geometrie** (wie Teddys Extrusion, rund wie die Startform): Teddy legt Kopien des Basisrings längs des Strichs, auf die
+  Strichbreite skaliert, löscht die Polygone im Ring und vernäht die Kopien. Bei uns: Achse = Mittelachse der neuen Fläche vom
+  Mittelpunkt des Loops zur Spitze; Querschnitte längs der Achse, am Ansatz genau die Kette des Loops (dieselben Netzpunkte), nach
+  außen ein Kreis mit der halben Breite der Zeichnung als Radius, dazwischen überblendet, am Ende eine runde Kappe. Teile auf der
+  Mittelebene liegen spiegelgleich (z = 0), Paare in der Tiefe des Loops.
+- **Zwei Lagen des Ansatzes:** Sieht das Blatt den Loop von der Kante (ein Schnitt-Ring, in der Seite gezogen), liegt die Zeichnung in
+  der Ebene, in die das Teil wächst — genau Teddys Fall. Sieht das Blatt den Loop von vorn (ein Paar-Loop an der Flanke, in der Seite
+  gezeichnet), tritt das Teil erst senkrecht aus der Flanke und biegt dann in die Zeichnung (Achse mit Bogen). Prüffall: Bein aus
+  einem Kreis an der Flanke.
+- **Offener Strich:** Liegen beide Enden eines offenen Strichs auf demselben Loop, schließt der Loop die Fläche; liegen sie im Körper
+  (5.9), schließt eine gerade Sehne (wie Monster Mash).
 - **Netz:** Ringe im Abstand der mittleren Kante, je Ring so viele Punkte wie die Kette, Dreiecke als Streifen, danach `verdichten`
   und Zusammenlegen; der Bereich im Loop (Deckel oder Haut) fällt weg.
-- **Linien:** Der Ansatz bleibt ein Loop (weich; mit K hart). Die Zeichnung wird eine Linie des neuen Teils: auf der Mittelebene setzt
-  sie den Umriss-Loop fort (A und B werden Kreuzungen mit dem Ansatz), bei einem Paar wird sie ein Zweig von A nach B. Danach setzt
-  „Loops“ die Quer- und Längslinie des neuen Teils, sonst hält der Löser seine Rundung nicht (Abschnitt 8).
+- **Linien:** Der Ansatz bleibt ein Loop und behält seine Art: am Schnitt eine Kante (FiberMesh macht die Basis einer Extrusion
+  immer scharf), an einer frei entstandenen Naht weich (5.9); K schaltet um. Die Zeichnung wird eine glatte Linie des neuen Teils
+  (FiberMesh: Silhouette glatt): auf der Mittelebene ersetzt sie im Umriss-Loop die Deckelkante (A und B werden Kreuzungen mit dem
+  Ansatz, der Umriss-Loop bleibt geschlossen), bei einem Paar wird sie ein Zweig von A nach B. Loops, die über den Deckel liefen,
+  enden am Ansatz (Zweige). Danach setzt „Loops“ die Quer- und Längslinie des neuen Teils, sonst hält der Löser seine Rundung nicht
+  (Abschnitt 8).
 - Ein Teil je Strich; verzweigte Zeichnungen (Hand mit Fingern) erst später.
 
 ### 5.9 Anbauen frei (Naht von selbst) und Paare
 
-- Eine Form im Modus „Aufblasen“, die den Körper überlappt, ohne an Punkten zu beginnen: Das neue Teil wird für sich aufgeblasen.
-  Seine Fläche ist bekannt: F(p) = (z − z₀)² − g(x, y) mit g aus seinen Kugeln (wie `rundAusSeite`). Die **Naht** sind die
-  Nullstellen von F auf der Haut (über die Dreiecke der Haut abgelaufen), sie wird als Loop eingesetzt; danach wie 5.8 mit der Naht als
-  Ansatz.
+- Eine Form im Modus „Aufblasen“, die den Körper überlappt, ohne an Punkten zu beginnen (geschlossen, oder offen mit beiden Enden im
+  Körper und einer Sehne dazwischen wie in Monster Mash): Das neue Teil wird für sich aufgeblasen. Seine Fläche ist bekannt:
+  F(p) = (z − z₀)² − g(x, y) mit g aus seinen Kugeln (wie `rundAusSeite`). Die **Naht** sind die Nullstellen von F auf der Haut (über
+  die Dreiecke der Haut abgelaufen), sie wird als weicher Loop eingesetzt; danach wie 5.8 mit der Naht als Ansatz. Das ist RigMeshs
+  Verschmelzen (wasserdichte Vereinigung mit geschlossener Schnittschleife, danach geglättet), nicht Monster Mashs Schlitz (dort
+  bleibt die Rückseite des Teils im Körper offen).
 - **Mitte oder Paar:** Standard Mitte (z₀ = 0: Kopf, Schwanz, Kamm). ⌥ beim Loslassen oder Schalter = Paar: z₀ so, dass das Teil an
-  der Flanke aus dem Körper kommt; das Spiegelbild entsteht mit. Die Tiefe ist danach in Front und Top verschiebbar (G mit Z).
+  der Flanke aus dem Körper kommt; das Spiegelbild entsteht mit (bei Monster Mash dupliziert ein Doppelklick ein Teil und legt es
+  hinter alle anderen — bei uns ist das der Spiegelzwilling, ohne eigenen Schritt). Die Tiefe ist danach in Front und Top
+  verschiebbar (G mit Z).
 - Fallback, falls die eigene Naht an Sonderfällen scheitert: robuste Netz-Vereinigung mit `manifold-3d` (3.5.4, Apache-2.0, WASM),
   die Naht aus den Herkunftskennungen der Dreiecke. Erst prüfen, wenn nötig.
 - Ganz außerhalb des Körpers gezeichnet: ein eigenes Stück im selben Netz (Entscheidung 7.5).
