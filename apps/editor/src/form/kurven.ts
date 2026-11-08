@@ -258,6 +258,62 @@ const KURZ = Number(new URLSearchParams(location.search).get('kurz') ?? 0.5);
  */
 const GENAU = Number(new URLSearchParams(location.search).get('genau') ?? 1 / 40);
 const GENAU_HAUT = new URLSearchParams(location.search).get('genauHaut') === '1';
+/**
+ * Verfeinern im Zug (08.11., Schritt 3, Florian: „Netz und Linien schon während des Zugs verfeinern, Zerlegung im Hintergrund“): Wird
+ * die Haut beim Ziehen gestreckt (eine Kante länger als `LIVE_KANTE` Startkanten), wird der Zug festgehalten, das Netz wie nach dem Zug
+ * verdichtet (Teilen, Zusammenlegen, Linien genau) und der Zug auf dem neuen Netz weitergeführt. Nur nach der Geometrie
+ * (`?gewichte=geometrie`): Dort hängt die Form nicht am Netz, das Einwechseln springt nicht. `?live=0` zum Vergleich.
+ */
+const LIVE = new URLSearchParams(location.search).get('live') !== '0';
+const LIVE_KANTE = Number(new URLSearchParams(location.search).get('liveKante') ?? 2);
+/** Linien: verfeinern, sobald sie um so viel Mal die Genauigkeit nach dem Zug (`GENAU`) von ihrer Kurve abweichen */
+const LIVE_GENAU = Number(new URLSearchParams(location.search).get('liveGenau') ?? 1);
+/**
+ * Eine Linie wird im Zug ungenau: Ihre Ziele liegen auf ihrem Pfad; weicht ein Ziel von der Sehne seiner Nachbarn um d ab, weicht die
+ * Kette dort etwa um d/4 von der Kurve ab. Ab `LIVE_GENAU` mal der Genauigkeit nach dem Zug (`GENAU`) wird verfeinert.
+ */
+function linieUngenau(z: Zug): boolean {
+  if (!(GENAU > 0)) return false;
+  const grenze = 4 * LIVE_GENAU * GENAU * MK;
+  for (let li = 0; li < loops.length; li++) {
+    const l = loops[li]!;
+    const L = z.lagen[li];
+    if (!L || !exakt(l)) continue;
+    const n = l.proben.length;
+    const zu = l.art !== 'ring';
+    for (let j = zu ? 0 : 1; j < (zu ? n : n - 1); j++) {
+      const a = lageAus(L, (j - 1 + n) % n);
+      const b = lageAus(L, j);
+      const c = lageAus(L, (j + 1) % n);
+      const ux = c.x - a.x;
+      const uy = c.y - a.y;
+      const uz = c.z - a.z;
+      const u2 = ux * ux + uy * uy + uz * uz;
+      if (!(u2 > 1e-12)) continue;
+      const t = Math.max(0, Math.min(1, ((b.x - a.x) * ux + (b.y - a.y) * uy + (b.z - a.z) * uz) / u2));
+      const d = Math.hypot(b.x - a.x - t * ux, b.y - a.y - t * uy, b.z - a.z - t * uz);
+      if (d > grenze) return true;
+    }
+  }
+  return false;
+}
+
+/** eine Kante der Haut ist länger als `LIVE_KANTE` Startkanten */
+function gestreckt(): boolean {
+  const P = haut.pos;
+  const T = haut.tri;
+  const g = (LIVE_KANTE * MK) ** 2;
+  for (let t = 0; t < T.length; t += 3)
+    for (let e = 0; e < 3; e++) {
+      const a = T[t + e]!;
+      const b = T[t + ((e + 1) % 3)]!;
+      const dx = P[3 * a]! - P[3 * b]!;
+      const dy = P[3 * a + 1]! - P[3 * b + 1]!;
+      const dz = P[3 * a + 2]! - P[3 * b + 2]!;
+      if (dx * dx + dy * dy + dz * dz > g) return true;
+    }
+  return false;
+}
 let letzteVerdichtung: { neu: number; gelegt: number; ms: number } | null = null;
 
 type Schnappschuss = {
@@ -2007,6 +2063,8 @@ function zugBewegen(X: number, Y: number): void {
   // reicht der Zug über den halben Bereich hinaus, eine neue Stufe: der Bereich wächst mit, dabei wird verdichtet. Über die ganze
   // Haut gibt es keinen Bereich, der wachsen müsste; verdichtet wird dann am Ende (jede Stufe hieße: alles neu zerlegen, mitten im Zug)
   if (!z.griff && !oAn && mitBereich() && weit > 0.5 * z.radius) zugStufe(z, X, Y);
+  // über die ganze Haut nach der Geometrie: verfeinern, sobald sie gestreckt wird
+  else if (LIVE && GEWICHTE === 'geometrie' && !mitBereich() && !z.griff && (gestreckt() || linieUngenau(z))) zugStufe(z, X, Y);
   hautZeigen();
   baenderZeigen();
   for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
@@ -2044,6 +2102,7 @@ function zugStufe(z: Zug, X: number, Y: number): void {
   letzteStufeMs = Math.round(performance.now() - t0);
 }
 let zugStufen = 0;
+let letzteEndrunden = 0;
 let letzteStufeMs = 0;
 
 /** Die Griffe übernehmen, wie der Zug sie verändert hat (vor dem Festlegen der Linien) */
@@ -2075,7 +2134,12 @@ function zugEnde(ok: boolean): void {
     return;
   }
   if (z.bewegt) {
+    // zum Messen: wie weit sich die Haut in den Runden am Ende noch bewegt (so weit hinkte der Löser im Zug nach)
+    const vorEnde = Float64Array.from(haut.pos);
     z.loeser.schritt(z.versch, RUNDEN_ENDE);
+    letzteEndrunden = 0;
+    for (let k = 0; k < vorEnde.length; k += 3)
+      letzteEndrunden = Math.max(letzteEndrunden, Math.hypot(haut.pos[k]! - vorEnde[k]!, haut.pos[k + 1]! - vorEnde[k + 1]!, haut.pos[k + 2]! - vorEnde[k + 2]!));
     zugGriffeUebernehmen(z);
     festlegenAlle();
     zugGriffeAblesen(z);
@@ -3105,6 +3169,7 @@ schleife();
     verdichtung: letzteVerdichtung,
     punkte: haut.n,
     stufen: zugStufen,
+    endrunden: letzteEndrunden,
     stufeMs: letzteStufeMs,
     neuRechnen: letztesNeuRechnen,
     vorrechnen: letztesVorrechnen,

@@ -252,6 +252,8 @@ const px = Math.hypot(a1.x - a0.x, a1.y - a0.y) / ((await K('ausschnitt', 'front
 
 const zz = A.z.zug.slice(-schritte);
 console.log(`${fall} (${basis.split('?')[1] ?? 'Standard'}): ${schritte} Mausschritte in ${zugMs} ms, je Bewegung ${f2(zz.reduce((s, v) => s + v, 0) / zz.length)} ms (max ${Math.max(...zz).toFixed(0)}), ${A.P.length / 3} Punkte vor dem Loslassen · ${px.toFixed(2)} px je Einheit bei 100 %`);
+console.log(`  Stufen im Zug: ${A.z.stufen ?? 0} (letzte ${A.z.stufeMs ?? 0} ms)`);
+const nachEnde = await seite.evaluate(() => window.__kurven.zeiten().endrunden);
 const zeile = (name, X, Y, t) => {
   const m = bewegung(X, Y);
   console.log(
@@ -259,13 +261,21 @@ const zeile = (name, X, Y, t) => {
       `bei (${m.wo.map((v) => v.toFixed(0)).join(', ')})`,
   );
 };
+console.log(`  davon die Runden am Ende (Nachhinken): bis ${nachEnde?.toFixed(2)}`);
 zeile('Loslassen sofort (Runden am Ende + Verdichten)', A, B, tB);
 verlauf.forEach((v, k) => zeile(`danach Änderung ${k + 1}`, k === 0 ? B : verlauf[k - 1].S, v.S, v.t));
 zeile('Endstand gegen vor dem Loslassen', A, C);
 // NACH=<Runden>: danach noch so viele Runden über die ganze Haut — ist der Endstand fertig gerechnet?
 if (process.env.NACH) {
-  await seite.evaluate((n) => window.__kurven.nachrechnen(n), Number(process.env.NACH));
-  zeile(`noch ${process.env.NACH} Runden`, C, await schnapp());
+  // NACH=40 oder NACH=5x8 (achtmal fünf Runden, jede Bewegung einzeln)
+  const [je, mal] = process.env.NACH.includes('x') ? process.env.NACH.split('x').map(Number) : [Number(process.env.NACH), 1];
+  let vor = C;
+  for (let k = 0; k < mal; k++) {
+    await seite.evaluate((n) => window.__kurven.nachrechnen(n), je);
+    const S = await schnapp();
+    zeile(`noch ${je} Runden (${k + 1})`, vor, S);
+    vor = S;
+  }
 }
 const zC = C.z;
 console.log(`  Zeiten: Verdichten ${zC.verdichtung?.ms ?? '–'} ms (${zC.verdichtung?.neu ?? 0} neu, ${zC.verdichtung?.gelegt ?? 0} gelegt) · Zerlegen in der Ruhe ${zC.vorrechnen} ms · Setzen samt Nachverfeinern ${zC.nachLoesen} ms`);

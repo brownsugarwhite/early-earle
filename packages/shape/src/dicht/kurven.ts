@@ -729,6 +729,30 @@ export function gewichteAus(h: Haut, kanten: ReadonlyMap<number, number> | null)
   });
 }
 
+/**
+ * Gewichte je Punkt und Nachbar nach 1 / Kantenlänge² (normiert, harte Kanten wie `gewichteAus`). Auf gestreckten Dreiecken antwortet
+ * so ein Laplace in jeder Richtung gleich stark auf eine Krümmung (wie der nach der Geometrie), mit gleichen Gewichten längs der
+ * Streckung zu schwach. Je Punkt höchstens `spanne` mal so groß wie das Mittel seiner Nachbarn bzw. ein `spanne`-tel davon: Ein
+ * Nachbar an einer sehr kurzen Kante beherrschte sonst die Zeile, der Löser lief auseinander (Ohr ohne Verdichten).
+ */
+export function laengenGewichte(h: Haut, kanten: ReadonlyMap<number, number> | null, spanne = Math.sqrt(10)): Float64Array[] {
+  const P = h.pos;
+  return h.nachbarn.map((nb, i) => {
+    const roh = nb.map((j) => {
+      const l2 = (P[3 * i]! - P[3 * j]!) ** 2 + (P[3 * i + 1]! - P[3 * j + 1]!) ** 2 + (P[3 * i + 2]! - P[3 * j + 2]!) ** 2;
+      return 1 / Math.max(l2, 1e-12);
+    });
+    const mittel = roh.reduce((a, b) => a + b, 0) / Math.max(1, roh.length);
+    const w = roh.map((x, k) => Math.min(spanne * mittel, Math.max(mittel / spanne, x)) * (kanten ? (kanten.get(kantenSchluessel(h, i, nb[k]!)) ?? 1) : 1));
+    let s = w.reduce((a, b) => a + b, 0);
+    if (s < 1e-30) {
+      w.fill(1);
+      s = nb.length || 1;
+    }
+    return Float64Array.from(w, (x) => x / s);
+  });
+}
+
 /** Einfluss wie O in Blender („glatt“): 1 in der Mitte, 0 am Rand des Kreises. */
 export function einfluss(d: number, r: number): number {
   if (d >= r) return 0;

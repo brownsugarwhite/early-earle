@@ -46,7 +46,7 @@ import type { NormalSystem, NormalZeile } from '../loeser/normalSystem';
 import { normalSystemZerlegt } from '../loeser/zerlegung';
 import { type IntrinsischeGewichte, intrinsischeGewichte } from './intrinsisch';
 import type { KruemmungsKetten } from './kruemmung';
-import { type Bindungen, type Haut, type Vermessung, gewichteAus, vermessen } from './kurven';
+import { type Bindungen, type Haut, type Vermessung, gewichteAus, laengenGewichte, vermessen } from './kurven';
 
 /**
  * Wie die Krümmung gemessen und verteilt wird: `gleich` (Mittel der Nachbarn, bis 08.11.) oder `geometrie` (Laplace–Beltrami auf der
@@ -142,7 +142,10 @@ export class HautAusKurven {
     this.nr = nr;
     this.frei = Int32Array.from(frei);
     this.art = gewichte;
-    this.gew = gewichteAus(h, kanten);
+    // nach der Geometrie gewichtet die Matrix nach 1 / Kantenlänge² der Lage beim Anlegen: Auf gestreckten Dreiecken antwortet sie
+    // dann in jeder Richtung wie die Krümmung nach der Geometrie (mit gleichen Gewichten längs der Streckung zu schwach: Das Ohr hinkte
+    // im Zug 0,75 statt 0,23 nach, der Rüssel auf dem Netz vom Greifen lag 9,2 statt 1,6 neben dem feinen). Am Ziel ändert das nichts.
+    this.gew = gewichte === 'geometrie' ? laengenGewichte(h, kanten) : gewichteAus(h, kanten);
     // Punkte harter Linien: Ihr Gewicht über die Linie ist 0; ihre Kanten längs der Linie bleiben in der intrinsischen Triangulierung
     const linie = new Set<number>();
     if (kanten) for (const [k, w] of kanten) if (w === 0) linie.add(Math.floor(k / n));
