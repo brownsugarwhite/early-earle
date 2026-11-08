@@ -51,14 +51,14 @@ Stand 08.11.2026, **zur Freigabe, noch nichts gebaut**. Branch `claude/nice-love
 5. **Fangen und Weiterzeichnen**: N und P beginnen und enden genau an Punkten, Kreuzungen oder Linien des Netzes und bleiben
    dort angeschlossen. Neu dafür: **Zweige**, Linien von Punkt zu Punkt (keine losen Enden).
 6. **Bereiche löschen**: Klick auf die Haut wählt den Bereich zwischen den Loops (samt Spiegelbild), ⌫ schneidet ihn ab. Die
-   Schnittstelle wird ein ebener **Deckel mit harter Kante** (wie Teddys Schnitt).
+   Schnittstelle wird ein ebener **Deckel mit harter Kante** (wie bei Teddy und FiberMesh).
 7. **Anbauen**: Im Modus „Aufblasen“ an zwei Punkten eines Loops beginnen und enden: Das neue Teil wächst **aus dem Loop** und
    ist rund aufgeblasen (Teddys Extrusion). Frei über den Körper gezeichnet: Die Naht entsteht von selbst, wo die neue Form den
    Körper trifft (wie Monster Mash), auf der Mitte oder als Paar.
 
 **Reihenfolge** (Abschnitt 6): Z0 Leiste und Bleistift → Z1 Startform → Z2 Knopf „Loops“ → Z3 Fangen und Zweige → Z4 Bereiche und
 Deckel → Z5 Anbauen aus dem Loop → Z6 Anbauen frei und Paare. Z0–Z2 hängen nicht am Löser; Z4–Z6 setzen den **netzunabhängigen
-Löser** voraus, den die laufende Session als Nächstes beweisen will. Grob 10–14 Arbeitstage, jeder Schritt mit Bildern und Toren.
+Löser** voraus, den die laufende Session als Nächstes beweisen will. Grob 10–15 Arbeitstage, jeder Schritt mit Bildern und Toren.
 
 **Zu entscheiden** (Abschnitt 7): Rechteck als Kissen oder als echter Kasten (der braucht einen eigenen Grundkörper und Zweige);
 Tasten (L für Loop oder für Ellipse); Zeichenmodus ausdrücklich oder geraten; Deckel eben oder gewölbt; Glättung als Faden oder als
@@ -73,7 +73,7 @@ laut Projektgedächtnis und Planseite [`2026-11-06-kurven-als-wahrheit.md`](2026
 | --- | --- | --- |
 | Startform aus dem Seitenumriss: Vereinigung der größten Kugeln, Surface Nets, Punkte genau auf der Fläche; Kreis → Kugel, Streifen → Röhre | `rund.ts` `rundAusSeite` (in `kurven.ts` fest `?form=kugel\|bohne`) | Aufblasen der Startform und angebauter Teile |
 | Seite zeichnen mit Vektorpunkten, sofort runde Form (grob ≈ 15 ms im Zug, fein 0,15–0,35 s) | `form.html`, `src/form/main.ts` | Startform-Bedienung übernehmen |
-| Wo die Form von vorn und von oben am breitesten ist (Linien mit wenigen Punkten) | `raumlinien.ts` `konturAusTiefe`, `umrissLinie` | Längs- und Querloops des Knopfs „Loops“ |
+| Wo die Form von vorn und von oben am breitesten ist (Linien mit wenigen Punkten) | `raumlinien.ts` `konturAusTiefe`, `umrissLinie` | Scheitellinie und Querringe des Knopfs „Loops“ |
 | Einbuchtungen des Umrisses mit Spitze, Öffnung, Tiefe; kürzeste Sehne als Naht | `teile.ts` `einbuchtungen`, `anEinbuchtungTeilen` | Ringe an Einschnürungen (Grenzen zwischen Teilen) |
 | Größte Kugel je Umrisspunkt (Mittelachse und Radius) | `kugeln.ts` | Teile, Bäuche, Hälse finden |
 | Loops `mitte`/`ring`/`paar`, Punkte mit gespeicherten Bézier-Griffen, Kreuzung = ein Punkt, Kante an/aus | `loops.ts` | Datenmodell; wird um Zweige erweitert |
@@ -277,7 +277,7 @@ liegt genau dort, wo die Form von oben bzw. vorn am breitesten ist.
 
 - **Fangpunkte** für N, P, Ellipse, Rechteck, L: Punkte der Loops (eigene, Kreuzungen, Ringenden auf dem Umriss), Linien (dort
   entsteht ein neuer Punkt), im Modus „Aufblasen“ auch der Umriss. Anzeige wie Illustrators intelligente Hilfslinien: kleiner Ring und
-  ein Wort („Kreuzung“, „Punkt“, „Linie“). Fangradius 8 px.
+  ein Wort („Kreuzung“, „Punkt“, „Linie“). Fangradius 10 px; Rangfolge Endpunkt einer offenen Linie > Punkt > Kreuzung > Linie.
 - **Haut-Modus:** Eine geschlossene Form durch einen gefangenen Punkt kreuzt genau dort. Eine **offene** Linie von einem gefangenen
   Punkt zu einem anderen wird ein **Zweig**: eine Linie auf der Haut, deren Enden Kreuzungen auf anderen Linien sind. So teilt Florian
   einen Bereich, ohne einen ganzen Loop um den Körper zu legen (und der Kasten bekommt seine Kanten in der Tiefe).
