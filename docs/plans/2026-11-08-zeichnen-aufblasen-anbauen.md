@@ -1,7 +1,7 @@
 # Zeichnen, Aufblasen, Schneiden, Anbauen: Teddy und FiberMesh mit Illustrator-Werkzeugen
 
 Stand 08.11.2026, **zur Freigabe, noch nichts gebaut**. Branch `claude/nice-lovelace-gxxpux`, aufgesetzt auf `claude/form-zuerst`
-(Stand 640c2595, „Stift-Form liegt genau wie gezeichnet“). Recherche im Detail:
+(zuletzt zusammengeführt: 53377344, Beweis „Form unabhängig vom Netz“). Recherche im Detail:
 [`docs/research/2026-11-08-teddy-fibermesh-stift-loops.md`](../research/2026-11-08-teddy-fibermesh-stift-loops.md).
 
 ## Anlass (Florian, 08.11., wörtlich)
@@ -58,11 +58,12 @@ Stand 08.11.2026, **zur Freigabe, noch nichts gebaut**. Branch `claude/nice-love
 
 **Reihenfolge** (Abschnitt 6): Z0 Leiste und Bleistift → Z1 Startform → Z2 Knopf „Loops“ → Z3 Fangen und Zweige → Z4 Bereiche und
 Deckel → Z5 Anbauen aus dem Loop → Z6 Anbauen frei und Paare. Z0–Z2 hängen nicht am Löser; Z4–Z6 setzen den **netzunabhängigen
-Löser** voraus, den die laufende Session als Nächstes beweisen will. Grob 10–15 Arbeitstage, jeder Schritt mit Bildern und Toren.
+Löser** als Standard voraus (die laufende Session hat ihn heute als Beweis gebaut, `?gewichte=geometrie`). Grob 10–15 Arbeitstage,
+jeder Schritt mit Bildern und Toren.
 
 **Zu entscheiden** (Abschnitt 7): Rechteck als Kissen oder als echter Kasten (der braucht einen eigenen Grundkörper und Zweige);
 Tasten (L für Loop oder für Ellipse); Zeichenmodus ausdrücklich oder geraten; Deckel eben oder gewölbt; Glättung als Faden oder als
-Nachlauf; Reihenfolge gegenüber dem Löser-Beweis.
+Nachlauf; Reihenfolge gegenüber „Haut fein und live“.
 
 ## 2. Anknüpfung: Was es auf `claude/form-zuerst` schon gibt
 
@@ -86,14 +87,16 @@ laut Projektgedächtnis und Planseite [`2026-11-06-kurven-als-wahrheit.md`](2026
 | Schneider-Anpassung mit Eckenerkennung | `packages/shape/src/fit.ts` | Bleistift N |
 | Prüfungen mit der Maus (Playwright) und Haken `__kurven.*` | `apps/editor/scripts/pruefen/form-*.mjs` | Tore je Schritt |
 
-**Nächste Schritte der laufenden Session** (08.11. abends, Florian: „ok, machen wir es so“): Stift-Form genau über Linien (gebaut),
-dann **Löser netzunabhängig als Beweis** (Gewichte aus der Geometrie, Kotangens auf intrinsischer Delaunay-Triangulierung,
-Verteilung getrennt), dann **Haut fein und live** (Netzschritte im Zug). Offen: Florians Wahl „Punkte wo nötig“.
+**Stand der laufenden Session** (Reihenfolge nach Florian, 08.11.: „ok, machen wir es so“): Stift-Form genau über Linien (gebaut);
+**Löser netzunabhängig als Beweis gebaut** (53377344: `dicht/intrinsisch.ts`, intrinsische Delaunay-Triangulierung mit Kotangens,
+`HautAusKurven` mit `geometrie`; Sprung beim Loslassen am Hals 4,9 → 0,34 Einheiten; im Fenster `?gewichte=geometrie`, Standard
+erst nach Florians Wort; offen Linse, Überhang, Ohr und Rüssel beim schnellen Zug); als Nächstes **Haut fein und live** (Netzschritte
+im Zug). Offen: Florians Wahl „Punkte wo nötig“.
 
 **Was das für diesen Plan heißt:** Schneiden und Anbauen ändern das Netz (andere Dichte am Deckel und am neuen Teil). Mit dem
-heutigen Löser (gleich gewichtetes Mittel der Nachbarn, „glatt“ hängt vom Netz ab, Planseite Abschnitt 8) würde die Haut nach
-jedem Schnitt und Anbau springen. Deshalb kommen Z4–Z6 erst nach dem Löser-Beweis. Z0–Z2 ändern weder Löser noch Netz-Topologie
-nach dem Start und können sofort beginnen.
+bisherigen Löser (gleich gewichtetes Mittel der Nachbarn, „glatt“ hängt vom Netz ab, Planseite Abschnitt 8) würde die Haut nach
+jedem Schnitt und Anbau springen. Deshalb setzen Z4–Z6 den netzunabhängigen Löser als Standard voraus (Beweis gebaut, Florians
+Wort offen). Z0–Z2 ändern weder Löser noch Netz-Topologie nach dem Start und können sofort beginnen.
 
 **Florians Regeln, die gelten bleiben** (Klarstellungen 05.11., Nachrichten 2 und 3): ein dichtes Netz, das sich selbst erzeugt;
 nach dem Start ist das Netz die Wahrheit, Linien und Loops formen es; Kanten und Edgeloops sind dieselbe Idee; nichts verschmilzt
@@ -352,8 +355,9 @@ liegt genau dort, wo die Form von oben bzw. vorn am breitesten ist.
 - Werte je Punkt mit `alt` umordnen, neue Punkte ergänzen (`ergaenzen` aus `poseLoop.ts`).
 - Schneiden und Anbauen nur in der Grundform; in der Pose gesperrt mit Hinweis.
 - Löser einmal je Schritt neu zerlegen (0,1–0,5 s), danach Ruhe wie heute (`nachLoesenOffen`).
-- Voraussetzung: netzunabhängiger Löser (laufende Session), sonst springt die Haut, wo der Deckel oder das neue Teil eine andere
-  Dichte hat.
+- Voraussetzung: netzunabhängiger Löser als Standard (Beweis 53377344, `HautAusKurven` mit `geometrie`), sonst springt die Haut, wo
+  der Deckel oder das neue Teil eine andere Dichte hat. Die intrinsische Triangulierung hält harte Linien fest — das passt zu
+  Deckelkante und Ansatz.
 
 ## 6. Schritte mit Toren
 
@@ -366,7 +370,7 @@ Rüssel, Boden, Pilz, Maul, Fressen-Pose, Stift über Linien) bleiben gleich ode
 | Z0 | Leiste, Zeichenmodus, Bleistift N (Faden und Nachlauf zum Vergleich), Ellipse, Rechteck (zunächst im Modus „Auf die Haut“) | Wiedergabetests mit aufgezeichneten Strichen: Kreis → 4 Anker, Ellipse 3–5, S-Kurve 2–3 Stücke, höchstens ε neben dem geglätteten Strich, Arm/Sehne ≤ 0,65, kein Krümmungssprung an glatten Ankern; Faden ≤ 4 ms je Mausbewegung, Anpassen beim Loslassen ≤ 30 ms; Florian bemerkt beim Loslassen keinen Sprung (sonst Vorschau des Anpassens schon beim Zeichnen); **Florian zeichnet und sagt, ob es sich wie Photoshop 100 % anfühlt, und wählt Faden oder Nachlauf** | 1–1,5 Tage |
 | Z1 | Startform im leeren Fenster, Umriss mit Griffen, aufblasen, bearbeitbar bis „Loops“ | Kreis → Kugel (≤ 0,5 % Abweichung), alte Aufrufer von `rundAusSeite` bitgleich, grob ≤ 20 ms im Zug, fein ≤ 0,4 s | 0,5–1 Tag |
 | Z2 | Knopf „Loops“ | Haut beim Einsetzen unverändert (≤ 0,1); Kreis und Ellipse genau die drei Loops, Querringe auf der Kugel ≤ 0,1 % vom Kreis; die acht Testumrisse aus der Recherche (C5: Kreis, Ellipse, Ei, Quadrat, Erdnuss, Banane, Wurst mit Höcker, Blob mit Kopf, Beinen und Schwanz) als Bild Erwartung neben Ergebnis, Florian nimmt ≥ 6 von 8 an; Zug am Kopf-Querring der Erdnuss: der andere Bauch bleibt (≤ 1) | 1,5–2 Tage |
-| Z3 | Fangen, Zweige | Anfang/Ende genau am Punkt (0,00), Zweig teilt einen Bereich, Haut beim Anlegen ≤ 0,1, ⌘Z genau; alle 103 Tests unter `src/dicht/` grün | 1,5–2 Tage |
+| Z3 | Fangen, Zweige | Anfang/Ende genau am Punkt (0,00), Zweig teilt einen Bereich, Haut beim Anlegen ≤ 0,1, ⌘Z genau; alle Tests unter `src/dicht/` grün (heute 104) | 1,5–2 Tage |
 | Z4 | Bereiche, Löschen, Deckel | 0 offene Kanten, spiegelgleich (10⁻⁸), Deckel eben (≤ 1 % der Breite), Knick an der Kante ≥ 80° bei einem Kugelschnitt, ⌘Z genau, ≤ 0,5 s | 1,5–2 Tage |
 | Z5 | Anbauen aus dem Loop | Kopf aus dem Schnitt-Loop: 0 umgeklappt, Knicke über 60° = 0, Naht weich (≤ 5° quer) oder hart, Teil rund (Querschnitt ≤ 5 % vom Kreis), Spiegel genau | 2–3 Tage |
 | Z6 | Anbauen frei, Paare | Naht geschlossen, Bein als Paar spiegelgleich, 0 umgeklappt, Ohr auf dem Kopf; Zeit ≤ 1 s | 2–3 Tage |
@@ -388,13 +392,14 @@ Abbruch je Schritt: wenn ein Tor nach dem zweiten Anlauf verfehlt ist, Befund un
 6. **Glättung:** Faden (formtreu bei jedem Tempo, Photoshops Faden-Modus) oder Nachlauf (näher an Photoshops Standard, verformt bei
    schnellem Zeichnen)? Vorschlag: beides in Z0 ausprobieren, Faden als Standard.
 7. **Paar oder Mitte** beim freien Anbau: Standard Mitte, ⌥ = Paar. Vorschlag so.
-8. **Reihenfolge:** Z0–Z2 sofort (vor dem Löser-Beweis) oder erst nach ihm? Vorschlag: Löser-Beweis zuerst fertig (er ist
-   angefangen), dann Z0–Z6 in dieser Session.
+8. **Reihenfolge:** Der Löser-Beweis ist gebaut; offen sind sein Standard (Florians Wort) und „Haut fein und live“. Z0–Z2 sofort
+   danach oder erst nach „Haut fein und live“? Vorschlag: Löser als Standard entscheiden, dann Z0–Z2 (unabhängig vom Löser), danach
+   „Haut fein und live“ und Z3–Z6 — alles in der Session, die das Fenster führt.
 
 ## 8. Risiken
 
 - **Zweige berühren den Kern** (`loops.ts`, 2 500 Zeilen): Rückschritte bei Griffen, Kreuzungen, Pfad. Gegenmittel: Zweig als
-  eigener Fall neben `ring`, alle Proben und 103 Tests vor und nach dem Umbau.
+  eigener Fall neben `ring`, alle Proben und Tests unter `src/dicht/` (heute 104) vor und nach dem Umbau.
 - **Neue Teile ohne Querloops** halten ihre Rundung im Löser aus den Kurven nicht (Krümmung quer kommt nur von Loops, die quer
   laufen). Gegenmittel: „Loops“ setzt sie beim Anbau; Tor in Z5.
 - **Anbau an stark gekrümmten oder schrägen Ansätzen** (Bein an der Flanke, Strich in einer anderen Richtung als die Normale des
