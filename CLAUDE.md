@@ -1540,6 +1540,13 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - **Fallen:** „umgeklappt“ (Dreieck gegen seine Ecken) sieht eine ganz umgestülpte Stelle nicht, dafür die Strahl-Parität; lange Griffe
     ragen aus dem Blatt (Proben zoomen dann heraus); in der Seite liegt die Hornspitze auf dem Umriss (in der Front wählen); Schritte
     zwischen Fenster-Läufen mit und ohne `geometrie` nicht Zug für Zug vergleichen (die Züge laufen anders).
+- **2026-11-08 (abends, danach): Teil 1 als Beweis angehalten, die Ursache liegt im Modell** (Florian: „Ja, fang mit Teil 1 als Beweis an …“;
+  Planseite „Kurven als Wahrheit“, Abschnitt 12). Die Matrix nach der Geometrie macht das Nachhinken größer (Ohr 1,35 → 3,65, nachgeführt
+  4,40). Ursache: Der Löser misst die Krümmung an den Linien an der Haut selbst; dann legen die Linien die Form nicht fest (Kugel mit einem
+  Ring: Kuppel ×1,25 bleibt bei 163 statt 150, unberührt ±50 % in den ersten Runden, steht bei 155,7; `form-kuppel-probe.ts`). Mit fester
+  Krümmung an den Linien steht der Löser nach drei Runden (`SCHWINGEN`, `QFEST=1` in `form-netzunabhaengig.ts`). Verworfen: Scheibenmittel,
+  Anderson, weiche Bindung (Code entfernt, Schalter `messreiheSetzen` bleibt). Vorschlag: Krümmung an den Linien aus den Linien selbst
+  (Pfad gegen die Normale, quer „so rund wie möglich“, ohne Gedächtnis). Entscheidung bei Florian.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

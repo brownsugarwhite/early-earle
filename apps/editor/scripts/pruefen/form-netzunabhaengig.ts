@@ -24,13 +24,14 @@ import {
   punktEinfuegen,
   verschiebungLaengs,
 } from '../../../../packages/shape/src/dicht/loops';
-import { daempfungSetzen } from '../../../../packages/shape/src/dicht/ausKurven';
+import { daempfungSetzen, messreiheSetzen } from '../../../../packages/shape/src/dicht/ausKurven';
 import { rundAusSeite } from '../../../../packages/shape/src/dicht/rund';
 import { verdichten } from '../../../../packages/shape/src/dicht/verdichten';
 
 const fall = process.env.FALL ?? 'hals';
 if (process.env.DAEMPFUNG) daempfungSetzen(Number(process.env.DAEMPFUNG));
 const gewichte = (process.env.GEWICHTE ?? 'gleich') as 'gleich' | 'geometrie';
+
 const weiter = Number(process.env.RUNDEN ?? 30);
 const kugel = () => {
   const n = rundAusSeite(
@@ -277,6 +278,11 @@ for (let k = 1; k <= SCHRITTE; k++) {
   z.schritt(d, JE_SCHRITT);
 }
 const jeSchritt = (performance.now() - tz) / SCHRITTE;
+// Nachhinken: der Stand nach dem letzten Mausschritt und nach zwei Runden ohne Bewegung, gegen den fertig gerechneten (A+, unten)
+const A0 = schnapp(st.h);
+z.schritt(d, 2);
+const A2 = schnapp(st.h);
+z.schritt(d, 2);
 {
   const zt = (z.loeser as unknown as { zeiten?: Record<string, number> }).zeiten;
   if (zt) {
@@ -287,9 +293,25 @@ const jeSchritt = (performance.now() - tz) / SCHRITTE;
     );
   }
 }
-z.schritt(d, 4);
 for (const l of st.loops) festlegen(st.h, l);
 const A = schnapp(st.h);
+// SCHWINGEN=<Runden>: vom Stand A ein Löser, Runde für Runde gemessen (FEST=1: Dämpfung ohne Anpassung, QFEST=1: Quellen fest)
+if (process.env.SCHWINGEN) {
+  messreiheSetzen({ fest: process.env.FEST === '1', quellenFest: process.env.QFEST === '1' });
+  const hS = { ...st.h, pos: Float64Array.from(A.P) };
+  const zS = new LoopZug(hS, st.loops, null, true, 'kurven', gewichte);
+  let vor = schnapp(hS);
+  for (let r = 1; r <= Number(process.env.SCHWINGEN); r++) {
+    zS.schritt(
+      st.loops.map(() => null),
+      1,
+    );
+    const jetzt = schnapp(hS);
+    zeile(`Runde ${r}`, vor, jetzt);
+    vor = jetzt;
+  }
+  messreiheSetzen({ fest: false, quellenFest: false });
+}
 console.log(`${fall}: ${st.h.n} Punkte, Zerlegen ${tZerlegen.toFixed(0)} ms, je Mausschritt (${JE_SCHRITT} Runden) ${jeSchritt.toFixed(1)} ms`);
 /** Runden ohne Zug (ein neuer Löser, wie das Fenster nach jeder Änderung) */
 const runden = (h: Haut, loops: Loop[], n: number) => {
@@ -339,6 +361,8 @@ runden(st.h, st.loops, weiter);
 const Bplus = schnapp(st.h);
 console.log(`  verdichtet: ${A.P.length / 3} → ${B.P.length / 3} Punkte`);
 zeile('A → A+ (grobes Netz weiter gerechnet)', A, Aplus);
+zeile('Nachhinken: letzter Mausschritt → A+', A0, Aplus);
+zeile('Nachhinken: zwei Runden danach → A+', A2, Aplus);
 // Vergleich über Läufe mit verschiedenen Startnetzen (DREIECKE): A+ speichern bzw. mit einem gespeicherten vergleichen
 if (process.env.SPEICHERN) {
   const fs = await import('node:fs');

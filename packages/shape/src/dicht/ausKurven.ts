@@ -78,6 +78,15 @@ let DAEMPFUNG = 1;
 export function daempfungSetzen(b: number): void {
   DAEMPFUNG = b;
 }
+/**
+ * nur für Messreihen (Löser-Schritt Teil 1, 08.11. abends): `fest` = volle Schritte ohne Anpassung je Punkt; `quellenFest` = die Krümmung
+ * an den Linien bleibt die beim Anlegen gemessene (statt jede Runde an der Haut gemessen). Damit gezeigt: Nicht die Matrix bremst den
+ * Löser, sondern die Messung an den Linien (Planseite „Kurven als Wahrheit“, Abschnitt 12).
+ */
+const MESSREIHE = { fest: false, quellenFest: false };
+export function messreiheSetzen(o: Partial<typeof MESSREIHE>): void {
+  Object.assign(MESSREIHE, o);
+}
 /** Genauigkeit der verteilten Krümmung je Runde (Rest gegen die rechte Seite); die Runden rechnen sie weiter */
 const PCG_GENAU = 1e-3;
 
@@ -385,7 +394,7 @@ export class HautAusKurven {
   private kruemmungIntrinsisch(kap: Float64Array, ig: IntrinsischeGewichte): Float64Array {
     const h = this.h;
     const c = Float64Array.from(kap);
-    for (let v = 0; v < h.n; v++) if (this.nr[v]! < 0) c[v] = this.ruhe.kap[v]!;
+    for (let v = 0; v < h.n; v++) if (this.nr[v]! < 0 || (MESSREIHE.quellenFest && this.quelle[v]! >= 0)) c[v] = this.ruhe.kap[v]!;
     const nc = this.cFrei.length;
     const M = this.cVor;
     if (nc === 0 || !M) return c;
@@ -496,7 +505,7 @@ export class HautAusKurven {
           // der Unterschied zwischen Soll und gemessener Krümmung (nach der Geometrie), gedämpft; wechselt er das Vorzeichen, schwingt
           // der Punkt: dort halbiert, sonst wieder hinauf
           const d = geo.kante2[i]! * (c[i]! - geo.kap[i]!);
-          const b = d * this.dVorher![i]! < 0 ? Math.max(0.02, 0.5 * this.beta![i]!) : Math.min(DAEMPFUNG, 1.25 * this.beta![i]!);
+          const b = MESSREIHE.fest ? DAEMPFUNG : d * this.dVorher![i]! < 0 ? Math.max(0.02, 0.5 * this.beta![i]!) : Math.min(DAEMPFUNG, 1.25 * this.beta![i]!);
           this.beta![i] = b;
           this.dVorher![i] = d;
           k = m.kante2[i]! * m.kap[i]! + b * d;

@@ -864,3 +864,55 @@ Ohr aus dem senkrechten Ring (70 hinaus), dann schmaler gezogen. Am Ohr gegen de
   elf Griffzügen höchstens 1,5-mal so viele Punkte wie vorher; je Mausbewegung ≤ 16 ms.
 
 **Nicht schlechter** (vorhandene Proben): Boden, Pilz, Linse, Überhang, Rüssel, Hin und zurück, Stift-Form, Maul, Fressen-Pose.
+
+## 12. Teil 1 als Beweis (08.11. abends): angehalten, die Ursache liegt im Modell
+
+Florian: „Ja, fang mit Teil 1 als Beweis an: Form unabhängig vom Netz und sofort, mit den Kriterien und dem Abbruch nach zwei Tagen von
+der Planseite.“ Geplant war: Die Matrix wird nach der Geometrie gebaut und im Hintergrund nachgeführt, dann kommt der Löser in ein, zwei
+Runden an.
+
+**Gemessen** (Kern, `apps/editor/scripts/pruefen/form-netzunabhaengig.ts`, Ohr, 30 Mausschritte mit je einer Runde wie im Fenster;
+Nachhinken = Stand nach dem letzten Mausschritt gegen fertig gerechnet, Einheiten):
+
+| Löser | Nachhinken | nach zwei Runden | Form hängt am Netz |
+| --- | --- | --- | --- |
+| gleiche Gewichte (Standard) | 0,38 | 0,14 | 7,96 |
+| nach der Geometrie (heute) | 1,35 | 0,38 | 1,81 |
+| dazu Matrix nach der Geometrie | 3,65 | 1,33 | 1,30 |
+| dazu im Hintergrund nachgeführt (alle 9 Schritte) | 4,40 | 2,15 | 1,27 |
+
+Die Matrix nach der Geometrie macht das Nachhinken größer, nicht kleiner.
+
+**Ursache, Runde für Runde gemessen** (`SCHWINGEN=<Runden>`, `FEST=1` volle Schritte ohne Dämpfung, `QFEST=1` Krümmung an den Linien fest):
+- Heute misst der Löser die Krümmung an den Linien jede Runde an der Haut. Ungedämpft wächst dann ab Runde 3 ein Fehler um das 1,7-Fache je
+  Runde (vorn unten an der Kugel); mit der Matrix nach der Geometrie schwingt er mit dem Faktor −2,4. Deshalb braucht der Löser die Dämpfung,
+  und die Dämpfung ist das Nachhinken.
+- Bleibt die Krümmung an den Linien fest, steht der Löser nach drei Runden: 0,11 → 0,05 → 0,03 → 0,02.
+- Der Löser mit gleichen Gewichten pendelt am Ohr dauerhaft um etwa 0,3 hin und her.
+- **Kugel mit einem Ring** (`apps/editor/scripts/pruefen/form-kuppel-probe.ts`): Die obere Kuppel 25 % höher gestellt bleibt bei 163 statt
+  150; 25 % flacher endet bei 155. Unberührt schwingt die Form in den ersten Runden um ±50 % und bleibt bei 155,7 stehen. Nach der Geometrie
+  ähnlich (154 bzw. 146).
+
+**Befund:** Misst der Löser die Krümmung an einer Linie an der Haut selbst, legen die Linien die Form zwischen sich nicht fest. Eine höhere
+Kuppel misst an ihrem Rand mehr Krümmung, verteilt sie und bleibt höher; eine flachere ebenso, und auch eine umgestülpte Kuppel passt zu sich
+selbst. Daraus folgen alle drei Fälle aus Abschnitt 11: Der Löser hat keinen festen Punkt, auf den er zuläuft, er schwingt oder treibt und
+braucht Dämpfung (Nachhinken); nach dem Loslassen bewegt sich die Form in Stufen; eine umgestülpte Stelle bleibt und wächst. Schneller rechnen
+(WebAssembly, nativ) ändert daran nichts.
+
+**Verworfen (gemessen):** Matrix nach der Geometrie (Nachhinken 1,35 → 3,65) und im Hintergrund nachgeführt (4,40); die Krümmung an den Linien
+über eine Scheibe gemittelt (Radius 10: wächst weiter; Radius 20: stabil, aber nur 0,75–0,8 je Runde, und die Form ändert sich um 8,6);
+Anderson-Beschleunigung (erst 0,02, dann schaukelt es sich wieder auf; mit Neustart bei wachsendem Schritt läuft der Löser auseinander); eine
+weiche Bindung an die Messung wie bei FiberMesh (läuft schneller auseinander). Der Code dieser Versuche ist wieder entfernt; geblieben sind
+die zwei Schalter für die Messung (`messreiheSetzen` in `dicht/ausKurven.ts`).
+
+**Vorschlag: Teil 1 neu, die Krümmung an den Linien kommt aus den Linien selbst.**
+- Wie stark sich die Haut an einer Linie wölbt, folgt daraus, wie sich die Linie biegt (ihr Bézier-Pfad, gegen die Normale der Haut
+  gemessen). Quer zur Linie gilt „so rund wie möglich“ (gleich stark), außer eine kreuzende Linie sagt etwas anderes. Das ist die „Krümmung
+  mit Richtung“ vom 06.11., aber ohne Gedächtnis.
+- Dann legen die Linien die Form fest (Kurven als Wahrheit). Der Löser sollte nach wenigen Runden stehen wie mit fester Krümmung (drei
+  Runden), und die Form hängt nicht am Netz, weil der Pfad genau ist. Ob eine umgestülpte Stelle dann von selbst zurückfindet, prüft der
+  Beweis.
+- Was sich ändern kann: Formen zwischen wenigen Linien (Kugel mit einem Ring, Rüssel, Hammer, Boden, Pilz) sind neu zu prüfen. Quer zu einer
+  einzelnen Linie ist „so rund wie möglich“ eine Annahme.
+- Kriterien wie Teil 1, dazu: Die Kugel mit einem Ring bleibt aus jeder Startkuppel eine Kugel (150 ± 0,5); Boden, Pilz, Linse, Überhang,
+  Rüssel, Hammer und Fressen-Pose nicht schlechter. Zeit: der Rest der zwei Tage.
