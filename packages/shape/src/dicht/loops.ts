@@ -10,7 +10,7 @@
 // gegenüber, an einer Ecke darf die Linie knicken (von Hand oder von selbst an der Kreuzung mit einer Kante). Wie in Illustrator
 // gehen die Griffe mit ihrem Punkt: Ein Punkt ändert nur die zwei Stücke bis zu seinen Nachbarn.
 
-import { HautAusKurven } from './ausKurven';
+import { HautAusKurven, type HautGewichte } from './ausKurven';
 import { KETTE_K, type KruemmungsKetten } from './kruemmung';
 import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich, hautNormalen, kantenSchluessel } from './kurven';
 import { bernstein, stueckAnpassen, stueckNaechstes, stueckPunkt, stueckTeilen } from './pfad';
@@ -860,7 +860,14 @@ export class LoopZug {
   readonly start: Float64Array[];
   readonly loeser: HautZiele | HautAusKurven;
 
-  constructor(h: Haut, loops: readonly Loop[], bereich: Uint8Array | null, kruemmung = true, art: HautArt = 'gedaechtnis') {
+  constructor(
+    h: Haut,
+    loops: readonly Loop[],
+    bereich: Uint8Array | null,
+    kruemmung = true,
+    art: HautArt = 'gedaechtnis',
+    gewichte: HautGewichte = 'gleich',
+  ) {
     this.plan = bindungenAus(h, loops);
     this.start = loops.map((l) => Float64Array.from(l.ruhe));
     // die Ketten tragen die Dehnung der Loops immer, die Krümmung (mit Richtung) nur mit `kruemmung`
@@ -868,7 +875,7 @@ export class LoopZug {
     const ziele = zieleAus(this.plan, this.start);
     this.loeser =
       art === 'kurven'
-        ? new HautAusKurven(h, this.plan.bind, ziele, bereich, 100, kantenGewichte(h, loops), ketten)
+        ? new HautAusKurven(h, this.plan.bind, ziele, bereich, 100, kantenGewichte(h, loops), ketten, gewichte)
         : new HautZiele(h, this.plan.bind, ziele, bereich, 100, kantenGewichte(h, loops), ketten, kruemmung);
   }
 

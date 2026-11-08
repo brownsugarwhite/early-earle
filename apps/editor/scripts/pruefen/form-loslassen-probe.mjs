@@ -262,6 +262,11 @@ const zeile = (name, X, Y, t) => {
 zeile('Loslassen sofort (Runden am Ende + Verdichten)', A, B, tB);
 verlauf.forEach((v, k) => zeile(`danach Änderung ${k + 1}`, k === 0 ? B : verlauf[k - 1].S, v.S, v.t));
 zeile('Endstand gegen vor dem Loslassen', A, C);
+// NACH=<Runden>: danach noch so viele Runden über die ganze Haut — ist der Endstand fertig gerechnet?
+if (process.env.NACH) {
+  await seite.evaluate((n) => window.__kurven.nachrechnen(n), Number(process.env.NACH));
+  zeile(`noch ${process.env.NACH} Runden`, C, await schnapp());
+}
 const zC = C.z;
 console.log(`  Zeiten: Verdichten ${zC.verdichtung?.ms ?? '–'} ms (${zC.verdichtung?.neu ?? 0} neu, ${zC.verdichtung?.gelegt ?? 0} gelegt) · Zerlegen in der Ruhe ${zC.vorrechnen} ms · Setzen samt Nachverfeinern ${zC.nachLoesen} ms`);
 if (fehler.length) console.log(`Fehler: ${fehler.slice(0, 3).join(' | ')}`);

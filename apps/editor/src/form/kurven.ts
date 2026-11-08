@@ -30,6 +30,7 @@ import {
   type Ansicht,
   type GriffVersatz,
   type HautArt,
+  type HautGewichte,
   type Kurve,
   type Loop,
   type LoopPunkt,
@@ -137,6 +138,11 @@ const RUNDEN_ENDE = 4;
  * ≈ 30 statt 57 ms).
  */
 const RUNDE_MS = 12;
+/**
+ * Nach der Geometrie (`GEWICHTE`) kostet eine Runde mehr (bei 5 200 Punkten ≈ 10 statt 8 ms: intrinsische Triangulierung, Krümmung
+ * verteilen); die zweite Runde gibt es dann nur, wenn beide zusammen unter 16 ms bleiben.
+ */
+const RUNDE_MS_GEOMETRIE = 8;
 
 const kreis = (r: number): UmrissPunkt[] => [
   { x: r, y: 0 },
@@ -201,6 +207,13 @@ const KRUEMMUNG = new URLSearchParams(location.search).get('kruemmung') !== '0';
  * weit die Loops sie nicht vorgeben, gelöst im Bereich des Zugs (bis 06.11., zum Vergleich). In der Pose immer mit Gedächtnis.
  */
 const HAUT: HautArt = new URLSearchParams(location.search).get('haut') === 'gedaechtnis' ? 'gedaechtnis' : 'kurven';
+/**
+ * Wie die Haut aus den Kurven die Krümmung misst und verteilt (08.11., Beweis, Florian: „Form unabhängig vom Netz, Sprung beim
+ * Loslassen höchstens ein halber Bildpunkt“): `?gewichte=geometrie` = nach der Geometrie (Laplace–Beltrami auf der intrinsischen
+ * Delaunay-Triangulierung); dann hängt die Form nicht mehr am Netz und springt nicht, wenn es sich nach dem Zug verdichtet. Standard
+ * bleibt bis zu Florians Wort das Mittel der Nachbarn (Ohr bei schnellem Zug und Linse damit etwas schlechter, Planseite).
+ */
+const GEWICHTE: HautGewichte = new URLSearchParams(location.search).get('gewichte') === 'geometrie' ? 'geometrie' : 'gleich';
 /** Der Zug löst nur einen Bereich um die bewegten Stellen (mit Gedächtnis und in der Pose); aus den Kurven die ganze Haut */
 const mitBereich = (): boolean => grund !== null || HAUT !== 'kurven';
 /**
@@ -1363,7 +1376,7 @@ function vorrechnenPlanen(): void {
     vorrechnenUhr = null;
     if (mitBereich() || zug) return;
     const t0 = performance.now();
-    const z = new LoopZug(haut, loops, null, KRUEMMUNG, 'kurven');
+    const z = new LoopZug(haut, loops, null, KRUEMMUNG, 'kurven', GEWICHTE);
     letztesVorrechnen = Math.round(performance.now() - t0);
     if (nachLoesenOffen !== haut) return;
     nachLoesenOffen = null;
@@ -1568,7 +1581,7 @@ function loeserFuer(bewegt: readonly V3[], r: number, ecken: Iterable<number>): 
   const art: HautArt = mitBereich() ? 'gedaechtnis' : 'kurven';
   const bereich = mitBereich() ? bereichUm(h, bewegt, r, ecken) : null;
   if (aus && bereich) for (let v = 0; v < h.n; v++) if (aus[v]) bereich[v] = 0;
-  return new LoopZug(h, loops, bereich, KRUEMMUNG && !grund, art);
+  return new LoopZug(h, loops, bereich, KRUEMMUNG && !grund, art, GEWICHTE);
 }
 
 /** Löser für die Stücke um Punkt k des Loops li (Griff ziehen oder ausrichten) */
@@ -1983,7 +1996,7 @@ function zugBewegen(X: number, Y: number): void {
   if (mitBereich()) z.loeser.schritt(z.versch, RUNDEN_ZUG);
   else {
     z.loeser.schritt(z.versch, 1);
-    if (performance.now() - t0 < RUNDE_MS) z.loeser.schritt(z.versch, 1);
+    if (performance.now() - t0 < (GEWICHTE === 'geometrie' ? RUNDE_MS_GEOMETRIE : RUNDE_MS)) z.loeser.schritt(z.versch, 1);
   }
   zeiten.push(performance.now() - t0);
   if (zeiten.length > 200) zeiten.shift();
@@ -2229,7 +2242,7 @@ function hautNeuRechnen(versch: readonly (Float64Array | null)[] = loops.map(() 
   vorrechnenAus();
   eckenAuto(loops);
   const t0 = performance.now();
-  const z = new LoopZug(haut, loops, null, KRUEMMUNG, HAUT);
+  const z = new LoopZug(haut, loops, null, KRUEMMUNG, HAUT, GEWICHTE);
   // Punkte und Griffe sind schon die neuen: Das Ziel jeder Linie mit Pfad ist genau ihr Pfad
   z.schritt(
     loops.map((l, li) => (exakt(l) ? pfadVersatz(l, z.start[li]!) : versch[li]!)),
@@ -2921,6 +2934,18 @@ schleife();
 
 // Prüfhaken für Skripte: Loops, Lagen, Bildschirmpunkte, Zeiten
 (window as unknown as { __kurven: unknown }).__kurven = {
+  /** Prüfung: n weitere Runden über die ganze Haut (wie das Setzen in der Ruhe), ohne Verdichten; ist die Haut fertig gerechnet? */
+  nachrechnen: (n: number) => {
+    if (mitBereich() || zug) return;
+    const z = new LoopZug(haut, loops, null, KRUEMMUNG, 'kurven', GEWICHTE);
+    z.schritt(
+      loops.map((l, li) => (exakt(l) ? pfadVersatz(l, z.start[li]!) : null)),
+      n,
+    );
+    festlegenAlle();
+    hautZeigen();
+    baenderZeigen();
+  },
   loops: () =>
     loops.map((l) => ({
       id: l.id,
