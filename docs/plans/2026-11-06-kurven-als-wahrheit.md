@@ -647,3 +647,78 @@ Florian: „ok, machen wir es so“ (Reihenfolge: zuerst die Stift-Form, dann de
 - **Fallen:** Die Stelle eines Punkts auf der Zeichnung nur zwischen seinen Nachbarankern suchen (die Zeichnung kann sich nahe
   kommen); ein geschlossener Loop springt über seinen ersten Anker um eine Runde (K Stücke) zurück. Ein Griff, der im Blatt null ist und
   nur in der Tiefe wirkt, verlässt die Haut an seiner Ecke: nicht frei mit den anderen anpassen.
+
+## 9. Beweis (08.11. nachts): Form unabhängig vom Netz
+
+Florian: „Ja, mach mit dem Löser-Beweis weiter: Form unabhängig vom Netz, Kriterien Sprung beim Loslassen höchstens ein halber
+Bildpunkt, je Mausbewegung höchstens 16 ms.“
+
+**Ursache, gemessen im Kern** (`apps/editor/scripts/pruefen/form-netzunabhaengig.ts`): Der Löser misst die Krümmung als Mittel der
+Normalkrümmung über die Kantenrichtungen, gewichtet mit der Kantenlänge², und verteilt sie nach der Zahl der Nachbarn. Auf einem
+gestreckten Netz sieht er vor allem die langen Kanten. Derselbe Hals, auf dem Netz beim Loslassen fertig gerechnet und auf dem
+verdichteten Netz: bis 6,4 Einheiten anders. Derselbe Zug auf Startnetzen mit 6 000, 12 000 und 24 000 Dreiecken: 0,86 bzw. 3,6
+gegen das feinste, ohne Ordnung.
+
+**Gebaut** (`?gewichte=geometrie` im Fenster; Standard bleibt bis zu Florians Wort das Mittel der Nachbarn):
+- `dicht/intrinsisch.ts`: intrinsische Delaunay-Triangulierung der Haut (dieselben Punkte; Kanten werden nur rechnerisch geklappt,
+  Länge aus dem Kosinussatz in der aufgefalteten Raute; harte Linien werden nie geklappt), darauf Kotangens-Gewichte ≥ 0. Kosten 1,0–1,5 ms
+  bei 5 000–9 000 Punkten, 2,9 ms bei 19 000.
+- `HautAusKurven` mit `geometrie`: Die Krümmung wird darauf gemessen und harmonisch verteilt (Laplace–Beltrami; konjugierte Gradienten,
+  vorkonditioniert mit dem einmal zerlegten Laplace des Netzes, gestartet bei der letzten Runde, 2–3 Schritte). Die Matrix der Lagen und
+  die Verteilung der Punkte bleiben die mit gleichen Gewichten (dieselbe Zerlegung wie bisher, die Dreiecke bleiben gut). Gelöst wird
+  der Unterschied zwischen Soll und gemessener Krümmung; wechselt er an einem Punkt das Vorzeichen, wird die Korrektur dort halbiert,
+  sonst wieder bis zum vollen Schritt angehoben.
+- Im Fenster: zweite Runde je Mausbewegung nur, wenn die erste unter 8 ms blieb (eine Runde ≈ 10 ms bei 5 200 Punkten).
+
+**Netzunabhängig (Kern):**
+
+| Prüfung | bisher | nach der Geometrie |
+| --- | --- | --- |
+| Hals: Startnetz 6 000 / 12 000 gegen 24 000 Dreiecke | 0,86 / 3,64 | 0,51 / 0,26 (halbiert je Verdopplung) |
+| Hals: Netz beim Loslassen gegen verdichtet, beide fertig | 6,37 | 0,36 (99 % 0,17) |
+| Hals: zwei feine Netze (6 200 gegen 21 000 Punkte) | 1,75 | 0,51 |
+| Rüssel: zwei feine Netze (6 900 gegen 20 700 Punkte) | 16,2 (99 % 14,8) | 2,5 an der Spitze (99 % 0,32) |
+| Ohr: Netz beim Loslassen gegen verdichtet | 8,0 | 1,5 |
+
+Test `dicht/netzunabhaengig.test.ts`: Hals auf 6 000 gegen 12 000 Dreiecken, nach der Geometrie 0,52, mit gleichen Gewichten 2,52
+(Gegenprobe). 104 Tests unter `src/dicht/` grün.
+
+**Sprung beim Loslassen im Fenster** (`form-loslassen-probe.mjs`, mit der Maus, 5 222 Punkte, 30 Mausschritte; Endstand gegen den
+Stand vor dem Loslassen; 0,89 px je Einheit bei 100 %):
+
+| Zug | bisher | nach der Geometrie |
+| --- | --- | --- |
+| Hals (obere Kreuzung 160 hoch) | 4,92 (4,4 px) | **0,34 (0,30 px)** |
+| Ohr, schneller Zug | 5,98 (5,3 px) | 8,69 (7,7 px) |
+| Ohr, langsamer Zug (120 Mausschritte) | 5,79 (5,2 px) | 4,84 (4,3 px); ohne Nachteilen der Linien 1,04 |
+| Rüssel (+320 / −70) | 33,85 (30 px) | 7,94 (7,1 px) |
+| je Mausbewegung | 15,8–16,1 ms | **10,1–13,1 ms** (Überhang mit 6 500 Punkten 13,5–15,3) |
+
+Das Kriterium hält der Hals, die Zeit alle Züge. Ohr und Rüssel springen weiter, aus einem Grund, den kein Löser beheben kann: Der Zug
+läuft auf dem Netz vom Greifen. Am Rüssel ist es vierfach gestreckt (ein Rohr mit Radius ≈ 50 aus wenigen Punkten im Umfang ist 4–9
+Einheiten eckig), an der Ohrspitze sind die Linien wenige Sehnen um eine enge Biegung. Nach dem Loslassen wird das Netz verdichtet und die
+Linien werden genau nachgeteilt; der Löser zeigt dann richtig die feinere Form, das ist der Sprung. Mit dem bisherigen Löser kam dazu,
+dass die Form am Netz hing (Hals). Auf gestreckten Dreiecken schätzt die Matrix mit gleichen Gewichten außerdem falsch ein, wie stark
+sich die Krümmung ändert (längs der Streckung 0,1–0,4-mal, quer bis zweimal): Der Löser schwingt quer und hinkt längs nach, das Ohr bei
+schnellem Zug 3,2 Einheiten hinter dem fertigen Stand. Beides verschwindet, wenn das Netz schon während des Zugs fein und gleichmäßig
+bleibt. Weil die Form jetzt nicht mehr vom Netz abhängt, darf es mitten im Zug verfeinert und neu zerlegt werden, ohne dass etwas springt.
+Die Zerlegung bestimmt nur, wie schnell der Löser ankommt, nicht wohin; sie kann deshalb im Hintergrund laufen und eingewechselt werden.
+
+**Andere Proben im Fenster mit `?gewichte=geometrie`** (bisher in Klammern): Boden 0,00 unter der Ebene (0,01); Pilz mit Kante 92°
+(90°); Stift-Form über Linien, Haut 0,13 (0,13); Maul dicht, 0 umgeklappt; Hin und zurück wie bisher. Schlechter: Linse mit hartem Rand,
+Median 78,5° (80°), aber an 10 % der Randproben kein Knick und 14 statt 6 umgeklappte Splitter (im Bild ein sauberer Rand; offen);
+Überhang (Explosion a) am Ende 20 Knicke über 60° statt 6–12, dafür 0 statt 2 umgeklappt.
+
+**Verworfen (gemessen):** Kotangens mit geklemmten negativen Gewichten (Hals 3,3; die Dreiecke verfallen beim Zug, 14 % statt 5 %
+stumpfe Kanten); nur messen, aber gleich verteilen (2,8); die Gewichte der Verteilung je Löser einfrieren (schwingt); die Korrektur zuerst
+in Normalenrichtung mit dem Operator nach der Geometrie lösen (explodiert auch am Hals: die Linearisierung weiß nicht, dass sich die
+Kantenlängen mitändern); feste Dämpfung 0,5–0,7 für alle Punkte (Rüssel schwingt, Ohr hinkt 3,4 nach); die Verteilung der Punkte
+tangential entspannen (Dreiecke besser, 1,5 % stumpfe Kanten, aber die Form wandert 4–6 Einheiten); Schwung (überschwingt bis 58).
+
+**Fallen:** Ein Fixpunktverfahren kann sich je Runde kaum bewegen und trotzdem weit vom Ziel sein: erst weiterrechnen lassen
+(`__kurven.nachrechnen(n)`, im Probe-Skript `NACH=<Runden>`), dann urteilen. Die Bilder der Härte-Probe überschreiben sich je Lauf
+(eigenen Ordner je Variante). Proben ohne Ordner legen ihre Bilder in `apps/editor/` ab.
+
+**Vorschlag für Schritt 3 (Haut fein und live):** während des Zugs verfeinern, wo die Haut gestreckt wird oder eine Linie ungenau wird
+(Teilen, Zusammenlegen, genaues Nachteilen wie nach dem Zug), das neue Netz im Hintergrund zerlegen und einwechseln, sobald es fertig
+ist; nach dem Loslassen bleibt dann nichts mehr zu tun. Danach die Linse und den Überhang.

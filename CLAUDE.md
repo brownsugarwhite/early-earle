@@ -1495,6 +1495,22 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Augen-Form und Ring über die Mitte wie gezeichnet, 0 umgeklappt. Rest: Grate der alten Linien (ihre Kurven treffen die Kugel nicht
   genau). Fallen: „gerade“ aus der Zeichnung entscheiden (Kreuzungen sitzen bis 0,09 neben der Geraden); ein Griff nur in der Tiefe
   (Ecke an gebogenem Stück) nicht frei mit den anderen anpassen (4 umgeklappt).
+- **2026-11-08 (nachts): Beweis „Form unabhängig vom Netz“** (Florian: „Form unabhängig vom Netz, Kriterien Sprung beim Loslassen
+  höchstens ein halber Bildpunkt, je Mausbewegung höchstens 16 ms“; Planseite „Kurven als Wahrheit“, Abschnitt 9).
+  - **Ursache:** Der Löser misst die Krümmung mit gleichen Gewichten (auf gestreckten Dreiecken vor allem längs der langen Kanten) und
+    verteilt sie nach der Zahl der Nachbarn; dieselben Linien geben auf einem anderen Netz eine andere Form (Hals 6,4 Einheiten).
+  - **Gebaut** (Fenster `?gewichte=geometrie`, Standard bleibt bis zu Florians Wort): `dicht/intrinsisch.ts` (intrinsische
+    Delaunay-Triangulierung, Kotangens ≥ 0, 1–3 ms), `HautAusKurven` mit `geometrie` (Krümmung darauf gemessen und verteilt, konjugierte
+    Gradienten mit dem Laplace des Netzes als Vorkonditionierer; Matrix und Verteilung der Punkte wie bisher; Korrektur je Punkt
+    halbiert, wenn sie das Vorzeichen wechselt). Test `dicht/netzunabhaengig.test.ts`, Messreihe `form-netzunabhaengig.ts`.
+  - **Gemessen:** Startnetz 6 000 / 12 000 gegen 24 000 Dreiecke 0,51 / 0,26 (bisher 0,86 / 3,64). Im Fenster (Sprung, 0,89 px je
+    Einheit): Hals 4,9 → 0,34 (0,30 px), Rüssel 33,9 → 7,9, Ohr 6,0 → 8,7 (schneller Zug) bzw. 5,8 → 4,8 (langsamer); je Mausbewegung
+    10–13 ms statt 16. Ohr und Rüssel: Der Zug läuft auf dem gestreckten Netz vom Greifen, nach dem Loslassen werden Netz und Linien
+    feiner; der Löser zeigt dann die feinere Form. Abhilfe ist Schritt 3 (während des Zugs verfeinern, Zerlegung im Hintergrund; die
+    Form hängt nicht mehr daran). Offen: Linse (an 10 % des harten Rands kein Knick, 14 statt 6 umgeklappt), Überhang 20 statt 6–12 Knicke.
+  - **Verworfen (gemessen):** geklemmter Kotangens, nur messen, eingefrorene Gewichte, Normalkorrektur mit dem geometrischen Operator
+    (explodiert), feste Dämpfung, tangential entspannen (Form wandert 4–6), Schwung (überschwingt).
+  - **Falle:** Ein Fixpunktverfahren kann sich je Runde kaum bewegen und doch weit vom Ziel sein (`__kurven.nachrechnen(n)`, Probe `NACH`).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
