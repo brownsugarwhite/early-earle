@@ -35,14 +35,19 @@ Stand 08.11.2026, **zur Freigabe, noch nichts gebaut**. Branch `claude/nice-love
 
 1. **Werkzeugleiste** links, schmal, wie in Illustrator: Auswahl V, Bleistift N, Zeichenstift P, Ellipse, Rechteck, Loop L, Knopf
    „Loops“, dazu der **Zeichenmodus** „Aufblasen“ oder „Auf die Haut“ (umschalten mit ⇧D wie Illustrators Zeichenmodi).
-2. **Bleistift N** wie ein harter Pinsel mit 100 % Glättung: Der Strich folgt der Maus an einer Schnur (Photoshops „Pulled
-   String“), beim Loslassen holt er auf und wird eine Bézier-Form mit so wenigen Ankern wie möglich (Kreis → 4).
+2. **Bleistift N** wie ein harter Pinsel mit 100 % Glättung: Der Strich folgt der Maus an einem Faden (Photoshops „Faden-Modus“,
+   bei 100 % etwa 24 px lang), beim Loslassen holt er auf und wird eine Bézier-Form mit so wenigen Ankern wie möglich: Die Anker
+   werden nicht gierig geteilt wie heute in `fit.ts`, sondern so gewählt, dass es die wenigsten sind (dynamische Programmierung wie
+   Potrace und kurbo). Erwartung: Kreis 4 Anker, S-Kurve 2–3 Stücke.
 3. **Startform von der Seite**: Das Fenster beginnt leer. Mit N, P, Ellipse oder Rechteck zeichnet Florian die Seite, sie wird sofort
    rund aufgeblasen (der vorhandene Weg aus `form.html`, Vereinigung der größten Kugeln). Solange es keine Loops gibt, bleibt der
    Umriss bearbeitbar.
-4. **Knopf „Loops“** setzt saubere Loops: Der gezeichnete Umriss wird der erste Loop (genau mit Florians Ankern), dazu je Teil der
-   Form ein Querloop an der breitesten Stelle, eine Längslinie, wo die Form von oben und vorn am breitesten ist, und Ringe an den
-   Einschnürungen zwischen Teilen. Beim Kreis sind das die drei Loops „mittig von jeder Seite“. Rechteck: harte Kanten.
+4. **Knopf „Loops“** setzt saubere Loops nach einer Regel: **Ein Loop liegt dort, wo die Form aus einer Blickrichtung ihren Umriss
+   hat, oder dort, wo ein Teil ansetzt.** Das gibt vier Arten: den gezeichneten Umriss (genau mit Florians Ankern), eine
+   **Scheitellinie** längs des Körpers (wo die Form von oben bzw. vorn am breitesten ist, weich und gebogen), je Teil einen
+   **Querring** an der dicksten Stelle und je Teil einen **Ansatzring** an Einschnürung oder Tasche. Beim Kreis sind das genau die drei
+   Loops „mittig von jeder Seite“. Auf unserer aufgeblasenen Form sind Querringe exakte Kreise (nachgerechnet), deshalb reicht die
+   Analyse des gezeichneten Umrisses. Hart wird nur, was eckig gezeichnet ist.
 5. **Fangen und Weiterzeichnen**: N und P beginnen und enden genau an Punkten, Kreuzungen oder Linien des Netzes und bleiben
    dort angeschlossen. Neu dafür: **Zweige**, Linien von Punkt zu Punkt (keine losen Enden).
 6. **Bereiche löschen**: Klick auf die Haut wählt den Bereich zwischen den Loops (samt Spiegelbild), ⌫ schneidet ihn ab. Die
@@ -55,8 +60,9 @@ Stand 08.11.2026, **zur Freigabe, noch nichts gebaut**. Branch `claude/nice-love
 Deckel → Z5 Anbauen aus dem Loop → Z6 Anbauen frei und Paare. Z0–Z2 hängen nicht am Löser; Z4–Z6 setzen den **netzunabhängigen
 Löser** voraus, den die laufende Session als Nächstes beweisen will. Grob 10–14 Arbeitstage, jeder Schritt mit Bildern und Toren.
 
-**Zu entscheiden** (Abschnitt 7): Rechteck als Kissen mit hartem Rand oder als Kasten; Tasten (L für Loop oder für Ellipse);
-Zeichenmodus ausdrücklich oder geraten; Deckel eben oder gewölbt; Reihenfolge gegenüber dem Löser-Beweis.
+**Zu entscheiden** (Abschnitt 7): Rechteck als Kissen oder als echter Kasten (der braucht einen eigenen Grundkörper und Zweige);
+Tasten (L für Loop oder für Ellipse); Zeichenmodus ausdrücklich oder geraten; Deckel eben oder gewölbt; Glättung als Faden oder als
+Nachlauf; Reihenfolge gegenüber dem Löser-Beweis.
 
 ## 2. Anknüpfung: Was es auf `claude/form-zuerst` schon gibt
 
@@ -95,7 +101,48 @@ zum Donut, ein Ende steckt im anderen; „so rund wie möglich“; keine losen L
 
 ## 3. Recherche (Kurzfassung)
 
-*(wird nach Abschluss der Recherche eingetragen)*
+Ausführlich mit Belegen: [`docs/research/2026-11-08-teddy-fibermesh-stift-loops.md`](../research/2026-11-08-teddy-fibermesh-stift-loops.md).
+Die Paper-Server waren aus der Cloud gesperrt; Monster Mash, Krita, Inkscape, paper.js, kurbo, Potrace, Blender, GEL und Teddy-Nachbauten
+wurden im Quelltext gelesen, Teddy, FiberMesh und RigMesh über Ausschnitte des Originaltexts (Kernaussagen gegengeprüft).
+
+**Schneiden und Anbauen**
+
+- **FiberMesh** legt den Kurventyp je Operation fest: Erzeugen → glatt, **Schnitt → scharf**, **Extrusion → scharfe Basis und glatte
+  Silhouette**, danach umschaltbar. Beim Schnitt wird die Schnittfläche **eben** gelegt und innen 2D vernetzt. Neu vernetzt wird am
+  Ende jeder Operation, die die Topologie ändert. → Das deckt sich mit unserem „Kante an/aus“ und gibt die Vorbelegung.
+- **Teddy:** Extrusion = Basisring auf der Fläche + Silhouettenstrich; Ringkopien laufen den Strich entlang, auf die Strichbreite
+  skaliert, das Innere des Rings wird gelöscht und vernäht. Nach einem Schnitt kann man direkt aus dem Schnitt extrudieren; der Deckel
+  ist stückweise eben.
+- **Monster Mash** (Code gelesen) ist das nächste Vorbild für das Zeichnen in der Seite: Zeichenreihenfolge = Tiefe, ein offener Strich
+  wird mit einer geraden Sehne geschlossen, die die Naht ist, ein Doppelklick dupliziert ein Teil auf die andere Seite. Aber: nicht
+  wasserdicht (die Rückseite eines Teils bleibt im Körper offen), und das Aufblasen (Poisson + Wurzel) macht Kugeln und Röhren nicht
+  zugleich rund. **Unsere Vereinigung der größten Kugeln ist genauer rund und bleibt.**
+- **RigMesh:** Verschmelzen = wasserdichte Vereinigung mit geschlossener Schnittschleife, danach glätten — das Muster für das freie
+  Anbauen mit einer Haut.
+
+**Bleistift**
+
+- Illustrator verrät sein Verfahren nicht (Patent: Ecken über Krümmung, Glätten je Abschnitt, Bézier mit Treuetest); seit 2014 ein
+  Treue-Regler, „Glatt“ gab im Test 3 Anker für eine Kurve; Schließabstand 15 px.
+- Photoshops Glättung hat einen **Faden-Modus** (gemalt wird erst, wenn der Faden gespannt ist) und einen undokumentierten Standard,
+  der sich wie ein zeitbasierter Nachlauf verhält.
+- Alle offenen Schneider-Umsetzungen (auch unser `fit.ts`) teilen gierig und rechnen den Fehler im Quadrat. Potrace und kurbo suchen
+  erst die **wenigsten Stücke**, dann den kleinsten Fehler, und begrenzen die Grifflänge (Beulen).
+- Simulation: Ohne Vorglättung zerfällt ein zittriger Strich in über 100 Stücke, mit Faden in 5–10; die Suche nach den wenigsten
+  Stücken spart weitere 30–60 %. Der Faden verformt unabhängig vom Tempo (1,4–5 px), ein Nachlauf umso mehr, je schneller man zeichnet
+  (4–24 px).
+
+**Loops von selbst**
+
+- Literatur, Skelett-Netze (SQM, FEQ, Blender Skin) und Modelliererpraxis landen an denselben Stellen: Teilgrenzen an Einbuchtungen
+  und Engstellen mit dem kürzesten Schnitt, ein Ring je Teil an der dicksten Stelle, Pole an Abzweigen und Spitzen.
+- Unsere Startform ist abseits der Abzweige eine **Kanalfläche**: Der ebene Schnitt durch die Berührsehne einer Kugel ist ein exakter
+  Kreis, sein Scheitel liegt genau dort, wo die Form von oben bzw. vorn am breitesten ist. Daher die vier Loop-Arten in 5.5.
+- Die Zutaten liegen im Repo: `kern/grundkoerper/skelett.ts` (Mittelachse mit Astbeschnitt), `kern/grundkoerper/zerlegung.ts`
+  (Schnittsehne am Abzweig), `dicht/teile.ts` (Einbuchtungen, kürzeste Sehne), `dicht/kugeln.ts`, `dicht/raumlinien.ts`
+  (`umrissLinie`).
+- Ein **Kasten** ist mit Kugeln nicht zu haben (aus einem Quadrat wird ein Kissen), und seine zwölf Kanten zerfallen nicht in
+  geschlossene Loops (Dreier-Ecken). Er braucht einen eigenen Grundkörper und Linien, die auf anderen Linien enden (Zweige).
 
 ## 4. Bedienung
 
@@ -108,7 +155,7 @@ die Startform entsteht in der Seite.
 | Werkzeug | Taste | Was es tut |
 | --- | --- | --- |
 | Auswahl | V (wie bisher „frei“) | Punkte, Griffe, Linien wählen und ziehen; **neu:** Klick auf die Haut wählt einen Bereich |
-| Bleistift | N | Freihand mit Schnur-Glättung → Bézier mit wenigen Ankern (ersetzt F; F bleibt zweite Taste) |
+| Bleistift | N | Freihand mit Faden-Glättung → Bézier mit den wenigsten Ankern (ersetzt F; F bleibt zweite Taste) |
 | Zeichenstift | P | wie heute; neu auch für Startform und Anbau, fängt an Punkten |
 | Ellipse | E (Vorschlag, siehe 7.2) | Ziehen von Ecke zu Ecke, ⇧ Kreis, ⌥ aus der Mitte, Leertaste verschiebt |
 | Rechteck | M | wie Ellipse, ⇧ Quadrat |
@@ -124,7 +171,7 @@ kennt das Muster (Zeichenmodi „Normal / Dahinter / Innen“, ⇧D). Standard: 
 
 1. Leeres Fenster → Ellipse ziehen (oder mit N/P zeichnen) → runde Form in allen Ansichten.
 2. Umriss nachbessern (Punkte, Griffe), die Form bläst sich mit auf.
-3. „Loops“ → Umriss-Loop, Quer- und Längsloops; ab jetzt formt Florian über Loops, Punkte und Griffe wie heute.
+3. „Loops“ → Umriss-Loop, Scheitellinie, Querringe, Ansatzringe; ab jetzt formt Florian über Loops, Punkte und Griffe wie heute.
 4. Bereich anklicken, ⌫ → abgeschnitten, ebener Deckel mit harter Kante.
 5. Modus „Aufblasen“, mit P an einem Punkt des Schnitt-Loops ansetzen, Hals und Kopf zeichnen, am anderen Punkt des Loops enden →
    der Kopf wächst aus dem Loop, rund aufgeblasen. „Loops“ setzt auch am neuen Teil die wichtigsten Loops.
@@ -139,28 +186,37 @@ Eigenes Modul `src/form/leiste.ts` (Aufbau, Zustand, Tasten), in `kurven.ts` nur
 
 ### 5.2 Bleistift N
 
-Kern DOM-frei in `packages/shape/src/zeichnen/` (neu): `schnur.ts` (Glättung) und `anpassen.ts` (Bézier mit wenigen Ankern),
-Tests mit aufgezeichneten Strichen. *(Einzelheiten und Standardwerte nach der Recherche, Abschnitt 3.)*
+Kern DOM-frei in `packages/shape/src/zeichnen/` (neu): `faden.ts` (Glättung) und `anpassen.ts` (Bézier mit den wenigsten Ankern),
+Tests mit aufgezeichneten Strichen (x, y, t). Startwerte aus der Recherche (Teil B4), alle Maße in **Bildschirm-Pixeln**, damit sich
+der Bleistift bei jedem Zoom gleich anfühlt:
 
-- **Eingabe:** `pointermove` mit `getCoalescedEvents()` (volle Abtastrate), in Bildschirm-Pixeln gerechnet, damit sich die Glättung
-  bei jedem Zoom gleich anfühlt.
-- **Schnur:** Der Pinselpunkt folgt dem Zeiger erst, wenn die Schnur straff ist (Länge R Bildschirm-Pixel); kleine Zitterbewegungen
-  hinterlassen nichts. Beim Loslassen holt der Strich gerade bis zum Zeiger auf. Gezeigt wird ein harter Strich (2 px Tinte) am
-  Pinselpunkt und die Schnur dünn zum Zeiger.
-- **Ecken:** aus dem geglätteten Strich nur, wo die Richtung über wenige Proben stark dreht; ein kurzes Innehalten setzt bewusst eine
-  Ecke (Vorschlag, im Test zu bestätigen).
-- **Anpassen:** Bézier-Kette mit Fehlerschranke in Bildschirm-Pixeln, danach Anker herausnehmen, solange die Schranke hält
-  (glatte Anker G1, Griffe auf einer Geraden); geschlossene Formen beginnen an einer Ecke oder an der stärksten Krümmung.
-- **Schließen und Fangen:** Ende nah am Anfang (10 px) → geschlossen; Anfang oder Ende an Punkt, Kreuzung oder Linie (8 px) →
-  angeschlossen (5.6).
+| Schritt | Wie | Startwert |
+| --- | --- | --- |
+| Eingabe | `pointermove` mit `getCoalescedEvents()` (alle Zwischenpunkte), `setPointerCapture`, Zeitstempel | — |
+| Fangen | beim Aufsetzen, **vor** dem Faden: der Strich beginnt genau am Fangpunkt (5.6) | 10 px |
+| Faden | Der Pinselpunkt folgt erst, wenn der Faden gespannt ist (rückt um d − R nach); Zittern hinterlässt nichts; Kreis und Faden sichtbar, der Strich hart (2 px Tinte). Eine Ecke entsteht, indem man den Faden umlenkt. | R = Glättung × 24 px, Standard 100 % |
+| Strichende | gerade zum Loslasspunkt nachziehen (tangential, kein Haken) | an |
+| Ecken | auf der geglätteten Spur: Drehung über ±8 px als örtliches Maximum; oder kurzes Verweilen | ≥ 40°; ≥ 120 ms mit ≥ 25° |
+| Anpassen | gleichabständig abtasten; dynamische Programmierung über Kandidaten: **erst die wenigsten Anker, dann der kleinste Fehler**; je Stück `stueckAnpassen` aus `dicht/pfad.ts` (feste Tangenten); zulässig nur Arm/Sehne ≤ 0,65 (sonst Beulen) und Drehung ≤ 150° | Proben 2 px, Kandidaten alle 6–8 px, Treue ε = 4 px (Stufen 1/2/3/4/6) |
+| Nacharbeit | glatte Anker probeweise entfernen, solange ε hält; G1 genau; gerade Stücke ohne Griffe (wie der Stift: ⅓ Sehne) | — |
+| Geschlossen | Naht an einer Ecke, sonst beste von 4–8 Kandidaten an den Extrempunkten | Schließen ≤ 15 px (wie Illustrator), Naht glatt unter 35° |
+
 - **Ergebnis:** dieselben Anker-Daten wie beim Stift P (`StiftAnker` mit Griffen), also gleiche Weiterverarbeitung: auf die Haut
   (`formAusZeichnung` + `griffeAusZeichnung`) oder aufblasen.
+- **Einstellungen** wie in Illustrator per Doppelklick auf das Werkzeug: Glättung (Fadenlänge) und Treue (ε).
+- **Vergleich am ersten Tag:** Florian zeichnet mit „Faden“ (Standard, formtreu bei jedem Tempo) und mit „Nachlauf“ (1€-Filter, näher
+  an Photoshops Standardmodus, verformt bei schnellem Zeichnen mehr) und wählt (Entscheidung 7.6). Seine Striche werden als
+  Wiedergabetests gespeichert.
+- **Abgleich mit dem Bestand:** `fit.ts` (Schneider) teilt gierig und rechnet ε im Quadrat; Tangenten (3 Proben) und `ecken` (±5
+  Proben) hängen an der Probenzahl. Für N wird nach Bogenlänge gerechnet; `fit.ts` bleibt für seine bisherigen Aufrufer unverändert.
 
 ### 5.3 Ellipse und Rechteck
 
-Ellipse: vier glatte Anker an den Scheiteln, Griffe κ · Halbachse (κ aus der Recherche). Rechteck: vier Ecken, gerade Stücke
-(Griff ⅓ der Sehne wie beim Stift). Im Modus „Auf die Haut“ wie eine P-Form, im Modus „Aufblasen“ wie eine Startform oder ein Anbau.
-Während des Ziehens zeigt das 3D die grobe Form (≈ 15 ms), beim Loslassen die feine.
+Ellipse: vier glatte Anker an den Scheiteln, Griffe κ · Halbachse mit κ = 0,5519150 (größter Fehler gegen den Kreis ±0,02 %).
+Rechteck: vier Ecken, gerade Stücke (Griff ⅓ der Sehne wie beim Stift). ⇧ = Kreis/Quadrat, ⌥ = aus der Mitte, Leertaste = während
+des Ziehens verschieben (wie Illustrator). Im Modus „Auf die Haut“ wie eine P-Form, im Modus „Aufblasen“ wie eine Startform oder ein
+Anbau. Während des Ziehens zeigt das 3D die grobe Form (≈ 15 ms), beim Loslassen die feine. Runde Ecken (Illustrators Live-Ecken)
+später.
 
 ### 5.4 Startform zeichnen und aufblasen
 
@@ -170,34 +226,52 @@ Während des Ziehens zeigt das 3D die grobe Form (≈ 15 ms), beim Loslassen die
   (für alle bisherigen Aufrufer bitgleich, Test).
 - **Bearbeitbar bis „Loops“:** Punkte und Griffe des Umrisses ziehen, Punkte einfügen und löschen (wie in `form.html`), die Form
   bläst sich neu auf. Mit dem ersten Loop beginnt die Phase „Netz ist die Wahrheit“ (Klarstellung 05.11.).
-- **Rechteck:** siehe Entscheidung 7.1. Aufgeblasen ist es zunächst ein Kissen (Ecken im Umriss, Querschnitte rund); „harte
-  Kanten“ kommen mit dem Knopf „Loops“.
+- **Rechteck:** Aus Kugeln wird ein Quadrat ein Kissen (Ecken im Umriss, Querschnitte rund). Ein echter Kasten braucht einen eigenen
+  Grundkörper (Quader, so tief wie die kürzere Seite, beim Quadrat ein Würfel, ebene Seitenflächen) — Entscheidung 7.1.
 
 ### 5.5 Knopf „Loops“
 
 Grundsatz aus Florians Nachricht 3 (05.11.): „ich gebe kopf und bauch ein edgloop und über diesen steuer ich die breite von oben oder
-von vorne“. Ein Loop lohnt sich also dort, wo er eine Breite trägt oder zwei Teile trennt. *(Regeln und Schwellen werden nach der
-Recherche festgelegt; Entwurf:)*
+von vorne“. Die Recherche (Teil C) gibt dafür eine Regel: **Ein Loop liegt dort, wo die Form aus einer Blickrichtung ihren Umriss hat,
+oder dort, wo ein Teil ansetzt.** Neues Kernmodul `dicht/loopsVonSelbst.ts`, gerechnet am gezeichneten Umriss (2D), gelegt mit den
+vorhandenen Werkzeugen auf die Haut.
+
+**Warum 2D reicht:** Die Startform ist abseits der Abzweige eine Kanalfläche (Hülle der größten Kugeln). Der ebene Schnitt durch die
+Berührsehne einer Kugel ist ein exakter Kreis (Mitte c − R·R′·t, Radius R·√(1 − R′²)), an Bauch und Hals ein Großkreis; sein Scheitel
+liegt genau dort, wo die Form von oben bzw. vorn am breitesten ist.
 
 1. **Umriss-Loop** (`mitte`): genau der gezeichnete Pfad mit Florians Ankern und Griffen (die Linie ist ihr Pfad, die Haut bleibt).
-2. **Teile finden** in der Seite: Mittelachse aus den größten Kugeln je Umrisspunkt (`kugeln.ts`), Radius längs der Achse.
-   Maxima = Bäuche, Minima zwischen zwei Maxima = Einschnürungen, Verzweigungen = Ansätze (Beine, Schwanz). Einbuchtungen des
-   Umrisses (`einbuchtungen`) bestätigen eine Grenze, ihre kürzeste Sehne ist der Schnitt.
-3. **Je Teil ein Querloop** an der breitesten Stelle: Ring quer zur Achse (in der Seite eine Gerade von Umriss zu Umriss durch die
-   Kugelmitte).
-4. **Je Teil eine Längslinie**, wo das Teil von oben bzw. vorn am breitesten ist (über der Achse in Höhe des Kugelradius;
-   `umrissLinie` rechnet das heute für die ganze Form). Folgt die Achse einem Bogen, ist die Längslinie gebogen: **organisch und
-   weich**. Schnitt dafür neu: `loopAusKurve`, die Fläche durch eine Kurve im Blatt und die Blickrichtung (Verallgemeinerung von
-   `loopAusSchnitt`).
-5. **Je Grenze ein Ring** längs der kürzesten Sehne (weich, der spätere Ansatz).
-6. **Kreis:** Die Achse ist ein Punkt → senkrechter und waagerechter Ring durch die Mitte = „mittig von jeder Seite“ (die drei
-   Achsen-Loops der Tests). **Ellipse:** dieselben drei, gestreckt.
-7. **Rechteck:** Entscheidung 7.1 (Kissen: Umriss-Loop als Kante mit vier Ecken plus zwei Mittelringe; Kasten: Paar-Loop als Rand
-   der Seitenflächen plus vier Kanten in der Tiefe als Zweige, alles Kante).
-8. **Wenige Punkte:** Ring = zwei Enden auf dem Umriss + Scheitel; Längslinie = Enden + Scheitel (+ Wendepunkte). Griffe so, dass der
-   Pfad auf der Haut liegt (vorhanden: `griffeAnlegen`, `linienAufPfad`).
-9. **Noch einmal drücken** setzt nur, wo noch keine Loops sind (etwa am neuen Teil nach einem Anbau). Höchstzahl je Teil, damit es
-   sauber bleibt (Entwurf: 1 Quer + 1 Längs + Ringe an Grenzen).
+2. **Achse:** Mittelachse des Umrisses mit Astbeschnitt und Radius R(s), vorhanden in `kern/grundkoerper/skelett.ts` (Ast zählt ab
+   0,45 R Überstand, Rumpfachse durch die dickste Stelle; Falle: Zhang–Suen verliert schräge Linien, Lü–Wang nehmen) oder genau aus
+   `dicht/kugeln.ts`; zusätzlich Astfläche ≥ 1 % des Umrisses, R(s) über 0,5 R geglättet. Alle Schwellen relativ zum örtlichen R.
+3. **Rund-Test:** Achse kürzer als 0,3 R_max (Kreis, Quadrat, fast rund) → senkrechter Querring und waagerechte Scheitellinie durch die
+   Mitte der größten Kugel: die drei Loops „mittig von jeder Seite“ (= die Mittelloops einer Quad-Kugel). Ellipse und Ei: dieselben
+   drei, der Querring an der dicksten Stelle.
+4. **Ansatzring je Teil** (Ast) im Fenster vom Austritt aus dem Abzweigkreis bis 1,5 R des Asts; die erste passende Regel gewinnt:
+   Taschen auf beiden Seiten → Sehne zwischen ihren Spitzen; Hals (R-Minimum mit ≥ 15 % Einschnürung) → Berührsehne dort; eine Tasche
+   → kürzeste Sehne von ihrer Spitze (`anEinbuchtungTeilen`); sonst Berührsehne am Fensteranfang (`kern/grundkoerper/zerlegung.ts`).
+   Kreuzen sich Sehnen, gewinnt die kürzere.
+5. **Querring** je Teil an der dicksten Stelle, senkrecht zur Achse — nur, wenn das Teil mindestens R lang ist und der Ring ≥ 0,75 R
+   von anderen Loops liegt.
+6. **Scheitellinie** längs der Rumpfachse samt Kopf und Schwanz (Beine bekommen keine): durch die Scheitel der Querkreise, an den Enden
+   bis zum Umriss verlängert. Folgt die Achse einem Bogen, ist sie gebogen und nicht eben — **organisch und weich**. Die vorhandene
+   `umrissLinie` rechnet denselben Gedanken heute für die ganze Form in einer Blickrichtung.
+7. **Eben oder weich:** Querringe und Hälse sind eben (auf unserer Form ohnehin Kreise) und entstehen wie heute mit L (Ebene durch die
+   Sehne und die Blickrichtung). Weich sind die Scheitellinie und Ansatzringe aus Taschen: Isolinie eines konkavitätsgewichteten
+   harmonischen Feldes (Au u. a. 2012) in einem Band um den ebenen Schnitt; ist sie mehr als 1,15-mal so lang wie eben, bleibt der Ring
+   eben. Neu im Kern: `loopAusKurve` (Schnittfläche durch eine Kurve im Blatt und die Blickrichtung) und das Legen einer Linie aus
+   Netzproben als Loop.
+8. **Hart** wird nur, was eckig gezeichnet ist: Liegen beide Enden eines Rings auf Ecken des Umrisses, wird er Kante; der Umriss-Loop
+   behält seine Ecken. Organisch keine Kanten („so rund wie möglich“).
+9. **Wenige Punkte:** Ring = zwei Enden auf dem Umriss + Scheitel (bei einem exakten Kreis genau, je Viertel ein Bézier-Stück);
+   Scheitellinie = Enden + Scheitel + so viele, bis sie ≤ 0,02 R abweicht. Griffe mit den vorhandenen `griffeAnlegen`, `linienAufPfad`.
+10. **Anzahl:** Vorrang Ansatzringe > Scheitellinie > Querringe; höchstens 12 neue Loops (ein Regler „Feinheit“ verschiebt Beschnitt
+    und Höchstzahl). **Noch einmal drücken** setzt nur, wo noch keine Loops sind (etwa am neuen Teil nach einem Anbau).
+11. **Rückfall,** wenn die Regeln nichts Sauberes finden: Umriss plus senkrechter und waagerechter Ring durch die größte Kugel.
+12. **Kasten** (Entscheidung 7.1b): Grundkörper Quader; zwei Paar-Loops als Ränder der Seitenflächen und vier Zweige in der Tiefe von
+    Ecke zu Ecke, alle Kante (zwölf Kanten mit Dreier-Ecken lassen sich nicht in geschlossene Loops zerlegen).
+13. **Angebaute Teile** haben ihre eigene Zeichnung; der Knopf nimmt deren Umriss (Z5). Erst wenn eine Form frei verformt wurde,
+    beschreibt die Zeichnung sie nicht mehr; dann dieselben Regeln am Netz (Querschnitte und Taschen am Netz messen) — später.
 
 ### 5.6 Fangen und Weiterzeichnen, Zweige
 
@@ -251,8 +325,8 @@ Recherche festgelegt; Entwurf:)*
   immer scharf), an einer frei entstandenen Naht weich (5.9); K schaltet um. Die Zeichnung wird eine glatte Linie des neuen Teils
   (FiberMesh: Silhouette glatt): auf der Mittelebene ersetzt sie im Umriss-Loop die Deckelkante (A und B werden Kreuzungen mit dem
   Ansatz, der Umriss-Loop bleibt geschlossen), bei einem Paar wird sie ein Zweig von A nach B. Loops, die über den Deckel liefen,
-  enden am Ansatz (Zweige). Danach setzt „Loops“ die Quer- und Längslinie des neuen Teils, sonst hält der Löser seine Rundung nicht
-  (Abschnitt 8).
+  enden am Ansatz (Zweige). Danach setzt „Loops“ Querring und Scheitellinie des neuen Teils aus seiner Zeichnung (5.5), sonst hält der
+  Löser seine Rundung nicht (Abschnitt 8).
 - Ein Teil je Strich; verzweigte Zeichnungen (Hand mit Fingern) erst später.
 
 ### 5.9 Anbauen frei (Naht von selbst) und Paare
@@ -289,9 +363,9 @@ Rüssel, Boden, Pilz, Maul, Fressen-Pose, Stift über Linien) bleiben gleich ode
 
 | Schritt | Inhalt | Tore (Entwurf) | Aufwand |
 | --- | --- | --- | --- |
-| Z0 | Leiste, Zeichenmodus, Bleistift N, Ellipse, Rechteck (zunächst im Modus „Auf die Haut“) | Kreis aus der Hand → 4 Anker, ≤ 2 px neben dem geglätteten Strich; zwischen Loslassen und fertiger Form kein sichtbarer Sprung (≤ 1 px); ≤ 4 ms je Mausbewegung; **Florian zeichnet und sagt, ob es sich wie Photoshop 100 % anfühlt** | 1–1,5 Tage |
+| Z0 | Leiste, Zeichenmodus, Bleistift N (Faden und Nachlauf zum Vergleich), Ellipse, Rechteck (zunächst im Modus „Auf die Haut“) | Wiedergabetests mit aufgezeichneten Strichen: Kreis → 4 Anker, Ellipse 3–5, S-Kurve 2–3 Stücke, höchstens ε neben dem geglätteten Strich, Arm/Sehne ≤ 0,65, kein Krümmungssprung an glatten Ankern; Faden ≤ 4 ms je Mausbewegung, Anpassen beim Loslassen ≤ 30 ms; Florian bemerkt beim Loslassen keinen Sprung (sonst Vorschau des Anpassens schon beim Zeichnen); **Florian zeichnet und sagt, ob es sich wie Photoshop 100 % anfühlt, und wählt Faden oder Nachlauf** | 1–1,5 Tage |
 | Z1 | Startform im leeren Fenster, Umriss mit Griffen, aufblasen, bearbeitbar bis „Loops“ | Kreis → Kugel (≤ 0,5 % Abweichung), alte Aufrufer von `rundAusSeite` bitgleich, grob ≤ 20 ms im Zug, fein ≤ 0,4 s | 0,5–1 Tag |
-| Z2 | Knopf „Loops“ | Haut beim Einsetzen unverändert (≤ 0,1); Kreis/Ellipse genau die drei Loops; sechs Prüfumrisse (Kreis, Ellipse, Rechteck, Bohne, Langhals, Vierbeiner-Umriss) mit erwarteten Loops als Bild, Florian nimmt ≥ 5 von 6 an; Zug am Kopf-Loop der Bohne: Bauch bleibt (≤ 1) | 1,5–2 Tage |
+| Z2 | Knopf „Loops“ | Haut beim Einsetzen unverändert (≤ 0,1); Kreis und Ellipse genau die drei Loops, Querringe auf der Kugel ≤ 0,1 % vom Kreis; die acht Testumrisse aus der Recherche (C5: Kreis, Ellipse, Ei, Quadrat, Erdnuss, Banane, Wurst mit Höcker, Blob mit Kopf, Beinen und Schwanz) als Bild Erwartung neben Ergebnis, Florian nimmt ≥ 6 von 8 an; Zug am Kopf-Querring der Erdnuss: der andere Bauch bleibt (≤ 1) | 1,5–2 Tage |
 | Z3 | Fangen, Zweige | Anfang/Ende genau am Punkt (0,00), Zweig teilt einen Bereich, Haut beim Anlegen ≤ 0,1, ⌘Z genau; alle 103 Tests unter `src/dicht/` grün | 1,5–2 Tage |
 | Z4 | Bereiche, Löschen, Deckel | 0 offene Kanten, spiegelgleich (10⁻⁸), Deckel eben (≤ 1 % der Breite), Knick an der Kante ≥ 80° bei einem Kugelschnitt, ⌘Z genau, ≤ 0,5 s | 1,5–2 Tage |
 | Z5 | Anbauen aus dem Loop | Kopf aus dem Schnitt-Loop: 0 umgeklappt, Knicke über 60° = 0, Naht weich (≤ 5° quer) oder hart, Teil rund (Querschnitt ≤ 5 % vom Kreis), Spiegel genau | 2–3 Tage |
@@ -302,16 +376,19 @@ Abbruch je Schritt: wenn ein Tor nach dem zweiten Anlauf verfehlt ist, Befund un
 
 ## 7. Entscheidungen für Florian
 
-1. **Rechteck „mit harten Kanten“:** (a) Kissen: Umriss wird eine Kante mit vier Ecken, Vorder- und Rückseite gewölbt; (b) Kasten:
-   flache Seiten, zwölf harte Kanten (braucht Zweige aus Z3). Vorschlag: beide in Z2 als Bild, dann wählen; mein Tipp (b), weil es
-   zum Kastenmaul passt.
+1. **Rechteck „mit harten Kanten“:** (a) **Kissen** aus Kugeln: Umriss mit vier Ecken, Vorder- und Rückseite rund (auf Wunsch der
+   Umriss als Kante: Kissen mit scharfem Rand); (b) **Kasten**: eigener Grundkörper (Quader), ebene Seiten, zwölf harte Kanten — braucht
+   Zweige aus Z3, weil sich die Kanten eines Würfels nicht in geschlossene Loops zerlegen lassen. Vorschlag: beide in Z2 als Bild, dann
+   wählen; mein Tipp (b), weil es zum Kastenmaul passt.
 2. **Tasten:** L bleibt „Loop schneiden“, Ellipse auf E (Vorschlag) — oder Illustrator-treu L = Ellipse und Loop auf ⌘R (wie im alten
    Editor). Achtung: ⌘R lädt im Browser-Fenster die Seite neu, ohne Speichern ginge alles verloren.
 3. **Zeichenmodus** ausdrücklich (⇧D) statt Raten aus dem Strich. Vorschlag: ausdrücklich.
-4. **Deckel** nach dem Löschen eben (Teddy) oder leicht gewölbt (FiberMesh)? Vorschlag: eben, wölben durch Ziehen.
+4. **Deckel** nach dem Löschen eben (Teddy, FiberMesh) oder gewölbt? Vorschlag: eben, wölben durch Ziehen.
 5. **Freie Teile** ganz außerhalb des Körpers (eigenes Stück, später anbauen) erlauben? Vorschlag: erst nach Z6.
-6. **Paar oder Mitte** beim freien Anbau: Standard Mitte, ⌥ = Paar. Vorschlag so.
-7. **Reihenfolge:** Z0–Z2 sofort (vor dem Löser-Beweis) oder erst nach ihm? Vorschlag: Löser-Beweis zuerst fertig (er ist
+6. **Glättung:** Faden (formtreu bei jedem Tempo, Photoshops Faden-Modus) oder Nachlauf (näher an Photoshops Standard, verformt bei
+   schnellem Zeichnen)? Vorschlag: beides in Z0 ausprobieren, Faden als Standard.
+7. **Paar oder Mitte** beim freien Anbau: Standard Mitte, ⌥ = Paar. Vorschlag so.
+8. **Reihenfolge:** Z0–Z2 sofort (vor dem Löser-Beweis) oder erst nach ihm? Vorschlag: Löser-Beweis zuerst fertig (er ist
    angefangen), dann Z0–Z6 in dieser Session.
 
 ## 8. Risiken
@@ -322,12 +399,26 @@ Abbruch je Schritt: wenn ein Tor nach dem zweiten Anlauf verfehlt ist, Befund un
   laufen). Gegenmittel: „Loops“ setzt sie beim Anbau; Tor in Z5.
 - **Anbau an stark gekrümmten oder schrägen Ansätzen** (Bein an der Flanke, Strich in einer anderen Richtung als die Normale des
   Loops): Falten am Ansatz. Gegenmittel: Überblenden über eine Ansatzlänge, Löser glättet; Tor „Knicke über 60°“.
-- **Gefühl des Bleistifts** ist nicht messbar: Florian testet in Z0 am ersten Tag, Schnurlänge und Fehlerschranke als Regler.
-- **Automatische Loops** an komplizierten Umrissen (Vierbeiner in einem Strich): die Regeln finden nicht alles. Fallback: Umriss,
-  Längslinie und Querloops an den zwei größten Bäuchen, den Rest zieht Florian mit L.
+- **Gefühl des Bleistifts** ist nicht messbar: Florian testet in Z0 am ersten Tag, Fadenlänge und Treue als Regler. Der Faden spitzt
+  Kurven, die enger sind als seine Länge (Photoshop-Nutzer berichten das bei 100 %); kleine Details zeichnet man mit weniger
+  Glättung oder mit P.
+- **Automatische Loops** an komplizierten Umrissen (Vierbeiner in einem Strich, Bein dicht unter dem Hals, Maulkerbe als Tasche): die
+  Regeln finden nicht alles, Sehnen kreuzen sich. Rückfall: Umriss plus senkrechter und waagerechter Ring durch die größte Kugel; den
+  Rest zieht Florian mit L. Die Mittelachse aus dem Raster verliert mit Zhang–Suen schräge Linien (Falle aus dem Editor-Gedächtnis).
 - **Parallele Arbeit:** `kurven.ts` ist eine Datei mit 3 100 Zeilen; zwei Sessions darin gleichzeitig geben Konflikte. Diese Schritte
   laufen deshalb in der Session, die das Fenster schon führt, nacheinander.
 
 ## 9. Quellen
 
-*(wird nach Abschluss der Recherche eingetragen)*
+Alle Belege mit Markierung (selbst gelesen oder nur Ausschnitt) in
+[`docs/research/2026-11-08-teddy-fibermesh-stift-loops.md`](../research/2026-11-08-teddy-fibermesh-stift-loops.md). Die wichtigsten:
+
+- Igarashi, Matsuoka, Tanaka: *Teddy: A Sketching Interface for 3D Freeform Design*, SIGGRAPH 1999.
+- Nealen, Igarashi, Sorkine, Alexa: *FiberMesh: Designing Freeform Surfaces with 3D Curves*, SIGGRAPH 2007
+  (https://igl.ethz.ch/projects/FiberMesh/fibermesh.pdf).
+- Dvorožňák u. a.: *Monster Mash*, SIGGRAPH Asia 2020; Quelltext https://github.com/google/monster-mash.
+- Borosán u. a.: *RigMesh*, 2012 (https://cragl.cs.gmu.edu/rigmesh/).
+- Schneider: *An Algorithm for Automatically Fitting Digitized Curves*, Graphics Gems 1990; Levien: Bézier-Anpassung in kurbo
+  (https://raphlinus.github.io/curves/2023/04/18/bezpath-simplify.html); Potrace.
+- Hoffman und Richards 1984 (Minima-Regel), Singh, Seyranian, Hoffman 1999 (Short-cut-Regel), Siddiqi und Kimia 1995 (Hals und
+  Gliedmaß), Au, Zheng, Tai, Cohen-Or 2012 (konkavitätsbewusste Felder), Bærentzen u. a. 2012 (SQM).
