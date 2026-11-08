@@ -67,6 +67,50 @@ export function normalSystemZerlegt(n: number, zeilen: readonly NormalZeile[], d
     if (gemerkt.length > MERKEN) gemerkt.length = MERKEN;
     return sys;
   }
+  return systemAusDaten(zerlegungsDaten(n, zeilen, daempfung));
+}
+
+/**
+ * Die Zerlegung selbst als Daten (Reihenfolge neu → alt, L spaltenweise), ohne Funktionen: So kann sie in einem Worker entstehen und
+ * im Fenster gelöst werden (08.11., Zerlegung im Hintergrund). Dieselbe Rechnung wie `normalSystemZerlegt`.
+ */
+export type ZerlegungsDaten = {
+  n: number;
+  perm: Int32Array;
+  Lp: Int32Array;
+  Li: Int32Array;
+  Lx: Float64Array;
+  zeitAufbau: number;
+  zeitZerlegen: number;
+};
+
+/** Zeilen als flache Felder (zum Übertragen an einen Worker): Zeile r hat die Einträge start[r] … start[r + 1] − 1 */
+export type FlacheZeilen = { start: Int32Array; index: Int32Array; wert: Float64Array; gewicht: Float64Array };
+
+export function flacheZeilen(zeilen: readonly NormalZeile[]): FlacheZeilen {
+  const start = new Int32Array(zeilen.length + 1);
+  zeilen.forEach((z, r) => (start[r + 1] = start[r]! + z.index.length));
+  const index = new Int32Array(start[zeilen.length]!);
+  const wert = new Float64Array(start[zeilen.length]!);
+  const gewicht = new Float64Array(zeilen.length);
+  zeilen.forEach((z, r) => {
+    for (let t = 0; t < z.index.length; t++) {
+      index[start[r]! + t] = z.index[t]!;
+      wert[start[r]! + t] = z.wert[t]!;
+    }
+    gewicht[r] = z.gewicht;
+  });
+  return { start, index, wert, gewicht };
+}
+
+export function zeilenAusFlach(f: FlacheZeilen): NormalZeile[] {
+  const out: NormalZeile[] = [];
+  for (let r = 0; r + 1 < f.start.length; r++)
+    out.push({ index: f.index.subarray(f.start[r]!, f.start[r + 1]!), wert: f.wert.subarray(f.start[r]!, f.start[r + 1]!), gewicht: f.gewicht[r]! });
+  return out;
+}
+
+export function zerlegungsDaten(n: number, zeilen: readonly NormalZeile[], daempfung = 0): ZerlegungsDaten {
   const t0 = jetzt();
   // Graph der Matrix: je Unbekannte ihre Nachbarn, sortiert, ohne Doppelte
   const grad = new Int32Array(n);
@@ -235,7 +279,12 @@ export function normalSystemZerlegt(n: number, zeilen: readonly NormalZeile[], d
     Lx[p] = Math.sqrt(d);
   }
   const t2 = jetzt();
+  return { n, perm, Lp, Li, Lx, zeitAufbau: t1 - t0, zeitZerlegen: t2 - t1 };
+}
 
+/** Das lösbare System zu einer Zerlegung */
+export function systemAusDaten(daten: ZerlegungsDaten): NormalSystem {
+  const { n, perm, Lp, Li, Lx } = daten;
   /** L·Lᵀ·X = B für k Spalten (k Werte je Unbekannte, verschachtelt, in neuer Reihenfolge), an Ort und Stelle */
   const einsetzen = (B: Float64Array, k: number): void => {
     for (let j = 0; j < n; j++) {
@@ -273,8 +322,8 @@ export function normalSystemZerlegt(n: number, zeilen: readonly NormalZeile[], d
     loesenSpalte: (rhs) => loesenSpalten(rhs, 1),
     loesenSpalten,
     huelle: Lp[n]!,
-    zeitAufbau: t1 - t0,
-    zeitZerlegen: t2 - t1,
+    zeitAufbau: daten.zeitAufbau,
+    zeitZerlegen: daten.zeitZerlegen,
   };
 }
 

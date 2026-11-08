@@ -30,7 +30,9 @@ import {
   type Ansicht,
   type GriffVersatz,
   type HautArt,
+  type Einbettung,
   type HautGewichte,
+  type HautVorlage,
   type Kurve,
   type Loop,
   type LoopPunkt,
@@ -87,6 +89,12 @@ import {
   stueckNaechstes,
   stueckPunkt,
   verdichten,
+  type Verdichtet,
+  type ZerlegungsDaten,
+  einbetten,
+  einbettungAuswerten,
+  flacheZeilen,
+  systemAusDaten,
   verschiebungLaengs,
 } from '@ee/shape/dicht';
 import {
@@ -1637,7 +1645,9 @@ function loeserFuer(bewegt: readonly V3[], r: number, ecken: Iterable<number>): 
   const art: HautArt = mitBereich() ? 'gedaechtnis' : 'kurven';
   const bereich = mitBereich() ? bereichUm(h, bewegt, r, ecken) : null;
   if (aus && bereich) for (let v = 0; v < h.n; v++) if (aus[v]) bereich[v] = 0;
-  return new LoopZug(h, loops, bereich, KRUEMMUNG && !grund, art, GEWICHTE);
+  const vorlage = naechsteVorlage && !mitBereich() ? naechsteVorlage : null;
+  naechsteVorlage = null;
+  return new LoopZug(h, loops, bereich, KRUEMMUNG && !grund, art, GEWICHTE, vorlage ? { vorlage } : {});
 }
 
 /** Löser für die Stücke um Punkt k des Loops li (Griff ziehen oder ausrichten) */
@@ -2019,6 +2029,7 @@ function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
 function zugBewegen(X: number, Y: number): void {
   const z = zug;
   if (!z) return;
+  letzteMaus = [X, Y];
   if (!z.bewegt && Math.hypot(X - z.x0, Y - z.y0) * skala(z.ansicht) < 2) return;
   z.bewegt = true;
   if (z.griff) {
@@ -2064,7 +2075,10 @@ function zugBewegen(X: number, Y: number): void {
   // Haut gibt es keinen Bereich, der wachsen müsste; verdichtet wird dann am Ende (jede Stufe hieße: alles neu zerlegen, mitten im Zug)
   if (!z.griff && !oAn && mitBereich() && weit > 0.5 * z.radius) zugStufe(z, X, Y);
   // über die ganze Haut nach der Geometrie: verfeinern, sobald sie gestreckt wird
-  else if (LIVE && GEWICHTE === 'geometrie' && !mitBereich() && !z.griff && (gestreckt() || linieUngenau(z))) zugStufe(z, X, Y);
+  else if (LIVE && GEWICHTE === 'geometrie' && !mitBereich() && !z.griff && !verfeinerung && (gestreckt() || linieUngenau(z))) {
+    if (HINTERGRUND) stufeImHintergrund(z, X, Y);
+    else zugStufe(z, X, Y);
+  }
   hautZeigen();
   baenderZeigen();
   for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
@@ -2101,6 +2115,144 @@ function zugStufe(z: Zug, X: number, Y: number): void {
   zugStufen++;
   letzteStufeMs = Math.round(performance.now() - t0);
 }
+/**
+ * Verfeinern im Zug mit der Zerlegung im Hintergrund (`?hintergrund=0`: wie `zugStufe` im Vordergrund):
+ * 1. Der Zug wird festgehalten und mit derselben Zerlegung weitergeführt (nach der Geometrie bestimmt die Matrix nur, wie schnell der
+ *    Löser ankommt, nicht wohin).
+ * 2. Das feinere Netz entsteht aus diesem Stand; jeder seiner Punkte merkt sich seine Stelle auf der alten Haut.
+ * 3. Die Zeilen seiner Matrix gehen an einen Worker. Ist die Zerlegung zurück, wird mitten im Zug eingewechselt (`einwechseln`).
+ */
+function stufeImHintergrund(z: Zug, X: number, Y: number): void {
+  const w = zerleger();
+  if (!w) {
+    zugStufe(z, X, Y);
+    return;
+  }
+  const t0 = performance.now();
+  const vorlage = z.loeser.vorlage;
+  if (!vorlage || !zugNeuAufsetzen(z, X, Y, vorlage)) return;
+  const t1 = performance.now();
+  const v = verdichtetesNetz();
+  if (!v) return;
+  const t2 = performance.now();
+  const einbettung = einbetten(haut, v.haut.pos, { nachbarn: v.haut.nachbarn, alt: v.alt });
+  const t3 = performance.now();
+  const auftrag = new LoopZug(v.haut, v.loops, null, KRUEMMUNG && !grund, 'kurven', GEWICHTE, { nurZeilen: true }).auftrag;
+  if (!auftrag) return;
+  const t4 = performance.now();
+  ausloesungTeile = [t1 - t0, t2 - t1, t3 - t2, t4 - t3].map(Math.round);
+  const id = ++verfeinerungsNr;
+  verfeinerung = { id, haut: v.haut, loops: v.loops, alt: v.alt, einbettung, gew: auftrag.gew, t0: performance.now() };
+  const systeme = auftrag.systeme.map((s) => ({ n: s.n, flach: flacheZeilen(s.zeilen), daempfung: s.daempfung }));
+  w.postMessage(
+    { id, systeme },
+    systeme.flatMap((s) => [s.flach.start.buffer, s.flach.index.buffer, s.flach.wert.buffer, s.flach.gewicht.buffer]),
+  );
+  letzteVerdichtung = { neu: v.neu, gelegt: v.gelegt, ms: 0 };
+  letzteAusloesungMs = Math.round(performance.now() - t0);
+}
+
+/** Den Zug festhalten und auf demselben Netz mit der Zerlegung `vorlage` weiterführen (kein Neuzerlegen) */
+function zugNeuAufsetzen(z: Zug, X: number, Y: number, vorlage: HautVorlage): boolean {
+  zugGriffeUebernehmen(z);
+  festlegenAlle();
+  zugGriffeAblesen(z);
+  zug = null;
+  naechsteVorlage = vorlage;
+  if (!zugStarten(z.modal, z.ansicht, X, Y, z.spiegel, z.weite)) {
+    naechsteVorlage = null;
+    zug = z;
+    return false;
+  }
+  const neu = zug as Zug | null;
+  if (!neu) return false;
+  neu.vorher = z.vorher;
+  neu.bewegt = true;
+  neu.achse = z.achse;
+  neu.weite0 = z.weite;
+  neu.weite = z.weite;
+  return true;
+}
+
+/** Die im Hintergrund zerlegte Verfeinerung einwechseln: Zug festhalten, die Punkte des feineren Netzes auf der Haut von jetzt, weiter */
+function einwechseln(f: Verfeinerung, daten: ZerlegungsDaten[]): void {
+  const z = zug;
+  if (!z || !letzteMaus) return;
+  const t0 = performance.now();
+  zugGriffeUebernehmen(z);
+  festlegenAlle();
+  zugGriffeAblesen(z);
+  const nAlt = haut.n;
+  const pos = einbettungAuswerten(f.einbettung, haut);
+  const neu: Haut = { ...f.haut, pos };
+  // die Linien des feineren Netzes (ihre Proben) mit dem Stand ihrer Punkte von jetzt
+  const neueLoops = f.loops.map((l, li) => {
+    const jetzt = loops[li]!;
+    return { ...jetzt, proben: l.proben, s: l.s, ruhe: l.ruhe, punkte: jetzt.punkte.map((p) => ({ ...p })) };
+  });
+  haut = neu;
+  loops = neueLoops;
+  netzGewachsen(nAlt, f.alt, null);
+  geometrieNeu();
+  festlegenAlle();
+  zug = null;
+  naechsteVorlage = { gew: f.gew, sys: systemAusDaten(daten[0]!), cVor: daten[1] ? systemAusDaten(daten[1]) : null };
+  const [X, Y] = letzteMaus;
+  if (!zugStarten(z.modal, z.ansicht, X, Y, z.spiegel, z.weite)) {
+    naechsteVorlage = null;
+    zug = null;
+    return;
+  }
+  const n2 = zug as Zug | null;
+  if (n2) {
+    n2.vorher = z.vorher;
+    n2.bewegt = true;
+    n2.achse = z.achse;
+    n2.weite0 = z.weite;
+    n2.weite = z.weite;
+  }
+  hintergrundStufen++;
+  letzteEinwechslungMs = Math.round(performance.now() - t0);
+  letzteHintergrundMs = Math.round(performance.now() - f.t0);
+  hautZeigen();
+  baenderZeigen();
+  for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
+  statusZeigen();
+}
+
+/** Zerlegung im Hintergrund (`?hintergrund=0`: im Vordergrund) */
+const HINTERGRUND = new URLSearchParams(location.search).get('hintergrund') !== '0';
+type Verfeinerung = { id: number; haut: Haut; loops: Loop[]; alt: Int32Array; einbettung: Einbettung; gew: Float64Array[]; t0: number };
+/** die Verfeinerung, deren Zerlegung gerade im Hintergrund läuft */
+let verfeinerung: Verfeinerung | null = null;
+let verfeinerungsNr = 0;
+/** die Zerlegung für den nächsten Löser (statt zu zerlegen) */
+let naechsteVorlage: HautVorlage | null = null;
+let letzteMaus: [number, number] | null = null;
+let zerlegerWorker: Worker | null = null;
+let hintergrundStufen = 0;
+let letzteAusloesungMs = 0;
+/** Auslösen in Teilen (ms): weiter aufsetzen, verdichten, einbetten, Zeilen */
+let ausloesungTeile: number[] = [];
+let letzteEinwechslungMs = 0;
+let letzteHintergrundMs = 0;
+function zerleger(): Worker | null {
+  if (!HINTERGRUND) return null;
+  if (zerlegerWorker) return zerlegerWorker;
+  try {
+    zerlegerWorker = new Worker(new URL('./zerlegen.worker.ts', import.meta.url), { type: 'module' });
+  } catch {
+    return null;
+  }
+  zerlegerWorker.onmessage = (e: MessageEvent<{ id: number; daten: ZerlegungsDaten[] }>) => {
+    const f = verfeinerung;
+    if (!f || e.data.id !== f.id) return;
+    verfeinerung = null;
+    einwechseln(f, e.data.daten);
+  };
+  return zerlegerWorker;
+}
+
 let zugStufen = 0;
 let letzteEndrunden = 0;
 let letzteStufeMs = 0;
@@ -2129,6 +2281,8 @@ function zugEnde(ok: boolean): void {
   const z = zug;
   if (!z) return;
   zug = null;
+  // eine Verfeinerung, die noch im Hintergrund zerlegt wird, verfällt (nach dem Zug wird wie bisher verdichtet)
+  verfeinerung = null;
   if (!ok) {
     wiederherstellen(z.vorher);
     return;
@@ -2171,10 +2325,21 @@ function zugEnde(ok: boolean): void {
  * Zusammenlegen).
  */
 function nachVerdichten(nurTeilen = false): void {
-  if (!VERDICHTEN) return;
   const t0 = performance.now();
   const vorher = grund ? poseKnochen() : null;
   const nAlt = haut.n;
+  const v = verdichtetesNetz(nurTeilen);
+  if (!v) return;
+  haut = v.haut;
+  loops = v.loops;
+  netzGewachsen(nAlt, v.alt, vorher);
+  geometrieNeu();
+  letzteVerdichtung = { neu: v.neu, gelegt: v.gelegt, ms: Math.round(performance.now() - t0) };
+}
+
+/** Das verdichtete Netz zum Stand jetzt (wie `nachVerdichten`, ohne es zu übernehmen) */
+function verdichtetesNetz(nurTeilen = false): Verdichtet | null {
+  if (!VERDICHTEN) return null;
   // die Öffnung des Mauls wird nicht gezeigt und nicht verdichtet (in der Pose überspannt sie das offene Maul)
   const m = maulAktuell();
   const verborgen = m && m.offen.length === haut.tri.length / 3 ? m.offen : null;
@@ -2182,18 +2347,12 @@ function nachVerdichten(nurTeilen = false): void {
   // abgelesen, die Griffe sind die der Grundform); nach dem Pfad geteilt wurde dort laufend neu vernetzt (Fressen-Probe: 572 neue,
   // 741 zusammengelegte Punkte, danach 2 umgeklappt)
   const genau = GENAU > 0 && grund === null ? { genau: GENAU * MK, genauHaut: GENAU_HAUT } : {};
-  const v = verdichten(
+  return verdichten(
     haut,
     loops,
     1.75 * MK,
     WINKEL ? { winkel: 25, minKante: MK / 3, verborgen } : { verborgen, kurz: nurTeilen ? 0 : KURZ * MK, ...genau },
   );
-  if (!v) return;
-  haut = v.haut;
-  loops = v.loops;
-  netzGewachsen(nAlt, v.alt, vorher);
-  geometrieNeu();
-  letzteVerdichtung = { neu: v.neu, gelegt: v.gelegt, ms: Math.round(performance.now() - t0) };
 }
 
 // ---------- Loops schneiden, Formen zeichnen, Punkte setzen und löschen ----------
@@ -3170,6 +3329,11 @@ schleife();
     punkte: haut.n,
     stufen: zugStufen,
     endrunden: letzteEndrunden,
+    hintergrund: hintergrundStufen,
+    ausloesung: letzteAusloesungMs,
+    ausloesungTeile,
+    einwechslung: letzteEinwechslungMs,
+    hintergrundMs: letzteHintergrundMs,
     stufeMs: letzteStufeMs,
     neuRechnen: letztesNeuRechnen,
     vorrechnen: letztesVorrechnen,

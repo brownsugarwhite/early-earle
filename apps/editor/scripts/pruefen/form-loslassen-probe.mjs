@@ -252,7 +252,10 @@ const px = Math.hypot(a1.x - a0.x, a1.y - a0.y) / ((await K('ausschnitt', 'front
 
 const zz = A.z.zug.slice(-schritte);
 console.log(`${fall} (${basis.split('?')[1] ?? 'Standard'}): ${schritte} Mausschritte in ${zugMs} ms, je Bewegung ${f2(zz.reduce((s, v) => s + v, 0) / zz.length)} ms (max ${Math.max(...zz).toFixed(0)}), ${A.P.length / 3} Punkte vor dem Loslassen · ${px.toFixed(2)} px je Einheit bei 100 %`);
-console.log(`  Stufen im Zug: ${A.z.stufen ?? 0} (letzte ${A.z.stufeMs ?? 0} ms)`);
+console.log(
+  `  Stufen im Zug: ${A.z.stufen ?? 0} im Vordergrund (letzte ${A.z.stufeMs ?? 0} ms), ${A.z.hintergrund ?? 0} eingewechselt aus dem Hintergrund ` +
+    `(Auslösen ${A.z.ausloesung ?? 0} ms [${(A.z.ausloesungTeile ?? []).join('/')}], Einwechseln ${A.z.einwechslung ?? 0} ms, Auslösen bis Einwechseln ${A.z.hintergrundMs ?? 0} ms)`,
+);
 const nachEnde = await seite.evaluate(() => window.__kurven.zeiten().endrunden);
 const zeile = (name, X, Y, t) => {
   const m = bewegung(X, Y);

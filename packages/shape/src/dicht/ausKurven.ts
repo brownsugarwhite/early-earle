@@ -54,6 +54,17 @@ import { type Bindungen, type Haut, type Vermessung, gewichteAus, laengenGewicht
  */
 export type HautGewichte = 'gleich' | 'geometrie';
 
+/**
+ * Eine fertige Zerlegung für einen Löser nach der Geometrie auf diesem Netz (Gewichte der Matrix, Lagen, Vorkonditionierer). Die Matrix
+ * bestimmt dort nur, wie schnell der Löser ankommt, nicht wohin; sie darf deshalb von einer früheren Lage stammen (08.11., Verfeinern im
+ * Zug: weiterziehen ohne neu zu zerlegen, eine im Hintergrund gerechnete Zerlegung einwechseln).
+ */
+export type HautVorlage = { gew: Float64Array[]; sys: NormalSystem; cVor: NormalSystem | null };
+/** Was ein Löser zerlegen würde: die Gewichte der Matrix und die Systeme (Lagen, Vorkonditionierer) */
+export type HautAuftrag = { gew: Float64Array[]; systeme: { n: number; zeilen: NormalZeile[]; daempfung: number }[] };
+/** `vorlage`: diese Zerlegung übernehmen; `nurZeilen`: nichts zerlegen, nur `auftrag` füllen (der Löser rechnet dann nicht). Nur nach der Geometrie. */
+export type HautOptionen = { vorlage?: HautVorlage; nurZeilen?: boolean };
+
 /** Gewicht, mit dem die Krümmung eines Punkts bei ihrem jetzigen Wert bleibt, wo keine Kurve hinreicht (hält das System lösbar) */
 const HALT = 1e-6;
 /**
@@ -78,7 +89,7 @@ const jetzt = () => (uhr ? uhr.now() : Date.now());
  * aus Messen, Verteilen der Krümmung und Lösen der Lagen. Gleiche Bindungen und Kantengewichte wie `HautZiele`.
  */
 export class HautAusKurven {
-  private readonly sys: NormalSystem;
+  private readonly sys: NormalSystem | null;
   /** Unbekannte → Punkt der Haut */
   private readonly frei: Int32Array;
   /** Punkt der Haut → Unbekannte (−1: bleibt) */
@@ -110,6 +121,8 @@ export class HautAusKurven {
   private readonly merken: boolean;
   /** `geometrie`: Vorkonditionierer der Krümmung (Laplace des Netzes), Lösung der letzten Runde, Dämpfung je Punkt */
   private cVor: NormalSystem | null = null;
+  /** mit `nurZeilen`: was zu zerlegen wäre */
+  auftrag: HautAuftrag | null = null;
   private cWarm: Float64Array | null = null;
   private beta: Float64Array | null = null;
   private dVorher: Float64Array | null = null;
@@ -129,6 +142,7 @@ export class HautAusKurven {
     /** Ketten der Loops: welche Bindungen Punkte eines eingesetzten Loops sind und wie hart er dort ist */
     ketten: KruemmungsKetten | null = null,
     gewichte: HautGewichte = 'gleich',
+    opt: HautOptionen = {},
   ) {
     const n = h.n;
     const P = h.pos;
@@ -145,7 +159,8 @@ export class HautAusKurven {
     // nach der Geometrie gewichtet die Matrix nach 1 / Kantenlänge² der Lage beim Anlegen: Auf gestreckten Dreiecken antwortet sie
     // dann in jeder Richtung wie die Krümmung nach der Geometrie (mit gleichen Gewichten längs der Streckung zu schwach: Das Ohr hinkte
     // im Zug 0,75 statt 0,23 nach, der Rüssel auf dem Netz vom Greifen lag 9,2 statt 1,6 neben dem feinen). Am Ziel ändert das nichts.
-    this.gew = gewichte === 'geometrie' ? laengenGewichte(h, kanten) : gewichteAus(h, kanten);
+    const geo = gewichte === 'geometrie';
+    this.gew = geo ? (opt.vorlage?.gew ?? laengenGewichte(h, kanten)) : gewichteAus(h, kanten);
     // Punkte harter Linien: Ihr Gewicht über die Linie ist 0; ihre Kanten längs der Linie bleiben in der intrinsischen Triangulierung
     const linie = new Set<number>();
     if (kanten) for (const [k, w] of kanten) if (w === 0) linie.add(Math.floor(k / n));
@@ -204,7 +219,8 @@ export class HautAusKurven {
     // nicht noch einmal zerlegt (das Fenster rechnet sie nach jeder Änderung schon vor)
     const merken = bereich === null;
     this.merken = merken;
-    this.sys = normalSystemZerlegt(frei.length, zeilen, 1e-9, merken);
+    if (geo && opt.nurZeilen) this.auftrag = { gew: this.gew, systeme: [{ n: frei.length, zeilen, daempfung: 1e-9 }] };
+    this.sys = geo && opt.vorlage ? opt.vorlage.sys : geo && opt.nurZeilen ? null : normalSystemZerlegt(frei.length, zeilen, 1e-9, merken);
     const ruhe = vermessen(h, this.gew);
     // Quellen der Krümmung: Punkte eingesetzter Loops (so weich, wie der Loop dort ist; an einer Kreuzung der härteste; an einer Ecke
     // nichts), die Haut, die stehen bleibt (ganz)
@@ -233,7 +249,8 @@ export class HautAusKurven {
       this.ruhe = { ...ruhe, ...this.messenIntrinsisch(intrinsischeGewichte(h, this.fest), ruhe.nor) };
       this.cDiag = new Float64Array(0);
       this.sysC = null;
-      this.cVor = this.vorkonditionierer();
+      if (opt.nurZeilen && this.cFrei.length) this.auftrag!.systeme.push({ n: this.cFrei.length, zeilen: this.vorkonditioniererZeilen(), daempfung: 1e-12 });
+      this.cVor = opt.vorlage ? opt.vorlage.cVor : opt.nurZeilen ? null : this.vorkonditionierer();
       this.zeitZerlegen = Date.now() - t0;
       return;
     }
@@ -306,10 +323,19 @@ export class HautAusKurven {
     return c;
   }
 
+  /** die fertige Zerlegung dieses Lösers (für einen nächsten auf demselben Netz) */
+  get vorlage(): HautVorlage | null {
+    return this.sys ? { gew: this.gew, sys: this.sys, cVor: this.cVor } : null;
+  }
+
   /** Vorkonditionierer der Krümmung: der Laplace des Netzes (Gewicht 1 je Kante, Quellen wie `kruemmung`), einmal zerlegt */
   private vorkonditionierer(): NormalSystem | null {
     const nc = this.cFrei.length;
     if (nc === 0) return null;
+    return normalSystemZerlegt(nc, this.vorkonditioniererZeilen(), 1e-12, this.merken);
+  }
+
+  private vorkonditioniererZeilen(): NormalZeile[] {
     const zeilen: NormalZeile[] = [];
     this.cFrei.forEach((v, u) => {
       const nb = this.h.nachbarn[v]!;
@@ -320,7 +346,7 @@ export class HautAusKurven {
       }
       zeilen.push({ index: [u], wert: [1], gewicht: HALT * nb.length });
     });
-    return normalSystemZerlegt(nc, zeilen, 1e-12, this.merken);
+    return zeilen;
   }
 
   /** Krümmung je Punkt auf der intrinsischen Delaunay-Triangulierung (wie `vermessen`: Normalanteil durch das mittlere Kantenquadrat) */
@@ -527,7 +553,7 @@ export class HautAusKurven {
         }
       });
       const tl = jetzt();
-      const x = this.sys.loesen(rhs);
+      const x = this.sys!.loesen(rhs);
       this.zeiten.loesen += jetzt() - tl;
       this.zeiten.runden++;
       for (let u = 0; u < nf; u++) {

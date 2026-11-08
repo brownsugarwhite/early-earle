@@ -10,7 +10,7 @@
 // gegenüber, an einer Ecke darf die Linie knicken (von Hand oder von selbst an der Kreuzung mit einer Kante). Wie in Illustrator
 // gehen die Griffe mit ihrem Punkt: Ein Punkt ändert nur die zwei Stücke bis zu seinen Nachbarn.
 
-import { HautAusKurven, type HautGewichte } from './ausKurven';
+import { type HautAuftrag, HautAusKurven, type HautGewichte, type HautOptionen, type HautVorlage } from './ausKurven';
 import { KETTE_K, type KruemmungsKetten } from './kruemmung';
 import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich, hautNormalen, kantenSchluessel } from './kurven';
 import { bernstein, stueckAnpassen, stueckNaechstes, stueckPunkt, stueckTeilen } from './pfad';
@@ -867,6 +867,7 @@ export class LoopZug {
     kruemmung = true,
     art: HautArt = 'gedaechtnis',
     gewichte: HautGewichte = 'gleich',
+    opt: HautOptionen = {},
   ) {
     this.plan = bindungenAus(h, loops);
     this.start = loops.map((l) => Float64Array.from(l.ruhe));
@@ -875,8 +876,18 @@ export class LoopZug {
     const ziele = zieleAus(this.plan, this.start);
     this.loeser =
       art === 'kurven'
-        ? new HautAusKurven(h, this.plan.bind, ziele, bereich, 100, kantenGewichte(h, loops), ketten, gewichte)
+        ? new HautAusKurven(h, this.plan.bind, ziele, bereich, 100, kantenGewichte(h, loops), ketten, gewichte, opt)
         : new HautZiele(h, this.plan.bind, ziele, bereich, 100, kantenGewichte(h, loops), ketten, kruemmung);
+  }
+
+  /** die fertige Zerlegung des Lösers (nach der Geometrie), für einen nächsten auf demselben Netz */
+  get vorlage(): HautVorlage | null {
+    return this.loeser instanceof HautAusKurven ? this.loeser.vorlage : null;
+  }
+
+  /** mit `nurZeilen`: was der Löser zerlegen würde */
+  get auftrag(): HautAuftrag | null {
+    return this.loeser instanceof HautAusKurven ? this.loeser.auftrag : null;
   }
 
   /** Lagen je Loop: Anfang + Verschiebung */
