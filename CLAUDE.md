@@ -1511,6 +1511,19 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - **Verworfen (gemessen):** geklemmter Kotangens, nur messen, eingefrorene Gewichte, Normalkorrektur mit dem geometrischen Operator
     (explodiert), feste Dämpfung, tangential entspannen (Form wandert 4–6), Schwung (überschwingt).
   - **Falle:** Ein Fixpunktverfahren kann sich je Runde kaum bewegen und doch weit vom Ziel sein (`__kurven.nachrechnen(n)`, Probe `NACH`).
+- **2026-11-08 (nachts, danach): Schritt 3 — Verfeinern im Zug, Zerlegung im Hintergrund** (Florian: „Ja, weiter mit Schritt 3: Netz und
+  Linien schon während des Zugs verfeinern, Zerlegung im Hintergrund.“; Planseite „Kurven als Wahrheit“, Abschnitt 10).
+  - **Gebaut** (nur `?gewichte=geometrie`; `?live=0`, `?hintergrund=0` zum Vergleich): Haut gestreckt oder Linie ungenau → Zug festhalten,
+    mit derselben Zerlegung weiter (`HautOptionen.vorlage`; die Matrix bestimmt nur das Tempo), feineres Netz aus diesem Stand, Punkte
+    eingebettet in die alte Haut (`dicht/einbettung.ts`), Zeilen (`nurZeilen`) flach an den Worker `src/form/zerlegen.worker.ts`
+    (`zerlegungsDaten`/`systemAusDaten` in `loeser/zerlegung.ts`); zurück → mitten im Zug einwechseln. Die Matrix nach der Geometrie
+    gewichtet jetzt nach 1 / Kantenlänge² (je Punkt höchstens zehnfach verschieden).
+  - **Gemessen im Fenster:** Sprung Hals 0,36, Rüssel 1,4 (bisher 33,9), Ohr 3,6 Einheiten; je Mausbewegung 11,5–13,4 ms (höchstens 19);
+    Auslösen 35–52 ms, Einwechseln 4–9 ms (Vordergrund 130–195 ms je Stufe). Rest = Nachhinken im schnellen Zug (eine Runde je Bewegung).
+    Linse jetzt mit Kante überall (80,6°, 2 umgeklappt), Überhang 2 statt 6–20 Knicke.
+  - **Fallen:** Beim Einwechseln die Punkte der Linien aus dem Stand von jetzt übernehmen (`verdichten` kopiert sie beim Auslösen). Den
+    Versatz der Einbettung im Rahmen des Dreiecks speichern, nicht längs der gemittelten Normale (Rückweg nur 0,009 genau). Längengewichte
+    ohne Begrenzung lassen den Löser auf gestreckten Netzen auseinanderlaufen.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

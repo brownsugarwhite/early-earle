@@ -722,3 +722,57 @@ tangential entspannen (Dreiecke besser, 1,5 % stumpfe Kanten, aber die Form wand
 **Vorschlag für Schritt 3 (Haut fein und live):** während des Zugs verfeinern, wo die Haut gestreckt wird oder eine Linie ungenau wird
 (Teilen, Zusammenlegen, genaues Nachteilen wie nach dem Zug), das neue Netz im Hintergrund zerlegen und einwechseln, sobald es fertig
 ist; nach dem Loslassen bleibt dann nichts mehr zu tun. Danach die Linse und den Überhang.
+
+## 10. Schritt 3 (08.11. nachts): Verfeinern im Zug, Zerlegung im Hintergrund
+
+Florian: „Ja, weiter mit Schritt 3: Netz und Linien schon während des Zugs verfeinern, Zerlegung im Hintergrund.“ Gebaut für den Löser
+nach der Geometrie (`?gewichte=geometrie`; `?live=0` ohne Verfeinern, `?hintergrund=0` mit Zerlegen im Vordergrund).
+
+**Ablauf im Fenster:**
+- **Auslösen:** eine Kante der Haut länger als 2 Startkanten, oder ein Ziel einer Linie weicht von der Sehne seiner Nachbarn so weit ab,
+  wie es nach dem Zug erlaubt ist.
+- **Weiterziehen ohne Neuzerlegen:** Der Zug wird festgehalten und mit derselben Zerlegung weitergeführt (`HautOptionen.vorlage`). Das
+  geht, weil die Matrix beim Löser nach der Geometrie nur bestimmt, wie schnell er ankommt, nicht wohin.
+- **Feineres Netz:** Es wird aus diesem Stand verdichtet wie nach dem Zug (Teilen, Zusammenlegen, Linien genau). Jeder seiner Punkte
+  merkt sich seine Stelle auf der alten Haut (`dicht/einbettung.ts`: nächstes Dreieck, baryzentrisch, Versatz im Rahmen des Dreiecks).
+- **Hintergrund:** Die Zeilen seiner Matrix (`nurZeilen`) gehen flach an einen Worker (`src/form/zerlegen.worker.ts`).
+- **Einwechseln:** Ist die Zerlegung zurück, wird mitten im Zug eingewechselt. Die Punkte des neuen Netzes werden auf der alten Haut von
+  jetzt ausgewertet, die Linien behalten den Stand ihrer Punkte.
+
+**Matrix nach Kantenlängen:** Der Löser nach der Geometrie gewichtet seine Matrix jetzt nach 1 / Kantenlänge², je Punkt höchstens
+zehnfacher Unterschied zwischen den Nachbarn (ohne Begrenzung explodierte er am Ohr ohne Verdichten). Auf gestreckten Dreiecken
+antwortet die Matrix so in jeder Richtung wie die Krümmung nach der Geometrie: Im Kern hinkte das Ohr 0,75 → 0,23 nach, und der Rüssel
+auf dem Netz vom Greifen lag 9,2 → 1,6 neben dem feinen.
+
+**Gemessen im Fenster** (`form-loslassen-probe.mjs`, 30 Mausschritte, 5 200 Punkte am Anfang; Einheiten, 0,89 px je Einheit bei 100 %):
+
+| Zug | bisheriger Löser | Geometrie ohne Verfeinern | mit Verfeinern im Zug (Hintergrund) | davon Nachhinken |
+| --- | --- | --- | --- | --- |
+| Hals | 4,92 | 0,34 | **0,36 (0,32 px)**, 3 Wechsel | 0,22 |
+| Rüssel | 33,85 | 7,94 | **1,43 (1,3 px)**, 9 Wechsel | 1,28 |
+| Ohr | 5,98 | 8,69 | **3,62 (3,2 px)**, 5 Wechsel | 2,41 |
+
+- Je Mausbewegung im Mittel 11,5–13,4 ms, höchstens 19 ms (bisheriger Löser 16 ms).
+- Auslösen hält den Zug 35–52 ms an (Verdichten 18–31, Zeilen 12–17), Einwechseln 4–9 ms. Zwischen Auslösen und Einwechseln vergehen
+  113–186 ms, in denen auf dem alten Netz weitergezogen wird. Im Vordergrund hielt jede Stufe den Zug 130–195 ms an.
+- **Was bleibt, ist Nachhinken:** Der Löser macht je Mausbewegung eine Runde (≈ 10 ms) und kommt dabei am Ohr mit etwa 0,65–0,77 je Runde
+  näher. Bei schnellem Zug hinkt die Haut deshalb hinter dem Ziel her (Ohr 2,4, Rüssel 1,3), und die Runden nach dem Loslassen holen das
+  auf. Das Kriterium ½ px hält damit nur der Hals.
+
+**Andere Proben** (`?gewichte=geometrie`): Boden 0,00; Pilz 92°; Linse 80,6° mit 2 umgeklappten Dreiecken (Beweis vom 08.11.: an 10 % des
+Rands kein Knick, 14); Stift-Form 0,13; Überhang am Ende 2 statt 6–20 Knicke über 60°, 0 umgeklappt; Maul dicht; Hin und zurück wie bisher.
+
+**Tests:** `dicht/einbettung.test.ts` (Zerlegung über Daten löst genau wie direkt; die Einbettung gibt die Punkte genau zurück und geht
+mit). 106 Tests unter `src/dicht/` grün.
+
+**Verworfen (gemessen):**
+- feste volle Schritte ohne Anpassung je Punkt (Ohr 6,9, Rüssel 21,7);
+- Längengewichte ohne Begrenzung (das Ohr ohne Verdichten explodierte);
+- der Versatz der Einbettung längs der gemittelten Normale (Rückweg nur auf 0,009 genau);
+- die Suche über zwei Nachbarringe (langsamer als das Raster).
+
+**Offen:**
+- Nachhinken im schnellen Zug: Die Runden müssten schneller werden oder schneller ankommen.
+- Das Verdichten beim Auslösen könnte ebenfalls in den Worker (dann ≈ 10 statt 35–52 ms).
+- Griff-Züge verfeinern noch nicht.
+- Florians Wahl, ob der Löser nach der Geometrie Standard wird.
