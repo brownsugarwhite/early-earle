@@ -1486,6 +1486,15 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     Achteck wie in Florians Bild), Haut bis 2,4 bewegt. Ursache: Die Kreuzungen teilen die gezeichneten Stücke, die Anker behalten den
     Griff des ganzen Stücks (43,1 statt 21,5), die Kreuzungen bekommen abgelesene Griffe, `linienAufPfad` legt die Linie darauf und die
     Haut folgt; dazu liegt der Pfad in der Tiefe nicht auf der Haut. Weg: de Casteljau an den Kreuzungen, Tiefe der Griffe an die Haut.
+- **2026-11-08 (abends, danach): Stift-Form genau über Linien** (Florian: „ok, machen wir es so“ — erst der Stift, dann der Löser als
+  Beweis, dann Haut fein und live; Planseite „Kurven als Wahrheit“, Abschnitt 8, „Stand“). Kern `griffeAusZeichnung` (`dicht/loops.ts`,
+  im Fenster aus `stiftFertig`): Jeder Punkt bekommt seine Stelle auf der Zeichnung, jedes Stück des Pfads ist im Blatt genau das Stück
+  der Zeichnung (de Casteljau an Kreuzungen und Ringenden); die Tiefe der Griffe nach kleinsten Quadraten an die Linie auf der Haut
+  (glatte Anker gekoppelt, Kreuzungen je Seite, Ecken an geraden Stücken ein Drittel der Sehne, an gebogenen danach einzeln). Mit der
+  Maus: Kreis über zwei Ringe 3,2 px → 0,0 px neben der Zeichnung, Haut 2,43 → 0,13 bewegt; großer Kreis 0,42, Quadrat aus Ecken 0,25,
+  Augen-Form und Ring über die Mitte wie gezeichnet, 0 umgeklappt. Rest: Grate der alten Linien (ihre Kurven treffen die Kugel nicht
+  genau). Fallen: „gerade“ aus der Zeichnung entscheiden (Kreuzungen sitzen bis 0,09 neben der Geraden); ein Griff nur in der Tiefe
+  (Ecke an gebogenem Stück) nicht frei mit den anderen anpassen (4 umgeklappt).
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

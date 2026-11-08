@@ -4,11 +4,13 @@
 // Ring senkrecht), in der Seite mit dem Stift ein Kreis (Radius R, vier glatte Anker auf den Diagonalen, Griffe wie ein Kreis) um die
 // Kreuzung der beiden Ringe; er kreuzt beide Ringe je zweimal. Gemessen: Linie im Blatt gegen die gezeichnete Form (px), wie weit sich
 // die Haut bewegt hat (Abstand jedes Punkts zur Fläche vorher), umgeklappte Dreiecke, Griffe an den Ankern gegen die gezeichneten.
-// Aufruf aus apps/editor: node scripts/pruefen/form-stift-kreuzung-probe.mjs [ordner für Bild]   (R=78, KURVEN_URL)
+// ECKEN=1: die vier Anker geklickt (Ecken, gerade Stücke) statt glatt. Aufruf aus apps/editor:
+// node scripts/pruefen/form-stift-kreuzung-probe.mjs [ordner für Bild]   (R=78, ECKEN=1, KURVEN_URL)
 import { chromium } from '@playwright/test';
 
 const ordner = process.argv[2] ?? null;
 const R = Number(process.env.R ?? 78);
+const ECKEN = process.env.ECKEN === '1';
 const basis = process.env.KURVEN_URL ?? 'http://localhost:5193/kurven.html';
 const browser = await chromium.launch();
 const seite = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 2 });
@@ -52,7 +54,7 @@ const C = { x: 10, y: 0 };
 const h = 0.5523 * R;
 const A = [45, 135, 225, 315].map((w) => {
   const t = (w * Math.PI) / 180;
-  return { p: { x: C.x + R * Math.cos(t), y: C.y + R * Math.sin(t), z: 0 }, g: { x: -h * Math.sin(t), y: h * Math.cos(t), z: 0 } };
+  return { p: { x: C.x + R * Math.cos(t), y: C.y + R * Math.sin(t), z: 0 }, g: ECKEN ? { x: 0, y: 0, z: 0 } : { x: -h * Math.sin(t), y: h * Math.cos(t), z: 0 } };
 });
 await seite.keyboard.press('p');
 for (const { p, g } of A) {
@@ -60,7 +62,7 @@ for (const { p, g } of A) {
   const b = await bild('seite', { x: p.x + g.x, y: p.y + g.y, z: 0 });
   await seite.mouse.move(a.x, a.y);
   await seite.mouse.down();
-  for (let i = 1; i <= 6; i++) await seite.mouse.move(a.x + ((b.x - a.x) * i) / 6, a.y + ((b.y - a.y) * i) / 6);
+  if (!ECKEN) for (let i = 1; i <= 6; i++) await seite.mouse.move(a.x + ((b.x - a.x) * i) / 6, a.y + ((b.y - a.y) * i) / 6);
   await seite.mouse.up();
   await seite.waitForTimeout(120);
 }
@@ -70,7 +72,7 @@ await seite.waitForTimeout(1500);
 const nachher = await schnapp();
 const L = await loops();
 const l = L.at(-1);
-console.log(`Stift-Kreis R ${R} um die Kreuzung: ${L.length - loopsVorher} neuer Loop (${l.art}), Punkte ${l.punkte.filter((p) => p.sichtbar !== false).length} (davon Kreuzungen ${l.punkte.filter((p) => p.kreuzung !== null).length})`);
+console.log(`Stift-${ECKEN ? 'Raute (Ecken)' : 'Kreis'} R ${R} um die Kreuzung: ${L.length - loopsVorher} neuer Loop (${l.art}), Punkte ${l.punkte.filter((p) => p.sichtbar !== false).length} (davon Kreuzungen ${l.punkte.filter((p) => p.kreuzung !== null).length})`);
 
 // ---------- Linie im Blatt gegen die Zeichnung ----------
 const zeichnung = [];
@@ -189,7 +191,7 @@ if (ordner) {
   await K('ausschnitt', 'seite', { cx: C.x, cy: -C.y, zoom: 2 });
   await seite.waitForTimeout(300);
   const f = (await K('felder')).seite;
-  await seite.screenshot({ path: `${ordner}/form-stift-kreuzung-2026-11-08.jpg`, type: 'jpeg', quality: 88, clip: { x: f.x, y: f.y, width: f.w, height: f.h } });
+  await seite.screenshot({ path: `${ordner}/form-stift-kreuzung${ECKEN ? '-ecken' : ''}${R !== 78 ? `-r${R}` : ''}-2026-11-08.jpg`, type: 'jpeg', quality: 88, clip: { x: f.x, y: f.y, width: f.w, height: f.h } });
 }
 if (fehler.length) console.log(`Fehler: ${fehler.slice(0, 3).join(' | ')}`);
 await browser.close();

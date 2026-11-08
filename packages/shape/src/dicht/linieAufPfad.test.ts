@@ -7,10 +7,13 @@ import { type Haut, type V3, hautAus, hautNormalen } from './kurven';
 import {
   type Loop,
   LoopZug,
+  type ZeichnungsStueck,
   bereichUm,
   eckenAuto,
   festlegen,
+  formAusZeichnung,
   griffeAnlegen,
+  griffeAusZeichnung,
   griffeUebernehmen,
   hatPfad,
   kreuzungenZwischen,
@@ -330,6 +333,108 @@ describe('Die Linie ist ihr Pfad', () => {
     const w = verdichten(v.haut, v.loops, 1.75 * MK, { genau, kurz: 0.5 * MK });
     if (w) expect(sehnenRest(w.loops[li]!)).toBeLessThanOrEqual(genau);
     log(`zweites Mal: ${w ? `+${w.neu} −${w.gelegt}` : 'nichts'}`);
+  });
+
+  it('Stift über zwei Linien (08.11.): Die Form liegt im Blatt genau wie gezeichnet, die Haut bleibt fast, wie sie war', () => {
+    // Florian: „Wenn ich eine Form mit P erstelle und diese über die vorhandenen Linien ziehe, ist die Form sehr ungenau und wird von
+    // den auf den Kreuzungen stehenden Punkten verzogen.“ Wie im Fenster: Kreis mit Radius 78 um die Kreuzung der beiden Ringe (Seite),
+    // vier glatte Anker auf den Diagonalen, Griffe wie ein Kreis; er kreuzt jeden Ring zweimal.
+    const bau = (alt: boolean, ecken = false) => {
+      const { h: h0, loops: L0, MK } = dreiLoopsGenau();
+      let h = h0;
+      let loops = L0;
+      const R = 78;
+      const c = 0.5523 * R;
+      const anker = [45, 135, 225, 315].map((w) => {
+        const t = (w * Math.PI) / 180;
+        return { p: [10 + R * Math.cos(t), R * Math.sin(t)] as const, g: ecken ? ([0, 0] as const) : ([-c * Math.sin(t), c * Math.cos(t)] as const) };
+      });
+      const zeichnung: ZeichnungsStueck[] = anker.map((p, i) => {
+        const q = anker[(i + 1) % anker.length]!;
+        return [p.p, [p.p[0] + p.g[0], p.p[1] + p.g[1]], [q.p[0] - q.g[0], q.p[1] - q.g[1]], q.p];
+      });
+      // abgetastet wie im Fenster (`stiftFertig`)
+      const uv: [number, number][] = [];
+      const knoten: number[] = [];
+      for (const z of zeichnung) {
+        knoten.push(uv.length);
+        const n = 24;
+        for (let k = 0; k < n; k++) {
+          const q = stueckPunkt({ x: z[0][0], y: z[0][1], z: 0 }, { x: z[1][0] - z[0][0], y: z[1][1] - z[0][1], z: 0 }, { x: z[2][0] - z[3][0], y: z[2][1] - z[3][1], z: 0 }, { x: z[3][0], y: z[3][1], z: 0 }, k / n);
+          uv.push([q.x, q.y]);
+        }
+      }
+      const l = formAusZeichnung(h, 'seite', uv, knoten, 99)!;
+      loops.push(l);
+      const r = loopEinsetzen(h, loops, loops.length - 1)!;
+      h = r.haut;
+      loops = r.loops;
+      const neu = loops[loops.length - 1]!;
+      let k = 100;
+      for (const x of loops.slice(0, -1))
+        for (const f of kreuzungenZwischen(x, x.ruhe, neu, neu.ruhe, 0.25 * MK)) {
+          const pa = punktEinfuegen(x, f.sa, k, true);
+          const pb = punktEinfuegen(neu, f.sb, k);
+          pb.ref = { ...pa.ref };
+          pb.cur = { ...pa.ref };
+          k++;
+        }
+      eckenAuto(loops);
+      griffeAnlegen(neu, neu.ruhe, true);
+      if (alt) {
+        // wie bis heute: jeder Anker behält den Griff des ganzen gezeichneten Stücks (in die Fläche gehoben), die Kreuzungen den abgelesenen
+        const nor = hautNormalen(h);
+        for (const p of neu.punkte) {
+          const a = anker.find((x) => Math.hypot(x.p[0] - p.ref.x, x.p[1] - p.ref.y) < 0.5);
+          if (!a) continue;
+          let j = 0;
+          for (let i = 1; i < neu.s.length; i++) if (Math.abs(neu.s[i]! - p.s) < Math.abs(neu.s[j]! - p.s)) j = i;
+          const v = neu.proben[j]!.ecken[0];
+          const nn = { x: nor[3 * v]!, y: nor[3 * v + 1]!, z: nor[3 * v + 2]! };
+          const kz = -(nn.x * a.g[0] + nn.y * a.g[1]) / nn.z;
+          p.aus = { x: a.g[0], y: a.g[1], z: kz };
+          p.ein = { x: -a.g[0], y: -a.g[1], z: -kz };
+        }
+      } else expect(griffeAusZeichnung(h, neu, 'seite', zeichnung)).toBe(true);
+      // im Blatt: Pfad gegen die Zeichnung (dicht abgetastet)
+      const dicht: V3[] = [];
+      for (const z of zeichnung)
+        for (let i = 0; i < 400; i++)
+          dicht.push(stueckPunkt({ x: z[0][0], y: z[0][1], z: 0 }, { x: z[1][0] - z[0][0], y: z[1][1] - z[0][1], z: 0 }, { x: z[2][0] - z[3][0], y: z[2][1] - z[3][1], z: 0 }, { x: z[3][0], y: z[3][1], z: 0 }, i / 400));
+      let blatt = 0;
+      for (let i = 0; i < neu.punkte.length; i++) {
+        const A = neu.punkte[i]!;
+        const B = neu.punkte[(i + 1) % neu.punkte.length]!;
+        for (let s = 0; s <= 20; s++) {
+          const q = stueckPunkt(A.ref, A.aus!, B.ein!, B.ref, s / 20);
+          blatt = Math.max(blatt, Math.min(...dicht.map((d) => Math.hypot(d.x - q.x, d.y - q.y))));
+        }
+      }
+      pfadParameter(neu);
+      const rest = pfadAbweichung(neu);
+      const vorher = Float64Array.from(h.pos);
+      aufPfad(h, loops, neu, MK);
+      let haut = 0;
+      for (let v = 0; v < h.n; v++) haut = Math.max(haut, abstand(lage(vorher, v), lage(h.pos, v)));
+      const griffe = neu.punkte.map((p) => `${p.kreuzung !== undefined ? 'K' : p.ecke ? '◆' : '●'}(${p.ref.x.toFixed(2)},${p.ref.y.toFixed(2)},${p.ref.z.toFixed(2)}) ein ${Math.hypot(p.ein!.x, p.ein!.y).toFixed(1)} aus ${Math.hypot(p.aus!.x, p.aus!.y).toFixed(1)}`).join(' | ');
+      return { blatt, rest, haut, griffe, punkte: neu.punkte.length, kreuzungen: neu.punkte.filter((p) => p.kreuzung !== undefined).length };
+    };
+    const alt = bau(true);
+    const neu = bau(false);
+    const quadrat = bau(false, true);
+    log(`Quadrat aus Ecken: Pfad im Blatt bis ${quadrat.blatt.toFixed(3)}, Linie bis ${quadrat.rest.toFixed(3)} neben dem Pfad, Haut bis ${quadrat.haut.toFixed(3)} bewegt; ${quadrat.griffe}`);
+    log(`Stift über zwei Linien, alt: Pfad im Blatt bis ${alt.blatt.toFixed(2)} neben der Zeichnung, Linie bis ${alt.rest.toFixed(2)} neben dem Pfad, Haut bis ${alt.haut.toFixed(2)} bewegt`);
+    log(`neu: ${neu.punkte} Punkte (${neu.kreuzungen} Kreuzungen), Pfad im Blatt bis ${neu.blatt.toFixed(3)}, Linie bis ${neu.rest.toFixed(3)} neben dem Pfad, Haut bis ${neu.haut.toFixed(3)} bewegt`);
+    expect(neu.kreuzungen).toBe(4);
+    // die Gegenprobe (wie bis heute) fällt durch
+    expect(alt.blatt).toBeGreaterThan(2);
+    expect(neu.blatt).toBeLessThan(0.05);
+    expect(neu.haut).toBeLessThan(0.3);
+    // aus Ecken (gerade Stücke): an jeder Ecke ein Drittel der Sehne; eine Kreuzung sitzt auf der alten Linie, bis 0,09 neben der Geraden
+    expect(quadrat.kreuzungen).toBe(4);
+    expect(quadrat.blatt).toBeLessThan(0.3);
+    expect(quadrat.haut).toBeLessThan(0.4);
+    expect(quadrat.griffe).not.toContain(' 0.0');
   });
 
   it('Nächster Punkt auf einem Stück: Newton findet ihn auch von weit weg', () => {

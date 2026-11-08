@@ -12,8 +12,8 @@
 
 import { HautAusKurven } from './ausKurven';
 import { KETTE_K, type KruemmungsKetten } from './kruemmung';
-import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich, kantenSchluessel } from './kurven';
-import { stueckAnpassen, stueckNaechstes, stueckPunkt, stueckTeilen } from './pfad';
+import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich, hautNormalen, kantenSchluessel } from './kurven';
+import { bernstein, stueckAnpassen, stueckNaechstes, stueckPunkt, stueckTeilen } from './pfad';
 
 export type Ansicht = 'seite' | 'front' | 'top';
 /** Ein Punkt der Haut: drei Ecken eines Dreiecks und baryzentrische Gewichte */
@@ -1256,6 +1256,421 @@ export function eckenTiefe(l: Loop, ecken: ReadonlySet<number>, tiefe: V3, L: Fl
     P[Number(i)]![seite] = g;
   }
   griffeSpiegeln(l);
+}
+
+/** Ein gezeichnetes Stück im Blatt (uv wie `blickUV`): Anfang, die zwei inneren Kontrollpunkte, Ende */
+export type ZeichnungsStueck = readonly [readonly [number, number], readonly [number, number], readonly [number, number], readonly [number, number]];
+
+/**
+ * Griffe eines mit dem Stift gezeichneten Loops genau aus der Zeichnung (Florian, 08.11.: „Die Form soll exakt wie eingezeichnet direkt
+ * auf der Haut liegen, ohne diese zu verändern“). `zeichnung`: die geschlossene Kurve im Blatt `a`, je Stück von Anker zu Anker.
+ * Kreuzungen mit anderen Loops teilen die gezeichneten Stücke: Jeder Punkt bekommt seine Stelle auf der Zeichnung, und jedes Stück des
+ * Pfads ist im Blatt genau das Stück der Zeichnung zwischen seinen Punkten (de Casteljau). Vorher behielten die Anker den Griff des
+ * ganzen gezeichneten Stücks, und die Kreuzungen bekamen abgelesene Griffe: Ein Kreis über zwei Linien wurde ein welliges Achteck (bis
+ * 3,6 Einheiten neben der Zeichnung), und die Haut folgte ihm (bis 2,4). In der Tiefe liegt jeder Griff zuerst in der Tangentialebene
+ * der Haut an seinem Punkt, dann wird er nach kleinsten Quadraten an die Linie auf der Haut angepasst; Ecken (geklickte Anker, im Blatt
+ * ohne Griff) ebenso. Die Enden eines Rings behalten ihre Griffe (senkrecht zur Mittelebene, aus `griffeAnlegen`). Passen die Punkte
+ * nicht zur Zeichnung (ein Anker lag nicht auf dem Körper), bleibt der Loop, wie er ist: false.
+ */
+export function griffeAusZeichnung(h: Haut, l: Loop, a: Ansicht, zeichnung: readonly ZeichnungsStueck[], L: Float64Array = l.ruhe): boolean {
+  const K = zeichnung.length;
+  const P = l.punkte;
+  if (K < 2 || !hatPfad(l)) return false;
+  const v3 = (q: readonly [number, number]): V3 => ({ x: q[0], y: q[1], z: 0 });
+  // Ein Loop, der in Front oder Top auf der Seite z < 0 gezeichnet wurde, liegt als sein Spiegelbild: dann die Zeichnung spiegeln
+  const gespiegeltUV = (q: readonly [number, number]): [number, number] => (a === 'front' ? [-q[0], q[1]] : a === 'top' ? [q[0], -q[1]] : [q[0], q[1]]);
+  const uv = P.map((p) => blickUV(a, p.ref));
+  let abstandAnker = Infinity;
+  for (let k = 0; k < K; k++) {
+    const p = zeichnung[k]![0];
+    const q = zeichnung[(k + 1) % K]![0];
+    abstandAnker = Math.min(abstandAnker, Math.hypot(q[0] - p[0], q[1] - p[1]));
+  }
+  const tol = 0.01 * abstandAnker;
+  // Anker → Punkt (der nächste sichtbare, näher als tol)
+  const zuordnen = (sp: boolean): Map<number, number> => {
+    const m = new Map<number, number>();
+    for (let k = 0; k < K; k++) {
+      const q = sp ? gespiegeltUV(zeichnung[k]![0]) : zeichnung[k]![0];
+      let best = -1;
+      let weit = tol;
+      P.forEach((p, i) => {
+        if (p.vonSelbst) return;
+        const d = Math.hypot(uv[i]![0] - q[0], uv[i]![1] - q[1]);
+        if (d < weit) {
+          weit = d;
+          best = i;
+        }
+      });
+      if (best >= 0) m.set(best, k);
+    }
+    return m;
+  };
+  const ohne = zuordnen(false);
+  const mit = a === 'seite' ? new Map<number, number>() : zuordnen(true);
+  const spiegel = mit.size > ohne.size;
+  const ankerVon = spiegel ? mit : ohne;
+  if (ankerVon.size < 2) return false;
+  const Z: ZeichnungsStueck[] = zeichnung.map((c) => {
+    const f = (q: readonly [number, number]): [number, number] => (spiegel ? gespiegeltUV(q) : [q[0], q[1]]);
+    return [f(c[0]), f(c[1]), f(c[2]), f(c[3])];
+  });
+  // Richtung: Folgen die Anker in der Reihenfolge der Punkte der Zeichnung vorwärts (+1) oder rückwärts (−1)?
+  const zu = geschlossen(l);
+  const ankerIdx = [...ankerVon.keys()].sort((x, y) => x - y);
+  let r: 1 | -1 | 0 = 0;
+  for (let j = 0; j + 1 < ankerIdx.length + (zu ? 1 : 0); j++) {
+    const k0 = ankerVon.get(ankerIdx[j]!)!;
+    const k1 = ankerVon.get(ankerIdx[(j + 1) % ankerIdx.length]!)!;
+    const d: 1 | -1 | 0 = (k1 - k0 + K) % K === 1 ? 1 : (k0 - k1 + K) % K === 1 ? -1 : 0;
+    if (d === 0 || (r !== 0 && d !== r)) return false;
+    r = d;
+  }
+  if (r === 0) return false;
+  // Stelle jedes Punkts auf der Zeichnung: g = Stück + t, längs der Punkte stetig (wächst mit r)
+  const g = new Float64Array(P.length).fill(Number.NaN);
+  const ersterAnker = ankerIdx[0]!;
+  // fortlaufend ab dem ersten Anker: jeder Anker k bekommt die ganze Zahl, die seinem Vorgänger um r folgt
+  {
+    let gPrev = ankerVon.get(ersterAnker)!;
+    g[ersterAnker] = gPrev;
+    for (let j = 1; j < ankerIdx.length; j++) {
+      gPrev += r;
+      g[ankerIdx[j]!] = gPrev;
+    }
+  }
+  /** Stelle von Punkt i auf Stück k der Zeichnung (nächster Punkt), zwischen tA und tB */
+  const stelleAuf = (i: number, k: number, tA: number, tB: number): number => {
+    const c = Z[((k % K) + K) % K]!;
+    const A = v3(c[0]);
+    const a1 = { x: c[1][0] - c[0][0], y: c[1][1] - c[0][1], z: 0 };
+    const b1 = { x: c[2][0] - c[3][0], y: c[2][1] - c[3][1], z: 0 };
+    const B = v3(c[3]);
+    const q = v3(uv[i]!);
+    const lo = Math.min(tA, tB);
+    const hi = Math.max(tA, tB);
+    let t0 = lo;
+    let best = Infinity;
+    for (let s = 0; s <= 32; s++) {
+      const t = lo + ((hi - lo) * s) / 32;
+      const d = abstand(stueckPunkt(A, a1, b1, B, t), q);
+      if (d < best) {
+        best = d;
+        t0 = t;
+      }
+    }
+    return Math.max(lo, Math.min(hi, stueckNaechstes(A, a1, b1, B, q, t0)));
+  };
+  const n = P.length;
+  // Punkte zwischen zwei Ankern (bzw. vor dem ersten und hinter dem letzten eines Rings): auf dem Stück dazwischen, in Folge geordnet
+  const zwischen = (von: number, bis: number, gVon: number, gBis: number): void => {
+    // von, bis: Indizes der Anker (bis kann über das Ende hinaus zählen); gVon, gBis: ihre Stellen (|gBis − gVon| = 1)
+    const k = Math.floor(Math.min(gVon, gBis) + 1e-9);
+    let letzt = gVon;
+    for (let x = von + 1; x < bis; x++) {
+      const i = x % n;
+      const tA = letzt - k;
+      const tB = gBis - k;
+      const t = stelleAuf(i, k, tA, tB);
+      letzt = k + t;
+      g[i] = letzt;
+    }
+  };
+  for (let j = 0; j + 1 < ankerIdx.length; j++) zwischen(ankerIdx[j]!, ankerIdx[j + 1]!, g[ankerIdx[j]!]!, g[ankerIdx[j + 1]!]!);
+  const letzterAnker = ankerIdx[ankerIdx.length - 1]!;
+  if (zu) zwischen(letzterAnker, ersterAnker + n, g[letzterAnker]!, g[letzterAnker]! + r);
+  else {
+    // Ring: vor dem ersten Anker liegt das Stück davor, hinter dem letzten das Stück danach (ihre anderen Anker liegen auf der Seite z < 0)
+    const gA = g[ersterAnker]!;
+    if (ersterAnker > 0) {
+      const k = Math.floor(Math.min(gA, gA - r) + 1e-9);
+      let letzt = gA - r;
+      for (let i = 0; i < ersterAnker; i++) {
+        const t = stelleAuf(i, k, letzt - k, gA - k);
+        letzt = k + t;
+        g[i] = letzt;
+      }
+    }
+    const gE = g[letzterAnker]!;
+    zwischen(letzterAnker, n, gE, gE + r);
+  }
+  if (g.some((x) => Number.isNaN(x))) return false;
+  // Griffe im Blatt je Stück des Pfads (de Casteljau auf dem Stück der Zeichnung), dann in die Fläche gehoben
+  const nor = hautNormalen(h);
+  const normaleBei = (i: number): V3 => {
+    let j = 0;
+    for (let x = 1; x < l.s.length; x++) if (Math.abs(l.s[x]! - P[i]!.s) < Math.abs(l.s[j]! - P[i]!.s)) j = x;
+    const pr = l.proben[j]!;
+    const v = { x: 0, y: 0, z: 0 };
+    for (let e = 0; e < 3; e++) {
+      const w = pr.b[e]!;
+      v.x += w * nor[3 * pr.ecken[e]!]!;
+      v.y += w * nor[3 * pr.ecken[e]! + 1]!;
+      v.z += w * nor[3 * pr.ecken[e]! + 2]!;
+    }
+    const lv = Math.hypot(v.x, v.y, v.z) || 1;
+    return { x: v.x / lv, y: v.y / lv, z: v.z / lv };
+  };
+  const tiefe = ausUV(a, 0, 0, 1);
+  const heben = (i: number, d: V3): V3 => {
+    const w = ausUV(a, d.x, d.y, 0);
+    const nn = normaleBei(i);
+    const nt = nn.x * tiefe.x + nn.y * tiefe.y + nn.z * tiefe.z;
+    const nw = nn.x * w.x + nn.y * w.y + nn.z * w.z;
+    const lw = Math.hypot(w.x, w.y, w.z);
+    const k = Math.abs(nt) > 1e-6 ? Math.max(-lw, Math.min(lw, -nw / nt)) : 0;
+    return { x: w.x + k * tiefe.x, y: w.y + k * tiefe.y, z: w.z + k * tiefe.z };
+  };
+  /** Kontrollpunkte von Stück k der Zeichnung auf [u0, u1] */
+  const teil = (k: number, u0: number, u1: number): { A: V3; a: V3; b: V3; B: V3 } => {
+    const c = Z[((k % K) + K) % K]!;
+    let A = v3(c[0]);
+    let a1: V3 = { x: c[1][0] - c[0][0], y: c[1][1] - c[0][1], z: 0 };
+    let b1: V3 = { x: c[2][0] - c[3][0], y: c[2][1] - c[3][1], z: 0 };
+    let B = v3(c[3]);
+    if (u1 < 1 - 1e-12) {
+      const s = stueckTeilen(A, a1, b1, B, u1);
+      a1 = s.a1;
+      b1 = s.ein;
+      B = s.F;
+    }
+    if (u0 > 1e-12) {
+      const s = stueckTeilen(A, a1, b1, B, u1 > 1e-12 ? u0 / u1 : 0);
+      A = s.F;
+      a1 = s.aus;
+      b1 = s.b2;
+    }
+    return { A, a: a1, b: b1, B };
+  };
+  // Griffe im Blatt je Stück des Pfads (uv, Tiefe 0); die Enden eines Rings behalten ihre (aus `griffeAnlegen`)
+  const ein: (V3 | null)[] = P.map(() => null);
+  const aus: (V3 | null)[] = P.map(() => null);
+  const liste: { i: number; j: number; gerade: boolean }[] = [];
+  // gerade gezeichnet: die Kontrollpunkte des Stücks der Zeichnung auf einer Geraden (zwei Ecken, oder Griffe längs der Sehne)
+  const geradeGezeichnet = (k: number): boolean => {
+    const c = Z[((k % K) + K) % K]!;
+    const sx = c[3][0] - c[0][0];
+    const sy = c[3][1] - c[0][1];
+    const s2 = sx * sx + sy * sy;
+    const quer = (q: readonly [number, number]) => Math.abs((q[0] - c[0][0]) * sy - (q[1] - c[0][1]) * sx);
+    return s2 > 1e-18 && quer(c[1]) <= 1e-6 * s2 && quer(c[2]) <= 1e-6 * s2;
+  };
+  const stuecke = zu ? n : n - 1;
+  for (let x = 0; x < stuecke; x++) {
+    const i = x;
+    const j = (x + 1) % n;
+    const gi = g[i]!;
+    // geschlossen: über den ersten Anker hinweg springt die Zählung um eine Runde (K Stücke) zurück
+    const gj = g[j]! + K * Math.round((gi - g[j]!) / K);
+    const lo = Math.min(gi, gj);
+    const hi = Math.max(gi, gj);
+    if (hi - lo > 1 + 1e-6 || hi - lo < 1e-9) return false;
+    const k = Math.floor(lo + 1e-9);
+    const s = teil(k, lo - k, Math.min(1, hi - k));
+    // in der Richtung der Punkte: vorwärts beginnt das Stück bei i mit a, rückwärts mit b
+    const [ai, bj] = gi <= gj ? [s.a, s.b] : [s.b, s.a];
+    aus[i] = ai;
+    ein[j] = bj;
+    liste.push({ i, j, gerade: geradeGezeichnet(k) });
+  }
+  const imBlatt = (v: V3): V3 => {
+    const q = blickUV(a, v);
+    return { x: q[0], y: q[1], z: 0 };
+  };
+  P.forEach((p, i) => {
+    if (!p.vonSelbst) return;
+    ein[i] = p.ein ? imBlatt(p.ein) : null;
+    aus[i] = p.aus ? imBlatt(p.aus) : null;
+  });
+  const lang = (v: V3 | null | undefined): number => (v ? Math.hypot(v.x, v.y) : 0);
+  // geklickte Anker: im Blatt ohne Griffe (die Zeichnung hat dort keinen) → Ecken. Ein gerade gezeichnetes Stück bekommt an seinen
+  // Ecken ein Drittel der Sehne (es bleibt gerade, läuft aber gleichmäßig, wie in `eckenTiefe`; ob es gerade ist, sagt die Zeichnung:
+  // eine Kreuzung darauf sitzt auf der alten Linie, bis 0,09 neben der Geraden); sonst bleibt der Griff im Blatt null und wirkt nur in
+  // der Tiefe (`krumm`, danach angepasst)
+  const ecken = new Set<number>();
+  for (const i of ankerVon.keys()) if (lang(ein[i]) < 1e-9 && lang(aus[i]) < 1e-9) ecken.add(i);
+  const krumm = new Set<string>();
+  for (const { i, j, gerade } of liste) {
+    if (!ecken.has(i) && !ecken.has(j)) continue;
+    const A = imBlatt(P[i]!.ref);
+    const B = imBlatt(P[j]!.ref);
+    const sx = B.x - A.x;
+    const sy = B.y - A.y;
+    if (!gerade || Math.hypot(sx, sy) < 1e-9) {
+      if (ecken.has(i)) krumm.add(`${i}:aus`);
+      if (ecken.has(j)) krumm.add(`${j}:ein`);
+      continue;
+    }
+    if (ecken.has(i)) aus[i] = { x: sx / 3, y: sy / 3, z: 0 };
+    if (ecken.has(j)) ein[j] = { x: -sx / 3, y: -sy / 3, z: 0 };
+  }
+  // Tiefe der Griffe nach kleinsten Quadraten: Jedes Stück soll den Proben der Linie folgen (sie liegen auf der Haut, wie gezeichnet).
+  // Eine Unbekannte je glattem Anker (Tiefe von aus; ein = −λ · aus, beide im Blatt auf einer Geraden), an Kreuzungen und Ecken je Seite
+  // eine (die alte Linie hat die Haut an einer Kreuzung oft zu einem Grat gezogen, die neue knickt dann nur in der Tiefe mit); die Enden
+  // eines Rings bleiben, wie sie sind. Gemessen (Kreis über zwei Ringe): in die Tangentialebene gehoben lag die Linie bis 0,88 neben dem
+  // Pfad, angepasst mit glatten Kreuzungen 0,59, je Seite 0,17; so weit folgt die Haut. An einem Quadrat ließen die Ecken 0,54, solange
+  // hier mit Griff null statt einem Drittel der Sehne angepasst wurde.
+  type Tiefe = { u: number; f: number } | null;
+  const tAus: Tiefe[] = P.map(() => null);
+  const tEin: Tiefe[] = P.map(() => null);
+  const start: number[] = [];
+  const spanne: number[] = [];
+  P.forEach((p, i) => {
+    if (p.vonSelbst) return;
+    const le = lang(ein[i]);
+    const lo = lang(aus[i]);
+    const anfang = (v: V3 | null | undefined) => (v && lang(v) > 1e-9 ? blickTiefe(a, heben(i, v)) : 0);
+    const ecke = ecken.has(i);
+    if (!ecke && le > 1e-9 && lo > 1e-9 && p.kreuzung === undefined) {
+      tAus[i] = { u: start.length, f: 1 };
+      tEin[i] = { u: start.length, f: -le / lo };
+      start.push(anfang(aus[i]));
+      spanne.push(2 * lo);
+      return;
+    }
+    // ein Griff einer Ecke, der im Blatt null ist (gebogenes Stück), bekommt seine Tiefe danach (unten)
+    if (aus[i] && lo > 1e-9) {
+      tAus[i] = { u: start.length, f: 1 };
+      start.push(anfang(aus[i]));
+      spanne.push(2 * lo);
+    }
+    if (ein[i] && le > 1e-9) {
+      tEin[i] = { u: start.length, f: 1 };
+      start.push(anfang(ein[i]));
+      spanne.push(2 * le);
+    }
+  });
+  const m = start.length;
+  const loes = Float64Array.from(start);
+  if (m > 0) {
+    const N = new Float64Array(m * m);
+    const rhs = new Float64Array(m);
+    const festeTiefe = (i: number, seite: 'ein' | 'aus'): number => {
+      const v = P[i]![seite];
+      return P[i]!.vonSelbst && v ? blickTiefe(a, v) : 0;
+    };
+    for (const { i, j } of liste) {
+      const A = P[i]!;
+      const B = P[j]!;
+      const Ai = imBlatt(A.ref);
+      const Bj = imBlatt(B.ref);
+      const ai = aus[i] ?? NULL;
+      const bj = ein[j] ?? NULL;
+      const Di = blickTiefe(a, A.ref);
+      const Dj = blickTiefe(a, B.ref);
+      const ti = tAus[i] ?? null;
+      const tj = tEin[j] ?? null;
+      const hi0 = ti ? 0 : festeTiefe(i, 'aus');
+      const hj0 = tj ? 0 : festeTiefe(j, 'ein');
+      const st = { s0: A.s, s1: B.s > A.s ? B.s : B.s + l.laenge };
+      for (const x of probenIn(l, st)) {
+        const q = lage(L, x.j);
+        const t = stueckNaechstes(Ai, ai, bj, Bj, imBlatt(q), x.t);
+        const [b0, b1, b2, b3] = bernstein(t);
+        const r0 = blickTiefe(a, q) - (b0 + b1) * Di - (b2 + b3) * Dj - b1 * hi0 - b2 * hj0;
+        const terme: [number, number][] = [];
+        if (ti) terme.push([ti.u, b1 * ti.f]);
+        if (tj) terme.push([tj.u, b2 * tj.f]);
+        for (const [u, cu] of terme) {
+          rhs[u] = rhs[u]! + cu * r0;
+          for (const [v, cv] of terme) N[u * m + v] = N[u * m + v]! + cu * cv;
+        }
+      }
+    }
+    // schwach zur Tangentialebene (ein Stück ohne Proben bleibt dort)
+    for (let u = 0; u < m; u++) {
+      N[u * m + u] = N[u * m + u]! + 1e-2;
+      rhs[u] = rhs[u]! + 1e-2 * start[u]!;
+    }
+    const x = loesenDicht(N, rhs, m);
+    if (x) for (let u = 0; u < m; u++) loes[u] = Math.max(-spanne[u]!, Math.min(spanne[u]!, x[u]!));
+  }
+  const griff = (v: V3, d: number): V3 => ausUV(a, v.x, v.y, d);
+  P.forEach((p, i) => {
+    if (p.vonSelbst) return;
+    if (ecken.has(i)) p.ecke = true;
+    else if (ankerVon.has(i)) delete p.ecke;
+    const e = ein[i];
+    const o = aus[i];
+    const te = tEin[i];
+    const to = tAus[i];
+    if (e) p.ein = griff(e, te ? te.f * loes[te.u]! : 0);
+    if (o) p.aus = griff(o, to ? to.f * loes[to.u]! : 0);
+  });
+  // Ecken an gebogenen Stücken: ihr Griff (im Blatt null) bekommt danach seine Tiefe, je Stück nach kleinsten Quadraten bei festen
+  // anderen Griffen (wie `eckenTiefe`; zusammen mit den anderen angepasst bekam die Augen-Form der Stift-Probe 4 umgeklappte Dreiecke)
+  for (const { i, j } of liste) {
+    const ka = krumm.has(`${i}:aus`);
+    const kb = krumm.has(`${j}:ein`);
+    if (!ka && !kb) continue;
+    const A = P[i]!;
+    const B = P[j]!;
+    const a0 = A.aus!;
+    const b0 = B.ein!;
+    let s11 = 0;
+    let s12 = 0;
+    let s22 = 0;
+    let r1 = 0;
+    let r2 = 0;
+    for (const x of probenIn(l, { s0: A.s, s1: B.s > A.s ? B.s : B.s + l.laenge })) {
+      const q = lage(L, x.j);
+      const t = stueckNaechstes(imBlatt(A.ref), imBlatt(a0), imBlatt(b0), imBlatt(B.ref), imBlatt(q), x.t);
+      const r = blickTiefe(a, q) - blickTiefe(a, stueckPunkt(A.ref, a0, b0, B.ref, t));
+      const [, w1a, w2b] = bernstein(t);
+      const w1 = ka ? w1a : 0;
+      const w2 = kb ? w2b : 0;
+      s11 += w1 * w1;
+      s12 += w1 * w2;
+      s22 += w2 * w2;
+      r1 += w1 * r;
+      r2 += w2 * r;
+    }
+    let al = 0;
+    let be = 0;
+    const det = s11 * s22 - s12 * s12;
+    if (ka && kb && Math.abs(det) > 1e-12 * Math.max(1e-30, s11 * s22)) {
+      al = (s22 * r1 - s12 * r2) / det;
+      be = (s11 * r2 - s12 * r1) / det;
+    } else if (ka && s11 > 1e-12) al = r1 / s11;
+    else if (kb && s22 > 1e-12) be = r2 / s22;
+    if (ka) A.aus = { x: a0.x + al * tiefe.x, y: a0.y + al * tiefe.y, z: a0.z + al * tiefe.z };
+    if (kb) B.ein = { x: b0.x + be * tiefe.x, y: b0.y + be * tiefe.y, z: b0.z + be * tiefe.z };
+  }
+  griffeSpiegeln(l);
+  return true;
+}
+
+/** Kleines dichtes System N x = b (Gauß mit Spaltenwahl); null, wenn es entartet ist */
+function loesenDicht(N: Float64Array, b: Float64Array, m: number): Float64Array | null {
+  const A = Float64Array.from(N);
+  const x = Float64Array.from(b);
+  for (let k = 0; k < m; k++) {
+    let p = k;
+    for (let r = k + 1; r < m; r++) if (Math.abs(A[r * m + k]!) > Math.abs(A[p * m + k]!)) p = r;
+    if (Math.abs(A[p * m + k]!) < 1e-14) return null;
+    if (p !== k) {
+      for (let c = 0; c < m; c++) {
+        const h = A[k * m + c]!;
+        A[k * m + c] = A[p * m + c]!;
+        A[p * m + c] = h;
+      }
+      const h = x[k]!;
+      x[k] = x[p]!;
+      x[p] = h;
+    }
+    for (let r = k + 1; r < m; r++) {
+      const f = A[r * m + k]! / A[k * m + k]!;
+      if (f === 0) continue;
+      for (let c = k; c < m; c++) A[r * m + c] = A[r * m + c]! - f * A[k * m + c]!;
+      x[r] = x[r]! - f * x[k]!;
+    }
+  }
+  for (let k = m - 1; k >= 0; k--) {
+    let s = x[k]!;
+    for (let c = k + 1; c < m; c++) s -= A[k * m + c]! * x[c]!;
+    x[k] = s / A[k * m + k]!;
+  }
+  return x;
 }
 
 /** Mittelebene: Griffe flach; Ende eines Rings: der Griff nach außen ist das Spiegelbild des inneren */

@@ -613,3 +613,37 @@ vier glatten Ankern auf den Diagonalen um die Kreuzung der beiden Ringe, er kreu
 - **Weg (vorgeschlagen):** die gezeichneten Stücke an den Kreuzungen nach de Casteljau teilen (im Blatt dann genau die Zeichnung), die
   Tiefe der Griffe an die Haut anpassen (kleinste Quadrate längs des Stücks); was dann noch neben der Haut liegt, ist der Rest einer
   kubischen Kurve auf einer gewölbten Fläche (bei Bedarf ein Punkt mehr, „Punkte wo nötig“).
+
+### Stand (08.11. abends): Stift-Form genau über Linien — gebaut
+
+Florian: „ok, machen wir es so“ (Reihenfolge: zuerst die Stift-Form, dann der Löser als Beweis, dann Haut fein und live).
+
+- **Kern `griffeAusZeichnung`** (`dicht/loops.ts`, im Fenster aus `stiftFertig` statt des Überschreibens der Ankergriffe): Jeder Punkt der
+  neuen Linie (Anker, Kreuzungen, Enden eines Rings) bekommt seine Stelle auf der Zeichnung; jedes Stück des Pfads ist im Blatt genau das
+  Stück der Zeichnung zwischen seinen Punkten (de Casteljau). Die Tiefe der Griffe wird nach kleinsten Quadraten an die Linie auf der
+  Haut angepasst (Anfang: die Tangentialebene): je glattem Anker eine Unbekannte (die Griffe bleiben auf einer Geraden), an Kreuzungen
+  je Seite eine (die alte Linie hat die Haut dort zu einem Grat gezogen), Ecken an gerade gezeichneten Stücken mit einem Drittel der
+  Sehne und gemeinsam angepasst, Ecken an gebogenen Stücken danach einzeln (wie `eckenTiefe`). Ob ein Stück gerade ist, sagt die
+  Zeichnung, nicht die Lage der Punkte (eine Kreuzung sitzt auf der alten Linie, bis 0,09 neben der Geraden). Passt ein Anker nicht
+  (er lag nicht auf dem Körper), bleiben die abgelesenen Griffe.
+- **Gemessen mit der Maus** (`form-stift-kreuzung-probe.mjs`, vorher → jetzt):
+
+| Form | Linie im Blatt neben der Zeichnung | Haut bewegt | umgeklappt |
+| --- | --- | --- | --- |
+| Kreis R 78 über zwei Ringe | 3,6 Einheiten (3,2 px) → 0,03 (0,0 px) | 2,43 (390 Punkte über 0,5) → 0,13 | 0 |
+| Kreis R 130 (nahe am Umriss) | → 0,03 | → 0,42 | 0 |
+| Quadrat aus Ecken (`ECKEN=1`) | → 0,09 (0,1 px) | → 0,25 | 0 |
+| Augen-Form ohne Kreuzungen (`form-stift-probe.mjs`) | 0,33 px → 0,34 px | unverändert | 0 |
+| Ring quer über die Mitte (Front) | → 0,00 px | — | 0 |
+
+  Die Griffe der Anker sind jetzt so lang wie ihr Stück bis zur Kreuzung (Kreis: 21,5 statt 43,1).
+- **Kern-Test** `linieAufPfad.test.ts` „Stift über zwei Linien“: Kreis und Quadrat; die Gegenprobe wie bis heute (Pfad im Blatt 3,66
+  neben der Zeichnung) fällt durch. Kreis: Pfad im Blatt 0,009, Haut 0,17; Quadrat 0,19 / 0,27. 103 Tests unter `src/dicht/` grün.
+- **Was bleibt:** Die Haut bewegt sich beim Anlegen noch bis 0,13–0,42 Einheiten: Ein kubisches Stück folgt einer gewölbten Haut mit
+  Graten an alten Linien nicht ganz. Die Grate kommen daher, dass die Kurven der ersten Loops die Kugel nicht genau treffen (drei Loops:
+  Kugel bis 2,2 daneben); genauer ginge es mit Punkten wo nötig (Florians offene Wahl).
+- **Verworfen (gemessen):** nur in die Tangentialebene gehoben 0,88; Kreuzungen glatt angepasst 0,59; Ecken an gebogenen Stücken mit
+  den anderen zusammen angepasst (Augen-Form: 4 umgeklappte Dreiecke an der Ecke).
+- **Fallen:** Die Stelle eines Punkts auf der Zeichnung nur zwischen seinen Nachbarankern suchen (die Zeichnung kann sich nahe
+  kommen); ein geschlossener Loop springt über seinen ersten Anker um eine Runde (K Stücke) zurück. Ein Griff, der im Blatt null ist und
+  nur in der Tiefe wirkt, verlässt die Haut an seiner Ecke: nicht frei mit den anderen anpassen.

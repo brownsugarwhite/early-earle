@@ -38,6 +38,7 @@ import {
   type MaulAmLoop,
   type UmrissPunkt,
   type V3,
+  type ZeichnungsStueck,
   bereichUm,
   eckenAuto,
   einfluss,
@@ -46,6 +47,7 @@ import {
   formAusZeichnung,
   griffeAbbilden,
   griffeAnlegen,
+  griffeAusZeichnung,
   griffeAusrichten,
   griffeBei,
   griffeErgaenzen,
@@ -81,7 +83,6 @@ import {
   punkteLoeschen,
   ringEnde,
   rundAusSeite,
-  eckenTiefe,
   stueckNaechstes,
   stueckPunkt,
   verdichten,
@@ -2539,20 +2540,6 @@ function stiftZeichnen(el: SVGElement, a: Ansicht, rp: number): void {
   A.forEach((p, i) => el.append(element('rect', `stift-anker${i === 0 ? ' erster' : ''}`, { x: p.X - rp, y: p.Y - rp, width: 2 * rp, height: 2 * rp })));
 }
 
-/**
- * Griff eines Blatts in die Fläche heben: Verschiebung im Blatt plus so viel Tiefe, dass er in der Tangentialebene liegt (Normale
- * `n`), höchstens so viel wie seine Länge im Blatt (am Umriss stünde er sonst fast senkrecht in die Tiefe).
- */
-function inFlaeche(a: Ansicht, d: [number, number], n: V3): V3 {
-  const w = inWelt(a, d[0], d[1]);
-  const t: V3 = a === 'seite' ? { x: 0, y: 0, z: 1 } : a === 'front' ? { x: 1, y: 0, z: 0 } : { x: 0, y: 1, z: 0 };
-  const nt = n.x * t.x + n.y * t.y + n.z * t.z;
-  const nw = n.x * w.x + n.y * w.y + n.z * w.z;
-  const lw = Math.hypot(w.x, w.y, w.z);
-  const k = Math.abs(nt) > 1e-6 ? Math.max(-lw, Math.min(lw, -nw / nt)) : 0;
-  return { x: w.x + k * t.x, y: w.y + k * t.y, z: w.z + k * t.z };
-}
-
 /** Form des Stifts schließen: abtasten, auf die Haut legen (wie F), Punkte an den Ankern; Griffe wie gezogen, Ecken als Ecken */
 function stiftFertig(): void {
   const st = stift;
@@ -2593,43 +2580,13 @@ function stiftFertig(): void {
   loops.push(l);
   einsetzenLetzten();
   const neu = loops.find((x) => x.id === l.id);
+  // Griffe genau aus der Zeichnung: Kreuzungen teilen die gezeichneten Stücke (de Casteljau), jeder Griff in der Fläche der Haut. Passt
+  // ein Anker nicht (er lag nicht auf dem Körper), bleiben die aus der Linie abgelesenen Griffe
   if (neu && hatGriffe(neu)) {
-    const nor = hautNormalen(haut);
-    const s = skala(a);
-    const ecken = new Set<number>();
-    for (const [pi, p] of neu.punkte.entries()) {
-      if (!istSichtbar(p) || p.kreuzung !== undefined) continue;
-      // der geklickte Anker an dieser Stelle (ein Loop auf der Seite z < 0 ist als sein Spiegelbild gespeichert)
-      let best: { k: StiftAnker; spiegel: boolean; d: number } | null = null;
-      for (const sp of [false, true]) {
-        const [x, y] = imBlatt(a, sp ? spiegeln(p.ref) : p.ref);
-        for (const k of A) {
-          const d = Math.hypot(x - k.X, y - k.Y) * s;
-          if (d < 3 && (!best || d < best.d)) best = { k, spiegel: sp, d };
-        }
-      }
-      if (!best) continue;
-      if (!best.k.aus) {
-        // geklickt: eine Ecke, im Blatt ohne Griffe wie gezeichnet, in der Tiefe der Haut nach (`eckenTiefe`)
-        p.ecke = true;
-        ecken.add(pi);
-        continue;
-      }
-      // Normale an der Stelle des Punkts (nächste Probe der Kette)
-      let j = 0;
-      for (let i = 1; i < neu.s.length; i++) if (Math.abs(neu.s[i]! - p.s) < Math.abs(neu.s[j]! - p.s)) j = i;
-      const v = neu.proben[j]!.ecken[0];
-      const n = { x: nor[3 * v]!, y: nor[3 * v + 1]!, z: nor[3 * v + 2]! };
-      const ln = Math.hypot(n.x, n.y, n.z) || 1;
-      const nn = best.spiegel ? { x: n.x / ln, y: n.y / ln, z: -n.z / ln } : { x: n.x / ln, y: n.y / ln, z: n.z / ln };
-      const aus = inFlaeche(a, best.k.aus, nn);
-      p.aus = best.spiegel ? spiegeln(aus) : aus;
-      p.ein = { x: -p.aus.x, y: -p.aus.y, z: -p.aus.z };
-      delete p.ecke;
-    }
-    eckenTiefe(neu, ecken, a === 'seite' ? { x: 0, y: 0, z: 1 } : a === 'front' ? { x: -1, y: 0, z: 0 } : { x: 0, y: 1, z: 0 });
+    const zeichnung = A.map((p, i) => stiftStueck(p, A[(i + 1) % A.length]!).map(([x, y]) => uvAus(a, x, y)) as unknown as ZeichnungsStueck);
+    griffeAusZeichnung(haut, neu, a, zeichnung);
   }
-  // die Linie genau auf den Pfad mit den gezogenen Griffen (im Blatt ist er genau die gezeichnete Form)
+  // die Linie genau auf den Pfad (im Blatt ist er genau die gezeichnete Form)
   if (neu) linienAufPfad(neu);
   auswahl = [{ l: l.id, i: -1 }];
   meldung = '';

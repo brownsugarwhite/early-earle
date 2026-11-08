@@ -175,8 +175,21 @@ for (const { p, g } of F) await anker('front', p, g);
 await seite.keyboard.press('Enter');
 await seite.waitForTimeout(500);
 const r = (await loops()).at(-1);
+// (08.11.) die Linie im Blatt gegen die gezeichnete Hälfte z ≥ 0 (drei gerade Stücke)
+const haelfte = [
+  [{ x: 0, y: 60 }, { x: 45, y: 60 }],
+  [{ x: 45, y: 60 }, { x: 45, y: 15 }],
+  [{ x: 45, y: 15 }, { x: 0, y: 15 }],
+];
+let dWeit = 0;
+for (let j = 0; j < r.proben; j++) {
+  const q = { x: r.ruhe[3 * j + 2], y: r.ruhe[3 * j + 1] };
+  dWeit = Math.max(dWeit, Math.min(...haelfte.map(([a, b]) => abstandZu(q, [a, b]))));
+}
+const skalaF = (await bild('front', { x: 0, y: 0, z: 1 })).x - (await bild('front', { x: 0, y: 0, z: 0 })).x;
 console.log(
-  `D Front: ${r.art}, sichtbare Punkte ${r.punkte.filter((p) => p.sichtbar !== false).length}, unsichtbare Enden ${r.punkte.filter((p) => p.sichtbar === false).length} · umgeklappt ${await umgeklappt()}`,
+  `D Front: ${r.art}, sichtbare Punkte ${r.punkte.filter((p) => p.sichtbar !== false).length}, unsichtbare Enden ${r.punkte.filter((p) => p.sichtbar === false).length}, ` +
+    `Linie im Blatt bis ${(dWeit * skalaF).toFixed(2)} px neben der Zeichnung · umgeklappt ${await umgeklappt()}`,
 );
 console.log(fehler.length ? `Fehler: ${fehler.join(' | ')}` : 'keine Fehler in der Konsole');
 await browser.close();
