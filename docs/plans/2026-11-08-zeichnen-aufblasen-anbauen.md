@@ -427,3 +427,86 @@ Alle Belege mit Markierung (selbst gelesen oder nur Ausschnitt) in
   (https://raphlinus.github.io/curves/2023/04/18/bezpath-simplify.html); Potrace.
 - Hoffman und Richards 1984 (Minima-Regel), Singh, Seyranian, Hoffman 1999 (Short-cut-Regel), Siddiqi und Kimia 1995 (Hals und
   Gliedmaß), Au, Zheng, Tai, Cohen-Or 2012 (konkavitätsbewusste Felder), Bærentzen u. a. 2012 (SQM).
+
+## 10. Nachtrag (08.11. abends): Florians Vorgaben, erster Schritt gebaut
+
+Florian (wörtlich, mit Screenshot von `kurven.html`: Kugel ohne Loops): „Zeichenmodus: „Aufblasen“ oder „Auf die Haut“ ausdrücklich mit
+⇧D umschalten, statt es aus dem Strich zu raten? Mein Tipp: ja....das verstehe ich nicht ganz. Bitte berücksichtige, das gerade alles auf
+den editor aus dem screenshot aufbauen soll. Die alte version soll erstmal unangetatstet werden. Die andere session arbeitet gerade noch an
+haut kurven und handles. Bitte das nur bearbeiten wenn der stand der anderen session nicht gefärdet wird. Fange erstmal mit dem an, das
+die andere session nicht beeinträchtigt.“
+
+**Was das heißt:**
+
+- Ziel ist der Editor aus dem Screenshot, `kurven.html`. `form.html` und der alte Editor bleiben unangetastet.
+- Solange die andere Session an Haut, Kurven und Griffen arbeitet, ändere ich weder `kurven.ts`, `kurven.html` und `form.css` noch
+  `packages/shape/src/dicht/`.
+- Neues kommt in eigene Dateien. In `kurven.html` wird es erst nach Absprache eingebaut, wenn die andere Session an einem ruhigen Punkt
+  ist. Das kann sie dann auch selbst tun.
+
+**Zeichenmodus, einfacher erklärt:** Eine mit N oder P gezeichnete Form kann zweierlei bedeuten:
+
+1. **Eine neue Form, die aufgeblasen wird:** die Startform oder ein Kopf, Bein, Ohr, das an den Körper wächst (Teddys „Extrude“).
+2. **Eine Linie auf der vorhandenen Haut:** wie heute F und P in `kurven.html`, zum Beispiel ein Loop ums Auge oder die schmale Form
+   ums Maul.
+
+Meist ist klar, was gemeint ist. Aber eine Form, die in der Seite vorn über den Umriss hinausgeht, ist heute die Maul-Form (2). Künftig
+soll genau diese Geste auch einen Kopf anbauen können (1). Das Programm kann beides nicht sicher unterscheiden. Vorschlag deshalb: ein
+kleiner Umschalter in der Leiste, „Aufblasen“ oder „Auf die Haut“ (Taste ⇧D wie Illustrators Zeichenmodi); vor dem ersten Körper steht er
+immer auf „Aufblasen“. Die Alternative ohne Umschalter sind zwei eigene Werkzeuge, etwa N/P für Linien auf der Haut und ein Werkzeug
+„Anbauen“. Entscheidung 7.3 bleibt bei Florian.
+
+**Gebaut (Z0 und Z1 als Prüffenster, nichts in `kurven.html`):**
+
+- **Kern** `packages/shape/src/zeichnen/` (Export `@ee/shape/zeichnen`, DOM-frei), unter `packages/shape/` ist nur `package.json` um
+  den Export ergänzt:
+  - `faden.ts`: Faden wie Photoshops Faden-Modus und Nachlauf zum Vergleich. Rundum gezeichnete Formen werden ohne Naht geglättet
+    (`fadenRund`), sonst knickte die Form am Anfangspunkt.
+  - `anpassen.ts`: Bézier mit den wenigsten Ankern (dynamische Programmierung, Ecken gebündelt, Griffe ≤ 0,65 Sehne, Richtung je Stück
+    ≤ 100°).
+  - `formen.ts`: Ellipse (κ = 0,5519150) und Rechteck.
+  - `bezierPfad.ts`: Pfad, Abtasten, Anker einfügen (de Casteljau), Selbstschnitt, Umriss fürs Aufblasen.
+  - 12 Tests.
+- **Fenster** `apps/editor/zeichnen.html` (`src/form/zeichnen.ts`, `zeichnen.css`), Aufbau wie `kurven.html` (vier Blätter, Umriss per
+  Shader, gleiche Farben):
+  - **Werkzeugleiste** links: Auswahl V, Bleistift N, Zeichenstift P, Ellipse E, Rechteck M, Neu.
+  - **Bleistift-Optionen:** Glättung 0–100 %, Treue 1–6 px, Faden oder Nachlauf.
+  - **Zeichnen:** Die gezeichnete Seite wird mit `rundAusSeite` aufgeblasen, grob während eines Zugs und fein beim Loslassen (wie die
+    Startform in `kurven.html`). Der Vektorpfad liegt türkis unter dem schwarzen Umriss.
+  - **Bearbeiten:** Punkte und Griffe ziehen, Doppelklick schaltet Ecke ↔ glatt, Doppelklick auf die Linie setzt einen Punkt, ⌫ löscht,
+    ⌘Z nimmt zurück.
+  - **Formen:** ⇧ zieht Kreis bzw. Quadrat, ⌥ zieht aus der Mitte, die Leertaste verschiebt.
+  - **Striche merken:** Die letzten 30 Striche liegen für spätere Wiedergabetests mit Florians Hand im Browser-Speicher
+    (`__zeichnen.striche()`).
+- **Start:** `EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5193`, dann `/zeichnen.html`.
+
+**Gemessen** mit der Maus (`apps/editor/scripts/pruefen/zeichnen-probe.mjs`, Bilder `docs/progress/editor/zeichnen-*-2026-11-08.jpg`)
+und im Kern (`zeichnen.test.ts`):
+
+| Fall | Ergebnis |
+| --- | --- |
+| Kreis aus der Hand, Faden 100 %, mit Zittern und Überschießen | 4 glatte Anker, 0,6 px neben dem Strich, Anpassen ≈ 110 ms, Kugel |
+| Blob mit Kopf und Bauch aus der Hand | 5 glatte Anker, keine Ecke (mit Naht vorher 6 Anker und eine falsche Ecke), 3,2 px |
+| zittrige S-Kurve (Kern) | mit Faden 3 Anker, ohne Faden 12 |
+| Rechteck aus der Hand mit scharfen Ecken (Kern) | 4 Ecken, gerade Seiten |
+| Ellipse, Quadrat mit ⇧⌥, Stift mit 4 Ankern | 4 / 4 Ecken (300 × 300) / 4 Anker mit 2 Ecken |
+| Anker ziehen, ⌘Z | genau 60 px, zurück genau |
+| Kreis-Pfad aufgeblasen (Kern) | Kugel, 0,13 % Abweichung |
+| Aufblasen | 70–170 ms fein (6 000 bestellte Dreiecke) |
+
+**Ehrlich offen:**
+
+- Das Gefühl des Bleistifts ist nur synthetisch geprüft; Florian zeichnet und entscheidet Faden oder Nachlauf (Entscheidung 7.6).
+- Das Anpassen beim Loslassen braucht für einen Kreis ≈ 110 ms (Ziel war ≤ 30 ms; vier Nahtstellen werden durchgerechnet). Bisher ist
+  das nicht als Sprung sichtbar.
+- Ein Quadrat wird ein Kissen mit spitzen Zipfeln an den Ecken in Front und Top. Das kommt vom heutigen Aufblasen (wie in `form.html`)
+  und ist der Fall von Entscheidung 7.1.
+- Der Faden rundet Ecken; für Ecken gibt es P, weniger Glättung oder das Umlenken des Fadens.
+- Noch kein Fangen an Punkten (Z3). Der Stift im Prüffenster ist eine Kopie des Verhaltens aus `kurven.ts`; beim Einbau wird er eins.
+
+**Nächste Schritte ohne Eingriff in die andere Session:**
+
+1. Florian probiert `zeichnen.html` aus (Glättung, Treue, Faden oder Nachlauf).
+2. Z2 als Vorschau im selben Fenster: Die Loops-Regel aus 5.5 rechnet am gezeichneten Umriss und zeigt die Loops als Linien auf der
+   aufgeblasenen Form. Dafür ist nur Lesen aus `dicht/` nötig.
+3. Einbau in `kurven.html` (Leiste, N, Formen, Startform, Loops-Knopf) erst, wenn die andere Session an einem ruhigen Punkt ist.
