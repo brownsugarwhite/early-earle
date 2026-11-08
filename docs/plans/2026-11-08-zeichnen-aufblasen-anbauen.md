@@ -371,7 +371,7 @@ Rüssel, Boden, Pilz, Maul, Fressen-Pose, Stift über Linien) bleiben gleich ode
 | Z1 | Startform im leeren Fenster, Umriss mit Griffen, aufblasen, bearbeitbar bis „Loops“ | Kreis → Kugel (≤ 0,5 % Abweichung), alte Aufrufer von `rundAusSeite` bitgleich, grob ≤ 20 ms im Zug, fein ≤ 0,4 s | 0,5–1 Tag |
 | Z2 | Knopf „Loops“ | Haut beim Einsetzen unverändert (≤ 0,1); Kreis und Ellipse genau die drei Loops, Querringe auf der Kugel ≤ 0,1 % vom Kreis; die acht Testumrisse aus der Recherche (C5: Kreis, Ellipse, Ei, Quadrat, Erdnuss, Banane, Wurst mit Höcker, Blob mit Kopf, Beinen und Schwanz) als Bild Erwartung neben Ergebnis, Florian nimmt ≥ 6 von 8 an; Zug am Kopf-Querring der Erdnuss: der andere Bauch bleibt (≤ 1) | 1,5–2 Tage |
 | Z3 | Fangen, Zweige | Anfang/Ende genau am Punkt (0,00), Zweig teilt einen Bereich, Haut beim Anlegen ≤ 0,1, ⌘Z genau; alle Tests unter `src/dicht/` grün (heute 104) | 1,5–2 Tage |
-| Z4 | Bereiche, Löschen, Deckel | 0 offene Kanten, spiegelgleich (10⁻⁸), Deckel eben (≤ 1 % der Breite), Knick an der Kante ≥ 80° bei einem Kugelschnitt, ⌘Z genau, ≤ 0,5 s | 1,5–2 Tage |
+| Z4 | Bereiche, Löschen, Deckel | 0 offene Kanten, spiegelgleich (10⁻⁸), Deckel eben (≤ 1 % der Breite, auch nach einem Zug an einem anderen Loop), Kugel durch die Mitte geschnitten: Knick an der Kante 90° ± 10°, ⌘Z genau, ≤ 0,5 s | 1,5–2 Tage |
 | Z5 | Anbauen aus dem Loop | Kopf aus dem Schnitt-Loop: 0 umgeklappt, Knicke über 60° = 0, Naht weich (≤ 5° quer) oder hart, Teil rund (Querschnitt ≤ 5 % vom Kreis), Spiegel genau | 2–3 Tage |
 | Z6 | Anbauen frei, Paare | Naht geschlossen, Bein als Paar spiegelgleich, 0 umgeklappt, Ohr auf dem Kopf; Zeit ≤ 1 s | 2–3 Tage |
 
