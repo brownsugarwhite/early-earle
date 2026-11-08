@@ -1473,6 +1473,19 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - **Fallen:** Verfeinerungen nach Normalen wuchern in Falten (Überhang 1 724 Knicke) — zuerst Überhang und Rüssel prüfen. Eine Schranke
     beim Zusammenlegen gegen „nicht schlechter als vorher“ messen (eine feste ließ einen doppelten Punkt an einer Stift-Ecke stehen). Was
     an Pfaden hängt, gilt nur in der Grundform.
+- **2026-11-08 (abends): Sprung beim Loslassen und Stift-Form über Linien gemessen, noch nichts geändert** (Florian: Haut „immer
+  glatt, auch bei kleinen Details und hoher Zoomstufe“; Stift-Form über Linien „sehr ungenau … von den Punkten auf den Kreuzungen
+  verzogen … soll exakt wie eingezeichnet direkt auf der Haut liegen, ohne diese zu verändern“; Fragen zum Sprung beim Loslassen und
+  „live dynamisch verdichten“ — erst beantworten; „Punkte wo nötig“ weiter offen; Planseite „Kurven als Wahrheit“, Abschnitt 8).
+  - **Sprung** (`form-loslassen-probe.mjs`): Während des Zugs ist die Haut auf ihrem Netz fertig gerechnet (Loslassen ohne Verdichten
+    ≤ 1,4). Eine halbe Sekunde später setzt sich das verdichtete Netz: Hals 4,9, Ohr 5,4, Rüssel 32 Einheiten. Ursache: Der Löser
+    rechnet „glatt“ als gleich gewichtetes Mittel der Nachbarn (wie FiberMesh), die Form hängt vom Netz ab. Live verdichten braucht
+    zuerst einen netzunabhängigen Löser (Kotangens-Gewichte, Verteilung getrennt), dann Netzschritte im Zug; teuer ist das Neuzerlegen
+    (110–153 ms bei 5 000–6 500 Punkten), nicht das Verdichten.
+  - **Stift über Linien** (`form-stift-kreuzung-probe.mjs`, Kreis R 78 über zwei Ringe): Linie bis 3,2 px neben der Zeichnung (welliges
+    Achteck wie in Florians Bild), Haut bis 2,4 bewegt. Ursache: Die Kreuzungen teilen die gezeichneten Stücke, die Anker behalten den
+    Griff des ganzen Stücks (43,1 statt 21,5), die Kreuzungen bekommen abgelesene Griffe, `linienAufPfad` legt die Linie darauf und die
+    Haut folgt; dazu liegt der Pfad in der Tiefe nicht auf der Haut. Weg: de Casteljau an den Kreuzungen, Tiefe der Griffe an die Haut.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

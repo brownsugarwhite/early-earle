@@ -569,3 +569,47 @@ ohne Zusatzpunkte, `?punkte=noetig` bleibt zum Vergleich.
   - Eine Schranke beim Zusammenlegen gegen „nicht schlechter als vorher“ messen, nicht gegen einen festen Wert; sonst bleiben
     doppelte Punkte stehen.
   - Was an Pfaden hängt, gilt nur in der Grundform (in der Pose sind die Griffe die der Grundform).
+
+## 8. Nachtrag (08.11. abends): Sprung beim Loslassen, Stift-Form über Linien — gemessen, noch nichts geändert
+
+Florian (mit zwei Bildern einer Stift-Form über zwei Linien): „die Haut sollte immer glatt sein, auch bei kleinen Details und hoher
+Zoomstufe“; „wenn ich z. B. eine Form mit P erstelle und diese über die vorhandenen Linien ziehe, ist die Form sehr ungenau und wird
+von den auf den Kreuzungen stehenden Punkten verzogen. Die Form soll exakt wie eingezeichnet direkt auf der Haut liegen, ohne diese zu
+verändern“; Frage: „beim Loslassen springt das Mesh teilweise ziemlich zwischen den Punkten. Kann man die Performance optimieren und
+können Änderungen auch live beim Zug passieren …? In meiner Vision ist das Mesh wirklich live dynamisch und verdichtet/lockert sich
+perfekt während des Zuges.“ Erst die Fragen beantworten, dann Haut und Punkte.
+
+**Sprung beim Loslassen** (`scripts/pruefen/form-loslassen-probe.mjs`: Stand nach der letzten Mausbewegung gegen jede spätere Änderung,
+Abstand jedes Punkts zur Fläche davor; drei Loops, 30 Mausschritte, 15,6 ms je Bewegung bei 5 222 Punkten):
+
+| Zug | ohne Verdichten (`?verdichten=0`) | Standard: gleich beim Loslassen | Standard: ≈ 0,4–0,6 s danach (Setzen) |
+| --- | --- | --- | --- |
+| Hals (obere Kreuzung 160 hoch) | 0,11 | 0,27 | 4,9 (1 456 Punkte über 1) |
+| Ohr (zwei Punkte 70 hinaus) | 0,11 | 0,92 | 5,4 (660 Punkte über 1) |
+| Rüssel (+320 / −70) | 1,41 | 1,41 | 32,2 (3 226 Punkte über 1) |
+
+- Während des Zugs ist die Haut auf ihrem Netz fertig gerechnet (die vier Runden am Ende ändern höchstens 1,4). Der Sprung kommt eine
+  halbe Sekunde nach dem Loslassen, wenn sich das verdichtete Netz setzt. Die neuen Punkte liegen erst auf der alten Fläche (≤ 1,4); das
+  Nachrechnen auf dem feineren Netz verschiebt sie. Das Nachverfeinern der Linien (`genau`) trägt kaum bei (mit `?genau=0` gleich).
+- **Ursache:** Der Löser (wie FiberMesh) rechnet „glatt“ als gleich gewichtetes Mittel der Nachbarn und hält die Verteilung der Punkte
+  (`tang` in `vermessen`). Damit hängt die Form vom Netz ab: dieselben Linien auf einem anderen Netz geben eine andere Form. Das Paper
+  nennt das selbst als Grenze (Abschnitt 2: gleichmäßiger Laplace statt Flächenmaß).
+- **Folgerung:** Live verdichten hilft erst, wenn die Form nicht mehr vom Netz abhängt (sonst schwimmt die Haut bei jedem Netzschritt).
+  Zwei Schritte: (1) Löser netzunabhängig (Gewichte nach der Geometrie der Dreiecke, Laplace–Beltrami mit Kotangens auf einer
+  intrinsischen Delaunay-Triangulierung; die Verteilung der Punkte getrennt davon entspannen); (2) das Netz im Zug nachführen (Teilen,
+  Zusammenlegen, Entspannen nur, wo sich etwas ändert). Teuer ist dabei nicht das Verdichten (25–53 ms für das ganze Netz), sondern das
+  Neuzerlegen des Lösers nach jeder Netzänderung (110–153 ms bei 5 000–6 500 Punkten, heute in der Ruhe): Löser mit Warmstart ohne
+  Zerlegung (iterativ) oder Zerlegen im Hintergrund und einwechseln. Je Bewegung heute 15–16 ms bei 5 200 Punkten, 27–29 ms bei 15 400.
+
+**Stift-Form über Linien** (`scripts/pruefen/form-stift-kreuzung-probe.mjs`: drei Loops, in der Seite ein Stift-Kreis mit Radius 78 und
+vier glatten Ankern auf den Diagonalen um die Kreuzung der beiden Ringe, er kreuzt jeden Ring zweimal):
+
+- Die Linie liegt im Blatt bis 3,6 Einheiten (3,2 px bei 100 %) neben der Zeichnung, aus dem Kreis wird ein welliges Achteck wie in
+  Florians Bild (`docs/progress/editor/form-stift-kreuzung-vorher-2026-11-08.jpg`). Die Haut bewegt sich bis 2,4 (390 Punkte über 0,5).
+- **Ursache:** Die Kreuzungen werden Punkte der neuen Linie und teilen jedes gezeichnete Stück (hier in der Mitte). Die Anker behalten
+  aber den Griff des ganzen Stücks (43,1 statt 21,5), die Kreuzungspunkte bekommen abgelesene Griffe; `linienAufPfad` legt die Linie
+  auf diesen Pfad, die Haut folgt. Dazu liegt der Pfad in der Tiefe zwischen den Punkten nicht auf der Haut (Griffe in der
+  Tangentialebene).
+- **Weg (vorgeschlagen):** die gezeichneten Stücke an den Kreuzungen nach de Casteljau teilen (im Blatt dann genau die Zeichnung), die
+  Tiefe der Griffe an die Haut anpassen (kleinste Quadrate längs des Stücks); was dann noch neben der Haut liegt, ist der Rest einer
+  kubischen Kurve auf einer gewölbten Fläche (bei Bedarf ein Punkt mehr, „Punkte wo nötig“).
