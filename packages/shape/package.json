@@ -10,7 +10,8 @@
     ".": "./src/index.ts",
     "./versuch": "./src/versuch/index.ts",
     "./kern": "./src/kern/index.ts",
-    "./dicht": "./src/dicht/index.ts"
+    "./dicht": "./src/dicht/index.ts",
+    "./zeichnen": "./src/zeichnen/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
