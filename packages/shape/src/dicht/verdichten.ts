@@ -8,9 +8,18 @@
 // Loops auf ihrem Bézier-Pfad (ohne Griffe Catmull–Rom nach der Stelle s), sonst auf der kubischen Kurve, die die Normalen der Enden vorgeben (wie PN-Dreiecke; an einer
 // Kugel genau der Bogen bis auf die vierte Ordnung); an einem harten Loop zählt die Normale der Seite, auf der die Kante liegt.
 // Loops bleiben Ketten von Kanten (eine geteilte Kante eines Loops bekommt den neuen Punkt in die Kette), ihre Punkte bleiben.
+//
+// Genauigkeit (08.11.2026, Florian mit Bild: „warum es ungenau und eckig wird, wenn ich kleine Details rausziehe … Die Linie wird ganz
+// kantig“): Mit `genau` löst das Netz die Linien auf eine feste Abweichung auf, wie beim adaptiven Neuvernetzen (Dunyach u. a. 2013):
+// Eine Kante einer Linie wird geteilt, wo die Linie zwischen ihren Proben weiter als `genau` von der Sehne abweicht (enthält die Kante
+// einen Punkt der Linie, an ihm, sonst in der Mitte); zusammengelegt wird nur, wo die neue Kante höchstens halb so weit abweicht (oder
+// nicht weiter als die zwei, die sie ersetzt). Gemessen an einem Ohr aus dem senkrechten Ring (Bild): Die Proben lagen bis 13,6
+// auseinander, die Linie schnitt ihre Kurve um 1,02 ab. Mit `genauHaut` (Versuch) ebenso die Haut, wo die Fläche zwischen den Enden einer
+// Kante weiter abweicht (Länge × Drehung der Normale / 8; die unberührte Startkugel höchstens 0,16), nicht in Falten: am Ohr rund,
+// aber weite Züge wurden schlechter (siehe `kurven.html`, `GENAU_HAUT`).
 
 import { type Haut, type V3, hautAus } from './kurven';
-import { type Loop, type Probe, kanteBei, pfadBei } from './loops';
+import { type Loop, type Probe, hatPfad, kanteBei, pfadBei } from './loops';
 
 const KEY = 2 ** 22;
 const schluessel = (a: number, b: number): number => (a < b ? a * KEY + b : b * KEY + a);
@@ -52,6 +61,10 @@ export type Verdichtet = {
  * Ketten unter `kurz` blieben einer Augenform 30 von 57 Proben, der Griff am Punkt las 23° Knick statt 2°; ohne Ketten blieben
  * schmale Dreiecke an den Linien, Schnabel 8 statt 0 Knicke über 60°). Nicht, wo das Netz dabei nicht mehr geschlossen wäre
  * (Verbindungsbedingung), Dreiecke um mehr als 60° kippten oder Kanten länger als `maxKante` würden.
+ *
+ * Mit `genau` (Abweichung in Welteinheiten) wird auch geteilt, wo das Netz eine Linie ungenauer wiedergibt, mit `genauHaut` auch die
+ * runde Fläche (siehe Kopf der Datei), bis hinunter zu `minKante` (Standard 1/16 `maxKante`); zusammengelegt wird dann nur, was danach
+ * höchstens `genau`/2 abweicht.
  */
 export function verdichten(
   h: Haut,
@@ -66,6 +79,8 @@ export function verdichten(
     verborgen?: Uint8Array | null;
     kurz?: number;
     kurzKette?: number;
+    genau?: number;
+    genauHaut?: boolean;
   } = {},
 ): Verdichtet | null {
   const runden = opt.runden ?? 8;
@@ -143,60 +158,119 @@ export function verdichten(
   };
 
   /**
-   * neuer Punkt auf der Kante (a, b) eines Loops, an der Stelle s in ihrer Mitte (`inKette`). Mit gespeicherten Griffen genau auf dem
-   * Bézier-Stück, dazu der Abstand der Linie von ihrem Pfad (beim Anlegen klein und gleichmäßig, ein Zug ändert ihn nicht), zwischen
-   * den Enden der Kante gemittelt; sonst Catmull–Rom nach s. Florian, 06.11.: „rausziehen und wieder zurücksetzen ist nicht gleich“
-   * — nach Sehnenlänge lag ein neuer Punkt nach einem weiten Zug neben seiner Stelle (Welle 0,38 nach 220 hinaus und zurück, ohne
-   * Verdichten 0,07); Catmull–Rom nach s trifft dort, wo der Zug im Stück quadratisch anwächst (neben dem festen Nachbarpunkt), um
-   * 0,67 daneben (nachgerechnet und gemessen 0,65).
+   * Stelle i der Kette eines Loops mit ihrem s: geschlossen ringsum (über das Ende hinaus um die Länge weiter), hinter den Enden eines
+   * Rings das Spiegelbild des inneren Nachbarn
    */
-  const aufLoop = (li: number, j: number): V3 => {
+  const kettenStelle = (li: number, i: number): { p: V3; s: number } => {
     const k = ketten[li]!;
     const s = sWerte[li]!;
     const l = loops[li]!;
     const m = k.length;
     const L = l.laenge;
-    const zu = l.art !== 'ring';
     const spiegelLage = (v: number) => ({ ...lage(v), z: -pos[3 * v + 2]! });
-    // Stelle i der Kette mit ihrem s: geschlossen ringsum (über das Ende hinaus um die Länge weiter), hinter den Enden eines Rings
-    // das Spiegelbild des inneren Nachbarn
-    const bei = (i: number): { p: V3; s: number } => {
-      if (zu) {
-        const w = ((i % m) + m) % m;
-        return { p: lage(k[w]!), s: s[w]! + Math.floor(i / m) * L };
-      }
-      if (i < 0) return { p: spiegelLage(k[-i]!), s: -s[-i]! };
-      if (i >= m) return { p: spiegelLage(k[2 * (m - 1) - i]!), s: 2 * L - s[2 * (m - 1) - i]! };
-      return { p: lage(k[i]!), s: s[i]! };
-    };
-    const A = bei(j);
-    const B = bei(j + 1);
-    const pa = pfadBei(l, A.s);
-    const pb = pfadBei(l, B.s);
-    const pm = pfadBei(l, (A.s + B.s) / 2);
-    if (pa && pb && pm) {
-      const m = {
-        x: pm.x + (A.p.x - pa.x + B.p.x - pb.x) / 2,
-        y: pm.y + (A.p.y - pa.y + B.p.y - pb.y) / 2,
-        z: pm.z + (A.p.z - pa.z + B.p.z - pb.z) / 2,
-      };
-      return begrenzt(A.p, B.p, { x: m.x - (A.p.x + B.p.x) / 2, y: m.y - (A.p.y + B.p.y) / 2, z: m.z - (A.p.z + B.p.z) / 2 });
+    if (l.art !== 'ring') {
+      const w = ((i % m) + m) % m;
+      return { p: lage(k[w]!), s: s[w]! + Math.floor(i / m) * L };
     }
-    const P = bei(j - 1);
-    const Q = bei(j + 2);
+    if (i < 0) return { p: spiegelLage(k[-i]!), s: -s[-i]! };
+    if (i >= m) return { p: spiegelLage(k[2 * (m - 1) - i]!), s: 2 * L - s[2 * (m - 1) - i]! };
+    return { p: lage(k[i]!), s: s[i]! };
+  };
+  /** Pfad an der Stelle s (geschlossen über das Ende hinaus gezählt) */
+  const pfadAn = (l: Loop, s: number): V3 | null => pfadBei(l, l.art !== 'ring' && s >= l.laenge ? s - l.laenge : s);
+  /**
+   * Lage der Linie zwischen den Stellen A und B ihrer Kette beim Anteil f der Stelle s: ihr Bézier-Pfad dort, dazu der Abstand der
+   * Linie von ihrem Pfad (beim Anlegen klein und gleichmäßig, ein Zug ändert ihn nicht), zwischen den Enden linear; null ohne Pfad
+   */
+  const linieBei = (l: Loop, A: { p: V3; s: number }, B: { p: V3; s: number }, f: number): V3 | null => {
+    const pa = pfadAn(l, A.s);
+    const pb = pfadAn(l, B.s);
+    const pm = pfadAn(l, A.s + f * (B.s - A.s));
+    if (!pa || !pb || !pm) return null;
+    return {
+      x: pm.x + (1 - f) * (A.p.x - pa.x) + f * (B.p.x - pb.x),
+      y: pm.y + (1 - f) * (A.p.y - pa.y) + f * (B.p.y - pb.y),
+      z: pm.z + (1 - f) * (A.p.z - pa.z) + f * (B.p.z - pb.z),
+    };
+  };
+  /** Abstand von q zur Strecke a–b */
+  const zurStrecke = (q: V3, a: V3, b: V3): number => {
+    const d = { x: b.x - a.x, y: b.y - a.y, z: b.z - a.z };
+    const dd = d.x * d.x + d.y * d.y + d.z * d.z || 1;
+    const t = Math.max(0, Math.min(1, ((q.x - a.x) * d.x + (q.y - a.y) * d.y + (q.z - a.z) * d.z) / dd));
+    return Math.hypot(q.x - a.x - t * d.x, q.y - a.y - t * d.y, q.z - a.z - t * d.z);
+  };
+  /** wie weit die Linie zwischen den Stellen i0 < i1 ihrer Kette von der Sehne abweicht (an sieben Stellen); 0 ohne Pfad */
+  const sehnenAbweichung = (li: number, i0: number, i1: number): number => {
+    const l = loops[li]!;
+    if (!hatPfad(l)) return 0;
+    const A = kettenStelle(li, i0);
+    const B = kettenStelle(li, i1);
+    let m = 0;
+    for (let i = 1; i < 8; i++) {
+      const q = linieBei(l, A, B, i / 8);
+      if (!q) return 0;
+      m = Math.max(m, zurStrecke(q, A.p, B.p));
+    }
+    return m;
+  };
+  /**
+   * Wo eine Kante j der Kette geteilt wird: an einem Punkt des Loops in ihrem Inneren (eine Ecke liegt dann genau auf dem Netz; der der
+   * Mitte nächste, nicht im äußeren Zehntel), sonst in der Mitte von s
+   */
+  const teilStelle = (li: number, j: number): number => {
+    const l = loops[li]!;
+    const A = kettenStelle(li, j);
+    const B = kettenStelle(li, j + 1);
+    const h = B.s - A.s;
+    const mitte = (A.s + B.s) / 2;
+    let best: number | null = null;
+    for (const p of l.punkte)
+      for (const s of l.art !== 'ring' ? [p.s, p.s + l.laenge] : [p.s]) {
+        if (s <= A.s + 0.1 * h || s >= B.s - 0.1 * h) continue;
+        if (best === null || Math.abs(s - mitte) < Math.abs(best - mitte)) best = s;
+      }
+    return best ?? mitte;
+  };
+  /**
+   * neuer Punkt auf der Kante j der Kette eines Loops an der Stelle s (Standard: Mitte). Mit gespeicherten Griffen genau auf dem
+   * Bézier-Stück samt dem Abstand der Linie von ihrem Pfad (`linieBei`); sonst Catmull–Rom nach s (in der Mitte). Florian, 06.11.:
+   * „rausziehen und wieder zurücksetzen ist nicht gleich“ — nach Sehnenlänge lag ein neuer Punkt nach einem weiten Zug neben seiner
+   * Stelle (Welle 0,38 nach 220 hinaus und zurück, ohne Verdichten 0,07); Catmull–Rom nach s trifft dort, wo der Zug im Stück
+   * quadratisch anwächst (neben dem festen Nachbarpunkt), um 0,67 daneben (nachgerechnet und gemessen 0,65).
+   */
+  const aufLoop = (li: number, j: number, s?: number): V3 => {
+    const l = loops[li]!;
+    const A = kettenStelle(li, j);
+    const B = kettenStelle(li, j + 1);
+    const f = s === undefined || !(B.s > A.s) ? 0.5 : (s - A.s) / (B.s - A.s);
+    const q = linieBei(l, A, B, f);
+    if (q) {
+      // Liegt die Linie an beiden Enden (fast) auf ihrem Pfad, kommt der neue Punkt genau auf den Pfad: Begrenzt auf ¼ der Sehne lag er an
+      // einer Ecke neben ihr, die Linie wurde danach neu vermessen, zwei Proben fielen auf die Ecke (doppelter Punkt, Stift-Probe: 3
+      // umgeklappte Dreiecke); sonst (in der Pose) wie bisher höchstens ¼ der Sehne neben ihr
+      const sehne = Math.hypot(B.p.x - A.p.x, B.p.y - A.p.y, B.p.z - A.p.z);
+      const pa = pfadAn(l, A.s)!;
+      const pb = pfadAn(l, B.s)!;
+      if (Math.max(Math.hypot(A.p.x - pa.x, A.p.y - pa.y, A.p.z - pa.z), Math.hypot(B.p.x - pb.x, B.p.y - pb.y, B.p.z - pb.z)) <= 0.1 * sehne) return q;
+      const c = { x: A.p.x + f * (B.p.x - A.p.x), y: A.p.y + f * (B.p.y - A.p.y), z: A.p.z + f * (B.p.z - A.p.z) };
+      return begrenzt(A.p, B.p, f, { x: q.x - c.x, y: q.y - c.y, z: q.z - c.z });
+    }
+    const P = kettenStelle(li, j - 1);
+    const Q = kettenStelle(li, j + 2);
     const dp = B.s - P.s || 1;
     const dq = Q.s - A.s || 1;
     const h = B.s - A.s;
     const ma = { x: (B.p.x - P.p.x) / dp, y: (B.p.y - P.p.y) / dp, z: (B.p.z - P.p.z) / dp };
     const mb = { x: (Q.p.x - A.p.x) / dq, y: (Q.p.y - A.p.y) / dq, z: (Q.p.z - A.p.z) / dq };
-    return begrenzt(A.p, B.p, { x: (h * (ma.x - mb.x)) / 8, y: (h * (ma.y - mb.y)) / 8, z: (h * (ma.z - mb.z)) / 8 });
+    return begrenzt(A.p, B.p, 0.5, { x: (h * (ma.x - mb.x)) / 8, y: (h * (ma.y - mb.y)) / 8, z: (h * (ma.z - mb.z)) / 8 });
   };
-  /** Mitte der Sehne plus Versatz, der Versatz höchstens ¼ der Sehne */
-  const begrenzt = (a: V3, b: V3, d: V3): V3 => {
+  /** Punkt der Sehne beim Anteil f plus Versatz, der Versatz höchstens ¼ der Sehne */
+  const begrenzt = (a: V3, b: V3, f: number, d: V3): V3 => {
     const L = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
     const ld = Math.hypot(d.x, d.y, d.z);
-    const f = ld > 0.25 * L ? (0.25 * L) / ld : 1;
-    return { x: (a.x + b.x) / 2 + f * d.x, y: (a.y + b.y) / 2 + f * d.y, z: (a.z + b.z) / 2 + f * d.z };
+    const g = ld > 0.25 * L ? (0.25 * L) / ld : 1;
+    return { x: a.x + f * (b.x - a.x) + g * d.x, y: a.y + f * (b.y - a.y) + g * d.y, z: a.z + f * (b.z - a.z) + g * d.z };
   };
   /** neuer Punkt auf einer Kante in der Fläche: Mitte der kubischen Kurve nach den Normalen der Enden (wie PN-Dreiecke) */
   const inFlaeche = (a: number, b: number, nor: Float64Array): V3 => {
@@ -216,7 +290,7 @@ export function verdichten(
     const nb = nv(b);
     const wa = (pb.x - pa.x) * na.x + (pb.y - pa.y) * na.y + (pb.z - pa.z) * na.z;
     const wb = (pa.x - pb.x) * nb.x + (pa.y - pb.y) * nb.y + (pa.z - pb.z) * nb.z;
-    return begrenzt(pa, pb, { x: -(wa * na.x + wb * nb.x) / 8, y: -(wa * na.y + wb * nb.y) / 8, z: -(wa * na.z + wb * nb.z) / 8 });
+    return begrenzt(pa, pb, 0.5, { x: -(wa * na.x + wb * nb.x) / 8, y: -(wa * na.y + wb * nb.y) / 8, z: -(wa * na.z + wb * nb.z) / 8 });
   };
   /** weggefallene Dreiecke (beim Zusammenlegen; ihre Ecken stehen noch in `tri`) */
   let totT: Uint8Array | null = null;
@@ -316,14 +390,22 @@ export function verdichten(
       return;
     }
   };
-  /** einen neuen Punkt in die Kette eines Loops nach Stelle j setzen (s in der Mitte) */
-  const inKette = (li: number, j: number, v: number) => {
+  /**
+   * einen neuen Punkt in die Kette eines Loops nach Stelle j setzen, an der Stelle `stelle` (Standard: Mitte); liegt sie auf dem
+   * Schlussstück eines geschlossenen Loops hinter seinem Ende, kommt er an den Anfang (s − Länge)
+   */
+  const inKette = (li: number, j: number, v: number, stelle?: number) => {
     const k = ketten[li]!;
     const s = sWerte[li]!;
     const l = loops[li]!;
-    const s1 = j + 1 < s.length ? s[j + 1]! : l.laenge;
+    const x = stelle ?? (kettenStelle(li, j).s + kettenStelle(li, j + 1).s) / 2;
+    if (l.art !== 'ring' && x >= l.laenge) {
+      k.unshift(v);
+      s.unshift(x - l.laenge);
+      return;
+    }
     k.splice(j + 1, 0, v);
-    s.splice(j + 1, 0, (s[j]! + s1) / 2);
+    s.splice(j + 1, 0, x);
   };
 
   /** Winkel zwischen den Normalen der Enden einer Kante (cos), an harten Loops die Normale der Seite der Kante */
@@ -346,22 +428,69 @@ export function verdichten(
     return na.x * nb.x + na.y * nb.y + na.z * nb.z;
   };
   const cosMax = opt.winkel !== undefined ? Math.cos((opt.winkel * Math.PI) / 180) : 2;
-  const minKante = opt.minKante ?? 0;
+  const genau = opt.genau;
+  const minKante = opt.minKante ?? (genau !== undefined ? maxKante / 16 : 0);
+  /** wie weit die Fläche zwischen den Enden einer Kante von ihr abweicht (Bogen: Länge × Drehung der Normale / 8) */
+  const bogen = (a: number, b: number, nor: Float64Array): number =>
+    (laengeVon(a, b) * Math.acos(Math.max(-1, Math.min(1, drehungCos(a, b, nor))))) / 8;
+  /**
+   * Punkte in einer Falte: Ein Dreieck an ihnen zeigt gegen ihre Normale (umgeklappt). Dort sagt die Drehung der Normale nichts über eine
+   * runde Fläche, feiner wird es dort nicht, und das Zusammenlegen bleibt, wie es war. Gemessen am Überhang (Fall a der Explosionsprobe):
+   * Die Falte an der Schnabelspitze (34 Knicke über 60°, 8 umgeklappt) wurde sonst immer feiner geteilt und beim Setzen größer (1 724 /
+   * 784, 9 629 statt 6 717 Punkte).
+   */
+  const gefaltet = (nor: Float64Array): Uint8Array => {
+    const g = new Uint8Array(pos.length / 3);
+    for (let t = 0; t < tri.length / 3; t++) {
+      if (totT && totT[t]) continue;
+      const n = flaechenNormale(t);
+      for (let e = 0; e < 3; e++) {
+        const v = tri[3 * t + e]!;
+        if (n.x * nor[3 * v]! + n.y * nor[3 * v + 1]! + n.z * nor[3 * v + 2]! < 0) g[v] = 1;
+      }
+    }
+    return g;
+  };
 
   const neu0 = pos.length / 3;
   for (let runde = 0; runde < runden; runde++) {
-    const lang: { a: number; b: number; l: number }[] = [];
+    // `stelle`: wo eine Kante einer Linie geteilt wird (s der Linie)
+    const lang: { a: number; b: number; l: number; stelle?: number }[] = [];
     const nor = punktNormalen();
+    const falte = genau !== undefined && opt.genauHaut === true ? gefaltet(nor) : null;
+    // mit Genauigkeit: die Kanten der Linien (samt Spiegelbild) nach der Linie
+    const kettenKanten = new Set<number>();
+    if (genau !== undefined)
+      ketten.forEach((k, li) => {
+        if (!k || !hatPfad(loops[li]!)) return;
+        const zu = loops[li]!.art !== 'ring';
+        for (let j = 0; j < (zu ? k.length : k.length - 1); j++) {
+          const a = k[j]!;
+          const b = k[(j + 1) % k.length]!;
+          const sl = schluessel(a, b);
+          kettenKanten.add(sl);
+          if (spiegel[a]! >= 0 && spiegel[b]! >= 0) kettenKanten.add(schluessel(spiegel[a]!, spiegel[b]!));
+          if (verborgen && (kanten.get(sl) ?? []).every((t) => verborgen[t] === 1)) continue;
+          const l = laengeVon(a, b);
+          if (l > maxKante || (l > minKante && sehnenAbweichung(li, j, j + 1) > genau)) lang.push({ a, b, l, stelle: teilStelle(li, j) });
+        }
+      });
     for (const k of kanten.keys()) {
+      if (kettenKanten.has(k)) continue;
       const a = Math.floor(k / KEY);
       const b = k % KEY;
       if (verborgen && kanten.get(k)!.every((t) => verborgen[t] === 1)) continue;
       const l = laengeVon(a, b);
-      if (l > maxKante || (cosMax <= 1 && l > minKante && drehungCos(a, b, nor) < cosMax)) lang.push({ a, b, l });
+      if (
+        l > maxKante ||
+        (cosMax <= 1 && l > minKante && drehungCos(a, b, nor) < cosMax) ||
+        (falte !== null && l > minKante && !falte[a] && !falte[b] && drehungCos(a, b, nor) > 0 && bogen(a, b, nor) > genau!)
+      )
+        lang.push({ a, b, l });
     }
     if (lang.length === 0) break;
     lang.sort((p, q) => q.l - p.l);
-    for (const { a, b } of lang) {
+    for (const { a, b, stelle } of lang) {
       if (!kanten.has(schluessel(a, b))) continue;
       const sa = spiegel[a]!;
       const sb = spiegel[b]!;
@@ -371,14 +500,14 @@ export function verdichten(
       const hier = kettenKante(a, b);
       const dort = selbst ? null : kettenKante(sa, sb);
       let m: V3;
-      if (hier) m = aufLoop(hier.li, hier.j);
+      if (hier) m = aufLoop(hier.li, hier.j, stelle);
       else if (dort) {
-        const q = aufLoop(dort.li, dort.j);
+        const q = aufLoop(dort.li, dort.j, stelle);
         m = { ...q, z: -q.z };
       } else m = inFlaeche(a, b, nor);
       if (selbst) m.z = 0;
       const v = teilen(a, b, m);
-      if (hier) inKette(hier.li, hier.j, v);
+      if (hier) inKette(hier.li, hier.j, v, stelle);
       if (selbst) {
         spiegel[v] = v;
         continue;
@@ -386,7 +515,7 @@ export function verdichten(
       const v2 = teilen(sa, sb, { x: m.x, y: m.y, z: -m.z });
       spiegel[v] = v2;
       spiegel[v2] = v;
-      if (dort) inKette(dort.li, dort.j, v2);
+      if (dort) inKette(dort.li, dort.j, v2, stelle);
       mitteFuellen(v, v2);
     }
   }
@@ -404,6 +533,9 @@ export function verdichten(
   if (kurz > 0) {
     totT = new Uint8Array(tri.length / 3);
     const tT = totT;
+    // mit Genauigkeit: Normalen vor dem Zusammenlegen (die Lagen ändern sich dabei nicht), Punkte in Falten
+    const norK = genau !== undefined && opt.genauHaut === true ? punktNormalen() : null;
+    const falteK = norK ? gefaltet(norK) : null;
     const umT: number[][] = Array.from({ length: nGesamt }, () => []);
     for (let t = 0; t < tri.length / 3; t++) for (let e = 0; e < 3; e++) umT[tri[3 * t + e]!]!.push(t);
     // je Punkt die Ketten, auf denen er liegt: li (gespeicherte Hälfte) oder −1 − li (ihr Spiegelbild)
@@ -529,6 +661,19 @@ export function verdichten(
         const l1 = Math.hypot(n1.x, n1.y, n1.z);
         if (!(l1 > 1e-12) || (n0.x * n1.x + n0.y * n1.y + n0.z * n1.z) / l1 < 0.5) return false;
         for (const w of e) if (w !== v && laengeVon(q, w) > maxKante) return false;
+        if (norK && !falteK![q]) {
+          // die neuen Kanten (q, w) weichen höchstens halb so weit von der runden Fläche ab, wie `genau` erlaubt (an harten Punkten die
+          // Normale dieses Dreiecks; in einer Falte wie ohne Genauigkeit)
+          const nf = { x: n1.x / l1, y: n1.y / l1, z: n1.z / l1 };
+          const nAn = (u: number): V3 => (hart.has(u) ? nf : { x: norK[3 * u]!, y: norK[3 * u + 1]!, z: norK[3 * u + 2]! });
+          const na = nAn(q);
+          for (const w of e) {
+            if (w === v || falteK![w]) continue;
+            const nb = nAn(w);
+            const c = Math.max(-1, Math.min(1, na.x * nb.x + na.y * nb.y + na.z * nb.z));
+            if ((laengeVon(q, w) * Math.acos(c)) / 8 > genau! / 2) return false;
+          }
+        }
       }
       for (const t of [...umT[v]!]) {
         const e = ecken3(t);
@@ -548,7 +693,15 @@ export function verdichten(
       const j = k.indexOf(code >= 0 ? v : spiegel[v]!);
       const i = k.indexOf(code >= 0 ? q : spiegel[q]!);
       const zu = loops[li]!.art !== 'ring';
-      return j >= 0 && i >= 0 && (Math.abs(i - j) === 1 || (zu && Math.abs(i - j) === k.length - 1)) ? { li, j } : false;
+      if (!(j >= 0 && i >= 0 && (Math.abs(i - j) === 1 || (zu && Math.abs(i - j) === k.length - 1)))) return false;
+      // mit Genauigkeit: die neue Kante (vom anderen Nachbarn von v zu q) weicht höchstens halb so weit von der Linie ab, oder nicht weiter als
+      // die zwei, die sie ersetzt (zwei Proben fast an einem Ort, etwa an einer Ecke, fallen so weiter zusammen; sonst blieb dort ein
+      // Dreieck ohne Fläche, Stift-Probe)
+      if (genau !== undefined) {
+        const neu = sehnenAbweichung(li, j - 1, j + 1);
+        if (neu > genau / 2 && neu > Math.max(sehnenAbweichung(li, j - 1, j), sehnenAbweichung(li, j, j + 1)) + genau / 10) return false;
+      }
+      return { li, j };
     };
     /** v in q legen samt Spiegelbild: v auf der Mitte nur in einen Punkt auf der Mitte, nie über die Mitte in sein Spiegelbild */
     const versuchen = (v: number, q: number): boolean => {

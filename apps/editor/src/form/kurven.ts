@@ -18,7 +18,9 @@
 // Das Netz bleibt geschlossen (die Öffnung wird nicht gezeigt), die Grundform zeigt das Maul zu, so wie es gezeichnet ist.
 // Die Linie ist ihr Pfad (07.11., Florian: „ja genau zur Bézier-Kurve machen“): In der Grundform liegt jede Linie genau auf dem
 // Bézier-Pfad aus ihren Punkten und Griffen, die Haut folgt; ein neuer Loop springt beim Anlegen örtlich darauf (ohne Zusatzpunkte;
-// `?punkte=noetig` zum Vergleich), eine Kreuzung ist ein Ort, O formt über Punkte und Griffspitzen.
+// `?punkte=noetig` zum Vergleich), eine Kreuzung ist ein Ort, O formt über Punkte und Griffspitzen. Die Blätter zeichnen die Linie als
+// ihren Bézier-Pfad, und nach einem Zug wird das Netz an den Linien so fein, dass es höchstens MK/40 von ihrer Kurve abweicht (08.11.,
+// kleine Details waren eckig).
 // Fressen-Pose (Florian: „in der Pose ganz normal die Bézier-Punkte bearbeiten und den Blendshape erstellen“): Knopf „Fressen“ oder
 // die Regler Maul und Kopf (Unterkiefer und Schädel als Knochen) zeigen die Pose. Darin wirken alle Werkzeuge wie in der Grundform
 // auf das, was zu sehen ist; gespeichert wird der Unterschied zur Grundform vor den Knochen (Blendshape, `poseLoop.ts`). Grundform
@@ -80,6 +82,8 @@ import {
   ringEnde,
   rundAusSeite,
   eckenTiefe,
+  stueckNaechstes,
+  stueckPunkt,
   verdichten,
   verschiebungLaengs,
 } from '@ee/shape/dicht';
@@ -227,6 +231,19 @@ const WINKEL = new URLSearchParams(location.search).get('winkel') === '1';
  * schwächer.
  */
 const KURZ = Number(new URLSearchParams(location.search).get('kurz') ?? 0.5);
+/**
+ * Genauigkeit der Linien im Netz als Anteil der Startkante (08.11., Florian: „warum es ungenau und eckig wird, wenn ich kleine Details
+ * rausziehe“): Nach einem Zug wird eine Kante einer Linie geteilt, wo die Linie zwischen ihren zwei Netzpunkten weiter als MK/40 (≈ 0,2,
+ * bei 307 % ≈ 0,6 Bildpunkte) von ihrer Kurve abweicht, und nur zusammengelegt, wo die Abweichung danach höchstens halb so groß ist
+ * (`verdichten`, `genau`). `?genau=0` zum Vergleich.
+ *
+ * Die Haut zwischen den Linien ebenso fein zu machen (`?genauHaut=1`, Versuch) macht sie am Ohr rund (0,21 statt 0,99), aber weite Züge
+ * schlechter: Rüssel mit gedrehtem Griff 108 Knicke über 60° und 46 umgeklappt statt 31 / 0, Fressen-Pose 8 umgeklappt statt 0 (der Löser
+ * aus den Kurven verträgt die vielen geteilten Dreiecke dort nicht). Auch gleich nach dem Anlegen eines Loops zu teilen war schlechter
+ * (ohne Setzen danach klappten Splitter um).
+ */
+const GENAU = Number(new URLSearchParams(location.search).get('genau') ?? 1 / 40);
+const GENAU_HAUT = new URLSearchParams(location.search).get('genauHaut') === '1';
 let letzteVerdichtung: { neu: number; gelegt: number; ms: number } | null = null;
 
 type Schnappschuss = {
@@ -1106,6 +1123,29 @@ const pfad = (a: Ansicht, p: readonly V3[]): string =>
       return `${i ? 'L' : 'M'} ${x.toFixed(2)} ${y.toFixed(2)}`;
     })
     .join(' ');
+const plus3 = (p: V3, v: V3): V3 => ({ x: p.x + v.x, y: p.y + v.y, z: p.z + v.z });
+/**
+ * Der Bézier-Pfad eines Loops im Blatt (08.11., Florian: „Die Linie wird ganz kantig. Der Punkt sitzt nicht mehr exakt auf der Linie“):
+ * Das Blatt bildet linear ab, ein Bézier-Stück bleibt ein Bézier-Stück aus den abgebildeten Punkten und Griffen. So ist die Linie bei
+ * jedem Zoom glatt und läuft genau durch ihre Punkte wie in Illustrator; das Netz liegt höchstens `GENAU` daneben. `sp`: Spiegelhälfte
+ * bzw. Zwilling. Ein Ring läuft vom ersten zum letzten Punkt (seine Enden sind Punkte), ein geschlossener Loop ringsum.
+ */
+function pfadKurven(a: Ansicht, l: Loop, sp: boolean): string {
+  const P = l.punkte;
+  const m = P.length;
+  const zu = l.art !== 'ring';
+  const B = (v: V3): string => {
+    const [x, y] = imBlatt(a, sp ? spiegeln(v) : v);
+    return `${x.toFixed(3)} ${y.toFixed(3)}`;
+  };
+  let d = `M ${B(P[0]!.ref)}`;
+  for (let i = 0; i < (zu ? m : m - 1); i++) {
+    const A = P[i]!;
+    const E = P[(i + 1) % m]!;
+    d += ` C ${B(plus3(A.ref, A.aus!))} ${B(plus3(E.ref, E.ein!))} ${B(E.ref)}`;
+  }
+  return zu ? `${d} Z` : d;
+}
 
 /** Mitte der Auswahl (für den Einflusskreis) */
 function auswahlMitte(): V3 | null {
@@ -1198,7 +1238,8 @@ function blattZeichnen(a: Ansicht): void {
     linienVon(l, lagen[li]!).forEach((pts, m) => {
       // in der Seite liegen Spiegelhälfte und Zwilling genau hinter dem Gespeicherten
       if (m === 1 && a === 'seite') return;
-      const d = pfad(a, pts);
+      // in Ruhe der Bézier-Pfad (die Linie ist ihr Pfad), während eines Zugs und in der Pose die Linie, wie sie gerade liegt
+      const d = !zug && exakt(l) ? pfadKurven(a, l, m === 1) : pfad(a, pts);
       el.append(element('path', `kurve${gew ? ' gewaehlt' : ''}${maul?.id === l.id ? ' maul' : ''}${m ? ' spiegel' : ''}`, { d }));
       const t = element('path', 'kurve-treffer', { d });
       t.setAttribute('data-l', String(l.id));
@@ -1308,6 +1349,12 @@ function allesZeigen(): void {
 let vorrechnenUhr: ReturnType<typeof setTimeout> | null = null;
 /** das verdichtete Netz des letzten Zugs, das sich noch setzen soll */
 let nachLoesenOffen: Haut | null = null;
+/**
+ * Wie oft sich das Netz nach einem Zug noch verfeinert hat: Gesetzt liegen die Linien etwas anders als beim Teilen (die neuen Punkte
+ * lagen nur rund zwischen den alten), dann wird es dort noch einmal feiner und setzt sich noch einmal, höchstens dreimal (nur geteilt,
+ * nichts zusammengelegt).
+ */
+let nachVerfeinert = 0;
 function vorrechnenPlanen(): void {
   vorrechnenAus();
   if (mitBereich() || zug) return;
@@ -1324,6 +1371,15 @@ function vorrechnenPlanen(): void {
       RUNDEN_ENDE,
     );
     festlegenAlle();
+    if (GENAU > 0 && nachVerfeinert < 3) {
+      const vor = haut;
+      nachVerdichten(true);
+      if (haut !== vor) {
+        nachVerfeinert++;
+        nachLoesenOffen = haut;
+        vorrechnenPlanen();
+      }
+    }
     letztesNachLoesen = Math.round(performance.now() - t0);
     hautZeigen();
     baenderZeigen();
@@ -2014,7 +2070,10 @@ function zugEnde(ok: boolean): void {
     nachVerdichten();
     // aus den Kurven: das verdichtete Netz setzt sich gleich danach in der Ruhe (die neuen Punkte liegen erst nur rund zwischen den
     // alten); beim Loslassen zu lösen hieß, dort auf das Zerlegen des neuen Netzes zu warten (0,6 s bei 15 000 Punkten)
-    if (!mitBereich() && haut !== vorVerdichten) nachLoesenOffen = haut;
+    if (!mitBereich() && haut !== vorVerdichten) {
+      nachLoesenOffen = haut;
+      nachVerfeinert = 0;
+    }
     // ein geschlossener Loop, der durch eine neue Kreuzung seinen zweiten Punkt (und damit einen Pfad) bekam: genau auf ihn
     linienAufPfad();
     poseSichern();
@@ -2029,10 +2088,11 @@ function zugEnde(ok: boolean): void {
  * Nach einem Zug: Wo Kanten länger als 1,75 Kanten des Startnetzes geworden sind (dort ist die Haut gedehnt), wird das Netz feiner,
  * die neuen Punkte liegen rund (`verdichten`); wo Kanten kürzer als ½ geworden sind (dort ist sie gestaucht), werden sie
  * zusammengelegt. Im unberührten Netz ist keine Kante so lang (Startkugel höchstens 1,67) und kaum eine so kurz (0,1 % unter ½).
- * Mit `?winkel=1` auch, wo sich die Fläche über eine Kante um mehr als 25° dreht (bis ⅓ Startkante; Versuch, dann ohne
+ * Dazu wird geteilt, wo das Netz eine Linie ungenauer als `GENAU` wiedergibt. `nurTeilen` (nach dem Setzen): nur das, ohne
+ * Zusammenlegen. Mit `?winkel=1` auch, wo sich die Fläche über eine Kante um mehr als 25° dreht (bis ⅓ Startkante; Versuch, dann ohne
  * Zusammenlegen).
  */
-function nachVerdichten(): void {
+function nachVerdichten(nurTeilen = false): void {
   if (!VERDICHTEN) return;
   const t0 = performance.now();
   const vorher = grund ? poseKnochen() : null;
@@ -2040,7 +2100,16 @@ function nachVerdichten(): void {
   // die Öffnung des Mauls wird nicht gezeigt und nicht verdichtet (in der Pose überspannt sie das offene Maul)
   const m = maulAktuell();
   const verborgen = m && m.offen.length === haut.tri.length / 3 ? m.offen : null;
-  const v = verdichten(haut, loops, 1.75 * MK, WINKEL ? { winkel: 25, minKante: MK / 3, verborgen } : { verborgen, kurz: KURZ * MK });
+  // nur in der Grundform: Dort ist die Linie ihr Pfad. In der Pose liegt sie neben ihm (die Punkte werden von der posierten Linie
+  // abgelesen, die Griffe sind die der Grundform); nach dem Pfad geteilt wurde dort laufend neu vernetzt (Fressen-Probe: 572 neue,
+  // 741 zusammengelegte Punkte, danach 2 umgeklappt)
+  const genau = GENAU > 0 && grund === null ? { genau: GENAU * MK, genauHaut: GENAU_HAUT } : {};
+  const v = verdichten(
+    haut,
+    loops,
+    1.75 * MK,
+    WINKEL ? { winkel: 25, minKante: MK / 3, verborgen } : { verborgen, kurz: nurTeilen ? 0 : KURZ * MK, ...genau },
+  );
   if (!v) return;
   haut = v.haut;
   loops = v.loops;
@@ -2169,7 +2238,10 @@ function hautNeuRechnen(versch: readonly (Float64Array | null)[] = loops.map(() 
   kreuzungenSuchen();
   const vorVerdichten = haut;
   nachVerdichten();
-  if (!mitBereich() && haut !== vorVerdichten) nachLoesenOffen = haut;
+  if (!mitBereich() && haut !== vorVerdichten) {
+    nachLoesenOffen = haut;
+    nachVerfeinert = 0;
+  }
   letzteZerlegung = z.loeser.zeitZerlegen;
   letzterBereich = z.loeser.anzahl;
   letztesNeuRechnen = Math.round(performance.now() - t0);
@@ -2278,29 +2350,83 @@ function formErstellen(a: Ansicht, roh: [number, number][]): void {
   auswahl = [{ l: l.id, i: -1 }];
 }
 
-/** Doppelklick auf eine Linie: dort ein Punkt */
+/**
+ * Stelle s auf dem Bézier-Pfad eines Loops, die im Blatt dem Klick (X, Y) am nächsten liegt: je Stück grob abgetastet, dann nach Newton
+ * auf dem abgebildeten Stück (das Blatt bildet linear ab, Tiefe 0). `m`: auf der Spiegelhälfte bzw. dem Zwilling.
+ */
+function stelleAmPfad(a: Ansicht, l: Loop, X: number, Y: number, m: boolean): number {
+  const P = l.punkte;
+  const n = P.length;
+  const zu = l.art !== 'ring';
+  const flach = (v: V3): V3 => {
+    const [x, y] = imBlatt(a, m ? spiegeln(v) : v);
+    return { x, y, z: 0 };
+  };
+  const q = { x: X, y: Y, z: 0 };
+  let best = Infinity;
+  let bs = 0;
+  for (let i = 0; i < (zu ? n : n - 1); i++) {
+    const A = P[i]!;
+    const E = P[(i + 1) % n]!;
+    const [p0, ga, gb, p3] = [flach(A.ref), flach(A.aus!), flach(E.ein!), flach(E.ref)];
+    let t0 = 0;
+    let d0 = Infinity;
+    for (let k = 0; k <= 32; k++) {
+      const c = stueckPunkt(p0, ga, gb, p3, k / 32);
+      const d = Math.hypot(c.x - X, c.y - Y);
+      if (d < d0) {
+        d0 = d;
+        t0 = k / 32;
+      }
+    }
+    const t = stueckNaechstes(p0, ga, gb, p3, q, t0);
+    const c = stueckPunkt(p0, ga, gb, p3, t);
+    const d = Math.hypot(c.x - X, c.y - Y);
+    if (d < best) {
+      best = d;
+      bs = A.s + t * ((i + 1 < n ? E.s : E.s + l.laenge) - A.s);
+    }
+  }
+  return zu && bs >= l.laenge ? bs - l.laenge : bs;
+}
+
+/**
+ * Doppelklick auf eine Linie: dort ein Punkt, genau auf der gezeichneten Linie (in Ruhe ihr Bézier-Pfad). Nur nicht dort, wo schon ein
+ * Punkt liegt (im Blatt näher als 3 Bildpunkte). Vorher galt „nicht näher als eine Startkante in s“: s ist aber die Stelle beim Anlegen,
+ * nach einem weiten Zug lagen in diesem Abstand bis 25 Einheiten Linie (am herausgezogenen Ohr ließ sich neben den Punkten keiner setzen).
+ */
 function punktAmKlick(a: Ansicht, id: number, X: number, Y: number, m: boolean): void {
   const l = loops[loopNr(id)];
   if (!l) return;
-  const n = l.proben.length;
-  let best = Infinity;
   let bs = 0;
-  for (let j = 0; j < (l.art === 'ring' ? n - 1 : n); j++) {
-    const k = (j + 1) % n;
-    const p = lageAus(l.ruhe, j);
-    const q = lageAus(l.ruhe, k);
-    const [x0, y0] = imBlatt(a, m ? spiegeln(p) : p);
-    const [x1, y1] = imBlatt(a, m ? spiegeln(q) : q);
-    const dx = x1 - x0;
-    const dy = y1 - y0;
-    const t = Math.max(0, Math.min(1, ((X - x0) * dx + (Y - y0) * dy) / (dx * dx + dy * dy || 1)));
-    const d = Math.hypot(X - x0 - t * dx, Y - y0 - t * dy);
-    if (d < best) {
-      best = d;
-      bs = l.s[j]! + t * ((k > j ? l.s[k]! : l.laenge) - l.s[j]!);
+  if (exakt(l)) bs = stelleAmPfad(a, l, X, Y, m);
+  else {
+    const n = l.proben.length;
+    let best = Infinity;
+    for (let j = 0; j < (l.art === 'ring' ? n - 1 : n); j++) {
+      const k = (j + 1) % n;
+      const p = lageAus(l.ruhe, j);
+      const q = lageAus(l.ruhe, k);
+      const [x0, y0] = imBlatt(a, m ? spiegeln(p) : p);
+      const [x1, y1] = imBlatt(a, m ? spiegeln(q) : q);
+      const dx = x1 - x0;
+      const dy = y1 - y0;
+      const t = Math.max(0, Math.min(1, ((X - x0) * dx + (Y - y0) * dy) / (dx * dx + dy * dy || 1)));
+      const d = Math.hypot(X - x0 - t * dx, Y - y0 - t * dy);
+      if (d < best) {
+        best = d;
+        bs = l.s[j]! + t * ((k > j ? l.s[k]! : l.laenge) - l.s[j]!);
+      }
     }
   }
-  if (l.punkte.some((p) => Math.abs(p.s - bs) < MK)) return;
+  const s = skala(a);
+  if (
+    l.punkte.some((p) => {
+      const [x, y] = imBlatt(a, m ? spiegeln(p.ref) : p.ref);
+      return Math.hypot(x - X, y - Y) * s < 3;
+    })
+  )
+    return;
   zurueck.push(schnappschuss());
   const p = punktEinfuegen(l, bs, undefined, exakt(l));
   linienAufPfad();

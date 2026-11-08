@@ -495,3 +495,77 @@ gewählt; gebaut ist meine Empfehlung „ohne Zusatzpunkte“, „Punkte wo nöt
     (die Härte-Probe brach so ab).
   - Proben, die eine Stelle s als Bogenlänge der Linie lesen, liegen daneben: s ist jetzt der Platz auf dem Pfad. Die Kurven-Probe
     traf deshalb mit dem Doppelklick einen Punkt statt der Linie; jetzt sucht sie die Probe nach ihrem s.
+
+**Nachtrag (08.11.): Kleine Details — Linien im Netz mit fester Genauigkeit, Linie als Bézier-Kurve gezeichnet, Doppelklick überall.**
+Florian mit Bild (`docs/progress/editor/form-detail-florian-2026-11-08.webp`): „Was ich nicht verstehe, warum es ungenau und eckig wird,
+wenn ich kleine Details rausziehe … Die Linie wird ganz kantig. Der Punkt sitzt nicht mehr exakt auf der Linie, und ich habe Probleme,
+einen neuen Punkt einzufügen direkt am Detail.“ Zu „Punkte wo nötig“: „etwas besser, aber ich muss es weiter testen“ — Standard bleibt
+ohne Zusatzpunkte, `?punkte=noetig` bleibt zum Vergleich.
+
+- **Nachgestellt** (`scripts/pruefen/form-detail-probe.mjs`): Kugel, drei Loops, auf dem senkrechten Ring in der Front vier Punkte per
+  Doppelklick (40°, 50°, 60°, 70° vom Scheitel, zwischen zwei Netzpunkten wie von Hand), die zwei mittleren zusammen 70 nach außen —
+  ein Ohr wie im Bild.
+- **Drei Ursachen:**
+  - Die Linie wurde durch ihre Proben gezeichnet, und das sind Punkte des Netzes. Verdichtet wurde nur nach der Länge (über 1,75
+    Startkanten). Am Ohr lagen die Proben bis 13,6 auseinander; wo die Kurve eng wird, schnitt die gezeichnete Linie sie um bis 1,02
+    ab (bei 307 % 2,8 Bildpunkte).
+  - Ein Punkt liegt genau auf seinem Pfad, die gezeichnete Linie auf der Sehne zwischen zwei Proben: bis 0,92 daneben (2,5 Bildpunkte).
+  - Ein Doppelklick wurde still verworfen, wenn er in s näher als eine Startkante an einem Punkt lag. s ist aber der Platz beim
+    Anlegen: Nach dem Zug lagen in diesem Abstand bis 25 Einheiten Linie, an der Flanke des Ohrs ging kein Punkt.
+- **Jetzt:**
+  - Nach einem Zug löst das Netz die Linien auf eine feste Abweichung auf (`verdichten` mit `genau` = MK/40 ≈ 0,22, bei 307 % 0,6
+    Bildpunkte; wie adaptives Neuvernetzen nach Dunyach u. a. 2013): Eine Kante einer Linie wird geteilt, wo die Linie zwischen ihren
+    zwei Netzpunkten weiter von der Sehne abweicht (liegt ein Punkt der Linie darin, genau an ihm, sonst in der Mitte); der neue Punkt
+    liegt genau auf der Kurve. Zusammengelegt wird nur, wo die neue Kante danach höchstens halb so weit abweicht oder nicht weiter als
+    die zwei, die sie ersetzt. Nach dem Setzen wird noch einmal geteilt, wo es nötig ist (höchstens dreimal). Nur in der Grundform: In
+    der Pose liegt die Linie neben ihrem Pfad.
+  - Die Blätter zeichnen die Linie als ihren Bézier-Pfad (SVG-Kurven aus den abgebildeten Punkten und Griffen; das Blatt bildet
+    linear ab): bei jedem Zoom glatt und genau durch die Punkte. Während eines Zugs und in der Pose wie bisher die Linie, wie sie liegt.
+  - Doppelklick: Der Punkt kommt an die Stelle des gezeichneten Pfads, die dem Klick am nächsten ist; verworfen nur, wo im Blatt schon
+    ein Punkt näher als 3 Bildpunkte liegt.
+- **Gemessen am Ohr** (mit der Maus, Front bei 307 %, 2,74 Bildpunkte je Einheit):
+
+| | vorher | jetzt |
+| --- | --- | --- |
+| gezeichnete Linie schneidet ihre Kurve ab | 1,02 (2,8 px) | 0 (Pfad); Linie im Netz 0,18 (0,5 px) |
+| Punkt neben der Linie des Netzes | 0,92 (2,5 px) | 0,10 (0,3 px) |
+| Doppelklick an der Flanke (20 %, 80 % des Stücks) | verworfen | gesetzt, 0,1 bzw. 0,4 px neben dem Klick |
+| Haut zwischen den Linien neben der runden Fläche | 0,85 | 0,99 (unverändert grob) |
+| Netzpunkte der ganzen Haut | 5 136 | 5 152 |
+
+  Bilder `docs/progress/editor/form-detail-{vorher,nachher}-{front,3d}-2026-11-08.jpg`. Nur die Linie als Kurve zu zeichnen reicht
+  nicht: Mit dem alten Netz ist die Linie glatt, der Umriss des Shaders daneben eckig, wo die Linie den Umriss bildet (`?genau=0`).
+- **Die Haut zwischen den Linien bleibt so grob wie vorher.** Sie ebenso fein zu machen (`?genauHaut=1`: geteilt, wo die Fläche zwischen
+  den Enden einer Kante weiter als MK/40 von der runden abweicht, Länge × Drehung der Normale / 8, nicht in Falten) macht das Ohr rund
+  (0,21 statt 0,99; 6 248 Punkte), aber weite Züge schlechter, gemessen mit der Maus (Knicke über 60° / umgeklappt):
+
+| | ohne | Linien genau (Standard) | Linien und Haut genau |
+| --- | --- | --- | --- |
+| Rüssel, erster Zug | 5 / 0 | 3 / 0 | 22 / 10 |
+| Rüssel, Griff an der Spitze −45° | 24 / 4 | 31 / 0 | 62 / 30 bis 108 / 46 (zwei Läufe) |
+| Fressen-Pose, Unterlippe 25 hinab (Haut umgeklappt) | 0 | 0 | 8 |
+| Augen-Form S ×1,3 (umgeschlagen) | 0 | 0 | 2 |
+
+  Ohne Schutz vor Falten wucherte der Überhang ganz (1 724 Knicke, 784 umgeklappt, später 17 615 Punkte): Die Falte an der
+  Schnabelspitze wurde immer feiner geteilt und beim Setzen größer. Der Löser aus den Kurven verträgt die vielen geteilten Dreiecke an
+  stark gedehnten Stellen nicht; die Haut fein und stabil zu machen ist ein eigener Schritt (etwa Neuvernetzen mit Entspannen statt nur
+  Teilen). Gleich nach dem Anlegen eines Loops zu teilen war ebenfalls schlechter (ohne Setzen danach klappten Splitter um).
+- **Unterwegs gefunden:** An einer Stift-Ecke fallen beim Anlegen zwei Proben auf die Ecke (0,01 auseinander, das Vermessen auf dem Pfad
+  projiziert beide dorthin). Das Zusammenlegen nahm den Doppelten bisher beim ersten Zug weg; eine zu strenge Schranke („die neue Kante
+  weicht höchstens halb so weit ab“) ließ ihn stehen, ein Dreieck ohne Fläche und zwei umgeklappte auf der Spiegelseite. Jetzt darf
+  zusammengelegt werden, was die Linie nicht verschlechtert.
+- **Die anderen Proben** (Standard gegen `?genau=0`, je ein Lauf): Überhang am Ende 6 / 2 wie vorher, nach „oben −300“ 40 / 12 statt
+  34 / 8; Hammer, Schnabel, Pilz, Linse, Hin und zurück (Haut 2,32 / 1,08, gegen das vorige Mal 0,19 / 0,18), Boden (0,01), Kreuzung
+  (38,8° / 11,3°), Maul (dicht bis 55°), Fressen-Pose (0 / 7), Pfad, Griffe, Spiegelpunkt, Zoom: gleich; Stift 0 umgeklappt (wie vorher);
+  Augen-Form R 30° 0 statt 4 umgeschlagen; Braue 46,8° / 11,3° statt 45,3° / 12,4°; Greifen gleich schnell (je Bewegung 15–16 ms bei
+  5 200 Punkten, 27–29 ms bei 15 400).
+- **Kern-Test** `linieAufPfad.test.ts` „Genauigkeit“: dasselbe Ohr im Kern. Linie ↔ Kurve 1,02 → ohne Genauigkeit 1,02, mit 0,18; mit der
+  Haut (Versuch) Fläche 0,27; geschlossen, spiegelgleich, Ketten heil, Punkte an Ort; die unberührte Startkugel und drei Loops auf ihr
+  teilen nichts. Alle 102 Tests unter `src/dicht/` grün.
+- **Fallen:**
+  - Jede neue Verfeinerung zuerst am Überhang und am Rüssel der Explosionsprobe prüfen: In Falten und an stark gedehnten Stellen
+    schaukeln sich Regeln nach Normalen auf.
+  - Abstände von Punkten nie in s messen: s ist nach einem Zug keine Länge mehr.
+  - Eine Schranke beim Zusammenlegen gegen „nicht schlechter als vorher“ messen, nicht gegen einen festen Wert; sonst bleiben
+    doppelte Punkte stehen.
+  - Was an Pfaden hängt, gilt nur in der Grundform (in der Pose sind die Griffe die der Grundform).

@@ -17,6 +17,7 @@ import {
   loopAusSchnitt,
   mittlereKante,
   pfadAbweichung,
+  pfadBei,
   pfadLagen,
   pfadParameter,
   pfadVersatz,
@@ -25,6 +26,7 @@ import {
 } from './loops';
 import { stueckNaechstes, stueckPunkt } from './pfad';
 import { rundAusSeite } from './rund';
+import { verdichten } from './verdichten';
 
 const log = (...a: unknown[]) => (globalThis as unknown as { console: { log: (...x: unknown[]) => void } }).console.log(...a);
 const lage = (L: ArrayLike<number>, j: number): V3 => ({ x: L[3 * j]!, y: L[3 * j + 1]!, z: L[3 * j + 2]! });
@@ -50,6 +52,48 @@ const neben = (h: Haut) => {
     summe += d;
   }
   return { max, mittel: summe / h.n };
+};
+
+/** Abstand von q zur Strecke a–b */
+const zurStrecke = (q: V3, a: V3, b: V3): number => {
+  const d = { x: b.x - a.x, y: b.y - a.y, z: b.z - a.z };
+  const t = Math.max(0, Math.min(1, ((q.x - a.x) * d.x + (q.y - a.y) * d.y + (q.z - a.z) * d.z) / (d.x * d.x + d.y * d.y + d.z * d.z || 1)));
+  return abstand(q, { x: a.x + t * d.x, y: a.y + t * d.y, z: a.z + t * d.z });
+};
+/** wie weit die Linie des Netzes (Strecken zwischen den Proben) ihre Kurve abschneidet: sieben Stellen je Strecke */
+const sehnenRest = (l: Loop): number => {
+  const n = l.proben.length;
+  const zu = l.art !== 'ring';
+  let m = 0;
+  for (let j = 0; j < (zu ? n : n - 1); j++) {
+    const k = (j + 1) % n;
+    const s0 = l.s[j]!;
+    const s1 = k > j ? l.s[k]! : l.s[k]! + l.laenge;
+    for (let i = 1; i < 8; i++) {
+      const s = s0 + ((s1 - s0) * i) / 8;
+      const q = pfadBei(l, zu && s >= l.laenge ? s - l.laenge : s);
+      if (q) m = Math.max(m, zurStrecke(q, lage(l.ruhe, j), lage(l.ruhe, k)));
+    }
+  }
+  return m;
+};
+/** wie weit die Haut zwischen den Enden ihrer Kanten von der runden Fläche abweicht (Bogen: Länge × Drehung der Normale / 8) */
+const flaechenRest = (h: Haut): number => {
+  const nor = hautNormalen(h);
+  const n = (v: number) => {
+    const l = Math.hypot(nor[3 * v]!, nor[3 * v + 1]!, nor[3 * v + 2]!) || 1;
+    return { x: nor[3 * v]! / l, y: nor[3 * v + 1]! / l, z: nor[3 * v + 2]! / l };
+  };
+  let m = 0;
+  for (let v = 0; v < h.n; v++)
+    for (const w of h.nachbarn[v]!) {
+      if (w < v) continue;
+      const a = n(v);
+      const b = n(w);
+      const c = Math.max(-1, Math.min(1, a.x * b.x + a.y * b.y + a.z * b.z));
+      m = Math.max(m, (abstand(lage(h.pos, v), lage(h.pos, w)) * Math.acos(c)) / 8);
+    }
+  return m;
 };
 
 /** Der neue Loop springt auf seinen Pfad: örtlich, jeder Punkt behält seine Krümmung (wie `linienAufPfad` im Fenster) */
@@ -225,6 +269,67 @@ describe('Die Linie ist ihr Pfad', () => {
     log(`hin und zurück: Linien bis ${linie.toFixed(3)}, Haut bis ${haut.toFixed(3)}, Linie ↔ Pfad ${loops.map((l) => pfadAbweichung(l).toFixed(3)).join(' / ')}`);
     expect(linie).toBeLessThan(0.05);
     expect(haut).toBeLessThan(0.3);
+  });
+
+  it('Genauigkeit (08.11.): Am kleinen Ohr aus dem Ring wird die Linie so fein, dass sie höchstens MK/40 von ihrer Kurve abweicht', () => {
+    const { h, loops, MK } = dreiLoopsGenau();
+    const genau = MK / 40;
+    // die unberührte Startkugel und drei Loops auf ihr: nichts zu teilen (auch mit der Haut: Die Startkugel weicht höchstens 0,16 ab)
+    const kugel0 = kugel();
+    expect(flaechenRest(kugel0)).toBeLessThan(genau);
+    expect(verdichten(kugel0, [], 1.75 * MK, { genau, genauHaut: true, kurz: 0 })).toBeNull();
+    for (const l of loops) expect(sehnenRest(l)).toBeLessThan(genau);
+    expect(verdichten(h, loops, 1.75 * MK, { genau, kurz: 0 })).toBeNull();
+    // Florians Bild: auf dem senkrechten Ring vier Punkte bei 40°, 50°, 60°, 70° vom Scheitel, die zwei mittleren 70 nach außen
+    const ring = loops.find((l) => l.art === 'ring' && l.punkte.some((p) => Math.abs(p.ref.y) > 140))!;
+    const winkel = (q: V3) => (Math.atan2(q.z, q.y) * 180) / Math.PI;
+    for (const w of [40, 50, 60, 70]) {
+      let j = 0;
+      for (let i = 1; i < ring.proben.length - 1; i++) if (Math.abs(winkel(lage(ring.ruhe, i)) - w) < Math.abs(winkel(lage(ring.ruhe, j)) - w)) j = i;
+      punktEinfuegen(ring, (ring.s[j]! + ring.s[j + 1]!) / 2, undefined, true);
+    }
+    const aussen = { x: 0, y: 70 * Math.cos((55 * Math.PI) / 180), z: 70 * Math.sin((55 * Math.PI) / 180) };
+    const mitte = ring.punkte.filter((p) => p.kreuzung === undefined && winkel(p.ref) > 45 && winkel(p.ref) < 65);
+    expect(mitte.length).toBe(2);
+    ziehen(h, loops, new Map([[ring, new Map(mitte.map((p) => [ring.punkte.indexOf(p), aussen]))]]));
+    const li = loops.indexOf(ring);
+    const vorher = { linie: sehnenRest(ring), flaeche: flaechenRest(h) };
+    const ohne = verdichten(h, loops, 1.75 * MK, { kurz: 0.5 * MK })!;
+    const v = verdichten(h, loops, 1.75 * MK, { genau, kurz: 0.5 * MK })!;
+    const haut = verdichten(h, loops, 1.75 * MK, { genau, genauHaut: true, kurz: 0.5 * MK })!;
+    const nachher = { linie: sehnenRest(v.loops[li]!), flaeche: flaechenRest(v.haut), mitHaut: flaechenRest(haut.haut) };
+    log(
+      `Ohr: Linie ↔ Kurve ${vorher.linie.toFixed(2)} → ohne Genauigkeit ${sehnenRest(ohne.loops[li]!).toFixed(2)}, mit ${nachher.linie.toFixed(3)}; ` +
+        `Fläche ${vorher.flaeche.toFixed(2)} → ${flaechenRest(ohne.haut).toFixed(2)} / ${nachher.flaeche.toFixed(2)}, mit der Haut (Versuch) ` +
+        `${nachher.mitHaut.toFixed(3)} (Grenze ${genau.toFixed(3)}); Punkte ${h.n} → ${ohne.haut.n} / ${v.haut.n} / ${haut.haut.n}`,
+    );
+    expect(vorher.linie).toBeGreaterThan(3 * genau);
+    expect(sehnenRest(ohne.loops[li]!)).toBeGreaterThan(3 * genau);
+    expect(nachher.linie).toBeLessThanOrEqual(genau);
+    // mit der Haut (Versuch): neue Punkte liegen rund (nach den Normalen der Enden), nicht genau, die Fläche danach knapp an der Grenze
+    expect(nachher.mitHaut).toBeLessThan(1.5 * genau);
+    expect(sehnenRest(haut.loops[li]!)).toBeLessThanOrEqual(genau);
+    // geschlossen, spiegelgleich, die Ketten heil, die Punkte an Ort
+    const zaehl = new Map<string, number>();
+    for (let t = 0; t < v.haut.tri.length; t += 3)
+      for (let e = 0; e < 3; e++) {
+        const a = v.haut.tri[t + e]!;
+        const b = v.haut.tri[t + ((e + 1) % 3)]!;
+        const k = a < b ? `${a}:${b}` : `${b}:${a}`;
+        zaehl.set(k, (zaehl.get(k) ?? 0) + 1);
+      }
+    expect([...zaehl.values()].filter((c) => c !== 2).length).toBe(0);
+    for (let x = 0; x < v.haut.n; x++) expect(v.haut.spiegel[x]!).toBeGreaterThanOrEqual(0);
+    for (const l of v.loops) {
+      const k = l.proben.map((p) => p.ecken[0]);
+      for (let j = 0; j + 1 < k.length; j++) expect(v.haut.nachbarn[k[j]!]!.includes(k[j + 1]!)).toBe(true);
+      for (let j = 1; j < l.s.length; j++) expect(l.s[j]!).toBeGreaterThan(l.s[j - 1]!);
+    }
+    for (const [i, l] of v.loops.entries()) expect(l.punkte.map((p) => p.ref)).toEqual(loops[i]!.punkte.map((p) => p.ref));
+    // ein zweites Mal: nichts mehr zu teilen, und das Zusammenlegen nimmt die Feinheit nicht zurück
+    const w = verdichten(v.haut, v.loops, 1.75 * MK, { genau, kurz: 0.5 * MK });
+    if (w) expect(sehnenRest(w.loops[li]!)).toBeLessThanOrEqual(genau);
+    log(`zweites Mal: ${w ? `+${w.neu} −${w.gelegt}` : 'nichts'}`);
   });
 
   it('Nächster Punkt auf einem Stück: Newton findet ihn auch von weit weg', () => {

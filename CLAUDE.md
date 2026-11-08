@@ -1458,6 +1458,21 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     Ein geschlossener Loop mit weniger als zwei Punkten hat keinen Pfad und folgt weiter je Probe.
   - Kern-Test `dicht/linieAufPfad.test.ts`, Haken `__kurven.pfadRest()`, `form-hin-zurueck.mjs` mit `ZYKLEN`,
     `form-explosion-probe.mjs` mit `PFAD=1`.
+- **2026-11-08: Kleine Details genau** (Florian mit Bild: „warum es ungenau und eckig wird, wenn ich kleine Details rausziehe … Die
+  Linie wird ganz kantig. Der Punkt sitzt nicht mehr exakt auf der Linie, und ich habe Probleme, einen neuen Punkt einzufügen“; zu
+  „Punkte wo nötig“: „etwas besser“, er testet weiter; Planseite „Kurven als Wahrheit“, Nachtrag 08.11.).
+  - **Ursachen** (nachgestellt mit `form-detail-probe.mjs`, Ohr aus dem senkrechten Ring): Die Linie wurde durch grobe Netzpunkte
+    gezeichnet (bis 13,6 auseinander, Kurve um 1,02 abgeschnitten = 2,8 px bei 307 %), der Punkt lag 0,92 daneben, und ein Doppelklick
+    nahe einem Punkt wurde in s verworfen (s ist nach einem Zug keine Länge mehr).
+  - **Jetzt:** `verdichten` mit `genau` (MK/40): Kanten einer Linie werden geteilt, wo sie weiter von ihrer Kurve abweichen (an einem
+    Punkt darin, sonst in der Mitte, genau auf die Kurve), nur in der Grundform, nach dem Setzen noch einmal. Die Blätter zeichnen die
+    Linie als Bézier-Pfad (SVG). Doppelklick setzt den Punkt an die nächste Stelle des Pfads, verworfen nur unter 3 px an einem Punkt.
+    Ohr: Linie 0,18 (0,5 px), Punkt 0,10, Einfügen an der Flanke geht.
+  - **Nicht gemacht:** Die Haut zwischen den Linien ebenso fein (`?genauHaut=1`) macht das Ohr rund (0,21 statt 0,99), aber weite Züge
+    schlechter (Rüssel bis 108 Knicke / 46 umgeklappt statt 31 / 0, Fressen-Pose 8 statt 0): eigener Schritt.
+  - **Fallen:** Verfeinerungen nach Normalen wuchern in Falten (Überhang 1 724 Knicke) — zuerst Überhang und Rüssel prüfen. Eine Schranke
+    beim Zusammenlegen gegen „nicht schlechter als vorher“ messen (eine feste ließ einen doppelten Punkt an einer Stift-Ecke stehen). Was
+    an Pfaden hängt, gilt nur in der Grundform.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
