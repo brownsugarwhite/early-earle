@@ -1547,6 +1547,12 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Krümmung an den Linien steht der Löser nach drei Runden (`SCHWINGEN`, `QFEST=1` in `form-netzunabhaengig.ts`). Verworfen: Scheibenmittel,
   Anderson, weiche Bindung (Code entfernt, Schalter `messreiheSetzen` bleibt). Vorschlag: Krümmung an den Linien aus den Linien selbst
   (Pfad gegen die Normale, quer „so rund wie möglich“, ohne Gedächtnis). Entscheidung bei Florian.
+- **2026-11-09: Teil 1 neu (Krümmung aus den Linien) nach fünf Anläufen angehalten** (Planseite „Kurven als Wahrheit“, Abschnitt 13).
+  Längs ist die Krümmung aus dem Verlauf der Linie genau (1,00); quer trägt die Linie nichts: „quer so stark wie längs“ macht am Ansatz eines
+  Ohrs (Sattel) eine Delle und lässt das Ohr auseinanderlaufen, Querwerte von der Haut beim Anfassen fallen zusammen bzw. laufen auseinander.
+  Befund: An den Punkten einer eingesetzten Linie misst der Löser die Krümmung der Haut grob falsch (Kugel: 9–225 %, nach dem Verdichten
+  16–134 %; daneben 99–106 %; `form-kap-ring.ts`), ein Paraboloid über 4 Kanten trifft sie auf 2,5 %. Löser unverändert; Entscheidung bei
+  Florian. Falle: Eine Kuppel über genau einem Ring am Äquator ist ein Grenzfall (Halbkugel), als Kriterium ungeeignet.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

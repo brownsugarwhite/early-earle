@@ -916,3 +916,37 @@ die zwei Schalter für die Messung (`messreiheSetzen` in `dicht/ausKurven.ts`).
   einzelnen Linie ist „so rund wie möglich“ eine Annahme.
 - Kriterien wie Teil 1, dazu: Die Kugel mit einem Ring bleibt aus jeder Startkuppel eine Kugel (150 ± 0,5); Boden, Pilz, Linse, Überhang,
   Rüssel, Hammer und Fressen-Pose nicht schlechter. Zeit: der Rest der zwei Tage.
+
+## 13. Teil 1 neu (09.11.): Krümmung aus den Linien — fünf Anläufe, angehalten
+
+Florian: „Ja, mach mit Teil 1 neu weiter: Krümmung an den Linien aus den Linien selbst, quer so rund wie möglich, ohne Gedächtnis …“ und
+nach seiner Rückfrage („Ich dachte, wenn sich das Mesh beim Zug exakt immer neu aus den Linien entwickelt und dabei live verdichtet …,
+haben wir weder Ecken noch ein Springen nach dem Loslassen“): „nein du kannst anfangen“.
+
+**Gebaut und gemessen** (Kern, im Löser „aus den Kurven“ als Schalter, nach der Messung wieder entfernt; Kugel mit einem Ring
+`form-kuppel-probe.ts`, Ohr `form-netzunabhaengig.ts`):
+
+| Anlauf | Kugel mit einem Ring | Ohr |
+| --- | --- | --- |
+| 1. quer so stark wie längs (Normalkrümmung der Linie) | jede Startkuppel läuft auf dieselbe Form zu (141 statt 150) | läuft am Ring auseinander (bis 6,8 je Runde) |
+| 2. längs aus der Linie (jetzt), quer von der Haut beim Anfassen, am Punkt der Linie gemessen | fällt zusammen (54) | — |
+| 3. dasselbe, quer an den Nachbarn gemessen | läuft auseinander | 0,75–0,8 je Runde, Nachhinken 4,9, Netz 6,8 |
+| 4./5. quer aus einem Paraboloid im Umkreis von 1,5 bzw. 4 Kanten | schrumpft (127 nach 20 Runden) | läuft im Zug auseinander |
+
+**Befunde:**
+- **Die Krümmung längs einer Linie aus ihrem Verlauf ist genau:** am Ring der Kugel 1,00 des Werts (0,87–1,20).
+- **Quer zur Linie trägt die Linie selbst nichts.** „Quer so stark wie längs“ gilt auf der Kugel, aber nicht am Ansatz eines Ohrs (der Ring
+  biegt nach innen, quer ist der Körper rund: ein Sattel, daraus wird eine tiefe Delle) und nicht an einem Rüssel, den nur gerade
+  Seitenlinien halten (er wird flach). Die Krümmung quer muss von kreuzenden Linien kommen, von der Haut (Gedächtnis) oder aus einer Regel
+  wie „aufblasen nach der Dicke“.
+- **Die Haut an den Punkten einer Linie misst der Löser falsch** (`form-kap-ring.ts`): Auf der Kugel liegt die Krümmung dort bei 9–225 %
+  des Werts (gleiche Gewichte im Mittel 50 %, nach der Geometrie 78 %), daneben bei 99–106 %; nach dem üblichen Verdichten noch 16–134 %.
+  Die Haut liegt dabei auf der Kugel (±0,15): Auf den kurzen Kanten neben der eingesetzten Linie überdeckt das Rauschen der Lagen die
+  Krümmung. Ein Paraboloid über 4 Kanten trifft sie auf 2,5 %. Der heutige Löser baut seine Krümmung genau aus diesen Werten an den Linien:
+  ein Grund für Treiben, Dämpfung und Sprünge.
+- **Eine Kuppel über genau einem Ring am Äquator ist ein Grenzfall:** Eine Halbkugel ist die höchste Kuppel mit dieser Krümmung; schon 2 %
+  zu wenig lassen sie in eine flache Kuppel kippen, 17 % zu viel sind mit keiner Kuppel erfüllbar. Als Kriterium ungeeignet.
+
+**Stand:** Keine Variante erfüllt die Kriterien; der Löser ist unverändert (Code der Versuche entfernt). Entscheidung bei Florian
+(Bericht im Chat): ein Weg mit dem Löser, den er bevorzugt (gleiche Gewichte), sauberen Dreiecken an den Linien und einem Netz, das sich nur
+während des Zugs verdichtet, oder ein grundsätzlicher Weg, bei dem jede Linie ihre Rundung quer als eigene Angabe trägt.
