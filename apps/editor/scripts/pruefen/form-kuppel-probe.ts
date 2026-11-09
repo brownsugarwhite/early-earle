@@ -53,6 +53,7 @@ if (process.env.RICHTUNG) {
 const z = new LoopZug(h, loops, null, true, 'kurven', gewichte, {
   ...(process.env.RICHTUNG ? { richtung: true } : {}),
   ...(process.env.MAX ? { maxNormalen: true } : {}),
+  ...(process.env.GEKOPPELT ? { gekoppelt: true } : {}),
 });
 // RICHTUNG=1 (09.11., Beweis „Linien mit Richtung“): am Ring die Normale der Kugel vorgeben (waagerecht nach außen); ZEILE=alt: die
 // Laplace-Zeile der Linienpunkte wie bisher (nur die Seiten messen mit der Richtung)
@@ -110,6 +111,11 @@ for (let k = 1; k <= runden; k++) {
   }
 }
 console.log(
-  `Kuppel ×${faktor} (${gewichte}${process.env.MAX ? ', Normalen nach Max' : ''}${process.env.RICHTUNG ? `, Richtung am Ring${process.env.ZEILE === 'alt' ? ', Zeile alt' : ''}` : ''}), ${h.n} Punkte; Kugel: oben 150, unten −150`,
+  `Kuppel ×${faktor} (${gewichte}${process.env.GEKOPPELT ? ', gekoppelt' : ''}${process.env.MAX ? ', Normalen nach Max' : ''}${process.env.RICHTUNG ? `, Richtung am Ring${process.env.ZEILE === 'alt' ? ', Zeile alt' : ''}` : ''}), ${h.n} Punkte; Kugel: oben 150, unten −150`,
 );
 console.log(`  ${zeilen.join(' · ')}`);
+// GEKOPPELT=1 (09.11., Beweis „Krümmung an den Linien mitgelöst“): GMRES-Schritte je Runde und Rest
+if (process.env.GEKOPPELT) {
+  const g = (z.loeser as HautAusKurven).gmres;
+  console.log(`  gekoppelt: ${g.runden} Runden, im Mittel ${(g.schritte / Math.max(1, g.runden)).toFixed(1)} GMRES-Schritte, letzter Rest ${g.rest.toExponential(1)}`);
+}

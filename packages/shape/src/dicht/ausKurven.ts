@@ -67,7 +67,7 @@ export type HautAuftrag = { gew: Float64Array[]; systeme: { n: number; zeilen: N
  * der Geometrie. `richtung`: Beweis „Linien mit Richtung“ (09.11.). `maxNormalen` (Weg a, 09.11.): im Maß des Lösers die Normalen nach Max
  * statt der nach Fläche gemittelten (die messen die Kugel 8 % zu flach, nach Max 1 %), sonst wie heute.
  */
-export type HautOptionen = { vorlage?: HautVorlage; nurZeilen?: boolean; richtung?: boolean; maxNormalen?: boolean };
+export type HautOptionen = { vorlage?: HautVorlage; nurZeilen?: boolean; richtung?: boolean; maxNormalen?: boolean; gekoppelt?: boolean };
 
 /** Gewicht, mit dem die Krümmung eines Punkts bei ihrem jetzigen Wert bleibt, wo keine Kurve hinreicht (hält das System lösbar) */
 const HALT = 1e-6;
@@ -212,6 +212,19 @@ export class HautAusKurven {
   /** Seitenwerte der letzten Runde (für `seiteSchritt` < 1) */
   private seitenVorher: Seiten | null = null;
   private seitenErst: Seiten | null = null;
+  /**
+   * Beweis „Krümmung an den Linien mitgelöst“ (09.11., `HautOptionen.gekoppelt`, nur `gleich`): Die Punkte weicher Linien haben keine
+   * eigene Laplace-Zeile mehr (die sagte „bleib so gebogen, wie du gerade bist“); ihre Krümmung ist eine Unbekannte, die je Runde so
+   * gewählt wird, dass die Haut über die Linie glatt weiterläuft (gemessene Krümmung am Linienpunkt = verteilte). Wie die gemischte Form
+   * des Plattenproblems (Ciarlet–Raviart) mit den unbekannten Randwerten der Krümmung (Glowinski–Pironneau), gelöst mit GMRES.
+   */
+  private readonly gekoppelt: boolean;
+  /** Punkte weicher Linien (Unbekannte der Krümmung an den Linien) */
+  private readonly linieWeich: Int32Array;
+  /** Krümmung an den Linien aus der letzten Runde (Start der nächsten) */
+  private cLinie: Float64Array | null = null;
+  /** je Runde: GMRES-Schritte und Rest (zum Messen) */
+  readonly gmres = { runden: 0, schritte: 0, rest: 0 };
 
   /** Zeiten je Teil einer Runde, aufsummiert (zum Messen) */
   readonly zeiten = { runden: 0, vermessen: 0, intrinsisch: 0, kruemmung: 0, schritte: 0, loesen: 0 };
@@ -262,10 +275,25 @@ export class HautAusKurven {
     this.fest = linie.size
       ? (a, b) => linie.has(a) && linie.has(b) && (kanten!.get(a * n + b) ?? 1) > 0 && (kanten!.get(b * n + a) ?? 1) > 0
       : null;
+    // gekoppelt: Punkte weicher Linien (auf keiner Kante, Ecke oder harten Linie), im Bereich
+    this.gekoppelt = !!opt.gekoppelt && !opt.richtung && !!ketten && !opt.vorlage && !opt.nurZeilen;
+    const weichL = new Set<number>();
+    if (this.gekoppelt) {
+      const hart = new Set<number>();
+      for (let j = 0; j < bind.ecken.length / 3; j++) {
+        const v = bind.ecken[3 * j]!;
+        if (bind.ecken[3 * j + 1] !== v || bind.ecken[3 * j + 2] !== v || !ketten!.kette[j] || nr[v]! < 0) continue;
+        if (ketten!.ecke[j] || ketten!.kante[j]) hart.add(v);
+        else weichL.add(v);
+      }
+      for (const v of hart) weichL.delete(v);
+    }
+    this.linieWeich = Int32Array.from(weichL);
     // Lagen: Laplace-Zeilen und Bindungen (wie HautZiele)
     const zeilen: NormalZeile[] = [];
     const lapZeilen: number[] = [];
     for (let i = 0; i < n; i++) {
+      if (weichL.has(i)) continue;
       const nb = h.nachbarn[i]!;
       const g = this.gew[i]!;
       const index: number[] = [];
@@ -807,7 +835,7 @@ export class HautAusKurven {
    * symmetrischen Laplace der intrinsischen Triangulierung, vorkonditioniert mit dem einmal zerlegten Laplace des Netzes, gestartet bei
    * der Lösung der letzten Runde (die Gewichte ändern sich mit der Lage; eine Zerlegung je Runde kostete 60 ms).
    */
-  private kruemmungIntrinsisch(kap: Float64Array, ig: IntrinsischeGewichte, seiten: Seiten | null = null): Float64Array {
+  private kruemmungIntrinsisch(kap: Float64Array, ig: IntrinsischeGewichte, seiten: Seiten | null = null, genau = PCG_GENAU): Float64Array {
     const h = this.h;
     const c = Float64Array.from(kap);
     for (let v = 0; v < h.n; v++) if (this.nr[v]! < 0 || (MESSREIHE.quellenFest && this.quelle[v]! >= 0)) c[v] = this.ruhe.kap[v]!;
@@ -854,7 +882,7 @@ export class HautAusKurven {
       r[u] = b[u]! - Ap[u]!;
       bb += b[u]! * b[u]!;
     }
-    const grenze = PCG_GENAU * PCG_GENAU * bb;
+    const grenze = genau * genau * bb;
     let z = M.loesenSpalte(r);
     const p = Float64Array.from(z);
     let rz = 0;
@@ -886,8 +914,183 @@ export class HautAusKurven {
     return c;
   }
 
+  /**
+   * gekoppelt: rechte Seite der Lagen zu einem Normalanteil je Punkt `k` (Laplace = Verteilung + k · Normale, wie in `schritt`, ohne
+   * Richtung). Die Zeilen der Punkte weicher Linien fehlen (siehe `gekoppelt`).
+   */
+  private rechteSeite(m: Vermessung, kWert: Float64Array, ziele: Float64Array): Float64Array {
+    const h = this.h;
+    const P = h.pos;
+    const nr = this.nr;
+    const rhs = new Float64Array(3 * this.frei.length);
+    for (const i of this.zeilen) {
+      const nb = h.nachbarn[i]!;
+      const g = this.gew[i]!;
+      const k = kWert[i]!;
+      let dx = m.tang[3 * i]! + k * m.nor[3 * i]!;
+      let dy = m.tang[3 * i + 1]! + k * m.nor[3 * i + 1]!;
+      let dz = m.tang[3 * i + 2]! + k * m.nor[3 * i + 2]!;
+      if (nr[i]! < 0) {
+        dx -= P[3 * i]!;
+        dy -= P[3 * i + 1]!;
+        dz -= P[3 * i + 2]!;
+      }
+      nb.forEach((j, kk) => {
+        if (nr[j]! >= 0) return;
+        dx += g[kk]! * P[3 * j]!;
+        dy += g[kk]! * P[3 * j + 1]!;
+        dz += g[kk]! * P[3 * j + 2]!;
+      });
+      const u = nr[i]!;
+      if (u >= 0) {
+        rhs[3 * u] = rhs[3 * u]! + dx;
+        rhs[3 * u + 1] = rhs[3 * u + 1]! + dy;
+        rhs[3 * u + 2] = rhs[3 * u + 2]! + dz;
+      }
+      nb.forEach((j, kk) => {
+        const w = nr[j]!;
+        if (w < 0) return;
+        rhs[3 * w] = rhs[3 * w]! - g[kk]! * dx;
+        rhs[3 * w + 1] = rhs[3 * w + 1]! - g[kk]! * dy;
+        rhs[3 * w + 2] = rhs[3 * w + 2]! - g[kk]! * dz;
+      });
+    }
+    const { ecken, b } = this.bind;
+    this.js.forEach((j, u) => {
+      let zx = this.haut0[3 * u]! + ziele[3 * j]! - this.ziel0[3 * u]!;
+      let zy = this.haut0[3 * u + 1]! + ziele[3 * j + 1]! - this.ziel0[3 * u + 1]!;
+      let zz = this.haut0[3 * u + 2]! + ziele[3 * j + 2]! - this.ziel0[3 * u + 2]!;
+      for (let e = 0; e < 3; e++) {
+        const v = ecken[3 * j + e]!;
+        if (nr[v]! >= 0) continue;
+        const w = b[3 * j + e]!;
+        zx -= w * P[3 * v]!;
+        zy -= w * P[3 * v + 1]!;
+        zz -= w * P[3 * v + 2]!;
+      }
+      for (let e = 0; e < 3; e++) {
+        const v = nr[ecken[3 * j + e]!]!;
+        if (v < 0) continue;
+        const w = this.gewicht * b[3 * j + e]!;
+        rhs[3 * v] = rhs[3 * v]! + w * zx;
+        rhs[3 * v + 1] = rhs[3 * v + 1]! + w * zy;
+        rhs[3 * v + 2] = rhs[3 * v + 2]! + w * zz;
+      }
+    });
+    return rhs;
+  }
+
+  /**
+   * gekoppelt: eine Runde. Für eine Krümmung an den Linien `cl` wird sie harmonisch verteilt und die Haut gelöst; der Rest je Linienpunkt ist
+   * die Krümmung, die die gelöste Haut dort hat, weniger `cl`. Für feste Normalen ist das linear in `cl`: GMRES bis Rest ≈ 0, gestartet bei
+   * der Lösung der letzten Runde.
+   */
+  private schrittGekoppelt(ziele: Float64Array, iterationen: number): void {
+    const h = this.h;
+    const P = h.pos;
+    const nr = this.nr;
+    const nf = this.frei.length;
+    const L = this.linieWeich;
+    const nl = L.length;
+    for (let it = 0; it < iterationen; it++) {
+      const t0 = jetzt();
+      const m = vermessen(h, this.gew);
+      // nach der Geometrie: Maß, Verteilung der Krümmung und die Messung an den Linien auf der intrinsischen Triangulierung dieser Runde;
+      // die Lagen mit der Matrix der Längengewichte als Korrektur um den Unterschied (voller Schritt, ohne Dämpfung)
+      const ig = this.art === 'geometrie' ? intrinsischeGewichte(h, this.fest) : null;
+      const geo = ig ? this.messenIntrinsisch(ig, m.nor) : null;
+      const kap = geo ? geo.kap : m.kap;
+      let cLetzt: Float64Array = kap;
+      const lagen = (cl: Float64Array): Float64Array => {
+        const k0 = Float64Array.from(kap);
+        for (let q = 0; q < nl; q++) k0[L[q]!] = cl[q]!;
+        cLetzt = ig ? this.kruemmungIntrinsisch(k0, ig, null, 1e-10) : this.kruemmung(k0);
+        const kWert = new Float64Array(h.n);
+        for (let i = 0; i < h.n; i++)
+          kWert[i] = geo ? m.kante2[i]! * m.kap[i]! + geo.kante2[i]! * (cLetzt[i]! - geo.kap[i]!) : m.kante2[i]! * cLetzt[i]!;
+        return this.sys!.loesen(this.rechteSeite(m, kWert, ziele));
+      };
+      const lage = (x: Float64Array, v: number, c: number) => (nr[v]! >= 0 ? x[3 * nr[v]! + c]! : P[3 * v + c]!);
+      // gemessene Krümmung an den Linienpunkten bei den Lagen x (Gewichte und Normalen dieser Runde), weniger cl
+      const rest = (cl: Float64Array): Float64Array => {
+        const x = lagen(cl);
+        const r = new Float64Array(nl);
+        for (let q = 0; q < nl; q++) {
+          const k = L[q]!;
+          let lx = 0;
+          let ly = 0;
+          let lz = 0;
+          let s = 0;
+          const fuege = (j: number, w: number) => {
+            s += w;
+            lx += w * (lage(x, k, 0) - lage(x, j, 0));
+            ly += w * (lage(x, k, 1) - lage(x, j, 1));
+            lz += w * (lage(x, k, 2) - lage(x, j, 2));
+          };
+          if (ig) for (let e = ig.start[k]!; e < ig.start[k + 1]!; e++) fuege(ig.nb[e]!, ig.w[e]!);
+          else h.nachbarn[k]!.forEach((j, kk) => fuege(j, this.gew[k]![kk]!));
+          const e2 = geo ? geo.kante2[k]! : m.kante2[k]!;
+          r[q] = (lx * m.nor[3 * k]! + ly * m.nor[3 * k + 1]! + lz * m.nor[3 * k + 2]!) / Math.max(s, 1e-12) / e2 - cl[q]!;
+        }
+        return r;
+      };
+      const c0 = this.cLinie && this.cLinie.length === nl ? this.cLinie : Float64Array.from(L, (v) => kap[v]!);
+      const r0 = rest(c0);
+      const b = Float64Array.from(r0, (x) => -x);
+      const loesung = gmresLoesen(
+        (v) => {
+          const c = Float64Array.from(c0, (x, q) => x + v[q]!);
+          const r = rest(c);
+          for (let q = 0; q < nl; q++) r[q] = r[q]! - r0[q]!;
+          return r;
+        },
+        b,
+        1e-6,
+        80,
+      );
+      const cl = Float64Array.from(c0, (x, q) => x + loesung.x[q]!);
+      this.cLinie = cl;
+      this.gmres.runden++;
+      this.gmres.schritte += loesung.schritte;
+      this.gmres.rest = loesung.rest;
+      const x = lagen(cl);
+      this.letzteKruemmung = cLetzt;
+      for (let u = 0; u < nf; u++) {
+        const v = this.frei[u]!;
+        P[3 * v] = x[3 * u]!;
+        P[3 * v + 1] = x[3 * u + 1]!;
+        P[3 * v + 2] = x[3 * u + 2]!;
+      }
+      for (let u = 0; u < nf; u++) {
+        const v = this.frei[u]!;
+        const w = h.spiegel[v]!;
+        if (w < 0 || w < v) continue;
+        if (w === v) {
+          P[3 * v + 2] = 0;
+          continue;
+        }
+        if (nr[w]! < 0) continue;
+        const mx = 0.5 * (P[3 * v]! + P[3 * w]!);
+        const my = 0.5 * (P[3 * v + 1]! + P[3 * w + 1]!);
+        const mz = 0.5 * (P[3 * v + 2]! - P[3 * w + 2]!);
+        P[3 * v] = mx;
+        P[3 * v + 1] = my;
+        P[3 * v + 2] = mz;
+        P[3 * w] = mx;
+        P[3 * w + 1] = my;
+        P[3 * w + 2] = -mz;
+      }
+      this.zeiten.runden++;
+      this.zeiten.loesen += jetzt() - t0;
+    }
+  }
+
   /** `iterationen` Runden zu den Zielen `ziele` (3 je Bindung) */
   schritt(ziele: Float64Array, iterationen = 2): void {
+    if (this.gekoppelt) {
+      this.schrittGekoppelt(ziele, iterationen);
+      return;
+    }
     const h = this.h;
     const P = h.pos;
     const nr = this.nr;
@@ -1092,6 +1295,76 @@ export class HautAusKurven {
       }
     }
   }
+}
+
+/**
+ * GMRES ohne Neustart für A x = b (A nur als Anwendung), Start bei 0: höchstens `max` Schritte, bis der Rest unter `genau` · |b| liegt.
+ * Modifiziertes Gram–Schmidt, Givens-Drehungen.
+ */
+function gmresLoesen(
+  anwenden: (v: Float64Array) => Float64Array,
+  b: Float64Array,
+  genau: number,
+  max: number,
+): { x: Float64Array; schritte: number; rest: number } {
+  const n = b.length;
+  const x = new Float64Array(n);
+  let beta = 0;
+  for (let q = 0; q < n; q++) beta += b[q]! * b[q]!;
+  beta = Math.sqrt(beta);
+  if (n === 0 || beta === 0) return { x, schritte: 0, rest: 0 };
+  const V: Float64Array[] = [Float64Array.from(b, (q) => q / beta)];
+  const H: Float64Array[] = [];
+  const cs: number[] = [];
+  const sn: number[] = [];
+  const g = [beta];
+  let k = 0;
+  for (; k < Math.min(max, n); k++) {
+    const w = anwenden(V[k]!);
+    const hk = new Float64Array(k + 2);
+    for (let i = 0; i <= k; i++) {
+      let s = 0;
+      const vi = V[i]!;
+      for (let q = 0; q < n; q++) s += w[q]! * vi[q]!;
+      hk[i] = s;
+      for (let q = 0; q < n; q++) w[q] = w[q]! - s * vi[q]!;
+    }
+    let nw = 0;
+    for (let q = 0; q < n; q++) nw += w[q]! * w[q]!;
+    nw = Math.sqrt(nw);
+    hk[k + 1] = nw;
+    for (let i = 0; i < k; i++) {
+      const a = cs[i]! * hk[i]! + sn[i]! * hk[i + 1]!;
+      hk[i + 1] = -sn[i]! * hk[i]! + cs[i]! * hk[i + 1]!;
+      hk[i] = a;
+    }
+    const r = Math.hypot(hk[k]!, hk[k + 1]!);
+    cs[k] = r === 0 ? 1 : hk[k]! / r;
+    sn[k] = r === 0 ? 0 : hk[k + 1]! / r;
+    hk[k] = r;
+    hk[k + 1] = 0;
+    g[k + 1] = -sn[k]! * g[k]!;
+    g[k] = cs[k]! * g[k]!;
+    H.push(hk);
+    const fertig = Math.abs(g[k + 1]!) <= genau * beta || nw === 0;
+    if (!fertig) V.push(Float64Array.from(w, (q) => q / nw));
+    if (fertig) {
+      k++;
+      break;
+    }
+  }
+  // H y = g (obere Dreiecksmatrix, Spalten in H)
+  const y = new Float64Array(k);
+  for (let i = k - 1; i >= 0; i--) {
+    let s = g[i]!;
+    for (let j = i + 1; j < k; j++) s -= H[j]![i]! * y[j]!;
+    y[i] = s / H[i]![i]!;
+  }
+  for (let j = 0; j < k; j++) {
+    const vj = V[j]!;
+    for (let q = 0; q < n; q++) x[q] = x[q]! + y[j]! * vj[q]!;
+  }
+  return { x, schritte: k, rest: Math.abs(g[k]!) / beta };
 }
 
 /** Lineares System k × k (Zeilen in M) mit Pivotsuche lösen; singulär: null */
