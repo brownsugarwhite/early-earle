@@ -122,9 +122,23 @@ export function messreiheSetzen(o: Partial<typeof MESSREIHE>): void {
  * Seite ihr Wert; dazu das Mittel der Seiten.
  */
 type Seiten = {
-  je: Map<number, { t: [number, number, number]; w: [number, number, number]; tw: number[]; werte: Float64Array; neigung: Float64Array }>;
+  je: Map<
+    number,
+    { t: [number, number, number]; w: [number, number, number]; seite: Map<number, number>; werte: Float64Array; neigung: Float64Array }
+  >;
   mittel: Map<number, number>;
 };
+
+/** Richtung an den Linien: Gewicht, mit dem die Neigung einer Seite bei 0 bleibt, wo die Punkte sie nicht zeigen (je Gewicht · Radius²) */
+const NEIGUNG_HALT = 0.05;
+/** Richtung an den Linien: kleinster Kosinus zwischen der Normale eines Punkts und der vorgegebenen, damit er in die Anpassung eingeht (60°) */
+const NORMALE_MIN = 0.5;
+/** Richtung an den Linien: Ausdehnung einer Seite quer zur Linie (Σ w² gegen Σ u²), ab der sie gilt */
+const SEITE_QUER = 0.05;
+/** Richtung an den Linien: Gewicht, mit dem die Krümmung einer Seite beim gemessenen Wert bleibt (je Gewicht · Radius⁴) */
+const KRUEMMUNG_HALT = 0.002;
+/** Richtung an den Linien: größte Neigung, um die die Punkte neben der Linie in einer Runde gedreht werden (tan, ≈ 27°) */
+const NEIGUNG_MAX = 0.5;
 
 /** Genauigkeit der verteilten Krümmung je Runde (Rest gegen die rechte Seite); die Runden rechnen sie weiter */
 const PCG_GENAU = 1e-3;
@@ -183,6 +197,8 @@ export class HautAusKurven {
   richtung: Float64Array | null = null;
   /** je Linienpunkt: seine Nachbarn auf den Linien durch ihn, paarweise (davor, dahinter) je Loop */
   private readonly linienNachbarn = new Map<number, [number, number][]>();
+  /** je Linienpunkt (mit `richtung` beim Anlegen): Seite je Nachbar, Punkte je Seite und auf seinen Linien bis zum 1,5-fachen Messabstand */
+  private readonly seitenTopo = new Map<number, { seite: Map<number, number>; zahl: number; punkte: Int32Array[]; linie: Int32Array }>();
   /** Punkte neben einer Linie (mit `richtung` beim Anlegen): ihre Linienpunkte */
   private readonly ersteReihe = new Map<number, number[]>();
   /** mittlere Kantenlänge beim Anlegen (Maß für die Umgebung je Seite) */
@@ -301,8 +317,20 @@ export class HautAusKurven {
         else this.linienNachbarn.set(v, [paar]);
       }
     // Richtung an den Linien: je Punkt neben einer Linie eine Zeile, die ihn auf die vorgegebene Ebene der Linie zieht (Ziel je Runde)
+    // nur an weichen Linien (an einer Kante oder Ecke hat jede Seite ihre eigene Ebene)
+    const weich = new Set<number>();
+    if (ketten)
+      for (let j = 0; j < m; j++) {
+        const v = bind.ecken[3 * j]!;
+        if (bind.ecken[3 * j + 1] !== v || bind.ecken[3 * j + 2] !== v || !ketten.kette[j]) continue;
+        if (!ketten.ecke[j] && !ketten.kante[j]) weich.add(v);
+      }
+    for (let j = 0; j < m; j++) {
+      const v = bind.ecken[3 * j]!;
+      if (ketten?.kette[j] && (ketten.ecke[j] || ketten.kante[j])) weich.delete(v);
+    }
     if (opt.richtung)
-      for (const v of this.linienNachbarn.keys())
+      for (const v of weich)
         for (const j of h.nachbarn[v]!) {
           if (nr[j]! < 0 || this.linienNachbarn.has(j)) continue;
           const a = this.ersteReihe.get(j);
@@ -313,6 +341,7 @@ export class HautAusKurven {
           this.ersteReihe.set(j, [v]);
           zeilen.push({ index: [nr[j]!], wert: [1], gewicht: MESSREIHE.g1Gewicht });
         }
+    if (opt.richtung) this.seitenAnlegen();
     const t0 = Date.now();
     // über die ganze Haut hängt die Matrix nur am Netz, an den Gewichten und an den Bindungen: gemerkt, damit das nächste Greifen sie
     // nicht noch einmal zerlegt (das Fenster rechnet sie nach jeder Änderung schon vor)
@@ -385,28 +414,28 @@ export class HautAusKurven {
   }
 
   /**
-   * Krümmung je Seite an den Linienpunkten mit Richtung. Die Nachbarn auf den Linien trennen die Seiten (Sektoren in der Ebene
-   * senkrecht zur vorgegebenen Normale n). Je Seite wird über die Punkte dieser Seite bis zum Abstand `SEITE_RADIUS` · mittlere Kante
-   * (über die Fläche gesucht, nie über eine Linie hinweg; die Linien selbst gehören zu beiden Seiten) eine Höhe über der Ebene
-   * h = −½ (A u² + 2B u w + C w²) angepasst, ohne Neigung (die Normale ist vorgegeben); ihr Wert (A + C)/4 ist im Maß des Lösers
-   * (Kugel: 1/(2R)). Liegt die Haut einer Seite schräg zur vorgegebenen Normale, misst diese Seite eine andere Krümmung, und ihr Feld
-   * biegt die Haut zurück. Nur die direkten Nachbarn waren zu wenig: Auf einer eingesetzten Linie haben die Punkte 4–6 Nachbarn und
-   * zum Teil sehr kurze Kanten, gemessen lag eine Seite bis zum 260-Fachen daneben. Liefert je Linienpunkt den Wert für jeden Nachbarn
-   * (den seiner Seite) und das Mittel der Seiten.
+   * Krümmung je Seite an den Linienpunkten mit Richtung. Je Seite (nach dem Fächer, `seitenAnlegen`) wird über ihre Punkte bis zum Abstand
+   * `seiteRadius` · mittlere Kante und die Punkte auf den Linien durch den Punkt eine Höhe über der Ebene senkrecht zur vorgegebenen
+   * Normale angepasst, h = α u + β w − ½ (A u² + 2B u w + C w²); ihr Wert (A + C)/4 ist im Maß des Lösers (Kugel: 1/(2R)), die Neigung
+   * (α, β) zieht die Punkte neben der Linie auf die Ebene. Nur die direkten Nachbarn waren zu wenig: Auf einer eingesetzten Linie haben die
+   * Punkte 4–6 Nachbarn und zum Teil sehr kurze Kanten, gemessen lag eine Seite bis zum 260-Fachen daneben.
    */
-  private seitenMessen(rn: Float64Array): Seiten {
-    const h = this.h;
-    const P = h.pos;
-    const je = new Map<number, { t: [number, number, number]; w: [number, number, number]; tw: number[]; werte: Float64Array; neigung: Float64Array }>();
+  private seitenMessen(rn: Float64Array, hn: Float64Array, kap: Float64Array): Seiten {
+    const P = this.h.pos;
+    const je: Seiten['je'] = new Map();
     const mittel = new Map<number, number>();
     const rad = MESSREIHE.seiteRadius * this.mk;
     const rad2 = rad * rad;
-    const istLinie = (x: number) => this.linienNachbarn.has(x) || this.quelle[x]! >= 0;
-    const besucht = new Int32Array(h.n).fill(-1);
-    let marke = 0;
+    const frei = MESSREIHE.seiteNeigung === 'frei';
+    const k = frei ? 5 : 3;
+    const M = new Float64Array(k * k);
+    const r = new Float64Array(k);
+    const z = new Float64Array(k);
     for (const [v, paare] of this.linienNachbarn) {
       const nx = rn[3 * v]!;
       if (Number.isNaN(nx)) continue;
+      const topo = this.seitenTopo.get(v);
+      if (!topo) continue;
       const ny = rn[3 * v + 1]!;
       const nz = rn[3 * v + 2]!;
       // Achsen in der Ebene senkrecht zu n: t längs der ersten Linie, w = n × t
@@ -429,74 +458,28 @@ export class HautAusKurven {
       const vx = P[3 * v]!;
       const vy = P[3 * v + 1]!;
       const vz = P[3 * v + 2]!;
-      const winkel = (j: number) => {
-        const dx = P[3 * j]! - vx;
-        const dy = P[3 * j + 1]! - vy;
-        const dz = P[3 * j + 2]! - vz;
-        return Math.atan2(dx * wx + dy * wy + dz * wz, dx * tx + dy * ty + dz * tz);
-      };
-      const trenner = new Set<number>();
-      for (const [a, b] of paare) {
-        trenner.add(a);
-        trenner.add(b);
-      }
-      const tw = [...trenner].map(winkel).sort((x, y) => x - y);
-      const nb = h.nachbarn[v]!;
-      const sektor = nb.map((j) => {
-        if (istLinie(j)) return -1;
-        const a = winkel(j);
-        let s = tw.length - 1;
-        for (let q = 0; q < tw.length; q++) if (tw[q]! <= a) s = q;
-        return s;
-      });
-      // Punkte auf den Linien durch v bis zum Abstand (gehören zu jeder Seite)
-      const linie: number[] = [];
-      for (const [a, b] of paare)
-        for (const start of [a, b]) {
-          let vor = v;
-          let x = start;
-          for (let k = 0; k < 64; k++) {
-            const dx = P[3 * x]! - vx;
-            const dy = P[3 * x + 1]! - vy;
-            const dz = P[3 * x + 2]! - vz;
-            if (dx * dx + dy * dy + dz * dz > rad2) break;
-            linie.push(x);
-            const weiter = this.linienNachbarn.get(x)?.find(([p, q]) => p === vor || q === vor);
-            if (!weiter) break;
-            const nach = weiter[0] === vor ? weiter[1] : weiter[0];
-            vor = x;
-            x = nach;
-            if (x === v) break;
-          }
-        }
-      const werte = new Float64Array(tw.length).fill(Number.NaN);
-      const neigung = new Float64Array(2 * tw.length);
+      const werte = new Float64Array(topo.zahl).fill(Number.NaN);
+      const neigung = new Float64Array(2 * topo.zahl);
       let summe = 0;
       let zahl = 0;
-      for (let s = 0; s < tw.length; s++) {
-        // Punkte dieser Seite: über die Fläche ab den Nachbarn im Sektor, nicht über Linien hinweg
-        marke++;
-        besucht[v] = marke;
-        const schlange: number[] = [];
-        for (let k = 0; k < nb.length; k++)
-          if (sektor[k] === s) {
-            schlange.push(nb[k]!);
-            besucht[nb[k]!] = marke;
-          }
-        if (schlange.length === 0) continue;
-        // Höhe h = n·(q − p) = α u + β w − ½ (A u² + 2B u w + C w²); mit `seiteNeigung` fest ohne α, β
-        const frei = MESSREIHE.seiteNeigung === 'frei';
-        const k = frei ? 5 : 3;
-        const M = new Float64Array(k * k);
-        const r = new Float64Array(k);
-        const z = new Float64Array(k);
+      for (let s = 0; s < topo.zahl; s++) {
+        M.fill(0);
+        r.fill(0);
         let anz = 0;
-        const dazu = (j: number) => {
+        let gs = 0;
+        let su = 0;
+        let sw = 0;
+        let ks = 0;
+        let kg = 0;
+        const dazu = (j: number, aufLinie: boolean) => {
           const dx = P[3 * j]! - vx;
           const dy = P[3 * j + 1]! - vy;
           const dz = P[3 * j + 2]! - vz;
           const q2 = dx * dx + dy * dy + dz * dz;
-          if (q2 > rad2) return false;
+          if (q2 > rad2) return;
+          // nur, wo die Haut eine Höhe über der Ebene ist: Um eine enge Spitze herum (Horn) reichte die Umgebung auf die andere Seite,
+          // die Anpassung lieferte dort −117 bis +921 (×300) und die Haut lief weg
+          if (hn[3 * j]! * nx + hn[3 * j + 1]! * ny + hn[3 * j + 2]! * nz < NORMALE_MIN) return;
           const u = dx * tx + dy * ty + dz * tz;
           const w = dx * wx + dy * wy + dz * wz;
           const hh = dx * nx + dy * ny + dz * nz;
@@ -512,54 +495,200 @@ export class HautAusKurven {
             r[p2] = r[p2]! + g * z[p2]! * hh;
             for (let q = 0; q < k; q++) M[p2 * k + q] = M[p2 * k + q]! + g * z[p2]! * z[q]!;
           }
+          gs += g;
+          su += g * u * u;
+          sw += g * w * w;
+          if (!aufLinie && !this.linienNachbarn.has(j)) {
+            ks += g * kap[j]!;
+            kg += g;
+          }
           anz++;
-          return true;
         };
-        for (const x of linie) dazu(x);
+        for (const x of topo.linie) dazu(x, true);
+        const liste = topo.punkte[s]!;
+        for (let i = 0; i < liste.length; i++) dazu(liste[i]!, false);
+        // Krümmung der Punkte dieser Seite neben der Linie (dort misst das Maß des Lösers mit den Normalen nach Max genau; am
+        // Linienpunkt selbst liegt es bei 9–225 %)
+        // eine Seite ohne Punkte neben der Linie (der Winkel zwischen zwei kreuzenden Linien) braucht keinen Wert: Ihre Anpassung war
+        // unbestimmt (an der Kreuzung von Äquator und Mittellinie bis 10¹⁶) und verdarb das Mittel des Linienpunkts
+        if (kg === 0) continue;
+        const vorher = ks / kg;
+        // quer zur Linie zu wenig Punkte (nach dem Verfeinern liegen auf einer Seite oft fast nur Linienpunkte): die Krümmung quer ist
+        // unbestimmt, gemessen lieferte eine solche Seite am Äquator 15 507 (×300) — die Seite gilt dann nicht
+        if (anz < k + 1 || sw < SEITE_QUER * su) {
+          werte[s] = vorher;
+          summe += vorher;
+          zahl++;
+          continue;
+        }
+        // schwach bei dieser Krümmung, wo die Punkte sie nicht festlegen
+        const lc = KRUEMMUNG_HALT * gs * rad2 * rad2;
+        M[0] = M[0]! + lc;
+        M[k + 1] = M[k + 1]! + lc;
+        M[2 * k + 2] = M[2 * k + 2]! + lc;
+        r[0] = r[0]! + lc * 2 * vorher;
+        r[2] = r[2]! + lc * 2 * vorher;
+        // Neigung nur, soweit die Punkte sie zeigen: Auf einer schmalen Seite (zwischen zwei nahen Linien) lassen sich Neigung und
+        // Krümmung quer nicht trennen, die Anpassung lief dort auf Neigung 16 (gemessen am Horn) und die Haut weg
+        if (frei) {
+          const lam = NEIGUNG_HALT * gs * rad2;
+          M[3 * k + 3] = M[3 * k + 3]! + lam;
+          M[4 * k + 4] = M[4 * k + 4]! + lam;
+        }
+        const loes = gauss(M, r, k);
+        if (!loes) continue;
+        const wert = (loes[0]! + loes[2]!) / 4;
+        if (MESSREIHE.seiteSoll > 0) werte[s] = MESSREIHE.seiteSoll;
+        else werte[s] = wert;
+        if (frei) {
+          // je Runde höchstens NEIGUNG_MAX (wie weit die Punkte neben der Linie in einer Runde auf die Ebene gedreht werden)
+          const nl = Math.hypot(loes[3]!, loes[4]!);
+          const f = nl > NEIGUNG_MAX ? NEIGUNG_MAX / nl : 1;
+          neigung[2 * s] = loes[3]! * f;
+          neigung[2 * s + 1] = loes[4]! * f;
+        }
+        summe += werte[s]!;
+        zahl++;
+      }
+      if (zahl === 0) continue;
+      je.set(v, { t: [tx, ty, tz], w: [wx, wy, wz], seite: topo.seite, werte, neigung });
+      mittel.set(v, summe / zahl);
+    }
+    return { je, mittel };
+  }
+
+  /**
+   * Seite des Linienpunkts j, auf der der Punkt v liegt: für seine Nachbarn nach dem Fächer; sonst (Nachbarn der intrinsischen
+   * Triangulierung) die Seite des Nachbarn, der in der Ebene von j in derselben Richtung liegt. Fehlt: −1.
+   */
+  private seitenSektor(seiten: Seiten, j: number, v: number): number {
+    const e = seiten.je.get(j);
+    if (!e) return -1;
+    const s = e.seite.get(v);
+    if (s !== undefined) return s;
+    const P = this.h.pos;
+    const winkel = (x: number) => {
+      const dx = P[3 * x]! - P[3 * j]!;
+      const dy = P[3 * x + 1]! - P[3 * j + 1]!;
+      const dz = P[3 * x + 2]! - P[3 * j + 2]!;
+      return Math.atan2(dx * e.w[0] + dy * e.w[1] + dz * e.w[2], dx * e.t[0] + dy * e.t[1] + dz * e.t[2]);
+    };
+    const a = winkel(v);
+    let best = -1;
+    let bd = Infinity;
+    for (const [x, sx] of e.seite) {
+      let d = Math.abs(winkel(x) - a);
+      if (d > Math.PI) d = 2 * Math.PI - d;
+      if (d < bd) {
+        bd = d;
+        best = sx;
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Seiten je Linienpunkt nach der Topologie: der Fächer der Dreiecke um den Punkt, geteilt an seinen Nachbarn auf den Linien (jede Seite
+   * ein Bogen des Fächers). Dazu je Seite die Punkte bis zum 1,5-Fachen des Messabstands (über die Fläche, nie über eine Linie) und je
+   * Punkt die Punkte auf seinen Linien bis dahin: einmal beim Anlegen (vorher in jeder Runde gesucht, und die Seite nach dem Winkel in der
+   * Ebene bestimmt, das kippt bei starker Biegung).
+   */
+  private seitenAnlegen(): void {
+    const h = this.h;
+    const P = h.pos;
+    const rMax = 1.5 * MESSREIHE.seiteRadius * this.mk;
+    const r2 = rMax * rMax;
+    const istLinie = (x: number) => this.linienNachbarn.has(x) || this.nr[x]! < 0;
+    // gegenüberliegende Kanten je Linienpunkt (Dreieck v, a, b: a → b um v)
+    const naechster = new Map<number, Map<number, number>>();
+    for (let t = 0; t < h.tri.length; t += 3)
+      for (let e = 0; e < 3; e++) {
+        const v = h.tri[t + e]!;
+        if (!this.linienNachbarn.has(v)) continue;
+        const a = h.tri[t + ((e + 1) % 3)]!;
+        const b = h.tri[t + ((e + 2) % 3)]!;
+        let m = naechster.get(v);
+        if (!m) naechster.set(v, (m = new Map()));
+        m.set(a, b);
+      }
+    const besucht = new Int32Array(h.n).fill(-1);
+    let marke = 0;
+    for (const [v, paare] of this.linienNachbarn) {
+      const nx = naechster.get(v);
+      if (!nx) continue;
+      const trenner = new Set<number>();
+      for (const [a, b] of paare) {
+        trenner.add(a);
+        trenner.add(b);
+      }
+      // Fächer ringsum, ab einem Trenner
+      const start = [...trenner].find((x) => nx.has(x)) ?? nx.keys().next().value;
+      if (start === undefined) continue;
+      const ring: number[] = [];
+      for (let x: number | undefined = start; x !== undefined && ring.length <= nx.size; ) {
+        ring.push(x);
+        x = nx.get(x);
+        if (x === start) break;
+      }
+      const seite = new Map<number, number>();
+      let s = -1;
+      for (const x of ring) {
+        if (trenner.has(x)) {
+          s++;
+          continue;
+        }
+        seite.set(x, Math.max(s, 0));
+      }
+      const zahl = Math.max(s + 1, 1);
+      // Punkte je Seite: Breitensuche ab den Nachbarn dieser Seite
+      const punkte: Int32Array[] = [];
+      const vx = P[3 * v]!;
+      const vy = P[3 * v + 1]!;
+      const vz = P[3 * v + 2]!;
+      for (let q = 0; q < zahl; q++) {
+        marke++;
+        besucht[v] = marke;
+        const liste: number[] = [];
+        const schlange: number[] = [];
+        for (const [x, sx] of seite)
+          if (sx === q) {
+            schlange.push(x);
+            besucht[x] = marke;
+          }
         for (let i = 0; i < schlange.length; i++) {
           const x = schlange[i]!;
-          if (!dazu(x) || istLinie(x)) continue;
+          const d2 = (P[3 * x]! - vx) ** 2 + (P[3 * x + 1]! - vy) ** 2 + (P[3 * x + 2]! - vz) ** 2;
+          if (d2 > r2) continue;
+          liste.push(x);
+          if (istLinie(x)) continue;
           for (const y of h.nachbarn[x]!) {
             if (besucht[y] === marke) continue;
             besucht[y] = marke;
             schlange.push(y);
           }
         }
-        if (anz < k + 1) continue;
-        const loes = gauss(M, r, k);
-        if (!loes) continue;
-        const wert = (loes[0]! + loes[2]!) / 4;
-        werte[s] = wert;
-        if (frei) {
-          neigung[2 * s] = loes[3]!;
-          neigung[2 * s + 1] = loes[4]!;
+        punkte.push(Int32Array.from(liste));
+      }
+      // Punkte auf den Linien durch v bis zum Abstand
+      const linie: number[] = [];
+      for (const [a, b] of paare)
+        for (const st of [a, b]) {
+          let vor = v;
+          let x = st;
+          for (let k = 0; k < 64; k++) {
+            const d2 = (P[3 * x]! - vx) ** 2 + (P[3 * x + 1]! - vy) ** 2 + (P[3 * x + 2]! - vz) ** 2;
+            if (d2 > r2) break;
+            linie.push(x);
+            const weiter = this.linienNachbarn.get(x)?.find(([p, q]) => p === vor || q === vor);
+            if (!weiter) break;
+            const nach = weiter[0] === vor ? weiter[1] : weiter[0];
+            vor = x;
+            x = nach;
+            if (x === v) break;
+          }
         }
-        summe += wert;
-        zahl++;
-      }
-      if (zahl === 0) continue;
-      if (MESSREIHE.seiteSoll > 0) {
-        werte.fill(MESSREIHE.seiteSoll);
-        summe = MESSREIHE.seiteSoll * zahl;
-      }
-      je.set(v, { t: [tx, ty, tz], w: [wx, wy, wz], tw, werte, neigung });
-      mittel.set(v, summe / zahl);
+      this.seitenTopo.set(v, { seite, zahl, punkte, linie: Int32Array.from(linie) });
     }
-    return { je, mittel };
-  }
-
-  /** Seite des Linienpunkts j, auf der der Punkt v liegt (nach dem Winkel in der Ebene von j); fehlt: −1 */
-  private seitenSektor(seiten: Seiten, j: number, v: number): number {
-    const e = seiten.je.get(j);
-    if (!e) return -1;
-    const P = this.h.pos;
-    const dx = P[3 * v]! - P[3 * j]!;
-    const dy = P[3 * v + 1]! - P[3 * j + 1]!;
-    const dz = P[3 * v + 2]! - P[3 * j + 2]!;
-    const a = Math.atan2(dx * e.w[0] + dy * e.w[1] + dz * e.w[2], dx * e.t[0] + dy * e.t[1] + dz * e.t[2]);
-    let s = e.tw.length - 1;
-    for (let q = 0; q < e.tw.length; q++) if (e.tw[q]! <= a) s = q;
-    return s;
   }
 
   /** Wert der Seite des Linienpunkts j, auf der der Punkt v liegt; fehlt: undefined */
@@ -770,7 +899,7 @@ export class HautAusKurven {
         const ig = intrinsischeGewichte(h, this.fest);
         geo = this.messenIntrinsisch(ig, m.nor);
         const t2 = jetzt();
-        seiten = this.richtung ? this.seitenMessen(this.richtung) : null;
+        seiten = this.richtung ? this.seitenMessen(this.richtung, m.nor, m.kap) : null;
         c = this.kruemmungIntrinsisch(geo.kap, ig, seiten);
         this.zeiten.intrinsisch += t2 - t1;
         this.zeiten.kruemmung += jetzt() - t2;
@@ -779,7 +908,7 @@ export class HautAusKurven {
           this.dVorher = new Float64Array(h.n);
         }
       } else {
-        seiten = this.richtung ? (MESSREIHE.seiteFest && this.seitenErst ? this.seitenErst : this.seitenMessen(this.richtung)) : null;
+        seiten = this.richtung ? (MESSREIHE.seiteFest && this.seitenErst ? this.seitenErst : this.seitenMessen(this.richtung, m.nor, m.kap)) : null;
         if (seiten && !this.seitenErst) this.seitenErst = seiten;
         const sch = MESSREIHE.seiteSchritt;
         if (seiten && sch < 1 && this.seitenVorher)

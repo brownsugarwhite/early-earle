@@ -222,6 +222,13 @@ const HAUT: HautArt = new URLSearchParams(location.search).get('haut') === 'geda
  * bleibt bis zu Florians Wort das Mittel der Nachbarn (Ohr bei schnellem Zug und Linse damit etwas schlechter, Planseite).
  */
 const GEWICHTE: HautGewichte = new URLSearchParams(location.search).get('gewichte') === 'geometrie' ? 'geometrie' : 'gleich';
+/**
+ * Beweis „Linien mit Richtung“ (09.11.): `?richtung=1` = jede Linie gibt der Haut ihre Richtung vor (aus den Kreuzungen und der
+ * Mittelebene, dazwischen gleichmäßig; `dicht/richtung.ts`), die Krümmung wird je Seite der Linie gemessen, die Punkte neben der Linie
+ * liegen auf ihrer Ebene. Nur aus den Kurven.
+ */
+const RICHTUNG = new URLSearchParams(location.search).get('richtung') === '1';
+const RICHTUNG_OPT: { richtung?: boolean } = RICHTUNG ? { richtung: true } : {};
 /** Der Zug löst nur einen Bereich um die bewegten Stellen (mit Gedächtnis und in der Pose); aus den Kurven die ganze Haut */
 const mitBereich = (): boolean => grund !== null || HAUT !== 'kurven';
 /**
@@ -1440,7 +1447,7 @@ function vorrechnenPlanen(): void {
     vorrechnenUhr = null;
     if (mitBereich() || zug) return;
     const t0 = performance.now();
-    const z = new LoopZug(haut, loops, null, KRUEMMUNG, 'kurven', GEWICHTE);
+    const z = new LoopZug(haut, loops, null, KRUEMMUNG, 'kurven', GEWICHTE, RICHTUNG_OPT);
     letztesVorrechnen = Math.round(performance.now() - t0);
     if (nachLoesenOffen !== haut) return;
     nachLoesenOffen = null;
@@ -1647,7 +1654,7 @@ function loeserFuer(bewegt: readonly V3[], r: number, ecken: Iterable<number>): 
   if (aus && bereich) for (let v = 0; v < h.n; v++) if (aus[v]) bereich[v] = 0;
   const vorlage = naechsteVorlage && !mitBereich() ? naechsteVorlage : null;
   naechsteVorlage = null;
-  return new LoopZug(h, loops, bereich, KRUEMMUNG && !grund, art, GEWICHTE, vorlage ? { vorlage } : {});
+  return new LoopZug(h, loops, bereich, KRUEMMUNG && !grund, art, GEWICHTE, vorlage ? { vorlage, ...RICHTUNG_OPT } : RICHTUNG_OPT);
 }
 
 /** Löser für die Stücke um Punkt k des Loops li (Griff ziehen oder ausrichten) */
@@ -2137,7 +2144,7 @@ function stufeImHintergrund(z: Zug, X: number, Y: number): void {
   const t2 = performance.now();
   const einbettung = einbetten(haut, v.haut.pos, { nachbarn: v.haut.nachbarn, alt: v.alt });
   const t3 = performance.now();
-  const auftrag = new LoopZug(v.haut, v.loops, null, KRUEMMUNG && !grund, 'kurven', GEWICHTE, { nurZeilen: true }).auftrag;
+  const auftrag = new LoopZug(v.haut, v.loops, null, KRUEMMUNG && !grund, 'kurven', GEWICHTE, { nurZeilen: true, ...RICHTUNG_OPT }).auftrag;
   if (!auftrag) return;
   const t4 = performance.now();
   ausloesungTeile = [t1 - t0, t2 - t1, t3 - t2, t4 - t3].map(Math.round);
@@ -2465,7 +2472,7 @@ function hautNeuRechnen(versch: readonly (Float64Array | null)[] = loops.map(() 
   vorrechnenAus();
   eckenAuto(loops);
   const t0 = performance.now();
-  const z = new LoopZug(haut, loops, null, KRUEMMUNG, HAUT, GEWICHTE);
+  const z = new LoopZug(haut, loops, null, KRUEMMUNG, HAUT, GEWICHTE, RICHTUNG_OPT);
   // Punkte und Griffe sind schon die neuen: Das Ziel jeder Linie mit Pfad ist genau ihr Pfad
   z.schritt(
     loops.map((l, li) => (exakt(l) ? pfadVersatz(l, z.start[li]!) : versch[li]!)),
@@ -3160,7 +3167,7 @@ schleife();
   /** Prüfung: n weitere Runden über die ganze Haut (wie das Setzen in der Ruhe), ohne Verdichten; ist die Haut fertig gerechnet? */
   nachrechnen: (n: number) => {
     if (mitBereich() || zug) return;
-    const z = new LoopZug(haut, loops, null, KRUEMMUNG, 'kurven', GEWICHTE);
+    const z = new LoopZug(haut, loops, null, KRUEMMUNG, 'kurven', GEWICHTE, RICHTUNG_OPT);
     z.schritt(
       loops.map((l, li) => (exakt(l) ? pfadVersatz(l, z.start[li]!) : null)),
       n,

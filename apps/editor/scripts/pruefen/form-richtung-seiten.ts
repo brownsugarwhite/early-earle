@@ -4,7 +4,7 @@
 // Aufruf aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/form-richtung-seiten.ts
 import type { HautAusKurven } from '../../../../packages/shape/src/dicht/ausKurven';
 import { loopEinsetzen } from '../../../../packages/shape/src/dicht/einsetzen';
-import { gewichteAus, hautAus, vermessen } from '../../../../packages/shape/src/dicht/kurven';
+import { gewichteAus, hautAus, hautNormalenMax, vermessen } from '../../../../packages/shape/src/dicht/kurven';
 import { LoopZug, griffeAnlegen, loopAusSchnitt } from '../../../../packages/shape/src/dicht/loops';
 import { rundAusSeite } from '../../../../packages/shape/src/dicht/rund';
 
@@ -25,10 +25,10 @@ const r = loopEinsetzen(h, [ring], 0)!;
 h = r.haut;
 griffeAnlegen(r.loops[0]!);
 for (let v = 0; v < h.n; v++) if (h.pos[3 * v + 1]! > 0) h.pos[3 * v + 1] = h.pos[3 * v + 1]! * faktor;
-const z = new LoopZug(h, r.loops, null, true, 'kurven', 'gleich');
+const z = new LoopZug(h, r.loops, null, true, 'kurven', 'gleich', { richtung: true });
 const L = z.loeser as unknown as HautAusKurven & {
   linienNachbarn: Map<number, [number, number][]>;
-  seitenMessen(rn: Float64Array): Seiten;
+  seitenMessen(rn: Float64Array, hn: Float64Array, kap: Float64Array): Seiten;
 };
 const vn = new Float64Array(3 * h.n).fill(Number.NaN);
 for (let v = 0; v < h.n; v++) {
@@ -39,7 +39,7 @@ for (let v = 0; v < h.n; v++) {
   vn[3 * v + 2] = h.pos[3 * v + 2]! / rr;
 }
 console.log(`Linienpunkte mit Nachbarn auf der Linie: ${L.linienNachbarn.size}`);
-const { je, mittel } = L.seitenMessen(vn);
+const { je, mittel } = L.seitenMessen(vn, hautNormalenMax(h), vermessen(h, gewichteAus(h, null), hautNormalenMax(h)).kap);
 const m = vermessen(h, gewichteAus(h, null));
 let k = 0;
 for (const [v, e] of je) {

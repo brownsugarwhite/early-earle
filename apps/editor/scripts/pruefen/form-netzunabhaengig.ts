@@ -31,6 +31,8 @@ import { verdichten } from '../../../../packages/shape/src/dicht/verdichten';
 const fall = process.env.FALL ?? 'hals';
 if (process.env.DAEMPFUNG) daempfungSetzen(Number(process.env.DAEMPFUNG));
 const gewichte = (process.env.GEWICHTE ?? 'gleich') as 'gleich' | 'geometrie';
+// RICHTUNG=1 (09.11., Beweis „Linien mit Richtung“): jede Linie gibt der Haut ihre Richtung aus dem Liniennetz vor
+const opt = process.env.RICHTUNG ? { richtung: true } : {};
 
 const weiter = Number(process.env.RUNDEN ?? 30);
 const kugel = () => {
@@ -269,7 +271,7 @@ const SCHRITTE = Number(process.env.SCHRITTE ?? 60);
 /** Runden je Mausschritt (das Fenster: eine, nach der Geometrie meist nur eine) */
 const JE_SCHRITT = Number(process.env.JE_SCHRITT ?? 2);
 const t0 = performance.now();
-const z = new LoopZug(st.h, st.loops, null, true, 'kurven', gewichte);
+const z = new LoopZug(st.h, st.loops, null, true, 'kurven', gewichte, opt);
 const tZerlegen = performance.now() - t0;
 let d: (Float64Array | null)[] = [];
 const tz = performance.now();
@@ -299,7 +301,7 @@ const A = schnapp(st.h);
 if (process.env.SCHWINGEN) {
   messreiheSetzen({ fest: process.env.FEST === '1', quellenFest: process.env.QFEST === '1' });
   const hS = { ...st.h, pos: Float64Array.from(A.P) };
-  const zS = new LoopZug(hS, st.loops, null, true, 'kurven', gewichte);
+  const zS = new LoopZug(hS, st.loops, null, true, 'kurven', gewichte, opt);
   let vor = schnapp(hS);
   for (let r = 1; r <= Number(process.env.SCHWINGEN); r++) {
     zS.schritt(
@@ -315,7 +317,7 @@ if (process.env.SCHWINGEN) {
 console.log(`${fall}: ${st.h.n} Punkte, Zerlegen ${tZerlegen.toFixed(0)} ms, je Mausschritt (${JE_SCHRITT} Runden) ${jeSchritt.toFixed(1)} ms`);
 /** Runden ohne Zug (ein neuer Löser, wie das Fenster nach jeder Änderung) */
 const runden = (h: Haut, loops: Loop[], n: number) => {
-  new LoopZug(h, loops, null, true, 'kurven', gewichte).schritt(
+  new LoopZug(h, loops, null, true, 'kurven', gewichte, opt).schritt(
     loops.map(() => null),
     n,
   );

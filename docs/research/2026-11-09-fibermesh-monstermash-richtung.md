@@ -157,3 +157,16 @@ Richtung“ als nächster Kandidat.
 - C. Shao, A. Bousseau, A. Sheffer, K. Singh: CrossShade: Shading Concept Sketches Using Cross-Section Curves. ACM TOG 31(4), 2012
   ([HAL](https://hal-univ-tlse3.archives-ouvertes.fr/INRIA/hal-00703202)): Normalen an Kreuzungen, längs und zwischen den Linien weitergereicht.
 - M. Wardetzky u. a.: Discrete Quadratic Curvature Energies. CAGD 2007 (von FiberMesh zitiert: ohne Normalen am Rand instabil).
+
+## Nachtrag (09.11., Beweis nach Tag 1 angehalten)
+
+Ergebnis auf der Planseite „Kurven als Wahrheit“, Abschnitt 15.
+- **Bestätigt:** Mit Richtung an den Linien ist die Form eindeutig. Eine überhöhte oder abgeflachte Kuppel kommt zur Kugel zurück, ohne
+  Richtung bleibt sie bei 163. Die Richtung lässt sich von selbst aus dem Liniennetz gewinnen (Kugel mit drei Loops: höchstens 0,52°
+  daneben).
+- **Nicht bestätigt:** Die Rechnung nach Schneider & Kobbelt (Krümmung an den Linien je Seite messen) ist auf unserem Netz nicht robust.
+  - Sie brauchte sechs Schutzregeln.
+  - In Florians Hörner-Fall zeigt sie umgestülpte Stellen früher als heute und läuft nach Griff 10 weg.
+  - Den Sprung nach dem Verfeinern behebt sie mit gleichen Gewichten nicht.
+- **Nebenbefund:** Das Maß des Lösers misst die Krümmung heute 8 % zu flach, weil die Normalen nach Fläche gemittelt werden. Mit den
+  Normalen nach Max (1999) ist es auf 1 % genau.

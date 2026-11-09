@@ -1566,6 +1566,21 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     der Symmetrie, dazwischen gleichmäßig, einsame Linien wie gezeichnet. Beweis mit Kriterien und Abbruch; Entscheidung bei Florian.
   - Falle: Die Normale nur in der eigenen Zeile des Linienpunkts zu tauschen, wirkt nicht (Kuppel ×1,25 → 199). Die Richtung gehört in die
     Krümmungsmessung je Seite der Linie.
+- **2026-11-09 (abends): Beweis „Linien mit Richtung“ nach Tag 1 angehalten** (Florian: „Ja, bau den Beweis … mit Kriterien und Abbruch
+  nach zwei Tagen.“; Planseite „Kurven als Wahrheit“, Abschnitt 15; hinter `kurven.html?richtung=1`, ohne bitgleich).
+  - **Bestätigt:** Mit Richtung ist die Form eindeutig: Kuppel ×1,25/×0,8 → 150 ± 0,2 (ohne: 163). Die Richtung kommt aus dem Netz
+    (`dicht/richtung.ts`, Kugel mit drei Loops ≤ 0,52°).
+  - **Nebenbefund:** Das Maß des Lösers misst die Krümmung 8 % zu flach (nach Fläche gemittelte Normalen); mit den Normalen nach Max
+    (`hautNormalenMax`) 1 %.
+  - **Nicht robust:** Die Krümmung je Seite an den Linien messen braucht sechs Schutzregeln. In Florians Hörner-Fall ist es schlechter als
+    heute (umgestülpt ab Griff 1, Griff 8 bis 5,9 %, nach Griff 10 läuft die Haut weg). Der Sprung nach dem Verfeinern bleibt (gleiche
+    Gewichte); nach der Geometrie halbiert sich der Fehler nur alle 10 Runden.
+  - Muster aller drei Anläufe: die Krümmung an den Linien jede Runde an der Haut messen. Wege für Florian: (a) Normalen nach Max allein im
+    heutigen Löser prüfen, (b) Krümmung an den Linien als Unbekannte in einem gemeinsamen System, (c) beim heutigen Löser bleiben.
+  - **Fallen:**
+    - Proben-Ausgabe nicht durch `tail` schicken: Sie kommt erst am Ende, eine laufende Probe sieht dann aus wie eine hängende.
+    - Die Auswertung von `form-drei-faelle.mjs` hängt stundenlang, wenn die Haut weggelaufen ist; die Probe prüft das jetzt vorher.
+    - Eine Seite ohne Punkte neben der Linie (Winkel zwischen zwei kreuzenden Linien) hat keine bestimmte Krümmung.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

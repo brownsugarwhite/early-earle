@@ -322,6 +322,22 @@ const zugMessen = async (name, [x0, y0], [x1, y1], schritte = 30) => {
     letzt = S;
   }
   const zz = A.z.zug.slice(-schritte);
+  {
+    let gross = 0;
+    let unendlich = 0;
+    for (const x of A.P) {
+      if (!Number.isFinite(x)) unendlich++;
+      else gross = Math.max(gross, Math.abs(x));
+    }
+    console.log(
+      `  (Netz vor dem Loslassen: ${A.P.length / 3} Punkte, ${A.T.length / 3} Dreiecke, größte Koordinate ${gross.toFixed(1)}, nicht endlich ${unendlich}; Endstand: ${letzt.P.length / 3} Punkte)`,
+    );
+    if (unendlich > 0 || gross > 5000) {
+      console.log('  ABBRUCH: Haut nicht endlich oder weit draußen');
+      await browser.close();
+      process.exit(1);
+    }
+  }
   const xA = stand(A);
   console.log(`\n${name}: je Mausbewegung ${f1(zz.reduce((s, v) => s + v, 0) / zz.length)} ms (max ${Math.max(...zz).toFixed(0)})`);
   console.log(`  vor dem Loslassen: ${standText(A, xA)} · im Zug bewegt bis ${f1(bewegung(S0, A).max)}`);

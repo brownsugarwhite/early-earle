@@ -971,3 +971,76 @@ Florian lehnte beide Wege aus Abschnitt 13 ab („klingen nach viel Nachjustiere
 - Ein naiver Schnellversuch (nur die Normale in der Zeile des Linienpunkts tauschen) hielt nicht: Kuppel ×1,25 → 199, ×0,8 pendelt um
   145. Die Richtung muss in die Krümmungsmessung je Seite.
 - Beweis mit Kriterien und Abbruch in Abschnitt 6 der Recherche. Entscheidung bei Florian.
+
+## 15. Beweis „Linien mit Richtung“ (09.11.): nach Tag 1 angehalten
+
+Florian: „Ja, bau den Beweis „Linien mit Richtung“ nach Abschnitt 6 der Recherche, im Browser wie bisher, mit Kriterien und Abbruch nach
+zwei Tagen.“ Gebaut hinter `kurven.html?richtung=1` (ohne den Schalter bitgleich, 107 Tests grün).
+
+**Gebaut:**
+- **Richtung aus dem Liniennetz** (`dicht/richtung.ts`, Test `richtung.test.ts`):
+  - an Kreuzungen senkrecht auf beiden Tangenten;
+  - auf der Mittelebene aus der Symmetrie;
+  - dazwischen ein Rahmen längs der Linie, der fehlende Winkel nach der Bogenlänge verteilt;
+  - Linien ohne Kreuzung nehmen die Haut beim Anfassen.
+  - Kugel mit drei Loops: 644 Linienpunkte, höchstens 0,52° neben der Normale der Kugel (Kriterium 1°). Die Tangente kommt aus einer
+    Parabel über eine Kantenlänge je Seite; aus drei Punkten kippte sie bis 1,8°.
+- **Löser „aus den Kurven“ mit Richtung** (`dicht/ausKurven.ts`):
+  - Krümmung je Seite der Linie über drei Kantenlängen, mit Neigung gegen die vorgegebene Ebene angepasst; die Seiten kommen aus dem Fächer
+    der Dreiecke um den Punkt.
+  - Jede Seite verteilt ihren Wert in ihr Feld.
+  - Die Punkte neben der Linie bekommen je Runde ein Ziel ohne Neigung (eigene Zeile).
+  - Im Maß des Lösers die Normalen nach Max (`hautNormalenMax`).
+
+**Gemessen:**
+- **Die Form ist mit Richtung eindeutig** (Kugel mit einem Ring, `form-kuppel-probe.ts`): Kuppel ×1,25 → 170, 161, 156 … nach 10 Runden
+  150,5, dann 149,8–150,2; ×0,8 → nach 5 Runden 150,0. Ohne Richtung bleibt sie bei 163. Das hat keine Variante vorher geschafft.
+- **Nebenbefund: Das Maß des Lösers misst die Krümmung heute 8 % zu flach** (`form-normalen-mass.ts`; Kugel: Mittel 0,917, an einzelnen
+  Punkten 0,73). Das liegt an den nach Fläche gemittelten Normalen; mit den Normalen nach Max misst es 0,999 (0,99–1,01). Mit genauen
+  Werten an den Linien und dem alten Maß blähte sich sogar die exakte Kugel auf; mit den Normalen nach Max bleibt sie über 40 Runden bei
+  149,6–150,2.
+- **Messung an den Linien:** Nur die direkten Nachbarn lagen bis zum 260-Fachen daneben (eingesetzte Linie: 4–6 Nachbarn, sehr kurze
+  Kanten). Eine Umgebung von drei Kantenlängen trifft die Kugel auf 3 %.
+- **Die Richtung nur über die Messung wirken lassen (wie in der Arbeit) schaukelt sich auf:** Die Rückkopplung ist umso stärker, je größer
+  das Feld hinter der Linie ist, am Ring etwa zwölffach (stabil wäre unter zwei). Deshalb die eigene Zeile für die Punkte neben der Linie.
+- **Nach der Geometrie** ist es stabil, aber nur gedämpft und langsam: Der Fehler halbiert sich etwa alle 10 Runden. Volle Schritte
+  explodieren.
+- **Hörner-Zug im Kern** (`form-richtung-horn.ts`, ohne Verdichten): erst nach fünf Schutzregeln stabil über 170 Einheiten. Die Regeln:
+  - Normalen-Filter: Um eine enge Hornspitze reichte die Umgebung auf die andere Seite, Werte bis 921.
+  - Halt der Neigung und Grenze je Runde: Die Neigung lief auf 16.
+  - Mindestbreite quer zur Linie: Nach dem Verfeinern hatte eine Seite fast nur Linienpunkte, Wert 15 507.
+  - Halt bei der Krümmung der Nachbarn.
+  - Leere Winkel zwischen kreuzenden Linien überspringen: Werte bis 10¹⁶.
+  - Nach dem Verfeinern springt die Haut um 27 Einheiten (ohne Richtung 15–20) und kriecht danach weiter (28 → 38 in 30 Runden).
+- **Florians Hörner-Fall im Fenster** (`form-drei-faelle.mjs` mit `?richtung=1`):
+  - Je Mausbewegung 13–16 ms.
+  - Hinausziehen: 12 Dreiecke umgestülpt.
+  - Nach dem Loslassen bläst sich die Haut weiter in Stufen auf (24,5 / 25,4 / 7 / 5,5 Einheiten, wie ohne Richtung 18–20).
+  - **Schlechter als heute:** umgestülpte Stellen schon ab Griff 1 (0,2–0,7 % der Fläche), Griff 8 4,3–5,9 %, Griff 10 6,8–7,5 %, danach
+    läuft die Haut weg (heute: bis Griff 9 sauber, Griff 11 2,9 %).
+
+**Bilanz:**
+- Die Aussage der Recherche stimmt: Mit Richtung ist die Form eindeutig (Kuppel). Die Richtung lässt sich von selbst aus dem Liniennetz
+  gewinnen.
+- Die Rechnung, die die Arbeit dafür nimmt (Krümmung an den Linien je Seite messen), ist auf unserem Netz nicht robust. Sie braucht schon
+  sechs Schutzregeln und ist im echten Fall schlechter als heute.
+- Den Sprung nach dem Verfeinern löst sie mit gleichen Gewichten nicht (die Form hängt am Netz). Nach der Geometrie wird sie zu langsam.
+- Wiederkehrendes Muster (Teil 1, Teil 1 neu, hier): Die schwache Stelle ist jedes Mal, die Krümmung an den Linien in jeder Runde an der Haut
+  zu messen.
+- Abbruch nach Tag 1, weil Florians Fall schlechter wird und die Regeln wachsen (Arbeitsregel: ab der dritten neuen Regel die Struktur
+  prüfen).
+
+**Bleibt (hinter dem Schalter, Wissen):**
+- `richtung.ts` mit Test;
+- die Normalen nach Max;
+- die Proben `form-kuppel-probe.ts` (RICHTUNG, SOLL, G1 …), `form-richtung-horn.ts` (NACH, DIAG, GEWICHTE),
+  `form-richtung-netz.ts`, `form-richtung-seiten.ts`, `form-richtung-ablauf.ts`, `form-normalen-mass.ts`;
+- `form-netzunabhaengig.ts` mit RICHTUNG;
+- `form-drei-faelle.mjs` bricht ab, wenn die Haut wegläuft.
+
+**Wege danach (Entscheidung bei Florian):**
+- (a) Die Normalen nach Max allein im heutigen Löser prüfen: Das Maß misst heute 8 % zu flach und hängt von der Form der Dreiecke ab. Das
+  könnte einen Teil des Sprungs nach dem Verfeinern erklären. Kurze Messung, keine neue Regel.
+- (b) Ein letzter struktureller Beweis: die Krümmung an den Linien nicht messen, sondern als Unbekannte in einem gemeinsamen System mit den
+  Lagen und der Richtung lösen. Ungewiss, etwa zwei Tage.
+- (c) Beim heutigen Löser bleiben und die Kraft auf die Bedienung legen.

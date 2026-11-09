@@ -12,8 +12,9 @@
 
 import { type HautAuftrag, HautAusKurven, type HautGewichte, type HautOptionen, type HautVorlage } from './ausKurven';
 import { KETTE_K, type KruemmungsKetten } from './kruemmung';
-import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich, hautNormalen, kantenSchluessel } from './kurven';
+import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich, hautNormalen, hautNormalenMax, kantenSchluessel } from './kurven';
 import { bernstein, stueckAnpassen, stueckNaechstes, stueckPunkt, stueckTeilen } from './pfad';
+import { linienRichtung } from './richtung';
 
 export type Ansicht = 'seite' | 'front' | 'top';
 /** Ein Punkt der Haut: drei Ecken eines Dreiecks und baryzentrische Gewichte */
@@ -859,6 +860,8 @@ export class LoopZug {
   readonly plan: BindungsPlan;
   readonly start: Float64Array[];
   readonly loeser: HautZiele | HautAusKurven;
+  /** Richtung an den Linien (Beweis 09.11.): Haut, Loops und Normalen der Haut beim Anfassen (Vorzeichen, Linien ohne Kreuzung) */
+  private readonly richtungAus: { h: Haut; loops: readonly Loop[]; normalen: Float64Array } | null = null;
 
   constructor(
     h: Haut,
@@ -878,6 +881,7 @@ export class LoopZug {
       art === 'kurven'
         ? new HautAusKurven(h, this.plan.bind, ziele, bereich, 100, kantenGewichte(h, loops), ketten, gewichte, opt)
         : new HautZiele(h, this.plan.bind, ziele, bereich, 100, kantenGewichte(h, loops), ketten, kruemmung);
+    if (art === 'kurven' && opt.richtung) this.richtungAus = { h, loops, normalen: hautNormalenMax(h) };
   }
 
   /** die fertige Zerlegung des Lösers (nach der Geometrie), für einen nächsten auf demselben Netz */
@@ -902,7 +906,10 @@ export class LoopZug {
   }
 
   schritt(versch: readonly (Float64Array | null)[], iterationen = 2): void {
-    this.loeser.schritt(zieleAus(this.plan, this.lagen(versch)), iterationen);
+    const L = this.lagen(versch);
+    const r = this.richtungAus;
+    if (r && this.loeser instanceof HautAusKurven) this.loeser.richtung = linienRichtung(r.h, r.loops, this.plan, L, r.normalen);
+    this.loeser.schritt(zieleAus(this.plan, L), iterationen);
   }
 }
 
