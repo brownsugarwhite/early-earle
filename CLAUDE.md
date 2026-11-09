@@ -1604,6 +1604,21 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     11), 12,4–19,7 ms je Mausbewegung. Sein Urteil vom 08.11. bleibt: ruckelt beim Ziehen, Nachhinken stört mehr als Nachjustieren.
   - Bilanz: Eine weitere Formel am Löser hat gemessen keinen Hebel mehr. Was bleibt, ist Tempo (mehr Runden je Mausbewegung, Verfeinern
     ohne Halt). Entscheidung bei Florian.
+- **2026-11-09 (spätabends): Bilanz seit dem 11.10.** (Florian: „… alles nochmal genau zusammenfassen … Kombinationen … bester und
+  elegantester Weg … übersehen oder eine alte Regel verfälscht … Browser oder richtige Software“;
+  [`docs/research/2026-11-09-bilanz-wesen-editor.md`](docs/research/2026-11-09-bilanz-wesen-editor.md)).
+  - Vier Abschnitte: Profile → Loft, Käfig aus Silhouetten, Form aus Ansichten (`form.html`), Kurven als Wahrheit (`kurven.html`). Nur
+    der vierte holt die Form aus Linien; er bleibt der Weg. Kein alter Form-Weg wird mit dem Kurven-Prinzip eleganter. Wieder nützlich
+    sind die Startform aus einer Seitenzeichnung und der Käfig bzw. das Stücknetz aus den Loops, aber nur fürs Spielnetz.
+  - Übersehen oder verfälscht:
+    - Die Kern-Probe rechnet viermal so viele Runden je Zug wie das Fenster, das Nachhinken sah dort bis zehnmal kleiner aus.
+    - Die Kugel mit einem Ring ist als Test mehrdeutig.
+    - Der Geometrie-Löser wurde am Tempo verworfen, nicht an der Form.
+    - Die Dichte bleibt nur wegen des Standard-Lösers bei „nach Länge“.
+    - Viel Altcode (knapp 16 000 Zeilen in `dicht/`, 17 Schalter); die ganze spiegelgleiche Haut macht jeden Netzschritt teuer.
+  - Empfehlung: Prinzip bleibt; der Geometrie-Löser wird Standard, sobald er schnell ist. Dafür kommt der Rechenkern stufenweise aus
+    JavaScript heraus, je nach Messung: Worker → WebAssembly → natives Modul in der Electron-App. Vorher aufräumen. Fünf
+    Entscheidungen offen.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
