@@ -1142,3 +1142,37 @@ in Klammern der Standard aus Abschnitt 16):
 
 - Viel besser als der Standard: kaum schwarze Stellen, ein Fünftel des Aufblähens nach dem Loslassen.
 - Das Kriterium hält es nicht: Nach dem Loslassen bewegt sich die Haut noch 0,4–17 Einheiten, bei Griff 10 schwingt sie einmal hin und zurück.
+
+**Die eigentliche Ursache, im Code nachgesehen** (`dicht/ausKurven.ts`, gilt für beide Maße): Jeder Punkt einer weichen Linie hat im
+Löser eine eigene Zeile mit dem Ziel „so gebogen wie jetzt“. Seine Krümmung wird an der Haut gemessen und als Ziel zurückgegeben, und von
+ihm aus wird sie ins Feld verteilt. Die Linien tragen so ein Gedächtnis: Zwischen ihnen bleibt die Form, wie sie war, und wohin sie über
+viele Runden kriecht, entscheidet das Netz. Das ist dieselbe Stelle wie in den Abschnitten 12, 13 und 15.
+
+**Test „Krümmung an den Linien mitgelöst“** (Schalter `gekoppelt`, Stand in Commit 476a874f, danach wieder entfernt):
+- Die Zeile „so gebogen wie jetzt“ fällt weg. Die Krümmung an den Linien ist je Runde eine Unbekannte, gewählt so, dass die Haut glatt über
+  die Linie läuft (gemessene Krümmung am Linienpunkt = verteilte Krümmung).
+- Das ist die gemischte Form der Plattengleichung (Ciarlet–Raviart) mit unbekannten Randwerten der Krümmung (Glowinski–Pironneau), gelöst
+  mit GMRES. In einer Dimension ergibt sie genau den kubischen Spline durch die Punkte. Kein Gedächtnis, keine Dämpfung.
+
+| Kern (Einheiten) | heute nach der Geometrie (gedämpft) | mitgelöst nach der Geometrie |
+| --- | --- | --- |
+| Hals: Nachhinken / Sprung | 0,02 / 0,37 | 0,03 / 0,54 |
+| Ohr: Nachhinken / Sprung | 0,23 / 1,55 | 0,12 / 2,21 |
+| Rüssel: Nachhinken / Sprung | 1,06 / 1,70 | läuft auf dem gestreckten Netz nicht zusammen (nach 30 Runden noch 11,4) |
+| je Runde | 11–12,5 ms | 400–575 ms (17–18 GMRES-Schritte mit je zwei Lösungen) |
+
+- Mit gleichen Gewichten: Hals Sprung 6,34 → 3,60, Nachhinken 0,03, danach steht die Form (0,00); 124 ms je Runde.
+- Kugel mit einem Ring: Von ×1,25 aus endet sie bei 159 / −142,6, eine glatte Kugel mit dem Mittelpunkt 8 Einheiten über dem Ring. Jede
+  Kugel durch den Ring ist eine Lösung. Ein einzelner Ring legt die Form nicht fest, mit keinem Löser (bestätigt Abschnitt 13).
+- **Verworfen:** Ohne Gedächtnis, aber nicht besser als der heutige Weg nach der Geometrie, auf dem gestreckten Netz schlechter und rund
+  35-mal langsamer.
+
+**Bilanz des Tages:**
+- Der heutige Weg nach der Geometrie mit Verfeinern im Zug ist der beste gemessene Stand. Was danach noch nachjustiert, hat zwei Gründe:
+  - Nachhinken: In eine Mausbewegung passt eine Runde (11–12,5 ms im Kern, davon 6,2–6,6 ms das Lösen der Lagen, 2,5–4,2 ms die Verteilung
+    der Krümmung). Jede weitere Runde holt am Ohr etwa ein Drittel auf (Abschnitt 10).
+  - Auflösung: Auf dem gestreckten Netz vom Greifen ist die Form ungenauer, verfeinert wird sie genauer (Rüssel 1,5 Einheiten zwischen den
+    fertig gerechneten Ständen).
+- Florians Urteil vom 08.11. über diesen Weg: Er ruckelt beim Ziehen, und das Nachhinken stört mehr als das Nachjustieren danach.
+- Die drei Löser-Beweise des 09.11. (Richtung, gleiches Maß, mitgelöst) haben an der Form nichts verbessert. Eine weitere Formel am Löser
+  hat gemessen keinen Hebel mehr. Was bleibt, ist Tempo: mehr Runden je Mausbewegung und Verfeinern ohne Halt.

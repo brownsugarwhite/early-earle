@@ -33,12 +33,7 @@ if (process.env.DAEMPFUNG) daempfungSetzen(Number(process.env.DAEMPFUNG));
 const gewichte = (process.env.GEWICHTE ?? 'gleich') as 'gleich' | 'geometrie';
 // RICHTUNG=1 (09.11., Beweis „Linien mit Richtung“): jede Linie gibt der Haut ihre Richtung aus dem Liniennetz vor
 // MAX=1 (09.11., Weg a): im Maß des Lösers die Normalen nach Max
-// GEKOPPELT=1 (09.11., Beweis „Krümmung an den Linien mitgelöst“): keine Laplace-Zeile an weichen Linien, ihre Krümmung je Runde gelöst
-const opt = {
-  ...(process.env.RICHTUNG ? { richtung: true } : {}),
-  ...(process.env.MAX ? { maxNormalen: true } : {}),
-  ...(process.env.GEKOPPELT ? { gekoppelt: true } : {}),
-};
+const opt = { ...(process.env.RICHTUNG ? { richtung: true } : {}), ...(process.env.MAX ? { maxNormalen: true } : {}) };
 
 const weiter = Number(process.env.RUNDEN ?? 30);
 const kugel = () => {
@@ -321,10 +316,6 @@ if (process.env.SCHWINGEN) {
   messreiheSetzen({ fest: false, quellenFest: false });
 }
 console.log(`${fall}: ${st.h.n} Punkte, Zerlegen ${tZerlegen.toFixed(0)} ms, je Mausschritt (${JE_SCHRITT} Runden) ${jeSchritt.toFixed(1)} ms`);
-{
-  const g = (z.loeser as unknown as { gmres?: { runden: number; schritte: number; rest: number } }).gmres;
-  if (g && g.runden) console.log(`  gekoppelt: im Mittel ${(g.schritte / g.runden).toFixed(1)} GMRES-Schritte je Runde, letzter Rest ${g.rest.toExponential(1)}`);
-}
 /** Runden ohne Zug (ein neuer Löser, wie das Fenster nach jeder Änderung) */
 const runden = (h: Haut, loops: Loop[], n: number) => {
   new LoopZug(h, loops, null, true, 'kurven', gewichte, opt).schritt(

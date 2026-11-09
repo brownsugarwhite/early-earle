@@ -1590,6 +1590,20 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     Sprung (31,7 → 43,7). Je Mausbewegung etwa 1 ms mehr.
   - Nicht Standard. Gegen den Sprung wirkte bisher nur die Messung nach der Geometrie mit Verfeinern im Zug (Hals 0,36, Rüssel 1,4); ihr
     Nachteil war das Nachhinken.
+- **2026-11-09 (abends, danach): Warum Verfeinern die Form ändert, zwei Löser-Tests, Bilanz** (Planseite „Kurven als Wahrheit“,
+  Abschnitte 17 und 18).
+  - Florians Frage: „warum das verdichtete Mesh überhaupt eine andere Form annimmt … sollte einfach nur abrunden“. Gemessen: Das Maß des
+    heutigen Lösers liest dieselbe Fläche nach dem Verfeinern 7–8 % stärker gekrümmt, das Maß nach der Geometrie nur 1,4–2,3 %.
+  - Beweis „gleiches Maß beim Messen und Rechnen“ (sein „ja“): schlechter, am ersten Tag angehalten. Meine Erklärung dazu war falsch;
+    Abschnitt 12 hatte es schon gemessen.
+  - Ursache im Code: Jeder Punkt einer weichen Linie hat eine eigene Zeile „so gebogen wie jetzt“. Die Linien tragen damit ein Gedächtnis.
+  - Test „Krümmung an den Linien mitgelöst“ (gemischte Form der Plattengleichung, GMRES; Stand in Commit 476a874f, wieder entfernt): ohne
+    Gedächtnis, aber nicht besser als der heutige Weg nach der Geometrie (Ohr Sprung 2,21 statt 1,55), am Rüssel nicht zusammengelaufen,
+    400–575 ms je Runde. Eine Kugel mit nur einem Ring ist mit keinem Löser eindeutig (jede Kugel durch den Ring passt).
+  - Florians Hörner-Fall im Fenster nach der Geometrie: nach dem Loslassen 4,6 statt 23,3 Einheiten, kaum schwarz (statt 19,8 % bei Griff
+    11), 12,4–19,7 ms je Mausbewegung. Sein Urteil vom 08.11. bleibt: ruckelt beim Ziehen, Nachhinken stört mehr als Nachjustieren.
+  - Bilanz: Eine weitere Formel am Löser hat gemessen keinen Hebel mehr. Was bleibt, ist Tempo (mehr Runden je Mausbewegung, Verfeinern
+    ohne Halt). Entscheidung bei Florian.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
