@@ -199,6 +199,41 @@ export function hautNormalen(h: Haut): Float64Array {
   return nor;
 }
 
+/**
+ * Normalen nach Max (1999, „Weights for computing vertex normals from facet normals“): je Dreieck am Punkt (a × b) / (|a|² |b|²) mit
+ * den Kanten a, b ab dem Punkt. Auf einer Kugel genau, auch auf einem unregelmäßigen Netz. Mit den nach Fläche gemittelten Normalen
+ * misst das Maß des Lösers (Normalanteil des Laplace durch das Kantenquadrat) die Kugel im Mittel 8 % zu flach (einzelne Punkte bis
+ * 27 %), mit diesen auf 1 % genau (`scripts/pruefen/form-normalen-mass.ts`, 09.11.).
+ */
+export function hautNormalenMax(h: Haut): Float64Array {
+  const nor = new Float64Array(3 * h.n);
+  const P = h.pos;
+  for (let t = 0; t < h.tri.length; t += 3)
+    for (let e = 0; e < 3; e++) {
+      const i = h.tri[t + e]!;
+      const j = h.tri[t + ((e + 1) % 3)]!;
+      const k = h.tri[t + ((e + 2) % 3)]!;
+      const ax = P[3 * j]! - P[3 * i]!;
+      const ay = P[3 * j + 1]! - P[3 * i + 1]!;
+      const az = P[3 * j + 2]! - P[3 * i + 2]!;
+      const bx = P[3 * k]! - P[3 * i]!;
+      const by = P[3 * k + 1]! - P[3 * i + 1]!;
+      const bz = P[3 * k + 2]! - P[3 * i + 2]!;
+      const q = (ax * ax + ay * ay + az * az) * (bx * bx + by * by + bz * bz);
+      if (!(q > 0)) continue;
+      nor[3 * i] = nor[3 * i]! + (ay * bz - az * by) / q;
+      nor[3 * i + 1] = nor[3 * i + 1]! + (az * bx - ax * bz) / q;
+      nor[3 * i + 2] = nor[3 * i + 2]! + (ax * by - ay * bx) / q;
+    }
+  for (let v = 0; v < h.n; v++) {
+    const l = Math.hypot(nor[3 * v]!, nor[3 * v + 1]!, nor[3 * v + 2]!) || 1;
+    nor[3 * v] = nor[3 * v]! / l;
+    nor[3 * v + 1] = nor[3 * v + 1]! / l;
+    nor[3 * v + 2] = nor[3 * v + 2]! / l;
+  }
+  return nor;
+}
+
 /** Nächster Punkt eines Dreiecks zu q (baryzentrisch, nach Ericson). */
 function naechsterImDreieck(q: V3, a: V3, b: V3, c: V3): [number, number, number] {
   const ab = minus(b, a);
@@ -679,10 +714,10 @@ export class HautLoeser {
  * Je Punkt der Laplace (Punkt − Mittel der Nachbarn): sein Anteil längs der Normale ist Krümmung · Kantenlänge², der Rest liegt
  * in der Fläche und sagt nur, wie die Punkte verteilt sind (beim Netz aus Surface Nets ist er viel größer).
  */
-export function vermessen(h: Haut, gew: readonly Float64Array[]): Vermessung {
+export function vermessen(h: Haut, gew: readonly Float64Array[], normalen?: Float64Array): Vermessung {
   const n = h.n;
   const P = h.pos;
-  const nor = hautNormalen(h);
+  const nor = normalen ?? hautNormalen(h);
   const kap = new Float64Array(n);
   const kante2 = new Float64Array(n);
   const tang = new Float64Array(3 * n);
