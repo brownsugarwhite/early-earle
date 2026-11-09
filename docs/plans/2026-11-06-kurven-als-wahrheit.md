@@ -1074,3 +1074,30 @@ Max je am selben Tag gemessen.
 - Nicht als Standard übernommen; der Schalter bleibt zum Ausprobieren. Gegen den Sprung hat bisher nur die Messung nach der Geometrie mit
   Verfeinern im Zug gewirkt (Abschnitt 10: Hals 0,36, Rüssel 1,4); ihr Nachteil war das Nachhinken. Beide Schalter zusammen
   (`?gewichte=geometrie&maxnormalen=1`) sind nicht gemessen.
+
+## 17. Warum das verfeinerte Netz eine andere Form annimmt (09.11.)
+
+Florian: „was ich nicht ganz verstehe, ist, warum das verdichtete Mesh überhaupt eine andere Form annimmt. Das ganze sollte doch komplett
+unsichtbar sein, außer an den Kanten der langen Flossen oder Rüssel … und da sollte es ja einfach nur abrunden, aber in exakt der gleichen
+Form.“
+
+**Antwort:** Er hat recht, so muss es sein. Bei uns ist es nicht so, weil der Löser die Krümmung nicht misst, sondern aus der Anordnung der
+Dreiecke schätzt: wie weit ein Punkt über dem Mittel seiner Nachbarn steht, durch das mittlere Kantenquadrat. Jeder Nachbar zählt gleich,
+ob nah oder fern; das Ergebnis hängt davon ab, wie das Netz gerade aussieht.
+
+**Gemessen** (`form-mass-netz.ts`): Hörner 170 hinaus, dann verfeinert wie nach dem Loslassen. Verglichen werden nur die alten Punkte, die
+das Verfeinern nicht bewegt, also dieselbe Fläche mit einem anderen Netz drumherum.
+
+| Bereich | Dreiecke gestreckt | Maß heute (Mittel) | je Punkt | nach der Geometrie (Mittel) | je Punkt |
+| --- | --- | --- | --- | --- | --- |
+| Rest | 1,77 → 1,62 | 0,526 → 0,564 (+7 %) | 14 % | 0,796 → 0,807 (+1,4 %) | 7,5 % |
+| Horn | 1,83 → 1,68 | 1,148 → 1,239 (+8 %) | 11 % | 1,583 → 1,620 (+2,3 %) | 4,8 % |
+
+- Auf derselben Fläche liest das heutige Maß nach dem Verfeinern 7–8 % mehr Krümmung. Der Löser biegt die Haut, bis seine Schätzung wieder
+  zu den Linien passt. Das ist die Stufe nach dem Loslassen, und jeder weitere Verfeinerungsdurchgang gibt die nächste.
+- Das heutige Maß liest diese Fläche außerdem um ein Drittel flacher als das nach der Geometrie (0,53 gegen 0,80). In sich ist es stimmig
+  (die Formen sehen rund aus), aber es ist an das Netz gebunden.
+- FiberMesh hat dieselbe Schwäche und schreibt sie selbst (gleich gewichteter Laplace, nicht ganz unabhängig vom Netz).
+- Mit dem Maß nach der Geometrie wäre Verfeinern nur Abrunden: Hals 0,36 statt 6,4 Einheiten (Abschnitt 9/10).
+- Dort hinkt es heute nach, weil der Löser nach der Geometrie misst, die Lage aber mit der einfachen Matrix rechnet. Deshalb nähert er sich
+  in gedämpften Schritten an. Messen und Rechnen müssten dasselbe Maß benutzen.
