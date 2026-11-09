@@ -62,8 +62,12 @@ export type HautGewichte = 'gleich' | 'geometrie';
 export type HautVorlage = { gew: Float64Array[]; sys: NormalSystem; cVor: NormalSystem | null };
 /** Was ein Löser zerlegen würde: die Gewichte der Matrix und die Systeme (Lagen, Vorkonditionierer) */
 export type HautAuftrag = { gew: Float64Array[]; systeme: { n: number; zeilen: NormalZeile[]; daempfung: number }[] };
-/** `vorlage`: diese Zerlegung übernehmen; `nurZeilen`: nichts zerlegen, nur `auftrag` füllen (der Löser rechnet dann nicht). Nur nach der Geometrie. */
-export type HautOptionen = { vorlage?: HautVorlage; nurZeilen?: boolean; richtung?: boolean };
+/**
+ * `vorlage`: diese Zerlegung übernehmen; `nurZeilen`: nichts zerlegen, nur `auftrag` füllen (der Löser rechnet dann nicht); beides nur nach
+ * der Geometrie. `richtung`: Beweis „Linien mit Richtung“ (09.11.). `maxNormalen` (Weg a, 09.11.): im Maß des Lösers die Normalen nach Max
+ * statt der nach Fläche gemittelten (die messen die Kugel 8 % zu flach, nach Max 1 %), sonst wie heute.
+ */
+export type HautOptionen = { vorlage?: HautVorlage; nurZeilen?: boolean; richtung?: boolean; maxNormalen?: boolean };
 
 /** Gewicht, mit dem die Krümmung eines Punkts bei ihrem jetzigen Wert bleibt, wo keine Kurve hinreicht (hält das System lösbar) */
 const HALT = 1e-6;
@@ -178,6 +182,8 @@ export class HautAusKurven {
   /** Krümmung je Punkt im letzten Schritt (zum Messen) */
   letzteKruemmung: Float64Array | null = null;
   private readonly art: HautGewichte;
+  /** Maß des Lösers mit den Normalen nach Max (`HautOptionen.maxNormalen`) */
+  private readonly maxNormalen: boolean;
   /** Kanten harter Linien (längs): werden in der intrinsischen Triangulierung nie geklappt */
   private readonly fest: ((a: number, b: number) => boolean) | null;
   private readonly merken: boolean;
@@ -349,7 +355,8 @@ export class HautAusKurven {
     this.merken = merken;
     if (geo && opt.nurZeilen) this.auftrag = { gew: this.gew, systeme: [{ n: frei.length, zeilen, daempfung: 1e-9 }] };
     this.sys = geo && opt.vorlage ? opt.vorlage.sys : geo && opt.nurZeilen ? null : normalSystemZerlegt(frei.length, zeilen, 1e-9, merken);
-    const ruhe = vermessen(h, this.gew);
+    this.maxNormalen = !!opt.maxNormalen;
+    const ruhe = vermessen(h, this.gew, this.maxNormalen ? hautNormalenMax(h) : undefined);
     // Quellen der Krümmung: Punkte eingesetzter Loops (so weich, wie der Loop dort ist; an einer Kreuzung der härteste; an einer Ecke
     // nichts), die Haut, die stehen bleibt (ganz)
     const quelle = new Float64Array(n).fill(-1);
@@ -889,7 +896,7 @@ export class HautAusKurven {
       const t0 = jetzt();
       // mit Richtung an den Linien: Normalen nach Max (sonst misst das Maß im Inneren die Krümmung zu flach, und die genaue Messung an
       // den Linien passt nicht dazu: die Haut bläht sich auf)
-      const m = vermessen(h, this.gew, this.richtung && MESSREIHE.maxNormalen ? hautNormalenMax(h) : undefined);
+      const m = vermessen(h, this.gew, this.maxNormalen || (this.richtung && MESSREIHE.maxNormalen) ? hautNormalenMax(h) : undefined);
       const t1 = jetzt();
       // nach der Geometrie: gemessen und verteilt auf der intrinsischen Triangulierung der Lage, wie sie jetzt ist
       let geo: { kap: Float64Array; kante2: Float64Array } | null = null;

@@ -32,7 +32,8 @@ const fall = process.env.FALL ?? 'hals';
 if (process.env.DAEMPFUNG) daempfungSetzen(Number(process.env.DAEMPFUNG));
 const gewichte = (process.env.GEWICHTE ?? 'gleich') as 'gleich' | 'geometrie';
 // RICHTUNG=1 (09.11., Beweis „Linien mit Richtung“): jede Linie gibt der Haut ihre Richtung aus dem Liniennetz vor
-const opt = process.env.RICHTUNG ? { richtung: true } : {};
+// MAX=1 (09.11., Weg a): im Maß des Lösers die Normalen nach Max
+const opt = { ...(process.env.RICHTUNG ? { richtung: true } : {}), ...(process.env.MAX ? { maxNormalen: true } : {}) };
 
 const weiter = Number(process.env.RUNDEN ?? 30);
 const kugel = () => {

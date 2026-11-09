@@ -49,7 +49,11 @@ if (process.env.RICHTUNG) {
   if (process.env.NEIGUNG) messreiheSetzen({ seiteNeigung: process.env.NEIGUNG as 'frei' | 'fest' });
   if (process.env.G1) messreiheSetzen({ g1Gewicht: Number(process.env.G1) });
 }
-const z = new LoopZug(h, loops, null, true, 'kurven', gewichte, process.env.RICHTUNG ? { richtung: true } : {});
+// MAX=1 (09.11., Weg a): im Maß des Lösers die Normalen nach Max, ohne Richtung
+const z = new LoopZug(h, loops, null, true, 'kurven', gewichte, {
+  ...(process.env.RICHTUNG ? { richtung: true } : {}),
+  ...(process.env.MAX ? { maxNormalen: true } : {}),
+});
 // RICHTUNG=1 (09.11., Beweis „Linien mit Richtung“): am Ring die Normale der Kugel vorgeben (waagerecht nach außen); ZEILE=alt: die
 // Laplace-Zeile der Linienpunkte wie bisher (nur die Seiten messen mit der Richtung)
 if (process.env.RICHTUNG) {
@@ -106,6 +110,6 @@ for (let k = 1; k <= runden; k++) {
   }
 }
 console.log(
-  `Kuppel ×${faktor} (${gewichte}${process.env.RICHTUNG ? `, Richtung am Ring${process.env.ZEILE === 'alt' ? ', Zeile alt' : ''}` : ''}), ${h.n} Punkte; Kugel: oben 150, unten −150`,
+  `Kuppel ×${faktor} (${gewichte}${process.env.MAX ? ', Normalen nach Max' : ''}${process.env.RICHTUNG ? `, Richtung am Ring${process.env.ZEILE === 'alt' ? ', Zeile alt' : ''}` : ''}), ${h.n} Punkte; Kugel: oben 150, unten −150`,
 );
 console.log(`  ${zeilen.join(' · ')}`);

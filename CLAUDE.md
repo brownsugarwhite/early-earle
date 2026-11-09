@@ -1581,6 +1581,15 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     - Proben-Ausgabe nicht durch `tail` schicken: Sie kommt erst am Ende, eine laufende Probe sieht dann aus wie eine hängende.
     - Die Auswertung von `form-drei-faelle.mjs` hängt stundenlang, wenn die Haut weggelaufen ist; die Probe prüft das jetzt vorher.
     - Eine Seite ohne Punkte neben der Linie (Winkel zwischen zwei kreuzenden Linien) hat keine bestimmte Krümmung.
+- **2026-11-09 (abends, danach): Weg a — Normalen nach Max allein im heutigen Löser** (Florian: „Prüf die Normalen nach Max allein im
+  heutigen Löser … Keine neuen Regeln.“; Planseite „Kurven als Wahrheit“, Abschnitt 16; Schalter `?maxnormalen=1`, ohne bitgleich).
+  - Kein Hebel gegen das Aufblasen nach dem Loslassen: Hals 6,3 → 6,1, Rüssel 35,5 → 37,2, Hörner im Fenster 21,5 → 22,2 Einheiten. Der
+    Sprung kommt aus den gleichen Gewichten, nicht aus den Normalen.
+  - Kuppel schlechter (wandert weiter: 137 / −160 statt 163,5 / −141,7).
+  - Etwas besser: Nachhinken am Rüssel (0,94 → 0,19) und die schwarzen Stellen bei Griff 11 (19,8 → 13,6 %); dafür dort ein größerer
+    Sprung (31,7 → 43,7). Je Mausbewegung etwa 1 ms mehr.
+  - Nicht Standard. Gegen den Sprung wirkte bisher nur die Messung nach der Geometrie mit Verfeinern im Zug (Hals 0,36, Rüssel 1,4); ihr
+    Nachteil war das Nachhinken.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

@@ -228,7 +228,12 @@ const GEWICHTE: HautGewichte = new URLSearchParams(location.search).get('gewicht
  * liegen auf ihrer Ebene. Nur aus den Kurven.
  */
 const RICHTUNG = new URLSearchParams(location.search).get('richtung') === '1';
-const RICHTUNG_OPT: { richtung?: boolean } = RICHTUNG ? { richtung: true } : {};
+/** Weg a (09.11.): `?maxnormalen=1` = im Maß des Lösers die Normalen nach Max (sonst wie heute) */
+const MAXNORMALEN = new URLSearchParams(location.search).get('maxnormalen') === '1';
+const RICHTUNG_OPT: { richtung?: boolean; maxNormalen?: boolean } = {
+  ...(RICHTUNG ? { richtung: true } : {}),
+  ...(MAXNORMALEN ? { maxNormalen: true } : {}),
+};
 /** Der Zug löst nur einen Bereich um die bewegten Stellen (mit Gedächtnis und in der Pose); aus den Kurven die ganze Haut */
 const mitBereich = (): boolean => grund !== null || HAUT !== 'kurven';
 /**

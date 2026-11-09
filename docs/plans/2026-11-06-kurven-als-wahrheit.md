@@ -1044,3 +1044,33 @@ zwei Tagen.“ Gebaut hinter `kurven.html?richtung=1` (ohne den Schalter bitglei
 - (b) Ein letzter struktureller Beweis: die Krümmung an den Linien nicht messen, sondern als Unbekannte in einem gemeinsamen System mit den
   Lagen und der Richtung lösen. Ungewiss, etwa zwei Tage.
 - (c) Beim heutigen Löser bleiben und die Kraft auf die Bedienung legen.
+
+## 16. Weg a (09.11.): Normalen nach Max allein im heutigen Löser
+
+Florian: „Weg a: Prüf die Normalen nach Max allein im heutigen Löser (ohne Richtung): Sprung nach dem Loslassen, Hörner mit Griffspiel,
+Kuppel. Keine neuen Regeln.“ Schalter `HautOptionen.maxNormalen`, im Fenster `kurven.html?maxnormalen=1` (ohne bitgleich). Heute und mit
+Max je am selben Tag gemessen.
+
+| Messung | heute | Normalen nach Max |
+| --- | --- | --- |
+| Kuppel ×1,25 nach 40 Runden (`form-kuppel-probe.ts`) | oben 163,5, unten −141,7 | oben 137,4, unten −160,4, wandert weiter |
+| Kugel unberührt nach 40 Runden | 155,7 / −150,3 | 131,8 / −169,0, wandert weiter |
+| Hals: Sprung nach dem Verfeinern (`form-netzunabhaengig.ts`) | bis 6,34 (Mittel 1,10) | bis 6,14 (Mittel 0,97) |
+| Hals: Nachhinken letzter Schritt / zwei Runden danach | 0,06 / 0,03 | 0,10 / 0,06 |
+| Rüssel: Sprung nach dem Verfeinern | bis 35,5 (Mittel 3,95) | bis 37,2 (Mittel 4,07) |
+| Rüssel: Nachhinken letzter Schritt / zwei Runden danach | 1,58 / 0,94 | 0,81 / 0,19 |
+| Fenster, Hörner hinaus: Sprung nach dem Loslassen | 20,0 + 3,3 (Volumen −5,6 %) | 21,4 + 2,3 (Volumen −5,5 %) |
+| Fenster, Griff 1–10: umgestülpt | 0–56 Dreiecke (höchstens 0,1 %) | 0–50 (Griff 1–5: 0) |
+| Fenster, Griff 11: umgestülpt vor / nach dem Setzen | 19,8 % / 8,7 % | 13,6 % / 3,9 % |
+| Fenster, Griff 11: Sprung nach dem Loslassen | 31,7 (Volumen +10,7 %) | 43,7 (Volumen +12,1 %) |
+| je Mausbewegung | 15,9–17,7 ms | 16,0–18,6 ms |
+
+**Bilanz:**
+- Kein Hebel gegen das Aufblasen nach dem Loslassen: Der Sprung nach dem Verfeinern bleibt gleich groß. Er kommt aus den gleichen Gewichten
+  (die Form hängt am Netz), nicht aus den Normalen.
+- An der Kuppel wird es schlechter: Gegen die Mehrdeutigkeit hilft das genauere Maß nicht, die Form wandert sogar weiter.
+- Etwas besser: das Nachhinken am Rüssel (halb so viel) und die schwarzen Stellen bei Griff 11 (13,6 statt 19,8 %). Dafür springt es dort
+  nach dem Loslassen stärker. Je Mausbewegung etwa 1 ms mehr.
+- Nicht als Standard übernommen; der Schalter bleibt zum Ausprobieren. Gegen den Sprung hat bisher nur die Messung nach der Geometrie mit
+  Verfeinern im Zug gewirkt (Abschnitt 10: Hals 0,36, Rüssel 1,4); ihr Nachteil war das Nachhinken. Beide Schalter zusammen
+  (`?gewichte=geometrie&maxnormalen=1`) sind nicht gemessen.
