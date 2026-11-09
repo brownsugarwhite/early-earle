@@ -74,6 +74,23 @@ const SCHLIESSEN_PX = 15;
 const TREFFER_PX = 8;
 /** Abtastweite des Pfads für das Aufblasen (Welteinheiten) */
 const UMRISS_H = 1.5;
+/** Finger: Fangradius um Punkte und Griffe (Bildpunkte), damit man sie mit dem Finger trifft */
+const FINGER_PX = 16;
+
+/**
+ * Beispiel beim Start (09.11.): der Prüfstrich B (Blob mit Kopf und Bauch) aus der Hand, durch dieselbe Kette wie der Bleistift
+ * (Faden rundum, Anpassen: 5 Anker, keine Ecke, 3,2 px neben dem Strich). Ein neuer Strich oder eine neue Form ersetzt es.
+ */
+const BEISPIEL: Pfad = {
+  geschlossen: true,
+  anker: [
+    { x: 234.5, y: 21.7, ein: { x: -0.6, y: -59.9 }, aus: { x: 0.8, y: 82.1 }, ecke: false },
+    { x: 27.3, y: 94.2, ein: { x: 52.6, y: 6.7 }, aus: { x: -56.9, y: -7.3 }, ecke: false },
+    { x: -191.6, y: 87.6, ein: { x: 35.1, y: 70.7 }, aus: { x: -17.7, y: -35.7 }, ecke: false },
+    { x: -130.8, y: -72.3, ein: { x: -32.2, y: 20.3 }, aus: { x: 59.3, y: -37.4 }, ecke: false },
+    { x: 72, y: -76.6, ein: { x: -57.9, y: -41.1 }, aus: { x: 39.7, y: 28.1 }, ecke: false },
+  ],
+};
 
 // ---------- Blätter und 3D ----------
 
@@ -228,6 +245,10 @@ let treuePx = 4;
 let glaettungArt: 'faden' | 'nachlauf' = 'faden';
 let leertaste = false;
 let grobAusstehend = false;
+/** die Startform ist noch das Beispiel (unberührt) */
+let beispiel = false;
+/** grober Zeiger (Finger): größere Fangflächen, Zurück-Knopf */
+const grob = window.matchMedia('(pointer: coarse)');
 
 /** Bleistift: Glättung, Spur des Pinsels, Zeiger (Welt) und die Rohpunkte (für Wiedergabetests) */
 let strich: { g: Glaettung; spur: V2[]; zeiger: V2; roh: [number, number, number][] } | null = null;
@@ -253,6 +274,7 @@ function strichMerken(roh: [number, number, number][]): void {
 }
 
 function zurueckMerken(p: Pfad | null = pfad): void {
+  beispiel = false;
   zurueck.push(p ? pfadKopie(p) : null);
   if (zurueck.length > 200) zurueck.shift();
 }
@@ -347,6 +369,18 @@ function ankerZeichnen(a: Anker, klasse: string, r: number): SVGElement {
   return element('circle', klasse, { cx: f(x), cy: f(y), r: f(r) });
 }
 
+/** unsichtbare Fangfläche für Finger um einen Punkt oder Griff */
+function fangKreis(p: V2, attr: string, wert: string, px: number): SVGElement {
+  const [x, y] = imBlatt(p);
+  const c = element('circle', 'z-fang', { cx: f(x), cy: f(y), r: f(FINGER_PX * px) });
+  c.setAttribute(attr, wert);
+  return c;
+}
+/** Fangweite in Bildpunkten: Finger größer als die Maus */
+const fangPx = (): number => (grob.matches ? FINGER_PX : TREFFER_PX);
+/** schmales Fenster (Telefon hochkant): nur Seite und 3D, ohne die langen Hinweise (wie `zeichnen.css`) */
+const schmal = window.matchMedia('(max-width: 700px)');
+
 function griffeZeichnen(a: Anker, i: number, px: number): void {
   for (const seite of ['ein', 'aus'] as const) {
     const g = a[seite];
@@ -354,6 +388,7 @@ function griffeZeichnen(a: Anker, i: number, px: number): void {
     const [x, y] = imBlatt(a);
     const [gx, gy] = imBlatt({ x: a.x + g.x, y: a.y + g.y });
     blatt.append(element('line', 'z-griff-linie', { x1: f(x), y1: f(y), x2: f(gx), y2: f(gy) }));
+    if (grob.matches) blatt.append(fangKreis({ x: a.x + g.x, y: a.y + g.y }, 'data-griff', `${i}:${seite}`, px));
     const c = element('circle', 'z-griff', { cx: f(gx), cy: f(gy), r: f(3.2 * px) });
     c.setAttribute('data-griff', `${i}:${seite}`);
     blatt.append(c);
@@ -374,6 +409,7 @@ function blattZeichnen(): void {
     const d = pfadD(pfad);
     blatt.append(element('path', 'z-treffer', { d }), element('path', 'z-linie', { d }));
     if (werkzeug === 'auswahl' && !aufzug) {
+      if (grob.matches) pfad.anker.forEach((a, i) => blatt.append(fangKreis(a, 'data-anker', String(i), px)));
       if (gewaehlt !== null && pfad.anker[gewaehlt]) griffeZeichnen(pfad.anker[gewaehlt]!, gewaehlt, px);
       pfad.anker.forEach((a, i) => {
         const e = ankerZeichnen(a, `z-anker${i === gewaehlt ? ' gewaehlt' : ''}`, 4 * px);
@@ -423,7 +459,13 @@ function blattZeichnen(): void {
   }
   if (!pfad && !strich && !stift && !aufzug) {
     const t = element('text', 'z-hinweis', { x: f(cx), y: f(cy), 'text-anchor': 'middle', 'font-size': f(13 * px) });
-    t.textContent = 'Zeichne die Seite: N Bleistift · P Zeichenstift · E Ellipse · M Rechteck';
+    t.textContent = schmal.matches || grob.matches ? 'Zeichne die Seite' : 'Zeichne die Seite: N Bleistift · P Zeichenstift · E Ellipse · M Rechteck';
+    blatt.append(t);
+  }
+  if (beispiel && pfad && !strich && !stift && !aufzug) {
+    const unten = cy + h / 2 - (schmal.matches ? 24 : 62) * px;
+    const t = element('text', 'z-hinweis', { x: f(cx), y: f(unten), 'text-anchor': 'middle', 'font-size': f(13 * px) });
+    t.textContent = 'Beispielform. Zeichne einfach deine eigene Seite.';
     blatt.append(t);
   }
 }
@@ -449,6 +491,31 @@ document.querySelector('[data-aktion="neu"]')?.addEventListener('click', () => {
   aufblasen(true);
   blattZeichnen();
 });
+/**
+ * ⌘Z und der Zurück-Knopf (Finger): eine laufende Geste zurücknehmen; beim Zeichenstift nur den letzten Punkt (wie Illustrator),
+ * sonst den letzten Schritt.
+ */
+function zurueckNehmen(): void {
+  if (stift && !stift.zieht) {
+    stift.anker.pop();
+    if (stift.anker.length === 0) stift = null;
+    blattZeichnen();
+    return;
+  }
+  if (strich || stift || aufzug || ziehen) {
+    abbrechen();
+    blattZeichnen();
+    return;
+  }
+  if (zurueck.length) {
+    pfad = zurueck.pop() ?? null;
+    gewaehlt = null;
+    letzteAnpassung = null;
+    aufblasen(true);
+    blattZeichnen();
+  }
+}
+document.querySelector('[data-aktion="zurueck"]')?.addEventListener('click', zurueckNehmen);
 const leiste = document.getElementById('leiste');
 for (const art of ['pointerdown', 'wheel'] as const) leiste?.addEventListener(art, (e) => e.stopPropagation());
 for (const art of ['pointerdown', 'wheel'] as const) optionen.addEventListener(art, (e) => e.stopPropagation());
@@ -562,7 +629,7 @@ function stiftDruecken(e: PointerEvent): void {
   const s = skala('seite');
   if (!stift) stift = { anker: [], zieht: false };
   const erster = stift.anker[0];
-  if (erster && stift.anker.length >= 3 && Math.hypot(p.x - erster.x, p.y - erster.y) * s < TREFFER_PX) {
+  if (erster && stift.anker.length >= 3 && Math.hypot(p.x - erster.x, p.y - erster.y) * s < fangPx()) {
     stiftFertig();
     return;
   }
@@ -621,7 +688,7 @@ function formVorschau(): void {
 const letzterKlick = { t: 0, x: 0, y: 0, was: '' };
 /** Doppelklick selbst zählen (das Blatt wird beim Drücken neu gezeichnet, `dblclick` käme nicht an) */
 function doppelklick(was: string, e: PointerEvent): boolean {
-  const ja = was === letzterKlick.was && e.timeStamp - letzterKlick.t < 400 && Math.hypot(e.clientX - letzterKlick.x, e.clientY - letzterKlick.y) < 6;
+  const ja = was === letzterKlick.was && e.timeStamp - letzterKlick.t < 400 && Math.hypot(e.clientX - letzterKlick.x, e.clientY - letzterKlick.y) < (grob.matches ? 14 : 6);
   Object.assign(letzterKlick, { t: ja ? 0 : e.timeStamp, x: e.clientX, y: e.clientY, was });
   return ja;
 }
@@ -675,7 +742,7 @@ function auswahlDruecken(e: PointerEvent): boolean {
   }
   // auf der Linie: Doppelklick setzt einen Punkt (die Linie bleibt genau)
   const stelle = naechsteStelle(pfad, p);
-  if (stelle && stelle.abstand * s < TREFFER_PX && doppelklick('linie', e)) {
+  if (stelle && stelle.abstand * s < fangPx() && doppelklick('linie', e)) {
     zurueckMerken();
     pfad = ankerEinfuegen(pfad, stelle.stueck, stelle.t);
     gewaehlt = stelle.stueck + 1;
@@ -720,7 +787,7 @@ function auswahlEnde(): void {
   ziehen = null;
   if (!z) return;
   if (z.bewegt) {
-    zurueck.push(z.vorher);
+    zurueckMerken(z.vorher);
     aufblasen(true);
   }
   blattZeichnen();
@@ -735,9 +802,62 @@ function ankerLoeschen(): void {
   blattZeichnen();
 }
 
-// ---------- Maus und Tasten ----------
+// ---------- Maus, Finger und Tasten ----------
+
+/** der Zeiger, der gerade eine Geste führt (Strich, Form, Punkt); andere Zeiger zeichnen dann nicht mit */
+let aktiverZeiger: number | null = null;
+/** Finger auf der Seite; zwei Finger verschieben und zoomen (wie das Rad), ein zweiter Finger nimmt die laufende Geste zurück */
+const finger = new Map<number, { x: number; y: number }>();
+let zweiFinger: { mitte: { x: number; y: number }; abstand: number } | null = null;
+
+function zweiFingerLage(): { mitte: { x: number; y: number }; abstand: number } {
+  const [a, b] = [...finger.values()] as [{ x: number; y: number }, { x: number; y: number }];
+  return { mitte: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, abstand: Math.hypot(a.x - b.x, a.y - b.y) };
+}
+
+function zweiFingerAnfang(): void {
+  // was der erste Finger begonnen hat, zählt nicht (er wollte zoomen)
+  strich = null;
+  if (aufzug) {
+    pfad = aufzug.vorher;
+    aufzug = null;
+    aufblasen(true);
+  }
+  if (ziehen) {
+    pfad = ziehen.vorher;
+    ziehen = null;
+    aufblasen(true);
+  }
+  if (stift?.zieht) {
+    stift.anker.pop();
+    stift.zieht = false;
+    if (stift.anker.length === 0) stift = null;
+  }
+  aktiverZeiger = null;
+  zweiFinger = zweiFingerLage();
+  blattZeichnen();
+}
+
+function zweiFingerZug(): void {
+  const z = zweiFinger;
+  if (!z || finger.size < 2) return;
+  const jetzt = zweiFingerLage();
+  schieben('seite', jetzt.mitte.x - z.mitte.x, jetzt.mitte.y - z.mitte.y);
+  if (z.abstand > 1 && jetzt.abstand > 1) zoomen('seite', jetzt.abstand / z.abstand, jetzt.mitte.x, jetzt.mitte.y);
+  zweiFinger = jetzt;
+}
 
 blatt.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'touch') {
+    finger.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    blatt.setPointerCapture(e.pointerId);
+    if (finger.size === 2) {
+      zweiFingerAnfang();
+      return;
+    }
+    if (finger.size > 2 || zweiFinger) return;
+  }
+  if (aktiverZeiger !== null) return;
   if (e.button === 1) {
     schwenk = { x: e.clientX, y: e.clientY };
     blatt.setPointerCapture(e.pointerId);
@@ -759,11 +879,20 @@ blatt.addEventListener('pointerdown', (e) => {
   } else {
     fangen = auswahlDruecken(e);
   }
-  if (fangen) blatt.setPointerCapture(e.pointerId);
+  if (fangen) {
+    blatt.setPointerCapture(e.pointerId);
+    aktiverZeiger = e.pointerId;
+  }
   blattZeichnen();
 });
 
 blatt.addEventListener('pointermove', (e) => {
+  if (finger.has(e.pointerId)) finger.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (zweiFinger) {
+    zweiFingerZug();
+    return;
+  }
+  if (aktiverZeiger !== null && e.pointerId !== aktiverZeiger) return;
   if (schwenk) {
     schieben('seite', e.clientX - schwenk.x, e.clientY - schwenk.y);
     schwenk = { x: e.clientX, y: e.clientY };
@@ -817,8 +946,22 @@ function loslassen(): void {
     blattZeichnen();
   } else if (ziehen) auswahlEnde();
 }
-blatt.addEventListener('pointerup', loslassen);
-blatt.addEventListener('pointercancel', loslassen);
+function zeigerLos(e: PointerEvent): void {
+  finger.delete(e.pointerId);
+  if (zweiFinger) {
+    if (finger.size < 2) zweiFinger = null;
+    return;
+  }
+  if (aktiverZeiger !== null && e.pointerId !== aktiverZeiger) return;
+  aktiverZeiger = null;
+  loslassen();
+}
+blatt.addEventListener('pointerup', zeigerLos);
+blatt.addEventListener('pointercancel', zeigerLos);
+// Fang verloren ohne Loslassen (Fenster verliert den Fokus): die Geste trotzdem beenden, sonst nimmt das Blatt nichts mehr an
+blatt.addEventListener('lostpointercapture', (e) => {
+  if (e.pointerId === aktiverZeiger) zeigerLos(e);
+});
 blatt.addEventListener('contextmenu', (e) => e.preventDefault());
 blatt.addEventListener('mousedown', (e) => {
   if (e.button === 1) e.preventDefault();
@@ -847,17 +990,7 @@ window.addEventListener('keydown', (e) => {
   }
   if ((e.metaKey || e.ctrlKey) && k === 'z') {
     e.preventDefault();
-    if (strich || stift || aufzug || ziehen) {
-      abbrechen();
-      blattZeichnen();
-      return;
-    }
-    if (zurueck.length) {
-      pfad = zurueck.pop() ?? null;
-      gewaehlt = null;
-      aufblasen(true);
-      blattZeichnen();
-    }
+    zurueckNehmen();
     return;
   }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -966,6 +1099,10 @@ window.addEventListener('resize', () => {
   neuZeichnen = true;
 });
 
+// Start mit der Beispielform (ein neuer Strich ersetzt sie, ⌘Z holt sie zurück)
+pfad = pfadKopie(BEISPIEL);
+beispiel = true;
+aufblasen(true);
 werkzeugSetzen('bleistift');
 statusZeigen();
 schleife();

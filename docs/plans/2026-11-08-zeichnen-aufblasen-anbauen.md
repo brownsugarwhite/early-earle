@@ -510,3 +510,35 @@ und im Kern (`zeichnen.test.ts`):
 2. Z2 als Vorschau im selben Fenster: Die Loops-Regel aus 5.5 rechnet am gezeichneten Umriss und zeigt die Loops als Linien auf der
    aufgeblasenen Form. Dafür ist nur Lesen aus `dicht/` nötig.
 3. Einbau in `kurven.html` (Leiste, N, Formen, Startform, Loops-Knopf) erst, wenn die andere Session an einem ruhigen Punkt ist.
+
+## 11. Nachtrag (09.11.): Wo testen, Bedienung mit Fingern
+
+Florian: „wo kann ich es testen?“
+
+- **Link (ohne Einrichtung, auch auf dem iPhone):** <https://claude.ai/artifact/AB8oFmyKxFPCyY1BSghQ19> (privat, Stand dieses
+  Branches). Gebaut mit `node scripts/zeichnen-testseite.mjs <ordner>` aus `apps/editor`: CSS und JS stehen in einer einzigen Datei,
+  dazu `vorschau.html` zum Ansehen im Browser. Nach Änderungen neu bauen und dieselbe Seite neu veröffentlichen.
+- **Lokal auf dem Mac:** ein eigener Arbeitsbaum dieses Branches (`claude/nice-lovelace-gxxpux`) auf einem eigenen Port (z. B. 5194),
+  dann `/zeichnen.html`. Der Arbeitsbaum und der Dev-Server der anderen Session bleiben unberührt.
+
+**Damit es mit Fingern geht** (nur eigene Dateien: `zeichnen.ts`, `zeichnen.html`, `zeichnen.css`):
+
+- Zwei Finger verschieben und zoomen die Seite. Ein zweiter Finger nimmt zurück, was der erste angefangen hat (Strich, Form, Punktzug).
+- Ein Zurück-Knopf erscheint in der Leiste nur bei Fingern; mit Tastatur bleibt es ⌘Z.
+- Um Punkte und Griffe liegen 16 px große Fangflächen, damit man sie mit dem Finger trifft. Ein Doppeltipp darf 14 px danebenliegen.
+- Bei schmalem Fenster (≤ 700 px) sind nur Seite und 3D zu sehen, ohne die langen Hinweise.
+- Die Leinwand ist so groß wie das Fenster (100 % statt 100vh, das auf dem iPhone höher ist als das sichtbare Fenster).
+
+**Auch neu:**
+
+- Start mit einer Beispielform, dem Prüfstrich B: Blob mit Kopf und Bauch, aus der Hand mit dem Bleistift, 5 Anker. Ein neuer Strich
+  oder eine neue Form ersetzt sie, ⌘Z holt sie zurück.
+- ⌘Z beim Zeichenstift nimmt nur den letzten Punkt zurück, wie in Illustrator; vorher verwarf es den ganzen angefangenen Pfad.
+
+**Geprüft:**
+
+- Maus-Probe wie am 08.11.: Kreis 4 Anker mit 0,64 px, Blob 5 Anker ohne Ecke mit 3,16 px. Quadrat, Stift, Ziehen um 67,2 Einheiten
+  und ⌘Z liefern dieselben Werte.
+- Finger-Probe `scripts/pruefen/zeichnen-finger.mjs` bei 390 × 844: 9 von 9 Prüfungen. Geprüft sind Layout, Beispielform,
+  Finger-Strich, zwei Finger (250 %, kein Strich), Zurück-Knopf und ein Punkt, der 6 px daneben gegriffen und gezogen wird.
+  Bild: `docs/progress/editor/zeichnen-finger-start-2026-11-09.jpg`.

@@ -52,10 +52,47 @@
   background: rgba(31, 26, 23, 0.18);
 }
 
+/* Zurück-Knopf nur für Finger (mit Tastatur ⌘Z) */
+.werkzeugleiste .nur-finger {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .werkzeugleiste .nur-finger {
+    display: block;
+  }
+}
+
+/* Leinwand so groß wie das Fenster: 100vh ist auf dem iPhone höher als das sichtbare Fenster (form.css bleibt unverändert) */
+#leinwand {
+  width: 100%;
+  height: 100%;
+}
+
+/* schmal (Telefon hochkant): nur Seite und 3D, ohne die langen Hinweise */
+@media (max-width: 700px) {
+  #raster {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+
+  #feld-front,
+  #feld-top,
+  .feld footer {
+    display: none;
+  }
+
+  /* die Zeile mit den Zahlen nicht über den Titel „3D“ */
+  #feld-3d .regler-leiste {
+    max-width: calc(100% - 64px);
+  }
+}
+
 .werkzeug-optionen {
   position: absolute;
   top: 8px;
   right: 14px;
+  max-width: calc(100% - 28px);
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -193,6 +230,14 @@
 
 .blatt .z-stift-anker.erster {
   fill: #0a5f56;
+}
+
+/* Fangfläche für Finger um Punkte und Griffe (unsichtbar) */
+.blatt .z-fang {
+  fill: none;
+  stroke: none;
+  pointer-events: all;
+  cursor: grab;
 }
 
 .blatt .z-hinweis {
