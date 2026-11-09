@@ -950,3 +950,24 @@ haben wir weder Ecken noch ein Springen nach dem Loslassen“): „nein du kanns
 **Stand:** Keine Variante erfüllt die Kriterien; der Löser ist unverändert (Code der Versuche entfernt). Entscheidung bei Florian
 (Bericht im Chat): ein Weg mit dem Löser, den er bevorzugt (gleiche Gewichte), sauberen Dreiecken an den Linien und einem Netz, das sich nur
 während des Zugs verdichtet, oder ein grundsätzlicher Weg, bei dem jede Linie ihre Rundung quer als eigene Angabe trägt.
+
+## 14. Recherche (09.11.): FiberMesh, Monster Mash und die fehlende Angabe an den Linien
+
+Florian lehnte beide Wege aus Abschnitt 13 ab („klingen nach viel Nachjustieren“) und bat um eine gründliche Recherche. Ergebnis:
+[`docs/research/2026-11-09-fibermesh-monstermash-richtung.md`](../research/2026-11-09-fibermesh-monstermash-richtung.md).
+
+- FiberMesh hat dieselben Schwächen: Runden, Gedächtnis, Neuvernetzen nach dem Loslassen, nicht ganz netzunabhängig. Mit Kurven ohne
+  Normalen ist die netzunabhängige Lösung dort selbst instabil. Monster Mash umgeht die Frage (2D-Zeichnung aufblasen, dann eine
+  Ruheform verformen).
+- Wurzel (Schneider & Kobbelt 2001): Die Gleichung, die FiberMesh und unser Löser rechnen (ΔH = 0), braucht an den Linien Lage **und
+  Richtung** (Normale). Dann ist die Form eindeutig, Kugel und Zylinder sind genaue Lösungen, und Verfeinern ändert nur die Näherung.
+  Unser Löser gibt nur die Lage vor und misst den Rest an der Haut. Daraus folgen Mehrdeutigkeit, Nachhinken, Stufen und schwarze
+  Löcher.
+- Vorschlag: **Linien mit Richtung**, von selbst aus dem Liniennetz:
+  - an Kreuzungen senkrecht auf beiden Tangenten;
+  - auf der Mittelebene aus der Symmetrie;
+  - dazwischen gleichmäßig gedreht;
+  - einsame Linien wie gezeichnet.
+- Ein naiver Schnellversuch (nur die Normale in der Zeile des Linienpunkts tauschen) hielt nicht: Kuppel ×1,25 → 199, ×0,8 pendelt um
+  145. Die Richtung muss in die Krümmungsmessung je Seite.
+- Beweis mit Kriterien und Abbruch in Abschnitt 6 der Recherche. Entscheidung bei Florian.

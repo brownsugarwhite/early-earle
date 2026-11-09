@@ -1553,6 +1553,19 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   Befund: An den Punkten einer eingesetzten Linie misst der Löser die Krümmung der Haut grob falsch (Kugel: 9–225 %, nach dem Verdichten
   16–134 %; daneben 99–106 %; `form-kap-ring.ts`), ein Paraboloid über 4 Kanten trifft sie auf 2,5 %. Löser unverändert; Entscheidung bei
   Florian. Falle: Eine Kuppel über genau einem Ring am Äquator ist ein Grenzfall (Halbkugel), als Kriterium ungeeignet.
+- **2026-11-09 (danach): Recherche „FiberMesh, Monster Mash und die fehlende Angabe an den Linien“** (Florian: „beide deiner Lösungen …
+  klingen nach viel Nachjustieren. Hat FiberMesh oder Monster Mash solche Probleme gelöst? … ob es nicht ehrlich eine elegantere Lösung
+  gibt“; [`docs/research/2026-11-09-fibermesh-monstermash-richtung.md`](docs/research/2026-11-09-fibermesh-monstermash-richtung.md),
+  Planseite „Kurven als Wahrheit“, Abschnitt 14).
+  - Keiner der beiden hat es gelöst. FiberMesh lebt mit Runden, Gedächtnis, Neuvernetzen nach dem Loslassen und Netzabhängigkeit; mit
+    Kurven ohne Normalen wird die netzunabhängige Lösung dort selbst instabil. Monster Mash bläst die 2D-Zeichnung auf und verformt dann
+    eine Ruheform.
+  - Wurzel (Schneider & Kobbelt 2001): ΔH = 0 braucht an den Linien Lage **und Richtung** (Normale). Dann ist die Form eindeutig und
+    netzunabhängig; nur mit der Lage passen unendlich viele Formen. Daraus folgen Mehrdeutigkeit, Nachhinken, Stufen und schwarze Löcher.
+  - Vorschlag „Linien mit Richtung“, von selbst aus dem Liniennetz: an Kreuzungen senkrecht auf beiden Tangenten, auf der Mittelebene aus
+    der Symmetrie, dazwischen gleichmäßig, einsame Linien wie gezeichnet. Beweis mit Kriterien und Abbruch; Entscheidung bei Florian.
+  - Falle: Die Normale nur in der eigenen Zeile des Linienpunkts zu tauschen, wirkt nicht (Kuppel ×1,25 → 199). Die Richtung gehört in die
+    Krümmungsmessung je Seite der Linie.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
