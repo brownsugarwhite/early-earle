@@ -1101,3 +1101,44 @@ das Verfeinern nicht bewegt, also dieselbe Fläche mit einem anderen Netz drumhe
 - Mit dem Maß nach der Geometrie wäre Verfeinern nur Abrunden: Hals 0,36 statt 6,4 Einheiten (Abschnitt 9/10).
 - Dort hinkt es heute nach, weil der Löser nach der Geometrie misst, die Lage aber mit der einfachen Matrix rechnet. Deshalb nähert er sich
   in gedämpften Schritten an. Messen und Rechnen müssten dasselbe Maß benutzen.
+
+## 18. Beweis „gleiches Maß beim Messen und Rechnen“ (09.11.): am ersten Tag angehalten
+
+Florian: „ja“ auf meine Frage: „Soll ich den Löser als Beweis so umbauen, dass er mit demselben geometrischen Maß misst und rechnet?
+Kriterien wären: Verfeinern ändert die Form höchstens um einen halben Bildpunkt, kein Nachhinken, höchstens 16 ms je Mausbewegung,
+Abbruch nach zwei Tagen.“
+
+**Gebaut und wieder entfernt:** Die Matrix der Lagen kommt aus denselben Kotangens-Gewichten der intrinsischen Triangulierung wie die
+Messung (beim Anlegen gerechnet), dazu volle Schritte ohne Dämpfung.
+
+**Gemessen im Kern** (`form-netzunabhaengig.ts`, Einheiten, 0,89 px je Einheit). Nachhinken heißt: Stand nach dem letzten Mausschritt
+gegen fertig gerechnet. Sprung heißt: Netz beim Loslassen gegen verfeinert, beide fertig gerechnet.
+
+| | Nachhinken | Sprung | je Mausschritt (2 Runden) |
+| --- | --- | --- | --- |
+| Hals, gleiche Gewichte (Standard) | 0,06 | 6,34 | 18,2 ms |
+| Hals, nach der Geometrie (heute, gedämpft) | 0,02 | 0,37 | 21,1 ms |
+| Hals, gleiches Maß | 2,87 | 1,78 | 26 ms |
+| Rüssel, gleiche Gewichte | 1,58 | 35,5 | |
+| Rüssel, nach der Geometrie | 1,06 | 1,70 | |
+| Rüssel, gleiches Maß | 29 | 28,6; auf dem feinen Netz läuft die Haut weg | |
+
+- Das gleiche Maß macht es schlechter. Meine Erklärung am Ende von Abschnitt 17 war falsch: Nicht der Unterschied zwischen Messen und
+  Rechnen bremst den Löser. Das stand schon in Abschnitt 12 (Matrix nach der Geometrie: Nachhinken 1,35 → 3,65); ich hätte es vor dem
+  Vorschlag nachlesen müssen.
+- Im Kern hält der heutige Weg nach der Geometrie am Hals beide Kriterien (Sprung 0,33 px, Nachhinken 0,02), am Rüssel nicht (1,5 px,
+  Nachhinken 1,06).
+
+**Florians Hörner-Fall im Fenster, heutiger Weg nach der Geometrie** (`form-drei-faelle.mjs` mit `?gewichte=geometrie`, Verfeinern im Zug;
+in Klammern der Standard aus Abschnitt 16):
+
+| Zug | nach dem Loslassen bewegt | umgestülpt | je Mausbewegung |
+| --- | --- | --- | --- |
+| Hörner 170 hinaus | 4,0 + 0,8 + 0,1, zusammen 4,6 (20,0 + 3,3) | 0 | 13,8 ms (15,9–17,7) |
+| Griff 1–5 | 0,4–2,0 | 0–2 Dreiecke | 12,4–14,0 ms |
+| Griff 6–9 | 2,7–7,6 | bis 36 Dreiecke (unter 0,1 % der Fläche) | 13,0–15,1 ms |
+| Griff 10 (Griff 107 lang, −120°) | 16,9, dann 12,7 zurück (Volumen +5,0 %, dann −3,5 %) | im Zug 112 (0,1 %), danach 12 | 15,1 ms |
+| Griff 11 | 11,6 + 5,0 + 1,4 + 0,6, zusammen 16,8 (31,7) | 16–18 (Standard: 19,8 % der Fläche) | 19,7 ms (max 25) |
+
+- Viel besser als der Standard: kaum schwarze Stellen, ein Fünftel des Aufblähens nach dem Loslassen.
+- Das Kriterium hält es nicht: Nach dem Loslassen bewegt sich die Haut noch 0,4–17 Einheiten, bei Griff 10 schwingt sie einmal hin und zurück.
