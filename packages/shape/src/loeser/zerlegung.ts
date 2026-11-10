@@ -308,7 +308,7 @@ export function systemAusDaten(daten: ZerlegungsDaten): NormalSystem {
       for (let c = 0; c < k; c++) B[bj + c] = B[bj + c]! / d;
     }
   };
-  const loesenSpalten = (rhs: Float64Array, k: number): Float64Array => {
+  const allgemein = (rhs: Float64Array, k: number): Float64Array => {
     const B = new Float64Array(k * n);
     for (let j = 0; j < n; j++) for (let c = 0; c < k; c++) B[k * j + c] = rhs[k * perm[j]! + c]!;
     einsetzen(B, k);
@@ -316,10 +316,95 @@ export function systemAusDaten(daten: ZerlegungsDaten): NormalSystem {
     for (let j = 0; j < n; j++) for (let c = 0; c < k; c++) out[k * perm[j]! + c] = B[k * j + c]!;
     return out;
   };
+  // 10.11.2026 (Gegenprüfung, Schritt G1): Eine und drei Spalten sind die Fälle jeder Löserrunde (Krümmung verteilen, Lagen lösen).
+  // Für sie ist das Einsetzen ausgeschrieben: je Spalte ein eigenes Feld, in der innersten Schleife keine Schleife über die Spalten,
+  // die Arbeitsfelder je Zerlegung einmal angelegt. Es sind dieselben Rechenschritte in derselben Reihenfolge wie in `einsetzen`,
+  // das Ergebnis ist bitgleich (`zerlegung.test.ts`). Gemessen bei drei Spalten und 5 200 Punkten: 6,0 → 1,6 ms.
+  const a0 = new Float64Array(n);
+  let a1: Float64Array | null = null;
+  let a2: Float64Array | null = null;
+  const loesenDrei = (rhs: Float64Array): Float64Array => {
+    const b1 = (a1 ??= new Float64Array(n));
+    const b2 = (a2 ??= new Float64Array(n));
+    for (let j = 0; j < n; j++) {
+      const q = 3 * perm[j]!;
+      a0[j] = rhs[q]!;
+      b1[j] = rhs[q + 1]!;
+      b2[j] = rhs[q + 2]!;
+    }
+    for (let j = 0; j < n; j++) {
+      const von = Lp[j]!;
+      const bis = Lp[j + 1]!;
+      const d = Lx[von]!;
+      const y0 = a0[j]! / d;
+      const y1 = b1[j]! / d;
+      const y2 = b2[j]! / d;
+      a0[j] = y0;
+      b1[j] = y1;
+      b2[j] = y2;
+      for (let p = von + 1; p < bis; p++) {
+        const l = Lx[p]!;
+        const i = Li[p]!;
+        a0[i] = a0[i]! - l * y0;
+        b1[i] = b1[i]! - l * y1;
+        b2[i] = b2[i]! - l * y2;
+      }
+    }
+    for (let j = n - 1; j >= 0; j--) {
+      const von = Lp[j]!;
+      const bis = Lp[j + 1]!;
+      let s0 = a0[j]!;
+      let s1 = b1[j]!;
+      let s2 = b2[j]!;
+      for (let p = von + 1; p < bis; p++) {
+        const l = Lx[p]!;
+        const i = Li[p]!;
+        s0 -= l * a0[i]!;
+        s1 -= l * b1[i]!;
+        s2 -= l * b2[i]!;
+      }
+      const d = Lx[von]!;
+      a0[j] = s0 / d;
+      b1[j] = s1 / d;
+      b2[j] = s2 / d;
+    }
+    const out = new Float64Array(3 * n);
+    for (let j = 0; j < n; j++) {
+      const q = 3 * perm[j]!;
+      out[q] = a0[j]!;
+      out[q + 1] = b1[j]!;
+      out[q + 2] = b2[j]!;
+    }
+    return out;
+  };
+  const loesenEine = (rhs: Float64Array): Float64Array => {
+    for (let j = 0; j < n; j++) a0[j] = rhs[perm[j]!]!;
+    for (let j = 0; j < n; j++) {
+      const von = Lp[j]!;
+      const bis = Lp[j + 1]!;
+      const y = a0[j]! / Lx[von]!;
+      a0[j] = y;
+      for (let p = von + 1; p < bis; p++) {
+        const i = Li[p]!;
+        a0[i] = a0[i]! - Lx[p]! * y;
+      }
+    }
+    for (let j = n - 1; j >= 0; j--) {
+      const von = Lp[j]!;
+      const bis = Lp[j + 1]!;
+      let s = a0[j]!;
+      for (let p = von + 1; p < bis; p++) s -= Lx[p]! * a0[Li[p]!]!;
+      a0[j] = s / Lx[von]!;
+    }
+    const out = new Float64Array(n);
+    for (let j = 0; j < n; j++) out[perm[j]!] = a0[j]!;
+    return out;
+  };
+  const loesenSpalten = (rhs: Float64Array, k: number): Float64Array => (k === 3 ? loesenDrei(rhs) : k === 1 ? loesenEine(rhs) : allgemein(rhs, k));
   return {
     n,
-    loesen: (rhs) => loesenSpalten(rhs, 3),
-    loesenSpalte: (rhs) => loesenSpalten(rhs, 1),
+    loesen: loesenDrei,
+    loesenSpalte: loesenEine,
     loesenSpalten,
     huelle: Lp[n]!,
     zeitAufbau: daten.zeitAufbau,
