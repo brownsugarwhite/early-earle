@@ -59,15 +59,79 @@ export type HautGewichte = 'gleich' | 'geometrie';
  * bestimmt dort nur, wie schnell der Löser ankommt, nicht wohin; sie darf deshalb von einer früheren Lage stammen (08.11., Verfeinern im
  * Zug: weiterziehen ohne neu zu zerlegen, eine im Hintergrund gerechnete Zerlegung einwechseln).
  */
-export type HautVorlage = { gew: Float64Array[]; sys: NormalSystem; cVor: NormalSystem | null };
-/** Was ein Löser zerlegen würde: die Gewichte der Matrix und die Systeme (Lagen, Vorkonditionierer) */
-export type HautAuftrag = { gew: Float64Array[]; systeme: { n: number; zeilen: NormalZeile[]; daempfung: number }[] };
+/**
+ * Eine fertige Zerlegung für einen nächsten Löser. `struktur` (10.11., G4): woran sie außer an den Lagen hängt (`strukturSchluessel`).
+ * Ein Löser übernimmt die Vorlage nur, wenn seine Struktur dieselbe ist; sonst zerlegt er selbst. So kann das Fenster die letzte
+ * Vorlage immer anbieten (nach dem Loslassen, beim nächsten Greifen), ohne selbst zu wissen, ob sich Netz, Bindungen oder Kanten
+ * geändert haben. Fehlt `struktur`, gilt die Vorlage ungeprüft (wie bis zum 10.11.).
+ */
+export type HautVorlage = { gew: Float64Array[]; sys: NormalSystem; cVor: NormalSystem | null; struktur?: string };
+/** Was ein Löser zerlegen würde: die Gewichte der Matrix und die Systeme (Lagen, Vorkonditionierer), dazu seine Struktur */
+export type HautAuftrag = { gew: Float64Array[]; systeme: { n: number; zeilen: NormalZeile[]; daempfung: number }[]; struktur: string };
 /**
  * `vorlage`: diese Zerlegung übernehmen; `nurZeilen`: nichts zerlegen, nur `auftrag` füllen (der Löser rechnet dann nicht); beides nur nach
  * der Geometrie. `richtung`: Beweis „Linien mit Richtung“ (09.11.). `maxNormalen` (Weg a, 09.11.): im Maß des Lösers die Normalen nach Max
  * statt der nach Fläche gemittelten (die messen die Kugel 8 % zu flach, nach Max 1 %), sonst wie heute.
  */
 export type HautOptionen = { vorlage?: HautVorlage; nurZeilen?: boolean; richtung?: boolean; maxNormalen?: boolean };
+
+/**
+ * Woran die Zerlegungen eines Lösers nach der Geometrie außer an den Lagen hängen: das Netz, welche Punkte sich bewegen, die
+ * Bindungen (Linien), ihr Gewicht, die harten Kanten und welche Linienpunkte Quellen der Krümmung sind. Zwei Löser mit demselben
+ * Schlüssel können dieselbe Zerlegung benutzen (mit anderen Lagen stimmen die Gewichte der Matrix dann nur ungefähr; das bestimmt,
+ * wie schnell der Löser ankommt, nicht wohin). Zwei unabhängige 32-Bit-Streuwerte wie beim Merken der Zerlegungen.
+ */
+function strukturSchluessel(
+  h: Haut,
+  bereich: Uint8Array | null,
+  bind: Bindungen,
+  gewicht: number,
+  kanten: ReadonlyMap<number, number> | null,
+  ketten: KruemmungsKetten | null,
+  richtung: boolean,
+): string {
+  let a = 2166136261;
+  let b = 0x9e3779b9;
+  const f = new Float64Array(1);
+  const u = new Uint32Array(f.buffer);
+  const mische = (x: number) => {
+    a = Math.imul(a ^ x, 16777619) >>> 0;
+    b = Math.imul(b ^ x, 2246822519) >>> 0;
+    b = (b ^ (b >>> 13)) >>> 0;
+  };
+  const zahl = (x: number) => {
+    f[0] = x;
+    mische(u[0]!);
+    mische(u[1]!);
+  };
+  mische(h.n);
+  for (let t = 0; t < h.tri.length; t++) mische(h.tri[t]!);
+  mische(bereich ? 1 : 0);
+  if (bereich) for (let v = 0; v < bereich.length; v++) mische(bereich[v]!);
+  mische(bind.ecken.length);
+  for (let j = 0; j < bind.ecken.length; j++) {
+    mische(bind.ecken[j]!);
+    zahl(bind.b[j]!);
+  }
+  zahl(gewicht);
+  mische(kanten ? kanten.size : -1);
+  if (kanten)
+    for (const [k, w] of kanten) {
+      zahl(k);
+      zahl(w);
+    }
+  mische(ketten ? ketten.kette.length : -1);
+  if (ketten)
+    for (let j = 0; j < ketten.kette.length; j++) {
+      const k = ketten.kette[j];
+      mische(k ? k.length : -1);
+      if (k) for (let q = 0; q < k.length; q++) mische(k[q]!);
+      mische(ketten.ecke[j]!);
+      mische(ketten.kante[j]!);
+    }
+  mische(richtung ? 1 : 0);
+  return `${h.n}:${bind.ecken.length}:${a}:${b}`;
+}
 
 /** Gewicht, mit dem die Krümmung eines Punkts bei ihrem jetzigen Wert bleibt, wo keine Kurve hinreicht (hält das System lösbar) */
 const HALT = 1e-6;
@@ -191,6 +255,10 @@ export class HautAusKurven {
   private cVor: NormalSystem | null = null;
   /** mit `nurZeilen`: was zu zerlegen wäre */
   auftrag: HautAuftrag | null = null;
+  /** woran die Zerlegung außer an den Lagen hängt (`strukturSchluessel`; nur nach der Geometrie) */
+  readonly struktur: string;
+  /** die angebotene Vorlage passte und wurde übernommen (sonst hat der Löser selbst zerlegt) */
+  readonly vorlageGenutzt: boolean;
   private cWarm: Float64Array | null = null;
   private beta: Float64Array | null = null;
   private dVorher: Float64Array | null = null;
@@ -255,7 +323,11 @@ export class HautAusKurven {
     // dann in jeder Richtung wie die Krümmung nach der Geometrie (mit gleichen Gewichten längs der Streckung zu schwach: Das Ohr hinkte
     // im Zug 0,75 statt 0,23 nach, der Rüssel auf dem Netz vom Greifen lag 9,2 statt 1,6 neben dem feinen). Am Ziel ändert das nichts.
     const geo = gewichte === 'geometrie';
-    this.gew = geo ? (opt.vorlage?.gew ?? laengenGewichte(h, kanten)) : gewichteAus(h, kanten);
+    this.struktur = geo ? strukturSchluessel(h, bereich, bind, gewicht, kanten, ketten, !!opt.richtung) : '';
+    // eine Vorlage gilt nur für dieselbe Struktur (Netz, Bindungen, Kanten, Quellen); sonst wird wie ohne sie zerlegt
+    const vorlage = geo && opt.vorlage && (opt.vorlage.struktur === undefined || opt.vorlage.struktur === this.struktur) ? opt.vorlage : null;
+    this.vorlageGenutzt = vorlage !== null;
+    this.gew = geo ? (vorlage?.gew ?? laengenGewichte(h, kanten)) : gewichteAus(h, kanten);
     // Punkte harter Linien: Ihr Gewicht über die Linie ist 0; ihre Kanten längs der Linie bleiben in der intrinsischen Triangulierung
     const linie = new Set<number>();
     if (kanten) for (const [k, w] of kanten) if (w === 0) linie.add(Math.floor(k / n));
@@ -353,8 +425,8 @@ export class HautAusKurven {
     // nicht noch einmal zerlegt (das Fenster rechnet sie nach jeder Änderung schon vor)
     const merken = bereich === null;
     this.merken = merken;
-    if (geo && opt.nurZeilen) this.auftrag = { gew: this.gew, systeme: [{ n: frei.length, zeilen, daempfung: 1e-9 }] };
-    this.sys = geo && opt.vorlage ? opt.vorlage.sys : geo && opt.nurZeilen ? null : normalSystemZerlegt(frei.length, zeilen, 1e-9, merken);
+    if (geo && opt.nurZeilen) this.auftrag = { gew: this.gew, systeme: [{ n: frei.length, zeilen, daempfung: 1e-9 }], struktur: this.struktur };
+    this.sys = vorlage ? vorlage.sys : geo && opt.nurZeilen ? null : normalSystemZerlegt(frei.length, zeilen, 1e-9, merken);
     this.maxNormalen = !!opt.maxNormalen;
     const ruhe = vermessen(h, this.gew, this.maxNormalen ? hautNormalenMax(h) : undefined);
     // Quellen der Krümmung: Punkte eingesetzter Loops (so weich, wie der Loop dort ist; an einer Kreuzung der härteste; an einer Ecke
@@ -385,7 +457,7 @@ export class HautAusKurven {
       this.cDiag = new Float64Array(0);
       this.sysC = null;
       if (opt.nurZeilen && this.cFrei.length) this.auftrag!.systeme.push({ n: this.cFrei.length, zeilen: this.vorkonditioniererZeilen(), daempfung: 1e-12 });
-      this.cVor = opt.vorlage ? opt.vorlage.cVor : opt.nurZeilen ? null : this.vorkonditionierer();
+      this.cVor = vorlage ? vorlage.cVor : opt.nurZeilen ? null : this.vorkonditionierer();
       this.zeitZerlegen = Date.now() - t0;
       return;
     }
@@ -750,7 +822,7 @@ export class HautAusKurven {
 
   /** die fertige Zerlegung dieses Lösers (für einen nächsten auf demselben Netz) */
   get vorlage(): HautVorlage | null {
-    return this.sys ? { gew: this.gew, sys: this.sys, cVor: this.cVor } : null;
+    return this.sys ? { gew: this.gew, sys: this.sys, cVor: this.cVor, struktur: this.struktur } : null;
   }
 
   /** Vorkonditionierer der Krümmung: der Laplace des Netzes (Gewicht 1 je Kante, Quellen wie `kruemmung`), einmal zerlegt */

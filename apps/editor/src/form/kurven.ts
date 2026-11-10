@@ -120,7 +120,17 @@ import {
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { V2 } from '@ee/shape';
 import { istTrackpad, radFaktor } from '../viewports/ansicht2d';
-import { type VerdichtenOptionen, type VerfeinerAuftrag, type VerfeinerErgebnis, gewichteAusFlach, hautAusFlach, hautFlach, nachbarnFlach } from './verfeinern';
+import {
+  type AufraeumAuftrag,
+  type AufraeumErgebnis,
+  type VerdichtenOptionen,
+  type VerfeinerAuftrag,
+  type VerfeinerErgebnis,
+  gewichteAusFlach,
+  hautAusFlach,
+  hautFlach,
+  nachbarnFlach,
+} from './verfeinern';
 
 /** Auswahl: ein Punkt (i ≥ 0) oder ein ganzer Loop (i = −1), Loop über seine Kennung */
 type Wahl = { l: number; i: number };
@@ -1444,12 +1454,20 @@ const SETZEN_RUHE = new URLSearchParams(location.search).get('setzen') !== '4';
 function vorrechnenPlanen(): void {
   vorrechnenAus();
   if (mitBereich() || zug) return;
+  // nach dem Loslassen rechnet der Hintergrund (Nachlauf, Aufräumen) und bringt die Zerlegung mit
+  if (nachlauf || aufraeumen) return;
   vorrechnenUhr = setTimeout(() => {
     vorrechnenUhr = null;
-    if (mitBereich() || zug) return;
+    if (mitBereich() || zug || nachlauf || aufraeumen) return;
+    // die bereite Zerlegung ist für genau diesen Stand gerechnet (sie kam aus dem Hintergrund): nichts zu tun
+    if (GEWICHTE === 'geometrie' && vorlageBereit && vorlageStand === standZahl()) return;
     const t0 = performance.now();
     const z = new LoopZug(haut, loops, null, KRUEMMUNG, 'kurven', GEWICHTE, RICHTUNG_OPT);
     letztesVorrechnen = Math.round(performance.now() - t0);
+    if (GEWICHTE === 'geometrie' && z.vorlage) {
+      vorlageBereit = z.vorlage;
+      vorlageStand = standZahl();
+    }
     if (nachLoesenOffen !== haut) return;
     nachLoesenOffen = null;
     const ziele = loops.map((l, li) => (exakt(l) ? pfadVersatz(l, z.start[li]!) : null));
@@ -1489,7 +1507,7 @@ const zeiten: number[] = [];
  * Messen, wo die Zeit im Zug bleibt (10.11., G4): Arbeit je Bild (Runden und Anzeige der Haut), je Mausbewegung (Ziele und Blätter),
  * je Auslösen und je Einwechseln beim Verfeinern im Zug (alles im Hauptthread, ms)
  */
-const messung = { bild: [] as number[], maus: [] as number[], ausloesen: [] as number[], einwechseln: [] as number[] };
+const messung = { bild: [] as number[], maus: [] as number[], ausloesen: [] as number[], einwechseln: [] as number[], nachlauf: [] as number[] };
 function merke(liste: number[], ms: number): void {
   liste.push(ms);
   if (liste.length > 600) liste.shift();
@@ -1503,7 +1521,7 @@ function statusZeigen(): void {
   const kreuz = new Set(loops.flatMap((l) => l.punkte.filter((p) => p.kreuzung !== undefined).map((p) => p.kreuzung))).size;
   statusZeile.textContent =
     meldung ||
-    `${loops.length} Loops · ${punkte} Punkte (${kreuz} Kreuzungen) · Zug ${ms.toFixed(1)} ms${zug?.offen ? ' (rechnet)' : ''} · zerlegen ${letzteZerlegung} ms · ` +
+    `${loops.length} Loops · ${punkte} Punkte (${kreuz} Kreuzungen) · Zug ${ms.toFixed(1)} ms${zug?.offen || nachlauf ? ' (rechnet)' : aufraeumen ? ' (verfeinert im Hintergrund)' : ''} · zerlegen ${letzteZerlegung} ms · ` +
       `Bereich ${letzterBereich} von ${haut.n}` +
       (letzteVerdichtung
         ? ` · verdichtet +${letzteVerdichtung.neu}${letzteVerdichtung.gelegt ? ` −${letzteVerdichtung.gelegt}` : ''} (${letzteVerdichtung.ms} ms)`
@@ -1669,7 +1687,9 @@ function loeserFuer(bewegt: readonly V3[], r: number, ecken: Iterable<number>): 
   const art: HautArt = mitBereich() ? 'gedaechtnis' : 'kurven';
   const bereich = mitBereich() ? bereichUm(h, bewegt, r, ecken) : null;
   if (aus && bereich) for (let v = 0; v < h.n; v++) if (aus[v]) bereich[v] = 0;
-  const vorlage = naechsteVorlage && !mitBereich() ? naechsteVorlage : null;
+  // die Zerlegung: die vom Einwechseln im Zug, sonst die bereite (letzter Zug oder Hintergrund; der Kern nimmt sie nur, wenn ihre
+  // Struktur passt, sonst zerlegt er selbst)
+  const vorlage = mitBereich() ? null : (naechsteVorlage ?? (GEWICHTE === 'geometrie' ? vorlageBereit : null));
   naechsteVorlage = null;
   return new LoopZug(h, loops, bereich, KRUEMMUNG && !grund, art, GEWICHTE, vorlage ? { vorlage, ...RICHTUNG_OPT } : RICHTUNG_OPT);
 }
@@ -2235,7 +2255,11 @@ function zugStufe(z: Zug, X: number, Y: number): void {
  * 3. Ist das Ergebnis zurück, wird mitten im Zug eingewechselt (`einwechseln`): Erst dort wird der Zug festgehalten.
  */
 function stufeImHintergrund(z: Zug, X: number, Y: number): void {
-  const w = zerleger();
+  // ein Aufräumen von vor diesem Zug ist verfallen (der Zug hat den Stand geändert); rechnet der Worker noch daran oder an einem
+  // verfallenen Auftrag des letzten Zugs, wird er neu angelegt (der neue Auftrag wartete sonst dahinter)
+  aufraeumen = null;
+  aufgeraeumt = null;
+  const w = auftraegeOffen > 0 ? hintergrundFrei() : zerleger();
   if (!w) {
     zugStufe(z, X, Y);
     return;
@@ -2265,6 +2289,7 @@ function stufeImHintergrund(z: Zug, X: number, Y: number): void {
     loeserOpt: RICHTUNG_OPT,
   };
   verfeinerung = { id, netz: haut, t0: performance.now() };
+  auftraegeOffen++;
   w.postMessage(auftrag, [auftrag.haut.pos.buffer]);
   ausloesungTeile = [t1 - t0, performance.now() - t1].map(Math.round);
   letzteAusloesungMs = Math.round(performance.now() - t0);
@@ -2365,17 +2390,31 @@ let einwechslungTeile: number[] = [];
 let letztesAuspacken = 0;
 let letzteHintergrundMs = 0;
 function zerleger(): Worker | null {
-  if (!HINTERGRUND) return null;
+  if (!HINTERGRUND || hintergrundAus) return null;
   if (zerlegerWorker) return zerlegerWorker;
   try {
     zerlegerWorker = new Worker(new URL('./verfeinern.worker.ts', import.meta.url), { type: 'module' });
   } catch {
     return null;
   }
-  zerlegerWorker.onmessage = (e: MessageEvent<VerfeinerErgebnis | { id: number; fehler: string }>) => {
-    const f = verfeinerung;
+  zerlegerWorker.onmessage = (e: MessageEvent<VerfeinerErgebnis | AufraeumErgebnis | { id: number; fehler: string }>) => {
+    auftraegeOffen = Math.max(0, auftraegeOffen - 1);
     const d = e.data;
-    if (!f || d.id !== f.id) return;
+    // das Aufräumen nach dem Loslassen: Das Ergebnis wird im nächsten Bild angewendet (`schleife`), wenn der Stand noch derselbe ist
+    if (aufraeumen && d.id === aufraeumen.id) {
+      if ('fehler' in d) {
+        // dieser Auftrag ist gescheitert: das Aufräumen dieses Zugs im Fenster (wie ohne Hintergrund), wenn der Stand noch derselbe ist
+        const f = aufraeumen;
+        aufraeumen = null;
+        if (!zug && !grund && f.netz === haut && f.stand === standZahl()) aufraeumenImFenster();
+        meldung = `Aufräumen im Hintergrund fehlgeschlagen (${d.fehler}): im Fenster gerechnet`;
+        if (zug) statusZeigen();
+        else allesZeigen();
+      } else if ('art' in d) aufgeraeumt = d;
+      return;
+    }
+    const f = verfeinerung;
+    if (!f || d.id !== f.id || 'art' in d) return;
     verfeinerung = null;
     if ('fehler' in d) {
       // der Zug läuft auf dem alten Netz weiter; verdichtet wird dann beim Loslassen
@@ -2397,12 +2436,250 @@ function zerleger(): Worker | null {
     eingetroffen = { netz: f.netz, fertig, daten: d.daten };
   };
   zerlegerWorker.onerror = (e) => {
+    // der Worker selbst ist ausgefallen (nicht ein einzelner Auftrag): ab jetzt ohne Hintergrund, alles im Fenster wie bis G4
+    hintergrundAus = true;
+    zerlegerWorker?.terminate();
+    zerlegerWorker = null;
+    auftraegeOffen = 0;
     verfeinerung = null;
+    eingetroffen = null;
     nichtsZuVerfeinern = haut;
-    meldung = `Verfeinern im Hintergrund fehlgeschlagen: ${e.message}`;
-    statusZeigen();
+    const warAufraeumen = aufraeumen !== null;
+    aufraeumen = null;
+    aufgeraeumt = null;
+    // das Aufräumen dieses Zugs jetzt im Fenster (verdichten, setzen in der Ruhe)
+    if (warAufraeumen && !zug && !grund) aufraeumenStarten();
+    meldung = `Verfeinern im Hintergrund ausgefallen (${e.message || 'Worker nicht geladen'}): weiter ohne Hintergrund`;
+    if (zug) statusZeigen();
+    else allesZeigen();
   };
   return zerlegerWorker;
+}
+/** der Worker selbst ist ausgefallen: Bis zum Neuladen läuft alles im Fenster (wie mit `?hintergrund=0`) */
+let hintergrundAus = false;
+/** Aufträge, an denen der Worker noch rechnet (auch verfallene) */
+let auftraegeOffen = 0;
+/**
+ * Der Worker für einen neuen Auftrag: Rechnet er noch an einem verfallenen (der Zug wurde losgelassen, oder man hat nach dem Loslassen
+ * gleich wieder gegriffen), wird er beendet und neu angelegt; der neue Auftrag wartete sonst dahinter (bei 23 400 Punkten Sekunden).
+ */
+function hintergrundFrei(): Worker | null {
+  if (zerlegerWorker && auftraegeOffen > 0) {
+    zerlegerWorker.terminate();
+    zerlegerWorker = null;
+    auftraegeOffen = 0;
+  }
+  return zerleger();
+}
+
+// ---------- Nach dem Loslassen: Nachlauf im Bildtakt, dann Aufräumen im Hintergrund (G4.2, G4.3) ----------
+
+/**
+ * Nach dem Loslassen (10.11., Gegenprüfung G4.2 und G4.3; über die ganze Haut nach der Geometrie; `?nachlauf=0`: wie bis dahin):
+ * 1. **Nachlauf.** Steht die Haut beim Loslassen noch nicht, rechnet der Löser des Zugs im Bildtakt weiter, bis sie steht (vorher:
+ *    höchstens vier Runden auf einmal, der Rest blieb liegen bis zum nächsten Greifen).
+ * 2. **Aufräumen im Hintergrund** (`verfeinern.ts`, `aufraeumen`): verdichten, setzen bis zur Ruhe, nachverfeinern, zerlegen. Das
+ *    Fenster zeigt so lange die Haut, wie sie ist, und wechselt einmal ein. Vorher lief das im Hauptthread und in Stufen: verdichten
+ *    beim Loslassen, 30 ms später zerlegen (0,1–1,2 s Stillstand) und setzen, bis zu dreimal nachverfeinern und wieder zerlegen
+ *    und setzen; jede Stufe war zu sehen, auch mitten im Anlauf des neuen Lösers.
+ * 3. Die Zerlegung kommt mit (`vorlageBereit`): Das nächste Greifen zerlegt nicht. Greift man vorher, verfällt der Auftrag, und der
+ *    Zug nimmt die Zerlegung des letzten Zugs (der Kern prüft, ob ihre Struktur noch passt).
+ * Ändert inzwischen jemand den Stand (Rückgängig, ein Werkzeug, ein neuer Zug), enden Nachlauf und Auftrag ohne Wirkung; geprüft
+ * wird am Stand selbst (`standZahl`), nicht an jeder Stelle, die ihn ändern kann.
+ */
+const NACHLAUF = new URLSearchParams(location.search).get('nachlauf') !== '0';
+const mitNachlauf = (): boolean => NACHLAUF && HINTERGRUND && !mitBereich() && GEWICHTE === 'geometrie';
+/** der Löser des losgelassenen Zugs, der noch rechnet; Netz, Lagen und Loops, wie er sie zuletzt hinterlassen hat */
+let nachlauf: { loeser: LoopZug; versch: (Float64Array | null)[]; runden: number; netz: Haut; lagen: number; loops: number } | null = null;
+/** der Auftrag im Hintergrund nach dem Loslassen: seine Nummer und der Stand, zu dem er gehört */
+let aufraeumen: { id: number; netz: Haut; stand: string; t0: number } | null = null;
+/** sein Ergebnis, bis es im nächsten Bild angewendet wird */
+let aufgeraeumt: AufraeumErgebnis | null = null;
+/**
+ * Die Zerlegung, die zum Stand passt: die des letzten Zugs oder die aus dem Hintergrund. Das nächste Greifen bietet sie dem Löser an
+ * (`loeserFuer`); er nimmt sie nur, wenn ihre Struktur passt. `vorlageStand`: der Stand, für den sie genau gerechnet ist (leer: nur
+ * ungefähr, mit den Lagen von früher).
+ */
+let vorlageBereit: HautVorlage | null = null;
+let vorlageStand = '';
+/** der letzte Auftrag nach dem Loslassen (zum Messen) */
+let letzterAuftrag: { nr: number; geaendert: boolean; neu: number; gelegt: number; durchgaenge: number; runden: number; ms: number[]; gesamt: number; einwechseln: number; angewendet: boolean } | null = null;
+let nachlaufRunden = 0;
+
+const streu = new Float64Array(1);
+const streuBits = new Uint32Array(streu.buffer);
+/** Streuwert über Lagen (jedes Bit zählt) */
+function lagenZahl(P: Float64Array): number {
+  const u = new Uint32Array(P.buffer, P.byteOffset, 2 * P.length);
+  let a = 2166136261;
+  for (let i = 0; i < u.length; i++) a = Math.imul(a ^ u[i]!, 16777619);
+  return a >>> 0;
+}
+/** Streuwert über die Loops: Punkte, Griffe, Kanten, Ecken, Zahl der Proben; dazu Maul und Pose */
+function loopsZahl(): number {
+  let a = 2166136261;
+  const mische = (x: number) => {
+    a = Math.imul(a ^ x, 16777619);
+  };
+  const zahl = (x: number) => {
+    streu[0] = x;
+    mische(streuBits[0]!);
+    mische(streuBits[1]!);
+  };
+  mische(loops.length);
+  for (const l of loops) {
+    mische(l.id);
+    mische(l.proben.length);
+    zahl(l.laenge);
+    mische((l.kante ? 1 : 0) | (l.pfad ? 2 : 0));
+    mische(l.punkte.length);
+    for (const p of l.punkte) {
+      zahl(p.s);
+      zahl(p.ref.x);
+      zahl(p.ref.y);
+      zahl(p.ref.z);
+      mische((p.kante === undefined ? 2 : p.kante ? 1 : 0) | (p.ecke === undefined ? 8 : p.ecke ? 4 : 0) | (p.autoEcke ? 16 : 0) | (p.vonSelbst ? 32 : 0) | (p.mundwinkel ? 64 : 0));
+      mische(p.kreuzung ?? -1);
+      for (const g of [p.ein, p.aus]) {
+        mische(g ? 1 : 0);
+        if (g) {
+          zahl(g.x);
+          zahl(g.y);
+          zahl(g.z);
+        }
+      }
+    }
+  }
+  mische(grund ? 1 : 0);
+  mische(maul ? maul.id : -1);
+  return a >>> 0;
+}
+/** Der Stand, an dem Nachlauf und Auftrag hängen: Netz, Lagen, Loops */
+const standZahl = (): string => `${haut.n}:${lagenZahl(haut.pos)}:${loopsZahl()}`;
+
+/** Nachlauf: je Bild Runden des losgelassenen Zugs, bis die Form steht; dann geht das Aufräumen in den Hintergrund */
+function nachlaufRechnen(): void {
+  const n = nachlauf;
+  if (!n) return;
+  // ein neuer Zug bewegt sich, oder jemand hat den Stand geändert: Der Nachlauf endet, wo er ist
+  if (zug?.bewegt || grund || n.netz !== haut || n.lagen !== lagenZahl(haut.pos) || n.loops !== loopsZahl()) {
+    nachlauf = null;
+    statusZeigen();
+    // ohne neuen Zug: die Zerlegung für das nächste Greifen wie sonst in der Ruhe vorrechnen
+    if (!zug) vorrechnenPlanen();
+    return;
+  }
+  const t0 = performance.now();
+  let steht = false;
+  for (;;) {
+    const tr = performance.now();
+    const weg = rundeMitWeg(n.loeser, n.versch);
+    n.runden++;
+    nachlaufRunden++;
+    if (weg < RUHE || n.runden >= NACH_RUNDEN) {
+      steht = true;
+      break;
+    }
+    const jetzt = performance.now();
+    if (jetzt - t0 + (jetzt - tr) > BUDGET_MS) break;
+  }
+  if (steht) {
+    nachlauf = null;
+    festlegenAlle();
+    aufraeumenStarten();
+    // ohne Hintergrund hat das Fenster selbst verdichtet: alles neu zeigen (und in der Ruhe setzen)
+    if (!aufraeumen) allesZeigen();
+    else for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
+  } else n.lagen = lagenZahl(haut.pos);
+  hautZeigen();
+  baenderZeigen();
+  statusZeigen();
+  merke(messung.nachlauf, performance.now() - t0);
+}
+
+/** Aufräumen ohne Hintergrund, wie bis G4.1 im Fenster: verdichten jetzt, setzen in der Ruhe (`vorrechnenPlanen`) */
+function aufraeumenImFenster(): void {
+  const vor = haut;
+  nachVerdichten();
+  if (haut !== vor) {
+    nachLoesenOffen = haut;
+    nachVerfeinert = 0;
+  }
+}
+
+/** Das Aufräumen an den Hintergrund geben (verdichten, setzen bis zur Ruhe, nachverfeinern, zerlegen) */
+function aufraeumenStarten(): void {
+  const w = hintergrundFrei();
+  if (!w) {
+    aufraeumenImFenster();
+    return;
+  }
+  const id = ++verfeinerungsNr;
+  if (nachbarnGemerkt?.haut !== haut) nachbarnGemerkt = { haut, flach: nachbarnFlach(haut) };
+  const auftrag: AufraeumAuftrag = {
+    art: 'aufraeumen',
+    id,
+    haut: hautFlach(haut, nachbarnGemerkt.flach),
+    loops,
+    exakt: loops.map(exakt),
+    verdichten: VERDICHTEN,
+    maxKante: 1.75 * MK,
+    opt: verdichtenOptionen(false),
+    optNurTeilen: verdichtenOptionen(true),
+    nachverfeinern: GENAU > 0 ? 3 : 0,
+    kruemmung: KRUEMMUNG,
+    gewichte: GEWICHTE,
+    loeserOpt: RICHTUNG_OPT,
+    ruhe: RUHE,
+    maxRunden: RUNDEN_NEU,
+  };
+  aufraeumen = { id, netz: haut, stand: standZahl(), t0: performance.now() };
+  aufgeraeumt = null;
+  auftraegeOffen++;
+  w.postMessage(auftrag, [auftrag.haut.pos.buffer]);
+}
+
+/** Das Ergebnis des Aufräumens anwenden: einmal einwechseln, die Zerlegung für das nächste Greifen merken */
+function aufgeraeumtAnwenden(): void {
+  const f = aufraeumen;
+  const d = aufgeraeumt;
+  if (!f || !d) return;
+  aufraeumen = null;
+  aufgeraeumt = null;
+  const t0 = performance.now();
+  // inzwischen hat jemand den Stand geändert: Das Ergebnis gehört nicht mehr dazu
+  const gilt = !grund && f.netz === haut && f.stand === standZahl();
+  if (gilt) {
+    if (d.geaendert && d.haut && d.loops && d.alt) {
+      const fertig = d.loops;
+      const nAlt = haut.n;
+      haut = hautAusFlach(d.haut);
+      // die Linien des feineren Netzes (ihre Proben) mit den Punkten von jetzt
+      loops = loops.map((jetzt, li) => ({ ...jetzt, proben: fertig[li]!.proben, s: fertig[li]!.s, ruhe: fertig[li]!.ruhe, punkte: jetzt.punkte.map((p) => ({ ...p })) }));
+      netzGewachsen(nAlt, d.alt, null);
+      geometrieNeu();
+      festlegenAlle();
+      letzteVerdichtung = { neu: d.neu, gelegt: d.gelegt, ms: Math.round(d.ms[0]!) };
+    }
+    if (d.gewStart && d.gewWert && d.daten.length) {
+      vorlageBereit = { gew: gewichteAusFlach(d.gewStart, d.gewWert), sys: systemAusDaten(d.daten[0]!), cVor: d.daten[1] ? systemAusDaten(d.daten[1]) : null, struktur: d.struktur };
+      vorlageStand = standZahl();
+    }
+  }
+  letzterAuftrag = {
+    nr: f.id,
+    geaendert: d.geaendert,
+    neu: d.neu,
+    gelegt: d.gelegt,
+    durchgaenge: d.durchgaenge,
+    runden: d.runden,
+    ms: d.ms.map(Math.round),
+    gesamt: Math.round(performance.now() - f.t0),
+    einwechseln: 0,
+    angewendet: gilt,
+  };
+  allesZeigen();
+  letzterAuftrag.einwechseln = Math.round(performance.now() - t0);
 }
 
 let zugStufen = 0;
@@ -2445,9 +2722,18 @@ function zugEnde(ok: boolean): void {
   if (z.bewegt) {
     // zum Messen: wie weit sich die Haut in den Runden am Ende noch bewegt (so weit hinkte der Löser im Zug nach)
     const vorEnde = Float64Array.from(haut.pos);
+    // nach dem Loslassen im Hintergrund weiter (Nachlauf, Aufräumen)?
+    const imHintergrund = mitNachlauf() && zerleger() !== null;
     // über die ganze Haut hat der Löser im Bildtakt mitgerechnet: Runden am Ende nur, wenn die Haut noch nicht steht
     if (mitBereich()) z.loeser.schritt(z.versch, RUNDEN_ENDE);
-    else for (let k = 0; z.offen && k < RUNDEN_ENDE; k++) if (rundeMitWeg(z.loeser, z.versch) < RUHE) z.offen = false;
+    else if (imHintergrund) {
+      // nur so weit, dass die Linien auf ihren Zielen liegen (dann können sie festgelegt werden); den Rest rechnet der Nachlauf
+      if (z.zielNeu) {
+        z.zielNeu = false;
+        z.nachRunden++;
+        if (rundeMitWeg(z.loeser, z.versch) < RUHE) z.offen = false;
+      }
+    } else for (let k = 0; z.offen && k < RUNDEN_ENDE; k++) if (rundeMitWeg(z.loeser, z.versch) < RUHE) z.offen = false;
     letzteEndrunden = 0;
     for (let k = 0; k < vorEnde.length; k += 3)
       letzteEndrunden = Math.max(letzteEndrunden, Math.hypot(haut.pos[k]! - vorEnde[k]!, haut.pos[k + 1]! - vorEnde[k + 1]!, haut.pos[k + 2]! - vorEnde[k + 2]!));
@@ -2455,18 +2741,38 @@ function zugEnde(ok: boolean): void {
     festlegenAlle();
     zugGriffeAblesen(z);
     kreuzungenSuchen();
-    const vorVerdichten = haut;
-    nachVerdichten();
-    // aus den Kurven: das verdichtete Netz setzt sich gleich danach in der Ruhe (die neuen Punkte liegen erst nur rund zwischen den
-    // alten); beim Loslassen zu lösen hieß, dort auf das Zerlegen des neuen Netzes zu warten (0,6 s bei 15 000 Punkten)
-    if (!mitBereich() && haut !== vorVerdichten) {
-      nachLoesenOffen = haut;
-      nachVerfeinert = 0;
+    if (imHintergrund) {
+      // ein geschlossener Loop, der durch eine neue Kreuzung seinen zweiten Punkt (und damit einen Pfad) bekam: genau auf ihn
+      const aufPfad = linienAufPfad();
+      poseSichern();
+      zurueck.push(z.vorher);
+      // die Zerlegung dieses Zugs für ein Greifen, das vor dem Ende des Aufräumens kommt (ungefähr: mit den Lagen vom Greifen)
+      vorlageBereit = z.loeser.vorlage ?? vorlageBereit;
+      vorlageStand = '';
+      // die Ecken an Kreuzungen folgen den Kanten (wie gleich in `allesZeigen`): Erst danach steht der Stand, an dem der Nachlauf hängt
+      eckenAuto(loops);
+      aufgeraeumt = null;
+      aufraeumen = null;
+      // hat `linienAufPfad` die Haut örtlich neu gelegt, gelten die Ziele des Zugs dort nicht mehr: gleich aufräumen
+      if (z.offen && !aufPfad) nachlauf = { loeser: z.loeser, versch: z.versch, runden: z.nachRunden, netz: haut, lagen: lagenZahl(haut.pos), loops: loopsZahl() };
+      else {
+        nachlauf = null;
+        aufraeumenStarten();
+      }
+    } else {
+      const vorVerdichten = haut;
+      nachVerdichten();
+      // aus den Kurven: das verdichtete Netz setzt sich gleich danach in der Ruhe (die neuen Punkte liegen erst nur rund zwischen den
+      // alten); beim Loslassen zu lösen hieß, dort auf das Zerlegen des neuen Netzes zu warten (0,6 s bei 15 000 Punkten)
+      if (!mitBereich() && haut !== vorVerdichten) {
+        nachLoesenOffen = haut;
+        nachVerfeinert = 0;
+      }
+      // ein geschlossener Loop, der durch eine neue Kreuzung seinen zweiten Punkt (und damit einen Pfad) bekam: genau auf ihn
+      linienAufPfad();
+      poseSichern();
+      zurueck.push(z.vorher);
     }
-    // ein geschlossener Loop, der durch eine neue Kreuzung seinen zweiten Punkt (und damit einen Pfad) bekam: genau auf ihn
-    linienAufPfad();
-    poseSichern();
-    zurueck.push(z.vorher);
   } else {
     for (const l of loops) for (const p of l.punkte) p.cur = { ...p.ref };
   }
@@ -2651,8 +2957,8 @@ let letztesNeuRechnen = 0;
  * Loops: so bis 2,2, im Mittel 0,4; aus den Kurven bis 8,9, im Mittel 3,5). Was nur um den Rest des Lösers daneben liegt, holt der
  * nächste Zug.
  */
-function linienAufPfad(neu?: Loop): void {
-  if (grund) return;
+function linienAufPfad(neu?: Loop): boolean {
+  if (grund) return false;
   const versch: (Float64Array | null)[] = loops.map(() => null);
   const bewegt: V3[] = [];
   const ecken = new Set<number>();
@@ -2670,7 +2976,7 @@ function linienAufPfad(neu?: Loop): void {
       for (const v of l.proben[j]!.ecken) ecken.add(v);
     }
   });
-  if (bewegt.length === 0) return;
+  if (bewegt.length === 0) return false;
   vorrechnenAus();
   const t0 = performance.now();
   const z = new LoopZug(haut, loops, bereichUm(haut, bewegt, Math.max(2 * MK, 3 * weit), ecken), false, 'gedaechtnis');
@@ -2678,6 +2984,7 @@ function linienAufPfad(neu?: Loop): void {
   festlegenAlle();
   kreuzungenSuchen();
   letztesNeuRechnen = Math.round(performance.now() - t0);
+  return true;
 }
 
 /** Ramer–Douglas–Peucker: Nummern der Punkte, die bleiben */
@@ -3302,6 +3609,9 @@ function schleife(): void {
   eingetroffen = null;
   if (e && zug && e.netz === haut) einwechseln(e.fertig, e.daten);
   else zugRechnen();
+  // nach dem Loslassen: der Nachlauf, danach das Ergebnis des Aufräumens (nicht, solange eine Maustaste einen Zug hält)
+  nachlaufRechnen();
+  if (aufgeraeumt && !zug && !nachlauf) aufgeraeumtAnwenden();
   if (neuZeichnen) {
     neuZeichnen = false;
     rendern();
@@ -3330,6 +3640,13 @@ schleife();
     hautZeigen();
     baenderZeigen();
     return m;
+  },
+  /** Prüfung: der Worker fällt aus (wie ein Fehler beim Laden oder ein Absturz); danach läuft alles im Fenster */
+  ausfall: () => zerleger()?.onerror?.(new ErrorEvent('error', { message: 'Probe' })),
+  /** Prüfung: der laufende Auftrag nach dem Loslassen meldet einen Fehler; das Fenster räumt dann selbst auf */
+  auftragFehler: () => {
+    const w = zerleger();
+    if (w && aufraeumen) w.onmessage?.(new MessageEvent('message', { data: { id: aufraeumen.id, fehler: 'Probe' } }));
   },
   /** Prüfung: n weitere Runden über die ganze Haut (wie das Setzen in der Ruhe), ohne Verdichten; ist die Haut fertig gerechnet? */
   nachrechnen: (n: number) => {
@@ -3507,7 +3824,13 @@ schleife();
     nachRunden: zug?.nachRunden ?? 0,
     hintergrund: hintergrundStufen,
     /** Arbeit im Hauptthread (ms): je Bild im Zug, je Mausbewegung, je Auslösen und je Einwechseln beim Verfeinern */
-    messung: { bild: [...messung.bild], maus: [...messung.maus], ausloesen: [...messung.ausloesen], einwechseln: [...messung.einwechseln] },
+    messung: { bild: [...messung.bild], maus: [...messung.maus], ausloesen: [...messung.ausloesen], einwechseln: [...messung.einwechseln], nachlauf: [...messung.nachlauf] },
+    /** nach dem Loslassen: Der Nachlauf rechnet noch (Runden bisher, über alle Züge); der Auftrag im Hintergrund läuft; der letzte Auftrag */
+    nachlauf: nachlauf !== null,
+    nachlaufRunden,
+    aufraeumen: aufraeumen !== null,
+    auftrag: letzterAuftrag,
+    hintergrundAus,
     ausloesung: letzteAusloesungMs,
     ausloesungTeile,
     /** der letzte Auftrag im Hintergrund (ms): verdichten, einbetten, Zeilen, zerlegen */
@@ -3523,6 +3846,8 @@ schleife();
     nachLoesen: letztesNachLoesen,
   }),
   lagen: () => Array.from(haut.pos),
+  /** die Felder der Haut selbst, ohne Kopie (nur für Proben, die im Fenster mitlesen) */
+  roh: () => ({ pos: haut.pos, tri: haut.tri }),
   /** Lagen der Grundform (in der Pose die gemerkte) */
   grundLagen: () => Array.from((grund ? grund.haut : haut).pos),
   /** Stand der Pose: an, Knochen, größte Verschiebung des Blendshapes */

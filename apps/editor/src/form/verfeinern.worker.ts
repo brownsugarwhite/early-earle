@@ -2,14 +2,22 @@
 // die Loops; der Worker verdichtet, bettet die neuen Punkte auf der alten Haut ein, baut die Zeilen der Matrix und zerlegt sie
 // (`verfeinern.ts`). Zurück kommen das feinere Netz und die Zerlegung; das Fenster wechselt sie ein, sobald sie da sind. (Seit dem
 // 08.11. lief hier nur die Zerlegung, `zerlegen.worker.ts`.) Ein Fehler kommt als Meldung zurück, damit der Zug nicht hängt.
-import { type VerfeinerAuftrag, felderZumUebergeben, verfeinern } from './verfeinern';
+// Zweiter Auftrag (G4.3): das Aufräumen nach dem Loslassen, verdeckt bis die neue Haut steht.
+import { type AufraeumAuftrag, type VerfeinerAuftrag, aufgeraeumtZumUebergeben, aufraeumen, felderZumUebergeben, verfeinern } from './verfeinern';
 
-self.onmessage = (e: MessageEvent<VerfeinerAuftrag>) => {
+self.onmessage = (e: MessageEvent<VerfeinerAuftrag | AufraeumAuftrag>) => {
   const ziel = self as unknown as Worker;
+  const auftrag = e.data;
   try {
-    const ergebnis = verfeinern(e.data);
-    ziel.postMessage(ergebnis, felderZumUebergeben(ergebnis) as ArrayBuffer[]);
+    if ('art' in auftrag) {
+      // nach dem Loslassen (G4.3): verdichten, setzen bis zur Ruhe, nachverfeinern, zerlegen
+      const ergebnis = aufraeumen(auftrag);
+      ziel.postMessage(ergebnis, aufgeraeumtZumUebergeben(ergebnis) as ArrayBuffer[]);
+    } else {
+      const ergebnis = verfeinern(auftrag);
+      ziel.postMessage(ergebnis, felderZumUebergeben(ergebnis) as ArrayBuffer[]);
+    }
   } catch (fehler) {
-    ziel.postMessage({ id: e.data.id, fehler: fehler instanceof Error ? `${fehler.message}` : String(fehler) });
+    ziel.postMessage({ id: auftrag.id, fehler: fehler instanceof Error ? `${fehler.message}` : String(fehler) });
   }
 };

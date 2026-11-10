@@ -12,6 +12,10 @@
 // vor dem Loslassen noch so viele Runden im laufenden Zug (wie weit ist die Haut von der Ruhe entfernt, wenn der Löser aufhört?).
 // FERN=<Einheiten>: je Bild des Zugs, wie weit sich die Haut fern vom Griff (weiter als so viele Einheiten vom Anfang des Zugs) gegen
 // das Bild davor bewegt (Ausschläge der ganzen Haut, wenn ein Löser neu anfängt).
+// Seit G4.2/G4.3 (10.11.): Nach dem Loslassen liest die Probe im Fenster mit, je Bild: Abstand der Bilder (hält der Hauptthread an?),
+// Bewegung bei gleichem Netz (Nachlauf) und jeden Netzwechsel (Stand davor und danach). `?nachlauf=0` in KURVEN_URL zeigt den
+// Ablauf von vorher. WIEDER=<ms>: so lange nach dem Loslassen denselben Punkt noch einmal greifen und kurz ziehen (wie lange hält
+// das Greifen an, wird dabei zerlegt?).
 // SICHERN=<datei>: den Stand vor dem Loslassen und den Endstand als JSON ablegen; VERGLEICH=<datei>: beide gegen einen abgelegten
 // Lauf messen (hängt die Form am Weg, z. B. an der Geschwindigkeit des Zugs?).
 // Aufruf aus apps/editor: node scripts/pruefen/form-loslassen-probe.mjs
@@ -237,7 +241,43 @@ await seite.evaluate(() => {
   const schnapp = () => ({ P: K.lagen(), T: K.dreiecke(), z: K.zeiten() });
   const probe = (window.__probe = { schnapp, nachZug: null, vorLos: null, nachLos: null, bilder: 0, zaehlt: true, zeit: [] });
   window.addEventListener('pointerup', () => (probe.vorLos = schnapp()), { capture: true, once: true });
-  window.addEventListener('pointerup', () => ((probe.nachLos = schnapp()), (probe.zaehlt = false)), { once: true });
+  window.addEventListener(
+    'pointerup',
+    () => {
+      probe.nachLos = schnapp();
+      // ab jetzt je Bild mitlesen: Abstand der Bilder, Bewegung bei gleichem Netz, Netzwechsel mit dem Stand davor und danach
+      const roh = K.roh ? K.roh : () => ({ pos: K.lagen(), tri: K.dreiecke() });
+      const nach = (probe.nach = { t0: performance.now(), bild: [], bewegt: [], wechsel: [], letzte: 0, aus: false });
+      let vor = Float64Array.from(roh().pos);
+      let vorTri = roh().tri;
+      const tick = () => {
+        if (nach.aus) return;
+        const jetzt = performance.now() - nach.t0;
+        nach.bild.push(jetzt);
+        const { pos, tri } = roh();
+        if (pos.length !== vor.length || (K.roh && tri !== vorTri)) {
+          nach.wechsel.push({ t: Math.round(jetzt), vor: { P: Array.from(vor), T: Array.from(vorTri) }, nach: { P: Array.from(pos), T: Array.from(tri) } });
+          nach.letzte = jetzt;
+          vor = Float64Array.from(pos);
+          vorTri = tri;
+        } else {
+          let weg = 0;
+          for (let i = 0; i < pos.length; i += 3) {
+            const d = Math.hypot(pos[i] - vor[i], pos[i + 1] - vor[i + 1], pos[i + 2] - vor[i + 2]);
+            if (d > weg) weg = d;
+          }
+          if (weg > 0) {
+            nach.bewegt.push({ t: Math.round(jetzt), weg });
+            nach.letzte = jetzt;
+            vor.set(pos);
+          }
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    },
+    { once: true },
+  );
   const bild = () => {
     if (!probe.zaehlt) return;
     probe.bilder++;
@@ -307,21 +347,40 @@ const t0 = Date.now();
 await seite.mouse.up();
 const { A0, A, B } = await seite.evaluate(() => ({ A0: window.__probe.nachZug, A: window.__probe.vorLos, B: window.__probe.nachLos }));
 const tB = Date.now() - t0;
-const verlauf = [];
-let letzt = B;
-let ruhig = 0;
-while (Date.now() - t0 < 8000) {
-  await seite.waitForTimeout(30);
-  const S = await schnapp();
-  if (gleich(S, letzt)) {
-    if (++ruhig > 30 && Date.now() - t0 > 2000) break;
-    continue;
+// WIEDER=<ms>: nach so vielen ms denselben Punkt noch einmal greifen, 12 px ziehen, loslassen (hält das Greifen an?)
+let wieder = null;
+if (process.env.WIEDER) {
+  await seite.waitForTimeout(Number(process.env.WIEDER));
+  const vorher = await seite.evaluate(() => ({ nachlauf: window.__kurven.zeiten().nachlauf, aufraeumen: window.__kurven.zeiten().aufraeumen, bilder: window.__probe.nach.bild.length }));
+  const tw = Date.now();
+  await seite.mouse.move(x1, y1);
+  await seite.mouse.down();
+  const druecken = Date.now() - tw;
+  for (let i = 1; i <= 6; i++) {
+    await seite.mouse.move(x1 + 2 * i, y1);
+    await seite.waitForTimeout(16);
   }
-  ruhig = 0;
-  verlauf.push({ t: Date.now() - t0, S });
-  letzt = S;
+  const zw = await seite.evaluate(() => window.__kurven.zeiten());
+  await seite.mouse.up();
+  wieder = { ...vorher, druecken, zerlegen: zw.zerlegen, ab: await seite.evaluate((n) => window.__probe.nach.bild[n] ?? 0, vorher.bilder) };
 }
-const C = letzt;
+// warten, bis nichts mehr rechnet und sich 2,5 s nichts mehr bewegt hat (höchstens 25 s)
+for (;;) {
+  await seite.waitForTimeout(150);
+  const s = await seite.evaluate(() => ({
+    jetzt: performance.now() - window.__probe.nach.t0,
+    letzte: window.__probe.nach.letzte,
+    laeuft: !!window.__kurven.zeiten().nachlauf || !!window.__kurven.zeiten().aufraeumen,
+  }));
+  if ((!s.laeuft && s.jetzt - s.letzte > 2500) || s.jetzt > 25000) break;
+}
+const nach = await seite.evaluate(() => {
+  const n = window.__probe.nach;
+  n.aus = true;
+  return { bild: n.bild, bewegt: n.bewegt, wechsel: n.wechsel, letzte: n.letzte };
+});
+const C = await schnapp();
+void gleich;
 
 // px je Einheit im Blatt bei 100 %
 const a0 = await bild('front', { x: 0, y: 0, z: 0 });
@@ -383,8 +442,35 @@ if (rest !== null)
   );
 if (rest !== null) zeile('  Form nach diesen Runden gegen vorher', vorDemRest, nachDemRest);
 console.log(`  davon die Runden am Ende (Nachhinken): bis ${nachEnde?.toFixed(2)}`);
-zeile('Loslassen sofort (Runden am Ende + Verdichten)', A, B, tB);
-verlauf.forEach((v, k) => zeile(`danach Änderung ${k + 1}`, k === 0 ? B : verlauf[k - 1].S, v.S, v.t));
+zeile('Loslassen sofort (was die Behandlung des Loslassens selbst ändert)', A, B, tB);
+{
+  // nach dem Loslassen, im Fenster mitgelesen
+  const bis = Math.max(nach.letzte, 1);
+  const gaps = [];
+  for (let i = 1; i < nach.bild.length && nach.bild[i] <= bis + 200; i++) gaps.push(nach.bild[i] - nach.bild[i - 1]);
+  const w = nach.bewegt.map((b) => b.weg);
+  console.log(
+    `  nach dem Loslassen bis zur Ruhe (${Math.round(bis)} ms): längster Abstand zwischen zwei Bildern ${Math.max(0, ...gaps).toFixed(0)} ms, über 50 ms: ${gaps.filter((g) => g > 50).length}, ` +
+      `über 100 ms: ${gaps.filter((g) => g > 100).length}, zusammen über 50 ms: ${gaps.filter((g) => g > 50).reduce((a, g) => a + g, 0).toFixed(0)} ms`,
+  );
+  console.log(
+    `  Bewegung bei gleichem Netz: ${w.length} Bilder, größte je Bild ${f2(Math.max(0, ...w))}, über 0,18 je Bild: ${w.filter((x) => x > 0.18).length}` +
+      (w.length ? `, von ${nach.bewegt[0].t} bis ${nach.bewegt[nach.bewegt.length - 1].t} ms` : '') +
+      ` · Netzwechsel: ${nach.wechsel.length}${nach.wechsel.length ? ` (nach ${nach.wechsel.map((x) => x.t).join(', ')} ms)` : ''}`,
+  );
+  nach.wechsel.forEach((x, k) => zeile(`Netzwechsel ${k + 1}: ${x.vor.P.length / 3} → ${x.nach.P.length / 3} Punkte, Haut davor gegen danach`, x.vor, x.nach, x.t));
+  const au = C.z.auftrag;
+  if (au)
+    console.log(
+      `  Auftrag im Hintergrund: ${au.angewendet ? 'angewendet' : 'verfallen'}, ${au.geaendert ? `${au.durchgaenge}-mal verdichtet (${au.neu} neu, ${au.gelegt} gelegt), ${au.runden} Runden gesetzt` : 'nichts zu verfeinern'}; ` +
+        `im Hintergrund [verdichten/Zeilen/zerlegen/setzen] ${au.ms.join('/')} ms, vom Abschicken bis fertig ${au.gesamt} ms, Einwechseln ${au.einwechseln} ms · Runden im Nachlauf ${C.z.nachlaufRunden ?? 0}`,
+    );
+  if (wieder)
+    console.log(
+      `  noch einmal gegriffen ${process.env.WIEDER} ms nach dem Loslassen (Nachlauf ${wieder.nachlauf ? 'lief' : 'fertig'}, Hintergrund ${wieder.aufraeumen ? 'rechnete' : 'fertig'}): ` +
+        `Drücken dauerte ${wieder.druecken} ms, zerlegt beim Greifen ${wieder.zerlegen} ms`,
+    );
+}
 zeile('Endstand gegen vor dem Loslassen', A, C);
 if (process.env.SICHERN) writeFileSync(process.env.SICHERN, JSON.stringify({ A: { P: A.P, T: A.T }, C: { P: C.P, T: C.T } }));
 if (process.env.VERGLEICH) {

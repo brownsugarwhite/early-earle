@@ -48,5 +48,12 @@ auf demselben Server.
 `ausgaben/g4-fenster-ruckeln.txt` und `loeser-mess9.out` gehören zu Schritt G4.1 (Verfeinern im Zug im Hintergrund): Abstand von
 Bild zu Bild im Zug und die Arbeit im Hauptthread, vor G4 und nach jedem der drei Teilschritte.
 
+`ausgaben/g4-fenster-loslassen.txt` und `g4-fenster-nachlauf-probe.txt` gehören zu G4.2/G4.3 (nach dem Loslassen: Nachlauf im
+Bildtakt, dann Verdichten und Setzen im Hintergrund, einmal einwechseln). Die erste Datei stammt von `form-loslassen-probe.mjs`
+(`GPU=1`, `HALTEN=0`, `WIEDER`; der Ablauf von vorher mit `&nachlauf=0` in `KURVEN_URL`): je Fall Abstand von Bild zu Bild nach dem
+Loslassen, Bewegung bei gleichem Netz, jeder Netzwechsel mit dem Stand davor und danach, Zeiten des Auftrags. Die zweite von
+`form-nachlauf-probe.mjs`: Rückgängig, wieder Greifen, Kante, neuer Loop und ein Ausfall des Workers, während Nachlauf oder
+Hintergrund rechnen (der Stand darf nicht angefasst werden, wenn ihn inzwischen jemand geändert hat).
+
 `ausgaben/` enthält sonst die Ausgaben vom 10.11. (je ein Lauf, die Maschine war belegt). `a5-ausgabe.txt` stammt von einem Skript, das
 eine von Hand angelegte Kopie des Lösers brauchte; gleichwertig ist `mess3.ts` mit `DREIECKE=30000`.

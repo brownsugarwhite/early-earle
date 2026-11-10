@@ -3,14 +3,24 @@
 // (gemessen je Auslösen: 40–90 ms bei 5 200, rund 100 ms bei 11 000, 180–290 ms bei 23 400 Punkten, drei- bis viermal je Zug).
 // Der Auftrag trägt die Haut flach (Felder statt 23 000 kleiner Listen) und die Loops; das Ergebnis ebenso, die großen Felder
 // wandern ohne Kopie. Ohne DOM: Der Worker (`verfeinern.worker.ts`) und der Test rufen dieselbe Funktion.
+//
+// Zweiter Auftrag (G4.3): das Aufräumen nach dem Loslassen. Bis dahin lief es im Hauptthread und in Stufen: verdichten beim
+// Loslassen, 30 ms später zerlegen (0,1–1,2 s Stillstand), setzen, bis zu dreimal nachverfeinern und wieder zerlegen und setzen,
+// jede Stufe sichtbar. Hier rechnet alles verdeckt, bis die neue Haut steht; das Fenster wechselt einmal ein und bekommt die
+// Zerlegung für das nächste Greifen gleich mit.
 import {
   type Einbettung,
   type Haut,
   type HautGewichte,
+  type HautVorlage,
   type Loop,
   LoopZug,
   type ZerlegungsDaten,
   einbetten,
+  festlegen,
+  hautNormalen,
+  pfadVersatz,
+  systemAusDaten,
   verdichten,
   zerlegungsDaten,
 } from '@ee/shape/dicht';
@@ -137,5 +147,157 @@ export function felderZumUebergeben(e: VerfeinerErgebnis): ArrayBufferLike[] {
     ...e.daten.flatMap((d) => [d.perm.buffer, d.Lp.buffer, d.Li.buffer, d.Lx.buffer]),
   ];
   // jedes Feld nur einmal (zwei Sichten auf denselben Speicher ließen das Übergeben scheitern)
+  return [...new Set(felder)];
+}
+
+// ---------- Aufräumen nach dem Loslassen (G4.3) ----------
+
+export type AufraeumAuftrag = {
+  art: 'aufraeumen';
+  id: number;
+  haut: FlacheHaut;
+  loops: Loop[];
+  /** je Loop: Die Linie ist ihr Pfad (beim Setzen ist ihr Ziel der Pfad; sonst bleibt sie, wo sie liegt) */
+  exakt: boolean[];
+  /** verdichten überhaupt (`?verdichten=0`: nur die Zerlegung für das nächste Greifen) */
+  verdichten: boolean;
+  maxKante: number;
+  /** das erste Mal: teilen und zusammenlegen; danach höchstens `nachverfeinern`-mal nur teilen (wo die gesetzten Linien es brauchen) */
+  opt: VerdichtenOptionen;
+  optNurTeilen: VerdichtenOptionen;
+  nachverfeinern: number;
+  kruemmung: boolean;
+  gewichte: HautGewichte;
+  loeserOpt: { richtung?: boolean; maxNormalen?: boolean };
+  /** Setzen: Runden, bis sich die Form in einer Runde um weniger als `ruhe` bewegt (längs der Normalen), höchstens `maxRunden` */
+  ruhe: number;
+  maxRunden: number;
+};
+
+export type AufraeumErgebnis = {
+  art: 'aufraeumen';
+  id: number;
+  /** das Netz ist feiner geworden und hat sich gesetzt (sonst kommt nur die Zerlegung zurück) */
+  geaendert: boolean;
+  haut: FlacheHaut | null;
+  loops: Loop[] | null;
+  /** je Punkt des neuen Netzes der Punkt des Netzes vom Auftrag (−1: neu); die gebliebenen stehen vorn */
+  alt: Int32Array | null;
+  neu: number;
+  gelegt: number;
+  /** wie oft verdichtet wurde und wie viele Runden das Setzen brauchte */
+  durchgaenge: number;
+  runden: number;
+  /** die Zerlegung des letzten Netzes für das nächste Greifen: Gewichte flach, Daten, Struktur (`HautVorlage`); null: nicht nach der Geometrie */
+  gewStart: Int32Array | null;
+  gewWert: Float64Array | null;
+  daten: ZerlegungsDaten[];
+  struktur: string;
+  /** Dauer in ms: verdichten (alle Durchgänge), Zeilen, zerlegen, setzen */
+  ms: number[];
+};
+
+/** Verdichten, setzen bis zur Ruhe, nachverfeinern und wieder setzen; am Ende die Zerlegung des letzten Netzes */
+export function aufraeumen(a: AufraeumAuftrag): AufraeumErgebnis {
+  const ms = [0, 0, 0, 0];
+  let h = hautAusFlach(a.haut);
+  let loops = a.loops;
+  let alt: Int32Array | null = null;
+  let neu = 0;
+  let gelegt = 0;
+  let durchgaenge = 0;
+  let runden = 0;
+  let verborgen = a.opt.verborgen ?? null;
+  const verdichte = (opt: VerdichtenOptionen): boolean => {
+    const t = uhr();
+    const v = a.verdichten ? verdichten(h, loops, a.maxKante, { ...opt, verborgen }) : null;
+    ms[0] = ms[0]! + uhr() - t;
+    if (!v) return false;
+    // die Zuordnung zum Netz vom Auftrag: über alle Durchgänge verkettet (gebliebene Punkte stehen in jedem vorn)
+    alt = alt ? v.alt.map((w) => (w >= 0 ? alt![w]! : -1)) : v.alt;
+    h = v.haut;
+    loops = v.loops;
+    verborgen = v.verborgen;
+    neu += v.neu;
+    gelegt += v.gelegt;
+    durchgaenge++;
+    return true;
+  };
+  /** die Zerlegung für das Netz von jetzt (null: nicht nach der Geometrie, dort zerlegt der Löser selbst) */
+  const zerlege = (): { vorlage: HautVorlage; daten: ZerlegungsDaten[] } | null => {
+    const t0 = uhr();
+    const auftrag = new LoopZug(h, loops, null, a.kruemmung, 'kurven', a.gewichte, { nurZeilen: true, ...a.loeserOpt }).auftrag;
+    const t1 = uhr();
+    ms[1] = ms[1]! + t1 - t0;
+    if (!auftrag) return null;
+    const daten = auftrag.systeme.map((s) => zerlegungsDaten(s.n, s.zeilen, s.daempfung));
+    ms[2] = ms[2]! + uhr() - t1;
+    return { vorlage: { gew: auftrag.gew, sys: systemAusDaten(daten[0]!), cVor: daten[1] ? systemAusDaten(daten[1]) : null, struktur: auftrag.struktur }, daten };
+  };
+  /** Runden zu den Pfaden, bis die Form steht; danach die Linien festlegen */
+  const setze = (vorlage: HautVorlage | null): void => {
+    const t = uhr();
+    const z = new LoopZug(h, loops, null, a.kruemmung, 'kurven', a.gewichte, vorlage ? { vorlage, ...a.loeserOpt } : a.loeserOpt);
+    const ziele = loops.map((l, li) => (a.exakt[li] ? pfadVersatz(l, z.start[li]!) : null));
+    const vor = new Float64Array(h.pos.length);
+    for (let k = 0; k < a.maxRunden; k++) {
+      vor.set(h.pos);
+      const N = hautNormalen(h);
+      z.schritt(ziele, 1);
+      runden++;
+      let weg = 0;
+      for (let i = 0; i < vor.length; i += 3) {
+        const d = Math.abs((h.pos[i]! - vor[i]!) * N[i]! + (h.pos[i + 1]! - vor[i + 1]!) * N[i + 1]! + (h.pos[i + 2]! - vor[i + 2]!) * N[i + 2]!);
+        if (d > weg) weg = d;
+      }
+      if (weg < a.ruhe) break;
+    }
+    loops.forEach((l, li) => festlegen(h, l, !a.exakt[li]));
+    ms[3] = ms[3]! + uhr() - t;
+  };
+
+  const geaendert = verdichte(a.opt);
+  let z = zerlege();
+  if (geaendert) {
+    for (let k = 0; ; k++) {
+      setze(z ? z.vorlage : null);
+      if (k >= a.nachverfeinern || !verdichte(a.optNurTeilen)) break;
+      z = zerlege();
+    }
+  }
+  let gewStart: Int32Array | null = null;
+  let gewWert: Float64Array | null = null;
+  if (z) {
+    const gew = z.vorlage.gew;
+    gewStart = new Int32Array(h.n + 1);
+    for (let p = 0; p < h.n; p++) gewStart[p + 1] = gewStart[p]! + gew[p]!.length;
+    gewWert = new Float64Array(gewStart[h.n]!);
+    for (let p = 0; p < h.n; p++) gewWert.set(gew[p]!, gewStart[p]!);
+  }
+  return {
+    art: 'aufraeumen',
+    id: a.id,
+    geaendert,
+    haut: geaendert ? { ...nachbarnFlach(h), pos: h.pos, tri: h.tri, n: h.n, spiegel: h.spiegel } : null,
+    loops: geaendert ? loops : null,
+    alt: geaendert ? alt : null,
+    neu,
+    gelegt,
+    durchgaenge,
+    runden,
+    gewStart,
+    gewWert,
+    daten: z ? z.daten : [],
+    struktur: z ? (z.vorlage.struktur ?? '') : '',
+    ms,
+  };
+}
+
+/** Die Felder des Ergebnisses, die ohne Kopie aus dem Worker wandern */
+export function aufgeraeumtZumUebergeben(e: AufraeumErgebnis): ArrayBufferLike[] {
+  const felder: ArrayBufferLike[] = e.daten.flatMap((d) => [d.perm.buffer, d.Lp.buffer, d.Li.buffer, d.Lx.buffer]);
+  if (e.gewStart && e.gewWert) felder.push(e.gewStart.buffer, e.gewWert.buffer);
+  if (e.haut) felder.push(e.haut.pos.buffer, e.haut.tri.buffer, e.haut.nbStart.buffer, e.haut.nb.buffer, e.haut.spiegel.buffer);
+  if (e.alt) felder.push(e.alt.buffer);
   return [...new Set(felder)];
 }

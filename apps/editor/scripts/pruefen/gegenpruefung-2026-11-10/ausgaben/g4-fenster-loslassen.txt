@@ -1,0 +1,156 @@
+G4.2/G4.3 im Fenster (10.11.2026): form-loslassen-probe.mjs mit GPU=1, Ohr (obere Kreuzung 90 Einheiten hinauf).
+Je Fall erst der alte Ablauf (&nachlauf=0), dann der neue. Einheiten: 1 = 0,89 px bei 100 %, 2,7 px bei 300 %.
+
+##### schneller Zug, sofort loslassen (5 200 Punkte)
+=== 5 200 Punkte, schneller Zug, sofort loslassen &nachlauf=0
+ohr (kurven.html?gewichte=geometrie&nachlauf=0): 30 Mausschritte in 634 ms (Pause 0 ms), 37 Bilder bis zum Loslassen, gehalten 0 ms · Löser je Bewegung bzw. Bild 10.03 ms (max 12), 4988 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  vor dem Loslassen: Haut rechnet noch ja, 2 Runden seit der letzten Mausbewegung
+  davon die Runden am Ende (Nachhinken): bis 0.95
+  Loslassen sofort (was die Behandlung des Loslassens selbst ändert) (nach 345 ms): 5282 Punkte · Haut bewegt bis 1.71 (99 % 1.20, Mittel 0.11, 82 Punkte über 1) bei (-23, 152, -147)
+  nach dem Loslassen bis zur Ruhe (544 ms): längster Abstand zwischen zwei Bildern 183 ms, über 50 ms: 3, über 100 ms: 3, zusammen über 50 ms: 482 ms
+  Bewegung bei gleichem Netz: 1 Bilder, größte je Bild 0.13, über 0,18 je Bild: 0, von 544 bis 544 ms · Netzwechsel: 2 (nach 201, 393 ms)
+  Netzwechsel 1: 5282 → 5306 Punkte, Haut davor gegen danach (nach 201 ms): 5306 Punkte · Haut bewegt bis 2.27 (99 % 1.76, Mittel 0.27, 420 Punkte über 1) bei (-46, 75, 179)
+  Netzwechsel 2: 5306 → 5310 Punkte, Haut davor gegen danach (nach 393 ms): 5310 Punkte · Haut bewegt bis 0.58 (99 % 0.13, Mittel 0.01, 0 Punkte über 1) bei (0, 143, 176)
+  Endstand gegen vor dem Loslassen: 5310 Punkte · Haut bewegt bis 3.68 (99 % 2.86, Mittel 0.40, 712 Punkte über 1) bei (-23, 89, -190)
+  Zeiten: Verdichten 21 ms (4 neu, 0 gelegt) · Zerlegen in der Ruhe 107 ms · Setzen samt Nachverfeinern 120 ms
+=== 5 200 Punkte, schneller Zug, sofort loslassen 
+ohr (kurven.html?gewichte=geometrie): 30 Mausschritte in 700 ms (Pause 0 ms), 42 Bilder bis zum Loslassen, gehalten 0 ms · Löser je Bewegung bzw. Bild 9.74 ms (max 11), 4988 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  vor dem Loslassen: Haut rechnet noch ja, 2 Runden seit der letzten Mausbewegung
+  davon die Runden am Ende (Nachhinken): bis 0.00
+  Loslassen sofort (was die Behandlung des Loslassens selbst ändert) (nach 288 ms): 4988 Punkte · Haut bewegt bis 0.00 (99 % 0.00, Mittel 0.00, 0 Punkte über 1) (nichts bewegt)
+  nach dem Loslassen bis zur Ruhe (934 ms): längster Abstand zwischen zwei Bildern 26 ms, über 50 ms: 0, über 100 ms: 0, zusammen über 50 ms: 0 ms
+  Bewegung bei gleichem Netz: 3 Bilder, größte je Bild 0.55, über 0,18 je Bild: 1, von 12 bis 45 ms · Netzwechsel: 1 (nach 934 ms)
+  Netzwechsel 1: 4988 → 5306 Punkte, Haut davor gegen danach (nach 934 ms): 5306 Punkte · Haut bewegt bis 3.10 (99 % 2.09, Mittel 0.29, 502 Punkte über 1) bei (-24, 88, -190)
+  Auftrag im Hintergrund: angewendet, 3-mal verdichtet (414 neu, 48 gelegt), 19 Runden gesetzt; im Hintergrund [verdichten/Zeilen/zerlegen/setzen] 99/53/313/146 ms, vom Abschicken bis fertig 890 ms, Einwechseln 4 ms · Runden im Nachlauf 5
+  Endstand gegen vor dem Loslassen: 5306 Punkte · Haut bewegt bis 3.40 (99 % 2.38, Mittel 0.37, 676 Punkte über 1) bei (-24, 88, -190)
+  Zeiten: Verdichten 99 ms (414 neu, 48 gelegt) · Zerlegen in der Ruhe 16 ms · Setzen samt Nachverfeinern 0 ms
+
+##### schneller Zug, sofort loslassen (11 000 und 23 400 Punkte)
+=== &dreiecke=14000 schneller Zug, sofort loslassen &nachlauf=0
+  davon die Runden am Ende (Nachhinken): bis 0.60
+  Loslassen sofort (was die Behandlung des Loslassens selbst ändert) (nach 645 ms): 11417 Punkte · Haut bewegt bis 0.88 (99 % 0.64, Mittel 0.11, 0 Punkte über 1) bei (-27, 152, -144)
+  nach dem Loslassen bis zur Ruhe (894 ms): längster Abstand zwischen zwei Bildern 443 ms, über 50 ms: 2, über 100 ms: 2, zusammen über 50 ms: 845 ms
+  Bewegung bei gleichem Netz: 1 Bilder, größte je Bild 0.31, über 0,18 je Bild: 1, von 894 bis 894 ms · Netzwechsel: 1 (nach 474 ms)
+  Netzwechsel 1: 11417 → 11429 Punkte, Haut davor gegen danach (nach 474 ms): 11429 Punkte · Haut bewegt bis 0.73 (99 % 0.33, Mittel 0.05, 0 Punkte über 1) bei (-3, 113, 194)
+  Endstand gegen vor dem Loslassen: 11429 Punkte · Haut bewegt bis 1.30 (99 % 0.83, Mittel 0.09, 44 Punkte über 1) bei (-3, 113, 194)
+  Zeiten: Verdichten 54 ms (12 neu, 0 gelegt) · Zerlegen in der Ruhe 312 ms · Setzen samt Nachverfeinern 386 ms
+=== &dreiecke=14000 schneller Zug, sofort loslassen 
+  davon die Runden am Ende (Nachhinken): bis 0.00
+  Loslassen sofort (was die Behandlung des Loslassens selbst ändert) (nach 592 ms): 10625 Punkte · Haut bewegt bis 0.00 (99 % 0.00, Mittel 0.00, 0 Punkte über 1) (nichts bewegt)
+  nach dem Loslassen bis zur Ruhe (1970 ms): längster Abstand zwischen zwei Bildern 47 ms, über 50 ms: 0, über 100 ms: 0, zusammen über 50 ms: 0 ms
+  Bewegung bei gleichem Netz: 3 Bilder, größte je Bild 0.37, über 0,18 je Bild: 1, von 17 bis 80 ms · Netzwechsel: 1 (nach 1970 ms)
+  Netzwechsel 1: 10625 → 11425 Punkte, Haut davor gegen danach (nach 1970 ms): 11425 Punkte · Haut bewegt bis 1.16 (99 % 0.53, Mittel 0.05, 8 Punkte über 1) bei (-4, 113, -194)
+  Auftrag im Hintergrund: angewendet, 2-mal verdichtet (1024 neu, 112 gelegt), 8 Runden gesetzt; im Hintergrund [verdichten/Zeilen/zerlegen/setzen] 189/83/848/188 ms, vom Abschicken bis fertig 1889 ms, Einwechseln 10 ms · Runden im Nachlauf 3
+  Endstand gegen vor dem Loslassen: 11425 Punkte · Haut bewegt bis 1.35 (99 % 0.85, Mittel 0.09, 44 Punkte über 1) bei (-4, 113, -194)
+  Zeiten: Verdichten 189 ms (1024 neu, 112 gelegt) · Zerlegen in der Ruhe 24 ms · Setzen samt Nachverfeinern 0 ms
+=== &dreiecke=30000 schneller Zug, sofort loslassen &nachlauf=0
+  davon die Runden am Ende (Nachhinken): bis 0.84
+  Loslassen sofort (was die Behandlung des Loslassens selbst ändert) (nach 1338 ms): 25216 Punkte · Haut bewegt bis 0.92 (99 % 0.79, Mittel 0.12, 0 Punkte über 1) bei (-49, 141, -167)
+  nach dem Loslassen bis zur Ruhe (3718 ms): längster Abstand zwischen zwei Bildern 1427 ms, über 50 ms: 4, über 100 ms: 3, zusammen über 50 ms: 3684 ms
+  Bewegung bei gleichem Netz: 1 Bilder, größte je Bild 0.05, über 0,18 je Bild: 0, von 3718 bis 3718 ms · Netzwechsel: 2 (nach 1492, 2665 ms)
+  Netzwechsel 1: 25216 → 25232 Punkte, Haut davor gegen danach (nach 1492 ms): 25232 Punkte · Haut bewegt bis 0.41 (99 % 0.28, Mittel 0.05, 0 Punkte über 1) bei (-29, 104, -195)
+  Netzwechsel 2: 25232 → 25234 Punkte, Haut davor gegen danach (nach 2665 ms): 25234 Punkte · Haut bewegt bis 0.11 (99 % 0.03, Mittel 0.00, 0 Punkte über 1) bei (-59, 143, -139)
+  Endstand gegen vor dem Loslassen: 25234 Punkte · Haut bewegt bis 1.20 (99 % 1.05, Mittel 0.17, 446 Punkte über 1) bei (-60, 102, -179)
+  Zeiten: Verdichten 102 ms (2 neu, 0 gelegt) · Zerlegen in der Ruhe 970 ms · Setzen samt Nachverfeinern 1021 ms
+=== &dreiecke=30000 schneller Zug, sofort loslassen 
+  davon die Runden am Ende (Nachhinken): bis 0.00
+  Loslassen sofort (was die Behandlung des Loslassens selbst ändert) (nach 1051 ms): 23968 Punkte · Haut bewegt bis 0.00 (99 % 0.00, Mittel 0.00, 0 Punkte über 1) (nichts bewegt)
+  nach dem Loslassen bis zur Ruhe (5065 ms): längster Abstand zwischen zwei Bildern 93 ms, über 50 ms: 1, über 100 ms: 0, zusammen über 50 ms: 93 ms
+  Bewegung bei gleichem Netz: 5 Bilder, größte je Bild 0.36, über 0,18 je Bild: 2, von 30 bis 216 ms · Netzwechsel: 1 (nach 5065 ms)
+  Netzwechsel 1: 23968 → 25230 Punkte, Haut davor gegen danach (nach 5065 ms): 25230 Punkte · Haut bewegt bis 0.66 (99 % 0.29, Mittel 0.05, 0 Punkte über 1) bei (3, 107, -191)
+  Auftrag im Hintergrund: angewendet, 3-mal verdichtet (1772 neu, 255 gelegt), 15 Runden gesetzt; im Hintergrund [verdichten/Zeilen/zerlegen/setzen] 398/191/2805/599 ms, vom Abschicken bis fertig 4849 ms, Einwechseln 13 ms · Runden im Nachlauf 5
+  Endstand gegen vor dem Loslassen: 25230 Punkte · Haut bewegt bis 1.20 (99 % 1.05, Mittel 0.17, 450 Punkte über 1) bei (-60, 102, -179)
+  Zeiten: Verdichten 398 ms (1772 neu, 255 gelegt) · Zerlegen in der Ruhe 54 ms · Setzen samt Nachverfeinern 0 ms
+
+##### nach dem Loslassen gleich wieder greifen (WIEDER)
+=== 5 200 Punkte, nach 300 ms noch einmal greifen &nachlauf=0
+  nach dem Loslassen bis zur Ruhe (1127 ms): längster Abstand zwischen zwei Bildern 186 ms, über 50 ms: 3, über 100 ms: 3, zusammen über 50 ms: 502 ms
+  Bewegung bei gleichem Netz: 17 Bilder, größte je Bild 2.26, über 0,18 je Bild: 14, von 381 bis 1127 ms · Netzwechsel: 2 (nach 208, 942 ms)
+  noch einmal gegriffen 300 ms nach dem Loslassen (Nachlauf fertig, Hintergrund fertig): Drücken dauerte 27 ms, zerlegt beim Greifen 3 ms
+  Endstand gegen vor dem Loslassen: 5396 Punkte · Haut bewegt bis 15.68 (99 % 13.41, Mittel 1.19, 1104 Punkte über 1) bei (-28, 118, -209)
+=== 5 200 Punkte, nach 300 ms noch einmal greifen 
+  nach dem Loslassen bis zur Ruhe (1321 ms): längster Abstand zwischen zwei Bildern 31 ms, über 50 ms: 0, über 100 ms: 0, zusammen über 50 ms: 0 ms
+  Bewegung bei gleichem Netz: 14 Bilder, größte je Bild 2.42, über 0,18 je Bild: 11, von 13 bis 822 ms · Netzwechsel: 1 (nach 1321 ms)
+  Auftrag im Hintergrund: angewendet, 2-mal verdichtet (562 neu, 62 gelegt), 10 Runden gesetzt; im Hintergrund [verdichten/Zeilen/zerlegen/setzen] 95/41/207/96 ms, vom Abschicken bis fertig 496 ms, Einwechseln 5 ms · Runden im Nachlauf 2
+  noch einmal gegriffen 300 ms nach dem Loslassen (Nachlauf fertig, Hintergrund rechnete): Drücken dauerte 24 ms, zerlegt beim Greifen 2 ms
+  Endstand gegen vor dem Loslassen: 5426 Punkte · Haut bewegt bis 15.45 (99 % 13.45, Mittel 1.21, 1114 Punkte über 1) bei (-29, 119, -208)
+=== 23 400 Punkte, nach 400 ms noch einmal greifen &nachlauf=0
+  nach dem Loslassen bis zur Ruhe (4876 ms): längster Abstand zwischen zwei Bildern 1438 ms, über 50 ms: 6, über 100 ms: 4, zusammen über 50 ms: 4158 ms
+  Bewegung bei gleichem Netz: 22 Bilder, größte je Bild 2.27, über 0,18 je Bild: 15, von 2613 bis 4876 ms · Netzwechsel: 2 (nach 1508, 3459 ms)
+  noch einmal gegriffen 400 ms nach dem Loslassen (Nachlauf fertig, Hintergrund fertig): Drücken dauerte 1040 ms, zerlegt beim Greifen 981 ms
+  Endstand gegen vor dem Loslassen: 25548 Punkte · Haut bewegt bis 14.49 (99 % 12.15, Mittel 0.99, 4378 Punkte über 1) bei (-16, 118, -211)
+=== 23 400 Punkte, nach 400 ms noch einmal greifen 
+  nach dem Loslassen bis zur Ruhe (7521 ms): längster Abstand zwischen zwei Bildern 95 ms, über 50 ms: 1, über 100 ms: 0, zusammen über 50 ms: 95 ms
+  Bewegung bei gleichem Netz: 33 Bilder, größte je Bild 2.24, über 0,18 je Bild: 20, von 30 bis 2338 ms · Netzwechsel: 1 (nach 7521 ms)
+  Auftrag im Hintergrund: angewendet, 3-mal verdichtet (2354 neu, 319 gelegt), 19 Runden gesetzt; im Hintergrund [verdichten/Zeilen/zerlegen/setzen] 448/224/3700/733 ms, vom Abschicken bis fertig 5182 ms, Einwechseln 17 ms · Runden im Nachlauf 10
+  noch einmal gegriffen 400 ms nach dem Loslassen (Nachlauf fertig, Hintergrund rechnete): Drücken dauerte 25 ms, zerlegt beim Greifen 7 ms
+  Endstand gegen vor dem Loslassen: 25694 Punkte · Haut bewegt bis 14.60 (99 % 12.37, Mittel 1.04, 4624 Punkte über 1) bei (-16, 118, -211)
+
+##### langsamer Zug, vor dem Loslassen gehalten (nur neuer Ablauf)
+===  langsamer Zug, 600 ms gehalten
+  Bilder im Zug: 73, Abstand im Mittel 16.8 ms (Mitte 16.0, 95 % 28.9, längster 46) · über 33 ms: 1, über 50 ms: 0, über 100 ms: 0
+  davon die Runden am Ende (Nachhinken): bis 0.00
+  Loslassen sofort (was die Behandlung des Loslassens selbst ändert) (nach 337 ms): 5218 Punkte · Haut bewegt bis 0.00 (99 % 0.00, Mittel 0.00, 0 Punkte über 1) (nichts bewegt)
+  nach dem Loslassen bis zur Ruhe (237 ms): längster Abstand zwischen zwei Bildern 27 ms, über 50 ms: 0, über 100 ms: 0, zusammen über 50 ms: 0 ms
+  Bewegung bei gleichem Netz: 0 Bilder, größte je Bild 0.00, über 0,18 je Bild: 0 · Netzwechsel: 1 (nach 237 ms)
+  Netzwechsel 1: 5218 → 5294 Punkte, Haut davor gegen danach (nach 237 ms): 5294 Punkte · Haut bewegt bis 1.22 (99 % 0.24, Mittel 0.02, 2 Punkte über 1) bei (5, 109, -190)
+  Auftrag im Hintergrund: angewendet, 1-mal verdichtet (80 neu, 2 gelegt), 7 Runden gesetzt; im Hintergrund [verdichten/Zeilen/zerlegen/setzen] 47/26/93/65 ms, vom Abschicken bis fertig 237 ms, Einwechseln 3 ms · Runden im Nachlauf 0
+  Endstand gegen vor dem Loslassen: 5294 Punkte · Haut bewegt bis 1.22 (99 % 0.24, Mittel 0.02, 2 Punkte über 1) bei (5, 109, -190)
+=== &dreiecke=14000 langsamer Zug, 600 ms gehalten
+  Bilder im Zug: 92, Abstand im Mittel 18.6 ms (Mitte 16.5, 95 % 33.8, längster 72) · über 33 ms: 5, über 50 ms: 2, über 100 ms: 0
+  davon die Runden am Ende (Nachhinken): bis 0.00
+  Loslassen sofort (was die Behandlung des Loslassens selbst ändert) (nach 703 ms): 10971 Punkte · Haut bewegt bis 0.00 (99 % 0.00, Mittel 0.00, 0 Punkte über 1) (nichts bewegt)
+  nach dem Loslassen bis zur Ruhe (1111 ms): längster Abstand zwischen zwei Bildern 53 ms, über 50 ms: 1, über 100 ms: 0, zusammen über 50 ms: 53 ms
+  Bewegung bei gleichem Netz: 0 Bilder, größte je Bild 0.00, über 0,18 je Bild: 0 · Netzwechsel: 1 (nach 1111 ms)
+  Netzwechsel 1: 10971 → 11371 Punkte, Haut davor gegen danach (nach 1111 ms): 11371 Punkte · Haut bewegt bis 0.71 (99 % 0.20, Mittel 0.04, 0 Punkte über 1) bei (4, 114, -191)
+  Auftrag im Hintergrund: angewendet, 2-mal verdichtet (506 neu, 53 gelegt), 9 Runden gesetzt; im Hintergrund [verdichten/Zeilen/zerlegen/setzen] 146/100/569/282 ms, vom Abschicken bis fertig 1115 ms, Einwechseln 7 ms · Runden im Nachlauf 0
+  Endstand gegen vor dem Loslassen: 11371 Punkte · Haut bewegt bis 0.71 (99 % 0.20, Mittel 0.04, 0 Punkte über 1) bei (4, 114, -191)
+=== &dreiecke=30000 langsamer Zug, 2000 ms gehalten
+  Bilder im Zug: 93, Abstand im Mittel 34.5 ms (Mitte 32.1, 95 % 50.4, längster 102) · über 33 ms: 28, über 50 ms: 5, über 100 ms: 1
+  davon die Runden am Ende (Nachhinken): bis 0.00
+  Loslassen sofort (was die Behandlung des Loslassens selbst ändert) (nach 1492 ms): 25054 Punkte · Haut bewegt bis 0.00 (99 % 0.00, Mittel 0.00, 0 Punkte über 1) (nichts bewegt)
+  nach dem Loslassen bis zur Ruhe (1376 ms): längster Abstand zwischen zwei Bildern 102 ms, über 50 ms: 1, über 100 ms: 1, zusammen über 50 ms: 102 ms
+  Bewegung bei gleichem Netz: 0 Bilder, größte je Bild 0.00, über 0,18 je Bild: 0 · Netzwechsel: 1 (nach 1376 ms)
+  Netzwechsel 1: 25054 → 25148 Punkte, Haut davor gegen danach (nach 1376 ms): 25148 Punkte · Haut bewegt bis 0.30 (99 % 0.25, Mittel 0.03, 0 Punkte über 1) bei (8, 120, -188)
+  Auftrag im Hintergrund: angewendet, 1-mal verdichtet (144 neu, 25 gelegt), 5 Runden gesetzt; im Hintergrund [verdichten/Zeilen/zerlegen/setzen] 173/78/911/194 ms, vom Abschicken bis fertig 1384 ms, Einwechseln 16 ms · Runden im Nachlauf 0
+  Endstand gegen vor dem Loslassen: 25148 Punkte · Haut bewegt bis 0.30 (99 % 0.25, Mittel 0.03, 0 Punkte über 1) bei (8, 120, -188)
+
+##### Gegenprobe ohne Verdichten (&verdichten=0&live=0): Steht die Haut nach dem Nachlauf? Danach sechsmal fünf Runden (NACH=5x6)
+=== 5 200 Punkte, schneller Zug, sofort loslassen, ohne Verdichten (&verdichten=0&live=0), danach NACH=5x6
+ohr (kurven.html?gewichte=geometrie&verdichten=0&live=0): 30 Mausschritte in 568 ms (Pause 0 ms), 34 Bilder bis zum Loslassen, gehalten 0 ms · Löser je Bewegung bzw. Bild 9.81 ms (max 12), 5222 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  vor dem Loslassen: Haut rechnet noch ja, 2 Runden seit der letzten Mausbewegung
+  Bilder im Zug: 34, Abstand im Mittel 17.0 ms (Mitte 16.6, 95 % 20.0, längster 46) · über 33 ms: 1, über 50 ms: 0, über 100 ms: 0
+    Arbeit im Hauptthread: je Bild 11.0 ms (längste 26), davon Löser 9.8; je Mausbewegung 0.9 ms (längste 3); Auslösen des Verfeinerns: – ms; Einwechseln: – ms (das letzte: Auspacken 0, dann []; im Hintergrund [])
+  Stufen im Zug: 0 im Vordergrund (letzte 0 ms), 0 eingewechselt aus dem Hintergrund (Auslösen 0 ms [], Einwechseln 0 ms, Auslösen bis Einwechseln 0 ms)
+  davon die Runden am Ende (Nachhinken): bis 0.00
+  Loslassen sofort (was die Behandlung des Loslassens selbst ändert) (nach 275 ms): 5222 Punkte · Haut bewegt bis 0.00 (99 % 0.00, Mittel 0.00, 0 Punkte über 1) (nichts bewegt)
+  nach dem Loslassen bis zur Ruhe (40 ms): längster Abstand zwischen zwei Bildern 29 ms, über 50 ms: 0, über 100 ms: 0, zusammen über 50 ms: 0 ms
+  Bewegung bei gleichem Netz: 2 Bilder, größte je Bild 0.49, über 0,18 je Bild: 1, von 11 bis 40 ms · Netzwechsel: 0
+  Auftrag im Hintergrund: angewendet, nichts zu verfeinern; im Hintergrund [verdichten/Zeilen/zerlegen/setzen] 0/28/118/0 ms, vom Abschicken bis fertig 428 ms, Einwechseln 2 ms · Runden im Nachlauf 4
+  Endstand gegen vor dem Loslassen: 5222 Punkte · Haut bewegt bis 0.43 (99 % 0.39, Mittel 0.06, 0 Punkte über 1) bei (-52, 144, -140)
+  noch 5 Runden (1): 5222 Punkte · Haut bewegt bis 0.20 (99 % 0.18, Mittel 0.02, 0 Punkte über 1) bei (-56, 120, 173)
+  noch 5 Runden (2): 5222 Punkte · Haut bewegt bis 0.06 (99 % 0.05, Mittel 0.01, 0 Punkte über 1) bei (-73, 123, -146)
+  noch 5 Runden (3): 5222 Punkte · Haut bewegt bis 0.00 (99 % 0.00, Mittel 0.00, 0 Punkte über 1) bei (-78, -61, 106)
+  noch 5 Runden (4): 5222 Punkte · Haut bewegt bis 0.00 (99 % 0.00, Mittel 0.00, 0 Punkte über 1) bei (-38, -59, -127)
+  noch 5 Runden (5): 5222 Punkte · Haut bewegt bis 0.00 (99 % 0.00, Mittel 0.00, 0 Punkte über 1) bei (94, -80, -93)
+  noch 5 Runden (6): 5222 Punkte · Haut bewegt bis 0.00 (99 % 0.00, Mittel 0.00, 0 Punkte über 1) bei (66, -102, 94)
+  Zeiten: Verdichten – ms (0 neu, 0 gelegt) · Zerlegen in der Ruhe 17 ms · Setzen samt Nachverfeinern 0 ms
+=== &dreiecke=14000, sonst gleich
+ohr (kurven.html?gewichte=geometrie&verdichten=0&live=0&dreiecke=14000): 30 Mausschritte in 845 ms (Pause 0 ms), 48 Bilder bis zum Loslassen, gehalten 0 ms · Löser je Bewegung bzw. Bild 11.10 ms (max 12), 10964 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  vor dem Loslassen: Haut rechnet noch ja, 1 Runden seit der letzten Mausbewegung
+  Bilder im Zug: 48, Abstand im Mittel 17.6 ms (Mitte 16.7, 95 % 19.3, längster 58) · über 33 ms: 1, über 50 ms: 1, über 100 ms: 0
+    Arbeit im Hauptthread: je Bild 13.7 ms (längste 39), davon Löser 11.1; je Mausbewegung 0.9 ms (längste 3); Auslösen des Verfeinerns: – ms; Einwechseln: – ms (das letzte: Auspacken 0, dann []; im Hintergrund [])
+  Stufen im Zug: 0 im Vordergrund (letzte 0 ms), 0 eingewechselt aus dem Hintergrund (Auslösen 0 ms [], Einwechseln 0 ms, Auslösen bis Einwechseln 0 ms)
+  davon die Runden am Ende (Nachhinken): bis 0.00
+  Loslassen sofort (was die Behandlung des Loslassens selbst ändert) (nach 498 ms): 10964 Punkte · Haut bewegt bis 0.00 (99 % 0.00, Mittel 0.00, 0 Punkte über 1) (nichts bewegt)
+  nach dem Loslassen bis zur Ruhe (160 ms): längster Abstand zwischen zwei Bildern 44 ms, über 50 ms: 0, über 100 ms: 0, zusammen über 50 ms: 0 ms
+  Bewegung bei gleichem Netz: 9 Bilder, größte je Bild 1.33, über 0,18 je Bild: 3, von 14 bis 160 ms · Netzwechsel: 0
+  Auftrag im Hintergrund: angewendet, nichts zu verfeinern; im Hintergrund [verdichten/Zeilen/zerlegen/setzen] 0/45/346/0 ms, vom Abschicken bis fertig 772 ms, Einwechseln 4 ms · Runden im Nachlauf 9
+  Endstand gegen vor dem Loslassen: 10964 Punkte · Haut bewegt bis 1.97 (99 % 1.78, Mittel 0.25, 842 Punkte über 1) bei (-58, 129, -165)
+  noch 5 Runden (1): 10964 Punkte · Haut bewegt bis 0.09 (99 % 0.05, Mittel 0.01, 0 Punkte über 1) bei (43, 41, -128)
+  noch 5 Runden (2): 10964 Punkte · Haut bewegt bis 0.01 (99 % 0.01, Mittel 0.00, 0 Punkte über 1) bei (-45, 128, -181)
+  noch 5 Runden (3): 10964 Punkte · Haut bewegt bis 0.02 (99 % 0.02, Mittel 0.00, 0 Punkte über 1) bei (-69, 95, -167)
+  noch 5 Runden (4): 10964 Punkte · Haut bewegt bis 0.01 (99 % 0.01, Mittel 0.00, 0 Punkte über 1) bei (-93, 54, -135)
+  noch 5 Runden (5): 10964 Punkte · Haut bewegt bis 0.07 (99 % 0.06, Mittel 0.01, 0 Punkte über 1) bei (-81, 101, -152)
+  noch 5 Runden (6): 10964 Punkte · Haut bewegt bis 0.02 (99 % 0.02, Mittel 0.00, 0 Punkte über 1) bei (-78, 73, -155)
+  Zeiten: Verdichten – ms (0 neu, 0 gelegt) · Zerlegen in der Ruhe 30 ms · Setzen samt Nachverfeinern 0 ms
