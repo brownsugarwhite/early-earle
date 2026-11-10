@@ -1,4 +1,4 @@
-# Übergabe (Stand 10.11.2026 mittags: G1 und G2 gebaut, Florians Blick offen; als Nächstes G3)
+# Übergabe (Stand 10.11.2026 nachmittags: G1 bis G3 gebaut, Florians Blick offen; als Nächstes G4)
 
 **Branch `claude/form-zuerst`, Arbeitsbaum `.claude/worktrees/form-zuerst`.** Diese Datei ist der Einstieg. Die alte Übergabe aus der
 Käfig-Zeit (Stand 04.11.) steht in der Git-Geschichte: `git show 82aed6dc:docs/UEBERGABE.md`.
@@ -6,26 +6,47 @@ Käfig-Zeit (Stand 04.11.) steht in der Git-Geschichte: `git show 82aed6dc:docs/
 **Auftrag (Florian, 10.11.):** Die Schritte G1–G4 aus dem Nachtrag von
 [`docs/research/2026-11-10-gegenpruefung-kurven-loeser.md`](research/2026-11-10-gegenpruefung-kurven-loeser.md) bauen
 („`?gewichte=geometrie` als Zielmodell“): G1 Einsetzen ausschreiben, G2 Anzeige, G3 durchgehend rechnen, G4 Schweres in den Worker.
-Kriterien stehen in der Tabelle des Nachtrags.
+Kriterien stehen in der Tabelle des Nachtrags; Messwerte und Befunde je Schritt unter „Stand“ am Ende des Nachtrags.
 
-**Stand der Schritte (10.11. mittags; es baut die Sitzung der Gegenprüfung, die frühere bauende Sitzung ändert nichts mehr):**
+**Stand der Schritte (10.11. nachmittags; es baut die Sitzung der Gegenprüfung, die frühere bauende Sitzung ändert nichts mehr):**
 - **G1 gebaut** (`6eae3883`): Einsetzen für eine und drei Spalten ausgeschrieben (`loeser/zerlegung.ts`, Test `zerlegung.test.ts`),
   bitgleich mit vorher. Runde „geometrie“ 12,8 → 7,7 ms / 32 → 15,5 ms / 73 → 32 ms bei 5 200 / 11 000 / 23 400 Punkten (Kern,
   Ohr-Zug); Lösen mit drei Spalten 6,0 → 1,7 ms. Kriterium bei 11 000 erfüllt (≤ 16 ms), bei 5 200 knapp nicht (7,7 statt ≤ 7 ms,
   bei belegter Maschine gemessen).
-- **G2 gebaut** (`0f80f0e2`): Griffe in wahrer Länge (`GRIFFE_WAHR`; `?griffe=mindest` zeigt die Mindestlänge von vorher zum
-  Vergleich), Bézier-Pfad auch im Zug (`pfadKurven(a, l, sp, li)`). Probe `form-griff-loslassen.mjs`: Sprung der Griffspitze beim
-  Loslassen 0,00 px (vorher 42,5 px), Linie im Zug gegen danach 0,00 px. **Florians Entscheidung zu den Griffen steht aus**
-  (wahre Länge oder Mindestlänge ohne Sprung). Nicht gebaut aus G2: die Kurve vor dem Löser zeichnen; das bringt erst mit G3 etwas
-  (im selben Mausereignis malt der Browser ohnehin erst nach dem Löser).
-- **G3–G6 offen.** Nächster Schritt G3 (durchgehend rechnen im Bildtakt, auch beim Halten; Maß für „steht“; Kurven zuerst).
+- **G2 gebaut** (`0f80f0e2`): Griffe in wahrer Länge, Bézier-Pfad auch im Zug (`pfadKurven(a, l, sp, li)`). Probe
+  `form-griff-loslassen.mjs`: Sprung der Griffspitze beim Loslassen 0,00 px (vorher 42,5 px), Linie im Zug gegen danach 0,00 px.
+  **Florian hat entschieden** (10.11.): „Die Griffe bleiben in wahrer Länge wie in Illustrator.“ Der Streckfaktor und der
+  Vergleichsschalter `?griffe=mindest` sind entfernt (`44a0fb8d`).
+- **G3 gebaut** (`44a0fb8d`, `ab3a8d95`): Über die ganze Haut rechnet der Löser im Bildtakt (`zugRechnen` in `schleife`), auch
+  wenn die Maus ruht, bis die Form steht; `zugBewegen` setzt nur noch die Ziele und zeichnet die Kurven.
+  - „Steht“ = in einer Runde kein Punkt über 0,05 Einheiten längs der Flächennormalen (`RUHE`, `rundeMitWeg`), höchstens 60 Runden
+    nach der letzten Mausbewegung (`NACH_RUNDEN`). Je Bild Runden für höchstens 12 ms (`BUDGET_MS`), mindestens eine.
+  - Loslassen: Runden am Ende nur noch, wenn die Haut nicht steht. Das Setzen danach rechnet, bis die Form steht (höchstens
+    `RUNDEN_NEU` = 12; `?setzen=4` wie vorher).
+  - Nach Neuaufsetzen und Einwechseln im Zug gelten sofort die Pfade als Ziele (`zieleVonJetzt`).
+  - Gemessen im Fenster (Ohr, vor dem Loslassen gehalten, vor G3 → mit G3): Ruck beim Loslassen 1,06 → 0,00 / 0,85 → 0,00 /
+    11,4 → 0,00 Einheiten bei 5 200 / 11 000 / 23 400 Punkten; Ende gegen vorher (99 % der Punkte) 1,2 → 0,35 / 0,6 → 0,04 /
+    8,7 → 0,25–0,7. Schnell gezogen und gehalten lag die Haut vorher 39 Einheiten zurück, jetzt 1,4.
+  - **Nicht behoben:** schneller Zug mit sofortigem Loslassen; die Stufen nach dem Loslassen (Verdichten, Setzen). Das ist G4.
+- **Befunde aus G3** (Bericht, „Vier Befunde aus dem Messen“):
+  1. Auf einem geänderten Netz schwingt ein neuer Löser vier bis fünf Runden über (Kugel mit frisch eingesetzten Loops: 3,9 /
+     7,9 / 2,9 / 1,05 / 0,10 Einheiten, die ganze Haut). Auf demselben Netz und einer Haut, die steht, stört ein neuer Löser
+     nicht (≤ 0,06). So entstehen die Stufen nach dem Loslassen und der Ruck beim ersten Greifen nach einem neuen Loop.
+  2. Die Punkte gleiten längs der Fläche stetig weiter (bei 23 400 Punkten 0,04 Einheiten je Runde), die Form steht.
+  3. Die Bremse hält die Haut nicht nur fest: Sie steht wirklich (Gegenprobe mit neuem Löser).
+  4. Bei 23 400 Punkten hat das Prüfnetz 1 442 zu kurze Kanten; das Zusammenlegen im Zug hinterlässt bei (−115, 48, ±93) Punkte
+     mit drei und vier Nachbarn, an denen die Haut unruhig bleibt. `&kurz=0` lässt die Haut dort einfallen.
+- **G4–G6 offen.** Vorschlag für G4 nach den Befunden (Bericht, „Was das für G4 heißt“; Florians Wort steht aus): (a) Nachlauf
+  im Bildtakt nach dem Loslassen, bis die Haut steht; (b) Verdichten, Zerlegen und Setzen verdeckt im Hintergrund, bis die neue
+  Haut steht, einmal einwechseln; (c) dasselbe nach jeder anderen Änderung (Loop, Punkt, Kante). Den Stand der Bremse
+  weiterzugeben ist nach Befund 1 nicht der Hebel.
 
 ## 1. Stand
 
-- **Letzter Commit vor dieser Übergabe:** `50880ce7` (Nachtrag zur Gegenprüfung). Alles ist committet und gepusht (lokal =
-  `origin/claude/form-zuerst`).
+- **Letzter Code-Commit:** `ab3a8d95` (G3). Alles ist committet und gepusht (lokal = `origin/claude/form-zuerst`).
 - **Halbfertiges:** keins. Am 09.11. sind zwei Löser-Versuche wieder entfernt worden („gleiches Maß“, „Krümmung an den Linien
-  mitgelöst“; Stand des zweiten in `476a874f`). Der Code des Lösers ist seit `1f1f5079` (Schalter `maxNormalen`) unverändert.
+  mitgelöst“; Stand des zweiten in `476a874f`). Der Code des Lösers (`dicht/ausKurven.ts`) ist seit `1f1f5079` (Schalter
+  `maxNormalen`) unverändert; G1 hat nur das Einsetzen in `loeser/zerlegung.ts` ausgeschrieben, G2 und G3 nur das Fenster.
 - **Läuft:** ein Vite-Server auf Port 5193 aus diesem Arbeitsbaum. Seit dem 10.11. mittags gehört er der Sitzung der
   Gegenprüfung (Konfiguration `kurven` in `.claude/launch.json` des Hauptordners, mit `pnpm -C <Arbeitsbaum>`); der alte Prozess
   der früheren Sitzung ist beendet. Florian testet damit. Vor einem eigenen Start `lsof -i :5193` prüfen. Port 5180 gehört dem
@@ -50,16 +71,20 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5193 --strictPort
 - **Florians Adresse jetzt:** `http://localhost:5193/kurven.html?gewichte=geometrie`. Standard ohne Schalter ist der Löser mit gleichen
   Gewichten. `?form=bohne` startet mit einer Bohne statt der Kugel, `?dreiecke=<n>` setzt die Größe des Startnetzes (Standard 6 000).
 - **Altes Fenster** `form.html` (Form aus den Ansichten) und der alte Editor (`pnpm editor`, Käfig) werden nicht mehr benutzt.
-- **Test-Haken im Fenster:** `window.__kurven` (`kurven.ts:3171–3410`): `nachrechnen`, `loops`, `auswahl`, `pfadRest`, `knickAm`,
-  `griffe`, `kamera`, `knick`, `umgeschlagen`, `maul`, `zeiten` (zug, zerlegen, bereich, verdichtung, punkte, stufen, endrunden,
-  hintergrund, ausloesung, einwechslung, hintergrundMs, stufeMs, neuRechnen, vorrechnen, nachLoesen), `lagen`, `grundLagen`, `pose`, `dreiecke`, `meldung`, `bild` (Weltpunkt →
+- **Test-Haken im Fenster:** `window.__kurven` (`kurven.ts`, ab Zeile 3271): `weiterrechnen` (n Runden im laufenden Zug),
+  `nachrechnen`, `loops`, `auswahl`, `pfadRest`, `knickAm`, `griffe`, `kamera`, `knick`, `umgeschlagen`, `maul`, `zeiten` (zug,
+  zerlegen, bereich, verdichtung, punkte, stufen, endrunden, offen, nachRunden, hintergrund, ausloesung, einwechslung,
+  hintergrundMs, stufeMs, neuRechnen, vorrechnen, nachLoesen), `lagen`, `grundLagen`, `pose`, `dreiecke`, `meldung`, `bild` (Weltpunkt →
   Pixel im Blatt), `ausschnitt` (Zoom je Blatt), `felder`, `setzeRadius`, `symmetrie`, `masse`.
 
 **Tests, die grün sein müssen:**
-- Kern der dichten Form, aus `packages/shape`: `npx vitest run src/dicht/`. Zuletzt 107 von 107 grün (09.11.), etwa 30 s. Ausgaben
+- Kern der dichten Form, aus `packages/shape`: `npx vitest run src/dicht/ src/loeser/zerlegung.test.ts`. Zuletzt 110 von 110
+  grün (10.11.), etwa 20 s. Ausgaben
   bestandener Tests nur mit `--reporter=verbose`. `HAUT=gedaechtnis` lässt `loops.test.ts` und `weiterZug.test.ts` mit dem alten
   Löser laufen (Standard `kurven`).
-- Typen: `pnpm --filter @ee/shape typecheck` (09.11. grün); `pnpm --filter @ee/editor typecheck` (in den letzten Tagen nicht gelaufen).
+- Typen: `pnpm --filter @ee/shape typecheck` (09.11. grün); `pnpm --filter @ee/editor exec tsc --noEmit -p tsconfig.json` (10.11.
+  grün). Lint: `pnpm --filter @ee/editor exec eslint <dateien>` (10.11. sauber für die geänderten Dateien). `prettier` mit der
+  Vorgabe des Repos passt nicht zu den Dateien unter `form/` (lange Zeilen); nicht umformatieren.
 - **Nicht** die ganze Testreihe von `@ee/shape`: Die Zeit- und Lasttests des Käfigs reißen unter Last (ohne Bezug zu `dicht/`).
 - Die Tests unter `dicht/` haben keine Zeitschranken. Die Grenzen in `weiterZug.test.ts` (A–E) hängen an der Reihenfolge des
   Zusammenlegens und haben deshalb Abstand. Wer das Zusammenlegen oder den Löser ändert, sieht dort zuerst etwas.
@@ -69,8 +94,10 @@ vitest; während sie laufen, keine Dateien unter `packages/shape/src` oder `apps
 
 | Probe | wofür |
 | --- | --- |
-| `form-drei-faelle.mjs` | Florians Hörner mit Griffspiel (`FALL=hoerner`) und das kleine Detail (`FALL=detail`): Zeit je Mausbewegung, Knicke, umgeklappt, **umgestülpt** (schwarze Stellen), jede Änderung nach dem Loslassen |
-| `form-loslassen-probe.mjs` | Sprung nach dem Loslassen (Hals, Ohr, Rüssel) |
+| `form-drei-faelle.mjs` | Florians Hörner mit Griffspiel (`FALL=hoerner`) und das kleine Detail (`FALL=detail`): Zeit je Mausbewegung, Knicke, umgeklappt, **umgestülpt** (schwarze Stellen), jede Änderung nach dem Loslassen. Seit G3: `HALTEN=<ms>` (je Bild Bewegung und Rauminhalt beim Halten), `GPU=1` |
+| `form-loslassen-probe.mjs` | Sprung nach dem Loslassen (Hals, Ohr, Rüssel). Seit G3: `HALTEN=<ms>` vor dem Loslassen, `PAUSE=<ms>` je Mausschritt, `GPU=1`, `REST=<Runden>` (Rest zur Ruhe), `FERN=<Einheiten>` (Ausschläge fern vom Griff je Bild), `SICHERN`/`VERGLEICH` (zwei Läufe gegeneinander); der Stand vor und nach dem Loslassen wird im Fenster festgehalten |
+| `form-anlauf-probe.mjs` | die ersten Bilder eines winzigen Zugs (Anlauf eines neuen Lösers); `ZWEIMAL=1` greift ein zweites Mal |
+| `form-griff-loslassen.mjs` | Griff bzw. Punkt (`ZUG=punkt`) ziehen und loslassen: Spitze unter der Maus, Sprung, Linie im Zug gegen danach, Runden am Ende |
 | `form-explosion-probe.mjs` | weite Züge `FALL=a\|b\|c\|d\|e\|f\|g\|p` (Überhang, Schnabel, Schlaufe, Stauchen, Rüssel mit Griff, Hammer, Pilz) |
 | `form-greifen-probe.mjs` | Tempo beim Greifen, je Mausbewegung, beim Loslassen, bei 5 200 und 15 400 Punkten |
 | `form-boden-probe.mjs`, `form-haerte-probe.mjs` | flacher Boden; Kante an Pilz, Linse, Braue |
@@ -85,40 +112,49 @@ vitest; während sie laufen, keine Dateien unter `packages/shape/src` oder `apps
   Standard sind 60 Mausschritte mit je zwei Runden, das Fenster rechnet 30 mit je einer. Für Nachhinken `SCHRITTE=30 JE_SCHRITT=1`.
 - `form-mass-netz.ts`: wie stark das Maß dieselbe Fläche nach dem Verfeinern anders liest.
 - Die Messkopie des Lösers und die Skripte der Gegenprüfung (`loeser/mess1.ts` mit `GEWICHTE=geometrie`, `algebra/a4-kern.ts` mit
-  `loesen3` …) in `apps/editor/scripts/pruefen/gegenpruefung-2026-11-10/`.
+  `loesen3` …) in `apps/editor/scripts/pruefen/gegenpruefung-2026-11-10/`. Seit G3 dort auch `loeser/mess7.ts` (Form gegen Gleiten
+  nach dem Zug, Anlauf eines neuen Lösers; `FALL=ruhe` ohne Zug), `loeser/mess8.ts` (neuer Löser auf dem Ruhestand, Stand der
+  Bremse) und `netz/m7-unruhige-stelle.mjs` (Fenster, 23 400 Punkte).
 
 **Was wackelt:**
-- Fenster-Proben sind nicht genau wiederholbar. Die zweite Runde je Mausbewegung hängt an der Uhr, das Setzen an einem Zeitgeber.
-  Derselbe Fall gab am 08.11. 11,4 und am 09.11. 4,6 Einheiten.
+- Fenster-Proben sind nicht genau wiederholbar. Die Runden je Bild hängen an der Uhr, das Setzen an einem Zeitgeber. Derselbe
+  Fall gab am 08.11. 11,4 und am 09.11. 4,6 Einheiten; die Hörner im verknoteten Zustand am 10.11. 5 bis 66 (fünf Läufe).
+- **Ohne `GPU=1` rechnet der Software-Renderer jedes Bild etwa 100 ms lang.** Seit G3 hängt das Rechnen am Bild: Dann kommen
+  nur zehn Runden je Sekunde zustande, und ein Zug der Probe dauert doppelt so lang. Für alles, was Zeit oder Nachhinken misst,
+  `GPU=1` setzen (Proben, die den Schalter noch nicht haben: `chromium.launch({ args: ['--use-angle=metal', '--enable-gpu',
+  '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] })`).
+- Den Stand „vor dem Loslassen“ im Fenster festhalten (Listener in der Erfassungsphase, wie in `form-loslassen-probe.mjs`), nicht
+  mit einem Aufruf davor: Seit G3 rechnet die Haut zwischen dem Aufruf und dem Loslassen weiter.
+- Zum Vergleichen mit einem alten Stand: `git show <commit>:apps/editor/src/form/kurven.ts > src/form/kurvenAlt.ts`, dazu eine
+  Kopie von `kurven.html` mit diesem Skript (beides danach löschen). Beide Stände laufen dann auf demselben Server.
 - Faltenzahlen streuen bei gleicher Form um den Faktor 2.
 - Zeiten nur als Verhältnisse lesen; bei belegter Maschine gibt es Ausreißer.
 
-## 3. Karte von `apps/editor/src/form/kurven.ts` (3 410 Zeilen, Stand `50880ce7`)
-
-Seit G2 (`0f80f0e2`) liegen die Zeilen ab `GRIFF_PX` um 8 bis 16 höher.
+## 3. Karte von `apps/editor/src/form/kurven.ts` (3 524 Zeilen, Stand `ab3a8d95`)
 
 | Zeilen | Abschnitt |
 | --- | --- |
-| 129–293 | Konstanten und Schalter: `RUNDEN_ZUG` 141, `RUNDEN_ENDE` 142, `RUNDE_MS` 148, `RUNDE_MS_GEOMETRIE` 153, `HAUT` 217, `GEWICHTE` 224, `mitBereich` 238, `exakt` 244, `KURZ` 267, `GENAU` 279, `LIVE` 287 |
-| 180–428 | Haut und Loops; **Rückgängig**: `zurueck` 349 (Stapel ohne Grenze), `schnappschuss` 361, `wiederherstellen` 372 (setzt auch das Ziel Pose/Grundform); `kreuzungenSuchen` 400 |
-| 429–713 | Darstellung: `teilungNeu` 544, `geometrieNeu` 602, Kameras 629–668, Zoom je Blatt 669–713 |
-| 714–819 | **Maul**: `maulAktuell` 757, `innenZeigen` 785, `maulAnlegen` 803 |
-| 820–1019 | **Pose**: `poseKnochen` 826, `poseBetreten` 840, `poseSichern` 868, `grundLoopsAus` 882, `poseVerlassen` 914, `netzGewachsen` 935 (Werte je Punkt nach dem Verdichten umordnen), `knochenSetzen` 963, Regler 980–1019 |
-| 1020–1240 | Anzeige: `hautZeigen` 1020, `bandGeometrie` 1085, `baenderZeigen` 1157, `pfad` 1209 (Streckenzug), `pfadKurven` 1223 (Bézier-Pfad) |
-| 1260–1309 | **Griffe**: `GRIFF_PX` 1260, `griffFaktor` 1262, `griffeZumZeigen` 1272 (im Zug Faktor vom Anfang, danach neu gerechnet) |
-| 1313–1438 | **Blätter zeichnen**: `blattZeichnen` 1313 (im Zug Streckenzug, sonst Pfad, `:1332`), `allesZeigen` 1412 |
-| 1439–1486 | **Setzen nach dem Loslassen**: `vorrechnenPlanen` 1448 (30 ms nach dem Zug: neuer `LoopZug`, Zerlegen im Hauptthread, `RUNDEN_ENDE` Runden, dann bis zu dreimal `nachVerdichten(true)` und wieder setzen) |
-| 1487–1506 | Messen und Status |
-| 1507–1832 | **Zug starten** (Teil 1): Typ `Zug` ab 1508, `zug` 1549, `abbildung` 1552, `loeserHaut` 1625, `loeserFuer` 1655 (in der Pose Gedächtnis mit Bereich), `stueckLoeser` 1666, `griffZugStarten` 1719, `punkteAnKreuzung` 1758, `eckeGezeigt` 1775, `eckeUmschalten` 1784 |
-| 1833–2040 | **Zug starten** (Teil 2): `zugStarten` 1833, `punktNach` 1966, `verschiebungen` 1980 |
-| 2041–2107 | **Zug bewegen**: `zugBewegen`; Runden je Mausereignis 2074–2078, Verfeinern im Zug 2088–2092 (nur `geometrie`, nicht bei Griffen), danach die ganze Anzeige 2094–2097 |
-| 2108–2291 | **Verfeinern im Zug**: `zugStufe` 2108 (nur mit Bereich), `stufeImHintergrund` 2137, `zugNeuAufsetzen` 2168, `einwechseln` 2190, `HINTERGRUND` 2236, Worker `zerleger` 2251 (`src/form/zerlegen.worker.ts`, ohne Fehlerbehandlung), `zugGriffeUebernehmen` 2273 |
-| 2292–2369 | **Loslassen**: `zugEnde` 2292 (`RUNDEN_ENDE` Runden 2305, Linien festlegen, Kreuzungen, Verdichten, `linienAufPfad`, `poseSichern`, Rückgängig-Eintrag); `nachVerdichten` 2339, `verdichtetesNetz` 2353 |
-| 2370–2718 | Loops schneiden 2372, `einsetzenLetzten` 2394, `kanteSetzen` 2418, `hautNeuRechnen` 2452, `linienAufPfad` 2509 (Gedächtnis, örtlich; Grund im Kommentar), `formErstellen` 2566, `stelleAmPfad` 2606, `punktAmKlick` 2647, `loeschen` 2686 |
-| 2719–2843 | Stift P |
-| 2844–3105 | Maus und Tasten: `druecken` 2864, `bewegen` 2928, `loslassen` 2955, Ereignisse 2986–3016, Tasten 3035 (G/S/R ohne Prüfung der Zusatztasten) |
-| 3106–3170 | Zeichnen: `rendern` 3108, `schleife` 3154 (zeichnet nur, rechnet nicht) |
-| 3171–3410 | Test-Haken `window.__kurven` |
+| 129–335 | Konstanten und Schalter: `RUNDEN_ZUG` 141, `RUNDEN_ENDE` 142, `BUDGET_MS` 150, `RUHE` 151 (G3), `HAUT` 215, `GEWICHTE` 222, `mitBereich` 236, `exakt` 242, `RUNDEN_NEU` 253, `KURZ` 265, `GENAU` 277, `LIVE` 285, `linieUngenau` 293, `gestreckt` 320 |
+| 178–426 | Haut und Loops; **Rückgängig**: `zurueck` 347 (Stapel ohne Grenze), `schnappschuss` 359, `wiederherstellen` 370 (setzt auch das Ziel Pose/Grundform); `kreuzungenSuchen` 398 |
+| 427–711 | Darstellung: `teilungNeu` 542, `geometrieNeu` 600, Kameras, Zoom je Blatt |
+| 712–817 | **Maul**: `maulAktuell` 755, `innenZeigen` 783, `maulAnlegen` 801 |
+| 818–1017 | **Pose**: `poseKnochen` 824, `poseBetreten` 838, `poseSichern` 866, `grundLoopsAus` 880, `poseVerlassen` 912, `netzGewachsen` 933 (Werte je Punkt nach dem Verdichten umordnen), `knochenSetzen` 961, Regler |
+| 1018–1243 | Anzeige: `hautZeigen` 1020 (merkt die Normalen in `normalenGezeigt` für das Maß „steht“), `bandGeometrie` 1086, `baenderZeigen` 1158, `pfad` 1210 (Streckenzug), `pfadKurven` 1227 (Bézier-Pfad, auch im Zug) |
+| 1264–1302 | **Griffe**: `griffeZumZeigen` 1274 (wahre Länge; kein Faktor mehr) |
+| 1304–1422 | **Blätter zeichnen**: `blattZeichnen` 1307 (in der Grundform immer der Bézier-Pfad; liest nur Ziele, Punkte und Griffe, nicht die Haut), `allesZeigen` 1407 |
+| 1424–1485 | **Setzen nach dem Loslassen**: `SETZEN_RUHE` 1444, `vorrechnenPlanen` 1445 (30 ms nach dem Zug: neuer `LoopZug`, Zerlegen im Hauptthread, Runden bis die Form steht (höchstens `RUNDEN_NEU`), dann bis zu dreimal `nachVerdichten(true)` und wieder setzen) |
+| 1486–1505 | Messen und Status: `statusZeigen` 1491 („(rechnet)“, solange der Zug `offen` ist) |
+| 1506–1838 | **Zug starten** (Teil 1): Typ `Zug` ab 1508 (neu: `zielNeu`, `offen`, `nachRunden`), `zug` 1553, `abbildung` 1556, `loeserHaut` 1629, `loeserFuer` 1659 (in der Pose Gedächtnis mit Bereich), `stueckLoeser` 1670, `griffZugStarten` 1723, `punkteAnKreuzung` 1764, `eckeGezeigt` 1781, `eckeUmschalten` 1790 |
+| 1839–2048 | **Zug starten** (Teil 2): `zugStarten` 1839, `punktNach` 1974, `verschiebungen` 1988 |
+| 2049–2105 | **Zug bewegen**: `zugBewegen` 2049. Über die ganze Haut setzt es nur die Ziele (`zielNeu`, `offen`) und zeichnet die Blätter (2086–2094); mit Bereich (Pose, `?haut=gedaechtnis`) rechnet es wie bisher im Mausereignis (2095–2104) |
+| 2107–2177 | **Rechnen im Bildtakt (G3)**: `NACH_RUNDEN` 2111, `rundeMitWeg` 2119 (eine Runde, zurück kommt die Bewegung der Form längs der Normalen), `zugRechnen` 2139 (je Bild Runden bis `BUDGET_MS`, bis die Form steht; Verfeinern im Zug nach einer Mausbewegung, nur `geometrie`, nicht bei Griffen), `zieleVonJetzt` 2174 |
+| 2179–2386 | **Verfeinern im Zug**: `zugStufe` 2187, `stufeImHintergrund` 2221, `zugNeuAufsetzen` 2252, `einwechseln` 2277, `HINTERGRUND` 2333, Worker `zerleger` 2350 (`src/form/zerlegen.worker.ts`, ohne Fehlerbehandlung), `zugGriffeUebernehmen` 2372 |
+| 2389–2470 | **Loslassen**: `zugEnde` 2389 (Runden am Ende nur, wenn der Zug noch `offen` ist; Linien festlegen, Kreuzungen, Verdichten, `linienAufPfad`, `poseSichern`, Rückgängig-Eintrag); `nachVerdichten` 2438, `verdichtetesNetz` 2452 |
+| 2471–2819 | `loopSchneiden` 2473, `einsetzenLetzten` 2495, `kanteSetzen` 2519, `hautNeuRechnen` 2553, `linienAufPfad` 2610 (Gedächtnis, örtlich; Grund im Kommentar), `formErstellen` 2667, `stelleAmPfad` 2707, `punktAmKlick` 2748, `loeschen` 2787 |
+| 2820–2944 | Stift P |
+| 2945–3206 | Maus und Tasten: `druecken` 2965, `bewegen` 3029, `loslassen` 3056, Tasten 3136 (G/S/R ohne Prüfung der Zusatztasten) |
+| 3207–3270 | Zeichnen: `rendern` 3207, `schleife` 3253 (ruft zuerst `zugRechnen`, zeichnet dann) |
+| 3271–3524 | Test-Haken `window.__kurven` |
 
 **Was man nicht verletzen darf:**
 - **Spiegelpaare.** Die Haut ist ganz und spiegelgleich, jeder Punkt hat seinen Partner (`haut.spiegel`), Punkte der Mittelebene
@@ -157,15 +193,23 @@ Seit G2 (`0f80f0e2`) liegen die Zeilen ab `GRIFF_PX` um 8 bis 16 höher.
 8. **Kern-Probe mit zwei Runden je Schritt:** Das Nachhinken sieht zehnmal kleiner aus als im Fenster.
 9. **Kugel mit einem Ring als Kriterium:** Jede Kugel durch den Ring ist eine Lösung. Taugt nicht.
 10. **Ein neuer Löser beginnt ohne den Stand des alten:** Bremse `beta`, `dVorher` und Startwert `cWarm` sind dann zurückgesetzt, und
-    die ersten Runden machen volle Schritte (bei `geometrie` Pendeln).
+    die ersten Runden machen volle Schritte (bei `geometrie` Pendeln). Gemessen am 10.11.: Das stört nur auf einem geänderten
+    Netz (dort 4 bis 8 Einheiten über die ganze Haut, vier bis fünf Runden lang); auf demselben Netz und einer Haut, die steht,
+    bewegt ein neuer Löser nichts.
 11. **Vite merkt sich einen Importfehler** einer Datei, die erst danach angelegt wird: Server neu starten.
 12. **Werkzeuge:** `git apply` aus einem Unterordner lässt Pfade außerhalb still aus; macOS hat kein `timeout`; das Werkzeug lehnt
     lange Bash-Ketten mit `cd` und Git ab (einzelne Befehle, `git -C`).
+13. **„Steht“ nie an der ganzen Bewegung der Punkte messen:** Nach der Geometrie gleiten die Punkte längs der Fläche stetig weiter
+    (bei 23 400 Punkten 0,04 Einheiten je Runde). Immer die Bewegung längs der Normalen nehmen oder den Abstand zur Fläche davor.
+14. **`&kurz=0` auf einem dichten Netz:** Bei 23 400 Punkten wächst das Netz im Zug auf 35 700 Punkte, und die Haut fällt ein.
+15. **Auf das Ende einer Probe warten:** `pgrep -f <probe>` in einer Warteschleife findet die Schleife selbst. Die Probe mit
+    `run_in_background` starten und auf die Meldung warten.
 
 ## 5. Florian: letzte Urteile, offene Entscheidungen, Testfälle
 
 **Urteile:**
 - **10.11.:**
+  - „Die Griffe bleiben in wahrer Länge wie in Illustrator. Mach weiter mit G3.“ (nach G1/G2; zu G3 steht sein Blick aus)
   - „Das Ergebnis ist schon ganz gut, aber entweder sehe ich noch Veränderungen beim Loslassen der Handles und das Mesh justiert nach,
     oder es ist ungenau und stockt.“
   - `?gewichte=geometrie` ist für ihn „bis auf das Tempo schon recht nah dran“, „bisher elegantester Weg mit bester Genauigkeit,
@@ -184,13 +228,15 @@ Seit G2 (`0f80f0e2`) liegen die Zeilen ab `GRIFF_PX` um 8 bis 16 höher.
   - Bézier-Punkte und O wie in Blender, „die perfekte Mischung aus Vektorwerkzeugen und Blender“.
 
 **Offene Entscheidungen:**
-1. Griffe in wahrer Länge (wie Illustrator) oder die Mindestlänge behalten, nur ohne Sprung (Gegenprüfung 8.2).
+1. ~~Griffe in wahrer Länge oder Mindestlänge~~ Entschieden am 10.11.: wahre Länge wie in Illustrator.
 2. Grundform immer symmetrisch? Dann rechnet der Löser eine halbe Haut (G6).
 3. Welche Werkzeuge zuerst (Gegenprüfung Abschnitt 6).
 4. „Punkte wo nötig“ als Standard für neue Loops.
 5. Linie kehrt um: rot zeigen und die Haut dort beim letzten gültigen Stand lassen (Vorschlag der Gegenprüfung), oder den Griff
    begrenzen.
 6. `?gewichte=geometrie` als Standard, nach seinem Test mit G1–G4.
+7. G4 in der neuen Fassung (Nachlauf im Bildtakt, Setzen verdeckt, einmal einwechseln, auch nach Loop/Punkt/Kante): sein Wort
+   steht aus (vorgelegt am 10.11. nachmittags).
 
 **Seine Testfälle** (Bilder in `docs/progress/editor/`):
 - Hörner aus dem senkrechten Ring mit Griffspiel: `form-ohren-aufblasen-florian-2026-11-08.webp`; das Bild mit den schwarzen
@@ -215,6 +261,8 @@ Die Gegenprüfung stimmt in den Hauptpunkten. Drei Stellen sind im Code nachgese
 („5- bis 30-mal“) waren falsch; die gemessenen Zahlen der Gegenprüfung gelten.
 
 **Was Absicht ist:**
+- *(Nachtrag 10.11.: Florian hat entschieden, die Griffe bleiben in wahrer Länge; Faktor und Mindestlänge sind entfernt. Der
+  folgende Punkt ist damit Geschichte.)*
 - **Die Mindestlänge der Griffe (28 px) ist Absicht** (05.11.). Kurze Griffe lägen sonst unter dem Punkt und wären nicht zu greifen.
   Der Zug wirkt dann im selben Verhältnis feiner, wie ein Hebel. Fehlerhaft ist nur, dass der Faktor nach dem Loslassen (und in
   den anderen Blättern schon im Zug) neu gerechnet wird. Vorschlag für G2, solange Florian nicht „wahre Länge“ wählt: Faktor je
@@ -238,9 +286,14 @@ Die Gegenprüfung stimmt in den Hauptpunkten. Drei Stellen sind im Code nachgese
     unverändert lassen.
   - Dass `geometrie` vom Weg abhängt (Gegenprüfung Anhang A: 2,7 Einheiten bei einem großen Schritt), sollte nach G3 nicht von der
     Zuggeschwindigkeit abhängen. Das am besten mit einem schnellen und einem langsamen Zug prüfen.
+    *(Nachtrag 10.11., geprüft mit `form-loslassen-probe.mjs` und `SICHERN`/`VERGLEICH`, Ohr, 2 s gehalten: schnell gegen langsam
+    1,4 Einheiten (99 % der Punkte 0,6), zwei langsame Läufe 0,4; vor G3 lag die Haut nach dem schnellen Zug 39 Einheiten zurück.)*
 - **G4:**
   - Wer den Löser nach dem Netzwechsel neu baut, sollte `beta`, `dVorher` und `cWarm` des alten über `alt` übernehmen (neue Punkte:
     Mittel der Nachbarn). Sonst pendelt jeder neue Löser in den ersten Runden (Falle 10).
+    *(Nachtrag 10.11., gemessen mit `loeser/mess8.ts`: Auf demselben Netz und einer Haut, die steht, stört ein neuer Löser nicht.
+    Der Anlauf kommt vom geänderten Netz. Ob das Weitergeben auf einem neuen Netz hilft, erst messen; der sichere Weg ist, das
+    Setzen verdeckt bis zur Ruhe zu rechnen.)*
   - Dem Worker fehlt eine Fehlerbehandlung.
   - Die Zerlegungen werden nach einem Fingerabdruck der Zeilen gemerkt (`merken`); eine Zerlegung aus dem Worker gehört in denselben
     Speicher.
@@ -263,13 +316,14 @@ Netzwechsel. Der Ausgleich ist selbst ein kleines Gedächtnis und am Rüssel nac
 
 ## 7. Altlasten und was nicht angefasst wird
 
-**Schalter in `kurven.ts`** (17):
+**Schalter in `kurven.ts`** (18):
 
 | Schalter | Einordnung |
 | --- | --- |
 | `form`, `dreiecke` | Betrieb (Startform, Größe des Startnetzes) |
 | `gewichte` | Betrieb, bis `geometrie` Standard ist (Florians Entscheidung 6) |
-| `live`, `hintergrund`, `verdichten`, `kurz` | Vergleich für G3/G4, bleiben vorerst |
+| `live`, `hintergrund`, `verdichten`, `kurz` | Vergleich für G3/G4, bleiben vorerst (`kurz=0` lässt ein dichtes Netz einfallen, Falle 14) |
+| `setzen=4` | Vergleich seit G3: das Setzen nach dem Loslassen mit genau vier Runden wie vorher; fällt mit G4 weg |
 | `genau`, `liveGenau`, `liveKante` | Stellgrößen des Verdichtens; Thema von G5 |
 | `punkte=noetig` | offene Entscheidung 4, bleibt |
 | `haut=gedaechtnis` | Altlast für die Grundform (der Gedächtnis-Löser selbst wird für Pose und `linienAufPfad` gebraucht) |

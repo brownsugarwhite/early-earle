@@ -1652,6 +1652,23 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     gebaut (`6eae3883`: Einsetzen ausgeschrieben, bitgleich; Runde „geometrie“ 12,8 → 7,7 / 32 → 15,5 / 73 → 32 ms). G2 gebaut
     (`0f80f0e2`: Griffe in wahrer Länge, `?griffe=mindest` zum Vergleich; Bézier-Pfad auch im Zug; Sprung der Griffspitze beim
     Loslassen 42,5 → 0 px). Florians Blick und seine Entscheidung zur Grifflänge stehen aus; als Nächstes G3.
+  - **Stand 10.11. nachmittags:** Florian: „Die Griffe bleiben in wahrer Länge wie in Illustrator. Mach weiter mit G3.“ G3 gebaut
+    (`44a0fb8d`, `ab3a8d95`): Über die ganze Haut rechnet der Löser im Bildtakt (`zugRechnen`), auch wenn die Maus ruht, bis die
+    Form steht (kein Punkt über 0,05 Einheiten je Runde längs der Normalen, höchstens 60 Runden); das Setzen nach dem Loslassen
+    rechnet bis zur Ruhe statt vier Runden. Im Fenster gemessen (Ohr, gehalten): Ruck beim Loslassen 1,06 / 0,85 / 11,4 → 0,00
+    Einheiten bei 5 200 / 11 000 / 23 400 Punkten; schnell gezogen und gehalten lag die Haut vorher 39 Einheiten zurück, jetzt
+    1,4. Nicht behoben: schneller Zug mit sofortigem Loslassen, Stufen nach dem Loslassen. Befunde: (1) Auf einem geänderten
+    Netz schwingt ein neuer Löser vier bis fünf Runden über (4–8 Einheiten, die ganze Haut), auf demselben Netz nicht: Daher
+    kommen die Stufen nach dem Loslassen und der Ruck beim ersten Greifen nach einem neuen Loop. (2) Die Punkte gleiten längs
+    der Fläche stetig weiter, die Form steht. (3) Bei 23 400 Punkten hinterlässt das Zusammenlegen im Zug eine unruhige Stelle;
+    `&kurz=0` lässt die Haut einfallen. Vorschlag für G4 (Florians Wort steht aus): Nachlauf im Bildtakt, Setzen verdeckt bis
+    zur Ruhe, einmal einwechseln, auch nach Loop/Punkt/Kante.
+  - Fallen aus G3: „Steht“ an der Form messen (längs der Normalen), nie an der ganzen Bewegung der Punkte. Fenster-Proben, die
+    Zeit oder Nachhinken messen, mit `GPU=1` (der Software-Renderer schafft seit dem Rechnen im Bildtakt nur zehn Runden je
+    Sekunde). Den Stand „vor dem Loslassen“ im Fenster festhalten (Listener in der Erfassungsphase). Einen alten Stand zum
+    Vergleich als zweite Seite auf demselben Server laufen lassen (`git show <commit>:…/kurven.ts > kurvenAlt.ts`). Eine
+    Warteschleife mit `pgrep -f <name>` findet sich selbst. Einen Schritt nicht aus einer Vermutung heraus erweitern: Das
+    zusätzliche Verfeinern beim Halten kam ohne Messung hinein und nach der Messung wieder heraus.
   - Fallen: Eine Messkopie des Lösers erst mit `MODE=gleichheit` gegen das Original prüfen. Varianten immer auch auf einem
     dichten Netz messen (`DREIECKE=30000`); Pendeln und Kriechen zeigen sich dort zuerst. Neun Prüfer parallel haben Florians
     Wochenlimit aufgebraucht: große Fächer nur nach Rückfrage.

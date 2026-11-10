@@ -55,6 +55,10 @@ hinaus und kontrolliere die bisherigen Versuche. Gibt es Fehler? … Haben wir e
 - **Nachtrag (10.11.):** Florian hält `?gewichte=geometrie` für den bisher besten Weg, nur zu langsam. Dafür gelten nur ein
   Teil der Schritte, und eine Nachmessung zeigt zwei Gründe für „zu langsam“ (teure Runde, viel mehr Runden auf dichten
   Netzen). Siehe den Nachtrag vor Anhang A.
+- **Stand (10.11. nachmittags):** G1 bis G3 sind gebaut und im Fenster gemessen (am Ende des Nachtrags). Hält man die Maus vor
+  dem Loslassen kurz still, ruckt die Haut beim Loslassen nicht mehr nach (bei 23 400 Punkten vorher 11 Einheiten). Dabei
+  gefunden: Auf einem geänderten Netz schwingt ein neuer Löser vier bis fünf Runden über; so entstehen die Stufen nach dem
+  Loslassen. Das ist der Kern von G4.
 - **Werkzeuge:** Dem Fenster fehlen fast alle Präzisionshilfen aus Illustrator und Blender (Zahlen im Zug, fein mit ⇧,
   Pfeiltasten, Einrasten, Wiederholen, Auswahlrechteck). Der größte Hebel der Bedienung ist, weite Züge überflüssig zu machen:
   Auswuchs als eigene Operation und eine Startform aus einer Seitenzeichnung (Abschnitt 6).
@@ -457,6 +461,9 @@ Danach Werkzeuge nach Abschnitt 6 (zuerst 1–4), und je nach deinem Urteil eine
    schnell; Posen dürfen weiter schief sein.
 4. **Welche Werkzeuge zuerst?** Mein Vorschlag: Präzision im Zug und verdeckte Linien blass, danach Auswuchs (E).
 
+Nachtrag 10.11.: Frage 1 ist entschieden (die Sitzung der Gegenprüfung baut G1–G4), Frage 2 auch („Die Griffe bleiben in wahrer
+Länge wie in Illustrator“). Fragen 3 und 4 sind offen.
+
 ## 9. Was diese Prüfung nicht kann
 
 - Sie hat nichts im Fenster gemessen und nichts gesehen. Ob der Griff-Sprung das ist, was du meinst, zeigt ein Blick.
@@ -534,6 +541,124 @@ Drei Ursachen:
 - Der Rückstand auf dichten Netzen (Ursache 2 oben) ist durch G1 nicht kleiner geworden, nur jede Runde billiger. Er ist Sache von
   G3 und G5.
 - Der Server auf 5193 gehört jetzt dieser Sitzung (gleiche Adresse).
+
+**Stand (10.11. nachmittags): G3 gebaut** (Florian: „Die Griffe bleiben in wahrer Länge wie in Illustrator. Mach weiter mit
+G3.“; Commits `44a0fb8d`, `ab3a8d95`).
+
+Gebaut (`apps/editor/src/form/kurven.ts`):
+- **Griffe:** Die wahre Länge gilt. Der Streckfaktor und der Vergleichsschalter `?griffe=mindest` sind entfernt.
+- **Rechnen im Bildtakt.** Über die ganze Haut setzt eine Mausbewegung nur noch die Ziele und zeichnet die Kurven (`zugBewegen`).
+  Gerechnet wird einmal je Bild (`zugRechnen` in der Bildschleife): mindestens eine Runde, weitere, solange sie in 12 ms passen.
+  Das läuft auch, wenn die Maus ruht, bis die Form steht. Die Statuszeile zeigt so lange „(rechnet)“.
+- **Maß für „steht“:** In einer Runde bewegt sich kein Punkt mehr als 0,05 Einheiten längs der Flächennormalen (0,14 px bei
+  300 %); spätestens nach 60 Runden ohne Mausbewegung ist Schluss. Gemessen wird die Form, nicht die ganze Bewegung der Punkte
+  (Befund 2).
+- **Loslassen:** Runden am Ende gibt es nur noch, wenn die Haut nicht steht (höchstens vier, wie bisher).
+- **Setzen nach dem Loslassen:** rechnet, bis die Form steht (höchstens zwölf Runden), statt genau vier Runden (`?setzen=4` zum
+  Vergleich; Befund 1).
+- Nach dem Neuaufsetzen und nach dem Einwechseln im Zug gelten sofort die Pfade als Ziele (`zieleVonJetzt`). Sonst hielte der
+  Löser, der jetzt weiterrechnet, die Linien bis zur nächsten Mausbewegung auf den Sehnen des alten Netzes.
+- Unverändert: wann im Zug verfeinert wird (nach einer Mausbewegung), der Löser mit Bereich (Pose, `?haut=gedaechtnis`), der Kern.
+
+Gemessen im Fenster mit der Maus und echter Grafikkarte (`form-loslassen-probe.mjs` mit `GPU=1 PAUSE=16 HALTEN=…`, Ohr). Der Stand
+vor G3 lief zum Vergleich als zweite Seite auf demselben Server. „Ende gegen vorher“ = wie weit die Haut am Ende von der Haut vor
+dem Loslassen liegt: größter Abstand / 99 % der Punkte / Zahl der Punkte über 1 Einheit. Stufen = sichtbare Änderungen ab dem
+Loslassen (das Loslassen mitgezählt). Vor G3 je ein Lauf, mit G3 zwei bis drei, bei 23 400 Punkten sechs (Fenster-Proben streuen).
+
+| Punkte, vor dem Loslassen gehalten | vor G3: Ruck beim Loslassen | vor G3: Ende gegen vorher | mit G3: Ruck | mit G3: Ende gegen vorher |
+| --- | --- | --- | --- | --- |
+| 5 200, 0,6–1,5 s | 1,06 | 1,7 / 1,2 / 150 | 0,00 | 1,2–1,3 / 0,30–0,35 / 2 |
+| 11 000, 0,6–1,5 s | 0,85 | 0,8 / 0,6 / 0 | 0,00 | 0,3–0,5 / 0,02–0,04 / 0 |
+| 23 400, 2–2,5 s | 11,4 | 15,0 / 8,7 / 9 862, in fünf Stufen über 6 s | 0,00 | 0,7–5,6 / 0,25–0,7 / 0–92, in zwei bis fünf Stufen |
+
+- **Kriterium** (Runden am Ende unter ½ px bei 300 % = 0,18 Einheiten): erfüllt, wenn die Maus vor dem Loslassen kurz ruht
+  (0,00 in allen Läufen). Bei 5 200 und 11 000 Punkten steht die Haut nach vier bis acht Runden (0,1 bis 0,2 s).
+- **Schnell ziehen und halten** (drei Mausschritte in 0,2 s, dann 2 s halten; 5 200 Punkte): Vor G3 lag die Haut bis zum
+  Loslassen 39 Einheiten neben der Form des langsamen Zugs (99 % der Punkte: 34). Mit G3 kommt sie beim Halten an: 1,4
+  (99 %: 0,6); zwei langsame Läufe unterscheiden sich um 0,4 (99 %: 0,2). Die Form hängt damit nicht mehr an der
+  Geschwindigkeit des Zugs (Hinweis der bauenden Sitzung, Übergabe Abschnitt 6).
+- **Rest zur Ruhe**, wenn der Löser aufhört (Form nach 40–60 weiteren Runden): 0,06 bei 5 200, 0,05 bei 11 000 Punkten. Bei
+  23 400 Punkten 0,07–0,8 für 99 % der Punkte (vier Läufe); in drei davon wandern an einer Stelle des Netzes 8 bis 146 Punkte
+  um 3 bis 10 Einheiten weiter (Befund 4).
+- **Griff ziehen** (`form-griff-loslassen.mjs`): Runden am Ende 0,52 → 0,00 Einheiten; Spitze und Linie wie nach G2 (0,00 px).
+- **Nicht erfüllt, und von G3 nicht zu erwarten:** schneller Zug mit sofortigem Loslassen. Dort holt weiter das Loslassen nach
+  (Ende gegen vorher bei 5 200 Punkten 2,9 vor wie nach G3, bei 11 000 Punkten 3,3 → 2,7, bei 23 400 Punkten 10,4 → 3,1; dort
+  bekommt der Löser im Zug der Probe mehr Runden als vorher).
+- **Was beim Loslassen nach dem Halten bleibt**, kommt vom Verdichten und vom Setzen danach: bei 5 200 Punkten 0,8 + 0,5
+  Einheiten an zwei Punkten neben der Linie am Ohransatz (99 % der Punkte unter 0,4), bei 23 400 Punkten ein bis vier Stufen an
+  der Stelle aus Befund 4. Das ist G4.
+- Florians Hörner mit Griffspiel (`form-drei-faelle.mjs`, ohne Halten): Im verknoteten Zustand (Griff um 120° gedreht, die Linie
+  kehrt um) schwankt der Rauminhalt nach dem Loslassen in Stufen: vor G3 um 6 und 46 % (zwei Läufe), mit G3 um 15, 24 und 25 %
+  (drei Läufe). Die Läufe streuen stärker als der Unterschied. Mit 1,2 s Halten vor jedem Loslassen endet derselbe Zug bei 2,6
+  Einheiten neben dem Stand vor dem Loslassen, ohne Halten bei 5 bis 66. „Hin und zurück“ und zwei weite Züge (`form-hin-zurueck.mjs`, `form-explosion-probe.mjs` a, e) geben vor
+  und nach G3 dasselbe.
+
+**Vier Befunde aus dem Messen** (Kern: `loeser/mess7.ts`, `mess8.ts`; Fenster: `form-anlauf-probe.mjs`,
+`netz/m7-unruhige-stelle.mjs`; Ausgaben unter `ausgaben/g3-fenster-*`, `loeser-mess7.out`, `loeser-mess8.out`, `m7-…`):
+
+1. **Auf einem geänderten Netz schwingt ein neuer Löser über (Anlauf).** Seine Bremse je Punkt (`beta`) beginnt bei 1 und findet
+   erst nach vier bis fünf Runden ihren Wert. Solange schwingt die ganze Haut. Gemessen an der Kugel, in die gerade drei Loops
+   eingesetzt wurden und an der sich sonst nichts ändert (Form je Runde, größter Punkt):
+
+   | Punkte | Runde 1 | 2 | 3 | 4 | 5 | 6 | nach 10 Runden netto |
+   | --- | --- | --- | --- | --- | --- | --- | --- |
+   | 5 222 | 3,9 | 7,9 | 2,9 | 1,05 | 0,10 | 0,02 | 0,12 |
+   | 10 964 | 3,3 | 8,2 | 4,6 | 0,33 | 0,04 | 0,03 | 0,04 |
+   | 23 406 | 1,6 | 5,1 | 5,2 | 1,15 | 0,43 | 0,06 | 0,07 |
+
+   - In Runde 1 bewegen sich 4 076 von 5 222 Punkten um mehr als ½ px bei 300 %, mitten in den Feldern zwischen den Linien. Die
+     Haut kommt fast genau dorthin zurück, wo sie war: Der Ausschlag ist dreißig- bis sechzigmal so groß wie das, was zu
+     korrigieren war.
+   - **Gegenprobe:** Ein neuer Löser auf einer Haut, die steht, und auf demselben Netz bewegt nichts (0,01–0,06 Einheiten bei
+     5 200 bis 23 400 Punkten, dreimal nacheinander; `mess8.ts`). Der Anlauf kommt also vom geänderten Netz, nicht vom neuen
+     Löser allein. Vermutung, nicht gemessen: Es sind die neuen Punkte auf den Linien; an ihnen wird die Krümmung gemessen, die
+     sich in die Felder verteilt.
+   - **Das Setzen nach dem Loslassen** ist genau dieser Fall: neues Netz, neuer Löser. Es rechnete vier Runden und zeigte dann den
+     Stand, mitten im Anlauf; nach dem Nachverfeinern noch bis zu dreimal. Das passt zum „Aufblasen in Stufen“ vom 08.11. Seit G3
+     rechnet es, bis die Form steht. Die Wirkung ist klein und nicht sicher: Bei 23 400 Punkten waren die Stufen mit vier Runden
+     3,2 / 1,8 / 1,2 Einheiten, mit der neuen Fassung 2,0 / 0,16 / 0,07 und in einem weiteren Lauf 3,0 / 1,5 / 0,16; bei 5 200
+     Punkten kein Unterschied. Der Anlauf bleibt, solange das Setzen sichtbar rechnet (G4).
+   - **Das erste Greifen nach einem neuen Loop** zeigt den Anlauf im Fenster: fern vom Griff je Bild 5,3 / 7,0 / 4,7 / 0,9
+     Einheiten, am Ende liegt die Haut dort 5 Einheiten neben der Kugel (dass der erste Zug die Kugel umformt, ist seit dem
+     07.11. bekannt). Beim zweiten Greifen bewegt sich fern vom Griff nur, was den Linien folgt.
+   - Übergabe Falle 10 kannte das Zurücksetzen der Bremse. Neu sind die Größe, die Gegenprobe und der Zusammenhang mit den Stufen
+     nach dem Loslassen.
+2. **Die Punkte gleiten längs der Fläche weiter, die Form steht.** Nach einem Zug bewegen sich die Punkte bei 23 400 Punkten je
+   Runde um 0,04 Einheiten, 400 Runden lang gleich (16 Einheiten); an der ruhenden Kugel um 0,006. Das liegt fast ganz längs
+   der Fläche. Die Form (Bewegung längs der Normalen) steht nach etwa 25 Runden; danach ändert sie sich in 25 bis 200 Runden um
+   0,06 bis 0,17 Einheiten. Das Auge sieht vom Gleiten nichts, aber:
+   - Ein Maß für „steht“ über die ganze Bewegung wird auf dichten Netzen nie erfüllt. Deshalb misst G3 die Form.
+   - Gleitende Punkte strecken und stauchen Dreiecke. Das kann zum Wachsen des Netzes beitragen (nicht gemessen; Thema von G5).
+   - In der Tabelle oben („Rückstand 19 Einheiten, etwa 30 Runden bis zur Ruhe“) ist die „größte Bewegung je Runde“ ab Runde 30
+     dieses Gleiten, kein Rest des Zugs.
+3. **Die Haut steht wirklich, die Bremse hält sie nicht nur fest.** Befürchtung beim Messen: Die Bremse je Punkt könnte den
+   Löser anhalten, bevor er am Ziel ist. Gegenprobe wie in Befund 1: Ein neuer Löser (Bremse wieder bei 1) auf dem Ruhestand
+   bewegt die Form um höchstens 0,06 Einheiten. Im Ruhestand steht die Bremse bei der Hälfte der Punkte über 0,5, nur 8 bis 54
+   Punkte sind am Boden (0,02).
+4. **Auf dem dichten Prüfnetz bleibt eine Stelle unruhig, und das kommt vom Zusammenlegen.** Bei 23 400 Punkten hat schon das
+   Startnetz 1 442 Kanten unter der halben mittleren Länge (kürzeste 0,25 bei im Mittel 3,9). Der erste Netzwechsel im Zug legt
+   sie zusammen, auch weit weg vom Zug. Bei (−115, 48, ±93) bleiben Punkte mit drei und vier Nachbarn, ein Winkel von 0,1 bis
+   0,5° und in einem Lauf ein umgeklapptes Dreieck. Dort springt die Haut je Runde um ±0,2 Einheiten zwischen zwei
+   Nachbarpunkten, die Stelle wandert in 30 Runden um 0,5 bis 1,8 Einheiten, und nach dem Loslassen bewegt jedes Setzen sie um 1
+   bis 5.
+   - Ohne Verfeinern im Zug (`&live=0`) gibt es die Stelle nicht (Rest zur Ruhe 0,17 Einheiten überall).
+   - Ohne Zusammenlegen (`&kurz=0`) wächst das Netz im selben Zug auf 35 700 Punkte, und die Haut fällt ein (40 bis 68
+     Einheiten). Das Zusammenlegen ist also nötig, es arbeitet auf dichten Netzen nur zu grob.
+   - Das Prüfnetz mit 23 400 Punkten ist erzeugt; Florians dichte Wesen sind durch Verfeinern gewachsen. Ob sie solche Stellen
+     haben, ist nicht gemessen. Für G5 heißt das: zuerst die Güte des Netzes ansehen (kurze Kanten, Punkte mit drei oder vier
+     Nachbarn, spitze Dreiecke), dann die Zahl der Punkte.
+
+**Was das für G4 heißt.** G4 war als „Zerlegen, Verdichten und Zeilenaufbau im Worker, einmal einwechseln“ beschrieben. Nach den
+Befunden ist der Kern von G4 der Ablauf nach dem Loslassen, der Worker ist das Mittel:
+1. **Nachlauf im Bildtakt.** Lässt man los, bevor die Haut steht, rechnet derselbe Löser im Bildtakt weiter, bis sie steht
+   (heute: höchstens vier Runden auf einmal, der Rest bleibt liegen bis zum nächsten Greifen).
+2. **Setzen verdeckt.** Verdichten, Zerlegen und Setzen laufen danach im Hintergrund, bis die neue Haut steht. Gezeigt wird nur
+   das Ergebnis, einmal. Der Anlauf des neuen Lösers ist dann nicht zu sehen. Greift man vorher wieder zu, verfällt der Auftrag.
+3. **Dasselbe nach jeder anderen Änderung** (Loop schneiden, Punkt setzen, Kante): Die Haut steht, bevor man das nächste Mal
+   greift. Das erste Greifen formt dann nichts mehr um.
+4. Den Stand der Bremse an den neuen Löser weiterzugeben (Vorschlag der bauenden Sitzung) ist nach der Gegenprobe in Befund 1
+   nicht der Hebel: Auf demselben Netz stört ein neuer Löser nicht, und auf einem neuen Netz kommt der Anlauf von den neuen
+   Punkten. Erst messen, ob es nach Schritt 2 noch etwas bringt.
 
 ## Anhang A: Messwerte
 
