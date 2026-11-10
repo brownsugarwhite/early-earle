@@ -1,0 +1,561 @@
+# Gegenprüfung „Kurven als Wahrheit“: Fehler, Übersehenes, bessere Wege (10.11.2026)
+
+**Anlass.** Florian: „Das Ergebnis ist schon ganz gut, aber entweder sehe ich noch Veränderungen beim Loslassen der Handles und das
+Mesh justiert nach oder es ist ungenau und stockt. … Kann man etwas noch eleganter oder besser lösen, um die Ziele besser zu
+erreichen? Hast du noch Ideen für den Editor für Werkzeuge, Funktionen bzw. die allgemeine Bedienung …? Denke über den Tellerrand
+hinaus und kontrolliere die bisherigen Versuche. Gibt es Fehler? … Haben wir etwas übersehen? Kann man den Löser noch verbessern?“
+
+**Wie geprüft.**
+- Unabhängig von der bauenden Session, am Stand `afb79d15` des Branches `claude/form-zuerst`. Am Code des Editors wurde nichts
+  geändert.
+- **Gelesen:** der Löser (`packages/shape/src/dicht/ausKurven.ts`), die Zerlegung (`loeser/zerlegung.ts`), das Verdichten, das
+  Fenster (`apps/editor/src/form/kurven.ts`, ganz), die Planseite „Kurven als Wahrheit“ (Abschnitte 1–18), die Bilanz vom 09.11.,
+  Florians Vorgaben seit dem 02.11. Dazu Recherche: Flächen aus Kurven, schnelle Löser, Werkzeuge anderer Programme.
+- **Gemessen:** im Kern, ohne Fenster, mit dem unveränderten Löser, an der Kugel mit drei Loops und den Zügen Hals, Ohr, Rüssel
+  aus `form-netzunabhaengig.ts`. Varianten des Lösers laufen in einer Messkopie, die mit Standardwerten bitgleich zum Original
+  rechnet (geprüft).
+- Neun Prüfer liefen parallel. Vier brachen am Nutzungslimit ab, bevor sie ihren Bericht schrieben; ihre Skripte und Ausgaben
+  waren vollständig. Die Messungen, auf denen die Hauptaussagen stehen, habe ich danach einzeln und nacheinander wiederholt
+  (im Text **✓**). Alles andere heißt „gemessen (ein Lauf)“.
+- **Nicht geprüft:** das Fenster mit der Maus, Florians eigene Wesen, die Pose. Alle Zahlen gelten für die Prüffälle.
+- Skripte und Ausgaben: [`apps/editor/scripts/pruefen/gegenpruefung-2026-11-10/`](../../apps/editor/scripts/pruefen/gegenpruefung-2026-11-10/README.md).
+- Die sechs fertigen Einzelberichte (Ablauf im Fenster, Versuche und Urteile, Literatur, schnelle Löser, Werkzeuge, Florians
+  Vorgaben als Prüfliste) liegen unverändert unter [`2026-11-10-gegenpruefung-berichte/`](2026-11-10-gegenpruefung-berichte/).
+  Sie enthalten die Einzelbelege mit Datei und Zeile; dieser Bericht fasst zusammen und ergänzt die Messungen.
+- Einheiten wie auf der Planseite: 1 Einheit = 0,89 px bei 100 %, 2,7 px bei 300 % (Florians Arbeitszoom).
+
+## Kurzfassung
+
+- **Das Prinzip bleibt richtig** (Kurven als Wahrheit, dichtes Netz). Was stört, kommt nicht aus dem Prinzip.
+- **„Justiert nach“ und „stockt“ haben fünf getrennte Ursachen.** Vier davon sind Fehler oder Versäumnisse in Anzeige, Ablauf und
+  Rechnung. Sie lassen sich in kleinen Schritten beheben, ohne neue Formel:
+  1. **Die Griffe springen beim Loslassen.** Kurze Griffe werden gestreckt gezeigt, und der Streckfaktor wird beim Loslassen neu
+     gerechnet. Das ist ein reiner Anzeigefehler und passt wörtlich auf „Veränderungen beim Loslassen der Handles“.
+  2. **Der Löser rechnet nur, solange sich die Maus bewegt.** Hältst du still, rechnet nichts. Der Rest kommt beim Loslassen
+     auf einmal, danach folgen bis zu vier weitere sichtbare Stufen im Abstand von Zehntelsekunden.
+  3. **Der Standard-Löser pendelt.** Nach jedem Zug springt die Haut von Runde zu Runde zwischen zwei Lagen hin und her: am Ohr um
+     0,3–0,6 Einheiten, am Rüssel um 2. Auf einem dichten Netz, wie deine Wesen es haben (23 400 Punkte), sind es am Ohr 2,4 und
+     am Rüssel 5 bis 26 Einheiten je Runde. Die Bremse dagegen steht schon im Code, sie ist aber nur beim anderen Löser
+     (`?gewichte=geometrie`) eingeschaltet. Mit ihr steht die Haut nach drei bis vier Runden. **✓**
+  4. **Der Netzwechsel nach dem Loslassen ändert die Form** (bekannt, Planseite Abschnitt 17). Neu: Das lässt sich beim Wechsel
+     ausgleichen. Am Hals bleiben dann 0,3 statt 6,3 Einheiten, am Rüssel 1,0 statt 35. Das ist nur noch das Abrunden, das du
+     erwartest. **✓** (Hals)
+  5. **Eine Rechenrunde ist doppelt so teuer wie nötig.** Zwei Drittel einer Runde kostet ein einziger Schritt (das Lösen mit
+     der fertig zerlegten Matrix). Er ist allgemein geschrieben und in JavaScript 3,7-mal langsamer als dieselbe Rechnung
+     ausgeschrieben für drei Spalten: 6,0 → 1,6 ms. **✓**
+- **Die Schlussfolgerung der Bilanz „am Löser gibt es keinen Hebel mehr, es bleibt nur Tempo, notfalls WebAssembly oder nativ“
+  trägt so nicht.** Die Punkte 2 bis 5 sind Hebel an Ablauf und Rechnung. WebAssembly bringt beim Lösen nur noch das 1,7-Fache
+  über gut geschriebenes JavaScript. Der Editor kann im Browser bzw. in Electron bleiben.
+- **Eleganter heißt hier: vier Regeln statt weiterer Formeln** (Abschnitt 4). Die Kurve ist immer sofort da. Die Haut rechnet
+  durchgehend, bis sie steht. Ein Netzwechsel ändert die Form nicht. Ein Löser, der von selbst zur Ruhe kommt, ohne versteckte
+  Stellgrößen.
+- **Ehrlich offen bleibt eine Modellfrage:** Wo nur eine Linie eine Form hält (Ohr, Horn, Rüssel), legt keine Linie die Dicke
+  quer fest. Dort hängt die Form leicht vom Weg ab (gemessen am Ohr rund 1 Einheit). Das beheben die vier Regeln nicht. Dafür gibt
+  es einen Vorschlag für die Bedienung (Stütz-Loop) und drei größere Wege, die erst eine Tagesmessung brauchen (Abschnitt 5).
+- **Werkzeuge:** Dem Fenster fehlen fast alle Präzisionshilfen aus Illustrator und Blender (Zahlen im Zug, fein mit ⇧,
+  Pfeiltasten, Einrasten, Wiederholen, Auswahlrechteck). Der größte Hebel der Bedienung ist, weite Züge überflüssig zu machen:
+  Auswuchs als eigene Operation und eine Startform aus einer Seitenzeichnung (Abschnitt 6).
+
+## 1. Was du siehst, und woher es kommt
+
+| Was du siehst | Ursache | Größe | Abhilfe | Aufwand |
+| --- | --- | --- | --- | --- |
+| Griffspitze springt beim Loslassen | kurze Griffe werden auf 28 px gestreckt gezeigt; der Faktor wird nach dem Zug neu gerechnet | bis zur doppelten Grifflänge (aus dem Code gerechnet) | Griffe in wahrer Länge, oder Faktor festhalten | klein |
+| Linie sieht nach dem Loslassen anders aus | im Zug wird ein Streckenzug gezeichnet, danach der Bézier-Pfad | sichtbar bei hohem Zoom | im Zug den Pfad zeichnen | klein |
+| Haut ruckt beim Loslassen | vier Runden auf einmal holen nach, was der Löser im Zug schuldig blieb | 0,2 Einheiten bei 5 200 Punkten, 2,1 bei 11 000 | durchgehend rechnen, auch beim Halten | klein bis mittel |
+| Haut zittert, springt zwischen zwei Lagen, „bläst sich in Stufen auf“ | der Standard-Löser pendelt, die Bremse fehlt | je Runde: Ohr ±0,3–0,6, Rüssel ±2–2,6; bei 23 400 Punkten Ohr ±2,4, Rüssel 5–26 | vorhandene Bremse auch im Standard | sehr klein |
+| Haut setzt sich nach dem Loslassen in bis zu fünf Stufen | das neue Netz liest dieselbe Fläche anders; dazu läuft der Wechsel in Stufen im Hauptthread | Hals 6,3, Ohr 7,7, Rüssel 35 Einheiten | Netzwechsel im Hintergrund, einmal einwechseln, mit Ausgleich | mittel |
+| Stocken | Löser und ganze Anzeige in jedem Mausereignis im Hauptthread; Runde 9 ms bei 5 200, 21 ms bei 11 000, 60 ms bei 28 000 Punkten; Zerlegen 0,1–1,2 s im Hauptthread | – | Lösen straffen, Kurven zuerst zeichnen, Schweres in den Worker, halbe Haut | klein bis mittel |
+| Grobe kleine Details | ein Netz für Rechnen und Zeigen | Ohr 22,5° je Kante (Planseite) | Abschnitt 5, Weg B | groß |
+
+## 2. Fehler und Versäumnisse im Einzelnen
+
+### 2.1 Anzeige
+
+**Griffe werden nicht in wahrer Länge gezeigt, und der Faktor springt** (gelesen).
+- `kurven.ts:1259–1265`: `griffFaktor = max(1, 28 px / (Maßstab × kürzerer Griff))`, für beide Griffe eines Punkts.
+- Im Zug bleibt der Faktor vom Anfang (`:1295`, `:1303`), die Maus wirkt mit 1/Faktor (`:2056`). Nach dem Zug wird er neu
+  gerechnet (`:1305–1306`).
+- Beispiel bei 100 %: Griffe 5 und 20 Einheiten lang, Faktor 6,3. Ziehst du den kurzen auf 10 Einheiten, steht die Spitze im Zug
+  bei 56 px. Nach dem Loslassen ist der Faktor 3,15 und die Spitze steht bei 28 px.
+- Betroffen sind alle Griffe unter 28 px, bei 100 % also unter 31 Einheiten: Augen, Ohren, Hörner, jedes Detail.
+- Nebenwirkung: Ein sehr kurzer Griff auf einer Seite streckt den Griff der anderen Seite um ein Vielfaches.
+- Nicht im Fenster angesehen. Mit Florian an einem kurzen Griff in einer Minute zu bestätigen.
+
+**Im Zug zeigt das Blatt einen Streckenzug statt des Bézier-Pfads** (gelesen, `kurven.ts:1332`: `!zug && exakt ? pfadKurven : pfad`).
+Gestreckte Linien sind im Zug eckig, der gezogene Punkt sitzt neben der gezeichneten Linie. Beim Loslassen wechselt die Darstellung.
+
+**Punkt, Griff und Linie werden erst nach dem Löser gezeichnet** (gelesen, `kurven.ts:2073–2097`). Der Griff unter der Maus ist so
+träge wie eine Löserrunde plus die ganze Anzeige. Die Kurven kosten fast nichts und könnten immer sofort folgen.
+
+**Die Anzeige „Zug … ms“ misst nur den Löser** (`kurven.ts:2074–2080`). Danach laufen ungemessen: Normalen der ganzen Haut,
+vier Band-Geometrien neu samt Grafikpuffern, drei SVG-Blätter ganz neu (`:2094–2097`). Alle Tempo-Kriterien der Planseite
+(„≤ 16 ms“) beziehen sich auf die Löser-Zahl. Was du als Stocken siehst, wurde nie gemessen. Dein Bildschirm läuft laut
+Projektgedächtnis mit 120 Hz, ein Bild dauert dort 8,3 ms.
+
+### 2.2 Ablauf
+
+**Gerechnet wird nur im Mausereignis** (gelesen).
+- Je Mausbewegung eine Runde, eine zweite nur, wenn die erste unter 12 ms blieb (`kurven.ts:2075–2079`). Die Bildschleife zeichnet
+  nur. Steht die Maus, rechnet nichts.
+- Beim Loslassen vier Runden auf einmal (`:2305`, `RUNDEN_ENDE = 4`).
+- Folge: Was fehlt, siehst du genau beim Loslassen. Gemessen (ein Lauf, Zug in 30 Mausschritten): Rest 0,19 Einheiten bei 5 200
+  Punkten, 2,10 bei 11 000; davon bleiben nach den vier Runden noch 0,04 bzw. 0,57.
+- Die Zahl der Runden je Zug hängt an der Hand: Ein schneller Zug bekommt zehn Ereignisse, ein langsamer hundert. Die Proben
+  schicken 30 abgewartete Mausschritte und messen deshalb weder eine schnelle Hand noch das Halten.
+- Auf der Planseite steht durchgehend „Runden je Mausbewegung“. Das Kriterium „zwei Bilder nach der letzten Mausbewegung steht die
+  Form“ (Abschnitt 11) setzt Rechnen ohne Mausbewegung voraus; gebaut wurde es nicht.
+
+**Nach dem Loslassen folgen bis zu fünf sichtbare Stufen** (gelesen, `kurven.ts:2292–2329`, `:1448–1479`).
+1. Loslassen: vier Runden, Linien ablesen, Kreuzungen suchen, Verdichten, Linien auf den Pfad (mit dem anderen Löser). Ein Bild.
+2. 30 ms später: neuer Löser über das verdichtete Netz. Die Zerlegung läuft im Hauptthread (0,1–0,6 s Halt). Vier Runden. Ein Bild.
+3. Danach bis zu dreimal: noch einmal feiner teilen, neu zerlegen, wieder setzen. Je ein Bild.
+- Stufe 2 ist die größte Änderung (Hals 6,3, Ohr 7,7, Rüssel 35 Einheiten; ein Lauf). Ihre Größe hängt am Löser, die Treppe und
+  die Halte hängen am Ablauf.
+- Der Stand nach Stufe 2 und 3 ist „vier Runden weiter“, nicht fertig. Der Rest kommt beim nächsten Griff dazu, über die ganze Haut.
+- Greifst du vor Stufe 2 den nächsten Punkt, beginnt der Zug auf dem ungesetzten Netz; die erste Mausbewegung enthält das ganze
+  Setzen (Sprung beim Anfassen).
+
+**Im Standard läuft alles im Hauptthread.** Den Worker und das Verfeinern im Zug gibt es nur mit `?gewichte=geometrie`
+(`kurven.ts:2090–2091`). Griff-Züge verfeinern in keinem Modus im Zug (`!z.griff`). Rund 250 Zeilen des Fensters sind im Standard
+ohne Wirkung.
+
+### 2.3 Löser
+
+**Der Standard-Löser pendelt; die Bremse fehlt** (gemessen **✓**, Skripte `loeser/mess1.ts`, `mess3.ts`).
+
+Ablauf: Zug in 30 Mausschritten mit je einer Runde wie im Fenster, danach Ziele fest, je Runde die größte Bewegung der Haut.
+
+| Fall | Standard heute | mit der Bremse, die „geometrie“ schon hat |
+| --- | --- | --- |
+| Ohr, 5 200 Punkte | 0,43 · 0,33 · 0,33 · 0,32 · … Runde 40: 0,63; jede Runde in die Gegenrichtung | 0,37 · 0,23 · 0,04 · 0,013 · 0,007 · 0,003 |
+| Rüssel, 5 200 Punkte | 2,15 · 2,06 · 2,03 · 2,03 · 2,6 · … Runde 40: 0,62 | 0,76 · 1,11 · 0,29 · 0,49 · 0,27 · 0,04 (ein Lauf) |
+| Ohr, 23 400 Punkte | 2,39 · 2,46 · 2,35 · 2,30 · … Runde 30: 0,58 | 0,29 · 0,11 · 0,04 · 0,03 · 0,012 |
+| Rüssel, 23 400 Punkte | 19,6 · 14,2 · 6,2 · 11,5 · 5,3 · 6,9 · … Runde 15: 26,5 · Runde 20: 21,1 | 0,99 · 0,29 · 0,65 · 0,37 · 0,47 · 0,23 · … Runde 20: 0,06 |
+
+- Die Bewegung wechselt jede Runde das Vorzeichen (Kosinus zum Schritt davor −1,00) und wächst am Ohr über 75 Runden noch an.
+  In welcher der beiden Lagen die Haut beim Loslassen steht, ist Zufall. Jede weitere Runde (Loslassen, Setzen, Nachverfeinern)
+  kippt sie wieder. Auf dem dichten Netz ist der Standard-Löser am Rüssel praktisch instabil.
+- Ursache im Code: Bei „geometrie“ wird die Korrektur der Krümmung je Punkt halbiert, wenn sie das Vorzeichen wechselt
+  (`ausKurven.ts:937–945`). Bei „gleich“ wird der verteilte Wert ohne Bremse eingesetzt (`:936`).
+- Die Bremse ändert das Ziel nicht: Die Endformen mit und ohne liegen am Ohr 0,18 Einheiten auseinander (Mittel 0,01).
+- Die Planseite kennt das Pendeln als Randnotiz („pendelt am Ohr dauerhaft um etwa 0,3“, Abschnitt 12). Es wurde nie als
+  Ursache behandelt, nie auf einem dichten Netz gemessen und nie mit der vorhandenen Bremse versucht.
+- Die Änderung (acht Zeilen) steht in Anhang B.
+
+**Eine versteckte Stellgröße wirkt als Gedächtnis und hängt an der Netzdichte** (gelesen und gemessen **✓**, `mess5.ts`,
+`algebra/a3-genau.ts`).
+- Die Verteilung der Krümmung enthält je Punkt eine Zeile „bleib beim gemessenen Wert“ mit dem Gewicht `HALT = 1e-6`
+  (`ausKurven.ts:73`, `:413`). Sie sollte nur das System lösbar halten.
+- Das System wird quadriert gelöst (Normalgleichungen). Dadurch ist 1e-6 nicht mehr klein: Auf großen Feldern und feinen
+  Netzen liegt der kleinste Eigenwert darunter.
+- Gemessen, wie viel der Krümmungskorrektur ankommt: drei Loops 99 % bei 5 200 Punkten, 91 % bei 19 800; ein Ring 78 % bei
+  5 000, 32 % bei 19 300. Beim einzelnen Ring mit 10 600 Punkten bleibt die Hälfte der gemessenen Krümmung als Gedächtnis stehen.
+- Folge: Der Standard-Löser ist auf dichten Netzen mit wenigen Linien zum Teil ein Gedächtnis-Löser, und wie stark, entscheidet
+  die Netzdichte. Das widerspricht „aus den Kurven, ohne Gedächtnis“ und ist ein weiterer Grund, warum ein feineres Netz eine
+  andere Form annimmt.
+- Zugleich dämpft diese Zeile heute das Pendeln. Ohne sie läuft der ungebremste Löser bei 28 000 Punkten auseinander (ein Lauf).
+  Deshalb erst die Bremse, dann diese Größe klein oder skalenfrei machen. Nicht quadriert gelöst wäre ihr Einfluss unter 0,2 %.
+
+**Die Form hängt leicht vom Weg ab** (gemessen, ein Lauf, `mess2.ts`). Ohr, dieselben Endlinien auf vier Wegen, je 300 Runden
+ausgerechnet: 30 gegen 120 Schritte 0,08 Einheiten; direkter Weg gegen „150 % und zurück“ 0,87; ein einziger großer Schritt 0,99.
+Nach der Geometrie 0,96 / 0,84 / 2,7. Das ist die direkte Prüfung von „Kurven sind die Wahrheit“; sie fehlte bisher.
+
+**Das Maß ist auf der Kugel genau, die Normalen sind es nicht** (gemessen, ein Lauf, `netz/m3-mass.ts`).
+- Mit den wahren Normalen liest das Maß des Standard-Lösers auf der Kugel genau 1,000. Mit den nach Fläche gemittelten Normalen
+  0,915 ± 0,089, an den Linienpunkten 0,60 ± 0,34.
+- Grund: Auf dem Startnetz (Surface Nets, 16 % stumpfe Dreiecke) ist der Anteil des Laplace in der Fläche fünfmal so groß wie
+  der Anteil längs der Normale (1,35 gegen 0,25 Einheiten). Ein Grad Fehler in der Normale macht daraus 10 % Fehler im Maß.
+- Die unberührte Kugel mit drei Loops wandert deshalb in 30 Runden bis 0,6 Einheiten (Mittel 0,14).
+- „Normalen nach Max“ wurde am 09.11. nur gegen den Sprung und an der mehrdeutigen Kuppel geprüft (siehe Abschnitt 3). Mit der
+  Bremse lohnt eine neue, kleine Messung: unberührte Kugel mit drei Loops, 30 Runden.
+
+### 2.4 Tempo
+
+**Das Lösen mit der fertigen Zerlegung ist 3,7-mal langsamer als nötig** (gemessen **✓**, `algebra/a4-kern.ts`).
+- `zerlegung.ts:289–318` rechnet für eine beliebige Zahl von Spalten: innerste Schleife über `k`, Werte verschachtelt in einem
+  Feld, zwei neue Felder je Aufruf.
+- Dieselbe Rechnung für drei Spalten ausgeschrieben, mit drei getrennten Feldern, gibt dasselbe Ergebnis (Unterschied 1e-10):
+
+| Lösen, drei Spalten | 5 200 Punkte | 11 000 Punkte |
+| --- | --- | --- |
+| Code heute (JavaScript) | 6,0 ms **✓** | 15,2 ms |
+| ausgeschrieben (JavaScript) | 1,6 ms **✓** | 4,0 ms |
+| ausgeschrieben, WebAssembly | 1,0 ms | 2,5 ms |
+| nativ (clang) / Apple Accelerate | 1,0 / 0,8 ms | 2,4 / 2,1 ms |
+
+- Eine Runde „gleich“ kostet 9,0 ms, davon 6,1 ms dieses Lösen **✓**. Mit der ausgeschriebenen Fassung sind es gerechnet 4,5 ms.
+  Eine Runde „geometrie“ kostet 13,1 ms (Lösen 6,3, Krümmung verteilen 3,9, intrinsische Triangulierung 1,1, Vermessen 0,9; ein
+  Lauf); gerechnet werden daraus etwa 7 ms.
+- Die Bilanz führt „drei Spalten in einem Durchgang“ als offenen Schritt. Er ist seit dem 06.11. gebaut, aber in dieser
+  langsamen Form.
+- Je Runde werden außerdem rund 22 Felder der Größe „Punkte × 8 Byte“ neu angelegt (gelesen); bei 15 000 Punkten sind das über
+  100 MB je Sekunde. Wiederverwenden nimmt der Speicherbereinigung die Arbeit.
+
+**Halbe Haut** (gemessen, ein Lauf, `algebra/a2-spiegel.ts`): Rechnet der Löser nur eine Hälfte (die Grundform ist spiegelgleich),
+sinkt die Rechenarbeit beim Lösen auf 34 %, beim Zerlegen auf 38 %. Die Lösung ist dieselbe (Unterschied 0,0004 Einheiten).
+Voraussetzung ist Entscheidung 3 der Bilanz (Grundform immer symmetrisch).
+
+**Was WebAssembly und nativ wirklich bringen** (gemessen, ein Lauf):
+
+| | JavaScript heute | WebAssembly | nativ (clang) | Apple Accelerate |
+| --- | --- | --- | --- | --- |
+| Zerlegen, 5 200 Punkte | 80 ms **✓** | 34 ms | 34–39 ms | 6,5 ms |
+| Zerlegen, 11 000 Punkte | 262 ms | 103 ms | 105–126 ms | 12,3 ms |
+
+- Beim Lösen bringt WebAssembly nur das 1,7-Fache über gut geschriebenes JavaScript, beim Zerlegen das 2,4-Fache. Die Bilanz
+  schätzte für ein natives Modul „Zerlegen 10- bis 30-mal, Runde 5- bis 10-mal“. Gemessen: Zerlegen 2-mal mit einfachem nativem
+  Code, 12- bis 21-mal mit einer ausgereiften Bibliothek; Lösen 6-mal gegen heute, aber nur 1,6- bis 2-mal gegen das ausgeschriebene
+  JavaScript.
+- Läuft das Zerlegen im Hintergrund (Regel 3 in Abschnitt 4), stört seine Dauer kaum noch. Ein natives Modul ist dann nicht nötig.
+- Kein Hebel (gemessen): die Reihenfolge der Zerlegung (5 % neben der besten), ein Teil-Neuzerlegen nach örtlichem Verfeinern
+  (79–93 % der Arbeit müssten neu), harte statt weiche Bindungen (die Linienpunkte liegen schon 0,003 Einheiten genau).
+
+**Bei 28 000 Punkten reicht das allein nicht.** Eine Runde kostet dort heute 60 ms, mit dem ausgeschriebenen Lösen geschätzt 25 ms.
+Dazu kommen halbe Haut und die Frage, ob das Rechennetz so fein sein muss (Abschnitt 5, Weg B). Das Spiel zeigt höchstens
+8 000 Dreiecke; das Fenster rechnet bei deinen Wesen mit 52 000.
+
+### 2.5 Netzwechsel: Verfeinern soll nur abrunden
+
+Florian (09.11.): „Das ganze sollte doch komplett unsichtbar sein … und da sollte es ja einfach nur abrunden, aber in exakt der
+gleichen Form.“
+
+**Versuch „Ausgleich beim Netzwechsel“** (gemessen, `netz/m5-ausgleich.ts`, ohne Änderung am Kern eingehängt).
+- Beim Wechsel auf das verdichtete Netz merkt sich jeder Punkt einmal, um wie viel der Löser auf dem neuen Netz eine andere
+  Krümmung verlangen würde, als die Haut gerade hat. Dieser Unterschied wird als fester Zuschlag mitgeführt. Damit steht die Haut,
+  wie sie beim Loslassen war, auf dem neuen Netz in Ruhe.
+
+| | Hals **✓** | Rüssel (ein Lauf) |
+| --- | --- | --- |
+| nur verdichtet, kein Löser (das reine Abrunden) | 0,34 | 1,04 |
+| heute: vier Runden nach dem Verdichten | 6,34 (Mittel 1,10) | 35,1 (Mittel 3,9) |
+| mit Ausgleich: vier Runden | 0,34 (Mittel 0,01) | 1,04 |
+| mit Ausgleich: 30 Runden weiter | 0,00 | 0,04 |
+
+- Beim nächsten Zug kann der Zuschlag bleiben oder über den Zug abklingen. Klingt er ab, ist die Endform am Hals dieselbe wie
+  heute (0,04 Einheiten Unterschied), nur ohne Sprung.
+- **Ehrliche Grenze:** Der Zuschlag ist ein kleines Gedächtnis für den Lesefehler des Netzes, nicht für die Form. Am Rüssel ist
+  er noch nicht gut: Nach dem nächsten Zug bewegt sich die Haut beim Loslassen bis 1,5 (Zuschlag bleibt) bzw. 1,9 Einheiten
+  (klingt ab, dazu vier Kratzer im Netz); heute sind es dort 0,4. Über viele Züge hintereinander ist nichts gemessen.
+- Der saubere Weg bleibt das Maß nach der Geometrie (Sprung 0,4 am Hals, 1,7 am Rüssel laut Planseite). Mit doppelt so schnellen
+  Runden (2.4) ist es neu zu beurteilen.
+
+**Sauber gelöst:** Neue Punkte liegen beim Teilen schon rund (0,016 Einheiten neben der Kugel statt 0,081 auf der Sehnenmitte).
+Am Platz der neuen Punkte liegt der Sprung nicht. Aber: Nach dem Teilen haben je 13 % der Punkte vier oder acht Nachbarn (vorher
+je 2–3 %). Das Maß mit gleichen Gewichten liest dieselbe Fläche danach um 8 % (Hals), 14 % (Ohr) und 40 % (Rüssel) stärker
+gekrümmt; nach der Geometrie um 2–4 % (ein Lauf, `loeser/mess6.ts`).
+
+### 2.6 Kleinere Fehler (gelesen, nicht im Fenster geprüft)
+
+1. Der Rückgängig-Stapel wächst unbegrenzt (`kurven.ts:349`); jeder Schritt hält nach einem Netzwechsel das ganze alte Netz.
+2. G/S/R startet mit einer veralteten Mausstelle, wenn der Zeiger beim Tastendruck über dem 3D-Blatt steht (`:3068`); bestätigen
+   lässt es sich nur in einem Blatt (`:2866`).
+3. ⌘S startet Skalieren, ⌘R Drehen (Tasten ohne Prüfung der Zusatztasten, `:3067`).
+4. Esc bricht einen Zug mit der Maus nicht ab (`:3047`); `pointercancel` übernimmt den Zug, statt ihn zurückzunehmen (`:2989`).
+5. Der Worker hat keine Fehlerbehandlung; wirft die Zerlegung, verfeinert der Rest des Zugs nicht mehr.
+6. Loops können nicht übereinander hinweg gezogen werden: Eine Linie wird nur beim Anlegen ins Netz eingesetzt (`:2397`).
+   Kreuzen sich später die Ziele, müssen die Dreiecke dazwischen umklappen (Folge vermutet).
+7. Die Liniengenauigkeit ist fest (MK/40), nicht am Bildschirm ausgerichtet: bei 100 % feiner, als man sieht (und löst nach fast
+   jedem Zug an einem Detail einen Netzwechsel aus), bei 4 000 % Zoom 7 px grob.
+8. Die Spiegelzuordnung (`hautAus`) rundet Lagen auf 0,001: Zwei Punkte, die näher als 0,0005 beieinander oder an der
+   Mittelebene liegen, bekommen falsche Partner (gemessen an einem Kunstfall, `netz/m6-spiegel.ts`). Betrifft nur
+   zusammengefallene Stellen.
+
+### 2.7 Was sauber ist
+
+- Punkte sind die Wahrheit: Nach dem Zug bleiben sie, wohin sie gezogen wurden. Ein Punkt ändert nur seine zwei Stücke.
+- Die Linie liegt in der Ruhe genau auf ihrem Pfad (Rest ≤ 0,003 Einheiten im Zug, 0,000 danach).
+- Stift, Griffe, G/S/R und O sind stimmig gebaut. Rückgängig nimmt einen ganzen Zug zurück.
+- Die Diagnosen der bauenden Session „Form hängt am Netz“ und „Linienpunkte tragen ein Gedächtnis“ stimmen und sind im Code
+  nachvollziehbar. Das Maß nach der Geometrie ist Stand der Literatur.
+- Die Zerlegung ist für diese Größe richtig gebaut und gut geordnet.
+
+## 3. Die bisherigen Versuche: welche Urteile tragen
+
+Vollständige Tabelle aller 26 Versuche seit dem 05.11. mit Prüfung je Urteil:
+[`2026-11-10-gegenpruefung-berichte/versuche.md`](2026-11-10-gegenpruefung-berichte/versuche.md). Hier nur, was sich ändert.
+
+| Urteil der Session | Befund der Gegenprüfung |
+| --- | --- |
+| „Am Löser gibt es keinen Hebel mehr, der Hebel ist Tempo“ (Bilanz) | **Nicht belegt.** Bremse, verstecktes Gedächtnis, Rechnen beim Halten und Ausgleich sind Hebel. Die drei Beweise vom 09.11. entstanden laut Git zwischen 09:30 und 12:14 Uhr; angesetzt waren je zwei Tage. Dieselbe Planseite sagt am 08.11.: „Schneller rechnen ändert daran nichts.“ |
+| „Krümmung an den Linien mitgelöst: verworfen“ (Abschnitt 18) | **Nicht belegt.** Gebaut, gemessen und entfernt in 17 Minuten. Die gewünschte Eigenschaft trat ein („danach steht die Form (0,00)“, kein Gedächtnis, keine Dämpfung). „35-mal langsamer“ galt für die erste Fassung (innere Rechnung auf 10⁻⁶ genau, ohne Start aus der letzten Lösung). Im Fenster an Florians Fällen nie gemessen. |
+| „Linien mit Richtung: nach Tag 1 angehalten“ (Abschnitt 15) | Die Idee ist **bestätigt** (Form eindeutig, Richtung aus dem Liniennetz auf 0,5° genau). Gescheitert ist eine Umsetzung, die die Richtung wieder über eine Messung an der Haut einspeiste. „Tag 1“ waren 101 Minuten. Der in der Recherche genannte Rückfall „rein linear aus der Richtung“ wurde nie gebaut. |
+| „Normalen nach Max: an der Kuppel schlechter“ (Abschnitt 16) | **Artefakt.** Die Kuppel über einem Ring ist mehrdeutig (jede Kugel durch den Ring passt); das „Wandern“ ist Gleiten längs dieser Schar. Der Endstand mit Max ist fast genau eine Kugel, der heutige ist gestreckt. |
+| Florians Urteil über `?gewichte=geometrie` (08.11.: „ruckelt“, hinkt nach) | Beurteilt wurde ein **Bündel**: anderes Maß, gedämpfte Schritte, andere Matrix, Verfeinern im Zug mit Halten. Das Ruckeln kommt vom Verfeinern im Hauptthread, das Nachhinken von den gebremsten Schritten bei einer Runde je Mausbewegung. Getrennt hat er es nie gesehen. |
+| „Die Gleichung braucht Lage und Normale“ (Recherche 09.11.) | **Zu grob.** Das gilt für den Rand eines Flächenstücks. Bei Linien im Inneren einer geschlossenen Haut ersetzt „die Haut läuft knickfrei über die Linie“ die fehlende Angabe, wie beim kubischen Spline durch Punkte. Mehrdeutig ist nur der einzelne Ring. Praktisch stimmt die Aussage beim heutigen Löser trotzdem, weil er Knick und Wölbung an der Linie in einer einzigen Messzahl vermengt. |
+| „B über die ganze Haut ist überall gleich oder besser“ (06.11.) | Trägt eingeschränkt: Dieselbe Seite nennt drei schlechtere Fälle; die Testschranken wurden dafür verdoppelt. Das Setzen nach dem Loslassen kam mit B neu in die Welt und wurde an dem Tag nicht gemessen. |
+
+**Messverfahren, die mehrere Urteile schwächen:**
+- Je ein Lauf, und das Fenster ist nicht wiederholbar (die zweite Runde hängt an der Uhr, das Setzen an einem Zeitgeber).
+  Derselbe Fall „Hörner 170, geometrie“ gibt am 08.11. 11,4 Einheiten und am 09.11. 4,6.
+- Faltenzählungen streuen bei gleicher Form um den Faktor 2.
+- Kriterien bei 100 % Zoom und 5 200 Punkten; du arbeitest bei 300 % und mit 11 000–26 000 Punkten. Ein halber Bildpunkt ist
+  bei 300 % nur 0,18 Einheiten.
+- Die Kern-Probe führt die Linien nicht auf ihrem Pfad wie das Fenster seit dem 07.11.
+
+**Annahmen, die sich durch alle Versuche ziehen und nie geprüft wurden:**
+- „Eine Runde je Mausbewegung“ (statt: rechnen, bis es steht).
+- „Ein Netz für Rechnen und Zeigen“ (darum hängen Auflösung, Tempo und Stabilität aneinander).
+- „Die Krümmung an den Linien wird an der Haut gemessen“, und zwar an den schlechtesten Punkten des Netzes.
+- „Verfeinern ist ein Ereignis mit neuem Löser“ (jeder neue Löser beginnt ohne den Stand des alten).
+- „Wo keine Linie die Form festlegt, füllt die Haut von gestern.“ Dafür gibt es keine Regel.
+
+## 4. Eleganter: vier Regeln statt weiterer Formeln
+
+Alle fünf Ursachen aus der Kurzfassung verletzen eine von vier einfachen Regeln. Keine davon ist eine Sonderregel für einen
+Körper oder eine Lage.
+
+1. **Die Kurve ist immer sofort da.** Punkt, Griff und Bézier-Pfad werden gezeichnet, bevor irgendetwas gerechnet wird, in
+   wahrer Länge und als Pfad. Sie sind die Wahrheit und kosten nichts.
+2. **Die Haut rechnet durchgehend, bis sie steht.** Die Maus gibt nur das Ziel vor. Gerechnet wird im Bildtakt (später im
+   Worker), so viele Runden, wie in ein Bild passen, und weiter, solange du hältst. Beim Loslassen ist nichts mehr nachzuholen.
+   Dazu gehört ein Maß für „steht“ (Bewegung je Runde unter einem Zehntel Bildpunkt).
+3. **Ein Netzwechsel ändert die Form nicht.** Verdichten, Zerlegen und Setzen laufen im Hintergrund auf einer Kopie und werden
+   einmal eingewechselt, wenn du nichts hältst. Das neue Netz übernimmt die Form, wie sie ist (Ausgleich oder Maß nach der
+   Geometrie). Aus bis zu fünf Stufen wird ein Abrunden.
+4. **Ein Löser, der von selbst zur Ruhe kommt, ohne versteckte Stellgrößen.** Die Bremse gilt für beide Maße, `HALT` hängt nicht
+   mehr an der Netzdichte, ein neuer Löser übernimmt den Stand des alten.
+
+Was das für deine zwei Beschwerden heißt:
+- **„Justiert nach“:** Griffe und Linie stehen sofort richtig (Regel 1). Die Haut kommt an, während du noch hältst (Regel 2).
+  Der Netzwechsel rundet nur ab (Regel 3). Nichts kippt mehr hin und her (Regel 4).
+- **„Ungenau und stockt“:** Der Griff folgt der Maus mit voller Bildrate (Regel 1). Eine Runde kostet die Hälfte (2.4), es passen
+  bei 5 200 Punkten zwei bis drei statt einer in ein Bild. Kein Halt beim Zerlegen (Regel 3).
+
+**Nicht versprochen:** Wie es sich im Fenster anfühlt, entscheidet dein Blick. Gemessen sind die Bausteine einzeln im Kern, nicht
+zusammen und nicht mit der Maus.
+
+## 5. Größere Wege (nicht bewiesen), je mit einer Tagesmessung
+
+Die vier Regeln lösen nicht, dass die Form an einer einzelnen Linie quer nicht festgelegt ist, und nicht, dass ein dichtes
+Netz teuer ist. Dafür gibt es vier Kandidaten. Keiner ist gemessen. Jeder braucht zuerst einen Tag im Kern mit Kriterium und
+Abbruch.
+
+**A. Linear aus Linien mit Richtung: die Form ist eine direkte Funktion der Linien.**
+- Idee: Die Richtung an den Linien kommt wie am 09.11. aus dem Liniennetz (`dicht/richtung.ts`, 0,5° genau). Daraus entstehen
+  in zwei bis drei fertig zerlegten Lösungen erst die Normalen der ganzen Haut, dann die Wölbung, dann die Lagen (Stanko u. a.
+  2016; verwandt Andrews, Joshi, Carr 2011 und die Adobe-Patente dazu). An der Haut wird nichts abgelesen, Runden gibt es nicht.
+- Verspricht: jedes Bild fertig, hin und zurück genau, kein Setzen, keine umgestülpte Stelle, die sich selbst bestätigt.
+- Belegte Grenzen: Die Kugel wird nur genähert (Krümmung 0,97–1,03 im Beispiel der Arbeit). Linien ohne Kreuzung haben keine
+  eigene Richtung. Bruchstelle ist der Rüssel aus zwei Profillinien: Die Wölbung quer ist in linearen Systemen eine Angabe.
+- Unterschied zu den verworfenen Versuchen: Verworfen wurde die Richtung über die Krümmungsmessung je Seite (Abschnitt 15) und
+  „quer wie längs“ (Abschnitt 13). Dieser Weg misst nichts an der Haut. Die Recherche vom 09.11. nennt ihn als Rückfall.
+- Tagesmessung: Kugel mit drei Loops ≤ 0,5 Einheiten vom Radius; Hals, Ohr, Rüssel auf 6 000, 12 000, 24 000 Dreiecken gleich
+  (≤ 0,5); Rüssel-Querschnitt Höhe zu Breite ≥ 0,8. Verwerfen, wenn die Kugel über 2 Einheiten abweicht oder der Rüssel flach
+  bleibt. Dann taugt er höchstens als Sofort-Antwort (D).
+
+**B. Kleines Rechennetz, glatt unterteilte Anzeige.**
+- Idee: Rechnen auf 1 500–2 500 Punkten (FiberMesh rechnete live 600–2 000). Zeigen mit einer glatten Unterteilung, in der die
+  Linien genau auf ihrem Pfad liegen und Kanten scharf bleiben. Verdichtet wird das Rechennetz nur, wo die Form es braucht.
+- Verspricht: viele Runden je Bild, weniger Netzwechsel, glatte kleine Details bei hohem Zoom.
+- Grenzen: Details unter einer Kante des Rechennetzes brauchen weiter örtliche Dichte. Die Unterteilung muss Linien und Kanten
+  genau treffen (eigene Arbeit, 3–5 Tage).
+- Billige Probe ohne Bau: `kurven.html?dreiecke=2000`. Die Facetten ignorieren und nur fühlen: Hinkt es noch? Springt es noch?
+
+**C. Krümmung an den Linien mitgelöst, diesmal sauber.**
+- Idee wie Abschnitt 18 der Planseite: Die Krümmung an den Linien ist eine Unbekannte, gewählt so, dass die Haut glatt über die
+  Linie läuft. Das ist dieselbe Ruheform wie heute, aber in einem Schritt statt über gebremste Runden, ohne Gedächtnis.
+- Neu gegenüber dem 17-Minuten-Versuch: innere Rechnung grob (10⁻²) und vom letzten Stand aus, Runden und Reste zählen statt
+  Zeit, Hörner-Fall messen.
+- Lohnt erst, wenn die gebremste Runde (2.3) nicht reicht.
+
+**D. Sofort-Antwort aus dem Griff.**
+- Idee: Beim Greifen wird einmal die lineare Antwort der Haut auf den gezogenen Punkt gelöst (eine Spalte). Je Bild wird sie vor
+  der Runde aufaddiert. Steht die Maus, ist der Zuschlag null (anders als der verworfene „Schwung“).
+- Verspricht: Die Haut ist der Runde eine halbe bis ganze Runde voraus. Nicht gemessen; kann bei Richtungswechsel überschwingen.
+
+**Geprüft und nicht empfohlen:** Anderson, Tschebyschow, L-BFGS (brauchen eine Zielfunktion, die es nicht gibt); Mehrgitter und
+WebGPU für die Runde (bei dieser Größe langsamer als das Lösen mit der fertigen Zerlegung); Willmore-Fluss; Flächenspannung
+oder Volumen als Zusatz (Regler); Felder aus Abstandsfunktionen als Körper (verschmilzt); Flächenstücke zwischen den Linien als
+Form (das ist der Käfig-Weg; fürs Spielnetz weiter richtig).
+
+## 6. Werkzeuge und Bedienung
+
+Geordnet nach Wert für „schnell und genau“. Nach jeder Operation gibt es nur Linien, Punkte und Griffe, sonst nichts; kein
+Regler, keine Automatik, die Punkte setzt.
+
+**Zuerst (klein, sofort spürbar):**
+1. **Präzision im Zug.** Nach G/S/R eine Zahl tippen; ⇧ zehnmal feiner; Pfeiltasten schieben die Auswahl; mit ⌃ einrasten
+   (Griff auf 0/45/90°, Griff gleich lang wie der gegenüber, Punkt auf die Höhe eines anderen Punkts, auf die Mittelebene, auf
+   eine Kreuzung); am Zeiger Δx, Δy, Grifflänge, Winkel. Dazu Wiederholen (⇧⌘Z) und Auswahlrechteck. Das meiste gab es im alten
+   Editor schon (`apps/editor/src/editing/modal/`); es ist Nachziehen, keine Erfindung.
+2. **Verdeckte Linien blass und gestrichelt, weiter greifbar.** Klick trifft das Sichtbare, ⌥-Klick das Stück darunter; eine
+   Taste zeigt nur die gewählten Loops (Solo). Das ist deine Klarstellung vom 02.11. und macht Blätter mit zehn Loops lesbar.
+3. **Umkehr-Wächter.** Kehrt eine Linie innerhalb eines Stücks um oder berührt sich im Raum, wird das Stück rot und die Haut
+   bleibt dort beim letzten gültigen Stand. Der Griff bleibt frei (Illustrator hält nie einen Griff fest). Das beantwortet
+   Entscheidung 5 der Bilanz und nimmt die schwarzen Stellen an der Quelle.
+4. **Prüfansichten, je eine Taste:** enge Stufen (Zebra); Nachlauf als Farbe (wo die Haut noch nicht steht – zugleich das
+   ehrlichste Messgerät für jeden Löser-Versuch); Dehnung der Dreiecke; Spielnetz (gebacken, 8 000 Dreiecke). Das Backen gibt
+   es im Kern, das Kurven-Fenster benutzt es nicht.
+
+**Schneller zum Wesen (der größte Hebel der Bedienung):**
+5. **Auswuchs als eigene Operation (E).** Horn, Ohr, Flosse und Hals entstehen heute durch weite Züge aus der Kugel. Genau
+   dieser Zug dehnt das Netz, erzwingt den Netzwechsel und springt. FiberMesh, Teddy und Blender machen daraus eine Operation:
+   Fuß-Loop wählen, E, Verlauf mit zwei, drei Punkten zeichnen; die Haut entsteht in einem Schritt in der richtigen Dichte, mit
+   einem Loop am Fuß und einem über die Spitze. Ehrlich: Das ist Vorschau und dann Ergebnis, nicht live im strengen Sinn.
+6. **Startform aus einer Seitenzeichnung** (dein „fühlt sich gut an“ vom 04.11.), als Wahl neben der Kugel. Der gezeichnete
+   Umriss wird der Loop der Mittelebene; danach ist er ein Loop wie jeder andere.
+7. **Stütz-Loop mit einem Klick: Wölbung als Linie.** Beim Schweben zeigt das Fenster den Loop durch die Stelle unter dem
+   Zeiger, Klick setzt ihn, Ziehen längs der Normale macht die Stelle dicker oder dünner. Dazu ein Schalter, der die Haut nach
+   dem Abstand zur nächsten Linie färbt: Dort, wo keine Linie nah ist, legt keine Linie die Form fest. Das ist die Antwort der
+   Bedienung auf die offene Modellfrage und auf „wenn ich etwas schmaler mache, nehme ich ihm auch die Höhe“.
+8. **Mausrad über einem gewählten Loop** macht ihn dicker oder dünner (S um seine Mitte), ohne Tastenwechsel.
+9. **Bibliothek als Kurvensätze.** Ein gespeichertes Horn ist ein Satz Loops relativ zu seinem Fuß; Klick setzt ihn, danach
+   sind es gewöhnliche Loops. Kein Teil-Objekt, keine Erkennung.
+
+**Linienpflege (jede Verbesserung der Linie verbessert die Haut):**
+10. **Kreis und eben** (Loop auf den bestpassenden Kreis bzw. in seine Ebene: Augen, Nüstern, Ringe); **Harmonisieren** (an
+    einem glatten Punkt die Grifflängen so setzen, dass die Krümmung stetig durchläuft; aus der Schriftgestaltung);
+    **Krümmungskamm** an der gewählten Linie; **Vereinfachen** mit Punktzahl vorher/nachher; **Linie direkt biegen**
+    (⌘-Ziehen an einem Stück). Nichts davon läuft von selbst.
+11. **Loop auf der Haut gleiten lassen (GG)** und **Parallel-Loop** im festen Abstand (Breite einer Rundung neben einer Kante).
+12. **O entlang der Haut** statt im Raum (heute gehen die Gegenlippe oder ein zweites Horn mit).
+
+**Ansichten:**
+13. **Blatt auf den Loop legen.** Eine Taste legt ein Blatt genau in die Ebene des gewählten Loops; dort ist er eine unverzerrte
+    2D-Form wie ein Illustrator-Pfad. Dazu Hinten und Unten als Umschalter und Greifen im 3D-Blatt (mit ⌥ längs der Normale).
+
+**Dokument:**
+14. **Speichern als Kurven, mit Rundreise-Test.** Das Dokument ist Startumriss, Loops und Operationen. Laden baut die Haut
+    neu auf. Der Test misst den Abstand zwischen der Haut vor dem Speichern und nach dem Laden. Das ist das direkteste Maß für
+    „Kurven sind die Wahrheit“, in einer Zahl, und das härteste Kriterium für jeden Löser. Heute wird er nicht bestehen.
+15. **Zwischenablage mit Illustrator.** Einen Pfad kopieren und in ein Blatt einfügen: Er liegt wie mit dem Stift gezeichnet
+    auf der Haut. Umgekehrt ein Blatt als SVG kopieren.
+
+**Nicht bauen, obwohl es naheliegt:** Pinsel in der Grundform (zweite Wahrheit neben den Kurven; gehört in die Pose); Regler für
+Härte, Wölbung oder Druck; Griffe festhalten; von selbst glätten oder Punkte setzen; eine weitere Verdichtungsregel, solange der
+Netzwechsel die Form ändert; das Nachjustieren weich überblenden und für gelöst erklären; ein Panel voller Zahlenfelder
+(Zahlen gehören in den Zug).
+
+## 7. Vorschlag für die Reihenfolge
+
+Kleine Schritte in `kurven.html`, je ein Kriterium, du urteilst im Fenster. Vor Schritt 1 einmal messen, was du wirklich siehst:
+die ganze Zeit vom Mausereignis bis zum Bild und den Abstand der Bilder im Zug (eine Stunde).
+
+| Schritt | Inhalt | Kriterium | Aufwand |
+| --- | --- | --- | --- |
+| 1. Anzeige | Griffe wahr oder Faktor fest; Bézier-Pfad im Zug; Punkt, Griff, Linie vor dem Löser zeichnen | beim Loslassen eines Griffs bewegt sich im Blatt nichts | ½ Tag |
+| 2. Bremse | Dämpfung je Punkt auch für „gleich“ (Anhang B); neuer Löser übernimmt den Stand des alten | Ohr und Rüssel, 5 200 und 23 400 Punkte: nach vier Runden unter 0,05 Einheiten je Runde | ½ Tag |
+| 3. Lösen straffen | drei Spalten ausschreiben, eine Spalte ebenso, Felder wiederverwenden | Runde ≤ 5 ms bei 5 200 Punkten (heute 9) | ½ Tag |
+| 4. Durchgehend rechnen | Löser im Bildtakt mit Zeitbudget, weiter beim Halten, Maß für „steht“ | Endrunden beim Loslassen bewegen unter ½ px bei 300 % | 1 Tag |
+| 5. Netzwechsel | Verdichten, Zerlegen, Setzen als eine Transaktion im Worker, einmal einwechseln, mit Ausgleich | nach dem Loslassen genau eine Änderung, nicht größer als das Abrunden (Hals 0,3) | 2 Tage |
+| 6. Geometrie neu fühlen | `?gewichte=geometrie` mit den Schritten 1–5, ohne das Bündel vom 08.11. | dein Urteil; danach Standard entscheiden | – |
+| 7. Verstecktes Gedächtnis | `HALT` skalenfrei; Krümmung nicht quadriert lösen | Kugel mit einem Ring: Korrektur kommt zu über 99 % an, bei 5 000 und 20 000 Punkten | ½ Tag |
+| 8. Halbe Haut | nach deiner Entscheidung | gleiche Form, Lösen ≤ 40 % | 2 Tage |
+
+Danach Werkzeuge nach Abschnitt 6 (zuerst 1–4), und je nach deinem Urteil eine Tagesmessung zu A oder B aus Abschnitt 5.
+
+## 8. Entscheidungen für Florian
+
+1. **Soll die bauende Session mit den Schritten 1–5 weitermachen?** (Kein neuer Löser, kein Umbau; fünf kleine Schritte.)
+2. **Griffe:** in wahrer Länge wie in Illustrator (kurze Griffe sind dann klein, Zoom hilft), oder Mindestlänge behalten, nur
+   ohne Sprung?
+3. **Grundform immer symmetrisch?** (Aus der Bilanz, weiter offen.) Dann rechnet der Löser eine Hälfte und ist gut doppelt so
+   schnell; Posen dürfen weiter schief sein.
+4. **Welche Werkzeuge zuerst?** Mein Vorschlag: Präzision im Zug und verdeckte Linien blass, danach Auswuchs (E).
+
+## 9. Was diese Prüfung nicht kann
+
+- Sie hat nichts im Fenster gemessen und nichts gesehen. Ob der Griff-Sprung das ist, was du meinst, zeigt ein Blick.
+- Die Bausteine (Bremse, Ausgleich, schnelleres Lösen, Rechnen beim Halten) sind einzeln gemessen, nicht zusammen.
+- Der Ausgleich ist am Rüssel nicht gut genug und über viele Züge nicht gemessen.
+- Rechnen beim Halten behebt den Rest nach dem Zug, nicht das Nachhinken bei schneller, gleichmäßiger Bewegung.
+- Vier Prüfer brachen ab; ihre Zahlen ohne **✓** stammen aus je einem Lauf auf einer belegten Maschine. Zeiten sind als
+  Verhältnisse zu lesen.
+- Andrews, Joshi, Carr 2011 war nur als Abstract zugänglich; die Aussagen dazu stützen sich auf die Dissertation des Erstautors
+  und drei Patente derselben Gruppe.
+- Die Pose (anderer Löser, Bereich) wurde nur mitgelesen.
+
+## Anhang A: Messwerte
+
+**Pendeln und Bremse** (Bewegung je Runde nach einem Zug in 30 Mausschritten; `loeser/mess1.ts`, `mess3.ts`):
+siehe Tabelle in 2.3. Aufruf: `MODE=varianten FALL=ohr DREIECKE=30000 VARIANTE=original,adaptiv NACH=40` (bestellt 30 000
+Dreiecke = 23 406 Punkte mit drei Loops; 6 000 = 5 222, 14 000 = 10 964, 36 000 = 27 758).
+
+**Rest nach dem Zug, Standard-Löser** (ein Lauf, Zug 160 hoch in 30 Mausschritten mit je einer Runde):
+
+| Punkte | Rest beim Loslassen | nach den 4 Runden des Fensters | Bewegung je Runde danach |
+| --- | --- | --- | --- |
+| 5 222 | 0,19 | 0,04 | 0,017 · 0,014 · 0,019 … |
+| 10 964 | 2,10 | 0,57 | 0,99 · 0,74 · 0,56 · 0,42 … Runde 20: 0,015 |
+| 27 758 | 1,61 | 1,57 | 1,5 · 1,5 · 1,5 · 1,3 … Runde 20: 0,63 · Runde 60: 0,54 (kommt nicht zur Ruhe) |
+
+**Kosten einer Runde** (5 222 Punkte, Anteile):
+
+| | vermessen | intrinsisch | Krümmung verteilen | Lagen lösen | Rest |
+| --- | --- | --- | --- | --- | --- |
+| gleich (9,9 ms) | 10 % | – | (im Rest) | 65 % | 26 % |
+| geometrie (13,1 ms) | 7 % | 9 % | 30 % (4,4 Schritte) | 48 % | 7 % |
+
+**Zerlegung** (5 222 Punkte): Einträge der Matrix 53 914, des Faktors 616 127; beste geprüfte Reihenfolge 583 405 (5 % weniger).
+Halbe Haut: 213 846 + 201 941 Einträge, Rechenarbeit 38 % (Zerlegen) und 34 % (Lösen).
+
+**Nach der Geometrie, Ohr, nach dem Zug** (ein Lauf): 1,20 · 0,96 · 0,21 · 0,20 · 0,04 · 0,04 …, danach dauerhaft 0,002–0,03 je
+Runde (kommt nie ganz zur Ruhe).
+
+**Wegabhängigkeit, Ohr** (Fläche, größter Abstand der Endformen nach 300 Runden):
+
+| | 30×1 ↔ 120×2 | 30×1 ↔ ein Schritt | 30×1 ↔ 150 % und zurück |
+| --- | --- | --- | --- |
+| gleich | 0,08 | 0,99 | 0,87 |
+| geometrie | 0,96 | 2,72 | 0,84 |
+
+**Maß auf genauen Flächen** (`netz/m3-mass.ts`): Kugel mit wahren Normalen 1,000 ± 0,000; mit Normalen nach Fläche 0,915 ± 0,089;
+auf den Linien 0,60 ± 0,34 (kleinstes 0,03, größtes 2,35). Ellipsoid, Netz zweifach gestreckt: 0,73 des wahren Werts, nach dem
+Verdichten 0,83; an alten Punkten ändert sich das Maß im Mittel um das 1,16-Fache (vierfach gestreckt: 2,5-fach).
+
+**Netzgüte:** Startnetz 16 % stumpfe Dreiecke, längste/kürzeste Kante je Dreieck im Median 1,46. Gleichmäßig neu vernetzt:
+1,8 % stumpf, 1,12; die unberührte Kugel wandert dann in 30 Runden 0,23 statt 0,60 Einheiten. Kein großer Hebel.
+
+## Anhang B: Die drei kleinen Änderungen als Skizze
+
+**Bremse für „gleich“** (`ausKurven.ts`, in `schritt`, nach `let k = m.kante2[i]! * c[i]!;`; genau so in der Messkopie,
+`loeser/gen.py`):
+
+```ts
+if (!geo) {
+  // Unterschied zwischen verteilter und gemessener Krümmung, je Punkt gebremst wie bei „geometrie“
+  const d = m.kante2[i]! * (c[i]! - m.kap[i]!);
+  const b = d * this.dVorher![i]! < 0 ? Math.max(0.02, 0.5 * this.beta![i]!) : Math.min(1, 1.25 * this.beta![i]!);
+  this.beta![i] = b;
+  this.dVorher![i] = d;
+  k = m.kante2[i]! * m.kap[i]! + b * d;
+}
+```
+
+(`beta` und `dVorher` wie bei „geometrie“ anlegen. An Linienpunkten ist `c = kap`, dort ändert sich nichts.)
+
+**Lösen für drei Spalten ausgeschrieben:** Funktion `loesen3` in `algebra/a4-kern.ts` (40 Zeilen, drei getrennte Felder,
+vorwärts streuen, rückwärts sammeln, Kehrwert der Diagonale einmal je Spalte).
+
+**Ausgleich beim Netzwechsel** (`netz/m5-ausgleich.ts`): direkt nach dem Anlegen des Lösers auf dem neuen Netz einmal
+`delta[i] = kap[i] − c[i]` (gemessene minus verteilte Krümmung), danach in jeder Runde `c[i] += delta[i]`.
+
+## Quellen
+
+Im Repo: Planseite `docs/plans/2026-11-06-kurven-als-wahrheit.md`, Bilanz `docs/research/2026-11-09-bilanz-wesen-editor.md`,
+Recherche `docs/research/2026-11-09-fibermesh-monstermash-richtung.md`, Klarstellungen `docs/plans/2026-10-22-klarstellungen.md`.
+
+Literatur (gelesen, soweit nicht anders vermerkt):
+- Nealen, Igarashi, Sorkine, Alexa: FiberMesh, SIGGRAPH 2007. https://www-ui.is.s.u-tokyo.ac.jp/~takeo/papers/fibermesh.pdf
+- Schneider, Kobbelt: Geometric fairing of irregular meshes for free-form surface design, CAGD 2001.
+  https://graphics.rwth-aachen.de/media/papers/geom_fair1.pdf
+- Stanko, Hahmann, Bonneau, Saguin-Sprynski: Smooth Interpolation of Curve Networks with Surface Normals, Eurographics 2016.
+  http://tiborstanko.sk/assets/2016-eg.pdf
+- Andrews, Joshi, Carr: A Linear Variational System for Modelling From Curves, CGF 2011 (nur Abstract).
+  https://diglib.eg.org/handle/10.1111/v30i6pp1850-1861 · Andrews, Dissertation 2013, Kap. 5.
+  https://www2.eecs.berkeley.edu/Pubs/TechRpts/2013/EECS-2013-103.pdf
+- Botsch, Kobbelt: An Intuitive Framework for Real-Time Freeform Modeling, SIGGRAPH 2004.
+  https://graphics.rwth-aachen.de/media/papers/modeling1.pdf
+- Botsch, Bommes, Kobbelt: Efficient Linear System Solvers for Mesh Processing, 2005. https://cgg.unibe.ch/media/papers/solvers1.pdf
+- Shi, Yu, Bell, Feng: A Fast Multigrid Algorithm for Mesh Deformation, SIGGRAPH 2006.
+  https://i.cs.hku.hk/~yzyu/publication/multigrid_mesh-sig06.pdf
+- Stein, Grinspun, Wardetzky, Jacobson: Natural Boundary Conditions for Smoothing in Geometry Processing, 2018.
+  https://arxiv.org/abs/1707.04348
+- Peng u. a.: Anderson Acceleration for Geometry Optimization and Physics Simulation, 2018.
+  https://ar5iv.labs.arxiv.org/html/1805.05715
+- Herholz, Sorkine-Hornung: Sparse Cholesky Updates for Interactive Mesh Parameterization, 2020.
+  https://igl.ethz.ch/projects/sparse-cholesky-update/sparse-cholesky-update-paper.pdf
+- de Goes, James: Regularized Kelvinlets, SIGGRAPH 2017. https://graphics.pixar.com/library/Kelvinlets
+- Werkzeuge: Blender-Handbuch (Zahlen im Zug, Einrasten, Kante gleiten, LoopTools), Illustrator-Hilfe (Krümmungswerkzeug,
+  Vereinfachen, intelligente Hilfslinien), Glyphs (Harmonisieren), Speed Punk (Krümmungskamm), Rhino (Zebra, Krümmungsgraph).

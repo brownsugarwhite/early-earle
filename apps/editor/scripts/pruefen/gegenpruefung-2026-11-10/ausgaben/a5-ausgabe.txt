@@ -1,0 +1,21 @@
+
+## 5.222 Punkte, Zug 160 hoch in 30 Mausschritten mit je 1 Runde(n)
+HALT 1e-6: je Mausschritt 9.6 ms (mit Vorbehalt) · Stand beim Loslassen gegen Stand nach 64 weiteren Runden: 0.19 Einheiten; nach den 4 Runden des Fensters noch 0.04
+   Bewegung je Runde danach: 0.017 0.014 0.019 0.016 0.013 0.011 … R20 0.0013 · R40 0.0007 · R60 0.0007; Faktor je Runde: R1–6 0.911, R20–40 0.966, R40–60 1.000
+HALT 1e-10: je Mausschritt 8.7 ms (mit Vorbehalt) · Stand beim Loslassen gegen Stand nach 64 weiteren Runden: 0.18 Einheiten; nach den 4 Runden des Fensters noch 0.04
+   Bewegung je Runde danach: 0.020 0.017 0.022 0.019 0.015 0.012 … R20 0.0015 · R40 0.0007 · R60 0.0007; Faktor je Runde: R1–6 0.906, R20–40 0.961, R40–60 1.000
+Endstände HALT 0.000001 gegen 1e-10: höchstens 0.062 Einheiten verschieden
+
+## 10.964 Punkte, Zug 160 hoch in 30 Mausschritten mit je 1 Runde(n)
+HALT 1e-6: je Mausschritt 20.6 ms (mit Vorbehalt) · Stand beim Loslassen gegen Stand nach 64 weiteren Runden: 2.10 Einheiten; nach den 4 Runden des Fensters noch 0.57
+   Bewegung je Runde danach: 0.988 0.735 0.556 0.420 0.321 0.246 … R20 0.0151 · R40 0.0038 · R60 0.0032; Faktor je Runde: R1–6 0.757, R20–40 0.934, R40–60 0.991
+HALT 1e-10: je Mausschritt 20.5 ms (mit Vorbehalt) · Stand beim Loslassen gegen Stand nach 64 weiteren Runden: 6.46 Einheiten; nach den 4 Runden des Fensters noch 1.82
+   Bewegung je Runde danach: 3.120 2.358 1.812 1.387 1.075 0.831 … R20 0.0477 · R40 0.0032 · R60 0.0032; Faktor je Runde: R1–6 0.768, R20–40 0.874, R40–60 1.000
+Endstände HALT 0.000001 gegen 1e-10: höchstens 12.838 Einheiten verschieden
+
+## 27.758 Punkte, Zug 160 hoch in 30 Mausschritten mit je 1 Runde(n)
+HALT 1e-6: je Mausschritt 60.2 ms (mit Vorbehalt) · Stand beim Loslassen gegen Stand nach 64 weiteren Runden: 1.61 Einheiten; nach den 4 Runden des Fensters noch 1.57
+   Bewegung je Runde danach: 1.520 1.454 1.450 1.348 1.346 1.280 … R20 0.6335 · R40 0.2755 · R60 0.5421; Faktor je Runde: R1–6 0.966, R20–40 0.959, R40–60 1.034
+HALT 1e-10: je Mausschritt 61.0 ms (mit Vorbehalt) · Stand beim Loslassen gegen Stand nach 64 weiteren Runden: 24.92 Einheiten; nach den 4 Runden des Fensters noch 25.00
+   Bewegung je Runde danach: 1.437 1.456 1.250 1.061 1.160 1.016 … R20 0.3622 · R40 4.0956 · R60 11.7864; Faktor je Runde: R1–6 0.933, R20–40 1.129, R40–60 1.054
+Endstände HALT 0.000001 gegen 1e-10: höchstens 23.977 Einheiten verschieden

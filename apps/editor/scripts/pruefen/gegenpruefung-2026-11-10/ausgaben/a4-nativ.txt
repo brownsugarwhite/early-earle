@@ -1,0 +1,34 @@
+--- clang -o2
+
+## 5222 Punkte, nnz(L) 616127 (nativ, clang)
+| Kern | Median ms | Minimum ms | Unterschied zu JavaScript |
+| --- | --- | --- | --- |
+| Zerlegen (Baum + Muster + Werte) | 39.35 | 35.75 | 6.7e-15 |
+| Lösen 3 Spalten, wie der Code heute (Schleife über c) | 2.35 | 2.09 | 5.8e-11 |
+| Lösen 3 Spalten, ausgeschrieben, getrennte Felder | 1.22 | 1.14 | 6.5e-11 |
+| Lösen 3 Spalten, Superknoten | 1.04 | 0.95 | 1.7e-10 |
+
+## 10964 Punkte, nnz(L) 1498335 (nativ, clang)
+| Kern | Median ms | Minimum ms | Unterschied zu JavaScript |
+| --- | --- | --- | --- |
+| Zerlegen (Baum + Muster + Werte) | 126.00 | 105.03 | 1.7e-14 |
+| Lösen 3 Spalten, wie der Code heute (Schleife über c) | 6.22 | 5.16 | 6.5e-10 |
+| Lösen 3 Spalten, ausgeschrieben, getrennte Felder | 3.06 | 2.71 | 6.7e-10 |
+| Lösen 3 Spalten, Superknoten | 2.50 | 2.19 | 7.1e-10 |
+--- clang -o3
+
+## 5222 Punkte, nnz(L) 616127 (nativ, clang)
+| Kern | Median ms | Minimum ms | Unterschied zu JavaScript |
+| --- | --- | --- | --- |
+| Zerlegen (Baum + Muster + Werte) | 33.81 | 31.95 | 0.0e+00 |
+| Lösen 3 Spalten, wie der Code heute (Schleife über c) | 3.00 | 2.08 | 0.0e+00 |
+| Lösen 3 Spalten, ausgeschrieben, getrennte Felder | 1.01 | 0.92 | 9.5e-11 |
+| Lösen 3 Spalten, Superknoten | 0.97 | 0.85 | 1.8e-10 |
+
+## 10964 Punkte, nnz(L) 1498335 (nativ, clang)
+| Kern | Median ms | Minimum ms | Unterschied zu JavaScript |
+| --- | --- | --- | --- |
+| Zerlegen (Baum + Muster + Werte) | 112.17 | 104.79 | 0.0e+00 |
+| Lösen 3 Spalten, wie der Code heute (Schleife über c) | 5.95 | 5.13 | 0.0e+00 |
+| Lösen 3 Spalten, ausgeschrieben, getrennte Felder | 2.44 | 2.26 | 5.5e-10 |
+| Lösen 3 Spalten, Superknoten | 2.28 | 2.11 | 7.2e-10 |

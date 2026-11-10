@@ -1,0 +1,25 @@
+
+hals, 5222 Punkte, gleiche Gewichte: Eigenwert gemessen (Runden 4…9 nach dem Zug): -0.38, -0.34, -0.67, -1.09, -0.89, -0.75
+  ganze Haut: f 0.58, Kantenquadrat Feld 101.40 / Linie 51.73 = s 1.96 → Abschätzung 1 − s/f = -2.37
+  Feld der Schwingung (2262 Punkte, Rand 447 Linienpunkte): f 0.58, Kantenquadrat Feld 131.25 / Linie 53.63 = s 2.45 → Abschätzung 1 − s/f = -3.19
+  nur die heißesten 5 %: f 0.58, Kantenquadrat Feld 141.19 / Linie 53.63 = s 2.63 → Abschätzung 1 − s/f = -3.50
+
+ohr, 5222 Punkte, gleiche Gewichte: Eigenwert gemessen (Runden 4…9 nach dem Zug): -0.98, -1.05, -1.04, -1.03, -1.03, -1.03
+  ganze Haut: f 0.58, Kantenquadrat Feld 80.88 / Linie 47.09 = s 1.72 → Abschätzung 1 − s/f = -1.95
+  Feld der Schwingung (2262 Punkte, Rand 447 Linienpunkte): f 0.58, Kantenquadrat Feld 89.55 / Linie 46.73 = s 1.92 → Abschätzung 1 − s/f = -2.28
+  nur die heißesten 5 %: f 0.58, Kantenquadrat Feld 115.30 / Linie 46.73 = s 2.47 → Abschätzung 1 − s/f = -3.22
+
+ruessel, 5222 Punkte, gleiche Gewichte: Eigenwert gemessen (Runden 4…9 nach dem Zug): -1.13, -1.16, -0.91, -0.87, -1.02, -1.07
+  ganze Haut: f 0.58, Kantenquadrat Feld 121.66 / Linie 65.02 = s 1.87 → Abschätzung 1 − s/f = -2.21
+  Feld der Schwingung (2284 Punkte, Rand 575 Linienpunkte): f 0.58, Kantenquadrat Feld 172.00 / Linie 63.24 = s 2.72 → Abschätzung 1 − s/f = -3.67
+  nur die heißesten 5 %: f 0.58, Kantenquadrat Feld 283.32 / Linie 63.24 = s 4.48 → Abschätzung 1 − s/f = -6.69
+
+ohr, 2710 Punkte, gleiche Gewichte: Eigenwert gemessen (Runden 4…9 nach dem Zug): -1.12, -1.10, -1.10, -1.08, -1.08, -1.06
+  ganze Haut: f 0.57, Kantenquadrat Feld 156.80 / Linie 91.65 = s 1.71 → Abschätzung 1 − s/f = -1.98
+  Feld der Schwingung (1140 Punkte, Rand 313 Linienpunkte): f 0.58, Kantenquadrat Feld 171.61 / Linie 91.00 = s 1.89 → Abschätzung 1 − s/f = -2.26
+  nur die heißesten 5 %: f 0.58, Kantenquadrat Feld 211.33 / Linie 91.00 = s 2.32 → Abschätzung 1 − s/f = -3.02
+
+ohr, 10082 Punkte, gleiche Gewichte: Eigenwert gemessen (Runden 4…9 nach dem Zug): -0.96, -0.89, -0.93, -0.86, -0.90, -0.85
+  ganze Haut: f 0.59, Kantenquadrat Feld 42.02 / Linie 26.26 = s 1.60 → Abschätzung 1 − s/f = -1.73
+  Feld der Schwingung (4656 Punkte, Rand 622 Linienpunkte): f 0.59, Kantenquadrat Feld 46.21 / Linie 26.49 = s 1.74 → Abschätzung 1 − s/f = -1.97
+  nur die heißesten 5 %: f 0.59, Kantenquadrat Feld 49.94 / Linie 26.49 = s 1.89 → Abschätzung 1 − s/f = -2.21

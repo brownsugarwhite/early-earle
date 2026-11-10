@@ -1619,6 +1619,33 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - Empfehlung: Prinzip bleibt; der Geometrie-Löser wird Standard, sobald er schnell ist. Dafür kommt der Rechenkern stufenweise aus
     JavaScript heraus, je nach Messung: Worker → WebAssembly → natives Modul in der Electron-App. Vorher aufräumen. Fünf
     Entscheidungen offen.
+- **2026-11-10: Unabhängige Gegenprüfung von `kurven.html`** (Florian: „… entweder sehe ich noch Veränderungen beim Loslassen der
+  Handles und das Mesh justiert nach oder es ist ungenau und stockt … Gibt es Fehler? … Kann man den Löser noch verbessern?“;
+  [`docs/research/2026-11-10-gegenpruefung-kurven-loeser.md`](docs/research/2026-11-10-gegenpruefung-kurven-loeser.md),
+  Einzelberichte `docs/research/2026-11-10-gegenpruefung-berichte/`, Messskripte
+  `apps/editor/scripts/pruefen/gegenpruefung-2026-11-10/`). Von einer anderen Session, am Code nichts geändert; Entscheidung
+  bei Florian.
+  - Fünf getrennte Ursachen, vier davon ohne neue Formel behebbar:
+    - Die Griffe springen beim Loslassen (der Anzeigefaktor `griffFaktor` wird neu gerechnet).
+    - Der Löser rechnet nur im Mausereignis; nach dem Loslassen folgen bis zu fünf sichtbare Stufen.
+    - Der Standard-Löser pendelt, die Bremse gibt es nur bei „geometrie“: je Runde Ohr ±0,3–0,6, Rüssel ±2, bei 23 400
+      Punkten Ohr ±2,4 und Rüssel 5–26 Einheiten. Mit der Bremse nach 3–4 Runden ruhig.
+    - Der Netzwechsel ändert die Form. Ein Ausgleich beim Wechsel nimmt den Sprung (Hals 6,3 → 0,3, Rüssel 35 → 1,0); am
+      Rüssel ist er beim Weiterziehen noch nicht gut.
+    - `loesenSpalten(rhs, 3)` ist 3,7-mal langsamer als dieselbe Rechnung ausgeschrieben (6,0 → 1,6 ms; Runde 9 → 4,5 ms).
+  - Übersehen: `HALT = 1e-6` wirkt im quadrierten Krümmungssystem als Gedächtnis, umso stärker, je dichter das Netz ist (ein
+    Ring, 19 000 Punkte: nur 32 % der Korrektur kommen an). Die Form hängt am Weg (Ohr rund 1 Einheit). „Zug ms“ misst nur den
+    Löser. Die Kriterien gelten bei 100 % und 5 200 Punkten; Florian arbeitet bei 300 % mit 11 000–26 000 Punkten.
+  - Urteile, die nicht tragen: „kein Hebel mehr am Löser, nur Tempo“; „mitgelöst verworfen“ (17 Minuten); „Linien mit Richtung“
+    (Idee bestätigt, die Umsetzung scheiterte); „Normalen nach Max an der Kuppel schlechter“ (Artefakt des mehrdeutigen Tests).
+    WebAssembly bringt beim Lösen nur das 1,7-Fache über gut geschriebenes JavaScript, beim Zerlegen das 2,4-Fache.
+  - Vorschlag: vier Regeln (Kurve sofort; Haut rechnet durchgehend, bis sie steht; Netzwechsel ändert die Form nicht; ein
+    Löser, der von selbst zur Ruhe kommt) in acht kleinen Schritten. Größere Wege (linear aus Linien mit Richtung, kleines
+    Rechennetz mit glatter Anzeige, mitgelöst sauber, Sofort-Antwort aus dem Griff) erst nach je einer Tagesmessung. Dazu eine
+    Werkzeugliste (Präzision im Zug, verdeckte Linien blass, Auswuchs als Operation, Stütz-Loop, Rundreise-Test).
+  - Fallen: Eine Messkopie des Lösers erst mit `MODE=gleichheit` gegen das Original prüfen. Varianten immer auch auf einem
+    dichten Netz messen (`DREIECKE=30000`); Pendeln und Kriechen zeigen sich dort zuerst. Neun Prüfer parallel haben Florians
+    Wochenlimit aufgebraucht: große Fächer nur nach Rückfrage.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
