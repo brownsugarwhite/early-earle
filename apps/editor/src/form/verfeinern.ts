@@ -64,7 +64,7 @@ export type VerfeinerAuftrag = {
   /** wie beim Löser des Fensters: Krümmung folgt den Loops, Gewichte, Schalter der Beweise */
   kruemmung: boolean;
   gewichte: HautGewichte;
-  loeserOpt: { richtung?: boolean; maxNormalen?: boolean };
+  loeserOpt: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean };
 };
 
 export type VerfeinerErgebnis =
@@ -97,7 +97,8 @@ export function verfeinern(a: VerfeinerAuftrag): VerfeinerErgebnis {
   const h = hautAusFlach(a.haut);
   const v = verdichten(h, a.loops, a.maxKante, a.opt);
   const t1 = uhr();
-  if (!v) return { id: a.id, leer: true, ms: [t1 - t0] };
+  // gekappt: Die Haut ist im Zug so weit gedehnt, dass das Netz auf das Vierfache wüchse; so läuft sie nur davon (dann verfällt es)
+  if (!v || v.gekappt) return { id: a.id, leer: true, ms: [t1 - t0] };
   const einbettung = einbetten(h, v.haut.pos, { nachbarn: v.haut.nachbarn, alt: v.alt });
   const t2 = uhr();
   const auftrag = new LoopZug(v.haut, v.loops, null, a.kruemmung, 'kurven', a.gewichte, { nurZeilen: true, ...a.loeserOpt }).auftrag;
@@ -172,7 +173,7 @@ export type AufraeumAuftrag = {
   nachverfeinern: number;
   kruemmung: boolean;
   gewichte: HautGewichte;
-  loeserOpt: { richtung?: boolean; maxNormalen?: boolean };
+  loeserOpt: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean };
   /** Setzen: Runden, bis sich die Form in einer Runde um weniger als `ruhe` bewegt (längs der Normalen), höchstens `maxRunden` */
   ruhe: number;
   maxRunden: number;
@@ -240,6 +241,8 @@ export type AufraeumErgebnis = {
   struktur: string;
   /** Dauer in ms: verdichten (alle Durchgänge), Zeilen, zerlegen, setzen */
   ms: number[];
+  /** Vorsicht bei Unruhe: wie oft die Löser dieses Auftrags ihren Schritt halbiert haben oder stehen geblieben sind */
+  unruhe: number;
 };
 
 /** Gewichte je Punkt als ein Feld mit Anfängen */
@@ -249,6 +252,37 @@ function gewichteFlach(gew: readonly Float64Array[]): { start: Int32Array; wert:
   const wert = new Float64Array(start[gew.length]!);
   for (let p = 0; p < gew.length; p++) wert.set(gew[p]!, start[p]!);
   return { start, wert };
+}
+
+/**
+ * Wie weit draußen eine Haut höchstens liegen darf, bevor sie als davongelaufen gilt (10.11., Florian: „der Kopf bläst sich auf und
+ * explodiert, dann ist es weg und die Seite hängt sich auf“): das Dreifache der größten Koordinate von Haut und Zielen der Linien,
+ * dazu ein Stück (`kante`: die Kantenlänge, über der geteilt wird). Eine Haut, die zwischen ihren Linien steht, kommt dort nie hin;
+ * eine, die davonläuft, ist nach wenigen Runden weit darüber (gemessen: 91 000 nach 27 Runden bei einer Form von 754).
+ */
+export function hautGrenze(pos: Float64Array, ziele: readonly Float64Array[], kante: number): number {
+  let m = 0;
+  for (let i = 0; i < pos.length; i++) {
+    const v = pos[i]!;
+    if (v > m) m = v;
+    else if (-v > m) m = -v;
+  }
+  for (const z of ziele)
+    for (let i = 0; i < z.length; i++) {
+      const v = z[i]!;
+      if (v > m) m = v;
+      else if (-v > m) m = -v;
+    }
+  return 3 * m + 20 * kante;
+}
+/** alle Lagen endlich und innerhalb der Grenze? */
+export function innerhalb(pos: Float64Array, grenze: number): boolean {
+  for (let i = 0; i < pos.length; i++) {
+    const v = pos[i]!;
+    // (NaN vergleicht immer falsch)
+    if (!(v <= grenze && v >= -grenze)) return false;
+  }
+  return true;
 }
 
 /**
@@ -265,6 +299,7 @@ export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => 
   let gelegt = 0;
   let durchgaenge = 0;
   let runden = 0;
+  let unruhe = 0;
   let verborgen = a.opt.verborgen ?? null;
   const verdichte = (opt: VerdichtenOptionen): boolean => {
     const t = uhr();
@@ -301,6 +336,8 @@ export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => 
     const z = new LoopZug(h, loops, null, a.kruemmung, 'kurven', a.gewichte, vorlage ? { vorlage, ...a.loeserOpt } : a.loeserOpt);
     const ziele = loops.map((l, li) => (a.exakt[li] ? pfadVersatz(l, z.start[li]!) : (versch?.[li] ?? null)));
     const vor = new Float64Array(h.pos.length);
+    // läuft die Haut beim Setzen davon (weiter draußen als das Dreifache von Haut und Zielen), gilt sie wie nicht endlich
+    const grenze = hautGrenze(h.pos, z.lagen(ziele), a.maxKante);
     let steht = false;
     let endlich = true;
     for (let k = 0; k < maxRunden; k++) {
@@ -314,7 +351,7 @@ export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => 
         // (NaN vergleicht immer falsch: eigens prüfen)
         if (d > weg || d !== d) weg = d;
       }
-      if (!Number.isFinite(weg)) {
+      if (!Number.isFinite(weg) || !innerhalb(h.pos, grenze)) {
         endlich = false;
         break;
       }
@@ -324,6 +361,7 @@ export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => 
       }
     }
     if (endlich) loops.forEach((l, li) => festlegen(h, l, !a.exakt[li]));
+    unruhe += z.unruhe.stufen + (z.unruhe.fest ? 1 : 0);
     ms[3] = ms[3]! + uhr() - t;
     return { steht, endlich };
   };
@@ -376,7 +414,7 @@ export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => 
     }
   }
   // die Haut ist beim Aufräumen nicht endlich geblieben: Es gilt der Stand davor (ohne Zerlegung; die passte zum verworfenen Netz)
-  if (abgebrochen) return { art: 'aufraeumen', id: a.id, vorstufe, abgebrochen, geaendert: false, haut: null, loops: null, alt: null, neu: 0, gelegt: 0, durchgaenge, runden, gewStart: null, gewWert: null, daten: [], struktur: '', ms };
+  if (abgebrochen) return { art: 'aufraeumen', id: a.id, vorstufe, abgebrochen, geaendert: false, haut: null, loops: null, alt: null, neu: 0, gelegt: 0, durchgaenge, runden, gewStart: null, gewWert: null, daten: [], struktur: '', ms, unruhe };
   const geaendert = verdichtet || gesetzt;
   const g = z && !vergeben ? gewichteFlach(z.vorlage.gew) : null;
   return {
@@ -397,6 +435,7 @@ export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => 
     daten: z && !vergeben ? z.daten : [],
     struktur: z && !vergeben ? (z.vorlage.struktur ?? '') : '',
     ms,
+    unruhe,
   };
 }
 

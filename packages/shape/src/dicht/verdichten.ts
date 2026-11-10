@@ -48,6 +48,8 @@ export type Verdichtet = {
   geloest: number;
   verborgen: Uint8Array | null;
   alt: Int32Array;
+  /** das Teilen hat vor der Grenze `hoechstens` aufgehört: Es blieben Kanten, die zu lang sind */
+  gekappt: boolean;
 };
 
 /** unter diesem kleinsten Winkel (Grad) gilt ein Dreieck als flach */
@@ -99,9 +101,17 @@ export function verdichten(
     flachSchutz?: boolean;
     /** zusammengelegt werden nur Kanten mit einem Ende auf einer Linie (nach dem Einsetzen eines Loops) */
     nurKetten?: boolean;
+    /**
+     * so viele Punkte höchstens (Standard: das Vierfache, mindestens 50 000 mehr): Ein Durchgang, der darüber käme, findet nicht mehr
+     * statt (`gekappt`). Läuft eine Haut davon (alle Kanten viel zu lang), entstünden sonst in acht Durchgängen Millionen Punkte,
+     * und wer verdichtet, käme nicht zurück (10.11., Florian: „die Seite hängt sich auf“).
+     */
+    hoechstens?: number;
   } = {},
 ): Verdichtet | null {
   const runden = opt.runden ?? 8;
+  const hoechstens = opt.hoechstens ?? Math.max(4 * h.n, h.n + 50000);
+  let gekappt = false;
   const pos: number[] = Array.from(h.pos);
   const tri: number[] = Array.from(h.tri);
   const spiegel: number[] = Array.from(h.spiegel);
@@ -518,6 +528,10 @@ export function verdichten(
         lang.push({ a, b, l });
     }
     if (lang.length === 0) break;
+    if (pos.length / 3 + lang.length > hoechstens) {
+      gekappt = true;
+      break;
+    }
     lang.sort((p, q) => q.l - p.l);
     for (const { a, b, stelle } of lang) {
       if (!kanten.has(schluessel(a, b))) continue;
@@ -1100,7 +1114,7 @@ export function verdichten(
       punkte: l.punkte.map((p) => ({ ...p })),
     };
   });
-  return { haut, loops: neueLoops, neu, gelegt, gedreht, geloest, verborgen: verborgen2 ? Uint8Array.from(verborgen2) : null, alt };
+  return { haut, loops: neueLoops, neu, gelegt, gedreht, geloest, verborgen: verborgen2 ? Uint8Array.from(verborgen2) : null, alt, gekappt };
 }
 
 /**

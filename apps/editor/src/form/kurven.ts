@@ -37,6 +37,7 @@ import {
   type Loop,
   type LoopPunkt,
   LoopZug,
+  loopStruktur,
   MAUL_WINKEL_MAX,
   type MaulAmLoop,
   type UmrissPunkt,
@@ -244,9 +245,19 @@ const GEWICHTE: HautGewichte = new URLSearchParams(location.search).get('gewicht
 const RICHTUNG = new URLSearchParams(location.search).get('richtung') === '1';
 /** Weg a (09.11.): `?maxnormalen=1` = im Maß des Lösers die Normalen nach Max (sonst wie heute) */
 const MAXNORMALEN = new URLSearchParams(location.search).get('maxnormalen') === '1';
-const RICHTUNG_OPT: { richtung?: boolean; maxNormalen?: boolean } = {
+/**
+ * Vorsicht bei Unruhe im Löser (10.11., `ausKurven.ts`): Schießt ein Schritt über das Ziel hinaus, wird er zurückgenommen und
+ * halbiert; hilft das nicht, bleibt die Haut bei ihrer ruhigsten Lage stehen. `?vorsicht=0`: ohne (wie bis zum 10.11.).
+ */
+const VORSICHT = new URLSearchParams(location.search).get('vorsicht') !== '0';
+/** `?vorsichtlaut=1` (für Proben): Jedes Eingreifen der Vorsicht, im Fenster und im Hintergrund, steht als Fehler in der Konsole */
+const VORSICHT_LAUT = new URLSearchParams(location.search).get('vorsichtlaut') === '1';
+/** `?davon=0`: das Fenster nimmt einen Zug nicht zurück, wenn die Haut davonläuft (wie bis zum 10.11.; nur zum Vergleichen) */
+const DAVON_SCHUTZ = new URLSearchParams(location.search).get('davon') !== '0';
+const RICHTUNG_OPT: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean } = {
   ...(RICHTUNG ? { richtung: true } : {}),
   ...(MAXNORMALEN ? { maxNormalen: true } : {}),
+  ...(VORSICHT ? {} : { vorsicht: false }),
 };
 /** Der Zug löst nur einen Bereich um die bewegten Stellen (mit Gedächtnis und in der Pose); aus den Kurven die ganze Haut */
 const mitBereich = (): boolean => grund !== null || HAUT !== 'kurven';
@@ -1503,13 +1514,14 @@ function vorrechnenPlanen(): void {
       if (r.verdichten) aufraeumenImFenster();
     }
     // die bereite Zerlegung ist für genau diesen Stand gerechnet (sie kam aus dem Hintergrund): nichts zu tun
-    if (GEWICHTE === 'geometrie' && vorlageBereit && vorlageStand === standZahl()) return;
+    if (GEWICHTE === 'geometrie' && vorlageGenau(standZahl())) return;
     const t0 = performance.now();
     const z = new LoopZug(haut, loops, null, KRUEMMUNG, 'kurven', GEWICHTE, RICHTUNG_OPT);
     letztesVorrechnen = Math.round(performance.now() - t0);
     if (GEWICHTE === 'geometrie' && z.vorlage) {
       vorlageBereit = z.vorlage;
       vorlageStand = standZahl();
+      vorlageNetz = netzZahl();
     }
     if (nachLoesenOffen !== haut) return;
     nachLoesenOffen = null;
@@ -1517,7 +1529,18 @@ function vorrechnenPlanen(): void {
     // nach der Geometrie, bis die Form steht (`?setzen=4`: wie bis zum 10.11. genau vier Runden): Ein neuer Löser schwingt in den
     // ersten Runden über (seine Bremse je Punkt beginnt von vorn), nach genau vier Runden blieb davon ein Rest stehen
     if (GEWICHTE === 'geometrie' && SETZEN_RUHE) {
-      for (let k = 0; k < RUNDEN_NEU; k++) if (rundeMitWeg(z, ziele) < RUHE) break;
+      // läuft die Haut beim Setzen davon, bleibt sie, wie sie war
+      const davor = Float64Array.from(haut.pos);
+      for (let k = 0; k < RUNDEN_NEU; k++) {
+        const weg = rundeMitWeg(z, ziele);
+        if (weg === Infinity) {
+          haut.pos.set(davor);
+          davonZahl++;
+          meldung = 'Hier kommt die Haut nicht zur Ruhe: Sie bleibt, wie sie war.';
+          break;
+        }
+        if (weg < RUHE) break;
+      }
     } else z.schritt(ziele, RUNDEN_ENDE);
     festlegenAlle();
     if (GENAU > 0 && nachVerfeinert < 3) {
@@ -2198,13 +2221,101 @@ function rundeMitWeg(loeser: LoopZug, versch: readonly (Float64Array | null)[]):
   if (!rundeVorher || rundeVorher.length !== P.length) rundeVorher = new Float64Array(P.length);
   rundeVorher.set(P);
   const N = normalenGezeigt?.haut === haut ? normalenGezeigt.nor : hautNormalen(haut);
+  const grenze = DAVON_SCHUTZ ? davonGrenze(loeser, versch) : Infinity;
   loeser.schritt(versch, 1);
   let m = 0;
+  let heil = true;
   for (let k = 0; k < P.length; k += 3) {
-    const d = Math.abs((P[k]! - rundeVorher[k]!) * N[k]! + (P[k + 1]! - rundeVorher[k + 1]!) * N[k + 1]! + (P[k + 2]! - rundeVorher[k + 2]!) * N[k + 2]!);
+    const x = P[k]!;
+    const y = P[k + 1]!;
+    const z = P[k + 2]!;
+    // (nicht endliche Lagen vergleichen immer falsch)
+    if (!(x <= grenze && x >= -grenze && y <= grenze && y >= -grenze && z <= grenze && z >= -grenze)) heil = false;
+    const d = Math.abs((x - rundeVorher[k]!) * N[k]! + (y - rundeVorher[k + 1]!) * N[k + 1]! + (z - rundeVorher[k + 2]!) * N[k + 2]!);
     if (d > m) m = d;
   }
-  return m;
+  const u = loeser.unruhe;
+  if (unruheLoeser !== loeser) {
+    unruheLoeser = loeser;
+    letzteUnruhe = { stufen: 0, fest: false };
+  }
+  if (u.stufen > letzteUnruhe.stufen || (u.fest && !letzteUnruhe.fest)) {
+    unruheZahl++;
+    // stehen geblieben: Das sagt die Statuszeile, bis der nächste Schritt beginnt
+    if (u.fest && !letzteUnruhe.fest) meldung = 'Hier kommt die Haut nicht zur Ruhe: Sie bleibt bei ihrer ruhigsten Lage stehen.';
+    if (VORSICHT_LAUT) console.error(`Vorsicht im Fenster: Schritt ${u.stufen}-mal halbiert${u.fest ? ', stehen geblieben' : ''}`);
+  }
+  letzteUnruhe = u;
+  if (davonProbe) {
+    davonProbe = false;
+    return Infinity;
+  }
+  return heil || !DAVON_SCHUTZ ? m : Infinity;
+}
+/** Prüfung: die nächste Runde gilt als davongelaufen; das nächste Bild wirft einen Fehler */
+let davonProbe = false;
+let fehlerProbe = false;
+/**
+ * Vorsicht bei Unruhe im Löser (zum Messen und für die Statuszeile): der Löser der letzten Runde, wie oft er seinen Schritt halbiert
+ * hat und ob er stehen geblieben ist; wie oft das insgesamt geschah
+ */
+let unruheLoeser: LoopZug | null = null;
+let letzteUnruhe = { stufen: 0, fest: false };
+let unruheZahl = 0;
+
+/**
+ * Läuft die Haut davon? (10.11., Florian: „der Kopf bläst sich auf und explodiert, dann ist es weg und die Seite hängt sich auf“;
+ * nachgestellt an seiner gesicherten Form, `form-gesichert-stabil.ts`: Der Löser kommt an manchen Stellen nicht zur Ruhe, die Haut
+ * bewegt sich je Runde weiter als in der davor, nach 27 Runden liegt sie bei 91 000 statt 754, danach sind die Lagen nicht mehr
+ * endlich.) Die Grenze je Löser: das Dreifache der größten Koordinate der Haut, als der Löser begann, und der Ziele seiner Linien,
+ * dazu ein Stück. Eine Haut zwischen ihren Linien kommt dort nie hin. `rundeMitWeg` meldet dann unendlich; wer die Runde gerechnet
+ * hat, nimmt den Schritt zurück (`davongelaufen`), statt die Haut zu zeigen, festzulegen oder zu verdichten.
+ */
+const davonAnfang = new WeakMap<LoopZug, number>();
+function davonGrenze(loeser: LoopZug, versch: readonly (Float64Array | null)[]): number {
+  let e0 = davonAnfang.get(loeser);
+  if (e0 === undefined) {
+    e0 = 0;
+    const P = haut.pos;
+    for (let k = 0; k < P.length; k++) {
+      const v = Math.abs(P[k]!);
+      if (v > e0) e0 = v;
+    }
+    // (eine Haut, die schon nicht mehr endlich ist, hat keine Grenze: Die Runde meldet es selbst)
+    if (!Number.isFinite(e0)) e0 = 0;
+    davonAnfang.set(loeser, e0);
+  }
+  let m = e0;
+  loeser.start.forEach((S, li) => {
+    const d = versch[li];
+    for (let k = 0; k < S.length; k++) {
+      const v = Math.abs(d ? S[k]! + d[k]! : S[k]!);
+      if (v > m) m = v;
+    }
+  });
+  return 3 * m + 35 * MK;
+}
+/** wie oft die Haut davongelaufen ist und der Schritt zurückgenommen wurde (zum Messen) */
+let davonZahl = 0;
+/**
+ * Die Haut ist davongelaufen: zurück zum Stand vor dem Schritt (`vorher`; fehlt er: der letzte Schritt von ⌘Z), nichts wird
+ * festgelegt, verdichtet oder in den Hintergrund gegeben. Die Meldung bleibt stehen, bis der nächste Schritt beginnt.
+ */
+function davongelaufen(vorher: Schnappschuss | null, text = 'Hier ist die Haut auseinandergelaufen. Der Zug ist zurückgenommen, die Form steht wieder wie davor.'): void {
+  davonZahl++;
+  zug = null;
+  nachlauf = null;
+  gegriffen = null;
+  verfeinerung = null;
+  eingetroffen = null;
+  nichtsZuVerfeinern = null;
+  aufraeumen = null;
+  aufgeraeumt = null;
+  zwischenstand = null;
+  const s = vorher ?? zurueck.pop() ?? null;
+  if (s) wiederherstellen(s);
+  meldung = text;
+  statusZeigen();
 }
 
 /**
@@ -2224,6 +2335,10 @@ function zugRechnen(): void {
     const tr = performance.now();
     z.zielNeu = false;
     const weg = rundeMitWeg(z.loeser, z.versch);
+    if (weg === Infinity) {
+      davongelaufen(z.vorher);
+      return;
+    }
     z.nachRunden++;
     if (weg < RUHE || z.nachRunden >= NACH_RUNDEN) {
       z.offen = false;
@@ -2353,7 +2468,10 @@ function einwechseln(f: Verfeinert, daten: ZerlegungsDaten[]): void {
   // der Löser rechnet im Bildtakt: Kam seit der letzten Runde eine Mausbewegung, liegen die Linien noch nicht auf ihren Zielen
   if (z.zielNeu && !mitBereich()) {
     z.zielNeu = false;
-    rundeMitWeg(z.loeser, z.versch);
+    if (rundeMitWeg(z.loeser, z.versch) === Infinity) {
+      davongelaufen(z.vorher);
+      return;
+    }
   }
   zugGriffeUebernehmen(z);
   festlegenAlle();
@@ -2462,16 +2580,23 @@ function zerleger(): Worker | null {
         aufraeumen = null;
         aufgeraeumt = null;
         zwischenstand = null;
+        let imFenster = 'im Fenster gerechnet';
         if (!zug && !grund && f.netz === haut && f.stand === standZahl()) {
           const r = ruheOffen;
           ruheOffen = null;
-          if (r?.setzen && !r.nurInRuhe) {
-            hautNeuRechnen(r.ziele ?? loops.map(() => null), true);
-            geometrieNeu();
-          } else if (r?.verdichten) aufraeumenImFenster();
+          // scheitert dieselbe Rechnung auch im Fenster, bleibt die Form, wie sie ist (der Fehler darf hier nicht weiterlaufen)
+          try {
+            if (r?.setzen && !r.nurInRuhe) {
+              hautNeuRechnen(r.ziele ?? loops.map(() => null), true);
+              geometrieNeu();
+            } else if (r?.verdichten) aufraeumenImFenster();
+          } catch (e) {
+            console.error('Fehler beim Rechnen im Fenster', e);
+            imFenster = 'die Form bleibt, wie sie ist';
+          }
           hintergrundGescheitert = standZahl();
         }
-        meldung = `Rechnen im Hintergrund fehlgeschlagen (${d.fehler}): im Fenster gerechnet`;
+        meldung = `Rechnen im Hintergrund fehlgeschlagen (${d.fehler}): ${imFenster}`;
         if (zug) statusZeigen();
         else allesZeigen();
       } else if ('art' in d) aufgeraeumt = d;
@@ -2583,6 +2708,35 @@ let standFertig = '';
  */
 let vorlageBereit: HautVorlage | null = null;
 let vorlageStand = '';
+/**
+ * Netz und Lagen, für die die bereite Zerlegung genau gerechnet ist (leer: nur ungefähr). Die Zerlegung hängt am Netz, an den Lagen
+ * und an der Struktur (Proben der Linien, Kanten, Ecken), nicht an den Punkten und Griffen der Loops: Nach einem neuen Punkt auf
+ * einer Linie ist der Stand ein anderer, die Zerlegung aber dieselbe (10.11., Florian: „beim Firefish warte ich nach dem Zug neuer
+ * Punkte Sekunden“; gemessen an seiner Form mit 27 800 Punkten: Der Griff am neuen Punkt wartete 0,9 s bis über 2 s auf den
+ * Hintergrund, der dieselbe Zerlegung noch einmal rechnete).
+ */
+let vorlageNetz = '';
+const netzZahl = (): string => `${haut.n}:${lagenZahl(haut.pos)}`;
+/** die Struktur, die ein Löser über die ganze Haut für den Stand von jetzt hätte (je Stand einmal gerechnet) */
+let strukturGemerkt: { stand: string; struktur: string } | null = null;
+function strukturJetzt(stand: string): string {
+  if (strukturGemerkt?.stand !== stand) strukturGemerkt = { stand, struktur: loopStruktur(haut, loops, RICHTUNG_OPT) };
+  return strukturGemerkt.struktur;
+}
+/** nimmt ein Löser für den Stand von jetzt die bereite Zerlegung (ihre Struktur ist dieselbe)? */
+const vorlagePasst = (stand: string): boolean => vorlageBereit !== null && vorlageBereit.struktur !== undefined && vorlageBereit.struktur === strukturJetzt(stand);
+/** ist die bereite Zerlegung genau die für diesen Stand (für ihn gerechnet, oder Netz, Lagen und Struktur sind seitdem dieselben)? */
+function vorlageGenau(stand: string): boolean {
+  if (!vorlageBereit) return false;
+  if (vorlageStand === stand) return true;
+  if (VORLAGE_BLEIBT && vorlageNetz !== '' && vorlageNetz === netzZahl() && vorlagePasst(stand)) {
+    vorlageStand = stand;
+    return true;
+  }
+  return false;
+}
+/** `?vorlagebleibt=0`: wie bis zum 10.11. (nach jeder Änderung an den Loops eine neue Zerlegung, der Griff wartet darauf) */
+const VORLAGE_BLEIBT = new URLSearchParams(location.search).get('vorlagebleibt') !== '0';
 /** der letzte Auftrag und der letzte Zwischenstand (zum Messen) */
 let letzterAuftrag: {
   nr: number;
@@ -2597,6 +2751,8 @@ let letzterAuftrag: {
   gesamt: number;
   einwechseln: number;
   angewendet: boolean;
+  /** Vorsicht bei Unruhe: wie oft die Löser des Auftrags ihren Schritt halbiert haben oder stehen geblieben sind */
+  unruhe: number;
 } | null = null;
 let letzterZwischenstand: { nr: number; runden: number; ms: number[]; gesamt: number; einwechseln: number } | null = null;
 let nachlaufRunden = 0;
@@ -2669,6 +2825,11 @@ function nachlaufRechnen(): void {
   for (;;) {
     const tr = performance.now();
     const weg = rundeMitWeg(n.loeser, n.versch);
+    if (weg === Infinity) {
+      // der Zug ist schon der letzte Schritt von ⌘Z: dorthin zurück
+      davongelaufen(null);
+      return;
+    }
     n.runden++;
     nachlaufRunden++;
     if (weg < RUHE || n.runden >= NACH_RUNDEN) {
@@ -2720,7 +2881,7 @@ function ruheImHintergrund(): boolean {
     ruheOffen = { setzen: true, nurInRuhe: false, verdichten: true, ziele: null };
   }
   if (ruheOffen) aufraeumenStarten(ruheOffen);
-  else if (standFertig !== stand && !(vorlageBereit && vorlageStand === stand)) aufraeumenStarten({ setzen: false, nurInRuhe: false, verdichten: false, ziele: null });
+  else if (standFertig !== stand && !vorlageGenau(stand)) aufraeumenStarten({ setzen: false, nurInRuhe: false, verdichten: false, ziele: null });
   else if (aufraeumen) {
     // ein Auftrag für einen früheren Stand läuft noch, und für diesen ist nichts zu tun: Er verfällt
     aufraeumen = null;
@@ -2799,6 +2960,7 @@ function zwischenAnwenden(): void {
   if (d.gewStart && d.gewWert && d.daten.length) {
     vorlageBereit = { gew: gewichteAusFlach(d.gewStart, d.gewWert), sys: systemAusDaten(d.daten[0]!), cVor: d.daten[1] ? systemAusDaten(d.daten[1]) : null, struktur: d.struktur };
     vorlageStand = kreuzungNeu ? '' : standZahl();
+    vorlageNetz = netzZahl();
   }
   if (kreuzungNeu) {
     // die Loops haben neue Punkte: Der Auftrag rechnet für den Stand ohne sie weiter und verfällt; in der Ruhe beginnt ein neuer
@@ -2835,8 +2997,10 @@ const griffWartet = (): boolean => {
   if (f ? f.setzen : ruheOffen !== null && ruheOffen.setzen) return true;
   // offen ist nur das Aufräumen (nach einem Zug, nach dem Zwischenstand): Die Zerlegung dazu ist da
   if (ruheOffen) return false;
-  // sonst fehlt höchstens die Zerlegung für diesen Stand; der Hintergrund rechnet sie (oder beginnt gleich)
-  return !(vorlageBereit && vorlageStand === stand) && standFertig !== stand;
+  // sonst fehlt höchstens die Zerlegung für diesen Stand; der Hintergrund rechnet sie (oder beginnt gleich). Passt die bereite noch
+  // (dieselbe Struktur: nach einem neuen Punkt auf einer Linie, nach Rückgängig auf demselben Netz), nimmt der Löser sie, und der
+  // Griff beginnt gleich
+  return !vorlageGenau(stand) && standFertig !== stand && !(VORLAGE_BLEIBT && vorlagePasst(stand));
 };
 /** den wartenden Griff beginnen (die gesetzte Haut ist da, oder der Auftrag ist verfallen): von der Stelle des Drückens zur Maus von jetzt */
 function griffNachholen(): void {
@@ -2878,10 +3042,14 @@ function aufgeraeumtAnwenden(): void {
     if (d.gewStart && d.gewWert && d.daten.length) {
       vorlageBereit = { gew: gewichteAusFlach(d.gewStart, d.gewWert), sys: systemAusDaten(d.daten[0]!), cVor: d.daten[1] ? systemAusDaten(d.daten[1]) : null, struktur: d.struktur };
       vorlageStand = standZahl();
+      vorlageNetz = netzZahl();
     }
     ruheOffen = null;
     standFertig = standZahl();
+    // beim Aufräumen lief die Haut davon: Das Ergebnis ist verworfen, die Form bleibt, wie sie ist (nicht aufgeräumt)
+    if (d.abgebrochen) meldung = 'Hier ließ sich das Netz nicht aufräumen (die Haut lief dabei auseinander). Die Form bleibt, wie sie ist.';
   }
+  if (VORSICHT_LAUT && (d.unruhe > 0 || d.abgebrochen)) console.error(`Vorsicht im Hintergrund: ${d.unruhe}-mal${d.abgebrochen ? ', abgebrochen' : ''}`);
   letzterAuftrag = {
     nr: f.id,
     geaendert: d.geaendert,
@@ -2895,6 +3063,7 @@ function aufgeraeumtAnwenden(): void {
     gesamt: Math.round(performance.now() - f.t0),
     einwechseln: 0,
     angewendet: gilt,
+    unruhe: d.unruhe,
   };
   // hat sich an der Haut nichts geändert (nur die Zerlegung kam), bleibt alles, wie es gezeigt ist
   if (neueHaut || !gilt) allesZeigen();
@@ -2952,9 +3121,22 @@ function zugEnde(ok: boolean): void {
       if (z.zielNeu) {
         z.zielNeu = false;
         z.nachRunden++;
-        if (rundeMitWeg(z.loeser, z.versch) < RUHE) z.offen = false;
+        const weg = rundeMitWeg(z.loeser, z.versch);
+        if (weg === Infinity) {
+          davongelaufen(z.vorher);
+          return;
+        }
+        if (weg < RUHE) z.offen = false;
       }
-    } else for (let k = 0; z.offen && k < RUNDEN_ENDE; k++) if (rundeMitWeg(z.loeser, z.versch) < RUHE) z.offen = false;
+    } else
+      for (let k = 0; z.offen && k < RUNDEN_ENDE; k++) {
+        const weg = rundeMitWeg(z.loeser, z.versch);
+        if (weg === Infinity) {
+          davongelaufen(z.vorher);
+          return;
+        }
+        if (weg < RUHE) z.offen = false;
+      }
     letzteEndrunden = 0;
     for (let k = 0; k < vorEnde.length; k += 3)
       letzteEndrunden = Math.max(letzteEndrunden, Math.hypot(haut.pos[k]! - vorEnde[k]!, haut.pos[k + 1]! - vorEnde[k + 1]!, haut.pos[k + 2]! - vorEnde[k + 2]!));
@@ -2970,6 +3152,7 @@ function zugEnde(ok: boolean): void {
       // die Zerlegung dieses Zugs für ein Greifen, das vor dem Ende des Aufräumens kommt (ungefähr: mit den Lagen vom Greifen)
       vorlageBereit = z.loeser.vorlage ?? vorlageBereit;
       vorlageStand = '';
+      vorlageNetz = '';
       // die Ecken an Kreuzungen folgen den Kanten (wie gleich in `allesZeigen`): Erst danach steht der Stand, an dem der Nachlauf hängt
       eckenAuto(loops);
       aufgeraeumt = null;
@@ -3954,6 +4137,7 @@ function standAnwenden(st: WesenStand): void {
   nachLoesenOffen = null;
   vorlageBereit = null;
   vorlageStand = '';
+  vorlageNetz = '';
   standFertig = '';
   hintergrundGescheitert = '';
   modus = 'frei';
@@ -4391,7 +4575,43 @@ function rendern(): void {
   }
 }
 
+/**
+ * Die Schleife der Bilder darf an einem Fehler beim Rechnen nicht enden: Sonst rechnet und zeigt das Fenster nichts mehr, es steht
+ * (10.11., Florian: „die Seite hängt sich auf“). Ein Fehler nimmt den laufenden Zug zurück (oder den letzten, wenn er im Nachlauf
+ * geschah), steht in der Statuszeile und in der Konsole, und das nächste Bild kommt wie sonst.
+ */
+let fehlerZahl = 0;
 function schleife(): void {
+  try {
+    bildRechnen();
+  } catch (e) {
+    fehlerZahl++;
+    // (käme der Fehler in jedem Bild wieder, füllte er die Konsole: nur die ersten)
+    if (fehlerZahl <= 5) console.error('Fehler beim Rechnen', e);
+    try {
+      const text = `Beim Rechnen ist ein Fehler aufgetreten (${e instanceof Error ? e.message : String(e)}).`;
+      if (zug) davongelaufen(zug.vorher, `${text} Der Zug ist zurückgenommen, die Form steht wieder wie davor.`);
+      else if (nachlauf) davongelaufen(null, `${text} Der Zug ist zurückgenommen, die Form steht wieder wie davor.`);
+      else {
+        gegriffen = null;
+        eingetroffen = null;
+        zwischenstand = null;
+        aufgeraeumt = null;
+        aufraeumen = null;
+        meldung = `${text} Die Form bleibt, wie sie ist.`;
+        statusZeigen();
+      }
+    } catch (e2) {
+      console.error('Fehler beim Zurücknehmen', e2);
+    }
+  }
+  requestAnimationFrame(schleife);
+}
+function bildRechnen(): void {
+  if (fehlerProbe) {
+    fehlerProbe = false;
+    throw new Error('Probe');
+  }
   // ein fertig verfeinertes Netz aus dem Hintergrund wird an Stelle der Löserrunde dieses Bilds eingewechselt
   const e = eingetroffen;
   eingetroffen = null;
@@ -4410,7 +4630,6 @@ function schleife(): void {
     neuZeichnen = false;
     rendern();
   }
-  requestAnimationFrame(schleife);
 }
 window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight, false);
@@ -4454,6 +4673,14 @@ if (BEHALTEN) behaltenesHolen();
     bytes: () => packen(standJetzt()).reduce((n, t) => n + t.length, 0),
     /** das Wesen, das „Laden“ oder „Neu“ zuletzt ersetzt hat (ohne seine Daten) */
     davor: () => davorHolen().then((d) => (d ? { zeit: d.zeit, punkte: d.punkte, loops: d.loops, name: d.name } : null)),
+  },
+  /** Prüfung: die nächste Runde des Lösers im Fenster gilt als davongelaufen (der Zug wird zurückgenommen) */
+  davonProbe: () => {
+    davonProbe = true;
+  },
+  /** Prüfung: das nächste Bild wirft beim Rechnen einen Fehler (die Schleife der Bilder läuft weiter) */
+  fehlerProbe: () => {
+    fehlerProbe = true;
   },
   /** Prüfung: der Worker fällt aus (wie ein Fehler beim Laden oder ein Absturz); danach läuft alles im Fenster */
   ausfall: () => zerleger()?.onerror?.(new ErrorEvent('error', { message: 'Probe' })),
@@ -4648,6 +4875,14 @@ if (BEHALTEN) behaltenesHolen();
     loslassen: letztesLoslassen,
     /** nach dem letzten Einsetzen eines Loops: zusammengelegte Punkte an den Linien (Nadeln), Dauer im Fenster */
     nadeln: letzteNadeln,
+    /**
+     * Schutz (10.11.): wie oft ein Zug zurückgenommen wurde, weil die Haut davonlief; Fehler in der Schleife der Bilder; wie oft ein
+     * Löser im Fenster seinen Schritt verkleinert hat oder stehen geblieben ist, und der Löser der letzten Runde
+     */
+    davon: davonZahl,
+    fehler: fehlerZahl,
+    unruhe: unruheZahl,
+    letzteUnruhe,
     /** was für den Stand offen ist; der letzte Zwischenstand; rechnet noch etwas oder steht etwas an (Zug, Nachlauf, Hintergrund, Uhr) */
     ruheOffen: ruheOffen ? (ruheOffen.setzen ? 'setzen' : 'aufraeumen') : null,
     auftragNr: aufraeumen ? aufraeumen.id : null,

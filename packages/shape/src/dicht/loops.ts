@@ -10,7 +10,7 @@
 // gegenüber, an einer Ecke darf die Linie knicken (von Hand oder von selbst an der Kreuzung mit einer Kante). Wie in Illustrator
 // gehen die Griffe mit ihrem Punkt: Ein Punkt ändert nur die zwei Stücke bis zu seinen Nachbarn.
 
-import { type HautAuftrag, HautAusKurven, type HautGewichte, type HautOptionen, type HautVorlage } from './ausKurven';
+import { type HautAuftrag, HautAusKurven, type HautGewichte, type HautOptionen, type HautVorlage, strukturSchluessel } from './ausKurven';
 import { KETTE_K, type KruemmungsKetten } from './kruemmung';
 import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich, hautNormalen, hautNormalenMax, kantenSchluessel } from './kurven';
 import { bernstein, stueckAnpassen, stueckNaechstes, stueckPunkt, stueckTeilen } from './pfad';
@@ -894,6 +894,14 @@ export class LoopZug {
     return this.loeser instanceof HautAusKurven ? this.loeser.auftrag : null;
   }
 
+  /**
+   * Vorsicht bei Unruhe (nach der Geometrie, `ausKurven.ts`): wie oft der Löser seinen Schritt halbiert hat, und ob er nicht zur Ruhe
+   * kam und stehen geblieben ist, bis sich die Ziele wieder bewegen
+   */
+  get unruhe(): { stufen: number; fest: boolean } {
+    return this.loeser instanceof HautAusKurven ? { stufen: this.loeser.vorsichtStufen, fest: this.loeser.stehtFest } : { stufen: 0, fest: false };
+  }
+
   /** Lagen je Loop: Anfang + Verschiebung */
   lagen(versch: readonly (Float64Array | null)[]): Float64Array[] {
     return this.start.map((s, i) => {
@@ -911,6 +919,17 @@ export class LoopZug {
     if (r && this.loeser instanceof HautAusKurven) this.loeser.richtung = linienRichtung(r.h, r.loops, this.plan, L, r.normalen);
     this.loeser.schritt(zieleAus(this.plan, L), iterationen);
   }
+}
+
+/**
+ * Die Struktur, die ein Löser nach der Geometrie über die ganze Haut für diesen Stand hätte (`HautVorlage.struktur`), ohne ihn
+ * anzulegen: Passt eine fertige Zerlegung noch? Sie hängt am Netz, an den Proben der Linien, an Kanten und Ecken, nicht an den Lagen
+ * und nicht an den Punkten und Griffen der Loops. Nach einem neuen Punkt auf einer Linie oder einem gezogenen Griff ist sie dieselbe;
+ * wer greift, braucht dann nicht auf eine neue Zerlegung zu warten (10.11., Florian: an einer Form mit 27 800 Punkten zwei Sekunden).
+ */
+export function loopStruktur(h: Haut, loops: readonly Loop[], opt: HautOptionen = {}): string {
+  const plan = bindungenAus(h, loops);
+  return strukturSchluessel(h, null, plan.bind, 100, kantenGewichte(h, loops), kruemmungsKetten(plan, loops), !!opt.richtung);
 }
 
 /**

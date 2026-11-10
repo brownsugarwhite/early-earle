@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { HautAusKurven } from './ausKurven';
 import { loopEinsetzen } from './einsetzen';
 import { type Haut, hautAus } from './kurven';
-import { type Loop, LoopZug, griffeAnlegen, kreuzungenZwischen, loopAusSchnitt, mittlereKante, punktEinfuegen, verschiebungLaengs } from './loops';
+import { type Loop, LoopZug, griffeAnlegen, kreuzungenZwischen, loopAusSchnitt, loopStruktur, mittlereKante, punktEinfuegen, verschiebungLaengs } from './loops';
 import { rundAusSeite } from './rund';
 
 function kugelMitLoops(): { h: Haut; loops: Loop[] } {
@@ -105,5 +105,23 @@ describe('Vorlage nach der Geometrie', () => {
     const a = new LoopZug(h, loops, null, true, 'kurven', 'geometrie', {});
     const nur = new LoopZug(h, loops, null, true, 'kurven', 'geometrie', { nurZeilen: true });
     expect(nur.auftrag!.struktur).toBe(a.vorlage!.struktur);
+  });
+
+  it('die Struktur ohne Löser (`loopStruktur`): dieselbe; ein neuer Punkt auf der Linie ändert sie nicht, eine Ecke schon', () => {
+    const { h, loops } = kugelMitLoops();
+    const a = new LoopZug(h, loops, null, true, 'kurven', 'geometrie', {});
+    const vorher = loopStruktur(h, loops);
+    expect(vorher).toBe(a.vorlage!.struktur);
+    // ein neuer Punkt mitten zwischen zwei Punkten des ersten Loops, auf seinem Pfad: Proben, Kanten und Ecken bleiben
+    const l = loops[0]!;
+    const n = l.punkte.length;
+    const p = punktEinfuegen(l, 0.5 * (l.punkte[0]!.s + l.punkte[1]!.s), undefined, true);
+    expect(l.punkte.length).toBe(n + 1);
+    expect(loopStruktur(h, loops)).toBe(vorher);
+    const b = new LoopZug(h, loops, null, true, 'kurven', 'geometrie', { vorlage: a.vorlage! });
+    expect(genutzt(b)).toBe(true);
+    // derselbe Punkt als Ecke: Dort gibt die Linie keine Krümmung mehr weiter, die Zerlegung gilt nicht mehr
+    p.ecke = true;
+    expect(loopStruktur(h, loops)).not.toBe(vorher);
   });
 });

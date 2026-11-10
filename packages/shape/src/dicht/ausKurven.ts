@@ -73,7 +73,14 @@ export type HautAuftrag = { gew: Float64Array[]; systeme: { n: number; zeilen: N
  * der Geometrie. `richtung`: Beweis „Linien mit Richtung“ (09.11.). `maxNormalen` (Weg a, 09.11.): im Maß des Lösers die Normalen nach Max
  * statt der nach Fläche gemittelten (die messen die Kugel 8 % zu flach, nach Max 1 %), sonst wie heute.
  */
-export type HautOptionen = { vorlage?: HautVorlage; nurZeilen?: boolean; richtung?: boolean; maxNormalen?: boolean };
+export type HautOptionen = {
+  vorlage?: HautVorlage;
+  nurZeilen?: boolean;
+  richtung?: boolean;
+  maxNormalen?: boolean;
+  /** `false`: ohne die Vorsicht bei Unruhe (`VORSICHT_…`), wie bis zum 10.11. (zum Vergleichen) */
+  vorsicht?: boolean;
+};
 
 /**
  * Woran die Zerlegungen eines Lösers nach der Geometrie außer an den Lagen hängen: das Netz, welche Punkte sich bewegen, die
@@ -81,7 +88,7 @@ export type HautOptionen = { vorlage?: HautVorlage; nurZeilen?: boolean; richtun
  * Schlüssel können dieselbe Zerlegung benutzen (mit anderen Lagen stimmen die Gewichte der Matrix dann nur ungefähr; das bestimmt,
  * wie schnell der Löser ankommt, nicht wohin). Zwei unabhängige 32-Bit-Streuwerte wie beim Merken der Zerlegungen.
  */
-function strukturSchluessel(
+export function strukturSchluessel(
   h: Haut,
   bereich: Uint8Array | null,
   bind: Bindungen,
@@ -211,6 +218,36 @@ const NEIGUNG_MAX = 0.5;
 /** Genauigkeit der verteilten Krümmung je Runde (Rest gegen die rechte Seite); die Runden rechnen sie weiter */
 const PCG_GENAU = 1e-3;
 
+/**
+ * Vorsicht bei Unruhe (10.11., Florian: „der Kopf bläst sich auf und explodiert … manchmal ist es instabil und führt dazu, dass es
+ * Risse gibt oder das Netz platzt“). Nachgestellt an seiner gesicherten Form (`form-gesichert-stabil.ts`): Wo die Haut dünn ist und
+ * eine Linie eng wendet, schießt der volle Schritt über das Ziel hinaus, die nächste Runde korrigiert noch weiter zurück, und die
+ * Haut bewegt sich von Runde zu Runde mehr statt weniger (je Runde 11 · 6 · 4 · 7 · 11 · 15 … 2 266 … 88 024 Einheiten, nach 27 Runden
+ * bei 91 000 statt 754). Mit halbem Schritt kommt derselbe Fall zur Ruhe (4 · 1,3 · 1,7 · 1,4 · 0,6 …). Die Bremse je Punkt (halbiert,
+ * wenn seine Korrektur das Vorzeichen wechselt) sieht das nicht: Die Punkte schwingen dort gemeinsam.
+ *
+ * Deshalb misst jede Runde, wie weit sich die Haut bewegt hat, über das hinaus, was die Ziele der Linien sich bewegt haben. Wächst
+ * das gegenüber der Runde davor (über `VORSICHT_WACHSTUM`; gleich nach einer Bewegung der Ziele gegen `VORSICHT_AUFHOLEN` davon) und
+ * ist es mehr als `VORSICHT_SCHWELLE` mittlere Kantenlängen, gilt der Schritt als zu groß: Die Runde wird zurückgenommen und
+ * gleich wiederholt; die Korrektur aller Punkte ist für diesen Löser halbiert (bis hinunter zu `VORSICHT_MIN`) und bleibt es. Eine
+ * Haut, die zur Ruhe kommt, berührt das nicht: Dort wird die Bewegung von Runde zu Runde kleiner, oder sie wächst nur im Kleinen
+ * (gemessen beim Setzen nach einem dritten Loop auf der Kugel: 1,9 · 3,2 · 1,0 · 0,4 · 0,05 Einheiten bei Kanten von 8,6; darum die
+ * Schwelle von drei Vierteln einer Kante).
+ */
+const VORSICHT_WACHSTUM = 1.3;
+const VORSICHT_SCHWELLE = 0.75;
+const VORSICHT_MIN = 1 / 16;
+/** gleich nach einer Bewegung der Ziele holt die Haut noch auf: so viel der Bewegung der Ziele gilt als gewöhnlich */
+const VORSICHT_AUFHOLEN = 0.3;
+/**
+ * Hilft auch der kleinste Schritt nicht (gemessen an derselben Form: Die Linie kreuzt sich dort nach dem Zug selbst, die Bewegung
+ * wächst mit 1/16 des Schritts weiter, je Runde um 15 %), hört der Löser auf: Wächst die Bewegung bei stehenden Zielen so viele
+ * Runden hintereinander und ist sie doppelt so groß wie in der ruhigsten Runde seit der letzten Bewegung der Ziele, geht die Haut
+ * dorthin zurück und bleibt stehen, bis sich die Ziele wieder bewegen (`stehtFest`). Wer rundenweise rechnet, sieht dann keine
+ * Bewegung mehr und hält die Haut für fertig; das ist gewollt.
+ */
+const VORSICHT_RUNDEN = 5;
+
 const uhr = (globalThis as { performance?: { now(): number } }).performance;
 const jetzt = () => (uhr ? uhr.now() : Date.now());
 
@@ -262,6 +299,22 @@ export class HautAusKurven {
   private cWarm: Float64Array | null = null;
   private beta: Float64Array | null = null;
   private dVorher: Float64Array | null = null;
+  /** Vorsicht bei Unruhe (`VORSICHT_…`): an?, Anteil der Korrektur für alle Punkte, wie oft er halbiert wurde */
+  private readonly mitVorsicht: boolean;
+  private anteil = 1;
+  vorsichtStufen = 0;
+  /** Lagen und Ziele vor der Runde; wie weit sich die Haut in der letzten Runde über die Ziele hinaus bewegt hat (−1: noch keine) */
+  private lagenVorher: Float64Array | null = null;
+  private zieleVorher: Float64Array | null = null;
+  private ueberVorher = -1;
+  /** wie weit sich die Ziele in der letzten Runde bewegt haben */
+  private zielVorher = 0;
+  /** seit der letzten Bewegung der Ziele: die ruhigste Runde (ihr Maß, die Lagen danach), Runden mit wachsender Bewegung in Folge */
+  private ruhigste = Infinity;
+  private ruhigsteLagen: Float64Array | null = null;
+  private wachstum = 0;
+  /** der Löser kommt hier nicht zur Ruhe und rechnet nicht weiter, bis sich die Ziele bewegen (`VORSICHT_RUNDEN`) */
+  stehtFest = false;
   /**
    * Richtung an den Linien (09.11., Beweis „Linien mit Richtung“): je Punkt der Haut die Normale, die das Liniennetz dort vorgibt (3 je
    * Punkt, NaN: keine), von außen vor jedem Schritt gesetzt. An diesen Punkten wird die Krümmung je Seite der Linie mit der vorgegebenen
@@ -327,6 +380,7 @@ export class HautAusKurven {
     // eine Vorlage gilt nur für dieselbe Struktur (Netz, Bindungen, Kanten, Quellen); sonst wird wie ohne sie zerlegt
     const vorlage = geo && opt.vorlage && (opt.vorlage.struktur === undefined || opt.vorlage.struktur === this.struktur) ? opt.vorlage : null;
     this.vorlageGenutzt = vorlage !== null;
+    this.mitVorsicht = geo && opt.vorsicht !== false;
     this.gew = geo ? (vorlage?.gew ?? laengenGewichte(h, kanten)) : gewichteAus(h, kanten);
     // Punkte harter Linien: Ihr Gewicht über die Linie ist 0; ihre Kanten längs der Linie bleiben in der intrinsischen Triangulierung
     const linie = new Set<number>();
@@ -966,6 +1020,12 @@ export class HautAusKurven {
     const nf = this.frei.length;
     for (let it = 0; it < iterationen; it++) {
       const t0 = jetzt();
+      if (this.mitVorsicht) {
+        // der Löser kam hier nicht zur Ruhe: Solange die Ziele stehen, bleibt die Haut bei ihrer ruhigsten Lage
+        if (this.stehtFest && this.zieleStehen(ziele)) return;
+        if (!this.lagenVorher) this.lagenVorher = new Float64Array(P.length);
+        this.lagenVorher.set(P);
+      }
       // mit Richtung an den Linien: Normalen nach Max (sonst misst das Maß im Inneren die Krümmung zu flach, und die genaue Messung an
       // den Linien passt nicht dazu: die Haut bläht sich auf)
       const m = vermessen(h, this.gew, this.maxNormalen || (this.richtung && MESSREIHE.maxNormalen) ? hautNormalenMax(h) : undefined);
@@ -1013,7 +1073,7 @@ export class HautAusKurven {
           const b = MESSREIHE.fest ? DAEMPFUNG : d * this.dVorher![i]! < 0 ? Math.max(0.02, 0.5 * this.beta![i]!) : Math.min(DAEMPFUNG, 1.25 * this.beta![i]!);
           this.beta![i] = b;
           this.dVorher![i] = d;
-          k = m.kante2[i]! * m.kap[i]! + b * d;
+          k = m.kante2[i]! * m.kap[i]! + this.anteil * b * d;
         }
         let nx = m.nor[3 * i]!;
         let ny = m.nor[3 * i + 1]!;
@@ -1162,7 +1222,90 @@ export class HautAusKurven {
         P[3 * w + 1] = my;
         P[3 * w + 2] = -mz;
       }
+      // eine zurückgenommene Runde zählt nicht: gleich noch einmal, mit dem halben Schritt (höchstens viermal je Löser)
+      if (this.mitVorsicht && this.vorsichtPruefen(ziele)) it--;
     }
+  }
+
+  /** sind die Ziele dieselben wie in der letzten Runde? */
+  private zieleStehen(ziele: Float64Array): boolean {
+    const zv = this.zieleVorher;
+    if (!zv || zv.length !== ziele.length) return false;
+    for (let k = 0; k < ziele.length; k++) if (ziele[k] !== zv[k]) return false;
+    return true;
+  }
+
+  /**
+   * Vorsicht bei Unruhe (`VORSICHT_…`): nach einer Runde messen, ob der Schritt zu groß war; dann die Runde zurücknehmen und den
+   * Schritt halbieren (wahr: Die Runde ist zu wiederholen)
+   */
+  private vorsichtPruefen(ziele: Float64Array): boolean {
+    const P = this.h.pos;
+    const vor = this.lagenVorher!;
+    // wie weit sich die Haut bewegt hat und wie weit die Ziele der Linien
+    let haut2 = 0;
+    for (const v of this.frei) {
+      const dx = P[3 * v]! - vor[3 * v]!;
+      const dy = P[3 * v + 1]! - vor[3 * v + 1]!;
+      const dz = P[3 * v + 2]! - vor[3 * v + 2]!;
+      const q = dx * dx + dy * dy + dz * dz;
+      // (nicht endlich vergleicht immer falsch: eigens)
+      if (q > haut2 || q !== q) haut2 = q;
+    }
+    let ziel2 = 0;
+    const zv = this.zieleVorher;
+    if (!zv || zv.length !== ziele.length) {
+      // die erste Runde: Die Ziele können beliebig weit von der Haut liegen (so beginnt ein Setzen), sie zählt nicht
+      this.zieleVorher = Float64Array.from(ziele);
+      this.ueberVorher = -1;
+      return false;
+    }
+    for (let k = 0; k < ziele.length; k += 3) {
+      const dx = ziele[k]! - zv[k]!;
+      const dy = ziele[k + 1]! - zv[k + 1]!;
+      const dz = ziele[k + 2]! - zv[k + 2]!;
+      const q = dx * dx + dy * dy + dz * dz;
+      if (q > ziel2) ziel2 = q;
+    }
+    const ziel = Math.sqrt(ziel2);
+    const ueber = Math.max(0, Math.sqrt(haut2) - ziel);
+    const stehen = ziel2 === 0;
+    if (!stehen) {
+      // die Ziele haben sich bewegt: von vorn
+      this.ruhigste = Infinity;
+      this.wachstum = 0;
+      this.stehtFest = false;
+    }
+    // Vergleich: die Runde davor; gleich nach einer Bewegung der Ziele holt die Haut noch auf (bis zu `VORSICHT_AUFHOLEN` davon)
+    const basis = Math.max(this.ueberVorher, VORSICHT_AUFHOLEN * this.zielVorher);
+    const zuGross = !(ueber <= VORSICHT_WACHSTUM * basis) && !(ueber <= VORSICHT_SCHWELLE * this.mk);
+    if (this.ueberVorher >= 0 && zuGross && this.anteil > VORSICHT_MIN) {
+      // die Runde gilt nicht: zurück zu den Lagen davor; sie wird gleich mit dem halben Schritt wiederholt (zu denselben Zielen;
+      // die Maße und die Ziele der Runde davor bleiben)
+      this.anteil *= 0.5;
+      this.vorsichtStufen++;
+      P.set(vor);
+      return true;
+    }
+    zv.set(ziele);
+    if (stehen) {
+      // die Runde gilt: Wächst die Bewegung trotzdem Runde um Runde, zurück zur ruhigsten Lage und stehen bleiben
+      this.wachstum = this.ueberVorher >= 0 && !(ueber <= this.ueberVorher) ? this.wachstum + 1 : 0;
+      if (this.wachstum >= VORSICHT_RUNDEN && !(ueber <= VORSICHT_SCHWELLE * this.mk) && !(ueber <= 2 * this.ruhigste) && this.ruhigsteLagen && this.ruhigste < Infinity) {
+        P.set(this.ruhigsteLagen);
+        this.stehtFest = true;
+        this.ueberVorher = -1;
+        return false;
+      }
+      if (ueber < this.ruhigste) {
+        this.ruhigste = ueber;
+        if (!this.ruhigsteLagen) this.ruhigsteLagen = new Float64Array(P.length);
+        this.ruhigsteLagen.set(P);
+      }
+    }
+    this.ueberVorher = ueber;
+    this.zielVorher = ziel;
+    return false;
   }
 }
 
