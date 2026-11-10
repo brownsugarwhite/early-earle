@@ -1663,6 +1663,12 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     der Fläche stetig weiter, die Form steht. (3) Bei 23 400 Punkten hinterlässt das Zusammenlegen im Zug eine unruhige Stelle;
     `&kurz=0` lässt die Haut einfallen. Vorschlag für G4 (Florians Wort steht aus): Nachlauf im Bildtakt, Setzen verdeckt bis
     zur Ruhe, einmal einwechseln, auch nach Loop/Punkt/Kante.
+  - **G4.1 (10.11., `cf46b548`):** Florian: G3 „gefällt mir schon besser“, aber „ruckt es während dem Ziehen noch spürbar“; „gleich zu
+    G4“. Gemessen: Das Auslösen des Verfeinerns hielt den Zug drei- bis viermal an (40–90 / 100 / 180–290 ms bei 5 200 / 11 000 /
+    23 400 Punkten). Jetzt läuft der ganze Auftrag im Worker (`src/form/verfeinern.ts`, `verfeinern.worker.ts`), der Zug wird beim
+    Auslösen nicht mehr neu aufgesetzt, eingewechselt wird an Stelle einer Löserrunde. Bilder im Zug über 50 ms: 4 → 0 / 4 → 1 /
+    22 → 3; längster Abstand 87 → 46 / 130 → 54 / 469 → 106 ms. Bleibt: Einwechseln 10 / 28 / 59 ms, bei 23 400 Punkten die Runde
+    selbst (29–33 ms). Offen: G4.2 Nachlauf nach dem Loslassen, G4.3 Setzen verdeckt, G4.4 nach Loop/Punkt/Kante.
   - Fallen aus G3: „Steht“ an der Form messen (längs der Normalen), nie an der ganzen Bewegung der Punkte. Fenster-Proben, die
     Zeit oder Nachhinken messen, mit `GPU=1` (der Software-Renderer schafft seit dem Rechnen im Bildtakt nur zehn Runden je
     Sekunde). Den Stand „vor dem Loslassen“ im Fenster festhalten (Listener in der Erfassungsphase). Einen alten Stand zum

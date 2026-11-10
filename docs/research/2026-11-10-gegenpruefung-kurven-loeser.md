@@ -660,6 +660,44 @@ Befunden ist der Kern von G4 der Ablauf nach dem Loslassen, der Worker ist das M
    nicht der Hebel: Auf demselben Netz stört ein neuer Löser nicht, und auf einem neuen Netz kommt der Anlauf von den neuen
    Punkten. Erst messen, ob es nach Schritt 2 noch etwas bringt.
 
+**Stand (10.11. nachmittags, danach): G4.1 gebaut — Verfeinern im Zug ganz im Hintergrund** (Florian: „gleich zu G4. Es gefällt
+mir schon besser … aber aktuell ruckt es während dem Ziehen noch spürbar. Wird das noch besser werden in dieser Runde?“;
+Commit `cf46b548`).
+
+**Woher das Rucken im Zug kam** (im Fenster gemessen, Ohr, echte Grafikkarte; `form-loslassen-probe.mjs`, Zeile „Bilder im Zug“;
+Ausgaben `ausgaben/g4-fenster-ruckeln.txt`):
+- **Halte beim Verfeinern.** Drei- bis viermal je Zug hielt das Auslösen des Verfeinerns den Zug an: 40–90 ms bei 5 200 Punkten,
+  rund 100 ms bei 11 000, 180–290 ms bei 23 400. Im Hauptthread liefen dabei: den Zug neu aufsetzen, verdichten, die neuen Punkte
+  einbetten, die Zeilen der Matrix bauen. Nur die Zerlegung lief im Hintergrund.
+- **Die Runde selbst auf sehr dichten Netzen.** Bei 5 200 und 11 000 Punkten kommt jedes Bild in 16 ms (60 Bilder je Sekunde).
+  Bei 23 400 Punkten kostet die Löserrunde 29–33 ms je Bild; mehr als 30 Bilder je Sekunde gehen dort nicht.
+
+Gebaut:
+- Der ganze Auftrag läuft im Worker (`apps/editor/src/form/verfeinern.ts`, `verfeinern.worker.ts`): verdichten, einbetten,
+  Zeilen bauen, zerlegen. Die Haut geht flach hin und zurück, die großen Felder ohne Kopie. Ein Fehler kommt als Meldung
+  zurück, der Zug läuft weiter.
+- Beim Auslösen wird der Zug nicht mehr neu aufgesetzt. Die Loops gehen als festgelegte Kopie in den Auftrag, der Löser des Zugs
+  rechnet ohne Neuanfang weiter.
+- Eingewechselt wird im nächsten Bild an Stelle der Löserrunde.
+
+| Punkte | vorher: Bilder über 33 / 50 / 100 ms, längster Abstand | jetzt | Auslösen im Hauptthread | Einwechseln |
+| --- | --- | --- | --- | --- |
+| 5 200 | 5 / 4 / 0, 87 ms | 1 / 0 / 0, 46 ms | 38–67 → 1–3 ms | 10 ms |
+| 11 000 | 5 / 4 / 3, 130 ms | 2 / 1 / 0, 54 ms | 92–112 → 1–5 ms | 28 ms |
+| 23 400 | 89 / 22 / 5, 469 ms (Mitte 46 ms) | 42 / 3 / 1, 106 ms (Mitte 33 ms) | 184–292 → 2–4 ms | 59 ms |
+
+- Kriterium von G4 („kein Halt über 16 ms im Zug“): beim Auslösen erfüllt; beim Einwechseln bei 5 200 Punkten erfüllt, bei
+  11 000 und 23 400 nicht (28 und 59 ms, zweimal je Zug). Davon kostet der neue Löser für das feinere Netz 21 bzw. 46 ms
+  (im Kern allein 16 bzw. 29 ms, `loeser/mess9.ts`).
+- Ein neuer Löser mitten im Zug rechnet seine erste Runde kaum länger als der alte (43 statt 29 ms bei 23 400 Punkten, sechs
+  statt vier Schritte beim Verteilen der Krümmung). Den Startwert weiterzugeben lohnt dafür nicht.
+- Die Form: „Hin und zurück“ und zwei weite Züge geben dasselbe wie vor G4.1 (`form-hin-zurueck.mjs`, `form-explosion-probe.mjs`
+  a, e). Test `verfeinern.test.ts`: Der Auftrag rechnet Feld für Feld dasselbe wie die Schritte einzeln.
+- **Bleibt für sehr dichte Wesen:** die Runde selbst (G5: Netz nicht dichter als nötig; G6: halbe Haut).
+
+**Weiter in G4** (noch nicht gebaut): G4.2 Nachlauf im Bildtakt nach dem Loslassen, G4.3 Setzen verdeckt und einmal einwechseln,
+G4.4 dasselbe nach Loop, Punkt und Kante.
+
 ## Anhang A: Messwerte
 
 **Pendeln und Bremse** (Bewegung je Runde nach einem Zug in 30 Mausschritten; `loeser/mess1.ts`, `mess3.ts`):

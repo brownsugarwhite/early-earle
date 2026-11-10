@@ -1,4 +1,4 @@
-# Übergabe (Stand 10.11.2026 nachmittags: G1 bis G3 gebaut, Florians Blick offen; als Nächstes G4)
+# Übergabe (Stand 10.11.2026 nachmittags: G1 bis G3 und G4.1 gebaut; als Nächstes G4.2 bis G4.4)
 
 **Branch `claude/form-zuerst`, Arbeitsbaum `.claude/worktrees/form-zuerst`.** Diese Datei ist der Einstieg. Die alte Übergabe aus der
 Käfig-Zeit (Stand 04.11.) steht in der Git-Geschichte: `git show 82aed6dc:docs/UEBERGABE.md`.
@@ -36,14 +36,23 @@ Kriterien stehen in der Tabelle des Nachtrags; Messwerte und Befunde je Schritt 
   3. Die Bremse hält die Haut nicht nur fest: Sie steht wirklich (Gegenprobe mit neuem Löser).
   4. Bei 23 400 Punkten hat das Prüfnetz 1 442 zu kurze Kanten; das Zusammenlegen im Zug hinterlässt bei (−115, 48, ±93) Punkte
      mit drei und vier Nachbarn, an denen die Haut unruhig bleibt. `&kurz=0` lässt die Haut dort einfallen.
-- **G4–G6 offen.** Vorschlag für G4 nach den Befunden (Bericht, „Was das für G4 heißt“; Florians Wort steht aus): (a) Nachlauf
-  im Bildtakt nach dem Loslassen, bis die Haut steht; (b) Verdichten, Zerlegen und Setzen verdeckt im Hintergrund, bis die neue
-  Haut steht, einmal einwechseln; (c) dasselbe nach jeder anderen Änderung (Loop, Punkt, Kante). Den Stand der Bremse
-  weiterzugeben ist nach Befund 1 nicht der Hebel.
+- **Florian zu G3 (10.11.):** „Es gefällt mir schon besser. Auch die Performance ist schon besser, aber aktuell ruckt es während
+  dem Ziehen noch spürbar.“ Und: „gleich zu G4“ (die neue Fassung ist damit freigegeben).
+- **G4.1 gebaut** (`cf46b548`): Das Verfeinern im Zug läuft ganz im Hintergrund (`src/form/verfeinern.ts`,
+  `verfeinern.worker.ts`; `zerlegen.worker.ts` gibt es nicht mehr). Beim Auslösen wird der Zug nicht mehr neu aufgesetzt (die
+  Loops gehen als festgelegte Kopie in den Auftrag), eingewechselt wird im nächsten Bild an Stelle der Löserrunde
+  (`eingetroffen`, `schleife`). Gemessen (Bilder im Zug über 33 / 50 / 100 ms, längster Abstand; vorher → jetzt): 5 200 Punkte
+  5 / 4 / 0, 87 ms → 1 / 0 / 0, 46 ms; 11 000 Punkte 5 / 4 / 3, 130 ms → 2 / 1 / 0, 54 ms; 23 400 Punkte 89 / 22 / 5, 469 ms →
+  42 / 3 / 1, 106 ms. Es bleiben das Einwechseln (10 / 28 / 59 ms, zweimal je Zug) und bei 23 400 Punkten die Runde selbst
+  (29–33 ms je Bild; G5/G6).
+- **G4.2 bis G4.4 offen** (Bericht, „Was das für G4 heißt“): G4.2 Nachlauf im Bildtakt nach dem Loslassen, bis die Haut steht;
+  G4.3 Verdichten, Zerlegen und Setzen verdeckt im Hintergrund, bis die neue Haut steht, einmal einwechseln (der Auftrag aus
+  G4.1 lässt sich dafür wiederverwenden); G4.4 dasselbe nach jeder anderen Änderung (Loop, Punkt, Kante). Den Stand der Bremse
+  weiterzugeben ist nach Befund 1 nicht der Hebel. Danach G5 (zuerst die Güte des Netzes), G6 (halbe Haut).
 
 ## 1. Stand
 
-- **Letzter Code-Commit:** `ab3a8d95` (G3). Alles ist committet und gepusht (lokal = `origin/claude/form-zuerst`).
+- **Letzter Code-Commit:** `cf46b548` (G4.1). Alles ist committet und gepusht (lokal = `origin/claude/form-zuerst`).
 - **Halbfertiges:** keins. Am 09.11. sind zwei Löser-Versuche wieder entfernt worden („gleiches Maß“, „Krümmung an den Linien
   mitgelöst“; Stand des zweiten in `476a874f`). Der Code des Lösers (`dicht/ausKurven.ts`) ist seit `1f1f5079` (Schalter
   `maxNormalen`) unverändert; G1 hat nur das Einsetzen in `loeser/zerlegung.ts` ausgeschrieben, G2 und G3 nur das Fenster.
@@ -71,13 +80,15 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5193 --strictPort
 - **Florians Adresse jetzt:** `http://localhost:5193/kurven.html?gewichte=geometrie`. Standard ohne Schalter ist der Löser mit gleichen
   Gewichten. `?form=bohne` startet mit einer Bohne statt der Kugel, `?dreiecke=<n>` setzt die Größe des Startnetzes (Standard 6 000).
 - **Altes Fenster** `form.html` (Form aus den Ansichten) und der alte Editor (`pnpm editor`, Käfig) werden nicht mehr benutzt.
-- **Test-Haken im Fenster:** `window.__kurven` (`kurven.ts`, ab Zeile 3271): `weiterrechnen` (n Runden im laufenden Zug),
+- **Test-Haken im Fenster:** `window.__kurven` (`kurven.ts`, ab Zeile 3321; `zeiten()` trägt seit G4.1 auch `messung`,
+  `hintergrundTeile`, `auspacken`, `einwechslungTeile`): `weiterrechnen` (n Runden im laufenden Zug),
   `nachrechnen`, `loops`, `auswahl`, `pfadRest`, `knickAm`, `griffe`, `kamera`, `knick`, `umgeschlagen`, `maul`, `zeiten` (zug,
   zerlegen, bereich, verdichtung, punkte, stufen, endrunden, offen, nachRunden, hintergrund, ausloesung, einwechslung,
   hintergrundMs, stufeMs, neuRechnen, vorrechnen, nachLoesen), `lagen`, `grundLagen`, `pose`, `dreiecke`, `meldung`, `bild` (Weltpunkt →
   Pixel im Blatt), `ausschnitt` (Zoom je Blatt), `felder`, `setzeRadius`, `symmetrie`, `masse`.
 
 **Tests, die grün sein müssen:**
+- Fenster, aus `apps/editor`: `npx vitest run src/form/verfeinern.test.ts` (3 Tests, der Auftrag im Hintergrund).
 - Kern der dichten Form, aus `packages/shape`: `npx vitest run src/dicht/ src/loeser/zerlegung.test.ts`. Zuletzt 110 von 110
   grün (10.11.), etwa 20 s. Ausgaben
   bestandener Tests nur mit `--reporter=verbose`. `HAUT=gedaechtnis` lässt `loops.test.ts` und `weiterZug.test.ts` mit dem alten
@@ -95,7 +106,7 @@ vitest; während sie laufen, keine Dateien unter `packages/shape/src` oder `apps
 | Probe | wofür |
 | --- | --- |
 | `form-drei-faelle.mjs` | Florians Hörner mit Griffspiel (`FALL=hoerner`) und das kleine Detail (`FALL=detail`): Zeit je Mausbewegung, Knicke, umgeklappt, **umgestülpt** (schwarze Stellen), jede Änderung nach dem Loslassen. Seit G3: `HALTEN=<ms>` (je Bild Bewegung und Rauminhalt beim Halten), `GPU=1` |
-| `form-loslassen-probe.mjs` | Sprung nach dem Loslassen (Hals, Ohr, Rüssel). Seit G3: `HALTEN=<ms>` vor dem Loslassen, `PAUSE=<ms>` je Mausschritt, `GPU=1`, `REST=<Runden>` (Rest zur Ruhe), `FERN=<Einheiten>` (Ausschläge fern vom Griff je Bild), `SICHERN`/`VERGLEICH` (zwei Läufe gegeneinander); der Stand vor und nach dem Loslassen wird im Fenster festgehalten |
+| `form-loslassen-probe.mjs` | Sprung nach dem Loslassen (Hals, Ohr, Rüssel); seit G4.1 auch die Zeile „Bilder im Zug“ (Abstand von Bild zu Bild, Arbeit im Hauptthread je Bild, je Auslösen und Einwechseln). Seit G3: `HALTEN=<ms>` vor dem Loslassen, `PAUSE=<ms>` je Mausschritt, `GPU=1`, `REST=<Runden>` (Rest zur Ruhe), `FERN=<Einheiten>` (Ausschläge fern vom Griff je Bild), `SICHERN`/`VERGLEICH` (zwei Läufe gegeneinander); der Stand vor und nach dem Loslassen wird im Fenster festgehalten |
 | `form-anlauf-probe.mjs` | die ersten Bilder eines winzigen Zugs (Anlauf eines neuen Lösers); `ZWEIMAL=1` greift ein zweites Mal |
 | `form-griff-loslassen.mjs` | Griff bzw. Punkt (`ZUG=punkt`) ziehen und loslassen: Spitze unter der Maus, Sprung, Linie im Zug gegen danach, Runden am Ende |
 | `form-explosion-probe.mjs` | weite Züge `FALL=a\|b\|c\|d\|e\|f\|g\|p` (Überhang, Schnabel, Schlaufe, Stauchen, Rüssel mit Griff, Hammer, Pilz) |
@@ -130,7 +141,12 @@ vitest; während sie laufen, keine Dateien unter `packages/shape/src` oder `apps
 - Faltenzahlen streuen bei gleicher Form um den Faktor 2.
 - Zeiten nur als Verhältnisse lesen; bei belegter Maschine gibt es Ausreißer.
 
-## 3. Karte von `apps/editor/src/form/kurven.ts` (3 524 Zeilen, Stand `ab3a8d95`)
+## 3. Karte von `apps/editor/src/form/kurven.ts` (3 581 Zeilen, Stand `cf46b548`)
+
+Die Zeilen der Tabelle stammen vom Stand `ab3a8d95`; seit G4.1 liegen sie ab 1486 um 8 höher, ab 2180 um 12 bis 60 höher
+(`zugRechnen` 2151, `stufeImHintergrund` 2237, `einwechseln` 2275, `zerleger` 2367, `zugEnde` 2432, `verdichtenOptionen` 2498,
+`schleife` 3299, Haken ab 3321). Neu neben `kurven.ts`: `verfeinern.ts` (der Auftrag: `verfeinern`, `hautFlach`, `hautAusFlach`),
+`verfeinern.worker.ts`, `verfeinern.test.ts`. `zugNeuAufsetzen` gibt es nicht mehr.
 
 | Zeilen | Abschnitt |
 | --- | --- |
