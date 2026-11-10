@@ -63,6 +63,9 @@ hinaus und kontrolliere die bisherigen Versuche. Gibt es Fehler? … Haben wir e
   nichts mehr, das Fenster steht nicht mehr still (vorher 0,5 bis 3,7 s), und die Haut wird einmal eingewechselt statt in
   Stufen. Offen: Das Einwechseln kommt auf sehr dichten Netzen erst nach 3 bis 6 s und ändert die Form einmal um 0,3 bis 3
   Einheiten; nach Loop, Punkt und Kante läuft noch alles im Hauptthread (G4.4).
+- **Stand (10.11. spätabends):** G4.4 ist gebaut. Kante, Löschen, Punkt setzen und Rückgängig halten das Fenster nicht mehr an
+  (vorher 0,1 bis 6 s), und der Ruck beim ersten Greifen nach neuen Loops ist weg (fern vom Griff 7 bis 26 Einheiten je Bild →
+  höchstens 0,2). Neuer Befund: Mit einem einzelnen Loop hält nichts die Haut; dort bleibt es beim alten Verhalten.
 - **Werkzeuge:** Dem Fenster fehlen fast alle Präzisionshilfen aus Illustrator und Blender (Zahlen im Zug, fein mit ⇧,
   Pfeiltasten, Einrasten, Wiederholen, Auswahlrechteck). Der größte Hebel der Bedienung ist, weite Züge überflüssig zu machen:
   Auswuchs als eigene Operation und eine Startform aus einer Seitenzeichnung (Abschnitt 6).
@@ -783,6 +786,99 @@ selbst), `verfeinern.test.ts` (der Auftrag rechnet dasselbe wie der Ablauf im Fe
 selbst an (bei 23 400 Punkten rund 60 ms; stand zuerst als „längster Abstand 93 ms“ in der Messung). Und nach einem Netzwechsel
 sagt der Vergleich Punkt für Punkt nichts: Die Punkte sind neu nummeriert (die Probe meldete „bewegt um 321“; die Form war
 dieselbe).
+
+**Stand (10.11. spätabends): G4.4 gebaut — nach Loop, Punkt, Kante, Löschen, Rückgängig** (Florian: „dann mach wie du
+empfiehlst“; Commits `9e755156`, `124e32a3`). Gilt wie G4.2/G4.3 für `?gewichte=geometrie` in der Grundform.
+
+**Was vorher geschah** (im Fenster gemessen mit `form-aendern-probe.mjs`, echte Grafikkarte; Stillstand = Summe der Abstände
+über 50 ms zwischen zwei Bildern ab dem Auslösen; Ausgaben `ausgaben/g44-fenster-aendern.txt`):
+
+| Schritt | 5 200 Punkte | 11 000 Punkte | 23 400 Punkte |
+| --- | --- | --- | --- |
+| Loop schneiden | 0,12–0,20 s | 0,41–0,80 s | 1,1–1,3 s |
+| Kante an | 0,37 s | 0,92 s | 2,5 s |
+| Kante aus | 0,49 s | 1,4 s | 6,2 s (fünf Halte) |
+| Punkt setzen (Doppelklick) | 0,09 s | 0,28 s | 1,0 s |
+| Punkt löschen | 0,17 s | 0,55 s | 1,6 s |
+| Rückgängig | 0,11 s | 0,31 s | 1,05 s |
+
+- **Woher:** Nach jeder Änderung rechnete das Fenster 30 ms später die Zerlegung für das nächste Greifen (0,1 / 0,3 / 1 s).
+  Kante und Löschen rechneten davor die ganze Haut neu (zerlegen, zwölf Runden, verdichten) und setzten sie danach in Stufen.
+- **Der erste Griff nach neuen Loops:** Nach dem Schneiden setzte sich die Haut nicht; das tat erst der Löser des ersten Zugs,
+  sichtbar. Fern vom Griff (untere Hälfte, während oben 6 Einheiten gezogen werden) schlug die Haut je Bild aus: 5,3 / 7,0 / 4,7
+  Einheiten bei 5 200 Punkten, 11,0 / 11,6 / 2,1 bei 11 000, 21,8 / 25,9 / 8,8 bei 23 400. Danach blieb dort eine Änderung von
+  2 Einheiten (Mittel 0,8). Der zweite Griff war ruhig (höchstens 0,12 je Bild, es bleibt 0,09).
+
+**Gebaut:**
+- **Was für den Stand offen ist, gehört zum Stand** (`kurven.ts`, `ruheOffen`: setzen, nur in Ruhe, verdichten). 30 ms nach
+  einer Änderung geht es an den Hintergrund (`ruheImHintergrund`). Verfällt ein Auftrag, weil sich der Stand geändert hat,
+  beginnt einer für den neuen Stand. Rückgängig bringt mit zurück, was für den alten Stand offen war.
+- **Auftrag mit Vorstufe** (`verfeinern.ts`): zerlegen und setzen, bis die Form steht (höchstens 60 Runden), und die gesetzte
+  Haut samt Zerlegung als Zwischenstand melden; danach aufräumen wie nach dem Loslassen. Das Fenster zeigt erst die gesetzte
+  Haut (`zwischenAnwenden`: dasselbe Netz, neue Lagen), dann die aufgeräumte.
+- **Kante an oder aus, Löschen** (`hautNeuRechnen`): als Auftrag mit Vorstufe statt im Fenster. Die Linien zeigen die Änderung
+  sofort, die Haut folgt.
+- **Neuer Loop** (L, F, Stift): Die Haut setzt sich im Hintergrund, sobald sich Loops kreuzen, und nur, wenn sie dabei zur Ruhe
+  kommt; danach wird nicht aufgeräumt (das tut wie bisher der erste Zug). Schalter `?loopsetzen=0`: wie vorher.
+- **Sonst** (Punkt gesetzt, Rückgängig): nur die Zerlegung für das nächste Greifen, im Hintergrund.
+- **Der Griff wartet** (`griffWartet`, `griffNachholen`): Wer greift, während der Hintergrund für genau diesen Stand noch die
+  Haut setzt oder zerlegt, bekäme einen Löser ohne Zerlegung auf einer Haut, die nicht steht. Der Griff beginnt deshalb erst,
+  wenn der Hintergrund fertig ist, dort, wo die Maus dann ist (höchstens 4 s, sonst wie früher). Nach einem Zug wartet er nicht.
+- Ecke umschalten rechnet weiter im Fenster (das Ausrichten der Griffe gleich danach braucht den Stand); nur das Setzen danach
+  geht in den Hintergrund. Meldet ein Auftrag einen Fehler oder fällt der Worker aus, rechnet das Fenster wie vorher selbst.
+
+**Gemessen nach dem Umbau:**
+
+| Schritt | 5 200 Punkte | 11 000 Punkte | 23 400 Punkte |
+| --- | --- | --- | --- |
+| Loop schneiden: Stillstand | 0–0,12 s | 0,06–0,12 s | 0,11–0,34 s |
+| Kante an: Stillstand; die Kante erscheint nach; aufgeräumt nach | keiner; 0,2–0,3 s; 0,4 s | keiner; 0,5–0,6 s; 0,9–1,0 s | keiner; 1,6–2,6 s; 3,4–5,2 s |
+| Kante aus | keiner; 0,2 s; 0,4–0,5 s | keiner; 0,5 s; 0,9 s | keiner; 2,2 s; 4,6–4,7 s |
+| Punkt setzen: Stillstand | keiner | keiner | 0,08 s |
+| Punkt löschen, Rückgängig: Stillstand | keiner | keiner | keiner |
+| nach dem zweiten Loop steht die Haut nach | 0,4 s | 0,8 s | 1,9 s |
+| erster Griff nach den Loops: Ausschlag fern vom Griff je Bild | 7,0 → 0,14 | 11,6 → 0,12 | 25,9 → 0,20 |
+| … und was dort bleibt | 2,0 → 0,06 | 2,0 → 0,10 | 2,0 → 0,07 |
+
+- „Keiner“ heißt: kein Abstand über 50 ms zwischen zwei Bildern (längster 17 bis 40 ms).
+- Beim Loop bleibt das Einsetzen selbst (die Kette ins Netz, die Linie auf ihren Pfad): 0,05–0,07 / 0,06–0,12 / 0,1–0,2 s.
+- Die Änderung von 2 Einheiten, die früher der erste Griff brachte, kommt jetzt gleich nach dem zweiten Loop, wenn die Haut
+  sich setzt (größte Stelle 2,0, Mittel 0,4 bis 1,0). Sie gehört zur Linie als Bézier-Pfad ohne Zusatzpunkte: Ein halber Ring
+  mit zwei Punkten ist kein genauer Kreis (bis 2 Einheiten daneben), die Haut folgt ihm.
+- **Gleich nach einem neuen Loop greifen** (vierter Loop, sofort die obere Kreuzung 6 Einheiten ziehen; neu / alter Ablauf;
+  `ausgaben/g44-fenster-sofort.txt`): Drücken 3 / 134 ms, Ausschlag fern vom Griff 0,11 / 4,6 bei 5 200 Punkten; 6 / 328 ms,
+  0,15 / 7,8 bei 11 000; 12 / 922 ms, 0,14 / 24,6 bei 23 400. Der Griff wartet dafür 0,1–0,3 / 0,4–0,8 / 1,3 s, bis die gesetzte
+  Haut da ist. (Ohne das Warten, mit dem Setzen im Hintergrund, zerlegte das Fenster beim Drücken selbst: 0,15 / 0,5 / 2,5 s.)
+- **Ältere Proben im neuen und im alten Ablauf** (Härte, Boden, Kreuzung, Griffe, Stift, Maul, Fressen-Pose, hin und zurück, zwei
+  weite Züge, Griff loslassen; `ausgaben/g44-vergleich-alte-proben.txt`): dieselben Formen. Im neuen Ablauf steht die Haut schon
+  vor dem ersten Zug (z. B. Knick quer über den weichen Pilzrand vor dem Zug 3,7° statt 6,2°).
+
+**Befund: Mit einem einzelnen Loop hält nichts die Haut.** Der erste Versuch setzte die Haut nach jedem neuen Loop. Bei
+11 000 Punkten zog schon der erste Ring die Kugel um 11 Einheiten flach (bei 5 200 nur 2), die nächsten Loops lagen auf der
+verzogenen Haut, und nach dem dritten lief die Haut auseinander. Im Kern nachgemessen (`loeser/mess10.ts`, `ausgaben/loeser-mess10.out`):
+- Ein Ring allein: Ein neuer Löser schlägt bis 144 bzw. 149 Einheiten je Runde aus (die Kugel hat den Halbmesser 150), braucht 23
+  bzw. 36 Runden (5 200 bzw. 11 000 Punkte) und landet je nach Netz woanders (2 bis 3,5 Einheiten neben der Kugel, im Fenster
+  11). Bei 23 400 Punkten steht die Haut nach 60 Runden noch nicht und liegt bis 26 Einheiten neben der Kugel.
+- Ring und Mitte zusammen: 7 Runden, Ausschlag bis 12, Ende 2 neben der Kugel. Drei Loops: 6 Runden, bis 8.
+- Jedes Aufräumen danach beginnt wieder mit einem neuen Löser und bricht nach zwölf Runden ab; mit einem einzelnen Ring ist das
+  mitten im Ausschlag.
+Deshalb die zwei Bedingungen beim neuen Loop: erst wenn sich Loops kreuzen, und nur, wenn die Haut zur Ruhe kommt. Mit einem
+einzelnen Loop bleibt alles wie bisher: Die Haut bleibt, wie sie ist, und der erste Griff setzt sie (mit dem alten Ruck). Das ist
+eine Schwäche des Lösers, nicht des Ablaufs; sie gilt genauso für jeden Zug mit nur einem Loop.
+
+**Geprüft:** `form-nachlauf-probe.mjs` (18 Prüfungen, bei 5 200 und 11 000 Punkten alle gut): Kante und neuer Loop, während der
+Hintergrund rechnet, setzen sich jetzt selbst; zweimal ⌘Z führt Bit für Bit zum Anfang; Fehler im Auftrag und Ausfall des
+Workers. Tests `verfeinern.test.ts` (12): die Vorstufe rechnet dasselbe wie die Schritte einzeln, der Zwischenstand übersteht
+die Grenze zum Worker, „nur in Ruhe“ lässt die Haut sonst, wie sie war.
+
+**Ehrlich offen nach G4.4:**
+1. **Die Kante erscheint auf dichten Netzen erst nach 1,6 bis 2,6 s** (23 400 Punkte; vorher stand das Fenster so lange still
+   und zeigte sie dann). Davon ist rund 1 s Zerlegen.
+2. **Mit einem einzelnen Loop** setzt sich nichts von selbst, der erste Griff ruckt dort wie bisher (siehe Befund).
+3. **Loop schneiden hält noch 0,1 bis 0,2 s an** (dichte Netze), **Ecke umschalten** rechnet noch im Fenster.
+4. **Der Griff wartet** nach Loop, Kante, Punkt oder Rückgängig bis zu 0,3 / 0,8 / 1,3 s (wer sofort greift). Die Linie folgt
+   der Maus in dieser Zeit noch nicht. G/S/R über die Tastatur warten nicht.
+5. Ältere Proben, die nach K oder Entf eine feste Zeit warten, lesen zu früh; vier sind angepasst (`ruhigK`).
 
 ## Anhang A: Messwerte
 

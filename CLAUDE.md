@@ -1681,12 +1681,34 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     greifen nach 400 ms bei 23 400 Punkten 1,0 s → 23 ms. Offen: Das Einwechseln kommt nach 0,7–0,9 / 1,4–2,0 / 3,2–6,1 s und
     ändert die Form einmal um bis zu 3,1 / 1,2 / 0,7 Einheiten (nach langsamen Zügen fast überall unter ⅓); weich überblenden
     wäre möglich (Florians Entscheidung). G4.4 (nach Loop, Punkt, Kante, Löschen, Rückgängig) läuft noch im Hauptthread.
+  - **G4.4 (10.11. spätabends, `9e755156`, `124e32a3`):** Florian: „dann mach wie du empfiehlst.“ Nach Loop, Punkt, Kante,
+    Löschen und Rückgängig rechnet der Hintergrund: Was für den Stand offen ist, steht in `ruheOffen` (gehört zum Schnappschuss)
+    und geht 30 ms nach der Änderung an den Auftrag (`ruheImHintergrund`); der Auftrag hat eine Vorstufe (zerlegen, setzen bis
+    zur Ruhe, Zwischenstand melden), das Fenster zeigt erst die gesetzte Haut (`zwischenAnwenden`), dann die aufgeräumte. Kante
+    und Löschen (`hautNeuRechnen`) rechnen nicht mehr im Fenster; nach einem neuen Loop setzt sich die Haut im Hintergrund,
+    wenn sich Loops kreuzen und sie dabei zur Ruhe kommt (`?loopsetzen=0` = vorher); sonst kommt nur die Zerlegung. Wer greift,
+    während der Hintergrund für den Stand noch rechnet, dessen Griff wartet darauf (`griffWartet`, höchstens 4 s). Gemessen
+    (Stillstand bei 5 200 / 11 000 / 23 400 Punkten): Kante an 0,37 / 0,92 / 2,5 s → keiner, Kante aus 0,49 / 1,4 / 6,2 s →
+    keiner, Punkt setzen, Löschen, Rückgängig 0,1–1,6 s → keiner (einmal 0,08 s), Loop schneiden 0,2 / 0,4–0,8 / 1,1–1,3 s →
+    0–0,12 / 0,06–0,12 / 0,11–0,34 s; erster Griff nach den Loops: Ausschlag fern vom Griff 7,0 / 11,6 / 25,9 → 0,14 / 0,12 /
+    0,20 Einheiten je Bild. Die Kante erscheint nach 0,2–0,3 / 0,5–0,6 / 1,6–2,6 s. Ältere Proben im neuen und alten Ablauf verglichen
+    (Härte, Boden, Kreuzung, Griffe, Stift, Maul, Fressen, hin und zurück, weite Züge): gleiche Formen.
+  - **Befund aus G4.4: Mit einem einzelnen Loop hält nichts die Haut.** Im Kern (`loeser/mess10.ts`): Ein neuer Löser schlägt mit
+    nur einem Ring bis 149 Einheiten je Runde aus, braucht 23–36 Runden und landet je nach Netz woanders; Ring und Mitte zusammen
+    7 Runden, bis 12. Der erste Versuch (setzen nach jedem Loop) zog die Kugel bei 11 000 Punkten 11 Einheiten flach, nach dem
+    dritten Loop lief die Haut auseinander. Deshalb setzt sich die Haut nach einem neuen Loop erst, wenn sich Loops kreuzen, nur
+    in Ruhe, ohne Aufräumen. Offen: Kante erscheint auf dichten Netzen erst nach 1,6–2,6 s; mit einem einzelnen Loop ruckt der
+    erste Griff wie bisher; Loop schneiden hält 0,1–0,2 s an; Ecke umschalten rechnet im Fenster.
+  - Fallen aus G4.4: Eine Regel, die an einem Fall (5 200 Punkte) harmlos aussieht, auch bei 11 000 und 23 400 messen, bevor sie
+    Standard wird (das Setzen nach dem ersten Loop: 2 Einheiten bei 5 200, 11 bei 11 000). Proben warten auf
+    `zeiten().beschaeftigt`, nicht auf feste Zeiten. Eine Probe prüft vor der Abstandsmessung, ob die Lagen endlich sind (sonst
+    hängt sie im Raster). Wer `ruheOffen` setzt, rechnet nicht selbst und startet keinen Auftrag von Hand.
   - Fallen aus G4.2/G4.3: Ein Ergebnis aus dem Hintergrund gehört zu einem Stand; am Stand selbst prüfen (`standZahl`), und
     jedes neue Feld der Loops, das die Haut bestimmt, in `loopsZahl` aufnehmen. Eine Probe, die gleich nach dem Loslassen große
     Stände aus dem Fenster holt, hält es selbst an (60 ms bei 23 400 Punkten, stand als „längster Abstand 93 ms“ in der Messung):
     erst am Ende abholen. Nach einem Netzwechsel sagt der Vergleich Punkt für Punkt nichts (neu nummeriert; „321 Einheiten“ bei
-    gleicher Form). Einen verfallenen Auftrag nicht von selbst neu starten: Nach einem neuen Loop gesetzt, änderte sich die Haut,
-    ohne dass jemand zieht.
+    gleicher Form). (Überholt mit G4.4: Ein verfallener Auftrag beginnt jetzt für den neuen Stand neu, und nach einem neuen Loop
+    setzt sich die Haut mit Absicht; siehe den Befund zum einzelnen Loop.)
   - Fallen aus G3: „Steht“ an der Form messen (längs der Normalen), nie an der ganzen Bewegung der Punkte. Fenster-Proben, die
     Zeit oder Nachhinken messen, mit `GPU=1` (der Software-Renderer schafft seit dem Rechnen im Bildtakt nur zehn Runden je
     Sekunde). Den Stand „vor dem Loslassen“ im Fenster festhalten (Listener in der Erfassungsphase). Einen alten Stand zum
