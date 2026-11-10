@@ -74,6 +74,11 @@ hinaus und kontrolliere die bisherigen Versuche. Gibt es Fehler? … Haben wir e
   diesem Bericht meint zwei Bildschirmfotos eines Tests vom 08.11. Nachgestellt endet derselbe Test heute bei 7 400 Punkten. Ob
   das Netz bei seinem Testen noch so wächst, ist offen; der Teil „Zahl der Punkte“ von G5 hat damit keine bestätigte Grundlage
   (am Ende des Nachtrags).
+- **Stand (10.11. spätnachts):** Der erste Teil von G5 ist gebaut. Die flachen Dreiecke an den Linien entstanden beim
+  Zusammenlegen zu kurzer Kanten (im Kern nachgestellt); jetzt entstehen sie nicht mehr, vorhandene werden aufgelöst, und Punkte
+  der Linie, die nach dem Schneiden fast aufeinander liegen, fallen gleich zusammen. An den Probeformen: unruhige Stellen 6 bis 14
+  → 0, Punkte und Kantenlängen unverändert, dieselben Formen. Am Rechnen selbst ändert das nichts Messbares; der Knoten im
+  Hörner-Fall und das Wachsen beim Spielen bleiben.
 - **Werkzeuge:** Dem Fenster fehlen fast alle Präzisionshilfen aus Illustrator und Blender (Zahlen im Zug, fein mit ⇧,
   Pfeiltasten, Einrasten, Wiederholen, Auswahlrechteck). Der größte Hebel der Bedienung ist, weite Züge überflüssig zu machen:
   Auswuchs als eigene Operation und eine Startform aus einer Seitenzeichnung (Abschnitt 6).

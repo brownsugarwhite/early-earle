@@ -301,7 +301,7 @@ vitest; während sie laufen, keine Dateien unter `packages/shape/src` oder `apps
 ## 3. Karte von `apps/editor/src/form/kurven.ts` (4 680 Zeilen, Stand `92b60a5b`)
 
 Seit `2be21c5b` (G5 Teil 1) liegt alles ab Zeile 3110 um rund 50 höher als im nächsten Absatz genannt: `einsetzenLetzten` 3092 (baut die
-Puffer der Anzeige jetzt einmal am Ende), `NADELN` 3120, `FLACH_SCHUTZ` 3128, `nadelnWeg` 3130, `verdichtenOptionen` 3031 (gibt
+Puffer der Anzeige jetzt einmal am Ende), `NADELN` 3123, `FLACH_SCHUTZ` 3128, `nadelnWeg` 3130, `verdichtenOptionen` 3031 (gibt
 `flachSchutz` mit). Im Kern `dicht/verdichten.ts`: `FLACH`, `kleinsterWinkel`, der Schutz in `legen` und `drehen`, das Auflösen vor
 dem Drehen nach Wertigkeit, `nadelnZusammenlegen` am Ende der Datei.
 
