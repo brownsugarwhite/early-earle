@@ -10,6 +10,10 @@
 // FALL=detail: Ohr aus dem senkrechten Ring (wie form-detail-probe), dann schmaler gezogen; am Ohr gegen den Rumpf: Punkte, Kantenlänge,
 //   Drehung der Normale über eine Kante, vor und nach dem Loslassen.
 // Varianten über KURVEN_URL (?gewichte=geometrie, ?genauHaut=1). BILDER=<name>: Bilder nach docs/progress/editor.
+// Seit 10.11. (Gegenprüfung G3): HALTEN=<ms> hält die Maus vor dem Loslassen so lange still (Standard 150); dabei je Bild im Fenster
+// die Bewegung der Haut gegen das Bild davor und der Rauminhalt (rechnet die Haut beim Halten weiter, und kommt sie zur Ruhe?). Der
+// Stand vor dem Loslassen und der gleich danach werden im Fenster festgehalten, genau vor und nach der Behandlung des Loslassens.
+// GPU=1: echte Grafikkarte.
 // Aufruf aus apps/editor: node scripts/pruefen/form-drei-faelle.mjs
 import { chromium } from '@playwright/test';
 
@@ -17,7 +21,8 @@ const fall = process.env.FALL ?? 'hoerner';
 const basis = process.env.KURVEN_URL ?? 'http://localhost:5193/kurven.html';
 const variante = basis.split('?')[1] ?? 'Standard';
 const bilder = process.env.BILDER ?? null;
-const browser = await chromium.launch();
+const halten = Number(process.env.HALTEN ?? 150);
+const browser = await chromium.launch(process.env.GPU ? { args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] } : {});
 const seite = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1 });
 const fehler = [];
 seite.on('console', (m) => {
@@ -302,11 +307,53 @@ const zugMessen = async (name, [x0, y0], [x1, y1], schritte = 30) => {
   await seite.mouse.move(x0, y0);
   await seite.mouse.down();
   for (let i = 1; i <= schritte; i++) await seite.mouse.move(x0 + ((x1 - x0) * i) / schritte, y0 + ((y1 - y0) * i) / schritte);
-  await seite.waitForTimeout(150);
-  const A = await schnapp();
+  // im Fenster: je Bild des Haltens Bewegung und Rauminhalt; der Stand genau vor (Erfassungsphase) und nach dem Loslassen
+  await seite.evaluate(() => {
+    const K2 = window.__kurven;
+    const snap = () => ({ P: K2.lagen(), T: K2.dreiecke(), z: K2.zeiten(), u: K2.umgeschlagen() });
+    const inhalt = (P, T) => {
+      let v = 0;
+      for (let t = 0; t < T.length; t += 3) {
+        const a = 3 * T[t];
+        const b = 3 * T[t + 1];
+        const c = 3 * T[t + 2];
+        v += (P[a] * (P[b + 1] * P[c + 2] - P[b + 2] * P[c + 1]) + P[a + 1] * (P[b + 2] * P[c] - P[b] * P[c + 2]) + P[a + 2] * (P[b] * P[c + 1] - P[b + 1] * P[c])) / 6;
+      }
+      return v;
+    };
+    const rec = (window.__halten = { bilder: [], aus: false, vorLos: null, nachLos: null });
+    let vor = Float64Array.from(K2.lagen());
+    const t0 = performance.now();
+    const tick = () => {
+      if (rec.aus) return;
+      const P = K2.lagen();
+      if (P.length !== vor.length) rec.bilder.push({ t: Math.round(performance.now() - t0), netz: P.length / 3 });
+      else {
+        let weg = 0;
+        for (let v = 0; v < P.length; v += 3) {
+          const e = Math.hypot(P[v] - vor[v], P[v + 1] - vor[v + 1], P[v + 2] - vor[v + 2]);
+          if (e > weg) weg = e;
+        }
+        if (weg > 0) rec.bilder.push({ t: Math.round(performance.now() - t0), weg, vol: inhalt(P, K2.dreiecke()) });
+      }
+      vor = Float64Array.from(P);
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    window.addEventListener(
+      'pointerup',
+      () => {
+        rec.aus = true;
+        rec.vorLos = snap();
+      },
+      { capture: true, once: true },
+    );
+    window.addEventListener('pointerup', () => (rec.nachLos = snap()), { once: true });
+  });
+  await seite.waitForTimeout(halten);
   const t0 = Date.now();
   await seite.mouse.up();
-  const B = await schnapp();
+  const { A, B, haltBilder } = await seite.evaluate(() => ({ A: window.__halten.vorLos, B: window.__halten.nachLos, haltBilder: window.__halten.bilder }));
   const verlauf = [{ t: Date.now() - t0, S: B }];
   let letzt = B;
   let ruhig = 0;
@@ -341,6 +388,17 @@ const zugMessen = async (name, [x0, y0], [x1, y1], schritte = 30) => {
   const xA = stand(A);
   console.log(`\n${name}: je Mausbewegung ${f1(zz.reduce((s, v) => s + v, 0) / zz.length)} ms (max ${Math.max(...zz).toFixed(0)})`);
   console.log(`  vor dem Loslassen: ${standText(A, xA)} · im Zug bewegt bis ${f1(bewegung(S0, A).max)}`);
+  {
+    const w = haltBilder.filter((b) => !b.netz);
+    const vol = w.map((b) => b.vol);
+    const spanne = vol.length ? (100 * (Math.max(...vol) - Math.min(...vol))) / Math.abs(vol[0]) : 0;
+    console.log(
+      `  beim Halten (${halten} ms${A.z.offen === undefined ? '' : `; Haut rechnet am Ende noch ${A.z.offen ? 'ja' : 'nein'}, ${A.z.nachRunden} Runden`}): ${w.length} Bilder mit Bewegung, ` +
+        `größte je Bild ${f1(Math.max(0, ...w.map((b) => b.weg)))}, über 1 Einheit ${w.filter((b) => b.weg > 1).length}, Summe ${f1(w.reduce((a, b) => a + b.weg, 0))}; ` +
+        `Rauminhalt schwankt um ${f2(spanne)} %; Netzwechsel ${haltBilder.filter((b) => b.netz).length}`,
+    );
+    if (w.length) console.log(`    je Bild: ${w.slice(0, 40).map((b) => b.weg.toFixed(1)).join(' ')}${w.length > 40 ? ' …' : ''}`);
+  }
   let vor = A;
   let xVor = xA;
   for (const [k, v] of verlauf.entries()) {

@@ -141,16 +141,14 @@ const DREIECKE = Number(new URLSearchParams(location.search).get('dreiecke') ?? 
 const RUNDEN_ZUG = 2;
 const RUNDEN_ENDE = 4;
 /**
- * Aus den Kurven (über die ganze Haut) gibt es die zweite Runde je Mausbewegung nur, wenn die erste schneller war als das: Kleine
- * Netze bekommen zwei, große eine (gemessen, eine Runde gegen zwei: Form fast gleich, je Bewegung halb so lang, bei 15 000 Punkten
- * ≈ 30 statt 57 ms).
+ * Aus den Kurven (über die ganze Haut) rechnet der Löser im Bildtakt, nicht im Mausereignis (10.11., Gegenprüfung Schritt G3,
+ * `zugRechnen`): je Bild mindestens eine Runde und so viele weitere, wie in `BUDGET_MS` passen; auch wenn die Maus ruht, bis sich
+ * die Form in einer Runde um weniger als `RUHE` Einheiten bewegt (0,05 Einheiten = 0,14 px bei 300 %; gemessen längs der
+ * Flächennormalen, `rundeMitWeg`). Vorher gab es je Mausbewegung eine Runde (eine zweite nur bei kleinen Netzen) und beim Loslassen
+ * vier auf einmal: Der Rest wurde genau beim Loslassen sichtbar.
  */
-const RUNDE_MS = 12;
-/**
- * Nach der Geometrie (`GEWICHTE`) kostet eine Runde mehr (bei 5 200 Punkten ≈ 10 statt 8 ms: intrinsische Triangulierung, Krümmung
- * verteilen); die zweite Runde gibt es dann nur, wenn beide zusammen unter 16 ms bleiben.
- */
-const RUNDE_MS_GEOMETRIE = 8;
+const BUDGET_MS = 12;
+const RUHE = 0.05;
 
 const kreis = (r: number): UmrissPunkt[] => [
   { x: r, y: 0 },
@@ -1017,6 +1015,8 @@ knopfPose.addEventListener('click', () => {
   allesZeigen();
 });
 
+/** die Normalen der Haut, wie sie zuletzt gezeigt wurde (für das Maß, ob die Form noch in Bewegung ist: `rundeMitWeg`) */
+let normalenGezeigt: { haut: Haut; nor: Float64Array } | null = null;
 function hautZeigen(): void {
   const m = maulAktuell();
   maulGezeigt = null;
@@ -1034,6 +1034,7 @@ function hautZeigen(): void {
   }
   innenZeigen();
   const nor = hautNormalen(haut);
+  normalenGezeigt = { haut, nor };
   const P = haut.pos;
   const I = maulGezeigt ? indexOhneOeffnung(maulGezeigt.m.offen) : anzeigeIndex;
   if (hautGeometrie.index?.array !== I) hautGeometrie.setIndex(new BufferAttribute(I, 1));
@@ -1262,28 +1263,15 @@ function auswahlMitte(): V3 | null {
   return { x: m.x / q.length, y: m.y / q.length, z: m.z / q.length };
 }
 
-/** so lang zeigt das Blatt einen Griff mindestens (px): kurze Stücke hätten sonst Griffe unter dem Punkt */
-const GRIFF_PX = 28;
 /**
- * Griffe in wahrer Länge wie in Illustrator (10.11., Gegenprüfung Schritt G2; Florian: „meine Vision war, dass es wie bei Illustrator
- * funktioniert“): Die gezeigte Spitze ist der Kontrollpunkt der Kurve, und beim Loslassen ändert sich nichts. Mit der Mindestlänge
- * (`GRIFF_PX`) wurde der Faktor nach jedem Zug neu gerechnet, die Spitze sprang (im Beispiel von 56 auf 28 px). `?griffe=mindest`
- * zeigt das Verhalten von vorher zum Vergleich, bis Florian entschieden hat.
+ * Griffe zum Zeigen: die der gewählten Punkte, an einer gewählten Kreuzung auch die des anderen Loops (relativ zum Punkt). Die
+ * gespeicherten; während eines Zugs, wie sie danach sind, den gerade gezogenen Griff genau (gespeichert + Versatz).
+ * Griffe werden in wahrer Länge gezeigt, wie in Illustrator (Florian, 10.11.: „Die Griffe bleiben in wahrer Länge wie in
+ * Illustrator“): Die Spitze ist der Kontrollpunkt der Kurve, die Maus wirkt 1:1, beim Loslassen ändert sich nichts. Bis zum 10.11.
+ * wurden kurze Griffe auf mindestens 28 px gestreckt gezeigt, mit einem Faktor je Punkt, der nach jedem Zug neu gerechnet wurde
+ * (die Spitze sprang, in der Probe um 42 px).
  */
-const GRIFFE_WAHR = new URLSearchParams(location.search).get('griffe') !== 'mindest';
-/** Faktor, mit dem die Griffe eines Punkts gezeigt werden (≥ 1); ein Zug an der Spitze wirkt im selben Verhältnis feiner */
-function griffFaktor(g: { ein: V3 | null; aus: V3 | null }, a: Ansicht): number {
-  if (GRIFFE_WAHR) return 1;
-  const kurz = Math.min(...[g.ein, g.aus].filter((v): v is V3 => !!v).map((v) => Math.hypot(v.x, v.y, v.z)));
-  return Number.isFinite(kurz) && kurz > 1e-9 ? Math.max(1, GRIFF_PX / (skala(a) * kurz)) : 1;
-}
-
-/**
- * Griffe zum Zeigen: die der gewählten Punkte, an einer gewählten Kreuzung auch die des anderen Loops (relativ zum Punkt, dazu
- * der Faktor fürs Blatt). Die gespeicherten; während eines Zugs, wie sie danach sind, den gerade gezogenen Griff genau (gespeichert
- * + Versatz).
- */
-function griffeZumZeigen(a: Ansicht): { li: number; i: number; ein: V3 | null; aus: V3 | null; f: number }[] {
+function griffeZumZeigen(): { li: number; i: number; ein: V3 | null; aus: V3 | null }[] {
   const wahl: { li: number; i: number }[] = [];
   const kreuz = new Set<number>();
   for (const w of auswahl) {
@@ -1304,20 +1292,12 @@ function griffeZumZeigen(a: Ansicht): { li: number; i: number; ein: V3 | null; a
     const g = zug?.griff;
     // gespeicherte Griffe: während eines Zugs, wie sie danach sind
     const neu = zug?.griffeNeu[li]?.[i];
-    if (neu && hatGriffe(l)) {
-      const r = { ein: neu.ein, aus: neu.aus };
-      const f = g && g.li === li && g.i === i && a === zug!.ansicht ? zug!.griffFaktor : griffFaktor(r, a);
-      return { li, i, ...r, f };
-    }
+    if (neu && hatGriffe(l)) return { li, i, ein: neu.ein, aus: neu.aus };
     if (g && g.li === li && g.i === i) {
       const r = griffeBei(l, i);
-      const ein = plus(r.ein, zug!.griffVersatz.ein);
-      const aus = plus(r.aus, zug!.griffVersatz.aus);
-      // im Blatt des Zugs bleibt der Faktor vom Anfang (die Spitze bleibt unter der Maus)
-      return { li, i, ein, aus, f: a === zug!.ansicht ? zug!.griffFaktor : griffFaktor({ ein, aus }, a) };
+      return { li, i, ein: plus(r.ein, zug!.griffVersatz.ein), aus: plus(r.aus, zug!.griffVersatz.aus) };
     }
-    const r = griffeBei(l, i);
-    return { li, i, ...r, f: griffFaktor(r, a) };
+    return { li, i, ...griffeBei(l, i) };
   });
 }
 
@@ -1370,7 +1350,7 @@ function blattZeichnen(a: Ansicht): void {
     }
   });
   // Griffe der gewählten Punkte: Linie vom Punkt zur Spitze, Spitze als kleines Quadrat (unter den Punkten)
-  for (const { li, i, ein, aus, f } of griffeZumZeigen(a)) {
+  for (const { li, i, ein, aus } of griffeZumZeigen()) {
     const l = loops[li]!;
     const p = l.punkte[i]!;
     const q = zug && !zug.griff ? p.cur : p.ref;
@@ -1381,7 +1361,7 @@ function blattZeichnen(a: Ansicht): void {
     ] as const) {
       // ein Griff der Länge null (Ecke, mit dem Stift geklickt) ist nicht zu sehen
       if (!v || Math.hypot(v.x, v.y, v.z) < 1e-9) continue;
-      const [gx, gy] = imBlatt(a, { x: q.x + f * v.x, y: q.y + f * v.y, z: q.z + f * v.z });
+      const [gx, gy] = imBlatt(a, { x: q.x + v.x, y: q.y + v.y, z: q.z + v.z });
       el.append(element('line', 'griff-linie', { x1: px, y1: py, x2: gx, y2: gy }));
       const g = element('rect', 'griff', { x: gx - rp * 0.75, y: gy - rp * 0.75, width: rp * 1.5, height: rp * 1.5 });
       g.setAttribute('data-l', String(l.id));
@@ -1460,6 +1440,8 @@ let nachLoesenOffen: Haut | null = null;
  * nichts zusammengelegt).
  */
 let nachVerfeinert = 0;
+/** das Setzen rechnet, bis die Form steht (Vergleich: `?setzen=4`) */
+const SETZEN_RUHE = new URLSearchParams(location.search).get('setzen') !== '4';
 function vorrechnenPlanen(): void {
   vorrechnenAus();
   if (mitBereich() || zug) return;
@@ -1471,10 +1453,12 @@ function vorrechnenPlanen(): void {
     letztesVorrechnen = Math.round(performance.now() - t0);
     if (nachLoesenOffen !== haut) return;
     nachLoesenOffen = null;
-    z.schritt(
-      loops.map((l, li) => (exakt(l) ? pfadVersatz(l, z.start[li]!) : null)),
-      RUNDEN_ENDE,
-    );
+    const ziele = loops.map((l, li) => (exakt(l) ? pfadVersatz(l, z.start[li]!) : null));
+    // nach der Geometrie, bis die Form steht (`?setzen=4`: wie bis zum 10.11. genau vier Runden): Ein neuer Löser schwingt in den
+    // ersten Runden über (seine Bremse je Punkt beginnt von vorn), nach genau vier Runden blieb davon ein Rest stehen
+    if (GEWICHTE === 'geometrie' && SETZEN_RUHE) {
+      for (let k = 0; k < RUNDEN_NEU; k++) if (rundeMitWeg(z, ziele) < RUHE) break;
+    } else z.schritt(ziele, RUNDEN_ENDE);
     festlegenAlle();
     if (GENAU > 0 && nachVerfeinert < 3) {
       const vor = haut;
@@ -1511,7 +1495,7 @@ function statusZeigen(): void {
   const kreuz = new Set(loops.flatMap((l) => l.punkte.filter((p) => p.kreuzung !== undefined).map((p) => p.kreuzung))).size;
   statusZeile.textContent =
     meldung ||
-    `${loops.length} Loops · ${punkte} Punkte (${kreuz} Kreuzungen) · Zug ${ms.toFixed(1)} ms · zerlegen ${letzteZerlegung} ms · ` +
+    `${loops.length} Loops · ${punkte} Punkte (${kreuz} Kreuzungen) · Zug ${ms.toFixed(1)} ms${zug?.offen ? ' (rechnet)' : ''} · zerlegen ${letzteZerlegung} ms · ` +
       `Bereich ${letzterBereich} von ${haut.n}` +
       (letzteVerdichtung
         ? ` · verdichtet +${letzteVerdichtung.neu}${letzteVerdichtung.gelegt ? ` −${letzteVerdichtung.gelegt}` : ''} (${letzteVerdichtung.ms} ms)`
@@ -1550,8 +1534,6 @@ type Zug = {
   /** ein Griff wird gezogen (statt Punkte): Loop (Index), Punkt, Seite; dazu der Versatz der Griffe des Punkts */
   griff: { li: number; i: number; seite: 'ein' | 'aus' } | null;
   griffVersatz: GriffVersatz;
-  /** Faktor der gezeigten Griffe beim Anfang des Zugs (die Spitze bleibt unter der Maus) */
-  griffFaktor: number;
   /** Radius des Bereichs beim Anfang; wie weit schon gezogen wurde (vor dieser Stufe, insgesamt) */
   radius: number;
   weite0: number;
@@ -1560,6 +1542,13 @@ type Zug = {
   griffeNeu: ({ ein: V3; aus: V3 }[] | null)[];
   /** mit O verschobene Loops (je Probe, nicht über ihre Punkte): ihre Griffe werden danach aus der Linie neu abgelesen */
   neuAblesen: Set<number>;
+  /**
+   * Über die ganze Haut rechnet der Löser im Bildtakt (`zugRechnen`). `zielNeu`: Die Ziele haben sich seit der letzten Runde geändert
+   * (die Linien liegen noch nicht auf ihnen). `offen`: Die Haut steht noch nicht. `nachRunden`: Runden seit der letzten Mausbewegung.
+   */
+  zielNeu: boolean;
+  offen: boolean;
+  nachRunden: number;
 };
 let zug: Zug | null = null;
 
@@ -1756,12 +1745,14 @@ function griffZugStarten(a: Ansicht, X: number, Y: number, spiegel: boolean, li:
     mitte: null,
     griff: { li, i, seite },
     griffVersatz: {},
-    griffFaktor: griffFaktor(griffeBei(loops[li]!, i), a),
     radius: 0,
     weite0: 0,
     weite: 0,
     griffeNeu: loops.map(() => null),
     neuAblesen: new Set(),
+    zielNeu: false,
+    offen: false,
+    nachRunden: 0,
   };
   letzteZerlegung = loeser.loeser.zeitZerlegen;
   letzterBereich = loeser.loeser.anzahl;
@@ -1964,12 +1955,14 @@ function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spieg
     mitte: zentren.length === 1 ? { ...zentren[0]! } : pivot,
     griff: null,
     griffVersatz: {},
-    griffFaktor: 1,
     radius: r,
     weite0: 0,
     weite: 0,
     griffeNeu: loops.map(() => null),
     neuAblesen: new Set(),
+    zielNeu: false,
+    offen: false,
+    nachRunden: 0,
   };
   letzteZerlegung = loeser.loeser.zeitZerlegen;
   letzterBereich = loeser.loeser.anzahl;
@@ -2068,7 +2061,7 @@ function zugBewegen(X: number, Y: number): void {
     const p = l.punkte[i]!;
     // ein glatter Punkt wird eine Ecke, wenn er als Ecke zu sehen ist (an einer Kreuzung mit einer Ecke) oder am Spiegelpunkt liegt
     if (istEckeVonSelbst(p) || (!istEcke(p) && (ringEnde(l, i) || eckeGezeigt(li, i)))) p.ecke = true;
-    const d = inWelt(z.ansicht, (X - z.x0) / z.griffFaktor, (Y - z.y0) / z.griffFaktor);
+    const d = inWelt(z.ansicht, X - z.x0, Y - z.y0);
     if (z.spiegel) d.z = -d.z;
     z.griffVersatz = griffZiehen(l, i, seite, d);
     z.versch = loops.map((_, k) => mitRest(z, k, k === li ? griffVerschiebung(l, z.loeser.start[li]!, i, z.griffVersatz) : null));
@@ -2086,30 +2079,101 @@ function zugBewegen(X: number, Y: number): void {
     if (z.mitte) z.mitte = f(z.pivot);
   }
   z.lagen = z.loeser.lagen(z.versch);
-  const t0 = performance.now();
-  if (mitBereich()) z.loeser.schritt(z.versch, RUNDEN_ZUG);
-  else {
-    z.loeser.schritt(z.versch, 1);
-    if (performance.now() - t0 < (GEWICHTE === 'geometrie' ? RUNDE_MS_GEOMETRIE : RUNDE_MS)) z.loeser.schritt(z.versch, 1);
-  }
-  zeiten.push(performance.now() - t0);
-  if (zeiten.length > 200) zeiten.shift();
   // wie weit die Loops in diesem Zug schon gezogen sind (über alle Stufen)
   let weit = 0;
   for (const d of z.versch) if (d) for (let j = 0; j < d.length; j += 3) weit = Math.max(weit, Math.hypot(d[j]!, d[j + 1]!, d[j + 2]!));
   z.weite = z.weite0 + weit;
-  // reicht der Zug über den halben Bereich hinaus, eine neue Stufe: der Bereich wächst mit, dabei wird verdichtet. Über die ganze
-  // Haut gibt es keinen Bereich, der wachsen müsste; verdichtet wird dann am Ende (jede Stufe hieße: alles neu zerlegen, mitten im Zug)
-  if (!z.griff && !oAn && mitBereich() && weit > 0.5 * z.radius) zugStufe(z, X, Y);
+  if (!mitBereich()) {
+    // über die ganze Haut: Hier werden nur die Ziele gesetzt und die Kurven gezeichnet (Punkte, Griffe, Pfad); die Haut rechnet im
+    // Bildtakt nach (`zugRechnen`), auch wenn die Maus ruht
+    z.zielNeu = true;
+    z.offen = true;
+    z.nachRunden = 0;
+    for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
+    return;
+  }
+  const t0 = performance.now();
+  z.loeser.schritt(z.versch, RUNDEN_ZUG);
+  zeiten.push(performance.now() - t0);
+  if (zeiten.length > 200) zeiten.shift();
+  // reicht der Zug über den halben Bereich hinaus, eine neue Stufe: der Bereich wächst mit, dabei wird verdichtet
+  if (!z.griff && !oAn && weit > 0.5 * z.radius) zugStufe(z, X, Y);
+  hautZeigen();
+  baenderZeigen();
+  for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
+  statusZeigen();
+}
+
+/**
+ * Runden ohne neue Mausbewegung, nach denen der Löser auf jeden Fall aufhört: nach der Geometrie kommt er vorher zur Ruhe (`RUHE`),
+ * mit gleichen Gewichten pendelt er, dort bleibt es bei so vielen Runden wie bisher am Ende
+ */
+const NACH_RUNDEN = GEWICHTE === 'geometrie' ? 60 : RUNDEN_ENDE;
+let rundeVorher: Float64Array | null = null;
+/**
+ * Eine Löserrunde über die ganze Haut zu den Zielen `versch`; zurück kommt, wie weit sich die Form dabei höchstens bewegt hat: die
+ * Bewegung der Punkte längs der Flächennormalen. Längs der Fläche gleiten die Punkte nach der Geometrie stetig weiter, ohne dass
+ * sich die Form ändert (gemessen im Kern, `gegenpruefung-2026-11-10/loeser/mess7.ts`: bei 23 400 Punkten 0,04 Einheiten je Runde,
+ * über 400 Runden gleich, die Form steht nach 25); gegen die ganze Bewegung gemessen käme der Löser dort nie zur Ruhe.
+ */
+function rundeMitWeg(loeser: LoopZug, versch: readonly (Float64Array | null)[]): number {
+  const P = haut.pos;
+  if (!rundeVorher || rundeVorher.length !== P.length) rundeVorher = new Float64Array(P.length);
+  rundeVorher.set(P);
+  const N = normalenGezeigt?.haut === haut ? normalenGezeigt.nor : hautNormalen(haut);
+  loeser.schritt(versch, 1);
+  let m = 0;
+  for (let k = 0; k < P.length; k += 3) {
+    const d = Math.abs((P[k]! - rundeVorher[k]!) * N[k]! + (P[k + 1]! - rundeVorher[k + 1]!) * N[k + 1]! + (P[k + 2]! - rundeVorher[k + 2]!) * N[k + 2]!);
+    if (d > m) m = d;
+  }
+  return m;
+}
+
+/**
+ * Der Löser eines Zugs über die ganze Haut, einmal je Bild (10.11., Gegenprüfung Schritt G3): Runden, solange die Haut nicht steht,
+ * auch wenn die Maus ruht; dann die Haut zeigen. So ist beim Loslassen nichts mehr nachzuholen, und die Zahl der Runden hängt nicht
+ * an der Zahl der Mausereignisse. Verfeinert wird wie bisher nach einer Mausbewegung (nach deren Runden: Die Linien liegen dann auf
+ * ihren Zielen und können festgelegt werden) und noch einmal, wenn die Haut zur Ruhe kommt (sie streckt sich beim Halten weiter).
+ */
+function zugRechnen(): void {
+  const z = zug;
+  if (!z || !z.offen || mitBereich()) return;
+  const neuesZiel = z.zielNeu;
+  const t0 = performance.now();
+  for (;;) {
+    const tr = performance.now();
+    z.zielNeu = false;
+    const weg = rundeMitWeg(z.loeser, z.versch);
+    z.nachRunden++;
+    if (weg < RUHE || z.nachRunden >= NACH_RUNDEN) {
+      z.offen = false;
+      break;
+    }
+    const jetzt = performance.now();
+    if (jetzt - t0 + (jetzt - tr) > BUDGET_MS) break;
+  }
+  zeiten.push(performance.now() - t0);
+  if (zeiten.length > 200) zeiten.shift();
   // über die ganze Haut nach der Geometrie: verfeinern, sobald sie gestreckt wird
-  else if (LIVE && GEWICHTE === 'geometrie' && !mitBereich() && !z.griff && !verfeinerung && (gestreckt() || linieUngenau(z))) {
+  if ((neuesZiel || !z.offen) && LIVE && GEWICHTE === 'geometrie' && !z.griff && !verfeinerung && letzteMaus && (gestreckt() || linieUngenau(z))) {
+    const [X, Y] = letzteMaus;
     if (HINTERGRUND) stufeImHintergrund(z, X, Y);
     else zugStufe(z, X, Y);
   }
   hautZeigen();
   baenderZeigen();
-  for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
   statusZeigen();
+}
+
+/**
+ * Nach dem Neuaufsetzen eines Zugs über die ganze Haut (Stufe, Einwechseln): Die Ziele der Linien sind ihre Pfade von jetzt, wie nach
+ * einer Mausbewegung um null. Der Löser rechnet im Bildtakt weiter, bevor die nächste Mausbewegung kommt; ohne das hielte er die
+ * Linien bis dahin dort, wo sie auf dem Netz gerade liegen (auf einem eben feineren Netz: auf den Sehnen des alten).
+ */
+function zieleVonJetzt(z: Zug): void {
+  z.versch = loops.map((_, li) => mitRest(z, li, null));
+  z.lagen = z.loeser.lagen(z.versch);
 }
 
 /**
@@ -2139,6 +2203,11 @@ function zugStufe(z: Zug, X: number, Y: number): void {
   neu.achse = z.achse;
   neu.weite0 = z.weite;
   neu.weite = z.weite;
+  // das neue Netz muss sich setzen (über die ganze Haut im Bildtakt)
+  if (!mitBereich()) {
+    neu.offen = true;
+    zieleVonJetzt(neu);
+  }
   zugStufen++;
   letzteStufeMs = Math.round(performance.now() - t0);
 }
@@ -2198,6 +2267,9 @@ function zugNeuAufsetzen(z: Zug, X: number, Y: number, vorlage: HautVorlage): bo
   neu.achse = z.achse;
   neu.weite0 = z.weite;
   neu.weite = z.weite;
+  neu.offen = z.offen;
+  neu.nachRunden = z.nachRunden;
+  zieleVonJetzt(neu);
   return true;
 }
 
@@ -2206,6 +2278,11 @@ function einwechseln(f: Verfeinerung, daten: ZerlegungsDaten[]): void {
   const z = zug;
   if (!z || !letzteMaus) return;
   const t0 = performance.now();
+  // der Löser rechnet im Bildtakt: Kam seit der letzten Runde eine Mausbewegung, liegen die Linien noch nicht auf ihren Zielen
+  if (z.zielNeu && !mitBereich()) {
+    z.zielNeu = false;
+    rundeMitWeg(z.loeser, z.versch);
+  }
   zugGriffeUebernehmen(z);
   festlegenAlle();
   zugGriffeAblesen(z);
@@ -2237,6 +2314,11 @@ function einwechseln(f: Verfeinerung, daten: ZerlegungsDaten[]): void {
     n2.achse = z.achse;
     n2.weite0 = z.weite;
     n2.weite = z.weite;
+    // das feinere Netz muss sich setzen
+    if (!mitBereich()) {
+      n2.offen = true;
+      zieleVonJetzt(n2);
+    }
   }
   hintergrundStufen++;
   letzteEinwechslungMs = Math.round(performance.now() - t0);
@@ -2317,7 +2399,9 @@ function zugEnde(ok: boolean): void {
   if (z.bewegt) {
     // zum Messen: wie weit sich die Haut in den Runden am Ende noch bewegt (so weit hinkte der Löser im Zug nach)
     const vorEnde = Float64Array.from(haut.pos);
-    z.loeser.schritt(z.versch, RUNDEN_ENDE);
+    // über die ganze Haut hat der Löser im Bildtakt mitgerechnet: Runden am Ende nur, wenn die Haut noch nicht steht
+    if (mitBereich()) z.loeser.schritt(z.versch, RUNDEN_ENDE);
+    else for (let k = 0; z.offen && k < RUNDEN_ENDE; k++) if (rundeMitWeg(z.loeser, z.versch) < RUHE) z.offen = false;
     letzteEndrunden = 0;
     for (let k = 0; k < vorEnde.length; k += 3)
       letzteEndrunden = Math.max(letzteEndrunden, Math.hypot(haut.pos[k]! - vorEnde[k]!, haut.pos[k + 1]! - vorEnde[k + 1]!, haut.pos[k + 2]! - vorEnde[k + 2]!));
@@ -3167,6 +3251,7 @@ function rendern(): void {
 }
 
 function schleife(): void {
+  zugRechnen();
   if (neuZeichnen) {
     neuZeichnen = false;
     rendern();
@@ -3184,6 +3269,18 @@ schleife();
 
 // Prüfhaken für Skripte: Loops, Lagen, Bildschirmpunkte, Zeiten
 (window as unknown as { __kurven: unknown }).__kurven = {
+  /** Prüfung im laufenden Zug über die ganze Haut: n weitere Runden zu den Zielen von jetzt; zurück kommt, wie weit sich die Haut dabei bewegt */
+  weiterrechnen: (n: number): number | null => {
+    const z = zug;
+    if (!z || mitBereich()) return null;
+    const vor = Float64Array.from(haut.pos);
+    z.loeser.schritt(z.versch, n);
+    let m = 0;
+    for (let k = 0; k < vor.length; k += 3) m = Math.max(m, Math.hypot(haut.pos[k]! - vor[k]!, haut.pos[k + 1]! - vor[k + 1]!, haut.pos[k + 2]! - vor[k + 2]!));
+    hautZeigen();
+    baenderZeigen();
+    return m;
+  },
   /** Prüfung: n weitere Runden über die ganze Haut (wie das Setzen in der Ruhe), ohne Verdichten; ist die Haut fertig gerechnet? */
   nachrechnen: (n: number) => {
     if (mitBereich() || zug) return;
@@ -3231,15 +3328,14 @@ schleife();
     const c = -(g.ein.x * g.aus.x + g.ein.y * g.aus.y + g.ein.z * g.aus.z) / (Math.hypot(g.ein.x, g.ein.y, g.ein.z) * Math.hypot(g.aus.x, g.aus.y, g.aus.z));
     return (Math.acos(Math.max(-1, Math.min(1, c))) * 180) / Math.PI;
   },
-  /** Griffspitzen eines Punkts in der Welt, wie gezeigt (mit dem Faktor fürs Blatt) */
+  /** Griffspitzen eines Punkts in der Welt, wie gezeigt (wahre Länge; `faktor` ist seit dem 10.11. immer 1, für ältere Proben) */
   griffe: (id: number, i: number): { ein: V3 | null; aus: V3 | null; faktor: number } => {
     const l = loops[loopNr(id)];
     const p = l?.punkte[i];
     if (!l || !p) return { ein: null, aus: null, faktor: 1 };
     const g = griffeBei(l, i);
-    const f = griffFaktor(g, 'seite');
-    const spitze = (v: V3 | null) => (v ? { x: p.ref.x + f * v.x, y: p.ref.y + f * v.y, z: p.ref.z + f * v.z } : null);
-    return { ein: spitze(g.ein), aus: spitze(g.aus), faktor: f };
+    const spitze = (v: V3 | null) => (v ? { x: p.ref.x + v.x, y: p.ref.y + v.y, z: p.ref.z + v.z } : null);
+    return { ein: spitze(g.ein), aus: spitze(g.aus), faktor: 1 };
   },
   /** 3D-Kamera setzen (für Nahbilder) */
   kamera: (pos: V3, ziel: V3) => {
@@ -3356,6 +3452,9 @@ schleife();
     punkte: haut.n,
     stufen: zugStufen,
     endrunden: letzteEndrunden,
+    /** der Löser eines laufenden Zugs rechnet noch (die Haut steht nicht); Runden seit der letzten Mausbewegung */
+    offen: zug?.offen ?? false,
+    nachRunden: zug?.nachRunden ?? 0,
     hintergrund: hintergrundStufen,
     ausloesung: letzteAusloesungMs,
     ausloesungTeile,

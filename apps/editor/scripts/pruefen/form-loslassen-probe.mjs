@@ -5,13 +5,25 @@
 // FALL=ohr: Ohr aus dem senkrechten Ring (wie form-detail-probe). FALL=hals: obere Kreuzung in der Seite 160 hoch (Flasche).
 // FALL=ruessel: neuer Punkt auf der Mitte, weit hinaus (+320/−70). SCHRITTE: Mausschritte des Zugs (Standard 30).
 // Varianten über KURVEN_URL (z. B. ?verdichten=0, ?genau=0).
+// Seit 10.11. (Gegenprüfung G3): HALTEN=<ms> hält die Maus nach der letzten Bewegung so lange still (Standard 150, 0 = sofort loslassen),
+// PAUSE=<ms> wartet zwischen den Mausschritten (16 ≈ ein Schritt je Bild), GPU=1 nimmt die echte Grafikkarte (sonst rechnet der
+// Software-Renderer jedes Bild ≈ 100 ms lang, und die Maus kommt nur zehnmal je Sekunde an). Der Stand vor dem Loslassen (A) und der
+// gleich danach (B) werden im Fenster festgehalten, genau vor und nach der Behandlung des Loslassens. REST=<Runden>: nach dem Halten,
+// vor dem Loslassen noch so viele Runden im laufenden Zug (wie weit ist die Haut von der Ruhe entfernt, wenn der Löser aufhört?).
+// FERN=<Einheiten>: je Bild des Zugs, wie weit sich die Haut fern vom Griff (weiter als so viele Einheiten vom Anfang des Zugs) gegen
+// das Bild davor bewegt (Ausschläge der ganzen Haut, wenn ein Löser neu anfängt).
+// SICHERN=<datei>: den Stand vor dem Loslassen und den Endstand als JSON ablegen; VERGLEICH=<datei>: beide gegen einen abgelegten
+// Lauf messen (hängt die Form am Weg, z. B. an der Geschwindigkeit des Zugs?).
 // Aufruf aus apps/editor: node scripts/pruefen/form-loslassen-probe.mjs
+import { readFileSync, writeFileSync } from 'node:fs';
 import { chromium } from '@playwright/test';
 
 const fall = process.env.FALL ?? 'hals';
 const schritte = Number(process.env.SCHRITTE ?? 30);
 const basis = process.env.KURVEN_URL ?? 'http://localhost:5193/kurven.html';
-const browser = await chromium.launch();
+const halten = Number(process.env.HALTEN ?? 150);
+const pause = Number(process.env.PAUSE ?? 0);
+const browser = await chromium.launch(process.env.GPU ? { args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] } : {});
 const seite = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1 });
 const fehler = [];
 seite.on('console', (m) => {
@@ -218,16 +230,79 @@ await seite.waitForTimeout(1500);
 
 const [x0, y0] = xy(await bild(ansicht, start));
 const [x1, y1] = xy(await bild(ansicht, ziel));
+// Stand genau vor und genau nach der Behandlung des Loslassens: Der erste Listener (Fenster, Erfassungsphase) läuft vor dem des Blatts,
+// der zweite (Fenster, Blasenphase) danach.
+await seite.evaluate(() => {
+  const K = window.__kurven;
+  const schnapp = () => ({ P: K.lagen(), T: K.dreiecke(), z: K.zeiten() });
+  const probe = (window.__probe = { schnapp, nachZug: null, vorLos: null, nachLos: null, bilder: 0, zaehlt: true });
+  window.addEventListener('pointerup', () => (probe.vorLos = schnapp()), { capture: true, once: true });
+  window.addEventListener('pointerup', () => ((probe.nachLos = schnapp()), (probe.zaehlt = false)), { once: true });
+  const bild = () => {
+    if (!probe.zaehlt) return;
+    probe.bilder++;
+    requestAnimationFrame(bild);
+  };
+  requestAnimationFrame(bild);
+});
+if (process.env.FERN)
+  await seite.evaluate(
+    ([q, r]) => {
+      const K2 = window.__kurven;
+      const rec = (window.__fern = { bilder: [], aus: false });
+      let vor = Float64Array.from(K2.lagen());
+      const t0 = performance.now();
+      const tick = () => {
+        if (rec.aus) return;
+        const P = K2.lagen();
+        if (P.length !== vor.length) rec.bilder.push({ t: Math.round(performance.now() - t0), netz: P.length / 3 });
+        else {
+          let weg = 0;
+          for (let v = 0; v < P.length; v += 3) {
+            if (Math.hypot(vor[v] - q.x, vor[v + 1] - q.y, Math.abs(vor[v + 2]) - Math.abs(q.z)) <= r) continue;
+            const e = Math.hypot(P[v] - vor[v], P[v + 1] - vor[v + 1], P[v + 2] - vor[v + 2]);
+            if (e > weg) weg = e;
+          }
+          if (weg > 0) rec.bilder.push({ t: Math.round(performance.now() - t0), weg });
+        }
+        vor = Float64Array.from(P);
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    },
+    [start, Number(process.env.FERN)],
+  );
 await seite.mouse.move(x0, y0);
 await seite.mouse.down();
+const bilder0 = await seite.evaluate(() => window.__probe.bilder);
 const tz0 = Date.now();
-for (let i = 1; i <= schritte; i++) await seite.mouse.move(x0 + ((x1 - x0) * i) / schritte, y0 + ((y1 - y0) * i) / schritte);
+for (let i = 1; i <= schritte; i++) {
+  await seite.mouse.move(x0 + ((x1 - x0) * i) / schritte, y0 + ((y1 - y0) * i) / schritte);
+  if (pause) await seite.waitForTimeout(pause);
+}
 const zugMs = Date.now() - tz0;
-await seite.waitForTimeout(150);
-const A = await schnapp();
+if (halten) {
+  await seite.evaluate(() => (window.__probe.nachZug = window.__probe.schnapp()));
+  await seite.waitForTimeout(halten);
+}
+const bilderZug = (await seite.evaluate(() => window.__probe.bilder)) - bilder0;
+const fernBilder = process.env.FERN
+  ? await seite.evaluate(() => {
+      window.__fern.aus = true;
+      return window.__fern.bilder;
+    })
+  : null;
+const vorRest = process.env.REST ? await seite.evaluate(() => ({ offen: window.__kurven.zeiten().offen, nachRunden: window.__kurven.zeiten().nachRunden })) : null;
+// REST=40 (vierzig Runden auf einmal) oder REST=1x40 (vierzigmal eine Runde, jede Bewegung einzeln)
+const [restJe, restMal] = (process.env.REST ?? '').includes('x') ? process.env.REST.split('x').map(Number) : [Number(process.env.REST ?? 0), 1];
+const restFolge = [];
+const vorDemRest = process.env.REST ? await schnapp() : null;
+if (process.env.REST) for (let k = 0; k < restMal; k++) restFolge.push(await seite.evaluate((n) => window.__kurven.weiterrechnen?.(n) ?? null, restJe));
+const rest = process.env.REST ? (restFolge.some((v) => v === null) ? null : restFolge.reduce((a, v) => a + v, 0)) : null;
+const nachDemRest = process.env.REST ? await schnapp() : null;
 const t0 = Date.now();
 await seite.mouse.up();
-const B = await schnapp();
+const { A0, A, B } = await seite.evaluate(() => ({ A0: window.__probe.nachZug, A: window.__probe.vorLos, B: window.__probe.nachLos }));
 const tB = Date.now() - t0;
 const verlauf = [];
 let letzt = B;
@@ -251,7 +326,11 @@ const a1 = await bild('front', { x: 0, y: 0, z: 1 });
 const px = Math.hypot(a1.x - a0.x, a1.y - a0.y) / ((await K('ausschnitt', 'front')).zoom || 1);
 
 const zz = A.z.zug.slice(-schritte);
-console.log(`${fall} (${basis.split('?')[1] ?? 'Standard'}): ${schritte} Mausschritte in ${zugMs} ms, je Bewegung ${f2(zz.reduce((s, v) => s + v, 0) / zz.length)} ms (max ${Math.max(...zz).toFixed(0)}), ${A.P.length / 3} Punkte vor dem Loslassen · ${px.toFixed(2)} px je Einheit bei 100 %`);
+console.log(
+  `${fall} (${basis.split('/').pop()}): ${schritte} Mausschritte in ${zugMs} ms (Pause ${pause} ms), ${bilderZug} Bilder bis zum Loslassen, gehalten ${halten} ms · ` +
+    `Löser je Bewegung bzw. Bild ${f2(zz.reduce((s, v) => s + v, 0) / zz.length)} ms (max ${Math.max(...zz).toFixed(0)}), ${A.P.length / 3} Punkte vor dem Loslassen · ${px.toFixed(2)} px je Einheit bei 100 %`,
+);
+if (A.z.offen !== undefined) console.log(`  vor dem Loslassen: Haut rechnet noch ${A.z.offen ? 'ja' : 'nein'}, ${A.z.nachRunden} Runden seit der letzten Mausbewegung`);
 console.log(
   `  Stufen im Zug: ${A.z.stufen ?? 0} im Vordergrund (letzte ${A.z.stufeMs ?? 0} ms), ${A.z.hintergrund ?? 0} eingewechselt aus dem Hintergrund ` +
     `(Auslösen ${A.z.ausloesung ?? 0} ms [${(A.z.ausloesungTeile ?? []).join('/')}], Einwechseln ${A.z.einwechslung ?? 0} ms, Auslösen bis Einwechseln ${A.z.hintergrundMs ?? 0} ms)`,
@@ -261,13 +340,35 @@ const zeile = (name, X, Y, t) => {
   const m = bewegung(X, Y);
   console.log(
     `  ${name}${t !== undefined ? ` (nach ${t} ms)` : ''}: ${Y.P.length / 3} Punkte · Haut bewegt bis ${f2(m.max)} (99 % ${f2(m.p99)}, Mittel ${f2(m.mittel)}, ${m.ueber1} Punkte über 1) ` +
-      `bei (${m.wo.map((v) => v.toFixed(0)).join(', ')})`,
+      (m.wo ? `bei (${m.wo.map((v) => v.toFixed(0)).join(', ')})` : '(nichts bewegt)'),
   );
 };
+if (fernBilder) {
+  const w = fernBilder.filter((b) => !b.netz).map((b) => b.weg);
+  console.log(
+    `  fern vom Griff (> ${process.env.FERN} Einheiten) je Bild gegen das Bild davor: ${w.length} Bilder mit Bewegung, größte ${f2(Math.max(0, ...w))}, ` +
+      `über 0,5: ${w.filter((x) => x > 0.5).length}, über 0,18: ${w.filter((x) => x > 0.18).length}; Netzwechsel ${fernBilder.filter((b) => b.netz).length}`,
+  );
+  console.log(`    Folge (ms: Einheiten, N = neues Netz): ${fernBilder.map((b) => (b.netz ? `${b.t}:N` : `${b.t}:${b.weg.toFixed(2)}`)).join(' ')}`);
+}
+if (A0) zeile(`während des Haltens (${halten} ms)`, A0, A);
+if (rest !== null)
+  console.log(
+    `  Rest zur Ruhe: nach dem Halten (Löser ${vorRest.offen ? 'rechnet noch' : 'steht'}, ${vorRest.nachRunden} Runden) bewegen ${process.env.REST} weitere Runden die Punkte um ${f2(rest)}` +
+      (restMal > 1 ? ` (Summe der Runden; je Runde: ${restFolge.map((v) => v.toFixed(3)).join(' ')})` : '') +
+      ' (mit dem Gleiten längs der Fläche); die Form:',
+  );
+if (rest !== null) zeile('  Form nach diesen Runden gegen vorher', vorDemRest, nachDemRest);
 console.log(`  davon die Runden am Ende (Nachhinken): bis ${nachEnde?.toFixed(2)}`);
 zeile('Loslassen sofort (Runden am Ende + Verdichten)', A, B, tB);
 verlauf.forEach((v, k) => zeile(`danach Änderung ${k + 1}`, k === 0 ? B : verlauf[k - 1].S, v.S, v.t));
 zeile('Endstand gegen vor dem Loslassen', A, C);
+if (process.env.SICHERN) writeFileSync(process.env.SICHERN, JSON.stringify({ A: { P: A.P, T: A.T }, C: { P: C.P, T: C.T } }));
+if (process.env.VERGLEICH) {
+  const V = JSON.parse(readFileSync(process.env.VERGLEICH, 'utf8'));
+  zeile('gegen den abgelegten Lauf, vor dem Loslassen', V.A, A);
+  zeile('gegen den abgelegten Lauf, Endstand', V.C, C);
+}
 // NACH=<Runden>: danach noch so viele Runden über die ganze Haut — ist der Endstand fertig gerechnet?
 if (process.env.NACH) {
   // NACH=40 oder NACH=5x8 (achtmal fünf Runden, jede Bewegung einzeln)

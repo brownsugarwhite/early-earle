@@ -1,0 +1,140 @@
+G3 im Fenster (10.11. nachmittags), form-loslassen-probe.mjs mit GPU=1 FALL=ohr PAUSE=16, je ein Lauf. kurven-alt.html = Stand vor G3 (0f80f0e2) als zweite Seite auf demselben Server; kurven.html = erster Stand von G3 (Maß für „steht“ noch über die ganze Bewegung).
+=== kurven-alt.html  HALTEN=0
+ohr (kurven-alt.html?gewichte=geometrie): 30 Mausschritte in 1385 ms (Pause 16 ms), 74 Bilder bis zum Loslassen, gehalten 0 ms · Löser je Bewegung bzw. Bild 10.73 ms (max 19), 5180 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  davon die Runden am Ende (Nachhinken): bis 0.90
+  Loslassen sofort (Runden am Ende + Verdichten) (nach 289 ms): 5290 Punkte · Haut bewegt bis 1.30 (99 % 0.85, Mittel 0.10, 22 Punkte über 1) bei (-26, 141, -184)
+  danach Änderung 1 (nach 423 ms): 5290 Punkte · Haut bewegt bis 0.60 (99 % 0.22, Mittel 0.02, 0 Punkte über 1) bei (5, 109, -190)
+  Endstand gegen vor dem Loslassen: 5290 Punkte · Haut bewegt bis 1.57 (99 % 1.02, Mittel 0.12, 74 Punkte über 1) bei (-24, 107, -196)
+  Zeiten: Verdichten 21 ms (124 neu, 7 gelegt) · Zerlegen in der Ruhe 111 ms · Setzen samt Nachverfeinern 134 ms
+=== kurven.html  HALTEN=0
+ohr (kurven.html?gewichte=geometrie): 30 Mausschritte in 1488 ms (Pause 16 ms), 77 Bilder bis zum Loslassen, gehalten 0 ms · Löser je Bewegung bzw. Bild 8.99 ms (max 11), 5206 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  vor dem Loslassen: Haut rechnet noch nein, 6 Runden seit der letzten Mausbewegung
+  davon die Runden am Ende (Nachhinken): bis 0.00
+  Loslassen sofort (Runden am Ende + Verdichten) (nach 284 ms): 5282 Punkte · Haut bewegt bis 0.79 (99 % 0.06, Mittel 0.00, 0 Punkte über 1) bei (5, 110, 189)
+  danach Änderung 1 (nach 413 ms): 5282 Punkte · Haut bewegt bis 0.51 (99 % 0.29, Mittel 0.03, 0 Punkte über 1) bei (5, 109, -190)
+  Endstand gegen vor dem Loslassen: 5282 Punkte · Haut bewegt bis 1.30 (99 % 0.30, Mittel 0.03, 2 Punkte über 1) bei (5, 109, 190)
+  Zeiten: Verdichten 25 ms (76 neu, 0 gelegt) · Zerlegen in der Ruhe 110 ms · Setzen samt Nachverfeinern 140 ms
+=== kurven-alt.html  HALTEN=600
+ohr (kurven-alt.html?gewichte=geometrie): 30 Mausschritte in 1467 ms (Pause 16 ms), 122 Bilder bis zum Loslassen, gehalten 600 ms · Löser je Bewegung bzw. Bild 11.05 ms (max 22), 5178 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  während des Haltens (600 ms): 5178 Punkte · Haut bewegt bis 0.00 (99 % 0.00, Mittel 0.00, 0 Punkte über 1) (nichts bewegt)
+  davon die Runden am Ende (Nachhinken): bis 1.06
+  Loslassen sofort (Runden am Ende + Verdichten) (nach 407 ms): 5294 Punkte · Haut bewegt bis 1.40 (99 % 0.97, Mittel 0.11, 38 Punkte über 1) bei (-59, 127, -172)
+  danach Änderung 1 (nach 542 ms): 5294 Punkte · Haut bewegt bis 0.54 (99 % 0.24, Mittel 0.03, 0 Punkte über 1) bei (5, 109, -190)
+  Endstand gegen vor dem Loslassen: 5294 Punkte · Haut bewegt bis 1.71 (99 % 1.18, Mittel 0.14, 150 Punkte über 1) bei (-59, 127, -172)
+  Zeiten: Verdichten 22 ms (128 neu, 6 gelegt) · Zerlegen in der Ruhe 113 ms · Setzen samt Nachverfeinern 141 ms
+=== kurven.html  HALTEN=600
+ohr (kurven.html?gewichte=geometrie): 30 Mausschritte in 1553 ms (Pause 16 ms), 125 Bilder bis zum Loslassen, gehalten 600 ms · Löser je Bewegung bzw. Bild 9.20 ms (max 12), 5188 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  vor dem Loslassen: Haut rechnet noch nein, 8 Runden seit der letzten Mausbewegung
+  während des Haltens (600 ms): 5188 Punkte · Haut bewegt bis 0.40 (99 % 0.36, Mittel 0.04, 0 Punkte über 1) bei (-65, 117, -171)
+  davon die Runden am Ende (Nachhinken): bis 0.00
+  Loslassen sofort (Runden am Ende + Verdichten) (nach 410 ms): 5276 Punkte · Haut bewegt bis 0.76 (99 % 0.07, Mittel 0.00, 0 Punkte über 1) bei (6, 111, -189)
+  danach Änderung 1 (nach 539 ms): 5280 Punkte · Haut bewegt bis 0.70 (99 % 0.32, Mittel 0.03, 0 Punkte über 1) bei (-25, 142, -184)
+  Endstand gegen vor dem Loslassen: 5280 Punkte · Haut bewegt bis 1.31 (99 % 0.35, Mittel 0.03, 2 Punkte über 1) bei (7, 111, -189)
+  Zeiten: Verdichten 17 ms (4 neu, 0 gelegt) · Zerlegen in der Ruhe 105 ms · Setzen samt Nachverfeinern 126 ms
+=== kurven-alt.html &dreiecke=14000 HALTEN=0
+ohr (kurven-alt.html?gewichte=geometrie&dreiecke=14000): 30 Mausschritte in 1808 ms (Pause 16 ms), 88 Bilder bis zum Loslassen, gehalten 0 ms · Löser je Bewegung bzw. Bild 13.06 ms (max 28), 10937 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  davon die Runden am Ende (Nachhinken): bis 1.44
+  Loslassen sofort (Runden am Ende + Verdichten) (nach 610 ms): 11353 Punkte · Haut bewegt bis 1.43 (99 % 1.15, Mittel 0.12, 276 Punkte über 1) bei (-35, 151, 152)
+  danach Änderung 1 (nach 1171 ms): 11359 Punkte · Haut bewegt bis 0.32 (99 % 0.12, Mittel 0.02, 0 Punkte über 1) bei (4, 114, -191)
+  Endstand gegen vor dem Loslassen: 11359 Punkte · Haut bewegt bis 1.57 (99 % 1.21, Mittel 0.12, 330 Punkte über 1) bei (-37, 123, -190)
+  Zeiten: Verdichten 41 ms (6 neu, 0 gelegt) · Zerlegen in der Ruhe 318 ms · Setzen samt Nachverfeinern 380 ms
+=== kurven.html &dreiecke=14000 HALTEN=0
+ohr (kurven.html?gewichte=geometrie&dreiecke=14000): 30 Mausschritte in 2016 ms (Pause 16 ms), 96 Bilder bis zum Loslassen, gehalten 0 ms · Löser je Bewegung bzw. Bild 11.11 ms (max 17), 11021 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  vor dem Loslassen: Haut rechnet noch ja, 4 Runden seit der letzten Mausbewegung
+  davon die Runden am Ende (Nachhinken): bis 0.11
+  Loslassen sofort (Runden am Ende + Verdichten) (nach 531 ms): 11367 Punkte · Haut bewegt bis 0.44 (99 % 0.17, Mittel 0.01, 0 Punkte über 1) bei (4, 114, -191)
+  danach Änderung 1 (nach 1132 ms): 11371 Punkte · Haut bewegt bis 0.29 (99 % 0.13, Mittel 0.02, 0 Punkte über 1) bei (4, 114, -191)
+  Endstand gegen vor dem Loslassen: 11371 Punkte · Haut bewegt bis 0.74 (99 % 0.24, Mittel 0.03, 0 Punkte über 1) bei (4, 114, -191)
+  Zeiten: Verdichten 41 ms (4 neu, 0 gelegt) · Zerlegen in der Ruhe 308 ms · Setzen samt Nachverfeinern 377 ms
+=== kurven-alt.html &dreiecke=14000 HALTEN=600
+ohr (kurven-alt.html?gewichte=geometrie&dreiecke=14000): 30 Mausschritte in 1884 ms (Pause 16 ms), 140 Bilder bis zum Loslassen, gehalten 600 ms · Löser je Bewegung bzw. Bild 13.22 ms (max 26), 11351 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  während des Haltens (600 ms): 11351 Punkte · Haut bewegt bis 0.48 (99 % 0.20, Mittel 0.01, 0 Punkte über 1) bei (-5, 146, 177)
+  davon die Runden am Ende (Nachhinken): bis 0.85
+  Loslassen sofort (Runden am Ende + Verdichten) (nach 812 ms): 11351 Punkte · Haut bewegt bis 0.77 (99 % 0.57, Mittel 0.07, 0 Punkte über 1) bei (22, 93, 126)
+  danach Änderung 1 (nach 1058 ms): 11351 Punkte · Haut bewegt bis 0.19 (99 % 0.13, Mittel 0.02, 0 Punkte über 1) bei (-67, 135, 146)
+  Endstand gegen vor dem Loslassen: 11351 Punkte · Haut bewegt bis 0.84 (99 % 0.64, Mittel 0.07, 0 Punkte über 1) bei (22, 93, 126)
+  Zeiten: Verdichten 60 ms (10 neu, 5 gelegt) · Zerlegen in der Ruhe 323 ms · Setzen samt Nachverfeinern 380 ms
+=== kurven.html &dreiecke=14000 HALTEN=600
+ohr (kurven.html?gewichte=geometrie&dreiecke=14000): 30 Mausschritte in 2036 ms (Pause 16 ms), 150 Bilder bis zum Loslassen, gehalten 600 ms · Löser je Bewegung bzw. Bild 11.13 ms (max 17), 11271 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  vor dem Loslassen: Haut rechnet noch nein, 4 Runden seit der letzten Mausbewegung
+  während des Haltens (600 ms): 11271 Punkte · Haut bewegt bis 0.75 (99 % 0.20, Mittel 0.02, 0 Punkte über 1) bei (4, 114, -191)
+  davon die Runden am Ende (Nachhinken): bis 0.00
+  Loslassen sofort (Runden am Ende + Verdichten) (nach 704 ms): 11341 Punkte · Haut bewegt bis 0.36 (99 % 0.00, Mittel 0.00, 0 Punkte über 1) bei (1, 146, 165)
+  danach Änderung 1 (nach 949 ms): 11341 Punkte · Haut bewegt bis 0.16 (99 % 0.04, Mittel 0.01, 0 Punkte über 1) bei (14, 124, -171)
+  Endstand gegen vor dem Loslassen: 11341 Punkte · Haut bewegt bis 0.52 (99 % 0.04, Mittel 0.01, 0 Punkte über 1) bei (1, 146, 165)
+  Zeiten: Verdichten 50 ms (90 neu, 10 gelegt) · Zerlegen in der Ruhe 316 ms · Setzen samt Nachverfeinern 377 ms
+
+--- 23 400 Punkte, 2 s gehalten
+=== kurven-alt.html 23k HALTEN=2000
+ohr (kurven-alt.html?gewichte=geometrie&dreiecke=30000): 30 Mausschritte in 3033 ms (Pause 16 ms), 246 Bilder bis zum Loslassen, gehalten 2000 ms · Löser je Bewegung bzw. Bild 49.49 ms (max 135), 23522 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  während des Haltens (2000 ms): 23522 Punkte · Haut bewegt bis 1.16 (99 % 0.18, Mittel 0.01, 2 Punkte über 1) bei (95, 51, 80)
+  davon die Runden am Ende (Nachhinken): bis 11.44
+  Loslassen sofort (Runden am Ende + Verdichten) (nach 1797 ms): 24492 Punkte · Haut bewegt bis 9.07 (99 % 5.12, Mittel 0.79, 6302 Punkte über 1) bei (-112, 53, 97)
+  danach Änderung 1 (nach 2261 ms): 24658 Punkte · Haut bewegt bis 8.30 (99 % 4.25, Mittel 0.61, 4188 Punkte über 1) bei (-122, 50, -93)
+  danach Änderung 2 (nach 3662 ms): 24672 Punkte · Haut bewegt bis 0.58 (99 % 0.33, Mittel 0.07, 0 Punkte über 1) bei (-123, 59, -85)
+  danach Änderung 3 (nach 4988 ms): 24682 Punkte · Haut bewegt bis 0.46 (99 % 0.15, Mittel 0.02, 0 Punkte über 1) bei (-116, 57, -83)
+  danach Änderung 4 (nach 6242 ms): 24682 Punkte · Haut bewegt bis 0.50 (99 % 0.01, Mittel 0.00, 0 Punkte über 1) bei (-116, 58, -83)
+  Endstand gegen vor dem Loslassen: 24682 Punkte · Haut bewegt bis 15.04 (99 % 8.72, Mittel 1.42, 9862 Punkte über 1) bei (-119, 51, -96)
+  Zeiten: Verdichten 74 ms (10 neu, 0 gelegt) · Zerlegen in der Ruhe 1078 ms · Setzen samt Nachverfeinern 1208 ms
+=== kurven.html 23k HALTEN=2000
+ohr (kurven.html?gewichte=geometrie&dreiecke=30000): 30 Mausschritte in 5262 ms (Pause 16 ms), 199 Bilder bis zum Loslassen, gehalten 2000 ms · Löser je Bewegung bzw. Bild 26.18 ms (max 48), 24490 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  vor dem Loslassen: Haut rechnet noch nein, 13 Runden seit der letzten Mausbewegung
+  während des Haltens (2000 ms): 24490 Punkte · Haut bewegt bis 5.49 (99 % 1.98, Mittel 0.28, 2298 Punkte über 1) bei (-114, 48, -92)
+  davon die Runden am Ende (Nachhinken): bis 0.00
+  Loslassen sofort (Runden am Ende + Verdichten) (nach 1551 ms): 24514 Punkte · Haut bewegt bis 0.09 (99 % 0.00, Mittel 0.00, 0 Punkte über 1) bei (20, 101, -117)
+  danach Änderung 1 (nach 2042 ms): 24514 Punkte · Haut bewegt bis 0.67 (99 % 0.24, Mittel 0.02, 0 Punkte über 1) bei (-120, 51, -94)
+  Endstand gegen vor dem Loslassen: 24514 Punkte · Haut bewegt bis 0.74 (99 % 0.25, Mittel 0.02, 0 Punkte über 1) bei (-119, 51, -95)
+  Zeiten: Verdichten 144 ms (66 neu, 21 gelegt) · Zerlegen in der Ruhe 1072 ms · Setzen samt Nachverfeinern 1215 ms
+
+--- schneller Zug (PAUSE=0), sofort losgelassen
+=== kurven-alt.html  schneller Zug, sofort loslassen
+ohr (kurven-alt.html?gewichte=geometrie): 30 Mausschritte in 889 ms (Pause 0 ms), 46 Bilder bis zum Loslassen, gehalten 0 ms · Löser je Bewegung bzw. Bild 10.61 ms (max 22), 5092 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  davon die Runden am Ende (Nachhinken): bis 0.62
+  Loslassen sofort (Runden am Ende + Verdichten) (nach 313 ms): 5272 Punkte · Haut bewegt bis 1.16 (99 % 0.78, Mittel 0.09, 22 Punkte über 1) bei (-18, 148, -174)
+  danach Änderung 1 (nach 493 ms): 5292 Punkte · Haut bewegt bis 2.10 (99 % 1.58, Mittel 0.21, 312 Punkte über 1) bei (-61, 127, -170)
+  Endstand gegen vor dem Loslassen: 5292 Punkte · Haut bewegt bis 2.95 (99 % 2.27, Mittel 0.30, 504 Punkte über 1) bei (-48, 114, -187)
+  Zeiten: Verdichten 19 ms (20 neu, 0 gelegt) · Zerlegen in der Ruhe 105 ms · Setzen samt Nachverfeinern 127 ms
+=== kurven.html  schneller Zug, sofort loslassen
+ohr (kurven.html?gewichte=geometrie): 30 Mausschritte in 838 ms (Pause 0 ms), 42 Bilder bis zum Loslassen, gehalten 0 ms · Löser je Bewegung bzw. Bild 9.35 ms (max 11), 5072 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  vor dem Loslassen: Haut rechnet noch ja, 2 Runden seit der letzten Mausbewegung
+  davon die Runden am Ende (Nachhinken): bis 0.50
+  Loslassen sofort (Runden am Ende + Verdichten) (nach 276 ms): 5280 Punkte · Haut bewegt bis 1.11 (99 % 0.75, Mittel 0.07, 12 Punkte über 1) bei (-11, 141, -184)
+  danach Änderung 1 (nach 490 ms): 5294 Punkte · Haut bewegt bis 2.09 (99 % 1.59, Mittel 0.21, 298 Punkte über 1) bei (-61, 127, -171)
+  Endstand gegen vor dem Loslassen: 5294 Punkte · Haut bewegt bis 2.85 (99 % 2.14, Mittel 0.28, 452 Punkte über 1) bei (-39, 117, -192)
+  Zeiten: Verdichten 20 ms (14 neu, 0 gelegt) · Zerlegen in der Ruhe 107 ms · Setzen samt Nachverfeinern 134 ms
+=== kurven-alt.html &dreiecke=14000 schneller Zug, sofort loslassen
+ohr (kurven-alt.html?gewichte=geometrie&dreiecke=14000): 30 Mausschritte in 1313 ms (Pause 0 ms), 61 Bilder bis zum Loslassen, gehalten 0 ms · Löser je Bewegung bzw. Bild 13.34 ms (max 26), 10775 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  davon die Runden am Ende (Nachhinken): bis 2.74
+  Loslassen sofort (Runden am Ende + Verdichten) (nach 563 ms): 11377 Punkte · Haut bewegt bis 2.87 (99 % 2.53, Mittel 0.31, 1196 Punkte über 1) bei (-49, 136, -172)
+  danach Änderung 1 (nach 1132 ms): 11385 Punkte · Haut bewegt bis 0.66 (99 % 0.38, Mittel 0.04, 0 Punkte über 1) bei (-26, 105, -194)
+  Endstand gegen vor dem Loslassen: 11385 Punkte · Haut bewegt bis 3.33 (99 % 2.89, Mittel 0.34, 1336 Punkte über 1) bei (-53, 127, -177)
+  Zeiten: Verdichten 40 ms (8 neu, 0 gelegt) · Zerlegen in der Ruhe 313 ms · Setzen samt Nachverfeinern 374 ms
+=== kurven.html &dreiecke=14000 schneller Zug, sofort loslassen
+ohr (kurven.html?gewichte=geometrie&dreiecke=14000): 30 Mausschritte in 1121 ms (Pause 0 ms), 52 Bilder bis zum Loslassen, gehalten 0 ms · Löser je Bewegung bzw. Bild 12.08 ms (max 20), 10623 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  vor dem Loslassen: Haut rechnet noch ja, 1 Runden seit der letzten Mausbewegung
+  davon die Runden am Ende (Nachhinken): bis 2.01
+  Loslassen sofort (Runden am Ende + Verdichten) (nach 588 ms): 11407 Punkte · Haut bewegt bis 2.19 (99 % 1.87, Mittel 0.26, 1030 Punkte über 1) bei (-48, 136, 173)
+  danach Änderung 1 (nach 1173 ms): 11417 Punkte · Haut bewegt bis 0.80 (99 % 0.42, Mittel 0.05, 0 Punkte über 1) bei (-7, 112, -195)
+  Endstand gegen vor dem Loslassen: 11417 Punkte · Haut bewegt bis 2.66 (99 % 2.27, Mittel 0.27, 1146 Punkte über 1) bei (-52, 127, -177)
+  Zeiten: Verdichten 36 ms (10 neu, 0 gelegt) · Zerlegen in der Ruhe 317 ms · Setzen samt Nachverfeinern 373 ms
+=== kurven-alt.html &dreiecke=30000 schneller Zug, sofort loslassen
+ohr (kurven-alt.html?gewichte=geometrie&dreiecke=30000): 30 Mausschritte in 2496 ms (Pause 0 ms), 63 Bilder bis zum Loslassen, gehalten 0 ms · Löser je Bewegung bzw. Bild 48.59 ms (max 124), 23994 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  davon die Runden am Ende (Nachhinken): bis 3.36
+  Loslassen sofort (Runden am Ende + Verdichten) (nach 1431 ms): 24924 Punkte · Haut bewegt bis 3.35 (99 % 3.08, Mittel 0.52, 4208 Punkte über 1) bei (-60, 128, -164)
+  danach Änderung 1 (nach 2401 ms): 25170 Punkte · Haut bewegt bis 6.96 (99 % 4.74, Mittel 0.71, 6194 Punkte über 1) bei (-117, -36, 86)
+  danach Änderung 2 (nach 3836 ms): 25212 Punkte · Haut bewegt bis 2.36 (99 % 1.30, Mittel 0.16, 468 Punkte über 1) bei (-113, 51, -97)
+  danach Änderung 3 (nach 5294 ms): 25236 Punkte · Haut bewegt bis 1.16 (99 % 0.17, Mittel 0.03, 4 Punkte über 1) bei (-105, 51, -89)
+  danach Änderung 4 (nach 6624 ms): 25236 Punkte · Haut bewegt bis 0.84 (99 % 0.10, Mittel 0.01, 0 Punkte über 1) bei (-105, 50, -90)
+  Endstand gegen vor dem Loslassen: 25236 Punkte · Haut bewegt bis 10.43 (99 % 6.75, Mittel 1.35, 9804 Punkte über 1) bei (-112, 50, -99)
+  Zeiten: Verdichten 79 ms (24 neu, 0 gelegt) · Zerlegen in der Ruhe 1124 ms · Setzen samt Nachverfeinern 1300 ms
+=== kurven.html &dreiecke=30000 schneller Zug, sofort loslassen
+ohr (kurven.html?gewichte=geometrie&dreiecke=30000): 30 Mausschritte in 5377 ms (Pause 0 ms), 90 Bilder bis zum Loslassen, gehalten 0 ms · Löser je Bewegung bzw. Bild 36.56 ms (max 64), 23710 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  vor dem Loslassen: Haut rechnet noch ja, 3 Runden seit der letzten Mausbewegung
+  davon die Runden am Ende (Nachhinken): bis 1.55
+  Loslassen sofort (Runden am Ende + Verdichten) (nach 1356 ms): 24430 Punkte · Haut bewegt bis 0.95 (99 % 0.30, Mittel 0.06, 0 Punkte über 1) bei (-110, 55, -93)
+  danach Änderung 1 (nach 2157 ms): 24474 Punkte · Haut bewegt bis 2.68 (99 % 1.04, Mittel 0.11, 282 Punkte über 1) bei (-118, 55, -97)
+  danach Änderung 2 (nach 3468 ms): 24484 Punkte · Haut bewegt bis 2.43 (99 % 0.39, Mittel 0.03, 12 Punkte über 1) bei (-114, 56, -94)
+  danach Änderung 3 (nach 4811 ms): 24504 Punkte · Haut bewegt bis 2.91 (99 % 0.15, Mittel 0.01, 8 Punkte über 1) bei (-115, 53, -96)
+  danach Änderung 4 (nach 5985 ms): 24504 Punkte · Haut bewegt bis 4.92 (99 % 0.27, Mittel 0.03, 12 Punkte über 1) bei (-113, 58, -94)
+  Endstand gegen vor dem Loslassen: 24504 Punkte · Haut bewegt bis 3.05 (99 % 1.23, Mittel 0.18, 416 Punkte über 1) bei (-118, 55, -97)
+  Zeiten: Verdichten 75 ms (20 neu, 0 gelegt) · Zerlegen in der Ruhe 1056 ms · Setzen samt Nachverfeinern 1177 ms
