@@ -120,6 +120,7 @@ import {
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { V2 } from '@ee/shape';
 import { istTrackpad, radFaktor } from '../viewports/ansicht2d';
+import { type WesenStand, auskunft, entpacken, packen, pruefen } from './ablage';
 import {
   type AufraeumAuftrag,
   type AufraeumErgebnis,
@@ -190,9 +191,13 @@ const startUmriss = FORMEN[new URLSearchParams(location.search).get('form') ?? '
 const netz = rundAusSeite(startUmriss, { dreiecke: DREIECKE });
 /** die Haut; jeder neue Loop wird als Kette von Kanten eingesetzt (die Haut wird dabei ersetzt) */
 let haut: Haut = hautAus(netz.positionen, netz.indizes);
-const MK = mittlereKante(haut);
+/**
+ * mittlere Kante des Startnetzes: das Maß für Verdichten, Kreuzungen und die Genauigkeit der Linien. Gehört zum Wesen (ein geladenes
+ * bringt seines mit, `standAnwenden`), nicht zur Adresse.
+ */
+let MK = mittlereKante(haut);
 /** so nah müssen sich zwei Loops kommen, damit sie sich kreuzen */
-const TOL = 0.25 * MK;
+let TOL = 0.25 * MK;
 
 let loops: Loop[] = [];
 let naechsteId = 1;
@@ -366,6 +371,8 @@ type Schnappschuss = {
   pose: PoseStand;
   grund: { haut: Haut; pos: Float64Array; loops: Loop[] } | null;
   ruhe: RuheOffen | null;
+  /** das Maß des Startnetzes (nach „Laden“ oder „Neu“ kann ein Schritt zurück zu einem Wesen mit anderem Maß führen) */
+  mk: number;
 };
 const zurueck: Schnappschuss[] = [];
 const kopieLoop = (l: Loop): Loop => ({
@@ -389,6 +396,7 @@ const schnappschuss = (): Schnappschuss => ({
   pose: poseKopie(pose),
   grund: grund ? { haut: grund.haut, pos: Float64Array.from(grund.haut.pos), loops: grund.loops.map(kopieLoop) } : null,
   ruhe: ruheOffen ? { ...ruheOffen } : null,
+  mk: MK,
 });
 /** Wiederherstellen samt Ziel: ein Schritt aus der Pose führt in die Pose zurück, einer aus der Grundform in die Grundform */
 function wiederherstellen(s: Schnappschuss): void {
@@ -401,6 +409,8 @@ function wiederherstellen(s: Schnappschuss): void {
   } else grund = null;
   pose = s.pose;
   ruheOffen = s.ruhe ? { ...s.ruhe } : null;
+  MK = s.mk;
+  TOL = 0.25 * MK;
   geometrieNeu();
   auswahl = s.auswahl;
   [naechsteId, naechsteKreuzung] = s.ids;
@@ -732,6 +742,7 @@ function ausschnittGeaendert(a: Ansicht): void {
   if (kopf) kopf.textContent = Math.abs(z - 1) < 1e-3 ? NAMEN[a] : `${NAMEN[a]} · ${Math.round(z * 100)} %`;
   blattZeichnen(a);
   neuZeichnen = true;
+  behaltenPlanen();
 }
 
 // ---------- Maul ----------
@@ -1448,6 +1459,7 @@ function allesZeigen(): void {
   knopfO.textContent = oAn ? `Einfluss O · ${Math.round(radius)}` : 'Einfluss O';
   statusZeigen();
   vorrechnenPlanen();
+  behaltenPlanen();
 }
 
 /**
@@ -3744,6 +3756,14 @@ knopfO.addEventListener('click', () => {
 
 window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
+  // ⌘S sichert (unter dem Namen von zuletzt, sonst fragt das Feld danach); der Browser böte sonst an, die Seite zu speichern
+  if ((e.metaKey || e.ctrlKey) && k === 's') {
+    e.preventDefault();
+    if (!zug) sichernKurz();
+    return;
+  }
+  // beim Tippen eines Namens (Sichern) gehören die Tasten dem Feld
+  if (e.target instanceof HTMLInputElement && e.target.type === 'text') return;
   if (zug && zug.modal) {
     if (e.key === 'Escape') zugEnde(false);
     else if (e.key === 'Enter') zugEnde(true);
@@ -3811,6 +3831,469 @@ window.addEventListener('keydown', (e) => {
   } else if (k === 'k') {
     kanteSetzen();
   }
+});
+
+// ---------- Wesen behalten, sichern, laden (10.11., vor G5) ----------
+
+/**
+ * Bis dahin lebte ein Wesen nur im offenen Fenster: Jedes Neuladen begann wieder mit der Kugel, auch das Neuladen von selbst, wenn
+ * sich der Code ändert. Jetzt:
+ * - **Behalten:** Der Stand liegt im Browser (IndexedDB) und ist nach dem Neuladen wieder da, solange die Startform der Adresse
+ *   dieselbe ist (`form`, `dreiecke`). `?behalten=0`: nicht. Proben beginnen ohnehin mit einem leeren Browser.
+ * - **Sichern / Laden:** unter einem Namen als Datei im Ordner `wesen/` des Arbeitsbaums (über den Dev-Server, `vite.config.ts`;
+ *   ohne ihn als Datei über den Browser).
+ * - **Neu:** wieder die Startform.
+ * Laden und Neu sind Schritte wie andere: ⌘Z bringt das Wesen von vorher zurück. Gesichert wird der Stand, den auch Rückgängig
+ * festhält (`ablage.ts`); die Liste der Schritte selbst gehört nicht dazu.
+ */
+const BEHALTEN = new URLSearchParams(location.search).get('behalten') !== '0';
+/** die Startform dieser Adresse: Ein behaltenes Wesen kommt nur zur selben zurück */
+const START_KENNUNG = `${new URLSearchParams(location.search).get('form') ?? 'kugel'}|${DREIECKE}`;
+
+/** Der Stand von jetzt als Wesen (die Lagen als Kopie, die Loops, wie sie sind: gleich packen) */
+function standJetzt(): WesenStand {
+  return {
+    mk: MK,
+    haut: hautFlach(haut),
+    loops,
+    ids: [naechsteId, naechsteKreuzung],
+    maul: maul ? { id: maul.id } : null,
+    pose: { kiefer: pose.kiefer, schaedel: pose.schaedel, delta: pose.delta },
+    grund: grund ? { haut: hautFlach(grund.haut), loops: grund.loops } : null,
+    ruhe: ruheOffen ? { setzen: ruheOffen.setzen, nurInRuhe: ruheOffen.nurInRuhe, verdichten: ruheOffen.verdichten, ziele: ruheOffen.ziele } : null,
+    sicht: { seite: { ...ausschnitt.seite }, front: { ...ausschnitt.front }, top: { ...ausschnitt.top } },
+    zeit: new Date().toISOString(),
+    quelle: `${location.pathname.split('/').pop() ?? ''}${location.search}`,
+  };
+}
+/** die Startform dieser Sitzung (für „Neu“) */
+const START_STAND: WesenStand = { ...standJetzt(), loops: [] };
+
+/** die offenen Ziele eines Stands, wenn sie zu seinen Loops passen (je Loop nichts oder 3 Zahlen je Probe) */
+function zieleAus(st: WesenStand): (Float64Array | null)[] | null {
+  const z = st.ruhe?.ziele;
+  if (!Array.isArray(z) || z.length !== st.loops.length) return null;
+  const passt = z.every((d, i) => d === null || (d instanceof Float64Array && d.length === 3 * st.loops[i]!.proben.length && d.every(Number.isFinite)));
+  return passt ? z.map((d) => (d ? Float64Array.from(d) : null)) : null;
+}
+
+/**
+ * Ein Wesen ins Fenster übernehmen (geladen, behalten oder die Startform). Was gerade rechnet oder ansteht, endet; die Zerlegung
+ * von vorher gilt nicht mehr. Kein Schritt für ⌘Z: Den legt an, wer es will (`zurueck.push(schnappschuss())` davor).
+ */
+function standAnwenden(st: WesenStand): void {
+  const h = hautAusFlach({ ...st.haut, pos: Float64Array.from(st.haut.pos) });
+  const g = st.grund ? hautAusFlach({ ...st.grund.haut, pos: Float64Array.from(st.grund.haut.pos) }) : null;
+  const s: Schnappschuss = {
+    haut: h,
+    loops: st.loops.map(kopieLoop),
+    pos: Float64Array.from(h.pos),
+    auswahl: [],
+    ids: [st.ids[0], st.ids[1]],
+    maul: st.maul ? { id: st.maul.id } : null,
+    pose: { kiefer: st.pose.kiefer, schaedel: st.pose.schaedel, delta: st.pose.delta ? Float64Array.from(st.pose.delta) : null },
+    grund: g && st.grund ? { haut: g, pos: Float64Array.from(g.pos), loops: st.grund.loops.map(kopieLoop) } : null,
+    ruhe: st.ruhe ? { setzen: st.ruhe.setzen === true, nurInRuhe: st.ruhe.nurInRuhe === true, verdichten: st.ruhe.verdichten === true, ziele: zieleAus(st) } : null,
+    mk: st.mk,
+  };
+  nachlauf = null;
+  aufraeumen = null;
+  aufgeraeumt = null;
+  zwischenstand = null;
+  gegriffen = null;
+  verfeinerung = null;
+  eingetroffen = null;
+  nichtsZuVerfeinern = null;
+  nachLoesenOffen = null;
+  vorlageBereit = null;
+  vorlageStand = '';
+  standFertig = '';
+  hintergrundGescheitert = '';
+  modus = 'frei';
+  entwurf = null;
+  spur = null;
+  stift = null;
+  wiederherstellen(s);
+  if (st.sicht) {
+    for (const a of ['seite', 'front', 'top'] as const) {
+      const v = st.sicht[a];
+      if (v && Number.isFinite(v.cx) && Number.isFinite(v.cy) && v.zoom > 0) Object.assign(ausschnitt[a], { cx: v.cx, cy: v.cy, zoom: v.zoom });
+      ausschnittGeaendert(a);
+    }
+  }
+}
+
+// ----- Behalten im Browser -----
+
+/** eine Anfrage an den Speicher des Browsers (ein Fach „stand“, darin „zuletzt“) */
+function speicher<T>(art: IDBTransactionMode, tun: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+  return new Promise<T>((ok, fehler) => {
+    const auf = indexedDB.open('early-earle-kurven', 1);
+    auf.onupgradeneeded = () => auf.result.createObjectStore('stand');
+    auf.onerror = () => fehler(auf.error ?? new Error('Speicher des Browsers nicht erreichbar'));
+    auf.onsuccess = () => {
+      const db = auf.result;
+      const t = db.transaction('stand', art);
+      const q = tun(t.objectStore('stand'));
+      t.oncomplete = () => {
+        db.close();
+        ok(q.result);
+      };
+      t.onerror = t.onabort = () => {
+        db.close();
+        fehler(t.error ?? new Error('Speicher des Browsers nicht erreichbar'));
+      };
+    };
+  });
+}
+type Behalten = { start: string; daten: ArrayBuffer; name?: string };
+/** das Wesen, das „Laden“ oder „Neu“ zuletzt ersetzt hat (Fach „davor“) */
+type Davor = { daten: ArrayBuffer; zeit: string; punkte: number; loops: number; name: string };
+let behaltenUhr: ReturnType<typeof setTimeout> | null = null;
+/** der Stand, der zuletzt in den Speicher ging */
+let behaltenStand = '';
+/** erst wenn beim Start nachgesehen ist, ob ein Wesen von vorhin da ist (sonst überschriebe die Startform es) */
+let behaltenBereit = !BEHALTEN;
+let behaltenAus = false;
+let letztesBehalten = 0;
+let behaltenLaeuft: Promise<unknown> = Promise.resolve();
+/** der Name, unter dem dieses Wesen zuletzt gesichert oder geladen wurde (er bleibt mit dem Wesen behalten) */
+let ablageName = '';
+const nameGueltig = (name: string): boolean => /^[\p{L}\p{N}][\p{L}\p{N} _.-]{0,59}$/u.test(name);
+const behaltenSchluessel = (): string => `${standZahl()}:${pose.kiefer}:${pose.schaedel}:${JSON.stringify(ausschnitt)}:${ablageName}`;
+
+/**
+ * Den Stand im Browser behalten: 0,8 s nach der ersten Änderung seit dem letzten Mal (nicht nach der letzten: Wer zügig arbeitet,
+ * ändert öfter als alle 0,8 s etwas, und es würde lange nichts behalten).
+ */
+function behaltenPlanen(): void {
+  if (!BEHALTEN || !behaltenBereit || behaltenAus || behaltenUhr) return;
+  behaltenUhr = setTimeout(behaltenJetzt, 800);
+}
+function behaltenJetzt(): void {
+  behaltenUhr = null;
+  if (!BEHALTEN || !behaltenBereit || behaltenAus) return;
+  // nicht mitten im Zug oder solange die Haut nachläuft: Der Stand danach kommt ohnehin
+  if (zug || nachlauf || gegriffen) {
+    behaltenPlanen();
+    return;
+  }
+  // die leere Startform ist kein Wesen: Was behalten ist, bleibt (bis „Neu“ es wegnimmt)
+  if (loops.length === 0 && !grund) return;
+  const schluessel = behaltenSchluessel();
+  if (schluessel === behaltenStand) return;
+  behaltenStand = schluessel;
+  const t0 = performance.now();
+  const st = standJetzt();
+  // ein Stand, der nicht in Ordnung ist (z. B. eine Haut mit nicht endlichen Lagen), ersetzt nicht den letzten guten
+  if (pruefen(st)) return;
+  const datei = new Blob(packen(st) as BlobPart[]);
+  letztesBehalten = Math.round((performance.now() - t0) * 10) / 10;
+  behaltenLaeuft = datei
+    .arrayBuffer()
+    .then((daten) => speicher('readwrite', (s) => s.put({ start: START_KENNUNG, daten, name: ablageName } satisfies Behalten, 'zuletzt')))
+    .catch((e: unknown) => {
+      // z. B. privates Fenster ohne Speicher: einmal sagen, dann ohne Behalten weiter
+      behaltenAus = true;
+      console.warn('Behalten im Browser geht nicht:', e);
+    });
+}
+/**
+ * Das Wesen, das „Laden“ oder „Neu“ gleich ersetzt, bleibt im Browser liegen (ein Fach „davor“). ⌘Z bringt es zurück, solange das
+ * Fenster offen ist; nach einem Neuladen (dann ist die Liste der Schritte leer) steht es in der Liste von „Laden“ ganz oben. Ohne das
+ * ginge ein Wesen, das nie unter einem Namen gesichert wurde, mit einem Klick auf „Laden“ und dem nächsten Neuladen verloren.
+ */
+let davorLaeuft: Promise<unknown> = Promise.resolve();
+function davorMerken(): void {
+  if (!BEHALTEN || behaltenAus || (loops.length === 0 && !grund)) return;
+  const st = standJetzt();
+  if (pruefen(st)) return;
+  const eintrag = { zeit: st.zeit, punkte: st.haut.n, loops: st.loops.length, name: ablageName };
+  // der Blob hält die Bytes von jetzt fest (das Fenster ändert die Felder danach)
+  davorLaeuft = new Blob(packen(st) as BlobPart[])
+    .arrayBuffer()
+    .then((daten) => speicher('readwrite', (s) => s.put({ ...eintrag, daten } satisfies Davor, 'davor')))
+    .catch(() => undefined);
+}
+const davorHolen = (): Promise<Davor | undefined> =>
+  BEHALTEN && !behaltenAus ? davorLaeuft.then(() => speicher<Davor | undefined>('readonly', (s) => s.get('davor') as IDBRequest<Davor | undefined>)).catch(() => undefined) : Promise.resolve(undefined);
+/** Beim Start: Ist ein Wesen von vorhin da (und die Startform dieselbe), kommt es zurück */
+function behaltenesHolen(): void {
+  speicher<Behalten | undefined>('readonly', (s) => s.get('zuletzt') as IDBRequest<Behalten | undefined>)
+    .then((b) => {
+      if (!b || b.start !== START_KENNUNG) return;
+      // inzwischen hat schon jemand angefangen: dann nicht
+      if (loops.length > 0 || zurueck.length > 0 || zug) return;
+      const st = entpacken(b.daten);
+      if (st.loops.length === 0 && !st.grund) return;
+      standAnwenden(st);
+      ablageName = typeof b.name === 'string' && nameGueltig(b.name) ? b.name : '';
+      behaltenStand = behaltenSchluessel();
+      meldung = `${ablageName ? `„${ablageName}“` : 'Wesen von vorhin'} wieder da (${auskunft(st)})`;
+      statusZeigen();
+    })
+    .catch((e: unknown) => {
+      // nicht lesbar: das Fenster bleibt bei der Startform, der Speicher wird geleert (sonst scheiterte jedes Neuladen daran)
+      console.warn('Das Wesen von vorhin ließ sich nicht lesen:', e);
+      void speicher('readwrite', (s) => s.delete('zuletzt')).catch(() => undefined);
+    })
+    .finally(() => {
+      behaltenBereit = true;
+      behaltenPlanen();
+    });
+}
+
+// ----- Sichern und Laden unter einem Namen -----
+
+const ABLAGE = '/__wesen/';
+type AblageEintrag = { name: string; bytes: number; zeit: string; punkte: number; loops: number };
+/** null: Die Ablage des Dev-Servers ist nicht erreichbar */
+async function ablageListe(): Promise<AblageEintrag[] | null> {
+  try {
+    const r = await fetch(ABLAGE, { headers: { accept: 'application/json' } });
+    if (!r.ok || !(r.headers.get('content-type') ?? '').includes('json')) return null;
+    return (await r.json()) as AblageEintrag[];
+  } catch {
+    return null;
+  }
+}
+const namenPruefen = (roh: string): string => roh.trim().replace(/\s+/g, ' ');
+
+/** Das Wesen unter einem Namen sichern; ohne Ablage als Datei über den Browser. Zurück: Text für die Statuszeile */
+async function wesenSichern(name: string): Promise<string> {
+  // läuft die Haut nach einem Zug noch nach, erst danach (bis dahin ist sie noch nicht die Form, die bleibt)
+  for (const t0 = performance.now(); (zug || nachlauf) && performance.now() - t0 < 5000; ) await new Promise((weiter) => setTimeout(weiter, 30));
+  if (zug) return 'Sichern: bitte erst den Zug beenden';
+  const st = standJetzt();
+  // ein Stand, der nicht in Ordnung ist, überschriebe sonst eine gute Datei (und ließe sich nicht wieder laden)
+  const mangel = pruefen(st);
+  if (mangel) return `Sichern geht so nicht: ${mangel} · ⌘Z führt zu einem Stand davor`;
+  const datei = new Blob(packen(st) as BlobPart[], { type: 'application/octet-stream' });
+  let antwort: Response | null = null;
+  try {
+    antwort = await fetch(ABLAGE + encodeURIComponent(name), { method: 'PUT', body: datei });
+  } catch {
+    antwort = null;
+  }
+  if (antwort?.ok) {
+    ablageName = name;
+    // der Name bleibt mit dem Wesen behalten (über das Neuladen)
+    behaltenPlanen();
+    return `gesichert: „${name}“ (${auskunft(st)}, ${(datei.size / 1e6).toFixed(1)} MB)`;
+  }
+  if (antwort && antwort.status !== 404) return `Sichern fehlgeschlagen (${antwort.status} ${await antwort.text().catch(() => '')})`;
+  // keine Ablage (kein Dev-Server): als Datei über den Browser
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(datei);
+  a.download = `${name}.eewesen`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  ablageName = name;
+  return `als Datei „${name}.eewesen“ abgelegt (${auskunft(st)})`;
+}
+
+/** Ein Wesen übernehmen, als Schritt (⌘Z bringt das jetzige zurück; über das Neuladen hinweg liegt es im Fach „davor“) */
+function wesenUebernehmen(st: WesenStand, name: string): void {
+  davorMerken();
+  zurueck.push(schnappschuss());
+  standAnwenden(st);
+  ablageName = name;
+}
+async function wesenLaden(name: string): Promise<string> {
+  const r = await fetch(ABLAGE + encodeURIComponent(name));
+  if (!r.ok) return `Laden fehlgeschlagen: „${name}“ (${r.status})`;
+  try {
+    const st = entpacken(await r.arrayBuffer());
+    wesenUebernehmen(st, name);
+    return `geladen: „${name}“ (${auskunft(st)}) · ⌘Z bringt das Wesen von vorher zurück`;
+  } catch (e) {
+    return `Laden fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`;
+  }
+}
+/** Neu: wieder die Startform dieser Sitzung, als Schritt; was im Browser behalten ist, geht weg */
+function wesenNeu(): string {
+  wesenUebernehmen(START_STAND, '');
+  behaltenStand = behaltenSchluessel();
+  if (BEHALTEN) void speicher('readwrite', (s) => s.delete('zuletzt')).catch(() => undefined);
+  return 'Neues Wesen · ⌘Z bringt das Wesen von vorher zurück';
+}
+
+// ----- die drei Knöpfe und ihr Feld -----
+
+const knopfNeu = document.getElementById('knopf-neu') as HTMLButtonElement | null;
+const knopfSichern = document.getElementById('knopf-sichern') as HTMLButtonElement | null;
+const knopfLaden = document.getElementById('knopf-laden') as HTMLButtonElement | null;
+const ablageFeld = document.getElementById('ablage-feld') as HTMLDivElement | null;
+let ablageOffen: 'sichern' | 'laden' | null = null;
+/** das offene Namensfeld abschicken (⏎, Knopf, ⌘S) */
+let ablageLos: (() => void) | null = null;
+function ablageSchliessen(): void {
+  ablageOffen = null;
+  ablageLos = null;
+  if (ablageFeld) {
+    ablageFeld.hidden = true;
+    ablageFeld.replaceChildren();
+  }
+  knopfSichern?.setAttribute('aria-pressed', 'false');
+  knopfLaden?.setAttribute('aria-pressed', 'false');
+}
+const sagen = (text: string): void => {
+  meldung = text;
+  statusZeigen();
+};
+const datumKurz = (zeit: string): string => {
+  const d = new Date(zeit);
+  return Number.isNaN(d.getTime()) ? '' : `${d.getDate()}.${d.getMonth() + 1}. ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+function sichernZeigen(): void {
+  if (!ablageFeld) return;
+  ablageOffen = 'sichern';
+  ablageFeld.hidden = false;
+  knopfSichern?.setAttribute('aria-pressed', 'true');
+  knopfLaden?.setAttribute('aria-pressed', 'false');
+  const feld = document.createElement('input');
+  feld.type = 'text';
+  feld.id = 'ablage-name';
+  feld.maxLength = 60;
+  feld.placeholder = 'Name des Wesens';
+  feld.value = ablageName;
+  const ok = document.createElement('button');
+  ok.type = 'button';
+  ok.className = 'regler knopf';
+  ok.id = 'ablage-ok';
+  ok.textContent = 'Sichern';
+  /** Namen, die es schon gibt (ein anderer als der eigene wird erst beim zweiten Mal überschrieben) */
+  let vorhanden = new Set<string>();
+  let bestaetigt = '';
+  void ablageListe().then((liste) => {
+    vorhanden = new Set((liste ?? []).map((e) => e.name));
+  });
+  const los = (): void => {
+    const name = namenPruefen(feld.value);
+    if (!nameGueltig(name)) {
+      sagen('Sichern: bitte einen Namen aus Buchstaben, Ziffern, Leerzeichen, Punkt, Strich (höchstens 60 Zeichen)');
+      return;
+    }
+    if (vorhanden.has(name) && name !== ablageName && bestaetigt !== name) {
+      bestaetigt = name;
+      ok.textContent = 'Überschreiben';
+      sagen(`„${name}“ gibt es schon: noch einmal drücken überschreibt`);
+      return;
+    }
+    ok.disabled = true;
+    void wesenSichern(name).then((text) => {
+      ablageSchliessen();
+      sagen(text);
+    });
+  };
+  feld.addEventListener('input', () => {
+    bestaetigt = '';
+    ok.textContent = 'Sichern';
+  });
+  feld.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') los();
+    else if (e.key === 'Escape') ablageSchliessen();
+  });
+  ok.addEventListener('click', los);
+  ablageLos = los;
+  ablageFeld.replaceChildren(feld, ok);
+  feld.focus();
+  feld.select();
+}
+/** ⌘S: unter dem Namen von zuletzt sichern; hat das Wesen noch keinen, fragt das Feld danach (ist es offen, gilt, was darin steht) */
+function sichernKurz(): void {
+  if (ablageOffen === 'sichern' && ablageLos) ablageLos();
+  else if (ablageName) {
+    ablageSchliessen();
+    const name = ablageName;
+    sagen(`sichere „${name}“ …`);
+    void wesenSichern(name).then(sagen);
+  } else sichernZeigen();
+}
+function ladenZeigen(): void {
+  if (!ablageFeld) return;
+  ablageOffen = 'laden';
+  ablageFeld.hidden = false;
+  knopfLaden?.setAttribute('aria-pressed', 'true');
+  knopfSichern?.setAttribute('aria-pressed', 'false');
+  ablageFeld.replaceChildren(document.createTextNode('…'));
+  void Promise.all([ablageListe(), davorHolen()]).then(([liste, davor]) => {
+    if (ablageOffen !== 'laden') return;
+    const teile: Node[] = [];
+    // das Wesen, das „Laden“ oder „Neu“ zuletzt ersetzt hat (über das Neuladen hinweg, wenn ⌘Z es nicht mehr bringt)
+    if (davor) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'regler knopf eintrag davor';
+      b.dataset.wesenDavor = '1';
+      b.textContent = `Wesen von vorher${davor.name ? ` („${davor.name}“)` : ''} · ${davor.punkte.toLocaleString('de-DE')} Punkte · ${datumKurz(davor.zeit)}`;
+      b.addEventListener('click', () => {
+        ablageSchliessen();
+        try {
+          const st = entpacken(davor.daten);
+          wesenUebernehmen(st, nameGueltig(davor.name) ? davor.name : '');
+          sagen(`Wesen von vorher wieder da (${auskunft(st)}) · ⌘Z bringt das andere zurück`);
+        } catch (e) {
+          sagen(`Laden fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      });
+      teile.push(b);
+    }
+    for (const e of [...(liste ?? [])].sort((a, b) => b.zeit.localeCompare(a.zeit))) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'regler knopf eintrag';
+      b.dataset.wesen = e.name;
+      b.textContent = `${e.name} · ${e.punkte.toLocaleString('de-DE')} Punkte · ${datumKurz(e.zeit)}`;
+      b.addEventListener('click', () => {
+        ablageSchliessen();
+        sagen(`lade „${e.name}“ …`);
+        void wesenLaden(e.name).then(sagen);
+      });
+      teile.push(b);
+    }
+    if (liste && liste.length === 0) teile.push(document.createTextNode('noch nichts gesichert'));
+    // eine Datei von anderswo (oder ohne Ablage)
+    const wahl = document.createElement('label');
+    wahl.className = 'regler knopf eintrag';
+    wahl.textContent = 'Datei …';
+    const datei = document.createElement('input');
+    datei.type = 'file';
+    datei.accept = '.eewesen';
+    datei.hidden = true;
+    datei.addEventListener('change', () => {
+      const f = datei.files?.[0];
+      if (!f) return;
+      ablageSchliessen();
+      void f
+        .arrayBuffer()
+        .then((buf) => {
+          const st = entpacken(buf);
+          const name = f.name.replace(/\.eewesen$/, '');
+          wesenUebernehmen(st, nameGueltig(name) ? name : '');
+          sagen(`geladen: „${f.name}“ (${auskunft(st)}) · ⌘Z bringt das Wesen von vorher zurück`);
+        })
+        .catch((e: unknown) => sagen(`Laden fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`));
+    });
+    wahl.append(datei);
+    teile.push(wahl);
+    ablageFeld.replaceChildren(...teile);
+  });
+}
+knopfSichern?.addEventListener('click', () => {
+  if (ablageOffen === 'sichern') ablageSchliessen();
+  else sichernZeigen();
+});
+knopfLaden?.addEventListener('click', () => {
+  if (ablageOffen === 'laden') ablageSchliessen();
+  else ladenZeigen();
+});
+knopfNeu?.addEventListener('click', () => {
+  ablageSchliessen();
+  // der Knopf behält den Fokus nicht: Sonst drückte ihn die nächste Leertaste oder ⏎ noch einmal
+  knopfNeu.blur();
+  if (zug) return;
+  sagen(wesenNeu());
 });
 
 // ---------- Zeichnen ----------
@@ -3890,6 +4373,7 @@ window.addEventListener('resize', () => {
 reglerZeigen();
 allesZeigen();
 schleife();
+if (BEHALTEN) behaltenesHolen();
 
 // Prüfhaken für Skripte: Loops, Lagen, Bildschirmpunkte, Zeiten
 (window as unknown as { __kurven: unknown }).__kurven = {
@@ -3904,6 +4388,25 @@ schleife();
     hautZeigen();
     baenderZeigen();
     return m;
+  },
+  /** Wesen behalten, sichern, laden (Prüfhaken): Namen sichern und laden, Liste, Neu, der Stand als Datei, Maß, Dauer des Packens */
+  ablage: {
+    sichern: (name: string) => wesenSichern(name),
+    laden: (name: string) => wesenLaden(name),
+    liste: () => ablageListe(),
+    neu: () => wesenNeu(),
+    /** jetzt behalten und warten, bis es im Browser liegt */
+    behalten: async (): Promise<number> => {
+      behaltenJetzt();
+      await behaltenLaeuft;
+      return letztesBehalten;
+    },
+    bereit: () => behaltenBereit,
+    mk: () => MK,
+    name: () => ablageName,
+    bytes: () => packen(standJetzt()).reduce((n, t) => n + t.length, 0),
+    /** das Wesen, das „Laden“ oder „Neu“ zuletzt ersetzt hat (ohne seine Daten) */
+    davor: () => davorHolen().then((d) => (d ? { zeit: d.zeit, punkte: d.punkte, loops: d.loops, name: d.name } : null)),
   },
   /** Prüfung: der Worker fällt aus (wie ein Fehler beim Laden oder ein Absturz); danach läuft alles im Fenster */
   ausfall: () => zerleger()?.onerror?.(new ErrorEvent('error', { message: 'Probe' })),

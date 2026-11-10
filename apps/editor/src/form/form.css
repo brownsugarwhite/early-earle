@@ -343,6 +343,50 @@ body {
   cursor: default;
 }
 
+/* Neu, Sichern, Laden: drei Knöpfe dicht beieinander; darunter das Feld für den Namen bzw. die Liste der gesicherten Wesen */
+.regler.ablage {
+  gap: 6px;
+}
+
+.ablage-feld {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px 8px;
+  font-size: 13px;
+  color: var(--leise);
+  /* viele gesicherte Wesen: Die Liste bleibt vier Zeilen hoch und rollt, statt das 3D zu verdecken */
+  max-height: 124px;
+  overflow-y: auto;
+}
+
+.ablage-feld[hidden] {
+  display: none;
+}
+
+/* das Wesen, das „Laden“ oder „Neu“ zuletzt ersetzt hat (liegt nur im Browser, nicht im Ordner) */
+.ablage-feld .eintrag.davor {
+  border-style: dashed;
+}
+
+.ablage-feld input[type='text'] {
+  font: inherit;
+  font-size: 13px;
+  width: 200px;
+  color: var(--linie);
+  background: transparent;
+  border: 1px solid var(--leise);
+  border-radius: 12px;
+  padding: 2px 10px;
+  outline: none;
+}
+
+.ablage-feld input[type='text']:focus {
+  border-color: var(--linie);
+}
+
 #teile-wert {
   font-variant-numeric: tabular-nums;
 }

@@ -45,7 +45,13 @@
           <label class="regler" id="kopf-regler" title="Schädel der Fressen-Pose">
             Kopf <input id="kopf-oeffnung" type="range" min="0" max="40" step="0.5" value="0" />
           </label>
+          <span class="regler ablage">
+            <button class="regler knopf" id="knopf-neu" type="button" title="Neues Wesen: wieder die Startform (⌘Z bringt das jetzige zurück)">Neu</button>
+            <button class="regler knopf" id="knopf-sichern" type="button" aria-pressed="false" title="Das Wesen unter einem Namen sichern (⌘S; es liegt dann im Ordner wesen/)">Sichern</button>
+            <button class="regler knopf" id="knopf-laden" type="button" aria-pressed="false" title="Ein gesichertes Wesen laden (⌘Z bringt das jetzige zurück; ganz oben steht das Wesen, das zuletzt ersetzt wurde)">Laden</button>
+          </span>
           <span class="regler" id="status"></span>
+          <div class="ablage-feld" id="ablage-feld" hidden></div>
         </div>
       </section>
     </main>
