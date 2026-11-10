@@ -70,6 +70,10 @@ hinaus und kontrolliere die bisherigen Versuche. Gibt es Fehler? … Haben wir e
   Messwerkzeug für die Güte des Netzes; gemessen ist damit erst an Probewesen, Florians eigene stehen aus. Erste Befunde dort:
   Das Netz ist nicht dichter als das Startnetz, es wächst mit der Fläche und beim Spielen (hinaus und zurück, gleiche Form, 7 bis
   10 % mehr Punkte); an den Linien bleiben in jedem Wesen flache Dreiecke stehen.
+- **Klarstellung (10.11. nachts):** Florian hat keine Wesen, er testet Formen. „Deine Wesen mit 11 000 bis 26 000 Punkten“ in
+  diesem Bericht meint zwei Bildschirmfotos eines Tests vom 08.11. Nachgestellt endet derselbe Test heute bei 7 400 Punkten. Ob
+  das Netz bei seinem Testen noch so wächst, ist offen; der Teil „Zahl der Punkte“ von G5 hat damit keine bestätigte Grundlage
+  (am Ende des Nachtrags).
 - **Werkzeuge:** Dem Fenster fehlen fast alle Präzisionshilfen aus Illustrator und Blender (Zahlen im Zug, fein mit ⇧,
   Pfeiltasten, Einrasten, Wiederholen, Auswahlrechteck). Der größte Hebel der Bedienung ist, weite Züge überflüssig zu machen:
   Auswuchs als eigene Operation und eine Startform aus einer Seitenzeichnung (Abschnitt 6).
@@ -976,6 +980,32 @@ längs der Linien mehr entstehen lassen und die vorhandenen auflösen, (b) Nadel
 dann die Zahl: (c) das Wachsen beim Spielen begrenzen (zusammenlegen, was nach dem Zurückziehen wieder dichter ist als das
 Startnetz). Vor (c) steht die Messung an Florians Wesen: Wie viel ihrer 11 000 bis 26 000 Punkte ist Fläche, wie viel ist
 Spielen?
+
+**Klarstellung (10.11. nachts, nach Florians Rückmeldung).** Auf die Bitte, „seine Wesen“ zu sichern, schrieb Florian: „Es gibt
+von mir keine Wesen. Ich weiß nicht, was du damit meinst. Ich teste immer nur ein paar Formen, aber wie soll ich jetzt schon Wesen
+machen. Es ist ja nur die Grundform-Erzeugung bis jetzt.“
+
+- **Der Fehler liegt bei dieser Prüfung.** „Deine Wesen“, „Florians dichte Wesen“ und „11 000 bis 26 000 Punkte“ stehen seit dem
+  ersten Tag in diesem Bericht (Kurzfassung, 2.5, das Kriterium von G5, Befund 4 zu G3). Belegt sind nur zwei Bildschirmfotos
+  vom 08.11. aus einem Test (Hörner, mit dem Griff gespielt: 18 234 Punkte, danach 26 284 bei 126 ms je Zug) und die Angabe in
+  der Übergabe der früheren Sitzung. Der Satz „an meinen echten Wesen messen“ war der Text eines Knopfs, den diese Sitzung ihm
+  angeboten hat, nicht sein Wortlaut.
+- **Nachgestellt** (`form-drei-faelle.mjs`, `FALL=hoerner`, `?gewichte=geometrie`, Standard-Startnetz; Ausgabe
+  `ausgaben/g5-netzguete-fall-hoerner.txt`): Die Hörner hinaus und zwölfmal mit dem Griff gespielt. Das Netz hat danach 7 352
+  Punkte (5 478 nach dem ersten Zug, dazwischen 6 100 bis 7 100), die Dichte ist 1,05 des Startnetzes. Von 18 000 oder 26 000
+  Punkten ist das weit entfernt. Warum sein Test am 08.11. dorthin kam, ist nicht geklärt (längeres Spielen, ein anderer Stand
+  des Verdichtens an dem Tag, anderes).
+- **Was daraus folgt:**
+  1. Der Teil „Zahl der Punkte“ von G5 („prüfen, warum es auf 20 000 und mehr Punkte wächst“, Kriterium „unter etwa 10 000
+     Punkten“) hat keine bestätigte Grundlage mehr. Er ruht, bis ein dichtes Netz aus seinem Testen vorliegt. Dasselbe gilt für
+     die Begründung von G6 mit „sehr dichten Wesen“.
+  2. Bestätigt bleiben die Mängel der Güte, unabhängig von der Größe: flache Dreiecke an den Linien in jeder Probeform; im
+     nachgestellten Hörner-Fall nach dem Griffspiel 18 umgeklappte Dreiecke, die meisten an den Hornspitzen (dort war die Haut
+     im Zug umgestülpt), und 30 Dreiecke unter 5°; 7 bis 10 % Wachsen beim Spielen.
+  3. Die Messungen bei 11 000 und 23 400 Punkten in G1 bis G4 bleiben gültig als Messungen an dichten Prüfnetzen. Sie sagen
+     nicht, dass er mit solchen Netzen arbeitet.
+  4. Sichern und Laden bleiben, was sie sind: Eine Form übersteht das Neuladen, und ein Stand, der beim Testen auffällt, lässt
+     sich mit einem Klick zum Nachsehen ablegen. Verlangt wird das von ihm nicht.
 
 ## Anhang A: Messwerte
 

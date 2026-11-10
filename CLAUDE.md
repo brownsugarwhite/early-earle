@@ -1711,6 +1711,15 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     zusammengelegt erst unter 0,5); an den Linien bleiben flache Dreiecke stehen (drei aufeinanderfolgende Punkte einer Linie, 14–28
     je Wesen) und nach dem Schneiden Nadeln bis zum ersten Aufräumen; für die Rundung genügten rund 3 000 Punkte (Schätzung).
     Vorschlag für G5 im Bericht („Stand (10.11. nachts)“): erst die Güte an den Linien, dann das Wachsen beim Spielen.
+  - **Klarstellung von Florian (10.11. nachts):** „Es gibt von mir keine Wesen. Ich weiß nicht, was du damit meinst. Ich teste
+    immer nur ein paar Formen, aber wie soll ich jetzt schon Wesen machen. Es ist ja nur die Grundform-Erzeugung bis jetzt.“ Die
+    Annahme „seine Wesen haben 11 000–26 000 Punkte“ kam aus zwei Bildschirmfotos eines Tests vom 08.11. (Hörner mit Griffspiel)
+    und stand in Übergabe und Bericht; „an meinen echten Wesen messen“ war der Text eines Knopfs dieser Sitzung, nicht sein
+    Wortlaut. Nachgestellt endet derselbe Fall heute bei 7 352 Punkten (`ausgaben/g5-netzguete-fall-hoerner.txt`). Folge: Der Teil
+    „Zahl der Punkte“ von G5 (und G6 mit der Begründung „dichte Wesen“) ruht ohne bestätigte Grundlage; bestätigt sind nur die
+    Mängel der Güte (flache Dreiecke an den Linien, umgeklappte Dreiecke nach dem Griffspiel, 7–10 % Wachsen beim Spielen).
+    Lehre: nie „deine Wesen“; Zahlen aus Bildschirmfotos erst nachstellen und messen, bevor ein Schritt auf ihnen steht;
+    Knopftexte enthalten keine Annahmen über Florian (sie kommen als seine Nachricht zurück).
   - Fallen daraus: Ein neues Feld im Stand gehört in `Schnappschuss`, `WesenStand`, `standJetzt`/`standAnwenden` und ggf.
     `loopsZahl`. Das Wesen von zuletzt kommt beim Laden der Seite zurück (`&behalten=0` oder „Neu“ für die Kugel). Probewesen
     nie in `wesen/` liegen lassen (Florians Liste). Eine Schätzung über Netze verschiedener Dichte braucht feste Einheiten (mit

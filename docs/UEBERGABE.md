@@ -1,4 +1,4 @@
-# Übergabe (Stand 10.11.2026 nachts: G1 bis G4 gebaut; Wesen sichern und laden; G5 begonnen: Messwerkzeug für die Güte des Netzes, Florians Wesen stehen aus)
+# Übergabe (Stand 10.11.2026 nachts: G1 bis G4 gebaut; Sichern und Laden; G5 begonnen: Messwerkzeug für die Güte des Netzes; Klarstellung: Florian hat keine Wesen, er testet Formen)
 
 **Branch `claude/form-zuerst`, Arbeitsbaum `.claude/worktrees/form-zuerst`.** Diese Datei ist der Einstieg. Die alte Übergabe aus der
 Käfig-Zeit (Stand 04.11.) steht in der Git-Geschichte: `git show 82aed6dc:docs/UEBERGABE.md`.
@@ -126,18 +126,29 @@ Kriterien stehen in der Tabelle des Nachtrags; Messwerte und Befunde je Schritt 
   - **Grenzen:** die Liste der Schritte wird nicht gesichert; nur dieser Browser und dieselbe Startform; keine älteren
     Fassungen; kein Löschen im Fenster.
 - **G5 Teil 1: Werkzeug für die Güte des Netzes** (`64354dac`): `scripts/pruefen/form-netzguete.ts` liest gesicherte Wesen,
-  `form-probewesen.mjs` baut Probewesen mit der Maus. **Florians Wesen sind noch nicht gemessen** (sie lebten nur im Fenster; er
-  muss sie sichern). Erste Zahlen an Probewesen (Bericht, Tabelle und fünf Befunde):
+  `form-probewesen.mjs` baut Probewesen mit der Maus. Erste Zahlen an Probewesen (Bericht, Tabelle und fünf Befunde):
   - Das Netz ist nicht dichter als das Startnetz (0,98–1,19) und wächst mit der Fläche.
   - Beim Spielen (hinaus und zurück, gleiche Form) wächst es um 7–10 %: geteilt wird über 1,75 Startkanten, zusammengelegt erst
     unter 0,5.
   - An den Linien bleiben flache Dreiecke stehen (drei aufeinanderfolgende Punkte einer Linie, 14–28 je Wesen); nach dem
     Schneiden eines Loops Nadeln bis zum ersten Aufräumen. Das sind die unruhigen Stellen aus G3.
   - Für die Rundung genügten rund 3 000 Punkte (Schätzung), ob mit 7 100 oder 32 900 gerechnet.
-- **Als Nächstes:** Florian sichert eines oder mehrere seiner Wesen (Knopf „Sichern“); dann
-  `cd packages/shape && BILD=<ordner> npx vite-node ../../apps/editor/scripts/pruefen/form-netzguete.ts` und die Zahlen neben die
-  der Probewesen legen. Danach sein Wort zur Reihenfolge in G5 (Vorschlag im Bericht: erst die flachen Dreiecke und Nadeln an den
-  Linien, dann das Wachsen beim Spielen). G6 (halbe Haut) braucht Entscheidung 2. Sein Blick auf G4 steht weiter aus.
+- **Klarstellung von Florian (10.11. nachts): „Es gibt von mir keine Wesen. … Ich teste immer nur ein paar Formen, aber wie soll
+  ich jetzt schon Wesen machen. Es ist ja nur die Grundform-Erzeugung bis jetzt.“**
+  - Die Annahme „Florians Wesen haben 11 000 bis 26 000 Punkte“ stammt aus zwei seiner Bildschirmfotos vom 08.11. (Hörner mit
+    Griffspiel: 18 234 und 26 284 Punkte). Sie stand so in der Übergabe der früheren Sitzung und zieht sich durch den Bericht
+    (auch das Kriterium von G5). Fertige Wesen gibt es nicht; von ihm ist dafür nichts zu erwarten.
+  - „An meinen echten Wesen messen“ war kein Satz von ihm, sondern der Text eines Knopfs, den diese Sitzung ihm angeboten hat.
+  - **Nachgestellt** (`form-drei-faelle.mjs` mit `ABLEGEN=fall-hoerner`, dann `form-netzguete.ts`; Ausgabe
+    `ausgaben/g5-netzguete-fall-hoerner.txt`): Derselbe Fall endet heute bei 7 352 Punkten (Dichte 1,05 des Startnetzes), nicht
+    bei 18 000 bis 26 000. **Ob das Netz bei seinem Testen heute noch so wächst, ist damit offen**; der Teil „Zahl der Punkte“
+    von G5 hat keine bestätigte Grundlage. Bestätigt sind die Mängel der Güte: flache Dreiecke an den Linien in jeder Form, nach
+    dem Griffspiel 18 umgeklappte Dreiecke (die meisten an den Hornspitzen), 7 bis 10 % Wachsen beim Spielen.
+  - Sichern bleibt nützlich, aber als Angebot: Wenn eine Form beim Testen auffällt (unruhig, eckig, langsam, die letzte Zahl der
+    Statuszeile über 10 000), sichert ein Klick genau diesen Stand zum Nachsehen.
+- **Als Nächstes** (sein Wort steht aus): entweder die flachen Dreiecke und Nadeln an den Linien beheben (Vorschlag), oder er
+  testet erst den Stand nach G4 und sagt, was ihn stört. Den Teil „Zahl der Punkte“ von G5 und G6 (halbe Haut) erst, wenn ein
+  dichtes Netz aus seinem Testen vorliegt oder er es will. Sein Blick auf G4 steht weiter aus.
 
 ## 1. Stand
 
@@ -390,12 +401,20 @@ nicht mehr.
     früher beim Laden aufruft, bekommt „Cannot access … before initialization“.
 25. **Mitten im Nachlauf ist der Stand nicht fertig** (die Linien liegen fest, die Haut läuft noch): Behalten überspringt das,
     Sichern wartet. Wer den Stand anderswo ablegt, tut es ebenso.
-26. **Probewesen nicht in `wesen/` liegen lassen:** Die Liste von „Laden“ zeigt den Ordner; Florian soll dort nur seine Wesen
-    sehen. `form-probewesen.mjs` verschiebt seine Dateien, `form-ablage-probe.mjs` löscht sie.
+26. **Probewesen nicht in `wesen/` liegen lassen:** Die Liste von „Laden“ zeigt den Ordner; Florian soll dort nur sehen, was
+    er selbst gesichert hat. `form-probewesen.mjs` und `form-drei-faelle.mjs` (`ABLEGEN`) verschieben ihre Dateien,
+    `form-ablage-probe.mjs` löscht sie.
 27. **Messskripte, die `ablage.ts` lesen, laufen aus `packages/shape`** (wie alle Kern-Proben; aus `apps/editor` zöge vite-node
     die Konfiguration des Editors mit Electron). `ablage.ts` importiert deshalb nur Typen.
 28. **Zwei Läufe von `form-probewesen.mjs` geben nicht dasselbe Netz** (Züge mit der Maus hängen an der Uhr): Punkte ±10,
     spitze Dreiecke 16 bis 26. Vorher/nachher-Vergleiche brauchen mehrere Läufe oder denselben gesicherten Stand als Anfang.
+29. **Florian hat keine Wesen, er testet Formen** (10.11. nachts). Nie von „deinen Wesen“ sprechen und nichts von ihm
+    verlangen, was fertige Wesen voraussetzt. Zahlen aus seinen Bildschirmfotos sind Zahlen eines Tests, keine Eigenschaft
+    „seiner Wesen“: vor einem Schritt, der auf ihnen steht, den Fall nachstellen und messen (die 18 000 bis 26 000 Punkte
+    ließen sich am 10.11. nicht nachstellen).
+30. **Knopftexte sind keine Aussagen von Florian.** Der Text eines angebotenen Knopfs kommt als seine Nachricht zurück. Er
+    darf nur enthalten, was er entscheidet, keine Annahme über ihn („meine echten Wesen“ stand so im Knopf und danach als Zitat
+    in der Übergabe).
 
 ## 5. Florian: letzte Urteile, offene Entscheidungen, Testfälle
 
@@ -410,8 +429,11 @@ nicht mehr.
     aber zu langsam“.
   - Er will, dass die andere Sitzung G1–G4 baut.
   - Nachts: „Weiter mit G5: zuerst mein Wesen sichern und laden können (es übersteht dann auch das Neuladen), dann die Güte
-    des Netzes an meinen echten Wesen messen.“ Sichern und Laden sind gebaut, sein Blick darauf steht aus; die Messung wartet
-    auf seine gesicherten Wesen.
+    des Netzes an meinen echten Wesen messen.“ (Das war der Text eines angebotenen Knopfs, nicht sein Wortlaut.) Sichern und
+    Laden sind gebaut, sein Blick darauf steht aus.
+  - Danach, auf die Bitte, „seine Wesen“ zu sichern: „Es gibt von mir keine Wesen. Ich weiß nicht, was du damit meinst. Ich
+    teste immer nur ein paar Formen, aber wie soll ich jetzt schon Wesen machen. Es ist ja nur die Grundform-Erzeugung bis
+    jetzt.“
 - **09.11.:**
   - Die Löser-Wege „klingen nach viel Nachjustieren“.
   - „… warum das verdichtete Mesh überhaupt eine andere Form annimmt … sollte einfach nur abrunden, aber in exakt der gleichen Form.“
@@ -438,9 +460,10 @@ nicht mehr.
    stattdessen G4.4 gewählt, die Frage bleibt offen.
 9. Die Änderung von 2 Einheiten, wenn sich die Haut nach dem zweiten Loop setzt, kommt vom Bézier-Pfad ohne Zusatzpunkte (ein
    halber Ring mit zwei Punkten ist kein genauer Kreis). Sie hängt an Entscheidung 4 („Punkte wo nötig“).
-10. Reihenfolge in G5 (vorgelegt am 10.11. nachts, nach der Messung an seinen Wesen zu entscheiden): erst die flachen Dreiecke
-    und Nadeln an den Linien, dann das Wachsen des Netzes beim Spielen; oder umgekehrt.
-11. Sollen gesicherte Wesen ins Repo (dann sind Messungen an ihnen wiederholbar, je Wesen 0,5 bis 3 MB)? Bisher liegt im
+10. Wie weiter nach der Klarstellung (vorgelegt am 10.11. nachts): die flachen Dreiecke und Nadeln an den Linien beheben, oder
+    er testet erst den Stand nach G4 und sagt, was ihn stört. Der Teil „Zahl der Punkte“ von G5 ruht, bis ein dichtes Netz aus
+    seinem Testen vorliegt.
+11. Sollen gesicherte Stände ins Repo (dann sind Messungen an ihnen wiederholbar, je Stand 0,5 bis 3 MB)? Bisher liegt im
     Ordner `wesen/` nur die Beschreibung.
 
 **Seine Testfälle** (Bilder in `docs/progress/editor/`):
@@ -456,10 +479,11 @@ nicht mehr.
 - Dazu Rüssel und Hammer (06.11.), Braue, Maul als Loop und Fressen-Pose.
 
 **Zoom und Netzgröße:** Florian arbeitet bei etwa 300 % (1 Einheit = 2,7 px; ein halber Bildpunkt = 0,18 Einheiten), am Detail auch
-höher. Seine Wesen haben 11 000–26 000 Punkte; am 08.11. waren es 18 234 Punkte bei 49 ms je Zug, nach dem Griffspiel 26 284 Punkte
-bei 126 ms. Die Prüfkugel hat 5 200. Kriterien deshalb immer auch bei 11 000+ Punkten messen.
-Gemessen sind seine Wesen noch nicht (bis zum 10.11. gab es sie nur im offenen Fenster); die Zahlen stammen aus seinen
-Bildschirmfotos. Die Probewesen wachsen beim Spielen um 7 bis 10 % bei gleicher Form, was zu „nach dem Griffspiel 26 284“ passt.
+höher. Er testet Formen, fertige Wesen gibt es nicht (Klarstellung vom 10.11. nachts, siehe oben). In zwei seiner Bildschirmfotos
+vom 08.11. (Hörner mit Griffspiel) standen 18 234 Punkte bei 49 ms je Zug und danach 26 284 Punkte bei 126 ms; daraus wurde in
+dieser Datei und im Bericht „seine Wesen haben 11 000–26 000 Punkte“. Derselbe Fall, am 10.11. nachts nachgestellt, endet bei
+7 352 Punkten. Wie groß seine Netze beim Testen heute werden, ist nicht bekannt (die letzte Zahl der Statuszeile zeigt es ihm).
+Die Prüfkugel hat 5 200. Kriterien weiter auch bei 11 000+ Punkten messen, aber nicht mehr mit „seine Wesen“ begründen.
 
 ## 6. Einwände und Ergänzungen der bauenden Sitzung zur Gegenprüfung
 

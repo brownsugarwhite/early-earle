@@ -1,12 +1,13 @@
 // Form zuerst (10.11.2026), G5: Probewesen mit der Maus bauen und sichern, immer dieselben Züge (zum Messen der Netzgüte mit
-// `form-netzguete.ts`, vor und nach einer Änderung am Verdichten). Kein Ersatz für Florians Wesen: wenige Linien, wenige Züge.
+// `form-netzguete.ts`, vor und nach einer Änderung am Verdichten). Wenige Linien, wenige Züge; Florians eigene Testfälle stellt
+// `form-drei-faelle.mjs` nach (dort `ABLEGEN=<name>`).
 //   Stufe 1  „…-kugel“: die Kugel mit drei Loops (Ring waagerecht, Mitte, Ring senkrecht)
 //   Stufe 2  „…-hals“:  der obere Punkt 160 hinauf (Hals), ein Ring um den Hals, dessen vorderer Punkt 70 nach vorn (Kopf)
 //   Stufe 3  „…-wesen“: vorn ein Rüssel (110 hinaus), auf dem senkrechten Ring ein Punkt bei 55° und 60 hinaus (Ohr), dort Kante
 //   Stufe 4  „…-spiel“: mit dem Ohr und dem Kopf gespielt, je sechsmal hinaus und zurück an dieselbe Stelle (wächst das Netz,
 //            wenn die Form am Ende dieselbe ist?)
 // Gesichert wird wie von Hand über das Fenster (in wesen/); danach wandern die Dateien nach `ZIEL` (Standard
-// apps/editor/pruefen-ausgabe/probewesen, nicht im Repo), damit Florians Liste von „Laden“ nur seine Wesen zeigt.
+// apps/editor/pruefen-ausgabe/probewesen, nicht im Repo), damit Florians Liste von „Laden“ nur zeigt, was er selbst gesichert hat.
 // Aufruf aus apps/editor: node scripts/pruefen/form-probewesen.mjs
 //   KURVEN_URL (Standard …/kurven.html?gewichte=geometrie; dichter mit &dreiecke=14000 bzw. 30000)   NAME=probe (Vorsilbe der Namen)
 //   SPIEL=6: so oft je Punkt hinaus und zurück in Stufe 4 (die Zahl der Punkte nach jedem Mal steht in der Ausgabe)

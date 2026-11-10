@@ -65,7 +65,9 @@ alter Ablauf), `g44-nachlauf-probe.txt` (die 18 Prüfungen mit dem Stand nach G4
 `ausgaben/g5-*.txt` gehören zum Anfang von G5 (die Güte des Netzes messen, 10.11. nachts): `g5-netzguete-probewesen.txt` ist die
 Ausgabe von `form-netzguete.ts` (liegt eine Ebene höher bei den Proben) für sieben Probewesen aus `form-probewesen.mjs` (Kugel mit
 drei Loops, Hals und Kopf, Rüssel und Ohr, danach gespielt; bei 5 200 und 23 400 Punkten am Start), `g5-probewesen-spiel.txt` die
-Zahl der Punkte nach jedem Mal Hinaus-und-zurück (`SPIEL=30`). Florians eigene Wesen sind damit noch nicht gemessen.
+Zahl der Punkte nach jedem Mal Hinaus-und-zurück (`SPIEL=30`), `g5-netzguete-fall-hoerner.txt` Florians Fall „Hörner, mit dem
+Griff gespielt“ vom 08.11., nachgestellt mit `form-drei-faelle.mjs` (`ABLEGEN=fall-hoerner`) und gemessen: 7 352 Punkte am Ende,
+nicht 18 000 bis 26 000 wie in seinem Bild. Fertige Wesen von Florian gibt es nicht (Klarstellung vom 10.11. nachts im Bericht).
 
 `ausgaben/` enthält sonst die Ausgaben vom 10.11. (je ein Lauf, die Maschine war belegt). `a5-ausgabe.txt` stammt von einem Skript, das
 eine von Hand angelegte Kopie des Lösers brauchte; gleichwertig ist `mess3.ts` mit `DREIECKE=30000`.

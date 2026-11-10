@@ -13,7 +13,8 @@
 // Seit 10.11. (Gegenprüfung G3): HALTEN=<ms> hält die Maus vor dem Loslassen so lange still (Standard 150); dabei je Bild im Fenster
 // die Bewegung der Haut gegen das Bild davor und der Rauminhalt (rechnet die Haut beim Halten weiter, und kommt sie zur Ruhe?). Der
 // Stand vor dem Loslassen und der gleich danach werden im Fenster festgehalten, genau vor und nach der Behandlung des Loslassens.
-// GPU=1: echte Grafikkarte.
+// GPU=1: echte Grafikkarte. ABLEGEN=<name> (seit 10.11., G5): den Endstand sichern und zu den Probeformen legen
+// (apps/editor/pruefen-ausgabe/probewesen), zum Messen mit form-netzguete.ts.
 // Aufruf aus apps/editor: node scripts/pruefen/form-drei-faelle.mjs
 import { chromium } from '@playwright/test';
 
@@ -630,6 +631,18 @@ if (fall === 'hoerner') {
   dichte(r.C, 'nach dem Loslassen');
   await seite.keyboard.press('Escape');
   await foto('detail-2');
+}
+// ABLEGEN=<name> (10.11., G5): den Endstand über das Fenster sichern und zu den Probeformen legen (nicht in wesen/), zum Messen der
+// Netzgüte mit form-netzguete.ts (ORDNER=…/pruefen-ausgabe/probewesen)
+if (process.env.ABLEGEN) {
+  await seite.waitForFunction(() => !window.__kurven.zeiten().beschaeftigt, null, { timeout: 120000 });
+  const text = await seite.evaluate((n) => window.__kurven.ablage.sichern(n), process.env.ABLEGEN);
+  console.log(`\n${process.env.ABLEGEN}: ${text}`);
+  const { mkdir, rename } = await import('node:fs/promises');
+  const { fileURLToPath } = await import('node:url');
+  const ziel = fileURLToPath(new URL('../../pruefen-ausgabe/probewesen/', import.meta.url));
+  await mkdir(ziel, { recursive: true });
+  if (text.startsWith('gesichert')) await rename(fileURLToPath(new URL(`../../../../wesen/${process.env.ABLEGEN}.eewesen`, import.meta.url)), `${ziel}${process.env.ABLEGEN}.eewesen`);
 }
 if (fehler.length) console.log(`Fehler: ${fehler.slice(0, 3).join(' | ')}`);
 await browser.close();
