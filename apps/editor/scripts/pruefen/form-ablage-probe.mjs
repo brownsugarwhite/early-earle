@@ -15,7 +15,8 @@ import { rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
-const basis = process.env.KURVEN_URL ?? 'http://localhost:5193/kurven.html?gewichte=geometrie';
+// unter Playwright behält das Fenster nichts (die anderen Proben erwarten bei jedem Laden die Startform): hier eigens einschalten
+const basis = ((u) => (u.searchParams.set('behalten', '1'), u.href))(new URL(process.env.KURVEN_URL ?? 'http://localhost:5193/kurven.html?gewichte=geometrie'));
 const NAME = 'probe-ablage';
 const NAME2 = 'probe-ablage zwei';
 const NAME3 = 'probe-ablage pose';

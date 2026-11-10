@@ -5,9 +5,11 @@
 // Nach jedem Loop (SETZEN=jeder) oder nur nach dem letzten (SETZEN=ende) bis RUNDEN Runden zu den Pfaden. Je Runde: Bewegung der
 // Form (längs der Normalen), Gleiten (ganze Bewegung der Punkte), dazu am Ende der Halbmesser (kleinster, mittlerer, größter).
 // DREIECKE=6000|14000|30000  LOOPS=ring,mitte,ring2  SETZEN=jeder|ende  RUNDEN=60  GENAU=1 (Griffe genau wie im Fenster)
+// NADELN=1 (seit G5): gleich nach dem Einsetzen fallen Punkte der Linie, die fast aufeinander liegen, zusammen (wie im Fenster seit G5)
 import { loopEinsetzen } from '../../../../../../packages/shape/src/dicht/einsetzen';
 import { hautNormalen } from '../../../../../../packages/shape/src/dicht/kurven';
 import { type Loop, LoopZug, festlegen, griffeAnlegen, hatPfad, kreuzungenZwischen, loopAusSchnitt, mittlereKante, pfadParameter, pfadVersatz, punktEinfuegen } from '../../../../../../packages/shape/src/dicht/loops';
+import { nadelnZusammenlegen } from '../../../../../../packages/shape/src/dicht/verdichten';
 import { kugel } from './gemeinsam';
 
 const dreiecke = Number(process.env.DREIECKE ?? 14000);
@@ -93,6 +95,14 @@ folge.forEach((name, nr) => {
       kreuz++;
     }
   griffeAnlegen(l, l.ruhe, true, 0);
+  if (process.env.NADELN === '1') {
+    const v = nadelnZusammenlegen(h, loops, mittlereKante(kugel(dreiecke)));
+    if (v) {
+      console.log(`  (Nadeln: ${v.gelegt} Punkte zusammengelegt, ${h.n} → ${v.haut.n})`);
+      h = v.haut;
+      loops = v.loops;
+    }
+  }
   if (hatPfad(l)) pfadParameter(l);
   console.log(`  Loop ${nr + 1} (${name}): ${h.n} Punkte, ${l.punkte.length} Punkte am Loop, Pfad ${hatPfad(l) ? 'ja' : 'nein'}`);
   if (setzenArt === 'jeder' || nr === folge.length - 1) setzen(`nach Loop ${nr + 1}`);

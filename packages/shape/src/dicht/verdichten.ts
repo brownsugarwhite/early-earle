@@ -17,6 +17,15 @@
 // auseinander, die Linie schnitt ihre Kurve um 1,02 ab. Mit `genauHaut` (Versuch) ebenso die Haut, wo die Fläche zwischen den Enden einer
 // Kante weiter abweicht (Länge × Drehung der Normale / 8; die unberührte Startkugel höchstens 0,16), nicht in Falten: am Ohr rund,
 // aber weite Züge wurden schlechter (siehe `kurven.html`, `GENAU_HAUT`).
+//
+// Flache Dreiecke (10.11.2026, G5): Gemessen blieben an den Linien Dreiecke ohne Fläche stehen (drei aufeinanderfolgende Punkte einer
+// Linie als Dreieck, kleinster Winkel 0,01 bis 1°, der mittlere Punkt mit nur drei Nachbarn; 14 bis 28 je Probeform). Sie entstehen beim
+// Zusammenlegen (im Kern nachgestellt, `netz/m8-ohren.ts`: nur dort, nicht beim Teilen oder Drehen): Schneidet eine Linie eine Ecke knapp
+// ab, hat der abgeschnittene Punkt kurze Kanten zu drei aufeinanderfolgenden Punkten der Linie; fällt er in den ersten oder letzten, spannt
+// sein Dreieck danach die drei Punkte der Linie auf. Der Test „kippt um mehr als 60°“ sieht das nicht (ein Dreieck ohne Fläche hat keine
+// verlässliche Normale). Deshalb: (1) Zusammenlegen und Drehen lassen kein Dreieck flach werden (kleinster Winkel unter `FLACH` und dabei
+// mehr als halbiert), (2) vorhandene flache Dreiecke werden aufgelöst, indem ihre lange Kante gedreht wird (beides Option `flachSchutz`), (3) gleich nach dem
+// Einsetzen eines Loops fallen Punkte der Linie, die fast aufeinander liegen, zusammen (`nadelnZusammenlegen`).
 
 import { type Haut, type V3, hautAus } from './kurven';
 import { type Loop, type Probe, hatPfad, kanteBei, pfadBei } from './loops';
@@ -35,9 +44,14 @@ export type Verdichtet = {
   neu: number;
   gelegt: number;
   gedreht: number;
+  /** flache Dreiecke, die durch Drehen ihrer langen Kante aufgelöst wurden */
+  geloest: number;
   verborgen: Uint8Array | null;
   alt: Int32Array;
 };
+
+/** unter diesem kleinsten Winkel (Grad) gilt ein Dreieck als flach */
+const FLACH = 10;
 
 /**
  * Teilt alle Kanten länger als `maxKante` (spiegelgleich, höchstens `runden` Durchgänge), dreht danach Kanten zur Wertigkeit 6 und
@@ -81,6 +95,10 @@ export function verdichten(
     kurzKette?: number;
     genau?: number;
     genauHaut?: boolean;
+    /** kein Dreieck flach werden lassen und vorhandene flache auflösen (Standard an; `false`: wie bis zum 10.11.) */
+    flachSchutz?: boolean;
+    /** zusammengelegt werden nur Kanten mit einem Ende auf einer Linie (nach dem Einsetzen eines Loops) */
+    nurKetten?: boolean;
   } = {},
 ): Verdichtet | null {
   const runden = opt.runden ?? 8;
@@ -127,6 +145,17 @@ export function verdichten(
     const l = Math.hypot(v.x, v.y, v.z) || 1;
     return { x: v.x / l, y: v.y / l, z: v.z / l };
   };
+  /** kleinster Winkel des Dreiecks in Grad (er liegt der kürzesten Seite gegenüber) */
+  const kleinsterWinkel = (A: V3, B: V3, C: V3): number => {
+    const a = Math.hypot(B.x - C.x, B.y - C.y, B.z - C.z);
+    const b = Math.hypot(C.x - A.x, C.y - A.y, C.z - A.z);
+    const c = Math.hypot(A.x - B.x, A.y - B.y, A.z - B.z);
+    const [k, m1, m2] = a <= b && a <= c ? [a, b, c] : b <= c ? [b, c, a] : [c, a, b];
+    if (!(m1 > 0 && m2 > 0)) return 0;
+    return (Math.acos(Math.max(-1, Math.min(1, (m1 * m1 + m2 * m2 - k * k) / (2 * m1 * m2)))) * 180) / Math.PI;
+  };
+  const winkelVon = (t: number): number => kleinsterWinkel(lage(tri[3 * t]!), lage(tri[3 * t + 1]!), lage(tri[3 * t + 2]!));
+  const flachSchutz = opt.flachSchutz !== false;
 
   // Ketten der eingesetzten Loops (die gespeicherte Hälfte; die andere ist ihr Spiegelbild im Netz), harte Punkte
   const ketten = loops.map((l) => (l.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2]) ? l.proben.map((p) => p.ecken[0]) : null));
@@ -660,6 +689,13 @@ export function verdichten(
         const n1 = { x: ab.y * ac.z - ab.z * ac.y, y: ab.z * ac.x - ab.x * ac.z, z: ab.x * ac.y - ab.y * ac.x };
         const l1 = Math.hypot(n1.x, n1.y, n1.z);
         if (!(l1 > 1e-12) || (n0.x * n1.x + n0.y * n1.y + n0.z * n1.z) / l1 < 0.5) return false;
+        // kein Dreieck flach werden lassen (siehe Kopf der Datei): Ein Punkt neben einer Linie, der in einen ihrer Punkte fiele, spannte
+        // sonst drei aufeinanderfolgende Punkte der Linie als Dreieck auf. Was schon flach ist, darf bleiben, wie es ist (Nadeln fallen
+        // weiter zusammen).
+        if (flachSchutz) {
+          const wNeu = kleinsterWinkel(A, B, C);
+          if (wNeu < FLACH && wNeu < 0.5 * winkelVon(t)) return false;
+        }
         for (const w of e) if (w !== v && laengeVon(q, w) > maxKante) return false;
         if (norK && !falteK![q]) {
           // die neuen Kanten (q, w) weichen höchstens halb so weit von der runden Fläche ab, wie `genau` erlaubt (an harten Punkten die
@@ -723,7 +759,7 @@ export function verdichten(
         const a = Math.floor(k / KEY);
         const b = k % KEY;
         const l = laengeVon(a, b);
-        if (l < kurz) kand.push({ a, b, l });
+        if (l < kurz && (!opt.nurKetten || aufKetten.has(a) || aufKetten.has(b))) kand.push({ a, b, l });
       }
       kand.sort((p, q) => p.l - q.l);
       let diesmal = 0;
@@ -765,8 +801,6 @@ export function verdichten(
       if (diesmal === 0) break;
     }
   }
-  if (neu === 0 && gelegt === 0) return null;
-
   // Kanten drehen: Wertigkeit näher an 6, nie Kanten eines Loops (samt Spiegelbild), nie über eine Falte
   const gesperrt = new Set<number>();
   ketten.forEach((k, li) => {
@@ -825,6 +859,12 @@ export function verdichten(
       const n2 = nn(y, c, d);
       const dot = (u: V3, w: V3) => u.x * w.x + u.y * w.y + u.z * w.z;
       if (dot(n1, n2) < dot(alt1, alt2) - 1e-3 || dot(n1, alt1) < 0.5 || dot(n2, alt2) < 0.5) return false;
+      // kein Dreieck flach werden lassen (wie beim Zusammenlegen): Die neue Kante (c, d) verbände sonst zwei Punkte einer Linie über
+      // ihren Nachbarn hinweg
+      if (flachSchutz) {
+        const wNeu = Math.min(kleinsterWinkel(lage(x), lage(d), lage(c)), kleinsterWinkel(lage(y), lage(c), lage(d)));
+        if (wNeu < FLACH && wNeu < 0.5 * Math.min(winkelVon(t1), winkelVon(t2))) return false;
+      }
     }
     weg(a, b, t1);
     weg(a, b, t2);
@@ -846,6 +886,92 @@ export function verdichten(
     wertigkeit[d]!++;
     return true;
   };
+  /**
+   * Flache Dreiecke auflösen (siehe Kopf der Datei): Ein Dreieck, dessen Ecken fast auf einer Geraden liegen (kleinster Winkel unter
+   * `FLACH`/2, ein Winkel über 150°), verliert seine lange Kante; sie wird gedreht, die mittlere Ecke bekommt die Kante zum Gegenpunkt.
+   * (Stumpfe Dreiecke, die nicht flach sind, bleiben: Gemessen drehte das sonst beim Verfeinern im Zug jedes Mal 10 bis 14 Kanten.) Nur, wenn die lange Kante nicht
+   * zu einer Linie gehört, die zwei neuen Dreiecke besser sind als die alten und auf derselben Seite liegen wie der Nachbar (das
+   * flache Dreieck selbst hat keine verlässliche Normale); spiegelgleich mit seinem Spiegelbild.
+   */
+  let geloest = 0;
+  if (flachSchutz) {
+    const lebt = (t: number): boolean => !(totT && totT[t]);
+    /** die lange Kante (a, b) eines flachen Dreiecks t, sonst null */
+    const langeKante = (t: number): [number, number] | null => {
+      if (winkelVon(t) >= FLACH / 2) return null;
+      const e = [tri[3 * t]!, tri[3 * t + 1]!, tri[3 * t + 2]!];
+      for (let k = 0; k < 3; k++) {
+        const m = lage(e[k]!);
+        const p = lage(e[(k + 1) % 3]!);
+        const q = lage(e[(k + 2) % 3]!);
+        const u = { x: p.x - m.x, y: p.y - m.y, z: p.z - m.z };
+        const w = { x: q.x - m.x, y: q.y - m.y, z: q.z - m.z };
+        const lu = Math.hypot(u.x, u.y, u.z);
+        const lw = Math.hypot(w.x, w.y, w.z);
+        // Winkel an der Ecke k über 150°: Dann liegt sie fast auf der Kante gegenüber
+        if (lu > 0 && lw > 0 && (u.x * w.x + u.y * w.y + u.z * w.z) / (lu * lw) < -0.866) return [e[(k + 1) % 3]!, e[(k + 2) % 3]!];
+      }
+      return null;
+    };
+    /** Darf die Kante (a, b) gedreht werden, um ein flaches Dreieck aufzulösen? Dann die Angaben zum Drehen */
+    const loesbar = (a: number, b: number): { t1: number; t2: number; c: number; d: number } | null => {
+      const f = drehbar(a, b);
+      if (!f) return null;
+      const e = [tri[3 * f.t1]!, tri[3 * f.t1 + 1]!, tri[3 * f.t1 + 2]!];
+      const ic = e.indexOf(f.c);
+      const x = e[(ic + 1) % 3]!;
+      const y = e[(ic + 2) % 3]!;
+      const N1 = [lage(x), lage(f.d), lage(f.c)] as const;
+      const N2 = [lage(y), lage(f.c), lage(f.d)] as const;
+      const wAlt = Math.min(winkelVon(f.t1), winkelVon(f.t2));
+      const wNeu = Math.min(kleinsterWinkel(...N1), kleinsterWinkel(...N2));
+      if (!(wNeu > 2 * wAlt) && !(wNeu >= FLACH)) return null;
+      // die Seite des größeren der beiden alten Dreiecke gilt (das flache hat keine verlässliche Normale)
+      const f1 = flaechenNormale(f.t1);
+      const f2 = flaechenNormale(f.t2);
+      const bezug = norm(Math.hypot(f1.x, f1.y, f1.z) >= Math.hypot(f2.x, f2.y, f2.z) ? f1 : f2);
+      for (const [P, Q, R] of [N1, N2]) {
+        const pq = { x: Q.x - P.x, y: Q.y - P.y, z: Q.z - P.z };
+        const pr = { x: R.x - P.x, y: R.y - P.y, z: R.z - P.z };
+        const n = norm({ x: pq.y * pr.z - pq.z * pr.y, y: pq.z * pr.x - pq.x * pr.z, z: pq.x * pr.y - pq.y * pr.x });
+        if (n.x * bezug.x + n.y * bezug.y + n.z * bezug.z < 0.5) return null;
+      }
+      return f;
+    };
+    for (let runde = 0; runde < 3; runde++) {
+      let diesmal = 0;
+      for (let t = 0; t < tri.length / 3; t++) {
+        if (!lebt(t)) continue;
+        const ab = langeKante(t);
+        if (!ab) continue;
+        const [a, b] = ab;
+        const f = loesbar(a, b);
+        if (!f) continue;
+        const sa = spiegel[a]!;
+        const sb = spiegel[b]!;
+        if (sa < 0 || sb < 0) continue;
+        if (schluessel(sa, sb) === schluessel(a, b)) {
+          // die Kante ist ihr eigenes Spiegelbild: Die neue Kante liegt dann in der Mitte (beide Gegenpunkte dort) oder quer über ihr
+          // (die Gegenpunkte sind Spiegelbilder)
+          const mitte = spiegel[f.c] === f.c && spiegel[f.d] === f.d;
+          if (!mitte && spiegel[f.c] !== f.d) continue;
+          if (drehen(a, b, f, false)) diesmal++;
+          continue;
+        }
+        const g = loesbar(sa, sb);
+        const gegen = g && ((g.c === spiegel[f.c] && g.d === spiegel[f.d]) || (g.c === spiegel[f.d] && g.d === spiegel[f.c]));
+        if (!g || !gegen || g.t1 === f.t1 || g.t1 === f.t2 || g.t2 === f.t1 || g.t2 === f.t2) continue;
+        if (schluessel(g.c, g.d) === schluessel(f.c, f.d)) continue;
+        if (!drehen(a, b, f, false)) continue;
+        if (!drehen(sa, sb, g, false)) continue;
+        diesmal += 2;
+      }
+      geloest += diesmal;
+      if (diesmal === 0) break;
+    }
+  }
+  if (neu === 0 && gelegt === 0 && geloest === 0) return null;
+
   let gedreht = 0;
   for (let runde = 0; runde < (opt.drehen === false ? 0 : 3); runde++) {
     let diesmal = 0;
@@ -974,5 +1100,16 @@ export function verdichten(
       punkte: l.punkte.map((p) => ({ ...p })),
     };
   });
-  return { haut, loops: neueLoops, neu, gelegt, gedreht, verborgen: verborgen2 ? Uint8Array.from(verborgen2) : null, alt };
+  return { haut, loops: neueLoops, neu, gelegt, gedreht, geloest, verborgen: verborgen2 ? Uint8Array.from(verborgen2) : null, alt };
+}
+
+/**
+ * Gleich nach dem Einsetzen eines Loops (10.11.2026, G5): Kreuzt die Linie eine Kante dicht neben einem Punkt, liegt der neue Punkt
+ * der Linie fast auf ihm, und wo sie eine Ecke knapp abschneidet, liegen zwei ihrer Punkte fast aufeinander (gemessen bis 0,002
+ * Startkanten; Dreiecke mit 0,02°). Bis zum ersten Aufräumen nach einem Zug rechnete der Löser mit diesen Nadeln. Hier fallen sie
+ * zusammen: nur Kanten an den Linien, kürzer als 0,22 Startkanten (auf einer Linie 0,11: so fein löst das Netz eine Linie höchstens
+ * auf), ohne Teilen, Drehen und Entspannen; die Form ändert sich nur um diese kurzen Stücke. Null, wenn nichts zu tun ist.
+ */
+export function nadelnZusammenlegen(h: Haut, loops: readonly Loop[], mk: number, verborgen: Uint8Array | null = null): Verdichtet | null {
+  return verdichten(h, loops, Infinity, { kurz: 0.22 * mk, nurKetten: true, drehen: false, entspannen: false, verborgen });
 }

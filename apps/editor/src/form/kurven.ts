@@ -88,6 +88,7 @@ import {
   rundAusSeite,
   stueckNaechstes,
   stueckPunkt,
+  nadelnZusammenlegen,
   verdichten,
   type Verdichtet,
   type ZerlegungsDaten,
@@ -3035,7 +3036,7 @@ function verdichtenOptionen(nurTeilen = false): VerdichtenOptionen {
   // abgelesen, die Griffe sind die der Grundform); nach dem Pfad geteilt wurde dort laufend neu vernetzt (Fressen-Probe: 572 neue,
   // 741 zusammengelegte Punkte, danach 2 umgeklappt)
   const genau = GENAU > 0 && grund === null ? { genau: GENAU * MK, genauHaut: GENAU_HAUT } : {};
-  return WINKEL ? { winkel: 25, minKante: MK / 3, verborgen } : { verborgen, kurz: nurTeilen ? 0 : KURZ * MK, ...genau };
+  return WINKEL ? { winkel: 25, minKante: MK / 3, verborgen, flachSchutz: FLACH_SCHUTZ } : { verborgen, kurz: nurTeilen ? 0 : KURZ * MK, ...genau, flachSchutz: FLACH_SCHUTZ };
 }
 
 /** Das verdichtete Netz zum Stand jetzt (wie `nachVerdichten`, ohne es zu übernehmen) */
@@ -3096,7 +3097,6 @@ function einsetzenLetzten(punkteNoetig = false): void {
     haut = r.haut;
     loops = r.loops;
     netzGewachsen(nAlt, nurGewachsen(haut.n, nAlt), vorher);
-    geometrieNeu();
     meldung = '';
   } else meldung = 'Loop liegt nur auf der Haut (nicht ins Netz eingesetzt): eine Kante wirkt dort kaum';
   // erst die Kreuzungen (in den anderen Loops teilen sie ein Stück), dann liest der neue Loop alle seine Griffe aus der Linie (wo
@@ -3106,6 +3106,51 @@ function einsetzenLetzten(punkteNoetig = false): void {
   eckenAuto(loops);
   const neu = loops[loops.length - 1]!;
   griffeAnlegen(neu, neu.ruhe, !grund, punkteNoetig && !grund ? 0.05 * MK : 0);
+  if (r) {
+    nadelnWeg();
+    // die Puffer der Anzeige einmal, für das Netz, wie es jetzt ist (bis G5 gleich nach dem Einsetzen; dazwischen braucht sie niemand)
+    geometrieNeu();
+  }
+}
+
+/**
+ * Gleich nach dem Einsetzen eines Loops (G5, 10.11.): Wo die Linie eine Kante dicht neben einem Punkt kreuzt oder eine Ecke knapp
+ * abschneidet, liegen Punkte der Linie fast aufeinander (gemessen bis 0,002 Startkanten, Dreiecke mit 0,02°). Bis zum ersten Aufräumen
+ * nach einem Zug rechnete der Löser mit diesen Nadeln; beim Aufräumen entstanden aus ihnen flache Dreiecke längs der Linie. Hier
+ * fallen sie zusammen (`nadelnZusammenlegen`: nur an den Linien, ohne Teilen, Drehen, Entspannen; die Form ändert sich um
+ * Hundertstel). `?nadeln=0`: wie vorher.
+ */
+const NADELN = new URLSearchParams(location.search).get('nadeln') !== '0';
+/**
+ * Beim Verdichten kein Dreieck flach werden lassen und vorhandene flache auflösen (G5, 10.11.; `verdichten`, Option `flachSchutz`).
+ * `?flach=0`: wie vorher (zum Vergleich, zusammen mit `?nadeln=0`).
+ */
+const FLACH_SCHUTZ = new URLSearchParams(location.search).get('flach') !== '0';
+let letzteNadeln = { gelegt: 0, ms: 0 };
+function nadelnWeg(): void {
+  if (!VERDICHTEN || !NADELN) return;
+  const t0 = performance.now();
+  // nur, wenn am neuen Loop eine Kante so kurz ist (sonst kostete schon das Nachsehen im Kern 10 / 22 / 40 ms bei 5 400 / 11 200 /
+  // 23 600 Punkten; die älteren Loops sind seit ihrem Einsetzen bereinigt)
+  const neu = loops[loops.length - 1]!;
+  const P = haut.pos;
+  const kurz = 0.22 * MK;
+  const noetig = neu.proben.some((p) => {
+    const v = p.ecken[0];
+    return haut.nachbarn[v]!.some((w) => Math.hypot(P[3 * v]! - P[3 * w]!, P[3 * v + 1]! - P[3 * w + 1]!, P[3 * v + 2]! - P[3 * w + 2]!) < kurz);
+  });
+  if (!noetig) {
+    letzteNadeln = { gelegt: 0, ms: Math.round((performance.now() - t0) * 10) / 10 };
+    return;
+  }
+  const vorher = grund ? poseKnochen() : null;
+  const nAlt = haut.n;
+  const v = nadelnZusammenlegen(haut, loops, MK, verdichtenOptionen().verborgen ?? null);
+  letzteNadeln = { gelegt: v ? v.gelegt : 0, ms: Math.round((performance.now() - t0) * 10) / 10 };
+  if (!v) return;
+  haut = v.haut;
+  loops = v.loops;
+  netzGewachsen(nAlt, v.alt, vorher);
 }
 
 /**
@@ -3839,14 +3884,16 @@ window.addEventListener('keydown', (e) => {
  * Bis dahin lebte ein Wesen nur im offenen Fenster: Jedes Neuladen begann wieder mit der Kugel, auch das Neuladen von selbst, wenn
  * sich der Code ändert. Jetzt:
  * - **Behalten:** Der Stand liegt im Browser (IndexedDB) und ist nach dem Neuladen wieder da, solange die Startform der Adresse
- *   dieselbe ist (`form`, `dreiecke`). `?behalten=0`: nicht. Proben beginnen ohnehin mit einem leeren Browser.
+ *   dieselbe ist (`form`, `dreiecke`). `?behalten=0`: nicht. Unter einer Fernsteuerung (die Proben mit Playwright,
+ *   `navigator.webdriver`) wird nicht behalten: Viele Proben laden die Seite je Fall neu und erwarten die Startform (die Härte-Probe
+ *   begann sonst ihren zweiten Fall mit der Form des ersten und blieb hängen). `?behalten=1` schaltet es auch dort ein.
  * - **Sichern / Laden:** unter einem Namen als Datei im Ordner `wesen/` des Arbeitsbaums (über den Dev-Server, `vite.config.ts`;
  *   ohne ihn als Datei über den Browser).
  * - **Neu:** wieder die Startform.
  * Laden und Neu sind Schritte wie andere: ⌘Z bringt das Wesen von vorher zurück. Gesichert wird der Stand, den auch Rückgängig
  * festhält (`ablage.ts`); die Liste der Schritte selbst gehört nicht dazu.
  */
-const BEHALTEN = new URLSearchParams(location.search).get('behalten') !== '0';
+const BEHALTEN = ((w) => w === '1' || (w !== '0' && !navigator.webdriver))(new URLSearchParams(location.search).get('behalten'));
 /** die Startform dieser Adresse: Ein behaltenes Wesen kommt nur zur selben zurück */
 const START_KENNUNG = `${new URLSearchParams(location.search).get('form') ?? 'kugel'}|${DREIECKE}`;
 
@@ -4599,6 +4646,8 @@ if (BEHALTEN) behaltenesHolen();
     auftrag: letzterAuftrag,
     hintergrundAus,
     loslassen: letztesLoslassen,
+    /** nach dem letzten Einsetzen eines Loops: zusammengelegte Punkte an den Linien (Nadeln), Dauer im Fenster */
+    nadeln: letzteNadeln,
     /** was für den Stand offen ist; der letzte Zwischenstand; rechnet noch etwas oder steht etwas an (Zug, Nachlauf, Hintergrund, Uhr) */
     ruheOffen: ruheOffen ? (ruheOffen.setzen ? 'setzen' : 'aufraeumen') : null,
     auftragNr: aufraeumen ? aufraeumen.id : null,

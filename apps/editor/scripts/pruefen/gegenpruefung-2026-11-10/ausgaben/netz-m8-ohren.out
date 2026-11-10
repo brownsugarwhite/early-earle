@@ -1,0 +1,116 @@
+Startkante 8.64, Gewichte geometrie, ohne Schutz (wie bis 10.11.)
+0 Kugel                                        4706 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+1 drei Loops eingesetzt                        5222 Punkte · unter 1°: 0, unter 5°: 18 (flach längs Linie 0, Nadel 18, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+2 Hals gezogen (vor dem Aufräumen)             5222 Punkte · unter 1°: 0, unter 5°: 18 (flach längs Linie 0, Nadel 18, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+  Aufräumen nach dem Hals, einzelne Teile des Verdichtens auf demselben Netz:
+    nur teilen                           6299 Punkte · unter 1°: 0, unter 5°: 18 (flach längs Linie 0, Nadel 18, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 1077, gelegt 0, gedreht 0, aufgelöst 0
+    teilen + zusammenlegen               5897 Punkte · unter 1°: 2, unter 5°: 2 (flach längs Linie 2, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 2 · neu 1077, gelegt 202, gedreht 0, aufgelöst 0
+    teilen + zusammenlegen + drehen      5897 Punkte · unter 1°: 2, unter 5°: 2 (flach längs Linie 2, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 2 · neu 1077, gelegt 202, gedreht 366, aufgelöst 0
+    alles (wie im Fenster)               5897 Punkte · unter 1°: 2, unter 5°: 2 (flach längs Linie 2, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 2 · neu 1077, gelegt 202, gedreht 366, aufgelöst 0
+    alles, ohne Schutz (wie bis 10.11.)  5897 Punkte · unter 1°: 2, unter 5°: 2 (flach längs Linie 2, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 2 · neu 1077, gelegt 202, gedreht 366, aufgelöst 0
+3 nach dem Aufräumen                           5897 Punkte · unter 1°: 2, unter 5°: 2 (flach längs Linie 2, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 2
+4 Ring um den Hals eingesetzt                  6049 Punkte · unter 1°: 2, unter 5°: 42 (flach längs Linie 2, Nadel 38, sonst an Linie 2, frei 0) · ≤ 3 Nachbarn: 2
+5 Kopf gezogen (vor dem Aufräumen)             6049 Punkte · unter 1°: 2, unter 5°: 40 (flach längs Linie 2, Nadel 30, sonst an Linie 8, frei 0) · ≤ 3 Nachbarn: 2
+  Aufräumen nach dem Kopf, einzelne Teile des Verdichtens auf demselben Netz:
+    nur teilen                           6234 Punkte · unter 1°: 0, unter 5°: 34 (flach längs Linie 0, Nadel 30, sonst an Linie 4, frei 0) · ≤ 3 Nachbarn: 0 · neu 185, gelegt 0, gedreht 0, aufgelöst 8
+    teilen + zusammenlegen               6118 Punkte · unter 1°: 8, unter 5°: 8 (flach längs Linie 8, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 8 · neu 185, gelegt 58, gedreht 0, aufgelöst 0
+    teilen + zusammenlegen + drehen      6118 Punkte · unter 1°: 8, unter 5°: 8 (flach längs Linie 8, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 8 · neu 185, gelegt 58, gedreht 110, aufgelöst 0
+    alles (wie im Fenster)               6118 Punkte · unter 1°: 8, unter 5°: 8 (flach längs Linie 8, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 8 · neu 185, gelegt 58, gedreht 110, aufgelöst 0
+    alles, ohne Schutz (wie bis 10.11.)  6118 Punkte · unter 1°: 8, unter 5°: 8 (flach längs Linie 8, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 8 · neu 185, gelegt 58, gedreht 110, aufgelöst 0
+6 nach dem Aufräumen                           6118 Punkte · unter 1°: 8, unter 5°: 8 (flach längs Linie 8, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 8
+
+Startkante 8.64, Gewichte geometrie
+0 Kugel                                        4706 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+1 drei Loops eingesetzt                        5222 Punkte · unter 1°: 0, unter 5°: 18 (flach längs Linie 0, Nadel 18, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+2 Hals gezogen (vor dem Aufräumen)             5222 Punkte · unter 1°: 0, unter 5°: 18 (flach längs Linie 0, Nadel 18, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+  Aufräumen nach dem Hals, einzelne Teile des Verdichtens auf demselben Netz:
+    nur teilen                           6299 Punkte · unter 1°: 0, unter 5°: 18 (flach längs Linie 0, Nadel 18, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 1077, gelegt 0, gedreht 0, aufgelöst 0
+    teilen + zusammenlegen               5909 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 1077, gelegt 196, gedreht 0, aufgelöst 0
+    teilen + zusammenlegen + drehen      5909 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 1077, gelegt 196, gedreht 370, aufgelöst 0
+    alles (wie im Fenster)               5909 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 1077, gelegt 196, gedreht 370, aufgelöst 0
+    alles, ohne Schutz (wie bis 10.11.)  5897 Punkte · unter 1°: 2, unter 5°: 2 (flach längs Linie 2, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 2 · neu 1077, gelegt 202, gedreht 366, aufgelöst 0
+3 nach dem Aufräumen                           5909 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+4 Ring um den Hals eingesetzt                  6061 Punkte · unter 1°: 0, unter 5°: 40 (flach längs Linie 0, Nadel 38, sonst an Linie 2, frei 0) · ≤ 3 Nachbarn: 0
+5 Kopf gezogen (vor dem Aufräumen)             6061 Punkte · unter 1°: 0, unter 5°: 38 (flach längs Linie 0, Nadel 30, sonst an Linie 8, frei 0) · ≤ 3 Nachbarn: 0
+  Aufräumen nach dem Kopf, einzelne Teile des Verdichtens auf demselben Netz:
+    nur teilen                           6242 Punkte · unter 1°: 0, unter 5°: 34 (flach längs Linie 0, Nadel 30, sonst an Linie 4, frei 0) · ≤ 3 Nachbarn: 0 · neu 181, gelegt 0, gedreht 0, aufgelöst 6
+    teilen + zusammenlegen               6132 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 181, gelegt 55, gedreht 0, aufgelöst 2
+    teilen + zusammenlegen + drehen      6132 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 181, gelegt 55, gedreht 98, aufgelöst 2
+    alles (wie im Fenster)               6132 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 181, gelegt 55, gedreht 98, aufgelöst 2
+    alles, ohne Schutz (wie bis 10.11.)  6116 Punkte · unter 1°: 8, unter 5°: 8 (flach längs Linie 8, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 8 · neu 181, gelegt 63, gedreht 102, aufgelöst 0
+6 nach dem Aufräumen                           6132 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+
+Startkante 8.64, Gewichte geometrie, Nadeln fallen gleich nach dem Einsetzen zusammen
+0 Kugel                                        4706 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+1 drei Loops eingesetzt                        5195 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+2 Hals gezogen (vor dem Aufräumen)             5195 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+  Aufräumen nach dem Hals, einzelne Teile des Verdichtens auf demselben Netz:
+    nur teilen                           6272 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 1077, gelegt 0, gedreht 0, aufgelöst 0
+    teilen + zusammenlegen               5909 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 1077, gelegt 182, gedreht 0, aufgelöst 0
+    teilen + zusammenlegen + drehen      5909 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 1077, gelegt 182, gedreht 366, aufgelöst 0
+    alles (wie im Fenster)               5909 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 1077, gelegt 182, gedreht 366, aufgelöst 0
+    alles, ohne Schutz (wie bis 10.11.)  5897 Punkte · unter 1°: 2, unter 5°: 2 (flach längs Linie 2, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 2 · neu 1077, gelegt 188, gedreht 362, aufgelöst 0
+3 nach dem Aufräumen                           5909 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+4 Ring um den Hals eingesetzt                  6027 Punkte · unter 1°: 0, unter 5°: 2 (flach längs Linie 0, Nadel 0, sonst an Linie 2, frei 0) · ≤ 3 Nachbarn: 0
+5 Kopf gezogen (vor dem Aufräumen)             6027 Punkte · unter 1°: 0, unter 5°: 2 (flach längs Linie 0, Nadel 0, sonst an Linie 2, frei 0) · ≤ 3 Nachbarn: 0
+  Aufräumen nach dem Kopf, einzelne Teile des Verdichtens auf demselben Netz:
+    nur teilen                           6212 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 185, gelegt 0, gedreht 0, aufgelöst 2
+    teilen + zusammenlegen               6136 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 185, gelegt 38, gedreht 0, aufgelöst 2
+    teilen + zusammenlegen + drehen      6136 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 185, gelegt 38, gedreht 100, aufgelöst 2
+    alles (wie im Fenster)               6136 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 185, gelegt 38, gedreht 100, aufgelöst 2
+    alles, ohne Schutz (wie bis 10.11.)  6118 Punkte · unter 1°: 8, unter 5°: 10 (flach längs Linie 10, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 10 · neu 185, gelegt 47, gedreht 106, aufgelöst 0
+6 nach dem Aufräumen                           6136 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+
+Startkante 3.97, Gewichte geometrie, ohne Schutz (wie bis 10.11.)
+0 Kugel                                        22310 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+1 drei Loops eingesetzt                        23406 Punkte · unter 1°: 0, unter 5°: 60 (flach längs Linie 0, Nadel 58, sonst an Linie 2, frei 0) · ≤ 3 Nachbarn: 0
+2 Hals gezogen (vor dem Aufräumen)             23406 Punkte · unter 1°: 0, unter 5°: 66 (flach längs Linie 0, Nadel 58, sonst an Linie 8, frei 0) · ≤ 3 Nachbarn: 0
+  Aufräumen nach dem Hals, einzelne Teile des Verdichtens auf demselben Netz:
+    nur teilen                           28799 Punkte · unter 1°: 0, unter 5°: 56 (flach längs Linie 0, Nadel 56, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 5393, gelegt 0, gedreht 0, aufgelöst 10
+    teilen + zusammenlegen               27221 Punkte · unter 1°: 0, unter 5°: 6 (flach längs Linie 0, Nadel 0, sonst an Linie 6, frei 0) · ≤ 3 Nachbarn: 0 · neu 5393, gelegt 790, gedreht 0, aufgelöst 0
+    teilen + zusammenlegen + drehen      27221 Punkte · unter 1°: 0, unter 5°: 6 (flach längs Linie 0, Nadel 0, sonst an Linie 6, frei 0) · ≤ 3 Nachbarn: 0 · neu 5393, gelegt 790, gedreht 2014, aufgelöst 0
+    alles (wie im Fenster)               27221 Punkte · unter 1°: 0, unter 5°: 6 (flach längs Linie 0, Nadel 0, sonst an Linie 6, frei 0) · ≤ 3 Nachbarn: 0 · neu 5393, gelegt 790, gedreht 2014, aufgelöst 0
+    alles, ohne Schutz (wie bis 10.11.)  27221 Punkte · unter 1°: 0, unter 5°: 6 (flach längs Linie 0, Nadel 0, sonst an Linie 6, frei 0) · ≤ 3 Nachbarn: 0 · neu 5393, gelegt 790, gedreht 2014, aufgelöst 0
+    nachverfeinert 1: neu 10, gedreht 80 → 27231 Punkte · unter 1°: 0, unter 5°: 4 (flach längs Linie 0, Nadel 0, sonst an Linie 4, frei 0) · ≤ 3 Nachbarn: 0
+    nachverfeinert 2: neu 8, gedreht 16 → 27239 Punkte · unter 1°: 0, unter 5°: 4 (flach längs Linie 0, Nadel 0, sonst an Linie 4, frei 0) · ≤ 3 Nachbarn: 0
+    nachverfeinert 3: neu 2, gedreht 2 → 27241 Punkte · unter 1°: 0, unter 5°: 4 (flach längs Linie 0, Nadel 0, sonst an Linie 4, frei 0) · ≤ 3 Nachbarn: 0
+3 nach dem Aufräumen                           27241 Punkte · unter 1°: 0, unter 5°: 4 (flach längs Linie 0, Nadel 0, sonst an Linie 4, frei 0) · ≤ 3 Nachbarn: 0
+4 Ring um den Hals eingesetzt                  27571 Punkte · unter 1°: 0, unter 5°: 36 (flach längs Linie 0, Nadel 30, sonst an Linie 6, frei 0) · ≤ 3 Nachbarn: 0
+5 Kopf gezogen (vor dem Aufräumen)             27571 Punkte · unter 1°: 0, unter 5°: 44 (flach längs Linie 0, Nadel 28, sonst an Linie 16, frei 0) · ≤ 3 Nachbarn: 0
+  Aufräumen nach dem Kopf, einzelne Teile des Verdichtens auf demselben Netz:
+    nur teilen                           28605 Punkte · unter 1°: 0, unter 5°: 32 (flach längs Linie 0, Nadel 28, sonst an Linie 4, frei 0) · ≤ 3 Nachbarn: 0 · neu 1034, gelegt 0, gedreht 0, aufgelöst 16
+    teilen + zusammenlegen               28281 Punkte · unter 1°: 6, unter 5°: 12 (flach längs Linie 6, Nadel 0, sonst an Linie 6, frei 0) · ≤ 3 Nachbarn: 4 · neu 1034, gelegt 162, gedreht 0, aufgelöst 0
+    teilen + zusammenlegen + drehen      28281 Punkte · unter 1°: 4, unter 5°: 6 (flach längs Linie 4, Nadel 0, sonst an Linie 2, frei 0) · ≤ 3 Nachbarn: 2 · neu 1034, gelegt 162, gedreht 530, aufgelöst 0
+    alles (wie im Fenster)               28281 Punkte · unter 1°: 4, unter 5°: 6 (flach längs Linie 4, Nadel 0, sonst an Linie 2, frei 0) · ≤ 3 Nachbarn: 2 · neu 1034, gelegt 162, gedreht 530, aufgelöst 0
+    alles, ohne Schutz (wie bis 10.11.)  28281 Punkte · unter 1°: 4, unter 5°: 6 (flach längs Linie 4, Nadel 0, sonst an Linie 2, frei 0) · ≤ 3 Nachbarn: 2 · neu 1034, gelegt 162, gedreht 530, aufgelöst 0
+    nachverfeinert 1: neu 4, gedreht 26 → 28285 Punkte · unter 1°: 4, unter 5°: 6 (flach längs Linie 4, Nadel 0, sonst an Linie 2, frei 0) · ≤ 3 Nachbarn: 2
+    nachverfeinert 2: neu 6, gedreht 2 → 28291 Punkte · unter 1°: 4, unter 5°: 6 (flach längs Linie 4, Nadel 0, sonst an Linie 2, frei 0) · ≤ 3 Nachbarn: 2
+    nachverfeinert 3: neu 4, gedreht 4 → 28295 Punkte · unter 1°: 4, unter 5°: 6 (flach längs Linie 4, Nadel 0, sonst an Linie 2, frei 0) · ≤ 3 Nachbarn: 2
+6 nach dem Aufräumen                           28295 Punkte · unter 1°: 4, unter 5°: 6 (flach längs Linie 4, Nadel 0, sonst an Linie 2, frei 0) · ≤ 3 Nachbarn: 2
+
+Startkante 3.97, Gewichte geometrie, Nadeln fallen gleich nach dem Einsetzen zusammen
+0 Kugel                                        22310 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+1 drei Loops eingesetzt                        23218 Punkte · unter 1°: 0, unter 5°: 2 (flach längs Linie 0, Nadel 0, sonst an Linie 2, frei 0) · ≤ 3 Nachbarn: 0
+2 Hals gezogen (vor dem Aufräumen)             23218 Punkte · unter 1°: 0, unter 5°: 4 (flach längs Linie 0, Nadel 0, sonst an Linie 4, frei 0) · ≤ 3 Nachbarn: 0
+  Aufräumen nach dem Hals, einzelne Teile des Verdichtens auf demselben Netz:
+    nur teilen                           28225 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 5007, gelegt 0, gedreht 0, aufgelöst 4
+    teilen + zusammenlegen               27029 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 5007, gelegt 599, gedreht 0, aufgelöst 2
+    teilen + zusammenlegen + drehen      27029 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 5007, gelegt 599, gedreht 2022, aufgelöst 2
+    alles (wie im Fenster)               27029 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 5007, gelegt 599, gedreht 2022, aufgelöst 2
+    alles, ohne Schutz (wie bis 10.11.)  27013 Punkte · unter 1°: 0, unter 5°: 4 (flach längs Linie 0, Nadel 0, sonst an Linie 4, frei 0) · ≤ 3 Nachbarn: 0 · neu 5007, gelegt 607, gedreht 2036, aufgelöst 0
+    nachverfeinert 1: neu 6, gedreht 84 → 27035 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+    nachverfeinert 2: neu 2, gedreht 2 → 27037 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+    nachverfeinert 3: neu 4, gedreht 4 → 27041 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+3 nach dem Aufräumen                           27041 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+4 Ring um den Hals eingesetzt                  27321 Punkte · unter 1°: 0, unter 5°: 6 (flach längs Linie 0, Nadel 0, sonst an Linie 6, frei 0) · ≤ 3 Nachbarn: 0
+5 Kopf gezogen (vor dem Aufräumen)             27321 Punkte · unter 1°: 0, unter 5°: 12 (flach längs Linie 0, Nadel 0, sonst an Linie 12, frei 0) · ≤ 3 Nachbarn: 0
+  Aufräumen nach dem Kopf, einzelne Teile des Verdichtens auf demselben Netz:
+    nur teilen                           28407 Punkte · unter 1°: 0, unter 5°: 4 (flach längs Linie 0, Nadel 0, sonst an Linie 4, frei 0) · ≤ 3 Nachbarn: 0 · neu 1086, gelegt 0, gedreht 0, aufgelöst 8
+    teilen + zusammenlegen               28151 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 1086, gelegt 128, gedreht 0, aufgelöst 4
+    teilen + zusammenlegen + drehen      28151 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 1086, gelegt 128, gedreht 532, aufgelöst 4
+    alles (wie im Fenster)               28151 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0 · neu 1086, gelegt 128, gedreht 532, aufgelöst 4
+    alles, ohne Schutz (wie bis 10.11.)  28127 Punkte · unter 1°: 2, unter 5°: 4 (flach längs Linie 2, Nadel 0, sonst an Linie 2, frei 0) · ≤ 3 Nachbarn: 2 · neu 1086, gelegt 140, gedreht 540, aufgelöst 0
+    nachverfeinert 1: neu 6, gedreht 28 → 28157 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+    nachverfeinert 2: neu 12, gedreht 12 → 28169 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+    nachverfeinert 3: neu 10, gedreht 4 → 28179 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0
+6 nach dem Aufräumen                           28179 Punkte · unter 1°: 0, unter 5°: 0 (flach längs Linie 0, Nadel 0, sonst an Linie 0, frei 0) · ≤ 3 Nachbarn: 0

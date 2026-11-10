@@ -39,6 +39,7 @@ python3 apps/editor/scripts/pruefen/gegenpruefung-2026-11-10/loeser/gen.py
 | `netz/m4-iso.ts` | gleichmäßig neu vernetzt gegen heute | `FALL`, `TEIL=dichte\|ruhe\|lag\|stufen`, `GEWICHTE` |
 | `netz/m5-ausgleich.ts` | Ausgleich beim Netzwechsel (in den Löser zur Laufzeit eingehängt) | `FALL=hals\|ruessel` |
 | `netz/m6-spiegel.ts` | Spiegelzuordnung bei sehr nahen Punkten | – |
+| `netz/m8-ohren.ts` | (G5) woher die flachen Dreiecke längs der Linien kommen: der Ablauf der Probeformen im Kern (drei Loops, Hals, aufräumen, Ring um den Hals, Kopf, aufräumen), nach jedem Schritt die spitzen Dreiecke nach Art, bei jedem Aufräumen die Teile des Verdichtens einzeln | `OHNE_SCHUTZ=1` (wie bis 10.11.), `NADELN=1`, `DREIECKE`, `GEWICHTE` |
 | `netz/m7-unruhige-stelle.mjs` | (G3, im Fenster, aus `apps/editor` mit `node`) die unruhige Stelle bei 23 400 Punkten: kurze Kanten im Startnetz, Umgebung des Punkts, der nach der Ruhe am weitesten wandert | `KURVEN_URL`, `HALTEN` |
 
 `ausgaben/g3-fenster-*.txt`, `loeser-mess7.out`, `loeser-mess8.out` und `m7-unruhige-stelle.out` gehören zu Schritt G3 (10.11.
@@ -68,6 +69,14 @@ drei Loops, Hals und Kopf, Rüssel und Ohr, danach gespielt; bei 5 200 und 23 40
 Zahl der Punkte nach jedem Mal Hinaus-und-zurück (`SPIEL=30`), `g5-netzguete-fall-hoerner.txt` Florians Fall „Hörner, mit dem
 Griff gespielt“ vom 08.11., nachgestellt mit `form-drei-faelle.mjs` (`ABLEGEN=fall-hoerner`) und gemessen: 7 352 Punkte am Ende,
 nicht 18 000 bis 26 000 wie in seinem Bild. Fertige Wesen von Florian gibt es nicht (Klarstellung vom 10.11. nachts im Bericht).
+
+`ausgaben/netz-m8-ohren.out` und `g5a-*.txt` gehören zum ersten Teil von G5 (keine flachen Dreiecke mehr an den Linien, 10.11.
+spätnachts): `netz-m8-ohren.out` (der Ablauf im Kern ohne Schutz, mit Schutz und mit Nadeln gleich weg, bei 5 200 und 23 400
+Punkten), `g5a-netzguete-nachher.txt` (die Probeformen neu gebaut und gemessen; vorher steht in `g5-netzguete-probewesen.txt`),
+`g5a-hoerner-vergleich.txt` (Florians Hörner-Fall je dreimal wie vorher und neu), `g5a-vergleich-alte-proben.txt` (elf ältere
+Proben neu und mit `&flach=0&nadeln=0`), `g5a-fenster-aendern.txt` (Stillstände bei Loop, Kante, Punkt, Rückgängig; Kosten des
+Zusammenlegens der Nadeln), `g5a-nachlauf-ablage.txt` (18 und 27 Prüfungen). `loeser/mess10.ts` hat dafür den Schalter `NADELN=1`
+bekommen (das Ausschlagen mit einem einzelnen Loop bleibt gleich).
 
 `ausgaben/` enthält sonst die Ausgaben vom 10.11. (je ein Lauf, die Maschine war belegt). `a5-ausgabe.txt` stammt von einem Skript, das
 eine von Hand angelegte Kopie des Lösers brauchte; gleichwertig ist `mess3.ts` mit `DREIECKE=30000`.

@@ -1,0 +1,51 @@
+G5 Teil 1 (10.11.2026 spätnachts): form-nachlauf-probe.mjs (GPU=1) und form-ablage-probe.mjs mit dem neuen Stand.
+
+gut  A sofort ⌘Z: Stand gegen vor dem Zug 0.0e+0 (beim Loslassen: Nachlauf true, Hintergrund false)
+gut  A bleibt: 3 s später 0.0e+0, 4984 Punkte (vorher 4984); Auftrag im Hintergrund: keiner
+gut  B Hintergrund: Auftrag angewendet, 4984 → 5284 Punkte, 2-mal verdichtet
+gut  B ⌘Z: Stand gegen vor dem Zug 0.0e+0, 4984 Punkte
+gut  C gleich wieder gegriffen: beim ersten Loslassen Nachlauf true, Hintergrund false; zerlegt beim zweiten Greifen 1 ms; Punkt jetzt bei y 258.8 (Start 154.0), 5424 Punkte, Auftrag angewendet
+gut  C zwei Schritte zurück: Stand gegen den Anfang 0.0e+0
+gut  D ⌘Z im Hintergrund: Hintergrund rechnete ja; Stand gegen vor dem Zug 0.0e+0
+gut  D bleibt: später 0.0e+0, 4984 Punkte (vorher 4984); Auftrag keiner
+gut  E Kante im Hintergrund: Hintergrund rechnete ja; die Kante: gesetzte Haut nach 283 ms (11 Runden), danach Auftrag angewendet; 4986 Punkte
+gut  E zwei Schritte zurück: Stand gegen den Anfang 0.0e+0
+gut  F Loop im Hintergrund: Hintergrund rechnete ja; Loops 3 → 4; die Haut setzt sich zum neuen Loop nach 329 ms, danach Auftrag angewendet; 5082 Punkte
+gut  F zwei Schritte zurück: Stand gegen den Anfang 0.0e+0, Loops 3
+gut  H Fehler im Auftrag: Hintergrund rechnete ja; im Fenster verdichtet: 4984 → 5096 Punkte; der gescheiterte Auftrag 28 kam nicht mehr an (letzter: 26, vorher 26)
+gut  H ein Schritt zurück: Stand gegen den Anfang 0.0e+0
+gut  G Ausfall: Hintergrund rechnete ja; ohne Hintergrund weiter: true; 4984 → 5096 Punkte (im Fenster verdichtet 114 neu)
+gut  G Zug ohne Hintergrund: Punkt 214.0 → 264.0, 5432 Punkte, kein Nachlauf und kein Auftrag (wie mit ?hintergrund=0)
+gut  Spiegelgleichheit: 0
+gut  Konsole: keine Fehler
+
+Wesen gebaut: 5080 Punkte, 3 Loops, Maß 8.636; als Datei 0.43 MB, Packen im Fenster 1 ms
+gut  A neu geladen: 5080 Punkte (vorher 5080), Stand Bit für Bit gleich; Statuszeile: „Wesen von vorhin wieder da (5080 Punkte im Netz, 3 Loops mit 10 Punkte“
+gut  A in der Ruhe: nach dem Rechnen im Hintergrund unverändert: ja
+gut  A Zug danach: Punkt 208.0 → 228.0, 5120 Punkte
+gut  A ⌘Z: zurück zum Stand nach dem Neuladen: ja
+gut  B Tippen: Wesen unverändert: ja, Loop-Werkzeug aus
+gut  B gesichert: Statuszeile „gesichert: „probe-ablage“ (5080 Punkte im Netz, 3 Loops mit 10 Punkten, 0.4 MB)“; in der Ablage: 5080 Punkte, 3 Loops, 0.43 MB
+gut  B ⌘S: „gesichert: „probe-ablage“ (5086 Punkte im Netz, 3 Loops mit “, ohne Namensfeld, Datei neu geschrieben: ja
+gut  B ⌘S im Feld: das Feld schlug „probe-ablage“ vor; gesichert als „probe-ablage zwei“
+gut  B Name bleibt: nach dem Neuladen: Name „probe-ablage zwei“, Stand gleich; „„probe-ablage zwei“ wieder da (5086 Punkte im Netz, 3 Loops “
+gut  C Neu: 4706 Punkte, 0 Loops (Startform: ja)
+gut  C kein Überschreiben: „„probe-ablage“ gibt es schon: noch einmal drücken überschreibt“; in der Ablage weiter 3 Loops
+gut  C ⌘Z: das Wesen ist wieder da: ja
+gut  D geladen: aus der Liste: 5086 Punkte, Stand Bit für Bit wie gesichert; „geladen: „probe-ablage zwei“ (5086 Punkte im Netz, 3 Loops m“
+gut  D Zug danach: 5086 → 5120 Punkte
+gut  D zweimal ⌘Z: zurück zur Startform von vor dem Laden: ja
+gut  F nach „Neu“ neu geladen: die Startform (kein Wesen kommt von selbst): ja
+gut  F Wesen von vorher: Eintrag „Wesen von vorher („probe-ablage zwei“) · 5.078 Punkte · 10.11. 20:20“; Stand Bit für Bit wie vor „Neu“
+gut  P Pose neu geladen: wieder in der Pose ({"an":true,"kiefer":45,"schaedel":10,"blendshape":24.998615780353482,"punkte":4735}), Regler 45/10, Stand samt Grundform Bit für Bit gleich; „Wesen von vorhin wieder da (4735 Punkte im Netz, 1
+gut  P Neu aus der Pose: die Startform, nicht in der Pose, kein Maul: ja
+gut  P geladen: „geladen: „probe-ablage pose“ (4735 Punkte im Netz, 1 Loops mit 3 Punkt“; Stand samt Grundform Bit für Bit wie gesichert
+gut  P Grundform: nach dem Laden die Pose verlassen: die Grundform wie gesichert Bit für Bit
+gut  P wieder hinein: Knochen und Blendshape wie gesichert; Lagen gegen vorher bis 1.1e-13 (Verlassen und Betreten allein, ohne Sichern: 5.7e-14)
+gut  E andere Startform: das behaltene Wesen kommt hier nicht von selbst: 10216 Punkte, 0 Loops, Maß 5.865
+gut  E geladen: 5086 Punkte, Maß 8.636 (das des Wesens: 8.636; das der Seite war 5.865)
+gut  E Zug danach: 5086 → 5120 Punkte (das Netz bleibt beim Maß des Wesens)
+gut  E zweimal ⌘Z: zurück zur dichteren Startform samt ihrem Maß 5.865: ja
+gut  Konsole: keine Fehler
+(die Dateien der Probe in wesen/ sind wieder weg)
+alles gut
