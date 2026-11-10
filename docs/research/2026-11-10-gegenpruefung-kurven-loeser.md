@@ -66,6 +66,10 @@ hinaus und kontrolliere die bisherigen Versuche. Gibt es Fehler? … Haben wir e
 - **Stand (10.11. spätabends):** G4.4 ist gebaut. Kante, Löschen, Punkt setzen und Rückgängig halten das Fenster nicht mehr an
   (vorher 0,1 bis 6 s), und der Ruck beim ersten Greifen nach neuen Loops ist weg (fern vom Griff 7 bis 26 Einheiten je Bild →
   höchstens 0,2). Neuer Befund: Mit einem einzelnen Loop hält nichts die Haut; dort bleibt es beim alten Verhalten.
+- **Stand (10.11. nachts):** Ein Wesen lässt sich jetzt sichern und laden und übersteht das Neuladen. Für G5 gibt es ein
+  Messwerkzeug für die Güte des Netzes; gemessen ist damit erst an Probewesen, Florians eigene stehen aus. Erste Befunde dort:
+  Das Netz ist nicht dichter als das Startnetz, es wächst mit der Fläche und beim Spielen (hinaus und zurück, gleiche Form, 7 bis
+  10 % mehr Punkte); an den Linien bleiben in jedem Wesen flache Dreiecke stehen.
 - **Werkzeuge:** Dem Fenster fehlen fast alle Präzisionshilfen aus Illustrator und Blender (Zahlen im Zug, fein mit ⇧,
   Pfeiltasten, Einrasten, Wiederholen, Auswahlrechteck). Der größte Hebel der Bedienung ist, weite Züge überflüssig zu machen:
   Auswuchs als eigene Operation und eine Startform aus einer Seitenzeichnung (Abschnitt 6).
@@ -879,6 +883,99 @@ die Grenze zum Worker, „nur in Ruhe“ lässt die Haut sonst, wie sie war.
 4. **Der Griff wartet** nach Loop, Kante, Punkt oder Rückgängig bis zu 0,3 / 0,8 / 1,3 s (wer sofort greift). Die Linie folgt
    der Maus in dieser Zeit noch nicht. G/S/R über die Tastatur warten nicht.
 5. Ältere Proben, die nach K oder Entf eine feste Zeit warten, lesen zu früh; vier sind angepasst (`ruhigK`).
+
+**Stand (10.11. nachts): vor G5 — Wesen sichern und laden; G5 Teil 1 — die Güte des Netzes messen** (Florian: „Weiter mit G5:
+zuerst mein Wesen sichern und laden können (es übersteht dann auch das Neuladen), dann die Güte des Netzes an meinen echten Wesen
+messen.“)
+
+*Sichern und Laden* (`92b60a5b`; `src/form/ablage.ts`, in `kurven.ts` der Abschnitt „Wesen behalten, sichern, laden“,
+`vite.config.ts`). Bis dahin lebte ein Wesen nur im offenen Fenster; jedes Neuladen begann mit der Kugel, auch das von selbst
+bei jeder Änderung am Code.
+
+| Was | Wie |
+| --- | --- |
+| **Behalten** | Der Stand liegt im Browser und ist nach dem Neuladen wieder da: Netz, Loops mit Punkten, Griffen und Kanten, Maul, Fressen-Pose samt Grundform, Ausschnitt der Blätter, Name. Geschrieben wird 0,8 s nach einer Änderung, nicht im Zug. |
+| **Sichern** (Knopf, ⌘S) | unter einem Namen als Datei `wesen/<Name>.eewesen` im Arbeitsbaum. Ein anderer vorhandener Name wird erst beim zweiten Drücken überschrieben. |
+| **Laden** | aus der Liste der gesicherten Wesen (oder eine Datei von anderswo). |
+| **Neu** | wieder die Startform. |
+| **Wesen von vorher** | „Laden“ und „Neu“ sind Schritte: ⌘Z bringt das Wesen von vorher zurück. Zusätzlich bleibt es im Browser liegen und steht nach einem Neuladen in der Liste von „Laden“ ganz oben. |
+
+- Gemessen: Eine Datei hat 0,4 MB bei 5 000 und 2,0 MB bei 24 000 Punkten; das Packen kostet im Fenster 1 bis 4 ms. Jede Zahl
+  bleibt Bit für Bit (Test). Die Abstände der Bilder bei Loop, Kante, Punkt und Rückgängig sind wie nach G4.4
+  (`form-aendern-probe.mjs` bei 5 200 und 23 400 Punkten).
+- Das Maß des Startnetzes gehört jetzt zum Wesen: Ein geladenes Wesen behält seine Netzdichte, auch in einem Fenster mit anderer
+  Startform.
+- Geprüft: `ablage.test.ts` (4), `form-ablage-probe.mjs` (27 Prüfungen, bei 5 000 und bei 24 000 Punkten alle gut: neu laden,
+  Zug danach, ⌘Z, Sichern mit Feld und ⌘S, Name bleibt, kein Überschreiben, Neu, Laden, Wesen von vorher, Fressen-Pose, andere
+  Startform), dazu unverändert `form-nachlauf-probe.mjs` (18). Bilder: `docs/progress/editor/form-ablage-sichern-2026-11-10.png`,
+  `form-ablage-laden-2026-11-10.png`.
+- **Grenzen:** Die Liste der Schritte (⌘Z) wird nicht gesichert. Behalten wird nur in diesem Browser und nur zur selben
+  Startform der Adresse (`form`, `dreiecke`; `&behalten=0` schaltet es ab). Sichern in den Ordner braucht den laufenden Server
+  dieses Arbeitsbaums; ohne ihn legt der Browser die Datei ab. Es gibt keine älteren Fassungen einer Datei (anderer Name) und
+  kein Löschen im Fenster (Datei im Ordner löschen).
+
+*Die Güte des Netzes messen* (`apps/editor/scripts/pruefen/form-netzguete.ts`, liest gesicherte Wesen; Aufruf im Kopf des
+Skripts). Je Wesen: Zahl der Punkte gegen ein gleichmäßiges Netz mit der Startkante; Kanten nach Länge gegen die Regeln des
+Verdichtens; wo die Punkte liegen (Abstand zur nächsten Linie); Nachbarn je Punkt, kleinste Winkel; Fehler (offene Kanten,
+umgeklappte Dreiecke, Spiegel); unruhige Stellen mit Ort; wie rund die Fläche ist (Sehnenfehler je Kante) und eine Schätzung, wie
+viele Punkte für die Rundung genügten. Dazu ein Bild je Wesen (drei Ansichten, Dreiecke nach Dichte gefärbt, Linien, unruhige
+Stellen).
+
+**Florians Wesen sind damit noch nicht gemessen:** Sie lebten nur im offenen Fenster. Sobald er eins sichert, liegt es im Ordner
+`wesen/`, und die Messung ist ein Aufruf.
+
+*Erste Zahlen an Probewesen* (`form-probewesen.mjs` baut sie mit der Maus: Kugel mit drei Loops → Hals, Ring um den Hals, Kopf →
+Rüssel, Ohr mit Kante → mit Ohr und Kopf gespielt; wenige Linien, wenige Züge, kein Ersatz für seine Wesen). Ausgabe:
+`ausgaben/g5-netzguete-probewesen.txt`, `g5-probewesen-spiel.txt`; Bilder
+`docs/progress/editor/form-netzguete-probewesen-5k-2026-11-10.jpg` und `…-23k-…`.
+
+| Probewesen | Punkte | gegen gleichmäßig | Dreiecke unter 1° / unter 5° | davon flach längs einer Linie / Nadel an einer Linie | umgeklappt | für die Rundung genügten (Schätzung) |
+| --- | --- | --- | --- | --- | --- | --- |
+| Kugel, drei Loops (5 200) | 5 222 | 1,19 | 8 / 20 | 0 / 20 | 0 | 2 100 |
+| Hals und Kopf | 6 023 | 0,99 | 20 / 26 | 24 / 0 | 0 | 2 800 |
+| Rüssel, Ohr, Kante | 7 082 | 1,00 | 22 / 24 | 22 / 0 | 0 | 3 000 |
+| danach gespielt (12-mal hinaus und zurück) | 7 578 | 1,07 | 18 / 20 | 18 / 0 | 0 | 3 100 |
+| Kugel, drei Loops (23 400) | 23 452 | 1,13 | 10 / 250 | 0 / 228 | 0 | 2 200 |
+| Hals und Kopf | 28 529 | 0,99 | 14 / 20 | 14 / 0 | 0 | 2 700 |
+| Rüssel, Ohr, Kante | 32 890 | 0,98 | 26 / 32 | 28 / 0 | 2 | 3 000 |
+
+(Dreiecke beider Seiten gezählt. Zwei Läufe desselben Baus geben bei den spitzen Dreiecken 16 bis 26 statt genau dieselbe Zahl:
+Die Züge mit der Maus sind nicht auf das Bild genau gleich.)
+
+1. **Das Netz ist nicht dichter als das Startnetz.** Nach den Zügen liegt die Dichte überall bei 0,9 bis 1,2 des Startnetzes,
+   auch an den Linien (auf ihnen 1,1 bis 1,4). Die Zahl der Punkte wächst mit der Fläche: 5 200 → 7 100 bzw. 23 400 → 32 900.
+   Dass die Linien feiner aufgelöst werden (auf MK/40), macht hier keine dichten Streifen.
+2. **Beim Spielen wächst das Netz, obwohl die Form dieselbe bleibt.** Ohr und Kopf je sechsmal hinaus und zurück an dieselbe
+   Stelle: Fläche 458 353 → 458 342, Punkte 7 082 → 7 578 (7 % mehr), verteilt über die ganze Haut. Je 30-mal: 7 090 → 7 768
+   (10 % mehr); das erste Mal bringt je Punkt rund 200 Punkte, jedes weitere 2 bis 5. Der Grund liegt in den Regeln: Gestreckte
+   Kanten werden über 1,75 Startkanten geteilt, gestauchte erst unter 0,5 zusammengelegt; dazwischen bleibt, was einmal geteilt
+   ist. Jeder Punkt, mit dem man spielt, lässt so seinen Anteil zurück. Das passt zu Florians Beobachtung vom 08.11. (18 234 →
+   26 284 Punkte nach dem Griffspiel), ist an seinen Wesen aber nicht gemessen.
+3. **In jedem Probewesen bleiben an den Linien flache Dreiecke stehen.** Zwei Arten, beide nur an Linien:
+   - *Nadeln nach dem Schneiden eines Loops:* zwei Punkte der Linie fast aufeinander (kürzeste Kante 0,013 Startkanten bei
+     5 200, 0,002 bei 23 400 Punkten; 20 bzw. 228 Dreiecke unter 5°). Das erste Aufräumen nach einem Zug legt sie zusammen. Bis
+     dahin rechnet der Löser mit ihnen.
+   - *Flache Dreiecke längs der Linie nach dem Aufräumen:* drei aufeinanderfolgende Punkte derselben Linie bilden ein Dreieck
+     (Winkel 0,01 bis 1°, der dritte 179°), der mittlere hat nur drei bis fünf Nachbarn. Sie bleiben, weil keine ihrer Kanten
+     kurz genug zum Zusammenlegen ist (0,4 bis 1,1 Startkanten). 14 bis 28 je Wesen, in allen Läufen am Ring um den Hals (dem
+     Loop, der nach dem ersten weiten Zug geschnitten wurde). Vermutung, nicht nachgewiesen: Sie entstehen, wenn das
+     Zusammenlegen einen freien Punkt neben der Linie in einen Punkt der Linie legt.
+   - Dazu zwei umgeklappte Dreiecke an der Ohrspitze mit Kante (nur bei 23 400 Punkten).
+   Das sind die Stellen, an denen in G3 die Haut unruhig blieb (Befund 4 dort: Punkte mit drei und vier Nachbarn, Winkel von
+   0,1 bis 0,5°). Abseits der Linien (weiter als zwei Startkanten) gibt es keinen Punkt mit drei Nachbarn; der kleinste Winkel
+   ist dort 18 bis 23° bei 5 200 Punkten und 4 bis 8° bei 23 400 (dort bringt schon das Startnetz 6° mit).
+4. **Für die Rundung genügte ein Bruchteil der Punkte** (Schätzung aus der Krümmung: Kante überall so lang, dass die Fläche
+   zwischen zwei Punkten höchstens 0,2 Einheiten von der Sehne abweicht, ein halbes Pixel bei 300 %, höchstens 15 Einheiten
+   lang): rund 3 000 Punkte für das Probewesen, unabhängig davon, ob es mit 7 100 oder 32 900 gerechnet ist. Das sagt nur, was
+   die fertige Form zum Zeigen braucht. Was der Löser braucht, damit dieselbe Form entsteht, sagt es nicht (ein gröberes Netz
+   hat heute eine etwas andere Ruheform, siehe G4.3).
+5. Zu grob ist das Netz in den Probewesen nirgends (Sehnenfehler je Kante höchstens 0,35 Einheiten, 99 % unter 0,19).
+
+**Was das für G5 heißt (Vorschlag, noch nicht gebaut):** erst die Güte, wie im Befund zu G3 gesagt: (a) keine flachen Dreiecke
+längs der Linien mehr entstehen lassen und die vorhandenen auflösen, (b) Nadeln gleich beim Schneiden eines Loops vermeiden;
+dann die Zahl: (c) das Wachsen beim Spielen begrenzen (zusammenlegen, was nach dem Zurückziehen wieder dichter ist als das
+Startnetz). Vor (c) steht die Messung an Florians Wesen: Wie viel ihrer 11 000 bis 26 000 Punkte ist Fläche, wie viel ist
+Spielen?
 
 ## Anhang A: Messwerte
 
