@@ -146,3 +146,25 @@ ohr (kurven-alt.html?gewichte=geometrie): 3 Mausschritte in 192 ms (Pause 0 ms),
   danach Änderung 1 (nach 5960 ms): 35578 Punkte · Haut bewegt bis 7.91 (99 % 6.95, Mittel 0.60, 5618 Punkte über 1) bei (-87, 39, -73)
   danach Änderung 2 (nach 9621 ms): 35690 Punkte · Haut bewegt bis 9.05 (99 % 5.99, Mittel 0.46, 3864 Punkte über 1) bei (-76, 32, -75)
   Endstand gegen vor dem Loslassen: 35690 Punkte · Haut bewegt bis 7.61 (99 % 5.92, Mittel 0.77, 6934 Punkte über 1) bei (91, 50, -83)
+
+--- Endstand des Codes (Verfeinern im Zug nur nach einer Mausbewegung): 5 200 Punkte HALTEN=1500, 23 400 Punkte HALTEN=2500
+===  HALTEN=1500
+  vor dem Loslassen: Haut rechnet noch nein, 8 Runden seit der letzten Mausbewegung
+  Stufen im Zug: 0 im Vordergrund (letzte 0 ms), 5 eingewechselt aus dem Hintergrund (Auslösen 46 ms [3/29/1/11], Einwechseln 4 ms, Auslösen bis Einwechseln 108 ms)
+  während des Haltens (1500 ms): 5198 Punkte · Haut bewegt bis 0.34 (99 % 0.29, Mittel 0.03, 0 Punkte über 1) bei (-56, 123, 178)
+  davon die Runden am Ende (Nachhinken): bis 0.00
+  Loslassen sofort (Runden am Ende + Verdichten) (nach 418 ms): 5276 Punkte · Haut bewegt bis 0.79 (99 % 0.08, Mittel 0.00, 0 Punkte über 1) bei (5, 110, 189)
+  danach Änderung 1 (nach 546 ms): 5280 Punkte · Haut bewegt bis 0.53 (99 % 0.28, Mittel 0.03, 0 Punkte über 1) bei (5, 109, -190)
+  Endstand gegen vor dem Loslassen: 5280 Punkte · Haut bewegt bis 1.31 (99 % 0.30, Mittel 0.03, 2 Punkte über 1) bei (5, 109, -190)
+  Zeiten: Verdichten 16 ms (4 neu, 0 gelegt) · Zerlegen in der Ruhe 107 ms · Setzen samt Nachverfeinern 124 ms
+=== &dreiecke=30000 HALTEN=2500
+  vor dem Loslassen: Haut rechnet noch nein, 8 Runden seit der letzten Mausbewegung
+  Stufen im Zug: 0 im Vordergrund (letzte 0 ms), 4 eingewechselt aus dem Hintergrund (Auslösen 177 ms [12/100/8/53], Einwechseln 19 ms, Auslösen bis Einwechseln 1091 ms)
+  während des Haltens (2500 ms): 24406 Punkte · Haut bewegt bis 4.28 (99 % 1.40, Mittel 0.23, 1582 Punkte über 1) bei (-120, 55, 96)
+  davon die Runden am Ende (Nachhinken): bis 0.00
+  Loslassen sofort (Runden am Ende + Verdichten) (nach 1555 ms): 24496 Punkte · Haut bewegt bis 0.19 (99 % 0.00, Mittel 0.00, 0 Punkte über 1) bei (-122, 57, -89)
+  danach Änderung 1 (nach 2304 ms): 24514 Punkte · Haut bewegt bis 3.01 (99 % 0.82, Mittel 0.07, 146 Punkte über 1) bei (-125, 55, -92)
+  danach Änderung 2 (nach 3700 ms): 24534 Punkte · Haut bewegt bis 1.48 (99 % 0.48, Mittel 0.04, 14 Punkte über 1) bei (-123, 55, -91)
+  danach Änderung 3 (nach 4849 ms): 24534 Punkte · Haut bewegt bis 0.16 (99 % 0.07, Mittel 0.01, 0 Punkte über 1) bei (-120, 50, -99)
+  Endstand gegen vor dem Loslassen: 24534 Punkte · Haut bewegt bis 1.11 (99 % 0.39, Mittel 0.03, 2 Punkte über 1) bei (-123, 55, -91)
+  Zeiten: Verdichten 100 ms (20 neu, 0 gelegt) · Zerlegen in der Ruhe 1062 ms · Setzen samt Nachverfeinern 1148 ms

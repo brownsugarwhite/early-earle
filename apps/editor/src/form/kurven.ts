@@ -2133,8 +2133,10 @@ function rundeMitWeg(loeser: LoopZug, versch: readonly (Float64Array | null)[]):
 /**
  * Der Löser eines Zugs über die ganze Haut, einmal je Bild (10.11., Gegenprüfung Schritt G3): Runden, solange die Haut nicht steht,
  * auch wenn die Maus ruht; dann die Haut zeigen. So ist beim Loslassen nichts mehr nachzuholen, und die Zahl der Runden hängt nicht
- * an der Zahl der Mausereignisse. Verfeinert wird wie bisher nach einer Mausbewegung (nach deren Runden: Die Linien liegen dann auf
- * ihren Zielen und können festgelegt werden) und noch einmal, wenn die Haut zur Ruhe kommt (sie streckt sich beim Halten weiter).
+ * an der Zahl der Mausereignisse. Verfeinert wird wie bisher nur nach einer Mausbewegung (nach deren Runden: Die Linien liegen dann
+ * auf ihren Zielen und können festgelegt werden). Beim Halten kommt kein weiterer Netzwechsel dazu: Auf einem dichten Netz legt
+ * jeder Durchgang auch fern vom Zug zu kurze Kanten zusammen (gemessen bei 23 400 Punkten: Das Startnetz hat 1 442 Kanten unter der
+ * halben mittleren Länge; danach Punkte mit drei und vier Nachbarn, an denen die Haut unruhig bleibt, `netz/m7-unruhige-stelle.mjs`).
  */
 function zugRechnen(): void {
   const z = zug;
@@ -2156,7 +2158,7 @@ function zugRechnen(): void {
   zeiten.push(performance.now() - t0);
   if (zeiten.length > 200) zeiten.shift();
   // über die ganze Haut nach der Geometrie: verfeinern, sobald sie gestreckt wird
-  if ((neuesZiel || !z.offen) && LIVE && GEWICHTE === 'geometrie' && !z.griff && !verfeinerung && letzteMaus && (gestreckt() || linieUngenau(z))) {
+  if (neuesZiel && LIVE && GEWICHTE === 'geometrie' && !z.griff && !verfeinerung && letzteMaus && (gestreckt() || linieUngenau(z))) {
     const [X, Y] = letzteMaus;
     if (HINTERGRUND) stufeImHintergrund(z, X, Y);
     else zugStufe(z, X, Y);
