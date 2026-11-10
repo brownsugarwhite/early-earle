@@ -1,4 +1,4 @@
-# Übergabe (Stand 10.11.2026 nachts: G1 bis G4 gebaut; Sichern und Laden; G5 begonnen: Messwerkzeug für die Güte des Netzes; Klarstellung: Florian hat keine Wesen, er testet Formen)
+# Übergabe (Stand 10.11.2026 spätnachts: G1 bis G4 gebaut; Sichern und Laden; G5 erster Teil gebaut: keine flachen Dreiecke mehr an den Linien; Florian hat keine Wesen, er testet Formen)
 
 **Branch `claude/form-zuerst`, Arbeitsbaum `.claude/worktrees/form-zuerst`.** Diese Datei ist der Einstieg. Die alte Übergabe aus der
 Käfig-Zeit (Stand 04.11.) steht in der Git-Geschichte: `git show 82aed6dc:docs/UEBERGABE.md`.
@@ -146,14 +146,44 @@ Kriterien stehen in der Tabelle des Nachtrags; Messwerte und Befunde je Schritt 
     dem Griffspiel 18 umgeklappte Dreiecke (die meisten an den Hornspitzen), 7 bis 10 % Wachsen beim Spielen.
   - Sichern bleibt nützlich, aber als Angebot: Wenn eine Form beim Testen auffällt (unruhig, eckig, langsam, die letzte Zahl der
     Statuszeile über 10 000), sichert ein Klick genau diesen Stand zum Nachsehen.
-- **Als Nächstes** (sein Wort steht aus): entweder die flachen Dreiecke und Nadeln an den Linien beheben (Vorschlag), oder er
-  testet erst den Stand nach G4 und sagt, was ihn stört. Den Teil „Zahl der Punkte“ von G5 und G6 (halbe Haut) erst, wenn ein
-  dichtes Netz aus seinem Testen vorliegt oder er es will. Sein Blick auf G4 steht weiter aus.
+- **Florian (10.11. spätnachts):** „Kannst du gerne so machen wie du es vorgeschlagen hast. Es macht Sinn, den Plan jetzt erst
+  zu beenden und dann an Maul, Posen und genaue Werkzeugfunktion zu gehen, oder? Ich möchte später gerne mehr Funktionen wie bei
+  FiberMesh haben. Dass ich Formen subtrahieren, addieren kann und Elemente wie Beine anfügen kann und dabei einen smoothen
+  Übergang zwischen Teilen kreieren, dass sie später ein Mesh sind und der Linien… das ist jetzt erstmal noch nicht der richtige
+  Zeitpunkt und sollte später kommen, oder?“ Beides bestätigt (Reihenfolge siehe Abschnitt 5).
+- **G5, erster Teil gebaut: keine flachen Dreiecke mehr an den Linien** (`2be21c5b`; Bericht „Stand (10.11. spätnachts)“).
+  - **Ursache nachgewiesen** (Kern, `netz/m8-ohren.ts`): Sie entstehen nur beim Zusammenlegen. Schneidet eine Linie eine Ecke
+    knapp ab, hat der abgeschnittene Punkt kurze Kanten zu drei aufeinanderfolgenden Punkten der Linie; fällt er in den ersten
+    oder letzten, spannt sein Dreieck danach die drei Punkte auf. Der Test „kippt um mehr als 60°“ sieht ein Dreieck ohne Fläche
+    nicht. Auf demselben Netz: ohne Schutz 8 flache Dreiecke, mit Schutz 0.
+  - **Im Kern** (`dicht/verdichten.ts`): (1) Zusammenlegen (`legen`) und Drehen (`drehen`) lassen kein Dreieck flach werden
+    (kleinster Winkel unter `FLACH` = 10° und dabei mehr als halbiert); (2) vorhandene flache Dreiecke (kleinster Winkel unter
+    5°, ein Winkel über 150°) werden aufgelöst, indem ihre lange Kante gedreht wird (Ergebnis `geloest`; ein Netz, an dem nur das
+    zu tun ist, kommt jetzt auch zurück statt `null`); (3) `nadelnZusammenlegen(h, loops, mk)` (nur Kanten an Linien unter 0,22
+    Startkanten, ohne Teilen, Drehen, Entspannen; Option `nurKetten`). Option `flachSchutz: false` rechnet wie vorher.
+  - **Im Fenster:** `nadelnWeg()` am Ende von `einsetzenLetzten` (nur wenn am neuen Loop eine so kurze Kante liegt); die Puffer
+    der Anzeige werden nach dem Einsetzen jetzt einmal am Ende aufgebaut. Schalter `&flach=0` (Option `flachSchutz`) und `&nadeln=0`;
+    Haken `zeiten().nadeln`.
+  - **Gemessen im Fenster** (Probeformen neu gebaut, vorher → jetzt, Dreiecke beider Seiten): flach längs einer Linie 14–28 → 0,
+    Dreiecke unter 1° 14–26 → 0, Punkte mit ≤ 3 Nachbarn 6–12 → 0, unruhige Stellen je Seite 6–14 → 0 (die fünf Formen mit Zügen);
+    Nadeln nach dem Schneiden 20 → 0 (5 200 Punkte) und 228 → 2 (23 400). Punkte und Kantenlängen unverändert. Tests im Kern
+    118 von 118 (`dicht/flach.test.ts` neu), Fenster 16 von 16.
+  - **Nicht geändert, gemessen:** das Rechnen selbst (gleich viele Runden mit und ohne Nadeln, `mess10.ts` mit `NADELN=1`); das
+    Ausschlagen mit einem einzelnen Loop (Vermutung „kommt von den Nadeln“ widerlegt); der Knoten im Hörner-Fall (je drei
+    Läufe, die Streuung ist größer als der Unterschied); das Wachsen beim Spielen (7 108 → 7 590).
+  - **Kosten:** Loop schneiden steht bei 5 200 Punkten 88–100 ms statt 41–69 ms, wenn am Loop Nadeln liegen (das
+    Zusammenlegen selbst rund 20 / 40 / 80 ms bei 5 400 / 11 200 / 23 600 Punkten).
+  - **Dabei behoben:** Unter Playwright (`navigator.webdriver`) behält das Fenster nichts mehr, außer mit `&behalten=1`. Seit dem
+    Sichern und Laden begannen Proben, die die Seite je Fall neu laden, den zweiten Fall mit der Form des ersten (die Härte-Probe
+    blieb hängen).
+- **Als Nächstes:** Florians Blick auf G4, auf Sichern/Laden und auf diesen Schritt. Vom Plan G1–G6 ist danach nichts Pflicht
+  mehr offen: Der Teil „Zahl der Punkte“ von G5 und G6 ruhen, bis ein dichtes Netz aus seinem Testen vorliegt. Dann nach seiner
+  Reihenfolge: Maul, Posen, genaue Werkzeuge (Abschnitt 5).
 
 ## 1. Stand
 
-- **Letzter Code-Commit:** `92b60a5b` (Sichern und Laden); danach `64354dac` (Messskripte, Bericht). Alles ist committet und
-  gepusht (lokal = `origin/claude/form-zuerst`).
+- **Letzter Code-Commit:** `2be21c5b` (G5 Teil 1: keine flachen Dreiecke an den Linien); davor `92b60a5b` (Sichern und Laden).
+  Alles ist committet und gepusht (lokal = `origin/claude/form-zuerst`).
 - **Halbfertiges:** keins. Am 09.11. sind zwei Löser-Versuche wieder entfernt worden („gleiches Maß“, „Krümmung an den Linien
   mitgelöst“; Stand des zweiten in `476a874f`). Der Code des Lösers (`dicht/ausKurven.ts`) ist seit `1f1f5079` (Schalter
   `maxNormalen`) im Rechnen unverändert; G1 hat nur das Einsetzen in `loeser/zerlegung.ts` ausgeschrieben, G2 und G3 nur das
@@ -200,8 +230,8 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5193 --strictPort
 **Tests, die grün sein müssen:**
 - Fenster, aus `apps/editor`: `npx vitest run src/form/` (16 Tests: die Aufträge im Hintergrund, im Zug, nach dem Loslassen,
   mit Vorstufe; das Wesen als Datei).
-- Kern der dichten Form, aus `packages/shape`: `npx vitest run src/dicht/ src/loeser/zerlegung.test.ts`. Zuletzt 114 von 114
-  grün (10.11. abends), etwa 20 s. Ausgaben
+- Kern der dichten Form, aus `packages/shape`: `npx vitest run src/dicht/ src/loeser/zerlegung.test.ts`. Zuletzt 118 von 118
+  grün (10.11. spätnachts, mit `flach.test.ts`), etwa 20 s. Ausgaben
   bestandener Tests nur mit `--reporter=verbose`. `HAUT=gedaechtnis` lässt `loops.test.ts` und `weiterZug.test.ts` mit dem alten
   Löser laufen (Standard `kurven`).
 - Typen: `pnpm --filter @ee/shape typecheck` (09.11. grün); `pnpm --filter @ee/editor exec tsc --noEmit -p tsconfig.json` (10.11.
@@ -222,6 +252,7 @@ vitest; während sie laufen, keine Dateien unter `packages/shape/src` oder `apps
 | `form-aendern-probe.mjs` | (G4.4) Was hält das Fenster bei Loop, Kante, Punkt setzen, Löschen, Rückgängig an, und was macht der erste Griff danach: je Schritt die längsten Abstände zwischen zwei Bildern, Netzwechsel, Bewegung der Haut, Zeiten aus dem Hintergrund; beim Griff der Ausschlag fern vom Griff (untere Hälfte) je Bild. `NUR=loops\|griff\|kante\|punkt\|sofort`; `&nachlauf=0` zeigt den Ablauf von vorher, `&loopsetzen=0` nur ohne das Setzen nach neuen Loops |
 | `form-ablage-probe.mjs` | (10.11. nachts) Behalten, Sichern, Laden: neu laden (Bit für Bit), Zug danach, ⌘Z, Sichern mit Feld und ⌘S, Name bleibt, kein Überschreiben, Neu, Laden, Wesen von vorher, Fressen-Pose, andere Startform; 27 Prüfungen. Legt „probe-ablage…“ in `wesen/` an und räumt sie wieder weg (`LASSEN=1` lässt sie liegen) |
 | `form-probewesen.mjs` | (G5) baut mit der Maus immer dieselben Probewesen (Kugel mit drei Loops → Hals und Kopf → Rüssel, Ohr, Kante → gespielt) und legt sie nach `pruefen-ausgabe/probewesen/` (nicht in `wesen/`); `NAME`, `SPIEL=<n>` (so oft hinaus und zurück, mit der Zahl der Punkte nach jedem Mal), `ZIEL` |
+| `form-alte-proben.sh` | (G5) elf ältere Proben nacheinander (Härte, Boden, Kreuzung, Griffe, Stift, Maul, Fressen, hin und zurück, zwei weite Züge, Griff loslassen) für den Vergleich zweier Schalter: `zsh scripts/pruefen/form-alte-proben.sh <name> ['&flach=0&nadeln=0']`, danach `diff -r pruefen-ausgabe/alte-proben/<a> <b>` |
 | `form-anlauf-probe.mjs` | die ersten Bilder eines winzigen Zugs (Anlauf eines neuen Lösers); `ZWEIMAL=1` greift ein zweites Mal |
 | `form-griff-loslassen.mjs` | Griff bzw. Punkt (`ZUG=punkt`) ziehen und loslassen: Spitze unter der Maus, Sprung, Linie im Zug gegen danach, Runden am Ende |
 | `form-explosion-probe.mjs` | weite Züge `FALL=a\|b\|c\|d\|e\|f\|g\|p` (Überhang, Schnabel, Schlaufe, Stauchen, Rüssel mit Griff, Hammer, Pilz) |
@@ -234,6 +265,9 @@ vitest; während sie laufen, keine Dateien unter `packages/shape/src` oder `apps
 | `form-detail-probe.mjs`, `form-verdichten-probe.mjs` | kleine Details, Verdichten |
 
 **Proben im Kern** (aus `packages/shape`: `npx vite-node ../../apps/editor/scripts/pruefen/<probe>.ts`):
+- `gegenpruefung-2026-11-10/netz/m8-ohren.ts` (G5): der Ablauf der Probeformen ohne Fenster (drei Loops, Hals, aufräumen, Ring,
+  Kopf, aufräumen), nach jedem Schritt die spitzen Dreiecke nach Art, bei jedem Aufräumen die Teile des Verdichtens einzeln;
+  `OHNE_SCHUTZ=1` (wie vorher), `NADELN=1` (Nadeln gleich weg), `DREIECKE`.
 - `form-netzguete.ts` (G5): die Güte des Netzes an gesicherten Wesen (`wesen/*.eewesen`; `WESEN="Name,Name"`, `ORDNER=<anderer
   Ordner>`, `DATEI=<pfad>`, `BILD=<ordner>` schreibt je Wesen `<Name>-netz.html`, daraus ein Bild mit
   `node scripts/pruefen/html-shot.mjs --jpg <datei>` aus `apps/editor`). Sieben Abschnitte je Wesen und eine Übersicht; die
@@ -265,6 +299,11 @@ vitest; während sie laufen, keine Dateien unter `packages/shape/src` oder `apps
 - Zeiten nur als Verhältnisse lesen; bei belegter Maschine gibt es Ausreißer.
 
 ## 3. Karte von `apps/editor/src/form/kurven.ts` (4 680 Zeilen, Stand `92b60a5b`)
+
+Seit `2be21c5b` (G5 Teil 1) liegt alles ab Zeile 3110 um rund 50 höher als im nächsten Absatz genannt: `einsetzenLetzten` 3092 (baut die
+Puffer der Anzeige jetzt einmal am Ende), `NADELN` 3120, `FLACH_SCHUTZ` 3128, `nadelnWeg` 3130, `verdichtenOptionen` 3031 (gibt
+`flachSchutz` mit). Im Kern `dicht/verdichten.ts`: `FLACH`, `kleinsterWinkel`, der Schutz in `legen` und `drehen`, das Auflösen vor
+dem Drehen nach Wertigkeit, `nadelnZusammenlegen` am Ende der Datei.
 
 Seit dem 10.11. nachts (Sichern und Laden) liegt alles ab Zeile 190 um 10 bis 20 höher als unten für G4.4 genannt, ab 3830 um
 rund 420. Neu: `MK`/`TOL` als `let` 198, `schnappschuss` 389 (trägt `mk`), `wiederherstellen` 402, Tasten 3757 (⌘S zuerst; im
@@ -391,8 +430,11 @@ nicht mehr.
 21. **Eine Probe darf nicht in `flaeche()` hängen:** Läuft die Haut auseinander (nicht endliche Lagen), läuft das Raster der
     Abstandsmessung endlos. Vor dem Messen `every(Number.isFinite)` prüfen (wie `form-aendern-probe.mjs`).
 22. **Das Wesen von zuletzt kommt zurück** (seit dem 10.11. nachts): Wer im Vorschau-Fenster oder in einem eigenen Browser
-    „die Kugel“ erwartet, bekommt das Wesen von vorhin. Für einen sauberen Anfang „Neu“ drücken oder `&behalten=0` anhängen.
-    Playwright-Proben beginnen mit einem leeren Browser; eine Probe, die neu lädt, wartet auf `ablage.bereit()`.
+    „die Kugel“ erwartet, bekommt die Form von vorhin. Für einen sauberen Anfang „Neu“ drücken oder `&behalten=0` anhängen.
+    **Unter Playwright (`navigator.webdriver`) behält das Fenster nichts**, außer mit `&behalten=1` (so `form-ablage-probe.mjs`):
+    Proben, die die Seite je Fall neu laden, bekamen sonst die Form des vorigen Falls (die Härte-Probe hing; bemerkt erst beim
+    Vergleichslauf der älteren Proben, weil nach dem Sichern und Laden nur Proben mit einem einzigen Laden gelaufen waren). Eine
+    neue Eigenschaft des Fensters, die über das Laden hinaus wirkt, gegen eine Probe mit mehreren Fällen prüfen.
 23. **Ein neues Feld im Stand gehört an vier Stellen:** `Schnappschuss` (mit `schnappschuss`/`wiederherstellen`), `WesenStand`
     (`ablage.ts`, mit `pruefen`), `standJetzt`/`standAnwenden` und, wenn es die Haut bestimmt, `loopsZahl` (Falle 16). Fehlt es
     in `standJetzt`, überlebt es ⌘Z, aber nicht das Neuladen. `form-ablage-probe.mjs` vergleicht Bit für Bit, was die Haken zeigen.
@@ -415,6 +457,18 @@ nicht mehr.
 30. **Knopftexte sind keine Aussagen von Florian.** Der Text eines angebotenen Knopfs kommt als seine Nachricht zurück. Er
     darf nur enthalten, was er entscheidet, keine Annahme über ihn („meine echten Wesen“ stand so im Knopf und danach als Zitat
     in der Übergabe).
+31. **Ein Dreieck ohne Fläche hat keine verlässliche Richtung.** Prüfungen der Art „kippt das Dreieck um mehr als 60°?“ lassen
+    es durch. Wer im Verdichten Dreiecke umhängt (zusammenlegen, drehen), prüft die Güte des neuen Dreiecks eigens
+    (`kleinsterWinkel`, `FLACH`). Was schon flach ist, darf dabei bleiben, wie es ist, sonst fallen Nadeln nicht mehr zusammen.
+32. **Auflösen nur, was wirklich flach ist** (kleinster Winkel unter 5°): Mit „ein Winkel über 150°“ allein drehte jeder Aufruf
+    beim Verfeinern im Zug 10 bis 14 Kanten stumpfer, aber brauchbarer Dreiecke; mit „über 170°“ blieben flache Dreiecke an leicht
+    gebogenen Linien (168,5°) stehen.
+33. **Eine Vermutung zur Ursache mit dem Schalter prüfen, bevor sie im Bericht steht:** „Die Nadeln lassen den Löser mit einem
+    einzelnen Loop ausschlagen“ war in zehn Minuten widerlegt (`mess10.ts` mit `NADELN=1`).
+34. **`ABLEGEN` in `form-drei-faelle.mjs` überschreibt eine Datei gleichen Namens** bei den Probeformen: für vorher/nachher
+    verschiedene Namen nehmen (der Stand „vorher“ des Hörner-Falls ging so verloren; seine Messung war schon abgelegt).
+35. **Lange Fenster-Läufe im Hintergrund starten und so lange nichts unter `apps/editor` und `packages/shape/src` ändern.** Ein
+    Lauf der elf älteren Proben dauert rund zehn Minuten, der Hörner-Fall zwei Minuten je Lauf.
 
 ## 5. Florian: letzte Urteile, offene Entscheidungen, Testfälle
 
@@ -434,6 +488,8 @@ nicht mehr.
   - Danach, auf die Bitte, „seine Wesen“ zu sichern: „Es gibt von mir keine Wesen. Ich weiß nicht, was du damit meinst. Ich
     teste immer nur ein paar Formen, aber wie soll ich jetzt schon Wesen machen. Es ist ja nur die Grundform-Erzeugung bis
     jetzt.“
+  - Spätnachts: „Kannst du gerne so machen wie du es vorgeschlagen hast“ (die flachen Dreiecke an den Linien), dazu seine
+    Reihenfolge und der Wunsch nach Funktionen wie bei FiberMesh für später (Entscheidung 12).
 - **09.11.:**
   - Die Löser-Wege „klingen nach viel Nachjustieren“.
   - „… warum das verdichtete Mesh überhaupt eine andere Form annimmt … sollte einfach nur abrunden, aber in exakt der gleichen Form.“
@@ -460,9 +516,16 @@ nicht mehr.
    stattdessen G4.4 gewählt, die Frage bleibt offen.
 9. Die Änderung von 2 Einheiten, wenn sich die Haut nach dem zweiten Loop setzt, kommt vom Bézier-Pfad ohne Zusatzpunkte (ein
    halber Ring mit zwei Punkten ist kein genauer Kreis). Sie hängt an Entscheidung 4 („Punkte wo nötig“).
-10. Wie weiter nach der Klarstellung (vorgelegt am 10.11. nachts): die flachen Dreiecke und Nadeln an den Linien beheben, oder
-    er testet erst den Stand nach G4 und sagt, was ihn stört. Der Teil „Zahl der Punkte“ von G5 ruht, bis ein dichtes Netz aus
-    seinem Testen vorliegt.
+10. ~~Wie weiter nach der Klarstellung~~ Entschieden am 10.11. spätnachts: die flachen Dreiecke und Nadeln an den Linien
+    beheben (gebaut). Der Teil „Zahl der Punkte“ von G5 ruht, bis ein dichtes Netz aus seinem Testen vorliegt.
+12. **Reihenfolge nach dem Plan (Florian, 10.11. spätnachts, bestätigt):** erst den Plan beenden, dann Maul, Posen, genaue
+    Werkzeugfunktionen. **Später, ausdrücklich noch nicht jetzt:** Funktionen wie bei FiberMesh (Formen addieren und subtrahieren,
+    Elemente wie Beine anfügen mit weichem Übergang zwischen den Teilen, am Ende ein Netz; sein Satz zu den Linien dabei bricht ab
+    und ist vor dem Bauen zu klären). Das erweitert seinen Grundsatz vom 05.11. („kein Verschmelzen, alles ein Netz“). Bis dahin
+    nichts bauen, was es verbaut (Format der gesicherten Formen, Annahme „immer spiegelgleich“, Regeln an den Linien); wenn es so
+    weit ist, zuerst ein kleiner Beweis (zwei Formen zu einem Netz, die Naht als Linie).
+13. Ob das Zusammenlegen der Nadeln gleich nach dem Schneiden bleiben soll: Es kostet beim Schneiden eines Loops 30 bis 50 ms
+    (5 200 Punkte) und ändert am Rechnen nichts Messbares; es hält das Netz zu jeder Zeit frei von Dreiecken ohne Fläche.
 11. Sollen gesicherte Stände ins Repo (dann sind Messungen an ihnen wiederholbar, je Stand 0,5 bis 3 MB)? Bisher liegt im
     Ordner `wesen/` nur die Beschreibung.
 

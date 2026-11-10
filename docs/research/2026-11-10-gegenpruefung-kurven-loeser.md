@@ -1007,6 +1007,70 @@ machen. Es ist ja nur die Grundform-Erzeugung bis jetzt.“
   4. Sichern und Laden bleiben, was sie sind: Eine Form übersteht das Neuladen, und ein Stand, der beim Testen auffällt, lässt
      sich mit einem Klick zum Nachsehen ablegen. Verlangt wird das von ihm nicht.
 
+**Stand (10.11. spätnachts): G5, erster Teil gebaut — keine flachen Dreiecke mehr an den Linien** (Florian: „Kannst du gerne so
+machen wie du es vorgeschlagen hast.“; Kern `packages/shape/src/dicht/verdichten.ts`, Fenster `kurven.ts`)
+
+*Woher sie kamen* (im Kern nachgestellt, ohne Fenster: `netz/m8-ohren.ts`, Ausgabe `ausgaben/netz-m8-ohren.out`; derselbe Ablauf
+wie die Probeformen: drei Loops, Hals, aufräumen, Ring um den Hals, Kopf, aufräumen):
+- Sie entstehen **nur beim Zusammenlegen**, nicht beim Teilen und nicht beim Drehen von Kanten. Auf demselben Netz gibt das
+  Aufräumen nach dem Kopf ohne Schutz 8 flache Dreiecke und 8 Punkte mit drei Nachbarn, mit Schutz 0 und 0.
+- Der Vorgang: Schneidet eine Linie eine Ecke des Netzes knapp ab, hat der abgeschnittene Punkt kurze Kanten zu drei
+  aufeinanderfolgenden Punkten der Linie. Beim Aufräumen fällt er in den ersten oder letzten von ihnen; sein Dreieck spannt
+  danach die drei Punkte der Linie auf, ohne Fläche. Die vorhandene Prüfung („kippt das Dreieck um mehr als 60°?“) sieht das
+  nicht, weil ein Dreieck ohne Fläche keine verlässliche Richtung hat. Die Vermutung aus dem letzten Abschnitt stimmt damit.
+- Nicht die Ursache sind sie für das Ausschlagen mit einem einzelnen Loop (G4.4): `loeser/mess10.ts` mit `NADELN=1` schlägt
+  genauso aus (48 / 150 / 45 … statt 48 / 144 / 42 Einheiten je Runde). Diese Vermutung ist widerlegt.
+
+*Was geändert ist:*
+1. **Zusammenlegen und Drehen lassen kein Dreieck flach werden** (kleinster Winkel unter 10° und dabei mehr als halbiert: dann
+   unterbleibt der Schritt). Was schon flach ist, darf bleiben, wie es ist; so fallen Nadeln weiter zusammen.
+2. **Vorhandene flache Dreiecke werden aufgelöst:** Ihre lange Kante wird gedreht, der mittlere Punkt bekommt die Kante zum
+   Gegenpunkt. Dabei bewegt sich kein Punkt (Test). Das greift auch für Formen, die vor der Änderung gesichert wurden.
+3. **Gleich nach dem Einsetzen eines Loops fallen Punkte der Linie zusammen, die fast aufeinander liegen** (nur an den Linien,
+   Kanten unter 0,22 Startkanten, auf einer Linie unter 0,11; ohne Teilen, Drehen, Entspannen). Bis dahin blieben diese Nadeln
+   bis zum ersten Aufräumen nach einem Zug.
+Zum Vergleich: `&flach=0&nadeln=0` rechnet wie vorher.
+
+*Gemessen im Fenster* (dieselben Probeformen neu gebaut; Dreiecke beider Seiten; vorher → jetzt; Ausgaben
+`ausgaben/g5-netzguete-probewesen.txt` und `g5a-netzguete-nachher.txt`):
+
+| Probeform | unter 1° | unter 5° | flach längs einer Linie | Nadeln | Punkte mit ≤ 3 Nachbarn | unruhige Stellen je Seite |
+| --- | --- | --- | --- | --- | --- | --- |
+| Kugel, drei Loops (5 200) | 8 → 0 | 20 → 0 | 0 → 0 | 20 → 0 | 0 → 0 | 5 → 0 |
+| Hals und Kopf | 20 → 0 | 26 → 0 | 24 → 0 | 0 → 0 | 12 → 0 | 6 → 0 |
+| Rüssel, Ohr, Kante | 22 → 0 | 24 → 0 | 22 → 0 | 0 → 0 | 12 → 0 | 6 → 0 |
+| danach gespielt | 18 → 0 | 20 → 0 | 18 → 0 | 0 → 0 | 10 → 0 | 6 → 0 |
+| Kugel, drei Loops (23 400) | 10 → 0 | 250 → 24 | 0 → 0 | 228 → 2 | 0 → 2 | 42 → 8 |
+| Hals und Kopf | 14 → 0 | 20 → 0 | 14 → 0 | 0 → 0 | 6 → 0 | 9 → 0 |
+| Rüssel, Ohr, Kante | 26 → 0 | 32 → 0 | 28 → 0 | 0 → 0 | 6 → 0 | 14 → 0 |
+
+- Die Zahl der Punkte und die Längen der Kanten bleiben, wie sie waren (z. B. 7 082 → 7 108 Punkte; Kanten zwischen ¼ und ½
+  Startkante 1,0 → 1,1 %). Der Schutz verhindert einzelne Schritte, er lässt nichts liegen.
+- Auf der dichten Kugel bleiben nach dem Schneiden 24 schmale Dreiecke (1 bis 5°) neben den Linien; sie stammen aus dem
+  dichten Startnetz selbst und verschwinden mit dem ersten Aufräumen.
+- Tests im Kern: `dicht/flach.test.ts` (4 neue; einer zeigt denselben Fall ohne Schutz mit über acht flachen Dreiecken und mit
+  Schutz ohne), zusammen 118 von 118.
+
+*Was sich nicht ändert (gemessen):*
+1. **Am Rechnen selbst ändert das nichts Messbares.** Mit und ohne Nadeln braucht das Setzen nach neuen Loops gleich viele
+   Runden und bewegt die Haut gleich weit (`mess10.ts`, 11 000 Punkte). Es ist Sauberkeit des Netzes; ob die unruhige Stelle
+   aus G3 damit weg ist, ist nicht eigens gemessen (sie trat nur auf dem dichten Prüfnetz im Zug auf).
+2. **Florians Hörner-Fall verknotet wie vorher.** Je drei Läufe: umgestülpte Dreiecke am Ende 8 / 16 / 40 vorher und 16 / 8 / 14
+   jetzt, Knicke über 60° 30 / 40 / 158 und 42 / 66 / 52. Die Läufe streuen stärker, als sich die Fassungen unterscheiden. Die
+   flachen Dreiecke an den Linien sind auch dort weg (6 / 4 / 4 → 0 / 0 / 0). Der Knoten ist ein anderes Thema (die Linie faltet
+   beim Griffspiel), nicht das Netz. (`ausgaben/g5a-hoerner-vergleich.txt`)
+3. **Das Wachsen beim Spielen bleibt** (7 108 → 7 590 Punkte nach zwölfmal hinaus und zurück).
+4. **Loop schneiden hält etwas länger an,** wenn am neuen Loop Nadeln liegen: Das Zusammenlegen selbst kostet rund 20 / 40 / 80 ms
+   bei 5 400 / 11 200 / 23 600 Punkten (ohne Nadeln 0); im Fenster gemessen steht es beim ersten und dritten Loop 98 bis 100 ms
+   bzw. 88 bis 94 ms statt 65 bis 69 ms bzw. unter 50 ms (5 200 Punkte, je zwei Läufe, `&nadeln=0` zum Vergleich).
+5. Es bleiben vereinzelt schmale Dreiecke (4 bis 5°) an Kreuzungen zweier Linien, wo Punkte verschiedener Linien dicht
+   beieinander liegen; sie gehören zu keiner der drei Arten oben.
+
+*Dabei gefunden und behoben:* Seit dem Sichern und Laden kam beim Laden der Seite das Wesen von zuletzt zurück, auch in den
+Proben, die die Seite je Fall neu laden und die Startform erwarten. Die Härte-Probe begann ihren zweiten Fall mit der Form des
+ersten und blieb hängen. Jetzt behält das Fenster unter einer Fernsteuerung (Playwright, `navigator.webdriver`) nichts, außer mit
+`&behalten=1` (so die Probe zum Sichern und Laden). In Florians Browser und im Vorschau-Fenster ändert sich nichts.
+
 ## Anhang A: Messwerte
 
 **Pendeln und Bremse** (Bewegung je Runde nach einem Zug in 30 Mausschritten; `loeser/mess1.ts`, `mess3.ts`):

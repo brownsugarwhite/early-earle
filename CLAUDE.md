@@ -1720,6 +1720,24 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     Mängel der Güte (flache Dreiecke an den Linien, umgeklappte Dreiecke nach dem Griffspiel, 7–10 % Wachsen beim Spielen).
     Lehre: nie „deine Wesen“; Zahlen aus Bildschirmfotos erst nachstellen und messen, bevor ein Schritt auf ihnen steht;
     Knopftexte enthalten keine Annahmen über Florian (sie kommen als seine Nachricht zurück).
+  - **G5, erster Teil (10.11. spätnachts, `2be21c5b`):** Florian: „Kannst du gerne so machen wie du es vorgeschlagen hast.“ Keine
+    flachen Dreiecke mehr an den Linien. Ursache im Kern nachgestellt (`netz/m8-ohren.ts`): Sie entstehen nur beim Zusammenlegen
+    (ein Punkt neben einer Linie fällt in einen ihrer Punkte; sein Dreieck spannt dann drei aufeinanderfolgende Punkte der Linie
+    auf; der Test „kippt um mehr als 60°“ sieht ein Dreieck ohne Fläche nicht). Geändert in `dicht/verdichten.ts`: Zusammenlegen
+    und Drehen lassen kein Dreieck flach werden, vorhandene flache werden aufgelöst (lange Kante drehen, kein Punkt bewegt sich),
+    `nadelnZusammenlegen` gleich nach dem Einsetzen eines Loops (Fenster: `nadelnWeg` in `einsetzenLetzten`); Schalter
+    `&flach=0`, `&nadeln=0`. Gemessen an den Probeformen: flach längs einer Linie 14–28 → 0, unter 1° 14–26 → 0, Punkte mit ≤ 3
+    Nachbarn 6–12 → 0, unruhige Stellen 6–14 → 0; Punkte und Kantenlängen unverändert; Tests im Kern 118 von 118. Nicht geändert
+    (gemessen): Runden des Lösers, Ausschlagen mit einem einzelnen Loop (Vermutung „Nadeln“ widerlegt), Knoten im Hörner-Fall,
+    Wachsen beim Spielen. Kosten: Loop schneiden mit Nadeln 88–100 statt 41–69 ms (5 200 Punkte).
+  - **Florians Reihenfolge (10.11. spätnachts, bestätigt):** erst den Plan beenden, dann Maul, Posen, genaue Werkzeugfunktionen;
+    später Funktionen wie bei FiberMesh (Formen addieren/subtrahieren, Elemente wie Beine anfügen mit weichem Übergang, am Ende ein
+    Netz) — ausdrücklich noch nicht jetzt. Vom Plan G1–G6 ist nach G5 Teil 1 nichts Pflicht mehr offen (Punktezahl und halbe Haut
+    ruhen ohne bestätigte Grundlage).
+  - Fallen aus G5 Teil 1: Unter Playwright behält das Fenster nichts mehr (`navigator.webdriver`; `&behalten=1` schaltet es ein):
+    Proben mit mehreren Fällen bekamen sonst die Form des vorigen Falls, die Härte-Probe hing. Ein Dreieck ohne Fläche hat keine
+    verlässliche Richtung (Güte eigens prüfen). Auflösen nur unter 5° kleinstem Winkel (sonst drehte jeder Aufruf im Zug 10–14
+    brauchbare Kanten). Lange Fenster-Läufe im Hintergrund, solange nichts unter `apps/editor` ändern.
   - Fallen daraus: Ein neues Feld im Stand gehört in `Schnappschuss`, `WesenStand`, `standJetzt`/`standAnwenden` und ggf.
     `loopsZahl`. Das Wesen von zuletzt kommt beim Laden der Seite zurück (`&behalten=0` oder „Neu“ für die Kugel). Probewesen
     nie in `wesen/` liegen lassen (Florians Liste). Eine Schätzung über Netze verschiedener Dichte braucht feste Einheiten (mit
