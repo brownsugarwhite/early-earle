@@ -8,6 +8,10 @@
 // Loslassen, 30 ms später zerlegen (0,1–1,2 s Stillstand), setzen, bis zu dreimal nachverfeinern und wieder zerlegen und setzen,
 // jede Stufe sichtbar. Hier rechnet alles verdeckt, bis die neue Haut steht; das Fenster wechselt einmal ein und bekommt die
 // Zerlegung für das nächste Greifen gleich mit.
+//
+// Mit Vorstufe (G4.4): Nach einer Kante, dem Löschen oder einem neuen Loop steht die Haut nicht zum Stand. Dann zerlegt und setzt
+// der Auftrag zuerst (bis dahin im Hauptthread: Kante an hielt das Fenster 0,4 / 0,9 / 2,5 s an bei 5 200 / 11 000 / 23 400 Punkten)
+// und meldet diesen Zwischenstand samt Zerlegung; danach räumt er auf wie nach dem Loslassen.
 import {
   type Einbettung,
   type Haut,
@@ -172,23 +176,64 @@ export type AufraeumAuftrag = {
   /** Setzen: Runden, bis sich die Form in einer Runde um weniger als `ruhe` bewegt (längs der Normalen), höchstens `maxRunden` */
   ruhe: number;
   maxRunden: number;
+  /**
+   * Vorstufe (G4.4): Die Haut steht nicht zum Stand (nach einer Kante, dem Löschen, einem neuen Loop). Dann vor dem Verdichten
+   * zerlegen und setzen, bis die Form steht (höchstens `maxRundenZuerst`), und den Stand melden. `ziele`: je Loop ohne Pfad seine
+   * Verschiebung (3 je Probe); sonst bleibt er, wo er liegt. Loops mit Pfad gehen auf ihren Pfad.
+   */
+  zuerstSetzen: boolean;
+  ziele: (Float64Array | null)[] | null;
+  maxRundenZuerst: number;
+  /**
+   * Die Vorstufe gilt nur, wenn die Haut darin zur Ruhe kommt (nach einem neuen Loop: Dort muss nichts geschehen, und mit einem
+   * einzigen Loop hält nichts die Haut — gemessen schwingt ein neuer Löser dann bis 149 Einheiten je Runde aus und braucht 23 bis 36
+   * Runden). Kommt sie nicht zur Ruhe, bleibt die Haut, wie sie war, und es gibt keinen Zwischenstand.
+   */
+  nurInRuhe: boolean;
+};
+
+/** Stand nach der Vorstufe: dasselbe Netz, gesetzt, mit seiner Zerlegung (die Lagen gehören dem Empfänger) */
+export type Zwischenstand = {
+  art: 'zwischen';
+  id: number;
+  pos: Float64Array;
+  runden: number;
+  gewStart: Int32Array | null;
+  gewWert: Float64Array | null;
+  daten: ZerlegungsDaten[];
+  struktur: string;
+  /** Dauer in ms: verdichten (0), Zeilen, zerlegen, setzen */
+  ms: number[];
 };
 
 export type AufraeumErgebnis = {
   art: 'aufraeumen';
   id: number;
-  /** das Netz ist feiner geworden und hat sich gesetzt (sonst kommt nur die Zerlegung zurück) */
+  /**
+   * Vorstufe: 'gesetzt', oder 'verworfen' (mit `nurInRuhe` nicht zur Ruhe gekommen: Die Haut ist die des Auftrags geblieben).
+   * `abgebrochen`: Beim Aufräumen kam die Haut nicht zu endlichen Lagen; es gilt der Stand davor (der des Auftrags oder der
+   * Zwischenstand), ohne Zerlegung.
+   */
+  vorstufe: 'keine' | 'gesetzt' | 'verworfen';
+  abgebrochen: boolean;
+  /**
+   * Die Haut ist eine andere als die, die der Empfänger hat (die des Auftrags, oder der gemeldete Zwischenstand): Das Netz ist
+   * feiner geworden und hat sich gesetzt, oder (Vorstufe ohne Meldung) dasselbe Netz hat sich gesetzt. Sonst kommt nur die Zerlegung.
+   */
   geaendert: boolean;
   haut: FlacheHaut | null;
   loops: Loop[] | null;
-  /** je Punkt des neuen Netzes der Punkt des Netzes vom Auftrag (−1: neu); die gebliebenen stehen vorn */
+  /** je Punkt des neuen Netzes der Punkt des Netzes vom Auftrag (−1: neu); die gebliebenen stehen vorn. null: dasselbe Netz */
   alt: Int32Array | null;
   neu: number;
   gelegt: number;
   /** wie oft verdichtet wurde und wie viele Runden das Setzen brauchte */
   durchgaenge: number;
   runden: number;
-  /** die Zerlegung des letzten Netzes für das nächste Greifen: Gewichte flach, Daten, Struktur (`HautVorlage`); null: nicht nach der Geometrie */
+  /**
+   * die Zerlegung des letzten Netzes für das nächste Greifen: Gewichte flach, Daten, Struktur (`HautVorlage`); null bzw. leer: nicht
+   * nach der Geometrie, oder sie ging schon mit dem Zwischenstand
+   */
   gewStart: Int32Array | null;
   gewWert: Float64Array | null;
   daten: ZerlegungsDaten[];
@@ -197,8 +242,21 @@ export type AufraeumErgebnis = {
   ms: number[];
 };
 
-/** Verdichten, setzen bis zur Ruhe, nachverfeinern und wieder setzen; am Ende die Zerlegung des letzten Netzes */
-export function aufraeumen(a: AufraeumAuftrag): AufraeumErgebnis {
+/** Gewichte je Punkt als ein Feld mit Anfängen */
+function gewichteFlach(gew: readonly Float64Array[]): { start: Int32Array; wert: Float64Array } {
+  const start = new Int32Array(gew.length + 1);
+  for (let p = 0; p < gew.length; p++) start[p + 1] = start[p]! + gew[p]!.length;
+  const wert = new Float64Array(start[gew.length]!);
+  for (let p = 0; p < gew.length; p++) wert.set(gew[p]!, start[p]!);
+  return { start, wert };
+}
+
+/**
+ * (Vorstufe: zerlegen, setzen, melden;) verdichten, setzen bis zur Ruhe, nachverfeinern und wieder setzen; am Ende die Zerlegung des
+ * letzten Netzes. `zwischen`: bekommt den Stand nach der Vorstufe; seine Felder dürfen dem Auftrag danach entzogen sein (der Worker
+ * übergibt sie ohne Kopie), der Auftrag rührt sie nicht mehr an.
+ */
+export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => void): AufraeumErgebnis {
   const ms = [0, 0, 0, 0];
   let h = hautAusFlach(a.haut);
   let loops = a.loops;
@@ -234,13 +292,18 @@ export function aufraeumen(a: AufraeumAuftrag): AufraeumErgebnis {
     ms[2] = ms[2]! + uhr() - t1;
     return { vorlage: { gew: auftrag.gew, sys: systemAusDaten(daten[0]!), cVor: daten[1] ? systemAusDaten(daten[1]) : null, struktur: auftrag.struktur }, daten };
   };
-  /** Runden zu den Pfaden, bis die Form steht; danach die Linien festlegen */
-  const setze = (vorlage: HautVorlage | null): void => {
+  /**
+   * Runden zu den Pfaden (Loops ohne Pfad: um `versch`), bis die Form steht; danach die Linien festlegen. Zurück: steht sie (in den
+   * erlaubten Runden zur Ruhe gekommen), sind die Lagen endlich?
+   */
+  const setze = (vorlage: HautVorlage | null, versch: (Float64Array | null)[] | null, maxRunden: number): { steht: boolean; endlich: boolean } => {
     const t = uhr();
     const z = new LoopZug(h, loops, null, a.kruemmung, 'kurven', a.gewichte, vorlage ? { vorlage, ...a.loeserOpt } : a.loeserOpt);
-    const ziele = loops.map((l, li) => (a.exakt[li] ? pfadVersatz(l, z.start[li]!) : null));
+    const ziele = loops.map((l, li) => (a.exakt[li] ? pfadVersatz(l, z.start[li]!) : (versch?.[li] ?? null)));
     const vor = new Float64Array(h.pos.length);
-    for (let k = 0; k < a.maxRunden; k++) {
+    let steht = false;
+    let endlich = true;
+    for (let k = 0; k < maxRunden; k++) {
       vor.set(h.pos);
       const N = hautNormalen(h);
       z.schritt(ziele, 1);
@@ -248,49 +311,100 @@ export function aufraeumen(a: AufraeumAuftrag): AufraeumErgebnis {
       let weg = 0;
       for (let i = 0; i < vor.length; i += 3) {
         const d = Math.abs((h.pos[i]! - vor[i]!) * N[i]! + (h.pos[i + 1]! - vor[i + 1]!) * N[i + 1]! + (h.pos[i + 2]! - vor[i + 2]!) * N[i + 2]!);
-        if (d > weg) weg = d;
+        // (NaN vergleicht immer falsch: eigens prüfen)
+        if (d > weg || d !== d) weg = d;
       }
-      if (weg < a.ruhe) break;
+      if (!Number.isFinite(weg)) {
+        endlich = false;
+        break;
+      }
+      if (weg < a.ruhe) {
+        steht = true;
+        break;
+      }
     }
-    loops.forEach((l, li) => festlegen(h, l, !a.exakt[li]));
+    if (endlich) loops.forEach((l, li) => festlegen(h, l, !a.exakt[li]));
     ms[3] = ms[3]! + uhr() - t;
+    return { steht, endlich };
   };
 
-  const geaendert = verdichte(a.opt);
-  let z = zerlege();
-  if (geaendert) {
+  let z: ReturnType<typeof zerlege> = null;
+  /** die Zerlegung `z` ging mit dem Zwischenstand hinaus: nicht mehr benutzen, nicht noch einmal schicken */
+  let vergeben = false;
+  /** die Vorstufe hat die Haut gesetzt, und niemand hat den Stand bekommen */
+  let gesetzt = false;
+  let vorstufe: AufraeumErgebnis['vorstufe'] = 'keine';
+  if (a.zuerstSetzen) {
+    z = zerlege();
+    const vorher = Float64Array.from(h.pos);
+    const r = setze(z ? z.vorlage : null, a.ziele, a.maxRundenZuerst);
+    vorstufe = r.endlich && (r.steht || !a.nurInRuhe) ? 'gesetzt' : 'verworfen';
+    if (vorstufe === 'verworfen') {
+      // die Haut bleibt, wie sie war (die Zerlegung `z` gilt für genau diese Lagen)
+      h.pos.set(vorher);
+      loops.forEach((l, li) => festlegen(h, l, !a.exakt[li]));
+    } else if (zwischen) {
+      const g = z ? gewichteFlach(z.vorlage.gew) : null;
+      zwischen({
+        art: 'zwischen',
+        id: a.id,
+        pos: Float64Array.from(h.pos),
+        runden,
+        gewStart: g ? g.start : null,
+        gewWert: g ? g.wert : null,
+        daten: z ? z.daten : [],
+        struktur: z ? (z.vorlage.struktur ?? '') : '',
+        ms: [...ms],
+      });
+      vergeben = true;
+    } else gesetzt = true;
+  }
+  const verdichtet = verdichte(a.opt);
+  if (verdichtet || !z) {
+    z = zerlege();
+    vergeben = false;
+  }
+  let abgebrochen = false;
+  if (verdichtet) {
     for (let k = 0; ; k++) {
-      setze(z ? z.vorlage : null);
+      if (!setze(z ? z.vorlage : null, null, a.maxRunden).endlich) {
+        abgebrochen = true;
+        break;
+      }
       if (k >= a.nachverfeinern || !verdichte(a.optNurTeilen)) break;
       z = zerlege();
     }
   }
-  let gewStart: Int32Array | null = null;
-  let gewWert: Float64Array | null = null;
-  if (z) {
-    const gew = z.vorlage.gew;
-    gewStart = new Int32Array(h.n + 1);
-    for (let p = 0; p < h.n; p++) gewStart[p + 1] = gewStart[p]! + gew[p]!.length;
-    gewWert = new Float64Array(gewStart[h.n]!);
-    for (let p = 0; p < h.n; p++) gewWert.set(gew[p]!, gewStart[p]!);
-  }
+  // die Haut ist beim Aufräumen nicht endlich geblieben: Es gilt der Stand davor (ohne Zerlegung; die passte zum verworfenen Netz)
+  if (abgebrochen) return { art: 'aufraeumen', id: a.id, vorstufe, abgebrochen, geaendert: false, haut: null, loops: null, alt: null, neu: 0, gelegt: 0, durchgaenge, runden, gewStart: null, gewWert: null, daten: [], struktur: '', ms };
+  const geaendert = verdichtet || gesetzt;
+  const g = z && !vergeben ? gewichteFlach(z.vorlage.gew) : null;
   return {
     art: 'aufraeumen',
     id: a.id,
+    vorstufe,
+    abgebrochen,
     geaendert,
     haut: geaendert ? { ...nachbarnFlach(h), pos: h.pos, tri: h.tri, n: h.n, spiegel: h.spiegel } : null,
     loops: geaendert ? loops : null,
-    alt: geaendert ? alt : null,
+    alt: verdichtet ? alt : null,
     neu,
     gelegt,
     durchgaenge,
     runden,
-    gewStart,
-    gewWert,
-    daten: z ? z.daten : [],
-    struktur: z ? (z.vorlage.struktur ?? '') : '',
+    gewStart: g ? g.start : null,
+    gewWert: g ? g.wert : null,
+    daten: z && !vergeben ? z.daten : [],
+    struktur: z && !vergeben ? (z.vorlage.struktur ?? '') : '',
     ms,
   };
+}
+
+/** Die Felder des Zwischenstands, die ohne Kopie aus dem Worker wandern */
+export function zwischenZumUebergeben(z: Zwischenstand): ArrayBufferLike[] {
+  const felder: ArrayBufferLike[] = [z.pos.buffer, ...z.daten.flatMap((d) => [d.perm.buffer, d.Lp.buffer, d.Li.buffer, d.Lx.buffer])];
+  if (z.gewStart && z.gewWert) felder.push(z.gewStart.buffer, z.gewWert.buffer);
+  return [...new Set(felder)];
 }
 
 /** Die Felder des Ergebnisses, die ohne Kopie aus dem Worker wandern */

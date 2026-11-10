@@ -4,10 +4,12 @@
 //   B  loslassen, warten bis der Hintergrund fertig ist (das Netz ist feiner), dann ⌘Z: wieder der Stand vor dem Zug
 //   C  loslassen und sofort denselben Punkt wieder greifen und weiterziehen: kein Fehler, am Ende ein Stand, der steht
 //   D  loslassen, warten bis der Hintergrund rechnet, dann ⌘Z: der Stand vor dem Zug, der Auftrag verfällt
-//   E  wie D, aber K (Kante an) statt ⌘Z: der Auftrag verfällt, das Fenster rechnet die Kante wie sonst
-//   F  wie D, aber ein neuer Loop: der Auftrag verfällt, der Loop ist da
-//   H  der Auftrag meldet einen Fehler: das Fenster räumt selbst auf (verdichtet), der Hintergrund bleibt
+//   E  wie D, aber K (Kante an) statt ⌘Z: der Auftrag verfällt; seit G4.4 beginnt einer für den Stand mit der Kante (erst die
+//      gesetzte Haut als Zwischenstand, dann das Aufräumen); zweimal ⌘Z führt genau zum Anfang
+//   F  wie D, aber ein neuer Loop: der Auftrag verfällt, der Loop ist da, seit G4.4 setzt sich die Haut zu ihm im Hintergrund
+//   H  der Auftrag meldet einen Fehler: das Fenster räumt selbst auf (verdichtet), der Hintergrund bleibt für spätere Stände
 //   G  der Worker fällt aus, während er rechnet: das Fenster räumt selbst auf, der nächste Zug läuft ohne Hintergrund
+// (Ein Auftrag, der nur die Zerlegung für das nächste Greifen bringt, ändert die Haut nicht; er zählt hier nicht als „angewendet“.)
 // Aufruf aus apps/editor: node scripts/pruefen/form-nachlauf-probe.mjs   (KURVEN_URL, GPU=1)
 import { chromium } from '@playwright/test';
 
@@ -34,13 +36,14 @@ const abstand = (a, b) => {
   for (let i = 0; i < a.P.length; i++) m = Math.max(m, Math.abs(a.P[i] - b.P[i]));
   return m;
 };
+// warten, bis nichts mehr rechnet und nichts mehr ansteht (viermal hintereinander ruhig: zwischen zwei Aufträgen liegen 30 ms)
 const ruhig = async () => {
-  for (let k = 0; k < 200; k++) {
+  let still = 0;
+  for (let k = 0; k < 400 && still < 4; k++) {
     await seite.waitForTimeout(100);
     const z = await K('zeiten');
-    if (!z.nachlauf && !z.aufraeumen) break;
+    still = (z.beschaeftigt ?? (z.nachlauf || z.aufraeumen)) ? 0 : still + 1;
   }
-  await seite.waitForTimeout(400);
 };
 const ziehen = async ([x, y], [x2, y2], n, loslassen = true) => {
   await seite.mouse.move(x, y);
@@ -75,7 +78,7 @@ const ok = (name, bedingung, text) => console.log(`${bedingung ? 'gut ' : 'FEHL'
 // ---------- A: loslassen und sofort ⌘Z ----------
 const S0 = await stand();
 const nr0 = S0.z.auftrag?.nr ?? -1;
-const auftragText = (z, nrVorher) => (z.auftrag && z.auftrag.nr !== nrVorher ? (z.auftrag.angewendet ? 'angewendet' : 'verfallen') : 'keiner');
+const auftragText = (z, nrVorher) => (z.auftrag && z.auftrag.nr !== nrVorher ? (z.auftrag.angewendet ? (z.auftrag.geaendert ? 'angewendet' : 'nur die Zerlegung') : 'verfallen') : 'keiner');
 // n Schritte zurück; steht danach wieder der Stand S?
 const zurueck = async (n, S) => {
   for (let k = 0; k < n; k++) {
@@ -165,8 +168,9 @@ const hintergrundLaeuft = async () => {
   await ruhig();
   const S2 = await stand();
   const endlich = S2.P.every(Number.isFinite);
-  // die Kante rechnet das Fenster selbst (wie bisher: die ganze Haut neu, dann verdichten); der Auftrag gehört zum Stand davor
-  ok('E Kante im Hintergrund', lief && endlich && auftragText(S2.z, nr) !== 'angewendet', `Hintergrund rechnete ${lief ? 'ja' : 'nein'}; Auftrag ${auftragText(S2.z, nr)}; die Kante im Fenster neu gerechnet in ${S2.z.neuRechnen} ms, ${S2.z.punkte} Punkte`);
+  // der Auftrag des Zugs gehört zum Stand davor und verfällt; für den Stand mit der Kante beginnt ein neuer (erst der Zwischenstand)
+  const zw = S2.z.zwischen;
+  ok('E Kante im Hintergrund', lief && endlich && !!zw && zw.nr > nr && !S2.z.ruheOffen, `Hintergrund rechnete ${lief ? 'ja' : 'nein'}; die Kante: gesetzte Haut nach ${zw?.gesamt ?? '?'} ms (${zw?.runden ?? '?'} Runden), danach Auftrag ${auftragText(S2.z, nr)}; ${S2.z.punkte} Punkte`);
   const d = await zurueck(2, S0);
   ok('E zwei Schritte zurück', d < 1e-9, `Stand gegen den Anfang ${d.toExponential(1)}`);
 }
@@ -186,7 +190,8 @@ const hintergrundLaeuft = async () => {
   await ruhig();
   const S2 = await stand();
   const zahl2 = (await K('loops')).length;
-  ok('F Loop im Hintergrund', lief && zahl2 === zahl + 1 && S2.P.every(Number.isFinite) && auftragText(S2.z, nr) !== 'angewendet', `Hintergrund rechnete ${lief ? 'ja' : 'nein'}; Loops ${zahl} → ${zahl2}; Auftrag ${auftragText(S2.z, nr)}; ${S2.z.punkte} Punkte`);
+  const zw = S2.z.zwischen;
+  ok('F Loop im Hintergrund', lief && zahl2 === zahl + 1 && S2.P.every(Number.isFinite) && !!zw && zw.nr > nr && !S2.z.ruheOffen, `Hintergrund rechnete ${lief ? 'ja' : 'nein'}; Loops ${zahl} → ${zahl2}; die Haut setzt sich zum neuen Loop nach ${zw?.gesamt ?? '?'} ms, danach Auftrag ${auftragText(S2.z, nr)}; ${S2.z.punkte} Punkte`);
   const d = await zurueck(2, S0);
   ok('F zwei Schritte zurück', d < 1e-9 && (await K('loops')).length === zahl, `Stand gegen den Anfang ${d.toExponential(1)}, Loops ${(await K('loops')).length}`);
 }
@@ -198,12 +203,14 @@ const hintergrundLaeuft = async () => {
   p = await oben();
   await ziehen(await bild('seite', p), await bild('seite', { ...p, y: p.y + 60 }), 5);
   const lief = await hintergrundLaeuft();
+  const nrFehler = (await K('zeiten')).auftragNr;
   await K('auftragFehler');
   const gleich = await K('zeiten');
   await seite.waitForTimeout(2500);
   await ruhig();
   const S1 = await stand();
-  ok('H Fehler im Auftrag', lief && !gleich.aufraeumen && !S1.z.hintergrundAus && S1.z.punkte > S.z.punkte && S1.P.every(Number.isFinite) && auftragText(S1.z, nr) === 'keiner', `Hintergrund rechnete ${lief ? 'ja' : 'nein'}; im Fenster verdichtet: ${S.z.punkte} → ${S1.z.punkte} Punkte; das späte Ergebnis des Auftrags: ${auftragText(S1.z, nr)}`);
+  // das späte Ergebnis des gescheiterten Auftrags darf nicht mehr ankommen (spätere Aufträge für neue Stände schon)
+  ok('H Fehler im Auftrag', lief && !gleich.aufraeumen && !S1.z.hintergrundAus && S1.z.punkte > S.z.punkte && S1.P.every(Number.isFinite) && S1.z.auftrag?.nr !== nrFehler, `Hintergrund rechnete ${lief ? 'ja' : 'nein'}; im Fenster verdichtet: ${S.z.punkte} → ${S1.z.punkte} Punkte; der gescheiterte Auftrag ${nrFehler} kam nicht mehr an (letzter: ${S1.z.auftrag?.nr ?? '–'}, vorher ${nr})`);
   const d = await zurueck(1, S0);
   ok('H ein Schritt zurück', d < 1e-9, `Stand gegen den Anfang ${d.toExponential(1)}`);
 }
