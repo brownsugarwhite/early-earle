@@ -1219,8 +1219,11 @@ const plus3 = (p: V3, v: V3): V3 => ({ x: p.x + v.x, y: p.y + v.y, z: p.z + v.z 
  * Das Blatt bildet linear ab, ein Bézier-Stück bleibt ein Bézier-Stück aus den abgebildeten Punkten und Griffen. So ist die Linie bei
  * jedem Zoom glatt und läuft genau durch ihre Punkte wie in Illustrator; das Netz liegt höchstens `GENAU` daneben. `sp`: Spiegelhälfte
  * bzw. Zwilling. Ein Ring läuft vom ersten zum letzten Punkt (seine Enden sind Punkte), ein geschlossener Loop ringsum.
+ * Während eines Zugs (10.11., Gegenprüfung Schritt G2) derselbe Pfad aus den Punkten, wo sie gerade sind, und den Griffen, wie sie
+ * danach sind (`zug.griffeNeu`, `li` = Nummer des Loops): Die Linie ist im Zug und nach dem Loslassen dieselbe Kurve; vorher zeigte
+ * das Blatt im Zug einen Streckenzug durch die Proben.
  */
-function pfadKurven(a: Ansicht, l: Loop, sp: boolean): string {
+function pfadKurven(a: Ansicht, l: Loop, sp: boolean, li = -1): string {
   const P = l.punkte;
   const m = P.length;
   const zu = l.art !== 'ring';
@@ -1228,11 +1231,14 @@ function pfadKurven(a: Ansicht, l: Loop, sp: boolean): string {
     const [x, y] = imBlatt(a, sp ? spiegeln(v) : v);
     return `${x.toFixed(3)} ${y.toFixed(3)}`;
   };
-  let d = `M ${B(P[0]!.ref)}`;
+  const neu = zug && li >= 0 ? zug.griffeNeu[li] : null;
+  const ort = (p: LoopPunkt): V3 => (zug && !zug.griff ? p.cur : p.ref);
+  let d = `M ${B(ort(P[0]!))}`;
   for (let i = 0; i < (zu ? m : m - 1); i++) {
+    const k = (i + 1) % m;
     const A = P[i]!;
-    const E = P[(i + 1) % m]!;
-    d += ` C ${B(plus3(A.ref, A.aus!))} ${B(plus3(E.ref, E.ein!))} ${B(E.ref)}`;
+    const E = P[k]!;
+    d += ` C ${B(plus3(ort(A), neu?.[i]?.aus ?? A.aus!))} ${B(plus3(ort(E), neu?.[k]?.ein ?? E.ein!))} ${B(ort(E))}`;
   }
   return zu ? `${d} Z` : d;
 }
@@ -1258,8 +1264,16 @@ function auswahlMitte(): V3 | null {
 
 /** so lang zeigt das Blatt einen Griff mindestens (px): kurze Stücke hätten sonst Griffe unter dem Punkt */
 const GRIFF_PX = 28;
+/**
+ * Griffe in wahrer Länge wie in Illustrator (10.11., Gegenprüfung Schritt G2; Florian: „meine Vision war, dass es wie bei Illustrator
+ * funktioniert“): Die gezeigte Spitze ist der Kontrollpunkt der Kurve, und beim Loslassen ändert sich nichts. Mit der Mindestlänge
+ * (`GRIFF_PX`) wurde der Faktor nach jedem Zug neu gerechnet, die Spitze sprang (im Beispiel von 56 auf 28 px). `?griffe=mindest`
+ * zeigt das Verhalten von vorher zum Vergleich, bis Florian entschieden hat.
+ */
+const GRIFFE_WAHR = new URLSearchParams(location.search).get('griffe') !== 'mindest';
 /** Faktor, mit dem die Griffe eines Punkts gezeigt werden (≥ 1); ein Zug an der Spitze wirkt im selben Verhältnis feiner */
 function griffFaktor(g: { ein: V3 | null; aus: V3 | null }, a: Ansicht): number {
+  if (GRIFFE_WAHR) return 1;
   const kurz = Math.min(...[g.ein, g.aus].filter((v): v is V3 => !!v).map((v) => Math.hypot(v.x, v.y, v.z)));
   return Number.isFinite(kurz) && kurz > 1e-9 ? Math.max(1, GRIFF_PX / (skala(a) * kurz)) : 1;
 }
@@ -1328,8 +1342,9 @@ function blattZeichnen(a: Ansicht): void {
     linienVon(l, lagen[li]!).forEach((pts, m) => {
       // in der Seite liegen Spiegelhälfte und Zwilling genau hinter dem Gespeicherten
       if (m === 1 && a === 'seite') return;
-      // in Ruhe der Bézier-Pfad (die Linie ist ihr Pfad), während eines Zugs und in der Pose die Linie, wie sie gerade liegt
-      const d = !zug && exakt(l) ? pfadKurven(a, l, m === 1) : pfad(a, pts);
+      // in der Grundform der Bézier-Pfad (die Linie ist ihr Pfad), auch während eines Zugs; in der Pose und ohne Pfad die Linie,
+      // wie sie gerade liegt
+      const d = exakt(l) ? pfadKurven(a, l, m === 1, li) : pfad(a, pts);
       el.append(element('path', `kurve${gew ? ' gewaehlt' : ''}${maul?.id === l.id ? ' maul' : ''}${m ? ' spiegel' : ''}`, { d }));
       const t = element('path', 'kurve-treffer', { d });
       t.setAttribute('data-l', String(l.id));
