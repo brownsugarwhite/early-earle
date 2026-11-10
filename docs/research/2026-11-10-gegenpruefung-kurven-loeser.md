@@ -52,6 +52,9 @@ hinaus und kontrolliere die bisherigen Versuche. Gibt es Fehler? … Haben wir e
 - **Ehrlich offen bleibt eine Modellfrage:** Wo nur eine Linie eine Form hält (Ohr, Horn, Rüssel), legt keine Linie die Dicke
   quer fest. Dort hängt die Form leicht vom Weg ab (gemessen am Ohr rund 1 Einheit). Das beheben die vier Regeln nicht. Dafür gibt
   es einen Vorschlag für die Bedienung (Stütz-Loop) und drei größere Wege, die erst eine Tagesmessung brauchen (Abschnitt 5).
+- **Nachtrag (10.11.):** Florian hält `?gewichte=geometrie` für den bisher besten Weg, nur zu langsam. Dafür gelten nur ein
+  Teil der Schritte, und eine Nachmessung zeigt zwei Gründe für „zu langsam“ (teure Runde, viel mehr Runden auf dichten
+  Netzen). Siehe den Nachtrag vor Anhang A.
 - **Werkzeuge:** Dem Fenster fehlen fast alle Präzisionshilfen aus Illustrator und Blender (Zahlen im Zug, fein mit ⇧,
   Pfeiltasten, Einrasten, Wiederholen, Auswahlrechteck). Der größte Hebel der Bedienung ist, weite Züge überflüssig zu machen:
   Auswuchs als eigene Operation und eine Startform aus einer Seitenzeichnung (Abschnitt 6).
@@ -465,6 +468,60 @@ Danach Werkzeuge nach Abschnitt 6 (zuerst 1–4), und je nach deinem Urteil eine
 - Andrews, Joshi, Carr 2011 war nur als Abstract zugänglich; die Aussagen dazu stützen sich auf die Dissertation des Erstautors
   und drei Patente derselben Gruppe.
 - Die Pose (anderer Löser, Bereich) wurde nur mitgelesen.
+
+## Nachtrag (10.11., nach Florians Rückfrage): `?gewichte=geometrie` als Zielmodell
+
+Florian: „In der anderen Session haben wir `kurven.html?gewichte=geometrie` als bisher elegantesten Weg mit bester Genauigkeit,
+aber zu langsam getestet. Zumindest kam es mir am besten vor. Baut deine Aussage auf diesem Modell auf?“
+
+**Antwort.** Der Bericht hat beide Löser gemessen. Die auffälligsten Zahlen (Pendeln, Sprung von 6–35 Einheiten, verstecktes
+Gedächtnis) gehören zum Standard ohne Schalter. Für „geometrie“ gilt:
+- Florians Eindruck deckt sich mit den Messungen: genaueste Form, kleiner Sprung beim Netzwechsel (Hals 0,4 statt 6,3), kein
+  Pendeln (die Bremse ist dort eingebaut), kein verstecktes Gedächtnis (das System wird dort nicht quadriert gelöst).
+- Von den acht Schritten aus Abschnitt 7 entfallen Schritt 2 (Bremse), Schritt 7 (`HALT`) und der Ausgleich beim Netzwechsel;
+  sie betreffen nur den Standard-Löser. Es bleiben Anzeige, schneller lösen, durchgehend rechnen, Netzwechsel und Zerlegen im
+  Hintergrund, halbe Haut.
+
+**Warum „geometrie“ zu langsam ist** (gemessen **✓**, Kern, Ohr-Zug in 30 Mausschritten mit je einer Runde wie im Fenster, ohne
+Verfeinern im Zug; `loeser/mess1.ts` mit `GEWICHTE=geometrie`, Ausgabe `ausgaben/loeser-mess1-ohr-geometrie-dichte.out`):
+
+| Punkte | eine Runde | davon Lagen lösen | davon Krümmung verteilen | Rückstand nach dem Zug | Runden bis zur Ruhe | Anlegen beim Greifen |
+| --- | --- | --- | --- | --- | --- | --- |
+| 5 222 | 12,8 ms | 6,2 ms | 3,8 ms | 1,4 Einheiten | etwa 5 | 0,19 s |
+| 10 964 | 32,1 ms | 15,2 ms | 10,7 ms | 3,5 Einheiten | etwa 10 | 0,42 s |
+| 23 406 | 72,7 ms | 37,5 ms | 25,2 ms | 19 Einheiten | etwa 30 | 1,1–1,2 s |
+
+Drei Ursachen:
+1. **Die Runde ist teuer.** 80–87 % stecken in zwei Schritten, die beide mit dem allgemein geschriebenen Einsetzen rechnen
+   (Abschnitt 2.4): das Lösen der Lagen (drei Spalten; ausgeschrieben 3,7-mal schneller **✓**) und das Verteilen der Krümmung
+   (je Runde fünf bis sechs Lösungen mit einer Spalte durch dieselbe Funktion; geschätzt zwei- bis dreimal schneller, nicht
+   gemessen). Gerechnet werden aus 12,8 / 32 / 73 ms etwa 6 / 15 / 32 ms.
+2. **Auf dichten Netzen braucht der Löser viel mehr Runden.** Der Rückstand nach demselben Zug wächst von 1,4 auf 19 Einheiten,
+   die Zahl der Runden bis zur Ruhe von 5 auf 30. Die Bremse je Punkt muss dort stärker greifen. Das ist dieselbe Wurzel wie
+   beim Pendeln des Standard-Lösers (2.3): Die Krümmung an den Linien wird an der Haut gemessen, und das wirkt umso stärker
+   zurück, je feiner das Netz ist. Schneller rechnen allein behebt das bei 20 000 und mehr Punkten nicht.
+3. **Nach jedem Zug wird neu zerlegt, im Hauptthread.** Nach der Geometrie hängt die Matrix an der Form (`ausKurven.ts:254–258`);
+   30 ms nach dem Loslassen baut das Fenster den Löser neu (`kurven.ts:1448–1456`, gelesen). Es steht dann 0,2 s bei 5 200 und
+   über 1 s bei 23 400 Punkten. Dazu kommen die Halte von 35–52 ms beim Verfeinern im Zug (Planseite Abschnitt 10).
+
+**Reihenfolge, wenn „geometrie“ der Weg ist** (ersetzt die Tabelle in Abschnitt 7):
+
+| Schritt | Inhalt | Kriterium |
+| --- | --- | --- |
+| G1 | Einsetzen für drei Spalten und für eine Spalte ausschreiben, Felder wiederverwenden (nur Kern, `loeser/zerlegung.ts`) | gleiche Lösung (Unterschied ≤ 1e-9); Runde „geometrie“ ≤ 7 ms bei 5 200 und ≤ 16 ms bei 11 000 Punkten |
+| G2 | Anzeige: Griffe, Bézier-Pfad im Zug, Kurve vor der Rechnung | beim Loslassen eines Griffs bewegt sich im Blatt nichts |
+| G3 | durchgehend rechnen, auch beim Halten, mit einem Maß für „steht“ | Endrunden beim Loslassen bewegen unter ½ px bei 300 % |
+| G4 | Zerlegen, Verdichten und Zeilenaufbau im Worker, einmal einwechseln (bei „geometrie“ nach jedem Zug) | kein Halt über 16 ms im Zug und nach dem Loslassen |
+| G5 | Netz nicht dichter als nötig: prüfen, warum es auf 20 000 und mehr Punkte wächst; Obergrenze oder Weg B aus Abschnitt 5 | Florians Wesen bleiben unter etwa 10 000 Punkten, oder die Anzeige ist feiner als das Rechennetz |
+| G6 | halbe Haut (nach Florians Entscheidung) | gleiche Form, Runde etwa halbiert |
+
+- Das Spiel zeigt höchstens 8 000 Dreiecke, also rund 4 000 Punkte. Ein Rechennetz mit 23 000 Punkten ist sechsmal feiner,
+  kostet nach der Tabelle das Sechsfache je Runde und braucht das Sechsfache an Runden.
+- Ursache 2 zeigt: Auch bei „geometrie“ setzt die Rückkopplung an den Linien die Grenze. Weg C aus Abschnitt 5 (Krümmung an
+  den Linien mitgelöst, ohne Bremse) zielt genau darauf. Er sollte nach G1–G4 seine Tagesmessung bekommen, und zwar auf einem
+  dichten Netz.
+- Nicht gemessen: das Fenster (dort wird im Zug verfeinert, und jeder neue Löser beginnt ohne den Stand der Bremse), Rüssel und
+  Hörner bei „geometrie“ auf dichten Netzen, die Runde nach G1.
 
 ## Anhang A: Messwerte
 

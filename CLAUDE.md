@@ -1643,6 +1643,11 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     Löser, der von selbst zur Ruhe kommt) in acht kleinen Schritten. Größere Wege (linear aus Linien mit Richtung, kleines
     Rechennetz mit glatter Anzeige, mitgelöst sauber, Sofort-Antwort aus dem Griff) erst nach je einer Tagesmessung. Dazu eine
     Werkzeugliste (Präzision im Zug, verdeckte Linien blass, Auswuchs als Operation, Stütz-Loop, Rundreise-Test).
+  - Nachtrag (Florian: `?gewichte=geometrie` kam ihm am besten vor, nur zu langsam): Pendeln, `HALT` und Ausgleich betreffen
+    nur den Standard-Löser. „geometrie“ ist langsam aus drei Gründen: die Runde (12,8 / 32 / 73 ms bei 5 200 / 11 000 /
+    23 400 Punkten, 80–87 % in den zwei Einsetz-Schritten), viel mehr Runden auf dichten Netzen (Rückstand nach einem Zug
+    1,4 / 3,5 / 19 Einheiten, 5 / 10 / 30 Runden bis zur Ruhe) und Neuzerlegen im Hauptthread nach jedem Zug (0,2–1,2 s).
+    Reihenfolge G1–G6 im Nachtrag des Berichts; das Rechennetz sollte nicht auf 20 000 Punkte wachsen.
   - Fallen: Eine Messkopie des Lösers erst mit `MODE=gleichheit` gegen das Original prüfen. Varianten immer auch auf einem
     dichten Netz messen (`DREIECKE=30000`); Pendeln und Kriechen zeigen sich dort zuerst. Neun Prüfer parallel haben Florians
     Wochenlimit aufgebraucht: große Fächer nur nach Rückfrage.
