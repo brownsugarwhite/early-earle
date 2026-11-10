@@ -1,4 +1,4 @@
-# Übergabe (Stand 10.11.2026 nachmittags: G1 bis G3 und G4.1 gebaut; als Nächstes G4.2 bis G4.4)
+# Übergabe (Stand 10.11.2026 abends: G1 bis G3 und G4.1 bis G4.3 gebaut; als Nächstes G4.4, nach Florians Wort)
 
 **Branch `claude/form-zuerst`, Arbeitsbaum `.claude/worktrees/form-zuerst`.** Diese Datei ist der Einstieg. Die alte Übergabe aus der
 Käfig-Zeit (Stand 04.11.) steht in der Git-Geschichte: `git show 82aed6dc:docs/UEBERGABE.md`.
@@ -8,7 +8,7 @@ Käfig-Zeit (Stand 04.11.) steht in der Git-Geschichte: `git show 82aed6dc:docs/
 („`?gewichte=geometrie` als Zielmodell“): G1 Einsetzen ausschreiben, G2 Anzeige, G3 durchgehend rechnen, G4 Schweres in den Worker.
 Kriterien stehen in der Tabelle des Nachtrags; Messwerte und Befunde je Schritt unter „Stand“ am Ende des Nachtrags.
 
-**Stand der Schritte (10.11. nachmittags; es baut die Sitzung der Gegenprüfung, die frühere bauende Sitzung ändert nichts mehr):**
+**Stand der Schritte (10.11. abends; es baut die Sitzung der Gegenprüfung, die frühere bauende Sitzung ändert nichts mehr):**
 - **G1 gebaut** (`6eae3883`): Einsetzen für eine und drei Spalten ausgeschrieben (`loeser/zerlegung.ts`, Test `zerlegung.test.ts`),
   bitgleich mit vorher. Runde „geometrie“ 12,8 → 7,7 ms / 32 → 15,5 ms / 73 → 32 ms bei 5 200 / 11 000 / 23 400 Punkten (Kern,
   Ohr-Zug); Lösen mit drei Spalten 6,0 → 1,7 ms. Kriterium bei 11 000 erfüllt (≤ 16 ms), bei 5 200 knapp nicht (7,7 statt ≤ 7 ms,
@@ -45,17 +45,46 @@ Kriterien stehen in der Tabelle des Nachtrags; Messwerte und Befunde je Schritt 
   5 / 4 / 0, 87 ms → 1 / 0 / 0, 46 ms; 11 000 Punkte 5 / 4 / 3, 130 ms → 2 / 1 / 0, 54 ms; 23 400 Punkte 89 / 22 / 5, 469 ms →
   42 / 3 / 1, 106 ms. Es bleiben das Einwechseln (10 / 28 / 59 ms, zweimal je Zug) und bei 23 400 Punkten die Runde selbst
   (29–33 ms je Bild; G5/G6).
-- **G4.2 bis G4.4 offen** (Bericht, „Was das für G4 heißt“): G4.2 Nachlauf im Bildtakt nach dem Loslassen, bis die Haut steht;
-  G4.3 Verdichten, Zerlegen und Setzen verdeckt im Hintergrund, bis die neue Haut steht, einmal einwechseln (der Auftrag aus
-  G4.1 lässt sich dafür wiederverwenden); G4.4 dasselbe nach jeder anderen Änderung (Loop, Punkt, Kante). Den Stand der Bremse
-  weiterzugeben ist nach Befund 1 nicht der Hebel. Danach G5 (zuerst die Güte des Netzes), G6 (halbe Haut).
+- **Florian (10.11. abends):** „Ja, mach weiter mit G4.2 und G4.3: Nachlauf im Bildtakt nach dem Loslassen, dann Verdichten und
+  Setzen verdeckt im Hintergrund und einmal einwechseln.“
+- **G4.2 und G4.3 gebaut** (`d695c2b5`, `97ad1457`; Bericht „Stand (10.11. abends)“). Nur über die ganze Haut nach der Geometrie
+  in der Grundform (`mitNachlauf()`); Pose, `?haut=gedaechtnis` und gleiche Gewichte laufen wie bisher.
+  - **Nachlauf:** Steht die Haut beim Loslassen noch nicht, rechnet der Löser des Zugs im Bildtakt weiter (`nachlaufRechnen` in
+    `schleife`), bis die Form steht. `zugEnde` rechnet dafür höchstens noch eine Runde.
+  - **Aufräumen im Hintergrund:** Danach geht ein Auftrag an den Worker (`aufraeumenStarten` → `verfeinern.ts` `aufraeumen`):
+    verdichten, zerlegen, setzen bis zur Ruhe, bis zu dreimal nachverfeinern. Das Fenster wechselt das Ergebnis einmal ein
+    (`aufgeraeumtAnwenden`); in der Statuszeile steht so lange „verfeinert im Hintergrund“.
+  - **Die Zerlegung kommt mit** (`vorlageBereit`): Das nächste Greifen zerlegt nicht. Greift man vorher, verfällt der Auftrag
+    (`hintergrundFrei` legt den Worker neu an), und der Zug nimmt die Zerlegung des letzten Zugs. Der Kern prüft selbst, ob eine
+    angebotene Zerlegung zur Struktur passt (`HautVorlage.struktur`, `strukturSchluessel` in `dicht/ausKurven.ts`); passt sie
+    nicht, zerlegt er selbst.
+  - **Der Stand entscheidet:** Nachlauf und Auftrag hängen an `standZahl()` (Netz, Streuwert der Lagen, Streuwert der Loops).
+    Hat sich der Stand geändert (Rückgängig, Kante, neuer Loop, neuer Zug), enden sie ohne Wirkung. Keine Stelle, die den Stand
+    ändert, muss dafür etwas tun.
+  - **Fehler:** Meldet der Auftrag einen Fehler, räumt das Fenster diesen Zug selbst auf (`aufraeumenImFenster`). Fällt der Worker
+    aus (`onerror`), läuft bis zum Neuladen alles im Fenster (`hintergrundAus`).
+  - **Gemessen** (Ohr, schneller Zug, sofort losgelassen; 5 200 / 11 000 / 23 400 Punkte; vorher → jetzt): Sprung beim Loslassen
+    1,1–1,7 / 0,7–0,9 / 0,9 → 0,00 Einheiten; das Loslassen selbst 58 / 115 / 274 → 3 / 5 / 6 ms; längster Abstand zwischen zwei
+    Bildern danach 183 / 453 / 1 437 → 21 / 25 / 31 ms; Stillstand zusammen 0,5 / 0,8 / 3,7 s → keiner; ein Netzwechsel statt
+    Sprung plus ein bis zwei. Das Einwechseln kommt nach 0,7–0,9 / 1,4–2,0 / 3,2–6,1 s und ändert die Haut um bis zu 3,1 / 1,2 /
+    0,7 Einheiten (99 % der Punkte unter 2,1 / 0,5 / 0,3); nach einem langsamen Zug mit Halten 99 % unter ⅓ Einheit. 400 ms nach
+    dem Loslassen wieder greifen bei 23 400 Punkten: 1,0 s → 23 ms.
+  - **Offen** (Bericht, „Ehrlich offen nach G4.2/G4.3“): Das Einwechseln kommt auf dichten Netzen spät und ändert die Form
+    einmal sichtbar (dieselbe Änderung wie vorher in Stufen; Ursache ist die Form des feineren Netzes, G5). Weich überblenden
+    beim Einwechseln wäre möglich, ist nicht gebaut (Florians Entscheidung 8).
+- **G4.4 offen:** dasselbe nach jeder anderen Änderung (Loop schneiden, Punkt setzen, Kante, Löschen, Rückgängig). Dort läuft
+  noch alles im Hauptthread: `hautNeuRechnen` (Kante an: 0,2 s bei 5 200, 0,5 s bei 11 000 Punkten), `linienAufPfad`, das
+  Vorrechnen der Zerlegung in der Ruhe (`vorrechnenPlanen`, 0,1 bis 1 s). Der Auftrag `aufraeumen` lässt sich dafür
+  wiederverwenden; Vorsicht bei „setzen“ nach einem neuen Loop (über die ganze Haut gesetzt ändert sich die Form, siehe den
+  Kommentar an `linienAufPfad`). Danach G5 (zuerst die Güte des Netzes), G6 (halbe Haut).
 
 ## 1. Stand
 
-- **Letzter Code-Commit:** `cf46b548` (G4.1). Alles ist committet und gepusht (lokal = `origin/claude/form-zuerst`).
+- **Letzter Code-Commit:** `97ad1457` (G4.2/G4.3). Alles ist committet und gepusht (lokal = `origin/claude/form-zuerst`).
 - **Halbfertiges:** keins. Am 09.11. sind zwei Löser-Versuche wieder entfernt worden („gleiches Maß“, „Krümmung an den Linien
   mitgelöst“; Stand des zweiten in `476a874f`). Der Code des Lösers (`dicht/ausKurven.ts`) ist seit `1f1f5079` (Schalter
-  `maxNormalen`) unverändert; G1 hat nur das Einsetzen in `loeser/zerlegung.ts` ausgeschrieben, G2 und G3 nur das Fenster.
+  `maxNormalen`) im Rechnen unverändert; G1 hat nur das Einsetzen in `loeser/zerlegung.ts` ausgeschrieben, G2 und G3 nur das
+  Fenster. G4.3 hat im Löser nur die Annahme einer angebotenen Zerlegung geändert (Prüfung der Struktur, `vorlageGenutzt`).
 - **Läuft:** ein Vite-Server auf Port 5193 aus diesem Arbeitsbaum. Seit dem 10.11. mittags gehört er der Sitzung der
   Gegenprüfung (Konfiguration `kurven` in `.claude/launch.json` des Hauptordners, mit `pnpm -C <Arbeitsbaum>`); der alte Prozess
   der früheren Sitzung ist beendet. Florian testet damit. Vor einem eigenen Start `lsof -i :5193` prüfen. Port 5180 gehört dem
@@ -80,17 +109,19 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5193 --strictPort
 - **Florians Adresse jetzt:** `http://localhost:5193/kurven.html?gewichte=geometrie`. Standard ohne Schalter ist der Löser mit gleichen
   Gewichten. `?form=bohne` startet mit einer Bohne statt der Kugel, `?dreiecke=<n>` setzt die Größe des Startnetzes (Standard 6 000).
 - **Altes Fenster** `form.html` (Form aus den Ansichten) und der alte Editor (`pnpm editor`, Käfig) werden nicht mehr benutzt.
-- **Test-Haken im Fenster:** `window.__kurven` (`kurven.ts`, ab Zeile 3321; `zeiten()` trägt seit G4.1 auch `messung`,
-  `hintergrundTeile`, `auspacken`, `einwechslungTeile`): `weiterrechnen` (n Runden im laufenden Zug),
+- **Test-Haken im Fenster:** `window.__kurven` (`kurven.ts`, ab Zeile 3635; `zeiten()` trägt seit G4.1 auch `messung`,
+  `hintergrundTeile`, `auspacken`, `einwechslungTeile`, seit G4.3 `nachlauf`, `nachlaufRunden`, `aufraeumen`, `auftrag` (der
+  letzte Auftrag: `nr`, `angewendet`, Zeiten), `hintergrundAus`, `loslassen`; neu `roh` (Lagen und Dreiecke ohne Kopie),
+  `ausfall` und `auftragFehler` (Fehler nachstellen)): `weiterrechnen` (n Runden im laufenden Zug),
   `nachrechnen`, `loops`, `auswahl`, `pfadRest`, `knickAm`, `griffe`, `kamera`, `knick`, `umgeschlagen`, `maul`, `zeiten` (zug,
   zerlegen, bereich, verdichtung, punkte, stufen, endrunden, offen, nachRunden, hintergrund, ausloesung, einwechslung,
   hintergrundMs, stufeMs, neuRechnen, vorrechnen, nachLoesen), `lagen`, `grundLagen`, `pose`, `dreiecke`, `meldung`, `bild` (Weltpunkt →
   Pixel im Blatt), `ausschnitt` (Zoom je Blatt), `felder`, `setzeRadius`, `symmetrie`, `masse`.
 
 **Tests, die grün sein müssen:**
-- Fenster, aus `apps/editor`: `npx vitest run src/form/verfeinern.test.ts` (3 Tests, der Auftrag im Hintergrund).
-- Kern der dichten Form, aus `packages/shape`: `npx vitest run src/dicht/ src/loeser/zerlegung.test.ts`. Zuletzt 110 von 110
-  grün (10.11.), etwa 20 s. Ausgaben
+- Fenster, aus `apps/editor`: `npx vitest run src/form/` (6 Tests: die Aufträge im Hintergrund, im Zug und nach dem Loslassen).
+- Kern der dichten Form, aus `packages/shape`: `npx vitest run src/dicht/ src/loeser/zerlegung.test.ts`. Zuletzt 114 von 114
+  grün (10.11. abends), etwa 20 s. Ausgaben
   bestandener Tests nur mit `--reporter=verbose`. `HAUT=gedaechtnis` lässt `loops.test.ts` und `weiterZug.test.ts` mit dem alten
   Löser laufen (Standard `kurven`).
 - Typen: `pnpm --filter @ee/shape typecheck` (09.11. grün); `pnpm --filter @ee/editor exec tsc --noEmit -p tsconfig.json` (10.11.
@@ -106,7 +137,8 @@ vitest; während sie laufen, keine Dateien unter `packages/shape/src` oder `apps
 | Probe | wofür |
 | --- | --- |
 | `form-drei-faelle.mjs` | Florians Hörner mit Griffspiel (`FALL=hoerner`) und das kleine Detail (`FALL=detail`): Zeit je Mausbewegung, Knicke, umgeklappt, **umgestülpt** (schwarze Stellen), jede Änderung nach dem Loslassen. Seit G3: `HALTEN=<ms>` (je Bild Bewegung und Rauminhalt beim Halten), `GPU=1` |
-| `form-loslassen-probe.mjs` | Sprung nach dem Loslassen (Hals, Ohr, Rüssel); seit G4.1 auch die Zeile „Bilder im Zug“ (Abstand von Bild zu Bild, Arbeit im Hauptthread je Bild, je Auslösen und Einwechseln). Seit G3: `HALTEN=<ms>` vor dem Loslassen, `PAUSE=<ms>` je Mausschritt, `GPU=1`, `REST=<Runden>` (Rest zur Ruhe), `FERN=<Einheiten>` (Ausschläge fern vom Griff je Bild), `SICHERN`/`VERGLEICH` (zwei Läufe gegeneinander); der Stand vor und nach dem Loslassen wird im Fenster festgehalten |
+| `form-loslassen-probe.mjs` | Sprung nach dem Loslassen (Hals, Ohr, Rüssel); seit G4.1 auch die Zeile „Bilder im Zug“ (Abstand von Bild zu Bild, Arbeit im Hauptthread je Bild, je Auslösen und Einwechseln). Seit G3: `HALTEN=<ms>` vor dem Loslassen, `PAUSE=<ms>` je Mausschritt, `GPU=1`, `REST=<Runden>` (Rest zur Ruhe), `FERN=<Einheiten>` (Ausschläge fern vom Griff je Bild), `SICHERN`/`VERGLEICH` (zwei Läufe gegeneinander); der Stand vor und nach dem Loslassen wird im Fenster festgehalten. Seit G4.2/G4.3 liest sie nach dem Loslassen im Fenster mit (Abstand der Bilder und wo die längsten liegen, Bewegung bei gleichem Netz, jeder Netzwechsel mit dem Stand davor und danach, Zeiten des Auftrags); `WIEDER=<ms>` greift noch einmal, `NACH=5x6` rechnet am Ende weiter (steht die Haut?); `&nachlauf=0` in `KURVEN_URL` zeigt den Ablauf von vorher |
+| `form-nachlauf-probe.mjs` | (G4.2/G4.3) Nachlauf und Hintergrund dürfen einen geänderten Stand nicht anfassen: ⌘Z sofort, ⌘Z während der Hintergrund rechnet und danach, gleich wieder greifen, Kante, neuer Loop, Fehler im Auftrag, Ausfall des Workers; 18 Prüfungen, `KURVEN_URL` mit `&dreiecke=14000` für 11 000 Punkte |
 | `form-anlauf-probe.mjs` | die ersten Bilder eines winzigen Zugs (Anlauf eines neuen Lösers); `ZWEIMAL=1` greift ein zweites Mal |
 | `form-griff-loslassen.mjs` | Griff bzw. Punkt (`ZUG=punkt`) ziehen und loslassen: Spitze unter der Maus, Sprung, Linie im Zug gegen danach, Runden am Ende |
 | `form-explosion-probe.mjs` | weite Züge `FALL=a\|b\|c\|d\|e\|f\|g\|p` (Überhang, Schnabel, Schlaufe, Stauchen, Rüssel mit Griff, Hammer, Pilz) |
@@ -136,17 +168,27 @@ vitest; während sie laufen, keine Dateien unter `packages/shape/src` oder `apps
   '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] })`).
 - Den Stand „vor dem Loslassen“ im Fenster festhalten (Listener in der Erfassungsphase, wie in `form-loslassen-probe.mjs`), nicht
   mit einem Aufruf davor: Seit G3 rechnet die Haut zwischen dem Aufruf und dem Loslassen weiter.
+- Große Stände erst am Ende der Probe aus dem Fenster holen: Das Übertragen hält das Fenster an (bei 23 400 Punkten rund 60 ms)
+  und stand zuerst als „längster Abstand 93 ms“ mitten im Nachlauf in der Messung.
+- Wann das Einwechseln kommt, schwankt mit der Zahl der Durchgänge im Hintergrund (bei 23 400 Punkten 3 bis 6 s).
 - Zum Vergleichen mit einem alten Stand: `git show <commit>:apps/editor/src/form/kurven.ts > src/form/kurvenAlt.ts`, dazu eine
   Kopie von `kurven.html` mit diesem Skript (beides danach löschen). Beide Stände laufen dann auf demselben Server.
 - Faltenzahlen streuen bei gleicher Form um den Faktor 2.
 - Zeiten nur als Verhältnisse lesen; bei belegter Maschine gibt es Ausreißer.
 
-## 3. Karte von `apps/editor/src/form/kurven.ts` (3 581 Zeilen, Stand `cf46b548`)
+## 3. Karte von `apps/editor/src/form/kurven.ts` (3 911 Zeilen, Stand `97ad1457`)
 
-Die Zeilen der Tabelle stammen vom Stand `ab3a8d95`; seit G4.1 liegen sie ab 1486 um 8 höher, ab 2180 um 12 bis 60 höher
-(`zugRechnen` 2151, `stufeImHintergrund` 2237, `einwechseln` 2275, `zerleger` 2367, `zugEnde` 2432, `verdichtenOptionen` 2498,
-`schleife` 3299, Haken ab 3321). Neu neben `kurven.ts`: `verfeinern.ts` (der Auftrag: `verfeinern`, `hautFlach`, `hautAusFlach`),
-`verfeinern.worker.ts`, `verfeinern.test.ts`. `zugNeuAufsetzen` gibt es nicht mehr.
+Die Zeilen der Tabelle stammen vom Stand `ab3a8d95`; seit G4.3 liegen sie ab 1430 um rund 10 höher, ab 1660 um rund 28, ab 2180
+um 30 bis 330 höher. Stand `97ad1457`: `vorrechnenPlanen` 1454, `statusZeigen` 1517, `loeserFuer` 1685, `zugStarten` 1867,
+`zugBewegen` 2077, `rundeMitWeg` 2149, `zugRechnen` 2171, `zugStufe` 2220, `stufeImHintergrund` 2257, `einwechseln` 2300,
+`zerleger` 2392 (mit `onmessage` und `onerror`), `hintergrundFrei` 2466, **nach dem Loslassen (G4.2/G4.3) 2475–2700:** `NACHLAUF`
+2490, `mitNachlauf` 2491, `vorlageBereit` 2503, `lagenZahl` 2512, `loopsZahl` 2519, `standZahl` 2558, `nachlaufRechnen` 2561,
+`aufraeumenImFenster` 2601, `aufraeumenStarten` 2611, `aufgeraeumtAnwenden` 2643; `zugEnde` 2709, `nachVerdichten` 2794,
+`verdichtenOptionen` 2808, `loopSchneiden` 2827, `kanteSetzen` 2873, `hautNeuRechnen` 2907, `linienAufPfad` 2964, `druecken`
+3320, `loslassen` 3411, `rendern` 3564, `schleife` 3610 (Reihenfolge je Bild: einwechseln oder `zugRechnen`, `nachlaufRechnen`,
+`aufgeraeumtAnwenden`, zeichnen), Haken ab 3635.
+Neben `kurven.ts`: `verfeinern.ts` (die Aufträge: `verfeinern` im Zug, `aufraeumen` nach dem Loslassen; `hautFlach`,
+`hautAusFlach`), `verfeinern.worker.ts`, `verfeinern.test.ts`. `zugNeuAufsetzen` gibt es nicht mehr.
 
 | Zeilen | Abschnitt |
 | --- | --- |
@@ -198,6 +240,8 @@ Die Zeilen der Tabelle stammen vom Stand `ab3a8d95`; seit G4.1 liegen sie ab 148
    Millionen Punkten; `form-drei-faelle.mjs` bricht dann ab.
 3. **Umgestülpte Haut bestätigt sich selbst** (08.11.): „umgeklappt“ zählt sie nicht, erst die Strahl-Parität („umgestülpt“).
 4. **Nummern vergleichen nach dem Verdichten:** Fast alles zählt dann als umgeklappt. Über Lagen bzw. die Stelle `s` vergleichen.
+   (10.11.: Eine Probe meldete nach „Kante an“ eine Bewegung von 321 Einheiten; das Netz war neu nummeriert, die Form dieselbe.
+   Ob das Netz gewechselt hat, an den Dreiecken prüfen, nicht an der Zahl der Punkte.)
 5. **Proben parallel zu vitest:** Es kommen weniger Mausereignisse an (140 ms je Bewegung), und der Zug geht einen anderen Weg.
 6. **Dateien im Vite-Root ändern, während eine Fenster-Probe läuft:** Die Seite lädt neu, die Probe misst Unsinn. Läuft Florians
    Fenster, lädt es auch bei ihm neu.
@@ -220,12 +264,23 @@ Die Zeilen der Tabelle stammen vom Stand `ab3a8d95`; seit G4.1 liegen sie ab 148
 14. **`&kurz=0` auf einem dichten Netz:** Bei 23 400 Punkten wächst das Netz im Zug auf 35 700 Punkte, und die Haut fällt ein.
 15. **Auf das Ende einer Probe warten:** `pgrep -f <probe>` in einer Warteschleife findet die Schleife selbst. Die Probe mit
     `run_in_background` starten und auf die Meldung warten.
+16. **Was im Hintergrund gerechnet wird, gehört zu einem Stand** (G4.3): Das Ergebnis nur anwenden, wenn `standZahl()` noch
+    derselbe ist. Wer den Loops ein Feld gibt, das die Haut bestimmt, nimmt es in `loopsZahl` auf; sonst wechselt ein Ergebnis
+    ein, das zu einem anderen Stand gehört. Was nur die Anzeige betrifft (`cur`, Auswahl), gehört nicht hinein.
+17. **Eine angebotene Zerlegung gilt nur für ihre Struktur** (Netz, Bindungen, Kanten, Quellen der Krümmung): Der Kern prüft das
+    seit G4.3 selbst (`strukturSchluessel`). Die Lagen gehören nicht zur Struktur; die Gewichte nach der Geometrie stammen dann
+    von den Lagen, mit denen zerlegt wurde (für einen Zug gleich nach dem letzten gewollt).
+18. **Nach einem neuen Loop nicht die ganze Haut im Hintergrund „setzen“:** Mit wenigen Loops ist die Haut dann noch nicht in
+    der Ruhe des Lösers; gesetzt änderte sie sich sichtbar, ohne dass jemand zieht. Deshalb startet ein verfallener Auftrag nicht
+    von selbst neu (erwogen und nicht gebaut, 10.11.).
 
 ## 5. Florian: letzte Urteile, offene Entscheidungen, Testfälle
 
 **Urteile:**
 - **10.11.:**
-  - „Die Griffe bleiben in wahrer Länge wie in Illustrator. Mach weiter mit G3.“ (nach G1/G2; zu G3 steht sein Blick aus)
+  - „Die Griffe bleiben in wahrer Länge wie in Illustrator. Mach weiter mit G3.“ (nach G1/G2)
+  - Zu G3: „Es gefällt mir schon besser. Auch die Performance ist schon besser, aber aktuell ruckt es während dem Ziehen noch
+    spürbar.“ Zu G4.1 bis G4.3 steht sein Blick aus.
   - „Das Ergebnis ist schon ganz gut, aber entweder sehe ich noch Veränderungen beim Loslassen der Handles und das Mesh justiert nach,
     oder es ist ungenau und stockt.“
   - `?gewichte=geometrie` ist für ihn „bis auf das Tempo schon recht nah dran“, „bisher elegantester Weg mit bester Genauigkeit,
@@ -251,8 +306,9 @@ Die Zeilen der Tabelle stammen vom Stand `ab3a8d95`; seit G4.1 liegen sie ab 148
 5. Linie kehrt um: rot zeigen und die Haut dort beim letzten gültigen Stand lassen (Vorschlag der Gegenprüfung), oder den Griff
    begrenzen.
 6. `?gewichte=geometrie` als Standard, nach seinem Test mit G1–G4.
-7. G4 in der neuen Fassung (Nachlauf im Bildtakt, Setzen verdeckt, einmal einwechseln, auch nach Loop/Punkt/Kante): sein Wort
-   steht aus (vorgelegt am 10.11. nachmittags).
+7. ~~G4 in der neuen Fassung~~ Freigegeben am 10.11. („gleich zu G4“, dann „mach weiter mit G4.2 und G4.3“). G4.1 bis G4.3 sind
+   gebaut; für G4.4 (dasselbe nach Loop, Punkt, Kante) steht sein Wort aus.
+8. Beim Einwechseln nach dem Loslassen weich überblenden (rund 0,15 s) statt umzuspringen? Vorgelegt am 10.11. abends.
 
 **Seine Testfälle** (Bilder in `docs/progress/editor/`):
 - Hörner aus dem senkrechten Ring mit Griffspiel: `form-ohren-aufblasen-florian-2026-11-08.webp`; das Bild mit den schwarzen
@@ -310,11 +366,12 @@ Die Gegenprüfung stimmt in den Hauptpunkten. Drei Stellen sind im Code nachgese
     *(Nachtrag 10.11., gemessen mit `loeser/mess8.ts`: Auf demselben Netz und einer Haut, die steht, stört ein neuer Löser nicht.
     Der Anlauf kommt vom geänderten Netz. Ob das Weitergeben auf einem neuen Netz hilft, erst messen; der sichere Weg ist, das
     Setzen verdeckt bis zur Ruhe zu rechnen.)*
-  - Dem Worker fehlt eine Fehlerbehandlung.
+  - Dem Worker fehlt eine Fehlerbehandlung. *(Erledigt mit G4.1 und G4.3: Fehler eines Auftrags kommen als Meldung zurück, bei
+    einem Ausfall des Workers läuft alles im Fenster weiter.)*
   - Die Zerlegungen werden nach einem Fingerabdruck der Zeilen gemerkt (`merken`); eine Zerlegung aus dem Worker gehört in denselben
     Speicher.
   - Für das Setzen nach dem Loslassen (`vorrechnenPlanen`) gilt dasselbe wie für das Verfeinern im Zug: einmal einwechseln statt bis
-    zu vier Stufen.
+    zu vier Stufen. *(Gebaut mit G4.3 für das Loslassen; `vorrechnenPlanen` rechnet nur noch nach den anderen Änderungen.)*
 - **G5** (danach): Das Netz wächst vor allem durch `GENAU` = MK/40, das nach fast jedem Zug an Details nachteilt, und durch bis zu
   drei Nachverfeinerungen nach dem Loslassen (`nachVerfeinert`).
 - **Messen:**
@@ -332,14 +389,15 @@ Netzwechsel. Der Ausgleich ist selbst ein kleines Gedächtnis und am Rüssel nac
 
 ## 7. Altlasten und was nicht angefasst wird
 
-**Schalter in `kurven.ts`** (18):
+**Schalter in `kurven.ts`** (19):
 
 | Schalter | Einordnung |
 | --- | --- |
 | `form`, `dreiecke` | Betrieb (Startform, Größe des Startnetzes) |
 | `gewichte` | Betrieb, bis `geometrie` Standard ist (Florians Entscheidung 6) |
 | `live`, `hintergrund`, `verdichten`, `kurz` | Vergleich für G3/G4, bleiben vorerst (`kurz=0` lässt ein dichtes Netz einfallen, Falle 14) |
-| `setzen=4` | Vergleich seit G3: das Setzen nach dem Loslassen mit genau vier Runden wie vorher; fällt mit G4 weg |
+| `setzen=4` | Vergleich seit G3: das Setzen nach dem Loslassen mit genau vier Runden wie vorher; wirkt nur noch im alten Ablauf (`nachlauf=0`, ohne Hintergrund) |
+| `nachlauf=0` | Vergleich seit G4.2/G4.3: nach dem Loslassen der Ablauf von vorher (alles im Fenster, in Stufen) |
 | `genau`, `liveGenau`, `liveKante` | Stellgrößen des Verdichtens; Thema von G5 |
 | `punkte=noetig` | offene Entscheidung 4, bleibt |
 | `haut=gedaechtnis` | Altlast für die Grundform (der Gedächtnis-Löser selbst wird für Pose und `linienAufPfad` gebraucht) |

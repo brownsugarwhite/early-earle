@@ -1669,6 +1669,24 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     Auslösen nicht mehr neu aufgesetzt, eingewechselt wird an Stelle einer Löserrunde. Bilder im Zug über 50 ms: 4 → 0 / 4 → 1 /
     22 → 3; längster Abstand 87 → 46 / 130 → 54 / 469 → 106 ms. Bleibt: Einwechseln 10 / 28 / 59 ms, bei 23 400 Punkten die Runde
     selbst (29–33 ms). Offen: G4.2 Nachlauf nach dem Loslassen, G4.3 Setzen verdeckt, G4.4 nach Loop/Punkt/Kante.
+  - **G4.2/G4.3 (10.11. abends, `d695c2b5`, `97ad1457`):** Florian: „Ja, mach weiter mit G4.2 und G4.3: Nachlauf im Bildtakt nach
+    dem Loslassen, dann Verdichten und Setzen verdeckt im Hintergrund und einmal einwechseln.“ Gebaut (nur `?gewichte=geometrie`,
+    Grundform; `?nachlauf=0` = vorher): Nach dem Loslassen rechnet der Löser des Zugs im Bildtakt aus (`nachlaufRechnen`), dann
+    verdichtet, zerlegt und setzt ein Auftrag im Worker (`verfeinern.ts` `aufraeumen`), das Fenster wechselt einmal ein
+    (`aufgeraeumtAnwenden`) und bekommt die Zerlegung für das nächste Greifen mit (`vorlageBereit`; der Kern prüft, ob sie zur
+    Struktur passt, `strukturSchluessel`). Nachlauf und Auftrag hängen am Stand (`standZahl`: Netz, Lagen, Loops) und verfallen,
+    wenn ihn jemand ändert. Gemessen (Ohr, schnell gezogen, sofort losgelassen; 5 200 / 11 000 / 23 400 Punkte): Sprung beim
+    Loslassen 1,1–1,7 / 0,7–0,9 / 0,9 → 0,00 Einheiten; das Loslassen selbst 58 / 115 / 274 → 3 / 5 / 6 ms; Stillstand danach
+    0,5 / 0,8 / 3,7 s → keiner (längster Abstand zwischen zwei Bildern 21 / 25 / 31 ms); ein Netzwechsel statt Stufen; wieder
+    greifen nach 400 ms bei 23 400 Punkten 1,0 s → 23 ms. Offen: Das Einwechseln kommt nach 0,7–0,9 / 1,4–2,0 / 3,2–6,1 s und
+    ändert die Form einmal um bis zu 3,1 / 1,2 / 0,7 Einheiten (nach langsamen Zügen fast überall unter ⅓); weich überblenden
+    wäre möglich (Florians Entscheidung). G4.4 (nach Loop, Punkt, Kante, Löschen, Rückgängig) läuft noch im Hauptthread.
+  - Fallen aus G4.2/G4.3: Ein Ergebnis aus dem Hintergrund gehört zu einem Stand; am Stand selbst prüfen (`standZahl`), und
+    jedes neue Feld der Loops, das die Haut bestimmt, in `loopsZahl` aufnehmen. Eine Probe, die gleich nach dem Loslassen große
+    Stände aus dem Fenster holt, hält es selbst an (60 ms bei 23 400 Punkten, stand als „längster Abstand 93 ms“ in der Messung):
+    erst am Ende abholen. Nach einem Netzwechsel sagt der Vergleich Punkt für Punkt nichts (neu nummeriert; „321 Einheiten“ bei
+    gleicher Form). Einen verfallenen Auftrag nicht von selbst neu starten: Nach einem neuen Loop gesetzt, änderte sich die Haut,
+    ohne dass jemand zieht.
   - Fallen aus G3: „Steht“ an der Form messen (längs der Normalen), nie an der ganzen Bewegung der Punkte. Fenster-Proben, die
     Zeit oder Nachhinken messen, mit `GPU=1` (der Software-Renderer schafft seit dem Rechnen im Bildtakt nur zehn Runden je
     Sekunde). Den Stand „vor dem Loslassen“ im Fenster festhalten (Listener in der Erfassungsphase). Einen alten Stand zum

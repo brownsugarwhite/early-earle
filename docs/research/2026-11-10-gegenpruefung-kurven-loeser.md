@@ -59,6 +59,10 @@ hinaus und kontrolliere die bisherigen Versuche. Gibt es Fehler? … Haben wir e
   dem Loslassen kurz still, ruckt die Haut beim Loslassen nicht mehr nach (bei 23 400 Punkten vorher 11 Einheiten). Dabei
   gefunden: Auf einem geänderten Netz schwingt ein neuer Löser vier bis fünf Runden über; so entstehen die Stufen nach dem
   Loslassen. Das ist der Kern von G4.
+- **Stand (10.11. abends):** G4.1 bis G4.3 sind gebaut. Im Zug hält das Verfeinern nicht mehr an. Nach dem Loslassen springt
+  nichts mehr, das Fenster steht nicht mehr still (vorher 0,5 bis 3,7 s), und die Haut wird einmal eingewechselt statt in
+  Stufen. Offen: Das Einwechseln kommt auf sehr dichten Netzen erst nach 3 bis 6 s und ändert die Form einmal um 0,3 bis 3
+  Einheiten; nach Loop, Punkt und Kante läuft noch alles im Hauptthread (G4.4).
 - **Werkzeuge:** Dem Fenster fehlen fast alle Präzisionshilfen aus Illustrator und Blender (Zahlen im Zug, fein mit ⇧,
   Pfeiltasten, Einrasten, Wiederholen, Auswahlrechteck). Der größte Hebel der Bedienung ist, weite Züge überflüssig zu machen:
   Auswuchs als eigene Operation und eine Startform aus einer Seitenzeichnung (Abschnitt 6).
@@ -695,8 +699,90 @@ Gebaut:
   a, e). Test `verfeinern.test.ts`: Der Auftrag rechnet Feld für Feld dasselbe wie die Schritte einzeln.
 - **Bleibt für sehr dichte Wesen:** die Runde selbst (G5: Netz nicht dichter als nötig; G6: halbe Haut).
 
-**Weiter in G4** (noch nicht gebaut): G4.2 Nachlauf im Bildtakt nach dem Loslassen, G4.3 Setzen verdeckt und einmal einwechseln,
-G4.4 dasselbe nach Loop, Punkt und Kante.
+**Weiter in G4** (Stand G4.1; G4.2 und G4.3 stehen gleich darunter): G4.2 Nachlauf im Bildtakt nach dem Loslassen, G4.3 Setzen
+verdeckt und einmal einwechseln, G4.4 dasselbe nach Loop, Punkt und Kante.
+
+**Stand (10.11. abends): G4.2 und G4.3 gebaut — nach dem Loslassen** (Florian: „Ja, mach weiter mit G4.2 und G4.3: Nachlauf im
+Bildtakt nach dem Loslassen, dann Verdichten und Setzen verdeckt im Hintergrund und einmal einwechseln.“; Commits `d695c2b5`,
+`97ad1457`). Gilt für `?gewichte=geometrie` in der Grundform; Pose, `?haut=gedaechtnis` und gleiche Gewichte laufen wie bisher.
+
+**Was vorher nach dem Loslassen geschah** (im Fenster gemessen, Ohr, schneller Zug, sofort losgelassen, echte Grafikkarte;
+`form-loslassen-probe.mjs` mit `&nachlauf=0`; Ausgaben `ausgaben/g4-fenster-loslassen.txt`):
+1. Beim Loslassen rechnete das Fenster höchstens vier Runden auf einmal und verdichtete das Netz. Das hielt 58 / 115 / 274 ms an
+   (5 200 / 11 000 / 23 400 Punkte), und die Haut sprang dabei um 0,7 bis 1,7 Einheiten.
+2. 30 ms später zerlegte es das neue Netz und setzte die Haut, dann verfeinerte es bis zu dreimal nach, jedes Mal mit Zerlegen
+   und Setzen. Alles im Hauptthread: Das Fenster stand zusammen 0,5 / 0,8 / 3,7 s still (längster Halt 0,18 / 0,45 / 1,4 s).
+3. Jede Stufe war zu sehen: nach dem Sprung noch ein bis zwei Netzwechsel.
+
+**Gebaut:**
+- **Nachlauf (G4.2).** Steht die Haut beim Loslassen noch nicht, rechnet der Löser des Zugs im Bildtakt weiter, bis die Form
+  steht (`kurven.ts`, `nachlaufRechnen`). Beim Loslassen selbst bewegt sich nichts mehr.
+- **Aufräumen im Hintergrund (G4.3).** Danach geht ein Auftrag an den Worker (`verfeinern.ts`, `aufraeumen`): verdichten,
+  zerlegen, setzen bis zur Ruhe, bis zu dreimal nachverfeinern. Das Fenster zeigt so lange die Haut, wie sie ist, und wechselt
+  einmal ein (`aufgeraeumtAnwenden`). In der Statuszeile steht so lange „verfeinert im Hintergrund“.
+- **Die Zerlegung kommt mit.** Das nächste Greifen zerlegt nicht mehr. Greift man, bevor der Auftrag fertig ist, verfällt er,
+  und der Zug nimmt die Zerlegung des letzten Zugs. Dafür prüft der Kern jetzt selbst, ob eine angebotene Zerlegung zur
+  Struktur passt (Netz, Bindungen der Linien, Kanten, Quellen der Krümmung; `ausKurven.ts`, `strukturSchluessel`). Passt sie
+  nicht, zerlegt er selbst.
+- **Der Stand entscheidet.** Ändert inzwischen jemand etwas (Rückgängig, Kante, neuer Loop, neuer Zug), enden Nachlauf und
+  Auftrag ohne Wirkung. Geprüft wird am Stand selbst (Netz, Lagen, Loops als Streuwert), nicht an jeder Stelle, die ihn
+  ändern kann.
+- **Fehler.** Meldet der Auftrag einen Fehler, räumt das Fenster diesen Zug selbst auf wie früher. Fällt der Worker ganz aus,
+  läuft bis zum Neuladen alles im Fenster (wie mit `?hintergrund=0`).
+- Schalter `?nachlauf=0`: der Ablauf von vorher, zum Vergleichen.
+
+**Gemessen** (schneller Zug, sofort losgelassen; vorher → jetzt; Spannen aus zwei bis drei Läufen):
+
+| | 5 200 Punkte | 11 000 Punkte | 23 400 Punkte |
+| --- | --- | --- | --- |
+| Sprung beim Loslassen (Einheiten) | 1,1–1,7 → 0,00 | 0,7–0,9 → 0,00 | 0,9 → 0,00 |
+| das Loslassen selbst hält an | 58 → 3 ms | 115 → 5 ms | 274 → 6 ms |
+| längster Abstand zwischen zwei Bildern danach | 183 → 21 ms | 453 → 25 ms | 1 437 → 31 ms |
+| Stillstand zusammen (Bilder über 50 ms) | 0,5 s → keiner | 0,8 s → keiner | 3,7 s → keiner |
+| sichtbare Netzwechsel nach dem Loslassen | 2 → 1 | 1 → 1 | 2 → 1 |
+| das Einwechseln kommt nach | 0,7–0,9 s | 1,4–2,0 s | 3,2–6,1 s |
+| es ändert die Haut um (größte Stelle / 99 % der Punkte unter) | 3,1 / 2,1 | 1,2 / 0,5 | 0,7 / 0,3 |
+| Endstand gegen den Stand beim Loslassen | 3,1–3,7 → 3,4–3,6 | 1,3 → 1,4–1,7 | 1,2 → 1,2–1,3 |
+
+- **Langsamer Zug mit Halten** (ein Mausschritt je Bild, 0,6 bis 2 s gehalten): Das Einwechseln kommt nach 0,2–0,6 / 1,0–1,1 /
+  1,4–2,5 s und ändert 99 % der Punkte um weniger als 0,32 / 0,25 / 0,25 Einheiten (größte Stelle 1,3 / 0,7 / 0,4). Das Netz
+  ist dann schon im Zug verfeinert (G4.1), es bleibt wenig nachzuholen.
+- **Gleich wieder greifen** (400 ms nach dem Loslassen, 23 400 Punkte): Das Drücken hielt 1,0 s an (Zerlegen), jetzt 23–25 ms.
+  Bei 5 200 Punkten war es schon vorher schnell (13–27 ms).
+- **Gegenprobe ohne Verdichten** (`&verdichten=0&live=0`): Nach dem Nachlauf liegt die Haut höchstens 0,2 Einheiten neben der
+  Ruhe. Was das Einwechseln noch ändert, kommt also vom feineren Netz selbst, nicht von einem Rest des Lösers.
+- **Kriterium von G4** („kein Halt über 16 ms nach dem Loslassen“): bei 5 200 und 11 000 Punkten erfüllt bis auf das eine Bild
+  des Einwechselns (21–25 ms, das Mitlesen der Probe eingerechnet). Bei 23 400 Punkten kostet jede Runde im Nachlauf 29–31 ms
+  (rund 30 Bilder je Sekunde, bis die Haut steht). Das ist die Runde selbst, also G5 und G6.
+
+**Geprüft, dass nichts den Stand anfasst, der nicht mehr gilt** (`form-nachlauf-probe.mjs`, 18 Prüfungen, bei 5 200 und 11 000
+Punkten alle gut; Ausgabe `ausgaben/g4-fenster-nachlauf-probe.txt`): ⌘Z im Nachlauf und während der Hintergrund rechnet (der Stand
+vor dem Zug ist Bit für Bit wieder da und bleibt), ⌘Z nach dem Einwechseln, gleich wieder greifen und weiterziehen, Kante und
+neuer Loop während der Hintergrund rechnet (der Auftrag verfällt, zweimal ⌘Z führt genau zum Anfang zurück), ein Fehler im
+Auftrag, ein Ausfall des Workers. Dazu „hin und zurück“, die Griff-Probe und zwei weite Züge wie vorher.
+Tests: `ausKurvenVorlage.test.ts` (eine Zerlegung wird bei gleicher Struktur Bit für Bit übernommen, sonst zerlegt der Löser
+selbst), `verfeinern.test.ts` (der Auftrag rechnet dasselbe wie der Ablauf im Fenster nacheinander).
+
+**Ehrlich offen nach G4.2/G4.3:**
+1. **Das Einwechseln kommt auf dichten Netzen spät** (3 bis 6 s bei 23 400 Punkten). Jeder Durchgang zerlegt das Netz neu; vom
+   Auftrag sind 1,9 bis 4,4 s Zerlegen. Greift man vorher wieder, verfällt der Auftrag; verfeinert wird dann im nächsten Zug
+   (G4.1) und nach dem nächsten Loslassen mit Pause.
+2. **Das Einwechseln ändert die Form einmal sichtbar.** Nach schnellen Zügen bis 3 Einheiten bei 5 200 Punkten (8 px bei 300 %),
+   0,7 bis 1,2 bei 11 000 bis 23 400 (2 bis 3 px); nach langsamen Zügen fast überall unter ¼ Einheit. Es ist dieselbe Änderung
+   wie vorher in Stufen: Das feinere Netz hat eine etwas andere Ruheform. Die Ursache gehört zu G5 (Form unabhängig vom Netz).
+   Mildern ließe sie sich, indem das Fenster beim Einwechseln über rund 0,15 s weich überblendet statt umzuspringen (nicht
+   gebaut, Florians Entscheidung).
+3. **Alles andere läuft noch im Hauptthread:** nach Loop, Punkt, Kante, Löschen und Rückgängig. Gemessen: Kante an hält 0,2 s
+   (5 200 Punkte) bzw. 0,5 s (11 000) an; das Vorrechnen der Zerlegung in der Ruhe 0,1 bis 1 s. Das ist G4.4.
+4. Wird zwischen Loslassen und Einwechseln ein Loop geschnitten oder ein Punkt gesetzt, verfällt das Aufräumen dieses Zugs;
+   nachgeholt wird es nach dem nächsten Zug. (Kante und Löschen verdichten selbst, wie bisher.)
+5. Greift man vor dem Einwechseln wieder, rechnet der neue Zug mit der Zerlegung des letzten (ihre Gewichte gehören zur Form
+   beim letzten Greifen). Die beiden Züge verhalten sich dann wie ein langer.
+
+**Zwei Fallen beim Messen** (für spätere Proben): Wer gleich nach dem Loslassen große Stände aus dem Fenster abholt, hält es
+selbst an (bei 23 400 Punkten rund 60 ms; stand zuerst als „längster Abstand 93 ms“ in der Messung). Und nach einem Netzwechsel
+sagt der Vergleich Punkt für Punkt nichts: Die Punkte sind neu nummeriert (die Probe meldete „bewegt um 321“; die Form war
+dieselbe).
 
 ## Anhang A: Messwerte
 
