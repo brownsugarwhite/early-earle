@@ -78,5 +78,18 @@ Proben neu und mit `&flach=0&nadeln=0`), `g5a-fenster-aendern.txt` (Stillstände
 Zusammenlegens der Nadeln), `g5a-nachlauf-ablage.txt` (18 und 27 Prüfungen). `loeser/mess10.ts` hat dafür den Schalter `NADELN=1`
 bekommen (das Ausschlagen mit einem einzelnen Loop bleibt gleich).
 
+`ausgaben/schutz-*.txt` gehören zum Schutz gegen das Davonlaufen der Haut und zur Vorsicht im Löser (10.11. nachts; Florians
+Formen `wesen/teat firefish.eewesen` und `wesen/strange bird.eewesen`): `schutz-stabil-firefish-vorher.txt` / `-jetzt.txt` und
+`schutz-stabil-bird-…` (`form-gesichert-stabil.ts` eine Ebene höher: im Kern an jedem Punkt der Form weite Züge, ohne und mit
+Vorsicht; gezeigt sind die Fälle, die unruhiger werden oder davonlaufen, am Ende die Zählung), `schutz-vorsicht-kosten-bird.txt`
+(`form-gesichert-vorsicht.ts`: die Züge, in denen die Vorsicht eingreift, je mit und ohne sie), `schutz-netzguete-firefish.txt`
+und `-bird.txt` (`form-netzguete.ts`), `schutz-fenster-florians-formen.txt` (`form-gesichert-tempo.ts` im Kern und
+`form-gesichert-zug.mjs` im Fenster: Tempo am Firefish, neuer Punkt vorher und jetzt, der Zug am Punkt 4:15 schnell je zweimal
+vorher und jetzt, der oberste Punkt des Vogels als Ecke), `schutz-fenster-proben.txt` (`form-schutz-probe.mjs` 12, Nachlauf 18,
+Sichern und Laden 27, Ändern), `schutz-vergleich-alte-proben.txt` (elf ältere Proben gegen den Stand davor; mit
+`&vorsichtlaut=1` steht jedes Eingreifen der Vorsicht in der Konsole: nur in der Griffe-Probe). Die Läufe im Fenster, in denen
+der Fehler wie bisher auftrat (Risse im Zug, Auftrag läuft davon), liefen bei belegter Maschine und stehen nur als Bild im
+Bericht (`docs/progress/editor/form-risse-nachgestellt-2026-11-10.jpg`).
+
 `ausgaben/` enthält sonst die Ausgaben vom 10.11. (je ein Lauf, die Maschine war belegt). `a5-ausgabe.txt` stammt von einem Skript, das
 eine von Hand angelegte Kopie des Lösers brauchte; gleichwertig ist `mess3.ts` mit `DREIECKE=30000`.

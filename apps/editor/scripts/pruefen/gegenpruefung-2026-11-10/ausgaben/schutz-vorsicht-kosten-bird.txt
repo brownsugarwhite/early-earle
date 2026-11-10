@@ -1,0 +1,25 @@
+Knicke der gesicherten Form: über 60° 54, über 120° 40
+4:2 vor 150          ohne: steht nicht (0.07), größter Weg 5.4, Summe 54 · mit: steht nicht (0.21), größter Weg 2.9, Summe 35, 2-mal halbiert · Häute am Ende bis 4.09 auseinander · Knicke über 60°/120°: ohne 521/344, mit 505/264
+1:0 hinauf 150       ohne: steht nach 49, größter Weg 12.3, Summe 41 · mit: steht nach 64, größter Weg 5.3, Summe 21, 1-mal halbiert · Häute am Ende bis 2.09 auseinander · Knicke über 60°/120°: ohne 351/200, mit 323/190
+1:0 vor 150          ohne: steht nicht (2.07), größter Weg 42.4, Summe 352 · mit: steht nach 80, größter Weg 5.8, Summe 43, 4-mal halbiert · Häute am Ende bis 10.94 auseinander · Knicke über 60°/120°: ohne 521/270, mit 505/294
+1:0 zurück 150       ohne: steht nicht (2.78), größter Weg 25.0, Summe 125 · mit: steht nicht (0.07), größter Weg 3.7, Summe 32, 3-mal halbiert · Häute am Ende bis 40.26 auseinander · Knicke über 60°/120°: ohne 379/218, mit 687/372
+4:3 vor 150          ohne: steht nach 36, größter Weg 8.2, Summe 26 · mit: steht nach 62, größter Weg 4.1, Summe 16, 1-mal halbiert · Häute am Ende bis 1.74 auseinander · Knicke über 60°/120°: ohne 185/134, mit 257/208
+4:3 außen 150        ohne: steht nach 33, größter Weg 8.1, Summe 22 · mit: steht nach 48, größter Weg 4.0, Summe 21, 1-mal halbiert · Häute am Ende bis 0.13 auseinander · Knicke über 60°/120°: ohne 59/40, mit 59/40
+2:6 zurück 150       ohne: steht nach 60, größter Weg 10.2, Summe 55 · mit: steht nach 56, größter Weg 6.1, Summe 36, 2-mal halbiert · Häute am Ende bis 5.94 auseinander · Knicke über 60°/120°: ohne 319/168, mit 289/170
+3:11 hinauf 150      ohne: steht nach 56, größter Weg 7.5, Summe 43 · mit: steht nach 66, größter Weg 3.9, Summe 37, 1-mal halbiert · Häute am Ende bis 0.46 auseinander · Knicke über 60°/120°: ohne 110/60, mit 112/60
+2:5 hinab 150        ohne: steht nach 51, größter Weg 10.1, Summe 53 · mit: steht nicht (0.13), größter Weg 2.3, Summe 29, 3-mal halbiert · Häute am Ende bis 14.20 auseinander · Knicke über 60°/120°: ohne 309/156, mit 305/126
+2:5 vor 150          ohne: steht nach 80, größter Weg 16.4, Summe 69 · mit: steht nicht (0.08), größter Weg 5.1, Summe 57, 3-mal halbiert · Häute am Ende bis 4.84 auseinander · Knicke über 60°/120°: ohne 679/374, mit 581/344
+2:5 zurück 150       ohne: steht nicht (0.12), größter Weg 13.0, Summe 105 · mit: steht nicht (0.05), größter Weg 8.3, Summe 89, 2-mal halbiert · Häute am Ende bis 3.56 auseinander · Knicke über 60°/120°: ohne 1109/682, mit 1137/714
+2:0 hinab 150        ohne: steht nach 26, größter Weg 5.5, Summe 29 · mit: steht nach 31, größter Weg 4.6, Summe 25, 1-mal halbiert · Häute am Ende bis 2.68 auseinander · Knicke über 60°/120°: ohne 92/47, mit 92/47
+8:1 hinauf 150       ohne: steht nicht (0.10), größter Weg 8.3, Summe 115 · mit: steht nicht (0.93), größter Weg 6.0, Summe 133, 1-mal halbiert · Häute am Ende bis 2.06 auseinander · Knicke über 60°/120°: ohne 251/152, mit 251/146
+3:4 zurück 150       ohne: steht nach 52, größter Weg 9.0, Summe 51 · mit: steht nach 42, größter Weg 4.7, Summe 41, 1-mal halbiert · Häute am Ende bis 2.22 auseinander · Knicke über 60°/120°: ohne 178/94, mit 182/96
+1:2 hinab 150        ohne: steht nach 19, größter Weg 7.7, Summe 16 · mit: steht nach 18, größter Weg 3.9, Summe 10, 1-mal halbiert · Häute am Ende bis 0.11 auseinander · Knicke über 60°/120°: ohne 75/52, mit 75/52
+1:2 zurück 150       ohne: steht nach 32, größter Weg 28.9, Summe 79 · mit: steht nach 61, größter Weg 7.3, Summe 45, 2-mal halbiert · Häute am Ende bis 2.18 auseinander · Knicke über 60°/120°: ohne 243/118, mit 229/108
+3:12 hinauf 150      ohne: steht nach 31, größter Weg 9.9, Summe 23 · mit: steht nach 53, größter Weg 6.0, Summe 19, 1-mal halbiert · Häute am Ende bis 1.69 auseinander · Knicke über 60°/120°: ohne 147/68, mit 149/84
+3:12 hinab 150       ohne: steht nach 37, größter Weg 4.6, Summe 21 · mit: steht nach 58, größter Weg 6.2, Summe 24, 1-mal halbiert · Häute am Ende bis 13.97 auseinander · Knicke über 60°/120°: ohne 239/133, mit 244/128
+2:3 vor 150          ohne: steht nach 56, größter Weg 16.3, Summe 68 · mit: steht nicht (0.54), größter Weg 5.2, Summe 61, 2-mal halbiert · Häute am Ende bis 21.47 auseinander · Knicke über 60°/120°: ohne 351/190, mit 281/166
+1:3 hinauf 150       ohne: steht nach 43, größter Weg 8.0, Summe 37 · mit: steht nicht (0.02), größter Weg 3.5, Summe 28, 2-mal halbiert · Häute am Ende bis 8.30 auseinander · Knicke über 60°/120°: ohne 215/92, mit 185/92
+1:3 vor 150          ohne: steht nach 68, größter Weg 6.9, Summe 24 · mit: steht nach 67, größter Weg 4.3, Summe 21, 1-mal halbiert · Häute am Ende bis 3.30 auseinander · Knicke über 60°/120°: ohne 353/190, mit 343/196
+3:14 hinauf 150      ohne: steht nach 26, größter Weg 15.4, Summe 51 · mit: steht nach 58, größter Weg 5.6, Summe 46, 2-mal halbiert · Häute am Ende bis 4.88 auseinander · Knicke über 60°/120°: ohne 134/68, mit 141/83
+Knicke am Ende: mit Vorsicht weniger in 9 Fällen, gleich in 3, mehr in 10
+22 von 284 Fällen mit Vorsicht; wo beide stehen (13): Runden mehr im Mittel 12.2, höchstens 32

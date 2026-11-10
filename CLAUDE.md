@@ -1743,6 +1743,32 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     nie in `wesen/` liegen lassen (Florians Liste). Eine Schätzung über Netze verschiedener Dichte braucht feste Einheiten (mit
     MK/40 als Fehler war die Zahl bei 23 400 Punkten nicht mit der bei 5 200 vergleichbar). Zwei Läufe mit der Maus geben nicht
     dasselbe Netz.
+  - **Schutz gegen das Davonlaufen, Vorsicht im Löser, Florians zwei Formen (10.11. nachts, `967998d9`):** Florian mit drei
+    Bildern: „Wenn ich den obersten Punkt nach oben ziehe, bläst sich der Kopf auf und ‚explodiert‘, dann ist es weg und die Seite
+    hängt sich auf. Einerseits mag ich das organische Wogen durch die Dicke, die durch die Höhe entsteht, aber manchmal ist es
+    instabil … Beim Firefish warte ich nach dem Zug neuer Punkte Sekunden, bis das Mesh nachhinkt.“ Und entschieden: „Die
+    Grundform bleibt immer spiegelgleich“ (Spiegelung vielleicht später abschaltbar) → G6 darf gebaut werden. Seine Formen:
+    `wesen/teat firefish.eewesen` (27 770 Punkte; die Punktzahl kommt von der Fläche, 6,3-mal die Startkugel) und
+    `wesen/strange bird.eewesen` (16 010). **Nachgestellt am Firefish** (Kern `form-gesichert-stabil.ts`: Punkt 4:15 150 hinauf in
+    zehn Schritten → je Runde mehr Bewegung, nach 27 Runden 91 000 statt 754, dann nicht endlich): ein Überschießen des vollen
+    Schritts, wo die Haut dünn ist und eine Linie eng wendet (in 60 kleinen Schritten oder mit halbem Schritt nicht); im Fenster
+    läuft vor allem der Auftrag nach dem Loslassen davon, sein Ergebnis wurde eingewechselt. Sein Fall an „strange bird“ ließ sich
+    nicht nachstellen. **Gebaut:** (1) Löser „Vorsicht bei Unruhe“ (`dicht/ausKurven.ts`: Runde zurücknehmen und Schritt halbieren,
+    wenn die Bewegung über die der Linien hinaus um 30 % wächst und über ¾ Kante liegt; nach fünf Runden Wachstum zurück zur
+    ruhigsten Lage und stehen bleiben; `&vorsicht=0`), (2) Fenster nimmt den Zug zurück, wenn die Haut davonläuft oder ein Bild
+    einen Fehler wirft (`davongelaufen`, `schleife`/`bildRechnen`; `&davon=0`), der Hintergrund bricht sein Setzen ab, (3)
+    `verdichten` mit Grenze `hoechstens` (Vierfaches), (4) neuer Punkt ohne Warten (`loopStruktur`, `vorlageGenau`: Die Zerlegung
+    hängt nicht an den Punkten der Loops; Firefish 1,0 s → 0,28 s). Gemessen: Firefish im Kern, 424 weite Züge: davongelaufen 1 → 0 (zur Ruhe 319 → 315; wo die
+    Vorsicht eingreift, kommt die Haut im Mittel 12 Runden später zur Ruhe, schöner wird ein solcher Zug nicht); im Fenster in je
+    fünf Läufen vorher zweimal Schaden (Risse im Zug, Auftrag nach dem Loslassen läuft davon), jetzt keiner; elf ältere Proben dieselben Formen; Kern-Tests 122 von 122,
+    `form-schutz-probe.mjs` 12 von 12. Nicht behoben: die Ursache an engen Wenden und Linien, die sich selbst kreuzen. Tempo am Firefish: Greifen 0,24–0,33 s,
+    Runde 32 ms, nach dem Loslassen 2–8 s bis zum aufgeräumten Netz; das wächst mit der Punktzahl → Vorschlag G6 als Nächstes.
+  - Fallen daraus: Ein Vergleich mit „nicht endlich“ ist immer falsch (`if (d > m)` hielt eine Haut aus nicht endlichen Lagen für
+    ruhig). Eine zurückgenommene Runde sieht für den Aufrufer wie Ruhe aus (der Löser wiederholt sie selbst). Ob etwas davonläuft,
+    hängt an der Schrittweite, im Fenster also am Tempo (ein Lauf reißt, der nächste nicht): im Kern mit festen Schritten
+    nachstellen. Die erste Runde nach einer Bewegung der Linien ist kein Maß (die Haut holt auf). `standZahl` ist feiner als die
+    Zerlegung. Eine gesicherte Datei ist nicht der Stand eines Bildschirmfotos. Bildschirmfotos aus dem Chat gleich nach
+    `docs/progress/editor/` legen (`form-risse-florian-*`).
   - Fallen aus G4.4: Eine Regel, die an einem Fall (5 200 Punkte) harmlos aussieht, auch bei 11 000 und 23 400 messen, bevor sie
     Standard wird (das Setzen nach dem ersten Loop: 2 Einheiten bei 5 200, 11 bei 11 000). Proben warten auf
     `zeiten().beschaeftigt`, nicht auf feste Zeiten. Eine Probe prüft vor der Abstandsmessung, ob die Lagen endlich sind (sonst

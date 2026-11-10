@@ -1,4 +1,4 @@
-# Übergabe (Stand 10.11.2026 spätnachts: G1 bis G4 gebaut; Sichern und Laden; G5 erster Teil gebaut: keine flachen Dreiecke mehr an den Linien; Florian hat keine Wesen, er testet Formen)
+# Übergabe (Stand 10.11.2026 nachts: G1 bis G4 gebaut; Sichern und Laden; G5 erster Teil; Schutz gegen das Davonlaufen der Haut und Vorsicht im Löser; Florians zwei gesicherte Formen; Grundform immer spiegelgleich entschieden)
 
 **Branch `claude/form-zuerst`, Arbeitsbaum `.claude/worktrees/form-zuerst`.** Diese Datei ist der Einstieg. Die alte Übergabe aus der
 Käfig-Zeit (Stand 04.11.) steht in der Git-Geschichte: `git show 82aed6dc:docs/UEBERGABE.md`.
@@ -176,18 +176,69 @@ Kriterien stehen in der Tabelle des Nachtrags; Messwerte und Befunde je Schritt 
   - **Dabei behoben:** Unter Playwright (`navigator.webdriver`) behält das Fenster nichts mehr, außer mit `&behalten=1`. Seit dem
     Sichern und Laden begannen Proben, die die Seite je Fall neu laden, den zweiten Fall mit der Form des ersten (die Härte-Probe
     blieb hängen).
-- **Als Nächstes:** Florians Blick auf G4, auf Sichern/Laden und auf diesen Schritt. Vom Plan G1–G6 ist danach nichts Pflicht
-  mehr offen: Der Teil „Zahl der Punkte“ von G5 und G6 ruhen, bis ein dichtes Netz aus seinem Testen vorliegt. Dann nach seiner
-  Reihenfolge: Maul, Posen, genaue Werkzeuge (Abschnitt 5).
+- **Florian (10.11. nachts, mit drei Bildern und zwei gesicherten Formen):** „Ja, die Grundform bleibt immer spiegelgleich.
+  Vielleicht kann man die Spiegelung auch später ausschalten, um auch asymmetrische Formen bauen zu können. Aber für die erste
+  Grundform soll es gespiegelt sein. Ich habe dir 2 ‚Wesen‘ gespeichert. Eines ist sehr verwinkelt mit vielen Punkten (test
+  firefish), das andere zeigt einen seltsamen Fehler: Wenn ich den obersten Punkt nach oben ziehe, bläst sich der Kopf auf und
+  ‚explodiert‘, dann ist es weg und die Seite hängt sich auf. Einerseits mag ich das organische Wogen durch die Dicke, die durch
+  die Höhe entsteht, aber manchmal ist es instabil und führt dazu, dass es Risse gibt oder das Netz platzt. Die Performance ist
+  auch nicht gut, wenn das Mesh etwas komplexer wird. Beim Firefish warte ich nach dem Zug neuer Punkte Sekunden, bis das Mesh
+  nachhinkt. Sollte das nicht viel viel besser sein? Bei einfachen Formen mit wenigen Loops ist es ganz gut.“
+- **Schutz gegen das Davonlaufen, Vorsicht im Löser, neuer Punkt ohne Warten** (`967998d9`; Bericht „Stand (10.11. nachts,
+  danach)“).
+  - **Seine Formen:** `wesen/teat firefish.eewesen` (27 770 Punkte, 17 Loops) und `wesen/strange bird.eewesen` (16 010 Punkte,
+    9 Loops). Die Punktzahl kommt von der Fläche (Firefish: 6,3-mal die Startkugel bei gleicher Kante), nicht vom Spielen.
+  - **Nachgestellt am Firefish** (Kern: `form-gesichert-stabil.ts`; Fenster: `form-gesichert-zug.mjs`): Punkt 4:15 (Kreuzung in
+    einer Kerbe des Umrisses) 150 hinauf in zehn Schritten → die Haut bewegt sich je Runde mehr statt weniger, nach 27 Runden
+    liegt ein Punkt bei 91 000 (Form 754), danach nicht mehr endlich. In 60 kleinen Schritten oder mit halbem Schritt der
+    Korrektur läuft derselbe Zug nicht davon: Es ist ein Überschießen des vollen Schritts, wo die Haut dünn ist und eine Linie
+    eng wendet. Im Fenster läuft dann vor allem der Auftrag nach dem Loslassen davon (neuer Löser auf dem verdichteten Netz);
+    sein Ergebnis wurde bis heute eingewechselt.
+  - **Nicht nachgestellt:** sein Fall an „strange bird“ (oberster Punkt 150/250/400 hinauf, auch als Ecke und schnell: nichts
+    reißt, vorher wie jetzt). Sein Bild zeigt einen anderen Stand als die Datei.
+  - **Im Kern, Löser** (`dicht/ausKurven.ts`, „Vorsicht bei Unruhe“, nur `geometrie`; Option `vorsicht: false` wie vorher):
+    `vorsichtPruefen` nach jeder Runde: Bewegung der Haut über die der Ziele hinaus; wächst sie gegen die Runde davor über das
+    1,3-Fache und über drei Viertel einer Kante, wird die Runde zurückgenommen und gleich mit dem halben Schritt wiederholt
+    (`anteil`, bis 1/16; bleibt für diesen Löser). Wächst sie fünf Runden in Folge trotzdem, geht die Haut zur
+    ruhigsten Lage zurück und der Löser bleibt stehen, bis sich die Ziele bewegen (`stehtFest`; `LoopZug.unruhe`).
+  - **Im Kern, Verdichten** (`dicht/verdichten.ts`): Option `hoechstens` (Standard: das Vierfache, mindestens 50 000 Punkte
+    mehr), Ergebnis `gekappt`.
+  - **Im Fenster** (`kurven.ts`): `rundeMitWeg` meldet unendlich, wenn Lagen nicht endlich sind oder weiter draußen liegen als
+    das Dreifache von Haut (beim Anlegen des Lösers) und Zielen (`davonGrenze`); dann `davongelaufen`: zurück zum Stand vor dem
+    Zug (im Nachlauf: der letzte Schritt von ⌘Z), Meldung, nichts wird festgelegt oder verdichtet. Die Schleife der Bilder fängt
+    Fehler (`schleife` → `bildRechnen`). Schalter `&vorsicht=0`, `&davon=0`; Haken `zeiten().davon`, `.fehler`, `.unruhe`,
+    `.letzteUnruhe`, `auftrag.unruhe`; Prüfhaken `davonProbe()`, `fehlerProbe()`.
+  - **Im Hintergrund** (`verfeinern.ts`): Das Setzen prüft dieselbe Grenze (`hautGrenze`, `innerhalb`) und bricht ab
+    (`abgebrochen`, das Fenster behält seine Haut und meldet es); ein gekapptes Verfeinern im Zug verfällt.
+  - **Neuer Punkt ohne Warten:** `loopStruktur(h, loops)` im Kern (die Struktur eines Lösers, ohne ihn anzulegen); im Fenster
+    `vorlageGenau`, `vorlagePasst`, `vorlageNetz`: Die bereite Zerlegung bleibt gültig, wenn sich nur Punkte und Griffe der
+    Loops geändert haben; der Griff wartet dann nicht, und der Hintergrund rechnet sie nicht noch einmal (`&vorlagebleibt=0`
+    wie vorher). Firefish: Drücken bis zur ersten Bewegung 1,0 s → 0,28 s.
+  - **Gemessen:** Firefish im Kern, 424 weite Züge (zur Ruhe / kriecht / unruhig / wird unruhiger / davongelaufen):
+    319 / 64 / 34 / 6 / 1 → 315 / 73 / 30 / 6 / 0; strange bird, 284 Züge: 254 / 21 / 9 / 0 / 0 → 248 / 23 / 13 / 0 / 0. Im
+    Fenster (Firefish, 4:15 hinauf, je fünf Läufe mit der Maus): vorher zweimal Schaden (einmal Risse im Zug, einmal lief der
+    Auftrag nach dem Loslassen davon; beide bei belegter Maschine), jetzt keiner. Elf ältere Proben: dieselben Formen; Nachlauf 18 von 18, Sichern und Laden 27 von 27, Ändern dieselben
+    Punktzahlen; `form-schutz-probe.mjs` 12 von 12; Kern 122 von 122 (`dicht/vorsicht.test.ts` neu), Fenster 16 von 16.
+  - **Kosten der Vorsicht:** Wo sie eingreift (am Vogel in 22 von 284 weiten Zügen, am Firefish in 65 von 424), kommt die Haut im
+    Mittel 12 Runden später zur Ruhe; der größte Sprung je Runde halbiert sich etwa. Schöner wird ein solcher Zug nicht (Knicke
+    am Ende: 9-mal weniger, 10-mal mehr). Eine Haut, die zur Ruhe kommt, rechnet Bit für Bit wie vorher (Test).
+  - **Tempo am Firefish** (27 770 Punkte, freie Maschine): Greifen 0,24–0,33 s, Runde 32 ms (vermessen 4, Gewichte nach der
+    Geometrie 8, Krümmung 5, Lösen 14), 11 Runden bis zur Ruhe, nach dem Loslassen 2–8 s bis zum aufgeräumten Netz (je Durchgang
+    ein Zerlegen von 1,3–1,7 s). Bei belegter Maschine Greifen bis 0,47 s, Runde 35–46 ms. Das wächst alles mit der Punktzahl.
+- **Als Nächstes (Vorschlag, sein Wort steht aus): G6, die halbe Haut**, jetzt mit Grundlage (Formen mit 16 000 bis 28 000
+  Punkten) und mit seiner Entscheidung. Danach der zweite Teil von G5 (Netz nur so dicht wie nötig) oder das Zerlegen selbst.
+  Offen bleibt sein Blick auf G4, Sichern/Laden und G5 Teil 1; dann nach seiner Reihenfolge Maul, Posen, genaue Werkzeuge.
 
 ## 1. Stand
 
-- **Letzter Code-Commit:** `2be21c5b` (G5 Teil 1: keine flachen Dreiecke an den Linien); davor `92b60a5b` (Sichern und Laden).
-  Alles ist committet und gepusht (lokal = `origin/claude/form-zuerst`).
+- **Letzter Code-Commit:** `967998d9` (Schutz gegen das Davonlaufen, Vorsicht im Löser, neuer Punkt ohne Warten); davor
+  `2be21c5b` (G5 Teil 1), `92b60a5b` (Sichern und Laden). Alles ist committet und gepusht (lokal = `origin/claude/form-zuerst`).
 - **Halbfertiges:** keins. Am 09.11. sind zwei Löser-Versuche wieder entfernt worden („gleiches Maß“, „Krümmung an den Linien
   mitgelöst“; Stand des zweiten in `476a874f`). Der Code des Lösers (`dicht/ausKurven.ts`) ist seit `1f1f5079` (Schalter
   `maxNormalen`) im Rechnen unverändert; G1 hat nur das Einsetzen in `loeser/zerlegung.ts` ausgeschrieben, G2 und G3 nur das
   Fenster. G4.3 hat im Löser nur die Annahme einer angebotenen Zerlegung geändert (Prüfung der Struktur, `vorlageGenutzt`).
+  **Seit `967998d9` gibt es die „Vorsicht bei Unruhe“** (`vorsichtPruefen`): Sie ändert das Rechnen nur, wenn die Bewegung der
+  Haut wächst (dann halber Schritt für diesen Löser); eine Haut, die zur Ruhe kommt, rechnet Bit für Bit wie vorher.
 - **Läuft:** ein Vite-Server auf Port 5193 aus diesem Arbeitsbaum. Seit dem 10.11. mittags gehört er der Sitzung der
   Gegenprüfung (Konfiguration `kurven` in `.claude/launch.json` des Hauptordners, mit `pnpm -C <Arbeitsbaum>`); der alte Prozess
   der früheren Sitzung ist beendet. Florian testet damit. Vor einem eigenen Start `lsof -i :5193` prüfen. Port 5180 gehört dem
@@ -469,6 +520,26 @@ nicht mehr.
     verschiedene Namen nehmen (der Stand „vorher“ des Hörner-Falls ging so verloren; seine Messung war schon abgelegt).
 35. **Lange Fenster-Läufe im Hintergrund starten und so lange nichts unter `apps/editor` und `packages/shape/src` ändern.** Ein
     Lauf der elf älteren Proben dauert rund zehn Minuten, der Hörner-Fall zwei Minuten je Lauf.
+36. **Ein Vergleich mit „nicht endlich“ ist immer falsch.** `if (d > m) m = d` übersieht eine Haut aus lauter nicht endlichen
+    Lagen und meldet „bewegt sich nicht“: Sie galt als „steht“, wurde festgelegt und verdichtet. Wer aus Lagen ein Maß bildet,
+    prüft sie eigens (`!(x <= g)`), und wer danach entscheidet, kennt den Fall „davongelaufen“ (`rundeMitWeg` → unendlich).
+37. **Eine zurückgenommene Runde sieht aus wie Ruhe.** Nimmt der Löser eine Runde zurück, hat sich nichts bewegt; wer
+    rundenweise bis zur Ruhe rechnet, hörte dann auf. Darum wiederholt der Löser die Runde selbst mit dem halben Schritt
+    (`schritt`: `it--`). Dass er nach `stehtFest` nichts mehr bewegt, ist dagegen gewollt.
+38. **Ob etwas davonläuft, hängt an der Schrittweite, also am Tempo.** Derselbe Zug in 60 kleinen Schritten kriecht, in zehn
+    großen läuft er davon. Im Fenster entscheidet das die Dauer einer Runde (schwere Form, belegte Maschine): Ein Lauf zeigt
+    Risse, der nächste nicht. Solche Fälle im Kern mit festen Schritten nachstellen (`form-gesichert-stabil.ts`), im Fenster
+    schnell ziehen (`SCHRITTE=12`) und mehrere Läufe machen.
+39. **Die erste Runde nach einer Bewegung der Linien ist kein Maß.** Die Haut holt dann auf; gegen die Runde davor gemessen
+    sähe das wie Wachsen aus. Verglichen wird mit dem größeren von beidem: der Bewegung der Runde davor und 0,3 der Bewegung der
+    Ziele davor (`VORSICHT_AUFHOLEN`). Und: Kleine Ausschläge gehören zu einer Haut, die zur Ruhe kommt (nach dem dritten Loop
+    auf der Kugel 1,9 · 3,2 · 1,0 · 0,4); die Schwelle von 0,25 Kanten hätte dort eingegriffen, 0,75 nicht.
+40. **Der Stand ist feiner als die Zerlegung.** `standZahl` ändert sich mit jedem Punkt und Griff der Loops, die Zerlegung
+    hängt nur an Netz, Lagen und Struktur. Wer „für genau diesen Stand gerechnet?“ fragt, lässt den Griff auf eine Zerlegung
+    warten, die er schon hat (`vorlageGenau`).
+41. **Eine gesicherte Datei ist nicht der Stand eines Bildschirmfotos.** „strange bird“ wurde eine halbe Stunde nach seiner
+    Nachricht gesichert; der Fehler seiner Bilder ließ sich daran nicht nachstellen. Im Bericht steht, was nachgestellt ist und
+    was nicht.
 
 ## 5. Florian: letzte Urteile, offene Entscheidungen, Testfälle
 
@@ -504,7 +575,9 @@ nicht mehr.
 
 **Offene Entscheidungen:**
 1. ~~Griffe in wahrer Länge oder Mindestlänge~~ Entschieden am 10.11.: wahre Länge wie in Illustrator.
-2. Grundform immer symmetrisch? Dann rechnet der Löser eine halbe Haut (G6).
+2. ~~Grundform immer symmetrisch?~~ Entschieden am 10.11. nachts: „Ja, die Grundform bleibt immer spiegelgleich. Vielleicht
+   kann man die Spiegelung auch später ausschalten … Aber für die erste Grundform soll es gespiegelt sein.“ G6 (halbe Haut)
+   darf gebaut werden; der Löser über die ganze Haut bleibt daneben (Pose; später „Spiegelung aus“).
 3. Welche Werkzeuge zuerst (Gegenprüfung Abschnitt 6).
 4. „Punkte wo nötig“ als Standard für neue Loops.
 5. Linie kehrt um: rot zeigen und die Haut dort beim letzten gültigen Stand lassen (Vorschlag der Gegenprüfung), oder den Griff
@@ -526,8 +599,17 @@ nicht mehr.
     weit ist, zuerst ein kleiner Beweis (zwei Formen zu einem Netz, die Naht als Linie).
 13. Ob das Zusammenlegen der Nadeln gleich nach dem Schneiden bleiben soll: Es kostet beim Schneiden eines Loops 30 bis 50 ms
     (5 200 Punkte) und ändert am Rechnen nichts Messbares; es hält das Netz zu jeder Zeit frei von Dreiecken ohne Fläche.
-11. Sollen gesicherte Stände ins Repo (dann sind Messungen an ihnen wiederholbar, je Stand 0,5 bis 3 MB)? Bisher liegt im
-    Ordner `wesen/` nur die Beschreibung.
+11. Sollen gesicherte Stände ins Repo (dann sind Messungen an ihnen wiederholbar, je Stand 0,5 bis 3 MB)? Seit dem 10.11. liegen
+    seine zwei Formen dort (er hat sie für diese Prüfung gesichert; ohne sie ist der nachgestellte Fall nicht wiederholbar; von
+    dieser Sitzung ohne Rückfrage entschieden, zusammen 3,8 MB). Ob künftig jeder gesicherte Stand ins Repo soll, bleibt offen.
+14. Nach dem Schutz: G6 (halbe Haut) als nächster Schritt für das Tempo? Vorgelegt am 10.11. nachts.
+15. Eine Linie, die sich nach einem Zug selbst kreuzt (so der nachgestellte Fall am Firefish), zeigt das Fenster nicht an. Es
+    ist dieselbe Frage wie Entscheidung 5.
+
+**Seine gesicherten Formen** (10.11., `wesen/`): „teat firefish“ (27 770 Punkte, sehr verwinkelt; daran das Davonlaufen
+nachgestellt: Punkt 4:15 hinauf) und „strange bird“ (16 010 Punkte, Vogel mit zwei Hörnern; sein „seltsamer Fehler“ ließ sich
+daran nicht nachstellen). Bilder seines Fehlers: `form-risse-florian-1-zacken-…`, `-2-haut-weg-…`, `-3-dreieck-2026-11-10.webp`;
+nachgestellt `form-risse-nachgestellt-2026-11-10.jpg`, mit Schutz `form-risse-nachgestellt-jetzt-2026-11-10.jpg`.
 
 **Seine Testfälle** (Bilder in `docs/progress/editor/`):
 - Hörner aus dem senkrechten Ring mit Griffspiel: `form-ohren-aufblasen-florian-2026-11-08.webp`; das Bild mit den schwarzen
@@ -545,8 +627,10 @@ nicht mehr.
 höher. Er testet Formen, fertige Wesen gibt es nicht (Klarstellung vom 10.11. nachts, siehe oben). In zwei seiner Bildschirmfotos
 vom 08.11. (Hörner mit Griffspiel) standen 18 234 Punkte bei 49 ms je Zug und danach 26 284 Punkte bei 126 ms; daraus wurde in
 dieser Datei und im Bericht „seine Wesen haben 11 000–26 000 Punkte“. Derselbe Fall, am 10.11. nachts nachgestellt, endet bei
-7 352 Punkten. Wie groß seine Netze beim Testen heute werden, ist nicht bekannt (die letzte Zahl der Statuszeile zeigt es ihm).
-Die Prüfkugel hat 5 200. Kriterien weiter auch bei 11 000+ Punkten messen, aber nicht mehr mit „seine Wesen“ begründen.
+7 352 Punkten. **Seit dem 10.11. nachts bekannt:** Seine zwei gesicherten Formen haben 27 770 und 16 010 Punkte, und zwei
+Bildschirmfotos desselben Abends zeigen 10 500 und 11 400. Die Punktzahl wächst mit der Fläche der Form (Dichte 1,0 gegen das
+Startnetz), nicht mit dem Spielen. Die Prüfkugel hat 5 200. Kriterien an seinen zwei Formen messen (`form-gesichert-*.ts/.mjs`)
+und weiter bei 11 000+ Punkten; begründet wird mit diesen Formen, nicht mit „seinen Wesen“.
 
 ## 6. Einwände und Ergänzungen der bauenden Sitzung zur Gegenprüfung
 
