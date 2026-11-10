@@ -91,9 +91,7 @@ import {
   verdichten,
   type Verdichtet,
   type ZerlegungsDaten,
-  einbetten,
   einbettungAuswerten,
-  flacheZeilen,
   systemAusDaten,
   verschiebungLaengs,
 } from '@ee/shape/dicht';
@@ -122,6 +120,7 @@ import {
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { V2 } from '@ee/shape';
 import { istTrackpad, radFaktor } from '../viewports/ansicht2d';
+import { type VerdichtenOptionen, type VerfeinerAuftrag, type VerfeinerErgebnis, gewichteAusFlach, hautAusFlach, hautFlach, nachbarnFlach } from './verfeinern';
 
 /** Auswahl: ein Punkt (i ≥ 0) oder ein ganzer Loop (i = −1), Loop über seine Kennung */
 type Wahl = { l: number; i: number };
@@ -1486,6 +1485,15 @@ let letztesNachLoesen = 0;
 // ---------- Messen ----------
 
 const zeiten: number[] = [];
+/**
+ * Messen, wo die Zeit im Zug bleibt (10.11., G4): Arbeit je Bild (Runden und Anzeige der Haut), je Mausbewegung (Ziele und Blätter),
+ * je Auslösen und je Einwechseln beim Verfeinern im Zug (alles im Hauptthread, ms)
+ */
+const messung = { bild: [] as number[], maus: [] as number[], ausloesen: [] as number[], einwechseln: [] as number[] };
+function merke(liste: number[], ms: number): void {
+  liste.push(ms);
+  if (liste.length > 600) liste.shift();
+}
 let letzteZerlegung = 0;
 let letzterBereich = 0;
 function statusZeigen(): void {
@@ -2049,6 +2057,7 @@ function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
 function zugBewegen(X: number, Y: number): void {
   const z = zug;
   if (!z) return;
+  const tm = performance.now();
   letzteMaus = [X, Y];
   if (!z.bewegt && Math.hypot(X - z.x0, Y - z.y0) * skala(z.ansicht) < 2) return;
   z.bewegt = true;
@@ -2090,6 +2099,7 @@ function zugBewegen(X: number, Y: number): void {
     z.offen = true;
     z.nachRunden = 0;
     for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
+    merke(messung.maus, performance.now() - tm);
     return;
   }
   const t0 = performance.now();
@@ -2158,7 +2168,7 @@ function zugRechnen(): void {
   zeiten.push(performance.now() - t0);
   if (zeiten.length > 200) zeiten.shift();
   // über die ganze Haut nach der Geometrie: verfeinern, sobald sie gestreckt wird
-  if (neuesZiel && LIVE && GEWICHTE === 'geometrie' && !z.griff && !verfeinerung && letzteMaus && (gestreckt() || linieUngenau(z))) {
+  if (neuesZiel && LIVE && GEWICHTE === 'geometrie' && !z.griff && !verfeinerung && !eingetroffen && letzteMaus && (gestreckt() || linieUngenau(z))) {
     const [X, Y] = letzteMaus;
     if (HINTERGRUND) stufeImHintergrund(z, X, Y);
     else zugStufe(z, X, Y);
@@ -2166,6 +2176,7 @@ function zugRechnen(): void {
   hautZeigen();
   baenderZeigen();
   statusZeigen();
+  merke(messung.bild, performance.now() - t0);
 }
 
 /**
@@ -2214,11 +2225,14 @@ function zugStufe(z: Zug, X: number, Y: number): void {
   letzteStufeMs = Math.round(performance.now() - t0);
 }
 /**
- * Verfeinern im Zug mit der Zerlegung im Hintergrund (`?hintergrund=0`: wie `zugStufe` im Vordergrund):
- * 1. Der Zug wird festgehalten und mit derselben Zerlegung weitergeführt (nach der Geometrie bestimmt die Matrix nur, wie schnell der
- *    Löser ankommt, nicht wohin).
- * 2. Das feinere Netz entsteht aus diesem Stand; jeder seiner Punkte merkt sich seine Stelle auf der alten Haut.
- * 3. Die Zeilen seiner Matrix gehen an einen Worker. Ist die Zerlegung zurück, wird mitten im Zug eingewechselt (`einwechseln`).
+ * Verfeinern im Zug im Hintergrund (`?hintergrund=0`: wie `zugStufe` im Vordergrund):
+ * 1. Haut (flach, mit einer Kopie der Lagen) und Loops gehen an den Worker (`verfeinern.worker.ts`), die Loops als Kopie, festgelegt
+ *    auf den Stand von jetzt. Der Zug selbst läuft mit seinem Löser unverändert weiter. (Bis zum 10.11. wurde er hier festgehalten
+ *    und mit einem neuen Löser weitergeführt, und Verdichten, Einbetten und Zeilenaufbau liefen im Hauptthread: je Auslösen 40–290 ms
+ *    bei 5 200–23 400 Punkten; nur die Zerlegung lief im Hintergrund.)
+ * 2. Der Worker verdichtet, merkt sich für jeden Punkt des feineren Netzes seine Stelle auf der alten Haut, baut die Zeilen der
+ *    Matrix und zerlegt sie.
+ * 3. Ist das Ergebnis zurück, wird mitten im Zug eingewechselt (`einwechseln`): Erst dort wird der Zug festgehalten.
  */
 function stufeImHintergrund(z: Zug, X: number, Y: number): void {
   const w = zerleger();
@@ -2226,60 +2240,43 @@ function stufeImHintergrund(z: Zug, X: number, Y: number): void {
     zugStufe(z, X, Y);
     return;
   }
+  // nichts zu tun: Verdichten ist aus, oder auf diesem Netz fand der letzte Auftrag in diesem Zug nichts zu verfeinern
+  if (!VERDICHTEN || nichtsZuVerfeinern === haut) return;
   const t0 = performance.now();
-  const vorlage = z.loeser.vorlage;
-  if (!vorlage || !zugNeuAufsetzen(z, X, Y, vorlage)) return;
-  const t1 = performance.now();
-  const v = verdichtetesNetz();
-  if (!v) return;
-  const t2 = performance.now();
-  const einbettung = einbetten(haut, v.haut.pos, { nachbarn: v.haut.nachbarn, alt: v.alt });
-  const t3 = performance.now();
-  const auftrag = new LoopZug(v.haut, v.loops, null, KRUEMMUNG && !grund, 'kurven', GEWICHTE, { nurZeilen: true, ...RICHTUNG_OPT }).auftrag;
-  if (!auftrag) return;
-  const t4 = performance.now();
-  ausloesungTeile = [t1 - t0, t2 - t1, t3 - t2, t4 - t3].map(Math.round);
-  const id = ++verfeinerungsNr;
-  verfeinerung = { id, haut: v.haut, loops: v.loops, alt: v.alt, einbettung, gew: auftrag.gew, t0: performance.now() };
-  const systeme = auftrag.systeme.map((s) => ({ n: s.n, flach: flacheZeilen(s.zeilen), daempfung: s.daempfung }));
-  w.postMessage(
-    { id, systeme },
-    systeme.flatMap((s) => [s.flach.start.buffer, s.flach.index.buffer, s.flach.wert.buffer, s.flach.gewicht.buffer]),
-  );
-  letzteVerdichtung = { neu: v.neu, gelegt: v.gelegt, ms: 0 };
-  letzteAusloesungMs = Math.round(performance.now() - t0);
-}
-
-/** Den Zug festhalten und auf demselben Netz mit der Zerlegung `vorlage` weiterführen (kein Neuzerlegen) */
-function zugNeuAufsetzen(z: Zug, X: number, Y: number, vorlage: HautVorlage): boolean {
+  // die Loops, wie sie nach dem Festhalten wären, als Kopie (die echten gehören dem laufenden Zug)
+  const echte = loops;
+  loops = echte.map(kopieLoop);
   zugGriffeUebernehmen(z);
   festlegenAlle();
   zugGriffeAblesen(z);
-  zug = null;
-  naechsteVorlage = vorlage;
-  if (!zugStarten(z.modal, z.ansicht, X, Y, z.spiegel, z.weite)) {
-    naechsteVorlage = null;
-    zug = z;
-    return false;
-  }
-  const neu = zug as Zug | null;
-  if (!neu) return false;
-  neu.vorher = z.vorher;
-  neu.bewegt = true;
-  neu.achse = z.achse;
-  neu.weite0 = z.weite;
-  neu.weite = z.weite;
-  neu.offen = z.offen;
-  neu.nachRunden = z.nachRunden;
-  zieleVonJetzt(neu);
-  return true;
+  const festgelegt = loops;
+  loops = echte;
+  const t1 = performance.now();
+  const id = ++verfeinerungsNr;
+  if (nachbarnGemerkt?.haut !== haut) nachbarnGemerkt = { haut, flach: nachbarnFlach(haut) };
+  const auftrag: VerfeinerAuftrag = {
+    id,
+    haut: hautFlach(haut, nachbarnGemerkt.flach),
+    loops: festgelegt,
+    maxKante: 1.75 * MK,
+    opt: verdichtenOptionen(),
+    kruemmung: KRUEMMUNG && !grund,
+    gewichte: GEWICHTE,
+    loeserOpt: RICHTUNG_OPT,
+  };
+  verfeinerung = { id, netz: haut, t0: performance.now() };
+  w.postMessage(auftrag, [auftrag.haut.pos.buffer]);
+  ausloesungTeile = [t1 - t0, performance.now() - t1].map(Math.round);
+  letzteAusloesungMs = Math.round(performance.now() - t0);
+  merke(messung.ausloesen, performance.now() - t0);
 }
 
-/** Die im Hintergrund zerlegte Verfeinerung einwechseln: Zug festhalten, die Punkte des feineren Netzes auf der Haut von jetzt, weiter */
-function einwechseln(f: Verfeinerung, daten: ZerlegungsDaten[]): void {
+/** Das im Hintergrund verfeinerte und zerlegte Netz einwechseln: Zug festhalten, die Punkte des feineren Netzes auf der Haut von jetzt, weiter */
+function einwechseln(f: Verfeinert, daten: ZerlegungsDaten[]): void {
   const z = zug;
   if (!z || !letzteMaus) return;
   const t0 = performance.now();
+  letzteVerdichtung = { neu: f.neu, gelegt: f.gelegt, ms: 0 };
   // der Löser rechnet im Bildtakt: Kam seit der letzten Runde eine Mausbewegung, liegen die Linien noch nicht auf ihren Zielen
   if (z.zielNeu && !mitBereich()) {
     z.zielNeu = false;
@@ -2288,8 +2285,10 @@ function einwechseln(f: Verfeinerung, daten: ZerlegungsDaten[]): void {
   zugGriffeUebernehmen(z);
   festlegenAlle();
   zugGriffeAblesen(z);
+  const t1 = performance.now();
   const nAlt = haut.n;
   const pos = einbettungAuswerten(f.einbettung, haut);
+  const t2 = performance.now();
   const neu: Haut = { ...f.haut, pos };
   // die Linien des feineren Netzes (ihre Proben) mit dem Stand ihrer Punkte von jetzt
   const neueLoops = f.loops.map((l, li) => {
@@ -2301,6 +2300,7 @@ function einwechseln(f: Verfeinerung, daten: ZerlegungsDaten[]): void {
   netzGewachsen(nAlt, f.alt, null);
   geometrieNeu();
   festlegenAlle();
+  const t3 = performance.now();
   zug = null;
   naechsteVorlage = { gew: f.gew, sys: systemAusDaten(daten[0]!), cVor: daten[1] ? systemAusDaten(daten[1]) : null };
   const [X, Y] = letzteMaus;
@@ -2309,6 +2309,7 @@ function einwechseln(f: Verfeinerung, daten: ZerlegungsDaten[]): void {
     zug = null;
     return;
   }
+  const t4 = performance.now();
   const n2 = zug as Zug | null;
   if (n2) {
     n2.vorher = z.vorher;
@@ -2329,37 +2330,77 @@ function einwechseln(f: Verfeinerung, daten: ZerlegungsDaten[]): void {
   baenderZeigen();
   for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
   statusZeigen();
+  merke(messung.einwechseln, performance.now() - t0);
+  einwechslungTeile = [t1 - t0, t2 - t1, t3 - t2, t4 - t3, performance.now() - t4].map(Math.round);
 }
 
-/** Zerlegung im Hintergrund (`?hintergrund=0`: im Vordergrund) */
+/** Verfeinern im Hintergrund (`?hintergrund=0`: im Vordergrund) */
 const HINTERGRUND = new URLSearchParams(location.search).get('hintergrund') !== '0';
-type Verfeinerung = { id: number; haut: Haut; loops: Loop[]; alt: Int32Array; einbettung: Einbettung; gew: Float64Array[]; t0: number };
-/** die Verfeinerung, deren Zerlegung gerade im Hintergrund läuft */
+/** der Auftrag, der gerade im Hintergrund läuft: seine Nummer und das Netz, zu dem er gehört */
+type Verfeinerung = { id: number; netz: Haut; t0: number };
+/** sein Ergebnis: das feinere Netz mit Loops, jeder Punkt als Stelle auf der alten Haut, die Gewichte der Matrix */
+type Verfeinert = { haut: Haut; loops: Loop[]; alt: Int32Array; einbettung: Einbettung; gew: Float64Array[]; neu: number; gelegt: number; t0: number };
 let verfeinerung: Verfeinerung | null = null;
 let verfeinerungsNr = 0;
+/** auf diesem Netz fand der letzte Auftrag nichts zu verfeinern (bis zum Loslassen nicht noch einmal fragen) */
+let nichtsZuVerfeinern: Haut | null = null;
+/** die Nachbarn der Haut als flaches Feld (hängt nur am Netz; je Netz einmal gebaut) */
+let nachbarnGemerkt: { haut: Haut; flach: ReturnType<typeof nachbarnFlach> } | null = null;
+/** das Ergebnis eines Auftrags, das im nächsten Bild eingewechselt wird */
+let eingetroffen: { netz: Haut; fertig: Verfeinert; daten: ZerlegungsDaten[] } | null = null;
 /** die Zerlegung für den nächsten Löser (statt zu zerlegen) */
 let naechsteVorlage: HautVorlage | null = null;
 let letzteMaus: [number, number] | null = null;
 let zerlegerWorker: Worker | null = null;
 let hintergrundStufen = 0;
 let letzteAusloesungMs = 0;
-/** Auslösen in Teilen (ms): weiter aufsetzen, verdichten, einbetten, Zeilen */
+/** Auslösen im Hauptthread in Teilen (ms): Loops kopieren und festlegen, Auftrag packen und abschicken */
 let ausloesungTeile: number[] = [];
+/** der letzte Auftrag im Hintergrund in Teilen (ms): verdichten, einbetten, Zeilen, zerlegen */
+let hintergrundTeile: number[] = [];
 let letzteEinwechslungMs = 0;
+/** das letzte Einwechseln in Teilen (ms): Linien festlegen, Punkte auf die Haut von jetzt, neues Netz übernehmen, Löser anlegen, zeigen */
+let einwechslungTeile: number[] = [];
+/** Auspacken des letzten Ergebnisses aus dem Hintergrund (ms) */
+let letztesAuspacken = 0;
 let letzteHintergrundMs = 0;
 function zerleger(): Worker | null {
   if (!HINTERGRUND) return null;
   if (zerlegerWorker) return zerlegerWorker;
   try {
-    zerlegerWorker = new Worker(new URL('./zerlegen.worker.ts', import.meta.url), { type: 'module' });
+    zerlegerWorker = new Worker(new URL('./verfeinern.worker.ts', import.meta.url), { type: 'module' });
   } catch {
     return null;
   }
-  zerlegerWorker.onmessage = (e: MessageEvent<{ id: number; daten: ZerlegungsDaten[] }>) => {
+  zerlegerWorker.onmessage = (e: MessageEvent<VerfeinerErgebnis | { id: number; fehler: string }>) => {
     const f = verfeinerung;
-    if (!f || e.data.id !== f.id) return;
+    const d = e.data;
+    if (!f || d.id !== f.id) return;
     verfeinerung = null;
-    einwechseln(f, e.data.daten);
+    if ('fehler' in d) {
+      // der Zug läuft auf dem alten Netz weiter; verdichtet wird dann beim Loslassen
+      nichtsZuVerfeinern = haut;
+      meldung = `Verfeinern im Hintergrund fehlgeschlagen: ${d.fehler}`;
+      statusZeigen();
+      return;
+    }
+    hintergrundTeile = d.ms.map(Math.round);
+    if (d.leer) {
+      nichtsZuVerfeinern = haut;
+      return;
+    }
+    if (f.netz !== haut) return;
+    const ta = performance.now();
+    const fertig: Verfeinert = { haut: hautAusFlach(d.haut), loops: d.loops, alt: d.alt, einbettung: d.einbettung, gew: gewichteAusFlach(d.gewStart, d.gewWert), neu: d.neu, gelegt: d.gelegt, t0: f.t0 };
+    letztesAuspacken = Math.round(performance.now() - ta);
+    // eingewechselt wird im nächsten Bild, an Stelle der Löserrunde (`schleife`): Beides in einem Bild hielte den Zug doppelt so lang an
+    eingetroffen = { netz: f.netz, fertig, daten: d.daten };
+  };
+  zerlegerWorker.onerror = (e) => {
+    verfeinerung = null;
+    nichtsZuVerfeinern = haut;
+    meldung = `Verfeinern im Hintergrund fehlgeschlagen: ${e.message}`;
+    statusZeigen();
   };
   return zerlegerWorker;
 }
@@ -2392,8 +2433,11 @@ function zugEnde(ok: boolean): void {
   const z = zug;
   if (!z) return;
   zug = null;
-  // eine Verfeinerung, die noch im Hintergrund zerlegt wird, verfällt (nach dem Zug wird wie bisher verdichtet)
+  // eine Verfeinerung, die noch im Hintergrund rechnet oder noch nicht eingewechselt ist, verfällt (nach dem Zug wird wie bisher
+  // verdichtet)
   verfeinerung = null;
+  eingetroffen = null;
+  nichtsZuVerfeinern = null;
   if (!ok) {
     wiederherstellen(z.vorher);
     return;
@@ -2450,9 +2494,8 @@ function nachVerdichten(nurTeilen = false): void {
   letzteVerdichtung = { neu: v.neu, gelegt: v.gelegt, ms: Math.round(performance.now() - t0) };
 }
 
-/** Das verdichtete Netz zum Stand jetzt (wie `nachVerdichten`, ohne es zu übernehmen) */
-function verdichtetesNetz(nurTeilen = false): Verdichtet | null {
-  if (!VERDICHTEN) return null;
+/** Wie verdichtet wird (für `verdichten`, im Fenster und im Hintergrund); `nurTeilen`: nichts zusammenlegen */
+function verdichtenOptionen(nurTeilen = false): VerdichtenOptionen {
   // die Öffnung des Mauls wird nicht gezeigt und nicht verdichtet (in der Pose überspannt sie das offene Maul)
   const m = maulAktuell();
   const verborgen = m && m.offen.length === haut.tri.length / 3 ? m.offen : null;
@@ -2460,12 +2503,13 @@ function verdichtetesNetz(nurTeilen = false): Verdichtet | null {
   // abgelesen, die Griffe sind die der Grundform); nach dem Pfad geteilt wurde dort laufend neu vernetzt (Fressen-Probe: 572 neue,
   // 741 zusammengelegte Punkte, danach 2 umgeklappt)
   const genau = GENAU > 0 && grund === null ? { genau: GENAU * MK, genauHaut: GENAU_HAUT } : {};
-  return verdichten(
-    haut,
-    loops,
-    1.75 * MK,
-    WINKEL ? { winkel: 25, minKante: MK / 3, verborgen } : { verborgen, kurz: nurTeilen ? 0 : KURZ * MK, ...genau },
-  );
+  return WINKEL ? { winkel: 25, minKante: MK / 3, verborgen } : { verborgen, kurz: nurTeilen ? 0 : KURZ * MK, ...genau };
+}
+
+/** Das verdichtete Netz zum Stand jetzt (wie `nachVerdichten`, ohne es zu übernehmen) */
+function verdichtetesNetz(nurTeilen = false): Verdichtet | null {
+  if (!VERDICHTEN) return null;
+  return verdichten(haut, loops, 1.75 * MK, verdichtenOptionen(nurTeilen));
 }
 
 // ---------- Loops schneiden, Formen zeichnen, Punkte setzen und löschen ----------
@@ -3253,7 +3297,11 @@ function rendern(): void {
 }
 
 function schleife(): void {
-  zugRechnen();
+  // ein fertig verfeinertes Netz aus dem Hintergrund wird an Stelle der Löserrunde dieses Bilds eingewechselt
+  const e = eingetroffen;
+  eingetroffen = null;
+  if (e && zug && e.netz === haut) einwechseln(e.fertig, e.daten);
+  else zugRechnen();
   if (neuZeichnen) {
     neuZeichnen = false;
     rendern();
@@ -3458,8 +3506,15 @@ schleife();
     offen: zug?.offen ?? false,
     nachRunden: zug?.nachRunden ?? 0,
     hintergrund: hintergrundStufen,
+    /** Arbeit im Hauptthread (ms): je Bild im Zug, je Mausbewegung, je Auslösen und je Einwechseln beim Verfeinern */
+    messung: { bild: [...messung.bild], maus: [...messung.maus], ausloesen: [...messung.ausloesen], einwechseln: [...messung.einwechseln] },
     ausloesung: letzteAusloesungMs,
     ausloesungTeile,
+    /** der letzte Auftrag im Hintergrund (ms): verdichten, einbetten, Zeilen, zerlegen */
+    hintergrundTeile,
+    /** das letzte Einwechseln (ms): Auspacken; festlegen, Punkte auf die Haut von jetzt, Netz übernehmen, Löser anlegen, zeigen */
+    auspacken: letztesAuspacken,
+    einwechslungTeile,
     einwechslung: letzteEinwechslungMs,
     hintergrundMs: letzteHintergrundMs,
     stufeMs: letzteStufeMs,

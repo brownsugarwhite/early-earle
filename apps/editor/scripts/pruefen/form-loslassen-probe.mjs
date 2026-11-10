@@ -235,12 +235,13 @@ const [x1, y1] = xy(await bild(ansicht, ziel));
 await seite.evaluate(() => {
   const K = window.__kurven;
   const schnapp = () => ({ P: K.lagen(), T: K.dreiecke(), z: K.zeiten() });
-  const probe = (window.__probe = { schnapp, nachZug: null, vorLos: null, nachLos: null, bilder: 0, zaehlt: true });
+  const probe = (window.__probe = { schnapp, nachZug: null, vorLos: null, nachLos: null, bilder: 0, zaehlt: true, zeit: [] });
   window.addEventListener('pointerup', () => (probe.vorLos = schnapp()), { capture: true, once: true });
   window.addEventListener('pointerup', () => ((probe.nachLos = schnapp()), (probe.zaehlt = false)), { once: true });
   const bild = () => {
     if (!probe.zaehlt) return;
     probe.bilder++;
+    probe.zeit.push(performance.now());
     requestAnimationFrame(bild);
   };
   requestAnimationFrame(bild);
@@ -281,6 +282,8 @@ for (let i = 1; i <= schritte; i++) {
   if (pause) await seite.waitForTimeout(pause);
 }
 const zugMs = Date.now() - tz0;
+// Bilder des Zugs (ab dem Drücken bis nach der letzten Mausbewegung): Abstände von Bild zu Bild
+const bildZeiten = await seite.evaluate((ab) => window.__probe.zeit.slice(Math.max(0, ab - 1)), bilder0);
 if (halten) {
   await seite.evaluate(() => (window.__probe.nachZug = window.__probe.schnapp()));
   await seite.waitForTimeout(halten);
@@ -331,6 +334,26 @@ console.log(
     `Löser je Bewegung bzw. Bild ${f2(zz.reduce((s, v) => s + v, 0) / zz.length)} ms (max ${Math.max(...zz).toFixed(0)}), ${A.P.length / 3} Punkte vor dem Loslassen · ${px.toFixed(2)} px je Einheit bei 100 %`,
 );
 if (A.z.offen !== undefined) console.log(`  vor dem Loslassen: Haut rechnet noch ${A.z.offen ? 'ja' : 'nein'}, ${A.z.nachRunden} Runden seit der letzten Mausbewegung`);
+{
+  // Ruckeln im Zug: Abstand von Bild zu Bild (16,7 ms = 60 Bilder je Sekunde) und was den Hauptthread dabei aufhält
+  const d = [];
+  for (let i = 1; i < bildZeiten.length; i++) d.push(bildZeiten[i] - bildZeiten[i - 1]);
+  const sortiert = [...d].sort((a, b) => a - b);
+  const q = (p) => (sortiert.length ? sortiert[Math.min(sortiert.length - 1, Math.floor(p * sortiert.length))] : 0);
+  const mittel = (L) => (L.length ? L.reduce((a, b) => a + b, 0) / L.length : 0);
+  const liste = (L) => (L.length ? L.map((v) => v.toFixed(0)).join(' ') : '–');
+  console.log(
+    `  Bilder im Zug: ${d.length}, Abstand im Mittel ${mittel(d).toFixed(1)} ms (Mitte ${q(0.5).toFixed(1)}, 95 % ${q(0.95).toFixed(1)}, längster ${(sortiert[sortiert.length - 1] ?? 0).toFixed(0)}) · ` +
+      `über 33 ms: ${d.filter((v) => v > 33).length}, über 50 ms: ${d.filter((v) => v > 50).length}, über 100 ms: ${d.filter((v) => v > 100).length}`,
+  );
+  const m = A.z.messung;
+  if (m)
+    console.log(
+      `    Arbeit im Hauptthread: je Bild ${mittel(m.bild).toFixed(1)} ms (längste ${Math.max(0, ...m.bild).toFixed(0)}), davon Löser ${mittel(zz).toFixed(1)}; je Mausbewegung ${mittel(m.maus).toFixed(1)} ms (längste ${Math.max(0, ...m.maus).toFixed(0)}); ` +
+        `Auslösen des Verfeinerns: ${liste(m.ausloesen)} ms; Einwechseln: ${liste(m.einwechseln)} ms` +
+        (A.z.einwechslungTeile ? ` (das letzte: Auspacken ${A.z.auspacken}, dann [${A.z.einwechslungTeile.join('/')}]; im Hintergrund [${(A.z.hintergrundTeile ?? []).join('/')}])` : ''),
+    );
+}
 console.log(
   `  Stufen im Zug: ${A.z.stufen ?? 0} im Vordergrund (letzte ${A.z.stufeMs ?? 0} ms), ${A.z.hintergrund ?? 0} eingewechselt aus dem Hintergrund ` +
     `(Auslösen ${A.z.ausloesung ?? 0} ms [${(A.z.ausloesungTeile ?? []).join('/')}], Einwechseln ${A.z.einwechslung ?? 0} ms, Auslösen bis Einwechseln ${A.z.hintergrundMs ?? 0} ms)`,

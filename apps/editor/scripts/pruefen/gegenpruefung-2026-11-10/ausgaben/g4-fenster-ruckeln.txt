@@ -1,0 +1,79 @@
+G4.1 im Fenster (10.11.): Ruckeln im Zug. form-loslassen-probe.mjs mit GPU=1 FALL=ohr PAUSE=16 HALTEN=800, je ein Lauf, ohne Schalter / &dreiecke=14000 / &dreiecke=30000.
+Bilder im Zug = Abstand von Bild zu Bild; Arbeit im Hauptthread je Bild (Runden, Anzeige), je Mausbewegung, je Auslösen und je Einwechseln des Verfeinerns.
+
+--- vor G4 (Stand ab3a8d95 mit Messlisten): Verdichten, Einbetten und Zeilen im Hauptthread, nur die Zerlegung im Worker
+=== 
+ohr (kurven.html?gewichte=geometrie): 30 Mausschritte in 1570 ms (Pause 16 ms), 140 Bilder bis zum Loslassen, gehalten 800 ms · Löser je Bewegung bzw. Bild 8.89 ms (max 12), 5176 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  Bilder im Zug: 84, Abstand im Mittel 18.7 ms (Mitte 15.8, 95 % 43.6, längster 87) · über 33 ms: 5, über 50 ms: 4, über 100 ms: 0
+    Arbeit im Hauptthread: je Bild 12.5 ms (längste 78), davon Löser 8.9; je Mausbewegung 1.2 ms (längste 6); Auslösen des Verfeinerns: 67 48 42 38 ms; Einwechseln: 19 6 6 5 ms
+  Stufen im Zug: 0 im Vordergrund (letzte 0 ms), 4 eingewechselt aus dem Hintergrund (Auslösen 38 ms [3/22/1/11], Einwechseln 4 ms, Auslösen bis Einwechseln 105 ms)
+=== &dreiecke=14000
+ohr (kurven.html?gewichte=geometrie&dreiecke=14000): 30 Mausschritte in 1839 ms (Pause 16 ms), 154 Bilder bis zum Loslassen, gehalten 800 ms · Löser je Bewegung bzw. Bild 11.00 ms (max 17), 11139 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  Bilder im Zug: 89, Abstand im Mittel 20.6 ms (Mitte 16.2, 95 % 45.9, längster 130) · über 33 ms: 5, über 50 ms: 4, über 100 ms: 3
+    Arbeit im Hauptthread: je Bild 16.8 ms (längste 126), davon Löser 11.0; je Mausbewegung 1.1 ms (längste 2); Auslösen des Verfeinerns: 112 92 92 ms; Einwechseln: 25 17 10 ms
+  Stufen im Zug: 0 im Vordergrund (letzte 0 ms), 3 eingewechselt aus dem Hintergrund (Auslösen 92 ms [6/49/10/25], Einwechseln 7 ms, Auslösen bis Einwechseln 299 ms)
+=== &dreiecke=30000
+ohr (kurven.html?gewichte=geometrie&dreiecke=30000): 30 Mausschritte in 5372 ms (Pause 16 ms), 146 Bilder bis zum Loslassen, gehalten 800 ms · Löser je Bewegung bzw. Bild 32.08 ms (max 59), 24444 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  Bilder im Zug: 89, Abstand im Mittel 60.9 ms (Mitte 46.1, 95 % 155.9, längster 469) · über 33 ms: 89, über 50 ms: 22, über 100 ms: 5
+    Arbeit im Hauptthread: je Bild 53.1 ms (längste 423), davon Löser 32.1; je Mausbewegung 1.0 ms (längste 2); Auslösen des Verfeinerns: 261 292 233 184 ms; Einwechseln: 44 21 32 23 ms
+  Stufen im Zug: 0 im Vordergrund (letzte 0 ms), 4 eingewechselt aus dem Hintergrund (Auslösen 184 ms [13/108/8/51], Einwechseln 19 ms, Auslösen bis Einwechseln 1066 ms)
+
+--- G4.1, erster Stand: der ganze Auftrag im Worker, der Zug wird beim Auslösen noch neu aufgesetzt
+=== 
+ohr (kurven.html?gewichte=geometrie): 30 Mausschritte in 1306 ms (Pause 16 ms), 133 Bilder bis zum Loslassen, gehalten 800 ms · Löser je Bewegung bzw. Bild 8.36 ms (max 11), 5158 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  Bilder im Zug: 78, Abstand im Mittel 16.7 ms (Mitte 15.7, 95 % 29.9, längster 35) · über 33 ms: 2, über 50 ms: 0, über 100 ms: 0
+    Arbeit im Hauptthread: je Bild 9.9 ms (längste 19), davon Löser 8.4; je Mausbewegung 1.0 ms (längste 2); Auslösen des Verfeinerns: 8 5 3 ms; Einwechseln: 21 11 9 ms
+  Stufen im Zug: 0 im Vordergrund (letzte 0 ms), 3 eingewechselt aus dem Hintergrund (Auslösen 3 ms [3/0], Einwechseln 7 ms, Auslösen bis Einwechseln 280 ms)
+  Endstand gegen vor dem Loslassen: 5296 Punkte · Haut bewegt bis 1.51 (99 % 0.94, Mittel 0.14, 40 Punkte über 1) bei (5, 109, -190)
+=== &dreiecke=14000
+ohr (kurven.html?gewichte=geometrie&dreiecke=14000): 30 Mausschritte in 1696 ms (Pause 16 ms), 162 Bilder bis zum Loslassen, gehalten 800 ms · Löser je Bewegung bzw. Bild 10.68 ms (max 15), 10865 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  Bilder im Zug: 98, Abstand im Mittel 17.4 ms (Mitte 16.3, 95 % 24.3, längster 59) · über 33 ms: 2, über 50 ms: 1, über 100 ms: 0
+    Arbeit im Hauptthread: je Bild 13.4 ms (längste 30), davon Löser 10.7; je Mausbewegung 1.0 ms (längste 2); Auslösen des Verfeinerns: 11 9 ms; Einwechseln: 32 25 ms
+  Stufen im Zug: 0 im Vordergrund (letzte 0 ms), 2 eingewechselt aus dem Hintergrund (Auslösen 9 ms [8/1], Einwechseln 22 ms, Auslösen bis Einwechseln 638 ms)
+  Endstand gegen vor dem Loslassen: 11375 Punkte · Haut bewegt bis 0.72 (99 % 0.24, Mittel 0.04, 0 Punkte über 1) bei (4, 114, 191)
+=== &dreiecke=30000
+ohr (kurven.html?gewichte=geometrie&dreiecke=30000): 30 Mausschritte in 4539 ms (Pause 16 ms), 154 Bilder bis zum Loslassen, gehalten 800 ms · Löser je Bewegung bzw. Bild 33.40 ms (max 47), 23650 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  Bilder im Zug: 92, Abstand im Mittel 49.6 ms (Mitte 44.5, 95 % 74.4, längster 218) · über 33 ms: 91, über 50 ms: 21, über 100 ms: 4
+    Arbeit im Hauptthread: je Bild 45.8 ms (längste 138), davon Löser 33.4; je Mausbewegung 1.1 ms (längste 2); Auslösen des Verfeinerns: 22 20 14 ms; Einwechseln: 73 43 41 ms
+  Stufen im Zug: 0 im Vordergrund (letzte 0 ms), 3 eingewechselt aus dem Hintergrund (Auslösen 14 ms [12/2], Einwechseln 37 ms, Auslösen bis Einwechseln 1317 ms)
+  Endstand gegen vor dem Loslassen: 24550 Punkte · Haut bewegt bis 2.09 (99 % 0.69, Mittel 0.06, 104 Punkte über 1) bei (-113, 56, 110)
+
+--- G4.1, zweiter Stand: ohne Neuaufsetzen beim Auslösen (die Loops gehen als festgelegte Kopie)
+=== 
+ohr (kurven.html?gewichte=geometrie): 30 Mausschritte in 1237 ms (Pause 16 ms), 129 Bilder bis zum Loslassen, gehalten 800 ms · Löser je Bewegung bzw. Bild 8.75 ms (max 10), 5180 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  Bilder im Zug: 74, Abstand im Mittel 16.7 ms (Mitte 16.2, 95 % 30.1, längster 34) · über 33 ms: 2, über 50 ms: 0, über 100 ms: 0
+    Arbeit im Hauptthread: je Bild 10.2 ms (längste 23), davon Löser 8.7; je Mausbewegung 0.9 ms (längste 2); Auslösen des Verfeinerns: 4 1 1 ms; Einwechseln: 20 10 10 ms (das letzte: Auspacken 1, dann [0/1/1/7/2]; im Hintergrund [32/6/35/201])
+  Stufen im Zug: 0 im Vordergrund (letzte 0 ms), 3 eingewechselt aus dem Hintergrund (Auslösen 1 ms [0/1], Einwechseln 8 ms, Auslösen bis Einwechseln 284 ms)
+  während des Haltens (800 ms): 5180 Punkte · Haut bewegt bis 1.63 (99 % 1.00, Mittel 0.14, 56 Punkte über 1) bei (-34, 151, -161)
+  Endstand gegen vor dem Loslassen: 5282 Punkte · Haut bewegt bis 1.32 (99 % 0.31, Mittel 0.03, 4 Punkte über 1) bei (5, 109, 190)
+=== &dreiecke=14000
+ohr (kurven.html?gewichte=geometrie&dreiecke=14000): 30 Mausschritte in 1963 ms (Pause 16 ms), 174 Bilder bis zum Loslassen, gehalten 800 ms · Löser je Bewegung bzw. Bild 13.97 ms (max 17), 10963 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  Bilder im Zug: 108, Abstand im Mittel 18.3 ms (Mitte 17.0, 95 % 26.3, längster 67) · über 33 ms: 3, über 50 ms: 1, über 100 ms: 0
+    Arbeit im Hauptthread: je Bild 15.7 ms (längste 42), davon Löser 14.0; je Mausbewegung 1.3 ms (längste 2); Auslösen des Verfeinerns: 2 1 ms; Einwechseln: 37 27 ms (das letzte: Auspacken 2, dann [0/1/1/23/3]; im Hintergrund [105/9/44/510])
+  Stufen im Zug: 0 im Vordergrund (letzte 0 ms), 2 eingewechselt aus dem Hintergrund (Auslösen 1 ms [0/1], Einwechseln 25 ms, Auslösen bis Einwechseln 716 ms)
+  während des Haltens (800 ms): 10963 Punkte · Haut bewegt bis 0.73 (99 % 0.30, Mittel 0.04, 0 Punkte über 1) bei (-4, 113, 194)
+  Endstand gegen vor dem Loslassen: 11369 Punkte · Haut bewegt bis 0.73 (99 % 0.30, Mittel 0.03, 0 Punkte über 1) bei (4, 114, -191)
+=== &dreiecke=30000
+ohr (kurven.html?gewichte=geometrie&dreiecke=30000): 30 Mausschritte in 3517 ms (Pause 16 ms), 165 Bilder bis zum Loslassen, gehalten 800 ms · Löser je Bewegung bzw. Bild 29.29 ms (max 43), 24160 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  Bilder im Zug: 90, Abstand im Mittel 39.2 ms (Mitte 34.1, 95 % 64.6, längster 161) · über 33 ms: 65, über 50 ms: 7, über 100 ms: 2
+    Arbeit im Hauptthread: je Bild 35.9 ms (längste 128), davon Löser 29.3; je Mausbewegung 1.3 ms (längste 3); Auslösen des Verfeinerns: 6 2 ms; Einwechseln: 77 58 ms (das letzte: Auspacken 5, dann [0/3/6/43/6]; im Hintergrund [271/24/91/1134])
+  Stufen im Zug: 0 im Vordergrund (letzte 0 ms), 2 eingewechselt aus dem Hintergrund (Auslösen 2 ms [0/2], Einwechseln 52 ms, Auslösen bis Einwechseln 1585 ms)
+  während des Haltens (800 ms): 24160 Punkte · Haut bewegt bis 3.07 (99 % 2.78, Mittel 0.43, 3412 Punkte über 1) bei (-63, 126, 167)
+  Endstand gegen vor dem Loslassen: 25190 Punkte · Haut bewegt bis 0.76 (99 % 0.47, Mittel 0.07, 0 Punkte über 1) bei (-26, 107, -196)
+
+--- G4.1, Endstand: Einwechseln im nächsten Bild an Stelle der Löserrunde
+=== 
+  Bilder im Zug: 79, Abstand im Mittel 16.9 ms (Mitte 16.5, 95 % 28.6, längster 46) · über 33 ms: 1, über 50 ms: 0, über 100 ms: 0
+    Arbeit im Hauptthread: je Bild 11.3 ms (längste 25), davon Löser 10.1; je Mausbewegung 1.1 ms (längste 4); Auslösen des Verfeinerns: 3 1 ms; Einwechseln: 35 11 ms (das letzte: Auspacken 1, dann [0/0/1/8/2]; im Hintergrund [55/6/25/114])
+  Stufen im Zug: 0 im Vordergrund (letzte 0 ms), 2 eingewechselt aus dem Hintergrund (Auslösen 1 ms [0/1], Einwechseln 9 ms, Auslösen bis Einwechseln 217 ms)
+  Endstand gegen vor dem Loslassen: 5306 Punkte · Haut bewegt bis 1.54 (99 % 1.04, Mittel 0.15, 60 Punkte über 1) bei (-25, 109, 196)
+=== &dreiecke=14000
+  Bilder im Zug: 95, Abstand im Mittel 17.4 ms (Mitte 16.4, 95 % 23.3, längster 54) · über 33 ms: 2, über 50 ms: 1, über 100 ms: 0
+    Arbeit im Hauptthread: je Bild 14.0 ms (längste 48), davon Löser 12.3; je Mausbewegung 1.2 ms (längste 2); Auslösen des Verfeinerns: 5 1 ms; Einwechseln: 35 28 ms (das letzte: Auspacken 2, dann [0/1/2/21/4]; im Hintergrund [78/9/45/525])
+  Stufen im Zug: 0 im Vordergrund (letzte 0 ms), 2 eingewechselt aus dem Hintergrund (Auslösen 1 ms [0/1], Einwechseln 24 ms, Auslösen bis Einwechseln 693 ms)
+  Endstand gegen vor dem Loslassen: 11367 Punkte · Haut bewegt bis 0.71 (99 % 0.21, Mittel 0.04, 0 Punkte über 1) bei (4, 114, -191)
+=== &dreiecke=30000
+  Bilder im Zug: 92, Abstand im Mittel 35.5 ms (Mitte 32.9, 95 % 46.1, längster 106) · über 33 ms: 42, über 50 ms: 3, über 100 ms: 1
+    Arbeit im Hauptthread: je Bild 32.8 ms (längste 73), davon Löser 29.0; je Mausbewegung 1.3 ms (längste 5); Auslösen des Verfeinerns: 4 2 ms; Einwechseln: 95 59 ms (das letzte: Auspacken 5, dann [0/3/5/46/4]; im Hintergrund [185/11/75/1681])
+  Stufen im Zug: 0 im Vordergrund (letzte 0 ms), 2 eingewechselt aus dem Hintergrund (Auslösen 2 ms [0/2], Einwechseln 55 ms, Auslösen bis Einwechseln 2024 ms)
+  Endstand gegen vor dem Loslassen: 25186 Punkte · Haut bewegt bis 0.85 (99 % 0.56, Mittel 0.08, 0 Punkte über 1) bei (-30, 104, -195)

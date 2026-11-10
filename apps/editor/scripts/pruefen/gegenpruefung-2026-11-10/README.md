@@ -26,6 +26,7 @@ python3 apps/editor/scripts/pruefen/gegenpruefung-2026-11-10/loeser/gen.py
 | `loeser/mess6.ts` | wie stark Verfeinern das Krümmungsmaß auf derselben Fläche ändert | `FALL` |
 | `loeser/mess7.ts` | (G3) Kommt der Löser zur Ruhe? Bewegung je Abschnitt nach dem Zug, getrennt nach Form (längs der Normalen) und Gleiten längs der Fläche; die ersten Runden eines neuen Lösers einzeln (Anlauf) | `FALL=ruhe\|ohr\|hals\|ruessel`, `DREIECKE`, `JE`, `NACH` |
 | `loeser/mess8.ts` | (G3) Steht die Haut wirklich? Nach der Ruhe ein neuer Löser auf demselben Stand (dreimal), dazu der Stand der Bremse je Punkt | `FALL`, `DREIECKE`, `RUHE`, `NEU` |
+| `loeser/mess9.ts` | (G4) Was kostet ein neuer Löser mitten im Zug: Anlegen mit fertiger Zerlegung, erste Runden gegen die des alten | `DREIECKE`, `HALB` |
 | `algebra/a1-fuellung.ts` | Füllung der Zerlegung gegen andere Reihenfolgen | `DREIECKE` |
 | `algebra/a2-spiegel.ts` | halbe Haut: Rechenarbeit und Gleichheit der Lösung | `DREIECKE` |
 | `algebra/a3-genau.ts` | Kondition, weiche Bindung, `HALT` im quadrierten System | `DREIECKE`, `LOOPS` |
@@ -43,6 +44,9 @@ python3 apps/editor/scripts/pruefen/gegenpruefung-2026-11-10/loeser/gen.py
 nachmittags, Bericht „Stand G3“): Messungen im Fenster mit `form-loslassen-probe.mjs` (`GPU=1`, `HALTEN`, `PAUSE`, `REST`, `FERN`,
 `SICHERN`/`VERGLEICH`), `form-drei-faelle.mjs` (`HALTEN`) und `form-anlauf-probe.mjs`; der Stand vor G3 lief dafür als zweite Seite
 auf demselben Server.
+
+`ausgaben/g4-fenster-ruckeln.txt` und `loeser-mess9.out` gehören zu Schritt G4.1 (Verfeinern im Zug im Hintergrund): Abstand von
+Bild zu Bild im Zug und die Arbeit im Hauptthread, vor G4 und nach jedem der drei Teilschritte.
 
 `ausgaben/` enthält sonst die Ausgaben vom 10.11. (je ein Lauf, die Maschine war belegt). `a5-ausgabe.txt` stammt von einem Skript, das
 eine von Hand angelegte Kopie des Lösers brauchte; gleichwertig ist `mess3.ts` mit `DREIECKE=30000`.
