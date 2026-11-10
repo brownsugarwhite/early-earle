@@ -1699,6 +1699,23 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     dritten Loop lief die Haut auseinander. Deshalb setzt sich die Haut nach einem neuen Loop erst, wenn sich Loops kreuzen, nur
     in Ruhe, ohne Aufräumen. Offen: Kante erscheint auf dichten Netzen erst nach 1,6–2,6 s; mit einem einzelnen Loop ruckt der
     erste Griff wie bisher; Loop schneiden hält 0,1–0,2 s an; Ecke umschalten rechnet im Fenster.
+  - **Sichern und Laden, Anfang von G5 (10.11. nachts, `92b60a5b`, `64354dac`):** Florian: „Weiter mit G5: zuerst mein Wesen
+    sichern und laden können (es übersteht dann auch das Neuladen), dann die Güte des Netzes an meinen echten Wesen messen.“
+    Gebaut: Das Wesen bleibt im Browser behalten (kommt nach dem Neuladen Bit für Bit zurück, samt Fressen-Pose und Name),
+    Knöpfe Neu / Sichern (⌘S) / Laden, Dateien `wesen/<Name>.eewesen` über den Dev-Server, „Wesen von vorher“ als Sicherheitsnetz
+    (`src/form/ablage.ts`, Abschnitt „Wesen behalten, sichern, laden“ in `kurven.ts`, `vite.config.ts`; Probe
+    `form-ablage-probe.mjs`, 27 Prüfungen bei 5 000 und 24 000 Punkten). Messwerkzeug `scripts/pruefen/form-netzguete.ts` (liest
+    gesicherte Wesen, schreibt je Wesen Zahlen und ein Bild), Probewesen mit `form-probewesen.mjs`. **Florians Wesen sind noch
+    nicht gemessen** (er muss sie erst sichern). Erste Zahlen an Probewesen: Netz nicht dichter als das Startnetz (0,98–1,19),
+    wächst mit der Fläche; beim Spielen (hinaus und zurück, gleiche Form) +7 bis 10 % Punkte (geteilt über 1,75 Startkanten,
+    zusammengelegt erst unter 0,5); an den Linien bleiben flache Dreiecke stehen (drei aufeinanderfolgende Punkte einer Linie, 14–28
+    je Wesen) und nach dem Schneiden Nadeln bis zum ersten Aufräumen; für die Rundung genügten rund 3 000 Punkte (Schätzung).
+    Vorschlag für G5 im Bericht („Stand (10.11. nachts)“): erst die Güte an den Linien, dann das Wachsen beim Spielen.
+  - Fallen daraus: Ein neues Feld im Stand gehört in `Schnappschuss`, `WesenStand`, `standJetzt`/`standAnwenden` und ggf.
+    `loopsZahl`. Das Wesen von zuletzt kommt beim Laden der Seite zurück (`&behalten=0` oder „Neu“ für die Kugel). Probewesen
+    nie in `wesen/` liegen lassen (Florians Liste). Eine Schätzung über Netze verschiedener Dichte braucht feste Einheiten (mit
+    MK/40 als Fehler war die Zahl bei 23 400 Punkten nicht mit der bei 5 200 vergleichbar). Zwei Läufe mit der Maus geben nicht
+    dasselbe Netz.
   - Fallen aus G4.4: Eine Regel, die an einem Fall (5 200 Punkte) harmlos aussieht, auch bei 11 000 und 23 400 messen, bevor sie
     Standard wird (das Setzen nach dem ersten Loop: 2 Einheiten bei 5 200, 11 bei 11 000). Proben warten auf
     `zeiten().beschaeftigt`, nicht auf feste Zeiten. Eine Probe prüft vor der Abstandsmessung, ob die Lagen endlich sind (sonst

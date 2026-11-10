@@ -1,4 +1,4 @@
-# Übergabe (Stand 10.11.2026 spätabends: G1 bis G4 gebaut, G4 mit allen vier Teilen; als Nächstes Florians Blick, dann G5)
+# Übergabe (Stand 10.11.2026 nachts: G1 bis G4 gebaut; Wesen sichern und laden; G5 begonnen: Messwerkzeug für die Güte des Netzes, Florians Wesen stehen aus)
 
 **Branch `claude/form-zuerst`, Arbeitsbaum `.claude/worktrees/form-zuerst`.** Diese Datei ist der Einstieg. Die alte Übergabe aus der
 Käfig-Zeit (Stand 04.11.) steht in der Git-Geschichte: `git show 82aed6dc:docs/UEBERGABE.md`.
@@ -99,11 +99,50 @@ Kriterien stehen in der Tabelle des Nachtrags; Messwerte und Befunde je Schritt 
     Einheiten flach, nach dem dritten Loop lief die Haut auseinander). Deshalb die Bedingung „Loops kreuzen sich“.
   - **Offen** (Bericht, „Ehrlich offen nach G4.4“): die Kante erscheint auf dichten Netzen erst nach 1,6–2,6 s; mit einem
     einzelnen Loop ruckt der erste Griff wie bisher; Loop schneiden hält noch 0,1–0,2 s an; Ecke umschalten rechnet im Fenster.
-- **Als Nächstes:** Florians Blick auf G4. Danach G5 (zuerst die Güte des Netzes, dann die Zahl der Punkte), G6 (halbe Haut).
+- **Florian (10.11. nachts):** „Weiter mit G5: zuerst mein Wesen sichern und laden können (es übersteht dann auch das Neuladen),
+  dann die Güte des Netzes an meinen echten Wesen messen.“
+- **Sichern und Laden gebaut** (`92b60a5b`; Bericht „Stand (10.11. nachts)“). `src/form/ablage.ts` (Format, ohne DOM), in
+  `kurven.ts` der Abschnitt „Wesen behalten, sichern, laden“ (ab Zeile 3830), `vite.config.ts` (`wesenAblage`), Knöpfe in
+  `kurven.html`.
+  - **Behalten:** Der Stand liegt im Browser (IndexedDB `early-earle-kurven`, Fach `stand`, Schlüssel `zuletzt`) und kommt beim
+    Start zurück (`behaltenesHolen`), wenn die Startform der Adresse dieselbe ist (`START_KENNUNG`: `form`, `dreiecke`).
+    Geschrieben wird 0,8 s nach der ersten Änderung seit dem letzten Mal (`behaltenPlanen` aus `allesZeigen` und
+    `ausschnittGeaendert`), nicht im Zug, Nachlauf oder wartenden Griff, nie die leere Startform, nie ein Stand, den `pruefen`
+    ablehnt. `&behalten=0` schaltet es ab.
+  - **Sichern** (Knopf, ⌘S; `wesenSichern`): `PUT /__wesen/<Name>` schreibt `wesen/<Name>.eewesen` im Arbeitsbaum (erst `.neu`,
+    dann umbenennen). Namensfeld im Fenster (kein Dialog); ein anderer vorhandener Name erst beim zweiten Drücken; ⌘S nimmt den
+    Namen von zuletzt. Läuft die Haut noch nach, wartet es. Ohne Server legt der Browser die Datei ab.
+  - **Laden** (`ladenZeigen`, `wesenLaden`): Liste aus `GET /__wesen/`, dazu „Datei …“. **Neu** (`wesenNeu`): die Startform.
+    Beides über `wesenUebernehmen` = ein Schritt für ⌘Z (`zurueck.push(schnappschuss())`, dann `standAnwenden`).
+  - **Wesen von vorher** (`davorMerken`, Schlüssel `davor`): Was „Laden“ oder „Neu“ ersetzt, bleibt im Browser liegen und steht
+    in der Liste von „Laden“ ganz oben (über das Neuladen hinweg, wenn ⌘Z es nicht mehr bringt).
+  - **Das Maß gehört zum Wesen:** `MK` und `TOL` sind veränderlich und stehen im Schnappschuss (`mk`); ein geladenes Wesen behält
+    seine Netzdichte.
+  - **Format:** Kennung `EEKW1`, Kopf als JSON (Stand mit Verweisen), die großen Felder binär an durch 8 teilbaren Stellen; −0
+    und nicht endliche Zahlen eigens. `entpacken` prüft (`pruefen`) und wirft mit lesbarem Grund. 0,4 MB bei 5 000, 2,0 MB bei
+    24 000 Punkten; Packen im Fenster 1–4 ms.
+  - **Geprüft:** `ablage.test.ts` (4), `form-ablage-probe.mjs` (27 Prüfungen, bei 5 000 und 24 000 Punkten alle gut),
+    `form-nachlauf-probe.mjs` (18) und `form-aendern-probe.mjs` unverändert.
+  - **Grenzen:** die Liste der Schritte wird nicht gesichert; nur dieser Browser und dieselbe Startform; keine älteren
+    Fassungen; kein Löschen im Fenster.
+- **G5 Teil 1: Werkzeug für die Güte des Netzes** (`64354dac`): `scripts/pruefen/form-netzguete.ts` liest gesicherte Wesen,
+  `form-probewesen.mjs` baut Probewesen mit der Maus. **Florians Wesen sind noch nicht gemessen** (sie lebten nur im Fenster; er
+  muss sie sichern). Erste Zahlen an Probewesen (Bericht, Tabelle und fünf Befunde):
+  - Das Netz ist nicht dichter als das Startnetz (0,98–1,19) und wächst mit der Fläche.
+  - Beim Spielen (hinaus und zurück, gleiche Form) wächst es um 7–10 %: geteilt wird über 1,75 Startkanten, zusammengelegt erst
+    unter 0,5.
+  - An den Linien bleiben flache Dreiecke stehen (drei aufeinanderfolgende Punkte einer Linie, 14–28 je Wesen); nach dem
+    Schneiden eines Loops Nadeln bis zum ersten Aufräumen. Das sind die unruhigen Stellen aus G3.
+  - Für die Rundung genügten rund 3 000 Punkte (Schätzung), ob mit 7 100 oder 32 900 gerechnet.
+- **Als Nächstes:** Florian sichert eines oder mehrere seiner Wesen (Knopf „Sichern“); dann
+  `cd packages/shape && BILD=<ordner> npx vite-node ../../apps/editor/scripts/pruefen/form-netzguete.ts` und die Zahlen neben die
+  der Probewesen legen. Danach sein Wort zur Reihenfolge in G5 (Vorschlag im Bericht: erst die flachen Dreiecke und Nadeln an den
+  Linien, dann das Wachsen beim Spielen). G6 (halbe Haut) braucht Entscheidung 2. Sein Blick auf G4 steht weiter aus.
 
 ## 1. Stand
 
-- **Letzter Code-Commit:** `9c5aa3f5` (G4.4, Statuszeile). Alles ist committet und gepusht (lokal = `origin/claude/form-zuerst`).
+- **Letzter Code-Commit:** `92b60a5b` (Sichern und Laden); danach `64354dac` (Messskripte, Bericht). Alles ist committet und
+  gepusht (lokal = `origin/claude/form-zuerst`).
 - **Halbfertiges:** keins. Am 09.11. sind zwei Löser-Versuche wieder entfernt worden („gleiches Maß“, „Krümmung an den Linien
   mitgelöst“; Stand des zweiten in `476a874f`). Der Code des Lösers (`dicht/ausKurven.ts`) ist seit `1f1f5079` (Schalter
   `maxNormalen`) im Rechnen unverändert; G1 hat nur das Einsetzen in `loeser/zerlegung.ts` ausgeschrieben, G2 und G3 nur das
@@ -131,12 +170,16 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5193 --strictPort
 
 - **Florians Adresse jetzt:** `http://localhost:5193/kurven.html?gewichte=geometrie`. Standard ohne Schalter ist der Löser mit gleichen
   Gewichten. `?form=bohne` startet mit einer Bohne statt der Kugel, `?dreiecke=<n>` setzt die Größe des Startnetzes (Standard 6 000).
+  Seit dem 10.11. nachts kommt beim Laden der Seite das Wesen von zuletzt zurück (`&behalten=0`: immer die Startform). Proben
+  beginnen mit einem leeren Browser und merken davon nichts; im Vorschau-Fenster und in Florians Browser bleibt das Wesen.
 - **Altes Fenster** `form.html` (Form aus den Ansichten) und der alte Editor (`pnpm editor`, Käfig) werden nicht mehr benutzt.
 - **Test-Haken im Fenster:** `window.__kurven` (`kurven.ts`, ab Zeile 3635; `zeiten()` trägt seit G4.1 auch `messung`,
   `hintergrundTeile`, `auspacken`, `einwechslungTeile`, seit G4.3 `nachlauf`, `nachlaufRunden`, `aufraeumen`, `auftrag` (der
   letzte Auftrag: `nr`, `angewendet`, Zeiten), `hintergrundAus`, `loslassen`; neu `roh` (Lagen und Dreiecke ohne Kopie),
   `ausfall` und `auftragFehler` (Fehler nachstellen); seit G4.4 `ruheOffen`, `auftragNr`, `zwischen` (letzter Zwischenstand),
-  `griffWartet` und `beschaeftigt` (rechnet noch etwas oder steht etwas an: darauf warten Proben statt auf feste Zeiten)):
+  `griffWartet` und `beschaeftigt` (rechnet noch etwas oder steht etwas an: darauf warten Proben statt auf feste Zeiten); seit
+  dem 10.11. nachts `ablage` (`sichern(name)`, `laden(name)`, `liste()`, `neu()`, `behalten()` (jetzt behalten und warten, bis
+  es im Browser liegt), `bereit()` (beim Start ist nachgesehen), `mk()`, `name()`, `bytes()`, `davor()`)):
   `weiterrechnen` (n Runden im laufenden Zug),
   `nachrechnen`, `loops`, `auswahl`, `pfadRest`, `knickAm`, `griffe`, `kamera`, `knick`, `umgeschlagen`, `maul`, `zeiten` (zug,
   zerlegen, bereich, verdichtung, punkte, stufen, endrunden, offen, nachRunden, hintergrund, ausloesung, einwechslung,
@@ -144,8 +187,8 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5193 --strictPort
   Pixel im Blatt), `ausschnitt` (Zoom je Blatt), `felder`, `setzeRadius`, `symmetrie`, `masse`.
 
 **Tests, die grün sein müssen:**
-- Fenster, aus `apps/editor`: `npx vitest run src/form/` (12 Tests: die Aufträge im Hintergrund, im Zug, nach dem Loslassen,
-  mit Vorstufe).
+- Fenster, aus `apps/editor`: `npx vitest run src/form/` (16 Tests: die Aufträge im Hintergrund, im Zug, nach dem Loslassen,
+  mit Vorstufe; das Wesen als Datei).
 - Kern der dichten Form, aus `packages/shape`: `npx vitest run src/dicht/ src/loeser/zerlegung.test.ts`. Zuletzt 114 von 114
   grün (10.11. abends), etwa 20 s. Ausgaben
   bestandener Tests nur mit `--reporter=verbose`. `HAUT=gedaechtnis` lässt `loops.test.ts` und `weiterZug.test.ts` mit dem alten
@@ -166,6 +209,8 @@ vitest; während sie laufen, keine Dateien unter `packages/shape/src` oder `apps
 | `form-loslassen-probe.mjs` | Sprung nach dem Loslassen (Hals, Ohr, Rüssel); seit G4.1 auch die Zeile „Bilder im Zug“ (Abstand von Bild zu Bild, Arbeit im Hauptthread je Bild, je Auslösen und Einwechseln). Seit G3: `HALTEN=<ms>` vor dem Loslassen, `PAUSE=<ms>` je Mausschritt, `GPU=1`, `REST=<Runden>` (Rest zur Ruhe), `FERN=<Einheiten>` (Ausschläge fern vom Griff je Bild), `SICHERN`/`VERGLEICH` (zwei Läufe gegeneinander); der Stand vor und nach dem Loslassen wird im Fenster festgehalten. Seit G4.2/G4.3 liest sie nach dem Loslassen im Fenster mit (Abstand der Bilder und wo die längsten liegen, Bewegung bei gleichem Netz, jeder Netzwechsel mit dem Stand davor und danach, Zeiten des Auftrags); `WIEDER=<ms>` greift noch einmal, `NACH=5x6` rechnet am Ende weiter (steht die Haut?); `&nachlauf=0` in `KURVEN_URL` zeigt den Ablauf von vorher |
 | `form-nachlauf-probe.mjs` | (G4.2–G4.4) Nachlauf und Hintergrund dürfen einen geänderten Stand nicht anfassen: ⌘Z sofort, ⌘Z während der Hintergrund rechnet und danach, gleich wieder greifen, Kante, neuer Loop (beide setzen sich seit G4.4 selbst), Fehler im Auftrag, Ausfall des Workers; 18 Prüfungen, `KURVEN_URL` mit `&dreiecke=14000` für 11 000 Punkte |
 | `form-aendern-probe.mjs` | (G4.4) Was hält das Fenster bei Loop, Kante, Punkt setzen, Löschen, Rückgängig an, und was macht der erste Griff danach: je Schritt die längsten Abstände zwischen zwei Bildern, Netzwechsel, Bewegung der Haut, Zeiten aus dem Hintergrund; beim Griff der Ausschlag fern vom Griff (untere Hälfte) je Bild. `NUR=loops\|griff\|kante\|punkt\|sofort`; `&nachlauf=0` zeigt den Ablauf von vorher, `&loopsetzen=0` nur ohne das Setzen nach neuen Loops |
+| `form-ablage-probe.mjs` | (10.11. nachts) Behalten, Sichern, Laden: neu laden (Bit für Bit), Zug danach, ⌘Z, Sichern mit Feld und ⌘S, Name bleibt, kein Überschreiben, Neu, Laden, Wesen von vorher, Fressen-Pose, andere Startform; 27 Prüfungen. Legt „probe-ablage…“ in `wesen/` an und räumt sie wieder weg (`LASSEN=1` lässt sie liegen) |
+| `form-probewesen.mjs` | (G5) baut mit der Maus immer dieselben Probewesen (Kugel mit drei Loops → Hals und Kopf → Rüssel, Ohr, Kante → gespielt) und legt sie nach `pruefen-ausgabe/probewesen/` (nicht in `wesen/`); `NAME`, `SPIEL=<n>` (so oft hinaus und zurück, mit der Zahl der Punkte nach jedem Mal), `ZIEL` |
 | `form-anlauf-probe.mjs` | die ersten Bilder eines winzigen Zugs (Anlauf eines neuen Lösers); `ZWEIMAL=1` greift ein zweites Mal |
 | `form-griff-loslassen.mjs` | Griff bzw. Punkt (`ZUG=punkt`) ziehen und loslassen: Spitze unter der Maus, Sprung, Linie im Zug gegen danach, Runden am Ende |
 | `form-explosion-probe.mjs` | weite Züge `FALL=a\|b\|c\|d\|e\|f\|g\|p` (Überhang, Schnabel, Schlaufe, Stauchen, Rüssel mit Griff, Hammer, Pilz) |
@@ -178,6 +223,10 @@ vitest; während sie laufen, keine Dateien unter `packages/shape/src` oder `apps
 | `form-detail-probe.mjs`, `form-verdichten-probe.mjs` | kleine Details, Verdichten |
 
 **Proben im Kern** (aus `packages/shape`: `npx vite-node ../../apps/editor/scripts/pruefen/<probe>.ts`):
+- `form-netzguete.ts` (G5): die Güte des Netzes an gesicherten Wesen (`wesen/*.eewesen`; `WESEN="Name,Name"`, `ORDNER=<anderer
+  Ordner>`, `DATEI=<pfad>`, `BILD=<ordner>` schreibt je Wesen `<Name>-netz.html`, daraus ein Bild mit
+  `node scripts/pruefen/html-shot.mjs --jpg <datei>` aus `apps/editor`). Sieben Abschnitte je Wesen und eine Übersicht; die
+  Sehnenfehler in festen Einheiten (0,2 und 0,8), damit Wesen aus verschieden dichten Startnetzen vergleichbar sind.
 - `form-netzunabhaengig.ts` (`FALL=hals|ohr|ruessel`, `GEWICHTE=gleich|geometrie`): Nachhinken, Sprung beim Verfeinern. **Achtung:**
   Standard sind 60 Mausschritte mit je zwei Runden, das Fenster rechnet 30 mit je einer. Für Nachhinken `SCHRITTE=30 JE_SCHRITT=1`.
 - `form-mass-netz.ts`: wie stark das Maß dieselbe Fläche nach dem Verfeinern anders liest.
@@ -204,7 +253,17 @@ vitest; während sie laufen, keine Dateien unter `packages/shape/src` oder `apps
 - Faltenzahlen streuen bei gleicher Form um den Faktor 2.
 - Zeiten nur als Verhältnisse lesen; bei belegter Maschine gibt es Ausreißer.
 
-## 3. Karte von `apps/editor/src/form/kurven.ts` (4 173 Zeilen, Stand `124e32a3`)
+## 3. Karte von `apps/editor/src/form/kurven.ts` (4 680 Zeilen, Stand `92b60a5b`)
+
+Seit dem 10.11. nachts (Sichern und Laden) liegt alles ab Zeile 190 um 10 bis 20 höher als unten für G4.4 genannt, ab 3830 um
+rund 420. Neu: `MK`/`TOL` als `let` 198, `schnappschuss` 389 (trägt `mk`), `wiederherstellen` 402, Tasten 3757 (⌘S zuerst; im
+Namensfeld gehören die Tasten dem Feld), **Wesen behalten, sichern, laden 3830–4298:** `BEHALTEN` 3849, `START_KENNUNG` 3851,
+`standJetzt` 3854, `START_STAND` 3870, `zieleAus` 3873, `standAnwenden` 3884 (beendet, was rechnet, und ruft
+`wiederherstellen`), `speicher` 3929, `behaltenPlanen` 3969, `behaltenJetzt` 3973, `davorMerken` 4007, `behaltenesHolen` 4021,
+`ablageListe` 4051, `wesenSichern` 4063, `wesenUebernehmen` 4096, `wesenLaden` 4102, `wesenNeu` 4114, `sichernZeigen` 4148,
+`sichernKurz` 4204, `ladenZeigen` 4213; `rendern` 4301, `schleife` 4347, Haken ab 4379 (`ablage` 4393). Daneben `ablage.ts`
+(`WesenStand`, `packen`, `zusammen`, `entpacken`, `pruefen`, `auskunft`; ohne Importe zur Laufzeit, damit die Messskripte es aus
+`packages/shape` lesen können) und `ablage.test.ts`.
 
 Die Zeilen der Tabelle stammen vom Stand `ab3a8d95`; seit G4.4 liegen sie ab 345 um rund 12 höher, ab 1430 um rund 40, ab 2180
 um 60 bis 590 höher. Stand nach G4.4: `RuheOffen`/`ruheOffen` 356, `schnappschuss` 381 (trägt `ruhe`), `vorrechnenPlanen` 1470
@@ -320,6 +379,23 @@ nicht mehr.
     einem Loop später (0,2 bis 2,6 s). Eine Probe, die nach K 150 ms wartete, las die Haut vor der Kante.
 21. **Eine Probe darf nicht in `flaeche()` hängen:** Läuft die Haut auseinander (nicht endliche Lagen), läuft das Raster der
     Abstandsmessung endlos. Vor dem Messen `every(Number.isFinite)` prüfen (wie `form-aendern-probe.mjs`).
+22. **Das Wesen von zuletzt kommt zurück** (seit dem 10.11. nachts): Wer im Vorschau-Fenster oder in einem eigenen Browser
+    „die Kugel“ erwartet, bekommt das Wesen von vorhin. Für einen sauberen Anfang „Neu“ drücken oder `&behalten=0` anhängen.
+    Playwright-Proben beginnen mit einem leeren Browser; eine Probe, die neu lädt, wartet auf `ablage.bereit()`.
+23. **Ein neues Feld im Stand gehört an vier Stellen:** `Schnappschuss` (mit `schnappschuss`/`wiederherstellen`), `WesenStand`
+    (`ablage.ts`, mit `pruefen`), `standJetzt`/`standAnwenden` und, wenn es die Haut bestimmt, `loopsZahl` (Falle 16). Fehlt es
+    in `standJetzt`, überlebt es ⌘Z, aber nicht das Neuladen. `form-ablage-probe.mjs` vergleicht Bit für Bit, was die Haken zeigen.
+24. **`behaltenPlanen` steht in `allesZeigen`**, die Größen dazu (`BEHALTEN`, `behaltenBereit` …) werden erst weiter unten im
+    Modul angelegt. Das geht, weil `allesZeigen` zum ersten Mal ganz am Ende läuft. Wer `allesZeigen` oder `ausschnittGeaendert`
+    früher beim Laden aufruft, bekommt „Cannot access … before initialization“.
+25. **Mitten im Nachlauf ist der Stand nicht fertig** (die Linien liegen fest, die Haut läuft noch): Behalten überspringt das,
+    Sichern wartet. Wer den Stand anderswo ablegt, tut es ebenso.
+26. **Probewesen nicht in `wesen/` liegen lassen:** Die Liste von „Laden“ zeigt den Ordner; Florian soll dort nur seine Wesen
+    sehen. `form-probewesen.mjs` verschiebt seine Dateien, `form-ablage-probe.mjs` löscht sie.
+27. **Messskripte, die `ablage.ts` lesen, laufen aus `packages/shape`** (wie alle Kern-Proben; aus `apps/editor` zöge vite-node
+    die Konfiguration des Editors mit Electron). `ablage.ts` importiert deshalb nur Typen.
+28. **Zwei Läufe von `form-probewesen.mjs` geben nicht dasselbe Netz** (Züge mit der Maus hängen an der Uhr): Punkte ±10,
+    spitze Dreiecke 16 bis 26. Vorher/nachher-Vergleiche brauchen mehrere Läufe oder denselben gesicherten Stand als Anfang.
 
 ## 5. Florian: letzte Urteile, offene Entscheidungen, Testfälle
 
@@ -333,6 +409,9 @@ nicht mehr.
   - `?gewichte=geometrie` ist für ihn „bis auf das Tempo schon recht nah dran“, „bisher elegantester Weg mit bester Genauigkeit,
     aber zu langsam“.
   - Er will, dass die andere Sitzung G1–G4 baut.
+  - Nachts: „Weiter mit G5: zuerst mein Wesen sichern und laden können (es übersteht dann auch das Neuladen), dann die Güte
+    des Netzes an meinen echten Wesen messen.“ Sichern und Laden sind gebaut, sein Blick darauf steht aus; die Messung wartet
+    auf seine gesicherten Wesen.
 - **09.11.:**
   - Die Löser-Wege „klingen nach viel Nachjustieren“.
   - „… warum das verdichtete Mesh überhaupt eine andere Form annimmt … sollte einfach nur abrunden, aber in exakt der gleichen Form.“
@@ -359,6 +438,10 @@ nicht mehr.
    stattdessen G4.4 gewählt, die Frage bleibt offen.
 9. Die Änderung von 2 Einheiten, wenn sich die Haut nach dem zweiten Loop setzt, kommt vom Bézier-Pfad ohne Zusatzpunkte (ein
    halber Ring mit zwei Punkten ist kein genauer Kreis). Sie hängt an Entscheidung 4 („Punkte wo nötig“).
+10. Reihenfolge in G5 (vorgelegt am 10.11. nachts, nach der Messung an seinen Wesen zu entscheiden): erst die flachen Dreiecke
+    und Nadeln an den Linien, dann das Wachsen des Netzes beim Spielen; oder umgekehrt.
+11. Sollen gesicherte Wesen ins Repo (dann sind Messungen an ihnen wiederholbar, je Wesen 0,5 bis 3 MB)? Bisher liegt im
+    Ordner `wesen/` nur die Beschreibung.
 
 **Seine Testfälle** (Bilder in `docs/progress/editor/`):
 - Hörner aus dem senkrechten Ring mit Griffspiel: `form-ohren-aufblasen-florian-2026-11-08.webp`; das Bild mit den schwarzen
@@ -375,6 +458,8 @@ nicht mehr.
 **Zoom und Netzgröße:** Florian arbeitet bei etwa 300 % (1 Einheit = 2,7 px; ein halber Bildpunkt = 0,18 Einheiten), am Detail auch
 höher. Seine Wesen haben 11 000–26 000 Punkte; am 08.11. waren es 18 234 Punkte bei 49 ms je Zug, nach dem Griffspiel 26 284 Punkte
 bei 126 ms. Die Prüfkugel hat 5 200. Kriterien deshalb immer auch bei 11 000+ Punkten messen.
+Gemessen sind seine Wesen noch nicht (bis zum 10.11. gab es sie nur im offenen Fenster); die Zahlen stammen aus seinen
+Bildschirmfotos. Die Probewesen wachsen beim Spielen um 7 bis 10 % bei gleicher Form, was zu „nach dem Griffspiel 26 284“ passt.
 
 ## 6. Einwände und Ergänzungen der bauenden Sitzung zur Gegenprüfung
 
