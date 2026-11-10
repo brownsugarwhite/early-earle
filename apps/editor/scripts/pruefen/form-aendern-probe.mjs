@@ -1,6 +1,7 @@
 // Form zuerst (10.11.2026), Gegenprüfung Schritt G4.4: Was halten die Änderungen ohne Zug an, und was macht der erste Griff danach?
 // Ablauf auf der Kugel: drei Loops schneiden (Ring waagerecht, Mitte, Ring senkrecht), erster und zweiter Griff (ein Zug um wenige
-// Einheiten), ein weiter Zug, Kante an, Kante aus, Punkt setzen (Doppelklick auf eine Linie), Punkt löschen, zweimal ⌘Z.
+// Einheiten), ein weiter Zug, Kante an, Kante aus, Punkt setzen (Doppelklick auf eine Linie), Punkt löschen, zweimal ⌘Z, zuletzt ein
+// vierter Loop und sofort danach ein Griff (ohne zu warten, bis der Hintergrund die Haut gesetzt hat).
 // Je Schritt, im Fenster mitgelesen:
 //   - die längsten Abstände zwischen zwei Bildern ab dem Auslösen (hält das Fenster an, wie lange, wann?)
 //   - Netzwechsel und Bewegung der Haut bei gleichem Netz (wann, wie viel je Bild)
@@ -11,7 +12,7 @@
 // Aufruf aus apps/editor: node scripts/pruefen/form-aendern-probe.mjs
 //   KURVEN_URL (Standard http://localhost:5193/kurven.html?gewichte=geometrie; dichter mit &dreiecke=14000 bzw. 30000)
 //   GPU=0: Software-Renderer (Standard ist die echte Grafikkarte)   FERN=-40: unter dieser Höhe zählt „fern“
-//   NUR=loops|griff|kante|punkt: nur bis zu diesem Abschnitt
+//   NUR=loops|griff|kante|punkt: nur bis zu diesem Abschnitt; NUR=sofort: nur die drei Loops und „Loop und sofort greifen“
 import { chromium } from '@playwright/test';
 
 const basis = process.env.KURVEN_URL ?? 'http://localhost:5193/kurven.html?gewichte=geometrie';
@@ -235,7 +236,7 @@ const schritt = async (name, tun, fern = null) => {
   console.log(`${name} (${n0} → ${nach.P.length / 3} Punkte)${eigenes ? `: ${eigenes}` : ''}`);
   console.log(
     `    Fenster: ${lang.length ? `${lang.length} Halte über 50 ms, zusammen ${Math.round(summe)} ms: ${lang.slice(0, 5).map((x) => `${Math.round(x.g)} ms (endet nach ${Math.round(x.t)} ms)`).join(', ')}` : `kein Halt über 50 ms (längster Abstand ${Math.round(Math.max(0, ...gaps.map((x) => x.g)))} ms)`}` +
-      ` · Ruhe nach ${Math.round(rec.letzte - t0)} ms`,
+      ` · ${rec.letzte > t0 ? `Ruhe nach ${Math.round(rec.letzte - t0)} ms` : 'nichts bewegt sich'}`,
   );
   const w = rec.bewegt;
   console.log(
@@ -317,7 +318,7 @@ for (const [name, a, A, B] of [
 await seite.keyboard.press('Escape');
 await seite.waitForTimeout(300);
 
-if (nur !== 'loops') {
+if (nur !== 'loops' && nur !== 'sofort') {
   // ---------- 2. erster und zweiter Griff ----------
   let p;
   await schritt('Erster Griff nach den Loops (6 Einheiten hinauf)', () => griff(6), { unter: fernAb });
@@ -362,6 +363,44 @@ if (nur !== 'loops') {
       });
     }
   }
+}
+if (nur === '' || nur === 'sofort') {
+  // ---------- 5. ein neuer Loop und sofort greifen ----------
+  const p = await oben();
+  const [gx, gy] = await bild('seite', p);
+  const [gx2, gy2] = await bild('seite', { ...p, y: p.y + 6 });
+  const von = await bild('seite', { x: -220, y: -60, z: 0 });
+  const bis = await bild('seite', { x: 220, y: -60, z: 0 });
+  await seite.keyboard.press('l');
+  await schritt(
+    'Loop 4 schneiden und sofort greifen (obere Kreuzung, 6 Einheiten hinauf)',
+    async () => {
+      await ziehen(von, bis, 6);
+      await seite.mouse.move(gx, gy);
+      const tDruck = await seite.evaluate(() => performance.now());
+      const td = Date.now();
+      await seite.mouse.down();
+      const druecken = Date.now() - td;
+      const z1 = await K('zeiten');
+      for (let i = 1; i <= 4; i++) {
+        await seite.mouse.move(gx + ((gx2 - gx) * i) / 4, gy + ((gy2 - gy) * i) / 4);
+        await seite.waitForTimeout(16);
+      }
+      // halten, bis der Griff begonnen hat, dann noch 800 ms
+      const tw = Date.now();
+      for (let k = 0; k < 160 && (await K('zeiten')).griffWartet; k++) await seite.waitForTimeout(50);
+      const gewartet = Date.now() - tw;
+      await seite.waitForTimeout(800);
+      const z2 = await K('zeiten');
+      await seite.mouse.up();
+      const fern = await seite.evaluate((t) => window.__rec.bewegt.filter((b) => b.t >= t).map((b) => b.fern), tDruck);
+      return (
+        `Drücken ${druecken} ms, zerlegt beim Greifen ${z2.zerlegen} ms; der Griff ${z1.griffWartet ? `wartete auf die gesetzte Haut (noch ${gewartet} ms nach den Mausschritten)` : 'begann sofort'}; ` +
+        `fern vom Griff je Bild ab dem Drücken: ${fern.length ? fern.slice(0, 14).map((x) => x.toFixed(2)).join(' ') : 'nichts'}${fern.length > 14 ? ' …' : ''} (größter ${fern.length ? Math.max(...fern).toFixed(2) : '0'})`
+      );
+    },
+    { unter: fernAb },
+  );
 }
 const sym = await K('symmetrie');
 console.log(`Spiegelgleichheit ${typeof sym === 'number' ? sym.toExponential(1) : JSON.stringify(sym)} · Konsole: ${fehler.length ? fehler.slice(0, 3).join(' | ') : 'keine Fehler'}`);

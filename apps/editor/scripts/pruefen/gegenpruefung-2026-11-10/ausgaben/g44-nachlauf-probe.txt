@@ -1,0 +1,87 @@
+=== form-nachlauf-probe.mjs, 5 200 Punkte (GPU=1), Stand nach G4.4
+gut  A sofort ⌘Z: Stand gegen vor dem Zug 0.0e+0 (beim Loslassen: Nachlauf true, Hintergrund false)
+gut  A bleibt: 3 s später 0.0e+0, 4978 Punkte (vorher 4978); Auftrag im Hintergrund: keiner
+gut  B Hintergrund: Auftrag angewendet, 4978 → 5278 Punkte, 1-mal verdichtet
+gut  B ⌘Z: Stand gegen vor dem Zug 0.0e+0, 4978 Punkte
+gut  C gleich wieder gegriffen: beim ersten Loslassen Nachlauf false, Hintergrund true; zerlegt beim zweiten Greifen 2 ms; Punkt jetzt bei y 258.8 (Start 154.0), 5418 Punkte, Auftrag angewendet
+gut  C zwei Schritte zurück: Stand gegen den Anfang 0.0e+0
+gut  D ⌘Z im Hintergrund: Hintergrund rechnete ja; Stand gegen vor dem Zug 0.0e+0
+gut  D bleibt: später 0.0e+0, 4978 Punkte (vorher 4978); Auftrag keiner
+gut  E Kante im Hintergrund: Hintergrund rechnete ja; die Kante: gesetzte Haut nach 270 ms (11 Runden), danach Auftrag angewendet; 4976 Punkte
+gut  E zwei Schritte zurück: Stand gegen den Anfang 0.0e+0
+gut  F Loop im Hintergrund: Hintergrund rechnete ja; Loops 3 → 4; die Haut setzt sich zum neuen Loop nach 289 ms, danach Auftrag angewendet; 5080 Punkte
+gut  F zwei Schritte zurück: Stand gegen den Anfang 0.0e+0, Loops 3
+gut  H Fehler im Auftrag: Hintergrund rechnete ja; im Fenster verdichtet: 4978 → 5090 Punkte; der gescheiterte Auftrag 27 kam nicht mehr an (letzter: 25, vorher 25)
+gut  H ein Schritt zurück: Stand gegen den Anfang 0.0e+0
+gut  G Ausfall: Hintergrund rechnete ja; ohne Hintergrund weiter: true; 4978 → 5090 Punkte (im Fenster verdichtet 114 neu)
+gut  G Zug ohne Hintergrund: Punkt 214.0 → 264.0, 5428 Punkte, kein Nachlauf und kein Auftrag (wie mit ?hintergrund=0)
+gut  Spiegelgleichheit: 0
+gut  Konsole: keine Fehler
+
+=== form-nachlauf-probe.mjs, 11 000 Punkte (&dreiecke=14000, GPU=1), Stand nach G4.4
+gut  A sofort ⌘Z: Stand gegen vor dem Zug 0.0e+0 (beim Loslassen: Nachlauf true, Hintergrund false)
+gut  A bleibt: 3 s später 0.0e+0, 10537 Punkte (vorher 10537); Auftrag im Hintergrund: keiner
+gut  B Hintergrund: Auftrag angewendet, 10537 → 11327 Punkte, 2-mal verdichtet
+gut  B ⌘Z: Stand gegen vor dem Zug 0.0e+0, 10537 Punkte
+gut  C gleich wieder gegriffen: beim ersten Loslassen Nachlauf true, Hintergrund false; zerlegt beim zweiten Greifen 3 ms; Punkt jetzt bei y 258.8 (Start 154.0), 11604 Punkte, Auftrag angewendet
+gut  C zwei Schritte zurück: Stand gegen den Anfang 0.0e+0
+gut  D ⌘Z im Hintergrund: Hintergrund rechnete ja; Stand gegen vor dem Zug 0.0e+0
+gut  D bleibt: später 0.0e+0, 10537 Punkte (vorher 10537); Auftrag keiner
+gut  E Kante im Hintergrund: Hintergrund rechnete ja; die Kante: gesetzte Haut nach 545 ms (9 Runden), danach Auftrag angewendet; 10545 Punkte
+gut  E zwei Schritte zurück: Stand gegen den Anfang 0.0e+0
+gut  F Loop im Hintergrund: Hintergrund rechnete ja; Loops 3 → 4; die Haut setzt sich zum neuen Loop nach 533 ms, danach Auftrag angewendet; 10824 Punkte
+gut  F zwei Schritte zurück: Stand gegen den Anfang 0.0e+0, Loops 3
+gut  H Fehler im Auftrag: Hintergrund rechnete ja; im Fenster verdichtet: 10537 → 10845 Punkte; der gescheiterte Auftrag 27 kam nicht mehr an (letzter: 25, vorher 25)
+gut  H ein Schritt zurück: Stand gegen den Anfang 0.0e+0
+gut  G Ausfall: Hintergrund rechnete ja; ohne Hintergrund weiter: true; 10537 → 10845 Punkte (im Fenster verdichtet 324 neu)
+gut  G Zug ohne Hintergrund: Punkt 214.0 → 264.0, 11629 Punkte, kein Nachlauf und kein Auftrag (wie mit ?hintergrund=0)
+gut  Spiegelgleichheit: 0
+gut  Konsole: keine Fehler
+
+##### Kontrolle Loslassen (form-loslassen-probe.mjs, Ohr, schneller Zug, sofort loslassen, 5 200 Punkte), Stand nach G4.4
+ohr (kurven.html?gewichte=geometrie): 30 Mausschritte in 624 ms (Pause 0 ms), 37 Bilder bis zum Loslassen, gehalten 0 ms · Löser je Bewegung bzw. Bild 9.59 ms (max 12), 4988 Punkte vor dem Loslassen · 0.89 px je Einheit bei 100 %
+  vor dem Loslassen: Haut rechnet noch ja, 2 Runden seit der letzten Mausbewegung
+  Bilder im Zug: 37, Abstand im Mittel 16.9 ms (Mitte 16.4, 95 % 33.6, längster 38) · über 33 ms: 2, über 50 ms: 0, über 100 ms: 0
+    Arbeit im Hauptthread: je Bild 10.9 ms (längste 20), davon Löser 9.6; je Mausbewegung 1.1 ms (längste 3); Auslösen des Verfeinerns: 0 1 ms; Einwechseln: 26 ms (das letzte: Auspacken 1, dann [5/1/1/17/3]; im Hintergrund [33/5/21/93])
+  Stufen im Zug: 0 im Vordergrund (letzte 0 ms), 1 eingewechselt aus dem Hintergrund (Auslösen 1 ms [0/1], Einwechseln 23 ms, Auslösen bis Einwechseln 197 ms)
+  davon die Runden am Ende (Nachhinken): bis 0.00
+  Loslassen sofort (was die Behandlung des Loslassens selbst ändert) (nach 5 ms): 4988 Punkte · Haut bewegt bis 0.00 (99 % 0.00, Mittel 0.00, 0 Punkte über 1) (nichts bewegt)
+  nach dem Loslassen bis zur Ruhe (417 ms): längster Abstand zwischen zwei Bildern 21 ms, über 50 ms: 0, über 100 ms: 0, zusammen über 50 ms: 0 ms
+    die längsten: 21 ms (endet 417 ms nach dem Loslassen), 18 ms (endet 530 ms nach dem Loslassen), 18 ms (endet 197 ms nach dem Loslassen), 18 ms (endet 580 ms nach dem Loslassen); das Loslassen selbst hielt 3 ms an; Arbeit des Nachlaufs je Bild: 9 13 ms
+  Bewegung bei gleichem Netz: 2 Bilder, größte je Bild 0.54, über 0,18 je Bild: 2, von 10 bis 26 ms · Netzwechsel: 1 (nach 417 ms)
+  Netzwechsel 1: 4988 → 5286 Punkte, Haut davor gegen danach (nach 417 ms): 5286 Punkte · Haut bewegt bis 3.01 (99 % 1.86, Mittel 0.23, 376 Punkte über 1) bei (-24, 96, -193)
+  Auftrag im Hintergrund: angewendet, 2-mal verdichtet (366 neu, 34 gelegt), 13 Runden gesetzt; im Hintergrund [verdichten/Zeilen/zerlegen/setzen] 62/28/194/87 ms, vom Abschicken bis fertig 391 ms, Einwechseln 4 ms · Runden im Nachlauf 5
+  Endstand gegen vor dem Loslassen: 5286 Punkte · Haut bewegt bis 3.24 (99 % 2.14, Mittel 0.29, 494 Punkte über 1) bei (-24, 96, -193)
+  Zeiten: Verdichten 62 ms (366 neu, 34 gelegt) · Zerlegen in der Ruhe 0 ms · Setzen samt Nachverfeinern 0 ms
+
+##### Hörner mit Griffspiel (form-drei-faelle.mjs FALL=hoerner, GPU=1), Stand nach G4.4: letzte Zeilen
+  beim Loslassen: Haut bewegt bis 0.0 bei (0, 0, 0), Volumen +0.00 % · 6874 Punkte · Volumen 18.192 Mio · Knicke über 60° 126 · umgeklappt 58 · umgestülpt 56 Dreiecke (0.1 % der Fläche, bei 0,240,-200 | 0,240,200 | 0,240,240 | 0,240,-240)
+  Änderung 1 nach 448 ms: Haut bewegt bis 2.7 bei (-78, 199, 212), Volumen +0.55 % · 6874 Punkte · Volumen 18.291 Mio · Knicke über 60° 128 · umgeklappt 56 · umgestülpt 56 Dreiecke (0.1 % der Fläche, bei 0,240,200 | 0,240,-200 | 0,240,240 | 0,240,-240)
+  Änderung 2 nach 610 ms: Haut bewegt bis 1.6 bei (-92, 174, -200), Volumen +0.50 % · 6874 Punkte · Volumen 18.382 Mio · Knicke über 60° 128 · umgeklappt 56 · umgestülpt 56 Dreiecke (0.1 % der Fläche, bei 0,240,-200 | 0,240,200 | 0,240,240 | 0,240,-240)
+  Änderung 3 nach 1298 ms: Haut bewegt bis 5.5 bei (-58, 220, -232), Volumen +1.23 % · 7050 Punkte · Volumen 18.608 Mio · Knicke über 60° 22 · umgeklappt 6 · umgestülpt 4 Dreiecke (0.0 % der Fläche, bei 0,240,240 | 0,240,-240 | 0,240,-200 | 0,240,200)
+  Endstand gegen vor dem Loslassen: bewegt bis 9.2, Volumen 2.29 %
+  Griff (Welt) 71.8 → 107.7 lang · Linie: größte Drehung von Probe zu Probe 46.2°, Selbstkreuzungen in der Front 0
+  (Netz vor dem Loslassen: 7050 Punkte, 14096 Dreiecke, größte Koordinate 250.5, nicht endlich 0; Endstand: 7034 Punkte)
+
+Griff 11 (seite): gedreht −90°: je Mausbewegung 8.3 ms (max 13)
+  vor dem Loslassen: 7050 Punkte · Volumen 18.683 Mio · Knicke über 60° 22 · umgeklappt 6 · umgestülpt 4 Dreiecke (0.0 % der Fläche, bei 0,240,240 | 0,240,-240 | 0,240,200 | 0,240,-200) · im Zug bewegt bis 5.1
+  beim Halten (150 ms; Haut rechnet am Ende noch nein, 5 Runden): 3 Bilder mit Bewegung, größte je Bild 0.1, über 1 Einheit 0, Summe 0.3; Rauminhalt schwankt um 0.04 %; Netzwechsel 0
+    je Bild: 0.1 0.1 0.1
+  beim Loslassen: Haut bewegt bis 0.0 bei (0, 0, 0), Volumen +0.00 % · 7050 Punkte · Volumen 18.683 Mio · Knicke über 60° 22 · umgeklappt 6 · umgestülpt 4 Dreiecke (0.0 % der Fläche, bei 0,240,240 | 0,240,-240 | 0,240,200 | 0,240,-200)
+  Änderung 1 nach 781 ms: Haut bewegt bis 0.5 bei (-86, 210, -184), Volumen +0.03 % · 7034 Punkte · Volumen 18.687 Mio · Knicke über 60° 26 · umgeklappt 6 · umgestülpt 4 Dreiecke (0.0 % der Fläche, bei 0,240,240 | 0,240,-240 | 0,240,200 | 0,240,-200)
+  Endstand gegen vor dem Loslassen: bewegt bis 0.5, Volumen 0.03 %
+  Griff (Welt) 107.7 → 107.7 lang · Linie: größte Drehung von Probe zu Probe 48.5°, Selbstkreuzungen in der Front 0
+  (Netz vor dem Loslassen: 7034 Punkte, 14064 Dreiecke, größte Koordinate 285.9, nicht endlich 0; Endstand: 7384 Punkte)
+
+Griff 12 (front): gedreht +120°: je Mausbewegung 8.6 ms (max 12)
+  vor dem Loslassen: 7034 Punkte · Volumen 21.055 Mio · Knicke über 60° 110 · umgeklappt 30 · umgestülpt 76 Dreiecke (0.0 % der Fläche, bei 0,240,-240 | 0,240,240 | 0,200,240 | 0,200,-240) · im Zug bewegt bis 47.9
+  beim Halten (150 ms; Haut rechnet am Ende noch ja, 11 Runden): 10 Bilder mit Bewegung, größte je Bild 3.5, über 1 Einheit 6, Summe 14.2; Rauminhalt schwankt um 3.20 %; Netzwechsel 0
+    je Bild: 1.1 0.6 0.8 0.5 0.6 1.5 3.5 1.8 1.6 2.2
+  beim Loslassen: Haut bewegt bis 0.0 bei (0, 0, 0), Volumen +0.00 % · 7034 Punkte · Volumen 21.055 Mio · Knicke über 60° 110 · umgeklappt 30 · umgestülpt 76 Dreiecke (0.0 % der Fläche, bei 0,240,-240 | 0,240,240 | 0,200,240 | 0,200,-240)
+  Änderung 1 nach 457 ms: Haut bewegt bis 21.2 bei (-95, 225, -207), Volumen -7.26 % · 7034 Punkte · Volumen 19.526 Mio · Knicke über 60° 92 · umgeklappt 28 · umgestülpt 70 Dreiecke (0.0 % der Fläche, bei 0,240,240 | 0,240,-240 | 0,200,240 | 0,200,-240)
+  Änderung 2 nach 641 ms: Haut bewegt bis 26.8 bei (-110, 250, -218), Volumen +9.97 % · 7034 Punkte · Volumen 21.473 Mio · Knicke über 60° 108 · umgeklappt 32 · umgestülpt 42 Dreiecke (0.0 % der Fläche, bei 0,240,-240 | 0,240,240 | 0,200,-240 | 0,200,240)
+  Änderung 3 nach 806 ms: Haut bewegt bis 11.4 bei (-100, 233, -233), Volumen -4.39 % · 7034 Punkte · Volumen 20.531 Mio · Knicke über 60° 106 · umgeklappt 36 · umgestülpt 44 Dreiecke (0.0 % der Fläche, bei 0,240,-240 | 0,240,240 | 0,200,-240 | 0,200,240)
+  Änderung 4 nach 967 ms: Haut bewegt bis 6.9 bei (-95, 242, 208), Volumen -2.15 % · 7034 Punkte · Volumen 20.090 Mio · Knicke über 60° 114 · umgeklappt 38 · umgestülpt 50 Dreiecke (0.0 % der Fläche, bei 0,240,240 | 0,240,-240 | 0,200,240 | 0,200,-240)
+  Änderung 5 nach 2106 ms: Haut bewegt bis 5.2 bei (-90, 243, -238), Volumen +1.66 % · 7384 Punkte · Volumen 20.424 Mio · Knicke über 60° 48 · umgeklappt 16 · umgestülpt 16 Dreiecke (0.0 % der Fläche, bei 0,240,-240 | 0,240,240)
+  Endstand gegen vor dem Loslassen: bewegt bis 8.1, Volumen -2.99 %
+  Griff (Welt) 107.7 → 107.7 lang · Linie: größte Drehung von Probe zu Probe 45.8°, Selbstkreuzungen in der Front 0

@@ -13,6 +13,8 @@ await seite.goto(process.env.KURVEN_URL ?? 'http://localhost:5193/kurven.html');
 await seite.waitForFunction(() => window.__kurven !== undefined);
 await seite.waitForTimeout(400);
 const K = (f, ...a) => seite.evaluate(([f2, a2]) => window.__kurven[f2](...a2), [f, a]);
+// seit G4.4 (10.11.) rechnet der Hintergrund nach Kante und Löschen: warten, bis nichts mehr rechnet und nichts ansteht
+const ruhigK = () => seite.waitForFunction(() => !window.__kurven.zeiten().beschaeftigt, null, { timeout: 60000 });
 const bild = (a, p) => K('bild', a, p);
 const xy = (p) => [p.x, p.y];
 const ziehen = async ([x, y], [x2, y2], n = 14) => {
@@ -40,6 +42,7 @@ const unten = L.find((l) => l.art === 'ring' && Math.abs(l.punkte[0].ref.y - Y0)
   await seite.mouse.click(p.x, p.y);
   await seite.waitForTimeout(200);
   await seite.keyboard.press('k');
+  await ruhigK();
   await seite.waitForTimeout(200);
   await seite.keyboard.press('Escape');
   await seite.waitForTimeout(450);

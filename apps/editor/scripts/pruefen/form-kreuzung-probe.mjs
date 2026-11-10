@@ -14,6 +14,8 @@ const seite = await browser.newPage({ viewport: { width: 1600, height: 1000 }, d
 const fehler = [];
 seite.on('pageerror', (e) => fehler.push(String(e)));
 const K = (f, ...a) => seite.evaluate(([f2, a2]) => window.__kurven[f2](...a2), [f, a]);
+// seit G4.4 (10.11.) rechnet der Hintergrund nach Kante und Löschen: warten, bis nichts mehr rechnet und nichts ansteht
+const ruhigK = () => seite.waitForFunction(() => !window.__kurven.zeiten().beschaeftigt, null, { timeout: 60000 });
 const bild = (a, p) => K('bild', a, p);
 const xy = (p) => [p.x, p.y];
 const ziehen = async ([x, y], [x2, y2], n = 12) => {
@@ -57,6 +59,7 @@ for (const folge of ['waagerecht zuerst', 'senkrecht zuerst']) {
   await seite.mouse.click(q.x, q.y);
   await seite.waitForTimeout(450);
   await seite.keyboard.press('k');
+  await ruhigK();
   await seite.waitForTimeout(450);
   const nach3 = await K('lagen');
   console.log(`${folge}: nach 3 an der Kreuzung zu sehen als ${(await oben(q)) === 'polygon' ? 'Ecke ◆' : 'glatt ●'}`);

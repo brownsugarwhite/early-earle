@@ -1551,7 +1551,7 @@ function statusZeigen(): void {
   const kreuz = new Set(loops.flatMap((l) => l.punkte.filter((p) => p.kreuzung !== undefined).map((p) => p.kreuzung))).size;
   statusZeile.textContent =
     meldung ||
-    `${loops.length} Loops · ${punkte} Punkte (${kreuz} Kreuzungen) · Zug ${ms.toFixed(1)} ms${zug?.offen || nachlauf ? ' (rechnet)' : aufraeumen?.setzen ? ' (rechnet im Hintergrund)' : aufraeumen?.verdichten ? ' (verfeinert im Hintergrund)' : ''} · zerlegen ${letzteZerlegung} ms · ` +
+    `${loops.length} Loops · ${punkte} Punkte (${kreuz} Kreuzungen) · Zug ${ms.toFixed(1)} ms${zug?.offen || nachlauf ? ' (rechnet)' : gegriffen ? ' (der Griff wartet, bis die Haut steht)' : aufraeumen?.setzen ? ' (rechnet im Hintergrund)' : aufraeumen?.verdichten ? ' (verfeinert im Hintergrund)' : ''} · zerlegen ${letzteZerlegung} ms · ` +
       `Bereich ${letzterBereich} von ${haut.n}` +
       (letzteVerdichtung
         ? ` · verdichtet +${letzteVerdichtung.neu}${letzteVerdichtung.gelegt ? ` −${letzteVerdichtung.gelegt}` : ''} (${letzteVerdichtung.ms} ms)`
@@ -2778,9 +2778,7 @@ function zwischenAnwenden(): void {
   haut.pos.set(d.pos);
   festlegenAlle();
   // wie nach jedem Neurechnen: neue Kreuzungen suchen (nach dem Löschen eines Punkts kann eine Linie eine andere schneiden)
-  const loopsVorher = loopsZahl();
-  kreuzungenSuchen();
-  const kreuzungNeu = loopsZahl() !== loopsVorher;
+  const kreuzungNeu = kreuzungenSuchen() > 0;
   if (d.gewStart && d.gewWert && d.daten.length) {
     vorlageBereit = { gew: gewichteAusFlach(d.gewStart, d.gewWert), sys: systemAusDaten(d.daten[0]!), cVor: d.daten[1] ? systemAusDaten(d.daten[1]) : null, struktur: d.struktur };
     vorlageStand = kreuzungNeu ? '' : standZahl();
@@ -2797,6 +2795,40 @@ function zwischenAnwenden(): void {
   letzterZwischenstand = { nr: d.id, runden: d.runden, ms: d.ms.map(Math.round), gesamt: Math.round(performance.now() - f.t0), einwechseln: 0 };
   allesZeigen();
   letzterZwischenstand.einwechseln = Math.round(performance.now() - t0);
+}
+
+/**
+ * Ein Griff, der wartet (G4.4): Wer greift, während der Hintergrund für genau diesen Stand noch rechnet (gleich nach einem neuen Loop,
+ * einer Kante, einem gesetzten Punkt, Rückgängig), bekäme einen Löser ohne fertige Zerlegung und, nach Loop oder Kante, auf einer
+ * Haut, die nicht steht: Das Fenster zerlegte selbst (gemessen 0,15 / 0,3–0,5 / 0,9–2,5 s Stillstand beim Drücken bei 5 200 /
+ * 11 000 / 23 400 Punkten), und die ersten Runden schlügen über die ganze Haut aus (5 / 8 / 25 Einheiten je Bild). Der Griff
+ * wartet deshalb, bis der Hintergrund die gesetzte Haut bzw. die Zerlegung gebracht hat (gemessen 0,3 / 0,8 / 1,3 s nach einem
+ * neuen Loop), und beginnt dann dort, wo die Maus inzwischen ist. Nach einem Zug wartet er nicht (dort gilt die Zerlegung des
+ * letzten Zugs, G4.3). Dauert es länger als `GRIFF_WARTEN_MS`, beginnt er wie früher.
+ */
+let gegriffen: { a: Ansicht; X: number; Y: number; m: boolean; griff: { id: number; i: number; seite: 'ein' | 'aus' } | null; seit: number } | null = null;
+const GRIFF_WARTEN_MS = 4000;
+/** der Hintergrund bringt für genau diesen Stand noch, was der Griff braucht (die gesetzte Haut, die Zerlegung), oder beginnt gleich damit */
+const griffWartet = (): boolean => {
+  if (grund || !mitNachlauf() || hintergrundAus) return false;
+  const stand = standZahl();
+  if (hintergrundGescheitert === stand) return false;
+  const f = aufraeumen && aufraeumen.netz === haut && aufraeumen.stand === stand ? aufraeumen : null;
+  // die Haut wird gerade gesetzt, oder das steht an (30 ms nach der Änderung)
+  if (f ? f.setzen : ruheOffen !== null && ruheOffen.setzen) return true;
+  // offen ist nur das Aufräumen (nach einem Zug, nach dem Zwischenstand): Die Zerlegung dazu ist da
+  if (ruheOffen) return false;
+  // sonst fehlt höchstens die Zerlegung für diesen Stand; der Hintergrund rechnet sie (oder beginnt gleich)
+  return !(vorlageBereit && vorlageStand === stand) && standFertig !== stand;
+};
+/** den wartenden Griff beginnen (die gesetzte Haut ist da, oder der Auftrag ist verfallen): von der Stelle des Drückens zur Maus von jetzt */
+function griffNachholen(): void {
+  const g = gegriffen;
+  gegriffen = null;
+  if (!g || zug) return;
+  const ok = g.griff ? griffZugStarten(g.a, g.X, g.Y, g.m, loopNr(g.griff.id), g.griff.i, g.griff.seite) : auswahl.length > 0 && zugStarten(null, g.a, g.X, g.Y, g.m);
+  if (ok && maus && maus.a === g.a && (maus.X !== g.X || maus.Y !== g.Y)) zugBewegen(maus.X, maus.Y);
+  statusZeigen();
 }
 
 /** Das Ergebnis des Aufräumens anwenden: einmal einwechseln, die Zerlegung für das nächste Greifen merken */
@@ -3563,7 +3595,12 @@ function druecken(a: Ansicht, e: PointerEvent): void {
       eckeUmschalten(Number(l), i);
       return;
     }
-    if (griffZugStarten(a, X, Y, m, loopNr(Number(l)), i, g)) blaetter[a].setPointerCapture(e.pointerId);
+    if (griffWartet()) {
+      gegriffen = { a, X, Y, m, griff: { id: Number(l), i, seite: g }, seit: performance.now() };
+      maus = { a, X, Y };
+      blaetter[a].setPointerCapture(e.pointerId);
+      statusZeigen();
+    } else if (griffZugStarten(a, X, Y, m, loopNr(Number(l)), i, g)) blaetter[a].setPointerCapture(e.pointerId);
     return;
   }
   if (i < 0 && doppelklick(a, `${l}:${m}`, X, Y, e.timeStamp)) {
@@ -3580,7 +3617,12 @@ function druecken(a: Ansicht, e: PointerEvent): void {
   if (e.shiftKey) auswahl = drin ? auswahl.filter((x) => x.l !== w.l || x.i !== w.i) : [...auswahl, w];
   else if (!drin) auswahl = [w];
   allesZeigen();
-  if (auswahl.length && zugStarten(null, a, X, Y, m)) blaetter[a].setPointerCapture(e.pointerId);
+  if (auswahl.length && griffWartet()) {
+    gegriffen = { a, X, Y, m, griff: null, seit: performance.now() };
+    maus = { a, X, Y };
+    blaetter[a].setPointerCapture(e.pointerId);
+    statusZeigen();
+  } else if (auswahl.length && zugStarten(null, a, X, Y, m)) blaetter[a].setPointerCapture(e.pointerId);
 }
 
 function bewegen(a: Ansicht, e: PointerEvent): void {
@@ -3634,6 +3676,12 @@ function loslassen(a: Ansicht): void {
   if (stift && stift.a === a && stift.zieht) {
     stift.zieht = false;
     blattZeichnen(a);
+    return;
+  }
+  // losgelassen, bevor der Griff beginnen konnte: ein Klick (die Auswahl steht schon)
+  if (gegriffen && gegriffen.a === a) {
+    gegriffen = null;
+    statusZeigen();
     return;
   }
   if (zug && !zug.modal) zugEnde(true);
@@ -3819,6 +3867,11 @@ function schleife(): void {
   nachlaufRechnen();
   if (zwischenstand && !zug && !nachlauf) zwischenAnwenden();
   if (aufgeraeumt && !zug && !nachlauf) aufgeraeumtAnwenden();
+  // ein wartender Griff beginnt, sobald die gesetzte Haut da ist (oder nichts mehr für diesen Stand gesetzt wird)
+  if (gegriffen && !zug) {
+    if (!griffWartet() || performance.now() - gegriffen.seit > GRIFF_WARTEN_MS) griffNachholen();
+    else if (!aufraeumen && vorrechnenUhr === null) vorrechnenPlanen();
+  }
   if (neuZeichnen) {
     neuZeichnen = false;
     rendern();
@@ -4043,7 +4096,8 @@ schleife();
     ruheOffen: ruheOffen ? (ruheOffen.setzen ? 'setzen' : 'aufraeumen') : null,
     auftragNr: aufraeumen ? aufraeumen.id : null,
     zwischen: letzterZwischenstand,
-    beschaeftigt: zug !== null || nachlauf !== null || aufraeumen !== null || vorrechnenUhr !== null,
+    beschaeftigt: zug !== null || nachlauf !== null || aufraeumen !== null || vorrechnenUhr !== null || gegriffen !== null,
+    griffWartet: gegriffen !== null,
     ausloesung: letzteAusloesungMs,
     ausloesungTeile,
     /** der letzte Auftrag im Hintergrund (ms): verdichten, einbetten, Zeilen, zerlegen */

@@ -23,6 +23,8 @@ const laden = async () => {
 await laden();
 
 const K = (f, ...a) => seite.evaluate(([f2, a2]) => window.__kurven[f2](...a2), [f, a]);
+// seit G4.4 (10.11.) rechnet der Hintergrund nach Kante und Löschen: warten, bis nichts mehr rechnet und nichts ansteht
+const ruhigK = () => seite.waitForFunction(() => !window.__kurven.zeiten().beschaeftigt, null, { timeout: 60000 });
 const loops = () => K('loops');
 const bild = (a, p) => K('bild', a, p);
 const xy = (p) => [p.x, p.y];
@@ -221,6 +223,7 @@ const aufA = await bild('front', { x: 0, y: 0, z: 70 });
 await seite.mouse.click(aufA.x, aufA.y);
 await seite.waitForTimeout(150);
 await seite.keyboard.press('k');
+await ruhigK();
 await seite.waitForTimeout(200);
 L = await loops();
 console.log(`  waagerecht Kante (${L[0].kante}): Punkt des senkrechten an der Kreuzung Ecke ${L[1].punkte[kB].ecke} (von selbst ${L[1].punkte[kB].autoEcke})`);

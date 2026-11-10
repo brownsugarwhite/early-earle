@@ -1,4 +1,4 @@
-G4.2/G4.3 im Fenster (10.11.2026): form-loslassen-probe.mjs mit GPU=1, Ohr (obere Kreuzung 90 Einheiten hinauf).
+G4.2/G4.3 im Fenster (10.11.2026): form-loslassen-probe.mjs mit GPU=1, FALL=ohr (vier Punkte auf dem senkrechten Ring gesetzt, zwei davon 70 Einheiten schräg hinaus, Front).
 Je Fall erst der Ablauf von vorher (&nachlauf=0), dann der neue. Einheiten: 1 = 0,89 px bei 100 %, 2,7 px bei 300 %.
 &dreiecke=6000 / 14000 / 30000 sind 5 200 / 11 000 / 23 400 Punkte.
 

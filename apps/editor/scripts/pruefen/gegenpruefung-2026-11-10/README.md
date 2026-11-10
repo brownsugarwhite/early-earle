@@ -27,6 +27,7 @@ python3 apps/editor/scripts/pruefen/gegenpruefung-2026-11-10/loeser/gen.py
 | `loeser/mess7.ts` | (G3) Kommt der Löser zur Ruhe? Bewegung je Abschnitt nach dem Zug, getrennt nach Form (längs der Normalen) und Gleiten längs der Fläche; die ersten Runden eines neuen Lösers einzeln (Anlauf) | `FALL=ruhe\|ohr\|hals\|ruessel`, `DREIECKE`, `JE`, `NACH` |
 | `loeser/mess8.ts` | (G3) Steht die Haut wirklich? Nach der Ruhe ein neuer Löser auf demselben Stand (dreimal), dazu der Stand der Bremse je Punkt | `FALL`, `DREIECKE`, `RUHE`, `NEU` |
 | `loeser/mess9.ts` | (G4) Was kostet ein neuer Löser mitten im Zug: Anlegen mit fertiger Zerlegung, erste Runden gegen die des alten | `DREIECKE`, `HALB` |
+| `loeser/mess10.ts` | (G4.4) Hält die Haut, wenn man sie nach einem neuen Loop über die ganze Haut setzt? Je Runde Bewegung der Form und Gleiten, am Ende der Halbmesser der Kugel | `DREIECKE`, `LOOPS=ring,mitte,ring2`, `SETZEN=jeder\|ende`, `RUNDEN` |
 | `algebra/a1-fuellung.ts` | Füllung der Zerlegung gegen andere Reihenfolgen | `DREIECKE` |
 | `algebra/a2-spiegel.ts` | halbe Haut: Rechenarbeit und Gleichheit der Lösung | `DREIECKE` |
 | `algebra/a3-genau.ts` | Kondition, weiche Bindung, `HALT` im quadrierten System | `DREIECKE`, `LOOPS` |
@@ -54,6 +55,12 @@ Bildtakt, dann Verdichten und Setzen im Hintergrund, einmal einwechseln). Die er
 Loslassen, Bewegung bei gleichem Netz, jeder Netzwechsel mit dem Stand davor und danach, Zeiten des Auftrags. Die zweite von
 `form-nachlauf-probe.mjs`: Rückgängig, wieder Greifen, Kante, neuer Loop und ein Ausfall des Workers, während Nachlauf oder
 Hintergrund rechnen (der Stand darf nicht angefasst werden, wenn ihn inzwischen jemand geändert hat).
+
+`ausgaben/g44-*.txt` und `loeser-mess10.out` gehören zu G4.4 (nach Loop, Punkt, Kante, Löschen, Rückgängig rechnet der
+Hintergrund): `g44-fenster-aendern.txt` (`form-aendern-probe.mjs`, je Schritt der Stillstand des Fensters und der erste Griff
+danach, vor und nach G4.4 bei drei Netzdichten), `g44-fenster-sofort.txt` (ein neuer Loop und sofort greifen: neu, ohne Setzen,
+alter Ablauf), `g44-nachlauf-probe.txt` (die 18 Prüfungen mit dem Stand nach G4.4, dazu Kontrollen), `g44-vergleich-alte-proben.txt`
+(elf ältere Proben im neuen und im alten Ablauf), `loeser-mess10.out` (im Kern: ein Ring allein hält die Haut nicht).
 
 `ausgaben/` enthält sonst die Ausgaben vom 10.11. (je ein Lauf, die Maschine war belegt). `a5-ausgabe.txt` stammt von einem Skript, das
 eine von Hand angelegte Kopie des Lösers brauchte; gleichwertig ist `mess3.ts` mit `DREIECKE=30000`.
