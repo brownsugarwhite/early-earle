@@ -1549,9 +1549,12 @@ function statusZeigen(): void {
   const ms = z.length ? z.reduce((s, v) => s + v, 0) / z.length : 0;
   const punkte = loops.reduce((s, l) => s + l.punkte.length, 0);
   const kreuz = new Set(loops.flatMap((l) => l.punkte.filter((p) => p.kreuzung !== undefined).map((p) => p.kreuzung))).size;
+  // was gerade noch rechnet: auch hinter einer Meldung (nach K steht dort „Kante“, die Haut folgt aus dem Hintergrund erst danach)
+  const rechnet =
+    zug?.offen || nachlauf ? ' (rechnet)' : gegriffen ? ' (der Griff wartet, bis die Haut steht)' : aufraeumen?.setzen ? ' (rechnet im Hintergrund)' : aufraeumen?.verdichten ? ' (verfeinert im Hintergrund)' : '';
   statusZeile.textContent =
-    meldung ||
-    `${loops.length} Loops · ${punkte} Punkte (${kreuz} Kreuzungen) · Zug ${ms.toFixed(1)} ms${zug?.offen || nachlauf ? ' (rechnet)' : gegriffen ? ' (der Griff wartet, bis die Haut steht)' : aufraeumen?.setzen ? ' (rechnet im Hintergrund)' : aufraeumen?.verdichten ? ' (verfeinert im Hintergrund)' : ''} · zerlegen ${letzteZerlegung} ms · ` +
+    (meldung ? meldung + rechnet : '') ||
+    `${loops.length} Loops · ${punkte} Punkte (${kreuz} Kreuzungen) · Zug ${ms.toFixed(1)} ms${rechnet} · zerlegen ${letzteZerlegung} ms · ` +
       `Bereich ${letzterBereich} von ${haut.n}` +
       (letzteVerdichtung
         ? ` · verdichtet +${letzteVerdichtung.neu}${letzteVerdichtung.gelegt ? ` −${letzteVerdichtung.gelegt}` : ''} (${letzteVerdichtung.ms} ms)`
@@ -2761,6 +2764,7 @@ function aufraeumenStarten(opt: RuheOffen): void {
   zwischenstand = null;
   auftraegeOffen++;
   w.postMessage(auftrag, [auftrag.haut.pos.buffer]);
+  statusZeigen();
 }
 
 /**
