@@ -73,7 +73,7 @@ Kriterien stehen in der Tabelle des Nachtrags; Messwerte und Befunde je Schritt 
     einmal sichtbar (dieselbe Änderung wie vorher in Stufen; Ursache ist die Form des feineren Netzes, G5). Weich überblenden
     beim Einwechseln wäre möglich, ist nicht gebaut (Florians Entscheidung 8).
 - **Florian (10.11. spätabends):** „dann mach wie du empfiehlst“ (G4.4).
-- **G4.4 gebaut** (`9e755156`, `124e32a3`; Bericht „Stand (10.11. spätabends)“): nach Loop, Punkt, Kante, Löschen und
+- **G4.4 gebaut** (`9e755156`, `124e32a3`, `9c5aa3f5`; Bericht „Stand (10.11. spätabends)“): nach Loop, Punkt, Kante, Löschen und
   Rückgängig rechnet der Hintergrund.
   - **Offene Arbeit je Stand:** `ruheOffen` (`setzen`: die Haut steht nicht zum Stand; `nurInRuhe`: das Setzen gilt nur, wenn
     sie dabei zur Ruhe kommt; `verdichten`: danach aufräumen; `ziele`). Es gehört zum Stand und steht im Schnappschuss
@@ -103,7 +103,7 @@ Kriterien stehen in der Tabelle des Nachtrags; Messwerte und Befunde je Schritt 
 
 ## 1. Stand
 
-- **Letzter Code-Commit:** `124e32a3` (G4.4). Alles ist committet und gepusht (lokal = `origin/claude/form-zuerst`).
+- **Letzter Code-Commit:** `9c5aa3f5` (G4.4, Statuszeile). Alles ist committet und gepusht (lokal = `origin/claude/form-zuerst`).
 - **Halbfertiges:** keins. Am 09.11. sind zwei Löser-Versuche wieder entfernt worden („gleiches Maß“, „Krümmung an den Linien
   mitgelöst“; Stand des zweiten in `476a874f`). Der Code des Lösers (`dicht/ausKurven.ts`) ist seit `1f1f5079` (Schalter
   `maxNormalen`) im Rechnen unverändert; G1 hat nur das Einsetzen in `loeser/zerlegung.ts` ausgeschrieben, G2 und G3 nur das
