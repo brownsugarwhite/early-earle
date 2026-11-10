@@ -345,8 +345,9 @@ const rest = process.env.REST ? (restFolge.some((v) => v === null) ? null : rest
 const nachDemRest = process.env.REST ? await schnapp() : null;
 const t0 = Date.now();
 await seite.mouse.up();
-const { A0, A, B } = await seite.evaluate(() => ({ A0: window.__probe.nachZug, A: window.__probe.vorLos, B: window.__probe.nachLos }));
 const tB = Date.now() - t0;
+// (die Stände vor und nach dem Loslassen holt die Probe erst am Ende ab: Sie zu übertragen hält das Fenster einige 10 ms an, bei
+// 23 400 Punkten rund 60 ms, und das läge mitten im Nachlauf)
 // WIEDER=<ms>: nach so vielen ms denselben Punkt noch einmal greifen, 12 px ziehen, loslassen (hält das Greifen an?)
 let wieder = null;
 if (process.env.WIEDER) {
@@ -379,6 +380,7 @@ const nach = await seite.evaluate(() => {
   n.aus = true;
   return { bild: n.bild, bewegt: n.bewegt, wechsel: n.wechsel, letzte: n.letzte };
 });
+const { A0, A, B } = await seite.evaluate(() => ({ A0: window.__probe.nachZug, A: window.__probe.vorLos, B: window.__probe.nachLos }));
 const C = await schnapp();
 void gleich;
 
@@ -452,6 +454,15 @@ zeile('Loslassen sofort (was die Behandlung des Loslassens selbst ändert)', A, 
   console.log(
     `  nach dem Loslassen bis zur Ruhe (${Math.round(bis)} ms): längster Abstand zwischen zwei Bildern ${Math.max(0, ...gaps).toFixed(0)} ms, über 50 ms: ${gaps.filter((g) => g > 50).length}, ` +
       `über 100 ms: ${gaps.filter((g) => g > 100).length}, zusammen über 50 ms: ${gaps.filter((g) => g > 50).reduce((a, g) => a + g, 0).toFixed(0)} ms`,
+  );
+  // wo die längsten liegen (das Bild des Netzwechsels zählt mit, obwohl die Probe dort selbst Stände kopiert: einige ms bis zu einigen 10 ms)
+  const lang = gaps
+    .map((g, i) => ({ g, t: nach.bild[i + 1] }))
+    .sort((a, b) => b.g - a.g)
+    .slice(0, 4);
+  console.log(
+    `    die längsten: ${lang.map((x) => `${x.g.toFixed(0)} ms (endet ${Math.round(x.t)} ms nach dem Loslassen)`).join(', ')}; ` +
+      `das Loslassen selbst hielt ${B.z.loslassen ?? '?'} ms an; Arbeit des Nachlaufs je Bild: ${(C.z.messung?.nachlauf ?? []).map((v) => v.toFixed(0)).join(' ') || '–'} ms`,
   );
   console.log(
     `  Bewegung bei gleichem Netz: ${w.length} Bilder, größte je Bild ${f2(Math.max(0, ...w))}, über 0,18 je Bild: ${w.filter((x) => x > 0.18).length}` +

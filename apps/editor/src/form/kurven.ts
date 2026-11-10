@@ -2709,6 +2709,7 @@ function zugGriffeAblesen(z: Zug): void {
 function zugEnde(ok: boolean): void {
   const z = zug;
   if (!z) return;
+  const tLos = performance.now();
   zug = null;
   // eine Verfeinerung, die noch im Hintergrund rechnet oder noch nicht eingewechselt ist, verfällt (nach dem Zug wird wie bisher
   // verdichtet)
@@ -2777,7 +2778,10 @@ function zugEnde(ok: boolean): void {
     for (const l of loops) for (const p of l.punkte) p.cur = { ...p.ref };
   }
   allesZeigen();
+  letztesLoslassen = Math.round(performance.now() - tLos);
 }
+/** so lange hielt das letzte Loslassen den Hauptthread an (ms, zum Messen) */
+let letztesLoslassen = 0;
 
 /**
  * Nach einem Zug: Wo Kanten länger als 1,75 Kanten des Startnetzes geworden sind (dort ist die Haut gedehnt), wird das Netz feiner,
@@ -3831,6 +3835,7 @@ schleife();
     aufraeumen: aufraeumen !== null,
     auftrag: letzterAuftrag,
     hintergrundAus,
+    loslassen: letztesLoslassen,
     ausloesung: letzteAusloesungMs,
     ausloesungTeile,
     /** der letzte Auftrag im Hintergrund (ms): verdichten, einbetten, Zeilen, zerlegen */
