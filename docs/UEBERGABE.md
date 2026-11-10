@@ -1,4 +1,4 @@
-# Übergabe (Stand 10.11.2026: Gegenprüfung fertig; eine andere Sitzung baut G1–G4 aus dem Nachtrag der Gegenprüfung)
+# Übergabe (Stand 10.11.2026 mittags: G1 und G2 gebaut, Florians Blick offen; als Nächstes G3)
 
 **Branch `claude/form-zuerst`, Arbeitsbaum `.claude/worktrees/form-zuerst`.** Diese Datei ist der Einstieg. Die alte Übergabe aus der
 Käfig-Zeit (Stand 04.11.) steht in der Git-Geschichte: `git show 82aed6dc:docs/UEBERGABE.md`.
@@ -8,14 +8,28 @@ Käfig-Zeit (Stand 04.11.) steht in der Git-Geschichte: `git show 82aed6dc:docs/
 („`?gewichte=geometrie` als Zielmodell“): G1 Einsetzen ausschreiben, G2 Anzeige, G3 durchgehend rechnen, G4 Schweres in den Worker.
 Kriterien stehen in der Tabelle des Nachtrags.
 
+**Stand der Schritte (10.11. mittags; es baut die Sitzung der Gegenprüfung, die frühere bauende Sitzung ändert nichts mehr):**
+- **G1 gebaut** (`6eae3883`): Einsetzen für eine und drei Spalten ausgeschrieben (`loeser/zerlegung.ts`, Test `zerlegung.test.ts`),
+  bitgleich mit vorher. Runde „geometrie“ 12,8 → 7,7 ms / 32 → 15,5 ms / 73 → 32 ms bei 5 200 / 11 000 / 23 400 Punkten (Kern,
+  Ohr-Zug); Lösen mit drei Spalten 6,0 → 1,7 ms. Kriterium bei 11 000 erfüllt (≤ 16 ms), bei 5 200 knapp nicht (7,7 statt ≤ 7 ms,
+  bei belegter Maschine gemessen).
+- **G2 gebaut** (`0f80f0e2`): Griffe in wahrer Länge (`GRIFFE_WAHR`; `?griffe=mindest` zeigt die Mindestlänge von vorher zum
+  Vergleich), Bézier-Pfad auch im Zug (`pfadKurven(a, l, sp, li)`). Probe `form-griff-loslassen.mjs`: Sprung der Griffspitze beim
+  Loslassen 0,00 px (vorher 42,5 px), Linie im Zug gegen danach 0,00 px. **Florians Entscheidung zu den Griffen steht aus**
+  (wahre Länge oder Mindestlänge ohne Sprung). Nicht gebaut aus G2: die Kurve vor dem Löser zeichnen; das bringt erst mit G3 etwas
+  (im selben Mausereignis malt der Browser ohnehin erst nach dem Löser).
+- **G3–G6 offen.** Nächster Schritt G3 (durchgehend rechnen im Bildtakt, auch beim Halten; Maß für „steht“; Kurven zuerst).
+
 ## 1. Stand
 
 - **Letzter Commit vor dieser Übergabe:** `50880ce7` (Nachtrag zur Gegenprüfung). Alles ist committet und gepusht (lokal =
   `origin/claude/form-zuerst`).
 - **Halbfertiges:** keins. Am 09.11. sind zwei Löser-Versuche wieder entfernt worden („gleiches Maß“, „Krümmung an den Linien
   mitgelöst“; Stand des zweiten in `476a874f`). Der Code des Lösers ist seit `1f1f5079` (Schalter `maxNormalen`) unverändert.
-- **Läuft:** ein Vite-Server auf Port 5193 aus diesem Arbeitsbaum, gestartet als Hintergrundaufgabe der bauenden Sitzung. Florian
-  testet damit. Vor einem eigenen Start `lsof -i :5193` prüfen. Port 5180 gehört dem alten Editor, nicht benutzen.
+- **Läuft:** ein Vite-Server auf Port 5193 aus diesem Arbeitsbaum. Seit dem 10.11. mittags gehört er der Sitzung der
+  Gegenprüfung (Konfiguration `kurven` in `.claude/launch.json` des Hauptordners, mit `pnpm -C <Arbeitsbaum>`); der alte Prozess
+  der früheren Sitzung ist beendet. Florian testet damit. Vor einem eigenen Start `lsof -i :5193` prüfen. Port 5180 gehört dem
+  alten Editor, nicht benutzen.
 - **Dokumente:**
   - Gegenprüfung mit Nachtrag (Maßstab für G1–G4): `docs/research/2026-11-10-gegenpruefung-kurven-loeser.md`; Einzelberichte in
     `docs/research/2026-11-10-gegenpruefung-berichte/`; Skripte und Ausgaben in
@@ -80,6 +94,8 @@ vitest; während sie laufen, keine Dateien unter `packages/shape/src` oder `apps
 - Zeiten nur als Verhältnisse lesen; bei belegter Maschine gibt es Ausreißer.
 
 ## 3. Karte von `apps/editor/src/form/kurven.ts` (3 410 Zeilen, Stand `50880ce7`)
+
+Seit G2 (`0f80f0e2`) liegen die Zeilen ab `GRIFF_PX` um 8 bis 16 höher.
 
 | Zeilen | Abschnitt |
 | --- | --- |

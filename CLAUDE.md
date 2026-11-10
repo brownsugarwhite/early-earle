@@ -1648,6 +1648,10 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     23 400 Punkten, 80–87 % in den zwei Einsetz-Schritten), viel mehr Runden auf dichten Netzen (Rückstand nach einem Zug
     1,4 / 3,5 / 19 Einheiten, 5 / 10 / 30 Runden bis zur Ruhe) und Neuzerlegen im Hauptthread nach jedem Zug (0,2–1,2 s).
     Reihenfolge G1–G6 im Nachtrag des Berichts; das Rechennetz sollte nicht auf 20 000 Punkte wachsen.
+  - **Stand 10.11. mittags:** Florian übergibt den Bau an die Sitzung der Gegenprüfung (Übergabe `docs/UEBERGABE.md`). G1
+    gebaut (`6eae3883`: Einsetzen ausgeschrieben, bitgleich; Runde „geometrie“ 12,8 → 7,7 / 32 → 15,5 / 73 → 32 ms). G2 gebaut
+    (`0f80f0e2`: Griffe in wahrer Länge, `?griffe=mindest` zum Vergleich; Bézier-Pfad auch im Zug; Sprung der Griffspitze beim
+    Loslassen 42,5 → 0 px). Florians Blick und seine Entscheidung zur Grifflänge stehen aus; als Nächstes G3.
   - Fallen: Eine Messkopie des Lösers erst mit `MODE=gleichheit` gegen das Original prüfen. Varianten immer auch auf einem
     dichten Netz messen (`DREIECKE=30000`); Pendeln und Kriechen zeigen sich dort zuerst. Neun Prüfer parallel haben Florians
     Wochenlimit aufgebraucht: große Fächer nur nach Rückfrage.

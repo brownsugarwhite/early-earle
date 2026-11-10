@@ -523,6 +523,18 @@ Drei Ursachen:
 - Nicht gemessen: das Fenster (dort wird im Zug verfeinert, und jeder neue Löser beginnt ohne den Stand der Bremse), Rüssel und
   Hörner bei „geometrie“ auf dichten Netzen, die Runde nach G1.
 
+**Stand (10.11. mittags): G1 und G2 gebaut** (Florian: „dann kannst du es machen“; die Übergabe der bauenden Sitzung steht in
+`docs/UEBERGABE.md`).
+
+| Schritt | Gemessen | Kriterium |
+| --- | --- | --- |
+| G1 (`6eae3883`) | Lösen mit drei Spalten 6,0 → 1,7 ms (5 200 Punkte), 15,2 → 4,0 ms (11 000). Runde „geometrie“ 12,8 → 7,7 / 32 → 15,5 / 73 → 32 ms bei 5 200 / 11 000 / 23 400 Punkten. Ergebnis bitgleich (Test; die Bewegungen je Runde nach dem Zug sind Ziffer für Ziffer dieselben). | bei 11 000 Punkten erfüllt (≤ 16 ms); bei 5 200 knapp nicht (7,7 statt ≤ 7 ms, Maschine belegt) |
+| G2 (`0f80f0e2`) | Im Fenster mit der Maus (`form-griff-loslassen.mjs`): Griffspitze unter der Maus 0,00 px; Sprung der Spitze beim Loslassen 0,00 px (mit der Mindestlänge von vorher 42,5 px); Linie im Zug gegen die Linie danach 0,00 px, am Griff und am Punkt. | erfüllt; Florians Entscheidung zur Grifflänge steht aus |
+
+- Der Rückstand auf dichten Netzen (Ursache 2 oben) ist durch G1 nicht kleiner geworden, nur jede Runde billiger. Er ist Sache von
+  G3 und G5.
+- Der Server auf 5193 gehört jetzt dieser Sitzung (gleiche Adresse).
+
 ## Anhang A: Messwerte
 
 **Pendeln und Bremse** (Bewegung je Runde nach einem Zug in 30 Mausschritten; `loeser/mess1.ts`, `mess3.ts`):
