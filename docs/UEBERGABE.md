@@ -1,7 +1,22 @@
-# Übergabe (Stand 11.11.2026 vormittags: Stabilität an der Spiegelachse gebaut — die Kette der Mittelebene bleibt geschlossen, Loops werden nachträglich eingesetzt, Linien bleiben auf ihrer Seite; der Löser rechnet mit eingesetzten Linien wie am 10.11., Normalfluss nur für einen lose aufliegenden Loop; davor G1 bis G4, Sichern und Laden, G5 erster Teil, Schutz und Vorsicht; Florians drei gesicherte Formen; Grundform immer spiegelgleich entschieden)
+# Übergabe (Stand 11.11.2026 mittags: Untersuchung „Ein Schritt zurück“ beendet; Florian: „lieber den Fehler an sich beseitigen“ — es wird das gespiegelte Grundmesh gebaut, wie Blenders Mirror-Modifier. Davor am 11.11. morgens: Stabilität an der Spiegelachse gebaut; davor G1 bis G4, Sichern und Laden, G5 erster Teil, Schutz und Vorsicht; Florians drei gesicherte Formen; Grundform immer spiegelgleich entschieden)
 
 **Branch `claude/form-zuerst`, Arbeitsbaum `.claude/worktrees/form-zuerst`.** Diese Datei ist der Einstieg. Die alte Übergabe aus der
 Käfig-Zeit (Stand 04.11.) steht in der Git-Geschichte: `git show 82aed6dc:docs/UEBERGABE.md`.
+
+**Stand 11.11. mittags (Florians Antwort auf die Untersuchung):**
+- Florian: Die vielen Testreihen im Hintergrund haben sehr viel seines Wochenlimits gekostet; „Sollten wir nicht lieber den Fehler an
+  sich beseitigen. Wenn das Mesh wirklich einfach gespiegelt würde, sollten doch alle Probleme mit der Spiegelkante verschwinden.
+  Momentan ist es ja genau das Problem, dass, wenn ein Teil einer Kurve über die Spiegelkante kommt, das Mesh rissig wird.
+  Hinziehen und Zurückziehen geht dann gar nicht mehr. Können wir dann nicht einfach wie bei Blenders Mirror Modifier das Mesh
+  spiegeln und ich kann ganz normal über die Spiegelkante ziehen und das Mesh verschmilzt dann.“ Später will er die Spiegelung
+  „applien“ können. Verdrehte Griffe abseits der Spiegelkante gehen bei einfachen Formen schon besser; das sieht er sich selbst
+  an. „Mach weiter, wie du es für richtig hältst.“ Bei Zufallstests ist er skeptisch.
+- Die Untersuchung ist beendet (Bericht, Abschnitte 9 und 10:
+  [`docs/research/2026-11-11-grundproblem-spiegelkante-rechnung.md`](research/2026-11-11-grundproblem-spiegelkante-rechnung.md)).
+- **Jetzt wird gebaut: das gespiegelte Grundmesh.** Eine Hälfte ist die Wahrheit, die andere ihr Spiegelbild; was über die
+  Spiegelkante gezogen wird, verschmilzt dort; hinüber und zurück muss gehen.
+- **Arbeitsregeln daraus:** keine Messreihen im Hintergrund, die die Sitzung immer wieder wecken (das kostet sein Wochenlimit);
+  gezielt an seinem Fall prüfen (Kurve über die Spiegelkante und zurück), nicht mit Zufallsfolgen; nicht unter seinem Fenster bauen.
 
 **Nebenbei (11.11., andere Sitzung, nur Messung):** Florians Frage nach Lofts wie in Plasticity ist an seinen zwei Formen gemessen,
 [`docs/research/2026-11-11-loft-messung.md`](research/2026-11-11-loft-messung.md). Am Fenster und am Löser ist dafür nichts geändert;
@@ -299,9 +314,39 @@ Kriterien stehen in der Tabelle des Nachtrags; Messwerte und Befunde je Schritt 
     kein Zug zurückgenommen; vorher 36-mal und sieben). (d) Linien näher beieinander als eine Kante kann das Netz nicht
     darstellen; ein Ring lässt sich weiter auf die Mittelebene drücken (nicht geprüft). (e) Wann `loopEinsetzen` außer an der
     offenen Kette noch scheitert, ist nicht untersucht.
-- **Als Nächstes (Vorschlag, sein Wort steht aus): G6, die halbe Haut**, jetzt mit Grundlage (Formen mit 16 000 bis 28 000
-  Punkten) und mit seiner Entscheidung. Danach der zweite Teil von G5 (Netz nur so dicht wie nötig) oder das Zerlegen selbst.
-  Offen bleibt sein Blick auf G4, Sichern/Laden und G5 Teil 1; dann nach seiner Reihenfolge Maul, Posen, genaue Werkzeuge.
+- **Florian (11.11. vormittags) zu diesem Schritt:** „Ich glaube an dieser Stelle wird es verkompliziert und wir verbessern das
+  Problem grundsätzlich nicht. Es muss eine elegantere Lösung geben und ich habe das Gefühl es liegt an der Spiegelkante. Das
+  Mesh soll natürlich gespiegelt werden, dadurch haben wir automatisch immer die Mittelkante … Die aktuelle Lösung trägt nicht
+  und auch wenn ich andere Griffe ziehe sehe ich wie das Mesh lange nachwobbelt, es gibt komische Wölbungen, und es
+  reißt/verdreht sich. Auch dass ich nicht einfach den Handle wieder zurückdrehen kann … Ich denke wir müssen hier nochmal einen
+  Schritt zurück gehen und das Grundproblem genauer untersuchen. Das Grundmesh soll immer gespiegelt sein … in einigen Versionen
+  vor dieser Session [waren] Schleifen einfach schwarze Löcher [die] bei erneutem Zurückdrehen einfach verschwanden …“
+- **Untersuchung „Ein Schritt zurück“ (11.11. mittags; nichts gebaut):**
+  [`docs/research/2026-11-11-grundproblem-spiegelkante-rechnung.md`](research/2026-11-11-grundproblem-spiegelkante-rechnung.md).
+  - **Zwei Probleme, er hat bei beiden recht.** (1) **Spiegelkante:** Auf den Ständen vom 07., 08. und 09.11. lag bei seiner
+    Reihenfolge (Mitte zuletzt) der Loop der Mitte lose, in beiden Rechnungen; schon der erste gedrehte Griff klappte 40 bis 60
+    Dreiecke um. Mit der Mitte zuerst waren Schleifen dort kleine schwarze Löcher (2 bis 8 Dreiecke), die beim Zurückdrehen
+    verschwanden. Heute sind beide Reihenfolgen heil; das Netz hält seine Spiegelung aber weiter über Buchführung (rund 300
+    Zeilen). (2) **Fehlgriffe:** Die Geometrie-Rechnung faltet bei einem verdrehten Griff tiefer, kommt lange nicht zur Ruhe und
+    hinterlässt an dünnen Formen Schaden (Vogel: 22 umgeklappte Dreiecke und 16 Knicke nach dem Zurückdrehen, in Ruhe 6 und 8);
+    die alte Rechnung (gleiche Gewichte) ist dort gutmütig (2 und 0).
+  - **Der Preis der alten Rechnung:** Nach jedem Loslassen setzt sich die Haut sichtbar nach (Firefish gut anderthalb Sekunden;
+    Geometrie-Rechnung: gar nicht), bei langen Zügen springt die Form (Hals 6, Rüssel 36 Einheiten). Keine kann beides.
+  - **Dahinter** steht die Ursache von der Planseite, Abschnitt 12 und 14 (08./09.11.): Die Linien geben nur die Lage vor, die
+    Wölbung misst die Rechnung an der Haut selbst; die Aufgabe hat keine eindeutige Lösung. Sechs billige Heilungsversuche im
+    Kern heute: alle gemessen gescheitert (Bericht, Abschnitt 6; nur in einer Arbeitskopie, nichts davon im Repo-Code).
+  - **Verfahrensfehler:** Sein Fenster (5193) läuft aus diesem Arbeitsbaum. Am 11.11. von etwa 6:45 bis 8:40 Uhr lief dort eine
+    Versuchsrechnung, bis 9:20 Uhr Zwischenstände. **Ab jetzt: nie unter seinem Fenster bauen** (Abschnitt 8).
+  - **Vorschlag, Entscheidung bei Florian:** (a) Grundmesh gespiegelt als Beweis (sein Vorschlag; G6 mit neuem Ziel: die
+    Mittelkante ist der Rand der Hälfte, ohne Buchführung; halbe Rechenzeit), zuerst im Kern; (b) die Rechnung wählt er mit
+    seinen Händen (beide Adressen im heutigen Stand); (c) das Grundproblem (Linien mit Richtung) erst danach und nur mit seinem
+    Wort, am Rand der Hälfte beginnend.
+  - **Proben neu:** `form-griffe-probe-versionen.mjs` (läuft auf jedem Stand seit dem 05.11.; `FORM=kugel-a|kugel-b|kugel-c|<Name>`,
+    `TEST=dreh|alle|sprung|zufall`), `form-griff-verdreht.ts` mit `GRAD`, `GEWICHTE=gleich`, `QFEST`, `SPERRE`;
+    `form-gesichert-stabil.ts` mit `GEWICHTE=gleich`. Ausgaben `gegenpruefung-2026-11-10/ausgaben/grund-{griff-kern,fenster}-2026-11-11.txt`.
+- **Als Nächstes:** Florians Antwort auf die Untersuchung. Bis dahin nichts bauen. (Der frühere Vorschlag „G6, die halbe Haut“ für
+  das Tempo geht in (a) auf.) Offen bleibt sein Blick auf G4, Sichern/Laden und G5 Teil 1; dann nach seiner Reihenfolge Maul,
+  Posen, genaue Werkzeuge.
 
 ## 1. Stand
 
@@ -318,7 +363,8 @@ Kriterien stehen in der Tabelle des Nachtrags; Messwerte und Befunde je Schritt 
   Haut wächst (dann halber Schritt für diesen Löser); eine Haut, die zur Ruhe kommt, rechnet Bit für Bit wie vorher.
   **Seit dem 11.11. gibt es den Normalfluss** (oben): Er ändert das Rechnen nur, wenn eine Linie lose aufliegt; mit eingesetzten
   Linien rechnet der Löser Bit für Bit wie vorher (Test in `dicht/normalfluss.test.ts`).
-- **Zum Vergleichen:** Arbeitsbaum `.claude/worktrees/form-alt` (losgelöst, zuletzt auf `b72c3586` = Stand von gestern Nacht) mit
+- **Zum Vergleichen:** Arbeitsbaum `.claude/worktrees/form-alt` (losgelöst; steht auf `b72c3586` = Stand vom 10.11. nachts; für
+  die Untersuchung vom 11.11. zeitweise auf `75b94733`, `640c2595`, `a0d2f959` ausgecheckt) mit
   der Konfiguration `kurven-alt` (Port 5194) in `.claude/launch.json` des Hauptordners (dort nicht committet). Proben nehmen ihn
   mit `KURVEN_URL=http://localhost:5194/kurven.html?gewichte=geometrie`. Er kann weg, sobald Florian den neuen Stand gesehen hat.
 - **Läuft:** ein Vite-Server auf Port 5193 aus diesem Arbeitsbaum. Seit dem 10.11. mittags gehört er der Sitzung der
@@ -875,3 +921,12 @@ Netzwechsel. Der Ausgleich ist selbst ein kleines Gedächtnis und am Rüssel nac
 - Vor einem Löser-Vorschlag die Planseite „Kurven als Wahrheit“ nach früheren Messungen derselben Idee durchsuchen.
 - Florian arbeitet oft per Fernsteuerung: Die Abschlussnachricht muss Frage und Wahlmöglichkeiten selbst enthalten.
 - Klare Begriffe: „dichtes Netz“, „Linien“, „Loops“, „Punkte“. Keine Käfig-Begriffe, sie verunsichern ihn.
+- **Nie unter Florians Fenster bauen** (11.11.): Port 5193 läuft aus diesem Arbeitsbaum und lädt bei jeder Dateiänderung unter
+  `apps/editor/src` und `packages/shape/src` neu. Gebaut wird in einem zweiten Arbeitsbaum mit eigenem Port; hierher kommen nur
+  geprüfte Commits, und Florian erfährt, wann sich sein Fenster geändert hat. Messskripte, Ausgaben und Docs sind unkritisch.
+  Versuche am Kern laufen in einer Arbeitskopie (`packages/shape/.versuch/`, lokal von Git ausgeschlossen), nie im Kern selbst.
+- Sagt Florian „es wird verkompliziert“ oder „trägt nicht“: nichts anbauen. Erst messen, was er sieht (ältere Stände, beide
+  Rechnungen, seine Formen), dann die Struktur vorschlagen, die die Ursache entfernt.
+- Immer an allen drei gesicherten Formen messen (`test_kaputt` allein zeigte die Schwäche der Geometrie-Rechnung nicht) und
+  Zahlen gegen den Ruhezustand der Form lesen (der Firefish hat in Ruhe 9 Knicke über 150°, der Vogel 4 bis 6 umgeklappte
+  Dreiecke).

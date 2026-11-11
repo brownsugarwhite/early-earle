@@ -29,6 +29,8 @@ const SCHRITTE = Number(process.env.SCHRITTE ?? 20);
 const RUNDEN = Number(process.env.RUNDEN ?? 80);
 const HOECHSTENS = Number(process.env.PUNKTE ?? 1e9);
 const VORSICHT = process.env.VORSICHT !== '0';
+/** GEWICHTE=gleich: die Rechnung ohne die Geometrie (gleiche Gewichte), wie `kurven.html` ohne `?gewichte=geometrie` */
+const GEWICHTE: 'gleich' | 'geometrie' = process.env.GEWICHTE === 'gleich' ? 'gleich' : 'geometrie';
 const st: WesenStand = entpacken(new Uint8Array(fs.readFileSync(datei)));
 let f: { pos: Float64Array; tri: Uint32Array; n: number; spiegel: Int32Array } = st.haut;
 let nachbarn: number[][] = new Array<number[]>(f.n);
@@ -92,14 +94,14 @@ function umgeschlagen(h: Haut): number {
 const haut = (): Haut => ({ pos: Float64Array.from(pos0), tri: f.tri, n: f.n, nachbarn, spiegel: f.spiegel });
 // die Zerlegung einmal (alle Fälle haben dieselbe Struktur)
 const t0 = performance.now();
-const vorlage = new LoopZug(haut(), loops, null, true, 'kurven', 'geometrie').vorlage!;
+const vorlage = new LoopZug(haut(), loops, null, true, 'kurven', GEWICHTE).vorlage!;
 console.log(`zerlegt in ${(performance.now() - t0).toFixed(0)} ms`);
 
 // SETZEN=<Runden>: die Haut zuerst ohne Zug setzen (so viele Runden), damit jeder Fall auf einer Haut beginnt, die steht (eine
 // gesicherte Form steht für einen neuen Löser nicht unbedingt: am Vogel bewegt die erste Runde 23 Einheiten)
 if (Number(process.env.SETZEN ?? 0) > 0) {
   const h0 = haut();
-  const z0 = new LoopZug(h0, loops, null, true, 'kurven', 'geometrie', { vorlage, vorsicht: VORSICHT, ...FLUSS_ART });
+  const z0 = new LoopZug(h0, loops, null, true, 'kurven', GEWICHTE, { vorlage, vorsicht: VORSICHT, ...FLUSS_ART });
   const ruhig = loops.map(() => null);
   let letzter = 0;
   for (let r = 0; r < Number(process.env.SETZEN); r++) {
@@ -155,7 +157,7 @@ let nurGefolgt = 0;
 let gesperrtAmEnde = 0;
 for (const fall of faelle) {
   const h = haut();
-  const z = new LoopZug(h, loops, null, true, 'kurven', 'geometrie', { vorlage, vorsicht: VORSICHT, ...FLUSS_ART });
+  const z = new LoopZug(h, loops, null, true, 'kurven', GEWICHTE, { vorlage, vorsicht: VORSICHT, ...FLUSS_ART });
   const k = fall.l.punkte[fall.i]!.kreuzung;
   const ziel = (anteil: number) =>
     loops.map((l) => {
@@ -224,4 +226,4 @@ for (const fall of faelle) {
   if (urteil === 'davon' || urteil === 'waechst' || process.env.ALLE)
     console.log(`${urteil.toUpperCase().padEnd(8)} ${fall.name}: Runden nach dem Zug ${nach.length}, Weg zuletzt ${ende.toFixed(3)}, größte Koordinate im Verlauf ${groesste.toFixed(0)}${kaputt ? ', NICHT ENDLICH' : ''}${stufen ? `, Schritt ${stufen}-mal halbiert` : ''}${fest ? ', stehen geblieben' : ''}${faltMax > 0 || umgEnde > 0 ? `, umgeschlagene Dreiecke im Zug bis ${faltMax} mehr, am Ende ${umgEnde} mehr` : ''} · Wege ${nach.slice(0, 6).map((w) => w.toFixed(2)).join(' ')} … ${spaet.map((w) => w.toFixed(2)).join(' ')}`);
 }
-console.log(`Ergebnis${VORSICHT ? '' : ' (ohne Vorsicht)'}${FLUSS_ART.normalfluss === undefined ? (lose ? ' (Normalfluss von selbst: ' + lose + ' Loops liegen lose auf)' : ' (alle Loops eingesetzt)') : FLUSS_ART.normalfluss ? ' (Normalfluss erzwungen)' : ' (ohne Normalfluss)'}: zur Ruhe ${zaehler.ruhe}, kriecht ${zaehler.kriecht}, schwingt ${zaehler.schwingt}, wächst ${zaehler.waechst}, davongelaufen ${zaehler.davon} (von ${faelle.length}) · Schritt verkleinert oder stehen geblieben in ${vorsichtig} Fällen · im Zug mehr umgeschlagene Dreiecke als beim Greifen in ${nurGefolgt} Fällen, am Ende noch in ${gesperrtAmEnde}`);
+console.log(`Ergebnis${GEWICHTE === 'gleich' ? ' (gleiche Gewichte)' : ''}${VORSICHT ? '' : ' (ohne Vorsicht)'}${FLUSS_ART.normalfluss === undefined ? (lose ? ' (Normalfluss von selbst: ' + lose + ' Loops liegen lose auf)' : ' (alle Loops eingesetzt)') : FLUSS_ART.normalfluss ? ' (Normalfluss erzwungen)' : ' (ohne Normalfluss)'}: zur Ruhe ${zaehler.ruhe}, kriecht ${zaehler.kriecht}, schwingt ${zaehler.schwingt}, wächst ${zaehler.waechst}, davongelaufen ${zaehler.davon} (von ${faelle.length}) · Schritt verkleinert oder stehen geblieben in ${vorsichtig} Fällen · im Zug mehr umgeschlagene Dreiecke als beim Greifen in ${nurGefolgt} Fällen, am Ende noch in ${gesperrtAmEnde}`);

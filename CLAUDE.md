@@ -1834,6 +1834,28 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
     schlechter (184 statt 188 von 196 Zügen zur Ruhe) und ein Viertel langsamer je Runde. Eine Regel, die anhält („umgeklappt
     heißt nur folgen“), braucht einen Weg zurück: Sie hielt am Vogel die Haut für immer an und schönte die Messreihe (alle Züge
     „in Ruhe“); gefunden erst beim Vergleich der Formen alt gegen neu.
+- **2026-11-11 mittags: Untersuchung „Ein Schritt zurück“, nichts gebaut** (Florian nach dem Schritt vom Morgen: „Ich glaube an
+  dieser Stelle wird es verkompliziert und wir verbessern das Problem grundsätzlich nicht … ich habe das Gefühl es liegt an der
+  Spiegelkante. Das Mesh soll natürlich gespiegelt werden, dadurch haben wir automatisch immer die Mittelkante … Die aktuelle
+  Lösung trägt nicht … wir müssen hier nochmal einen Schritt zurück gehen und das Grundproblem genauer untersuchen.“). Bericht
+  [`docs/research/2026-11-11-grundproblem-spiegelkante-rechnung.md`](docs/research/2026-11-11-grundproblem-spiegelkante-rechnung.md).
+  - **Zwei Probleme, er hat bei beiden recht.** Spiegelkante: Auf den Ständen vom 07. bis 09.11. lag bei seiner Reihenfolge
+    (Mitte zuletzt) der Loop der Mitte lose, in beiden Rechnungen, und alles zerbrach; mit der Mitte zuerst waren Schleifen kleine
+    schwarze Löcher, die wieder verschwanden. Fehlgriffe: Die Geometrie-Rechnung (`?gewichte=geometrie`, sein Standard seit dem
+    10.11.) faltet bei verdrehten Griffen tief, kommt lange nicht zur Ruhe und hinterlässt an dünnen Formen Schaden; die alte
+    Rechnung ist dort gutmütig, setzt sich dafür nach jedem Loslassen sichtbar nach und hängt am Netz. Keine kann beides; dahinter
+    steht die Ursache von der Planseite „Kurven als Wahrheit“, Abschnitt 12 und 14 (die Linien geben nur die Lage vor).
+  - **Vorschlag, Entscheidung bei Florian:** Grundmesh gespiegelt als Beweis (sein Vorschlag; G6 mit neuem Ziel), die Rechnung
+    wählt er mit beiden Adressen an seinen Formen, das Grundproblem erst danach.
+  - **Lehren:** Nie unter seinem Fenster bauen (Port 5193 läuft aus dem Arbeitsbaum, in dem gebaut wurde; am Morgen sah er
+    stundenlang Zwischenstände samt Versuchsrechnung). An allen drei gesicherten Formen messen, nicht nur an der einfachsten.
+    Zahlen gegen den Ruhezustand lesen. Sagt er „es wird verkompliziert“: nichts anbauen, erst über die Stände messen.
+- **2026-11-11 mittags (danach): Untersuchung beendet, es wird das gespiegelte Grundmesh gebaut.** Florian: Die Testreihen im
+  Hintergrund kosten sein Wochenlimit, „lieber den Fehler an sich beseitigen“; wie Blenders Mirror-Modifier: Hälfte und
+  Spiegelbild, über die Spiegelkante ziehen, das Mesh verschmilzt, zurückziehen geht; „applien“ später. Bericht, Abschnitte 9 und
+  10: Zufallsfolgen enden im Fenster in beiden Rechnungen beschädigt, die alte Rechnung ist dort nicht gutmütiger. Regeln: keine
+  Messreihen im Hintergrund, die die Sitzung wecken; gezielt an seinem Fall prüfen statt mit Zufallsfolgen; in eigenem Arbeitsbaum
+  bauen.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
