@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Node-Skript (CommonJS) */
 // SVG-Skizze als PNG: node skizze.cjs <svg> <png>
 const fs = require('fs');
 const { createRequire } = require('module');

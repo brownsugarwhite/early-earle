@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Node-Skript (CommonJS) */
 // Bilder des Prototyps: node schau.cjs <ausgabe-präfix> [schritte als JSON]
 const path = require('path');
 const { createRequire } = require('module');

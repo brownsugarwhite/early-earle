@@ -36,6 +36,9 @@ Griffen). Die Arbeit am Löser und an den Kurven läuft in einer anderen Sitzung
 | Bilder des Stands | `docs/progress/editor/blaupause-*.jpg` |
 | Florians Vorgaben, Reihenfolge, Urteile | Gedächtnis `feedback-designvision-blaupause-1110.md` |
 | Recherche „Pose wie Grundform bedienen“ | Gedächtnis `recherche-pose-wie-grundform-1110.md` |
+| **Teststand** (echte Linien, echtes Netz, ziehbare Griffe), veröffentlicht | https://claude.ai/artifact/YL4ZhsiUQT9aVfcjZFBHga |
+| Quelle des Teststands, Bauen, Bilder | `teststand/` hier (Abschnitt 10) |
+| Bilder des Teststands | `docs/progress/editor/blaupause-teststand-*.jpg` |
 
 `CLAUDE.md` ist in diesem Strang nicht geändert worden, weil die bauende Sitzung sie auf ihrem Zweig pflegt.
 
@@ -183,3 +186,52 @@ Erst nach Florians Wort, und abgestimmt mit der bauenden Sitzung. Was ich beim L
   [Blender-Handbuch](https://docs.blender.org/manual/en/4.1/grease_pencil/properties/onion_skinning.html)
 - Rot wirkt für die meisten näher als Blau, aber schwach und nicht bei allen.
   [TU Delft](https://repository.tudelft.nl/file/File_391bf7f8-b758-4e07-ab1a-996a407c26e7?preview=1)
+
+## 10. Teststand (11.11., mittags)
+
+Florians Auftrag: „den aktuellsten Stand schon mit echten Kurven und dem 3D-Modell bauen, so dass die Handles funktionieren, dass ich
+einen echten Teststand habe. Die Einstellungen kannst du in einem Aufklappmenü verbergen.“ Dazu: „ohne die andere Sitzung mit den
+Reparaturarbeiten an der Kurve zu stören.“
+
+**Wie er gebaut ist**
+- Eigene Seite neben dem Prototyp, eigenes Artefakt (Adresse oben). Der Prototyp `blaupause.html` und sein Artefakt sind unverändert.
+- `teststand/fenster.ts` ist eine **Kopie** von `apps/editor/src/form/kurven.ts` aus dem festen Stand `6ba0bcb3` (Zweig
+  `claude/form-zuerst`). Löser, Linien, Punkte, Werkzeuge und Abläufe sind die des Editors. Geändert (jede Stelle mit „Teststand“
+  kommentiert): Darstellung, vier drehbare Fenster, Treffer, Griffe, Leiste. `teststand/gl.ts` enthält die Shader der Blaupause.
+- `node bau.mjs` holt Kern und Helfer per `git archive` aus `6ba0bcb3` (der Arbeitsbaum der anderen Sitzung wird nicht angefasst),
+  bündelt alles mit esbuild zu einer Seite und legt Florians drei Formen aus `wesen/` desselben Stands hinein (gzip, base64):
+  `teststand/dist/blaupause-teststand.html` (3,8 MB, nicht im Repo). `STAND=<commit>` nimmt einen anderen Kern; Änderungen der
+  anderen Sitzung an `kurven.ts` selbst kommen damit aber **nicht** mit (dann `kurven.ts` neu kopieren und die Teststand-Stellen
+  nachziehen).
+- Bilder: `DPR=2 node schau.cjs <präfix> '[…]'` (Schritte im Kopf des Skripts: Form laden, Ansicht, Zoom, Punkt wählen, Griff oder
+  Punkt mit der echten Maus ziehen, mit Umschalt, Fenster drehen oder wenden, Menü aufklappen).
+
+**Was geht** (geprüft nur in Chromium auf dem Mac, mit echten Mauszügen)
+- Start mit „strange bird“ (16 010 Punkte, 9 Linien); im Menü Kugel, „teat firefish“ (27 770 Punkte), „test_kaputt“. Die Form bleibt
+  im Browser über das Neuladen. Alle Fenster mit einem Maßstab (höchstens 100 %), die Form ganz zu sehen.
+- Vier echte 3D-Fenster: Grund ziehen dreht, Einrasten innerhalb von 9°, Wenden (von hinten dunkel), Doppelklick auf den Grund =
+  Hausansicht und ganze Form, Pos1 = alle Fenster.
+- Punkte und Griffe ziehen in **jedem** Fenster, auch frei gedreht und gewendet (in der Ebene des Fensters, die Tiefe bleibt).
+  Treffer nur auf Sichtbares; X (Durchsicht) zeigt Verdecktes blass und macht es greifbar.
+- Griffe: je Linie das gerade Paar mit Bögen. **Bogen ziehen = gleiten**: das Paar dreht sich als Gerade, der gezogene Griff bekommt
+  die Entfernung der Maus, der andere behält seine Länge, ein Knick bleibt (gemessen: 14 → 45 Einheiten, die Gegenseite bleibt 119).
+  **Umschalt halten**: die Bögen drehen sich um den Stab in die Knickebene und wandern an das wahre Ende ihres Griffs; **mit Umschalt
+  ziehen = knicken**: nur dieser Griff bewegt sich, der Punkt wird eine Ecke (wie Skizze „Knicken“). Der Kern macht die kreuzende
+  Linie an so einem Knick von selbst zur Kante (seine Regel ab 15°), die Haut knickt dort.
+- Alle Werkzeuge des Editors: Doppelklick auf Linie (neuer Punkt), auf Punkt/Griff (Ecke ↔ glatt), K, ⌫, G/S/R, O, ⌘Z; L, F, P nur in
+  der Hausansicht von Seite, Front, Top. Passer, Farben, „Linien wachsen mit“, „Knick ⇧“ im Menü „Einstellungen“.
+- Zeichnen aller vier Fenster etwa 1–1,5 ms je Bild (Messung mit gl.finish, nicht belastbar); Zug im Editor-Löser 11–22 ms.
+
+**Abweichungen von der Blaupause (Florians Urteil offen)**
+- Doppelklick führt zur ganzen Form statt auf 100 % (die Formen sind größer als die Prüfkugel; 100 % bleibt das Maß der Outlines).
+- Mit Umschalt wandern die Bögen an das wahre Griffende (eigene Idee, damit man den Knick dort greift). Nach einem Knick schweben sie
+  dann frei neben dem Stab, der die mittlere Richtung zeigt (Bild 4 in `blaupause-teststand-griffe-2026-11-11.jpg`).
+- Knicken bewegt nur den gegriffenen Griff. Ein erster Versuch ließ beide Seiten gleich weit kippen; das zog die lange Seite mit und
+  machte einen Haken in die Linie (verworfen).
+
+**Offen und Schwächen**
+- Im Artefakt-Rahmen selbst nicht geprüft (der eingebaute Browser ist bei claude.ai nicht angemeldet); Hintergrund-Rechner aus einem
+  Blob, Speicher und Schriften sollten dort gehen, laut Regeln des Artefakts.
+- Pose und Passer „Wandel“ brauchen ein Maul; keine der drei Formen hat eins.
+- Sichern unter einem Namen gibt es nicht (keine Ablage, keine Dateien im Artefakt).
+- Bei Zoom laufen Linien und Outline unter den Fensternamen (Punkt 6 oben).

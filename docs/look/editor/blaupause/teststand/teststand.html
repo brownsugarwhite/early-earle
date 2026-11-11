@@ -1,0 +1,146 @@
+<title>Blaupause Teststand</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* Layout: vier randlose 3D-Fenster im Raster 2 × 2 über einer Leinwand, darunter eine schmale Leiste; die Einstellungen klappen
+   über den Fenstern auf, ohne sie zu verschieben. Eine feste Optik (die des Editors), ohne helles/dunkles Thema. */
+:root {
+  --tinte: #1c1c1f;
+  --weiss: #ffffff;
+  --mitte: #8e8e90;
+  --hell: #c8c8ca;
+  --platte-a: #1c43ff;
+  --platte-b: #ff6b1f;
+  --schrift-fett: 'Archivo', 'Arial Black', 'Helvetica Neue', sans-serif;
+  --schrift-mass: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--tinte); color: var(--weiss); font-family: var(--schrift-mass); overflow: hidden; }
+#leinwand { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+#app { position: relative; height: 100%; display: grid; grid-template-rows: minmax(0, 1fr) auto; }
+#raster { position: relative; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; touch-action: none; }
+.fenster {
+  position: relative; min-width: 0; min-height: 0; overflow: hidden; color: var(--tinte);
+  padding-block: 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  user-select: none; -webkit-user-select: none;
+}
+.fenster:nth-child(odd) { border-right: 1px solid var(--mitte); }
+.fenster:nth-child(-n+2) { border-bottom: 1px solid var(--mitte); }
+.kopf { position: relative; z-index: 1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; pointer-events: none; padding-right: 84px; }
+.name { font-family: var(--schrift-fett); font-stretch: 125%; font-weight: 900; font-size: clamp(15px, 1.7vw, 24px); line-height: 1; text-transform: uppercase; letter-spacing: 0.01em; }
+.fenster.frei .name { font-weight: 200; }
+.lage { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+.wenden {
+  position: absolute; z-index: 3; top: 10px; right: max(16px, env(safe-area-inset-right, 0px));
+  background: transparent; color: inherit; border: 1px solid currentColor; border-radius: 0;
+  font: 700 10px/1 var(--schrift-mass); letter-spacing: 0.12em; text-transform: uppercase; padding: 6px 9px; cursor: pointer;
+}
+/* das SVG über jedem Fenster: unsichtbare Treffer und die Vorschau der Werkzeuge */
+.blatt { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; touch-action: none; cursor: grab; display: block; }
+.fenster.zieht .blatt { cursor: grabbing; }
+.fenster.punkt .blatt { cursor: pointer; }
+.blatt.loop, .blatt.form, .blatt.stift { cursor: crosshair; }
+.blatt .kurve-treffer { fill: none; stroke: transparent; stroke-width: 12px; vector-effect: non-scaling-stroke; cursor: pointer; }
+.blatt circle.kpunkt { fill: transparent; stroke: none; cursor: pointer; }
+.blatt circle.griff { fill: transparent; stroke: none; cursor: grab; }
+.blatt .einfluss { fill: none; stroke: var(--platte-b); stroke-width: 1.5px; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.blatt .entwurf { fill: none; stroke: var(--platte-b); stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.blatt .griff-linie { stroke: var(--platte-b); stroke-width: 1px; vector-effect: non-scaling-stroke; pointer-events: none; }
+.blatt rect.griff { fill: var(--platte-b); pointer-events: none; }
+/* Leiste: eine Zeile mit dem Knopf „Einstellungen“ und der Statuszeile; die Einstellungen klappen darüber auf */
+#leiste {
+  position: relative; z-index: 5; background: var(--tinte); color: var(--weiss); border-top: 1px solid var(--mitte);
+  padding-block: 7px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.zeile { display: flex; align-items: center; gap: 14px; min-width: 0; }
+#status { flex: 1; min-width: 0; font-size: 10px; letter-spacing: 0.06em; color: var(--hell); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#menue {
+  position: absolute; left: 0; right: 0; bottom: 100%;
+  background: var(--tinte); border-top: 1px solid var(--mitte);
+  padding-block: 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 26px; max-height: 60vh; overflow-y: auto;
+}
+.gruppe { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 0; }
+.titel { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--hell); margin-right: 10px; }
+button.wahl, #menue-knopf {
+  background: transparent; color: var(--weiss); border: 1px solid var(--mitte); border-radius: 0; margin-left: -1px;
+  font: 700 10px/1 var(--schrift-mass); letter-spacing: 0.1em; text-transform: uppercase; padding: 7px 10px; cursor: pointer;
+}
+#menue-knopf { margin-left: 0; flex: none; }
+#menue-knopf::after { content: ' ▴'; }
+#menue-knopf[aria-expanded="true"]::after { content: ' ▾'; }
+button.wahl[aria-pressed="true"], #menue-knopf[aria-expanded="true"] { background: var(--weiss); color: var(--tinte); border-color: var(--weiss); position: relative; }
+button.wahl:focus-visible, #menue-knopf:focus-visible, .wenden:focus-visible { outline: 2px solid var(--platte-b); outline-offset: 2px; }
+.regler { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--hell); margin-left: 12px; }
+.regler input[type="range"] { width: 110px; accent-color: var(--platte-b); }
+#tiefe { width: 90px; margin-left: 10px; accent-color: var(--platte-a); }
+.farbfeld { display: flex; align-items: center; gap: 6px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; margin-right: 12px; cursor: pointer; color: var(--hell); }
+.farbfeld input { width: 30px; height: 24px; padding: 0; border: 1px solid var(--weiss); border-radius: 0; background: none; cursor: pointer; }
+.hinweis { flex-basis: 100%; font-size: 10px; line-height: 1.6; letter-spacing: 0.05em; color: var(--hell); max-width: 120ch; }
+.hinweis b { color: var(--weiss); font-weight: 700; }
+#ablage-feld { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+#fehler { position: absolute; z-index: 6; inset: auto 16px 56px 16px; color: var(--tinte); background: var(--weiss); border: 1px solid var(--tinte); padding: 10px 12px; font-size: 12px; white-space: pre-wrap; }
+@media (max-width: 700px) { .kopf { padding-right: 70px; } .lage { display: none; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<canvas id="leinwand"></canvas>
+<div id="app">
+  <main id="raster">
+    <section class="fenster" id="feld-seite"><div class="kopf"><span class="name">Seite</span><span class="lage"></span></div><button class="wenden" type="button" title="Dieses Fenster um 180° wenden">Wenden</button><svg class="blatt" id="blatt-seite" aria-label="Seite"></svg></section>
+    <section class="fenster" id="feld-front"><div class="kopf"><span class="name">Front</span><span class="lage"></span></div><button class="wenden" type="button" title="Dieses Fenster um 180° wenden">Wenden</button><svg class="blatt" id="blatt-front" aria-label="Front"></svg></section>
+    <section class="fenster" id="feld-top"><div class="kopf"><span class="name">Top</span><span class="lage"></span></div><button class="wenden" type="button" title="Dieses Fenster um 180° wenden">Wenden</button><svg class="blatt" id="blatt-top" aria-label="Top"></svg></section>
+    <section class="fenster" id="feld-3d"><div class="kopf"><span class="name">3D</span><span class="lage"></span></div><button class="wenden" type="button" title="Dieses Fenster um 180° wenden">Wenden</button><svg class="blatt" id="blatt-drei" aria-label="3D"></svg></section>
+  </main>
+  <nav id="leiste" aria-label="Einstellungen und Status">
+    <div id="menue" hidden>
+      <div class="gruppe"><span class="titel">Form</span>
+        <button class="wahl" type="button" id="form-kugel" data-form="kugel">Kugel</button>
+        <!--FORM_KNOEPFE-->
+      </div>
+      <div class="gruppe"><span class="titel">Werkzeug</span>
+        <button class="wahl" type="button" id="knopf-loop" aria-pressed="false" title="Loop quer über den Körper schneiden (L), nur in der Hausansicht">Loop L</button>
+        <button class="wahl" type="button" id="knopf-form" aria-pressed="false" title="Geschlossene Form auf die Haut zeichnen (F), nur in der Hausansicht">Form F</button>
+        <button class="wahl" type="button" id="knopf-stift" aria-pressed="false" title="Stift wie Illustrator (P), nur in der Hausansicht">Stift P</button>
+        <button class="wahl" type="button" id="knopf-o" aria-pressed="false" title="Einflusskreis wie in Blender (O), Größe mit [ ]">Einfluss O</button>
+      </div>
+      <div class="gruppe"><span class="titel">Pose</span>
+        <button class="wahl" type="button" id="knopf-pose" aria-pressed="false" title="Fressen-Pose: Punkte und Griffe ziehen formt die Pose, die Grundform bleibt (erst eine schmale Form ums Maul zeichnen)">Fressen</button>
+        <label class="regler" id="maul-regler" for="maul-oeffnung">Maul <input id="maul-oeffnung" type="range" min="0" max="55" step="0.5" value="30"></label>
+        <label class="regler" id="kopf-regler" for="kopf-oeffnung">Kopf <input id="kopf-oeffnung" type="range" min="0" max="40" step="0.5" value="0"></label>
+      </div>
+      <div class="gruppe"><span class="titel">Passer</span>
+        <button class="wahl" type="button" id="pa-blick" data-s="pBlick">Blick</button>
+        <button class="wahl" type="button" id="pa-wandel" data-s="pWandel" title="Platte 1 zeigt die Grundform, Platte 2 die Pose">Wandel</button>
+        <button class="wahl" type="button" id="pa-tiefe" data-s="pTiefe">Tiefe</button>
+        <input type="range" id="tiefe" min="0.02" max="0.4" step="0.01" value="0.14" title="Stärke der Tiefe: wie weit Nahes und Fernes auseinanderlaufen" aria-label="Stärke der Tiefe">
+        <button class="wahl" type="button" id="pa-schraeg" data-s="tiefeSchraeg" style="margin-left: 10px" title="Richtung der Tiefe: schräg wie beim Blick, sonst waagerecht">schräg</button>
+      </div>
+      <div class="gruppe"><span class="titel">Anzeige</span>
+        <button class="wahl" type="button" id="li-mass" data-s="linienMass" title="Linien und Punkte wachsen mit dem Zoom wie die Outlines">Linien wachsen mit</button>
+        <button class="wahl" type="button" id="sch-durchsicht" data-s="durchsicht" title="Verdeckte Linien und Punkte blass zeigen und greifbar machen (X)">Durchsicht X</button>
+        <button class="wahl" type="button" id="sch-umschalt" data-s="umschalt" title="Wie die Umschalttaste gehalten: die Bögen drehen sich in die Knickrichtung, Ziehen knickt">Knick ⇧</button>
+      </div>
+      <div class="gruppe"><span class="titel">Farben</span>
+        <label class="farbfeld" for="f-tinte">Dunkel <input type="color" id="f-tinte" data-farbe="tinte" value="#1c1c1f"></label>
+        <label class="farbfeld" for="f-a">Platte 1 <input type="color" id="f-a" data-farbe="a" value="#1c43ff"></label>
+        <label class="farbfeld" for="f-b">Platte 2 <input type="color" id="f-b" data-farbe="b" value="#ff6b1f"></label>
+        <button class="wahl" type="button" id="f-passend" title="Platte 2 so setzen, dass sie über Platte 1 gedruckt das Dunkle ergibt">Platte 2 passend</button>
+      </div>
+      <p class="hinweis"><b>Grund ziehen</b> dreht das Fenster, es rastet innerhalb von 9° ein · <b>Rad</b> zoomt, zwei Finger verschieben · <b>Doppelklick auf den Grund</b>: Hausansicht, ganze Form (Pos1: alle Fenster) · <b>Punkt</b> anklicken und ziehen · <b>Griff am Bogen ziehen</b>: das gerade Paar gleitet · <b>mit ⇧</b>: die Bögen drehen sich in die Knickrichtung und sitzen am wahren Ende ihres Griffs, Ziehen bewegt nur diesen Griff (Ecke) · <b>Doppelklick auf eine Linie</b>: neuer Punkt · <b>Doppelklick auf Punkt oder Griff</b>: Ecke ↔ glatt · <b>K</b> Kante an/aus · <b>⌫</b> löschen · <b>G/S/R</b> · <b>⌘Z</b> zurück · <b>L F P</b> nur in der Hausansicht von Seite, Front, Top</p>
+    </div>
+    <div class="zeile">
+      <button id="menue-knopf" type="button" aria-expanded="false" aria-controls="menue">Einstellungen</button>
+      <span id="status" role="status"></span>
+    </div>
+  </nav>
+</div>
+<!--FORMEN-->
+<!--BUNDLE-->
