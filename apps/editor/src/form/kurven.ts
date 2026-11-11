@@ -82,7 +82,6 @@ import {
   maulAmLoop,
   mittlereKante,
   mundwinkelProbe,
-  mitteAbstand,
   pfadAbweichung,
   pfadParameter,
   pfadVersatz,
@@ -263,17 +262,11 @@ const DAVON_SCHUTZ = new URLSearchParams(location.search).get('davon') !== '0';
  * immer, `?normalfluss=0` nie (zum Vergleichen).
  */
 const NORMALFLUSS = new URLSearchParams(location.search).get('normalfluss');
-/**
- * Die Wand an der Spiegelebene (11.11., `hautWand`): Kein Punkt der Haut kommt auf die Seite seines Spiegelbilds. `?wand=0`: ohne sie,
- * wie bis zum 11.11. (nur zum Vergleichen).
- */
-const WAND = new URLSearchParams(location.search).get('wand') !== '0';
-const RICHTUNG_OPT: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean; normalfluss?: boolean; wand?: boolean } = {
+const RICHTUNG_OPT: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean; normalfluss?: boolean } = {
   ...(RICHTUNG ? { richtung: true } : {}),
   ...(MAXNORMALEN ? { maxNormalen: true } : {}),
   ...(VORSICHT ? {} : { vorsicht: false }),
   ...(NORMALFLUSS === '1' ? { normalfluss: true } : NORMALFLUSS === '0' ? { normalfluss: false } : {}),
-  ...(WAND ? {} : { wand: false }),
 };
 /** Der Zug löst nur einen Bereich um die bewegten Stellen (mit Gedächtnis und in der Pose); aus den Kurven die ganze Haut */
 const mitBereich = (): boolean => grund !== null || HAUT !== 'kurven';
@@ -1080,11 +1073,11 @@ knopfPose.addEventListener('click', () => {
 });
 
 /**
- * Die Anzeige verschmilzt die Hälften an der Spiegelebene, wie „Merge“ beim Spiegeln in Blender (11.11., Florian: „ich kann ganz
- * normal über die Spiegelkante ziehen und das Mesh verschmilzt dann“). Die Wand im Löser (`hautWand`) hält jeden Punkt auf seiner
- * Seite; wo die Haut dabei flach an der Ebene anliegt, fällt sie mit ihrem Spiegelbild zusammen. Diese Dreiecke (alle Ecken auf der
- * Ebene) werden nicht gezeigt, und ihre Randpunkte bekommen die Normale eines verschmolzenen Punkts. Zur Sicherheit schneidet die
- * Anzeige auch selbst ab: Ein Punkt, der doch einmal hinüberreicht (zwischen zwei Runden, ohne Wand), wird auf der Ebene gezeigt.
+ * Die Anzeige spiegelt wie der Mirror-Modifier in Blender (11.11., Florian: „ich kann ganz normal über die Spiegelkante ziehen und
+ * das Mesh verschmilzt dann“): Die Hälfte z ≥ 0 und ihr Spiegelbild dürfen durch die Spiegelebene laufen, Linien wie Haut; gerechnet
+ * wird damit wie überall sonst, nichts wird gequetscht. Erst die Anzeige schneidet jede Hälfte an der Ebene ab: Ein Punkt, der
+ * hinüberreicht, wird auf der Ebene gezeigt (dort trifft er sein Spiegelbild), und Dreiecke, die danach ganz auf der Ebene liegen,
+ * werden nicht gezeigt. So verschmelzen die Hälften, und zurückgezogen ist alles wie vorher.
  */
 let seitenGemerkt: { tri: Uint32Array; n: number; seite: Int8Array | null } | null = null;
 /** Seite je Punkt der Haut (`hautSeiten`: +1 die Hälfte z ≥ 0, −1 ihr Spiegelbild, 0 die Mittelkante); gemerkt je Netz */
@@ -1181,7 +1174,7 @@ function hautZeigen(): void {
   }
   for (let d = 0; d < N; d++) {
     const q = anzeigeQuelle[d]!;
-    // ein Punkt, der an der Spiegelebene anliegt, ist dort mit seinem Spiegelbild verschmolzen: Es zählen nur die gezeigten
+    // ein Punkt, der an der Spiegelebene abgeschnitten ist, ist dort mit seinem Spiegelbild verschmolzen: Es zählen nur die gezeigten
     // Dreiecke, und die Normale liegt in der Ebene (wie bei einem Punkt der Mittelkante)
     const verschmolzen = seite !== null && seite[q] !== 0 && Z[q] === 0;
     const h = verschmolzen ? 1 : anzeigeKante[d]!;
@@ -1898,20 +1891,12 @@ function mitRest(z: Zug, li: number, d: Float64Array | null): Float64Array | nul
 }
 
 /**
- * Mittelebene und Enden eines Rings bleiben auf z = 0; ein Ring und ein Paar gehen nicht unter die Mittelebene (ihre Seite ist
- * z ≥ 0, die andere gehört dem Spiegelbild; bis zum 11.11. durfte ein Paar hinüber und zog die Haut durch sich selbst). Ein Paar
- * bleibt um `mitteAbstand` vor ihr.
+ * Mittelebene und Enden eines Rings bleiben auf z = 0. Sonst darf eine Linie durch die Spiegelebene (11.11.: Erst die Anzeige
+ * schneidet dort ab, `anzeigeZ`; bis dahin hielt die Linie Abstand, und die Haut zwischen ihr und der Mitte wurde zerknüllt).
  */
-function zGrenzen(l: Loop, S: Float64Array, d: Float64Array): void {
+function zGrenzen(l: Loop, _S: Float64Array, d: Float64Array): void {
   const n = l.proben.length;
-  const g = mitteAbstand(l);
-  for (let j = 0; j < n; j++) {
-    if (l.art === 'mitte' || (l.art === 'ring' && (j === 0 || j === n - 1))) d[3 * j + 2] = 0;
-    else if (d[3 * j + 2]! < g - S[3 * j + 2]!) {
-      if (d[3 * j + 2]! < g - S[3 * j + 2]! - 1e-9) anMitteGehalten = true;
-      d[3 * j + 2] = g - S[3 * j + 2]!;
-    }
-  }
+  for (let j = 0; j < n; j++) if (l.art === 'mitte' || (l.art === 'ring' && (j === 0 || j === n - 1))) d[3 * j + 2] = 0;
 }
 /** `zGrenzen` hat seit dem letzten Zurücksetzen eine Linie an der Mittelebene gehalten (für `Zug.begrenzt`) */
 let anMitteGehalten = false;
@@ -2177,25 +2162,7 @@ function punktNach(l: Loop, p: LoopPunkt, g: number, f: (p: V3) => V3): V3 {
   const q = f(p.ref);
   const c = { x: p.ref.x + g * (q.x - p.ref.x), y: p.ref.y + g * (q.y - p.ref.y), z: p.ref.z + g * (q.z - p.ref.z) };
   if (zFest(l, p.s)) c.z = 0;
-  else {
-    const g = mitteGrenze(l, p);
-    if (c.z < g) {
-      // der Punkt liegt an der Mittelebene an (`Zug.begrenzt`)
-      if (c.z < g - 1e-9) anMitteGehalten = true;
-      c.z = g;
-    }
-  }
   return c;
-}
-
-/**
- * So nah kommt Punkt p des Loops l der Mittelebene höchstens: wie sein Loop (`mitteAbstand`); an einer Kreuzung wie der Loop dort,
- * der am weitesten wegbleibt (sonst läge derselbe Punkt in zwei Loops an zwei Orten: ein Ring ginge bis zur Mitte, das Paar nicht)
- */
-function mitteGrenze(l: Loop, p: LoopPunkt): number {
-  let g = mitteAbstand(l);
-  if (p.kreuzung !== undefined) for (const o of loops) if (o !== l && o.punkte.some((q) => q.kreuzung === p.kreuzung)) g = Math.max(g, mitteAbstand(o));
-  return g;
 }
 
 /**
@@ -5127,7 +5094,7 @@ if (BEHALTEN) behaltenesHolen();
     return { an: grund !== null, kiefer: pose.kiefer, schaedel: pose.schaedel, blendshape: max, punkte: haut.n };
   },
   dreiecke: () => Array.from(haut.tri),
-  /** die Haut, wie sie gezeigt wird (an der Spiegelebene verschmolzen): Lagen je gezeigtem Punkt und Dreiecke */
+  /** die Haut, wie sie gezeigt wird (jede Hälfte an der Spiegelebene abgeschnitten): Lagen je gezeigtem Punkt und Dreiecke */
   anzeige: () => ({ lagen: Array.from(hautLagen), dreiecke: Array.from(hautGeometrie.index?.array ?? []) }),
   meldung: () => meldung,
   bild: (a: Ansicht, p: V3): { x: number; y: number } => {

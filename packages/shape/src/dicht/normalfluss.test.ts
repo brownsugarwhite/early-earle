@@ -24,7 +24,6 @@ import {
   kreuzungenZwischen,
   linieKreuztSich,
   loopAusSchnitt,
-  mitteAbstand,
   mittlereKante,
   pfadLagen,
   punktEinfuegen,
@@ -184,18 +183,13 @@ describe('Normalfluss', () => {
     }
   });
 
-  it('ohne Normalfluss und ohne die Wand geraten um eine Linie, die nur aufliegt, Punkte auf die andere Seite der Mittelebene', () => {
+  it('ohne Normalfluss geraten um eine Linie, die nur aufliegt, Punkte auf die andere Seite der Mittelebene', () => {
     const b = kugelMitLoops(true);
     const start = Float64Array.from(b.h.pos);
-    const zb = new LoopZug(b.h, b.loops, null, true, 'kurven', 'geometrie', { normalfluss: false, wand: false });
+    const zb = new LoopZug(b.h, b.loops, null, true, 'kurven', 'geometrie', { normalfluss: false });
     spielen(zb, b.loops, [50, -30, 60, 0], 5, 60);
     // gemessen: 10 Punkte
     expect(drueben(start, b.h.pos)).toBeGreaterThan(0);
-    // mit der Wand an der Spiegelebene (`hautWand`, seit dem 11.11.) kommt auch dann keiner hinüber
-    const c = kugelMitLoops(true);
-    const zc = new LoopZug(c.h, c.loops, null, true, 'kurven', 'geometrie', { normalfluss: false });
-    spielen(zc, c.loops, [50, -30, 60, 0], 5, 60);
-    expect(drueben(start, c.h.pos)).toBe(0);
   });
 });
 
@@ -273,7 +267,7 @@ describe('Mittelebene', () => {
     expect(r!.loops[0]!.proben.length).toBe(auf.size);
   });
 
-  it('die Linie eines Paars bleibt auf ihrer Seite: Wo ihr Pfad durch die Mittelebene ginge, hält sie Abstand', () => {
+  it('die Linie eines Paars darf durch die Mittelebene: Ihr Pfad gilt, wie er gezeichnet ist', () => {
     let h = kugel();
     const paar = loopAusSchnitt(h, 'front', [60, 200], [60, -200], 1, 8)!;
     expect(paar.art).toBe('paar');
@@ -283,8 +277,6 @@ describe('Mittelebene', () => {
     // vier Punkte, damit der Loop einen Pfad hat
     for (const s of [0, 0.25, 0.5, 0.75]) punktEinfuegen(l, s * l.laenge);
     griffeAnlegen(l);
-    const g = mitteAbstand(l);
-    expect(g).toBeGreaterThan(0);
     // ein Punkt über die Mitte gezogen
     const P = l.punkte.map((p, i) => (i === 1 ? { ...p.ref, z: -40 } : p.ref));
     const roh = pfadLagen(l, P, undefined, true)!;
@@ -296,7 +288,7 @@ describe('Mittelebene', () => {
       min = Math.min(min, gehalten[j]!);
     }
     expect(rohMin).toBeLessThan(-30);
-    expect(min).toBeCloseTo(g, 9);
+    expect(min).toBe(rohMin);
   });
 });
 

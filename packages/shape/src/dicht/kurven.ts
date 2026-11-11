@@ -173,7 +173,7 @@ export function hautAus(positionen: ArrayLike<number>, indizes: ArrayLike<number
  *
  * Gelesen wird das am Netz, nicht an den Lagen: Die Punkte der Mittelkante trennen das Netz in Stücke, jedes Stück hat sein
  * Spiegelstück, und von den beiden liegt dasjenige auf der Seite z ≥ 0, dessen Punkte im Mittel das größere z haben. So behält ein
- * Punkt seine Seite, auch wenn er einmal über die Ebene geraten ist (`hautWand` holt ihn zurück).
+ * Punkt seine Seite, auch wenn er über die Ebene gezogen ist (das darf er: Die Anzeige schneidet jede Hälfte an der Ebene ab).
  *
  * null: Die Mittelkante trennt das Netz nicht (eine Kante läuft quer über die Ebene von einem Punkt zu einem der anderen Hälfte).
  */
@@ -219,27 +219,6 @@ export function hautSeiten(h: Haut): Int8Array | null {
     seite[v] = summe[c]! > summe[d]! || (summe[c] === summe[d] && c < d) ? 1 : -1;
   }
   return seite;
-}
-
-/**
- * Die Wand an der Spiegelebene (wie „Clipping“ beim Spiegeln in Blender): Kein Punkt der Haut kommt auf die Seite seines
- * Spiegelbilds. Ein Punkt, der hinüber geraten ist, liegt danach auf der Ebene; dort trifft er sein Spiegelbild. Gesetzt werden nur
- * die Punkte `punkte` (fehlt die Angabe: alle). Zurück: wie viele Punkte an die Ebene gelegt wurden.
- */
-export function hautWand(P: Float64Array, seite: Int8Array, punkte?: Int32Array): number {
-  let gelegt = 0;
-  const m = punkte ? punkte.length : seite.length;
-  for (let u = 0; u < m; u++) {
-    const v = punkte ? punkte[u]! : u;
-    const s = seite[v]!;
-    if (s === 0) continue;
-    const z = P[3 * v + 2]!;
-    if (s > 0 ? z < 0 : z > 0) {
-      P[3 * v + 2] = 0;
-      gelegt++;
-    }
-  }
-  return gelegt;
 }
 
 /** Normalen je Punkt (Dreiecke nach Fläche gewichtet). */
@@ -455,8 +434,6 @@ export class HautZiele {
   private readonly ruhe: Vermessung;
   /** Gewichte je Punkt und Nachbar (normiert; über harte Linien kleiner) */
   private readonly gew: Float64Array[];
-  /** Seite je Punkt (`hautSeiten`); null: Das Netz hat keine Seiten */
-  private readonly seite: Int8Array | null;
   readonly zeitZerlegen: number;
 
   constructor(
@@ -484,7 +461,6 @@ export class HautZiele {
     }
     this.nr = nr;
     this.frei = Int32Array.from(frei);
-    this.seite = hautSeiten(h);
     const zeilen: NormalZeile[] = [];
     const lapZeilen: number[] = [];
     this.gew = gewichteAus(h, kanten);
@@ -711,8 +687,6 @@ export class HautZiele {
         P[3 * v + 1] = x[3 * u + 1]!;
         P[3 * v + 2] = x[3 * u + 2]!;
       }
-      // die Wand an der Spiegelebene: Kein Punkt kommt auf die Seite seines Spiegelbilds
-      if (this.seite) hautWand(P, this.seite, this.frei);
       // genau spiegelgleich halten: Die Aufgabe ist es, aber in großen, kaum gehaltenen Bereichen wuchsen Rundungsfehler über
       // die Stufen eines Zugs bis 10⁻³, dann fand die Spiegelzuordnung einzelne Punkte nicht mehr
       for (let u = 0; u < nf; u++) {

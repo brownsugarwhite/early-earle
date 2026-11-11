@@ -46,7 +46,7 @@ import type { NormalSystem, NormalZeile } from '../loeser/normalSystem';
 import { normalSystemZerlegt } from '../loeser/zerlegung';
 import { type IntrinsischeGewichte, intrinsischeGewichte } from './intrinsisch';
 import { KETTE_K, type KruemmungsKetten } from './kruemmung';
-import { type Bindungen, type Haut, type Vermessung, gewichteAus, hautNormalenMax, hautSeiten, hautWand, laengenGewichte, vermessen } from './kurven';
+import { type Bindungen, type Haut, type Vermessung, gewichteAus, hautNormalenMax, laengenGewichte, vermessen } from './kurven';
 
 /**
  * Wie die Krümmung gemessen und verteilt wird: `gleich` (Mittel der Nachbarn, bis 08.11.) oder `geometrie` (Laplace–Beltrami auf der
@@ -85,11 +85,6 @@ export type HautOptionen = {
    * Linie nur auf der Haut liegt (nicht ins Netz eingesetzt); `true` / `false` erzwingen es (zum Vergleichen).
    */
   normalfluss?: boolean;
-  /**
-   * Die Wand an der Spiegelebene (`hautWand`): Kein Punkt der Haut kommt auf die Seite seines Spiegelbilds. `false`: ohne sie, wie
-   * bis zum 11.11. (zum Vergleichen).
-   */
-  wand?: boolean;
 };
 
 /**
@@ -285,8 +280,6 @@ export class HautAusKurven {
   private readonly ziel0: Float64Array;
   /** Gewichte je Punkt und Nachbar (normiert; über harte Linien kleiner) */
   private readonly gew: Float64Array[];
-  /** Seite je Punkt (`hautSeiten`: +1 die Hälfte z ≥ 0, −1 ihr Spiegelbild); null: ohne Wand, oder das Netz hat keine Seiten */
-  private readonly seite: Int8Array | null;
   /** je Punkt: wie stark er seine Krümmung weitergibt (−1: keine Quelle; Loops 1 − Härte/3, Rand des Bereichs 1) */
   private readonly quelle: Float64Array;
   /** Unbekannte der Krümmung: freie Punkte, die keine Quelle sind */
@@ -386,7 +379,6 @@ export class HautAusKurven {
     }
     this.nr = nr;
     this.frei = Int32Array.from(frei);
-    this.seite = opt.wand === false ? null : hautSeiten(h);
     let kl = 0;
     let kz = 0;
     for (let v = 0; v < n; v++)
@@ -1325,9 +1317,6 @@ export class HautAusKurven {
       }
       this.zeiten.loesen += jetzt() - tl;
       this.zeiten.runden++;
-      // Die Wand an der Spiegelebene (wie „Clipping“ beim Spiegeln in Blender): Kein Punkt kommt auf die Seite seines Spiegelbilds.
-      // Wo die Hälften durcheinander liefen, stand im Fenster ein schwarzes Loch.
-      if (this.seite) hautWand(P, this.seite, this.frei);
       // genau spiegelgleich halten (wie HautZiele)
       for (let u = 0; u < nf; u++) {
         const v = this.frei[u]!;

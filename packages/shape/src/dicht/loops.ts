@@ -1178,27 +1178,16 @@ export function pfadBei(l: Loop, s: number): V3 | null {
 export const hatPfad = (l: Loop): boolean => hatGriffe(l) && l.punkte.length >= 2 && l.punkte.every((p) => p.ein && p.aus);
 
 /**
- * So nah kommt die Linie eines Loops der Mittelebene höchstens (11.11.): ein Ring 0 (seine Enden liegen auf ihr), ein Paar anderthalb
- * Weiten seiner Proben (etwa eine Kante des Netzes). Läge ein Paar auf der Mittelebene, läge es auf seinem Spiegelbild und auf dem
- * Loop der Mitte: Die Haut dazwischen hätte keine Breite mehr. Gemessen an Florians Form (Punkt des Paars über die Mitte gezogen,
- * dort losgelassen, wieder weggezogen): ohne Abstand 38 Knicke über 150° und 4 falsche Kreuzungen an der Berührung, danach nicht
- * mehr heil; mit einer halben Probenweite 63 Knicke (der Streifen ist dann schmaler, als das Netz darstellen kann); mit anderthalb
- * keine umgeklappten Dreiecke, und der Punkt lässt sich wieder wegziehen. Näher an die Mitte geht es erst mit einem Netz, das an
- * engen Linien feiner ist.
- */
-export const mitteAbstand = (l: Loop): number => (l.art === 'paar' ? (1.5 * l.laenge) / Math.max(1, l.proben.length) : 0);
-
-/**
  * Lage je Probe auf dem Pfad (3 je Probe): an ihrer Stelle t in ihrem Stück, aus den Punkten `P` (sonst ihren Lagen) und den Griffen
  * `G` (sonst den gespeicherten); null ohne Pfad. Mittelebene und Enden eines Rings genau auf z = 0.
  *
- * Ein Ring und ein Paar liegen auf der Seite z ≥ 0, ihr Spiegelbild auf der anderen (11.11., Florian: „es darf nicht jedes Mal, wenn
- * ich versehentlich ein Handle falschherum drehe oder mit einem Punkt nahe der Mittellinie ziehe, das Mesh kaputt gehen“). Wo der
- * Pfad durch die Mittelebene ginge (ein Punkt oder ein Griff über die Mitte gezogen), bleibt die Linie deshalb auf ihrer Seite
- * (`mitteAbstand`): Sonst zöge sie die Haut ihrer Seite durch die der anderen. `roh`: der Pfad, wie er gezeichnet ist (für den, der
- * danach selbst begrenzt).
+ * Ein Ring und ein Paar gehören zur Hälfte z ≥ 0, ihr Spiegelbild zur anderen. Ihr Pfad darf durch die Mittelebene laufen (ein
+ * Punkt oder ein Griff über die Mitte gezogen): Gerechnet wird damit wie überall, erst die Anzeige schneidet jede Hälfte an der Ebene
+ * ab, dort verschmelzen sie (11.11., Florian: „ich kann ganz normal über die Spiegelkante ziehen und das Mesh verschmilzt dann“).
+ * Am Morgen des 11.11. hielt die Linie Abstand zur Ebene; dann wurde die Haut zwischen ihr und der Mitte zerknüllt. `roh` hat seitdem
+ * keine Wirkung mehr.
  */
-export function pfadLagen(l: Loop, P?: readonly V3[], G?: readonly { ein: V3; aus: V3 }[], roh = false): Float64Array | null {
+export function pfadLagen(l: Loop, P?: readonly V3[], G?: readonly { ein: V3; aus: V3 }[], _roh = false): Float64Array | null {
   if (!hatPfad(l)) return null;
   const n = l.proben.length;
   const out = new Float64Array(3 * n);
@@ -1225,14 +1214,6 @@ export function pfadLagen(l: Loop, P?: readonly V3[], G?: readonly { ein: V3; au
   if (l.art === 'ring') {
     out[2] = 0;
     out[3 * n - 1] = 0;
-  }
-  if (!roh && l.art !== 'mitte') {
-    const g = mitteAbstand(l);
-    for (let j = 0; j < n; j++) if (out[3 * j + 2]! < g) out[3 * j + 2] = g;
-    if (l.art === 'ring') {
-      out[2] = 0;
-      out[3 * n - 1] = 0;
-    }
   }
   return out;
 }
