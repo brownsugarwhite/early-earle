@@ -281,3 +281,40 @@ Das machte alles dunkler und satter (Petrol fast schwarz) — es betraf auch sch
 **Offen:** Florians Urteil zu allem; der Fensterkopf liegt bei Zoom über dem weißen Körper (weiße Schrift unlesbar); die Innenlappen
 der Kugel liegen ineinander (die Vorlage hat zwei getrennte Lappen); Bläschen und Glanz sind einfache Regeln, keine Gestaltung je
 Wesen; geprüft nur in Chromium auf dem Mac (Playwright, echte Mauszüge), das Artefakt nicht im Artefakt-Rahmen.
+
+### Nachtrag 11.11. spätabends: TikTok, Wenden, Kontrast, glatter, Lava
+
+Florian zum Stand von `/editor`: „sieht schon durchaus gut“, dazu fünf Wünsche (wörtlich gekürzt): den „TikTok-Effekt wie bei der
+Ursprungsversion, so dass die dunkelblaue Linie aus der Überschneidung der beiden anderen entsteht“; „die Griffe immer Kontrast …
+wenn ein Griff über eine dunkle Linie geht, soll der Bereich, der im Dunkleren liegt, weiß sein“; Schattierung „noch eine Spur
+mehr geglättet, die Stufen sind jetzt stark abgerundet, aber immer noch sichtbar“; im Jelly beim Herausziehen von Hals oder Kopf
+„mehrere dunkle Bubbles … immer rund/bohnenförmig … wie Bubbles in einer Lavalampe, mehr oder weniger unabhängig vom Mesh“; und
+„beim Seitenwechsel sollen Modell und dunkelblaue Outline wieder Farben umkehren wie zuvor“. Commit `f2e62643` auf
+`claude/form-spiegel`, Artefakt Version 4. Bilder `docs/progress/editor/editor-{tiktok-gesamt,tiktok-lava-bogen,griffe-kontrast-nah,
+gewendet,schattierung-300,lava-nah}-2026-11-11.jpg`.
+
+- **TikTok** (Passer, Standard an): die dicke Kontur aus zwei Platten in den Farben des Verlaufs, jede ein Band von ihrem Körper bis
+  zur Kontur, Rosa nach rechts oben, Lila nach links unten versetzt (je ⅕ der Kontur, mit „Blick“: von der Seite keiner, von hinten
+  umgekehrt); wo beide liegen, Petrol. Innen ein Streifen der einen, außen einer der anderen Farbe, wie Blau/Orange der Blaupause.
+  Der Rand liegt um beide Platten; der Schatten entfällt (Schalter aus = die Kontur mit Schatten von vorher). Rand-Regler jetzt ab 0
+  (Rand 0 zeigt die Platten pur, Bild 2). Ehrlich: Wo der Verlauf des Rands dieselbe Farbe hat wie der Streifen, verschwimmt er.
+- **Wenden:** Körper und Kontur tauschen wie in der Blaupause (`kipp(sigma)`): von hinten Körper Petrol (Schattenseite ⅔), Kontur,
+  Linien und Inneres des Mauls weiß, der Grund hell; die Kante läuft beim Drehen durchs Bild.
+- **Griffe mit Kontrast:** Nach Grund, Körper, Linien und Punkten kopiert jedes Fenster sein Bild in eine Textur
+  (`copyFramebufferToTexture`); Stäbe und Bögen lesen darunter die Helligkeit je Bildpunkt: dunkle Tinte wird über Dunklem weiß
+  (Luma < 0,36–0,48), helle Tinte (Jelly, Rückseite) über sehr Hellem dunkel (> 0,84–0,92). Punkte bleiben, wie sie sind.
+- **Glatter:** Halbmesser der Glättung im Bild 4,5 × 0,75 Netzkanten ohne die alte Obergrenze von 28 px (die ließ beim Zoomen die
+  Kanten des Netzes als runde Stufen stehen), zwei Runden waagerecht/senkrecht mit 25 Abtastpunkten, Felder linear gefiltert. Die
+  Extrusion steckt jetzt im Abstandsfeld selbst (die Maske wird längs der Extrusion bis zu 64-mal versetzt gezeichnet) — vorher
+  sechs Kopien im Shader, das gab bei starkem Zoom Zacken an der rosa Kante.
+- **Lava** (`src/form/lava.ts`, ersetzt die Innenlappen aus der Dicke): Das gezeigte Netz wird in Würfel zerlegt (40 längs der
+  größten Ausdehnung, innen per Strahl längs x), exakte Abstandstransformation; die größten Kugeln, die sich nicht überdecken (ab ¼
+  der größten), sind Anker. Die Blase ist ein Ellipsoid nach dem dicken Kern um den Anker (Hauptachsen der Würfel mit ≥ 0,7 seiner
+  Tiefe): im flachen Rumpf eine breite Linse, in einer Kugel eine Kugel. Je Blase zwei Ellipsoide (eine Bohne), weich verschmolzen,
+  auch mit den Nachbarn; sie treiben, atmen, das kleinere schwappt (Perioden 6–17 s); unten dunkler als oben. Formänderung → neue
+  Anker höchstens alle 250 ms (2–8 ms), die Blasen schwimmen hin, neue wachsen, alte schrumpfen. Gezeichnet als Ellipsen im Bild
+  (E = P·M·Pᵀ), Rand scharf. Für die Bewegung zeichnet nur das 3D-Fenster neu (`preserveDrawingBuffer`, höchstens 60/s; geprüft:
+  die drei anderen Fenster bleiben bitgleich stehen). Schalter „Lava bewegt“.
+- **Offen:** Florians Urteil; ein dünner herausgezogener Hals bekommt keine Blase (unter ¼ der dicksten Stelle) — ein dicker Kopf
+  schon; die Bögen der Griffe stehen in der Seitenansicht oft von der Kante (3D-Bögen, älter); bei starkem Zoom haben Kantenlinien
+  und Punkte nahe der Silhouette Zähne bzw. halbe Kreise (Tiefentest gegen den Körper, älter, nicht angefasst).
