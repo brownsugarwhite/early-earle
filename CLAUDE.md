@@ -1798,6 +1798,42 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   meist 1–3 % der Feldgröße neben der Haut, einzelne 9–19 %, Knick an den Linien im Mittel 4–12°, bis 26°. Empfehlung: keine
   Richtungsänderung; bei „Teile anfügen“ Schwanz, Hals, Horn, Bein zuerst als Loft prüfen (offen: weicher Übergang). Messcode
   `apps/editor/scripts/pruefen/loft-2026-11-11/`, Bilder `docs/progress/editor/loft-*-2026-11-11.jpg`.
+- **2026-11-11 morgens: Stabilität an der Spiegelachse** (Sitzung der Gegenprüfung; Florian: „Ich habe das Gefühl, dass es
+  irgendwann gestern fragiler wurde … Gestern kam einiges Schlechtes und Sonderregeln mit rein“, dann mit der gesicherten Form
+  `wesen/test_kaputt.eewesen`: „… bläst sich das Mesh auf und wird irgendwann zerrissen. Aber nur, wenn ich erst die beiden Loops
+  daneben ziehe und dann erst den in der Mitte … Sobald ich die Mittelachse kreuze und dann wieder zurückfahre, wobbelt das Mesh
+  … jeder weitere Zug macht das Mesh kaputt. Das muss richtig stabil werden.“). Bericht
+  [`docs/research/2026-11-10-gegenpruefung-kurven-loeser.md`](docs/research/2026-11-10-gegenpruefung-kurven-loeser.md), „Stand
+  (11.11. morgens)“; Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
+  - **Befund:** Hauptursache: Das Verdichten drehte seit dem 05.11. Kanten der Mittelebene quer; ein danach gezogener Loop der
+    Mitte ließ sich nicht einsetzen und lag nur auf der Haut (daher die Reihenfolge). Um eine Linie, die nur aufliegt, kommt der
+    Löser nie zur Ruhe, und seine Korrektur schiebt die Punkte der Haut seitlich bis auf die andere Seite der Mittelebene. Dazu
+    durfte die Linie eines Paars über die Mitte. Seit G3 (10.11., 13 Uhr) rechnet der Löser vier bis sechs statt zwei Runden je
+    Mausschritt; derselbe Zug war mit zwei Runden heil und mit fünf zerrissen. Sein Gefühl „seit gestern“ stimmte.
+  - **Gebaut:** Die Kette der Mittelebene bleibt geschlossen (`verdichten.ts`, `einsetzen.ts` `mitteKetteSchliessen`, Fenster
+    `einsetzenNachholen` nach dem Laden und nach jedem neuen Loop), Ring und Paar bleiben auf ihrer Seite (`loops.ts`
+    `pfadLagen`, `mitteAbstand`), im Zug kein Netzumbau, solange eine Linie an der Mitte anliegt oder der Zug die Haut
+    umgeklappt hat. **Der Löser rechnet mit eingesetzten Linien Bit für Bit wie am 10.11.**; nur für einen Loop, der sich nicht
+    einsetzen lässt, rechnet er von selbst mit dem Normalfluss (`dicht/ausKurven.ts`: die Haut folgt den Linien, die Korrektur
+    der Krümmung wirkt nur längs der Normale; `normalfluss: true` / `false`, `?normalfluss=1` / `=0`).
+    **Verdrehter Griff:** Kreuzt sich nach einem Zug eine Linie selbst (`loops.ts` `linieKreuztSich`), bleiben Netz und
+    Zerlegung, wie sie sind, mit Meldung (Fenster `nachZugAufraeumen`); eine Zerlegung von der gefalteten Haut führte beim
+    Zurückdrehen in eine andere Ruhelage (im Kern nachgestellt).
+  - **Gemessen** (alt = `b72c3586`): zwölf grobe Abläufe im Fenster an seiner Form: vorher nach dem fünften zerstört und jeder
+    Zug danach zurückgenommen, jetzt die ersten zehn in jedem Lauf heil; sein Ablauf von der Kugel an: vorher Mitte
+    nicht eingesetzt, jetzt eingesetzt und ohne umgeschlagenes Dreieck; 92 Züge im Kern an seiner Form zur Ruhe 0 → 92; Vogel
+    und Firefish unverändert (dieselbe Rechnung).
+  - **Offen:** Griff verdreht loslassen und erst danach zurückdrehen: an der frisch geladenen Form in fünf von fünf Läufen wieder
+    genau die alte Form (vorher in keinem), nach zehn groben Zügen davor in vier von sechs (quer zu einer Linie hat
+    die Haut ein Gedächtnis, mehr als eine Ruhelage; das Rechnen selbst nur mit Florians Wort anfassen); die enge Stelle am Firefish
+    braucht die Vorsicht vom 10.11. weiter; Vorsicht und Schutz sind noch drin; Linien näher als eine Kante des Netzes.
+  - **Lehren:** Stabil heißt für Florian: nach einem Fehlgriff und dem Rückweg wieder heil. Grobe Züge prüfen
+    (`form-ablauf-probe.mjs`, `form-reihenfolge-probe.mjs`), seine Reihenfolge nachstellen, erst die Ursache suchen. **Vor jeder
+    Meldung über eine neue Rechnung die Gegenmessung „neuer Stand mit der alten Rechnung“:** Der Normalfluss war am Morgen die
+    Rechnung für alle Fälle; mit eingesetzter Mitte bestand die alte Rechnung dieselben Abläufe, der Normalfluss war am Firefish
+    schlechter (184 statt 188 von 196 Zügen zur Ruhe) und ein Viertel langsamer je Runde. Eine Regel, die anhält („umgeklappt
+    heißt nur folgen“), braucht einen Weg zurück: Sie hielt am Vogel die Haut für immer an und schönte die Messreihe (alle Züge
+    „in Ruhe“); gefunden erst beim Vergleich der Formen alt gegen neu.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

@@ -1,4 +1,4 @@
-# Übergabe (Stand 10.11.2026 nachts: G1 bis G4 gebaut; Sichern und Laden; G5 erster Teil; Schutz gegen das Davonlaufen der Haut und Vorsicht im Löser; Florians zwei gesicherte Formen; Grundform immer spiegelgleich entschieden)
+# Übergabe (Stand 11.11.2026 vormittags: Stabilität an der Spiegelachse gebaut — die Kette der Mittelebene bleibt geschlossen, Loops werden nachträglich eingesetzt, Linien bleiben auf ihrer Seite; der Löser rechnet mit eingesetzten Linien wie am 10.11., Normalfluss nur für einen lose aufliegenden Loop; davor G1 bis G4, Sichern und Laden, G5 erster Teil, Schutz und Vorsicht; Florians drei gesicherte Formen; Grundform immer spiegelgleich entschieden)
 
 **Branch `claude/form-zuerst`, Arbeitsbaum `.claude/worktrees/form-zuerst`.** Diese Datei ist der Einstieg. Die alte Übergabe aus der
 Käfig-Zeit (Stand 04.11.) steht in der Git-Geschichte: `git show 82aed6dc:docs/UEBERGABE.md`.
@@ -237,20 +237,90 @@ Kriterien stehen in der Tabelle des Nachtrags; Messwerte und Befunde je Schritt 
   20 s, das Netz wächst dabei auf 36 700 Punkte, nicht untersucht). **Meldungen an ihn: erst, was sich an seiner Form geändert
   hat, mit Zahlen von dieser Form; dann, was bleibt.** `form-gesichert-zug.mjs` hat dafür `KANTE=1` und meldet den Stillstand
   nach dem Loslassen.
+- **Florian (11.11. früh), mit der Form `test_kaputt`:** „Ich habe das Gefühl, dass es irgendwann gestern fragiler wurde …
+  Gestern kam einiges Schlechtes und Sonderregeln mit rein … Wenn du in der Front den mittleren obersten Punkt bewegst und damit
+  spielst, bläst sich das Mesh auf und wird irgendwann zerrissen. Aber nur, wenn ich erst die beiden Loops daneben ziehe und dann
+  erst den in der Mitte … Sobald ich die Mittelachse kreuze und dann wieder zurückfahre, wobbelt das Mesh und kommt oft nur sehr
+  zerrissen zur Ruhe, und jeder weitere Zug macht das Mesh kaputt. **Das muss richtig stabil werden.**“
+- **Stabilität an der Spiegelachse gebaut** (Bericht „Stand (11.11. morgens)“, dort Befund, Messungen, Verworfenes):
+  - **Befund:** (1) **Hauptursache:** Das Verdichten drehte Kanten der Mittelebene quer (seit dem 05.11. beim Verbessern der
+    Wertigkeit, seit dem 10.11. nachts auch beim Auflösen flacher Dreiecke); ein danach gezogener Loop der Mitte ließ sich nicht
+    einsetzen und lag nur auf der Haut (deshalb seine Reihenfolge). (2) Um eine Linie, die nur aufliegt, kommt der Löser nie zur
+    Ruhe, und seine Korrektur schiebt die Punkte der Haut seitlich, bis auf die andere Seite der Mittelebene; seit G3 mit vier
+    bis sechs statt zwei Runden je Mausschritt, deshalb „seit gestern“. (3) Die Linie eines Paars durfte über die Mittelebene.
+  - **Im Kern, Netz:** `dicht/verdichten.ts` dreht keine Kante der Mittelebene mehr und dreht quer liegende zurück;
+    `dicht/einsetzen.ts` schließt die Kette vor dem Einsetzen der Mitte (`mitteKetteSchliessen`).
+  - **Im Kern, Linien** (`dicht/loops.ts`): `pfadLagen` hält Ring und Paar auf ihrer Seite (`roh` = wie gezeichnet), das Paar
+    um `mitteAbstand` (anderthalb Probenweiten) vor der Mittelebene.
+  - **Im Fenster** (`kurven.ts`): `zGrenzen` und `punktNach` begrenzen auch das Paar (`mitteGrenze`: an einer Kreuzung für beide
+    Loops gleich); im Zug kein Verfeinern und kein Einwechseln, solange eine Linie an der Mittelebene anliegt (`Zug.begrenzt`)
+    oder der Zug mehr umgeschlagene Dreiecke hat als bei seinem Anfang (`Zug.umgAnfang`, `umgeschlageneZahl`);
+    `einsetzenNachholen` setzt Loops, die nur aufliegen, nach dem Laden und nach jedem neuen Loop ein (an `test_kaputt` mit
+    Meldung). Haken `loops()[i].eingesetzt`.
+  - **Verdrehter Griff** (`dicht/loops.ts` `linieKreuztSich`; Fenster `nachZugAufraeumen`, `linienGekreuzt`): Kreuzt sich nach
+    einem Zug eine Linie selbst, bleiben Netz und Zerlegung, wie sie sind (kein Aufräumen, keine neue Zerlegung; die bereite
+    bleibt die des Zugs), mit Meldung; liegt sie nach einem späteren Zug wieder frei, wird wie sonst aufgeräumt. Ursache, im
+    Kern gemessen (`form-griff-verdreht.ts`): Eine Zerlegung, die auf der gefalteten Haut gebaut ist, führt die Haut
+    beim Zurückdrehen in eine andere Ruhelage (4 Knicke über 150°, 1 % Rauminhalt fehlt); mit der Zerlegung von davor ist die
+    Form wieder die alte.
+  - **Im Kern, Löser** (`dicht/ausKurven.ts`): **Mit eingesetzten Linien rechnet er Bit für Bit wie am 10.11.** Nur wenn eine
+    Linie lose aufliegt (ein Loop ließ sich nicht einsetzen), rechnet er von selbst mit dem **Normalfluss:** Eine Runde folgt den
+    Linien (nur wenn sie nicht auf ihren Zielen liegen, `FOLGEN_GENAU`) und löst die Korrektur der Krümmung für sich;
+    aufgetragen wird nur ihr Anteil längs der Normale, Punkte an Linien bleiben (`gebunden`). Sechs Spalten in einem Durchgang
+    (`loeser/zerlegung.ts`, `loesenSpalten(…, 6)`). Option `normalfluss: true` / `false` erzwingt bzw. verbietet es (Fenster
+    `&normalfluss=1` / `=0`, Prüfskript `FLUSS=1` / `=0`).
+  - **Gemessen** (alt = Stand von gestern Nacht `b72c3586`, als zweite Seite auf Port 5194): 92 Züge im Kern an `test_kaputt`
+    zur Ruhe 0 → 92 (Mitte eingesetzt, wie das Fenster die Form jetzt lädt; mit loser Mitte und Normalfluss 75). Zwölf grobe
+    Abläufe im Fenster an `test_kaputt` (`form-ablauf-probe.mjs`): vorher nach dem fünften zerstört (Rauminhalt 25 %, 624
+    umgeschlagene Dreiecke), jeder Zug danach zurückgenommen; jetzt die ersten zehn in allen zehn Läufen heil. Sein Ablauf von
+    der Kugel an (`form-reihenfolge-probe.mjs`): vorher Mitte nicht eingesetzt und 16 / 22 umgeschlagene Dreiecke, jetzt
+    eingesetzt und 0 / 0 (sechs von sechs Läufen). Griff in einem Zug 160 auf die falsche Seite und zurück: vorher bleiben 169
+    bis 208 umgeschlagene Dreiecke, jetzt 0 (fünf von fünf). Vogel und Firefish im Kern unverändert (283 von 284, 188 von 196;
+    dieselbe Rechnung). Kern 132 Tests (`dicht/normalfluss.test.ts` neu), Fenster 16; Schutz 12 von 12, Nachlauf 18 von 18,
+    Sichern und Laden 27 von 27, Ändern ohne Fehler.
+  - **Proben und Bilder:** `form-ablauf-probe.mjs` (Ablauf als Text, Punkte nach Lage `4:oben`, Zoom `@3`, `LINIEN=1`, `ORTE=1`,
+    `BILD=…`), `form-reihenfolge-probe.mjs`, `form-griff-spur.mjs`; im Kern `form-gesichert-stabil.ts` (`EINSETZEN=1`,
+    `FLUSS=0/1`), `form-griff-verdreht.ts` (`NEU=1`, `VORLAGE=1`), `form-achse-drift.ts`, `form-achse-spiel.ts`,
+    `form-achse-spur.ts`. Ausgaben `gegenpruefung-2026-11-10/ausgaben/achse-{ablaeufe,reihenfolge}-2026-11-11.txt`. Vergleichsbild
+    vorher/nachher: `docs/progress/editor/form-achse-test-kaputt-vergleich-2026-11-11.jpg`.
+  - **Der Normalfluss war am Morgen die Rechnung für alle Fälle und ist zurückgestuft.** Die Gegenmessung „neuer Stand mit der
+    Rechnung vom 10.11.“ zeigte: Mit eingesetzter Mitte kommt die alte Rechnung an seiner Form in 92 von 92 Zügen zur Ruhe und
+    besteht die Abläufe; der Normalfluss ist am Firefish schlechter (184 statt 188 von 196), kostet ein Viertel mehr Zeit je
+    Runde im Zug (Vogel 20 → 26 ms, Firefish 37 → 45 ms) und heilt den verdrehten Griff seltener. Sein gemessener Nutzen ist die
+    lose Linie (75 statt 0 von 92 Zügen zur Ruhe); nur dafür springt er ein.
+  - **Offen:** (a) Griff verdreht loslassen und erst danach zurückdrehen: an der frisch geladenen Form in fünf von fünf Läufen
+    wieder genau die alte Form (vorher in keinem von drei), am Ende der zwölf groben Abläufe in vier von sechs;
+    im Rest bleiben zwei kleine Beulen oder ein kurzer Grat längs des Rings neben der Mitte, obwohl Linien, Griffe und
+    Zerlegung die von davor sind. Dahinter steht
+    eine Eigenschaft des Rechnens: Quer zu einer Linie ist der Winkel der Haut frei, die Haut hat dort ein Gedächtnis (mehr als
+    eine Ruhelage zu denselben Linien). Nicht anfassen ohne Florians Wort; ein Weg im Fenster wäre, die Haut nach dem
+    Zurückdrehen aus dem Stand vor dem Verdrehen neu zu rechnen. (b) Die enge Stelle am Firefish (4:15) braucht die Vorsicht weiter; ohne sie läuft die Haut dort
+    davon. (c) Vorsicht und Schutz vom 10.11. sind noch drin (in den zwölf Abläufen: Schritt verkleinert null- bis zweimal,
+    kein Zug zurückgenommen; vorher 36-mal und sieben). (d) Linien näher beieinander als eine Kante kann das Netz nicht
+    darstellen; ein Ring lässt sich weiter auf die Mittelebene drücken (nicht geprüft). (e) Wann `loopEinsetzen` außer an der
+    offenen Kette noch scheitert, ist nicht untersucht.
 - **Als Nächstes (Vorschlag, sein Wort steht aus): G6, die halbe Haut**, jetzt mit Grundlage (Formen mit 16 000 bis 28 000
   Punkten) und mit seiner Entscheidung. Danach der zweite Teil von G5 (Netz nur so dicht wie nötig) oder das Zerlegen selbst.
   Offen bleibt sein Blick auf G4, Sichern/Laden und G5 Teil 1; dann nach seiner Reihenfolge Maul, Posen, genaue Werkzeuge.
 
 ## 1. Stand
 
-- **Letzter Code-Commit:** `967998d9` (Schutz gegen das Davonlaufen, Vorsicht im Löser, neuer Punkt ohne Warten); davor
-  `2be21c5b` (G5 Teil 1), `92b60a5b` (Sichern und Laden). Alles ist committet und gepusht (lokal = `origin/claude/form-zuerst`).
+- **Letzter Code-Commit:** „Stabilität an der Spiegelachse“ vom 11.11. (Kette der Mittelebene, Loops nachträglich einsetzen,
+  Linien auf ihrer Seite, Normalfluss für lose Linien; `git log -1 -- packages/shape/src/dicht/ausKurven.ts`); davor `967998d9`
+  (Schutz gegen das Davonlaufen, Vorsicht im Löser, neuer Punkt ohne Warten), `2be21c5b` (G5 Teil 1), `92b60a5b` (Sichern und
+  Laden). Alles ist committet und gepusht (lokal = `origin/claude/form-zuerst`). Dazwischen liegt `b72c3586` einer anderen
+  Sitzung (Loft-Messung, nur Messung).
 - **Halbfertiges:** keins. Am 09.11. sind zwei Löser-Versuche wieder entfernt worden („gleiches Maß“, „Krümmung an den Linien
   mitgelöst“; Stand des zweiten in `476a874f`). Der Code des Lösers (`dicht/ausKurven.ts`) ist seit `1f1f5079` (Schalter
   `maxNormalen`) im Rechnen unverändert; G1 hat nur das Einsetzen in `loeser/zerlegung.ts` ausgeschrieben, G2 und G3 nur das
   Fenster. G4.3 hat im Löser nur die Annahme einer angebotenen Zerlegung geändert (Prüfung der Struktur, `vorlageGenutzt`).
   **Seit `967998d9` gibt es die „Vorsicht bei Unruhe“** (`vorsichtPruefen`): Sie ändert das Rechnen nur, wenn die Bewegung der
   Haut wächst (dann halber Schritt für diesen Löser); eine Haut, die zur Ruhe kommt, rechnet Bit für Bit wie vorher.
+  **Seit dem 11.11. gibt es den Normalfluss** (oben): Er ändert das Rechnen nur, wenn eine Linie lose aufliegt; mit eingesetzten
+  Linien rechnet der Löser Bit für Bit wie vorher (Test in `dicht/normalfluss.test.ts`).
+- **Zum Vergleichen:** Arbeitsbaum `.claude/worktrees/form-alt` (losgelöst, zuletzt auf `b72c3586` = Stand von gestern Nacht) mit
+  der Konfiguration `kurven-alt` (Port 5194) in `.claude/launch.json` des Hauptordners (dort nicht committet). Proben nehmen ihn
+  mit `KURVEN_URL=http://localhost:5194/kurven.html?gewichte=geometrie`. Er kann weg, sobald Florian den neuen Stand gesehen hat.
 - **Läuft:** ein Vite-Server auf Port 5193 aus diesem Arbeitsbaum. Seit dem 10.11. mittags gehört er der Sitzung der
   Gegenprüfung (Konfiguration `kurven` in `.claude/launch.json` des Hauptordners, mit `pnpm -C <Arbeitsbaum>`); der alte Prozess
   der früheren Sitzung ist beendet. Florian testet damit. Vor einem eigenen Start `lsof -i :5193` prüfen. Port 5180 gehört dem
@@ -552,6 +622,41 @@ nicht mehr.
 41. **Eine gesicherte Datei ist nicht der Stand eines Bildschirmfotos.** „strange bird“ wurde eine halbe Stunde nach seiner
     Nachricht gesichert; der Fehler seiner Bilder ließ sich daran nicht nachstellen. Im Bericht steht, was nachgestellt ist und
     was nicht.
+42. **Eine Stichprobe mit braven Zügen zeigt nicht, ob es stabil ist** (11.11.). Stabil heißt für Florian: Nach einem Fehlgriff
+    und dem Rückweg ist die Form wieder heil. Vor jeder Meldung zu einem Rechenschritt die groben Züge laufen lassen:
+    `form-ablauf-probe.mjs` an seinen Formen (Punkt über die Mitte und zurück, Griff umdrehen und zurück, Punkt über seinen
+    Nachbarn hinaus und zurück, nahe der Mitte loslassen und wieder wegziehen) und `form-reihenfolge-probe.mjs` von der Kugel an.
+43. **„Nur wenn ich erst … dann …“ ist eine Spur im Ablauf, kein Zufall.** Seine Reihenfolge nachstellen: Hier hatte das
+    Aufräumen das Netz verändert, bevor der Loop der Mitte kam.
+44. **Ein Loop, der nur auf der Haut liegt, ist für den Löser keine Linie.** Er hält die Haut, gibt ihr aber keine Krümmung;
+    um ihn kam die Haut nie zur Ruhe. `loops()[i].eingesetzt` prüfen; `einsetzenNachholen` holt es nach. Bleibt er lose,
+    rechnet der Löser von selbst mit dem Normalfluss (ruhiger, aber die Linie formt die Haut schwächer).
+45. **Mehr Runden machen eine alte Schwäche sichtbar** (G3): Derselbe Zug war mit zwei Runden je Mausschritt heil und mit fünf
+    zerrissen. Nach einem Schritt, der dem Löser mehr Runden gibt, die groben Züge prüfen; im Kern mit so vielen Runden je
+    Schritt messen wie das Fenster (Falle 8).
+46. **Zwei Punkte am selben Ort verwirren die Spiegelzuordnung** (`hautAus` findet den Partner über die gerundete Lage). Einen
+    Punkt nie auf sein Spiegelbild legen.
+47. **Eine Grenze, die den Zug begrenzt, verliert beim Neuaufsetzen den Rest der Mausbewegung.** Wird der Zug aufgesetzt, während
+    ein Punkt an der Mittelebene anliegt, liegt er nach dem Rückweg weiter draußen (gemessen 32 Einheiten). Deshalb setzt das
+    Fenster dann nicht neu auf (`Zug.begrenzt`; auch der gezogene Punkt selbst muss es melden, nicht nur die Proben).
+48. **Eine Probe, die klickt, kann einen anderen Punkt treffen.** In der Seite liegen zwei Punkte der Form oft fast aufeinander;
+    nahe der Mitte greift man leicht das Spiegelbild. Auswahl prüfen (`auswahl()`), mit Zoom greifen (`@3` in der Ablauf-Probe),
+    Punkte nach ihrer Lage wählen (`4:oben`), nicht nach der Nummer (die hängt am Stand).
+49. **In diesem Arbeitsbaum arbeitet zeitweise eine zweite Sitzung** (11.11.: Loft-Messung, nur Messung, eigener Commit). Vor dem
+    Committen `git status` und `git log -3` lesen und nur die eigenen Dateien stagen.
+50. **Vor jeder Meldung über eine neue Rechnung: die Gegenmessung „neuer Stand mit der alten Rechnung“** (11.11.). Der
+    Normalfluss schien nötig, solange die Mitte lose lag; mit eingesetzter Mitte bestand die Rechnung vom 10.11. dieselben
+    Abläufe. Wer zwei Dinge zugleich ändert (Netz und Rechnung), misst jedes für sich.
+52. **Ein neuer Löser erbt die Lage, auf der er zerlegt.** Seine Matrix ist nach den Kantenlängen beim Zerlegen gewichtet. Auf
+    einer gefalteten Haut gebaut, führt sie beim Entfalten in eine andere Ruhelage. Deshalb zerlegt und verdichtet das Fenster
+    nicht, solange sich eine Linie selbst kreuzt (`nachZugAufraeumen`). Wer einen Rest nach einem Zug untersucht: im Kern
+    nachstellen und die Teilschritte einzeln tauschen (`form-griff-verdreht.ts`: `NEU=1`, `VORLAGE=1`).
+53. **Quer zu einer Linie ist der Winkel der Haut frei.** Ein Linienpunkt gibt seine gemessene Krümmung als Soll weiter und wird
+    selbst nicht korrigiert. Zu denselben Linien gibt es deshalb mehr als eine Ruhelage (Grat oder Beule längs einer Linie),
+    der Weg entscheidet. Das erklärt Reste nach groben Zügen, die mit Netz und Zerlegung nichts zu tun haben.
+51. **Eine Regel, die anhält, braucht einen Weg zurück; „zur Ruhe“ kann ein Stillstand sein.** „Umgeklappt heißt nur folgen“
+    hielt am Vogel die Haut nach der ersten Runde für immer an, und die Reihe im Kern meldete „284 von 284 zur Ruhe“ (Firefish
+    „196 von 196“). Gefunden erst beim Vergleich der Formen alt gegen neu. Zu jeder Reihe gehört dieser Vergleich.
 
 ## 5. Florian: letzte Urteile, offene Entscheidungen, Testfälle
 
@@ -617,10 +722,21 @@ nicht mehr.
 14. Nach dem Schutz: G6 (halbe Haut) als nächster Schritt für das Tempo? Vorgelegt am 10.11. nachts.
 15. Eine Linie, die sich nach einem Zug selbst kreuzt (so der nachgestellte Fall am Firefish), zeigt das Fenster nicht an. Es
     ist dieselbe Frage wie Entscheidung 5.
+16. (11.11.) Eine Linie auf einer Seite (Paar) hält jetzt etwa eine Kante Abstand zur Mitte und bleibt dort stehen, wenn man sie
+    darüber hinaus zieht; näher geht es erst mit einem Netz, das an engen Linien feiner ist. Ist ihm das recht?
+17. (11.11.) Bleibt ein Griff verdreht oder eine Linie überschlagen, ist die Haut dort umgeklappt, und das Fenster sagt es.
+    Nach dem Zurückdrehen ist sie an der frisch geladenen Form in jedem Lauf wieder die alte, nach vielen groben Zügen davor in
+    vier von sechs Läufen. Für den Rest gibt es zwei Wege: im Fenster die Haut nach dem Zurückdrehen aus dem Stand
+    vor dem Verdrehen neu rechnen (klein, Kriterium zehn von zehn Läufen), oder am Rechnen selbst (quer zu einer Linie hat die
+    Haut ein Gedächtnis; nur mit seinem Wort).
+18. (11.11.) Vorsicht und Schutz vom 10.11. bleiben vorerst drin (die enge Stelle am Firefish braucht die Vorsicht). Vorschlag:
+    erst sein Blick auf den neuen Stand, dann die enge Stelle für sich untersuchen und die Schwellen einzeln prüfen.
 
-**Seine gesicherten Formen** (10.11., `wesen/`): „teat firefish“ (27 770 Punkte, sehr verwinkelt; daran das Davonlaufen
-nachgestellt: Punkt 4:15 hinauf) und „strange bird“ (16 010 Punkte, Vogel mit zwei Hörnern; sein „seltsamer Fehler“ ließ sich
-daran nicht nachstellen). Bilder seines Fehlers: `form-risse-florian-1-zacken-…`, `-2-haut-weg-…`, `-3-dreieck-2026-11-10.webp`;
+**Seine gesicherten Formen** (`wesen/`): „teat firefish“ (10.11.; 27 770 Punkte, sehr verwinkelt; daran das Davonlaufen
+nachgestellt: Punkt 4:15 hinauf), „strange bird“ (10.11.; 16 010 Punkte, Vogel mit zwei Hörnern; sein „seltsamer Fehler“ ließ sich
+daran nicht nachstellen) und **„test_kaputt“** (11.11.; 6 217 Punkte, vier Loops; der Loop der Mitte liegt in der Datei nur auf
+der Haut, das Fenster setzt ihn beim Laden ein; daran die Fehler an der Spiegelachse nachgestellt). Bilder vom 11.11.:
+`form-achse-florian-{1-zacken,2-griff-ueber-mitte,3-test-kaputt}-2026-11-11.png`. Bilder seines Fehlers: `form-risse-florian-1-zacken-…`, `-2-haut-weg-…`, `-3-dreieck-2026-11-10.webp`;
 nachgestellt `form-risse-nachgestellt-2026-11-10.jpg`, mit Schutz `form-risse-nachgestellt-jetzt-2026-11-10.jpg`.
 
 **Seine Testfälle** (Bilder in `docs/progress/editor/`):
@@ -722,6 +838,8 @@ Netzwechsel. Der Ausgleich ist selbst ein kleines Gedächtnis und am Rüssel nac
 | `haut=gedaechtnis` | Altlast für die Grundform (der Gedächtnis-Löser selbst wird für Pose und `linienAufPfad` gebraucht) |
 | `kruemmung=0` | Altlast, wirkt nur mit dem Gedächtnis-Löser |
 | `richtung=1`, `maxnormalen=1` | Beweise vom 09.11., Altlast |
+| `vorsicht=0`, `davon=0`, `vorlagebleibt=0` | Vergleich seit dem 10.11. nachts (Vorsicht im Löser, Schutz im Fenster, neuer Punkt ohne Warten) |
+| `normalfluss=1` / `=0` | seit dem 11.11.: Normalfluss immer / nie (ohne Angabe nur, wenn ein Loop lose auf der Haut liegt; mit eingesetzten Loops rechnet der Löser wie am 10.11.) |
 | `winkel=1` | verworfene Verdichtung, Altlast |
 | `genauHaut=1` | verworfen, solange die Form am Netz hing; mit `geometrie` neu zu prüfen (G5) |
 
@@ -741,7 +859,8 @@ Netzwechsel. Der Ausgleich ist selbst ein kleines Gedächtnis und am Rüssel nac
 
 **Nicht anfassen** (ohne Florians Wort):
 - den Gedächtnis-Löser in der Pose und in `linienAufPfad` (Gründe in Abschnitt 3);
-- Spiegel- und Kreuzungslogik;
+- Spiegel- und Kreuzungslogik (am 11.11. auf Florians Forderung „das muss richtig stabil werden“ geändert: Das Paar bleibt auf
+  seiner Seite, die Kette der Mittelebene bleibt geschlossen; sonst unberührt);
 - Pfad und Griffe (`dicht/pfad.ts`, `griffeAnlegen`, `griffeAusZeichnung`, `griffeUebernehmen`);
 - Maul am Loop (`dicht/maulLoop.ts`) und die Fressen-Pose (`dicht/poseLoop.ts`);
 - `backen.ts`;

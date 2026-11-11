@@ -26,6 +26,18 @@ hinaus und kontrolliere die bisherigen Versuche. Gibt es Fehler? … Haben wir e
 
 ## Kurzfassung
 
+- **11.11.: Stabilität an der Spiegelachse** (Florians Form `test_kaputt`; ganz unten, „Stand (11.11. morgens)“).
+  Hauptursache: Das Verdichten drehte Kanten der Mittelebene quer; ein danach gezogener Loop der Mitte ließ sich nicht ins Netz
+  einsetzen und lag nur auf der Haut (daher seine Reihenfolge). Um eine solche Linie kommt der Löser nie zur Ruhe und schiebt
+  die Haut seitlich bis über die Mitte; seit G3 mit mehr Runden je Mausschritt sichtbar. Dazu durfte die Linie eines Paars über
+  die Mitte. Gebaut: Die Kette der Mittelebene bleibt geschlossen (Verdichten, Einsetzen, Nachholen im Fenster), eine Linie
+  bleibt auf ihrer Seite, im Zug kein Netzumbau an der Mitte oder auf umgeklappter Haut. Der Löser rechnet mit eingesetzten
+  Linien Bit für Bit wie am 10.11.; nur für einen Loop, der sich doch nicht einsetzen lässt, rechnet er von selbst mit dem
+  Normalfluss (Korrektur nur längs der Normale). Zwölf grobe Abläufe an seiner Form: vorher nach dem fünften zerstört, jetzt
+  die ersten zehn in jedem Lauf heil. Ein verdrehter Griff: Kreuzt sich eine Linie selbst, baut das Fenster Netz und Zerlegung
+  nicht um, bis sie wieder frei liegt; verdreht loslassen und zurückdrehen ergibt an der frisch geladenen Form in fünf von fünf
+  Läufen wieder genau die alte Form (vorher in keinem), nach zehn groben Zügen davor in vier von sechs. Offen:
+  dieser Rest (quer zu einer Linie hat die Haut ein Gedächtnis), die enge Stelle am Firefish (braucht die Vorsicht weiter).
 - **Das Prinzip bleibt richtig** (Kurven als Wahrheit, dichtes Netz). Was stört, kommt nicht aus dem Prinzip.
 - **„Justiert nach“ und „stockt“ haben fünf getrennte Ursachen.** Vier davon sind Fehler oder Versäumnisse in Anzeige, Ablauf und
   Rechnung. Sie lassen sich in kleinen Schritten beheben, ohne neue Formel:
@@ -1238,6 +1250,201 @@ dieser Größe geändert hat. Nachgemessen an seiner Form (`form-gesichert-zug.m
   zäh an, und der Hintergrund braucht nach „Kante aus“ 20 s, bis die Form fertig ist (das Netz wächst dabei von 28 500 auf 36 700
   Punkte; nicht untersucht).
 - Lehre für die Meldungen an ihn: erst sagen, was sich an seiner Form geändert hat, mit Zahlen von dieser Form; dann, was bleibt.
+
+**Stand (11.11. morgens): Stabilität an der Spiegelachse — Florians Form `test_kaputt`** (Florian: „Ich habe das Gefühl, dass es
+irgendwann gestern fragiler wurde … Gestern kam einiges Schlechtes und Sonderregeln mit rein“; dann mit der gesicherten Form:
+„Wenn du in der Front den mittleren obersten Punkt bewegst und damit spielst, bläst sich das Mesh auf und wird irgendwann
+zerrissen. Aber nur, wenn ich erst die beiden Loops daneben ziehe und dann erst den in der Mitte … Sobald ich die Mittelachse
+kreuze und dann wieder zurückfahre, wobbelt das Mesh und kommt oft nur sehr zerrissen mit schwarzen Rissen zur Ruhe, und jeder
+weitere Zug macht das Mesh kaputt. Das muss richtig stabil werden.“ Seine Bilder:
+`docs/progress/editor/form-achse-florian-{1-zacken,2-griff-ueber-mitte,3-test-kaputt}-2026-11-11.png`.)
+
+Sein Gefühl stimmt, und es lässt sich auf den Schritt datieren. Die Ursachen sind älter als gestern; seit G3 (10.11., 13 Uhr)
+bekommt die zweite drei- bis fünfmal so viele Runden je Mausschritt und wird dadurch sichtbar.
+
+*Befund an `test_kaputt`* (6 217 Punkte, vier Loops: zwei rundum, das Paar, die Mitte):
+
+1. **Der Loop der Mitte lag nur auf der Haut. Das ist die Hauptursache.** Das Verdichten drehte seit dem 05.11. (`9b996ee3`) auch
+   Kanten, die in der Mittelebene liegen, wenn es die Wertigkeit verbesserte; die Kante lag dann quer über der Mitte (ein Punkt
+   und sein Spiegelbild), und die Kette der Punkte der Mittelebene war offen. Dieselbe Lücke hatte seit dem 10.11. nachts das
+   Auflösen flacher Dreiecke (G5 Teil 1); welcher der beiden Wege an seiner Form gedreht hat, ist nicht gemessen. Solange ein
+   Loop der Mitte eingesetzt ist, sind seine Kanten gesperrt. Florian zog aber erst das Paar und verformte es, das Aufräumen
+   drehte an zwei Stellen (bei x −2 bis 8 unten und bei y 14 bis 27 hinten), und der danach gezogene Loop der Mitte ließ sich
+   nicht mehr einsetzen (`loopEinsetzen` gab null; in der Datei: 259 Proben in Dreiecken statt 125 Punktproben). Daher die
+   Reihenfolge. Von der Kugel an nachgestellt (`form-reihenfolge-probe.mjs`, Ausgabe
+   `ausgaben/achse-reihenfolge-2026-11-11.txt`): mit dem Stand von gestern Nacht 258 Proben auf 127 Punkten der Mittelebene, mit
+   dem neuen 127 auf 127.
+2. **Um eine Linie, die nur aufliegt, kommt der Löser nie zur Ruhe, und seine Korrektur schiebt die Punkte der Haut seitlich.**
+   Eine aufliegende Linie hält die Haut fest, ist aber keine Quelle der Krümmung; die Korrektur an ihren Punkten ist nie
+   erfüllbar. Ohne jeden Zug wanderten die Punkte dieser Form 0,12 bis 0,15 Einheiten je Runde, nach 200 Runden 18,5, bei
+   gleichem Rauminhalt (längs der Fläche; `form-achse-drift.ts`). Von 92 Zügen im Kern (9 Punkte, alle Richtungen, 30
+   und 60 Einheiten) kam keiner zur Ruhe. Der Weg dahin: Die Korrektur der Krümmung wird als Vektor gelöst (Korrektur mal
+   Normale, durch den Laplace des Netzes geteilt). Auf einem First zeigen die Normalen der beiden Flanken auseinander; ihr
+   seitlicher Anteil summiert sich über das ganze Feld und kommt als Schub längs der Fläche zurück. Verfolgt an einem Punkt neben
+   der Mittellinie (`form-achse-spur.ts`): Beim ersten Hochziehen um 50 rückt er in 60 Runden von 10,6 auf 2,9 Einheiten an die
+   Mittelebene, beim dritten Hochziehen ist er drüben. **Mit eingesetzter Mitte gibt es das nicht:** Dieselben 92 Züge kommen
+   dann alle zur Ruhe, mit der Rechnung vom 10.11.
+3. **Die Linie eines Paars durfte über die Mittelebene.** Mittelebene und Ringe waren begrenzt, das Paar nicht; über die Mitte
+   gezogen, zog es die Haut seiner Seite durch die der anderen.
+
+*Warum seit gestern:* Bis G3 rechnete der Löser zwei Runden je Mausereignis und vier am Ende, seit G3 im Bildtakt, bis die Form
+steht (an diesem Netz vier bis sechs Runden je Mausschritt, danach bis 60). Derselbe Spielzug im Kern an der Form, wie sie
+gesichert ist (der oberste Punkt der Mitte 50 hinauf, 30 hinunter, 60 hinauf, zurück): mit einer oder zwei Runden je Schritt 0
+Knicke und kein Punkt auf der falschen Seite; mit fünf Runden je Schritt 12 Punkte drüben schon oben, 22 nach der Ruhe, 27 Knicke
+über 150°, die Haut bis 42 Einheiten neben ihrem Anfang. G3 hat den Fehler nicht gemacht, aber ihm die Runden gegeben.
+
+*Gebaut* (vier Dinge; mit eingesetzten Linien rechnet der Löser Bit für Bit wie am 10.11.):
+
+1. **Die Kette der Mittelebene bleibt geschlossen.** Das Verdichten dreht keine Kante der Mittelebene mehr und dreht quer
+   liegende zurück (`dicht/verdichten.ts`, beide Wege: Wertigkeit und flache Dreiecke); `loopEinsetzen` schließt die Kette,
+   bevor es die Mitte einsetzt (`dicht/einsetzen.ts`, `mitteKetteSchliessen`); das Fenster setzt Loops, die nur aufliegen, nach
+   dem Laden und nach jedem neuen Loop nach (`einsetzenNachholen`; an `test_kaputt` beim Laden mit Meldung).
+2. **Eine Linie bleibt auf ihrer Seite.** `pfadLagen` (`dicht/loops.ts`) hält Ring und Paar auf z ≥ 0, das Paar um anderthalb
+   Probenweiten vor der Mittelebene (`mitteAbstand`, etwa eine Kante des Netzes); eine Kreuzung gilt für beide Loops gleich
+   (`mitteGrenze` im Fenster). Im Fenster: Solange eine Linie im Zug an der Mittelebene anliegt oder der Zug mehr umgeschlagene
+   Dreiecke hat als bei seinem Anfang, wird nicht verfeinert und nichts eingewechselt (`Zug.begrenzt`, `Zug.umgAnfang`).
+3. **Normalfluss, nur als Netz für den Fall, dass ein Loop lose bleibt** (`dicht/ausKurven.ts`). `loopEinsetzen` kann in
+   mehreren Lagen scheitern; dann liegt eine Linie weiter nur auf der Haut (Befund 2). Genau dann rechnet der Löser von selbst
+   anders: Die Haut **folgt** den Linien (Zeilen des Laplace = wie er ist, Bindungen = Ziele; nur wenn die Linien nicht auf ihren
+   Zielen liegen, `FOLGEN_GENAU` als Rechengenauigkeit), und die **Korrektur** der Krümmung wird für sich gelöst wie bisher,
+   aufgetragen wird aber nur ihr Anteil längs der Normale; Punkte, die eine Linie hält, bleiben. Beides in einem Durchgang durch
+   die Zerlegung (`loeser/zerlegung.ts`, `loesenSpalten` mit sechs Spalten, bitgleich zu zweimal drei). `normalfluss: true` /
+   `false` erzwingt bzw. verbietet es (im Fenster `?normalfluss=1` / `=0`).
+4. **Kreuzt sich eine Linie selbst, bleiben Netz und Zerlegung, wie sie sind** (`dicht/loops.ts` `linieKreuztSich`; Fenster
+   `nachZugAufraeumen`). Ein verdrehter Griff legt die Linie über sich selbst, die Haut ist dort gefaltet. Bis dahin räumte das
+   Fenster nach dem Loslassen das Netz auf dieser Haut auf und zerlegte neu; nach dem Zurückdrehen blieb ein Rest. Im Kern
+   nachgestellt (`form-griff-verdreht.ts`: Griff des obersten Punkts der Mitte verdreht, 60 Runden, zurückgedreht):
+
+   | Zurückdrehen mit | umgeschlagen | Knicke über 150° | Rauminhalt |
+   | --- | --- | --- | --- |
+   | demselben Löser | 0 | 0 | 100,0 % |
+   | einem neuen Löser, zerlegt auf der gefalteten Haut (so das Fenster bis dahin) | 0 | 4 | 99,0 % |
+   | einem neuen Löser mit der Zerlegung von vor dem Verdrehen | 0 | 0 | 100,0 % |
+
+   Die Matrix des Lösers ist nach den Kantenlängen der Lage beim Zerlegen gewichtet; von der gefalteten Haut gebaut, führt sie
+   die Haut beim Zurückdrehen in eine andere Ruhelage (ein Grat längs des Rings neben der Mitte). Deshalb: Solange sich eine Linie
+   selbst kreuzt (zwei Stücke, längs der Linie mindestens drei Probenweiten auseinander, näher als ein Zehntel einer
+   Probenweite), wird nach dem Zug nicht aufgeräumt und nicht neu zerlegt; die bereite Zerlegung bleibt die des Zugs. Das Fenster
+   sagt es („Loop 4 kreuzt sich selbst (ein Griff verdreht?) …“). Liegt die Linie nach einem späteren Zug wieder frei, wird wie
+   sonst aufgeräumt.
+
+*Gemessen danach* (alt = Stand von gestern Nacht `b72c3586`, als zweite Seite auf Port 5194):
+
+| An `test_kaputt` | Stand von gestern Nacht | jetzt |
+| --- | --- | --- |
+| 92 Züge im Kern, Form wie das Fenster sie lädt (Mitte eingesetzt): kommen zur Ruhe | Mitte ließ sich nicht einsetzen: 0 | 92 |
+| 92 Züge im Kern, Mitte lose (wie gesichert): kommen zur Ruhe | 0 | 75 (4 kriechen, 12 schwingen, 1 wächst; keiner läuft davon) |
+| Ablauf von der Kugel an (`form-reihenfolge-probe.mjs`) | Mitte nicht eingesetzt, 16 und 22 umgeschlagene Dreiecke | eingesetzt, 0 und 0 (in sechs von sechs Läufen) |
+| im Fenster, Hin und Her am obersten Punkt der Mitte | in sechs von sieben Läufen Knicke über 150° (10 bis 40, sie werden mit jedem Zug mehr) | 0, in jedem Lauf |
+| im Fenster, Punkt des Paars über die Mitte und zurück | 40 Knicke über 150°, 35 umgeschlagene Dreiecke; nach dem zweiten Mal 112 und 124, „Netz ließ sich nicht aufräumen“ | 0 und 0, der Punkt liegt wieder an seinem Ort |
+| im Fenster, die Spitze des Paars 300 weit über die Mitte und zurück | die Form ist zerstört (größte Koordinate 718 statt 260, Rauminhalt 25 %, 624 umgeschlagene Dreiecke), sie kommt in 60 s nicht zur Ruhe; jeder der sieben Züge danach wird zurückgenommen | 0 und 0, Rauminhalt wie davor |
+
+Zwölf Abläufe hintereinander an seiner Form (`form-ablauf-probe.mjs`, Ausgabe `ausgaben/achse-ablaeufe-2026-11-11.txt`; Bilder
+`docs/progress/editor/form-achse-test-kaputt-{vorher-nach-4-ablaeufen,nach-4-ablaeufen,nach-12-ablaeufen}-2026-11-11.jpg`, nebeneinander
+in `form-achse-test-kaputt-vergleich-2026-11-11.jpg`): Hin und Her, über die
+Mitte und zurück (auch zweimal und bis 300 Einheiten weit), Griff umdrehen und zurück, Punkt der Mitte 160 über seinen Nachbarn
+hinaus und zurück, nahe der Mitte loslassen und wieder wegziehen, Griff verdreht loslassen und danach zurückdrehen. Die ersten
+zehn enden in allen zehn Läufen des endgültigen Stands ohne Knick über 150° und ohne umgeschlagenes Dreieck; der Schutz nimmt
+keinen Zug zurück, die Vorsicht verkleinert null- bis dreimal einen Schritt. Mit dem Stand von gestern Nacht ist die Form im
+ersten Lauf nach dem fünften zerstört (danach wird jeder Zug zurückgenommen, sieben; die Vorsicht greift 36-mal), in einem zweiten
+Lauf hat sie nach dem vierten 66 umgeschlagene Dreiecke, 78 Knicke über 150° und zwei falsche Kreuzungen, und der Schutz nimmt den
+fünften zurück.
+**Der letzte Fall, Griff verdreht loslassen und erst danach zurückdrehen:** An der frisch geladenen Form blieb ohne die
+vierte Regel in drei von drei Läufen ein Rest (2 umgeschlagene Dreiecke, 2 bis 6 Knicke über 150°, Rauminhalt 97,8 bis 100,0 %);
+mit ihr ist die Form in fünf von fünf Läufen wieder genau die alte (0, 0, 100,0 %; das Netz bleibt im verdrehten Zustand bei
+seinen 6 217 Punkten). Am Ende der zwölf Abläufe (nach zehn groben Zügen davor): in vier von sechs Läufen wieder
+genau die Form von davor, in zwei blieb ein Rest längs des Rings neben der Mitte (einmal 2 Knicke über 150° und zwei kleine
+Beulen, Rauminhalt 95,0 statt 93,3 %, Bild `docs/progress/editor/form-achse-test-kaputt-nach-12-ablaeufen-mit-rest-2026-11-11.jpg`;
+einmal 10 Knicke über 150° und 6 umgeschlagene Dreiecke bei gleichem Rauminhalt), obwohl Linien und Griffe exakt zurück sind und
+die Zerlegung die von davor ist. Offen (unten). Ohne die Regel: drei von vier Läufen heil, in einem 6
+umgeschlagene Dreiecke und 14 Knicke. Den Griff in einem Zug 160 Einheiten auf die falsche Seite und zurück
+(`form-griff-spur.mjs`): unterwegs bis 58 umgeschlagene Dreiecke, in Ruhe 0 in fünf von fünf Läufen (Stand von
+gestern Nacht: 169 bis 208 bleiben).
+
+An den beiden anderen Formen im Kern (`form-gesichert-stabil.ts`; alle ihre Loops sind eingesetzt, die Rechnung ist dort die vom
+10.11.): Vogel 283 von 284 Zügen zur Ruhe, Firefish (24 oberste Punkte, 60 und 150 Einheiten) 188 von 196 (vier kriechen, drei
+schwingen, einer wächst). Unverändert gegen gestern. Kern 132 Tests (`dicht/normalfluss.test.ts` neu), Fenster 16; Proben
+Schutz 12 von 12, Nachlauf 18 von 18, Sichern und Laden 27 von 27, Ändern ohne Fehler.
+
+*Der Normalfluss: erst für alle Fälle gebaut, dann zurückgestuft.* Am Morgen galt Befund 2 als die wichtigste Ursache, und der
+Normalfluss wurde die Rechnung für alle Fälle. Die Gegenmessung „neuer Stand mit der Rechnung vom 10.11.“ hat das berichtigt:
+
+| | Rechnung vom 10.11. | Normalfluss |
+| --- | --- | --- |
+| `test_kaputt`, Mitte eingesetzt: 92 Züge zur Ruhe | 92 | 92 |
+| `test_kaputt`, Mitte lose: 92 Züge zur Ruhe | 0 | 75 |
+| Vogel: 284 Züge zur Ruhe | 283 | 283 |
+| Firefish: 196 Züge zur Ruhe | 188 | 184 |
+| Vogel setzen aus dem gesicherten Stand: umgeschlagene Dreiecke danach | 6 | 16 |
+| eine Runde im Zug (Vogel / Firefish) | 20 / 37 ms | 26 / 45 ms |
+| zwölf Abläufe im Fenster: die ersten zehn heil | vier von vier Läufen | in jedem Lauf |
+| zwölfter Ablauf (verdreht loslassen, danach zurückdrehen) heil, noch ohne die vierte Regel | drei von vier Läufen | einer von zwei Läufen |
+| Griff in einem Zug 160 auf die falsche Seite und zurück: umgeschlagene Dreiecke in Ruhe | 0 (drei von drei Läufen) | 12 bis 32 |
+
+Mit eingesetzten Linien bringt er an Florians Formen nichts und kostet ein Viertel mehr Zeit je Runde im Zug. Sein gemessener
+Nutzen ist der Fall der lose aufliegenden Linie; dafür bleibt er, und nur dafür springt er von selbst ein.
+
+*Gemessen und verworfen:*
+- Der Normalfluss als Rechnung für alle Fälle (Tabelle oben).
+- Die Korrektur als eine Spalte lösen und längs der Normale auftragen (billiger): am Vogel 275 statt 283 Züge zur Ruhe (drei
+  kriechen, fünf schwingen, einer wächst).
+- Die Korrektur mit dem Laplace nach der Geometrie der Lage von jetzt lösen (konjugierte Gradienten): schießt aus der Ruhe 6 bis
+  7 Einheiten über (29 bis 45, solange die Punkte einer aufliegenden Linie mitgingen), die Vorsicht muss zwei- bis viermal
+  eingreifen.
+- „Umgeklappt heißt nur folgen“ (solange die Haut mehr umgeschlagene Dreiecke hat, wird nicht korrigiert), in drei Fassungen:
+  (a) mehr als beim Anlegen des Lösers: Am Vogel, dessen gesicherte Haut noch nicht steht, klappt die erste Runde eines neuen
+  Lösers ein paar Dreiecke um, und die Sperre hielt die Haut danach für immer an; die Reihe im Kern meldete das als „284 von 284
+  zur Ruhe“, ebenso am Firefish „196 von 196“. Aufgefallen ist es erst beim Vergleich der Formen alt gegen neu (bis 12 Einheiten
+  auseinander). (b) nur, wenn sich die Ziele der Linien bewegt haben: sprang in 88 von 284 gewöhnlichen Zügen an. (c) nur, wenn
+  eine Linie sich überschlägt: erkennt den weiten Ausflug zur Seite nicht. Alle drei sind wieder draußen.
+- Hautpunkte an der Mittelebene festhalten, wenn sie hinübergeraten: half dem Fall nicht, und zwei Punkte am selben Ort
+  verwirren die Spiegelzuordnung (`hautAus` findet den Partner über die gerundete Lage).
+- Das Paar bis auf die Mittelebene lassen: 38 Knicke über 150° und vier falsche Kreuzungen mit dem Loop der Mitte, nach dem
+  Wegziehen nicht mehr heil. Mit einer halben Probenweite Abstand: 63 Knicke (der Streifen ist schmaler, als das Netz darstellen
+  kann).
+
+*Was bleibt, ehrlich:*
+- **Griff verdreht loslassen und erst danach zurückdrehen** heilt an der frisch geladenen Form in jedem Lauf, nach vielen
+  groben Zügen davor in vier von sechs (oben). Im selben Zug umdrehen und zurück ist in jedem Lauf heil; ⌘Z nimmt
+  den verdrehten Zug immer genau zurück. Die Ursache des Rests liegt tiefer: Quer zu einer Linie ist der Winkel der Haut frei
+  (ein Linienpunkt gibt seine gemessene Krümmung als Soll an seine Umgebung weiter, er selbst wird nicht korrigiert). Die Haut
+  hat dort ein Gedächtnis, und es gibt zu denselben Linien mehr als eine Ruhelage; welche erreicht wird, hängt vom Weg ab. Das
+  ist eine Frage an das Rechnen selbst und wird ohne Florians Wort nicht angefasst. Ein Weg im Fenster wäre, die Haut nach dem
+  Zurückdrehen aus dem Stand vor dem Verdrehen neu zu den Linien zu rechnen (nicht gebaut).
+- **Vorsicht und Schutz von gestern Nacht bleiben drin.** Sie dämpfen ein Symptom und haben Schwellen. An der engsten Stelle
+  des Firefish (Punkt 4:15, 150 hinauf in zehn Schritten) läuft die Haut ohne Vorsicht weiterhin davon. Die Ursache dort ist
+  eine andere: Wo die Haut dünn ist und eine Linie eng wendet, verlangt die Linie eine Krümmung, die das Netz nicht darstellen
+  kann. Das ist nicht gelöst. In den zwölf Abläufen an `test_kaputt` greifen sie kaum noch ein (Schritt verkleinert null- bis
+  zweimal, kein Zug zurückgenommen; vorher 36-mal und sieben).
+- **Linien näher beieinander als eine Kante des Netzes** kann das Netz nicht darstellen; deshalb hält das Paar Abstand zur
+  Mitte. Näher geht es erst mit einem Netz, das an engen Linien feiner ist. Ein Ring lässt sich weiterhin bis auf die
+  Mittelebene drücken (nicht geprüft).
+- Nach einem sehr weiten Zug über die Mitte und zurück liegt der Punkt wieder an seinem Ort; ob die Haut dort genau dieselbe
+  Dicke hat wie vorher, ist nur am Rauminhalt geprüft (gleich auf 0,1 %).
+- Lässt sich ein Loop nicht einsetzen, bleibt er lose; der Normalfluss hält die Haut dann ruhig (75 von 92 Zügen), aber eine
+  lose Linie formt die Haut schwächer als eine eingesetzte. Wann `loopEinsetzen` außer an der offenen Kette noch scheitert, ist
+  nicht untersucht.
+- Regeln, die der 10.11. gebracht hat und die noch drin sind: die Vorsicht im Löser (fünf Zahlen), der Schutz im Fenster (zwei
+  Grenzen), die Grenze der Punktzahl beim Verdichten, der Schutz gegen flache Dreiecke und Nadeln (G5), die Ruheschwelle und
+  die 60 Runden (G3). Heute dazugekommen: ein Abstand (`mitteAbstand`), zwei Sperren im Zug, die Zustände vergleichen und keine
+  Zahl haben (`Zug.begrenzt`, `Zug.umgAnfang`), die Prüfung „Linie kreuzt sich selbst“ (zwei Maße in Probenweiten) und für die
+  lose Linie der Normalfluss mit einer Rechengenauigkeit (`FOLGEN_GENAU`).
+- Der Arbeitsbaum hat seit heute früh einen Commit einer anderen Sitzung (Loft-Messung, nur Messung); nichts davon berührt.
+
+Lehren: (1) Vor jeder Meldung über eine neue Rechnung die Gegenmessung „neuer Stand mit der alten Rechnung“: Der halbe Morgen
+ging an eine Rechnung, die der eigentliche Fehler (die lose Mitte) nur nötig erscheinen ließ. (2) Eine Regel, die anhält,
+braucht einen Weg zurück; „zur Ruhe“ in einer Messreihe kann ein Stillstand sein, deshalb die Formen alt gegen neu vergleichen.
+(3) „Nur wenn ich erst … dann …“ ist eine Spur im Ablauf: Hier hatte das Aufräumen das Netz verändert, bevor der Loop der Mitte
+kam. (4) Einen Rest im Kern nachstellen und die Teilschritte einzeln tauschen (derselbe Löser, neuer Löser, neue oder alte
+Zerlegung): Das fand die Ursache des verdrehten Griffs in drei Läufen; die Vermutung „das Aufräumen ist schuld“ war nur die halbe
+Wahrheit (ohne Aufräumen blieb der Rest auch).
+
+Fallen: Eine Probe, die einen Punkt in einem Blatt anklickt, kann einen anderen treffen, der dort fast an derselben Stelle
+liegt (K4 und K8 in der Seite nach einem Zug): Auswahl prüfen, bevor ein Griff gezogen wird. Nahe der Mitte greift man leicht
+das Spiegelbild (dessen Zug zur Mitte hin begrenzt ist): mit Zoom greifen. Die Nummern der Punkte eines Loops hängen am Stand
+(nach dem Einsetzen der Mitte andere): Punkte nach ihrer Lage wählen (`4:oben`). `zsh`: `set -- $v` trennt nicht an
+Leerzeichen, eine Schleife über Paare lief deshalb zweimal mit den alten Schaltern.
+
 
 ## Anhang A: Messwerte
 
