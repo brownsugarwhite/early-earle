@@ -4,7 +4,7 @@
 // - `logo` (Seite, Front, Top; Florians Vorlage „illudiy“): dunkler Grund, Körper weiß mit lavendel Schattenseite und rosa Extrusion,
 //   eine dicke Kontur in Petrol um die Silhouette, darum ein Rand im Verlauf Rosa → Lila. Die Kontur entsteht wie beim Passer der
 //   Blaupause („TikTok“, 11.11. abends) aus zwei versetzten Platten in Rosa und Lila: Petrol, wo sie sich überdecken (umschaltbar auf die
-//   Kontur, die ihren Schatten auf den Rand wirft). Von hinten (Seitenwechsel) tauschen Körper und Kontur die Farben, der Grund wird hell.
+//   Kontur, die ihren Schatten auf den Rand wirft). Von hinten (Seitenwechsel) tauschen Körper und Kontur die Farben, der Grund wird hellblau.
 // - `jelly` (3D; Florians Vorlage, das Jelly-Material des Spiels): kräftiges Türkis, Licht oben links, dunkle Lava (runde Bohnen in den
 //   dicken Teilen des Körpers, `lava.ts`), Glanzlicht, Bläschen, keine Outlines.
 // - `papier` (3D, umschaltbar): der Papierkörper der Blaupause, ohne Outlines.
@@ -100,7 +100,8 @@ export type Einstellung = {
 /** Farben: Logo (Florians Vorlage), Papier (Blaupause), Auswahl */
 export const FARBEN_START = {
   grund: '#17131b',
-  grundHinten: '#f4eff6',
+  // von hinten (Seitenwechsel): ein helles Himmelblau (Florian 11.11. spätabends: „statt des weißen Backgrounds ein schönes Hellblau“)
+  grundHinten: '#bfe3fa',
   kontur: '#003f4e',
   verlaufA: '#ff72a9',
   verlaufB: '#936ffb',
