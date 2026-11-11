@@ -355,3 +355,10 @@ bei 0,9 des Halbmessers zwischen 112° und 140°, Punkt bei 151°. Gebaut (`src/
 - **Fallen:** Löschen mit Deckkraft 0 setzt in three.js alle Kanäle auf 0 (vormultiplizierte Deckkraft) — Saat als Fläche zeichnen;
   `atan(0, 0)` gibt auf manchen Grafikkarten NaN; Feldwerte vor `fwidth` begrenzen (Sprung an der Reichweite zeichnet feine Linien).
 Commit `722aecca`, Artefakt Version 8, Bilder `docs/progress/editor/editor-jelly-{glanz-bohnen,teat-firefish}-2026-11-11.jpg`.
+
+**Danach (Florian: „echte Kanten sollen in den 3 Ansichten wieder die gleiche verjüngende Outline/Kontur bekommen wie in der
+Ursprungsform des Editors, in gleicher Dicke und Farbe wie meine Kanten jetzt“):** wie `umrissMaterial` in `kurven.ts` — der Körper
+umgestülpt (Rückseiten), im Bild längs der Normale nach außen geschoben, umso weiter, je mehr die Fläche zur Seite zeigt (voll ab
+0,35): an Umrissen im Inneren (Hörner vor dem Kopf, Falten) und an echten Kanten eine Linie, die sich verjüngt. Breite 4 Bildpunkte bei
+100 % (wachsen mit wie die Kantenlinien), Farbe Petrol, von hinten weiß. Nur Seite, Front, Top. Commit `d3f7dc95`, Artefakt Version 9,
+Bilder `docs/progress/editor/editor-kanten-kontur{,-nah,-hinten}-2026-11-11.jpg`.
