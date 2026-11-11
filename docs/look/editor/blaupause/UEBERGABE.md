@@ -418,3 +418,21 @@ würde es schweben. Und am unteren Oberkiefer sollte doch auch eine Outline ents
 - Nachstellen: „strange bird“, Linie 1 wählen, „Fressen“. **Offen:** Linien, die hinter der verjüngenden Kontur durchlaufen, zeigen bei
   starkem Zoom eine kleine Treppe am Hof (Tiefentest gegen die Kontur), nicht angefasst.
 Commit `9224c45a`, Artefakt Version 13, Bilder `docs/progress/editor/editor-{kante-umriss-maul,maul-offen-front}-2026-11-11.png`.
+
+**Danach (Florian 12.11.: „da sind ja immer noch diese dünnen weißen Konturen … die will ich nicht, egal wo … Kanten sollen direkt in
+die dicke Outline am Rand übergehen, wie aus einem Guss“; „du hast hier nichts behoben … es fehlt immer noch die dunkle Kontur beim
+Mund“; „wenn etwas überlappt, entsteht eine Kante … egal wo“):** Version 13 hatte die Linien am Umriss nur ausgeblendet (Lücke zur
+Outline) und die Maulstelle an einer anderen Form nachgestellt; seine Stelle war nicht behoben. Jetzt (Logo-Look, Commit `3979efa6`):
+- **Kante an jeder Überlappung:** Konturstreifen aus der Form (`streifenBauen` in `blaupause.ts`): je Dreieck, dessen Ecken vom Blick
+  verschieden kippen (Normale ⟂ Blick), ein Stück Kontur; als Streifen nach außen auf das Verdeckte, nach außen nach hinten gekippt
+  (läuft aus, wo das Verdeckte dicht dahinter liegt), Tiefentest gegen den Körper. Entsteht auch an eng aufeinanderliegenden Teilen und
+  am offenen Maul, wo die verjüngende Kontur (umgestülpter Körper, bleibt zusätzlich) nichts zeigte.
+- **Keine dünnen weißen Konturen:** keine Höfe um Linien, nichts über der dicken Kontur (auch keine weichen Linien), Punkte ohne hellen
+  Saum (auf harten Linien weiße Vollpunkte). Linien etwas weiter vor der Fläche (vorher Treppen an steilen Stellen).
+- **Wie aus einem Guss:** Beide TikTok-Platten beginnen innen am Körper — das Petrol liegt überall direkt an, Rosa und Lila nur außen
+  (vorher innen je nach Seite ein schmaler Streifen, die „Lücke zur dunklen Outline“). Kanten laufen bis in die Outline.
+- **Maul:** Die Linie des Mauls ist immer eine harte, dunkle Kante; das Innere im Ton des Grunds.
+- Nachstellen wie Florian: Kugel, mit F eine schmale Form vorn über den Umriss zeichnen, wählen, „Fressen“ an/aus (Skript
+  `maul-bauen.cjs` im Scratchpad der Sitzung, Ablauf in der Beschreibung). **Offen:** Konturstreifen enden an manchen Stellen stumpf statt
+  spitz (wo die Kontur hinter eine Fläche läuft).
+Artefakt Version 14, Bild `docs/progress/editor/editor-kante-ueberlappung-2026-11-12.png`.
