@@ -22,6 +22,14 @@ Käfig-Zeit (Stand 04.11.) steht in der Git-Geschichte: `git show 82aed6dc:docs/
   fühlt sich an wie vorher.“ **Lob nie einer Fassung zuordnen, ohne zu fragen, wenn er mehrere gesehen hat.**
 - **Offen:** sein Urteil zur gültigen Fassung nach längerem Probieren (weite Züge, absetzen, zurück); Linien hinter der Mitte
   werden weiter ganz gezeichnet; gerechnet werden weiter beide Hälften; „applien“ gibt es nicht.
+- **Zum Vergleichen (11.11. mittags, Florian: „es gab auch eine Wand, die funktioniert hat. Diese würde ich gerne im Vergleich
+  sehen“):** zwei weitere Arbeitsbäume mit festen Ständen, Server über `.claude/launch.json` im Hauptverzeichnis:
+  `kurven-wand` Port 5195 (`.claude/worktrees/form-wand`, `a4490f2f`: Wand im Löser, die Linie hält kurz vor der Mitte) und
+  `kurven-wand2` Port 5196 (`.claude/worktrees/form-wand2`, `a4490f2f` mit `mitteAbstand` = 0, nicht gesichert: Wand, die Linie
+  darf bis genau an die Mitte). Ports 5193 und 5194 zeigen die gültige Fassung ohne Wand. Beim Bauen hatte er nacheinander gesehen:
+  Wand mit Abstand (ab etwa 10:45, ab etwa 10:55 mit Verschmelzen in der Anzeige), wenige Minuten Wand ohne Abstand (etwa 11:00),
+  ohne Wand über die Mitte (etwa 11:10 bis 11:20), wieder Wand mit Abstand (bis etwa 12:05). Welche er meint, entscheidet er nach
+  dem Vergleich; bis dahin an keiner der vier Adressen etwas ändern.
 - **Zwei Arbeitsbäume:** `.claude/worktrees/form-zuerst` (Branch `claude/form-zuerst`, Port 5193) und `.claude/worktrees/form-alt`
   (Branch `claude/form-spiegel`, Port 5194, zum Bauen). Florian schaut auch auf 5194, wenn dort etwas Neues liegt: Jede Änderung
   unter `src` lädt dann sein Fenster neu. Vor dem Bauen sagen, wo gebaut wird.
