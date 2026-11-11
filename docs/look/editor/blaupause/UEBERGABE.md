@@ -323,3 +323,10 @@ gewendet,schattierung-300,lava-nah}-2026-11-11.jpg`.
 jetzt `#bfe3fa` statt `#f4eff6`, als Farbfeld „Grund hinten“ im Menü. Verglichen mit `#b3d4ff` (lavendelblau) und `#c4ecf2` (eisblau):
 `docs/progress/editor/editor-hellblau-{kandidaten,gewendet}-2026-11-11.jpg`. Commit `f0157dfe`, Artefakt Version 5. Der Papierkörper
 im 3D (Knopf „Papier“) hat vorn weiter Weiß.
+
+**Danach (Florian: „lieber Lavendel, und der TikTok-Effekt soll an allen Seiten gleich sein, die pinke innere Seite kommt weiter als
+die fliederfarbene“):** Grund hinten `#b3d4ff`. Gemessen an „teat firefish“ (Strahlen von der Körpermitte): innen Rosa 10–32
+Bildpunkte, Lila 0–9 — die rosa Extrusion (18 px nach links unten) legte sich zum rosa Streifen. Die Extrusion ist jetzt ein eigener
+Schalter („Extrusion“ bei Outline, Standard aus, Farbe „Körper Schatten“); ohne sie sind Rosa und Lila innen wie außen gleich breit
+(an der Kugel punktsymmetrisch: innen je ⅕ der Kontur × Blick, außen das Doppelte, weil die Platten innen am Körper beginnen).
+Commit `c7e0808b`, Artefakt Version 6, Bilder `docs/progress/editor/editor-{tiktok-symmetrisch,lavendelblau-gewendet}-2026-11-11.jpg`.
