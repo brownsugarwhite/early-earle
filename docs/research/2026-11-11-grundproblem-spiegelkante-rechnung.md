@@ -309,6 +309,11 @@ Protokolle: `apps/editor/scripts/pruefen/gegenpruefung-2026-11-10/ausgaben/grund
 
 ## 11. Gebaut (11.11. mittags): Wand an der Spiegelkante, die Anzeige verschmilzt die Hälften
 
+> **Berichtigung (11.11. mittags, kurz danach): Dieser Abschnitt beschreibt die falsche Fassung.** Florians Lob galt nicht der
+> Fassung mit der Wand, sondern der Zwischenfassung davor (hier unter „Gemessen und verworfen“ als erste genannt): Linien dürfen
+> durch die Spiegelebene, die Anzeige schneidet ab und verschmilzt. Zur Wand sagte er: „jetzt sind die ganzen Fehler wieder da …
+> wenn ich in die Mitte ziehe und absetze und wieder zurück. Das fühlt sich an wie vorher.“ Gültig ist Abschnitt 12.
+
 Commit `a4490f2f`. Florian hat den Stand in Chrome auf Port 5194 selbst getestet: „Es fühlt sich gerade ziemlich gut an mit der
 Spiegelung. Ich habe die meisten Fälle selbst getestet über Mitte ziehen und auch Schleifen, es ist jetzt viel mehr wie ich es mir
 vorgestellt habe.“
@@ -352,4 +357,35 @@ steckte sie in der anderen Hälfte (im Kern-Test bis zu 10 Punkte, bis 2,3 Einhe
 - Die Spiegelung „applien“ (ein ganzes Netz ohne Spiegel) gibt es noch nicht.
 
 Protokoll: `apps/editor/scripts/pruefen/gegenpruefung-2026-11-10/ausgaben/spiegelkante-wand-2026-11-11.txt`.
+
+## 12. Gültiger Stand (11.11. mittags): über die Mitte ziehen, die Anzeige verschmilzt
+
+Commit `09f39297` (die Wand aus `a4490f2f` ist wieder heraus).
+
+**Was geschehen ist:** Während ich baute, sah Florian in Chrome auf Port 5194 jede Zwischenfassung. Sein Lob („fühlt sich gerade
+ziemlich gut an … viel mehr wie ich es mir vorgestellt habe“) habe ich der Fassung mit der Wand zugeordnet, ohne nachzufragen, und
+diese gesichert. Er danach: „nein, das war nicht das, was ich gesehen habe? Jetzt sind die ganzen Fehler wieder da. Während du
+gearbeitet hast, konnte ich über die Mittelgrenze ziehen und das Mesh ist verschmolzen. Das war gut. Dann gab es kurz eine Wand in
+der Mitte und es ging. Jetzt gibt es wieder diese Fehler, wenn ich in die Mitte ziehe und absetze und wieder zurück. Das fühlt sich
+an wie vorher.“
+
+**Gültig ist die Fassung, die er gut fand:**
+- Linien und Punkte dürfen durch die Spiegelebene (`pfadLagen` ohne Abstand, `zGrenzen` hält nur die Mittelebene und die Enden
+  eines Rings, `punktNach` ohne Grenze; `mitteAbstand`, `mitteGrenze` und die Wand `hautWand` gibt es nicht mehr).
+- Gerechnet wird damit wie überall; an der Mitte wird nichts gequetscht.
+- Die Anzeige schneidet jede Hälfte an der Spiegelebene ab (`anzeigeZ` nach `hautSeiten`) und zeigt Dreiecke nicht, die danach
+  ganz auf ihr liegen: Dort verschmelzen die Hälften, wie beim Mirror-Modifier.
+
+**Warum ich sie verworfen hatte, und was daran falsch war:** Meine Probe zählte Knicke und umgeklappte Dreiecke an der gerechneten
+Haut (nach einem Zug 17 Einheiten über die Mitte 8 und 4, weit gezogen 482 und 632). Ein großer Teil davon liegt hinter der
+Spiegelebene und wird gar nicht gezeigt. Sein Auge hat die gezeigte Form beurteilt, meine Zahl die verborgene. Zum zweiten Mal an
+diesem Tag hat eine Zählung dem widersprochen, was er sieht, und ich bin der Zählung gefolgt.
+
+**Die Fassung mit der Wand** (Abschnitt 11) hatte in meiner eigenen Probe den Fall, den er dann selbst fand: zur Mitte ziehen,
+absetzen, zurück endete in einem von zwei Läufen mit 714 Knicken und 733 umgeklappten Dreiecken. Ich habe das als seltenen Fall
+eingeordnet.
+
+**Offen, ungeprüft:** wie sich die gültige Fassung in Florians Händen bei weiten Zügen, nach dem Absetzen und beim Zurückziehen
+verhält (sein Urteil steht für das, was er während des Bauens probiert hat); die Linien werden hinter der Mitte weiter ganz
+gezeichnet; gerechnet werden weiter beide Hälften; „applien“ gibt es nicht.
 

@@ -1856,13 +1856,14 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   10: Zufallsfolgen enden im Fenster in beiden Rechnungen beschädigt, die alte Rechnung ist dort nicht gutmütiger. Regeln: keine
   Messreihen im Hintergrund, die die Sitzung wecken; gezielt an seinem Fall prüfen statt mit Zufallsfolgen; in eigenem Arbeitsbaum
   bauen.
-- **2026-11-11 mittags: Spiegelung wie ein Mirror-Modifier gebaut** (`a4490f2f`): Wand an der Spiegelkante (`hautSeiten`,
-  `hautWand` im Kern: kein Punkt kommt auf die Seite seines Spiegelbilds), die Anzeige verschmilzt die Hälften (Dreiecke auf der
-  Spiegelebene werden nicht gezeigt). Florian nach eigenem Test: „fühlt sich gerade ziemlich gut an … viel mehr wie ich es mir
-  vorgestellt habe“. Verworfen (gemessen): Linien frei durch die Ebene, nur die Anzeige abschneiden, Linie ohne Abstand. Offen:
-  Falten an der Wand bei sehr weitem Zug an die Mitte; nur eine Hälfte rechnen; „applien“. Falle: Die Zählung „umgeschlagene
-  Dreiecke“ sieht durcheinander laufende Hälften nicht (am Morgen „heil“ gemeldet, Florian sah Risse) → `form-ablauf-probe.mjs`
-  misst jetzt die umgestülpten Stellen; Bilder ansehen. Bericht Abschnitt 11, Übergabe.
+- **2026-11-11 mittags: Spiegelung wie ein Mirror-Modifier** (gültig `09f39297`): Linien und Punkte dürfen durch die
+  Spiegelebene, gerechnet wird wie überall, die Anzeige schneidet jede Hälfte an der Ebene ab (`hautSeiten`, `anzeigeZ`) und
+  verschmilzt sie. Florian sah beim Bauen jede Zwischenfassung auf Port 5194; diese fand er gut („über die Mittelgrenze ziehen und
+  das Mesh ist verschmolzen“). Die Fassung mit Wand im Löser (`a4490f2f`) hielt ich irrtümlich für die gelobte und sicherte sie;
+  sein Urteil: „jetzt sind die ganzen Fehler wieder da … fühlt sich an wie vorher“ → zurückgenommen. Lehren: Lob nie einer Fassung
+  zuordnen, ohne zu fragen, wenn er mehrere gesehen hat; Zählungen an der gerechneten Haut sehen entweder zu wenig (durcheinander
+  laufende Hälften) oder zu viel (Verborgenes hinter der Spiegelebene) — sein Auge entscheidet. Bericht Abschnitte 11 (falsche
+  Fassung) und 12 (gültig), Übergabe.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 

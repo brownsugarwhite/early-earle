@@ -1,4 +1,4 @@
-# Übergabe (Stand 11.11.2026 mittags: Spiegelung wie ein Mirror-Modifier gebaut (Wand an der Spiegelkante, die Anzeige verschmilzt); Florian: „fühlt sich gerade ziemlich gut an … viel mehr wie ich es mir vorgestellt habe“. Davor: Untersuchung „Ein Schritt zurück“ beendet. Davor am 11.11. morgens: Stabilität an der Spiegelachse gebaut; davor G1 bis G4, Sichern und Laden, G5 erster Teil, Schutz und Vorsicht; Florians drei gesicherte Formen; Grundform immer spiegelgleich entschieden)
+# Übergabe (Stand 11.11.2026 mittags: Spiegelung wie ein Mirror-Modifier: Linien dürfen über die Mitte, die Anzeige schneidet ab und verschmilzt (`09f39297`); das ist die Fassung, die Florian gut fand. Die Fassung mit Wand (`a4490f2f`) hat er verworfen. Davor: Untersuchung „Ein Schritt zurück“ beendet. Davor am 11.11. morgens: Stabilität an der Spiegelachse gebaut; davor G1 bis G4, Sichern und Laden, G5 erster Teil, Schutz und Vorsicht; Florians drei gesicherte Formen; Grundform immer spiegelgleich entschieden)
 
 **Branch `claude/form-zuerst`, Arbeitsbaum `.claude/worktrees/form-zuerst`.** Diese Datei ist der Einstieg. Die alte Übergabe aus der
 Käfig-Zeit (Stand 04.11.) steht in der Git-Geschichte: `git show 82aed6dc:docs/UEBERGABE.md`.
@@ -13,19 +13,22 @@ Käfig-Zeit (Stand 04.11.) steht in der Git-Geschichte: `git show 82aed6dc:docs/
   an. „Mach weiter, wie du es für richtig hältst.“ Bei Zufallstests ist er skeptisch.
 - Die Untersuchung ist beendet (Bericht, Abschnitte 9 und 10:
   [`docs/research/2026-11-11-grundproblem-spiegelkante-rechnung.md`](research/2026-11-11-grundproblem-spiegelkante-rechnung.md)).
-- **Gebaut (`a4490f2f`): Wand an der Spiegelkante, die Anzeige verschmilzt die Hälften.** Kern `hautSeiten` (Seite je Punkt, am
-  Netz gelesen) und `hautWand` (in jeder Runde beider Löser bleibt jeder Punkt auf seiner Seite); im Fenster werden Dreiecke, die
-  ganz auf der Spiegelebene liegen, nicht gezeigt. `?wand=0` zeigt den Stand ohne Wand. Bericht, Abschnitt 11.
-- **Florian (11.11. mittags, nach eigenem Test in Chrome auf Port 5194):** „Es fühlt sich gerade ziemlich gut an mit der
-  Spiegelung. Ich habe die meisten Fälle selbst getestet über Mitte ziehen und auch Schleifen, es ist jetzt viel mehr wie ich es
-  mir vorgestellt habe.“ Der Stand liegt seitdem auch im Arbeitsbaum seines gewohnten Fensters (Port 5193).
-- **Offen:** Sehr weit an die Mitte gezogen kann die Haut an der Wand Falten werfen (Bericht, Abschnitt 11, „Offen“). Gerechnet
-  werden weiter beide Hälften; „nur noch eine Hälfte rechnen“ (halbe Rechenzeit, keine Buchführung) und „applien“ sind nicht gebaut.
+- **Gültig (`09f39297`): über die Mitte ziehen, die Anzeige verschmilzt.** Linien und Punkte dürfen durch die Spiegelebene,
+  gerechnet wird wie überall, die Anzeige schneidet jede Hälfte an der Ebene ab (`anzeigeZ` nach `hautSeiten`) und zeigt Dreiecke
+  nicht, die danach ganz auf ihr liegen. Bericht, Abschnitt 12.
+- **Florian** sah während des Bauens jede Zwischenfassung (Chrome, Port 5194). Zu dieser: „konnte ich über die Mittelgrenze ziehen
+  und das Mesh ist verschmolzen. Das war gut.“ Zur Fassung mit Wand (`a4490f2f`, Abschnitt 11), die ich irrtümlich für die gelobte
+  hielt und sicherte: „jetzt sind die ganzen Fehler wieder da … wenn ich in die Mitte ziehe und absetze und wieder zurück. Das
+  fühlt sich an wie vorher.“ **Lob nie einer Fassung zuordnen, ohne zu fragen, wenn er mehrere gesehen hat.**
+- **Offen:** sein Urteil zur gültigen Fassung nach längerem Probieren (weite Züge, absetzen, zurück); Linien hinter der Mitte
+  werden weiter ganz gezeichnet; gerechnet werden weiter beide Hälften; „applien“ gibt es nicht.
 - **Zwei Arbeitsbäume:** `.claude/worktrees/form-zuerst` (Branch `claude/form-zuerst`, Port 5193) und `.claude/worktrees/form-alt`
   (Branch `claude/form-spiegel`, Port 5194, zum Bauen). Florian schaut auch auf 5194, wenn dort etwas Neues liegt: Jede Änderung
   unter `src` lädt dann sein Fenster neu. Vor dem Bauen sagen, wo gebaut wird.
 - **Messen:** Die Zählung „umgeschlagene Dreiecke“ sieht nicht, wenn die Hälften durcheinander laufen. `form-ablauf-probe.mjs`
   misst deshalb auch die umgestülpten Stellen (schwarz im Fenster). Ohne dieses Maß und ohne Bild nichts als „heil“ melden.
+  Und umgekehrt: Zahlen an der gerechneten Haut zählen auch, was hinter der Spiegelebene liegt und nicht gezeigt wird. Was Florian
+  sieht, entscheidet; widerspricht ihm eine Zählung, erst die Zählung prüfen.
 - **Arbeitsregeln daraus:** keine Messreihen im Hintergrund, die die Sitzung immer wieder wecken (das kostet sein Wochenlimit);
   gezielt an seinem Fall prüfen (Kurve über die Spiegelkante und zurück), nicht mit Zufallsfolgen; nicht unter seinem Fenster bauen.
 
