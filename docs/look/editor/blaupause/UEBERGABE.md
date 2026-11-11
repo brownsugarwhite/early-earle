@@ -373,3 +373,12 @@ abgerundet“):**
   Hälfte scharf geschnitten: immer rund, nie am Rand, dort, wo das Wesen wirklich aufliegt (Kugel: unten wie die Vorlage; Vogel: unter
   dem Bauch; „teat firefish“: unter dem tiefsten Teil). Das Ellipsoid aus `lava.ts` wird dafür nicht mehr benutzt.
 Commit `66f82121`, Artefakt Version 10, Bilder `docs/progress/editor/editor-{kontaktbohne,kontur-innen}-2026-11-11.jpg`.
+
+**Danach (Florian: „Kontaktbereich sollte die untere Kontur nicht berühren und bei den verwinkelten Wesen etwas größer sein und auch
+mehr als nur das unterste Teil betreffen. Alle unteren Flächen sollten einen haben. Je weiter unten desto größer. Aber immer so
+abgerundet, dass die untere Kontur nicht berührt wird, wie in meiner Referenz“):** Kontaktbereiche aus einer **Bodenkarte** (der Körper
+von unten: Höhe der Unterseite je Bodenpunkt) — ein Punkt im Glas gehört dazu, wenn er über der Unterseite darunter liegt, mit Abstand,
+bis zu einer Schicht, die umso dicker ist, je näher diese Unterseite am Boden liegt. **Glasrand in alle Richtungen** über den Abstand zur
+Haut aus der Abstandstransformation der Lava (`AbstandFeld` in `lava.ts`, als 3D-Textur). Maß = größter Teil, bei verwinkelten Wesen aus
+der Körperhöhe (≥ 0,24 der Höhe); weich gerechnet und rund geschnitten. Commit `79abefc9`, Artefakt Version 11, Bilder
+`docs/progress/editor/editor-kontaktbereiche{,-fisch}-2026-11-11.jpg`.
