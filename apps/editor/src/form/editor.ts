@@ -154,6 +154,8 @@ const teststand = {
   lava: true,
   /** Logo-Look: die rosa Extrusion nach links unten (aus: Rosa und Lila sind innen gleich breit) */
   extrusion: false,
+  /** Logo-Look: der lange flache Schatten nach links unten, Stärke 0…0,8 (0 = aus) */
+  schatten: 0.36,
 };
 /** /editor: Das Artefakt bringt den Hintergrund-Rechner als Text mit (Bau mit esbuild); im Dev-Server lädt Vite ihn als Modul */
 declare const __TESTSTAND_WORKER__: string;
@@ -5355,6 +5357,7 @@ function rendern(): void {
     rand: T.rand,
     tiktok: T.tiktok,
     extrusion: T.extrusion,
+    schatten: T.schatten,
   };
   // Jelly: Größe und Mitte des Körpers, Bläschen, Lava
   const kasten = hautGeometrie.boundingBox;
@@ -5520,6 +5523,10 @@ function leisteZeigen(): void {
     const z = document.getElementById(`${k}-zahl`);
     if (z) z.textContent = `${teststand[k]} px`;
   }
+  const sch = document.getElementById('schatten') as HTMLInputElement | null;
+  if (sch) sch.value = String(Math.round(100 * teststand.schatten));
+  const schZ = document.getElementById('schatten-zahl');
+  if (schZ) schZ.textContent = `${Math.round(100 * teststand.schatten)} %`;
   const p3 = document.getElementById('knopf-papier3d');
   if (p3) {
     p3.setAttribute('aria-pressed', String(teststand.papier3d));
@@ -5590,6 +5597,7 @@ document.getElementById('leiste')?.addEventListener('click', (e) => {
 document.getElementById('tiefe')?.addEventListener('input', (e) => teststandSetzen({ tiefe: Number((e.target as HTMLInputElement).value) }));
 document.getElementById('kontur')?.addEventListener('input', (e) => teststandSetzen({ kontur: Number((e.target as HTMLInputElement).value) }));
 document.getElementById('rand')?.addEventListener('input', (e) => teststandSetzen({ rand: Number((e.target as HTMLInputElement).value) }));
+document.getElementById('schatten')?.addEventListener('input', (e) => teststandSetzen({ schatten: Number((e.target as HTMLInputElement).value) / 100 }));
 // /editor: Material im 3D-Fenster (Jelly ↔ Papier), Knopf oben rechts im Fenster
 document.getElementById('knopf-papier3d')?.addEventListener('click', () => teststandSetzen({ papier3d: !teststand.papier3d }));
 // Im Artefakt gibt es weder Ablage noch Dateien: Sichern und Laden aus; im Dev-Server ist „Kugel“ dasselbe wie „Neu“

@@ -100,6 +100,12 @@ export type Einstellung = {
    * TikTok ist: Sie legt sich innen zum rosa Streifen und macht Rosa breiter als Lila (11.11. spätabends, Florian)
    */
   extrusion: boolean;
+  /**
+   * Logo: der lange flache Schatten des ganzen Abzeichens (Körper samt Kontur und Rand) auf dem Grund, immer schräg nach links unten,
+   * mit harter Kante, nach hinten leicht auslaufend (Florians Vorlage vom 11.11. spätabends, dort nach rechts unten). Stärke 0…1
+   * (0 = aus): so viel dunkler als der Grund ist er am Abzeichen
+   */
+  schatten: number;
 };
 
 /** Farben: Logo (Florians Vorlage), Papier (Blaupause), Auswahl */
@@ -308,6 +314,10 @@ const feldZiel = (): WebGLRenderTarget =>
     stencilBuffer: false,
   });
 
+/** langer Schatten: Deckung und Weg je Bildpunkt (halbe Gleitkommazahlen: der Weg reicht über das ganze Fenster) */
+const schattenZiel = (): WebGLRenderTarget =>
+  new WebGLRenderTarget(4, 4, { type: HalfFloatType, format: RGBAFormat, minFilter: NearestFilter, magFilter: NearestFilter, generateMipmaps: false, depthBuffer: false, stencilBuffer: false });
+
 /** Logo: Tiefe der Extrusion in Bildpunkten bei 100 % (Florians Vorlage: gut ein Sechstel der Buchstabenhöhe) */
 const EXTRUSION = 18;
 /** Bläschen im Jelly (Mitte xyz, Halbmesser w; Welt) */
@@ -425,6 +435,7 @@ export class BlaupauseBild {
     rand: 12,
     tiktok: true,
     extrusion: false,
+    schatten: 0.36,
   };
   farbe: Farben = { ...FARBEN_START };
   /** Halbmesser, Mitte, typische Dicke und halbe Höhe des Körpers (für Jelly) */
@@ -704,6 +715,9 @@ export class BlaupauseBild {
         uExtr: { value: new Vector2() },
         uPlatte: { value: new Vector2() },
         uTiktok: { value: 1 },
+        tSchatten: { value: null },
+        uSchatten: { value: 0 },
+        uSchattenLang: { value: 1000 },
         uPlatteA: { value: farbe3(FARBEN_START.verlaufA) },
         uPlatteB: { value: farbe3(FARBEN_START.verlaufB) },
         uGrundV: { value: farbe3(FARBEN_START.grund) },
@@ -720,11 +734,18 @@ export class BlaupauseBild {
       vertexShader: 'void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
       fragmentShader: [
         SCHEMA,
-        'uniform sampler2D tFeldC, tFeldR; uniform vec2 uSchub, uExtr, uPlatte; uniform float uTiktok;',
+        'uniform sampler2D tFeldC, tFeldR, tSchatten; uniform vec2 uSchub, uExtr, uPlatte; uniform float uTiktok, uSchatten, uSchattenLang;',
         'uniform vec3 uGrundV, uGrundH, uKontur, uRosa, uVA, uVM1, uVM2, uVB, uSchattenA, uSchattenB, uPlatteA, uPlatteB;',
         'vec3 verlauf(float x) { return x < 0.45 ? mix(uVA, uVM1, x / 0.45) : (x < 0.7 ? mix(uVM1, uVM2, (x - 0.45) / 0.25) : mix(uVM2, uVB, (x - 0.7) / 0.3)); }',
         'void main() {',
         '  vec2 fc = gl_FragCoord.xy; float sg = sigma(fc), kk = kipp(sg); vec3 col = mix(uGrundV, uGrundH, kk);',
+        // der lange Schatten liegt auf dem Grund: am Abzeichen am dunkelsten, nach hinten etwas heller (wie in der Vorlage); auf dem hellen
+        // Grund von hinten schwächer
+        '  if (uSchatten > 0.0) {',
+        '    vec4 sv = texture2D(tSchatten, (fc - uVp.xy) / uVp.zw);',
+        '    float st = uSchatten * mix(1.0, 0.45, kk) * (1.0 - 0.45 * smoothstep(0.0, 1.0, sv.g * 1.4142 / uSchattenLang));',
+        '    col *= 1.0 - st * sv.r;',
+        '  }',
         // die dicke Kontur tauscht beim Wenden die Farbe mit dem Körper
         '  vec3 kontur = mix(uKontur, uPapierLogo, kk);',
         '  float ri = uInnen * uDpr * uMass, ra = (uInnen + uAussen) * uDpr * uMass;',
@@ -1089,6 +1110,10 @@ export class BlaupauseBild {
       hu.uTiktok!.value = E.tiktok ? 1 : 0;
       const pl = 0.2 * E.kontur * k;
       (hu.uPlatte!.value as Vector2).set(0.7071 * pl, 0.7071 * pl);
+      // der lange Schatten (immer nach links unten)
+      hu.uSchatten!.value = E.schatten;
+      hu.uSchattenLang!.value = Math.max(rect.w, rect.h);
+      if (E.schatten > 0) hu.tSchatten!.value = this.langerSchatten(rect, kam);
     }
     r.setRenderTarget(null);
     r.setViewport(f.css.x, f.css.y, f.css.w, f.css.h);
@@ -1172,6 +1197,87 @@ export class BlaupauseBild {
     r.copyFramebufferToTexture(unter, this.posHilf);
     for (const m of [this.stabMat, this.bogenMat]) m.uniforms.tUnter!.value = unter;
     r.render(this.szGriffe, kam);
+  }
+
+  /** langer Schatten: zwei Ziele zum Hin- und Herzeichnen (R = Deckung, G = Weg zum Abzeichen in Schritten), Maske und Zug */
+  private readonly schattenZiele: [WebGLRenderTarget, WebGLRenderTarget] = [schattenZiel(), schattenZiel()];
+  private schattenMaskeMat: ShaderMaterial | null = null;
+  private readonly schattenZugMat = new ShaderMaterial({
+    depthTest: false,
+    depthWrite: false,
+    blending: NoBlending,
+    uniforms: { tQuelle: { value: null }, uGroesse: { value: new Vector2(4, 4) }, uSchritt: { value: 1 } },
+    vertexShader: 'void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    // je Schritt: der Punkt selbst und der um `uSchritt` Bildpunkte rechts oben (dort liegt, was den Schatten nach links unten wirft);
+    // Deckung = Höchstwert, Weg = kürzester bis zum Abzeichen. Nach k Schritten (1, 2, 4, …) ist jeder Weg bis 2^k abgedeckt
+    fragmentShader: [
+      'uniform sampler2D tQuelle; uniform vec2 uGroesse; uniform float uSchritt;',
+      'void main() {',
+      '  vec2 fc = gl_FragCoord.xy; vec4 a = texture2D(tQuelle, fc / uGroesse);',
+      '  vec2 q = fc + vec2(uSchritt);',
+      '  if (q.x < uGroesse.x && q.y < uGroesse.y) {',
+      '    vec4 b = texture2D(tQuelle, q / uGroesse);',
+      '    float da = a.r > 0.004 ? a.g : 60000.0, db = b.r > 0.004 ? b.g + uSchritt : 60000.0;',
+      '    a = vec4(max(a.r, b.r), min(da, db), 0.0, 1.0);',
+      '  }',
+      '  gl_FragColor = a;',
+      '}',
+    ].join('\n'),
+  });
+  private readonly szSchattenMaske = new Scene();
+  private readonly szSchattenZug = new Scene();
+
+  /** Der lange Schatten dieses Fensters (Gerätepixel, Größe des Fensters): Maske des Abzeichens, dann nach links unten gezogen */
+  private langerSchatten(rect: { w: number; h: number }, kam: OrthographicCamera): Texture {
+    const r = this.r;
+    const [A, B] = this.schattenZiele;
+    if (A.width !== rect.w || A.height !== rect.h) {
+      A.setSize(rect.w, rect.h);
+      B.setSize(rect.w, rect.h);
+    }
+    if (!this.schattenMaskeMat) {
+      const hu = this.hgLogoMat.uniforms;
+      this.schattenMaskeMat = new ShaderMaterial({
+        depthTest: false,
+        depthWrite: false,
+        blending: NoBlending,
+        uniforms: this.mitU({ tFeldC: hu.tFeldC!, tFeldR: hu.tFeldR!, uPlatte: hu.uPlatte!, uTiktok: hu.uTiktok! }),
+        vertexShader: 'void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
+        // was den Schatten wirft: alles bis zum äußeren Rand des Rands (beide Platten bzw. die Kontur samt Rand), geglättet
+        fragmentShader: [
+          SCHEMA,
+          'uniform sampler2D tFeldC, tFeldR; uniform vec2 uPlatte; uniform float uTiktok;',
+          'void main() {',
+          '  vec2 fc = gl_FragCoord.xy + uVp.xy; float ra = (uInnen + uAussen) * uDpr * uMass;',
+          '  float d = uTiktok > 0.5 ? min(abstandV(tFeldC, fc - uPlatte), abstandV(tFeldR, fc + uPlatte)) : abstandV(tFeldC, fc);',
+          '  float c = 1.0 - smoothstep(ra - 0.7, ra + 0.7, d);',
+          '  gl_FragColor = vec4(c, c > 0.004 ? 0.0 : 60000.0, 0.0, 1.0);',
+          '}',
+        ].join('\n'),
+      });
+      const m1 = new Mesh(new PlaneGeometry(2, 2), this.schattenMaskeMat);
+      m1.frustumCulled = false;
+      this.szSchattenMaske.add(m1);
+      const m2 = new Mesh(new PlaneGeometry(2, 2), this.schattenZugMat);
+      m2.frustumCulled = false;
+      this.szSchattenZug.add(m2);
+    }
+    r.setRenderTarget(A);
+    r.render(this.szSchattenMaske, kam);
+    const z = this.schattenZugMat.uniforms;
+    (z.uGroesse!.value as Vector2).set(rect.w, rect.h);
+    let quelle = A;
+    let ziel = B;
+    for (let s = 1; s < Math.max(rect.w, rect.h); s *= 2) {
+      z.tQuelle!.value = quelle.texture;
+      z.uSchritt!.value = s;
+      r.setRenderTarget(ziel);
+      r.render(this.szSchattenZug, kam);
+      const t = quelle;
+      quelle = ziel;
+      ziel = t;
+    }
+    return quelle.texture;
   }
 
   private readonly lavaHilf = new Vector3();
