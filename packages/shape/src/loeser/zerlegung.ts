@@ -400,7 +400,95 @@ export function systemAusDaten(daten: ZerlegungsDaten): NormalSystem {
     for (let j = 0; j < n; j++) out[perm[j]!] = a0[j]!;
     return out;
   };
-  const loesenSpalten = (rhs: Float64Array, k: number): Float64Array => (k === 3 ? loesenDrei(rhs) : k === 1 ? loesenEine(rhs) : allgemein(rhs, k));
+  // 11.11.2026 (Normalfluss): Sechs Spalten sind eine Löserrunde, in der die Haut den Linien folgt und die Korrektur der Krümmung
+  // für sich gelöst wird (zweimal drei Spalten). Ausgeschrieben wie `loesenDrei`: dieselben Rechenschritte je Spalte in derselben
+  // Reihenfolge (bitgleich zu zwei Aufrufen mit drei Spalten), die Zerlegung wird nur einmal gelesen.
+  let a3: Float64Array | null = null;
+  let a4: Float64Array | null = null;
+  let a5: Float64Array | null = null;
+  const loesenSechs = (rhs: Float64Array): Float64Array => {
+    const b1 = (a1 ??= new Float64Array(n));
+    const b2 = (a2 ??= new Float64Array(n));
+    const b3 = (a3 ??= new Float64Array(n));
+    const b4 = (a4 ??= new Float64Array(n));
+    const b5 = (a5 ??= new Float64Array(n));
+    for (let j = 0; j < n; j++) {
+      const q = 6 * perm[j]!;
+      a0[j] = rhs[q]!;
+      b1[j] = rhs[q + 1]!;
+      b2[j] = rhs[q + 2]!;
+      b3[j] = rhs[q + 3]!;
+      b4[j] = rhs[q + 4]!;
+      b5[j] = rhs[q + 5]!;
+    }
+    for (let j = 0; j < n; j++) {
+      const von = Lp[j]!;
+      const bis = Lp[j + 1]!;
+      const d = Lx[von]!;
+      const y0 = a0[j]! / d;
+      const y1 = b1[j]! / d;
+      const y2 = b2[j]! / d;
+      const y3 = b3[j]! / d;
+      const y4 = b4[j]! / d;
+      const y5 = b5[j]! / d;
+      a0[j] = y0;
+      b1[j] = y1;
+      b2[j] = y2;
+      b3[j] = y3;
+      b4[j] = y4;
+      b5[j] = y5;
+      for (let p = von + 1; p < bis; p++) {
+        const l = Lx[p]!;
+        const i = Li[p]!;
+        a0[i] = a0[i]! - l * y0;
+        b1[i] = b1[i]! - l * y1;
+        b2[i] = b2[i]! - l * y2;
+        b3[i] = b3[i]! - l * y3;
+        b4[i] = b4[i]! - l * y4;
+        b5[i] = b5[i]! - l * y5;
+      }
+    }
+    for (let j = n - 1; j >= 0; j--) {
+      const von = Lp[j]!;
+      const bis = Lp[j + 1]!;
+      let s0 = a0[j]!;
+      let s1 = b1[j]!;
+      let s2 = b2[j]!;
+      let s3 = b3[j]!;
+      let s4 = b4[j]!;
+      let s5 = b5[j]!;
+      for (let p = von + 1; p < bis; p++) {
+        const l = Lx[p]!;
+        const i = Li[p]!;
+        s0 -= l * a0[i]!;
+        s1 -= l * b1[i]!;
+        s2 -= l * b2[i]!;
+        s3 -= l * b3[i]!;
+        s4 -= l * b4[i]!;
+        s5 -= l * b5[i]!;
+      }
+      const d = Lx[von]!;
+      a0[j] = s0 / d;
+      b1[j] = s1 / d;
+      b2[j] = s2 / d;
+      b3[j] = s3 / d;
+      b4[j] = s4 / d;
+      b5[j] = s5 / d;
+    }
+    const out = new Float64Array(6 * n);
+    for (let j = 0; j < n; j++) {
+      const q = 6 * perm[j]!;
+      out[q] = a0[j]!;
+      out[q + 1] = b1[j]!;
+      out[q + 2] = b2[j]!;
+      out[q + 3] = b3[j]!;
+      out[q + 4] = b4[j]!;
+      out[q + 5] = b5[j]!;
+    }
+    return out;
+  };
+  const loesenSpalten = (rhs: Float64Array, k: number): Float64Array =>
+    k === 3 ? loesenDrei(rhs) : k === 1 ? loesenEine(rhs) : k === 6 ? loesenSechs(rhs) : allgemein(rhs, k);
   return {
     n,
     loesen: loesenDrei,

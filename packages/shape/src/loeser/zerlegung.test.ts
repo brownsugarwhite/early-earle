@@ -72,6 +72,18 @@ describe('Einsetzen ausgeschrieben (G1)', () => {
     expect(unterschied(x, sys.loesenSpalten(rhs3, 3))).toBe(0);
   });
 
+  it('sechs Spalten (11.11., Normalfluss): bitgleich mit zweimal drei Spalten', () => {
+    const zweite = zahlen(3 * n, 11);
+    const rhs6 = Float64Array.from({ length: 6 * n }, (_, i) => (i % 6 < 3 ? rhs3[3 * Math.floor(i / 6) + (i % 6)]! : zweite[3 * Math.floor(i / 6) + (i % 6) - 3]!));
+    const x = sys.loesenSpalten(rhs6, 6);
+    const a = sys.loesen(rhs3);
+    const b = sys.loesen(zweite);
+    for (let c = 0; c < 3; c++) {
+      expect(unterschied(spalte(x, 6, c), spalte(a, 3, c))).toBe(0);
+      expect(unterschied(spalte(x, 6, 3 + c), spalte(b, 3, c))).toBe(0);
+    }
+  });
+
   it('eine Spalte: bitgleich mit dem allgemeinen Einsetzen', () => {
     for (const b of r) {
       const x = sys.loesenSpalte(b);

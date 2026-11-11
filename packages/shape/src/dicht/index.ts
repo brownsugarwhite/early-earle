@@ -98,6 +98,8 @@ export {
   kreuzungenZwischen,
   loopAusSchnitt,
   mittlereKante,
+  linieKreuztSich,
+  mitteAbstand,
   pfadAbweichung,
   pfadLagen,
   pfadParameter,

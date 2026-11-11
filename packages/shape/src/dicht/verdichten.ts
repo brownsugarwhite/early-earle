@@ -965,10 +965,10 @@ export function verdichten(
         const sb = spiegel[b]!;
         if (sa < 0 || sb < 0) continue;
         if (schluessel(sa, sb) === schluessel(a, b)) {
-          // die Kante ist ihr eigenes Spiegelbild: Die neue Kante liegt dann in der Mitte (beide Gegenpunkte dort) oder quer über ihr
-          // (die Gegenpunkte sind Spiegelbilder)
+          // die Kante ist ihr eigenes Spiegelbild: Liegt sie quer über der Mitte (beide Gegenpunkte in der Mittelebene), wird sie in
+          // die Mitte gedreht. Eine Kante in der Mittelebene bleibt (`mitteKette`, unten).
           const mitte = spiegel[f.c] === f.c && spiegel[f.d] === f.d;
-          if (!mitte && spiegel[f.c] !== f.d) continue;
+          if (!mitte) continue;
           if (drehen(a, b, f, false)) diesmal++;
           continue;
         }
@@ -993,17 +993,21 @@ export function verdichten(
       const a = Math.floor(k / KEY);
       const b = k % KEY;
       const f = drehbar(a, b);
-      if (!f || !besser(a, b, f.c, f.d)) continue;
+      if (!f) continue;
       const sa = spiegel[a]!;
       const sb = spiegel[b]!;
       if (sa < 0 || sb < 0) continue;
       const selbst = schluessel(sa, sb) === k;
       if (selbst) {
-        // die Gegenpunkte sind dann Spiegelbilder, die neue Kante liegt wieder spiegelgleich
-        if (spiegel[f.c] !== f.d) continue;
-        if (drehen(a, b, f, true)) diesmal++;
+        // Die Kante ist ihr eigenes Spiegelbild. Die Punkte der Mittelebene bilden eine geschlossene Kette von Kanten; über sie läuft
+        // der Loop der Mitte (`loopEinsetzen`). Eine Kante in der Mittelebene wird deshalb nie gedreht. (Bis zum 11.11. wurde sie es,
+        // wenn es die Wertigkeit verbesserte; danach lag sie quer über der Mitte, die Kette war offen, und ein später gezogener Loop
+        // der Mitte ließ sich nicht mehr einsetzen: Florians Form `test_kaputt`, dort an zwei Stellen.) Eine Kante quer über die
+        // Mitte zwischen zwei ihrer Punkte wird zurückgedreht.
+        if (sa === b && spiegel[f.c] === f.c && spiegel[f.d] === f.d && drehen(a, b, f, false)) diesmal++;
         continue;
       }
+      if (!besser(a, b, f.c, f.d)) continue;
       const g = drehbar(sa, sb);
       // das Spiegelbild muss dieselben (gespiegelten) Gegenpunkte haben und darf kein Dreieck mit dieser Kante teilen
       const gegen = g && ((g.c === spiegel[f.c] && g.d === spiegel[f.d]) || (g.c === spiegel[f.d] && g.d === spiegel[f.c]));

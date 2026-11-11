@@ -662,6 +662,50 @@ export function kreuzungenZwischen(A: Loop, la: Float64Array, B: Loop, lb: Float
   return out;
 }
 
+/**
+ * Kreuzt oder berührt die Linie sich selbst (11.11.)? Zwei ihrer Stücke, die längs der Linie mindestens drei Probenweiten auseinander
+ * liegen, kommen sich näher als ein Zehntel einer Probenweite. So liegt sie, wenn ein Griff verdreht oder ein Punkt über seinen
+ * Nachbarn hinaus gezogen ist; die Haut ist dort über sich selbst gefaltet. Das Maß ist die mittlere Probenweite der Linie, nicht die
+ * Bogenlänge zwischen den Stücken: Ein schmaler geschlossener Loop kreuzt sich nicht. `L`: die Lagen der Proben (sonst die Ruhe).
+ */
+export function linieKreuztSich(l: Loop, L: Float64Array = l.ruhe): boolean {
+  const n = L.length / 3;
+  const zu = geschlossen(l);
+  const m = zu ? n : n - 1;
+  if (m < 4) return false;
+  // Bogenlänge am Anfang jedes Stücks
+  const s0 = new Float64Array(m + 1);
+  for (let i = 0; i < m; i++) s0[i + 1] = s0[i]! + abstand(lage(L, i), lage(L, (i + 1) % n));
+  const ganz = s0[m]!;
+  if (!(ganz > 0)) return false;
+  const weite = ganz / m;
+  const nah = 0.1 * weite;
+  const fern = 3 * weite;
+  for (let a = 0; a < m; a++) {
+    const p0 = lage(L, a);
+    const p1 = lage(L, (a + 1) % n);
+    const xmin = Math.min(p0.x, p1.x) - nah;
+    const xmax = Math.max(p0.x, p1.x) + nah;
+    const ymin = Math.min(p0.y, p1.y) - nah;
+    const ymax = Math.max(p0.y, p1.y) + nah;
+    const zmin = Math.min(p0.z, p1.z) - nah;
+    const zmax = Math.max(p0.z, p1.z) + nah;
+    for (let b = a + 1; b < m; b++) {
+      // längs der Linie vom Ende von a zum Anfang von b, bei einer geschlossenen auch andersherum
+      const vor = s0[b]! - s0[a + 1]!;
+      const rueck = zu ? ganz - s0[b + 1]! + s0[a]! : Infinity;
+      if (Math.min(vor, rueck) < fern) continue;
+      const q0 = lage(L, b);
+      const q1 = lage(L, (b + 1) % n);
+      if (Math.max(q0.x, q1.x) < xmin || Math.min(q0.x, q1.x) > xmax) continue;
+      if (Math.max(q0.y, q1.y) < ymin || Math.min(q0.y, q1.y) > ymax) continue;
+      if (Math.max(q0.z, q1.z) < zmin || Math.min(q0.z, q1.z) > zmax) continue;
+      if (streckenNaechste(p0, p1, q0, q1).d < nah) return true;
+    }
+  }
+  return false;
+}
+
 const NULL: V3 = { x: 0, y: 0, z: 0 };
 
 /**
@@ -1134,10 +1178,27 @@ export function pfadBei(l: Loop, s: number): V3 | null {
 export const hatPfad = (l: Loop): boolean => hatGriffe(l) && l.punkte.length >= 2 && l.punkte.every((p) => p.ein && p.aus);
 
 /**
+ * So nah kommt die Linie eines Loops der Mittelebene höchstens (11.11.): ein Ring 0 (seine Enden liegen auf ihr), ein Paar anderthalb
+ * Weiten seiner Proben (etwa eine Kante des Netzes). Läge ein Paar auf der Mittelebene, läge es auf seinem Spiegelbild und auf dem
+ * Loop der Mitte: Die Haut dazwischen hätte keine Breite mehr. Gemessen an Florians Form (Punkt des Paars über die Mitte gezogen,
+ * dort losgelassen, wieder weggezogen): ohne Abstand 38 Knicke über 150° und 4 falsche Kreuzungen an der Berührung, danach nicht
+ * mehr heil; mit einer halben Probenweite 63 Knicke (der Streifen ist dann schmaler, als das Netz darstellen kann); mit anderthalb
+ * keine umgeklappten Dreiecke, und der Punkt lässt sich wieder wegziehen. Näher an die Mitte geht es erst mit einem Netz, das an
+ * engen Linien feiner ist.
+ */
+export const mitteAbstand = (l: Loop): number => (l.art === 'paar' ? (1.5 * l.laenge) / Math.max(1, l.proben.length) : 0);
+
+/**
  * Lage je Probe auf dem Pfad (3 je Probe): an ihrer Stelle t in ihrem Stück, aus den Punkten `P` (sonst ihren Lagen) und den Griffen
  * `G` (sonst den gespeicherten); null ohne Pfad. Mittelebene und Enden eines Rings genau auf z = 0.
+ *
+ * Ein Ring und ein Paar liegen auf der Seite z ≥ 0, ihr Spiegelbild auf der anderen (11.11., Florian: „es darf nicht jedes Mal, wenn
+ * ich versehentlich ein Handle falschherum drehe oder mit einem Punkt nahe der Mittellinie ziehe, das Mesh kaputt gehen“). Wo der
+ * Pfad durch die Mittelebene ginge (ein Punkt oder ein Griff über die Mitte gezogen), bleibt die Linie deshalb auf ihrer Seite
+ * (`mitteAbstand`): Sonst zöge sie die Haut ihrer Seite durch die der anderen. `roh`: der Pfad, wie er gezeichnet ist (für den, der
+ * danach selbst begrenzt).
  */
-export function pfadLagen(l: Loop, P?: readonly V3[], G?: readonly { ein: V3; aus: V3 }[]): Float64Array | null {
+export function pfadLagen(l: Loop, P?: readonly V3[], G?: readonly { ein: V3; aus: V3 }[], roh = false): Float64Array | null {
   if (!hatPfad(l)) return null;
   const n = l.proben.length;
   const out = new Float64Array(3 * n);
@@ -1165,12 +1226,20 @@ export function pfadLagen(l: Loop, P?: readonly V3[], G?: readonly { ein: V3; au
     out[2] = 0;
     out[3 * n - 1] = 0;
   }
+  if (!roh && l.art !== 'mitte') {
+    const g = mitteAbstand(l);
+    for (let j = 0; j < n; j++) if (out[3 * j + 2]! < g) out[3 * j + 2] = g;
+    if (l.art === 'ring') {
+      out[2] = 0;
+      out[3 * n - 1] = 0;
+    }
+  }
   return out;
 }
 
-/** Was die Linie (`L`, 3 je Probe) zu ihrem Pfad fehlt, je Probe; null ohne Pfad */
-export function pfadVersatz(l: Loop, L: Float64Array = l.ruhe): Float64Array | null {
-  const p = pfadLagen(l);
+/** Was die Linie (`L`, 3 je Probe) zu ihrem Pfad fehlt, je Probe; null ohne Pfad (`roh`: wie `pfadLagen`) */
+export function pfadVersatz(l: Loop, L: Float64Array = l.ruhe, roh = false): Float64Array | null {
+  const p = pfadLagen(l, undefined, undefined, roh);
   if (!p) return null;
   for (let k = 0; k < p.length; k++) p[k] = p[k]! - L[k]!;
   return p;

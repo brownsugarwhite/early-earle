@@ -2,7 +2,8 @@
 // sich auf“). An seiner gesicherten Form lief die Haut davon, wo der volle Schritt des Lösers über das Ziel hinausschoss; die Haut
 // einer davongelaufenen Form ließ das Verdichten auf Millionen Punkte wachsen. Die Tests halten fest:
 // (1) Schießt der Schritt über (hier erzwungen: nach einem gewöhnlichen Zug der dreifache Schritt ohne die Bremse je Punkt), läuft
-//     die Haut ohne Vorsicht davon; mit ihr nimmt der Löser die Runde zurück, halbiert und bleibt bei der Form.
+//     die Haut ohne Vorsicht davon; mit ihr nimmt der Löser die Runde zurück, halbiert und bleibt bei der Form. (Mit dem Normalfluss
+//     vom 11.11. läuft derselbe Fall auch ohne Vorsicht nicht davon.)
 // (2) Eine Haut, die zur Ruhe kommt, rechnet mit und ohne Vorsicht Bit für Bit gleich.
 // (3) Das Verdichten hört vor der Grenze `hoechstens` auf und meldet es.
 import { afterEach, describe, expect, it } from 'vitest';
@@ -122,6 +123,13 @@ describe('Vorsicht bei Unruhe', () => {
     expect(zc.unruhe.stufen).toBeGreaterThan(0);
     // die Haut liegt bei der Form mit gewöhnlichem Schritt
     expect(weg).toBeLessThan(3);
+    // mit dem Normalfluss (11.11.; von selbst nur, wenn eine Linie lose aufliegt) läuft derselbe erzwungene Überschuss auch ohne
+    // Vorsicht nicht davon
+    const e = kugelMitLoops();
+    const fluss = ziehen(new LoopZug(e.h, e.loops, null, true, 'kurven', 'geometrie', { vorsicht: false, normalfluss: true }), e.h, e.loops, 40, 4, 50, 40, ueberschiessen);
+    zurueck();
+    // gemessen: 189,7 wie beim gewöhnlichen Schritt
+    expect(fluss).toBeLessThan(200);
   });
 
   it('eine Haut, die zur Ruhe kommt, rechnet mit und ohne Vorsicht Bit für Bit gleich', () => {

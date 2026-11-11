@@ -58,6 +58,7 @@ import {
   griffeNach,
   griffeUebernehmen,
   griffZiehen,
+  linieKreuztSich,
   griffeProportional,
   type Haut,
   hatGriffe,
@@ -80,6 +81,7 @@ import {
   maulAmLoop,
   mittlereKante,
   mundwinkelProbe,
+  mitteAbstand,
   pfadAbweichung,
   pfadParameter,
   pfadVersatz,
@@ -254,10 +256,17 @@ const VORSICHT = new URLSearchParams(location.search).get('vorsicht') !== '0';
 const VORSICHT_LAUT = new URLSearchParams(location.search).get('vorsichtlaut') === '1';
 /** `?davon=0`: das Fenster nimmt einen Zug nicht zurück, wenn die Haut davonläuft (wie bis zum 10.11.; nur zum Vergleichen) */
 const DAVON_SCHUTZ = new URLSearchParams(location.search).get('davon') !== '0';
-const RICHTUNG_OPT: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean } = {
+/**
+ * Normalfluss im Löser (11.11., `ausKurven.ts`): Die Haut folgt den Linien, und die Korrektur der Krümmung bewegt ihre Punkte nur
+ * senkrecht zur Fläche. Der Löser rechnet so von selbst, wenn ein Loop nur auf der Haut liegt (nicht eingesetzt); `?normalfluss=1`
+ * immer, `?normalfluss=0` nie (zum Vergleichen).
+ */
+const NORMALFLUSS = new URLSearchParams(location.search).get('normalfluss');
+const RICHTUNG_OPT: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean; normalfluss?: boolean } = {
   ...(RICHTUNG ? { richtung: true } : {}),
   ...(MAXNORMALEN ? { maxNormalen: true } : {}),
   ...(VORSICHT ? {} : { vorsicht: false }),
+  ...(NORMALFLUSS === '1' ? { normalfluss: true } : NORMALFLUSS === '0' ? { normalfluss: false } : {}),
 };
 /** Der Zug löst nur einen Bereich um die bewegten Stellen (mit Gedächtnis und in der Pose); aus den Kurven die ganze Haut */
 const mitBereich = (): boolean => grund !== null || HAUT !== 'kurven';
@@ -1644,6 +1653,20 @@ type Zug = {
   zielNeu: boolean;
   offen: boolean;
   nachRunden: number;
+  /**
+   * Eine Linie liegt in diesem Zug gerade an der Mittelebene an (ihr Punkt oder Griff ist über die Mitte gezogen, `zGrenzen` hält sie
+   * dort). Solange wird im Zug nicht verfeinert und nichts eingewechselt: Die Haut zwischen Linie und Mitte ist dann auf nichts
+   * zusammengeschoben, ein Netz für diesen Augenblick passte nach dem Rückweg nicht mehr (11.11., gemessen an Florians Form: über die
+   * Mitte und zurück blieben 9 Knicke über 150° und 3 % mehr Rauminhalt, ohne Verfeinern im Zug nichts).
+   */
+  begrenzt: boolean;
+  /**
+   * Umgeschlagene Dreiecke, als der Zug begann (`umgeschlageneZahl`). Sind es im Zug mehr, hat er die Haut gerade umgeklappt (ein
+   * sehr weiter Zug, eine Linie überschlägt sich): Solange wird im Zug nicht verfeinert und nichts eingewechselt. Ein Netz für
+   * die umgeklappte Haut passte nach dem Rückweg nicht mehr (11.11., gemessen an Florians Form: Punkt der Mitte 160 längs über
+   * seinen Nachbarn hinaus und zurück; mit Verfeinern im Zug danach 130 bis 210 umgeschlagene Dreiecke, ohne 36).
+   */
+  umgAnfang: number;
 };
 let zug: Zug | null = null;
 
@@ -1791,7 +1814,8 @@ function griffVerschiebung(l: Loop, S: Float64Array, k: number, v: GriffVersatz)
 
 /** In der Grundform je Loop mit Pfad: was seiner Linie beim Anfang eines Zugs (`start`) zu ihrem Pfad fehlt; sonst null */
 function restZumPfad(z: LoopZug): (Float64Array | null)[] {
-  return loops.map((l, li) => (exakt(l) ? pfadVersatz(l, z.start[li]!) : null));
+  // (der Pfad, wie er gezeichnet ist: `mitRest` begrenzt das Ziel danach an der Mittelebene, `zGrenzen`)
+  return loops.map((l, li) => (exakt(l) ? pfadVersatz(l, z.start[li]!, true) : null));
 }
 
 /**
@@ -1807,14 +1831,24 @@ function mitRest(z: Zug, li: number, d: Float64Array | null): Float64Array | nul
   return out;
 }
 
-/** Mittelebene und Enden eines Rings bleiben auf z = 0, ein Ring geht nicht unter die Mittelebene */
+/**
+ * Mittelebene und Enden eines Rings bleiben auf z = 0; ein Ring und ein Paar gehen nicht unter die Mittelebene (ihre Seite ist
+ * z ≥ 0, die andere gehört dem Spiegelbild; bis zum 11.11. durfte ein Paar hinüber und zog die Haut durch sich selbst). Ein Paar
+ * bleibt um `mitteAbstand` vor ihr.
+ */
 function zGrenzen(l: Loop, S: Float64Array, d: Float64Array): void {
   const n = l.proben.length;
+  const g = mitteAbstand(l);
   for (let j = 0; j < n; j++) {
     if (l.art === 'mitte' || (l.art === 'ring' && (j === 0 || j === n - 1))) d[3 * j + 2] = 0;
-    else if (l.art === 'ring') d[3 * j + 2] = Math.max(d[3 * j + 2]!, -S[3 * j + 2]!);
+    else if (d[3 * j + 2]! < g - S[3 * j + 2]!) {
+      if (d[3 * j + 2]! < g - S[3 * j + 2]! - 1e-9) anMitteGehalten = true;
+      d[3 * j + 2] = g - S[3 * j + 2]!;
+    }
   }
 }
+/** `zGrenzen` hat seit dem letzten Zurücksetzen eine Linie an der Mittelebene gehalten (für `Zug.begrenzt`) */
+let anMitteGehalten = false;
 
 /** Griff `seite` von Punkt i des Loops li ziehen */
 function griffZugStarten(a: Ansicht, X: number, Y: number, spiegel: boolean, li: number, i: number, seite: 'ein' | 'aus'): boolean {
@@ -1850,6 +1884,8 @@ function griffZugStarten(a: Ansicht, X: number, Y: number, spiegel: boolean, li:
     zielNeu: false,
     offen: false,
     nachRunden: 0,
+    begrenzt: false,
+    umgAnfang: umgeschlageneZahl(),
   };
   letzteZerlegung = loeser.loeser.zeitZerlegen;
   letzterBereich = loeser.loeser.anzahl;
@@ -2061,6 +2097,8 @@ function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spieg
     zielNeu: false,
     offen: false,
     nachRunden: 0,
+    begrenzt: false,
+    umgAnfang: umgeschlageneZahl(),
   };
   letzteZerlegung = loeser.loeser.zeitZerlegen;
   letzterBereich = loeser.loeser.anzahl;
@@ -2068,13 +2106,30 @@ function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spieg
   return true;
 }
 
-/** Wohin Punkt p mit dem Gewicht g unter der Abbildung f geht (Mittelebene und Enden eines Rings auf z = 0, ein Ring nicht darunter) */
+/** Wohin Punkt p mit dem Gewicht g unter der Abbildung f geht (Mittelebene und Enden eines Rings auf z = 0, Ring und Paar nicht darunter) */
 function punktNach(l: Loop, p: LoopPunkt, g: number, f: (p: V3) => V3): V3 {
   const q = f(p.ref);
   const c = { x: p.ref.x + g * (q.x - p.ref.x), y: p.ref.y + g * (q.y - p.ref.y), z: p.ref.z + g * (q.z - p.ref.z) };
   if (zFest(l, p.s)) c.z = 0;
-  else if (l.art === 'ring') c.z = Math.max(0, c.z);
+  else {
+    const g = mitteGrenze(l, p);
+    if (c.z < g) {
+      // der Punkt liegt an der Mittelebene an (`Zug.begrenzt`)
+      if (c.z < g - 1e-9) anMitteGehalten = true;
+      c.z = g;
+    }
+  }
   return c;
+}
+
+/**
+ * So nah kommt Punkt p des Loops l der Mittelebene höchstens: wie sein Loop (`mitteAbstand`); an einer Kreuzung wie der Loop dort,
+ * der am weitesten wegbleibt (sonst läge derselbe Punkt in zwei Loops an zwei Orten: ein Ring ginge bis zur Mitte, das Paar nicht)
+ */
+function mitteGrenze(l: Loop, p: LoopPunkt): number {
+  let g = mitteAbstand(l);
+  if (p.kreuzung !== undefined) for (const o of loops) if (o !== l && o.punkte.some((q) => q.kreuzung === p.kreuzung)) g = Math.max(g, mitteAbstand(o));
+  return g;
 }
 
 /**
@@ -2151,6 +2206,7 @@ function zugBewegen(X: number, Y: number): void {
   letzteMaus = [X, Y];
   if (!z.bewegt && Math.hypot(X - z.x0, Y - z.y0) * skala(z.ansicht) < 2) return;
   z.bewegt = true;
+  anMitteGehalten = false;
   if (z.griff) {
     // Griff: in der Ebene des Blatts verschoben (die Tiefe bleibt), nur sein Loop bewegt sich. Eine Ecke von selbst wird dabei
     // eine Ecke von Hand (ihre Griffe sind dann frei, wie in Blender ein automatischer Griff, den man anfasst). Am Spiegelpunkt geht
@@ -2178,6 +2234,7 @@ function zugBewegen(X: number, Y: number): void {
     if (z.mitte) z.mitte = f(z.pivot);
   }
   z.lagen = z.loeser.lagen(z.versch);
+  z.begrenzt = anMitteGehalten;
   // wie weit die Loops in diesem Zug schon gezogen sind (über alle Stufen)
   let weit = 0;
   for (const d of z.versch) if (d) for (let j = 0; j < d.length; j += 3) weit = Math.max(weit, Math.hypot(d[j]!, d[j + 1]!, d[j + 2]!));
@@ -2318,6 +2375,44 @@ function davongelaufen(vorher: Schnappschuss | null, text = 'Hier ist die Haut a
   statusZeigen();
 }
 
+/** umgeschlagene Dreiecke der Haut: ihre Normale zeigt gegen die mittlere Normale ihrer Ecken */
+function umgeschlageneZahl(): number {
+  const P = haut.pos;
+  const t = haut.tri;
+  const vn = new Float64Array(P.length);
+  const fn = new Float64Array(t.length);
+  for (let i = 0; i < t.length; i += 3) {
+    const a = 3 * t[i]!;
+    const b = 3 * t[i + 1]!;
+    const c = 3 * t[i + 2]!;
+    const ux = P[b]! - P[a]!;
+    const uy = P[b + 1]! - P[a + 1]!;
+    const uz = P[b + 2]! - P[a + 2]!;
+    const vx = P[c]! - P[a]!;
+    const vy = P[c + 1]! - P[a + 1]!;
+    const vz = P[c + 2]! - P[a + 2]!;
+    const fx = uy * vz - uz * vy;
+    const fy = uz * vx - ux * vz;
+    const fz = ux * vy - uy * vx;
+    fn[i] = fx;
+    fn[i + 1] = fy;
+    fn[i + 2] = fz;
+    for (const v of [a, b, c]) {
+      vn[v] = vn[v]! + fx;
+      vn[v + 1] = vn[v + 1]! + fy;
+      vn[v + 2] = vn[v + 2]! + fz;
+    }
+  }
+  let z = 0;
+  for (let i = 0; i < t.length; i += 3) {
+    const a = 3 * t[i]!;
+    const b = 3 * t[i + 1]!;
+    const c = 3 * t[i + 2]!;
+    if (fn[i]! * (vn[a]! + vn[b]! + vn[c]!) + fn[i + 1]! * (vn[a + 1]! + vn[b + 1]! + vn[c + 1]!) + fn[i + 2]! * (vn[a + 2]! + vn[b + 2]! + vn[c + 2]!) < 0) z++;
+  }
+  return z;
+}
+
 /**
  * Der Löser eines Zugs über die ganze Haut, einmal je Bild (10.11., Gegenprüfung Schritt G3): Runden, solange die Haut nicht steht,
  * auch wenn die Maus ruht; dann die Haut zeigen. So ist beim Loslassen nichts mehr nachzuholen, und die Zahl der Runden hängt nicht
@@ -2350,7 +2445,7 @@ function zugRechnen(): void {
   zeiten.push(performance.now() - t0);
   if (zeiten.length > 200) zeiten.shift();
   // über die ganze Haut nach der Geometrie: verfeinern, sobald sie gestreckt wird
-  if (neuesZiel && LIVE && GEWICHTE === 'geometrie' && !z.griff && !verfeinerung && !eingetroffen && letzteMaus && (gestreckt() || linieUngenau(z))) {
+  if (neuesZiel && LIVE && GEWICHTE === 'geometrie' && !z.griff && !z.begrenzt && !verfeinerung && !eingetroffen && letzteMaus && (gestreckt() || linieUngenau(z)) && umgeschlageneZahl() <= z.umgAnfang) {
     const [X, Y] = letzteMaus;
     if (HINTERGRUND) stufeImHintergrund(z, X, Y);
     else zugStufe(z, X, Y);
@@ -2394,6 +2489,7 @@ function zugStufe(z: Zug, X: number, Y: number): void {
   const neu = zug as Zug | null;
   if (!neu) return;
   neu.vorher = z.vorher;
+  neu.umgAnfang = z.umgAnfang;
   neu.bewegt = true;
   neu.achse = z.achse;
   neu.weite0 = z.weite;
@@ -2504,6 +2600,7 @@ function einwechseln(f: Verfeinert, daten: ZerlegungsDaten[]): void {
   const n2 = zug as Zug | null;
   if (n2) {
     n2.vorher = z.vorher;
+    n2.umgAnfang = z.umgAnfang;
     n2.bewegt = true;
     n2.achse = z.achse;
     n2.weite0 = z.weite;
@@ -2808,6 +2905,32 @@ function loopsZahl(): number {
 /** Der Stand, an dem Nachlauf und Auftrag hängen: Netz, Lagen, Loops */
 const standZahl = (): string => `${haut.n}:${lagenZahl(haut.pos)}:${loopsZahl()}`;
 
+/** Loops, deren Linie sich selbst kreuzt oder berührt (`linieKreuztSich`): ein Griff ist verdreht, ein Punkt über seinen Nachbarn hinaus gezogen */
+const linienGekreuzt = (): number[] => loops.filter((l) => linieKreuztSich(l)).map((l) => l.id);
+const GEKREUZT_TEXT = (ids: readonly number[]): string =>
+  `Loop ${ids.join(', ')} kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bleibt, wie es ist, bis die Linie wieder frei liegt.`;
+
+/**
+ * Nach einem Zug, wenn die Haut steht: aufräumen (verdichten, setzen, zerlegen im Hintergrund). Kreuzt sich eine Linie selbst
+ * (11.11., Florian: „es darf nicht jedes Mal, wenn ich versehentlich ein Handle falschherum drehe, das Mesh kaputt gehen“), bleibt
+ * alles, wie es ist: kein Aufräumen und keine neue Zerlegung, die bereite bleibt die des Zugs (von vor dem Verdrehen). Die Haut ist
+ * dort über sich selbst gefaltet; ein Netz und eine Zerlegung, die für die gefaltete Haut gebaut sind, passen nach dem Zurückdrehen
+ * nicht mehr. Gemessen im Kern an Florians Form `test_kaputt` (`form-griff-verdreht.ts`: Griff des obersten Punkts der Mitte
+ * verdreht, losgelassen, zurückgedreht): mit einer Zerlegung von der gefalteten Haut bleiben 4 Knicke über 150°, und 1 % Rauminhalt
+ * fehlt; mit der Zerlegung von davor ist die Form wieder die alte (0 Knicke, 100,0 %). Liegt die Linie nach einem späteren Zug wieder
+ * frei, wird wie sonst aufgeräumt.
+ */
+function nachZugAufraeumen(): void {
+  const gekreuzt = linienGekreuzt();
+  if (gekreuzt.length) {
+    ruheOffen = null;
+    standFertig = standZahl();
+    meldung = GEKREUZT_TEXT(gekreuzt);
+    return;
+  }
+  aufraeumenStarten(ruheOffen ?? { setzen: false, nurInRuhe: false, verdichten: true, ziele: null });
+}
+
 /** Nachlauf: je Bild Runden des losgelassenen Zugs, bis die Form steht; dann geht das Aufräumen in den Hintergrund */
 function nachlaufRechnen(): void {
   const n = nachlauf;
@@ -2842,7 +2965,7 @@ function nachlaufRechnen(): void {
   if (steht) {
     nachlauf = null;
     festlegenAlle();
-    aufraeumenStarten(ruheOffen ?? { setzen: false, nurInRuhe: false, verdichten: true, ziele: null });
+    nachZugAufraeumen();
     // ohne Hintergrund hat das Fenster selbst verdichtet: alles neu zeigen (und in der Ruhe setzen)
     if (!aufraeumen) allesZeigen();
     else for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
@@ -3164,11 +3287,14 @@ function zugEnde(ok: boolean): void {
       if (z.offen && !aufPfad) nachlauf = { loeser: z.loeser, versch: z.versch, runden: z.nachRunden, netz: haut, lagen: lagenZahl(haut.pos), loops: loopsZahl() };
       else {
         nachlauf = null;
-        aufraeumenStarten(ruheOffen);
+        nachZugAufraeumen();
       }
     } else {
       const vorVerdichten = haut;
-      nachVerdichten();
+      // (kreuzt sich eine Linie selbst, bleibt das Netz, wie es ist: `nachZugAufraeumen`)
+      const gekreuzt = linienGekreuzt();
+      if (gekreuzt.length) meldung = GEKREUZT_TEXT(gekreuzt);
+      else nachVerdichten();
       // aus den Kurven: das verdichtete Netz setzt sich gleich danach in der Ruhe (die neuen Punkte liegen erst nur rund zwischen den
       // alten); beim Loslassen zu lösen hieß, dort auf das Zerlegen des neuen Netzes zu warten (0,6 s bei 15 000 Punkten)
       if (!mitBereich() && haut !== vorVerdichten) {
@@ -3245,6 +3371,7 @@ function loopSchneiden(a: Ansicht, A: [number, number], B: [number, number]): vo
   loops.push(l);
   einsetzenLetzten(PUNKTE_NOETIG);
   linienAufPfad(loops[loops.length - 1]);
+  einsetzenNachholen();
   ruheNoetig();
   auswahl = [{ l: l.id, i: -1 }];
 }
@@ -3294,6 +3421,34 @@ function einsetzenLetzten(punkteNoetig = false): void {
     // die Puffer der Anzeige einmal, für das Netz, wie es jetzt ist (bis G5 gleich nach dem Einsetzen; dazwischen braucht sie niemand)
     geometrieNeu();
   }
+}
+
+/**
+ * Loops, die nur auf der Haut liegen, noch einmal ins Netz einsetzen (11.11.). So lag in Florians Form `test_kaputt` der Loop der
+ * Mitte: Als er gezogen wurde, hatte das Verdichten an zwei Stellen eine Kante der Mittelebene quer gedreht, und er ließ sich nicht
+ * einsetzen. Eine Linie, die nur aufliegt, hält die Haut fest, gibt ihr aber keine Krümmung: Der Löser kam um sie herum nie zur Ruhe
+ * (an dieser Form: von 92 Zügen im Kern keiner). Nach dem Laden einer Form und nach jedem neuen Loop; in der Pose nicht.
+ * Zurück: wie viele eingesetzt wurden.
+ */
+function einsetzenNachholen(): number {
+  if (grund) return 0;
+  let zahl = 0;
+  for (let li = 0; li < loops.length; li++) {
+    if (loops[li]!.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2])) continue;
+    const r = loopEinsetzen(haut, loops, li);
+    if (!r) continue;
+    haut = r.haut;
+    loops = r.loops;
+    // die Linie liegt jetzt auf Punkten des Netzes: jede Probe an ihre Stelle auf dem Pfad, die Haut folgt
+    linienAufPfad(loops[li]);
+    zahl++;
+  }
+  if (zahl) {
+    geometrieNeu();
+    hautZeigen();
+    ruheNoetig();
+  }
+  return zahl;
 }
 
 /**
@@ -3528,6 +3683,7 @@ function formErstellen(a: Ansicht, roh: [number, number][]): void {
   loops.push(l);
   einsetzenLetzten(PUNKTE_NOETIG);
   linienAufPfad(loops[loops.length - 1]);
+  einsetzenNachholen();
   ruheNoetig();
   auswahl = [{ l: l.id, i: -1 }];
 }
@@ -4145,6 +4301,11 @@ function standAnwenden(st: WesenStand): void {
   spur = null;
   stift = null;
   wiederherstellen(s);
+  // ein Loop, der in diesem Stand nur auf der Haut liegt, wird jetzt eingesetzt (`einsetzenNachholen`)
+  if (einsetzenNachholen()) {
+    meldung = 'Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.';
+    allesZeigen();
+  }
   if (st.sicht) {
     for (const a of ['seite', 'front', 'top'] as const) {
       const v = st.sicht[a];
@@ -4615,7 +4776,9 @@ function bildRechnen(): void {
   // ein fertig verfeinertes Netz aus dem Hintergrund wird an Stelle der Löserrunde dieses Bilds eingewechselt
   const e = eingetroffen;
   eingetroffen = null;
-  if (e && zug && e.netz === haut) einwechseln(e.fertig, e.daten);
+  // (nicht, solange eine Linie an der Mittelebene anliegt oder der Zug die Haut gerade umgeklappt hat: `Zug.begrenzt`,
+  // `Zug.umgAnfang`; das Netz verfällt dann)
+  if (e && zug && e.netz === haut && !zug.begrenzt && umgeschlageneZahl() <= zug.umgAnfang) einwechseln(e.fertig, e.daten);
   else zugRechnen();
   // nach dem Loslassen: der Nachlauf; danach, was aus dem Hintergrund gekommen ist (nicht, solange eine Maustaste einen Zug hält)
   nachlaufRechnen();
@@ -4720,6 +4883,8 @@ if (BEHALTEN) behaltenesHolen();
         aus: p.aus ?? null,
       })),
       pfad: hatGriffe(l),
+      /** ins Netz eingesetzt (jede Probe ein Punkt des Netzes); sonst liegt der Loop nur auf der Haut */
+      eingesetzt: l.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2]),
       kante: l.kante ?? null,
       ruhe: Array.from(l.ruhe),
       s: Array.from(l.s),
@@ -4758,27 +4923,7 @@ if (BEHALTEN) behaltenesHolen();
     return l ? Array.from(knickWinkel(haut, l)) : [];
   },
   /** umgeschlagene Dreiecke (Normale gegen die mittlere Normale ihrer Ecken) */
-  umgeschlagen: (): number => {
-    const P = haut.pos;
-    const t = haut.tri;
-    const vn = new Float64Array(P.length);
-    const fn: number[][] = [];
-    for (let i = 0; i < t.length; i += 3) {
-      const [a, b, c] = [t[i]!, t[i + 1]!, t[i + 2]!];
-      const ab = [P[3 * b]! - P[3 * a]!, P[3 * b + 1]! - P[3 * a + 1]!, P[3 * b + 2]! - P[3 * a + 2]!];
-      const ac = [P[3 * c]! - P[3 * a]!, P[3 * c + 1]! - P[3 * a + 1]!, P[3 * c + 2]! - P[3 * a + 2]!];
-      const f = [ab[1]! * ac[2]! - ab[2]! * ac[1]!, ab[2]! * ac[0]! - ab[0]! * ac[2]!, ab[0]! * ac[1]! - ab[1]! * ac[0]!];
-      fn.push(f);
-      for (const v of [a, b, c]) for (let k = 0; k < 3; k++) vn[3 * v + k] = vn[3 * v + k]! + f[k]!;
-    }
-    let z = 0;
-    for (let i = 0; i < t.length; i += 3) {
-      const f = fn[i / 3]!;
-      const m = [0, 1, 2].map((k) => vn[3 * t[i]! + k]! + vn[3 * t[i + 1]! + k]! + vn[3 * t[i + 2]! + k]!);
-      if (f[0]! * m[0]! + f[1]! * m[1]! + f[2]! * m[2]! < 0) z++;
-    }
-    return z;
-  },
+  umgeschlagen: (): number => umgeschlageneZahl(),
   /** das Maul: Loop, Öffnung, Dreiecke der Öffnung und des Inneren, umgeschlagene Dreiecke und offene Kanten wie gezeigt */
   maul: (orte = false) => {
     const g = maulGezeigt;

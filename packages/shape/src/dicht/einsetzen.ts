@@ -399,6 +399,49 @@ function loopErgaenzt(h: Haut, l: Loop, kette: readonly number[]): Loop {
 }
 
 /**
+ * Die Kette der Punkte der Mittelebene schließen: Jede Kante zwischen einem Punkt und seinem Spiegelbild, deren beide Dreiecke
+ * ihre dritte Ecke in der Mittelebene haben, wird gedreht (danach verbindet sie diese beiden Ecken, längs der Mitte). Die Lagen
+ * bleiben; zurück die neue Haut, null, wenn nichts zu drehen war.
+ */
+function mitteKetteSchliessen(h: Haut, auf: ReadonlySet<number>): Haut | null {
+  const tri = Uint32Array.from(h.tri);
+  // je Kante quer über die Mitte (a < b, b das Spiegelbild von a): ihre Dreiecke
+  const quer = new Map<number, number[]>();
+  for (let t = 0; t < tri.length; t += 3)
+    for (let e = 0; e < 3; e++) {
+      const a = tri[t + e]!;
+      const b = tri[t + ((e + 1) % 3)]!;
+      if (auf.has(a) || auf.has(b) || h.spiegel[a] !== b) continue;
+      const k = Math.min(a, b) * h.n + Math.max(a, b);
+      const liste = quer.get(k);
+      if (liste) liste.push(t);
+      else quer.set(k, [t]);
+    }
+  let gedreht = 0;
+  for (const ts of quer.values()) {
+    if (ts.length !== 2) continue;
+    const [t1, t2] = ts as [number, number];
+    // t1 = (x, y, c) mit der Kante x→y, t2 = (y, x, d)
+    const e1 = [tri[t1]!, tri[t1 + 1]!, tri[t1 + 2]!];
+    const ic = e1.findIndex((v) => auf.has(v));
+    if (ic < 0) continue;
+    const c = e1[ic]!;
+    const x = e1[(ic + 1) % 3]!;
+    const y = e1[(ic + 2) % 3]!;
+    const d = [tri[t2]!, tri[t2 + 1]!, tri[t2 + 2]!].find((v) => v !== x && v !== y);
+    if (d === undefined || !auf.has(d) || d === c || h.nachbarn[c]!.includes(d)) continue;
+    tri[t1] = x;
+    tri[t1 + 1] = d;
+    tri[t1 + 2] = c;
+    tri[t2] = y;
+    tri[t2 + 1] = c;
+    tri[t2 + 2] = d;
+    gedreht++;
+  }
+  return gedreht ? hautAus(h.pos, tri) : null;
+}
+
+/**
  * Einen Loop ins Netz einsetzen (samt Spiegelbild: der Ring als ganzer Ring, das Paar mit seinem Zwilling). Danach ist jede
  * seiner Proben ein Punkt des Netzes. Andere eingesetzte Loops bekommen die Punkte auf ihren geteilten Kanten dazu. Ergebnis:
  * die neue Haut und alle Loops (in derselben Reihenfolge), null, wenn der Weg nicht aufgeht (dann bleibt alles, wie es war).
@@ -444,6 +487,13 @@ export function loopEinsetzen(h: Haut, loops: readonly Loop[], nr: number): { ha
     const auf = new Set<number>();
     for (let v = 0; v < h.n; v++) if (Math.abs(h.pos[3 * v + 2]!) < 1e-9) auf.add(v);
     if (auf.size < 3) return null;
+    // Wo zwischen zwei Punkten der Mittelebene statt der Kante längs eine Kante quer über die Mitte läuft (ein Punkt und sein
+    // Spiegelbild; so drehte das Verdichten bis zum 11.11. Kanten der Mittelebene), ist die Kette offen: zurückdrehen.
+    const geheilt = mitteKetteSchliessen(h, auf);
+    if (geheilt) {
+      haut = geheilt;
+      h = geheilt;
+    }
     const start = [...auf][0]!;
     const kette = [start];
     let vor = -1;

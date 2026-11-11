@@ -80,6 +80,11 @@ export type HautOptionen = {
   maxNormalen?: boolean;
   /** `false`: ohne die Vorsicht bei Unruhe (`VORSICHT_…`), wie bis zum 10.11. (zum Vergleichen) */
   vorsicht?: boolean;
+  /**
+   * Normalfluss (`FOLGEN_GENAU`; nur nach der Geometrie, nie mit `richtung`). Fehlt die Angabe, rechnet der Löser so nur, wenn eine
+   * Linie nur auf der Haut liegt (nicht ins Netz eingesetzt); `true` / `false` erzwingen es (zum Vergleichen).
+   */
+  normalfluss?: boolean;
 };
 
 /**
@@ -248,6 +253,12 @@ const VORSICHT_AUFHOLEN = 0.3;
  */
 const VORSICHT_RUNDEN = 5;
 
+/**
+ * Normalfluss (Versuch 11.11.): so genau müssen die Linien auf ihren Zielen liegen (in mittleren Kantenlängen), damit eine Runde ihnen
+ * nicht noch einmal folgt (eine Rechengenauigkeit, keine Schwelle des Verhaltens: Jede Folgerunde verkleinert den Rest auf einen Bruchteil)
+ */
+const FOLGEN_GENAU = 1e-3;
+
 const uhr = (globalThis as { performance?: { now(): number } }).performance;
 const jetzt = () => (uhr ? uhr.now() : Date.now());
 
@@ -315,6 +326,12 @@ export class HautAusKurven {
   private wachstum = 0;
   /** der Löser kommt hier nicht zur Ruhe und rechnet nicht weiter, bis sich die Ziele bewegen (`VORSICHT_RUNDEN`) */
   stehtFest = false;
+  /** Normalfluss (`HautOptionen.normalfluss`): an?; Punkte, die eine Bindung allein hält (Linienpunkte); Korrektur je Punkt der Runde */
+  private readonly normalfluss: boolean;
+  private readonly gebunden: Uint8Array;
+  private korrektur: Float64Array | null = null;
+  /** zum Messen: Runden, in denen den Linien gefolgt wurde (drei Spalten gelöst) */
+  folgeRunden = 0;
   /**
    * Richtung an den Linien (09.11., Beweis „Linien mit Richtung“): je Punkt der Haut die Normale, die das Liniennetz dort vorgibt (3 je
    * Punkt, NaN: keine), von außen vor jedem Schritt gesetzt. An diesen Punkten wird die Krümmung je Seite der Linie mit der vorgegebenen
@@ -381,6 +398,17 @@ export class HautAusKurven {
     const vorlage = geo && opt.vorlage && (opt.vorlage.struktur === undefined || opt.vorlage.struktur === this.struktur) ? opt.vorlage : null;
     this.vorlageGenutzt = vorlage !== null;
     this.mitVorsicht = geo && opt.vorsicht !== false;
+    this.gebunden = new Uint8Array(n);
+    // liegt eine Linie nur auf der Haut (eine ihrer Proben ist kein Punkt des Netzes)?
+    let lose = false;
+    for (let j = 0; j < bind.ecken.length / 3; j++) {
+      const v = bind.ecken[3 * j]!;
+      if (bind.ecken[3 * j + 1] === v && bind.ecken[3 * j + 2] === v) this.gebunden[v] = 1;
+      else lose = true;
+      // auch eine Probe, die nur auf der Haut liegt (nicht eingesetzt), hält den Punkt, auf dem sie sitzt
+      for (let e = 0; e < 3; e++) if (bind.b[3 * j + e]! > 0.999) this.gebunden[bind.ecken[3 * j + e]!] = 1;
+    }
+    this.normalfluss = geo && !opt.richtung && (opt.normalfluss ?? lose);
     this.gew = geo ? (vorlage?.gew ?? laengenGewichte(h, kanten)) : gewichteAus(h, kanten);
     // Punkte harter Linien: Ihr Gewicht über die Linie ist 0; ihre Kanten längs der Linie bleiben in der intrinsischen Triangulierung
     const linie = new Set<number>();
@@ -1061,7 +1089,16 @@ export class HautAusKurven {
       }
       this.zeiten.vermessen += t1 - t0;
       this.letzteKruemmung = c;
-      const rhs = new Float64Array(3 * nf);
+      // Normalfluss: Die Korrektur der Krümmung geht nicht in die Zeilen der Lagen ein (dort folgt die Haut nur den Linien, und nur,
+      // wenn die Linien nicht auf ihren Zielen liegen); sie wird danach für sich gelöst und längs der Normalen aufgetragen
+      const fluss = geo !== null && this.normalfluss;
+      let korr: Float64Array | null = null;
+      if (fluss) {
+        if (!this.korrektur) this.korrektur = new Float64Array(h.n);
+        korr = this.korrektur;
+      }
+      const folgen = !fluss || this.bindungenOffen(ziele) > FOLGEN_GENAU * this.mk;
+      const rhs = folgen ? new Float64Array(3 * nf) : null;
       for (const i of this.zeilen) {
         const nb = h.nachbarn[i]!;
         const g = this.gew[i]!;
@@ -1073,8 +1110,13 @@ export class HautAusKurven {
           const b = MESSREIHE.fest ? DAEMPFUNG : d * this.dVorher![i]! < 0 ? Math.max(0.02, 0.5 * this.beta![i]!) : Math.min(DAEMPFUNG, 1.25 * this.beta![i]!);
           this.beta![i] = b;
           this.dVorher![i] = d;
-          k = m.kante2[i]! * m.kap[i]! + this.anteil * b * d;
+          const kr = this.anteil * b * d;
+          if (korr) {
+            korr[i] = kr;
+            k = m.kante2[i]! * m.kap[i]!;
+          } else k = m.kante2[i]! * m.kap[i]! + kr;
         }
+        if (!rhs) continue;
         let nx = m.nor[3 * i]!;
         let ny = m.nor[3 * i + 1]!;
         let nz = m.nor[3 * i + 2]!;
@@ -1122,30 +1164,31 @@ export class HautAusKurven {
         });
       }
       const { ecken, b } = this.bind;
-      this.js.forEach((j, u) => {
-        let zx = this.haut0[3 * u]! + ziele[3 * j]! - this.ziel0[3 * u]!;
-        let zy = this.haut0[3 * u + 1]! + ziele[3 * j + 1]! - this.ziel0[3 * u + 1]!;
-        let zz = this.haut0[3 * u + 2]! + ziele[3 * j + 2]! - this.ziel0[3 * u + 2]!;
-        for (let e = 0; e < 3; e++) {
-          const v = ecken[3 * j + e]!;
-          if (nr[v]! >= 0) continue;
-          const w = b[3 * j + e]!;
-          zx -= w * P[3 * v]!;
-          zy -= w * P[3 * v + 1]!;
-          zz -= w * P[3 * v + 2]!;
-        }
-        for (let e = 0; e < 3; e++) {
-          const v = nr[ecken[3 * j + e]!]!;
-          if (v < 0) continue;
-          const w = this.gewicht * b[3 * j + e]!;
-          rhs[3 * v] = rhs[3 * v]! + w * zx;
-          rhs[3 * v + 1] = rhs[3 * v + 1]! + w * zy;
-          rhs[3 * v + 2] = rhs[3 * v + 2]! + w * zz;
-        }
-      });
+      if (rhs)
+        this.js.forEach((j, u) => {
+          let zx = this.haut0[3 * u]! + ziele[3 * j]! - this.ziel0[3 * u]!;
+          let zy = this.haut0[3 * u + 1]! + ziele[3 * j + 1]! - this.ziel0[3 * u + 1]!;
+          let zz = this.haut0[3 * u + 2]! + ziele[3 * j + 2]! - this.ziel0[3 * u + 2]!;
+          for (let e = 0; e < 3; e++) {
+            const v = ecken[3 * j + e]!;
+            if (nr[v]! >= 0) continue;
+            const w = b[3 * j + e]!;
+            zx -= w * P[3 * v]!;
+            zy -= w * P[3 * v + 1]!;
+            zz -= w * P[3 * v + 2]!;
+          }
+          for (let e = 0; e < 3; e++) {
+            const v = nr[ecken[3 * j + e]!]!;
+            if (v < 0) continue;
+            const w = this.gewicht * b[3 * j + e]!;
+            rhs[3 * v] = rhs[3 * v]! + w * zx;
+            rhs[3 * v + 1] = rhs[3 * v + 1]! + w * zy;
+            rhs[3 * v + 2] = rhs[3 * v + 2]! + w * zz;
+          }
+        });
       // Richtung an den Linien: die Punkte neben einer Linie ohne ihre Neigung gegen die vorgegebene Ebene (je Seite angepasst),
       // mit dem Linienpunkt mitgeführt; ohne Messung bleiben sie, wo sie sind
-      if (this.ersteReihe.size) {
+      if (rhs && this.ersteReihe.size) {
         const zielV = new Map<number, number>();
         this.js.forEach((j, u) => {
           const v = ecken[3 * j]!;
@@ -1193,15 +1236,87 @@ export class HautAusKurven {
         }
       }
       const tl = jetzt();
-      const x = this.sys!.loesen(rhs);
+      if (rhs && !korr) {
+        const x = this.sys!.loesen(rhs);
+        for (let u = 0; u < nf; u++) {
+          const v = this.frei[u]!;
+          P[3 * v] = x[3 * u]!;
+          P[3 * v + 1] = x[3 * u + 1]!;
+          P[3 * v + 2] = x[3 * u + 2]!;
+        }
+      }
+      if (korr) {
+        // die Korrektur für sich, gelöst wie bis zum 10.11. (dieselbe Matrix; Zeilen des Laplace = Korrektur mal Normale, Bindungen
+        // = 0), aber aufgetragen wird nur ihr Anteil längs der Normale (wie sie vor der Runde war). Punkte, die eine Linie hält,
+        // bleiben auf ihren Zielen.
+        const rv = new Float64Array(3 * nf);
+        let irgend = false;
+        for (const i of this.zeilen) {
+          const r = korr[i]!;
+          if (r === 0) continue;
+          irgend = true;
+          const dx = r * m.nor[3 * i]!;
+          const dy = r * m.nor[3 * i + 1]!;
+          const dz = r * m.nor[3 * i + 2]!;
+          const u = nr[i]!;
+          if (u >= 0) {
+            rv[3 * u] = rv[3 * u]! + dx;
+            rv[3 * u + 1] = rv[3 * u + 1]! + dy;
+            rv[3 * u + 2] = rv[3 * u + 2]! + dz;
+          }
+          const nb = h.nachbarn[i]!;
+          const g = this.gew[i]!;
+          for (let kk = 0; kk < nb.length; kk++) {
+            const w = nr[nb[kk]!]!;
+            if (w < 0) continue;
+            rv[3 * w] = rv[3 * w]! - g[kk]! * dx;
+            rv[3 * w + 1] = rv[3 * w + 1]! - g[kk]! * dy;
+            rv[3 * w + 2] = rv[3 * w + 2]! - g[kk]! * dz;
+          }
+        }
+        // folgt die Haut in dieser Runde auch den Linien, beides in einem Durchgang (sechs Spalten, die Zerlegung einmal gelesen)
+        let uu: Float64Array | null = null;
+        let ab = 0;
+        let schritt = 3;
+        if (rhs) {
+          this.folgeRunden++;
+          let x: Float64Array;
+          if (irgend) {
+            const beide = new Float64Array(6 * nf);
+            for (let u = 0; u < nf; u++) {
+              beide[6 * u] = rhs[3 * u]!;
+              beide[6 * u + 1] = rhs[3 * u + 1]!;
+              beide[6 * u + 2] = rhs[3 * u + 2]!;
+              beide[6 * u + 3] = rv[3 * u]!;
+              beide[6 * u + 4] = rv[3 * u + 1]!;
+              beide[6 * u + 5] = rv[3 * u + 2]!;
+            }
+            x = this.sys!.loesenSpalten(beide, 6);
+            uu = x;
+            ab = 3;
+            schritt = 6;
+          } else x = this.sys!.loesen(rhs);
+          const k = irgend ? 6 : 3;
+          for (let u = 0; u < nf; u++) {
+            const v = this.frei[u]!;
+            P[3 * v] = x[k * u]!;
+            P[3 * v + 1] = x[k * u + 1]!;
+            P[3 * v + 2] = x[k * u + 2]!;
+          }
+        } else if (irgend) uu = this.sys!.loesen(rv);
+        if (uu)
+          for (let u = 0; u < nf; u++) {
+            const v = this.frei[u]!;
+            if (this.gebunden[v]) continue;
+            const q = schritt * u + ab;
+            const a = uu[q]! * m.nor[3 * v]! + uu[q + 1]! * m.nor[3 * v + 1]! + uu[q + 2]! * m.nor[3 * v + 2]!;
+            P[3 * v] = P[3 * v]! + a * m.nor[3 * v]!;
+            P[3 * v + 1] = P[3 * v + 1]! + a * m.nor[3 * v + 1]!;
+            P[3 * v + 2] = P[3 * v + 2]! + a * m.nor[3 * v + 2]!;
+          }
+      }
       this.zeiten.loesen += jetzt() - tl;
       this.zeiten.runden++;
-      for (let u = 0; u < nf; u++) {
-        const v = this.frei[u]!;
-        P[3 * v] = x[3 * u]!;
-        P[3 * v + 1] = x[3 * u + 1]!;
-        P[3 * v + 2] = x[3 * u + 2]!;
-      }
       // genau spiegelgleich halten (wie HautZiele)
       for (let u = 0; u < nf; u++) {
         const v = this.frei[u]!;
@@ -1225,6 +1340,28 @@ export class HautAusKurven {
       // eine zurückgenommene Runde zählt nicht: gleich noch einmal, mit dem halben Schritt (höchstens viermal je Löser)
       if (this.mitVorsicht && this.vorsichtPruefen(ziele)) it--;
     }
+  }
+
+  /** wie weit die Bindungen (Linien) höchstens neben ihren Zielen liegen */
+  private bindungenOffen(ziele: Float64Array): number {
+    const P = this.h.pos;
+    const { ecken, b } = this.bind;
+    let m2 = 0;
+    this.js.forEach((j, u) => {
+      let x = this.haut0[3 * u]! + ziele[3 * j]! - this.ziel0[3 * u]!;
+      let y = this.haut0[3 * u + 1]! + ziele[3 * j + 1]! - this.ziel0[3 * u + 1]!;
+      let z = this.haut0[3 * u + 2]! + ziele[3 * j + 2]! - this.ziel0[3 * u + 2]!;
+      for (let e = 0; e < 3; e++) {
+        const v = ecken[3 * j + e]!;
+        const w = b[3 * j + e]!;
+        x -= w * P[3 * v]!;
+        y -= w * P[3 * v + 1]!;
+        z -= w * P[3 * v + 2]!;
+      }
+      const q = x * x + y * y + z * z;
+      if (q > m2 || q !== q) m2 = q;
+    });
+    return Math.sqrt(m2);
   }
 
   /** sind die Ziele dieselben wie in der letzten Runde? */
