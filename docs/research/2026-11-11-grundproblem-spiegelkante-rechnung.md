@@ -306,3 +306,50 @@ Protokolle: `apps/editor/scripts/pruefen/gegenpruefung-2026-11-10/ausgaben/grund
   muss gehen. Geprüft wird gezielt an diesem Fall, nicht mit Zufallsfolgen.
 - Die verdrehten Griffe abseits der Spiegelkante (Abschnitte 3 und 9) bleiben danach als eigenes Thema; Florian sieht sie sich
   zuerst selbst an.
+
+## 11. Gebaut (11.11. mittags): Wand an der Spiegelkante, die Anzeige verschmilzt die Hälften
+
+Commit `a4490f2f`. Florian hat den Stand in Chrome auf Port 5194 selbst getestet: „Es fühlt sich gerade ziemlich gut an mit der
+Spiegelung. Ich habe die meisten Fälle selbst getestet über Mitte ziehen und auch Schleifen, es ist jetzt viel mehr wie ich es mir
+vorgestellt habe.“
+
+**Sein Fall, nachgestellt** (`form-ablauf-probe.mjs`, `test_kaputt`, frisch geladen: den äußersten Punkt des Loops auf einer Seite
+250 an die Mitte gezogen und losgelassen): Auf dem Stand von heute früh steht danach ein schwarzes Loch an der Spiegelkante
+(`docs/progress/editor/form-spiegelkante-vorher-2026-11-11.jpg`). Die Zählung „umgeschlagene Dreiecke“ meldete dabei 0: Sie sieht
+nicht, wenn die beiden Hälften durcheinander laufen. Deshalb hieß es am Morgen „heil“, obwohl Florian Risse sah. Die Probe misst
+jetzt zusätzlich die umgestülpten Stellen (`lib-umgestuelpt.mjs`, das Maß vom 08.11.), auf dem neuen Stand an der gezeigten Haut.
+
+**Ursache:** Die Linie blieb seit heute früh auf ihrer Seite, die Haut daneben aber nicht. Wo sie über die Spiegelebene geriet,
+steckte sie in der anderen Hälfte (im Kern-Test bis zu 10 Punkte, bis 2,3 Einheiten tief).
+
+**Gebaut:**
+- `hautSeiten` (Kern): auf welcher Seite der Spiegelebene jeder Punkt liegt, am Netz gelesen (die Mittelkante trennt es in Stücke),
+  nicht an der Lage.
+- `hautWand` (Kern, in jeder Runde beider Löser): Kein Punkt kommt auf die Seite seines Spiegelbilds, wie „Clipping“ beim Spiegeln
+  in Blender. `?wand=0` zeigt den Stand ohne sie.
+- Fenster: Die Anzeige verschmilzt die Hälften, wie „Merge“: Dreiecke, die ganz auf der Spiegelebene liegen, werden nicht gezeigt,
+  ihre Randpunkte bekommen die Normale eines verschmolzenen Punkts.
+- Ergebnis an seinem Fall: kein schwarzes Loch mehr (`form-spiegelkante-nachher-2026-11-11.jpg`). Kern-Test `wand.test.ts`: im
+  ganzen Ablauf kein Punkt auf der falschen Seite, zurückgezogen kein umgeklapptes Dreieck, Haut 2,8 Einheiten neben vorher (Radius
+  150).
+
+**Gemessen und verworfen:**
+- *Linien und Haut frei durch die Spiegelebene, nur die Anzeige schneidet ab* (das wäre der Mirror-Modifier wörtlich): Die Haut
+  faltet sich dann an der Mittelkante selbst, weil die beiden Streifen daneben die Seiten tauschen. Schon 17 Einheiten hinüber
+  ließen 8 Knicke und 4 umgeklappte Dreiecke zurück (mit Wand 0), weit gezogen 482 Knicke und 632 umgeklappte.
+- *Rechnung wie heute früh, nur die Anzeige schneidet ab:* Aus dem schwarzen Loch wird eine Kerbe im Umriss.
+- *Linie ohne Abstand bis an die Ebene:* im Kern-Test zurückgezogen 61 statt 2,8 Einheiten neben vorher, im Fenster schwarze
+  Kanten längs der Naht. Der Abstand von heute früh bleibt.
+
+**Offen:**
+- **Sehr weit an die Mitte gezogen kann die Haut an der Wand Falten werfen.** Nach den zwölf groben Schritten von heute früh denselben
+  Punkt 250 an die Mitte: ein Lauf endete mit 122 Knicken über 150° und 94 umgeklappten Dreiecken, ein zweiter mit 714 und 733
+  (`form-spiegelkante-weit-falten-2026-11-11.jpg`), und zurückgezogen blieb es dort schlecht. Ohne Wand lag derselbe Schritt bei
+  108 und 76. Der Grund ist in allen Fassungen derselbe: Die Haut zwischen der Linie und der Mitte hat keinen Platz mehr, und es
+  gibt noch nichts, das sie dort im Zug wegnimmt.
+- Gerechnet werden weiter beide Hälften, und das Netz führt seine Spiegelung weiter über Buchführung. „Nur noch eine Hälfte
+  rechnen“ (halbe Rechenzeit, keine Buchführung) ist nicht gebaut.
+- Die Spiegelung „applien“ (ein ganzes Netz ohne Spiegel) gibt es noch nicht.
+
+Protokoll: `apps/editor/scripts/pruefen/gegenpruefung-2026-11-10/ausgaben/spiegelkante-wand-2026-11-11.txt`.
+

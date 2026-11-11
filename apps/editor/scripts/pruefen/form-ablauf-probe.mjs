@@ -8,13 +8,15 @@
 //   griff <ansicht> <loop>:<i> <ein|aus> <dx,dy,dz>[>…]   den Punkt wählen, dann die Griffspitze über Wegpunkte ziehen, loslassen
 //   warte <ms>
 //   (ein Schritt kann mit @<zoom> enden: der Zoom des Blatts für diesen Schritt, z. B. um nahe der Mitte den richtigen Punkt zu greifen)
-// Nach jedem Schritt: Punkte im Netz, größte Koordinate, Rauminhalt, umgeschlagene Dreiecke, flachste Stelle (kleinster Winkel
+// Nach jedem Schritt: Punkte im Netz, größte Koordinate, Rauminhalt, umgeschlagene Dreiecke, umgestülpte Stellen (die Außenseite zeigt
+// ins Innere: schwarz im Fenster, auch wo die Hälften an der Spiegelkante durcheinander laufen), flachste Stelle (kleinster Winkel
 // zwischen Nachbardreiecken über 150°), wie lange bis alles ruht, was der Schutz getan hat, Meldung in der Statuszeile.
 // Aufruf aus apps/editor: NAME=test_kaputt ABLAUF="zug front 4:1 0,40,0>0,-40,0>0,0,0" node scripts/pruefen/form-ablauf-probe.mjs
 //   SCHRITTE=12 (Mausschritte je Wegstück)   PAUSE=16 (ms je Mausschritt)   HALTEN=300 (ms vor dem Loslassen)
 //   ZOOM=0.5   BILD=<pfad ohne Endung> (ein Bild nach jedem Schritt)   WARTEN=60 (s höchstens bis zur Ruhe)   KURVEN_URL
 //   ORTE=1 (wo die Knicke über 150° liegen)   LINIEN=1 (Punkte, Kreuzungen und Lage der Linien nach jedem Schritt)
 import { chromium } from '@playwright/test';
+import { geo, umgestuelpt } from './lib-umgestuelpt.mjs';
 
 const basis = process.env.KURVEN_URL ?? 'http://localhost:5193/kurven.html?gewichte=geometrie';
 const NAME = process.env.NAME ?? 'test_kaputt';
@@ -49,7 +51,7 @@ const ruhig = async () => {
   }
 };
 /** wie es der Haut geht (im Fenster gerechnet, ohne die Felder zu kopieren) */
-const zustand = () =>
+const zustandSeite = () =>
   seite.evaluate(() => {
     const k = window.__kurven;
     const { pos: P, tri: T } = k.roh();
@@ -128,8 +130,20 @@ const zustand = () =>
       status: document.getElementById('status')?.textContent ?? '',
     };
   });
+/** der Zustand der Haut, dazu die umgestülpten Stellen (schwarz im Fenster), in Node aus Lagen und Dreiecken gerechnet */
+const zustand = async () => {
+  const z = await zustandSeite();
+  // gemessen wird die Haut, wie sie gezeigt wird (seit dem 11.11. schneidet die Anzeige jede Hälfte an der Spiegelebene ab); auf
+  // älteren Ständen die Haut selbst
+  const [P, T] = await seite.evaluate(() => {
+    const a = window.__kurven.anzeige?.();
+    return a ? [a.lagen, a.dreiecke] : [Array.from(window.__kurven.lagen()), Array.from(window.__kurven.dreiecke())];
+  });
+  z.schwarz = umgestuelpt(P, T, geo(P, T));
+  return z;
+};
 const zeile = (z, z0) =>
-  `${z.punkte} Punkte · größte Koordinate ${z.max}${z.kaputt ? ` · NICHT ENDLICH ${z.kaputt}` : ''} · Rauminhalt ${(z.inhalt / z0.inhalt * 100).toFixed(1)} % · Fläche ${(z.flaeche / z0.flaeche * 100).toFixed(1)} % · Knicke über 60° ${z.scharf}, über 150° ${z.spitz} · umgeschlagen ${z.umgeschlagen} · Schutz: zurückgenommen ${z.davon}, Fehler ${z.fehler}, Schritt verkleinert ${z.unruhe}${z.meldung ? ` · Meldung: ${z.meldung.slice(0, 110)}` : ''}`;
+  `${z.punkte} Punkte · größte Koordinate ${z.max}${z.kaputt ? ` · NICHT ENDLICH ${z.kaputt}` : ''} · Rauminhalt ${(z.inhalt / z0.inhalt * 100).toFixed(1)} % · Fläche ${(z.flaeche / z0.flaeche * 100).toFixed(1)} % · Knicke über 60° ${z.scharf}, über 150° ${z.spitz} · umgeschlagen ${z.umgeschlagen} · umgestülpt (schwarz) ${z.schwarz.zahl}, ${(100 * z.schwarz.anteil).toFixed(1)} % der Fläche · Schutz: zurückgenommen ${z.davon}, Fehler ${z.fehler}, Schritt verkleinert ${z.unruhe}${z.meldung ? ` · Meldung: ${z.meldung.slice(0, 110)}` : ''}`;
 
 const text = await seite.evaluate((n) => window.__kurven.ablage.laden(n), NAME);
 console.log(text);
