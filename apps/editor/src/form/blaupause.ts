@@ -1,7 +1,7 @@
 // Wesen-Editor „/editor“ (11.11.2026): die Darstellung der Fenster. Hervorgegangen aus dem Prototyp „Blaupause“
 // (`docs/look/editor/blaupause/` auf `claude/editor-grundlayout`) und seinem Teststand. Drei Looks je Fenster:
 //
-// - `logo` (Seite, Front, Top; Florians Vorlage „illudiy“): dunkler Grund, Körper weiß mit lavendel Schattenseite und rosa Extrusion,
+// - `logo` (Seite, Front, Top; Florians Vorlage „illudiy“): dunkler Grund, Körper weiß mit lavendel Schattenseite (rosa Extrusion schaltbar),
 //   eine dicke Kontur in Petrol um die Silhouette, darum ein Rand im Verlauf Rosa → Lila. Die Kontur entsteht wie beim Passer der
 //   Blaupause („TikTok“, 11.11. abends) aus zwei versetzten Platten in Rosa und Lila: Petrol, wo sie sich überdecken (umschaltbar auf die
 //   Kontur, die ihren Schatten auf den Rand wirft). Von hinten (Seitenwechsel) tauschen Körper und Kontur die Farben, der Grund wird hellblau.
@@ -95,13 +95,19 @@ export type Einstellung = {
    * „TikTok“); aus: die Kontur in Petrol, die ihren Schatten auf den Rand wirft
    */
   tiktok: boolean;
+  /**
+   * Logo: die Extrusion in Rosa (die Silhouette nach links unten gezogen, wie die Seitenflächen der Buchstaben). Aus, wenn die Kontur
+   * TikTok ist: Sie legt sich innen zum rosa Streifen und macht Rosa breiter als Lila (11.11. spätabends, Florian)
+   */
+  extrusion: boolean;
 };
 
 /** Farben: Logo (Florians Vorlage), Papier (Blaupause), Auswahl */
 export const FARBEN_START = {
   grund: '#17131b',
-  // von hinten (Seitenwechsel): ein helles Himmelblau (Florian 11.11. spätabends: „statt des weißen Backgrounds ein schönes Hellblau“)
-  grundHinten: '#bfe3fa',
+  // von hinten (Seitenwechsel): Lavendelblau (Florian 11.11. spätabends: „statt des weißen Backgrounds ein schönes Hellblau“, dann
+  // „lieber Lavendel“)
+  grundHinten: '#b3d4ff',
   kontur: '#003f4e',
   verlaufA: '#ff72a9',
   verlaufB: '#936ffb',
@@ -418,6 +424,7 @@ export class BlaupauseBild {
     kontur: 28,
     rand: 12,
     tiktok: true,
+    extrusion: false,
   };
   farbe: Farben = { ...FARBEN_START };
   /** Halbmesser, Mitte, typische Dicke und halbe Höhe des Körpers (für Jelly) */
@@ -1057,7 +1064,8 @@ export class BlaupauseBild {
       const weit = (E.kontur + 1.72 * E.rand + EXTRUSION + 4) * mass * this.DPR * SS + 3;
       // Blick: die Extrusion fällt von vorn nach links unten, von der Seite keine, von hinten nach oben
       const k = E.pBlick ? this.DPR * mass * s.fdot : 0;
-      const extr = this.extrHilf.set(-0.55 * EXTRUSION * k, -0.835 * EXTRUSION * k);
+      const ke = E.extrusion ? k : 0;
+      const extr = this.extrHilf.set(-0.55 * EXTRUSION * ke, -0.835 * EXTRUSION * ke);
       const zug = this.zugHilf.copy(extr).multiplyScalar(SS);
       const haupt = this.feldRechnen(kam, this.FELDER[0]!, 0, 0, mw, mh, weit, zug);
       let texC = haupt;

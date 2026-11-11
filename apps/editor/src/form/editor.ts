@@ -152,6 +152,8 @@ const teststand = {
   tiktok: true,
   /** Jelly: die Lava bewegt sich (sonst steht sie still) */
   lava: true,
+  /** Logo-Look: die rosa Extrusion nach links unten (aus: Rosa und Lila sind innen gleich breit) */
+  extrusion: false,
 };
 /** /editor: Das Artefakt bringt den Hintergrund-Rechner als Text mit (Bau mit esbuild); im Dev-Server lädt Vite ihn als Modul */
 declare const __TESTSTAND_WORKER__: string;
@@ -5352,6 +5354,7 @@ function rendern(): void {
     kontur: T.kontur,
     rand: T.rand,
     tiktok: T.tiktok,
+    extrusion: T.extrusion,
   };
   // Jelly: Größe und Mitte des Körpers, Bläschen, Lava
   const kasten = hautGeometrie.boundingBox;
