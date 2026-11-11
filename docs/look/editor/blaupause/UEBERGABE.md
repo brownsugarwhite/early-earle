@@ -36,8 +36,9 @@ Griffen). Die Arbeit am Löser und an den Kurven läuft in einer anderen Sitzung
 | Bilder des Stands | `docs/progress/editor/blaupause-*.jpg` |
 | Florians Vorgaben, Reihenfolge, Urteile | Gedächtnis `feedback-designvision-blaupause-1110.md` |
 | Recherche „Pose wie Grundform bedienen“ | Gedächtnis `recherche-pose-wie-grundform-1110.md` |
-| **Teststand** (echte Linien, echtes Netz, ziehbare Griffe), veröffentlicht | https://claude.ai/artifact/YL4ZhsiUQT9aVfcjZFBHga |
-| Quelle des Teststands, Bauen, Bilder | `teststand/` hier (Abschnitt 10) |
+| **`/editor`** (Standardversion „geometrie“ mit diesem Design, Abschnitt 11) | `http://localhost:5194/editor`, Code in `apps/editor` auf `claude/form-spiegel` |
+| **Artefakt „Wesen-Editor“** (dasselbe, mit Florians drei Formen) | https://claude.ai/artifact/M9BbsZYtsNe868dyRz2VeA, gebaut mit `teststand/bau.mjs` |
+| Teststand vom 11.11. mittags (Vorgänger, Abschnitt 10) | https://claude.ai/artifact/YL4ZhsiUQT9aVfcjZFBHga, Quelle in Commit `087ae214` |
 | Bilder des Teststands | `docs/progress/editor/blaupause-teststand-*.jpg` |
 
 `CLAUDE.md` ist in diesem Strang nicht geändert worden, weil die bauende Sitzung sie auf ihrem Zweig pflegt.
@@ -235,3 +236,48 @@ Reparaturarbeiten an der Kurve zu stören.“
 - Pose und Passer „Wandel“ brauchen ein Maul; keine der drei Formen hat eins.
 - Sichern unter einem Namen gibt es nicht (keine Ablage, keine Dateien im Artefakt).
 - Bei Zoom laufen Linien und Outline unter den Fensternamen (Punkt 6 oben).
+
+## 11. Übertragen in den Editor: `/editor` (11.11., abends)
+
+Florian: „die andere Session ist vorerst fertig. `http://localhost:5194/kurven.html?gewichte=geometrie` ist die neue
+Standardversion. Kannst du diese auch so vermerken und unter einem eigenen Link veröffentlichen /editor. Bitte wende das Layout
+direkt an.“ Dazu: das 3D als „original halbtransparentes, glossy Blobmaterial“ (seine Vorlage: das Jelly des Spiels), ohne
+Outlines, mit Umschalter auf das Papier; Seite/Front/Top in Farben, Outline und Verlauf seiner Logo-Vorlage („illudiy“), mit dem
+Schatten der dicken Outline auf der äußeren, kombiniert mit „Blick“, „noch mehr bold“; die Schattierung nicht zackig, sondern
+„scharf wie saubere Vektorkurven“.
+
+**Wo:** `http://localhost:5194/editor` (Arbeitsbaum `.claude/worktrees/form-alt`, Zweig `claude/form-spiegel`, gepusht; `kurven.html`
+dort unverändert). `?laden=<Name>` öffnet ein gesichertes Wesen aus `wesen/`. Artefakt mit Florians drei Formen:
+https://claude.ai/artifact/M9BbsZYtsNe868dyRz2VeA („Wesen-Editor“, gebaut mit `teststand/bau.mjs` aus `claude/form-spiegel`).
+Bilder: `docs/progress/editor/editor-blaupause-{gesamt,bogen}-2026-11-11.jpg`.
+
+**Code** (alle neu, im Editor): `apps/editor/editor.html` (Gerüst und Leiste), `src/form/editor.ts` (= `kurven.ts` von `09f39297`
+per `git merge-file` mit dem Teststand zusammengeführt, ohne Konflikt; „geometrie“ ohne Parameter Standard, `?gewichte=gleich`),
+`src/form/blaupause.ts` (Darstellung), `scripts/editor-bilder.cjs` (Bilder mit echten Mauszügen, wie `schau.cjs`). Eintrag im
+Projektgedächtnis von `claude/form-spiegel` (`CLAUDE.md`). Ändert jemand `kurven.ts`, muss `editor.ts` nachgezogen werden
+(dreifache Zusammenführung, Basis = `09f39297`). Der Teststand-Code hier im Ordner ist entfernt (Geschichte: Commit `087ae214`);
+das alte Artefakt „Blaupause Teststand“ zeigt weiter den Stand vom Mittag.
+
+**Seite, Front, Top (Logo-Look):** Grund `#17131b` (von hinten `#f4eff6`), Körper weiß mit leichtem Verlauf nach unten, die
+Schattenseite nur zart lavendel; dahinter die **Extrusion** in Rosa (`#ff72a9`): die Silhouette, längs eines Versatzes nach links
+unten gezogen (sechs Schritte, 18 px bei 100 %); um beides die **dicke Kontur** in Petrol (`#003f4e`, 28 px), darum der **Rand** im
+Verlauf `#ff72a9` → `#fca4de` → `#d4b3f5` → `#936ffb` (12 px), auf dem die Kontur ihren **Schatten** nach unten wirft (72 % der
+Randbreite, gesättigter und dunkler). Extrusion und Schatten versetzen sich wie „Blick“: von vorn nach links unten bzw. unten, von
+der Seite keiner, von hinten nach oben. Wandel und Tiefe wirken weiter auf Rand und Schatten. Kontur und Rand als Regler im Menü,
+sechs Farbfelder. Linien und Griffe in Petrol, Auswahl in Lila.
+
+**3D:** Jelly (Grund `#081b25` wie im Spiel): drei Töne mit scharfen Grenzen (Licht oben links `#3bfcf2` … Schattenseite `#008e89`),
+**Innenlappen aus der Dicke des Körpers** (Rückseiten-Tiefe je Bildpunkt, unten etwas mehr wie der Bodenlappen der Vorlage), vier
+Bläschen (Punkte der Haut, ein Stück nach innen), Glanzstrich und Punkt nur auf der oberen Rundung, Linien weiß. Knopf „Jelly/Papier“
+im Fenster schaltet auf den Papierkörper der Blaupause (ohne Outlines).
+
+**Glatt:** Normalen der Anzeige über die Nachbarn geglättet (acht Runden, Kanten ausgenommen) **und im Bild**: ein Feld aus
+Blicknormale, Tiefe und Dicke wird waagerecht und senkrecht weichgezeichnet (Halbmesser 2,5 Netzkanten, Nachbarn hinter einem
+Tiefensprung zählen nicht); erst danach liegen die scharfen Grenzen. Vorher liefen sie als Treppe über die Dreiecke (Bild im Bogen).
+
+**Farben roh in sRGB:** three r186 rechnet `new Color('#hex')` in den linearen Raum um, die Shader schreiben aber ohne Rückwandlung.
+Das machte alles dunkler und satter (Petrol fast schwarz) — es betraf auch schon den Teststand vom Mittag.
+
+**Offen:** Florians Urteil zu allem; der Fensterkopf liegt bei Zoom über dem weißen Körper (weiße Schrift unlesbar); die Innenlappen
+der Kugel liegen ineinander (die Vorlage hat zwei getrennte Lappen); Bläschen und Glanz sind einfache Regeln, keine Gestaltung je
+Wesen; geprüft nur in Chromium auf dem Mac (Playwright, echte Mauszüge), das Artefakt nicht im Artefakt-Rahmen.

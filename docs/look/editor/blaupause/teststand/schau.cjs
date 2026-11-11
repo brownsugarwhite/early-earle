@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- Node-Skript (CommonJS) */
-// Bilder des Teststands: node schau.cjs <ausgabe-präfix> '[schritte als JSON]'
-// Lädt dist/blaupause-teststand.html (vorher `node bau.mjs`) in Chromium, wie das Artefakt sie zeigt (in einem Gerüst), und macht je
+// Bilder des Artefakts „Wesen-Editor“: node schau.cjs <ausgabe-präfix> '[schritte als JSON]'
+// Lädt dist/wesen-editor.html (vorher `node bau.mjs`) in Chromium, wie das Artefakt sie zeigt (in einem Gerüst), und macht je
 // Schritt ein Bild. Je Schritt (alles freiwillig):
 //   n        Name des Bilds
 //   form     Form laden ("kugel", "strange bird", …)
@@ -32,8 +32,8 @@ const { chromium } = req('@playwright/test');
     if (m.type() === 'error' || m.type() === 'warning') meldungen.push(m.type() + ': ' + m.text().slice(0, 600));
   });
   seite.on('pageerror', (e) => meldungen.push('pageerror: ' + String(e).slice(0, 600)));
-  const html = fs.readFileSync(path.join(__dirname, 'dist/blaupause-teststand.html'), 'utf8');
-  const huelle = path.join(os.tmpdir(), 'blaupause-teststand-huelle.html');
+  const html = fs.readFileSync(path.join(__dirname, 'dist/wesen-editor.html'), 'utf8');
+  const huelle = path.join(os.tmpdir(), 'wesen-editor-huelle.html');
   fs.writeFileSync(
     huelle,
     '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>body{margin:0;font:14px system-ui}[hidden]{display:none!important}</style></head><body>' +
