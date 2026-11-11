@@ -110,7 +110,7 @@ import {
 import { BufferAttribute, BufferGeometry, Mesh, OrthographicCamera, Raycaster, Vector3, WebGLRenderer } from 'three';
 import type { V2 } from '@ee/shape';
 import { type Art, BlaupauseBild, type FensterBild, type P3, type PunktBild, type Strecke } from './blaupause';
-import { LavaLampe, lavaAnker } from './lava';
+import { LavaLampe, lavaAnker, lavaPlan } from './lava';
 import { istTrackpad, radFaktor } from '../viewports/ansicht2d';
 import { type WesenStand, auskunft, entpacken, packen, pruefen } from './ablage';
 import {
@@ -5293,23 +5293,27 @@ function lavaAnkerRechnen(jetzt: number): void {
   const idx = hautGeometrie.index?.array;
   const kasten = hautGeometrie.boundingBox;
   if (!idx || !kasten || hautLagen.length < 12) {
-    lampe.anker([], () => 0.8);
+    lampe.ziele({ anker: [], kontakt: null }, 0.66, 0.87);
+    glanzTeile = [];
     return;
   }
   const t0 = performance.now();
-  const my = (kasten.max.y + kasten.min.y) / 2;
-  const hh = Math.max(1e-6, (kasten.max.y - kasten.min.y) / 2);
-  // unten dunkler als oben (wie der Bodenlappen der Vorlage)
-  lampe.anker(lavaAnker(hautLagen, idx), (a) => 0.86 - 0.13 * Math.min(1, Math.max(0, 0.5 + (0.5 * (my - a.p[1])) / hh)));
+  // Kontaktbohne dunkel, Lavabohnen heller (Vorlage gemessen: unten × 0,6–0,7, oben × 0,9); Glanz auf den großen Teilen
+  const plan = lavaPlan(lavaAnker(hautLagen, idx));
+  lampe.ziele(plan, 0.66, 0.87);
+  glanzTeile = (plan.teile ?? []).map((a) => ({ c: a.p, r: a.r }));
+  bild.grossHalbmesser = plan.teile?.[0]?.r ?? 100;
   lavaAnkerMs = performance.now() - t0;
 }
+/** Teile mit Glanz (Rumpf, große Köpfe): Mitte und Halbmesser ihrer größten Kugel */
+let glanzTeile: { c: P3; r: number }[] = [];
 /** zeigt das 3D-Fenster gerade Lava, die sich bewegt? */
 function lavaLaeuft(): boolean {
   return !teststand.papier3d && !lampe.leer && (teststand.lava || lampe.unruhig);
 }
 /** nur das 3D-Fenster neu zeichnen (die anderen bleiben stehen: `preserveDrawingBuffer`) */
 function rendernDrei(): void {
-  bild.lava(lampe.formen(lavaUhr));
+  bild.lava(lampe.formen(lavaUhr), lampe.kontakt(lavaUhr), glanzTeile);
   fensterZeichnen('drei', griffBilder(), window.innerHeight);
 }
 
@@ -5372,7 +5376,7 @@ function rendern(): void {
     bild.halbeHoehe = Math.max(1, 0.5 * g.y);
   }
   bild.blasen(blasenJetzt());
-  bild.lava(lampe.formen(lavaUhr));
+  bild.lava(lampe.formen(lavaUhr), lampe.kontakt(lavaUhr), glanzTeile);
   bild.kantenLaenge = MK;
   bild.linien(linienBauen());
   bild.punkte(punkteBauen());
@@ -6006,7 +6010,10 @@ schleife();
     return (performance.now() - t0) / 5;
   },
   /** Lava im Jelly: Anker (Welt), Blasen und Rechenzeit der Anker */
-  lava: () => ({ anker: hautGeometrie.index ? lavaAnker(hautLagen, hautGeometrie.index.array) : [], formen: lampe.formen(lavaUhr), ms: lavaAnkerMs, uhr: lavaUhr }),
+  lava: () => {
+    const fund = hautGeometrie.index ? lavaAnker(hautLagen, hautGeometrie.index.array) : { anker: [], kontakt: null };
+    return { anker: fund.anker, kontakt: fund.kontakt, plan: lavaPlan(fund), formen: lampe.formen(lavaUhr), ms: lavaAnkerMs, uhr: lavaUhr };
+  },
   griffe: (id: number, i: number) => {
     const l = loops[loopNr(id)];
     return l ? griffeBei(l, i) : null;

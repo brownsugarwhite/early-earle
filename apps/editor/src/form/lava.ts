@@ -12,8 +12,50 @@ export type P3 = [number, number, number];
 /** Anker: Mitte, Halbmesser der größten Kugel, Hauptachsen (Einheitsvektoren) und Halbachsen der Blase */
 export type Anker = { p: P3; r: number; achsen: [P3, P3, P3]; halb: P3 };
 
-/** höchstens so viele Blasen (je zwei Ellipsoide) */
-export const MAX_LAVA = 7;
+/** höchstens so viele Lavabohnen (je zwei Ellipsoide); dazu kommt die Kontaktbohne */
+export const MAX_LAVA = 4;
+/** Größe der Startkugel (Halbmesser ihrer größten inneren Kugel, Welt): Maß für „größere Skalierung“ */
+export const R_BEZUG = 141;
+
+/**
+ * Ergebnis der Suche: alle Anker (nach Größe) und die Kontaktbohne unten im größten Teil (achsparallel); nach `lavaPlan` die
+ * Lavabohnen und die Teile, die Glanz tragen (der größte und die großen auf der Mittelebene)
+ */
+export type LavaFund = { anker: Anker[]; kontakt: Anker | null; teile?: Anker[] };
+
+/**
+ * Florian (11.11. spätabends): „Es gibt immer eine untere dunkle Bohne, die eine Art Kontaktebene zum Boden simulieren soll, und
+ * mindestens eine Lavalampen-Bohne, die etwas heller ist … Größere Wesen sollen mehr Lavabohnen haben, aber nur bei großen Köpfen und
+ * Bäuchen oder größerer Skalierung.“ Regeln: die Kontaktbohne unten im größten Teil; eine Lavabohne im oberen Teil des größten Teils
+ * (bei größerer Skalierung bis zu drei längs seiner Achse); dazu je eine in großen Teilen auf der Mittelebene (Kopf, Bauch; Paare
+ * wie Flügel und Beine nicht), groß heißt ≥ 0,62 des größten Teils (bei größerer Skalierung weniger) und ≥ 0,45 der Startkugel.
+ */
+export function lavaPlan(f: LavaFund): LavaFund {
+  const A = f.anker;
+  if (!A.length) return { anker: [], kontakt: null, teile: [] };
+  const haupt = A[0]!;
+  const teile: Anker[] = [haupt];
+  const s = haupt.r / R_BEZUG;
+  const lava: Anker[] = [];
+  const nHaupt = 1 + Math.min(2, Math.floor(Math.max(0, s - 1) / 0.6));
+  const e1 = haupt.achsen[0];
+  const L = haupt.halb[0];
+  const k = nHaupt === 1 ? 0.62 : 0.5;
+  for (let i = 0; i < nHaupt; i++) {
+    const t = nHaupt === 1 ? 0 : (2 * i) / (nHaupt - 1) - 1;
+    const v = 0.45 * L * t;
+    lava.push({ p: [haupt.p[0] + e1[0] * v, haupt.p[1] + e1[1] * v + 0.3 * haupt.r, haupt.p[2] + e1[2] * v], r: haupt.r * k, achsen: haupt.achsen, halb: haupt.halb.map((x) => x * k) as P3 });
+  }
+  const schwelle = Math.max((0.62 / Math.sqrt(Math.max(1, s))) * haupt.r, 0.45 * R_BEZUG);
+  for (const a of A.slice(1)) {
+    if (lava.length >= MAX_LAVA) break;
+    // Paare (Flügel, Beine, Hörner) liegen neben der Mittelebene
+    if (Math.abs(a.p[2]) > 0.35 * a.r || a.r < schwelle) continue;
+    lava.push({ ...a, halb: a.halb.map((x) => x * 0.8) as P3 });
+    teile.push(a);
+  }
+  return { anker: lava, kontakt: f.kontakt, teile };
+}
 
 /** eindimensionale exakte Abstandstransformation (Felzenszwalb–Huttenlocher), quadratische Abstände */
 function abstand1d(f: Float64Array, n: number, d: Float64Array, v: Int32Array, z: Float64Array): void {
@@ -44,9 +86,9 @@ function abstand1d(f: Float64Array, n: number, d: Float64Array, v: Int32Array, z
  * Anker der Lava: die größten Kugeln im Körper, die sich nicht überdecken. `pos` Lagen (xyz je Punkt), `index` Dreiecke (geschlossen),
  * `aufloesung` Würfel längs der größten Ausdehnung. Ergebnis nach Größe absteigend.
  */
-export function lavaAnker(pos: ArrayLike<number>, index: ArrayLike<number>, aufloesung = 40, max = MAX_LAVA): Anker[] {
+export function lavaAnker(pos: ArrayLike<number>, index: ArrayLike<number>, aufloesung = 40, max = 7): LavaFund {
   const nP = Math.floor(pos.length / 3);
-  if (nP < 4 || index.length < 12) return [];
+  if (nP < 4 || index.length < 12) return { anker: [], kontakt: null };
   let x0 = Infinity;
   let y0 = Infinity;
   let z0 = Infinity;
@@ -65,7 +107,7 @@ export function lavaAnker(pos: ArrayLike<number>, index: ArrayLike<number>, aufl
     if (z > z1) z1 = z;
   }
   const gross = Math.max(x1 - x0, y1 - y0, z1 - z0);
-  if (!(gross > 0)) return [];
+  if (!(gross > 0)) return { anker: [], kontakt: null };
   const h = gross / aufloesung;
   const RAND = 2;
   const nx = Math.ceil((x1 - x0) / h) + 2 * RAND;
@@ -227,7 +269,7 @@ export function lavaAnker(pos: ArrayLike<number>, index: ArrayLike<number>, aufl
         S.yz += dy * dz;
         S.zz += dz * dz;
       }
-  return roh.map((a, n) => {
+  const anker = roh.map((a, n) => {
     const S = sum[n]!;
     const N = Math.max(1, S.n);
     const mx = S.mx / N;
@@ -245,6 +287,41 @@ export function lavaAnker(pos: ArrayLike<number>, index: ArrayLike<number>, aufl
     const p: P3 = [a.p[0] + 0.5 * mx, a.p[1] + 0.5 * my, a.p[2] + 0.5 * mz];
     return { p, r: a.r, achsen: vektoren, halb };
   });
+  // Kontaktbohne: im größten Teil vom Anker abwärts bis zum Rand, auf halbem Weg die Breite nach x und z messen (achsparallel,
+  // flach: die Kontaktebene zum Boden)
+  let kontakt: Anker | null = null;
+  const h0 = roh[0];
+  if (h0) {
+    const zelle = (x: number, y: number, z: number): boolean => {
+      const i = Math.floor((x - ox) / h);
+      const j = Math.floor((y - oy) / h);
+      const k = Math.floor((z - oz) / h);
+      return i >= 0 && j >= 0 && k >= 0 && i < nx && j < ny && k < nz && d2[idx(i, j, k)]! > 0;
+    };
+    const lauf = (x: number, y: number, z: number, dx: number, dy: number, dz: number): number => {
+      let t = 0;
+      while (t < gross && zelle(x + dx * (t + h * 0.5), y + dy * (t + h * 0.5), z + dz * (t + h * 0.5))) t += h * 0.5;
+      return t + h * 0.25;
+    };
+    const [ax, ay, az] = h0.p;
+    const unten = lauf(ax, ay, az, 0, -1, 0);
+    const yc = ay - 0.5 * unten;
+    const xl = lauf(ax, yc, az, -1, 0, 0);
+    const xr = lauf(ax, yc, az, 1, 0, 0);
+    const zl = lauf(ax, yc, az, 0, 0, -1);
+    const zr = lauf(ax, yc, az, 0, 0, 1);
+    kontakt = {
+      p: [ax + 0.5 * (xr - xl), yc, az + 0.5 * (zr - zl)],
+      r: h0.r,
+      achsen: [
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+      ],
+      halb: [0.84 * 0.5 * (xl + xr), 0.38 * unten, 0.84 * 0.5 * (zl + zr)],
+    };
+  }
+  return { anker, kontakt };
 }
 
 /** Eigenwerte und -vektoren einer symmetrischen 3×3-Matrix (Jacobi), nach Größe absteigend */
@@ -301,7 +378,7 @@ function eigen3(A: number[][]): { werte: P3; vektoren: [P3, P3, P3] } {
  * Reihenfolge der Achsen, deshalb lässt sie sich ruhig von einer Form zur nächsten überblenden */
 export type Matrix6 = [number, number, number, number, number, number];
 
-function formMatrix(a: Anker): Matrix6 {
+export function formMatrix(a: Anker): Matrix6 {
   const m: Matrix6 = [0, 0, 0, 0, 0, 0];
   for (let k = 0; k < 3; k++) {
     const e = a.achsen[k]!;
@@ -374,6 +451,43 @@ export class LavaLampe {
   private naechste = 1;
   private bewegt = false;
 
+  /** die Kontaktbohne (unten, dunkel, ruhig): nur Atmen, kein Treiben */
+  private kontaktBlase: Blase | null = null;
+
+  /** neue Ziele nach einer Formänderung: Kontaktbohne und Lavabohnen */
+  ziele(f: LavaFund, tonKontakt: number, tonLava: number): void {
+    if (f.kontakt) {
+      const m = formMatrix(f.kontakt);
+      if (this.kontaktBlase) {
+        this.kontaktBlase.ziel = [...f.kontakt.p];
+        this.kontaktBlase.mZiel = m;
+        this.kontaktBlase.tonZiel = tonKontakt;
+        this.kontaktBlase.geht = false;
+      } else this.kontaktBlase = this.neu(f.kontakt, m, tonKontakt);
+    } else if (this.kontaktBlase) this.kontaktBlase.geht = true;
+    this.anker(f.anker, () => tonLava);
+  }
+
+  private neu(a: Anker, m: Matrix6, ton: number): Blase {
+    const z = zufall(0x9e3779b1 * this.naechste++);
+    return {
+      ziel: [...a.p],
+      p: [...a.p],
+      mZiel: m,
+      m: [...m],
+      tonZiel: ton,
+      ton,
+      da: 0,
+      r: a.r,
+      ph: Array.from({ length: 8 }, () => 2 * Math.PI * z()),
+      // Perioden 9–17 s (Treiben), 6–9 s (Atmen), 11–17 s (Schwappen), 8–12 s (Kreisen)
+      w: [0, 1, 2]
+        .map(() => (2 * Math.PI) / (9 + 8 * z()))
+        .concat([(2 * Math.PI) / (6 + 3 * z()), (2 * Math.PI) / (11 + 6 * z()), (2 * Math.PI) / (8 + 4 * z()), (2 * Math.PI) / (7 + 4 * z()), (2 * Math.PI) / (13 + 5 * z())]),
+      geht: false,
+    };
+  }
+
   /** neue Anker (nach einer Formänderung): jede Blase schwimmt zum nächsten freien Anker, übrige wachsen neu oder schrumpfen weg */
   anker(liste: readonly Anker[], ton: (a: Anker) => number): void {
     const frei = new Set(this.blasen.filter((b) => !b.geht));
@@ -394,32 +508,14 @@ export class LavaLampe {
         beste.mZiel = m;
         beste.r = a.r;
         beste.tonZiel = ton(a);
-      } else {
-        const z = zufall(0x9e3779b1 * this.naechste++);
-        this.blasen.push({
-          ziel: [...a.p],
-          p: [...a.p],
-          mZiel: m,
-          m: [...m],
-          tonZiel: ton(a),
-          ton: ton(a),
-          da: 0,
-          r: a.r,
-          ph: Array.from({ length: 8 }, () => 2 * Math.PI * z()),
-          // Perioden 9–17 s (Treiben), 6–9 s (Atmen), 11–17 s (Schwappen), 8–12 s (Kreisen)
-          w: [0, 1, 2]
-            .map(() => (2 * Math.PI) / (9 + 8 * z()))
-            .concat([(2 * Math.PI) / (6 + 3 * z()), (2 * Math.PI) / (11 + 6 * z()), (2 * Math.PI) / (8 + 4 * z()), (2 * Math.PI) / (7 + 4 * z()), (2 * Math.PI) / (13 + 5 * z())]),
-          geht: false,
-        });
-      }
+      } else this.blasen.push(this.neu(a, m, ton(a)));
     }
     for (const b of frei) b.geht = true;
   }
 
   /** gibt es etwas zu zeigen? */
   get leer(): boolean {
-    return this.blasen.length === 0;
+    return this.blasen.length === 0 && !this.kontaktBlase;
   }
   /** schwimmen, wachsen oder schrumpfen noch Blasen (auch wenn die Lava sonst stillsteht)? */
   get unruhig(): boolean {
@@ -433,7 +529,7 @@ export class LavaLampe {
     const aP = 1 - Math.exp(-dt / 0.9);
     const aM = 1 - Math.exp(-dt / 0.7);
     let rest = 0;
-    for (const b of this.blasen) {
+    for (const b of this.kontaktBlase ? [...this.blasen, this.kontaktBlase] : this.blasen) {
       const groesse = Math.sqrt(Math.max(b.m[0] + b.m[3] + b.m[5], b.mZiel[0] + b.mZiel[3] + b.mZiel[5], 1e-9));
       let d = 0;
       for (let e = 0; e < 3; e++) {
@@ -451,6 +547,15 @@ export class LavaLampe {
     }
     this.bewegt = rest > 0.004;
     this.blasen = this.blasen.filter((b) => !(b.geht && b.da < 0.03));
+    if (this.kontaktBlase?.geht && this.kontaktBlase.da < 0.03) this.kontaktBlase = null;
+  }
+
+  /** die Kontaktbohne zur Zeit `t`: liegt still unten, atmet nur ein wenig (±4 %) */
+  kontakt(t: number): LavaForm | null {
+    const b = this.kontaktBlase;
+    if (!b || b.da <= 1e-3) return null;
+    const k = b.da * b.da * (1 + 0.08 * Math.sin(b.w[3]! * t + b.ph[3]!));
+    return { c: [...b.p], m: b.m.map((x) => x * k) as Matrix6, ton: b.ton };
   }
 
   /**

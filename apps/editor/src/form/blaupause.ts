@@ -388,10 +388,13 @@ export class BlaupauseBild {
   /** Feld für die Glättung im Bild (zwei Ziele zum Hin- und Herzeichnen) */
   private readonly glattA: WebGLRenderTarget;
   private readonly glattB: WebGLRenderTarget;
+  /** Halbmesser des größten Teils (Welt): Maß für den Glanz am Umriss im Jelly */
+  grossHalbmesser = 100;
   /** mittlere Kantenlänge des Netzes (Welteinheiten): so weit wird im Bild geglättet */
   kantenLaenge = 8;
   private readonly innenMat: ShaderMaterial;
   private readonly maskeMat: ShaderMaterial;
+  private readonly maskeInnenMat: ShaderMaterial;
   private readonly flutMat: ShaderMaterial;
   private readonly hgLogoMat: ShaderMaterial;
   private readonly hgPapierMat: ShaderMaterial;
@@ -455,6 +458,7 @@ export class BlaupauseBild {
       new WebGLRenderTarget(4, 4, { type: HalfFloatType, format: RGBAFormat, minFilter: LinearFilter, magFilter: LinearFilter, generateMipmaps: false, depthBuffer: tiefe, stencilBuffer: false });
     this.glattA = glattZiel(true);
     this.glattB = glattZiel(false);
+
 
     // Logo: weiß mit leichtem Verlauf nach unten, die Schattenseite rosa wie die Seitenflächen der Buchstaben (Licht von rechts oben)
     this.logoMat = new ShaderMaterial({
@@ -575,6 +579,12 @@ export class BlaupauseBild {
         uLava: { value: Array.from({ length: 2 * MAX_LAVA }, () => new Vector4()) },
         uLavaE: { value: Array.from({ length: 2 * MAX_LAVA }, () => new Vector4()) },
         uLavaZahl: { value: 0 },
+        uKontakt: { value: new Vector4() },
+        uKontaktE: { value: new Vector4() },
+        uKontaktAn: { value: 0 },
+        uGlanzP: { value: Array.from({ length: MAX_LAVA }, () => new Vector4()) },
+        uGlanzZahl: { value: 0 },
+        tRand: { value: null },
         uJLichtO: { value: farbe3('#3bfcf2') },
         uJLicht: { value: farbe3('#1ee9df') },
         uJMitte: { value: farbe3('#00c4ba') },
@@ -595,15 +605,15 @@ export class BlaupauseBild {
         // Abstand zum Rand einer Ellipse in Bildpunkten (genähert: gemessen an der kleinen Halbachse)
         'float ellipse(vec2 fc, vec4 s, vec4 e) { vec2 q = fc - s.xy; float m = e.x * q.x * q.x + 2.0 * e.y * q.x * q.y + e.z * q.y * q.y; return (sqrt(max(m, 0.0)) - 1.0) * s.z; }',
         'float smin(float a, float b, float k) { float h = max(k - abs(a - b), 0.0) / max(k, 1e-5); return min(a, b) - h * h * k * 0.25; }',
+        // Kontaktbohne (unten, dunkel): eine Ellipse für sich, unter der Lava
+        'uniform vec4 uKontakt, uKontaktE; uniform float uKontaktAn;',
+        // Glanz auf den großen Teilen (Rumpf, großer Kopf): je Teil Mitte im Bild (Gerätepixel) und Halbmesser seiner größten Kugel im
+        // Bild; dazu der Abstand zum Umriss innen (`tRand`)
+        `uniform vec4 uGlanzP[${MAX_LAVA}]; uniform float uGlanzZahl; uniform sampler2D tRand;`,
+        // Winkel zwischen der Richtung d (Einheit) und der Richtung phi0 (vorzeichenbehaftet)
+        'float winkel(vec2 d, float phi0) { float c = cos(phi0), s = sin(phi0); return atan(d.y * c - d.x * s, d.x * c + d.y * s); }',
         GLATT,
         'uniform vec3 uJLichtO, uJLicht, uJMitte, uJMitteU, uJSchatten, uJRand; varying vec3 vN; varying vec3 vW;',
-        // weiche Rechteck-Lichtquelle in Richtung k, gesehen über die Spiegelrichtung d (wie im Spiel), gedreht und mit scharfem Rand
-        'float softbox(vec3 d, vec3 k, vec2 size, float rr, float dreh, float breiter) {',
-        '  vec3 kx = normalize(cross(vec3(0.0, 1.0, 0.0), k)); vec3 ky = cross(k, kx);',
-        '  float cz = dot(d, k); vec2 uv = vec2(dot(d, kx), dot(d, ky)) / max(cz, 0.05);',
-        '  float c = cos(dreh), s = sin(dreh); uv = mat2(c, s, -s, c) * uv;',
-        '  vec2 q = abs(uv) - size; float sd = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - rr - breiter;',
-        '  float aa = max(fwidth(sd), 1e-5); return (1.0 - smoothstep(-aa, aa, sd)) * smoothstep(0.05, 0.12, cz); }',
         'void main() {',
         '  vec4 g = glattFeld(); vec3 n = glatteNormale(normalize(vN), g);',
         '  vec2 tc = (gl_FragCoord.xy - uVp.xy) / uVp.zw;',
@@ -631,6 +641,8 @@ export class BlaupauseBild {
         '  float aaL = max(fwidth(lavaD) * 0.85, 0.5);',
         '  float lava = 1.0 - smoothstep(-aaL, aaL, lavaD);',
         '  col *= mix(1.0, tonS / max(tonW, 1e-5), lava);',
+        // die Kontaktbohne liegt als eigene, dunklere Schicht darunter (wo sich beide decken, dunkler: halbtransparent)
+        '  if (uKontaktAn > 0.5) { float dk = ellipse(fc, uKontakt, uKontaktE); float aaK = max(fwidth(dk) * 0.85, 0.5); col *= mix(1.0, uKontakt.w, 1.0 - smoothstep(-aaK, aaK, dk)); }',
         // Bläschen: Strahlnähe zu kleinen Kugeln im Körper, helle Scheiben mit scharfem Rand
         '  float bub = 0.0;',
         `  for (int i = 0; i < ${MAX_BLASEN}; i++) {`,
@@ -642,15 +654,31 @@ export class BlaupauseBild {
         '    bub = max(bub, (1.0 - smoothstep(b.w - aa, b.w + aa, quer)) * drin);',
         '  }',
         '  col = mix(col, min(col * 1.26 + vec3(0.0, 0.02, 0.02), vec3(1.0)), bub * 0.9);',
-        // Glanz: ein langer Strich und ein Punkt oben links, scharf, mit hellem Saum
-        '  vec3 R = reflect(vec3(0.0, 0.0, -1.0), n);',
-        '  vec3 k1 = normalize(vec3(-0.45, 0.62, 0.64)); vec3 k2 = normalize(vec3(-0.66, 0.4, 0.64));',
-        '  float g1 = softbox(R, k1, vec2(0.045, 0.24), 0.04, -0.7, 0.0), g1s = softbox(R, k1, vec2(0.045, 0.24), 0.04, -0.7, 0.025);',
-        '  float g2 = softbox(R, k2, vec2(0.02, 0.02), 0.025, 0.0, 0.0), g2s = softbox(R, k2, vec2(0.02, 0.02), 0.025, 0.0, 0.02);',
-        // nur auf der oberen Rundung (wie im Spiel und in der Vorlage)
-        '  float oben = smoothstep(0.0, 0.3, n.y) * smoothstep(-0.35, 0.1, h);',
-        '  col = mix(col, vec3(0.77, 0.99, 0.98), max(g1s, g2s) * oben);',
-        '  col = mix(col, vec3(1.0), max(g1, g2) * oben);',
+        // Glanz wie in der Vorlage (gemessen): ein weißer, leicht gebogener Strich am Rand oben links (Richtung 112°–140°, bei 0,9 des
+        // Halbmessers) und ein länglicher Punkt darunter (151°), reines Weiß ohne Saum. Wie gemalt am Umriss: aus dem Abstand zum Umriss im
+        // Bild (`tRand`) und der Richtung nach außen wird eine Kugel-Normale gedacht (Neigung asin(1 − Abstand / Halbmesser)) — so liegt
+        // der Strich innen am Rand der Masse; nur auf den großen Teilen (Rumpf, großer Kopf), nicht auf Hörnern und Beinen
+        // je großem Teil: der Bogen liegt in dem Winkelbereich, der von seiner Mitte aus oben links liegt (wie auf einer Kugel: Strich
+        // 112°–140°, Punkt um 151°), und dort innen am echten Umriss (Abstand zum Umriss 0,07–0,14 seines Halbmessers) — so bleibt er
+        // ein kurzer, glatter Bogen, der dem Umriss folgt; der Umriss muss dort von der Mitte weg zeigen
+        '  float dR = abstandV(tRand, fc);',
+        '  vec2 gR = vec2(abstandV(tRand, fc + vec2(3.0, 0.0)) - abstandV(tRand, fc - vec2(3.0, 0.0)), abstandV(tRand, fc + vec2(0.0, 3.0)) - abstandV(tRand, fc - vec2(0.0, 3.0)));',
+        '  float lg = length(gR); vec2 aussen = lg > 1e-3 ? -gR / lg : vec2(0.0, 1.0);',
+        '  float glanz = 0.0;',
+        `  for (int i = 0; i < ${MAX_LAVA}; i++) {`,
+        '    if (float(i) >= uGlanzZahl) break;',
+        '    vec4 P = uGlanzP[i]; vec2 v = fc - P.xy; float lv = length(v); vec2 dir = lv > 1e-3 ? v / lv : vec2(0.0, 1.0);',
+        // (begrenzt: hinter der Reichweite des Felds springt der Abstand, ungebremst zeichnete die Kantenglättung dort feine Linien)
+        '    float u = min(dR / max(P.z, 1.0), 0.45);',
+        '    float a1 = winkel(dir, radians(126.0)) / radians(14.0), b1 = (u - 0.103) / 0.034;',
+        '    float a2 = winkel(dir, radians(151.0)) / radians(4.5), b2 = (u - 0.125) / 0.026;',
+        '    float c = max(1.0 - stufe(sqrt(a1 * a1 + b1 * b1), 1.0), 1.0 - stufe(sqrt(a2 * a2 + b2 * b2), 1.0));',
+        // nur am Umriss der Masse um das Teil (bis 3 Halbmesser von der Mitte) und wo der Körper nach innen breit ist (kein dünner Arm)
+        '    float breit = step(0.26 * P.z, abstandV(tRand, fc - aussen * 0.32 * P.z));',
+        '    c *= smoothstep(0.2, 0.45, dot(aussen, dir)) * step(1e-3, lg) * step(lv, 3.0 * P.z) * breit;',
+        '    glanz = max(glanz, c);',
+        '  }',
+        '  col = mix(col, vec3(1.0), glanz);',
         // Saum: zum Rand der Schattenseite etwas satter
         '  float saum = (1.0 - smoothstep(0.05, 0.38, n.z)) * (1.0 - aM);',
         '  col = mix(col, col * 0.9, saum);',
@@ -676,6 +704,16 @@ export class BlaupauseBild {
       // zur gezogenen Silhouette selbst (ohne Treppen, auch stark vergrößert)
       vertexShader: SICHT_VS + 'uniform float uGrund; uniform vec2 uZug; attribute vec3 aGrund; void main() { gl_Position = sicht(mix(position, aGrund, uGrund)); gl_Position.xy += uZug * gl_Position.w; }',
       fragmentShader: 'void main() { gl_FragColor = vec4(8.0 / 255.0, 0.0, 8.0 / 255.0, 0.0); }',
+    });
+    // umgekehrte Saat (Jelly-Glanz): der Grund trägt den Versatz null, der Körper keinen — das Feld misst innen den Abstand zum Umriss
+    this.maskeInnenMat = new ShaderMaterial({
+      side: DoubleSide,
+      depthTest: false,
+      depthWrite: false,
+      blending: NoBlending,
+      uniforms: { uPar: { value: 0 }, uParR: U.uParR, uKamAbstand: U.uKamAbstand, uGrund: { value: 0 } },
+      vertexShader: SICHT_VS + 'uniform float uGrund; attribute vec3 aGrund; void main() { gl_Position = sicht(mix(position, aGrund, uGrund)); }',
+      fragmentShader: 'void main() { gl_FragColor = vec4(0.0); }',
     });
     this.flutMat = new ShaderMaterial({
       depthTest: false,
@@ -897,10 +935,14 @@ export class BlaupauseBild {
     this.punkteSicht.geometry = g;
     this.punkteVerdeckt.geometry = g;
   }
-  /** Lava im Jelly (je Blase zwei Ellipsoide in der Welt; im Fenster aufs Bild gerechnet) */
+  /** Lava im Jelly (je Blase zwei Ellipsoide in der Welt; im Fenster aufs Bild gerechnet), Kontaktbohne, Teile mit Glanz */
   private lavaFormen: readonly LavaForm[] = [];
-  lava(k: readonly LavaForm[]): void {
+  private kontaktForm: LavaForm | null = null;
+  private glanzTeile: readonly { c: P3; r: number }[] = [];
+  lava(k: readonly LavaForm[], kontakt: LavaForm | null = null, glanz: readonly { c: P3; r: number }[] = []): void {
     this.lavaFormen = k.slice(0, 2 * MAX_LAVA);
+    this.kontaktForm = kontakt;
+    this.glanzTeile = glanz.slice(0, MAX_LAVA);
   }
   /** Bläschen im Jelly (Mitte und Halbmesser in der Welt) */
   blasen(b: readonly { p: P3; r: number }[]): void {
@@ -997,6 +1039,55 @@ export class BlaupauseBild {
     }
     return quelle.texture;
   }
+
+  /** Jelly: Abstand jedes Bildpunkts des Körpers zum Umriss (für den Glanz am Rand), Reichweite in Bildpunkten des Felds */
+  private randFeld(kam: OrthographicCamera, mw: number, mh: number, weit: number): Texture {
+    const paar = this.FELDER[0]!;
+    if (paar[0].width !== mw || paar[0].height !== mh) {
+      paar[0].setSize(mw, mh);
+      paar[1].setSize(mw, mh);
+    }
+    const r = this.r;
+    r.setRenderTarget(paar[0]);
+    // die Saat als Fläche zeichnen (Löschen mit Deckkraft 0 setzt in three.js alle Kanäle auf 0: vormultiplizierte Deckkraft)
+    r.render(this.szSaat, kam);
+    this.maske.material = this.maskeInnenMat;
+    r.render(this.szMaske, kam);
+    this.maske.material = this.maskeMat;
+    let quelle = paar[0];
+    let ziel = paar[1];
+    const schritte: number[] = [];
+    for (let k = 2 ** (Math.ceil(Math.log2(weit + 1)) - 1); k >= 1; k /= 2) schritte.push(k);
+    schritte.push(1);
+    (this.flutMat.uniforms.uGroesse!.value as Vector2).set(mw, mh);
+    for (const st of schritte) {
+      this.flutMat.uniforms.tQuelle!.value = quelle.texture;
+      this.flutMat.uniforms.uSchritt!.value = st;
+      r.setRenderTarget(ziel);
+      r.render(this.szFlut, kam);
+      const t = quelle;
+      quelle = ziel;
+      ziel = t;
+    }
+    return quelle.texture;
+  }
+  /** Saat des Abstandsfelds (Versatz null) über das ganze Ziel */
+  private readonly szSaat = (() => {
+    const sz = new Scene();
+    const m = new Mesh(
+      new PlaneGeometry(2, 2),
+      new ShaderMaterial({
+        depthTest: false,
+        depthWrite: false,
+        blending: NoBlending,
+        vertexShader: 'void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
+        fragmentShader: 'void main() { gl_FragColor = vec4(8.0 / 255.0, 0.0, 8.0 / 255.0, 0.0); }',
+      }),
+    );
+    m.frustumCulled = false;
+    sz.add(m);
+    return sz;
+  })();
 
   /**
    * Feld für die Glättung im Bild: Blicknormale, Tiefe, Dicke des Körpers, weichgezeichnet. Halbmesser ≈ 4,5 Kanten des Netzes (ohne
@@ -1155,7 +1246,7 @@ export class BlaupauseBild {
       const q = this.lavaHilf;
       const R = this.lavaRe;
       const O = this.lavaOb;
-      this.lavaFormen.forEach((s, i) => {
+      const insBild = (s: LavaForm, aus: Vector4, ausE: Vector4): void => {
         q.set(s.c[0], s.c[1], s.c[2]).project(kam);
         const [xx, xy, xz, yy, yz, zz] = s.m;
         const mal = (a: Vector3, b: Vector3): number =>
@@ -1167,10 +1258,28 @@ export class BlaupauseBild {
         const det = Math.max(1e-9, e00 * e11 - e01 * e01);
         const spur = 0.5 * (e00 + e11);
         const klein = Math.sqrt(Math.max(1e-6, spur - Math.sqrt(Math.max(0, spur * spur - det))));
-        lv[i]!.set(rect.x + (q.x * 0.5 + 0.5) * rect.w, rect.y + (q.y * 0.5 + 0.5) * rect.h, klein, s.ton);
-        le[i]!.set(e11 / det, -e01 / det, e00 / det, 0);
-      });
+        aus.set(rect.x + (q.x * 0.5 + 0.5) * rect.w, rect.y + (q.y * 0.5 + 0.5) * rect.h, klein, s.ton);
+        ausE.set(e11 / det, -e01 / det, e00 / det, 0);
+      };
+      this.lavaFormen.forEach((s, i) => insBild(s, lv[i]!, le[i]!));
       j.uLavaZahl!.value = Math.floor(this.lavaFormen.length / 2);
+      if (this.kontaktForm) insBild(this.kontaktForm, j.uKontakt!.value as Vector4, j.uKontaktE!.value as Vector4);
+      j.uKontaktAn!.value = this.kontaktForm ? 1 : 0;
+      // Teile mit Glanz: Mitte im Bild und Halbmesser ihrer größten Kugel im Bild
+      const gp = j.uGlanzP!.value as Vector4[];
+      this.glanzTeile.forEach((g, i) => {
+        q.set(g.c[0], g.c[1], g.c[2]).project(kam);
+        gp[i]!.set(rect.x + (q.x * 0.5 + 0.5) * rect.w, rect.y + (q.y * 0.5 + 0.5) * rect.h, g.r * f.ppu, 1);
+      });
+      j.uGlanzZahl!.value = this.glanzTeile.length;
+      // Glanz am Umriss: Abstand zum Umriss innen (bis ⅓ des größten Teils), Halbmesser in Bildpunkten
+      const Rm = Math.max(4, this.grossHalbmesser * f.ppu);
+      const SSj = this.SS;
+      const mwj = Math.round(rect.w * SSj);
+      const mhj = Math.round(rect.h * SSj);
+      if (this.glanzTeile.length) j.tRand!.value = this.randFeld(kam, mwj, mhj, 0.35 * Rm * SSj + 3);
+      U.uFeldGr.value.set(mwj, mhj);
+      U.uSS.value = SSj;
       this.koerper.material = this.jellyMat;
     } else this.koerper.material = (f.art === 'logo' ? this.logoMat : this.papierMat) as Material;
     // Glättung im Bild: Feld des Körpers zeichnen, dann waagerecht und senkrecht weichzeichnen
