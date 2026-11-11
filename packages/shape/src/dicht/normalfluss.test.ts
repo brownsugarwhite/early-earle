@@ -184,13 +184,18 @@ describe('Normalfluss', () => {
     }
   });
 
-  it('ohne Normalfluss geraten um eine Linie, die nur aufliegt, Punkte auf die andere Seite der Mittelebene', () => {
+  it('ohne Normalfluss und ohne die Wand geraten um eine Linie, die nur aufliegt, Punkte auf die andere Seite der Mittelebene', () => {
     const b = kugelMitLoops(true);
     const start = Float64Array.from(b.h.pos);
-    const zb = new LoopZug(b.h, b.loops, null, true, 'kurven', 'geometrie', { normalfluss: false });
+    const zb = new LoopZug(b.h, b.loops, null, true, 'kurven', 'geometrie', { normalfluss: false, wand: false });
     spielen(zb, b.loops, [50, -30, 60, 0], 5, 60);
     // gemessen: 10 Punkte
     expect(drueben(start, b.h.pos)).toBeGreaterThan(0);
+    // mit der Wand an der Spiegelebene (`hautWand`, seit dem 11.11.) kommt auch dann keiner hinüber
+    const c = kugelMitLoops(true);
+    const zc = new LoopZug(c.h, c.loops, null, true, 'kurven', 'geometrie', { normalfluss: false });
+    spielen(zc, c.loops, [50, -30, 60, 0], 5, 60);
+    expect(drueben(start, c.h.pos)).toBe(0);
   });
 });
 

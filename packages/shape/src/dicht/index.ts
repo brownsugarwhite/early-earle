@@ -43,6 +43,8 @@ export {
   einfluss,
   einflussBereich,
   hautAus,
+  hautSeiten,
+  hautWand,
   hautNormalen,
   kurveAbtasten,
   kurveAnheften,

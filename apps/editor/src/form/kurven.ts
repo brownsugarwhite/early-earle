@@ -75,6 +75,7 @@ import {
   knochenDrehen,
   knochenWinkel,
   kreuzungenZwischen,
+  hautSeiten,
   kurveAbtasten,
   loopAusSchnitt,
   loopEinsetzen,
@@ -262,11 +263,17 @@ const DAVON_SCHUTZ = new URLSearchParams(location.search).get('davon') !== '0';
  * immer, `?normalfluss=0` nie (zum Vergleichen).
  */
 const NORMALFLUSS = new URLSearchParams(location.search).get('normalfluss');
-const RICHTUNG_OPT: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean; normalfluss?: boolean } = {
+/**
+ * Die Wand an der Spiegelebene (11.11., `hautWand`): Kein Punkt der Haut kommt auf die Seite seines Spiegelbilds. `?wand=0`: ohne sie,
+ * wie bis zum 11.11. (nur zum Vergleichen).
+ */
+const WAND = new URLSearchParams(location.search).get('wand') !== '0';
+const RICHTUNG_OPT: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean; normalfluss?: boolean; wand?: boolean } = {
   ...(RICHTUNG ? { richtung: true } : {}),
   ...(MAXNORMALEN ? { maxNormalen: true } : {}),
   ...(VORSICHT ? {} : { vorsicht: false }),
   ...(NORMALFLUSS === '1' ? { normalfluss: true } : NORMALFLUSS === '0' ? { normalfluss: false } : {}),
+  ...(WAND ? {} : { wand: false }),
 };
 /** Der Zug löst nur einen Bereich um die bewegten Stellen (mit Gedächtnis und in der Pose); aus den Kurven die ganze Haut */
 const mitBereich = (): boolean => grund !== null || HAUT !== 'kurven';
@@ -1072,6 +1079,59 @@ knopfPose.addEventListener('click', () => {
   allesZeigen();
 });
 
+/**
+ * Die Anzeige verschmilzt die Hälften an der Spiegelebene, wie „Merge“ beim Spiegeln in Blender (11.11., Florian: „ich kann ganz
+ * normal über die Spiegelkante ziehen und das Mesh verschmilzt dann“). Die Wand im Löser (`hautWand`) hält jeden Punkt auf seiner
+ * Seite; wo die Haut dabei flach an der Ebene anliegt, fällt sie mit ihrem Spiegelbild zusammen. Diese Dreiecke (alle Ecken auf der
+ * Ebene) werden nicht gezeigt, und ihre Randpunkte bekommen die Normale eines verschmolzenen Punkts. Zur Sicherheit schneidet die
+ * Anzeige auch selbst ab: Ein Punkt, der doch einmal hinüberreicht (zwischen zwei Runden, ohne Wand), wird auf der Ebene gezeigt.
+ */
+let seitenGemerkt: { tri: Uint32Array; n: number; seite: Int8Array | null } | null = null;
+/** Seite je Punkt der Haut (`hautSeiten`: +1 die Hälfte z ≥ 0, −1 ihr Spiegelbild, 0 die Mittelkante); gemerkt je Netz */
+function hautSeite(): Int8Array | null {
+  if (!seitenGemerkt || seitenGemerkt.tri !== haut.tri || seitenGemerkt.n !== haut.n) seitenGemerkt = { tri: haut.tri, n: haut.n, seite: hautSeiten(haut) };
+  return seitenGemerkt.seite;
+}
+/** z je Punkt der Haut, wie es gezeigt wird: jede Hälfte an der Spiegelebene abgeschnitten */
+function anzeigeZ(): Float64Array {
+  const P = haut.pos;
+  const seite = hautSeite();
+  const Z = new Float64Array(haut.n);
+  for (let v = 0; v < haut.n; v++) {
+    const z = P[3 * v + 2]!;
+    const s = seite ? seite[v]! : 0;
+    Z[v] = s > 0 ? (z < 0 ? 0 : z) : s < 0 ? (z > 0 ? 0 : z) : z;
+  }
+  return Z;
+}
+let anliegendGemerkt: { aus: Uint32Array; kenn: number; index: Uint32Array } | null = null;
+/** Der Index ohne die Dreiecke, die in der Anzeige ganz auf der Spiegelebene liegen (derselbe, wenn es keine gibt) */
+function indexOhneAnliegende(I: Uint32Array, Z: Float64Array): Uint32Array {
+  const aufEbene = (d: number): boolean => Z[anzeigeQuelle[d]!] === 0;
+  let zahl = 0;
+  let kenn = 0;
+  for (let f = 0; f < I.length / 3; f++)
+    if (aufEbene(I[3 * f]!) && aufEbene(I[3 * f + 1]!) && aufEbene(I[3 * f + 2]!)) {
+      zahl++;
+      kenn = (Math.imul(kenn, 31) + f) | 0;
+    }
+  if (!zahl) return I;
+  if (anliegendGemerkt && anliegendGemerkt.aus === I && anliegendGemerkt.kenn === kenn && anliegendGemerkt.index.length === I.length - 3 * zahl) return anliegendGemerkt.index;
+  const neu = new Uint32Array(I.length - 3 * zahl);
+  let k = 0;
+  for (let f = 0; f < I.length / 3; f++) {
+    const a = I[3 * f]!;
+    const b = I[3 * f + 1]!;
+    const c = I[3 * f + 2]!;
+    if (aufEbene(a) && aufEbene(b) && aufEbene(c)) continue;
+    neu[k++] = a;
+    neu[k++] = b;
+    neu[k++] = c;
+  }
+  anliegendGemerkt = { aus: I, kenn, index: neu };
+  return neu;
+}
+
 /** die Normalen der Haut, wie sie zuletzt gezeigt wurde (für das Maß, ob die Form noch in Bewegung ist: `rundeMitWeg`) */
 let normalenGezeigt: { haut: Haut; nor: Float64Array } | null = null;
 function hautZeigen(): void {
@@ -1093,7 +1153,10 @@ function hautZeigen(): void {
   const nor = hautNormalen(haut);
   normalenGezeigt = { haut, nor };
   const P = haut.pos;
-  const I = maulGezeigt ? indexOhneOeffnung(maulGezeigt.m.offen) : anzeigeIndex;
+  // jede Hälfte an der Spiegelebene abgeschnitten (`anzeigeZ`), ohne die Dreiecke, die danach ganz auf ihr liegen
+  const Z = anzeigeZ();
+  const seite = hautSeite();
+  const I = indexOhneAnliegende(maulGezeigt ? indexOhneOeffnung(maulGezeigt.m.offen) : anzeigeIndex, Z);
   if (hautGeometrie.index?.array !== I) hautGeometrie.setIndex(new BufferAttribute(I, 1));
   const N = anzeigeQuelle.length;
   // Normale je gezeigtem Punkt aus seinen Dreiecken (bei doppelten nur die seiner Seite)
@@ -1102,10 +1165,10 @@ function hautZeigen(): void {
     const [a, b, c] = [anzeigeQuelle[I[3 * f]!]!, anzeigeQuelle[I[3 * f + 1]!]!, anzeigeQuelle[I[3 * f + 2]!]!];
     const abx = P[3 * b]! - P[3 * a]!;
     const aby = P[3 * b + 1]! - P[3 * a + 1]!;
-    const abz = P[3 * b + 2]! - P[3 * a + 2]!;
+    const abz = Z[b]! - Z[a]!;
     const acx = P[3 * c]! - P[3 * a]!;
     const acy = P[3 * c + 1]! - P[3 * a + 1]!;
-    const acz = P[3 * c + 2]! - P[3 * a + 2]!;
+    const acz = Z[c]! - Z[a]!;
     const fx = aby * acz - abz * acy;
     const fy = abz * acx - abx * acz;
     const fz = abx * acy - aby * acx;
@@ -1118,18 +1181,21 @@ function hautZeigen(): void {
   }
   for (let d = 0; d < N; d++) {
     const q = anzeigeQuelle[d]!;
-    const h = anzeigeKante[d]!;
+    // ein Punkt, der an der Spiegelebene anliegt, ist dort mit seinem Spiegelbild verschmolzen: Es zählen nur die gezeigten
+    // Dreiecke, und die Normale liegt in der Ebene (wie bei einem Punkt der Mittelkante)
+    const verschmolzen = seite !== null && seite[q] !== 0 && Z[q] === 0;
+    const h = verschmolzen ? 1 : anzeigeKante[d]!;
     const el = Math.hypot(eigen[3 * d]!, eigen[3 * d + 1]!, eigen[3 * d + 2]!) || 1;
     let nx = (1 - h) * nor[3 * q]! + (h * eigen[3 * d]!) / el;
     let ny = (1 - h) * nor[3 * q + 1]! + (h * eigen[3 * d + 1]!) / el;
-    let nz = (1 - h) * nor[3 * q + 2]! + (h * eigen[3 * d + 2]!) / el;
+    let nz = verschmolzen ? 0 : (1 - h) * nor[3 * q + 2]! + (h * eigen[3 * d + 2]!) / el;
     const nl = Math.hypot(nx, ny, nz) || 1;
     nx /= nl;
     ny /= nl;
     nz /= nl;
     hautLagen[3 * d] = P[3 * q]!;
     hautLagen[3 * d + 1] = P[3 * q + 1]!;
-    hautLagen[3 * d + 2] = P[3 * q + 2]!;
+    hautLagen[3 * d + 2] = Z[q]!;
     hautNormalenPuffer[3 * d] = nx;
     hautNormalenPuffer[3 * d + 1] = ny;
     hautNormalenPuffer[3 * d + 2] = nz;
@@ -5061,6 +5127,8 @@ if (BEHALTEN) behaltenesHolen();
     return { an: grund !== null, kiefer: pose.kiefer, schaedel: pose.schaedel, blendshape: max, punkte: haut.n };
   },
   dreiecke: () => Array.from(haut.tri),
+  /** die Haut, wie sie gezeigt wird (an der Spiegelebene verschmolzen): Lagen je gezeigtem Punkt und Dreiecke */
+  anzeige: () => ({ lagen: Array.from(hautLagen), dreiecke: Array.from(hautGeometrie.index?.array ?? []) }),
   meldung: () => meldung,
   bild: (a: Ansicht, p: V3): { x: number; y: number } => {
     const r = felder[a].getBoundingClientRect();
