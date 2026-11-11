@@ -3,6 +3,10 @@
 **Branch `claude/form-zuerst`, Arbeitsbaum `.claude/worktrees/form-zuerst`.** Diese Datei ist der Einstieg. Die alte Übergabe aus der
 Käfig-Zeit (Stand 04.11.) steht in der Git-Geschichte: `git show 82aed6dc:docs/UEBERGABE.md`.
 
+**Nebenbei (11.11., andere Sitzung, nur Messung):** Florians Frage nach Lofts wie in Plasticity ist an seinen zwei Formen gemessen,
+[`docs/research/2026-11-11-loft-messung.md`](research/2026-11-11-loft-messung.md). Am Fenster und am Löser ist dafür nichts geändert;
+der Messcode liegt in `apps/editor/scripts/pruefen/loft-2026-11-11/`. Wissen für den späteren Schritt „Teile anfügen“.
+
 **Auftrag (Florian, 10.11.):** Die Schritte G1–G4 aus dem Nachtrag von
 [`docs/research/2026-11-10-gegenpruefung-kurven-loeser.md`](research/2026-11-10-gegenpruefung-kurven-loeser.md) bauen
 („`?gewichte=geometrie` als Zielmodell“): G1 Einsetzen ausschreiben, G2 Anzeige, G3 durchgehend rechnen, G4 Schweres in den Worker.

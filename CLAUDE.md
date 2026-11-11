@@ -1788,6 +1788,16 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
   - Fallen: Eine Messkopie des Lösers erst mit `MODE=gleichheit` gegen das Original prüfen. Varianten immer auch auf einem
     dichten Netz messen (`DREIECKE=30000`); Pendeln und Kriechen zeigen sich dort zuerst. Neun Prüfer parallel haben Florians
     Wochenlimit aufgebraucht: große Fächer nur nach Rückfrage.
+- **2026-11-11: Loft-Messung an Florians Formen** (seine Frage nach Plasticity: „Warum waren Lofts für uns keine bessere
+  Lösung?“; von einer anderen Sitzung, am Fenster und am Löser nichts geändert). Verworfen war am 12.10. nur der Loft aus drei
+  Silhouetten; ein Loft durch gezeichnete Linien war nie gemessen. Ergebnis
+  [`docs/research/2026-11-11-loft-messung.md`](docs/research/2026-11-11-loft-messung.md): Am Schlauch mit Ringen quer (Schwanz des
+  Firefish) dieselbe Form (Mitte 0,2, größter 2,0 Einheiten), Zug 0,3–3,5 ms in einem Schritt statt 7–8 Runden mit 350–610 ms.
+  Schläuche sind aber nur 10 % der Fläche des Firefish und beim Bird keiner; an einer Abzweigung wird der Loft eine Blase.
+  Felder zwischen den Linien: 20 und 27, nur ein Viertel bis ein Drittel der Fläche vierseitig; Fläche nur aus den Randlinien
+  meist 1–3 % der Feldgröße neben der Haut, einzelne 9–19 %, Knick an den Linien im Mittel 4–12°, bis 26°. Empfehlung: keine
+  Richtungsänderung; bei „Teile anfügen“ Schwanz, Hals, Horn, Bein zuerst als Loft prüfen (offen: weicher Übergang). Messcode
+  `apps/editor/scripts/pruefen/loft-2026-11-11/`, Bilder `docs/progress/editor/loft-*-2026-11-11.jpg`.
 - Die vorhandenen Dokumente (`docs/GDD.md`, `docs/STYLE.md`, `docs/PRODUCTION.md`, ADRs) beschreiben den **Prototyp**. Sie sind Erfahrungsschatz und Ausgangsmaterial, kein Auftrag. Wo der neue Plan abweicht, gilt der neue Plan.
 - **Vor jeder Planung lesen:** die aktuelle Übergabe [`docs/UEBERGABE.md`](docs/UEBERGABE.md) mit dem Einstiegsdokument der laufenden Arbeit; für Spiel-Themen zusätzlich [`docs/prototyp/README.md`](docs/prototyp/README.md) (Abschluss, Entscheidungen, Lehren, offene Punkte).
 
