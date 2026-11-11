@@ -382,3 +382,24 @@ bis zu einer Schicht, die umso dicker ist, je näher diese Unterseite am Boden l
 Haut aus der Abstandstransformation der Lava (`AbstandFeld` in `lava.ts`, als 3D-Textur). Maß = größter Teil, bei verwinkelten Wesen aus
 der Körperhöhe (≥ 0,24 der Höhe); weich gerechnet und rund geschnitten. Commit `79abefc9`, Artefakt Version 11, Bilder
 `docs/progress/editor/editor-kontaktbereiche{,-fisch}-2026-11-11.jpg`.
+
+**Danach (Florian, mit markierten Bildern `docs/look/editor/blaupause/feedback/glanz-markiert-2026-11-11.jpg` und
+`kontakt-zu-hoch-2026-11-11.png`: „rote Pfeile auf den Glanzbereich, der mich stört … teilweise an unlogischen Stellen und an hohen
+runden Teilen fehlt es. Beim Kontaktbereich geht er jetzt zu hoch und ist zu weit von der unteren Kontur entfernt, lieber etwas breiter
+und weniger Höhe“):**
+- **Glanz an der Kontur** statt an der Neigung der Fläche (die gab in Kehlen Striche und an kleinen Teilen nur Haarstriche): ein
+  Abstandsfeld im Inneren der Silhouette des 3D-Fensters (halbe Auflösung, Saat = Hintergrund), daraus je Teil der Halbmesser (größter
+  Abstand auf dem Weg nach innen, weich gerechnet). Band in 0,12 R Abstand zur Kontur, Breite ≈ 1,24 √R Bildpunkte bei 100 % (mindestens
+  3,4), wo die Fläche nach oben links zeigt; Strich und Punkt nach Länge (Kugel wie die Vorlage: Strich 110°–146°, Punkt um 160°; an
+  kleinen Teilen über größere Winkel, der Punkt wandert die linke Flanke hinunter). Liegt Richtung Licht innerhalb von 2,5 Strichbreiten
+  ein anderes Teil, wird das Band schmaler bis zu nichts (keine Striche in Kehlen und Gabeln). Als Feld gezeichnet, leicht weich gerechnet
+  und scharf geschnitten: runde Enden, keine Knicke der Dreiecke.
+- **Kontakt als flache Bohne** (Schalter „Kontakt flach“ unter Anzeige, Standard an; aus = Bodenbereich durchs Glas wie Version 11): drin,
+  wer von hier schräg nach links unten und nach rechts unten (je 35°) um D aus dem um den Rand verkleinerten Körper fällt — unten an jeder
+  nach unten zeigenden Kontur eine Bohne mit gewölbter Oberkante, die an steilen Stellen ausläuft. Rand 0,045 · Maß, D = 0,46 · Maß ×
+  (1 − Höhe der Kontur über dem Boden / max(0,8 · Maß, 0,5 · Körperhöhe)); unter 35 % von D keine Bohne (sonst Flecken an hohen Teilen).
+  Kugel: Bohne ≈ ⅙ der Höhe statt ⅓, 10 Bildpunkte über der Kontur.
+- **Verworfen (gemessen):** Richtung aus dem Gefälle des Abstandsfelds (folgt der Treppe der Bildpunkte, Striche zerfallen in Perlen);
+  feste Winkelbereiche (auf geraden Flanken alles oder nichts); Kontakt als Band mit Höhe am Bildpunkt (dünne Sichel) oder parallel zur
+  Kontur (Schale statt Bohne). **Falle:** weich gerechnete Felder in 8 Bit fransen an flachen Stellen aus → halbe Gleitkommazahlen.
+Commit `938304c5`, Artefakt Version 12, Bilder `docs/progress/editor/editor-glanz-kontakt{,-ansichten,-bogen}-2026-11-11.png`.
