@@ -403,3 +403,18 @@ und weniger Höhe“):**
   feste Winkelbereiche (auf geraden Flanken alles oder nichts); Kontakt als Band mit Höhe am Bildpunkt (dünne Sichel) oder parallel zur
   Kontur (Schale statt Bohne). **Falle:** weich gerechnete Felder in 8 Bit fransen an flachen Stellen aus → halbe Gleitkommazahlen.
 Commit `938304c5`, Artefakt Version 12, Bilder `docs/progress/editor/editor-glanz-kontakt{,-ansichten,-bogen}-2026-11-11.png`.
+
+**Danach (Florian, Bild `docs/look/editor/blaupause/feedback/kanten-outline-2026-11-11.png`: „bei harten Kanten ist auch nochmals eine
+extra dünne Outline, diese soll auch verschwinden; passt die Outline, die sich selbst bildet, schon richtig? Es sieht manchmal aus, als
+würde es schweben. Und am unteren Oberkiefer sollte doch auch eine Outline entstehen, wenn es so überlappt, oder nicht?“):**
+- **Die dünne Extra-Outline** war die Kantenlinie selbst: Liegt eine Linie mit Kante auf dem Umriss, zeichnete die Logo-Ansicht sie samt
+  weißem Hof neben die dicke Kontur — daher das Schweben. Linien und Höfe im Abstand von gut einer Linienbreite zum Umriss zeichnen dort
+  nicht mehr (Probe des Abstandsfelds rundum); gewählte Linien bleiben sichtbar. Die verjüngende Kontur selbst war richtig.
+- **Kontur am überlappenden Kiefer:** Das offene Maul zählte für die Maske als außen, die verjüngende Kontur davor wurde verworfen; und
+  das Innere war Petrol wie die Kontur. Jetzt gehört das Innere zur Silhouette (`maskeInnen`), es hat den Ton des Grunds (wie ein Loch im
+  Abzeichen, von hinten der helle), und an Kiefern und Ohren vor dem offenen Maul läuft die verjüngende Kontur.
+- **Passer „Wandel“ in der Pose:** Der Puffer `aGrund` (Lage in der Grundform) wurde in `editor.ts` nie gefüllt — in jeder Pose fiel die
+  Platte der Grundform und damit das ganze Petrol weg. Jetzt aus `grund.haut` (an der Spiegelebene abgeschnitten wie die Anzeige).
+- Nachstellen: „strange bird“, Linie 1 wählen, „Fressen“. **Offen:** Linien, die hinter der verjüngenden Kontur durchlaufen, zeigen bei
+  starkem Zoom eine kleine Treppe am Hof (Tiefentest gegen die Kontur), nicht angefasst.
+Commit `9224c45a`, Artefakt Version 13, Bilder `docs/progress/editor/editor-{kante-umriss-maul,maul-offen-front}-2026-11-11.png`.
