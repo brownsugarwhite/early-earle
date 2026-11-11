@@ -207,6 +207,15 @@ const LINIE_FS = [
   // Griffe mit Kontrast: das Bild des Fensters ohne Griffe (`tUnter`) entscheidet je Bildpunkt — eine dunkle Tinte wird über Dunklem
   // weiß, eine helle über sehr Hellem dunkel
   'uniform sampler2D tUnter; uniform float uKontrast;',
+  // Logo: Linien, die auf dem Umriss liegen, verdoppeln die dicke Kontur (mit ihrem weißen Hof sieht es aus wie eine zweite, dünne
+  // Outline, die schwebt; Florian 11.11. nachts) — dort zeichnet nur die Kontur; gewählte Linien bleiben sichtbar
+  'uniform float uRandWeg, uBreitHart;',
+  'float amRand() {',
+  '  if (uRandWeg < 0.5 || uTintenArt < 0.5 || uTintenArt > 1.5) return 0.0;',
+  '  float rr = (0.5 * uBreitHart + 3.25) * uDpr * uSkal; vec2 fc = gl_FragCoord.xy; float aus = step(0.6, abstand(fc));',
+  '  for (int i = 0; i < 12; i++) { float w = float(i) * 0.5235988; aus = max(aus, step(0.6, abstand(fc + rr * vec2(cos(w), sin(w))))); }',
+  '  return aus;',
+  '}',
   'vec3 kontrast(vec3 col) {',
   '  vec3 u = texture2D(tUnter, (gl_FragCoord.xy - uVp.xy) / uVp.zw).rgb;',
   '  float L = dot(u, vec3(0.2126, 0.7152, 0.0722)), Lc = dot(col, vec3(0.2126, 0.7152, 0.0722));',
@@ -218,8 +227,9 @@ const LINIE_FS = [
   '  float u = clamp(vL.x / max(vLen, 1e-4), 0.0, 1.0); float hw = mix(vHw.x, vHw.y, u);',
   '  float dist = length(vL - vec2(u * vLen, 0.0)); float h = mix(vHh.x, vHh.y, u);',
   '  float sg = sigma(gl_FragCoord.xy);',
+  '  float weg = amRand() * (1.0 - max(vWahl.x, vWahl.y));',
   '  if (uHalo > 0.0) {',
-  '    float ha = uHalo * uDpr * uSkal; float hue = (1.0 - smoothstep(hw + ha - 0.6, hw + ha + 0.6, dist)) * smoothstep(0.45, 0.9, h) * uAlpha;',
+  '    float ha = uHalo * uDpr * uSkal; float hue = (1.0 - smoothstep(hw + ha - 0.6, hw + ha + 0.6, dist)) * smoothstep(0.45, 0.9, h) * uAlpha * (1.0 - weg);',
   '    if (hue < 0.004) discard;',
   '    gl_FragColor = vec4(gegen(sg), hue); return;',
   '  }',
@@ -236,7 +246,7 @@ const LINIE_FS = [
   '  vec3 col = uFest > 0.5 ? hart : mix(weich, hart, smoothstep(0.05, 0.6, h));',
   '  col = mix(col, RT, mix(vWahl.x, vWahl.y, u));',
   '  if (uKontrast > 0.5) col = kontrast(col);',
-  '  float a = kern * an * uAlpha;',
+  '  float a = kern * an * uAlpha * (1.0 - weg);',
   '  if (a < 0.004) discard;',
   '  gl_FragColor = vec4(col, a);',
   '}',
@@ -436,6 +446,8 @@ export class BlaupauseBild {
   private readonly koerper: Mesh;
   private readonly innen: Mesh;
   private readonly maske: Mesh;
+  /** das Innere des Mauls in der Maske: ein offenes Maul ist Teil der Silhouette, kein Loch (sonst fiele dort die Kontur weg) */
+  private readonly maskeInnen: Mesh;
   private readonly szKoerper = new Scene();
   /**
    * Kontur der Ursprungsform (`kurven.ts`, Florian 11.11. spätabends: „echte Kanten sollen in den 3 Ansichten wieder die gleiche
@@ -697,11 +709,18 @@ export class BlaupauseBild {
       ].join('\n'),
     });
     // das Innere des Mauls (in der Pose): dunkel, ohne Stufen
+    // Logo: das Innere wie ein Loch im Abzeichen (Ton des Grunds, von hinten der helle): so sieht man an Kiefern, die davor liegen, die
+    // verjüngende Kontur (Florian 11.11. nachts: „am unteren Oberkiefer sollte doch auch eine Outline entstehen“ — in Petrol verschwand
+    // sie im gleich gefärbten Inneren)
     this.innenMat = new ShaderMaterial({
       side: DoubleSide,
-      uniforms: this.mitU({ uPar: { value: 0 } }),
+      uniforms: this.mitU({ uPar: { value: 0 }, uGrundV: { value: farbe3(FARBEN_START.grund) }, uGrundH: { value: farbe3(FARBEN_START.grundHinten) } }),
       vertexShader: SICHT_VS + 'void main() { gl_Position = sicht(position); }',
-      fragmentShader: [SCHEMA, 'void main() { gl_FragColor = vec4(uTintenArt > 1.5 ? vec3(0.0, 0.3, 0.3) : (uTintenArt > 0.5 ? strich(sigma(gl_FragCoord.xy)) : mix(mix(WEISS, uTinte, 0.55), mix(uTinte, WEISS, 0.18), kipp(sigma(gl_FragCoord.xy)))), 1.0); }'].join('\n'),
+      fragmentShader: [
+        SCHEMA,
+        'uniform vec3 uGrundV, uGrundH;',
+        'void main() { float k = kipp(sigma(gl_FragCoord.xy)); gl_FragColor = vec4(uTintenArt > 1.5 ? vec3(0.0, 0.3, 0.3) : (uTintenArt > 0.5 ? mix(uGrundV, uGrundH, k) : mix(mix(WEISS, uTinte, 0.55), mix(uTinte, WEISS, 0.18), k)), 1.0); }',
+      ].join('\n'),
     });
     // Saat des Abstandsfelds: jeder Bildpunkt des Körpers trägt den Versatz null
     this.maskeMat = new ShaderMaterial({
@@ -864,6 +883,7 @@ export class BlaupauseBild {
           uPar: { value: 0 },
           tUnter: { value: null },
           uKontrast: { value: o.kontrast ? 1 : 0 },
+          uRandWeg: { value: o.kontrast ? 0 : 1 },
         }),
         vertexShader: LINIE_VS,
         fragmentShader: LINIE_FS,
@@ -916,7 +936,10 @@ export class BlaupauseBild {
     this.szKoerper.add(this.koerper, this.innen);
     this.maske = new Mesh(new BufferGeometry(), this.maskeMat);
     this.maske.frustumCulled = false;
-    this.szMaske.add(this.maske);
+    this.maskeInnen = new Mesh(new BufferGeometry(), this.maskeMat);
+    this.maskeInnen.frustumCulled = false;
+    this.maskeInnen.visible = false;
+    this.szMaske.add(this.maske, this.maskeInnen);
     const lGeo = streckenGeo([]);
     this.linienSicht = new Mesh(lGeo, this.matSicht);
     this.linienVerdeckt = new Mesh(lGeo, this.matVerdeckt);
@@ -950,8 +973,10 @@ export class BlaupauseBild {
     if (g) {
       this.innen.geometry.dispose();
       this.innen.geometry = g;
+      this.maskeInnen.geometry = g;
     }
     this.innen.visible = g !== null;
+    this.maskeInnen.visible = g !== null;
   }
   linien(seg: readonly Strecke[]): void {
     const g = streckenGeo(seg);
@@ -1100,8 +1125,10 @@ export class BlaupauseBild {
     lu.uPar!.value = this.jellyMat.uniforms.uPar!.value;
     const mat = this.maske.material;
     this.maske.material = this.leerMat;
+    this.maskeInnen.material = this.leerMat;
     r.render(this.szMaske, kam);
     this.maske.material = mat;
+    this.maskeInnen.material = mat;
     let quelle = A;
     let ziel = B;
     (this.flutMat.uniforms.uGroesse!.value as Vector2).set(mw, mh);
@@ -1556,6 +1583,8 @@ export class BlaupauseBild {
     const u = this.hgLogoMat.uniforms;
     (u.uGrundV!.value as Vector3).copy(farbe3(F.grund));
     (u.uGrundH!.value as Vector3).copy(farbe3(F.grundHinten));
+    (this.innenMat.uniforms.uGrundV!.value as Vector3).copy(farbe3(F.grund));
+    (this.innenMat.uniforms.uGrundH!.value as Vector3).copy(farbe3(F.grundHinten));
     (u.uKontur!.value as Vector3).copy(farbe3(F.kontur));
     // Verlauf: die zwei Enden aus den Farbfeldern, die Mitte aufgehellt wie in der Vorlage, der Schatten satter und dunkler
     const A = roh(F.verlaufA);

@@ -1239,6 +1239,9 @@ function hautZeigen(): void {
   const I = indexOhneAnliegende(maulGezeigt ? indexOhneOeffnung(maulGezeigt.m.offen) : anzeigeIndex, Z);
   if (hautGeometrie.index?.array !== I) hautGeometrie.setIndex(new BufferAttribute(I, 1));
   const N = anzeigeQuelle.length;
+  // Lage in der Grundform (Passer „Wandel“ in der Pose: die Kontur der Grundform gegen die der Pose); ohne Pose die Lage selbst. Der
+  // Puffer blieb bis 11.11. nachts leer (alle Punkte im Ursprung): In jeder Pose fiel die Platte der Grundform und damit das Petrol weg
+  const G = grund && grund.haut.n === haut.n ? grund.haut.pos : null;
   // Normale je gezeigtem Punkt aus seinen Dreiecken (bei doppelten nur die seiner Seite)
   const eigen = new Float64Array(3 * N);
   for (let f = 0; f < I.length / 3; f++) {
@@ -1276,12 +1279,25 @@ function hautZeigen(): void {
     hautLagen[3 * d] = P[3 * q]!;
     hautLagen[3 * d + 1] = P[3 * q + 1]!;
     hautLagen[3 * d + 2] = Z[q]!;
+    if (G) {
+      // jede Hälfte an der Spiegelebene abgeschnitten wie `anzeigeZ`
+      const sq = seite ? seite[q]! : 0;
+      const gz = G[3 * q + 2]!;
+      hautGrundPuffer[3 * d] = G[3 * q]!;
+      hautGrundPuffer[3 * d + 1] = G[3 * q + 1]!;
+      hautGrundPuffer[3 * d + 2] = sq > 0 ? Math.max(0, gz) : sq < 0 ? Math.min(0, gz) : gz;
+    } else {
+      hautGrundPuffer[3 * d] = P[3 * q]!;
+      hautGrundPuffer[3 * d + 1] = P[3 * q + 1]!;
+      hautGrundPuffer[3 * d + 2] = Z[q]!;
+    }
     hautNormalenPuffer[3 * d] = nx;
     hautNormalenPuffer[3 * d + 1] = ny;
     hautNormalenPuffer[3 * d + 2] = nz;
   }
   hautGeometrie.attributes.position!.needsUpdate = true;
   hautGeometrie.attributes.normal!.needsUpdate = true;
+  hautGeometrie.attributes.aGrund!.needsUpdate = true;
   hautGeometrie.computeBoundingSphere();
   hautGeometrie.computeBoundingBox();
   lavaVersion++;
