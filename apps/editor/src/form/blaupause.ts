@@ -411,6 +411,15 @@ export class BlaupauseBild {
   private readonly innen: Mesh;
   private readonly maske: Mesh;
   private readonly szKoerper = new Scene();
+  /**
+   * Kontur der Ursprungsform (`kurven.ts`, Florian 11.11. spätabends: „echte Kanten sollen in den 3 Ansichten wieder die gleiche
+   * verjüngende Outline bekommen … in gleicher Dicke und Farbe wie meine Kanten“): der Körper umgestülpt (Rückseiten), im Bild längs
+   * der Normale nach außen geschoben, umso weiter, je mehr die Fläche zur Seite zeigt — an Umrissen und echten Kanten eine Linie, die
+   * sich verjüngt, wo die Fläche zum Betrachter dreht
+   */
+  private readonly szUmriss = new Scene();
+  private readonly umrissMat: ShaderMaterial;
+  private readonly umriss: Mesh;
   private readonly szMaske = new Scene();
   private readonly szFlut = new Scene();
   private readonly szHg = new Scene();
@@ -878,6 +887,25 @@ export class BlaupauseBild {
     this.pMatSicht = punktMat({});
     this.pMatVerdeckt = punktMat({ verdeckt: true, alpha: 0.35 });
 
+    this.umrissMat = new ShaderMaterial({
+      side: BackSide,
+      polygonOffset: true,
+      polygonOffsetFactor: 2,
+      polygonOffsetUnits: 2,
+      uniforms: this.mitU({ uPar: { value: 0 }, uGrund: { value: 0 }, uBreite: { value: 4 } }),
+      vertexShader:
+        SICHT_VS +
+        'uniform float uGrund, uBreite; uniform vec4 uVp; attribute vec3 aGrund;\n' +
+        'void main() { vec4 clip = sicht(mix(position, aGrund, uGrund)); vec3 n = normalize(normalMatrix * normal);\n' +
+        // Richtung der Normale im Bild (in Bildpunkten, auch in nicht quadratischen Fenstern gleich lang)
+        '  vec2 r = (projectionMatrix * vec4(n, 0.0)).xy * uVp.zw; float l = length(r); r = l > 1e-9 ? r / l : vec2(0.0);\n' +
+        '  float kipp = clamp(length(n.xy) / 0.35, 0.0, 1.0);\n' +
+        '  clip.xy += r * kipp * uBreite * 2.0 / uVp.zw * clip.w; gl_Position = clip; }',
+      fragmentShader: [SCHEMA, 'void main() { gl_FragColor = vec4(strich(sigma(gl_FragCoord.xy)), 1.0); }'].join('\n'),
+    });
+    this.umriss = new Mesh(new BufferGeometry(), this.umrissMat);
+    this.umriss.frustumCulled = false;
+    this.szUmriss.add(this.umriss);
     this.koerper = new Mesh(new BufferGeometry(), this.logoMat);
     this.koerper.frustumCulled = false;
     this.innen = new Mesh(new BufferGeometry(), this.innenMat);
@@ -913,6 +941,7 @@ export class BlaupauseBild {
   hautGeometrie(g: BufferGeometry): void {
     this.koerper.geometry = g;
     this.maske.geometry = g;
+    this.umriss.geometry = g;
   }
   /** Das Innere des Mauls (null: keins) */
   innenGeometrie(g: BufferGeometry | null): void {
@@ -1291,6 +1320,11 @@ export class BlaupauseBild {
     r.setViewport(f.css.x, f.css.y, f.css.w, f.css.h);
     r.setScissor(f.css.x, f.css.y, f.css.w, f.css.h);
     r.setScissorTest(true);
+    // Logo: die verjüngende Kontur der Ursprungsform in Breite und Farbe der Kanten (4 Bildpunkte bei 100 %, wachsen mit wie die Linien)
+    if (f.art === 'logo') {
+      this.umrissMat.uniforms.uBreite!.value = 4 * this.DPR * skal;
+      r.render(this.szUmriss, kam);
+    }
     r.render(this.szKoerper, kam);
     r.render(this.szLinien, kam);
     const gs = streckenGeo(f.griffStaebe);
