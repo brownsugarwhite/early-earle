@@ -912,7 +912,8 @@ export class BlaupauseBild {
     const w = this.weichMat.uniforms;
     (w.uGroesse!.value as Vector2).set(rect.w, rect.h);
     w.uRadius!.value = Math.min(28 * this.DPR, Math.max(3 * this.DPR, 2.5 * this.kantenLaenge * f.ppu));
-    w.uSigmaZ!.value = Math.max(1, 0.05 * this.koerperRadius);
+    // Tiefensprünge (ein Teil vor dem anderen) sind viel größer als die Neigung einer Fläche über den Halbmesser der Glättung
+    w.uSigmaZ!.value = Math.max(1, 0.18 * this.koerperRadius);
     w.tQuelle!.value = this.glattA.texture;
     (w.uRichtung!.value as Vector2).set(1, 0);
     r.setRenderTarget(this.glattB);
