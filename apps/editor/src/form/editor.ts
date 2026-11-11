@@ -5977,6 +5977,8 @@ schleife();
 
 // Teststand: Haken für die Bilder (`schau.cjs`)
 (window as unknown as { __teststand: unknown }).__teststand = {
+  /** die Darstellung selbst (nur für Proben: Teile ein- und ausblenden) */
+  bild,
   form: (name: string) => formLaden(name),
   setze: (o: TeststandWert) => teststandSetzen(o),
   farbe: (o: Partial<typeof bild.farbe>) => farbeSetzen(o),

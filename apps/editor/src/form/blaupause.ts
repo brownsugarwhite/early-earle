@@ -27,8 +27,6 @@ import {
   HalfFloatType,
   InstancedBufferAttribute,
   InstancedBufferGeometry,
-  InstancedInterleavedBuffer,
-  InterleavedBufferAttribute,
   LessEqualDepth,
   LinearFilter,
   LinearSRGBColorSpace,
@@ -821,10 +819,10 @@ export class BlaupauseBild {
         // Lila nach der anderen; wo sie sich überdecken, entsteht die Kontur in Petrol. Der Rand liegt um beide.
         '    float dA = abstandV(tFeldC, fc - uPlatte), dB = abstandV(tFeldR, fc + uPlatte);',
         '    float aussen = 1.0 - smoothstep(ra - 0.7, ra + 0.7, min(dA, dB));',
-        // innen beginnen beide Platten am Körper: das Petrol liegt überall direkt an, Rosa und Lila zeigen sich nur außen (Florian 12.11.:
-        // kein Abstand zur dunklen Outline; vorher lag innen je nach Seite ein schmaler rosa oder lila Streifen dazwischen)
-        '    float pA = (1.0 - smoothstep(ri - 0.7, ri + 0.7, dA)) * smoothstep(-0.2, 0.8, dE);',
-        '    float pB = (1.0 - smoothstep(ri - 0.7, ri + 0.7, dB)) * smoothstep(-0.2, 0.8, dE);',
+        // innen beginnt jede Platte an ihrer versetzten Silhouette: auch innen zeigt sich je nach Seite Rosa oder Lila (der innere
+        // TikTok-Effekt; Florian 12.11.: „jetzt fehlt der innere TikTok-Effekt“)
+        '    float pA = (1.0 - smoothstep(ri - 0.7, ri + 0.7, dA)) * smoothstep(-0.2, 0.8, dA);',
+        '    float pB = (1.0 - smoothstep(ri - 0.7, ri + 0.7, dB)) * smoothstep(-0.2, 0.8, dB);',
         '    col = mix(col, rand, aussen);',
         '    col = mix(col, uPlatteA, pA * (1.0 - pB));',
         '    col = mix(col, uPlatteB, pB * (1.0 - pA));',
@@ -1087,118 +1085,6 @@ export class BlaupauseBild {
     }
     return A.texture;
   }
-  /**
-   * Konturen an jeder Überlappung (Florian 12.11.: „wenn etwas überlappt, entsteht eine Kante … egal wo“). Wo die Fläche vom Blick
-   * wegkippt (Normale ⟂ Blick, je Dreieck zwischen den Ecken genähert), liegt ein Streifen nach außen auf dem, was dahinter liegt —
-   * wie die verjüngende Kontur, aber ohne deren Lücken: Die braucht sichtbare Rückseiten mit Abstand in der Tiefe, an eng
-   * aufeinanderliegenden Kiefern und am offenen Maul entstand nichts. Verdeckte Stücke verschwinden im Tiefentest. Nur Logo-Look.
-   */
-  private readonly streifenMat = new ShaderMaterial({
-    depthWrite: false,
-    depthTest: true,
-    side: DoubleSide,
-    uniforms: this.mitU({ uPar: { value: 0 }, uBreite: { value: 4 }, uVersatz: { value: 0 }, uNeig: { value: 0 } }),
-    vertexShader: [
-      SICHT_VS,
-      'attribute vec3 aA; attribute vec3 aB; attribute vec3 aNa; attribute vec3 aNb;',
-      'uniform vec4 uVp; uniform float uBreite, uVersatz, uNeig;',
-      'void main() {',
-      '  vec3 P = mix(aA, aB, position.x); vec3 N = mix(aNa, aNb, position.x);',
-      '  vec4 c = sicht(P);',
-      // der Streifen kippt nach außen nach hinten: wo das Verdeckte dicht dahinter liegt, wird er schmaler und läuft spitz aus
-      '  c.z += uNeig * max(0.0, position.y) * c.w;',
-      '  vec2 r = (projectionMatrix * vec4(normalMatrix * N, 0.0)).xy * uVp.zw; float l = length(r); r = l > 1e-9 ? r / l : vec2(0.0);',
-      // von knapp innen (schließt die Lücke zur gezeichneten Fläche) bis eine Breite nach außen
-      '  c.xy += r * mix(-0.35, 1.0, position.y) * uBreite * 2.0 / uVp.zw * c.w;',
-      '  c.z -= uVersatz * c.w;',
-      '  gl_Position = c;',
-      '}',
-    ].join('\n'),
-    fragmentShader: [SCHEMA, 'void main() { if (abstand(gl_FragCoord.xy) > 0.6) discard; gl_FragColor = vec4(strich(sigma(gl_FragCoord.xy)), 1.0); }'].join('\n'),
-  });
-  private streifenPuffer = new Float32Array(12 * 1024);
-  private streifenG = new Float32Array(0);
-  private readonly streifen = (() => {
-    const g = new InstancedBufferGeometry();
-    g.setAttribute('position', new Float32BufferAttribute([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0], 3));
-    g.setIndex([0, 1, 2, 0, 2, 3]);
-    const m = new Mesh(g, this.streifenMat);
-    m.frustumCulled = false;
-    return m;
-  })();
-  private readonly szStreifen = (() => {
-    const sz = new Scene();
-    sz.add(this.streifen);
-    return sz;
-  })();
-  private readonly blickHilf = new Vector3();
-  private streifenBuf: InstancedInterleavedBuffer | null = null;
-  /** Streifen für die Kamera rechnen: je Dreieck, dessen Ecken vom Blick verschieden kippen, ein Stück der Kontur */
-  private streifenBauen(kam: OrthographicCamera): void {
-    kam.updateMatrixWorld();
-    const d = this.blickHilf.set(0, 0, 1).applyQuaternion(kam.quaternion);
-    const quellen: BufferGeometry[] = [this.koerper.geometry];
-    if (this.innen.visible) quellen.push(this.innen.geometry);
-    let bedarf = 0;
-    for (const g of quellen) bedarf += (g.index ? g.index.count : (g.attributes.position?.count ?? 0)) / 3;
-    if (this.streifenPuffer.length < 12 * bedarf) {
-      this.streifenPuffer = new Float32Array(Math.ceil(12 * bedarf * 1.25));
-      this.streifenBuf = null;
-    }
-    const S = this.streifenPuffer;
-    let n = 0;
-    for (const g of quellen) {
-      const pa = g.attributes.position;
-      const na = g.attributes.normal;
-      if (!pa || !na) continue;
-      const P = pa.array as Float32Array;
-      const N = na.array as Float32Array;
-      const cnt = pa.count;
-      if (this.streifenG.length < cnt) this.streifenG = new Float32Array(cnt);
-      const G = this.streifenG;
-      for (let i = 0; i < cnt; i++) G[i] = N[3 * i]! * d.x + N[3 * i + 1]! * d.y + N[3 * i + 2]! * d.z;
-      const I = g.index ? g.index.array : null;
-      const tri = (I ? I.length : cnt) / 3;
-      for (let f = 0; f < tri; f++) {
-        const a = I ? I[3 * f]! : 3 * f;
-        const b = I ? I[3 * f + 1]! : 3 * f + 1;
-        const c = I ? I[3 * f + 2]! : 3 * f + 2;
-        const sa = G[a]! > 0;
-        const sb = G[b]! > 0;
-        const sc = G[c]! > 0;
-        if (sa === sb && sb === sc) continue;
-        let k = 0;
-        for (const [i, j] of [
-          [a, b],
-          [b, c],
-          [c, a],
-        ] as const) {
-          const gi = G[i]!;
-          const gj = G[j]!;
-          if (gi > 0 === gj > 0 || k > 1) continue;
-          const t = gi / (gi - gj);
-          const o = 12 * n + 3 * k;
-          for (let e = 0; e < 3; e++) {
-            S[o + e] = P[3 * i + e]! + t * (P[3 * j + e]! - P[3 * i + e]!);
-            S[o + 6 + e] = N[3 * i + e]! + t * (N[3 * j + e]! - N[3 * i + e]!);
-          }
-          k++;
-        }
-        if (k === 2) n++;
-      }
-    }
-    const geo = this.streifen.geometry as InstancedBufferGeometry;
-    if (!this.streifenBuf || this.streifenBuf.array !== S) {
-      this.streifenBuf = new InstancedInterleavedBuffer(S, 12);
-      geo.setAttribute('aA', new InterleavedBufferAttribute(this.streifenBuf, 3, 0));
-      geo.setAttribute('aB', new InterleavedBufferAttribute(this.streifenBuf, 3, 3));
-      geo.setAttribute('aNa', new InterleavedBufferAttribute(this.streifenBuf, 3, 6));
-      geo.setAttribute('aNb', new InterleavedBufferAttribute(this.streifenBuf, 3, 9));
-    }
-    this.streifenBuf.needsUpdate = true;
-    geo.instanceCount = n;
-  }
-
   /**
    * Glanzfeld (Jelly): Abstand zur Silhouette im Inneren, halbe Auflösung. Saat ist der Hintergrund (eine Fläche über alles), der
    * Körper schreibt „kein Wert“; dann fluten (wie die Felder der Outlines). Reicht 256 Bildpunkte weit (Halbmesser großer Teile).
@@ -1962,15 +1848,6 @@ export class BlaupauseBild {
       r.render(this.szUmriss, kam);
     }
     r.render(this.szKoerper, kam);
-    if (f.art === 'logo') {
-      this.streifenBauen(kam);
-      const su = this.streifenMat.uniforms;
-      su.uBreite!.value = 4 * this.DPR * skal;
-      su.uVersatz!.value = tiefeNdc;
-      // Tiefe der äußeren Kante: gut eine Streifenbreite hinter dem Rand (in der Welt)
-      su.uNeig!.value = (2 * ((1.5 * 4 * this.DPR * skal) / Math.max(1e-6, f.ppu))) / Math.max(1e-6, kam.far - kam.near);
-      r.render(this.szStreifen, kam);
-    }
     r.render(this.szLinien, kam);
     const gs = streckenGeo(f.griffStaebe);
     const gb = streckenGeo(f.griffBoegen);
