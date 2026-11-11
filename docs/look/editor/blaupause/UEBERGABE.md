@@ -318,3 +318,8 @@ gewendet,schattierung-300,lava-nah}-2026-11-11.jpg`.
 - **Offen:** Florians Urteil; ein dünner herausgezogener Hals bekommt keine Blase (unter ¼ der dicksten Stelle) — ein dicker Kopf
   schon; die Bögen der Griffe stehen in der Seitenansicht oft von der Kante (3D-Bögen, älter); bei starkem Zoom haben Kantenlinien
   und Punkte nahe der Silhouette Zähne bzw. halbe Kreise (Tiefentest gegen den Körper, älter, nicht angefasst).
+
+**Danach (Florian: „statt des weißen Backgrounds in den Fenstern ein schönes Hellblau“):** Der Grund von hinten (Seitenwechsel) ist
+jetzt `#bfe3fa` statt `#f4eff6`, als Farbfeld „Grund hinten“ im Menü. Verglichen mit `#b3d4ff` (lavendelblau) und `#c4ecf2` (eisblau):
+`docs/progress/editor/editor-hellblau-{kandidaten,gewendet}-2026-11-11.jpg`. Commit `f0157dfe`, Artefakt Version 5. Der Papierkörper
+im 3D (Knopf „Papier“) hat vorn weiter Weiß.
