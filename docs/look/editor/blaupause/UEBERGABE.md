@@ -436,3 +436,12 @@ Outline) und die Maulstelle an einer anderen Form nachgestellt; seine Stelle war
   `maul-bauen.cjs` im Scratchpad der Sitzung, Ablauf in der Beschreibung). **Offen:** Konturstreifen enden an manchen Stellen stumpf statt
   spitz (wo die Kontur hinter eine Fläche läuft).
 Artefakt Version 14, Bild `docs/progress/editor/editor-kante-ueberlappung-2026-11-12.png`.
+
+**Danach (Florian 12.11.: „jetzt fehlt der innere TikTok-Effekt und die automatischen Kanten verjüngen nicht schön smooth auf 0,
+meistens brechen sie einfach ab mit einer Kante“):** Mit „Abstand zur dunklen Outline“ war die Lücke durch das Ausblenden gemeint, nicht
+der innere TikTok-Streifen → TikTok innen wieder wie vorher (jede Platte ab ihrer versetzten Silhouette). Die Konturstreifen aus der Form
+(Version 14) sind wieder entfernt: Im Vergleich (`__teststand.bild` blendet Teile aus) zeichnete die verjüngende Kontur jede geprüfte
+Überlappung selbst und lief spitz aus; die Streifen lagen voll breit darüber und endeten stumpf (auch mit Breite nach dem Tiefenabstand
+und mit gekippter Tiefe nicht anders, ihr Ende ist der Rand des Stücks, nicht die verdeckte Fläche). Die einzige echte Lücke war der Rand
+des offenen Mauls → harte Maul-Linie (bleibt). Ebenfalls geblieben: keine Höfe, nichts über der dicken Kontur, einfarbige Punkte, Linien
+weiter vor der Fläche. Commit `3d74f0a7`, Artefakt Version 15, Bild `docs/progress/editor/editor-kanten-spitz-tiktok-2026-11-12.png`.
