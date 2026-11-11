@@ -339,3 +339,19 @@ Grund, immer unter 45° nach links unten, harte geglättete Kante. Vorlage gemes
 nur 45 % davon. Regler „Schatten“ bei Outline (0–80 %, 36 %; 0 = aus). Rechnung: Maske des Abzeichens aus den Abstandsfeldern,
 dann ~11 Verdopplungsschritte nach links unten (Deckung = Höchstwert, Weg = kürzester), halbe Gleitkommazahlen.
 Commit `698c336d`, Artefakt Version 7, Bilder `docs/progress/editor/editor-langer-schatten{,-hinten}-2026-11-11.jpg`.
+
+**Danach (Florian: „die weißen Glanzpunkte noch mehr wie in meiner Referenz … immer eine untere dunkle Bohne als Kontaktebene zum Boden
+und mindestens eine Lavalampen-Bohne, etwas heller … größere Wesen mehr Lavabohnen, aber aktuell zu viele … nur bei großen Köpfen und
+Bäuchen oder größerer Skalierung“):** Vorlage gemessen (Jelly-Blob): untere Bohne × 0,6–0,7 der Jelly-Farbe, obere × 0,9; Glanzstrich
+bei 0,9 des Halbmessers zwischen 112° und 140°, Punkt bei 151°. Gebaut (`src/form/lava.ts` `lavaPlan`, `blaupause.ts`):
+- **Kontaktbohne** (× 0,66): flach und achsparallel in der unteren Hälfte des größten Teils, Breite an ihrer Höhe gemessen; liegt
+  still, atmet nur; eigene Schicht unter der Lava.
+- **Lavabohnen** (× 0,87): eine im oberen Teil des größten Teils; weitere nur in großen Teilen auf der Mittelebene (≥ 0,62 des
+  größten und ≥ 0,45 der Startkugel `R_BEZUG` = 141; Paare wie Flügel und Beine nie); bei größerer Skalierung (größtes Teil ab
+  1,6 × Startkugel) bis zu drei im größten Teil; höchstens vier. Startkugel und „strange bird“: eine, „teat firefish“: zwei (großer Kopf).
+- **Glanz:** gebogener weißer Strich und länglicher Punkt innen am Umriss oben links, je großem Teil im Winkelbereich von seiner Mitte
+  aus, aus einem eigenen Abstandsfeld (Abstand zum Umriss innen); nicht auf dünnen Armen und Hörnern. An der Kugel genau wie die
+  Vorlage, an verwickelten Formen am Kopf oben links (kleiner, weil die Teile kleiner sind).
+- **Fallen:** Löschen mit Deckkraft 0 setzt in three.js alle Kanäle auf 0 (vormultiplizierte Deckkraft) — Saat als Fläche zeichnen;
+  `atan(0, 0)` gibt auf manchen Grafikkarten NaN; Feldwerte vor `fwidth` begrenzen (Sprung an der Reichweite zeichnet feine Linien).
+Commit `722aecca`, Artefakt Version 8, Bilder `docs/progress/editor/editor-jelly-{glanz-bohnen,teat-firefish}-2026-11-11.jpg`.
