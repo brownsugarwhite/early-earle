@@ -1426,7 +1426,10 @@ function linienBauen(): Strecke[] {
   const lagen = aktuelleLagen();
   const zuege: LinienZug[] = [];
   loops.forEach((l, li) => {
-    const K = kantenStuetzen(l);
+    const K0 = kantenStuetzen(l);
+    // die Linie des Mauls ist der Rand der Öffnung: immer eine harte, dunkle Kante (Florian 12.11.: „es fehlt die dunkle Kontur, die
+    // sich beim Mund bilden müsste“ — die verjüngende Kontur entsteht an einem offenen Rand nicht, gestrichelt fiel sie weg)
+    const K = maul !== null && l.id === maul.id ? [{ s: 0, k: 1 }] : K0;
     const haelften = l.art === 'mitte' ? [false] : [false, true];
     if (exakt(l)) {
       const P = l.punkte;
@@ -1507,7 +1510,8 @@ function punkteBauen(): PunktBild[] {
   const out: PunktBild[] = [];
   const anKreuzung = new Map<number, number[]>();
   loops.forEach((l) => {
-    const K = kantenStuetzen(l);
+    // das Maul ist immer eine harte Kante (wie in `linienBauen`)
+    const K = maul !== null && l.id === maul.id ? [{ s: 0, k: 1 }] : kantenStuetzen(l);
     l.punkte.forEach((p, i) => {
       if (!istSichtbar(p)) return;
       const q = zug ? p.cur : p.ref;
