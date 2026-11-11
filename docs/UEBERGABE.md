@@ -225,6 +225,14 @@ Kriterien stehen in der Tabelle des Nachtrags; Messwerte und Befunde je Schritt 
   - **Tempo am Firefish** (27 770 Punkte, freie Maschine): Greifen 0,24–0,33 s, Runde 32 ms (vermessen 4, Gewichte nach der
     Geometrie 8, Krümmung 5, Lösen 14), 11 Runden bis zur Ruhe, nach dem Loslassen 2–8 s bis zum aufgeräumten Netz (je Durchgang
     ein Zerlegen von 1,3–1,7 s). Bei belegter Maschine Greifen bis 0,47 s, Runde 35–46 ms. Das wächst alles mit der Punktzahl.
+- **Florian (11.11. früh):** „Wir sind ja hier seit einem Tag zur Performance-Optimierung und du sagst mir gerade, das geht
+  nicht, sobald es etwas mehr als eine Kugel mit 3–4 Loops ist … Dann war alles umsonst.“ Die Meldung davor hatte nur aufgezählt,
+  was langsam bleibt. Nachgemessen an seinem Firefish (Bericht „Nachtrag (11.11. früh)“): ohne die Rechnung im Hintergrund steht
+  das Fenster bei Kante an 2,0 s und bei Kante aus 5,3 s still, heute nicht; Greifen 1,9 s → 0,33 s. Erreicht ist „viel viel
+  besser“ an 27 800 Punkten trotzdem nicht (28 Bilder je Sekunde, 0,3 s beim Greifen; nach „Kante aus“ rechnet der Hintergrund
+  20 s, das Netz wächst dabei auf 36 700 Punkte, nicht untersucht). **Meldungen an ihn: erst, was sich an seiner Form geändert
+  hat, mit Zahlen von dieser Form; dann, was bleibt.** `form-gesichert-zug.mjs` hat dafür `KANTE=1` und meldet den Stillstand
+  nach dem Loslassen.
 - **Als Nächstes (Vorschlag, sein Wort steht aus): G6, die halbe Haut**, jetzt mit Grundlage (Formen mit 16 000 bis 28 000
   Punkten) und mit seiner Entscheidung. Danach der zweite Teil von G5 (Netz nur so dicht wie nötig) oder das Zerlegen selbst.
   Offen bleibt sein Blick auf G4, Sichern/Laden und G5 Teil 1; dann nach seiner Reihenfolge Maul, Posen, genaue Werkzeuge.

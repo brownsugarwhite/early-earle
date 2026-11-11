@@ -1219,6 +1219,26 @@ asymmetrische Formen bauen zu können. Aber für die erste Grundform soll es ges
      einfachen verschachtelten Ordnung; eine bessere Ordnung oder die Zerlegung des Laplace statt seines Quadrats wäre ein
      eigener Schritt mit eigener Messung.
 
+**Nachtrag (11.11. früh): Was G1 bis G4 an seinem Firefish ändern** (Florian nach der letzten Meldung: „Wir sind ja hier seit
+einem Tag zur Performance-Optimierung und du sagst mir gerade, das geht nicht, sobald es etwas mehr als eine Kugel mit 3–4 Loops
+ist … Dann war alles umsonst“). Die Meldung hatte nur aufgezählt, was an 27 800 Punkten langsam bleibt, nicht, was der Tag an genau
+dieser Größe geändert hat. Nachgemessen an seiner Form (`form-gesichert-zug.mjs`, Ausgabe `ausgaben/schutz-firefish-ohne-hintergrund.txt`):
+
+| Am Firefish | ohne die Rechnung im Hintergrund (`&hintergrund=0`) | heute |
+| --- | --- | --- |
+| Kante an: das Fenster steht still | 2,0 s | nicht (45 ms) |
+| Kante aus: das Fenster steht still | 5,3 s | nicht (49 ms) |
+| oberster Punkt 60 hinauf: Drücken bis zur ersten Bewegung | 1,9 s | 0,33 s |
+| derselbe Zug: Halte im Zug | alle anderthalb Sekunden (der Zug dauert 58 s statt 5 s) | keine (Bilder alle 36 ms) |
+
+- Die Zeile zum Zug überzeichnet: Vor G4 lief das Zerlegen im Zug schon in einem Worker; gemessen waren damals am Prüfnetz mit
+  23 400 Punkten Halte bis 0,47 s im Zug und 3,7 s Stillstand nach jedem Loslassen (jetzt 0,1 s und keiner), eine Runde 73 ms
+  (jetzt 32 ms, G1), wieder greifen 1,0 s (jetzt 23 ms). Die Zeilen zur Kante gelten so (dort rechnete bis G4.4 das Fenster).
+- **Was stimmt:** „Viel viel besser“ ist an dieser Größe nicht erreicht. 28 Bilder je Sekunde und 0,3 s beim Greifen fühlen sich
+  zäh an, und der Hintergrund braucht nach „Kante aus“ 20 s, bis die Form fertig ist (das Netz wächst dabei von 28 500 auf 36 700
+  Punkte; nicht untersucht).
+- Lehre für die Meldungen an ihn: erst sagen, was sich an seiner Form geändert hat, mit Zahlen von dieser Form; dann, was bleibt.
+
 ## Anhang A: Messwerte
 
 **Pendeln und Bremse** (Bewegung je Runde nach einem Zug in 30 Mausschritten; `loeser/mess1.ts`, `mess3.ts`):
