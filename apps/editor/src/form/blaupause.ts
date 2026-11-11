@@ -515,12 +515,21 @@ export class BlaupauseBild {
         uSchwelle: { value: 0.02 },
         tGlatt: { value: null },
         uGlattAn: { value: 0 },
+        tGlanzF: { value: null },
+        uGFGr: { value: new Vector2(4, 4) },
+        uGS: { value: 0.5 },
+        uTiktokInnen: { value: 0 },
+        uPlatteI: { value: new Vector2() },
+        uPlatteIA: { value: new Vector3() },
+        uPlatteIB: { value: new Vector3() },
       }),
       vertexShader: KOERPER_VS,
       fragmentShader: [
         SCHEMA,
         STUFE,
         GLATT,
+        GLANZ_FELD,
+        'uniform float uTiktokInnen; uniform vec2 uPlatteI; uniform vec3 uPlatteIA, uPlatteIB;',
         'uniform vec3 uWeissO, uWeissU, uLavendel; uniform float uSchwelle; varying vec3 vN; varying vec3 vW;',
         'void main() {',
         '  vec3 n0 = normalize(vN); if (!gl_FrontFacing) n0 = -n0; vec3 n = glatteNormale(n0, glattFeld());',
@@ -529,7 +538,17 @@ export class BlaupauseBild {
         '  vec3 weiss = mix(uWeissO, uWeissU, smoothstep(0.35, -0.6, n.y));',
         // von hinten (Seitenwechsel) tauschen Körper und Kontur die Farben: der Körper in Petrol, die Schattenseite dunkler
         '  vec3 vorn = mix(uLavendel, weiss, a), hinten = mix(uTinteLogo * 0.66, uTinteLogo, a);',
-        '  gl_FragColor = vec4(mix(vorn, hinten, kipp(sigma(gl_FragCoord.xy))), 1.0);',
+        '  vec3 col = mix(vorn, hinten, kipp(sigma(gl_FragCoord.xy)));',
+        // TikTok innen: am Umriss auf dem Körper der Streifen der Platte, die nach innen versetzt ist, so breit wie außen (doppelter
+        // Versatz in Richtung der Normale); Linien und Konturen liegen darüber und laufen direkt ins Petrol
+        '  if (uTiktokInnen > 0.5) {',
+        '    float dI = gAbst(gl_FragCoord.xy - uVp.xy); vec2 nx = n0.xy; float ln = length(nx);',
+        '    if (dI > 0.0 && ln > 1e-3) {',
+        '      float sP = dot(uPlatteI, nx / ln), w = 2.0 * abs(sP);',
+        '      col = mix(col, sP > 0.0 ? uPlatteIB : uPlatteIA, (1.0 - smoothstep(w - 0.7, w + 0.7, dI)) * step(0.5, w));',
+        '    }',
+        '  }',
+        '  gl_FragColor = vec4(col, 1.0);',
         '}',
       ].join('\n'),
     });
@@ -819,10 +838,10 @@ export class BlaupauseBild {
         // Lila nach der anderen; wo sie sich überdecken, entsteht die Kontur in Petrol. Der Rand liegt um beide.
         '    float dA = abstandV(tFeldC, fc - uPlatte), dB = abstandV(tFeldR, fc + uPlatte);',
         '    float aussen = 1.0 - smoothstep(ra - 0.7, ra + 0.7, min(dA, dB));',
-        // innen beginnt jede Platte an ihrer versetzten Silhouette: auch innen zeigt sich je nach Seite Rosa oder Lila (der innere
-        // TikTok-Effekt; Florian 12.11.: „jetzt fehlt der innere TikTok-Effekt“)
-        '    float pA = (1.0 - smoothstep(ri - 0.7, ri + 0.7, dA)) * smoothstep(-0.2, 0.8, dA);',
-        '    float pB = (1.0 - smoothstep(ri - 0.7, ri + 0.7, dB)) * smoothstep(-0.2, 0.8, dB);',
+        // die Innenkante der dunklen Kontur ist der Umriss (Florian 12.11.: „das Innere der dunklen Kontur wird der Umriss und der innere
+        // TikTok-Effekt läuft weiter innen“): beide Platten beginnen am Körper; den inneren Streifen malt der Körper selbst (`logoMat`)
+        '    float pA = (1.0 - smoothstep(ri - 0.7, ri + 0.7, dA)) * smoothstep(-0.2, 0.8, dE);',
+        '    float pB = (1.0 - smoothstep(ri - 0.7, ri + 0.7, dB)) * smoothstep(-0.2, 0.8, dE);',
         '    col = mix(col, rand, aussen);',
         '    col = mix(col, uPlatteA, pA * (1.0 - pB));',
         '    col = mix(col, uPlatteB, pB * (1.0 - pA));',
@@ -1105,7 +1124,7 @@ export class BlaupauseBild {
     sz.add(m);
     return sz;
   })();
-  private glanzFeld(rect: { w: number; h: number }, kam: OrthographicCamera): { tex: Texture; w: number; h: number; R: Texture } {
+  private glanzFeld(rect: { w: number; h: number }, kam: OrthographicCamera, mitR = true): { tex: Texture; w: number; h: number; R: Texture } {
     const r = this.r;
     const mw = Math.max(4, Math.round(rect.w * this.GS));
     const mh = Math.max(4, Math.round(rect.h * this.GS));
@@ -1140,6 +1159,7 @@ export class BlaupauseBild {
     // Halbmesser der Teile (für Breite und Abstand des Glanzes): je Bildpunkt der größte Abstand zur Kontur auf dem Weg nach innen bis
     // zum ersten Höchstwert, dann weich gerechnet (sonst springt er dort, wo ein Teil in ein größeres übergeht, und der Glanz franst aus)
     const [Ra, Rb] = this.glanzRZiele;
+    if (!mitR) return { tex: quelle.texture, w: mw, h: mh, R: Ra.texture };
     if (Ra.width !== mw || Ra.height !== mh) {
       Ra.setSize(mw, mh);
       Rb.setSize(mw, mh);
@@ -1765,6 +1785,18 @@ export class BlaupauseBild {
       hu.uSchatten!.value = E.schatten;
       hu.uSchattenLang!.value = Math.max(rect.w, rect.h);
       if (E.schatten > 0) hu.tSchatten!.value = this.langerSchatten(rect, kam);
+      // TikTok innen: Abstand zum Umriss im Inneren (wie für den Glanz im Jelly)
+      const lu = this.logoMat.uniforms;
+      lu.uTiktokInnen!.value = E.tiktok ? 1 : 0;
+      if (E.tiktok) {
+        const gi = this.glanzFeld(rect, kam, false);
+        lu.tGlanzF!.value = gi.tex;
+        (lu.uGFGr!.value as Vector2).set(gi.w, gi.h);
+        lu.uGS!.value = this.GS;
+        (lu.uPlatteI!.value as Vector2).copy(hu.uPlatte!.value as Vector2);
+        (lu.uPlatteIA!.value as Vector3).copy(hu.uPlatteA!.value as Vector3);
+        (lu.uPlatteIB!.value as Vector3).copy(hu.uPlatteB!.value as Vector3);
+      }
     }
     r.setRenderTarget(null);
     r.setViewport(f.css.x, f.css.y, f.css.w, f.css.h);
