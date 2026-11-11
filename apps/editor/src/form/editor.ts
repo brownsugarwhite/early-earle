@@ -5300,7 +5300,8 @@ function lavaAnkerRechnen(jetzt: number): void {
   const t0 = performance.now();
   // Kontaktbohne dunkel, Lavabohnen heller (Vorlage gemessen: unten × 0,6–0,7, oben × 0,9); Glanz auf den großen Teilen
   const plan = lavaPlan(lavaAnker(hautLagen, idx));
-  lampe.ziele(plan, 0.66, 0.87);
+  // (die Kontaktbohne rechnet jetzt das Fenster selbst aus dem Bodenkontakt)
+  lampe.ziele({ anker: plan.anker, kontakt: null }, 0.66, 0.87);
   glanzTeile = (plan.teile ?? []).map((a) => ({ c: a.p, r: a.r }));
   bild.grossHalbmesser = plan.teile?.[0]?.r ?? 100;
   lavaAnkerMs = performance.now() - t0;
@@ -5313,7 +5314,7 @@ function lavaLaeuft(): boolean {
 }
 /** nur das 3D-Fenster neu zeichnen (die anderen bleiben stehen: `preserveDrawingBuffer`) */
 function rendernDrei(): void {
-  bild.lava(lampe.formen(lavaUhr), lampe.kontakt(lavaUhr), glanzTeile);
+  bild.lava(lampe.formen(lavaUhr), glanzTeile);
   fensterZeichnen('drei', griffBilder(), window.innerHeight);
 }
 
@@ -5374,9 +5375,11 @@ function rendern(): void {
     // typische Dicke: aus der mittleren Ausdehnung (ein Fisch ist lang, aber nicht dick)
     bild.dickeBezug = Math.max(1, 0.6 * ausd[1]!);
     bild.halbeHoehe = Math.max(1, 0.5 * g.y);
+    // das Wesen steht auf dem Boden: sein tiefster Punkt (Kontaktbohne)
+    bild.bodenY = kasten.min.y;
   }
   bild.blasen(blasenJetzt());
-  bild.lava(lampe.formen(lavaUhr), lampe.kontakt(lavaUhr), glanzTeile);
+  bild.lava(lampe.formen(lavaUhr), glanzTeile);
   bild.kantenLaenge = MK;
   bild.linien(linienBauen());
   bild.punkte(punkteBauen());

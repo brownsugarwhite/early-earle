@@ -588,9 +588,9 @@ export class BlaupauseBild {
         uLava: { value: Array.from({ length: 2 * MAX_LAVA }, () => new Vector4()) },
         uLavaE: { value: Array.from({ length: 2 * MAX_LAVA }, () => new Vector4()) },
         uLavaZahl: { value: 0 },
-        uKontakt: { value: new Vector4() },
-        uKontaktE: { value: new Vector4() },
+        tKontakt: { value: null },
         uKontaktAn: { value: 0 },
+        uKontaktTon: { value: 0.66 },
         uGlanzP: { value: Array.from({ length: MAX_LAVA }, () => new Vector4()) },
         uGlanzZahl: { value: 0 },
         tRand: { value: null },
@@ -614,8 +614,8 @@ export class BlaupauseBild {
         // Abstand zum Rand einer Ellipse in Bildpunkten (genähert: gemessen an der kleinen Halbachse)
         'float ellipse(vec2 fc, vec4 s, vec4 e) { vec2 q = fc - s.xy; float m = e.x * q.x * q.x + 2.0 * e.y * q.x * q.y + e.z * q.y * q.y; return (sqrt(max(m, 0.0)) - 1.0) * s.z; }',
         'float smin(float a, float b, float k) { float h = max(k - abs(a - b), 0.0) / max(k, 1e-5); return min(a, b) - h * h * k * 0.25; }',
-        // Kontaktbohne (unten, dunkel): eine Ellipse für sich, unter der Lava
-        'uniform vec4 uKontakt, uKontaktE; uniform float uKontaktAn;',
+        // Kontaktbohne (unten, dunkel): wo der Blick durchs Glas den Bodenbereich trifft, weich gerechnet (`kontaktFeld`)
+        'uniform sampler2D tKontakt; uniform float uKontaktAn, uKontaktTon;',
         // Glanz auf den großen Teilen (Rumpf, großer Kopf): je Teil Mitte im Bild (Gerätepixel) und Halbmesser seiner größten Kugel im
         // Bild; dazu der Abstand zum Umriss innen (`tRand`)
         `uniform vec4 uGlanzP[${MAX_LAVA}]; uniform float uGlanzZahl; uniform sampler2D tRand;`,
@@ -650,8 +650,8 @@ export class BlaupauseBild {
         '  float aaL = max(fwidth(lavaD) * 0.85, 0.5);',
         '  float lava = 1.0 - smoothstep(-aaL, aaL, lavaD);',
         '  col *= mix(1.0, tonS / max(tonW, 1e-5), lava);',
-        // die Kontaktbohne liegt als eigene, dunklere Schicht darunter (wo sich beide decken, dunkler: halbtransparent)
-        '  if (uKontaktAn > 0.5) { float dk = ellipse(fc, uKontakt, uKontaktE); float aaK = max(fwidth(dk) * 0.85, 0.5); col *= mix(1.0, uKontakt.w, 1.0 - smoothstep(-aaK, aaK, dk)); }',
+        // die Kontaktbohne liegt als eigene, dunklere Schicht darunter (wo sich beide decken, dunkler: halbtransparent); scharf und rund
+        '  if (uKontaktAn > 0.5) col *= mix(1.0, uKontaktTon, stufe(texture2D(tKontakt, tc).r, 0.5));',
         // Bläschen: Strahlnähe zu kleinen Kugeln im Körper, helle Scheiben mit scharfem Rand
         '  float bub = 0.0;',
         `  for (int i = 0; i < ${MAX_BLASEN}; i++) {`,
@@ -901,7 +901,9 @@ export class BlaupauseBild {
         '  vec2 r = (projectionMatrix * vec4(n, 0.0)).xy * uVp.zw; float l = length(r); r = l > 1e-9 ? r / l : vec2(0.0);\n' +
         '  float kipp = clamp(length(n.xy) / 0.35, 0.0, 1.0);\n' +
         '  clip.xy += r * kipp * uBreite * 2.0 / uVp.zw * clip.w; gl_Position = clip; }',
-      fragmentShader: [SCHEMA, 'void main() { gl_FragColor = vec4(strich(sigma(gl_FragCoord.xy)), 1.0); }'].join('\n'),
+      // nur im Inneren der Silhouette (an Kanten und inneren Umrissen): außen liegt schon die dicke Kontur (Florian: „eine 4px Kontur um
+      // alles … kann weg“)
+      fragmentShader: [SCHEMA, 'void main() { if (abstand(gl_FragCoord.xy) > 0.6) discard; gl_FragColor = vec4(strich(sigma(gl_FragCoord.xy)), 1.0); }'].join('\n'),
     });
     this.umriss = new Mesh(new BufferGeometry(), this.umrissMat);
     this.umriss.frustumCulled = false;
@@ -964,15 +966,120 @@ export class BlaupauseBild {
     this.punkteSicht.geometry = g;
     this.punkteVerdeckt.geometry = g;
   }
-  /** Lava im Jelly (je Blase zwei Ellipsoide in der Welt; im Fenster aufs Bild gerechnet), Kontaktbohne, Teile mit Glanz */
+  /** Lava im Jelly (je Blase zwei Ellipsoide in der Welt; im Fenster aufs Bild gerechnet) und die Teile mit Glanz */
   private lavaFormen: readonly LavaForm[] = [];
-  private kontaktForm: LavaForm | null = null;
   private glanzTeile: readonly { c: P3; r: number }[] = [];
-  lava(k: readonly LavaForm[], kontakt: LavaForm | null = null, glanz: readonly { c: P3; r: number }[] = []): void {
+  lava(k: readonly LavaForm[], glanz: readonly { c: P3; r: number }[] = []): void {
     this.lavaFormen = k.slice(0, 2 * MAX_LAVA);
-    this.kontaktForm = kontakt;
     this.glanzTeile = glanz.slice(0, MAX_LAVA);
   }
+  /** Höhe des Bodens (tiefster Punkt des Körpers, Welt): darauf steht das Wesen (Kontaktbohne) */
+  bodenY = 0;
+
+  /**
+   * Kontaktbohne (Florian 11.11. spätabends: „eine abgerundete Andeutung des echten Kontaktbereichs, wenn das Modell immer auf dem Boden
+   * steht … immer Abstand zur Kante wie bei einem Glas-Effekt … immer stark abgerundet“): je Bildpunkt der Strahl durchs Glas zwischen
+   * Vorder- und Rückseite, an beiden Enden ein Rand frei (⅒ des größten Teils); reicht er tiefer als ein Band über dem Boden (0,42 des
+   * größten Teils), gehört der Bildpunkt dazu. Dann weich gerechnet (Halbmesser ⅓ des größten Teils) — der Shader schneidet bei der
+   * Hälfte scharf: rund, nie am Rand.
+   */
+  private kontaktFeld(rect: { w: number; h: number }, kam: OrthographicCamera): Texture {
+    const r = this.r;
+    const [A, B] = this.kontaktZiele;
+    if (A.width !== rect.w || A.height !== rect.h) {
+      A.setSize(rect.w, rect.h);
+      B.setSize(rect.w, rect.h);
+    }
+    const R = this.grossHalbmesser;
+    const u = this.kontaktMat.uniforms;
+    u.tRueck!.value = this.rueckZiel.depthTexture;
+    u.uNah!.value = kam.near;
+    u.uFern!.value = kam.far;
+    u.uBodenY!.value = this.bodenY;
+    u.uBand!.value = 0.42 * R;
+    u.uRand!.value = 0.1 * R;
+    (u.uGroesseK!.value as Vector2).set(rect.w, rect.h);
+    (u.uVornK!.value as Vector3).copy((this.jellyMat.uniforms.uVorn!.value as Vector3));
+    const innenAn = this.innen.visible;
+    this.innen.visible = false;
+    const mat = this.koerper.material;
+    this.koerper.material = this.kontaktMat;
+    r.setRenderTarget(A);
+    r.setClearColor(0x000000, 0);
+    r.clear();
+    r.render(this.szKoerper, kam);
+    this.koerper.material = mat;
+    this.innen.visible = innenAn;
+    const w = this.kontaktWeichMat.uniforms;
+    (w.uGroesse!.value as Vector2).set(rect.w, rect.h);
+    w.uRadius!.value = Math.min(0.35 * Math.min(rect.w, rect.h), Math.max(4, 0.34 * R * this.ppuJetzt));
+    for (const [quelle, ziel, rx, ry] of [
+      [A, B, 1, 0],
+      [B, A, 0, 1],
+    ] as const) {
+      w.tQuelle!.value = quelle.texture;
+      (w.uRichtung!.value as Vector2).set(rx, ry);
+      r.setRenderTarget(ziel);
+      r.render(this.szKontaktWeich, kam);
+    }
+    return A.texture;
+  }
+  private ppuJetzt = 1;
+  private readonly kontaktZiele: [WebGLRenderTarget, WebGLRenderTarget] = [
+    new WebGLRenderTarget(4, 4, { minFilter: LinearFilter, magFilter: LinearFilter, generateMipmaps: false, depthBuffer: true, stencilBuffer: false }),
+    new WebGLRenderTarget(4, 4, { minFilter: LinearFilter, magFilter: LinearFilter, generateMipmaps: false, depthBuffer: false, stencilBuffer: false }),
+  ];
+  private readonly kontaktMat = new ShaderMaterial({
+    side: FrontSide,
+    uniforms: {
+      uPar: { value: 0 },
+      uParR: { value: new Vector2(1, 0) },
+      uKamAbstand: { value: 3000 },
+      uGrund: { value: 0 },
+      tRueck: { value: null },
+      uNah: { value: 100 },
+      uFern: { value: 6000 },
+      uBodenY: { value: 0 },
+      uBand: { value: 60 },
+      uRand: { value: 14 },
+      uGroesseK: { value: new Vector2(4, 4) },
+      uVornK: { value: new Vector3(0, 0, -1) },
+    },
+    vertexShader: KOERPER_VS,
+    fragmentShader: [
+      'uniform sampler2D tRueck; uniform float uNah, uFern, uBodenY, uBand, uRand; uniform vec2 uGroesseK; uniform vec3 uVornK; varying vec3 vN; varying vec3 vW;',
+      'void main() {',
+      '  float T = clamp(texture2D(tRueck, gl_FragCoord.xy / uGroesseK).x - gl_FragCoord.z, 0.0, 1.0) * (uFern - uNah);',
+      '  float t0 = uRand, t1 = T - uRand;',
+      '  if (t1 <= t0) { gl_FragColor = vec4(0.0); return; }',
+      // die tiefste Stelle des Strahls im Glas (die Höhe ändert sich längs des Strahls gleichmäßig)
+      '  float y = min(vW.y + t0 * uVornK.y, vW.y + t1 * uVornK.y);',
+      '  float c = clamp((uBodenY + uBand - y) / (0.2 * uBand), 0.0, 1.0);',
+      '  gl_FragColor = vec4(c, c, c, 1.0);',
+      '}',
+    ].join('\n'),
+  });
+  private readonly kontaktWeichMat = new ShaderMaterial({
+    depthTest: false,
+    depthWrite: false,
+    blending: NoBlending,
+    uniforms: { tQuelle: { value: null }, uGroesse: { value: new Vector2(4, 4) }, uRichtung: { value: new Vector2(1, 0) }, uRadius: { value: 8 } },
+    vertexShader: 'void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: [
+      'uniform sampler2D tQuelle; uniform vec2 uGroesse, uRichtung; uniform float uRadius;',
+      'void main() { vec2 fc = gl_FragCoord.xy; float s = 0.0, w = 0.0;',
+      '  for (int i = -12; i <= 12; i++) { float u = float(i) / 12.0; float g = exp(-4.0 * u * u);',
+      '    s += g * texture2D(tQuelle, (fc + uRichtung * u * uRadius) / uGroesse).r; w += g; }',
+      '  float v = s / w; gl_FragColor = vec4(v, v, v, 1.0); }',
+    ].join('\n'),
+  });
+  private readonly szKontaktWeich = (() => {
+    const sz = new Scene();
+    const m = new Mesh(new PlaneGeometry(2, 2), this.kontaktWeichMat);
+    m.frustumCulled = false;
+    sz.add(m);
+    return sz;
+  })();
   /** Bläschen im Jelly (Mitte und Halbmesser in der Welt) */
   blasen(b: readonly { p: P3; r: number }[]): void {
     const arr = this.jellyMat.uniforms.uBlasen!.value as Vector4[];
@@ -1172,6 +1279,7 @@ export class BlaupauseBild {
     const { rect, kam } = f;
     if (rect.w < 4 || rect.h < 4) return;
     const mass = f.mass;
+    this.ppuJetzt = f.ppu;
     U.uMass.value = mass;
     U.uInnen.value = E.kontur;
     U.uAussen.value = E.rand;
@@ -1292,8 +1400,9 @@ export class BlaupauseBild {
       };
       this.lavaFormen.forEach((s, i) => insBild(s, lv[i]!, le[i]!));
       j.uLavaZahl!.value = Math.floor(this.lavaFormen.length / 2);
-      if (this.kontaktForm) insBild(this.kontaktForm, j.uKontakt!.value as Vector4, j.uKontaktE!.value as Vector4);
-      j.uKontaktAn!.value = this.kontaktForm ? 1 : 0;
+      // Kontaktbohne: der Bodenbereich, wie man ihn durchs Glas sieht
+      j.tKontakt!.value = this.kontaktFeld(rect, kam);
+      j.uKontaktAn!.value = 1;
       // Teile mit Glanz: Mitte im Bild und Halbmesser ihrer größten Kugel im Bild
       const gp = j.uGlanzP!.value as Vector4[];
       this.glanzTeile.forEach((g, i) => {
