@@ -110,6 +110,7 @@ import {
 import { BufferAttribute, BufferGeometry, Mesh, OrthographicCamera, Raycaster, Vector3, WebGLRenderer } from 'three';
 import type { V2 } from '@ee/shape';
 import { type Art, BlaupauseBild, type FensterBild, type P3, type PunktBild, type Strecke } from './blaupause';
+import { LavaLampe, lavaAnker } from './lava';
 import { istTrackpad, radFaktor } from '../viewports/ansicht2d';
 import { type WesenStand, auskunft, entpacken, packen, pruefen } from './ablage';
 import {
@@ -147,6 +148,10 @@ const teststand = {
   /** Logo-Look: dicke Kontur und Rand bei 100 % in Bildpunkten */
   kontur: 28,
   rand: 12,
+  /** Logo-Look: die Kontur aus zwei versetzten Platten (Rosa, Lila), Petrol in der Überdeckung („TikTok“, wie der Passer der Blaupause) */
+  tiktok: true,
+  /** Jelly: die Lava bewegt sich (sonst steht sie still) */
+  lava: true,
 };
 /** /editor: Das Artefakt bringt den Hintergrund-Rechner als Text mit (Bau mit esbuild); im Dev-Server lädt Vite ihn als Modul */
 declare const __TESTSTAND_WORKER__: string;
@@ -509,7 +514,8 @@ const knopfLoop = document.getElementById('knopf-loop') as HTMLButtonElement;
 const knopfO = document.getElementById('knopf-o') as HTMLButtonElement;
 
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
-const renderer = new WebGLRenderer({ canvas: leinwand, antialias: true });
+// das Bild bleibt zwischen zwei Bildern stehen: Für die Lava im Jelly wird nur das 3D-Fenster neu gezeichnet
+const renderer = new WebGLRenderer({ canvas: leinwand, antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(DPR);
 renderer.setSize(window.innerWidth, window.innerHeight, false);
 renderer.autoClear = false;
@@ -1272,6 +1278,7 @@ function hautZeigen(): void {
   hautGeometrie.attributes.normal!.needsUpdate = true;
   hautGeometrie.computeBoundingSphere();
   hautGeometrie.computeBoundingBox();
+  lavaVersion++;
   neuZeichnen = true;
 }
 
@@ -5261,6 +5268,47 @@ function blasenJetzt(): { p: P3; r: number }[] {
   });
 }
 
+/**
+ * /editor: Lava im Jelly (Florian 11.11. abends: mehrere dunkle, runde Bubbles, die sich wie in einer Lavalampe bewegen). Die Anker
+ * (größte Kugeln in den dicken Teilen) werden nach einer Formänderung neu gesucht, höchstens alle 250 ms; die Blasen schwimmen hin.
+ * Solange sie sich bewegen, wird nur das 3D-Fenster neu gezeichnet (höchstens 60-mal je Sekunde).
+ */
+const lampe = new LavaLampe();
+let lavaVersion = 0;
+let lavaGerechnet = -1;
+let lavaAnkerZeit = -Infinity;
+/** Uhr der Lava in Sekunden (steht, wenn „Lava bewegt“ aus ist) und das letzte Bild nur fürs 3D */
+let lavaUhr = 0;
+let lavaZeit = -1;
+let lavaBildZeit = 0;
+let lavaAnkerMs = 0;
+function lavaAnkerRechnen(jetzt: number): void {
+  if (lavaGerechnet === lavaVersion || jetzt - lavaAnkerZeit < 250) return;
+  lavaAnkerZeit = jetzt;
+  lavaGerechnet = lavaVersion;
+  const idx = hautGeometrie.index?.array;
+  const kasten = hautGeometrie.boundingBox;
+  if (!idx || !kasten || hautLagen.length < 12) {
+    lampe.anker([], () => 0.8);
+    return;
+  }
+  const t0 = performance.now();
+  const my = (kasten.max.y + kasten.min.y) / 2;
+  const hh = Math.max(1e-6, (kasten.max.y - kasten.min.y) / 2);
+  // unten dunkler als oben (wie der Bodenlappen der Vorlage)
+  lampe.anker(lavaAnker(hautLagen, idx), (a) => 0.86 - 0.13 * Math.min(1, Math.max(0, 0.5 + (0.5 * (my - a.p[1])) / hh)));
+  lavaAnkerMs = performance.now() - t0;
+}
+/** zeigt das 3D-Fenster gerade Lava, die sich bewegt? */
+function lavaLaeuft(): boolean {
+  return !teststand.papier3d && !lampe.leer && (teststand.lava || lampe.unruhig);
+}
+/** nur das 3D-Fenster neu zeichnen (die anderen bleiben stehen: `preserveDrawingBuffer`) */
+function rendernDrei(): void {
+  bild.lava(lampe.formen(lavaUhr));
+  fensterZeichnen('drei', griffBilder(), window.innerHeight);
+}
+
 /** Halbmesser des Körpers (für die Kante zwischen hellem und dunklem Grund beim Drehen und für den Verlauf der Auswahl) */
 function koerperRadius(): number {
   const b = hautGeometrie.boundingSphere;
@@ -5303,8 +5351,9 @@ function rendern(): void {
     grundDa: grund !== null,
     kontur: T.kontur,
     rand: T.rand,
+    tiktok: T.tiktok,
   };
-  // Jelly: Größe und Mitte des Körpers (Innenlappen), Bläschen
+  // Jelly: Größe und Mitte des Körpers, Bläschen, Lava
   const kasten = hautGeometrie.boundingBox;
   bild.koerperRadius = koerperRadius();
   if (kasten) {
@@ -5317,6 +5366,7 @@ function rendern(): void {
     bild.halbeHoehe = Math.max(1, 0.5 * g.y);
   }
   bild.blasen(blasenJetzt());
+  bild.lava(lampe.formen(lavaUhr));
   bild.kantenLaenge = MK;
   bild.linien(linienBauen());
   bild.punkte(punkteBauen());
@@ -5334,27 +5384,31 @@ function rendern(): void {
   bild.wahl({ ort, loops: durch, ganz, r: 0.45 * koerperRadius() });
   bild.versatzWelt = Math.max(0.5, 0.15 * MK);
   const gb = griffBilder();
-  for (const a of FENSTER) {
-    const r = felder[a].getBoundingClientRect();
-    if (r.width < 4 || r.height < 4) continue;
-    const css = { x: r.left, y: H - r.bottom, w: r.width, h: r.height };
-    const rect = { x: Math.floor(css.x * DPR), y: Math.floor(css.y * DPR), w: Math.floor(css.w * DPR), h: Math.floor(css.h * DPR) };
-    const kam = kameraSetzen(a, r);
-    const s = skala(a);
-    const ppu = s * DPR;
-    const sg = sigmaWerte(a, rect, ppu);
-    const gr = griffeFuerFenster(gb, s);
-    // /editor: Seite, Front, Top im Logo-Look; das 3D als Jelly oder Papier, ohne Outlines
-    const art: Art = a === 'drei' ? (T.papier3d ? 'papier' : 'jelly') : 'logo';
-    const { d } = basis(a);
-    bild.zeichne({ rect, css, kam, sigma: sg, ppu, mass: ausschnitt[a].zoom, kamAbstand: KAM_ABSTAND, blick: [d.x, d.y, d.z], griffStaebe: gr.staebe, griffBoegen: gr.boegen, art });
-    // Beschriftung in der Farbe des Grunds an ihrer Stelle: Logo von vorn dunkel, von hinten hell; Jelly dunkel; Papier wie die Blaupause
-    const farbeBei = (x: number, y: number): string =>
-      art === 'jelly' ? '#ffffff' : art === 'logo' ? (sigmaJS(sg, x, y) > 0.55 ? bild.farbe.kontur : '#ffffff') : sigmaJS(sg, x, y) > 0.55 ? '#ffffff' : bild.farbe.tinte;
-    felder[a].style.color = farbeBei(rect.x + 24 * DPR, rect.y + rect.h - 20 * DPR);
-    const kn = felder[a].querySelector('.wenden') as HTMLElement | null;
-    if (kn) kn.style.color = farbeBei(rect.x + rect.w - 50 * DPR, rect.y + rect.h - 22 * DPR);
-  }
+  for (const a of FENSTER) fensterZeichnen(a, gb, H);
+}
+
+/** ein Fenster zeichnen (Grund, Körper, Linien, Punkte, Griffe) und seine Beschriftung in der Farbe des Grunds */
+function fensterZeichnen(a: Fenster, gb: readonly GriffBild[], H: number): void {
+  const T = teststand;
+  const r = felder[a].getBoundingClientRect();
+  if (r.width < 4 || r.height < 4) return;
+  const css = { x: r.left, y: H - r.bottom, w: r.width, h: r.height };
+  const rect = { x: Math.floor(css.x * DPR), y: Math.floor(css.y * DPR), w: Math.floor(css.w * DPR), h: Math.floor(css.h * DPR) };
+  const kam = kameraSetzen(a, r);
+  const s = skala(a);
+  const ppu = s * DPR;
+  const sg = sigmaWerte(a, rect, ppu);
+  const gr = griffeFuerFenster(gb, s);
+  // /editor: Seite, Front, Top im Logo-Look; das 3D als Jelly oder Papier, ohne Outlines
+  const art: Art = a === 'drei' ? (T.papier3d ? 'papier' : 'jelly') : 'logo';
+  const { d } = basis(a);
+  bild.zeichne({ rect, css, kam, sigma: sg, ppu, mass: ausschnitt[a].zoom, kamAbstand: KAM_ABSTAND, blick: [d.x, d.y, d.z], griffStaebe: gr.staebe, griffBoegen: gr.boegen, art });
+  // Beschriftung in der Farbe des Grunds an ihrer Stelle: Logo von vorn dunkel, von hinten hell; Jelly dunkel; Papier wie die Blaupause
+  const farbeBei = (x: number, y: number): string =>
+    art === 'jelly' ? '#ffffff' : art === 'logo' ? (sigmaJS(sg, x, y) > 0.55 ? bild.farbe.kontur : '#ffffff') : sigmaJS(sg, x, y) > 0.55 ? '#ffffff' : bild.farbe.tinte;
+  felder[a].style.color = farbeBei(rect.x + 24 * DPR, rect.y + rect.h - 20 * DPR);
+  const kn = felder[a].querySelector('.wenden') as HTMLElement | null;
+  if (kn) kn.style.color = farbeBei(rect.x + rect.w - 50 * DPR, rect.y + rect.h - 22 * DPR);
 }
 
 /**
@@ -5421,9 +5475,18 @@ function bildRechnen(): void {
     neuZeichnen = true;
   }
   knickDreh.zeit = jetzt;
+  // Lava: Anker nach Formänderungen, Uhr und Schwimmen der Blasen
+  lavaAnkerRechnen(jetzt);
+  if (teststand.lava && lavaZeit >= 0) lavaUhr += Math.min(0.1, (jetzt - lavaZeit) / 1000);
+  lavaZeit = jetzt;
+  lampe.schritt(jetzt);
   if (neuZeichnen) {
     neuZeichnen = false;
     rendern();
+    lavaBildZeit = jetzt;
+  } else if (lavaLaeuft() && jetzt - lavaBildZeit >= 15) {
+    lavaBildZeit = jetzt;
+    rendernDrei();
   }
 }
 window.addEventListener('resize', () => {
@@ -5921,6 +5984,18 @@ schleife();
     return (performance.now() - t0) / 5;
   },
   sichtbar: (a: Fenster, p: V3) => sichtbarIn(a, p),
+  /** nur das 3D-Fenster zeichnen (wie für die Lava), in ms (Mittel aus 5, mit gl.finish) */
+  zeitDrei: (): number => {
+    const gl = renderer.getContext();
+    const t0 = performance.now();
+    for (let k = 0; k < 5; k++) {
+      rendernDrei();
+      gl.finish();
+    }
+    return (performance.now() - t0) / 5;
+  },
+  /** Lava im Jelly: Anker (Welt), Blasen und Rechenzeit der Anker */
+  lava: () => ({ anker: hautGeometrie.index ? lavaAnker(hautLagen, hautGeometrie.index.array) : [], formen: lampe.formen(lavaUhr), ms: lavaAnkerMs, uhr: lavaUhr }),
   griffe: (id: number, i: number) => {
     const l = loops[loopNr(id)];
     return l ? griffeBei(l, i) : null;

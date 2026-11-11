@@ -131,10 +131,11 @@ button.wahl:focus-visible, #menue-knopf:focus-visible, .wenden:focus-visible, .w
       </div>
       <div class="gruppe"><span class="titel">Outline</span>
         <label class="regler" for="kontur">Kontur <input id="kontur" type="range" min="4" max="60" step="1" value="28"><span class="zahl" id="kontur-zahl">28 px</span></label>
-        <label class="regler" for="rand">Rand <input id="rand" type="range" min="2" max="40" step="1" value="12"><span class="zahl" id="rand-zahl">12 px</span></label>
+        <label class="regler" for="rand">Rand <input id="rand" type="range" min="0" max="40" step="1" value="12"><span class="zahl" id="rand-zahl">12 px</span></label>
       </div>
       <div class="gruppe"><span class="titel">Passer</span>
-        <button class="wahl" type="button" id="pa-blick" data-s="pBlick" title="Der Schatten der Kontur auf dem Rand: von vorn nach rechts unten, von der Seite keiner, von hinten nach links oben">Blick</button>
+        <button class="wahl" type="button" id="pa-tiktok" data-s="tiktok" title="Die Kontur aus zwei versetzten Platten in Rosa und Lila, Petrol, wo sie sich überdecken (wie der Passer der Blaupause); aus: die Kontur wirft ihren Schatten auf den Rand">TikTok</button>
+        <button class="wahl" type="button" id="pa-blick" data-s="pBlick" title="Versatz nach dem Blick: von vorn Rosa nach rechts oben und Lila nach links unten (ohne TikTok: der Schatten nach unten), von der Seite keiner, von hinten umgekehrt">Blick</button>
         <button class="wahl" type="button" id="pa-wandel" data-s="pWandel" title="Der Rand zeigt die Grundform, Kontur und Körper die Pose">Wandel</button>
         <button class="wahl" type="button" id="pa-tiefe" data-s="pTiefe">Tiefe</button>
         <input type="range" id="tiefe" min="0.02" max="0.4" step="0.01" value="0.14" title="Stärke der Tiefe: wie weit Nahes und Fernes auseinanderlaufen" aria-label="Stärke der Tiefe">
@@ -144,6 +145,7 @@ button.wahl:focus-visible, #menue-knopf:focus-visible, .wenden:focus-visible, .w
         <button class="wahl" type="button" id="li-mass" data-s="linienMass" title="Linien und Punkte wachsen mit dem Zoom wie die Outlines">Linien wachsen mit</button>
         <button class="wahl" type="button" id="sch-durchsicht" data-s="durchsicht" title="Verdeckte Linien und Punkte blass zeigen und greifbar machen (X)">Durchsicht X</button>
         <button class="wahl" type="button" id="sch-umschalt" data-s="umschalt" title="Wie die Umschalttaste gehalten: die Bögen drehen sich in die Knickrichtung, Ziehen knickt">Knick ⇧</button>
+        <button class="wahl" type="button" id="sch-lava" data-s="lava" title="Die dunklen Blasen im Jelly bewegen sich wie in einer Lavalampe (aus: sie stehen still)">Lava bewegt</button>
       </div>
       <div class="gruppe"><span class="titel">Farben</span>
         <label class="farbfeld" for="f-grund">Grund <input type="color" id="f-grund" data-farbe="grund" value="#17131b"></label>

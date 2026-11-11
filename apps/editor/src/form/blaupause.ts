@@ -1,15 +1,17 @@
 // Wesen-Editor „/editor“ (11.11.2026): die Darstellung der Fenster. Hervorgegangen aus dem Prototyp „Blaupause“
 // (`docs/look/editor/blaupause/` auf `claude/editor-grundlayout`) und seinem Teststand. Drei Looks je Fenster:
 //
-// - `logo` (Seite, Front, Top; Florians Vorlage „illudiy“): dunkler Grund (von hinten hell), Körper weiß mit rosa Schattenseite, eine
-//   dicke Kontur in Petrol um die Silhouette, darum ein Rand im Verlauf Rosa → Lila; die dicke Kontur wirft einen Schatten auf den Rand.
-//   Der Schatten versetzt sich wie der Passer „Blick“: von vorn nach rechts unten, von der Seite keiner, von hinten nach links oben.
-// - `jelly` (3D; Florians Vorlage, das Jelly-Material des Spiels): kräftiges Türkis, Licht oben links, Innenlappen aus der Dicke des
-//   Körpers (halbtransparent wirkend), Glanzlicht, Bläschen, keine Outlines.
+// - `logo` (Seite, Front, Top; Florians Vorlage „illudiy“): dunkler Grund, Körper weiß mit lavendel Schattenseite und rosa Extrusion,
+//   eine dicke Kontur in Petrol um die Silhouette, darum ein Rand im Verlauf Rosa → Lila. Die Kontur entsteht wie beim Passer der
+//   Blaupause („TikTok“, 11.11. abends) aus zwei versetzten Platten in Rosa und Lila: Petrol, wo sie sich überdecken (umschaltbar auf die
+//   Kontur, die ihren Schatten auf den Rand wirft). Von hinten (Seitenwechsel) tauschen Körper und Kontur die Farben, der Grund wird hell.
+// - `jelly` (3D; Florians Vorlage, das Jelly-Material des Spiels): kräftiges Türkis, Licht oben links, dunkle Lava (runde Bohnen in den
+//   dicken Teilen des Körpers, `lava.ts`), Glanzlicht, Bläschen, keine Outlines.
 // - `papier` (3D, umschaltbar): der Papierkörper der Blaupause, ohne Outlines.
 //
 // Alle Grenzen der Schattierung sind scharf und geglättet wie Vektorkurven (fwidth), die Normalen kommen geglättet aus dem Fenster.
-// Linien, Punkte und Griffe wie in der Blaupause; ihre Tinte richtet sich nach dem Look.
+// Linien, Punkte und Griffe wie in der Blaupause; ihre Tinte richtet sich nach dem Look. Griffe haben immer Kontrast: über Dunklem
+// werden sie weiß (über sehr Hellem dunkel), je Bildpunkt nach dem Bild des Fensters ohne Griffe.
 
 import {
   BackSide,
@@ -18,12 +20,14 @@ import {
   DepthTexture,
   DoubleSide,
   Float32BufferAttribute,
+  FramebufferTexture,
   FrontSide,
   GreaterDepth,
   HalfFloatType,
   InstancedBufferAttribute,
   InstancedBufferGeometry,
   LessEqualDepth,
+  LinearFilter,
   LinearSRGBColorSpace,
   type Material,
   Mesh,
@@ -42,6 +46,7 @@ import {
   WebGLRenderTarget,
   type WebGLRenderer,
 } from 'three';
+import { type LavaForm, MAX_LAVA } from './lava';
 
 export type P3 = [number, number, number];
 /** Strecke einer Linie: Enden, Härte an den Enden (1 = Kante), Weg längs der Linie (Welteinheiten, für die Strichelung), Linie */
@@ -85,6 +90,11 @@ export type Einstellung = {
   /** dicke Kontur und Rand bei 100 % in Bildpunkten */
   kontur: number;
   rand: number;
+  /**
+   * Logo: die dicke Kontur aus zwei versetzten Platten (Rosa, Lila), Petrol nur, wo sie sich überdecken (wie der Passer der Blaupause,
+   * „TikTok“); aus: die Kontur in Petrol, die ihren Schatten auf den Rand wirft
+   */
+  tiktok: boolean;
 };
 
 /** Farben: Logo (Florians Vorlage), Papier (Blaupause), Auswahl */
@@ -110,9 +120,10 @@ const SCHEMA = [
   // 0 = von vorn, 1 = von hinten (harte Kante beim Drehen)
   'float sigma(vec2 fc) { float s = uA * uFdot + uBeta * dot(fc - uMitte, uFs); return 1.0 - smoothstep(-uW, uW, s); }',
   'float kipp(float sg) { return smoothstep(0.52, 0.58, sg); }',
-  // Tinte nach dem Look: Papier wechselt mit dem Grund, Logo bleibt Petrol auf Weiß, Jelly ist weiß auf Türkis
-  'vec3 strich(float sg) { return uTintenArt > 1.5 ? WEISS : (uTintenArt > 0.5 ? uTinteLogo : mix(BLAU, WEISS, kipp(sg))); }',
-  'vec3 gegen(float sg) { return uTintenArt > 1.5 ? vec3(0.0, 0.33, 0.33) : (uTintenArt > 0.5 ? uPapierLogo : mix(WEISS, BLAU, kipp(sg))); }',
+  // Tinte nach dem Look: Papier und Logo tauschen beim Wenden Tinte und Papier (Logo: Petrol auf Weiß, von hinten Weiß auf Petrol),
+  // Jelly ist weiß auf Türkis
+  'vec3 strich(float sg) { return uTintenArt > 1.5 ? WEISS : (uTintenArt > 0.5 ? mix(uTinteLogo, uPapierLogo, kipp(sg)) : mix(BLAU, WEISS, kipp(sg))); }',
+  'vec3 gegen(float sg) { return uTintenArt > 1.5 ? vec3(0.0, 0.33, 0.33) : (uTintenArt > 0.5 ? mix(uPapierLogo, uTinteLogo, kipp(sg)) : mix(WEISS, BLAU, kipp(sg))); }',
   'uniform float uSS, uInnen, uAussen, uMass; uniform sampler2D tFeld; uniform vec2 uFeldGr;',
   // je Bildpunkt der Versatz zum nächsten Körperpunkt, je Achse in zwei Bytes; alles null = kein Wert
   'float feldDv(sampler2D t, vec2 tc) { vec4 b = floor(texture2D(t, tc / uFeldGr) * 255.0 + 0.5); if (b.r + b.g < 0.5) return 1e4;',
@@ -155,6 +166,15 @@ const LINIE_VS = [
 const LINIE_FS = [
   SCHEMA,
   'uniform float uPpu, uStrichel, uAlpha, uHalo, uFest, uWeichStark, uSkal;',
+  // Griffe mit Kontrast: das Bild des Fensters ohne Griffe (`tUnter`) entscheidet je Bildpunkt — eine dunkle Tinte wird über Dunklem
+  // weiß, eine helle über sehr Hellem dunkel
+  'uniform sampler2D tUnter; uniform float uKontrast;',
+  'vec3 kontrast(vec3 col) {',
+  '  vec3 u = texture2D(tUnter, (gl_FragCoord.xy - uVp.xy) / uVp.zw).rgb;',
+  '  float L = dot(u, vec3(0.2126, 0.7152, 0.0722)), Lc = dot(col, vec3(0.2126, 0.7152, 0.0722));',
+  '  vec3 dunkel = uTintenArt > 1.5 ? vec3(0.0, 0.3, 0.3) : (uTintenArt > 0.5 ? uTinteLogo : BLAU);',
+  '  return Lc < 0.5 ? mix(col, WEISS, 1.0 - smoothstep(0.36, 0.48, L)) : mix(col, dunkel, smoothstep(0.84, 0.92, L));',
+  '}',
   'varying vec2 vL; varying float vLen; varying vec2 vHw; varying vec2 vHh; varying vec2 vDd; varying vec2 vWahl;',
   'void main() {',
   '  float u = clamp(vL.x / max(vLen, 1e-4), 0.0, 1.0); float hw = mix(vHw.x, vHw.y, u);',
@@ -173,10 +193,11 @@ const LINIE_FS = [
   '    an = anteil >= 1.0 ? 1.0 : smoothstep(0.0, 0.06, ph) * (1.0 - smoothstep(anteil - 0.06, anteil, ph));',
   '  }',
   '  float kk = kipp(sg); vec3 hart = strich(sg);',
-  '  vec3 weich = uTintenArt > 1.5 ? vec3(0.78, 1.0, 0.97) : (uTintenArt > 0.5 ? mix(uPapierLogo, uTinteLogo, 0.42)',
+  '  vec3 weich = uTintenArt > 1.5 ? vec3(0.78, 1.0, 0.97) : (uTintenArt > 0.5 ? mix(gegen(sg), hart, 0.42)',
   '    : mix(mix(HELL, DIMM, sg), mix(mix(WEISS, uTinte, 0.6), mix(WEISS, uTinte, 0.38), kk), uWeichStark));',
   '  vec3 col = uFest > 0.5 ? hart : mix(weich, hart, smoothstep(0.05, 0.6, h));',
   '  col = mix(col, RT, mix(vWahl.x, vWahl.y, u));',
+  '  if (uKontrast > 0.5) col = kontrast(col);',
   '  float a = kern * an * uAlpha;',
   '  if (a < 0.004) discard;',
   '  gl_FragColor = vec4(col, a);',
@@ -395,6 +416,7 @@ export class BlaupauseBild {
     grundDa: false,
     kontur: 28,
     rand: 12,
+    tiktok: true,
   };
   farbe: Farben = { ...FARBEN_START };
   /** Halbmesser, Mitte, typische Dicke und halbe Höhe des Körpers (für Jelly) */
@@ -410,7 +432,8 @@ export class BlaupauseBild {
     const U = this.U;
     this.rueckZiel = new WebGLRenderTarget(4, 4, { depthBuffer: true, stencilBuffer: false, depthTexture: new DepthTexture(4, 4) });
     const glattZiel = (tiefe: boolean): WebGLRenderTarget =>
-      new WebGLRenderTarget(4, 4, { type: HalfFloatType, format: RGBAFormat, minFilter: NearestFilter, magFilter: NearestFilter, generateMipmaps: false, depthBuffer: tiefe, stencilBuffer: false });
+      // linear gefiltert: die Abtastpunkte der Glättung liegen zwischen den Bildpunkten (an der Mitte eines Bildpunkts gilt sein Wert)
+      new WebGLRenderTarget(4, 4, { type: HalfFloatType, format: RGBAFormat, minFilter: LinearFilter, magFilter: LinearFilter, generateMipmaps: false, depthBuffer: tiefe, stencilBuffer: false });
     this.glattA = glattZiel(true);
     this.glattB = glattZiel(false);
 
@@ -436,8 +459,11 @@ export class BlaupauseBild {
         'void main() {',
         '  vec3 n0 = normalize(vN); if (!gl_FrontFacing) n0 = -n0; vec3 n = glatteNormale(n0, glattFeld());',
         '  float l = dot(n, normalize(vec3(0.55, 0.62, 0.56)));',
+        '  float a = stufe(l, uSchwelle);',
         '  vec3 weiss = mix(uWeissO, uWeissU, smoothstep(0.35, -0.6, n.y));',
-        '  gl_FragColor = vec4(mix(uLavendel, weiss, stufe(l, uSchwelle)), 1.0);',
+        // von hinten (Seitenwechsel) tauschen Körper und Kontur die Farben: der Körper in Petrol, die Schattenseite dunkler
+        '  vec3 vorn = mix(uLavendel, weiss, a), hinten = mix(uTinteLogo * 0.66, uTinteLogo, a);',
+        '  gl_FragColor = vec4(mix(vorn, hinten, kipp(sigma(gl_FragCoord.xy))), 1.0);',
         '}',
       ].join('\n'),
     });
@@ -498,8 +524,8 @@ export class BlaupauseBild {
         '  vec2 fc = gl_FragCoord.xy; vec4 c = texture2D(tQuelle, fc / uGroesse);',
         '  if (c.z <= 0.0) { gl_FragColor = c; return; }',
         '  vec4 summe = vec4(0.0); float gw = 0.0;',
-        '  for (int i = -8; i <= 8; i++) {',
-        '    float u = float(i) / 8.0; vec4 s = texture2D(tQuelle, (fc + uRichtung * u * uRadius) / uGroesse);',
+        '  for (int i = -12; i <= 12; i++) {',
+        '    float u = float(i) / 12.0; vec4 s = texture2D(tQuelle, (fc + uRichtung * u * uRadius) / uGroesse);',
         '    if (s.z <= 0.0) continue;',
         '    float dz = (s.z - c.z) / uSigmaZ; float w = exp(-4.0 * u * u - dz * dz);',
         '    summe += s * w; gw += w;',
@@ -527,6 +553,9 @@ export class BlaupauseBild {
         uVorn: { value: new Vector3(0, 0, -1) },
         uBlasen: { value: Array.from({ length: MAX_BLASEN }, () => new Vector4()) },
         uBlasenZahl: { value: 0 },
+        uLava: { value: Array.from({ length: 2 * MAX_LAVA }, () => new Vector4()) },
+        uLavaE: { value: Array.from({ length: 2 * MAX_LAVA }, () => new Vector4()) },
+        uLavaZahl: { value: 0 },
         uJLichtO: { value: farbe3('#3bfcf2') },
         uJLicht: { value: farbe3('#1ee9df') },
         uJMitte: { value: farbe3('#00c4ba') },
@@ -542,6 +571,11 @@ export class BlaupauseBild {
         STUFE,
         'uniform sampler2D tRueck; uniform float uNah, uFern, uRadius, uDickeBezug, uHoehe; uniform vec3 uMitteK, uVorn;',
         `uniform vec4 uBlasen[${MAX_BLASEN}]; uniform float uBlasenZahl;`,
+        // Lava: je Blase zwei Ellipsoide, im Bild als Ellipse: Mitte und kleine Halbachse (Bildpunkte), Ton; dazu die inverse Form (2×2)
+        `uniform vec4 uLava[${2 * MAX_LAVA}]; uniform vec4 uLavaE[${2 * MAX_LAVA}]; uniform float uLavaZahl;`,
+        // Abstand zum Rand einer Ellipse in Bildpunkten (genähert: gemessen an der kleinen Halbachse)
+        'float ellipse(vec2 fc, vec4 s, vec4 e) { vec2 q = fc - s.xy; float m = e.x * q.x * q.x + 2.0 * e.y * q.x * q.y + e.z * q.y * q.y; return (sqrt(max(m, 0.0)) - 1.0) * s.z; }',
+        'float smin(float a, float b, float k) { float h = max(k - abs(a - b), 0.0) / max(k, 1e-5); return min(a, b) - h * h * k * 0.25; }',
         GLATT,
         'uniform vec3 uJLichtO, uJLicht, uJMitte, uJMitteU, uJSchatten, uJRand; varying vec3 vN; varying vec3 vW;',
         // weiche Rechteck-Lichtquelle in Richtung k, gesehen über die Spiegelrichtung d (wie im Spiel), gedreht und mit scharfem Rand
@@ -564,11 +598,20 @@ export class BlaupauseBild {
         '  vec3 mitte = mix(uJMitteU, uJMitte, smoothstep(-0.08, 0.52, l));',
         '  vec3 schatten = mix(uJRand, uJSchatten, smoothstep(-0.85, -0.08, l));',
         '  vec3 col = mix(schatten, mix(mitte, licht, aL), aM);',
-        // Innenlappen: wo der Körper dick ist, halbtransparent dunkler; unten etwas mehr (der Bodenlappen der Vorlage)
         '  float h = clamp((vW.y - uMitteK.y) / uHoehe, -1.0, 1.0);',
-        '  float te = t - 0.45 * h;',
-        '  col *= mix(1.0, 0.8, stufe(te, 0.85));',
-        '  col *= mix(1.0, 0.76, stufe(te, 1.35));',
+        // Lava (die dunklen Lappen der Vorlage): runde Bohnen aus je zwei Kreisen, weich verschmolzen, auch mit den Nachbarn (wie in einer
+        // Lavalampe); scharfer, geglätteter Rand. Der Ton (halbtransparent dunkler) kommt von der nächsten Blase.
+        '  vec2 fc = gl_FragCoord.xy; float lavaD = 1e5, tonS = 0.0, tonW = 0.0;',
+        `  for (int b = 0; b < ${MAX_LAVA}; b++) {`,
+        '    if (float(b) >= uLavaZahl) break;',
+        '    vec4 s0 = uLava[2 * b], s1 = uLava[2 * b + 1];',
+        '    float db = smin(ellipse(fc, s0, uLavaE[2 * b]), ellipse(fc, s1, uLavaE[2 * b + 1]), 0.6 * s0.z);',
+        '    lavaD = smin(lavaD, db, 0.35 * s0.z);',
+        '    float w = exp(-max(db, 0.0) / max(0.25 * s0.z, 1.0)); tonS += w * s0.w; tonW += w;',
+        '  }',
+        '  float aaL = max(fwidth(lavaD) * 0.85, 0.5);',
+        '  float lava = 1.0 - smoothstep(-aaL, aaL, lavaD);',
+        '  col *= mix(1.0, tonS / max(tonW, 1e-5), lava);',
         // Bläschen: Strahlnähe zu kleinen Kugeln im Körper, helle Scheiben mit scharfem Rand
         '  float bub = 0.0;',
         `  for (int i = 0; i < ${MAX_BLASEN}; i++) {`,
@@ -601,7 +644,7 @@ export class BlaupauseBild {
       side: DoubleSide,
       uniforms: this.mitU({ uPar: { value: 0 } }),
       vertexShader: SICHT_VS + 'void main() { gl_Position = sicht(position); }',
-      fragmentShader: [SCHEMA, 'void main() { gl_FragColor = vec4(uTintenArt > 1.5 ? vec3(0.0, 0.3, 0.3) : (uTintenArt > 0.5 ? uTinteLogo : mix(mix(WEISS, uTinte, 0.55), mix(uTinte, WEISS, 0.18), kipp(sigma(gl_FragCoord.xy)))), 1.0); }'].join('\n'),
+      fragmentShader: [SCHEMA, 'void main() { gl_FragColor = vec4(uTintenArt > 1.5 ? vec3(0.0, 0.3, 0.3) : (uTintenArt > 0.5 ? strich(sigma(gl_FragCoord.xy)) : mix(mix(WEISS, uTinte, 0.55), mix(uTinte, WEISS, 0.18), kipp(sigma(gl_FragCoord.xy)))), 1.0); }'].join('\n'),
     });
     // Saat des Abstandsfelds: jeder Bildpunkt des Körpers trägt den Versatz null
     this.maskeMat = new ShaderMaterial({
@@ -609,8 +652,10 @@ export class BlaupauseBild {
       depthTest: false,
       depthWrite: false,
       blending: NoBlending,
-      uniforms: { uPar: { value: 0 }, uParR: U.uParR, uKamAbstand: U.uKamAbstand, uGrund: { value: 0 } },
-      vertexShader: SICHT_VS + 'uniform float uGrund; attribute vec3 aGrund; void main() { gl_Position = sicht(mix(position, aGrund, uGrund)); }',
+      uniforms: { uPar: { value: 0 }, uParR: U.uParR, uKamAbstand: U.uKamAbstand, uGrund: { value: 0 }, uZug: { value: new Vector2() } },
+      // `uZug`: Versatz im Bild (NDC) — die Maske wird längs der Extrusion mehrfach versetzt gezeichnet, das Feld misst dann den Abstand
+      // zur gezogenen Silhouette selbst (ohne Treppen, auch stark vergrößert)
+      vertexShader: SICHT_VS + 'uniform float uGrund; uniform vec2 uZug; attribute vec3 aGrund; void main() { gl_Position = sicht(mix(position, aGrund, uGrund)); gl_Position.xy += uZug * gl_Position.w; }',
       fragmentShader: 'void main() { gl_FragColor = vec4(8.0 / 255.0, 0.0, 8.0 / 255.0, 0.0); }',
     });
     this.flutMat = new ShaderMaterial({
@@ -649,6 +694,10 @@ export class BlaupauseBild {
         tFeldR: { value: null },
         uSchub: { value: new Vector2() },
         uExtr: { value: new Vector2() },
+        uPlatte: { value: new Vector2() },
+        uTiktok: { value: 1 },
+        uPlatteA: { value: farbe3(FARBEN_START.verlaufA) },
+        uPlatteB: { value: farbe3(FARBEN_START.verlaufB) },
         uGrundV: { value: farbe3(FARBEN_START.grund) },
         uGrundH: { value: farbe3(FARBEN_START.grundHinten) },
         uKontur: { value: farbe3(FARBEN_START.kontur) },
@@ -663,23 +712,38 @@ export class BlaupauseBild {
       vertexShader: 'void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
       fragmentShader: [
         SCHEMA,
-        'uniform sampler2D tFeldC, tFeldR; uniform vec2 uSchub, uExtr; uniform vec3 uGrundV, uGrundH, uKontur, uRosa, uVA, uVM1, uVM2, uVB, uSchattenA, uSchattenB;',
+        'uniform sampler2D tFeldC, tFeldR; uniform vec2 uSchub, uExtr, uPlatte; uniform float uTiktok;',
+        'uniform vec3 uGrundV, uGrundH, uKontur, uRosa, uVA, uVM1, uVM2, uVB, uSchattenA, uSchattenB, uPlatteA, uPlatteB;',
         'vec3 verlauf(float x) { return x < 0.45 ? mix(uVA, uVM1, x / 0.45) : (x < 0.7 ? mix(uVM1, uVM2, (x - 0.45) / 0.25) : mix(uVM2, uVB, (x - 0.7) / 0.3)); }',
-        // Abstand zur gezogenen Silhouette: Körper und Kopien längs des Versatzes (sechs Schritte, damit dünne Teile nicht abreißen)
-        'float gezogen(sampler2D t, vec2 fc, vec2 v) { float d = abstandV(t, fc); for (int k = 1; k <= 6; k++) d = min(d, abstandV(t, fc - v * (float(k) / 6.0))); return d; }',
         'void main() {',
-        '  vec2 fc = gl_FragCoord.xy; float sg = sigma(fc); vec3 col = mix(uGrundV, uGrundH, kipp(sg));',
+        '  vec2 fc = gl_FragCoord.xy; float sg = sigma(fc), kk = kipp(sg); vec3 col = mix(uGrundV, uGrundH, kk);',
+        // die dicke Kontur tauscht beim Wenden die Farbe mit dem Körper
+        '  vec3 kontur = mix(uKontur, uPapierLogo, kk);',
         '  float ri = uInnen * uDpr * uMass, ra = (uInnen + uAussen) * uDpr * uMass;',
-        '  float dE = gezogen(tFeld, fc, uExtr), dC = gezogen(tFeldC, fc, uExtr), dS = gezogen(tFeldR, fc - uSchub, uExtr);',
+        // alle Felder messen den Abstand zur gezogenen Silhouette (Körper samt Extrusion, `feldRechnen`)
+        '  float dE = abstandV(tFeld, fc);',
         '  float x = clamp((fc.x - uVp.x) / uVp.z, 0.0, 1.0);',
-        '  vec3 rand = verlauf(x), schatten = mix(uSchattenA, uSchattenB, smoothstep(0.0, 1.0, x));',
-        '  float aussen = 1.0 - smoothstep(ra - 0.7, ra + 0.7, dC);',
-        '  float sch = 1.0 - smoothstep(ri - 0.7, ri + 0.7, dS);',
-        '  float kontur = 1.0 - smoothstep(ri - 0.7, ri + 0.7, dE);',
-        '  float extr = 1.0 - smoothstep(-0.2, 0.8, dE);',
-        '  col = mix(col, mix(rand, schatten, sch), aussen);',
-        '  col = mix(col, uKontur, kontur);',
-        '  col = mix(col, uRosa, extr);',
+        '  vec3 rand = verlauf(x);',
+        '  if (uTiktok > 0.5) {',
+        // TikTok (Passer der Blaupause): zwei Platten, jede ein Band von ihrem Körper bis zur Kontur, Rosa nach der einen Seite versetzt,
+        // Lila nach der anderen; wo sie sich überdecken, entsteht die Kontur in Petrol. Der Rand liegt um beide.
+        '    float dA = abstandV(tFeldC, fc - uPlatte), dB = abstandV(tFeldR, fc + uPlatte);',
+        '    float aussen = 1.0 - smoothstep(ra - 0.7, ra + 0.7, min(dA, dB));',
+        '    float pA = (1.0 - smoothstep(ri - 0.7, ri + 0.7, dA)) * smoothstep(-0.2, 0.8, dA);',
+        '    float pB = (1.0 - smoothstep(ri - 0.7, ri + 0.7, dB)) * smoothstep(-0.2, 0.8, dB);',
+        '    col = mix(col, rand, aussen);',
+        '    col = mix(col, uPlatteA, pA * (1.0 - pB));',
+        '    col = mix(col, uPlatteB, pB * (1.0 - pA));',
+        '    col = mix(col, kontur, pA * pB);',
+        '  } else {',
+        '    float dC = abstandV(tFeldC, fc), dS = abstandV(tFeldR, fc - uSchub);',
+        '    vec3 schatten = mix(uSchattenA, uSchattenB, smoothstep(0.0, 1.0, x));',
+        '    float aussen = 1.0 - smoothstep(ra - 0.7, ra + 0.7, dC);',
+        '    float sch = 1.0 - smoothstep(ri - 0.7, ri + 0.7, dS);',
+        '    col = mix(col, mix(rand, schatten, sch), aussen);',
+        '    col = mix(col, kontur, 1.0 - smoothstep(ri - 0.7, ri + 0.7, dE));',
+        '  }',
+        '  col = mix(col, uRosa, 1.0 - smoothstep(-0.2, 0.8, dE));',
         '  gl_FragColor = vec4(col, 1.0);',
         '}',
       ].join('\n'),
@@ -704,7 +768,7 @@ export class BlaupauseBild {
     this.hgNetz.frustumCulled = false;
     this.szHg.add(this.hgNetz);
 
-    const linienMat = (o: { hart: number; weich: number; strichel?: number; verdeckt?: boolean; alpha?: number; halo?: number; fest?: boolean; tiefe?: boolean }): ShaderMaterial =>
+    const linienMat = (o: { hart: number; weich: number; strichel?: number; verdeckt?: boolean; alpha?: number; halo?: number; fest?: boolean; tiefe?: boolean; kontrast?: boolean }): ShaderMaterial =>
       new ShaderMaterial({
         transparent: true,
         depthWrite: false,
@@ -722,6 +786,8 @@ export class BlaupauseBild {
           uWeichStark: { value: 1 },
           uSkal: { value: 1 },
           uPar: { value: 0 },
+          tUnter: { value: null },
+          uKontrast: { value: o.kontrast ? 1 : 0 },
         }),
         vertexShader: LINIE_VS,
         fragmentShader: LINIE_FS,
@@ -729,8 +795,8 @@ export class BlaupauseBild {
     this.matSicht = linienMat({ hart: 4, weich: 0.5, strichel: 7 });
     this.matVerdeckt = linienMat({ hart: 4, weich: 0.5, strichel: 7, verdeckt: true, alpha: 0.3 });
     this.matHalo = linienMat({ hart: 4, weich: 0.5, halo: 1.75 });
-    this.stabMat = linienMat({ hart: 1.1, weich: 1.1, fest: true, tiefe: false });
-    this.bogenMat = linienMat({ hart: 2.2, weich: 2.2, fest: true, tiefe: false });
+    this.stabMat = linienMat({ hart: 1.1, weich: 1.1, fest: true, tiefe: false, kontrast: true });
+    this.bogenMat = linienMat({ hart: 2.2, weich: 2.2, fest: true, tiefe: false, kontrast: true });
     const punktMat = (o: { verdeckt?: boolean; alpha?: number }): ShaderMaterial =>
       new ShaderMaterial({
         transparent: true,
@@ -802,6 +868,11 @@ export class BlaupauseBild {
     this.punkteSicht.geometry = g;
     this.punkteVerdeckt.geometry = g;
   }
+  /** Lava im Jelly (je Blase zwei Ellipsoide in der Welt; im Fenster aufs Bild gerechnet) */
+  private lavaFormen: readonly LavaForm[] = [];
+  lava(k: readonly LavaForm[]): void {
+    this.lavaFormen = k.slice(0, 2 * MAX_LAVA);
+  }
   /** Bläschen im Jelly (Mitte und Halbmesser in der Welt) */
   blasen(b: readonly { p: P3; r: number }[]): void {
     const arr = this.jellyMat.uniforms.uBlasen!.value as Vector4[];
@@ -850,11 +921,17 @@ export class BlaupauseBild {
     };
     (u.uSchattenA!.value as Vector3).copy(alsV(satt(A, 0.8)));
     (u.uSchattenB!.value as Vector3).copy(alsV(satt(B, 0.78)));
+    // TikTok: die Platten in den zwei Farben des Verlaufs
+    (u.uPlatteA!.value as Vector3).copy(alsV(A));
+    (u.uPlatteB!.value as Vector3).copy(alsV(B));
     (this.hgLogoMat.uniforms.uRosa!.value as Vector3).copy(farbe3(F.koerperSchatten));
   }
 
-  /** Abstandsfeld einer Silhouette: Maske zeichnen, dann fluten; gibt die Textur mit dem Ergebnis */
-  private feldRechnen(kam: OrthographicCamera, paar: [WebGLRenderTarget, WebGLRenderTarget], grund: number, par: number, mw: number, mh: number, weit: number): Texture {
+  /**
+   * Abstandsfeld einer Silhouette: Maske zeichnen (längs `zug` gezogen, Bildpunkte des Felds: die Extrusion), dann fluten; gibt die
+   * Textur mit dem Ergebnis
+   */
+  private feldRechnen(kam: OrthographicCamera, paar: [WebGLRenderTarget, WebGLRenderTarget], grund: number, par: number, mw: number, mh: number, weit: number, zug: Vector2): Texture {
     if (paar[0].width !== mw || paar[0].height !== mh) {
       paar[0].setSize(mw, mh);
       paar[1].setSize(mw, mh);
@@ -865,7 +942,15 @@ export class BlaupauseBild {
     r.setRenderTarget(paar[0]);
     r.setClearColor(0x000000, 0);
     r.clear();
-    r.render(this.szMaske, kam);
+    // je höchstens 1,5 Bildpunkte eine Kopie (höchstens 64)
+    const n = Math.min(64, Math.ceil(zug.length() / 1.5));
+    const uz = this.maskeMat.uniforms.uZug!.value as Vector2;
+    for (let k = 0; k <= n; k++) {
+      const a = n === 0 ? 0 : k / n;
+      uz.set((2 * a * zug.x) / mw, (2 * a * zug.y) / mh);
+      r.render(this.szMaske, kam);
+    }
+    uz.set(0, 0);
     let quelle = paar[0];
     let ziel = paar[1];
     const schritte: number[] = [];
@@ -884,7 +969,10 @@ export class BlaupauseBild {
     return quelle.texture;
   }
 
-  /** Feld für die Glättung im Bild: Blicknormale, Tiefe, Dicke des Körpers, weichgezeichnet (Halbmesser ≈ 2,5 Kanten des Netzes) */
+  /**
+   * Feld für die Glättung im Bild: Blicknormale, Tiefe, Dicke des Körpers, weichgezeichnet. Halbmesser ≈ 4,5 Kanten des Netzes (ohne
+   * feste Obergrenze, sonst bleiben beim Zoomen die Kanten des Netzes als runde Stufen sichtbar), zweimal waagerecht und senkrecht.
+   */
   private glattFeld(f: FensterBild, kam: OrthographicCamera): Texture | null {
     const r = this.r;
     const { rect } = f;
@@ -911,17 +999,19 @@ export class BlaupauseBild {
     this.innen.visible = innenAn;
     const w = this.weichMat.uniforms;
     (w.uGroesse!.value as Vector2).set(rect.w, rect.h);
-    w.uRadius!.value = Math.min(28 * this.DPR, Math.max(3 * this.DPR, 2.5 * this.kantenLaenge * f.ppu));
+    w.uRadius!.value = Math.min(0.35 * Math.min(rect.w, rect.h), Math.max(3 * this.DPR, 4.5 * this.kantenLaenge * f.ppu * 0.75));
     // Tiefensprünge (ein Teil vor dem anderen) sind viel größer als die Neigung einer Fläche über den Halbmesser der Glättung
     w.uSigmaZ!.value = Math.max(1, 0.18 * this.koerperRadius);
-    w.tQuelle!.value = this.glattA.texture;
-    (w.uRichtung!.value as Vector2).set(1, 0);
-    r.setRenderTarget(this.glattB);
-    r.render(this.szWeich, kam);
-    w.tQuelle!.value = this.glattB.texture;
-    (w.uRichtung!.value as Vector2).set(0, 1);
-    r.setRenderTarget(this.glattA);
-    r.render(this.szWeich, kam);
+    for (let runde = 0; runde < 2; runde++) {
+      w.tQuelle!.value = this.glattA.texture;
+      (w.uRichtung!.value as Vector2).set(1, 0);
+      r.setRenderTarget(this.glattB);
+      r.render(this.szWeich, kam);
+      w.tQuelle!.value = this.glattB.texture;
+      (w.uRichtung!.value as Vector2).set(0, 1);
+      r.setRenderTarget(this.glattA);
+      r.render(this.szWeich, kam);
+    }
     return this.glattA.texture;
   }
 
@@ -964,25 +1054,32 @@ export class BlaupauseBild {
       const mw = Math.round(rect.w * SS);
       const mh = Math.round(rect.h * SS);
       const weit = (E.kontur + 1.72 * E.rand + EXTRUSION + 4) * mass * this.DPR * SS + 3;
-      const haupt = this.feldRechnen(kam, this.FELDER[0]!, 0, 0, mw, mh, weit);
+      // Blick: die Extrusion fällt von vorn nach links unten, von der Seite keine, von hinten nach oben
+      const k = E.pBlick ? this.DPR * mass * s.fdot : 0;
+      const extr = this.extrHilf.set(-0.55 * EXTRUSION * k, -0.835 * EXTRUSION * k);
+      const zug = this.zugHilf.copy(extr).multiplyScalar(SS);
+      const haupt = this.feldRechnen(kam, this.FELDER[0]!, 0, 0, mw, mh, weit, zug);
       let texC = haupt;
       let texR = haupt;
       // Rand: im Wandel die Grundform, bei Tiefe nach der einen Seite geschert; Schatten: die Form, bei Tiefe nach der anderen
       const grundC = E.pWandel && E.grundDa ? 1 : 0;
-      if (E.pTiefe || grundC) texC = this.feldRechnen(kam, this.FELDER[1]!, grundC, E.pTiefe ? E.tiefe : 0, mw, mh, weit);
-      if (E.pTiefe) texR = this.feldRechnen(kam, this.FELDER[2]!, 0, -E.tiefe, mw, mh, weit);
+      if (E.pTiefe || grundC) texC = this.feldRechnen(kam, this.FELDER[1]!, grundC, E.pTiefe ? E.tiefe : 0, mw, mh, weit, zug);
+      if (E.pTiefe) texR = this.feldRechnen(kam, this.FELDER[2]!, 0, -E.tiefe, mw, mh, weit, zug);
       U.tFeld.value = haupt;
       U.uFeldGr.value.set(mw, mh);
       U.uSS.value = SS;
       const hu = this.hgLogoMat.uniforms;
       hu.tFeldC!.value = texC;
       hu.tFeldR!.value = texR;
-      // Blick: Extrusion und Schatten fallen von vorn nach links unten bzw. unten, von der Seite keine, von hinten nach oben
-      const k = E.pBlick ? this.DPR * mass * s.fdot : 0;
-      (hu.uExtr!.value as Vector2).set(-0.55 * EXTRUSION * k, -0.835 * EXTRUSION * k);
+      (hu.uExtr!.value as Vector2).copy(extr);
       // der Schatten deckt wie in der Vorlage gut zwei Drittel des Rands, außen bleibt ein heller Streifen
       const sch = 0.72 * E.rand;
       (hu.uSchub!.value as Vector2).set(-0.26 * sch * k, -0.966 * sch * k);
+      // TikTok: Rosa nach rechts oben, Lila nach links unten (je ein Fünftel der Kontur); von der Seite fallen sie zusammen, von hinten
+      // tauschen sie die Seiten (wie der Passer „Blick“ der Blaupause)
+      hu.uTiktok!.value = E.tiktok ? 1 : 0;
+      const pl = 0.2 * E.kontur * k;
+      (hu.uPlatte!.value as Vector2).set(0.7071 * pl, 0.7071 * pl);
     }
     r.setRenderTarget(null);
     r.setViewport(f.css.x, f.css.y, f.css.w, f.css.h);
@@ -1015,6 +1112,31 @@ export class BlaupauseBild {
       j.uHoehe!.value = this.halbeHoehe;
       (j.uMitteK!.value as Vector3).set(...this.koerperMitte);
       (j.uVorn!.value as Vector3).set(-f.blick[0], -f.blick[1], -f.blick[2]);
+      // Lava: die Ellipsoide aufs Bild dieses Fensters. Die Mitte projiziert, die Form E = P·M·Pᵀ mit P = Bildpunkte je Welteinheit ×
+      // (rechts, oben) der Kamera; der Shader bekommt E⁻¹ und die kleine Halbachse
+      kam.updateMatrixWorld();
+      kam.matrixWorld.extractBasis(this.lavaRe, this.lavaOb, this.lavaHilf);
+      const lv = j.uLava!.value as Vector4[];
+      const le = j.uLavaE!.value as Vector4[];
+      const q = this.lavaHilf;
+      const R = this.lavaRe;
+      const O = this.lavaOb;
+      this.lavaFormen.forEach((s, i) => {
+        q.set(s.c[0], s.c[1], s.c[2]).project(kam);
+        const [xx, xy, xz, yy, yz, zz] = s.m;
+        const mal = (a: Vector3, b: Vector3): number =>
+          a.x * (xx * b.x + xy * b.y + xz * b.z) + a.y * (xy * b.x + yy * b.y + yz * b.z) + a.z * (xz * b.x + yz * b.y + zz * b.z);
+        const pp = f.ppu * f.ppu;
+        const e00 = pp * mal(R, R);
+        const e01 = pp * mal(R, O);
+        const e11 = pp * mal(O, O);
+        const det = Math.max(1e-9, e00 * e11 - e01 * e01);
+        const spur = 0.5 * (e00 + e11);
+        const klein = Math.sqrt(Math.max(1e-6, spur - Math.sqrt(Math.max(0, spur * spur - det))));
+        lv[i]!.set(rect.x + (q.x * 0.5 + 0.5) * rect.w, rect.y + (q.y * 0.5 + 0.5) * rect.h, klein, s.ton);
+        le[i]!.set(e11 / det, -e01 / det, e00 / det, 0);
+      });
+      j.uLavaZahl!.value = Math.floor(this.lavaFormen.length / 2);
       this.koerper.material = this.jellyMat;
     } else this.koerper.material = (f.art === 'logo' ? this.logoMat : this.papierMat) as Material;
     // Glättung im Bild: Feld des Körpers zeichnen, dann waagerecht und senkrecht weichzeichnen
@@ -1034,6 +1156,34 @@ export class BlaupauseBild {
     this.boegen.geometry.dispose();
     this.staebe.geometry = gs;
     this.boegen.geometry = gb;
+    if (f.griffStaebe.length + f.griffBoegen.length === 0) return;
+    // Griffe mit Kontrast: das Fenster, wie es ohne Griffe aussieht, als Bild; die Griffe richten ihre Farbe je Bildpunkt danach
+    const unter = this.unterBild(rect.w, rect.h);
+    this.posHilf.set(rect.x, rect.y);
+    r.copyFramebufferToTexture(unter, this.posHilf);
+    for (const m of [this.stabMat, this.bogenMat]) m.uniforms.tUnter!.value = unter;
     r.render(this.szGriffe, kam);
+  }
+
+  private readonly lavaHilf = new Vector3();
+  private readonly extrHilf = new Vector2();
+  private readonly zugHilf = new Vector2();
+  private readonly lavaRe = new Vector3();
+  private readonly lavaOb = new Vector3();
+  private readonly posHilf = new Vector2();
+  /** Bilder der Fenster ohne Griffe, je Größe (die Fenster sind meist gleich groß) */
+  private readonly unterBilder = new Map<string, FramebufferTexture>();
+  private unterBild(w: number, h: number): FramebufferTexture {
+    const key = `${w}x${h}`;
+    let t = this.unterBilder.get(key);
+    if (!t) {
+      if (this.unterBilder.size >= 6) {
+        for (const alt of this.unterBilder.values()) alt.dispose();
+        this.unterBilder.clear();
+      }
+      t = new FramebufferTexture(w, h);
+      this.unterBilder.set(key, t);
+    }
+    return t;
   }
 }
