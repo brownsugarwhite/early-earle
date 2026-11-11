@@ -21,7 +21,12 @@ export const R_BEZUG = 141;
  * Ergebnis der Suche: alle Anker (nach Größe) und die Kontaktbohne unten im größten Teil (achsparallel); nach `lavaPlan` die
  * Lavabohnen und die Teile, die Glanz tragen (der größte und die großen auf der Mittelebene)
  */
-export type LavaFund = { anker: Anker[]; kontakt: Anker | null; teile?: Anker[] };
+export type LavaFund = { anker: Anker[]; kontakt: Anker | null; teile?: Anker[]; feld?: AbstandFeld };
+/**
+ * Abstand jedes Würfels zur Haut (innen, Welt; außen 0), Würfel x am schnellsten, dann y, dann z; Ursprung (Ecke) und Kantenlänge —
+ * für den Glasrand der Kontaktbereiche im Jelly
+ */
+export type AbstandFeld = { werte: Float32Array; nx: number; ny: number; nz: number; o: P3; h: number; max: number };
 
 /**
  * Florian (11.11. spätabends): „Es gibt immer eine untere dunkle Bohne, die eine Art Kontaktebene zum Boden simulieren soll, und
@@ -321,7 +326,18 @@ export function lavaAnker(pos: ArrayLike<number>, index: ArrayLike<number>, aufl
       halb: [0.84 * 0.5 * (xl + xr), 0.38 * unten, 0.84 * 0.5 * (zl + zr)],
     };
   }
-  return { anker, kontakt };
+  // Abstandsfeld für den Glasrand (x, y, z: x am schnellsten)
+  const werte = new Float32Array(nx * ny * nz);
+  let dmax = 0;
+  for (let k = 0; k < nz; k++)
+    for (let j = 0; j < ny; j++)
+      for (let i = 0; i < nx; i++) {
+        const w = d2[idx(i, j, k)]!;
+        const d = w > 0 ? Math.max(0, (Math.sqrt(w) - 0.5) * h) : 0;
+        werte[i + nx * (j + ny * k)] = d;
+        if (d > dmax) dmax = d;
+      }
+  return { anker, kontakt, feld: { werte, nx, ny, nz, o: [ox, oy, oz], h, max: dmax } };
 }
 
 /** Eigenwerte und -vektoren einer symmetrischen 3×3-Matrix (Jacobi), nach Größe absteigend */

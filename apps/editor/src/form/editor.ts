@@ -5299,8 +5299,10 @@ function lavaAnkerRechnen(jetzt: number): void {
   }
   const t0 = performance.now();
   // Kontaktbohne dunkel, Lavabohnen heller (Vorlage gemessen: unten × 0,6–0,7, oben × 0,9); Glanz auf den großen Teilen
-  const plan = lavaPlan(lavaAnker(hautLagen, idx));
-  // (die Kontaktbohne rechnet jetzt das Fenster selbst aus dem Bodenkontakt)
+  const fund = lavaAnker(hautLagen, idx);
+  const plan = lavaPlan(fund);
+  // die Kontaktbereiche rechnet das Fenster selbst aus dem Bodenkontakt; dafür der Abstand zur Haut (Glasrand)
+  if (fund.feld) bild.abstandFeld(fund.feld);
   lampe.ziele({ anker: plan.anker, kontakt: null }, 0.66, 0.87);
   glanzTeile = (plan.teile ?? []).map((a) => ({ c: a.p, r: a.r }));
   bild.grossHalbmesser = plan.teile?.[0]?.r ?? 100;

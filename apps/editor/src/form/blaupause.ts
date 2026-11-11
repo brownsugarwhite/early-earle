@@ -17,6 +17,7 @@ import {
   BackSide,
   BufferGeometry,
   Color,
+  Data3DTexture,
   DepthTexture,
   DoubleSide,
   Float32BufferAttribute,
@@ -30,11 +31,13 @@ import {
   LinearFilter,
   LinearSRGBColorSpace,
   type Material,
+  Matrix4,
   Mesh,
   NearestFilter,
   NoBlending,
-  type OrthographicCamera,
+  OrthographicCamera,
   PlaneGeometry,
+  RedFormat,
   RGBAFormat,
   Scene,
   ShaderMaterial,
@@ -46,7 +49,7 @@ import {
   WebGLRenderTarget,
   type WebGLRenderer,
 } from 'three';
-import { type LavaForm, MAX_LAVA } from './lava';
+import { type AbstandFeld, type LavaForm, MAX_LAVA } from './lava';
 
 export type P3 = [number, number, number];
 /** Strecke einer Linie: Enden, Härte an den Enden (1 = Kante), Weg längs der Linie (Welteinheiten, für die Strichelung), Linie */
@@ -977,11 +980,13 @@ export class BlaupauseBild {
   bodenY = 0;
 
   /**
-   * Kontaktbohne (Florian 11.11. spätabends: „eine abgerundete Andeutung des echten Kontaktbereichs, wenn das Modell immer auf dem Boden
-   * steht … immer Abstand zur Kante wie bei einem Glas-Effekt … immer stark abgerundet“): je Bildpunkt der Strahl durchs Glas zwischen
-   * Vorder- und Rückseite, an beiden Enden ein Rand frei (⅒ des größten Teils); reicht er tiefer als ein Band über dem Boden (0,42 des
-   * größten Teils), gehört der Bildpunkt dazu. Dann weich gerechnet (Halbmesser ⅓ des größten Teils) — der Shader schneidet bei der
-   * Hälfte scharf: rund, nie am Rand.
+   * Kontaktbereiche (Florian 11.11. spätabends: „eine abgerundete Andeutung des echten Kontaktbereichs, wenn das Modell immer auf dem
+   * Boden steht … immer Abstand zur Kante wie bei einem Glas-Effekt … immer stark abgerundet“; dann: „alle unteren Flächen sollten einen
+   * haben, je weiter unten desto größer, … die untere Kontur nicht berühren“). Eine Bodenkarte hält je Bodenpunkt die Höhe der
+   * Unterseite des Körpers (von unten gesehen). Je Bildpunkt wird der Strahl durchs Glas zwischen Vorder- und Rückseite abgetastet (an
+   * beiden Enden ein Rand frei); ein Punkt gehört dazu, wenn er über der Unterseite darunter liegt — mit Abstand (dem Glasrand) und bis
+   * zu einer Schicht, die umso dicker ist, je näher diese Unterseite am Boden liegt. Dann weich gerechnet, der Shader schneidet bei der
+   * Hälfte scharf: rund, nie an der Kontur.
    */
   private kontaktFeld(rect: { w: number; h: number }, kam: OrthographicCamera): Texture {
     const r = this.r;
@@ -990,19 +995,55 @@ export class BlaupauseBild {
       A.setSize(rect.w, rect.h);
       B.setSize(rect.w, rect.h);
     }
-    const R = this.grossHalbmesser;
-    const u = this.kontaktMat.uniforms;
-    u.tRueck!.value = this.rueckZiel.depthTexture;
-    u.uNah!.value = kam.near;
-    u.uFern!.value = kam.far;
-    u.uBodenY!.value = this.bodenY;
-    u.uBand!.value = 0.42 * R;
-    u.uRand!.value = 0.1 * R;
-    (u.uGroesseK!.value as Vector2).set(rect.w, rect.h);
-    (u.uVornK!.value as Vector3).copy((this.jellyMat.uniforms.uVorn!.value as Vector3));
+    // Maße: Rand (Glas) und Schicht über den tiefsten Unterseiten aus dem größten Teil, bei verwinkelten Wesen (kleiner größter Teil,
+    // hohe Form) aus der Höhe des Körpers
+    const kasten = this.koerper.geometry.boundingBox;
+    const hoehe = kasten ? kasten.max.y - kasten.min.y : 2 * this.grossHalbmesser;
+    const R = Math.max(this.grossHalbmesser, 0.24 * hoehe);
     const innenAn = this.innen.visible;
     this.innen.visible = false;
     const mat = this.koerper.material;
+    // Bodenkarte: der Körper von unten (die tiefste Fläche je Bodenpunkt), Höhe in Rot, gültig in Alpha
+    if (kasten) {
+      const cx = 0.5 * (kasten.min.x + kasten.max.x);
+      const cz = 0.5 * (kasten.min.z + kasten.max.z);
+      const halb = 0.5 * Math.max(kasten.max.x - kasten.min.x, kasten.max.z - kasten.min.z) + 10;
+      const bk = this.bodenKam;
+      bk.left = -halb;
+      bk.right = halb;
+      bk.top = halb;
+      bk.bottom = -halb;
+      bk.near = 1;
+      bk.far = hoehe + 40;
+      bk.position.set(cx, kasten.min.y - 20, cz);
+      bk.up.set(0, 0, 1);
+      bk.lookAt(cx, kasten.max.y, cz);
+      bk.updateProjectionMatrix();
+      bk.updateMatrixWorld();
+      this.koerper.material = this.bodenMat;
+      r.setRenderTarget(this.bodenZiel);
+      r.setClearColor(0x000000, 0);
+      r.clear();
+      r.render(this.szKoerper, bk);
+      this.bodenM.multiplyMatrices(bk.projectionMatrix, bk.matrixWorldInverse);
+    }
+    const u = this.kontaktMat.uniforms;
+    u.tRueck!.value = this.rueckZiel.depthTexture;
+    u.tBoden!.value = this.bodenZiel.texture;
+    (u.uBodenM!.value as Matrix4).copy(this.bodenM);
+    u.uNah!.value = kam.near;
+    u.uFern!.value = kam.far;
+    u.uBodenY!.value = this.bodenY;
+    u.uSchicht!.value = 0.75 * R;
+    u.uRand!.value = 0.14 * R;
+    u.tAbst!.value = this.abstand3d;
+    u.uAbstAn!.value = this.abstand3d ? 1 : 0;
+    (u.uAbstO!.value as Vector3).copy(this.abstandO);
+    (u.uAbstG!.value as Vector3).copy(this.abstandG);
+    u.uAbstMax!.value = this.abstandMax;
+    u.uHoeheK!.value = Math.max(1, 0.6 * hoehe);
+    (u.uGroesseK!.value as Vector2).set(rect.w, rect.h);
+    (u.uVornK!.value as Vector3).copy(this.jellyMat.uniforms.uVorn!.value as Vector3);
     this.koerper.material = this.kontaktMat;
     r.setRenderTarget(A);
     r.setClearColor(0x000000, 0);
@@ -1012,7 +1053,7 @@ export class BlaupauseBild {
     this.innen.visible = innenAn;
     const w = this.kontaktWeichMat.uniforms;
     (w.uGroesse!.value as Vector2).set(rect.w, rect.h);
-    w.uRadius!.value = Math.min(0.35 * Math.min(rect.w, rect.h), Math.max(4, 0.34 * R * this.ppuJetzt));
+    w.uRadius!.value = Math.min(0.35 * Math.min(rect.w, rect.h), Math.max(4, 0.58 * R * this.ppuJetzt));
     for (const [quelle, ziel, rx, ry] of [
       [A, B, 1, 0],
       [B, A, 0, 1],
@@ -1025,6 +1066,43 @@ export class BlaupauseBild {
     return A.texture;
   }
   private ppuJetzt = 1;
+  /** Abstand zur Haut als 3D-Textur (Glasrand der Kontaktbereiche), Ursprung und Größe in der Welt */
+  private abstand3d: Data3DTexture | null = null;
+  private readonly abstandO = new Vector3();
+  private readonly abstandG = new Vector3(1, 1, 1);
+  private abstandMax = 1;
+  abstandFeld(f: AbstandFeld): void {
+    const n = f.nx * f.ny * f.nz;
+    const max = Math.max(1e-6, f.max);
+    const daten = new Uint8Array(n);
+    for (let i = 0; i < n; i++) daten[i] = Math.round((255 * f.werte[i]!) / max);
+    if (this.abstand3d && (this.abstand3d.image.width !== f.nx || this.abstand3d.image.height !== f.ny || this.abstand3d.image.depth !== f.nz)) {
+      this.abstand3d.dispose();
+      this.abstand3d = null;
+    }
+    if (!this.abstand3d) {
+      this.abstand3d = new Data3DTexture(daten, f.nx, f.ny, f.nz);
+      this.abstand3d.format = RedFormat;
+      this.abstand3d.type = UnsignedByteType;
+      this.abstand3d.minFilter = LinearFilter;
+      this.abstand3d.magFilter = LinearFilter;
+      this.abstand3d.unpackAlignment = 1;
+    } else this.abstand3d.image.data = daten;
+    this.abstand3d.needsUpdate = true;
+    this.abstandO.set(f.o[0], f.o[1], f.o[2]);
+    this.abstandG.set(f.nx * f.h, f.ny * f.h, f.nz * f.h);
+    this.abstandMax = max;
+  }
+  /** Bodenkarte (Höhe der Unterseite je Bodenpunkt), ihre Kamera (von unten) und Abbildung Welt → Karte */
+  private readonly bodenZiel = new WebGLRenderTarget(256, 256, { type: HalfFloatType, format: RGBAFormat, minFilter: NearestFilter, magFilter: NearestFilter, generateMipmaps: false, depthBuffer: true, stencilBuffer: false });
+  private readonly bodenKam = new OrthographicCamera(-1, 1, 1, -1, 1, 100);
+  private readonly bodenM = new Matrix4();
+  private readonly bodenMat = new ShaderMaterial({
+    side: DoubleSide,
+    uniforms: { uPar: { value: 0 }, uParR: { value: new Vector2(1, 0) }, uKamAbstand: { value: 3000 }, uGrund: { value: 0 } },
+    vertexShader: KOERPER_VS,
+    fragmentShader: 'varying vec3 vN; varying vec3 vW; void main() { gl_FragColor = vec4(vW.y, 0.0, 0.0, 1.0); }',
+  });
   private readonly kontaktZiele: [WebGLRenderTarget, WebGLRenderTarget] = [
     new WebGLRenderTarget(4, 4, { minFilter: LinearFilter, magFilter: LinearFilter, generateMipmaps: false, depthBuffer: true, stencilBuffer: false }),
     new WebGLRenderTarget(4, 4, { minFilter: LinearFilter, magFilter: LinearFilter, generateMipmaps: false, depthBuffer: false, stencilBuffer: false }),
@@ -1037,24 +1115,42 @@ export class BlaupauseBild {
       uKamAbstand: { value: 3000 },
       uGrund: { value: 0 },
       tRueck: { value: null },
+      tBoden: { value: null },
+      uBodenM: { value: new Matrix4() },
       uNah: { value: 100 },
       uFern: { value: 6000 },
       uBodenY: { value: 0 },
-      uBand: { value: 60 },
+      uSchicht: { value: 60 },
       uRand: { value: 14 },
+      uHoeheK: { value: 200 },
+      tAbst: { value: null },
+      uAbstO: { value: new Vector3() },
+      uAbstG: { value: new Vector3(1, 1, 1) },
+      uAbstMax: { value: 1 },
+      uAbstAn: { value: 0 },
       uGroesseK: { value: new Vector2(4, 4) },
       uVornK: { value: new Vector3(0, 0, -1) },
     },
     vertexShader: KOERPER_VS,
     fragmentShader: [
-      'uniform sampler2D tRueck; uniform float uNah, uFern, uBodenY, uBand, uRand; uniform vec2 uGroesseK; uniform vec3 uVornK; varying vec3 vN; varying vec3 vW;',
+      'precision highp sampler3D;',
+      'uniform sampler2D tRueck, tBoden; uniform sampler3D tAbst; uniform mat4 uBodenM; uniform float uNah, uFern, uBodenY, uSchicht, uRand, uHoeheK;',
+      'uniform vec3 uAbstO, uAbstG; uniform float uAbstMax, uAbstAn; uniform vec2 uGroesseK; uniform vec3 uVornK; varying vec3 vN; varying vec3 vW;',
       'void main() {',
       '  float T = clamp(texture2D(tRueck, gl_FragCoord.xy / uGroesseK).x - gl_FragCoord.z, 0.0, 1.0) * (uFern - uNah);',
-      '  float t0 = uRand, t1 = T - uRand;',
-      '  if (t1 <= t0) { gl_FragColor = vec4(0.0); return; }',
-      // die tiefste Stelle des Strahls im Glas (die Höhe ändert sich längs des Strahls gleichmäßig)
-      '  float y = min(vW.y + t0 * uVornK.y, vW.y + t1 * uVornK.y);',
-      '  float c = clamp((uBodenY + uBand - y) / (0.2 * uBand), 0.0, 1.0);',
+      '  float c = 0.0;',
+      '  for (int k = 0; k < 14; k++) {',
+      '    vec3 P = vW + T * (float(k) + 0.5) / 14.0 * uVornK;',
+      '    vec4 q = uBodenM * vec4(P, 1.0); vec4 b = texture2D(tBoden, q.xy / q.w * 0.5 + 0.5);',
+      // über der Unterseite darunter: mit Abstand, dann eine Schicht, je näher die Unterseite am Boden, desto dicker
+      '    float h = max(0.0, b.r - uBodenY), L = uSchicht * max(0.2, 1.0 - h / uHoeheK);',
+      '    float lo = b.r + uRand, hi = lo + L;',
+      '    float s = smoothstep(lo - 0.1 * L, lo + 0.1 * L, P.y) * (1.0 - smoothstep(hi - 0.15 * L, hi + 0.15 * L, P.y));',
+      // Glasrand in alle Richtungen: der Punkt liegt mindestens den Rand tief in der Haut
+      '    float d = uAbstAn > 0.5 ? texture(tAbst, (P - uAbstO) / uAbstG).r * uAbstMax : 1e4;',
+      '    s *= smoothstep(uRand, 1.25 * uRand, d);',
+      '    c = max(c, s * step(0.5, b.a));',
+      '  }',
       '  gl_FragColor = vec4(c, c, c, 1.0);',
       '}',
     ].join('\n'),
