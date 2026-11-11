@@ -109,7 +109,29 @@ export type Einstellung = {
    * (0 = aus): so viel dunkler als der Grund ist er am Abzeichen
    */
   schatten: number;
+  /**
+   * Jelly: der Kontaktbereich als flaches, breites Band knapp über der unteren Kontur (je tiefer ein Teil, desto höher sein Band);
+   * aus: der Bodenbereich, wie man ihn durchs Glas sieht (3D, Stand 11.11. spätabends)
+   */
+  kontaktKontur: boolean;
 };
+
+/**
+ * Jelly: Abstandsfeld im Inneren der Silhouette des 3D-Fensters (halbe Auflösung): je Bildpunkt der Versatz zum nächsten Punkt des
+ * Hintergrunds (Kodierung wie die Felder der Outlines). Daraus Abstand zur Kontur und Richtung zu ihr (nach außen).
+ */
+const GLANZ_FELD = [
+  'uniform sampler2D tGlanzF; uniform vec2 uGFGr; uniform float uGS;',
+  'vec3 gfV(vec2 q) { vec4 b = floor(texture2D(tGlanzF, q / uGFGr) * 255.0 + 0.5); if (b.r + b.g < 0.5) return vec3(0.0);',
+  '  return vec3(vec2(b.r * 256.0 + b.g, b.b * 256.0 + b.a) - 2048.0, 1.0); }',
+  'float gfD(vec2 q) { vec3 v = gfV(q); return v.z < 0.5 ? 4000.0 : length(v.xy); }',
+  // Abstand zur Kontur in Bildpunkten des Fensters (fl: Lage im Fenster), bilinear; im Hintergrund 0
+  'float gAbst(vec2 fl) { vec2 p = fl * uGS - 0.5; vec2 b = floor(p); vec2 f = p - b;',
+  '  float d = mix(mix(gfD(b + vec2(0.5, 0.5)), gfD(b + vec2(1.5, 0.5)), f.x), mix(gfD(b + vec2(0.5, 1.5)), gfD(b + vec2(1.5, 1.5)), f.x), f.y);',
+  '  return max(0.0, d - 0.5) / uGS; }',
+  // Richtung zur nächsten Stelle der Kontur (nach außen)
+  'vec2 gRicht(vec2 fl) { vec3 v = gfV(floor(fl * uGS) + 0.5); float l = length(v.xy); return l > 0.5 ? v.xy / l : vec2(0.0, -1.0); }',
+].join('\n');
 
 /** Farben: Logo (Florians Vorlage), Papier (Blaupause), Auswahl */
 export const FARBEN_START = {
@@ -397,7 +419,8 @@ export class BlaupauseBild {
   kantenLaenge = 8;
   private readonly innenMat: ShaderMaterial;
   private readonly maskeMat: ShaderMaterial;
-  private readonly maskeInnenMat: ShaderMaterial;
+  /** wie die Maske, schreibt aber „kein Wert“: der Körper im Glanzfeld (Saat ist dort der Hintergrund) */
+  private readonly leerMat: ShaderMaterial;
   private readonly flutMat: ShaderMaterial;
   private readonly hgLogoMat: ShaderMaterial;
   private readonly hgPapierMat: ShaderMaterial;
@@ -451,6 +474,7 @@ export class BlaupauseBild {
     tiktok: true,
     extrusion: false,
     schatten: 0.36,
+    kontaktKontur: true,
   };
   farbe: Farben = { ...FARBEN_START };
   /** Halbmesser, Mitte, typische Dicke und halbe Höhe des Körpers (für Jelly) */
@@ -594,9 +618,9 @@ export class BlaupauseBild {
         tKontakt: { value: null },
         uKontaktAn: { value: 0 },
         uKontaktTon: { value: 0.66 },
-        uGlanzP: { value: Array.from({ length: MAX_LAVA }, () => new Vector4()) },
-        uGlanzZahl: { value: 0 },
-        tRand: { value: null },
+        tGlanzB: { value: null },
+        uGlanzAn: { value: 0 },
+
         uJLichtO: { value: farbe3('#3bfcf2') },
         uJLicht: { value: farbe3('#1ee9df') },
         uJMitte: { value: farbe3('#00c4ba') },
@@ -619,11 +643,7 @@ export class BlaupauseBild {
         'float smin(float a, float b, float k) { float h = max(k - abs(a - b), 0.0) / max(k, 1e-5); return min(a, b) - h * h * k * 0.25; }',
         // Kontaktbohne (unten, dunkel): wo der Blick durchs Glas den Bodenbereich trifft, weich gerechnet (`kontaktFeld`)
         'uniform sampler2D tKontakt; uniform float uKontaktAn, uKontaktTon;',
-        // Glanz auf den großen Teilen (Rumpf, großer Kopf): je Teil Mitte im Bild (Gerätepixel) und Halbmesser seiner größten Kugel im
-        // Bild; dazu der Abstand zum Umriss innen (`tRand`)
-        `uniform vec4 uGlanzP[${MAX_LAVA}]; uniform float uGlanzZahl; uniform sampler2D tRand;`,
-        // Winkel zwischen der Richtung d (Einheit) und der Richtung phi0 (vorzeichenbehaftet)
-        'float winkel(vec2 d, float phi0) { float c = cos(phi0), s = sin(phi0); return atan(d.y * c - d.x * s, d.x * c + d.y * s); }',
+        'uniform sampler2D tGlanzB; uniform float uGlanzAn;',
         GLATT,
         'uniform vec3 uJLichtO, uJLicht, uJMitte, uJMitteU, uJSchatten, uJRand; varying vec3 vN; varying vec3 vW;',
         'void main() {',
@@ -666,30 +686,8 @@ export class BlaupauseBild {
         '    bub = max(bub, (1.0 - smoothstep(b.w - aa, b.w + aa, quer)) * drin);',
         '  }',
         '  col = mix(col, min(col * 1.26 + vec3(0.0, 0.02, 0.02), vec3(1.0)), bub * 0.9);',
-        // Glanz wie in der Vorlage (gemessen): ein weißer, leicht gebogener Strich am Rand oben links (Richtung 112°–140°, bei 0,9 des
-        // Halbmessers) und ein länglicher Punkt darunter (151°), reines Weiß ohne Saum. Wie gemalt am Umriss: aus dem Abstand zum Umriss im
-        // Bild (`tRand`) und der Richtung nach außen wird eine Kugel-Normale gedacht (Neigung asin(1 − Abstand / Halbmesser)) — so liegt
-        // der Strich innen am Rand der Masse; nur auf den großen Teilen (Rumpf, großer Kopf), nicht auf Hörnern und Beinen
-        // je großem Teil: der Bogen liegt in dem Winkelbereich, der von seiner Mitte aus oben links liegt (wie auf einer Kugel: Strich
-        // 112°–140°, Punkt um 151°), und dort innen am echten Umriss (Abstand zum Umriss 0,07–0,14 seines Halbmessers) — so bleibt er
-        // ein kurzer, glatter Bogen, der dem Umriss folgt; der Umriss muss dort von der Mitte weg zeigen
-        '  float dR = abstandV(tRand, fc);',
-        '  vec2 gR = vec2(abstandV(tRand, fc + vec2(3.0, 0.0)) - abstandV(tRand, fc - vec2(3.0, 0.0)), abstandV(tRand, fc + vec2(0.0, 3.0)) - abstandV(tRand, fc - vec2(0.0, 3.0)));',
-        '  float lg = length(gR); vec2 aussen = lg > 1e-3 ? -gR / lg : vec2(0.0, 1.0);',
-        '  float glanz = 0.0;',
-        `  for (int i = 0; i < ${MAX_LAVA}; i++) {`,
-        '    if (float(i) >= uGlanzZahl) break;',
-        '    vec4 P = uGlanzP[i]; vec2 v = fc - P.xy; float lv = length(v); vec2 dir = lv > 1e-3 ? v / lv : vec2(0.0, 1.0);',
-        // (begrenzt: hinter der Reichweite des Felds springt der Abstand, ungebremst zeichnete die Kantenglättung dort feine Linien)
-        '    float u = min(dR / max(P.z, 1.0), 0.45);',
-        '    float a1 = winkel(dir, radians(126.0)) / radians(14.0), b1 = (u - 0.103) / 0.034;',
-        '    float a2 = winkel(dir, radians(151.0)) / radians(4.5), b2 = (u - 0.125) / 0.026;',
-        '    float c = max(1.0 - stufe(sqrt(a1 * a1 + b1 * b1), 1.0), 1.0 - stufe(sqrt(a2 * a2 + b2 * b2), 1.0));',
-        // nur am Umriss der Masse um das Teil (bis 3 Halbmesser von der Mitte) und wo der Körper nach innen breit ist (kein dünner Arm)
-        '    float breit = step(0.26 * P.z, abstandV(tRand, fc - aussen * 0.32 * P.z));',
-        '    c *= smoothstep(0.2, 0.45, dot(aussen, dir)) * step(1e-3, lg) * step(lv, 3.0 * P.z) * breit;',
-        '    glanz = max(glanz, c);',
-        '  }',
+        // Glanz (`glanzBild`): weich gerechnet, hier scharf geschnitten — runde Enden, keine Knicke der Dreiecke
+        '  float glanz = uGlanzAn > 0.5 ? stufe(texture2D(tGlanzB, tc).r, 0.5) : 0.0;',
         '  col = mix(col, vec3(1.0), glanz);',
         // Saum: zum Rand der Schattenseite etwas satter
         '  float saum = (1.0 - smoothstep(0.05, 0.38, n.z)) * (1.0 - aM);',
@@ -717,14 +715,13 @@ export class BlaupauseBild {
       vertexShader: SICHT_VS + 'uniform float uGrund; uniform vec2 uZug; attribute vec3 aGrund; void main() { gl_Position = sicht(mix(position, aGrund, uGrund)); gl_Position.xy += uZug * gl_Position.w; }',
       fragmentShader: 'void main() { gl_FragColor = vec4(8.0 / 255.0, 0.0, 8.0 / 255.0, 0.0); }',
     });
-    // umgekehrte Saat (Jelly-Glanz): der Grund trägt den Versatz null, der Körper keinen — das Feld misst innen den Abstand zum Umriss
-    this.maskeInnenMat = new ShaderMaterial({
+    this.leerMat = new ShaderMaterial({
       side: DoubleSide,
       depthTest: false,
       depthWrite: false,
       blending: NoBlending,
-      uniforms: { uPar: { value: 0 }, uParR: U.uParR, uKamAbstand: U.uKamAbstand, uGrund: { value: 0 } },
-      vertexShader: SICHT_VS + 'uniform float uGrund; attribute vec3 aGrund; void main() { gl_Position = sicht(mix(position, aGrund, uGrund)); }',
+      uniforms: { uPar: { value: 0 }, uParR: U.uParR, uKamAbstand: U.uKamAbstand, uGrund: { value: 0 }, uZug: { value: new Vector2() } },
+      vertexShader: this.maskeMat.vertexShader,
       fragmentShader: 'void main() { gl_FragColor = vec4(0.0); }',
     });
     this.flutMat = new ShaderMaterial({
@@ -1034,8 +1031,10 @@ export class BlaupauseBild {
     u.uNah!.value = kam.near;
     u.uFern!.value = kam.far;
     u.uBodenY!.value = this.bodenY;
-    u.uSchicht!.value = 0.75 * R;
-    u.uRand!.value = 0.14 * R;
+    // flacher und breiter, näher an der unteren Kontur (Florian: „geht zu hoch und ist zu weit von der unteren Kontur entfernt, lieber
+    // etwas breiter und weniger Höhe“)
+    u.uSchicht!.value = 0.26 * R;
+    u.uRand!.value = 0.075 * R;
     u.tAbst!.value = this.abstand3d;
     u.uAbstAn!.value = this.abstand3d ? 1 : 0;
     (u.uAbstO!.value as Vector3).copy(this.abstandO);
@@ -1053,7 +1052,354 @@ export class BlaupauseBild {
     this.innen.visible = innenAn;
     const w = this.kontaktWeichMat.uniforms;
     (w.uGroesse!.value as Vector2).set(rect.w, rect.h);
-    w.uRadius!.value = Math.min(0.35 * Math.min(rect.w, rect.h), Math.max(4, 0.58 * R * this.ppuJetzt));
+    w.uRadius!.value = Math.min(0.35 * Math.min(rect.w, rect.h), Math.max(4, 0.32 * R * this.ppuJetzt));
+    for (const [quelle, ziel, rx, ry] of [
+      [A, B, 1, 0],
+      [B, A, 0, 1],
+    ] as const) {
+      w.tQuelle!.value = quelle.texture;
+      (w.uRichtung!.value as Vector2).set(rx, ry);
+      r.setRenderTarget(ziel);
+      r.render(this.szKontaktWeich, kam);
+    }
+    return A.texture;
+  }
+  /**
+   * Glanzfeld (Jelly): Abstand zur Silhouette im Inneren, halbe Auflösung. Saat ist der Hintergrund (eine Fläche über alles), der
+   * Körper schreibt „kein Wert“; dann fluten (wie die Felder der Outlines). Reicht 256 Bildpunkte weit (Halbmesser großer Teile).
+   */
+  private readonly glanzZiele: [WebGLRenderTarget, WebGLRenderTarget] = [feldZiel(), feldZiel()];
+  private readonly GS = 0.5;
+  private readonly saatMat = new ShaderMaterial({
+    depthTest: false,
+    depthWrite: false,
+    blending: NoBlending,
+    vertexShader: 'void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: 'void main() { gl_FragColor = vec4(8.0 / 255.0, 0.0, 8.0 / 255.0, 0.0); }',
+  });
+  private readonly szSaat = (() => {
+    const sz = new Scene();
+    const m = new Mesh(new PlaneGeometry(2, 2), this.saatMat);
+    m.frustumCulled = false;
+    sz.add(m);
+    return sz;
+  })();
+  private glanzFeld(rect: { w: number; h: number }, kam: OrthographicCamera): { tex: Texture; w: number; h: number; R: Texture } {
+    const r = this.r;
+    const mw = Math.max(4, Math.round(rect.w * this.GS));
+    const mh = Math.max(4, Math.round(rect.h * this.GS));
+    const [A, B] = this.glanzZiele;
+    if (A.width !== mw || A.height !== mh) {
+      A.setSize(mw, mh);
+      B.setSize(mw, mh);
+    }
+    r.setRenderTarget(A);
+    r.render(this.szSaat, kam);
+    const lu = this.leerMat.uniforms;
+    lu.uGrund!.value = this.jellyMat.uniforms.uGrund!.value;
+    lu.uPar!.value = this.jellyMat.uniforms.uPar!.value;
+    const mat = this.maske.material;
+    this.maske.material = this.leerMat;
+    r.render(this.szMaske, kam);
+    this.maske.material = mat;
+    let quelle = A;
+    let ziel = B;
+    (this.flutMat.uniforms.uGroesse!.value as Vector2).set(mw, mh);
+    for (const st of [64, 32, 16, 8, 4, 2, 1, 1]) {
+      this.flutMat.uniforms.tQuelle!.value = quelle.texture;
+      this.flutMat.uniforms.uSchritt!.value = st;
+      r.setRenderTarget(ziel);
+      r.render(this.szFlut, kam);
+      const t = quelle;
+      quelle = ziel;
+      ziel = t;
+    }
+    // Halbmesser der Teile (für Breite und Abstand des Glanzes): je Bildpunkt der größte Abstand zur Kontur auf dem Weg nach innen bis
+    // zum ersten Höchstwert, dann weich gerechnet (sonst springt er dort, wo ein Teil in ein größeres übergeht, und der Glanz franst aus)
+    const [Ra, Rb] = this.glanzRZiele;
+    if (Ra.width !== mw || Ra.height !== mh) {
+      Ra.setSize(mw, mh);
+      Rb.setSize(mw, mh);
+    }
+    const ru = this.glanzRMat.uniforms;
+    ru.tGlanzF!.value = quelle.texture;
+    (ru.uGFGr!.value as Vector2).set(mw, mh);
+    ru.uGS!.value = this.GS;
+    ru.uDprR!.value = this.DPR;
+    r.setRenderTarget(Ra);
+    r.render(this.szGlanzR, kam);
+    const wu = this.glanzRWeichMat.uniforms;
+    (wu.uGroesse!.value as Vector2).set(mw, mh);
+    wu.uRadius!.value = 12 * this.DPR * this.GS;
+    for (const [q, z, rx, ry] of [
+      [Ra, Rb, 1, 0],
+      [Rb, Ra, 0, 1],
+    ] as const) {
+      wu.tQuelle!.value = q.texture;
+      (wu.uRichtung!.value as Vector2).set(rx, ry);
+      r.setRenderTarget(z);
+      r.render(this.szGlanzRWeich, kam);
+    }
+    return { tex: quelle.texture, w: mw, h: mh, R: Ra.texture };
+  }
+  private readonly glanzRZiele: [WebGLRenderTarget, WebGLRenderTarget] = [
+    new WebGLRenderTarget(4, 4, { type: HalfFloatType, format: RGBAFormat, minFilter: LinearFilter, magFilter: LinearFilter, generateMipmaps: false, depthBuffer: false, stencilBuffer: false }),
+    new WebGLRenderTarget(4, 4, { type: HalfFloatType, format: RGBAFormat, minFilter: LinearFilter, magFilter: LinearFilter, generateMipmaps: false, depthBuffer: false, stencilBuffer: false }),
+  ];
+  private readonly glanzRMat = new ShaderMaterial({
+    depthTest: false,
+    depthWrite: false,
+    blending: NoBlending,
+    uniforms: { tGlanzF: { value: null }, uGFGr: { value: new Vector2(4, 4) }, uGS: { value: 0.5 }, uDprR: { value: 1 } },
+    vertexShader: 'void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: [
+      GLANZ_FELD,
+      'uniform float uDprR;',
+      'void main() {',
+      '  vec2 fl = gl_FragCoord.xy / uGS; float d = gAbst(fl);',
+      '  if (d < 0.5) { gl_FragColor = vec4(0.0); return; }',
+      '  vec2 o = gRicht(fl); float Rg = d, weiter = 1.0, s = 2.0 * uDprR;',
+      '  for (int k = 0; k < 13; k++) { float dk = min(gAbst(fl - o * s), 3000.0); Rg = max(Rg, dk * weiter); weiter *= step(0.6 * Rg, dk); s *= 1.45; }',
+      '  gl_FragColor = vec4(Rg, 1.0, 0.0, 1.0);',
+      '}',
+    ].join('\n'),
+  });
+  private readonly szGlanzR = (() => {
+    const sz = new Scene();
+    const m = new Mesh(new PlaneGeometry(2, 2), this.glanzRMat);
+    m.frustumCulled = false;
+    sz.add(m);
+    return sz;
+  })();
+  /** weich rechnen nur über den Körper (G = 1), der Hintergrund zählt nicht mit */
+  private readonly glanzRWeichMat = new ShaderMaterial({
+    depthTest: false,
+    depthWrite: false,
+    blending: NoBlending,
+    uniforms: { tQuelle: { value: null }, uGroesse: { value: new Vector2(4, 4) }, uRichtung: { value: new Vector2(1, 0) }, uRadius: { value: 8 } },
+    vertexShader: 'void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: [
+      'uniform sampler2D tQuelle; uniform vec2 uGroesse, uRichtung; uniform float uRadius;',
+      'void main() { vec2 fc = gl_FragCoord.xy; vec4 c = texture2D(tQuelle, fc / uGroesse); float s = 0.0, w = 0.0;',
+      '  for (int i = -12; i <= 12; i++) { float u = float(i) / 12.0; vec4 q = texture2D(tQuelle, (fc + uRichtung * u * uRadius) / uGroesse);',
+      '    float g = exp(-4.0 * u * u) * q.g; s += g * q.r; w += g; }',
+      '  gl_FragColor = vec4(w > 1e-4 ? s / w : 0.0, c.g, 0.0, 1.0); }',
+    ].join('\n'),
+  });
+  private readonly szGlanzRWeich = (() => {
+    const sz = new Scene();
+    const m = new Mesh(new PlaneGeometry(2, 2), this.glanzRWeichMat);
+    m.frustumCulled = false;
+    sz.add(m);
+    return sz;
+  })();
+  /**
+   * Glanz wie in der Vorlage: ein weißer, leicht gebogener Strich am Rand oben links und ein länglicher Punkt darunter, reines Weiß
+   * ohne Saum. Florian (11.11. spätabends, mit markiertem Bild): an jedem runden Teil oben links, auch an Armen, Hörnern und am Kopf,
+   * nie in den Mulden zwischen Teilen. Deshalb an der Kontur gemessen, nicht an der Neigung der Fläche (die gab an kleinen Teilen nur
+   * Haarstriche): ein Band in festem Abstand zur Kontur, wo die Fläche nach oben links zeigt; Breite und Abstand nach der Größe des
+   * Teils (Halbmesser R aus `glanzFeld`: Abstand 0,12 R, Breite ≈ 1,24 √R Bildpunkte bei 100 %), Strich und Punkt nach Länge (auf der
+   * Kugel wie die Vorlage, an kleinen Teilen über größere Winkel). Liegt in Richtung des Lichts nah ein anderes Teil, wird das Band
+   * schmaler bis zu nichts: keine Striche in Mulden und Gabeln. Gezeichnet als Feld (innen > ½), dann weich gerechnet und im Jelly
+   * scharf geschnitten: runde Enden, und die Knicke der Normalen an den Dreiecken verschwinden.
+   */
+  private readonly glanzBildZiele: [WebGLRenderTarget, WebGLRenderTarget] = [
+    new WebGLRenderTarget(4, 4, { type: HalfFloatType, minFilter: LinearFilter, magFilter: LinearFilter, generateMipmaps: false, depthBuffer: true, stencilBuffer: false }),
+    new WebGLRenderTarget(4, 4, { type: HalfFloatType, minFilter: LinearFilter, magFilter: LinearFilter, generateMipmaps: false, depthBuffer: false, stencilBuffer: false }),
+  ];
+  private readonly glanzBildMat = new ShaderMaterial({
+    side: FrontSide,
+    uniforms: {
+      uPar: { value: 0 },
+      uParR: { value: new Vector2(1, 0) },
+      uKamAbstand: { value: 3000 },
+      uGrund: { value: 0 },
+      tGlanzF: { value: null },
+      uGFGr: { value: new Vector2(4, 4) },
+      uGS: { value: 0.5 },
+      tGlanzR: { value: null },
+      uDprG: { value: 1 },
+    },
+    vertexShader: KOERPER_VS,
+    fragmentShader: [
+      GLANZ_FELD,
+      'uniform sampler2D tGlanzR; uniform float uDprG; varying vec3 vN; varying vec3 vW;',
+      // Winkelabstand (Bogenmaß) über den Sprung bei ±180° hinweg
+      'float winkelAb(float a, float b) { return mod(a - b + 3.14159265, 6.28318531) - 3.14159265; }',
+      'void main() {',
+      '  vec2 fl = gl_FragCoord.xy; float s = -1e3;',
+      '  vec3 nN = normalize(vN); float ln2 = length(nN.xy); vec2 n2 = ln2 > 1e-4 ? nN.xy / ln2 : vec2(0.0, 1.0);',
+      '  float dG = gAbst(fl), phiG = atan(n2.y, n2.x), wa = winkelAb(phiG, radians(154.0));',
+      // Strich und Punkt liegen höchstens zwischen 90° und 218°, höchstens 80 Bildpunkte (bei 100 %) innen
+      '  if (wa < radians(64.0) && wa > -radians(64.0) && dG < 80.0 * uDprG) {',
+      '    float Rg = max(texture2D(tGlanzR, fl * uGS / uGFGr).r, dG);',
+      '    float Rc = max(Rg, 3.0 * uDprG) / uDprG;',
+      '    float epsG = 0.12 * Rc * uDprG, TG = max(1.24 * pow(Rc, 0.47), 3.4) * uDprG;',
+      // Länge statt Winkel: der Strich ist gut 4,8 Breiten lang, der Punkt 2 Breiten, dazwischen knapp eine Breite frei (auf der Kugel
+      // wie die Vorlage: Strich 110°–146°, Punkt um 160°); an kleinen Teilen werden die Winkel größer, höchstens 36° (Strich)
+      '    float rho = max(Rg - epsG - 0.5 * TG, 2.0 * uDprG);',
+      '    float hK = clamp(2.4 * TG / rho, radians(18.0), radians(36.0)), gap = clamp(0.9 * TG / rho, radians(5.0), radians(12.0));',
+      '    float hP = clamp(TG / rho, radians(5.0), radians(20.0)), cP = radians(128.0) + hK + gap + hP;',
+      '    float aK = winkelAb(phiG, radians(128.0)) / hK, aP = winkelAb(phiG, cP) / hP;',
+      '    float wK = sqrt(max(0.0, 1.0 - aK * aK)) * (1.0 - 0.25 * aK), wP = sqrt(max(0.0, 1.0 - aP * aP));',
+      // frei zum Licht: von der Kontur aus Richtung oben links (zwischen Normale und Licht) kein anderes Teil in der Nähe
+      '    vec2 mg = normalize(n2 + vec2(-0.6691, 0.7431)); vec2 cg = fl + n2 * dG;',
+      '    float DG = 2.5 * TG, occ = 0.0;',
+      '    for (int k = 1; k <= 6; k++) { float t = float(k) / 6.0; float dq = gAbst(cg + mg * (1.5 * uDprG + DG * t));',
+      '      occ = max(occ, smoothstep(0.5 * uDprG, 2.0 * uDprG, dq) * (1.0 - 0.75 * (t - 1.0 / 6.0))); }',
+      '    float fe = smoothstep(0.3, 0.85, 1.0 - occ);',
+      // Strich und Punkt als Ellipsen um die Mittellinie des Bands: Abstand zu ihrem Rand (innen positiv)
+      '    float sK = 0.5 * TG * wK * fe - abs(dG - (epsG + 0.5 * TG));',
+      '    float sP = 0.38 * TG * wP * fe - abs(dG - (epsG + 0.45 * TG));',
+      '    s = max(sK, sP);',
+      '  }',
+      '  float v = 0.5 + 0.5 * clamp(s / (1.5 * uDprG), -1.0, 1.0);',
+      '  gl_FragColor = vec4(v, v, v, 1.0);',
+      '}',
+    ].join('\n'),
+  });
+  private glanzBild(rect: { w: number; h: number }, kam: OrthographicCamera, feld: { tex: Texture; w: number; h: number; R: Texture }): Texture {
+    const r = this.r;
+    const [A, B] = this.glanzBildZiele;
+    if (A.width !== rect.w || A.height !== rect.h) {
+      A.setSize(rect.w, rect.h);
+      B.setSize(rect.w, rect.h);
+    }
+    const u = this.glanzBildMat.uniforms;
+    u.tGlanzF!.value = feld.tex;
+    (u.uGFGr!.value as Vector2).set(feld.w, feld.h);
+    u.uGS!.value = this.GS;
+    u.tGlanzR!.value = feld.R;
+    u.uDprG!.value = this.DPR;
+    u.uGrund!.value = this.jellyMat.uniforms.uGrund!.value;
+    u.uPar!.value = this.jellyMat.uniforms.uPar!.value;
+    (u.uParR!.value as Vector2).copy(this.U.uParR.value);
+    u.uKamAbstand!.value = this.U.uKamAbstand.value;
+    const innenAn = this.innen.visible;
+    this.innen.visible = false;
+    const mat = this.koerper.material;
+    this.koerper.material = this.glanzBildMat;
+    r.setRenderTarget(A);
+    r.setClearColor(0x000000, 0);
+    r.clear();
+    r.render(this.szKoerper, kam);
+    this.koerper.material = mat;
+    this.innen.visible = innenAn;
+    // leicht weich: die Knicke der Normalen an den Dreiecken (einige Bildpunkte) verschwinden, die Enden werden rund
+    const w = this.kontaktWeichMat.uniforms;
+    (w.uGroesse!.value as Vector2).set(rect.w, rect.h);
+    w.uRadius!.value = 4 * this.DPR;
+    for (const [quelle, ziel, rx, ry] of [
+      [A, B, 1, 0],
+      [B, A, 0, 1],
+    ] as const) {
+      w.tQuelle!.value = quelle.texture;
+      (w.uRichtung!.value as Vector2).set(rx, ry);
+      r.setRenderTarget(ziel);
+      r.render(this.szKontaktWeich, kam);
+    }
+    return A.texture;
+  }
+  /** Höhe der sichtbaren Fläche in der Welt je Bildpunkt (Kontaktbereich: wie tief liegt die Kontur dort über dem Boden?) */
+  private readonly hoeheZiel = new WebGLRenderTarget(4, 4, { type: HalfFloatType, format: RGBAFormat, minFilter: LinearFilter, magFilter: LinearFilter, generateMipmaps: false, depthBuffer: true, stencilBuffer: false });
+
+  /**
+   * Kontaktbereich an der Kontur (Florian 11.11. nachts: „geht er jetzt zu hoch und ist zu weit von der unteren Kontur entfernt,
+   * lieber etwas breiter und weniger Höhe“): ein Band in kleinem, festem Abstand über jeder Stelle der Kontur, die nach unten zeigt,
+   * so breit wie diese Stelle; seine Höhe wächst, je tiefer der Körper dort über dem Boden ist (hohe Teile bekommen keins), und läuft an
+   * den Enden rund aus. Dann weich gerechnet, der Shader schneidet bei der Hälfte scharf: rund, nie an der Kontur.
+   */
+  private readonly kontaktKonturMat = new ShaderMaterial({
+    side: FrontSide,
+    uniforms: {
+      uPar: { value: 0 },
+      uParR: { value: new Vector2(1, 0) },
+      uKamAbstand: { value: 3000 },
+      uGrund: { value: 0 },
+      tGlanzF: { value: null },
+      uGFGr: { value: new Vector2(4, 4) },
+      uGS: { value: 0.5 },
+      uBodenY: { value: 0 },
+      uRandK: { value: 8 },
+      uHoeheK: { value: 40 },
+      uWeltK: { value: 100 },
+      tHoehe: { value: null },
+      uGroesseH: { value: new Vector2(4, 4) },
+    },
+    vertexShader: KOERPER_VS,
+    fragmentShader: [
+      GLANZ_FELD,
+      'uniform float uBodenY, uRandK, uHoeheK, uWeltK; uniform sampler2D tHoehe; uniform vec2 uGroesseH; varying vec3 vN; varying vec3 vW;',
+      'void main() {',
+      '  vec2 fl = gl_FragCoord.xy; float d = gAbst(fl);',
+      // Richtung zur Kontur aus dem Gefälle des Abstands (glatt), dort die Höhe der Kontur über dem Boden (knapp innen)
+      '  vec2 gr = vec2(gAbst(fl + vec2(1.5, 0.0)) - gAbst(fl - vec2(1.5, 0.0)), gAbst(fl + vec2(0.0, 1.5)) - gAbst(fl - vec2(0.0, 1.5)));',
+      '  vec2 o = length(gr) > 1e-4 ? -normalize(gr) : vec2(0.0, -1.0);',
+      '  vec4 hk = texture2D(tHoehe, (fl + o * max(0.0, d - 2.0)) / uGroesseH);',
+      '  float h = hk.a > 0.5 ? max(0.0, hk.r - uBodenY) : max(0.0, vW.y - uBodenY);',
+      '  float D = uHoeheK * clamp(1.0 - h / uWeltK, 0.0, 1.0);',
+      // drin, wenn man von hier um D schräg nach links unten und nach rechts unten (je 35°) aus dem um den Rand verkleinerten Körper
+      // fällt: unten an der Kontur eine Bohne mit gewölbter Oberkante, die an steilen Stellen ausläuft
+      '  float l1 = 1.0 - smoothstep(uRandK - 0.7, uRandK + 0.7, gAbst(fl + D * vec2(0.5736, -0.8192)));',
+      '  float l2 = 1.0 - smoothstep(uRandK - 0.7, uRandK + 0.7, gAbst(fl + D * vec2(-0.5736, -0.8192)));',
+      // hohe Teile mit nur noch kleinem Band bekommen keins (sonst bleiben winzige Flecken)
+      '  float c = smoothstep(uRandK - 0.7, uRandK + 0.7, d) * l1 * l2 * step(0.35 * uHoeheK, D);',
+      '  gl_FragColor = vec4(c, c, c, 1.0);',
+      '}',
+    ].join('\n'),
+  });
+  private kontaktKontur(rect: { w: number; h: number }, kam: OrthographicCamera, feld: { tex: Texture; w: number; h: number; R: Texture }): Texture {
+    const r = this.r;
+    const [A, B] = this.kontaktZiele;
+    if (A.width !== rect.w || A.height !== rect.h) {
+      A.setSize(rect.w, rect.h);
+      B.setSize(rect.w, rect.h);
+    }
+    const kasten = this.koerper.geometry.boundingBox;
+    const hoehe = kasten ? kasten.max.y - kasten.min.y : 2 * this.grossHalbmesser;
+    const R = Math.max(this.grossHalbmesser, 0.24 * hoehe);
+    const Rs = R * this.ppuJetzt;
+    // Höhe der sichtbaren Fläche je Bildpunkt (Welt)
+    if (this.hoeheZiel.width !== rect.w || this.hoeheZiel.height !== rect.h) this.hoeheZiel.setSize(rect.w, rect.h);
+    {
+      const innen0 = this.innen.visible;
+      this.innen.visible = false;
+      const m0 = this.koerper.material;
+      this.koerper.material = this.bodenMat;
+      r.setRenderTarget(this.hoeheZiel);
+      r.setClearColor(0x000000, 0);
+      r.clear();
+      r.render(this.szKoerper, kam);
+      this.koerper.material = m0;
+      this.innen.visible = innen0;
+    }
+    const u = this.kontaktKonturMat.uniforms;
+    u.tHoehe!.value = this.hoeheZiel.texture;
+    (u.uGroesseH!.value as Vector2).set(rect.w, rect.h);
+    u.tGlanzF!.value = feld.tex;
+    (u.uGFGr!.value as Vector2).set(feld.w, feld.h);
+    u.uGS!.value = this.GS;
+    u.uBodenY!.value = this.bodenY;
+    u.uRandK!.value = Math.max(3 * this.DPR, 0.045 * Rs);
+    u.uHoeheK!.value = 0.46 * Rs;
+    u.uWeltK!.value = Math.max(1, 0.8 * R, 0.5 * hoehe);
+    u.uGrund!.value = this.jellyMat.uniforms.uGrund!.value;
+    u.uPar!.value = this.jellyMat.uniforms.uPar!.value;
+    (u.uParR!.value as Vector2).copy(this.U.uParR.value);
+    u.uKamAbstand!.value = this.U.uKamAbstand.value;
+    const innenAn = this.innen.visible;
+    this.innen.visible = false;
+    const mat = this.koerper.material;
+    this.koerper.material = this.kontaktKonturMat;
+    r.setRenderTarget(A);
+    r.setClearColor(0x000000, 0);
+    r.clear();
+    r.render(this.szKoerper, kam);
+    this.koerper.material = mat;
+    this.innen.visible = innenAn;
+    const w = this.kontaktWeichMat.uniforms;
+    (w.uGroesse!.value as Vector2).set(rect.w, rect.h);
+    w.uRadius!.value = Math.min(0.35 * Math.min(rect.w, rect.h), Math.max(4, 0.22 * Rs));
     for (const [quelle, ziel, rx, ry] of [
       [A, B, 1, 0],
       [B, A, 0, 1],
@@ -1103,9 +1449,10 @@ export class BlaupauseBild {
     vertexShader: KOERPER_VS,
     fragmentShader: 'varying vec3 vN; varying vec3 vW; void main() { gl_FragColor = vec4(vW.y, 0.0, 0.0, 1.0); }',
   });
+  // halbe Gleitkommazahlen: mit 8 Bit franst die Grenze an flachen Stellen des weichen Felds aus (kleine Bereiche)
   private readonly kontaktZiele: [WebGLRenderTarget, WebGLRenderTarget] = [
-    new WebGLRenderTarget(4, 4, { minFilter: LinearFilter, magFilter: LinearFilter, generateMipmaps: false, depthBuffer: true, stencilBuffer: false }),
-    new WebGLRenderTarget(4, 4, { minFilter: LinearFilter, magFilter: LinearFilter, generateMipmaps: false, depthBuffer: false, stencilBuffer: false }),
+    new WebGLRenderTarget(4, 4, { type: HalfFloatType, minFilter: LinearFilter, magFilter: LinearFilter, generateMipmaps: false, depthBuffer: true, stencilBuffer: false }),
+    new WebGLRenderTarget(4, 4, { type: HalfFloatType, minFilter: LinearFilter, magFilter: LinearFilter, generateMipmaps: false, depthBuffer: false, stencilBuffer: false }),
   ];
   private readonly kontaktMat = new ShaderMaterial({
     side: FrontSide,
@@ -1271,55 +1618,6 @@ export class BlaupauseBild {
     }
     return quelle.texture;
   }
-
-  /** Jelly: Abstand jedes Bildpunkts des Körpers zum Umriss (für den Glanz am Rand), Reichweite in Bildpunkten des Felds */
-  private randFeld(kam: OrthographicCamera, mw: number, mh: number, weit: number): Texture {
-    const paar = this.FELDER[0]!;
-    if (paar[0].width !== mw || paar[0].height !== mh) {
-      paar[0].setSize(mw, mh);
-      paar[1].setSize(mw, mh);
-    }
-    const r = this.r;
-    r.setRenderTarget(paar[0]);
-    // die Saat als Fläche zeichnen (Löschen mit Deckkraft 0 setzt in three.js alle Kanäle auf 0: vormultiplizierte Deckkraft)
-    r.render(this.szSaat, kam);
-    this.maske.material = this.maskeInnenMat;
-    r.render(this.szMaske, kam);
-    this.maske.material = this.maskeMat;
-    let quelle = paar[0];
-    let ziel = paar[1];
-    const schritte: number[] = [];
-    for (let k = 2 ** (Math.ceil(Math.log2(weit + 1)) - 1); k >= 1; k /= 2) schritte.push(k);
-    schritte.push(1);
-    (this.flutMat.uniforms.uGroesse!.value as Vector2).set(mw, mh);
-    for (const st of schritte) {
-      this.flutMat.uniforms.tQuelle!.value = quelle.texture;
-      this.flutMat.uniforms.uSchritt!.value = st;
-      r.setRenderTarget(ziel);
-      r.render(this.szFlut, kam);
-      const t = quelle;
-      quelle = ziel;
-      ziel = t;
-    }
-    return quelle.texture;
-  }
-  /** Saat des Abstandsfelds (Versatz null) über das ganze Ziel */
-  private readonly szSaat = (() => {
-    const sz = new Scene();
-    const m = new Mesh(
-      new PlaneGeometry(2, 2),
-      new ShaderMaterial({
-        depthTest: false,
-        depthWrite: false,
-        blending: NoBlending,
-        vertexShader: 'void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
-        fragmentShader: 'void main() { gl_FragColor = vec4(8.0 / 255.0, 0.0, 8.0 / 255.0, 0.0); }',
-      }),
-    );
-    m.frustumCulled = false;
-    sz.add(m);
-    return sz;
-  })();
 
   /**
    * Feld für die Glättung im Bild: Blicknormale, Tiefe, Dicke des Körpers, weichgezeichnet. Halbmesser ≈ 4,5 Kanten des Netzes (ohne
@@ -1496,24 +1794,14 @@ export class BlaupauseBild {
       };
       this.lavaFormen.forEach((s, i) => insBild(s, lv[i]!, le[i]!));
       j.uLavaZahl!.value = Math.floor(this.lavaFormen.length / 2);
-      // Kontaktbohne: der Bodenbereich, wie man ihn durchs Glas sieht
-      j.tKontakt!.value = this.kontaktFeld(rect, kam);
+      // Glanzfeld (Abstand zur Kontur): daraus Glanz und Kontaktbereich
+      const gf = this.glanzFeld(rect, kam);
+      j.tGlanzB!.value = this.glanzBild(rect, kam, gf);
+      j.uGlanzAn!.value = 1;
+      // Kontaktbereich: flaches Band über der unteren Kontur, oder der Bodenbereich, wie man ihn durchs Glas sieht
+      j.tKontakt!.value = E.kontaktKontur ? this.kontaktKontur(rect, kam, gf) : this.kontaktFeld(rect, kam);
       j.uKontaktAn!.value = 1;
-      // Teile mit Glanz: Mitte im Bild und Halbmesser ihrer größten Kugel im Bild
-      const gp = j.uGlanzP!.value as Vector4[];
-      this.glanzTeile.forEach((g, i) => {
-        q.set(g.c[0], g.c[1], g.c[2]).project(kam);
-        gp[i]!.set(rect.x + (q.x * 0.5 + 0.5) * rect.w, rect.y + (q.y * 0.5 + 0.5) * rect.h, g.r * f.ppu, 1);
-      });
-      j.uGlanzZahl!.value = this.glanzTeile.length;
-      // Glanz am Umriss: Abstand zum Umriss innen (bis ⅓ des größten Teils), Halbmesser in Bildpunkten
-      const Rm = Math.max(4, this.grossHalbmesser * f.ppu);
-      const SSj = this.SS;
-      const mwj = Math.round(rect.w * SSj);
-      const mhj = Math.round(rect.h * SSj);
-      if (this.glanzTeile.length) j.tRand!.value = this.randFeld(kam, mwj, mhj, 0.35 * Rm * SSj + 3);
-      U.uFeldGr.value.set(mwj, mhj);
-      U.uSS.value = SSj;
+
       this.koerper.material = this.jellyMat;
     } else this.koerper.material = (f.art === 'logo' ? this.logoMat : this.papierMat) as Material;
     // Glättung im Bild: Feld des Körpers zeichnen, dann waagerecht und senkrecht weichzeichnen

@@ -156,6 +156,8 @@ const teststand = {
   extrusion: false,
   /** Logo-Look: der lange flache Schatten nach links unten, Stärke 0…0,8 (0 = aus) */
   schatten: 0.36,
+  /** Jelly: Kontaktbereich als flaches Band über der unteren Kontur (aus: der Bodenbereich durchs Glas, 3D) */
+  kontaktKontur: true,
 };
 /** /editor: Das Artefakt bringt den Hintergrund-Rechner als Text mit (Bau mit esbuild); im Dev-Server lädt Vite ihn als Modul */
 declare const __TESTSTAND_WORKER__: string;
@@ -5365,6 +5367,7 @@ function rendern(): void {
     tiktok: T.tiktok,
     extrusion: T.extrusion,
     schatten: T.schatten,
+    kontaktKontur: T.kontaktKontur,
   };
   // Jelly: Größe und Mitte des Körpers, Bläschen, Lava
   const kasten = hautGeometrie.boundingBox;
