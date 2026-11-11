@@ -445,3 +445,12 @@ der innere TikTok-Streifen → TikTok innen wieder wie vorher (jede Platte ab ih
 und mit gekippter Tiefe nicht anders, ihr Ende ist der Rand des Stücks, nicht die verdeckte Fläche). Die einzige echte Lücke war der Rand
 des offenen Mauls → harte Maul-Linie (bleibt). Ebenfalls geblieben: keine Höfe, nichts über der dicken Kontur, einfarbige Punkte, Linien
 weiter vor der Fläche. Commit `3d74f0a7`, Artefakt Version 15, Bild `docs/progress/editor/editor-kanten-spitz-tiktok-2026-11-12.png`.
+
+**Danach (Florian 12.11.: „kann ich beides haben — den TikTok-Effekt innen, so groß wie den außen … und die Konturen gehen trotzdem zur
+dunklen Linie“, „harte Linien, die über die Kontur zur Rückseite laufen, in voller Breite in die Kontur“, dann klärend: „das Innere der
+dunklen Kontur wird der Umriss und der innere TikTok-Effekt läuft weiter innen“):** Beide Platten beginnen am Körper, die dunkle Kontur
+liegt direkt am Umriss. Den inneren TikTok-Streifen malt der Körper selbst (`logoMat`): am Umriss die Farbe der nach innen versetzten
+Platte, so breit wie außen (doppelter Versatz in Richtung der Normale), Abstand zum Umriss aus dem Feld im Inneren (`glanzFeld(…, false)`,
+halbe Auflösung). Linien und Konturen liegen darüber und laufen direkt ins Petrol. Ein Zwischenschritt (Streifen zwischen Körper und
+Petrol, Linien per „Brücke“ hinübergeführt) ist verworfen. Commit `a61f3c87`, Artefakt Version 16, Bild
+`docs/progress/editor/editor-tiktok-innen-2026-11-12.png`.
