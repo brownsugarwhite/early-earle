@@ -330,3 +330,12 @@ Bildpunkte, Lila 0–9 — die rosa Extrusion (18 px nach links unten) legte sic
 Schalter („Extrusion“ bei Outline, Standard aus, Farbe „Körper Schatten“); ohne sie sind Rosa und Lila innen wie außen gleich breit
 (an der Kugel punktsymmetrisch: innen je ⅕ der Kontur × Blick, außen das Doppelte, weil die Platten innen am Körper beginnen).
 Commit `c7e0808b`, Artefakt Version 6, Bilder `docs/progress/editor/editor-{tiktok-symmetrisch,lavendelblau-gewendet}-2026-11-11.jpg`.
+
+**Danach (Florian, mit Vorlage `docs/look/editor/blaupause/vorlage-langer-schatten-2026-11-11.png`: „in den 3 Fenstern mit der Outline
+auch noch den großen flachen Schatten mit harten Kanten, der auf der dunkelblauen Fläche liegt … immer schräg nach links unten statt
+rechts“):** Das ganze Abzeichen (alles bis zum äußeren Rand des Rands; bei TikTok beide Platten) wirft einen langen Schatten auf den
+Grund, immer unter 45° nach links unten, harte geglättete Kante. Vorlage gemessen: Grund `#081b25`, Schatten am Logo `#051318`
+(≈ ⅔), nach hinten heller → hier am Abzeichen Grund × 0,64, über die Fensterlänge auf ≈ × 0,8 auslaufend, von hinten (heller Grund)
+nur 45 % davon. Regler „Schatten“ bei Outline (0–80 %, 36 %; 0 = aus). Rechnung: Maske des Abzeichens aus den Abstandsfeldern,
+dann ~11 Verdopplungsschritte nach links unten (Deckung = Höchstwert, Weg = kürzester), halbe Gleitkommazahlen.
+Commit `698c336d`, Artefakt Version 7, Bilder `docs/progress/editor/editor-langer-schatten{,-hinten}-2026-11-11.jpg`.
