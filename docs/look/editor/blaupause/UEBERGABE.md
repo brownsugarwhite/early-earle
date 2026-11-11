@@ -362,3 +362,14 @@ umgestülpt (Rückseiten), im Bild längs der Normale nach außen geschoben, ums
 0,35): an Umrissen im Inneren (Hörner vor dem Kopf, Falten) und an echten Kanten eine Linie, die sich verjüngt. Breite 4 Bildpunkte bei
 100 % (wachsen mit wie die Kantenlinien), Farbe Petrol, von hinten weiß. Nur Seite, Front, Top. Commit `d3f7dc95`, Artefakt Version 9,
 Bilder `docs/progress/editor/editor-kanten-kontur{,-nah,-hinten}-2026-11-11.jpg`.
+
+**Danach (Florian: „eine 4px Kontur um alles … kann weg“, und: „der Kontaktbohne überzeugt noch nicht … eine abgerundete Andeutung
+des echten Kontaktbereichs, wenn das Modell immer auf dem Boden steht … immer Abstand zur Kante wie bei einem Glas-Effekt … immer stark
+abgerundet“):**
+- Die verjüngende Kontur zeichnet nur noch im Inneren der Silhouette (Abstandsfeld des Körpers); außen liegt die dicke Kontur.
+- Kontaktbohne neu (`kontaktFeld` in `blaupause.ts`): je Bildpunkt der Strahl durchs Glas zwischen Vorder- und Rückseite (Dicke aus
+  den Rückseiten), an beiden Enden ⅒ des größten Teils frei (Glasrand); reicht er tiefer als 0,42 des größten Teils über den Boden
+  (tiefster Punkt des Körpers), gehört der Bildpunkt dazu. Dann weich gerechnet (Halbmesser ⅓ des größten Teils) und im Jelly bei der
+  Hälfte scharf geschnitten: immer rund, nie am Rand, dort, wo das Wesen wirklich aufliegt (Kugel: unten wie die Vorlage; Vogel: unter
+  dem Bauch; „teat firefish“: unter dem tiefsten Teil). Das Ellipsoid aus `lava.ts` wird dafür nicht mehr benutzt.
+Commit `66f82121`, Artefakt Version 10, Bilder `docs/progress/editor/editor-{kontaktbohne,kontur-innen}-2026-11-11.jpg`.
