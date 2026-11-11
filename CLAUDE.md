@@ -34,6 +34,17 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 > P0a angesehen, P1 Tag 1 (Umrissschleifen), Tag 2–3 (Schleifen-Käfig, Einteiler) und Tag 4–5 (Teile an der Naht) gebaut —
 > Abnahme offen, Florians Blick auf die Bögen entscheidet.** Einstieg: [`docs/UEBERGABE.md`](docs/UEBERGABE.md).
 
+> **11.11.2026 abends (Florian): Standardversion des Editors ist `kurven.html?gewichte=geometrie`** (Stand `09f39297`, „über die
+> Mitte ziehen, die Anzeige verschmilzt“; die andere Sitzung ist vorerst fertig). **Dieselbe Fassung mit dem Design der Blaupause
+> liegt unter `/editor`** (`apps/editor/editor.html`, `src/form/editor.ts` = `kurven.ts` mit Blaupause-Fenstern, `src/form/blaupause.ts`
+> = Darstellung; dort ist „geometrie“ ohne Parameter Standard, `?gewichte=gleich` zum Vergleich, `?laden=<Name>` öffnet ein gesichertes
+> Wesen): vier drehbare 3D-Fenster, Seite/Front/Top im Look von Florians Logo-Vorlage (dicke Kontur, Verlaufsrand, Extrusion und
+> Schatten wie der Passer „Blick“), das 3D als Jelly des Spiels oder Papier (Knopf im Fenster), Schattierungsgrenzen im Bild
+> geglättet. Port 5194 (Arbeitsbaum `.claude/worktrees/form-alt`, Zweig `claude/form-spiegel`). Bilder: `node apps/editor/scripts/
+> editor-bilder.cjs`. Design-Übergabe: `docs/look/editor/blaupause/UEBERGABE.md` auf `claude/editor-grundlayout`. Änderungen an
+> `kurven.ts` müssen in `editor.ts` nachgezogen werden (dreifache Zusammenführung mit `git merge-file`, Basis = der Stand, aus dem
+> `editor.ts` kopiert ist).
+
 - **2026-10-04: Prototyp 1 ist abgeschlossen** (Archiv-Branch `prototyp-1`). Er diente zum Lernen. Florian: „Der Prototyp war sehr gut und aufschlussreich und hat bewiesen, dass die Spielidee toll ist.“ Viele Entscheidungen sind gefallen; die Gesamtdynamik und einige grafische Elemente haben ihm gefallen.
 - **Jetzt beginnt die eigentliche Produktion mit dem finalen Look.** Grundlage wird **Florians neuer Plan mit neuem Hauptprompt**: Story, Charaktere und Map arbeitet er genauer aus und trägt sie in Dokumenten und Screenshots zusammen. Es folgen mehrere Runden und Iterationen.
 - **Bis der neue Plan da ist:** keine Produktionsarbeit auf Basis der alten Pläne beginnen und den Prototyp-Code nicht eigenmächtig weiterbauen. Florian führt zwischendurch eigene Tests durch (u. a. KI-3D-Werkzeuge in der Cloud).
