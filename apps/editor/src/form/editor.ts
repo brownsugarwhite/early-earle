@@ -4980,7 +4980,8 @@ async function wesenSichern(name: string): Promise<string> {
   }
   if (antwort && antwort.status !== 404) return `Sichern fehlgeschlagen (${antwort.status} ${await antwort.text().catch(() => '')})`;
   // keine Ablage (kein Dev-Server): als Datei über den Browser; im Artefakt gibt es keine Dateien (die Form bleibt im Browser)
-  if (ARTEFAKT) return 'Sichern gibt es im Artefakt nicht: Die Form bleibt in diesem Browser erhalten, auch nach dem Neuladen.';
+  // (direkt geprüft, damit der Bau des Artefakts den Rest hier weglässt: dort gibt es keine Dateien)
+  if (typeof __TESTSTAND_WORKER__ !== 'undefined') return 'Sichern gibt es im Artefakt nicht: Die Form bleibt in diesem Browser erhalten, auch nach dem Neuladen.';
   const a = document.createElement('a');
   a.href = URL.createObjectURL(datei);
   a.download = `${name}.eewesen`;
