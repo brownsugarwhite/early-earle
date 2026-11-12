@@ -300,6 +300,13 @@ ihre eigenen Normalen geben aber kleine Wellen an jeder Dreieckskante. Die Unter
 scharfen Graten aber über die Linie. Empfohlen und im Bild gezeigt ist die Verbindung: Form der gekrümmten Dreiecke (ohne Glätten
 verfeinert), Schattierung mit den Normalen der gewöhnlichen Unterteilung. Stand und Bilder: `docs/UEBERGABE.md`, Abschnitt 4.
 
+**Nachtrag 12.11. abends (Einbau):** Im Fenster gebaut hinter `&anzeige=glatt` (Bau-Zweig). Beim Einbau zeigte sich: Die Wellen
+in den Farbstufen kamen vor allem aus den Normalen des ungleichmäßigen Netzes, nicht aus der Zahl der Dreiecke. Die Normalen der
+Unterteilung aus dem Vergleichsbild sitzen zudem neben den gezeigten Punkten. Gebaut ist deshalb ein Normalenfeld je Rechenpunkt
+(nach Max 1999, beruhigt mit Gewichten nach den Mittelwert-Koordinaten, Floater 2003), das mit den Lagen verfeinert wird. Die
+Verfeinerung dient damit dem Umriss und den Linien, die Farbstufen sind schon ohne sie ruhig. Gemessen: Die Anzeige kostet im
+Zug 2 bis 3 ms je Bild, das Tempo bestimmt die Löserrunde (Schritt 2). Einzelheiten: `docs/UEBERGABE.md`, Abschnitt 4.
+
 ### A.2 Rechennetz (Schritt 2)
 
 - `DREIECKE` (heute 6 000 bestellt, rund 5 200 Punkte an der Kugel) auf etwa ein Drittel. Die Schwellen in
