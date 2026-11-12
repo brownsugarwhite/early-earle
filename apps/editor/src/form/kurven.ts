@@ -152,8 +152,17 @@ const LIPPE = 0xb0413a;
 const MAULFARBE = 0x7a3431;
 /** So viele Welteinheiten passen in die kürzere Seite eines Blatts. */
 const SICHT = 560;
-/** bestellte Dreiecke der Haut (Surface Nets geben etwa das 1,5-Fache); `?dreiecke=` für Messungen mit feineren Netzen */
-const DREIECKE = Number(new URLSearchParams(location.search).get('dreiecke') ?? 6000);
+/**
+ * Kleines Rechennetz (Plan vom 12.11., Schritt 2): Das Startnetz hat ein Drittel der Dreiecke bis dahin (die Startkante ist rund
+ * √3-mal so lang), dichter wird das Netz, wo die Form es braucht: an den Linien nach ihrem Pfad (`GENAU`) und in der Haut, wo sie
+ * gekrümmt ist (`GENAU_HAUT`). Glatt macht die Form seit Schritt 1 die Anzeige. Eine Form mit kürzerer Startkante (bis zum 12.11.
+ * gesichert oder behalten) wird beim Übernehmen auf die Startkante dieser Adresse gebracht (`netzVergroebern`).
+ * `?netz=dicht`: das Netz wie bis zum 12.11. (überall gleich dicht, 6 000 Dreiecke bestellt); dort bleibt eine solche Form, wie sie
+ * ist.
+ */
+const NETZ_KLEIN = new URLSearchParams(location.search).get('netz') !== 'dicht';
+/** bestellte Dreiecke des Startnetzes (Surface Nets geben etwa das 1,5-Fache); `?dreiecke=<n>` für Messungen */
+const DREIECKE = Number(new URLSearchParams(location.search).get('dreiecke') ?? (NETZ_KLEIN ? 2000 : 6000));
 /**
  * Glatte Anzeige (Plan vom 12.11., Schritt 1; Florian: „Spalte 3 einbauen“, am selben Tag als Standard übernommen): Die Haut wird
  * nur für die Anzeige verfeinert (`glattPlan.ts`: Lagen ohne Glätten, die Fläche geht durch alle Rechenpunkte, Kanten auf Linien
@@ -163,15 +172,16 @@ const DREIECKE = Number(new URLSearchParams(location.search).get('dreiecke') ?? 
  */
 const GLATT = new URLSearchParams(location.search).get('anzeige') !== 'grob';
 /**
- * Stufen der Verfeinerung (jede vervierfacht die Dreiecke), `?fein=0|1|2|3` legt sie fest. Ohne Angabe: Solange sich die Haut
- * ändert, eine Stufe, bei mehr als `GLATT_GROSS` Punkten keine (gemessen am 12.11. an „strange bird“, 16 010 Punkte: eine Stufe
- * kostet dort 7,8 ms je Bild, bei einer Löserrunde von 17 ms; die Farbstufen laufen schon ohne Verfeinerung ruhig, weil sie an den
- * Normalen hängen, nicht an der Zahl der Dreiecke). `GLATT_RUHE_MS` nach der letzten Änderung zwei Stufen, wenn es nicht mehr als
- * `GLATT_HOECHSTENS` Dreiecke werden, sonst eine: Dann sind auch Umriss und Linien glatt. Mit dem kleinen Rechennetz (Schritt 2 des
- * Plans) passen zwei Stufen in jedes Bild.
+ * Stufen der Verfeinerung (jede vervierfacht die Dreiecke), `?fein=0|1|2|3` legt sie fest. Ohne Angabe: in der Ruhe zwei Stufen,
+ * wenn es nicht mehr als `GLATT_HOECHSTENS` Dreiecke werden, sonst eine. Solange sich die Haut ändert, dieselben Stufen, wenn es
+ * nicht mehr als `GLATT_IM_ZUG` Dreiecke werden, sonst so viele weniger, dass es passt; `GLATT_RUHE_MS` nach der letzten Änderung
+ * kommen dann die Stufen der Ruhe. Gemessen am 12.11. mit dem kleinen Rechennetz (Schritt 2): Zwei Stufen kosten im Zug am
+ * „teat firefish“ (7 762 Punkte, 249 792 Dreiecke gezeigt) 4,1 ms je Bild und 1,9 ms für die Linienbänder, am „strange bird“
+ * (4 740 Punkte) 2,5 und 1,4 ms; der Abstand der Bilder bleibt bei 17 ms. Bis Schritt 2 gab es im Zug höchstens eine Stufe und
+ * über 6 000 Punkten keine (eine Stufe kostete am Vogel mit 16 010 Punkten 7,8 ms je Bild bei einer Löserrunde von 17 ms).
  */
 const FEIN = Number(new URLSearchParams(location.search).get('fein') ?? -1);
-const GLATT_GROSS = 6000;
+const GLATT_IM_ZUG = 260_000;
 const GLATT_HOECHSTENS = 700_000;
 const GLATT_RUHE_MS = 200;
 /**
@@ -228,6 +238,8 @@ let haut: Haut = hautAus(netz.positionen, netz.indizes);
  * bringt seines mit, `standAnwenden`), nicht zur Adresse.
  */
 let MK = mittlereKante(haut);
+/** die Startkante dieser Adresse (die des Startnetzes): Auf sie wird eine Form mit feinerem Netz gebracht (`netzVergroebern`) */
+const MK_START = MK;
 /** so nah müssen sich zwei Loops kommen, damit sie sich kreuzen */
 let TOL = 0.25 * MK;
 
@@ -333,13 +345,29 @@ const KURZ = Number(new URLSearchParams(location.search).get('kurz') ?? 0.5);
  * bei 307 % ≈ 0,6 Bildpunkte) von ihrer Kurve abweicht, und nur zusammengelegt, wo die Abweichung danach höchstens halb so groß ist
  * (`verdichten`, `genau`). `?genau=0` zum Vergleich.
  *
- * Die Haut zwischen den Linien ebenso fein zu machen (`?genauHaut=1`, Versuch) macht sie am Ohr rund (0,21 statt 0,99), aber weite Züge
- * schlechter: Rüssel mit gedrehtem Griff 108 Knicke über 60° und 46 umgeklappt statt 31 / 0, Fressen-Pose 8 umgeklappt statt 0 (der Löser
- * aus den Kurven verträgt die vielen geteilten Dreiecke dort nicht). Auch gleich nach dem Anlegen eines Loops zu teilen war schlechter
- * (ohne Setzen danach klappten Splitter um).
+ * Die Haut zwischen den Linien ebenso fein machen (`GENAU_HAUT`): Eine Kante wird geteilt, wo die runde Fläche zwischen ihren Enden
+ * weiter als dieselbe Genauigkeit von ihr abweicht (Länge × Drehung der Normale / 8), und nur zusammengelegt, wo es danach höchstens
+ * halb so viel ist. Mit dem kleinen Rechennetz Standard (12.11., Schritt 2), `?genauHaut=0` zum Vergleich: Ohne sie fällt ein kleines
+ * Detail auf dem groben Netz zusammen (Florians Ohr vom 08.11.: flach auf der Linie, 6 umgeklappte Dreiecke; mit ihr rund wie bisher,
+ * 0 umgeklappt, 1 910 Punkte statt 5 270 mit dem Netz bis zum 12.11.). Am 08.11. war sie ein Versuch und wurde verworfen (damals
+ * hing die Form noch am Netz: Rüssel mit gedrehtem Griff 108 Knicke über 60° und 46 umgeklappt statt 31 / 0). Nach der Geometrie
+ * gerechnet gilt das nicht mehr, gemessen am 12.11. mit `form-explosion-probe.mjs` (kleines Netz mit ihr gegen das Netz bis zum
+ * 12.11.; Knicke über 60° / umgeklappt): Rüssel mit um 90° gedrehtem Griff 1/0 gegen 10/0, langer Hammer 0/0 gegen 0/0, Ei mit
+ * Überhang 0/0 gegen 4/0, Schlaufe (die Linie kreuzt sich selbst, in jeder Fassung kaputt) 119/26 gegen 128/26; mit der Genauigkeit
+ * der Linien statt `GENAU_FLAECHE` entstanden an der Schlaufe mehr Splitter (214/70). Gleich nach dem Anlegen eines Loops zu teilen
+ * war schlechter (ohne Setzen danach klappten Splitter um).
  */
 const GENAU = Number(new URLSearchParams(location.search).get('genau') ?? 1 / 40);
-const GENAU_HAUT = new URLSearchParams(location.search).get('genauHaut') === '1';
+const GENAU_HAUT = ((w) => w === '1' || (w !== '0' && NETZ_KLEIN))(new URLSearchParams(location.search).get('genauHaut'));
+/**
+ * Genauigkeit der Haut mit `GENAU_HAUT` als Anteil der Startkante (`?genauFlaeche=`). Die Linien behalten ihre eigene, feinere
+ * (`GENAU`): An ihnen hängen die Ziele der Haut. In der Fläche zählt nur, dass der Löser genug Punkte hat, um eine Wölbung zu
+ * bilden; glatt zeichnet sie die Anzeige. Gemessen am 12.11. (Florians Ohr, `form-detail-probe.mjs`; Punkte seiner Formen nach dem
+ * Laden): mit 1/40 wie die Linien bleiben „teat firefish“ 20 122 von 27 770 Punkten (im Zug 34 ms je Bild); mit 1/20 12 965, mit
+ * 1/12 9 944 (18 ms), das Ohr ist in beiden rund und ohne umgeklapptes Dreieck; mit 1/8 8 712, am Ohr klappen 4 Dreiecke um.
+ * 1/16 lässt Abstand zu dieser Grenze: 11 449 Punkte, 19 ms je Bild.
+ */
+const GENAU_FLAECHE = Number(new URLSearchParams(location.search).get('genauFlaeche') ?? 1 / 16);
 /**
  * Verfeinern im Zug (08.11., Schritt 3, Florian: „Netz und Linien schon während des Zugs verfeinern, Zerlegung im Hintergrund“): Wird
  * die Haut beim Ziehen gestreckt (eine Kante länger als `LIVE_KANTE` Startkanten), wird der Zug festgehalten, das Netz wie nach dem Zug
@@ -1311,11 +1339,12 @@ const glattOrt = (li: number, j: number, sp: boolean): number => (li * 1_000_000
 /** Woran die Zuordnung der Linien zu den Kanten hängt (außer am Netz der Anzeige) */
 const glattKenn = (): string => `${grund ? 'p' : 'g'}|${loops.map((l) => `${l.id}.${l.proben.length}.${exakt(l) ? 1 : 0}`).join(',')}`;
 
-/** So viele Stufen bekommt die Anzeige jetzt (`FEIN`, sonst danach, ob die Haut ruht, und im Zug nach ihrer Größe) */
-function glattStufen(punkte: number, dreiecke: number): number {
+/** So viele Stufen bekommt die Anzeige jetzt (`FEIN`, sonst die der Ruhe; ruht die Haut nicht, höchstens `GLATT_IM_ZUG` Dreiecke) */
+function glattStufen(dreiecke: number): number {
   if (FEIN >= 0) return FEIN;
-  if (glattVoll) return glattZiel(dreiecke);
-  return punkte <= GLATT_GROSS ? 1 : 0;
+  let stufen = glattZiel(dreiecke);
+  if (!glattVoll) while (stufen > 0 && 4 ** stufen * dreiecke > GLATT_IM_ZUG) stufen--;
+  return stufen;
 }
 /** Stufen in der Ruhe */
 const glattZiel = (dreiecke: number): number => (16 * dreiecke <= GLATT_HOECHSTENS ? 2 : 1);
@@ -1438,7 +1467,7 @@ function glattZeigen(I: Uint32Array): void {
       K[12 * i + 9 + x] = b;
     }
   });
-  const stufen = glattStufen(N, I.length / 3);
+  const stufen = glattStufen(I.length / 3);
   if (g.kanten.length && stufen > 0)
     loops.forEach((l, li) => {
       const stuecke = pfadStuecke(l, li);
@@ -3692,6 +3721,38 @@ function nachVerdichten(nurTeilen = false): void {
   letzteVerdichtung = { neu: v.neu, gelegt: v.gelegt, ms: Math.round(performance.now() - t0) };
 }
 
+/**
+ * Beim Vergröbern fallen Kanten unter diesem Anteil der Startkante zusammen. Gemessen an „strange bird“ im Kern
+ * (`form-netz-kleiner.ts`): Mit 0,8 ist die mittlere Kante danach 1,06 Startkanten, wie bei einer Form, die aus dem Startnetz
+ * gewachsen ist (32 % der Punkte); mit ½ wie nach einem Zug (`KURZ`) blieben 61 %.
+ */
+const GROB_KURZ = 0.8;
+
+/**
+ * Kleines Rechennetz (Schritt 2): Hat die Form eine kürzere Startkante als diese Adresse, bekommt sie deren Startkante, und das Netz
+ * wird so grob wie eines, das mit ihr gewachsen ist (`verdichten`: Kanten zusammenlegen, die kürzesten zuerst; Linien bleiben auf
+ * `GENAU` genau, ihre Punkte, Kreuzungen und Enden bleiben). Die Punkte, die bleiben, bleiben, wo sie sind: Die Form ist danach
+ * dieselbe, nur mit weniger Punkten; neu gerechnet wird sie wie bisher erst beim nächsten Griff. Nicht in der Pose.
+ */
+function netzVergroebern(): { vorher: number; nachher: number; ms: number } | null {
+  if (!VERDICHTEN || grund || !(MK_START > 1.05 * MK)) return null;
+  const t0 = performance.now();
+  const vorher = haut.n;
+  MK = MK_START;
+  TOL = 0.25 * MK;
+  for (let gang = 0; gang < 8; gang++) {
+    const nAlt = haut.n;
+    const v = verdichten(haut, loops, 1.75 * MK, { ...verdichtenOptionen(), kurz: GROB_KURZ * MK });
+    if (!v) break;
+    haut = v.haut;
+    loops = v.loops;
+    netzGewachsen(nAlt, v.alt, null);
+    if (v.gelegt === 0 && v.neu === 0) break;
+  }
+  geometrieNeu();
+  return { vorher, nachher: haut.n, ms: Math.round(performance.now() - t0) };
+}
+
 /** Wie verdichtet wird (für `verdichten`, im Fenster und im Hintergrund); `nurTeilen`: nichts zusammenlegen */
 function verdichtenOptionen(nurTeilen = false): VerdichtenOptionen {
   // die Öffnung des Mauls wird nicht gezeigt und nicht verdichtet (in der Pose überspannt sie das offene Maul)
@@ -3700,7 +3761,7 @@ function verdichtenOptionen(nurTeilen = false): VerdichtenOptionen {
   // nur in der Grundform: Dort ist die Linie ihr Pfad. In der Pose liegt sie neben ihm (die Punkte werden von der posierten Linie
   // abgelesen, die Griffe sind die der Grundform); nach dem Pfad geteilt wurde dort laufend neu vernetzt (Fressen-Probe: 572 neue,
   // 741 zusammengelegte Punkte, danach 2 umgeklappt)
-  const genau = GENAU > 0 && grund === null ? { genau: GENAU * MK, genauHaut: GENAU_HAUT } : {};
+  const genau = GENAU > 0 && grund === null ? { genau: GENAU * MK, genauHaut: GENAU_HAUT, genauFlaeche: GENAU_FLAECHE * MK } : {};
   return WINKEL ? { winkel: 25, minKante: MK / 3, verborgen, flachSchutz: FLACH_SCHUTZ } : { verborgen, kurz: nurTeilen ? 0 : KURZ * MK, ...genau, flachSchutz: FLACH_SCHUTZ };
 }
 
@@ -4589,8 +4650,13 @@ window.addEventListener('keydown', (e) => {
  * festhält (`ablage.ts`); die Liste der Schritte selbst gehört nicht dazu.
  */
 const BEHALTEN = ((w) => w === '1' || (w !== '0' && !navigator.webdriver))(new URLSearchParams(location.search).get('behalten'));
-/** die Startform dieser Adresse: Ein behaltenes Wesen kommt nur zur selben zurück */
-const START_KENNUNG = `${new URLSearchParams(location.search).get('form') ?? 'kugel'}|${DREIECKE}`;
+/**
+ * Die Startform dieser Adresse: Ein behaltenes Wesen kommt nur zur selben zurück. Die Dichte des Startnetzes steht zur Auskunft
+ * dabei, sie entscheidet nicht (seit Schritt 2: Ein Wesen mit feinerem Netz wird beim Übernehmen vergröbert; vorher wäre das
+ * Wesen von vorhin mit dem neuen Standard der Dichte nicht zurückgekommen).
+ */
+const START_FORM = new URLSearchParams(location.search).get('form') ?? 'kugel';
+const START_KENNUNG = `${START_FORM}|${DREIECKE}`;
 
 /** Der Stand von jetzt als Wesen (die Lagen als Kopie, die Loops, wie sie sind: gleich packen) */
 function standJetzt(): WesenStand {
@@ -4621,9 +4687,10 @@ function zieleAus(st: WesenStand): (Float64Array | null)[] | null {
 
 /**
  * Ein Wesen ins Fenster übernehmen (geladen, behalten oder die Startform). Was gerade rechnet oder ansteht, endet; die Zerlegung
- * von vorher gilt nicht mehr. Kein Schritt für ⌘Z: Den legt an, wer es will (`zurueck.push(schnappschuss())` davor).
+ * von vorher gilt nicht mehr. Kein Schritt für ⌘Z: Den legt an, wer es will (`zurueck.push(schnappschuss())` davor). Zurück: Text
+ * für die Statuszeile, wenn das Netz dabei vergröbert wurde (sonst leer).
  */
-function standAnwenden(st: WesenStand): void {
+function standAnwenden(st: WesenStand): string {
   const h = hautAusFlach({ ...st.haut, pos: Float64Array.from(st.haut.pos) });
   const g = st.grund ? hautAusFlach({ ...st.grund.haut, pos: Float64Array.from(st.grund.haut.pos) }) : null;
   const s: Schnappschuss = {
@@ -4662,6 +4729,10 @@ function standAnwenden(st: WesenStand): void {
     meldung = 'Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.';
     allesZeigen();
   }
+  // eine Form mit feinerem Netz, als diese Adresse rechnet, bekommt das kleine Rechennetz
+  const grob = netzVergroebern();
+  if (grob) allesZeigen();
+  const netzText = grob ? ` · Rechennetz ${grob.vorher.toLocaleString('de-DE')} → ${grob.nachher.toLocaleString('de-DE')} Punkte` : '';
   if (st.sicht) {
     for (const a of ['seite', 'front', 'top'] as const) {
       const v = st.sicht[a];
@@ -4669,6 +4740,7 @@ function standAnwenden(st: WesenStand): void {
       ausschnittGeaendert(a);
     }
   }
+  return netzText;
 }
 
 // ----- Behalten im Browser -----
@@ -4769,15 +4841,16 @@ const davorHolen = (): Promise<Davor | undefined> =>
 function behaltenesHolen(): void {
   speicher<Behalten | undefined>('readonly', (s) => s.get('zuletzt') as IDBRequest<Behalten | undefined>)
     .then((b) => {
-      if (!b || b.start !== START_KENNUNG) return;
+      if (!b || b.start.split('|')[0] !== START_FORM) return;
       // inzwischen hat schon jemand angefangen: dann nicht
       if (loops.length > 0 || zurueck.length > 0 || zug) return;
       const st = entpacken(b.daten);
       if (st.loops.length === 0 && !st.grund) return;
-      standAnwenden(st);
+      const netzText = standAnwenden(st);
       ablageName = typeof b.name === 'string' && nameGueltig(b.name) ? b.name : '';
-      behaltenStand = behaltenSchluessel();
-      meldung = `${ablageName ? `„${ablageName}“` : 'Wesen von vorhin'} wieder da (${auskunft(st)})`;
+      // nach dem Vergröbern ist der Stand ein anderer als der behaltene: Er wird neu behalten
+      behaltenStand = netzText ? '' : behaltenSchluessel();
+      meldung = `${ablageName ? `„${ablageName}“` : 'Wesen von vorhin'} wieder da (${auskunft(st)})${netzText}`;
       statusZeigen();
     })
     .catch((e: unknown) => {
@@ -4841,19 +4914,20 @@ async function wesenSichern(name: string): Promise<string> {
 }
 
 /** Ein Wesen übernehmen, als Schritt (⌘Z bringt das jetzige zurück; über das Neuladen hinweg liegt es im Fach „davor“) */
-function wesenUebernehmen(st: WesenStand, name: string): void {
+function wesenUebernehmen(st: WesenStand, name: string): string {
   davorMerken();
   zurueck.push(schnappschuss());
-  standAnwenden(st);
+  const netzText = standAnwenden(st);
   ablageName = name;
+  return netzText;
 }
 async function wesenLaden(name: string): Promise<string> {
   const r = await fetch(ABLAGE + encodeURIComponent(name));
   if (!r.ok) return `Laden fehlgeschlagen: „${name}“ (${r.status})`;
   try {
     const st = entpacken(await r.arrayBuffer());
-    wesenUebernehmen(st, name);
-    return `geladen: „${name}“ (${auskunft(st)}) · ⌘Z bringt das Wesen von vorher zurück`;
+    const netzText = wesenUebernehmen(st, name);
+    return `geladen: „${name}“ (${auskunft(st)})${netzText} · ⌘Z bringt das Wesen von vorher zurück`;
   } catch (e) {
     return `Laden fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`;
   }

@@ -313,6 +313,14 @@ describe('Die Linie ist ihr Pfad', () => {
     // mit der Haut (Versuch): neue Punkte liegen rund (nach den Normalen der Enden), nicht genau, die Fläche danach knapp an der Grenze
     expect(nachher.mitHaut).toBeLessThan(1.5 * genau);
     expect(sehnenRest(haut.loops[li]!)).toBeLessThanOrEqual(genau);
+    // eigene Genauigkeit der Haut (12.11., kleines Rechennetz): gröber als die der Linien gibt weniger neue Punkte, die Fläche hält
+    // diese Grenze, und die Linie bleibt so genau wie vorher
+    const grob = verdichten(h, loops, 1.75 * MK, { genau, genauHaut: true, genauFlaeche: 2.5 * genau, kurz: 0.5 * MK })!;
+    log(`Ohr, Haut auf ${(2.5 * genau).toFixed(3)} statt ${genau.toFixed(3)}: Punkte ${grob.haut.n} statt ${haut.haut.n}, Fläche ${flaechenRest(grob.haut).toFixed(3)}`);
+    expect(grob.haut.n).toBeLessThan(haut.haut.n);
+    expect(flaechenRest(grob.haut)).toBeLessThan(1.5 * 2.5 * genau);
+    expect(flaechenRest(grob.haut)).toBeGreaterThan(nachher.mitHaut);
+    expect(sehnenRest(grob.loops[li]!)).toBeLessThanOrEqual(genau);
     // geschlossen, spiegelgleich, die Ketten heil, die Punkte an Ort
     const zaehl = new Map<string, number>();
     for (let t = 0; t < v.haut.tri.length; t += 3)

@@ -79,8 +79,8 @@ const FLACH = 10;
  * (Verbindungsbedingung), Dreiecke um mehr als 60° kippten oder Kanten länger als `maxKante` würden.
  *
  * Mit `genau` (Abweichung in Welteinheiten) wird auch geteilt, wo das Netz eine Linie ungenauer wiedergibt, mit `genauHaut` auch die
- * runde Fläche (siehe Kopf der Datei), bis hinunter zu `minKante` (Standard 1/16 `maxKante`); zusammengelegt wird dann nur, was danach
- * höchstens `genau`/2 abweicht.
+ * runde Fläche (siehe Kopf der Datei; auf `genauFlaeche`, ohne Angabe auf `genau`), bis hinunter zu `minKante` (Standard 1/16
+ * `maxKante`); zusammengelegt wird dann nur, was danach höchstens halb so weit abweicht.
  */
 export function verdichten(
   h: Haut,
@@ -97,6 +97,8 @@ export function verdichten(
     kurzKette?: number;
     genau?: number;
     genauHaut?: boolean;
+    /** mit `genauHaut`: die Abweichung, auf die die Haut aufgelöst wird (Standard: `genau`, wie die Linien) */
+    genauFlaeche?: number;
     /** kein Dreieck flach werden lassen und vorhandene flache auflösen (Standard an; `false`: wie bis zum 10.11.) */
     flachSchutz?: boolean;
     /** zusammengelegt werden nur Kanten mit einem Ende auf einer Linie (nach dem Einsetzen eines Loops) */
@@ -468,6 +470,7 @@ export function verdichten(
   };
   const cosMax = opt.winkel !== undefined ? Math.cos((opt.winkel * Math.PI) / 180) : 2;
   const genau = opt.genau;
+  const genauF = opt.genauFlaeche ?? genau;
   const minKante = opt.minKante ?? (genau !== undefined ? maxKante / 16 : 0);
   /** wie weit die Fläche zwischen den Enden einer Kante von ihr abweicht (Bogen: Länge × Drehung der Normale / 8) */
   const bogen = (a: number, b: number, nor: Float64Array): number =>
@@ -523,7 +526,7 @@ export function verdichten(
       if (
         l > maxKante ||
         (cosMax <= 1 && l > minKante && drehungCos(a, b, nor) < cosMax) ||
-        (falte !== null && l > minKante && !falte[a] && !falte[b] && drehungCos(a, b, nor) > 0 && bogen(a, b, nor) > genau!)
+        (falte !== null && l > minKante && !falte[a] && !falte[b] && drehungCos(a, b, nor) > 0 && bogen(a, b, nor) > genauF!)
       )
         lang.push({ a, b, l });
     }
@@ -721,7 +724,7 @@ export function verdichten(
             if (w === v || falteK![w]) continue;
             const nb = nAn(w);
             const c = Math.max(-1, Math.min(1, na.x * nb.x + na.y * nb.y + na.z * nb.z));
-            if ((laengeVon(q, w) * Math.acos(c)) / 8 > genau! / 2) return false;
+            if ((laengeVon(q, w) * Math.acos(c)) / 8 > genauF! / 2) return false;
           }
         }
       }
