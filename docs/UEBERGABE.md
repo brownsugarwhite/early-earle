@@ -1,5 +1,12 @@
 # Übergabe (Stand 11.11.2026 mittags: Spiegelung wie ein Mirror-Modifier: Linien dürfen über die Mitte, die Anzeige schneidet ab und verschmilzt (`09f39297`); das ist die Fassung, die Florian gut fand. Die Fassung mit Wand (`a4490f2f`) hat er verworfen. Davor: Untersuchung „Ein Schritt zurück“ beendet. Davor am 11.11. morgens: Stabilität an der Spiegelachse gebaut; davor G1 bis G4, Sichern und Laden, G5 erster Teil, Schutz und Vorsicht; Florians drei gesicherte Formen; Grundform immer spiegelgleich entschieden)
 
+**Nachtrag 12.11.2026 – zuerst lesen:** Der Plan für alles Weitere ist
+[`docs/plans/2026-11-12-schnell-glatt-exakt.md`](plans/2026-11-12-schnell-glatt-exakt.md) (zur Freigabe; nichts davon gebaut).
+Er sagt, was von G1–G6 offen ist, was die Wege A–D waren, und legt acht Schritte fest (Aufräumen, glatte Anzeige, kleines
+Rechennetz, Beweis „Haut direkt aus den Linien“, echte Spiegelung, Posen, Maul, Auswahl). Basis ist jetzt der Zweig
+`claude/form-spiegel` im Arbeitsbaum `.claude/worktrees/form-alt` (Port 5194, Florians Fenster: dort nicht bauen). Diese
+Übergabe wird in Schritt 0 des Plans neu und kurz geschrieben; bis dahin gilt der Text unten als Stand vom 11.11.
+
 **Branch `claude/form-zuerst`, Arbeitsbaum `.claude/worktrees/form-zuerst`.** Diese Datei ist der Einstieg. Die alte Übergabe aus der
 Käfig-Zeit (Stand 04.11.) steht in der Git-Geschichte: `git show 82aed6dc:docs/UEBERGABE.md`.
 

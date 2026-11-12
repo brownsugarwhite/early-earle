@@ -4,6 +4,14 @@ Diese Datei lädt jede Claude-Session automatisch. Sie hält den Stand, die Arbe
 
 ## Stand: Prototyp 1 abgeschlossen, Produktion beginnt
 
+> **12.11.2026: Plan „schnell, glatt, exakt“ zur Freigabe**
+> ([`docs/plans/2026-11-12-schnell-glatt-exakt.md`](docs/plans/2026-11-12-schnell-glatt-exakt.md)): Stand G1–G6 (G5 Teil 2 und G6
+> fehlen), Wege A–D eingeordnet (nie gebaut), Loft-Frage, Ursachen der vier Beschwerden (zäh, stufig, bläst auf, justiert nach),
+> Zielbild und acht Schritte: 0 Aufräumen, 1 glatte Anzeige, 2 kleines Rechennetz, 3 Beweis „Haut direkt aus den Linien“ (Weg A),
+> 4 echte Spiegelung + neue Rechnung ins Fenster, 5 Posen wie die Basis, 6 Maul als eigene Geometrie, 7 Auswahl wie in Blender.
+> **Nichts davon ist gebaut; ohne Florians Freigabe nichts bauen und nichts löschen.** Arbeitsweise: keine Messreihen im
+> Hintergrund, keine Agenten-Fächer, je Schritt eine sichtbare Probe, nie unter seinem Fenster (5194) bauen.
+>
 > **Neue Sitzung ab 16.10.2026 (Florian): Falten, Wirbelsäulen und Kantenlinien.** Einstieg mit allem aus der Exploration
 > vom 13.–16.10. (Ziele, Entscheidungen, Editor- vs. Kern-Stand, Messungen, Ursachen, Lehren, Werkzeuge, Startempfehlung):
 > [`docs/plans/2026-10-16-einstieg-falten-wirbelsaeulen-linien.md`](docs/plans/2026-10-16-einstieg-falten-wirbelsaeulen-linien.md).

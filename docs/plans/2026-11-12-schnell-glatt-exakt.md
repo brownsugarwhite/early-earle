@@ -1,0 +1,451 @@
+# Plan: schnell, glatt, exakt (12.11.2026)
+
+**Status: zur Freigabe.** Nichts davon ist gebaut. Basis ist `kurven.html?gewichte=geometrie` (Zweig `claude/form-spiegel`,
+Port 5194). Der Plan ersetzt die offenen Reste von G5 und G6 und ordnet die Wege A bis D ein.
+
+**Gelesen dafür:** die Berichte und Übergaben der Sitzungen „3D-Editor Kurven und Mesh-Präzision“, „Mesh-Performance und
+Optimierungsmöglichkeiten“, „Blaupause Editor Design Iteration“, „Lofts vs. Plasticity performance“ und „Mesh-Pose-Editor
+Bedienung recherche“; die Gegenprüfung vom 10.11. mit ihren Einzelberichten; der Rechenkern (`dicht/ausKurven.ts`) und die
+Anzeige (`form/kurven.ts`). **Neu recherchiert:** Plasticity und CAD-Flächen, Flächen aus Linien mit Richtung, Unterteilung und
+glatte Anzeige (Quellen am Ende). **Gemessen wurde für diesen Plan nichts Neues**; alle Zahlen stammen aus den genannten
+Berichten.
+
+## Kurz
+
+- **G1 bis G4 sind gebaut** und bleiben. Von **G5** fehlt der Teil „weniger Punkte“, **G6** (halbe Haut) fehlt ganz.
+  **Die Wege A, B, C und D wurden nie gebaut.**
+- Deine vier Beschwerden (zäh, stufig, bläst auf oder kollabiert, justiert nach) haben vier getrennte Ursachen (Abschnitt 2).
+  G1 bis G4 haben den Ablauf geglättet, die Ursachen aber nicht entfernt.
+- **Weg B und G6 lösen „zäh“ und „stufig“ sicher.** Es ist dieselbe Technik wie Subsurf in Blender: wenige Punkte rechnen, die
+  Grafikkarte glättet.
+- **Weg A löst „bläst auf, kollabiert, justiert nach“ an der Wurzel**, ist bei uns aber unbewiesen. Deshalb zuerst ein kleiner
+  Beweis mit Bildern an deinen eigenen Formen, dann erst der Einbau.
+- **C entfällt, wenn A trägt. D ist nur noch Rückfall.**
+- **Lofts:** als Flächenart weiter nein (am 11.11. an deinen Formen gemessen). Was dir an Plasticity gefällt (immer glatt,
+  saubere Kanten, sofort), liefern A und B zusammen, ohne dass du Flächenstücke planen musst.
+- **Der Unterbau bleibt:** Linien sind die Wahrheit, darunter liegt ein Dreiecksnetz. Es ändern sich zwei Dinge: wie die Haut
+  gerechnet und wie sie gezeigt wird. Spiegelung, Posen, Maul und Auswahl bauen darauf auf.
+- **Acht Schritte.** Jeder endet mit etwas, das du im Fenster oder auf einem Bild deiner Formen siehst. Das Erste, was du
+  siehst: glatte Schattierung mit Vektorkanten und Linien genau auf dem Pfad (Schritt 1).
+
+## 1. Deine Fragen
+
+### 1.1 Was ist von G1 bis G6 offen?
+
+| Schritt | Inhalt | Stand |
+| --- | --- | --- |
+| G1 | schneller lösen | gebaut (Runde 12,8 → 7,7 ms bei 5 200 Punkten) |
+| G2 | Griffe in wahrer Länge, Kurve sofort da | gebaut |
+| G3 | rechnen im Bildtakt, bis die Form steht | gebaut |
+| G4 | Schweres im Hintergrund (Verfeinern, Aufräumen, Kante, Loop) | gebaut. Rest: Das Einwechseln nach dem Loslassen kommt je nach Punktzahl nach 1 bis 6 s und ändert die Form dann einmal, um bis zu 3 Einheiten |
+| G5 | Netz nicht dichter als nötig | **nur Teil 1** (keine flachen Dreiecke an den Linien). Teil 2 „weniger Punkte, oder die Anzeige ist feiner als das Rechennetz“ fehlt. Das ist Weg B |
+| G6 | halbe Haut | **nicht gebaut.** Gebaut ist nur die Anzeige (die Hälften verschmelzen an der Mitte); gerechnet werden weiter beide Hälften |
+
+Außerhalb der Reihe gebaut: Sichern und Laden, Schutz gegen das Davonlaufen, Stabilität an der Spiegelachse, der Wurstballon
+als Versuch (`?wurst=1`, nicht tragfähig).
+
+### 1.2 Was waren die Wege A bis D?
+
+Sie stehen in Abschnitt 5 der Gegenprüfung vom 10.11. als „größere Wege, nicht bewiesen“. Keiner wurde gebaut.
+
+| Weg | Idee in einem Satz | Urteil heute |
+| --- | --- | --- |
+| **A** | Die Haut direkt aus den Linien rechnen: Jede Linie bekommt ihre Richtung aus dem Liniennetz, daraus folgt die Haut in einem Schritt, ohne Runden | der wichtigste Schritt für die **Form** → Schritt 3 |
+| **B** | Kleines Rechennetz, feine glatte Anzeige | der wichtigste Schritt für **Tempo und Glätte** → Schritte 1 und 2 |
+| **C** | Die heutigen Runden reparieren: die Wölbung an den Linien mitlösen statt an der Haut ablesen | entfällt, wenn A trägt; sonst zweiter Rückfall |
+| **D** | Sofort-Antwort: beim Greifen einmal vorausrechnen, wie die Haut auf den Griff antwortet, im Zug nur noch addieren | mit A überflüssig (A ist selbst sofort); sonst erster Rückfall |
+
+### 1.3 Bringen uns G1 bis G6, A und B ans Ziel? Ist es noch der eleganteste Weg?
+
+- **G1 bis G6 allein: nein.** Sie machen die heutige Rechnung schneller und ruhiger im Ablauf. Dass die Form vom Weg abhängt
+  und dass eine Röhre dicker wird, wenn man sie verlängert, liegt in der Rechnung selbst.
+- **Mit A und B: ja, für alles, was du aufgezählt hast** – unter dem Vorbehalt, dass der Beweis für A hält. A und B greifen an
+  verschiedenen Stellen an und passen zusammen: B bestimmt, **wo** gerechnet und **wie** gezeigt wird, A bestimmt, **was**
+  gerechnet wird, die halbe Haut halbiert beides.
+- **Eleganter als das habe ich nichts gefunden.** Geprüft und wieder verworfen: Flächenstücke wie im CAD als Grundlage (1.4),
+  ein Kontrollnetz aus Vierecken mit Unterteilung (braucht Planung um jede Linie, das war der Weg bis zum 04.11.), implizite
+  Körper (verschmelzen bei Annäherung, Punkte behalten ihren Ort nicht).
+- **Was neu ist gegenüber dem Stand vom 10.11.:** Die Anzeige wird nicht nur „feiner“, sie trägt auf jeder Linienkante das
+  exakte Stück deines Bézier-Pfads (Abschnitt 4, Schritt 1). Und Pose, Maul und Auswahl hängen direkt an A: Erst wenn dieselben
+  Linien immer dieselbe Haut geben, lässt sich eine Pose als „andere Lage derselben Linien“ speichern.
+
+### 1.4 Lofts wie in Plasticity
+
+- **Gemessen (11.11., deine Formen):** Wo ein Schlauch mit Ringen quer vorliegt, gibt der Loft dieselbe Form wie unsere Rechnung
+  und ist 100- bis 1000-mal schneller. Aber nur 0 bis 10 % der Fläche deiner Formen sind solche Schläuche; nur ein Viertel bis
+  ein Drittel der Fläche liegt in vierseitigen Feldern zwischen deinen Linien.
+- **Was Plasticity an solchen Stellen selbst tut:** Ein Loft verbindet Profile, die sich entsprechen. Für Löcher und Felder mit
+  beliebig vielen Seiten nimmt auch CAD keine Lofts, sondern Füllflächen, die ausgerechnet werden (in Plasticity „Patch“ mit
+  Rand und Führungslinien, in Rhino „Patch“ mit einem Regler, der zwischen rund und flach stellt).
+- **Was daran für uns stimmt:** Der Loft ist deshalb sauber, weil er eine direkte Funktion der Kurven ist. Genau das ist Weg A,
+  nur für beliebige Liniennetze: An einem Schlauch mit Ringen ergibt A dasselbe wie ein Loft (Richtung an den Ringen radial →
+  Zylinder), überall sonst füllt es das Feld rund aus.
+- **Urteil:** kein Richtungswechsel. Der Loft bleibt das Mittel der Wahl für „Teile anfügen“ (Schwanz, Hals, Horn, Bein), wie am
+  11.11. entschieden: später.
+
+## 2. Woher die vier Beschwerden kommen
+
+1. **Zäh.** Gerechnet wird auf demselben dichten Netz, das auch gezeigt wird, über die ganze Haut, in Runden. Eine Runde kostet
+   7,7 / 15,5 / 32 ms bei 5 200 / 11 000 / 23 400 Punkten, und bis zur Ruhe braucht es 5 / 10 / 30 Runden. Die Wartezeit wächst
+   also etwa mit dem Quadrat der Punktzahl (dein Firefish: 27 770 Punkte). Blender und ZBrush rechnen beim Ziehen nichts über
+   die ganze Fläche: Du bewegst wenige Punkte, geglättet wird in der Grafikkarte.
+2. **Stufig.** Die Haut wird als flache Dreiecke gezeichnet. Die Grenze einer Farbstufe läuft je Dreieck gerade und knickt an
+   jeder Dreieckskante. In `kurven.html` ist die Stufe außerdem eine harte Schwelle je Bildpunkt, ohne Kantenglättung.
+3. **Bläst auf, kollabiert, zerreißt.** Die Rechnung kennt je Punkt nur eine Zahl: wie stark die Haut dort insgesamt gewölbt
+   ist, ohne Richtung. Für diese Zahl sind eine Röhre und eine Kugel von doppelter Dicke dasselbe. Darum wird ein Horn beim
+   Verlängern dicker, ein dünnes kann ebenso gut einfallen, und eine Kappe zwischen wenigen Linien darf sich fast umsonst
+   aufblasen. Viele Loops helfen, weil sie der Haut Stück für Stück die Freiheit nehmen.
+4. **Justiert nach.** Eine Linie legt nur fest, wo die Haut liegt, nicht, wie sie über die Linie hinwegläuft. Diese fehlende
+   Angabe liest die Rechnung jede Runde an der Haut selbst ab. Das Ergebnis hängt dadurch vom Weg ab: Hin und zurück gibt nicht
+   genau dieselbe Form, ein neues Netz hat eine etwas andere Ruheform, und auf dichten Netzen braucht es mehr Runden.
+
+Ursache 1 und 2 löst Weg B mit der halben Haut. Ursache 3 und 4 sind eine: Der Haut fehlt an den Linien die Richtung. Das löst
+Weg A.
+
+## 3. Zielbild
+
+1. **Wahrheit sind nur die Linien:** Punkte, Griffe, Kreuzungen, Kante an oder aus. Jede Pose hat ihre eigenen Lagen derselben
+   Punkte.
+2. **Jede Linie kennt ihre Richtung**, also wie die Haut über sie hinwegläuft, von selbst aus dem Liniennetz: An einer Kreuzung
+   spannen zwei Linien die Fläche auf, auf der Spiegelebene folgt sie aus der Symmetrie, dazwischen dreht sie gleichmäßig. Du
+   stellst nichts ein. (Der Baustein dafür existiert seit dem 09.11.: `dicht/richtung.ts`, an der Kugel mit drei Loops auf 0,5°
+   genau.)
+3. **Die Haut wird aus Linien und Richtungen direkt gerechnet.** Gleiche Linien geben immer dieselbe Haut: kein Ablesen an der
+   Haut, keine Runden bis zur Ruhe, kein Nachjustieren, hin und zurück genau.
+4. **Gerechnet wird klein, gezeigt wird fein.** Das Rechennetz hat wenige tausend Punkte und nur eine Hälfte. Die Anzeige
+   unterteilt es in der Grafikkarte so fein, wie der Zoom es verlangt; Linien liegen exakt auf ihrem Bézier-Pfad, Kanten sind
+   scharf, Farbstufen sind Vektorkanten.
+5. **Gespiegelt wird wirklich.** Eine Hälfte ist die Wahrheit, die Mittellinie ist von Anfang an eine Linie. Was über die Mitte
+   reicht, verschmilzt an einem sauberen Loop. Eine Pose ist die angewendete Spiegelung.
+
+## 4. Die Schritte
+
+Jeder Schritt wird in einem eigenen Arbeitsbaum gebaut und kommt erst in dein Fenster (5194), wenn du ihn gesehen hast. Der
+Aufwand ist grob in Arbeitstagen einer Sitzung geschätzt.
+
+### Schritt 0: Aufräumen (½ Tag)
+
+Was sortiert wird, steht in Anhang B. Kurz: eine Entwicklungslinie statt drei Zweigen, alte Arbeitsbäume weg (rund 8 GB), die
+Gedächtnisdateien des Projekts auf wenige Seiten kürzen (sie werden in jeder Sitzung ganz gelesen und kosten jedes Mal Budget),
+eine kurze Übergabe. Am Code des Editors ändert Schritt 0 nichts.
+
+### Schritt 1: Glatte Anzeige (Weg B, erster Teil; 2 bis 3 Tage)
+
+- **Was du danach siehst:** dieselben Formen, aber die Farbstufen sind scharfe, glatte Kanten wie eine Vektorlinie, bei jedem
+  Zoom. Die Linien liegen genau auf der Haut. Das Loch im Donut hat in der Anzeige einen glatten Rand statt Stufen.
+- **Zuerst ein Vergleichsbild** (½ Tag, vor dem Einbau): dein „strange bird“ bei 300 % und 800 %, nebeneinander heute und die
+  zwei Bauarten der glatten Anzeige (Anhang A.1). Dein Auge entscheidet, welche eingebaut wird.
+- **Was gebaut wird:** Das Netz wird nur für die Anzeige unterteilt; die Grafikkarte zeichnet 16- bis 64-mal so viele Dreiecke.
+  Kanten der Haut, die auf einer Linie liegen, tragen das exakte Stück des Bézier-Pfads. „Kante an“ bleibt scharf. Die
+  Farbstufe wird im Shader einen Bildpunkt breit geglättet (die Funktion dafür gibt es in `/editor` schon). An der Spiegelebene
+  wird je Bildpunkt abgeschnitten statt je Netzpunkt.
+- **Geprüft wird** mit einem Bild vorher und nachher an deinen drei Formen und einmal dem Abstand der Bilder im Zug.
+- **Risiko:** klein. An der Rechnung ändert sich nichts.
+
+### Schritt 2: Kleines Rechennetz (Weg B, zweiter Teil = Rest von G5; 1 bis 2 Tage)
+
+- **Was du danach siehst:** Die Statuszeile zeigt etwa ein Drittel bis ein Viertel der Punkte, die Form sieht dank Schritt 1
+  genauso glatt aus, und auch der Firefish lässt sich ohne Zähigkeit ziehen. Nach dem Loslassen wartet nichts mehr sichtbar.
+- **Was gebaut wird:** Das Startnetz wird gröber. Dichter wird es nur dort, wo die Form es braucht (enge Linien, kleine
+  Details). Zeichnen auf der Haut trifft die glatte Anzeige, nicht die groben Dreiecke.
+- **Geprüft wird** an Firefish, Vogel und test_kaputt: ein Lauf je Form (Abstand der Bilder im Zug, Zeit bis zur Ruhe) und ein
+  Bild „Form vorher und nachher übereinander“.
+- **Risiko:** mittel. Die heutige Rechnung gibt auf einem gröberen Netz eine leicht andere Form (bisher bis 3 Einheiten). Wenn
+  dich das stört, bleibt die Dichte über einen Schalter höher, bis Schritt 3 entschieden ist.
+
+### Schritt 3: Beweis „Haut direkt aus den Linien“ (Weg A; 1 bis 2 Tage, nur Bilder)
+
+- **Was du danach siehst:** ein Blatt mit Bildern, links heute, rechts neu: deine drei Formen, dazu Kugel, Schlauch, Rüssel und
+  „Horn verlängern“. Am Fenster ändert sich in diesem Schritt nichts.
+- **Was der Beweis zeigen muss** (in deinen Worten):
+  - Ein Horn, das ich verlängere, wird nicht dicker und fällt nicht ein.
+  - Ein Rüssel nur aus zwei Profillinien wird rund und nicht flach.
+  - Die Kugel bleibt eine Kugel, auch wenn nur die Mittellinie da ist.
+  - Hin und zurück gibt genau dieselbe Form; beim Loslassen ändert sich nichts.
+  - Ein gröberes Netz gibt dieselbe Form (höchstens ½ Bildpunkt bei 300 %).
+- **Ehrlich offen ist genau eine Frage:** ob die Richtung auch dort trägt, wo erst wenige Linien da sind (nur die Mittellinie,
+  der Rüssel aus Profillinien). Dafür gibt es zwei Bauarten (Anhang A.3). Das „Organische“ beim Erstellen bleibt: Zwischen
+  wenigen Linien wölbt sich die Haut weiter rund auf. Sie folgt den Linien aber strenger als heute; ob dir das gefällt, sollen
+  die Bilder zeigen.
+- **Was aus den vier Vorschlägen der Blaupause-Sitzung wird:** Der Wurstballon ist dieselbe Idee, dort aber in die alte Rechnung
+  gezwängt; hier steckt die Richtung in der Rechnung selbst. „Dicke merken“ wird unnötig, weil die Dicke aus den Linien folgt.
+  „Dicke aus der Seitenansicht“ ergibt sich von selbst, wo nur Profillinien da sind. Ein Druck-Regler wäre später als „Fülle“
+  je Linie möglich, ist aber nicht geplant.
+- **Wenn der Beweis nicht hält:** Die heutige Rechnung bleibt, auf kleinem Netz und halber Haut (Schritte 2 und 4 lohnen sich
+  in jedem Fall). Gegen das Aufblasen bleibt dann nur der Druck-Regler, gegen das Nachhinken Weg D.
+
+### Schritt 4: Echte Spiegelung und die neue Rechnung ins Fenster (G6 und A; 5 bis 8 Tage)
+
+- **Was du danach siehst:**
+  - Jede neue Form beginnt als gespiegelte Kugel, **die Mittellinie ist von Anfang an eingezeichnet**.
+  - Ziehen fühlt sich direkt an: Die Haut ist in jedem Bild fertig, nach dem Loslassen passiert nichts mehr.
+  - **Ziehst du einen Punkt oder Griff über die Mitte, verschmelzen die Hälften an einem glatten Loop** (dein Donut: das Loch
+    ist ein sauberer runder Rand). Ziehst du zurück, löst es sich wieder.
+- **Was gebaut wird:** Die Haut ist nur noch die Hälfte z ≥ 0, die Spiegelebene ist ihr Rand; die Anzeige spiegelt. Die
+  Rechnung aus Schritt 3 (oder, falls der Beweis nicht hielt, die heutige) rechnet auf dieser Hälfte. Die Naht an der Mitte ist
+  eine Linie der Mittelebene, die von selbst entsteht und vergeht; auf Wunsch wird sie eine feste Linie mit Punkten und Griffen
+  (Entscheidung 4).
+- **Kleiner Beweis zuerst** (½ Tag, ein Bild): der Donut. Griff durch die Mitte → Loch mit glattem Rand; zurück → Form wie
+  vorher.
+- **Risiko:** mittel bis hoch; es ist der größte Umbau im Plan. Das Fenster arbeitet heute mit Punktpaaren; die Umstellung auf
+  eine Hälfte berührt Einsetzen, Verdichten und die Anzeige. Dafür fallen rund 300 Zeilen Paar-Buchführung weg.
+
+### Schritt 5: Posen wie die Basis (3 bis 4 Tage)
+
+- **Was du danach siehst:** In einer Pose bedienst du dieselben Punkte und Griffe wie in der Basis, und die Haut verhält sich
+  genauso. Neue Punkte und Loops gibt es in der Pose nicht. Die Spiegelung ist in der Pose angewendet (beide Seiten frei), in
+  der Basis ist sie wieder da.
+- **Was gebaut wird:** Eine Pose speichert die Lagen der Linienpunkte und Griffe (und die Knochen), nicht mehr eine
+  Verschiebung je Netzpunkt. Ihre Haut entsteht mit derselben Rechnung auf dem ganzen Netz (Hälfte plus Spiegelbild). Der
+  Blendshape fürs Spiel ist der Unterschied beider Häute.
+- **Folge:** Änderst du später die Basis, gehen die Posen mit (neue Punkte der Basis bekommen in der Pose ihren Platz auf der
+  Linie).
+- **Voraussetzung:** Schritt 3 hält. Mit der heutigen Rechnung ginge „bedienen wie die Basis“ auch, aber eine Pose ließe sich
+  dann nicht aus ihren Linien wiederherstellen.
+
+### Schritt 6: Maul als eigene Geometrie (4 bis 6 Tage, Entwurf und kleiner Beweis zuerst)
+
+- **Was du danach siehst:** Das Maul ist ein echter Teil der Haut: Ober- und Unterlippe sind zwei Linien, die sich an den
+  Mundwinkeln treffen, dahinter liegt die Maulhöhle als Haut. Linien, die vorher über die Maulstelle liefen, enden an den
+  Lippen. Du kannst einen Loop nur um den Unterkiefer legen (außen ums Kinn, innen über den Maulboden). Die Lippen liegen exakt
+  auf ihren Kurven.
+- **Was gebaut wird:** Beim Anlegen des Mauls wird die Haut entlang der Lippenlinie wirklich aufgeschnitten und um die
+  Maulhöhle ergänzt. Gerechnet wird in leicht geöffneter Stellung (dort liegt nichts aufeinander); geschlossen zeigt der
+  Kieferknochen die Lippen genau aufeinander.
+- **Risiko:** hoch; hier ist am meisten Entwurf offen (Anhang A.6). Deshalb zuerst ein Beweis an einer Form: Maul anlegen, Loop
+  um den Unterkiefer, öffnen und schließen.
+
+### Schritt 7: Auswahl wie in Blender (2 bis 3 Tage)
+
+- **Was du danach siehst:** Du wählst Punkte, **Kanten** (das Linienstück zwischen zwei Punkten) und **Flächen** (das Feld
+  zwischen den Linien). Ein Doppelklick auf eine Linie wählt den ganzen Loop. G, S und R wirken auf die Auswahl.
+- **Zu klären** (Entscheidung 3): Doppelklick auf eine Linie setzt heute einen neuen Punkt. Der bekäme einen anderen Griff
+  (Vorschlag: ⌘-Klick auf die Linie oder der Stift).
+
+### Danach (nicht in diesem Plan)
+
+Auswuchs und Teile anfügen (dort Lofts für Schläuche, Beweis „Schwanz als Loft mit weichem Übergang“), Formen addieren und
+abziehen, Backen fürs Spiel (≤ 8 000 Dreiecke; mit dem kleinen Rechennetz liegt das Spielnetz schon fast vor), die
+Werkzeugliste der Gegenprüfung (Präzision im Zug, verdeckte Linien blass), das Layout von `/editor`.
+
+## 5. Entscheidungen für dich
+
+Zu jeder steht meine Empfehlung; „alles wie empfohlen“ genügt.
+
+1. **Plan und Reihenfolge freigeben?** Empfehlung: ja, mit Schritt 0 und 1 beginnen.
+2. **Aufräumen (Anhang B):** eine Linie `claude/form-spiegel`; die 13 alten Arbeitsbäume löschen (rund 8 GB, die Zweige
+   bleiben; ungespeicherte Reste sichere ich vorher als Zweig); Gedächtnisdateien kürzen, der alte Text wandert ins Archiv.
+   Empfehlung: ja.
+3. **Auswahl:** „Kante“ = Linienstück zwischen zwei Punkten, „Fläche“ = Feld zwischen den Linien, Doppelklick auf eine Linie =
+   ganzer Loop; ein neuer Punkt auf einer Linie dann mit ⌘-Klick. Meinst du es so?
+4. **Verschmelzen an der Mitte:** Empfehlung wie Blenders Mirror: Die Naht entsteht und vergeht von selbst, solange du ziehst
+   und auch später (zurückziehen löst sie wieder). Eine feste Linie mit Punkten wird sie erst, wenn du sie doppelklickst oder
+   die Spiegelung anwendest. Die Alternative wäre: schon beim Loslassen eine feste Linie.
+5. **Posen speichern ihre Linien**, nicht mehr die Verschiebung je Netzpunkt (Schritt 5). Empfehlung: ja. Alte Test-Posen in
+   gesicherten Formen werden dabei nicht übernommen.
+6. **`/editor` (Blaupause-Layout)** wird während der Schritte 1 bis 7 nicht nachgezogen, danach einmal in einem Zug.
+   Empfehlung: ja.
+
+## 6. Arbeitsweise (damit das Budget hält)
+
+- **Keine Messreihen im Hintergrund, keine Fächer aus Agenten.** Geprüft wird im Vordergrund, gebündelt, mit kurzer Ausgabe.
+- **Jeder Schritt hat genau eine sichtbare Probe**, die vorher feststeht: ein Bild deiner Formen vorher und nachher oder ein
+  Lauf im Fenster. Mehr gemessen wird nur, wenn etwas kaputtgeht.
+- **Vergleichsbild vor dem Einbau** bei allem, was man sehen kann (Schritte 1, 3, 4, 6).
+- **Hält ein Beweis nach dem geschätzten Aufwand nicht, halte ich an** und sage es, statt weiter zu suchen.
+- **Gebaut wird nie unter deinem Fenster.** 5194 bleibt, wie es ist, bis du einen Schritt gesehen hast; ich sage vorher, wann es
+  sich ändert.
+- **Die Gedächtnisdateien werden klein gehalten** (Schritt 0): `CLAUDE.md` hat auf diesem Zweig 271 KB und wird in jeder
+  Sitzung ganz gelesen.
+- Nach jedem Schritt: committen, pushen, drei Sätze an dich (was sich an deiner Form geändert hat, was bleibt).
+
+## 7. Was ich nicht weiß
+
+- Ob A bei wenigen Linien trägt (Schritt 3 klärt es; die Literatur zeigt es nur für geschlossene, eher dichte Liniennetze).
+- Wie stark die heutige Rechnung auf dem kleinen Netz anders aussieht (Schritt 2 zeigt es als Bild).
+- Ob das Verschmelzen an der Mitte beim Hin- und Herziehen ruhig bleibt (Donut-Beweis in Schritt 4).
+- Wie viel die Blätter (drei Zeichnungen und die Linienbänder) je Bild kosten; das wird in Schritt 1 einmal gemessen.
+- Die Aufwände sind Schätzungen. Zusammen sind es etwa 19 bis 29 Arbeitstage; die Schritte 0 bis 3 etwa eine Woche.
+
+---
+
+## Anhang A: Technik für die bauende Sitzung
+
+### A.1 Anzeige (Schritt 1)
+
+Zwei Bauarten, das Vergleichsbild entscheidet:
+
+- **Unterteilung (Loop, zwei bis drei Stufen).** Die Verfeinerung ist eine dünn besetzte Matrix (fein = S · grob); sie wird
+  nur bei einem Netzwechsel neu gebaut (im Worker) und je Bild einmal angewendet (bei 3 000 Rechenpunkten und 48 000
+  Anzeigepunkten wenige Millisekunden, geschätzt). Damit die Fläche nicht nach innen rutscht (gewöhnliche Unterteilung: Körper 0,4,
+  dünnes Horn 1,7 Einheiten), werden die Rechenpunkte vor dem Unterteilen um ihren Abstand zur eigenen Grenzlage nach außen
+  versetzt (ein bis zwei Durchgänge; die Grenzfläche geht dann durch die Rechenpunkte). Harte Linien: Knickregel längs der
+  Kette. Linienpunkte jeder Stufe: aus dem Bézier-Pfad. Normalen aus dem feinen Netz. Vorteil: Farbstufen laufen glatt, weil
+  auch die Normalen glatt sind (wie Subsurf).
+- **Gekrümmte Dreiecke im Shader (PN-Dreiecke).** Je Rechendreieck zehn Kontrollpunkte aus Ecken und Normalen; Kanten auf einer
+  Linie bekommen die Kontrollpunkte des exakten Pfadstücks (ein Stück eines kubischen Béziers ist wieder ein kubischer
+  Bézier). Ausgewertet wird im Vertex-Shader über ein festes Gitter je Dreieck (Instanzen; WebGL 2 hat keine
+  Tessellation-Stufe). Vorteil: einfach, Linien exakt, nichts schrumpft. Nachteil: Die Normalen sind nur stetig, die Grenze
+  einer Farbstufe kann an groben Kanten leicht knicken.
+
+Für beide: die geglättete Stufe `stufe(x, t) = smoothstep(t − w, t + w, x)` mit w = 0,85 · fwidth(x) (steht in
+`form/blaupause.ts`), `MeshToonMaterial` in `kurven.ts` wird dafür ersetzt; Spiegelebene als Schnittebene des Materials statt
+`anzeigeZ`; das Maul-Innere läuft durch dieselbe Anzeige; Strahltreffer (Zeichnen, Greifen auf der Haut) gegen das feine Netz,
+zurückgerechnet auf Dreieck und Gewichte des Rechennetzes.
+
+### A.2 Rechennetz (Schritt 2)
+
+- `DREIECKE` (heute 6 000 bestellt, rund 5 200 Punkte an der Kugel) auf etwa ein Drittel. Die Schwellen in
+  `dicht/verdichten.ts` hängen an der mittleren Startkante und gehen mit.
+- Dichte nach Bedarf: an Linien nach dem Sehnenfehler gegen den Pfad (`GENAU`), zwischen eng benachbarten Linien mindestens
+  zwei Kanten. Obergrenze für die Gesamtzahl.
+- Schalter für die alte Dichte bleibt, bis Schritt 3 entschieden ist.
+
+### A.3 Beweis „Haut direkt aus den Linien“ (Schritt 3)
+
+Nur im Kern (`packages/shape/src/dicht/`, eigene Datei, eigene Messskripte), nichts am Fenster. Gebaut am 09.11. und verworfen
+wurde etwas anderes: die Richtung über eine Krümmungsmessung je Seite an den Linienpunkten, in den Runden der alten Rechnung,
+auf dem dichten Netz. Hier geht die Richtung als Angabe ein, an der Haut wird nichts gemessen.
+
+**Eingaben:** Rechennetz, Linien als Kantenketten, Ziele der Linienpunkte (Pfad), Richtung je Linienpunkt (`linienRichtung`),
+Kante an/aus.
+
+**Rechnung** (jede Lösung mit einer einmal zerlegten Matrix, je Bild nur Einsetzen):
+
+1. **Normalenfeld.** Die Richtungen der Linien werden über die Haut verteilt.
+   - Bauart 1 (Stanko u. a. 2016): je Komponente glatt verteilen, danach auf Länge 1. Reicht, wo die Linien dicht genug sind.
+   - Bauart 2 (für wenige Linien): schrittweise glätten und nach jedem Schritt auf Länge 1 bringen, Start sind die Normalen der
+     Haut, wie sie ist. Der Start bestimmt nur, auf welcher Seite die Haut liegt (Kuppel nach außen), nicht die Form. Auf der
+     Hälfte liefert die Spiegelebene den Rand (Normale in der Ebene).
+   - An harten Linien hat jede Seite ihre eigene Richtung; über die Linie wird nicht verteilt.
+2. **Wölbung aus dem Normalenfeld** (H = −½ div n). Sie hat damit eine Richtung: Ein Schlauch mit radialen Normalen bleibt ein
+   Schlauch.
+3. **Lagen:** Laplace der Lagen = 2 H n (dazu ein kleiner Glättungsanteil wie bei Stanko), Linienpunkte auf dem Pfad. Der
+   Operator stammt aus der Lage beim Greifen und wird nach dem Loslassen einmal im Hintergrund neu gebaut; wie viel sich die
+   Haut dabei noch bewegt, ist das Maß für „justiert nach“.
+
+**Fälle und Kriterien** (je ein Lauf; Bilder nebeneinander für Florian):
+
+| Fall | Kriterium |
+| --- | --- |
+| Kugel nur mit Mittellinie | bleibt Kugel, höchstens 1 % vom Radius |
+| Kugel mit drei Loops | höchstens 0,5 Einheiten |
+| Schlauch mit drei Ringen, auf doppelte Länge gezogen | Dicke ändert sich höchstens 2 % |
+| Rüssel aus zwei Profillinien | Querschnitt Höhe zu Breite mindestens 0,8 |
+| Horn am „strange bird“ um 70 Einheiten verlängert | nicht dicker, nicht eingefallen (Bild) |
+| ein Punkt hinaus und zurück | dieselbe Haut (höchstens 0,05 Einheiten) |
+| dasselbe auf einem Viertel der Punkte | höchstens 0,18 Einheiten (½ Bildpunkt bei 300 %) an Kugel und Schlauch; an seinen Formen als Bild |
+| Operator neu gebaut | Haut bewegt sich höchstens 0,18 Einheiten |
+| Firefish, test_kaputt | keine umgestülpte Stelle, die die heutige Rechnung nicht auch hat |
+
+**Abbruch:** Hält Bauart 2 Kugel und Rüssel nicht, ist A für den Anfang einer Form (wenige Linien) nicht tragfähig. Dann bleibt
+die heutige Rechnung; die lineare Rechnung aus A taugt noch als Sofort-Antwort (Weg D).
+
+### A.4 Spiegelung (Schritt 4)
+
+- Die Haut der Basis ist die Hälfte z ≥ 0. Randpunkte liegen bei z = 0. In den Zeilen eines Randpunkts zählen die inneren
+  Nachbarn doppelt (das Spiegelbild hat dasselbe x und y), z ist dort fest 0: zwei Matrizen (x/y und z), jede halb so groß.
+- `Haut.spiegel`, das Mitteln der Paare am Ende jeder Runde und die Paar-Buchführung in `verdichten.ts`/`einsetzen.ts` entfallen
+  für die Basis. Ringe sind schon heute Hälften mit Enden auf der Mittelebene.
+- Start: halbe Kugel, die Mittellinie ist ein Loop der Mittelebene (Rand der Hälfte). Mit der alten Rechnung hielt ein einzelner
+  Loop die Haut nicht; deshalb kommt die Mittellinie mit der neuen Rechnung oder mit der Hälfte, nicht vorher.
+- Über die Mitte: Punkte der Hälfte, die nach z < 0 wollen, werden auf der Ebene gehalten und zählen dort als Rand (Normale in
+  der Ebene, glatter Übergang ins Spiegelbild). Zieht die Haut dort wieder nach außen, werden sie frei. Die Anzeige schneidet je
+  Bildpunkt. „Feste Linie“: die Randkette als Bézier-Loop anpassen und als Linie eintragen.
+- Angewendet (Pose): Netz = Hälfte plus Spiegelbild, am Rand verschweißt; feste Nummern (Spiegelbild von Punkt i ist n + i).
+
+### A.5 Pose (Schritt 5)
+
+- Pose = Knochen + Lagen aller Linienpunkte und Griffe (beide Seiten) + Kante an/aus wie die Basis. Reihenfolge: Knochen drehen
+  die Linien der Basis starr mit (Gewichte aus dem Maul), darauf der Versatz der Pose, daraus die Haut.
+- Netz der Pose = angewendetes Netz der Basis, dieselben Verbindungen. Keine Werkzeuge, die Punkte oder Loops anlegen.
+- Wird die Basis feiner, bekommen die Linien der Pose die neuen Punkte durch Teilen ihres Pfads an derselben Stelle.
+- `pose.delta` je Netzpunkt und der eigene Löser der Pose (`HautZiele` mit Bereich) entfallen.
+
+### A.6 Maul (Schritt 6)
+
+Heute (`dicht/maulLoop.ts`): Die schmale Form ist ein Loop; die Haut bleibt geschlossen, nur die Anzeige schneidet auf und
+setzt Gaumen und Boden als Gewölbe ein. Darum hängen die Kiefer weiter an den alten Linien, und um einen Kiefer allein lässt
+sich nichts legen.
+
+Ziel: Beim Anlegen wird das Rechennetz längs der Lippenlinie aufgetrennt; aus der einen Linie werden Ober- und Unterlippe mit
+gemeinsamen Mundwinkel-Punkten; die Höhle kommt als Netz dazu (Rand = die beiden Lippen, in der Mittelebene eine Profillinie
+für Gaumen und Boden). Linien, die die Form kreuzten, enden an den Lippen in gemeinsamen Punkten. Gerechnet wird in einer
+Bezugsstellung mit leicht offenem Maul; „geschlossen“ ist die zurückgedrehte Stellung des Kieferknochens, die Lippen liegen dann
+aufeinander. Lippen sind Linien mit Kante an oder aus wie alle anderen.
+
+Offen (vor dem Bauen als Entwurf mit Bildern): wie tief die Höhle ohne weitere Linien wird; Zeichnen in der geschlossenen
+Ansicht auf Stellen, die innen liegen; Mundwinkel als Punkt, an dem vier Flächen zusammenkommen; Zähne und Zunge später.
+
+### A.7 Auswahl (Schritt 7)
+
+- Kante = Stück eines Pfads zwischen zwei Punkten (Treffer am Pfad im Blatt und am Band im 3D-Fenster).
+- Fläche = zusammenhängendes Gebiet der Haut zwischen Linienketten (Füllen über die Dreiecke des Rechennetzes; je Netzstand
+  gemerkt). Ihre Auswahl meint die Punkte auf ihrem Rand.
+- Doppelklick auf eine Linie = alle Punkte des Loops. Der heutige Doppelklick „neuer Punkt“ zieht um.
+
+## Anhang B: Aufräumliste (Schritt 0)
+
+**Zweige.** Heute: `main` (Stand 08.10.), `claude/editor-grundlayout` (Doku und Blaupause, Hauptordner), `claude/form-zuerst`
+(ganz in `claude/form-spiegel` enthalten), `claude/form-spiegel` (Basis, 136 Commits voraus). `editor-grundlayout` hat 59
+Dateien, die `form-spiegel` fehlen: Doku, Bilder und `.claude/launch.json`, kein Editor-Code. Vorschlag: `editor-grundlayout`
+in `form-spiegel` führen, der Hauptordner wechselt auf diese Linie, `form-zuerst` bleibt als Zeiger. `main` bleibt unberührt.
+
+**Arbeitsbäume** (zusammen rund 8 GB; gelöscht werden nur die Ordner, alle Zweige bleiben):
+
+| Arbeitsbaum | Was | Vorschlag |
+| --- | --- | --- |
+| `form-wand`, `form-wand2` | Vergleich der Wand-Fassungen vom 11.11. (verworfen); `form-wand2` trägt eine ungespeicherte Änderung (Abstand zur Mitte 0, in der Übergabe beschrieben) | löschen |
+| `form-zuerst` | Stand von `claude/form-zuerst`, Port 5193 | löschen (ganz in `form-spiegel` enthalten) |
+| acht `agent-…`, `integ-welten`, `merge-verlaeufe` | Prototyp 1 (30.09.–01.10.), eines vom 12.10. Sieben tragen ungespeicherte Reste: vier sind seit dem 01.10. als `bergung/…` gesichert, zwei weitere (Nebel-Tests, Planet) sichere ich vorher ebenso, eines besteht nur aus gelöschten Dateien | löschen |
+| `early-earle-meshy` (eigener Ordner) | deine Meshy-Tests | bleibt |
+| `form-alt` | Basis, Port 5194 | bleibt; dazu neu `form-bau` zum Bauen mit eigenem Port |
+
+**Ungespeichertes im Hauptordner:** drei Server-Einträge in `.claude/launch.json` und eine kleine Korrektur an drei Zeittests
+(auf CI die doppelte Zeitgrenze) werden committet. Die Schrift „Hippie Movement.otf“ ist deine; sie bleibt, wie sie ist.
+
+**Gedächtnisdateien.** `CLAUDE.md` 271 KB (auf `form-spiegel`; im Hauptordner 106 KB), `apps/editor/CLAUDE.md` 115 KB,
+`docs/UEBERGABE.md` 103 KB. Vorschlag: `CLAUDE.md` auf Stand, Regeln, Fallen und Landkarte kürzen (wenige Seiten); der bisherige
+Text wandert unverändert nach `docs/verlauf/`. `apps/editor/CLAUDE.md` beschreibt den alten Editor und wandert ganz ins Archiv.
+Die Übergabe wird neu und kurz geschrieben (Stand, dieser Plan, Starten, Fallen), die alte bleibt in der Git-Geschichte.
+Der Gedächtnis-Index der Sitzungen wird ebenso gestrafft.
+
+**Code – noch nicht, erst nach Schritt 4** (damit der Vergleich mit dem alten Stand möglich bleibt), und nur nach deinem Ja:
+die Schalter in `kurven.ts` (30, Liste in der alten Übergabe, Abschnitt 7), die alte Rechnung mit ihren Schutzregeln (Vorsicht,
+Normalfluss, Wurstballon), `form.html` mit `main.ts`, die 232 Dateien unter `apps/editor/scripts/pruefen/` (alte Proben in einen
+Unterordner). `editor.ts` ist eine Kopie von `kurven.ts` mit anderem Layout (1 744 abweichende Zeilen); die Doppelung wird beim
+Nachziehen von `/editor` aufgelöst.
+
+## Quellen
+
+Im Repo:
+- `docs/research/2026-11-10-gegenpruefung-kurven-loeser.md` (Abschnitt 5: Wege A bis D; Nachtrag: G1 bis G6 mit Messwerten) und
+  `docs/research/2026-11-10-gegenpruefung-berichte/literatur.md` (Rangliste, Stanko, Adobe-Familie, Schneider & Kobbelt).
+- `docs/research/2026-11-09-fibermesh-monstermash-richtung.md` (Linien mit Richtung, Beweis vom 09.11.).
+- `docs/research/2026-11-11-loft-messung.md` (Loft an Florians Formen).
+- `docs/research/2026-11-11-grundproblem-spiegelkante-rechnung.md` (Spiegelung, gültiger Stand `09f39297`).
+- `docs/UEBERGABE.md` (Stand 11.11.: Karte von `kurven.ts`, Fallen, Altlasten).
+
+Aus dem Netz (12.11.; je nur Zusammenfassung oder Abstract gelesen, wenn nicht anders gesagt):
+- T. Stanko, S. Hahmann, G.-P. Bonneau, N. Saguin-Sprynski: Surfacing Curve Networks with Normal Control. Computers & Graphics
+  2016. https://hal.archives-ouvertes.fr/hal-01342465 (Normalen von den Kurven über das Netz, daraus die mittlere Krümmung,
+  daraus die Lagen; die Kurzfassung hat die Gegenprüfung im Volltext gelesen).
+- J. Andrews, P. Joshi, N. Carr: A Linear Variational System for Modelling From Curves. Computer Graphics Forum 30(6), 2011.
+  https://diglib.eg.org/handle/10.1111/v30i6pp1850-1861 (lineares System mit Lage und Querableitung an den Kurven; laut
+  Abstract schneller, stabiler und genauer zu steuern als die nichtlinearen Systeme).
+- S. Schaefer, J. Warren, D. Zorin: Lofting Curve Networks using Subdivision Surfaces. SGP 2004.
+  https://people.engr.tamu.edu/schaefer/research/lofting.pdf · A. Levin: Interpolating Nets of Curves by Smooth Subdivision
+  Surfaces. SIGGRAPH 1999. https://www.math.tau.ac.il/~levin/adi/paper7.htm (Lofts über Kurvennetze als Unterteilungsfläche;
+  brauchen ein Kontrollnetz um die Kurven).
+- P. Salvi, T. Várady: G2 Surface Interpolation Over General Topology Curve Networks. CGF 2014.
+  https://diglib.eg.org/handle/10.1111/v33i7pp151-160 · P. Salvi, I. Kovács, T. Várady: Computationally efficient transfinite
+  patches with fullness control. 2020. https://arxiv.org/abs/2002.11212 (Flächenstücke mit beliebig vielen Seiten; „Fülle“ als
+  Stellgröße).
+- Plasticity, Befehle Loft und Patch (inoffizielle Spiegel der Dokumentation):
+  https://plasticity-unofficial-document-nakcinpm5-shinjiesaki.vercel.app/solid/loft ·
+  https://plasticity-document-revisions.vercel.app/solid/patch · Rhino, Patch (Regler „Stiffness“ für die Fülle):
+  https://docs.mcneel.com/rhino/9/help/en-us/commands/patch.htm
+- OpenSubdiv, Stencil-Tabellen (warum Unterteilung bei festem Netz fast nichts kostet und nur ein Netzwechsel teuer ist):
+  https://graphics.pixar.com/opensubdiv/docs/intro_30.html
+- T. Boubekeur, M. Alexa: Phong Tessellation. SIGGRAPH Asia 2008. https://history.siggraph.org/?p=195171 · A. Vlachos u. a.:
+  Curved PN Triangles. 2001 (gekrümmte Dreiecke aus Ecken und Normalen; aus dem Gedächtnis, heute nicht nachgelesen).
