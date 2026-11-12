@@ -1,4 +1,4 @@
-# Übergabe (Stand 12.11.2026 spätabends: Schritt 1 „glatte Anzeige“ ist auf Florians Ja Standard, auch in seinem Fenster auf 5194; als Nächstes Schritt 2 „kleines Rechennetz“)
+# Übergabe (Stand 12.11.2026 nachts: Schritt 1 „glatte Anzeige“ ist Standard, auch in Florians Fenster auf 5194; Schritt 2 „kleines Rechennetz“ ist im Bau-Zweig gebaut und gemessen, sein Blick steht aus)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -23,7 +23,7 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | --- | --- |
 | 0 Aufräumen | **erledigt** (12.11., Einzelheiten unten) |
 | 1 Glatte Anzeige | **eingebaut und Standard** (Abschnitt 4). Florian am 12.11.: „Ja, übernehmen“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&anzeige=grob` zeigt zum Vergleich die Anzeige davor. Sein Urteil nach dem Arbeiten damit steht aus |
-| 2 Kleines Rechennetz | offen |
+| 2 Kleines Rechennetz | **gebaut in `form-bau`** (Port 5197, Abschnitt 5): rund 40 % der Punkte, im Zug 16 bis 20 ms je Bild; Florians Blick und sein Ja zum Zusammenführen stehen aus. Nicht gebaut: Zeichnen gegen die feine Fläche |
 | 3 Beweis „Haut direkt aus den Linien“ | offen |
 | 4 Echte Spiegelung und neue Rechnung ins Fenster | offen |
 | 5 Posen wie die Basis | offen |
@@ -113,10 +113,84 @@ ungleichmäßigem Netz und an einem Grat), `packages/shape/src/dicht/linieAufPfa
 4. Nicht Sache der Anzeige: Wo die gerechnete Haut selbst wellig ist (kleine Knicke an den Linien, fast ebene Flächen), laufen
    die Farbstufen ruhig, aber in Wellen. Das ist Schritt 3.
 
-**Nächster Schritt:** Schritt 2 „kleines Rechennetz“ (Plan, Anhang A.2). Dort prüfen, ob es das Beruhigen der Normalen noch
-braucht (die Punkte liegen dann auf der gerechneten Fläche), und die Stufen im Zug neu festlegen.
+## 5. Schritt 2, kleines Rechennetz: gebaut im Bau-Zweig, gemessen, was offen ist
 
-## 5. Offen aus der Zeit davor
+Gebaut am 12.11. nachts im Arbeitsbaum `form-bau`, zu sehen unter `http://localhost:5197/kurven.html?gewichte=geometrie`.
+**Florian hat es noch nicht gesehen; sein Fenster (5194) steht auf dem Stand von Schritt 1.** `&netz=dicht` ist das Netz wie bis
+zum 12.11. (zum Vergleich, im selben Fenster).
+
+**Was gebaut ist** (`apps/editor/src/form/kurven.ts`, im Kern nur eine Option in `packages/shape/src/dicht/verdichten.ts`):
+- **Startnetz mit einem Drittel der Dreiecke** (`DREIECKE` 2 000 statt 6 000 bestellt; die Startkante ist rund 15 statt 8,6
+  Einheiten lang, die Startkugel hat 1 500 statt 5 200 Punkte). Alle Maße, die an der Startkante hängen, gehen mit.
+- **Dichter, wo die Form es braucht:** an den Linien wie bisher nach ihrem Pfad (`GENAU`), neu in der Haut nach ihrer Krümmung
+  (`GENAU_HAUT`, den Schalter gab es seit dem 08.11. als Versuch; jetzt Standard mit eigener Genauigkeit `GENAU_FLAECHE` = 1/16
+  der Startkante, im Kern die Option `genauFlaeche`). Eine Kante wird geteilt, wo die runde Fläche zwischen ihren Enden weiter
+  als das von ihr abweicht.
+- **Formen mit feinerem Netz werden beim Übernehmen vergröbert** (`netzVergroebern` in `standAnwenden`: geladen, behalten). Die
+  Punkte, die bleiben, bleiben, wo sie sind: Die Form ist nach dem Laden dieselbe; neu gerechnet wird sie wie bisher erst beim
+  nächsten Griff. Die Statuszeile nennt es („Rechennetz 27 770 → 11 449 Punkte“). Nicht in der Pose gesicherte Formen.
+- **Behaltene Form:** Sie kommt jetzt auch nach dem Wechsel der Dichte zurück (`START_FORM`; vorher hing sie an der Zahl der
+  Dreiecke und wäre mit dem neuen Standard nicht zurückgekommen).
+- **Anzeige im Zug:** dieselben Stufen wie in der Ruhe, solange es höchstens 260 000 Dreiecke werden (`GLATT_IM_ZUG`), sonst
+  eine weniger. Vogel und test_kaputt haben im Zug zwei Stufen (kein Umschalten nach dem Loslassen), der Firefish eine.
+
+**Befunde:**
+- **Ein überall gleich grobes Netz reicht nicht.** Florians drei Formen sahen damit gleich aus und liefen mit 60 Bildern, aber ein
+  kleines Detail fiel zusammen (Florians Ohr vom 08.11., `form-detail-probe.mjs`: flach auf der Linie, 6 umgeklappte Dreiecke).
+  Mit der Verfeinerung nach Krümmung ist es rund wie mit dem alten Netz. Bild: `docs/progress/editor/netz-klein-ohr-2026-11-12.jpg`.
+- **Der alte Einwand gegen `GENAU_HAUT` gilt nicht mehr** (am 08.11. verworfen, damals hing die Form am Netz). Gemessen mit
+  `form-explosion-probe.mjs`, kleines Netz gegen das Netz bis zum 12.11., Knicke über 60° / umgeklappt: Rüssel mit um 90°
+  gedrehtem Griff 1/0 gegen 10/0, langer Hammer 0/0 gegen 0/0, Ei mit Überhang 0/0 gegen 4/0, Schlaufe (die Linie kreuzt sich
+  selbst, in jeder Fassung kaputt) 119/26 gegen 128/26.
+- **Genauigkeit der Haut:** mit 1/40 wie die Linien blieben am Firefish 20 122 Punkte (34 ms je Bild); mit 1/12 9 944 (18 ms),
+  das Ohr noch rund; mit 1/8 klappen am Ohr 4 Dreiecke um. 1/16 lässt Abstand zu dieser Grenze.
+- **Das Beruhigen der Normalen braucht es weiter** (Vergleich `&ruhe=0` am Vogel: ohne laufen die Farbflächen fleckig).
+- **„strange bird“ steht, wie gesichert, nicht in der Ruhe der Rechnung:** Beim ersten Neurechnen geht eine Stelle bei
+  (156, −12, ±54) um rund 19 Einheiten, mit dem alten Netz genauso wie mit dem neuen. Das ist kein Befund von Schritt 2, aber
+  es heißt: Der erste Griff an dieser Form ruckt dort.
+
+**Gemessen** (ohne Bildschirm, derselbe Zug je Form mit `form-gesichert-zug.mjs`; Zeiten nur als Verhältnisse lesen):
+
+| Form | Punkte | Greifen | Bilder im Zug (Median / 95 %) | Rechenrunde | ruht nach |
+| --- | --- | --- | --- | --- | --- |
+| teat firefish, Netz bis 12.11. | 27 770 | 321 ms | 44 / 66 ms | 32,7 ms | 2,1 s |
+| teat firefish, kleines Rechennetz | 11 449 | 201 ms | 20 / 36 ms | 11,9 ms | 0,4 s |
+| strange bird, Netz bis 12.11. | 16 010 | 262 ms | 24 / 45 ms | 18,4 ms | 2,2 s |
+| strange bird, kleines Rechennetz | 7 437 | 208 ms | 16 / 21 ms | 7,5 ms | 0,9 s |
+| test_kaputt, Netz bis 12.11. | 6 217 | 160 ms | 15 / 32 ms | 9,7 ms | 0,6 s |
+| test_kaputt, kleines Rechennetz | 2 137 | 129 ms | 17 / 30 ms | 7,4 ms | 0,2 s |
+
+- Laden bis zur Ruhe: Firefish 1,7 s → 1,8 s, Vogel 0,8 s → 1,3 s (das Vergröbern kostet 0,1 bis 0,5 s, der Hintergrund danach
+  ist schneller).
+- Form vorher und nachher übereinander, beide einmal neu gerechnet (`netz-vorher-nachher.mjs`, `SETZEN=1`): Von Umriss und
+  Linien des alten Bilds liegen am Vogel 31, am Firefish 16, an test_kaputt 0 Bildpunkte neben dem neuen (Bild je 2 400 × 1 504).
+  Bilder: `docs/progress/editor/netz-klein-<form>-2026-11-12.jpg` (links vorher, Mitte nachher, rechts übereinander).
+- Zum Vergleich das überall gleich grobe Netz (ohne `GENAU_HAUT`): Firefish 7 762 Punkte, 17 ms je Bild.
+
+**Geprüft:** Typen, Lint der geänderten Dateien, Tests im Fenster (24) und im Kern (137; neu: eigene Genauigkeit der Haut am
+Ohr in `linieAufPfad.test.ts`). Im Fenster auf dem kleinen Netz: Maul als Loop (`form-maul-loop.mjs`) und Fressen-Pose
+(`form-fressen-pose.mjs`): keine offenen Kanten, nichts umgeklappt, ⌘Z genau, keine Fehler; die weiten Züge und das Ohr wie oben.
+Neue Proben: `netz-vorher-nachher.mjs` (Bild), `form-netz-kleiner.ts` (im Kern: eine gesicherte Form vergröbern, Zeit je
+Runde, Abstand der Häute).
+
+**Offen in Schritt 2:**
+1. **Florians Blick** (Port 5197). Mit seinem Ja: wie bei Schritt 1 in `form-bau` `git merge claude/form-spiegel`, prüfen, dann
+   in `form-alt` `git merge --ff-only claude/form-bau`. Vorher ansagen: Sein Fenster lädt neu, und die behaltene Form kommt mit
+   dem kleinen Rechennetz zurück.
+2. **Zeichnen und Greifen gegen die feine Fläche** (Plan: „Zeichnen auf der Haut trifft die glatte Anzeige“): nicht gebaut. Die
+   groben Dreiecke liegen an der Startkugel 0,2 Einheiten unter der gezeigten Fläche (vorher 0,06), an engen Stellen bis rund
+   1: Eine neu gezeichnete Linie liegt um so viel innen.
+3. **„Zwischen eng benachbarten Linien mindestens zwei Kanten“** (Plan, Anhang A.2) ist nicht als eigene Regel gebaut. Die
+   Verfeinerung nach Krümmung hat den Fall des Ohrs gelöst; bleibt ein schmaler Streifen zwischen zwei Linien flach (dann gibt
+   es dort keine Krümmung, die verfeinert), wäre das die nächste Regel.
+4. **Sichern überschreibt mit dem kleinen Netz:** Eine geladene alte Form ist im Fenster vergröbert; wer sie unter demselben
+   Namen sichert, ersetzt die Datei. Die drei Formen in `wesen/` liegen in git.
+5. Die Proben unter `scripts/pruefen/`, die feste Orte oder Punktzahlen der Startkugel erwarten, sind mit dem neuen Standard
+   nicht durchgesehen (mit `&netz=dicht` laufen sie wie bisher).
+
+**Nächster Schritt:** Schritt 3, Beweis „Haut direkt aus den Linien“ (Plan, Anhang A.3; nur Kern und Bilder).
+
+## 6. Offen aus der Zeit davor
 
 Florians Blick auf G4, auf Sichern und Laden und auf G5 Teil 1 steht aus. Die offenen Entscheidungen der alten Übergabe
 (Abschnitt 5 dort: „Punkte wo nötig“, weich überblenden beim Einwechseln, Linie kehrt um, Vorsicht und Schutz) erledigen sich

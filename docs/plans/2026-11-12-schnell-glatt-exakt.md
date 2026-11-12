@@ -319,6 +319,16 @@ Anzeige davor.
   zwei Kanten. Obergrenze für die Gesamtzahl.
 - Schalter für die alte Dichte bleibt, bis Schritt 3 entschieden ist.
 
+**Nachtrag 12.11. nachts (gebaut im Bau-Zweig):** Das Startnetz hat ein Drittel der Dreiecke; Formen mit feinerem Netz werden
+beim Laden vergröbert (die Punkte, die bleiben, bleiben an ihrem Ort). Ein überall gleich grobes Netz reichte nicht: Deine drei
+Formen sahen gleich aus, aber ein kleines Detail (das Ohr vom 08.11.) fiel flach auf seine Linie. „Dichter nach Bedarf“ ist
+deshalb die Verfeinerung nach der Krümmung der Haut geworden (den Schalter gab es seit dem 08.11. als Versuch; nach der
+Geometrie gerechnet halten auch die weiten Züge), mit eigener Genauigkeit von 1/16 der Startkante. Damit bleiben an deinen
+Formen rund 40 % der Punkte statt eines Drittels; im Zug sind es 16 bis 20 ms je Bild statt 24 bis 44 ms, nach dem Loslassen
+ruht alles nach 0,2 bis 0,9 s statt nach 0,6 bis 2,2 s. Die Regel „zwischen eng benachbarten Linien mindestens zwei Kanten“
+und das Zeichnen gegen die feine Fläche sind nicht gebaut. `&netz=dicht` ist das Netz wie vorher. Einzelheiten und Zahlen:
+`docs/UEBERGABE.md`, Abschnitt 5.
+
 ### A.3 Beweis „Haut direkt aus den Linien“ (Schritt 3)
 
 Nur im Kern (`packages/shape/src/dicht/`, eigene Datei, eigene Messskripte), nichts am Fenster. Gebaut am 09.11. und verworfen
