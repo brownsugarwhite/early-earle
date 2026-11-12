@@ -181,7 +181,9 @@ Runde, Abstand der Häute).
    vorher; die Form, die sein Browser bis zum Wechsel behalten hatte, liegt dort unverändert.
 2. **Zeichnen und Greifen gegen die feine Fläche** (Plan: „Zeichnen auf der Haut trifft die glatte Anzeige“): nicht gebaut. Die
    groben Dreiecke liegen an der Startkugel 0,2 Einheiten unter der gezeigten Fläche (vorher 0,06), an engen Stellen bis rund
-   1: Eine neu gezeichnete Linie liegt um so viel innen.
+   1: Eine neu gezeichnete Linie liegt um so viel innen. Nachgesehen am Ring um einen Rüssel (`form-explosion-probe.mjs`,
+   `FALL=e`, Bild nach dem Ring, kleines Netz gegen `&netz=dicht`): In der ganzen Ansicht ist keine Einschnürung zu sehen. Nicht
+   dringend; wenn es gebaut wird, dann als Anheben der neuen Punkte einer Linie auf die runde Fläche gleich nach dem Einsetzen.
 3. **„Zwischen eng benachbarten Linien mindestens zwei Kanten“** (Plan, Anhang A.2) ist nicht als eigene Regel gebaut. Die
    Verfeinerung nach Krümmung hat den Fall des Ohrs gelöst; bleibt ein schmaler Streifen zwischen zwei Linien flach (dann gibt
    es dort keine Krümmung, die verfeinert), wäre das die nächste Regel.
