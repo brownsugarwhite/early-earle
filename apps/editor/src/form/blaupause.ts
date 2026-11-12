@@ -114,6 +114,16 @@ export type Einstellung = {
    * aus: der Bodenbereich, wie man ihn durchs Glas sieht (3D, Stand 11.11. spätabends)
    */
   kontaktKontur: boolean;
+  /**
+   * Jelly: Bodenkontakt wie echt (12.11.): die Stellen, an denen das Wesen aufliegt, als Ellipsen am Boden, durchs Glas gesehen (von
+   * schräg oben eine Ellipse, je höher der Blick, desto größer und blasser); aus: wie `kontaktKontur` sagt
+   */
+  kontaktBoden: boolean;
+  /**
+   * Logo: Kanten der Überdeckung aus den Tiefensprüngen im Bild (12.11.): die Linie liegt mittig auf der Kante und wird mit dem Sprung
+   * gleichmäßig schmaler; aus: die verjüngende Kontur aus dem umgestülpten Körper (Stand 11.11.)
+   */
+  kantenTiefe: boolean;
 };
 
 /**
@@ -350,8 +360,26 @@ const schattenZiel = (): WebGLRenderTarget =>
 
 /** Logo: Tiefe der Extrusion in Bildpunkten bei 100 % (Florians Vorlage: gut ein Sechstel der Buchstabenhöhe) */
 const EXTRUSION = 18;
+/** Logo: Breite der Kanten der Überdeckung in Bildpunkten bei 100 % (wie die Kantenlinien) */
+const KANTE_BREITE = 4;
+/**
+ * Logo: ab diesem Tiefensprung (Anteil des Körperhalbmessers) ist eine Kante der Überdeckung voll breit; darunter wird sie gleichmäßig
+ * schmaler bis zur Spitze
+ */
+const KANTE_VOLL = 0.2;
+/** Logo: kleinster Tiefensprung einer Kante, als Anteil von `KANTE_VOLL` (dort ist die Linie null breit: spitzes Ende) */
+const KANTE_MIN = 0.15;
 /** Bläschen im Jelly (Mitte xyz, Halbmesser w; Welt) */
 export const MAX_BLASEN = 6;
+/** Stellen, an denen das Wesen aufliegt (Bodenkontakt im Jelly), höchstens */
+export const MAX_KONTAKT = 4;
+/**
+ * eine Stelle des Bodenkontakts: Mitte (x, z) einer waagerechten Ellipse in Höhe y (knapp über dem Boden, im Glas), Richtung der ersten
+ * Achse (x, z, Länge 1), Halbachsen
+ */
+export type KontaktEllipse = { x: number; y: number; z: number; ux: number; uz: number; a: number; b: number };
+/** das Auge im Jelly: Mitte auf der Haut, waagerecht, senkrecht und Normale (Länge 1), halbe Breite und halbe Höhe */
+export type AugeBild = { p: P3; u: P3; v: P3; n: P3; breite: number; hoehe: number };
 
 /**
  * Farben bleiben in sRGB, wie sie im Farbfeld stehen: Die Shader schreiben ohne Umwandlung in die Leinwand. (`new Color(hex)` rechnet
@@ -482,6 +510,8 @@ export class BlaupauseBild {
     extrusion: false,
     schatten: 0.36,
     kontaktKontur: true,
+    kontaktBoden: true,
+    kantenTiefe: true,
   };
   farbe: Farben = { ...FARBEN_START };
   /** Halbmesser, Mitte, typische Dicke und halbe Höhe des Körpers (für Jelly) */
@@ -497,8 +527,18 @@ export class BlaupauseBild {
     const U = this.U;
     this.rueckZiel = new WebGLRenderTarget(4, 4, { depthBuffer: true, stencilBuffer: false, depthTexture: new DepthTexture(4, 4) });
     const glattZiel = (tiefe: boolean): WebGLRenderTarget =>
-      // linear gefiltert: die Abtastpunkte der Glättung liegen zwischen den Bildpunkten (an der Mitte eines Bildpunkts gilt sein Wert)
-      new WebGLRenderTarget(4, 4, { type: HalfFloatType, format: RGBAFormat, minFilter: LinearFilter, magFilter: LinearFilter, generateMipmaps: false, depthBuffer: tiefe, stencilBuffer: false });
+      // linear gefiltert: die Abtastpunkte der Glättung liegen zwischen den Bildpunkten (an der Mitte eines Bildpunkts gilt sein Wert);
+      // mit Tiefe als Textur (die Kanten der Überdeckung lesen die Tiefensprünge daraus, `kantenFeld`)
+      new WebGLRenderTarget(4, 4, {
+        type: HalfFloatType,
+        format: RGBAFormat,
+        minFilter: LinearFilter,
+        magFilter: LinearFilter,
+        generateMipmaps: false,
+        depthBuffer: tiefe,
+        stencilBuffer: false,
+        ...(tiefe ? { depthTexture: new DepthTexture(4, 4) } : {}),
+      });
     this.glattA = glattZiel(true);
     this.glattB = glattZiel(false);
 
@@ -515,6 +555,12 @@ export class BlaupauseBild {
         uSchwelle: { value: 0.02 },
         tGlatt: { value: null },
         uGlattAn: { value: 0 },
+        tKante: { value: null },
+        tKanteSpalt: { value: null },
+        uKanteAn: { value: 0 },
+        uKanteHalb: { value: 4 },
+        uKanteVoll: { value: 30 },
+        uKanteMin: { value: 3 },
       }),
       vertexShader: KOERPER_VS,
       fragmentShader: [
@@ -522,6 +568,17 @@ export class BlaupauseBild {
         STUFE,
         GLATT,
         'uniform vec3 uWeissO, uWeissU, uLavendel; uniform float uSchwelle; varying vec3 vN; varying vec3 vW;',
+        // Kanten der Überdeckung (`kantenFeld`): Abstand zur nächsten Stelle mit Tiefensprung und dessen Größe; die Linie liegt mittig auf
+        // der Kante und wird mit dem Sprung gleichmäßig schmaler bis zur Spitze
+        'uniform sampler2D tKante, tKanteSpalt; uniform float uKanteAn, uKanteHalb, uKanteVoll, uKanteMin;',
+        'float kante() {',
+        '  float d = abstandV(tKante, gl_FragCoord.xy); if (d > uKanteHalb + 1.0) return 0.0;',
+        '  vec2 c = floor((gl_FragCoord.xy - uVp.xy) * uSS) + 0.5; vec4 b = floor(texture2D(tKante, c / uFeldGr) * 255.0 + 0.5);',
+        '  if (b.r + b.g < 0.5) return 0.0;',
+        '  vec2 s = c + vec2(b.r * 256.0 + b.g, b.b * 256.0 + b.a) - 2048.0;',
+        // am kleinsten Sprung (wo die Kante endet) null breit, bis zum vollen Sprung gleichmäßig breiter: spitzes, glattes Ende
+        '  float h = uKanteHalb * smoothstep(uKanteMin, uKanteVoll, texture2D(tKanteSpalt, s / uFeldGr).r);',
+        '  return (1.0 - smoothstep(h - 0.6, h + 0.6, d)) * clamp(h / 0.6, 0.0, 1.0); }',
         'void main() {',
         '  vec3 n0 = normalize(vN); if (!gl_FrontFacing) n0 = -n0; vec3 n = glatteNormale(n0, glattFeld());',
         '  float l = dot(n, normalize(vec3(0.55, 0.62, 0.56)));',
@@ -529,7 +586,9 @@ export class BlaupauseBild {
         '  vec3 weiss = mix(uWeissO, uWeissU, smoothstep(0.35, -0.6, n.y));',
         // von hinten (Seitenwechsel) tauschen Körper und Kontur die Farben: der Körper in Petrol, die Schattenseite dunkler
         '  vec3 vorn = mix(uLavendel, weiss, a), hinten = mix(uTinteLogo * 0.66, uTinteLogo, a);',
-        '  gl_FragColor = vec4(mix(vorn, hinten, kipp(sigma(gl_FragCoord.xy))), 1.0);',
+        '  float k = kipp(sigma(gl_FragCoord.xy)); vec3 col = mix(vorn, hinten, k);',
+        '  if (uKanteAn > 0.5) col = mix(col, strich(sigma(gl_FragCoord.xy)), kante());',
+        '  gl_FragColor = vec4(col, 1.0);',
         '}',
       ].join('\n'),
     });
@@ -625,6 +684,18 @@ export class BlaupauseBild {
         tKontakt: { value: null },
         uKontaktAn: { value: 0 },
         uKontaktTon: { value: 0.66 },
+        uKontaktBoden: { value: 0 },
+        uBodenY: { value: 0 },
+        uKontaktA: { value: Array.from({ length: MAX_KONTAKT }, () => new Vector4()) },
+        uKontaktB: { value: Array.from({ length: MAX_KONTAKT }, () => new Vector4()) },
+        uKontaktZahl: { value: 0 },
+        uAugeAn: { value: 0 },
+        uAugeP: { value: new Vector3() },
+        uAugeU: { value: new Vector3(0, 0, 1) },
+        uAugeV: { value: new Vector3(0, 1, 0) },
+        uAugeN: { value: new Vector3(-1, 0, 0) },
+        uAugeMass: { value: new Vector2(10, 30) },
+        uAugeFarbe: { value: farbe3('#14272d') },
         tGlanzB: { value: null },
         uGlanzAn: { value: 0 },
 
@@ -650,6 +721,22 @@ export class BlaupauseBild {
         'float smin(float a, float b, float k) { float h = max(k - abs(a - b), 0.0) / max(k, 1e-5); return min(a, b) - h * h * k * 0.25; }',
         // Kontaktbohne (unten, dunkel): wo der Blick durchs Glas den Bodenbereich trifft, weich gerechnet (`kontaktFeld`)
         'uniform sampler2D tKontakt; uniform float uKontaktAn, uKontaktTon;',
+        // Bodenkontakt wie echt (12.11.): wo das Wesen aufliegt, je Stelle eine Ellipse am Boden (Mitte xz, Richtung der ersten Achse;
+        // Halbachsen), durchs Glas gesehen: der Blick geht durch den Körper bis zum Boden. Von schräg oben eine Ellipse, von oben größer
+        `uniform vec4 uKontaktA[${MAX_KONTAKT}]; uniform vec4 uKontaktB[${MAX_KONTAKT}]; uniform float uKontaktZahl, uKontaktBoden, uBodenY;`,
+        'float kontaktBoden(vec3 w) {',
+        '  if (uVorn.y > -1e-3) return 0.0;',
+        '  float s = 1e4;',
+        `  for (int i = 0; i < ${MAX_KONTAKT}; i++) {`,
+        '    if (float(i) >= uKontaktZahl) break;',
+        '    vec4 a = uKontaktA[i]; vec4 b = uKontaktB[i]; vec3 g = w + uVorn * ((b.z - w.y) / uVorn.y); vec2 q = g.xz - a.xy;',
+        '    float u = dot(q, a.zw) / b.x, v = (q.y * a.z - q.x * a.w) / b.y; s = min(s, u * u + v * v);',
+        '  }',
+        '  return 1.0 - stufe(min(s, 4.0), 1.0); }',
+        // ein Auge (Schlitz wie die Vorlage) auf der Haut vorn: Ellipse in der Tangentialebene um seine Mitte
+        'uniform float uAugeAn; uniform vec3 uAugeP, uAugeU, uAugeV, uAugeN, uAugeFarbe; uniform vec2 uAugeMass;',
+        'float auge(vec3 w) { vec3 q = w - uAugeP; if (abs(dot(q, uAugeN)) > uAugeMass.y) return 0.0;',
+        '  float u = dot(q, uAugeU) / uAugeMass.x, v = dot(q, uAugeV) / uAugeMass.y; return 1.0 - stufe(min(u * u + v * v, 4.0), 1.0); }',
         'uniform sampler2D tGlanzB; uniform float uGlanzAn;',
         GLATT,
         'uniform vec3 uJLichtO, uJLicht, uJMitte, uJMitteU, uJSchatten, uJRand; varying vec3 vN; varying vec3 vW;',
@@ -682,6 +769,8 @@ export class BlaupauseBild {
         '  col *= mix(1.0, tonS / max(tonW, 1e-5), lava);',
         // die Kontaktbohne liegt als eigene, dunklere Schicht darunter (wo sich beide decken, dunkler: halbtransparent); scharf und rund
         '  if (uKontaktAn > 0.5) col *= mix(1.0, uKontaktTon, stufe(texture2D(tKontakt, tc).r, 0.5));',
+        // je höher der Blick, desto schwächer (ganz von oben kaum noch zu sehen); die Größe wächst von selbst (der Boden verkürzt weniger)
+        '  if (uKontaktBoden > 0.5) col *= mix(1.0, uKontaktTon, kontaktBoden(vW) * (1.0 - 0.88 * smoothstep(0.3, 0.98, -uVorn.y)));',
         // Bläschen: Strahlnähe zu kleinen Kugeln im Körper, helle Scheiben mit scharfem Rand
         '  float bub = 0.0;',
         `  for (int i = 0; i < ${MAX_BLASEN}; i++) {`,
@@ -693,6 +782,7 @@ export class BlaupauseBild {
         '    bub = max(bub, (1.0 - smoothstep(b.w - aa, b.w + aa, quer)) * drin);',
         '  }',
         '  col = mix(col, min(col * 1.26 + vec3(0.0, 0.02, 0.02), vec3(1.0)), bub * 0.9);',
+        '  if (uAugeAn > 0.5) col = mix(col, uAugeFarbe, auge(vW));',
         // Glanz (`glanzBild`): weich gerechnet, hier scharf geschnitten — runde Enden, keine Knicke der Dreiecke
         '  float glanz = uGlanzAn > 0.5 ? stufe(texture2D(tGlanzB, tc).r, 0.5) : 0.0;',
         '  col = mix(col, vec3(1.0), glanz);',
@@ -1554,6 +1644,28 @@ export class BlaupauseBild {
     b.slice(0, MAX_BLASEN).forEach((x, i) => arr[i]!.set(x.p[0], x.p[1], x.p[2], x.r));
     this.jellyMat.uniforms.uBlasenZahl!.value = Math.min(MAX_BLASEN, b.length);
   }
+  /** Jelly: die Stellen, an denen das Wesen aufliegt (Ellipsen am Boden in Höhe `bodenY`) */
+  kontaktEllipsen(k: readonly KontaktEllipse[]): void {
+    const j = this.jellyMat.uniforms;
+    const A = j.uKontaktA!.value as Vector4[];
+    const B = j.uKontaktB!.value as Vector4[];
+    k.slice(0, MAX_KONTAKT).forEach((e, i) => {
+      A[i]!.set(e.x, e.z, e.ux, e.uz);
+      B[i]!.set(Math.max(1e-3, e.a), Math.max(1e-3, e.b), e.y, 0);
+    });
+    j.uKontaktZahl!.value = Math.min(MAX_KONTAKT, k.length);
+  }
+  /** Jelly: das Auge (null: keins) */
+  auge(a: AugeBild | null): void {
+    const j = this.jellyMat.uniforms;
+    j.uAugeAn!.value = a ? 1 : 0;
+    if (!a) return;
+    (j.uAugeP!.value as Vector3).set(...a.p);
+    (j.uAugeU!.value as Vector3).set(...a.u);
+    (j.uAugeV!.value as Vector3).set(...a.v);
+    (j.uAugeN!.value as Vector3).set(...a.n);
+    (j.uAugeMass!.value as Vector2).set(a.breite, a.hoehe);
+  }
   /** der gewählte Punkt wirft einen Verlauf auf seine Linien; ganz gewählte Loops tragen die Farbe auf ganzer Länge */
   wahl(o: { ort: P3 | null; loops: readonly number[]; ganz: readonly number[]; r: number }): void {
     const U = this.U;
@@ -1674,6 +1786,8 @@ export class BlaupauseBild {
     r.render(this.szKoerper, kam);
     this.koerper.material = koerperMat;
     this.innen.visible = innenAn;
+    // Logo: die Kanten der Überdeckung aus den Tiefensprüngen, solange das Feld noch nicht weich gerechnet ist
+    this.kantenTex = f.art === 'logo' && this.einstellung.kantenTiefe ? this.kantenFeld(f, kam) : null;
     const w = this.weichMat.uniforms;
     (w.uGroesse!.value as Vector2).set(rect.w, rect.h);
     w.uRadius!.value = Math.min(0.35 * Math.min(rect.w, rect.h), Math.max(3 * this.DPR, 4.5 * this.kantenLaenge * f.ppu * 0.75));
@@ -1690,6 +1804,170 @@ export class BlaupauseBild {
       r.render(this.szWeich, kam);
     }
     return this.glattA.texture;
+  }
+
+  /** Kanten der Überdeckung: Ergebnis des letzten `kantenFeld` (null: keins) */
+  private kantenTex: Texture | null = null;
+  private readonly kantenZiele: [WebGLRenderTarget, WebGLRenderTarget] = [feldZiel(), feldZiel()];
+  private readonly kantenSpalt = new WebGLRenderTarget(4, 4, {
+    type: HalfFloatType,
+    format: RGBAFormat,
+    minFilter: NearestFilter,
+    magFilter: NearestFilter,
+    generateMipmaps: false,
+    depthBuffer: false,
+    stencilBuffer: false,
+  });
+  private readonly kantenSpaltB = new WebGLRenderTarget(4, 4, {
+    type: HalfFloatType,
+    format: RGBAFormat,
+    minFilter: NearestFilter,
+    magFilter: NearestFilter,
+    generateMipmaps: false,
+    depthBuffer: false,
+    stencilBuffer: false,
+  });
+  /** die Größe der Sprünge längs der Kante weich gerechnet (nur über Saatpunkte): die Linie wird gleichmäßig breiter und schmaler */
+  private readonly kantenWeichMat = new ShaderMaterial({
+    depthTest: false,
+    depthWrite: false,
+    blending: NoBlending,
+    uniforms: { tQuelle: { value: null }, uGroesse: { value: new Vector2(4, 4) }, uRichtung: { value: new Vector2(1, 0) } },
+    vertexShader: 'void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: [
+      'uniform sampler2D tQuelle; uniform vec2 uGroesse, uRichtung;',
+      'void main() { vec2 fc = gl_FragCoord.xy; float c = texture2D(tQuelle, fc / uGroesse).r; float s = 0.0, w = 0.0;',
+      '  for (int i = -8; i <= 8; i++) { float t = texture2D(tQuelle, (fc + uRichtung * float(i)) / uGroesse).r;',
+      '    if (t > 0.0) { float g = exp(-float(i * i) / 32.0); s += g * t; w += g; } }',
+      '  gl_FragColor = vec4(c > 0.0 ? s / max(w, 1e-5) : 0.0, 0.0, 0.0, 1.0); }',
+    ].join('\n'),
+  });
+  private readonly szKantenWeich = (() => {
+    const s = new Scene();
+    const m = new Mesh(new PlaneGeometry(2, 2), this.kantenWeichMat);
+    m.frustumCulled = false;
+    s.add(m);
+    return s;
+  })();
+  /**
+   * Saat der Kanten: ein Bildpunkt des Körpers, dessen Nachbar (auch Körper) um mehr als `uMin` weiter hinten liegt, liegt vorn an einer
+   * Überdeckung; `uSpalt` 1: statt der Saat die Größe des Sprungs (Welteinheiten)
+   */
+  private readonly kantenSaatMat = new ShaderMaterial({
+    depthTest: false,
+    depthWrite: false,
+    blending: NoBlending,
+    uniforms: {
+      tDaten: { value: null },
+      tTiefe: { value: null },
+      uGroesseD: { value: new Vector2(4, 4) },
+      uSS: { value: 1 },
+      uNah: { value: 100 },
+      uFern: { value: 6000 },
+      uMin: { value: 1 },
+      uVoll: { value: 30 },
+      uSpalt: { value: 0 },
+    },
+    vertexShader: 'void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: [
+      'uniform sampler2D tDaten, tTiefe; uniform vec2 uGroesseD; uniform float uSS, uNah, uFern, uMin, uVoll, uSpalt;',
+      'float tiefe(vec2 q) { return uNah + texture2D(tTiefe, q / uGroesseD).x * (uFern - uNah); }',
+      'bool koerper(vec2 q) { return q.x > 0.0 && q.y > 0.0 && q.x < uGroesseD.x && q.y < uGroesseD.y && texture2D(tDaten, q / uGroesseD).z > 0.0; }',
+      // ein Sprung ist mehr als die Neigung der Fläche: an steilen Flächen (kurz vor dem Umriss) wächst die Tiefe schon von Bildpunkt zu
+      // Bildpunkt, ohne dass etwas verdeckt wird; gezählt wird nur, was über das 2,5-Fache der eigenen Neigung davor hinausgeht
+      'float sprung(vec2 c, float z, vec2 o) { vec2 q = c + o; if (!koerper(q)) return 0.0; float d1 = tiefe(q) - z;',
+      '  vec2 r = c - o; float d0 = koerper(r) ? max(z - tiefe(r), 0.0) : 0.0; return d1 > 2.5 * d0 ? d1 - d0 : 0.0; }',
+      'void main() {',
+      '  vec2 c = floor(floor(gl_FragCoord.xy) / uSS) + 0.5; float s = 0.0;',
+      '  if (koerper(c)) { float z = tiefe(c);',
+      '    s = max(max(sprung(c, z, vec2(1.0, 0.0)), sprung(c, z, vec2(-1.0, 0.0))), max(sprung(c, z, vec2(0.0, 1.0)), sprung(c, z, vec2(0.0, -1.0)))); }',
+      '  bool saat = s > uMin;',
+      // nahe am Umriss läuft die Kante in voller Breite in die dicke Kontur (Florian: „direkt in die dicke Outline, wie aus einem Guss“)
+      // (zur Kontur hin über 6 Bildpunkte gleichmäßig breiter, nicht sprunghaft)
+      '  if (saat && uSpalt > 0.5 && s > 2.0 * uMin) for (int k = 1; k <= 6; k++) { float e = float(k);',
+      '    if (!koerper(c + vec2(e, 0.0)) || !koerper(c - vec2(e, 0.0)) || !koerper(c + vec2(0.0, e)) || !koerper(c - vec2(0.0, e))) {',
+      '      s = max(s, uVoll * (1.0 - (e - 1.0) / 6.0)); break; } }',
+      '  gl_FragColor = uSpalt > 0.5 ? vec4(saat ? s : 0.0, 0.0, 0.0, 1.0) : (saat ? vec4(8.0 / 255.0, 0.0, 8.0 / 255.0, 0.0) : vec4(0.0));',
+      '}',
+    ].join('\n'),
+  });
+  private readonly szKantenSaat = (() => {
+    const s = new Scene();
+    const m = new Mesh(new PlaneGeometry(2, 2), this.kantenSaatMat);
+    m.frustumCulled = false;
+    s.add(m);
+    return s;
+  })();
+
+  /**
+   * Kanten der Überdeckung (Logo, 12.11.): Saat an den Tiefensprüngen des Körpers (Daten und Tiefe der Glättung, Auflösung der Felder),
+   * daneben die Größe jedes Sprungs; die Saat geflutet bis zur halben Linienbreite. Florian: Die verjüngende Kontur aus dem
+   * umgestülpten Körper lief „oft sehr kurz“ und „in eine Richtung ausgekerbt“ aus — sie lag nur auf einer Seite der Kante und wurde dort
+   * abgeschnitten, wo sich die Tiefen kreuzen. Diese Linie liegt mittig auf der Kante und wird mit dem Sprung gleichmäßig schmaler.
+   */
+  /** kleinster Tiefensprung einer Kante in diesem Fenster (Welteinheiten): 4 Bildpunkte, mindestens `KANTE_MIN` der vollen Breite */
+  private kanteMin(f: FensterBild): number {
+    return Math.max(4 / Math.max(1e-6, f.ppu), KANTE_MIN * KANTE_VOLL * this.koerperRadius);
+  }
+
+  private kantenFeld(f: FensterBild, kam: OrthographicCamera): Texture {
+    const r = this.r;
+    const { rect } = f;
+    const SS = this.SS;
+    const mw = Math.round(rect.w * SS);
+    const mh = Math.round(rect.h * SS);
+    const [A, B] = this.kantenZiele;
+    if (A.width !== mw || A.height !== mh) {
+      A.setSize(mw, mh);
+      B.setSize(mw, mh);
+      this.kantenSpalt.setSize(mw, mh);
+      this.kantenSpaltB.setSize(mw, mh);
+    }
+    const u = this.kantenSaatMat.uniforms;
+    u.tDaten!.value = this.glattA.texture;
+    u.tTiefe!.value = this.glattA.depthTexture;
+    (u.uGroesseD!.value as Vector2).set(rect.w, rect.h);
+    u.uSS!.value = SS;
+    u.uNah!.value = kam.near;
+    u.uFern!.value = kam.far;
+    // kleiner als ein Sprung um 8 Bildpunkte in der Tiefe ist kein Sprung (eine steile Fläche ändert die Tiefe von Bildpunkt zu Bildpunkt)
+    // ein Sprung zählt ab 4 Bildpunkten Tiefe und ab einem Zehntel der vollen Breite (darunter wäre die Linie dünner als ein Bildpunkt,
+    // und Sprünge knapp an der Schwelle zerfielen in Strichstücke)
+    u.uMin!.value = this.kanteMin(f);
+    u.uVoll!.value = KANTE_VOLL * this.koerperRadius;
+    u.uSpalt!.value = 0;
+    r.setRenderTarget(A);
+    r.render(this.szKantenSaat, kam);
+    u.uSpalt!.value = 1;
+    r.setRenderTarget(this.kantenSpalt);
+    r.render(this.szKantenSaat, kam);
+    const kw = this.kantenWeichMat.uniforms;
+    (kw.uGroesse!.value as Vector2).set(mw, mh);
+    kw.tQuelle!.value = this.kantenSpalt.texture;
+    (kw.uRichtung!.value as Vector2).set(1, 0);
+    r.setRenderTarget(this.kantenSpaltB);
+    r.render(this.szKantenWeich, kam);
+    kw.tQuelle!.value = this.kantenSpaltB.texture;
+    (kw.uRichtung!.value as Vector2).set(0, 1);
+    r.setRenderTarget(this.kantenSpalt);
+    r.render(this.szKantenWeich, kam);
+    const halb = 0.5 * KANTE_BREITE * this.DPR * (this.einstellung.linienMass ? f.mass : 1) * SS + 2;
+    const schritte: number[] = [];
+    for (let k = 2 ** (Math.ceil(Math.log2(halb + 1)) - 1); k >= 1; k /= 2) schritte.push(k);
+    schritte.push(1);
+    (this.flutMat.uniforms.uGroesse!.value as Vector2).set(mw, mh);
+    let quelle = A;
+    let ziel = B;
+    for (const st of schritte) {
+      this.flutMat.uniforms.tQuelle!.value = quelle.texture;
+      this.flutMat.uniforms.uSchritt!.value = st;
+      r.setRenderTarget(ziel);
+      r.render(this.szFlut, kam);
+      const t = quelle;
+      quelle = ziel;
+      ziel = t;
+    }
+    return quelle.texture;
   }
 
   /** ein Fenster zeichnen (der Aufrufer hat die Leinwand vorher gelöscht) */
@@ -1830,8 +2108,14 @@ export class BlaupauseBild {
       j.tGlanzB!.value = this.glanzBild(rect, kam, gf);
       j.uGlanzAn!.value = 1;
       // Kontaktbereich: flaches Band über der unteren Kontur, oder der Bodenbereich, wie man ihn durchs Glas sieht
-      j.tKontakt!.value = E.kontaktKontur ? this.kontaktKontur(rect, kam, gf) : this.kontaktFeld(rect, kam);
-      j.uKontaktAn!.value = 1;
+      // Bodenkontakt wie echt (Ellipsen am Boden, durchs Glas) oder wie bis zum 12.11. (Band über der Kontur bzw. Bodenbereich)
+      j.uKontaktBoden!.value = E.kontaktBoden ? 1 : 0;
+      j.uBodenY!.value = this.bodenY;
+      if (E.kontaktBoden) j.uKontaktAn!.value = 0;
+      else {
+        j.tKontakt!.value = E.kontaktKontur ? this.kontaktKontur(rect, kam, gf) : this.kontaktFeld(rect, kam);
+        j.uKontaktAn!.value = 1;
+      }
 
       this.koerper.material = this.jellyMat;
     } else this.koerper.material = (f.art === 'logo' ? this.logoMat : this.papierMat) as Material;
@@ -1844,10 +2128,21 @@ export class BlaupauseBild {
     r.setViewport(f.css.x, f.css.y, f.css.w, f.css.h);
     r.setScissor(f.css.x, f.css.y, f.css.w, f.css.h);
     r.setScissorTest(true);
-    // Logo: die verjüngende Kontur der Ursprungsform in Breite und Farbe der Kanten (4 Bildpunkte bei 100 %, wachsen mit wie die Linien)
+    // Logo: Kanten der Überdeckung in Breite und Farbe der Kantenlinien (4 Bildpunkte bei 100 %, wachsen mit wie die Linien): aus den
+    // Tiefensprüngen im Körper (`kantenFeld`), sonst die verjüngende Kontur aus dem umgestülpten Körper
     if (f.art === 'logo') {
-      this.umrissMat.uniforms.uBreite!.value = 4 * this.DPR * skal;
-      r.render(this.szUmriss, kam);
+      const lm = this.logoMat.uniforms;
+      lm.uKanteAn!.value = this.kantenTex ? 1 : 0;
+      if (this.kantenTex) {
+        lm.tKante!.value = this.kantenTex;
+        lm.tKanteSpalt!.value = this.kantenSpalt.texture;
+        lm.uKanteHalb!.value = 0.5 * KANTE_BREITE * this.DPR * skal;
+        lm.uKanteVoll!.value = KANTE_VOLL * this.koerperRadius;
+        lm.uKanteMin!.value = this.kanteMin(f);
+      } else {
+        this.umrissMat.uniforms.uBreite!.value = KANTE_BREITE * this.DPR * skal;
+        r.render(this.szUmriss, kam);
+      }
     }
     r.render(this.szKoerper, kam);
     r.render(this.szLinien, kam);

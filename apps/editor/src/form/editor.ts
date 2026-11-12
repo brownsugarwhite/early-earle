@@ -109,7 +109,7 @@ import {
 } from '@ee/shape/dicht';
 import { BufferAttribute, BufferGeometry, Mesh, OrthographicCamera, Raycaster, Vector3, WebGLRenderer } from 'three';
 import type { V2 } from '@ee/shape';
-import { type Art, BlaupauseBild, type FensterBild, type P3, type PunktBild, type Strecke } from './blaupause';
+import { type Art, type AugeBild, BlaupauseBild, type FensterBild, type KontaktEllipse, type P3, type PunktBild, type Strecke } from './blaupause';
 import { LavaLampe, lavaAnker, lavaPlan } from './lava';
 import { istTrackpad, radFaktor } from '../viewports/ansicht2d';
 import { type WesenStand, auskunft, entpacken, packen, pruefen } from './ablage';
@@ -156,8 +156,12 @@ const teststand = {
   extrusion: false,
   /** Logo-Look: der lange flache Schatten nach links unten, Stärke 0…0,8 (0 = aus) */
   schatten: 0.36,
-  /** Jelly: Kontaktbereich als flaches Band über der unteren Kontur (aus: der Bodenbereich durchs Glas, 3D) */
+  /** Jelly: Kontaktbereich als flaches Band über der unteren Kontur (aus: der Bodenbereich durchs Glas, 3D); gilt nur ohne `kontaktBoden` */
   kontaktKontur: true,
+  /** Jelly: Bodenkontakt wie echt (12.11.): Ellipsen am Boden, wo das Wesen aufliegt, durchs Glas gesehen */
+  kontaktBoden: true,
+  /** Logo: Kanten der Überdeckung aus den Tiefensprüngen, mittig und gleichmäßig verjüngt (12.11.; aus: umgestülpter Körper) */
+  kantenTiefe: true,
   /**
    * Haut als Wurstballon (12.11., Florian: „aufblasen, andererseits die Dicke halten“): jede Linie gibt ihre Wölbung nur in ihrer Richtung
    * weiter, quer dazu behält die Haut ihre Dicke vom Greifen (`HautOptionen.wurst`); aus: aufblasen wie bisher. `?wurst=1` schaltet ein.
@@ -5260,6 +5264,229 @@ function kameraSetzen(a: Fenster, r: DOMRect): OrthographicCamera {
   return k;
 }
 /**
+ * /editor (12.11., Florian: „Es soll sich noch mehr wie ein echter Kontaktbereich verhalten … von schräg oben … wie in meinem
+ * Referenzblob eine schöne Ellipse“): die Stellen, an denen das Wesen aufliegt. Die unterste Schicht der Haut (bis 12 % der Körperhöhe
+ * über dem tiefsten Punkt) nach zusammenhängenden Gruppen am Boden, je Gruppe eine Ellipse aus ihrer Streuung (zwei Standardabweichungen,
+ * etwas kleiner für den Glasrand). Das Jelly sieht sie durch den Körper am Boden liegen.
+ */
+let kontaktStand = -1;
+let kontaktJetzt: KontaktEllipse[] = [];
+function kontaktRechnen(): KontaktEllipse[] {
+  if (kontaktStand === lavaVersion) return kontaktJetzt;
+  kontaktStand = lavaVersion;
+  const L = hautLagen;
+  const n = L.length / 3;
+  if (n < 10) return (kontaktJetzt = []);
+  let y0 = Infinity;
+  let y1 = -Infinity;
+  for (let v = 0; v < n; v++) {
+    y0 = Math.min(y0, L[3 * v + 1]!);
+    y1 = Math.max(y1, L[3 * v + 1]!);
+  }
+  const R = koerperRadius();
+  const band = y0 + 0.12 * (y1 - y0);
+  const zelle = Math.max(1, 0.05 * R);
+  // Punkte der untersten Schicht in Zellen am Boden; Gruppen = zusammenhängende Zellen (auch über Ecken)
+  const zellen = new Map<string, number[]>();
+  for (let v = 0; v < n; v++) {
+    if (L[3 * v + 1]! > band) continue;
+    const k = `${Math.floor(L[3 * v]! / zelle)},${Math.floor(L[3 * v + 2]! / zelle)}`;
+    const z = zellen.get(k);
+    if (z) z.push(v);
+    else zellen.set(k, [v]);
+  }
+  const gruppe = new Map<string, number>();
+  const gruppen: number[][] = [];
+  for (const start of zellen.keys()) {
+    if (gruppe.has(start)) continue;
+    const g = gruppen.length;
+    const punkte: number[] = [];
+    const offen = [start];
+    gruppe.set(start, g);
+    while (offen.length) {
+      const k = offen.pop()!;
+      punkte.push(...zellen.get(k)!);
+      const [i, j] = k.split(',').map(Number) as [number, number];
+      for (let di = -1; di <= 1; di++)
+        for (let dj = -1; dj <= 1; dj++) {
+          const q = `${i + di},${j + dj}`;
+          if (zellen.has(q) && !gruppe.has(q)) {
+            gruppe.set(q, g);
+            offen.push(q);
+          }
+        }
+    }
+    gruppen.push(punkte);
+  }
+  const ellipsen: (KontaktEllipse & { zahl: number })[] = [];
+  for (const g of gruppen) {
+    if (g.length < 3) continue;
+    let mx = 0;
+    let mz = 0;
+    let gy = Infinity;
+    for (const v of g) {
+      mx += L[3 * v]!;
+      mz += L[3 * v + 2]!;
+      gy = Math.min(gy, L[3 * v + 1]!);
+    }
+    mx /= g.length;
+    mz /= g.length;
+    let sxx = 0;
+    let sxz = 0;
+    let szz = 0;
+    for (const v of g) {
+      const dx = L[3 * v]! - mx;
+      const dz = L[3 * v + 2]! - mz;
+      sxx += dx * dx;
+      sxz += dx * dz;
+      szz += dz * dz;
+    }
+    // Hauptachsen der Streuung; die Halbachsen aus der Ausdehnung längs dieser Achsen (95 % der Punkte), etwas kleiner für den Glasrand
+    const phi = 0.5 * Math.atan2(2 * sxz, sxx - szz);
+    const ux = Math.cos(phi);
+    const uz = Math.sin(phi);
+    const pa: number[] = [];
+    const pb: number[] = [];
+    for (const v of g) {
+      const dx = L[3 * v]! - mx;
+      const dz = L[3 * v + 2]! - mz;
+      pa.push(Math.abs(dx * ux + dz * uz));
+      pb.push(Math.abs(dz * ux - dx * uz));
+    }
+    // die Halbachsen aus dem Querschnitt des Körpers in Höhe der Ellipse (sonst ragt sie an flachen Bäuchen über die Kontur)
+    const yE = gy + 0.5 * (band - y0);
+    const qa: number[] = [];
+    const qb: number[] = [];
+    for (const v of g) {
+      if (Math.abs(L[3 * v + 1]! - yE) > 0.02 * (y1 - y0)) continue;
+      const dx = L[3 * v]! - mx;
+      const dz = L[3 * v + 2]! - mz;
+      qa.push(Math.abs(dx * ux + dz * uz));
+      qb.push(Math.abs(dz * ux - dx * uz));
+    }
+    if (qa.length >= 6) {
+      pa.length = 0;
+      pb.length = 0;
+      pa.push(...qa);
+      pb.push(...qb);
+    }
+    pa.sort((p, q) => p - q);
+    pb.sort((p, q) => p - q);
+    const q95 = (w: number[]): number => w[Math.min(w.length - 1, Math.floor(0.95 * w.length))]!;
+    const rmin = 0.08 * R;
+    // die Ellipse liegt waagerecht knapp über dem tiefsten Punkt ihrer Stelle (im Glas, nicht am Boden: so bleibt sie auch von der Seite
+    // innerhalb der Kontur)
+    ellipsen.push({ x: mx, y: gy + 0.5 * (band - y0), z: mz, ux, uz, a: Math.max(rmin, 0.8 * q95(pa)), b: Math.max(rmin, 0.8 * q95(pb)), zahl: g.length });
+  }
+  ellipsen.sort((a, b) => b.zahl - a.zahl);
+  kontaktJetzt = ellipsen.slice(0, 4).map(({ x, y, z, ux, uz, a, b }) => ({ x, y, z, ux, uz, a, b }));
+  return kontaktJetzt;
+}
+
+/**
+ * /editor (12.11., Florian: „Das Wesen in 3D sollte immer schon ein Auge haben“): ein Schlitzauge wie die Vorlage (dunkel, schmal und
+ * hoch) vorn auf der Mittelebene. Vorn ist die Richtung zur Front-Kamera; das Auge sitzt auf halber Höhe des Körpers (mit Maul darüber),
+ * auf dem vordersten Punkt der Haut in dieser Höhe; Höhe 0,3 und Breite 0,08 des vorderen Drittels.
+ */
+let augeStand = -1;
+let augeJetzt: AugeBild | null = null;
+function augeRechnen(): AugeBild | null {
+  if (augeStand === lavaVersion) return augeJetzt;
+  augeStand = lavaVersion;
+  const L = hautLagen;
+  const N = hautNormalenPuffer;
+  const n = L.length / 3;
+  if (n < 10) return (augeJetzt = null);
+  const f = blickAus(HEIM.front[0], HEIM.front[1]);
+  const s = (v: number): number => L[3 * v]! * f.x + L[3 * v + 1]! * f.y + L[3 * v + 2]! * f.z;
+  let sMin = Infinity;
+  let sMax = -Infinity;
+  for (let v = 0; v < n; v++) {
+    sMin = Math.min(sMin, s(v));
+    sMax = Math.max(sMax, s(v));
+  }
+  const vorn = sMax - 0.3 * (sMax - sMin);
+  let yLo = Infinity;
+  let yHi = -Infinity;
+  for (let v = 0; v < n; v++) {
+    if (s(v) < vorn) continue;
+    yLo = Math.min(yLo, L[3 * v + 1]!);
+    yHi = Math.max(yHi, L[3 * v + 1]!);
+  }
+  const H = yHi - yLo;
+  if (!(H > 0)) return (augeJetzt = null);
+  // auf halber Höhe des ganzen Körpers (von vorn gesehen die Mitte des Gesichts), im vorderen Drittel nicht ganz unten oder oben; mit Maul
+  // über dem Maul (ein Drittel des Wegs von seiner Oberkante zum Scheitel)
+  let yG0 = Infinity;
+  let yG1 = -Infinity;
+  for (let v = 0; v < n; v++) {
+    yG0 = Math.min(yG0, L[3 * v + 1]!);
+    yG1 = Math.max(yG1, L[3 * v + 1]!);
+  }
+  let yA = Math.min(yLo + 0.8 * H, Math.max(yLo + 0.2 * H, 0.5 * (yG0 + yG1)));
+  const ml = maul ? loops.find((l) => l.id === maul!.id) : undefined;
+  if (ml) {
+    let oben = -Infinity;
+    for (let i = 0; i < ml.ruhe.length / 3; i++) oben = Math.max(oben, ml.ruhe[3 * i + 1]!);
+    if (Number.isFinite(oben) && oben < yHi) yA = Math.max(yA, oben + 0.35 * (yHi - oben));
+  }
+  const zTol = 0.02 * koerperRadius();
+  // eine Stelle auf der Mittelebene im vorderen Teil, deren Fläche nach vorn schaut (sonst läge der Schlitz auf einer Oberseite längs),
+  // möglichst nahe der Zielhöhe; ohne solche Stelle der vorderste Punkt in dieser Höhe
+  let best = -1;
+  let bs = -Infinity;
+  for (let v = 0; v < n; v++) {
+    if (Math.abs(L[3 * v + 2]!) > zTol || s(v) < vorn) continue;
+    const nf = (N[3 * v]! * f.x + N[3 * v + 1]! * f.y + N[3 * v + 2]! * f.z) / (Math.hypot(N[3 * v]!, N[3 * v + 1]!, N[3 * v + 2]!) || 1);
+    // nicht unter der Mitte (dort liegen Mäuler und Kehlen, deren Rückwand auch nach vorn schaut)
+    if (nf < 0.4 || L[3 * v + 1]! < yA - 0.1 * H) continue;
+    const w = 0.6 * nf - Math.abs(L[3 * v + 1]! - yA) / H;
+    if (w > bs) {
+      bs = w;
+      best = v;
+    }
+  }
+  if (best < 0) {
+    const tol = Math.max(0.03 * H, 0.5);
+    for (let v = 0; v < n; v++) {
+      if (Math.abs(L[3 * v + 2]!) > zTol || Math.abs(L[3 * v + 1]! - yA) > tol) continue;
+      if (s(v) > bs) {
+        bs = s(v);
+        best = v;
+      }
+    }
+  }
+  if (best < 0) return (augeJetzt = null);
+  let nx = N[3 * best]!;
+  let ny = N[3 * best + 1]!;
+  let nz = N[3 * best + 2]!;
+  const nl = Math.hypot(nx, ny, nz) || 1;
+  nx /= nl;
+  ny /= nl;
+  nz /= nl;
+  // senkrecht = „oben“ in der Tangentialebene, waagerecht quer dazu
+  let vx = -ny * nx;
+  let vy = 1 - ny * ny;
+  let vz = -ny * nz;
+  const vl = Math.hypot(vx, vy, vz) || 1;
+  vx /= vl;
+  vy /= vl;
+  vz /= vl;
+  const ux = vy * nz - vz * ny;
+  const uy = vz * nx - vx * nz;
+  const uz = vx * ny - vy * nx;
+  augeJetzt = {
+    p: [L[3 * best]!, L[3 * best + 1]!, L[3 * best + 2]!],
+    u: [ux, uy, uz],
+    v: [vx, vy, vz],
+    n: [nx, ny, nz],
+    breite: 0.04 * H,
+    hoehe: 0.15 * H,
+  };
+  return augeJetzt;
+}
+
+/**
  * /editor: Bläschen im Jelly (wie in der Vorlage: drei, vier helle Scheiben im Körper). Je Netz einmal gewählt: Punkte der Haut, die
  * zum 3D-Fenster schauen, weit auseinander; jedes Bild ein Stück unter ihre Lage gerückt (sie wandern mit der Haut).
  */
@@ -5396,6 +5623,8 @@ function rendern(): void {
     extrusion: T.extrusion,
     schatten: T.schatten,
     kontaktKontur: T.kontaktKontur,
+    kontaktBoden: T.kontaktBoden,
+    kantenTiefe: T.kantenTiefe,
   };
   // Jelly: Größe und Mitte des Körpers, Bläschen, Lava
   const kasten = hautGeometrie.boundingBox;
@@ -5413,6 +5642,8 @@ function rendern(): void {
   }
   bild.blasen(blasenJetzt());
   bild.lava(lampe.formen(lavaUhr), glanzTeile);
+  bild.kontaktEllipsen(kontaktRechnen());
+  bild.auge(augeRechnen());
   bild.kantenLaenge = MK;
   bild.linien(linienBauen());
   bild.punkte(punkteBauen());
@@ -6054,6 +6285,9 @@ schleife();
     }
     return (performance.now() - t0) / 5;
   },
+  /** Jelly: Bodenkontakt (Ellipsen) und Auge, wie sie gerade gezeigt werden */
+  kontakt: () => kontaktRechnen(),
+  auge: () => augeRechnen(),
   /** Lava im Jelly: Anker (Welt), Blasen und Rechenzeit der Anker */
   lava: () => {
     const fund = hautGeometrie.index ? lavaAnker(hautLagen, hautGeometrie.index.array) : { anker: [], kontakt: null };
