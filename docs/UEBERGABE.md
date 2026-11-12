@@ -1,4 +1,4 @@
-# Übergabe (Stand 12.11.2026: Plan „schnell, glatt, exakt“ freigegeben, Schritt 0 erledigt, Schritt 1 beginnt)
+# Übergabe (Stand 12.11.2026 nachmittags: Plan „schnell, glatt, exakt“ freigegeben, Schritt 0 erledigt, Schritt 1: Vergleichsbild liegt vor, Florians Wahl der Bauart steht aus)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -22,7 +22,7 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | Schritt | Stand |
 | --- | --- |
 | 0 Aufräumen | **erledigt** (12.11., Einzelheiten unten) |
-| 1 Glatte Anzeige | **begonnen:** zuerst das Vergleichsbild (heute, gekrümmte Dreiecke, Unterteilung) an „strange bird“ |
+| 1 Glatte Anzeige | **Vergleichsbild fertig, Wahl der Bauart bei Florian** (Abschnitt 4); eingebaut ist noch nichts |
 | 2 Kleines Rechennetz | offen |
 | 3 Beweis „Haut direkt aus den Linien“ | offen |
 | 4 Echte Spiegelung und neue Rechnung ins Fenster | offen |
@@ -54,15 +54,44 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
   `form-alt` auf `claude/form-spiegel`. Am Ende eines Schritts in `form-alt` `git merge claude/editor-grundlayout` (nur Doku),
   danach im Hauptordner `git merge --ff-only claude/form-spiegel`.
 
-## 4. Nächster Schritt: Schritt 1, glatte Anzeige
+## 4. Schritt 1, glatte Anzeige: Stand und nächster Schritt
 
-1. **Vergleichsbild** (vor jedem Einbau): „strange bird“ bei 300 % und 800 %, nebeneinander heute, gekrümmte Dreiecke im
-   Shader und Unterteilung, jeweils mit geglätteter Farbstufe. Bauarten und Einzelheiten: Plan, Anhang A.1. Florians Auge
-   entscheidet, welche eingebaut wird.
-2. Einbau in `kurven.ts` hinter einem Schalter; Linienkanten tragen das exakte Stück des Bézier-Pfads, „Kante an“ bleibt
-   scharf, an der Spiegelebene wird je Bildpunkt geschnitten, das Maul-Innere läuft durch dieselbe Anzeige.
-3. Probe: ein Bild vorher und nachher an seinen drei Formen, einmal der Abstand der Bilder im Zug. Dabei einmal messen, was
-   die drei Blätter und die Linienbänder je Bild kosten.
+**Vergleichsbild (12.11.), „strange bird“, vier Fassungen nebeneinander:**
+`docs/progress/editor/anzeige-vergleich-ganz-2026-11-12.jpg` (ganze Form und 144 %),
+`…-300-2026-11-12.jpg` (Kopf und Ohr bei 300 %), `…-800-2026-11-12.jpg` (Farbstufe und Ohrkante bei 800 %).
+
+| Fassung | Befund |
+| --- | --- |
+| heute | Farbstufen eckig (je Dreieck gerade) und ohne Kantenglättung |
+| heute, nur die Farbstufe geglättet | weiche Kante, aber dieselben Ecken: Die Kantenglättung allein reicht nicht |
+| **gekrümmte Dreiecke, ruhig schattiert** (Empfehlung) | Form geht durch alle Rechenpunkte, Linien exakt auf dem Pfad, nichts schwingt über; Farbstufen so ruhig wie bei der Unterteilung |
+| unterteilt (Loop, zwei Stufen, mit Versatz) | Farbstufen ruhig; an scharfen Graten (Ohrkante) wölbt die Fläche über die Linie (Kontur wird dick und wellig, die Linie verschwindet) |
+
+- **Die empfohlene Fassung im Einzelnen** (`apps/editor/src/form/glatt.ts`): Lagen = zweimal ohne Glätten verfeinern
+  (`verfeinernGekruemmt`: neuer Punkt in der Mitte der gewölbten Kante, auf Linien in der Mitte des Pfadstücks); Normalen = die
+  der gewöhnlichen Unterteilung desselben Netzes ohne Versatz (`unterteilen` und `netzNormalen`). Beide Verfeinerungen zählen ihre
+  Punkte gleich, die Normalen passen Punkt für Punkt. Kanten der Haut auf Linien tragen ihr Stück des Bézier-Pfads
+  (`pfadKanten` im Kern, `anzeigeNetz`); harte Linien sind aufgetrennt (je Seite eigene Normale).
+- **Verworfen (gesehen, nicht nur gerechnet):** gekrümmte Dreiecke mit den Normalen von heute oder mit beruhigten Normalen je
+  Rechenpunkt (kleine Wellen an jeder Dreieckskante, auch nach zweimaligem Verfeinern); Unterteilung mit freien weichen Linien
+  (Pfad bis 0,8 Einheiten neben der Fläche, an Graten Wellen in der Kontur).
+- **Was die glatte Anzeige nicht behebt:** Die Farbstufen laufen ruhig, aber noch in Wellen. Die kommen aus der gerechneten Haut
+  selbst (kleine Knicke an den Linien, fast ebene Flächen). Das ist Sache von Schritt 3.
+- **Gemessen an „strange bird“** (16 010 Punkte, 2 004 Kanten auf Linien): Die Punkte der Haut liegen auf den Linien genau auf
+  dem Pfad (0,000 Einheiten). Rechenzeit der Probe, noch ohne jede Vorarbeit je Netz: Netz der Anzeige 11 ms, beide
+  Verfeinerungen zusammen rund 380 ms. Für das Fenster heißt das: bei den heutigen Punktzahlen eine Stufe, zwei Stufen erst mit
+  dem kleinen Rechennetz (Schritt 2), und die Zuordnung der Kanten einmal je Netz statt je Bild.
+- **Die Testseite:** `http://localhost:5197/anzeige.html?name=strange%20bird` (Server `kurven-bau`); Schalter stehen im Kopf von
+  `apps/editor/src/form/anzeigeProbe.ts`. Bilder: aus `apps/editor`
+  `node scripts/pruefen/anzeige-bild.mjs <ziel.jpg> 'name=strange%20bird&z1=2.7&m1=-330,40,80&z2=2.7&m2=-60,300,40&info=0'`.
+
+**Nächster Schritt (nach Florians Wahl):** Einbau in `kurven.ts` hinter einem Schalter, im Arbeitsbaum `form-bau`:
+1. Netz der Anzeige und die Zuordnung der Verfeinerung einmal je Netzstand (nach `teilungNeu`), Lagen und Normalen je Bild.
+2. Die geglättete Farbstufe statt `MeshToonMaterial` mit harter Schwelle; Umriss und Maul-Inneres auf derselben Geometrie.
+3. An der Spiegelebene je Bildpunkt schneiden (Schnittebene des Materials) statt `anzeigeZ`.
+4. Strahltreffer (Zeichnen, Greifen) gegen die feine Fläche.
+5. Probe: ein Bild vorher und nachher an seinen drei Formen, einmal der Abstand der Bilder im Zug; dabei einmal messen, was die
+   drei Blätter und die Linienbänder je Bild kosten.
 
 ## 5. Offen aus der Zeit davor
 

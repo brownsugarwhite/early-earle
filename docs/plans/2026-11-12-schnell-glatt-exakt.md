@@ -295,6 +295,11 @@ Für beide: die geglättete Stufe `stufe(x, t) = smoothstep(t − w, t + w, x)` 
 `anzeigeZ`; das Maul-Innere läuft durch dieselbe Anzeige; Strahltreffer (Zeichnen, Greifen auf der Haut) gegen das feine Netz,
 zurückgerechnet auf Dreieck und Gewichte des Rechennetzes.
 
+**Nachtrag 12.11. (Vergleichsbild):** Keine der beiden Bauarten allein. Die gekrümmten Dreiecke halten Linien und Grate sauber,
+ihre eigenen Normalen geben aber kleine Wellen an jeder Dreieckskante. Die Unterteilung gibt ruhige Farbstufen, schwingt an
+scharfen Graten aber über die Linie. Empfohlen und im Bild gezeigt ist die Verbindung: Form der gekrümmten Dreiecke (ohne Glätten
+verfeinert), Schattierung mit den Normalen der gewöhnlichen Unterteilung. Stand und Bilder: `docs/UEBERGABE.md`, Abschnitt 4.
+
 ### A.2 Rechennetz (Schritt 2)
 
 - `DREIECKE` (heute 6 000 bestellt, rund 5 200 Punkte an der Kugel) auf etwa ein Drittel. Die Schwellen in
