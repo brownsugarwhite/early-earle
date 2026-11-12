@@ -158,6 +158,12 @@ const teststand = {
   schatten: 0.36,
   /** Jelly: Kontaktbereich als flaches Band über der unteren Kontur (aus: der Bodenbereich durchs Glas, 3D) */
   kontaktKontur: true,
+  /**
+   * Haut als Wurstballon (12.11., Florian: „aufblasen, andererseits die Dicke halten“): jede Linie gibt ihre Wölbung nur in ihrer Richtung
+   * weiter, quer dazu behält die Haut ihre Dicke vom Greifen (`HautOptionen.wurst`); aus: aufblasen wie bisher. `?wurst=1` schaltet ein.
+   * Versuch, nicht tragfähig (Ergebnis in `packages/shape/src/dicht/wurst.ts`): deshalb kein Knopf in der Leiste.
+   */
+  wurst: new URLSearchParams(location.search).get('wurst') === '1',
 };
 /** /editor: Das Artefakt bringt den Hintergrund-Rechner als Text mit (Bau mit esbuild); im Dev-Server lädt Vite ihn als Modul */
 declare const __TESTSTAND_WORKER__: string;
@@ -279,11 +285,12 @@ const DAVON_SCHUTZ = new URLSearchParams(location.search).get('davon') !== '0';
  * immer, `?normalfluss=0` nie (zum Vergleichen).
  */
 const NORMALFLUSS = new URLSearchParams(location.search).get('normalfluss');
-const RICHTUNG_OPT: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean; normalfluss?: boolean } = {
+const RICHTUNG_OPT: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean; normalfluss?: boolean; wurst?: boolean } = {
   ...(RICHTUNG ? { richtung: true } : {}),
   ...(MAXNORMALEN ? { maxNormalen: true } : {}),
   ...(VORSICHT ? {} : { vorsicht: false }),
   ...(NORMALFLUSS === '1' ? { normalfluss: true } : NORMALFLUSS === '0' ? { normalfluss: false } : {}),
+  ...(new URLSearchParams(location.search).get('wurst') === '1' ? { wurst: true } : {}),
 };
 /** Der Zug löst nur einen Bereich um die bewegten Stellen (mit Gedächtnis und in der Pose); aus den Kurven die ganze Haut */
 const mitBereich = (): boolean => grund !== null || HAUT !== 'kurven';
@@ -5538,7 +5545,14 @@ window.addEventListener('resize', () => {
 const FORMEN_EINGEBETTET: Record<string, string> = (globalThis as unknown as { __TESTSTAND_FORMEN?: Record<string, string> }).__TESTSTAND_FORMEN ?? {};
 
 function teststandSetzen(o: TeststandWert): void {
+  const wurstVorher = teststand.wurst;
   Object.assign(teststand, o);
+  // Wurstballon: der Löser rechnet ab jetzt so (auch im Hintergrund), und die Haut setzt sich einmal neu
+  if (teststand.wurst !== wurstVorher) {
+    if (teststand.wurst) RICHTUNG_OPT.wurst = true;
+    else delete RICHTUNG_OPT.wurst;
+    if (!grund && !zug) hautNeuRechnen();
+  }
   leisteZeigen();
   neuZeichnen = true;
 }

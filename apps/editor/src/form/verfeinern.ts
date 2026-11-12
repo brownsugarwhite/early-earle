@@ -64,7 +64,7 @@ export type VerfeinerAuftrag = {
   /** wie beim Löser des Fensters: Krümmung folgt den Loops, Gewichte, Schalter der Beweise */
   kruemmung: boolean;
   gewichte: HautGewichte;
-  loeserOpt: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean; normalfluss?: boolean };
+  loeserOpt: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean; normalfluss?: boolean; wurst?: boolean };
 };
 
 export type VerfeinerErgebnis =
@@ -173,7 +173,7 @@ export type AufraeumAuftrag = {
   nachverfeinern: number;
   kruemmung: boolean;
   gewichte: HautGewichte;
-  loeserOpt: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean; normalfluss?: boolean };
+  loeserOpt: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean; normalfluss?: boolean; wurst?: boolean };
   /** Setzen: Runden, bis sich die Form in einer Runde um weniger als `ruhe` bewegt (längs der Normalen), höchstens `maxRunden` */
   ruhe: number;
   maxRunden: number;

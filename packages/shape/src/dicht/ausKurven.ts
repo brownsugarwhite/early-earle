@@ -47,6 +47,7 @@ import { normalSystemZerlegt } from '../loeser/zerlegung';
 import { type IntrinsischeGewichte, intrinsischeGewichte } from './intrinsisch';
 import { KETTE_K, type KruemmungsKetten } from './kruemmung';
 import { type Bindungen, type Haut, type Vermessung, gewichteAus, hautNormalenMax, laengenGewichte, vermessen } from './kurven';
+import { Wurstfeld } from './wurst';
 
 /**
  * Wie die Krümmung gemessen und verteilt wird: `gleich` (Mittel der Nachbarn, bis 08.11.) oder `geometrie` (Laplace–Beltrami auf der
@@ -85,6 +86,11 @@ export type HautOptionen = {
    * Linie nur auf der Haut liegt (nicht ins Netz eingesetzt); `true` / `false` erzwingen es (zum Vergleichen).
    */
   normalfluss?: boolean;
+  /**
+   * Wurstballon (12.11., `wurst.ts`; nur nach der Geometrie): Jeder Loop sagt die Wölbung nur längs seiner Richtung, quer dazu die Loops,
+   * die quer laufen; wo keiner hinreicht, behält die Haut ihre Wölbung vom Greifen (die Dicke). Dieselbe Zerlegung, kein neuer Schlüssel.
+   */
+  wurst?: boolean;
 };
 
 /**
@@ -350,6 +356,8 @@ export class HautAusKurven {
   /** Seitenwerte der letzten Runde (für `seiteSchritt` < 1) */
   private seitenVorher: Seiten | null = null;
   private seitenErst: Seiten | null = null;
+  /** Wurstballon (`HautOptionen.wurst`): Wölbung mit Richtung statt der verteilten Zahl */
+  private readonly wurstFeld: Wurstfeld | null = null;
 
   /** Zeiten je Teil einer Runde, aufsummiert (zum Messen) */
   readonly zeiten = { runden: 0, vermessen: 0, intrinsisch: 0, kruemmung: 0, schritte: 0, loesen: 0 };
@@ -540,6 +548,9 @@ export class HautAusKurven {
       this.sysC = null;
       if (opt.nurZeilen && this.cFrei.length) this.auftrag!.systeme.push({ n: this.cFrei.length, zeilen: this.vorkonditioniererZeilen(), daempfung: 1e-12 });
       this.cVor = vorlage ? vorlage.cVor : opt.nurZeilen ? null : this.vorkonditionierer();
+      // Wurstballon: die Wölbung mit Richtung, verteilt mit derselben Zerlegung (nur, wenn der Löser rechnet)
+      if (opt.wurst && ketten && this.cVor && this.cFrei.length)
+        this.wurstFeld = new Wurstfeld(h, bind, ketten, ziele0, this.quelle, this.cFrei, this.cVor, HALT, this.gew, this.ruhe.nor, this.ruhe.kap);
       this.zeitZerlegen = Date.now() - t0;
       return;
     }
@@ -1040,6 +1051,18 @@ export class HautAusKurven {
     return c;
   }
 
+  /**
+   * Wurstballon: die Zahl je Punkt aus der Wölbung mit Richtung (`Wurstfeld`) für die Unbekannten der Krümmung; Quellen behalten ihre
+   * gemessene Krümmung, feste Punkte die beim Anlegen (wie `kruemmungIntrinsisch`)
+   */
+  private wurstKruemmung(ziele: Float64Array, nor: Float64Array, kap: Float64Array): Float64Array {
+    const c = Float64Array.from(kap);
+    for (let v = 0; v < this.h.n; v++) if (this.nr[v]! < 0) c[v] = this.ruhe.kap[v]!;
+    const z = this.wurstFeld!.ziel(ziele, nor);
+    for (let u = 0; u < this.cFrei.length; u++) if (Number.isFinite(z[u]!)) c[this.cFrei[u]!] = z[u]!;
+    return c;
+  }
+
   /** `iterationen` Runden zu den Zielen `ziele` (3 je Bindung) */
   schritt(ziele: Float64Array, iterationen = 2): void {
     const h = this.h;
@@ -1067,7 +1090,7 @@ export class HautAusKurven {
         geo = this.messenIntrinsisch(ig, m.nor);
         const t2 = jetzt();
         seiten = this.richtung ? this.seitenMessen(this.richtung, m.nor, m.kap) : null;
-        c = this.kruemmungIntrinsisch(geo.kap, ig, seiten);
+        c = this.wurstFeld ? this.wurstKruemmung(ziele, m.nor, geo.kap) : this.kruemmungIntrinsisch(geo.kap, ig, seiten);
         this.zeiten.intrinsisch += t2 - t1;
         this.zeiten.kruemmung += jetzt() - t2;
         if (!this.beta) {

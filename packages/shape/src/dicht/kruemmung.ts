@@ -475,7 +475,7 @@ export class KruemmungsFeld {
 }
 
 /** Feste Basis (u, v) der Tangentialebene zur Normale n: u aus der Achse, die am wenigsten in n liegt */
-function tangentialBasis(nx: number, ny: number, nz: number): [V, V] {
+export function tangentialBasis(nx: number, ny: number, nz: number): [V, V] {
   const ax = Math.abs(nx);
   const ay = Math.abs(ny);
   const az = Math.abs(nz);
@@ -495,7 +495,7 @@ function tangentialBasis(nx: number, ny: number, nz: number): [V, V] {
 }
 
 /** größter Abstand der Probe in der Mitte der Kette zu ihren Nachbarn (Lagen X, 3 je Bindung) */
-function probenAbstand(k: Int32Array, X: Float64Array): number {
+export function probenAbstand(k: Int32Array, X: Float64Array): number {
   const mi = (k.length - 1) >> 1;
   const a = k[mi]!;
   let hp = 0;
@@ -511,7 +511,7 @@ function probenAbstand(k: Int32Array, X: Float64Array): number {
  * Tensor im Raum a·u uᵀ + b·(u vᵀ + v uᵀ) + c·v vᵀ zu out ab o addiert (xx, xy, xz, yy, yz, zz). Für einen Loop (κ·t tᵀ) ist
  * u = v = t, b = c = 0.
  */
-function tensorAus(u: V, v: V, a: number, b: number, c: number, out: Float64Array, o: number): void {
+export function tensorAus(u: V, v: V, a: number, b: number, c: number, out: Float64Array, o: number): void {
   out[o] = out[o]! + a * u[0] * u[0] + 2 * b * u[0] * v[0] + c * v[0] * v[0];
   out[o + 1] = out[o + 1]! + a * u[0] * u[1] + b * (u[0] * v[1] + v[0] * u[1]) + c * v[0] * v[1];
   out[o + 2] = out[o + 2]! + a * u[0] * u[2] + b * (u[0] * v[2] + v[0] * u[2]) + c * v[0] * v[2];
@@ -523,7 +523,7 @@ function tensorAus(u: V, v: V, a: number, b: number, c: number, out: Float64Arra
 /**
  * (a, b, c) eines Tensors im Raum (6 Werte ab o) in der Basis (u, v) (6 Werte ab ob: u, dann v): uᵀTu, uᵀTv, vᵀTv nach out ab oo
  */
-function inBasis(S: Float64Array, o: number, B: Float64Array, ob: number, out: Float64Array, oo: number): void {
+export function inBasis(S: Float64Array, o: number, B: Float64Array, ob: number, out: Float64Array, oo: number): void {
   const xx = S[o]!;
   const xy = S[o + 1]!;
   const xz = S[o + 2]!;
@@ -551,7 +551,7 @@ function inBasis(S: Float64Array, o: number, B: Float64Array, ob: number, out: F
  * Gewichte der Ausgleichsparabel X(u) = a + b·u + c·u² durch die Kettenpunkte mit Parameter u (NaN: fehlt): c = Σ γ_d X_d,
  * b = Σ β_d X_d. null, wenn weniger als drei Punkte da sind.
  */
-function parabelGewichte(u: Float64Array): { c: Float64Array; b: Float64Array } | null {
+export function parabelGewichte(u: Float64Array): { c: Float64Array; b: Float64Array } | null {
   const da = [...u].map((x, d) => (Number.isFinite(x) ? d : -1)).filter((d) => d >= 0);
   if (da.length < 3) return null;
   // M = Σ φ φᵀ, φ = (1, u, u²)
@@ -575,7 +575,7 @@ function parabelGewichte(u: Float64Array): { c: Float64Array; b: Float64Array } 
 
 type M3 = [number, number, number, number, number, number, number, number, number];
 
-function invers3(m: readonly number[]): M3 | null {
+export function invers3(m: readonly number[]): M3 | null {
   const [a, b, c, d, e, f, g, h, i] = m as M3;
   const A = e * i - f * h;
   const B = -(d * i - f * g);
@@ -589,7 +589,7 @@ function invers3(m: readonly number[]): M3 | null {
  * Krümmungsvektor und Richtung der Kette (Lagen X, 3 je Bindung) aus der Parabel: (2c − (2c·b̂) b̂) / |b|² und b̂; null, wenn die
  * Kette dort keine Steigung hat.
  */
-function kruemmungUndRichtung(k: Int32Array, gc: Float64Array, gb: Float64Array, X: Float64Array): [V, V] | null {
+export function kruemmungUndRichtung(k: Int32Array, gc: Float64Array, gb: Float64Array, X: Float64Array): [V, V] | null {
   let cx = 0;
   let cy = 0;
   let cz = 0;
