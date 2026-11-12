@@ -87,8 +87,9 @@ export type HautOptionen = {
    */
   normalfluss?: boolean;
   /**
-   * Wurstballon (12.11., `wurst.ts`; nur nach der Geometrie): Jeder Loop sagt die Wölbung nur längs seiner Richtung, quer dazu die Loops,
-   * die quer laufen; wo keiner hinreicht, behält die Haut ihre Wölbung vom Greifen (die Dicke). Dieselbe Zerlegung, kein neuer Schlüssel.
+   * Wurstballon (12.11., `wurst.ts`; nur nach der Geometrie, Beweis): Je Punkt zwei Zeilen statt einer Laplace-Zeile, eine für die
+   * Wölbung quer, eine für die längs (Richtungen = Hauptrichtungen beim Greifen). Ihre Ziele: Jeder Loop sagt die Wölbung längs seiner
+   * Richtung, quer dazu die Loops, die quer laufen; wo keiner hinreicht, die Wölbung vom Greifen (die Dicke bleibt). Eigene Zerlegung.
    */
   wurst?: boolean;
 };
@@ -153,6 +154,8 @@ export function strukturSchluessel(
 
 /** Gewicht, mit dem die Krümmung eines Punkts bei ihrem jetzigen Wert bleibt, wo keine Kurve hinreicht (hält das System lösbar) */
 const HALT = 1e-6;
+/** Wurstballon: Rest jeder Kante in beiden Zeilen eines Punkts (cos² + Rest bzw. sin² + Rest), damit keine Zeile leer bleibt */
+const WURST_REST = 0.05;
 /**
  * Anteil der Korrektur je Runde (`geometrie`), höchstens. Gelöst wird mit der Matrix der gleichen Gewichte; auf gestreckten Dreiecken
  * antwortet die Krümmung nach der Geometrie stärker, als diese Matrix annimmt: Ungedämpft schwang der Hals (das Vorzeichen kippte jede
@@ -356,8 +359,13 @@ export class HautAusKurven {
   /** Seitenwerte der letzten Runde (für `seiteSchritt` < 1) */
   private seitenVorher: Seiten | null = null;
   private seitenErst: Seiten | null = null;
-  /** Wurstballon (`HautOptionen.wurst`): Wölbung mit Richtung statt der verteilten Zahl */
+  /** Wurstballon (`HautOptionen.wurst`): die Wölbung mit Richtung, je Zeilenpunkt die Gewichte seiner zwei Zeilen, ihre Zerlegung */
   private readonly wurstFeld: Wurstfeld | null = null;
+  private gewU: Float64Array[] = [];
+  private gewV: Float64Array[] = [];
+  /** je Punkt der Anteil seiner zwei Zeilen längs der Normale beim Greifen (das genaue Gedächtnis der Zeilen) */
+  private wurstMess0: Float64Array | null = null;
+  private sysWurst: NormalSystem | null = null;
 
   /** Zeiten je Teil einer Runde, aufsummiert (zum Messen) */
   readonly zeiten = { runden: 0, vermessen: 0, intrinsisch: 0, kruemmung: 0, schritte: 0, loesen: 0 };
@@ -548,9 +556,12 @@ export class HautAusKurven {
       this.sysC = null;
       if (opt.nurZeilen && this.cFrei.length) this.auftrag!.systeme.push({ n: this.cFrei.length, zeilen: this.vorkonditioniererZeilen(), daempfung: 1e-12 });
       this.cVor = vorlage ? vorlage.cVor : opt.nurZeilen ? null : this.vorkonditionierer();
-      // Wurstballon: die Wölbung mit Richtung, verteilt mit derselben Zerlegung (nur, wenn der Löser rechnet)
-      if (opt.wurst && ketten && this.cVor && this.cFrei.length)
+      // Wurstballon: die Wölbung mit Richtung (verteilt mit derselben Zerlegung) und je Punkt zwei Zeilen, eigene Zerlegung (nur, wenn
+      // der Löser rechnet)
+      if (opt.wurst && ketten && this.cVor && this.cFrei.length) {
         this.wurstFeld = new Wurstfeld(h, bind, ketten, ziele0, this.quelle, this.cFrei, this.cVor, HALT, this.gew, this.ruhe.nor, this.ruhe.kap);
+        this.wurstZeilenAnlegen();
+      }
       this.zeitZerlegen = Date.now() - t0;
       return;
     }
@@ -1052,15 +1063,289 @@ export class HautAusKurven {
   }
 
   /**
-   * Wurstballon: die Zahl je Punkt aus der Wölbung mit Richtung (`Wurstfeld`) für die Unbekannten der Krümmung; Quellen behalten ihre
-   * gemessene Krümmung, feste Punkte die beim Anlegen (wie `kruemmungIntrinsisch`)
+   * Wurstballon: je Zeilenpunkt zwei Zeilen statt der Laplace-Zeile. Die Gewichte des Lösers werden nach der Richtung der Kanten verteilt
+   * (cos² zur ersten Richtung, sin² zur zweiten, dazu ein kleiner Rest, damit keine Zeile leer bleibt); die Richtungen sind die
+   * Hauptrichtungen der Wölbung beim Greifen (an einem Rohr quer und längs). Je Zeile Gewicht ½, zusammen wie eine Laplace-Zeile; die
+   * Bindungen wie im System des Lösers. Eine eigene Zerlegung (die Vorlage gilt für die Laplace-Zeilen).
    */
-  private wurstKruemmung(ziele: Float64Array, nor: Float64Array, kap: Float64Array): Float64Array {
-    const c = Float64Array.from(kap);
-    for (let v = 0; v < this.h.n; v++) if (this.nr[v]! < 0) c[v] = this.ruhe.kap[v]!;
-    const z = this.wurstFeld!.ziel(ziele, nor);
-    for (let u = 0; u < this.cFrei.length; u++) if (Number.isFinite(z[u]!)) c[this.cFrei[u]!] = z[u]!;
-    return c;
+  private wurstZeilenAnlegen(): void {
+    const h = this.h;
+    const P = h.pos;
+    const nr = this.nr;
+    const W = this.wurstFeld!;
+    const nor = this.ruhe.nor;
+    const mess0 = new Float64Array(2 * h.n);
+    const zeilen: NormalZeile[] = [];
+    for (const i of this.zeilen) {
+      const [u0, v0] = W.basisVon(i);
+      const [a, b, c] = W.gedaechtnisVon(i);
+      const phi = 0.5 * Math.atan2(2 * b, a - c);
+      const cs = Math.cos(phi);
+      const sn = Math.sin(phi);
+      const ux = cs * u0[0] + sn * v0[0];
+      const uy = cs * u0[1] + sn * v0[1];
+      const uz = cs * u0[2] + sn * v0[2];
+      const vx = -sn * u0[0] + cs * v0[0];
+      const vy = -sn * u0[1] + cs * v0[1];
+      const vz = -sn * u0[2] + cs * v0[2];
+      const nb = h.nachbarn[i]!;
+      const g = this.gew[i]!;
+      const nx = nor[3 * i]!;
+      const ny = nor[3 * i + 1]!;
+      const nz = nor[3 * i + 2]!;
+      const wu = new Float64Array(nb.length);
+      const wv = new Float64Array(nb.length);
+      let su = 0;
+      let sv = 0;
+      for (let k = 0; k < nb.length; k++) {
+        const gk = g[k]!;
+        if (gk === 0) continue;
+        const j = nb[k]!;
+        const ex = P[3 * j]! - P[3 * i]!;
+        const ey = P[3 * j + 1]! - P[3 * i + 1]!;
+        const ez = P[3 * j + 2]! - P[3 * i + 2]!;
+        const en = ex * nx + ey * ny + ez * nz;
+        const tx = ex - en * nx;
+        const ty = ey - en * ny;
+        const tz = ez - en * nz;
+        const lt2 = tx * tx + ty * ty + tz * tz;
+        let cu2 = 0.5;
+        let cv2 = 0.5;
+        if (lt2 > 1e-18) {
+          const cu = (tx * ux + ty * uy + tz * uz) / Math.sqrt(lt2);
+          const cv = (tx * vx + ty * vy + tz * vz) / Math.sqrt(lt2);
+          cu2 = cu * cu;
+          cv2 = cv * cv;
+        }
+        wu[k] = gk * (cu2 + WURST_REST);
+        wv[k] = gk * (cv2 + WURST_REST);
+        su += wu[k]!;
+        sv += wv[k]!;
+      }
+      for (let k = 0; k < nb.length; k++) {
+        if (su > 0) wu[k] = wu[k]! / su;
+        if (sv > 0) wv[k] = wv[k]! / sv;
+      }
+      this.gewU[i] = wu;
+      this.gewV[i] = wv;
+      // beide Zeilen beim Greifen, längs der Normale gemessen
+      [wu, wv].forEach((w, r) => {
+        let rx = P[3 * i]!;
+        let ry = P[3 * i + 1]!;
+        let rz = P[3 * i + 2]!;
+        for (let k = 0; k < nb.length; k++) {
+          const wk = w[k]!;
+          if (wk === 0) continue;
+          rx -= wk * P[3 * nb[k]!]!;
+          ry -= wk * P[3 * nb[k]! + 1]!;
+          rz -= wk * P[3 * nb[k]! + 2]!;
+        }
+        mess0[2 * i + r] = rx * nx + ry * ny + rz * nz;
+      });
+      for (const w of [wu, wv]) {
+        const index: number[] = [];
+        const wert: number[] = [];
+        if (nr[i]! >= 0) {
+          index.push(nr[i]!);
+          wert.push(1);
+        }
+        for (let k = 0; k < nb.length; k++) {
+          if (nr[nb[k]!]! < 0 || w[k] === 0) continue;
+          index.push(nr[nb[k]!]!);
+          wert.push(-w[k]!);
+        }
+        if (index.length) zeilen.push({ index, wert, gewicht: 0.5 });
+      }
+    }
+    const { ecken, b } = this.bind;
+    for (const j of this.js) {
+      const index: number[] = [];
+      const wert: number[] = [];
+      for (let e = 0; e < 3; e++) {
+        const v = ecken[3 * j + e]!;
+        if (nr[v]! < 0 || b[3 * j + e] === 0) continue;
+        index.push(nr[v]!);
+        wert.push(b[3 * j + e]!);
+      }
+      if (index.length) zeilen.push({ index, wert, gewicht: this.gewicht });
+    }
+    this.wurstMess0 = mess0;
+    this.sysWurst = normalSystemZerlegt(this.frei.length, zeilen, 1e-9, false);
+  }
+
+  /**
+   * Eine Runde des Wurstballons. Je Zeile ihr Wert jetzt und dessen Anteil längs der Normale; das Ziel dieses Anteils kommt aus der Wölbung
+   * K des Punkts mit den Kanten jetzt (½ Σ w λ² κ_K(Richtung der Kante)). Die Zeile soll ihren Wert behalten, längs der Normale um die
+   * gedämpfte Differenz zum Ziel verschoben (wie der Löser nach der Geometrie); wo K nicht gilt (harte Loops, Ecken), bleibt sie. Dann
+   * die Bindungen, Lösen und der Spiegel wie im Löser.
+   */
+  private wurstRunde(ziele: Float64Array): void {
+    const h = this.h;
+    const P = h.pos;
+    const nr = this.nr;
+    const nf = this.frei.length;
+    const t0 = jetzt();
+    const m = vermessen(h, this.gew);
+    const W = this.wurstFeld!;
+    const K = W.tensoren(ziele, m.nor);
+    const t1 = jetzt();
+    if (!this.beta) {
+      this.beta = new Float64Array(h.n).fill(DAEMPFUNG);
+      this.dVorher = new Float64Array(h.n);
+    }
+    const rhs = new Float64Array(3 * nf);
+    const R = new Float64Array(6);
+    const D = new Float64Array(2);
+    for (const i of this.zeilen) {
+      const nb = h.nachbarn[i]!;
+      const nx = m.nor[3 * i]!;
+      const ny = m.nor[3 * i + 1]!;
+      const nz = m.nor[3 * i + 2]!;
+      // Wölbung des Punkts und sein Gedächtnis als Unterschied (das Gedächtnis selbst gibt die Messung beim Greifen genau wieder)
+      const [ga, gb, gc] = W.gedaechtnisVon(i);
+      const ka = K[3 * i]! - ga;
+      const kb = K[3 * i + 1]! - gb;
+      const kc = K[3 * i + 2]! - gc;
+      const gilt = Number.isFinite(ka) && Number.isFinite(kb) && Number.isFinite(kc);
+      // Basis der Wölbung (beim Greifen) in die Tangentialebene jetzt gedreht
+      const [bu] = W.basisVon(i);
+      const bn = bu[0] * nx + bu[1] * ny + bu[2] * nz;
+      let ux = bu[0] - bn * nx;
+      let uy = bu[1] - bn * ny;
+      let uz = bu[2] - bn * nz;
+      const ul = Math.hypot(ux, uy, uz) || 1;
+      ux /= ul;
+      uy /= ul;
+      uz /= ul;
+      const vx = ny * uz - nz * uy;
+      const vy = nz * ux - nx * uz;
+      const vz = nx * uy - ny * ux;
+      for (let r = 0; r < 2; r++) {
+        const w = r === 0 ? this.gewU[i]! : this.gewV[i]!;
+        let rx = P[3 * i]!;
+        let ry = P[3 * i + 1]!;
+        let rz = P[3 * i + 2]!;
+        let tn = 0;
+        for (let k = 0; k < nb.length; k++) {
+          const wk = w[k]!;
+          if (wk === 0) continue;
+          const j = nb[k]!;
+          rx -= wk * P[3 * j]!;
+          ry -= wk * P[3 * j + 1]!;
+          rz -= wk * P[3 * j + 2]!;
+          if (!gilt) continue;
+          const ex = P[3 * j]! - P[3 * i]!;
+          const ey = P[3 * j + 1]! - P[3 * i + 1]!;
+          const ez = P[3 * j + 2]! - P[3 * i + 2]!;
+          const en = ex * nx + ey * ny + ez * nz;
+          const tx = ex - en * nx;
+          const ty = ey - en * ny;
+          const tz = ez - en * nz;
+          const lt2 = tx * tx + ty * ty + tz * tz;
+          if (!(lt2 > 1e-18)) continue;
+          const lt = Math.sqrt(lt2);
+          const cu = (tx * ux + ty * uy + tz * uz) / lt;
+          const cv = (tx * vx + ty * vy + tz * vz) / lt;
+          tn += 0.5 * wk * lt2 * (ka * cu * cu + 2 * kb * cu * cv + kc * cv * cv);
+        }
+        R[3 * r] = rx;
+        R[3 * r + 1] = ry;
+        R[3 * r + 2] = rz;
+        D[r] = gilt ? this.wurstMess0![2 * i + r]! + tn - (rx * nx + ry * ny + rz * nz) : 0;
+      }
+      // Dämpfung je Punkt wie im Löser nach der Geometrie: wechselt die Korrektur das Vorzeichen, halbiert, sonst wieder hinauf
+      const d = D[0]! + D[1]!;
+      const b = MESSREIHE.fest ? DAEMPFUNG : d * this.dVorher![i]! < 0 ? Math.max(0.02, 0.5 * this.beta![i]!) : Math.min(DAEMPFUNG, 1.25 * this.beta![i]!);
+      this.beta![i] = b;
+      this.dVorher![i] = d;
+      for (let r = 0; r < 2; r++) {
+        const w = r === 0 ? this.gewU[i]! : this.gewV[i]!;
+        const kr = this.anteil * b * D[r]!;
+        let dx = R[3 * r]! + kr * nx;
+        let dy = R[3 * r + 1]! + kr * ny;
+        let dz = R[3 * r + 2]! + kr * nz;
+        // was fest bleibt, auf die rechte Seite
+        if (nr[i]! < 0) {
+          dx -= P[3 * i]!;
+          dy -= P[3 * i + 1]!;
+          dz -= P[3 * i + 2]!;
+        }
+        for (let k = 0; k < nb.length; k++) {
+          const j = nb[k]!;
+          if (w[k] === 0 || nr[j]! >= 0) continue;
+          dx += w[k]! * P[3 * j]!;
+          dy += w[k]! * P[3 * j + 1]!;
+          dz += w[k]! * P[3 * j + 2]!;
+        }
+        const u = nr[i]!;
+        if (u >= 0) {
+          rhs[3 * u] = rhs[3 * u]! + 0.5 * dx;
+          rhs[3 * u + 1] = rhs[3 * u + 1]! + 0.5 * dy;
+          rhs[3 * u + 2] = rhs[3 * u + 2]! + 0.5 * dz;
+        }
+        for (let k = 0; k < nb.length; k++) {
+          const q = nr[nb[k]!]!;
+          if (q < 0 || w[k] === 0) continue;
+          const f = 0.5 * w[k]!;
+          rhs[3 * q] = rhs[3 * q]! - f * dx;
+          rhs[3 * q + 1] = rhs[3 * q + 1]! - f * dy;
+          rhs[3 * q + 2] = rhs[3 * q + 2]! - f * dz;
+        }
+      }
+    }
+    // Bindungen wie im Löser
+    const { ecken, b } = this.bind;
+    this.js.forEach((j, u) => {
+      let zx = this.haut0[3 * u]! + ziele[3 * j]! - this.ziel0[3 * u]!;
+      let zy = this.haut0[3 * u + 1]! + ziele[3 * j + 1]! - this.ziel0[3 * u + 1]!;
+      let zz = this.haut0[3 * u + 2]! + ziele[3 * j + 2]! - this.ziel0[3 * u + 2]!;
+      for (let e = 0; e < 3; e++) {
+        const v = ecken[3 * j + e]!;
+        if (nr[v]! >= 0) continue;
+        const w = b[3 * j + e]!;
+        zx -= w * P[3 * v]!;
+        zy -= w * P[3 * v + 1]!;
+        zz -= w * P[3 * v + 2]!;
+      }
+      for (let e = 0; e < 3; e++) {
+        const v = nr[ecken[3 * j + e]!]!;
+        if (v < 0) continue;
+        const w = this.gewicht * b[3 * j + e]!;
+        rhs[3 * v] = rhs[3 * v]! + w * zx;
+        rhs[3 * v + 1] = rhs[3 * v + 1]! + w * zy;
+        rhs[3 * v + 2] = rhs[3 * v + 2]! + w * zz;
+      }
+    });
+    const tl = jetzt();
+    const x = this.sysWurst!.loesen(rhs);
+    for (let u = 0; u < nf; u++) {
+      const v = this.frei[u]!;
+      P[3 * v] = x[3 * u]!;
+      P[3 * v + 1] = x[3 * u + 1]!;
+      P[3 * v + 2] = x[3 * u + 2]!;
+    }
+    // genau spiegelgleich halten (wie im Löser)
+    for (let u = 0; u < nf; u++) {
+      const v = this.frei[u]!;
+      const w = h.spiegel[v]!;
+      if (w < 0 || w < v) continue;
+      if (w === v) {
+        P[3 * v + 2] = 0;
+        continue;
+      }
+      if (nr[w]! < 0) continue;
+      const mx = 0.5 * (P[3 * v]! + P[3 * w]!);
+      const my = 0.5 * (P[3 * v + 1]! + P[3 * w + 1]!);
+      const mz = 0.5 * (P[3 * v + 2]! - P[3 * w + 2]!);
+      P[3 * v] = mx;
+      P[3 * v + 1] = my;
+      P[3 * v + 2] = mz;
+      P[3 * w] = mx;
+      P[3 * w + 1] = my;
+      P[3 * w + 2] = -mz;
+    }
+    this.zeiten.vermessen += t1 - t0;
+    this.zeiten.loesen += jetzt() - tl;
   }
 
   /** `iterationen` Runden zu den Zielen `ziele` (3 je Bindung) */
@@ -1077,6 +1362,13 @@ export class HautAusKurven {
         if (!this.lagenVorher) this.lagenVorher = new Float64Array(P.length);
         this.lagenVorher.set(P);
       }
+      // Wurstballon: zwei Zeilen je Punkt (eigene Runde), dann wie sonst die Vorsicht
+      if (this.sysWurst) {
+        this.wurstRunde(ziele);
+        this.zeiten.runden++;
+        if (this.mitVorsicht && this.vorsichtPruefen(ziele)) it--;
+        continue;
+      }
       // mit Richtung an den Linien: Normalen nach Max (sonst misst das Maß im Inneren die Krümmung zu flach, und die genaue Messung an
       // den Linien passt nicht dazu: die Haut bläht sich auf)
       const m = vermessen(h, this.gew, this.maxNormalen || (this.richtung && MESSREIHE.maxNormalen) ? hautNormalenMax(h) : undefined);
@@ -1090,7 +1382,7 @@ export class HautAusKurven {
         geo = this.messenIntrinsisch(ig, m.nor);
         const t2 = jetzt();
         seiten = this.richtung ? this.seitenMessen(this.richtung, m.nor, m.kap) : null;
-        c = this.wurstFeld ? this.wurstKruemmung(ziele, m.nor, geo.kap) : this.kruemmungIntrinsisch(geo.kap, ig, seiten);
+        c = this.kruemmungIntrinsisch(geo.kap, ig, seiten);
         this.zeiten.intrinsisch += t2 - t1;
         this.zeiten.kruemmung += jetzt() - t2;
         if (!this.beta) {

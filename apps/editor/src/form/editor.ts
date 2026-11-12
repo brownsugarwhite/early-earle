@@ -2856,8 +2856,9 @@ function zugRechnen(): void {
   }
   zeiten.push(performance.now() - t0);
   if (zeiten.length > 200) zeiten.shift();
-  // über die ganze Haut nach der Geometrie: verfeinern, sobald sie gestreckt wird
-  if (neuesZiel && LIVE && GEWICHTE === 'geometrie' && !z.griff && !z.begrenzt && !verfeinerung && !eingetroffen && letzteMaus && (gestreckt() || linieUngenau(z)) && umgeschlageneZahl() <= z.umgAnfang) {
+  // über die ganze Haut nach der Geometrie: verfeinern, sobald sie gestreckt wird (nicht beim Wurstballon: Er zerlegt jeden neuen Löser
+  // selbst, ein eingewechseltes Netz hielte den Zug an; verdichtet wird beim Aufräumen nach dem Loslassen)
+  if (neuesZiel && LIVE && GEWICHTE === 'geometrie' && !RICHTUNG_OPT.wurst && !z.griff && !z.begrenzt && !verfeinerung && !eingetroffen && letzteMaus && (gestreckt() || linieUngenau(z)) && umgeschlageneZahl() <= z.umgAnfang) {
     const [X, Y] = letzteMaus;
     if (HINTERGRUND) stufeImHintergrund(z, X, Y);
     else zugStufe(z, X, Y);
