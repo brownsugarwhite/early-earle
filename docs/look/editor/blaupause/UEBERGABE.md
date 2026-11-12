@@ -460,3 +460,23 @@ Streifen liegt wieder zwischen Körper und Petrol (außerhalb des Körpers), so 
 innen beim doppelten Versatz: `qA = min(dE, 2·dA − dE)`); kein Streifen auf dem Körper, keine Brücke — Linien enden am Körperrand.
 Commit `0c32a375`, Artefakt Version 17, Bild `docs/progress/editor/editor-tiktok-ohne-bruecken-2026-11-12.png`. Server 5194
 („kurven-alt“) war aus und ist über die Vorschau neu gestartet.
+
+**Danach (Florian 12.11.: „Die Bodenkontakt-Bubble verhält sich noch seltsam. Je weiter ich von oben schaue, desto größer und heller
+müsste sie werden, ganz von oben kaum noch zu sehen. Von schräg oben … wie in meinem Referenzblob eine schöne Ellipse … mehr wie ein
+echter Kontaktbereich. Das Wesen in 3D sollte immer schon ein Auge haben. Das Verjüngen der Shaderkanten … oft sehr kurz und die Spitze
+in eine Richtung ausgekerbt statt smooth und gleichmäßig“):**
+- **Bodenkontakt am Boden** (Knopf „Kontakt am Boden“, Standard an): die unterste Schicht der Haut (12 % der Höhe) nach Gruppen am Boden,
+  je Gruppe eine waagerechte Ellipse knapp über ihrem tiefsten Punkt, Halbachsen aus dem Querschnitt in dieser Höhe (× 0,8 für den
+  Glasrand). Das Jelly sieht sie durchs Glas: der Blick geht durch den Körper bis zur Ellipse. Dadurch von schräg oben eine Ellipse mit
+  Abstand zur Kontur, je höher der Blick, desto größer (weniger verkürzt); die Stärke fällt mit der Blickhöhe (× 0,12 von oben).
+- **Auge** (Vorlage `docs/look/wesen-refs/bild01-jellyblob.png`): ein dunkles Schlitzauge (Höhe 0,3, Breite 0,08 des vorderen Drittels)
+  vorn auf der Mittelebene, auf halber Körperhöhe, an einer Stelle, die nach vorn schaut (nicht unter der Mitte: dort liegen Mäuler).
+  Bei „strange bird“ landet es vorn auf der Schnauze (keine Stirn, die nach vorn schaut).
+- **Kanten der Überdeckung aus Tiefensprüngen** (`kantenFeld`, Standard; `kantenTiefe: false` = umgestülpter Körper wie bisher): Saat, wo
+  ein Nachbar im Körper um mehr als das 2,5-Fache der eigenen Neigung weiter hinten liegt (sonst zeichnen steile Flächen am Umriss
+  falsche Linien), mindestens 4 Bildpunkte und 0,15 der vollen Breite; die Größe des Sprungs längs der Kante weich gerechnet, die Saat
+  geflutet. Die Linie liegt mittig auf der Kante und wächst mit dem Sprung von null (spitzes Ende) bis zur vollen Breite (Sprung 0,2 des
+  Körperhalbmessers); zur Outline hin über 6 Bildpunkte voll breit. Mehr Überdeckungen bekommen jetzt eine Kante (Schnauze von vorn ganz).
+  Offen: an manchen Einmündungen in die Outline eine kleine Kerbe, Ränder dünner Linien leicht unruhig.
+Commit `f0999831` (`claude/form-spiegel`), Artefakt Version 18, Bilder `docs/progress/editor/editor-jelly-kontakt-hoehen-2026-11-12.jpg`,
+`editor-jelly-auge-2026-11-12.jpg`, `editor-kanten-tiefensprung-2026-11-12.jpg`.
