@@ -234,6 +234,8 @@ for (let mal = 1; mal <= MAL; mal++) {
   if (!geplatzt) await seite.waitForTimeout(HALTEN);
   if (process.env.BILD) await seite.screenshot({ path: `${process.env.BILD}-zug${mal}-gehalten.jpg`, type: 'jpeg', quality: 85 });
   const vorLos = await K('zeiten');
+  // glatte Anzeige (`&anzeige=glatt`): was sie im Zug je Bild kostet
+  const glattImZug = await seite.evaluate(() => window.__kurven.glatt?.() ?? null);
   const hVor = await heil();
   await seite.mouse.up();
   const tLos = await seite.evaluate(() => performance.now());
@@ -266,6 +268,7 @@ for (let mal = 1; mal <= MAL; mal++) {
   if (geplatzt) console.log(`  GEPLATZT bei Schritt ${geplatzt.schritt}: ${geplatzt.punkte} Punkte, größte Koordinate ${geplatzt.max}, nicht endliche Lagen ${geplatzt.kaputt}`);
   console.log(`  Greifen: erste Bewegung der Haut ${erste ? `${Math.round(erste.t - tDruck)} ms nach dem Drücken` : 'keine'}`);
   console.log(`  im Zug (${((tLos - tDruck) / 1000).toFixed(1)} s): ${imZug.length} Bilder, Abstand Median ${q(0.5).toFixed(0)} ms, 95 % ${q(0.95).toFixed(0)} ms, längster ${(ab[ab.length - 1] ?? NaN).toFixed(0)} ms · je Runde ${mittel.toFixed(1)} ms`);
+  if (glattImZug) console.log(`  glatte Anzeige im Zug: ${glattImZug.stufen} Stufen, ${glattImZug.dreiecke} Dreiecke, ${glattImZug.ms.toFixed(1)} ms je Bild, Linienbänder ${glattImZug.baenderMs.toFixed(1)} ms`);
   console.log(`  beim Loslassen: Haut steht ${vorLos.offen ? 'NICHT' : ''} (Runden seit der letzten Mausbewegung ${vorLos.nachRunden}) · ${hVor.punkte} Punkte, größte Koordinate ${hVor.max}`);
   console.log(`  nach dem Loslassen: das Fenster steht höchstens ${still.toFixed(0)} ms still (Bilder über 100 ms Abstand: ${nachLos.filter((b) => b.ab > 100).length}) · letzte Bewegung der Haut nach ${letzteBewegung ? ((letzteBewegung.t - tLos) / 1000).toFixed(1) : '0'} s, alles ruht nach ${((tRuhe - tLos) / 1000).toFixed(1)} s (${ruhe}) · Netzwechsel: ${wechsel.length ? wechsel.join(', ') : 'keiner'}`);
   console.log(`  Auftrag im Hintergrund: ${JSON.stringify(z.auftrag)}`);

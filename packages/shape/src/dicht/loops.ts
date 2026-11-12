@@ -1226,10 +1226,10 @@ export type PfadKante = { ja: number; jb: number; a: number; b: number; k: [V3, 
  * aufeinanderfolgender Proben `ja`, `jb` die Punkte der Haut `a`, `b` und die vier Kontrollpunkte des kubischen Bézier-Stücks von a
  * nach b (ein Stück eines kubischen Béziers ist wieder einer). Damit legt die Anzeige jede Kante der Haut, die auf einer Linie liegt,
  * genau auf den Pfad, so fein sie auch unterteilt. Null ohne Pfad oder wenn der Loop nicht ins Netz eingesetzt ist. Wie `pfadLagen`
- * nur die eigene Hälfte (Ring, Paar), die Mittelebene und die Enden eines Rings genau bei z = 0. Eine Kante, deren Proben in
+ * nur die eigene Hälfte (Ring, Paar), die Mittelebene und die Enden eines Rings genau bei z = 0, und mit `P`/`G` der Pfad im Zug. Eine Kante, deren Proben in
  * verschiedenen Stücken liegen (zwischen ihnen ein Punkt, der keine Probe ist), fehlt in der Liste.
  */
-export function pfadKanten(l: Loop): PfadKante[] | null {
+export function pfadKanten(l: Loop, P?: readonly V3[], G?: readonly { ein: V3; aus: V3 }[]): PfadKante[] | null {
   if (!hatPfad(l)) return null;
   if (!l.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2])) return null;
   const n = l.proben.length;
@@ -1238,14 +1238,12 @@ export function pfadKanten(l: Loop): PfadKante[] | null {
   for (const st of stuecke(l)) {
     const h = st.s1 - st.s0;
     if (!(h > 1e-9)) continue;
-    const A = l.punkte[st.a]!;
-    const B = l.punkte[st.b]!;
-    const C: [V3, V3, V3, V3] = [
-      A.ref,
-      { x: A.ref.x + A.aus!.x, y: A.ref.y + A.aus!.y, z: A.ref.z + A.aus!.z },
-      { x: B.ref.x + B.ein!.x, y: B.ref.y + B.ein!.y, z: B.ref.z + B.ein!.z },
-      B.ref,
-    ];
+    // wie `pfadLagen`: andere Lagen der Punkte (`P`) und andere Griffe (`G`), solange gezogen wird
+    const A = P?.[st.a] ?? l.punkte[st.a]!.ref;
+    const B = P?.[st.b] ?? l.punkte[st.b]!.ref;
+    const a = G?.[st.a]?.aus ?? l.punkte[st.a]!.aus!;
+    const b = G?.[st.b]?.ein ?? l.punkte[st.b]!.ein!;
+    const C: [V3, V3, V3, V3] = [A, { x: A.x + a.x, y: A.y + a.y, z: A.z + a.z }, { x: B.x + b.x, y: B.y + b.y, z: B.z + b.z }, B];
     const drin: { j: number; t: number }[] = [];
     for (let j = 0; j < n; j++) {
       const x = imStueck(l, st, l.s[j]!);

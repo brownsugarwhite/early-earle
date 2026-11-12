@@ -137,32 +137,49 @@ export function anzeigeNetz(h: Haut, loops: readonly Loop[], lagen: ArrayLike<nu
 }
 
 /** Kanten eines Netzes: je Kante ihre Enden (a < b) und die gegenüberliegenden Punkte (d = −1: Rand), je Dreiecksseite ihre Kante */
-function kantenVon(tri: Uint32Array, n: number): { a: Int32Array; b: Int32Array; c: Int32Array; d: Int32Array; seite: Uint32Array } {
+export type Kanten = { a: Int32Array; b: Int32Array; c: Int32Array; d: Int32Array; seite: Uint32Array };
+
+/**
+ * Die Kanten eines Netzes, in der Reihenfolge, in der die Dreiecke sie zum ersten Mal nennen. Gesucht wird in einer Streutabelle aus
+ * Zahlenfeldern (eine `Map` brauchte bei 100 000 Kanten ein Vielfaches der Zeit; die Anzeige baut die Kanten bei jedem Netzwechsel).
+ */
+export function kantenVon(tri: Uint32Array, n: number): Kanten {
   const F = tri.length / 3;
-  const nr = new Map<number, number>();
-  const a: number[] = [];
-  const b: number[] = [];
-  const c: number[] = [];
-  const d: number[] = [];
+  let platz = 16;
+  while (platz < 4 * F) platz *= 2;
+  const maske = platz - 1;
+  const tafel = new Int32Array(platz).fill(-1);
+  const a = new Int32Array(3 * F);
+  const b = new Int32Array(3 * F);
+  const c = new Int32Array(3 * F);
+  const d = new Int32Array(3 * F);
   const seite = new Uint32Array(3 * F);
+  let E = 0;
   for (let f = 0; f < F; f++)
     for (let e = 0; e < 3; e++) {
       const p = tri[3 * f + e]!;
       const q = tri[3 * f + ((e + 1) % 3)]!;
       const r = tri[3 * f + ((e + 2) % 3)]!;
-      const s = schluessel(p, q, n);
-      let i = nr.get(s);
-      if (i === undefined) {
-        i = a.length;
-        nr.set(s, i);
-        a.push(Math.min(p, q));
-        b.push(Math.max(p, q));
-        c.push(r);
-        d.push(-1);
+      const lo = p < q ? p : q;
+      const hi = p < q ? q : p;
+      let h = (Math.imul(lo, 73856093) ^ Math.imul(hi, 19349663)) & maske;
+      let i = tafel[h]!;
+      while (i >= 0 && (a[i] !== lo || b[i] !== hi)) {
+        h = (h + 1) & maske;
+        i = tafel[h]!;
+      }
+      if (i < 0) {
+        i = E++;
+        tafel[h] = i;
+        a[i] = lo;
+        b[i] = hi;
+        c[i] = r;
+        d[i] = -1;
       } else d[i] = r;
       seite[3 * f + e] = i;
     }
-  return { a: Int32Array.from(a), b: Int32Array.from(b), c: Int32Array.from(c), d: Int32Array.from(d), seite };
+  void n;
+  return { a: a.slice(0, E), b: b.slice(0, E), c: c.slice(0, E), d: d.slice(0, E), seite };
 }
 
 /**
@@ -458,6 +475,11 @@ export function verfeinernGekruemmt(net: AnzeigeNetz, normalen: ArrayLike<number
       pfad.set(a * M + m, { k: links, hart: p.hart });
       pfad.set(b * M + m, { k: rechts, hart: p.hart });
       if (p.hart) fest[m] = 1;
+      continue;
+    }
+    // eine Randkante ohne Pfad bleibt gerade (der Rand der Maulöffnung: Dort schließt das Innere an, das nicht verfeinert wird)
+    if (K.d[i]! < 0) {
+      for (let x = 0; x < 3; x++) Q[3 * m + x] = 0.5 * (P[3 * a + x]! + P[3 * b + x]!);
       continue;
     }
     let wa = 0;

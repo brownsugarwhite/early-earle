@@ -21,6 +21,7 @@ import {
   mittlereKante,
   pfadAbweichung,
   pfadBei,
+  pfadKanten,
   pfadLagen,
   pfadParameter,
   pfadVersatz,
@@ -445,6 +446,61 @@ describe('Die Linie ist ihr Pfad', () => {
     for (const t of [0.1, 0.37, 0.5, 0.82]) {
       const q = stueckPunkt(P0, a, b, P3, t);
       expect(Math.abs(stueckNaechstes(P0, a, b, P3, q, t > 0.5 ? 0.2 : 0.8) - t)).toBeLessThan(1e-6);
+    }
+  });
+});
+
+// Plan vom 12.11., Schritt 1 „glatte Anzeige“: Die Anzeige verfeinert jede Kante der Haut auf einer Linie längs ihres Pfads. Dafür
+// gibt `pfadKanten` je Kante das Stück des Pfads zwischen ihren beiden Proben als eigenen kubischen Bézier.
+describe('Pfadstücke je Kante der Haut (`pfadKanten`)', () => {
+  const mitte = (k: readonly V3[]): V3 => ({
+    x: (k[0]!.x + 3 * k[1]!.x + 3 * k[2]!.x + k[3]!.x) / 8,
+    y: (k[0]!.y + 3 * k[1]!.y + 3 * k[2]!.y + k[3]!.y) / 8,
+    z: (k[0]!.z + 3 * k[1]!.z + 3 * k[2]!.z + k[3]!.z) / 8,
+  });
+
+  it('Enden auf den Proben des Pfads, die Mitte jedes Stücks auf dem Pfad, die Punkte der Haut sind die der Proben', () => {
+    const { loops } = dreiLoopsGenau();
+    for (const l of loops) {
+      const K = pfadKanten(l)!;
+      const P = pfadLagen(l)!;
+      const n = l.proben.length;
+      expect(K.length).toBeGreaterThan(0);
+      expect(K.length).toBeLessThanOrEqual(l.art === 'ring' ? n - 1 : n);
+      let ende = 0;
+      let innen = 0;
+      for (const e of K) {
+        ende = Math.max(ende, abstand(e.k[0], lage(P, e.ja)), abstand(e.k[3], lage(P, e.jb)));
+        expect(e.a).toBe(l.proben[e.ja]!.ecken[0]);
+        expect(e.b).toBe(l.proben[e.jb]!.ecken[0]);
+        // die Mitte des Stücks ist der Pfad in der Mitte zwischen den Stellen der beiden Proben
+        const s0 = l.s[e.ja]!;
+        const s1 = l.s[e.jb]! < s0 ? l.s[e.jb]! + l.laenge : l.s[e.jb]!;
+        const sm = (s0 + s1) / 2;
+        const soll = pfadBei(l, sm >= l.laenge ? sm - l.laenge : sm)!;
+        innen = Math.max(innen, abstand(mitte(e.k), soll));
+      }
+      log(`Loop ${l.id} (${l.art}): ${K.length} Stücke auf ${n} Proben, Enden bis ${ende.toExponential(1)}, Mitte bis ${innen.toExponential(1)} neben dem Pfad`);
+      expect(ende).toBeLessThan(1e-9);
+      expect(innen).toBeLessThan(1e-6);
+    }
+  });
+
+  it('im Zug (andere Punkte, andere Griffe) sind es die Stücke des Pfads im Zug', () => {
+    const { loops } = dreiLoopsGenau();
+    for (const l of loops) {
+      const P = l.punkte.map((p) => ({ x: p.ref.x + 6, y: p.ref.y - 4, z: p.ref.z }));
+      const G = l.punkte.map((p) => ({
+        ein: { x: 1.3 * p.ein!.x, y: 1.3 * p.ein!.y, z: 1.3 * p.ein!.z },
+        aus: { x: 0.8 * p.aus!.x, y: 0.8 * p.aus!.y, z: 0.8 * p.aus!.z },
+      }));
+      const K = pfadKanten(l, P, G)!;
+      const L = pfadLagen(l, P, G)!;
+      expect(K.length).toBeGreaterThan(0);
+      for (const e of K) {
+        expect(abstand(e.k[0], lage(L, e.ja))).toBeLessThan(1e-9);
+        expect(abstand(e.k[3], lage(L, e.jb))).toBeLessThan(1e-9);
+      }
     }
   });
 });

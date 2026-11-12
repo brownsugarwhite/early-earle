@@ -83,6 +83,7 @@ import {
   mittlereKante,
   mundwinkelProbe,
   pfadAbweichung,
+  pfadKanten,
   pfadParameter,
   pfadVersatz,
   punktEinfuegen,
@@ -125,6 +126,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { V2 } from '@ee/shape';
 import { istTrackpad, radFaktor } from '../viewports/ansicht2d';
 import { type WesenStand, auskunft, entpacken, packen, pruefen } from './ablage';
+import { GlattPlan, type LinienKante } from './glattPlan';
 import {
   type AufraeumAuftrag,
   type AufraeumErgebnis,
@@ -152,6 +154,31 @@ const MAULFARBE = 0x7a3431;
 const SICHT = 560;
 /** bestellte Dreiecke der Haut (Surface Nets geben etwa das 1,5-Fache); `?dreiecke=` für Messungen mit feineren Netzen */
 const DREIECKE = Number(new URLSearchParams(location.search).get('dreiecke') ?? 6000);
+/**
+ * Glatte Anzeige (Plan vom 12.11., Schritt 1; Florian: „Spalte 3 einbauen“), `?anzeige=glatt`: Die Haut wird nur für die Anzeige
+ * verfeinert (`glattPlan.ts`: Lagen ohne Glätten, die Fläche geht durch alle Rechenpunkte, Kanten auf Linien liegen auf ihrem
+ * Pfad; Normalen der gewöhnlichen Unterteilung), die Farbstufe ist einen Bildpunkt breit geglättet, und an der Spiegelebene wird je
+ * Bildpunkt geschnitten statt je Netzpunkt. An der Rechnung ändert das nichts. Ohne den Schalter ist alles wie vorher.
+ */
+const GLATT = new URLSearchParams(location.search).get('anzeige') === 'glatt';
+/**
+ * Stufen der Verfeinerung (jede vervierfacht die Dreiecke), `?fein=0|1|2|3` legt sie fest. Ohne Angabe: Solange sich die Haut
+ * ändert, eine Stufe, bei mehr als `GLATT_GROSS` Punkten keine (gemessen am 12.11. an „strange bird“, 16 010 Punkte: eine Stufe
+ * kostet dort 7,8 ms je Bild, bei einer Löserrunde von 17 ms; die Farbstufen laufen schon ohne Verfeinerung ruhig, weil sie an den
+ * Normalen hängen, nicht an der Zahl der Dreiecke). `GLATT_RUHE_MS` nach der letzten Änderung zwei Stufen, wenn es nicht mehr als
+ * `GLATT_HOECHSTENS` Dreiecke werden, sonst eine: Dann sind auch Umriss und Linien glatt. Mit dem kleinen Rechennetz (Schritt 2 des
+ * Plans) passen zwei Stufen in jedes Bild.
+ */
+const FEIN = Number(new URLSearchParams(location.search).get('fein') ?? -1);
+const GLATT_GROSS = 6000;
+const GLATT_HOECHSTENS = 700_000;
+const GLATT_RUHE_MS = 200;
+/**
+ * Normalen der glatten Anzeige: je Rechenpunkt gemessen, so oft beruhigt und mit den Lagen verfeinert (`GlattPlan.rechnen`). An ihnen
+ * hängen die Farbstufen. `?ruhe=-1`: die Normalen der gewöhnlich unterteilten Fläche wie im Vergleichsbild vom 12.11. (zum Vergleich;
+ * auf dem ungleichmäßigen Netz laufen die Farbstufen damit in Wellen).
+ */
+const GLATT_RUHE = Number(new URLSearchParams(location.search).get('ruhe') ?? 3);
 /** Runden je Mausbewegung und beim Loslassen */
 const RUNDEN_ZUG = 2;
 const RUNDEN_ENDE = 4;
@@ -507,12 +534,54 @@ const stufen = new DataTexture(new Uint8Array([70, 135, 200, 255]), 4, 1, RedFor
 stufen.minFilter = NearestFilter;
 stufen.magFilter = NearestFilter;
 stufen.needsUpdate = true;
+/**
+ * Glatte Anzeige: an der Spiegelebene je Bildpunkt schneiden. Jeder gezeigte Punkt trägt seine Seite (`aSeite`: +1 die Hälfte z ≥ 0,
+ * −1 ihr Spiegelbild, 0 die Mittelkante); ein Bildpunkt, der auf der anderen Seite der Ebene liegt, fällt weg. Die Hälften reichen
+ * um `SCHNITT_RAND` über die Ebene, damit zwischen ihnen keine Fuge bleibt.
+ */
+const SCHNITT_RAND = 0.02;
+const SCHNITT_VERTEX = GLATT ? 'attribute float aSeite;\nvarying vec2 vSchnitt;' : '';
+const SCHNITT_VERTEX_MAIN = GLATT ? 'vSchnitt = vec2(aSeite, position.z);' : '';
+const SCHNITT_FRAGMENT = GLATT ? 'varying vec2 vSchnitt;' : '';
+const SCHNITT_FRAGMENT_MAIN = GLATT ? `if (vSchnitt.x * vSchnitt.y < -${SCHNITT_RAND.toFixed(3)} * abs(vSchnitt.x)) discard;` : '';
+/**
+ * Material der Haut. Glatte Anzeige: dieselben vier Stufen an denselben Schwellen wie `stufen`, die Grenze aber einen Bildpunkt
+ * breit geglättet (eine harte Schwelle je Bildpunkt gibt Treppen), dazu der Schnitt an der Spiegelebene.
+ */
+function hautMaterial(farbe: number): MeshToonMaterial {
+  if (!GLATT) return new MeshToonMaterial({ color: farbe, gradientMap: stufen });
+  const m = new MeshToonMaterial({ color: farbe });
+  m.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>\n${SCHNITT_VERTEX}`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>\n${SCHNITT_VERTEX_MAIN}`);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\n${SCHNITT_FRAGMENT}`)
+      .replace(
+        '#include <gradientmap_pars_fragment>',
+        /* glsl */ `
+        vec3 getGradientIrradiance( vec3 normal, vec3 lightDirection ) {
+          float x = dot( normal, lightDirection ) * 0.5 + 0.5;
+          float w = max( fwidth( x ), 1e-5 ) * 0.85;
+          float g = mix( 70.0 / 255.0, 135.0 / 255.0, smoothstep( 0.25 - w, 0.25 + w, x ) );
+          g = mix( g, 200.0 / 255.0, smoothstep( 0.5 - w, 0.5 + w, x ) );
+          g = mix( g, 1.0, smoothstep( 0.75 - w, 0.75 + w, x ) );
+          return vec3( g );
+        }`,
+      )
+      .replace('void main() {', `void main() {\n${SCHNITT_FRAGMENT_MAIN}`);
+  };
+  m.customProgramCacheKey = () => 'haut-glatt';
+  return m;
+}
 const umrissMaterial = new ShaderMaterial({
   uniforms: { uBreite: { value: 2.5 }, uAufloesung: { value: new Vector2(1, 1) }, uFarbe: { value: new Color(TINTE) } },
   vertexShader: /* glsl */ `
     uniform float uBreite;
     uniform vec2 uAufloesung;
+    ${SCHNITT_VERTEX}
     void main() {
+      ${SCHNITT_VERTEX_MAIN}
       vec4 clip = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       vec3 n = normalize(normalMatrix * normal);
       vec2 richtung = (projectionMatrix * vec4(n, 0.0)).xy;
@@ -525,7 +594,11 @@ const umrissMaterial = new ShaderMaterial({
   `,
   fragmentShader: /* glsl */ `
     uniform vec3 uFarbe;
-    void main() { gl_FragColor = vec4(uFarbe, 1.0); }
+    ${SCHNITT_FRAGMENT}
+    void main() {
+      ${SCHNITT_FRAGMENT_MAIN}
+      gl_FragColor = vec4(uFarbe, 1.0);
+    }
   `,
   side: BackSide,
   polygonOffset: true,
@@ -586,7 +659,7 @@ const bandMaterialien = [
 let hautGeometrie = new BufferGeometry();
 let hautLagen = new Float32Array(0);
 let hautNormalenPuffer = new Float32Array(0);
-const koerper = new Mesh(hautGeometrie, new MeshToonMaterial({ color: KOERPER, gradientMap: stufen }));
+const koerper = new Mesh(hautGeometrie, hautMaterial(KOERPER));
 const umriss = new Mesh(hautGeometrie, umrissMaterial);
 /**
  * Anzeige wie Edge Crease mit Auto Smooth: Ein Netzpunkt auf einer harten Linie wird doppelt gezeigt, jede Seite der Linie mit
@@ -673,7 +746,7 @@ const baender = bandMaterialien.map((m, i) => {
   b.renderOrder = 2 + i;
   return b;
 });
-const maulInnen = new Mesh(new BufferGeometry(), new MeshToonMaterial({ color: MAULFARBE, gradientMap: stufen }));
+const maulInnen = new Mesh(new BufferGeometry(), hautMaterial(MAULFARBE));
 maulInnen.visible = false;
 szene.add(koerper, umriss, maulInnen, ...baender);
 const sonne = new DirectionalLight(0xffffff, 2.4);
@@ -1149,7 +1222,8 @@ function hautZeigen(): void {
   // jede Hälfte an der Spiegelebene abgeschnitten (`anzeigeZ`), ohne die Dreiecke, die danach ganz auf ihr liegen
   const Z = anzeigeZ();
   const seite = hautSeite();
-  const I = indexOhneAnliegende(maulGezeigt ? indexOhneOeffnung(maulGezeigt.m.offen) : anzeigeIndex, Z);
+  const ohneMaul = maulGezeigt ? indexOhneOeffnung(maulGezeigt.m.offen) : anzeigeIndex;
+  const I = indexOhneAnliegende(ohneMaul, Z);
   if (hautGeometrie.index?.array !== I) hautGeometrie.setIndex(new BufferAttribute(I, 1));
   const N = anzeigeQuelle.length;
   // Normale je gezeigtem Punkt aus seinen Dreiecken (bei doppelten nur die seiner Seite)
@@ -1196,7 +1270,228 @@ function hautZeigen(): void {
   hautGeometrie.attributes.position!.needsUpdate = true;
   hautGeometrie.attributes.normal!.needsUpdate = true;
   hautGeometrie.computeBoundingSphere();
+  // glatte Anzeige: aus den Lagen, wie sie sind, und allen Dreiecken außer der Maulöffnung (an der Spiegelebene schneidet dort das
+  // Material je Bildpunkt); die Puffer oben bleiben wie vorher, an ihnen messen die Proben
+  if (GLATT) glattZeigen(ohneMaul);
   neuZeichnen = true;
+}
+
+/**
+ * Glatte Anzeige (`GLATT`): der Stand für das Netz der Anzeige, wie es gerade ist. Der Plan hängt am Netz (gezeigte Dreiecke,
+ * aufgetrennte harte Linien) und daran, welche Kanten auf Linien liegen; je Bild kommen nur die Lagen und die Pfadstücke dazu.
+ */
+type GlattStand = {
+  index: Uint32Array;
+  quelle: Int32Array;
+  kenn: string;
+  plan: GlattPlan;
+  /** je Linienkante des Plans ihre beiden Punkte der Anzeige (Kontrollpunkte von `a` nach `b`) */
+  kanten: LinienKante[];
+  /** Loop, Probe, Spiegelhälfte (`glattOrt`) → Linienkanten des Plans (eine weiche Kante eine, eine harte je Seite eine) */
+  wo: Map<number, number[]>;
+  /** Seite der Spiegelung je Punkt der Anzeige (null: nicht gespiegelt) */
+  seite: Float32Array | null;
+  geo: Map<number, BufferGeometry>;
+  lagen: Float64Array;
+  pfade: Float64Array;
+  /** Stufen im letzten Bild, Dauer der letzten Rechnung, Dauer des Anlegens */
+  gezeigt: number;
+  ms: number;
+  planMs: number;
+};
+let glatt: GlattStand | null = null;
+/** wann die Haut zuletzt neu gezeigt wurde; `glattVoll`: Dieses Zeigen rechnet alle Stufen (die Haut ruht) */
+let glattGeaendert = 0;
+let glattVoll = false;
+
+/** Schlüssel einer Linienkante: Loop, Probe, an der sie beginnt (sie läuft zur nächsten), Spiegelhälfte */
+const glattOrt = (li: number, j: number, sp: boolean): number => (li * 1_000_000 + j) * 2 + (sp ? 1 : 0);
+
+/** Woran die Zuordnung der Linien zu den Kanten hängt (außer am Netz der Anzeige) */
+const glattKenn = (): string => `${grund ? 'p' : 'g'}|${loops.map((l) => `${l.id}.${l.proben.length}.${exakt(l) ? 1 : 0}`).join(',')}`;
+
+/** So viele Stufen bekommt die Anzeige jetzt (`FEIN`, sonst danach, ob die Haut ruht, und im Zug nach ihrer Größe) */
+function glattStufen(punkte: number, dreiecke: number): number {
+  if (FEIN >= 0) return FEIN;
+  if (glattVoll) return glattZiel(dreiecke);
+  return punkte <= GLATT_GROSS ? 1 : 0;
+}
+/** Stufen in der Ruhe */
+const glattZiel = (dreiecke: number): number => (16 * dreiecke <= GLATT_HOECHSTENS ? 2 : 1);
+
+/** Wird die Anzeige feiner, sobald die Haut ruht? */
+function glattOffen(): boolean {
+  if (!glatt || FEIN >= 0) return false;
+  return glatt.gezeigt < glattZiel(glatt.index.length / 3);
+}
+
+function glattAnlegen(I: Uint32Array): GlattStand {
+  const t0 = performance.now();
+  const n = haut.n;
+  const N = anzeigeQuelle.length;
+  const skin = (a: number, b: number): number => (a < b ? a * n + b : b * n + a);
+  // Kanten der Haut am Rand der Maulöffnung bleiben gerade (dort schließt das Innere an): kein Pfad
+  const amRand = new Set<number>();
+  const offen = maulGezeigt?.m.offen;
+  if (offen)
+    for (let f = 0; f < haut.tri.length / 3; f++) {
+      if (!offen[f]) continue;
+      for (let e = 0; e < 3; e++) amRand.add(skin(haut.tri[3 * f + e]!, haut.tri[3 * f + ((e + 1) % 3)]!));
+    }
+  // Kanten der Haut auf Linien mit Pfad: von welcher Probe zu welcher, ob hart
+  const linie = new Map<number, { schluessel: number; von: number; hart: boolean }>();
+  loops.forEach((l, li) => {
+    if (!exakt(l) || !l.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2])) return;
+    const hd = kanteBei(l, loops);
+    const kette = l.proben.map((p) => p.ecken[0]);
+    const m = kette.length;
+    for (let j = 0; j < (l.art === 'ring' ? m - 1 : m); j++) {
+      const k = (j + 1) % m;
+      const hart = hd[j] === 1 && hd[k] === 1;
+      for (const sp of l.art === 'mitte' ? [false] : [false, true]) {
+        const a = sp ? haut.spiegel[kette[j]!]! : kette[j]!;
+        const b = sp ? haut.spiegel[kette[k]!]! : kette[k]!;
+        if (a < 0 || b < 0 || a === b) continue;
+        const s = skin(a, b);
+        if (amRand.has(s) || linie.has(s)) continue;
+        linie.set(s, { schluessel: glattOrt(li, j, sp), von: a, hart });
+      }
+    }
+  });
+  const kanten: LinienKante[] = [];
+  const wo = new Map<number, number[]>();
+  const gesehen = new Set<number>();
+  if (linie.size)
+    for (let t = 0; t < I.length; t += 3)
+      for (let e = 0; e < 3; e++) {
+        const da = I[t + e]!;
+        const db = I[t + ((e + 1) % 3)]!;
+        const qa = anzeigeQuelle[da]!;
+        const qb = anzeigeQuelle[db]!;
+        const eintrag = linie.get(skin(qa, qb));
+        if (!eintrag) continue;
+        const s = da < db ? da * N + db : db * N + da;
+        if (gesehen.has(s)) continue;
+        gesehen.add(s);
+        const liste = wo.get(eintrag.schluessel);
+        if (liste) liste.push(kanten.length);
+        else wo.set(eintrag.schluessel, [kanten.length]);
+        kanten.push(qa === eintrag.von ? { a: da, b: db, hart: eintrag.hart } : { a: db, b: da, hart: eintrag.hart });
+      }
+  const fest = new Uint8Array(N);
+  for (let d = 0; d < N; d++) fest[d] = anzeigeKante[d]! > 0 ? 1 : 0;
+  const hs = hautSeite();
+  const plan = new GlattPlan(I, N, fest, kanten);
+  return {
+    index: I,
+    quelle: anzeigeQuelle,
+    kenn: glattKenn(),
+    plan,
+    kanten,
+    wo,
+    seite: hs ? Float32Array.from(anzeigeQuelle, (q) => hs[q]!) : null,
+    geo: new Map(),
+    lagen: new Float64Array(3 * N),
+    pfade: new Float64Array(12 * kanten.length),
+    gezeigt: 0,
+    ms: 0,
+    planMs: performance.now() - t0,
+  };
+}
+
+/** Die Pfadstücke eines Loops, wie er jetzt ist (im Zug mit den Punkten und Griffen des Zugs), je Probenpaar */
+function pfadStuecke(l: Loop, li: number): ReturnType<typeof pfadKanten> {
+  if (!exakt(l)) return null;
+  const P = zug && !zug.griff ? l.punkte.map((p) => p.cur) : undefined;
+  return pfadKanten(l, P, zug?.griffeNeu[li] ?? undefined);
+}
+
+/** Die verfeinerte Haut rechnen und zeigen (`I`: die gezeigten Dreiecke des Netzes der Anzeige) */
+function glattZeigen(I: Uint32Array): void {
+  if (!glatt || glatt.index !== I || glatt.quelle !== anzeigeQuelle || glatt.kenn !== glattKenn()) {
+    if (glatt) for (const g of glatt.geo.values()) g.dispose();
+    glatt = glattAnlegen(I);
+  }
+  const g = glatt;
+  const t0 = performance.now();
+  const P = haut.pos;
+  const N = g.quelle.length;
+  const L = g.lagen;
+  for (let d = 0; d < N; d++) {
+    const q = 3 * g.quelle[d]!;
+    L[3 * d] = P[q]!;
+    L[3 * d + 1] = P[q + 1]!;
+    L[3 * d + 2] = P[q + 2]!;
+  }
+  // Pfadstücke: erst jede Linienkante gerade, dann die Stücke der Loops. Ein Stück wird an die Punkte der Haut gelegt, wie sie
+  // gerade sind (seine Enden auf sie verschoben, die inneren Kontrollpunkte mit): Steht die Haut, liegt sie auf dem Pfad, und das
+  // Stück ist genau der Pfad; hinkt sie im Zug nach, bleibt die Kante stetig.
+  const K = g.pfade;
+  g.kanten.forEach((k, i) => {
+    for (let x = 0; x < 3; x++) {
+      const a = L[3 * k.a + x]!;
+      const b = L[3 * k.b + x]!;
+      K[12 * i + x] = a;
+      K[12 * i + 3 + x] = a + (b - a) / 3;
+      K[12 * i + 6 + x] = b - (b - a) / 3;
+      K[12 * i + 9 + x] = b;
+    }
+  });
+  const stufen = glattStufen(N, I.length / 3);
+  if (g.kanten.length && stufen > 0)
+    loops.forEach((l, li) => {
+      const stuecke = pfadStuecke(l, li);
+      if (!stuecke) return;
+      for (const e of stuecke)
+        for (const sp of l.art === 'mitte' ? [0] : [0, 1]) {
+          const plaetze = g.wo.get(glattOrt(li, e.ja, sp === 1));
+          if (!plaetze) continue;
+          // die vier Kontrollpunkte des Stücks (in der Spiegelhälfte gespiegelt)
+          const c = e.k.map((p) => [p.x, p.y, sp ? -p.z : p.z] as const);
+          for (const i of plaetze) {
+            const k = g.kanten[i]!;
+            for (let x = 0; x < 3; x++) {
+              K[12 * i + 3 + x] = c[1]![x]! + (L[3 * k.a + x]! - c[0]![x]!);
+              K[12 * i + 6 + x] = c[2]![x]! + (L[3 * k.b + x]! - c[3]![x]!);
+            }
+          }
+        }
+    });
+  const fein = g.plan.rechnen(L, K, stufen, GLATT_RUHE);
+  let geo = g.geo.get(stufen);
+  if (!geo) {
+    geo = new BufferGeometry();
+    geo.setAttribute('position', new BufferAttribute(fein.pos, 3));
+    geo.setAttribute('normal', new BufferAttribute(fein.nor, 3));
+    if (g.seite) geo.setAttribute('aSeite', new BufferAttribute(g.plan.weiterreichen(stufen, g.seite), 1));
+    geo.setIndex(new BufferAttribute(g.plan.index(stufen), 1));
+    g.geo.set(stufen, geo);
+  }
+  geo.attributes.position!.needsUpdate = true;
+  geo.attributes.normal!.needsUpdate = true;
+  // die Kugel um die Haut reicht auch für die verfeinerte (sie liegt höchstens um eine Wölbung daneben)
+  const kugel = hautGeometrie.boundingSphere;
+  if (kugel) geo.boundingSphere = kugel.clone();
+  if (geo.boundingSphere) geo.boundingSphere.radius *= 1.05;
+  koerper.geometry = geo;
+  umriss.geometry = geo;
+  g.gezeigt = stufen;
+  g.ms = performance.now() - t0;
+  if (!glattVoll) glattGeaendert = performance.now();
+}
+
+/** Ruht die Haut seit `GLATT_RUHE_MS`, bekommt die Anzeige ihre Stufen für die Ruhe (im Zug kosteten sie je Bild zu viel) */
+function glattInRuhe(): void {
+  if (!GLATT || zug || nachlauf || !glattOffen() || performance.now() - glattGeaendert < GLATT_RUHE_MS) return;
+  // ohne Stufe laufen die Bänder der Linien gerade von Probe zu Probe, mit Stufen auf dem Pfad (`baenderZeigen`)
+  const gerade = glatt?.gezeigt === 0;
+  glattVoll = true;
+  try {
+    hautZeigen();
+  } finally {
+    glattVoll = false;
+  }
+  if (gerade) baenderZeigen();
 }
 
 function bandGeometrie(linien: readonly { p: readonly V3[]; breite: number }[]): BufferGeometry {
@@ -1271,7 +1566,28 @@ function streckeOffen(l: Loop, j: number, k: number, sp: boolean): boolean {
   return o.m.kantenOffen.has(u < v ? u * haut.n + v : v * haut.n + u);
 }
 
+/**
+ * Punkte auf dem Pfadstück zwischen zwei Proben (bei ¼, ½, ¾), an die Lagen der Proben gelegt wie in `glattZeigen` (`sp`: in der
+ * Spiegelhälfte gespiegelt); leer ohne Stück
+ */
+function zwischenPunkte(k: readonly V3[] | undefined, a: V3, b: V3, sp: boolean): V3[] {
+  if (!k) return [];
+  const s = sp ? -1 : 1;
+  const k1 = { x: k[1]!.x + a.x - k[0]!.x, y: k[1]!.y + a.y - k[0]!.y, z: s * k[1]!.z + a.z - s * k[0]!.z };
+  const k2 = { x: k[2]!.x + b.x - k[3]!.x, y: k[2]!.y + b.y - k[3]!.y, z: s * k[2]!.z + b.z - s * k[3]!.z };
+  return [0.25, 0.5, 0.75].map((t) => {
+    const u = 1 - t;
+    const b0 = u * u * u;
+    const b1 = 3 * u * u * t;
+    const b2 = 3 * u * t * t;
+    const b3 = t * t * t;
+    return { x: b0 * a.x + b1 * k1.x + b2 * k2.x + b3 * b.x, y: b0 * a.y + b1 * k1.y + b2 * k2.y + b3 * b.y, z: b0 * a.z + b1 * k1.z + b2 * k2.z + b3 * b.z };
+  });
+}
+
+let baenderMs = 0;
 function baenderZeigen(): void {
+  const baenderT0 = performance.now();
   const lagen = aktuelleLagen();
   const normal: { p: V3[]; breite: number }[] = [];
   const gewaehlt: { p: V3[]; breite: number }[] = [];
@@ -1284,6 +1600,10 @@ function baenderZeigen(): void {
     const ziel = gew ? gewaehlt : maul?.id === l.id ? lippe : normal;
     const hd = kanteBei(l, loops);
     const n = l.proben.length;
+    // glatte Anzeige mit verfeinerter Haut: Das Band folgt zwischen zwei Proben dem Pfad (gerade Strecken lägen neben der gewölbten
+    // Haut); ohne Stufe (große Form im Zug) läuft es gerade wie die Kanten der Haut
+    const stueck = new Map<number, readonly V3[]>();
+    if (GLATT && glatt && glatt.gezeigt > 0) for (const e of pfadStuecke(l, li) ?? []) stueck.set(e.ja * n + e.jb, e.k);
     // Ring: gespeicherte Hälfte und Spiegelhälfte, Paar: Loop und Zwilling, Mitte geschlossen
     for (const sp of l.art === 'mitte' ? [false] : [false, true]) {
       const pkt = Array.from({ length: n }, (_, i) => zeigeLage(L, i, sp));
@@ -1298,9 +1618,10 @@ function baenderZeigen(): void {
           schluss();
           continue;
         }
+        const zw = zwischenPunkte(stueck.get(j * n + k), pkt[j]!, pkt[k]!, sp);
         if (lauf.length === 0) lauf.push(pkt[j]!);
-        lauf.push(pkt[k]!);
-        if (hd[j] && hd[k]) hart.push({ p: [pkt[j]!, pkt[k]!], breite: 4 });
+        lauf.push(...zw, pkt[k]!);
+        if (hd[j] && hd[k]) hart.push({ p: [pkt[j]!, ...zw, pkt[k]!], breite: 4 });
       }
       schluss();
     }
@@ -1314,6 +1635,7 @@ function baenderZeigen(): void {
     baender[i]!.geometry = g;
   }
   neuZeichnen = true;
+  baenderMs = performance.now() - baenderT0;
 }
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -4723,7 +5045,7 @@ knopfNeu?.addEventListener('click', () => {
 
 // ---------- Zeichnen ----------
 
-function rendern(): void {
+function rendern(nur?: keyof typeof felder): void {
   const hoehe = window.innerHeight;
   const dpr = renderer.getPixelRatio();
   renderer.setScissorTest(false);
@@ -4737,6 +5059,7 @@ function rendern(): void {
     ['drei', dreiKamera],
   ];
   for (const [name, kamera] of liste) {
+    if (nur && name !== nur) continue;
     const r = felder[name].getBoundingClientRect();
     if (r.width < 2 || r.height < 2) continue;
     const y = hoehe - r.bottom;
@@ -4822,6 +5145,7 @@ function bildRechnen(): void {
     if (!griffWartet() || performance.now() - gegriffen.seit > GRIFF_WARTEN_MS) griffNachholen();
     else if (!aufraeumen && vorrechnenUhr === null) vorrechnenPlanen();
   }
+  glattInRuhe();
   if (neuZeichnen) {
     neuZeichnen = false;
     rendern();
@@ -5096,6 +5420,43 @@ if (BEHALTEN) behaltenesHolen();
   dreiecke: () => Array.from(haut.tri),
   /** die Haut, wie sie gezeigt wird (jede Hälfte an der Spiegelebene abgeschnitten): Lagen je gezeigtem Punkt und Dreiecke */
   anzeige: () => ({ lagen: Array.from(hautLagen), dreiecke: Array.from(hautGeometrie.index?.array ?? []) }),
+  /** die glatte Anzeige (`?anzeige=glatt`): Stufen, gezeigte Punkte und Dreiecke, Linienkanten, Zeiten; null ohne sie */
+  glatt: () =>
+    glatt
+      ? {
+          stufen: glatt.gezeigt,
+          punkte: glatt.plan.punkte(glatt.gezeigt),
+          dreiecke: glatt.plan.index(glatt.gezeigt).length / 3,
+          rechenpunkte: glatt.quelle.length,
+          linienkanten: glatt.kanten.length,
+          ms: glatt.ms,
+          baenderMs,
+          planMs: glatt.planMs,
+          wirdFeiner: glattOffen(),
+          /** zeigt der Körper gerade die verfeinerte Geometrie (und wie viele Dreiecke)? */
+          amKoerper: koerper.geometry === glatt.geo.get(glatt.gezeigt),
+          koerperDreiecke: (koerper.geometry.index?.count ?? 0) / 3,
+        }
+      : null,
+  /**
+   * Zeit je Zeichnen in ms, mit Warten auf die Grafikkarte (alle vier Felder oder nur eines): für Messungen, was die Blätter kosten
+   * (`scripts/pruefen/anzeige-zeichnen-zeit.mjs`)
+   */
+  zeichnenMs: (mal = 20, nur?: keyof typeof felder): number => {
+    const gl = renderer.getContext();
+    const punkt = new Uint8Array(4);
+    const fertig = (): void => gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, punkt);
+    rendern(nur);
+    fertig();
+    const t0 = performance.now();
+    for (let i = 0; i < mal; i++) {
+      rendern(nur);
+      fertig();
+    }
+    const ms = (performance.now() - t0) / mal;
+    neuZeichnen = true;
+    return ms;
+  },
   meldung: () => meldung,
   bild: (a: Ansicht, p: V3): { x: number; y: number } => {
     const r = felder[a].getBoundingClientRect();
