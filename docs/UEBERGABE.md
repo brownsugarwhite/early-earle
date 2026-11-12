@@ -1,4 +1,4 @@
-# Übergabe (Stand 12.11.2026 nachts: Schritt 1 „glatte Anzeige“ ist Standard, auch in Florians Fenster auf 5194; Schritt 2 „kleines Rechennetz“ ist im Bau-Zweig gebaut und gemessen, sein Blick steht aus)
+# Übergabe (Stand 12.11.2026 nachts: Schritt 1 „glatte Anzeige“ und Schritt 2 „kleines Rechennetz“ sind Standard, auch in Florians Fenster auf 5194; sein Urteil nach dem Arbeiten damit steht aus; offen in Schritt 2: Zeichnen gegen die feine Fläche)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -23,7 +23,7 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | --- | --- |
 | 0 Aufräumen | **erledigt** (12.11., Einzelheiten unten) |
 | 1 Glatte Anzeige | **eingebaut und Standard** (Abschnitt 4). Florian am 12.11.: „Ja, übernehmen“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&anzeige=grob` zeigt zum Vergleich die Anzeige davor. Sein Urteil nach dem Arbeiten damit steht aus |
-| 2 Kleines Rechennetz | **gebaut in `form-bau`** (Port 5197, Abschnitt 5): rund 40 % der Punkte, im Zug 16 bis 20 ms je Bild; Florians Blick und sein Ja zum Zusammenführen stehen aus. Nicht gebaut: Zeichnen gegen die feine Fläche |
+| 2 Kleines Rechennetz | **eingebaut und Standard** (Abschnitt 5): rund 40 % der Punkte, im Zug 16 bis 20 ms je Bild. Florian am 12.11. nachts, vom Handy aus: „ja“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&netz=dicht` ist das Netz davor. Sein Urteil nach dem Arbeiten damit steht aus. Nicht gebaut: Zeichnen gegen die feine Fläche |
 | 3 Beweis „Haut direkt aus den Linien“ | offen |
 | 4 Echte Spiegelung und neue Rechnung ins Fenster | offen |
 | 5 Posen wie die Basis | offen |
@@ -113,11 +113,12 @@ ungleichmäßigem Netz und an einem Grat), `packages/shape/src/dicht/linieAufPfa
 4. Nicht Sache der Anzeige: Wo die gerechnete Haut selbst wellig ist (kleine Knicke an den Linien, fast ebene Flächen), laufen
    die Farbstufen ruhig, aber in Wellen. Das ist Schritt 3.
 
-## 5. Schritt 2, kleines Rechennetz: gebaut im Bau-Zweig, gemessen, was offen ist
+## 5. Schritt 2, kleines Rechennetz: gebaut, gemessen, seit dem 12.11. nachts Standard
 
-Gebaut am 12.11. nachts im Arbeitsbaum `form-bau`, zu sehen unter `http://localhost:5197/kurven.html?gewichte=geometrie`.
-**Florian hat es noch nicht gesehen; sein Fenster (5194) steht auf dem Stand von Schritt 1.** `&netz=dicht` ist das Netz wie bis
-zum 12.11. (zum Vergleich, im selben Fenster).
+Gebaut am 12.11. nachts im Arbeitsbaum `form-bau`. **Florian am selben Abend auf die Frage, ob es in sein Fenster soll:
+„ja“** (er antwortete vom Handy aus; sein Urteil am Fenster steht aus). Seitdem liegt es auf `claude/form-spiegel`: Sein
+Fenster `http://localhost:5194/kurven.html?gewichte=geometrie` rechnet mit dem kleinen Netz. `&netz=dicht` ist das Netz wie
+bis zum 12.11. (zum Vergleich, im selben Fenster).
 
 **Was gebaut ist** (`apps/editor/src/form/kurven.ts`, im Kern nur eine Option in `packages/shape/src/dicht/verdichten.ts`):
 - **Startnetz mit einem Drittel der Dreiecke** (`DREIECKE` 2 000 statt 6 000 bestellt; die Startkante ist rund 15 statt 8,6
@@ -129,8 +130,10 @@ zum 12.11. (zum Vergleich, im selben Fenster).
 - **Formen mit feinerem Netz werden beim Übernehmen vergröbert** (`netzVergroebern` in `standAnwenden`: geladen, behalten). Die
   Punkte, die bleiben, bleiben, wo sie sind: Die Form ist nach dem Laden dieselbe; neu gerechnet wird sie wie bisher erst beim
   nächsten Griff. Die Statuszeile nennt es („Rechennetz 27 770 → 11 449 Punkte“). Nicht in der Pose gesicherte Formen.
-- **Behaltene Form:** Sie kommt jetzt auch nach dem Wechsel der Dichte zurück (`START_FORM`; vorher hing sie an der Zahl der
-  Dreiecke und wäre mit dem neuen Standard nicht zurückgekommen).
+- **Behaltene Form:** Sie kommt auch nach dem Wechsel der Dichte zurück (`START_FORM`; vorher hing sie an der Zahl der
+  Dreiecke). Der Browser behält je Netz eine eigene (`FACH_ZULETZT`: „zuletzt-klein“ und „zuletzt“): Beim ersten Start mit dem
+  kleinen Netz kommt einmal die Form aus „zuletzt“, vergröbert; „zuletzt“ selbst bleibt, wie es war, und `&netz=dicht` zeigt
+  sie dort in der alten Dichte.
 - **Anzeige im Zug:** dieselben Stufen wie in der Ruhe, solange es höchstens 260 000 Dreiecke werden (`GLATT_IM_ZUG`), sonst
   eine weniger. Vogel und test_kaputt haben im Zug zwei Stufen (kein Umschalten nach dem Loslassen), der Firefish eine.
 
@@ -174,9 +177,8 @@ Neue Proben: `netz-vorher-nachher.mjs` (Bild), `form-netz-kleiner.ts` (im Kern: 
 Runde, Abstand der Häute).
 
 **Offen in Schritt 2:**
-1. **Florians Blick** (Port 5197). Mit seinem Ja: wie bei Schritt 1 in `form-bau` `git merge claude/form-spiegel`, prüfen, dann
-   in `form-alt` `git merge --ff-only claude/form-bau`. Vorher ansagen: Sein Fenster lädt neu, und die behaltene Form kommt mit
-   dem kleinen Rechennetz zurück.
+1. **Florians Urteil nach dem Arbeiten in seinem Fenster** (5194) steht aus. Stört ihn etwas: `&netz=dicht` ist das Netz wie
+   vorher; die Form, die sein Browser bis zum Wechsel behalten hatte, liegt dort unverändert.
 2. **Zeichnen und Greifen gegen die feine Fläche** (Plan: „Zeichnen auf der Haut trifft die glatte Anzeige“): nicht gebaut. Die
    groben Dreiecke liegen an der Startkugel 0,2 Einheiten unter der gezeigten Fläche (vorher 0,06), an engen Stellen bis rund
    1: Eine neu gezeichnete Linie liegt um so viel innen.

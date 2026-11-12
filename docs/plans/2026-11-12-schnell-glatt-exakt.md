@@ -327,7 +327,8 @@ Geometrie gerechnet halten auch die weiten Züge), mit eigener Genauigkeit von 1
 Formen rund 40 % der Punkte statt eines Drittels; im Zug sind es 16 bis 20 ms je Bild statt 24 bis 44 ms, nach dem Loslassen
 ruht alles nach 0,2 bis 0,9 s statt nach 0,6 bis 2,2 s. Die Regel „zwischen eng benachbarten Linien mindestens zwei Kanten“
 und das Zeichnen gegen die feine Fläche sind nicht gebaut. `&netz=dicht` ist das Netz wie vorher. Einzelheiten und Zahlen:
-`docs/UEBERGABE.md`, Abschnitt 5.
+`docs/UEBERGABE.md`, Abschnitt 5. Florian noch in der Nacht: „ja“; seitdem ist das kleine Rechennetz der Standard in seinem
+Fenster.
 
 ### A.3 Beweis „Haut direkt aus den Linien“ (Schritt 3)
 
