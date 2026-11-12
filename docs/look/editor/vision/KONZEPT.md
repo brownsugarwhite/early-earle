@@ -4,6 +4,7 @@
 > selbsterklärend, Shader und Animation statt Text. Für diese Sitzung galt keine der festgelegten Regeln; die andere Sitzung
 > (Kurve reparieren) wurde nicht berührt (eigener Zweig, eigener Ordner, kein Code des Editors geändert).
 > Recherche: [`RECHERCHE.md`](RECHERCHE.md). Prototyp: [`prototyp/`](prototyp/) (Bauanleitung unten).
+> **Präsentation mit Filmen und Prototyp:** https://claude.ai/artifact/SahX9VLKYfxFbmhNPNs18f (Quelle `praesentation/`).
 
 ## Der Satz
 

@@ -1,7 +1,8 @@
 # Prototyp „Kurven im Raum“
 
 Lauffähige Vision des Kurven-Editors: Raum, Blatt und Blick mit Faltung, eine Gestengrammatik ohne Werkzeugleiste, Licht statt
-Beschriftung. Konzept: [`../KONZEPT.md`](../KONZEPT.md), Recherche: [`../RECHERCHE.md`](../RECHERCHE.md).
+Beschriftung. Konzept: [`../KONZEPT.md`](../KONZEPT.md), Recherche: [`../RECHERCHE.md`](../RECHERCHE.md), Präsentation:
+https://claude.ai/artifact/SahX9VLKYfxFbmhNPNs18f (Prototyp darin als `vision.html`, Einstellungen über den Anker).
 
 ## Bauen und Starten
 
