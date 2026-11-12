@@ -31,11 +31,12 @@ export const tangenteAuf = (L, s, t) => {
   return bezAbl(a, b, c, d, t);
 };
 
-// Proben je Stück: t = 0, 1/3, 2/3 (beim Ring zusätzlich das Ende)
+// Proben je Stück: t = 0, 1/3, 2/3 (große Netze: 0, 1/2), beim Ring zusätzlich das Ende
+export const PROBEN = { je: [0, 1 / 3, 2 / 3] };
 export function probenStellen(L) {
   const st = [];
   const m = anzahlStuecke(L);
-  for (let s = 0; s < m; s++) for (const t of [0, 1 / 3, 2 / 3]) st.push([s, t]);
+  for (let s = 0; s < m; s++) for (const t of PROBEN.je) st.push([s, t]);
   if (!geschlossen(L)) st.push([m - 1, 1]);
   return st;
 }

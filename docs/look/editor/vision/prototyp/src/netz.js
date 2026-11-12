@@ -2,14 +2,14 @@
 // Die Kugel ist ein unterteiltes Ikosaeder; es ist von Haus aus spiegelgleich zur Ebene z = 0.
 
 export class Netz {
-  constructor(ruhe, tri) {
+  constructor(ruhe, tri, spiegel) {
     this.nV = ruhe.length / 3;
     this.nT = tri.length / 3;
     this.ruhe = ruhe; // Float32Array 3nV
     this.pos = new Float32Array(ruhe); // aktuelle Lage
     this.nrm = new Float32Array(ruhe.length);
     this.tri = tri; // Uint32Array 3nT
-    this.spiegel = spiegelPartner(ruhe);
+    this.spiegel = spiegel || spiegelPartner(ruhe);
     this.normalen();
   }
 

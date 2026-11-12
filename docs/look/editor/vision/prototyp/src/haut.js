@@ -136,6 +136,54 @@ export class Haut {
     this.zeit = performance.now() - t0;
   }
 
+  // Zugbasis (Botsch & Kobbelt 2005): Bewegen sich Punkte mit festen Gewichten w um δ, bewegen sich die Proben linear
+  // in δ. Einmal je Zug lösen, dann ist jedes Bild nur noch pos = pos0 + G·δ (in z getrennt, wegen Mittelebene und Spiegel).
+  zugBasis(bewegt, aufEbene) {
+    if (this.baustand !== this.stand) this.aufbauen();
+    if (!this.rbf) return null;
+    const N = this.quellen.length;
+    const gx = new Float64Array(N), gz = new Float64Array(N);
+    for (let i = 0; i < N; i++) {
+      const q = this.quellen[i], L = q.L, n = L.punkte.length;
+      const A = L.punkte[q.s], B = L.punkte[(q.s + 1) % n];
+      const wA = bewegt.get(A) || 0, wB = bewegt.get(B) || 0;
+      if (!wA && !wB) continue;
+      const t = q.t, u = 1 - t;
+      const a = u * u * u + 3 * u * u * t, b = 3 * u * t * t + t * t * t;
+      gx[i] = a * wA + b * wB;
+      gz[i] = (a * wA * (aufEbene(A) ? 0 : 1) + b * wB * (aufEbene(B) ? 0 : 1)) * (q.sp ? -1 : 1);
+    }
+    const ux = this.rbf.loesenEins(gx), uz = this.rbf.loesenEins(gz);
+    const netz = this.netz, V = netz.nV, R = netz.ruhe, phi = this.phi, np = this.rbf.np;
+    const G = new Float32Array(V), Gz = new Float32Array(V);
+    for (let v = 0; v < V; v++) {
+      const o = v * N;
+      let a = 0, c = 0;
+      for (let i = 0; i < N; i++) {
+        const f = phi[o + i];
+        a += f * ux[i];
+        c += f * uz[i];
+      }
+      const x = R[3 * v], y = R[3 * v + 1], z = R[3 * v + 2];
+      a += ux[N] + ux[N + 1] * x + ux[N + 2] * y + (np > 3 ? ux[N + 3] * z : 0);
+      c += uz[N] + uz[N + 1] * x + uz[N + 2] * y + (np > 3 ? uz[N + 3] * z : 0);
+      G[v] = a;
+      Gz[v] = c;
+    }
+    return { G, Gz, pos0: new Float32Array(netz.pos) };
+  }
+
+  zugAnwenden(basis, d) {
+    const P = this.netz.pos, { G, Gz, pos0 } = basis;
+    for (let v = 0, n = G.length; v < n; v++) {
+      P[3 * v] = pos0[3 * v] + G[v] * d[0];
+      P[3 * v + 1] = pos0[3 * v + 1] + G[v] * d[1];
+      P[3 * v + 2] = pos0[3 * v + 2] + Gz[v] * d[2];
+    }
+    this.netz.normalen();
+    this.netz.geaendert();
+  }
+
   // Abbildung eines beliebigen Ruhepunkts (z. B. Gelenk des Kiefers)
   abbilden(x, y, z) {
     if (!this.rbf || !this.w) return [x, y, z];

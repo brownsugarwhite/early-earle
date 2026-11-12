@@ -10,6 +10,7 @@ import { Raum } from './raum.js';
 import { OrthoSicht } from './ansichten.js';
 import { add, sub, mul, dot, len, norm, dist, spiegel, clamp, smooth, mix } from './mathe.js';
 import * as S from './shader.js';
+import { formHolen, PROBEN } from './formen.js';
 
 const parameter = new URLSearchParams(location.search);
 const istTouch = matchMedia('(pointer: coarse)').matches;
@@ -43,12 +44,39 @@ export class App {
     this.letzteFingerZeit = 0;
     this.formLaden(parameter.get('form') || 'kugel');
     this.groesseAnpassen();
+    this.einpassen(true);
     addEventListener('resize', () => this.groesseAnpassen());
     this.modusSetzen(parameter.get('layout') || 'raum', true);
   }
 
   // ---------------- Formen ----------------
+  async formHolen(name) {
+    const { netz, linien } = await formHolen(name);
+    PROBEN.je = [0, 0.5];
+    this.netzSetzen(netz);
+    this.haut.linien = linien;
+    for (const L of linien) this.haut.einbetten(L);
+    this.haut.struktur();
+    this.groesse = 2;
+    this.auswahl.clear();
+    this.haut.verformen();
+    this.z.netzAktualisieren();
+    this.raum._boxStart = false;
+    this.raum.boxSetzen(this.netz);
+    this.einpassen(true);
+    this.geschichte = [];
+    this.gIndex = -1;
+    this.merken();
+    this.formName = name;
+  }
+
   formLaden(name) {
+    if (name !== 'kugel' && name) {
+      // erst die Kugel, dann die Form (asynchron entpackt)
+      this.formLaden('kugel');
+      this.formHolen(name).catch((e) => console.error('Form', name, e));
+      return;
+    }
     if (name === 'kugel' || !this.netz) {
       const netz = kugel(5, 1);
       this.netzSetzen(netz);
@@ -69,6 +97,7 @@ export class App {
     this.raum.boxSetzen(this.netz);
     this.raum._boxStart = false;
     this.raum.boxSetzen(this.netz);
+    if (this.W) this.einpassen(true);
     this.merken();
   }
 
@@ -164,6 +193,12 @@ export class App {
     this.vorher.set(this.netz.pos);
     this.haut.verformen();
     this.poseAnwenden();
+    this.seifeAus(sofort);
+    this.z.netzAktualisieren();
+    this.verformZeit = performance.now() - t0;
+  }
+
+  seifeAus(sofort) {
     // Bewegung je Netzpunkt → Seifenhaut
     // Seifenhaut nur dort, wo sich die Haut am stärksten neu findet: Bewegung relativ zur stärksten Bewegung dieses Bilds
     const P = this.netz.pos, B = this.z.bewegt, V = this.vorher;
@@ -181,8 +216,6 @@ export class App {
         B[v] = Math.max(B[v], r * r * r * staerke);
       }
     }
-    this.z.netzAktualisieren();
-    this.verformZeit = performance.now() - t0;
   }
 
   // Pose: Unterkiefer dreht um das Gelenk hinter den Mundwinkeln (vereinfachter Knochen)
@@ -414,6 +447,15 @@ export class App {
     }
     z.bewegt = neu;
     for (const Q of neu.keys()) if (!z.start.has(Q)) z.start.set(Q, Q.p.slice());
+    // Basis neu, ausgehend vom Stand beim Greifen (Punkte zurück auf ihren Start, Netz dazu)
+    // Punkte, die nicht mehr im Einfluss liegen, zurück an ihren Start
+    for (const [Q, p0] of z.start) if (!neu.has(Q)) Q.p = p0.slice();
+    const jetzt = new Map();
+    for (const [Q] of neu) { jetzt.set(Q, Q.p.slice()); Q.p = z.start.get(Q).slice(); }
+    this.haut.verformen();
+    this.poseAnwenden();
+    z.basis = this.haut.zugBasis(neu, (P) => this.aufEbene(P));
+    for (const [Q, p] of jetzt) Q.p = p;
   }
 
   zugBewegen(x, y) {
@@ -432,11 +474,20 @@ export class App {
       // Mittelebene: Punkt vor dem Durchstoßen anhalten (Spiegelglas zeigt die Grenze)
       for (const [Q] of z.bewegt) if (!this.aufEbene(Q) && Q.p[2] < 0.01 * this.groesse) Q.p[2] = 0.01 * this.groesse;
       this.spiegelNaehe = Math.max(0, 1 - Math.abs(z.ziel.P.p[2]) / (0.25 * this.groesse)) * (this.aufEbene(z.ziel.P) ? 0.35 : 1);
-      for (const L of this.linien) {
-        ringEndenRichten(L);
-        mitteRichten(L);
+      if (z.basis && !this.pose) {
+        // schnell: nur pos = pos0 + G·δ
+        this.vorher.set(this.netz.pos);
+        z.letztesD = d;
+        this.haut.zugAnwenden(z.basis, d);
+        this.seifeAus(false);
+        this.z.netzAktualisieren();
+      } else {
+        for (const L of this.linien) {
+          ringEndenRichten(L);
+          mitteRichten(L);
+        }
+        this.verformen();
       }
-      this.verformen();
     } else if (z.art === 'griff') {
       const P = z.ziel.P;
       const welcher = z.ziel.welcher, anderer = welcher === 'ein' ? 'aus' : 'ein';
@@ -516,6 +567,10 @@ export class App {
     if (!z) return;
     this.zug = null;
     this.spiegelNaehe = 0;
+    if (z.art === 'punkt') {
+      for (const L of this.linien) { ringEndenRichten(L); mitteRichten(L); }
+      this.verformen(true);
+    }
     if (z.art === 'linie' && z.richtung === 'tusche') {
       let n = 0;
       for (const Q of z.tusche) for (const R of this.verbunden(Q)) { if (!R.kante) n++; R.kante = true; }
@@ -581,14 +636,27 @@ export class App {
     }
   }
 
-  einpassen() {
+  // Abstand der Kamera, bei dem der ganze Raum ins Bild passt
+  passAbstand() {
+    const b = this.raum.box;
+    const r = Math.hypot(b.max[0] - b.min[0], b.max[1] - b.min[1], b.max[2] - b.min[2]) / 2;
+    const rs = this.raum.sichten.raum;
+    const fov = (rs.fov * Math.PI) / 180;
+    const asp = Math.min(1, this.W / this.H);
+    return (r * 1.02) / Math.sin((fov / 2) * Math.max(0.62, asp));
+  }
+
+  einpassen(sofort) {
     const R = this.raum;
     R.blattZoom = 1;
     R.blattVersatz = [0, 0];
     R.blickZoom = 1;
     R.blickVersatz = [0, 0];
     const rs = R.sichten.raum;
-    this.kamFahrt = { az: rs.azimut, hz: rs.hoehe, ab: 7.5 * this.groesse / 2, zielAz: rs.azimut, zielH: rs.hoehe, t: 0 };
+    const b = R.box;
+    rs.ziel = [(b.min[0] + b.max[0]) / 2, (b.min[1] + b.max[1]) / 2 - (b.max[1] - b.min[1]) * 0.04, 0];
+    if (sofort) { rs.abstand = this.passAbstand(); return; }
+    this.kamFahrt = { ab: this.passAbstand(), t: 0 };
   }
 
   // ---------------- Striche: Schnitt, Form, Kritzeln ----------------

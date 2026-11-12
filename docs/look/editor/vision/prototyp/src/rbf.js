@@ -48,6 +48,14 @@ export class RBF {
     return this.mitZ ? [1, x, y, z] : [1, x, y];
   }
 
+  // eine rechte Seite (Länge N) → Gewichte (Länge M)
+  loesenEins(b0) {
+    const b = new Float64Array(this.M);
+    b.set(b0.subarray ? b0.subarray(0, this.N) : b0.slice(0, this.N));
+    luEinsetzen(this.lu, this.piv, this.M, b);
+    return b;
+  }
+
   // Werte d (3N) → Gewichte w (3 × M), je Achse getrennt
   loesen(d) {
     const { N, M } = this;

@@ -284,7 +284,7 @@ export function eingabeAnbinden(app, el) {
     e.preventDefault();
     const [x, y] = pos(e);
     if (app.zug && app.zug.art === 'punkt') {
-      app.einfluss = clamp((app.einfluss || 0.25 * app.groesse) * Math.exp(e.deltaY * 0.0025), 0, 3 * app.groesse);
+      app.einfluss = clamp((app.einfluss || 0.2 * app.groesse) * Math.exp(-e.deltaY * 0.0035), 0, 3 * app.groesse);
       if (app.einfluss < 0.05 * app.groesse) app.einfluss = 0;
       app.einflussAnwenden();
       app.zugBewegen(einer ? einer.x : x, einer ? einer.y : y);

@@ -9,6 +9,46 @@ THREE.ColorManagement.enabled = false;
 const v3 = (a) => new THREE.Vector3(a[0], a[1], a[2]);
 const farbe = (k) => new THREE.Vector3(...S.rgb(k));
 
+// Wiederverwendbare Puffer: Attribute werden nie ersetzt (three.js gäbe ihre GPU-Puffer sonst nie frei),
+// sondern nur befüllt; wächst der Bedarf, wird die ganze Geometrie ersetzt und die alte freigegeben.
+class Puffer {
+  constructor(mesh, attribute) {
+    this.mesh = mesh;
+    this.attribute = attribute; // { name: itemSize }
+    this.kap = 0;
+    this.kapIdx = 0;
+  }
+  sichern(nV, nI) {
+    if (this.kap > 0 && nV <= this.kap && nI <= this.kapIdx) return;
+    const alt = this.mesh.geometry;
+    const g = new THREE.BufferGeometry();
+    this.kap = Math.max(1024, Math.ceil(nV * 1.5));
+    this.kapIdx = Math.max(2048, Math.ceil(nI * 1.5));
+    for (const [name, k] of Object.entries(this.attribute)) {
+      const a = new THREE.BufferAttribute(new Float32Array(this.kap * k), k);
+      a.setUsage(THREE.DynamicDrawUsage);
+      g.setAttribute(name, a);
+    }
+    g.setIndex(new THREE.BufferAttribute(new Uint32Array(this.kapIdx), 1).setUsage(THREE.DynamicDrawUsage));
+    for (const m of this.mesh.alle || [this.mesh]) m.geometry = g;
+    if (alt) alt.dispose();
+  }
+  arr(name) { return this.mesh.geometry.attributes[name].array; }
+  fertig(nV, nI) {
+    const g = this.mesh.geometry;
+    for (const name of Object.keys(this.attribute)) {
+      const a = g.attributes[name];
+      a.needsUpdate = true;
+      a.clearUpdateRanges();
+      a.addUpdateRange(0, nV * a.itemSize);
+    }
+    g.index.needsUpdate = true;
+    g.index.clearUpdateRanges();
+    g.index.addUpdateRange(0, nI);
+    g.setDrawRange(0, nI);
+  }
+}
+
 export class Zeichner {
   constructor(canvas) {
     this.canvas = canvas;
@@ -28,6 +68,7 @@ export class Zeichner {
       uSeife: { value: 1 },
       uLinse: { value: new THREE.Vector3(0, 0, 0) },
       uAufl: { value: new THREE.Vector2(1, 1) },
+      uEinfluss: { value: new THREE.Vector4(0, 0, 0, 0) },
     };
 
     this.jelly = new THREE.ShaderMaterial({
@@ -137,14 +178,17 @@ export class Zeichner {
     });
 
     this.koerper = null;
-    this.linienGeo = new THREE.BufferGeometry();
-    this.linienSicht = new THREE.Mesh(this.linienGeo, this.linieSicht);
-    this.linienVerd = new THREE.Mesh(this.linienGeo, this.linieVerdeckt);
-    this.punktGeo = new THREE.BufferGeometry();
-    this.punkte = new THREE.Mesh(this.punktGeo, this.punktMat);
-    this.punkteVerd = new THREE.Mesh(this.punktGeo, this.punktMatVerdeckt);
-    this.strahlGeo = new THREE.BufferGeometry();
-    this.strahlen = new THREE.Mesh(this.strahlGeo, this.strahlMat);
+    const LA = { position: 3, vor: 3, nach: 3, seite: 1, kante: 1, bogen: 1, zustand: 1, tusche: 1 };
+    this.linienSicht = new THREE.Mesh(new THREE.BufferGeometry(), this.linieSicht);
+    this.linienVerd = new THREE.Mesh(new THREE.BufferGeometry(), this.linieVerdeckt);
+    this.linienSicht.alle = [this.linienSicht, this.linienVerd];
+    this.linienPuffer = new Puffer(this.linienSicht, LA);
+    this.punkte = new THREE.Mesh(new THREE.BufferGeometry(), this.punktMat);
+    this.punkteVerd = new THREE.Mesh(new THREE.BufferGeometry(), this.punktMatVerdeckt);
+    this.punkte.alle = [this.punkte, this.punkteVerd];
+    this.punktPuffer = new Puffer(this.punkte, { position: 3, mitte: 3, groesse: 1, zustand: 1, ecke: 2 });
+    this.strahlen = new THREE.Mesh(new THREE.BufferGeometry(), this.strahlMat);
+    this.strahlPuffer = new Puffer(this.strahlen, LA);
     this.glas = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this.glasMat);
     for (const m of [this.linienSicht, this.linienVerd, this.punkte, this.punkteVerd, this.strahlen, this.glas]) m.frustumCulled = false;
     this.linienSicht.renderOrder = 2;
@@ -220,19 +264,22 @@ export class Zeichner {
   }
 
   // Züge: [{ pts:[[x,y,z]], kante:[], zu, zustand, tusche:[] }] → ein Bänder-Netz
-  linienSetzen(zuege, geo = this.linienGeo) {
+  linienSetzen(zuege, puffer = this.linienPuffer) {
     let n = 0, ni = 0;
     for (const z of zuege) {
       const m = z.pts.length;
-      n += m * 2 + (z.zu ? 2 : 0);
-      ni += ((z.zu ? m : m - 1) * 6);
+      if (m < 2) continue;
+      n += (z.zu ? m + 1 : m) * 2;
+      ni += (z.zu ? m : m - 1) * 6;
     }
-    const pos = new Float32Array(n * 3), vor = new Float32Array(n * 3), nach = new Float32Array(n * 3);
-    const seite = new Float32Array(n), kante = new Float32Array(n), bogen = new Float32Array(n), zustand = new Float32Array(n), tusche = new Float32Array(n);
-    const idx = new Uint32Array(ni);
+    puffer.sichern(n, ni);
+    const pos = puffer.arr('position'), vor = puffer.arr('vor'), nach = puffer.arr('nach');
+    const seite = puffer.arr('seite'), kante = puffer.arr('kante'), bogen = puffer.arr('bogen'), zustand = puffer.arr('zustand'), tusche = puffer.arr('tusche');
+    const idx = puffer.mesh.geometry.index.array;
     let o = 0, oi = 0;
     for (const z of zuege) {
       const P = z.pts, m = P.length;
+      if (m < 2) continue;
       const zahl = z.zu ? m + 1 : m;
       let b = 0;
       const start = o;
@@ -240,63 +287,57 @@ export class Zeichner {
         const i = k % m;
         const pv = P[z.zu ? (i - 1 + m) % m : Math.max(0, i - 1)];
         const pn = P[z.zu ? (i + 1) % m : Math.min(m - 1, i + 1)];
-        if (k > 0) b += Math.hypot(P[i][0] - P[(k - 1) % m][0], P[i][1] - P[(k - 1) % m][1], P[i][2] - P[(k - 1) % m][2]);
-        for (const s of [-1, 1]) {
-          pos.set(P[i], o * 3);
-          vor.set(pv, o * 3);
-          nach.set(pn, o * 3);
-          seite[o] = s;
-          kante[o] = z.kante ? z.kante[i] : 0;
-          bogen[o] = b;
-          zustand[o] = z.zustandJe ? z.zustandJe[i] : z.zustand || 0;
-          tusche[o] = z.tusche ? z.tusche[i] : 0;
+        if (k > 0) {
+          const q = P[(k - 1) % m];
+          b += Math.hypot(P[i][0] - q[0], P[i][1] - q[1], P[i][2] - q[2]);
+        }
+        const ka = z.kante ? z.kante[i] : 0, zu = z.zustandJe ? z.zustandJe[i] : z.zustand || 0, tu = z.tusche ? z.tusche[i] : 0;
+        for (let s = -1; s <= 1; s += 2) {
+          const o3 = o * 3;
+          pos[o3] = P[i][0]; pos[o3 + 1] = P[i][1]; pos[o3 + 2] = P[i][2];
+          vor[o3] = pv[0]; vor[o3 + 1] = pv[1]; vor[o3 + 2] = pv[2];
+          nach[o3] = pn[0]; nach[o3 + 1] = pn[1]; nach[o3 + 2] = pn[2];
+          seite[o] = s; kante[o] = ka; bogen[o] = b; zustand[o] = zu; tusche[o] = tu;
           o++;
         }
       }
       for (let k = 0; k < zahl - 1; k++) {
         const a = start + 2 * k;
-        idx.set([a, a + 1, a + 2, a + 1, a + 3, a + 2], oi);
-        oi += 6;
+        idx[oi++] = a; idx[oi++] = a + 1; idx[oi++] = a + 2;
+        idx[oi++] = a + 1; idx[oi++] = a + 3; idx[oi++] = a + 2;
       }
     }
-    const set = (name, arr, k) => geo.setAttribute(name, new THREE.BufferAttribute(arr, k));
-    set('position', pos, 3);
-    set('vor', vor, 3);
-    set('nach', nach, 3);
-    set('seite', seite, 1);
-    set('kante', kante, 1);
-    set('bogen', bogen, 1);
-    set('zustand', zustand, 1);
-    set('tusche', tusche, 1);
-    geo.setIndex(new THREE.BufferAttribute(idx.subarray(0, oi), 1));
+    puffer.fertig(o, oi);
   }
 
   // Punkte: [{ p:[x,y,z], gr (px), zustand }]
   punkteSetzen(liste) {
     const n = liste.length;
-    const mitte = new Float32Array(n * 12), gr = new Float32Array(n * 4), zu = new Float32Array(n * 4), ecke = new Float32Array(n * 8);
-    const idx = new Uint32Array(n * 6);
-    const E = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
-    liste.forEach((q, i) => {
+    const P = this.punktPuffer;
+    P.sichern(n * 4, n * 6);
+    const pos = P.arr('position'), mitte = P.arr('mitte'), gr = P.arr('groesse'), zu = P.arr('zustand'), ecke = P.arr('ecke');
+    const idx = this.punkte.geometry.index.array;
+    const E = [-1, -1, 1, -1, 1, 1, -1, 1];
+    for (let i = 0; i < n; i++) {
+      const q = liste[i];
       for (let k = 0; k < 4; k++) {
-        mitte.set(q.p, (4 * i + k) * 3);
-        gr[4 * i + k] = q.gr;
-        zu[4 * i + k] = q.zustand;
-        ecke.set(E[k], (4 * i + k) * 2);
+        const v = 4 * i + k;
+        mitte[3 * v] = pos[3 * v] = q.p[0];
+        mitte[3 * v + 1] = pos[3 * v + 1] = q.p[1];
+        mitte[3 * v + 2] = pos[3 * v + 2] = q.p[2];
+        gr[v] = q.gr;
+        zu[v] = q.zustand;
+        ecke[2 * v] = E[2 * k];
+        ecke[2 * v + 1] = E[2 * k + 1];
       }
-      idx.set([4 * i, 4 * i + 1, 4 * i + 2, 4 * i, 4 * i + 2, 4 * i + 3], 6 * i);
-    });
-    const g = this.punktGeo;
-    g.setAttribute('mitte', new THREE.BufferAttribute(mitte, 3));
-    g.setAttribute('position', new THREE.BufferAttribute(mitte, 3));
-    g.setAttribute('groesse', new THREE.BufferAttribute(gr, 1));
-    g.setAttribute('zustand', new THREE.BufferAttribute(zu, 1));
-    g.setAttribute('ecke', new THREE.BufferAttribute(ecke, 2));
-    g.setIndex(new THREE.BufferAttribute(idx, 1));
+      idx[6 * i] = 4 * i; idx[6 * i + 1] = 4 * i + 1; idx[6 * i + 2] = 4 * i + 2;
+      idx[6 * i + 3] = 4 * i; idx[6 * i + 4] = 4 * i + 2; idx[6 * i + 5] = 4 * i + 3;
+    }
+    P.fertig(n * 4, n * 6);
   }
 
   strahlenSetzen(zuege) {
-    this.linienSetzen(zuege, this.strahlGeo);
+    this.linienSetzen(zuege, this.strahlPuffer);
   }
 
   ziel(name, w, h, opt = {}) {
@@ -400,9 +441,10 @@ export class Zeichner {
       this.voll(this.illu, zw, w, h);
       r.setRenderTarget(null);
       r.setViewport(rc.x, H - rc.y - rc.h, rc.w, rc.h);
-      this.kopie = this.kopie || new THREE.MeshBasicMaterial({ map: null, depthTest: false, depthWrite: false });
+      if (!this.kopie) {
+        this.kopie = new THREE.MeshBasicMaterial({ map: zw.texture, depthTest: false, depthWrite: false });
+      }
       this.kopie.map = zw.texture;
-      this.kopie.needsUpdate = true;
       this.vollMesh.material = this.kopie;
       r.render(this.vollSzene, this.vollKamera);
     }

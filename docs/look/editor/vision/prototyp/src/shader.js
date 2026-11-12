@@ -54,8 +54,18 @@ uniform vec3 uLinse; // x,y Bildpunkt, z Halbmesser (0 = aus)
 uniform vec2 uAufl;
 uniform float uGeist;   // >0: Geisterbild (frühere Form) in Plattenfarbe
 uniform vec3 uGeistFarbe;
+uniform vec4 uEinfluss; // Mitte, Halbmesser (0 = aus)
 varying vec3 vN; varying vec3 vW; varying float vBew; varying float vMaul; varying vec3 vRuhe;
 ${RAUSCHEN}
+vec3 einflussLicht(vec3 c, vec3 w){
+  if (uEinfluss.w <= 0.0) return c;
+  float d = distance(w, uEinfluss.xyz) / uEinfluss.w;
+  float innen = 1.0 - smoothstep(0.0, 1.0, d);
+  float ring = smoothstep(0.93, 0.985, d) * (1.0 - smoothstep(0.985, 1.04, d));
+  float wellen = 0.5 + 0.5 * sin(d * 18.0 - uZeit * 5.0);
+  c = mix(c, c + vec3(0.30, 0.22, 0.55) * (0.5 + 0.5 * wellen), innen * innen * 0.45);
+  return mix(c, vec3(0.83, 0.70, 0.96), ring * 0.9);
+}
 void main(){
   vec3 N = normalize(vN);
   vec3 V = normalize(uKamera - vW);
@@ -88,6 +98,7 @@ void main(){
     film = mix(vec3(dot(film, vec3(0.333))), film, 0.75);
     c = mix(c, c * 0.55 + film * 0.6, sf * 0.42);
   }
+  c = einflussLicht(c, vW);
   float alpha = 1.0;
   // Röntgenlinse: durchsichtig an einer Stelle
   if (uLinse.z > 0.0) {
@@ -107,10 +118,11 @@ export const papierVS = /* glsl */ `
 attribute float bewegt;
 attribute float maul;
 attribute vec3 ruhe;
-varying vec3 vN; varying float vBew; varying float vMaul; varying vec3 vRuhe; varying float vTiefe;
+varying vec3 vN; varying float vBew; varying float vMaul; varying vec3 vRuhe; varying float vTiefe; varying vec3 vW;
 void main(){
   vN = normalize(mat3(modelMatrix) * normal);
   vBew = bewegt; vMaul = maul; vRuhe = ruhe;
+  vW = (modelMatrix * vec4(position,1.0)).xyz;
   vec4 v = viewMatrix * modelMatrix * vec4(position,1.0);
   vTiefe = -v.z;
   gl_Position = projectionMatrix * v;
@@ -121,7 +133,8 @@ precision highp float;
 uniform vec3 uPapier, uLavendel, uBlick;
 uniform float uSeife, uZeit, uHinten;
 uniform vec3 uPetrol;
-varying vec3 vN; varying float vBew; varying float vMaul; varying vec3 vRuhe; varying float vTiefe;
+uniform vec4 uEinfluss;
+varying vec3 vN; varying float vBew; varying float vMaul; varying vec3 vRuhe; varying float vTiefe; varying vec3 vW;
 ${RAUSCHEN}
 void main(){
   vec3 N = normalize(vN);
@@ -139,6 +152,13 @@ void main(){
     vec3 film = seifenhaut(dicke, 0.9);
     film = mix(vec3(dot(film, vec3(0.333))), film, 0.6);
     c = mix(c, c * 0.7 + film * 0.35, sf * 0.3);
+  }
+  if (uEinfluss.w > 0.0) {
+    float d = distance(vW, uEinfluss.xyz) / uEinfluss.w;
+    float innen = 1.0 - smoothstep(0.0, 1.0, d);
+    float ring = smoothstep(0.93, 0.985, d) * (1.0 - smoothstep(0.985, 1.04, d));
+    c = mix(c, vec3(0.88, 0.80, 1.0), innen * innen * 0.5);
+    c = mix(c, vec3(0.58, 0.44, 0.98), ring);
   }
   // von hinten: Körper Petrol (wie die Blaupause beim Wenden)
   c = mix(c, mix(uPetrol, uPetrol * 1.6, s), uHinten);

@@ -144,6 +144,11 @@ App.prototype.bild = function (tJetzt) {
     } else L.r = Math.min(L.ziel, L.r + dt * 700);
   }
   z.U.uLinse.value.set(this.linse ? this.linse.x * z.dpr : 0, this.linse ? (this.H - this.linse.y) * z.dpr : 0, this.linse ? this.linse.r * z.dpr : 0);
+  // Einfluss sichtbar machen (nur während eines Zugs mit Zirkel oder Rad)
+  if (this.zug && this.zug.art === 'punkt' && this.einfluss > 0) {
+    const p = this.zug.ziel.sp ? spiegel(this.zug.ziel.P.p) : this.zug.ziel.P.p;
+    z.U.uEinfluss.value.set(p[0], p[1], p[2], this.einfluss);
+  } else z.U.uEinfluss.value.set(0, 0, 0, 0);
   for (const f of this.fx) f.t += dt;
   this.fx = this.fx.filter((f) => f.t < f.dauer);
   for (const g of this.geister) g.t += dt;
@@ -155,8 +160,9 @@ App.prototype.bild = function (tJetzt) {
   const lay = R.layout(this.W, this.H);
   this.lay = lay;
 
-  // Linien und Punkte für dieses Bild
+  // Linien und Punkte für dieses Bild (einmal, für alle Ansichten)
   this.anzeigeBauen();
+  this.anzeigeSetzen();
 
   z.r.setScissorTest(false);
   z.r.setRenderTarget(null);
@@ -197,7 +203,6 @@ App.prototype.orthoZeichnen = function (s, ziel, rectTex) {
   z.koerper.scale.set(1, 1, 1);
   const grund = this.pose && this.maulAuf > 0.01 ? (mg, kam, w, h) => this.grundMaske(mg, kam, w, h) : null;
   z.illustration({ name: (ziel ? 'w:' : 'd:') + s.name, kamera: s.kamera, w: W, h: H, px, rect: s.rect, hinten: s.hinten, grundMaske: grund }, ziel, (kam, w, h) => {
-    this.anzeigeSetzen(s, px / (z.dpr || 1));
   });
 };
 
@@ -226,7 +231,6 @@ App.prototype.dreiDZeichnen = function (rs, rect) {
   rs.setzen(rect);
   const a = this.wackel || 0;
   z.koerper.scale.set(1 - a * 0.5, 1 + a, 1 - a * 0.5);
-  this.anzeigeSetzen(rs, rs.pxJeEinheit([0, 0, 0]));
   this.strahlenSetzen(false);
   z.jelly.uniforms.uDurchsicht.value = 1;
   z.raum(rs.kamera, rect, { strahlen: true, glas: this.spiegelNaehe > 0.01, geister: this.geisterZeichner() });
@@ -290,7 +294,6 @@ App.prototype.raumZeichnen = function (lay) {
     const k2 = this._formSicht || (this._formSicht = new (rs.constructor)());
     k2.azimut = -0.62; k2.hoehe = 0.36; k2.abstand = rs.abstand; k2.ziel = rs.ziel;
     k2.setzen(ziel);
-    this.anzeigeSetzen(k2, k2.pxJeEinheit([0, 0, 0]));
     z.raum(k2.kamera, ziel, { klar: false });
     if (R.falte >= 1 && R.modus === 'blatt') rs._faltStart = null;
     if (R.falte <= 0 && R._zurueck) R._zurueck = false;
@@ -299,7 +302,6 @@ App.prototype.raumZeichnen = function (lay) {
   // Raum: Wände, dann Form; nahe einer Achse wird die Form durchsichtig und ihr Schatten an der Wand übernimmt
   const a = this.wackel || 0;
   z.koerper.scale.set(1 - a * 0.5, 1 + a, 1 - a * 0.5);
-  this.anzeigeSetzen(rs, rs.pxJeEinheit([0, 0, 0]));
   this.strahlenSetzen(true);
   const durch = 1 - smooth01(this.achsNaehe || 0) * 0.85;
   z.jelly.uniforms.uDurchsicht.value = durch;
@@ -376,9 +378,8 @@ App.prototype.anzeigeBauen = function () {
 };
 
 // Punkte, Griffe, Perle für eine Ansicht (Größe in Bildpunkten)
-App.prototype.anzeigeSetzen = function (sicht, pxJe) {
+App.prototype.anzeigeSetzen = function () {
   const z = this.z;
-  z.linienSetzen(this.anzeige.zuege);
   const punkte = [];
   const nahId = this.nah && this.nah.art === 'punkt' ? this.nah.P.id : null;
   const nein = this.fx.find((f) => f.art === 'nein' && f.P);
@@ -424,7 +425,7 @@ App.prototype.anzeigeSetzen = function (sicht, pxJe) {
   }
   // Perle: hier entsteht beim Tippen ein Punkt
   if (this.nah && this.nah.art === 'linie' && !this.zug && !this.strich) punkte.push({ p: this.nah.p, gr: basis * 1.4, zustand: 4 });
-  if (griffZuege.length) z.linienSetzen([...this.anzeige.zuege, ...griffZuege.map((g) => ({ ...g, kante: [1, 1] }))]);
+  z.linienSetzen([...this.anzeige.zuege, ...griffZuege.map((g) => ({ ...g, kante: [1, 1] }))]);
   z.punkteSetzen(punkte);
 };
 
