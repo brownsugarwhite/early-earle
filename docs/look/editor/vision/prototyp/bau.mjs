@@ -1,9 +1,13 @@
 // Bündelt den Prototyp zu einer Datei: node bau.mjs [eintrag] [ausgabe]
-import { build } from '/tmp/claude-0/-home-user-early-earle/b341633e-ad28-58e2-a5a6-16c95d14b024/scratchpad/dev/node_modules/esbuild/lib/main.js';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+// esbuild und three.js kommen aus ./node_modules oder aus NODE_MODULES=<pfad> (z. B. npm i three@0.170.0 esbuild@0.24.0).
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+const NM = resolve(process.env.NODE_MODULES || 'node_modules');
+if (!existsSync(NM + '/esbuild')) throw new Error('esbuild fehlt: npm i three@0.170.0 esbuild@0.24.0 (oder NODE_MODULES setzen)');
+const { build } = await import(pathToFileURL(NM + '/esbuild/lib/main.js').href);
 const eintrag = process.argv[2] || 'src/main.js';
 const aus = process.argv[3] || 'dist/vision.html';
-const NM = process.env.NODE_MODULES || '/tmp/claude-0/-home-user-early-earle/b341633e-ad28-58e2-a5a6-16c95d14b024/scratchpad/dev/node_modules';
 const r = await build({ entryPoints: [eintrag], bundle: true, format: 'iife', minify: !!process.env.KLEIN, write: false, nodePaths: [NM], target: 'es2020', legalComments: 'none', loader: { '.txt': 'text' } });
 const js = r.outputFiles[0].text;
 const html = readFileSync('seite.html', 'utf8').replace('/*SKRIPT*/', () => js.replace(/<\/script>/g, '<\\/script>'));

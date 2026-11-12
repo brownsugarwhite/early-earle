@@ -456,6 +456,8 @@ export class Zeichner {
     r.clearDepth();
     this.koerper.material = this.nurTiefe;
     r.render(this.szeneKoerper, kam);
+    this.linieSicht.uniforms.uBreite.value = 1.3;
+    this.linieVerdeckt.uniforms.uBreite.value = 1.3;
     this.linienFarben('papier');
     if (ueberlagern) ueberlagern(kam, w, h);
     r.render(this.szeneLinien, kam);
@@ -489,6 +491,8 @@ export class Zeichner {
     r.clearDepth();
     this.koerper.material = this.jelly;
     this.jelly.uniforms.uKamera.value.copy(kam.position);
+    this.linieSicht.uniforms.uBreite.value = 1.7;
+    this.linieVerdeckt.uniforms.uBreite.value = 1.7;
     if (opt.geister) for (const g of opt.geister) g(kam);
     r.render(this.szeneKoerper, kam);
     this.linienFarben('jelly');

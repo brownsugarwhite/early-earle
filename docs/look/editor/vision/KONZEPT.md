@@ -1,110 +1,156 @@
-# Vision: Der Kurven-Editor als Raum (Arbeitsfassung 1, 12.11.2026)
+# Vision: Der Kurven-Editor als Raum (Fassung 2, 12.11.2026, nach den Prototypen)
 
-> Auftrag: der coolste und eleganteste Editor für Florians Kurven. Minimalistisch, „alles funktioniert gleich“,
-> selbsterklärend, Shader und Animation statt Text. Keine der festgelegten Regeln gilt für diese Sitzung; die andere Sitzung
-> (Kurve reparieren) wird nicht berührt. Recherche: [`RECHERCHE.md`](RECHERCHE.md). Diese Fassung entsteht vor den
-> Prototypen und wird nach den Tests überarbeitet.
+> Auftrag (Florian, 12.11.): der coolste und eleganteste Editor für seine Kurven. Minimalistisch, „alles funktioniert gleich“,
+> selbsterklärend, Shader und Animation statt Text. Für diese Sitzung galt keine der festgelegten Regeln; die andere Sitzung
+> (Kurve reparieren) wurde nicht berührt (eigener Zweig, eigener Ordner, kein Code des Editors geändert).
+> Recherche: [`RECHERCHE.md`](RECHERCHE.md). Prototyp: [`prototyp/`](prototyp/) (Bauanleitung unten).
 
 ## Der Satz
 
 **Das Wesen steht in einer Ecke aus Papier. Seine Schatten an den Wänden sind die Ansichten. Eine Hand formt, zwei Finger
 schauen. Was du tust, zeigt sich in Licht, nicht in Worten.**
 
-## Drei Säulen
+## Der wichtigste Fund
 
-### 1. Raum: Es gibt keine Fenster, nur einen Raum, der sich falten lässt
+Florians vier Fenster (Seite oben links, Front rechts daneben, Top darunter, 3D in der freien Ecke) sind keine Willkür: Sie
+sind exakt die **europäische Projektionsmethode** (ISO 5456-2, Methode 1). Bei ihr steht das Objekt zwischen Betrachter und
+Wand und wirft seine Ansicht nach hinten, wie einen Schatten. Klappt man die drei Wände einer Raumecke flach auf, entsteht genau
+sein Blatt. Im Prototyp ist das keine Behauptung, sondern eine Animation: Die Wände klappen um ihre Kanten, die Form gleitet in
+ihr Feld (Bilder `docs/progress/editor/vision-falten-*.jpg`).
 
-Florians vier Fenster (Seite oben links, Front rechts daneben, Top darunter, 3D in der Ecke) sind keine Willkür. Sie sind exakt
-die **europäische Projektionsmethode** (ISO 5456-2, Methode 1): Das Objekt steht zwischen Betrachter und Wand und wirft seine
-Ansicht nach hinten wie einen Schatten. Klappt man die drei Wände einer Raumecke flach auf, entsteht genau sein Blatt.
+Daraus folgt das ganze Konzept: **Es gibt keine Fenster, nur einen Raum, der sich falten lässt.**
 
-Daraus folgt der Raum mit drei Zuständen derselben Szene, zwischen denen es keine Knöpfe gibt, nur Bewegung:
+## 1. Raum (Anordnung)
 
-| Zustand | Bild | Wofür | Hinein |
+| Zustand | Was man sieht | Wofür | Wie man hinkommt |
 |---|---|---|---|
-| **Raum** (gefaltet) | Das Jelly-Wesen steht in einer Ecke aus drei Wänden: Boden = Top, Rückwand = Seite, Seitenwand = Front. Auf jeder Wand liegt seine Ansicht als Illustration, wie ein Schatten. | Verstehen, wie alles zusammenhängt; frei schräg schneiden | zwei Finger drehen, bis keine Achse mehr gerade ist |
-| **Blatt** (aufgefaltet) | Die Wände klappen flach: Florians 2×2, aber **ein Maßstab** für alle, ohne Rahmen und Titel. Die Lage sagt, welche Ansicht es ist. | Genau arbeiten, alle Ansichten zugleich | aus dem Raum herauszoomen: die Wände klappen auf |
-| **Blick** | Eine Ansicht füllt den Bildschirm (Telefon). | Eine Ansicht groß | in eine Ansicht hineinzoomen; oder im Raum auf eine Achse einrasten |
+| **Raum** | Das Jelly-Wesen in einer Ecke aus drei Wänden. Boden = Top, Rückwand = Seite, Seitenwand = Front, jede Wand mit der Illustration ihrer Ansicht (Platten, Kontur, langer Schatten). | verstehen, schräg schneiden, das Wesen erleben | Start; zwei Finger drehen |
+| **Blatt** | Die Wände flach: Florians 2×2, **ein Maßstab**, keine Rahmen, keine Titel. Die Lage sagt, welche Ansicht es ist. | genau arbeiten, alle Ansichten zugleich | aus dem Raum herauszoomen: Die Ecke faltet sich auf |
+| **Blick** | Eine Ansicht füllt den Bildschirm. | Telefon; Feinarbeit | in ein Feld des Blatts hineinzoomen, oder im Raum auf eine Achse drehen: Dort wird die Form durchsichtig und ihr Schatten an der Wand übernimmt |
 
-- **Ordnungslinien** (aus dem Schiffbau und dem technischen Zeichnen): Fasst man einen Punkt an, laufen feine Lichtstrahlen zu
-  seinen Bildern in den anderen Ansichten. Im Raum gehen sie senkrecht vom Wesen zu den Wänden; auf dem Blatt waagerecht und
-  senkrecht, zwischen Front und Top über die 45°-Gehrungslinie der Zeichner. So sieht man, welche Linie in der Front welche in
-  der Seite ist (Florian, 05.11.: „Die Querschnitte von Kopf und Bauch sind in den anderen Ansichten noch nicht gut zu
-  bearbeiten“).
-- **Die Wände bleiben hinten.** Dreht man um das Wesen herum, klappt die Ecke mit, so dass die Wände immer hinter dem Wesen
-  stehen. Von hinten gesehen ist der Grund hell (das Wenden der Blaupause), ohne Knopf.
-- **Ganz weit herausgezoomt** liegt das Regal: Jedes Wesen hat seinen eigenen kleinen Raum, das Regal hält die Räume. Laden =
-  hineinzoomen, Neu = der Raum mit der leeren Kugel. Sichern geschieht von selbst (Ausblick, nicht im Prototyp).
+- **Ordnungslinien.** Fasst man einen Punkt, gehen im Raum drei Lichtstrahlen senkrecht zu den Wänden und treffen dort sein
+  Bild. Auf dem Blatt laufen gepunktete Linien waagerecht (gleiche Höhe) und senkrecht (gleiche Länge), zwischen Front und Top
+  über die 45°-Gehrungslinie der Zeichner. Das ist der Linienriss des Schiffbaus: Das „Straken“ (alle Ansichten passen zusammen)
+  wird sichtbar.
+- **Die Wände sind bearbeitbar** (Interactive Shadows, 1992): Ein Punkt an der Wand bewegt sich in der Ebene dieser Ansicht.
+  Ein Strich über einen Schatten schneidet einen Loop in dieser Ansicht.
+- **Die Ecke bleibt hinten.** Dreht man um das Wesen herum, wandert die Ecke mit; von hinten gesehen ist der Grund hell (das
+  Wenden der Blaupause, ohne Knopf).
 
-### 2. Hand: Eine Grammatik für alles
+## 2. Hand (Grammatik)
 
-| Regel | Bedeutung |
-|---|---|
-| **Ein Finger macht.** | Auf einem Ding: es formen. Auf der Leere oder auf der Haut: zeichnen. |
-| **Zwei Finger schauen.** | Ziehen = Blick drehen. Kneifen = Zoom und Falten. Tippen = einen Schritt zurück. Kreisen = Zeit spulen. |
-| **Ein ruhender Finger hält.** | Was unter ihm liegt, bleibt. Er begrenzt den Einfluss wie ein Zirkel und macht aus einem Griffzug einen Knick. |
-| **Mehr tippen, mehr nehmen.** | 1× Punkt, 2× Loop, 3× alles (wie Wort und Absatz im Text). |
-| **Kritzeln nimmt weg.** | Immer eine Schicht: Tusche → Bleistift → nichts. |
-| **Nachfahren tuscht.** | Eine Linie entlangfahren macht das Stück zur Kante (durchgezogen). Wie ein Tuschezeichner, der die Bleistiftlinie nachzieht. |
-| **Halten zeigt Verborgenes.** | Auf dem Wesen: Röntgen (Linien dahinter werden greifbar). Auf der Leere: Lichtspuren der Gesten, die hier gehen. |
-
-**Was ein Strich bedeutet, entscheidet seine Form**, und man sieht es, bevor man loslässt:
-
-- quer über den Körper (hinein und wieder hinaus) → **Loop**; ein Lichtring läuft um den Körper, wo er entstehen wird;
-- auf der Haut geschlossen → **Form** (z. B. Auge, Maul); kurz vor dem Schließen zieht ein Magnet das Ende an;
-- hin und her über etwas → **löschen**; das Ziel franst schon beim Kritzeln aus;
-- längs einer Linie → **tuschen**; die Tusche läuft hinter dem Finger her.
-
-**Gegenstücke auf dem Mac:** Klick = Tippen, Maus ziehen = ein Finger, Trackpad mit zwei Fingern = Blick, Kneifen oder Rad =
-Zoom, ⇧ = ruhender Finger, ⌥ halten = Röntgen, ⌘Z. Die bisherigen Tasten (G/S/R, O, K, L, F) bleiben als unsichtbare
-Abkürzung.
-
-**Pose ohne Regler:** Man greift ins Maul und zieht es auf. Das offene Maul *ist* die Pose. Solange es offen ist, wirkt jede
-Formänderung auf die Pose (Blendshape). Zuziehen kehrt zur Grundform zurück. Der Passer zeigt den Zustand: Platte 1 trägt die
-Grundform, Platte 2 die Pose; je weiter das Maul offen ist, desto weiter laufen die Platten auseinander.
-
-### 3. Licht: Die Sprache ohne Worte
-
-Grundregel aus der Luftfahrt: **Dunkles Cockpit.** Zu sehen sind nur das Wesen, seine Linien und Punkte. Alles andere erscheint,
-wenn es gebraucht wird, und geht wieder.
-
-| Signal | Bedeutet | Wann |
+| Regel | Bedeutung | Gebaut |
 |---|---|---|
-| Nähe | „Das kannst du greifen“: Punkte schwellen, das nächste Ziel bekommt einen Ring | Zeiger in der Nähe (Maus) |
-| Perle | „Hier entsteht ein Punkt“: eine Perle gleitet auf der Linie mit | Zeiger über einer Linie |
-| Ordnungslinien | „Hier ist derselbe Punkt in den anderen Ansichten“ | anfassen, ziehen |
-| Seifenhaut | „Hier wird die Haut neu gefunden“: Schillern, das beim Loslassen erstarrt | während einer Formänderung |
-| Zirkel | Einflussbereich zwischen ziehendem und ruhendem Finger | zweiter Finger |
-| Lichtring | Vorschau des neuen Loops | Strich quer über den Körper |
-| Tusche / Ausfransen | Kante entsteht / etwas verschwindet | nachfahren / kritzeln |
-| Spiegelglas | „Hier ist die Mitte“: Glasebene mit Lichtflecken, der Zwilling leuchtet | Punkt nahe der Mittelebene |
-| Röntgenlinse | Durchsicht an einer Stelle | halten |
-| Passer | Pose gegen Grundform | Maul offen |
-| Geister | frühere Formen | Zeit spulen |
-| Einrasten | Das Jelly-Wesen wird zur flachen Illustration (perspektivisch → parallel) | Drehen nahe einer Achse |
+| **Ein Finger macht.** | Auf einem Punkt, Griff oder einer Linie: formen. Auf der Leere oder der Haut: zeichnen. | ja |
+| **Zwei Finger schauen.** | Ziehen = drehen (Raum) oder schwenken (Blatt); kneifen = Zoom, weit heraus = Auffalten; zwei Finger tippen = zurück, drei = vor; zwei Finger still halten und schieben = Zeit spulen. | ja |
+| **Ein ruhender Finger hält.** | Während eines Zugs: Der zweite Finger ist ein Zirkel, sein Abstand ist der Einfluss (Blenders O). Auf einem Punkt ruhend: Der Griffzug knickt (Ecke). | ja |
+| **Mehr tippen, mehr nehmen.** | 1× Punkt, 2× Loop, 3× alles. Ein Tipp auf eine Linie setzt dort einen Punkt (die Perle zeigt vorher, wo). | ja |
+| **Ein Strich bedeutet, was seine Form sagt.** | Über den Umriss = Loop (Lichtring läuft vorher um den Körper). Geschlossen auf der Haut = Form (Magnet zieht das Ende an). Zickzack = Kritzeln. Längs einer Linie = Tusche. | ja |
+| **Kritzeln nimmt eine Schicht weg.** | Ecke → glatt; Kante → weich; Punkt weg; Linie weg. Was nicht geht (Kreuzung, Mittellinie), schüttelt den Kopf. | ja |
+| **Nachfahren tuscht.** | Wie ein Tuschezeichner, der die Bleistiftlinie nachzieht: Das nachgefahrene Stück wird Kante. | ja |
+| **Halten zeigt Verborgenes.** | Auf der Form: Röntgenlinse, Linien dahinter werden greifbar. Auf der Leere: Lichtspuren der Gesten, die hier gehen. | ja |
+| **Pose ohne Regler.** | Ins Maul greifen und aufziehen. Das offene Maul *ist* die Pose; der Passer zeigt Grundform gegen Pose. | erster Wurf |
 
-Dazu, nur als Zusatz: leiser Ton (Bleistift, Zupfen, Reißverschluss) und in der App ein Tick der Haptik beim Einrasten und Fangen.
+**Auf dem Mac** dieselbe Grammatik: Klick = Tippen, Maus ziehen = ein Finger, Trackpad mit zwei Fingern = drehen, Kneifen oder
+Rad = Zoom, Rad während eines Zugs = Einfluss, ⇧ = ruhender Finger (Knick), ⌥ halten = Röntgen, ⌘Z/⇧⌘Z, Tab = falten,
+1/3/7 = Seite/Front/Top (wie Blenders Ziffernblock), K = Kante, ⌫ = löschen. Die Tasten sind ein zweiter Weg, nie der einzige.
 
-### 4. Leben
+## 3. Licht (Sprache)
 
-Das Wesen atmet kaum merklich und schaut dem Finger nach. Beim Loslassen wackelt das Jelly kurz. Während eines Zugs hält es still.
-(Spore: Der Rechner haucht dem Geschaffenen Leben ein; Tester liebten ihre Wesen, auch wenn etwas schiefging.)
+Grundregel aus der Luftfahrt: **dunkles Cockpit.** Zu sehen sind das Wesen, seine Linien und Punkte. Alles andere erscheint,
+wenn es gebraucht wird.
 
-## Was wegfällt
+| Signal | Bedeutet | Stand im Prototyp |
+|---|---|---|
+| Nähe | „greifbar“: Punkte schwellen, das nächste Ziel hebt sich (Bubble Cursor) | Maus |
+| Perle | „hier entsteht ein Punkt“ | Maus |
+| Ordnungslinien | dieser Punkt in den anderen Ansichten | Raum und Blatt |
+| Seifenhaut | wo die Haut sich gerade neu findet (Frei Otto); erstarrt beim Loslassen | leise, nur im stärksten Bereich |
+| Zirkel | Einflussbereich, mit wandernden Ringen | ja |
+| Lichtring | Vorschau des neuen Loops | ja |
+| Tusche / Krümel | Kante entsteht / etwas verschwindet | ja |
+| Spiegelglas | die Mittelebene, nur in ihrer Nähe | ja |
+| Röntgenlinse | Durchsicht an einer Stelle | ja |
+| Passer | Pose gegen Grundform (rosa = Grundform, lila = Pose) | ja, im Blatt |
+| Geister | frühere Formen beim Zurückgehen | ja |
+| Einrasten | Die Form wird zu ihrem Schatten | ja |
+| Kopfschütteln | „geht nicht“ | ja |
+| Wackeln | Jelly nach dem Loslassen | ja |
+| Ton (aus) | Zupfen, Reißverschluss, Rascheln, Klick | `?ton=1` oder M |
 
-Werkzeugleiste (Loop, Form, Stift, Einfluss, Fressen), die Regler Maul und Kopf, Neu/Sichern/Laden, Fenstertitel,
-Wenden-Knöpfe, Hilfetexte, Statuszeile. Es bleiben das Wesen, seine Linien, Punkte und Griffe.
+## 4. Prüfung aus vielen Blickwinkeln (ehrlich)
 
-## Was bleibt
+**Florian als Illustrator.** Die Wände sind seine Illustrationen, das 3D-Jelly steht davor wie in einer Galerie. Tusche und
+Bleistift sind Zeichnerbegriffe, keine Werkzeuge. *Gefahr:* Im Raum dominiert das Jelly; genaues Zeichnen geschieht im Blick
+oder Blatt. Gut so, aber der Weg dorthin muss schnell sein (eine Kneifbewegung).
 
-Das Datenmodell (Loops `mitte`/`ring`/`paar`, Punkte, Bézier-Griffe, Kanten, Spiegel, Maul, Pose), der Look der Blaupause für
-die Ansichten und das Jelly für das 3D, die Tasten als zweiter Weg. Die Vision ist unabhängig vom Löser; sie liegt als Schicht
-über dem, was die andere Sitzung baut.
+**Bildhauer (Rodin).** Profile umrunden ist hier das Drehen im Raum; „Formen, die von innen drängen“ ist die Haut zwischen den
+Linien. Zwei Hände am Ton: der ruhende Finger. *Fehlt:* direktes Drücken und Ziehen der Haut. Ein Finger auf der Haut zeichnet
+hier. Eine Variante (Haut ziehen = nächste Linien mitnehmen) wäre zu prüfen.
 
-## Offene Fragen, die die Prototypen beantworten sollen
+**Architekt.** Ein Raum statt vier Fenster ist eine Ordnung, kein Effekt: Das Blatt ist die Abwicklung, der Blick ist ein Feld
+daraus. Ordnungslinien und Gehrung sind die Konstruktion. Frei Ottos Seifenhaut ist die ehrlichste Darstellung dessen, was der
+Löser tut. *Gefahr:* Drei Wände sind „Architektur“, die mit dem Wesen um Aufmerksamkeit konkurriert. Darum sind sie dunkel, das
+Wesen leuchtet.
 
-1. Trägt die Raumecke im Arbeiten, oder ist sie nur schön? (Kriterium: Kann man auf einer schrägen Wand sinnvoll ziehen?)
-2. Ist „Nachfahren tuscht“ von „Linie biegen“ sicher zu trennen? (Kriterium: Richtung der ersten 12 px.)
-3. Lenkt die Seifenhaut ab, oder zeigt sie, wie weit ein Zug reicht?
-4. Reicht ein Maßstab für alle Ansichten auf dem Blatt?
-5. Wie fühlt sich „ein Finger zeichnet auf der Leere“ an, wenn man eigentlich drehen wollte?
+**Ingenieur.** Das Datenmodell bleibt (mitte/ring/paar, Punkte, Griffe, Kanten, Spiegel). Die Wände sind drei Renderziele, die
+es für die Ansichten ohnehin gibt. Treffer an Wänden sind Strahl gegen Ebene. Gemessen in der Cloud (Software-Grafik): Raum und
+Blatt stetig ~17 ms je Bild; ein Zug am „teat firefish“ (27 770 Punkte) kostet dank einmal gerechneter Zugbasis (Botsch &
+Kobbelt) nur eine Addition je Netzpunkt. *Gefunden und behoben:* ein Speicherleck (Puffer je Bild neu), Gesten, die unter Last
+falsch erkannt wurden (jetzt nach Zeitstempel). *Offen:* nichts davon ist auf dem iPhone gemessen.
+
+**Spieledesigner.** Keine Fehlerzustände, nur Zurück. Jede Geste hat ein Echo (Ring, Krümel, Wackeln, Klick). Townscapers
+„klare Arbeitsteilung zwischen Nutzer und Algorithmus“: Florian zieht Linien, der Rechner bläst die Haut auf und macht sie schön.
+Spore: Das Wesen lebt (atmen und Blick folgen sind noch nicht gebaut).
+
+**Kind / Neuling.** Ein Finger zeichnet: sofort belohnend. Zwei Finger drehen: kennt man aus Karten. Zwei Finger tippen = zurück
+kennt man aus Procreate, sonst nicht. Die Geisterhand führt es einmal vor.
+
+**Skeptiker (Norman & Nielsen).** Gesten sind schwer zu entdecken. Antwort hier: Vorschau vor jeder Handlung, eine Regel statt
+vieler, Geisterhand, Halten = „zeig mir, was geht“, Tasten auf dem Mac. *Ehrlich:* Den Zirkel (ruhender zweiter Finger) und das
+Zeitspulen findet niemand von selbst. *Und:* „Ein Finger auf der Leere zeichnet“ bricht Florians Gewohnheit „Grund ziehen dreht“.
+Deshalb gibt es die Variante `?leere=drehen` (Leere dreht, Striche beginnen auf der Haut).
+
+**Barrierefreiheit.** Keine Beschriftung heißt: nichts für Bildschirmleser. Farbe trägt Bedeutung (rosa/lila), dazu immer Lage
+und Form. Bewegung lässt sich reduzieren (Seifenhaut `?seife=0`, Wackeln). Haptik in der App wäre ein Kanal für Nichtsehende.
+
+**Florians Budget.** Nichts davon braucht den Löser. Jede Säule lässt sich einzeln in `kurven.ts` übernehmen, ohne die andere
+Sitzung zu stören (Reihenfolge unten).
+
+## 5. Was der Prototyp ist und was nicht
+
+- **Ist:** eine lauffähige Seite (eine Datei) mit Raum, Blatt, Blick, Faltung, Ordnungslinien, der ganzen Grammatik für Finger,
+  Maus und Trackpad, allen Lichtsignalen oben, Florians drei Formen (`?form=vogel`, `fisch`, `kaputt`) und Filmen mit
+  Geisterfingern.
+- **Ist nicht:** sein Löser. Die Haut rechnet ein Ersatzverfahren (Verformung mit radialen Basisfunktionen durch die Proben der
+  Linien): Sie geht genau durch die Linien und gibt für gleiche Linien immer dieselbe Haut, bläst sich aber nicht auf wie seine
+  und kennt keine echten Kanten (Kanten sind gezeichnet, nicht gerechnet). Das Maul ist ein einfacher Kieferknochen, keine eigene
+  Geometrie.
+- **Ungeprüft:** iPhone, Safari, echte Finger, Florians Auge.
+
+## 6. Übernahme in den Editor (Vorschlag, je Schritt einzeln)
+
+1. **Blatt mit einem Maßstab und Ordnungslinien** in den vier Fenstern (nur Anzeige, kein Kern).
+2. **Raumecke als 3D-Fenster:** die drei Ansichten als Wandbilder, Strahlen beim Greifen.
+3. **Grammatik:** ein Finger zeichnet (Schnitt/Form ohne L/F), Kritzeln löscht, Nachfahren tuscht; Tasten bleiben.
+4. **Lichtsignale:** Ring, Zirkel, Röntgen, Seifenhaut, Kopfschütteln.
+5. **Falten** zwischen Raum, Blatt und Blick (Kneifen).
+6. **Pose übers Maul**, sobald Schritt 6 des Plans (Maul als eigene Geometrie) steht.
+
+## 7. Entscheidungen für Florian
+
+1. Raumecke als 3D-Fenster: ja / nein / als Schalter?
+2. Leere zeichnet (Vision) oder Leere dreht (wie heute, `?leere=drehen`)?
+3. Ein Maßstab für alle Ansichten im Blatt?
+4. Tusche und Kritzeln statt K und ⌫ (Tasten bleiben)?
+5. Seifenhaut: Bedeutung oder Ablenkung?
+
+## Bauanleitung Prototyp
+
+```bash
+cd docs/look/editor/vision/prototyp
+npm i three@0.170.0 esbuild@0.24.0   # oder NODE_MODULES=<pfad> setzen
+node bau.mjs src/main.js dist/vision.html
+# Parameter: ?form=kugel|vogel|fisch|kaputt  ?layout=raum|blatt|seite|front|top  ?leere=drehen  ?ton=1  ?seife=0
+# Filme: node film.cjs raum aus.mp4 960 600 25 16
+```

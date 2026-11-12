@@ -79,12 +79,17 @@ class WandSicht {
   }
 }
 
-App.prototype.start = function () {
+App.prototype.startOhneTakt = function () {
   this.wandSichten = { seite: new WandSicht(this, 'seite'), front: new WandSicht(this, 'front'), top: new WandSicht(this, 'top') };
   this.wandEcken = {};
-  this.tasten = new Set();
+  this.tasten = this.tasten || new Set();
+  this.letzt = 0;
+};
+App.prototype.start = function () {
+  this.startOhneTakt();
   this.letzt = performance.now();
   const schleife = (t) => {
+    if (this.filmTakt) this.filmTakt(t);
     this.bild(t);
     requestAnimationFrame(schleife);
   };
@@ -92,10 +97,12 @@ App.prototype.start = function () {
 };
 
 App.prototype.bild = function (tJetzt) {
-  const dt = Math.min(0.05, (tJetzt - this.letzt) / 1000);
+  const dt = Math.min(0.05, Math.max(0, (tJetzt - this.letzt) / 1000));
   this.letzt = tJetzt;
+  this._dt = dt;
   this.zeit += dt;
   const z = this.z, R = this.raum;
+  if (this.eingabeTakt) this.eingabeTakt();
   z.U.uZeit.value = this.zeit;
   z.U.uSeife.value = this.seife ? 1 : 0;
   R.schritt(dt);
@@ -189,11 +196,11 @@ App.prototype.bild = function (tJetzt) {
 // Wackeln nach dem Loslassen (nur im 3D)
 App.prototype.wackelSkala = function () {
   const w = this.fx.find((f) => f.art === 'wackeln');
-  const k = this.z.koerper;
-  if (!w) { k.scale.set(1, 1, 1); k.position.set(0, 0, 0); return; }
+  // Atmen: kaum merklich, nur im 3D und nur, wenn niemand zieht (Spore: das Wesen lebt)
+  const atmen = this.zug || this.strich ? 0 : Math.sin(this.zeit * 1.7) * 0.006;
+  if (!w) { this.wackel = atmen; return; }
   const t = w.t / w.dauer;
-  const a = Math.sin(t * Math.PI * 4) * Math.exp(-t * 4) * 0.028;
-  this.wackel = a;
+  this.wackel = Math.sin(t * Math.PI * 4) * Math.exp(-t * 4) * 0.028 + atmen;
 };
 
 App.prototype.orthoZeichnen = function (s, ziel, rectTex) {
@@ -511,6 +518,7 @@ App.prototype.obenZeichnen = function (lay) {
   if ((lay.art === 'blatt') && this.fokusPunkt()) this.ordnungslinien(this.fokusPunkt());
   // Gestenhilfe: Lichtspuren der Gesten, die hier gehen
   if (this.hilfe) this.hilfeZeichnen();
+  if (this.geisterFinger) this.geisterFinger(c, this._dt || 0.016);
   // Faltkanten im Blatt (ganz leise)
   if (lay.art === 'blatt') {
     const bl = this.raum.blatt;

@@ -3,6 +3,7 @@ import { App } from './bild.js';
 import './werkzeuge.js';
 import { eingabeAnbinden } from './eingabe.js';
 import { Ton } from './ton.js';
+import { filmAnbinden } from './film.js';
 
 const app = new App(document.getElementById('leinwand'), document.getElementById('oben'));
 eingabeAnbinden(app, document.getElementById('leinwand'));
@@ -11,5 +12,7 @@ app.tonUmschalten = () => {
   app.ton = app.ton ? null : new Ton();
   if (app.ton) app.ton.wecken();
 };
-app.start();
+const film = filmAnbinden(app);
+if (film.film) app.startOhneTakt();
+else app.start();
 window.__app = app;

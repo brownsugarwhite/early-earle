@@ -69,7 +69,8 @@ vec3 einflussLicht(vec3 c, vec3 w){
 void main(){
   vec3 N = normalize(vN);
   vec3 V = normalize(uKamera - vW);
-  if (!gl_FrontFacing) N = -N;
+  bool innen = !gl_FrontFacing;
+  if (innen) N = -N;
   vec3 L = normalize(vec3(-0.55, 0.75, 0.45));
   float ndl = dot(N, L);
   float aa = fwidth(ndl) * 1.2 + 0.002;
@@ -84,10 +85,19 @@ void main(){
   // Rand (Fresnel) etwas dunkler, dann Glanz
   float fr = pow(1.0 - max(dot(N, V), 0.0), 2.0);
   c = mix(c, uTief * 0.8, fr * 0.35);
-  vec3 H = normalize(L + V);
-  float sp = pow(max(dot(N, H), 0.0), 90.0);
-  float g = smoothstep(0.45, 0.55, sp);
-  c = mix(c, vec3(1.0), g * 0.9);
+  // Glanz wie in Florians Jelly-Vorlage: ein gebogener Strich und ein Punkt, scharf begrenzt
+  vec3 H1 = normalize(L + V);
+  vec3 L2 = normalize(L + vec3(0.16, -0.13, 0.02));
+  vec3 H2 = normalize(L2 + V);
+  vec3 L3 = normalize(L + vec3(0.30, -0.36, 0.08));
+  vec3 H3 = normalize(L3 + V);
+  float s1 = pow(max(dot(N, H1), 0.0), 26.0);
+  float s2 = pow(max(dot(N, H2), 0.0), 26.0);
+  float s3 = pow(max(dot(N, H3), 0.0), 380.0);
+  float aa1 = fwidth(s1) + 0.002;
+  float strichG = smoothstep(0.62 - aa1, 0.62 + aa1, s1) * (1.0 - smoothstep(0.50 - aa1, 0.50 + aa1, s2));
+  float punktG = smoothstep(0.5 - fwidth(s3), 0.5 + fwidth(s3), s3);
+  c = mix(c, vec3(1.0), max(strichG, punktG) * 0.92);
   // Maul innen
   c = mix(c, vec3(0.28, 0.04, 0.10), smoothstep(0.4, 0.6, vMaul));
   // Seifenhaut, wo sich die Haut gerade neu findet
@@ -99,7 +109,9 @@ void main(){
     c = mix(c, c * 0.55 + film * 0.6, sf * 0.42);
   }
   c = einflussLicht(c, vW);
-  float alpha = 1.0;
+  // halbtransparentes Jelly (Florian, 11.11.): die Wandbilder scheinen durch; Rückseiten dunkler
+  float alpha = innen ? 0.55 : 0.88;
+  if (innen) c = mix(uTief * 0.55, c * 0.6, 0.35);
   // Röntgenlinse: durchsichtig an einer Stelle
   if (uLinse.z > 0.0) {
     float d = distance(gl_FragCoord.xy, uLinse.xy);

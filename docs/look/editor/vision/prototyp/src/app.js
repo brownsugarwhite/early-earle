@@ -42,6 +42,7 @@ export class App {
     this.maulAuf = 0;
     this.pose = null;
     this.letzteFingerZeit = 0;
+    this.tasten = new Set();
     this.formLaden(parameter.get('form') || 'kugel');
     this.groesseAnpassen();
     this.einpassen(true);
@@ -718,9 +719,10 @@ export class App {
     const endeDrin = !!trifftKoerper(this.netz, sicht, e[0], e[1]);
     const zu = Math.hypot(e[0] - a[0], e[1] - a[1]) < Math.max(26, diag * 0.18) && weg > 80;
     if (startDrin && zu) return 'form';
-    if (startDrin) return 'formOffen';
-    if (!startDrin && !endeDrin) return 'schnitt';
-    return 'schnittOffen';
+    // Ein Strich, der den Umriss überquert, schneidet einen Loop (auch wenn er drinnen beginnt oder endet: Loops sind
+    // immer geschlossen, die Vorschau zeigt den ganzen Ring, bevor man loslässt)
+    if (!startDrin || !endeDrin) return 'schnitt';
+    return 'formOffen';
   }
 
   strichEnde() {
@@ -1043,8 +1045,9 @@ export class App {
     if (this.linse) { this.linse.x = x; this.linse.y = y; }
     if (this.hilfe) { this.hilfe.x = x; this.hilfe.y = y; }
   }
-  haltenEnde() {
+  haltenEnde(sofort) {
     if (this.linse) this.linse.zu = true;
+    if (sofort) this.linse = null;
     this.hilfe = null;
   }
 
