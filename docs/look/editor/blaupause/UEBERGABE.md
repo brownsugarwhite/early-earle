@@ -454,3 +454,9 @@ Platte, so breit wie außen (doppelter Versatz in Richtung der Normale), Abstand
 halbe Auflösung). Linien und Konturen liegen darüber und laufen direkt ins Petrol. Ein Zwischenschritt (Streifen zwischen Körper und
 Petrol, Linien per „Brücke“ hinübergeführt) ist verworfen. Commit `a61f3c87`, Artefakt Version 16, Bild
 `docs/progress/editor/editor-tiktok-innen-2026-11-12.png`.
+
+**Danach (Florian 12.11.: „Mach den TikTok-Effekt doch bitte wieder so wie vorher, aber ohne die Brücken zur Outline“):** Der innere
+Streifen liegt wieder zwischen Körper und Petrol (außerhalb des Körpers), so breit wie der äußere (die nach außen versetzte Platte beginnt
+innen beim doppelten Versatz: `qA = min(dE, 2·dA − dE)`); kein Streifen auf dem Körper, keine Brücke — Linien enden am Körperrand.
+Commit `0c32a375`, Artefakt Version 17, Bild `docs/progress/editor/editor-tiktok-ohne-bruecken-2026-11-12.png`. Server 5194
+(„kurven-alt“) war aus und ist über die Vorschau neu gestartet.
