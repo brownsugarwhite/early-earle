@@ -9,7 +9,7 @@
 
 import { clamp } from './mathe.js';
 
-const PAR = new URLSearchParams(location.search);
+import { PAR } from './parameter.js';
 export const HALTEN = +(PAR.get('halten') || 430);
 // Variante: ein Finger auf der Leere dreht (wie in Florians Fenstern); Striche beginnen dann auf der Haut
 const LEERE_DREHT = PAR.get('leere') === 'drehen';
@@ -197,9 +197,12 @@ export function eingabeAnbinden(app, el) {
         if (d > 10 && zwei.d > 10) app.zoomen(d / zwei.d, c[0], c[1]);
         const lay = app.lay;
         if (lay && lay.art === 'blick') {
+          // hineingezoomt: schwenken; sonst dreht man sich aus der flachen Ansicht heraus in den Raum
           zwei.dreh += dw;
+          zwei.zieh = (zwei.zieh || 0) + Math.hypot(dc[0], dc[1]);
           if (Math.abs(zwei.dreh) > 0.6) { app.wenden(Math.sign(zwei.dreh)); zwei.dreh = 0; }
-          else app.schwenken(dc[0], dc[1]);
+          else if (app.raum.blickZoom > 1.15) app.schwenken(dc[0], dc[1]);
+          else if (zwei.zieh > 26) { app.ausBlick(); app.drehen(dc[0], dc[1]); }
         } else if (lay && lay.art === 'blatt') app.schwenken(dc[0], dc[1]);
         else { app.drehen(dc[0], dc[1]); app._letzteDrehung = dc; }
       }

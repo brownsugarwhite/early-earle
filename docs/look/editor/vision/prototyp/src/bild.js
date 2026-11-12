@@ -215,22 +215,20 @@ App.prototype.orthoZeichnen = function (s, ziel, rectTex) {
 
 // Maske der Grundform (ohne Pose) für den Passer
 App.prototype.grundMaske = function (ziel, kam, w, h) {
+  // die Grundform (vor dem Kiefer) liegt in grundPos, festgehalten beim Anwenden der Pose
   const z = this.z;
+  if (!this.grundPos) return;
   const P = this.netz.pos;
-  const gemerkt = new Float32Array(P);
-  const auf = this.maulAuf;
-  this.maulAuf = 0;
-  this.haut.verformen();
-  this.maulAuf = auf;
-  z.netzAktualisieren();
+  const jetzt = new Float32Array(P);
+  P.set(this.grundPos);
+  z.koerper.geometry.attributes.position.needsUpdate = true;
   z.koerper.material = z.maske;
   z.r.setRenderTarget(ziel);
   z.r.setClearColor(0x000000, 0);
   z.r.clear(true, true, true);
   z.r.render(z.szeneKoerper, kam);
-  P.set(gemerkt);
-  this.netz.normalen();
-  z.netzAktualisieren();
+  P.set(jetzt);
+  z.koerper.geometry.attributes.position.needsUpdate = true;
 };
 
 App.prototype.dreiDZeichnen = function (rs, rect) {

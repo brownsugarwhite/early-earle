@@ -128,6 +128,20 @@ Sitzung zu stören (Reihenfolge unten).
   Geometrie.
 - **Ungeprüft:** iPhone, Safari, echte Finger, Florians Auge.
 
+## 5a. Was das Bauen gelehrt hat (gefunden in den Tests)
+
+- **Pixeldichte:** `setViewport` rechnet in three.js immer mit der Pixeldichte, auch wenn ein Renderziel gebunden ist. Bei
+  doppelter Dichte (iPhone, Retina-Mac) waren die Wandbilder und das Blatt leer, bei einfacher Dichte (Cloud-Tests) nicht.
+  Behoben; gilt für jeden, der Ansichten in Renderziele zeichnet.
+- **Puffer:** Linien und Punkte je Bild mit neuen Attributen anzulegen, lässt die GPU-Puffer überlaufen (three gibt ersetzte
+  Attribute nie frei). Nach kurzer Zeit dauerte im Blatt jedes Bild 1 bis 2 s. Jetzt feste Puffer mit Kapazität.
+- **Gesten unter Last:** Zwei gleichzeitige Finger kamen bei langsamen Bildern als „erst einer, dann der andere“ an und wurden
+  als ruhender Finger gedeutet. Entscheidungen fallen jetzt nach dem Zeitstempel der Ereignisse; Halten wird im Bildtakt geprüft.
+- **Seifenhaut:** am ganzen Körper zu laut (alles regenbogenbunt). Jetzt nur der Bereich, der sich am stärksten bewegt, kubisch
+  abfallend, höchstens zu 42 % gemischt.
+- **Maul gegen Auge:** Eine Form über die Mitte war zu schnell ein Maul (ein Auge nahe der Mitte wurde eines). Jetzt: vorn, breit
+  (mindestens 1,6-mal so breit wie hoch) und in der unteren Hälfte.
+
 ## 6. Übernahme in den Editor (Vorschlag, je Schritt einzeln)
 
 1. **Blatt mit einem Maßstab und Ordnungslinien** in den vier Fenstern (nur Anzeige, kein Kern).

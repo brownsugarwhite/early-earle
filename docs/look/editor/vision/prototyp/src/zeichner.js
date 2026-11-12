@@ -357,10 +357,11 @@ export class Zeichner {
     return z;
   }
 
+  // Achtung: setViewport rechnet in three.js immer mit der Pixeldichte, auch bei einem Renderziel. In Renderziele deshalb
+  // nie setViewport aufrufen; sie zeichnen von selbst über ihre ganze Größe.
   voll(material, ziel, w, h) {
     this.vollMesh.material = material;
     this.r.setRenderTarget(ziel);
-    if (ziel) this.r.setViewport(0, 0, w, h);
     this.r.render(this.vollSzene, this.vollKamera);
   }
 
@@ -397,7 +398,6 @@ export class Zeichner {
     this.maske.uniforms.uNah.value = kam.near;
     this.maske.uniforms.uFern.value = kam.far;
     r.setRenderTarget(maske);
-    r.setViewport(0, 0, w, h);
     r.setClearColor(0x000000, 0);
     r.clear(true, true, true);
     r.render(this.szeneKoerper, kam);
@@ -413,7 +413,6 @@ export class Zeichner {
     this.koerper.material = this.papier;
     this.papier.uniforms.uHinten.value = sicht.hinten ? 1 : 0;
     r.setRenderTarget(koerperZiel);
-    r.setViewport(0, 0, w, h);
     r.setClearColor(0x000000, 0);
     r.clear(true, true, true);
     r.render(this.szeneKoerper, kam);
@@ -449,10 +448,7 @@ export class Zeichner {
       r.render(this.vollSzene, this.vollKamera);
     }
     // 3. Tiefe des Körpers, dann Linien und Punkte
-    if (ziel) {
-      r.setRenderTarget(ziel);
-      r.setViewport(0, 0, w, h);
-    }
+    if (ziel) r.setRenderTarget(ziel);
     r.clearDepth();
     this.koerper.material = this.nurTiefe;
     r.render(this.szeneKoerper, kam);

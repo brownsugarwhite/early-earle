@@ -4,7 +4,7 @@
 
 import { spiegel } from './mathe.js';
 
-const PAR = new URLSearchParams(location.search);
+import { PAR } from './parameter.js';
 
 export function filmAnbinden(app) {
   const finger = new Map(); // id → { x, y, spur: [[x,y]], an }
@@ -74,19 +74,20 @@ export function filmAnbinden(app) {
   const W = () => app.W, H = () => app.H;
 
   const FILME = {
-    // Der Raum: drehen, einrasten (die Form wird zu ihrem Schatten), zurück, auffalten zum Blatt
+    // Der Raum: drehen, einrasten (die Form wird zu ihrem Schatten), heraus in den Raum, auffalten zum Blatt
     raum() {
-      warte(0.6);
-      zwei(() => [[W() * 0.38, H() * 0.72], [W() * 0.62, H() * 0.72]], () => [[W() * 0.62, H() * 0.72], [W() * 0.86, H() * 0.72]], 0.01);
-      sz.pop();
-      zwei(() => [[W() * 0.35, H() * 0.75], [W() * 0.5, H() * 0.75]], () => [[W() * 0.52, H() * 0.75], [W() * 0.67, H() * 0.75]], 1.4);
-      warte(0.5);
-      zwei(() => [[W() * 0.5, H() * 0.75], [W() * 0.62, H() * 0.78]], () => [[W() * 0.66, H() * 0.75], [W() * 0.78, H() * 0.78]], 1.0);
-      warte(1.6);
-      zwei(() => [[W() * 0.42, H() * 0.7], [W() * 0.3, H() * 0.62]], () => [[W() * 0.58, H() * 0.7], [W() * 0.46, H() * 0.62]], 1.0);
       warte(0.8);
-      zwei(() => [[W() * 0.35, H() * 0.5], [W() * 0.47, H() * 0.5]], () => [[W() * 0.65, H() * 0.5], [W() * 0.53, H() * 0.5]], 1.1);
-      warte(2.2);
+      // nach links drehen bis knapp vor die Seitenansicht → loslassen → einrasten
+      // genau so weit drehen, dass die Seitenansicht erreicht ist (Azimut 0, Höhe 0): drehen() rechnet 0,008 je Pixel quer, 0,006 hoch
+      const zurSeite = (x0) => () => { const rs = app.raum.sichten.raum; const dx = rs.azimut / 0.008, dy = -rs.hoehe / 0.006; return [[x0, H() * 0.72], [x0 + dx, H() * 0.72 + dy]]; };
+      zwei(zurSeite(W() * 0.42), zurSeite(W() * 0.58), 1.6);
+      warte(2.4);
+      // aus dem Blick heraus wieder in den Raum drehen
+      zwei(() => [[W() * 0.4, H() * 0.7], [W() * 0.4 + 120, H() * 0.7 + 34]], () => [[W() * 0.56, H() * 0.7], [W() * 0.56 + 120, H() * 0.7 + 34]], 1.6);
+      warte(1.0);
+      // zusammenkneifen = herauszoomen → die Ecke faltet sich zum Blatt
+      zwei(() => [[W() * 0.3, H() * 0.5], [W() * 0.44, H() * 0.5]], () => [[W() * 0.7, H() * 0.5], [W() * 0.56, H() * 0.5]], 1.2);
+      warte(2.8);
     },
     // Formen: ziehen mit Ordnungslinien und Seifenhaut, schneiden mit Lichtring, Zirkel mit zwei Fingern
     formen() {
@@ -103,7 +104,7 @@ export function filmAnbinden(app) {
     zeichnen() {
       warte(0.4);
       // Form (Auge): geschlossener Kreis auf der Haut
-      zieh(() => { const r = formRahmen(); const c = [r.x0 + r.w * 0.28, r.y0 + r.h * 0.38], R = Math.min(r.w, r.h) * 0.09; const w = []; for (let i = 0; i <= 40; i++) { const a = (i / 40) * Math.PI * 2 * 1.02; w.push([c[0] + Math.cos(a) * R, c[1] + Math.sin(a) * R * 0.9]); } return w; }, 1.6, { glatt: false });
+      zieh(() => { const r = formRahmen(); const c = [r.x0 + r.w * 0.42, r.y0 + r.h * 0.3], R = Math.min(r.w, r.h) * 0.07; const w = []; for (let i = 0; i <= 40; i++) { const a = (i / 40) * Math.PI * 2 * 1.02; w.push([c[0] + Math.cos(a) * R, c[1] + Math.sin(a) * R * 0.9]); } return w; }, 1.6, { glatt: false });
       warte(0.8);
       // Kritzeln über den hinteren Punkt
       zieh(() => { const p = mitte('hinten')(); const w = []; for (let i = 0; i <= 14; i++) w.push([p[0] - 18 + (i % 2) * 36, p[1] - 22 + i * 3]); return w; }, 1.0, { glatt: false });
@@ -119,6 +120,12 @@ export function filmAnbinden(app) {
         if (u >= 1 && !k.aus) { k.aus = true; hoch(k.ia); hoch(k.ib); }
       } });
       warte(1.0);
+    },
+    // alles nacheinander: aus der Kugel ein Wesen, zeichnen, löschen, zurück, Zeit spulen
+    werkstatt() {
+      FILME.formen();
+      FILME.zeichnen();
+      FILME.zeit();
     },
     roentgen() {
       warte(0.4);
@@ -189,6 +196,9 @@ export function filmAnbinden(app) {
     window.__filmZeit = 0;
     let gestartet = false;
     window.__film = {
+      // für Standbilder: Geisterfinger direkt setzen
+      finger(id, x, y, an = true) { if (an) { const f = finger.get(id) || { spur: [] }; f.x = x; f.y = y; f.an = true; f.spur.push([x, y]); finger.set(id, f); } else finger.delete(id); },
+      ereignis,
       schritt(ms = 1000 / 30) {
         window.__filmZeit += ms;
         if (!gestartet && window.__filmZeit > 400) { start(name); gestartet = true; }

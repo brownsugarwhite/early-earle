@@ -91,12 +91,12 @@ void main(){
   vec3 H2 = normalize(L2 + V);
   vec3 L3 = normalize(L + vec3(0.30, -0.36, 0.08));
   vec3 H3 = normalize(L3 + V);
-  float s1 = pow(max(dot(N, H1), 0.0), 26.0);
-  float s2 = pow(max(dot(N, H2), 0.0), 26.0);
-  float s3 = pow(max(dot(N, H3), 0.0), 380.0);
-  float aa1 = fwidth(s1) + 0.002;
-  float strichG = smoothstep(0.62 - aa1, 0.62 + aa1, s1) * (1.0 - smoothstep(0.50 - aa1, 0.50 + aa1, s2));
-  float punktG = smoothstep(0.5 - fwidth(s3), 0.5 + fwidth(s3), s3);
+  float g1 = pow(max(dot(N, H1), 0.0), 12.0);
+  float g2 = pow(max(dot(N, H2), 0.0), 12.0);
+  float g3 = pow(max(dot(N, H3), 0.0), 160.0);
+  float aa1 = fwidth(g1) + 0.002;
+  float strichG = smoothstep(0.62 - aa1, 0.62 + aa1, g1) * (1.0 - smoothstep(0.50 - aa1, 0.50 + aa1, g2));
+  float punktG = smoothstep(0.5 - fwidth(g3), 0.5 + fwidth(g3), g3);
   c = mix(c, vec3(1.0), max(strichG, punktG) * 0.92);
   // Maul innen
   c = mix(c, vec3(0.28, 0.04, 0.10), smoothstep(0.4, 0.6, vMaul));

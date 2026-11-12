@@ -12,7 +12,7 @@ import { add, sub, mul, dot, len, norm, dist, spiegel, clamp, smooth, mix } from
 import * as S from './shader.js';
 import { formHolen, PROBEN } from './formen.js';
 
-const parameter = new URLSearchParams(location.search);
+import { PAR as parameter } from './parameter.js';
 const istTouch = matchMedia('(pointer: coarse)').matches;
 
 export class App {
@@ -222,6 +222,7 @@ export class App {
   // Pose: Unterkiefer dreht um das Gelenk hinter den Mundwinkeln (vereinfachter Knochen)
   poseAnwenden() {
     if (!this.pose || this.maulAuf <= 0.001) return;
+    this.grundPos = new Float32Array(this.netz.pos);
     const { gelenk, gewicht } = this.pose;
     const a = -this.maulAuf * 0.75;
     const c = Math.cos(a), s = Math.sin(a);
@@ -644,7 +645,7 @@ export class App {
     const rs = this.raum.sichten.raum;
     const fov = (rs.fov * Math.PI) / 180;
     const asp = Math.min(1, this.W / this.H);
-    return (r * 1.02) / Math.sin((fov / 2) * Math.max(0.62, asp));
+    return (r * 0.9) / Math.sin((fov / 2) * Math.max(0.62, asp));
   }
 
   einpassen(sofort) {
@@ -829,47 +830,53 @@ export class App {
 
   // ---------------- Maul und Pose ----------------
   maulVersuchen(L) {
-    // vorn am Körper (kleinstes x des Körpers in der Nähe), schmale Form → Maul
+    // eine breite, flache Form vorn am Körper, über die Mitte gezogen → das Maul
     const pts = abtasten(L, 12)[0].pts;
     let minx = Infinity;
     for (let i = 0; i < this.netz.pos.length; i += 3) minx = Math.min(minx, this.netz.pos[i]);
-    const mx = pts.reduce((a, p) => Math.min(a, p[0]), Infinity);
-    const ys = pts.map((p) => p[1]), xs = pts.map((p) => p[0]);
-    const hoehe = Math.max(...ys) - Math.min(...ys), laenge = Math.max(...xs) - Math.min(...xs);
-    if (mx - minx > 0.25 * this.groesse || hoehe > laenge * 0.9) return;
+    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]), zs = pts.map((p) => p[2]);
+    let ymin = Infinity, ymax = -Infinity;
+    for (let i = 1; i < this.netz.pos.length; i += 3) { ymin = Math.min(ymin, this.netz.pos[i]); ymax = Math.max(ymax, this.netz.pos[i]); }
+    const vorn = Math.min(...xs) - minx < 0.25 * this.groesse;
+    const breit = (Math.max(...zs) - Math.min(...zs)) > (Math.max(...ys) - Math.min(...ys)) * 1.6;
+    // ein Maul liegt unter der halben Höhe des Kopfs, ein Auge darüber
+    const unten = (Math.max(...ys) + Math.min(...ys)) / 2 < ymin + (ymax - ymin) * 0.55;
+    if (!vorn || !breit || !unten) return;
     L.maul = true;
     this.poseAnlegen(L);
+    this.fx.push({ art: 'formLicht', L, t: 0, dauer: 1.2 });
   }
 
   poseAnlegen(L) {
-    const pts = abtasten(L, 16)[0].pts;
-    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
+    const pts = abtasten(L, 24)[0].pts;
+    const ys = pts.map((p) => p[1]), xs = pts.map((p) => p[0]);
     const ymitte = (Math.max(...ys) + Math.min(...ys)) / 2;
-    const xhinten = Math.max(...xs);
-    const xvorn = Math.min(...xs);
-    const gelenk = [xhinten + (xhinten - xvorn) * 0.35, ymitte, 0];
+    const xvorn = Math.min(...xs), xhinten = Math.max(...xs);
+    const tiefe = Math.max(0.25 * this.groesse, (xhinten - xvorn) * 2.2);
+    const gelenk = [xvorn + tiefe, ymitte, 0];
     const V = this.netz.nV, P = this.netz.pos;
     const gewicht = new Float32Array(V);
     const maul = this.z.maulAttr;
-    // Unterkiefer: unter der Maullinie, vor dem Gelenk; weich auslaufend
-    const tief = (xhinten - xvorn) * 1.2;
-    for (let v = 0; v < V; v++) {
-      const x = P[3 * v], y = P[3 * v + 1];
-      const unter = smooth(0.0, -0.06 * this.groesse, y - ymitte) * 0 + (y < ymitte ? 1 : 0);
-      const vor = smooth(gelenk[0] + 0.1, gelenk[0] - 0.25 * (gelenk[0] - xvorn), x);
-      const nah = 1 - smooth(tief * 0.6, tief * 1.4, ymitte - y);
-      gewicht[v] = unter * vor * nah;
-    }
-    // Inneres des Mauls: Haut innerhalb der Maulform (in der Seitenansicht, vorn)
-    const halbH = (Math.max(...ys) - Math.min(...ys)) / 2;
+    // Umriss des Mauls in der Frontansicht (z, y) für „innen“
+    const poly = pts.map((p) => [p[2], p[1]]);
+    const innen = (z, y) => {
+      let c = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const [zi, yi] = poly[i], [zj, yj] = poly[j];
+        if ((yi > y) !== (yj > y) && z < ((zj - zi) * (y - yi)) / (yj - yi + 1e-12) + zi) c = !c;
+      }
+      return c;
+    };
     for (let v = 0; v < V; v++) {
       const x = P[3 * v], y = P[3 * v + 1], z = P[3 * v + 2];
-      const imX = x < xhinten && x > xvorn - 0.05;
-      const imY = Math.abs(y - ymitte) < halbH * 0.55 * (1 - Math.pow((x - xvorn) / (xhinten - xvorn + 1e-6), 2) * 0.4);
-      maul[v] = imX && imY && Math.abs(z) < 0.6 * this.groesse ? 1 : 0;
+      // Unterkiefer: unter der Maullinie, vor dem Gelenk, weich auslaufend nach hinten und unten
+      const unter = smooth(0.0, -0.04 * this.groesse, y - ymitte);
+      const vor = 1 - smooth(gelenk[0] - tiefe * 0.25, gelenk[0] + tiefe * 0.15, x);
+      gewicht[v] = unter * vor;
+      maul[v] = x < xhinten + 0.05 * this.groesse && innen(z, y) ? 1 : 0;
     }
-    this.pose = { gelenk, gewicht: Array.from(gewicht) };
-    this.pose.gewicht = gewicht;
+    this.pose = { gelenk, gewicht };
+    this.grundPos = null;
     this.z.netzAktualisieren();
   }
 
@@ -940,10 +947,10 @@ export class App {
     if (lay.art === 'raum' || lay.art === 'blickRaum') {
       const rs = R.sichten.raum;
       rs.abstand = clamp(rs.abstand / f, 1.5 * this.groesse, 30 * this.groesse);
-      // weit heraus: der Raum faltet sich auf
-      if (rs.abstand > 12 * this.groesse && R.modus === 'raum' && R.falte === 0) {
-        rs.abstand = 7.5 * this.groesse / 2 * 1.6;
+      // weiter heraus als „alles im Bild“: der Raum faltet sich auf
+      if (rs.abstand > this.passAbstand() * 1.35 && R.modus === 'raum' && R.falte === 0) {
         this.modusSetzen('blatt');
+        rs.abstand = this.passAbstand();
         this.klang('falten');
       }
       return;
