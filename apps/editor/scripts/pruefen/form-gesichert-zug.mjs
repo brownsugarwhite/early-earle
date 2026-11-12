@@ -234,7 +234,7 @@ for (let mal = 1; mal <= MAL; mal++) {
   if (!geplatzt) await seite.waitForTimeout(HALTEN);
   if (process.env.BILD) await seite.screenshot({ path: `${process.env.BILD}-zug${mal}-gehalten.jpg`, type: 'jpeg', quality: 85 });
   const vorLos = await K('zeiten');
-  // glatte Anzeige (`&anzeige=glatt`): was sie im Zug je Bild kostet
+  // glatte Anzeige (Standard; nicht mit `&anzeige=grob`): was sie im Zug je Bild kostet
   const glattImZug = await seite.evaluate(() => window.__kurven.glatt?.() ?? null);
   const hVor = await heil();
   await seite.mouse.up();

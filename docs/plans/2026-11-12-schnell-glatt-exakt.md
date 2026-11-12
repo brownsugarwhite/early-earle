@@ -307,6 +307,10 @@ Unterteilung aus dem Vergleichsbild sitzen zudem neben den gezeigten Punkten. Ge
 Verfeinerung dient damit dem Umriss und den Linien, die Farbstufen sind schon ohne sie ruhig. Gemessen: Die Anzeige kostet im
 Zug 2 bis 3 ms je Bild, das Tempo bestimmt die Löserrunde (Schritt 2). Einzelheiten: `docs/UEBERGABE.md`, Abschnitt 4.
 
+**Nachtrag 12.11. spätabends (Standard):** Florian: „Ja, übernehmen“. Die glatte Anzeige ist seitdem der
+Standard von `kurven.html` und liegt auf der gemeinsamen Linie (sein Fenster auf 5194). `&anzeige=grob` zeigt zum Vergleich die
+Anzeige davor.
+
 ### A.2 Rechennetz (Schritt 2)
 
 - `DREIECKE` (heute 6 000 bestellt, rund 5 200 Punkte an der Kugel) auf etwa ein Drittel. Die Schwellen in

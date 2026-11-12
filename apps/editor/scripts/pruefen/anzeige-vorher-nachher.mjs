@@ -1,5 +1,5 @@
-// Plan vom 12.11., Schritt 1: Bild vorher und nachher im Fenster `kurven.html` (links wie heute, rechts `&anzeige=glatt`), je
-// gesicherter Form ein JPG. Aufruf aus apps/editor:
+// Plan vom 12.11., Schritt 1: Bild vorher und nachher im Fenster `kurven.html` (links `&anzeige=grob`, die Anzeige bis zum 12.11.;
+// rechts die glatte Anzeige, seit dem 12.11. Standard), je gesicherter Form ein JPG. Aufruf aus apps/editor:
 //   node scripts/pruefen/anzeige-vorher-nachher.mjs <zielordner> ["strange bird,teat firefish,test_kaputt"]
 // Umgebung: URL (Standard http://localhost:5197), BREITE, HOEHE (Fenster je Seite, Standard 1500 × 940), DPR (1.6)
 import { chromium } from '@playwright/test';
@@ -32,8 +32,8 @@ async function bild(name, frage) {
 }
 
 for (const name of liste.split(',')) {
-  const vorher = await bild(name, '');
-  const nachher = await bild(name, '&anzeige=glatt');
+  const vorher = await bild(name, '&anzeige=grob');
+  const nachher = await bild(name, '');
   const g = nachher.stand.glatt;
   const unter = g ? `${g.rechenpunkte.toLocaleString('de-DE')} Rechenpunkte, ${g.dreiecke.toLocaleString('de-DE')} Dreiecke gezeigt (${g.stufen} Stufen)` : '';
   const html = `<!doctype html><meta charset="utf-8"><style>
@@ -44,7 +44,7 @@ for (const name of liste.split(',')) {
     figcaption small{font-weight:400;opacity:.7;margin-left:8px}
     img{display:block;width:100%;border:1px solid rgba(31,26,23,.3)}
   </style><div class="reihe">
-    <figure><figcaption>„${name}“ wie heute<small>${vorher.stand.punkte.toLocaleString('de-DE')} Punkte gerechnet und gezeigt</small></figcaption><img src="data:image/jpeg;base64,${vorher.daten}"></figure>
+    <figure><figcaption>„${name}“ grob (bis 12.11.)<small>${vorher.stand.punkte.toLocaleString('de-DE')} Punkte gerechnet und gezeigt</small></figcaption><img src="data:image/jpeg;base64,${vorher.daten}"></figure>
     <figure><figcaption>mit glatter Anzeige<small>${unter}</small></figcaption><img src="data:image/jpeg;base64,${nachher.daten}"></figure>
   </div>`;
   const blatt = await browser.newPage({ viewport: { width: Math.round(2 * breite * dpr) + 18, height: 400 }, deviceScaleFactor: 1 });

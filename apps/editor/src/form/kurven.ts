@@ -155,12 +155,13 @@ const SICHT = 560;
 /** bestellte Dreiecke der Haut (Surface Nets geben etwa das 1,5-Fache); `?dreiecke=` für Messungen mit feineren Netzen */
 const DREIECKE = Number(new URLSearchParams(location.search).get('dreiecke') ?? 6000);
 /**
- * Glatte Anzeige (Plan vom 12.11., Schritt 1; Florian: „Spalte 3 einbauen“), `?anzeige=glatt`: Die Haut wird nur für die Anzeige
- * verfeinert (`glattPlan.ts`: Lagen ohne Glätten, die Fläche geht durch alle Rechenpunkte, Kanten auf Linien liegen auf ihrem
- * Pfad; Normalen der gewöhnlichen Unterteilung), die Farbstufe ist einen Bildpunkt breit geglättet, und an der Spiegelebene wird je
- * Bildpunkt geschnitten statt je Netzpunkt. An der Rechnung ändert das nichts. Ohne den Schalter ist alles wie vorher.
+ * Glatte Anzeige (Plan vom 12.11., Schritt 1; Florian: „Spalte 3 einbauen“, am selben Tag als Standard übernommen): Die Haut wird
+ * nur für die Anzeige verfeinert (`glattPlan.ts`: Lagen ohne Glätten, die Fläche geht durch alle Rechenpunkte, Kanten auf Linien
+ * liegen auf ihrem Pfad; die Normalen je Rechenpunkt gemessen und beruhigt, `GLATT_RUHE`), die Farbstufe ist einen Bildpunkt breit
+ * geglättet, und an der Spiegelebene wird je Bildpunkt geschnitten statt je Netzpunkt. An der Rechnung ändert das nichts.
+ * `?anzeige=grob` zeigt zum Vergleich die Rechenpunkte selbst, wie bis zum 12.11.
  */
-const GLATT = new URLSearchParams(location.search).get('anzeige') === 'glatt';
+const GLATT = new URLSearchParams(location.search).get('anzeige') !== 'grob';
 /**
  * Stufen der Verfeinerung (jede vervierfacht die Dreiecke), `?fein=0|1|2|3` legt sie fest. Ohne Angabe: Solange sich die Haut
  * ändert, eine Stufe, bei mehr als `GLATT_GROSS` Punkten keine (gemessen am 12.11. an „strange bird“, 16 010 Punkte: eine Stufe
@@ -5420,7 +5421,7 @@ if (BEHALTEN) behaltenesHolen();
   dreiecke: () => Array.from(haut.tri),
   /** die Haut, wie sie gezeigt wird (jede Hälfte an der Spiegelebene abgeschnitten): Lagen je gezeigtem Punkt und Dreiecke */
   anzeige: () => ({ lagen: Array.from(hautLagen), dreiecke: Array.from(hautGeometrie.index?.array ?? []) }),
-  /** die glatte Anzeige (`?anzeige=glatt`): Stufen, gezeigte Punkte und Dreiecke, Linienkanten, Zeiten; null ohne sie */
+  /** die glatte Anzeige: Stufen, gezeigte Punkte und Dreiecke, Linienkanten, Zeiten; null mit `?anzeige=grob` */
   glatt: () =>
     glatt
       ? {

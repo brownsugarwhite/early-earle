@@ -1,4 +1,4 @@
-# Übergabe (Stand 12.11.2026 abends: Schritt 1 „glatte Anzeige“ ist im Bau-Zweig eingebaut, Schalter `&anzeige=glatt`; Florians Blick steht aus, sein Fenster ist unverändert)
+# Übergabe (Stand 12.11.2026 spätabends: Schritt 1 „glatte Anzeige“ ist auf Florians Ja Standard, auch in seinem Fenster auf 5194; als Nächstes Schritt 2 „kleines Rechennetz“)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -22,7 +22,7 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | Schritt | Stand |
 | --- | --- |
 | 0 Aufräumen | **erledigt** (12.11., Einzelheiten unten) |
-| 1 Glatte Anzeige | **eingebaut in `form-bau` hinter `&anzeige=glatt`** (Abschnitt 4); Florians Blick und sein Ja zum Zusammenführen stehen aus |
+| 1 Glatte Anzeige | **eingebaut und Standard** (Abschnitt 4). Florian am 12.11.: „Ja, übernehmen“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&anzeige=grob` zeigt zum Vergleich die Anzeige davor. Sein Urteil nach dem Arbeiten damit steht aus |
 | 2 Kleines Rechennetz | offen |
 | 3 Beweis „Haut direkt aus den Linien“ | offen |
 | 4 Echte Spiegelung und neue Rechnung ins Fenster | offen |
@@ -48,19 +48,23 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
   `http://localhost:5194/kurven.html?gewichte=geometrie`. **Dort arbeitet auch die Sitzung „Blaupause Editor Design Iteration“
   an `/editor`** (`editor.html`, `editor.ts`, `blaupause.ts`); am 12.11. lagen dort ihre ungespeicherten Änderungen. Vor jedem
   Commit in `form-alt`: `git status`, nur eigene Dateien stagen.
-- **Gebaut wird in `.claude/worktrees/form-bau`** (Port 5197). Ein fertiger Schritt kommt erst nach Florians Blick per Merge
-  nach `claude/form-spiegel`; das lädt sein Fenster neu, also vorher ansagen.
+- **Gebaut wird in `.claude/worktrees/form-bau`** (Port 5197). Ein fertiger Schritt kommt erst nach Florians Ja nach
+  `claude/form-spiegel`, und zwar so (am 12.11. bei Schritt 1 so gemacht): zuerst in `form-bau` `git merge claude/form-spiegel`
+  und dort prüfen, dann in `form-alt` `git merge --ff-only claude/form-bau`. Das lädt sein Fenster neu, also vorher ansagen.
 - **Zweige zusammenhalten:** Die Design-Sitzung committet Doku im Hauptordner auf `claude/editor-grundlayout` und Code in
   `form-alt` auf `claude/form-spiegel`. Am Ende eines Schritts in `form-alt` `git merge claude/editor-grundlayout` (nur Doku),
   danach im Hauptordner `git merge --ff-only claude/form-spiegel`.
 
-## 4. Schritt 1, glatte Anzeige: gebaut, gemessen, was offen ist
+## 4. Schritt 1, glatte Anzeige: gebaut, gemessen, seit dem 12.11. Standard
 
 **Florian am 12.11.: „Spalte 3 einbauen“** (aus dem Vergleichsbild `docs/progress/editor/anzeige-vergleich-…-2026-11-12.jpg`:
-gekrümmte Dreiecke, ruhig schattiert). Gebaut im Arbeitsbaum `form-bau` (Zweig `claude/form-bau`), zu sehen unter
-`http://localhost:5197/kurven.html?gewichte=geometrie&anzeige=glatt` (Server `kurven-bau`). Ohne den Schalter ist alles wie vorher.
+gekrümmte Dreiecke, ruhig schattiert). Gebaut im Arbeitsbaum `form-bau` hinter dem Schalter `&anzeige=glatt`. **Florian am
+12.11.: „Ja, übernehmen“.** Seitdem ist die glatte Anzeige der Standard von `kurven.html` und liegt auf
+`claude/form-spiegel`: Sein Fenster `http://localhost:5194/kurven.html?gewichte=geometrie` zeigt sie. `&anzeige=grob` zeigt zum
+Vergleich die Anzeige bis zum 12.11. (die Rechenpunkte selbst). `/editor` (`editor.ts`) hat sie noch nicht; das kommt nach
+Schritt 7.
 
-**Was der Schalter tut** (nur Anzeige, die Rechnung ist unverändert):
+**Was die glatte Anzeige tut** (nur Anzeige, die Rechnung ist unverändert):
 - **Verfeinerte Haut** (`apps/editor/src/form/glattPlan.ts`, `GlattPlan`: Zuordnung einmal je Netzstand, Lagen und Normalen je
   Bild; angelegt in `glattAnlegen`, gezeigt in `glattZeigen` in `kurven.ts`). Neue Punkte liegen in der Mitte der gewölbten Kante,
   auf Linien in der Mitte ihres Pfadstücks (`pfadKanten` im Kern; im Zug mit den Punkten und Griffen des Zugs). Die Fläche geht
@@ -77,29 +81,32 @@ gekrümmte Dreiecke, ruhig schattiert). Gebaut im Arbeitsbaum `form-bau` (Zweig 
 - Die groben Puffer (`hautLagen`, `anzeigeZ`, `indexOhneAnliegende`) bleiben wie vorher: An ihnen messen die Proben, an ihnen
   hängen die Strahltreffer.
 
-**Bilder** (`docs/progress/editor/`, je links wie heute, rechts mit Schalter): `anzeige-fenster-strange-bird-2026-11-12.jpg`,
+**Bilder** (`docs/progress/editor/`, je links die grobe Anzeige bis zum 12.11., rechts die glatte): `anzeige-fenster-strange-bird-2026-11-12.jpg`,
 `anzeige-fenster-strange-bird-nah-2026-11-12.jpg` (Front bei 260 %), `anzeige-fenster-teat-firefish-2026-11-12.jpg`,
 `anzeige-fenster-test_kaputt-2026-11-12.jpg`, `anzeige-fenster-ueber-die-mitte-2026-11-12.jpg` (Punkt über die Mitte gezogen: der
-Lochrand).
+Lochrand), `anzeige-pose-maul-grob-glatt-2026-11-12.jpg` (Fressen-Pose, Maul 45°, Kopf 10°).
 
 **Gemessen** (ohne Bildschirm, „strange bird“, 16 010 Punkte, derselbe Zug; Zeiten nur als Verhältnisse lesen):
-- Abstand der Bilder im Zug: Median 21 ms wie heute, 23 ms mit Schalter (keine Stufe: 2,6 ms je Bild, Linienbänder 0,5 ms). Mit
+- Abstand der Bilder im Zug: Median 21 ms grob, 23 ms glatt (keine Stufe: 2,6 ms je Bild, Linienbänder 0,5 ms). Mit
   einer Stufe wären es 26 ms (4,2 ms und 2,0 ms für die Bänder auf dem Pfad). Die Löserrunde kostet 17,5 ms: Sie bestimmt das
   Tempo, nicht die Anzeige. Das ändert erst Schritt 2.
-- Zeichnen aller vier Felder: 8 ms wie heute; mit Schalter 7 ms ohne Stufe, 9 ms mit einer, 12 ms mit zweien (512 000
+- Zeichnen aller vier Felder: 8 ms grob; glatt 7 ms ohne Stufe, 9 ms mit einer, 12 ms mit zweien (512 000
   Dreiecke). Ein Blatt kostet rund 1 ms, der feste Teil je Bild rund 5 ms.
-- Nach dem Loslassen: einmal ein Bild von bis zu 57 ms, wenn die Stufen der Ruhe angelegt werden (heute 31 ms).
+- Nach dem Loslassen: einmal ein Bild von bis zu 57 ms, wenn die Stufen der Ruhe angelegt werden (grob 31 ms).
 - Rechnung allein, 16 386 Punkte: 2,4 ms ohne Stufe, 3,3 ms mit einer, 7,0 ms mit zweien.
 
-**Geprüft:** Maul-Probe mit Schalter (`form-maul-loop.mjs`): keine offenen Kanten, ⌘Z genau, keine Fehler. Tests:
+**Geprüft:** Maul-Probe (`form-maul-loop.mjs`) und Probe der Fressen-Pose (`form-fressen-pose.mjs`: Maul, Zug an der Lippe in der
+Pose, Knochen, zurück in die Grundform, Loop schneiden, ⌘Z) mit der glatten Anzeige: keine offenen Kanten, ⌘Z genau, keine
+Fehler. Im Bild sehen Maul und Pose aus wie mit der groben Anzeige, die Farbflächen des Körpers sind ruhiger. Die kleine Schlaufe
+der Linie am Mundwinkel und die Kerbe am Rand des Inneren gibt es in beiden Anzeigen; sie gehören zu Schritt 6. Tests:
 `apps/editor/src/form/glattPlan.test.ts` (schnelle Rechnung gegen die Fassung des Vergleichsbilds; Normalen an einer Kugel mit
 ungleichmäßigem Netz und an einem Grat), `packages/shape/src/dicht/linieAufPfad.test.ts` (Pfadstücke je Kante). Neue Proben in
 `apps/editor/scripts/pruefen/`: `anzeige-vorher-nachher.mjs`, `bilder-nebeneinander.mjs`, `anzeige-zeichnen-zeit.mjs`;
-`form-gesichert-zug.mjs` nennt mit Schalter die Kosten der Anzeige je Bild.
+`form-gesichert-zug.mjs` nennt die Kosten der Anzeige je Bild.
 
 **Offen in Schritt 1:**
-1. **Florians Blick** (Port 5197 mit Schalter, oder die Bilder). Mit seinem Ja: Zusammenführen nach `claude/form-spiegel` (sein
-   Fenster auf 5194 lädt neu, vorher ansagen) und den Schalter zum Standard machen.
+1. **Florians Urteil nach dem Arbeiten in seinem Fenster** (5194) steht aus. Stört ihn etwas: `&anzeige=grob` zeigt die alte
+   Anzeige, an der Rechnung hat sich nichts geändert.
 2. Strahltreffer (Zeichnen, Greifen) gegen die feine Fläche: auf Schritt 2 verschoben. Bei den heutigen Punktzahlen liegt die
    grobe Fläche nur Bruchteile einer Einheit neben der feinen.
 3. Das Innere des Mauls hat dieselbe geglättete Farbstufe, wird aber nicht verfeinert.

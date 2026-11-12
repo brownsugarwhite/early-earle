@@ -1,5 +1,6 @@
-// Was das Zeichnen je Bild kostet (Plan vom 12.11., Schritt 1): alle vier Felder und jedes Feld für sich, wie heute und mit
-// `&anzeige=glatt`, an gesicherten Formen. Gemessen mit Warten auf die Grafikkarte (`__kurven.zeichnenMs`). Aufruf aus apps/editor:
+// Was das Zeichnen je Bild kostet (Plan vom 12.11., Schritt 1): alle vier Felder und jedes Feld für sich, grob (`&anzeige=grob`,
+// die Anzeige bis zum 12.11.) und glatt (Standard), an gesicherten Formen. Gemessen mit Warten auf die Grafikkarte
+// (`__kurven.zeichnenMs`). Aufruf aus apps/editor:
 //   node scripts/pruefen/anzeige-zeichnen-zeit.mjs ["strange bird,teat firefish"]
 // Umgebung: URL (Standard http://localhost:5197), BREITE, HOEHE (1600 × 1000), DPR (2), FEIN (legt die Stufen fest, z. B. 0, 1, 2)
 import { chromium } from '@playwright/test';
@@ -10,8 +11,8 @@ const browser = await chromium.launch({ args: ['--use-angle=metal', '--enable-gp
 const fein = process.env.FEIN ? `&fein=${process.env.FEIN}` : '';
 for (const name of liste) {
   for (const [titel, frage] of [
-    ['wie heute', ''],
-    ['glatte Anzeige', `&anzeige=glatt${fein}`],
+    ['grobe Anzeige', '&anzeige=grob'],
+    ['glatte Anzeige', fein],
   ]) {
     const seite = await browser.newPage({
       viewport: { width: Number(process.env.BREITE ?? 1600), height: Number(process.env.HOEHE ?? 1000) },

@@ -23,9 +23,10 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
 - Adresse: `http://localhost:<port>/kurven.html?gewichte=geometrie`. Schalter: `&dreiecke=<n>` (Größe des Startnetzes),
   `&form=bohne`, `&behalten=0` (immer die Startform). Die übrigen rund 25 Schalter sind Vergleiche alter Stände (Liste im
   Archiv der Übergabe, Abschnitt 7).
-- **Glatte Anzeige** (Schritt 1 des Plans vom 12.11.): `&anzeige=glatt`, dazu `&fein=0|1|2|3` (Stufen der Verfeinerung
-  festlegen) und `&ruhe=<n>` (Durchgänge beim Beruhigen der Normalen). Rechnung in `src/form/glattPlan.ts`, Einbau in
-  `kurven.ts` (`glattAnlegen`, `glattZeigen`, `hautMaterial`). Test-Haken `__kurven.glatt()` und `__kurven.zeichnenMs()`.
+- **Glatte Anzeige** (Schritt 1 des Plans vom 12.11., seit demselben Tag Standard): `&anzeige=grob` schaltet sie zum Vergleich
+  ab; `&fein=0|1|2|3` legt die Stufen der Verfeinerung fest, `&ruhe=<n>` die Durchgänge beim Beruhigen der Normalen. Rechnung in
+  `src/form/glattPlan.ts`, Einbau in `kurven.ts` (`glattAnlegen`, `glattZeigen`, `hautMaterial`). Test-Haken `__kurven.glatt()`
+  (null mit `&anzeige=grob`) und `__kurven.zeichnenMs()`.
 - Test-Haken im Fenster: `window.__kurven` (`zeiten()`, `lagen`, `loops`, `ablage`, `beschaeftigt` …).
 
 ## Prüfen
@@ -63,7 +64,7 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
 - Proben warten auf `zeiten().beschaeftigt`, nicht auf feste Zeiten, und prüfen vor einer Abstandsmessung, ob die Lagen
   endlich sind. Große Stände erst am Ende aus dem Fenster holen (das Übertragen hält es an).
 - Zählungen an der gerechneten Haut sehen auch, was hinter der Spiegelebene liegt und gar nicht gezeigt wird.
-- Mit `&anzeige=glatt` zeigt der Körper eine eigene, verfeinerte Geometrie. Die groben Puffer (`hautLagen`, `anzeigeZ`) werden
+- Der Körper zeigt eine eigene, verfeinerte Geometrie (glatte Anzeige). Die groben Puffer (`hautLagen`, `anzeigeZ`) werden
   weiter gefüllt: An ihnen messen die Proben und hängen die Strahltreffer. Für die Schattierung der glatten Anzeige die
   Normalen nie nach der Fläche gewichten (sie kippen auf ungleichmäßigem Netz zur dichteren Seite) und beim Mitteln kein
   Gewicht nehmen, das schon bei kleinen Winkeln fällt (`glattPlan.ts`, `normalenUndGewichte`, `feldBeruhigen`).
