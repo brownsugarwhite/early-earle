@@ -1,7 +1,9 @@
 # Plan: schnell, glatt, exakt (12.11.2026)
 
-**Status: zur Freigabe.** Nichts davon ist gebaut. Basis ist `kurven.html?gewichte=geometrie` (Zweig `claude/form-spiegel`,
-Port 5194). Der Plan ersetzt die offenen Reste von G5 und G6 und ordnet die Wege A bis D ein.
+**Status: freigegeben am 12.11.2026** (Florian: „Ok, fangen wir an“; die Entscheidungen aus Abschnitt 5 gelten wie empfohlen,
+solange er nichts anderes sagt). Der Stand je Schritt steht in `docs/UEBERGABE.md`. Basis ist
+`kurven.html?gewichte=geometrie` (Zweig `claude/form-spiegel`, Port 5194). Der Plan ersetzt die offenen Reste von G5 und G6
+und ordnet die Wege A bis D ein.
 
 **Gelesen dafür:** die Berichte und Übergaben der Sitzungen „3D-Editor Kurven und Mesh-Präzision“, „Mesh-Performance und
 Optimierungsmöglichkeiten“, „Blaupause Editor Design Iteration“, „Lofts vs. Plasticity performance“ und „Mesh-Pose-Editor

@@ -8,28 +8,16 @@
       "port": 5180
     },
     {
-      "name": "kurven",
-      "runtimeExecutable": "env",
-      "runtimeArgs": ["EDITOR_WEB=1", "pnpm", "-C", "/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/form-zuerst", "--filter", "@ee/editor", "exec", "vite", "--port", "5193", "--strictPort"],
-      "port": 5193
-    },
-    {
       "name": "kurven-alt",
       "runtimeExecutable": "env",
       "runtimeArgs": ["EDITOR_WEB=1", "pnpm", "-C", "/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/form-alt", "--filter", "@ee/editor", "exec", "vite", "--port", "5194", "--strictPort"],
       "port": 5194
     },
     {
-      "name": "kurven-wand",
+      "name": "kurven-bau",
       "runtimeExecutable": "env",
-      "runtimeArgs": ["EDITOR_WEB=1", "pnpm", "-C", "/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/form-wand", "--filter", "@ee/editor", "exec", "vite", "--port", "5195", "--strictPort"],
-      "port": 5195
-    },
-    {
-      "name": "kurven-wand2",
-      "runtimeExecutable": "env",
-      "runtimeArgs": ["EDITOR_WEB=1", "pnpm", "-C", "/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/form-wand2", "--filter", "@ee/editor", "exec", "vite", "--port", "5196", "--strictPort"],
-      "port": 5196
+      "runtimeArgs": ["EDITOR_WEB=1", "pnpm", "-C", "/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/form-bau", "--filter", "@ee/editor", "exec", "vite", "--port", "5197", "--strictPort"],
+      "port": 5197
     },
     {
       "name": "game-dev",
