@@ -36,6 +36,9 @@ import { schleifenKaefig, teileFinden } from './schleifenKaefig';
 import { umrissPlan } from './umrissPlan';
 
 declare const console: { log: (...a: unknown[]) => void };
+declare const process: { env: Record<string, string | undefined> };
+/** CI-Rechner sind langsamer und lassen alle Pakete parallel laufen (Plan 20.10., V0): dort gilt das Doppelte der Zeitgrenze. */
+const ZEIT = process.env.CI ? 2 : 1;
 
 /** Körper → hält er heute (03.11. spätabends) Form Seite, Form Front/Top, Naht (Knick frei ≤ 30°), Glätte (0 nach innen, Knicke 95 % ≤ 20°)? */
 const HAELT: Record<string, { seite: boolean; frontTop: boolean; naht: boolean; glatt: boolean; kinder: number }> = {
@@ -127,7 +130,7 @@ describe('P1 Tag 4–5: Teile an der Naht auf dem Schleifen-Käfig', () => {
       expect(c.netz.info.kaefig?.teile?.kinder.length ?? 0, `${name}: Kinder im Editor-Bau`).toBeGreaterThanOrEqual(1);
       expect(c.netz.positionen.length, `${name}: mehr Punkte mit Teilen`).toBeGreaterThan(a.netz.positionen.length);
     }
-  });
+  }, 60_000 * ZEIT); // zwölf Editor-Bauten: lokal allein ≈ 13 s, auf CI über die 30 s des Standards
 
   it('Einteiler bleiben Einteiler: Vase, runde Vase, Kegel, Würfel bekommen kein Kind aus dem Teilbaum', () => {
     for (const name of ['vase', 'kegel', 'wuerfel'] as const) {

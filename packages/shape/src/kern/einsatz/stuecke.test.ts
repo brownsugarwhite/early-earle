@@ -13,6 +13,9 @@ import type { Anfang, Form } from '../pruefen/linien';
 import { mundwinkelEcke, stueckeFinden } from './stuecke';
 
 declare const console: { log: (...a: unknown[]) => void };
+declare const process: { env: Record<string, string | undefined> };
+/** CI-Rechner sind langsamer und lassen alle Pakete parallel laufen (Plan 20.10., V0): dort gilt das Doppelte der Zeitgrenze. */
+const ZEIT = process.env.CI ? 2 : 1;
 
 export const P2_FAELLE: [KoerperArt, Anfang, Form][] = [
   ['rex', 'mittel', 'gerade'],
@@ -53,7 +56,7 @@ describe('P2 Tag 1: Stücke im Maulfeld', () => {
       expect(z.fund.stuecke.length, `${z.name}: Stücke`).toBeGreaterThanOrEqual(2);
       expect(summe + z.fund.ohneStueck, `${z.name}: Dreiecke`).toBe(z.dreiecke);
       expect(z.fund.ohneStueck, `${z.name}: Dreiecke ohne Stück`).toBe(0);
-      expect(z.fund.ms, `${z.name}: Zeit`).toBeLessThanOrEqual(250);
+      expect(z.fund.ms, `${z.name}: Zeit`).toBeLessThanOrEqual(250 * ZEIT);
     }
   }, 600_000);
 

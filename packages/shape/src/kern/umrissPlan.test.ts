@@ -2,7 +2,7 @@
 // Tore Tag 1: (a) Jitter-Ruhe — die Schleifen hängen nur an der Zeichnung (0 px bei jedem Wackeln des Käfigs; die heutigen
 // V2-Linien zum Vergleich gemessen), (b) zwischen zwei Kreuzungen höchstens zwei Krümmungswechsel der Tiefe, (c) jede Schleife
 // geschlossen, verdeckte Stücke und Ansätze schließen tangentenstetig (Langhals, Ente im Top), (d) Blatt = SVG ≤ 0,1 px,
-// (e) Planung ≤ 16 ms je Bau. Messwerte mit `--reporter=verbose` lesen.
+// (e) Planung ≤ 16 ms je Bau (auf CI doppelt, wie in den anderen Zeittests). Messwerte mit `--reporter=verbose` lesen.
 import { describe, expect, it } from 'vitest';
 import { alleFlaechen } from '../kaefig/halbkanten';
 import { anwenden3 } from '../subdivision/matrix';
@@ -13,6 +13,9 @@ import { netzSicht } from './netzSicht';
 import { type PlanArt, type PlanSchleife, blattKoord, planLaeufe, tiefenWechselStuecke, umrissPlan, umrissSvg } from './umrissPlan';
 
 declare const console: { log: (...a: unknown[]) => void };
+declare const process: { env: Record<string, string | undefined> };
+/** CI-Rechner sind langsamer und lassen alle Pakete parallel laufen (Plan 20.10., V0): dort gilt das Doppelte der Zeitgrenze. */
+const ZEIT = process.env.CI ? 2 : 1;
 const PX = 461;
 const FAELLE = ['kugel', 'ei', 'kegel', 'robbe', 'rex', 'langhals', 'ente', 'pilz', 'tigerkopf', 'wuerfel', 'vase'] as const;
 const koerper = (name: string) => extremKoerper(name).dok();
@@ -75,7 +78,7 @@ describe('P1 Tag 1: geplante Umrissschleifen', () => {
       console.log(
         `${name}: ${plan.schleifen.length} Schleifen (${plan.schleifen.map((s) => `${s.id}×${s.proben.length}`).join(' ')}), ${plan.tStoesse.length / 2} T-Stoß-Paare, ${vorschlaege} Vorschlagsproben, Widerspruch S/F/T ${plan.widerspruch.seite.toFixed(1)}/${plan.widerspruch.front.toFixed(1)}/${plan.widerspruch.top.toFixed(1)} px, Krümmungswechsel je Stück: ${wechsel}; ${ms.toFixed(1)} ms`,
       );
-      expect(ms).toBeLessThanOrEqual(16);
+      expect(ms).toBeLessThanOrEqual(16 * ZEIT);
     });
   }
 
