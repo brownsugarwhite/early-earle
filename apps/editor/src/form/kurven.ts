@@ -4745,7 +4745,7 @@ function standAnwenden(st: WesenStand): string {
 
 // ----- Behalten im Browser -----
 
-/** eine Anfrage an den Speicher des Browsers (ein Fach „stand“, darin „zuletzt“) */
+/** eine Anfrage an den Speicher des Browsers (ein Fach „stand“, darin `FACH_ZULETZT`, „davor“ und `FACH_MARKE`) */
 function speicher<T>(art: IDBTransactionMode, tun: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
   return new Promise<T>((ok, fehler) => {
     const auf = indexedDB.open('early-earle-kurven', 1);
@@ -4767,6 +4767,14 @@ function speicher<T>(art: IDBTransactionMode, tun: (s: IDBObjectStore) => IDBReq
   });
 }
 type Behalten = { start: string; daten: ArrayBuffer; name?: string };
+/**
+ * Das Fach für das Wesen von vorhin. Mit dem kleinen Rechennetz (Schritt 2) ein eigenes: „zuletzt“ behält, was bis zum Wechsel mit
+ * dem dichten Netz behalten war, und `?netz=dicht` findet es dort unverändert. Beim ersten Start mit dem kleinen Netz (die Marke
+ * `FACH_MARKE` fehlt noch) kommt einmal das Wesen aus „zuletzt“, vergröbert (`standAnwenden`), und wird von da an im eigenen Fach
+ * behalten.
+ */
+const FACH_ZULETZT = NETZ_KLEIN ? 'zuletzt-klein' : 'zuletzt';
+const FACH_MARKE = 'kleines-netz-seit';
 /** das Wesen, das „Laden“ oder „Neu“ zuletzt ersetzt hat (Fach „davor“) */
 type Davor = { daten: ArrayBuffer; zeit: string; punkte: number; loops: number; name: string };
 let behaltenUhr: ReturnType<typeof setTimeout> | null = null;
@@ -4811,7 +4819,7 @@ function behaltenJetzt(): void {
   letztesBehalten = Math.round((performance.now() - t0) * 10) / 10;
   behaltenLaeuft = datei
     .arrayBuffer()
-    .then((daten) => speicher('readwrite', (s) => s.put({ start: START_KENNUNG, daten, name: ablageName } satisfies Behalten, 'zuletzt')))
+    .then((daten) => speicher('readwrite', (s) => s.put({ start: START_KENNUNG, daten, name: ablageName } satisfies Behalten, FACH_ZULETZT)))
     .catch((e: unknown) => {
       // z. B. privates Fenster ohne Speicher: einmal sagen, dann ohne Behalten weiter
       behaltenAus = true;
@@ -4839,7 +4847,18 @@ const davorHolen = (): Promise<Davor | undefined> =>
   BEHALTEN && !behaltenAus ? davorLaeuft.then(() => speicher<Davor | undefined>('readonly', (s) => s.get('davor') as IDBRequest<Davor | undefined>)).catch(() => undefined) : Promise.resolve(undefined);
 /** Beim Start: Ist ein Wesen von vorhin da (und die Startform dieselbe), kommt es zurück */
 function behaltenesHolen(): void {
-  speicher<Behalten | undefined>('readonly', (s) => s.get('zuletzt') as IDBRequest<Behalten | undefined>)
+  /** das Wesen kommt aus dem Fach des dichten Netzes: Es wird danach im eigenen Fach behalten */
+  let ausZuletzt = false;
+  speicher<Behalten | undefined>('readonly', (s) => s.get(FACH_ZULETZT) as IDBRequest<Behalten | undefined>)
+    .then(async (b) => {
+      if (b || !NETZ_KLEIN) return b;
+      // das eigene Fach ist leer: beim ersten Start mit dem kleinen Netz einmal das Wesen aus „zuletzt“ (danach nicht mehr, sonst käme
+      // es nach „Neu“ beim nächsten Neuladen wieder)
+      if (await speicher<unknown>('readonly', (s) => s.get(FACH_MARKE) as IDBRequest<unknown>)) return undefined;
+      await speicher('readwrite', (s) => s.put(new Date().toISOString(), FACH_MARKE));
+      ausZuletzt = true;
+      return speicher<Behalten | undefined>('readonly', (s) => s.get('zuletzt') as IDBRequest<Behalten | undefined>);
+    })
     .then((b) => {
       if (!b || b.start.split('|')[0] !== START_FORM) return;
       // inzwischen hat schon jemand angefangen: dann nicht
@@ -4848,15 +4867,16 @@ function behaltenesHolen(): void {
       if (st.loops.length === 0 && !st.grund) return;
       const netzText = standAnwenden(st);
       ablageName = typeof b.name === 'string' && nameGueltig(b.name) ? b.name : '';
-      // nach dem Vergröbern ist der Stand ein anderer als der behaltene: Er wird neu behalten
-      behaltenStand = netzText ? '' : behaltenSchluessel();
+      // nach dem Vergröbern ist der Stand ein anderer als der behaltene, und aus dem Fach des dichten Netzes kommt er ins eigene:
+      // Er wird neu behalten
+      behaltenStand = netzText || ausZuletzt ? '' : behaltenSchluessel();
       meldung = `${ablageName ? `„${ablageName}“` : 'Wesen von vorhin'} wieder da (${auskunft(st)})${netzText}`;
       statusZeigen();
     })
     .catch((e: unknown) => {
       // nicht lesbar: das Fenster bleibt bei der Startform, der Speicher wird geleert (sonst scheiterte jedes Neuladen daran)
       console.warn('Das Wesen von vorhin ließ sich nicht lesen:', e);
-      void speicher('readwrite', (s) => s.delete('zuletzt')).catch(() => undefined);
+      void speicher('readwrite', (s) => s.delete(FACH_ZULETZT)).catch(() => undefined);
     })
     .finally(() => {
       behaltenBereit = true;
@@ -4936,7 +4956,7 @@ async function wesenLaden(name: string): Promise<string> {
 function wesenNeu(): string {
   wesenUebernehmen(START_STAND, '');
   behaltenStand = behaltenSchluessel();
-  if (BEHALTEN) void speicher('readwrite', (s) => s.delete('zuletzt')).catch(() => undefined);
+  if (BEHALTEN) void speicher('readwrite', (s) => s.delete(FACH_ZULETZT)).catch(() => undefined);
   return 'Neues Wesen · ⌘Z bringt das Wesen von vorher zurück';
 }
 
