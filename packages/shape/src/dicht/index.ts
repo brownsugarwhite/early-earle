@@ -101,6 +101,8 @@ export {
   mittlereKante,
   linieKreuztSich,
   pfadAbweichung,
+  type PfadKante,
+  pfadKanten,
   pfadLagen,
   pfadParameter,
   pfadVersatz,

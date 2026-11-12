@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vergleich: glatte Anzeige</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #efe9dd;
+        font:
+          13px/1.35 -apple-system,
+          'Helvetica Neue',
+          sans-serif;
+        color: #1f1a17;
+        overflow: hidden;
+      }
+      canvas {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .titel {
+        position: fixed;
+        padding: 6px 10px;
+        font-weight: 600;
+        pointer-events: none;
+      }
+      .titel small {
+        display: block;
+        font-weight: 400;
+        opacity: 0.7;
+      }
+      .zeile {
+        position: fixed;
+        left: 10px;
+        padding: 2px 6px;
+        background: #1f1a17;
+        color: #efe9dd;
+        border-radius: 3px;
+        font-size: 11px;
+        pointer-events: none;
+      }
+      .rahmen {
+        position: fixed;
+        border-left: 1px solid rgba(31, 26, 23, 0.25);
+        border-top: 1px solid rgba(31, 26, 23, 0.25);
+        pointer-events: none;
+      }
+      #info {
+        position: fixed;
+        right: 8px;
+        bottom: 6px;
+        font-size: 11px;
+        opacity: 0.75;
+        text-align: right;
+        white-space: pre;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="leinwand"></canvas>
+    <div id="schrift"></div>
+    <div id="info">lädt …</div>
+    <script type="module" src="./src/form/anzeigeProbe.ts"></script>
+  </body>
+</html>

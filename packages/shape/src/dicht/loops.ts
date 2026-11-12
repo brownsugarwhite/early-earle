@@ -1218,6 +1218,65 @@ export function pfadLagen(l: Loop, P?: readonly V3[], G?: readonly { ein: V3; au
   return out;
 }
 
+/** Eine Kante der Haut auf einer Linie mit ihrem Stück des Pfads (`pfadKanten`) */
+export type PfadKante = { ja: number; jb: number; a: number; b: number; k: [V3, V3, V3, V3] };
+
+/**
+ * Die Kanten eines eingesetzten Loops mit ihrem Stück des Pfads (Plan vom 12.11., Schritt 1 „glatte Anzeige“): je Paar
+ * aufeinanderfolgender Proben `ja`, `jb` die Punkte der Haut `a`, `b` und die vier Kontrollpunkte des kubischen Bézier-Stücks von a
+ * nach b (ein Stück eines kubischen Béziers ist wieder einer). Damit legt die Anzeige jede Kante der Haut, die auf einer Linie liegt,
+ * genau auf den Pfad, so fein sie auch unterteilt. Null ohne Pfad oder wenn der Loop nicht ins Netz eingesetzt ist. Wie `pfadLagen`
+ * nur die eigene Hälfte (Ring, Paar), die Mittelebene und die Enden eines Rings genau bei z = 0. Eine Kante, deren Proben in
+ * verschiedenen Stücken liegen (zwischen ihnen ein Punkt, der keine Probe ist), fehlt in der Liste.
+ */
+export function pfadKanten(l: Loop): PfadKante[] | null {
+  if (!hatPfad(l)) return null;
+  if (!l.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2])) return null;
+  const n = l.proben.length;
+  const aus: PfadKante[] = [];
+  const misch = (p: V3, q: V3, t: number): V3 => ({ x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t, z: p.z + (q.z - p.z) * t });
+  for (const st of stuecke(l)) {
+    const h = st.s1 - st.s0;
+    if (!(h > 1e-9)) continue;
+    const A = l.punkte[st.a]!;
+    const B = l.punkte[st.b]!;
+    const C: [V3, V3, V3, V3] = [
+      A.ref,
+      { x: A.ref.x + A.aus!.x, y: A.ref.y + A.aus!.y, z: A.ref.z + A.aus!.z },
+      { x: B.ref.x + B.ein!.x, y: B.ref.y + B.ein!.y, z: B.ref.z + B.ein!.z },
+      B.ref,
+    ];
+    const drin: { j: number; t: number }[] = [];
+    for (let j = 0; j < n; j++) {
+      const x = imStueck(l, st, l.s[j]!);
+      if (x !== null) drin.push({ j, t: (x - st.s0) / h });
+    }
+    drin.sort((p, q) => p.t - q.t);
+    // Blüte des kubischen Stücks: Kontrollpunkte des Teilstücks von u bis v sind b(u,u,u), b(u,u,v), b(u,v,v), b(v,v,v)
+    const bluete = (t1: number, t2: number, t3: number): V3 => {
+      const a01 = misch(C[0], C[1], t1);
+      const a12 = misch(C[1], C[2], t1);
+      const a23 = misch(C[2], C[3], t1);
+      return misch(misch(a01, a12, t2), misch(a12, a23, t2), t3);
+    };
+    for (let q = 0; q + 1 < drin.length; q++) {
+      const u = drin[q]!.t;
+      const v = drin[q + 1]!.t;
+      if (!(v - u > 1e-12)) continue;
+      const ja = drin[q]!.j;
+      const jb = drin[q + 1]!.j;
+      const k: [V3, V3, V3, V3] = [bluete(u, u, u), bluete(u, u, v), bluete(u, v, v), bluete(v, v, v)];
+      if (l.art === 'mitte') for (const p of k) p.z = 0;
+      if (l.art === 'ring') {
+        if (ja === 0) k[0].z = 0;
+        if (jb === n - 1) k[3].z = 0;
+      }
+      aus.push({ ja, jb, a: l.proben[ja]!.ecken[0]!, b: l.proben[jb]!.ecken[0]!, k });
+    }
+  }
+  return aus;
+}
+
 /** Was die Linie (`L`, 3 je Probe) zu ihrem Pfad fehlt, je Probe; null ohne Pfad (`roh`: wie `pfadLagen`) */
 export function pfadVersatz(l: Loop, L: Float64Array = l.ruhe, roh = false): Float64Array | null {
   const p = pfadLagen(l, undefined, undefined, roh);
