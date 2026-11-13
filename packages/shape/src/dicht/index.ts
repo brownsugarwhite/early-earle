@@ -122,6 +122,7 @@ export {
 } from './loops';
 export { type DirektLoeser } from './direktZug';
 export { loopEinsetzen } from './einsetzen';
+export { type MitteSchnitt, hinterDerMitte, mitteFestmachen, mitteKreuzungen } from './mitteSchnitt';
 export { bernstein, stueckAnpassen, stueckNaechstes, stueckPunkt, stueckTeilen } from './pfad';
 export { type Verdichtet, nadelnZusammenlegen, verdichten } from './verdichten';
 export {

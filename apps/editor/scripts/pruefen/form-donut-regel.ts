@@ -41,6 +41,7 @@
 // Aufruf aus packages/shape: BLATT=<pfad ohne Endung> npx vite-node ../../apps/editor/scripts/pruefen/form-donut-regel.ts
 //   TIEF=190 (so weit wird der Punkt gezogen; die Kugel hat Radius 150; mehrere mit Komma: je eine Zeile)   DREIECKE=2000
 import { HautAusKurven } from '../../../../packages/shape/src/dicht/ausKurven';
+import { mitteFestmachen } from '../../../../packages/shape/src/dicht/mitteSchnitt';
 import { type Haut, type V3 } from '../../../../packages/shape/src/dicht/kurven';
 import {
   type Loop,
@@ -69,10 +70,11 @@ const TIEFEN = (process.env.TIEF ?? '190').split(',').map(Number);
 const DREIECKE = Number(process.env.DREIECKE ?? 2000);
 /**
  * Die neuen Enden: `anteil` (die erste Regel: glatt, Griff = senkrechter Anteil), `lang`, `angepasst` (siehe oben), `kante` (Florians
- * zweite Regel, siehe oben); mehrere mit Komma: je eine Spalte
+ * zweite Regel, siehe oben, hier in der Probe gerechnet), `kern` (dieselbe Regel mit dem Baustein des Kerns, `mitteFestmachen`, wie
+ * ihn das Fenster benutzt); mehrere mit Komma: je eine Spalte
  */
-type GriffArt = 'anteil' | 'lang' | 'angepasst' | 'kante';
-const GRIFF_ARTEN = (process.env.GRIFFE ?? 'anteil').split(',').map((g): GriffArt => (g === 'lang' || g === 'angepasst' || g === 'kante' ? g : 'anteil'));
+type GriffArt = 'anteil' | 'lang' | 'angepasst' | 'kante' | 'kern';
+const GRIFF_ARTEN = (process.env.GRIFFE ?? 'anteil').split(',').map((g): GriffArt => (g === 'lang' || g === 'angepasst' || g === 'kante' || g === 'kern' ? g : 'anteil'));
 const NUR_ORT = process.env.RAND === 'ort';
 /** beim Schneiden: Punkte, neben denen näher als dieser Anteil einer Kante geschnitten würde, kommen selbst auf die Ebene (`FANGEN=0`: aus) */
 const FANGEN = Number(process.env.FANGEN ?? 0.25);
@@ -454,12 +456,20 @@ function fall(tief: number): BlattBild[] {
   bilder.push({ name: 'heute: jede Hälfte wird bis zur Mitte gezeigt', h: ohne.h, loops: ohne.loops, notiz: m0.text, schnitt: schnitte(ohne.h) });
 
   for (const griffArt of GRIFF_ARTEN) {
-    const name = `${griffArt === 'kante' ? 'deine neue Regel: fest gemacht, der Rand ist eine Kante' : griffArt === 'angepasst' ? 'deine Regel, die Griffe der neuen Punkte nach der abgeschnittenen Linie angepasst' : griffArt === 'lang' ? 'dieselben Punkte, die Griffe der neuen Enden länger' : 'deine Regel: beim Loslassen geschnitten, neue Punkte ohne Knick'}${NUR_ORT ? ' (der Rand hält nur den Ort)' : ''}`;
+    const name = `${griffArt === 'kern' ? 'deine neue Regel mit dem Baustein des Kerns: fest gemacht, der Rand ist eine Kante' : griffArt === 'kante' ? 'deine neue Regel: fest gemacht, der Rand ist eine Kante' : griffArt === 'angepasst' ? 'deine Regel, die Griffe der neuen Punkte nach der abgeschnittenen Linie angepasst' : griffArt === 'lang' ? 'dieselben Punkte, die Griffe der neuen Enden länger' : 'deine Regel: beim Loslassen geschnitten, neue Punkte ohne Knick'}${NUR_ORT ? ' (der Rand hält nur den Ort)' : ''}`;
     const v = verschmelzen(wahr.h, wahr.loops, true, false, FANGEN);
     const s: Stand = { h: v.h, loops: v.loops, randId: v.loops[v.loops.length - 1]!.id };
     let text = '';
     try {
-      const an = regelAnlegen(s, wahr.loops, v.von, griffArt);
+      let an: string;
+      if (griffArt === 'kern') {
+        const k = mitteFestmachen(wahr.h, wahr.loops, { naechsteId: 100, naechsteKreuzung: 100, fangen: FANGEN });
+        if ('fehler' in k) throw new Error(k.fehler);
+        s.h = k.haut;
+        s.loops = k.loops;
+        s.randId = k.rand[0]!;
+        an = `${k.loops.filter((l) => l.id >= 100 && l.art === 'ring').length} Linienstücke, ${randLoop(s).punkte.length} neue Kreuzungen, ${k.wegPunkte} Punkte weggefallen (Baustein des Kerns). Die Linien gehen dafür bis ${z1(Math.max(0, ...s.loops.filter((l) => l.art === 'ring').map(wegZumPfad)))} (Ringe) und ${z1(wegZumPfad(randLoop(s)))} (Rand) von ihrer Lage nach dem Schnitt.`;
+      } else an = regelAnlegen(s, wahr.loops, v.von, griffArt);
       const nurOrt = (): Set<number> | null => (NUR_ORT ? new Set(randPunkte(s)) : null);
       const aufraeumen = (): void => {
         const d = nachVerdichten(s.h, s.loops, mk);
@@ -489,7 +499,7 @@ function fall(tief: number): BlattBild[] {
       text = `hält nicht: ${(e as Error).message}`;
     }
     console.log(`${name}: ${text}`);
-    if (griffArt !== 'kante') {
+    if (griffArt !== 'kante' && griffArt !== 'kern') {
       bilder.push({ name, h: s.h, loops: s.loops, notiz: text, schnitt: schnitte(s.h), punkte: true });
       continue;
     }
