@@ -14,6 +14,7 @@ import { type HautAuftrag, HautAusKurven, type HautGewichte, type HautOptionen, 
 import { KETTE_K, type KruemmungsKetten } from './kruemmung';
 import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich, hautNormalen, hautNormalenMax, kantenSchluessel } from './kurven';
 import { bernstein, stueckAnpassen, stueckNaechstes, stueckPunkt, stueckTeilen } from './pfad';
+import { DirektLoeser } from './direktZug';
 import { linienRichtung } from './richtung';
 
 export type Ansicht = 'seite' | 'front' | 'top';
@@ -893,7 +894,31 @@ export function kruemmungsKetten(plan: BindungsPlan, loops: readonly Loop[]): Kr
  * nicht vorgeben (`HautZiele`, das Fenster); `kurven` = die Haut im Bereich wird aus den Loops neu gerechnet, ohne Gedächtnis
  * (`HautAusKurven`, Beweis B vom 06.11., zum Vergleich).
  */
-export type HautArt = 'gedaechtnis' | 'kurven';
+export type HautArt = 'gedaechtnis' | 'kurven' | 'direkt';
+
+/** Punkte der Haut auf einer harten Linie (Kante an), samt ihrem Spiegelbild */
+export function hartePunkte(h: Haut, loops: readonly Loop[]): Uint8Array {
+  const hart = new Uint8Array(h.n);
+  for (const l of loops) {
+    const k = kanteBei(l, loops);
+    l.proben.forEach((p, i) => {
+      if (!k[i] || p.ecken[0] !== p.ecken[1] || p.ecken[1] !== p.ecken[2]) return;
+      hart[p.ecken[0]] = 1;
+      const s = h.spiegel[p.ecken[0]]!;
+      if (s >= 0) hart[s] = 1;
+    });
+  }
+  return hart;
+}
+
+/**
+ * Den Löser `direkt` für eine Haut und ihre Loops anlegen, bevor gegriffen wird (er hängt nicht daran, was gezogen wird): Ein
+ * `LoopZug` mit der Art `direkt` übernimmt ihn (`opt.direkt`), solange Haut und Loops dieselben sind.
+ */
+export function direktLoeserFuer(h: Haut, loops: readonly Loop[]): DirektLoeser {
+  const plan = bindungenAus(h, loops);
+  return new DirektLoeser(h, loops, plan, zieleAus(plan, loops.map((l) => l.ruhe)), hartePunkte(h, loops));
+}
 
 /**
  * Ein Zug: Löser für den Einflussbereich, Lagen der Loops beim Anfang. Je Schritt die Verschiebung je Probe (je Loop, null:
@@ -903,7 +928,9 @@ export type HautArt = 'gedaechtnis' | 'kurven';
 export class LoopZug {
   readonly plan: BindungsPlan;
   readonly start: Float64Array[];
-  readonly loeser: HautZiele | HautAusKurven;
+  readonly loeser: HautZiele | HautAusKurven | DirektLoeser;
+  /** wie die Haut zwischen den Loops entsteht (`HautArt`) */
+  readonly art: HautArt;
   /** Richtung an den Linien (Beweis 09.11.): Haut, Loops und Normalen der Haut beim Anfassen (Vorzeichen, Linien ohne Kreuzung) */
   private readonly richtungAus: { h: Haut; loops: readonly Loop[]; normalen: Float64Array } | null = null;
 
@@ -914,10 +941,16 @@ export class LoopZug {
     kruemmung = true,
     art: HautArt = 'gedaechtnis',
     gewichte: HautGewichte = 'gleich',
-    opt: HautOptionen = {},
+    opt: HautOptionen & { direkt?: DirektLoeser | null } = {},
   ) {
+    this.art = art;
     this.plan = bindungenAus(h, loops);
     this.start = loops.map((l) => Float64Array.from(l.ruhe));
+    if (art === 'direkt') {
+      // fertige Haut direkt bewegen (13.11.): der vorbereitete Löser, sonst hier angelegt (dann wartet das Greifen auf das Zerlegen)
+      this.loeser = opt.direkt ?? new DirektLoeser(h, loops, this.plan, zieleAus(this.plan, this.start), hartePunkte(h, loops));
+      return;
+    }
     // die Ketten tragen die Dehnung der Loops immer, die Krümmung (mit Richtung) nur mit `kruemmung`
     const ketten = kruemmungsKetten(this.plan, loops);
     const ziele = zieleAus(this.plan, this.start);
@@ -959,6 +992,10 @@ export class LoopZug {
 
   schritt(versch: readonly (Float64Array | null)[], iterationen = 2): void {
     const L = this.lagen(versch);
+    if (this.loeser instanceof DirektLoeser) {
+      this.loeser.schritt(L, zieleAus(this.plan, L), iterationen);
+      return;
+    }
     const r = this.richtungAus;
     if (r && this.loeser instanceof HautAusKurven) this.loeser.richtung = linienRichtung(r.h, r.loops, this.plan, L, r.normalen);
     this.loeser.schritt(zieleAus(this.plan, L), iterationen);

@@ -586,6 +586,24 @@ body {
   fill: #0a5f56;
 }
 
+/* Über die Mitte gezogen (13.11.): der Punkt hinter der Mitte ist markiert; wo eine Linie die Mitte kreuzt, ein Punkt, der noch lose ist */
+.blatt .kpunkt.hinter {
+  stroke: #c8672d;
+  fill: #f6dcc6;
+}
+
+.blatt .kpunkt.hinter.gewaehlt {
+  fill: #c8672d;
+}
+
+.blatt .mitte-kreuz {
+  fill: var(--papier);
+  stroke: var(--linie);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
 #status {
   font-variant-numeric: tabular-nums;
 }
