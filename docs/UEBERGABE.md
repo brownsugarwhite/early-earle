@@ -1,4 +1,4 @@
-# Übergabe (Stand 13.11.2026 nachts: Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt („Form halten“ hat Florian ausprobiert: „Gefällt nicht“). Schritt 4: Der Donut ist im Kern bewiesen (Abschnitt 7). Florian hat danach eine zweite, bessere Regel genannt (der Rand bleibt erst eine Kante, rund wird er mit „Kante aus“); sie hält mit den vorhandenen Kanten-Regeln und braucht die halbe Haut nicht. Er entscheidet, ob zuerst der Donut ins Bau-Fenster kommt oder die halbe Haut. Schritt 1 und 2 sind Standard in seinem Fenster auf 5194, sein Urteil dazu steht aus)
+# Übergabe (Stand 13.11.2026 nachts: Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt („Form halten“ hat Florian ausprobiert: „Gefällt nicht“). Schritt 4a, der Donut nach Florians zweiter Regel, ist im Bau-Fenster (Port 5197) gebaut und geprüft (Abschnitt 7.4); sein Urteil dort steht aus, in seinem Fenster (5194) ist nichts geändert. Der Umbau auf die halbe Haut (Schritt 4b) ist nicht begonnen. Schritt 1 und 2 sind Standard in seinem Fenster, sein Urteil dazu steht aus)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -25,7 +25,7 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | 1 Glatte Anzeige | **eingebaut und Standard** (Abschnitt 4). Florian am 12.11.: „Ja, übernehmen“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&anzeige=grob` zeigt zum Vergleich die Anzeige davor. Sein Urteil nach dem Arbeiten damit steht aus |
 | 2 Kleines Rechennetz | **eingebaut und Standard** (Abschnitt 5): rund 40 % der Punkte, im Zug 16 bis 20 ms je Bild. Florian am 12.11. nachts, vom Handy aus: „ja“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&netz=dicht` ist das Netz davor. Sein Urteil nach dem Arbeiten damit steht aus. Nicht gebaut: Zeichnen gegen die feine Fläche |
 | 3 Beweis „Haut direkt aus den Linien“ | **abgeschlossen, die heutige Rechnung bleibt** (Abschnitt 6, 13.11.): Die Haut nur aus den Linien (A) scheitert zwischen wenigen Linien und an seinen drei Formen. Der Teil B (fertige Haut direkt bewegen) hält rechnerisch; als Schalter „Form halten“ im Bau-Fenster ausprobiert, Florian: „Gefällt nicht“. Knopf und Taste sind wieder weg; der Code liegt nur auf `claude/form-bau` hinter `?ziehen=direkt` |
-| 4 Echte Spiegelung (mit der heutigen Rechnung) | **Donut im Kern bewiesen (Abschnitt 7, 13.11.):** Verschmelzen allein lässt den Rand des Lochs eine Kante (7.1). Geschnitten und mit Punkten ohne Knick an den neuen Kreuzungen wird er glatt, mit der heutigen Rechnung (7.2). Florians zweite Regel (7.3: Ziehen und Loslassen wie heute, Punkte an den Kreuzungen, der gezogene Punkt markiert, Löschen macht fest, der Rand ein Loop mit Kante, „Kante aus“ macht rund) hält mit den vorhandenen Kanten-Regeln. Im Fenster ist nichts gebaut; der Umbau auf die halbe Haut ist nicht begonnen und für den Donut nicht nötig |
+| 4 Echte Spiegelung (mit der heutigen Rechnung) | **4a, der Donut, im Bau-Fenster gebaut (Abschnitt 7.4, 13.11.):** nach Florians zweiter Regel (lose wie heute mit Punkten an den Kreuzungen und markiertem Punkt; den Punkt löschen macht den Schnitt fest, der Rand ist ein Loop mit Kante; „Kante aus“ macht rund). Probe im Fenster an der Kugel und an zwei seiner Formen: alles gut; „strange bird“ zeigt eine Grenze des heutigen Zugs. Sein Urteil und die Übernahme in sein Fenster stehen aus. **4b, die halbe Haut,** ist nicht begonnen (nur noch Tempo und weniger Buchführung) |
 | 5 Posen wie die Basis | offen |
 | 6 Maul als eigene Geometrie | offen |
 | 7 Auswahl wie in Blender | offen |
@@ -435,11 +435,63 @@ Loch, und `schritt4-donut-kante-klein-2026-11-13.jpg`; Zahlen am Ende von `schri
    gespiegelte Haut, auf der das Fenster weiterarbeiten kann (so rechnet die Probe). Der offene Punkt aus 7.2 („der Zug selbst
    ist nicht gerechnet“) entfällt mit dieser Regel.
 
-**Gefragt ist Florian (13.11. nachts):**
-- **„Donut bauen“:** seine zweite Regel ins Bau-Fenster (5197), auf der heutigen Haut: Punkte an den Kreuzungen, markierter
-  Punkt, Löschen macht fest, Kante am Rand, „Kante aus“. Etwa drei bis vier Tage, in Etappen mit sichtbaren Proben (vorher in
-  den Plan). Die halbe Haut bleibt als eigener Schritt für das Tempo. Empfohlen.
-- **„Erst die halbe Haut“:** wie im Plan (5 bis 8 Tage), der Donut danach.
+Gefragt war: „Donut bauen“ oder „Erst die halbe Haut“. **Florian: „Donut bauen“.**
+
+### 7.4 Schritt 4a: der Donut im Bau-Fenster (13.11. nachts)
+
+Gebaut in `form-bau` (Port 5197, `http://localhost:5197/kurven.html?gewichte=geometrie`; der Server ist die Vorschau der
+Sitzung, Eintrag `kurven-bau`), Etappen 1 bis 5 aus dem Plan (Schritt 4a). **Florian hat es noch nicht ausprobiert.** In seinem
+Fenster (5194) ist nichts geändert.
+
+**Was das Bau-Fenster jetzt tut:**
+- **Lose** (ein Punkt ist über die Mitte gezogen): Ziehen, Loslassen und Zurückziehen wie bisher. In den Blättern steht ein
+  kleiner heller Punkt, wo eine Linie die Mitte kreuzt (er folgt dem Zug), der Punkt hinter der Mitte ist orange markiert, und
+  die Statuszeile sagt „ein Punkt hinter der Mitte (löschen macht den Schnitt fest)“.
+- **Fest:** Den markierten Punkt wählen und löschen (⌫). Die Haut wird an der Mitte geschnitten, die Linien enden dort mit ihrem
+  Knick (Rauten: Ecken an der Kante), der Rand des Lochs ist ein Loop mit Kante und ist gleich gewählt. ⌘Z führt zurück.
+- **Rund:** K am gewählten Rand (Kante aus); K noch einmal macht ihn wieder kantig.
+- **Weiter:** Die Punkte des Rands sind gewöhnliche Punkte (ziehen, Griffe); der Umriss des Lochs wird über sie rund.
+
+**Wo es liegt:** Kern `packages/shape/src/dicht/mitteSchnitt.ts` (`mitteKreuzungen`, `hinterDerMitte`, `mitteFestmachen`; Tests
+`mitteSchnitt.test.ts`). Fenster `apps/editor/src/form/kurven.ts`: in `blattZeichnen` die Punkte an den Kreuzungen und die
+Klasse `hinter`, `hinterDerMitteZahl` (Statuszeile), `mitteFest`, am Anfang von `loeschen` die Weiche; drei Regeln am Ende des
+Kurven-Blocks in `form.css`. Keine neuen Felder im Stand. Proben: `apps/editor/scripts/pruefen/form-donut-fenster.mjs` (im
+Fenster: `GPU=1 node scripts/pruefen/form-donut-fenster.mjs`, mit `NAME=<Form>` an einer gesicherten Form) und
+`form-donut-regel.ts` mit `GRIFFE=kern` (der Baustein rechnet dieselben Zahlen wie 7.3).
+
+**Gemessen im Bau-Fenster** (Zahlen `docs/progress/editor/schritt4a-donut-fenster-messung-2026-11-13.txt`, Bild
+`schritt4a-donut-fenster-2026-11-13.jpg`; gezogen wird die Kreuzung zweier Ringe an der Seite bis 40 hinter die Mitte):
+
+| Fall | fest gemacht: die gezeigte Haut neben der von vorher (größter Abstand / Mittel) | Knick quer über den Rand: mit Kante → nach K | Probe |
+| --- | --- | --- | --- |
+| Kugel mit zwei Ringen und der Mittellinie | 6,4 / 1,7 | 82° → 26° | alles gut |
+| `test_kaputt` | 4,7 / 0,3 | 65° → 15° | alles gut |
+| `teat firefish` (11 400 Punkte) | 4,7 / 0,1 | 55° → 14° | alles gut |
+| `strange bird` (Zug nur 12 hinter die Mitte) | 2,7 / 0,1 | 98° → 17° | Grenze, siehe unten |
+
+„Alles gut“ heißt: lose stehen die Punkte an den Kreuzungen, der Punkt ist markiert; zurückgezogen ist nichts mehr markiert;
+fest gemacht gibt es die Linienstücke und den Rand mit Kante, nichts ist umgeschlagen oder schwarz, die Haut ist spiegelgleich;
+K macht den Rand glatt und wieder kantig; ein Punkt des Rands lässt sich danach ziehen und bleibt in der Mitte; ⌘Z führt bis
+zum losen Stand zurück; keine Fehler in der Konsole.
+
+**Grenzen und Offenes:**
+1. **`strange bird`, Kreuzung der Ringe bei (30, −28, 148):** Schon der lose Zug stülpt dort 15 % der gezeigten Haut um (schwarz
+   im Fenster; das ist der Zug von heute, nicht der Schnitt), und das Loch reicht bis an den Umriss der Form (der Rand bekommt
+   zwei Punkte mit der Mittellinie). Fest machen ändert daran nichts, „Kante aus“ mindert es auf 3 %. An so einer Stelle lässt
+   sich heute kein sauberer Donut ziehen.
+2. Fest gemacht wird alles, was hinter der Mitte liegt, nicht nur die Stelle des gelöschten Punkts.
+3. Liegt nur ein Griff hinter der Mitte und kein Punkt, erscheinen die Punkte an den Kreuzungen, aber nichts macht fest.
+4. In der Pose und mit einem Maul kommt eine Meldung statt eines Schnitts (seine drei Formen haben beides nicht; an einer Form
+   mit Maul ist das nicht geprüft).
+5. Ein Loch, das den Umriss durchbricht oder kleiner ist als ein Dreieck: Meldung, nichts ändert sich (`fehler` im Kern).
+6. Der Umriss des Lochs bleibt bei „Kante aus“, wie er geschnitten wurde.
+7. Fest machen bewegt die Haut ein wenig (Tabelle): An der Kante rundet sich jede Seite für sich.
+8. Sichern und Laden einer fest gemachten Form ist nicht eigens geprüft.
+
+**Als Nächstes:** Florian probiert es im Bau-Fenster aus. Sagt er ja, kommt es in sein Fenster: `claude/form-bau` nach
+`claude/form-spiegel` zusammenführen (vorher ansagen, sein Fenster lädt neu; dabei kommt auch der Code mit, der bisher nur in
+`form-bau` liegt, darunter „Form halten“ hinter `?ziehen=direkt`). Danach Schritt 4b (halbe Haut) oder Schritt 5 (Posen), nach
+seiner Wahl.
 
 ## 8. Offen aus der Zeit davor
 

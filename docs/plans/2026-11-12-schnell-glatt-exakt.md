@@ -253,6 +253,11 @@ ihrer sichtbaren Probe:
 gelöschten Punkts. „Kante aus“ am Rand gibt es erst nach dem Festmachen. Der Umriss des Lochs bleibt, wie er geschnitten wurde.
 Liegt nur ein Griff hinter der Mitte und kein Punkt, bleibt die Stelle lose (offen, was dann fest macht). **Abbruch:** Hält eine
 Etappe nach ihrem Aufwand (je ein halber bis ein Tag) nicht: anhalten und es sagen.
+**Ergebnis (13.11. nachts; `docs/UEBERGABE.md`, Abschnitt 7.4):** Die Etappen 1 bis 5 sind im Bau-Fenster gebaut. Die Probe im
+Fenster (`form-donut-fenster.mjs`) besteht an der Kugel und an `test_kaputt` und `teat firefish` in allen Punkten (lose, zurück,
+fest, rund, weiterziehen, ⌘Z); fest machen bewegt die gezeigte Haut höchstens 4,7 bis 6,4, „Kante aus“ bringt den Knick am Rand
+von 55° bis 82° auf 14° bis 26°. An `strange bird` stülpt schon der lose Zug an der geprüften Stelle die Haut um (der Zug von
+heute); dort entsteht kein sauberer Donut. Florians Urteil im Bau-Fenster und die Übernahme in sein Fenster stehen aus.
 
 - **Was du danach siehst:**
   - Jede neue Form beginnt als gespiegelte Kugel, **die Mittellinie ist von Anfang an eingezeichnet**.
