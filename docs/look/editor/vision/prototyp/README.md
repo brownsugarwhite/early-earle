@@ -4,6 +4,39 @@ Lauffähige Vision des Kurven-Editors: Raum, Blatt und Blick mit Faltung, eine G
 Beschriftung. Konzept: [`../KONZEPT.md`](../KONZEPT.md), Recherche: [`../RECHERCHE.md`](../RECHERCHE.md), Präsentation:
 https://claude.ai/artifact/SahX9VLKYfxFbmhNPNs18f (Prototyp darin als `vision.html`, Einstellungen über den Anker).
 
+## Runde 4 (13.11.2026): die Ecke
+
+Drei Ansichten als Druckfarben (Cyan Seite, Magenta Front, Gelb Top) an den unsichtbaren Wänden einer Ecke. Jede ist eine
+echte Ansicht mit eigenem Projektor. Tab: Wesen drehen; die Ansichten laufen zusammen, in ihrer Schnittmenge entsteht das
+Material. Start mit dem Stift in der Seitenansicht. Prüfung der Vision: [`../VISION-4.md`](../VISION-4.md),
+Plan: [`../PLAN-4.md`](../PLAN-4.md).
+
+```bash
+node bau.mjs src/einstieg/ecke.js dist/ecke.html "Ecke"
+# Standard: Start mit dem Stift auf leerem Papier. Ohne Stift: ?start=0&form=vogel (im Artefakt: #vogel-ohnestift)
+node film2.cjs dist/ecke.html stift <film.mp4> 960 600                          # auch: start
+node film2.cjs dist/ecke.html tab <film.mp4> 960 600 25 20 "start=0&form=vogel"  # auch: drehen, achse, vier
+node pruefe.cjs dist/ecke.html <ordner> <schritte.js> 1280 800 "start=0&form=vogel"
+```
+
+| Taste, Geste | Wirkung |
+|---|---|
+| Stift (Start) | Klick = Ecke, Ziehen = glatter Punkt mit Griffen, Klick auf den ersten Punkt = schließen, <kbd>Enter</kbd> oder Doppelklick = bestätigen, <kbd>⌫</kbd> = letzter Punkt weg, <kbd>Esc</kbd> = neu |
+| Leere ziehen | drehen. Raum: alles dreht sich, die Ansichten bleiben an den Wänden. Wesen (nach Tab): nur das Wesen dreht sich, Licht und Fliese bleiben |
+| <kbd>Tab</kbd> | Raum drehen ↔ Wesen drehen (die Ansichten wandern ins Wesen, wo sich alle drei decken, entsteht das Material) |
+| <kbd>4</kbd> | Viereransicht ↔ Ecke (Seite oben links, Front oben rechts, Top unten links, Raum unten rechts; in jedem Feld bearbeitbar) |
+| <kbd>1</kbd> <kbd>3</kbd> <kbd>7</kbd> halten oder tippen, <kbd>0</kbd> | Seite, Front, Top: flach, die Druckfarbe der Achse liegt genau unter dem Drahtmodell; <kbd>0</kbd> = Raum |
+| sonst | wie in der Werft: Punkte und Griffe ziehen, Haut formen, Nachzeichnen, Spant schneiden, Rad, <kbd>⌘Z</kbd>, <kbd>?</kbd> Vorführung |
+
+| Datei | Inhalt |
+|---|---|
+| `src/werkstatt/ecke.js` | Klasse `Ecke` (erbt `Werft`): Projektoren und Tafeln, Deckung je Druckfarbe, Zusammensetzen (Transparentpapier, Material), Licht und Fliese, Tab, Viereransicht, Stift, Aufblasen, Vorführungen |
+| `src/werkstatt/aufblasen.js` | Umriss → Poisson (Δf = −2) → z = ±κ√f → Surface Nets → Rand auf den Umriss → Taubin; drei Spanten aus Querschnitten |
+| `src/werkstatt/shader2.js` | neu: `tafelVS/FS`, `tafelDeckFS`, `koerperZusammenFS`, `bodenEckeVS/FS`, `goochFS` |
+
+`pruefe.cjs` wartet jetzt nach jedem Bild auf die Grafik (liest einen Bildpunkt); sonst staut sich die Arbeit des
+Software-Renderers bis zum Screenshot und läuft in die Zeitgrenze.
+
 ## Runde 3 (13.11.2026): die Werft
 
 Ein Bild, jede Kurve in ihrer Fläche, federnde Ansichten, Jelly ↔ Illustration, Haut formen, Nachzeichnen.

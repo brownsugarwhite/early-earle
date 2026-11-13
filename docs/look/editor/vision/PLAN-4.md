@@ -53,3 +53,13 @@ Seitenansicht). Dann Drahtmodell, drei Projektionen an den Wänden der Ecke (Wä
 4. Achsen-Morph zur flachen Ansicht; Viereransicht (4).
 5. Start: Umriss mit dem Stift, Aufblasen mit Feder.
 6. Prüfen mit Mauszügen, Filme, Präsentation (gleiche Adresse), Push.
+
+## Stand (laufend)
+
+- 13.11. Ecke gebaut (`prototyp/src/werkstatt/ecke.js`, `aufblasen.js`, Einstieg `src/einstieg/ecke.js`,
+  `node bau.mjs src/einstieg/ecke.js dist/ecke.html Ecke`). Schritte 1 bis 5 des Bauplans erledigt: heller Grund, Drahtmodell mit
+  Transparentpapier, drei Projektoren mit Tafeln an den abgewandten Wänden, Tab mit Zusammenlaufen (1,15 s) und Material in der
+  Schnittmenge, Wesen-Modus mit Licht und Fliese fest vor dem Blick und Zusammenlaufen nach dem Winkel zur nächsten Achse,
+  Achsen flach mit der Druckfarbe darunter, Viereransicht (4), Start mit Stift und Aufblasen. Geprüft mit Mauszügen (Zeichnen,
+  Schließen, Enter, Aufblasen; Tab; 1/3/7/0; Drehen von hinten; Punkt im Seitenfeld der Viereransicht ziehen). Drehbücher:
+  `start`, `stift`, `tab`, `drehen`, `achse`, `vier`. Konzept-Nachtrag in `KONZEPT.md`.

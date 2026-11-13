@@ -9,4 +9,5 @@ for (const t of (location.hash || '').slice(1).split('-').filter(Boolean)) {
   else if (t === 'ton') PAR.set('ton', '1');
   else if (t === 'ohneseife') PAR.set('seife', '0');
   else if (t === 'zeigen') PAR.set('vorfuehren', 'formen');
+  else if (t === 'ohnestift') PAR.set('start', '0');
 }

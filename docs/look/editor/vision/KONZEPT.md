@@ -238,3 +238,54 @@ Lagen und bildet Spitzen. Randgriffe behalten ihre Richtung, sonst biegt sich da
 Kreuzung ist mehrdeutig; die Kurve wird deshalb je Kurve nach Anfang und Ende gesucht. Die Seifenhaut aus Runde 1 fällt weg:
 Die Hand zeigt sich als Flieder-Licht.
 
+
+## Nachtrag 13.11.2026 (nachts): Runde 4, die Ecke
+
+Florians Vision (wörtlich und geprüft in [`VISION-4.md`](VISION-4.md), Plan in [`PLAN-4.md`](PLAN-4.md)): Statt des Grundrisses
+am Boden liegen Seite, Front und Top in Cyan, Magenta und Gelb an den Wänden einer Ecke, deren Wände man nicht sieht. Die
+Projektionen sind echte 3D-Ansichten: Dreht man das Wesen, drehen sie sich synchron mit, legen sich deckungsgleich übereinander,
+und an ihrer Schnittfläche entsteht das Material. Eine Taste schaltet zwischen „Raum drehen“ und „Wesen drehen“. Heller Grund.
+Start: Umriss mit dem Stift in der Seitenansicht, Bestätigen, die Ansicht zieht sich zurück, das Wesen bläst sich wackelnd auf.
+
+**Wie es gebaut ist:**
+
+- *Projektor je Ansicht.* Auf der Achse schaut er fast parallel (Öffnung 0,6°) genau von der Seite, von vorn oder von oben; seine
+  Maske liegt als Tafel auf der Wand hinter dem Wesen (der Wand, die vom Blick abgewandt ist). Beim Zusammenlaufen werden Blick
+  (Quaternion), Ziel, Rahmenhöhe und Öffnung (im Tangens-Raum) zur Kamera hin gemischt, wie beim Dolly-Zoom; die Tafel steht
+  immer senkrecht zu ihrem Projektor. Am Ende ist der Projektor die Kamera: Ein Bild, das vom Auge aus geworfen wird, deckt sich
+  aus dem Auge immer genau mit dem Wesen (Anamorphose), ganz gleich, auf welcher Ebene die Tafel liegt.
+- *Material an der Schnittfläche.* Jede Tafel schreibt ihre Deckung in einen eigenen Farbkanal (Cyan → Rot, Magenta → Grün,
+  Gelb → Blau); wo das Minimum der drei groß ist und der Körper liegt, erscheint das Material. Unterwegs zeigen sich die
+  Überdruckfarben (Cyan und Magenta = Blau usw.) wie ein Druck, der in Passer kommt. Die Dichten (0,40 / 0,32 / 0,34) sind so
+  gewählt, dass alle drei übereinander ein neutrales Grau ergeben (Graubalance).
+- *Raum oder Wesen.* Beides ist dieselbe Kamerafahrt um das Wesen; im Wesen-Modus dreht sich der Raum (Licht und Fliese) mit dem
+  Blick mit, deshalb dreht sich auf dem Bildschirm nur das Wesen. Zurück im Raum richtet sich die Fliese mit einer kleinen Drehung
+  wieder an den Wänden aus (Vierteldrehungen sehen gleich aus). Im Wesen-Modus hängt das Zusammenlaufen vom Winkel zur nächsten
+  Achse ab: bis 6° liegen die Ansichten an ihren Wänden, ab 29° deckungsgleich im Wesen. Auf einer Achse macht der Dolly-Zoom die
+  Ansicht flach; die Tafel dieser Achse liegt dann genau unter dem Drahtmodell (Morph zur Seitenansicht), die anderen stehen
+  hochkant und verblassen.
+- *Viereransicht.* Die Tafeln fliegen in Bildkoordinaten von ihrer Wand in ihr Feld (am Anfang perspektivisch richtig, am Ende
+  flach), der Raum schrumpft über eine Verschiebung der Projektion ins vierte Feld. Europäische Anordnung: Seite oben links,
+  Front rechts daneben (gleiche Höhen in einer Zeile), Top darunter (gleiche Längen in einer Spalte), alle im selben Maßstab.
+- *Start.* Stift wie in Vektorprogrammen. Das Wesen entsteht durch Aufblasen des Umrisses: Poisson-Gleichung Δf = −2 im Umriss,
+  Höhe z = ±0,92·√f (lange Teile bekommen runde Querschnitte; Teddy 1999, Monster Mash 2020), Fläche mit Surface Nets auf
+  F = κ²f − z² (glatt, das Gitter ist zur Mittelebene symmetrisch, die Spiegelpartner ergeben sich aus den Zellen), Rand auf den
+  gezeichneten Umriss gelegt, Taubin-Glättung. Drei Spanten an Querschnitten des Rumpfs. Die Seitenansicht zieht sich auf ihre
+  Wand zurück (der „Windzug“), das Wesen bläst sich mit einer gedämpften Feder auf (1,25 Hz, gut ein Viertel Überschwingen), die
+  Welle läuft vom Kopf zum Schwanz; Front und Top wachsen mit, weil ihre Projektoren das aufgehende Wesen sehen.
+
+**Gestaltung:** warmes Weiß, kein Glühen, kein Schein; Druckfarben multipliziert mit feiner, satterer Kante derselben Farbe;
+Drahtmodell = Kurvennetz in dunkler Tinte (Kiel doppelt so stark), verdeckte Linien hell, Umriss, dazu Transparentpapier (der
+Körper hellt die Farben hinter sich auf); Material matt mit kühlen Schatten und warmem Licht (Gooch et al. 1998), so bleiben
+dunkle Linien und weiße Griffe mit dunklem Ring lesbar; Lila heißt gewählt; Fliese als feines Quadrat; weicher Kontaktschatten.
+
+**Beim Bauen gelernt:** Chrome zeigte eine nur noch geleerte 2D-Überlagerung abwechselnd mit einem alten Puffer (ein unsichtbarer
+Bildpunkt je Bild behebt es). Der Gitterrand des aufgeblasenen Netzes macht die Seitenansicht zackig, bis er auf den Umriss gelegt
+wird. Masken brauchen Kantenglättung, sonst franst die Kante der Druckfarbe aus. Im Test staut sich die Arbeit des
+Software-Renderers bis zum Screenshot; das Prüfwerkzeug wartet deshalb nach jedem Bild.
+
+**Ehrlich offen:** Florians Satz „das Material des 3D-Models ist immer enthalten“ (Raum drehen) habe ich so gelesen, dass sich
+im Raum das Material nicht ändert; gebaut ist im Raum das Drahtmodell, weil er auch schreibt „Wireframe, wenn die Projektionen
+die Seiten anzeigen“. Ob das Zusammenlaufen vom Winkel abhängen soll oder nur von Tab, muss er beim Drehen fühlen. Die Spanten
+beim Start sind geraten (drei, gleichmäßig im Rumpf). Bildrate auf iPhone und Mac nicht gemessen; unter der Oberfläche rechnet
+weiter die Ersatz-Haut.

@@ -666,6 +666,11 @@ export class Ecke extends Werft {
     c.restore();
   }
 
+  // Eine Vorführung aus dem Start (leeres Papier) zeichnet ein Wesen; das bleibt danach (nichts zurückholen)
+  standMerken() {
+    return this.phase === 'stift' ? null : super.standMerken();
+  }
+
   // ---------------- Vorführung (Geistermaus, Filme) ----------------
   drehbuecher() {
     const app = this;
@@ -698,8 +703,8 @@ export class Ecke extends Werft {
     };
     return {
       start(G) {
-        zeichnen(G);
-        G.warte(3.4);
+        // auf leerem Papier: erst zeichnen und aufblasen; sonst nur die Ecke
+        if (app.phase === 'stift') { zeichnen(G); G.warte(3.4); }
         G.gehe(an(0.86, 0.84), 0.5);
         G.taste('Tab', 0.3);
         G.warte(1.8);
