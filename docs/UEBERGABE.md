@@ -1,4 +1,4 @@
-# Übergabe (Stand 13.11.2026 abends: Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt. Die Haut nur aus den Linien hält nicht; „Form halten“ (B) hat Florian im Bau-Fenster ausprobiert: „Gefällt nicht“. Als Nächstes Schritt 4, echte Spiegelung, zuerst der Donut-Beweis. Schritt 1 und 2 sind Standard in seinem Fenster auf 5194, sein Urteil dazu steht aus)
+# Übergabe (Stand 13.11.2026 abends: Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt („Form halten“ hat Florian ausprobiert: „Gefällt nicht“). Schritt 4 hat mit dem kleinen Donut-Beweis begonnen: Der Rand des Lochs wird durch Verschmelzen allein nicht glatt. Florian entscheidet, wie Schritt 4 weitergeht. Schritt 1 und 2 sind Standard in seinem Fenster auf 5194, sein Urteil dazu steht aus)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -25,7 +25,7 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | 1 Glatte Anzeige | **eingebaut und Standard** (Abschnitt 4). Florian am 12.11.: „Ja, übernehmen“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&anzeige=grob` zeigt zum Vergleich die Anzeige davor. Sein Urteil nach dem Arbeiten damit steht aus |
 | 2 Kleines Rechennetz | **eingebaut und Standard** (Abschnitt 5): rund 40 % der Punkte, im Zug 16 bis 20 ms je Bild. Florian am 12.11. nachts, vom Handy aus: „ja“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&netz=dicht` ist das Netz davor. Sein Urteil nach dem Arbeiten damit steht aus. Nicht gebaut: Zeichnen gegen die feine Fläche |
 | 3 Beweis „Haut direkt aus den Linien“ | **abgeschlossen, die heutige Rechnung bleibt** (Abschnitt 6, 13.11.): Die Haut nur aus den Linien (A) scheitert zwischen wenigen Linien und an seinen drei Formen. Der Teil B (fertige Haut direkt bewegen) hält rechnerisch; als Schalter „Form halten“ im Bau-Fenster ausprobiert, Florian: „Gefällt nicht“. Knopf und Taste sind wieder weg; der Code liegt nur auf `claude/form-bau` hinter `?ziehen=direkt` |
-| 4 Echte Spiegelung (mit der heutigen Rechnung) | **als Nächstes.** Zuerst der kleine Beweis aus dem Plan: der Donut (ein Bild), dann der Umbau auf die halbe Haut |
+| 4 Echte Spiegelung (mit der heutigen Rechnung) | **kleiner Beweis „Donut“ gerechnet (Abschnitt 7, 13.11.):** Der Rand des Lochs ist heute eine scharfe Kante und bleibt es auch, wenn die Hälften wirklich verschmolzen werden; zurückgezogen ist die Form wieder da. Der Umbau auf die halbe Haut ist nicht begonnen; Florian entscheidet, ob er ohne glatten Rand kommt oder ob zuerst der Rand geklärt wird |
 | 5 Posen wie die Basis | offen |
 | 6 Maul als eigene Geometrie | offen |
 | 7 Auswahl wie in Blender | offen |
@@ -308,7 +308,41 @@ Die heutige Rechnung bleibt die einzige im Fenster. Weiter nach Plan mit Schritt
 `FALL=ruessel,horn,biegen,formen`), dann aus `apps/editor`
 `HOEHE=100 node scripts/pruefen/html-shot.mjs --jpg <pfad>-*.html`.
 
-## 7. Offen aus der Zeit davor
+## 7. Schritt 4, kleiner Beweis „Donut“: gerechnet am 13.11., der Rand wird so nicht glatt
+
+Der Plan verlangt vor dem Umbau auf die halbe Haut ein Bild: „Griff durch die Mitte → Loch mit glattem Rand; zurück → Form wie
+vorher.“ Probe im Kern: `apps/editor/scripts/pruefen/form-donut.ts` (aus `packages/shape`,
+`BLATT=<pfad ohne Endung> npx vite-node ../../apps/editor/scripts/pruefen/form-donut.ts`), Bild
+`docs/progress/editor/schritt4-donut-2026-11-13.jpg`. **Florian hat das Bild noch nicht beurteilt.** Am Fenster ist nichts
+geändert.
+
+**Fall:** Kugel mit drei Loops (1 784 Punkte), der Punkt an der Seite (Kreuzung der beiden Ringe) um 190 durch die Spiegelebene
+gezogen.
+
+| Fassung | Rand des Lochs (Knick quer über den Rand, Mittel / größter) | Sonst |
+| --- | --- | --- |
+| heute: ganze Haut gerechnet, jede Hälfte bis zur Ebene gezeigt | 97° / 113° (scharfe Kante) | Loch mit Halbmesser 74 bis 93; 9 Runden; an der gerechneten Haut nichts umgestülpt |
+| verschmolzen (an der Ebene geschnitten, mit dem Spiegelbild verbunden), Rand frei | 22° / 84° | das Loch verzieht sich (Halbmesser 52 bis 111), Haut bis 32 neben heute, 17 Knicke über 60° |
+| verschmolzen, Rand als Linie der Mittelebene | 32° / 111° | Loch bleibt (75 bis 92), Haut bis 13 neben heute, 9 Knicke |
+| verschmolzen, Rand als Linie, die keine Wölbung vorgibt (Ecken) | 77° / 150° | Loch bleibt, 60 Knicke |
+| zurückgezogen (heute) | – | Kugel wieder da: im Mittel 0,11, größter 0,4 neben vorher, nichts umgestülpt |
+
+**Befunde:**
+1. **„Zurück → Form wie vorher“ hält schon heute** (ganze Haut als Wahrheit, die Anzeige schneidet ab).
+2. **„Loch mit glattem Rand“ hält nicht.** Verschmelzen macht aus den beiden Hälften eine Haut, aber die heutige Rechnung liest
+   die Wölbung an den Linien an der Haut ab: Die Kante am Rand bestätigt sich selbst. Ohne Linie am Rand glättet sie mehr, dafür
+   wandert das Loch. Ein runder Rand braucht also eine eigene Regel (woher die Wölbung am Rand kommt), nicht nur den Umbau.
+3. **Der Schnitt an der Ebene trägt:** Hälfte abschneiden und spiegeln gibt genau das Bild von heute als eine geschlossene Haut
+   (1 523 statt 1 784 Punkte), und die heutige Rechnung läuft darauf ohne davonzulaufen (`verschmelzen` in der Probe; teilt auch
+   die Loops an der Ebene in Stücke). Das ist der Baustein für „die Hälfte ist die Wahrheit“.
+
+**Gefragt ist Florian (13.11. abends):**
+- **„Halbe Haut ohne glatten Rand“:** Schritt 4 als Umbau auf die Hälfte (schneller, die Mittellinie von Anfang an, keine
+  Buchführung der Paare); wo die Hälften sich treffen, bleibt es die Kante von heute. Empfohlen.
+- **„Erst den Rand“:** vor dem Umbau ein zweiter kleiner Beweis, wie der Rand rund wird.
+- **„Schritt 4 zurückstellen“:** erst Posen (5), Maul (6) oder Auswahl (7).
+
+## 8. Offen aus der Zeit davor
 
 Florians Blick auf G4, auf Sichern und Laden und auf G5 Teil 1 steht aus. Die offenen Entscheidungen der alten Übergabe
 (Abschnitt 5 dort: „Punkte wo nötig“, weich überblenden beim Einwechseln, Linie kehrt um, Vorsicht und Schutz) erledigen sich
