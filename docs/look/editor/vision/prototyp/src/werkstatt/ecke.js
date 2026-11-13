@@ -11,7 +11,7 @@ import { Werft } from './werft.js';
 import { THREE } from '../zeichner.js';
 import * as S from '../shader.js';
 import * as S2 from './shader2.js';
-import { add, sub, mul, norm, dist, len, smooth, lerp } from '../mathe.js';
+import { add, sub, mul, dot, norm, dist, spiegel, smooth, lerp } from '../mathe.js';
 import { neuerPunkt, neueId, ringEndenRichten, mitteRichten } from '../linien.js';
 import { linieAnlegen } from '../schnitt.js';
 import { PAR } from '../parameter.js';
@@ -72,7 +72,7 @@ export class Ecke extends Werft {
       g.setIndex([0, 1, 2, 0, 2, 3]);
       const druck = new THREE.ShaderMaterial({
         vertexShader: S2.tafelVS, fragmentShader: S2.tafelFS,
-        uniforms: { uMaske: { value: null }, uFarbe: { value: new THREE.Vector3(...FARBE[n]) }, uDichte: { value: 0 }, uKante: { value: 0.26 }, uTexel: { value: new THREE.Vector2(1 / 512, 1 / 512) } },
+        uniforms: { uMaske: { value: null }, uFarbe: { value: new THREE.Vector3(...FARBE[n]) }, uDichte: { value: 0 }, uKante: { value: 0.26 }, uTexel: { value: new THREE.Vector2(1 / 512, 1 / 512) }, uLinse: z.U.uLinse, uLinseS: { value: 0 } },
         depthTest: false, depthWrite: false, side: THREE.DoubleSide, transparent: true, ...multipliziert,
       });
       const deck = new THREE.ShaderMaterial({
@@ -93,7 +93,7 @@ export class Ecke extends Werft {
     });
     this.zusammenMat = new THREE.ShaderMaterial({
       vertexShader: S.vollbildVS, fragmentShader: S2.koerperZusammenFS,
-      uniforms: { uKoerper: { value: null }, uDeckung: { value: null }, uSchleier: { value: 0 }, uMaterial: { value: 0 }, uImmer: { value: 0 }, uGrund: { value: new THREE.Vector3(...GRUND) } },
+      uniforms: { uKoerper: { value: null }, uDeckung: { value: null }, uSchleier: { value: 0 }, uMaterial: { value: 0 }, uImmer: { value: 0 }, uGrund: { value: new THREE.Vector3(...GRUND) }, uLinse: z.U.uLinse },
       depthTest: false, depthWrite: false, transparent: true,
       blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
     });
@@ -101,7 +101,7 @@ export class Ecke extends Werft {
     bg.rotateX(-Math.PI / 2);
     this.bodenMat = new THREE.ShaderMaterial({
       vertexShader: S2.bodenEckeVS, fragmentShader: S2.bodenEckeFS,
-      uniforms: { uMitte: { value: new THREE.Vector2() }, uRiss: { value: null }, uR: { value: 1 }, uFliese: { value: 1 }, uPsi: { value: 0 }, uSchatten: { value: 0.1 }, uFlieseA: { value: 1 }, uTexel: { value: 1 / 256 }, uTinte: { value: new THREE.Vector3(...TINTE) } },
+      uniforms: { uVersatz: { value: new THREE.Vector2() }, uMitte: { value: new THREE.Vector2() }, uRiss: { value: null }, uR: { value: 1 }, uFliese: { value: 1 }, uPsi: { value: 0 }, uSchatten: { value: 0.1 }, uFlieseA: { value: 1 }, uTexel: { value: 1 / 256 }, uTinte: { value: new THREE.Vector3(...TINTE) } },
       transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide,
     });
     this.boden = new THREE.Mesh(bg, this.bodenMat);
@@ -786,6 +786,14 @@ export class Ecke extends Werft {
     r.setClearColor(0x000000, 0);
     r.clear(true, true, true);
     this.goochMat.uniforms.uLicht.value.set(...this.licht());
+    // Einfluss: Lichtfleck auf der Haut vor dem Formen, im Zug mit
+    const ein = z.U.uEinfluss.value;
+    if (this.zug && this.zug.art === 'haut') {
+      const c0 = this.zug.p0, dd = this.zug.d ? (this.zug.sp ? spiegel(this.zug.d) : this.zug.d) : [0, 0, 0];
+      ein.set(c0[0] + dd[0], c0[1] + dd[1], c0[2] + dd[2], this.hautR);
+    } else if (!this.zug && !this.strich && this.nahZiel && this.nahZiel.art === 'haut' && this.maus.drin && this.phase === null) {
+      ein.set(this.nahZiel.p[0], this.nahZiel.p[1], this.nahZiel.p[2], this.hautR);
+    }
     z.koerper.material = this.goochMat;
     if (this.sichtbarkeit > 0.001) r.render(z.szeneKoerper, kam);
     // 2. Grund
@@ -814,6 +822,10 @@ export class Ecke extends Werft {
       B2.uSchatten.value = (0.07 + 0.09 * s) * (1 - flach * 0.6) * this.sichtbarkeit;
       B2.uFlieseA.value = this.sichtbarkeit * this.flieseA();
       B2.uTexel.value = 1 / 256;
+      // Schatten weicht dem Licht aus: im Wesen-Modus bleibt er stehen, während sich das Wesen dreht
+      const L = this.licht(), hh = 0.5 * (g.max[1] - g.min[1]);
+      const kv = (hh * 0.42) / Math.max(0.35, L[1]);
+      B2.uVersatz.value.set(-L[0] * kv, -L[2] * kv);
       r.render(this.bodenSzene, kam);
       // 4. Tafeln: Druck (multipliziert) und Deckung je Farbe
       this.tafelnSetzen(B, mw, mh);
@@ -823,6 +835,7 @@ export class Ecke extends Werft {
         const T = this.tafeln[n];
         if (T.w < 0.003) continue;
         T.druck.uniforms.uDichte.value = DICHTE[n] * T.w;
+        T.druck.uniforms.uLinseS.value = s;
         T.mesh.material = T.druck;
         r.render(T.szene, kam);
       }
@@ -866,7 +879,12 @@ export class Ecke extends Werft {
         this.ebene.scale.set(E.hu, E.hv, 1);
         EU.uGroesse.value.set(E.hu, E.hv);
         EU.uRaster.value = 0.05 * this.groesse;
+        // hochkant gesehen wäre das Glas nur ein greller Strich: dann ausblenden
+        const kp = kam.position, bl = norm([kp.x - E.c[0], kp.y - E.c[1], kp.z - E.c[2]]);
+        const a0 = EU.uAlpha.value;
+        EU.uAlpha.value = a0 * smooth(0.12, 0.38, Math.abs(dot(bl, E.n)));
         r.render(this.ebeneSzene, kam);
+        EU.uAlpha.value = a0;
       }
       // 8. Linien und Punkte (Tiefe des Körpers zuerst: verdeckte Linien fein und hell)
       r.clearDepth();
@@ -915,8 +933,14 @@ export class Ecke extends Werft {
       U.uHell.value.set(0.74, 0.62, 1.0);
       U.uGestrichelt.value = 0;
     }
+    // Strichstärke nach Tiefe: näher = kräftiger (nur im Raum, flach ohne Wirkung)
+    const kp = this.rs.kamera.position, zl = this.rs.ziel;
+    for (const m of [z.linieSicht, z.linieVerdeckt]) {
+      m.uniforms.uTiefenGewicht.value = 0.9 * (1 - flach);
+      m.uniforms.uRefTiefe.value = Math.hypot(kp.x - zl[0], kp.y - zl[1], kp.z - zl[2]);
+    }
     z.linieSicht.uniforms.uAlpha.value = 0.92 * this.sichtbarkeit;
-    z.linieVerdeckt.uniforms.uAlpha.value = 0.17 * (1 - s) * (1 - flach) * this.sichtbarkeit;
+    z.linieVerdeckt.uniforms.uAlpha.value = (this.linse ? 0.3 : 0.17 * (1 - s)) * (1 - flach) * this.sichtbarkeit;
     const P = z.punktMat.uniforms;
     P.uFarbe.value.set(1, 1, 1);
     P.uHell.value.set(...TINTE);

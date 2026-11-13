@@ -137,7 +137,7 @@ export class Zeichner {
           uBreite: { value: 1.3 }, uBreiteKante: { value: 3.6 },
           uFarbe: { value: farbe('petrol') }, uWahl: { value: farbe('lila') }, uHell: { value: new THREE.Vector3(1, 1, 1) },
           uVerdeckt: { value: verdeckt ? 1 : 0 }, uStrich: { value: 6 }, uAlpha: { value: verdeckt ? 0.22 : 1 }, uGestrichelt: { value: 1 },
-          uTiefe: { value: null }, uMitTiefe: { value: 0 }, uRect: { value: new THREE.Vector4() },
+          uTiefe: { value: null }, uMitTiefe: { value: 0 }, uRect: { value: new THREE.Vector4() }, uTiefenGewicht: { value: 0 }, uRefTiefe: { value: 1 },
         },
         transparent: true,
         depthWrite: false,

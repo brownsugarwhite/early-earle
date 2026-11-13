@@ -231,9 +231,11 @@ void main(){ vUv = uv; gl_Position = clip; }`;
 export const tafelFS = /* glsl */ `
 precision highp float;
 uniform sampler2D uMaske; uniform vec3 uFarbe; uniform float uDichte, uKante; uniform vec2 uTexel;
+uniform vec3 uLinse; uniform float uLinseS; // Röntgen: im Kreis keine Farbe, soweit die Ansichten im Wesen liegen
 varying vec2 vUv;
 void main(){
   if (vUv.x < 0.0 || vUv.y < 0.0 || vUv.x > 1.0 || vUv.y > 1.0) discard;
+  if (uLinse.z > 0.0 && uLinseS > 0.5 && distance(gl_FragCoord.xy, uLinse.xy) < uLinse.z) discard;
   float m = texture2D(uMaske, vUv).a;
   float e = 0.0;
   for (int i = 0; i < 8; i++) {
@@ -260,15 +262,18 @@ void main(){
 export const koerperZusammenFS = /* glsl */ `
 precision highp float;
 uniform sampler2D uKoerper, uDeckung; uniform float uSchleier, uMaterial, uImmer; uniform vec3 uGrund;
+uniform vec3 uLinse; // Röntgen (X halten): Mitte und Halbmesser in Bildpunkten; darin wird das Material durchsichtig
 varying vec2 vUv;
 void main(){
   vec4 k = texture2D(uKoerper, vUv);
   vec3 d = texture2D(uDeckung, vUv).rgb;
   float drei = min(d.r, min(d.g, d.b));
   float g = max(smoothstep(0.2, 0.85, drei) * uMaterial, uImmer);
+  if (uLinse.z > 0.0) g *= 0.12 + 0.88 * smoothstep(uLinse.z - 1.5, uLinse.z, distance(gl_FragCoord.xy, uLinse.xy));
   float mat = k.a * g;
   float sch = k.a * uSchleier * (1.0 - g);
-  gl_FragColor = vec4(k.rgb * g + uGrund * sch, mat + sch);
+  vec3 schleier = mix(uGrund, k.rgb / max(k.a, 1e-3), 0.32);
+  gl_FragColor = vec4(k.rgb * g + schleier * sch, mat + sch);
 }`;
 // Boden: Fliese (ein Feld des späteren 2048-Spiels, gedreht um uPsi) und weicher Kontaktschatten (Draufsicht, verwischt)
 export const bodenEckeVS = /* glsl */ `
@@ -282,6 +287,7 @@ void main(){
 export const bodenEckeFS = /* glsl */ `
 precision highp float;
 uniform sampler2D uRiss; uniform float uR, uFliese, uPsi, uSchatten, uFlieseA, uTexel; uniform vec3 uTinte;
+uniform vec2 uVersatz; // der Schatten weicht dem Licht aus (Welt, x und z)
 varying vec2 vQ;
 void main(){
   float c = cos(uPsi), s = sin(uPsi);
@@ -295,7 +301,8 @@ void main(){
   float flaeche = 1.0 - smoothstep(-aa, aa, sd);
   float fliese = max(linie * 0.16, flaeche * 0.018) * uFlieseA;
   // Kontaktschatten: Draufsicht, mit 16 Proben verwischt
-  vec2 uv = vec2(vQ.x / uR * 0.5 + 0.5, 0.5 - vQ.y / uR * 0.5);
+  vec2 qs = vQ - uVersatz;
+  vec2 uv = vec2(qs.x / uR * 0.5 + 0.5, 0.5 - qs.y / uR * 0.5);
   float sh = 0.0;
   for (int i = 0; i < 16; i++) {
     float w = float(i) * 2.3999632;

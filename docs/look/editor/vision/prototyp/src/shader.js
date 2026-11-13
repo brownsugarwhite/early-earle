@@ -278,6 +278,7 @@ export const linieVS = /* glsl */ `
 attribute vec3 vor; attribute vec3 nach; attribute float seite; attribute float kante; attribute float bogen;
 attribute float zustand; attribute float tusche; attribute float gewicht;
 uniform vec2 uAufl; uniform float uBreite, uBreiteKante;
+uniform float uTiefenGewicht, uRefTiefe; // Strichstärke nach Tiefe (0 = aus): näher = kräftiger
 varying float vKante; varying float vBogen; varying float vZustand; varying float vTusche; varying float vSeite; varying float vPx;
 void main(){
   vec4 a = projectionMatrix * viewMatrix * vec4(position, 1.0);
@@ -288,6 +289,7 @@ void main(){
   t = normalize(t);
   vec2 n = vec2(-t.y, t.x);
   float w = mix(uBreite, uBreiteKante, kante) * (1.0 + 0.6 * step(1.5, zustand)) * gewicht;
+  w *= mix(1.0, clamp(pow(uRefTiefe / max(a.w, 1e-4), 1.4), 0.6, 1.7), uTiefenGewicht);
   vec2 s = sa + n * seite * w * 0.5;
   gl_Position = vec4(s / (uAufl * 0.5) * a.w, a.z - 0.0008 * a.w, a.w);
   vKante = kante; vBogen = bogen; vZustand = zustand; vTusche = tusche; vSeite = seite; vPx = w;
