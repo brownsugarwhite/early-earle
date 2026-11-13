@@ -123,5 +123,8 @@ Geistermaus, Film), mit eigener Grammatik und eigenem Zeichnen:
   Boden mit Grundriss (`bodenFS`, Draufsicht-Maske 512²), Linien nach Art gewichtet, Punkte nur an der Kurve unter der Hand,
   Rauten für Ecken (Zustand + 10). Geprüft mit Mauszügen: Spantpunkt bleibt in seiner Ebene, Haut formen, Taste 1 → Seite als
   Illustration, 0 → Raum. Drehbücher: `start`, kurze Filme `achse`, `ebene`, `haut`, `nach`, `spant`, `feder`.
-- Nächste Schritte: Film prüfen, kurze Filme aufnehmen, Präsentation Runde 3 (gleiche Artefakt-Adresse, Start in der Seite),
-  KONZEPT-Nachtrag, Push.
+- 13.11. abends: Nachzeichnen erkennt die Kurve je Kurve nach Anfang und Ende (Kreuzungen sind mehrdeutig), zieht
+  Kreuzungszwillinge mit (sonst Spitzen in der Haut) und lässt Randgriffe in ihrer Richtung; Pencil zeichnet auch auf der Haut;
+  keine Seifenhaut. Geprüft: Kiel nachzeichnen hebt die Spitze von 0,22 auf 0,35 ohne Spitzen in der Haut; Spant nachzeichnen
+  hält ihn eben (Abweichung 0,22 → 0,07). Filme (Hauptfilm und je Grundsatz) und Präsentation Version 4 veröffentlicht:
+  https://claude.ai/artifact/SahX9VLKYfxFbmhNPNs18f. Offen: Florians Urteil; iPad, Safari, Mac und Bildrate ungeprüft.
