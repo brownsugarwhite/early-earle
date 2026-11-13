@@ -327,6 +327,44 @@ eine größere Prüfform als seine drei Testformen (etwa ein Körper mit vier an
 - **Voraussetzung:** Schritt 3 hält. Mit der heutigen Rechnung ginge „bedienen wie die Basis“ auch, aber eine Pose ließe sich
   dann nicht aus ihren Linien wiederherstellen.
 
+**Nachtrag 13.11. nachmittags: Schritt 5 mit der heutigen Rechnung** (Florian: „Dann mach erstmal weiter, wie du empfiehlst“).
+Die Voraussetzung ist nicht erfüllt (Schritt 3: Die heutige Rechnung bleibt). Deshalb gilt für die Pose:
+
+- **Eine Pose ist eine zweite Lage derselben Form:** dieselben Linien, Punkte und Griffe wie die Grundform an anderen Orten,
+  dazu ihre eigene Haut auf demselben Netz. Gespeichert wird beides als Versatz gegen die Grundform: je Punkt und Griff der
+  Linien, und je Netzpunkt der Haut (das ist der Blendshape). Die Haut muss dabei sein, weil die heutige Rechnung sie nicht aus
+  den Linien allein wiederherstellt.
+- **Gerechnet und gespeichert wird in der Ruhe der Pose** (vor den Knochen, das Maul ist zu). Die Knochen drehen nur, was
+  gezeigt wird: Haut, Linien, Punkte, Griffe. Ein Zug im Blatt wird mit dem Winkel seines Punkts zurückgedreht. Für die
+  Rechnung ist die Pose damit eine Form wie die Grundform: dieselbe Rechnung über die ganze Haut, Linien genau auf ihren
+  Pfaden, Griffe gespeichert statt abgelesen, auch die Rechnung auf der Hälfte. Die Regler für Maul und Kopf rechnen nichts
+  neu. So rechnet auch das Spiel: erst der Blendshape, dann die Knochen. (Anhang A.5 sah vor, in der gedrehten Lage zu
+  rechnen. Dann müssten Linien und Griffe nach jedem Dreh neu abgelesen werden; das ist das Nachjustieren von heute.)
+- **Ändert sich die Grundform, geht die Pose mit:** Linien der Pose = Linien der Grundform + Versatz, Haut der Pose = Haut der
+  Grundform + Blendshape; beim Betreten setzt die Rechnung die Haut auf ihre Linien.
+
+**Etappen**, jede mit ihrer sichtbaren Probe, gebaut im Bau-Fenster (5197); in Florians Fenster erst nach seinem Wort:
+1. **Kleiner Beweis im Kern** (Probe `form-pose-ruhe.ts`, ein Bild; Aufwand ein halber Tag; hält er danach nicht: anhalten und
+   es sagen). Eine Kugel mit Maul, im Fenster gezeichnet wie in der Fressen-Probe, Maul 30° offen. Derselbe Zug in der Pose
+   (unterster Punkt der Unterlippe 25 nach unten), einmal wie heute (aus dem Fenster abgelesen), einmal neu (Rechnung der
+   Grundform in der Ruhe der Pose, danach gedreht). Dazu der Gegenzug (25 nach oben: in der Ruhe läuft die Unterlippe dabei
+   durch die Oberlippe) und ein Zug fern vom Maul. An den Lippen drei Fassungen: (a) die verborgene Fläche der Öffnung rechnet
+   mit, (b) die Lippen sind eine Kante, (c) die Öffnung ist aus der Rechnung genommen.
+   **Kriterien, vorher festgelegt:** 1. In der gezeigten Haut ist nichts umgeschlagen, und die Rechnung kommt zur Ruhe.
+   2. Ohne Zug bewegt die Rechnung die Haut der Pose nicht (höchstens 0,05). 3. Ein Zug fern vom Maul gibt in der Pose dieselbe
+   Haut wie in der Grundform (höchstens 0,5 auseinander). 4. Beim Zug an der Lippe bleibt die Haut fern vom Maul stehen
+   (höchstens 1 bei Halbmesser 150), und die Linien liegen auf ihren Pfaden (höchstens 0,5). 5. Die Grundform bleibt bitgleich.
+2. **Im Fenster ziehen wie in der Grundform:** Pose betreten, Punkte und Griffe ziehen, Regler drehen, zurück. **Probe:** die
+   Fressen-Probe (`form-fressen-pose.mjs`) und ein Bildpaar vorher und nachher in gleicher Ansicht.
+3. **Die Pose geht mit der Grundform mit** (Punkte der Grundform ziehen, Linie schneiden, Netz verfeinern). **Probe:** die
+   Fressen-Probe, Schritt 4 (Grundform ändern, wieder in die Pose: der Zug an der Lippe bleibt).
+4. **Beide Seiten frei** (die Spiegelung ist in der Pose angewendet). Eigener kleiner Beweis zuerst: Die Rechnung und die
+   Linien setzen heute überall Spiegelpaare voraus.
+5. **Florians Ablauf** an einer seiner Formen (Maul zeichnen, Fressen, formen), danach Übergabe und sein Urteil.
+
+**Festlegungen (er kann widersprechen):** In der Pose gibt es keine neuen Punkte und Loops und kein Löschen (wie oben). Alte
+Test-Posen in gesicherten Formen behalten ihren Blendshape; ihre Linien beginnen ohne Versatz.
+
 ### Schritt 6: Maul als eigene Geometrie (4 bis 6 Tage, Entwurf und kleiner Beweis zuerst)
 
 - **Was du danach siehst:** Das Maul ist ein echter Teil der Haut: Ober- und Unterlippe sind zwei Linien, die sich an den
