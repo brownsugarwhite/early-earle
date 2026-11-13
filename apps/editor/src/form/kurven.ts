@@ -81,6 +81,9 @@ import {
   kurveAbtasten,
   loopAusSchnitt,
   loopEinsetzen,
+  hinterDerMitte,
+  mitteFestmachen,
+  mitteKreuzungen,
   maulAmLoop,
   mittlereKante,
   mundwinkelProbe,
@@ -1869,16 +1872,29 @@ function blattZeichnen(a: Ansicht): void {
       el.append(g);
     }
   }
+  // Lose über die Mitte gezogen (13.11., Florian: „An den neuen Kreuzungen bilden sich Punkte und der durch die Mitte gezogene Griff
+  // bleibt sichtbar, aber ist markiert“): ein Punkt, wo der Pfad einer Linie die Mittelebene kreuzt. Er folgt dem Zug und gehört noch
+  // niemandem; greifen lässt er sich, wenn der Schnitt fest ist (`mitteFest`). Nur in der Grundform (dort ist die Linie ihr Pfad).
+  loops.forEach((l, li) => {
+    if (!exakt(l) || l.art === 'mitte') return;
+    const orte = l.punkte.map((p) => (zug && !zug.griff ? p.cur : p.ref));
+    for (const k of mitteKreuzungen(l, orte, (zug ? zug.griffeNeu[li] : null) ?? undefined)) {
+      const [x, y] = imBlatt(a, k.ort);
+      el.append(element('circle', 'mitte-kreuz', { cx: x, cy: y, r: rp * 0.85 }));
+    }
+  });
   loops.forEach((l, li) =>
     l.punkte.forEach((p, i) => {
       // ein Ende von selbst (Ring ohne Kreuzung dort) hält nur Griffe: nicht zu sehen, nicht zu greifen
       if (!istSichtbar(p)) return;
       const q = zug ? p.cur : p.ref;
+      // hinter der Mitte: ein Punkt der Hälfte z ≥ 0, über die Mittelebene gezogen (markiert; ihn löschen macht den Schnitt fest)
+      const hinter = !grund && l.art !== 'mitte' && q.z < -1e-6;
       for (const m of a === 'seite' || Math.abs(q.z) < 1e-6 ? [false] : [false, true]) {
         const [x, y] = imBlatt(a, m ? spiegeln(q) : q);
         const gew = auswahl.some((x2) => x2.l === l.id && x2.i === i);
         const kreuz = p.kreuzung !== undefined;
-        const klasse = `kpunkt${kreuz ? ' kreuz' : ''}${gew ? ' gewaehlt' : ''}${m ? ' spiegel' : ''}`;
+        const klasse = `kpunkt${kreuz ? ' kreuz' : ''}${gew ? ' gewaehlt' : ''}${m ? ' spiegel' : ''}${hinter ? ' hinter' : ''}`;
         const r = kreuz ? rp * 1.2 : rp;
         // Ecke als Raute, glatt als Kreis (an einer Kreuzung: Ecke, sobald einer ihrer Loops dort eine hat)
         const c = eckeGezeigt(li, i)
@@ -2034,6 +2050,18 @@ function merke(liste: number[], ms: number): void {
 }
 let letzteZerlegung = 0;
 let letzterBereich = 0;
+/** so viele Punkte liegen lose hinter der Mitte (eine Kreuzung zählt einmal); in der Pose keiner */
+function hinterDerMitteZahl(): number {
+  if (grund) return 0;
+  const gesehen = new Set<string>();
+  loops.forEach((l) => {
+    for (const i of hinterDerMitte(l)) {
+      const p = l.punkte[i]!;
+      if (istSichtbar(p)) gesehen.add(p.kreuzung !== undefined ? `k${p.kreuzung}` : `${l.id}:${i}`);
+    }
+  });
+  return gesehen.size;
+}
 function statusZeigen(): void {
   const z = zeiten.slice(-20);
   const ms = z.length ? z.reduce((s, v) => s + v, 0) / z.length : 0;
@@ -2042,9 +2070,10 @@ function statusZeigen(): void {
   // was gerade noch rechnet: auch hinter einer Meldung (nach K steht dort „Kante“, die Haut folgt aus dem Hintergrund erst danach)
   const rechnet =
     zug?.offen || nachlauf ? ' (rechnet)' : gegriffen ? ' (der Griff wartet, bis die Haut steht)' : aufraeumen?.setzen ? ' (rechnet im Hintergrund)' : aufraeumen?.verdichten ? ' (verfeinert im Hintergrund)' : '';
+  const hinter = hinterDerMitteZahl();
   statusZeile.textContent =
     (meldung ? meldung + rechnet : '') ||
-    `${direktGilt() ? 'Form halten · ' : ''}${loops.length} Loops · ${punkte} Punkte (${kreuz} Kreuzungen) · Zug ${ms.toFixed(1)} ms${rechnet} · zerlegen ${letzteZerlegung} ms · ` +
+    `${direktGilt() ? 'Form halten · ' : ''}${hinter ? `${hinter === 1 ? 'ein Punkt' : `${hinter} Punkte`} hinter der Mitte (löschen macht den Schnitt fest) · ` : ''}${loops.length} Loops · ${punkte} Punkte (${kreuz} Kreuzungen) · Zug ${ms.toFixed(1)} ms${rechnet} · zerlegen ${letzteZerlegung} ms · ` +
       `Bereich ${letzterBereich} von ${haut.n}` +
       (letzteVerdichtung
         ? ` · verdichtet +${letzteVerdichtung.neu}${letzteVerdichtung.gelegt ? ` −${letzteVerdichtung.gelegt}` : ''} (${letzteVerdichtung.ms} ms)`
@@ -4252,7 +4281,50 @@ function punktAmKlick(a: Ansicht, id: number, X: number, Y: number, m: boolean):
   allesZeigen();
 }
 
+/**
+ * Den Schnitt an der Mitte fest machen (13.11., Florian: „Ich kann ihn [den markierten Punkt] auch löschen, dann ist kein Rückführen
+ * mehr möglich“): Die Haut wird an der Mittelebene geschnitten und mit ihrem Spiegelbild verbunden, die Linien enden dort mit ihrem
+ * Knick, und der Rand jedes Lochs ist ein Loop mit Kante an (`mitteFestmachen` im Kern). Was hinter der Mitte lag, ist weg; ⌘Z führt
+ * zurück. Rund wird der Rand danach mit „Kante aus“ (K). Nur in der Grundform und noch nicht mit einem Maul.
+ */
+function mitteFest(): void {
+  if (grund || maul) {
+    meldung = grund ? 'In der Pose lässt sich der Schnitt an der Mitte nicht fest machen (erst zurück in die Grundform)' : 'Mit einem Maul lässt sich der Schnitt an der Mitte noch nicht fest machen';
+    statusZeigen();
+    return;
+  }
+  const r = mitteFestmachen(haut, loops, { naechsteId, naechsteKreuzung });
+  if ('fehler' in r) {
+    meldung = `Der Schnitt an der Mitte geht so nicht: ${r.fehler}`;
+    statusZeigen();
+    return;
+  }
+  zurueck.push(schnappschuss());
+  const nAlt = haut.n;
+  haut = r.haut;
+  loops = r.loops;
+  naechsteId = r.naechsteId;
+  naechsteKreuzung = r.naechsteKreuzung;
+  netzGewachsen(nAlt, r.alt, null);
+  auswahl = r.rand.map((id) => ({ l: id, i: -1 }));
+  meldung = `Schnitt an der Mitte fest: ${r.rand.length === 1 ? 'Der Rand des Lochs ist ein Loop' : `Die Ränder der ${r.rand.length} Löcher sind Loops`} mit Kante (K macht ihn rund, ⌘Z führt zurück)`;
+  // die Linien liegen auf ihren Pfaden wie vorher, aber das Netz am Rand ist neu: Die Haut setzt sich und räumt auf wie nach einer Kante
+  hautNeuRechnen();
+  geometrieNeu();
+  allesZeigen();
+}
+
 function loeschen(): void {
+  // ein gewählter Punkt hinter der Mitte: Ihn löschen macht den Schnitt fest
+  if (
+    auswahl.some((w) => {
+      const l = loops[loopNr(w.l)];
+      return w.i >= 0 && l !== undefined && !grund && hinterDerMitte(l).includes(w.i);
+    })
+  ) {
+    mitteFest();
+    return;
+  }
   const punkte = auswahl.filter((w) => w.i >= 0).map((w) => loops[loopNr(w.l)]?.punkte[w.i]);
   const ganz = new Set(auswahl.filter((w) => w.i < 0).map((w) => w.l));
   const eigene = new Set(punkte.filter((p) => p && p.kreuzung === undefined));
