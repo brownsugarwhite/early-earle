@@ -1,0 +1,30 @@
+strange bird, Form halten an: geladen: „strange bird“ (16010 Punkte im Netz, 9 Loops mit 55 Punkten) · Rechennetz 16.010 · 7437 Punkte · Löser bereit: ja (Vorbereiten 306 ms)
+  1  gegriffen, nicht gezogen: Haut bewegt sich um höchstens 0,00 (Mittel 0,00)
+  2  70 hinauf und zurück, ohne loszulassen: Haut liegt höchstens 0,00 neben der von vorher (Mittel 0,00)
+     Bilder im Zug: 259, Abstand Median 14 ms, 95 % 37 ms, längster 72 ms
+     Rechnen je Bild (letzte 80): Median 9.7 ms, 95 % 10.7 ms
+  3  hinauf und losgelassen: danach liegt die Haut vom Halten höchstens 0,35 neben der Fläche in der Ruhe (Mittel 0,00); Ruhe nach 0.8 s; Punkte 7437 → 7477 (verdichtet +66 −13)
+     Löser für das nächste Greifen bereit: ja (Vorbereiten 397 ms)
+     Konsole: keine Fehler
+strange bird, Form halten aus: geladen: „strange bird“ (16010 Punkte im Netz, 9 Loops mit 55 Punkten) · Rechennetz 16.010 · 7437 Punkte
+  1  gegriffen, nicht gezogen: Haut bewegt sich um höchstens 0,00 (Mittel 0,00)
+  2  70 hinauf und zurück, ohne loszulassen: Haut liegt höchstens 19,61 neben der von vorher (Mittel 1,47)
+     Bilder im Zug: 265, Abstand Median 16 ms, 95 % 21 ms, längster 72 ms
+     Rechnen je Bild (letzte 80): Median 7.1 ms, 95 % 7.4 ms
+  3  hinauf und losgelassen: danach liegt die Haut vom Halten höchstens 2,19 neben der Fläche in der Ruhe (Mittel 0,04); Ruhe nach 0.8 s; Punkte 7437 → 7461 (verdichtet +100 −38)
+     Konsole: keine Fehler
+teat firefish, Form halten an: geladen: „teat firefish“ (27770 Punkte im Netz, 17 Loops mit 90 Punkten) · Rechennetz 27.7 · 11449 Punkte · Löser bereit: ja (Vorbereiten 444 ms)
+  1  gegriffen, nicht gezogen: Haut bewegt sich um höchstens 0,00 (Mittel 0,00)
+  2  70 hinauf und zurück, ohne loszulassen: Haut liegt höchstens 0,00 neben der von vorher (Mittel 0,00)
+     Bilder im Zug: 254, Abstand Median 19 ms, 95 % 44 ms, längster 87 ms
+     Rechnen je Bild (letzte 80): Median 15.0 ms, 95 % 16.2 ms
+  3  hinauf und losgelassen: danach liegt die Haut vom Halten höchstens 0,00 neben der Fläche in der Ruhe (Mittel 0,00); Ruhe nach 1.1 s; Punkte 11449 → 11459 (verdichtet +12 −1)
+     Löser für das nächste Greifen bereit: ja (Vorbereiten 443 ms)
+     Konsole: keine Fehler
+teat firefish, Form halten aus: geladen: „teat firefish“ (27770 Punkte im Netz, 17 Loops mit 90 Punkten) · Rechennetz 27.7 · 11449 Punkte
+  1  gegriffen, nicht gezogen: Haut bewegt sich um höchstens 0,00 (Mittel 0,00)
+  2  70 hinauf und zurück, ohne loszulassen: Haut liegt höchstens 2,13 neben der von vorher (Mittel 0,12)
+     Bilder im Zug: 250, Abstand Median 20 ms, 95 % 34 ms, längster 81 ms
+     Rechnen je Bild (letzte 80): Median 10.9 ms, 95 % 11.8 ms
+  3  hinauf und losgelassen: danach liegt die Haut vom Halten höchstens 0,31 neben der Fläche in der Ruhe (Mittel 0,00); Ruhe nach 0.8 s; Punkte 11449 → 11453 (verdichtet +10 −3)
+     Konsole: keine Fehler

@@ -186,6 +186,16 @@ ob die paar Prozent Dickenänderung am gebogenen und verlängerten Horn zu sehen
    wenn ein Zug am Firefish über 30 ms je Bild bleibt oder es sich falsch anfühlt. Hält es, wäre B auch der naheliegende
    Rechner für die Posen (Schritt 5: Linien in der Pose, dieselbe Haut, in der Basis wieder da).
 
+## Nachtrag 13.11. abends: B als Schalter im Bau-Fenster
+
+Florian: „B ausprobieren“. B liegt als Schalter „Form halten“ in `kurven.html` des Bau-Zweigs (Port 5197). Dafür rechnet der
+Kern je Bild ohne Aufbau: die Zeilen als feste Felder, die Drehung der Normalen über eine einmal zerlegte Matrix, je Bild zwei
+Schritte Nachführen mit einem Vorkonditionierer, der mit den Normalen mitdreht (ohne das Mitdrehen kam es bei 25° je Runde nur
+um ein Viertel näher, mit ihm um rund neun Zehntel). Im Kern kostet ein Bild damit 11 ms am „strange bird“ (im zweiten Beweis
+80 ms) und 17 ms am Firefish; im Fenster liegen die Bilder im Mittel 14 und 19 ms auseinander (heute 16 und 20 ms). Greifen ohne zu ziehen und
+hinauf und zurück lassen die Haut auf 0,00 stehen. Zahlen, Bedienung und offene Punkte: `docs/UEBERGABE.md`, Abschnitt 6.
+Florians Urteil nach dem Ausprobieren steht aus.
+
 ## Nachrechnen
 
 ```bash

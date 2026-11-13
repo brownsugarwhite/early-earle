@@ -431,6 +431,11 @@ Beweis“. Offen ist Florians Entscheidung: weiter nach Plan, oder B als Schalte
   Bilder im Zug; nach dem Loslassen bewegt sich die Haut höchstens 0,18.
 - **Abbruch:** Bleibt ein Zug am Firefish im Mittel über 30 ms je Bild, oder sagt Florian, es fühle sich falsch an, kommt B
   nicht weiter ins Fenster; der Code bleibt hinter dem Schalter liegen.
+- **Gebaut und gemessen (13.11. abends):** Der Schalter liegt im Bau-Fenster. Probe: gegriffen ohne zu ziehen 0,00; hinauf und
+  zurück 0,00 neben der Haut von vorher (heute bis 19,6 am „strange bird“, bis 2,1 am Firefish); Bilder im Zug im Mittel alle
+  14 ms („strange bird“) und 19 ms (Firefish), heute 16 und 20 ms; nach dem Loslassen höchstens 0,35 (wo das Verdichten Punkte
+  zusammenlegt), im Mittel 0,00. Der Abbruch nach der Zeit greift nicht. Offen ist Florians Urteil nach dem Ausprobieren.
+  Einzelheiten: `docs/UEBERGABE.md`, Abschnitt 6.
 
 ### A.4 Spiegelung (Schritt 4)
 

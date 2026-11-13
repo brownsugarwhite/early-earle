@@ -1,4 +1,4 @@
-# Übergabe (Stand 13.11.2026: Schritt 3 ist mit zwei Beweisen gerechnet. Die Haut nur aus den Linien hält nicht. Der Teil „B“ bewegt fertige Haut genau (nichts geht auf, hin und zurück gleich, Biegen ohne Knick), kann aber nichts Neues runden und ersetzt die heutige Rechnung nicht. Florian entscheidet: weiter nach Plan oder B als Schalter im Bau-Fenster ausprobieren. Schritt 1 und 2 sind Standard in seinem Fenster, sein Urteil dazu steht aus)
+# Übergabe (Stand 13.11.2026 abends: B liegt als Schalter „Form halten“ im Bau-Fenster auf 5197 zum Ausprobieren; Florians Urteil dazu steht aus. Schritt 3 ist mit zwei Beweisen gerechnet: Die Haut nur aus den Linien hält nicht; B bewegt fertige Haut genau, rundet aber nichts Neues. Schritt 1 und 2 sind Standard in seinem Fenster auf 5194, sein Urteil dazu steht aus)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -24,7 +24,7 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | 0 Aufräumen | **erledigt** (12.11., Einzelheiten unten) |
 | 1 Glatte Anzeige | **eingebaut und Standard** (Abschnitt 4). Florian am 12.11.: „Ja, übernehmen“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&anzeige=grob` zeigt zum Vergleich die Anzeige davor. Sein Urteil nach dem Arbeiten damit steht aus |
 | 2 Kleines Rechennetz | **eingebaut und Standard** (Abschnitt 5): rund 40 % der Punkte, im Zug 16 bis 20 ms je Bild. Florian am 12.11. nachts, vom Handy aus: „ja“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&netz=dicht` ist das Netz davor. Sein Urteil nach dem Arbeiten damit steht aus. Nicht gebaut: Zeichnen gegen die feine Fläche |
-| 3 Beweis „Haut direkt aus den Linien“ | **gerechnet, hält so nicht** (Abschnitt 6, 13.11.): Die Haut nur aus den Linien (A) scheitert zwischen wenigen Linien und an seinen drei Formen. Der Teil B (Lagen direkt aus den Linien, die Wölbung der Haut bleibt) hält für fertige Haut, auch im zweiten Beweis (Biegen, fester Stand), ersetzt die heutige Rechnung aber nicht. Seine Entscheidung steht aus; am Fenster ist nichts geändert, der Code liegt nur auf `claude/form-bau` |
+| 3 Beweis „Haut direkt aus den Linien“ | **gerechnet, hält so nicht** (Abschnitt 6, 13.11.): Die Haut nur aus den Linien (A) scheitert zwischen wenigen Linien und an seinen drei Formen. Der Teil B (Lagen direkt aus den Linien, die Wölbung der Haut bleibt) hält für fertige Haut, ersetzt die heutige Rechnung aber nicht. **B liegt seit dem 13.11. abends als Schalter „Form halten“ im Bau-Fenster (5197) zum Ausprobieren**; Florians Urteil steht aus. Sein Fenster (5194) ist unverändert, der Code liegt nur auf `claude/form-bau` |
 | 4 Echte Spiegelung und neue Rechnung ins Fenster | offen; mit welcher Rechnung, hängt an seiner Antwort zu Schritt 3 |
 | 5 Posen wie die Basis | offen |
 | 6 Maul als eigene Geometrie | offen |
@@ -258,11 +258,49 @@ Ausgabe `schritt3b-messung-2026-11-13.txt`. Florian hat die Bilder noch nicht be
   Haut vom Anfassen sein. `flaechenAbstand` findet Abstände über etwa der Zellengröße nicht sicher (für große Abstände eine
   große Zelle nehmen).
 
-**Gefragt ist Florian (13.11., nach dem zweiten Beweis):**
-- **„B ausprobieren“:** B als Schalter ins Bau-Fenster (5197), etwa zwei Tage. An: Linien bewegen die Haut direkt, nichts
-  rundet neu. Aus: wie heute. Er probiert es an seinen Formen. Abbruch, wenn ein Zug am Firefish über 30 ms je Bild bleibt
-  oder es sich falsch anfühlt. Empfohlen ist dieser Weg; hält er, ist B auch der naheliegende Rechner für die Posen.
-- **„Weiter nach Plan“:** Die heutige Rechnung bleibt allein, als Nächstes Schritt 4 (echte Spiegelung).
+**B als Schalter im Bau-Fenster (13.11. abends, Florian: „B ausprobieren“).** Probe und Abbruch standen vorher im Plan (Anhang
+A.3). Nur `claude/form-bau`; sein Fenster auf 5194 ist unberührt.
+
+- **Ausprobieren:** `http://localhost:5197/kurven.html?gewichte=geometrie`, Knopf „Form halten (H)“ oder Taste H; die
+  Statuszeile beginnt dann mit „Form halten“. Der Schalter übersteht das Neuladen (`&ziehen=direkt` schaltet ihn an,
+  `&ziehen=rund` aus). Läuft der Server nicht: Eintrag `kurven-bau` in `.claude/launch.json` oder
+  `EDITOR_WEB=1 pnpm -C <form-bau> --filter @ee/editor exec vite --port 5197 --strictPort`. Seine drei Formen liegen dort in
+  `wesen/` (Laden).
+- **Was der Schalter tut:** An: Ein Zug an Punkten oder Griffen bewegt die Haut direkt mit den Linien (Löser `direkt`); nach
+  dem Loslassen wird nur verdichtet; die heutige Rechnung setzt nichts, auch nicht nach einem neuen Loop; gelöschte Punkte und
+  geknickte Griffe gehen denselben Weg; im Zug wird nicht verfeinert. Aus: alles wie bisher. Nur in der Grundform (die Pose
+  rechnet wie bisher). Eine Kante an oder aus ändert die Haut mit dem Schalter an nicht.
+- **Gebaut:** Kern: `HautDirekt` mit festen Feldern je Bild (`bereiten`, `drehungSetzen`, `nachfuehrenSchnell`; der
+  Vorkonditionierer dreht mit den Normalen mit), `dicht/direktZug.ts` (`DirektLoeser`), `LoopZug` mit der Art `direkt`,
+  `direktLoeserFuer`. Fenster (`kurven.ts`, `kurven.html`): `direktAn`, `direktGilt`, `direktBereiten` (legt den Löser in der
+  Ruhe nach jeder Änderung an, damit das Greifen nicht wartet), `haltenSchalten`; Eingriffe in `loeserFuer`, `zugRechnen`,
+  `zugEnde`, `aufraeumenStarten` (keine Runden), `ruheNoetig`, `hautNeuRechnen`; Haken `__kurven.halten()` und
+  `zeiten().halten`. Probe `apps/editor/scripts/pruefen/form-halten-probe.mjs`.
+- **Gemessen im Bau-Fenster** (`GPU=1`, höchster Punkt 70 hinauf; Ausgabe `docs/progress/editor/halten-fenster-messung-2026-11-13.txt`,
+  Bildschirmfotos `halten-fenster-{an,aus}-2026-11-13.jpg`):
+
+  | | strange bird an | aus | teat firefish an | aus |
+  | --- | --- | --- | --- | --- |
+  | gegriffen, nicht gezogen | 0,00 | 0,00 | 0,00 | 0,00 |
+  | hinauf und zurück, neben der Haut von vorher | 0,00 | bis 19,6 | 0,00 | bis 2,1 |
+  | Bilder im Zug, Abstand Median / 95 % | 14 / 37 ms | 16 / 21 ms | 19 / 44 ms | 20 / 34 ms |
+  | Rechnen je Bild | 9,7 ms | 6,9 ms | 15,0 ms | 10,7 ms |
+  | nach dem Loslassen neben der Fläche in der Ruhe | bis 0,35 | bis 2,2 | 0,00 | bis 0,31 |
+  | Vorbereiten nach jeder Änderung (hält das Fenster an) | 0,3 bis 0,4 s | – | 0,45 s | – |
+
+  Der Abbruch (über 30 ms je Bild am Firefish) greift nicht. Die 0,35 nach dem Loslassen entstehen, wo das Verdichten Punkte
+  zusammenlegt (im Mittel 0,00).
+- **Offen und nicht geprüft:** Florians Urteil (Gefühl beim Ziehen). Einzelne Bilder dauern länger als heute (95 % 37 bis 44 ms
+  gegen 21 bis 34 ms). Das Vorbereiten läuft im Fenster, nicht im Hintergrund: Greift er in den 0,3 bis 0,45 s danach, wartet
+  der Griff. Neue Haut rundet der Schalter nicht (Rüssel aus der Kugel wird ein Keil): dafür Schalter aus; schaltet er danach
+  wieder aus und zieht, rundet die heutige Rechnung alles neu. Pose, Maul und `/editor` sind nicht angefasst.
+- **Fallen:** Das Vorbereiten darf die Haut nicht anfassen (auch nicht um Rundungsreste): Die Standzahl änderte sich sonst,
+  und der Hintergrund begann endlos von vorn. `nachfuehrenSchnell` rechnet je Runde zwei Schritte von den Lagen der Haut aus;
+  ohne den mitdrehenden Vorkonditionierer kam es bei großen Drehungen je Runde nur um ein Viertel näher.
+
+**Gefragt ist Florian (13.11. abends):** im Bau-Fenster ausprobieren und sagen, ob sich „Form halten“ richtig anfühlt.
+- Gefällt es: B bleibt als Schalter und kommt mit Schritt 4 in sein Fenster; das Vorbereiten geht dann in den Hintergrund.
+- Gefällt es nicht: Der Schalter bleibt aus, weiter nach Plan mit Schritt 4.
 
 **Nachrechnen:** aus `packages/shape` `BLATT=<pfad ohne Endung> npx vite-node ../../apps/editor/scripts/pruefen/form-direkt.ts`
 (rund 45 s; `FALL=kugel,schlauch,ruessel,horn,formen,viertel`) und genauso `form-direkt-b.ts` (20 s;
