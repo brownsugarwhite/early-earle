@@ -1,4 +1,4 @@
-# Übergabe (Stand 13.11.2026, 22:15 Uhr: Schritt 6 im Bau-Fenster (5197) in dritter Fassung (Abschnitt 7.13): Die Kante trägt ihren Winkel selbst. „Maul formen“ macht die Maullinie hart und gibt ihr den Knick vor (95° an den Lippen, 70° am Mundwinkel), ohne Mittellinie und ohne Punkt im Maul, animiert; `LoopZug` führt dafür die erste Reihe der Haut innen in jeder Rechnung, auch im Zug. Gemessen im Fenster an der Kugel und an Florians „simple_mouth_more simple“: 94° bis 95° an den Lippen, 72° am Mundwinkel, auch nach einem Zug. Sein Urteil steht aus. Offen: K macht die Lippen nicht rund (die Rechnung läuft dabei auseinander, die Form bleibt), die Angabe lässt sich nicht von Hand setzen, in der Pose wird nicht geführt. In seinem Fenster (5194) ist davon nichts. Danach Etappe 2 (Kieferknochen, dort auch das Maul aus nur einer Linie), dann Schritt 5 (Posen). Schritt 4b, erster Teil, ist in seinem Fenster (Abschnitt 7.5); der Rest der halben Haut ist als Schritt 4c fest vorgemerkt. Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt. Zu Schritt 1, 2, dem Donut (4a) und der halben Rechnung steht sein Urteil aus)
+# Übergabe (Stand 13.11.2026, 22:50 Uhr: Schritt 6, Etappe 2 im Bau-Fenster (5197) gebaut (Abschnitt 7.14): „Fressen“ und die Regler arbeiten am geformten Maul. Der Unterkiefer dreht um den Mundwinkel, nichts wird weggeschnitten oder eingesetzt; geprüft im Fenster an der Kugel, an „simple_mouth_more simple“ und an „maul handgemacht test“. Davor (7.13): Die Kante trägt ihren Winkel selbst, „Maul formen“ ohne Mittellinie. Florians Urteil zu beidem steht aus. Offen: das Maul aus nur einer Linie (nicht gebaut, braucht einen Entwurf), runde Lippen (Florian: nur die Lippe wird abgerundet), die Tiefe der Tasche, Schritt 5 (Posen). In seinem Fenster (5194) ist davon nichts. Schritt 4b, erster Teil, ist in seinem Fenster (Abschnitt 7.5); der Rest der halben Haut ist als Schritt 4c fest vorgemerkt. Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt. Zu Schritt 1, 2, dem Donut (4a) und der halben Rechnung steht sein Urteil aus)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -28,7 +28,7 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | 4 Echte Spiegelung (mit der heutigen Rechnung) | **4a, der Donut, ist in Florians Fenster (Abschnitt 7.4, 13.11.):** nach seiner zweiten Regel; sein Urteil steht aus. **4b, erster Teil, ist seit dem 13.11. nachmittags in Florians Fenster (Abschnitt 7.5):** Der Löser rechnet auf der Hälfte (zwei halb so große Systeme, Krümmung auf der Hälfte), das Netz im Fenster bleibt ganz; Rechnen je Bild 10,3 → 7,1 ms am „teat firefish“, Zerlegen rund 50 %, gleiche Form; dazu „flüssig zuerst“ (eine weitere Runde je Bild nur, wenn sie ins Bild passt). Sein Urteil zum Tempo steht aus |
 | 4c Rest der halben Haut | **fest vorgemerkt** (Plan, „Schritt 4c“; Florian am 13.11.: „es soll nicht vergessen werden“): Gewichte und Vermessen auf der Hälfte (Runde von 73 % auf 50 bis 60 %), die einzelnen langsamen Bilder, Verdichten und Anzeige auf der Hälfte, das Netz selbst als Hälfte. Kommt nach den Posen wieder auf den Tisch und muss gebaut sein, bevor Shader, Materialien, Fell oder Zusatzteile beginnen. Seine heutigen Formen sind kein Maßstab für das Tempo |
 | 5 Posen wie die Basis | **Entwurf steht, Gegenprobe an Florians Form hält** (Abschnitte 7.6 und 7.8, 13.11.): Eine Pose ist dieselbe Form mit anderen Lagen der Punkte und Griffe, dazu die Knochen (Florian: „ein einfacher Morph der Punkte und Handles […], während die Kieferknochen sich bewegen“). Der erste Beweis war am Maul aus der schmalen Form gescheitert (verborgene Fläche); am von Hand geformten Maul ist ein Zug in der Pose ein gewöhnlicher Zug. Gebaut ist nichts; kommt nach Schritt 6 |
-| 6 Maul | **Dritte Fassung im Bau-Fenster (Abschnitt 7.13, 13.11., 22:15 Uhr): Die Kante trägt ihren Winkel selbst.** „Maul formen“ macht die Maullinie hart und gibt ihr den Knick vor (95° an den Lippen, 70° am Mundwinkel); keine Mittellinie, kein Punkt im Maul; animiert. `LoopZug` führt die erste Reihe innen in jeder Rechnung (`kantenWinkel.ts`), der Winkel hält auch im Zug. Mit einer vorhandenen Mittellinie durch beide Lippen gilt die zweite Fassung (7.11). Dazu Linien mit Verjüngung (7.11). Florians Urteil steht aus. **Offen:** K für runde Lippen (läuft auseinander, die Form bleibt), die Angabe von Hand setzen, Führung in der Pose, das Maul aus nur einer Linie; danach Etappe 2 (Kieferknochen; „Fressen“ gibt am geformten Maul bis dahin eine Meldung). Das Maul aus der schmalen Form mit eingesetztem Inneren besteht daneben weiter |
+| 6 Maul | **Im Bau-Fenster gebaut, Florians Urteil steht aus:** (7.13) Die Kante trägt ihren Winkel selbst; „Maul formen“ macht die Maullinie hart und gibt ihr den Knick vor (95° an den Lippen, 70° am Mundwinkel), ohne Mittellinie und ohne Punkt im Maul, animiert; mit einer vorhandenen Mittellinie durch beide Lippen gilt die zweite Fassung (7.11). (7.14, Etappe 2) „Fressen“ und die Regler am geformten Maul: Der Unterkiefer dreht um den Mundwinkel, nichts wird weggeschnitten oder eingesetzt; auch am von Hand geformten Maul (harter Ring). Dazu Linien mit Verjüngung (7.11). **Offen:** das Maul aus nur einer Linie (Entwurf nötig), runde Lippen (nur die Lippe wird abgerundet), Tiefe der Tasche, die Angabe des Knicks von Hand; danach Schritt 5. Das Maul aus der schmalen Form mit eingesetztem Inneren besteht daneben weiter |
 | 7 Auswahl wie in Blender | offen |
 
 **Schritt 0, was getan ist:**
@@ -955,6 +955,45 @@ löscht mit „Kante aus“ auch `knick`, der Streuwert des Stands enthält `kni
 - Tiefe der Tasche nicht eingestellt. Genau am Mundwinkel liegt innen kein Punkt der Haut.
 - Formen dauert an seinem Modell 4,5 s (`&maulRunden=4` halbiert es).
 - Etappe 2 (Kieferknochen am geformten Maul, das Maul aus nur einer Linie), danach Schritt 5.
+
+### 7.14 Schritt 6, Etappe 2: Kieferknochen am geformten Maul (13.11., 22:50 Uhr)
+
+Florian: „Dann mache mal Kieferknochen. Bei rundem Maul meine ich nur die Lippe wird abgerundet.“ Gebaut in `form-bau` (5197);
+in seinem Fenster (5194) ist davon nichts.
+
+**Kern:**
+- `maulGeformtAmLoop(h, l, ecke, opt)` in `packages/shape/src/dicht/maulLoop.ts`: das geformte Maul für die Knochen. Gleiche
+  Gestalt wie `maulAmLoop` (`MaulAmLoop`), aber `offen` überall 0, `kantenOffen` leer, kein Inneres. Gewichte: außen das Feld von
+  `maulAmLoop` mit `kieferWieLippe` (jeder Kiefer reicht mindestens so weit, wie seine Lippe lang ist: `kieferFeld` mit
+  `dickeMin`); innen harmonisch von der Unterlippe (1) zur Oberlippe (0), der Übergang zwischen ¼ und ¾ (nahe einer Lippe dreht
+  die Haut ganz mit ihr); außen die ersten drei Reihen neben den Lippen harmonisch zwischen Lippe und Feld; am Ende genau
+  spiegelgleich gemacht. `wieVorher` wie bei `maulAmLoop`.
+- `LoopZug` führt die erste Reihe einer Linie mit Knick jetzt auch in der Pose (`gedaechtnis`), nicht nur in der Grundform.
+
+**Fenster (`kurven.ts`):** `maulSchnitt` wählt nach `maulGeformt` zwischen `maulGeformtAmLoop` und `maulAmLoop`
+(`maulAktuell`). `maulAnlegen` nimmt geformte Ringe an; ein harter Ring ohne die Angabe wird dabei ein geformtes Maul; ein
+vorhandener Mundwinkel bleibt. `hautZeigen` schneidet am geformten Maul nichts weg und zeigt kein eingesetztes Inneres
+(`maulIstGeformt`); die Statuszeile meldet dort nicht mehr „Loop schneidet nicht“. Prüfhaken `loops()` mit `geformt`.
+
+**Proben:**
+- Kern: `form-kiefer-geformt.ts` (`NAME`, `RING`, `KIEFER=20,40`, `AUS`), Tabelle im Plan. Vorher/nachher an „simple_mouth_more
+  simple“: 0 → 2 → 6 umgeschlagen und große Flächen von hinten, jetzt 0 → 0 → 0; an „maul handgemacht test“ 8 → 8 → 18, jetzt
+  8 → 8 → 8 (der Zacken an der Kieferspitze ist weg).
+- Fenster: `GPU=1 [NAME=… RING=…] [ALT=1] node scripts/pruefen/form-kiefer-fenster.mjs <bild>`: Kugel, „simple_mouth_more
+  simple“, „maul handgemacht test“ (`RING=14`), und das Maul bisher (`ALT=1`): alles gut. `form-maul-formen-fenster.mjs`
+  prüft jetzt, dass „Fressen“ am geformten Maul angeht und nichts wegschneidet.
+- 159 Tests im Kern, 24 im Fenster, Typen und Lint sauber, Donut-Probe wie vorher.
+- Bilder: `docs/progress/editor/schritt6-kiefer-florian-zu-2026-11-13.jpg`, `schritt6-kiefer-florian-offen-2026-11-13.jpg`,
+  `schritt6-kiefer-kugel-offen-2026-11-13.jpg`, `schritt6-kiefer-zwei-kiefer-2026-11-13.jpg`.
+
+**Offen:**
+- **Das Maul aus nur einer Linie** (Florian: gefalteter Edgeloop, Lippen aufeinander, geschlossen unsichtbar): nicht gebaut. Im
+  Modell der Linien fehlt die Linie, die auf der Mitte beginnt und am Mundwinkel endet; Vorschlag im Plan (Anzeige trennt die
+  Lippen beim Öffnen, Schnitt längs einer Maullinie aus `maul.ts`). Braucht einen Entwurf und sein Wort.
+- **Runde Lippen:** „nur die Lippe wird abgerundet“. K an der Maullinie rundet noch nichts (7.13).
+- Flache Tasche an der schmalen Form: offen eine gedehnte Wand dicht hinter den Lippen. Tiefe nicht einstellbar.
+- Schritt 5 (Pose als Morph mit der Rechnung der Grundform) ist nicht gebaut; in der Pose rechnet `HautZiele`.
+- Der Regler schließt nicht über die Grundform hinaus.
 
 ## 8. Offen aus der Zeit davor
 

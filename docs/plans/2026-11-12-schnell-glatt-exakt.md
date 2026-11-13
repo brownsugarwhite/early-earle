@@ -774,6 +774,56 @@ Im Fenster formt die Kugel in 1,6 s (76 Bilder), sein Modell in 4,5 s. Die Kugel
 - In der Pose rechnet ein anderer Löser; dort wird die Reihe nicht geführt. Das gehört zu den Kieferknochen (Etappe 2) und zu
   Schritt 5.
 
+**Florian (13.11., 22:20 Uhr):** „Dann mache mal Kieferknochen. Bei rundem Maul meine ich nur die Lippe wird abgerundet.“ Also:
+„rund“ heißt am Maul, dass die Lippe eine Rundung bekommt; das Maul bleibt. (Noch nicht gebaut; siehe unten.)
+
+**Etappe 2, Kieferknochen am geformten Maul: gebaut im Bau-Fenster (13.11., 22:50 Uhr), in seinem Fenster (5194) ist davon
+nichts.**
+- **Was jetzt geht:** „Fressen“ und die Regler „Maul“ und „Kopf“ arbeiten am geformten Maul (mit „Maul formen“ oder von Hand
+  geformt: ein harter Ring gilt als geformtes Maul). Der Unterkiefer dreht um den Mundwinkel; nichts wird weggeschnitten, nichts
+  eingesetzt. Regler auf 0 ist genau die Grundform, „Fressen“ aus auch. In der Pose lässt sich ziehen wie bisher; der Knick der
+  Maullinie wird jetzt auch dort geführt.
+- **Kern** (`maulGeformtAmLoop` in `maulLoop.ts`, Test in `maulFormen.test.ts`): Gelenk, Drehsinn und Lippen wie beim Maul
+  bisher. Drei Dinge sind neu:
+  1. *Der Kiefer reicht so weit unter seine Lippe, wie sie lang ist* (`kieferFeld` mit `dickeMin`). Bisher reichte er so weit,
+     wie die Form am Mundwinkel dick ist. Bei Florians „simple_mouth_more simple“ sitzt der Mundwinkel dicht an der Rückseite
+     (eine Sichel): Nur ein schmaler Streifen unter der Lippe drehte mit und stülpte sich über den Rest (bei 40° sechs
+     umgeschlagene Dreiecke und große Flächen von hinten zu sehen).
+  2. *Innen läuft das Gewicht weich vom Boden zum Gaumen* (über die Haut im Maul verteilt, der Übergang in der Mitte der
+     Tasche): Nahe einer Lippe dreht die Haut ganz mit ihr, so bleibt der Knick an der Lippe beim Öffnen; gedehnt wird die
+     Rückwand.
+  3. *Außen schließen die ersten drei Reihen der Haut weich an die Lippe an.* Das Feld kennt die Form nur als Raster in der
+     Seite; an einer dünnen Kieferspitze bekamen die Punkte vor dem Lippenanfang 0, und es blieb ein Zacken (an „maul handgemacht
+     test“; das war der Knick an der Kieferspitze aus der Gegenprobe).
+- **Gemessen im Kern** (`form-kiefer-geformt.ts`, Unterkiefer 20° und 40°; umgeschlagen zu → 20° → 40°):
+
+  | Form | umgeschlagen | Knick an den Lippen beim Öffnen |
+  | --- | --- | --- |
+  | Kugel, mit „Maul formen“ | 6 → 6 → 6 | bleibt 95,0° und 95,0° |
+  | „simple_mouth_more simple“ | 0 → 0 → 0 (vorher 0 → 2 → 6) | bleibt 126,8° und 116,4° |
+  | „simple_mouth“ | 6 → 6 → 8 | bleibt 95,2° und 96,8° |
+  | „maul handgemacht test“ (Lippen: Loop 14) | 8 → 8 → 8 (vorher 8 → 8 → 18) | bleibt |
+
+- **Im Fenster** (`form-kiefer-fenster.mjs`: Kugel, „simple_mouth_more simple“, „maul handgemacht test“ mit `RING=14`): alle
+  Punkte erfüllt. „Fressen“ an (30°): Die Lippen sind vorn weiter auseinander (25 → 72, 169 → 246, 143 → 245), der Knick an den
+  Lippen bleibt, nichts schlägt zusätzlich um, spiegelgleich; Regler auf 0 genau die Grundform; auf 45 weit offen; in der Pose
+  an der Lippe gezogen: heil; „Fressen“ aus: genau die Grundform. Das Maul bisher (schmale Form als weiche Linie, `ALT=1`) läuft
+  unverändert. 159 Tests im Kern, 24 im Fenster. Bilder: `docs/progress/editor/schritt6-kiefer-florian-zu-2026-11-13.jpg`,
+  `schritt6-kiefer-florian-offen-2026-11-13.jpg`, `schritt6-kiefer-kugel-offen-2026-11-13.jpg`,
+  `schritt6-kiefer-zwei-kiefer-2026-11-13.jpg` (aus dem Kern).
+- **Offen:**
+  - **Das Maul aus nur einer Linie ist nicht gebaut.** Eine Linie, die vorn an der Mitte beginnt und am Mundwinkel endet, gibt es
+    im Modell der Linien nicht (ein Ring endet an beiden Seiten auf der Mitte); ein an den Mundwinkeln gefalteter Ring liefe
+    zweimal über dieselben Punkte des Netzes. Vorschlag, noch zu entwerfen: die Linie als eigener Fall „Maul aus einer Linie“,
+    geschlossen nur diese Linie; beim Öffnen trennt die Anzeige die Lippen und setzt Gaumen und Boden ein wie beim Maul bisher
+    (dafür gibt es im Kern aus der Zeit vor den Kurven schon den Schnitt längs einer Maullinie, `maul.ts`).
+  - **Runde Lippen** (seine Antwort oben: nur die Lippe wird abgerundet): K an der Maullinie rundet noch nichts.
+  - An der schmalen Form der Kugel ist die Tasche flach; offen sieht man eine gedehnte Wand dicht hinter den Lippen statt eines
+    tiefen Mauls. Die Tiefe der Tasche lässt sich nicht einstellen.
+  - In der Pose rechnet weiter der Löser mit Gedächtnis; Schritt 5 (die Pose als Morph der Punkte und Griffe mit der Rechnung
+    der Grundform) ist nicht gebaut.
+  - Geschlossen über die Grundform hinaus (negativer Winkel) gibt es nicht.
+
 ### Schritt 7: Auswahl wie in Blender (2 bis 3 Tage)
 
 - **Was du danach siehst:** Du wählst Punkte, **Kanten** (das Linienstück zwischen zwei Punkten) und **Flächen** (das Feld
