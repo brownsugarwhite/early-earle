@@ -44,8 +44,14 @@ export function mausAnbinden(app, el) {
   const istDing = (a) => a === 'punkt' || a === 'griff' || a === 'linie' || a === 'maul' || (a === 'haut' && !!app.hautFormbar);
 
   // ---------------- Zeiger runter ----------------
+  const fangen = (art, e) => {
+    if (!app.eingabeFangen) return false;
+    const [x, y] = pos(e);
+    return app.eingabeFangen(art, e, x, y);
+  };
   function runter(e) {
     if (app.vorfuehrungStoppen && !e.geist) app.vorfuehrungStoppen();
+    if (fangen('runter', e)) return;
     try { if (!e.geist) el.setPointerCapture(e.pointerId); } catch (_) { /* künstlicher Zeiger */ }
     const [x, y] = pos(e);
     const typ = e.pointerType || 'mouse';
@@ -98,6 +104,7 @@ export function mausAnbinden(app, el) {
 
   // ---------------- bewegen ----------------
   function bewegen(e) {
+    if (fangen('bewegen', e)) return;
     const [x, y] = pos(e);
     app.maus.x = x;
     app.maus.y = y;
@@ -164,6 +171,7 @@ export function mausAnbinden(app, el) {
 
   // ---------------- hoch ----------------
   function hoch(e) {
+    if (fangen('hoch', e)) return;
     const z = zeiger.get(e.pointerId);
     zeiger.delete(e.pointerId);
     if (!z) return;
@@ -279,6 +287,7 @@ export function mausAnbinden(app, el) {
   // ---------------- Tasten ----------------
   function taste(e) {
     if (app.vorfuehrungStoppen && !e.geist && e.key !== '?') app.vorfuehrungStoppen();
+    if (app.eingabeFangen && app.eingabeFangen('taste', e, app.maus.x, app.maus.y)) { if (e.preventDefault) e.preventDefault(); return; }
     app.tasten.add(e.key);
     const k = (e.key || '').toLowerCase();
     const cmd = e.metaKey || e.ctrlKey;

@@ -220,3 +220,112 @@ void main(){
   vec3 c = uFarbe * (linie / max(linie + hof + schatten, 1e-4)) * (1.0 + ziel * 0.6);
   gl_FragColor = vec4(c, alpha);
 }`;
+
+// ---------- Ecke (Runde 4): heller Grund, drei Ansichten als Druckfarben, Fliese, ruhiges Material ----------
+// Tafel: eine Ansicht (Maske aus Sicht ihres Projektors) als flache Druckfarbe mit feiner, satterer Kante derselben Farbe.
+export const tafelVS = /* glsl */ `
+varying vec2 vUv;
+void main(){ vUv = uv; gl_Position = projectionMatrix * viewMatrix * vec4(position, 1.0); }`;
+export const tafelFS = /* glsl */ `
+precision highp float;
+uniform sampler2D uMaske; uniform vec3 uFarbe; uniform float uDichte, uKante; uniform vec2 uTexel;
+varying vec2 vUv;
+void main(){
+  if (vUv.x < 0.0 || vUv.y < 0.0 || vUv.x > 1.0 || vUv.y > 1.0) discard;
+  float m = texture2D(uMaske, vUv).a;
+  float e = 0.0;
+  for (int i = 0; i < 8; i++) {
+    float w = float(i) * 0.7853982;
+    e = max(e, abs(texture2D(uMaske, vUv + vec2(cos(w), sin(w)) * uTexel * 1.25).a - m));
+  }
+  float d = clamp(m * uDichte + e * uKante * step(0.001, uDichte), 0.0, 1.0);
+  if (d < 0.002) discard;
+  gl_FragColor = vec4(mix(vec3(1.0), uFarbe, d), 1.0);
+}`;
+// Deckung einer Tafel in ihrem Kanal (Cyan → r, Magenta → g, Gelb → b), addiert
+export const tafelDeckFS = /* glsl */ `
+precision highp float;
+uniform sampler2D uMaske; uniform vec3 uKanal; uniform float uW;
+varying vec2 vUv;
+void main(){
+  if (vUv.x < 0.0 || vUv.y < 0.0 || vUv.x > 1.0 || vUv.y > 1.0) discard;
+  float m = texture2D(uMaske, vUv).a * uW;
+  if (m < 0.002) discard;
+  gl_FragColor = vec4(uKanal * m, 1.0);
+}`;
+// Körper zusammensetzen (vormultipliziert): Schleier (Transparentpapier) im Drahtmodell, Material dort, wo alle drei
+// Ansichten den Körper decken. uKoerper: Material (rgb vormultipliziert durch die Kantenglättung), a = Deckung des Körpers.
+export const koerperZusammenFS = /* glsl */ `
+precision highp float;
+uniform sampler2D uKoerper, uDeckung; uniform float uSchleier, uMaterial; uniform vec3 uGrund;
+varying vec2 vUv;
+void main(){
+  vec4 k = texture2D(uKoerper, vUv);
+  vec3 d = texture2D(uDeckung, vUv).rgb;
+  float drei = min(d.r, min(d.g, d.b));
+  float g = smoothstep(0.2, 0.85, drei) * uMaterial;
+  float mat = k.a * g;
+  float sch = k.a * uSchleier * (1.0 - g);
+  gl_FragColor = vec4(k.rgb * g + uGrund * sch, mat + sch);
+}`;
+// Boden: Fliese (ein Feld des späteren 2048-Spiels, gedreht um uPsi) und weicher Kontaktschatten (Draufsicht, verwischt)
+export const bodenEckeVS = /* glsl */ `
+uniform vec2 uMitte;
+varying vec2 vQ;
+void main(){
+  vec4 w = modelMatrix * vec4(position, 1.0);
+  vQ = w.xz - uMitte;
+  gl_Position = projectionMatrix * viewMatrix * w;
+}`;
+export const bodenEckeFS = /* glsl */ `
+precision highp float;
+uniform sampler2D uRiss; uniform float uR, uFliese, uPsi, uSchatten, uFlieseA, uTexel; uniform vec3 uTinte;
+varying vec2 vQ;
+void main(){
+  float c = cos(uPsi), s = sin(uPsi);
+  vec2 q = vec2(c * vQ.x - s * vQ.y, s * vQ.x + c * vQ.y) / uFliese;
+  vec2 a = abs(q);
+  float rr = 0.12;
+  vec2 dd = a - vec2(1.0 - rr);
+  float sd = length(max(dd, 0.0)) + min(max(dd.x, dd.y), 0.0) - rr;
+  float aa = fwidth(sd) * 1.1 + 1e-5;
+  float linie = 1.0 - smoothstep(aa * 0.6, aa * 1.6, abs(sd));
+  float flaeche = 1.0 - smoothstep(-aa, aa, sd);
+  float fliese = max(linie * 0.16, flaeche * 0.018) * uFlieseA;
+  // Kontaktschatten: Draufsicht, mit 16 Proben verwischt
+  vec2 uv = vec2(vQ.x / uR * 0.5 + 0.5, 0.5 - vQ.y / uR * 0.5);
+  float sh = 0.0;
+  for (int i = 0; i < 16; i++) {
+    float w = float(i) * 2.3999632;
+    float r = sqrt((float(i) + 0.5) / 16.0) * 10.0;
+    sh += texture2D(uRiss, uv + vec2(cos(w), sin(w)) * r * uTexel).a;
+  }
+  sh = sh / 16.0 * uSchatten;
+  float al = 1.0 - (1.0 - fliese) * (1.0 - sh);
+  if (al < 0.002) discard;
+  gl_FragColor = vec4(uTinte, al);
+}`;
+// Ruhiges Material: kühl im Schatten, warm im Licht (Gooch et al. 1998), zum Umriss hin etwas dunkler; der Einfluss der Hand
+// (Haut formen) als zarter Fliederhof mit feinem Rand.
+export const goochFS = /* glsl */ `
+precision highp float;
+uniform vec3 uLicht, uKalt, uWarm, uWahl; uniform vec4 uEinfluss;
+varying vec3 vN; varying float vBew; varying float vMaul; varying vec3 vRuhe; varying float vTiefe; varying vec3 vW;
+void main(){
+  vec3 N = normalize(vN);
+  if (!gl_FrontFacing) N = -N;
+  vec3 V = normalize(cameraPosition - vW);
+  float k = 0.5 + 0.5 * dot(N, normalize(uLicht));
+  vec3 c = mix(uKalt, uWarm, smoothstep(0.02, 0.98, k));
+  float rand = 1.0 - abs(dot(N, V));
+  c *= 1.0 - 0.10 * rand * rand;
+  c = mix(c, vec3(0.45, 0.17, 0.23), smoothstep(0.4, 0.6, vMaul));
+  if (uEinfluss.w > 0.0) {
+    vec3 p = vW;
+    float d = min(distance(p, uEinfluss.xyz), distance(p, uEinfluss.xyz * vec3(1.0, 1.0, -1.0))) / uEinfluss.w;
+    float h = 1.0 - smoothstep(0.0, 1.0, d);
+    c = mix(c, uWahl, 0.20 * h * h);
+    c = mix(c, uWahl, 0.55 * (1.0 - smoothstep(0.0, 0.03, abs(d - 1.0))));
+  }
+  gl_FragColor = vec4(c, 1.0);
+}`;

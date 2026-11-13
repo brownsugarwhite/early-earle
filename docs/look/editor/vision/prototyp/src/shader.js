@@ -333,6 +333,7 @@ uniform vec3 uFarbe, uWahl, uHell; uniform float uZeit;
 uniform vec3 uLampe; // Taschenlampe: Bildpunkt x, y und Halbmesser (0 = aus); außerhalb nur ein Hauch
 uniform float uDeck; // Deckkraft aller Punkte (1 = voll)
 uniform float uLampeMin; // Deckkraft außerhalb des Lichts
+uniform vec3 uGriff; uniform float uGriffEigen; // eigene Farbe für Griffspitzen (heller Grund)
 varying vec2 vE; varying float vZustand; varying float vGr;
 void main(){
   // Ecken (Zustand + 10) sind Rauten, glatte Punkte Kreise
@@ -353,7 +354,7 @@ void main(){
     c = uWahl; a = max(ring, kern) * (0.75 + 0.25 * sin(uZeit * 8.0));
   } else if (zs > 2.5 && zs < 3.5) {
     float ring = smoothstep(0.5 - aa, 0.5, r) * (1.0 - smoothstep(0.95, 0.95 + aa, r));
-    c = uFarbe; a = ring;
+    c = mix(uFarbe, uGriff, uGriffEigen); a = ring;
   } else {
     float saum = 1.0 - smoothstep(1.0 - aa, 1.0, r);
     float kern = 1.0 - smoothstep(0.62 - aa, 0.62, r);

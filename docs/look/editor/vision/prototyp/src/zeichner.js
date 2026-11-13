@@ -149,7 +149,7 @@ export class Zeichner {
     this.punktMat = new THREE.ShaderMaterial({
       vertexShader: S.punktVS,
       fragmentShader: S.punktFS,
-      uniforms: { uAufl: this.U.uAufl, uZeit: this.U.uZeit, uFarbe: { value: farbe('petrol') }, uWahl: { value: farbe('lila') }, uHell: { value: new THREE.Vector3(1, 1, 1) }, uLampe: { value: new THREE.Vector3(0, 0, 0) }, uSkala: { value: 1 }, uDeck: { value: 1 }, uLampeMin: { value: 0.16 } },
+      uniforms: { uAufl: this.U.uAufl, uZeit: this.U.uZeit, uFarbe: { value: farbe('petrol') }, uWahl: { value: farbe('lila') }, uHell: { value: new THREE.Vector3(1, 1, 1) }, uLampe: { value: new THREE.Vector3(0, 0, 0) }, uSkala: { value: 1 }, uDeck: { value: 1 }, uLampeMin: { value: 0.16 }, uGriff: { value: new THREE.Vector3(0, 0, 0) }, uGriffEigen: { value: 0 } },
       transparent: true,
       depthWrite: false,
       depthTest: true,
