@@ -18,14 +18,16 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
 - **Gültiger Plan:** [`docs/plans/2026-11-12-schnell-glatt-exakt.md`](docs/plans/2026-11-12-schnell-glatt-exakt.md), von Florian
   am 12.11. freigegeben („Ok, fangen wir an“). Schritte: 0 Aufräumen, 1 glatte Anzeige, 2 kleines Rechennetz, 3 Beweis „Haut
   direkt aus den Linien“, 4 echte Spiegelung und neue Rechnung ins Fenster, 5 Posen wie die Basis, 6 Maul als eigene Geometrie,
-  7 Auswahl wie in Blender. **Wo wir stehen und was als Nächstes kommt: [`docs/UEBERGABE.md`](docs/UEBERGABE.md).**
+  7 Auswahl wie in Blender. Fest vorgemerkt ist **4c, der Rest der halben Haut** (Florian, 13.11.: „es soll nicht vergessen
+  werden“; das Tempo wird für Shader, Materialien, Fell und Zusatzteile gebraucht). **Wo wir stehen und was als Nächstes kommt: [`docs/UEBERGABE.md`](docs/UEBERGABE.md).**
 - **Design-Strang daneben (eigene Sitzung):** `/editor` (`apps/editor/editor.html`, `src/form/editor.ts`,
   `src/form/blaupause.ts`) zeigt denselben Editor im Layout der Blaupause. Einstieg:
   [`docs/look/editor/blaupause/UEBERGABE.md`](docs/look/editor/blaupause/UEBERGABE.md). `editor.ts` ist eine Kopie von
   `kurven.ts` und wird erst nach Schritt 7 nachgezogen.
 - **Eingefroren (Wissen, nicht weiterbauen):** der Käfig-Weg vom 13.10. bis 04.11. (`packages/shape/src/kern/`, der alte
   Electron-Editor `pnpm editor`) und `form.html`.
-- **Florians Testformen:** `wesen/` (teat firefish, strange bird, test_kaputt). Fertige Wesen gibt es nicht.
+- **Florians Testformen:** `wesen/` (teat firefish, strange bird, test_kaputt). Fertige Wesen gibt es nicht; die Formen sind
+  beliebige Tests und kein Maßstab für das Tempo.
 
 ## Grundidee (Florian, 15.10. und 05.11.)
 

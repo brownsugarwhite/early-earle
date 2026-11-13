@@ -39,7 +39,7 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   `mitteFestmachen` in `dicht/mitteSchnitt.ts`: Der Rand des Lochs wird ein Loop mit Kante); K am Rand macht ihn rund. Nur in
   der Grundform und ohne Maul. Probe im Fenster: `GPU=1 node scripts/pruefen/form-donut-fenster.mjs` (`NAME=<Form>` für eine
   gesicherte Form).
-- **Rechnung auf der Hälfte** (Schritt 4b, erster Teil, 13.11.; bis zur Übernahme nur in `form-bau`): Der Löser faltet auf die
+- **Rechnung auf der Hälfte** (Schritt 4b, erster Teil, 13.11.; seit dem 13.11. nachmittags auch in Florians Fenster): Der Löser faltet auf die
   Hälfte (`HautOptionen.halb`, im Fenster Standard, `&halb=0` schaltet es ab); das Netz bleibt ganz. Dazu „flüssig zuerst“: eine
   weitere Runde je Bild nur, wenn sie samt Anzeige in 14,5 ms passt (`&bildms=0`: nur das feste Budget, `&budget=<ms>` stellt
   es). Messen: im Kern `form-halb.ts`, im Fenster `GPU=1 HALTEN=0 NAME=<Form> node scripts/pruefen/form-halten-probe.mjs`.

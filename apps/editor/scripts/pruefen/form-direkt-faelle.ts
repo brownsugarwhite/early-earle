@@ -127,7 +127,11 @@ export function hartePunkte(h: Haut, loops: readonly Loop[]): Uint8Array {
 }
 
 export function formLaden(name: string, klein = true): { h: Haut; loops: Loop[]; mk: number } {
-  const datei = fileURLToPath(new URL(`../../../../wesen/${name}.eewesen`, import.meta.url));
+  return formLadenDatei(fileURLToPath(new URL(`../../../../wesen/${name}.eewesen`, import.meta.url)), klein);
+}
+
+/** wie `formLaden`, aus einer Datei (Formen der Proben liegen unter `scripts/pruefen/formen/`) */
+export function formLadenDatei(datei: string, klein = true): { h: Haut; loops: Loop[]; mk: number } {
   const st: WesenStand = entpacken(new Uint8Array(fs.readFileSync(datei)));
   if (st.grund) throw new Error('Die Form ist in der Pose gesichert; die Probe rechnet nur die Grundform.');
   const f = st.haut;

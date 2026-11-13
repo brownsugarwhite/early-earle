@@ -1,4 +1,4 @@
-# Übergabe (Stand 13.11.2026 mittags: Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt („Form halten“ hat Florian ausprobiert: „Gefällt nicht“). Schritt 4a, der Donut nach Florians zweiter Regel, ist in seinem Fenster (5194; sein Urteil steht aus, Abschnitt 7.4). Schritt 4b, erster Teil, die Rechnung auf der Hälfte, ist im Bau-Fenster (5197) gebaut und gemessen (Abschnitt 7.5): Rechnen je Bild rund 30 % weniger, Zerlegen die Hälfte, gleiche Form; in seinem Fenster ist das noch nicht. Schritt 1 und 2 sind Standard in seinem Fenster, sein Urteil dazu steht aus)
+# Übergabe (Stand 13.11.2026 nachmittags: Schritt 4b, erster Teil, die Rechnung auf der Hälfte, ist in Florians Fenster (5194; Abschnitt 7.5). Der Rest der halben Haut ist als Schritt 4c fest vorgemerkt (Florian: „es soll nicht vergessen werden“). Schritt 5 (Posen): Der erste kleine Beweis hält nicht wie festgelegt, angehalten; gefragt ist Florians Entscheidung (Abschnitt 7.6). Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt. Zu Schritt 1, 2, dem Donut (4a) und der halben Rechnung steht sein Urteil aus)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -25,8 +25,9 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | 1 Glatte Anzeige | **eingebaut und Standard** (Abschnitt 4). Florian am 12.11.: „Ja, übernehmen“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&anzeige=grob` zeigt zum Vergleich die Anzeige davor. Sein Urteil nach dem Arbeiten damit steht aus |
 | 2 Kleines Rechennetz | **eingebaut und Standard** (Abschnitt 5): rund 40 % der Punkte, im Zug 16 bis 20 ms je Bild. Florian am 12.11. nachts, vom Handy aus: „ja“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&netz=dicht` ist das Netz davor. Sein Urteil nach dem Arbeiten damit steht aus. Nicht gebaut: Zeichnen gegen die feine Fläche |
 | 3 Beweis „Haut direkt aus den Linien“ | **abgeschlossen, die heutige Rechnung bleibt** (Abschnitt 6, 13.11.): Die Haut nur aus den Linien (A) scheitert zwischen wenigen Linien und an seinen drei Formen. Der Teil B (fertige Haut direkt bewegen) hält rechnerisch; als Schalter „Form halten“ im Bau-Fenster ausprobiert, Florian: „Gefällt nicht“. Knopf und Taste sind wieder weg; der Code liegt nur auf `claude/form-bau` hinter `?ziehen=direkt` |
-| 4 Echte Spiegelung (mit der heutigen Rechnung) | **4a, der Donut, ist in Florians Fenster (Abschnitt 7.4, 13.11.):** nach seiner zweiten Regel; sein Urteil steht aus. **4b, erster Teil, im Bau-Fenster (Abschnitt 7.5, 13.11.):** Der Löser rechnet auf der Hälfte (zwei halb so große Systeme, Krümmung auf der Hälfte), das Netz im Fenster bleibt ganz; Rechnen je Bild 10,3 → 7,1 ms am „teat firefish“, Zerlegen rund 50 %, gleiche Form; dazu „flüssig zuerst“ (eine weitere Runde je Bild nur, wenn sie ins Bild passt). Noch nicht in seinem Fenster. Offen: Gewichte und Vermessen auf der Hälfte (Runde von 73 % auf 50 bis 60 %), Verdichten und Anzeige auf der Hälfte |
-| 5 Posen wie die Basis | offen |
+| 4 Echte Spiegelung (mit der heutigen Rechnung) | **4a, der Donut, ist in Florians Fenster (Abschnitt 7.4, 13.11.):** nach seiner zweiten Regel; sein Urteil steht aus. **4b, erster Teil, ist seit dem 13.11. nachmittags in Florians Fenster (Abschnitt 7.5):** Der Löser rechnet auf der Hälfte (zwei halb so große Systeme, Krümmung auf der Hälfte), das Netz im Fenster bleibt ganz; Rechnen je Bild 10,3 → 7,1 ms am „teat firefish“, Zerlegen rund 50 %, gleiche Form; dazu „flüssig zuerst“ (eine weitere Runde je Bild nur, wenn sie ins Bild passt). Sein Urteil zum Tempo steht aus |
+| 4c Rest der halben Haut | **fest vorgemerkt** (Plan, „Schritt 4c“; Florian am 13.11.: „es soll nicht vergessen werden“): Gewichte und Vermessen auf der Hälfte (Runde von 73 % auf 50 bis 60 %), die einzelnen langsamen Bilder, Verdichten und Anzeige auf der Hälfte, das Netz selbst als Hälfte. Kommt nach den Posen wieder auf den Tisch und muss gebaut sein, bevor Shader, Materialien, Fell oder Zusatzteile beginnen. Seine heutigen Formen sind kein Maßstab für das Tempo |
+| 5 Posen wie die Basis | **Etappe 1 (kleiner Beweis) gerechnet, hält nicht wie festgelegt; angehalten** (Abschnitt 7.6, 13.11.): Die Rechnung der Grundform kann die Pose rechnen, scheitert aber an den Lippen des Mauls von heute. Offen ist Florians Entscheidung: erst das Maul (Schritt 6), die Posen jetzt mit der Maullinie als Kante, oder erst Schritt 4c |
 | 6 Maul als eigene Geometrie | offen |
 | 7 Auswahl wie in Blender | offen |
 
@@ -502,7 +503,9 @@ hängt seitdem an der bauenden Sitzung; läuft er nicht, startet ihn `kurven-alt
 
 ### 7.5 Schritt 4b, erster Teil: die Rechnung auf der Hälfte (13.11. mittags, Florian: „kannst du halbe Haut machen“)
 
-Gebaut in `form-bau` (Port 5197); **in Florians Fenster (5194) ist davon nichts.** Er war unterwegs und hat es noch nicht gesehen.
+Gebaut in `form-bau` (Port 5197); **seit dem 13.11. nachmittags in Florians Fenster (5194)** (er: „Dann mach erstmal weiter, wie du
+empfiehlst“; `claude/form-bau` nach `claude/form-spiegel`, Stand `b8d3f656`). Geprüft dort: Die Donut-Probe meldet „alles gut“,
+`kurven.html` und `/editor` laden ohne Fehler. Er war unterwegs und hat es noch nicht gesehen; sein Urteil zum Tempo steht aus.
 
 **Was gebaut ist** (anders als im Plan zuerst beschrieben, mit weniger Risiko): Das Netz im Fenster bleibt ganz (Verdichten,
 Anzeige, Sichern, Posen unverändert). Gefaltet wird dort, wo die Zeit bleibt, im Löser `HautAusKurven` (Option `halb`):
@@ -554,11 +557,62 @@ Anzeige, Sichern, Posen unverändert). Gefaltet wird dort, wo die Zeit bleibt, i
 ausgeschriebenen); zwei umgeschlagene Dreiecke nach „über die Mitte und zurück“ am Firefish kommen mit und ohne halbe Rechnung
 vor (je einmal in zwei bis drei Läufen), sie hängen am Lauf.
 
-**Gefragt ist Florian (13.11. mittags), zwei Fragen:**
-- Soll es in sein Fenster? **„Übernehmen“** (die halbe Rechnung und „flüssig zuerst“ kommen nach 5194, das Fenster lädt einmal
-  neu, dann sein Urteil zum Tempo; empfohlen) oder **„Noch nicht“**.
-- Womit weiter? **„Posen“** (Schritt 5; empfohlen, weil an seinen heutigen Formen die Bilder schon im Takt kommen) oder
-  **„Weiter an der Hälfte“** (die offenen Teile aus Befund 4, für größere Formen).
+**Florians Antwort (13.11. nachmittags):** „Dann mach erstmal weiter, wie du empfiehlst, aber es soll nicht vergessen werden. Wir
+werden das Tempo noch brauchen, wenn Shader, Materialien, Fell und Zusatzteile wie Flügel und Beine dazukommen. Meine Formen sind
+momentan beliebige Testformen und haben nichts mit den Wesen zu tun.“ Also: übernommen, weiter mit den Posen; der Rest der halben
+Haut steht als **Schritt 4c** fest im Plan. Befund 4 oben („an seinen heutigen Formen änderte das die Bilder nicht mehr“) ist
+kein Grund, ihn zurückzustellen: Seine Formen sind kein Maßstab für das Tempo.
+
+### 7.6 Schritt 5, Etappe 1: kleiner Beweis „die Pose in ihrer Ruhe rechnen“ (13.11. nachmittags): hält nicht wie festgelegt, angehalten
+
+**Was geprüft wurde** (Plan, Nachtrag zu Schritt 5): Weil die heutige Rechnung bleibt, wäre eine Pose eine zweite Lage derselben
+Form (Versatz der Linien, Blendshape der Haut), gerechnet in ihrer Ruhe (vor den Knochen, das Maul ist zu) mit der Rechnung der
+Grundform; die Knochen drehen nur die Anzeige, ein Zug im Blatt wird mit dem Winkel seines Punkts zurückgedreht. Gebaut ist
+davon nichts, im Fenster ändert sich nichts.
+
+**Probe:** `form-pose-ruhe.ts` (Kern) an einer Kugel mit einem Ring und einem Maul aus der Seite, im Bau-Fenster gezeichnet
+(`form-pose-ruhe-fenster.mjs`; die Form liegt unter `apps/editor/scripts/pruefen/formen/pose-maul-kugel.eewesen`), Maul 30°
+offen. Drei Züge, jeder von demselben Stand: unterster Punkt der Unterlippe 25 nach unten, derselbe 25 nach oben, der Punkt oben
+auf dem Ring 40 nach oben. Bild `docs/progress/editor/schritt5-pose-ruhe-2026-11-13.jpg` (links jeweils die Pose von heute, aus
+dem Fenster abgelesen), Zahlen `docs/progress/editor/schritt5-pose-ruhe-messung-2026-11-13.txt`. Alle Bewegungen sind gegen die
+zur Ruhe gerechnete Haut der Fassung gemessen (Halbmesser der Kugel 150).
+
+| Fassung an den Lippen | ohne Zug (20 Runden) | Lippe nach unten: Haut fern vom Maul | Lippe nach oben: Haut fern vom Maul | Punkt am Ring: größte Bewegung |
+| --- | --- | --- | --- | --- |
+| (a) die verborgene Fläche der Öffnung rechnet mit (Rechnung der Grundform, unverändert) | 0,03 | 10,7 | 31,7 (der Kopf verzieht sich sichtbar) | 40,0 (wie die Grundform) |
+| (b) die Lippen sind eine Kante | 0,12 (der Wechsel zur Kante einmal 0,6) | 0,95 | 0,92 | 56,8 (bläst anders auf) |
+| (c) die Öffnung ist aus der Rechnung genommen | der Wechsel allein: 35,7 | 1,8 | 2,2 | 39,9 |
+
+In allen Fällen: nichts umgeschlagen, Ruhe nach 43 bis 73 Runden, Linien genau auf ihren Pfaden (0,00), Grundform bitgleich.
+
+**Befunde:**
+1. **Die Rechnung der Grundform kann die Pose rechnen** (Kriterien 1 und 5 erfüllt; 2 für (a)). Daran scheitert es nicht.
+2. **(a) scheitert an den Lippen** (Kriterium 4): Ein Zug an der Lippe nimmt die Haut über den ganzen Kopf mit. Nach oben läuft
+   die Unterlippe in der Ruhe der Pose durch die Oberlippe (dort ist das Maul zu, die Lippen liegen rund 18 auseinander), die
+   verborgene Fläche stülpt sich um, die Form verzieht sich. Das ist kein Randfall: Ein Maul ist in der Ruhe fast zu, jeder Zug
+   der Lippen aufeinander zu führt dorthin.
+3. **(b) hält die Züge an der Lippe am Ort und sauber** (auch nach oben), ändert aber, wie die Form sich aufbläst: Ein Zug fern
+   vom Maul bewegt die Haut um 56,8 statt 40,0 (Kriterium 3). Die Kante lässt die Haut am Maul los. Gälte die Kante nur in der
+   Pose, verhielte sich die Pose dort anders als die Grundform; gälte sie auch in der Grundform, änderte sich die Grundform mit
+   Maul.
+4. **(c) scheidet aus:** Mit einem Loch fällt die Form zusammen (35,7). Die Rechnung über die ganze Haut braucht eine
+   geschlossene Haut. In der gezeigten Lage (Maul offen) zu rechnen hieße mit dem Maul von heute: entweder dieses Loch, oder die
+   verborgene Fläche überspannt das offene Maul (am 05.11. klappte sie dort um; heute nicht neu gerechnet).
+5. **Die Ursache ist das Maul von heute, nicht die Pose:** Die Haut ist am Maul geschlossen, nur die Anzeige schneidet auf.
+   Erwartung, nicht gerechnet: Mit dem Maul als eigener Geometrie (Schritt 6: zwei Lippenlinien, die Höhle als Haut) gibt es
+   keine verborgene Fläche; dann lässt sich die Pose in der gezeigten Lage rechnen, dort liegt nichts aufeinander.
+6. **Grenzen der Probe:** eine Form mit nur zwei Loops (der härteste Fall „wenige Linien“; mit mehr Linien wandert die Haut
+   weniger mit, das ist nicht gemessen), ein Maul aus der Seite, 30°. Die Linie des Mauls kreuzt sich bei (b) in der Ruhe selbst;
+   ob das Fenster das verträgt, ist offen.
+7. **Nebenbefund am Stand von heute:** Nach „Fressen“ aus steht die Grundform nicht ganz (bis 1,6 bis zur Ruhe):
+   `poseVerlassen` legt die Linien auf ihre Pfade, gesetzt wird die Haut erst beim nächsten Griff. Nicht behoben.
+
+**Gefragt ist Florian (13.11. nachmittags):**
+- **„Erst das Maul“** (empfohlen): Schritt 6 vor die Posen ziehen. Er beginnt mit einem Entwurf und einem kleinen Beweis in
+  Bildern; dazu gehört dann auch der Zug an der Lippe bei offenem Maul.
+- **„Posen mit Kante“:** die Posen jetzt bauen, in der Pose ist die Maullinie eine Kante (Fassung b). Züge an den Lippen sind
+  sauber; Züge weit weg vom Maul blasen in der Pose anders auf als in der Grundform; ein Teil wird mit Schritt 6 neu gemacht.
+- **„Erst die Hälfte“:** Schritt 4c jetzt (Tempo-Reserve), Maul und Posen danach.
 
 ## 8. Offen aus der Zeit davor
 

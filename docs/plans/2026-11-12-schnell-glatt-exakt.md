@@ -270,7 +270,9 @@ bleibt zurückgestellt, bis das Tempo ihn verlangt.
 (`?halb=0` zum Vergleichen). Gleiche Form (höchstens 0,08 auseinander), Zerlegen rund 50 %, eine Runde 73 % (nicht die erhoffte
 Hälfte: Lösen ist heute nur noch die halbe Runde); im Fenster am „teat firefish“ Rechnen je Bild 10,3 → 7,1 ms, Bilder im Median
 alle 16 statt 18 ms. Dazu „flüssig zuerst“ (eine weitere Runde je Bild nur, wenn sie ins Bild passt). Offen: Gewichte nach der
-Geometrie und Vermessen auf der Hälfte (Runde auf 50 bis 60 %). In Florians Fenster erst nach seinem Wort.
+Geometrie und Vermessen auf der Hälfte (Runde auf 50 bis 60 %). **Übernommen in Florians Fenster am 13.11. nachmittags** (er:
+„Dann mach erstmal weiter, wie du empfiehlst“; `claude/form-bau` nach `claude/form-spiegel`, die Donut-Probe besteht auch dort).
+Sein Urteil zum Tempo steht aus. Der Rest steht unten als Schritt 4c.
 
 - **Was du danach siehst:**
   - Jede neue Form beginnt als gespiegelte Kugel, **die Mittellinie ist von Anfang an eingezeichnet**.
@@ -364,6 +366,28 @@ Die Voraussetzung ist nicht erfüllt (Schritt 3: Die heutige Rechnung bleibt). D
 
 **Festlegungen (er kann widersprechen):** In der Pose gibt es keine neuen Punkte und Loops und kein Löschen (wie oben). Alte
 Test-Posen in gesicherten Formen behalten ihren Blendshape; ihre Linien beginnen ohne Versatz.
+
+**Ergebnis der Etappe 1 (13.11. nachmittags): Der Beweis hält nicht so, wie er festgelegt war; angehalten.** Bild
+`docs/progress/editor/schritt5-pose-ruhe-2026-11-13.jpg`, Zahlen `schritt5-pose-ruhe-messung-2026-11-13.txt`, Einzelheiten in
+`docs/UEBERGABE.md`, Abschnitt 7.6. Die Rechnung der Grundform kann die Pose rechnen: Nichts schlägt um, sie kommt nach 43 bis
+73 Runden zur Ruhe, die Linien liegen genau auf ihren Pfaden, die Grundform bleibt bitgleich. Aber keine der drei Fassungen an
+den Lippen erfüllt alle Kriterien:
+- **(a) Die Öffnung rechnet mit** (die Rechnung der Grundform, unverändert): Ohne Zug steht die Haut (0,03), der Zug fern vom
+  Maul ist derselbe wie in der Grundform. Ein Zug an der Lippe nimmt aber die Haut fern vom Maul mit: 10,7 beim Zug nach unten,
+  31,7 beim Zug nach oben (Kriterium: 1). Nach oben verzieht sich der ganze Kopf sichtbar: In der Ruhe der Pose ist das Maul zu,
+  die Unterlippe läuft dort durch die Oberlippe.
+- **(b) Die Lippen als Kante:** Die Züge an der Lippe bleiben am Maul (fern 0,95 und 0,92) und sind sauber, auch nach oben. Der
+  Wechsel zur Kante bewegt die Haut einmal um bis 0,6. Aber ein Zug fern vom Maul bläst die Form anders auf als in der
+  Grundform (größte Bewegung 56,8 statt 40,0), und ohne Zug kriecht die Haut in 20 Runden um 0,12 (Kriterium: 0,05).
+- **(c) Die Öffnung aus der Rechnung genommen:** Schon der Wechsel bewegt die ganze Form um 35,7. Scheidet aus; die Rechnung
+  über die ganze Haut verträgt kein Loch.
+
+Die Ursache liegt nicht in der Pose, sondern im Maul von heute: Die Haut ist dort geschlossen, nur die Anzeige schneidet auf.
+In der Ruhe liegt die verborgene Fläche zwischen den Lippen; was die Lippen aufeinander zu bewegt, läuft dort durcheinander.
+Erwartung (nicht gerechnet): Mit dem Maul als eigener Geometrie (Schritt 6: zwei Lippenlinien, die Höhle als Haut) gibt es keine
+verborgene Fläche mehr; dann lässt sich die Pose in der gezeigten Lage rechnen, dort liegt nichts aufeinander. **Offen ist
+Florians Entscheidung:** Schritt 6 vor Schritt 5 ziehen (empfohlen), die Posen jetzt mit (b) bauen (nur in der Pose ist die
+Maullinie eine Kante), oder inzwischen Schritt 4c.
 
 ### Schritt 6: Maul als eigene Geometrie (4 bis 6 Tage, Entwurf und kleiner Beweis zuerst)
 
