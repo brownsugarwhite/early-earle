@@ -1,0 +1,66 @@
+Schritt 4b, erster Teil: die Rechnung auf der Hälfte (13.11.2026)
+
+== Im Kern (apps/editor/scripts/pruefen/form-halb.ts, aus packages/shape): derselbe Zug ganz und halb ==
+test_kaputt: 2166 Punkte, 4 Loops; Zug (0, 40, 0) am höchsten Punkt, 20 Schritte zu 2 Runden und 20 Runden am Ende
+   ganz: Zerlegen 72,1 ms, Runde 1,40 ms (vermessen 9 %, intrinsisch 21 %, Krümmung 16 % (1,4 Schritte), Lagen lösen 39 %, Rest 14 %)
+   halb: Zerlegen 57,0 ms, Runde 1,12 ms (vermessen 12 %, intrinsisch 25 %, Krümmung 11 % (1,4 Schritte), Lagen lösen 36 %, Rest 15 %)
+   halb gegen ganz: Zerlegen 79 %, Runde 80 %; die Häute liegen höchstens 0,0019 auseinander (im Mittel 0,0003); halb: Knicke über 60° 0, umgeklappt 0
+strange bird: 7628 Punkte, 9 Loops; Zug (0, 40, 0) am höchsten Punkt, 20 Schritte zu 2 Runden und 20 Runden am Ende
+   ganz: Zerlegen 239,2 ms, Runde 6,78 ms (vermessen 8 %, intrinsisch 26 %, Krümmung 15 % (1,3 Schritte), Lagen lösen 40 %, Rest 10 %)
+   halb: Zerlegen 125,8 ms, Runde 4,92 ms (vermessen 10 %, intrinsisch 35 %, Krümmung 11 % (1,3 Schritte), Lagen lösen 30 %, Rest 13 %)
+   halb gegen ganz: Zerlegen 53 %, Runde 73 %; die Häute liegen höchstens 0,0221 auseinander (im Mittel 0,0019); halb: Knicke über 60° 55, umgeklappt 2
+teat firefish: 11765 Punkte, 17 Loops; Zug (0, 40, 0) am höchsten Punkt, 20 Schritte zu 2 Runden und 20 Runden am Ende
+   ganz: Zerlegen 352,2 ms, Runde 10,35 ms (vermessen 8 %, intrinsisch 26 %, Krümmung 15 % (1,2 Schritte), Lagen lösen 40 %, Rest 11 %)
+   halb: Zerlegen 178,2 ms, Runde 7,58 ms (vermessen 10 %, intrinsisch 37 %, Krümmung 12 % (1,2 Schritte), Lagen lösen 28 %, Rest 13 %)
+   halb gegen ganz: Zerlegen 51 %, Runde 73 %; die Häute liegen höchstens 0,0776 auseinander (im Mittel 0,0045); halb: Knicke über 60° 39, umgeklappt 0
+   Nachgerechnet (ein Lauf, MAL=1): Knicke über 60° und umgeklappte Dreiecke sind ganz und halb gleich
+   (strange bird 55 und 2 bei beiden, teat firefish 39 und 0 bei beiden).
+
+== Im Bau-Fenster (form-halten-probe.mjs mit HALTEN=0, GPU=1): der höchste Punkt 70 hinauf und zurück, dann hinauf und loslassen ==
+   vorher = ?halb=0&bildms=0 (über die ganze Haut, festes Budget von 12 ms je Bild); neu = Standard (auf der Hälfte, flüssig zuerst)
+-- test_kaputt, vorher (&halb=0&bildms=0)
+  1  gegriffen, nicht gezogen: Haut bewegt sich um höchstens 0,00 (Mittel 0,00)
+  2  70 hinauf und zurück, ohne loszulassen: Haut liegt höchstens 0,08 neben der von vorher (Mittel 0,01)
+     Bilder im Zug: 160, Abstand Median 17 ms, 95 % 27 ms, längster 33 ms
+     Rechnen je Bild (letzte 80): Median 5.7 ms, 95 % 8.0 ms
+  3  hinauf und losgelassen: danach liegt die Haut vom Halten höchstens 0,28 neben der Fläche in der Ruhe (Mittel 0,01); Ruhe nach 0.2 s; Punkte 2137 → 2143 (verdichtet +10 −2)
+     Konsole: keine Fehler
+-- test_kaputt, neu
+  1  gegriffen, nicht gezogen: Haut bewegt sich um höchstens 0,00 (Mittel 0,00)
+  2  70 hinauf und zurück, ohne loszulassen: Haut liegt höchstens 0,09 neben der von vorher (Mittel 0,01)
+     Bilder im Zug: 159, Abstand Median 17 ms, 95 % 27 ms, längster 33 ms
+     Rechnen je Bild (letzte 80): Median 4.2 ms, 95 % 7.0 ms
+  3  hinauf und losgelassen: danach liegt die Haut vom Halten höchstens 0,28 neben der Fläche in der Ruhe (Mittel 0,01); Ruhe nach 0.2 s; Punkte 2137 → 2143 (verdichtet +10 −2)
+     Konsole: keine Fehler
+-- strange bird, vorher (&halb=0&bildms=0)
+  1  gegriffen, nicht gezogen: Haut bewegt sich um höchstens 0,00 (Mittel 0,00)
+  2  70 hinauf und zurück, ohne loszulassen: Haut liegt höchstens 19,61 neben der von vorher (Mittel 1,47)
+     Bilder im Zug: 248, Abstand Median 16 ms, 95 % 21 ms, längster 67 ms
+     Rechnen je Bild (letzte 80): Median 6.6 ms, 95 % 6.9 ms
+  3  hinauf und losgelassen: danach liegt die Haut vom Halten höchstens 2,19 neben der Fläche in der Ruhe (Mittel 0,04); Ruhe nach 1.2 s; Punkte 7437 → 7461 (verdichtet +100 −38)
+     Konsole: keine Fehler
+-- strange bird, neu
+  1  gegriffen, nicht gezogen: Haut bewegt sich um höchstens 0,00 (Mittel 0,00)
+  2  70 hinauf und zurück, ohne loszulassen: Haut liegt höchstens 19,61 neben der von vorher (Mittel 1,47)
+     Bilder im Zug: 225, Abstand Median 17 ms, 95 % 21 ms, längster 58 ms
+     Rechnen je Bild (letzte 80): Median 4.7 ms, 95 % 4.9 ms
+  3  hinauf und losgelassen: danach liegt die Haut vom Halten höchstens 2,19 neben der Fläche in der Ruhe (Mittel 0,04); Ruhe nach 0.6 s; Punkte 7437 → 7461 (verdichtet +100 −38)
+     Konsole: keine Fehler
+-- teat firefish, vorher (&halb=0&bildms=0)
+  1  gegriffen, nicht gezogen: Haut bewegt sich um höchstens 0,00 (Mittel 0,00)
+  2  70 hinauf und zurück, ohne loszulassen: Haut liegt höchstens 2,13 neben der von vorher (Mittel 0,12)
+     Bilder im Zug: 295, Abstand Median 18 ms, 95 % 32 ms, längster 68 ms
+     Rechnen je Bild (letzte 80): Median 10.3 ms, 95 % 10.7 ms
+  3  hinauf und losgelassen: danach liegt die Haut vom Halten höchstens 0,31 neben der Fläche in der Ruhe (Mittel 0,00); Ruhe nach 0.7 s; Punkte 11449 → 11453 (verdichtet +10 −3)
+     Konsole: keine Fehler
+-- teat firefish, neu
+  1  gegriffen, nicht gezogen: Haut bewegt sich um höchstens 0,00 (Mittel 0,00)
+  2  70 hinauf und zurück, ohne loszulassen: Haut liegt höchstens 2,13 neben der von vorher (Mittel 0,12)
+     Bilder im Zug: 263, Abstand Median 16 ms, 95 % 35 ms, längster 67 ms
+     Rechnen je Bild (letzte 80): Median 7.1 ms, 95 % 7.5 ms
+  3  hinauf und losgelassen: danach liegt die Haut vom Halten höchstens 0,30 neben der Fläche in der Ruhe (Mittel 0,00); Ruhe nach 0.6 s; Punkte 11449 → 11453 (verdichtet +10 −3)
+     Konsole: keine Fehler
+
+== Nebenbefund: nur auf der Hälfte, aber weiter mit dem festen Budget (?bildms=0) am strange bird ==
+     Bilder im Zug: 268, Abstand Median 16 ms, 95 % 35 ms, längster 58 ms
+     Rechnen je Bild (letzte 80): Median 9.4 ms, 95 % 9.9 ms
