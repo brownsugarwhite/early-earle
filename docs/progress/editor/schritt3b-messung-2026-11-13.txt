@@ -1,0 +1,26 @@
+Rüssel aus der Kugel, heute: 1822 Punkte, Querschnitt in der Mitte Höhe 86,1, Breite 88,3, Breite zu Höhe 1,03 (bei 25 / 50 / 75 %: 1,19 · 1,03 · 1,03), Knicke über 60° 0, umgestülpt 0
+   in einem Zug um die Hälfte gestreckt, heute: dieselben Punkte der Haut vorher und nachher, ihre Breite bei 25 / 50 / 75 %: −8,1 % · −4,8 % · +3,3 %, Knicke über 60° 0, umgestülpt 0
+   um die Hälfte verlängert, heute: 1967 Punkte, Querschnitt bei 25 / 50 / 75 % (Höhe × Breite): vorher 92,4 × 109,8 · 86,1 × 88,3 · 84,5 × 86,9, nachher 90,3 × 93,0 · 85,5 × 84,7 · 84,3 × 89,9; Breite −15,3 % · −4,1 % · +3,5 %, Höhe −2,3 % · −0,6 % · −0,2 %, Knicke über 60° 0, umgestülpt 0
+   in einem Zug um die Hälfte gestreckt, B: dieselben Punkte der Haut vorher und nachher, ihre Breite bei 25 / 50 / 75 %: +5,2 % · −1,6 % · +1,0 %, Knicke über 60° 0, umgestülpt 0
+   um die Hälfte verlängert, mit der heutigen Rechnung erzeugt, mit B verlängert: 1972 Punkte, Querschnitt bei 25 / 50 / 75 % (Höhe × Breite): vorher 92,4 × 109,8 · 86,1 × 88,3 · 84,5 × 86,9, nachher 90,3 × 98,4 · 85,5 × 85,8 · 84,5 × 88,3; Breite −10,4 % · −2,8 % · +1,6 %, Höhe −2,3 % · −0,6 % · +0,0 %, Knicke über 60° 0, umgestülpt 0
+Rüssel aus der Kugel, B: 1993 Punkte, Querschnitt in der Mitte Höhe 86,1, Breite 169,0, Breite zu Höhe 1,96 (bei 25 / 50 / 75 %: 2,15 · 1,96 · 1,05), Knicke über 60° 7, umgestülpt 0
+   um die Hälfte verlängert, B allein (erzeugt und verlängert): 2200 Punkte, Querschnitt bei 25 / 50 / 75 % (Höhe × Breite): vorher 103,0 × 221,7 · 86,1 × 169,0 · 84,5 × 89,0, nachher 90,3 × 232,6 · 85,6 × 155,6 · 84,4 × 92,3; Breite +4,9 % · −7,9 % · +3,7 %, Höhe −12,3 % · −0,5 % · −0,0 %, Knicke über 60° 6, umgestülpt 0
+Horn am strange bird (7628 Punkte), Spitze um 70 nach oben. Dicke (in z) bei 40 / 60 / 80 % der Länge: vorher 62,1 · 64,9 · 63,2
+   dieselben Punkte der Haut vorher und nachher (ihre Dicke in z): heute +12,6 % · +8,9 % · +5,7 %
+   heute (bis zur Ruhe, dann verdichtet): 71,9 · 74,6 · 69,3 (+15,8 % · +14,9 % · +9,8 %), Knicke über 60° 43, umgestülpt 2
+   B im Zug (ein Rechnen 267 ms, davon Zerlegen 240 ms, Einsetzen 4 ms): 63,8 · 64,7 · 66,4 (+2,7 % · −0,3 % · +5,1 %), Knicke über 60° 45, umgestülpt 2 (vorher Knicke über 60° 43, umgestülpt 2) · dieselben Punkte: +3,2 % · +1,3 % · +0,7 %
+   B hin und zurück: größter Unterschied zur Haut vor dem Zug 1.7e-7
+   B nach dem Loslassen (verdichtet, 50 neue Punkte, 0 Punkte in 0 Runden gerundet, zusammen 515 ms): 63,8 · 64,7 · 66,4 (+2,7 % · −0,3 % · +5,1 %), Knicke über 60° 43, umgestülpt 2
+   B neu angelegt, Linien unbewegt: Haut bewegt sich um höchstens 1.7e-7
+Horn am strange bird um 30° gebogen (oberhalb y = 300, an der Spitze 30°). Querschnitt bei 40 / 60 / 80 % (in x × in z, zurückgebogen gemessen): vorher 143,1 × 62,1 · 112,5 × 64,9 · 76,4 × 63,2; Knicke über 60° 43, umgestülpt 2
+   heute: 149,5 × 66,3 · 118,7 × 72,5 · 78,2 × 71,5 (+4,4 % × +6,8 % · +5,5 % × +11,8 % · +2,4 % × +13,2 %), Knicke über 60° 43, umgestülpt 2
+   B im Zug: 144,9 × 64,2 · 113,6 × 67,2 · 76,4 × 64,8 (+1,3 % × +3,4 % · +1,0 % × +3,6 % · +0,0 % × +2,5 %), Knicke über 60° 43, umgestülpt 2
+   B hin und zurück: größter Unterschied 1.7e-7
+   B ohne Mitdrehen der Normalen: 142,3 × 62,7 · 110,5 × 67,0 · 70,8 × 65,4 (−0,6 % × +0,9 % · −1,7 % × +3,2 % · −7,3 % × +3,5 %), Knicke über 60° 77, umgestülpt 12
+   B ohne neues Zerlegen je Bild (30 Bilder bis 30°, Greifen 291 ms): Schritte des Nachführens je Bild Median 8, größter 13; Zeit je Bild Median 80 ms, größte 114 ms; am Ende gegen die genaue Lösung höchstens 0,01 daneben
+   B nach dem Loslassen (verdichtet, 8 neue Punkte, 0 Punkte in 0 Runden gerundet): 144,9 × 64,2 · 113,6 × 67,2 · 76,4 × 64,8 (+1,3 % × +3,4 % · +1,0 % × +3,6 % · +0,0 % × +2,5 %), Knicke über 60° 43, umgestülpt 2
+   B neu angelegt, Linien unbewegt: Haut bewegt sich um höchstens 1.9e-7
+strange bird (7628 Punkte) angefasst, nichts gezogen: B bewegt die Haut um höchstens 1.7e-7 (317 ms) · heute im Mittel 1,33, größter 19,8 (23 Runden)
+teat firefish (11765 Punkte) angefasst, nichts gezogen: B bewegt die Haut um höchstens 2.5e-7 (456 ms) · heute im Mittel 0,09, größter 1,8 (12 Runden)
+test_kaputt (2166 Punkte) angefasst, nichts gezogen: B bewegt die Haut um höchstens 2.1e-8 (70 ms) · heute im Mittel 0,08, größter 0,8 (6 Runden)
+20 s

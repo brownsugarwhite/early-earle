@@ -1,4 +1,4 @@
-# Übergabe (Stand 13.11.2026: Schritt 3, der Beweis „Haut direkt aus den Linien“, ist gerechnet. Der geplante Weg hält nicht; ein Teil davon hält und lässt ein verlängertes Horn so dick, wie es war. Florian entscheidet, wie es weitergeht. Schritt 1 und 2 sind Standard in seinem Fenster, sein Urteil dazu steht aus)
+# Übergabe (Stand 13.11.2026: Schritt 3 ist mit zwei Beweisen gerechnet. Die Haut nur aus den Linien hält nicht. Der Teil „B“ bewegt fertige Haut genau (nichts geht auf, hin und zurück gleich, Biegen ohne Knick), kann aber nichts Neues runden und ersetzt die heutige Rechnung nicht. Florian entscheidet: weiter nach Plan oder B als Schalter im Bau-Fenster ausprobieren. Schritt 1 und 2 sind Standard in seinem Fenster, sein Urteil dazu steht aus)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -24,7 +24,7 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | 0 Aufräumen | **erledigt** (12.11., Einzelheiten unten) |
 | 1 Glatte Anzeige | **eingebaut und Standard** (Abschnitt 4). Florian am 12.11.: „Ja, übernehmen“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&anzeige=grob` zeigt zum Vergleich die Anzeige davor. Sein Urteil nach dem Arbeiten damit steht aus |
 | 2 Kleines Rechennetz | **eingebaut und Standard** (Abschnitt 5): rund 40 % der Punkte, im Zug 16 bis 20 ms je Bild. Florian am 12.11. nachts, vom Handy aus: „ja“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&netz=dicht` ist das Netz davor. Sein Urteil nach dem Arbeiten damit steht aus. Nicht gebaut: Zeichnen gegen die feine Fläche |
-| 3 Beweis „Haut direkt aus den Linien“ | **gerechnet, hält so nicht** (Abschnitt 6, 13.11.): Die Haut nur aus den Linien scheitert zwischen wenigen Linien und an seinen drei Formen. Ein Teil hält: Lagen direkt aus den Linien und der Wölbung der Haut (Horn verlängert bleibt gleich dick, hin und zurück bitgleich). Seine Entscheidung steht aus; am Fenster ist nichts geändert, der Code liegt nur auf `claude/form-bau` |
+| 3 Beweis „Haut direkt aus den Linien“ | **gerechnet, hält so nicht** (Abschnitt 6, 13.11.): Die Haut nur aus den Linien (A) scheitert zwischen wenigen Linien und an seinen drei Formen. Der Teil B (Lagen direkt aus den Linien, die Wölbung der Haut bleibt) hält für fertige Haut, auch im zweiten Beweis (Biegen, fester Stand), ersetzt die heutige Rechnung aber nicht. Seine Entscheidung steht aus; am Fenster ist nichts geändert, der Code liegt nur auf `claude/form-bau` |
 | 4 Echte Spiegelung und neue Rechnung ins Fenster | offen; mit welcher Rechnung, hängt an seiner Antwort zu Schritt 3 |
 | 5 Posen wie die Basis | offen |
 | 6 Maul als eigene Geometrie | offen |
@@ -237,15 +237,36 @@ des Laufs: `schritt3-messung-2026-11-13.txt`. **Florian hat die Bilder noch nich
 5. Das Kriterium „ein Viertel der Punkte gibt dieselbe Form“ ist nicht gezeigt (heute 0,14 / 0,77, B 0,10 / 0,61 gegen
    erlaubte 0,18); die Startnetze selbst liegen schon 0,2 bis 0,7 auseinander.
 
-**Gefragt ist Florian (13.11.):**
-- **„Weiter nach Plan“:** Die heutige Rechnung bleibt, als Nächstes Schritt 4 (echte Spiegelung, Mittellinie von Anfang an).
-- **„B prüfen“:** zuerst ein zweiter kurzer Beweis, wieder nur Kern und Bilder (etwa ein Tag): Ziehen an fertiger Haut rechnet
-  B, neue Haut rundet die heutige Rechnung. Kriterien: Rüssel aus der Kugel mindestens 0,8 rund; derselbe Rüssel danach
-  verlängert höchstens 3 % dicker oder dünner; ein Horn um 30° gebogen ohne Knick; nach dem Loslassen nichts über 0,18.
-  Empfohlen ist dieser Weg.
+**Zweiter Beweis „B“ (13.11., Florian: „ok, prüfe B“).** Kriterien vorher im Plan festgelegt (Anhang A.3). Probe
+`apps/editor/scripts/pruefen/form-direkt-b.ts` (20 s), Bilder `schritt3b-{ruessel,ruessel-laenger,horn,biegen}-2026-11-13.jpg`,
+Ausgabe `schritt3b-messung-2026-11-13.txt`. Florian hat die Bilder noch nicht beurteilt.
+
+- **Dazugebaut in `HautDirekt`:** fester Stand (Option `stand`: die Haut beim Anfassen ist genau die Lösung für unbewegte
+  Linien; die Normalen werden jedes Mal von der Haut gelesen und müssen kein gemerkter Stand mehr sein), Mitdrehen der Normalen
+  mit den Linien (`linienDrehung`, `normalenDrehen`), Nachführen ohne neues Zerlegen (`lagenNachfuehren`).
+- **Erfüllt:** Anfassen bewegt nichts (0,0000003; heute im Mittel 1,33 · 0,09 · 0,08 an seinen drei Formen), hin und zurück
+  0,0000002, nach dem Loslassen 0,0000002, Horn um 30° gebogen ohne neue Knicke und ohne umgestülpte Dreiecke.
+- **Knapp nicht erfüllt (Kriterium 3 %):** Horn verlängert, dasselbe Stück Haut +3,2 · +1,3 · +0,7 % (heute +12,6 · +8,9 ·
+  +5,7 %); Horn gebogen +3,4 · +3,6 · +2,5 % (heute +6,8 · +11,8 · +13,2 %); Rüssel verlängert +5,2 · −1,6 · +1,0 % (heute
+  −8,1 · −4,8 · +3,3 %).
+- **Nicht erfüllt:** Rüssel aus der Kugel. B allein gibt einen breiten Keil (1,96). Die heutige Rechnung auf einen Teil der
+  Haut zu beschränken (neue Punkte mit Ringen oder ganze Felder zwischen den Linien) geht nicht: Sie kommt nicht zur Ruhe,
+  stülpt um oder läuft davon. **B ersetzt die heutige Rechnung also nicht; beides zusammen geht nur als Schalter.**
+- **Tempo im Kern** (7 628 Punkte): Greifen 240 ms; Zug ohne Drehung 3 bis 4 ms je Bild; Zug mit Drehung 80 ms je Bild, so wie
+  es gebaut ist (je Bild 8 Schritte Nachführen und neuer Aufbau der Zeilen).
+- **Fallen:** `linienRichtung` liest die mittlere Kantenlänge an der Haut, die man ihr gibt; für hin und zurück muss das die
+  Haut vom Anfassen sein. `flaechenAbstand` findet Abstände über etwa der Zellengröße nicht sicher (für große Abstände eine
+  große Zelle nehmen).
+
+**Gefragt ist Florian (13.11., nach dem zweiten Beweis):**
+- **„B ausprobieren“:** B als Schalter ins Bau-Fenster (5197), etwa zwei Tage. An: Linien bewegen die Haut direkt, nichts
+  rundet neu. Aus: wie heute. Er probiert es an seinen Formen. Abbruch, wenn ein Zug am Firefish über 30 ms je Bild bleibt
+  oder es sich falsch anfühlt. Empfohlen ist dieser Weg; hält er, ist B auch der naheliegende Rechner für die Posen.
+- **„Weiter nach Plan“:** Die heutige Rechnung bleibt allein, als Nächstes Schritt 4 (echte Spiegelung).
 
 **Nachrechnen:** aus `packages/shape` `BLATT=<pfad ohne Endung> npx vite-node ../../apps/editor/scripts/pruefen/form-direkt.ts`
-(rund 45 s; `FALL=kugel,schlauch,ruessel,horn,formen,viertel`), dann aus `apps/editor`
+(rund 45 s; `FALL=kugel,schlauch,ruessel,horn,formen,viertel`) und genauso `form-direkt-b.ts` (20 s;
+`FALL=ruessel,horn,biegen,formen`), dann aus `apps/editor`
 `HOEHE=100 node scripts/pruefen/html-shot.mjs --jpg <pfad>-*.html`.
 
 ## 7. Offen aus der Zeit davor
