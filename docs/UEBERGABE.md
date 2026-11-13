@@ -1,4 +1,4 @@
-# Übergabe (Stand 12.11.2026 nachts: Schritt 1 „glatte Anzeige“ und Schritt 2 „kleines Rechennetz“ sind Standard, auch in Florians Fenster auf 5194; sein Urteil nach dem Arbeiten damit steht aus; offen in Schritt 2: Zeichnen gegen die feine Fläche)
+# Übergabe (Stand 13.11.2026: Schritt 3, der Beweis „Haut direkt aus den Linien“, ist gerechnet. Der geplante Weg hält nicht; ein Teil davon hält und lässt ein verlängertes Horn so dick, wie es war. Florian entscheidet, wie es weitergeht. Schritt 1 und 2 sind Standard in seinem Fenster, sein Urteil dazu steht aus)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -24,8 +24,8 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | 0 Aufräumen | **erledigt** (12.11., Einzelheiten unten) |
 | 1 Glatte Anzeige | **eingebaut und Standard** (Abschnitt 4). Florian am 12.11.: „Ja, übernehmen“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&anzeige=grob` zeigt zum Vergleich die Anzeige davor. Sein Urteil nach dem Arbeiten damit steht aus |
 | 2 Kleines Rechennetz | **eingebaut und Standard** (Abschnitt 5): rund 40 % der Punkte, im Zug 16 bis 20 ms je Bild. Florian am 12.11. nachts, vom Handy aus: „ja“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&netz=dicht` ist das Netz davor. Sein Urteil nach dem Arbeiten damit steht aus. Nicht gebaut: Zeichnen gegen die feine Fläche |
-| 3 Beweis „Haut direkt aus den Linien“ | offen |
-| 4 Echte Spiegelung und neue Rechnung ins Fenster | offen |
+| 3 Beweis „Haut direkt aus den Linien“ | **gerechnet, hält so nicht** (Abschnitt 6, 13.11.): Die Haut nur aus den Linien scheitert zwischen wenigen Linien und an seinen drei Formen. Ein Teil hält: Lagen direkt aus den Linien und der Wölbung der Haut (Horn verlängert bleibt gleich dick, hin und zurück bitgleich). Seine Entscheidung steht aus; am Fenster ist nichts geändert, der Code liegt nur auf `claude/form-bau` |
+| 4 Echte Spiegelung und neue Rechnung ins Fenster | offen; mit welcher Rechnung, hängt an seiner Antwort zu Schritt 3 |
 | 5 Posen wie die Basis | offen |
 | 6 Maul als eigene Geometrie | offen |
 | 7 Auswahl wie in Blender | offen |
@@ -192,9 +192,63 @@ Runde, Abstand der Häute).
 5. Die Proben unter `scripts/pruefen/`, die feste Orte oder Punktzahlen der Startkugel erwarten, sind mit dem neuen Standard
    nicht durchgesehen (mit `&netz=dicht` laufen sie wie bisher).
 
-**Nächster Schritt:** Schritt 3, Beweis „Haut direkt aus den Linien“ (Plan, Anhang A.3; nur Kern und Bilder).
+**Danach:** Schritt 3 (Abschnitt 6).
 
-## 6. Offen aus der Zeit davor
+## 6. Schritt 3, Beweis „Haut direkt aus den Linien“: gerechnet am 13.11., hält so nicht
+
+Bericht mit allen Zahlen: [`research/2026-11-13-beweis-haut-direkt.md`](research/2026-11-13-beweis-haut-direkt.md). Bilder:
+`docs/progress/editor/schritt3-{kugel,schlauch,ruessel,horn,strange-bird,teat-firefish,test_kaputt}-2026-11-13.jpg`, Ausgabe
+des Laufs: `schritt3-messung-2026-11-13.txt`. **Florian hat die Bilder noch nicht beurteilt.**
+
+**Was gebaut ist** (nur Kern und Proben, nur auf `claude/form-bau`; `kurven.ts` und der Löser des Fensters sind unberührt):
+- `packages/shape/src/dicht/direkt.ts` (`HautDirekt`): `richtungVerteilen` (Normalen von den Linien über die Haut) und
+  `lagenLoesen` (Lagen aus Linien und Normalen, eine Lösung). Test `direkt.test.ts`.
+- `apps/editor/scripts/pruefen/form-direkt.ts` (die Fälle, je mit „heute“, A und B), `form-direkt-faelle.ts` (Kugel, Schlauch,
+  gesicherte Formen laden wie das Fenster), `form-direkt-blatt.ts` (Bilder aus dem Kern als HTML). `html-shot.mjs` nimmt jetzt
+  `BREITE` und `HOEHE`.
+
+**Zwei Fassungen wurden gegen „heute“ gerechnet:**
+- **A, wie geplant:** Richtung aus dem Liniennetz (`linienRichtung`), über die Haut verteilt, daraus die Lagen. Nichts von
+  der Haut.
+- **B, nur die zweite Hälfte:** die Normalen der Haut beim Anfassen bleiben, daraus und aus den Linien die Lagen.
+
+| Fall | heute | A | B |
+| --- | --- | --- | --- |
+| Kugel nur mit Mittellinie | bleibt | bleibt (0,14 % vom Radius) | bleibt |
+| Schlauch, zwischen den Ringen doppelt so lang | Dicke −0,2 %, Enden bis 2,4 daneben | Dicke −0,2 %, Enden keilförmig (bis 12,7 von 50) | Dicke −0,1 %, Enden bis 0,7 |
+| Rüssel aus zwei Profillinien, Breite zu Höhe | 1,03 (rund) | 0,36 (flach), umgestülpt | 1,94 (kann nichts Neues runden) |
+| Horn am „strange bird“ um 70 verlängert, Dicke | +16 · +15 · +10 % | −9 · −2 · −3 %, 76 Dreiecke umgestülpt | −0 · +1 · +3 % |
+| seine drei Formen, nichts gezogen (Mittel / größter Abstand) | 1,37 / 29,6 · 0,09 / 1,8 · 0,08 / 0,8 | 4,2 / 52 · 4,9 / 69 · 2,4 / 18, dazu 82 · 112 · 10 umgestülpte Dreiecke | 0,15 / 1,4 · 0,10 / 0,9 · 0,10 / 0,8, keine neuen |
+| hin und zurück | rechnet in Runden | 0,0002 | bitgleich |
+
+**Befunde:**
+1. **A hält nicht.** Erstens fehlt zwischen wenigen Linien eine Angabe: Gleichmäßig verteilte Normalen gehören zu einer Fläche
+   mit überall gleicher Wölbung. Kugel und Schlauch zwischen Ringen bleiben deshalb genau, ein Ende mit runder Kappe wird ein
+   Keil, ein Rüssel flach. Zweitens trägt die Richtung aus dem Liniennetz nur an der Kugel (0,5°): An seinen Formen weicht sie
+   je Linie im Mittel bis 15° von der Haut ab, an einzelnen Stellen bis 68°.
+2. **B hält, wo schon Haut ist.** Die Dicke bleibt beim Strecken und Verlängern, hin und zurück ist bitgleich, seine Formen
+   bleiben stehen. Gerechnet wird einmal (Zerlegen rund 230 ms bei 7 600 Punkten, Einsetzen 3 bis 4 ms).
+3. **Die heutige Rechnung lässt das Horn schon beim Anfassen aufgehen** (ohne Zug, bis zur Ruhe: +8 bis +12 %). Die gesicherte
+   Form ruht für sie nicht. Das ist messbar das, was Florian als „bläst sich auf“ beschreibt.
+4. **Fallen für B:** Die Normalen müssen ein gemerkter Stand sein. Liest man sie nach jedem Rechnen neu von der Haut, kriecht
+   die Fläche je Mal um 0,4 bis 1,0. Nach einem Zug neu angelegt (Normalen gemerkt) bewegt sie sich im Mittel um 0,04, an der
+   größten Stelle einmal um 0,8, dann 0,3 und 0,2; das Kriterium 0,18 ist dort nicht erfüllt. Drehen ist nicht gebaut (im
+   Horn-Fall blieben die Normalen einfach stehen). Neue Haut runden kann B nicht.
+5. Das Kriterium „ein Viertel der Punkte gibt dieselbe Form“ ist nicht gezeigt (heute 0,14 / 0,77, B 0,10 / 0,61 gegen
+   erlaubte 0,18); die Startnetze selbst liegen schon 0,2 bis 0,7 auseinander.
+
+**Gefragt ist Florian (13.11.):**
+- **„Weiter nach Plan“:** Die heutige Rechnung bleibt, als Nächstes Schritt 4 (echte Spiegelung, Mittellinie von Anfang an).
+- **„B prüfen“:** zuerst ein zweiter kurzer Beweis, wieder nur Kern und Bilder (etwa ein Tag): Ziehen an fertiger Haut rechnet
+  B, neue Haut rundet die heutige Rechnung. Kriterien: Rüssel aus der Kugel mindestens 0,8 rund; derselbe Rüssel danach
+  verlängert höchstens 3 % dicker oder dünner; ein Horn um 30° gebogen ohne Knick; nach dem Loslassen nichts über 0,18.
+  Empfohlen ist dieser Weg.
+
+**Nachrechnen:** aus `packages/shape` `BLATT=<pfad ohne Endung> npx vite-node ../../apps/editor/scripts/pruefen/form-direkt.ts`
+(rund 45 s; `FALL=kugel,schlauch,ruessel,horn,formen,viertel`), dann aus `apps/editor`
+`HOEHE=100 node scripts/pruefen/html-shot.mjs --jpg <pfad>-*.html`.
+
+## 7. Offen aus der Zeit davor
 
 Florians Blick auf G4, auf Sichern und Laden und auf G5 Teil 1 steht aus. Die offenen Entscheidungen der alten Übergabe
 (Abschnitt 5 dort: „Punkte wo nötig“, weich überblenden beim Einwechseln, Linie kehrt um, Vorsicht und Schutz) erledigen sich

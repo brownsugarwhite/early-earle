@@ -175,6 +175,12 @@ eine kurze Übergabe. Am Code des Editors ändert Schritt 0 nichts.
   je Linie möglich, ist aber nicht geplant.
 - **Wenn der Beweis nicht hält:** Die heutige Rechnung bleibt, auf kleinem Netz und halber Haut (Schritte 2 und 4 lohnen sich
   in jedem Fall). Gegen das Aufblasen bleibt dann nur der Druck-Regler, gegen das Nachhinken Weg D.
+- **Nachtrag 13.11. (gerechnet):** Der Beweis hält so nicht. Die Haut nur aus den Linien bleibt an Kugel und Schlauch genau,
+  wird aber zwischen wenigen Linien keilförmig oder flach und verändert deine drei Formen stark. Ein Teil hält: Aus den Linien
+  und der Wölbung, die die Haut schon hat, folgen die Lagen in einer Lösung; damit bleibt das Horn am „strange bird“ beim
+  Verlängern so dick, wie es war (heute +10 bis +16 %). Neue Haut runden kann dieser Teil nicht. Bilder und Zahlen:
+  `docs/research/2026-11-13-beweis-haut-direkt.md`. Offen ist deine Entscheidung: weiter nach Plan mit der heutigen Rechnung,
+  oder zuerst ein zweiter kurzer Beweis, ob beide zusammen das Ziehen exakt machen.
 
 ### Schritt 4: Echte Spiegelung und die neue Rechnung ins Fenster (G6 und A; 5 bis 8 Tage)
 
@@ -369,6 +375,17 @@ Kante an/aus.
 
 **Abbruch:** Hält Bauart 2 Kugel und Rüssel nicht, ist A für den Anfang einer Form (wenige Linien) nicht tragfähig. Dann bleibt
 die heutige Rechnung; die lineare Rechnung aus A taugt noch als Sofort-Antwort (Weg D).
+
+**Nachtrag 13.11. (gerechnet, `dicht/direkt.ts`, Probe `form-direkt.ts`):** Gebaut ist Bauart 2 (in jedem Durchgang auf Länge 1)
+und für die Lagen statt „Laplace = 2 H n“ je Kante die Zeile „Kante senkrecht auf dem Mittel der Normalen ihrer Enden“
+(dieselbe Aussage, aber die Wölbung steht mit den neuen Lagen in der Gleichung; so bleibt keine alte Dicke stehen). Ergebnis
+gegen die Tabelle: Kugel nur mit Mittellinie 0,14 % (hält), Kugel mit drei Loops 0,43 wie das Startnetz (hält), Schlauch
+gestreckt −0,2 % (hält, aber die Enden werden keilförmig), Rüssel 0,36 (hält nicht), Horn umgestülpt (hält nicht), hin und
+zurück 0,0002 (hält), Firefish und test_kaputt 112 und 10 umgestülpte Dreiecke gegen 0 (hält nicht). Der Abbruch gilt: A ist
+für wenige Linien und für die vorhandenen Formen nicht tragfähig. Zwei Gründe, beide gemessen: Gleichmäßig verteilte Normalen
+gehören zu einer Fläche mit überall gleicher Wölbung, und `linienRichtung` weicht an seinen Formen bis 68° von der Haut ab.
+Die zweite Hälfte allein (Lagen aus den Linien und den Normalen der Haut) hält dagegen an allen vorhandenen Formen; Zahlen im
+Bericht `docs/research/2026-11-13-beweis-haut-direkt.md`.
 
 ### A.4 Spiegelung (Schritt 4)
 
