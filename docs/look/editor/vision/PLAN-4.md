@@ -87,3 +87,5 @@ gegenüber ihrem Projektor; ihr Inhalt dreht sich synchron zur Kamera. Zusammeng
 hinter dem Wesen an der Kugelwand; weil der Projektor dann die Kamera ist, decken sie sich aus dem Blick genau mit dem Wesen.
 Das Material entsteht auf dem Wesen selbst (wie bisher: Körperbild, wo sich alle drei decken). Das Band des Zusammenlaufens ist
 breiter: bis 3° von einer Achse an den Wänden, ab 35° deckungsgleich.
+Präsentation Version 6 (gleiche Adresse) mit Skizze des Kugelmodells, neuen Filmen `tab`, `drehen`, `start` und neuem
+Stufenstreifen.
