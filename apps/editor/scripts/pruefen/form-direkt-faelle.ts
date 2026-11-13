@@ -91,24 +91,26 @@ export const verdichtenWieImFenster = (mk: number, kurz = 0.5): { kurz: number; 
   flachSchutz: true,
 });
 
-/** die Haut verdichten wie das Fenster nach einem Zug (bis nichts mehr zu tun ist) */
-export function nachVerdichten(h: Haut, loops: Loop[], mk: number, kurz = 0.5): { h: Haut; loops: Loop[] } {
+/**
+ * Die Haut verdichten wie das Fenster nach einem Zug (bis nichts mehr zu tun ist). `neu`: je Punkt der neuen Haut 1, wenn es ihn
+ * vorher nicht gab (das Verdichten hat ihn gesetzt, weil eine Kante zu lang oder die Haut dort zu grob war).
+ */
+export function nachVerdichten(h: Haut, loops: Loop[], mk: number, kurz = 0.5): { h: Haut; loops: Loop[]; neu: Uint8Array } {
   let haut = h;
   let ls = loops;
+  // Herkunft je Punkt: seine Nummer in der Haut am Anfang oder −1
+  let her = Int32Array.from({ length: h.n }, (_, v) => v);
   for (let g = 0; g < 8; g++) {
     const v = verdichten(haut, ls, 1.75 * mk, verdichtenWieImFenster(mk, kurz));
     if (!v) break;
+    her = Int32Array.from(v.alt, (a) => (a >= 0 ? her[a]! : -1));
     haut = v.haut;
     ls = v.loops;
     if (v.gelegt === 0 && v.neu === 0) break;
   }
-  return { h: haut, loops: ls };
+  return { h: haut, loops: ls, neu: Uint8Array.from(her, (a) => (a < 0 ? 1 : 0)) };
 }
 
-/**
- * Eine gesicherte Form (`wesen/<name>.eewesen`) laden wie das Fenster seit dem 12.11.: Ein feineres Netz wird auf die Startkante
- * des kleinen Rechennetzes vergröbert (`netzVergroebern` in `kurven.ts`).
- */
 /** Punkte der Haut auf einer harten Linie (Kante an) */
 export function hartePunkte(h: Haut, loops: readonly Loop[]): Uint8Array {
   const hart = new Uint8Array(h.n);
@@ -144,5 +146,5 @@ export function formLaden(name: string, klein = true): { h: Haut; loops: Loop[];
   const MK_KLEIN = 8.64 * Math.sqrt(3);
   if (!klein || st.mk > MK_KLEIN / 1.05) return { h, loops, mk: st.mk };
   const r = nachVerdichten(h, loops, MK_KLEIN, 0.8);
-  return { ...r, mk: MK_KLEIN };
+  return { h: r.h, loops: r.loops, mk: MK_KLEIN };
 }

@@ -33,12 +33,20 @@
 // - `woelbung: 'linien'` und `'haut'` sind Versuche dazu, woher beim Verteilen die fehlende Angabe kommen kann (die Wölbung an
 //   den Linien an der Haut gemessen bzw. überall die der Haut). An der Kapsel: ohne 12,7, von den Linien 6,1, von der Haut 0,8.
 //
+// **Zweiter Beweis „B“ (13.11.2026, Probe `form-direkt-b.ts`):** Schritt 2 als Werkzeug für fertige Haut. Dazu `stand` (die
+// Haut beim Anlegen ist genau die Lösung für unbewegte Linien; die Normalen werden jedes Mal von der Haut gelesen),
+// `linienDrehung` und `normalenDrehen` (dreht eine Linie, drehen die Normalen der Haut mit) und `lagenNachfuehren` (dieselbe
+// Aufgabe ohne neu zu zerlegen). Gemessen: Anfassen und hin und zurück auf 10⁻⁷, Horn um 30° gebogen ohne neue Knicke, Dicke
+// bis auf 1 bis 5 % gehalten (heute 6 bis 16 %). Neue Haut runden kann es nicht, und die heutige Rechnung lässt sich dafür
+// nicht auf einen Teil der Haut beschränken: kein Ersatz für sie.
+//
 // Die Gewichte stammen aus der Haut beim Anlegen (intrinsische Delaunay-Triangulierung, `intrinsisch.ts`).
 
-import type { NormalZeile } from '../loeser/normalSystem';
+import type { NormalSystem, NormalZeile } from '../loeser/normalSystem';
 import { normalSystemZerlegt } from '../loeser/zerlegung';
 import { type IntrinsischeGewichte, intrinsischeGewichte } from './intrinsisch';
 import { type Bindungen, type Haut, hautNormalenMax } from './kurven';
+import type { BindungsPlan, Loop } from './loops';
 
 const uhr = (globalThis as { performance?: { now(): number } }).performance;
 const jetzt = (): number => (uhr ? uhr.now() : Date.now());
@@ -62,6 +70,13 @@ export type DirektOptionen = {
    * überall wie die Haut beim Anlegen (die Haut behält ihre Form, so weit die Linien sie nicht ändern).
    */
   woelbung?: 'keine' | 'linien' | 'haut';
+  /**
+   * Fester Stand (zweiter Beweis, 13.11.): Die Haut, wie sie beim Anlegen ist, ist genau die Lösung für unbewegte Linien und die
+   * Normalen der Haut. Was die Zeilen der Kanten an ihr nicht erfüllen, bleibt als rechte Seite stehen (je Kante ihr Anteil längs
+   * des Mittels der Normalen). Dann bewegt sich beim Anfassen und beim neuen Anlegen nichts, und die Normalen müssen kein eigener
+   * gemerkter Stand sein: Sie werden jedes Mal von der Haut gelesen.
+   */
+  stand?: boolean;
 };
 
 export type DirektZeiten = { verteilen: number; durchgaenge: number; rest: number; zeilen: number; zerlegen: number; loesen: number };
@@ -79,6 +94,8 @@ export class HautDirekt {
   private readonly nFrei: number;
   private readonly hart: Uint8Array | null;
   private readonly opt: Required<Omit<DirektOptionen, 'hart'>>;
+  /** fester Stand: je Kante (Eintrag der Gewichte, Nachbar > Punkt) ihr Anteil längs des Mittels der Normalen beim Anlegen */
+  private readonly versatz: Float64Array | null = null;
   /** Normalen der Haut beim Anlegen (nach Max) */
   private readonly nor0: Float64Array;
   /** Laplace der Lagen beim Anlegen je Punkt (Σ Gewicht · (Nachbar − Punkt)) */
@@ -87,6 +104,8 @@ export class HautDirekt {
   private readonly quelle: Float64Array | null;
   /** die gemessene und verteilte Wölbung je Punkt (nur mit `woelbung: 'linien'`) */
   readonly woelbung: Float64Array | null = null;
+  /** die Zerlegung des letzten `lagenLoesen` (Vorkonditionierer für `lagenNachfuehren`) */
+  private system: NormalSystem | null = null;
   /** das Feld der Normalen der letzten Rechnung (Start der nächsten) */
   feld: Float64Array | null = null;
   readonly zeiten: DirektZeiten = { verteilen: 0, durchgaenge: 0, rest: 0, zeilen: 0, zerlegen: 0, loesen: 0 };
@@ -103,6 +122,7 @@ export class HautDirekt {
       omega: opt.omega ?? 1.7,
       bindung: opt.bindung ?? 100,
       woelbung: opt.woelbung ?? 'keine',
+      stand: opt.stand ?? false,
     };
     this.hart = opt.hart ?? null;
     this.gewichte = intrinsischeGewichte(h);
@@ -130,6 +150,23 @@ export class HautDirekt {
       }
     this.quelle = null;
     const N0 = this.nor0;
+    if (this.opt.stand) {
+      const V = new Float64Array(nb.length);
+      const hart = this.hart;
+      for (let i = 0; i < n; i++)
+        for (let q = S[i]!; q < S[i + 1]!; q++) {
+          const j = nb[q]!;
+          if (j <= i) continue;
+          const hi = hart ? hart[i]! : 0;
+          const hj = hart ? hart[j]! : 0;
+          if (hi && hj) continue;
+          const f = hi || hj ? 1 : 0.5;
+          let r = 0;
+          for (let c = 0; c < 3; c++) r += f * ((hi ? 0 : N0[3 * i + c]!) + (hj ? 0 : N0[3 * j + c]!)) * (P[3 * j + c]! - P[3 * i + c]!);
+          V[q] = r;
+        }
+      this.versatz = V;
+    }
     if (this.opt.woelbung === 'haut') {
       // Quelle = was dem gewichteten Mittel der Nachbarnormalen fehlt, damit die Normalen der Haut stehen bleiben
       const s = new Float64Array(3 * n);
@@ -366,15 +403,243 @@ export class HautDirekt {
     return f;
   }
 
+  /**
+   * Die Drehung der Linien über die Haut verteilen und die Normalen der Haut beim Anlegen mitdrehen. `drehung`: Drehvektor je Punkt
+   * (Achse mal Winkel, 3 je Punkt; NaN: keiner), an den Punkten der Linien aus `linienDrehung`. Dazwischen wird jede Komponente
+   * gleichmäßig verteilt (Gewichte nach der Geometrie). Ohne Drehung kommen die Normalen der Haut zurück.
+   */
+  normalenDrehen(drehung: Float64Array): Float64Array {
+    const { start: S, nb, w } = this.gewichte;
+    const n = this.h.n;
+    const sp = this.h.spiegel;
+    const o = new Float64Array(3 * n);
+    const gegeben = new Uint8Array(n);
+    let irgend = false;
+    for (let v = 0; v < n; v++)
+      if (Number.isFinite(drehung[3 * v]!)) {
+        gegeben[v] = 1;
+        for (let c = 0; c < 3; c++) {
+          o[3 * v + c] = drehung[3 * v + c]!;
+          if (o[3 * v + c] !== 0) irgend = true;
+        }
+      }
+    if (irgend) {
+      const om = this.opt.omega;
+      let weg = Infinity;
+      for (let d = 0; d < this.opt.durchgaenge && weg > 1e-7; d++) {
+        weg = 0;
+        for (let v = 0; v < n; v++) {
+          if (gegeben[v]) continue;
+          const p = sp[v]!;
+          if (p >= 0 && p < v && !gegeben[p]) continue;
+          let sx = 0;
+          let sy = 0;
+          let sz = 0;
+          let W = 0;
+          for (let q = S[v]!; q < S[v + 1]!; q++) {
+            const j = nb[q]!;
+            if (j === v) continue;
+            const g = w[q]!;
+            sx += g * o[3 * j]!;
+            sy += g * o[3 * j + 1]!;
+            sz += g * o[3 * j + 2]!;
+            W += g;
+          }
+          if (!(W > 0)) continue;
+          // auf der Mittelebene dreht aus Symmetrie nur etwas um die Achse quer zu ihr
+          let x = p === v ? 0 : o[3 * v]! + om * (sx / W - o[3 * v]!);
+          let y = p === v ? 0 : o[3 * v + 1]! + om * (sy / W - o[3 * v + 1]!);
+          const z = o[3 * v + 2]! + om * (sz / W - o[3 * v + 2]!);
+          if (!Number.isFinite(x + y + z)) {
+            x = 0;
+            y = 0;
+          }
+          weg = Math.max(weg, Math.abs(x - o[3 * v]!), Math.abs(y - o[3 * v + 1]!), Math.abs(z - o[3 * v + 2]!));
+          o[3 * v] = x;
+          o[3 * v + 1] = y;
+          o[3 * v + 2] = z;
+          // das Spiegelbild einer Drehung: dieselbe um die gespiegelte Achse, andersherum
+          if (p >= 0 && p !== v && !gegeben[p]) {
+            o[3 * p] = -x;
+            o[3 * p + 1] = -y;
+            o[3 * p + 2] = z;
+          }
+        }
+      }
+    }
+    const N0 = this.nor0;
+    const f = new Float64Array(3 * n);
+    for (let v = 0; v < n; v++) {
+      const ax = o[3 * v]!;
+      const ay = o[3 * v + 1]!;
+      const az = o[3 * v + 2]!;
+      const th = Math.hypot(ax, ay, az);
+      const x = N0[3 * v]!;
+      const y = N0[3 * v + 1]!;
+      const z = N0[3 * v + 2]!;
+      if (!(th > 1e-12)) {
+        f[3 * v] = x;
+        f[3 * v + 1] = y;
+        f[3 * v + 2] = z;
+        continue;
+      }
+      // Rodrigues: v cos θ + (k × v) sin θ + k (k · v)(1 − cos θ)
+      const kx = ax / th;
+      const ky = ay / th;
+      const kz = az / th;
+      const c = Math.cos(th);
+      const si = Math.sin(th);
+      const kv = kx * x + ky * y + kz * z;
+      f[3 * v] = x * c + (ky * z - kz * y) * si + kx * kv * (1 - c);
+      f[3 * v + 1] = y * c + (kz * x - kx * z) * si + ky * kv * (1 - c);
+      f[3 * v + 2] = z * c + (kx * y - ky * x) * si + kz * kv * (1 - c);
+    }
+    return f;
+  }
+
   /** Schritt 2: die Lagen aus den Zielen der Bindungen (3 je Bindung) und dem Feld der Normalen; schreibt in die Haut */
   lagenLoesen(ziele: Float64Array, feld: Float64Array): void {
     const t0 = jetzt();
+    const { zeilen, rechts } = this.zeilenBauen(ziele, feld);
+    const t1 = jetzt();
+    const N = 3 * this.nFrei;
+    const sys = normalSystemZerlegt(N, zeilen, 1e-12);
+    this.system = sys;
+    const t2 = jetzt();
+    this.schreiben(ziele, sys.loesenSpalte(this.rechteSeite(zeilen, rechts)));
+    this.zeiten.zeilen = t1 - t0;
+    this.zeiten.zerlegen = t2 - t1;
+    this.zeiten.loesen = jetzt() - t2;
+  }
+
+  /**
+   * Dieselbe Aufgabe wie `lagenLoesen`, ohne neu zu zerlegen (zweiter Beweis, 13.11.): Drehen die Normalen mit den Linien, ändert
+   * sich die Matrix mit jedem Bild. Hier wird mit der Zerlegung des letzten `lagenLoesen` als Vorkonditionierer nachgeführt
+   * (konjugierte Gradienten, Start sind die Lagen der Haut, wie sie ist). Zurück kommt, wie viele Schritte es brauchte, bis der Rest
+   * unter `genau` mal der rechten Seite lag (höchstens `hoechstens`).
+   */
+  lagenNachfuehren(ziele: Float64Array, feld: Float64Array, genau = 1e-6, hoechstens = 80): number {
+    const sys = this.system;
+    if (!sys) throw new Error('HautDirekt: vor dem Nachführen einmal `lagenLoesen`');
+    const { zeilen, rechts } = this.zeilenBauen(ziele, feld);
+    const N = 3 * this.nFrei;
+    const b = this.rechteSeite(zeilen, rechts);
+    /** Matrix mal Vektor: Σ Gewicht · Zeile · (Zeile · x) */
+    const mal = (x: Float64Array): Float64Array => {
+      const y = new Float64Array(N);
+      for (const z of zeilen) {
+        let t = 0;
+        for (let k = 0; k < z.index.length; k++) t += z.wert[k]! * x[z.index[k]!]!;
+        t *= z.gewicht;
+        if (t === 0) continue;
+        for (let k = 0; k < z.index.length; k++) y[z.index[k]!] = y[z.index[k]!]! + t * z.wert[k]!;
+      }
+      return y;
+    };
+    const x = new Float64Array(N);
+    const P = this.h.pos;
+    for (let v = 0; v < this.h.n; v++) {
+      const k = this.nr[v]!;
+      if (k < 0) continue;
+      x[3 * k] = P[3 * v]!;
+      x[3 * k + 1] = P[3 * v + 1]!;
+      x[3 * k + 2] = P[3 * v + 2]!;
+    }
+    const Ax = mal(x);
+    const r = Float64Array.from(b, (q, i) => q - Ax[i]!);
+    let bb = 0;
+    for (let i = 0; i < N; i++) bb += b[i]! * b[i]!;
+    const ziel = genau * genau * Math.max(bb, 1e-300);
+    let z = sys.loesenSpalte(r);
+    const p = Float64Array.from(z);
+    let rz = 0;
+    for (let i = 0; i < N; i++) rz += r[i]! * z[i]!;
+    let it = 0;
+    for (; it < hoechstens; it++) {
+      let rr = 0;
+      for (let i = 0; i < N; i++) rr += r[i]! * r[i]!;
+      if (rr <= ziel) break;
+      const Ap = mal(p);
+      let pAp = 0;
+      for (let i = 0; i < N; i++) pAp += p[i]! * Ap[i]!;
+      if (!(pAp > 0)) break;
+      const a = rz / pAp;
+      for (let i = 0; i < N; i++) {
+        x[i] = x[i]! + a * p[i]!;
+        r[i] = r[i]! - a * Ap[i]!;
+      }
+      z = sys.loesenSpalte(r);
+      let rzNeu = 0;
+      for (let i = 0; i < N; i++) rzNeu += r[i]! * z[i]!;
+      const be = rzNeu / rz;
+      rz = rzNeu;
+      for (let i = 0; i < N; i++) p[i] = z[i]! + be * p[i]!;
+    }
+    this.schreiben(ziele, x);
+    return it;
+  }
+
+  /** rechte Seite der Normalgleichungen: Σ Gewicht · rechts · Zeile */
+  private rechteSeite(zeilen: readonly NormalZeile[], rechts: readonly number[]): Float64Array {
+    const b = new Float64Array(3 * this.nFrei);
+    for (let r = 0; r < zeilen.length; r++) {
+      const z = zeilen[r]!;
+      const gr = z.gewicht * rechts[r]!;
+      if (gr === 0) continue;
+      for (let t = 0; t < z.index.length; t++) b[z.index[t]!] = b[z.index[t]!]! + gr * z.wert[t]!;
+    }
+    return b;
+  }
+
+  /** die Lösung in die Haut schreiben: feste Punkte auf ihr Ziel, freie aus `x`; spiegelgleich genau */
+  private schreiben(ziele: Float64Array, x: Float64Array): void {
+    const h = this.h;
+    const n = h.n;
+    const fest = this.fest;
+    const nr = this.nr;
+    const P = h.pos;
+    for (let v = 0; v < n; v++) {
+      const fj = fest[v]!;
+      if (fj >= 0) {
+        P[3 * v] = ziele[3 * fj]!;
+        P[3 * v + 1] = ziele[3 * fj + 1]!;
+        P[3 * v + 2] = ziele[3 * fj + 2]!;
+      } else {
+        const k = 3 * nr[v]!;
+        P[3 * v] = x[k]!;
+        P[3 * v + 1] = x[k + 1]!;
+        P[3 * v + 2] = x[k + 2]!;
+      }
+    }
+    // spiegelgleich bis auf Rundung: genau machen
+    const sp = h.spiegel;
+    for (let v = 0; v < n; v++) {
+      const p = sp[v]!;
+      if (p < 0 || fest[v]! >= 0) continue;
+      if (p === v) P[3 * v + 2] = 0;
+      else if (p > v && fest[p]! < 0) {
+        const x0 = (P[3 * v]! + P[3 * p]!) / 2;
+        const y0 = (P[3 * v + 1]! + P[3 * p + 1]!) / 2;
+        const z0 = (P[3 * v + 2]! - P[3 * p + 2]!) / 2;
+        P[3 * v] = x0;
+        P[3 * v + 1] = y0;
+        P[3 * v + 2] = z0;
+        P[3 * p] = x0;
+        P[3 * p + 1] = y0;
+        P[3 * p + 2] = -z0;
+      }
+    }
+  }
+
+  /** die Zeilen der Aufgabe (Kanten, Verteilung in der Fläche, lose Bindungen) und ihre rechten Seiten */
+  private zeilenBauen(ziele: Float64Array, feld: Float64Array): { zeilen: NormalZeile[]; rechts: number[] } {
     const { start: S, nb, w } = this.gewichte;
     const h = this.h;
     const n = h.n;
     const fest = this.fest;
     const nr = this.nr;
     const hart = this.hart;
+    const V = this.versatz;
     const zeilen: NormalZeile[] = [];
     const rechts: number[] = [];
     /** eine Zeile Σ koeff · Lage = konst über Punkte der Haut; feste Punkte wandern mit ihrem Ziel auf die rechte Seite */
@@ -414,7 +679,7 @@ export class HautDirekt {
         const my = (hi ? 0 : feld[3 * i + 1]!) + (hj ? 0 : feld[3 * j + 1]!);
         const mz = (hi ? 0 : feld[3 * i + 2]!) + (hj ? 0 : feld[3 * j + 2]!);
         const f = hi || hj ? 1 : 0.5;
-        zeile([i, j], [-f * mx, -f * my, -f * mz, f * mx, f * my, f * mz], g, 0);
+        zeile([i, j], [-f * mx, -f * my, -f * mz, f * mx, f * my, f * mz], g, V ? V[q]! : 0);
       }
     }
     // je freiem Punkt: in der Fläche im gewichteten Mittel seiner Nachbarn (zwei Richtungen senkrecht zu seiner Normale)
@@ -487,53 +752,7 @@ export class HautDirekt {
         zeile([e0, e1, e2], koeff, this.opt.bindung, ziele[3 * j + c]!);
       }
     }
-    const t1 = jetzt();
-    const N = 3 * this.nFrei;
-    const sys = normalSystemZerlegt(N, zeilen, 1e-12);
-    const t2 = jetzt();
-    const b = new Float64Array(N);
-    for (let r = 0; r < zeilen.length; r++) {
-      const z = zeilen[r]!;
-      const gr = z.gewicht * rechts[r]!;
-      if (gr === 0) continue;
-      for (let t = 0; t < z.index.length; t++) b[z.index[t]!] = b[z.index[t]!]! + gr * z.wert[t]!;
-    }
-    const x = sys.loesenSpalte(b);
-    const P = h.pos;
-    for (let v = 0; v < n; v++) {
-      const fj = fest[v]!;
-      if (fj >= 0) {
-        P[3 * v] = ziele[3 * fj]!;
-        P[3 * v + 1] = ziele[3 * fj + 1]!;
-        P[3 * v + 2] = ziele[3 * fj + 2]!;
-      } else {
-        const k = 3 * nr[v]!;
-        P[3 * v] = x[k]!;
-        P[3 * v + 1] = x[k + 1]!;
-        P[3 * v + 2] = x[k + 2]!;
-      }
-    }
-    // spiegelgleich bis auf Rundung: genau machen
-    const sp = h.spiegel;
-    for (let v = 0; v < n; v++) {
-      const p = sp[v]!;
-      if (p < 0 || fest[v]! >= 0) continue;
-      if (p === v) P[3 * v + 2] = 0;
-      else if (p > v && fest[p]! < 0) {
-        const x0 = (P[3 * v]! + P[3 * p]!) / 2;
-        const y0 = (P[3 * v + 1]! + P[3 * p + 1]!) / 2;
-        const z0 = (P[3 * v + 2]! - P[3 * p + 2]!) / 2;
-        P[3 * v] = x0;
-        P[3 * v + 1] = y0;
-        P[3 * v + 2] = z0;
-        P[3 * p] = x0;
-        P[3 * p + 1] = y0;
-        P[3 * p + 2] = -z0;
-      }
-    }
-    this.zeiten.zeilen = t1 - t0;
-    this.zeiten.zerlegen = t2 - t1;
-    this.zeiten.loesen = jetzt() - t2;
+    return { zeilen, rechts };
   }
 
   /**
@@ -546,4 +765,101 @@ export class HautDirekt {
     this.feld = this.richtungVerteilen(richtung, s);
     this.lagenLoesen(ziele, this.feld);
   }
+}
+
+type V3 = [number, number, number];
+
+/**
+ * Wie sich jede Linie an ihren Punkten gedreht hat: Drehvektor (Achse mal Winkel) je Punkt der Haut auf einer Linie (3 je Punkt,
+ * NaN: keiner). Das Dreibein eines Linienpunkts ist seine Tangente, die Richtung aus dem Liniennetz (`linienRichtung`) und ihr
+ * Kreuzprodukt; die Drehung führt das Dreibein der alten Lagen in das der neuen. Die Richtung aus dem Liniennetz trifft die Haut
+ * an Florians Formen nicht genau (Kopf der Datei); hier geht nur ein, wie sie sich ändert. Liegen mehrere Linien auf einem Punkt
+ * (Kreuzung), wird gemittelt.
+ */
+export function linienDrehung(
+  h: Haut,
+  loops: readonly Loop[],
+  plan: BindungsPlan,
+  lagenAlt: readonly Float64Array[],
+  lagenNeu: readonly Float64Array[],
+  richtungAlt: Float64Array,
+  richtungNeu: Float64Array,
+): Float64Array {
+  const aus = new Float64Array(3 * h.n).fill(Number.NaN);
+  const zahl = new Uint16Array(h.n);
+  const m = plan.loop.length;
+  const tangente = (l: Loop, L: Float64Array, i: number, gespiegelt: boolean): V3 => {
+    const n = l.proben.length;
+    const p = (k: number): V3 => {
+      let q = k;
+      let sp = false;
+      if (l.art === 'ring') {
+        // über das Ende eines Rings geht es in seiner Spiegelhälfte weiter
+        if (q < 0) {
+          q = Math.min(-q, n - 1);
+          sp = true;
+        } else if (q > n - 1) {
+          q = Math.max(2 * (n - 1) - q, 0);
+          sp = true;
+        }
+      } else q = ((q % n) + n) % n;
+      return [L[3 * q]!, L[3 * q + 1]!, sp ? -L[3 * q + 2]! : L[3 * q + 2]!];
+    };
+    const a = p(i - 1);
+    const b = p(i + 1);
+    const t: V3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    if (gespiegelt) t[2] = -t[2];
+    const len = Math.hypot(t[0], t[1], t[2]);
+    return len > 1e-12 ? [t[0] / len, t[1] / len, t[2] / len] : [0, 0, 0];
+  };
+  /** Dreibein (Spalten t, d, t × d) aus Tangente und Richtung; null, wenn eines fehlt */
+  const dreibein = (t: V3, R: Float64Array, v: number): [V3, V3, V3] | null => {
+    if (!Number.isFinite(R[3 * v]!) || (t[0] === 0 && t[1] === 0 && t[2] === 0)) return null;
+    const s = R[3 * v]! * t[0] + R[3 * v + 1]! * t[1] + R[3 * v + 2]! * t[2];
+    const d: V3 = [R[3 * v]! - s * t[0], R[3 * v + 1]! - s * t[1], R[3 * v + 2]! - s * t[2]];
+    const len = Math.hypot(d[0], d[1], d[2]);
+    if (!(len > 1e-6)) return null;
+    d[0] /= len;
+    d[1] /= len;
+    d[2] /= len;
+    return [t, d, [t[1] * d[2] - t[2] * d[1], t[2] * d[0] - t[0] * d[2], t[0] * d[1] - t[1] * d[0]]];
+  };
+  for (let j = 0; j < m; j++) {
+    const e = plan.bind.ecken;
+    const v = e[3 * j]!;
+    if (e[3 * j + 1] !== v || e[3 * j + 2] !== v) continue;
+    const li = plan.loop[j]!;
+    const l = loops[li]!;
+    const sp = plan.spiegel[j] === 1;
+    const A = dreibein(tangente(l, lagenAlt[li]!, plan.probe[j]!, sp), richtungAlt, v);
+    const B = dreibein(tangente(l, lagenNeu[li]!, plan.probe[j]!, sp), richtungNeu, v);
+    if (!A || !B) continue;
+    // Drehung = B · Aᵀ (Summe der dyadischen Produkte der Achsen); ihr Drehvektor aus dem schiefen Teil
+    let spur = 0;
+    const R: number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+    for (let k = 0; k < 3; k++) for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) R[3 * r + c] = R[3 * r + c]! + B[k]![r]! * A[k]![c]!;
+    spur = R[0]! + R[4]! + R[8]!;
+    const wx = R[7]! - R[5]!;
+    const wy = R[2]! - R[6]!;
+    const wz = R[3]! - R[1]!;
+    const sin2 = Math.hypot(wx, wy, wz);
+    const th = Math.atan2(sin2 / 2, (spur - 1) / 2);
+    const f = sin2 > 1e-12 ? th / sin2 : 0.5;
+    if (zahl[v] === 0) {
+      aus[3 * v] = 0;
+      aus[3 * v + 1] = 0;
+      aus[3 * v + 2] = 0;
+    }
+    aus[3 * v] = aus[3 * v]! + f * wx;
+    aus[3 * v + 1] = aus[3 * v + 1]! + f * wy;
+    aus[3 * v + 2] = aus[3 * v + 2]! + f * wz;
+    zahl[v] = zahl[v]! + 1;
+  }
+  for (let v = 0; v < h.n; v++)
+    if (zahl[v]! > 1) {
+      aus[3 * v] = aus[3 * v]! / zahl[v]!;
+      aus[3 * v + 1] = aus[3 * v + 1]! / zahl[v]!;
+      aus[3 * v + 2] = aus[3 * v + 2]! / zahl[v]!;
+    }
+  return aus;
 }
