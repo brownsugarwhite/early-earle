@@ -195,6 +195,19 @@ das Loch. Der dritte Punkt unten („verschmelzen an einem glatten Loop“) folg
 und Spiegeln der Hälfte selbst trägt. Offen ist Florians Entscheidung: Umbau auf die halbe Haut ohne glatten Rand, zuerst den
 Rand klären, oder Schritt 4 zurückstellen.
 
+**Nachtrag 13.11. nachts, zweiter kleiner Beweis „Donut mit Florians Regel“** (Florian: „Donut beweisen“; Probe
+`form-donut-regel.ts`, nur Kern und ein Bild, im Fenster ändert sich nichts). Derselbe Fall wie oben (Kugel mit drei Loops, der
+Punkt der Seite um 190 durch die Mitte), jetzt mit seiner Regel (Abschnitt 5, Punkt 4): Beim Loslassen wird an der Mitte
+geschnitten; jede geschnittene Linie endet dort in einem Punkt ohne Knick (Griff senkrecht zur Mitte, wie jedes Ende eines Rings
+im Kern); der Rand des Lochs ist ein neuer Loop der Mittelebene mit glatten Punkten an den neuen Kreuzungen. Zwei Fassungen:
+(a) nur diese Regel, die heutige Rechnung rechnet weiter; (b) dazu wird die Haut am neuen Rand einmal neu gerundet (der neue
+Loop hält dabei nur den Ort und gibt noch keine Wölbung vor), danach rechnet die heutige Rechnung unverändert weiter.
+**Kriterien, vorher festgelegt:** 1. Im Bild (flach schattiert, gleiche Blicke wie oben) ist am Rand des Lochs keine Kante zu
+sehen; im Schnitt läuft die Haut rund durch die Mitte (keine Spitze). 2. Der Knick quer über den Rand ist nicht größer als der
+zwischen den Dreiecken daneben (heute im Mittel 97°). 3. Das Loch hat keine Ecken, sein Halbmesser bleibt im Bereich von heute
+(73,5 bis 93,1). 4. Die Rechnung kommt zur Ruhe, nichts ist umgestülpt, und nach weiteren Runden der unveränderten heutigen
+Rechnung ist der Rand noch glatt. **Aufwand:** ein halber bis ein Tag; hält es danach nicht: anhalten und es sagen.
+
 - **Was du danach siehst:**
   - Jede neue Form beginnt als gespiegelte Kugel, **die Mittellinie ist von Anfang an eingezeichnet**.
   - Ziehen fühlt sich direkt an: Die Haut ist in jedem Bild fertig, nach dem Loslassen passiert nichts mehr.
