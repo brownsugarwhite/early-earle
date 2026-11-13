@@ -217,6 +217,15 @@ die Mitte kommt), und der Rand des Lochs ist ein Loop so rund wie möglich durch
 keine schmalen Dreiecke bleiben (Punkte dicht an der Mitte kommen auf die Mitte). Fassung (b) ist verworfen: Hält der neue Rand
 nur den Ort, kommt die Rechnung nicht zur Ruhe. Nicht gerechnet ist der Zug selbst (Vorschlag: beim ersten Durchstoßen einmal
 schneiden, danach wandern nur die Linien). Florians Urteil zu den Bildern steht aus.
+**Nachtrag 13.11. nachts, Florians zweite Regel** (Abschnitt 5, Punkt 4; dieselbe Probe mit `GRIFFE=kante`, Bilder
+`docs/progress/editor/schritt4-donut-kante-2026-11-13.jpg` und `…-kante-klein-…`): Sie lässt sich ganz mit den Regeln rechnen,
+die der Kern für Kanten schon hat. Fest gemacht (geschnitten, die neuen Enden behalten ihren Knick als Ecken von selbst, der
+Rand ein Loop mit Kante) bewegt sich die Haut wenig: beim großen Loch bis 6,9, im Mittel 1,8 (zwischen den Linien rundet sich
+jede Seite am Rand etwas, Knick 96° → 71°), gerade erst über die Mitte im Mittel 0,04. „Kante aus“ am Rand macht die Ecken glatt
+(`kantenKnicken`: Griffe auf eine Gerade, Längen bleiben) und die Haut glatt (Knick am Rand 15° wie eine Reihe daneben, nichts
+umgestülpt); der Umriss des Lochs bleibt, wie er geschnitten wurde (Halbmesser 77 bis 92, Ecken an den vier Punkten). Rund geht
+erst, wenn der Schnitt fest ist. Der Zug braucht mit dieser Regel keinen Schnitt (er bleibt wie heute), und der Schnitt gibt
+wieder eine gewöhnliche gespiegelte Haut: Der Donut hängt damit nicht mehr am Umbau auf die halbe Haut.
 
 - **Was du danach siehst:**
   - Jede neue Form beginnt als gespiegelte Kugel, **die Mittellinie ist von Anfang an eingezeichnet**.
@@ -289,6 +298,14 @@ Zu jeder steht meine Empfehlung; „alles wie empfohlen“ genügt.
    Beim Loslassen verschwindet er, und es gibt kein Zurückziehen. So ähnlich ist es bei Blender, wenn Clipping beim Mirror
    Modifier eingestellt ist.“ Es gilt also: beim Loslassen endgültig an der Mitte geschnitten, der Rand des Lochs ein neuer
    Edgeloop mit glatten Punkten an den neuen Kreuzungen, kein Zurückziehen (⌘Z bleibt).
+   **Florian am 13.11. nachts (nach dem zweiten Donut-Beweis), ändert seine Regel:** „Ich glaube, ich habe eine bessere
+   Regeländerung, die Springen vermeidet. Der neue Loop soll nicht gleich rund sein, sondern wie vorher eine Kante. An den neuen
+   Kreuzungen bilden sich Punkte, und der durch die Mitte gezogene Griff bleibt sichtbar, aber ist markiert. Ich kann ihn auch
+   löschen, dann ist kein Rückführen mehr möglich. Wenn ich die Kante dann selektiere und ihre Kantigkeit auf 0 stelle, erhalte
+   ich ja den runden Donut. Wäre das eleganter? Oder habe ich einen Denkfehler?“ Damit gilt (seine Zusage zur Antwort steht
+   aus): Ziehen und Loslassen bleiben wie heute (die Hälften treffen sich an einer Kante, zurückziehen geht); an den Kreuzungen
+   der Linien mit der Mitte erscheinen Punkte, der gezogene Punkt ist markiert; erst sein Löschen macht den Schnitt fest; der
+   Rand des Lochs ist dann ein Loop mit Kante; rund wird er mit „Kante aus“.
 5. **Posen speichern ihre Linien**, nicht mehr die Verschiebung je Netzpunkt (Schritt 5). Empfehlung: ja. Alte Test-Posen in
    gesicherten Formen werden dabei nicht übernommen.
 6. **`/editor` (Blaupause-Layout)** wird während der Schritte 1 bis 7 nicht nachgezogen, danach einmal in einem Zug.
