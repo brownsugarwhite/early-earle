@@ -52,6 +52,11 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   `formLaden` in `form-direkt-faelle.ts` wie das Fenster (lose Loops eingesetzt, auf das kleine Netz vergröbert). Der zweite
   Beweis „B“ (fertige Haut direkt bewegen, biegen, anfassen) ist `form-direkt-b.ts` (20 s). Die heutige Rechnung auf einem Teil
   der Haut (`LoopZug` mit Bereich, `kurven`) läuft davon; nicht darauf bauen.
+- Donut (Schritt 4, 13.11.): `form-donut.ts` (verschmelzen allein: der Rand bleibt eine Kante) und `form-donut-regel.ts`
+  (Florians Regel: beim Loslassen geschnitten, an den neuen Kreuzungen Punkte ohne Knick, der Rand ein neuer Loop; hält mit der
+  heutigen Rechnung). Gemeinsame Teile in `form-donut-teile.ts`. Wer die Haut an der Spiegelebene schneidet, legt Punkte dicht
+  an der Ebene selbst auf die Ebene (`verschmelzen` mit `fangen`): An den schmalen Dreiecken sonst kommt die heutige Rechnung
+  auf feinem Netz nicht zur Ruhe.
 
 ## Was man nicht verletzen darf
 

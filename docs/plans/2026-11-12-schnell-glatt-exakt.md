@@ -207,6 +207,16 @@ sehen; im Schnitt läuft die Haut rund durch die Mitte (keine Spitze). 2. Der Kn
 zwischen den Dreiecken daneben (heute im Mittel 97°). 3. Das Loch hat keine Ecken, sein Halbmesser bleibt im Bereich von heute
 (73,5 bis 93,1). 4. Die Rechnung kommt zur Ruhe, nichts ist umgestülpt, und nach weiteren Runden der unveränderten heutigen
 Rechnung ist der Rand noch glatt. **Aufwand:** ein halber bis ein Tag; hält es danach nicht: anhalten und es sagen.
+**Ergebnis (13.11. nachts; Bilder `docs/progress/editor/schritt4-donut-regel-2026-11-13.jpg` und `…-regel-klein-…`, Zahlen
+`schritt4-donut-regel-messung-2026-11-13.txt`, Einzelheiten in `docs/UEBERGABE.md`, Abschnitt 7.2):** Fassung (a) hält, alle
+vier Kriterien sind erfüllt: Das Loch ist rund (Halbmesser 91,1 bis 91,8 statt 77 bis 92), der Knick quer über den Rand im
+Mittel 18° statt 96° und so groß wie eine Reihe daneben, die Rechnung steht nach 3 + 8 Runden; ebenso bei mittlerem und kleinem
+Loch und mit viermal so vielen Dreiecken. Dazu gehören zwei Festlegungen, die im Beweis entstanden sind: Der Griff des neuen
+Endes ist der senkrechte Anteil des geteilten Griffs (mit seiner ganzen Länge springt die Form, wenn der Punkt gerade erst über
+die Mitte kommt), und der Rand des Lochs ist ein Loop so rund wie möglich durch die neuen Kreuzungen. Beim Schneiden dürfen
+keine schmalen Dreiecke bleiben (Punkte dicht an der Mitte kommen auf die Mitte). Fassung (b) ist verworfen: Hält der neue Rand
+nur den Ort, kommt die Rechnung nicht zur Ruhe. Nicht gerechnet ist der Zug selbst (Vorschlag: beim ersten Durchstoßen einmal
+schneiden, danach wandern nur die Linien). Florians Urteil zu den Bildern steht aus.
 
 - **Was du danach siehst:**
   - Jede neue Form beginnt als gespiegelte Kugel, **die Mittellinie ist von Anfang an eingezeichnet**.
