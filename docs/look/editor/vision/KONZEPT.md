@@ -278,6 +278,10 @@ Start: Umriss mit dem Stift in der Seitenansicht, Bestätigen, die Ansicht zieht
 Drahtmodell = Kurvennetz in dunkler Tinte (Kiel doppelt so stark), verdeckte Linien hell, Umriss, dazu Transparentpapier (der
 Körper hellt die Farben hinter sich auf); Material matt mit kühlen Schatten und warmem Licht (Gooch et al. 1998), so bleiben
 dunkle Linien und weiße Griffe mit dunklem Ring lesbar; Lila heißt gewählt; Fliese als feines Quadrat; weicher Kontaktschatten.
+Dynamisch, aber still: Linien werden zum Betrachter hin kräftiger (Strichstärke nach Tiefe), der Kontaktschatten weicht dem
+Licht aus (im Wesen-Modus bleibt er stehen, während sich das Wesen dreht), das Transparentpapier trägt einen Hauch der
+Schattierung, die Hand zeigt sich beim Haut-Formen als lila Ring der Reichweite, X gehalten macht das Material im Kreis
+durchsichtig (Röntgen).
 
 **Beim Bauen gelernt:** Chrome zeigte eine nur noch geleerte 2D-Überlagerung abwechselnd mit einem alten Puffer (ein unsichtbarer
 Bildpunkt je Bild behebt es). Der Gitterrand des aufgeblasenen Netzes macht die Seitenansicht zackig, bis er auf den Umriss gelegt

@@ -4,22 +4,27 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=Instrument+Sans:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-  /* Layout: ein Werkstattheft, im Risograph gedruckt. Drei Bögen, jeder in den Farben seines Prototyps; Passerkreuze statt
-     Rahmen. Bewusst eine einzige helle Welt (Papier), deshalb ohne dunklen Gegenentwurf. */
+  /* Layout: ein Werkstattheft auf Papier, gedruckt in den drei Farben der Ecke (Cyan Seite, Magenta Front, Gelb Top) und
+     Tinte; Passerkreuze trennen die Bögen. Bewusst eine einzige helle Welt: Druckfarben brauchen helles Papier. */
   :root {
-    --papier: #f4f2ed;
-    --papier-2: #ebe7df;
-    --tinte: #1c1a21;
-    --grau: #66616e;
-    --haar: #d6d0c5;
-    --pink: #ff3e9a;
-    --blau: #0078bf;
-    --gelb: #ffd800;
+    --papier: #f6f3ee;
+    --papier-2: #ece7df;
+    --tinte: #1e1c23;
+    --grau: #67626f;
+    --haar: #d8d1c6;
+    --cyan: #0099db;
+    --magenta: #e61a85;
+    --gelb: #ffd100;
+    --lila: #936ffb;
     --tiefe: #0a1c25;
-    --jelly: #3bfcf2;
-    --nonphoto: #5fb4dc;
     --petrol: #003f4e;
     --magenta-tinte: #b0005e;
+    --t-cyan: #99d6f1;
+    --t-magenta: #f7b6d8;
+    --t-gelb: #ffefa8;
+    --c70: #4db8e6;
+    --m70: #ed5ea9;
+    --y70: #ffdf4d;
     --f-display: 'Unbounded', 'Arial Black', 'Helvetica Neue', sans-serif;
     --f-text: 'Instrument Sans', 'Helvetica Neue', Arial, sans-serif;
     --f-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
@@ -27,7 +32,7 @@
     --s0: 1.0625rem;
     --s1: 1.3rem;
     --s2: clamp(1.7rem, 4.4vw, 2.6rem);
-    --s3: clamp(2.5rem, 9.6vw, 6.2rem);
+    --s3: clamp(3rem, 13vw, 8.4rem);
     color-scheme: light;
   }
   html { background: var(--papier); }
@@ -42,16 +47,16 @@
   .heft { max-width: 1180px; margin: 0 auto; display: grid; gap: 0; padding-block: 28px 72px; }
   h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; line-height: 1.06; }
   h2 { font-size: var(--s2); font-weight: 800; letter-spacing: -0.015em; }
-  h3 { font-size: var(--s1); font-weight: 500; }
+  h3 { font-size: var(--s1); font-weight: 800; }
   p { margin: 0; max-width: 64ch; }
-  a { color: var(--blau); text-underline-offset: 3px; }
-  a:focus-visible, button:focus-visible { outline: 2px solid var(--pink); outline-offset: 3px; border-radius: 4px; }
+  a { color: var(--cyan); text-underline-offset: 3px; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--magenta); outline-offset: 3px; border-radius: 4px; }
   .mono { font-family: var(--f-mono); font-size: var(--s-1); letter-spacing: 0.03em; color: var(--grau); }
   .klein { font-size: var(--s-1); color: var(--grau); }
   .eyebrow { font-family: var(--f-mono); font-size: var(--s-1); letter-spacing: 0.12em; text-transform: uppercase; color: var(--grau); }
   section { display: grid; gap: 22px; }
 
-  /* Passerkreuz zwischen den Abschnitten: das Zeichen des Hefts */
+  /* Passerkreuz zwischen den Bögen */
   .passer { position: relative; height: 1px; margin-block: 60px 40px; background: var(--haar); }
   .passer::before {
     content: ''; position: absolute; left: 50%; top: -11px; width: 22px; height: 22px; transform: translateX(-50%);
@@ -62,84 +67,101 @@
       var(--papier);
   }
 
-  /* Kopf: der Titel als Überdruck dreier Platten (Gelb, Pink, Blau), leicht außer Passer */
-  .kopf { display: grid; gap: 26px; padding-block: 14px 8px; }
+  /* Kopf: „Ecke“ als drei Druckplatten, die gerade in Passer kommen */
+  .kopf { display: grid; gap: 22px; padding-block: 14px 8px; }
   .kopf .zeile { display: flex; justify-content: space-between; align-items: baseline; gap: 12px 20px; flex-wrap: wrap; }
-  .titel { position: relative; font-size: var(--s3); font-weight: 800; letter-spacing: -0.035em; line-height: 0.92; isolation: isolate; overflow-wrap: anywhere; }
+  .titel { position: relative; font-size: var(--s3); font-weight: 800; letter-spacing: -0.04em; line-height: 0.9; isolation: isolate; overflow-wrap: anywhere; }
   .titel .platte { display: block; mix-blend-mode: multiply; }
   .titel .platte + .platte { position: absolute; inset: 0; }
-  .titel .p-gelb { color: var(--gelb); transform: translate(-0.025em, 0.05em); }
-  .titel .p-pink { color: var(--pink); transform: translate(0.035em, 0.025em); }
-  .titel .p-blau { color: var(--blau); }
-  .satz { font-size: var(--s1); line-height: 1.45; max-width: 52ch; }
+  .titel .p-c { color: var(--c70); transform: translate(-0.03em, 0.025em); }
+  .titel .p-m { color: var(--m70); transform: translate(0.026em, -0.018em); }
+  .titel .p-y { color: var(--y70); transform: translate(0.01em, 0.045em); }
+  .satz { font-size: var(--s1); line-height: 1.45; max-width: 54ch; }
 
-  /* Rückmeldung und Antwort */
-  .antworten { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 18px 28px; }
-  .antwort { display: grid; gap: 8px; align-content: start; min-width: 0; }
-  .antwort q { font-family: var(--f-mono); font-size: var(--s-1); color: var(--grau); quotes: '„' '“'; }
-
-  /* Bögen: Film links, Text rechts; schmal untereinander */
-  .bogen { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 26px 34px; align-items: start; }
-  @media (max-width: 860px) { .bogen { grid-template-columns: minmax(0, 1fr); } }
-  .bogen .film { position: relative; border-radius: 4px; overflow: hidden; aspect-ratio: 16 / 10; max-width: 100%; background: var(--papier-2); box-shadow: 0 1px 0 var(--haar), 0 18px 40px -26px rgba(28, 26, 33, 0.45); }
-  .bogen .film video { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .bogen .text { display: grid; gap: 16px; min-width: 0; }
-  .bogen .name { display: flex; align-items: center; gap: 12px; }
-  .bogen .name h2 { color: var(--ink); }
-  .farbe { width: 30px; height: 30px; border-radius: 50%; flex: none; }
-  .bogen .leit { font-size: var(--s1); line-height: 1.38; }
+  /* Held: der Film der ganzen Vorführung, darunter die zwei Starts */
+  .held { display: grid; gap: 18px; }
+  .held .film { position: relative; border-radius: 6px; overflow: hidden; aspect-ratio: 16 / 10; max-width: 100%; background: var(--papier-2); box-shadow: 0 1px 0 var(--haar), 0 24px 60px -36px rgba(30, 28, 35, 0.55); }
+  .held .film video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .held .zeile { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; }
   .oeffnen {
     display: inline-flex; align-items: center; gap: 10px; justify-self: start; padding: 13px 20px; border-radius: 999px;
     background: var(--ink, var(--tinte)); color: var(--papier); font: 600 var(--s0)/1 var(--f-text); text-decoration: none;
-    transition: transform 160ms ease, box-shadow 160ms ease;
+    border: 0; cursor: pointer; transition: transform 160ms ease, box-shadow 160ms ease;
   }
   .oeffnen:hover { transform: translateY(-1px); box-shadow: 0 6px 18px -8px var(--ink, var(--tinte)); }
-  .oeffnen { border: 0; cursor: pointer; }
-  /* Vollbild-Zeichen: vier Ecken */
+  .oeffnen.gross { padding: 16px 26px; font-size: var(--s1); }
+  .oeffnen.hell { background: var(--papier); color: var(--tinte); box-shadow: inset 0 0 0 1.5px var(--tinte); }
+  .oeffnen.hell:hover { box-shadow: inset 0 0 0 1.5px var(--tinte), 0 6px 18px -10px var(--tinte); }
   .voll { width: 14px; height: 14px; flex: none; background:
     linear-gradient(currentColor, currentColor) 0 0 / 5px 2px no-repeat, linear-gradient(currentColor, currentColor) 0 0 / 2px 5px no-repeat,
     linear-gradient(currentColor, currentColor) 100% 0 / 5px 2px no-repeat, linear-gradient(currentColor, currentColor) 100% 0 / 2px 5px no-repeat,
     linear-gradient(currentColor, currentColor) 0 100% / 5px 2px no-repeat, linear-gradient(currentColor, currentColor) 0 100% / 2px 5px no-repeat,
     linear-gradient(currentColor, currentColor) 100% 100% / 5px 2px no-repeat, linear-gradient(currentColor, currentColor) 100% 100% / 2px 5px no-repeat; }
+
   /* Bühne: der Prototyp über der ganzen Seite, im Vollbild über dem ganzen Bildschirm */
-  [hidden] { display: none !important; }
-  .buehne { position: fixed; inset: 0; z-index: 50; background: var(--tiefe); }
+  .buehne { position: fixed; inset: 0; z-index: 50; background: var(--papier); }
   .buehne iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
   .buehne .leiste { position: absolute; z-index: 2; top: calc(10px + env(safe-area-inset-top, 0px)); right: calc(10px + env(safe-area-inset-right, 0px)); display: flex; gap: 8px; }
   .buehne .leiste button { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
-    border: 1px solid rgba(255, 255, 255, 0.4); background: rgba(10, 28, 37, 0.6); color: var(--papier); font: 600 20px/1 var(--f-text); }
-  .buehne .leiste button:hover { background: rgba(10, 28, 37, 0.85); }
+    border: 1px solid rgba(30, 28, 35, 0.35); background: rgba(246, 243, 238, 0.85); color: var(--tinte); font: 600 20px/1 var(--f-text); }
+  .buehne .leiste button:hover { background: var(--papier); }
+
+  /* Prüfung der Vision */
+  .pruefung { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 22px 40px; align-items: start; }
+  @media (max-width: 820px) { .pruefung { grid-template-columns: minmax(0, 1fr); } }
+  .urteil { display: grid; gap: 14px; }
+  .urteil p { font-size: var(--s1); line-height: 1.45; }
+  .fehler { margin: 0; padding: 0; list-style: none; display: grid; gap: 16px; }
+  .fehler li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 12px; align-items: start; }
+  .fehler .punkt { width: 14px; height: 14px; border-radius: 50%; margin-top: 5px; background: var(--d, var(--tinte)); mix-blend-mode: multiply; }
+  .fehler b { font-weight: 600; }
+
+  /* Reihen: Film links, Text rechts */
+  .reihen { display: grid; gap: 46px; }
+  .reihe { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); gap: 20px 34px; align-items: start; }
+  @media (max-width: 820px) { .reihe { grid-template-columns: minmax(0, 1fr); } }
+  .reihe video, .reihe img { width: 100%; max-width: 100%; height: auto; display: block; border-radius: 4px; background: var(--papier-2); aspect-ratio: 16 / 10; object-fit: cover; box-shadow: 0 1px 0 var(--haar); }
+  .reihe .text { display: grid; gap: 12px; min-width: 0; align-content: start; }
+  .reihe .nr { font-family: var(--f-mono); font-size: var(--s-1); color: var(--grau); letter-spacing: 0.1em; display: flex; gap: 8px; align-items: center; }
+  .reihe .nr i { width: 10px; height: 10px; border-radius: 50%; background: var(--d, var(--tinte)); display: inline-block; }
   .wertung { display: grid; gap: 10px; }
   .wertung div { display: grid; grid-template-columns: 4.4rem minmax(0, 1fr); gap: 10px; align-items: baseline; font-size: var(--s-1); line-height: 1.5; }
   .wertung span:first-child { font-family: var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--grau); }
-  .schritte { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; font-size: var(--s-1); }
-  .schritte li { display: grid; grid-template-columns: 8rem minmax(0, 1fr); gap: 10px; }
-  .schritte li b { font-weight: 600; }
-  @media (max-width: 420px) { .schritte li { grid-template-columns: minmax(0, 1fr); gap: 0; } }
-  .b1 { --ink: var(--tiefe); }
-  .b1 .farbe { background: radial-gradient(circle at 36% 34%, var(--papier) 0 9%, var(--jelly) 10% 42%, var(--tiefe) 44%); box-shadow: inset 0 0 0 2px var(--nonphoto); }
-  .b2 { --ink: var(--petrol); }
-  .b2 .farbe { background: var(--papier); box-shadow: inset 0 0 0 2px var(--petrol), 0 0 0 4px var(--papier), 0 0 0 5px var(--nonphoto); }
-  .b3 { --ink: var(--magenta-tinte); }
-  .b3 .farbe { background: conic-gradient(var(--pink) 0 33%, var(--gelb) 0 66%, var(--blau) 0); }
+
+  /* Stufen des Zusammenlaufens */
+  .stufen { display: grid; gap: 10px; min-width: 0; }
+  .stufen .streifen { overflow-x: auto; }
+  .stufen img { width: 100%; max-width: 100%; height: auto; display: block; border-radius: 4px; box-shadow: 0 1px 0 var(--haar); }
+  @media (max-width: 700px) { .stufen .streifen img { width: 900px; max-width: none; } }
+  .stufen .achse { display: flex; justify-content: space-between; font-family: var(--f-mono); font-size: var(--s-1); color: var(--grau); }
+
+  /* Druckfarben: Graubalance als drei Kreise */
+  .druck { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px 30px; align-items: center; }
+  @media (max-width: 560px) { .druck { grid-template-columns: minmax(0, 1fr); } }
+  .kreise { position: relative; width: 168px; height: 150px; isolation: isolate; }
+  .kreise span { position: absolute; width: 96px; height: 96px; border-radius: 50%; mix-blend-mode: multiply; }
+  .kreise .k-c { background: var(--t-cyan); left: 0; top: 0; }
+  .kreise .k-m { background: var(--t-magenta); left: 72px; top: 0; }
+  .kreise .k-y { background: var(--t-gelb); left: 36px; top: 54px; }
+  .druck dl { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; font-size: var(--s-1); }
+  .druck dt { font-family: var(--f-mono); color: var(--grau); letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
+  .druck dd { margin: 0; }
 
   /* Tafeln */
   .tafel { overflow-x: auto; border-top: 1px solid var(--tinte); }
-  table { width: 100%; border-collapse: collapse; font-size: var(--s-1); line-height: 1.45; min-width: 640px; }
+  table { width: 100%; border-collapse: collapse; font-size: var(--s-1); line-height: 1.45; min-width: 680px; }
   th, td { text-align: left; vertical-align: top; padding: 10px 14px 10px 0; border-bottom: 1px solid var(--haar); }
   th { font-family: var(--f-mono); font-weight: 400; letter-spacing: 0.08em; text-transform: uppercase; color: var(--grau); }
   td:first-child { font-weight: 600; }
+  td.zahl { font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
   kbd { font-family: var(--f-mono); font-size: 0.92em; padding: 1px 5px; border: 1px solid var(--haar); border-bottom-width: 2px; border-radius: 4px; background: var(--papier); white-space: nowrap; }
 
   .liste { margin: 0; padding-left: 1.1em; display: grid; gap: 10px; max-width: 80ch; }
-  .zwei { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 22px 30px; align-items: start; }
-  .zwei > * { min-width: 0; }
-  .stapel { display: grid; gap: 14px; align-content: start; }
-  figure { margin: 0; display: grid; gap: 8px; }
-  figure video { width: 100%; height: auto; display: block; border-radius: 4px; background: var(--tiefe); }
-  figcaption { font-size: var(--s-1); color: var(--grau); }
-  .empfehlung { border-left: 3px solid var(--pink); padding-left: 18px; display: grid; gap: 12px; }
-  .empfehlung p { font-size: var(--s1); line-height: 1.42; max-width: 60ch; }
+  .fragen { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; max-width: 80ch; counter-reset: f; }
+  .fragen li { display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: 10px; counter-increment: f; }
+  .fragen li::before { content: counter(f); font-family: var(--f-mono); color: var(--magenta); font-weight: 600; }
+  .archiv { display: flex; flex-wrap: wrap; gap: 10px 14px; }
+  .archiv .oeffnen { font-size: var(--s-1); padding: 10px 16px; }
 
   .schriftfeld { margin-top: 64px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); border-top: 1px solid var(--tinte); }
   .schriftfeld div { display: grid; gap: 2px; padding: 10px 12px 10px 0; border-bottom: 1px solid var(--haar); min-width: 0; }
@@ -147,218 +169,188 @@
   .schriftfeld span:last-child { font-size: var(--s-1); overflow-wrap: anywhere; }
 
   @media (prefers-reduced-motion: reduce) { .oeffnen { transition: none; } }
-
-  /* Runde 3: Titel in den Farben der Werft, Held mit Film, Grundsätze als Reihen */
-  .titel .p-a { color: var(--jelly); transform: translate(-0.03em, 0.045em); }
-  .titel .p-b { color: #936ffb; transform: translate(0.035em, 0.02em); }
-  .titel .p-c { color: var(--petrol); }
-  .held { display: grid; gap: 18px; }
-  .held .film { position: relative; border-radius: 6px; overflow: hidden; aspect-ratio: 16 / 10; max-width: 100%; background: var(--tiefe); box-shadow: 0 24px 60px -34px rgba(28, 26, 33, 0.6); }
-  .held .film video { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .held .zeile { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; }
-  .oeffnen.gross { padding: 16px 26px; font-size: var(--s1); }
-  .frage { display: grid; gap: 16px; max-width: 74ch; }
-  .frage p { font-size: var(--s1); line-height: 1.45; }
-  .frage strong { color: var(--petrol); }
-  .grundsaetze { display: grid; gap: 46px; }
-  .grundsatz { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 20px 34px; align-items: start; }
-  @media (max-width: 820px) { .grundsatz { grid-template-columns: minmax(0, 1fr); } }
-  .grundsatz video, .grundsatz img { width: 100%; height: auto; display: block; border-radius: 4px; background: var(--tiefe); aspect-ratio: 16 / 10; object-fit: cover; }
-  .grundsatz .text { display: grid; gap: 12px; min-width: 0; align-content: start; }
-  .grundsatz h3 { font-size: var(--s1); font-weight: 800; }
-  .grundsatz .nr { font-family: var(--f-mono); font-size: var(--s-1); color: var(--grau); letter-spacing: 0.1em; }
-  .archiv { display: flex; flex-wrap: wrap; gap: 10px 14px; }
-  .archiv .oeffnen { font-size: var(--s-1); padding: 10px 16px; }
 </style>
 
 <div class="heft">
   <header class="kopf">
     <div class="zeile">
-      <span class="eyebrow">Kurven im Raum · Runde 3 · 13.11.2026</span>
-      <span class="mono">ein Bild statt vier Fenster</span>
+      <span class="eyebrow">Kurven im Raum · Runde 4 · 13.11.2026</span>
+      <span class="mono">drei Ansichten, ein Wesen</span>
     </div>
-    <h1 class="titel" aria-label="Werft">
-      <span class="platte p-a" aria-hidden="true">Werft</span>
-      <span class="platte p-b" aria-hidden="true">Werft</span>
-      <span class="platte p-c" aria-hidden="true">Werft</span>
+    <h1 class="titel" aria-label="Ecke">
+      <span class="platte p-c" aria-hidden="true">Ecke</span>
+      <span class="platte p-m" aria-hidden="true">Ecke</span>
+      <span class="platte p-y" aria-hidden="true">Ecke</span>
     </h1>
-    <p class="satz">Ein Bild über den ganzen Bildschirm. Jede Kurve bringt ihre Fläche mit: Der Kiel liegt in der Mittelebene, jeder Spant in seiner Querebene, jede Form auf der Haut. Darin ziehst du, aus jedem Blickwinkel. Deshalb braucht der Editor keine Fenster mehr.</p>
+    <p class="satz">Seite, Front und Top liegen als Druckfarben an den Wänden einer Ecke, die man nicht sieht. Es sind echte Ansichten: Drehst du das Wesen, drehen sie sich mit, laufen zusammen, und wo sich alle drei decken, entsteht sein Material.</p>
   </header>
 
   <section class="held" aria-label="Film und Start">
-    <div class="film"><video src="filme/werft.mp4" poster="bilder/werft.jpg" autoplay muted loop playsinline preload="metadata" aria-label="Film: die Werft, die Geistermaus führt vor"></video></div>
+    <div class="film"><video src="filme/e_start.mp4" poster="bilder/ecke.jpg" autoplay muted loop playsinline preload="metadata" aria-label="Film: Umriss mit dem Stift, Aufblasen, die Ansichten laufen zusammen, Viereransicht"></video></div>
     <div class="zeile">
-      <button type="button" class="oeffnen gross" data-seite="werft.html" style="--ink: var(--petrol);">Werft im Vollbild starten <span class="voll" aria-hidden="true"></span></button>
-      <span class="klein">Beim Start führt eine Geistermaus vor, <kbd>?</kbd> zeigt es wieder. <kbd>Esc</kbd> verlässt das Vollbild, das × schließt.</span>
+      <button type="button" class="oeffnen gross" data-seite="ecke.html">Mit dem Stift beginnen <span class="voll" aria-hidden="true"></span></button>
+      <button type="button" class="oeffnen hell" data-seite="ecke.html#vogel-ohnestift">Ecke mit dem Vogel <span class="voll" aria-hidden="true"></span></button>
+    </div>
+    <p class="klein">Leeres Papier, der Stift ist bereit: Klick setzt einen Punkt, Ziehen macht ihn glatt, ein Klick auf den ersten Punkt schließt, <kbd>Enter</kbd> bläst auf. Dann <kbd>Tab</kbd>, Leere ziehen, <kbd>4</kbd>. <kbd>?</kbd> führt vor, <kbd>Esc</kbd> verlässt das Vollbild, das × schließt.</p>
+  </section>
+
+  <div class="passer" role="presentation"></div>
+
+  <section aria-labelledby="pruefung">
+    <span class="eyebrow">Deine Vision, ehrlich geprüft</span>
+    <h2 id="pruefung">Ist es eine gute Idee?</h2>
+    <div class="pruefung">
+      <div class="urteil">
+        <p>Ja. Die Ecke zeigt die drei Ansichten immer, ohne ein einziges Fenster. Und sie erklärt mit einer Bewegung, wie drei flache Zeichnungen und ein Körper zusammenhängen. Das kann kein Vierer-Layout.</p>
+        <p class="klein">Fünf Stellen hielten der Prüfung nicht stand. So sind sie gelöst; die ganze Analyse steht in <span class="mono">VISION-4.md</span>.</p>
+      </div>
+      <ul class="fehler">
+        <li><span class="punkt" style="--d: var(--cyan);"></span><span><b>Flache Ansichten decken sich aus einem schrägen Blick nicht.</b> Deine Antwort löst es: Jede Ansicht hat einen Projektor, der sich synchron zur Kamera dreht. Am Ende ist er die Kamera, und ein Bild, das vom Auge aus geworfen wird, deckt sich aus dem Auge genau mit dem Wesen.</span></li>
+        <li><span class="punkt" style="--d: var(--magenta);"></span><span><b>Cyan, Magenta und Gelb übereinander werden fast schwarz.</b> Genau dort erscheint das Material. Die Dichten sind so gewählt, dass die drei zusammen ein neutrales Grau ergeben.</span></li>
+        <li><span class="punkt" style="--d: var(--gelb);"></span><span><b>Druckfarben leuchten auf dunklem Grund wie Neon.</b> Deshalb warmes Weiß, kein Glühen, kein Schein.</span></li>
+        <li><span class="punkt" style="--d: var(--lila);"></span><span><b>Zwei Arten zu drehen sind ein Modus.</b> Eine Taste schaltet um, und man sieht, in welchem man ist: Im Raum stehen die Ansichten an den Wänden, beim Wesen liegt es im Material.</span></li>
+        <li><span class="punkt"></span><span><b>Ein Drahtmodell aus Dreiecken wäre Rauschen.</b> Das Drahtmodell ist dein Kurvennetz mit Umriss, auf Transparentpapier.</span></li>
+      </ul>
     </div>
   </section>
 
   <div class="passer" role="presentation"></div>
 
-  <section aria-labelledby="falsch">
-    <span class="eyebrow">Deine Rückmeldung zu Runde 2</span>
-    <h2 id="falsch">Was falsch war</h2>
-    <ul class="liste">
-      <li>Ich habe vom Layout aus gedacht statt von der Aufgabe. Drei neue Anordnungen derselben Fenster lösten keines ihrer Probleme und brachten neue: Bullaugen decken zu, das Blatt zwingt zum Zoomen und Schwenken, die Platten muss man entziffern.</li>
-      <li>Bedienung, Material, Punkte, Linien und Konturen kamen unverändert aus Runde 1. Es gab Teile, aber kein Zusammenspiel.</li>
-    </ul>
+  <section aria-labelledby="wie">
+    <span class="eyebrow">Fünf Bewegungen, ein Modell</span>
+    <h2 id="wie">So funktioniert die Ecke</h2>
+    <div class="reihen">
+      <div class="reihe">
+        <video src="filme/e_tab.mp4" autoplay muted loop playsinline preload="metadata" aria-label="Film: Tab, die Ansichten laufen ins Wesen und zurück"></video>
+        <div class="text">
+          <span class="nr"><i style="background: var(--cyan);"></i>TAB · ZUSAMMENLAUFEN</span>
+          <h3>Die Ansichten laufen ins Wesen</h3>
+          <p>Jede Ansicht löst sich von ihrer Wand. Ihr Projektor dreht sich zur Kamera, die Tafel wandert ins Wesen. Unterwegs mischen sich die Farben wie im Druck: Cyan und Magenta ergeben Blau, Cyan und Gelb Grün, Magenta und Gelb Rot. Wo alle drei das Wesen decken, entsteht das Material, bis das ganze Wesen fest dasteht. <kbd>Tab</kbd> noch einmal entfaltet es zurück auf die Wände.</p>
+          <div class="wertung">
+            <div><span>Dafür</span><span>Man sieht, dass die drei flachen Ansichten und der Körper ein Wesen sind. Der Wechsel ist eine Fahrt, kein Sprung.</span></div>
+            <div><span>Dagegen</span><span>Die Mischfarben unterwegs sind kräftig. Ob sie so bleiben sollen, musst du sehen.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="reihe">
+        <video src="filme/e_drehen.mp4" autoplay muted loop playsinline preload="metadata" aria-label="Film: Raum drehen, dann Wesen drehen"></video>
+        <div class="text">
+          <span class="nr"><i style="background: var(--magenta);"></i>DREHEN · RAUM ODER WESEN</span>
+          <h3>Zwei Arten zu drehen</h3>
+          <p>Im Raum dreht sich alles, die Ansichten bleiben an ihren Wänden. Liegt der Blick hinter dem Wesen, wandern die Wände auf die abgewandte Seite, immer dann, wenn sie gerade hochkant stehen; man sieht den Wechsel nicht. Nach <kbd>Tab</kbd> dreht sich nur das Wesen: Licht und Fliese bleiben stehen, die Schattierung wandert über die Haut. Kommt das Wesen nahe an eine Achse, lösen sich die Ansichten wieder und gehen an ihre Wände.</p>
+          <div class="wertung">
+            <div><span>Dafür</span><span>Beide Gesten sind dieselbe Bewegung der Hand. Der Unterschied liegt im Bild, nicht in einer neuen Taste.</span></div>
+            <div><span>Dagegen</span><span>Ob das Zusammenlaufen beim Drehen vom Winkel abhängen soll oder nur von Tab, kann man nur fühlen.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="reihe">
+        <video src="filme/e_achse.mp4" autoplay muted loop playsinline preload="metadata" aria-label="Film: Seite, Front, Top flach"></video>
+        <div class="text">
+          <span class="nr"><i style="background: var(--gelb);"></i>1 · 3 · 7 · ACHSEN</span>
+          <h3>Auf der Achse wird es flach</h3>
+          <p>Nahe der Seite, der Front oder der Draufsicht rastet die Kamera ein und fährt zurück, bis die Ansicht parallel ist. Dabei schiebt sich die Druckfarbe dieser Achse genau unter das Drahtmodell: Aus Raum wird Zeichnung, ohne Schnitt. Die Fliese wird zur Bodenlinie, von oben zum Quadrat um das Gelb. <kbd>1</kbd> <kbd>3</kbd> <kbd>7</kbd> halten schaut kurz hin, tippen bleibt, <kbd>0</kbd> führt zurück.</p>
+          <div class="wertung">
+            <div><span>Dafür</span><span>Die flache Ansicht ist kein eigener Modus, nur ein Blickwinkel. Bearbeiten geht genauso.</span></div>
+            <div><span>Dagegen</span><span>Auf der Achse sieht man immer nur eine Ansicht. Dafür gibt es die Viereransicht.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="reihe">
+        <video src="filme/e_vier.mp4" autoplay muted loop playsinline preload="metadata" aria-label="Film: Viereransicht und zurück"></video>
+        <div class="text">
+          <span class="nr"><i style="background: var(--tinte);"></i>4 · VIERERANSICHT</span>
+          <h3>Die Wände klappen zum Blatt</h3>
+          <p><kbd>4</kbd>: Jede Ansicht fliegt von ihrer Wand in ihr Feld, der Raum zieht sich ins vierte. Angeordnet wie in europäischen Zeichnungen: Seite oben links, Front daneben in derselben Höhe, Top darunter in derselben Länge, alle im selben Maßstab. In jedem Feld kann man ziehen, die anderen folgen. <kbd>4</kbd> noch einmal: zurück in die Ecke.</p>
+          <div class="wertung">
+            <div><span>Dafür</span><span>Alle vier Blicke auf einmal, wenn es um Maße geht; die Fahrt zeigt, woher jede Ansicht kommt.</span></div>
+            <div><span>Dagegen</span><span>Jede Ansicht hat nur ein Viertel des Bildschirms. Für die Feinarbeit bleibt die Ecke besser.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="reihe">
+        <video src="filme/e_stift.mp4" autoplay muted loop playsinline preload="metadata" aria-label="Film: Umriss mit dem Stift, das Wesen bläst sich auf"></video>
+        <div class="text">
+          <span class="nr"><i style="background: var(--lila);"></i>P · START</span>
+          <h3>Der Start mit dem Stift</h3>
+          <p>Leeres Papier in der Seitenansicht. Der Stift arbeitet wie in Vektorprogrammen. Ist der Umriss geschlossen, ist er schon die Seitenansicht in Cyan. Nach <kbd>Enter</kbd> zieht sich die Ansicht auf ihre Wand zurück, die Spiegelkante bleibt stehen, und der Luftzug bläst das Wesen auf: eine gedämpfte Feder, die als Welle vom Kopf zum Schwanz läuft. Drei Spanten zeichnen sich ein, Front und Top wachsen mit.</p>
+          <div class="wertung">
+            <div><span>Dafür</span><span>In zwanzig Sekunden von der Zeichnung zum Körper, mit dem Werkzeug, das du kennst.</span></div>
+            <div><span>Dagegen</span><span>Die Breite ist geraten (runde Querschnitte). Schmale Wesen formt man danach an den Spanten.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <div class="passer" role="presentation"></div>
 
-  <section aria-labelledby="frage">
-    <span class="eyebrow">Die Frage hinter den vier Fenstern</span>
-    <h2 id="frage">Warum es überhaupt Fenster gibt</h2>
-    <div class="frage">
-      <p>Ein Punkt im Raum braucht drei Zahlen. Eine Maus liefert zwei. Zwei Fenster liefern zusammen drei. <strong>Jeder Editor ohne Fenster muss die dritte Zahl anders bekommen.</strong></p>
-      <p>In deinem Modell liegt sie schon bereit: Jede Kurve liegt in einer natürlichen Fläche, wie im Schiffbau, aus dem deine Wörter Spant und Loft kommen.</p>
+  <section aria-labelledby="stufen">
+    <span class="eyebrow">Eingefrorene Stufen aus dem Prototyp</span>
+    <h2 id="stufen">Das Material entsteht in der Schnittmenge</h2>
+    <figure class="stufen">
+      <div class="streifen"><img src="bilder/ecke_stufen.jpg" alt="Fünf Stufen: Ansichten an den Wänden, Überdruckfarben, erstes Material, fast deckungsgleich, Material"></div>
+      <div class="achse" aria-hidden="true"><span>an den Wänden</span><span>deckungsgleich</span></div>
+      <figcaption class="klein">Jede Tafel schreibt ihre Deckung in einen eigenen Kanal. Wo das Kleinste der drei groß ist und der Körper liegt, zeigt sich das Material. Kein Überblenden: Das Material ist die Schnittmenge.</figcaption>
+    </figure>
+  </section>
+
+  <div class="passer" role="presentation"></div>
+
+  <section aria-labelledby="material">
+    <span class="eyebrow">Material, Linien, Griffe</span>
+    <h2 id="material">Lesbar in jedem Zustand</h2>
+    <div class="druck">
+      <div class="kreise" role="img" aria-label="Cyan 40, Magenta 32, Gelb 34 Prozent übereinander ergeben ein neutrales Grau"><span class="k-c"></span><span class="k-m"></span><span class="k-y"></span></div>
+      <dl>
+        <dt>C 40 %</dt><dd>Seite. Die stärkste Farbe, weil die Seite die Hauptansicht ist.</dd>
+        <dt>M 32 %</dt><dd>Front.</dd>
+        <dt>Y 34 %</dt><dd>Top, auf dem Boden.</dd>
+        <dt>C+M+Y</dt><dd>neutrales Grau: die Schnittmenge, aus der das Material kommt.</dd>
+      </dl>
     </div>
     <div class="tafel">
       <table>
-        <thead><tr><th>Kurve</th><th>im Schiffbau</th><th>ihre Fläche</th><th>ein Zug darin bedeutet</th></tr></thead>
+        <thead><tr><th>Element</th><th>Raum (Drahtmodell)</th><th>Wesen (Material)</th><th>Achse (flach)</th><th>sichtbar</th></tr></thead>
         <tbody>
-          <tr><td>Mitte</td><td>Kiel, Profil</td><td>die Mittelebene</td><td>das Profil formen</td></tr>
-          <tr><td>Ring</td><td>Spant</td><td>seine Querebene</td><td>den Querschnitt formen; der Spant bleibt eben</td></tr>
-          <tr><td>Form</td><td>Luke, Auge, Flosse</td><td>die Haut</td><td>auf der Haut verschieben</td></tr>
+          <tr><td>Körper</td><td>Transparentpapier: hellt die Farben hinter sich auf</td><td>matt, kühl im Schatten, warm im Licht (Gooch 1998)</td><td>die Druckfarbe ist die Fläche</td><td>immer</td></tr>
+          <tr><td>Ansichten</td><td>Druckfarben an den Wänden, feine Kante in derselben Farbe</td><td>im Wesen, unter dem Material</td><td>die der Achse genau unter dem Drahtmodell</td><td>immer</td></tr>
+          <tr><td>Kiel</td><td>dunkle Tinte, doppelt so stark wie ein Spant</td><td>dasselbe</td><td>dasselbe</td><td>immer</td></tr>
+          <tr><td>Spant, Form</td><td>feine Tinte, verdeckt hell</td><td>feine Tinte, verdeckt unsichtbar</td><td>feine Tinte</td><td>immer</td></tr>
+          <tr><td>Umriss</td><td>feine Tinte</td><td>dasselbe</td><td>dasselbe</td><td>immer</td></tr>
+          <tr><td>Tiefe</td><td>nahe Linien kräftiger, ferne feiner</td><td>dasselbe</td><td>gleich stark</td><td>immer</td></tr>
+          <tr><td>Hand</td><td>Haut formen: ein lila Ring zeigt die Reichweite</td><td>dasselbe, dazu ein zarter Hof</td><td>dasselbe</td><td>beim Zeigen auf die Haut und im Zug</td></tr>
+          <tr><td>Röntgen</td><td>entfällt, man sieht schon hindurch</td><td><kbd>X</kbd> halten: im Kreis wird das Material durchsichtig</td><td>entfällt</td><td>solange <kbd>X</kbd> gehalten</td></tr>
+          <tr><td>Punkt</td><td>weiße Scheibe mit dunklem Ring, Ecke als Raute ◆</td><td>dasselbe</td><td>dasselbe</td><td>im Licht des Zeigers; gewählt in Lila</td></tr>
+          <tr><td>Griff</td><td>feine Linie, hohler Ring</td><td>dasselbe</td><td>dasselbe</td><td>am aktiven Punkt</td></tr>
+          <tr><td>Fliese</td><td>feines Quadrat, ein Feld des 2048-Spiels</td><td>bleibt stehen, wenn das Wesen sich dreht</td><td>Bodenlinie, von oben das Quadrat</td><td>immer</td></tr>
+          <tr><td>Schatten</td><td>kaum, das Gelb liegt schon am Boden</td><td>weicher Kontaktschatten, vom Licht abgewandt; er bleibt stehen, wenn sich das Wesen dreht</td><td>schwach</td><td>immer</td></tr>
         </tbody>
       </table>
     </div>
-    <p>Wer einen Spant greift, bewegt den Punkt in der Spantebene, egal von wo er schaut. Seite, Front und Top werden damit Zustände der einen Kamera statt eigener Fenster.</p>
+    <p class="klein">Jede Farbe hat eine Bedeutung: Tinte trägt die Struktur, Cyan, Magenta und Gelb sind die drei Ansichten, Lila ist die Hand (gewählt, Einfluss). Nichts leuchtet.</p>
   </section>
 
   <div class="passer" role="presentation"></div>
 
-  <section aria-labelledby="grundsaetze">
-    <span class="eyebrow">Aus dieser Antwort folgt der ganze Editor</span>
-    <h2 id="grundsaetze">Sieben Grundsätze</h2>
-    <div class="grundsaetze">
-      <div class="grundsatz">
-        <video src="filme/w_ebene.mp4" autoplay muted loop playsinline preload="metadata" aria-label="Film: Spant und Kiel in ihrer Fläche"></video>
-        <div class="text">
-          <span class="nr">1 · FLÄCHE</span>
-          <h3>Jede Kurve bewegt sich in ihrer Fläche</h3>
-          <p>Zeigst du auf einen Spant, erscheint seine Ebene als Glas. Punkte, Griffe und Linienstücke bleiben darin, also bleibt der Spant ein ebener Querschnitt. Kielpunkte bleiben in der Mittelebene, Formpunkte auf der Haut. Mit <kbd>⇧</kbd> ziehst du quer zur Fläche, etwa einen Spant am Körper entlang.</p>
-          <div class="wertung">
-            <div><span>Dafür</span><span>Ein Punkt landet nie aus Versehen in der falschen Tiefe, der häufigste Fehler in einem einzelnen 3D-Fenster.</span></div>
-            <div><span>Dagegen</span><span>Liegt die Fläche fast flach zum Blick, gilt die Bildebene. Man dreht dann ein wenig weiter.</span></div>
-          </div>
-        </div>
-      </div>
-      <div class="grundsatz">
-        <video src="filme/w_achse.mp4" autoplay muted loop playsinline preload="metadata" aria-label="Film: Drehen rastet ein, das Jelly wird zur Illustration"></video>
-        <div class="text">
-          <span class="nr">2 · EIN BILD</span>
-          <h3>Der Blick bestimmt den Look</h3>
-          <p>Es gibt ein Bild über den ganzen Bildschirm. Im Raum ist das Wesen Jelly. Drehst du nahe an eine Achse und lässt los, fährt die Kamera zurück und wird schmal, bis die Ansicht parallel ist. Dabei wird das Jelly zu deiner Illustration: weißer Körper, dicke Kontur, Passer, langer Schatten, gestrichelte Linien. Zwei Looks, die du schon hast, werden ein Material mit zwei Zuständen.</p>
-          <div class="wertung">
-            <div><span>Dafür</span><span>Jede Ansicht hat den ganzen Bildschirm. Der Wechsel ist eine Fahrt, kein Sprung; man verliert die Orientierung nicht.</span></div>
-            <div><span>Dagegen</span><span>Nie zwei Ansichten zugleich. Grundsatz 3 und der Grundriss am Boden gleichen das aus.</span></div>
-          </div>
-        </div>
-      </div>
-      <div class="grundsatz">
-        <video src="filme/w_feder.mp4" autoplay muted loop playsinline preload="metadata" aria-label="Film: Tasten 1, 3, 7 halten"></video>
-        <div class="text">
-          <span class="nr">3 · FEDERN</span>
-          <h3>Ansichten federn</h3>
-          <p>Halte <kbd>1</kbd>, <kbd>3</kbd> oder <kbd>7</kbd>: Die Kamera schwenkt auf Seite, Front oder Top. Lass los, und sie kehrt dorthin zurück, wo du warst. Tippen statt halten: Du bleibst. <kbd>0</kbd> führt zurück in den Raum.</p>
-          <div class="wertung">
-            <div><span>Dafür</span><span>Ein Blick von der Seite kostet eine Viertelsekunde und keine Fensterfläche. Gehaltene Modi verhindern Verwechslungen besser als gemerkte (Sellen, Kurtenbach, Buxton 1992).</span></div>
-            <div><span>Dagegen</span><span>Man muss die Tasten kennen. Auf dem iPad gibt es dafür das Einrasten beim Drehen.</span></div>
-          </div>
-        </div>
-      </div>
-      <div class="grundsatz">
-        <video src="filme/w_nach.mp4" autoplay muted loop playsinline preload="metadata" aria-label="Film: den Kiel nachzeichnen"></video>
-        <div class="text">
-          <span class="nr">4 · ZEICHNEN</span>
-          <h3>Zeichnen statt zerren</h3>
-          <p>Willst du eine Kurve anders, zeichnest du sie nach: Ein Strich mit der rechten Taste, der nahe an einer Kurve beginnt und endet, ersetzt dieses Stück, in ihrer Fläche. So arbeiten Zeichner, und so hat es Baudel 1994 für Kurven vorgeschlagen. Punkte und Griffe bleiben für die Feinarbeit.</p>
-          <div class="wertung">
-            <div><span>Dafür</span><span>Eine Form, die man im Kopf hat, ist ein Strich statt zehn Griffzüge.</span></div>
-            <div><span>Dagegen</span><span>Der Strich muss an der Kurve beginnen und enden. Sonst wird er ein Schnitt oder verdunstet.</span></div>
-          </div>
-        </div>
-      </div>
-      <div class="grundsatz">
-        <video src="filme/w_haut.mp4" autoplay muted loop playsinline preload="metadata" aria-label="Film: die Haut formen"></video>
-        <div class="text">
-          <span class="nr">5 · TON</span>
-          <h3>Haut formen wie Ton</h3>
-          <p>Ziehst du auf der Haut statt auf einer Kurve, gehen die Kurvenpunkte im Umkreis weich mit, wie beim Move-Pinsel in ZBrush. Vorher zeigt ein Lichtfleck, wie weit es reicht; das Rad ändert die Reichweite während des Zugs. Die Kurven bleiben, was sie sind: deine Wahrheit.</p>
-          <div class="wertung">
-            <div><span>Dafür</span><span>Beulen, Bäuche, Wangen: grobe Formen in einem Zug, ohne einzelne Punkte zu suchen.</span></div>
-            <div><span>Dagegen</span><span>Ziehen auf dem Wesen dreht nicht mehr. Gedreht wird auf der Leere, mit <kbd>⌥</kbd> + ziehen oder der mittleren Taste.</span></div>
-          </div>
-        </div>
-      </div>
-      <div class="grundsatz">
-        <video src="filme/w_spant.mp4" autoplay muted loop playsinline preload="metadata" aria-label="Film: einen Spant schneiden"></video>
-        <div class="text">
-          <span class="nr">6 · SCHNEIDEN</span>
-          <h3>Ein Strich quer schneidet einen Spant</h3>
-          <p>Dieselbe Geste wie das Nachzeichnen, nur quer über den Umriss: Ein Lichtring zeigt den neuen Spant, bevor du loslässt. Geschlossen auf der Haut wird eine Form daraus, ein Zickzack nimmt einen Punkt oder eine Linie weg.</p>
-          <div class="wertung">
-            <div><span>Dafür</span><span>Kein Werkzeug wählen. Die Form des Strichs sagt, was er tut, und die Vorschau zeigt es vorher.</span></div>
-            <div><span>Dagegen</span><span>Vier Bedeutungen für eine Geste. Die Vorschau muss sie klar zeigen; das ist der Teil, den du am meisten testen solltest.</span></div>
-          </div>
-        </div>
-      </div>
-      <div class="grundsatz">
-        <img src="bilder/werft_form.jpg" alt="Die Werft: Spant unter dem Zeiger mit seinen Punkten, Kiel stärker, Grundriss am Boden">
-        <div class="text">
-          <span class="nr">7 · FORMENSPRACHE</span>
-          <h3>Alles spricht eine Sprache</h3>
-          <p>Kiel, Spanten und Formen unterscheiden sich durch Gewicht, nicht durch Farbe: Der Kiel ist doppelt so stark wie ein Spant. Punkte erscheinen nur an der Kurve unter der Hand und im Licht des Zeigers, Griffe nur am aktiven Punkt, Ecken als Raute ◆. Hilfen wie Glas, Lichtfleck und Vorschau gibt es nur während der Handlung. Auf dem Boden liegt der Grundriss: die Draufsicht als Projektion, immer da, ohne Fenster.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <div class="passer" role="presentation"></div>
-
-  <section aria-labelledby="vergleich">
-    <span class="eyebrow">Was es dir bringt</span>
-    <h2 id="vergleich">Gegen den heutigen Editor</h2>
+  <section aria-labelledby="bewegung">
+    <span class="eyebrow">Jede Animation erklärt eine Veränderung</span>
+    <h2 id="bewegung">Bewegung</h2>
     <div class="tafel">
       <table>
-        <thead><tr><th>Aufgabe</th><th>heute, vier Fenster</th><th>Werft</th></tr></thead>
+        <thead><tr><th>Bewegung</th><th>was sie erklärt</th><th>Dauer, Art</th></tr></thead>
         <tbody>
-          <tr><td>Fläche einer Ansicht</td><td>ein Viertel des Bildschirms</td><td>der ganze Bildschirm</td></tr>
-          <tr><td>Spantpunkt nach außen ziehen</td><td>im Front-Fenster ziehen, im 3D-Fenster prüfen</td><td>im großen Bild ziehen; der Punkt bleibt in der Spantebene, das Jelly zeigt die Wirkung am selben Ort</td></tr>
-          <tr><td>Profil ändern</td><td>Punkte im Seiten-Fenster ziehen</td><td>den Kiel nachzeichnen, ein Strich</td></tr>
-          <tr><td>Eine Beule herausarbeiten</td><td>mehrere Punkte in mehreren Fenstern, <kbd>O</kbd> für den Einfluss</td><td>auf der Haut ziehen, Rad für die Reichweite</td></tr>
-          <tr><td>Seite, Front oder Top prüfen</td><td>ins jeweilige Viertel schauen</td><td><kbd>1</kbd>, <kbd>3</kbd>, <kbd>7</kbd> halten: ganzer Bildschirm, als Illustration; loslassen: zurück</td></tr>
-          <tr><td>Draufsicht im Blick behalten</td><td>Top-Fenster</td><td>Grundriss auf dem Boden, immer</td></tr>
-          <tr><td>Neuen Spant schneiden</td><td>Werkzeug wählen, im Fenster quer ziehen</td><td>rechte Taste quer über den Körper, aus jedem Winkel</td></tr>
-          <tr><td>Blickwege</td><td>zwischen vier Fenstern</td><td>keine: alles geschieht an der Stelle, auf die du schaust</td></tr>
+          <tr><td>Ansichten laufen zusammen</td><td>Drei flache Ansichten und der Körper sind ein Wesen</td><td class="zahl">1,15 s, weich an und aus</td></tr>
+          <tr><td>Ansichten lösen sich nahe einer Achse</td><td>woher die flache Ansicht kommt</td><td class="zahl">folgt dem Drehen, 0,1 s Nachlauf</td></tr>
+          <tr><td>Fahrt auf die Achse</td><td>Perspektive wird parallel, ohne Sprung (Dolly-Zoom)</td><td class="zahl">0,42 s</td></tr>
+          <tr><td>Fliese richtet sich aus</td><td>der Raum steht wieder an seinen Wänden</td><td class="zahl">0,4 s</td></tr>
+          <tr><td>Wände klappen zum Blatt</td><td>woher jede Ansicht der Viereransicht kommt</td><td class="zahl">0,62 s</td></tr>
+          <tr><td>Wesen bläst sich auf</td><td>die Form ist weich und kommt aus der Zeichnung</td><td class="zahl">Feder 1,25 Hz, 27 % Überschwingen</td></tr>
+          <tr><td>Ring am ersten Punkt</td><td>der Umriss ist geschlossen</td><td class="zahl">0,6 s</td></tr>
         </tbody>
       </table>
     </div>
-  </section>
-
-  <div class="passer" role="presentation"></div>
-
-  <section aria-labelledby="formen">
-    <span class="eyebrow">Wie alles zusammenspielt</span>
-    <h2 id="formen">Formensprache</h2>
-    <div class="tafel">
-      <table>
-        <thead><tr><th>Element</th><th>im Raum (Jelly)</th><th>auf der Achse (Illustration)</th><th>wann sichtbar</th></tr></thead>
-        <tbody>
-          <tr><td>Haut</td><td>Jelly, durchscheinend, Lava, Glanz; feine dunkle Kontur</td><td>weißer Körper, Lavendel im Schatten, dicke Kontur, Passer, langer Schatten</td><td>immer</td></tr>
-          <tr><td>Kiel</td><td>durchgehende helle Linie, doppelt so stark wie ein Spant</td><td>Petrol, gestrichelt; Kante durchgezogen</td><td>immer</td></tr>
-          <tr><td>Spant</td><td>feine Linie; unter der Hand stärker, seine Ebene als Glas</td><td>Petrol, gestrichelt</td><td>immer</td></tr>
-          <tr><td>Form</td><td>feine Linie</td><td>wie Spant</td><td>immer</td></tr>
-          <tr><td>Punkt</td><td>Niete: glatt ●, Ecke ◆</td><td>dasselbe in Petrol</td><td>an der Kurve unter der Hand, im Licht des Zeigers, gewählte immer</td></tr>
-          <tr><td>Griff</td><td>zwei Nadeln</td><td>dasselbe</td><td>nur am aktiven Punkt</td></tr>
-          <tr><td>Fläche</td><td>Glas in Jelly-Türkis mit feinem Raster</td><td>entfällt, die Bildebene gilt</td><td>beim Schweben schwach, im Zug kräftig</td></tr>
-          <tr><td>Einfluss</td><td>Flieder-Licht auf der Haut</td><td>dasselbe</td><td>beim Schweben über der Haut, im Zug</td></tr>
-          <tr><td>Boden</td><td>Scheibe mit Raststrichen, darauf der Grundriss</td><td>entfällt</td><td>im Raum</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="klein">Jede Farbe hat eine Bedeutung: Weiß und Petrol tragen die Struktur, Lila heißt gewählt, Flieder ist die Hand (Einfluss, Vorschau), Türkis die Fläche, Rosa heißt weg.</p>
+    <p class="klein">Grundlage: Kontinuität statt Sprung (Chang und Ungar 1993), Übergänge helfen, Veränderungen zu verfolgen (Heer und Robertson 2007), Federn nur dort, wo etwas weich ist (Thomas und Calder 2001). Alles ist unterbrechbar.</p>
   </section>
 
   <div class="passer" role="presentation"></div>
@@ -368,17 +360,15 @@
     <h2 id="bedienung">Bedienung</h2>
     <div class="tafel">
       <table>
-        <thead><tr><th>Handlung</th><th>Maus und Tastatur</th><th>iPad</th></tr></thead>
+        <thead><tr><th>Handlung</th><th>Maus und Tastatur</th></tr></thead>
         <tbody>
-          <tr><td>Drehen</td><td>links auf Leere ziehen, oder <kbd>⌥</kbd> + ziehen, oder mittlere Taste; nahe einer Achse einrasten</td><td>ein Finger auf Leere</td></tr>
-          <tr><td>Haut formen</td><td>links auf der Haut ziehen; Rad im Zug = Reichweite</td><td>ein Finger auf der Haut</td></tr>
-          <tr><td>Punkt, Griff, Kurve ziehen</td><td>links ziehen, in ihrer Fläche; <kbd>⇧</kbd> = quer dazu</td><td>Finger</td></tr>
-          <tr><td>Wählen</td><td>Klick, <kbd>⇧</kbd> + Klick dazu; Klick auf eine Kurve wählt sie ganz</td><td>tippen</td></tr>
-          <tr><td>Punkt setzen, Ecke</td><td>Doppelklick auf Kurve = Punkt; Doppelklick auf Punkt = Ecke ↔ glatt</td><td>doppelt tippen</td></tr>
-          <tr><td>Zeichnen</td><td>rechte Taste oder <kbd>P</kbd>: nachzeichnen, quer = Spant, geschlossen = Form, Zickzack = weg</td><td>Pencil</td></tr>
-          <tr><td>Ansichten</td><td><kbd>1</kbd> <kbd>3</kbd> <kbd>7</kbd> halten = kurz hinschauen, tippen = bleiben; <kbd>0</kbd> = Raum</td><td>Einrasten beim Drehen</td></tr>
-          <tr><td>Zoom, Schwenken</td><td>Rad; <kbd>Leertaste</kbd> + ziehen</td><td>zwei Finger</td></tr>
-          <tr><td>Sonst</td><td><kbd>⌘Z</kbd>, <kbd>⇧⌘Z</kbd>, <kbd>⌫</kbd>, <kbd>K</kbd> Kante, <kbd>F</kbd> einpassen, <kbd>X</kbd> halten = Röntgen, <kbd>?</kbd> Vorführung, <kbd>Esc</kbd></td><td>zwei / drei Finger tippen</td></tr>
+          <tr><td>Umriss zeichnen (Start)</td><td>Klick = Ecke, Ziehen = glatter Punkt mit Griffen, Klick auf den ersten Punkt = schließen, <kbd>Enter</kbd> oder Doppelklick = aufblasen, <kbd>⌫</kbd> = letzter Punkt weg, <kbd>Esc</kbd> = neu</td></tr>
+          <tr><td>Drehen</td><td>Leere ziehen; <kbd>Tab</kbd> wechselt zwischen Raum drehen und Wesen drehen</td></tr>
+          <tr><td>Ansichten</td><td><kbd>1</kbd> <kbd>3</kbd> <kbd>7</kbd> halten = kurz hinschauen, tippen = bleiben; <kbd>0</kbd> = Raum; <kbd>4</kbd> = Viereransicht</td></tr>
+          <tr><td>Punkt, Griff, Kurve ziehen</td><td>links ziehen, in ihrer Fläche wie in der Werft; <kbd>⇧</kbd> = quer dazu</td></tr>
+          <tr><td>Haut formen</td><td>links auf dem Wesen ziehen; Rad im Zug = Reichweite</td></tr>
+          <tr><td>Zeichnen</td><td>rechte Taste oder <kbd>P</kbd>: nachzeichnen, quer = Spant, geschlossen = Form</td></tr>
+          <tr><td>Sonst</td><td>Rad = Zoom, <kbd>X</kbd> halten = Röntgen, <kbd>⌘Z</kbd>, <kbd>⇧⌘Z</kbd>, Doppelklick auf Kurve = Punkt, <kbd>?</kbd> = Vorführung</td></tr>
         </tbody>
       </table>
     </div>
@@ -386,14 +376,22 @@
 
   <div class="passer" role="presentation"></div>
 
-  <section aria-labelledby="stand">
+  <section aria-labelledby="ehrlich">
     <span class="eyebrow">Ehrlich</span>
-    <h2 id="stand">Verworfen, geprüft, offen</h2>
+    <h2 id="ehrlich">Geprüft, offen, Fragen an dich</h2>
     <ul class="liste">
-      <li><b>Verworfen:</b> Fenster, Linsen, Blätter und Platten (Runde 1 und 2), weil sie die Fläche teilen oder verdecken. Eine Kamera, die sich von selbst zur Kurve dreht (wie ILoveSketch beim Zeichnen): beim Ziehen desorientierend, die Fläche löst es ohne Bewegung. Den Umriss selbst als Griff (Nealen et al. 2005): Deine Wahrheit sind die Kurven, nicht der Umriss.</li>
-      <li><b>Geprüft</b> mit echten Mauszügen (Chromium mit Software-Grafik): Ein Spantpunkt bleibt beim Ziehen in seiner Ebene, Haut formen verschiebt die Punkte im Umkreis, ein Strich mit der rechten Taste über den Kiel hebt das Profil an, Taste 1 zeigt die Seite als Illustration, 0 führt zurück. Finger und Pencil nur mit künstlichen Ereignissen. Die Filme zeigen Vorführungen mit derselben Eingabe.</li>
-      <li><b>Offen:</b> iPad, Safari, dein Mac und die Bildrate sind nicht geprüft. Unter der Oberfläche rechnet wie in Runde 1 und 2 eine Ersatz-Haut, nicht dein Löser; neu ist alles, was man sieht und tut. Der Code des Editors und die andere Sitzung sind nicht berührt.</li>
+      <li><b>Geprüft</b> mit echten Mauszügen in Chromium mit Software-Grafik: Umriss zeichnen, schließen, Enter, Aufblasen; Tab hin und zurück; 1, 3, 7, 0; Drehen von hinten (die Wände wechseln die Seite); ein Punkt im Seitenfeld der Viereransicht, die anderen Ansichten folgen. Die Filme sind Vorführungen mit derselben Eingabe.</li>
+      <li><b>Offen:</b> dein Mac, iPad, Safari und die Bildrate sind nicht geprüft. Unter der Oberfläche rechnet weiter die Ersatz-Haut, nicht dein Löser. Der Code des Editors und die andere Sitzung sind nicht berührt.</li>
     </ul>
+    <ol class="fragen">
+      <li><span><b>Raum: Drahtmodell oder Material?</b> Du schreibst „Wireframe, wenn die Projektionen die Seiten anzeigen“ und beim Raum-Drehen „das Material ist immer enthalten“. Gebaut ist im Raum das Drahtmodell. Soll dort auch das Material stehen, mit den Ansichten an den Wänden?</span></li>
+      <li><span><b>Zusammenlaufen nach Winkel oder nur mit Tab?</b> Beim Wesen-Drehen lösen sich die Ansichten nahe einer Achse (bis 6° an den Wänden, ab 29° deckungsgleich). Fühlt sich das gut an, oder soll nur Tab umschalten?</span></li>
+      <li><span><b>Spanten beim Start:</b> drei automatisch im Rumpf. Oder zeichnest du sie nach dem Aufblasen selbst, zum Beispiel in der Front?</span></li>
+      <li><span><b>Mischfarben beim Zusammenlaufen:</b> so kräftig wie jetzt oder zarter?</span></li>
+      <li><span><b>Vorschlag:</b> Ein Klick auf eine Ansicht an der Wand fliegt auf ihre Achse. Noch nicht gebaut, wäre klein.</span></li>
+      <li><span><b>Werkzeugleiste:</b> Bisher kommt die Ecke ohne aus. Wird eine nötig, dann drei Zeichen am unteren Rand (Stift, Raum oder Wesen, Viereransicht), jedes mit seiner Taste daneben, damit man die Taste nebenbei lernt.</span></li>
+    </ol>
+    <p class="klein">Grundlagen: visuelle Hülle (Laurentini 1994), Schattenskulpturen (Mitra und Pauly 2009), Anamorphose, kühl-warme Schattierung (Gooch et al. 1998), Aufblasen aus Skizzen (Teddy, Igarashi et al. 1999; Monster Mash, Dvorožňák et al. 2020), Surface Nets (Gibson 1998), Glättung ohne Schrumpfen (Taubin 1995), europäische Anordnung der Ansichten (ISO 5456-2), Bewegung in Oberflächen (Chang und Ungar 1993; Thomas und Calder 2001; Heer und Robertson 2007).</p>
   </section>
 
   <div class="passer" role="presentation"></div>
@@ -402,6 +400,7 @@
     <span class="eyebrow">Zum Vergleich</span>
     <h2 id="frueher">Frühere Runden</h2>
     <div class="archiv">
+      <button type="button" class="oeffnen" data-seite="werft.html" style="--ink: var(--petrol);">Runde 3: Werft <span class="voll" aria-hidden="true"></span></button>
       <button type="button" class="oeffnen" data-seite="vision.html#vogel" style="--ink: var(--tiefe);">Runde 1: Raumecke <span class="voll" aria-hidden="true"></span></button>
       <button type="button" class="oeffnen" data-seite="bullaugen.html" style="--ink: var(--tiefe);">Runde 2: Bullaugen <span class="voll" aria-hidden="true"></span></button>
       <button type="button" class="oeffnen" data-seite="modellblatt.html" style="--ink: var(--petrol);">Runde 2: Modellblatt <span class="voll" aria-hidden="true"></span></button>
@@ -410,11 +409,11 @@
   </section>
 
   <footer class="schriftfeld" aria-label="Schriftfeld">
-    <div><span>Benennung</span><span>Werft, Runde 3</span></div>
+    <div><span>Benennung</span><span>Ecke, Runde 4</span></div>
     <div><span>Datum</span><span>13.11.2026</span></div>
     <div><span>Zweig</span><span>claude/meme-curves-editor-concept-s65kq1</span></div>
-    <div><span>Quelle</span><span>docs/look/editor/vision/prototyp/src/werkstatt/werft.js</span></div>
-    <div><span>Plan</span><span>docs/look/editor/vision/PLAN-3.md</span></div>
+    <div><span>Quelle</span><span>docs/look/editor/vision/prototyp/src/werkstatt/ecke.js</span></div>
+    <div><span>Plan</span><span>docs/look/editor/vision/PLAN-4.md</span></div>
     <div><span>Geprüft</span><span>Florian (steht aus)</span></div>
   </footer>
 </div>

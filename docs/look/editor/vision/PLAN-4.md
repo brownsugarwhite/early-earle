@@ -63,3 +63,6 @@ Seitenansicht). Dann Drahtmodell, drei Projektionen an den Wänden der Ecke (Wä
   Achsen flach mit der Druckfarbe darunter, Viereransicht (4), Start mit Stift und Aufblasen. Geprüft mit Mauszügen (Zeichnen,
   Schließen, Enter, Aufblasen; Tab; 1/3/7/0; Drehen von hinten; Punkt im Seitenfeld der Viereransicht ziehen). Drehbücher:
   `start`, `stift`, `tab`, `drehen`, `achse`, `vier`. Konzept-Nachtrag in `KONZEPT.md`.
+- 13.11. später: Strichstärke nach Tiefe, Schatten vom Licht abgewandt, Licht der Hand und Röntgen im Material, Glas einer
+  Fläche hochkant ausgeblendet, Transparentpapier mit Hauch von Schattierung. Auf leerem Papier wird keine Form nachgeladen.
+  Filme `tab`, `achse`, `vier`, `drehen`, `stift`, `start` (960 × 600) und Präsentation (gleiche Adresse) aktualisiert.

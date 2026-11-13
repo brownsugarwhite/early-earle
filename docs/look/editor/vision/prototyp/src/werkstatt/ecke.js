@@ -747,10 +747,11 @@ export class Ecke extends Werft {
       },
       achse(G) {
         G.gehe(an(0.86, 0.84), 0.5);
-        G.taste('1', 0.3); G.warte(1.6);
-        G.taste('3', 0.3); G.warte(1.6);
-        G.taste('7', 0.3); G.warte(1.6);
-        G.taste('0', 0.3); G.warte(1.4);
+        // tippen (unter 0,3 s), sonst federt die Ansicht zurück
+        G.taste('1', 0.12); G.warte(1.6);
+        G.taste('3', 0.12); G.warte(1.6);
+        G.taste('7', 0.12); G.warte(1.6);
+        G.taste('0', 0.12); G.warte(1.4);
       },
       vier(G) {
         G.gehe(an(0.9, 0.9), 0.5);
