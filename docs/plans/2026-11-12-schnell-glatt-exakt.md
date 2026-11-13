@@ -439,7 +439,7 @@ danach nicht: anhalten und es sagen). Form: dieselbe Kugel mit Ring und Maul wie
    gezeigten Lage gerechnet. Mit den Lippen als Kante: nichts umgeschlagen, der Kopf verzieht sich nicht (Haut fern vom Maul
    höchstens 1 bewegt), Linien höchstens 0,5 neben ihrem Pfad. Ohne Kante wird dasselbe gemessen und gezeigt.
 
-**Ergebnis (13.11., 17 Uhr): Der Beweis hält nicht; angehalten bei Kriterium 2.** Bild
+**Ergebnis (13.11., 16:45 Uhr): Der Beweis hält nicht; angehalten bei Kriterium 2.** Bild
 `docs/progress/editor/schritt6-maul-haut-2026-11-13.jpg`, Zahlen `schritt6-maul-haut-messung-2026-11-13.txt`, Einzelheiten in
 `docs/UEBERGABE.md`, Abschnitt 7.7.
 - **Kriterium 1 hält:** Das Maul lässt sich als Haut einschweißen: geschlossen, spiegelgleich, nichts verdreht, die Lippen genau
@@ -459,9 +459,46 @@ Warum: Die heutige Rechnung macht die Haut zwischen den Linien so rund wie mögl
 der Haut selbst ab. Eine Höhle ist eine tief eingestülpte Fläche mit einem Knick hinten und an den Mundwinkeln; ohne Linien, die
 sie überall fassen, hat die Rechnung dafür kein Gleichgewicht. Das ist dieselbe Schwäche wie „bläst auf oder kollabiert“
 zwischen wenigen Linien, hier in ihrer härtesten Form. **Folgerung: Das Maul als Tasche in derselben Haut geht mit der heutigen
-Rechnung nicht.** Offen ist Florians Entscheidung zwischen: (1) das Maul bleibt wie heute, die Maullinie wird eine Kante, und
+Rechnung nicht.** (**Diese Folgerung ist falsch**, siehe die Berichtigung unten: Geprüft war meine Konstruktion, nicht ein
+Maul, das wie jede Form mit Linien geformt ist.) Offen ist Florians Entscheidung zwischen: (1) das Maul bleibt wie heute, die Maullinie wird eine Kante, und
 die Posen werden damit gebaut (Fassung b aus dem Beweis zu Schritt 5); (2) der Unterkiefer wird ein eigenes Teil mit eigener
 Haut und eigenen Linien, zusammen mit „Teile anfügen“ (eigener Entwurf zuerst); (3) inzwischen Schritt 4c.
+
+**Berichtigung zu den Beweisen der Schritte 5 und 6 (13.11., 17:15 Uhr).** Florian zum Ergebnis: „Ich verstehe das Problem nicht.
+Ich kann doch jedes beliebige Maul auch mit dem jetzigen Mesh von Hand formen, und es kollabiert nichts, und es wird nichts
+komisch aufgeblasen. Ich denke, du verkomplizierst da etwas oder hast mich missverstanden.“ Und zu den Posen: „Ich verstehe, dass
+ich keine neuen Edgeloops oder Punkte in der Pose hinzufügen kann, aber verschieben und bearbeiten sollte ich alles ohne Probleme
+können. Dann ist es ja ein einfacher Morph der Punkte und Handles von einer zur anderen Position, während die Kieferknochen sich
+bewegen.“ Er hat seine Form `wesen/maul handgemacht test.eewesen` gesichert: ein Maul, von Hand geformt (zwei Kiefer, dazwischen
+die Bucht), mit der Lippenlinie als Kante und je einem Loop nur um den Ober- und den Unterkiefer.
+
+**Er hat recht. Beide Beweise haben das Falsche geprüft:**
+- Der Beweis zu Schritt 6 hat ein fertiges, fast geschlossenes Inneres auf einmal eingeschweißt (dünn, mit einem Knick hinten,
+  fast ohne Linien) und die Rechnung darauf losgelassen. Ein Maul, das wie jede Form mit Linien geformt wird, hält die Rechnung:
+  Gegenprobe `form-maul-geformt.ts` (Kugel, der Punkt vorn 110 nach innen gezogen): steht nach 84 Runden, nichts umgeschlagen;
+  Bild `docs/progress/editor/schritt6-maul-geformt-2026-11-13.jpg`. Seine Form steht (0,07 bis zur Ruhe).
+- Der Beweis zu Schritt 5 ist an der verborgenen Fläche gescheitert, die nur das Maul aus der schmalen Form hat. An seiner Form
+  gibt es sie nicht. Gegenprobe `form-pose-geformt.ts` (Unterkiefer 20° weiter offen, ein Punkt der Unterlippe 25 nach unten,
+  25 und 70 nach oben, ein Punkt fern vom Maul; Rechnung der Grundform, unverändert): steht nach 42 bis 54 Runden, Linien genau
+  auf ihren Pfaden, fern vom Maul bewegt sich nichts (0,00), keine neuen umgeschlagenen Dreiecke außer beim weiten Zug (8). Bild
+  `docs/progress/editor/schritt5-pose-geformt-2026-11-13.jpg`, Zahlen `schritt5-6-gegenprobe-geformt-messung-2026-11-13.txt`.
+
+**Was daraus folgt:**
+- **Das Maul ist, was er formt.** Was er am 12.11. verlangt hat (echte eigene Geometrie, Loops nur um einen Kiefer, Kiefer nicht
+  mehr an den alten Linien, exakt auf den Kurven), hat ein von Hand geformtes Maul schon. Eine eingeschweißte Höhle braucht es
+  dafür nicht.
+- **Was am geformten Maul fehlt, ist die Maul-Funktion.** „Fressen“ und die Regler kennen heute nur die schmale Form: Sie würden
+  an seiner Form die Innenseiten der Kiefer als Öffnung wegschneiden (622 Dreiecke) und ein eigenes Inneres einsetzen. Die
+  Gewichte der Knochen lassen sich aus seiner Lippenlinie schon lesen (Gelenk am Mundwinkel, der Unterkiefer dreht als Ganzes);
+  an der Spitze des Unterkiefers, wo die Lippenlinie endet, knickt die Haut dabei (im Bild oben; beim Öffnen 4, beim Schließen
+  20 umgeschlagene Dreiecke mehr).
+- **Schritt 6, neu gefasst (klein):** die Maul-Funktion für ein geformtes Maul. Die Lippenlinie wählen, „Fressen“: Gelenk und
+  Gewichte, nichts wird geschnitten, nichts eingesetzt; der Knick an der Kieferspitze wird behoben. Das Maul aus der schmalen
+  Form bleibt daneben, wie es ist.
+- **Schritt 5 wie im Nachtrag oben** und in seinen Worten: Eine Pose ist dieselbe Form mit anderen Lagen der Punkte und Griffe,
+  dazu die Knochen. Die Fassungen (b) und (c) und die Frage nach der Kante am Maul entfallen für ein geformtes Maul.
+- Reihenfolge: zuerst Schritt 6 neu (ohne Knochen gibt es an seiner Form keine Pose), dann Schritt 5. Gebaut wird im Bau-Fenster
+  nach seinem Wort.
 
 ### Schritt 7: Auswahl wie in Blender (2 bis 3 Tage)
 

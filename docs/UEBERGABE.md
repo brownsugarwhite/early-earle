@@ -1,4 +1,4 @@
-# Übergabe (Stand 13.11.2026, 17 Uhr: Zwei kleine Beweise halten nicht, beide sind angehalten. Schritt 5 (Posen) scheitert an den Lippen des Mauls von heute (Abschnitt 7.6); Schritt 6 (Maul als eigene Geometrie), den Florian deshalb vorgezogen hat, scheitert daran, dass die heutige Rechnung keine Höhle hält (Abschnitt 7.7). Gefragt ist Florians Entscheidung. Schritt 4b, erster Teil, die Rechnung auf der Hälfte, ist in seinem Fenster (5194; Abschnitt 7.5); der Rest der halben Haut ist als Schritt 4c fest vorgemerkt. Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt. Zu Schritt 1, 2, dem Donut (4a) und der halben Rechnung steht sein Urteil aus)
+# Übergabe (Stand 13.11.2026, 17:15 Uhr: Die Beweise zu Schritt 5 (Posen) und Schritt 6 (Maul) hatten das Falsche geprüft; Florian hat widersprochen und recht behalten (Abschnitt 7.8). An seiner Form „maul handgemacht test“ (ein Maul, von Hand geformt) hält die Rechnung von heute das Maul, und ein Zug in der Pose ist ein gewöhnlicher Zug. Was dort fehlt, ist die Maul-Funktion (Gelenk und Gewichte ohne Schneiden und Einsetzen). Gefragt ist sein Wort zum Bauen. Schritt 4b, erster Teil, die Rechnung auf der Hälfte, ist in seinem Fenster (5194; Abschnitt 7.5); der Rest der halben Haut ist als Schritt 4c fest vorgemerkt. Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt. Zu Schritt 1, 2, dem Donut (4a) und der halben Rechnung steht sein Urteil aus)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -27,8 +27,8 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | 3 Beweis „Haut direkt aus den Linien“ | **abgeschlossen, die heutige Rechnung bleibt** (Abschnitt 6, 13.11.): Die Haut nur aus den Linien (A) scheitert zwischen wenigen Linien und an seinen drei Formen. Der Teil B (fertige Haut direkt bewegen) hält rechnerisch; als Schalter „Form halten“ im Bau-Fenster ausprobiert, Florian: „Gefällt nicht“. Knopf und Taste sind wieder weg; der Code liegt nur auf `claude/form-bau` hinter `?ziehen=direkt` |
 | 4 Echte Spiegelung (mit der heutigen Rechnung) | **4a, der Donut, ist in Florians Fenster (Abschnitt 7.4, 13.11.):** nach seiner zweiten Regel; sein Urteil steht aus. **4b, erster Teil, ist seit dem 13.11. nachmittags in Florians Fenster (Abschnitt 7.5):** Der Löser rechnet auf der Hälfte (zwei halb so große Systeme, Krümmung auf der Hälfte), das Netz im Fenster bleibt ganz; Rechnen je Bild 10,3 → 7,1 ms am „teat firefish“, Zerlegen rund 50 %, gleiche Form; dazu „flüssig zuerst“ (eine weitere Runde je Bild nur, wenn sie ins Bild passt). Sein Urteil zum Tempo steht aus |
 | 4c Rest der halben Haut | **fest vorgemerkt** (Plan, „Schritt 4c“; Florian am 13.11.: „es soll nicht vergessen werden“): Gewichte und Vermessen auf der Hälfte (Runde von 73 % auf 50 bis 60 %), die einzelnen langsamen Bilder, Verdichten und Anzeige auf der Hälfte, das Netz selbst als Hälfte. Kommt nach den Posen wieder auf den Tisch und muss gebaut sein, bevor Shader, Materialien, Fell oder Zusatzteile beginnen. Seine heutigen Formen sind kein Maßstab für das Tempo |
-| 5 Posen wie die Basis | **Etappe 1 (kleiner Beweis) gerechnet, hält nicht wie festgelegt; angehalten** (Abschnitt 7.6, 13.11.): Die Rechnung der Grundform kann die Pose rechnen, scheitert aber an den Lippen des Mauls von heute. Florian: „ja, dann erst das Maul“. Nach dem Beweis zu Schritt 6 wieder offen: Mit der Maullinie als Kante (Fassung b) ließen sich die Posen bauen |
-| 6 Maul als eigene Geometrie | **vorgezogen (Florian am 13.11.), kleiner Beweis gerechnet, hält nicht; angehalten** (Abschnitt 7.7): Das Maul lässt sich als Haut einschweißen, aber die Rechnung von heute hält keine Höhle. Offen ist Florians Entscheidung: Maul bleibt wie heute und die Maullinie wird Kante (dann Posen), Unterkiefer als eigenes Teil, oder erst Schritt 4c |
+| 5 Posen wie die Basis | **Entwurf steht, Gegenprobe an Florians Form hält** (Abschnitte 7.6 und 7.8, 13.11.): Eine Pose ist dieselbe Form mit anderen Lagen der Punkte und Griffe, dazu die Knochen (Florian: „ein einfacher Morph der Punkte und Handles […], während die Kieferknochen sich bewegen“). Der erste Beweis war am Maul aus der schmalen Form gescheitert (verborgene Fläche); am von Hand geformten Maul ist ein Zug in der Pose ein gewöhnlicher Zug. Gebaut ist nichts; kommt nach Schritt 6 |
+| 6 Maul | **neu gefasst (Abschnitt 7.8, 13.11.): die Maul-Funktion für ein von Hand geformtes Maul.** Das Maul selbst formt Florian wie jede Form (hält; Loops um einen Kiefer gehen dort schon). Zu bauen: „Fressen“ an der gewählten Lippenlinie (Gelenk, Gewichte), ohne Schneiden und Einsetzen; der Knick an der Spitze des Unterkiefers. Der Beweis „Maul als eingeschweißte Höhle“ (7.7) hat das Falsche geprüft. Gefragt ist sein Wort zum Bauen |
 | 7 Auswahl wie in Blender | offen |
 
 **Schritt 0, was getan ist:**
@@ -565,6 +565,9 @@ kein Grund, ihn zurückzustellen: Seine Formen sind kein Maßstab für das Tempo
 
 ### 7.6 Schritt 5, Etappe 1: kleiner Beweis „die Pose in ihrer Ruhe rechnen“ (13.11. nachmittags): hält nicht wie festgelegt, angehalten
 
+**Vorweg (13.11., 17:15 Uhr): Was hier scheitert, ist das Maul aus der schmalen Form (die verborgene Fläche zwischen den Lippen),
+nicht die Pose. An Florians von Hand geformtem Maul hält derselbe Beweis; siehe 7.8.**
+
 **Was geprüft wurde** (Plan, Nachtrag zu Schritt 5): Weil die heutige Rechnung bleibt, wäre eine Pose eine zweite Lage derselben
 Form (Versatz der Linien, Blendshape der Haut), gerechnet in ihrer Ruhe (vor den Knochen, das Maul ist zu) mit der Rechnung der
 Grundform; die Knochen drehen nur die Anzeige, ein Zug im Blatt wird mit dem Winkel seines Punkts zurückgedreht. Gebaut ist
@@ -610,7 +613,11 @@ In allen Fällen: nichts umgeschlagen, Ruhe nach 43 bis 73 Runden, Linien genau 
 **Florians Antwort (13.11. nachmittags): „ja, dann erst das Maul“.** Der Beweis dazu steht in 7.7; er hält nicht. Damit ist die
 Fassung (b) wieder im Spiel.
 
-### 7.7 Schritt 6, kleiner Beweis „das Maul als eigene Geometrie“ (13.11., 17 Uhr): hält nicht, angehalten
+### 7.7 Schritt 6, kleiner Beweis „das Maul als eigene Geometrie“ (13.11., 16:45 Uhr): hält nicht, angehalten
+
+**Vorweg (13.11., 17:15 Uhr): Dieser Beweis hat das Falsche geprüft, Befund 2 und die Folgerung in Befund 5 gelten so nicht.
+Geprüft war ein fertiges, fast geschlossenes Inneres, auf einmal eingeschweißt; ein Maul, das wie jede Form mit Linien geformt
+wird, hält die Rechnung. Siehe 7.8.**
 
 **Was geprüft wurde** (Plan, Nachtrag zu Schritt 6, mit Entwurf): Das Maul wird Haut. Die verborgene Fläche der Öffnung fällt
 weg, Gaumen und Boden werden an den Lippen eingeschweißt (eine Tasche, die Haut bleibt geschlossen); darauf rechnet die Rechnung
@@ -649,13 +656,58 @@ Kante und Mittellinie durch die Höhle (51) · gewölbt wie in der Anzeige von h
    so nur, wenn der Unterkiefer ein eigenes Teil mit eigener Haut ist (zwei runde Körper, jeder von der heutigen Rechnung
    gehalten). Das ist ein eigener Entwurf und gehört zu „Teile anfügen“ (Flügel, Beine).
 
-**Gefragt ist Florian (13.11., 17 Uhr):**
-- **„Posen mit Kante“** (empfohlen): Das Maul bleibt, wie es heute ist. Die Maullinie wird eine Kante, und damit werden die
-  Posen gebaut (Fassung b aus 7.6: Züge an den Lippen sauber und am Ort). Linien, die über die Lippen laufen, bekommen dort
-  einen Eckpunkt. Loops um einen Kiefer allein gibt es dann nicht. Mit Kante bläst sich die Form bei Zügen weit weg vom Maul
-  anders auf als ohne (56,8 statt 40,0 in der Probe).
-- **„Kiefer als Teil“:** der Unterkiefer als eigenes Teil; zuerst ein Entwurf in Bildern, zusammen mit „Teile anfügen“.
-- **„Erst die Hälfte“:** Schritt 4c jetzt, Maul und Posen danach.
+**Gefragt war Florian (13.11., 16:45 Uhr)** nach „Posen mit Kante“, „Kiefer als Teil“ oder „Erst die Hälfte“. Seine Antwort war
+ein Widerspruch; siehe 7.8.
+
+### 7.8 Berichtigung: An Florians von Hand geformtem Maul halten beide Beweise (13.11., 17:15 Uhr)
+
+**Florian zum Ergebnis von 7.7:** „Ich verstehe das Problem nicht. Ich kann doch jedes beliebige Maul auch mit dem jetzigen Mesh
+von Hand formen, und es kollabiert nichts, und es wird nichts komisch aufgeblasen. Ich denke, du verkomplizierst da etwas oder
+hast mich missverstanden. Schau es dir nochmal an.“ **Und zu 7.6:** „Auch bei deinem fehlgeschlagenen Posenbeweis. Ich verstehe
+das Problem nicht. Ich verstehe, dass ich keine neuen Edgeloops oder Punkte in der Pose hinzufügen kann, aber verschieben und
+bearbeiten sollte ich alles ohne Probleme können. Dann ist es ja ein einfacher Morph der Punkte und Handles von einer zur anderen
+Position, während die Kieferknochen sich bewegen.“ Er hat dazu seine Form gesichert: **`wesen/maul handgemacht test.eewesen`**
+(3 485 Punkte, 13 Loops): zwei Kiefer, dazwischen die Bucht; die Lippenlinie ist Loop 14 (Ring, Kante), Loop 15 läuft nur um den
+Oberkiefer, Loop 16 nur um den Unterkiefer.
+
+**Was falsch war:**
+- 7.7 hat nicht „ein Maul in derselben Haut“ geprüft, sondern eine Konstruktion: das Innere der Anzeige (oder eine flache
+  Fassung davon) fast geschlossen, mit einem Knick hinten und fast ohne Linien, auf einmal eingeschweißt. Daraus habe ich
+  geschlossen, die Rechnung halte keine Höhle. Seine Formen zeigen täglich das Gegenteil (auch „teat firefish“ hat tiefe
+  Buchten).
+- 7.6 ist an der verborgenen Fläche zwischen den Lippen gescheitert. Die hat nur das Maul aus der schmalen Form; ein geformtes
+  Maul hat sie nicht.
+- Sein Wunsch vom 12.11. („echte eigene Geometrie“, Loops nur um einen Kiefer, Kiefer nicht mehr an den alten Linien) ist an
+  einem von Hand geformten Maul schon erfüllt. Ich hatte ihn als „die schmale Form in eine Höhle umbauen“ gelesen.
+
+**Gegenproben** (Zahlen `docs/progress/editor/schritt5-6-gegenprobe-geformt-messung-2026-11-13.txt`):
+1. **Ein Maul mit Linien geformt** (`form-maul-geformt.ts`; Kugel mit drei Loops, Punkte für die Lippen, der Punkt vorn in 40
+   Schritten 110 nach innen): steht nach 84 Runden, Bucht 110 tief, nichts umgeschlagen, Linien genau auf ihren Pfaden. Bild
+   `docs/progress/editor/schritt6-maul-geformt-2026-11-13.jpg`.
+2. **Seine Form, Knochen und Pose** (`form-pose-geformt.ts`, `LIPPE=14`; Bild
+   `docs/progress/editor/schritt5-pose-geformt-2026-11-13.jpg`):
+   - Die Form steht (zur Ruhe in 8 Runden, dabei 0,07 bewegt; Knicke über 60° 96, umgeschlagen 8 als Ausgangswert).
+   - **Knochen:** Aus der Lippenlinie liest `maulAmLoop` Gelenk und Gewichte (Mundwinkel hinten in der Bucht; 226 Punkte drehen
+     ganz, 400 zum Teil). Der Unterkiefer dreht als Ganzes. An seiner Spitze, wo die Lippenlinie endet, knickt die Haut: 20°
+     weiter offen 12 umgeschlagen (4 mehr), 20° weiter zu 28 (20 mehr). **Die Maul-Funktion von heute ginge an dieser Form
+     nicht:** Sie nähme die Innenseiten der Kiefer als Öffnung (622 Dreiecke), schnitte sie weg und setzte ein eigenes Inneres
+     ein.
+   - **Pose** (20° weiter offen; der Zug zurückgedreht, Rechnung der Grundform unverändert): Punkt der Unterlippe 25 nach unten
+     und 25 nach oben: steht nach 43 Runden, fern vom Maul 0,00, Linien 0,00 neben ihrem Pfad, keine neuen umgeschlagenen
+     Dreiecke. 70 nach oben: steht nach 54 Runden, 8 umgeschlagene mehr. Punkt fern vom Maul 25 nach außen: steht nach 42.
+
+**Was daraus folgt** (im Plan als Berichtigung):
+- Das Maul ist, was er formt. Eine eingeschweißte Höhle braucht es nicht.
+- **Schritt 6 neu (klein): die Maul-Funktion für ein geformtes Maul.** Lippenlinie wählen, „Fressen“: Gelenk und Gewichte, nichts
+  schneiden, nichts einsetzen; den Knick an der Kieferspitze beheben. Das Maul aus der schmalen Form bleibt daneben bestehen.
+- **Schritt 5:** Pose = dieselben Punkte und Griffe an anderen Lagen, dazu die Knochen (Nachtrag im Plan). Die Fassungen (b)
+  und (c) aus 7.6 und die Frage nach der Kante am Maul entfallen für ein geformtes Maul.
+- Reihenfolge: erst Schritt 6 neu (ohne Knochen gibt es an seiner Form keine Pose), dann Schritt 5.
+
+**Grenzen:** eine Form, nur im Kern, die Gewichte von heute. Im Fenster ist nichts gebaut und nichts geändert.
+
+**Gefragt ist Florian (13.11., 17:15 Uhr):** Ist es so richtig verstanden, und soll ich so bauen? **„Ja, so bauen“** oder
+**„Nein“**.
 
 ## 8. Offen aus der Zeit davor
 
