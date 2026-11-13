@@ -1,4 +1,4 @@
-# Übergabe (Stand 13.11.2026, 17:15 Uhr: Die Beweise zu Schritt 5 (Posen) und Schritt 6 (Maul) hatten das Falsche geprüft; Florian hat widersprochen und recht behalten (Abschnitt 7.8). An seiner Form „maul handgemacht test“ (ein Maul, von Hand geformt) hält die Rechnung von heute das Maul, und ein Zug in der Pose ist ein gewöhnlicher Zug. Was dort fehlt, ist die Maul-Funktion (Gelenk und Gewichte ohne Schneiden und Einsetzen). Gefragt ist sein Wort zum Bauen. Schritt 4b, erster Teil, die Rechnung auf der Hälfte, ist in seinem Fenster (5194; Abschnitt 7.5); der Rest der halben Haut ist als Schritt 4c fest vorgemerkt. Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt. Zu Schritt 1, 2, dem Donut (4a) und der halben Rechnung steht sein Urteil aus)
+# Übergabe (Stand 13.11.2026, 17:30 Uhr: Schritt 6 (Maul) ist neu gefasst und der Beweis hält (Abschnitt 7.9): Das Maul entsteht automatisch an der gewählten Linie, geformt wie von Hand (Kante hart, Querlinie durch die Mundwinkel, die Mitte zwischen den Lippen wird in Schritten nach innen gezogen). Danach gehen Loops nur um einen Kiefer und der Kieferknochen. Die beiden Beweise davor (7.6 Posen, 7.7 Maul als eingeschweißte Höhle) hatten das Falsche geprüft; Florian hat widersprochen und recht behalten (7.8). Gebaut ist nichts; gefragt ist sein Wort zum Bauen. Schritt 4b, erster Teil, die Rechnung auf der Hälfte, ist in seinem Fenster (5194; Abschnitt 7.5); der Rest der halben Haut ist als Schritt 4c fest vorgemerkt. Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt. Zu Schritt 1, 2, dem Donut (4a) und der halben Rechnung steht sein Urteil aus)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -28,7 +28,7 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | 4 Echte Spiegelung (mit der heutigen Rechnung) | **4a, der Donut, ist in Florians Fenster (Abschnitt 7.4, 13.11.):** nach seiner zweiten Regel; sein Urteil steht aus. **4b, erster Teil, ist seit dem 13.11. nachmittags in Florians Fenster (Abschnitt 7.5):** Der Löser rechnet auf der Hälfte (zwei halb so große Systeme, Krümmung auf der Hälfte), das Netz im Fenster bleibt ganz; Rechnen je Bild 10,3 → 7,1 ms am „teat firefish“, Zerlegen rund 50 %, gleiche Form; dazu „flüssig zuerst“ (eine weitere Runde je Bild nur, wenn sie ins Bild passt). Sein Urteil zum Tempo steht aus |
 | 4c Rest der halben Haut | **fest vorgemerkt** (Plan, „Schritt 4c“; Florian am 13.11.: „es soll nicht vergessen werden“): Gewichte und Vermessen auf der Hälfte (Runde von 73 % auf 50 bis 60 %), die einzelnen langsamen Bilder, Verdichten und Anzeige auf der Hälfte, das Netz selbst als Hälfte. Kommt nach den Posen wieder auf den Tisch und muss gebaut sein, bevor Shader, Materialien, Fell oder Zusatzteile beginnen. Seine heutigen Formen sind kein Maßstab für das Tempo |
 | 5 Posen wie die Basis | **Entwurf steht, Gegenprobe an Florians Form hält** (Abschnitte 7.6 und 7.8, 13.11.): Eine Pose ist dieselbe Form mit anderen Lagen der Punkte und Griffe, dazu die Knochen (Florian: „ein einfacher Morph der Punkte und Handles […], während die Kieferknochen sich bewegen“). Der erste Beweis war am Maul aus der schmalen Form gescheitert (verborgene Fläche); am von Hand geformten Maul ist ein Zug in der Pose ein gewöhnlicher Zug. Gebaut ist nichts; kommt nach Schritt 6 |
-| 6 Maul | **neu gefasst (Abschnitt 7.8, 13.11.): die Maul-Funktion für ein von Hand geformtes Maul.** Das Maul selbst formt Florian wie jede Form (hält; Loops um einen Kiefer gehen dort schon). Zu bauen: „Fressen“ an der gewählten Lippenlinie (Gelenk, Gewichte), ohne Schneiden und Einsetzen; der Knick an der Spitze des Unterkiefers. Der Beweis „Maul als eingeschweißte Höhle“ (7.7) hat das Falsche geprüft. Gefragt ist sein Wort zum Bauen |
+| 6 Maul | **neu gefasst, Beweis hält (Abschnitt 7.9, 13.11.): Das Maul entsteht automatisch an der gewählten Linie, geformt wie von Hand.** Kante hart, Querlinie durch die Mundwinkel, die Mitte zwischen den Lippen wird in Schritten nach innen gezogen; nichts wird eingeschweißt oder eingesetzt. Danach gehen Loops nur um einen Kiefer und der Kieferknochen. Ein von Hand geformtes Maul bekommt dieselben Knochen (7.8). Der Beweis „Maul als eingeschweißte Höhle“ (7.7) hat das Falsche geprüft. Gebaut ist nichts; gefragt ist Florians Wort zum Bauen |
 | 7 Auswahl wie in Blender | offen |
 
 **Schritt 0, was getan ist:**
@@ -706,8 +706,49 @@ Oberkiefer, Loop 16 nur um den Unterkiefer.
 
 **Grenzen:** eine Form, nur im Kern, die Gewichte von heute. Im Fenster ist nichts gebaut und nichts geändert.
 
-**Gefragt ist Florian (13.11., 17:15 Uhr):** Ist es so richtig verstanden, und soll ich so bauen? **„Ja, so bauen“** oder
-**„Nein“**.
+**Gefragt war Florian (13.11., 17:15 Uhr),** ob es so richtig verstanden ist. Seine Antwort steht in 7.9: Das Maul soll
+weiter automatisch entstehen.
+
+### 7.9 Schritt 6 neu: das Maul automatisch geformt, wie von Hand (13.11., 17:30 Uhr): der Beweis hält
+
+**Florian:** „Das Maul soll aber an einem gewählten Edgeloop immer noch automatisch entstehen. Ist das dann noch so? Im Grunde
+machst du ja nur die Kante hart und verbindest von der Seite die gegenüberliegenden Seiten. Das sollte automatisch passieren
+können. Das Maul ist dann einfach eine Form wie von Hand gemacht, nur automatisiert. Ich kann weitere Edgeloops auch im Inneren
+einziehen und später Zahnfleisch, Zähne und Zunge genau einstellen. (Zähne und Zahnfleisch und Zunge machen wir jetzt noch
+nicht.) Geht das so, wie ich es hier erklärt habe? Die Spiegelkante ist zur Stabilisation der Form ja sowieso schon von Anfang
+an gegeben. Daher bläst sich eigentlich auch nicht mehr so viel auf, und es sollte problemlos gehen.“
+
+**Antwort: ja.** Probe `form-maul-automatisch.ts` (Kern) an der Kugel mit Ring und Maullinie
+(`formen/pose-maul-kugel.eewesen`); Bild `docs/progress/editor/schritt6-maul-automatisch-2026-11-13.jpg`, Zahlen
+`docs/progress/editor/schritt6-maul-automatisch-messung-2026-11-13.txt`. Nichts wird hineingebaut, es wird nur an Linien gezogen:
+1. Die Maullinie wird eine Kante (die Lippen).
+2. Mittellinie (falls sie fehlt) und eine **Querlinie durch beide Mundwinkel**: ein Ring um den Kopf in der Ebene des Mauls. Er
+   kreuzt die Mittellinie vorn zwischen den Lippen und die Maullinie in den Mundwinkeln; das Stück dazwischen ist hart. Das ist
+   „die gegenüberliegenden Seiten verbinden“, als Linie.
+3. Die Kreuzung vorn zwischen den Lippen wird in 60 Schritten nach innen gezogen (91, bis zwischen die Mundwinkel).
+
+| Geprüft | Ergebnis |
+| --- | --- |
+| Das Maul formen | steht gleich nach dem Zug; nichts umgeschlagen; außen 0,02 bewegt; Linien 0,08 neben ihrem Pfad; Vorsicht 0 |
+| Loop nur um den Unterkiefer, Loop nur um den Oberkiefer | beide lassen sich schneiden und einsetzen; danach Ruhe nach 7 Runden, nichts umgeschlagen |
+| Kieferknochen 30° offen | nichts umgeschlagen (Gelenk am Mundwinkel; Gewichte außen wie heute, innen Boden ganz, Gaumen gar nicht) |
+| Zum Vergleich: dieselbe Form auf einmal hineingebaut, mit der Verbindung hinten als harter Linie | kommt nicht zur Ruhe (Vorsicht hält nach acht Runden an; 99 umgeschlagen) |
+
+**Befunde:**
+1. Der Unterschied zu 7.7 ist das Formen in Schritten. Die Form ist dieselbe (Gaumen und Boden als Flächen zwischen den Lippen
+   und der Linie von Mundwinkel zu Mundwinkel).
+2. Die Verbindung von Mundwinkel zu Mundwinkel braucht keine neue Art Linie: Sie ist das innere Stück eines gewöhnlichen Rings
+   um den Kopf, der durch die Mundwinkel läuft.
+3. Was 7.7 nicht konnte (den Loop um einen Kiefer einsetzen), geht hier.
+
+**Offen aus der Probe:** eine Form, nur im Kern, ohne Verfeinern im Zug. Die Maullinie bekommt am Mundwinkel einen zweiten
+Punkt dicht neben dem vorhandenen. Die Gewichte innen sind grob; geöffnet ist die Fläche hinten am Gelenk zackig. Glatte Lippen
+(Kante aus) sind nicht geprüft.
+
+**Etappen** (Plan, „Schritt 6, wie Florian ihn beschreibt“): 1. „Maul“ formt automatisch (Kern und Fenster); 2. Kieferknochen am
+geformten Maul, auch am von Hand geformten; 3. danach Schritt 5 (Posen).
+
+**Gefragt ist Florian (13.11., 17:30 Uhr):** Soll ich so bauen? **„Ja, so bauen“** oder **„Nein“**.
 
 ## 8. Offen aus der Zeit davor
 

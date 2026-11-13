@@ -500,6 +500,46 @@ die Bucht), mit der Lippenlinie als Kante und je einem Loop nur um den Ober- und
 - Reihenfolge: zuerst Schritt 6 neu (ohne Knochen gibt es an seiner Form keine Pose), dann Schritt 5. Gebaut wird im Bau-Fenster
   nach seinem Wort.
 
+**Schritt 6, wie Florian ihn beschreibt (13.11., 17:30 Uhr): Das Maul entsteht automatisch an der gewählten Linie, als Form wie
+von Hand.** Florian: „Das Maul soll aber an einem gewählten Edgeloop immer noch automatisch entstehen. […] Im Grunde machst du
+ja nur die Kante hart und verbindest von der Seite die gegenüberliegenden Seiten. Das sollte automatisch passieren können. Das
+Maul ist dann einfach eine Form wie von Hand gemacht, nur automatisiert. Ich kann weitere Edgeloops auch im Inneren einziehen und
+später Zahnfleisch, Zähne und Zunge genau einstellen. (Zähne und Zahnfleisch und Zunge machen wir jetzt noch nicht.) […] Die
+Spiegelkante ist zur Stabilisation der Form ja sowieso schon von Anfang an gegeben.“
+
+**Geprüft und gehalten** (Probe `form-maul-automatisch.ts`, Bild `docs/progress/editor/schritt6-maul-automatisch-2026-11-13.jpg`,
+Zahlen `schritt6-maul-automatisch-messung-2026-11-13.txt`): Das Maul wird nicht hineingebaut, sondern geformt, wie eine Hand es
+täte; es wird nur an Linien gezogen, die Haut folgt der Rechnung der Grundform Schritt für Schritt.
+1. Die gewählte Maullinie wird eine Kante (die Lippen).
+2. Die Mittellinie ist da (sonst wird sie angelegt). Dazu kommt eine Querlinie durch beide Mundwinkel: ein Ring um den Kopf in
+   der Ebene des Mauls. Er kreuzt die Mittellinie vorn zwischen den Lippen und die Maullinie in den Mundwinkeln. Sein Stück
+   dazwischen ist die Verbindung der gegenüberliegenden Seiten; es ist hart.
+3. Die Kreuzung vorn zwischen den Lippen wird nach innen gezogen, bis zwischen die Mundwinkel. Aus der Fläche zwischen den Lippen
+   werden Gaumen und Boden.
+
+Ergebnis an der Kugel mit Maullinie: Die Haut steht gleich nach dem Zug (60 Schritte, 91 nach innen), nichts ist umgeschlagen,
+außen bewegt sich nichts (0,02), die Linien liegen auf ihren Pfaden (0,08). Danach lassen sich Loops nur um den Unterkiefer und
+nur um den Oberkiefer schneiden und einsetzen (steht nach 7 Runden, nichts umgeschlagen), und der Kieferknochen öffnet das Maul
+um 30° ohne umgeschlagene Dreiecke. Zum Vergleich: Dieselbe Form auf einmal hineingebaut (`form-maul-haut.ts`) kommt nicht zur
+Ruhe, auch mit der Verbindung hinten als harter Linie (die Vorsicht hält nach acht Runden an). Der Unterschied ist das Formen in
+Schritten, nicht die Form.
+
+**Offen aus der Probe:** eine Form, nur im Kern, ohne Verfeinern im Zug (die Fläche zwischen den Lippen wird stark gestreckt; im
+Fenster verfeinert der Zug). Die Maullinie bekommt am Mundwinkel einen zweiten Punkt dicht neben dem vorhandenen (die Kreuzung
+mit der Querlinie muss den Mundwinkel selbst nehmen). Die Gewichte innen sind in der Probe grob (Boden ganz, Gaumen gar nicht);
+geöffnet ist die Fläche hinten am Gelenk deshalb zackig. Glatte Lippen (Kante aus) sind nicht geprüft.
+
+**Etappen** (Bau-Fenster, jede mit Bildpaar; in Florians Fenster erst nach seinem Wort):
+1. **„Maul“ formt automatisch:** im Kern eine Funktion für die drei Schritte oben (mit Verfeinern im Zug), im Fenster am
+   gewählten Ring. Nichts wird mehr geschnitten oder eingesetzt. **Probe:** die Zahlen oben im Fenster, und eine seiner Formen.
+2. **Kieferknochen am geformten Maul:** Gelenk an den Mundwinkeln, Gewichte außen wie heute, innen weich vom Boden zum Gaumen;
+   „Fressen“ und die Regler darauf. Gilt auch für ein von Hand geformtes Maul (Lippenlinie wählen); dort den Knick an der
+   Kieferspitze beheben. **Probe:** seine Form „maul handgemacht test“ und das automatisch geformte Maul, zu und offen.
+3. **Danach Schritt 5** (Posen als Morph der Punkte und Griffe mit den Knochen).
+
+Das Maul aus der schmalen Form mit eingesetztem Inneren (die Anzeige von heute) bleibt für gesicherte Formen bestehen, bis er
+entscheidet.
+
 ### Schritt 7: Auswahl wie in Blender (2 bis 3 Tage)
 
 - **Was du danach siehst:** Du wählst Punkte, **Kanten** (das Linienstück zwischen zwei Punkten) und **Flächen** (das Feld

@@ -16,7 +16,7 @@
 import { fileURLToPath } from 'node:url';
 import { loopEinsetzen } from '../../../../packages/shape/src/dicht/einsetzen';
 import { type Haut, type V3, hautAus } from '../../../../packages/shape/src/dicht/kurven';
-import { type Loop, LoopZug, eckenAuto, hautLagen, istSichtbar, kanteBei, kreuzungenZwischen, loopAusSchnitt, mittlereKante, pfadLagen, punktEinfuegen } from '../../../../packages/shape/src/dicht/loops';
+import { type Loop, LoopZug, eckenAuto, hatPfad, hautLagen, istSichtbar, kanteBei, kreuzungenZwischen, loopAusSchnitt, mittlereKante, pfadLagen, punktEinfuegen } from '../../../../packages/shape/src/dicht/loops';
 import { type MaulAmLoop, maulAmLoop } from '../../../../packages/shape/src/dicht/maulLoop';
 import { verdichten } from '../../../../packages/shape/src/dicht/verdichten';
 import { type BlattBild, type BlattLinie, type BlattSchnitt, type BlattZeile, blattSchreiben } from './form-direkt-blatt';
@@ -104,10 +104,11 @@ type Teil = Uint8Array;
  * ein Punkt, am Mundwinkel die Strecke von Mundwinkel zu Mundwinkel; dort treffen sich Gaumen und Boden). Dieselbe Bauart wie das
  * gewölbte Innere der Anzeige (`maulAmLoop`), ohne die Wölbung in die Kiefer.
  */
-function flachesInneres(h: Haut): { positionen: number[]; indizes: number[]; unten: number[] } {
+function flachesInneres(h: Haut): { positionen: number[]; indizes: number[]; unten: number[]; achse: number[] } {
   const P: number[] = [];
   const I: number[] = [];
   const unten: number[] = [];
+  let achse: number[] = [];
   let zMax = 0;
   for (const w of m.lippeOben) zMax = Math.max(zMax, Math.abs(h.pos[3 * w + 2]!));
   const nZ = Math.max(2, 2 * Math.ceil(zMax / (0.6 * mk)));
@@ -137,6 +138,8 @@ function flachesInneres(h: Haut): { positionen: number[]; indizes: number[]; unt
       }
       spalten.push(sp);
     }
+    // die Spalte am Mundwinkel: die Strecke von Mundwinkel zu Mundwinkel (Gaumen und Boden teilen sie sich)
+    if (istUnten === 0) achse = spalten[K - 1]!;
     const start = I.length;
     const tri = (a: number, b: number, c: number) => {
       if (a !== b && b !== c && c !== a) I.push(a, b, c);
@@ -163,10 +166,10 @@ function flachesInneres(h: Haut): { positionen: number[]; indizes: number[]; unt
       }
     }
   }
-  return { positionen: P, indizes: I, unten };
+  return { positionen: P, indizes: I, unten, achse };
 }
 
-function maulAlsHaut(h: Haut, flach = false): { haut: Haut; neu: Int32Array; teil: Teil } {
+function maulAlsHaut(h: Haut, flach = false): { haut: Haut; neu: Int32Array; teil: Teil; achse: number[] } {
   const T = h.tri.length / 3;
   const benutzt = new Uint8Array(h.n);
   for (let t = 0; t < T; t++) if (!m.offen[t]) for (let e = 0; e < 3; e++) benutzt[h.tri[3 * t + e]!] = 1;
@@ -239,7 +242,7 @@ function maulAlsHaut(h: Haut, flach = false): { haut: Haut; neu: Int32Array; tei
     haut.pos.set([x, y, -z], 3 * w);
   }
   haut = hautAus(haut.pos, haut.tri);
-  return { haut, neu, teil: Uint8Array.from(teil) };
+  return { haut, neu, teil: Uint8Array.from(teil), achse: eigen ? eigen.achse.map((i) => innenNr[i]!) : [] };
 }
 
 /** Prüfung einer Haut: Kanten, die nicht genau zwei Dreiecke haben oder zweimal gleich herum laufen; Punkte ohne Spiegelbild */
@@ -445,7 +448,7 @@ function mitLinie(st0: Stand, teil0: Teil, a: 'top' | 'seite', P: [number, numbe
   let k = Math.max(0, ...st.loops.flatMap((x) => x.punkte.map((p) => p.kreuzung ?? 0))) + 1;
   for (let i = 0; i < nr; i++)
     for (const f of kreuzungenZwischen(st.loops[i]!, st.loops[i]!.ruhe, st.loops[nr]!, st.loops[nr]!.ruhe, tol)) {
-      punktEinfuegen(st.loops[i]!, f.sa, k, true);
+      punktEinfuegen(st.loops[i]!, f.sa, k, hatPfad(st.loops[i]!));
       punktEinfuegen(st.loops[nr]!, f.sb, k);
       k++;
     }
@@ -507,6 +510,70 @@ let mitte: Fall | null = null;
   }
 }
 
+// Florians Beschreibung (13.11.): „Im Grunde machst du ja nur die Kante hart und verbindest von der Seite die gegenüberliegenden
+// Seiten.“ Das ist die flache Höhle. Dazu hier: Die Verbindung hinten, von Mundwinkel zu Mundwinkel, ist selbst eine harte Linie
+// (im Linienmodell gibt es sie noch nicht: Sie läuft nicht von Mitte zu Mitte; zur Probe als Ring von der Mitte hinten über den
+// Mundwinkel und die Unterlippe zur Mitte vorn, sie liegt also auf der Unterlippe doppelt).
+let gehalten: Fall | null = null;
+let gehaltenTeil: Teil | null = null;
+/** der Stand vor der Rechnung (vergleichmäßigt, mit allen Linien), für die Diagnose */
+let gehaltenStart: { st: Stand; teil: Teil } | null = null;
+if (FLACH && A.achse.length) {
+  const st0 = kopie(angelegt);
+  st0.loops[maulNr]!.kante = true;
+  const nZ = A.achse.length - 1;
+  const KU = (m.lippeUnten.length + 1) / 2;
+  const kette = [...A.achse.slice(nZ / 2)];
+  for (let i = 2 * KU - 3; i >= KU - 1; i--) kette.push(A.neu[m.lippeUnten[i]!]!);
+  const pk = kette.map((w) => lage(st0.h.pos, w));
+  pk[0]!.z = 0;
+  pk[pk.length - 1]!.z = 0;
+  const sK = new Float64Array(kette.length);
+  for (let i = 1; i < kette.length; i++) sK[i] = sK[i - 1]! + Math.hypot(pk[i]!.x - pk[i - 1]!.x, pk[i]!.y - pk[i - 1]!.y, pk[i]!.z - pk[i - 1]!.z);
+  const hinten: Loop = {
+    id: Math.max(...st0.loops.map((l) => l.id)) + 1,
+    art: 'ring',
+    proben: kette.map((w) => ({ ecken: [w, w, w] as [number, number, number], b: [1, 0, 0] as [number, number, number] })),
+    s: sK,
+    laenge: sK[kette.length - 1]!,
+    ruhe: Float64Array.from(pk.flatMap((q) => [q.x, q.y, q.z])),
+    punkte: [],
+    kante: true,
+  };
+  const zusammen = new Set(kette).size === kette.length && kette.every((w, i) => i === 0 || st0.h.nachbarn[kette[i - 1]!]!.includes(w));
+  console.log(`   Linie hinten von Mundwinkel zu Mundwinkel: ${nZ / 2 + 1} Punkte bis zum Mundwinkel, als Ring mit der Unterlippe ${kette.length} Punkte, Kette über Kanten des Netzes: ${zusammen ? 'ja' : 'NEIN'}`);
+  st0.loops.push(hinten);
+  // einmal auf dem feinen Gitter, einmal auf dem vergleichmäßigten Netz (die Linien bleiben dabei Ketten des Netzes)
+  for (const fein of [true, false]) {
+    let stA: Stand = kopie(st0);
+    let teilA: Teil = A.teil;
+    if (!fein) {
+      try {
+        const Vg = vergleichmaessigen(stA, teilA);
+        stA = Vg.st;
+        teilA = Vg.teil;
+        console.log(`   vergleichmäßigt mit der Linie hinten: ${stA.h.n} Punkte; ${JSON.stringify(dicht(stA.h))}`);
+      } catch (e) {
+        console.log(`   vergleichmäßigen mit der Linie hinten scheitert: ${String(e).slice(0, 160)}`);
+        continue;
+      }
+    }
+    const mitM = mitMittellinie(stA, teilA);
+    if (!mitM) {
+      console.log('   Mittellinie: lässt sich nicht schneiden oder einsetzen');
+      continue;
+    }
+    console.log(`   Mittellinie: ${linieText(mitM.st, mitM.teil, mitM.nr)}; Netz ${mitM.st.h.n} Punkte; ${JSON.stringify(dicht(mitM.st.h))}`);
+    if (!fein) gehaltenStart = { st: kopie(mitM.st), teil: mitM.teil };
+    const f = fall(`Florians Beschreibung (${fein ? 'feines Gitter' : 'vergleichmäßigt'}): Lippen hart, Seiten verbunden, Verbindung hinten als harte Linie, Mittellinie`, mitM.st, mitM.teil, Float64Array.from(mitM.st.h.pos));
+    if (!gehalten || (f.lauf.steht && !f.lauf.unruhe.fest)) {
+      gehalten = f;
+      gehaltenTeil = mitM.teil;
+    }
+  }
+}
+void gehaltenTeil;
+
 // dazu je ein Loop um den Unterkiefer und um den Oberkiefer (Schnitt in der Seite quer durch das Maul, auf halber Länge)
 let kiefer: Fall | null = null;
 {
@@ -563,6 +630,7 @@ zeilen.push({
     bild('gerechnet: Lippen als Kante', kantig.st, kantig.text),
     ...(mitte ? [bild('gerechnet: Lippen als Kante, Mittellinie durch die Höhle', (mitte as Fall).st, (mitte as Fall).text)] : []),
     ...(kiefer ? [bild('gerechnet: dazu je ein Loop um Ober- und Unterkiefer', (kiefer as Fall).st, (kiefer as Fall).text)] : []),
+    ...(gehalten ? [bild('gerechnet: Lippen hart, Verbindung hinten als harte Linie, Mittellinie', (gehalten as Fall).st, (gehalten as Fall).text)] : []),
     ...(kieferBild ? [kieferBild] : []),
   ],
   blicke: BLICKE,
@@ -574,7 +642,8 @@ zeilen.push({
 if (process.env.DIAG === '1') {
   const st0 = kopie(V.st);
   st0.loops[maulNr]!.kante = true;
-  const mm = process.env.DIAG_MITTE === '0' ? { st: st0, teil: V.teil } : mitMittellinie(st0, V.teil)!;
+  const gs = gehaltenStart as { st: Stand; teil: Teil } | null;
+  const mm = process.env.DIAG_FALL === 'hinten' && gs ? { st: kopie(gs.st), teil: gs.teil } : process.env.DIAG_MITTE === '0' ? { st: st0, teil: V.teil } : mitMittellinie(st0, V.teil)!;
   const st = mm.st;
   const teil = mm.teil;
   const hart = new Uint8Array(st.h.n);
