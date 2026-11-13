@@ -4,6 +4,19 @@ Lauffähige Vision des Kurven-Editors: Raum, Blatt und Blick mit Faltung, eine G
 Beschriftung. Konzept: [`../KONZEPT.md`](../KONZEPT.md), Recherche: [`../RECHERCHE.md`](../RECHERCHE.md), Präsentation:
 https://claude.ai/artifact/SahX9VLKYfxFbmhNPNs18f (Prototyp darin als `vision.html`, Einstellungen über den Anker).
 
+## Runde 3 (13.11.2026): die Werft
+
+Ein Bild, jede Kurve in ihrer Fläche, federnde Ansichten, Jelly ↔ Illustration, Haut formen, Nachzeichnen.
+Plan und Abwägung: [`../PLAN-3.md`](../PLAN-3.md).
+
+```bash
+node bau.mjs src/einstieg/werft.js dist/werft.html "Werft"
+node film2.cjs dist/werft.html start <film.mp4> 1280 800        # Vorführung; kurze Filme: ebene, achse, haut, nach, spant, feder
+```
+
+`src/werkstatt/werft.js` erbt die Kamera der Bullaugen (Dolly-Zoom, Einrasten) und ersetzt Zeichnen, Formensprache und Züge.
+Neue Shader in `src/werkstatt/shader2.js`: `konturFS`, `ebeneVS/FS`, `bodenFS`.
+
 ## Runde 2 (13.11.2026): drei Vollbild-Prototypen, Maus zuerst
 
 | Seite | Einstieg | Idee |

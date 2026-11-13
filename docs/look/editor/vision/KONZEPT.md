@@ -213,3 +213,28 @@ Doppelklick-Handlung neu beginnen, sonst schaltet ein zweiter Doppelklick die Ec
 Überblick, Bullaugen für die Arbeit an einer Stelle; nächster Schritt wäre beides zusammen (Modellblatt als Grundlayout,
 Doppelklick macht eine Ansicht groß, die anderen kommen als Bullaugen zum Zeiger). Die Raumecke aus Runde 1 ist jetzt auch mit
 der Maus bedienbar (links dreht, rechts zeichnet).
+
+---
+
+## Nachtrag 13.11.2026 (abends): Runde 3, die Werft
+
+Florian zu Runde 2: Bedienung und Material waren übernommen, die Fenster nur anders verteilt, ohne Vorteil gegenüber dem
+gewöhnlichen Layout; Punkte, Linien, Konturen und Materialien ohne Zusammenspiel. Er will die eleganteste Lösung, ausführlich
+abgewogen, ohne Scrollen, Sprünge und Überlagerungen. Konzept und Abwägung: [`PLAN-3.md`](PLAN-3.md).
+
+**Kern:** Fenster gibt es, weil ein Punkt im Raum drei Zahlen braucht und die Maus zwei liefert. In Florians Modell liegt jede
+Kurve in einer natürlichen Fläche (Kiel: Mittelebene, Spant: seine Querebene, Form: die Haut). Wer in dieser Fläche zieht, braucht
+kein zweites Fenster. Daraus folgen sieben Grundsätze: ein Bild; jede Kurve in ihrer Fläche; der Blick bestimmt den Look (Raum =
+Jelly, Achse = Illustration, Dolly-Zoom); Ansichten federn (1/3/7 halten oder tippen); zeichnen statt zerren (Nachzeichnen ersetzt
+ein Kurvenstück); Haut wie Ton (Ziehen auf der Haut verschiebt die Kurvenpunkte im Umkreis); eine Formensprache (Kiel stärker als
+Spanten, Punkte nur an der Kurve unter der Hand, Griffe nur am aktiven Punkt, Hilfen nur in der Handlung, Grundriss am Boden).
+
+**Gebaut:** `prototyp/src/werkstatt/werft.js` (Seite `dist/werft.html`). Geprüft mit Mauszügen: Spantpunkt bleibt in seiner
+Ebene, Haut formen, Nachzeichnen des Kiels (Spitze bei 0,22 → 0,35), Taste 1 → Seite als Illustration, 0 zurück; Finger und
+Pencil mit künstlichen Ereignissen.
+
+**Beim Bauen gelernt:** Beim Nachzeichnen müssen Kreuzungszwillinge auf anderen Kurven mitgehen, sonst muss die Haut durch zwei
+Lagen und bildet Spitzen. Randgriffe behalten ihre Richtung, sonst biegt sich das Nachbarstück mit. Ein Strich über einer
+Kreuzung ist mehrdeutig; die Kurve wird deshalb je Kurve nach Anfang und Ende gesucht. Die Seifenhaut aus Runde 1 fällt weg:
+Die Hand zeigt sich als Flieder-Licht.
+
