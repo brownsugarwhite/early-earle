@@ -1,4 +1,4 @@
-# Übergabe (Stand 13.11.2026 nachmittags: Schritt 4b, erster Teil, die Rechnung auf der Hälfte, ist in Florians Fenster (5194; Abschnitt 7.5). Der Rest der halben Haut ist als Schritt 4c fest vorgemerkt (Florian: „es soll nicht vergessen werden“). Schritt 5 (Posen): Der erste kleine Beweis hält nicht wie festgelegt, angehalten; gefragt ist Florians Entscheidung (Abschnitt 7.6). Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt. Zu Schritt 1, 2, dem Donut (4a) und der halben Rechnung steht sein Urteil aus)
+# Übergabe (Stand 13.11.2026, 17 Uhr: Zwei kleine Beweise halten nicht, beide sind angehalten. Schritt 5 (Posen) scheitert an den Lippen des Mauls von heute (Abschnitt 7.6); Schritt 6 (Maul als eigene Geometrie), den Florian deshalb vorgezogen hat, scheitert daran, dass die heutige Rechnung keine Höhle hält (Abschnitt 7.7). Gefragt ist Florians Entscheidung. Schritt 4b, erster Teil, die Rechnung auf der Hälfte, ist in seinem Fenster (5194; Abschnitt 7.5); der Rest der halben Haut ist als Schritt 4c fest vorgemerkt. Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt. Zu Schritt 1, 2, dem Donut (4a) und der halben Rechnung steht sein Urteil aus)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -27,8 +27,8 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | 3 Beweis „Haut direkt aus den Linien“ | **abgeschlossen, die heutige Rechnung bleibt** (Abschnitt 6, 13.11.): Die Haut nur aus den Linien (A) scheitert zwischen wenigen Linien und an seinen drei Formen. Der Teil B (fertige Haut direkt bewegen) hält rechnerisch; als Schalter „Form halten“ im Bau-Fenster ausprobiert, Florian: „Gefällt nicht“. Knopf und Taste sind wieder weg; der Code liegt nur auf `claude/form-bau` hinter `?ziehen=direkt` |
 | 4 Echte Spiegelung (mit der heutigen Rechnung) | **4a, der Donut, ist in Florians Fenster (Abschnitt 7.4, 13.11.):** nach seiner zweiten Regel; sein Urteil steht aus. **4b, erster Teil, ist seit dem 13.11. nachmittags in Florians Fenster (Abschnitt 7.5):** Der Löser rechnet auf der Hälfte (zwei halb so große Systeme, Krümmung auf der Hälfte), das Netz im Fenster bleibt ganz; Rechnen je Bild 10,3 → 7,1 ms am „teat firefish“, Zerlegen rund 50 %, gleiche Form; dazu „flüssig zuerst“ (eine weitere Runde je Bild nur, wenn sie ins Bild passt). Sein Urteil zum Tempo steht aus |
 | 4c Rest der halben Haut | **fest vorgemerkt** (Plan, „Schritt 4c“; Florian am 13.11.: „es soll nicht vergessen werden“): Gewichte und Vermessen auf der Hälfte (Runde von 73 % auf 50 bis 60 %), die einzelnen langsamen Bilder, Verdichten und Anzeige auf der Hälfte, das Netz selbst als Hälfte. Kommt nach den Posen wieder auf den Tisch und muss gebaut sein, bevor Shader, Materialien, Fell oder Zusatzteile beginnen. Seine heutigen Formen sind kein Maßstab für das Tempo |
-| 5 Posen wie die Basis | **Etappe 1 (kleiner Beweis) gerechnet, hält nicht wie festgelegt; angehalten** (Abschnitt 7.6, 13.11.): Die Rechnung der Grundform kann die Pose rechnen, scheitert aber an den Lippen des Mauls von heute. Offen ist Florians Entscheidung: erst das Maul (Schritt 6), die Posen jetzt mit der Maullinie als Kante, oder erst Schritt 4c |
-| 6 Maul als eigene Geometrie | offen |
+| 5 Posen wie die Basis | **Etappe 1 (kleiner Beweis) gerechnet, hält nicht wie festgelegt; angehalten** (Abschnitt 7.6, 13.11.): Die Rechnung der Grundform kann die Pose rechnen, scheitert aber an den Lippen des Mauls von heute. Florian: „ja, dann erst das Maul“. Nach dem Beweis zu Schritt 6 wieder offen: Mit der Maullinie als Kante (Fassung b) ließen sich die Posen bauen |
+| 6 Maul als eigene Geometrie | **vorgezogen (Florian am 13.11.), kleiner Beweis gerechnet, hält nicht; angehalten** (Abschnitt 7.7): Das Maul lässt sich als Haut einschweißen, aber die Rechnung von heute hält keine Höhle. Offen ist Florians Entscheidung: Maul bleibt wie heute und die Maullinie wird Kante (dann Posen), Unterkiefer als eigenes Teil, oder erst Schritt 4c |
 | 7 Auswahl wie in Blender | offen |
 
 **Schritt 0, was getan ist:**
@@ -259,7 +259,7 @@ Ausgabe `schritt3b-messung-2026-11-13.txt`. Florian hat die Bilder noch nicht be
   Haut vom Anfassen sein. `flaechenAbstand` findet Abstände über etwa der Zellengröße nicht sicher (für große Abstände eine
   große Zelle nehmen).
 
-**B als Schalter im Bau-Fenster (13.11. abends, Florian: „B ausprobieren“).** Probe und Abbruch standen vorher im Plan (Anhang
+**B als Schalter im Bau-Fenster (13.11. vormittags, Florian: „B ausprobieren“).** Probe und Abbruch standen vorher im Plan (Anhang
 A.3). Nur `claude/form-bau`; sein Fenster auf 5194 ist unberührt.
 
 - **Ausprobieren** (so war es am 13.11.; seit seinem „Gefällt nicht“ gibt es nur noch die Adresse):
@@ -299,7 +299,7 @@ A.3). Nur `claude/form-bau`; sein Fenster auf 5194 ist unberührt.
   und der Hintergrund begann endlos von vorn. `nachfuehrenSchnell` rechnet je Runde zwei Schritte von den Lagen der Haut aus;
   ohne den mitdrehenden Vorkonditionierer kam es bei großen Drehungen je Runde nur um ein Viertel näher.
 
-**Florian am 13.11. abends, nach dem Ausprobieren: „Gefällt nicht“** (ohne Begründung). Damit gilt der Abbruch aus dem Plan:
+**Florian am 13.11. vormittags, nach dem Ausprobieren: „Gefällt nicht“** (ohne Begründung). Damit gilt der Abbruch aus dem Plan:
 B kommt nicht in sein Fenster. Knopf und Taste sind aus dem Bau-Fenster wieder entfernt; der Weg bleibt zum Nachrechnen hinter
 `?ziehen=direkt` und dem Haken `__kurven.halten(true)` liegen (Kern `dicht/direkt.ts`, `dicht/direktZug.ts`, Tests, Proben).
 Die heutige Rechnung bleibt die einzige im Fenster. Weiter nach Plan mit Schritt 4.
@@ -311,7 +311,7 @@ Die heutige Rechnung bleibt die einzige im Fenster. Weiter nach Plan mit Schritt
 
 ## 7. Schritt 4, zwei kleine Beweise „Donut“ (13.11.): Mit Florians Regel wird der Rand glatt und das Loch rund
 
-### 7.1 Erster Beweis: verschmelzen allein (13.11. abends)
+### 7.1 Erster Beweis: verschmelzen allein (13.11. vormittags)
 
 Der Plan verlangt vor dem Umbau auf die halbe Haut ein Bild: „Griff durch die Mitte → Loch mit glattem Rand; zurück → Form wie
 vorher.“ Probe im Kern: `apps/editor/scripts/pruefen/form-donut.ts` (aus `packages/shape`,
@@ -339,7 +339,7 @@ gezogen.
    (1 523 statt 1 784 Punkte), und die heutige Rechnung läuft darauf ohne davonzulaufen (`verschmelzen` in der Probe; teilt auch
    die Loops an der Ebene in Stücke). Das ist der Baustein für „die Hälfte ist die Wahrheit“.
 
-**Florian am 13.11. abends zum Bild** (wörtlich im Plan, Abschnitt 5, Punkt 4): Er stellt sich den Donut anders vor. An den
+**Florian am 13.11. vormittags zum Bild** (wörtlich im Plan, Abschnitt 5, Punkt 4): Er stellt sich den Donut anders vor. An den
 neuen Kreuzungen (wo die gezogenen Linien die Mitte treffen) sollen **Punkte ohne Knick** entstehen, das Loch bekommt einen
 **neuen Edgeloop**; der gezogene Punkt ist nur im Zug noch sichtbar und vom neuen Mesh gelöst; **beim Loslassen verschwindet er,
 kein Zurückziehen** („so ähnlich wie Blenders Mirror mit Clipping“). Das ersetzt Entscheidung 4 des Plans (umkehrbare Naht). Auf
@@ -607,12 +607,55 @@ In allen Fällen: nichts umgeschlagen, Ruhe nach 43 bis 73 Runden, Linien genau 
 7. **Nebenbefund am Stand von heute:** Nach „Fressen“ aus steht die Grundform nicht ganz (bis 1,6 bis zur Ruhe):
    `poseVerlassen` legt die Linien auf ihre Pfade, gesetzt wird die Haut erst beim nächsten Griff. Nicht behoben.
 
-**Gefragt ist Florian (13.11. nachmittags):**
-- **„Erst das Maul“** (empfohlen): Schritt 6 vor die Posen ziehen. Er beginnt mit einem Entwurf und einem kleinen Beweis in
-  Bildern; dazu gehört dann auch der Zug an der Lippe bei offenem Maul.
-- **„Posen mit Kante“:** die Posen jetzt bauen, in der Pose ist die Maullinie eine Kante (Fassung b). Züge an den Lippen sind
-  sauber; Züge weit weg vom Maul blasen in der Pose anders auf als in der Grundform; ein Teil wird mit Schritt 6 neu gemacht.
-- **„Erst die Hälfte“:** Schritt 4c jetzt (Tempo-Reserve), Maul und Posen danach.
+**Florians Antwort (13.11. nachmittags): „ja, dann erst das Maul“.** Der Beweis dazu steht in 7.7; er hält nicht. Damit ist die
+Fassung (b) wieder im Spiel.
+
+### 7.7 Schritt 6, kleiner Beweis „das Maul als eigene Geometrie“ (13.11., 17 Uhr): hält nicht, angehalten
+
+**Was geprüft wurde** (Plan, Nachtrag zu Schritt 6, mit Entwurf): Das Maul wird Haut. Die verborgene Fläche der Öffnung fällt
+weg, Gaumen und Boden werden an den Lippen eingeschweißt (eine Tasche, die Haut bleibt geschlossen); darauf rechnet die Rechnung
+der Grundform. Gebaut ist davon nichts, im Fenster ändert sich nichts.
+
+**Probe:** `form-maul-haut.ts` (Kern) an derselben Kugel mit Ring und Maul (`formen/pose-maul-kugel.eewesen`). Bild
+`docs/progress/editor/schritt6-maul-haut-2026-11-13.jpg` (links das Maul als Haut vor der Rechnung, daneben was die Rechnung
+daraus macht, rechts der geschnittene Loop um den Unterkiefer), Zahlen und die Diagnose Runde für Runde in
+`docs/progress/editor/schritt6-maul-haut-messung-2026-11-13.txt`.
+
+| Kriterium | Ergebnis |
+| --- | --- |
+| 1 Das Maul ist Haut | **hält:** geschlossen, spiegelgleich, nichts verdreht, Lippen genau auf ihrer Linie (3 062 Punkte, vergleichmäßigt 2 147) |
+| 2 Die Höhle hält | **hält nicht:** In acht Fassungen hält die Vorsicht die Rechnung nach acht Runden an, die Höhle ist dann weit auseinandergelaufen; Runde für Runde angesehen (drei Fassungen) bewegen sich freie Punkte der Höhle schon in der ersten Runde 37 bis 98 weit |
+| 3 Loop um den Unterkiefer | **zur Hälfte:** Der Schnitt gibt den Ring (außen ums Kinn, innen über den Boden); der Kern setzt ihn an keiner von neun Stellen ins Netz ein |
+| 4 Öffnen und Schließen, 5 Zug an der Lippe | nicht mehr gerechnet |
+
+**Die acht Fassungen zu Kriterium 2** (größte Bewegung außen): Höhle flach, feines Gitter, Lippen als Kante (0,7 außen, die
+Höhle läuft davon) · flach, vergleichmäßigt, Lippen glatt (663) · flach, vergleichmäßigt, Kante (202) · flach, vergleichmäßigt,
+Kante und Mittellinie durch die Höhle (51) · gewölbt wie in der Anzeige von heute, in denselben vier Fassungen (0,7 / 435 /
+184 / 57). In allen: „steht fest“ nach acht Runden, das heißt angehalten, nicht zur Ruhe gekommen.
+
+**Befunde:**
+1. **Einschweißen geht.** Die Bauart der Anzeige (`maulAmLoop`: Gaumen an der Oberlippe, Boden an der Unterlippe, zwischen den
+   Mundwinkeln treffen sie sich) gibt eine geschlossene Haut, wenn die Punkte an den Lippen verschmolzen werden.
+2. **Die Rechnung von heute hält keine Höhle.** Sie macht die Haut zwischen den Linien so rund wie möglich und nimmt die
+   Krümmung an den Linien von der Haut selbst ab. Bei der gewölbten Höhle laufen Punkte mitten im Gaumen davon, bei der flachen
+   die hinten, wo Gaumen und Boden in einem Knick zusammenlaufen. Dieselbe Schwäche wie „bläst auf oder kollabiert“ zwischen
+   wenigen Linien, hier in ihrer härtesten Form.
+3. **Der Knick hinten und an den Mundwinkeln bräuchte eine harte Linie**, die es im Linienmodell nicht gibt: Sie liefe von
+   Mundwinkel zu Mundwinkel durch das Innere, also weder von Mitte zu Mitte (Ring) noch geschlossen (Mitte, Paar).
+4. **Nicht geprüft:** die Höhle mit mehreren Linien gefasst (dazu müsste der Kern den Loop um den Kiefer einsetzen können);
+   eine Höhle mit runden Mundwinkeln; die Höhle aus der Rechnung genommen (sie folgte dann den Lippen wie heute in der Anzeige;
+   für Florian sähe das aus wie heute).
+5. **Folgerung:** Das Maul als Tasche in derselben Haut geht mit der heutigen Rechnung nicht. „Loops um einen Kiefer“ gibt es
+   so nur, wenn der Unterkiefer ein eigenes Teil mit eigener Haut ist (zwei runde Körper, jeder von der heutigen Rechnung
+   gehalten). Das ist ein eigener Entwurf und gehört zu „Teile anfügen“ (Flügel, Beine).
+
+**Gefragt ist Florian (13.11., 17 Uhr):**
+- **„Posen mit Kante“** (empfohlen): Das Maul bleibt, wie es heute ist. Die Maullinie wird eine Kante, und damit werden die
+  Posen gebaut (Fassung b aus 7.6: Züge an den Lippen sauber und am Ort). Linien, die über die Lippen laufen, bekommen dort
+  einen Eckpunkt. Loops um einen Kiefer allein gibt es dann nicht. Mit Kante bläst sich die Form bei Zügen weit weg vom Maul
+  anders auf als ohne (56,8 statt 40,0 in der Probe).
+- **„Kiefer als Teil“:** der Unterkiefer als eigenes Teil; zuerst ein Entwurf in Bildern, zusammen mit „Teile anfügen“.
+- **„Erst die Hälfte“:** Schritt 4c jetzt, Maul und Posen danach.
 
 ## 8. Offen aus der Zeit davor
 

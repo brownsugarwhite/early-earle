@@ -187,7 +187,7 @@ eine kurze Übergabe. Am Code des Editors ändert Schritt 0 nichts.
 **Nachtrag 13.11.:** Schritt 3 hat ergeben, dass die heutige Rechnung bleibt (A hält nicht, B gefällt Florian nicht). Schritt 4
 ist damit nur noch die echte Spiegelung; der zweite Punkt unten („Ziehen fühlt sich direkt an“) entfällt.
 
-**Nachtrag 13.11. abends, kleiner Beweis „Donut“ (Probe `form-donut.ts`, Bild `docs/progress/editor/schritt4-donut-2026-11-13.jpg`):**
+**Nachtrag 13.11. vormittags, kleiner Beweis „Donut“ (Probe `form-donut.ts`, Bild `docs/progress/editor/schritt4-donut-2026-11-13.jpg`):**
 „Zurück → Form wie vorher“ hält schon heute (im Mittel 0,11, größter 0,4 neben der Kugel). „Loch mit glattem Rand“ hält nicht:
 Heute ist der Rand eine scharfe Kante (Knick im Mittel 97°), und er bleibt eine, wenn die Hälften wirklich verschmolzen werden
 (im Mittel 22° bis 77°, je nachdem, ob der Rand frei, eine Linie oder eine Linie ohne Wölbung ist); mit freiem Rand verzieht sich
@@ -439,6 +439,30 @@ danach nicht: anhalten und es sagen). Form: dieselbe Kugel mit Ring und Maul wie
    gezeigten Lage gerechnet. Mit den Lippen als Kante: nichts umgeschlagen, der Kopf verzieht sich nicht (Haut fern vom Maul
    höchstens 1 bewegt), Linien höchstens 0,5 neben ihrem Pfad. Ohne Kante wird dasselbe gemessen und gezeigt.
 
+**Ergebnis (13.11., 17 Uhr): Der Beweis hält nicht; angehalten bei Kriterium 2.** Bild
+`docs/progress/editor/schritt6-maul-haut-2026-11-13.jpg`, Zahlen `schritt6-maul-haut-messung-2026-11-13.txt`, Einzelheiten in
+`docs/UEBERGABE.md`, Abschnitt 7.7.
+- **Kriterium 1 hält:** Das Maul lässt sich als Haut einschweißen: geschlossen, spiegelgleich, nichts verdreht, die Lippen genau
+  auf ihrer Linie (3 062 Punkte, nach dem Vergleichmäßigen des Netzes 2 147).
+- **Kriterium 2 hält nicht: Die Rechnung der Grundform hält keine Höhle.** Geprüft in acht Fassungen (Höhle gewölbt wie in der
+  Anzeige von heute oder flach; je auf dem feinen Gitter mit den Lippen als Kante und auf dem vergleichmäßigten Netz mit glatten
+  Lippen, mit Kante, mit Kante und der Mittellinie durch die Höhle). In jeder hält die Vorsicht die Rechnung nach acht Runden
+  an, die Höhle ist dann weit auseinandergelaufen. Runde für Runde angesehen (drei Fassungen): Freie Punkte der Höhle bewegen
+  sich schon in der ersten Runde 37 bis 98 weit. Mit glatten Lippen reißt die Höhle die ganze Form mit; mit den Lippen als
+  Kante bleibt das Äußere nur auf dem feinen Gitter stehen. Wo es beginnt: bei der gewölbten Höhle mitten im Gaumen, bei der
+  flachen hinten, wo Gaumen und Boden zusammenlaufen.
+- **Kriterium 3 zur Hälfte:** Der Schnitt quer durch den Unterkiefer gibt den Ring außen ums Kinn und innen über den Boden. Der
+  Kern setzt ihn aber an keiner von neun Stellen ins Netz ein (Ursache nicht untersucht); gezogen wurde deshalb nicht.
+- **Kriterien 4 und 5** sind nicht mehr gerechnet.
+
+Warum: Die heutige Rechnung macht die Haut zwischen den Linien so rund wie möglich und nimmt die Krümmung dafür an den Linien von
+der Haut selbst ab. Eine Höhle ist eine tief eingestülpte Fläche mit einem Knick hinten und an den Mundwinkeln; ohne Linien, die
+sie überall fassen, hat die Rechnung dafür kein Gleichgewicht. Das ist dieselbe Schwäche wie „bläst auf oder kollabiert“
+zwischen wenigen Linien, hier in ihrer härtesten Form. **Folgerung: Das Maul als Tasche in derselben Haut geht mit der heutigen
+Rechnung nicht.** Offen ist Florians Entscheidung zwischen: (1) das Maul bleibt wie heute, die Maullinie wird eine Kante, und
+die Posen werden damit gebaut (Fassung b aus dem Beweis zu Schritt 5); (2) der Unterkiefer wird ein eigenes Teil mit eigener
+Haut und eigenen Linien, zusammen mit „Teile anfügen“ (eigener Entwurf zuerst); (3) inzwischen Schritt 4c.
+
 ### Schritt 7: Auswahl wie in Blender (2 bis 3 Tage)
 
 - **Was du danach siehst:** Du wählst Punkte, **Kanten** (das Linienstück zwischen zwei Punkten) und **Flächen** (das Feld
@@ -664,11 +688,11 @@ Beweis“. Offen ist Florians Entscheidung: weiter nach Plan, oder B als Schalte
   Bilder im Zug; nach dem Loslassen bewegt sich die Haut höchstens 0,18.
 - **Abbruch:** Bleibt ein Zug am Firefish im Mittel über 30 ms je Bild, oder sagt Florian, es fühle sich falsch an, kommt B
   nicht weiter ins Fenster; der Code bleibt hinter dem Schalter liegen.
-- **Gebaut und gemessen (13.11. abends):** Der Schalter liegt im Bau-Fenster. Probe: gegriffen ohne zu ziehen 0,00; hinauf und
+- **Gebaut und gemessen (13.11. vormittags):** Der Schalter liegt im Bau-Fenster. Probe: gegriffen ohne zu ziehen 0,00; hinauf und
   zurück 0,00 neben der Haut von vorher (heute bis 19,6 am „strange bird“, bis 2,1 am Firefish); Bilder im Zug im Mittel alle
   14 ms („strange bird“) und 19 ms (Firefish), heute 16 und 20 ms; nach dem Loslassen höchstens 0,35 (wo das Verdichten Punkte
   zusammenlegt), im Mittel 0,00. Der Abbruch nach der Zeit greift nicht. Einzelheiten: `docs/UEBERGABE.md`, Abschnitt 6.
-- **Florians Urteil (13.11. abends): „Gefällt nicht“.** Damit greift der zweite Abbruch: B kommt nicht in sein Fenster. Knopf
+- **Florians Urteil (13.11. vormittags): „Gefällt nicht“.** Damit greift der zweite Abbruch: B kommt nicht in sein Fenster. Knopf
   und Taste sind wieder entfernt, der Code bleibt hinter `?ziehen=direkt` liegen. **Schritt 3 ist abgeschlossen: Die heutige
   Rechnung bleibt.** Weiter mit Schritt 4, wie im Plan für diesen Fall vorgesehen: echte Spiegelung mit der heutigen Rechnung,
   zuerst der Donut-Beweis.
