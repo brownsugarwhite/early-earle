@@ -1,4 +1,4 @@
-# Übergabe (Stand 13.11.2026 nachts: Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt („Form halten“ hat Florian ausprobiert: „Gefällt nicht“). Schritt 4a, der Donut nach Florians zweiter Regel, ist in seinem Fenster (5194; sein Urteil steht aus, Abschnitt 7.4). Schritt 4b, erster Teil, die Rechnung auf der Hälfte, ist im Bau-Fenster (5197) gebaut und gemessen (Abschnitt 7.5): Rechnen je Bild rund 30 % weniger, Zerlegen die Hälfte, gleiche Form; in seinem Fenster ist das noch nicht. Schritt 1 und 2 sind Standard in seinem Fenster, sein Urteil dazu steht aus)
+# Übergabe (Stand 13.11.2026 mittags: Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt („Form halten“ hat Florian ausprobiert: „Gefällt nicht“). Schritt 4a, der Donut nach Florians zweiter Regel, ist in seinem Fenster (5194; sein Urteil steht aus, Abschnitt 7.4). Schritt 4b, erster Teil, die Rechnung auf der Hälfte, ist im Bau-Fenster (5197) gebaut und gemessen (Abschnitt 7.5): Rechnen je Bild rund 30 % weniger, Zerlegen die Hälfte, gleiche Form; in seinem Fenster ist das noch nicht. Schritt 1 und 2 sind Standard in seinem Fenster, sein Urteil dazu steht aus)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -25,7 +25,7 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | 1 Glatte Anzeige | **eingebaut und Standard** (Abschnitt 4). Florian am 12.11.: „Ja, übernehmen“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&anzeige=grob` zeigt zum Vergleich die Anzeige davor. Sein Urteil nach dem Arbeiten damit steht aus |
 | 2 Kleines Rechennetz | **eingebaut und Standard** (Abschnitt 5): rund 40 % der Punkte, im Zug 16 bis 20 ms je Bild. Florian am 12.11. nachts, vom Handy aus: „ja“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&netz=dicht` ist das Netz davor. Sein Urteil nach dem Arbeiten damit steht aus. Nicht gebaut: Zeichnen gegen die feine Fläche |
 | 3 Beweis „Haut direkt aus den Linien“ | **abgeschlossen, die heutige Rechnung bleibt** (Abschnitt 6, 13.11.): Die Haut nur aus den Linien (A) scheitert zwischen wenigen Linien und an seinen drei Formen. Der Teil B (fertige Haut direkt bewegen) hält rechnerisch; als Schalter „Form halten“ im Bau-Fenster ausprobiert, Florian: „Gefällt nicht“. Knopf und Taste sind wieder weg; der Code liegt nur auf `claude/form-bau` hinter `?ziehen=direkt` |
-| 4 Echte Spiegelung (mit der heutigen Rechnung) | **4a, der Donut, ist in Florians Fenster (Abschnitt 7.4, 13.11.):** nach seiner zweiten Regel; sein Urteil steht aus. **4b, erster Teil, im Bau-Fenster (Abschnitt 7.5, 13.11.):** Der Löser rechnet auf der Hälfte (zwei halb so große Systeme, Krümmung auf der Hälfte), das Netz im Fenster bleibt ganz; Rechnen je Bild 10,3 → 7,1 ms am „teat firefish“, Zerlegen rund 50 %, gleiche Form; dazu „flüssig zuerst“ (eine weitere Runde je Bild nur, wenn sie ins Bild passt). Noch nicht in seinem Fenster. Offen: Gewichte und Vermessen auf der Hälfte (Runde von 73 % auf rund 50 %), Verdichten und Anzeige auf der Hälfte |
+| 4 Echte Spiegelung (mit der heutigen Rechnung) | **4a, der Donut, ist in Florians Fenster (Abschnitt 7.4, 13.11.):** nach seiner zweiten Regel; sein Urteil steht aus. **4b, erster Teil, im Bau-Fenster (Abschnitt 7.5, 13.11.):** Der Löser rechnet auf der Hälfte (zwei halb so große Systeme, Krümmung auf der Hälfte), das Netz im Fenster bleibt ganz; Rechnen je Bild 10,3 → 7,1 ms am „teat firefish“, Zerlegen rund 50 %, gleiche Form; dazu „flüssig zuerst“ (eine weitere Runde je Bild nur, wenn sie ins Bild passt). Noch nicht in seinem Fenster. Offen: Gewichte und Vermessen auf der Hälfte (Runde von 73 % auf 50 bis 60 %), Verdichten und Anzeige auf der Hälfte |
 | 5 Posen wie die Basis | offen |
 | 6 Maul als eigene Geometrie | offen |
 | 7 Auswahl wie in Blender | offen |
@@ -344,7 +344,7 @@ neuen Kreuzungen (wo die gezogenen Linien die Mitte treffen) sollen **Punkte ohn
 kein Zurückziehen** („so ähnlich wie Blenders Mirror mit Clipping“). Das ersetzt Entscheidung 4 des Plans (umkehrbare Naht). Auf
 die Frage „jetzt daran feilen oder erst die halbe Haut“ habe ich den kleinen Beweis empfohlen; Florian: **„Donut beweisen“**.
 
-### 7.2 Zweiter Beweis: der Donut mit Florians Regel (13.11. nachts)
+### 7.2 Zweiter Beweis: der Donut mit Florians Regel (13.11. mittags)
 
 Probe im Kern: `apps/editor/scripts/pruefen/form-donut-regel.ts` (aus `packages/shape`,
 `TIEF=190 GRIFFE=anteil,lang BREITE=1560 BLATT=<pfad ohne Endung> npx vite-node ../../apps/editor/scripts/pruefen/form-donut-regel.ts`;
@@ -396,7 +396,7 @@ gemeinsame Teile beider Proben in `form-donut-teile.ts`). Bilder: `docs/progress
 
 Gefragt hatte ich danach „Halbe Haut bauen“ oder „Erst am Donut feilen“; Florian hat stattdessen seine Regel geändert (7.3).
 
-### 7.3 Florians zweite Regel: Der Rand bleibt erst eine Kante (13.11. nachts)
+### 7.3 Florians zweite Regel: Der Rand bleibt erst eine Kante (13.11. mittags)
 
 Florian (wörtlich im Plan, Abschnitt 5, Punkt 4): „Der neue Loop soll nicht gleich rund sein, sondern wie vorher eine Kante. An
 den neuen Kreuzungen bilden sich Punkte, und der durch die Mitte gezogene Griff bleibt sichtbar, aber ist markiert. Ich kann ihn
@@ -437,7 +437,7 @@ Loch, und `schritt4-donut-kante-klein-2026-11-13.jpg`; Zahlen am Ende von `schri
 
 Gefragt war: „Donut bauen“ oder „Erst die halbe Haut“. **Florian: „Donut bauen“.**
 
-### 7.4 Schritt 4a: der Donut, gebaut im Bau-Fenster und in Florians Fenster übernommen (13.11. nachts)
+### 7.4 Schritt 4a: der Donut, gebaut im Bau-Fenster und in Florians Fenster übernommen (13.11. mittags)
 
 Gebaut in `form-bau` (Port 5197, `http://localhost:5197/kurven.html?gewichte=geometrie`; der Server ist die Vorschau der
 Sitzung, Eintrag `kurven-bau`), Etappen 1 bis 5 aus dem Plan (Schritt 4a), und noch am selben Abend in sein Fenster übernommen
@@ -488,7 +488,7 @@ zum losen Stand zurück; keine Fehler in der Konsole.
 7. Fest machen bewegt die Haut ein wenig (Tabelle): An der Kante rundet sich jede Seite für sich.
 8. Sichern und Laden einer fest gemachten Form ist nicht eigens geprüft.
 
-**In Florians Fenster seit dem 13.11. nachts (er: „Übernehmen“):** `claude/form-bau` ist nach `claude/form-spiegel`
+**In Florians Fenster seit dem 13.11. mittags (er: „Übernehmen“):** `claude/form-bau` ist nach `claude/form-spiegel`
 zusammengeführt (`e511d990`, ohne Konflikte); damit liegt dort auch der Code, der bisher nur in `form-bau` lag (der Schnitt im
 Kern, die Proben zu Schritt 3 und 4, „Form halten“ hinter `?ziehen=direkt`). Geprüft im Arbeitsbaum `form-alt`: Typen, die Tests
 zum Schnitt und zum Fenster, und `form-donut-fenster.mjs` gegen `http://localhost:5194/…`: alles gut, dieselben Zahlen wie im
@@ -500,7 +500,7 @@ hängt seitdem an der bauenden Sitzung; läuft er nicht, startet ihn `kurven-alt
 **Als Nächstes:** Florians Urteil im Fenster. Danach nach seiner Wahl: am Donut weiter (die offenen Punkte oben), Schritt 4b
 (halbe Haut) oder Schritt 5 (Posen).
 
-### 7.5 Schritt 4b, erster Teil: die Rechnung auf der Hälfte (13.11. nachts, Florian: „kannst du halbe Haut machen“)
+### 7.5 Schritt 4b, erster Teil: die Rechnung auf der Hälfte (13.11. mittags, Florian: „kannst du halbe Haut machen“)
 
 Gebaut in `form-bau` (Port 5197); **in Florians Fenster (5194) ist davon nichts.** Er war unterwegs und hat es noch nicht gesehen.
 
@@ -534,27 +534,31 @@ Anzeige, Sichern, Posen unverändert). Gefaltet wird dort, wo die Zeit bleibt, i
    39 und 0). Im Fenster: Die Donut-Probe meldet an Kugel und `test_kaputt` „alles gut“; am `teat firefish` meldet sie in
    manchen Läufen zwei umgeschlagene Dreiecke nach „über die Mitte und zurück“, über die ganze Haut gerechnet genauso (siehe
    Fallen). Grobe Züge an `test_kaputt` (`form-ablauf-probe.mjs`): wie vorher, Rauminhalt und Fläche 100,0 %, nichts
-   umgeschlagen.
+   umgeschlagen. **Maul und Pose** (`form-fressen-pose.mjs` mit `&netz=dicht`: Maul zeichnen, Fressen, in der Pose ziehen,
+   zurück, in der Grundform einen Ring schneiden und ziehen, wieder Fressen, ⌘Z): ganz und halb dasselbe Ergebnis (keine offenen
+   Kanten, nichts umgeschlagen, ⌘Z bis zum Anfang). In der Pose rechnet die halbe Rechnung nicht mit (dort gilt der Löser mit
+   Bereich); sie greift nur in der Grundform über die ganze Haut.
 2. **Das Tempo steigt um rund ein Drittel, nicht auf das Doppelte.** Die Gegenprüfung vom 10.11. hatte für das Lösen 34 %
    gemessen; heute macht das Lösen nur noch die Hälfte einer Runde aus (der Rest ist Vermessen und die Gewichte nach der
    Geometrie), und zwei halbe Systeme zu lesen kostet mehr als ein Drittel eines ganzen. Im Kern: Runde 73 %, Zerlegen 51 %.
 3. **Die Bilder im Zug ändern sich nur am größten seiner Formen:** dort im Median alle 16 statt 18 ms; jedes zwanzigste braucht
    weiter doppelt so lange (32 und 35 ms). An den beiden kleineren war schon vorher eine Runde je Bild fertig; dort wird nur
    das Rechnen kürzer (Reserve) und am „strange bird“ die Ruhe nach dem Loslassen (1,2 → 0,6 s).
-4. **Nicht gebaut** (was die Runde von 73 % auf rund 50 % brächte, je ein halber bis ein Tag, nur im Kern): die Gewichte nach
-   der Geometrie und das Vermessen auf der Hälfte rechnen; die beiden halben Systeme in einem Durchgang lösen. Am größten
-   seiner Formen änderte das die Bildrate nicht mehr (dort passt ohnehin eine Runde ins Bild), nur die Reserve. Auch nicht
-   gebaut: Verdichten und Anzeige auf der Hälfte, das Netz als Hälfte (der große Umbau aus dem Plan).
+4. **Nicht gebaut** (nur im Kern, brächte die Runde von 73 % auf 50 bis 60 %): die Gewichte nach der Geometrie (heute der
+   größte Posten einer Runde, 37 %) und das Vermessen auf der Hälfte rechnen. Schwierig daran: Die Gewichte tauschen Kanten,
+   auch solche auf der Mittelebene; dort entstünden Dreiecke über beide Hälften. An seinen heutigen Formen änderte das die
+   Bilder nicht mehr (eine Runde passt ins Bild), nur die Reserve für größere Formen. Auch nicht gebaut: Verdichten und Anzeige
+   auf der Hälfte, das Netz selbst als Hälfte (der große Umbau aus dem Plan).
 
 **Fallen dabei:** `loesenSpalten` mit 2 oder 4 Spalten läuft über den allgemeinen Weg (je Spalte rund viermal so langsam wie die
 ausgeschriebenen); zwei umgeschlagene Dreiecke nach „über die Mitte und zurück“ am Firefish kommen mit und ohne halbe Rechnung
 vor (je einmal in zwei bis drei Läufen), sie hängen am Lauf.
 
-**Gefragt ist Florian (13.11. nachts):**
-- **„Übernehmen“:** die halbe Rechnung und „flüssig zuerst“ in sein Fenster (ein Neuladen), dann sein Urteil zum Tempo.
-  Empfohlen.
-- **„Weiter an der Hälfte“:** erst die offenen Teile aus Befund 4.
-- Danach, nach seiner Wahl: Schritt 5 (Posen).
+**Gefragt ist Florian (13.11. mittags), zwei Fragen:**
+- Soll es in sein Fenster? **„Übernehmen“** (die halbe Rechnung und „flüssig zuerst“ kommen nach 5194, das Fenster lädt einmal
+  neu, dann sein Urteil zum Tempo; empfohlen) oder **„Noch nicht“**.
+- Womit weiter? **„Posen“** (Schritt 5; empfohlen, weil an seinen heutigen Formen die Bilder schon im Takt kommen) oder
+  **„Weiter an der Hälfte“** (die offenen Teile aus Befund 4, für größere Formen).
 
 ## 8. Offen aus der Zeit davor
 

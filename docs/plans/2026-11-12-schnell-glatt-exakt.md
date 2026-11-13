@@ -195,7 +195,7 @@ das Loch. Der dritte Punkt unten („verschmelzen an einem glatten Loop“) folg
 und Spiegeln der Hälfte selbst trägt. Offen ist Florians Entscheidung: Umbau auf die halbe Haut ohne glatten Rand, zuerst den
 Rand klären, oder Schritt 4 zurückstellen.
 
-**Nachtrag 13.11. nachts, zweiter kleiner Beweis „Donut mit Florians Regel“** (Florian: „Donut beweisen“; Probe
+**Nachtrag 13.11. mittags, zweiter kleiner Beweis „Donut mit Florians Regel“** (Florian: „Donut beweisen“; Probe
 `form-donut-regel.ts`, nur Kern und ein Bild, im Fenster ändert sich nichts). Derselbe Fall wie oben (Kugel mit drei Loops, der
 Punkt der Seite um 190 durch die Mitte), jetzt mit seiner Regel (Abschnitt 5, Punkt 4): Beim Loslassen wird an der Mitte
 geschnitten; jede geschnittene Linie endet dort in einem Punkt ohne Knick (Griff senkrecht zur Mitte, wie jedes Ende eines Rings
@@ -207,7 +207,7 @@ sehen; im Schnitt läuft die Haut rund durch die Mitte (keine Spitze). 2. Der Kn
 zwischen den Dreiecken daneben (heute im Mittel 97°). 3. Das Loch hat keine Ecken, sein Halbmesser bleibt im Bereich von heute
 (73,5 bis 93,1). 4. Die Rechnung kommt zur Ruhe, nichts ist umgestülpt, und nach weiteren Runden der unveränderten heutigen
 Rechnung ist der Rand noch glatt. **Aufwand:** ein halber bis ein Tag; hält es danach nicht: anhalten und es sagen.
-**Ergebnis (13.11. nachts; Bilder `docs/progress/editor/schritt4-donut-regel-2026-11-13.jpg` und `…-regel-klein-…`, Zahlen
+**Ergebnis (13.11. mittags; Bilder `docs/progress/editor/schritt4-donut-regel-2026-11-13.jpg` und `…-regel-klein-…`, Zahlen
 `schritt4-donut-regel-messung-2026-11-13.txt`, Einzelheiten in `docs/UEBERGABE.md`, Abschnitt 7.2):** Fassung (a) hält, alle
 vier Kriterien sind erfüllt: Das Loch ist rund (Halbmesser 91,1 bis 91,8 statt 77 bis 92), der Knick quer über den Rand im
 Mittel 18° statt 96° und so groß wie eine Reihe daneben, die Rechnung steht nach 3 + 8 Runden; ebenso bei mittlerem und kleinem
@@ -217,7 +217,7 @@ die Mitte kommt), und der Rand des Lochs ist ein Loop so rund wie möglich durch
 keine schmalen Dreiecke bleiben (Punkte dicht an der Mitte kommen auf die Mitte). Fassung (b) ist verworfen: Hält der neue Rand
 nur den Ort, kommt die Rechnung nicht zur Ruhe. Nicht gerechnet ist der Zug selbst (Vorschlag: beim ersten Durchstoßen einmal
 schneiden, danach wandern nur die Linien). Florians Urteil zu den Bildern steht aus.
-**Nachtrag 13.11. nachts, Florians zweite Regel** (Abschnitt 5, Punkt 4; dieselbe Probe mit `GRIFFE=kante`, Bilder
+**Nachtrag 13.11. mittags, Florians zweite Regel** (Abschnitt 5, Punkt 4; dieselbe Probe mit `GRIFFE=kante`, Bilder
 `docs/progress/editor/schritt4-donut-kante-2026-11-13.jpg` und `…-kante-klein-…`): Sie lässt sich ganz mit den Regeln rechnen,
 die der Kern für Kanten schon hat. Fest gemacht (geschnitten, die neuen Enden behalten ihren Knick als Ecken von selbst, der
 Rand ein Loop mit Kante) bewegt sich die Haut wenig: beim großen Loch bis 6,9, im Mittel 1,8 (zwischen den Linien rundet sich
@@ -227,7 +227,7 @@ umgestülpt); der Umriss des Lochs bleibt, wie er geschnitten wurde (Halbmesser 
 erst, wenn der Schnitt fest ist. Der Zug braucht mit dieser Regel keinen Schnitt (er bleibt wie heute), und der Schnitt gibt
 wieder eine gewöhnliche gespiegelte Haut: Der Donut hängt damit nicht mehr am Umbau auf die halbe Haut.
 
-**Schritt 4a, der Donut im Bau-Fenster (Florian am 13.11. nachts: „Donut bauen“).** Gebaut wird in `form-bau` (Port 5197) auf
+**Schritt 4a, der Donut im Bau-Fenster (Florian am 13.11. mittags: „Donut bauen“).** Gebaut wird in `form-bau` (Port 5197) auf
 der heutigen Haut (ganze Haut mit Spiegelpaaren). Florians Fenster (5194) bleibt, wie es ist, bis er die Übernahme freigibt. Der
 Umbau auf die halbe Haut wird Schritt 4b (Tempo, weniger Buchführung) und ist für den Donut nicht nötig. Etappen, jede mit
 ihrer sichtbaren Probe:
@@ -253,24 +253,24 @@ ihrer sichtbaren Probe:
 gelöschten Punkts. „Kante aus“ am Rand gibt es erst nach dem Festmachen. Der Umriss des Lochs bleibt, wie er geschnitten wurde.
 Liegt nur ein Griff hinter der Mitte und kein Punkt, bleibt die Stelle lose (offen, was dann fest macht). **Abbruch:** Hält eine
 Etappe nach ihrem Aufwand (je ein halber bis ein Tag) nicht: anhalten und es sagen.
-**Ergebnis (13.11. nachts; `docs/UEBERGABE.md`, Abschnitt 7.4):** Die Etappen 1 bis 5 sind im Bau-Fenster gebaut. Die Probe im
+**Ergebnis (13.11. mittags; `docs/UEBERGABE.md`, Abschnitt 7.4):** Die Etappen 1 bis 5 sind im Bau-Fenster gebaut. Die Probe im
 Fenster (`form-donut-fenster.mjs`) besteht an der Kugel und an `test_kaputt` und `teat firefish` in allen Punkten (lose, zurück,
 fest, rund, weiterziehen, ⌘Z); fest machen bewegt die gezeigte Haut höchstens 4,7 bis 6,4, „Kante aus“ bringt den Knick am Rand
 von 55° bis 82° auf 14° bis 26°. An `strange bird` stülpt schon der lose Zug an der geprüften Stelle die Haut um (der Zug von
-heute); dort entsteht kein sauberer Donut. **Übernommen in Florians Fenster am 13.11. nachts** (er: „Übernehmen“;
+heute); dort entsteht kein sauberer Donut. **Übernommen in Florians Fenster am 13.11. mittags** (er: „Übernehmen“;
 `claude/form-bau` nach `claude/form-spiegel`, die Probe besteht auch dort). Sein Urteil steht aus.
 
-**Schritt 4b, die halbe Haut (Florian am 13.11. nachts: „Ich bin jetzt etwas unterwegs, daher kannst du halbe Haut machen. Wir
+**Schritt 4b, die halbe Haut (Florian am 13.11. mittags: „Ich bin jetzt etwas unterwegs, daher kannst du halbe Haut machen. Wir
 werden das Tempo sicher noch brauchen“).** Gebaut wird zuerst, wo das Tempo entsteht, mit dem kleinsten Risiko: **die Rechnung
 auf der Hälfte im Löser**, das Netz im Fenster bleibt ganz (so hatte es die Gegenprüfung vom 10.11. gemessen: „Rechnet der Löser
 nur eine Hälfte …“). Probe: derselbe Zug ganz und halb im Kern (gleiche Form, Zeiten), dann im Bau-Fenster an seinen Formen
 (Rechnen je Bild, Bilder im Zug, Proben wie vorher). Der große Umbau (das Netz selbst als Hälfte: Verdichten, Anzeige, Sichern)
 bleibt zurückgestellt, bis das Tempo ihn verlangt.
-**Ergebnis des ersten Teils (13.11. nachts; `docs/UEBERGABE.md`, Abschnitt 7.5):** gebaut und im Bau-Fenster Standard
+**Ergebnis des ersten Teils (13.11. mittags; `docs/UEBERGABE.md`, Abschnitt 7.5):** gebaut und im Bau-Fenster Standard
 (`?halb=0` zum Vergleichen). Gleiche Form (höchstens 0,08 auseinander), Zerlegen rund 50 %, eine Runde 73 % (nicht die erhoffte
 Hälfte: Lösen ist heute nur noch die halbe Runde); im Fenster am „teat firefish“ Rechnen je Bild 10,3 → 7,1 ms, Bilder im Median
 alle 16 statt 18 ms. Dazu „flüssig zuerst“ (eine weitere Runde je Bild nur, wenn sie ins Bild passt). Offen: Gewichte nach der
-Geometrie und Vermessen auf der Hälfte (Runde auf rund 50 %). In Florians Fenster erst nach seinem Wort.
+Geometrie und Vermessen auf der Hälfte (Runde auf 50 bis 60 %). In Florians Fenster erst nach seinem Wort.
 
 - **Was du danach siehst:**
   - Jede neue Form beginnt als gespiegelte Kugel, **die Mittellinie ist von Anfang an eingezeichnet**.
@@ -343,7 +343,7 @@ Zu jeder steht meine Empfehlung; „alles wie empfohlen“ genügt.
    Beim Loslassen verschwindet er, und es gibt kein Zurückziehen. So ähnlich ist es bei Blender, wenn Clipping beim Mirror
    Modifier eingestellt ist.“ Es gilt also: beim Loslassen endgültig an der Mitte geschnitten, der Rand des Lochs ein neuer
    Edgeloop mit glatten Punkten an den neuen Kreuzungen, kein Zurückziehen (⌘Z bleibt).
-   **Florian am 13.11. nachts (nach dem zweiten Donut-Beweis), ändert seine Regel:** „Ich glaube, ich habe eine bessere
+   **Florian am 13.11. mittags (nach dem zweiten Donut-Beweis), ändert seine Regel:** „Ich glaube, ich habe eine bessere
    Regeländerung, die Springen vermeidet. Der neue Loop soll nicht gleich rund sein, sondern wie vorher eine Kante. An den neuen
    Kreuzungen bilden sich Punkte, und der durch die Mitte gezogene Griff bleibt sichtbar, aber ist markiert. Ich kann ihn auch
    löschen, dann ist kein Rückführen mehr möglich. Wenn ich die Kante dann selektiere und ihre Kantigkeit auf 0 stelle, erhalte

@@ -61,6 +61,13 @@ teat firefish: 11765 Punkte, 17 Loops; Zug (0, 40, 0) am höchsten Punkt, 20 Sch
   3  hinauf und losgelassen: danach liegt die Haut vom Halten höchstens 0,30 neben der Fläche in der Ruhe (Mittel 0,00); Ruhe nach 0.6 s; Punkte 11449 → 11453 (verdichtet +10 −3)
      Konsole: keine Fehler
 
+== Maul und Pose (form-fressen-pose.mjs, &netz=dicht, ohne GPU): ganz (&halb=0&bildms=0) gegen neu ==
+   Beide Läufe gleich: 1. Fressen (Maul 30°): offene Kanten 0, umgeschlagen Haut 0 / innen 0, Grundform 0.
+   2. Unterlippe 25 nach unten in der Pose: Blendshape 25,0; Grundform an Ort. 3. Maul 45°, Kopf 10° und zurück: Pose wie nach dem Zug.
+   4. Grundform, Ring geschnitten und 30 hoch gezogen: oberes Ende (60, 137,7) → (60, 167,7, 0); wieder Fressen: 0 / 0 / 0.
+   5. ⌘Z ×12: Haut wie am Anfang 0, Loops 0. Keine Fehler in der Konsole.
+   Unterschied: Punkte nach dem Zug in der Grundform 4900 (ganz) und 4898 (neu).
+
 == Nebenbefund: nur auf der Hälfte, aber weiter mit dem festen Budget (?bildms=0) am strange bird ==
      Bilder im Zug: 268, Abstand Median 16 ms, 95 % 35 ms, längster 58 ms
      Rechnen je Bild (letzte 80): Median 9.4 ms, 95 % 9.9 ms
