@@ -79,6 +79,11 @@ export type Loop = {
   kante?: boolean;
   /** Die Griffe sind angelegt (`griffeAnlegen`, nach den Kreuzungen des neuen Loops); fehlt: noch nicht (der Loop entsteht gerade) */
   pfad?: boolean;
+  /**
+   * Das Maul an diesem Ring ist geformt (`maulFormen`, 13.11.): Was er umschließt, sind Gaumen und Boden, echte Haut, die gezeigt
+   * wird. Fehlt: An ihm entsteht das Maul wie bisher erst in der Anzeige (die Fläche wird weggeschnitten, das Innere eingesetzt).
+   */
+  maulGeformt?: boolean;
 };
 
 /** Blattkoordinaten (u, v) und Tiefe zum Betrachter: Seite von +z, Front von −x, Top von +y */

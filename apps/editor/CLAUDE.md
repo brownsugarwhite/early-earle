@@ -43,6 +43,13 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Hälfte (`HautOptionen.halb`, im Fenster Standard, `&halb=0` schaltet es ab); das Netz bleibt ganz. Dazu „flüssig zuerst“: eine
   weitere Runde je Bild nur, wenn sie samt Anzeige in 14,5 ms passt (`&bildms=0`: nur das feste Budget, `&budget=<ms>` stellt
   es). Messen: im Kern `form-halb.ts`, im Fenster `GPU=1 HALTEN=0 NAME=<Form> node scripts/pruefen/form-halten-probe.mjs`.
+- **Maul formen** (Schritt 6, Etappe 1, 13.11.; nur in `form-bau`, Knopf „Maul formen“): Am gewählten Ring entsteht das Maul als
+  echte Form, von der Seite durchgestanzt. Kern: `maulFormen` (`packages/shape/src/dicht/maulFormen.ts`): Maullinie hart,
+  Mittellinie (wird angelegt, wenn sie fehlt), Querlinie durch beide Mundwinkel, dann bekommt die Mittellinie im Maul in Stufen
+  die Punkte und Griffe der Maullinie (z = 0). Es wird nur an Linien gezogen; nichts wird geschnitten oder eingesetzt. Der Ring
+  trägt danach `maulGeformt`; „Fressen“ und die Regler gibt es daran noch nicht (Meldung). Das Maul aus der schmalen Form mit
+  eingesetztem Inneren (`maulAmLoop`) besteht daneben weiter. Proben: `GPU=1 node scripts/pruefen/form-maul-formen-fenster.mjs`
+  (Fenster), `form-maul-automatisch.ts` (Kern, mit Bildblatt), Test `maulFormen.test.ts`.
 - Test-Haken im Fenster: `window.__kurven` (`zeiten()`, `lagen`, `loops`, `ablage`, `beschaeftigt` …).
 
 ## Prüfen
@@ -110,5 +117,13 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   `vorlageAusSystemen` bauen (auf der Hälfte sind es drei Systeme, nicht zwei).
 - Wird eine Runde kürzer, rechnet das Fenster mehr Runden je Bild: Nach jeder Beschleunigung des Lösers die Bilder im Zug
   messen (Median und 95 %), nicht nur das Rechnen je Bild.
+- Geometrie nie fertig ins Netz bauen und die Rechnung darauf loslassen (ein eingeschweißtes Maul kam in acht Fassungen nicht
+  zur Ruhe). Formen heißt: an Linien ziehen, in Schritten, die Haut folgt; dazwischen verfeinern wie nach einem Zug.
+- Eine neu geschnittene Linie braucht Punkte, wo sie nötig sind (`griffeAnlegen` mit `punkteBis`): Mit nur zwei Punkten dicht
+  beieinander lief die Mittellinie in einem Stück um den ganzen Körper, und die Kugel wurde beim Setzen um 21 verformt.
+- Eine Kante an einem Punkt reicht bis zu den Nachbarpunkten. Soll sie nur ein Stück weit gelten, braucht die Linie dahinter
+  einen Punkt mit `kante: false`.
+- Kreuzt eine neue Linie eine alte dicht an einem ihrer Punkte (Mundwinkel), wird dieser Punkt die Kreuzung; sonst liegen dort
+  zwei Punkte, und die Griffe des Mundwinkels verteilen sich auf beide.
 - **Vor Arbeit an `kurven.ts` oder am Löser lesen:** `docs/verlauf/2026-11-11-uebergabe-kurven.md`, Abschnitt 3 (Karte von
   `kurven.ts`) und Abschnitt 4 (Fallen, was schon kaputtging).

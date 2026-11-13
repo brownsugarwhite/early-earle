@@ -84,6 +84,7 @@ import {
   vorlageAusSystemen,
   hinterDerMitte,
   mitteFestmachen,
+  maulFormen,
   mitteKreuzungen,
   maulAmLoop,
   mittlereKante,
@@ -929,6 +930,7 @@ const maulRegler = document.getElementById('maul-oeffnung') as HTMLInputElement;
 maulRegler.max = String(MAUL_WINKEL_MAX);
 const kopfRegler = document.getElementById('kopf-oeffnung') as HTMLInputElement;
 const knopfPose = document.getElementById('knopf-pose') as HTMLButtonElement;
+const knopfMaul = document.getElementById('knopf-maul') as HTMLButtonElement | null;
 /** zuletzt geschnittenes Maul der Grundform: gilt für diese Haut, diese Kette und diesen Mundwinkel, bei dieser Lage der Haut (`fp`) */
 let maulStand: { haut: Haut; proben: Loop['proben']; ecke: number; fp: number; m: MaulAmLoop } | null = null;
 /**
@@ -1015,6 +1017,12 @@ function innenZeigen(): void {
 function maulAnlegen(): boolean {
   if (maul && loops[loopNr(maul.id)]?.art === 'ring') return true;
   const l = auswahl.map((w) => loops[loopNr(w.l)]).find((x) => x?.art === 'ring');
+  if (l?.maulGeformt) {
+    // (die Fressen-Pose schnitte dort die Fläche weg, die der Ring umschließt: Am geformten Maul sind das Gaumen und Boden)
+    meldung = 'Dieses Maul ist geformt: „Fressen“ und die Regler kommen dafür als Nächstes (Kieferknochen am geformten Maul)';
+    maul = null;
+    return false;
+  }
   if (!l) {
     meldung = 'Kein Maul: erst mit F eine schmale Form ums Maul zeichnen (vorn über den Umriss oder über die Mitte) und wählen';
     maul = null;
@@ -1228,6 +1236,77 @@ knopfPose.addEventListener('click', () => {
   reglerZeigen();
   allesZeigen();
 });
+
+/**
+ * Das Maul am gewählten Ring formen (13.11., Schritt 6). Florian: „Das Maul soll aber an einem gewählten Edgeloop immer noch
+ * automatisch entstehen. […] Im Grunde machst du ja nur die Kante hart und verbindest von der Seite die gegenüberliegenden Seiten.
+ * […] Das Maul ist dann einfach eine Form wie von Hand gemacht, nur automatisiert.“ Und: „Es soll aussehen, als wäre der Edgeloop
+ * von der Seitenansicht durchgestanzt.“ Gerechnet wird im Kern (`maulFormen`): Es wird nur an Linien gezogen, die Haut folgt in
+ * Schritten; nichts wird geschnitten oder eingesetzt. Dauert an einer kleinen Form rund eine Sekunde; so lange steht das Fenster.
+ */
+let maulFormt = false;
+function maulFormenGewaehlt(): void {
+  if (zug || maulFormt) return;
+  if (grund) {
+    meldung = 'Das Maul wird in der Grundform geformt (erst „Fressen“ aus)';
+    statusZeigen();
+    return;
+  }
+  const l = auswahl.map((w) => loops[loopNr(w.l)]).find((x) => x?.art === 'ring');
+  if (!l) {
+    meldung = 'Maul formen: erst mit F eine schmale Form ums Maul zeichnen (vorn über den Umriss oder über die Mitte) und wählen';
+    statusZeigen();
+    return;
+  }
+  if (l.maulGeformt) {
+    meldung = 'An dieser Linie ist das Maul schon geformt (⌘Z führt zurück)';
+    statusZeigen();
+    return;
+  }
+  maulFormt = true;
+  meldung = 'Das Maul wird geformt …';
+  statusZeigen();
+  // erst die Meldung zeigen, dann rechnen
+  setTimeout(() => {
+    maulFormt = false;
+    if (zug || grund || loops[loopNr(l.id)] !== l) return;
+    const t0 = performance.now();
+    // das Maul der Anzeige an dieser Linie (Fläche weggeschnitten, Inneres eingesetzt) entfällt: Seine Fläche wird jetzt die Form
+    const maulVorher = maul;
+    if (maul?.id === l.id) maul = null;
+    const r = maulFormen(haut, loops, l.id, {
+      naechsteId,
+      naechsteKreuzung,
+      gewichte: GEWICHTE,
+      loeser: RICHTUNG_OPT,
+      // verfeinert wird unterwegs wie nach jedem Zug (ohne die Angabe „verborgen“: Das Netz ändert sich dabei)
+      ...(VERDICHTEN ? { verdichten: { maxKante: 1.75 * MK, opt: { ...verdichtenOptionen(), verborgen: null } } } : {}),
+    });
+    if ('fehler' in r) {
+      maul = maulVorher;
+      meldung = `Maul formen geht so nicht: ${r.fehler}`;
+      statusZeigen();
+      return;
+    }
+    const jetzt = maul;
+    maul = maulVorher;
+    zurueck.push(schnappschuss());
+    maul = jetzt;
+    const nAlt = haut.n;
+    haut = r.haut;
+    loops = r.loops;
+    naechsteId = r.naechsteId;
+    naechsteKreuzung = r.naechsteKreuzung;
+    netzGewachsen(nAlt, r.alt, null);
+    auswahl = [{ l: l.id, i: -1 }];
+    meldung = `Maul geformt (${((performance.now() - t0) / 1000).toFixed(1)} s${r.steht ? '' : '; die Haut steht noch nicht'}): Die Lippen sind eine Kante, dazu kamen die Mittellinie im Maul und eine Linie durch die Mundwinkel · ⌘Z führt zurück`;
+    geometrieNeu();
+    ruheNoetig();
+    reglerZeigen();
+    allesZeigen();
+  }, 30);
+}
+knopfMaul?.addEventListener('click', maulFormenGewaehlt);
 
 /**
  * Die Anzeige spiegelt wie der Mirror-Modifier in Blender (11.11., Florian: „ich kann ganz normal über die Spiegelkante ziehen und
