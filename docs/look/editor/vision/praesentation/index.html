@@ -135,6 +135,12 @@
   @media (max-width: 700px) { .stufen .streifen img { width: 900px; max-width: none; } }
   .stufen .achse { display: flex; justify-content: space-between; font-family: var(--f-mono); font-size: var(--s-1); color: var(--grau); }
 
+  /* Skizzen des Kugelmodells */
+  .skizzen { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 22px 34px; }
+  .skizze { display: grid; gap: 10px; min-width: 0; }
+  .skizze svg { width: 100%; max-width: 100%; height: auto; display: block; background: var(--papier-2); border-radius: 4px; }
+  .skizze .sk-t { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.06em; fill: var(--grau); }
+
   /* Druckfarben: Graubalance als drei Kreise */
   .druck { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px 30px; align-items: center; }
   @media (max-width: 560px) { .druck { grid-template-columns: minmax(0, 1fr); } }
@@ -284,6 +290,51 @@
     </div>
   </section>
 
+  <div class="passer" role="presentation"></div>
+
+  <section aria-labelledby="kugel">
+    <span class="eyebrow">So habe ich dich verstanden</span>
+    <h2 id="kugel">Ansichten an der Kugelwand</h2>
+    <div class="skizzen">
+      <figure class="skizze">
+        <svg viewBox="0 0 360 300" role="img" aria-label="Auf der Achse: Cyan liegt hinter dem Wesen, Magenta und Gelb an ihren Wänden">
+        <circle cx="180" cy="150" r="108" fill="none" stroke="var(--grau)" stroke-width="1" stroke-dasharray="2 5" opacity="0.6"/>
+        <line x1="180.0" y1="228.0" x2="148.4" y2="46.7" stroke="var(--tinte)" stroke-width="0.8" opacity="0.35"/>
+        <line x1="180.0" y1="228.0" x2="211.6" y2="46.7" stroke="var(--tinte)" stroke-width="0.8" opacity="0.35"/>
+        <path d="M148.4 46.7 A108 108 0 0 1 211.6 46.7" fill="none" stroke="var(--c70)" stroke-width="8" stroke-linecap="round" style="mix-blend-mode:multiply"/>
+        <text x="180.0" y="18.0" text-anchor="middle" class="sk-t">Seite</text>
+        <path d="M283.3 118.4 A108 108 0 0 1 283.3 181.6" fill="none" stroke="var(--m70)" stroke-width="8" stroke-linecap="round" style="mix-blend-mode:multiply"/>
+        <text x="316.0" y="154.0" text-anchor="start" class="sk-t">Front</text>
+        <path d="M76.7 181.6 A108 108 0 0 1 76.7 118.4" fill="none" stroke="var(--y70)" stroke-width="8" stroke-linecap="round" style="mix-blend-mode:multiply"/>
+        <text x="44.0" y="154.0" text-anchor="end" class="sk-t">Top</text>
+        <ellipse cx="180" cy="150" rx="27" ry="17" fill="var(--papier)" stroke="var(--tinte)" stroke-width="1.6"/>
+        <path d="M174 135 q4 -16 9 -2 M183 135 q5 -15 9 -1" fill="none" stroke="var(--tinte)" stroke-width="1.4"/>
+        <circle cx="180.0" cy="228.0" r="7" fill="var(--papier)" stroke="var(--tinte)" stroke-width="1.4"/><circle cx="180.0" cy="228.0" r="2.4" fill="var(--tinte)"/>
+        </svg>
+        <figcaption class="klein"><b>Auf der Achse:</b> Jede Ansicht hängt an ihrer Wand. Die der Achse liegt genau hinter dem Wesen, in ihre Ansicht gedreht; die anderen stehen hochkant und verblassen.</figcaption>
+      </figure>
+      <figure class="skizze">
+        <svg viewBox="0 0 360 300" role="img" aria-label="Schräg: alle drei gleiten an der Kugelwand hinter das Wesen und liegen übereinander">
+        <circle cx="180" cy="150" r="108" fill="none" stroke="var(--grau)" stroke-width="1" stroke-dasharray="2 5" opacity="0.6"/>
+        <line x1="102.0" y1="212.0" x2="241.2" y2="61.0" stroke="var(--tinte)" stroke-width="0.8" opacity="0.35"/>
+        <line x1="102.0" y1="212.0" x2="280.5" y2="110.5" stroke="var(--tinte)" stroke-width="0.8" opacity="0.35"/>
+        <path d="M197.1 28.2 A123 123 0 0 1 244.3 45.1" fill="none" stroke="var(--c70)" stroke-width="1.5" stroke-dasharray="3 4"/>
+        <circle cx="180.0" cy="42.0" r="3.2" fill="var(--papier-2)" stroke="var(--c70)" stroke-width="1.5"/>
+        <path d="M296.7 111.0 A123 123 0 0 1 301.8 132.9" fill="none" stroke="var(--m70)" stroke-width="1.5" stroke-dasharray="3 4"/>
+        <circle cx="288.0" cy="150.0" r="3.2" fill="var(--papier-2)" stroke="var(--m70)" stroke-width="1.5"/>
+        <path d="M48.3 131.5 A133 133 0 0 1 249.5 36.6" fill="none" stroke="var(--y70)" stroke-width="1.5" stroke-dasharray="3 4"/>
+        <circle cx="72.0" cy="150.0" r="3.2" fill="var(--papier-2)" stroke="var(--y70)" stroke-width="1.5"/>
+        <path d="M243.5 57.7 A112 112 0 0 1 284.2 109.0" fill="none" stroke="var(--y70)" stroke-width="8" stroke-linecap="round" style="mix-blend-mode:multiply"/>
+        <path d="M241.2 61.0 A108 108 0 0 1 280.5 110.5" fill="none" stroke="var(--m70)" stroke-width="8" stroke-linecap="round" style="mix-blend-mode:multiply"/>
+        <path d="M238.9 64.3 A104 104 0 0 1 276.8 111.9" fill="none" stroke="var(--c70)" stroke-width="8" stroke-linecap="round" style="mix-blend-mode:multiply"/>
+        <ellipse cx="180" cy="150" rx="27" ry="17" fill="var(--papier)" stroke="var(--tinte)" stroke-width="1.6"/>
+        <path d="M174 135 q4 -16 9 -2 M183 135 q5 -15 9 -1" fill="none" stroke="var(--tinte)" stroke-width="1.4"/>
+        <circle cx="102.0" cy="212.0" r="7" fill="var(--papier)" stroke="var(--tinte)" stroke-width="1.4"/><circle cx="102.0" cy="212.0" r="2.4" fill="var(--tinte)"/>
+        </svg>
+        <figcaption class="klein"><b>Schräg:</b> Alle drei gleiten an der Kugelwand hinter das Wesen und liegen dort gleich gedreht übereinander. Aus dem Blick decken sie sich genau mit dem Wesen; dort, auf dem Wesen, entsteht das Material.</figcaption>
+      </figure>
+    </div>
+  </section>
   <div class="passer" role="presentation"></div>
 
   <section aria-labelledby="stufen">
