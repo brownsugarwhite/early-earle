@@ -74,7 +74,8 @@ export function mausAnbinden(app, el) {
     einer.ziel = zielHolen(x, y);
     const a = einer.ziel.art;
     if (typ === 'mouse' && (leertaste || (e.shiftKey && !istDing(a) && a !== 'layout'))) return beginne('schwenken');
-    if (typ === 'pen' && !istDing(a) && a !== 'layout') return beginne('strich');
+    // Pencil zeichnet überall außer auf Punkt, Griff, Linie (auch auf der Haut, wo der Finger sie formt)
+    if (typ === 'pen' && !['punkt', 'griff', 'linie', 'maul', 'layout'].includes(a)) return beginne('strich');
     zeigerArt();
   }
 

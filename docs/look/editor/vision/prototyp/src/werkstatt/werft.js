@@ -34,6 +34,8 @@ export class Werft extends Bullaugen {
     this.hautR = null; // Reichweite beim Formen (Welt), wird nach dem Laden gesetzt
     this.flach = 0;
     this.feder = null;
+    // keine Seifenhaut: Die Hand zeigt sich als Flieder-Licht (Einfluss), nicht als Schillern
+    this.seife = false;
     const z = this.z;
     z.illu.transparent = true;
     this.maskeWeiss = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
@@ -337,12 +339,24 @@ export class Werft extends Bullaugen {
       Q.aus = mul(tan, ln);
       Q.ecke = false;
     }
-    // Ränder: Griff zur neuen Linie hin ausrichten
-    const tA = auf(0.02).tan, tB = auf(0.98).tan;
+    // Ränder: Richtung der Griffe bleibt (sonst biegt sich das Nachbarstück mit), nur die Länge passt zum neuen Stück
     const A = kette[0], B = kette[kette.length - 1];
-    if (!A.ecke) { const l = len(A.aus) || dist(A.p, kette[1].p) / 3; A.aus = mul(tA, l); A.ein = mul(tA, -(len(A.ein) || l)); }
-    if (!B.ecke) { const l = len(B.ein) || dist(B.p, kette[kette.length - 2].p) / 3; B.ein = mul(tB, -l); B.aus = mul(tB, len(B.aus) || l); }
+    const lA = dist(A.p, kette[1].p) / 3, lB = dist(B.p, kette[kette.length - 2].p) / 3;
+    if (len(A.aus) > 1e-6) A.aus = mul(norm(A.aus), lA);
+    if (len(B.ein) > 1e-6) B.ein = mul(norm(B.ein), lB);
     if (L.art === 'mitte') for (const Q of L.punkte) { Q.p[2] = 0; Q.ein[2] = 0; Q.aus[2] = 0; }
+    // Kreuzungen: die Zwillinge auf den anderen Kurven gehen mit (sonst muss die Haut durch zwei Lagen und bildet eine Spitze)
+    const andere = new Set();
+    for (let k = 1; k < kette.length - 1; k++) {
+      const Q = kette[k];
+      if (!Q.kreuz) continue;
+      for (const R of this.verbunden(Q)) {
+        if (R === Q) continue;
+        R.p = Q.p.slice();
+        for (const M of this.linien) if (M !== L && M.punkte.includes(R)) andere.add(M);
+      }
+    }
+    for (const M of andere) { ringEndenRichten(M); mitteRichten(M); this.haut.einbetten(M); }
     ringEndenRichten(L);
     mitteRichten(L);
     this.haut.einbetten(L);
