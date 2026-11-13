@@ -1,4 +1,4 @@
-# Beweis „Haut direkt aus den Linien“ (Schritt 3 des Plans vom 12.11.), Ergebnis vom 13.11.2026
+# Beweis „Haut direkt aus den Linien“ (Schritt 3 des Plans vom 12.11.), Ergebnis vom 13.11.2026, mit dem zweiten Beweis „B“
 
 Plan: [`../plans/2026-11-12-schnell-glatt-exakt.md`](../plans/2026-11-12-schnell-glatt-exakt.md), Schritt 3 und Anhang A.3.
 Gerechnet wurde nur im Kern (`packages/shape/src/dicht/direkt.ts`), nichts im Fenster. Alle Zahlen stammen aus einem Lauf der
@@ -15,8 +15,10 @@ nicht beurteilt.
   10 bis 16 % dicker), hin und zurück gibt bitgleich dieselbe Haut, und seine drei Formen kommen unverändert zurück.
 - **B kann nichts Neues runden.** Zieht man einen Rüssel aus der Kugel, entsteht mit B keine runde Röhre. Das kann die heutige
   Rechnung (Breite zu Höhe 1,03).
-- Damit ist die Frage für Florian: nach Plan weiter mit der heutigen Rechnung, oder zuerst prüfen, ob B und die heutige Rechnung
-  zusammen das Ziehen exakt machen.
+- **Zweiter Beweis (B, am selben Tag, Abschnitt unten):** B ist ein genaues Werkzeug für fertige Haut: Anfassen bewegt
+  nichts, hin und zurück stimmt auf ein Zehnmillionstel, ein gebogenes Horn knickt nicht, verlängert bleibt es bis auf wenige
+  Prozent gleich dick. **B ersetzt die heutige Rechnung aber nicht:** Neue Haut rundet nur sie, und sie lässt sich nicht auf
+  einen Teil der Haut beschränken (dort läuft sie davon). Beides zusammen geht also nur als Schalter, nicht von selbst.
 
 ## Was der Beweis zeigen sollte
 
@@ -106,7 +108,9 @@ kaum kleiner.
 Nach der Abbruchregel des Plans (Anhang A.3) ist A damit für den Anfang einer Form und für seine vorhandenen Formen nicht
 tragfähig.
 
-## Was an B dran ist und was fehlt
+## Was an B dran ist und was fehlt (Stand nach dem ersten Beweis)
+
+Drehen und der gemerkte Stand sind im zweiten Beweis gebaut und gemessen (nächster Abschnitt).
 
 B benutzt nur die zweite Hälfte der neuen Rechnung: Je Kante steht eine Zeile „die Kante steht senkrecht auf dem Mittel der
 Normalen ihrer Enden“, dazu je Punkt zwei Zeilen, die ihn in der Fläche halten; die Punkte auf den Linien liegen fest. Die
@@ -123,14 +127,64 @@ Normalen sind die der Haut beim Anfassen. Das ist eine Lösung, keine Runden.
 - **Tempo:** einmal Zerlegen beim Greifen (rund 230 ms bei 7 600 Punkten), je Bild ein Einsetzen (3 bis 4 ms), wenn die
   Normalen im Zug stehen bleiben. Drehen sie mit, ändert sich die Matrix; das wäre eigens zu lösen.
 
+## Zweiter Beweis: B (13.11., Florian: „ok, prüfe B“)
+
+Fälle und Kriterien standen vor dem Bauen fest (Plan, Anhang A.3, „Zweiter Beweis“). Probe:
+`apps/editor/scripts/pruefen/form-direkt-b.ts` (rund 20 s), Ausgabe `docs/progress/editor/schritt3b-messung-2026-11-13.txt`,
+Bilder `schritt3b-{ruessel,ruessel-laenger,horn,biegen}-2026-11-13.jpg`. Florian hat die Bilder noch nicht beurteilt.
+
+**Was an B dazukam** (`HautDirekt`, Option `stand`; `normalenDrehen`, `linienDrehung`, `lagenNachfuehren`):
+- **Fester Stand.** Die Haut, wie sie beim Anfassen ist, ist genau die Lösung für unbewegte Linien: Was die Zeilen an ihr
+  nicht erfüllen, bleibt als rechte Seite stehen. Damit bewegt sich beim Anfassen und beim neuen Anlegen nichts, und die
+  Normalen müssen kein eigener gemerkter Stand sein; sie werden jedes Mal von der Haut gelesen. Das löst die Falle aus dem
+  ersten Beweis (Kriechen um 0,4 bis 1,0 je Anfassen).
+- **Mitdrehen.** Dreht eine Linie, drehen die Normalen der Haut mit: An jedem Linienpunkt wird aus Tangente und Richtung der
+  Linie vorher und nachher eine Drehung bestimmt und gleichmäßig über die Haut verteilt. Die Richtung der Linien muss dabei
+  an der Haut vom Anfassen gerechnet werden (sie liest dort die mittlere Kantenlänge); an der bewegten Haut gerechnet, kam
+  hin und zurück eine um 0,5 andere Haut heraus.
+- **Nachführen.** Mit dem Mitdrehen ändert sich die Matrix je Bild. Statt neu zu zerlegen, wird mit der Zerlegung vom Greifen
+  als Vorkonditionierer nachgeführt (konjugierte Gradienten).
+
+**Ergebnis gegen die Kriterien:**
+
+| Fall | Kriterium | Ergebnis |
+| --- | --- | --- |
+| Rüssel aus zwei Profillinien, aus der Kugel gezogen | Breite zu Höhe 0,8 bis 1,25, nichts umgestülpt | **nicht erfüllt:** B allein 1,96 (heute 1,03). Das Runden neuer Haut mit der heutigen Rechnung, während der Rest fest steht, trägt nicht (siehe unten) |
+| Rüssel, mit der heutigen Rechnung erzeugt, danach um die Hälfte verlängert | Breite höchstens 3 % anders | dasselbe Stück Haut bei 25 / 50 / 75 %: +5,2 · −1,6 · +1,0 % (heute −8,1 · −4,8 · +3,3 %). In der Mitte und vorn erfüllt, am Ansatz nicht |
+| Horn am „strange bird“ um 70 verlängert | Dicke höchstens 3 % anders | dasselbe Stück Haut: +3,2 · +1,3 · +0,7 % (heute +12,6 · +8,9 · +5,7 %). Nach der Höhe gemessen wie im ersten Beweis: +2,7 · −0,3 · +5,1 % (heute +15,8 · +14,9 · +9,8 %). Knapp nicht erfüllt |
+| dasselbe Horn um 30° gebogen | keine neuen Knicke über 60°, nichts umgestülpt, Dicke höchstens 3 % anders | Knicke 43 wie vorher, umgestülpt 2 wie vorher: erfüllt. Dicke +3,4 · +3,6 · +2,5 % (heute +6,8 · +11,8 · +13,2 %): knapp nicht. Ohne Mitdrehen 77 Knicke und 12 umgestülpte Dreiecke |
+| hin und zurück (Horn, verlängert und gebogen) | höchstens 0,05 | 0,0000002: erfüllt |
+| nach dem Loslassen neu angelegt, Linien unbewegt | höchstens 0,18 | 0,0000002: erfüllt |
+| seine drei Formen angefasst, nichts gezogen | höchstens 0,05 | höchstens 0,0000003: erfüllt (heute im Mittel 1,33 · 0,09 · 0,08 Einheiten) |
+
+**Warum „neue Haut runden, Rest halten“ nicht geht.** Geplant war: Wo das Verdichten neue Punkte setzt, rundet die heutige
+Rechnung, alles andere steht fest. Geprüft sind zwei Regeln für den Bereich und beide Gewichtungen der heutigen Rechnung:
+- neue Punkte und zwei Ringe darum: Am Horn kam sie in 150 Runden nicht zur Ruhe und stülpte 16 Dreiecke um; der Rüssel blieb
+  breit (1,93) mit 12 bzw. 34 umgestülpten Dreiecken.
+- das ganze Feld zwischen den Linien, in dem neue Punkte liegen: Am Rüssel lief die Haut in 5 von 8 Schritten davon
+  (Gewichte nach der Geometrie) bzw. in 8 von 8 (gleiche Gewichte).
+Die heutige Rechnung rechnet im Fenster immer über die ganze Haut; auf einem Teil ist sie in dieser Form nicht stabil. Und B
+allein zieht aus der Kugel einen breiten Keil, keinen Rüssel. Nach der vorher festgelegten Abbruchregel ist B damit **kein
+Ersatz** für die heutige Rechnung: Zum Erzeugen bleibt sie.
+
+**Tempo von B, im Kern gemessen** (strange bird, 7 628 Punkte, nicht auf Tempo gebaut):
+- Greifen: einmal Zerlegen, rund 240 ms.
+- Zug ohne Drehung der Linien: je Bild ein Einsetzen, 3 bis 4 ms.
+- Zug mit Drehung (30 Bilder bis 30° gebogen, je Bild nachgeführt): im Mittel 8 Schritte, höchstens 13; je Bild 80 ms, am
+  Ende 0,01 neben der genauen Lösung. Davon ist ein guter Teil Aufbau (die Zeilen werden je Bild neu angelegt). Wie weit das
+  herunterkommt, ist nicht gemessen.
+
+**Nicht geprüft:** B im Fenster (Gefühl beim Ziehen, Zusammenspiel mit dem Verdichten im Zug), B in der Pose, B am Maul, und
+ob die paar Prozent Dickenänderung am gebogenen und verlängerten Horn zu sehen sind.
+
 ## Wege von hier
 
-1. **Nach Plan weiter.** Die heutige Rechnung bleibt, Schritt 4 (echte Spiegelung, Mittellinie von Anfang an) kommt als
-   Nächstes. Gegen das Aufgehen beim Anfassen bleibt dann nur ein Regler; B bleibt als Befund liegen.
-2. **Zuerst ein zweiter, kurzer Beweis für B** (wieder nur Kern und Bilder, etwa ein Tag): Ziehen an fertiger Haut rechnet B,
-   neue Haut rundet die heutige Rechnung. Zu zeigen wäre: Rüssel aus der Kugel wird rund (mindestens 0,8); derselbe Rüssel
-   danach verlängert bleibt gleich dick (höchstens 3 %); ein Horn um 30° gebogen knickt nicht; nach dem Loslassen bewegt sich
-   nichts über 0,18. Hält das, käme B mit Schritt 4 ins Fenster.
+1. **Weiter nach Plan.** Die heutige Rechnung bleibt allein, als Nächstes Schritt 4 (echte Spiegelung, Mittellinie von Anfang
+   an). Das Aufgehen beim Anfassen bleibt.
+2. **B als Schalter zum Ausprobieren ins Bau-Fenster** (etwa zwei Tage, mit Abbruch): Ist der Schalter an, bewegen die Linien
+   die Haut direkt und nichts rundet neu; ist er aus, rechnet es wie heute. Florian probiert es an seinen Formen. Abbruch,
+   wenn ein Zug am Firefish über 30 ms je Bild bleibt oder es sich falsch anfühlt. Hält es, wäre B auch der naheliegende
+   Rechner für die Posen (Schritt 5: Linien in der Pose, dieselbe Haut, in der Basis wieder da).
 
 ## Nachrechnen
 
@@ -143,4 +197,6 @@ HOEHE=100 node scripts/pruefen/html-shot.mjs --jpg /tmp/schritt3-*.html
 ```
 
 Der ganze Lauf dauert rund 45 Sekunden; seine Ausgabe liegt in `docs/progress/editor/schritt3-messung-2026-11-13.txt`. Test im
-Kern: `packages/shape/src/dicht/direkt.test.ts`.
+Kern: `packages/shape/src/dicht/direkt.test.ts`. Der zweite Beweis genauso mit `form-direkt-b.ts`
+(`FALL=ruessel,horn,biegen,formen`; die verworfenen Regeln zum Runden über `RUNDEN=geometrie|gleich` und
+`BEREICH=punkte|feld`).

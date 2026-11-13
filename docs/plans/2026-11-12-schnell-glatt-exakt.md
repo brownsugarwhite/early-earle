@@ -409,6 +409,13 @@ Anfassen oder Loslassen bewegen könnte, und die Normalen müssen kein eigener g
 **Abbruch:** Wird der Rüssel so nicht rund oder knickt das gebogene Horn, bleibt es bei der heutigen Rechnung (Weg 1 aus dem
 Bericht).
 
+**Ergebnis (13.11.):** Der Abbruch gilt für das Erzeugen: Der Rüssel wird so nicht rund (B allein 1,96), und die heutige
+Rechnung lässt sich nicht auf einen Teil der Haut beschränken (kommt nicht zur Ruhe, stülpt um, läuft davon). Die übrigen
+Fälle hält B: Anfassen, Loslassen und hin und zurück auf ein Zehnmillionstel, das gebogene Horn ohne neue Knicke; die Dicke
+bleibt bis auf 1 bis 5 % (heute 6 bis 16 %), das Kriterium von 3 % ist an einzelnen Stellen knapp verfehlt. B ist damit ein
+genaues Werkzeug für fertige Haut, kein Ersatz für die heutige Rechnung. Zahlen und Bilder im Bericht, Abschnitt „Zweiter
+Beweis“. Offen ist Florians Entscheidung: weiter nach Plan, oder B als Schalter im Bau-Fenster ausprobieren.
+
 ### A.4 Spiegelung (Schritt 4)
 
 - Die Haut der Basis ist die Hälfte z ≥ 0. Randpunkte liegen bei z = 0. In den Zeilen eines Randpunkts zählen die inneren
