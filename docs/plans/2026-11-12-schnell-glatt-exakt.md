@@ -401,6 +401,44 @@ Maullinie eine Kante), oder inzwischen Schritt 4c.
 - **Risiko:** hoch; hier ist am meisten Entwurf offen (Anhang A.6). Deshalb zuerst ein Beweis an einer Form: Maul anlegen, Loop
   um den Unterkiefer, öffnen und schließen.
 
+**Nachtrag 13.11. nachmittags: Schritt 6 kommt vor Schritt 5** (Florian nach dem Beweis zu den Posen: „ja, dann erst das
+Maul“). Zuerst Entwurf und kleiner Beweis in Bildern; gebaut wird erst nach seinem Wort.
+
+**Entwurf** (was feststeht und was der Beweis klären soll):
+- **Die Haut:** Beim Anlegen wird das Rechennetz längs der Maullinie aufgetrennt. Die verborgene Fläche der Öffnung fällt weg;
+  an die Oberlippe kommt der Gaumen, an die Unterlippe der Boden, beide als Haut. Zwischen den Mundwinkeln treffen sie sich. Das
+  ist die Form, die die Anzeige heute nur einsetzt (`maulAmLoop`); neu ist, dass sie zur Haut gehört. Die Haut bleibt
+  geschlossen: Das Maul ist eine Tasche.
+- **Die Linien:** Die Maullinie bleibt ein Ring. Oberlippe und Unterlippe sind ihre beiden Stücke, der Mundwinkel ist der Punkt
+  dazwischen (eine Ecke). In die Höhle gehört die Mittellinie: Sie läuft von der Oberlippe über den Gaumen nach hinten und über
+  den Boden zur Unterlippe und hält so die Tiefe. Hat die Form keine Mittellinie, legt „Maul anlegen“ sie an. Weitere Linien in
+  der Höhle sind gewöhnliche Loops (auch der Loop um den Unterkiefer). Die Lippen beginnen mit Kante an.
+- **Bezugsstellung:** Gerechnet wird, wie die schmale Form gezeichnet ist: Die Lippen liegen leicht auseinander. „Zu“ ist der
+  zurückgedrehte Kiefer in der Anzeige.
+- **Knochen:** wie heute aus dem Maulschnitt. Der Boden dreht ganz mit dem Unterkiefer, der Gaumen mit dem Schädel, die Linie
+  zwischen den Mundwinkeln ist die Achse.
+- **Folge für die Posen (Schritt 5 danach):** Eine Pose wird in der gezeigten Lage gerechnet (Maul offen, nichts liegt
+  aufeinander) und zurückgedreht gespeichert.
+- **Offen, nach dem Beweis mit Bildern zu entscheiden:** wie tief die Höhle ohne weitere Linien wird; ob die Lippen beim Schließen
+  genau aufeinander liegen; was mit Linien geschieht, die über die Maulstelle liefen; Zeichnen auf Stellen, die innen liegen;
+  Zähne und Zunge später.
+
+**Kleiner Beweis im Kern** (Probe `form-maul-haut.ts`, ein Bildblatt; im Fenster ändert sich nichts; Aufwand ein Tag; hält er
+danach nicht: anhalten und es sagen). Form: dieselbe Kugel mit Ring und Maul wie beim Beweis zu den Posen
+(`formen/pose-maul-kugel.eewesen`). **Kriterien, vorher festgelegt:**
+1. **Das Maul ist Haut:** Nach dem Anlegen ist die Haut geschlossen und spiegelgleich, nichts ist umgeschlagen, die Lippen
+   liegen auf ihrer Linie.
+2. **Die Höhle hält:** Die Rechnung der Grundform kommt zur Ruhe, und die Höhle bleibt eine Höhle: Gaumen und Boden durchdringen
+   sich nicht und stülpen sich nicht nach außen (Schnitt durch die Mitte im Bild). Außen bewegt das Anlegen die Haut höchstens
+   um 1 (Halbmesser 150).
+3. **Loop um den Unterkiefer:** Ein Schnitt quer durch den Unterkiefer gibt einen Ring außen ums Kinn und innen über den Boden;
+   an ihm lässt sich ziehen, ohne dass etwas umschlägt.
+4. **Öffnen und Schließen:** Mit dem Kiefer gedreht (30° offen; zu, so weit die Lippen reichen) ist nichts offen und nichts
+   umgeschlagen.
+5. **Zug an der Lippe bei offenem Maul** (daran sind die Posen gescheitert): Unterlippe 25 nach unten und 25 nach oben, in der
+   gezeigten Lage gerechnet. Mit den Lippen als Kante: nichts umgeschlagen, der Kopf verzieht sich nicht (Haut fern vom Maul
+   höchstens 1 bewegt), Linien höchstens 0,5 neben ihrem Pfad. Ohne Kante wird dasselbe gemessen und gezeigt.
+
 ### Schritt 7: Auswahl wie in Blender (2 bis 3 Tage)
 
 - **Was du danach siehst:** Du wählst Punkte, **Kanten** (das Linienstück zwischen zwei Punkten) und **Flächen** (das Feld
