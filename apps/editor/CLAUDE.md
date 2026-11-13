@@ -43,21 +43,21 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Hälfte (`HautOptionen.halb`, im Fenster Standard, `&halb=0` schaltet es ab); das Netz bleibt ganz. Dazu „flüssig zuerst“: eine
   weitere Runde je Bild nur, wenn sie samt Anzeige in 14,5 ms passt (`&bildms=0`: nur das feste Budget, `&budget=<ms>` stellt
   es). Messen: im Kern `form-halb.ts`, im Fenster `GPU=1 HALTEN=0 NAME=<Form> node scripts/pruefen/form-halten-probe.mjs`.
-- **Maul formen** (Schritt 6, 13.11., zweite Fassung; nur in `form-bau`, Knopf „Maul formen“): Am gewählten Ring wird die
-  Maullinie hart, die Mittellinie (angelegt, wenn sie fehlt: zwei Punkte an den Lippen) knickt an beiden Lippen um 95° ins Maul;
-  im Maul kein Punkt. Kern: `maulFormen` und `maulFormenSchritte` (`packages/shape/src/dicht/maulFormen.ts`); das Fenster zeigt
-  die Schritte (`maulSchritt`, `&maulRunden=<n>`: Runden je Bild) und sperrt so lange die Eingaben. `&maulMitte=0`: die nur zum
-  Formen angelegte Mittellinie am Ende wieder entfernen (der Knick ist dann nicht eingestellt, er hängt am Netz). Der Ring
-  trägt danach `maulGeformt`; „Fressen“ und die Regler gibt es daran noch nicht (Meldung). Das Maul aus der schmalen Form mit
-  eingesetztem Inneren (`maulAmLoop`) besteht daneben weiter. Proben: `GPU=1 node scripts/pruefen/form-maul-formen-fenster.mjs`
-  (Fenster), `form-maul-einfach.ts` (Kern, mit Bildblatt; `OHNE_MITTE=1`, `MITTE=1`, `DREIECKE=3000`), `form-linien.ts` (eine
-  gesicherte Form lesen: Punkte, Griffe, Knicke), Test `maulFormen.test.ts`. Die erste Fassung (durchgestanzt, Querlinie) liegt
-  in `90b98322`.
-- **Kante mit eigenem Winkel** (Beweis vom 13.11., nur als Probe `form-kante-winkel.ts`, am Löser nichts geändert): Die erste
-  Reihe der Haut innen an einer harten Linie wird je Runde um die Linie gedreht geführt (ein Loop ohne Kette, dessen Proben je
-  einen Punkt der Haut binden: `ecken: [v, a, b]`, `b: [1, 0, 0]`). Hält auf drei Netzen und an „simple_mouth_more simple“
-  (95° an den Lippen, 72° bis 74° am Mundwinkel). Ohne die Führung läuft der Winkel davon; hinter der starren Reihe ist das
-  Innere unruhig. Der Einbau steht aus (Plan, Schritt 6).
+- **Kante mit eigenem Winkel** (13.11.; nur in `form-bau`): Ein Punkt einer Linie kann den Knick der Haut quer über die Linie
+  angeben (`LoopPunkt.knick`, Grad, nach innen); dazwischen gleitet er. Kern `packages/shape/src/dicht/kantenWinkel.ts`:
+  `LoopZug` bindet für jede solche Linie die erste Reihe der Haut innen als Loop ohne Kette mit und rechnet ihre Ziele vor
+  jeder Runde neu (um die Linie gedreht, gegen die Haut außen gemessen). Nur eingesetzte Ringe, nur in der Grundform. Messen:
+  `__kurven.knickGemessen(id)`; Kern-Probe `form-kante-winkel.ts` (`DREIECKE`, `NAME=<Form>`, `LOSLASSEN=1`, `MEHR=<Runden>`).
+- **Maul formen** (Schritt 6, 13.11., dritte Fassung; nur in `form-bau`, Knopf „Maul formen“): Am gewählten Ring wird die
+  Maullinie hart und trägt ihren Knick selbst (95° an den Lippen, 70° am Mundwinkel); keine Mittellinie, kein Punkt im Maul.
+  Läuft schon eine Mittellinie durch beide Lippen, knickt stattdessen ihr Griff nach innen (zweite Fassung; `&maulWeg=mitte`
+  legt sie zum Vergleich an). Kern: `maulFormen` und `maulFormenSchritte` (`maulFormen.ts`); das Fenster zeigt die Schritte
+  (`maulSchritt`, `&maulRunden=<n>`: Runden je Bild) und sperrt so lange die Eingaben. Der Ring trägt danach `maulGeformt`;
+  „Fressen“ und die Regler gibt es daran noch nicht (Meldung). Das Maul aus der schmalen Form mit eingesetztem Inneren
+  (`maulAmLoop`) besteht daneben weiter. Proben: `GPU=1 node scripts/pruefen/form-maul-formen-fenster.mjs` (Kugel),
+  `GPU=1 NAME=<Form> node scripts/pruefen/form-maul-formen-form.mjs` (eine gesicherte Form), `form-maul-einfach.ts` (Kern, zweite
+  Fassung), `form-linien.ts` (eine gesicherte Form lesen), Tests `maulFormen.test.ts`, `kantenWinkel.test.ts`. Die erste
+  Fassung (durchgestanzt, Querlinie) liegt in `90b98322`.
 - **Linienbreiten** (13.11.): 3 Bildpunkte am Knick, ein halber an runden Punkten, dazwischen verjüngt (`haerteBei` im Kern;
   `baenderZeigen` mit Breite je Punkt, in den Blättern `kantenFlaeche` und die Klasse `kante-band`). Probe:
   `GPU=1 node scripts/pruefen/form-kante-verjuengung-fenster.mjs`.
@@ -142,11 +142,19 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   sie kreuzt (dann ist sie dort eine Ecke und jede Seite passt für sich).
 - An einer solchen Linie die Griffe nie von selbst ausrichten (Ecke → glatt, „Kante aus“): Sie sind mehrere Hundert lang, der
   Körper stülpt sich um.
-- Ein einzelner Ring bestimmt die Form nicht: Ohne kreuzende Linie landet die Haut je nach Netz woanders (Maul ohne
-  Mittellinie: Knick an den Lippen 93°/100° oder 39°/68°).
+- Ein einzelner Ring bestimmt die Form nicht: Ohne kreuzende Linie und ohne Angabe des Knicks landet die Haut je nach Netz
+  woanders (Maul ohne Mittellinie: Knick an den Lippen 93°/100° oder 39°/68°). Dafür gibt es `LoopPunkt.knick`.
 - Wer in Schritten rechnet und unterwegs verfeinert, braucht eine Obergrenze für das Netz (ein davongelaufener Lauf wuchs auf
   433 000 Punkte und hielt Minuten).
 - `falten().umgeklappt` zählt am spitzen Mundwinkel auch an Florians eigenen Modellen 6 Dreiecke: nicht als „nichts
   umgeschlagen“ prüfen, sondern gegen diesen Stand.
+- Eine harte Linie, die ihren Knick trägt, nie erst allein setzen lassen (ohne Angabe verzieht ein einzelner Ring die Form: an
+  der Kugel um 9) und nie in einem Schritt weich schalten: Eine weiche Linie misst an einem Knick eine riesige Krümmung, die
+  Rechnung läuft auseinander.
+- Wer `LoopZug` ändert: Die Führungen stehen hinter den Loops der Form im Plan; `start` und `lagen` zeigen nur die Loops der
+  Form. `loopStruktur` muss dieselben Bindungen sehen wie `LoopZug`, sonst passt eine fertige Zerlegung nicht.
+- Kern-Bilder (`blattSchreiben`) sind flach schattiert und übertreiben jede Unruhe; ob etwas ruhig aussieht, im Fenster ansehen
+  (Unruhe messen: `form-kante-winkel.ts`, Knick zwischen Nachbardreiecken; Florians Modelle liegen gesichert bei 5,6° bis 6,3°,
+  nach jedem Neurechnen bei rund 7°).
 - **Vor Arbeit an `kurven.ts` oder am Löser lesen:** `docs/verlauf/2026-11-11-uebergabe-kurven.md`, Abschnitt 3 (Karte von
   `kurven.ts`) und Abschnitt 4 (Fallen, was schon kaputtging).

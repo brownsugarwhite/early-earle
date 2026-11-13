@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { loopEinsetzen } from './einsetzen';
 import { type Haut, type V3, hautAus } from './kurven';
 import { falten } from './kurvenFaelle';
-import { type Loop, formAusZeichnung, griffeAnlegen, griffeBei, istSichtbar, knickAm, loopAusSchnitt, mittlereKante, pfadLagen, punktEinfuegen } from './loops';
+import { knickQuer, knickReihe, knickSoll } from './kantenWinkel';
+import { type Loop, LoopZug, formAusZeichnung, griffeAnlegen, griffeBei, istSichtbar, knickAm, loopAusSchnitt, mittlereKante, pfadLagen, punktEinfuegen } from './loops';
 import { type MaulGeformt, maulFormen, maulFormenSchritte } from './maulFormen';
 import { rundAusSeite } from './rund';
 import type { UmrissPunkt } from './umriss';
@@ -117,8 +118,22 @@ function pruefen(r: MaulGeformt, maulId: number): Loop {
   return L;
 }
 
+/** Knick der Haut quer über die Maullinie nahe dem Mundwinkel (Mittel der Stellen bis 2,5 Kanten davor und dahinter) */
+function amMundwinkel(h: Haut, L: Loop): number {
+  const R = knickReihe(h, L)!;
+  const W = L.punkte.find((p) => p.mundwinkel)!;
+  const mk = mittlereKante(h);
+  const w: number[] = [];
+  for (let j = 0; j < L.proben.length; j++) {
+    if (Math.abs(L.s[j]! - W.s) > 2.5 * mk) continue;
+    const x = knickQuer(h, R, j);
+    if (Number.isFinite(x)) w.push(x);
+  }
+  return w.reduce((a, b) => a + b, 0) / w.length;
+}
+
 describe('Maul formen (wie von Hand: Lippen hart, an den Lippen knickt die Haut ins Maul, keine Punkte im Maul)', () => {
-  it('an der Kugel ohne weitere Linien: dazu kommt nur die Mittellinie mit ihren zwei Punkten an den Lippen', () => {
+  it('an der Kugel ohne weitere Linien: Es bleibt nur die Maullinie, sie trägt ihren Knick selbst (95° an den Lippen, 70° am Mundwinkel)', () => {
     const { haut, loops, maul } = maulKugel();
     const vorher = Float64Array.from(haut.pos);
     const sichtbarVorher = maul.punkte.filter(istSichtbar).length;
@@ -139,6 +154,72 @@ describe('Maul formen (wie von Hand: Lippen hart, an den Lippen knickt die Haut 
     // die Eingaben bleiben, wie sie waren
     expect(Array.from(haut.pos)).toEqual(Array.from(vorher));
     expect(maul.kante).toBeUndefined();
+    expect(maul.punkte.some((p) => p.knick !== undefined)).toBe(false);
+    const L = pruefen(r, maul.id);
+    // keine Linie kommt dazu, kein Punkt außer höchstens dem Mundwinkel
+    expect(r.loops.length).toBe(1);
+    expect(r.mitte).toBe(-1);
+    expect(L.punkte.every((p) => p.kreuzung === undefined)).toBe(true);
+    expect(L.punkte.filter(istSichtbar).length).toBeLessThanOrEqual(sichtbarVorher + 1);
+    // die Angaben: an beiden Enden 95°, am Mundwinkel 70°, dazwischen gleitend
+    expect(L.punkte[0]!.knick).toBeCloseTo(95, 9);
+    expect(L.punkte[L.punkte.length - 1]!.knick).toBeCloseTo(95, 9);
+    expect(L.punkte.find((p) => p.mundwinkel)!.knick).toBeCloseTo(70, 9);
+    const W = L.punkte.find((p) => p.mundwinkel)!;
+    expect(knickSoll(L, W.s / 2)).toBeCloseTo(82.5, 6);
+    const s = schnitt(r.haut, L);
+    const f = falten(r.haut);
+    const kW = amMundwinkel(r.haut, L);
+    // hinter dem Maul bleibt die Kugel eine Kugel (keine Mittellinie, keine Zitrone)
+    let aussen = 0;
+    for (let v = 0; v < r.haut.n; v++) {
+      if (r.haut.pos[3 * v]! < -40) continue;
+      aussen = Math.max(aussen, Math.abs(Math.hypot(r.haut.pos[3 * v]!, r.haut.pos[3 * v + 1]!, r.haut.pos[3 * v + 2]!) - 150));
+    }
+    log(
+      `Maul geformt (Kugel ohne Linien): ${r.haut.n} Punkte, ${r.runden} Runden, ${zwischen} Zwischenstände; Knick an den Lippen ${s.knick.map((x) => x.toFixed(1)).join('° und ')}°, ` +
+        `am Mundwinkel ${kW.toFixed(1)}°, Tasche ${s.tiefe.toFixed(2)}; hinter dem Maul bis ${aussen.toFixed(2)} neben der Kugel; umgeschlagen ${f.umgeklappt}`,
+    );
+    // Florian: „von der Seite mit je 90 bis 100 Grad eingeknickt […] und beim Mundwinkel ca. 70 Grad nach innen abknicken“
+    for (const k of s.knick) {
+      expect(k).toBeGreaterThan(90);
+      expect(k).toBeLessThan(100);
+    }
+    expect(kW).toBeGreaterThan(62);
+    expect(kW).toBeLessThan(80);
+    expect(s.tiefe).toBeGreaterThan(0.1);
+    expect(aussen).toBeLessThan(8);
+    expect(f.umgeklappt).toBeLessThanOrEqual(12);
+
+    // Der Winkel hält in jeder weiteren Rechnung (die Kante trägt ihn): ein neuer Zug über die ganze Haut, 60 Runden
+    const h2: Haut = { ...r.haut, pos: Float64Array.from(r.haut.pos) };
+    const z = new LoopZug(h2, r.loops, null, true, 'kurven', 'geometrie', { halb: true });
+    const still = r.loops.map((l) => new Float64Array(l.ruhe.length));
+    for (let k = 0; k < 60; k++) z.schritt(still, 1);
+    // (gemessen im Maul: an der Linie und was sie umschließt. Der Körper einer Kugel ohne Haltelinien darf sich dabei weiter
+    // verformen: Ein einzelner Ring bestimmt ihn nicht; Florian, 13.11.: „Wenn eine Anfangskugel keine Linien hat, darf sie sich
+    // organisch verformen.“)
+    const R2 = knickReihe(h2, L)!;
+    let imMaul = 0;
+    let amKoerper = 0;
+    for (let v = 0; v < h2.n; v++) {
+      const d = Math.hypot(h2.pos[3 * v]! - r.haut.pos[3 * v]!, h2.pos[3 * v + 1]! - r.haut.pos[3 * v + 1]!, h2.pos[3 * v + 2]! - r.haut.pos[3 * v + 2]!);
+      if (R2.innen[v] || R2.aufKette[v]! >= 0) imMaul = Math.max(imMaul, d);
+      else amKoerper = Math.max(amKoerper, d);
+    }
+    const s2 = schnitt(h2, L);
+    log(`   60 Runden weiter: im Maul bewegt ${imMaul.toFixed(2)}, am Körper ${amKoerper.toFixed(2)}; Knick an den Lippen ${s2.knick.map((x) => x.toFixed(1)).join('° und ')}°`);
+    for (const k of s2.knick) {
+      expect(k).toBeGreaterThan(90);
+      expect(k).toBeLessThan(100);
+    }
+    expect(imMaul).toBeLessThan(2);
+  }, 120000);
+
+  it('zum Vergleich mit der Mittellinie (zweite Fassung): Sie wird angelegt, zwei Punkte an den Lippen, dort knickt sie um 95°', () => {
+    const { haut, loops, maul } = maulKugel();
+    const r = maulFormen(haut, loops, maul.id, { naechsteId: 3, naechsteKreuzung: 1, verdichten: wieImFenster(haut), weg: 'mitte' });
+    if ('fehler' in r) throw new Error(r.fehler);
     const L = pruefen(r, maul.id);
     expect(r.loops.length).toBe(2);
     expect(r.mitteNeu).toBe(true);
@@ -146,36 +227,13 @@ describe('Maul formen (wie von Hand: Lippen hart, an den Lippen knickt die Haut 
     expect(M.art).toBe('mitte');
     expect(M.punkte.length).toBe(2);
     for (let i = 0; i < 2; i++) expect(Math.abs(knickAm(M, i) - 95)).toBeLessThan(0.01);
-    expect(L.punkte.filter(istSichtbar).length).toBeLessThanOrEqual(sichtbarVorher + 1);
+    expect(L.punkte.some((p) => p.knick !== undefined)).toBe(false);
     const s = schnitt(r.haut, L);
-    const f = falten(r.haut);
-    log(
-      `Maul geformt (Kugel ohne Linien): ${r.haut.n} Punkte, ${r.runden} Runden, ${zwischen} Zwischenstände; Knick an den Lippen ${s.knick.map((x) => x.toFixed(1)).join('° und ')}°, ` +
-        `Tasche ${s.tiefe.toFixed(2)} des Wegs zum Mundwinkel; umgeschlagen ${f.umgeklappt}`,
-    );
-    // Florian: „von der Seite mit je 90 bis 100 Grad eingeknickt“ (im Netz gemessen: je nach Maschen ein paar Grad neben den 95° der Linie)
     for (const k of s.knick) {
       expect(k).toBeGreaterThan(85);
       expect(k).toBeLessThan(110);
     }
     expect(s.tiefe).toBeGreaterThan(0.4);
-    expect(f.umgeklappt).toBeLessThanOrEqual(12);
-  }, 120000);
-
-  it('ohne die Mittellinie (zum Ansehen): läuft durch oder sagt, dass die Haut so nicht zur Ruhe kommt', () => {
-    const { haut, loops, maul } = maulKugel();
-    const r = maulFormen(haut, loops, maul.id, { naechsteId: 3, naechsteKreuzung: 1, verdichten: wieImFenster(haut), ohneMitte: true });
-    if ('fehler' in r) {
-      log(`Maul formen ohne Mittellinie: ${r.fehler}`);
-      expect(r.fehler).toMatch(/Ruhe|Netz/);
-      return;
-    }
-    expect(r.loops.length).toBe(1);
-    expect(r.mitte).toBe(-1);
-    expect(r.loops[0]!.punkte.every((p) => p.kreuzung === undefined)).toBe(true);
-    for (let k = 0; k < r.haut.pos.length; k++) expect(Number.isFinite(r.haut.pos[k])).toBe(true);
-    const s = schnitt(r.haut, r.loops[0]!);
-    log(`Maul formen ohne Mittellinie: Knick an den Lippen ${s.knick.map((x) => x.toFixed(1)).join('° und ')}°, Tasche ${s.tiefe.toFixed(2)} (nicht eingestellt: ergibt sich)`);
   }, 120000);
 
   it('mit einer Mittellinie, die es schon gibt: Sie knickt an beiden Lippen um 95° ins Maul, der Körper dahinter bleibt', () => {

@@ -6,12 +6,14 @@
 // Heute ergibt sich der Winkel an einer Kante aus der Form; einstellen lässt er sich nur über die Griffe einer kreuzenden Linie.
 // Ohne kreuzende Linie landet die Haut je nach Netz woanders (`form-maul-einfach.ts` mit OHNE_MITTE=1: 93°/100° oder 39°/68°).
 //
-// Der Beweis: Die Kante bekommt je Stelle einen Winkel (an den Lippen LIPPE, am Mundwinkel WINKEL, dazwischen gleitend). Die erste
-// Reihe der Haut innen an der Linie wird in jeder Runde geführt: jeder ihrer Punkte um die Linie gedreht, bis er um diesen Winkel
-// gegen die Haut außen abknickt (nach innen, also in den Körper); sein Abstand zur Linie bleibt. Dafür braucht der Löser nichts
-// Neues: Die Reihe ist für ihn eine Liste von Bindungen (ein Loop ohne Kette, der nur Orte hält). Alles Weitere im Maul rundet die
-// Rechnung wie sonst. Keine Mittellinie, kein Punkt außer dem Mundwinkel. Gedreht wird in Stufen, dazwischen verfeinert wie nach
-// einem Zug.
+// Die Kante bekommt je Stelle einen Winkel (an den Lippen LIPPE, am Mundwinkel WINKEL, dazwischen gleitend: `LoopPunkt.knick`). Die
+// erste Reihe der Haut innen an der Linie wird in jeder Runde geführt: jeder ihrer Punkte um die Linie gedreht, bis er um diesen
+// Winkel gegen die Haut außen abknickt (nach innen, also in den Körper); sein Abstand zur Linie bleibt. Für den Löser ist die
+// Reihe eine Liste von Bindungen (ein Loop ohne Kette, der nur Orte hält). Alles Weitere im Maul rundet die Rechnung wie sonst.
+// Keine Mittellinie, kein Punkt außer dem Mundwinkel. Gedreht wird in Stufen, dazwischen verfeinert wie nach einem Zug.
+//
+// Der erste Lauf des Beweises (13.11., 21:20 Uhr) hatte das alles in dieser Probe; seit Etappe 1 des Einbaus steht es im Kern
+// (`packages/shape/src/dicht/kantenWinkel.ts`, geführt von `LoopZug`), und die Probe formt mit `maulFormen` (Weg „Kante“).
 //
 // Kriterium (vorher im Plan festgelegt): Kugel mit Maullinie, ohne weitere Linien, auf zwei Netzen: Knick an beiden Lippen 90 bis
 // 100°, am Mundwinkel 65 bis 75°, auf beiden Netzen höchstens 5° auseinander; die Haut steht, nichts schlägt um.
@@ -22,12 +24,13 @@
 //   LOSLASSEN=1 (danach ohne die Führung weiterrechnen: zeigt, dass der Winkel nur hält, solange die Kante ihn trägt)
 //   AUS=<datei.html> (Bildblatt)
 import { loopEinsetzen } from '../../../../packages/shape/src/dicht/einsetzen';
+import { type KnickReihe, knickQuer, knickReihe } from '../../../../packages/shape/src/dicht/kantenWinkel';
 import { type Haut, type V3, hautAus } from '../../../../packages/shape/src/dicht/kurven';
 import { falten } from '../../../../packages/shape/src/dicht/kurvenFaelle';
-import { type Loop, LoopZug, formAusZeichnung, griffeAnlegen, hautLagen, istSichtbar, kanteBei, mittlereKante, pfadLagen, punktEinfuegen } from '../../../../packages/shape/src/dicht/loops';
+import { type Loop, LoopZug, formAusZeichnung, griffeAnlegen, hautLagen, istSichtbar, kanteBei, mittlereKante, punktEinfuegen } from '../../../../packages/shape/src/dicht/loops';
+import { maulFormen } from '../../../../packages/shape/src/dicht/maulFormen';
 import { mundwinkelProbe } from '../../../../packages/shape/src/dicht/maulLoop';
 import { rundAusSeite } from '../../../../packages/shape/src/dicht/rund';
-import { verdichten } from '../../../../packages/shape/src/dicht/verdichten';
 import { type BlattBild, type BlattLinie, type BlattSchnitt, blattSchreiben } from './form-direkt-blatt';
 import { formLaden, verdichtenWieImFenster } from './form-direkt-faelle';
 
@@ -44,7 +47,6 @@ const z1 = (x: number): string => x.toFixed(1).replace('.', ',');
 const z2 = (x: number): string => x.toFixed(2).replace('.', ',');
 const lage = (P: ArrayLike<number>, v: number): V3 => ({ x: P[3 * v]!, y: P[3 * v + 1]!, z: P[3 * v + 2]! });
 const minus = (a: V3, b: V3): V3 => ({ x: a.x - b.x, y: a.y - b.y, z: a.z - b.z });
-const plus = (a: V3, b: V3): V3 => ({ x: a.x + b.x, y: a.y + b.y, z: a.z + b.z });
 const mal = (a: V3, f: number): V3 => ({ x: a.x * f, y: a.y * f, z: a.z * f });
 const punkt = (a: V3, b: V3): number => a.x * b.x + a.y * b.y + a.z * b.z;
 const kreuz = (a: V3, b: V3): V3 => ({ x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x });
@@ -106,172 +108,12 @@ const vorher = { haut: { ...haut, pos: Float64Array.from(haut.pos) }, loops: loo
 let vorherText = '';
 console.log(`${NAME ? `Form „${NAME}“` : 'Kugel'}: ${haut.n} Punkte, mittlere Kante ${z1(mk)}; ${loops.length} Loop${loops.length === 1 ? '' : 's'}; die Maullinie mit ${finde().punkte.filter(istSichtbar).length} sichtbaren Punkten, hart`);
 
-// ---------- die erste Reihe innen an der Kante ----------
-type Reihe = {
-  /** Netzpunkte der Linie rundum: die Hälfte z ≥ 0, dann ihr Spiegelbild zurück */
-  kette: number[];
-  /** je Kettenglied die Probe der Maullinie (für den Winkel) */
-  probe: number[];
-  innen: Uint8Array;
-  aufKette: Int32Array;
-  /** Dreiecke je Netzpunkt */
-  um: number[][];
-  /** Punkte der ersten Reihe innen (z ≥ 0): je anliegendem Punkt der Linie der Abstand längs und quer, wie er beim Anlegen war */
-  punkte: { w: number; an: { k: number; laengs: number; quer: number }[] }[];
-};
-
-function tangente(h: Haut, R: Pick<Reihe, 'kette'>, k: number): V3 {
-  const m = R.kette.length;
-  return einheit(minus(lage(h.pos, R.kette[(k + 1) % m]!), lage(h.pos, R.kette[(k - 1 + m) % m]!)));
-}
-
-function reiheAnlegen(h: Haut, L: Loop): Reihe {
-  const halb = L.proben.map((p) => p.ecken[0]);
-  const n = halb.length;
-  const kette = [...halb];
-  const probe = halb.map((_, j) => j);
-  for (let j = n - 2; j >= 1; j--) {
-    kette.push(h.spiegel[halb[j]!]!);
-    probe.push(j);
-  }
-  const aufKette = new Int32Array(h.n).fill(-1);
-  kette.forEach((v, k) => {
-    aufKette[v] = k;
-  });
-  // innen: was die Linie umschließt (alle Teile der Haut neben der Linie außer dem größten)
-  const teil = new Int32Array(h.n).fill(-1);
-  const groesse: number[] = [];
-  for (let v0 = 0; v0 < h.n; v0++) {
-    if (teil[v0]! >= 0 || aufKette[v0]! >= 0) continue;
-    const nr = groesse.length;
-    let zahl = 0;
-    const stapel = [v0];
-    teil[v0] = nr;
-    while (stapel.length) {
-      const v = stapel.pop()!;
-      zahl++;
-      for (const u of h.nachbarn[v]!) {
-        if (teil[u]! >= 0 || aufKette[u]! >= 0) continue;
-        teil[u] = nr;
-        stapel.push(u);
-      }
-    }
-    groesse.push(zahl);
-  }
-  const aussen = groesse.indexOf(Math.max(...groesse));
-  const innen = Uint8Array.from(teil, (t) => (t >= 0 && t !== aussen ? 1 : 0));
-  const um: number[][] = Array.from({ length: h.n }, () => []);
-  for (let f = 0; f < h.tri.length / 3; f++) for (let e = 0; e < 3; e++) um[h.tri[3 * f + e]!]!.push(f);
-  const R: Reihe = { kette, probe, innen, aufKette, um, punkte: [] };
-  for (let w = 0; w < h.n; w++) {
-    if (!innen[w] || h.pos[3 * w + 2]! < -1e-9) continue;
-    const an: Reihe['punkte'][number]['an'] = [];
-    for (const x of h.nachbarn[w]!) {
-      const k = aufKette[x]!;
-      if (k < 0) continue;
-      const t = tangente(h, R, k);
-      const d = minus(lage(h.pos, w), lage(h.pos, x));
-      const laengs = punkt(d, t);
-      an.push({ k, laengs, quer: betrag(minus(d, mal(t, laengs))) });
-    }
-    if (an.length) R.punkte.push({ w, an });
-  }
+type Reihe = KnickReihe;
+const reiheAnlegen = (h: Haut, L: Loop): Reihe => {
+  const R = knickReihe(h, L);
+  if (!R) throw new Error('innen an der Maullinie liegt kein Punkt der Haut');
   return R;
-}
-
-/** an einem Punkt der Linie: Tangente, die Richtung der Haut außen von der Linie weg, ihre Normale nach außen */
-function rahmen(h: Haut, R: Reihe, k: number): { t: V3; uAussen: V3; nAussen: V3 } | null {
-  const x = R.kette[k]!;
-  const p = lage(h.pos, x);
-  const t = tangente(h, R, k);
-  let u = { x: 0, y: 0, z: 0 };
-  for (const j of h.nachbarn[x]!) {
-    if (R.innen[j] || R.aufKette[j]! >= 0) continue;
-    const d = minus(lage(h.pos, j), p);
-    u = plus(u, einheit(minus(d, mal(t, punkt(d, t)))));
-  }
-  if (betrag(u) < 1e-9) return null;
-  const uAussen = einheit(u);
-  // die Normale der Haut außen: aus ihren Dreiecken an diesem Punkt
-  let nRef = { x: 0, y: 0, z: 0 };
-  for (const f of R.um[x]!) {
-    const e = [h.tri[3 * f]!, h.tri[3 * f + 1]!, h.tri[3 * f + 2]!];
-    if (e.some((v) => R.innen[v])) continue;
-    if (e.filter((v) => R.aufKette[v]! >= 0).length === 3) continue;
-    const a = lage(h.pos, e[0]!);
-    nRef = plus(nRef, kreuz(minus(lage(h.pos, e[1]!), a), minus(lage(h.pos, e[2]!), a)));
-  }
-  let nAussen = einheit(kreuz(t, uAussen));
-  if (punkt(nAussen, nRef) < 0) nAussen = mal(nAussen, -1);
-  return { t, uAussen, nAussen };
-}
-
-/** das Soll je Stelle der Maullinie (Grad): an den Lippen `LIPPE`, am Mundwinkel `WINKEL`, dazwischen gleitend */
-function sollBei(L: Loop, s: number): number {
-  const sW = sMundwinkel(L);
-  const f = s <= sW ? s / Math.max(sW, 1e-9) : (L.laenge - s) / Math.max(L.laenge - sW, 1e-9);
-  return WINKEL + (LIPPE - WINKEL) * (1 - Math.max(0, Math.min(1, f)));
-}
-/** der Knick quer über die Linie, wie er am Anfang war (Stelle, Grad): Von ihm aus dreht sich die Reihe zum Soll */
-let anfang: { s: number; w: number }[] = [];
-function anfangBei(s: number): number | null {
-  if (anfang.length === 0) return null;
-  let i = anfang.findIndex((a) => a.s > s);
-  if (i < 0) i = anfang.length;
-  const a = anfang[Math.max(0, i - 1)]!;
-  const b = anfang[Math.min(anfang.length - 1, i)]!;
-  if (b.s - a.s < 1e-9) return a.w;
-  const f = Math.max(0, Math.min(1, (s - a.s) / (b.s - a.s)));
-  return a.w + f * (b.w - a.w);
-}
-/** der Winkel je Probe (Grad) beim Anteil `anteil` des Wegs vom Knick am Anfang zum Soll */
-function winkelBei(L: Loop, j: number, anteil: number): number {
-  const s = L.s[j]!;
-  const soll = sollBei(L, s);
-  const von = anfangBei(s) ?? 0;
-  return von + anteil * (soll - von);
-}
-
-/** Ziele der ersten Reihe: jeder Punkt um die Linie gedreht, bis er um den Winkel gegen die Haut außen nach innen abknickt */
-function reihenZiele(h: Haut, L: Loop, R: Reihe, anteil: number): Float64Array {
-  const Z = new Float64Array(3 * R.punkte.length);
-  const rahmenBei = new Map<number, ReturnType<typeof rahmen>>();
-  R.punkte.forEach((q, i) => {
-    let s = { x: 0, y: 0, z: 0 };
-    let zahl = 0;
-    for (const a of q.an) {
-      let r = rahmenBei.get(a.k);
-      if (r === undefined) {
-        r = rahmen(h, R, a.k);
-        rahmenBei.set(a.k, r);
-      }
-      if (!r) continue;
-      const w = (winkelBei(L, R.probe[a.k]!, anteil) * Math.PI) / 180;
-      // geradeaus weiter wäre −uAussen; um den Winkel in den Körper gedreht (gegen die Normale außen)
-      const uInnen = plus(mal(r.uAussen, -Math.cos(w)), mal(r.nAussen, -Math.sin(w)));
-      s = plus(s, plus(lage(h.pos, R.kette[a.k]!), plus(mal(r.t, a.laengs), mal(uInnen, a.quer))));
-      zahl++;
-    }
-    const z = zahl ? mal(s, 1 / zahl) : lage(h.pos, q.w);
-    if (Math.abs(h.pos[3 * q.w + 2]!) < 1e-9) z.z = 0;
-    Z[3 * i] = z.x;
-    Z[3 * i + 1] = z.y;
-    Z[3 * i + 2] = z.z;
-  });
-  return Z;
-}
-
-/** die Reihe als Loop ohne Kette: Er hält nur Orte (jede Probe bindet einen Punkt der Haut; die Spiegelhälfte geht von selbst mit) */
-function reihenLoop(h: Haut, R: Reihe): Loop {
-  const proben = R.punkte.map((q) => {
-    const f = R.um[q.w]![0]!;
-    const andere = [h.tri[3 * f]!, h.tri[3 * f + 1]!, h.tri[3 * f + 2]!].filter((v) => v !== q.w);
-    return { ecken: [q.w, andere[0]!, andere[1]!] as [number, number, number], b: [1, 0, 0] as [number, number, number] };
-  });
-  const ruhe = new Float64Array(3 * proben.length);
-  R.punkte.forEach((q, i) => ruhe.set([h.pos[3 * q.w]!, h.pos[3 * q.w + 1]!, h.pos[3 * q.w + 2]!], 3 * i));
-  return { id: 900001, art: 'paar', proben, s: Float64Array.from(proben, (_, i) => i), laenge: Math.max(1, proben.length), ruhe, punkte: [] };
-}
+};
 
 // ---------- messen ----------
 /** Knick der Haut an beiden Enden des Rings im Schnitt durch die Mitte (Grad), und die Tiefe der Tasche als Anteil des Wegs zum Mundwinkel */
@@ -315,26 +157,6 @@ function schnitt(h: Haut, L: Loop): { knick: number[]; tiefe: number } {
   return { knick, tiefe };
 }
 
-/**
- * Knick der Haut quer über die Linie an einer Probe (Grad): die Richtung der Haut außen von der Linie weg gegen die der Haut innen,
- * beide aus den Nachbarpunkten quer zur Linie (0 = die Haut läuft gerade durch)
- */
-function knickQuer(h: Haut, R: Reihe, k: number): number {
-  const r = rahmen(h, R, k);
-  if (!r) return NaN;
-  const x = R.kette[k]!;
-  const p = lage(h.pos, x);
-  let u = { x: 0, y: 0, z: 0 };
-  for (const j of h.nachbarn[x]!) {
-    if (!R.innen[j]) continue;
-    const d = minus(lage(h.pos, j), p);
-    u = plus(u, einheit(minus(d, mal(r.t, punkt(d, r.t)))));
-  }
-  if (betrag(u) < 1e-9) return NaN;
-  const c = punkt(einheit(u), mal(r.uAussen, -1));
-  return (Math.acos(Math.max(-1, Math.min(1, c))) * 180) / Math.PI;
-}
-
 /** Knick quer über die Linie: nahe dem Mundwinkel (Mittel über die Proben bis `weit` Kanten davor und dahinter, ohne den Mundwinkel selbst), und längs der ganzen Linie */
 function knicke(h: Haut, L: Loop): { winkel: number; lippenMitte: number; alle: number[] } {
   const R = reiheAnlegen(h, L);
@@ -346,6 +168,74 @@ function knicke(h: Haut, L: Loop): { winkel: number; lippenMitte: number; alle: 
   const mitte = (xs: number[]): number => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN);
   return { winkel: mitte(nah), lippenMitte: mitte([alle[0]!, alle[alle.length - 1]!].filter(Number.isFinite)), alle };
 }
+
+/**
+ * Unruhe im Maul: der Knick zwischen Nachbardreiecken (Grad) an den Kanten der Haut innen, nach der Reihe gezählt, in der die
+ * Kante liegt (1 = an der Linie und in der ersten Reihe, 2 = bis zur zweiten, 3 = tiefer). Die Kanten auf der Linie selbst zählen
+ * nicht (dort ist der Knick gewollt). Je Gruppe das Mittel, dazu das Mittel über alle.
+ */
+function unruhe(h: Haut, L: Loop): { reihe: number[]; alle: number; zahl: number; gegen: number; gegenMittel: number } {
+  const R = reiheAnlegen(h, L);
+  // Reihe je Punkt: Abstand von der Linie in Kanten, nur im Inneren
+  const reihe = new Int32Array(h.n).fill(-1);
+  let rand: number[] = [];
+  for (const v of R.kette) {
+    reihe[v] = 0;
+    rand.push(v);
+  }
+  for (let r = 1; rand.length; r++) {
+    const neu: number[] = [];
+    for (const v of rand)
+      for (const u of h.nachbarn[v]!) {
+        if (reihe[u]! >= 0 || !R.innen[u]) continue;
+        reihe[u] = r;
+        neu.push(u);
+      }
+    rand = neu;
+  }
+  const normale = (f: number): V3 => {
+    const a = lage(h.pos, h.tri[3 * f]!);
+    return einheit(kreuz(minus(lage(h.pos, h.tri[3 * f + 1]!), a), minus(lage(h.pos, h.tri[3 * f + 2]!), a)));
+  };
+  const innenFlaeche = (f: number): boolean => {
+    const e = [h.tri[3 * f]!, h.tri[3 * f + 1]!, h.tri[3 * f + 2]!];
+    return e.every((v) => reihe[v]! >= 0) && e.some((v) => R.innen[v]);
+  };
+  const summe = [0, 0, 0];
+  const zahl = [0, 0, 0];
+  // Gegenknicke: Kanten, über die sich die Fläche gegen die Mehrheit biegt (über 2°): ihr Anteil und ihr mittlerer Winkel. Eine
+  // glatte Mulde biegt sich überall in dieselbe Richtung; Wellen zeigen sich als Gegenknicke.
+  const mit: number[] = [];
+  const gegenL: number[] = [];
+  for (let v = 0; v < h.n; v++) {
+    if (reihe[v]! < 0) continue;
+    for (const u of h.nachbarn[v]!) {
+      if (u < v || reihe[u]! < 0) continue;
+      // die Kanten der Linie selbst nicht
+      if (reihe[v] === 0 && reihe[u] === 0) continue;
+      const fs = R.um[v]!.filter((f) => R.um[u]!.includes(f));
+      if (fs.length !== 2 || !fs.every(innenFlaeche)) continue;
+      const w = (Math.acos(Math.max(-1, Math.min(1, punkt(normale(fs[0]!), normale(fs[1]!))))) * 180) / Math.PI;
+      const g = Math.min(2, Math.max(reihe[v]!, reihe[u]!) - 1);
+      summe[g] = summe[g]! + w;
+      zahl[g] = zahl[g]! + 1;
+      // Vorzeichen: Liegt die gegenüberliegende Ecke der zweiten Fläche auf der Seite der Normale der ersten?
+      const gegenEcke = [h.tri[3 * fs[1]!]!, h.tri[3 * fs[1]! + 1]!, h.tri[3 * fs[1]! + 2]!].find((x) => x !== v && x !== u)!;
+      const seite = punkt(normale(fs[0]!), minus(lage(h.pos, gegenEcke), lage(h.pos, v)));
+      if (w > 2) (seite > 0 ? mit : gegenL).push(w);
+    }
+  }
+  const z = zahl[0]! + zahl[1]! + zahl[2]!;
+  // die Minderheit sind die Gegenknicke
+  const [wenige] = mit.length < gegenL.length ? [mit] : [gegenL];
+  const gegen = mit.length + gegenL.length ? wenige.length / (mit.length + gegenL.length) : 0;
+  const gegenMittel = wenige.length ? wenige.reduce((a, b) => a + b, 0) / wenige.length : 0;
+  return { reihe: summe.map((x, g) => (zahl[g] ? x / zahl[g]! : NaN)), alle: z ? (summe[0]! + summe[1]! + summe[2]!) / z : NaN, zahl: z, gegen, gegenMittel };
+}
+const unruheText = (h: Haut, L: Loop): string => {
+  const u = unruhe(h, L);
+  return `Knick zwischen Nachbardreiecken im Maul im Mittel ${z1(u.alle)}° (erste Reihe ${z1(u.reihe[0]!)}°, zweite ${z1(u.reihe[1]!)}°, tiefer ${z1(u.reihe[2]!)}°; ${u.zahl} Kanten); Gegenknicke ${z1(100 * u.gegen)} % der Kanten, im Mittel ${z1(u.gegenMittel)}°`;
+};
 
 const ausgabe = (was: string, ms: number): void => {
   const L = finde();
@@ -365,10 +255,7 @@ const ausgabe = (was: string, ms: number): void => {
   );
 };
 
-// ---------- formen: die Reihe in Stufen drehen ----------
-let runden = 0;
-let steht = false;
-const opt = verdichtenWieImFenster(mk);
+// ---------- formen: `maulFormen` auf dem Weg „Kante“ (die Maullinie trägt ihren Knick selbst) ----------
 let t0 = Date.now();
 {
   const s0 = schnitt(haut, finde());
@@ -376,86 +263,55 @@ let t0 = Date.now();
   vorherText = `; Knick an den Lippen ${z1(s0.knick[0]!)}° und ${z1(s0.knick[1]!)}°, am Mundwinkel ${z1(k0.winkel)}°; Tasche ${z2(s0.tiefe)}`;
 }
 ausgabe('vorher', 0);
-{
-  const L = finde();
-  const R = reiheAnlegen(haut, L);
-  anfang = L.proben.map((_, j) => ({ s: L.s[j]!, w: knickQuer(haut, R, j) })).filter((a) => Number.isFinite(a.w));
+console.log(`   vorher: ${unruheText(haut, finde())}`);
+const r = maulFormen(haut, loops, MAUL, {
+  naechsteId: 1 + Math.max(...loops.map((l) => l.id)),
+  naechsteKreuzung: 1 + Math.max(0, ...loops.flatMap((l) => l.punkte.map((p) => p.kreuzung ?? 0))),
+  stufen: STUFEN,
+  schritte: SCHRITTE,
+  knick: LIPPE,
+  knickWinkel: WINKEL,
+  verdichten: { maxKante: 1.75 * mk, opt: verdichtenWieImFenster(mk) },
+  zwischen: (was, hz, lz) => {
+    haut = hz;
+    loops = [...lz];
+    ausgabe(was, Date.now() - t0);
+    t0 = Date.now();
+  },
+});
+if ('fehler' in r) {
+  console.log(`geht so nicht: ${r.fehler}`);
+  process.exit(1);
 }
-/** eine Stufe: die Reihe von `von` bis `bis` (Anteil des Winkels) drehen, in Schritten; danach setzen (höchstens `setzen` Runden) */
-function stufe(von: number, bis: number, schritte: number, setzen: number): boolean {
-  const L = finde();
-  const R = reiheAnlegen(haut, L);
-  const fuehrung = reihenLoop(haut, R);
-  const alle = [...loops, fuehrung];
-  const z = new LoopZug(haut, alle, null, true, 'kurven', 'geometrie', { halb: true });
-  const start = alle.map((l) => Float64Array.from(l.ruhe));
-  const versch = (anteil: number): Float64Array[] =>
-    alle.map((l, i) => {
-      const Z = l === fuehrung ? reihenZiele(haut, L, R, anteil) : (pfadLagen(l) ?? start[i]!);
-      return Float64Array.from(Z, (x, k) => x - start[i]![k]!);
-    });
-  for (let k = 1; k <= schritte; k++) {
-    z.schritt(versch(von + ((bis - von) * k) / schritte), 2);
-    runden += 2;
-  }
-  let letzte = Infinity;
-  const vor = new Float64Array(haut.pos.length);
-  for (let r = 0; r < setzen && letzte > RUHE; r++) {
-    vor.set(haut.pos);
-    // die Ziele der Reihe folgen der Haut außen (ihr Winkel ist gegen sie gemessen)
-    z.schritt(versch(bis), 1);
-    runden++;
-    letzte = 0;
-    for (let k = 0; k < vor.length; k += 3) letzte = Math.max(letzte, Math.hypot(haut.pos[k]! - vor[k]!, haut.pos[k + 1]! - vor[k + 1]!, haut.pos[k + 2]! - vor[k + 2]!));
-    if (!Number.isFinite(letzte)) throw new Error('die Lagen sind nicht endlich');
-  }
-  for (const l of loops) {
-    l.ruhe = hautLagen(haut, l);
-    for (const p of l.punkte) p.ref = { ...p.cur };
-  }
-  return letzte <= RUHE;
-}
-for (let b = 1; b <= STUFEN; b++) {
-  stufe((b - 1) / STUFEN, b / STUFEN, SCHRITTE, 40);
-  // verfeinern wie das Fenster nach einem Zug
-  for (let g = 0; g < 8; g++) {
-    const v = verdichten(haut, loops, 1.75 * mk, opt);
-    if (!v) break;
-    haut = v.haut;
-    loops = v.loops;
-    for (const l of loops) for (const q of l.punkte) q.cur = { ...q.ref };
-    if (haut.n > 40000) throw new Error('das Netz wächst über alle Maßen');
-    if (v.gelegt === 0 && v.neu === 0) break;
-  }
-  ausgabe(`Stufe ${b}`, Date.now() - t0);
-  t0 = Date.now();
-}
-// setzen, mit der Führung (die Kante trägt ihren Winkel weiter)
-for (let g = 0; g < 4 && !steht; g++) steht = stufe(1, 1, 0, 200);
-// MEHR=<n>: danach noch n Runden mit der Führung, auch wenn die Haut schon steht (rundet sich das Innere weiter?)
+haut = r.haut;
+loops = r.loops;
+const runden = r.runden;
+const steht = r.steht;
+ausgabe(steht ? 'gesetzt' : 'STEHT NICHT', Date.now() - t0);
+// MEHR=<n>: danach noch n Runden, auch wenn die Haut schon steht (die Kante trägt ihren Winkel in jeder Rechnung)
 {
   const mehr = Number(process.env.MEHR ?? 0);
   if (mehr > 0) {
     const vor = Float64Array.from(haut.pos);
-    const L = finde();
-    const R = reiheAnlegen(haut, L);
-    const fuehrung = reihenLoop(haut, R);
-    const alle = [...loops, fuehrung];
-    const z = new LoopZug(haut, alle, null, true, 'kurven', 'geometrie', { halb: true });
-    const start = alle.map((l) => Float64Array.from(l.ruhe));
-    for (let r = 0; r < mehr; r++)
-      z.schritt(
-        alle.map((l, i) => Float64Array.from(l === fuehrung ? reihenZiele(haut, L, R, 1) : (pfadLagen(l) ?? start[i]!), (x, k) => x - start[i]![k]!)),
-        1,
-      );
+    const z = new LoopZug(haut, loops, null, true, 'kurven', 'geometrie', { halb: true });
+    const still = loops.map((l) => new Float64Array(l.ruhe.length));
+    for (let k = 0; k < mehr; k++) z.schritt(still, 1);
     let weit = 0;
     for (let k = 0; k < vor.length; k += 3) weit = Math.max(weit, Math.hypot(haut.pos[k]! - vor[k]!, haut.pos[k + 1]! - vor[k + 1]!, haut.pos[k + 2]! - vor[k + 2]!));
     for (const l of loops) l.ruhe = hautLagen(haut, l);
-    console.log(`   ${mehr} Runden mehr mit der Führung: Die Haut bewegt sich dabei noch um höchstens ${z2(weit)}`);
+    // wo: im Maul (innen an der Linie und die Linie selbst) oder am Körper
+    const R = reiheAnlegen(haut, finde());
+    let imMaul = 0;
+    let amKoerper = 0;
+    for (let v = 0; v < haut.n; v++) {
+      const d = Math.hypot(haut.pos[3 * v]! - vor[3 * v]!, haut.pos[3 * v + 1]! - vor[3 * v + 1]!, haut.pos[3 * v + 2]! - vor[3 * v + 2]!);
+      if (R.innen[v] || R.aufKette[v]! >= 0) imMaul = Math.max(imMaul, d);
+      else amKoerper = Math.max(amKoerper, d);
+    }
+    console.log(`   ${mehr} Runden mehr: Die Haut bewegt sich dabei noch um höchstens ${z2(weit)} (im Maul ${z2(imMaul)}, am Körper ${z2(amKoerper)})`);
+    ausgabe('danach', 0);
   }
 }
-ausgabe(steht ? 'gesetzt' : 'STEHT NICHT', Date.now() - t0);
-t0 = Date.now();
 const geformt = { haut: { ...haut, pos: Float64Array.from(haut.pos) }, loops: loops.map((l) => ({ ...l, ruhe: Float64Array.from(l.ruhe) })) };
 const sEnde = schnitt(haut, finde());
 const kEnde = knicke(haut, finde());
@@ -464,17 +320,19 @@ console.log(
   `Ergebnis (${NAME ? `„${NAME}“` : `${DREIECKE} bestellte Dreiecke`}): ${haut.n} Punkte, ${runden} Runden, ${steht ? 'steht' : 'STEHT NICHT'}; Knick an den Lippen ${z1(sEnde.knick[0]!)}° und ${z1(sEnde.knick[1]!)}° ` +
     `(Soll ${LIPPE}°), am Mundwinkel ${z1(kEnde.winkel)}° (Soll ${WINKEL}°); Tasche ${z2(sEnde.tiefe)} des Wegs zum Mundwinkel; umgeschlagen ${fEnde.umgeklappt}`,
 );
+console.log(`   nachher: ${unruheText(haut, finde())}`);
 console.log(`   Knick quer längs der Linie (Probe für Probe, von der Oberlippe über den Mundwinkel zur Unterlippe): ${kEnde.alle.map((x) => (Number.isFinite(x) ? Math.round(x) : '–')).join(' ')}`);
 
 let losText = '';
 if (LOSLASSEN) {
-  // zum Vergleich: ohne die Führung weiterrechnen (wie heute, die Kante trägt nichts)
+  // zum Vergleich: ohne die Angaben weiterrechnen (wie bis zum 13.11., die Kante trägt nichts)
+  for (const l of loops) for (const p of l.punkte) delete p.knick;
   const z = new LoopZug(haut, loops, null, true, 'kurven', 'geometrie', { halb: true });
   const versch = loops.map((l) => new Float64Array(l.ruhe.length));
   let letzte = Infinity;
-  let r = 0;
+  let rr = 0;
   const vor = new Float64Array(haut.pos.length);
-  for (; r < 400 && letzte > RUHE; r++) {
+  for (; rr < 400 && letzte > RUHE; rr++) {
     vor.set(haut.pos);
     z.schritt(versch, 1);
     letzte = 0;
@@ -482,7 +340,7 @@ if (LOSLASSEN) {
   }
   const s = schnitt(haut, finde());
   const k = knicke(haut, finde());
-  losText = `ohne die Führung nach ${r} Runden: Knick an den Lippen ${z1(s.knick[0]!)}° und ${z1(s.knick[1]!)}°, am Mundwinkel ${z1(k.winkel)}°, Tasche ${z2(s.tiefe)}`;
+  losText = `ohne die Führung nach ${rr} Runden: Knick an den Lippen ${z1(s.knick[0]!)}° und ${z1(s.knick[1]!)}°, am Mundwinkel ${z1(k.winkel)}°, Tasche ${z2(s.tiefe)}`;
   console.log(`   zum Vergleich ${losText}`);
 }
 

@@ -1,14 +1,12 @@
-// Plan vom 12.11.2026, Schritt 6 (13.11., zweite Fassung nach Florians Modell „simple_mouth“): der Knopf „Maul formen“ im Fenster,
-// mit der Maus.
+// Plan vom 12.11.2026, Schritt 6 (13.11., dritte Fassung: die Maullinie trägt ihren Knick selbst): der Knopf „Maul formen“ im
+// Fenster, mit der Maus.
 //   1  Von der Kugel an: mit F die schmale Form ums Maul (Seite, vorn über den Umriss); sie ist danach gewählt.
-//   2  „Maul formen“: Die Linie wird eine Kante, die Mittellinie kommt dazu (sie fehlte) und knickt an beiden Lippen um 95° ins Maul;
-//      im Maul kein Punkt, keine weitere Linie. Das Fenster zeigt das Formen in Schritten (nicht als Sprung). Geprüft: Zwischenbilder,
-//      Meldung, Zahl der Loops und Punkte, Knick, spiegelgleich, keine Fehler in der Konsole. Gemeldet, nicht geprüft: wie weit sich
-//      die Kugel dabei verformt (ohne weitere Linien wird sie zur Zitrone: Das ist die Form der Mittellinie mit zwei Punkten).
+//   2  „Maul formen“: Die Linie wird eine Kante und gibt ihren Knick vor (95° an den Lippen, 70° am Mundwinkel). Keine Linie und kein
+//      Punkt im Maul kommen dazu. Das Fenster zeigt das Formen in Schritten (nicht als Sprung). Geprüft: Zwischenbilder, Meldung,
+//      Zahl der Loops, die Angaben, der gemessene Knick, die Kugel hinter dem Maul, spiegelgleich, keine Fehler in der Konsole.
 //   3  „Fressen“ an der geformten Linie: eine Meldung statt der alten Anzeige-Fassung.
-//   4  An der Unterlippe ziehen (ein gewöhnlicher Zug am geformten Maul) und wieder zurück mit ⌘Z.
-//   5  K an der gewählten Maullinie: Die Form bleibt stehen (die Kante bleibt, wo die Mittellinie knickt; runde Lippen sind noch
-//      offen), und zurück mit ⌘Z.
+//   4  An der Unterlippe ziehen (ein gewöhnlicher Zug): Der Knick an den Lippen bleibt (jede Rechnung des Fensters hält ihn).
+//   5  K an der gewählten Maullinie: rund (die Linie gibt keinen Knick mehr vor); zurück mit ⌘Z.
 //   6  ⌘Z: die Form wie vor dem Formen.
 // Aufruf aus apps/editor: GPU=1 node scripts/pruefen/form-maul-formen-fenster.mjs [bild-ohne-endung]
 //   KURVEN_URL (Standard http://localhost:5197/kurven.html?gewichte=geometrie)
@@ -101,13 +99,15 @@ ok('Maul formen: Meldung', meldung.startsWith('Maul geformt'), meldung);
 ok('animiert: Das Fenster zeigt das Formen in Schritten', film.bewegt >= 20, `${film.bewegt} von ${film.bilder} Bildern mit Bewegung in ${z1(film.ms / 1000)} s`);
 console.log(`     nach dem Formen: ${nach.lagen.length / 3} Punkte, Loops ${kurz(nach.loops)}`);
 const L = nach.loops.find((l) => l.id === maulId);
-const M = nach.loops.find((l) => l.art === 'mitte');
 ok('die Maullinie ist eine Kante', L?.kante === true);
-ok('dazu kam nur die Mittellinie, mit zwei Punkten an den Lippen; kein Punkt im Maul', nach.loops.length === vorher.loops.length + 1 && M?.punkte.length === 2, `${nach.loops.length} Loops, Mittellinie mit ${M?.punkte.length} Punkten`);
-if (M) {
-  const k = [await K('knickAm', M.id, 0), await K('knickAm', M.id, 1)];
-  ok('die Mittellinie knickt an beiden Lippen um 95° ins Maul', k.every((x) => Math.abs(x - 95) < 0.1), k.map((x) => `${z1(x)}°`).join(' und '));
+ok('keine Linie kommt dazu, kein Punkt im Maul', nach.loops.length === vorher.loops.length, `${nach.loops.length} Loop${nach.loops.length === 1 ? '' : 's'}`);
+{
+  const W = L?.punkte.find((p) => p.mundwinkel);
+  const angaben = L ? [L.punkte[0].knick, W?.knick, L.punkte.at(-1).knick] : [];
+  ok('die Angaben: 95° an beiden Lippen, 70° am Mundwinkel', angaben.length === 3 && Math.abs(angaben[0] - 95) < 1e-6 && Math.abs(angaben[1] - 70) < 1e-6 && Math.abs(angaben[2] - 95) < 1e-6, angaben.map((x) => (x === null || x === undefined ? '–' : `${z1(x)}°`)).join(', '));
 }
+const gemessen = await K('knickGemessen', maulId);
+ok('gemessen: an den Lippen 90 bis 100°, am Mundwinkel 62 bis 80°', !!gemessen && gemessen.enden.every((x) => x > 90 && x < 100) && gemessen.mundwinkel > 62 && gemessen.mundwinkel < 80, gemessen ? `${gemessen.enden.map((x) => `${z1(x)}°`).join(' und ')}; Mundwinkel ${z1(gemessen.mundwinkel)}°` : 'nicht messbar');
 {
   const k0 = L ? [await K('knickAm', L.id, 0), await K('knickAm', L.id, L.punkte.length - 1)] : [];
   ok('die Lippenlinie läuft an der Mitte rund durch', k0.length === 2 && k0.every((x) => !(x > 0.5)), k0.map((x) => `${z1(x || 0)}°`).join(' und '));
@@ -116,13 +116,13 @@ const umg = await K('umgeschlagen');
 ok('umgeschlagen höchstens wie in Florians Modellen', umg <= 12, `umgeschlagen ${umg}`);
 ok('spiegelgleich', (await K('symmetrie')) < 1e-6, `Abweichung ${(await K('symmetrie')).toExponential(1)}`);
 {
-  // (gemeldet, nicht geprüft) hinter dem Maul: Abweichung von der Kugel (Halbmesser 150)
+  // hinter dem Maul bleibt die Kugel eine Kugel (Halbmesser 150): keine Mittellinie, keine Zitrone
   let weit = 0;
   for (let i = 0; i < nach.lagen.length; i += 3) {
     if (nach.lagen[i] < -40) continue;
     weit = Math.max(weit, Math.abs(Math.hypot(nach.lagen[i], nach.lagen[i + 1], nach.lagen[i + 2]) - 150));
   }
-  console.log(`     hinter dem Maul weicht die Form bis ${z2(weit)} von der Kugel ab (ohne weitere Linien: die Zitrone der Mittellinie mit zwei Punkten)`);
+  ok('hinter dem Maul bleibt die Kugel', weit < 8, `größte Abweichung von der Kugel ${z2(weit)}`);
 }
 if (BILD) await seite.screenshot({ path: `${BILD}-3-geformt.jpg`, type: 'jpeg', quality: 88 });
 
@@ -148,12 +148,14 @@ ok('„Fressen“ am geformten Maul: Meldung statt der alten Anzeige', /geformt/
   await ruhig();
   const u = await K('umgeschlagen');
   ok('an der Unterlippe ziehen: umgeschlagen höchstens wie davor', u <= Math.max(umg, 12), `umgeschlagen ${u}; ${(await K('lagen')).length / 3} Punkte`);
+  const g2 = await K('knickGemessen', maulId);
+  ok('nach dem Zug: Der Knick an den Lippen bleibt', !!g2 && g2.enden.every((x) => x > 88 && x < 102), g2 ? `${g2.enden.map((x) => `${z1(x)}°`).join(' und ')}; Mundwinkel ${z1(g2.mundwinkel)}°` : 'nicht messbar');
   if (BILD) await seite.screenshot({ path: `${BILD}-4-lippe.jpg`, type: 'jpeg', quality: 88 });
   await seite.keyboard.press('Meta+z');
   await ruhig();
 }
 
-// 5. K an der Maullinie: Die Form bleibt stehen; ⌘Z zurück
+// 5. K an der Maullinie: rund; ⌘Z zurück
 {
   const t = await bild('seite', L.punkte.find((q) => q.mundwinkel).ref);
   // die Maullinie wählen: ein Klick neben ihren Mundwinkel auf die Linie (ein Stück Richtung Oberlippe)
@@ -165,15 +167,15 @@ ok('„Fressen“ am geformten Maul: Meldung statt der alten Anzeige', /geformt/
   await seite.waitForTimeout(150);
   const gew = await K('auswahl');
   if (gew.length === 1 && gew[0].l === maulId && gew[0].i < 0) {
-    const davor = await K('lagen');
     await seite.keyboard.press('k');
     await ruhig();
-    const danach = await K('lagen');
-    let weit = danach.length === davor.length ? 0 : Infinity;
-    if (weit === 0) for (let i = 0; i < danach.length; i++) weit = Math.max(weit, Math.abs(danach[i] - davor[i]));
+    const Ls = await K('loops');
+    const L2 = Ls.find((l) => l.id === maulId);
+    const g3 = await K('knickGemessen', maulId);
+    const lagen3 = await K('lagen');
+    const endlich = lagen3.every((x) => Number.isFinite(x));
     const mk = await K('meldung');
-    // Noch offen (Plan, „Kanten neu“): runde Lippen. Bis dahin bleibt die Kante, wo die Mittellinie knickt, und die Form bleibt stehen.
-    ok('K an der Maullinie: Die Form bleibt (die Kante bleibt, wo die Mittellinie knickt)', weit < 1 && /bleibt/.test(mk) && (await K('umgeschlagen')) <= Math.max(umg, 12), `bewegt ${weit === Infinity ? 'andere Punktzahl' : z2(weit)}; ${mk}`);
+    ok('K an der Maullinie: rund (keine Kante, kein vorgegebener Knick), die Form bleibt heil', L2?.kante !== true && L2.punkte.every((q) => q.knick === null) && endlich && (await K('umgeschlagen')) <= Math.max(umg, 12), `Meldung „${mk}“; Knick an den Lippen jetzt ${g3 ? g3.enden.map((x) => `${z1(x)}°`).join(' und ') : '–'}; umgeschlagen ${await K('umgeschlagen')}`);
     if (BILD) await seite.screenshot({ path: `${BILD}-5-k.jpg`, type: 'jpeg', quality: 88 });
     await seite.keyboard.press('Meta+z');
     await ruhig();
@@ -181,7 +183,7 @@ ok('„Fressen“ am geformten Maul: Meldung statt der alten Anzeige', /geformt/
 }
 
 // 6. ⌘Z bis vor das Formen
-for (let i = 0; i < 6 && (await K('loops')).length > vorher.loops.length; i++) {
+for (let i = 0; i < 6 && (await K('loops')).find((l) => l.id === maulId)?.kante === true; i++) {
   await seite.keyboard.press('Meta+z');
   await ruhig();
 }

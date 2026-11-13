@@ -40,6 +40,9 @@ function kugelMitLoops(dreiecke: number): { h: Haut; loops: Loop[] } {
 function standAus(dreiecke = 1200): WesenStand {
   const { h, loops } = kugelMitLoops(dreiecke);
   loops[0]!.kante = true;
+  // die Kante trägt ihren Winkel selbst (13.11.): Die Angabe am Punkt bleibt beim Sichern und Laden
+  loops[0]!.punkte[0]!.knick = 95;
+  if (loops[0]!.punkte[1]) loops[0]!.punkte[1]!.knick = 72.5;
   // ein paar Zahlen, die als Text leicht leiden: sehr klein, negativ null, lange Brüche
   h.pos[0] = 1 / 3;
   h.pos[1] = -0;

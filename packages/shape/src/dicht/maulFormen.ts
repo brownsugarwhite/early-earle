@@ -23,18 +23,17 @@
 // Gerechnet wird in Schritten, die das Fenster einzeln zeigt (`maulFormenSchritte`; Florian: „schön organisch animiert […] nicht
 // […] einfach in die neue Form springen“).
 //
-// Sein zweites Modell `wesen/simple_mouth_more simple.eewesen` hat nur noch die Maullinie mit ihrem Mundwinkel („Es soll die Basis
-// sein und funktioniert sogar ganz ohne Punkt. […] Bei der Maulkante ohne Punkte muss dann eingestellt sein, dass das Maul vom
-// Lippenstart von der Seite mit je 90 bis 100 Grad eingeknickt ist, auch ohne Punkt, und beim Mundwinkel ca. 70 Grad nach innen
-// abknicken“). Das kann die heutige Rechnung noch nicht einstellen: An einer Kante ergibt sich der Winkel aus der Form; einstellen
-// lässt er sich nur über die Griffe einer kreuzenden Linie. Deshalb bleibt die Mittellinie hier stehen (`ohneMitte` zeigt, was ohne
-// sie geschieht). Offen: die Kante, die ihren Winkel selbst trägt (Plan, Schritt 6).
-// Die erste Fassung vom selben Tag (Querlinie durch die Mundwinkel, die Mittellinie im Maul mit den Punkten der Maullinie „von der
-// Seite durchgestanzt“) steht im Verlauf des Zweigs (`90b98322`) und als Beweis in `apps/editor/scripts/pruefen/form-maul-automatisch.ts`.
-// Dieselbe Form auf einmal hineingebaut (`form-maul-haut.ts`) kommt nicht zur Ruhe: Der Unterschied ist das Formen in Schritten.
+// Dritte Fassung (13.11., spät), nach seinem zweiten Modell `wesen/simple_mouth_more simple.eewesen` (nur noch die Maullinie mit
+// ihrem Mundwinkel: „Es soll die Basis sein und funktioniert sogar ganz ohne Punkt. […] Bei der Maulkante ohne Punkte muss dann
+// eingestellt sein, dass das Maul vom Lippenstart von der Seite mit je 90 bis 100 Grad eingeknickt ist, auch ohne Punkt, und beim
+// Mundwinkel ca. 70 Grad nach innen abknicken“): Läuft keine Mittellinie durch beide Lippen, kommt auch keine dazu. Die Maullinie
+// trägt ihren Knick selbst (`kantenWinkel.ts`): 95° an den Lippen, 70° am Mundwinkel, dazwischen gleitend; gedreht wird in Stufen
+// vom Knick, den die Haut dort hat. Die Kugel bleibt dabei eine Kugel. Gibt es eine Mittellinie durch beide Lippen, gilt die
+// zweite Fassung (ihr Griff nach innen knickt; an einer Kreuzung ist der Knick der kreuzenden Linie die Kante).
 
 import type { HautGewichte, HautOptionen } from './ausKurven';
 import { loopEinsetzen } from './einsetzen';
+import { knickQuer, knickReihe } from './kantenWinkel';
 import type { Haut, V3 } from './kurven';
 import {
   type Loop,
@@ -59,7 +58,10 @@ export type MaulFormenOptionen = {
   /** die nächste freie Nummer für einen Loop und für eine Kreuzung (wie im Fenster) */
   naechsteId: number;
   naechsteKreuzung: number;
-  /** in so vielen Stufen drehen sich die Griffe (Standard 8), je Stufe so viele Schritte zu zwei Runden (Standard 8) */
+  /**
+   * In so vielen Stufen dreht sich der Knick, je Stufe so viele Schritte zu zwei Runden. Standard: 12 Stufen zu 6 Schritten auf dem
+   * Weg „Kante“, 8 zu 8 mit der Mittellinie.
+   */
   stufen?: number;
   schritte?: number;
   /** die Rechnung der Grundform, wie das Fenster sie benutzt */
@@ -67,18 +69,18 @@ export type MaulFormenOptionen = {
   loeser?: HautOptionen;
   /** nach jeder Stufe verfeinern wie das Fenster nach einem Zug; ohne Angabe bleibt das Netz, wie es ist */
   verdichten?: { maxKante: number; opt: NonNullable<Parameters<typeof verdichten>[3]> };
-  /** Knick der Mittellinie an den Lippen, von der Seite gesehen, in Grad (Standard 95) */
+  /** Knick an den Lippen, von der Seite gesehen, in Grad (Standard 95): der Mittellinie, oder (Weg `kante`) der Haut quer über die Maullinie */
   knick?: number;
   /** Tiefe der Tasche: Anteil des Wegs von der Mitte zwischen den Lippen zum Mundwinkel, von der Seite gesehen (Standard 0,55) */
   tiefe?: number;
   /**
-   * Eine Mittellinie, die nur zum Formen angelegt wurde, am Ende wieder entfernen: Es bleibt die Maullinie mit ihrem Mundwinkel, wie
-   * in Florians Modell „simple_mouth_more simple“. Zum Ansehen, nicht der Standard: Ohne die Mittellinie ist der Knick an den Lippen
-   * nicht mehr eingestellt, er ergibt sich. Gemessen an der Kugel (`form-maul-einfach.ts`): mit der Mittellinie 98° an beiden
-   * Lippen und die Tasche 0,45 tief, auf zwei Netzen gleich; ohne sie auf dem Netz des Fensters 93° und 100° mit einer Tasche
-   * von 0,82, auf einem feineren 39° und 68° mit 0,23 (ein einzelner Ring bestimmt die Form in der heutigen Rechnung nicht).
+   * Der Weg, wenn keine Mittellinie durch beide Lippen läuft: `kante` (Standard, dritte Fassung): Die Maullinie trägt ihren Knick
+   * selbst (`kantenWinkel.ts`), es kommt keine Linie dazu. `mitte` (zweite Fassung, zum Vergleich): Die Mittellinie wird angelegt
+   * und knickt an beiden Lippen ins Maul.
    */
-  ohneMitte?: boolean;
+  weg?: 'kante' | 'mitte';
+  /** Knick der Haut quer über die Maullinie am Mundwinkel, in Grad (Standard 70; nur auf dem Weg `kante`) */
+  knickWinkel?: number;
   /** nach jedem Abschnitt gerufen (zum Zeigen oder Messen): Name, Haut und Loops von jetzt, und `alt` wie im Ergebnis */
   zwischen?: (was: string, haut: Haut, loops: readonly Loop[], alt: Int32Array) => void;
 };
@@ -90,7 +92,7 @@ export type MaulGeformt = {
   alt: Int32Array;
   naechsteId: number;
   naechsteKreuzung: number;
-  /** Nummer der Mittellinie (−1: mit `ohneMitte` war sie nur das Gerüst zum Formen und ist wieder weg), und ob sie neu angelegt wurde */
+  /** Nummer der Mittellinie (−1: keine; die Maullinie trägt ihren Knick selbst), und ob sie neu angelegt wurde */
   mitte: number;
   mitteNeu: boolean;
   /** Runden insgesamt, und ob die Haut am Ende steht */
@@ -125,8 +127,8 @@ export function maulFormen(h0: Haut, loops0: readonly Loop[], maulId: number, op
  * weitergerechnet werden: nur lesen), am Ende das Ergebnis.
  */
 export function* maulFormenSchritte(h0: Haut, loops0: readonly Loop[], maulId: number, opt: MaulFormenOptionen): Generator<MaulStand, MaulGeformt | { fehler: string }, void> {
-  const stufen = Math.max(1, opt.stufen ?? 8);
-  const schritte = Math.max(1, opt.schritte ?? 8);
+  let stufen = Math.max(1, opt.stufen ?? 8);
+  let schritte = Math.max(1, opt.schritte ?? 8);
   const knick = ((opt.knick ?? 95) * Math.PI) / 180;
   const tiefe = opt.tiefe ?? 0.55;
   let haut: Haut = { ...h0, pos: Float64Array.from(h0.pos) };
@@ -244,10 +246,86 @@ export function* maulFormenSchritte(h0: Haut, loops0: readonly Loop[], maulId: n
     for (const x of loops) for (const p of x.punkte) p.cur = { ...p.ref };
   }
   netzNeu = true;
-  yield* rechnen('Lippen hart');
-  opt.zwischen?.('Lippen hart', haut, loops, her);
+  // Weg „Kante“ (keine Mittellinie durch die Lippen, und keine soll dazu): Die Maullinie trägt ihren Knick gleich selbst. Erst die
+  // harte Linie allein setzen zu lassen, verzöge die Form (ein einzelner Ring bestimmt sie nicht: an der Kugel um 9).
+  const wegKante = mitteId === undefined && opt.weg !== 'mitte';
+  if (wegKante) {
+    // kleinere Stufen (gemessen an Florians Modell: 12 zu 6 formt ruhiger als 8 zu 8, nichts schlägt um)
+    stufen = Math.max(1, opt.stufen ?? 12);
+    schritte = Math.max(1, opt.schritte ?? 6);
+  } else {
+    yield* rechnen('Lippen hart');
+    opt.zwischen?.('Lippen hart', haut, loops, her);
+  }
 
-  // ---------- 2. die Mittellinie durch beide Lippen, wenn sie fehlt ----------
+  // Sicherung: Läuft die Rechnung davon, wächst das Netz beim Verfeinern über alle Maßen (gemessen: 433 000 Punkte, Minuten); dann
+  // lieber abbrechen und sagen, dass es so nicht geht
+  const grenze = 4 * haut.n + 4000;
+  const endlich = (): boolean => {
+    for (let k = 0; k < haut.pos.length; k++) if (!Number.isFinite(haut.pos[k]!)) return false;
+    return true;
+  };
+  /** nach einer Stufe verfeinern wie das Fenster nach einem Zug; `fehler`, wenn das Netz davonläuft */
+  const verfeinern = (): string | null => {
+    const vd = opt.verdichten;
+    for (let g = 0; vd && g < 8; g++) {
+      const v = verdichten(haut, loops, vd.maxKante, vd.opt);
+      if (!v) break;
+      her = Int32Array.from(v.alt, (a) => (a >= 0 ? her[a]! : -1));
+      haut = v.haut;
+      loops = v.loops;
+      netzNeu = true;
+      for (const l of loops) for (const q of l.punkte) q.cur = { ...q.ref };
+      if (haut.n > grenze) return 'die Haut trägt das Maul so nicht (das Netz wächst beim Formen über alle Maßen)';
+      if (v.gelegt === 0 && v.neu === 0) break;
+    }
+    return endlich() ? null : 'die Haut kommt beim Formen nicht zur Ruhe';
+  };
+
+  // ---------- Weg „Kante“ (dritte Fassung): Die Maullinie trägt ihren Knick selbst, es kommt keine Linie dazu ----------
+  if (wegKante) {
+    // Angaben an den beiden Enden des Rings (die Lippen an der Mitte) und am Mundwinkel; dazwischen gleitet der Knick. Gedreht wird
+    // vom Knick, den die Haut dort jetzt hat, in Stufen zum Soll: Die erste Reihe innen wird dabei in jeder Runde geführt (`LoopZug`).
+    const wo = (L: Loop): LoopPunkt[] => [L.punkte[0]!, L.punkte.find((p) => p.mundwinkel)!, L.punkte[L.punkte.length - 1]!];
+    const ziel = [opt.knick ?? 95, opt.knickWinkel ?? 70, opt.knick ?? 95];
+    const von: number[] = [];
+    {
+      const L = finde(maulId);
+      const R = knickReihe(haut, L);
+      if (!R) return { fehler: 'innen an der Maullinie liegt kein Punkt der Haut (die Form ums Maul ist zu schmal für dieses Netz)' };
+      const n = L.proben.length;
+      const mk = mittlereKante(haut);
+      for (const p of wo(L)) {
+        // gemessen an den Stellen der Linie bis 2,5 Kanten um den Punkt (genau am Mundwinkel liegt innen kein Punkt der Haut)
+        const w: number[] = [];
+        for (let j = 0; j < n; j++) {
+          if (Math.abs(L.s[j]! - p.s) > 2.5 * mk) continue;
+          const x = knickQuer(haut, R, j);
+          if (Number.isFinite(x)) w.push(x);
+        }
+        von.push(w.length ? w.reduce((a, b) => a + b, 0) / w.length : 0);
+      }
+      wo(L).forEach((p, i) => {
+        p.knick = von[i]!;
+      });
+    }
+    netzNeu = true;
+    for (let b = 1; b <= stufen; b++) {
+      yield* rechnen(`Stufe ${b}`, schritte, (f) => {
+        wo(finde(maulId)).forEach((p, i) => {
+          p.knick = von[i]! + ((b - 1 + f) / stufen) * (ziel[i]! - von[i]!);
+        });
+      });
+      const fehler = verfeinern();
+      if (fehler) return { fehler };
+      opt.zwischen?.(`Stufe ${b}`, haut, loops, her);
+    }
+    const steht = yield* rechnen('setzen');
+    if (!endlich()) return { fehler: 'die Haut kommt beim Formen nicht zur Ruhe' };
+    return { haut, loops, alt: her, naechsteId, naechsteKreuzung, mitte: -1, mitteNeu: false, runden, steht };
+  }
+
+  // ---------- 2. die Mittellinie durch beide Lippen, wenn sie fehlt (Weg „Mittellinie“, zweite Fassung) ----------
   let mitteNeu = false;
   if (mitteId === undefined) {
     // Angelegt wie mit dem Werkzeug L: geschnitten in der Mittelebene, eingesetzt, Punkte nur an den Kreuzungen. Weil die Lippen
@@ -299,13 +377,6 @@ export function* maulFormenSchritte(h0: Haut, loops0: readonly Loop[], maulId: n
   }
 
   // ---------- 3. die Griffe der Mittellinie an den Lippen ins Maul ----------
-  // Sicherung: Läuft die Rechnung davon, wächst das Netz beim Verfeinern über alle Maßen (gemessen: 433 000 Punkte, Minuten); dann
-  // lieber abbrechen und sagen, dass es so nicht geht
-  const grenze = 4 * haut.n + 4000;
-  const endlich = (): boolean => {
-    for (let k = 0; k < haut.pos.length; k++) if (!Number.isFinite(haut.pos[k]!)) return false;
-    return true;
-  };
   type Ziel = { i: number; seite: 'ein' | 'aus'; von: V3; nach: V3 };
   const ziele: Ziel[] = [];
   {
@@ -343,41 +414,11 @@ export function* maulFormenSchritte(h0: Haut, loops0: readonly Loop[], maulId: n
     yield* rechnen(`Stufe ${b}`, schritte, (f) => {
       for (const zl of ziele) M.punkte[zl.i]![zl.seite] = zwischen(zl.von, zl.nach, (b - 1 + f) / stufen);
     });
-    // verfeinern wie das Fenster nach einem Zug
-    const vd = opt.verdichten;
-    for (let g = 0; vd && g < 8; g++) {
-      const v = verdichten(haut, loops, vd.maxKante, vd.opt);
-      if (!v) break;
-      her = Int32Array.from(v.alt, (a) => (a >= 0 ? her[a]! : -1));
-      haut = v.haut;
-      loops = v.loops;
-      netzNeu = true;
-      for (const l of loops) for (const q of l.punkte) q.cur = { ...q.ref };
-      if (haut.n > grenze) return { fehler: 'die Haut trägt das Maul so nicht (das Netz wächst beim Formen über alle Maßen)' };
-      if (v.gelegt === 0 && v.neu === 0) break;
-    }
-    if (!endlich()) return { fehler: 'die Haut kommt beim Formen nicht zur Ruhe' };
+    const fehler = verfeinern();
+    if (fehler) return { fehler };
     opt.zwischen?.(`Stufe ${b}`, haut, loops, her);
   }
-  let steht = yield* rechnen('setzen');
+  const steht = yield* rechnen('setzen');
   if (!endlich()) return { fehler: 'die Haut kommt beim Formen nicht zur Ruhe' };
-  if (mitteNeu && opt.ohneMitte) {
-    // die Mittellinie war nur das Gerüst zum Formen: wieder weg (ihre Punkte im Netz bleiben gewöhnliche Punkte der Haut)
-    const M = finde(mitteId);
-    const weg = new Set(M.punkte.map((p) => p.kreuzung).filter((k) => k !== undefined));
-    loops = loops.filter((l) => l !== M);
-    for (const l of loops)
-      for (const p of l.punkte) {
-        if (p.kreuzung === undefined || !weg.has(p.kreuzung) || loops.some((x) => x !== l && x.punkte.some((q) => q.kreuzung === p.kreuzung))) continue;
-        delete p.kreuzung;
-        if (l.art === 'ring' && (p.s <= 1e-6 || p.s >= l.laenge - 1e-6)) p.vonSelbst = true;
-      }
-    eckenAuto(loops);
-    netzNeu = true;
-    opt.zwischen?.('mit Gerüst', haut, [...loops, M], her);
-    steht = yield* rechnen('ohne Mittellinie');
-    if (!endlich()) return { fehler: 'die Haut kommt beim Formen nicht zur Ruhe' };
-    opt.zwischen?.('ohne Gerüst', haut, loops, her);
-  }
-  return { haut, loops, alt: her, naechsteId, naechsteKreuzung, mitte: mitteNeu && opt.ohneMitte ? -1 : mitteId, mitteNeu, runden, steht };
+  return { haut, loops, alt: her, naechsteId, naechsteKreuzung, mitte: mitteId, mitteNeu, runden, steht };
 }

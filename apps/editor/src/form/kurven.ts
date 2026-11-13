@@ -68,6 +68,8 @@ import {
   haerteBei,
   kanteBei,
   kantenKnicken,
+  knickQuer,
+  knickReihe,
   istEcke,
   istSichtbar,
   istEckeVonSelbst,
@@ -1242,14 +1244,16 @@ knopfPose.addEventListener('click', () => {
  * Das Maul am gewählten Ring formen (13.11., Schritt 6). Florian: „Das Maul soll aber an einem gewählten Edgeloop immer noch
  * automatisch entstehen. […] Im Grunde machst du ja nur die Kante hart und verbindest von der Seite die gegenüberliegenden Seiten.
  * […] Das Maul ist dann einfach eine Form wie von Hand gemacht, nur automatisiert.“ Zweite Fassung nach seinem Modell
- * „simple_mouth“ (13.11. abends): keine Punkte im Maul, die Lippen hart, die Mittellinie knickt an beiden Lippen um 95° ins Maul.
- * Gerechnet wird im Kern (`maulFormenSchritte`): Es wird nur an Griffen gedreht, die Haut folgt in Schritten; nichts wird
- * geschnitten oder eingesetzt. Das Fenster zeigt die Schritte (Florian: „Es sollte nur schön organisch animiert sein und nicht nach
- * ‚Maul formen‘ einfach in die neue Form springen“); so lange nimmt es keine Eingaben an.
- * `?maulMitte=0`: Eine Mittellinie, die nur zum Formen angelegt wurde, am Ende wieder entfernen (sein Modell „simple_mouth_more
- * simple“; der Knick an den Lippen ist dann nicht mehr eingestellt, er ergibt sich).
+ * „simple_mouth“ (13.11. abends): keine Punkte im Maul, die Lippen hart. Dritte Fassung nach „simple_mouth_more simple“ (13.11.,
+ * spät): Läuft keine Mittellinie durch beide Lippen, kommt auch keine dazu; die Maullinie trägt ihren Knick selbst (95° an den
+ * Lippen, 70° am Mundwinkel, `kantenWinkel.ts`), und jede Rechnung des Fensters hält ihn (`LoopZug`). Mit einer Mittellinie durch
+ * beide Lippen knickt deren Griff nach innen (zweite Fassung).
+ * Gerechnet wird im Kern (`maulFormenSchritte`), die Haut folgt in Schritten; nichts wird geschnitten oder eingesetzt. Das Fenster
+ * zeigt die Schritte (Florian: „Es sollte nur schön organisch animiert sein und nicht nach ‚Maul formen‘ einfach in die neue Form
+ * springen“); so lange nimmt es keine Eingaben an.
+ * `?maulWeg=mitte`: zum Vergleich die zweite Fassung auch ohne vorhandene Mittellinie (sie wird angelegt, die Kugel wird zur Zitrone).
  */
-const MAUL_OHNE_MITTE = new URLSearchParams(location.search).get('maulMitte') === '0';
+const MAUL_WEG = new URLSearchParams(location.search).get('maulWeg') === 'mitte' ? ('mitte' as const) : ('kante' as const);
 /** je Bild höchstens so viele Runden und so lange weiterrechnen (ms), dann zeigen: An der Startkugel dauert das Formen so rund 2 s */
 const MAUL_BILD_MS = 12;
 const MAUL_BILD_RUNDEN = Number(new URLSearchParams(location.search).get('maulRunden') ?? 2);
@@ -1277,7 +1281,7 @@ function maulFormenGewaehlt(): void {
       naechsteKreuzung,
       gewichte: GEWICHTE,
       loeser: RICHTUNG_OPT,
-      ohneMitte: MAUL_OHNE_MITTE,
+      weg: MAUL_WEG,
       // verfeinert wird unterwegs wie nach jedem Zug (ohne die Angabe „verborgen“: Das Netz ändert sich dabei)
       ...(VERDICHTEN ? { verdichten: { maxKante: 1.75 * MK, opt: { ...verdichtenOptionen(), verborgen: null } } } : {}),
     }),
@@ -1347,8 +1351,8 @@ function maulSchritt(): void {
   naechsteKreuzung = r.naechsteKreuzung;
   netzGewachsen(m.nAlt, r.alt, null);
   auswahl = [{ l: m.id, i: -1 }];
-  const dazu = r.mitte < 0 ? '' : r.mitteNeu ? ', dazu kam die Mittellinie: Sie knickt an beiden Lippen ins Maul' : ', die Mittellinie knickt an beiden Lippen ins Maul';
-  meldung = `Maul geformt (${((performance.now() - m.t0) / 1000).toFixed(1)} s${r.steht ? '' : '; die Haut steht noch nicht'}): Die Lippen sind eine Kante${dazu} · ⌘Z führt zurück`;
+  const dazu = r.mitte < 0 ? ' und trägt ihren Knick selbst (95° an den Lippen, 70° am Mundwinkel)' : r.mitteNeu ? ', dazu kam die Mittellinie: Sie knickt an beiden Lippen ins Maul' : ', die Mittellinie knickt an beiden Lippen ins Maul';
+  meldung = `Maul geformt (${((performance.now() - m.t0) / 1000).toFixed(1)} s${r.steht ? '' : '; die Haut steht noch nicht'}): Die Maullinie ist eine Kante${dazu} · ⌘Z führt zurück`;
   geometrieNeu();
   ruheNoetig();
   reglerZeigen();
@@ -3559,6 +3563,7 @@ function loopsZahl(): number {
       zahl(p.ref.y);
       zahl(p.ref.z);
       mische((p.kante === undefined ? 2 : p.kante ? 1 : 0) | (p.ecke === undefined ? 8 : p.ecke ? 4 : 0) | (p.autoEcke ? 16 : 0) | (p.vonSelbst ? 32 : 0) | (p.mundwinkel ? 64 : 0));
+      if (p.knick !== undefined) mische(Math.round(1000 * p.knick) + 7);
       mische(p.kreuzung ?? -1);
       for (const g of [p.ein, p.aus]) {
         mische(g ? 1 : 0);
@@ -4226,10 +4231,17 @@ function kanteSetzen(): void {
     if (!l) continue;
     if (w.i < 0) {
       l.kante = an;
-      for (const p of l.punkte) p.kante = an;
+      for (const p of l.punkte) {
+        p.kante = an;
+        // rund heißt: Die Linie gibt auch keinen Knick mehr vor (eine Maullinie, die ihren Winkel selbst trug)
+        if (!an) delete p.knick;
+      }
     } else {
       const p = l.punkte[w.i];
-      if (p) p.kante = an;
+      if (p) {
+        p.kante = an;
+        if (!an) delete p.knick;
+      }
     }
   }
   eckenAuto(loops);
@@ -5728,6 +5740,7 @@ if (BEHALTEN) behaltenesHolen();
         autoEcke: p.autoEcke ?? false,
         kante: p.kante ?? null,
         mundwinkel: p.mundwinkel ?? false,
+        knick: p.knick ?? null,
         ein: p.ein ?? null,
         aus: p.aus ?? null,
       })),
@@ -5773,6 +5786,31 @@ if (BEHALTEN) behaltenesHolen();
   },
   /** umgeschlagene Dreiecke (Normale gegen die mittlere Normale ihrer Ecken) */
   umgeschlagen: (): number => umgeschlageneZahl(),
+  /**
+   * Gemessen: der Knick der Haut quer über einen Ring (Grad): an seinen beiden Enden im Schnitt durch die Mitte, und nahe seinem
+   * Mundwinkel (Mittel der Stellen bis 2,5 Kanten davor und dahinter); null, wenn der Loop kein eingesetzter Ring ist
+   */
+  knickGemessen: (id: number): { enden: number[]; mundwinkel: number } | null => {
+    const l = loops[loopNr(id)];
+    const R = l ? knickReihe(haut, l) : null;
+    if (!l || !R) return null;
+    const inMitte = (v: number): number[] => haut.nachbarn[v]!.filter((u) => Math.abs(haut.pos[3 * u + 2]!) < 1e-6);
+    const enden = [l.proben[0]!.ecken[0], l.proben[l.proben.length - 1]!.ecken[0]].map((v) => {
+      const r = inMitte(v).map((u) => ({ x: haut.pos[3 * u]! - haut.pos[3 * v]!, y: haut.pos[3 * u + 1]! - haut.pos[3 * v + 1]! }));
+      if (r.length !== 2) return NaN;
+      const c = (r[0]!.x * r[1]!.x + r[0]!.y * r[1]!.y) / (Math.hypot(r[0]!.x, r[0]!.y) * Math.hypot(r[1]!.x, r[1]!.y));
+      return 180 - (Math.acos(Math.max(-1, Math.min(1, c))) * 180) / Math.PI;
+    });
+    const W = l.punkte.find((p) => p.mundwinkel);
+    const w: number[] = [];
+    if (W)
+      for (let j = 0; j < l.proben.length; j++) {
+        if (Math.abs(l.s[j]! - W.s) > 2.5 * MK) continue;
+        const x = knickQuer(haut, R, j);
+        if (Number.isFinite(x)) w.push(x);
+      }
+    return { enden, mundwinkel: w.length ? w.reduce((a, b) => a + b, 0) / w.length : NaN };
+  },
   /** das Maul: Loop, Öffnung, Dreiecke der Öffnung und des Inneren, umgeschlagene Dreiecke und offene Kanten wie gezeigt */
   maul: (orte = false) => {
     const g = maulGezeigt;

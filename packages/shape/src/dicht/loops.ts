@@ -15,6 +15,7 @@ import { KETTE_K, type KruemmungsKetten } from './kruemmung';
 import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich, hautNormalen, hautNormalenMax, kantenSchluessel } from './kurven';
 import { bernstein, stueckAnpassen, stueckNaechstes, stueckPunkt, stueckTeilen } from './pfad';
 import { DirektLoeser } from './direktZug';
+import { type KnickFuehrung, knickFuehrungen, knickZiele } from './kantenWinkel';
 import { linienRichtung } from './richtung';
 
 export type Ansicht = 'seite' | 'front' | 'top';
@@ -39,6 +40,12 @@ export type LoopPunkt = {
   autoEcke?: boolean;
   /** der Mundwinkel, wenn der Loop das Maul ist (dort treffen sich Ober- und Unterlippe, um ihn dreht der Unterkiefer) */
   mundwinkel?: boolean;
+  /**
+   * Der Knick der Haut quer über die Linie an diesem Punkt, in Grad, nach innen (13.11., `kantenWinkel.ts`): Die Kante trägt ihren
+   * Winkel selbst, auch ohne kreuzende Linie; zwischen den Punkten mit Angabe gleitet er. Fehlt die Angabe an allen Punkten der
+   * Linie, ergibt sich der Winkel wie bisher aus der Form.
+   */
+  knick?: number;
   /**
    * Gespeicherte Bézier-Griffe (Vektoren vom Punkt aus): `ein` zum vorigen Stück, `aus` zum nächsten (Teil A, 06.11.: vorher am
    * Verlauf der Linie abgelesen). Am Ende eines Rings ist der Griff nach innen der eigentliche, der andere sein Spiegelbild.
@@ -932,12 +939,20 @@ export function direktLoeserFuer(h: Haut, loops: readonly Loop[]): DirektLoeser 
  */
 export class LoopZug {
   readonly plan: BindungsPlan;
+  /** Lagen der Loops beim Anfang (je Loop der Form; die Führungen stehen nicht darin) */
   readonly start: Float64Array[];
   readonly loeser: HautZiele | HautAusKurven | DirektLoeser;
   /** wie die Haut zwischen den Loops entsteht (`HautArt`) */
   readonly art: HautArt;
   /** Richtung an den Linien (Beweis 09.11.): Haut, Loops und Normalen der Haut beim Anfassen (Vorzeichen, Linien ohne Kreuzung) */
   private readonly richtungAus: { h: Haut; loops: readonly Loop[]; normalen: Float64Array } | null = null;
+  /**
+   * Linien, die ihren Knick selbst tragen (`kantenWinkel.ts`): je Linie die erste Reihe der Haut innen, als weiterer Loop hinter
+   * denen der Form gebunden; ihre Ziele werden vor jeder Runde neu gerechnet. Nur in der Rechnung der Grundform (`kurven`).
+   */
+  private readonly fuehrung: KnickFuehrung[] = [];
+  private readonly h: Haut;
+  private readonly startFuehrung: Float64Array[] = [];
 
   constructor(
     h: Haut,
@@ -949,20 +964,26 @@ export class LoopZug {
     opt: HautOptionen & { direkt?: DirektLoeser | null } = {},
   ) {
     this.art = art;
-    this.plan = bindungenAus(h, loops);
+    this.h = h;
     this.start = loops.map((l) => Float64Array.from(l.ruhe));
     if (art === 'direkt') {
       // fertige Haut direkt bewegen (13.11.): der vorbereitete Löser, sonst hier angelegt (dann wartet das Greifen auf das Zerlegen)
+      this.plan = bindungenAus(h, loops);
       this.loeser = opt.direkt ?? new DirektLoeser(h, loops, this.plan, zieleAus(this.plan, this.start), hartePunkte(h, loops));
       return;
     }
+    // Linien mit vorgegebenem Knick: ihre erste Reihe innen wird mitgebunden (hinter den Loops der Form)
+    if (art === 'kurven') this.fuehrung = knickFuehrungen(h, loops);
+    const alle = mitFuehrung(loops, this.fuehrung);
+    this.startFuehrung = this.fuehrung.map((f) => Float64Array.from(f.loop.ruhe));
+    this.plan = bindungenAus(h, alle);
     // die Ketten tragen die Dehnung der Loops immer, die Krümmung (mit Richtung) nur mit `kruemmung`
-    const ketten = kruemmungsKetten(this.plan, loops);
-    const ziele = zieleAus(this.plan, this.start);
+    const ketten = kruemmungsKetten(this.plan, alle);
+    const ziele = zieleAus(this.plan, [...this.start, ...this.startFuehrung]);
     this.loeser =
       art === 'kurven'
-        ? new HautAusKurven(h, this.plan.bind, ziele, bereich, 100, kantenGewichte(h, loops), ketten, gewichte, opt)
-        : new HautZiele(h, this.plan.bind, ziele, bereich, 100, kantenGewichte(h, loops), ketten, kruemmung);
+        ? new HautAusKurven(h, this.plan.bind, ziele, bereich, 100, kantenGewichte(h, alle), ketten, gewichte, opt)
+        : new HautZiele(h, this.plan.bind, ziele, bereich, 100, kantenGewichte(h, alle), ketten, kruemmung);
     if (art === 'kurven' && opt.richtung) this.richtungAus = { h, loops, normalen: hautNormalenMax(h) };
   }
 
@@ -1003,9 +1024,20 @@ export class LoopZug {
     }
     const r = this.richtungAus;
     if (r && this.loeser instanceof HautAusKurven) this.loeser.richtung = linienRichtung(r.h, r.loops, this.plan, L, r.normalen);
-    this.loeser.schritt(zieleAus(this.plan, L), iterationen);
+    if (this.fuehrung.length === 0) {
+      this.loeser.schritt(zieleAus(this.plan, L), iterationen);
+      return;
+    }
+    // Die Führungen folgen der Haut außen (ihr Winkel ist gegen sie gemessen) und ihrer Linie: vor jeder Runde neu
+    for (let it = 0; it < iterationen; it++) {
+      const F = this.fuehrung.map((f) => knickZiele(this.h, f.l, f.R, L[f.li]));
+      this.loeser.schritt(zieleAus(this.plan, [...L, ...F]), 1);
+    }
   }
 }
+
+/** Die Loops der Form, dahinter die Loops der Führungen (so sieht der Löser sie) */
+const mitFuehrung = (loops: readonly Loop[], fuehrung: readonly KnickFuehrung[]): readonly Loop[] => (fuehrung.length ? [...loops, ...fuehrung.map((f) => f.loop)] : loops);
 
 /**
  * Die Struktur, die ein Löser nach der Geometrie über die ganze Haut für diesen Stand hätte (`HautVorlage.struktur`), ohne ihn
@@ -1014,10 +1046,12 @@ export class LoopZug {
  * wer greift, braucht dann nicht auf eine neue Zerlegung zu warten (10.11., Florian: an einer Form mit 27 800 Punkten zwei Sekunden).
  */
 export function loopStruktur(h: Haut, loops: readonly Loop[], opt: HautOptionen = {}): string {
-  const plan = bindungenAus(h, loops);
+  // (wie `LoopZug`: Linien mit vorgegebenem Knick binden ihre erste Reihe mit)
+  const alle = mitFuehrung(loops, knickFuehrungen(h, loops));
+  const plan = bindungenAus(h, alle);
   // (auf der Hälfte gerechnet, wo der Löser es täte: gewünscht und jeder Punkt hat sein Spiegelbild)
   const halb = !!opt.halb && !opt.richtung && !opt.wurst && halbMoeglich(h);
-  return strukturSchluessel(h, null, plan.bind, 100, kantenGewichte(h, loops), kruemmungsKetten(plan, loops), !!opt.richtung, halb);
+  return strukturSchluessel(h, null, plan.bind, 100, kantenGewichte(h, alle), kruemmungsKetten(plan, alle), !!opt.richtung, halb);
 }
 
 /**
