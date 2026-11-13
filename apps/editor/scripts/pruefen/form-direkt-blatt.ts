@@ -4,10 +4,12 @@
 // Geschrieben wird eine HTML-Datei; als Bild: aus apps/editor `node scripts/pruefen/html-shot.mjs --jpg <datei.html>`.
 import { writeFileSync } from 'node:fs';
 import type { Haut } from '../../../../packages/shape/src/dicht/kurven';
-import { type Loop, hautLagen, kanteBei } from '../../../../packages/shape/src/dicht/loops';
+import { type Loop, hautLagen, istSichtbar, kanteBei } from '../../../../packages/shape/src/dicht/loops';
 
-/** `schnitt`: Strecken eines Schnitts durch die Haut (je vier Zahlen: u1, v1, u2, v2), als eigenes Bild unter den Blicken */
-export type BlattBild = { name: string; h: Haut; loops: readonly Loop[]; notiz?: string; schnitt?: { titel: string; strecken: number[]; mass: number } };
+/** Strecken eines Schnitts durch die Haut (je vier Zahlen: u1, v1, u2, v2), als eigenes Bild unter den Blicken; `hoch`: seine Höhe als Anteil der Breite (sonst 0,5) */
+export type BlattSchnitt = { titel: string; strecken: number[]; mass: number; hoch?: number };
+/** `schnitt`: ein Schnitt oder mehrere untereinander; `punkte`: die sichtbaren Punkte der Loops einzeichnen */
+export type BlattBild = { name: string; h: Haut; loops: readonly Loop[]; notiz?: string; schnitt?: BlattSchnitt | readonly BlattSchnitt[]; punkte?: boolean };
 export type BlattZeile = { titel: string; bilder: BlattBild[]; blicke?: readonly Blick[]; mass?: number };
 /** Blick: Name, Drehung um die Hochachse und Neigung (Grad); 0/0 = Seite (von +z); dazu die Höhe des Bilds als Anteil seiner Breite */
 export type Blick = readonly [string, number, number, number?];
@@ -24,7 +26,12 @@ function daten(b: BlattBild): object {
   return {
     name: b.name,
     notiz: b.notiz ?? '',
-    schnitt: b.schnitt ? { titel: b.schnitt.titel, mass: b.schnitt.mass, strecken: runden(b.schnitt.strecken) } : null,
+    schnitte: (b.schnitt ? ('strecken' in b.schnitt ? [b.schnitt] : b.schnitt) : []).map((sn) => ({ titel: sn.titel, mass: sn.mass, hoch: sn.hoch ?? 0.5, strecken: runden(sn.strecken) })),
+    punkte: b.punkte
+      ? loops.flatMap((l) =>
+          l.punkte.filter(istSichtbar).flatMap((p) => (l.art === 'mitte' || Math.abs(p.ref.z) < 1e-6 ? [[p.ref.x, p.ref.y, p.ref.z]] : [[p.ref.x, p.ref.y, p.ref.z], [p.ref.x, p.ref.y, -p.ref.z]])),
+        )
+      : [],
     pos: runden(h.pos),
     tri: Array.from(h.tri),
     linien: loops.flatMap((l) => {
@@ -68,14 +75,15 @@ F.sort((p,q)=>p[0]-q[0]);for(const [,a,b,c,L,nz] of F){let col;if(nz<=0){col='rg
 g.fillStyle=col;g.strokeStyle=col;g.lineWidth=0.6;g.beginPath();g.moveTo(X(a),Y(a));g.lineTo(X(b),Y(b));g.lineTo(X(c),Y(c));g.closePath();g.fill();g.stroke()}
 for(const li of d.linien){const p=li.p;g.strokeStyle=li.hart>0.5?'#000':'#2a5d8a';g.lineWidth=li.hart>0.5?2.2:1.1;g.beginPath();let offen=false;
 for(let j=0;j<p.length/3;j++){const q=T(p[3*j],p[3*j+1],p[3*j+2]);const x=cx+s*q[0],y=cy-s*q[1];if(q[2]<-1){offen=false;continue}if(offen)g.lineTo(x,y);else g.moveTo(x,y);offen=true}
-g.stroke()}}
+g.stroke()}
+for(const p of d.punkte){const q=T(p[0],p[1],p[2]);if(q[2]<-1)continue;g.beginPath();g.arc(cx+s*q[0],cy-s*q[1],3.6,0,6.2832);g.fillStyle='#fff';g.fill();g.strokeStyle='#17384f';g.lineWidth=1.6;g.stroke()}}
 const w=document.getElementById('w');for(const z of Z){const h=document.createElement('h2');h.textContent=z.titel;w.appendChild(h);const r=document.createElement('div');r.className='r';w.appendChild(r);
 const B=Math.floor((BREITE-10*(z.bilder.length-1))/z.bilder.length);
 // Höhe eines Bilds: nach der Ausdehnung der Form in diesem Blick (alle Spalten gleich)
 for(const d of z.bilder){const sp=document.createElement('div');sp.className='s';sp.style.width=B+'px';const t=document.createElement('b');t.textContent=d.name;sp.appendChild(t);
 for(const [name,az,el,hoch] of z.blicke){const k=document.createElement('div');k.className='k';const cv=document.createElement('canvas');cv.width=B;cv.height=Math.round(B*(hoch||0.62));k.appendChild(cv);const u=document.createElement('div');u.textContent=name;k.appendChild(u);sp.appendChild(k);zeichnen(cv,d,az,el,z.mass)}
-if(d.schnitt){const k=document.createElement('div');k.className='k';const cv=document.createElement('canvas');cv.width=B;cv.height=Math.round(B*0.5);k.appendChild(cv);const u=document.createElement('div');u.textContent=d.schnitt.titel;k.appendChild(u);sp.appendChild(k);
-const g=cv.getContext('2d');const sc=cv.width/d.schnitt.mass;g.strokeStyle='#b9b2a3';g.lineWidth=1;g.beginPath();g.moveTo(0,cv.height/2);g.lineTo(cv.width,cv.height/2);g.stroke();g.strokeStyle='#222';g.lineWidth=1.6;g.beginPath();const S=d.schnitt.strecken;for(let i=0;i<S.length;i+=4){g.moveTo(cv.width/2+sc*S[i],cv.height/2-sc*S[i+1]);g.lineTo(cv.width/2+sc*S[i+2],cv.height/2-sc*S[i+3])}g.stroke()}
+for(const sn of d.schnitte){const k=document.createElement('div');k.className='k';const cv=document.createElement('canvas');cv.width=B;cv.height=Math.round(B*sn.hoch);k.appendChild(cv);const u=document.createElement('div');u.textContent=sn.titel;k.appendChild(u);sp.appendChild(k);
+const g=cv.getContext('2d');const sc=cv.width/sn.mass;g.strokeStyle='#b9b2a3';g.lineWidth=1;g.beginPath();g.moveTo(0,cv.height/2);g.lineTo(cv.width,cv.height/2);g.stroke();g.strokeStyle='#222';g.lineWidth=1.6;g.beginPath();const S=sn.strecken;for(let i=0;i<S.length;i+=4){g.moveTo(cv.width/2+sc*S[i],cv.height/2-sc*S[i+1]);g.lineTo(cv.width/2+sc*S[i+2],cv.height/2-sc*S[i+3])}g.stroke()}
 if(d.notiz){const nn=document.createElement('div');nn.className='n';nn.textContent=d.notiz;sp.appendChild(nn)}r.appendChild(sp)}}
 </script>`;
   writeFileSync(datei, html);
