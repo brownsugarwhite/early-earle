@@ -286,6 +286,34 @@ Geometrie und Vermessen auf der Hälfte (Runde auf 50 bis 60 %). In Florians Fen
 - **Risiko:** mittel bis hoch; es ist der größte Umbau im Plan. Das Fenster arbeitet heute mit Punktpaaren; die Umstellung auf
   eine Hälfte berührt Einsetzen, Verdichten und die Anzeige. Dafür fallen rund 300 Zeilen Paar-Buchführung weg.
 
+### Schritt 4c, vorgemerkt: der Rest der halben Haut (Tempo-Reserve; nicht vergessen)
+
+**Florian am 13.11. nachmittags** (auf die Frage „Posen“ oder „Weiter an der Hälfte“): „Dann mach erstmal weiter, wie du
+empfiehlst, aber es soll nicht vergessen werden. Wir werden das Tempo noch brauchen, wenn Shader, Materialien, Fell und
+Zusatzteile wie Flügel und Beine dazukommen. Meine Formen sind momentan beliebige Testformen und haben nichts mit den Wesen zu
+tun.“
+
+Daraus folgt zweierlei:
+- **Der Rest der halben Haut ist ein fester Schritt des Plans, kein „vielleicht später“.** Er kommt nach den Posen wieder auf
+  den Tisch (dann wird Florian gefragt) und muss gebaut sein, bevor der erste der genannten Bausteine beginnt (Shader,
+  Materialien, Fell, Zusatzteile; im Abschnitt „Danach“ also vor „Auswuchs und Teile anfügen“).
+- **Seine heutigen Formen sind kein Maßstab für das Tempo.** „An seinen Formen sieht man davon nichts“ ist kein Grund, Tempo
+  zurückzustellen oder zu streichen. Wie groß ein Wesen mit Zusatzteilen im Editor wird, weiß heute niemand; gebraucht wird
+  Reserve.
+
+Was offen ist, in der Reihenfolge, in der ich es bauen würde:
+1. **Gewichte nach der Geometrie und Vermessen auf der Hälfte** (nur im Kern). Heute rechnen beide über die ganze Haut; die
+   Gewichte sind mit 37 % der größte Posten einer Runde. Erwartung: eine Runde von 73 % auf 50 bis 60 % der ganzen Rechnung.
+   Schwierig: Die Gewichte tauschen Kanten, auch solche auf der Mittelebene; dort entstünden Dreiecke über beide Hälften.
+2. **Die einzelnen langsamen Bilder im Zug** (jedes zwanzigste braucht rund doppelt so lange, 32 bis 35 ms): Ursache messen,
+   dann beheben. Bisher nicht untersucht.
+3. **Verdichten und Anzeige auf der Hälfte:** der Teil eines Bilds, der nicht Rechnen ist. Wie viel die Hälfte dort spart, ist
+   nicht gemessen; Shader, Materialien und Fell kommen später in diesem Teil dazu.
+4. **Das Netz selbst als Hälfte** (der große Umbau oben: Mittellinie von Anfang an, die Paar-Buchführung fällt weg).
+
+Jeder Teil mit seiner Probe wie in 4b (derselbe Zug vorher und nachher: gleiche Form, Zeiten im Kern, Bilder im Fenster), dazu
+eine größere Prüfform als seine drei Testformen (etwa ein Körper mit vier angesetzten Teilen), damit die Reserve sichtbar wird.
+
 ### Schritt 5: Posen wie die Basis (3 bis 4 Tage)
 
 - **Was du danach siehst:** In einer Pose bedienst du dieselben Punkte und Griffe wie in der Basis, und die Haut verhält sich
@@ -319,6 +347,9 @@ Geometrie und Vermessen auf der Hälfte (Runde auf 50 bis 60 %). In Florians Fen
   (Vorschlag: ⌘-Klick auf die Linie oder der Stift).
 
 ### Danach (nicht in diesem Plan)
+
+**Vorher fertig sein muss Schritt 4c** (der Rest der halben Haut, oben): Florian braucht das Tempo für Shader, Materialien,
+Fell und Zusatzteile.
 
 Auswuchs und Teile anfügen (dort Lofts für Schläuche, Beweis „Schwanz als Loft mit weichem Übergang“), Formen addieren und
 abziehen, Backen fürs Spiel (≤ 8 000 Dreiecke; mit dem kleinen Rechennetz liegt das Spielnetz schon fast vor), die
