@@ -824,6 +824,100 @@ nichts.**
     der Grundform) ist nicht gebaut.
   - Geschlossen über die Grundform hinaus (negativer Winkel) gibt es nicht.
 
+**Das Maul aus nur einer Linie: Entwurf und Beweis im Kern (13.11., 23:50 Uhr; im Fenster ist nichts gebaut).** Florian:
+„ok, dann weiter mit dem maul“. Seine Vorgabe (13.11.): „Ein Maul soll auch nur eine Linie sein können. Wenn ich nur eine Linie
+einzeichne, ist das wie ein an den Mundwinkeln gefalteter Edgeloop, dessen Lippen exakt aufeinander liegen. Im geschlossenen
+Zustand kann ich dann nur die Linie bearbeiten, nicht beide Kiefer (also nur beide Lippen zusammen). Manche Wesen haben im
+geschlossenen Zustand kein Maul. Dann muss es quasi unsichtbar sein.“
+
+**Entwurf** (der Gedanke steht oben im ersten Entwurf zu Schritt 6 schon: „Gerechnet wird in leicht geöffneter Stellung;
+geschlossen zeigt der Kieferknochen die Lippen genau aufeinander“):
+1. **Die eine Linie ist die Oberlippe. Die Unterlippe ist dieselbe Linie, um den Mundwinkel ein Stück aufgedreht** (20°): Punkt
+   für Punkt und Griff für Griff ihr gedrehtes Abbild (ihr Zwilling). Beide zusammen sind der an den Mundwinkeln gefaltete Ring.
+2. **Daraus wird ein geformtes Maul wie bisher** („Maul formen“: Die Kante trägt ihren Knick, die Tasche ist Haut). Gerechnet
+   wird immer diese leicht geöffnete Lage; dort liegt nichts aufeinander.
+3. **Gezeigt wird das Maul zu:** Der Kieferknochen dreht den Unterkiefer um denselben Winkel zurück. Die Unterlippe dreht ganz
+   mit und liegt dann genau auf der Oberlippe. Der Regler „Maul“ steht dabei auf 0, nach rechts öffnet er wie bisher.
+4. **Geschlossen fasst Florian nur die Linie an:** Das ist die Oberlippe (sie dreht nicht mit: gezeigt ist gleich gerechnet); der
+   Zwilling auf der Unterlippe folgt als gedrehtes Abbild. Geöffnet lassen sich beide Lippen einzeln formen wie an jedem
+   geformten Maul; das gehört zu den Posen (Schritt 5).
+5. **Der Kern bleibt, wie er ist** (im Beweis keine Zeile in `packages/shape` geändert). Neu wären im Fenster: mit F eine offene
+   Linie zeichnen (vom Umriss oder über die Mitte bis zum Mundwinkel), den Zwilling anlegen und das Maul formen (animiert), der
+   Regler mit „zu“ bei 0, die Zwillingsregel beim Ziehen, die Linie ausblendbar und die Naht glatt schattiert („quasi
+   unsichtbar“).
+
+Der Vorschlag aus Etappe 2 oben (die Anzeige trennt die Lippen erst beim Öffnen und setzt Gaumen und Boden ein, `maul.ts`) ist
+damit ersetzt: Dort wäre das Innere wieder eingesetzt und nicht geformt.
+
+**Nicht weiterverfolgt: das geformte Maul in der Rechnung zudrücken**, bis die Lippen aufeinanderliegen (mein erster Versuch
+heute; ein Lauf). Die Probe war am Mundwinkel falsch gebaut (die Linie schoss dort über), sie beweist also nichts. Drei Dinge
+sprechen unabhängig davon gegen den Weg: Die Wände der Tasche lehnen überall dort aneinander, wo der Knick unter 90° liegt (am
+größten Teil der Lippe), und durchdringen sich, sobald die Lippen aufeinanderliegen; am gefalteten Mundwinkel hat die Linie keine
+Richtung mehr, mit der die Führung des Knicks rechnet (`tangente` in `kantenWinkel.ts`); und das Verdichten legt kurze Kanten
+zusammen, eine Tasche dünner als die kürzeste Kante bleibt so nicht stehen (im Lauf fiel das Netz von 1 705 auf 1 500 Punkte,
+geöffnet spannte sich eine Wand zwischen den Lippen). Das ist kein Beweis, dass es nicht geht; es ist der teurere Weg, und der
+Entwurf oben braucht ihn nicht.
+
+**Beweis im Kern** (Probe `apps/editor/scripts/pruefen/form-maul-linie.ts`; Bilder
+`docs/progress/editor/schritt6-maul-linie-2026-11-13.jpg` mit 2 000 Dreiecken wie im Fenster und
+`schritt6-maul-linie-feines-netz-2026-11-13.jpg` mit 6 000; Zahlen `schritt6-maul-linie-messung-2026-11-13.txt`). Kugel mit
+Halbmesser 150; die Linie läuft in der Seite vom Umriss vorn bis zum Mundwinkel (Länge 94, leicht geschwungen); zwei Ringe um
+den Körper als Haltelinien. **Kriterien, vorher festgelegt:** 1. zu liegen die Lippen aufeinander (so genau, wie das Netz jede
+Linie wiedergibt); 2. zu schlägt außen nichts zusätzlich um, und die Tasche tritt nirgends durch die Haut (Schnitte in neun
+Tiefen); 3. um 30° geöffnet sind die Lippen vorn mindestens 30 auseinander, ohne neue Fehler; 4. die Rechnung der leicht
+geöffneten Lage steht.
+
+| Lauf (gerechnete Lage 20° offen, wenn nicht anders genannt) | Spalt zu | außen umgeschlagen: gerechnet → zu → auf | Tasche tritt durch die Haut: gerechnet → zu → auf | Naht außen (Mittel) | Kriterien |
+| --- | --- | --- | --- | --- | --- |
+| mit Haltelinien, 2 000 Dreiecke (wie im Fenster) | 0,15 | 2 → 0 → 2 | 3 → 2 → 3 | 3,4° | 1 und 4 halten; 2 und 3 nicht |
+| mit Haltelinien, 6 000 Dreiecke | 0,08 | 0 → 0 → 0 | 0 → 0 → 0 | 5,1° | alle vier halten |
+| mit Haltelinien, 2 000, 16° | 0,20 | 2 → 2 → 4 | 0 → 0 → 0 | 3,4° | 1, 2, 4 halten; 3 nicht |
+| mit Haltelinien, 2 000, 24° | 0,17 | 6 → 4 → 6 | 0 → 0 → 0 (außen kreuzt sich die Haut zu an 2 Stellen) | 7,5° | 1, 3, 4 halten; 2 nicht |
+| Kugel allein, 2 000 | 0,15 | 0 → 0 → 0 | 2 → 2 → 2 | 3,2° | 1 und 4 halten; 2 und 3 nicht |
+| Kugel allein, 2 000, 16° | 0,20 | 4 → 4 → 4 | 0 → 0 → 0 | 4,6° | alle vier halten |
+| Kugel allein, 2 000, 12° | 0,32 | 6 → 4 → 6 | 1 → 0 → 0 (außen kreuzt sich die Haut an 1 bis 3 Stellen) | 5,0° | 1 und 4 halten; 2 und 3 nicht |
+| Kugel allein, 2 000, 8° und 6 000, 12° | | | | | die Form lässt sich nicht einsetzen (der Keil ist am Mundwinkel zu dünn) |
+
+**Was hält, in jedem Lauf, der sich rechnen lässt:**
+- **Zu liegen die Lippen aufeinander:** vorn 0,00, größter Spalt 0,08 bis 0,32. So genau gibt das Netz jede Linie wieder (0,22
+  auf dem feinen, 0,38 auf dem groben Netz): Beide Lippen liegen auf derselben Kurve, ihre Netzpunkte sitzen aber an
+  verschiedenen Stellen.
+- **Die Rechnung steht** (181 bis 219 Runden beim Formen), die Zwillinge bleiben beim Formen genau (Abweichung 0,00), das Gelenk
+  liegt genau auf dem Mundwinkel der Linie.
+- **Geöffnet hat das Maul eine echte Tasche:** um 30° von zu sind die Lippen vorn 47 auseinander; im Schnitt eine runde Tasche,
+  keine Wand.
+- **Mit den zwei Haltelinien bleibt der Körper stehen** (fern vom Maul 0,2 bis 0,3 neben der Kugel, am Maul 2,1 bis 2,5).
+
+**Was nicht hält: der Mundwinkel auf dem groben Netz (2 000 Dreiecke, so groß wie das Rechennetz des Fensters).** Auf dem
+letzten Zehntel der Linie vor dem Mundwinkel (bei x −65 bis −57, der Mundwinkel liegt bei −55; bei 12° schon ab x −84) ist die
+Tasche dünner als die Maschen des Netzes. Dort sind je nach Lauf 0 bis 6 Dreiecke außen umgeschlagen, und die Tasche tritt an
+0 bis 3 Stellen durch die Haut. **Das ist schon in der gerechneten Lage so**, nicht erst beim Schließen: Es ist eine Schwäche von
+„Maul formen“ an einer spitzen Ecke (dieselbe wie die 6 umgeschlagenen Dreiecke am Mundwinkel oben; dort war die Stelle im
+Fenster sauber, für den Keil ist das im Fenster nicht geprüft). Auf dem feinen Netz ist die Stelle sauber. Dazu die Grenze nach
+unten: Unter etwa 16° Öffnung der gerechneten Lage wird der Keil zu dünn (12° mehr Fehler, 8° nicht einsetzbar).
+
+**Gemessen, ohne Kriterium:**
+- **Die Naht außen:** Zu knickt die Haut über die Linie im Mittel um 3,2° bis 5,1° (16° bis 20° gerechnete Lage; bei 24° 7,5°).
+  Im flach schattierten Bild ohne Linien sieht man eine feine Naht und am Mundwinkel eine kleine Delle. Ob das „quasi unsichtbar“
+  ist, entscheidet Florians Auge im Fenster; dort kommt die glatte Schattierung über die Naht dazu.
+- **Linien am Unterkiefer** drehen in der geschlossenen Ansicht mit (im Bild die vordere Haltelinie unten): Was Florian zu
+  sieht, ist die gerechnete Lage mit zurückgedrehtem Kiefer.
+- **Ohne Haltelinien** verzieht sich die Kugel beim Formen wie bekannt (fern 16 bis 21). Eine Falle der Probe: Solange die Maullinie
+  noch keine Kante war, zog der schmale Keil als einzige runde Linie die Kugel zusammen (hinten von 150 auf 58 bis 99); die
+  Maullinie muss von Anfang an eine Kante sein.
+
+**Nicht geprüft:** mit einer Mittellinie durch das Maul (dann nimmt „Maul formen“ den Weg über die Mittellinie, und ihre Kreuzung
+an der Unterlippe muss mit dem Zwilling mitgehen); an Florians Formen; alles im Fenster (Zeichnen, Ziehen im geschlossenen
+Zustand, Ausblenden).
+
+**Was der Bau im Bau-Fenster wäre** (erst nach Florians Wort; Reihenfolge):
+1. Die spitze Ecke am Mundwinkel. Kriterium: auf dem Rechennetz des Fensters außen nichts umgeschlagen, und die Tasche tritt
+   nirgends durch die Haut, an der Kugel und an „simple_mouth_more simple“. Das hilft jedem geformten Maul.
+2. Mit F eine offene Linie zeichnen: Zwilling anlegen, Maullinie als Kante, „Maul formen“ animiert.
+3. Der Regler „Maul“: 0 ist zu, „Fressen“ öffnet wie bisher.
+4. Die Zwillingsregel beim Ziehen im geschlossenen Zustand; Probe mit einer Mittellinie durch das Maul.
+5. Die Linie ausblendbar, die Naht glatt schattiert; dann sein Blick auf „quasi unsichtbar“.
+
 ### Schritt 7: Auswahl wie in Blender (2 bis 3 Tage)
 
 - **Was du danach siehst:** Du wählst Punkte, **Kanten** (das Linienstück zwischen zwei Punkten) und **Flächen** (das Feld
