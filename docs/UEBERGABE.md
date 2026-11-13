@@ -1,4 +1,4 @@
-# Übergabe (Stand 13.11.2026, 20:45 Uhr: Schritt 6 im Bau-Fenster (5197) in zweiter Fassung, nach Florians Blick und seinen zwei Modellen (Abschnitt 7.11): „Maul formen“ macht die Maullinie hart und lässt die Mittellinie an beiden Lippen um 95° ins Maul knicken, ohne Punkte im Maul, und das Fenster zeigt das Formen in Schritten statt als Sprung. Linien sind am Knick 3 Bildpunkte breit, an runden Punkten ein halber, dazwischen verjüngt. Gemessen: Ohne Mittellinie ist der Knick an den Lippen nicht eingestellt (hängt am Netz); dafür braucht es eine Kante, die ihren Winkel selbst trägt (Vorschlag mit Beweis, Florians Wort steht aus). K macht die Lippen eines geformten Mauls noch nicht rund. In seinem Fenster (5194) ist davon nichts. Danach Etappe 2 (Kieferknochen, dort auch das Maul aus nur einer Linie), dann Schritt 5 (Posen). Schritt 4b, erster Teil, ist in seinem Fenster (Abschnitt 7.5); der Rest der halben Haut ist als Schritt 4c fest vorgemerkt. Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt. Zu Schritt 1, 2, dem Donut (4a) und der halben Rechnung steht sein Urteil aus)
+# Übergabe (Stand 13.11.2026, 21:20 Uhr: Der Beweis „die Kante trägt ihren Winkel selbst“ hält (Abschnitt 7.12): An der Kugel auf drei Netzen und an Florians Modell „simple_mouth_more simple“ knickt die Haut an den Lippen um 94° bis 95° und am Mundwinkel um 72° bis 74°, ohne Mittellinie und ohne Punkt im Maul; die Haut steht. Nur im Kern als Probe, am Löser und im Fenster ist dafür nichts geändert. Offen: der Einbau (Vorschlag in drei Etappen im Plan, Florians Wort steht aus) und das unruhige Innere hinter der ersten Reihe. Im Bau-Fenster (5197) steht weiter die zweite Fassung von „Maul formen“ mit Mittellinie, animiert, und die Linien mit Verjüngung (Abschnitt 7.11). In seinem Fenster (5194) ist davon nichts. Danach Etappe 2 (Kieferknochen, dort auch das Maul aus nur einer Linie), dann Schritt 5 (Posen). Schritt 4b, erster Teil, ist in seinem Fenster (Abschnitt 7.5); der Rest der halben Haut ist als Schritt 4c fest vorgemerkt. Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt. Zu Schritt 1, 2, dem Donut (4a) und der halben Rechnung steht sein Urteil aus)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -28,7 +28,7 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | 4 Echte Spiegelung (mit der heutigen Rechnung) | **4a, der Donut, ist in Florians Fenster (Abschnitt 7.4, 13.11.):** nach seiner zweiten Regel; sein Urteil steht aus. **4b, erster Teil, ist seit dem 13.11. nachmittags in Florians Fenster (Abschnitt 7.5):** Der Löser rechnet auf der Hälfte (zwei halb so große Systeme, Krümmung auf der Hälfte), das Netz im Fenster bleibt ganz; Rechnen je Bild 10,3 → 7,1 ms am „teat firefish“, Zerlegen rund 50 %, gleiche Form; dazu „flüssig zuerst“ (eine weitere Runde je Bild nur, wenn sie ins Bild passt). Sein Urteil zum Tempo steht aus |
 | 4c Rest der halben Haut | **fest vorgemerkt** (Plan, „Schritt 4c“; Florian am 13.11.: „es soll nicht vergessen werden“): Gewichte und Vermessen auf der Hälfte (Runde von 73 % auf 50 bis 60 %), die einzelnen langsamen Bilder, Verdichten und Anzeige auf der Hälfte, das Netz selbst als Hälfte. Kommt nach den Posen wieder auf den Tisch und muss gebaut sein, bevor Shader, Materialien, Fell oder Zusatzteile beginnen. Seine heutigen Formen sind kein Maßstab für das Tempo |
 | 5 Posen wie die Basis | **Entwurf steht, Gegenprobe an Florians Form hält** (Abschnitte 7.6 und 7.8, 13.11.): Eine Pose ist dieselbe Form mit anderen Lagen der Punkte und Griffe, dazu die Knochen (Florian: „ein einfacher Morph der Punkte und Handles […], während die Kieferknochen sich bewegen“). Der erste Beweis war am Maul aus der schmalen Form gescheitert (verborgene Fläche); am von Hand geformten Maul ist ein Zug in der Pose ein gewöhnlicher Zug. Gebaut ist nichts; kommt nach Schritt 6 |
-| 6 Maul | **Zweite Fassung im Bau-Fenster (Abschnitt 7.11, 13.11., 20:45 Uhr), nach Florians Blick auf die erste (7.10) und seinen Modellen „simple_mouth“ und „simple_mouth_more simple“:** „Maul formen“ macht die Maullinie hart und lässt die Mittellinie an beiden Lippen um 95° ins Maul knicken; im Maul kein Punkt, keine Querlinie mehr; animiert (rund 2 s). Dazu Linien mit Verjüngung (3 Bildpunkte am Knick, ein halber an runden Punkten). **Offen, Florians Wort steht aus:** die Kante, die ihren Winkel selbst trägt (damit das Maul ohne Mittellinie und ohne Punkt hält: heute hängt der Knick dann am Netz), K für runde Lippen, was die 70° am Mundwinkel meinen, das Maul aus nur einer Linie; danach Etappe 2 (Kieferknochen; „Fressen“ gibt am geformten Maul bis dahin eine Meldung). Das Maul aus der schmalen Form mit eingesetztem Inneren besteht daneben weiter |
+| 6 Maul | **Zweite Fassung im Bau-Fenster (Abschnitt 7.11, 13.11., 20:45 Uhr), nach Florians Blick auf die erste (7.10) und seinen Modellen „simple_mouth“ und „simple_mouth_more simple“:** „Maul formen“ macht die Maullinie hart und lässt die Mittellinie an beiden Lippen um 95° ins Maul knicken; im Maul kein Punkt, keine Querlinie mehr; animiert (rund 2 s). Dazu Linien mit Verjüngung (3 Bildpunkte am Knick, ein halber an runden Punkten). **Beweis „die Kante trägt ihren Winkel selbst“ hält (Abschnitt 7.12, 21:20 Uhr):** ohne Mittellinie und ohne Punkt 94° bis 95° an den Lippen und 72° bis 74° am Mundwinkel, auf drei Netzen und an seinem Modell; nur als Probe im Kern. **Offen, Florians Wort steht aus:** der Einbau (Löser, Angabe an der Linie, „Maul formen“ darauf; Plan), das unruhige Innere hinter der ersten Reihe, K für runde Lippen, das Maul aus nur einer Linie; danach Etappe 2 (Kieferknochen; „Fressen“ gibt am geformten Maul bis dahin eine Meldung). Das Maul aus der schmalen Form mit eingesetztem Inneren besteht daneben weiter |
 | 7 Auswahl wie in Blender | offen |
 
 **Schritt 0, was getan ist:**
@@ -874,6 +874,35 @@ feineren 39° und 68° mit 0,23. Deshalb bleibt die Mittellinie im Standard steh
 - Das Maul aus nur einer Linie (geschlossen unsichtbar): mit Etappe 2.
 - Etappe 2: Kieferknochen am geformten Maul. Danach Schritt 5.
 - An einer seiner Formen ist der Knopf noch nicht probiert. `/editor` ist nicht angefasst.
+
+### 7.12 Beweis „die Kante trägt ihren Winkel selbst“ (13.11., 21:20 Uhr): hält
+
+Florian auf die zwei Fragen aus 7.11: „Ja, es meint den Knick quer an den Mundwinkeln nach innen. Mache gerne erstmal das bzw.
+den Beweis.“ Die 70° sind also der Knick der Haut quer über die Maullinie am Mundwinkel.
+
+**Die Probe** (`apps/editor/scripts/pruefen/form-kante-winkel.ts`, aus `packages/shape` mit `npx vite-node …`; `DREIECKE=2000|
+3000|6000`, `NAME=<gesicherte Form>`, `LIPPE`, `WINKEL`, `LOSLASSEN=1`, `MEHR=<Runden>`, `AUS=<datei.html>`): Kugel mit der
+schmalen Form ums Maul, hart, sonst keine Linie. Am Löser ist nichts geändert: Die erste Reihe der Haut innen an der Linie
+(`reiheAnlegen`: was die Linie umschließt, die Punkte neben ihr) ist ein Loop ohne Kette, dessen Proben je einen Punkt der Haut
+binden (`reihenLoop`). Seine Ziele werden vor jedem Schritt neu gerechnet (`reihenZiele`): jeder Punkt um die Linie gedreht, bis
+er um den Winkel gegen die Haut außen in den Körper knickt (`rahmen`: Tangente, Richtung der Haut außen, ihre Normale); Abstand
+längs und quer wie beim Anlegen. Gedreht wird vom Knick der Form zum Soll in 12 Stufen zu 6 Schritten, nach jeder Stufe
+verfeinert, am Ende gesetzt.
+
+**Ergebnis:** die Tabelle im Plan (Schritt 6, „Beweis“). Kugel auf drei Netzen: 95,0°/95,0°, 95,1°/94,1°, 95,0°/95,0° an den
+Lippen, 74,0°, 72,2°, 72,3° am Mundwinkel, Tasche 0,18 bis 0,20, die Haut steht. Florians „simple_mouth_more simple“: von
+126,8°/116,4° auf 93,6°/94,6°, Mundwinkel von 43,5° auf 72,0°, steht, nichts umgeschlagen. Alle Punkte des Kriteriums erfüllt;
+die 6 umgeschlagenen Dreiecke auf dem Netz des Fensters sind schon ohne jeden Winkel da (vom Verfeinern am spitzen Mundwinkel).
+
+**Was der Beweis nicht zeigt:**
+- Die Führung steht nur in der Probe. Ohne sie läuft der Winkel wieder davon (76°/80°, 132°/106°, 69°/66°; an seiner Form
+  111°/107°): Sie muss in jede Rechnung (Zug, Nachlauf, Hintergrund), also in `LoopZug` oder in den Löser.
+- Hinter der starren ersten Reihe ist das Innere unruhig (an seiner Form im Bild zu sehen; 400 Runden mehr ändern es nicht).
+- Die Tiefe der Tasche ergibt sich (an der Kugel 0,2 des Wegs zum Mundwinkel).
+- Genau am Mundwinkel gibt es innen keine Punkte der Haut; der Knick ist dort nicht gemessen.
+
+**Als Nächstes (Florians Wort steht aus):** der Einbau in drei Etappen (Plan, „Vorschlag für den Einbau“): im Löser als weiches
+Ziel der Ebene statt als starre Bindung; der Winkel als Angabe an der Linie; „Maul formen“ darauf, ohne Mittellinie.
 
 ## 8. Offen aus der Zeit davor
 
