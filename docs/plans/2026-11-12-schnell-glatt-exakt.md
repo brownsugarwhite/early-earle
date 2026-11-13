@@ -260,6 +260,18 @@ von 55° bis 82° auf 14° bis 26°. An `strange bird` stülpt schon der lose Zu
 heute); dort entsteht kein sauberer Donut. **Übernommen in Florians Fenster am 13.11. nachts** (er: „Übernehmen“;
 `claude/form-bau` nach `claude/form-spiegel`, die Probe besteht auch dort). Sein Urteil steht aus.
 
+**Schritt 4b, die halbe Haut (Florian am 13.11. nachts: „Ich bin jetzt etwas unterwegs, daher kannst du halbe Haut machen. Wir
+werden das Tempo sicher noch brauchen“).** Gebaut wird zuerst, wo das Tempo entsteht, mit dem kleinsten Risiko: **die Rechnung
+auf der Hälfte im Löser**, das Netz im Fenster bleibt ganz (so hatte es die Gegenprüfung vom 10.11. gemessen: „Rechnet der Löser
+nur eine Hälfte …“). Probe: derselbe Zug ganz und halb im Kern (gleiche Form, Zeiten), dann im Bau-Fenster an seinen Formen
+(Rechnen je Bild, Bilder im Zug, Proben wie vorher). Der große Umbau (das Netz selbst als Hälfte: Verdichten, Anzeige, Sichern)
+bleibt zurückgestellt, bis das Tempo ihn verlangt.
+**Ergebnis des ersten Teils (13.11. nachts; `docs/UEBERGABE.md`, Abschnitt 7.5):** gebaut und im Bau-Fenster Standard
+(`?halb=0` zum Vergleichen). Gleiche Form (höchstens 0,08 auseinander), Zerlegen rund 50 %, eine Runde 73 % (nicht die erhoffte
+Hälfte: Lösen ist heute nur noch die halbe Runde); im Fenster am „teat firefish“ Rechnen je Bild 10,3 → 7,1 ms, Bilder im Median
+alle 16 statt 18 ms. Dazu „flüssig zuerst“ (eine weitere Runde je Bild nur, wenn sie ins Bild passt). Offen: Gewichte nach der
+Geometrie und Vermessen auf der Hälfte (Runde auf rund 50 %). In Florians Fenster erst nach seinem Wort.
+
 - **Was du danach siehst:**
   - Jede neue Form beginnt als gespiegelte Kugel, **die Mittellinie ist von Anfang an eingezeichnet**.
   - Ziehen fühlt sich direkt an: Die Haut ist in jedem Bild fertig, nach dem Loslassen passiert nichts mehr.
