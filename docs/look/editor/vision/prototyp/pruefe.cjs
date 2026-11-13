@@ -13,7 +13,12 @@ const path = require('path'), fs = require('fs');
   page.on('pageerror', (e) => fehler.push('pageerror: ' + e.message));
   await page.goto('file://' + path.resolve(seite) + '?film=leer' + (zusatz ? '&' + zusatz : ''));
   await page.waitForTimeout(2500);
-  const schritt = (n = 1, ms = 1000 / 30) => page.evaluate(([n, ms]) => { for (let i = 0; i < n; i++) window.__film.schritt(ms); }, [n, ms]);
+  // nach jedem Bild auf die Grafik warten (ein Bildpunkt lesen): sonst staut sich die Arbeit bis zum Screenshot
+const schritt = (n = 1, ms = 1000 / 30) => page.evaluate(([n, ms]) => {
+    const gl = window.__app && window.__app.z && window.__app.z.r.getContext();
+    const px = new Uint8Array(4);
+    for (let i = 0; i < n; i++) { window.__film.schritt(ms); if (gl) gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); }
+  }, [n, ms]);
   await schritt(8);
   let nr = 0;
   const bild = async (name) => { const f = path.join(aus, String(++nr).padStart(2, '0') + '_' + name + '.jpg'); await page.screenshot({ path: f, type: 'jpeg', quality: 88 }); console.log(f); };

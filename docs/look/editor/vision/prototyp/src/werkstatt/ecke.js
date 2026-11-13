@@ -11,7 +11,12 @@ import { Werft } from './werft.js';
 import { THREE } from '../zeichner.js';
 import * as S from '../shader.js';
 import * as S2 from './shader2.js';
-import { add, sub, mul, dot, norm, dist, spiegel, clamp, smooth, lerp } from '../mathe.js';
+import { add, sub, mul, norm, dist, len, smooth, lerp } from '../mathe.js';
+import { neuerPunkt, neueId, ringEndenRichten, mitteRichten } from '../linien.js';
+import { linieAnlegen } from '../schnitt.js';
+import { PAR } from '../parameter.js';
+import { zeigerSetzen } from './zeiger.js';
+import { aufblasen, polygonAus, spantenPfade } from './aufblasen.js';
 
 export const GRUND = [0.965, 0.955, 0.933];
 const GRUND_RAND = [0.928, 0.914, 0.885];
@@ -102,6 +107,24 @@ export class Ecke extends Werft {
     this.bodenSzene = new THREE.Scene();
     this.bodenSzene.add(this.boden);
     this.konturMat.uniforms.uFarbe.value.set(...TINTE);
+    // Start: leeres Papier in der Seitenansicht, der Stift ist bereit
+    this.phase = PAR.get('start') === '0' ? null : 'stift';
+    this.stiftZustand = { punkte: [], zu: false, zug: null, maus: null, klick: null };
+    if (this.phase === 'stift') this.sichtbarkeit = 0;
+  }
+
+  einpassen(sofort) {
+    if (this.phase === 'stift' && this.rs) return this.startKamera();
+    return super.einpassen(sofort);
+  }
+  startKamera() {
+    const rs = this.rs;
+    rs.azimut = 0; rs.hoehe = 0;
+    rs.parallel = 1; this.parallelZiel = 1;
+    rs.ziel = [0, 0.15, 0];
+    rs.abstand = 6;
+    this.kamFahrt = null;
+    this.letztAz = null;
   }
 
   // Die Ecke braucht Platz für die Wände hinter dem Wesen
@@ -145,6 +168,7 @@ export class Ecke extends Werft {
   schrittLayout(dt) {
     super.schrittLayout(dt);
     const rs = this.rs;
+    if (this.phase === 'aufblasen') this.aufblasenSchritt(dt);
     // Im Wesen-Modus bleibt der Raum (Licht, Fliese) vor der Kamera stehen: er dreht sich mit dem Blick mit
     if (this.letztAz === null) this.letztAz = rs.azimut;
     if (this.modus === 'wesen') this.psi += rs.azimut - this.letztAz;
@@ -194,7 +218,7 @@ export class Ecke extends Werft {
       let D;
       if (n === 'top') D = sg > 0 ? C[1] - g.min[1] + 0.004 * R : g.max[1] - C[1] + luecke;
       else if (n === 'front') D = (sg < 0 ? g.max[0] - C[0] : C[0] - g.min[0]) + luecke;
-      else D = (g.max[2] + luecke) * this.rueckzug;
+      else D = ((this.phase === 'aufblasen' ? this.zBasis : g.max[2]) + luecke) * this.rueckzug;
       // Blick der Achse: oben = y (Seite, Front); Top: vom Betrachter weg (so dreht sie sich ohne Rolle zur Kamera)
       let u0 = [0, 1, 0];
       if (n === 'top') {
@@ -220,7 +244,7 @@ export class Ecke extends Werft {
         T.druck.uniforms.uTexel.value.set(1 / B.width, 1 / B.height);
       } else {
         const schl = [n, sg, z.netzVersion, sk.x.toFixed(4), sk.y.toFixed(4), sk.z.toFixed(4), asp.toFixed(4), mw, P.map((x) => x.toFixed(4)).join(','), [q.x, q.y, q.z, q.w].map((x) => x.toFixed(5)).join(','), tau.toFixed(7)].join('|');
-        const ziel = z.ziel('ecke:maske:' + n, mw, mh);
+        const ziel = z.ziel('ecke:maske:' + n, mw, mh, { samples: 4 });
         if (T.schl !== schl) {
           T.schl = schl;
           const kam = T.kam;
@@ -284,6 +308,281 @@ export class Ecke extends Werft {
     this.z.koerper.scale.set(1 - a * 0.5, 1 + a, (1 - a * 0.5) * this.sigma);
   }
 
+  // ---------------- Start: Umriss mit dem Stift ----------------
+  // Klick = Eckpunkt, Ziehen = glatter Punkt (Griffe), Klick auf den ersten Punkt = schließen,
+  // Enter oder Doppelklick = bestätigen, ⌫ = letzten Punkt weg, Esc = neu anfangen.
+  eingabeFangen(art, e, x, y) {
+    if (this.phase === 'aufblasen') return art !== 'taste' || e.key !== '?';
+    if (this.phase !== 'stift') return false;
+    const st = this.stiftZustand;
+    const welt = (sx, sy) => { const r = this.rs.strahl(sx, sy); const t = -r.o[2] / (r.d[2] || 1e-9); return [r.o[0] + r.d[0] * t, r.o[1] + r.d[1] * t]; };
+    const bild = (p) => this.rs.projizieren([p[0], p[1], 0]);
+    const abstand = (P) => { const q = bild(P.p); return Math.hypot(q[0] - x, q[1] - y); };
+    if (art === 'taste') {
+      const k = e.key;
+      if (k === '?') return false;
+      if (k === 'Enter') this.stiftBestaetigen();
+      else if (k === 'Backspace' || k === 'Delete') { if (st.zu) st.zu = false; else st.punkte.pop(); }
+      else if (k === 'Escape') { st.punkte = []; st.zu = false; }
+      return true;
+    }
+    if (art === 'runter') {
+      if (e.button === 2) return true;
+      const jetzt = window.__filmZeit ?? performance.now();
+      const doppelt = st.klick && jetzt - st.klick.t < 400 && Math.hypot(x - st.klick.x, y - st.klick.y) < 9;
+      st.klick = { t: jetzt, x, y };
+      if (doppelt && st.punkte.length >= 3) { st.zug = null; this.stiftBestaetigen(); return true; }
+      if (!st.zu && st.punkte.length >= 3 && abstand(st.punkte[0]) < 12) {
+        st.zu = true;
+        st.zug = { art: 'schliessen', P: st.punkte[0], x0: x, y0: y };
+        this.fx.push({ art: 'stiftZu', t: 0, dauer: 0.6 });
+        this.klang('form');
+        return true;
+      }
+      const P = st.punkte.find((Q) => abstand(Q) < 9);
+      if (P) { st.zug = { art: 'verschieben', P }; return true; }
+      if (st.zu) return true;
+      const neu = { p: welt(x, y), ein: [0, 0], aus: [0, 0] };
+      st.punkte.push(neu);
+      st.zug = { art: 'griff', P: neu, x0: x, y0: y };
+      this.klang('punkt');
+      return true;
+    }
+    if (art === 'bewegen') {
+      st.maus = [x, y];
+      this.maus.x = x; this.maus.y = y; this.maus.drin = true;
+      zeigerSetzen(this.canvas, 'stift');
+      const z = st.zug;
+      if (!z) return true;
+      if (z.art === 'verschieben') { z.P.p = welt(x, y); return true; }
+      if (Math.hypot(x - z.x0, y - z.y0) < 4) return true;
+      const q = welt(x, y);
+      const d = [q[0] - z.P.p[0], q[1] - z.P.p[1]];
+      z.P.aus = d;
+      z.P.ein = [-d[0], -d[1]];
+      return true;
+    }
+    if (art === 'hoch') { st.zug = null; return true; }
+    return true;
+  }
+
+  stiftBestaetigen() {
+    const st = this.stiftZustand;
+    if (st.punkte.length < 3) { this.fx.push({ art: 'nein', t: 0, dauer: 0.4 }); this.klang('nein'); return; }
+    st.zu = true;
+    this.wesenAusUmriss(st.punkte);
+  }
+
+  // Der Umriss wird zum Kiel; das Wesen wird aufgeblasen, drei Spanten geben ihm Breite
+  wesenAusUmriss(punkte) {
+    const poly = polygonAus(punkte);
+    const t0 = performance.now();
+    const { netz, hoehe } = aufblasen(poly, { ziel: 9000 });
+    const ecke = (P) => Math.hypot(...P.ein) + Math.hypot(...P.aus) < 1e-9;
+    const kiel = { id: neueId(), art: 'mitte', proben: [], punkte: punkte.map((P) => neuerPunkt([P.p[0], P.p[1], 0], [P.ein[0], P.ein[1], 0], [P.aus[0], P.aus[1], 0], ecke(P))) };
+    this.groesse = 2;
+    const linien = [kiel];
+    for (const pfad of spantenPfade(poly, hoehe, 3)) linien.push(linieAnlegen('ring', pfad, linien, this.groesse).L);
+    for (const L of linien) { ringEndenRichten(L); mitteRichten(L); }
+    this.netzSetzen(netz);
+    this.haut.linien = linien;
+    for (const L of linien) this.haut.einbetten(L);
+    this.haut.struktur();
+    this.auswahl.clear();
+    this.haut.verformen();
+    this.z.netzAktualisieren();
+    this.raum._boxStart = false;
+    this.raum.boxSetzen(this.netz);
+    this.geschichte = [];
+    this.gIndex = -1;
+    this.merken();
+    this.bauzeit = performance.now() - t0;
+    // Animation: Ansicht zieht zurück, Seitenansicht auf ihre Wand, Wesen bläst sich wackelnd auf
+    const P = this.netz.pos;
+    this.basisPos = new Float32Array(P);
+    let zmax = 0, xa = Infinity, xb = -Infinity;
+    for (let i = 0; i < P.length; i += 3) { zmax = Math.max(zmax, P[i + 2]); xa = Math.min(xa, P[i]); xb = Math.max(xb, P[i]); }
+    this.zBasis = zmax;
+    const rs = this.rs;
+    this.phase = 'aufblasen';
+    this.sichtbarkeit = 1;
+    this.sigma = 0;
+    this.rueckzug = 0;
+    const g = this.grenzen();
+    this.anim = { t: 0, xa, xb, von: { az: rs.azimut, h: rs.hoehe, ab: rs.abstand, ziel: rs.ziel.slice(), par: rs.parallel }, nach: { az: HEIM_AZ, h: 0.32, ab: this.passAbstand(), ziel: [g.mitte[0], g.mitte[1] + (g.max[1] - g.min[1]) * 0.04, 0] } };
+    this.parallelZiel = 0;
+    this.kamFahrt = null;
+    this.klang('form');
+  }
+
+  // gedämpfte Feder 0 → 1 (Überschwingen gut ein Viertel)
+  feder01(t) {
+    if (t <= 0) return 0;
+    const zeta = 0.36, w = 2 * Math.PI * 1.25, wd = w * Math.sqrt(1 - zeta * zeta);
+    return 1 - Math.exp(-zeta * w * t) * (Math.cos(wd * t) + ((zeta * w) / wd) * Math.sin(wd * t));
+  }
+  // Maß in z an der Stelle x: die Welle läuft vom Kopf zum Schwanz
+  sigmaBei(x) {
+    const a = this.anim;
+    if (!a) return 1;
+    const u = (x - a.xa) / Math.max(1e-6, a.xb - a.xa);
+    return this.feder01(a.t - 0.22 - 0.16 * u);
+  }
+
+  aufblasenSchritt(dt) {
+    const a = this.anim, rs = this.rs;
+    a.t += dt;
+    const t = a.t;
+    // Kamera: zurück und in die Ecke (Dolly-Fahrt aus der flachen Seitenansicht)
+    const k = ease(Math.min(1, t / 1.9));
+    rs.azimut = a.von.az + (a.nach.az - a.von.az) * k;
+    rs.hoehe = a.von.h + (a.nach.h - a.von.h) * k;
+    rs.abstand = a.von.ab + (a.nach.ab - a.von.ab) * k;
+    rs.ziel = lerp(a.von.ziel, a.nach.ziel, k);
+    rs.parallel = a.von.par * (1 - ease(Math.min(1, t / 1.3)));
+    this.parallelZiel = 0;
+    this.psi = HEIM_AZ;
+    this.letztAz = rs.azimut;
+    // Seitenansicht zieht sich auf ihre Wand zurück
+    this.rueckzug = 1 - Math.pow(1 - Math.min(1, Math.max(0, (t - 0.08) / 1.1)), 3);
+    // Aufblasen mit Welle
+    const B = this.basisPos, P = this.netz.pos;
+    for (let i = 0; i < P.length; i += 3) P[i + 2] = B[i + 2] * this.sigmaBei(B[i]);
+    this.netz.normalen();
+    this.netz.geaendert();
+    this.z.netzAktualisieren();
+    this.sigma = 1;
+    if (t > 3.0) {
+      P.set(B);
+      this.netz.normalen();
+      this.netz.geaendert();
+      this.z.netzAktualisieren();
+      this.anim = null;
+      this.phase = null;
+      this.rueckzug = 1;
+      rs.parallel = 0;
+    }
+  }
+  flieseA() {
+    if (this.phase === 'stift') return 0;
+    if (this.phase === 'aufblasen') return smooth(0.5, 1.6, this.anim.t);
+    return 1;
+  }
+
+  // Anzeige: im Aufblasen gehen die Linien mit, die Spanten zeichnen sich ein
+  anzeigeBauen() {
+    super.anzeigeBauen();
+    const a = this.anim;
+    if (this.phase !== 'aufblasen' || !a) return;
+    const zeigen = smooth(0.35, 1.3, a.t);
+    const ringe = new Set(this.linien.filter((L) => L.art === 'ring'));
+    const neu = [];
+    for (const zug of this.anzeige.zuege) {
+      const pts = zug.pts.map((p) => [p[0], p[1], p[2] * this.sigmaBei(p[0])]);
+      neu.push({ ...zug, pts });
+    }
+    // Ringe: die ersten Züge nach dem Kiel gehören den Ringen (abtasten liefert je Ring einen Zug)
+    let i = 0;
+    for (const L of this.linien) {
+      const anzahl = L.art === 'paar' ? 2 : 1;
+      if (ringe.has(L)) for (let k = 0; k < anzahl; k++) {
+        const z = neu[i + k];
+        const m = Math.max(2, Math.floor(z.pts.length * zeigen));
+        neu[i + k] = { ...z, pts: z.pts.slice(0, m), zu: zeigen >= 0.999 ? z.zu : false, kante: z.kante && z.kante.slice(0, m), tusche: z.tusche && z.tusche.slice(0, m) };
+      }
+      i += anzahl;
+    }
+    this.anzeige.zuege = neu;
+  }
+
+  // der Umriss in Arbeit (2D über dem Papier; die Seitenansicht ist flach, Bild = Ebene z = 0)
+  stiftZeichnen(c, alpha) {
+    const st = this.stiftZustand, P = st.punkte;
+    if (!P.length || alpha <= 0) return;
+    const B = (p) => this.rs.projizieren([p[0], p[1], 0]);
+    const n = P.length;
+    c.save();
+    c.globalAlpha = alpha;
+    c.lineJoin = 'round';
+    c.lineCap = 'round';
+    const pfad = (zu) => {
+      c.beginPath();
+      const a0 = B(P[0].p);
+      c.moveTo(a0[0], a0[1]);
+      for (let i = 0; i < (zu ? n : n - 1); i++) {
+        const a = P[i], b = P[(i + 1) % n];
+        const c1 = B([a.p[0] + a.aus[0], a.p[1] + a.aus[1]]), c2 = B([b.p[0] + b.ein[0], b.p[1] + b.ein[1]]), e = B(b.p);
+        c.bezierCurveTo(c1[0], c1[1], c2[0], c2[1], e[0], e[1]);
+      }
+      if (zu) c.closePath();
+    };
+    // geschlossen: die Fläche ist schon die Seitenansicht (Cyan, wie gedruckt)
+    if (st.zu && n >= 3) {
+      c.save();
+      c.globalCompositeOperation = 'multiply';
+      const d = DICHTE.seite;
+      c.fillStyle = `rgb(${FARBE.seite.map((v) => Math.round(255 * (1 - d * (1 - v)))).join(',')})`;
+      pfad(true);
+      c.fill();
+      c.restore();
+    }
+    c.strokeStyle = 'rgba(30,28,35,0.92)';
+    c.lineWidth = 1.6;
+    pfad(st.zu);
+    c.stroke();
+    // Gummiband zum Zeiger
+    if (!st.zu && !st.zug && st.maus && this.maus.drin) {
+      const a = P[n - 1], s0 = B(a.p), c1 = B([a.p[0] + a.aus[0], a.p[1] + a.aus[1]]), m = st.maus;
+      c.strokeStyle = 'rgba(30,28,35,0.32)';
+      c.lineWidth = 1.2;
+      c.setLineDash([3, 4]);
+      c.beginPath();
+      c.moveTo(s0[0], s0[1]);
+      c.bezierCurveTo(c1[0], c1[1], m[0], m[1], m[0], m[1]);
+      c.stroke();
+      c.setLineDash([]);
+    }
+    // Griffe des Punkts in der Hand (oder des letzten)
+    const aktiv = st.zug ? st.zug.P : !st.zu ? P[n - 1] : null;
+    if (aktiv && Math.hypot(aktiv.aus[0], aktiv.aus[1]) > 1e-6) {
+      const m = B(aktiv.p);
+      for (const g of [aktiv.ein, aktiv.aus]) {
+        const q = B([aktiv.p[0] + g[0], aktiv.p[1] + g[1]]);
+        c.strokeStyle = 'rgba(30,28,35,0.5)';
+        c.lineWidth = 1;
+        c.beginPath(); c.moveTo(m[0], m[1]); c.lineTo(q[0], q[1]); c.stroke();
+        c.fillStyle = '#ffffff';
+        c.strokeStyle = '#1e1c23';
+        c.lineWidth = 1.2;
+        c.beginPath(); c.arc(q[0], q[1], 2.8, 0, Math.PI * 2); c.fill(); c.stroke();
+      }
+    }
+    // Punkte: weiße Scheiben mit dunklem Ring, Ecken als Raute; der erste wächst, wenn man ihn zum Schließen anpeilt
+    const q0 = B(P[0].p);
+    const nahErster = !st.zu && n >= 3 && st.maus && Math.hypot(q0[0] - st.maus[0], q0[1] - st.maus[1]) < 12;
+    P.forEach((Q, i) => {
+      const q = B(Q.p);
+      const r = i === 0 && nahErster ? 6.5 : 4.2;
+      const ecke = Math.hypot(Q.aus[0], Q.aus[1]) < 1e-9;
+      c.fillStyle = Q === aktiv && st.zug ? 'rgb(147,111,251)' : '#ffffff';
+      c.strokeStyle = '#1e1c23';
+      c.lineWidth = 1.4;
+      c.beginPath();
+      if (ecke) { c.moveTo(q[0], q[1] - r * 1.15); c.lineTo(q[0] + r * 1.15, q[1]); c.lineTo(q[0], q[1] + r * 1.15); c.lineTo(q[0] - r * 1.15, q[1]); c.closePath(); }
+      else c.arc(q[0], q[1], r, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+    });
+    for (const f of this.fx) if (f.art === 'stiftZu') {
+      const t = f.t / f.dauer;
+      c.globalAlpha = alpha * (1 - t);
+      c.strokeStyle = 'rgb(147,111,251)';
+      c.lineWidth = 1.5;
+      c.beginPath(); c.arc(q0[0], q0[1], 6 + t * 26, 0, Math.PI * 2); c.stroke();
+    }
+    c.restore();
+  }
+
   // ---------------- Zeichnen ----------------
   zeichnen() {
     const z = this.z, r = z.r, W = this.W, H = this.H, d = z.dpr;
@@ -292,7 +591,7 @@ export class Ecke extends Werft {
     const flach = this.flach;
     const s = this.s;
     const g = this.grenzen();
-    const fein = Math.min(1, 1600 / Math.max(w, h));
+    const fein = Math.min(1, 1024 / Math.max(w, h));
     const mw = Math.max(64, Math.round(w * fein)), mh = Math.max(64, Math.round(h * fein));
     this.koerperSkala();
     // 1. Körper mit Material in ein Ziel (seine Deckung ist Maske für Umriss, Schleier und deckungsgleiche Tafeln)
@@ -394,10 +693,6 @@ export class Ecke extends Werft {
     z.koerper.scale.set(1, 1, 1);
     r.setViewport(0, 0, W, H);
   }
-  flieseA() {
-    return 1;
-  }
-
   linienStil(s, flach) {
     const z = this.z;
     z.breiten(1.25);
@@ -416,12 +711,17 @@ export class Ecke extends Werft {
     P.uWahl.value.set(...LILA);
     P.uGriff.value.set(...TINTE);
     P.uGriffEigen.value = 1;
-    P.uDeck.value = this.sichtbarkeit;
+    P.uDeck.value = this.sichtbarkeit * (this.phase === 'aufblasen' ? 0 : 1);
     P.uLampeMin.value = 0;
     z.punktMatVerdeckt.uniforms.uDeck.value = 0.3 * (1 - s) * (1 - flach) * this.sichtbarkeit;
   }
 
   obenLayout(c) {
+    // Chrome zeigt eine nur geleerte 2D-Fläche manchmal mit einem alten Puffer: immer einen unsichtbaren Punkt zeichnen
+    c.fillStyle = 'rgba(0,0,0,0.004)';
+    c.fillRect(0, 0, 1, 1);
+    if (this.phase === 'stift') this.stiftZeichnen(c, 1);
+    else if (this.phase === 'aufblasen' && this.anim.t < 0.3) this.stiftZeichnen(c, 1 - this.anim.t / 0.3);
     if (this.feder && this.zeit - this.feder.t0 > 0.3) {
       c.save();
       c.globalAlpha = 0.9;
