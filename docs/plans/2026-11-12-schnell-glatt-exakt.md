@@ -548,6 +548,16 @@ geöffnet ist die Fläche hinten am Gelenk deshalb zackig. Glatte Lippen (Kante 
 Das Maul aus der schmalen Form mit eingesetztem Inneren (die Anzeige von heute) bleibt für gesicherte Formen bestehen, bis er
 entscheidet.
 
+**Etappe 1 ist im Bau-Fenster gebaut (13.11., 18:40 Uhr; Florian: „Bau mal, ich muss es mir anschauen“).** Kern `maulFormen`
+(`packages/shape/src/dicht/maulFormen.ts`, Test `maulFormen.test.ts`), im Fenster der Knopf „Maul formen“ am gewählten Ring
+(`kurven.ts`, `maulFormenGewaehlt`). Probe im Fenster (`form-maul-formen-fenster.mjs`, Kugel mit schmaler Form): geformt in
+0,7 s, nichts umgeschlagen, spiegelgleich, die Mittellinie liegt im Maul 0,15 neben der Maullinie von der Seite, hinter dem
+Maul weicht die Kugel um höchstens 4,2 ab, ein Zug an der Unterlippe läuft wie jeder Zug, ⌘Z führt genau zurück. Bild
+`docs/progress/editor/schritt6-maul-formen-fenster-2026-11-13.jpg`. Beim Einbau gefunden und behoben: Die neue Mittellinie
+hatte nur zwei Punkte und verzog die Kugel zur Zitrone (jetzt Punkte, wo sie nötig sind); die Kante der Querlinie reichte um
+den ganzen Kopf (jetzt nur im Maul). „Fressen“ am geformten Maul gibt bis Etappe 2 eine Meldung. In Florians Fenster (5194)
+ist davon nichts.
+
 ### Schritt 7: Auswahl wie in Blender (2 bis 3 Tage)
 
 - **Was du danach siehst:** Du wählst Punkte, **Kanten** (das Linienstück zwischen zwei Punkten) und **Flächen** (das Feld
