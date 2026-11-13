@@ -66,3 +66,6 @@ Seitenansicht). Dann Drahtmodell, drei Projektionen an den Wänden der Ecke (Wä
 - 13.11. später: Strichstärke nach Tiefe, Schatten vom Licht abgewandt, Licht der Hand und Röntgen im Material, Glas einer
   Fläche hochkant ausgeblendet, Transparentpapier mit Hauch von Schattierung. Auf leerem Papier wird keine Form nachgeladen.
   Filme `tab`, `achse`, `vier`, `drehen`, `stift`, `start` (960 × 600) und Präsentation (gleiche Adresse) aktualisiert.
+- 13.11. Präsentation Version 5 veröffentlicht (gleiche Adresse): https://claude.ai/artifact/SahX9VLKYfxFbmhNPNs18f. Die
+  Achsen-Vorführung tippt 1/3/7 jetzt (gehalten ab 0,3 s federte sie zurück). Offen: Florians Urteil und seine Antworten auf
+  die fünf Fragen der Präsentation; Mac, iPad, Safari und Bildrate ungeprüft.
