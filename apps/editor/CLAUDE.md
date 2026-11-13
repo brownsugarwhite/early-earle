@@ -39,6 +39,10 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   `mitteFestmachen` in `dicht/mitteSchnitt.ts`: Der Rand des Lochs wird ein Loop mit Kante); K am Rand macht ihn rund. Nur in
   der Grundform und ohne Maul. Probe im Fenster: `GPU=1 node scripts/pruefen/form-donut-fenster.mjs` (`NAME=<Form>` für eine
   gesicherte Form).
+- **Rechnung auf der Hälfte** (Schritt 4b, erster Teil, 13.11.; bis zur Übernahme nur in `form-bau`): Der Löser faltet auf die
+  Hälfte (`HautOptionen.halb`, im Fenster Standard, `&halb=0` schaltet es ab); das Netz bleibt ganz. Dazu „flüssig zuerst“: eine
+  weitere Runde je Bild nur, wenn sie samt Anzeige in 14,5 ms passt (`&bildms=0`: nur das feste Budget, `&budget=<ms>` stellt
+  es). Messen: im Kern `form-halb.ts`, im Fenster `GPU=1 HALTEN=0 NAME=<Form> node scripts/pruefen/form-halten-probe.mjs`.
 - Test-Haken im Fenster: `window.__kurven` (`zeiten()`, `lagen`, `loops`, `ablage`, `beschaeftigt` …).
 
 ## Prüfen
@@ -101,5 +105,10 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   vor dem gesuchten (`ZUGBLATT=top` in `form-donut-fenster.mjs`).
 - Die Anzeige legt Punkte hinter der Mitte auf die Mitte (`anzeigeZ`), sie schneidet keine Dreiecke: Wer „gezeigt vorher“ mit
   einer geschnittenen Haut vergleicht, sieht am Rand bis zu einer Kante Unterschied.
+- `loesenSpalten` der Zerlegung ist nur für 1, 3 und 6 Spalten ausgeschrieben (dazu `loesenZwei`); jede andere Zahl läuft über
+  den allgemeinen Weg und braucht je Spalte rund viermal so lange. Eine Vorlage aus zerlegten Systemen immer mit
+  `vorlageAusSystemen` bauen (auf der Hälfte sind es drei Systeme, nicht zwei).
+- Wird eine Runde kürzer, rechnet das Fenster mehr Runden je Bild: Nach jeder Beschleunigung des Lösers die Bilder im Zug
+  messen (Median und 95 %), nicht nur das Rechnen je Bild.
 - **Vor Arbeit an `kurven.ts` oder am Löser lesen:** `docs/verlauf/2026-11-11-uebergabe-kurven.md`, Abschnitt 3 (Karte von
   `kurven.ts`) und Abschnitt 4 (Fallen, was schon kaputtging).

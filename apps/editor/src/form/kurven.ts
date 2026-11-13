@@ -206,7 +206,18 @@ const RUNDEN_ENDE = 4;
  * Flächennormalen, `rundeMitWeg`). Vorher gab es je Mausbewegung eine Runde (eine zweite nur bei kleinen Netzen) und beim Loslassen
  * vier auf einmal: Der Rest wurde genau beim Loslassen sichtbar.
  */
-const BUDGET_MS = 12;
+const BUDGET_MS = Number(new URLSearchParams(location.search).get('budget') ?? 12);
+/**
+ * Flüssig zuerst (13.11., mit der Rechnung auf der Hälfte): Eine weitere Runde im selben Bild gibt es nur, wenn sie samt dem, was das
+ * Bild sonst kostet (Haut und Blätter anzeigen, zeichnen; gleitend gemessen in `bildRestMs`), in `BILD_MS` passt. Anlass: Am „strange
+ * bird“ (7 400 Punkte) passten mit der kürzeren Runde zwei in die 12 ms, das Bild dauerte dann mit der Anzeige länger als ein
+ * Bildschirmtakt, und jedes zwanzigste kam erst nach 35 ms statt nach 21. Die erste Runde läuft immer. `?budget=<ms>&bildms=0`: wie
+ * vorher nur das feste Budget.
+ */
+const BILD_MS = Number(new URLSearchParams(location.search).get('bildms') ?? 14.5);
+let bildRestMs = 6;
+/** in diesem Bild hat der Zug gerechnet: so lange (für `bildRestMs`) */
+let bildGerechnetMs = -1;
 const RUHE = 0.05;
 
 const kreis = (r: number): UmrissPunkt[] => [
@@ -311,9 +322,11 @@ const NORMALFLUSS = new URLSearchParams(location.search).get('normalfluss');
 /**
  * Die Rechnung auf der Hälfte (13.11., Plan Schritt 4b; `HautOptionen.halb`): Die Grundform ist spiegelgleich, der Löser löst zwei
  * halb so große Systeme statt eines ganzen und verteilt die Krümmung auf der Hälfte; die Form ist dieselbe. Das Netz im Fenster
- * bleibt ganz (Verdichten, Anzeige, Sichern unverändert). `?halb=1` schaltet es ein (zum Vergleichen, bis es Standard wird).
+ * bleibt ganz (Verdichten, Anzeige, Sichern unverändert). Standard; `?halb=0` rechnet zum Vergleichen über die ganze Haut.
+ * Gemessen am 13.11. im Fenster an „teat firefish“ (11 400 Punkte): Rechnen je Bild 10,3 → 7,1 ms, Bilder im Median alle 16 statt
+ * 18 ms; im Kern Zerlegen rund 50 %, die Häute höchstens 0,08 auseinander (`scripts/pruefen/form-halb.ts`).
  */
-const HALB = new URLSearchParams(location.search).get('halb') === '1';
+const HALB = new URLSearchParams(location.search).get('halb') !== '0';
 const RICHTUNG_OPT: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean; normalfluss?: boolean; halb?: boolean } = {
   ...(HALB ? { halb: true } : {}),
   ...(RICHTUNG ? { richtung: true } : {}),
@@ -2898,8 +2911,9 @@ function zugRechnen(): void {
       break;
     }
     const jetzt = performance.now();
-    if (jetzt - t0 + (jetzt - tr) > BUDGET_MS) break;
+    if (jetzt - t0 + (jetzt - tr) > (BILD_MS > 0 ? Math.min(BUDGET_MS, BILD_MS - bildRestMs) : BUDGET_MS)) break;
   }
+  bildGerechnetMs = performance.now() - t0;
   zeiten.push(performance.now() - t0);
   if (zeiten.length > 200) zeiten.shift();
   // über die ganze Haut nach der Geometrie: verfeinern, sobald sie gestreckt wird
@@ -5379,6 +5393,8 @@ function bildRechnen(): void {
     fehlerProbe = false;
     throw new Error('Probe');
   }
+  const bildT0 = performance.now();
+  bildGerechnetMs = -1;
   // ein fertig verfeinertes Netz aus dem Hintergrund wird an Stelle der Löserrunde dieses Bilds eingewechselt
   const e = eingetroffen;
   eingetroffen = null;
@@ -5400,6 +5416,8 @@ function bildRechnen(): void {
     neuZeichnen = false;
     rendern();
   }
+  // was dieses Bild außer den Runden des Zugs gekostet hat (nur Bilder, in denen der Zug gerechnet hat), gleitend gemittelt
+  if (bildGerechnetMs >= 0) bildRestMs += 0.2 * (Math.min(40, performance.now() - bildT0 - bildGerechnetMs) - bildRestMs);
 }
 window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight, false);

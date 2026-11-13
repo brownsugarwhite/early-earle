@@ -84,6 +84,7 @@ for (const name of NAMEN) {
       summe += d;
     }
     const f = falten({ ...h, pos: halb.pos });
-    console.log(`   halb gegen ganz: Zerlegen ${Math.round((100 * halb.zerlegen) / ganz.zerlegen)} %, Runde ${Math.round((100 * halb.runde) / ganz.runde)} %; die Häute liegen höchstens ${z4(weit)} auseinander (im Mittel ${z4(summe / h.n)}); halb: Knicke über 60° ${f.ueber60}, umgeklappt ${f.umgeklappt}`);
+    const g = falten({ ...h, pos: ganz.pos });
+    console.log(`   halb gegen ganz: Zerlegen ${Math.round((100 * halb.zerlegen) / ganz.zerlegen)} %, Runde ${Math.round((100 * halb.runde) / ganz.runde)} %; die Häute liegen höchstens ${z4(weit)} auseinander (im Mittel ${z4(summe / h.n)}); Knicke über 60° halb ${f.ueber60}, ganz ${g.ueber60}; umgeklappt halb ${f.umgeklappt}, ganz ${g.umgeklappt}`);
   }
 }
