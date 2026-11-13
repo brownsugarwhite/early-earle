@@ -262,11 +262,12 @@ void main(){
 export const koerperZusammenFS = /* glsl */ `
 precision highp float;
 uniform sampler2D uKoerper, uDeckung; uniform float uSchleier, uMaterial, uImmer; uniform vec3 uGrund;
+uniform vec3 uFrei; // Ansichten, die gerade nicht mitspielen (hinter der Kamera), zählen für die Schnittmenge als deckend
 uniform vec3 uLinse; // Röntgen (X halten): Mitte und Halbmesser in Bildpunkten; darin wird das Material durchsichtig
 varying vec2 vUv;
 void main(){
   vec4 k = texture2D(uKoerper, vUv);
-  vec3 d = texture2D(uDeckung, vUv).rgb;
+  vec3 d = max(texture2D(uDeckung, vUv).rgb, uFrei);
   float drei = min(d.r, min(d.g, d.b));
   float g = max(smoothstep(0.2, 0.85, drei) * uMaterial, uImmer);
   if (uLinse.z > 0.0) g *= 0.12 + 0.88 * smoothstep(uLinse.z - 1.5, uLinse.z, distance(gl_FragCoord.xy, uLinse.xy));

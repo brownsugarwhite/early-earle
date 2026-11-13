@@ -298,3 +298,7 @@ weiter die Ersatz-Haut.
 unsichtbaren Kugel um das Wesen, immer gegenüber ihrem Projektor, wie Schatten von drei Lampen auf einer Kuppel; die Lampen
 wandern zum Auge, die Schatten hinter das Wesen. Zusammengelaufen liegen sie gleich gedreht an der Kugelwand hinter dem Wesen
 und decken sich aus dem Blick genau mit ihm; das Material entsteht auf dem Wesen. Wortlaut und Änderung in `PLAN-4.md`.
+
+**Nachtrag (Kugel größer, feste Ansichten):** Halbmesser 3,4 halbe Diagonalen (zum Ausprobieren `?kugel=2 … 6`), nur Seite,
+Front, Top, kein Umspringen; was hinter der Kamera hängt, blendet aus und zählt nicht für die Schnittmenge. Projektor im
+Abstand der Kamera, damit die fernen Bilder so groß wie das Wesen wirken. Siehe `PLAN-4.md`.

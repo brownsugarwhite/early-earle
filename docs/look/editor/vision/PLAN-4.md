@@ -89,3 +89,15 @@ Das Material entsteht auf dem Wesen selbst (wie bisher: Körperbild, wo sich all
 breiter: bis 3° von einer Achse an den Wänden, ab 35° deckungsgleich.
 Präsentation Version 6 (gleiche Adresse) mit Skizze des Kugelmodells, neuen Filmen `tab`, `drehen`, `start` und neuem
 Stufenstreifen.
+
+## Nachtrag 13.11.2026: Florian zur Kugel (wörtlich)
+
+> „Ja die kugel deutlich größer und nurnoch front eine seite und top als projektion. Sonst springt es so wild herum...mal
+> probieren wie das ist“
+
+**Umgesetzt:** Kugel mit dem 3,4-fachen der halben Diagonale des Wesens als Halbmesser (vorher die Wände der Ecke, etwa 1,2-fach).
+Nur noch drei feste Ansichten: Seite von +z, Front von vorn (−x), Top von oben; das Umspringen auf die abgewandte Wand ist weg.
+Liegt der Blick auf der anderen Seite, hängt die Ansicht hinter der Kamera und blendet weich aus; sie zählt dann nicht für die
+Schnittmenge (das Material entsteht aus den Ansichten, die mitspielen). Der Projektor steht jetzt im Abstand der Kamera: So
+erscheinen die Bilder auf der fernen Wand etwa so groß wie das Wesen und decken sich auf der Achse genau. Zum Ausprobieren:
+`?kugel=2` bis `?kugel=6` (im Artefakt `#vogel-ohnestift-kugel6`).

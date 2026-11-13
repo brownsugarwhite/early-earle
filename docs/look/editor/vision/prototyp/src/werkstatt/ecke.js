@@ -31,7 +31,6 @@ const DICHTE = { seite: 0.4, front: 0.32, top: 0.34 }; // Graubalance: die drei 
 const KALT = [0.6, 0.64, 0.72], WARM = [0.975, 0.948, 0.895];
 const L_BLICK = norm([-0.5, 0.74, 0.46]); // Licht im Raum, vom Heimblick aus gesehen: links oben vorn
 const HEIM_AZ = -0.66;
-const TAU0 = Math.tan((0.3 * Math.PI) / 180); // Projektor auf der Achse: fast parallel
 
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const rotY = (v, a) => [v[0] * Math.cos(a) + v[2] * Math.sin(a), v[1], -v[0] * Math.sin(a) + v[2] * Math.cos(a)];
@@ -56,6 +55,7 @@ export class Ecke extends Werft {
     this.letztAz = null;
     this.sigma = 1; // Aufblasen: Maß in z (Start)
     this.rueckzug = 1; // Start: die Seitenansicht zieht sich auf ihre Wand zurück (0 → 1)
+    this.kugelMass = Math.max(1.2, parseFloat(PAR.get('kugel')) || 3.4); // Halbmesser der Kugel in halben Diagonalen des Wesens
     this.sichtbarkeit = 1; // Wesen, Tafeln, Fliese (Start: erst nach dem Aufblasen)
     this.grundMat.uniforms.uInnen.value.set(...GRUND);
     this.grundMat.uniforms.uAussen.value.set(...GRUND_RAND);
@@ -85,7 +85,7 @@ export class Ecke extends Werft {
       mesh.frustumCulled = false;
       const szene = new THREE.Scene();
       szene.add(mesh);
-      this.tafeln[n] = { name: n, mesh, druck, deck, szene, kam: new THREE.PerspectiveCamera(1, 1, 0.01, 100), schl: null, w: 0, maske: null };
+      this.tafeln[n] = { name: n, mesh, druck, deck, szene, kam: new THREE.PerspectiveCamera(1, 1, 0.01, 100), schl: null, w: 0, teil: 0, maske: null };
     }
     this.goochMat = new THREE.ShaderMaterial({
       vertexShader: S.papierVS, fragmentShader: S2.goochFS,
@@ -94,7 +94,7 @@ export class Ecke extends Werft {
     });
     this.zusammenMat = new THREE.ShaderMaterial({
       vertexShader: S.vollbildVS, fragmentShader: S2.koerperZusammenFS,
-      uniforms: { uKoerper: { value: null }, uDeckung: { value: null }, uSchleier: { value: 0 }, uMaterial: { value: 0 }, uImmer: { value: 0 }, uGrund: { value: new THREE.Vector3(...GRUND) }, uLinse: z.U.uLinse },
+      uniforms: { uKoerper: { value: null }, uDeckung: { value: null }, uSchleier: { value: 0 }, uMaterial: { value: 0 }, uImmer: { value: 0 }, uFrei: { value: new THREE.Vector3() }, uGrund: { value: new THREE.Vector3(...GRUND) }, uLinse: z.U.uLinse },
       depthTest: false, depthWrite: false, transparent: true,
       blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
     });
@@ -265,7 +265,6 @@ export class Ecke extends Werft {
     const C = [g.mitte[0], g.mitte[1], 0];
     const ext = [g.max[0] - g.min[0], g.max[1] - g.min[1], g.max[2] - g.min[2]];
     const R = 0.5 * Math.hypot(ext[0], ext[1], ext[2]);
-    const luecke = 0.3 * Math.max(ext[0], ext[1], ext[2]);
     const kp = vek(k.position);
     const v = norm(sub(kp, C));
     const X = new THREE.Vector3(), Y = new THREE.Vector3(), Z = new THREE.Vector3();
@@ -279,23 +278,18 @@ export class Ecke extends Werft {
     const h0 = this.rahmenH0(g);
     const s = this.s;
     const sk = z.koerper.scale;
-    // Unsichtbare Kugel um das Wesen (Florian, 13.11.): Die Ansichten bleiben an ihrer Wand und gleiten auf ihr entlang,
-    // nie ins Wesen. Auf der Achse berührt die Kugel die Wände der Ecke; zusammengelaufen liegen alle drei genau hinter dem
-    // Wesen, und nur der Blick lässt sie im Wesen erscheinen (der Projektor ist dann die Kamera).
-    const dSeite = ((this.phase === 'aufblasen' ? this.zBasis : g.max[2]) + luecke) * this.rueckzug;
-    const dFront = Math.max(g.max[0] - C[0], C[0] - g.min[0]) + luecke;
-    const dKugel = Math.max(dSeite, dFront);
+    // Große unsichtbare Kugel um das Wesen (Florian, 13.11.): feste Ansichten (Seite von +z, Front von vorn, Top von oben),
+    // nichts springt auf eine andere Wand. Jede Tafel hängt an der Kugelwand gegenüber ihrem Projektor und gleitet auf ihr
+    // entlang, nie ins Wesen. Der Projektor steht im Abstand der Kamera: So erscheinen die Bilder auf der fernen Wand so groß
+    // wie das Wesen, auf der Achse genau deckungsgleich; zusammengelaufen ist der Projektor die Kamera.
+    const rKugel = this.kugelMass * R;
+    const Lk = Math.max(1e-3, dist(kp, T1));
     for (const n of NAMEN) {
       const T = this.tafeln[n];
       const ax = ACHSE[n];
-      const sg = this.viererZiel > 0.5 || this.vierer > 0.001 ? (n === 'front' ? -1 : 1) : v[ax] >= 0 ? 1 : -1;
+      const sg = n === 'front' ? -1 : 1;
       const A = [0, 0, 0];
       A[ax] = sg;
-      // Wand hinter dem Wesen (vom Blick abgewandt); der Boden liegt unter den Füßen
-      let D;
-      if (n === 'top') D = sg > 0 ? C[1] - g.min[1] + 0.004 * R : g.max[1] - C[1] + luecke;
-      else if (n === 'front') D = dFront;
-      else D = dSeite;
       // Blick der Achse: oben = y (Seite, Front); Top: vom Betrachter weg (so dreht sie sich ohne Rolle zur Kamera)
       let u0 = [0, 1, 0];
       if (n === 'top') {
@@ -308,12 +302,13 @@ export class Ecke extends Werft {
       const rr = vek(new THREE.Vector3(1, 0, 0).applyQuaternion(q));
       const Tz = lerp(C, T1, s);
       const h = h0 + (h1 - h0) * s;
-      const tau = Math.exp(Math.log(TAU0) + (Math.log(tau1) - Math.log(TAU0)) * s);
-      const L = h / tau;
+      const L = Lk;
+      const tau = h / L;
       const P = add(Tz, mul(e, L));
-      // Gewicht: auf der Achse quer liegende Wände verschwinden (man sähe sie nur als Strich); im Wesen voll
-      const wA = smooth(0.1, 0.32, Math.abs(v[ax]));
-      T.w = (wA + (1 - wA) * Math.max(smooth(0, 0.5, s), smooth(0, 0.6, this.vierer))) * this.sichtbarkeit;
+      // Gewicht: sichtbar, solange der Blick auf der Seite ihres Projektors liegt (sonst hängt sie hinter der Kamera);
+      // in der Viereransicht immer
+      T.teil = Math.max(smooth(-0.05, 0.25, dot(v, A)), smooth(0, 0.6, this.vierer));
+      T.w = T.teil * this.sichtbarkeit;
       if (T.w < 0.003) continue;
       // Maske: aus Sicht des Projektors (auf der Achse unverändert, solange das Netz bleibt); deckungsgleich = Körperbild
       if (s >= 0.999) {
@@ -343,8 +338,8 @@ export class Ecke extends Werft {
         T.druck.uniforms.uTexel.value.set(1 / mw, 1 / mh);
       }
       T.druck.uniforms.uMaske.value = T.maske;
-      // Lage der Tafel: senkrecht zum Projektor, gegenüber dem Projektor an der Kugelwand (Abstand vom Wand- zum Kugelmaß)
-      const delta = D + (dKugel - D) * smooth(0, 1, s);
+      // Lage der Tafel: senkrecht zum Projektor, ihm gegenüber an der Kugelwand (beim Start zieht sich die Seite dorthin zurück)
+      const delta = rKugel * (n === 'seite' ? this.rueckzug : 1);
       const Qc = sub(Tz, mul(e, delta));
       const hh = (L + delta) * tau, hw = hh * asp;
       const a = T.mesh.geometry.attributes.position, cl = T.mesh.geometry.attributes.clip;
@@ -827,7 +822,7 @@ export class Ecke extends Werft {
       B2.uR.value = Rr;
       B2.uFliese.value = fl;
       B2.uPsi.value = this.psi - HEIM_AZ;
-      B2.uSchatten.value = (0.07 + 0.09 * s) * (1 - flach * 0.6) * this.sichtbarkeit;
+      B2.uSchatten.value = (0.12 + 0.04 * s) * (1 - flach * 0.6) * this.sichtbarkeit;
       B2.uFlieseA.value = this.sichtbarkeit * this.flieseA();
       B2.uTexel.value = 1 / 256;
       // Schatten weicht dem Licht aus: im Wesen-Modus bleibt er stehen, während sich das Wesen dreht
@@ -864,6 +859,7 @@ export class Ecke extends Werft {
       const U = this.zusammenMat.uniforms;
       U.uKoerper.value = B.texture;
       U.uDeckung.value = A.texture;
+      U.uFrei.value.set(1 - this.tafeln.seite.teil, 1 - this.tafeln.front.teil, 1 - this.tafeln.top.teil);
       U.uSchleier.value = 0.4 * (1 - flach) * (1 - smooth(0, 0.6, s)) * this.sichtbarkeit;
       U.uMaterial.value = smooth(0.02, 0.35, s) * (1 - flach);
       U.uImmer.value = smooth(0.3, 1, this.vierer) * (1 - flach);

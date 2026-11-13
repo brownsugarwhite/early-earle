@@ -34067,6 +34067,7 @@ void main(){
     else if (t === "ohneseife") PAR.set("seife", "0");
     else if (t === "zeigen") PAR.set("vorfuehren", "formen");
     else if (t === "ohnestift") PAR.set("start", "0");
+    else if (/^kugel\d+(\.\d+)?$/.test(t)) PAR.set("kugel", t.slice(5));
   }
 
   // src/app.js
@@ -36594,11 +36595,12 @@ void main(){
     `
 precision highp float;
 uniform sampler2D uKoerper, uDeckung; uniform float uSchleier, uMaterial, uImmer; uniform vec3 uGrund;
+uniform vec3 uFrei; // Ansichten, die gerade nicht mitspielen (hinter der Kamera), z\xE4hlen f\xFCr die Schnittmenge als deckend
 uniform vec3 uLinse; // R\xF6ntgen (X halten): Mitte und Halbmesser in Bildpunkten; darin wird das Material durchsichtig
 varying vec2 vUv;
 void main(){
   vec4 k = texture2D(uKoerper, vUv);
-  vec3 d = texture2D(uDeckung, vUv).rgb;
+  vec3 d = max(texture2D(uDeckung, vUv).rgb, uFrei);
   float drei = min(d.r, min(d.g, d.b));
   float g = max(smoothstep(0.2, 0.85, drei) * uMaterial, uImmer);
   if (uLinse.z > 0.0) g *= 0.12 + 0.88 * smoothstep(uLinse.z - 1.5, uLinse.z, distance(gl_FragCoord.xy, uLinse.xy));
@@ -38320,7 +38322,6 @@ void main(){
   var WARM = [0.975, 0.948, 0.895];
   var L_BLICK = norm([-0.5, 0.74, 0.46]);
   var HEIM_AZ = -0.66;
-  var TAU0 = Math.tan(0.3 * Math.PI / 180);
   var ease2 = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
   var rotY = (v, a) => [v[0] * Math.cos(a) + v[2] * Math.sin(a), v[1], -v[0] * Math.sin(a) + v[2] * Math.cos(a)];
   var quatAus = (e, u) => {
@@ -38343,6 +38344,7 @@ void main(){
       this.letztAz = null;
       this.sigma = 1;
       this.rueckzug = 1;
+      this.kugelMass = Math.max(1.2, parseFloat(PAR.get("kugel")) || 3.4);
       this.sichtbarkeit = 1;
       this.grundMat.uniforms.uInnen.value.set(...GRUND);
       this.grundMat.uniforms.uAussen.value.set(...GRUND_RAND);
@@ -38380,7 +38382,7 @@ void main(){
         mesh.frustumCulled = false;
         const szene = new three_module_exports.Scene();
         szene.add(mesh);
-        this.tafeln[n] = { name: n, mesh, druck, deck, szene, kam: new three_module_exports.PerspectiveCamera(1, 1, 0.01, 100), schl: null, w: 0, maske: null };
+        this.tafeln[n] = { name: n, mesh, druck, deck, szene, kam: new three_module_exports.PerspectiveCamera(1, 1, 0.01, 100), schl: null, w: 0, teil: 0, maske: null };
       }
       this.goochMat = new three_module_exports.ShaderMaterial({
         vertexShader: papierVS,
@@ -38391,7 +38393,7 @@ void main(){
       this.zusammenMat = new three_module_exports.ShaderMaterial({
         vertexShader: vollbildVS,
         fragmentShader: koerperZusammenFS,
-        uniforms: { uKoerper: { value: null }, uDeckung: { value: null }, uSchleier: { value: 0 }, uMaterial: { value: 0 }, uImmer: { value: 0 }, uGrund: { value: new three_module_exports.Vector3(...GRUND) }, uLinse: z.U.uLinse },
+        uniforms: { uKoerper: { value: null }, uDeckung: { value: null }, uSchleier: { value: 0 }, uMaterial: { value: 0 }, uImmer: { value: 0 }, uFrei: { value: new three_module_exports.Vector3() }, uGrund: { value: new three_module_exports.Vector3(...GRUND) }, uLinse: z.U.uLinse },
         depthTest: false,
         depthWrite: false,
         transparent: true,
@@ -38574,7 +38576,6 @@ void main(){
       const C = [g.mitte[0], g.mitte[1], 0];
       const ext = [g.max[0] - g.min[0], g.max[1] - g.min[1], g.max[2] - g.min[2]];
       const R = 0.5 * Math.hypot(ext[0], ext[1], ext[2]);
-      const luecke = 0.3 * Math.max(ext[0], ext[1], ext[2]);
       const kp = vek(k.position);
       const v = norm(sub(kp, C));
       const X = new three_module_exports.Vector3(), Y = new three_module_exports.Vector3(), Z = new three_module_exports.Vector3();
@@ -38588,19 +38589,14 @@ void main(){
       const h0 = this.rahmenH0(g);
       const s = this.s;
       const sk = z.koerper.scale;
-      const dSeite = ((this.phase === "aufblasen" ? this.zBasis : g.max[2]) + luecke) * this.rueckzug;
-      const dFront = Math.max(g.max[0] - C[0], C[0] - g.min[0]) + luecke;
-      const dKugel = Math.max(dSeite, dFront);
+      const rKugel = this.kugelMass * R;
+      const Lk = Math.max(1e-3, dist(kp, T1));
       for (const n of NAMEN2) {
         const T = this.tafeln[n];
         const ax = ACHSE2[n];
-        const sg = this.viererZiel > 0.5 || this.vierer > 1e-3 ? n === "front" ? -1 : 1 : v[ax] >= 0 ? 1 : -1;
+        const sg = n === "front" ? -1 : 1;
         const A = [0, 0, 0];
         A[ax] = sg;
-        let D;
-        if (n === "top") D = sg > 0 ? C[1] - g.min[1] + 4e-3 * R : g.max[1] - C[1] + luecke;
-        else if (n === "front") D = dFront;
-        else D = dSeite;
         let u0 = [0, 1, 0];
         if (n === "top") {
           const l = Math.hypot(v[0], v[2]);
@@ -38612,11 +38608,11 @@ void main(){
         const rr = vek(new three_module_exports.Vector3(1, 0, 0).applyQuaternion(q));
         const Tz = lerp(C, T1, s);
         const h = h0 + (h1 - h0) * s;
-        const tau = Math.exp(Math.log(TAU0) + (Math.log(tau1) - Math.log(TAU0)) * s);
-        const L = h / tau;
+        const L = Lk;
+        const tau = h / L;
         const P = add(Tz, mul(e, L));
-        const wA = smooth(0.1, 0.32, Math.abs(v[ax]));
-        T.w = (wA + (1 - wA) * Math.max(smooth(0, 0.5, s), smooth(0, 0.6, this.vierer))) * this.sichtbarkeit;
+        T.teil = Math.max(smooth(-0.05, 0.25, dot(v, A)), smooth(0, 0.6, this.vierer));
+        T.w = T.teil * this.sichtbarkeit;
         if (T.w < 3e-3) continue;
         if (s >= 0.999) {
           T.maske = B.texture;
@@ -38645,7 +38641,7 @@ void main(){
           T.druck.uniforms.uTexel.value.set(1 / mw, 1 / mh);
         }
         T.druck.uniforms.uMaske.value = T.maske;
-        const delta = D + (dKugel - D) * smooth(0, 1, s);
+        const delta = rKugel * (n === "seite" ? this.rueckzug : 1);
         const Qc = sub(Tz, mul(e, delta));
         const hh = (L + delta) * tau, hw = hh * asp;
         const a = T.mesh.geometry.attributes.position, cl = T.mesh.geometry.attributes.clip;
@@ -39177,7 +39173,7 @@ void main(){
         B2.uR.value = Rr;
         B2.uFliese.value = fl;
         B2.uPsi.value = this.psi - HEIM_AZ;
-        B2.uSchatten.value = (0.07 + 0.09 * s) * (1 - flach * 0.6) * this.sichtbarkeit;
+        B2.uSchatten.value = (0.12 + 0.04 * s) * (1 - flach * 0.6) * this.sichtbarkeit;
         B2.uFlieseA.value = this.sichtbarkeit * this.flieseA();
         B2.uTexel.value = 1 / 256;
         const L = this.licht(), hh = 0.5 * (g.max[1] - g.min[1]);
@@ -39211,6 +39207,7 @@ void main(){
         const U = this.zusammenMat.uniforms;
         U.uKoerper.value = B.texture;
         U.uDeckung.value = A.texture;
+        U.uFrei.value.set(1 - this.tafeln.seite.teil, 1 - this.tafeln.front.teil, 1 - this.tafeln.top.teil);
         U.uSchleier.value = 0.4 * (1 - flach) * (1 - smooth(0, 0.6, s)) * this.sichtbarkeit;
         U.uMaterial.value = smooth(0.02, 0.35, s) * (1 - flach);
         U.uImmer.value = smooth(0.3, 1, this.vierer) * (1 - flach);

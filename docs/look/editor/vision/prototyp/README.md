@@ -14,6 +14,7 @@ Plan: [`../PLAN-4.md`](../PLAN-4.md).
 ```bash
 node bau.mjs src/einstieg/ecke.js dist/ecke.html "Ecke"
 # Standard: Start mit dem Stift auf leerem Papier. Ohne Stift: ?start=0&form=vogel (im Artefakt: #vogel-ohnestift)
+# Größe der Kugel (halbe Diagonalen des Wesens, Standard 3,4): ?kugel=6 (im Artefakt: #vogel-ohnestift-kugel6)
 node film2.cjs dist/ecke.html stift <film.mp4> 960 600                          # auch: start
 node film2.cjs dist/ecke.html tab <film.mp4> 960 600 25 20 "start=0&form=vogel"  # auch: drehen, achse, vier
 node pruefe.cjs dist/ecke.html <ordner> <schritte.js> 1280 800 "start=0&form=vogel"

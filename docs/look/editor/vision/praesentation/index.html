@@ -92,6 +92,8 @@
   .oeffnen.gross { padding: 16px 26px; font-size: var(--s1); }
   .oeffnen.hell { background: var(--papier); color: var(--tinte); box-shadow: inset 0 0 0 1.5px var(--tinte); }
   .oeffnen.hell:hover { box-shadow: inset 0 0 0 1.5px var(--tinte), 0 6px 18px -10px var(--tinte); }
+  .oeffnen.klein-knopf { padding: 8px 14px; font-size: var(--s-1); }
+  .groessen { gap: 8px 10px; }
   .voll { width: 14px; height: 14px; flex: none; background:
     linear-gradient(currentColor, currentColor) 0 0 / 5px 2px no-repeat, linear-gradient(currentColor, currentColor) 0 0 / 2px 5px no-repeat,
     linear-gradient(currentColor, currentColor) 100% 0 / 5px 2px no-repeat, linear-gradient(currentColor, currentColor) 100% 0 / 2px 5px no-repeat,
@@ -189,7 +191,7 @@
       <span class="platte p-y" aria-hidden="true">Ecke</span>
     </h1>
     <p class="satz">Seite, Front und Top liegen als Druckfarben an den Wänden einer Ecke, die man nicht sieht. Es sind echte Ansichten: Drehst du das Wesen, drehen sie sich mit und gleiten an der Wand einer unsichtbaren Kugel hinter das Wesen. Dort liegen sie deckungsgleich übereinander, und wo sich alle drei decken, entsteht auf dem Wesen sein Material.</p>
-    <p class="klein"><b>Neu nach deiner Rückmeldung:</b> Die Ansichten fliegen nicht mehr ins Wesen. Sie bleiben an der Kugelwand und gleiten auf ihr entlang; nur der Blick lässt sie am Ende im Wesen erscheinen.</p>
+    <p class="klein"><b>Neu nach deinen Rückmeldungen:</b> Die Ansichten fliegen nicht mehr ins Wesen. Sie hängen an der Wand einer deutlich größeren Kugel und gleiten auf ihr entlang; nur der Blick lässt sie am Ende im Wesen erscheinen. Es gibt nur noch drei feste Ansichten: die Seite von einer Seite, die Front von vorn, Top von oben. Nichts springt mehr auf eine andere Wand.</p>
   </header>
 
   <section class="held" aria-label="Film und Start">
@@ -197,6 +199,12 @@
     <div class="zeile">
       <button type="button" class="oeffnen gross" data-seite="ecke.html">Mit dem Stift beginnen <span class="voll" aria-hidden="true"></span></button>
       <button type="button" class="oeffnen hell" data-seite="ecke.html#vogel-ohnestift">Ecke mit dem Vogel <span class="voll" aria-hidden="true"></span></button>
+    </div>
+    <div class="zeile groessen">
+      <span class="mono">Kugel zum Ausprobieren</span>
+      <button type="button" class="oeffnen hell klein-knopf" data-seite="ecke.html#vogel-ohnestift-kugel2">kleiner ×2</button>
+      <button type="button" class="oeffnen hell klein-knopf" data-seite="ecke.html#vogel-ohnestift-kugel3.4">Standard ×3,4</button>
+      <button type="button" class="oeffnen hell klein-knopf" data-seite="ecke.html#vogel-ohnestift-kugel6">größer ×6</button>
     </div>
     <p class="klein">Leeres Papier, der Stift ist bereit: Klick setzt einen Punkt, Ziehen macht ihn glatt, ein Klick auf den ersten Punkt schließt, <kbd>Enter</kbd> bläst auf. Dann <kbd>Tab</kbd>, Leere ziehen, <kbd>4</kbd>. <kbd>?</kbd> führt vor, <kbd>Esc</kbd> verlässt das Vollbild, das × schließt.</p>
   </section>
@@ -244,7 +252,7 @@
         <div class="text">
           <span class="nr"><i style="background: var(--magenta);"></i>DREHEN · RAUM ODER WESEN</span>
           <h3>Zwei Arten zu drehen</h3>
-          <p>Im Raum dreht sich alles, die Ansichten bleiben an ihren Wänden. Liegt der Blick hinter dem Wesen, wandern die Wände auf die abgewandte Seite, immer dann, wenn sie gerade hochkant stehen; man sieht den Wechsel nicht. Nach <kbd>Tab</kbd> dreht sich nur das Wesen: Licht und Fliese bleiben stehen, die Schattierung wandert über die Haut. Kommt das Wesen nahe an eine Achse, gleiten die Ansichten wieder an ihre Wände; die Ansicht dieser Achse liegt dann genau dahinter, in ihre Ansicht gedreht.</p>
+          <p>Im Raum dreht sich alles, die Ansichten bleiben an ihrem Platz auf der Kugel. Jede sieht man, wenn man von ihrer Seite schaut: die Seite von der einen Seite, die Front von vorn, Top von oben. Schaut man von der anderen Seite, hängt sie hinter der Kamera und blendet weich aus. Nach <kbd>Tab</kbd> dreht sich nur das Wesen: Licht und Fliese bleiben stehen, die Schattierung wandert über die Haut. Kommt das Wesen nahe an eine Achse, gleiten die Ansichten wieder an ihre Wände; die Ansicht dieser Achse liegt dann genau dahinter, in ihre Ansicht gedreht.</p>
           <div class="wertung">
             <div><span>Dafür</span><span>Beide Gesten sind dieselbe Bewegung der Hand. Der Unterschied liegt im Bild, nicht in einer neuen Taste.</span></div>
             <div><span>Dagegen</span><span>Ob das Zusammenlaufen beim Drehen vom Winkel abhängen soll oder nur von Tab, kann man nur fühlen.</span></div>
@@ -366,7 +374,7 @@
         <thead><tr><th>Element</th><th>Raum (Drahtmodell)</th><th>Wesen (Material)</th><th>Achse (flach)</th><th>sichtbar</th></tr></thead>
         <tbody>
           <tr><td>Körper</td><td>Transparentpapier: hellt die Farben hinter sich auf</td><td>matt, kühl im Schatten, warm im Licht (Gooch 1998)</td><td>die Druckfarbe ist die Fläche</td><td>immer</td></tr>
-          <tr><td>Ansichten</td><td>Druckfarben an den Wänden, feine Kante in derselben Farbe</td><td>im Wesen, unter dem Material</td><td>die der Achse genau unter dem Drahtmodell</td><td>immer</td></tr>
+          <tr><td>Ansichten</td><td>Druckfarben an der Kugelwand, so groß wie das Wesen, feine Kante in derselben Farbe</td><td>im Wesen, unter dem Material</td><td>die der Achse genau unter dem Drahtmodell</td><td>immer</td></tr>
           <tr><td>Kiel</td><td>dunkle Tinte, doppelt so stark wie ein Spant</td><td>dasselbe</td><td>dasselbe</td><td>immer</td></tr>
           <tr><td>Spant, Form</td><td>feine Tinte, verdeckt hell</td><td>feine Tinte, verdeckt unsichtbar</td><td>feine Tinte</td><td>immer</td></tr>
           <tr><td>Umriss</td><td>feine Tinte</td><td>dasselbe</td><td>dasselbe</td><td>immer</td></tr>
