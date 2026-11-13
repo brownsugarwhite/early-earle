@@ -558,6 +558,112 @@ hatte nur zwei Punkte und verzog die Kugel zur Zitrone (jetzt Punkte, wo sie nö
 den ganzen Kopf (jetzt nur im Maul). „Fressen“ am geformten Maul gibt bis Etappe 2 eine Meldung. In Florians Fenster (5194)
 ist davon nichts.
 
+**Zweite Fassung nach Florians Blick ins Bau-Fenster (13.11., 20:45 Uhr): einfacher, animiert, und die Kanten neu gefasst.**
+Florian hat sich Etappe 1 angesehen, zwei eigene Modelle gebaut und dreimal geschrieben. Wörtlich:
+
+1. Zum gebauten Maul, mit `wesen/simple_mouth.eewesen`: „Grundsätzlich gut. Die Form im Maul ist etwas kompliziert und die
+   zusätzlichen Punkte brauchen wir eigentlich nicht. Die Zitronenform ist das logische Ergebnis und kein Fehler, wenn ich keine
+   entsprechenden Linien vorher gezogen habe. Das Grundproblem liegt darin, dass wir Kanten falsch definieren. Im Moment kann
+   ein Punkt eine Kante sein oder nicht und auch eine Linie ist entweder Kante oder nicht. An einer Kreuzung kann ein Punkt mit
+   mehr als 2 Handles in eine Richtung knicken, aber in eine andere rund verlaufen. In meinem Modell simple_mouth habe ich
+   keinerlei Extrapunkte im Innenbereich gesetzt. Nur die Handles zum Innenraum an den beiden Lippenkreuzungen zeigen von der
+   Seite deutlich ins Maulinnere, ca. 90 bis 100 Grad von der Lippenkante von der Seite. Es bildet sich automatisch eine schöne
+   abgerundete Maultasche. Das ist eine gute Basis. Ich kann Punkte adden und Innenraum wie Lippen bearbeiten. Die Lippenkante
+   soll standardmäßig hart sein. Soll aber wie alle anderen Kanten mit K auch rund gemacht werden können. Momentan wird immer
+   eine ganze Linie zur Kante … das kann man machen, aber wenn man einzelne Punkte knickt, kann es sein, dass auf einer Linie
+   auch ein Übergang zwischen zwei Punkten von hart zu rund ist, wenn einer der Punkte geknickt ist und der andere nicht.
+   Dargestellt ist das dann durch eine Verjüngung. Knicke sollen immer 3px Breite haben, Linien an runden Punkten sollen so dünn
+   und fein wie möglich sein. 0.5px, wenn das geht.“
+2. Mit `wesen/simple_mouth_more simple.eewesen`: „[…] habe ich ein noch einfacheres Maul ausprobiert. Es soll die Basis sein
+   und funktioniert sogar ganz ohne Punkt. Nur je ein Mundwinkel. Bei der Maulkante ohne Punkte muss dann eingestellt sein, dass
+   das Maul vom Lippenstart von der Seite mit je 90 bis 100 Grad eingeknickt ist, auch ohne Punkt, und beim Mundwinkel ca. 70
+   Grad nach innen abknicken. Dass sich dabei die Form verzieht, finde ich ohne Haltelinien sogar gut. Es sollte nur schön
+   organisch animiert sein und nicht nach ‚Maul formen‘ einfach in die neue Form springen. Bei mehr Haltelinien ist die Form ja
+   sowieso stabil.“
+3. „Und eine letzte Klarstellung. Ein Maul soll auch nur eine Linie sein können. Wenn ich nur eine Linie einzeichne, ist das
+   wie ein an den Mundwinkeln gefalteter Edgeloop, dessen Lippen exakt aufeinander liegen. Im geschlossenen Zustand kann ich
+   dann nur die Linie bearbeiten, nicht beide Kiefer (also nur beide Lippen zusammen). Manche Wesen haben im geschlossenen
+   Zustand kein Maul. Dann muss es quasi unsichtbar sein. Wenn eine Anfangskugel keine Linien hat, darf sie sich organisch
+   verformen. Sobald Mittellinien an allen Seiten gesetzt sind, soll es stabil die Form halten (das tut es in meinen Tests
+   (einigermaßen)).“
+
+**An seinen Modellen gemessen** (`form-linien.ts`, liest eine gesicherte Form wie das Fenster):
+
+| | „simple_mouth“ | „simple_mouth_more simple“ |
+| --- | --- | --- |
+| Linien | Maullinie (Ring, Kante) und Mittellinie | nur die Maullinie (Ring, Kante) |
+| Punkte | Mundwinkel; die Mittellinie hat nur die zwei Punkte an den Lippen | nur der Mundwinkel |
+| Mittellinie an den Lippen | knickt um 95,2° und 93,8°; ihr Griff ins Maul ist 174 und 134 lang | (keine) |
+| Lippenlinie an der Mitte | läuft rund durch (Griffe quer zur Mittelebene) | läuft rund durch |
+| Knick der Haut an den Lippen, von der Seite | 95,2° und 96,8° (wie die Griffe) | 126,8° und 116,4° (ergibt sich) |
+| Tiefe der Tasche (Anteil des Wegs zum Mundwinkel) | 0,54 | (weit offenes Maul) |
+| Knick der Maullinie am Mundwinkel | 161° | 92° (von der Seite 77°, von vorn 70°) |
+
+**Gebaut im Bau-Fenster (5197), in seinem Fenster (5194) ist davon nichts:**
+- **„Maul formen“, zweite Fassung** (`maulFormen.ts`, Test `maulFormen.test.ts`, Proben `form-maul-einfach.ts` und
+  `form-maul-formen-fenster.mjs`): Die Maullinie wird eine Kante, wie mit K. Die Mittellinie läuft durch beide Lippen (fehlt
+  sie, wird sie angelegt, nur mit den zwei Punkten an den Lippen). An beiden Lippen dreht sich ihr Griff nach innen in Stufen,
+  bis sie dort um 95° knickt; seine Länge ist so gewählt, dass die Tasche gut halb so tief reicht wie der Weg zum Mundwinkel
+  (0,55; an seinem Modell 0,54). Die Lippenlinie läuft an diesen Punkten weiter rund durch. Im Maul kommt kein Punkt dazu;
+  Querlinie und Durchstanzen sind weg. Eine Mittellinie, die es schon gibt, behält ihren Griff nach außen: Der Körper bleibt
+  (an der Kugel mit einer Mittellinie aus vier Punkten bewegt er sich hinter dem Maul um höchstens 3). Ohne weitere Linien wird
+  die Kugel zur Zitrone (bis 25 neben der Kugel): Das ist die Form einer Mittellinie mit zwei Punkten.
+- **Animiert:** Der Kern rechnet in Schritten (`maulFormenSchritte`, ein Zwischenstand je Runde), das Fenster zeigt sie (je Bild
+  zwei Runden; an der Startkugel rund 2 s und 100 Bilder; `&maulRunden=<n>` stellt das Tempo). So lange nimmt es keine Eingaben
+  an. Läuft die Rechnung davon, bricht das Formen ab und die Form steht wie davor (Sicherung: das Netz wächst über alle Maßen,
+  oder die Lagen sind nicht endlich).
+- **Linien:** am Knick 3 Bildpunkte, an runden Punkten ein halber (im 3D mindestens ein Gerätepunkt), dazwischen verjüngt
+  (`haerteBei` im Kern: an den Stützstellen der Kante 1 oder 0, dazwischen gleichmäßig; in den Blättern eine Fläche statt eines
+  Strichs, im 3D Bänder mit Breite je Punkt). Eine gewählte Linie ist 1,25 Bildpunkte breit. Probe
+  `form-kante-verjuengung-fenster.mjs`: ein Ring mit drei Punkten, K am mittleren: 3,00 Bildpunkte am Punkt, 0,50 an den
+  Nachbarn.
+
+**Gemessen: Ohne Mittellinie ist der Knick an den Lippen nicht eingestellt.** Mit `?maulMitte=0` (im Kern `ohneMitte`) wird die
+nur zum Formen angelegte Mittellinie am Ende wieder entfernt; es bleibt die Maullinie mit ihrem Mundwinkel, wie in seinem
+zweiten Modell. Was die heutige Rechnung dann daraus macht, hängt am Netz:
+
+| Kugel, schmale Form ums Maul | Knick an den Lippen | Tasche | hinter dem Maul bewegt |
+| --- | --- | --- | --- |
+| mit Mittellinie, Netz des Fensters (1 606 Punkte) | 98,5° und 99,2° | 0,45 | bis 28 (Zitrone) |
+| mit Mittellinie, feineres Netz (2 492 Punkte) | 97,7° und 97,7° | 0,47 | bis 21 |
+| ohne Mittellinie, Netz des Fensters | 93,2° und 100,2° | 0,82 | bis 57 |
+| ohne Mittellinie, feineres Netz | 39,1° und 68,2° | 0,23 | bis 46 |
+
+Ein einzelner Ring bestimmt die Form in der heutigen Rechnung nicht (das steht auch in `ruheNoetig` im Fenster). An einer Kante
+ergibt sich der Winkel aus der Form; einstellen lässt er sich heute nur über die Griffe einer kreuzenden Linie. Deshalb bleibt
+die Mittellinie im Standard stehen. **Sein Satz „muss eingestellt sein […] auch ohne Punkt“ verlangt eine Kante, die ihren
+Winkel selbst trägt:** Das ist neue Rechnung (unten, „Kanten neu“).
+
+**Gemessen und zurückgenommen: K macht die Lippen eines geformten Mauls noch nicht rund.** Die Kante der Lippen ist der Knick
+der Mittellinie; solange sie dort knickt, bleibt die Lippenlinie hart. Der Versuch, die kreuzende Linie bei „Kante aus“ von
+selbst glatt zu machen, hat an der Mittellinie mit zwei Punkten den ganzen Körper umgestülpt (ihre langen Griffe drehen sich um
+47°). Jetzt bleibt die Form stehen, und die Meldung sagt, warum die Kante bleibt.
+
+**Kanten neu, wie ich Florian verstehe (zur Bestätigung, noch nicht gebaut):**
+1. **Der Knick gehört zum Punkt, je Richtung.** An einer Kreuzung hat ein Punkt vier Griffe, zwei je Linie. Jede Linie knickt
+   dort für sich oder läuft rund durch. Wo die eine knickt, ist die andere dort eine Kante. (Das rechnet der Kern seit dem 06.11.
+   schon so: `knickKnoten`. Das Fenster schaltet Ecke und glatt an einer Kreuzung aber für alle Linien zusammen und macht beim
+   Ziehen eines Griffs den glatten Nachbarn zur Ecke; das wäre zu trennen.)
+2. **Zwischen zwei Punkten läuft der Knick aus,** gezeigt als Verjüngung (gebaut). In der Rechnung ist das ganze Stück Kante,
+   und der Knick läuft in der Form aus (seit dem 06.11.; wie gleichmäßig, ist nicht gemessen).
+3. **Eine Kante trägt ihren Winkel selbst, auch ohne Punkt und ohne kreuzende Linie:** an der Maulkante 90 bis 100° am
+   Lippenstart und rund 70° am Mundwinkel, dazwischen gleitend; „rund“ ist der Winkel 0. Dann braucht das Maul keine
+   Mittellinie, K hat an jeder Kante einen klaren Sinn, und der Übergang von hart zu rund ist ein Winkel, der ausläuft.
+   **Ich teste es** (kleiner Beweis im Kern, rund ein halber Tag): Die erste Reihe der Haut innen an der Kante bekommt die Ebene
+   vorgegeben, in der sie die Kante verlässt (dieselbe Zeile, die es für weiche Linien als „Richtung“ schon gibt). **Kriterium:**
+   Kugel mit Maullinie, ohne weitere Linien, auf zwei Netzen: Knick an beiden Lippen 90 bis 100°, am Mundwinkel 65 bis 75°, auf
+   beiden Netzen höchstens 5° auseinander; die Haut steht, nichts schlägt um. Hält es nicht, bleibt die Mittellinie die Stelle,
+   an der man den Winkel einstellt.
+4. **Ein Maul aus nur einer Linie** (geschlossen: die Lippen liegen aufeinander, die Linie ist bearbeitbar, das Maul ist
+   unsichtbar; es öffnet sich erst mit dem Kiefer): gehört zu Etappe 2 (Kieferknochen) und kommt dort als eigener Punkt.
+5. **Stabil mit Mittellinien an allen Seiten:** an der Kugel mit einer Mittellinie aus vier Punkten gemessen (oben: der Körper
+   bleibt). Ohne Linien darf sie sich verformen.
+
+**Offene Fragen an Florian:** (a) Sind die 70° am Mundwinkel der Knick der Haut quer über die Maullinie (wie die 90 bis 100°
+vorn), oder der Knick der Maullinie selbst, von vorn gesehen (an seinem zweiten Modell 70°)? (b) Soll „Maul formen“ den
+Mundwinkel nach innen ziehen wie in seinem zweiten Modell, oder bleibt er, wo die Linie ihn hat? (c) Reihenfolge: erst der
+Beweis „Kante mit Winkel“, oder erst die Kieferknochen (Etappe 2) an der Fassung mit Mittellinie?
+
 ### Schritt 7: Auswahl wie in Blender (2 bis 3 Tage)
 
 - **Was du danach siehst:** Du wählst Punkte, **Kanten** (das Linienstück zwischen zwei Punkten) und **Flächen** (das Feld
