@@ -458,7 +458,8 @@ body {
 .blatt .kurve {
   fill: none;
   stroke: #0e9f8e;
-  stroke-width: 1.6px;
+  /* an runden Punkten so fein wie möglich (Florian, 13.11.); wo die Linie hart ist, liegt die verjüngte Kante darüber */
+  stroke-width: 0.5px;
   vector-effect: non-scaling-stroke;
   stroke-linejoin: round;
   pointer-events: none;
@@ -466,7 +467,7 @@ body {
 
 .blatt .kurve.gewaehlt {
   stroke: #0a5f56;
-  stroke-width: 2.4px;
+  stroke-width: 1.25px;
 }
 
 .blatt .kurve.spiegel {
@@ -575,6 +576,17 @@ body {
 
 .blatt .kante-hart.spiegel {
   stroke-opacity: 0.4;
+}
+
+/* Kante mit Verjüngung: 3 px am Knick, zum runden Punkt hin schmaler (eine Fläche, kein Strich) */
+.blatt .kante-band {
+  fill: var(--linie);
+  stroke: none;
+  pointer-events: none;
+}
+
+.blatt .kante-band.spiegel {
+  fill-opacity: 0.4;
 }
 
 .blatt .kpunkt.kreuz {

@@ -16,6 +16,7 @@ import {
   griffeBei,
   griffeUebernehmen,
   griffZiehen,
+  haerteBei,
   kanteAn,
   kanteBei,
   istEcke,
@@ -551,8 +552,19 @@ describe('Bézier-Griffe und Ecken', () => {
     expect(hd[naechste(waag, (w.s + q.s) / 2)]).toBe(1);
     expect(hd[naechste(waag, q.s)]).toBe(1);
     expect(hd[naechste(waag, (q.s + r.s) / 2)]).toBe(0);
+    // die Härte für die Anzeige (13.11., Florian: „ein Übergang zwischen zwei Punkten von hart zu rund […] dargestellt […] durch eine
+    // Verjüngung“): am Knick 1, zum runden Punkt hin gleichmäßig auf 0, und nie über 0, wo die Rechnung keine Kante hat
+    const hh = haerteBei(waag, loops);
+    expect(hh[naechste(waag, w.s)]).toBeGreaterThan(0.9);
+    expect(Math.abs(hh[naechste(waag, (w.s + q.s) / 2)]! - 0.5)).toBeLessThan(0.1);
+    expect(hh[naechste(waag, q.s)]).toBeLessThan(0.1);
+    expect(hh[naechste(waag, (q.s + r.s) / 2)]).toBe(0);
+    hh.forEach((x, j) => {
+      if (x > 0) expect(hd[j]).toBe(1);
+    });
     // ohne die anderen Loops gilt nur die eigene Kante
     expect(Math.max(...kanteBei(waag))).toBe(0);
+    expect(Math.max(...haerteBei(waag))).toBe(0);
   });
 
   it('Harter Ring als Ganzes hinausgeschoben: der kreuzende Ring folgt dem Grat mit einer Ecke, glatt flacht er ihn ab', () => {

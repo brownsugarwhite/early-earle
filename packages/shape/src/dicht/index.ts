@@ -12,7 +12,7 @@ export { type Pose, type PoseZiel, type PoseZug, RUHE, ZUG_MAX, posePunkt, poseW
 export { dichtNachLage, umgeklappt } from './netzpruefung';
 export { type HautAuftrag, type HautGewichte, type HautOptionen, type HautVorlage, halbMoeglich, vorlageAusSystemen } from './ausKurven';
 export { type Einbettung, einbetten, einbettungAuswerten } from './einbettung';
-export { type MaulFormenOptionen, type MaulGeformt, maulFormen } from './maulFormen';
+export { type MaulFormenOptionen, type MaulGeformt, type MaulStand, maulFormen, maulFormenSchritte } from './maulFormen';
 export { type FlacheZeilen, type ZerlegungsDaten, flacheZeilen, systemAusDaten, zeilenAusFlach, zerlegungsDaten } from '../loeser/zerlegung';
 export { type AnsichtName, type GleichesNetz, type GleichOptionen, type Zeichnung, type Zeichnungen, formAusAnsichten, formAusTeilen } from './gleich';
 export { type Einbuchtung, type Teilung, anEinbuchtungTeilen, anNahtTeilen, einbuchtungen } from './teile';
@@ -90,6 +90,7 @@ export {
   hatPfad,
   hautLagen,
   kanteAn,
+  haerteBei,
   kanteBei,
   kantenKnicken,
   istEcke,

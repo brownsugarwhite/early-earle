@@ -65,6 +65,7 @@ import {
   type Haut,
   hatGriffe,
   hatPfad,
+  haerteBei,
   kanteBei,
   kantenKnicken,
   istEcke,
@@ -84,7 +85,7 @@ import {
   vorlageAusSystemen,
   hinterDerMitte,
   mitteFestmachen,
-  maulFormen,
+  maulFormenSchritte,
   mitteKreuzungen,
   maulAmLoop,
   mittlereKante,
@@ -1240,13 +1241,21 @@ knopfPose.addEventListener('click', () => {
 /**
  * Das Maul am gewählten Ring formen (13.11., Schritt 6). Florian: „Das Maul soll aber an einem gewählten Edgeloop immer noch
  * automatisch entstehen. […] Im Grunde machst du ja nur die Kante hart und verbindest von der Seite die gegenüberliegenden Seiten.
- * […] Das Maul ist dann einfach eine Form wie von Hand gemacht, nur automatisiert.“ Und: „Es soll aussehen, als wäre der Edgeloop
- * von der Seitenansicht durchgestanzt.“ Gerechnet wird im Kern (`maulFormen`): Es wird nur an Linien gezogen, die Haut folgt in
- * Schritten; nichts wird geschnitten oder eingesetzt. Dauert an einer kleinen Form rund eine Sekunde; so lange steht das Fenster.
+ * […] Das Maul ist dann einfach eine Form wie von Hand gemacht, nur automatisiert.“ Zweite Fassung nach seinem Modell
+ * „simple_mouth“ (13.11. abends): keine Punkte im Maul, die Lippen hart, die Mittellinie knickt an beiden Lippen um 95° ins Maul.
+ * Gerechnet wird im Kern (`maulFormenSchritte`): Es wird nur an Griffen gedreht, die Haut folgt in Schritten; nichts wird
+ * geschnitten oder eingesetzt. Das Fenster zeigt die Schritte (Florian: „Es sollte nur schön organisch animiert sein und nicht nach
+ * ‚Maul formen‘ einfach in die neue Form springen“); so lange nimmt es keine Eingaben an.
+ * `?maulMitte=0`: Eine Mittellinie, die nur zum Formen angelegt wurde, am Ende wieder entfernen (sein Modell „simple_mouth_more
+ * simple“; der Knick an den Lippen ist dann nicht mehr eingestellt, er ergibt sich).
  */
-let maulFormt = false;
+const MAUL_OHNE_MITTE = new URLSearchParams(location.search).get('maulMitte') === '0';
+/** je Bild höchstens so viele Runden und so lange weiterrechnen (ms), dann zeigen: An der Startkugel dauert das Formen so rund 2 s */
+const MAUL_BILD_MS = 12;
+const MAUL_BILD_RUNDEN = Number(new URLSearchParams(location.search).get('maulRunden') ?? 2);
+let maulLauf: { lauf: ReturnType<typeof maulFormenSchritte>; id: number; vorher: Schnappschuss; nAlt: number; t0: number } | null = null;
 function maulFormenGewaehlt(): void {
-  if (zug || maulFormt) return;
+  if (zug || maulLauf) return;
   if (grund) {
     meldung = 'Das Maul wird in der Grundform geformt (erst „Fressen“ aus)';
     statusZeigen();
@@ -1258,53 +1267,92 @@ function maulFormenGewaehlt(): void {
     statusZeigen();
     return;
   }
-  if (l.maulGeformt) {
-    meldung = 'An dieser Linie ist das Maul schon geformt (⌘Z führt zurück)';
-    statusZeigen();
-    return;
-  }
-  maulFormt = true;
-  meldung = 'Das Maul wird geformt …';
-  statusZeigen();
-  // erst die Meldung zeigen, dann rechnen
-  setTimeout(() => {
-    maulFormt = false;
-    if (zug || grund || loops[loopNr(l.id)] !== l) return;
-    const t0 = performance.now();
-    // das Maul der Anzeige an dieser Linie (Fläche weggeschnitten, Inneres eingesetzt) entfällt: Seine Fläche wird jetzt die Form
-    const maulVorher = maul;
-    if (maul?.id === l.id) maul = null;
-    const r = maulFormen(haut, loops, l.id, {
+  // der Stand davor, samt dem Maul der Anzeige an dieser Linie (Fläche weggeschnitten, Inneres eingesetzt): Es entfällt, seine
+  // Fläche wird jetzt die Form
+  const vorher = schnappschuss();
+  if (maul?.id === l.id) maul = null;
+  maulLauf = {
+    lauf: maulFormenSchritte(haut, loops, l.id, {
       naechsteId,
       naechsteKreuzung,
       gewichte: GEWICHTE,
       loeser: RICHTUNG_OPT,
+      ohneMitte: MAUL_OHNE_MITTE,
       // verfeinert wird unterwegs wie nach jedem Zug (ohne die Angabe „verborgen“: Das Netz ändert sich dabei)
       ...(VERDICHTEN ? { verdichten: { maxKante: 1.75 * MK, opt: { ...verdichtenOptionen(), verborgen: null } } } : {}),
-    });
-    if ('fehler' in r) {
-      maul = maulVorher;
-      meldung = `Maul formen geht so nicht: ${r.fehler}`;
-      statusZeigen();
-      return;
-    }
-    const jetzt = maul;
-    maul = maulVorher;
-    zurueck.push(schnappschuss());
-    maul = jetzt;
-    const nAlt = haut.n;
-    haut = r.haut;
-    loops = r.loops;
-    naechsteId = r.naechsteId;
-    naechsteKreuzung = r.naechsteKreuzung;
-    netzGewachsen(nAlt, r.alt, null);
-    auswahl = [{ l: l.id, i: -1 }];
-    meldung = `Maul geformt (${((performance.now() - t0) / 1000).toFixed(1)} s${r.steht ? '' : '; die Haut steht noch nicht'}): Die Lippen sind eine Kante, dazu kamen die Mittellinie im Maul und eine Linie durch die Mundwinkel · ⌘Z führt zurück`;
-    geometrieNeu();
-    ruheNoetig();
-    reglerZeigen();
-    allesZeigen();
-  }, 30);
+    }),
+    id: l.id,
+    vorher,
+    nAlt: haut.n,
+    t0: performance.now(),
+  };
+  // was der Hintergrund für den Stand davor noch setzen wollte, entfällt
+  ruheOffen = null;
+  document.body.style.pointerEvents = 'none';
+  meldung = 'Das Maul wird geformt …';
+  statusZeigen();
+}
+
+/** Ein Bild der Animation: so lange weiterrechnen, wie das Bild Zeit hat, dann den Zwischenstand zeigen; am Ende übernehmen. */
+function maulSchritt(): void {
+  const m = maulLauf;
+  if (!m) return;
+  const abbrechen = (text: string): void => {
+    maulLauf = null;
+    document.body.style.pointerEvents = '';
+    wiederherstellen(m.vorher);
+    meldung = text;
+    statusZeigen();
+  };
+  let st: ReturnType<typeof m.lauf.next>;
+  let netzNeu = false;
+  let stand: { haut: Haut; loops: Loop[] } | null = null;
+  try {
+    const t = performance.now();
+    let zahl = 0;
+    do {
+      st = m.lauf.next();
+      zahl++;
+      if (!st.done) {
+        netzNeu ||= st.value.netzNeu;
+        stand = st.value;
+      }
+    } while (!st.done && zahl < MAUL_BILD_RUNDEN && performance.now() - t < MAUL_BILD_MS);
+  } catch (e) {
+    console.error('Fehler beim Formen des Mauls', e);
+    abbrechen(`Maul formen: Beim Rechnen ist ein Fehler aufgetreten (${e instanceof Error ? e.message : String(e)}). Die Form steht wieder wie davor.`);
+    return;
+  }
+  if (!st.done) {
+    if (!stand) return;
+    haut = stand.haut;
+    loops = stand.loops;
+    if (netzNeu) geometrieNeu();
+    hautZeigen();
+    baenderZeigen();
+    for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
+    return;
+  }
+  const r = st.value;
+  if ('fehler' in r) {
+    abbrechen(`Maul formen geht so nicht: ${r.fehler}`);
+    return;
+  }
+  maulLauf = null;
+  document.body.style.pointerEvents = '';
+  zurueck.push(m.vorher);
+  haut = r.haut;
+  loops = r.loops;
+  naechsteId = r.naechsteId;
+  naechsteKreuzung = r.naechsteKreuzung;
+  netzGewachsen(m.nAlt, r.alt, null);
+  auswahl = [{ l: m.id, i: -1 }];
+  const dazu = r.mitte < 0 ? '' : r.mitteNeu ? ', dazu kam die Mittellinie: Sie knickt an beiden Lippen ins Maul' : ', die Mittellinie knickt an beiden Lippen ins Maul';
+  meldung = `Maul geformt (${((performance.now() - m.t0) / 1000).toFixed(1)} s${r.steht ? '' : '; die Haut steht noch nicht'}): Die Lippen sind eine Kante${dazu} · ⌘Z führt zurück`;
+  geometrieNeu();
+  ruheNoetig();
+  reglerZeigen();
+  allesZeigen();
 }
 knopfMaul?.addEventListener('click', maulFormenGewaehlt);
 
@@ -1658,7 +1706,9 @@ function glattInRuhe(): void {
   if (gerade) baenderZeigen();
 }
 
-function bandGeometrie(linien: readonly { p: readonly V3[]; breite: number }[]): BufferGeometry {
+/** ein Band: Punkte und Breite in Bildpunkten (eine Zahl oder eine je Punkt: Dazwischen läuft sie gleichmäßig) */
+type Band = { p: readonly V3[]; breite: number | readonly number[] };
+function bandGeometrie(linien: readonly Band[]): BufferGeometry {
   const pos: number[] = [];
   const anderer: number[] = [];
   const seite: number[] = [];
@@ -1670,16 +1720,18 @@ function bandGeometrie(linien: readonly { p: readonly V3[]; breite: number }[]):
       const a = l.p[i]!;
       const b = l.p[i + 1]!;
       const v = pos.length / 3;
-      for (const [p, q, r] of [
-        [a, b, 1],
-        [b, a, -1],
+      const wa = typeof l.breite === 'number' ? l.breite : l.breite[i]!;
+      const wb = typeof l.breite === 'number' ? l.breite : l.breite[i + 1]!;
+      for (const [p, q, r, w] of [
+        [a, b, 1, wa],
+        [b, a, -1, wb],
       ] as const) {
         for (const sd of [1, -1]) {
           pos.push(p.x, p.y, p.z);
           anderer.push(q.x, q.y, q.z);
           seite.push(sd);
           richtung.push(r);
-          breite.push(l.breite);
+          breite.push(w);
         }
       }
       ind.push(v, v + 1, v + 2, v + 1, v + 3, v + 2);
@@ -1749,20 +1801,31 @@ function zwischenPunkte(k: readonly V3[] | undefined, a: V3, b: V3, sp: boolean)
   });
 }
 
+/**
+ * Breite der Linien in Bildpunkten (Florian, 13.11.: „Knicke sollen immer 3px Breite haben, Linien an runden Punkten sollen so dünn
+ * und fein wie möglich sein. 0.5px wenn das geht“): am Knick 3, an runden Punkten ein halber Bildpunkt (im 3D mindestens ein
+ * Gerätepunkt: schmaler zerfällt das Band), dazwischen verjüngt nach der Härte (`haerteBei`). Eine gewählte Linie ist etwas kräftiger.
+ */
+const BREITE_KNICK = 3;
+const BREITE_FEIN = 0.5;
+const BREITE_GEWAEHLT = 1.25;
+const breiteBei = (haerte: number, fein: number): number => fein + (BREITE_KNICK - fein) * haerte;
+
 let baenderMs = 0;
 function baenderZeigen(): void {
   const baenderT0 = performance.now();
   const lagen = aktuelleLagen();
-  const normal: { p: V3[]; breite: number }[] = [];
-  const gewaehlt: { p: V3[]; breite: number }[] = [];
-  const lippe: { p: V3[]; breite: number }[] = [];
-  // Kanten: je Strecke ein breites Band (Spiegelhälfte und Zwilling ebenso)
-  const hart: { p: V3[]; breite: number }[] = [];
+  const fein = Math.max(BREITE_FEIN, 1 / renderer.getPixelRatio());
+  const normal: Band[] = [];
+  const gewaehlt: Band[] = [];
+  const lippe: Band[] = [];
+  // Kanten: je Strecke ein Band, so breit, wie die Linie dort hart ist (Spiegelhälfte und Zwilling ebenso)
+  const hart: Band[] = [];
   loops.forEach((l, li) => {
     const L = lagen[li]!;
     const gew = auswahl.some((w) => w.l === l.id);
     const ziel = gew ? gewaehlt : maul?.id === l.id ? lippe : normal;
-    const hd = kanteBei(l, loops);
+    const hd = haerteBei(l, loops);
     const n = l.proben.length;
     // glatte Anzeige mit verfeinerter Haut: Das Band folgt zwischen zwei Proben dem Pfad (gerade Strecken lägen neben der gewölbten
     // Haut); ohne Stufe (große Form im Zug) läuft es gerade wie die Kanten der Haut
@@ -1773,7 +1836,7 @@ function baenderZeigen(): void {
       const pkt = Array.from({ length: n }, (_, i) => zeigeLage(L, i, sp));
       let lauf: V3[] = [];
       const schluss = () => {
-        if (lauf.length > 1) ziel.push({ p: lauf, breite: gew ? 3 : 2 });
+        if (lauf.length > 1) ziel.push({ p: lauf, breite: gew ? Math.max(BREITE_GEWAEHLT, fein) : maul?.id === l.id ? 2 : fein });
         lauf = [];
       };
       for (let j = 0; j < (l.art === 'ring' ? n - 1 : n); j++) {
@@ -1785,7 +1848,10 @@ function baenderZeigen(): void {
         const zw = zwischenPunkte(stueck.get(j * n + k), pkt[j]!, pkt[k]!, sp);
         if (lauf.length === 0) lauf.push(pkt[j]!);
         lauf.push(...zw, pkt[k]!);
-        if (hd[j] && hd[k]) hart.push({ p: [pkt[j]!, ...zw, pkt[k]!], breite: 4 });
+        if (hd[j]! > 0 || hd[k]! > 0) {
+          const p = [pkt[j]!, ...zw, pkt[k]!];
+          hart.push({ p, breite: p.map((_, i) => breiteBei(hd[j]! + ((hd[k]! - hd[j]!) * i) / (p.length - 1), fein)) });
+        }
       }
       schluss();
     }
@@ -1844,6 +1910,38 @@ function pfadKurven(a: Ansicht, l: Loop, sp: boolean, li = -1): string {
     d += ` C ${B(plus3(ort(A), neu?.[i]?.aus ?? A.aus!))} ${B(plus3(ort(E), neu?.[k]?.ein ?? E.ein!))} ${B(ort(E))}`;
   }
   return zu ? `${d} Z` : d;
+}
+
+/**
+ * Fläche um einen Streckenzug im Blatt, mit Breite je Punkt (in Blatteinheiten): der Umriss als Pfad, an beiden Enden rund. So läuft
+ * eine Kante vom Knick zum runden Punkt gleichmäßig schmaler (ein Strich hat in SVG nur eine Breite).
+ */
+function kantenFlaeche(p: readonly (readonly [number, number])[], breite: readonly number[]): string | null {
+  const n = p.length;
+  if (n < 2) return null;
+  const links: string[] = [];
+  const rechts: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const a = p[Math.max(0, i - 1)]!;
+    const b = p[Math.min(n - 1, i + 1)]!;
+    let tx = b[0] - a[0];
+    let ty = b[1] - a[1];
+    const tl = Math.hypot(tx, ty);
+    if (tl < 1e-12) {
+      tx = 1;
+      ty = 0;
+    } else {
+      tx /= tl;
+      ty /= tl;
+    }
+    const r = breite[i]! / 2;
+    links.push(`${(p[i]![0] - ty * r).toFixed(3)} ${(p[i]![1] + tx * r).toFixed(3)}`);
+    rechts.push(`${(p[i]![0] + ty * r).toFixed(3)} ${(p[i]![1] - tx * r).toFixed(3)}`);
+  }
+  const r0 = (breite[0]! / 2).toFixed(3);
+  const r1 = (breite[n - 1]! / 2).toFixed(3);
+  // links entlang hin, Halbkreis am Ende, rechts entlang zurück, Halbkreis am Anfang
+  return `M ${links.join(' L ')} A ${r1} ${r1} 0 0 0 ${rechts[n - 1]} L ${rechts.slice(0, n - 1).reverse().join(' L ')} A ${r0} ${r0} 0 0 0 ${links[0]} Z`;
 }
 
 /** Mitte der Auswahl (für den Einflusskreis) */
@@ -1934,21 +2032,44 @@ function blattZeichnen(a: Ansicht): void {
       el.append(t);
     });
   });
-  // Kanten schwarz und breit
+  // Kanten schwarz: je zusammenhängendem harten Stück eine Fläche, 3 Bildpunkte breit am Knick, zum runden Punkt hin verjüngt
   loops.forEach((l, li) => {
-    const hd = kanteBei(l, loops);
+    const hd = haerteBei(l, loops);
+    if (!hd.some((x) => x > 0)) return;
     const L = lagen[li]!;
     const n = l.proben.length;
+    const zu = l.art !== 'ring';
     for (const m of a === 'seite' || l.art === 'mitte' ? [false] : [false, true]) {
-      for (let j = 0; j < (l.art === 'ring' ? n - 1 : n); j++) {
-        const k = (j + 1) % n;
-        if (!hd[j] || !hd[k]) continue;
+      const ort = (j: number): [number, number] => {
         const p = lageAus(L, j);
-        const q = lageAus(L, k);
-        const [x1, y1] = imBlatt(a, m ? spiegeln(p) : p);
-        const [x2, y2] = imBlatt(a, m ? spiegeln(q) : q);
-        el.append(element('line', `kante-hart${m ? ' spiegel' : ''}`, { x1, y1, x2, y2 }));
+        return imBlatt(a, m ? spiegeln(p) : p);
+      };
+      // Läufe aufeinanderfolgender Strecken, an denen die Linie hart ist (ein geschlossener Loop beginnt an einer runden Stelle)
+      const hartStrecke = (j: number): boolean => hd[j]! > 0 || hd[(j + 1) % n]! > 0;
+      const strecken = zu ? n : n - 1;
+      let start = 0;
+      if (zu) {
+        while (start < n && hartStrecke(start)) start++;
+        if (start === n) start = 0;
       }
+      let lauf: number[] = [];
+      const schluss = (): void => {
+        if (lauf.length > 1) {
+          const d = kantenFlaeche(lauf.map(ort), lauf.map((j) => breiteBei(hd[j]!, BREITE_FEIN) / s));
+          if (d) el.append(element('path', `kante-band${m ? ' spiegel' : ''}`, { d }));
+        }
+        lauf = [];
+      };
+      for (let k = 0; k < strecken; k++) {
+        const j = (start + k) % n;
+        if (!hartStrecke(j)) {
+          schluss();
+          continue;
+        }
+        if (lauf.length === 0) lauf.push(j);
+        lauf.push((j + 1) % n);
+      }
+      schluss();
     }
   });
   // Griffe der gewählten Punkte: Linie vom Punkt zur Spitze, Spitze als kleines Quadrat (unter den Punkten)
@@ -4086,7 +4207,8 @@ function nadelnWeg(): void {
 
 /**
  * Kante der Auswahl an oder aus (Taste K): ein ganzer Loop samt seinen Punkten, sonst die gewählten Punkte. Eine Kante reicht von
- * einem Punkt bis zu seinen Nachbarpunkten, dort läuft der Knick in der Form aus. Sind schon alle gewählten an, gehen sie aus.
+ * einem Punkt bis zu seinen Nachbarpunkten, dort läuft der Knick in der Form aus (gezeigt als Verjüngung der Linie). Sind schon alle
+ * gewählten an, gehen sie aus.
  */
 function kanteSetzen(): void {
   if (auswahl.length === 0) return;
@@ -4110,8 +4232,24 @@ function kanteSetzen(): void {
       if (p) p.kante = an;
     }
   }
-  meldung = an ? 'Kante' : 'keine Kante';
   eckenAuto(loops);
+  // Kante aus, aber eine kreuzende Linie knickt dort noch von Hand: Ihr Knick ist die Kante, die Linie bleibt hart (gemessen und
+  // verworfen, 13.11.: die kreuzende Linie dabei von selbst glatt machen. An einem geformten Maul mit einer Mittellinie aus zwei
+  // Punkten drehen sich dann deren lange Griffe, und der ganze Körper stülpt sich um.)
+  const bleibt =
+    !an &&
+    auswahl.some((w) => {
+      const l = loops[loopNr(w.l)];
+      if (!l) return false;
+      const hd = kanteBei(l, loops);
+      if (w.i < 0) return hd.some((x) => x > 0);
+      const p = l.punkte[w.i];
+      if (!p) return false;
+      let j = 0;
+      for (let k = 1; k < l.s.length; k++) if (Math.abs(l.s[k]! - p.s) < Math.abs(l.s[j]! - p.s)) j = k;
+      return hd[j]! > 0;
+    });
+  meldung = an ? 'Kante' : bleibt ? 'Die Kante bleibt, wo eine kreuzende Linie knickt (ihr Knick ist die Kante)' : 'keine Kante';
   hautNeuRechnen(kantenKnicken(loops, vorher));
   geometrieNeu();
   allesZeigen();
@@ -4804,6 +4942,11 @@ function haltenSchalten(an = !direktAn): void {
 }
 
 window.addEventListener('keydown', (e) => {
+  // solange das Maul geformt wird, nimmt das Fenster keine Eingaben an
+  if (maulLauf) {
+    e.preventDefault();
+    return;
+  }
   const k = e.key.toLowerCase();
   // ⌘S sichert (unter dem Namen von zuletzt, sonst fragt das Feld danach); der Browser böte sonst an, die Seite zu speichern
   if ((e.metaKey || e.ctrlKey) && k === 's') {
@@ -5474,6 +5617,8 @@ function bildRechnen(): void {
   }
   const bildT0 = performance.now();
   bildGerechnetMs = -1;
+  // „Maul formen“ läuft: ein Bild der Animation
+  maulSchritt();
   // ein fertig verfeinertes Netz aus dem Hintergrund wird an Stelle der Löserrunde dieses Bilds eingewechselt
   const e = eingetroffen;
   eingetroffen = null;
@@ -5743,7 +5888,7 @@ if (BEHALTEN) behaltenesHolen();
     ruheOffen: ruheOffen ? (ruheOffen.setzen ? 'setzen' : 'aufraeumen') : null,
     auftragNr: aufraeumen ? aufraeumen.id : null,
     zwischen: letzterZwischenstand,
-    beschaeftigt: zug !== null || nachlauf !== null || aufraeumen !== null || vorrechnenUhr !== null || gegriffen !== null,
+    beschaeftigt: zug !== null || nachlauf !== null || aufraeumen !== null || vorrechnenUhr !== null || gegriffen !== null || maulLauf !== null,
     griffWartet: gegriffen !== null,
     ausloesung: letzteAusloesungMs,
     ausloesungTeile,

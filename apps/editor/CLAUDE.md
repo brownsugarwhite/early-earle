@@ -43,13 +43,19 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Hälfte (`HautOptionen.halb`, im Fenster Standard, `&halb=0` schaltet es ab); das Netz bleibt ganz. Dazu „flüssig zuerst“: eine
   weitere Runde je Bild nur, wenn sie samt Anzeige in 14,5 ms passt (`&bildms=0`: nur das feste Budget, `&budget=<ms>` stellt
   es). Messen: im Kern `form-halb.ts`, im Fenster `GPU=1 HALTEN=0 NAME=<Form> node scripts/pruefen/form-halten-probe.mjs`.
-- **Maul formen** (Schritt 6, Etappe 1, 13.11.; nur in `form-bau`, Knopf „Maul formen“): Am gewählten Ring entsteht das Maul als
-  echte Form, von der Seite durchgestanzt. Kern: `maulFormen` (`packages/shape/src/dicht/maulFormen.ts`): Maullinie hart,
-  Mittellinie (wird angelegt, wenn sie fehlt), Querlinie durch beide Mundwinkel, dann bekommt die Mittellinie im Maul in Stufen
-  die Punkte und Griffe der Maullinie (z = 0). Es wird nur an Linien gezogen; nichts wird geschnitten oder eingesetzt. Der Ring
+- **Maul formen** (Schritt 6, 13.11., zweite Fassung; nur in `form-bau`, Knopf „Maul formen“): Am gewählten Ring wird die
+  Maullinie hart, die Mittellinie (angelegt, wenn sie fehlt: zwei Punkte an den Lippen) knickt an beiden Lippen um 95° ins Maul;
+  im Maul kein Punkt. Kern: `maulFormen` und `maulFormenSchritte` (`packages/shape/src/dicht/maulFormen.ts`); das Fenster zeigt
+  die Schritte (`maulSchritt`, `&maulRunden=<n>`: Runden je Bild) und sperrt so lange die Eingaben. `&maulMitte=0`: die nur zum
+  Formen angelegte Mittellinie am Ende wieder entfernen (der Knick ist dann nicht eingestellt, er hängt am Netz). Der Ring
   trägt danach `maulGeformt`; „Fressen“ und die Regler gibt es daran noch nicht (Meldung). Das Maul aus der schmalen Form mit
   eingesetztem Inneren (`maulAmLoop`) besteht daneben weiter. Proben: `GPU=1 node scripts/pruefen/form-maul-formen-fenster.mjs`
-  (Fenster), `form-maul-automatisch.ts` (Kern, mit Bildblatt), Test `maulFormen.test.ts`.
+  (Fenster), `form-maul-einfach.ts` (Kern, mit Bildblatt; `OHNE_MITTE=1`, `MITTE=1`, `DREIECKE=3000`), `form-linien.ts` (eine
+  gesicherte Form lesen: Punkte, Griffe, Knicke), Test `maulFormen.test.ts`. Die erste Fassung (durchgestanzt, Querlinie) liegt
+  in `90b98322`.
+- **Linienbreiten** (13.11.): 3 Bildpunkte am Knick, ein halber an runden Punkten, dazwischen verjüngt (`haerteBei` im Kern;
+  `baenderZeigen` mit Breite je Punkt, in den Blättern `kantenFlaeche` und die Klasse `kante-band`). Probe:
+  `GPU=1 node scripts/pruefen/form-kante-verjuengung-fenster.mjs`.
 - Test-Haken im Fenster: `window.__kurven` (`zeiten()`, `lagen`, `loops`, `ablage`, `beschaeftigt` …).
 
 ## Prüfen
@@ -119,11 +125,23 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   messen (Median und 95 %), nicht nur das Rechnen je Bild.
 - Geometrie nie fertig ins Netz bauen und die Rechnung darauf loslassen (ein eingeschweißtes Maul kam in acht Fassungen nicht
   zur Ruhe). Formen heißt: an Linien ziehen, in Schritten, die Haut folgt; dazwischen verfeinern wie nach einem Zug.
-- Eine neu geschnittene Linie braucht Punkte, wo sie nötig sind (`griffeAnlegen` mit `punkteBis`): Mit nur zwei Punkten dicht
-  beieinander lief die Mittellinie in einem Stück um den ganzen Körper, und die Kugel wurde beim Setzen um 21 verformt.
+- Eine neu geschnittene Linie mit nur zwei Punkten dicht beieinander läuft in einem Stück um den ganzen Körper: Die Kugel wird
+  zur Zitrone (um 21 bis 28 verformt). Florian (13.11.): kein Fehler, „das logische Ergebnis“, solange er keine Haltelinien
+  gezogen hat; keine Punkte von selbst dazusetzen (`griffeAnlegen` mit `punkteBis` war die erste, abgelehnte Antwort).
 - Eine Kante an einem Punkt reicht bis zu den Nachbarpunkten. Soll sie nur ein Stück weit gelten, braucht die Linie dahinter
   einen Punkt mit `kante: false`.
 - Kreuzt eine neue Linie eine alte dicht an einem ihrer Punkte (Mundwinkel), wird dieser Punkt die Kreuzung; sonst liegen dort
   zwei Punkte, und die Griffe des Mundwinkels verteilen sich auf beide.
+- Eine geschlossene Linie mit nur zwei Punkten dicht beieinander (die Mittellinie an den Lippen) nie glatt anlegen: Ein
+  Griffpaar auf einer Geraden für das kurze und das lange Stück legt ihren Pfad bis 190 neben die Kugel. Erst die Kante, die
+  sie kreuzt (dann ist sie dort eine Ecke und jede Seite passt für sich).
+- An einer solchen Linie die Griffe nie von selbst ausrichten (Ecke → glatt, „Kante aus“): Sie sind mehrere Hundert lang, der
+  Körper stülpt sich um.
+- Ein einzelner Ring bestimmt die Form nicht: Ohne kreuzende Linie landet die Haut je nach Netz woanders (Maul ohne
+  Mittellinie: Knick an den Lippen 93°/100° oder 39°/68°).
+- Wer in Schritten rechnet und unterwegs verfeinert, braucht eine Obergrenze für das Netz (ein davongelaufener Lauf wuchs auf
+  433 000 Punkte und hielt Minuten).
+- `falten().umgeklappt` zählt am spitzen Mundwinkel auch an Florians eigenen Modellen 6 Dreiecke: nicht als „nichts
+  umgeschlagen“ prüfen, sondern gegen diesen Stand.
 - **Vor Arbeit an `kurven.ts` oder am Löser lesen:** `docs/verlauf/2026-11-11-uebergabe-kurven.md`, Abschnitt 3 (Karte von
   `kurven.ts`) und Abschnitt 4 (Fallen, was schon kaputtging).

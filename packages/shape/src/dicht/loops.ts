@@ -1121,6 +1121,40 @@ export function kanteBei(l: Loop, loops?: readonly Loop[]): Uint8Array {
 }
 
 /**
+ * Härte je Probe für die Anzeige (0 = rund … 1 = Knick): an den Stützstellen der Kante 1 oder 0 (dieselben wie bei `kanteBei`: die
+ * gesetzte Kante an den Punkten, dazu die Kreuzungen, an denen eine kreuzende Linie knickt), dazwischen läuft sie längs der Linie
+ * gleichmäßig aus (Florian, 13.11.: „wenn man einzelne Punkte knickt, kann es sein, dass auf einer Linie auch ein Übergang zwischen
+ * zwei Punkten von hart zu rund ist […] Dargestellt ist das dann durch eine Verjüngung“). Sie ist genau dort über 0, wo `kanteBei`
+ * eine Kante meldet (bis auf die runde Stützstelle am Ende eines Übergangs selbst). Die Rechnung nimmt weiter `kanteBei`: Im
+ * Übergang darf die Haut knicken, der Knick läuft in der Form aus.
+ */
+export function haerteBei(l: Loop, loops?: readonly Loop[]): Float32Array {
+  const zu = geschlossen(l);
+  const verlauf = (K: readonly { s: number; k: boolean }[], s: number): number => {
+    if (K.length === 0) return l.kante ? 1 : 0;
+    const wert = (x: { k: boolean }): number => (x.k ? 1 : 0);
+    let i = K.findIndex((k) => k.s > s);
+    if (i < 0) i = K.length;
+    // vor der ersten und nach der letzten Stützstelle eines Rings wie diese (dort setzt er sich im Spiegelbild fort)
+    if (!zu && (i === 0 || i === K.length)) return wert(K[i === 0 ? 0 : K.length - 1]!);
+    const a = i === 0 ? K[K.length - 1]! : K[i - 1]!;
+    const b = i === K.length ? K[0]! : K[i]!;
+    if (a.k === b.k) return wert(a);
+    const weg = (((b.s - a.s) % l.laenge) + l.laenge) % l.laenge;
+    const bis = (((s - a.s) % l.laenge) + l.laenge) % l.laenge;
+    const f = weg > 1e-9 ? Math.max(0, Math.min(1, bis / weg)) : 0;
+    return wert(a) + f * (wert(b) - wert(a));
+  };
+  const K = kanteKnoten(l);
+  const h = Float32Array.from(l.s, (s) => verlauf(K, s));
+  if (!loops) return h;
+  const KK = knickKnoten(l, loops);
+  if (!KK.some((x) => x.k)) return h;
+  for (let j = 0; j < h.length; j++) h[j] = Math.max(h[j]!, verlauf(KK, l.s[j]!));
+  return h;
+}
+
+/**
  * Automatische Ecken: Ein Punkt an der Kreuzung mit einer Kante wird eine Ecke (dort knickt die Haut quer über die Kante, also auch
  * die Linie, die sie kreuzt); sonst nicht. Was von Hand gesetzt ist (`ecke`), gilt vor.
  */
