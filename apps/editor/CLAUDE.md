@@ -62,6 +62,10 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   `maulSchnitt`. Nichts wird weggeschnitten oder eingesetzt; der Kiefer reicht so weit unter die Lippe, wie sie lang ist; innen
   weich vom Boden zum Gaumen. Proben: `form-kiefer-geformt.ts` (Kern, Bildblatt zu und offen), `GPU=1 [NAME=… RING=…] [ALT=1]
   node scripts/pruefen/form-kiefer-fenster.mjs`.
+- **Maul aus nur einer Linie** (13.11. nachts: Entwurf und Beweis im Kern, im Fenster nichts gebaut): Die Linie ist die
+  Oberlippe, die Unterlippe ihr um 20° um den Mundwinkel gedrehtes Abbild (Punkte und Griffe); gerechnet wird diese leicht
+  geöffnete Lage als geformtes Maul, „zu“ dreht der Kieferknochen um denselben Winkel zurück. Probe `form-maul-linie.ts`
+  (`WINKEL0`, `RINGE=-10,70`, `DREIECKE`, `AUS`); Stand und Zahlen im Plan, Schritt 6.
 - **Linienbreiten** (13.11.): 3 Bildpunkte am Knick, ein halber an runden Punkten, dazwischen verjüngt (`haerteBei` im Kern;
   `baenderZeigen` mit Breite je Punkt, in den Blättern `kantenFlaeche` und die Klasse `kante-band`). Probe:
   `GPU=1 node scripts/pruefen/form-kante-verjuengung-fenster.mjs`.
@@ -162,6 +166,14 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Kieferdicke ist die Dicke der Form am Mundwinkel; sitzt der Mundwinkel an der Rückseite der Form, ist sie fast null.
 - Gewichte, die der Reihe nach über die Punkte verteilt werden, am Ende je Spiegelpaar mitteln (sonst ist die Pose nicht mehr
   spiegelgleich).
+- Ein Punkt, an dem eine Linie umkehrt (der Mundwinkel eines Keils), muss vor `griffeAnlegen` eine Ecke sein; als glatter Punkt
+  bekommt er dort einen unsinnig langen Griff (gemessen 12 Millionen, das Netz wuchs danach auf 131 000 Punkte).
+- Eine schmale Form als einzige runde Linie zieht eine Kugel ohne Haltelinien zusammen (hinten von 150 auf 58 bis 99 in 80 bis
+  190 Runden): Eine Maullinie ist von Anfang an eine Kante.
+- `knochenWinkel` klemmt negative Winkel auf 0. Für „zu“ unter der gerechneten Lage dreht die Probe `form-maul-linie.ts` selbst
+  (`knochenDrehen` mit negativem Winkel); im Fenster gibt es das noch nicht.
+- `loopEinsetzen` setzt einen Keil, der am Mundwinkel dünner als etwa 16° ist, nicht verlässlich ein (8° bei 2 000 Dreiecken,
+  12° bei 6 000: null).
 - Kern-Bilder (`blattSchreiben`) sind flach schattiert und übertreiben jede Unruhe; ob etwas ruhig aussieht, im Fenster ansehen
   (Unruhe messen: `form-kante-winkel.ts`, Knick zwischen Nachbardreiecken; Florians Modelle liegen gesichert bei 5,6° bis 6,3°,
   nach jedem Neurechnen bei rund 7°).
