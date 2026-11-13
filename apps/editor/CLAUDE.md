@@ -34,7 +34,7 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
 - **„Form halten“** (B, fertige Haut direkt bewegen; 13.11.): von Florian ausprobiert und abgelehnt („Gefällt nicht“). Kein
   Knopf, keine Taste; zum Nachrechnen `&ziehen=direkt` oder `__kurven.halten(true)` (`LoopZug` mit der Art `direkt`,
   `dicht/direktZug.ts`, Probe `scripts/pruefen/form-halten-probe.mjs`). Nicht wieder vorschlagen, ohne dass er danach fragt.
-- **Über die Mitte gezogen** (Schritt 4a, 13.11.; bis zur Übernahme nur in `form-bau`): lose wie bisher, dazu Punkte, wo eine
+- **Über die Mitte gezogen** (Schritt 4a, 13.11., auch in Florians Fenster): lose wie bisher, dazu Punkte, wo eine
   Linie die Mitte kreuzt, und der Punkt hinter der Mitte markiert; ihn löschen macht den Schnitt fest (`mitteFest` im Fenster,
   `mitteFestmachen` in `dicht/mitteSchnitt.ts`: Der Rand des Lochs wird ein Loop mit Kante); K am Rand macht ihn rund. Nur in
   der Grundform und ohne Maul. Probe im Fenster: `GPU=1 node scripts/pruefen/form-donut-fenster.mjs` (`NAME=<Form>` für eine

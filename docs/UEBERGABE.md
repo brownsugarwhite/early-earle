@@ -1,4 +1,4 @@
-# Übergabe (Stand 13.11.2026 nachts: Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt („Form halten“ hat Florian ausprobiert: „Gefällt nicht“). Schritt 4a, der Donut nach Florians zweiter Regel, ist im Bau-Fenster (Port 5197) gebaut und geprüft (Abschnitt 7.4); sein Urteil dort steht aus, in seinem Fenster (5194) ist nichts geändert. Der Umbau auf die halbe Haut (Schritt 4b) ist nicht begonnen. Schritt 1 und 2 sind Standard in seinem Fenster, sein Urteil dazu steht aus)
+# Übergabe (Stand 13.11.2026 nachts: Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt („Form halten“ hat Florian ausprobiert: „Gefällt nicht“). Schritt 4a, der Donut nach Florians zweiter Regel, ist gebaut und seit dem 13.11. nachts in seinem Fenster (5194; Florian: „Übernehmen“, Abschnitt 7.4); sein Urteil dazu steht aus. Der Umbau auf die halbe Haut (Schritt 4b) ist nicht begonnen. Schritt 1 und 2 sind Standard in seinem Fenster, sein Urteil dazu steht aus)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -25,7 +25,7 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | 1 Glatte Anzeige | **eingebaut und Standard** (Abschnitt 4). Florian am 12.11.: „Ja, übernehmen“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&anzeige=grob` zeigt zum Vergleich die Anzeige davor. Sein Urteil nach dem Arbeiten damit steht aus |
 | 2 Kleines Rechennetz | **eingebaut und Standard** (Abschnitt 5): rund 40 % der Punkte, im Zug 16 bis 20 ms je Bild. Florian am 12.11. nachts, vom Handy aus: „ja“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&netz=dicht` ist das Netz davor. Sein Urteil nach dem Arbeiten damit steht aus. Nicht gebaut: Zeichnen gegen die feine Fläche |
 | 3 Beweis „Haut direkt aus den Linien“ | **abgeschlossen, die heutige Rechnung bleibt** (Abschnitt 6, 13.11.): Die Haut nur aus den Linien (A) scheitert zwischen wenigen Linien und an seinen drei Formen. Der Teil B (fertige Haut direkt bewegen) hält rechnerisch; als Schalter „Form halten“ im Bau-Fenster ausprobiert, Florian: „Gefällt nicht“. Knopf und Taste sind wieder weg; der Code liegt nur auf `claude/form-bau` hinter `?ziehen=direkt` |
-| 4 Echte Spiegelung (mit der heutigen Rechnung) | **4a, der Donut, im Bau-Fenster gebaut (Abschnitt 7.4, 13.11.):** nach Florians zweiter Regel (lose wie heute mit Punkten an den Kreuzungen und markiertem Punkt; den Punkt löschen macht den Schnitt fest, der Rand ist ein Loop mit Kante; „Kante aus“ macht rund). Probe im Fenster an der Kugel und an zwei seiner Formen: alles gut; „strange bird“ zeigt eine Grenze des heutigen Zugs. Sein Urteil und die Übernahme in sein Fenster stehen aus. **4b, die halbe Haut,** ist nicht begonnen (nur noch Tempo und weniger Buchführung) |
+| 4 Echte Spiegelung (mit der heutigen Rechnung) | **4a, der Donut, ist in Florians Fenster (Abschnitt 7.4, 13.11.):** nach seiner zweiten Regel (lose wie bisher mit Punkten an den Kreuzungen und markiertem Punkt; den Punkt löschen macht den Schnitt fest, der Rand ist ein Loop mit Kante; „Kante aus“ macht rund). Probe im Fenster an der Kugel und an zwei seiner Formen: alles gut; „strange bird“ zeigt eine Grenze des heutigen Zugs. Sein Urteil steht aus. **4b, die halbe Haut,** ist nicht begonnen (nur noch Tempo und weniger Buchführung) |
 | 5 Posen wie die Basis | offen |
 | 6 Maul als eigene Geometrie | offen |
 | 7 Auswahl wie in Blender | offen |
@@ -437,13 +437,13 @@ Loch, und `schritt4-donut-kante-klein-2026-11-13.jpg`; Zahlen am Ende von `schri
 
 Gefragt war: „Donut bauen“ oder „Erst die halbe Haut“. **Florian: „Donut bauen“.**
 
-### 7.4 Schritt 4a: der Donut im Bau-Fenster (13.11. nachts)
+### 7.4 Schritt 4a: der Donut, gebaut im Bau-Fenster und in Florians Fenster übernommen (13.11. nachts)
 
 Gebaut in `form-bau` (Port 5197, `http://localhost:5197/kurven.html?gewichte=geometrie`; der Server ist die Vorschau der
-Sitzung, Eintrag `kurven-bau`), Etappen 1 bis 5 aus dem Plan (Schritt 4a). **Florian hat es noch nicht ausprobiert.** In seinem
-Fenster (5194) ist nichts geändert.
+Sitzung, Eintrag `kurven-bau`), Etappen 1 bis 5 aus dem Plan (Schritt 4a), und noch am selben Abend in sein Fenster übernommen
+(unten). **Florians Urteil steht aus.**
 
-**Was das Bau-Fenster jetzt tut:**
+**Was das Fenster jetzt tut:**
 - **Lose** (ein Punkt ist über die Mitte gezogen): Ziehen, Loslassen und Zurückziehen wie bisher. In den Blättern steht ein
   kleiner heller Punkt, wo eine Linie die Mitte kreuzt (er folgt dem Zug), der Punkt hinter der Mitte ist orange markiert, und
   die Statuszeile sagt „ein Punkt hinter der Mitte (löschen macht den Schnitt fest)“.
@@ -488,10 +488,17 @@ zum losen Stand zurück; keine Fehler in der Konsole.
 7. Fest machen bewegt die Haut ein wenig (Tabelle): An der Kante rundet sich jede Seite für sich.
 8. Sichern und Laden einer fest gemachten Form ist nicht eigens geprüft.
 
-**Als Nächstes:** Florian probiert es im Bau-Fenster aus. Sagt er ja, kommt es in sein Fenster: `claude/form-bau` nach
-`claude/form-spiegel` zusammenführen (vorher ansagen, sein Fenster lädt neu; dabei kommt auch der Code mit, der bisher nur in
-`form-bau` liegt, darunter „Form halten“ hinter `?ziehen=direkt`). Danach Schritt 4b (halbe Haut) oder Schritt 5 (Posen), nach
-seiner Wahl.
+**In Florians Fenster seit dem 13.11. nachts (er: „Übernehmen“):** `claude/form-bau` ist nach `claude/form-spiegel`
+zusammengeführt (`e511d990`, ohne Konflikte); damit liegt dort auch der Code, der bisher nur in `form-bau` lag (der Schnitt im
+Kern, die Proben zu Schritt 3 und 4, „Form halten“ hinter `?ziehen=direkt`). Geprüft im Arbeitsbaum `form-alt`: Typen, die Tests
+zum Schnitt und zum Fenster, und `form-donut-fenster.mjs` gegen `http://localhost:5194/…`: alles gut, dieselben Zahlen wie im
+Bau-Fenster. **Der Server auf 5194 lief nach der Zusammenführung nicht mehr** (vorher hörte ein Prozess auf dem Port; ob die
+Zusammenführung ihn beendet hat oder die App, ließ sich nicht feststellen). Er ist neu gestartet (Eintrag `kurven-alt`) und
+hängt seitdem an der bauenden Sitzung; läuft er nicht, startet ihn `kurven-alt` wieder. `claude/form-bau`,
+`claude/form-spiegel` und `claude/editor-grundlayout` stehen auf demselben Stand.
+
+**Als Nächstes:** Florians Urteil im Fenster. Danach nach seiner Wahl: am Donut weiter (die offenen Punkte oben), Schritt 4b
+(halbe Haut) oder Schritt 5 (Posen).
 
 ## 8. Offen aus der Zeit davor
 

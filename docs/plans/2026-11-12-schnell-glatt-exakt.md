@@ -257,7 +257,8 @@ Etappe nach ihrem Aufwand (je ein halber bis ein Tag) nicht: anhalten und es sag
 Fenster (`form-donut-fenster.mjs`) besteht an der Kugel und an `test_kaputt` und `teat firefish` in allen Punkten (lose, zurück,
 fest, rund, weiterziehen, ⌘Z); fest machen bewegt die gezeigte Haut höchstens 4,7 bis 6,4, „Kante aus“ bringt den Knick am Rand
 von 55° bis 82° auf 14° bis 26°. An `strange bird` stülpt schon der lose Zug an der geprüften Stelle die Haut um (der Zug von
-heute); dort entsteht kein sauberer Donut. Florians Urteil im Bau-Fenster und die Übernahme in sein Fenster stehen aus.
+heute); dort entsteht kein sauberer Donut. **Übernommen in Florians Fenster am 13.11. nachts** (er: „Übernehmen“;
+`claude/form-bau` nach `claude/form-spiegel`, die Probe besteht auch dort). Sein Urteil steht aus.
 
 - **Was du danach siehst:**
   - Jede neue Form beginnt als gespiegelte Kugel, **die Mittellinie ist von Anfang an eingezeichnet**.
