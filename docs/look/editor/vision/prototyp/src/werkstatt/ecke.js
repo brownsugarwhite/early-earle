@@ -17,6 +17,7 @@ import { linieAnlegen } from '../schnitt.js';
 import { PAR } from '../parameter.js';
 import { zeigerSetzen } from './zeiger.js';
 import { aufblasen, polygonAus, spantenPfade } from './aufblasen.js';
+import { OrthoSicht } from '../ansichten.js';
 
 export const GRUND = [0.965, 0.955, 0.933];
 const GRUND_RAND = [0.928, 0.914, 0.885];
@@ -66,6 +67,7 @@ export class Ecke extends Werft {
     for (const n of NAMEN) {
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(12), 3));
+      g.setAttribute('clip', new THREE.BufferAttribute(new Float32Array(16), 4));
       g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]), 2));
       g.setIndex([0, 1, 2, 0, 2, 3]);
       const druck = new THREE.ShaderMaterial({
@@ -91,7 +93,7 @@ export class Ecke extends Werft {
     });
     this.zusammenMat = new THREE.ShaderMaterial({
       vertexShader: S.vollbildVS, fragmentShader: S2.koerperZusammenFS,
-      uniforms: { uKoerper: { value: null }, uDeckung: { value: null }, uSchleier: { value: 0 }, uMaterial: { value: 0 }, uGrund: { value: new THREE.Vector3(...GRUND) } },
+      uniforms: { uKoerper: { value: null }, uDeckung: { value: null }, uSchleier: { value: 0 }, uMaterial: { value: 0 }, uImmer: { value: 0 }, uGrund: { value: new THREE.Vector3(...GRUND) } },
       depthTest: false, depthWrite: false, transparent: true,
       blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
     });
@@ -107,6 +109,11 @@ export class Ecke extends Werft {
     this.bodenSzene = new THREE.Scene();
     this.bodenSzene.add(this.boden);
     this.konturMat.uniforms.uFarbe.value.set(...TINTE);
+    // Viereransicht (Taste 4): Seite oben links, Front oben rechts, Top unten links, Raum unten rechts
+    this.vierer = 0;
+    this.viererZiel = 0;
+    this.viererFahrt = null;
+    this.vierSichten = { seite: new OrthoSicht('seite'), front: new OrthoSicht('front'), top: new OrthoSicht('top') };
     // Start: leeres Papier in der Seitenansicht, der Stift ist bereit
     this.phase = PAR.get('start') === '0' ? null : 'stift';
     this.stiftZustand = { punkte: [], zu: false, zug: null, maus: null, klick: null };
@@ -138,6 +145,51 @@ export class Ecke extends Werft {
   // ---------------- Zustände ----------------
   layoutTaste(k) {
     if (k === 'Tab') return this.modusWechseln();
+    if (k === '4') return this.viererUmschalten();
+  }
+  viererUmschalten() {
+    this.viererZiel = this.viererZiel > 0.5 ? 0 : 1;
+    this.viererFahrt = { von: this.vierer, t: 0 };
+    this.klang('rasten');
+  }
+  // Felder der Viereransicht (Bildpunkte)
+  felder() {
+    const W = this.W, H = this.H, m = 14, g = 12;
+    const qw = (W - 2 * m - g) / 2, qh = (H - 2 * m - g) / 2;
+    return {
+      seite: { x: m, y: m, w: qw, h: qh }, front: { x: m + qw + g, y: m, w: qw, h: qh },
+      top: { x: m, y: m + qh + g, w: qw, h: qh }, raum: { x: m + qw + g, y: m + qh + g, w: qw, h: qh },
+    };
+  }
+  // halbe Höhe des Rahmens der Achsprojektoren: eng um die größte Silhouette (alle drei im selben Maßstab)
+  rahmenH0(g) {
+    const asp = this.W / this.H;
+    const ex = g.max[0] - g.min[0], ey = g.max[1] - g.min[1], ez = g.max[2] - g.min[2];
+    return 0.56 * Math.max(ey, ez, ex / asp, ez / asp);
+  }
+  // Tafel im Feld: mit dem Seitenverhältnis des Bilds, mittig
+  tafelRechteck(F) {
+    const asp = this.W / this.H;
+    const h = Math.min(F.h, F.w / asp), w = h * asp;
+    return { x: F.x + (F.w - w) / 2, y: F.y + (F.h - h) / 2, w, h };
+  }
+  sichtBei(x, y) {
+    if (this.vierer < 0.5) return super.sichtBei(x, y);
+    const F = this.felder();
+    for (const n of NAMEN) { const r = F[n]; if (x >= r.x && y >= r.y && x <= r.x + r.w && y <= r.y + r.h) return this.vierSichten[n]; }
+    return this.rs;
+  }
+  // Der Raum zieht sich ins vierte Feld zusammen: die Projektion der Kamera wird verkleinert und verschoben
+  viererProjektion() {
+    const v = ease(this.vierer);
+    if (v < 1e-4) return;
+    const W = this.W, H = this.H, R = this.felder().raum;
+    const sc = 1 + (1.5 * Math.min(R.w / W, R.h / H) - 1) * v;
+    const ox = (((R.x + R.w / 2) / W) * 2 - 1) * v, oy = (1 - ((R.y + R.h / 2) / H) * 2) * v;
+    const k = this.rs.kamera;
+    const M = new THREE.Matrix4().set(sc, 0, 0, ox, 0, sc, 0, oy, 0, 0, 1, 0, 0, 0, 0, 1);
+    k.projectionMatrix.premultiply(M);
+    k.projectionMatrixInverse.copy(k.projectionMatrix).invert();
   }
   modusWechseln(ziel) {
     const neu = ziel || (this.modus === 'raum' ? 'wesen' : 'raum');
@@ -155,7 +207,7 @@ export class Ecke extends Werft {
     return norm([k.x - g.mitte[0], k.y - g.mitte[1], k.z]);
   }
   sZiel() {
-    if (this.modus !== 'wesen') return 0;
+    if (this.modus !== 'wesen' || this.viererZiel > 0.5) return 0;
     const v = this.blickZumWesen();
     const m = Math.max(Math.abs(v[0]), Math.abs(v[1]), Math.abs(v[2]));
     const winkel = Math.acos(Math.min(1, m)); // zur nächsten Achse
@@ -185,6 +237,24 @@ export class Ecke extends Werft {
       if (U.t >= 1) this.uebergang = null;
     } else this.s += (sZ - this.s) * (1 - Math.exp(-dt * 9));
     if (Math.abs(this.s - sZ) < 1e-4 && !this.uebergang) this.s = sZ;
+    if (this.viererFahrt) {
+      const f = this.viererFahrt;
+      f.t += dt / 0.62;
+      this.vierer = f.von + (this.viererZiel - f.von) * Math.min(1, f.t);
+      if (f.t >= 1) { this.vierer = this.viererZiel; this.viererFahrt = null; }
+    }
+    rs.setzen({ x: 0, y: 0, w: this.W, h: this.H });
+    this.viererProjektion();
+    // Ansichten der Felder (gleicher Maßstab, Zeilen und Spalten fluchten)
+    if (this.vierer > 0) {
+      const g = this.grenzen();
+      const h0 = this.rahmenH0(g);
+      const F = this.felder();
+      for (const n of NAMEN) {
+        const rc = this.tafelRechteck(F[n]);
+        this.vierSichten[n].setzen(rc, rc.h / (2 * h0), [g.mitte[0], g.mitte[1], 0]);
+      }
+    }
   }
 
   // ---------------- Tafeln: Projektoren, Masken, Lage ----------------
@@ -204,14 +274,14 @@ export class Ecke extends Werft {
     const T1 = rs.ziel.slice();
     const tau1 = Math.tan((k.fov * Math.PI) / 360);
     const h1 = dist(kp, T1) * tau1;
-    const h0 = 1.1 * R;
     const asp = this.W / this.H;
+    const h0 = this.rahmenH0(g);
     const s = this.s;
     const sk = z.koerper.scale;
     for (const n of NAMEN) {
       const T = this.tafeln[n];
       const ax = ACHSE[n];
-      const sg = v[ax] >= 0 ? 1 : -1;
+      const sg = this.viererZiel > 0.5 || this.vierer > 0.001 ? (n === 'front' ? -1 : 1) : v[ax] >= 0 ? 1 : -1;
       const A = [0, 0, 0];
       A[ax] = sg;
       // Wand hinter dem Wesen (vom Blick abgewandt); der Boden liegt unter den Füßen
@@ -236,7 +306,7 @@ export class Ecke extends Werft {
       const P = add(Tz, mul(e, L));
       // Gewicht: auf der Achse quer liegende Wände verschwinden (man sähe sie nur als Strich); im Wesen voll
       const wA = smooth(0.1, 0.32, Math.abs(v[ax]));
-      T.w = (wA + (1 - wA) * smooth(0, 0.5, s)) * this.sichtbarkeit;
+      T.w = (wA + (1 - wA) * Math.max(smooth(0, 0.5, s), smooth(0, 0.6, this.vierer))) * this.sichtbarkeit;
       if (T.w < 0.003) continue;
       // Maske: aus Sicht des Projektors (auf der Achse unverändert, solange das Netz bleibt); deckungsgleich = Körperbild
       if (s >= 0.999) {
@@ -270,10 +340,23 @@ export class Ecke extends Werft {
       const delta = D * (1 - s);
       const Qc = sub(Tz, mul(e, delta));
       const hh = (L + delta) * tau, hw = hh * asp;
-      const a = T.mesh.geometry.attributes.position;
-      const ecke = (i, sx, sy) => { const p = add(Qc, add(mul(rr, sx * hw), mul(u, sy * hh))); a.setXYZ(i, p[0], p[1], p[2]); };
+      const a = T.mesh.geometry.attributes.position, cl = T.mesh.geometry.attributes.clip;
+      const PV = new THREE.Matrix4().multiplyMatrices(k.projectionMatrix, k.matrixWorldInverse);
+      const vv = ease(this.vierer);
+      const ziel = vv > 0 ? this.tafelRechteck(this.felder()[n]) : null;
+      const ecke = (i, sx, sy) => {
+        const p = add(Qc, add(mul(rr, sx * hw), mul(u, sy * hh)));
+        a.setXYZ(i, p[0], p[1], p[2]);
+        const c = new THREE.Vector4(p[0], p[1], p[2], 1).applyMatrix4(PV);
+        if (ziel) {
+          const bx = ((ziel.x + (sx > 0 ? ziel.w : 0)) / this.W) * 2 - 1, by = 1 - ((ziel.y + (sy > 0 ? 0 : ziel.h)) / this.H) * 2;
+          c.set(c.x + (bx - c.x) * vv, c.y + (by - c.y) * vv, c.z * (1 - vv), c.w + (1 - c.w) * vv);
+        }
+        cl.setXYZW(i, c.x, c.y, c.z, c.w);
+      };
       ecke(0, -1, -1); ecke(1, 1, -1); ecke(2, 1, 1); ecke(3, -1, 1);
       a.needsUpdate = true;
+      cl.needsUpdate = true;
     }
     r.setRenderTarget(null);
   }
@@ -583,6 +666,104 @@ export class Ecke extends Werft {
     c.restore();
   }
 
+  // ---------------- Vorführung (Geistermaus, Filme) ----------------
+  drehbuecher() {
+    const app = this;
+    const W = () => app.W, H = () => app.H;
+    const an = (fx, fy) => () => [W() * fx, H() * fy];
+    const proj = (p) => app.rs.projizieren(p);
+    // ein Wesen mit dem Stift (Bruchteile der Bildgröße; Seitenansicht)
+    const zeichnen = (G) => {
+      const Z = [
+        ['zieh', 0.328, 0.55, 0.322, 0.494], ['zieh', 0.406, 0.4125, 0.457, 0.3975], ['zieh', 0.547, 0.465, 0.594, 0.49],
+        ['klick', 0.6875, 0.3975], ['zieh', 0.625, 0.565, 0.602, 0.5875], ['klick', 0.57, 0.625], ['klick', 0.556, 0.71],
+        ['klick', 0.525, 0.64], ['klick', 0.461, 0.645], ['klick', 0.441, 0.715], ['klick', 0.414, 0.644], ['zieh', 0.375, 0.625, 0.353, 0.6075],
+      ];
+      G.gehe(an(0.3, 0.62), 0.6);
+      for (const [art, x, y, x2, y2] of Z) {
+        G.gehe(an(x, y), 0.42);
+        if (art === 'klick') G.klick(an(x, y));
+        else G.zieh(() => [[W() * x, H() * y], [W() * (x + (x2 - x) * 0.5), H() * (y + (y2 - y) * 0.5)], [W() * x2, H() * y2]], 0.42);
+      }
+      G.gehe(an(0.329, 0.551), 0.5);
+      G.warte(0.25);
+      G.klick(an(0.328, 0.55));
+      G.warte(0.7);
+      G.taste('Enter', 0.3);
+    };
+    // Leere ziehen: drehen (Raum oder Wesen, je nach Tab)
+    const drehen = (G, dx, dy, s = 1.6) => {
+      G.gehe(an(0.86, 0.84), 0.5);
+      G.zieh(() => [[W() * 0.86, H() * 0.84], [W() * 0.86 + dx * 0.5, H() * 0.84 + dy * 0.5], [W() * 0.86 + dx, H() * 0.84 + dy]], s);
+    };
+    return {
+      start(G) {
+        zeichnen(G);
+        G.warte(3.4);
+        G.gehe(an(0.86, 0.84), 0.5);
+        G.taste('Tab', 0.3);
+        G.warte(1.8);
+        drehen(G, 260, 0, 2.2);
+        G.warte(1.2);
+        G.taste('Tab', 0.3);
+        G.warte(1.8);
+        G.taste('4', 0.3);
+        G.warte(1.6);
+        G.taste('4', 0.3);
+        G.warte(1.4);
+      },
+      stift(G) {
+        zeichnen(G);
+        G.warte(3.6);
+      },
+      tab(G) {
+        G.gehe(an(0.86, 0.84), 0.6);
+        G.warte(0.6);
+        G.taste('Tab', 0.3);
+        G.warte(2.2);
+        G.taste('Tab', 0.3);
+        G.warte(2.0);
+      },
+      drehen(G) {
+        // Raum drehen: alles dreht sich, die Ansichten bleiben an ihren Wänden
+        drehen(G, 230, 30, 2.0);
+        G.warte(0.8);
+        drehen(G, -230, -30, 2.0);
+        G.warte(0.6);
+        // Wesen drehen: Licht und Fliese bleiben, nur das Wesen dreht sich; nahe einer Achse lösen sich die Ansichten wieder
+        G.taste('Tab', 0.3);
+        G.warte(1.6);
+        drehen(G, -70, -40, 1.8);
+        G.warte(1.0);
+        drehen(G, 330, 0, 2.6);
+        G.warte(1.0);
+        G.taste('Tab', 0.3);
+        G.warte(1.6);
+      },
+      achse(G) {
+        G.gehe(an(0.86, 0.84), 0.5);
+        G.taste('1', 0.3); G.warte(1.6);
+        G.taste('3', 0.3); G.warte(1.6);
+        G.taste('7', 0.3); G.warte(1.6);
+        G.taste('0', 0.3); G.warte(1.4);
+      },
+      vier(G) {
+        G.gehe(an(0.9, 0.9), 0.5);
+        G.taste('4', 0.3);
+        G.warte(1.4);
+        // im Seitenfeld einen Punkt des Kiels ziehen: alle Ansichten folgen
+        const kielPunkt = () => { const L = app.linien.find((x) => x.art === 'mitte'); const P = L.punkte.reduce((u, v) => (v.p[1] > u.p[1] ? v : u)); return app.vierSichten.seite.projizieren(P.p); };
+        G.gehe(() => kielPunkt(), 0.8);
+        G.warte(0.5);
+        G.zieh(() => { const p = kielPunkt(); return [p, [p[0] + 20, p[1] - 30], [p[0] + 30, p[1] - 44]]; }, 1.4);
+        G.warte(0.6);
+        G.gehe(an(0.9, 0.9), 0.6);
+        G.taste('4', 0.3);
+        G.warte(1.4);
+      },
+    };
+  }
+
   // ---------------- Zeichnen ----------------
   zeichnen() {
     const z = this.z, r = z.r, W = this.W, H = this.H, d = z.dpr;
@@ -659,6 +840,8 @@ export class Ecke extends Werft {
       U.uDeckung.value = A.texture;
       U.uSchleier.value = 0.4 * (1 - flach) * (1 - smooth(0, 0.6, s)) * this.sichtbarkeit;
       U.uMaterial.value = smooth(0.02, 0.35, s) * (1 - flach);
+      U.uImmer.value = smooth(0.3, 1, this.vierer) * (1 - flach);
+      U.uSchleier.value *= 1 - smooth(0.3, 1, this.vierer);
       z.vollMesh.material = this.zusammenMat;
       r.render(z.vollSzene, z.vollKamera);
       // 6. Umriss
@@ -688,11 +871,35 @@ export class Ecke extends Werft {
       z.U.uAufl.value.set(w, h);
       this.lampe(true, 150);
       r.render(z.szeneLinien, kam);
+      if (this.vierer > 0.01) this.felderLinien(s);
       this.lampe(false);
     }
     z.koerper.scale.set(1, 1, 1);
     r.setViewport(0, 0, W, H);
   }
+  // Linien und Punkte in den drei flachen Feldern (bearbeitbar wie im Raum)
+  felderLinien(s) {
+    const z = this.z, r = z.r, H = this.H, d = z.dpr;
+    const F = this.felder();
+    const a = smooth(0.55, 1, this.vierer);
+    r.setScissorTest(true);
+    for (const n of NAMEN) {
+      const S = this.vierSichten[n], rc = S.rect, q = F[n];
+      r.setViewport(rc.x, H - rc.y - rc.h, rc.w, rc.h);
+      r.setScissor(q.x, H - q.y - q.h, q.w, q.h);
+      r.clearDepth();
+      z.koerper.material = z.nurTiefe;
+      r.render(z.szeneKoerper, S.kamera);
+      z.U.uAufl.value.set(rc.w * d, rc.h * d);
+      this.linienStil(s, 1);
+      z.linieSicht.uniforms.uAlpha.value *= a;
+      z.punktMat.uniforms.uDeck.value *= a;
+      r.render(z.szeneLinien, S.kamera);
+    }
+    r.setScissorTest(false);
+    r.setViewport(0, 0, this.W, this.H);
+  }
+
   linienStil(s, flach) {
     const z = this.z;
     z.breiten(1.25);
@@ -720,6 +927,18 @@ export class Ecke extends Werft {
     // Chrome zeigt eine nur geleerte 2D-Fläche manchmal mit einem alten Puffer: immer einen unsichtbaren Punkt zeichnen
     c.fillStyle = 'rgba(0,0,0,0.004)';
     c.fillRect(0, 0, 1, 1);
+    if (this.vierer > 0.01) {
+      const F = this.felder(), a = smooth(0.4, 1, this.vierer);
+      c.save();
+      c.strokeStyle = `rgba(30,28,35,${0.09 * a})`;
+      c.lineWidth = 1;
+      const x = (F.seite.x + F.seite.w + F.front.x) / 2, y = (F.seite.y + F.seite.h + F.top.y) / 2;
+      c.beginPath();
+      c.moveTo(x, F.seite.y + 8); c.lineTo(x, F.top.y + F.top.h - 8);
+      c.moveTo(F.seite.x + 8, y); c.lineTo(F.front.x + F.front.w - 8, y);
+      c.stroke();
+      c.restore();
+    }
     if (this.phase === 'stift') this.stiftZeichnen(c, 1);
     else if (this.phase === 'aufblasen' && this.anim.t < 0.3) this.stiftZeichnen(c, 1 - this.anim.t / 0.3);
     if (this.feder && this.zeit - this.feder.t0 > 0.3) {

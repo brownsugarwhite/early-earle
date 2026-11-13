@@ -223,9 +223,11 @@ void main(){
 
 // ---------- Ecke (Runde 4): heller Grund, drei Ansichten als Druckfarben, Fliese, ruhiges Material ----------
 // Tafel: eine Ansicht (Maske aus Sicht ihres Projektors) als flache Druckfarbe mit feiner, satterer Kante derselben Farbe.
+// Lage in Bildkoordinaten (clip), auf der CPU gerechnet: so kann eine Tafel aus dem Raum in ein Feld der Viereransicht fliegen
 export const tafelVS = /* glsl */ `
+attribute vec4 clip;
 varying vec2 vUv;
-void main(){ vUv = uv; gl_Position = projectionMatrix * viewMatrix * vec4(position, 1.0); }`;
+void main(){ vUv = uv; gl_Position = clip; }`;
 export const tafelFS = /* glsl */ `
 precision highp float;
 uniform sampler2D uMaske; uniform vec3 uFarbe; uniform float uDichte, uKante; uniform vec2 uTexel;
@@ -257,13 +259,13 @@ void main(){
 // Ansichten den Körper decken. uKoerper: Material (rgb vormultipliziert durch die Kantenglättung), a = Deckung des Körpers.
 export const koerperZusammenFS = /* glsl */ `
 precision highp float;
-uniform sampler2D uKoerper, uDeckung; uniform float uSchleier, uMaterial; uniform vec3 uGrund;
+uniform sampler2D uKoerper, uDeckung; uniform float uSchleier, uMaterial, uImmer; uniform vec3 uGrund;
 varying vec2 vUv;
 void main(){
   vec4 k = texture2D(uKoerper, vUv);
   vec3 d = texture2D(uDeckung, vUv).rgb;
   float drei = min(d.r, min(d.g, d.b));
-  float g = smoothstep(0.2, 0.85, drei) * uMaterial;
+  float g = max(smoothstep(0.2, 0.85, drei) * uMaterial, uImmer);
   float mat = k.a * g;
   float sch = k.a * uSchleier * (1.0 - g);
   gl_FragColor = vec4(k.rgb * g + uGrund * sch, mat + sch);
