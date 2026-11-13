@@ -336,7 +336,15 @@ gezogen.
    (1 523 statt 1 784 Punkte), und die heutige Rechnung läuft darauf ohne davonzulaufen (`verschmelzen` in der Probe; teilt auch
    die Loops an der Ebene in Stücke). Das ist der Baustein für „die Hälfte ist die Wahrheit“.
 
-**Gefragt ist Florian (13.11. abends):**
+**Florian am 13.11. abends zum Bild** (wörtlich im Plan, Abschnitt 5, Punkt 4): Er stellt sich den Donut anders vor, als der
+Beweis ihn gerechnet hat. An den neuen Kreuzungen (wo die gezogenen Linien die Mitte treffen) sollen **Punkte ohne Knick**
+entstehen, das Loch bekommt einen **neuen Edgeloop**; der gezogene Punkt ist nur im Zug noch sichtbar und vom neuen Mesh gelöst;
+**beim Loslassen verschwindet er, kein Zurückziehen** („so ähnlich wie Blenders Mirror mit Clipping“). Das ersetzt Entscheidung
+4 des Plans (umkehrbare Naht). Der Beweis oben hat die Linien an der Mitte nur abgeschnitten, mit ihrem Knick; seine Regel ist
+noch nicht gerechnet. Seine Frage: jetzt daran feilen oder erst die halbe Haut bauen. Meine Antwort: zuerst ein kleiner Beweis
+mit seiner Regel (Kern, ein Bild), dann die halbe Haut; seine Zusage dazu steht aus.
+
+**Gefragt war Florian (13.11. abends, vor seiner Klarstellung):**
 - **„Halbe Haut ohne glatten Rand“:** Schritt 4 als Umbau auf die Hälfte (schneller, die Mittellinie von Anfang an, keine
   Buchführung der Paare); wo die Hälften sich treffen, bleibt es die Kante von heute. Empfohlen.
 - **„Erst den Rand“:** vor dem Umbau ein zweiter kleiner Beweis, wie der Rand rund wird.
