@@ -1,4 +1,4 @@
-# Übergabe (Stand 13.11.2026 abends: B liegt als Schalter „Form halten“ im Bau-Fenster auf 5197 zum Ausprobieren; Florians Urteil dazu steht aus. Schritt 3 ist mit zwei Beweisen gerechnet: Die Haut nur aus den Linien hält nicht; B bewegt fertige Haut genau, rundet aber nichts Neues. Schritt 1 und 2 sind Standard in seinem Fenster auf 5194, sein Urteil dazu steht aus)
+# Übergabe (Stand 13.11.2026 abends: Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt. Die Haut nur aus den Linien hält nicht; „Form halten“ (B) hat Florian im Bau-Fenster ausprobiert: „Gefällt nicht“. Als Nächstes Schritt 4, echte Spiegelung, zuerst der Donut-Beweis. Schritt 1 und 2 sind Standard in seinem Fenster auf 5194, sein Urteil dazu steht aus)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -24,8 +24,8 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | 0 Aufräumen | **erledigt** (12.11., Einzelheiten unten) |
 | 1 Glatte Anzeige | **eingebaut und Standard** (Abschnitt 4). Florian am 12.11.: „Ja, übernehmen“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&anzeige=grob` zeigt zum Vergleich die Anzeige davor. Sein Urteil nach dem Arbeiten damit steht aus |
 | 2 Kleines Rechennetz | **eingebaut und Standard** (Abschnitt 5): rund 40 % der Punkte, im Zug 16 bis 20 ms je Bild. Florian am 12.11. nachts, vom Handy aus: „ja“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&netz=dicht` ist das Netz davor. Sein Urteil nach dem Arbeiten damit steht aus. Nicht gebaut: Zeichnen gegen die feine Fläche |
-| 3 Beweis „Haut direkt aus den Linien“ | **gerechnet, hält so nicht** (Abschnitt 6, 13.11.): Die Haut nur aus den Linien (A) scheitert zwischen wenigen Linien und an seinen drei Formen. Der Teil B (Lagen direkt aus den Linien, die Wölbung der Haut bleibt) hält für fertige Haut, ersetzt die heutige Rechnung aber nicht. **B liegt seit dem 13.11. abends als Schalter „Form halten“ im Bau-Fenster (5197) zum Ausprobieren**; Florians Urteil steht aus. Sein Fenster (5194) ist unverändert, der Code liegt nur auf `claude/form-bau` |
-| 4 Echte Spiegelung und neue Rechnung ins Fenster | offen; mit welcher Rechnung, hängt an seiner Antwort zu Schritt 3 |
+| 3 Beweis „Haut direkt aus den Linien“ | **abgeschlossen, die heutige Rechnung bleibt** (Abschnitt 6, 13.11.): Die Haut nur aus den Linien (A) scheitert zwischen wenigen Linien und an seinen drei Formen. Der Teil B (fertige Haut direkt bewegen) hält rechnerisch; als Schalter „Form halten“ im Bau-Fenster ausprobiert, Florian: „Gefällt nicht“. Knopf und Taste sind wieder weg; der Code liegt nur auf `claude/form-bau` hinter `?ziehen=direkt` |
+| 4 Echte Spiegelung (mit der heutigen Rechnung) | **als Nächstes.** Zuerst der kleine Beweis aus dem Plan: der Donut (ein Bild), dann der Umbau auf die halbe Haut |
 | 5 Posen wie die Basis | offen |
 | 6 Maul als eigene Geometrie | offen |
 | 7 Auswahl wie in Blender | offen |
@@ -261,9 +261,9 @@ Ausgabe `schritt3b-messung-2026-11-13.txt`. Florian hat die Bilder noch nicht be
 **B als Schalter im Bau-Fenster (13.11. abends, Florian: „B ausprobieren“).** Probe und Abbruch standen vorher im Plan (Anhang
 A.3). Nur `claude/form-bau`; sein Fenster auf 5194 ist unberührt.
 
-- **Ausprobieren:** `http://localhost:5197/kurven.html?gewichte=geometrie`, Knopf „Form halten (H)“ oder Taste H; die
-  Statuszeile beginnt dann mit „Form halten“. Der Schalter übersteht das Neuladen (`&ziehen=direkt` schaltet ihn an,
-  `&ziehen=rund` aus). Läuft der Server nicht: Eintrag `kurven-bau` in `.claude/launch.json` oder
+- **Ausprobieren** (so war es am 13.11.; seit seinem „Gefällt nicht“ gibt es nur noch die Adresse):
+  `http://localhost:5197/kurven.html?gewichte=geometrie&ziehen=direkt`; die Statuszeile beginnt dann mit „Form halten“.
+  Knopf, Taste H und das Merken über das Neuladen sind wieder entfernt. Läuft der Server nicht: Eintrag `kurven-bau` in `.claude/launch.json` oder
   `EDITOR_WEB=1 pnpm -C <form-bau> --filter @ee/editor exec vite --port 5197 --strictPort`. Seine drei Formen liegen dort in
   `wesen/` (Laden).
 - **Was der Schalter tut:** An: Ein Zug an Punkten oder Griffen bewegt die Haut direkt mit den Linien (Löser `direkt`); nach
@@ -298,9 +298,10 @@ A.3). Nur `claude/form-bau`; sein Fenster auf 5194 ist unberührt.
   und der Hintergrund begann endlos von vorn. `nachfuehrenSchnell` rechnet je Runde zwei Schritte von den Lagen der Haut aus;
   ohne den mitdrehenden Vorkonditionierer kam es bei großen Drehungen je Runde nur um ein Viertel näher.
 
-**Gefragt ist Florian (13.11. abends):** im Bau-Fenster ausprobieren und sagen, ob sich „Form halten“ richtig anfühlt.
-- Gefällt es: B bleibt als Schalter und kommt mit Schritt 4 in sein Fenster; das Vorbereiten geht dann in den Hintergrund.
-- Gefällt es nicht: Der Schalter bleibt aus, weiter nach Plan mit Schritt 4.
+**Florian am 13.11. abends, nach dem Ausprobieren: „Gefällt nicht“** (ohne Begründung). Damit gilt der Abbruch aus dem Plan:
+B kommt nicht in sein Fenster. Knopf und Taste sind aus dem Bau-Fenster wieder entfernt; der Weg bleibt zum Nachrechnen hinter
+`?ziehen=direkt` und dem Haken `__kurven.halten(true)` liegen (Kern `dicht/direkt.ts`, `dicht/direktZug.ts`, Tests, Proben).
+Die heutige Rechnung bleibt die einzige im Fenster. Weiter nach Plan mit Schritt 4.
 
 **Nachrechnen:** aus `packages/shape` `BLATT=<pfad ohne Endung> npx vite-node ../../apps/editor/scripts/pruefen/form-direkt.ts`
 (rund 45 s; `FALL=kugel,schlauch,ruessel,horn,formen,viertel`) und genauso `form-direkt-b.ts` (20 s;

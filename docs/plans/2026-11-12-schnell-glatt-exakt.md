@@ -184,6 +184,9 @@ eine kurze Übergabe. Am Code des Editors ändert Schritt 0 nichts.
 
 ### Schritt 4: Echte Spiegelung und die neue Rechnung ins Fenster (G6 und A; 5 bis 8 Tage)
 
+**Nachtrag 13.11.:** Schritt 3 hat ergeben, dass die heutige Rechnung bleibt (A hält nicht, B gefällt Florian nicht). Schritt 4
+ist damit nur noch die echte Spiegelung; der zweite Punkt unten („Ziehen fühlt sich direkt an“) entfällt.
+
 - **Was du danach siehst:**
   - Jede neue Form beginnt als gespiegelte Kugel, **die Mittellinie ist von Anfang an eingezeichnet**.
   - Ziehen fühlt sich direkt an: Die Haut ist in jedem Bild fertig, nach dem Loslassen passiert nichts mehr.
@@ -434,8 +437,11 @@ Beweis“. Offen ist Florians Entscheidung: weiter nach Plan, oder B als Schalte
 - **Gebaut und gemessen (13.11. abends):** Der Schalter liegt im Bau-Fenster. Probe: gegriffen ohne zu ziehen 0,00; hinauf und
   zurück 0,00 neben der Haut von vorher (heute bis 19,6 am „strange bird“, bis 2,1 am Firefish); Bilder im Zug im Mittel alle
   14 ms („strange bird“) und 19 ms (Firefish), heute 16 und 20 ms; nach dem Loslassen höchstens 0,35 (wo das Verdichten Punkte
-  zusammenlegt), im Mittel 0,00. Der Abbruch nach der Zeit greift nicht. Offen ist Florians Urteil nach dem Ausprobieren.
-  Einzelheiten: `docs/UEBERGABE.md`, Abschnitt 6.
+  zusammenlegt), im Mittel 0,00. Der Abbruch nach der Zeit greift nicht. Einzelheiten: `docs/UEBERGABE.md`, Abschnitt 6.
+- **Florians Urteil (13.11. abends): „Gefällt nicht“.** Damit greift der zweite Abbruch: B kommt nicht in sein Fenster. Knopf
+  und Taste sind wieder entfernt, der Code bleibt hinter `?ziehen=direkt` liegen. **Schritt 3 ist abgeschlossen: Die heutige
+  Rechnung bleibt.** Weiter mit Schritt 4, wie im Plan für diesen Fall vorgesehen: echte Spiegelung mit der heutigen Rechnung,
+  zuerst der Donut-Beweis.
 
 ### A.4 Spiegelung (Schritt 4)
 
