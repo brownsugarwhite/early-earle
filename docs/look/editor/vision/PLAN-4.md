@@ -101,3 +101,5 @@ Liegt der Blick auf der anderen Seite, hängt die Ansicht hinter der Kamera und 
 Schnittmenge (das Material entsteht aus den Ansichten, die mitspielen). Der Projektor steht jetzt im Abstand der Kamera: So
 erscheinen die Bilder auf der fernen Wand etwa so groß wie das Wesen und decken sich auf der Achse genau. Zum Ausprobieren:
 `?kugel=2` bis `?kugel=6` (im Artefakt `#vogel-ohnestift-kugel6`).
+Präsentation Version 7 (gleiche Adresse): alle sechs Filme, Stufenstreifen und Titelbild mit der großen Kugel neu, drei Knöpfe
+für die Kugelgröße (×2, ×3,4, ×6).
