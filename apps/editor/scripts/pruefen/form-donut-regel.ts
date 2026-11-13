@@ -13,6 +13,16 @@
 //   3. Der Rand des Lochs ist ein neuer Loop der Mittelebene durch diese neuen Enden (die neuen Kreuzungen). Auch dort ist jeder
 //      Punkt glatt, der Loop so rund wie möglich (Richtung parallel zur Sehne der Nachbarpunkte, Grifflänge wie ein Kreisbogen).
 //   4. Die heutige Rechnung rechnet weiter, bis die Haut steht (sie folgt den Linien auf ihre neuen Pfade).
+// Florians zweite Regel (13.11. nachts, `GRIFFE=kante`): „Der neue Loop soll nicht gleich rund sein, sondern wie vorher eine Kante.
+// An den neuen Kreuzungen bilden sich Punkte, und der durch die Mitte gezogene Griff bleibt sichtbar, aber ist markiert. Ich kann
+// ihn auch löschen, dann ist kein Rückführen mehr möglich. Wenn ich die Kante dann selektiere und ihre Kantigkeit auf 0 stelle,
+// erhalte ich ja den runden Donut.“ Gerechnet in zwei Stufen, mit den Regeln, die der Kern für Kanten schon hat:
+//   fest gemacht  (der markierte Punkt gelöscht) geschnitten wie oben, aber die neuen Enden behalten den Griff des geteilten Stücks
+//                 (die Linien knicken an der Mitte wie vorher; Ecken von selbst, `eckenAuto`), der Rand ist ein Loop mit Kante an,
+//                 seine Griffe aus seinem Verlauf (`griffeAnlegen`)
+//   Kante aus     am Rand: Die Ecken von selbst werden glatt, ihre Griffe kommen auf eine Gerade, die Längen bleiben (`kantenKnicken`)
+// Ergebnis: Festmachen bewegt die Haut wenig (großes Loch bis 6,9, im Mittel 1,8; gerade erst über die Mitte im Mittel 0,04); „Kante
+// aus“ macht die Haut glatt (Knick am Rand 15° wie daneben), der Umriss des Lochs bleibt, wie er geschnitten wurde (77 bis 92).
 // Schalter zum Nachrechnen dessen, was verworfen wurde:
 //   GRIFFE=angepasst  die Griffe der neuen Punkte nach dem Verlauf der abgeschnittenen Linie angepasst (`griffeAnlegen`): Sie werden
 //                     null lang, die Spitze an den Kreuzungen bleibt (Knick am Rand im Mittel 26°, größter 88°, das Loch eckig)
@@ -36,26 +46,33 @@ import {
   type Loop,
   type LoopPunkt,
   bindungenAus,
+  eckenAuto,
   festlegen,
   griffeAnlegen,
   hatPfad,
   hautLagen,
+  istEckeVonSelbst,
   kantenGewichte,
+  kantenKnicken,
   kruemmungsKetten,
   mittlereKante,
   pfadLagen,
   pfadParameter,
   zieleAus,
 } from '../../../../packages/shape/src/dicht/loops';
+import { flaechenAbstand } from './flaechenabstand';
 import { type BlattBild, type BlattSchnitt, blattSchreiben } from './form-direkt-blatt';
 import { R, kugelMit, nachVerdichten } from './form-direkt-faelle';
 import { fz, heute, knickDaneben, kopie, lochRund, loopsKopie, randKnick, richtungswechsel, schnittDurch, verschmelzen, z1, z2 } from './form-donut-teile';
 
 const TIEFEN = (process.env.TIEF ?? '190').split(',').map(Number);
 const DREIECKE = Number(process.env.DREIECKE ?? 2000);
-/** Länge der Griffe an den neuen Enden: `anteil` (die Regel), `lang`, `angepasst` (siehe oben); mehrere mit Komma: je eine Spalte */
-type GriffArt = 'anteil' | 'lang' | 'angepasst';
-const GRIFF_ARTEN = (process.env.GRIFFE ?? 'anteil').split(',').map((g): GriffArt => (g === 'lang' || g === 'angepasst' ? g : 'anteil'));
+/**
+ * Die neuen Enden: `anteil` (die erste Regel: glatt, Griff = senkrechter Anteil), `lang`, `angepasst` (siehe oben), `kante` (Florians
+ * zweite Regel, siehe oben); mehrere mit Komma: je eine Spalte
+ */
+type GriffArt = 'anteil' | 'lang' | 'angepasst' | 'kante';
+const GRIFF_ARTEN = (process.env.GRIFFE ?? 'anteil').split(',').map((g): GriffArt => (g === 'lang' || g === 'angepasst' || g === 'kante' ? g : 'anteil'));
 const NUR_ORT = process.env.RAND === 'ort';
 /** beim Schneiden: Punkte, neben denen näher als dieser Anteil einer Kante geschnitten würde, kommen selbst auf die Ebene (`FANGEN=0`: aus) */
 const FANGEN = Number(process.env.FANGEN ?? 0.25);
@@ -279,8 +296,17 @@ function regelAnlegen(s: Stand, original: readonly Loop[], von: readonly number[
         const anfang = pi === 0;
         const roh = anfang ? p.aus! : p.ein!;
         const ganz = laenge(roh);
-        const g = griffArt === 'lang' ? ganz : Math.abs(roh.z);
         knicke.push((2 * Math.acos(Math.max(-1, Math.min(1, roh.z / (ganz || 1)))) * 180) / Math.PI);
+        if (griffArt === 'kante') {
+          // zweite Regel: Der Rand bleibt eine Kante. Das neue Ende behält den Griff des geteilten Stücks, die Linie knickt an der
+          // Mitte wie vorher (es wird unten eine Ecke von selbst, weil es eine Kante kreuzt); nach außen sein Spiegelbild.
+          griffe.push(ganz);
+          if (anfang) p.ein = { ...roh, z: -roh.z };
+          else p.aus = { ...roh, z: -roh.z };
+          kreuzung(l, p, anfang ? 0 : n - 1);
+          return;
+        }
+        const g = griffArt === 'lang' ? ganz : Math.abs(roh.z);
         griffe.push(g);
         p.aus = { x: 0, y: 0, z: anfang ? g : -g };
         p.ein = { x: 0, y: 0, z: anfang ? -g : g };
@@ -301,8 +327,14 @@ function regelAnlegen(s: Stand, original: readonly Loop[], von: readonly number[
   const P = rand.punkte;
   const m = P.length;
   const randGriffe: number[] = [];
-  if (griffArt === 'angepasst') griffeAnlegen(rand, rand.ruhe, true);
-  else if (m >= 2) {
+  if (griffArt === 'angepasst' || griffArt === 'kante') {
+    // der Rand, wie er geschnitten ist: seine Griffe aus seinem Verlauf (wie bei jedem neuen Loop)
+    griffeAnlegen(rand, rand.ruhe, true);
+    if (griffArt === 'kante') {
+      rand.kante = true;
+      eckenAuto(s.loops);
+    }
+  } else if (m >= 2) {
     P.forEach((p, i) => {
       const a = P[(i + m - 1) % m]!.ref;
       const b = P[(i + 1) % m]!.ref;
@@ -333,7 +365,27 @@ function regelAnlegen(s: Stand, original: readonly Loop[], von: readonly number[
   }
   const mittel = (a: readonly number[]): number => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
   const wegRinge = Math.max(0, ...s.loops.filter((l) => l.art === 'ring').map(wegZumPfad));
-  return `${stuecke} Linienstücke, ${m} neue Kreuzungen${knicke.length ? ` (die Linien knickten dort an der Mitte um ${z1(mittel(knicke))}°; Griffe der neuen Enden im Mittel ${z1(mittel(griffe))} lang, am Rand ${z1(mittel(randGriffe))})` : ` (Griffe der neuen Enden im Mittel ${z1(mittel(griffe))} lang)`}. Die Linien gehen dafür bis ${z1(wegRinge)} (Ringe) und ${z1(wegZumPfad(rand))} (Rand) von ihrer Lage nach dem Schnitt.`;
+  return `${stuecke} Linienstücke, ${m} neue Kreuzungen${knicke.length ? ` (die Linien knickten dort an der Mitte um ${z1(mittel(knicke))}°; Griffe der neuen Enden im Mittel ${z1(mittel(griffe))} lang${randGriffe.length ? `, am Rand ${z1(mittel(randGriffe))}` : ''})` : ` (Griffe der neuen Enden im Mittel ${z1(mittel(griffe))} lang)`}. Die Linien gehen dafür bis ${z1(wegRinge)} (Ringe) und ${z1(wegZumPfad(rand))} (Rand) von ihrer Lage nach dem Schnitt.`;
+}
+
+/** wie weit die Punkte der Haut `h` neben der Fläche `vor` liegen (größter Abstand, Mittel) */
+function nebenFlaeche(h: Haut, vor: Haut): { max: number; mittel: number } {
+  const punkte = (x: Haut): [number, number, number][] => Array.from({ length: x.n }, (_, i) => [x.pos[3 * i]!, x.pos[3 * i + 1]!, x.pos[3 * i + 2]!]);
+  const d = flaechenAbstand(
+    punkte(h),
+    punkte(vor),
+    Array.from({ length: vor.tri.length / 3 }, (_, t) => [vor.tri[3 * t]!, vor.tri[3 * t + 1]!, vor.tri[3 * t + 2]!]),
+    30,
+  );
+  let max = 0;
+  let summe = 0;
+  let zahl = 0;
+  for (const x of d) {
+    max = Math.max(max, x);
+    summe += x;
+    zahl++;
+  }
+  return { max, mittel: zahl ? summe / zahl : 0 };
 }
 
 /** Maße am Rand des Lochs */
@@ -402,7 +454,7 @@ function fall(tief: number): BlattBild[] {
   bilder.push({ name: 'heute: jede Hälfte wird bis zur Mitte gezeigt', h: ohne.h, loops: ohne.loops, notiz: m0.text, schnitt: schnitte(ohne.h) });
 
   for (const griffArt of GRIFF_ARTEN) {
-    const name = `${griffArt === 'angepasst' ? 'deine Regel, die Griffe der neuen Punkte nach der abgeschnittenen Linie angepasst' : griffArt === 'lang' ? 'dieselben Punkte, die Griffe der neuen Enden länger' : 'deine Regel: beim Loslassen geschnitten, neue Punkte ohne Knick'}${NUR_ORT ? ' (der Rand hält nur den Ort)' : ''}`;
+    const name = `${griffArt === 'kante' ? 'deine neue Regel: fest gemacht, der Rand ist eine Kante' : griffArt === 'angepasst' ? 'deine Regel, die Griffe der neuen Punkte nach der abgeschnittenen Linie angepasst' : griffArt === 'lang' ? 'dieselben Punkte, die Griffe der neuen Enden länger' : 'deine Regel: beim Loslassen geschnitten, neue Punkte ohne Knick'}${NUR_ORT ? ' (der Rand hält nur den Ort)' : ''}`;
     const v = verschmelzen(wahr.h, wahr.loops, true, false, FANGEN);
     const s: Stand = { h: v.h, loops: v.loops, randId: v.loops[v.loops.length - 1]!.id };
     let text = '';
@@ -437,7 +489,39 @@ function fall(tief: number): BlattBild[] {
       text = `hält nicht: ${(e as Error).message}`;
     }
     console.log(`${name}: ${text}`);
-    bilder.push({ name, h: s.h, loops: s.loops, notiz: text, schnitt: schnitte(s.h), punkte: true });
+    if (griffArt !== 'kante') {
+      bilder.push({ name, h: s.h, loops: s.loops, notiz: text, schnitt: schnitte(s.h), punkte: true });
+      continue;
+    }
+    // zweite Regel, erste Stufe: fest gemacht, der Rand ist eine Kante. Wie weit liegt die Haut neben dem, was vorher gezeigt war?
+    const a = nebenFlaeche(s.h, ohne.h);
+    const textA = `${text} Die Haut liegt höchstens ${z2(a.max)} (im Mittel ${z2(a.mittel)}) neben dem, was vorher gezeigt war.`;
+    console.log(`   neben dem vorher Gezeigten: höchstens ${z2(a.max)}, im Mittel ${z2(a.mittel)}`);
+    bilder.push({ name, h: kopie(s.h), loops: loopsKopie(s.loops), notiz: textA, schnitt: schnitte(s.h), punkte: true });
+    // zweite Stufe: Kante am Rand aus. Was der Editor dabei tut (`kantenKnicken`): Die Ecken von selbst an den Kreuzungen werden
+    // glatt, ihre Griffe kommen auf eine Gerade (am Spiegelpunkt senkrecht zur Mitte), die Längen bleiben.
+    const nameB = 'danach: Kante am Rand aus';
+    let textB = '';
+    try {
+      const vorher = new Set(s.loops.flatMap((l) => l.punkte.filter(istEckeVonSelbst)));
+      randLoop(s).kante = false;
+      eckenAuto(s.loops);
+      const versch = kantenKnicken(s.loops, vorher);
+      let weit = 0;
+      for (const d of versch) if (d) for (let j = 0; j < d.length; j += 3) weit = Math.max(weit, Math.hypot(d[j]!, d[j + 1]!, d[j + 2]!));
+      const r1 = rechnen(s.h, s.loops, pfade(s.loops), null, 30, 300);
+      legen(s.h, s.loops);
+      const d = nachVerdichten(s.h, s.loops, mk);
+      s.h = d.h;
+      s.loops = d.loops;
+      const r2 = rechnen(s.h, s.loops, pfade(s.loops), null, 0, 300);
+      legen(s.h, s.loops);
+      textB = `${vorher.size} Ecken werden glatt, die Linien gehen dafür bis ${z1(weit)}. ${r1.runden} + ${r2.runden} Runden bis zur Ruhe${r1.steht && r2.steht ? '' : ' (steht nicht)'}${r1.fest || r2.fest ? ' (die Rechnung hat aufgegeben)' : ''}; ${s.h.n} Punkte. ${masse(s).text}`;
+    } catch (e) {
+      textB = `hält nicht: ${(e as Error).message}`;
+    }
+    console.log(`${nameB}: ${textB}`);
+    bilder.push({ name: nameB, h: s.h, loops: s.loops, notiz: textB, schnitt: schnitte(s.h), punkte: true });
   }
   return bilder;
 }
@@ -451,6 +535,7 @@ const zeilen = TIEFEN.map((tief) => ({
   bilder: fall(tief),
 }));
 if (process.env.BLATT) {
-  blattSchreiben(`${process.env.BLATT}.html`, 'Schritt 4, zweiter kleiner Beweis: der Donut mit deiner Regel', zeilen, Number(process.env.BREITE ?? 1300));
+  const titel = GRIFF_ARTEN.includes('kante') ? 'Schritt 4, Donut: deine neue Regel (der Rand bleibt erst eine Kante, rund wird er mit „Kante aus“)' : 'Schritt 4, zweiter kleiner Beweis: der Donut mit deiner Regel';
+  blattSchreiben(`${process.env.BLATT}.html`, titel, zeilen, Number(process.env.BREITE ?? 1300));
   console.log(`${process.env.BLATT}.html`);
 }
