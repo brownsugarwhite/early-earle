@@ -387,6 +387,28 @@ gehören zu einer Fläche mit überall gleicher Wölbung, und `linienRichtung` w
 Die zweite Hälfte allein (Lagen aus den Linien und den Normalen der Haut) hält dagegen an allen vorhandenen Formen; Zahlen im
 Bericht `docs/research/2026-11-13-beweis-haut-direkt.md`.
 
+**Zweiter Beweis „B“ (13.11., Florian: „ok, prüfe B“), vor dem Bauen festgelegt.** Wieder nur Kern und Bilder.
+
+Was B heißt: Ziehen an fertiger Haut rechnet die zweite Hälfte (Lagen direkt aus den Linien, die Wölbung der Haut bleibt).
+Neue Haut rundet die heutige Rechnung, und zwar nur dort, wo das Verdichten neue Punkte gesetzt hat, weil die Haut gedehnt
+wurde; alles andere steht dabei fest. Dazu kommen zwei Ergänzungen an B: Dreht eine Linie, drehen die Normalen der Haut mit
+(die Drehung der Linien wird über die Haut verteilt). Und die Haut, wie sie beim Anfassen ist, ist genau die Lösung für
+unbewegte Linien (was die Zeilen an ihr nicht erfüllen, bleibt als rechte Seite stehen); dann gibt es nichts, was sich beim
+Anfassen oder Loslassen bewegen könnte, und die Normalen müssen kein eigener gemerkter Stand sein.
+
+| Fall | Kriterium |
+| --- | --- |
+| Rüssel aus zwei Profillinien, aus der Kugel gezogen (8 Schritte) | Querschnitt Breite zu Höhe zwischen 0,8 und 1,25, nichts umgestülpt |
+| derselbe Rüssel danach um die Hälfte verlängert (gleichmäßig gestreckt) | Breite und Höhe in der Mitte ändern sich höchstens 3 % |
+| Horn am „strange bird“ um 70 verlängert | Dicke höchstens 3 % anders (wie im ersten Beweis, jetzt mit Drehen und Runden) |
+| dasselbe Horn um 30° gebogen | keine neuen Knicke über 60°, nichts umgestülpt, Dicke höchstens 3 % anders (Bild gegen heute) |
+| hin und zurück (Horn) | dieselbe Haut (höchstens 0,05) |
+| nach dem Loslassen: neu angelegt, Linien unbewegt | Haut bewegt sich höchstens 0,18 |
+| seine drei Formen angefasst, nichts gezogen | Haut bewegt sich nicht (höchstens 0,05) |
+
+**Abbruch:** Wird der Rüssel so nicht rund oder knickt das gebogene Horn, bleibt es bei der heutigen Rechnung (Weg 1 aus dem
+Bericht).
+
 ### A.4 Spiegelung (Schritt 4)
 
 - Die Haut der Basis ist die Hälfte z ≥ 0. Randpunkte liegen bei z = 0. In den Zeilen eines Randpunkts zählen die inneren
