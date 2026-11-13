@@ -443,7 +443,7 @@
   }
   function starten(seite, knopf) {
     zuletzt = knopf;
-    for (const v of document.querySelectorAll('.bogen video')) v.pause();
+    for (const v of document.querySelectorAll('video')) v.pause();
     const f = document.createElement('iframe');
     f.src = seite;
     f.title = 'Prototyp';
@@ -462,7 +462,7 @@
       const x = document.exitFullscreen || document.webkitExitFullscreen;
       try { const p = x.call(document); if (p && p.catch) p.catch(() => {}); } catch (e) {}
     }
-    for (const v of document.querySelectorAll('.bogen video')) { try { v.play().catch(() => {}); } catch (e) {} }
+    for (const v of document.querySelectorAll('video')) { try { v.play().catch(() => {}); } catch (e) {} }
     if (zuletzt) zuletzt.focus();
   }
   for (const k of document.querySelectorAll('[data-seite]')) k.addEventListener('click', () => starten(k.dataset.seite, k));
