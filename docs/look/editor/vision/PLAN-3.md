@@ -112,3 +112,16 @@ Geistermaus, Film), mit eigener Grammatik und eigenem Zeichnen:
 5. Haut formen (Ziehen auf der Haut mit weichem Rand, Lichtfleck vorher).
 6. Nachzeichnen (Stück einer Kurve ersetzen), Schnitt, Form, Zickzack.
 7. Geistermaus, Film, Prüfung mit echten Mauszügen, Präsentation (gleiche Adresse).
+
+## Stand (laufend)
+
+- 13.11. Werft gebaut (`prototyp/src/werkstatt/werft.js`, Einstieg `src/einstieg/werft.js`, `node bau.mjs src/einstieg/werft.js
+  dist/werft.html Werft`): Flächen je Kurve (Ring: Ebene aus der Hauptrichtung der Punkte in x-y, Ringende: Gerade, Kiel: z = 0,
+  Form: Haut wie beim Greifen), Glas der Fläche (beim Zug voll, beim Schweben über einer Kurve schwach), Haut formen
+  (`hautZugStart`, Rad im Zug = Reichweite), Nachzeichnen (`nachZiel`, `nachzeichnen`), federnde Ansichten (`ansichtDruck`,
+  `ansichtLos`), Jelly ↔ Illustration nach `rs.parallel` (Überblendung über `werft:illu`), Kontur aus Maske (`konturFS`),
+  Boden mit Grundriss (`bodenFS`, Draufsicht-Maske 512²), Linien nach Art gewichtet, Punkte nur an der Kurve unter der Hand,
+  Rauten für Ecken (Zustand + 10). Geprüft mit Mauszügen: Spantpunkt bleibt in seiner Ebene, Haut formen, Taste 1 → Seite als
+  Illustration, 0 → Raum. Drehbücher: `start`, kurze Filme `achse`, `ebene`, `haut`, `nach`, `spant`, `feder`.
+- Nächste Schritte: Film prüfen, kurze Filme aufnehmen, Präsentation Runde 3 (gleiche Artefakt-Adresse, Start in der Seite),
+  KONZEPT-Nachtrag, Push.

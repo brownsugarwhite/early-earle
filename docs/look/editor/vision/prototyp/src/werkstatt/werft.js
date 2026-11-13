@@ -600,7 +600,64 @@ export class Werft extends Bullaugen {
       }
       return m;
     };
+    const kielNachzeichnen = (G) => {
+      G.gehe(() => { const L = kiel(), P = kielOben(); const i = L.punkte.indexOf(P), n = L.punkte.length; return proj(L.punkte[(i + n - 1) % n].p); }, 0.9);
+      G.zieh(() => {
+        const L = kiel(), P = kielOben(); const i = L.punkte.indexOf(P), n = L.punkte.length;
+        const a = proj(L.punkte[(i + n - 1) % n].p), b = proj(L.punkte[(i + 1) % n].p), c = proj(P.p);
+        const w = []; for (let k = 0; k <= 24; k++) { const u = k / 24; const x = a[0] + (b[0] - a[0]) * u, y0 = a[1] + (b[1] - a[1]) * u; w.push([x, Math.min(y0, c[1]) - Math.sin(u * Math.PI) * 38]); } return w;
+      }, 1.6, 2, { gleich: true });
+    };
+    const rahmen = () => {
+      const P = app.netz.pos;
+      let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+      for (let i = 0; i < P.length; i += 27) { const q = proj([P[i], P[i + 1], P[i + 2]]); x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); }
+      return { x0, x1, y0, y1, w: x1 - x0, h: y1 - y0 };
+    };
     return {
+      // kurze Filme je Grundsatz (für die Präsentation)
+      achse(G) {
+        G.gehe(() => [W() * 0.16, H() * 0.74], 0.6);
+        G.zieh(() => { const rs = app.rs; const dx = (rs.azimut - 0.04) / 0.008, dy = -rs.hoehe / 0.006 + 5; return [[W() * 0.16, H() * 0.74], [W() * 0.16 + dx, H() * 0.74 + dy]]; }, 1.6);
+        G.warte(1.8);
+        G.gehe(() => [W() * 0.14, H() * 0.6], 0.5);
+        G.zieh(() => [[W() * 0.14, H() * 0.6], [W() * 0.14 + 80, H() * 0.6 + 45]], 1.2);
+        G.warte(1.2);
+      },
+      ebene(G) {
+        G.gehe(() => proj(ringPunkt().p), 1.0);
+        G.warte(0.9);
+        G.zieh(() => { const p = proj(ringPunkt().p); return [p, [p[0] + 40, p[1] - 30], [p[0] + 70, p[1] - 6]]; }, 1.8);
+        G.warte(0.6);
+        G.gehe(() => proj(kielOben().p), 0.9);
+        G.warte(0.8);
+        G.zieh(() => { const p = proj(kielOben().p); return [p, [p[0] - 30, p[1] - 40]]; }, 1.5);
+        G.warte(0.8);
+      },
+      haut(G) {
+        G.gehe(() => hautStelle(), 1.0);
+        G.warte(0.9);
+        G.zieh(() => { const p = hautStelle(); return [p, [p[0] - 14, p[1] - 60], [p[0] - 18, p[1] - 70]]; }, 2.2);
+        G.warte(0.8);
+      },
+      nach(G) {
+        kielNachzeichnen(G);
+        G.warte(1.2);
+      },
+      spant(G) {
+        G.gehe(() => { const r = rahmen(); return [r.x0 + r.w * 0.62, r.y0 - 50]; }, 0.8);
+        G.zieh(() => { const r = rahmen(); return [[r.x0 + r.w * 0.62, r.y0 - 50], [r.x0 + r.w * 0.6, r.y0 + r.h * 0.5], [r.x0 + r.w * 0.57, r.y1 + 50]]; }, 1.5, 2);
+        G.warte(1.4);
+      },
+      feder(G) {
+        G.gehe(() => [W() * 0.84, H() * 0.82], 0.5);
+        G.taste('1', 1.6);
+        G.warte(0.7);
+        G.taste('3', 1.6);
+        G.warte(0.7);
+        G.taste('7', 1.6);
+        G.warte(0.9);
+      },
       start(G) {
         // 1. Leere ziehen: drehen; nahe der Seite loslassen: das Wesen wird zu seiner Illustration
         G.gehe(() => [W() * 0.16, H() * 0.74], 0.7);
