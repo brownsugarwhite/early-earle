@@ -714,6 +714,66 @@ mit Winkel 0). Der Winkel selbst schlägt nichts um.
 3. **„Maul formen“ darauf:** Maullinie hart mit 95° und 70°, keine Mittellinie mehr; animiert wie jetzt. K schaltet zwischen
    hart mit Winkel und rund (Winkel 0, in Stufen). Danach die Kieferknochen (Etappe 2).
 
+**Eingebaut im Bau-Fenster (13.11., 22:15 Uhr; Florian: „Dann mache Etappe 1“), in seinem Fenster (5194) ist davon nichts.**
+Gebaut ist mehr als Etappe 1, aber anders als angekündigt; beides der Reihe nach.
+
+*Was anders ist:* Angekündigt war, die erste Reihe im Löser „beweglich statt starr“ zu führen, damit das Innere ruhiger wird.
+Vorher gemessen (`form-kante-winkel.ts`, Knick zwischen Nachbardreiecken im Maul an seinem Modell „simple_mouth_more simple“):
+
+| Stand | Mittel | Gegenknicke |
+| --- | --- | --- |
+| wie gesichert | 5,6° | 41 % der Kanten, im Mittel 6,3° |
+| nur neu gerechnet, Winkel unverändert | 7,3° | 50 %, 8,3° |
+| mit dem Winkel geformt (12 Stufen zu 6 Schritten) | 6,1° | 50 %, 7,3° |
+| zum Vergleich sein „simple_mouth“, wie gesichert | 6,3° | 44 %, 7,8° |
+
+Die Unruhe kommt also nicht von der starren Reihe: Jede Rechnung bringt sein Modell auf diesen Stand, und die erste Reihe selbst
+ist die ruhigste (4,2°). Mein Bild vom Beweis war flach schattiert und hat übertrieben; in der Anzeige des Fensters ist das Innere
+ruhig (Bild unten). Eine Reihe, die quer zur Ebene fest und in der Ebene frei ist, passt außerdem nicht in den Löser, ohne ihn
+umzubauen (er hat eine Matrix für x, y und z). Die Reihe bleibt deshalb geführt wie im Beweis, jede Runde neu.
+
+*Was gebaut ist* (das Wichtige aus den Etappen 1 bis 3: Der Winkel gilt in jeder Rechnung, steht an der Linie, und „Maul
+formen“ nutzt ihn):
+- **Kern:** `packages/shape/src/dicht/kantenWinkel.ts` (Test `kantenWinkel.test.ts`). Ein Punkt einer Linie kann den Knick der
+  Haut quer über die Linie angeben (`LoopPunkt.knick`, Grad, nach innen); zwischen den Punkten mit Angabe gleitet er
+  (`knickSoll`). `LoopZug` legt für jede solche Linie die erste Reihe innen an und führt sie vor jeder Runde nach
+  (`knickFuehrungen`, `knickZiele`); `loopStruktur` rechnet sie mit. Durch `LoopZug` läuft im Fenster jede Rechnung (Zug,
+  Nachlauf, Hintergrund). Nur für eingesetzte Ringe und nur in der Grundform.
+- **„Maul formen“, dritte Fassung** (`maulFormen.ts`): Läuft keine Mittellinie durch beide Lippen, kommt auch keine dazu. Die
+  Maullinie wird hart und bekommt die Angaben 95° an beiden Enden und 70° am Mundwinkel; gedreht wird vom Knick, den die Haut
+  dort hat, in 12 Stufen zu 6 Schritten, animiert wie bisher. Mit einer Mittellinie durch beide Lippen gilt die zweite Fassung
+  (ihr Griff knickt); `weg: 'mitte'` (im Fenster `?maulWeg=mitte`) zeigt sie zum Vergleich auch ohne vorhandene Mittellinie.
+- **Fenster:** Meldung, K nimmt mit der Kante auch die Angabe weg, die Angabe gehört zum Stand (Sichern und Laden, Rückgängig,
+  Hintergrund), Prüfhaken `knickGemessen`.
+
+*Gemessen, alle Punkte der Proben erfüllt:*
+
+| Form | Knick an den Lippen | am Mundwinkel | Tasche | umgeschlagen |
+| --- | --- | --- | --- | --- |
+| Kugel im Fenster (`form-maul-formen-fenster.mjs`) | 95,0° und 95,0° | 71,9° | | 0 |
+| dieselbe nach einem Zug an der Unterlippe | 95,0° und 95,0° | 72,8° | | 0 |
+| Florians „simple_mouth_more simple“ im Fenster (`form-maul-formen-form.mjs`) | 93,6° und 94,6° (vorher 126,8° und 116,4°) | 71,9° (vorher 43,5°) | | 0 |
+| dasselbe nach einem Zug am Mundwinkel | 93,6° und 94,4° | 72,0° | | 0 |
+| Kugel im Kern, drei Netze (`form-kante-winkel.ts`) | 92,5° bis 95,1° | 72,3° bis 73,8° | 0,17 bis 0,20 | 6, 0, 0 |
+
+Im Fenster formt die Kugel in 1,6 s (76 Bilder), sein Modell in 4,5 s. Die Kugel bleibt eine Kugel (hinter dem Maul höchstens
+4,4 daneben). ⌘Z führt genau zurück. 158 Tests im Kern, 24 im Fenster; die Donut-Probe läuft wie vorher. Bilder:
+`docs/progress/editor/schritt6-maul-kante-fenster-2026-11-13.jpg`, `schritt6-maul-kante-florian-vorher-2026-11-13.jpg`,
+`schritt6-maul-kante-florian-nachher-2026-11-13.jpg`.
+
+*Offen:*
+- **K macht die Lippen noch nicht rund.** K nimmt Kante und Angabe weg; die Rechnung läuft danach auseinander (eine weiche Linie
+  misst an dem Knick eine riesige Krümmung), das Fenster merkt es und behält die Form. Was „rund“ am Maul heißen soll (die Tasche
+  verschwindet, oder die Lippe bekommt nur eine Rundung), ist eine Frage an Florian.
+- Der Körper einer Kugel ohne Haltelinien verformt sich bei sehr vielen weiteren Runden langsam weiter (im Kern nach 300 Runden
+  um 14); das Maul bleibt dabei (0,9). An seinem Modell bleibt beides (0,7).
+- Die Tiefe der Tasche ist nicht eingestellt (an der Kugel rund ein Fünftel des Wegs zum Mundwinkel).
+- Die 6 umgeschlagenen Dreiecke am Mundwinkel auf dem groben Netz im Kern kommen vom Verfeinern an der spitzen Ecke, nicht vom
+  Winkel (im Fenster 0).
+- Die Angabe lässt sich im Fenster noch nicht von Hand setzen oder ändern; es gibt sie nur durch „Maul formen“.
+- In der Pose rechnet ein anderer Löser; dort wird die Reihe nicht geführt. Das gehört zu den Kieferknochen (Etappe 2) und zu
+  Schritt 5.
+
 ### Schritt 7: Auswahl wie in Blender (2 bis 3 Tage)
 
 - **Was du danach siehst:** Du wählst Punkte, **Kanten** (das Linienstück zwischen zwei Punkten) und **Flächen** (das Feld
