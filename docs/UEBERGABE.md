@@ -1,4 +1,4 @@
-# Übergabe (Stand 13.11.2026, 17:35 Uhr: Schritt 6 (Maul) ist neu gefasst und der Beweis hält (Abschnitt 7.9): Das Maul entsteht automatisch an der gewählten Linie, geformt wie von Hand und von der Seite durchgestanzt (Kante hart, Querlinie durch die Mundwinkel, die Mittellinie bekommt im Maul in Stufen die Form der Maullinie). Danach gehen Loops nur um einen Kiefer und der Kieferknochen. Die beiden Beweise davor (7.6 Posen, 7.7 Maul als eingeschweißte Höhle) hatten das Falsche geprüft; Florian hat widersprochen und recht behalten (7.8). Gebaut ist nichts; gefragt ist sein Wort zum Bauen. Schritt 4b, erster Teil, die Rechnung auf der Hälfte, ist in seinem Fenster (5194; Abschnitt 7.5); der Rest der halben Haut ist als Schritt 4c fest vorgemerkt. Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt. Zu Schritt 1, 2, dem Donut (4a) und der halben Rechnung steht sein Urteil aus)
+# Übergabe (Stand 13.11.2026, 18:40 Uhr: Schritt 6, Etappe 1 ist im Bau-Fenster (5197) gebaut: Der Knopf „Maul formen“ formt am gewählten Ring das Maul als echte Form, von der Seite durchgestanzt (Abschnitt 7.10). Florian sieht es sich an; sein Urteil steht aus. In seinem Fenster (5194) ist davon nichts. Als Nächstes Etappe 2 (Kieferknochen am geformten Maul), dann Schritt 5 (Posen). Die Beweise davor: 7.9 (Maul automatisch geformt: hält), 7.8 (Berichtigung), 7.6 und 7.7 (hatten das Falsche geprüft). Schritt 4b, erster Teil, die Rechnung auf der Hälfte, ist in seinem Fenster (Abschnitt 7.5); der Rest der halben Haut ist als Schritt 4c fest vorgemerkt. Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt. Zu Schritt 1, 2, dem Donut (4a) und der halben Rechnung steht sein Urteil aus)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -28,7 +28,7 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | 4 Echte Spiegelung (mit der heutigen Rechnung) | **4a, der Donut, ist in Florians Fenster (Abschnitt 7.4, 13.11.):** nach seiner zweiten Regel; sein Urteil steht aus. **4b, erster Teil, ist seit dem 13.11. nachmittags in Florians Fenster (Abschnitt 7.5):** Der Löser rechnet auf der Hälfte (zwei halb so große Systeme, Krümmung auf der Hälfte), das Netz im Fenster bleibt ganz; Rechnen je Bild 10,3 → 7,1 ms am „teat firefish“, Zerlegen rund 50 %, gleiche Form; dazu „flüssig zuerst“ (eine weitere Runde je Bild nur, wenn sie ins Bild passt). Sein Urteil zum Tempo steht aus |
 | 4c Rest der halben Haut | **fest vorgemerkt** (Plan, „Schritt 4c“; Florian am 13.11.: „es soll nicht vergessen werden“): Gewichte und Vermessen auf der Hälfte (Runde von 73 % auf 50 bis 60 %), die einzelnen langsamen Bilder, Verdichten und Anzeige auf der Hälfte, das Netz selbst als Hälfte. Kommt nach den Posen wieder auf den Tisch und muss gebaut sein, bevor Shader, Materialien, Fell oder Zusatzteile beginnen. Seine heutigen Formen sind kein Maßstab für das Tempo |
 | 5 Posen wie die Basis | **Entwurf steht, Gegenprobe an Florians Form hält** (Abschnitte 7.6 und 7.8, 13.11.): Eine Pose ist dieselbe Form mit anderen Lagen der Punkte und Griffe, dazu die Knochen (Florian: „ein einfacher Morph der Punkte und Handles […], während die Kieferknochen sich bewegen“). Der erste Beweis war am Maul aus der schmalen Form gescheitert (verborgene Fläche); am von Hand geformten Maul ist ein Zug in der Pose ein gewöhnlicher Zug. Gebaut ist nichts; kommt nach Schritt 6 |
-| 6 Maul | **neu gefasst, Beweis hält (Abschnitt 7.9, 13.11.): Das Maul entsteht automatisch an der gewählten Linie, geformt wie von Hand.** Kante hart, Querlinie durch die Mundwinkel, die Mitte zwischen den Lippen wird in Schritten nach innen gezogen; nichts wird eingeschweißt oder eingesetzt. Danach gehen Loops nur um einen Kiefer und der Kieferknochen. Ein von Hand geformtes Maul bekommt dieselben Knochen (7.8). Der Beweis „Maul als eingeschweißte Höhle“ (7.7) hat das Falsche geprüft. Gebaut ist nichts; gefragt ist Florians Wort zum Bauen |
+| 6 Maul | **Etappe 1 im Bau-Fenster gebaut (Abschnitt 7.10, 13.11.): Der Knopf „Maul formen“ formt am gewählten Ring das Maul als echte Form, von der Seite durchgestanzt** (Kante hart, Mittellinie, Querlinie durch die Mundwinkel; die Mittellinie bekommt im Maul in Stufen die Form der Maullinie; nichts wird geschnitten oder eingesetzt). Florians Urteil steht aus. Offen: Etappe 2 (Kieferknochen am geformten Maul, auch am von Hand geformten; „Fressen“ gibt dort bis dahin eine Meldung), die Flächen innen genauer, das Maul aus der schmalen Form mit eingesetztem Inneren besteht daneben weiter |
 | 7 Auswahl wie in Blender | offen |
 
 **Schritt 0, was getan ist:**
@@ -758,7 +758,62 @@ dicht neben dem vorhandenen. Die Gewichte innen sind grob; geöffnet ist die Fl�
 **Etappen** (Plan, „Schritt 6, wie Florian ihn beschreibt“): 1. „Maul“ formt automatisch (Kern und Fenster); 2. Kieferknochen am
 geformten Maul, auch am von Hand geformten; 3. danach Schritt 5 (Posen).
 
-**Gefragt ist Florian (13.11., 17:35 Uhr):** Soll ich so bauen? **„Ja, so bauen“** oder **„Nein“**.
+**Florians Antwort (13.11.):** „Bau mal, ich muss es mir anschauen.“ Siehe 7.10.
+
+### 7.10 Schritt 6, Etappe 1: „Maul formen“ im Bau-Fenster gebaut (13.11., 18:40 Uhr)
+
+Gebaut in `form-bau` (Port 5197); **in Florians Fenster (5194) ist davon nichts.** Er sieht es sich im Bau-Fenster an.
+
+**Was gebaut ist:**
+- **Kern:** `maulFormen(haut, loops, maulId, opt)` in `packages/shape/src/dicht/maulFormen.ts` (Test `maulFormen.test.ts`). Rein:
+  Haut und Loops bleiben, zurück kommen die neue Haut, die neuen Loops, `alt` (für `netzGewachsen`) und die Zähler, oder
+  `fehler` mit dem Grund. Ablauf wie in 7.9: Mundwinkel sicherstellen, Maullinie hart (und `maulGeformt` am Ring),
+  Mittellinie (vorhandene durch beide Lippen, sonst angelegt), Querlinie durch beide Mundwinkel (hart nur von der Mitte bis zum
+  Mundwinkel, dahinter ein Punkt ohne Kante), dann durchstanzen in 8 Stufen zu 8 Schritten, nach jeder Stufe verfeinert.
+  `opt.zwischen` ruft nach jedem Abschnitt (zum Messen oder später zum Zeigen).
+- **Fenster:** Knopf „Maul formen“ (`kurven.html`, `kurven.ts`: `maulFormenGewaehlt`): am gewählten Ring, nur in der Grundform.
+  Erst die Meldung, dann wird gerechnet (an der Kugel 0,7 s, so lange steht das Fenster); ⌘Z führt zurück. Ein Maul der alten
+  Art an derselben Linie entfällt dabei. `maulAnlegen` weist einen geformten Ring ab: „Fressen“ und die Regler geben dort eine
+  Meldung, bis Etappe 2 gebaut ist. `/editor` ist nicht angefasst.
+
+**Probe im Fenster** (`GPU=1 node scripts/pruefen/form-maul-formen-fenster.mjs <bild>`, Kugel, schmale Form in der Seite vorn
+über den Umriss, dann der Knopf), alle Punkte erfüllt:
+
+| Geprüft | Ergebnis |
+| --- | --- |
+| Formen | „Maul geformt (0,7 s)“; 1 586 → 1 761 Punkte; drei Loops (Maullinie mit Kante, Mittellinie mit 11 Punkten, Querlinie mit 4) |
+| Nichts umgeschlagen, spiegelgleich | 0; Abweichung 0 |
+| Durchgestanzt | die Mittellinie liegt im Maul (19 Stellen) höchstens 0,15 neben der Maullinie von der Seite |
+| Hinter dem Maul bleibt die Form | größte Abweichung von der Kugel 4,2 (Halbmesser 150) |
+| An der Unterlippe ziehen | wie jeder Zug, nichts umgeschlagen |
+| „Fressen“ am geformten Maul | Meldung statt der alten Anzeige |
+| ⌘Z | genau wie vor dem Formen |
+| Konsole | keine Fehler |
+
+Bild: `docs/progress/editor/schritt6-maul-formen-fenster-2026-11-13.jpg`. Dazu: 152 Tests im Kern (`src/dicht/`,
+`zerlegung.test.ts`), 24 im Fenster, Typen und Lint sauber; die Donut-Probe und die Fressen-Probe (Maul der alten Art) laufen
+wie vorher.
+
+**Beim Einbau gefunden und behoben** (beides war in der Probe 7.9 nicht aufgefallen, weil die Form dort schon einen Ring hatte):
+1. **Die Kugel wurde zur Zitrone.** Die neue Mittellinie hatte nur die zwei Punkte an den Lippen; ihr Pfad lief in einem Stück
+   um den ganzen Körper und verzog die Form beim Setzen um 21. Jetzt bekommen die neuen Linien Punkte, wo sie nötig sind
+   (`griffeAnlegen` mit `punkteBis`): 1,7.
+2. **Die Kante der Querlinie reichte um den ganzen Kopf** (eine Kante an einem Punkt reicht bis zum Nachbarpunkt). Jetzt liegt
+   dicht hinter dem Mundwinkel ein Punkt ohne Kante.
+3. Die Kreuzung der Querlinie mit der Maullinie nimmt den Mundwinkel selbst (kein zweiter Punkt daneben mehr).
+
+**Offen:**
+- **Etappe 2:** Kieferknochen am geformten Maul (Gelenk an den Mundwinkeln; Gewichte außen wie heute, innen weich vom Boden zum
+  Gaumen; „Fressen“ und Regler ohne Schneiden und Einsetzen), auch am von Hand geformten Maul (dort der Knick an der
+  Kieferspitze, 7.8).
+- Die Flächen zwischen Lippe und Mitte sind noch nicht genau durchgestanzt (7.9: bis 9,8 daneben); Vorschlag: Querlinien an
+  jedem Punkt der Maullinie, innen gerade.
+- Hinter dem Maul setzt sich die Haut an der neuen Querlinie um bis zu 6 (Kern) bzw. 4 (Fenster); das tut jede neue Linie.
+- Die Querlinie läuft außen um den ganzen Kopf, weil es Linien nur von Mitte zu Mitte gibt. Ob Florian sie dort will, ist
+  offen.
+- Geprüft an der Kugel. An einer seiner Formen ist der Knopf noch nicht probiert; eine Mittellinie, die es schon gibt, wird
+  benutzt, wenn sie durch beide Lippen läuft (bei Formen mit Löchern gibt es mehrere Linien der Mitte).
+- Das Formen steht 0,7 s lang im Fenster; bei großen Formen länger (nicht gemessen).
 
 ## 8. Offen aus der Zeit davor
 
