@@ -58,6 +58,7 @@ export class Zeichner {
     r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.r = r;
     this.zeit = 0;
+    this.skala = 1; // Linien und Punkte in Bildpunkten × skala (Werkstatt: Pixeldichte, damit sie auf Retina gleich groß wirken)
     this.vollKamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     this.vollGeo = new THREE.PlaneGeometry(2, 2);
     this.ziele = new Map(); // Render-Ziele je Ansicht und Größe
@@ -117,7 +118,7 @@ export class Zeichner {
         uFeldA: { value: null }, uFeldB: { value: null }, uKoerper: { value: null }, uMaske: { value: null },
         uAufl: { value: new THREE.Vector2() }, uPx: { value: 1 },
         uGrund: { value: farbe('grund') }, uPetrol: { value: farbe('petrol') }, uRosa: { value: farbe('rosa') }, uLila: { value: farbe('lila') },
-        uKontur: { value: 0.07 }, uPasser: { value: 0.016 }, uSchatten: { value: 0.36 }, uHinten: { value: 0 }, uPose: { value: 0 },
+        uKontur: { value: 0.07 }, uPasser: { value: 0.016 }, uSchatten: { value: 0.36 }, uHinten: { value: 0 }, uPose: { value: 0 }, uSchattenLang: { value: 4000 },
       },
       depthTest: false,
       depthWrite: false,
@@ -148,7 +149,7 @@ export class Zeichner {
     this.punktMat = new THREE.ShaderMaterial({
       vertexShader: S.punktVS,
       fragmentShader: S.punktFS,
-      uniforms: { uAufl: this.U.uAufl, uZeit: this.U.uZeit, uFarbe: { value: farbe('petrol') }, uWahl: { value: farbe('lila') }, uHell: { value: new THREE.Vector3(1, 1, 1) } },
+      uniforms: { uAufl: this.U.uAufl, uZeit: this.U.uZeit, uFarbe: { value: farbe('petrol') }, uWahl: { value: farbe('lila') }, uHell: { value: new THREE.Vector3(1, 1, 1) }, uLampe: { value: new THREE.Vector3(0, 0, 0) }, uSkala: { value: 1 } },
       transparent: true,
       depthWrite: false,
       depthTest: true,
@@ -256,6 +257,7 @@ export class Zeichner {
   }
 
   netzAktualisieren() {
+    this.netzVersion = (this.netzVersion || 0) + 1;
     const g = this.koerper.geometry;
     g.attributes.position.needsUpdate = true;
     g.attributes.normal.needsUpdate = true;
@@ -425,7 +427,7 @@ export class Zeichner {
     U.uAufl.value.set(w, h);
     U.uPx.value = sicht.px;
     U.uHinten.value = sicht.hinten ? 1 : 0;
-    U.uGrund.value.set(...(sicht.hinten ? S.rgb('grundHinten') : S.rgb('grund')));
+    U.uGrund.value.set(...(sicht.grund || (sicht.hinten ? S.rgb('grundHinten') : S.rgb('grund'))));
     if (ziel) {
       this.voll(this.illu, ziel, w, h);
     } else {
@@ -452,12 +454,19 @@ export class Zeichner {
     r.clearDepth();
     this.koerper.material = this.nurTiefe;
     r.render(this.szeneKoerper, kam);
-    this.linieSicht.uniforms.uBreite.value = 1.3;
-    this.linieVerdeckt.uniforms.uBreite.value = 1.3;
+    this.breiten(1.3);
     this.linienFarben('papier');
     if (ueberlagern) ueberlagern(kam, w, h);
-    r.render(this.szeneLinien, kam);
+    if (!sicht.ohneLinien) r.render(this.szeneLinien, kam);
     r.setScissorTest(false);
+  }
+
+  breiten(b) {
+    for (const m of [this.linieSicht, this.linieVerdeckt]) {
+      m.uniforms.uBreite.value = b * this.skala;
+      m.uniforms.uBreiteKante.value = 3.6 * this.skala;
+    }
+    this.punktMat.uniforms.uSkala.value = this.skala;
   }
 
   linienFarben(art) {
@@ -487,8 +496,7 @@ export class Zeichner {
     r.clearDepth();
     this.koerper.material = this.jelly;
     this.jelly.uniforms.uKamera.value.copy(kam.position);
-    this.linieSicht.uniforms.uBreite.value = 1.7;
-    this.linieVerdeckt.uniforms.uBreite.value = 1.7;
+    this.breiten(1.7);
     if (opt.geister) for (const g of opt.geister) g(kam);
     r.render(this.szeneKoerper, kam);
     this.linienFarben('jelly');

@@ -228,6 +228,7 @@ uniform sampler2D uFeldA, uFeldB, uKoerper, uMaske; // A: Grundform, B: Pose (od
 uniform vec2 uAufl; uniform float uPx; // Bildpunkte je Einheit Kontur (Zoom)
 uniform vec3 uGrund, uPetrol, uRosa, uLila;
 uniform float uKontur, uPasser, uSchatten, uHinten, uPose;
+uniform float uSchattenLang; // größte Länge des langen Schattens (Bildpunkte)
 varying vec2 vUv;
 float abstand(sampler2D f, vec2 p){
   vec2 s = texture2D(f, p / uAufl).xy;
@@ -253,9 +254,9 @@ void main(){
     for (int i = 0; i < 40; i++) {
       vec2 q = p + dir * t;
       float d = abstand(uFeldA, q) - K;
-      if (d < 0.5) { sch = 1.0; break; }
+      if (d < 0.5) { sch = 1.0 - smoothstep(uSchattenLang * 0.55, uSchattenLang, t); break; }
       t += max(d, 1.0);
-      if (t > 4000.0) break;
+      if (t > uSchattenLang) break;
     }
   }
   vec3 grund = uGrund;
@@ -316,21 +317,27 @@ void main(){
 // ---------- Punkte, Griffspitzen, Perlen als Bildpunkt-Scheiben ----------
 export const punktVS = /* glsl */ `
 attribute vec3 mitte; attribute float groesse; attribute float zustand; attribute vec2 ecke;
-uniform vec2 uAufl;
+uniform vec2 uAufl; uniform float uSkala;
 varying vec2 vE; varying float vZustand; varying float vGr;
 void main(){
   vec4 a = projectionMatrix * viewMatrix * vec4(mitte, 1.0);
-  vec2 s = a.xy / a.w + ecke * groesse / (uAufl * 0.5);
+  vec2 s = a.xy / a.w + ecke * groesse * uSkala / (uAufl * 0.5);
   gl_Position = vec4(s * a.w, a.z - 0.0015 * a.w, a.w);
-  vE = ecke; vZustand = zustand; vGr = groesse;
+  vE = ecke; vZustand = zustand; vGr = groesse * uSkala;
 }`;
 
 export const punktFS = /* glsl */ `
 precision highp float;
 uniform vec3 uFarbe, uWahl, uHell; uniform float uZeit;
+uniform vec3 uLampe; // Taschenlampe: Bildpunkt x, y und Halbmesser (0 = aus); außerhalb nur ein Hauch
 varying vec2 vE; varying float vZustand; varying float vGr;
 void main(){
   float r = length(vE);
+  float lampe = 1.0;
+  if (uLampe.z > 0.0 && (vZustand < 0.5 || (vZustand > 4.5 && vZustand < 5.5))) {
+    float d = distance(gl_FragCoord.xy, uLampe.xy);
+    lampe = mix(0.16, 1.0, 1.0 - smoothstep(uLampe.z * 0.45, uLampe.z, d));
+  }
   float aa = 1.5 / max(vGr, 1.0);
   // 0 Punkt, 1 Nähe, 2 gewählt, 3 Griffspitze, 4 Perle (neuer Punkt), 5 Zwilling, 6 verweigert
   vec3 c; float a;
@@ -349,6 +356,7 @@ void main(){
     if (vZustand > 4.5 && vZustand < 5.5) c = mix(uHell, uWahl * 0.8 + 0.2, kern);
     a = saum;
   }
+  a *= lampe;
   if (a < 0.02) discard;
   gl_FragColor = vec4(c, a);
 }`;

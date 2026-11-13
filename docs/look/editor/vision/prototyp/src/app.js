@@ -296,8 +296,8 @@ export class App {
     if (!sicht) return { art: 'nichts' };
     const r = opt.radius || (istTouch ? 24 : 11);
     const roentgen = !!this.linse && Math.hypot(x - this.linse.x, y - this.linse.y) < this.linse.r;
-    // 1. Griffspitzen der gewählten Punkte
-    for (const id of this.auswahl) {
+    // 1. Griffspitzen der gewählten Punkte (nur, wenn sie gezeigt werden: höchstens 6 gewählte Punkte)
+    for (const id of this.auswahl.size > 6 ? [] : this.auswahl) {
       const q = this.punktMitId(id);
       if (!q) continue;
       for (const w of ['ein', 'aus']) {
