@@ -31,10 +31,9 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   ab; `&fein=0|1|2|3` legt die Stufen der Verfeinerung fest, `&ruhe=<n>` die Durchgänge beim Beruhigen der Normalen. Rechnung in
   `src/form/glattPlan.ts`, Einbau in `kurven.ts` (`glattAnlegen`, `glattZeigen`, `hautMaterial`). Test-Haken `__kurven.glatt()`
   (null mit `&anzeige=grob`) und `__kurven.zeichnenMs()`.
-- **„Form halten“** (B als Schalter, seit dem 13.11. im Bau-Zweig zum Ausprobieren): Knopf oder Taste H, `&ziehen=direkt` /
-  `&ziehen=rund`. An: Ein Zug bewegt die Haut direkt mit den Linien (`LoopZug` mit der Art `direkt`, `dicht/direktZug.ts`),
-  nach dem Loslassen wird nur verdichtet, nichts setzt sich. Der Löser wird in der Ruhe vorbereitet (`direktBereiten`).
-  Probe `scripts/pruefen/form-halten-probe.mjs`. Haken `__kurven.halten(an?)`, `zeiten().halten`.
+- **„Form halten“** (B, fertige Haut direkt bewegen; 13.11.): von Florian ausprobiert und abgelehnt („Gefällt nicht“). Kein
+  Knopf, keine Taste; zum Nachrechnen `&ziehen=direkt` oder `__kurven.halten(true)` (`LoopZug` mit der Art `direkt`,
+  `dicht/direktZug.ts`, Probe `scripts/pruefen/form-halten-probe.mjs`). Nicht wieder vorschlagen, ohne dass er danach fragt.
 - Test-Haken im Fenster: `window.__kurven` (`zeiten()`, `lagen`, `loops`, `ablage`, `beschaeftigt` …).
 
 ## Prüfen

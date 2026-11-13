@@ -313,22 +313,14 @@ const RICHTUNG_OPT: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: bool
 /** Der Zug löst nur einen Bereich um die bewegten Stellen (mit Gedächtnis und in der Pose); aus den Kurven die ganze Haut */
 const mitBereich = (): boolean => grund !== null || HAUT !== 'kurven';
 /**
- * „Form halten“ (Plan vom 12.11., Anhang A.3: B als Schalter, 13.11.; zum Ausprobieren im Bau-Fenster). An: Ein Zug bewegt die Haut
- * direkt mit den Linien (Löser `direkt` im Kern, `direktZug.ts`). Was schon Haut ist, behält seine Wölbung, nichts rundet neu, hin
- * und zurück gibt dieselbe Haut. Nach dem Loslassen wird nur verdichtet; die heutige Rechnung setzt nichts, auch nicht nach einem
- * neuen Loop. Im Zug wird nicht verfeinert. Aus: alles wie bisher. Nur in der Grundform. Knopf „Form halten“, Taste H,
- * `?ziehen=direkt` (an) oder `?ziehen=rund` (aus); sonst gilt, was zuletzt geschaltet war. Neue Haut runden kann dieser Löser
- * nicht (aus der Kugel gezogen entsteht ein Keil): dafür den Schalter aus.
+ * „Form halten“ (Plan vom 12.11., Anhang A.3: B als Schalter, 13.11.). An: Ein Zug bewegt die Haut direkt mit den Linien (Löser
+ * `direkt` im Kern, `direktZug.ts`). Was schon Haut ist, behält seine Wölbung, nichts rundet neu, hin und zurück gibt dieselbe
+ * Haut. Nach dem Loslassen wird nur verdichtet; die heutige Rechnung setzt nichts, auch nicht nach einem neuen Loop. Im Zug wird
+ * nicht verfeinert. Nur in der Grundform. Neue Haut runden kann dieser Löser nicht (aus der Kugel gezogen entsteht ein Keil).
+ * Florian hat es am 13.11. im Bau-Fenster ausprobiert: „Gefällt nicht“. Knopf und Taste sind deshalb wieder weg; der Weg bleibt
+ * nur zum Nachrechnen hinter `?ziehen=direkt` (Probe `form-halten-probe.mjs`, Haken `__kurven.halten`).
  */
-let direktAn = ((w) => (w === 'direkt' ? true : w === 'rund' ? false : haltenGemerkt()))(new URLSearchParams(location.search).get('ziehen'));
-/** der Schalter übersteht das Neuladen (nicht unter einer Fernsteuerung, dort gilt nur die Adresse; `?ziehen=rund` schaltet ihn aus) */
-function haltenGemerkt(): boolean {
-  try {
-    return !navigator.webdriver && localStorage.getItem('ee-form-halten') === '1';
-  } catch {
-    return false;
-  }
-}
+let direktAn = new URLSearchParams(location.search).get('ziehen') === 'direkt';
 const direktGilt = (): boolean => direktAn && !mitBereich();
 /** der vorbereitete Löser `direkt` für den Stand von jetzt (das Greifen wartet dann nicht auf das Zerlegen) */
 let direktBereit: { stand: string; haut: Haut; loeser: DirektLoeser } | null = null;
@@ -592,7 +584,6 @@ const leinwand = document.getElementById('leinwand') as HTMLCanvasElement;
 const statusZeile = document.getElementById('status') as HTMLSpanElement;
 const knopfLoop = document.getElementById('knopf-loop') as HTMLButtonElement;
 const knopfO = document.getElementById('knopf-o') as HTMLButtonElement;
-const knopfHalten = document.getElementById('knopf-halten') as HTMLButtonElement | null;
 
 const renderer = new WebGLRenderer({ canvas: leinwand, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -1929,7 +1920,6 @@ function allesZeigen(): void {
   knopfStift.setAttribute('aria-pressed', String(modus === 'stift'));
   knopfO.setAttribute('aria-pressed', String(oAn));
   knopfO.textContent = oAn ? `Einfluss O · ${Math.round(radius)}` : 'Einfluss O';
-  knopfHalten?.setAttribute('aria-pressed', String(direktAn));
   statusZeigen();
   vorrechnenPlanen();
   behaltenPlanen();
@@ -4627,16 +4617,11 @@ knopfO.addEventListener('click', () => {
   oAn = !oAn;
   allesZeigen();
 });
-/** „Form halten“ an oder aus (nicht mitten in einem Zug) */
+/** „Form halten“ an oder aus (nicht mitten in einem Zug; nur noch über den Test-Haken und `?ziehen=direkt`) */
 function haltenSchalten(an = !direktAn): void {
   if (zug) return;
   direktAn = an;
   direktBereit = null;
-  try {
-    localStorage.setItem('ee-form-halten', an ? '1' : '0');
-  } catch {
-    // ohne Speicher gilt der Schalter bis zum Neuladen
-  }
   meldung = direktAn
     ? grund
       ? 'Form halten: gilt in der Grundform (in der Pose rechnet es wie bisher).'
@@ -4644,7 +4629,6 @@ function haltenSchalten(an = !direktAn): void {
     : 'Form halten aus: Ziehen rundet die Haut wie bisher.';
   allesZeigen();
 }
-knopfHalten?.addEventListener('click', () => haltenSchalten());
 
 window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
@@ -4701,8 +4685,6 @@ window.addEventListener('keydown', (e) => {
   } else if (k === 'o') {
     oAn = !oAn;
     allesZeigen();
-  } else if (k === 'h') {
-    haltenSchalten();
   } else if (e.key === 'Home') {
     // Pos1: alle Blätter wieder ganz zeigen
     for (const a of ['seite', 'front', 'top'] as const) {
