@@ -664,6 +664,56 @@ vorn), oder der Knick der Maullinie selbst, von vorn gesehen (an seinem zweiten 
 Mundwinkel nach innen ziehen wie in seinem zweiten Modell, oder bleibt er, wo die Linie ihn hat? (c) Reihenfolge: erst der
 Beweis „Kante mit Winkel“, oder erst die Kieferknochen (Etappe 2) an der Fassung mit Mittellinie?
 
+**Florians Antwort (13.11., 21:00 Uhr):** „Ja, es meint den Knick quer an den Mundwinkeln nach innen. Mache gerne erstmal das
+bzw. den Beweis.“ Also (a): Die 70° sind der Knick der Haut quer über die Maullinie am Mundwinkel; und zuerst der Beweis.
+
+**Beweis „die Kante trägt ihren Winkel selbst“ (13.11., 21:20 Uhr): hält.** Probe `form-kante-winkel.ts` (nur im Kern; am Löser
+ist nichts geändert), Bilder `docs/progress/editor/schritt6-kante-winkel-kugel-2026-11-13.jpg` und
+`schritt6-kante-winkel-florian-2026-11-13.jpg`.
+
+So ist er gebaut: Die Maullinie bekommt je Stelle einen Winkel (95° an den Lippen, 70° am Mundwinkel, dazwischen gleitend). Die
+erste Reihe der Haut innen an der Linie wird in jeder Runde geführt: jeder ihrer Punkte um die Linie gedreht, bis er um diesen
+Winkel gegen die Haut außen nach innen abknickt; sein Abstand zur Linie bleibt. Für den Löser ist die Reihe eine Liste von
+Bindungen (ein Loop ohne Kette, der nur Orte hält). Alles Weitere im Maul rundet die Rechnung wie sonst. Keine Mittellinie,
+kein Punkt außer dem Mundwinkel. Gedreht wird vom Knick, den die Form hat, in 12 Stufen zum Soll; dazwischen wird verfeinert.
+
+| Form | Knick an den Lippen (Soll 95°) | am Mundwinkel (Soll 70°) | Tasche | steht | umgeschlagen |
+| --- | --- | --- | --- | --- | --- |
+| Kugel, Netz des Fensters (1 606 Punkte) | 95,0° und 95,0° | 74,0° | 0,20 | ja, 215 Runden | 6 |
+| Kugel, feiner (2 492 Punkte) | 95,1° und 94,1° | 72,2° | 0,19 | ja | 0 |
+| Kugel, noch feiner (4 906 Punkte) | 95,0° und 95,0° | 72,3° | 0,18 | ja | 0 |
+| Florians „simple_mouth_more simple“ | 93,6° und 94,6° (vorher 126,8° und 116,4°) | 72,0° (vorher 43,5°) | 0,35 (vorher 0,54) | ja, 211 Runden | 0 |
+
+Gemessen an den Lippen im Schnitt durch die Mitte (unabhängig von der Führung), am Mundwinkel als Mittel der Stellen bis 2,5
+Kanten davor und dahinter. Längs der Linie gleitet der Knick von 94° über 80° auf 67° bis 76° am Mundwinkel und zurück.
+
+**Gegen das Kriterium:** Knick an beiden Lippen 90 bis 100°: erfüllt. Am Mundwinkel 65 bis 75°: erfüllt. Auf den Netzen
+höchstens 5° auseinander: erfüllt (Lippen 1,0°, Mundwinkel 1,8°). Die Haut steht: erfüllt (400 Runden mehr bewegen sie um
+höchstens 0,64). Nichts schlägt um: auf den feineren Netzen und an seiner Form 0; auf dem Netz des Fensters 6 Dreiecke am
+Mundwinkel, die schon ohne jeden Winkel da sind (sie kommen vom Verfeinern an der spitzen Ecke der schmalen Form; gegengeprüft
+mit Winkel 0). Der Winkel selbst schlägt nichts um.
+
+**Dazu gesehen:**
+- **Ohne Mittellinie bleibt die Kugel eine Kugel** (hinter dem Maul höchstens 3,9 daneben, statt der Zitrone mit 25).
+- **Die Tasche wird flacher als mit der Mittellinie** (0,2 statt 0,45 des Wegs zum Mundwinkel): eine runde Rinne zwischen den
+  Lippen. Ihre Tiefe ist nicht eingestellt, sie ergibt sich.
+- **Der Winkel hält nur, solange die Kante ihn trägt.** Ohne die Führung weitergerechnet, läuft er wieder davon, je nach Netz
+  anders (76°/80°, 132°/106°, 69°/66°; an seiner Form 111°/107°). Die Führung muss also in jede Rechnung, nicht nur ins Formen.
+- **Offen, im Bild an seiner Form zu sehen: Hinter der ersten Reihe ist das Innere unruhig.** Die Reihe steht im Beweis starr;
+  die Haut dahinter läuft nicht glatt weiter, es bleibt eine Welle (sie rundet sich auch mit 400 Runden mehr nicht). An der
+  schmalen Form der Kugel fällt es kaum auf, an seinem weit offenen Maul schon.
+
+**Vorschlag für den Einbau (noch nicht gebaut, etwa zwei Tage, in Etappen mit Bild):**
+1. **Im Löser statt als starre Bindung:** Die erste Reihe bekommt je Runde ihre Ebene als weiches Ziel (wie die Zeile, die es
+   für weiche Linien als „Richtung“ gibt), bleibt in der Ebene beweglich und nimmt am Runden teil. **Probe:** dieselbe Tabelle,
+   dazu an seiner Form das Innere so ruhig wie in seinem Modell (Knicke zwischen Nachbardreiecken im Maul nicht mehr als
+   vorher).
+2. **Der Winkel als Angabe an der Linie:** je Punkt ein Knick in Grad (fehlt er: wie heute, der Winkel ergibt sich), dazwischen
+   gleitend; an einer Kreuzung gilt der Knick der kreuzenden Linie. `LoopZug` führt die Reihe in jedem Zug, im Nachlauf und im
+   Hintergrund. Sichern und Laden.
+3. **„Maul formen“ darauf:** Maullinie hart mit 95° und 70°, keine Mittellinie mehr; animiert wie jetzt. K schaltet zwischen
+   hart mit Winkel und rund (Winkel 0, in Stufen). Danach die Kieferknochen (Etappe 2).
+
 ### Schritt 7: Auswahl wie in Blender (2 bis 3 Tage)
 
 - **Was du danach siehst:** Du wählst Punkte, **Kanten** (das Linienstück zwischen zwei Punkten) und **Flächen** (das Feld
