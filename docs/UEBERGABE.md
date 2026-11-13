@@ -1,4 +1,4 @@
-# Übergabe (Stand 13.11.2026 abends: Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt („Form halten“ hat Florian ausprobiert: „Gefällt nicht“). Schritt 4 hat mit dem kleinen Donut-Beweis begonnen: Der Rand des Lochs wird durch Verschmelzen allein nicht glatt. Florian entscheidet, wie Schritt 4 weitergeht. Schritt 1 und 2 sind Standard in seinem Fenster auf 5194, sein Urteil dazu steht aus)
+# Übergabe (Stand 13.11.2026 nachts: Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt („Form halten“ hat Florian ausprobiert: „Gefällt nicht“). Schritt 4: Der zweite kleine Beweis „Donut mit Florians Regel“ hält, der Rand des Lochs wird glatt und das Loch rund (Abschnitt 7); Florian hat die Bilder noch nicht beurteilt, der Umbau auf die halbe Haut ist nicht begonnen. Schritt 1 und 2 sind Standard in seinem Fenster auf 5194, sein Urteil dazu steht aus)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -25,7 +25,7 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | 1 Glatte Anzeige | **eingebaut und Standard** (Abschnitt 4). Florian am 12.11.: „Ja, übernehmen“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&anzeige=grob` zeigt zum Vergleich die Anzeige davor. Sein Urteil nach dem Arbeiten damit steht aus |
 | 2 Kleines Rechennetz | **eingebaut und Standard** (Abschnitt 5): rund 40 % der Punkte, im Zug 16 bis 20 ms je Bild. Florian am 12.11. nachts, vom Handy aus: „ja“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&netz=dicht` ist das Netz davor. Sein Urteil nach dem Arbeiten damit steht aus. Nicht gebaut: Zeichnen gegen die feine Fläche |
 | 3 Beweis „Haut direkt aus den Linien“ | **abgeschlossen, die heutige Rechnung bleibt** (Abschnitt 6, 13.11.): Die Haut nur aus den Linien (A) scheitert zwischen wenigen Linien und an seinen drei Formen. Der Teil B (fertige Haut direkt bewegen) hält rechnerisch; als Schalter „Form halten“ im Bau-Fenster ausprobiert, Florian: „Gefällt nicht“. Knopf und Taste sind wieder weg; der Code liegt nur auf `claude/form-bau` hinter `?ziehen=direkt` |
-| 4 Echte Spiegelung (mit der heutigen Rechnung) | **kleiner Beweis „Donut“ gerechnet (Abschnitt 7, 13.11.):** Der Rand des Lochs ist heute eine scharfe Kante und bleibt es auch, wenn die Hälften wirklich verschmolzen werden; zurückgezogen ist die Form wieder da. Der Umbau auf die halbe Haut ist nicht begonnen; Florian entscheidet, ob er ohne glatten Rand kommt oder ob zuerst der Rand geklärt wird |
+| 4 Echte Spiegelung (mit der heutigen Rechnung) | **zwei kleine Beweise „Donut“ gerechnet (Abschnitt 7, 13.11.):** Verschmelzen allein lässt den Rand des Lochs eine Kante. Mit Florians Regel (beim Loslassen geschnitten, an den neuen Kreuzungen Punkte ohne Knick, der Rand ein neuer Loop) wird er glatt und das Loch rund, mit der heutigen Rechnung, bei großem und kleinem Loch. Bilder liegen bei Florian, sein Urteil steht aus. Der Umbau auf die halbe Haut ist nicht begonnen; nicht gerechnet ist der Zug selbst |
 | 5 Posen wie die Basis | offen |
 | 6 Maul als eigene Geometrie | offen |
 | 7 Auswahl wie in Blender | offen |
@@ -308,13 +308,14 @@ Die heutige Rechnung bleibt die einzige im Fenster. Weiter nach Plan mit Schritt
 `FALL=ruessel,horn,biegen,formen`), dann aus `apps/editor`
 `HOEHE=100 node scripts/pruefen/html-shot.mjs --jpg <pfad>-*.html`.
 
-## 7. Schritt 4, kleiner Beweis „Donut“: gerechnet am 13.11., der Rand wird so nicht glatt
+## 7. Schritt 4, zwei kleine Beweise „Donut“ (13.11.): Mit Florians Regel wird der Rand glatt und das Loch rund
+
+### 7.1 Erster Beweis: verschmelzen allein (13.11. abends)
 
 Der Plan verlangt vor dem Umbau auf die halbe Haut ein Bild: „Griff durch die Mitte → Loch mit glattem Rand; zurück → Form wie
 vorher.“ Probe im Kern: `apps/editor/scripts/pruefen/form-donut.ts` (aus `packages/shape`,
 `BLATT=<pfad ohne Endung> npx vite-node ../../apps/editor/scripts/pruefen/form-donut.ts`), Bild
-`docs/progress/editor/schritt4-donut-2026-11-13.jpg`. **Florian hat das Bild noch nicht beurteilt.** Am Fenster ist nichts
-geändert.
+`docs/progress/editor/schritt4-donut-2026-11-13.jpg`. Am Fenster ist nichts geändert.
 
 **Fall:** Kugel mit drei Loops (1 784 Punkte), der Punkt an der Seite (Kreuzung der beiden Ringe) um 190 durch die Spiegelebene
 gezogen.
@@ -329,26 +330,74 @@ gezogen.
 
 **Befunde:**
 1. **„Zurück → Form wie vorher“ hält schon heute** (ganze Haut als Wahrheit, die Anzeige schneidet ab).
-2. **„Loch mit glattem Rand“ hält nicht.** Verschmelzen macht aus den beiden Hälften eine Haut, aber die heutige Rechnung liest
-   die Wölbung an den Linien an der Haut ab: Die Kante am Rand bestätigt sich selbst. Ohne Linie am Rand glättet sie mehr, dafür
-   wandert das Loch. Ein runder Rand braucht also eine eigene Regel (woher die Wölbung am Rand kommt), nicht nur den Umbau.
+2. **„Loch mit glattem Rand“ hält so nicht.** Verschmelzen macht aus den beiden Hälften eine Haut, aber die Linien enden an der
+   Mitte mit ihrem Knick, und die heutige Rechnung liest die Wölbung an den Linien an der Haut ab: Die Kante bleibt. Ohne Linie
+   am Rand glättet sie mehr, dafür wandert das Loch. (Damals geschlossen: „braucht eine eigene Regel für die Wölbung am Rand“.
+   Das stimmt nicht, siehe 7.2: Es fehlten die glatten Punkte an den neuen Kreuzungen.)
 3. **Der Schnitt an der Ebene trägt:** Hälfte abschneiden und spiegeln gibt genau das Bild von heute als eine geschlossene Haut
    (1 523 statt 1 784 Punkte), und die heutige Rechnung läuft darauf ohne davonzulaufen (`verschmelzen` in der Probe; teilt auch
    die Loops an der Ebene in Stücke). Das ist der Baustein für „die Hälfte ist die Wahrheit“.
 
-**Florian am 13.11. abends zum Bild** (wörtlich im Plan, Abschnitt 5, Punkt 4): Er stellt sich den Donut anders vor, als der
-Beweis ihn gerechnet hat. An den neuen Kreuzungen (wo die gezogenen Linien die Mitte treffen) sollen **Punkte ohne Knick**
-entstehen, das Loch bekommt einen **neuen Edgeloop**; der gezogene Punkt ist nur im Zug noch sichtbar und vom neuen Mesh gelöst;
-**beim Loslassen verschwindet er, kein Zurückziehen** („so ähnlich wie Blenders Mirror mit Clipping“). Das ersetzt Entscheidung
-4 des Plans (umkehrbare Naht). Der Beweis oben hat die Linien an der Mitte nur abgeschnitten, mit ihrem Knick; seine Regel ist
-noch nicht gerechnet. Seine Frage: jetzt daran feilen oder erst die halbe Haut bauen. Meine Antwort: zuerst ein kleiner Beweis
-mit seiner Regel (Kern, ein Bild), dann die halbe Haut; seine Zusage dazu steht aus.
+**Florian am 13.11. abends zum Bild** (wörtlich im Plan, Abschnitt 5, Punkt 4): Er stellt sich den Donut anders vor. An den
+neuen Kreuzungen (wo die gezogenen Linien die Mitte treffen) sollen **Punkte ohne Knick** entstehen, das Loch bekommt einen
+**neuen Edgeloop**; der gezogene Punkt ist nur im Zug noch sichtbar und vom neuen Mesh gelöst; **beim Loslassen verschwindet er,
+kein Zurückziehen** („so ähnlich wie Blenders Mirror mit Clipping“). Das ersetzt Entscheidung 4 des Plans (umkehrbare Naht). Auf
+die Frage „jetzt daran feilen oder erst die halbe Haut“ habe ich den kleinen Beweis empfohlen; Florian: **„Donut beweisen“**.
 
-**Gefragt war Florian (13.11. abends, vor seiner Klarstellung):**
-- **„Halbe Haut ohne glatten Rand“:** Schritt 4 als Umbau auf die Hälfte (schneller, die Mittellinie von Anfang an, keine
-  Buchführung der Paare); wo die Hälften sich treffen, bleibt es die Kante von heute. Empfohlen.
-- **„Erst den Rand“:** vor dem Umbau ein zweiter kleiner Beweis, wie der Rand rund wird.
-- **„Schritt 4 zurückstellen“:** erst Posen (5), Maul (6) oder Auswahl (7).
+### 7.2 Zweiter Beweis: der Donut mit Florians Regel (13.11. nachts)
+
+Probe im Kern: `apps/editor/scripts/pruefen/form-donut-regel.ts` (aus `packages/shape`,
+`TIEF=190 GRIFFE=anteil,lang BREITE=1560 BLATT=<pfad ohne Endung> npx vite-node ../../apps/editor/scripts/pruefen/form-donut-regel.ts`;
+gemeinsame Teile beider Proben in `form-donut-teile.ts`). Bilder: `docs/progress/editor/schritt4-donut-regel-2026-11-13.jpg`
+(großes Loch) und `schritt4-donut-regel-klein-2026-11-13.jpg` (der Punkt gerade erst über die Mitte), alle Zahlen in
+`schritt4-donut-regel-messung-2026-11-13.txt`. **Florian hat die Bilder noch nicht beurteilt.** Am Fenster ist nichts geändert.
+
+**Die Regel, wie sie gerechnet ist** (derselbe Fall wie in 7.1, die Linien wie im Fenster genau auf ihren Pfaden):
+1. Beim Loslassen wird die Hälfte an der Ebene abgeschnitten und mit ihrem Spiegelbild verbunden (`verschmelzen`).
+2. Der Pfad jeder geschnittenen Linie wird an der Ebene geteilt (de Casteljau: Was über der Ebene liegt, behält genau seine
+   Form; der gezogene Punkt darunter fällt weg). Das neue Ende ist ein **Punkt ohne Knick**: Sein Griff steht senkrecht zur
+   Ebene, die Linie läuft rund in ihr Spiegelbild (so endet im Kern jeder Ring). Seine Länge: was vom Griff des geteilten Stücks
+   senkrecht zur Ebene zeigt (die kleinste Änderung des Griffs, die den Punkt glatt macht).
+3. **Der Rand des Lochs ist ein neuer Loop** der Mittelebene durch diese neuen Enden (die neuen Kreuzungen). Jeder seiner Punkte
+   ist glatt, der Loop so rund wie möglich (Richtung parallel zur Sehne der Nachbarpunkte, Grifflänge wie ein Kreisbogen).
+4. Die heutige Rechnung rechnet unverändert weiter, bis die Haut steht; danach verdichtet das Netz wie nach jedem Zug.
+
+| Fall (Kugel mit drei Loops, Standardnetz) | heute gezeigt | mit der Regel |
+| --- | --- | --- |
+| großes Loch (Punkt um 190 gezogen, 41 hinter die Mitte) | Loch eckig, Halbmesser 77 bis 92; Knick quer über den Rand im Mittel 96°, größter 111° | Loch rund, 91,1 bis 91,8; Knick 18° / 27° (eine Reihe daneben 19°); 3 + 8 Runden bis zur Ruhe, nichts umgestülpt; die Linien gehen dafür 10 (Ringe) und 17 (Rand) |
+| mittleres Loch (165, 16 dahinter) | 54 bis 62; 124° / 133° | 60,6 bis 62,1; 20° / 32° (daneben 15°); 3 + 8 Runden |
+| gerade erst über die Mitte (150,5; 1,1 dahinter) | 16 bis 18; 161° / 167° | 16,0 bis 18,7; 38° / 61° (daneben 22°); 3 + 9 Runden; die Linien gehen 13,5 |
+| großes Loch, viermal so viele Dreiecke | 96° / 110° | 91,0 bis 91,7; 12° / 24° (daneben 11°); 13 + 9 Runden, nichts umgestülpt |
+
+**Befunde:**
+1. **Die Regel hält, die heutige Rechnung genügt.** Alle vier Kriterien aus dem Plan sind am großen Loch erfüllt: keine Kante
+   am Rand, in den Schnitten keine Spitze (durch eine Linie und zwischen den Linien); der Knick quer über den Rand ist so groß
+   wie eine Reihe daneben (und wird mit feinerem Netz kleiner: Er ist das Netz, kein Grat); das Loch hat keine Ecken; die
+   Rechnung steht nach 3 + 8 Runden, weitere 100 Runden bewegen die Haut höchstens 0,03.
+2. **Die Länge des neuen Griffs entscheidet, wie rund der Schlauch wird und ob die Form springt.** Mit dem senkrechten Anteil
+   (die Regel) ändert sich die Form wenig, auch wenn der Punkt gerade erst über die Mitte kommt (die Linien gehen 13,5). Behält
+   der Griff seine ganze Länge (`GRIFFE=lang`, im Bild die dritte Spalte), ist der Schlauch beim großen Loch runder (Knick 15°),
+   aber gerade erst über die Mitte gezogen springt die Kugel zu einem dicken Ring (die Linien gehen 43). Florian kann den
+   Griff danach von Hand länger ziehen; die dritte Spalte zeigt, was das bewirkt. Nach dem Verlauf der abgeschnittenen Linie
+   angepasst (`GRIFFE=angepasst`) wird der Griff null lang, und die Spitze bleibt (88°).
+3. **Sauber schneiden.** Wird dicht neben einem Netzpunkt geschnitten, bleiben schmale Dreiecke; auf dem Standardnetz ohne
+   Folgen, mit viermal so vielen Dreiecken kam die Rechnung daran nicht zur Ruhe (eine Spitze am Rand, 152 umgestülpt). Die
+   Probe legt solche Punkte selbst auf die Ebene (`verschmelzen` mit `fangen`, ein Viertel einer Kante); damit ist auch das
+   feine Netz sauber. Das gehört in den Bau.
+4. **Verworfen:** Der neue Rand hält nur den Ort und gibt keine Wölbung vor (`RAND=ort`): Die Rechnung kommt nicht zur Ruhe.
+
+**Nicht gerechnet (gehört zum Bau):**
+- **Der Zug selbst.** Gerechnet ist der Stand nach dem Loslassen. Florians Bild verlangt das neue Mesh schon im Zug. Vorschlag:
+  beim ersten Durchstoßen einmal schneiden (ein kurzes Stocken wie beim Greifen), danach wandern nur noch die Linien (das Loch
+  wächst mit dem Zug, der gezogene Punkt bleibt als loser Griff sichtbar); zurück über die Mitte im selben Zug nimmt den Schnitt
+  zurück.
+- Ein Loch, das kleiner ist als eine Netzkante (der allererste Moment), seine eigenen Formen, eine Linie allein oder mehr als
+  zwei durch die Mitte, Linien mit Kante durch die Mitte, das Maul, die Pose.
+
+**Gefragt ist Florian (13.11. nachts):**
+- **„Halbe Haut bauen“:** Schritt 4 als Umbau (die Hälfte ist die Wahrheit, Mittellinie von Anfang an), der Donut kommt mit
+  dieser Regel gleich mit ins Fenster. Vorher kommen die Etappen mit ihren sichtbaren Proben in den Plan. Empfohlen.
+- **„Erst noch am Donut feilen“:** wenn am Bild etwas nicht stimmt (dann sagt er, was).
 
 ## 8. Offen aus der Zeit davor
 
