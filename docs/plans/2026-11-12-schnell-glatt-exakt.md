@@ -187,6 +187,14 @@ eine kurze Übergabe. Am Code des Editors ändert Schritt 0 nichts.
 **Nachtrag 13.11.:** Schritt 3 hat ergeben, dass die heutige Rechnung bleibt (A hält nicht, B gefällt Florian nicht). Schritt 4
 ist damit nur noch die echte Spiegelung; der zweite Punkt unten („Ziehen fühlt sich direkt an“) entfällt.
 
+**Nachtrag 13.11. abends, kleiner Beweis „Donut“ (Probe `form-donut.ts`, Bild `docs/progress/editor/schritt4-donut-2026-11-13.jpg`):**
+„Zurück → Form wie vorher“ hält schon heute (im Mittel 0,11, größter 0,4 neben der Kugel). „Loch mit glattem Rand“ hält nicht:
+Heute ist der Rand eine scharfe Kante (Knick im Mittel 97°), und er bleibt eine, wenn die Hälften wirklich verschmolzen werden
+(im Mittel 22° bis 77°, je nachdem, ob der Rand frei, eine Linie oder eine Linie ohne Wölbung ist); mit freiem Rand verzieht sich
+das Loch. Der dritte Punkt unten („verschmelzen an einem glatten Loop“) folgt also nicht aus dem Umbau allein. Das Abschneiden
+und Spiegeln der Hälfte selbst trägt. Offen ist Florians Entscheidung: Umbau auf die halbe Haut ohne glatten Rand, zuerst den
+Rand klären, oder Schritt 4 zurückstellen.
+
 - **Was du danach siehst:**
   - Jede neue Form beginnt als gespiegelte Kugel, **die Mittellinie ist von Anfang an eingezeichnet**.
   - Ziehen fühlt sich direkt an: Die Haut ist in jedem Bild fertig, nach dem Loslassen passiert nichts mehr.
