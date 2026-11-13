@@ -260,6 +260,12 @@ Zu jeder steht meine Empfehlung; „alles wie empfohlen“ genügt.
 4. **Verschmelzen an der Mitte:** Empfehlung wie Blenders Mirror: Die Naht entsteht und vergeht von selbst, solange du ziehst
    und auch später (zurückziehen löst sie wieder). Eine feste Linie mit Punkten wird sie erst, wenn du sie doppelklickst oder
    die Spiegelung anwendest. Die Alternative wäre: schon beim Loslassen eine feste Linie.
+   **Florian am 13.11. (nach dem Donut-Beweis), ersetzt die Empfehlung:** „Ich hätte mir vorgestellt, dass beim Donut an den
+   neuen Kreuzungen Punkte ohne Knick entstehen und so der Donut wirklich ohne harte Kante entsteht. […] Der Punkt, den man über
+   die Mitte zieht, soll nur während des Zuges noch sichtbar sein, aber vom ‚neuen‘ Mesh mit dem neuen Edgeloop des Lochs gelöst.
+   Beim Loslassen verschwindet er, und es gibt kein Zurückziehen. So ähnlich ist es bei Blender, wenn Clipping beim Mirror
+   Modifier eingestellt ist.“ Es gilt also: beim Loslassen endgültig an der Mitte geschnitten, der Rand des Lochs ein neuer
+   Edgeloop mit glatten Punkten an den neuen Kreuzungen, kein Zurückziehen (⌘Z bleibt).
 5. **Posen speichern ihre Linien**, nicht mehr die Verschiebung je Netzpunkt (Schritt 5). Empfehlung: ja. Alte Test-Posen in
    gesicherten Formen werden dabei nicht übernommen.
 6. **`/editor` (Blaupause-Layout)** wird während der Schritte 1 bis 7 nicht nachgezogen, danach einmal in einem Zug.
