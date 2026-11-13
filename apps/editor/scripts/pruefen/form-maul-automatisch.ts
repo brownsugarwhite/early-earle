@@ -9,25 +9,28 @@
 //   2  die Mittellinie (falls sie fehlt) und eine Querlinie durch beide Mundwinkel: ein Ring um den Kopf in der Ebene des Mauls. Er
 //      kreuzt die Mittellinie vorn zwischen den Lippen und die Maullinie in den Mundwinkeln; sein Stück zwischen diesen Kreuzungen ist
 //      die Verbindung der gegenüberliegenden Seiten
-//   3  die Kreuzung vorn zwischen den Lippen wird nach innen gezogen, bis zwischen die Mundwinkel: Aus der Fläche zwischen den Lippen
-//      werden Gaumen und Boden
+//   3  durchstanzen (Florian: „als wäre der Edgeloop von der Seitenansicht durchgestanzt […] Das heißt, die Mittellinie muss von der
+//      Seite exakt den Shape der Maullinie haben“): Die Mittellinie bekommt im Maul die Punkte und Griffe der Maullinie, flach auf
+//      die Mittelebene gelegt; die Kreuzung vorn wandert dabei zwischen die Mundwinkel. In Stufen gezogen, unterwegs verfeinert
+//      wie nach jedem Zug. Aus der Fläche zwischen den Lippen werden Gaumen und Boden
 // Form: die Kugel mit Ring und Maullinie aus `formen/pose-maul-kugel.eewesen`.
 //
 // Aufruf aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/form-maul-automatisch.ts
-//   AUS=<datei.html> (Bildblatt)   SCHRITTE=60   TIEF=0.97 (Anteil des Wegs bis zwischen die Mundwinkel)   QUER=hart|weich
+//   AUS=<datei.html> (Bildblatt)   STUFEN=8 (so oft wird unterwegs verfeinert)   SCHRITTE=8 (Schritte je Stufe)   QUER=hart|weich
 import { fileURLToPath } from 'node:url';
 import { loopEinsetzen } from '../../../../packages/shape/src/dicht/einsetzen';
 import type { Haut, V3 } from '../../../../packages/shape/src/dicht/kurven';
 import { falten } from '../../../../packages/shape/src/dicht/kurvenFaelle';
 import { type Loop, LoopZug, eckenAuto, griffeAnlegen, hatPfad, hautLagen, istSichtbar, kanteBei, kreuzungenZwischen, loopAusSchnitt, mittlereKante, pfadLagen, punktEinfuegen } from '../../../../packages/shape/src/dicht/loops';
 import { maulAmLoop, mundwinkelProbe } from '../../../../packages/shape/src/dicht/maulLoop';
+import { verdichten } from '../../../../packages/shape/src/dicht/verdichten';
 import { type BlattBild, type BlattLinie, type BlattSchnitt, type BlattZeile, blattSchreiben } from './form-direkt-blatt';
-import { formLadenDatei } from './form-direkt-faelle';
+import { formLadenDatei, verdichtenWieImFenster } from './form-direkt-faelle';
 
 const DATEI = process.env.FORM ?? fileURLToPath(new URL('./formen/pose-maul-kugel.eewesen', import.meta.url));
 const AUS = process.env.AUS ?? '';
-const SCHRITTE = Number(process.env.SCHRITTE ?? 60);
-const TIEF = Number(process.env.TIEF ?? 0.97);
+const STUFEN = Number(process.env.STUFEN ?? 8);
+const SCHRITTE = Number(process.env.SCHRITTE ?? 8);
 const QUER_HART = process.env.QUER !== 'weich';
 const RUHE = 0.02;
 const z1 = (x: number): string => x.toFixed(1).replace('.', ',');
@@ -131,38 +134,197 @@ const vorher: Stand = { h: { ...st.h, pos: Float64Array.from(st.h.pos) }, loops:
 const ruheVor = rechnen(st);
 console.log(`vor dem Zug: ${ruheVor.steht ? `steht nach ${ruheVor.runden} Runden` : 'steht nicht'}; Knicke über 60° ${falten(st.h).ueber60}, umgeschlagen ${falten(st.h).umgeklappt}`);
 
-// 3. die Kreuzung vorn nach innen, bis zwischen die Mundwinkel
+// 3. durchstanzen: die Mittellinie bekommt im Maul die Form der Maullinie von der Seite
 const kVorn = vornP.kreuzung!;
-const weg = { x: TIEF * (G.x - vornP.ref.x), y: TIEF * (G.y - vornP.ref.y), z: 0 };
-const ziel = st.loops.map((l) => {
-  const P = l.punkte.map((p) => {
-    if (p.kreuzung !== kVorn) return p.ref;
-    p.cur = { x: p.ref.x + weg.x, y: p.ref.y + weg.y, z: p.ref.z };
-    return p.cur;
-  });
-  return pfadLagen(l, P) ?? Float64Array.from(l.ruhe);
-});
-const vorZug = Float64Array.from(st.h.pos);
-const lauf = rechnen(st, ziel, SCHRITTE);
-let linieWeit = 0;
-st.loops.forEach((l, i) => {
-  for (let k = 0; k < l.ruhe.length; k += 3) linieWeit = Math.max(linieWeit, Math.hypot(l.ruhe[k]! - ziel[i]![k]!, l.ruhe[k + 1]! - ziel[i]![k + 1]!, l.ruhe[k + 2]! - ziel[i]![k + 2]!));
-});
-const f1 = falten(st.h);
-// außen: Punkte, die vor dem Zug nicht in der Fläche zwischen den Lippen lagen (weiter als 12 hinter den Lippen vorn oder seitlich davon)
-let aussen = 0;
-let innenTief = 0;
-for (let v = 0; v < st.h.n; v++) {
-  const d = Math.hypot(st.h.pos[3 * v]! - vorZug[3 * v]!, st.h.pos[3 * v + 1]! - vorZug[3 * v + 1]!, st.h.pos[3 * v + 2]! - vorZug[3 * v + 2]!);
-  const y0 = vorZug[3 * v + 1]!;
-  const imMaul = vorZug[3 * v]! < G.x && y0 < Math.max(eA.y, eB.y) + 1 && y0 > Math.min(eA.y, eB.y) - 1;
-  if (imMaul) innenTief = Math.max(innenTief, d);
-  else aussen = Math.max(aussen, d);
+const flach = (v: V3): V3 => ({ x: v.x, y: v.y, z: 0 });
+type Ziel = { loop: number; i: number; ort?: V3; ein?: V3; aus?: V3 };
+const ziele: Ziel[] = [];
+{
+  const L = maul();
+  const M = mitte();
+  const n = M.punkte.length;
+  const iW = L.punkte.findIndex((q) => q.mundwinkel);
+  const W = L.punkte[iW]!;
+  const amWinkel = (q: { ref: V3 }): boolean => Math.hypot(q.ref.x - G.x, q.ref.y - G.y, q.ref.z - G.z) < 1;
+  const erste = L.punkte[0]!;
+  const letzte = L.punkte[L.punkte.length - 1]!;
+  const vorWinkel = L.punkte.slice(1, iW).filter((q) => !amWinkel(q));
+  const nachWinkel = L.punkte.slice(iW + 1, -1).filter((q) => !amWinkel(q));
+  const pE0 = M.punkte.find((q) => q.kreuzung === erste.kreuzung)!;
+  const pE1 = M.punkte.find((q) => q.kreuzung === letzte.kreuzung)!;
+  const pT = M.punkte.find((q) => q.kreuzung === kVorn)!;
+  if (!pE0 || !pE1 || !pT) throw new Error('Die Mittellinie kreuzt die Maullinie nicht an beiden Lippen');
+  const folgt = (a: number, b: number): boolean => (b - a + n) % n === 1;
+  // läuft die Mittellinie vom Ende der Maullinie über die Mitte zu ihrem Anfang (dann die Maullinie rückwärts) oder umgekehrt?
+  const rueck = folgt(M.punkte.indexOf(pE1), M.punkte.indexOf(pT)) && folgt(M.punkte.indexOf(pT), M.punkte.indexOf(pE0));
+  const von = rueck ? pE1 : pE0;
+  const bis = rueck ? pE0 : pE1;
+  const erst = rueck ? [...nachWinkel].reverse() : vorWinkel;
+  const dann = rueck ? [...vorWinkel].reverse() : nachWinkel;
+  const hinein = (q: { ein?: V3; aus?: V3 }): V3 => flach((rueck ? q.aus : q.ein)!);
+  const hinaus = (q: { ein?: V3; aus?: V3 }): V3 => flach((rueck ? q.ein : q.aus)!);
+  // neue Punkte der Mittellinie: je Punkt der Maullinie einer, zunächst gleichmäßig auf dem kurzen Stück zwischen den Lippen
+  const einfuegen = (a: { s: number }, b: { s: number }, zahl: number): ReturnType<typeof punktEinfuegen>[] => {
+    const ds = (b.s - a.s + M.laenge) % M.laenge;
+    return Array.from({ length: zahl }, (_, j) => punktEinfuegen(M, (a.s + (ds * (j + 1)) / (zahl + 1)) % M.laenge, undefined, true));
+  };
+  const neuErst = einfuegen(von, pT, erst.length);
+  const neuDann = einfuegen(pT, bis, dann.length);
+  const nr = (q: unknown): number => M.punkte.indexOf(q as (typeof M.punkte)[number]);
+  erst.forEach((q, j) => ziele.push({ loop: M.id, i: nr(neuErst[j]), ort: flach(q.ref), ein: hinein(q), aus: hinaus(q) }));
+  dann.forEach((q, j) => ziele.push({ loop: M.id, i: nr(neuDann[j]), ort: flach(q.ref), ein: hinein(q), aus: hinaus(q) }));
+  // am Mundwinkel können zwei Punkte liegen (der Mundwinkel und die Kreuzung mit der Querlinie dicht daneben): Der Griff zur einen
+  // Lippe steht am ersten, der zur anderen am letzten
+  const amW = L.punkte.filter((q) => amWinkel(q));
+  const zuAnfang = flach(amW[0]!.ein!);
+  const zuEnde = flach(amW[amW.length - 1]!.aus!);
+  ziele.push({ loop: M.id, i: nr(pT), ort: flach(W.ref), ein: rueck ? zuEnde : zuAnfang, aus: rueck ? zuAnfang : zuEnde });
+  // an den Lippen vorn: der Griff ins Maul wie der der Maullinie dort (der andere bleibt)
+  ziele.push({ loop: M.id, i: nr(von), aus: flach((rueck ? letzte.ein : erste.aus)!) });
+  ziele.push({ loop: M.id, i: nr(bis), ein: flach((rueck ? erste.aus : letzte.ein)!) });
+  // die Querlinie: ihr Punkt vorn kommt zwischen die Mundwinkel, das Stück bis zum Mundwinkel wird gerade
+  const Q = quer();
+  const qT = Q.punkte.findIndex((q) => q.kreuzung === kVorn);
+  const qW = winkelP ? Q.punkte.indexOf(winkelP) : -1;
+  const d3 = G.z / 3;
+  ziele.push({ loop: Q.id, i: qT, ort: flach(W.ref), ...(qT === 0 ? { aus: { x: 0, y: 0, z: d3 }, ein: { x: 0, y: 0, z: -d3 } } : { ein: { x: 0, y: 0, z: d3 }, aus: { x: 0, y: 0, z: -d3 } }) });
+  if (qW >= 0) ziele.push({ loop: Q.id, i: qW, ...(qW > qT ? { ein: { x: 0, y: 0, z: -d3 } } : { aus: { x: 0, y: 0, z: -d3 } }) });
+  for (const x of st.loops) for (const q of x.punkte) q.cur = { ...q.ref };
+  console.log(`Durchstanzen: die Mittellinie bekommt im Maul ${erst.length + dann.length + 1} Punkte der Maullinie (${rueck ? 'rückwärts' : 'vorwärts'} durchlaufen); Mittellinie jetzt ${M.punkte.length} Punkte`);
 }
+// Anfang und Ende je Punkt und Griff
+const start = ziele.map((zl) => {
+  const q = st.loops.find((l) => l.id === zl.loop)!.punkte[zl.i]!;
+  return { ort: { ...q.ref }, ein: { ...q.ein! }, aus: { ...q.aus! } };
+});
+const zwischen = (a: V3, b: V3, f: number): V3 => ({ x: a.x + f * (b.x - a.x), y: a.y + f * (b.y - a.y), z: a.z + f * (b.z - a.z) });
+// die Fläche zwischen den Lippen (wird Gaumen und Boden) und die Herkunft der Punkte, durch das Verfeinern hindurch
+let innen = new Uint8Array(st.h.n);
+{
+  const L = maul();
+  const m0 = maulAmLoop(st.h, L, mundwinkelProbe(L), { zelle: geladen.mk / 2 });
+  if (!m0) throw new Error('Die Maullinie umschließt keine Fläche');
+  const offenZahl = new Uint16Array(st.h.n);
+  const alleZahl = new Uint16Array(st.h.n);
+  for (let t = 0; t < st.h.tri.length / 3; t++)
+    for (let e = 0; e < 3; e++) {
+      alleZahl[st.h.tri[3 * t + e]!]!++;
+      if (m0.offen[t]) offenZahl[st.h.tri[3 * t + e]!]!++;
+    }
+  for (let v = 0; v < st.h.n; v++) innen[v] = offenZahl[v]! > 0 && offenZahl[v] === alleZahl[v] ? 1 : 0;
+}
+const vorZug = Float64Array.from(st.h.pos);
+let her = Int32Array.from({ length: st.h.n }, (_, v) => v);
+const punkteVor = st.h.n;
+let lauf = ruheVor;
+let rundenGanz = 0;
+let unruhe = 0;
+for (let b = 1; b <= STUFEN; b++) {
+  const f = b / STUFEN;
+  ziele.forEach((zl, k) => {
+    const q = st.loops.find((l) => l.id === zl.loop)!.punkte[zl.i]!;
+    if (zl.ort) q.cur = zwischen(start[k]!.ort, zl.ort, f);
+    if (zl.ein) q.ein = zwischen(start[k]!.ein, zl.ein, f);
+    if (zl.aus) q.aus = zwischen(start[k]!.aus, zl.aus, f);
+  });
+  // die gemeinsamen Punkte einer Kreuzung liegen am selben Ort
+  for (const l of st.loops) for (const q of l.punkte) if (q.kreuzung === kVorn) q.cur = zwischen(start[ziele.findIndex((zl) => zl.ort && zl.loop === mitteId && st.loops.find((x) => x.id === mitteId)!.punkte[zl.i]!.kreuzung === kVorn)]!.ort, flach(G), f);
+  const Z = st.loops.map((l) => pfadLagen(l, l.punkte.map((q) => q.cur)) ?? Float64Array.from(l.ruhe));
+  lauf = rechnen(st, Z, SCHRITTE);
+  rundenGanz += lauf.runden;
+  unruhe += lauf.unruhe.stufen;
+  // verfeinern wie das Fenster nach einem Zug
+  for (let g = 0; g < 8; g++) {
+    const v = verdichten(st.h, st.loops, 1.75 * geladen.mk, verdichtenWieImFenster(geladen.mk, 0.5));
+    if (!v) break;
+    const i2 = new Uint8Array(v.haut.n);
+    const h2 = new Int32Array(v.haut.n);
+    for (let w = 0; w < v.haut.n; w++) {
+      const a = v.alt[w]!;
+      h2[w] = a >= 0 ? her[a]! : -1;
+      i2[w] = a >= 0 ? innen[a]! : 2;
+    }
+    for (let w = 0; w < v.haut.n; w++) {
+      if (i2[w] !== 2) continue;
+      const nb = v.haut.nachbarn[w]!.filter((x) => i2[x] !== 2);
+      i2[w] = nb.length && nb.filter((x) => i2[x] === 1).length * 2 > nb.length ? 1 : 0;
+    }
+    innen = i2;
+    her = h2;
+    st = { h: v.haut, loops: v.loops };
+    for (const l of st.loops) for (const q of l.punkte) q.cur = { ...q.ref };
+    if (v.gelegt === 0 && v.neu === 0) break;
+  }
+}
+const ende = rechnen(st);
+rundenGanz += ende.runden;
+// Maße: Linien auf ihren Pfaden; außen bewegt; die Mittellinie im Maul und die Flächen innen gegen die Maullinie von der Seite
+let linieWeit = 0;
+for (const l of st.loops) {
+  const Z = pfadLagen(l);
+  if (!Z) continue;
+  for (let k = 0; k < l.ruhe.length; k += 3) linieWeit = Math.max(linieWeit, Math.hypot(l.ruhe[k]! - Z[k]!, l.ruhe[k + 1]! - Z[k + 1]!, l.ruhe[k + 2]! - Z[k + 2]!));
+}
+const f1 = falten(st.h);
+let aussen = 0;
+for (let v = 0; v < st.h.n; v++) {
+  if (innen[v] || her[v]! < 0) continue;
+  const a = her[v]!;
+  aussen = Math.max(aussen, Math.hypot(st.h.pos[3 * v]! - vorZug[3 * a]!, st.h.pos[3 * v + 1]! - vorZug[3 * a + 1]!, st.h.pos[3 * v + 2]! - vorZug[3 * a + 2]!));
+}
+/** Abstand in der Seite (x, y) zur Maullinie, wie sie von der Seite aussieht */
+const zurMaullinie = ((): ((x: number, y: number) => number) => {
+  const L = maul();
+  const Pf = pfadLagen(L) ?? L.ruhe;
+  const q: [number, number][] = [];
+  for (let k = 0; k < Pf.length; k += 3) q.push([Pf[k]!, Pf[k + 1]!]);
+  return (x, y) => {
+    let best = Infinity;
+    for (let k = 0; k + 1 < q.length; k++) {
+      const [ax, ay] = q[k]!;
+      const [bx, by] = q[k + 1]!;
+      const l2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1;
+      const t = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / l2));
+      best = Math.min(best, Math.hypot(x - ax - t * (bx - ax), y - ay - t * (by - ay)));
+    }
+    return best;
+  };
+})();
+let profilWeit = 0;
+let profilZahl = 0;
+for (const pr of mitte().proben) {
+  const v = pr.ecken[0];
+  if (!innen[v]) continue;
+  profilZahl++;
+  profilWeit = Math.max(profilWeit, zurMaullinie(st.h.pos[3 * v]!, st.h.pos[3 * v + 1]!));
+}
+let flaecheWeit = 0;
+let flaecheMittel = 0;
+let flaecheZahl = 0;
+for (let v = 0; v < st.h.n; v++) {
+  if (!innen[v]) continue;
+  const d = zurMaullinie(st.h.pos[3 * v]!, st.h.pos[3 * v + 1]!);
+  flaecheWeit = Math.max(flaecheWeit, d);
+  flaecheMittel += d;
+  flaecheZahl++;
+}
+flaecheMittel /= Math.max(1, flaecheZahl);
+const stanzText = `Mittellinie im Maul (${profilZahl} Stellen) höchstens ${z2(profilWeit)} neben der Maullinie von der Seite; Flächen innen (${flaecheZahl} Punkte) höchstens ${z2(flaecheWeit)}, im Mittel ${z2(flaecheMittel)}`;
 console.log(
-  `Zug (${SCHRITTE} Schritte, ${z1(Math.hypot(weg.x, weg.y))} nach innen): ${lauf.steht ? `steht nach ${lauf.runden} Runden` : `steht nach ${lauf.runden} Runden nicht (letzte ${z2(lauf.letzte)})`}; ` +
-    `zwischen den Lippen bis ${z1(innenTief)} bewegt, außen bis ${z2(aussen)}; Linien bis ${z2(linieWeit)} neben ihrem Pfad; Knicke über 60° ${f1.ueber60}, umgeschlagen ${f1.umgeklappt}; Vorsicht ${lauf.unruhe.stufen}${lauf.unruhe.fest ? ', steht fest' : ''}`,
+  `Durchgestanzt in ${STUFEN} Stufen zu ${SCHRITTE} Schritten (${rundenGanz} Runden, Netz ${punkteVor} → ${st.h.n} Punkte): ${ende.steht ? `steht (${ende.runden} Runden am Ende)` : `steht nicht (letzte ${z2(ende.letzte)})`}; ` +
+    `außen bis ${z2(aussen)} bewegt; Linien bis ${z2(linieWeit)} neben ihrem Pfad; Knicke über 60° ${f1.ueber60}, umgeschlagen ${f1.umgeklappt}; Vorsicht ${unruhe + ende.unruhe.stufen}${ende.unruhe.fest ? ', steht fest' : ''}`,
 );
+console.log(`   wie durchgestanzt: ${stanzText}`);
+if (process.env.DEBUG === '1') {
+  const v3 = (v?: V3): string => (v ? `(${z1(v.x)}, ${z1(v.y)}, ${z1(v.z)})` : '-');
+  console.log('   Maullinie:');
+  for (const q of maul().punkte) console.log(`      ${v3(q.ref)} ein ${v3(q.ein)} aus ${v3(q.aus)}${q.mundwinkel ? ' Mundwinkel' : ''}${q.kreuzung !== undefined ? ` K${q.kreuzung}` : ''}`);
+  console.log('   Mittellinie:');
+  for (const q of mitte().punkte) console.log(`      ${v3(q.ref)} ein ${v3(q.ein)} aus ${v3(q.aus)}${q.kreuzung !== undefined ? ` K${q.kreuzung}` : ''}${q.ecke ?? q.autoEcke ? ' Ecke' : ''}`);
+  console.log('   Ziele:');
+  ziele.forEach((zl) => console.log(`      Loop ${zl.loop} Punkt ${zl.i}: Ort ${v3(zl.ort)} ein ${v3(zl.ein)} aus ${v3(zl.aus)}`));
+}
+lauf = ende;
 
 const geformt: Stand = { h: { ...st.h, pos: Float64Array.from(st.h.pos) }, loops: kopieLoops(st.loops) };
 
@@ -279,10 +441,10 @@ if (AUS) {
       ] as const;
       const zeilen: BlattZeile[] = [
         {
-          titel: 'Maullinie hart, Mittellinie, Querlinie durch die Mundwinkel; dann die Kreuzung vorn zwischen den Lippen nach innen',
+          titel: 'Maullinie hart, Mittellinie, Querlinie durch die Mundwinkel; dann bekommt die Mittellinie im Maul die Form der Maullinie von der Seite',
           bilder: [
             bild('vorher: die Maullinie auf der geschlossenen Haut, mit den beiden Linien', vorher, 'nichts geschnitten, nichts eingesetzt'),
-            bild('nachher: automatisch geformt, mit der Rechnung der Grundform', geformt, `${lauf.steht ? `steht nach ${lauf.runden} Runden` : 'steht nicht'}; umgeschlagen ${f1.umgeklappt}; außen bis ${z2(aussen)} bewegt; Linien bis ${z2(linieWeit)} neben ihrem Pfad`),
+            bild('nachher: automatisch geformt, von der Seite durchgestanzt', geformt, `${lauf.steht ? 'steht' : 'steht nicht'}; umgeschlagen ${f1.umgeklappt}; außen bis ${z2(aussen)} bewegt; ${stanzText}`),
           ],
           blicke,
           mass: 430,

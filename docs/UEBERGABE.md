@@ -1,4 +1,4 @@
-# Übergabe (Stand 13.11.2026, 17:30 Uhr: Schritt 6 (Maul) ist neu gefasst und der Beweis hält (Abschnitt 7.9): Das Maul entsteht automatisch an der gewählten Linie, geformt wie von Hand (Kante hart, Querlinie durch die Mundwinkel, die Mitte zwischen den Lippen wird in Schritten nach innen gezogen). Danach gehen Loops nur um einen Kiefer und der Kieferknochen. Die beiden Beweise davor (7.6 Posen, 7.7 Maul als eingeschweißte Höhle) hatten das Falsche geprüft; Florian hat widersprochen und recht behalten (7.8). Gebaut ist nichts; gefragt ist sein Wort zum Bauen. Schritt 4b, erster Teil, die Rechnung auf der Hälfte, ist in seinem Fenster (5194; Abschnitt 7.5); der Rest der halben Haut ist als Schritt 4c fest vorgemerkt. Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt. Zu Schritt 1, 2, dem Donut (4a) und der halben Rechnung steht sein Urteil aus)
+# Übergabe (Stand 13.11.2026, 17:35 Uhr: Schritt 6 (Maul) ist neu gefasst und der Beweis hält (Abschnitt 7.9): Das Maul entsteht automatisch an der gewählten Linie, geformt wie von Hand und von der Seite durchgestanzt (Kante hart, Querlinie durch die Mundwinkel, die Mittellinie bekommt im Maul in Stufen die Form der Maullinie). Danach gehen Loops nur um einen Kiefer und der Kieferknochen. Die beiden Beweise davor (7.6 Posen, 7.7 Maul als eingeschweißte Höhle) hatten das Falsche geprüft; Florian hat widersprochen und recht behalten (7.8). Gebaut ist nichts; gefragt ist sein Wort zum Bauen. Schritt 4b, erster Teil, die Rechnung auf der Hälfte, ist in seinem Fenster (5194; Abschnitt 7.5); der Rest der halben Haut ist als Schritt 4c fest vorgemerkt. Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt. Zu Schritt 1, 2, dem Donut (4a) und der halben Rechnung steht sein Urteil aus)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -725,11 +725,19 @@ an gegeben. Daher bläst sich eigentlich auch nicht mehr so viel auf, und es sol
 2. Mittellinie (falls sie fehlt) und eine **Querlinie durch beide Mundwinkel**: ein Ring um den Kopf in der Ebene des Mauls. Er
    kreuzt die Mittellinie vorn zwischen den Lippen und die Maullinie in den Mundwinkeln; das Stück dazwischen ist hart. Das ist
    „die gegenüberliegenden Seiten verbinden“, als Linie.
-3. Die Kreuzung vorn zwischen den Lippen wird in 60 Schritten nach innen gezogen (91, bis zwischen die Mundwinkel).
+3. **Durchstanzen:** Die Mittellinie bekommt im Maul die Punkte und Griffe der Maullinie, flach auf die Mittelebene gelegt; die
+   Kreuzung vorn wandert dabei zwischen die Mundwinkel, das Stück der Querlinie bis zum Mundwinkel wird gerade. In 8 Stufen zu 8
+   Schritten, nach jeder Stufe verfeinert wie nach einem Zug.
+
+**Florian zum ersten Bild (13.11., 17:35 Uhr; dort wurde nur die Kreuzung nach innen gezogen, die Mittellinie lief als gerades V
+nach hinten):** „Das Maul sieht aber auf deinen Bildern noch falsch aus. Es soll aussehen, als wäre der Edgeloop von der
+Seitenansicht durchgestanzt mit genau der Form des Maulloops von der Seite. Das heißt, die Mittellinie muss von der Seite exakt
+den Shape der Maullinie haben. Verstehst du. Aber der Weg ist grundsätzlich richtig.“ Daraus ist Schritt 3 oben geworden.
 
 | Geprüft | Ergebnis |
 | --- | --- |
-| Das Maul formen | steht gleich nach dem Zug; nichts umgeschlagen; außen 0,02 bewegt; Linien 0,08 neben ihrem Pfad; Vorsicht 0 |
+| Das Maul formen | steht; nichts umgeschlagen; Vorsicht 0; Linien 0,08 neben ihrem Pfad; außen bis 3,0 bewegt (mit dem Verfeinern unterwegs) |
+| Durchgestanzt | **die Mittellinie liegt im Maul höchstens 0,27 neben der Maullinie von der Seite**; die Flächen zwischen Lippe und Mitte weichen noch bis 9,8 ab (im Mittel 2,4) |
 | Loop nur um den Unterkiefer, Loop nur um den Oberkiefer | beide lassen sich schneiden und einsetzen; danach Ruhe nach 7 Runden, nichts umgeschlagen |
 | Kieferknochen 30° offen | nichts umgeschlagen (Gelenk am Mundwinkel; Gewichte außen wie heute, innen Boden ganz, Gaumen gar nicht) |
 | Zum Vergleich: dieselbe Form auf einmal hineingebaut, mit der Verbindung hinten als harter Linie | kommt nicht zur Ruhe (Vorsicht hält nach acht Runden an; 99 umgeschlagen) |
@@ -741,14 +749,16 @@ an gegeben. Daher bläst sich eigentlich auch nicht mehr so viel auf, und es sol
    um den Kopf, der durch die Mundwinkel läuft.
 3. Was 7.7 nicht konnte (den Loop um einen Kiefer einsetzen), geht hier.
 
-**Offen aus der Probe:** eine Form, nur im Kern, ohne Verfeinern im Zug. Die Maullinie bekommt am Mundwinkel einen zweiten
-Punkt dicht neben dem vorhandenen. Die Gewichte innen sind grob; geöffnet ist die Fläche hinten am Gelenk zackig. Glatte Lippen
+**Offen aus der Probe:** eine Form, nur im Kern. Die Flächen innen sind noch nicht genau durchgestanzt (zwischen Lippe und
+Mitte liegt keine Linie, die Rechnung rundet dort); Vorschlag: an jedem Punkt der Maullinie eine Querlinie wie am Mundwinkel,
+innen gerade von der Lippe zur Mitte, außen ein Loop um den Kiefer. Die Maullinie bekommt am Mundwinkel einen zweiten Punkt
+dicht neben dem vorhandenen. Die Gewichte innen sind grob; geöffnet ist die Fläche hinten am Gelenk zackig. Glatte Lippen
 (Kante aus) sind nicht geprüft.
 
 **Etappen** (Plan, „Schritt 6, wie Florian ihn beschreibt“): 1. „Maul“ formt automatisch (Kern und Fenster); 2. Kieferknochen am
 geformten Maul, auch am von Hand geformten; 3. danach Schritt 5 (Posen).
 
-**Gefragt ist Florian (13.11., 17:30 Uhr):** Soll ich so bauen? **„Ja, so bauen“** oder **„Nein“**.
+**Gefragt ist Florian (13.11., 17:35 Uhr):** Soll ich so bauen? **„Ja, so bauen“** oder **„Nein“**.
 
 ## 8. Offen aus der Zeit davor
 

@@ -514,19 +514,27 @@ täte; es wird nur an Linien gezogen, die Haut folgt der Rechnung der Grundform 
 2. Die Mittellinie ist da (sonst wird sie angelegt). Dazu kommt eine Querlinie durch beide Mundwinkel: ein Ring um den Kopf in
    der Ebene des Mauls. Er kreuzt die Mittellinie vorn zwischen den Lippen und die Maullinie in den Mundwinkeln. Sein Stück
    dazwischen ist die Verbindung der gegenüberliegenden Seiten; es ist hart.
-3. Die Kreuzung vorn zwischen den Lippen wird nach innen gezogen, bis zwischen die Mundwinkel. Aus der Fläche zwischen den Lippen
-   werden Gaumen und Boden.
+3. **Durchstanzen** (Florian zum ersten Bild, 13.11., 17:35 Uhr: „Das Maul sieht aber auf deinen Bildern noch falsch aus. Es
+   soll aussehen, als wäre der Edgeloop von der Seitenansicht durchgestanzt mit genau der Form des Maulloops von der Seite. Das
+   heißt, die Mittellinie muss von der Seite exakt den Shape der Maullinie haben. […] Aber der Weg ist grundsätzlich richtig“):
+   Die Mittellinie bekommt im Maul die Punkte und Griffe der Maullinie, flach auf die Mittelebene gelegt; die Kreuzung vorn
+   wandert dabei zwischen die Mundwinkel, das Stück der Querlinie bis zum Mundwinkel wird gerade. Gezogen wird in Stufen,
+   unterwegs wird verfeinert wie nach jedem Zug. Aus der Fläche zwischen den Lippen werden Gaumen und Boden. (Die erste Fassung
+   zog nur die Kreuzung nach innen; die Mittellinie lief dann als gerades V nach hinten.)
 
-Ergebnis an der Kugel mit Maullinie: Die Haut steht gleich nach dem Zug (60 Schritte, 91 nach innen), nichts ist umgeschlagen,
-außen bewegt sich nichts (0,02), die Linien liegen auf ihren Pfaden (0,08). Danach lassen sich Loops nur um den Unterkiefer und
-nur um den Oberkiefer schneiden und einsetzen (steht nach 7 Runden, nichts umgeschlagen), und der Kieferknochen öffnet das Maul
-um 30° ohne umgeschlagene Dreiecke. Zum Vergleich: Dieselbe Form auf einmal hineingebaut (`form-maul-haut.ts`) kommt nicht zur
+Ergebnis an der Kugel mit Maullinie (8 Stufen zu 8 Schritten): Die Haut steht, nichts ist umgeschlagen, die Vorsicht greift nie
+ein, die Linien liegen auf ihren Pfaden (0,08). **Die Mittellinie liegt im Maul höchstens 0,27 neben der Maullinie von der
+Seite.** Die Flächen zwischen Lippe und Mitte weichen von der durchgestanzten Form noch bis 9,8 ab (im Mittel 2,4): Dort liegt
+noch keine Linie, die Rechnung rundet. Außen bewegt sich die Haut bis 3,0 (mit dem Verfeinern unterwegs; ohne waren es 0,02).
+Danach lassen sich Loops nur um den Unterkiefer und nur um den Oberkiefer schneiden und einsetzen (steht nach 7 Runden, nichts
+umgeschlagen), und der Kieferknochen öffnet das Maul um 30° ohne umgeschlagene Dreiecke. Zum Vergleich: Dieselbe Form auf einmal hineingebaut (`form-maul-haut.ts`) kommt nicht zur
 Ruhe, auch mit der Verbindung hinten als harter Linie (die Vorsicht hält nach acht Runden an). Der Unterschied ist das Formen in
 Schritten, nicht die Form.
 
-**Offen aus der Probe:** eine Form, nur im Kern, ohne Verfeinern im Zug (die Fläche zwischen den Lippen wird stark gestreckt; im
-Fenster verfeinert der Zug). Die Maullinie bekommt am Mundwinkel einen zweiten Punkt dicht neben dem vorhandenen (die Kreuzung
-mit der Querlinie muss den Mundwinkel selbst nehmen). Die Gewichte innen sind in der Probe grob (Boden ganz, Gaumen gar nicht);
+**Offen aus der Probe:** eine Form, nur im Kern. Die Flächen innen sind noch nicht genau durchgestanzt (bis 9,8 daneben);
+Vorschlag: an jedem Punkt der Maullinie eine Querlinie wie am Mundwinkel (innen gerade von der Lippe zur Mitte, außen ein Loop
+um den Kiefer), dann spannt die Rechnung dazwischen nur noch kurze Stücke. Die Maullinie bekommt am Mundwinkel einen zweiten
+Punkt dicht neben dem vorhandenen (die Kreuzung mit der Querlinie muss den Mundwinkel selbst nehmen). Die Gewichte innen sind in der Probe grob (Boden ganz, Gaumen gar nicht);
 geöffnet ist die Fläche hinten am Gelenk deshalb zackig. Glatte Lippen (Kante aus) sind nicht geprüft.
 
 **Etappen** (Bau-Fenster, jede mit Bildpaar; in Florians Fenster erst nach seinem Wort):
