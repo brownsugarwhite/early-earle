@@ -7,8 +7,8 @@ https://claude.ai/artifact/SahX9VLKYfxFbmhNPNs18f (Prototyp darin als `vision.ht
 ## Runde 4 (13.11.2026): die Ecke
 
 Drei Ansichten als Druckfarben (Cyan Seite, Magenta Front, Gelb Top) an den unsichtbaren Wänden einer Ecke. Jede ist eine
-echte Ansicht mit eigenem Projektor. Tab: Wesen drehen; die Ansichten laufen zusammen, in ihrer Schnittmenge entsteht das
-Material. Start mit dem Stift in der Seitenansicht. Prüfung der Vision: [`../VISION-4.md`](../VISION-4.md),
+echte Ansicht mit eigenem Projektor. Tab: Wesen drehen; die Ansichten gleiten an der Wand einer unsichtbaren Kugel hinter das
+Wesen und decken sich dort, in ihrer Schnittmenge entsteht auf dem Wesen das Material. Start mit dem Stift in der Seitenansicht. Prüfung der Vision: [`../VISION-4.md`](../VISION-4.md),
 Plan: [`../PLAN-4.md`](../PLAN-4.md).
 
 ```bash

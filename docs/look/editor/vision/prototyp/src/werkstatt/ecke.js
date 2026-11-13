@@ -4,7 +4,8 @@
 //   Raum drehen (Tab aus): Die Tafeln liegen auf den unsichtbaren Wänden hinter dem Wesen, ihre Projektoren schauen genau
 //     von der Seite, von vorn und von oben. Das Wesen ist ein Drahtmodell (Kurvennetz, Umriss, Transparentpapier).
 //   Wesen drehen (Tab an): Licht und Fliese bleiben stehen, nur das Wesen dreht sich. Die Projektoren drehen sich synchron zur
-//     Kamera, die Tafeln wandern ins Wesen und legen sich deckungsgleich darauf. Wo alle drei es decken, entsteht das Material.
+//     Kamera; die Tafeln bleiben an der Wand einer unsichtbaren Kugel und gleiten auf ihr hinter das Wesen, bis alle drei
+//     deckungsgleich dahinter liegen (aus dem Blick wirken sie wie im Wesen). Wo alle drei es decken, entsteht auf ihm das Material.
 //     Nahe einer Achse liegen sie wieder an ihren Wänden; die Dolly-Fahrt macht die Achsansicht flach (Morph zur Seitenansicht).
 
 import { Werft } from './werft.js';
@@ -211,7 +212,7 @@ export class Ecke extends Werft {
     const v = this.blickZumWesen();
     const m = Math.max(Math.abs(v[0]), Math.abs(v[1]), Math.abs(v[2]));
     const winkel = Math.acos(Math.min(1, m)); // zur nächsten Achse
-    return smooth(0.1, 0.5, winkel) * (1 - this.parallelZiel);
+    return smooth(0.06, 0.62, winkel) * (1 - this.parallelZiel);
   }
   licht() {
     return rotY(L_BLICK, this.psi);
@@ -278,6 +279,12 @@ export class Ecke extends Werft {
     const h0 = this.rahmenH0(g);
     const s = this.s;
     const sk = z.koerper.scale;
+    // Unsichtbare Kugel um das Wesen (Florian, 13.11.): Die Ansichten bleiben an ihrer Wand und gleiten auf ihr entlang,
+    // nie ins Wesen. Auf der Achse berührt die Kugel die Wände der Ecke; zusammengelaufen liegen alle drei genau hinter dem
+    // Wesen, und nur der Blick lässt sie im Wesen erscheinen (der Projektor ist dann die Kamera).
+    const dSeite = ((this.phase === 'aufblasen' ? this.zBasis : g.max[2]) + luecke) * this.rueckzug;
+    const dFront = Math.max(g.max[0] - C[0], C[0] - g.min[0]) + luecke;
+    const dKugel = Math.max(dSeite, dFront);
     for (const n of NAMEN) {
       const T = this.tafeln[n];
       const ax = ACHSE[n];
@@ -287,8 +294,8 @@ export class Ecke extends Werft {
       // Wand hinter dem Wesen (vom Blick abgewandt); der Boden liegt unter den Füßen
       let D;
       if (n === 'top') D = sg > 0 ? C[1] - g.min[1] + 0.004 * R : g.max[1] - C[1] + luecke;
-      else if (n === 'front') D = (sg < 0 ? g.max[0] - C[0] : C[0] - g.min[0]) + luecke;
-      else D = ((this.phase === 'aufblasen' ? this.zBasis : g.max[2]) + luecke) * this.rueckzug;
+      else if (n === 'front') D = dFront;
+      else D = dSeite;
       // Blick der Achse: oben = y (Seite, Front); Top: vom Betrachter weg (so dreht sie sich ohne Rolle zur Kamera)
       let u0 = [0, 1, 0];
       if (n === 'top') {
@@ -336,8 +343,8 @@ export class Ecke extends Werft {
         T.druck.uniforms.uTexel.value.set(1 / mw, 1 / mh);
       }
       T.druck.uniforms.uMaske.value = T.maske;
-      // Lage der Tafel: senkrecht zum Projektor, auf der Wand (s = 0) bis durch das Ziel (s = 1)
-      const delta = D * (1 - s);
+      // Lage der Tafel: senkrecht zum Projektor, gegenüber dem Projektor an der Kugelwand (Abstand vom Wand- zum Kugelmaß)
+      const delta = D + (dKugel - D) * smooth(0, 1, s);
       const Qc = sub(Tz, mul(e, delta));
       const hh = (L + delta) * tau, hw = hh * asp;
       const a = T.mesh.geometry.attributes.position, cl = T.mesh.geometry.attributes.clip;

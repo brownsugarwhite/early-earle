@@ -69,3 +69,21 @@ Seitenansicht). Dann Drahtmodell, drei Projektionen an den Wänden der Ecke (Wä
 - 13.11. Präsentation Version 5 veröffentlicht (gleiche Adresse): https://claude.ai/artifact/SahX9VLKYfxFbmhNPNs18f. Die
   Achsen-Vorführung tippt 1/3/7 jetzt (gehalten ab 0,3 s federte sie zurück). Offen: Florians Urteil und seine Antworten auf
   die fünf Fragen der Präsentation; Mac, iPad, Safari und Bildrate ungeprüft.
+
+## Nachtrag 13.11.2026: Florians Rückmeldung zur Bewegung der Ansichten (wörtlich)
+
+> „ich finde die bewegung der ansichten in cmy noch seltsam und hätte es anders erwartet. Die „projektionen sind echte 3d
+> modelle und drehen sich anschein zum echten model und ändern dabei ihre position so dass wenn ich von rechts oben oder
+> linksunten daraufschaue genau die überlagerung entsteht. in den exakten seitenansichten sind die projektionsmodelle dann genau
+> in die ansicht gedreht. Alles andere ist nur eine synchrone bewegung. Du kannst es dir besser vorstellen als wären wir in eine
+> großen kugel und die projektionen sind immer an der wand der kugel und bewegen sich entlang dieser. wie ein riesiger
+> kugelförmiger bildschirm der die 3d modelle der projektionen zeigt. Also auch von schräg oben ligen die 3 ansichten exakt
+> gleich rotiert übereinander an der wander großen kugel. Nur durch die ansicht macht es den eindruck als wären sie im mesh.
+> Verstehst du was ich meine. Das aus der überschneidung entstehende material soll dann tatsächlich im mesh sein.“
+
+**Was falsch war:** Die Tafeln flogen beim Zusammenlaufen nach vorn bis in die Mittelebene des Wesens. **Jetzt:** Sie bleiben an
+der Wand einer unsichtbaren Kugel um das Wesen (auf den Achsen berührt sie die Wände der Ecke) und gleiten auf ihr entlang,
+gegenüber ihrem Projektor; ihr Inhalt dreht sich synchron zur Kamera. Zusammengelaufen liegen alle drei gleich gedreht genau
+hinter dem Wesen an der Kugelwand; weil der Projektor dann die Kamera ist, decken sie sich aus dem Blick genau mit dem Wesen.
+Das Material entsteht auf dem Wesen selbst (wie bisher: Körperbild, wo sich alle drei decken). Das Band des Zusammenlaufens ist
+breiter: bis 3° von einer Achse an den Wänden, ab 35° deckungsgleich.

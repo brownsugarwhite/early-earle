@@ -293,3 +293,8 @@ im Raum das Material nicht ändert; gebaut ist im Raum das Drahtmodell, weil er 
 die Seiten anzeigen“. Ob das Zusammenlaufen vom Winkel abhängen soll oder nur von Tab, muss er beim Drehen fühlen. Die Spanten
 beim Start sind geraten (drei, gleichmäßig im Rumpf). Bildrate auf iPhone und Mac nicht gemessen; unter der Oberfläche rechnet
 weiter die Ersatz-Haut.
+
+**Nachtrag (Florians Rückmeldung zur Bewegung):** Die Ansichten fliegen nicht mehr ins Wesen. Sie gleiten an der Wand einer
+unsichtbaren Kugel um das Wesen, immer gegenüber ihrem Projektor, wie Schatten von drei Lampen auf einer Kuppel; die Lampen
+wandern zum Auge, die Schatten hinter das Wesen. Zusammengelaufen liegen sie gleich gedreht an der Kugelwand hinter dem Wesen
+und decken sich aus dem Blick genau mit ihm; das Material entsteht auf dem Wesen. Wortlaut und Änderung in `PLAN-4.md`.

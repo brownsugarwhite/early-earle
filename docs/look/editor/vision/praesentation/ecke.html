@@ -38519,7 +38519,7 @@ void main(){
       const v = this.blickZumWesen();
       const m = Math.max(Math.abs(v[0]), Math.abs(v[1]), Math.abs(v[2]));
       const winkel = Math.acos(Math.min(1, m));
-      return smooth(0.1, 0.5, winkel) * (1 - this.parallelZiel);
+      return smooth(0.06, 0.62, winkel) * (1 - this.parallelZiel);
     }
     licht() {
       return rotY(L_BLICK, this.psi);
@@ -38588,6 +38588,9 @@ void main(){
       const h0 = this.rahmenH0(g);
       const s = this.s;
       const sk = z.koerper.scale;
+      const dSeite = ((this.phase === "aufblasen" ? this.zBasis : g.max[2]) + luecke) * this.rueckzug;
+      const dFront = Math.max(g.max[0] - C[0], C[0] - g.min[0]) + luecke;
+      const dKugel = Math.max(dSeite, dFront);
       for (const n of NAMEN2) {
         const T = this.tafeln[n];
         const ax = ACHSE2[n];
@@ -38596,8 +38599,8 @@ void main(){
         A[ax] = sg;
         let D;
         if (n === "top") D = sg > 0 ? C[1] - g.min[1] + 4e-3 * R : g.max[1] - C[1] + luecke;
-        else if (n === "front") D = (sg < 0 ? g.max[0] - C[0] : C[0] - g.min[0]) + luecke;
-        else D = ((this.phase === "aufblasen" ? this.zBasis : g.max[2]) + luecke) * this.rueckzug;
+        else if (n === "front") D = dFront;
+        else D = dSeite;
         let u0 = [0, 1, 0];
         if (n === "top") {
           const l = Math.hypot(v[0], v[2]);
@@ -38642,7 +38645,7 @@ void main(){
           T.druck.uniforms.uTexel.value.set(1 / mw, 1 / mh);
         }
         T.druck.uniforms.uMaske.value = T.maske;
-        const delta = D * (1 - s);
+        const delta = D + (dKugel - D) * smooth(0, 1, s);
         const Qc = sub(Tz, mul(e, delta));
         const hh = (L + delta) * tau, hw = hh * asp;
         const a = T.mesh.geometry.attributes.position, cl = T.mesh.geometry.attributes.clip;
