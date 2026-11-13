@@ -377,6 +377,53 @@ export function systemAusDaten(daten: ZerlegungsDaten): NormalSystem {
     }
     return out;
   };
+  // 13.11.2026 (Rechnung auf der Hälfte): Zwei Spalten sind x und y im symmetrischen System. Ausgeschrieben wie `loesenDrei`,
+  // dieselben Rechenschritte je Spalte in derselben Reihenfolge wie in `einsetzen` (bitgleich, `zerlegung.test.ts`).
+  const loesenZwei = (rhs: Float64Array): Float64Array => {
+    const b1 = (a1 ??= new Float64Array(n));
+    for (let j = 0; j < n; j++) {
+      const q = 2 * perm[j]!;
+      a0[j] = rhs[q]!;
+      b1[j] = rhs[q + 1]!;
+    }
+    for (let j = 0; j < n; j++) {
+      const von = Lp[j]!;
+      const bis = Lp[j + 1]!;
+      const d = Lx[von]!;
+      const y0 = a0[j]! / d;
+      const y1 = b1[j]! / d;
+      a0[j] = y0;
+      b1[j] = y1;
+      for (let p = von + 1; p < bis; p++) {
+        const l = Lx[p]!;
+        const i = Li[p]!;
+        a0[i] = a0[i]! - l * y0;
+        b1[i] = b1[i]! - l * y1;
+      }
+    }
+    for (let j = n - 1; j >= 0; j--) {
+      const von = Lp[j]!;
+      const bis = Lp[j + 1]!;
+      let s0 = a0[j]!;
+      let s1 = b1[j]!;
+      for (let p = von + 1; p < bis; p++) {
+        const l = Lx[p]!;
+        const i = Li[p]!;
+        s0 -= l * a0[i]!;
+        s1 -= l * b1[i]!;
+      }
+      const d = Lx[von]!;
+      a0[j] = s0 / d;
+      b1[j] = s1 / d;
+    }
+    const out = new Float64Array(2 * n);
+    for (let j = 0; j < n; j++) {
+      const q = 2 * perm[j]!;
+      out[q] = a0[j]!;
+      out[q + 1] = b1[j]!;
+    }
+    return out;
+  };
   const loesenEine = (rhs: Float64Array): Float64Array => {
     for (let j = 0; j < n; j++) a0[j] = rhs[perm[j]!]!;
     for (let j = 0; j < n; j++) {
@@ -494,6 +541,7 @@ export function systemAusDaten(daten: ZerlegungsDaten): NormalSystem {
     loesen: loesenDrei,
     loesenSpalte: loesenEine,
     loesenSpalten,
+    loesenZwei,
     huelle: Lp[n]!,
     zeitAufbau: daten.zeitAufbau,
     zeitZerlegen: daten.zeitZerlegen,

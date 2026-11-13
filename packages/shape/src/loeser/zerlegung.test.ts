@@ -84,6 +84,15 @@ describe('Einsetzen ausgeschrieben (G1)', () => {
     }
   });
 
+  it('zwei Spalten ausgeschrieben (13.11., Rechnung auf der Hälfte): bitgleich mit dem allgemeinen Einsetzen', () => {
+    const rhs2 = verschachtelt(r[0]!, r[2]!);
+    const x = sys.loesenZwei!(rhs2);
+    expect(unterschied(x, sys.loesenSpalten(rhs2, 2))).toBe(0);
+    // und mit je einer Spalte für sich
+    expect(unterschied(spalte(x, 2, 0), sys.loesenSpalte(r[0]!))).toBe(0);
+    expect(unterschied(spalte(x, 2, 1), sys.loesenSpalte(r[2]!))).toBe(0);
+  });
+
   it('eine Spalte: bitgleich mit dem allgemeinen Einsetzen', () => {
     for (const b of r) {
       const x = sys.loesenSpalte(b);

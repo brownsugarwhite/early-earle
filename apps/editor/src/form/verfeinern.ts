@@ -25,6 +25,7 @@ import {
   hautNormalen,
   pfadVersatz,
   systemAusDaten,
+  vorlageAusSystemen,
   verdichten,
   zerlegungsDaten,
 } from '@ee/shape/dicht';
@@ -64,7 +65,7 @@ export type VerfeinerAuftrag = {
   /** wie beim Löser des Fensters: Krümmung folgt den Loops, Gewichte, Schalter der Beweise */
   kruemmung: boolean;
   gewichte: HautGewichte;
-  loeserOpt: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean; normalfluss?: boolean; wurst?: boolean };
+  loeserOpt: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean; normalfluss?: boolean; wurst?: boolean; halb?: boolean };
 };
 
 export type VerfeinerErgebnis =
@@ -83,8 +84,9 @@ export type VerfeinerErgebnis =
       /** Gewichte der Matrix je Punkt und Nachbar, flach */
       gewStart: Int32Array;
       gewWert: Float64Array;
-      /** die Zerlegungen (Lagen, Vorkonditionierer der Krümmung) */
+      /** die Zerlegungen (Lagen, Vorkonditionierer der Krümmung; auf der Hälfte zwei für die Lagen) und wozu sie gehören */
       daten: ZerlegungsDaten[];
+      struktur: string;
       /** Dauer in ms: verdichten, einbetten, Zeilen, zerlegen */
       ms: number[];
     };
@@ -122,6 +124,7 @@ export function verfeinern(a: VerfeinerAuftrag): VerfeinerErgebnis {
     gewStart,
     gewWert,
     daten,
+    struktur: auftrag.struktur,
     ms: [t1 - t0, t2 - t1, t3 - t2, t4 - t3],
   };
 }
@@ -173,7 +176,7 @@ export type AufraeumAuftrag = {
   nachverfeinern: number;
   kruemmung: boolean;
   gewichte: HautGewichte;
-  loeserOpt: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean; normalfluss?: boolean; wurst?: boolean };
+  loeserOpt: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean; normalfluss?: boolean; wurst?: boolean; halb?: boolean };
   /** Setzen: Runden, bis sich die Form in einer Runde um weniger als `ruhe` bewegt (längs der Normalen), höchstens `maxRunden` */
   ruhe: number;
   maxRunden: number;
@@ -325,7 +328,7 @@ export function aufraeumen(a: AufraeumAuftrag, zwischen?: (z: Zwischenstand) => 
     if (!auftrag) return null;
     const daten = auftrag.systeme.map((s) => zerlegungsDaten(s.n, s.zeilen, s.daempfung));
     ms[2] = ms[2]! + uhr() - t1;
-    return { vorlage: { gew: auftrag.gew, sys: systemAusDaten(daten[0]!), cVor: daten[1] ? systemAusDaten(daten[1]) : null, struktur: auftrag.struktur }, daten };
+    return { vorlage: vorlageAusSystemen(auftrag.gew, daten.map(systemAusDaten), auftrag.struktur), daten };
   };
   /**
    * Runden zu den Pfaden (Loops ohne Pfad: um `versch`), bis die Form steht; danach die Linien festlegen. Zurück: steht sie (in den

@@ -10,7 +10,7 @@
 // gegenüber, an einer Ecke darf die Linie knicken (von Hand oder von selbst an der Kreuzung mit einer Kante). Wie in Illustrator
 // gehen die Griffe mit ihrem Punkt: Ein Punkt ändert nur die zwei Stücke bis zu seinen Nachbarn.
 
-import { type HautAuftrag, HautAusKurven, type HautGewichte, type HautOptionen, type HautVorlage, strukturSchluessel } from './ausKurven';
+import { type HautAuftrag, HautAusKurven, type HautGewichte, type HautOptionen, type HautVorlage, halbMoeglich, strukturSchluessel } from './ausKurven';
 import { KETTE_K, type KruemmungsKetten } from './kruemmung';
 import { type Bindungen, type Haut, HautZiele, type V3, einflussBereich, hautNormalen, hautNormalenMax, kantenSchluessel } from './kurven';
 import { bernstein, stueckAnpassen, stueckNaechstes, stueckPunkt, stueckTeilen } from './pfad';
@@ -1010,7 +1010,9 @@ export class LoopZug {
  */
 export function loopStruktur(h: Haut, loops: readonly Loop[], opt: HautOptionen = {}): string {
   const plan = bindungenAus(h, loops);
-  return strukturSchluessel(h, null, plan.bind, 100, kantenGewichte(h, loops), kruemmungsKetten(plan, loops), !!opt.richtung);
+  // (auf der Hälfte gerechnet, wo der Löser es täte: gewünscht und jeder Punkt hat sein Spiegelbild)
+  const halb = !!opt.halb && !opt.richtung && !opt.wurst && halbMoeglich(h);
+  return strukturSchluessel(h, null, plan.bind, 100, kantenGewichte(h, loops), kruemmungsKetten(plan, loops), !!opt.richtung, halb);
 }
 
 /**

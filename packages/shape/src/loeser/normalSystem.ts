@@ -18,6 +18,11 @@ export type NormalSystem = {
   loesenSpalte(rhs: Float64Array): Float64Array;
   /** Form zuerst (06.11.): k Spalten auf einmal (k Werte je Punkt, verschachtelt), die Zerlegung wird dabei nur einmal gelesen */
   loesenSpalten(rhs: Float64Array, k: number): Float64Array;
+  /**
+   * Zwei Spalten (verschachtelt wie bei `loesenSpalten` mit k = 2), ausgeschrieben wie für eine und drei: bitgleich, aber ohne die
+   * Schleife über die Spalten (13.11., Rechnung auf der Hälfte: x und y im symmetrischen System). Fehlt bei Systemen ohne Zerlegung.
+   */
+  loesenZwei?(rhs: Float64Array): Float64Array;
   /** Einträge der Hülle (Größe der Zerlegung) */
   huelle: number;
   zeitAufbau: number;

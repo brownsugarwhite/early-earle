@@ -66,7 +66,7 @@ export type HautGewichte = 'gleich' | 'geometrie';
  * Vorlage immer anbieten (nach dem Loslassen, beim nächsten Greifen), ohne selbst zu wissen, ob sich Netz, Bindungen oder Kanten
  * geändert haben. Fehlt `struktur`, gilt die Vorlage ungeprüft (wie bis zum 10.11.).
  */
-export type HautVorlage = { gew: Float64Array[]; sys: NormalSystem; cVor: NormalSystem | null; struktur?: string };
+export type HautVorlage = { gew: Float64Array[]; sys: NormalSystem; cVor: NormalSystem | null; struktur?: string; sysZ?: NormalSystem | null };
 /** Was ein Löser zerlegen würde: die Gewichte der Matrix und die Systeme (Lagen, Vorkonditionierer), dazu seine Struktur */
 export type HautAuftrag = { gew: Float64Array[]; systeme: { n: number; zeilen: NormalZeile[]; daempfung: number }[]; struktur: string };
 /**
@@ -92,7 +92,95 @@ export type HautOptionen = {
    * Richtung, quer dazu die Loops, die quer laufen; wo keiner hinreicht, die Wölbung vom Greifen (die Dicke bleibt). Eigene Zerlegung.
    */
   wurst?: boolean;
+  /**
+   * Die Rechnung auf der Hälfte (13.11., Plan Schritt 4b; nur nach der Geometrie über die ganze Haut): Die Grundform ist
+   * spiegelgleich, also sind x und y eines Punkts und seines Spiegelbilds gleich und z entgegengesetzt. Statt eines Systems über
+   * alle Punkte werden zwei halb so große gelöst (x und y: beide Partner eine Unbekannte; z: ebenso mit Vorzeichen, die Punkte der
+   * Mittelebene fallen heraus), und die Krümmung wird auf der Hälfte verteilt. Die Lösung ist dieselbe (bis auf Rundung); gemessen
+   * am 10.11.: Lösen 34 %, Zerlegen 38 % der Arbeit. Gilt nicht (und wird still übergangen), wenn ein Punkt kein Spiegelbild hat.
+   */
+  halb?: boolean;
 };
+
+/** Die Rechnung auf der Hälfte ist für diese Haut möglich: Jeder Punkt hat sein Spiegelbild */
+export function halbMoeglich(h: Haut): boolean {
+  for (let v = 0; v < h.n; v++) if (h.spiegel[v]! < 0) return false;
+  return true;
+}
+
+/**
+ * Die Vorlage aus den zerlegten Systemen eines Auftrags (`HautAuftrag.systeme`, in ihrer Reihenfolge): über die ganze Haut das
+ * System der Lagen und der Vorkonditionierer der Krümmung, auf der Hälfte (`struktur` endet dann auf „:h“) die zwei Systeme der
+ * Lagen und der Vorkonditionierer.
+ */
+export function vorlageAusSystemen(gew: Float64Array[], systeme: readonly NormalSystem[], struktur?: string): HautVorlage {
+  const halb = struktur !== undefined && struktur.endsWith(':h');
+  const v: HautVorlage = halb ? { gew, sys: systeme[0]!, sysZ: systeme[1] ?? null, cVor: systeme[2] ?? null } : { gew, sys: systeme[0]!, cVor: systeme[1] ?? null };
+  if (struktur !== undefined) v.struktur = struktur;
+  return v;
+}
+
+/**
+ * Faltung auf die Hälfte: je Unbekannter des ganzen Systems ihre Unbekannte im symmetrischen System (`sym`; beide Partner dieselbe)
+ * und im antisymmetrischen (`anti`, mit Vorzeichen `vz`; −1 für Punkte der Mittelebene, dort ist der Wert 0)
+ */
+type Faltung = { sym: Int32Array; anti: Int32Array; vz: Int8Array; nS: number; nA: number };
+
+function faltungAnlegen(h: Haut, frei: readonly number[], nr: Int32Array): Faltung | null {
+  const nf = frei.length;
+  const sym = new Int32Array(nf).fill(-1);
+  const anti = new Int32Array(nf).fill(-1);
+  const vz = new Int8Array(nf);
+  let nS = 0;
+  let nA = 0;
+  for (let u = 0; u < nf; u++) {
+    const v = frei[u]!;
+    const w = h.spiegel[v]!;
+    if (w < 0 || nr[w]! < 0) return null;
+    if (w === v) sym[u] = nS++;
+    else if (w > v) {
+      sym[u] = nS++;
+      anti[u] = nA++;
+      vz[u] = 1;
+    }
+  }
+  for (let u = 0; u < nf; u++) {
+    const v = frei[u]!;
+    const w = h.spiegel[v]!;
+    if (w >= v) continue;
+    const uw = nr[w]!;
+    sym[u] = sym[uw]!;
+    anti[u] = anti[uw]!;
+    vz[u] = -1;
+  }
+  return { sym, anti, vz, nS, nA };
+}
+
+/** Zeilen auf die Hälfte gefaltet: Unbekannte nach `nr` (−1: fällt heraus), mit Vorzeichen `vz`; `mal`: Faktor des Gewichts je Zeile (0: Zeile fällt weg) */
+function gefaltet(zeilen: readonly NormalZeile[], nr: Int32Array, vz: Int8Array | null, mal: ((z: number) => number) | null = null): NormalZeile[] {
+  const aus: NormalZeile[] = [];
+  zeilen.forEach((z, zi) => {
+    const f = mal ? mal(zi) : 1;
+    if (f === 0) return;
+    const index: number[] = [];
+    const wert: number[] = [];
+    for (let k = 0; k < z.index.length; k++) {
+      const u = z.index[k]!;
+      const q = nr[u]!;
+      if (q < 0) continue;
+      const w = (vz ? vz[u]! : 1) * z.wert[k]!;
+      const da = index.indexOf(q);
+      if (da >= 0) wert[da] = wert[da]! + w;
+      else {
+        index.push(q);
+        wert.push(w);
+      }
+    }
+    if (!wert.some((w) => Math.abs(w) > 1e-14)) return;
+    aus.push({ index, wert, gewicht: f * z.gewicht });
+  });
+  return aus;
+}
 
 /**
  * Woran die Zerlegungen eines Lösers nach der Geometrie außer an den Lagen hängen: das Netz, welche Punkte sich bewegen, die
@@ -108,6 +196,7 @@ export function strukturSchluessel(
   kanten: ReadonlyMap<number, number> | null,
   ketten: KruemmungsKetten | null,
   richtung: boolean,
+  halb = false,
 ): string {
   let a = 2166136261;
   let b = 0x9e3779b9;
@@ -149,7 +238,9 @@ export function strukturSchluessel(
       mische(ketten.kante[j]!);
     }
   mische(richtung ? 1 : 0);
-  return `${h.n}:${bind.ecken.length}:${a}:${b}`;
+  // (auf der Hälfte: andere Systeme, also ein anderer Schlüssel; ohne sie bleibt er, wie er war)
+  if (halb) mische(7);
+  return `${h.n}:${bind.ecken.length}:${a}:${b}${halb ? ':h' : ''}`;
 }
 
 /** Gewicht, mit dem die Krümmung eines Punkts bei ihrem jetzigen Wert bleibt, wo keine Kurve hinreicht (hält das System lösbar) */
@@ -297,6 +388,11 @@ export class HautAusKurven {
   /** Diagonale je Zeile der Krümmung (1 weniger das Gewicht, das über Quellen nicht weitergegeben wird) */
   private readonly cDiag: Float64Array;
   private readonly sysC: NormalSystem | null;
+  /** Rechnung auf der Hälfte (`HautOptionen.halb`): die Faltung der Lagen (dann ist `sys` das symmetrische System, `sysZ` das antisymmetrische) */
+  private falte: Faltung | null = null;
+  private sysZ: NormalSystem | null = null;
+  /** … und der Krümmung: je Unbekannter ihre im gefalteten System, je gefalteter ihr Vertreter (Index in `cFrei`) und wie viele Punkte sie vertritt */
+  private cFalte: { sym: Int32Array; rep: Int32Array; zahl: Float64Array; n: number } | null = null;
   readonly zeitZerlegen: number;
   /** Haut beim Anlegen, vermessen (Krümmung für den Rand des Bereichs) */
   private readonly ruhe: Vermessung;
@@ -409,9 +505,14 @@ export class HautAusKurven {
     // dann in jeder Richtung wie die Krümmung nach der Geometrie (mit gleichen Gewichten längs der Streckung zu schwach: Das Ohr hinkte
     // im Zug 0,75 statt 0,23 nach, der Rüssel auf dem Netz vom Greifen lag 9,2 statt 1,6 neben dem feinen). Am Ziel ändert das nichts.
     const geo = gewichte === 'geometrie';
-    this.struktur = geo ? strukturSchluessel(h, bereich, bind, gewicht, kanten, ketten, !!opt.richtung) : '';
+    // Rechnung auf der Hälfte: nur über die ganze Haut, und nur, wenn jeder Punkt sein Spiegelbild hat
+    const falte = geo && opt.halb && !opt.richtung && !opt.wurst && bereich === null ? faltungAnlegen(h, frei, nr) : null;
+    this.falte = falte;
+    this.struktur = geo ? strukturSchluessel(h, bereich, bind, gewicht, kanten, ketten, !!opt.richtung, falte !== null) : '';
     // eine Vorlage gilt nur für dieselbe Struktur (Netz, Bindungen, Kanten, Quellen); sonst wird wie ohne sie zerlegt
-    const vorlage = geo && opt.vorlage && (opt.vorlage.struktur === undefined || opt.vorlage.struktur === this.struktur) ? opt.vorlage : null;
+    const passt = geo && opt.vorlage && (opt.vorlage.struktur === undefined || opt.vorlage.struktur === this.struktur) ? opt.vorlage : null;
+    // (und nur mit den Systemen dieser Rechnung: auf der Hälfte zwei für die Lagen)
+    const vorlage = passt && (falte ? !!passt.sysZ : !passt.sysZ) ? passt : null;
     this.vorlageGenutzt = vorlage !== null;
     this.mitVorsicht = geo && opt.vorsicht !== false;
     this.gebunden = new Uint8Array(n);
@@ -523,8 +624,33 @@ export class HautAusKurven {
     // nicht noch einmal zerlegt (das Fenster rechnet sie nach jeder Änderung schon vor)
     const merken = bereich === null;
     this.merken = merken;
-    if (geo && opt.nurZeilen) this.auftrag = { gew: this.gew, systeme: [{ n: frei.length, zeilen, daempfung: 1e-9 }], struktur: this.struktur };
-    this.sys = vorlage ? vorlage.sys : geo && opt.nurZeilen ? null : normalSystemZerlegt(frei.length, zeilen, 1e-9, merken);
+    if (falte) {
+      // gefaltet: Die Laplace-Zeile eines Punkts und die seines Spiegelbilds sind dieselbe Zeile (eine genügt, doppelt gewichtet);
+      // im antisymmetrischen System fallen die Punkte der Mittelebene heraus, ihre Zeilen heben sich auf
+      const doppelt = (zi: number): number => {
+        if (zi >= lapZeilen.length) return 1;
+        const v = lapZeilen[zi]!;
+        const w = h.spiegel[v]!;
+        return w === v ? 1 : w > v ? 2 : 0;
+      };
+      const offen = !vorlage || (geo && opt.nurZeilen);
+      const zS = offen ? gefaltet(zeilen, falte.sym, null, doppelt) : [];
+      const zA = offen ? gefaltet(zeilen, falte.anti, falte.vz, doppelt) : [];
+      if (opt.nurZeilen)
+        this.auftrag = {
+          gew: this.gew,
+          systeme: [
+            { n: falte.nS, zeilen: zS, daempfung: 1e-9 },
+            { n: falte.nA, zeilen: zA, daempfung: 1e-9 },
+          ],
+          struktur: this.struktur,
+        };
+      this.sys = vorlage ? vorlage.sys : opt.nurZeilen ? null : normalSystemZerlegt(falte.nS, zS, 1e-9, merken);
+      this.sysZ = vorlage ? (vorlage.sysZ ?? null) : opt.nurZeilen ? null : normalSystemZerlegt(falte.nA, zA, 1e-9, merken);
+    } else {
+      if (geo && opt.nurZeilen) this.auftrag = { gew: this.gew, systeme: [{ n: frei.length, zeilen, daempfung: 1e-9 }], struktur: this.struktur };
+      this.sys = vorlage ? vorlage.sys : geo && opt.nurZeilen ? null : normalSystemZerlegt(frei.length, zeilen, 1e-9, merken);
+    }
     this.maxNormalen = !!opt.maxNormalen;
     const ruhe = vermessen(h, this.gew, this.maxNormalen ? hautNormalenMax(h) : undefined);
     // Quellen der Krümmung: Punkte eingesetzter Loops (so weich, wie der Loop dort ist; an einer Kreuzung der härteste; an einer Ecke
@@ -548,13 +674,36 @@ export class HautAusKurven {
     }
     this.cNr = cNr;
     this.cFrei = Int32Array.from(cFrei);
+    if (falte && cFrei.length) {
+      // die Krümmung auf der Hälfte: wie die Lagen x und y (beide Partner eine Unbekannte); nur, wenn die Quellen spiegelgleich sind
+      const nc = cFrei.length;
+      const sym = new Int32Array(nc).fill(-1);
+      const rep: number[] = [];
+      const zahl: number[] = [];
+      let geht = true;
+      for (let u = 0; u < nc && geht; u++) {
+        const v = cFrei[u]!;
+        const w = h.spiegel[v]!;
+        if (cNr[w]! < 0) geht = false;
+        else if (w >= v) {
+          sym[u] = rep.length;
+          rep.push(u);
+          zahl.push(w === v ? 1 : 2);
+        }
+      }
+      for (let u = 0; u < nc && geht; u++) {
+        const w = h.spiegel[cFrei[u]!]!;
+        if (w < cFrei[u]!) sym[u] = sym[cNr[w]!]!;
+      }
+      if (geht) this.cFalte = { sym, rep: Int32Array.from(rep), zahl: Float64Array.from(zahl), n: rep.length };
+    }
     if (gewichte === 'geometrie') {
       // Krümmung beim Anlegen nach der Geometrie (für den Rand des Bereichs), der Vorkonditionierer gleich mit zerlegt (über die ganze
       // Haut gemerkt wie die anderen Systeme; das Fenster rechnet ihn in der Ruhe vor)
       this.ruhe = { ...ruhe, ...this.messenIntrinsisch(intrinsischeGewichte(h, this.fest), ruhe.nor) };
       this.cDiag = new Float64Array(0);
       this.sysC = null;
-      if (opt.nurZeilen && this.cFrei.length) this.auftrag!.systeme.push({ n: this.cFrei.length, zeilen: this.vorkonditioniererZeilen(), daempfung: 1e-12 });
+      if (opt.nurZeilen && this.cFrei.length) this.auftrag!.systeme.push({ n: this.cFalte ? this.cFalte.n : this.cFrei.length, zeilen: this.vorkonditioniererZeilen(), daempfung: 1e-12 });
       this.cVor = vorlage ? vorlage.cVor : opt.nurZeilen ? null : this.vorkonditionierer();
       // Wurstballon: die Wölbung mit Richtung (verteilt mit derselben Zerlegung) und je Punkt zwei Zeilen, eigene Zerlegung (nur, wenn
       // der Löser rechnet)
@@ -926,14 +1075,67 @@ export class HautAusKurven {
 
   /** die fertige Zerlegung dieses Lösers (für einen nächsten auf demselben Netz) */
   get vorlage(): HautVorlage | null {
-    return this.sys ? { gew: this.gew, sys: this.sys, cVor: this.cVor, struktur: this.struktur } : null;
+    if (!this.sys) return null;
+    return this.falte ? { gew: this.gew, sys: this.sys, sysZ: this.sysZ, cVor: this.cVor, struktur: this.struktur } : { gew: this.gew, sys: this.sys, cVor: this.cVor, struktur: this.struktur };
+  }
+
+  /**
+   * Die Lagen lösen: `rhs` mit `k` Spalten je Unbekannter des ganzen Systems (x, y, z, wieder x, y, z …). Auf der Hälfte gefaltet
+   * gelöst (x und y im symmetrischen, z im antisymmetrischen System) und zurück auf alle Punkte.
+   */
+  private lagen(rhs: Float64Array, k: number): Float64Array {
+    const f = this.falte;
+    if (!f) return k === 3 ? this.sys!.loesen(rhs) : this.sys!.loesenSpalten(rhs, k);
+    const nf = this.frei.length;
+    const g = k / 3;
+    // je Spalte ein eigenes Feld: Die Zerlegung löst eine Spalte auf ihrem ausgeschriebenen Weg (zwei oder vier verschachtelte
+    // Spalten liefen über den allgemeinen, der je Spalte rund viermal so lange braucht)
+    const x = new Float64Array(k * nf);
+    const rs = new Float64Array(f.nS);
+    const ra = new Float64Array(f.nA);
+    const zwei = this.sys!.loesenZwei;
+    const rs2 = zwei ? new Float64Array(2 * f.nS) : null;
+    for (let q = 0; q < g; q++) {
+      if (zwei && rs2) {
+        // x und y in einem Durchgang durch die Zerlegung
+        rs2.fill(0);
+        for (let u = 0; u < nf; u++) {
+          const s = 2 * f.sym[u]!;
+          rs2[s] = rs2[s]! + rhs[k * u + 3 * q]!;
+          rs2[s + 1] = rs2[s + 1]! + rhs[k * u + 3 * q + 1]!;
+        }
+        const xs = zwei(rs2);
+        for (let u = 0; u < nf; u++) {
+          const s = 2 * f.sym[u]!;
+          x[k * u + 3 * q] = xs[s]!;
+          x[k * u + 3 * q + 1] = xs[s + 1]!;
+        }
+      } else
+        for (let c = 0; c < 2; c++) {
+          rs.fill(0);
+          for (let u = 0; u < nf; u++) rs[f.sym[u]!] = rs[f.sym[u]!]! + rhs[k * u + 3 * q + c]!;
+          const xs = this.sys!.loesenSpalte(rs);
+          for (let u = 0; u < nf; u++) x[k * u + 3 * q + c] = xs[f.sym[u]!]!;
+        }
+      ra.fill(0);
+      for (let u = 0; u < nf; u++) {
+        const a = f.anti[u]!;
+        if (a >= 0) ra[a] = ra[a]! + f.vz[u]! * rhs[k * u + 3 * q + 2]!;
+      }
+      const xa = this.sysZ!.loesenSpalte(ra);
+      for (let u = 0; u < nf; u++) {
+        const a = f.anti[u]!;
+        x[k * u + 3 * q + 2] = a >= 0 ? f.vz[u]! * xa[a]! : 0;
+      }
+    }
+    return x;
   }
 
   /** Vorkonditionierer der Krümmung: der Laplace des Netzes (Gewicht 1 je Kante, Quellen wie `kruemmung`), einmal zerlegt */
   private vorkonditionierer(): NormalSystem | null {
     const nc = this.cFrei.length;
     if (nc === 0) return null;
-    return normalSystemZerlegt(nc, this.vorkonditioniererZeilen(), 1e-12, this.merken);
+    return normalSystemZerlegt(this.cFalte ? this.cFalte.n : nc, this.vorkonditioniererZeilen(), 1e-12, this.merken);
   }
 
   private vorkonditioniererZeilen(): NormalZeile[] {
@@ -947,7 +1149,8 @@ export class HautAusKurven {
       }
       zeilen.push({ index: [u], wert: [1], gewicht: HALT * nb.length });
     });
-    return zeilen;
+    // auf der Hälfte: dieselben Zeilen gefaltet (die Zeilen eines Punkts und seines Spiegelbilds fallen zusammen, ihre Gewichte addieren sich)
+    return this.cFalte ? gefaltet(zeilen, this.cFalte.sym, null) : zeilen;
   }
 
   /** Krümmung je Punkt auf der intrinsischen Delaunay-Triangulierung (wie `vermessen`: Normalanteil durch das mittlere Kantenquadrat) */
@@ -992,6 +1195,88 @@ export class HautAusKurven {
     const M = this.cVor;
     if (nc === 0 || !M) return c;
     const { start, nb, w } = ig;
+    const cf = this.cFalte;
+    if (cf) {
+      // Auf der Hälfte: dieselben konjugierten Gradienten, aber jede Größe nur an einem Punkt je Spiegelpaar (die Vektoren sind
+      // spiegelgleich). Skalarprodukte zählen ein Paar doppelt, der Vorkonditionierer ist das gefaltete System: derselbe Weg zur
+      // selben Lösung wie über die ganze Haut, mit der halben Arbeit.
+      const n = cf.n;
+      const { sym, rep, zahl } = cf;
+      const diag = new Float64Array(n);
+      const b = new Float64Array(n);
+      for (let hh = 0; hh < n; hh++) {
+        const v = this.cFrei[rep[hh]!]!;
+        let s = 0;
+        for (let k = start[v]!; k < start[v + 1]!; k++) {
+          const j = nb[k]!;
+          const g = w[k]!;
+          s += g;
+          const q = this.quelle[j]!;
+          if (q >= 0) {
+            diag[hh] = diag[hh]! + g * q;
+            b[hh] = b[hh]! + g * q * c[j]!;
+          } else diag[hh] = diag[hh]! + g;
+        }
+        diag[hh] = diag[hh]! + HALT * s;
+        b[hh] = b[hh]! + HALT * s * kap[v]!;
+      }
+      const mal = (x: Float64Array, y: Float64Array) => {
+        for (let hh = 0; hh < n; hh++) {
+          const v = this.cFrei[rep[hh]!]!;
+          let t = diag[hh]! * x[hh]!;
+          for (let k = start[v]!; k < start[v + 1]!; k++) {
+            const q = this.cNr[nb[k]!]!;
+            if (q >= 0) t -= w[k]! * x[sym[q]!]!;
+          }
+          y[hh] = t;
+        }
+      };
+      /** der Vorkonditionierer auf den Rest (rechte Seite gefaltet: ein Paar zählt doppelt) */
+      const vor = (r: Float64Array): Float64Array => {
+        const g = new Float64Array(n);
+        for (let hh = 0; hh < n; hh++) g[hh] = zahl[hh]! * r[hh]!;
+        return M.loesenSpalte(g);
+      };
+      const x = this.cWarm && this.cWarm.length === n ? Float64Array.from(this.cWarm) : Float64Array.from(rep, (u) => kap[this.cFrei[u]!]!);
+      const r = new Float64Array(n);
+      const Ap = new Float64Array(n);
+      mal(x, Ap);
+      let bb = 0;
+      for (let hh = 0; hh < n; hh++) {
+        r[hh] = b[hh]! - Ap[hh]!;
+        bb += zahl[hh]! * b[hh]! * b[hh]!;
+      }
+      const grenze = PCG_GENAU * PCG_GENAU * bb;
+      let z = vor(r);
+      const p = Float64Array.from(z);
+      let rz = 0;
+      for (let hh = 0; hh < n; hh++) rz += zahl[hh]! * r[hh]! * z[hh]!;
+      let it = 0;
+      for (; it < 60; it++) {
+        let rr = 0;
+        for (let hh = 0; hh < n; hh++) rr += zahl[hh]! * r[hh]! * r[hh]!;
+        if (rr <= grenze) break;
+        mal(p, Ap);
+        let pAp = 0;
+        for (let hh = 0; hh < n; hh++) pAp += zahl[hh]! * p[hh]! * Ap[hh]!;
+        if (!(pAp > 0)) break;
+        const a = rz / pAp;
+        for (let hh = 0; hh < n; hh++) {
+          x[hh] = x[hh]! + a * p[hh]!;
+          r[hh] = r[hh]! - a * Ap[hh]!;
+        }
+        z = vor(r);
+        let rz2 = 0;
+        for (let hh = 0; hh < n; hh++) rz2 += zahl[hh]! * r[hh]! * z[hh]!;
+        const beta = rz2 / rz;
+        rz = rz2;
+        for (let hh = 0; hh < n; hh++) p[hh] = z[hh]! + beta * p[hh]!;
+      }
+      this.zeiten.schritte += it;
+      this.cWarm = x;
+      for (let u = 0; u < nc; u++) c[this.cFrei[u]!] = x[sym[u]!]!;
+      return c;
+    }
     const diag = new Float64Array(nc);
     const b = new Float64Array(nc);
     for (let u = 0; u < nc; u++) {
@@ -1552,7 +1837,7 @@ export class HautAusKurven {
       }
       const tl = jetzt();
       if (rhs && !korr) {
-        const x = this.sys!.loesen(rhs);
+        const x = this.lagen(rhs, 3);
         for (let u = 0; u < nf; u++) {
           const v = this.frei[u]!;
           P[3 * v] = x[3 * u]!;
@@ -1606,11 +1891,11 @@ export class HautAusKurven {
               beide[6 * u + 4] = rv[3 * u + 1]!;
               beide[6 * u + 5] = rv[3 * u + 2]!;
             }
-            x = this.sys!.loesenSpalten(beide, 6);
+            x = this.lagen(beide, 6);
             uu = x;
             ab = 3;
             schritt = 6;
-          } else x = this.sys!.loesen(rhs);
+          } else x = this.lagen(rhs, 3);
           const k = irgend ? 6 : 3;
           for (let u = 0; u < nf; u++) {
             const v = this.frei[u]!;
@@ -1618,7 +1903,7 @@ export class HautAusKurven {
             P[3 * v + 1] = x[k * u + 1]!;
             P[3 * v + 2] = x[k * u + 2]!;
           }
-        } else if (irgend) uu = this.sys!.loesen(rv);
+        } else if (irgend) uu = this.lagen(rv, 3);
         if (uu)
           for (let u = 0; u < nf; u++) {
             const v = this.frei[u]!;

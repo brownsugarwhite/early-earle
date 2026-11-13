@@ -85,6 +85,10 @@ export function intrinsischeGewichte(h: Haut, fest: ((a: number, b: number) => b
     const f = 4 * A * B - s * s;
     return s / Math.sqrt(f > 1e-24 ? f : 1e-24);
   };
+  // der Kotangens je Halbkante einmal gerechnet (13.11.; dieselben Werte wie bei jedem einzelnen Aufruf, nach einem Klappen für
+  // die sechs Halbkanten der beiden Dreiecke neu): Vorher wurde er je Halbkante dreimal gerechnet, mit je einer Wurzel
+  const cot = new Float64Array(m);
+  for (let x = 0; x < m; x++) cot[x] = cotX(x);
   const stapel = new Int32Array(m);
   let oben = 0;
   const drin = new Uint8Array(m);
@@ -101,7 +105,7 @@ export function intrinsischeGewichte(h: Haut, fest: ((a: number, b: number) => b
     drin[x] = 0;
     const g = zwilling[x]!;
     if (g < 0 || fix[x]) continue;
-    if (cotX(x) + cotX(g) >= -1e-12) continue;
+    if (cot[x]! + cot[g]! >= -1e-12) continue;
     // Raute: x = a→b im Dreieck (a, b, c), g = b→a im Dreieck (b, a, d)
     const t0 = x - (x % 3);
     const t1 = g - (g % 3);
@@ -149,6 +153,10 @@ export function intrinsischeGewichte(h: Haut, fest: ((a: number, b: number) => b
     setze(t1, a, qad, zg1, fg1);
     setze(t1 + 1, d, qcd, t0 + 2, 0);
     setze(t1 + 2, c, qca, zx2, fx2);
+    for (let e = 0; e < 3; e++) {
+      cot[t0 + e] = cotX(t0 + e);
+      cot[t1 + e] = cotX(t1 + e);
+    }
     flips++;
     for (const s of [t0, t0 + 1, t1, t1 + 2]) {
       const z = zwilling[s]!;
@@ -170,7 +178,7 @@ export function intrinsischeGewichte(h: Haut, fest: ((a: number, b: number) => b
   for (let x = 0; x < m; x++) {
     const a = V[x]!;
     const g = zwilling[x]!;
-    const gewicht = 0.5 * (cotX(x) + (g >= 0 ? cotX(g) : 0));
+    const gewicht = 0.5 * (cot[x]! + (g >= 0 ? cot[g]! : 0));
     const k = fuell[a]!++;
     nb[k] = V[x - (x % 3) + ((x % 3) + 1) % 3]!;
     w[k] = gewicht > 0 ? gewicht : 0;

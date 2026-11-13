@@ -782,12 +782,18 @@ export function vermessen(h: Haut, gew: readonly Float64Array[], normalen?: Floa
     let sy = 0;
     let sz = 0;
     let e2 = 0;
-    nb.forEach((j, k) => {
-      sx += g[k]! * P[3 * j]!;
-      sy += g[k]! * P[3 * j + 1]!;
-      sz += g[k]! * P[3 * j + 2]!;
-      e2 += g[k]! * ((P[3 * j]! - P[3 * i]!) ** 2 + (P[3 * j + 1]! - P[3 * i + 1]!) ** 2 + (P[3 * j + 2]! - P[3 * i + 2]!) ** 2);
-    });
+    // (ausgeschrieben statt `forEach`, 13.11.: dieselben Summen in derselben Reihenfolge)
+    for (let k = 0; k < nb.length; k++) {
+      const j = nb[k]!;
+      const w = g[k]!;
+      const dx = P[3 * j]! - P[3 * i]!;
+      const dy = P[3 * j + 1]! - P[3 * i + 1]!;
+      const dz = P[3 * j + 2]! - P[3 * i + 2]!;
+      sx += w * P[3 * j]!;
+      sy += w * P[3 * j + 1]!;
+      sz += w * P[3 * j + 2]!;
+      e2 += w * (dx ** 2 + dy ** 2 + dz ** 2);
+    }
     const lx = P[3 * i]! - sx;
     const ly = P[3 * i + 1]! - sy;
     const lz = P[3 * i + 2]! - sz;

@@ -10,7 +10,7 @@ export { type Knochen, ergaenzen, innenPosieren, knochenDrehen, knochenWinkel } 
 export { type Netzteil, type Spielnetz, backen, backenBereit, maulBacken } from './backen';
 export { type Pose, type PoseZiel, type PoseZug, RUHE, ZUG_MAX, posePunkt, poseWinkel, posieren } from './pose';
 export { dichtNachLage, umgeklappt } from './netzpruefung';
-export { type HautAuftrag, type HautGewichte, type HautOptionen, type HautVorlage } from './ausKurven';
+export { type HautAuftrag, type HautGewichte, type HautOptionen, type HautVorlage, halbMoeglich, vorlageAusSystemen } from './ausKurven';
 export { type Einbettung, einbetten, einbettungAuswerten } from './einbettung';
 export { type FlacheZeilen, type ZerlegungsDaten, flacheZeilen, systemAusDaten, zeilenAusFlach, zerlegungsDaten } from '../loeser/zerlegung';
 export { type AnsichtName, type GleichesNetz, type GleichOptionen, type Zeichnung, type Zeichnungen, formAusAnsichten, formAusTeilen } from './gleich';

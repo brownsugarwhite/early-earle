@@ -81,6 +81,7 @@ import {
   kurveAbtasten,
   loopAusSchnitt,
   loopEinsetzen,
+  vorlageAusSystemen,
   hinterDerMitte,
   mitteFestmachen,
   mitteKreuzungen,
@@ -307,7 +308,14 @@ const DAVON_SCHUTZ = new URLSearchParams(location.search).get('davon') !== '0';
  * immer, `?normalfluss=0` nie (zum Vergleichen).
  */
 const NORMALFLUSS = new URLSearchParams(location.search).get('normalfluss');
-const RICHTUNG_OPT: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean; normalfluss?: boolean } = {
+/**
+ * Die Rechnung auf der Hälfte (13.11., Plan Schritt 4b; `HautOptionen.halb`): Die Grundform ist spiegelgleich, der Löser löst zwei
+ * halb so große Systeme statt eines ganzen und verteilt die Krümmung auf der Hälfte; die Form ist dieselbe. Das Netz im Fenster
+ * bleibt ganz (Verdichten, Anzeige, Sichern unverändert). `?halb=1` schaltet es ein (zum Vergleichen, bis es Standard wird).
+ */
+const HALB = new URLSearchParams(location.search).get('halb') === '1';
+const RICHTUNG_OPT: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: boolean; normalfluss?: boolean; halb?: boolean } = {
+  ...(HALB ? { halb: true } : {}),
   ...(RICHTUNG ? { richtung: true } : {}),
   ...(MAXNORMALEN ? { maxNormalen: true } : {}),
   ...(VORSICHT ? {} : { vorsicht: false }),
@@ -3039,7 +3047,7 @@ function einwechseln(f: Verfeinert, daten: ZerlegungsDaten[]): void {
   festlegenAlle();
   const t3 = performance.now();
   zug = null;
-  naechsteVorlage = { gew: f.gew, sys: systemAusDaten(daten[0]!), cVor: daten[1] ? systemAusDaten(daten[1]) : null };
+  naechsteVorlage = vorlageAusSystemen(f.gew, daten.map(systemAusDaten), f.struktur);
   const [X, Y] = letzteMaus;
   if (!zugStarten(z.modal, z.ansicht, X, Y, z.spiegel, z.weite)) {
     naechsteVorlage = null;
@@ -3077,7 +3085,7 @@ const HINTERGRUND = new URLSearchParams(location.search).get('hintergrund') !== 
 /** der Auftrag, der gerade im Hintergrund läuft: seine Nummer und das Netz, zu dem er gehört */
 type Verfeinerung = { id: number; netz: Haut; t0: number };
 /** sein Ergebnis: das feinere Netz mit Loops, jeder Punkt als Stelle auf der alten Haut, die Gewichte der Matrix */
-type Verfeinert = { haut: Haut; loops: Loop[]; alt: Int32Array; einbettung: Einbettung; gew: Float64Array[]; neu: number; gelegt: number; t0: number };
+type Verfeinert = { haut: Haut; loops: Loop[]; alt: Int32Array; einbettung: Einbettung; gew: Float64Array[]; struktur: string; neu: number; gelegt: number; t0: number };
 let verfeinerung: Verfeinerung | null = null;
 let verfeinerungsNr = 0;
 /** auf diesem Netz fand der letzte Auftrag nichts zu verfeinern (bis zum Loslassen nicht noch einmal fragen) */
@@ -3166,7 +3174,7 @@ function zerleger(): Worker | null {
     }
     if (f.netz !== haut) return;
     const ta = performance.now();
-    const fertig: Verfeinert = { haut: hautAusFlach(d.haut), loops: d.loops, alt: d.alt, einbettung: d.einbettung, gew: gewichteAusFlach(d.gewStart, d.gewWert), neu: d.neu, gelegt: d.gelegt, t0: f.t0 };
+    const fertig: Verfeinert = { haut: hautAusFlach(d.haut), loops: d.loops, alt: d.alt, einbettung: d.einbettung, gew: gewichteAusFlach(d.gewStart, d.gewWert), struktur: d.struktur, neu: d.neu, gelegt: d.gelegt, t0: f.t0 };
     letztesAuspacken = Math.round(performance.now() - ta);
     // eingewechselt wird im nächsten Bild, an Stelle der Löserrunde (`schleife`): Beides in einem Bild hielte den Zug doppelt so lang an
     eingetroffen = { netz: f.netz, fertig, daten: d.daten };
@@ -3533,7 +3541,7 @@ function zwischenAnwenden(): void {
   // wie nach jedem Neurechnen: neue Kreuzungen suchen (nach dem Löschen eines Punkts kann eine Linie eine andere schneiden)
   const kreuzungNeu = kreuzungenSuchen() > 0;
   if (d.gewStart && d.gewWert && d.daten.length) {
-    vorlageBereit = { gew: gewichteAusFlach(d.gewStart, d.gewWert), sys: systemAusDaten(d.daten[0]!), cVor: d.daten[1] ? systemAusDaten(d.daten[1]) : null, struktur: d.struktur };
+    vorlageBereit = vorlageAusSystemen(gewichteAusFlach(d.gewStart, d.gewWert), d.daten.map(systemAusDaten), d.struktur);
     vorlageStand = kreuzungNeu ? '' : standZahl();
     vorlageNetz = netzZahl();
   }
@@ -3615,7 +3623,7 @@ function aufgeraeumtAnwenden(): void {
       neueHaut = true;
     }
     if (d.gewStart && d.gewWert && d.daten.length) {
-      vorlageBereit = { gew: gewichteAusFlach(d.gewStart, d.gewWert), sys: systemAusDaten(d.daten[0]!), cVor: d.daten[1] ? systemAusDaten(d.daten[1]) : null, struktur: d.struktur };
+      vorlageBereit = vorlageAusSystemen(gewichteAusFlach(d.gewStart, d.gewWert), d.daten.map(systemAusDaten), d.struktur);
       vorlageStand = standZahl();
       vorlageNetz = netzZahl();
     }
