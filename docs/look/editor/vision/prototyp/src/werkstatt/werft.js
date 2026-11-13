@@ -61,6 +61,14 @@ export class Werft extends Bullaugen {
     this.illuKopie = new THREE.MeshBasicMaterial({ map: null, transparent: true, opacity: 1, depthTest: false, depthWrite: false });
   }
 
+  // Das Wesen füllt das Bild (ein Bild statt vier: es darf groß sein)
+  passAbstand() {
+    const g = this.grenzen();
+    const r = Math.hypot(g.max[0] - g.min[0], g.max[1] - g.min[1], g.max[2] - g.min[2]) / 2;
+    const asp = Math.min(1, this.W / this.H);
+    return (r * 0.8) / Math.sin(((30 * Math.PI) / 360) * Math.max(0.62, asp));
+  }
+
   // ---------------- Flächen der Kurven ----------------
   ringNormale(L) {
     let mx = 0, my = 0;
@@ -220,25 +228,27 @@ export class Werft extends Bullaugen {
     for (let i = 1; i < P.length; i++) weg += Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]);
     const a = P[0], e = P[P.length - 1];
     if (weg < 40 || Math.hypot(e[0] - a[0], e[1] - a[1]) < 24) return null;
-    const naechste = (q) => {
-      let best = null;
-      for (const L of this.linien) for (const zug of abtasten(L, 24)) {
+    // je Kurve: nächste Stelle zum Anfang und zum Ende des Strichs (Kreuzungen sind mehrdeutig, deshalb je Kurve getrennt)
+    let best = null;
+    for (const L of this.linien) {
+      let bA = null, bB = null;
+      for (const zug of abtasten(L, 24)) {
         for (let k = 0; k < zug.pts.length; k++) {
           const s2 = this.rs.projizieren(zug.pts[k]);
-          const dd = Math.hypot(s2[0] - q[0], s2[1] - q[1]);
-          if (!best || dd < best.d) {
-            let par = zug.s[k];
-            const sp = zug.spiegel || par < 0;
-            if (par < 0) par = -par - 1;
-            best = { d: dd, L, par, sp };
-          }
+          let par = zug.s[k];
+          const sp = zug.spiegel || par < 0;
+          if (par < 0) par = -par - 1;
+          const dA = Math.hypot(s2[0] - a[0], s2[1] - a[1]), dB = Math.hypot(s2[0] - e[0], s2[1] - e[1]);
+          if (!bA || dA < bA.d) bA = { d: dA, par, sp };
+          if (!bB || dB < bB.d) bB = { d: dB, par, sp };
         }
       }
-      return best;
-    };
-    const A = naechste(a), B = naechste(e);
-    if (!A || !B || A.d > 22 || B.d > 22 || A.L !== B.L || A.sp !== B.sp) return null;
-    return { L: A.L, sp: A.sp, ua: A.par, ub: B.par };
+      if (!bA || !bB || bA.d > 22 || bB.d > 22 || bA.sp !== bB.sp || Math.abs(bA.par - bB.par) < 0.05) continue;
+      const wert = bA.d + bB.d - (L.art === 'mitte' ? 4 : 0);
+      if (!best || wert < best.wert) best = { wert, L, sp: bA.sp, ua: bA.par, ub: bB.par };
+    }
+    if (!best) return null;
+    return { L: best.L, sp: best.sp, ua: best.ua, ub: best.ub };
   }
   strichEnde() {
     const s = this.strich;
@@ -588,7 +598,13 @@ export class Werft extends Bullaugen {
     const app = this;
     const W = () => app.W, H = () => app.H;
     const proj = (p) => app.rs.projizieren(p);
-    const ring = () => app.linien.filter((L) => L.art === 'ring').sort((a, b) => Math.abs(app.ringNormale(a).c[0]) - Math.abs(app.ringNormale(b).c[0]))[0];
+    // ein Spant quer zum Körper (Normale längs x), möglichst in der Mitte: seine Ebene sieht man gut
+    const ring = () => {
+      const g = app.grenzen();
+      const quer = app.linien.filter((L) => L.art === 'ring' && Math.abs(app.ringNormale(L).n[0]) > 0.75);
+      const alle = quer.length ? quer : app.linien.filter((L) => L.art === 'ring');
+      return alle.sort((a, b) => Math.abs(app.ringNormale(a).c[0] - g.mitte[0]) - Math.abs(app.ringNormale(b).c[0] - g.mitte[0]))[0];
+    };
     const ringPunkt = () => { const L = ring(); return L.punkte.reduce((a, b) => (b.p[2] > a.p[2] ? b : a)); };
     const kiel = () => app.linien.find((L) => L.art === 'mitte');
     const kielOben = () => kiel().punkte.reduce((a, b) => (b.p[1] > a.p[1] ? b : a));
@@ -605,7 +621,8 @@ export class Werft extends Bullaugen {
       G.zieh(() => {
         const L = kiel(), P = kielOben(); const i = L.punkte.indexOf(P), n = L.punkte.length;
         const a = proj(L.punkte[(i + n - 1) % n].p), b = proj(L.punkte[(i + 1) % n].p), c = proj(P.p);
-        const w = []; for (let k = 0; k <= 24; k++) { const u = k / 24; const x = a[0] + (b[0] - a[0]) * u, y0 = a[1] + (b[1] - a[1]) * u; w.push([x, Math.min(y0, c[1]) - Math.sin(u * Math.PI) * 38]); } return w;
+        // über die alte Linie (a → Spitze → b), in der Mitte gut 40 Bildpunkte höher
+        const w = []; for (let k = 0; k <= 24; k++) { const u = k / 24, v = u < 0.5 ? u * 2 : (u - 0.5) * 2, p = u < 0.5 ? [a[0] + (c[0] - a[0]) * v, a[1] + (c[1] - a[1]) * v] : [c[0] + (b[0] - c[0]) * v, c[1] + (b[1] - c[1]) * v]; w.push([p[0], p[1] - Math.sin(u * Math.PI) * 42]); } return w;
       }, 1.6, 2, { gleich: true });
     };
     const rahmen = () => {
@@ -677,12 +694,7 @@ export class Werft extends Bullaugen {
         G.zieh(() => { const p = hautStelle(); return [p, [p[0] - 10, p[1] - 45]]; }, 1.3);
         G.warte(0.6);
         // 4. Rechte Taste längs des Kiels: nachzeichnen
-        G.gehe(() => { const L = kiel(), P = kielOben(); const i = L.punkte.indexOf(P), n = L.punkte.length; return proj(L.punkte[(i + n - 1) % n].p); }, 0.9);
-        G.zieh(() => {
-          const L = kiel(), P = kielOben(); const i = L.punkte.indexOf(P), n = L.punkte.length;
-          const a = proj(L.punkte[(i + n - 1) % n].p), b = proj(L.punkte[(i + 1) % n].p), c = proj(P.p);
-          const w = []; for (let k = 0; k <= 24; k++) { const u = k / 24; const x = a[0] + (b[0] - a[0]) * u, y0 = a[1] + (b[1] - a[1]) * u; w.push([x, Math.min(y0, c[1]) - Math.sin(u * Math.PI) * 38]); } return w;
-        }, 1.6, 2, { gleich: true });
+        kielNachzeichnen(G);
         G.warte(1.0);
         // 5. 1 halten: kurz von der Seite schauen, loslassen: zurück
         G.gehe(() => [W() * 0.84, H() * 0.82], 0.6);

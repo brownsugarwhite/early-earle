@@ -147,185 +147,274 @@
   .schriftfeld span:last-child { font-size: var(--s-1); overflow-wrap: anywhere; }
 
   @media (prefers-reduced-motion: reduce) { .oeffnen { transition: none; } }
+
+  /* Runde 3: Titel in den Farben der Werft, Held mit Film, Grundsätze als Reihen */
+  .titel .p-a { color: var(--jelly); transform: translate(-0.03em, 0.045em); }
+  .titel .p-b { color: #936ffb; transform: translate(0.035em, 0.02em); }
+  .titel .p-c { color: var(--petrol); }
+  .held { display: grid; gap: 18px; }
+  .held .film { position: relative; border-radius: 6px; overflow: hidden; aspect-ratio: 16 / 10; max-width: 100%; background: var(--tiefe); box-shadow: 0 24px 60px -34px rgba(28, 26, 33, 0.6); }
+  .held .film video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .held .zeile { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; }
+  .oeffnen.gross { padding: 16px 26px; font-size: var(--s1); }
+  .frage { display: grid; gap: 16px; max-width: 74ch; }
+  .frage p { font-size: var(--s1); line-height: 1.45; }
+  .frage strong { color: var(--petrol); }
+  .grundsaetze { display: grid; gap: 46px; }
+  .grundsatz { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 20px 34px; align-items: start; }
+  @media (max-width: 820px) { .grundsatz { grid-template-columns: minmax(0, 1fr); } }
+  .grundsatz video, .grundsatz img { width: 100%; height: auto; display: block; border-radius: 4px; background: var(--tiefe); aspect-ratio: 16 / 10; object-fit: cover; }
+  .grundsatz .text { display: grid; gap: 12px; min-width: 0; align-content: start; }
+  .grundsatz h3 { font-size: var(--s1); font-weight: 800; }
+  .grundsatz .nr { font-family: var(--f-mono); font-size: var(--s-1); color: var(--grau); letter-spacing: 0.1em; }
+  .archiv { display: flex; flex-wrap: wrap; gap: 10px 14px; }
+  .archiv .oeffnen { font-size: var(--s-1); padding: 10px 16px; }
 </style>
 
 <div class="heft">
   <header class="kopf">
     <div class="zeile">
-      <span class="eyebrow">Kurven im Raum · Runde 2 · 13.11.2026</span>
-      <span class="mono">drei Vollbild-Prototypen</span>
+      <span class="eyebrow">Kurven im Raum · Runde 3 · 13.11.2026</span>
+      <span class="mono">ein Bild statt vier Fenster</span>
     </div>
-    <h1 class="titel" aria-label="Kurven-Werkstatt">
-      <span class="platte p-gelb" aria-hidden="true">Kurven-Werkstatt</span>
-      <span class="platte p-pink" aria-hidden="true">Kurven-Werkstatt</span>
-      <span class="platte p-blau" aria-hidden="true">Kurven-Werkstatt</span>
+    <h1 class="titel" aria-label="Werft">
+      <span class="platte p-a" aria-hidden="true">Werft</span>
+      <span class="platte p-b" aria-hidden="true">Werft</span>
+      <span class="platte p-c" aria-hidden="true">Werft</span>
     </h1>
-    <p class="satz">Drei neue Layouts für deinen Kurven-Editor, jedes eine eigene Seite über den ganzen Bildschirm. Zuerst für Maus und Tastatur gebaut, auf dem iPad mit Finger und Pencil.</p>
+    <p class="satz">Ein Bild über den ganzen Bildschirm. Jede Kurve bringt ihre Fläche mit: Der Kiel liegt in der Mittelebene, jeder Spant in seiner Querebene, jede Form auf der Haut. Darin ziehst du, aus jedem Blickwinkel. Deshalb braucht der Editor keine Fenster mehr.</p>
   </header>
 
-  <div class="passer" role="presentation"></div>
-
-  <section aria-labelledby="geaendert">
-    <span class="eyebrow">Deine Rückmeldung zu Runde 1</span>
-    <h2 id="geaendert">Was sich geändert hat</h2>
-    <div class="antworten">
-      <div class="antwort"><q>mit der Maus am Desktop nicht bedienbar</q><p>Links ziehen auf leerer Fläche oder auf dem Wesen dreht, wie heute im Editor. Die rechte Taste zeichnet, das Rad zoomt. Beim Start führt eine Geistermaus die Gesten einmal vor; <kbd>?</kbd> zeigt sie wieder.</p></div>
-      <div class="antwort"><q>erwartet, dass du das Layout veränderst</q><p>Keine vier Fenster mehr und keine Raumecke. Die Bullaugen holen die Ansichten zum Zeiger, das Modellblatt legt ein Turnaround an, die Drei Platten drucken die Ansichten übereinander.</p></div>
-      <div class="antwort"><q>anständige Fullscreenprototypen</q><p>Jede Variante ist eine eigene Seite über den ganzen Bildschirm und startet mit deinem strange bird.</p></div>
+  <section class="held" aria-label="Film und Start">
+    <div class="film"><video src="filme/werft.mp4" poster="bilder/werft.jpg" autoplay muted loop playsinline preload="metadata" aria-label="Film: die Werft, die Geistermaus führt vor"></video></div>
+    <div class="zeile">
+      <button type="button" class="oeffnen gross" data-seite="werft.html" style="--ink: var(--petrol);">Werft im Vollbild starten <span class="voll" aria-hidden="true"></span></button>
+      <span class="klein">Beim Start führt eine Geistermaus vor, <kbd>?</kbd> zeigt es wieder. <kbd>Esc</kbd> verlässt das Vollbild, das × schließt.</span>
     </div>
   </section>
 
   <div class="passer" role="presentation"></div>
 
-  <section class="bogen b1" aria-labelledby="bullaugen">
-    <div class="film"><video src="filme/bullaugen.mp4" poster="bilder/bullaugen.jpg" autoplay muted loop playsinline preload="metadata" aria-label="Film: Bullaugen, die Geistermaus führt vor"></video></div>
-    <div class="text">
-      <div class="name"><span class="farbe" aria-hidden="true"></span><h2 id="bullaugen">Bullaugen</h2></div>
-      <p class="leit">Eine große Ansicht. Die anderen kommen zu dir.</p>
-      <p>Das Wesen steht auf einem Drehteller und füllt den Bildschirm. Seite, Front und Top sind runde Bullaugen. In Ruhe liegen sie klein am Rand, jedes dort, wo seine Kamera steht; dreht man das Wesen, wandern sie mit. Zeigst du auf einen Punkt, schwimmen sie heran, setzen sich neben das Wesen und zeigen die Stelle aus ihrer Richtung. Im Bullauge arbeitest du wie in der großen Ansicht.</p>
-      <ul class="schritte">
-        <li><b>Leere ziehen</b><span>drehen; nahe einer Achse rastet es ein, und die Ansicht wird parallel</span></li>
-        <li><b>auf Punkt zeigen</b><span>die Bullaugen kommen; beim Ziehen zeigen sie den Punkt mit</span></li>
-        <li><b>Bullauge klicken</b><span>die Kamera fliegt auf seine Achse (<kbd>1</kbd> <kbd>3</kbd> <kbd>7</kbd>, zurück mit <kbd>0</kbd>)</span></li>
-      </ul>
-      <button type="button" class="oeffnen" data-seite="bullaugen.html">Im Vollbild starten <span class="voll" aria-hidden="true"></span></button>
-      <div class="wertung">
-        <div><span>Stark</span><span>Das Wesen hat den ganzen Bildschirm. Die anderen Ansichten erscheinen dort, wo du arbeitest, und ihre Lage zeigt ohne ein Wort, aus welcher Richtung sie schauen.</span></div>
-        <div><span>Schwach</span><span>Solange du an einer Stelle arbeitest, verdecken die Bullaugen einen Teil des Wesens. Den Überblick über alle Ansichten gibt es nur klein am Rand.</span></div>
-      </div>
-    </div>
-  </section>
-
-  <div class="passer" role="presentation"></div>
-
-  <section class="bogen b2" aria-labelledby="modellblatt">
-    <div class="film"><video src="filme/modellblatt.mp4" poster="bilder/modellblatt.jpg" autoplay muted loop playsinline preload="metadata" aria-label="Film: Modellblatt, die Geistermaus führt vor"></video></div>
-    <div class="text">
-      <div class="name"><span class="farbe" aria-hidden="true"></span><h2 id="modellblatt">Modellblatt</h2></div>
-      <p class="leit">Das Blatt, das Figurenzeichner ohnehin anlegen.</p>
-      <p>Ein Turnaround auf Papier: Front, Dreiviertel, Seite, Dreiviertel hinten und Rücken in einer Reihe, darunter die Draufsicht und das Wesen in Farbe von vorn und von hinten. Alles im selben Maßstab. Zeigst du auf einen Punkt, läuft seine Höhe als Linie durch alle Ansichten und seine Länge bis in die Draufsicht. In jeder Ansicht wird gleich gearbeitet, auch in den schrägen.</p>
-      <ul class="schritte">
-        <li><b>Leere ziehen</b><span>alle Ansichten drehen sich zugleich; loslassen, und das Blatt federt zurück</span></li>
-        <li><b>Punkt ziehen</b><span>rote Höhenlinie durch das ganze Blatt, alle Ansichten folgen</span></li>
-        <li><b>Rad</b><span>ins Blatt hinein und heraus (<kbd>1</kbd> <kbd>3</kbd> <kbd>7</kbd> fahren an eine Ansicht heran)</span></li>
-      </ul>
-      <button type="button" class="oeffnen" data-seite="modellblatt.html">Im Vollbild starten <span class="voll" aria-hidden="true"></span></button>
-      <div class="wertung">
-        <div><span>Stark</span><span>Sieben Ansichten zugleich, auch die schrägen, in denen man Formen am besten beurteilt. Die Konstruktionslinien zeigen, ob alles zusammenpasst. Wer Figuren zeichnet, kennt diese Form.</span></div>
-        <div><span>Schwach</span><span>Jede Ansicht ist kleiner als heute; auf dem Laptop zoomt man öfter. Bei jeder Änderung rechnet das ganze Blatt Kontur und Schatten neu; auf deinem Mac gemessen habe ich das nicht.</span></div>
-      </div>
-    </div>
-  </section>
-
-  <div class="passer" role="presentation"></div>
-
-  <section class="bogen b3" aria-labelledby="platten">
-    <div class="film"><video src="filme/platten.mp4" poster="bilder/platten.jpg" autoplay muted loop playsinline preload="metadata" aria-label="Film: Drei Platten, die Geistermaus führt vor"></video></div>
-    <div class="text">
-      <div class="name"><span class="farbe" aria-hidden="true"></span><h2 id="platten">Drei Platten</h2></div>
-      <p class="leit">Drei Ansichten auf einem Bogen, gedruckt wie mit dem Risograph.</p>
-      <p>Seite in Pink, Front in Gelb, Top in Blau. Die Platten liegen Mitte auf Mitte im selben Maßstab übereinander und mischen sich wie Farbe auf Papier. So hat jede Ansicht den ganzen Bildschirm, und was du in einer änderst, siehst du in den anderen an derselben Stelle. Die Platte, an deren Linien du arbeitest, druckt kräftig, die anderen blass.</p>
-      <ul class="schritte">
-        <li><b>Passerkreuz ziehen</b><span>die Platte gleitet heraus und bleibt auf ihrer gemeinsamen Achse (Front waagerecht, Top senkrecht)</span></li>
-        <li><b><kbd>Tab</kbd></b><span>alle Platten nebeneinander wie im heutigen Editor; noch einmal: wieder übereinander</span></li>
-        <li><b>blasse Linie</b><span>kurz darauf zeigen, und ihre Platte wird die kräftige (<kbd>1</kbd> <kbd>3</kbd> <kbd>7</kbd> wählen direkt)</span></li>
-      </ul>
-      <button type="button" class="oeffnen" data-seite="platten.html">Im Vollbild starten <span class="voll" aria-hidden="true"></span></button>
-      <div class="wertung">
-        <div><span>Stark</span><span>Die größten Ansichten aller Varianten und die Wirkung einer Änderung in allen Ansichten auf einen Blick. <kbd>Tab</kbd> macht aus dem Druck in einer Bewegung das heutige Layout.</span></div>
-        <div><span>Schwach</span><span>Übereinander braucht Eingewöhnung, bis die Farben fest zu den Ansichten gehören. Statt deiner weißen Illustration gibt es Rasterpunkte.</span></div>
-      </div>
-    </div>
-  </section>
-
-  <div class="passer" role="presentation"></div>
-
-  <section aria-labelledby="bedienung">
-    <span class="eyebrow">In allen drei Varianten gleich</span>
-    <h2 id="bedienung">Die Bedienung</h2>
-    <div class="tafel">
-      <table>
-        <thead><tr><th>Handlung</th><th>Maus und Tastatur</th><th>iPad</th></tr></thead>
-        <tbody>
-          <tr><td>Drehen</td><td>links ziehen auf leerer Fläche oder auf dem Wesen; mit Schwung, beim Loslassen einrasten</td><td>ein Finger</td></tr>
-          <tr><td>Punkt, Griff, Linie bewegen</td><td>links ziehen; eine Linie biegt sich, längs nachgefahren wird sie Kante</td><td>Finger oder Pencil</td></tr>
-          <tr><td>Wählen</td><td>Klick, <kbd>⇧</kbd> + Klick dazu; Klick auf eine Linie wählt den ganzen Loop; <kbd>⌘A</kbd> alles</td><td>tippen</td></tr>
-          <tr><td>Punkt setzen</td><td>Doppelklick auf eine Linie (die Perle zeigt vorher, wo)</td><td>doppelt tippen</td></tr>
-          <tr><td>Ecke ↔ glatt</td><td>Doppelklick auf einen Punkt</td><td>doppelt tippen</td></tr>
-          <tr><td>Zeichnen</td><td>rechte Taste ziehen, oder <kbd>⌥</kbd> + links, oder <kbd>P</kbd> schaltet den Stift an: quer über den Umriss = neuer Loop, geschlossen = Form, Zickzack = weg</td><td>Pencil, oder lange drücken und ziehen</td></tr>
-          <tr><td>Zoom</td><td>Rad am Zeiger, Trackpad kneifen</td><td>zwei Finger kneifen</td></tr>
-          <tr><td>Einfluss beim Ziehen</td><td>Rad während des Zugs, wie <kbd>O</kbd> in Blender</td><td>zweiter Finger als Zirkel</td></tr>
-          <tr><td>Schwenken</td><td>mittlere Taste, <kbd>Leertaste</kbd> + ziehen oder <kbd>⇧</kbd> + Leere ziehen</td><td>zwei Finger</td></tr>
-          <tr><td>Zurück, vor</td><td><kbd>⌘Z</kbd>, <kbd>⇧⌘Z</kbd></td><td>zwei Finger tippen, drei Finger tippen</td></tr>
-          <tr><td>Ansichten</td><td><kbd>1</kbd> Seite, <kbd>3</kbd> Front, <kbd>7</kbd> Top, <kbd>0</kbd> zurück; <kbd>F</kbd> oder Doppelklick ins Leere: einpassen</td><td>doppelt tippen ins Leere</td></tr>
-          <tr><td>Weiteres</td><td><kbd>⌫</kbd> löschen, <kbd>K</kbd> Kante, <kbd>X</kbd> halten: Röntgen, <kbd>Esc</kbd>, <kbd>?</kbd> Vorführung, <kbd>Tab</kbd> Platten nebeneinander</td><td>–</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="klein">Der Zeiger zeigt vorher, was ein Zug tun wird: Bogen = drehen, Ring = greifen, Perle mit Kreuz = Punkt setzen, Feder = zeichnen. Ein Prototyp startet im Vollbild des Browsers; <kbd>Esc</kbd> verlässt das Vollbild, das × oben rechts schließt den Prototyp.</p>
-  </section>
-
-  <div class="passer" role="presentation"></div>
-
-  <section aria-labelledby="abwaegung">
-    <span class="eyebrow">Meine Einschätzung, nicht gemessen</span>
-    <h2 id="abwaegung">Nebeneinander</h2>
-    <div class="tafel">
-      <table>
-        <thead><tr><th></th><th>Bullaugen</th><th>Modellblatt</th><th>Drei Platten</th></tr></thead>
-        <tbody>
-          <tr><td>Platz je Ansicht</td><td>groß für eine, klein für die anderen</td><td>klein, dafür sieben</td><td>alle groß</td></tr>
-          <tr><td>Alle Ansichten zugleich</td><td>beim Arbeiten an einer Stelle</td><td>immer</td><td>immer, übereinander</td></tr>
-          <tr><td>Schräge Ansichten</td><td>die große Ansicht dreht frei</td><td>zwei feste Dreiviertel, alle drehbar</td><td>nur beim Drehen</td></tr>
-          <tr><td>Eingewöhnung</td><td>gering</td><td>gering, wenn man Turnarounds kennt</td><td>hoch</td></tr>
-          <tr><td>Laptop</td><td>gut</td><td>mit Zoom</td><td>gut</td></tr>
-          <tr><td>Erster Eindruck</td><td>die Bullaugen, die heranschwimmen</td><td>das Blatt, das sich als Ganzes dreht</td><td>der Druck</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="empfehlung">
-      <span class="eyebrow">Empfehlung</span>
-      <p>Probier jede Variante zehn Minuten mit dem strange bird. Ich erwarte, dass das Modellblatt für Proportionen und Überblick am meisten taugt und die Bullaugen für die Arbeit an einer Stelle. Beides zusammen wäre der nächste Schritt: das Modellblatt als Grundlayout, und ein Doppelklick auf eine Ansicht macht sie groß, während die anderen als Bullaugen zum Zeiger kommen.</p>
-    </div>
-  </section>
-
-  <div class="passer" role="presentation"></div>
-
-  <section aria-labelledby="gelernt">
-    <span class="eyebrow">Beim Bauen</span>
-    <h2 id="gelernt">Was die Tests gezeigt haben</h2>
+  <section aria-labelledby="falsch">
+    <span class="eyebrow">Deine Rückmeldung zu Runde 2</span>
+    <h2 id="falsch">Was falsch war</h2>
     <ul class="liste">
-      <li><b>Bullaugen dicht am Punkt stören.</b> Im ersten Wurf hingen sie am Zeiger, stark vergrößert, und deckten das halbe Wesen zu. Jetzt suchen sie in ihrer Richtung einen freien Platz neben dem Wesen und zeigen gut die Hälfte davon, so dass man sieht, wo man ist.</li>
-      <li><b>Ein gedrehtes Modellblatt ist kein Modellblatt.</b> Zuerst rastete das Drehen in 45°-Schritten ein; dann zeigten die schmalen Plätze von Front und Rücken breite Ansichten. Jetzt federt das Blatt immer zurück, das Drehen ist ein Umschauen.</li>
-      <li><b>Platten dürfen nicht flackern.</b> Würde jede Linie unter dem Zeiger sofort ihre Platte nach vorn holen, wechselten die Platten beim Überfahren ständig. Sie wechseln erst nach kurzem Verweilen oder sofort beim Klick.</li>
-      <li><b>Geprüft mit echten Mauszügen</b> (Playwright, Chromium mit Software-Grafik): Klick wählt, Doppelklick setzt einen Punkt, rechts ziehen schneidet einen Loop, <kbd>⌘Z</kbd> nimmt ihn zurück, das Rad zoomt, die Leertaste schwenkt, Zickzack löscht einen Punkt. Finger und Pencil nur mit künstlichen Ereignissen. Nicht geprüft: iPad, Safari, dein Mac, die Bildrate.</li>
-      <li><b>Wie in Runde 1</b> rechnet die Haut ein Ersatzverfahren durch die Linien, nicht dein Löser. Der Code des Editors und die Zweige der anderen Sitzung sind nicht berührt.</li>
+      <li>Ich habe vom Layout aus gedacht statt von der Aufgabe. Drei neue Anordnungen derselben Fenster lösten keines ihrer Probleme und brachten neue: Bullaugen decken zu, das Blatt zwingt zum Zoomen und Schwenken, die Platten muss man entziffern.</li>
+      <li>Bedienung, Material, Punkte, Linien und Konturen kamen unverändert aus Runde 1. Es gab Teile, aber kein Zusammenspiel.</li>
     </ul>
   </section>
 
   <div class="passer" role="presentation"></div>
 
-  <section aria-labelledby="runde1">
-    <span class="eyebrow">Zum Vergleich</span>
-    <h2 id="runde1">Runde 1: die Raumecke</h2>
-    <div class="zwei">
-      <figure>
-        <video src="filme/werkstatt.mp4" poster="bilder/vogel_raum.jpg" muted loop playsinline controls preload="none"></video>
-        <figcaption>Runde 1: die Ansichten als Wände einer Raumecke, aufgefaltet zum Blatt, bedient mit Fingern.</figcaption>
-      </figure>
-      <div class="stapel b1">
-        <p>Die Raumecke ist jetzt auch mit der Maus bedienbar: links ziehen auf Leere oder Haut dreht, die rechte Taste zeichnet. Sonst ist sie unverändert.</p>
-        <button type="button" class="oeffnen" data-seite="vision.html#vogel">Raumecke im Vollbild <span class="voll" aria-hidden="true"></span></button>
+  <section aria-labelledby="frage">
+    <span class="eyebrow">Die Frage hinter den vier Fenstern</span>
+    <h2 id="frage">Warum es überhaupt Fenster gibt</h2>
+    <div class="frage">
+      <p>Ein Punkt im Raum braucht drei Zahlen. Eine Maus liefert zwei. Zwei Fenster liefern zusammen drei. <strong>Jeder Editor ohne Fenster muss die dritte Zahl anders bekommen.</strong></p>
+      <p>In deinem Modell liegt sie schon bereit: Jede Kurve liegt in einer natürlichen Fläche, wie im Schiffbau, aus dem deine Wörter Spant und Loft kommen.</p>
+    </div>
+    <div class="tafel">
+      <table>
+        <thead><tr><th>Kurve</th><th>im Schiffbau</th><th>ihre Fläche</th><th>ein Zug darin bedeutet</th></tr></thead>
+        <tbody>
+          <tr><td>Mitte</td><td>Kiel, Profil</td><td>die Mittelebene</td><td>das Profil formen</td></tr>
+          <tr><td>Ring</td><td>Spant</td><td>seine Querebene</td><td>den Querschnitt formen; der Spant bleibt eben</td></tr>
+          <tr><td>Form</td><td>Luke, Auge, Flosse</td><td>die Haut</td><td>auf der Haut verschieben</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Wer einen Spant greift, bewegt den Punkt in der Spantebene, egal von wo er schaut. Seite, Front und Top werden damit Zustände der einen Kamera statt eigener Fenster.</p>
+  </section>
+
+  <div class="passer" role="presentation"></div>
+
+  <section aria-labelledby="grundsaetze">
+    <span class="eyebrow">Aus dieser Antwort folgt der ganze Editor</span>
+    <h2 id="grundsaetze">Sieben Grundsätze</h2>
+    <div class="grundsaetze">
+      <div class="grundsatz">
+        <video src="filme/w_ebene.mp4" autoplay muted loop playsinline preload="metadata" aria-label="Film: Spant und Kiel in ihrer Fläche"></video>
+        <div class="text">
+          <span class="nr">1 · FLÄCHE</span>
+          <h3>Jede Kurve bewegt sich in ihrer Fläche</h3>
+          <p>Zeigst du auf einen Spant, erscheint seine Ebene als Glas. Punkte, Griffe und Linienstücke bleiben darin, also bleibt der Spant ein ebener Querschnitt. Kielpunkte bleiben in der Mittelebene, Formpunkte auf der Haut. Mit <kbd>⇧</kbd> ziehst du quer zur Fläche, etwa einen Spant am Körper entlang.</p>
+          <div class="wertung">
+            <div><span>Dafür</span><span>Ein Punkt landet nie aus Versehen in der falschen Tiefe, der häufigste Fehler in einem einzelnen 3D-Fenster.</span></div>
+            <div><span>Dagegen</span><span>Liegt die Fläche fast flach zum Blick, gilt die Bildebene. Man dreht dann ein wenig weiter.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="grundsatz">
+        <video src="filme/w_achse.mp4" autoplay muted loop playsinline preload="metadata" aria-label="Film: Drehen rastet ein, das Jelly wird zur Illustration"></video>
+        <div class="text">
+          <span class="nr">2 · EIN BILD</span>
+          <h3>Der Blick bestimmt den Look</h3>
+          <p>Es gibt ein Bild über den ganzen Bildschirm. Im Raum ist das Wesen Jelly. Drehst du nahe an eine Achse und lässt los, fährt die Kamera zurück und wird schmal, bis die Ansicht parallel ist. Dabei wird das Jelly zu deiner Illustration: weißer Körper, dicke Kontur, Passer, langer Schatten, gestrichelte Linien. Zwei Looks, die du schon hast, werden ein Material mit zwei Zuständen.</p>
+          <div class="wertung">
+            <div><span>Dafür</span><span>Jede Ansicht hat den ganzen Bildschirm. Der Wechsel ist eine Fahrt, kein Sprung; man verliert die Orientierung nicht.</span></div>
+            <div><span>Dagegen</span><span>Nie zwei Ansichten zugleich. Grundsatz 3 und der Grundriss am Boden gleichen das aus.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="grundsatz">
+        <video src="filme/w_feder.mp4" autoplay muted loop playsinline preload="metadata" aria-label="Film: Tasten 1, 3, 7 halten"></video>
+        <div class="text">
+          <span class="nr">3 · FEDERN</span>
+          <h3>Ansichten federn</h3>
+          <p>Halte <kbd>1</kbd>, <kbd>3</kbd> oder <kbd>7</kbd>: Die Kamera schwenkt auf Seite, Front oder Top. Lass los, und sie kehrt dorthin zurück, wo du warst. Tippen statt halten: Du bleibst. <kbd>0</kbd> führt zurück in den Raum.</p>
+          <div class="wertung">
+            <div><span>Dafür</span><span>Ein Blick von der Seite kostet eine Viertelsekunde und keine Fensterfläche. Gehaltene Modi verhindern Verwechslungen besser als gemerkte (Sellen, Kurtenbach, Buxton 1992).</span></div>
+            <div><span>Dagegen</span><span>Man muss die Tasten kennen. Auf dem iPad gibt es dafür Doppeltippen ins Leere und das Einrasten beim Drehen.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="grundsatz">
+        <video src="filme/w_nach.mp4" autoplay muted loop playsinline preload="metadata" aria-label="Film: den Kiel nachzeichnen"></video>
+        <div class="text">
+          <span class="nr">4 · ZEICHNEN</span>
+          <h3>Zeichnen statt zerren</h3>
+          <p>Willst du eine Kurve anders, zeichnest du sie nach: Ein Strich mit der rechten Taste, der nahe an einer Kurve beginnt und endet, ersetzt dieses Stück, in ihrer Fläche. So arbeiten Zeichner, und so hat es Baudel 1994 für Kurven vorgeschlagen. Punkte und Griffe bleiben für die Feinarbeit.</p>
+          <div class="wertung">
+            <div><span>Dafür</span><span>Eine Form, die man im Kopf hat, ist ein Strich statt zehn Griffzüge.</span></div>
+            <div><span>Dagegen</span><span>Der Strich muss an der Kurve beginnen und enden. Sonst wird er ein Schnitt oder verdunstet.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="grundsatz">
+        <video src="filme/w_haut.mp4" autoplay muted loop playsinline preload="metadata" aria-label="Film: die Haut formen"></video>
+        <div class="text">
+          <span class="nr">5 · TON</span>
+          <h3>Haut formen wie Ton</h3>
+          <p>Ziehst du auf der Haut statt auf einer Kurve, gehen die Kurvenpunkte im Umkreis weich mit, wie beim Move-Pinsel in ZBrush. Vorher zeigt ein Lichtfleck, wie weit es reicht; das Rad ändert die Reichweite während des Zugs. Die Kurven bleiben, was sie sind: deine Wahrheit.</p>
+          <div class="wertung">
+            <div><span>Dafür</span><span>Beulen, Bäuche, Wangen: grobe Formen in einem Zug, ohne einzelne Punkte zu suchen.</span></div>
+            <div><span>Dagegen</span><span>Ziehen auf dem Wesen dreht nicht mehr. Gedreht wird auf der Leere, mit <kbd>⌥</kbd> + ziehen oder der mittleren Taste.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="grundsatz">
+        <video src="filme/w_spant.mp4" autoplay muted loop playsinline preload="metadata" aria-label="Film: einen Spant schneiden"></video>
+        <div class="text">
+          <span class="nr">6 · SCHNEIDEN</span>
+          <h3>Ein Strich quer schneidet einen Spant</h3>
+          <p>Dieselbe Geste wie das Nachzeichnen, nur quer über den Umriss: Ein Lichtring zeigt den neuen Spant, bevor du loslässt. Geschlossen auf der Haut wird eine Form daraus, ein Zickzack nimmt einen Punkt oder eine Linie weg.</p>
+          <div class="wertung">
+            <div><span>Dafür</span><span>Kein Werkzeug wählen. Die Form des Strichs sagt, was er tut, und die Vorschau zeigt es vorher.</span></div>
+            <div><span>Dagegen</span><span>Vier Bedeutungen für eine Geste. Die Vorschau muss sie klar zeigen; das ist der Teil, den du am meisten testen solltest.</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="grundsatz">
+        <img src="bilder/werft_form.jpg" alt="Die Werft: Spant unter dem Zeiger mit seinen Punkten, Kiel stärker, Grundriss am Boden">
+        <div class="text">
+          <span class="nr">7 · FORMENSPRACHE</span>
+          <h3>Alles spricht eine Sprache</h3>
+          <p>Kiel, Spanten und Formen unterscheiden sich durch Gewicht, nicht durch Farbe: Der Kiel ist doppelt so stark wie ein Spant. Punkte erscheinen nur an der Kurve unter der Hand und im Licht des Zeigers, Griffe nur am aktiven Punkt, Ecken als Raute ◆. Hilfen wie Glas, Lichtfleck und Vorschau gibt es nur während der Handlung. Auf dem Boden liegt der Grundriss: die Draufsicht als Projektion, immer da, ohne Fenster.</p>
+        </div>
       </div>
     </div>
   </section>
 
+  <div class="passer" role="presentation"></div>
+
+  <section aria-labelledby="vergleich">
+    <span class="eyebrow">Was es dir bringt</span>
+    <h2 id="vergleich">Gegen den heutigen Editor</h2>
+    <div class="tafel">
+      <table>
+        <thead><tr><th>Aufgabe</th><th>heute, vier Fenster</th><th>Werft</th></tr></thead>
+        <tbody>
+          <tr><td>Fläche einer Ansicht</td><td>ein Viertel des Bildschirms</td><td>der ganze Bildschirm</td></tr>
+          <tr><td>Spantpunkt nach außen ziehen</td><td>im Front-Fenster ziehen, im 3D-Fenster prüfen</td><td>im großen Bild ziehen; der Punkt bleibt in der Spantebene, das Jelly zeigt die Wirkung am selben Ort</td></tr>
+          <tr><td>Profil ändern</td><td>Punkte im Seiten-Fenster ziehen</td><td>den Kiel nachzeichnen, ein Strich</td></tr>
+          <tr><td>Eine Beule herausarbeiten</td><td>mehrere Punkte in mehreren Fenstern, <kbd>O</kbd> für den Einfluss</td><td>auf der Haut ziehen, Rad für die Reichweite</td></tr>
+          <tr><td>Seite, Front oder Top prüfen</td><td>ins jeweilige Viertel schauen</td><td><kbd>1</kbd>, <kbd>3</kbd>, <kbd>7</kbd> halten: ganzer Bildschirm, als Illustration; loslassen: zurück</td></tr>
+          <tr><td>Draufsicht im Blick behalten</td><td>Top-Fenster</td><td>Grundriss auf dem Boden, immer</td></tr>
+          <tr><td>Neuen Spant schneiden</td><td>Werkzeug wählen, im Fenster quer ziehen</td><td>rechte Taste quer über den Körper, aus jedem Winkel</td></tr>
+          <tr><td>Blickwege</td><td>zwischen vier Fenstern</td><td>keine: alles geschieht an der Stelle, auf die du schaust</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="passer" role="presentation"></div>
+
+  <section aria-labelledby="formen">
+    <span class="eyebrow">Wie alles zusammenspielt</span>
+    <h2 id="formen">Formensprache</h2>
+    <div class="tafel">
+      <table>
+        <thead><tr><th>Element</th><th>im Raum (Jelly)</th><th>auf der Achse (Illustration)</th><th>wann sichtbar</th></tr></thead>
+        <tbody>
+          <tr><td>Haut</td><td>Jelly, durchscheinend, Lava, Glanz; feine dunkle Kontur</td><td>weißer Körper, Lavendel im Schatten, dicke Kontur, Passer, langer Schatten</td><td>immer</td></tr>
+          <tr><td>Kiel</td><td>durchgehende helle Linie, doppelt so stark wie ein Spant</td><td>Petrol, gestrichelt; Kante durchgezogen</td><td>immer</td></tr>
+          <tr><td>Spant</td><td>feine Linie; unter der Hand stärker, seine Ebene als Glas</td><td>Petrol, gestrichelt</td><td>immer</td></tr>
+          <tr><td>Form</td><td>feine Linie</td><td>wie Spant</td><td>immer</td></tr>
+          <tr><td>Punkt</td><td>Niete: glatt ●, Ecke ◆</td><td>dasselbe in Petrol</td><td>an der Kurve unter der Hand, im Licht des Zeigers, gewählte immer</td></tr>
+          <tr><td>Griff</td><td>zwei Nadeln</td><td>dasselbe</td><td>nur am aktiven Punkt</td></tr>
+          <tr><td>Fläche</td><td>Glas in Jelly-Türkis mit feinem Raster</td><td>entfällt, die Bildebene gilt</td><td>beim Schweben schwach, im Zug kräftig</td></tr>
+          <tr><td>Einfluss</td><td>Flieder-Licht auf der Haut</td><td>dasselbe</td><td>beim Schweben über der Haut, im Zug</td></tr>
+          <tr><td>Boden</td><td>Scheibe mit Raststrichen, darauf der Grundriss</td><td>entfällt</td><td>im Raum</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="klein">Jede Farbe hat eine Bedeutung: Weiß und Petrol tragen die Struktur, Lila heißt gewählt, Flieder ist die Hand (Einfluss, Vorschau), Türkis die Fläche, Rosa heißt weg.</p>
+  </section>
+
+  <div class="passer" role="presentation"></div>
+
+  <section aria-labelledby="bedienung">
+    <span class="eyebrow">Maus und Tastatur zuerst</span>
+    <h2 id="bedienung">Bedienung</h2>
+    <div class="tafel">
+      <table>
+        <thead><tr><th>Handlung</th><th>Maus und Tastatur</th><th>iPad</th></tr></thead>
+        <tbody>
+          <tr><td>Drehen</td><td>links auf Leere ziehen, oder <kbd>⌥</kbd> + ziehen, oder mittlere Taste; nahe einer Achse einrasten</td><td>ein Finger auf Leere</td></tr>
+          <tr><td>Haut formen</td><td>links auf der Haut ziehen; Rad im Zug = Reichweite</td><td>ein Finger auf der Haut</td></tr>
+          <tr><td>Punkt, Griff, Kurve ziehen</td><td>links ziehen, in ihrer Fläche; <kbd>⇧</kbd> = quer dazu</td><td>Finger</td></tr>
+          <tr><td>Wählen</td><td>Klick, <kbd>⇧</kbd> + Klick dazu; Klick auf eine Kurve wählt sie ganz</td><td>tippen</td></tr>
+          <tr><td>Punkt setzen, Ecke</td><td>Doppelklick auf Kurve = Punkt; Doppelklick auf Punkt = Ecke ↔ glatt</td><td>doppelt tippen</td></tr>
+          <tr><td>Zeichnen</td><td>rechte Taste oder <kbd>P</kbd>: nachzeichnen, quer = Spant, geschlossen = Form, Zickzack = weg</td><td>Pencil</td></tr>
+          <tr><td>Ansichten</td><td><kbd>1</kbd> <kbd>3</kbd> <kbd>7</kbd> halten = kurz hinschauen, tippen = bleiben; <kbd>0</kbd> = Raum</td><td>Einrasten beim Drehen</td></tr>
+          <tr><td>Zoom, Schwenken</td><td>Rad; <kbd>Leertaste</kbd> + ziehen</td><td>zwei Finger</td></tr>
+          <tr><td>Sonst</td><td><kbd>⌘Z</kbd>, <kbd>⇧⌘Z</kbd>, <kbd>⌫</kbd>, <kbd>K</kbd> Kante, <kbd>F</kbd> einpassen, <kbd>X</kbd> halten = Röntgen, <kbd>?</kbd> Vorführung, <kbd>Esc</kbd></td><td>zwei / drei Finger tippen</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="passer" role="presentation"></div>
+
+  <section aria-labelledby="stand">
+    <span class="eyebrow">Ehrlich</span>
+    <h2 id="stand">Verworfen, geprüft, offen</h2>
+    <ul class="liste">
+      <li><b>Verworfen:</b> Fenster, Linsen, Blätter und Platten (Runde 1 und 2), weil sie die Fläche teilen oder verdecken. Eine Kamera, die sich von selbst zur Kurve dreht (wie ILoveSketch beim Zeichnen): beim Ziehen desorientierend, die Fläche löst es ohne Bewegung. Den Umriss selbst als Griff (Nealen et al. 2005): Deine Wahrheit sind die Kurven, nicht der Umriss.</li>
+      <li><b>Geprüft</b> mit echten Mauszügen (Chromium mit Software-Grafik): Ein Spantpunkt bleibt beim Ziehen in seiner Ebene, Haut formen verschiebt die Punkte im Umkreis, Taste 1 zeigt die Seite als Illustration, 0 führt zurück. Die Filme zeigen Vorführungen mit derselben Eingabe.</li>
+      <li><b>Offen:</b> iPad, Safari, dein Mac und die Bildrate sind nicht geprüft. Unter der Oberfläche rechnet wie in Runde 1 und 2 eine Ersatz-Haut, nicht dein Löser; neu ist alles, was man sieht und tut. Der Code des Editors und die andere Sitzung sind nicht berührt.</li>
+    </ul>
+  </section>
+
+  <div class="passer" role="presentation"></div>
+
+  <section aria-labelledby="frueher">
+    <span class="eyebrow">Zum Vergleich</span>
+    <h2 id="frueher">Frühere Runden</h2>
+    <div class="archiv">
+      <button type="button" class="oeffnen" data-seite="vision.html#vogel" style="--ink: var(--tiefe);">Runde 1: Raumecke <span class="voll" aria-hidden="true"></span></button>
+      <button type="button" class="oeffnen" data-seite="bullaugen.html" style="--ink: var(--tiefe);">Runde 2: Bullaugen <span class="voll" aria-hidden="true"></span></button>
+      <button type="button" class="oeffnen" data-seite="modellblatt.html" style="--ink: var(--petrol);">Runde 2: Modellblatt <span class="voll" aria-hidden="true"></span></button>
+      <button type="button" class="oeffnen" data-seite="platten.html" style="--ink: var(--magenta-tinte);">Runde 2: Drei Platten <span class="voll" aria-hidden="true"></span></button>
+    </div>
+  </section>
+
   <footer class="schriftfeld" aria-label="Schriftfeld">
-    <div><span>Benennung</span><span>Kurven-Werkstatt, Runde 2</span></div>
+    <div><span>Benennung</span><span>Werft, Runde 3</span></div>
     <div><span>Datum</span><span>13.11.2026</span></div>
     <div><span>Zweig</span><span>claude/meme-curves-editor-concept-s65kq1</span></div>
-    <div><span>Quelle</span><span>docs/look/editor/vision/prototyp/src/werkstatt/</span></div>
-    <div><span>Plan</span><span>docs/look/editor/vision/PLAN-2.md</span></div>
+    <div><span>Quelle</span><span>docs/look/editor/vision/prototyp/src/werkstatt/werft.js</span></div>
+    <div><span>Plan</span><span>docs/look/editor/vision/PLAN-3.md</span></div>
     <div><span>Geprüft</span><span>Florian (steht aus)</span></div>
   </footer>
 </div>
