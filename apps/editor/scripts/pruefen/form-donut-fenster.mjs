@@ -7,11 +7,15 @@
 //   rund     K am Rand (Kante aus): Knick quer über den Rand
 //   ⌘Z ⌘Z    führt zum losen Stand zurück
 // Aufruf aus apps/editor: GPU=1 node scripts/pruefen/form-donut-fenster.mjs
-//   KURVEN_URL (Standard http://localhost:5197/kurven.html?gewichte=geometrie)   TIEF=190   BILD=<pfad ohne Endung> (drei Bilder)
+//   KURVEN_URL (Standard http://localhost:5197/kurven.html?gewichte=geometrie)   BILD=<pfad ohne Endung> (vier Bilder)
+//   NAME=<gesicherte Form aus wesen/> statt der Kugel: Gezogen wird die Kreuzung zweier Ringe, die am weitesten von der Mitte liegt
+//   TIEF=<so weit wird gezogen> (Standard: bis 40 hinter die Mitte)   ZUGBLATT=front|top (in welchem Blatt gezogen wird)
 import { chromium } from '@playwright/test';
+import { geo, umgestuelpt } from './lib-umgestuelpt.mjs';
 
 const basis = process.env.KURVEN_URL ?? 'http://localhost:5197/kurven.html?gewichte=geometrie';
-const TIEF = Number(process.env.TIEF ?? 190);
+const NAME = process.env.NAME ?? '';
+const ZUGBLATT = process.env.ZUGBLATT === 'top' ? 'top' : 'front';
 const BILD = process.env.BILD ?? '';
 const browser = await chromium.launch({ args: process.env.GPU === '1' ? ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] : [] });
 const seite = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1 });
@@ -76,14 +80,17 @@ const ziehen = async (a, lid, i, weg, zoom = 0.5) => {
 };
 const zaehle = (klasse) => seite.evaluate((k) => document.querySelectorAll(`.blatt ${k}`).length, klasse);
 const status = () => seite.evaluate(() => document.querySelector('#status')?.textContent ?? '');
-/** der Punkt an der Seite: die Kreuzung zweier Ringe mit dem größten |z| (Loop, Index, Ort) */
-const seitenPunkt = async () => {
+/**
+ * Der Punkt an der Seite: die Kreuzung zweier Ringe mit dem größten |z| (Loop, Index, Ort); mit `kreuzung` genau diese (nach einem
+ * Zug liegt eine andere weiter außen)
+ */
+const seitenPunkt = async (kreuzung = null) => {
   const L = await K('loops');
   let p = null;
   for (const l of L) {
     if (l.art !== 'ring') continue;
     l.punkte.forEach((q, i) => {
-      if (q.kreuzung === null || q.sichtbar === false) return;
+      if (q.kreuzung === null || q.sichtbar === false || (kreuzung !== null && q.kreuzung !== kreuzung)) return;
       const andere = L.some((m) => m.id !== l.id && m.art === 'ring' && m.punkte.some((r) => r.kreuzung === q.kreuzung));
       if (andere && (!p || Math.abs(q.ref.z) > Math.abs(p.ref.z))) p = { l: l.id, i, ref: q.ref, kreuzung: q.kreuzung };
     });
@@ -92,6 +99,13 @@ const seitenPunkt = async () => {
 };
 /** die gezeigte Haut (jede Hälfte bis zur Mitte) als Fläche */
 const gezeigt = () => K('anzeige');
+/** schwarze Stellen im Fenster: Dreiecke der gezeigten Haut, deren Außenseite ins Innere zeigt (Zahl und Anteil der Fläche) */
+const schwarz = async () => {
+  const a = await gezeigt();
+  if (!a.lagen.every(Number.isFinite)) return 'nicht endlich';
+  const u = umgestuelpt(a.lagen, a.dreiecke, geo(a.lagen, a.dreiecke));
+  return `${u.zahl} Dreiecke (${z1(100 * u.anteil)} % der Fläche)`;
+};
 /** Abstand eines Punkts zu einem Dreieck (Ericson, Real-Time Collision Detection 5.1.5) */
 function punktDreieck(p, a, b, c) {
   const sub = (u, v) => [u[0] - v[0], u[1] - v[1], u[2] - v[2]];
@@ -161,37 +175,59 @@ const foto = async (name) => {
   await seite.screenshot({ path: `${BILD}-${name}.png` });
 };
 
-// ---------- von der Kugel an: zwei Ringe und die Mittellinie ----------
-await schneiden('seite', { x: -200, y: 0, z: 0 }, { x: 200, y: 0, z: 0 });
-await schneiden('front', { x: 0, y: 200, z: 0 }, { x: 0, y: -200, z: 0 });
-await schneiden('seite', { x: 10, y: 200, z: 0 }, { x: 10, y: -200, z: 0 });
-let L = await K('loops');
-ok('drei Loops', L.length === 3 && L.filter((l) => l.art === 'ring').length === 2 && L.some((l) => l.art === 'mitte') && L.every((l) => l.eingesetzt), L.map((l) => `${l.id} ${l.art}`).join(', '));
+let L;
+if (NAME) {
+  // ---------- eine gesicherte Form ----------
+  const text = await seite.evaluate((n) => window.__kurven.ablage.laden(n), NAME);
+  if (!text.startsWith('geladen')) {
+    console.log(text);
+    await browser.close();
+    process.exit(1);
+  }
+  await ruhig();
+  L = await K('loops');
+  console.log(`${NAME}: ${text.slice(0, 80)} · ${(await K('zeiten')).punkte} Punkte, ${L.length} Loops`);
+} else {
+  // ---------- von der Kugel an: zwei Ringe und die Mittellinie ----------
+  await schneiden('seite', { x: -200, y: 0, z: 0 }, { x: 200, y: 0, z: 0 });
+  await schneiden('front', { x: 0, y: 200, z: 0 }, { x: 0, y: -200, z: 0 });
+  await schneiden('seite', { x: 10, y: 200, z: 0 }, { x: 10, y: -200, z: 0 });
+  L = await K('loops');
+  ok('drei Loops', L.length === 3 && L.filter((l) => l.art === 'ring').length === 2 && L.some((l) => l.art === 'mitte') && L.every((l) => l.eingesetzt), L.map((l) => `${l.id} ${l.art}`).join(', '));
+}
+await foto('anfang');
+console.log(`     schwarz gezeigt am Anfang: ${await schwarz()}`);
+const loopsVorher = L.length;
+const umgVorher = await K('umgeschlagen');
 ok('vorher nichts an der Mitte', (await zaehle('.mitte-kreuz')) === 0 && (await zaehle('.kpunkt.hinter')) === 0);
 
 // ---------- lose: der Punkt an der Seite über die Mitte ----------
 let p = await seitenPunkt();
 const richtung = p.ref.z > 0 ? -1 : 1;
-await ziehen('front', p.l, p.i, [0, 0, richtung * TIEF]);
+const TIEF = Number(process.env.TIEF ?? Math.abs(p.ref.z) + 40);
+console.log(`     gezogen wird der Punkt bei (${z1(p.ref.x)}, ${z1(p.ref.y)}, ${z1(p.ref.z)}) um ${z1(TIEF)} über die Mitte`);
+await ziehen(ZUGBLATT, p.l, p.i, [0, 0, richtung * TIEF]);
 const kreuze = await zaehle('.mitte-kreuz');
 const markiert = await zaehle('.kpunkt.hinter');
 const st = await status();
-ok('lose: Punkte an den Kreuzungen mit der Mitte', kreuze === 12, `${kreuze} in den drei Blättern (je Blatt vier)`);
+ok('lose: Punkte an den Kreuzungen mit der Mitte', kreuze > 0 && kreuze % 3 === 0 && (NAME !== '' || kreuze === 12), `${kreuze} in den drei Blättern (je Blatt ${kreuze / 3})`);
 ok('lose: der gezogene Punkt ist markiert', markiert > 0 && st.includes('hinter der Mitte'), `${markiert} markierte Punkte gezeichnet; Status: „${st.slice(0, 70)}…“`);
-ok('lose: nichts umgeschlagen', (await K('umgeschlagen')) === 0 && (await K('symmetrie')) < 1e-6);
+ok('lose: nichts umgeschlagen', (await K('umgeschlagen')) <= umgVorher && (await K('symmetrie')) < 1e-6, `umgeschlagen ${await K('umgeschlagen')} (vorher ${umgVorher})`);
+console.log(`     schwarz gezeigt, lose: ${await schwarz()}`);
 await foto('lose');
 
 // ---------- zurück ----------
-p = await seitenPunkt();
-await ziehen('front', p.l, p.i, [0, 0, -richtung * TIEF]);
+const kz = p.kreuzung;
+p = await seitenPunkt(kz);
+await ziehen(ZUGBLATT, p.l, p.i, [0, 0, -richtung * TIEF]);
 ok('zurückgezogen: keine Punkte an der Mitte, kein Punkt markiert', (await zaehle('.mitte-kreuz')) === 0 && (await zaehle('.kpunkt.hinter')) === 0 && !(await status()).includes('hinter der Mitte'));
-ok('zurückgezogen: nichts umgeschlagen', (await K('umgeschlagen')) === 0);
+ok('zurückgezogen: nichts umgeschlagen', (await K('umgeschlagen')) <= umgVorher, `umgeschlagen ${await K('umgeschlagen')}`);
 
 // ---------- fest: wieder hinüber, den markierten Punkt löschen ----------
-p = await seitenPunkt();
-await ziehen('front', p.l, p.i, [0, 0, richtung * TIEF]);
+p = await seitenPunkt(kz);
+await ziehen(ZUGBLATT, p.l, p.i, [0, 0, richtung * TIEF]);
 const gewaehlt = await K('auswahl');
-p = await seitenPunkt();
+p = await seitenPunkt(kz);
 L = await K('loops');
 // (die Kreuzung ist ein Punkt beider Ringe: gewählt ist der des Rings, an dem gegriffen wurde)
 ok('der gezogene Punkt ist gewählt', gewaehlt.some((w) => w.i >= 0 && L.find((l) => l.id === w.l)?.punkte[w.i]?.kreuzung === p.kreuzung), JSON.stringify(gewaehlt));
@@ -208,14 +244,17 @@ const gesetzt = neben(danach, vorher);
 L = await K('loops');
 const rand = L.find((l) => l.art === 'mitte' && l.kante === true);
 ok('fest: Meldung', (await K('meldung')).includes('fest'), await K('meldung'));
-ok('fest: vier Linienstücke, zwei Loops der Mitte', L.filter((l) => l.art === 'ring').length === 4 && L.filter((l) => l.art === 'mitte').length === 2, L.map((l) => `${l.id} ${l.art}${l.kante ? ' Kante' : ''}`).join(', '));
-ok('fest: der Rand ist ein Loop mit Kante und vier Punkten an den Kreuzungen', !!rand && rand.punkte.length === 4 && rand.punkte.every((q) => q.kreuzung !== null) && rand.eingesetzt, rand ? `Loop ${rand.id}, ${rand.punkte.length} Punkte` : 'kein Rand');
+ok('fest: die geschnittenen Linien sind Stücke, dazu der Rand', L.length > loopsVorher && (NAME !== '' || (L.filter((l) => l.art === 'ring').length === 4 && L.filter((l) => l.art === 'mitte').length === 2)), L.map((l) => `${l.id} ${l.art}${l.kante ? ' Kante' : ''}`).join(', '));
+// (an jedem Punkt des Rands: mit welchem Loop er sich dort kreuzt)
+const partner = rand ? rand.punkte.map((q) => `(${z1(q.ref.x)}, ${z1(q.ref.y)}) mit ${L.filter((l) => l.id !== rand.id && l.punkte.some((r) => r.kreuzung === q.kreuzung)).map((l) => `${l.id} ${l.art}`).join('+') || 'keinem'}`) : [];
+ok('fest: der Rand ist ein Loop mit Kante und Punkten an den Kreuzungen', !!rand && rand.punkte.length === kreuze / 3 && rand.punkte.every((q) => q.kreuzung !== null) && rand.eingesetzt, rand ? `Loop ${rand.id}, ${rand.punkte.length} Punkte: ${partner.join('; ')}` : 'kein Rand');
 ok('fest: nichts mehr lose', (await zaehle('.mitte-kreuz')) === 0 && (await zaehle('.kpunkt.hinter')) === 0);
 ok('fest: der Rand ist gewählt', (await K('auswahl')).some((w) => rand && w.l === rand.id && w.i < 0));
-ok('fest: nichts umgeschlagen, spiegelgleich', (await K('umgeschlagen')) === 0 && (await K('symmetrie')) < 1e-6, `umgeschlagen ${await K('umgeschlagen')}, Symmetrie ${(await K('symmetrie')).toExponential(1)}`);
+ok('fest: nichts umgeschlagen, spiegelgleich', (await K('umgeschlagen')) <= umgVorher && (await K('symmetrie')) < 1e-6, `umgeschlagen ${await K('umgeschlagen')}, Symmetrie ${(await K('symmetrie')).toExponential(1)}`);
 const knickFest = rand ? await K('knick', rand.id) : [];
 console.log(`     die gezeigte Haut liegt gleich nach dem Löschen höchstens ${z2(sprung.max)} (im Mittel ${z2(sprung.mittel)}) neben der von vorher, nach dem Setzen ${z2(gesetzt.max)} (im Mittel ${z2(gesetzt.mittel)}); ${punkteVorher} → ${(await K('zeiten')).punkte} Punkte; Knick quer über den Rand im Mittel ${z1(mittel(knickFest))}°, größter ${z1(Math.max(0, ...knickFest))}°`);
 ok('fest: die Haut bleibt, wo sie gezeigt war', gesetzt.max < 12 && Number.isFinite(gesetzt.max), `höchstens ${z2(gesetzt.max)}`);
+console.log(`     schwarz gezeigt, fest: ${await schwarz()}`);
 await foto('fest');
 
 // ---------- rund: Kante aus am Rand ----------
@@ -226,8 +265,31 @@ const rund = L.find((l) => rand && l.id === rand.id);
 const knickRund = rund ? await K('knick', rund.id) : [];
 ok('rund: Kante aus', !!rund && rund.kante !== true && (await K('meldung')).includes('keine Kante'), await K('meldung'));
 ok('rund: der Rand ist glatt', knickRund.length > 0 && mittel(knickRund) < 0.5 * mittel(knickFest), `Knick quer über den Rand im Mittel ${z1(mittel(knickRund))}°, größter ${z1(Math.max(0, ...knickRund))}° (mit Kante ${z1(mittel(knickFest))}°)`);
-ok('rund: nichts umgeschlagen, spiegelgleich', (await K('umgeschlagen')) === 0 && (await K('symmetrie')) < 1e-6);
+ok('rund: nichts umgeschlagen, spiegelgleich', (await K('umgeschlagen')) <= umgVorher && (await K('symmetrie')) < 1e-6, `umgeschlagen ${await K('umgeschlagen')}`);
+console.log(`     schwarz gezeigt, rund: ${await schwarz()}`);
 await foto('rund');
+// danach lässt sich weiterziehen: ein Punkt des Rands (eine Kreuzung mit einem Linienstück) in der Seite nach außen, und zurück mit ⌘Z
+{
+  let q = null;
+  rund.punkte.forEach((r, i) => {
+    if (!q || r.ref.x > q.ref.x) q = { i, ref: r.ref };
+  });
+  const vor = (await K('zeiten')).punkte;
+  await ziehen('seite', rund.id, q.i, [20, 4, 0], 0.8);
+  L = await K('loops');
+  const nach = L.find((l) => l.id === rund.id);
+  const jetzt = nach?.punkte.reduce((a, r) => (!a || r.ref.x > a.ref.x ? r : a), null);
+  ok('weiterziehen: ein Punkt des Rands folgt der Maus und bleibt in der Mitte', !!jetzt && Math.abs(jetzt.ref.x - q.ref.x - 20) < 1.5 && Math.abs(jetzt.ref.z) < 1e-9, jetzt ? `von x = ${z1(q.ref.x)} nach ${z1(jetzt.ref.x)}, z = ${z2(jetzt.ref.z)}` : 'Rand fehlt');
+  ok('weiterziehen: nichts umgeschlagen, spiegelgleich, nichts lose', (await K('umgeschlagen')) <= umgVorher && (await K('symmetrie')) < 1e-6 && (await zaehle('.mitte-kreuz')) === 0, `umgeschlagen ${await K('umgeschlagen')}, ${vor} → ${(await K('zeiten')).punkte} Punkte; schwarz gezeigt: ${await schwarz()}`);
+  await foto('weitergezogen');
+  await seite.keyboard.press('Meta+z');
+  await ruhig();
+  // (die Auswahl nach ⌘Z ist die von vor dem Zug: der Rand als Ganzes, für K)
+  const wahl = await K('auswahl');
+  if (!wahl.some((w) => w.l === rund.id && w.i < 0)) {
+    console.log(`     (Auswahl nach ⌘Z: ${JSON.stringify(wahl)})`);
+  }
+}
 // und wieder an: kantig
 await seite.keyboard.press('k');
 await ruhig();
@@ -240,7 +302,7 @@ for (let i = 0; i < 3; i++) {
   await ruhig();
 }
 L = await K('loops');
-ok('⌘Z: wieder lose', L.length === 3 && (await zaehle('.mitte-kreuz')) === 12 && (await zaehle('.kpunkt.hinter')) > 0, `${L.length} Loops`);
+ok('⌘Z: wieder lose', L.length === loopsVorher && (await zaehle('.mitte-kreuz')) === kreuze && (await zaehle('.kpunkt.hinter')) > 0, `${L.length} Loops`);
 
 ok('keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));
 console.log(schlecht ? `${schlecht} Punkte FEHLEN` : 'alles gut');
