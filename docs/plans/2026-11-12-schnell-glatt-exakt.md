@@ -416,6 +416,22 @@ bleibt bis auf 1 bis 5 % (heute 6 bis 16 %), das Kriterium von 3 % ist an einzel
 genaues Werkzeug für fertige Haut, kein Ersatz für die heutige Rechnung. Zahlen und Bilder im Bericht, Abschnitt „Zweiter
 Beweis“. Offen ist Florians Entscheidung: weiter nach Plan, oder B als Schalter im Bau-Fenster ausprobieren.
 
+**B als Schalter im Bau-Fenster (13.11., Florian: „B ausprobieren“), vor dem Bauen festgelegt.** Nur im Bau-Fenster (5197,
+`claude/form-bau`); sein Fenster (5194) bleibt, wie es ist.
+
+- **Was er bekommt:** in `kurven.html` einen Schalter „Form halten“ (Knopf und Taste H, auch `&ziehen=direkt`). An: Ziehen an
+  Punkten und Griffen rechnet B (die Haut folgt den Linien direkt, nichts rundet neu, nach dem Loslassen wird nur verdichtet).
+  Aus: alles wie heute. Nur in der Grundform; die Pose bleibt, wie sie ist.
+- **Was gebaut wird:** B im Kern so, dass je Bild nichts neu zerlegt wird (Zeilen als feste Felder, Drehung der Normalen über
+  eine einmal zerlegte Matrix, wenige Schritte Nachführen je Bild); ein Löser `direkt` im `LoopZug`; im Fenster der Schalter,
+  das Vorbereiten nach jeder Änderung (damit das Greifen nicht wartet) und kein Setzen mit der heutigen Rechnung, solange der
+  Schalter an ist (auch nicht nach einem neuen Loop). Im Zug wird mit B nicht verfeinert, erst nach dem Loslassen.
+- **Sichtbare Probe** (ein Lauf im Bau-Fenster, `GPU=1`): „strange bird“ und „teat firefish“ laden; greifen, ohne zu ziehen
+  (Haut bewegt sich höchstens 0,05); die Hornspitze 70 hinauf und zurück (höchstens 0,05 neben der Haut davor); Abstand der
+  Bilder im Zug; nach dem Loslassen bewegt sich die Haut höchstens 0,18.
+- **Abbruch:** Bleibt ein Zug am Firefish im Mittel über 30 ms je Bild, oder sagt Florian, es fühle sich falsch an, kommt B
+  nicht weiter ins Fenster; der Code bleibt hinter dem Schalter liegen.
+
 ### A.4 Spiegelung (Schritt 4)
 
 - Die Haut der Basis ist die Hälfte z ≥ 0. Randpunkte liegen bei z = 0. In den Zeilen eines Randpunkts zählen die inneren
