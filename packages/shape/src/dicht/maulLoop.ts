@@ -121,7 +121,7 @@ export function maulAmLoop(
   h: Haut,
   l: Loop,
   ecke: number,
-  opt: { zelle: number; normalen?: Float64Array; wieVorher?: MaulAmLoop | null },
+  opt: { zelle: number; normalen?: Float64Array; wieVorher?: MaulAmLoop | null; kieferWieLippe?: boolean },
 ): MaulAmLoop | null {
   const { zelle } = opt;
   const alt = opt.wieVorher && opt.wieVorher.gewicht.length === h.n && opt.wieVorher.offen.length === h.tri.length / 3 ? opt.wieVorher : null;
@@ -188,8 +188,9 @@ export function maulAmLoop(
   const tmp: [number, number, number] = [0, 0, 0];
   // der Auslauf nach dem Abstand vom Mundwinkel (`hebel`): sonst knickte die Haut, wo der Kiefer weit vom Gelenk endet
   const hebel = (MAUL_WINKEL_MAX * Math.PI) / 180;
-  const unterFeld = alt ? null : kieferFeld(LD, M, kontur, zelle, true, hebel);
-  const schaedelFeld = alt ? null : kieferFeld(LU, M, kontur, zelle, false, hebel);
+  // `kieferWieLippe` (geformtes Maul): Jeder Kiefer reicht mindestens so weit unter seine Lippe, wie sie in der Seite lang ist
+  const unterFeld = alt ? null : kieferFeld(LD, M, kontur, zelle, true, hebel, opt.kieferWieLippe ? LD.S : 0);
+  const schaedelFeld = alt ? null : kieferFeld(LU, M, kontur, zelle, false, hebel, opt.kieferWieLippe ? LU.S : 0);
   const gewicht = alt ? alt.gewicht : new Float32Array(n);
   const gradient = alt ? alt.gradient : new Float32Array(2 * n);
   const gewichtOben = alt ? alt.gewichtOben : new Float32Array(n);
@@ -411,3 +412,142 @@ export function maulAmLoop(
     kantenOffen,
   };
 }
+
+/**
+ * Das geformte Maul (13.11.2026, Schritt 6, Etappe 2: Kieferknochen): Was der Ring umschließt, ist echte Haut (Gaumen und Boden,
+ * von Hand oder mit „Maul formen“ geformt). Nichts wird weggeschnitten, nichts eingesetzt. Gelenk (der Mundwinkel), Drehsinn, Lippen
+ * und die Gewichte außen sind die von `maulAmLoop`, nur reicht jeder Kiefer mindestens so weit, wie seine Lippe lang ist
+ * (`kieferWieLippe`). Innen laufen die Gewichte weich vom Boden zum Gaumen: An der Unterlippe dreht die Haut ganz mit dem
+ * Unterkiefer, an der Oberlippe gar nicht; dazwischen harmonisch über die Haut im Maul verteilt (jeder Punkt das Mittel seiner
+ * Nachbarn; die Mundwinkel liegen auf der Drehachse und zählen als ½), der Übergang in der Mitte der Tasche. Mit dem Schädel
+ * dreht innen, was mit dem Unterkiefer nicht dreht.
+ *
+ * Das Ergebnis hat die Gestalt von `maulAmLoop` (das Fenster und die Knochen der Pose rechnen damit weiter): `offen` ist überall 0,
+ * das Innere leer. `wieVorher`: wie dort (gleiche Haut: Die Gewichte gelten weiter).
+ */
+export function maulGeformtAmLoop(
+  h: Haut,
+  l: Loop,
+  ecke: number,
+  opt: { zelle: number; normalen?: Float64Array; wieVorher?: MaulAmLoop | null },
+): MaulAmLoop | null {
+  const T = h.tri.length / 3;
+  const alt = opt.wieVorher && opt.wieVorher.gewicht.length === h.n && opt.wieVorher.offen.length === T ? opt.wieVorher : null;
+  const m = maulAmLoop(h, l, ecke, { ...opt, wieVorher: alt, kieferWieLippe: true });
+  if (!m) return null;
+  if (!alt) {
+    // innen: Punkte, die nur in Dreiecken der umschlossenen Fläche liegen
+    const aussen = new Uint8Array(h.n);
+    for (let t = 0; t < T; t++) if (!m.offen[t]) for (let e = 0; e < 3; e++) aussen[h.tri[3 * t + e]!] = 1;
+    const innen: number[] = [];
+    for (let v = 0; v < h.n; v++) if (!aussen[v]) innen.push(v);
+    // Randwerte: die Lippen wie gesetzt (unten 1, oben 0), die Mundwinkel ½
+    const w = Float64Array.from(m.gewicht);
+    const v0 = l.proben[ecke]!.ecken[0];
+    for (const x of [v0, h.spiegel[v0]!]) if (x >= 0) w[x] = 0.5;
+    for (const v of innen) w[v] = 0.5;
+    for (let runde = 0; runde < 4000; runde++) {
+      let weit = 0;
+      for (const v of innen) {
+        const nb = h.nachbarn[v]!;
+        if (nb.length === 0) continue;
+        let s = 0;
+        for (const u of nb) s += w[u]!;
+        const neu = s / nb.length;
+        weit = Math.max(weit, Math.abs(neu - w[v]!));
+        w[v] = neu;
+      }
+      if (weit < 1e-6) break;
+    }
+    for (const v of innen) {
+      // Der Übergang liegt in der Mitte der Tasche (zwischen ¼ und ¾ des verteilten Werts): Nahe einer Lippe dreht die Haut ganz
+      // mit ihr, so bleibt ihr Knick an der Lippe beim Öffnen; gedehnt wird die Rückwand.
+      const t = Math.max(0, Math.min(1, (w[v]! - 0.25) / 0.5));
+      const x = t * t * (3 - 2 * t);
+      m.gewicht[v] = x;
+      m.gewichtOben[v] = 1 - x;
+      m.gradient[2 * v] = 0;
+      m.gradient[2 * v + 1] = 0;
+      m.gradientOben[2 * v] = 0;
+      m.gradientOben[2 * v + 1] = 0;
+    }
+    // Außen neben den Lippen: Die ersten drei Reihen der Haut gehen von der Lippe (ihr Gewicht) in das Feld über (harmonisch, wie
+    // innen). Das Feld allein kennt die Form nur als Raster in der Seite: An einer dünnen Kieferspitze liegen die Punkte vor dem
+    // Lippenanfang außerhalb des Rasters und bekämen 0, während die Lippe daneben ganz dreht (gemessen an Florians „maul
+    // handgemacht test“: ein Zacken an der Kieferspitze).
+    const ringPunkte = new Set<number>();
+    for (const p of l.proben) {
+      ringPunkte.add(p.ecken[0]);
+      const sp = h.spiegel[p.ecken[0]]!;
+      if (sp >= 0) ringPunkte.add(sp);
+    }
+    const reihe = new Int32Array(h.n).fill(-1);
+    let rand = [...ringPunkte];
+    for (const v of rand) reihe[v] = 0;
+    const kragen: number[] = [];
+    for (let r = 1; r <= 3; r++) {
+      const naechste: number[] = [];
+      for (const v of rand)
+        for (const u of h.nachbarn[v]!) {
+          if (reihe[u]! >= 0 || !aussen[u] || ringPunkte.has(u)) continue;
+          reihe[u] = r;
+          naechste.push(u);
+          kragen.push(u);
+        }
+      rand = naechste;
+    }
+    for (const [feld, wert] of [
+      [m.gewicht, 0.5],
+      [m.gewichtOben, 0.5],
+    ] as const) {
+      const g = Float64Array.from(feld);
+      for (const x of [v0, h.spiegel[v0]!]) if (x >= 0) g[x] = wert;
+      for (let runde = 0; runde < 4000; runde++) {
+        let weit = 0;
+        for (const v of kragen) {
+          const nb = h.nachbarn[v]!;
+          let sum = 0;
+          let zahl = 0;
+          // (Nachbarn im Maul zählen nicht: außen und innen hängen nur über die Lippe zusammen)
+          for (const u of nb) {
+            if (!aussen[u]) continue;
+            sum += g[u]!;
+            zahl++;
+          }
+          if (!zahl) continue;
+          const neu = sum / zahl;
+          weit = Math.max(weit, Math.abs(neu - g[v]!));
+          g[v] = neu;
+        }
+        if (weit < 1e-6) break;
+      }
+      for (const v of kragen) feld[v] = Math.max(0, Math.min(1, g[v]!));
+    }
+    for (const v of kragen) {
+      m.gradient[2 * v] = 0;
+      m.gradient[2 * v + 1] = 0;
+      m.gradientOben[2 * v] = 0;
+      m.gradientOben[2 * v + 1] = 0;
+    }
+    // genau spiegelgleich (das Verteilen läuft der Reihe nach durch die Punkte: Ein Paar unterschiede sich sonst um den Rest der
+    // letzten Runde, und die Pose wäre nicht mehr spiegelgleich)
+    for (const v of [...innen, ...kragen]) {
+      const sp = h.spiegel[v]!;
+      if (sp < 0 || sp <= v) continue;
+      for (const feld of [m.gewicht, m.gewichtOben]) {
+        const mittel = 0.5 * (feld[v]! + feld[sp]!);
+        feld[v] = mittel;
+        feld[sp] = mittel;
+      }
+    }
+  }
+  return {
+    ...m,
+    indizes: Uint32Array.from(h.tri),
+    innen: { positionen: new Float32Array(0), normalen: new Float32Array(0), indizes: new Uint32Array(0) },
+    innenUnten: new Uint8Array(0),
+    offen: alt ? alt.offen : new Uint8Array(T),
+    kantenOffen: alt ? alt.kantenOffen : new Set<number>(),
+  };
+}
+

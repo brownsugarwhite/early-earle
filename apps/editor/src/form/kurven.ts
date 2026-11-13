@@ -90,6 +90,7 @@ import {
   maulFormenSchritte,
   mitteKreuzungen,
   maulAmLoop,
+  maulGeformtAmLoop,
   mittlereKante,
   mundwinkelProbe,
   pfadAbweichung,
@@ -983,9 +984,21 @@ function maulAktuell(): MaulAmLoop | null {
   const gleich = st !== null && st.haut === h && st.proben === l.proben && st.ecke === ecke;
   if (gleich && st.fp === fp) return st.m;
   const imZug = gleich && zug !== null && !grund;
-  const m = maulAmLoop(h, l, ecke, { zelle: MK / 2, wieVorher: imZug ? st.m : null });
+  const m = maulSchnitt(h, l, ecke, imZug ? st.m : null);
   maulStand = m ? { haut: h, proben: l.proben, ecke, fp: imZug ? st.fp : fp, m } : null;
   return m;
+}
+
+/** Das Maul der Pose ist ein geformtes (nichts wird weggeschnitten, es gibt kein eingesetztes Inneres zu zeigen) */
+const maulIstGeformt = (): boolean => !!maul && !!loops[loopNr(maul.id)]?.maulGeformt;
+
+/**
+ * Der Maulschnitt an einem Ring, nach seiner Art: Am geformten Maul (`maulGeformt`: Was der Ring umschließt, ist echte Haut) wird
+ * nichts weggeschnitten und nichts eingesetzt, die Knochen bekommen innen weiche Gewichte vom Boden zum Gaumen
+ * (`maulGeformtAmLoop`); an der schmalen Form bisher ist die umschlossene Fläche die Öffnung (`maulAmLoop`).
+ */
+function maulSchnitt(h: Haut, l: Loop, ecke: number, wieVorher: MaulAmLoop | null): MaulAmLoop | null {
+  return l.maulGeformt ? maulGeformtAmLoop(h, l, ecke, { zelle: MK / 2, wieVorher }) : maulAmLoop(h, l, ecke, { zelle: MK / 2, wieVorher });
 }
 
 /** Die gezeigten Dreiecke ohne die Öffnung (je Dreieck des Netzes eins in `anzeigeIndex`) */
@@ -1020,21 +1033,21 @@ function innenZeigen(): void {
 function maulAnlegen(): boolean {
   if (maul && loops[loopNr(maul.id)]?.art === 'ring') return true;
   const l = auswahl.map((w) => loops[loopNr(w.l)]).find((x) => x?.art === 'ring');
-  if (l?.maulGeformt) {
-    // (die Fressen-Pose schnitte dort die Fläche weg, die der Ring umschließt: Am geformten Maul sind das Gaumen und Boden)
-    meldung = 'Dieses Maul ist geformt: „Fressen“ und die Regler kommen dafür als Nächstes (Kieferknochen am geformten Maul)';
-    maul = null;
-    return false;
-  }
+  // Ein harter Ring ist ein geformtes Maul (von Hand oder mit „Maul formen“): Was er umschließt, sind Gaumen und Boden, echte Haut.
+  // Die Knochen schneiden dort nichts weg (Etappe 2, 13.11.; die schmale Form bisher ist eine weiche Linie auf geschlossener Haut).
+  if (l && !l.maulGeformt && l.kante && l.punkte.every((p) => p.kante !== false)) l.maulGeformt = true;
   if (!l) {
     meldung = 'Kein Maul: erst mit F eine schmale Form ums Maul zeichnen (vorn über den Umriss oder über die Mitte) und wählen';
     maul = null;
     return false;
   }
-  const s = l.s[mundwinkelProbe(l)]!;
-  const p = l.punkte.find((q) => Math.abs(q.s - s) < MK) ?? punktEinfuegen(l, s, undefined, exakt(l));
-  p.mundwinkel = true;
-  if (p.ecke === undefined) p.ecke = true;
+  // (ein geformtes Maul hat seinen Mundwinkel schon)
+  if (!l.punkte.some((q) => q.mundwinkel)) {
+    const s = l.s[mundwinkelProbe(l)]!;
+    const p = l.punkte.find((q) => Math.abs(q.s - s) < MK) ?? punktEinfuegen(l, s, undefined, exakt(l));
+    p.mundwinkel = true;
+    if (p.ecke === undefined) p.ecke = true;
+  }
   maul = { id: l.id };
   meldung = '';
   return true;
@@ -1418,7 +1431,8 @@ let normalenGezeigt: { haut: Haut; nor: Float64Array } | null = null;
 function hautZeigen(): void {
   const m = maulAktuell();
   maulGezeigt = null;
-  if (m && maul) {
+  // (am geformten Maul wird nichts weggeschnitten und nichts eingesetzt: Gaumen und Boden sind die Haut selbst)
+  if (m && maul && !maulIstGeformt()) {
     if (grund) {
       // das Innere aus der Ruhe der Pose geschnitten (die Gewichte der Grundform gelten weiter), dann mit den Knochen gedreht
       const k = poseKnochen();
@@ -2303,7 +2317,7 @@ function statusZeigen(): void {
       (letzteVerdichtung
         ? ` · verdichtet +${letzteVerdichtung.neu}${letzteVerdichtung.gelegt ? ` −${letzteVerdichtung.gelegt}` : ''} (${letzteVerdichtung.ms} ms)`
         : '') +
-      (maul ? (!maulGezeigt ? ' · Maul: Loop schneidet nicht (als Kette eingesetzt?)' : grund ? ` · Fressen: Maul ${pose.kiefer}°, Kopf ${pose.schaedel}°` : ' · Grundform') : '');
+      (maul ? (!maulGezeigt && !maulIstGeformt() ? ' · Maul: Loop schneidet nicht (als Kette eingesetzt?)' : grund ? ` · Fressen: Maul ${pose.kiefer}°, Kopf ${pose.schaedel}°` : ' · Grundform') : '');
 }
 
 // ---------- Ziehen und G/S/R ----------
@@ -5748,6 +5762,8 @@ if (BEHALTEN) behaltenesHolen();
       /** ins Netz eingesetzt (jede Probe ein Punkt des Netzes); sonst liegt der Loop nur auf der Haut */
       eingesetzt: l.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2]),
       kante: l.kante ?? null,
+      /** das Maul an diesem Ring ist geformt (echte Haut im Maul) */
+      geformt: l.maulGeformt ?? false,
       ruhe: Array.from(l.ruhe),
       s: Array.from(l.s),
     })),

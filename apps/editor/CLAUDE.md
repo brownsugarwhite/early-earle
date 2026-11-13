@@ -52,12 +52,16 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Maullinie hart und trägt ihren Knick selbst (95° an den Lippen, 70° am Mundwinkel); keine Mittellinie, kein Punkt im Maul.
   Läuft schon eine Mittellinie durch beide Lippen, knickt stattdessen ihr Griff nach innen (zweite Fassung; `&maulWeg=mitte`
   legt sie zum Vergleich an). Kern: `maulFormen` und `maulFormenSchritte` (`maulFormen.ts`); das Fenster zeigt die Schritte
-  (`maulSchritt`, `&maulRunden=<n>`: Runden je Bild) und sperrt so lange die Eingaben. Der Ring trägt danach `maulGeformt`;
-  „Fressen“ und die Regler gibt es daran noch nicht (Meldung). Das Maul aus der schmalen Form mit eingesetztem Inneren
-  (`maulAmLoop`) besteht daneben weiter. Proben: `GPU=1 node scripts/pruefen/form-maul-formen-fenster.mjs` (Kugel),
+  (`maulSchritt`, `&maulRunden=<n>`: Runden je Bild) und sperrt so lange die Eingaben. Der Ring trägt danach `maulGeformt`.
+  Das Maul aus der schmalen Form mit eingesetztem Inneren (`maulAmLoop`) besteht daneben weiter. Proben: `GPU=1 node scripts/pruefen/form-maul-formen-fenster.mjs` (Kugel),
   `GPU=1 NAME=<Form> node scripts/pruefen/form-maul-formen-form.mjs` (eine gesicherte Form), `form-maul-einfach.ts` (Kern, zweite
   Fassung), `form-linien.ts` (eine gesicherte Form lesen), Tests `maulFormen.test.ts`, `kantenWinkel.test.ts`. Die erste
   Fassung (durchgestanzt, Querlinie) liegt in `90b98322`.
+- **Kieferknochen am geformten Maul** (Etappe 2, 13.11.; nur in `form-bau`): „Fressen“ und die Regler arbeiten an einem Ring
+  mit `maulGeformt` (ein harter Ring wird beim ersten „Fressen“ einer): Kern `maulGeformtAmLoop` (`maulLoop.ts`), im Fenster
+  `maulSchnitt`. Nichts wird weggeschnitten oder eingesetzt; der Kiefer reicht so weit unter die Lippe, wie sie lang ist; innen
+  weich vom Boden zum Gaumen. Proben: `form-kiefer-geformt.ts` (Kern, Bildblatt zu und offen), `GPU=1 [NAME=… RING=…] [ALT=1]
+  node scripts/pruefen/form-kiefer-fenster.mjs`.
 - **Linienbreiten** (13.11.): 3 Bildpunkte am Knick, ein halber an runden Punkten, dazwischen verjüngt (`haerteBei` im Kern;
   `baenderZeigen` mit Breite je Punkt, in den Blättern `kantenFlaeche` und die Klasse `kante-band`). Probe:
   `GPU=1 node scripts/pruefen/form-kante-verjuengung-fenster.mjs`.
@@ -153,6 +157,11 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Rechnung läuft auseinander.
 - Wer `LoopZug` ändert: Die Führungen stehen hinter den Loops der Form im Plan; `start` und `lagen` zeigen nur die Loops der
   Form. `loopStruktur` muss dieselben Bindungen sehen wie `LoopZug`, sonst passt eine fertige Zerlegung nicht.
+- Das Gewichtsfeld der Kiefer (`kieferFeld`) kennt die Form nur als Raster in der Seite: An dünnen Stellen (Kieferspitze)
+  liegt ein Punkt außerhalb und bekommt 0. Neben den Lippen deshalb über die Haut verteilen, nicht das Feld lesen. Und: Seine
+  Kieferdicke ist die Dicke der Form am Mundwinkel; sitzt der Mundwinkel an der Rückseite der Form, ist sie fast null.
+- Gewichte, die der Reihe nach über die Punkte verteilt werden, am Ende je Spiegelpaar mitteln (sonst ist die Pose nicht mehr
+  spiegelgleich).
 - Kern-Bilder (`blattSchreiben`) sind flach schattiert und übertreiben jede Unruhe; ob etwas ruhig aussieht, im Fenster ansehen
   (Unruhe messen: `form-kante-winkel.ts`, Knick zwischen Nachbardreiecken; Florians Modelle liegen gesichert bei 5,6° bis 6,3°,
   nach jedem Neurechnen bei rund 7°).

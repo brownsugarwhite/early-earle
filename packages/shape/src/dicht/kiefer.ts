@@ -1177,6 +1177,7 @@ export function dickeAmMundwinkel(L: Lippe, M: V2, kontur: Kontur, zelle: number
  * sondern mindestens so lang, wie die Haut dort beim größten Winkel wandert (1,5 × Abstand vom Mundwinkel × Winkel), höchstens
  * zwei Kieferdicken. Fest und kurz lag der Übergang auf einer Kugel mitten im Kinn, weit vom Gelenk: Das Kinn drehte ganz, der
  * Bauch dahinter gar nicht, und dazwischen knickte die Haut (gemessen bis 117°; die Falle vom 14.10.: Hebel × Gefälle × Winkel > 1).
+ * `dickeMin`: die Kieferdicke mindestens so groß (sonst die Dicke der Form am Mundwinkel).
  */
 export function kieferFeld(
   L: Lippe,
@@ -1185,6 +1186,7 @@ export function kieferFeld(
   zelle: number,
   unterkiefer: boolean,
   hebel?: number,
+  dickeMin = 0,
 ): (x: number, y: number, aus: [number, number, number]) => void {
   const rand = 3 * zelle;
   const seiteK = unterkiefer ? -L.oben : L.oben;
@@ -1209,7 +1211,11 @@ export function kieferFeld(
     const q = nahe(L, x, y);
     return { d: q.d, unten: q.sg === seiteK };
   });
-  const dicke = dickeAmMundwinkel(L, M, kontur, zelle, seiteK);
+  // `dickeMin` (geformtes Maul, 13.11.): Der Kiefer reicht mindestens so weit unter die Lippe. Sitzt der Mundwinkel dicht an der
+  // Rückseite der Form (Florians „simple_mouth_more simple“: eine Sichel), ist die Form dort dünn, der Kiefer aber das ganze
+  // untere Horn; mit der Dicke am Mundwinkel allein drehte nur ein schmaler Streifen unter der Lippe mit und stülpte sich über den
+  // Rest.
+  const dicke = Math.max(dickeAmMundwinkel(L, M, kontur, zelle, seiteK), dickeMin);
   const L0 = dicke;
   // Länge des Auslaufs: fest eine halbe Kieferdicke, mit `hebel` nach dem Abstand vom Mundwinkel (höchstens zwei Kieferdicken)
   const kurz = 0.5 * dicke;

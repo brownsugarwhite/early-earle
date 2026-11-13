@@ -948,7 +948,8 @@ export class LoopZug {
   private readonly richtungAus: { h: Haut; loops: readonly Loop[]; normalen: Float64Array } | null = null;
   /**
    * Linien, die ihren Knick selbst tragen (`kantenWinkel.ts`): je Linie die erste Reihe der Haut innen, als weiterer Loop hinter
-   * denen der Form gebunden; ihre Ziele werden vor jeder Runde neu gerechnet. Nur in der Rechnung der Grundform (`kurven`).
+   * denen der Form gebunden; ihre Ziele werden vor jeder Runde neu gerechnet. In der Grundform (`kurven`) und in der Pose
+   * (`gedaechtnis`), nicht mit `direkt`.
    */
   private readonly fuehrung: KnickFuehrung[] = [];
   private readonly h: Haut;
@@ -972,8 +973,9 @@ export class LoopZug {
       this.loeser = opt.direkt ?? new DirektLoeser(h, loops, this.plan, zieleAus(this.plan, this.start), hartePunkte(h, loops));
       return;
     }
-    // Linien mit vorgegebenem Knick: ihre erste Reihe innen wird mitgebunden (hinter den Loops der Form)
-    if (art === 'kurven') this.fuehrung = knickFuehrungen(h, loops);
+    // Linien mit vorgegebenem Knick: ihre erste Reihe innen wird mitgebunden (hinter den Loops der Form). Auch in der Pose
+    // (`gedaechtnis`): Dort ist die Haut mit den Knochen gedreht, der Knick wird an ihr gemessen, wie sie liegt.
+    this.fuehrung = knickFuehrungen(h, loops);
     const alle = mitFuehrung(loops, this.fuehrung);
     this.startFuehrung = this.fuehrung.map((f) => Float64Array.from(f.loop.ruhe));
     this.plan = bindungenAus(h, alle);

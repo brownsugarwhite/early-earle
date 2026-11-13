@@ -5,7 +5,7 @@ export { Kugeln, kugelRadien } from './kugeln';
 export { BREITE_MAX, type Kante3D, type KantenLinie, type KantenPunkt, kantenAnwenden, linieAbtasten } from './kanten';
 export { type DichtesNetz, type RundOptionen, type RundTeil, type RundeTeile, rundAusSeite, rundAusTeilen } from './rund';
 export { MAUL_WINKEL_MAX, type MaulLinie, type MaulPunkt, type MaulSchnitt, maulOeffnen, maulPunkt, maulSchneiden } from './maul';
-export { type MaulAmLoop, maulAmLoop, mundwinkelProbe } from './maulLoop';
+export { type MaulAmLoop, maulAmLoop, maulGeformtAmLoop, mundwinkelProbe } from './maulLoop';
 export { type Knochen, ergaenzen, innenPosieren, knochenDrehen, knochenWinkel } from './poseLoop';
 export { type Netzteil, type Spielnetz, backen, backenBereit, maulBacken } from './backen';
 export { type Pose, type PoseZiel, type PoseZug, RUHE, ZUG_MAX, posePunkt, poseWinkel, posieren } from './pose';

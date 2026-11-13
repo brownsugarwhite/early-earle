@@ -5,6 +5,8 @@ import { falten } from './kurvenFaelle';
 import { knickQuer, knickReihe, knickSoll } from './kantenWinkel';
 import { type Loop, LoopZug, formAusZeichnung, griffeAnlegen, griffeBei, istSichtbar, knickAm, loopAusSchnitt, mittlereKante, pfadLagen, punktEinfuegen } from './loops';
 import { type MaulGeformt, maulFormen, maulFormenSchritte } from './maulFormen';
+import { maulGeformtAmLoop } from './maulLoop';
+import { knochenDrehen, knochenWinkel } from './poseLoop';
 import { rundAusSeite } from './rund';
 import type { UmrissPunkt } from './umriss';
 
@@ -281,3 +283,62 @@ describe('Maul formen (wie von Hand: Lippen hart, an den Lippen knickt die Haut 
     expect(maulFormen(haut, [ohne], maul.id, { naechsteId: 3, naechsteKreuzung: 1 })).toHaveProperty('fehler');
   });
 });
+
+describe('Kieferknochen am geformten Maul (nichts wird geschnitten, nichts eingesetzt)', () => {
+  it('Gewichte: Unterlippe 1, Oberlippe 0, im Maul weich dazwischen; geöffnet bleibt der Knick an den Lippen, nichts schlägt zusätzlich um', () => {
+    const { haut, loops, maul } = maulKugel();
+    const r = maulFormen(haut, loops, maul.id, { naechsteId: 3, naechsteKreuzung: 1, verdichten: wieImFenster(haut) });
+    if ('fehler' in r) throw new Error(r.fehler);
+    const h = r.haut;
+    const L = r.loops.find((l) => l.id === maul.id)!;
+    const W = L.punkte.find((p) => p.mundwinkel)!;
+    let ecke = 1;
+    for (let j = 1; j < L.proben.length - 1; j++) if (Math.abs(L.s[j]! - W.s) < Math.abs(L.s[ecke]! - W.s)) ecke = j;
+    const m = maulGeformtAmLoop(h, L, ecke, { zelle: mittlereKante(h) / 2 })!;
+    expect(m).not.toBeNull();
+    // nichts weggeschnitten, nichts eingesetzt
+    expect(m.offen.every((x) => x === 0)).toBe(true);
+    expect(m.kantenOffen.size).toBe(0);
+    expect(m.innen.indizes.length).toBe(0);
+    expect(m.indizes.length).toBe(h.tri.length);
+    // die Lippen: unten ganz mit dem Unterkiefer, oben gar nicht (die Mundwinkel liegen auf der Achse)
+    const winkel = new Set([L.proben[ecke]!.ecken[0], h.spiegel[L.proben[ecke]!.ecken[0]]!]);
+    for (const v of m.lippeUnten) if (!winkel.has(v)) expect(m.gewicht[v]).toBe(1);
+    for (const v of m.lippeOben) if (!winkel.has(v)) expect(m.gewicht[v]).toBe(0);
+    // im Maul: zwischen 0 und 1, beides kommt vor, mit dem Schädel dreht der Rest; alles spiegelgleich
+    const R = knickReihe(h, L)!;
+    let klein = 1;
+    let gross = 0;
+    for (let v = 0; v < h.n; v++) {
+      expect(m.gewicht[v]).toBe(m.gewicht[h.spiegel[v]!]);
+      if (!R.innen[v]) continue;
+      expect(m.gewicht[v]).toBeGreaterThanOrEqual(0);
+      expect(m.gewicht[v]).toBeLessThanOrEqual(1);
+      expect(m.gewichtOben[v]! + m.gewicht[v]!).toBeCloseTo(1, 6);
+      klein = Math.min(klein, m.gewicht[v]!);
+      gross = Math.max(gross, m.gewicht[v]!);
+    }
+    expect(klein).toBeLessThan(0.05);
+    expect(gross).toBeGreaterThan(0.95);
+    // 30° geöffnet
+    const zu = schnitt(h, L);
+    const f0 = falten(h);
+    const offen: Haut = { ...h, pos: knochenDrehen(h.pos, knochenWinkel(m, { kiefer: 30, schaedel: 0 }), m.gelenk) };
+    const auf = schnitt(offen, L);
+    const f1 = falten(offen);
+    const vorn = (H: Haut): number => {
+      const a = lage(H.pos, L.proben[0]!.ecken[0]);
+      const b = lage(H.pos, L.proben[L.proben.length - 1]!.ecken[0]);
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    };
+    log(`Kiefer 30° (Kugel): Lippen vorn ${vorn(h).toFixed(1)} → ${vorn(offen).toFixed(1)}; Knick an den Lippen ${auf.knick.map((x) => x.toFixed(1)).join('° und ')}°; umgeschlagen ${f0.umgeklappt} → ${f1.umgeklappt}`);
+    expect(vorn(offen)).toBeGreaterThan(vorn(h) + 20);
+    auf.knick.forEach((k, i) => expect(Math.abs(k - zu.knick[i]!)).toBeLessThan(1));
+    expect(f1.umgeklappt).toBeLessThanOrEqual(f0.umgeklappt);
+    // dieselbe Haut noch einmal (wie im Zug): Die Gewichte gelten weiter
+    const m2 = maulGeformtAmLoop(h, L, ecke, { zelle: mittlereKante(h) / 2, wieVorher: m })!;
+    expect(m2.gewicht).toBe(m.gewicht);
+    expect(m2.offen.every((x) => x === 0)).toBe(true);
+  }, 120000);
+});
+

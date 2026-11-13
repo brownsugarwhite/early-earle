@@ -4,7 +4,7 @@
 //   2  „Maul formen“: Die Linie wird eine Kante und gibt ihren Knick vor (95° an den Lippen, 70° am Mundwinkel). Keine Linie und kein
 //      Punkt im Maul kommen dazu. Das Fenster zeigt das Formen in Schritten (nicht als Sprung). Geprüft: Zwischenbilder, Meldung,
 //      Zahl der Loops, die Angaben, der gemessene Knick, die Kugel hinter dem Maul, spiegelgleich, keine Fehler in der Konsole.
-//   3  „Fressen“ an der geformten Linie: eine Meldung statt der alten Anzeige-Fassung.
+//   3  „Fressen“ an der geformten Linie: Die Pose geht an, nichts wird weggeschnitten; wieder aus ist die Grundform wie davor.
 //   4  An der Unterlippe ziehen (ein gewöhnlicher Zug): Der Knick an den Lippen bleibt (jede Rechnung des Fensters hält ihn).
 //   5  K an der gewählten Maullinie: rund (die Linie gibt keinen Knick mehr vor); zurück mit ⌘Z.
 //   6  ⌘Z: die Form wie vor dem Formen.
@@ -126,11 +126,21 @@ ok('spiegelgleich', (await K('symmetrie')) < 1e-6, `Abweichung ${(await K('symme
 }
 if (BILD) await seite.screenshot({ path: `${BILD}-3-geformt.jpg`, type: 'jpeg', quality: 88 });
 
-// 3. „Fressen“ an der geformten Linie (sie ist nach dem Formen gewählt): Meldung
+// 3. „Fressen“ an der geformten Linie (sie ist nach dem Formen gewählt): Die Pose geht an, ohne dass etwas weggeschnitten wird;
+//    wieder aus ist die Grundform wie davor (ausführlich: `form-kiefer-fenster.mjs`)
 await seite.click('#knopf-pose');
-await seite.waitForTimeout(300);
-const m4 = await K('meldung');
-ok('„Fressen“ am geformten Maul: Meldung statt der alten Anzeige', /geformt/.test(m4) && !(await K('pose')).an, m4);
+await ruhig();
+{
+  const p = await K('pose');
+  const mz = await K('maul');
+  ok('„Fressen“ am geformten Maul: die Pose geht an, nichts wird weggeschnitten', p.an === true && (!mz || mz.geschnitten === false), `Unterkiefer ${p.kiefer}°; ${await K('meldung')}`);
+  await seite.click('#knopf-pose');
+  await ruhig();
+  const z = await K('lagen');
+  let rest = z.length === nach.lagen.length ? 0 : Infinity;
+  if (rest === 0) for (let i = 0; i < z.length; i++) rest = Math.max(rest, Math.abs(z[i] - nach.lagen[i]));
+  ok('„Fressen“ wieder aus: die Grundform wie davor', !(await K('pose')).an && rest < 1e-6, `Rest ${rest === Infinity ? 'andere Punktzahl' : rest.toExponential(1)}`);
+}
 
 // 4. ein gewöhnlicher Zug an der Unterlippe
 {
