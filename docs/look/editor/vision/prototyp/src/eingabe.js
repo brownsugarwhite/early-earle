@@ -39,7 +39,14 @@ export function eingabeAnbinden(app, el) {
   const stempel = (e) => (window.__filmZeit !== undefined ? window.__filmZeit : e.timeStamp || performance.now());
   function einerStart(id, x, y, typ, knopf, tE) {
     einer = { id, x0: x, y0: y, x, y, t0: jetzt(), tE: tE ?? jetzt(), typ, ziel: null, art: null, bewegt: false, knopf };
-    if (knopf === 2 || knopf === 1) einer.art = knopf === 2 ? 'drehen' : 'schwenken';
+    // Maus (Runde 2, Florian 13.11.: „mit der Maus nicht bedienbar“): rechte Taste zeichnet, mittlere schwenkt,
+    // links auf Leere oder Haut dreht (wie im Editor); Finger und Trackpad bleiben wie in Runde 1
+    if (typ === 'mouse' && knopf === 2) {
+      einer.ziel = app.treffer(x, y);
+      einer.bewegt = true;
+      einer.art = einer.ziel.sicht ? 'strich' : 'nichts';
+      if (einer.ziel.sicht) app.strichStart(einer.ziel, x, y);
+    } else if (knopf === 2 || knopf === 1) einer.art = knopf === 2 ? 'drehen' : 'schwenken';
   }
 
   function zweiStart() {
@@ -147,6 +154,8 @@ export function eingabeAnbinden(app, el) {
         if (a === 'punkt' || a === 'griff' || a === 'linie' || a === 'maul') {
           einer.art = 'zug';
           app.zugStart(einer.ziel, einer.x0, einer.y0);
+        } else if ((a === 'leer' || a === 'haut') && einer.typ === 'mouse') {
+          einer.art = 'drehen';
         } else if (a === 'leer' && LEERE_DREHT) {
           einer.art = 'drehen';
         } else if (a === 'haut' || a === 'leer') {

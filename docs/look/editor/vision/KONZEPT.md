@@ -169,3 +169,47 @@ node bau.mjs src/main.js dist/vision.html
 # Parameter: ?form=kugel|vogel|fisch|kaputt  ?layout=raum|blatt|seite|front|top  ?leere=drehen  ?ton=1  ?seife=0
 # Filme: node film.cjs raum aus.mp4 960 600 25 16
 ```
+
+---
+
+## Nachtrag 13.11.2026: Runde 2 nach Florians Rückmeldung
+
+Florian: „mit der Maus am Desktop nicht bedienbar … Ich hätte auch erwartet dass du das layout veränderst … Gerade sieht es halt
+aus wie vorher nur als raumecke … Bitte gib mir auch anständige fullscreenprototypen … vor allem mit maus und tastatur.“
+Plan: [`PLAN-2.md`](PLAN-2.md). Präsentation (Version 2): https://claude.ai/artifact/SahX9VLKYfxFbmhNPNs18f.
+
+**Grammatik, Maus zuerst** (alle drei gleich): links ziehen auf Leere oder Haut dreht (wie heute im Editor, mit Einrasten);
+links auf Punkt, Griff, Linie bearbeitet; Doppelklick auf eine Linie setzt einen Punkt, auf einen Punkt schaltet er Ecke ↔ glatt;
+rechts ziehen (oder ⌥ + links, oder P) zeichnet: quer = Loop, geschlossen = Form, Zickzack = weg; Rad zoomt, während eines Zugs
+stellt es den Einfluss ein; Mitte, Leertaste oder ⇧ + Leere schwenkt; 1/3/7/0, ⌘Z, ⇧⌘Z, ⌫, K, F, X (Röntgen), Esc, ?, Tab.
+iPad: Finger wie die linke Taste, Pencil zeichnet, zwei Finger zoomen und schwenken, zwei Finger tippen = zurück, drei = vor,
+lange drücken und ziehen = zeichnen. Eine Geistermaus führt beim Start Drehen, Ziehen, Schneiden und Zoom vor und stellt danach
+alles wieder her.
+
+**Drei Layouts** (je eine Vollbildseite, Quelle `prototyp/src/werkstatt/`):
+
+1. **Bullaugen**: eine Ansicht auf einem Drehteller mit Raststrichen alle 45°. Seite, Front, Top sind Bullaugen: in Ruhe klein
+   am Rand, jedes dort, wo seine Kamera steht (sie wandern beim Drehen mit); beim Zeigen auf einen Punkt kommen sie heran und
+   suchen sich einen Platz neben dem Wesen in ihrer Richtung (Bewertung nach Deckung des Umrisses). Einrasten = Dolly-Zoom in
+   die Parallelansicht. Bearbeiten auch im Bullauge.
+2. **Modellblatt**: Turnaround auf Papier, sieben Ansichten in einem Maßstab, alle bearbeitbar. Konstruktionslinien in
+   Non-Photo-Blau; der Punkt unter dem Zeiger oder in der Hand zieht seine Höhe durch alle Ansichten und seine Länge in die
+   Draufsicht. Drehen dreht alle Ansichten zugleich, das Blatt federt zurück. Das Blatt (Masken, Abstandsfeld, Kontur, Schatten,
+   Korn) wird nur neu gerechnet, wenn sich Form oder Lage ändern.
+3. **Drei Platten**: Seite Pink, Front Gelb, Top Blau als Risograph-Platten übereinander (multipliziert, Raster in eigenem
+   Winkel, Korn). Die Platte, an deren Linien man arbeitet, druckt kräftig. Passerkreuze schieben eine Platte entlang ihrer
+   gemeinsamen Achse; Tab legt alle nebeneinander (heutiges Layout) und wieder übereinander.
+
+**Geprüft** mit echten Mauszügen in Playwright (Chromium, Software-Grafik): Klick, ⇧-Klick, Doppelklick (Punkt setzen, Ecke),
+rechts ziehen (Schnitt mit Vorschau), Zickzack, ⌘Z, Rad, Leertaste; Finger, Pencil, Kneifen, zwei Finger tippen, lange drücken
+mit künstlichen Ereignissen. Nicht geprüft: iPad, Safari, Florians Mac, Bildrate.
+
+**Gelernt:** Bullaugen direkt am Zeiger und stark vergrößert decken das Wesen zu (jetzt: freier Platz, halbes Wesen im Bild).
+Ein Modellblatt, das in 45°-Schritten einrastet, zeigt breite Ansichten auf schmalen Plätzen (jetzt: federt zurück). Platten,
+die beim Überfahren sofort wechseln, flackern (jetzt: kurzes Verweilen oder Klick). Der Zähler für Doppelklicks muss nach einer
+Doppelklick-Handlung neu beginnen, sonst schaltet ein zweiter Doppelklick die Ecke gleich wieder zurück.
+
+**Empfehlung:** jede Variante zehn Minuten mit dem strange bird probieren. Erwartung: Modellblatt für Proportionen und
+Überblick, Bullaugen für die Arbeit an einer Stelle; nächster Schritt wäre beides zusammen (Modellblatt als Grundlayout,
+Doppelklick macht eine Ansicht groß, die anderen kommen als Bullaugen zum Zeiger). Die Raumecke aus Runde 1 ist jetzt auch mit
+der Maus bedienbar (links dreht, rechts zeichnet).

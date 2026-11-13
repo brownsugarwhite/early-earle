@@ -91,3 +91,57 @@ void main(){
   float m = 1.0 - uStaerke * (0.026 * korn + 0.016 * faser + 0.035 * wolke) - 0.06 * rand * uStaerke;
   gl_FragColor = vec4(vec3(m), 1.0);
 }`;
+
+// ---------- Drei Platten (Risograph) ----------
+// Körper einer Platte: Helligkeit (r) und Deckung (a)
+export const risoKoerperFS = /* glsl */ `
+precision highp float;
+varying vec3 vN; varying float vBew; varying float vMaul; varying vec3 vRuhe; varying float vTiefe; varying vec3 vW;
+void main(){
+  vec3 N = normalize(vN);
+  if (!gl_FrontFacing) N = -N;
+  vec3 L = normalize(vec3(-0.45, 0.8, 0.4));
+  float ndl = dot(N, L);
+  float hell = smoothstep(-0.55, 0.85, ndl);
+  hell = mix(hell, 0.15, smoothstep(0.4, 0.6, vMaul));
+  gl_FragColor = vec4(hell, vBew, 0.0, 1.0);
+}`;
+
+// Platte: Fläche als Tönung, Schatten als Rasterpunkte im Winkel der Platte, Umriss satt, Korn der Farbe.
+// Ausgabe wird multipliziert (wie Farbe auf Papier): Weiß = keine Farbe.
+export const platteFS = /* glsl */ `
+precision highp float;
+uniform sampler2D uKoerper; uniform vec2 uAufl; uniform vec3 uFarbe;
+uniform float uDichte, uWinkel, uZelle, uTon, uRand, uSaat;
+varying vec2 vUv;
+float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7)) + uSaat) * 43758.5453); }
+float wert(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(h(i), h(i + vec2(1.0, 0.0)), f.x), mix(h(i + vec2(0.0, 1.0)), h(i + vec2(1.0, 1.0)), f.x), f.y); }
+float deck(vec2 p){ return texture2D(uKoerper, p / uAufl).a; }
+void main(){
+  vec2 p = gl_FragCoord.xy;
+  vec4 k = texture2D(uKoerper, vUv);
+  float m = k.a;
+  // Umriss: ein Nachbar außen
+  float r = uRand;
+  float aussen = 0.0;
+  for (int i = 0; i < 8; i++) {
+    float w = float(i) * 0.7853982;
+    aussen = max(aussen, 1.0 - deck(p + vec2(cos(w), sin(w)) * r));
+  }
+  float rand = m * aussen;
+  // Raster: Punkte im Winkel der Platte, Größe nach Dunkelheit
+  float c = cos(uWinkel), s = sin(uWinkel);
+  vec2 q = mat2(c, -s, s, c) * p / uZelle;
+  vec2 f = fract(q) - 0.5;
+  float dunkel = clamp(1.0 - k.r, 0.0, 1.0);
+  float rp = sqrt(dunkel) * 0.66;
+  float fw = 0.9 / uZelle;
+  float punkt = 1.0 - smoothstep(rp - fw, rp + fw, length(f));
+  float dichte = m * max(uTon, punkt) ;
+  dichte = max(dichte, rand);
+  // Korn: ungleichmäßige Farbe, kleine Flecken
+  float korn = 0.82 + 0.28 * wert(p * 0.35) - 0.12 * step(0.985, h(floor(p * 0.5)));
+  dichte *= clamp(korn, 0.0, 1.0) * uDichte;
+  gl_FragColor = vec4(mix(vec3(1.0), uFarbe, clamp(dichte, 0.0, 1.0)), 1.0);
+}`;

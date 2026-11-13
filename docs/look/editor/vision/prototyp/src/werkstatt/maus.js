@@ -39,7 +39,7 @@ export function mausAnbinden(app, el) {
   const mods = (e) => ({ shift: !!e.shiftKey, alt: !!e.altKey, meta: !!(e.metaKey || e.ctrlKey) });
 
   function zielHolen(x, y) {
-    return app.layoutTreffer(x, y) || app.treffer(x, y);
+    return app.layoutTreffer(x, y) || app.treffer(x, y, { sofort: true });
   }
   const istDing = (a) => a === 'punkt' || a === 'griff' || a === 'linie' || a === 'maul';
 
@@ -196,7 +196,9 @@ export function mausAnbinden(app, el) {
       klicks.y = y;
       if (g.typ === 'mouse' && g.knopf !== 0) { /* rechts/mitte geklickt: nichts */ }
       else if (g.ziel && g.ziel.art === 'layout') app.layoutKlick(g.ziel, klicks.n, x, y, g.mod);
-      else app.klick(klicks.n >= 2 ? app.treffer(x, y) : g.ziel, klicks.n, x, y, g.mod);
+      else app.klick(klicks.n >= 2 ? app.treffer(x, y, { sofort: true }) : g.ziel, klicks.n, x, y, g.mod);
+      // nach einem Doppelklick beginnt das Zählen neu (der nächste Doppelklick ist eine eigene Handlung)
+      if (klicks.n >= 2) klicks.n = 0;
     }
     schwebe = [x, y];
     schwebeNeu = true;

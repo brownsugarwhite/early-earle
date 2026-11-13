@@ -32979,6 +32979,7 @@ uniform sampler2D uFeldA, uFeldB, uKoerper, uMaske; // A: Grundform, B: Pose (od
 uniform vec2 uAufl; uniform float uPx; // Bildpunkte je Einheit Kontur (Zoom)
 uniform vec3 uGrund, uPetrol, uRosa, uLila;
 uniform float uKontur, uPasser, uSchatten, uHinten, uPose;
+uniform float uSchattenLang; // gr\xF6\xDFte L\xE4nge des langen Schattens (Bildpunkte)
 varying vec2 vUv;
 float abstand(sampler2D f, vec2 p){
   vec2 s = texture2D(f, p / uAufl).xy;
@@ -33004,9 +33005,9 @@ void main(){
     for (int i = 0; i < 40; i++) {
       vec2 q = p + dir * t;
       float d = abstand(uFeldA, q) - K;
-      if (d < 0.5) { sch = 1.0; break; }
+      if (d < 0.5) { sch = 1.0 - smoothstep(uSchattenLang * 0.55, uSchattenLang, t); break; }
       t += max(d, 1.0);
-      if (t > 4000.0) break;
+      if (t > uSchattenLang) break;
     }
   }
   vec3 grund = uGrund;
@@ -33071,13 +33072,13 @@ void main(){
     /* glsl */
     `
 attribute vec3 mitte; attribute float groesse; attribute float zustand; attribute vec2 ecke;
-uniform vec2 uAufl;
+uniform vec2 uAufl; uniform float uSkala;
 varying vec2 vE; varying float vZustand; varying float vGr;
 void main(){
   vec4 a = projectionMatrix * viewMatrix * vec4(mitte, 1.0);
-  vec2 s = a.xy / a.w + ecke * groesse / (uAufl * 0.5);
+  vec2 s = a.xy / a.w + ecke * groesse * uSkala / (uAufl * 0.5);
   gl_Position = vec4(s * a.w, a.z - 0.0015 * a.w, a.w);
-  vE = ecke; vZustand = zustand; vGr = groesse;
+  vE = ecke; vZustand = zustand; vGr = groesse * uSkala;
 }`
   );
   var punktFS = (
@@ -33085,9 +33086,16 @@ void main(){
     `
 precision highp float;
 uniform vec3 uFarbe, uWahl, uHell; uniform float uZeit;
+uniform vec3 uLampe; // Taschenlampe: Bildpunkt x, y und Halbmesser (0 = aus); au\xDFerhalb nur ein Hauch
+uniform float uDeck; // Deckkraft aller Punkte (1 = voll)
 varying vec2 vE; varying float vZustand; varying float vGr;
 void main(){
   float r = length(vE);
+  float lampe = 1.0;
+  if (uLampe.z > 0.0 && (vZustand < 0.5 || (vZustand > 4.5 && vZustand < 5.5))) {
+    float d = distance(gl_FragCoord.xy, uLampe.xy);
+    lampe = mix(0.16, 1.0, 1.0 - smoothstep(uLampe.z * 0.45, uLampe.z, d));
+  }
   float aa = 1.5 / max(vGr, 1.0);
   // 0 Punkt, 1 N\xE4he, 2 gew\xE4hlt, 3 Griffspitze, 4 Perle (neuer Punkt), 5 Zwilling, 6 verweigert
   vec3 c; float a;
@@ -33106,6 +33114,7 @@ void main(){
     if (vZustand > 4.5 && vZustand < 5.5) c = mix(uHell, uWahl * 0.8 + 0.2, kern);
     a = saum;
   }
+  a *= lampe * uDeck;
   if (a < 0.02) discard;
   gl_FragColor = vec4(c, a);
 }`
@@ -33210,6 +33219,7 @@ void main(){
       r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       this.r = r;
       this.zeit = 0;
+      this.skala = 1;
       this.vollKamera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
       this.vollGeo = new PlaneGeometry(2, 2);
       this.ziele = /* @__PURE__ */ new Map();
@@ -33276,7 +33286,8 @@ void main(){
           uPasser: { value: 0.016 },
           uSchatten: { value: 0.36 },
           uHinten: { value: 0 },
-          uPose: { value: 0 }
+          uPose: { value: 0 },
+          uSchattenLang: { value: 4e3 }
         },
         depthTest: false,
         depthWrite: false
@@ -33313,7 +33324,7 @@ void main(){
       this.punktMat = new ShaderMaterial({
         vertexShader: punktVS,
         fragmentShader: punktFS,
-        uniforms: { uAufl: this.U.uAufl, uZeit: this.U.uZeit, uFarbe: { value: farbe("petrol") }, uWahl: { value: farbe("lila") }, uHell: { value: new Vector3(1, 1, 1) } },
+        uniforms: { uAufl: this.U.uAufl, uZeit: this.U.uZeit, uFarbe: { value: farbe("petrol") }, uWahl: { value: farbe("lila") }, uHell: { value: new Vector3(1, 1, 1) }, uLampe: { value: new Vector3(0, 0, 0) }, uSkala: { value: 1 }, uDeck: { value: 1 } },
         transparent: true,
         depthWrite: false,
         depthTest: true
@@ -33414,6 +33425,7 @@ void main(){
       this.netz = netz;
     }
     netzAktualisieren() {
+      this.netzVersion = (this.netzVersion || 0) + 1;
       const g = this.koerper.geometry;
       g.attributes.position.needsUpdate = true;
       g.attributes.normal.needsUpdate = true;
@@ -33591,7 +33603,7 @@ void main(){
       U.uAufl.value.set(w, h);
       U.uPx.value = sicht.px;
       U.uHinten.value = sicht.hinten ? 1 : 0;
-      U.uGrund.value.set(...sicht.hinten ? rgb("grundHinten") : rgb("grund"));
+      U.uGrund.value.set(...sicht.grund || (sicht.hinten ? rgb("grundHinten") : rgb("grund")));
       if (ziel) {
         this.voll(this.illu, ziel, w, h);
       } else {
@@ -33616,12 +33628,18 @@ void main(){
       r.clearDepth();
       this.koerper.material = this.nurTiefe;
       r.render(this.szeneKoerper, kam);
-      this.linieSicht.uniforms.uBreite.value = 1.3;
-      this.linieVerdeckt.uniforms.uBreite.value = 1.3;
+      this.breiten(1.3);
       this.linienFarben("papier");
       if (ueberlagern) ueberlagern(kam, w, h);
-      r.render(this.szeneLinien, kam);
+      if (!sicht.ohneLinien) r.render(this.szeneLinien, kam);
       r.setScissorTest(false);
+    }
+    breiten(b) {
+      for (const m of [this.linieSicht, this.linieVerdeckt]) {
+        m.uniforms.uBreite.value = b * this.skala;
+        m.uniforms.uBreiteKante.value = 3.6 * this.skala;
+      }
+      this.punktMat.uniforms.uSkala.value = this.skala;
     }
     linienFarben(art) {
       const papier = art === "papier";
@@ -33649,8 +33667,7 @@ void main(){
       r.clearDepth();
       this.koerper.material = this.jelly;
       this.jelly.uniforms.uKamera.value.copy(kam.position);
-      this.linieSicht.uniforms.uBreite.value = 1.7;
-      this.linieVerdeckt.uniforms.uBreite.value = 1.7;
+      this.breiten(1.7);
       if (opt.geister) for (const g of opt.geister) g(kam);
       r.render(this.szeneKoerper, kam);
       this.linienFarben("jelly");
@@ -34301,7 +34318,7 @@ void main(){
       if (!sicht) return { art: "nichts" };
       const r = opt.radius || (istTouch ? 24 : 11);
       const roentgen = !!this.linse && Math.hypot(x - this.linse.x, y - this.linse.y) < this.linse.r;
-      for (const id of this.auswahl) {
+      for (const id of this.auswahl.size > 6 ? [] : this.auswahl) {
         const q = this.punktMitId(id);
         if (!q) continue;
         for (const w of ["ein", "aus"]) {
@@ -35770,7 +35787,12 @@ void main(){
     const stempel = (e) => window.__filmZeit !== void 0 ? window.__filmZeit : e.timeStamp || performance.now();
     function einerStart(id, x, y, typ, knopf, tE) {
       einer = { id, x0: x, y0: y, x, y, t0: jetzt(), tE: tE ?? jetzt(), typ, ziel: null, art: null, bewegt: false, knopf };
-      if (knopf === 2 || knopf === 1) einer.art = knopf === 2 ? "drehen" : "schwenken";
+      if (typ === "mouse" && knopf === 2) {
+        einer.ziel = app2.treffer(x, y);
+        einer.bewegt = true;
+        einer.art = einer.ziel.sicht ? "strich" : "nichts";
+        if (einer.ziel.sicht) app2.strichStart(einer.ziel, x, y);
+      } else if (knopf === 2 || knopf === 1) einer.art = knopf === 2 ? "drehen" : "schwenken";
     }
     function zweiStart() {
       const ids = [...zeiger.keys()].slice(0, 2);
@@ -35884,6 +35906,8 @@ void main(){
           if (a === "punkt" || a === "griff" || a === "linie" || a === "maul") {
             einer.art = "zug";
             app2.zugStart(einer.ziel, einer.x0, einer.y0);
+          } else if ((a === "leer" || a === "haut") && einer.typ === "mouse") {
+            einer.art = "drehen";
           } else if (a === "leer" && LEERE_DREHT) {
             einer.art = "drehen";
           } else if (a === "haut" || a === "leer") {

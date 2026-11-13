@@ -330,6 +330,7 @@ export const punktFS = /* glsl */ `
 precision highp float;
 uniform vec3 uFarbe, uWahl, uHell; uniform float uZeit;
 uniform vec3 uLampe; // Taschenlampe: Bildpunkt x, y und Halbmesser (0 = aus); außerhalb nur ein Hauch
+uniform float uDeck; // Deckkraft aller Punkte (1 = voll)
 varying vec2 vE; varying float vZustand; varying float vGr;
 void main(){
   float r = length(vE);
@@ -356,7 +357,7 @@ void main(){
     if (vZustand > 4.5 && vZustand < 5.5) c = mix(uHell, uWahl * 0.8 + 0.2, kern);
     a = saum;
   }
-  a *= lampe;
+  a *= lampe * uDeck;
   if (a < 0.02) discard;
   gl_FragColor = vec4(c, a);
 }`;

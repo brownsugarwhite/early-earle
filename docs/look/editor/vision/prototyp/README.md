@@ -4,7 +4,34 @@ Lauffähige Vision des Kurven-Editors: Raum, Blatt und Blick mit Faltung, eine G
 Beschriftung. Konzept: [`../KONZEPT.md`](../KONZEPT.md), Recherche: [`../RECHERCHE.md`](../RECHERCHE.md), Präsentation:
 https://claude.ai/artifact/SahX9VLKYfxFbmhNPNs18f (Prototyp darin als `vision.html`, Einstellungen über den Anker).
 
-## Bauen und Starten
+## Runde 2 (13.11.2026): drei Vollbild-Prototypen, Maus zuerst
+
+| Seite | Einstieg | Idee |
+|---|---|---|
+| `dist/bullaugen.html` | `src/einstieg/bullaugen.js` | eine große Ansicht auf dem Drehteller; Seite, Front, Top als Bullaugen, die zum Punkt unter dem Zeiger kommen |
+| `dist/modellblatt.html` | `src/einstieg/modellblatt.js` | Turnaround auf Papier (Front, ¾, Seite, ¾ hinten, Rücken, Draufsicht, zwei Farbansichten), Konstruktionslinien |
+| `dist/platten.html` | `src/einstieg/platten.js` | Seite, Front, Top als Risograph-Platten übereinander; Passerkreuze, Tab legt sie nebeneinander |
+
+```bash
+node bau.mjs src/einstieg/bullaugen.js dist/bullaugen.html "Bullaugen"
+node bau.mjs src/einstieg/modellblatt.js dist/modellblatt.html "Modellblatt"
+node bau.mjs src/einstieg/platten.js dist/platten.html "Drei Platten"
+node pruefe.cjs dist/bullaugen.html <ordner> <schritte.js>      # Prüfbilder mit echten Mauszügen (Filmuhr)
+node film2.cjs dist/bullaugen.html start <film.mp4> 1280 800     # Film der Geistermaus-Vorführung
+```
+
+Die Form ist `vogel` (strange bird), sonst `#kugel`, `#fisch`, `#kaputt`. `?geist=0` startet ohne Vorführung.
+
+| Datei | Inhalt |
+|---|---|
+| `src/werkstatt/basis.js` | Klasse `Werkstatt` (erbt `App`): Klicks wie im Editor, Schweben, Bildtakt, Überlagerung, Stand für die Vorführung |
+| `src/werkstatt/maus.js` | Grammatik: links auf Leere/Haut dreht, links auf Dingen bearbeitet, rechts/⌥/P zeichnet, Rad, Mitte/Leertaste, Tasten, iPad |
+| `src/werkstatt/zeiger.js`, `geist.js` | Zeiger als kleinste Zeichen; Geistermaus (Vorführung beim Start, `?`) und Filmuhr |
+| `src/werkstatt/sichten.js` | Parallelansicht aus jedem Winkel, Kamera mit Dolly-Zoom zur Parallelansicht |
+| `src/werkstatt/shader2.js` | Grund, Drehteller, Bullauge (Glas), Papierkorn, Risograph-Platte (Raster, Umriss, Korn) |
+| `src/werkstatt/bullaugen.js`, `modellblatt.js`, `platten.js` | die drei Layouts samt Drehbuch der Vorführung |
+
+## Bauen und Starten (Runde 1)
 
 ```bash
 npm i three@0.170.0 esbuild@0.24.0     # einmal (oder NODE_MODULES=<pfad> setzen)

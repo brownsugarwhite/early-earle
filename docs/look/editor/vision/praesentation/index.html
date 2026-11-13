@@ -4,427 +4,319 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;800&family=Instrument+Sans:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-  /* Layout: ein technisches Blatt im Dunkeln. Abschnitte sind Ansichten, getrennt durch Faltkanten; am Ende ein Schriftfeld.
-     Eine einzige Welt (dunkel wie die Fenster der Blaupause), deshalb ohne hellen Gegenentwurf. */
+  /* Layout: ein Werkstattheft, im Risograph gedruckt. Drei Bögen, jeder in den Farben seines Prototyps; Passerkreuze statt
+     Rahmen. Bewusst eine einzige helle Welt (Papier), deshalb ohne dunklen Gegenentwurf. */
   :root {
-    --tinte: #17131b;
-    --tinte-2: #1f1925;
-    --raum: #0a1c25;
-    --papier: #f3eff8;
-    --grau: #a59db1;
-    --linie: #3b3346;
+    --papier: #f4f2ed;
+    --papier-2: #ebe7df;
+    --tinte: #1c1a21;
+    --grau: #66616e;
+    --haar: #d6d0c5;
+    --pink: #ff3e9a;
+    --blau: #0078bf;
+    --gelb: #ffd800;
+    --tiefe: #0a1c25;
     --jelly: #3bfcf2;
-    --rosa: #ff72a9;
-    --lila: #936ffb;
-    --flieder: #d4b3f5;
+    --nonphoto: #5fb4dc;
+    --petrol: #003f4e;
+    --magenta-tinte: #b0005e;
     --f-display: 'Unbounded', 'Arial Black', 'Helvetica Neue', sans-serif;
     --f-text: 'Instrument Sans', 'Helvetica Neue', Arial, sans-serif;
     --f-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
     --s-1: 0.8125rem;
     --s0: 1.0625rem;
     --s1: 1.3rem;
-    --s2: clamp(1.6rem, 4.2vw, 2.35rem);
-    --s3: clamp(2.4rem, 9vw, 5.6rem);
-    color-scheme: dark;
+    --s2: clamp(1.7rem, 4.4vw, 2.6rem);
+    --s3: clamp(2.5rem, 9.6vw, 6.2rem);
+    color-scheme: light;
   }
-  html { background: var(--tinte); }
+  html { background: var(--papier); }
   body {
-    background: var(--tinte);
-    color: var(--papier);
+    background: var(--papier);
+    color: var(--tinte);
     font: 400 var(--s0)/1.55 var(--f-text);
     padding-left: max(16px, env(safe-area-inset-left, 0px));
     padding-right: max(16px, env(safe-area-inset-right, 0px));
     -webkit-font-smoothing: antialiased;
   }
-  .blatt { max-width: 1120px; margin: 0 auto; display: grid; gap: 0; padding-block: 28px 64px; }
-  h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; line-height: 1.08; }
-  h2 { font-size: var(--s2); font-weight: 800; letter-spacing: -0.01em; }
+  .heft { max-width: 1180px; margin: 0 auto; display: grid; gap: 0; padding-block: 28px 72px; }
+  h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; line-height: 1.06; }
+  h2 { font-size: var(--s2); font-weight: 800; letter-spacing: -0.015em; }
   h3 { font-size: var(--s1); font-weight: 500; }
-  p { margin: 0; max-width: 62ch; }
-  a { color: var(--flieder); text-underline-offset: 3px; }
-  a:focus-visible, button:focus-visible { outline: 2px solid var(--jelly); outline-offset: 3px; border-radius: 4px; }
-  .mono { font-family: var(--f-mono); font-size: var(--s-1); letter-spacing: 0.04em; color: var(--grau); }
+  p { margin: 0; max-width: 64ch; }
+  a { color: var(--blau); text-underline-offset: 3px; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--pink); outline-offset: 3px; border-radius: 4px; }
+  .mono { font-family: var(--f-mono); font-size: var(--s-1); letter-spacing: 0.03em; color: var(--grau); }
   .klein { font-size: var(--s-1); color: var(--grau); }
-
-  /* Kopf */
-  .kopf { display: grid; gap: 22px; padding-block: 18px 34px; }
-  .kopf .zeile { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
-  .titel {
-    font-size: var(--s3); font-weight: 800; letter-spacing: -0.03em; line-height: 0.95;
-    /* Passer: zwei Farbplatten, leicht versetzt (die Sprache der Blaupause) */
-    text-shadow: 0.045em 0.04em 0 var(--rosa), -0.04em -0.035em 0 var(--lila);
-  }
-  .satz { font-size: var(--s1); line-height: 1.45; max-width: 46ch; color: var(--papier); }
-  .satz em { font-style: normal; color: var(--jelly); }
-
-  .buehne { position: relative; border-radius: 6px; overflow: hidden; background: var(--raum); aspect-ratio: 16 / 10; max-width: 100%; }
-  .buehne video, .buehne img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .unter { display: flex; gap: 14px 22px; flex-wrap: wrap; align-items: baseline; margin-top: 10px; }
-
-  /* Faltkante zwischen den Abschnitten: gestrichelte Linie mit Scharnier-Marken */
-  .falz { height: 1px; margin-block: 56px 40px; background-image: linear-gradient(90deg, var(--linie) 50%, transparent 50%); background-size: 10px 1px; position: relative; }
-  .falz::before, .falz::after { content: ''; position: absolute; top: -5px; width: 1px; height: 11px; background: var(--grau); }
-  .falz::before { left: 0; } .falz::after { right: 0; }
-
-  section { display: grid; gap: 22px; }
   .eyebrow { font-family: var(--f-mono); font-size: var(--s-1); letter-spacing: 0.12em; text-transform: uppercase; color: var(--grau); }
+  section { display: grid; gap: 22px; }
 
-  .zwei { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 22px; align-items: start; }
+  /* Passerkreuz zwischen den Abschnitten: das Zeichen des Hefts */
+  .passer { position: relative; height: 1px; margin-block: 60px 40px; background: var(--haar); }
+  .passer::before {
+    content: ''; position: absolute; left: 50%; top: -11px; width: 22px; height: 22px; transform: translateX(-50%);
+    border-radius: 50%; border: 1px solid var(--tinte);
+    background:
+      linear-gradient(var(--tinte), var(--tinte)) center / 1px 100% no-repeat,
+      linear-gradient(var(--tinte), var(--tinte)) center / 100% 1px no-repeat,
+      var(--papier);
+  }
+
+  /* Kopf: der Titel als Überdruck dreier Platten (Gelb, Pink, Blau), leicht außer Passer */
+  .kopf { display: grid; gap: 26px; padding-block: 14px 8px; }
+  .kopf .zeile { display: flex; justify-content: space-between; align-items: baseline; gap: 12px 20px; flex-wrap: wrap; }
+  .titel { position: relative; font-size: var(--s3); font-weight: 800; letter-spacing: -0.035em; line-height: 0.92; isolation: isolate; overflow-wrap: anywhere; }
+  .titel .platte { display: block; mix-blend-mode: multiply; }
+  .titel .platte + .platte { position: absolute; inset: 0; }
+  .titel .p-gelb { color: var(--gelb); transform: translate(-0.025em, 0.05em); }
+  .titel .p-pink { color: var(--pink); transform: translate(0.035em, 0.025em); }
+  .titel .p-blau { color: var(--blau); }
+  .satz { font-size: var(--s1); line-height: 1.45; max-width: 52ch; }
+
+  /* Rückmeldung und Antwort */
+  .antworten { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 18px 28px; }
+  .antwort { display: grid; gap: 8px; align-content: start; min-width: 0; }
+  .antwort q { font-family: var(--f-mono); font-size: var(--s-1); color: var(--grau); quotes: '„' '“'; }
+
+  /* Bögen: Film links, Text rechts; schmal untereinander */
+  .bogen { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 26px 34px; align-items: start; }
+  @media (max-width: 860px) { .bogen { grid-template-columns: minmax(0, 1fr); } }
+  .bogen .film { position: relative; border-radius: 4px; overflow: hidden; aspect-ratio: 16 / 10; max-width: 100%; background: var(--papier-2); box-shadow: 0 1px 0 var(--haar), 0 18px 40px -26px rgba(28, 26, 33, 0.45); }
+  .bogen .film video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .bogen .text { display: grid; gap: 16px; min-width: 0; }
+  .bogen .name { display: flex; align-items: center; gap: 12px; }
+  .bogen .name h2 { color: var(--ink); }
+  .farbe { width: 30px; height: 30px; border-radius: 50%; flex: none; }
+  .bogen .leit { font-size: var(--s1); line-height: 1.38; }
+  .oeffnen {
+    display: inline-flex; align-items: center; gap: 10px; justify-self: start; padding: 13px 20px; border-radius: 999px;
+    background: var(--ink, var(--tinte)); color: var(--papier); font: 600 var(--s0)/1 var(--f-text); text-decoration: none;
+    transition: transform 160ms ease, box-shadow 160ms ease;
+  }
+  .oeffnen:hover { transform: translateY(-1px); box-shadow: 0 6px 18px -8px var(--ink, var(--tinte)); }
+  .oeffnen .pfeil { font-family: var(--f-mono); }
+  .wertung { display: grid; gap: 10px; }
+  .wertung div { display: grid; grid-template-columns: 4.4rem minmax(0, 1fr); gap: 10px; align-items: baseline; font-size: var(--s-1); line-height: 1.5; }
+  .wertung span:first-child { font-family: var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--grau); }
+  .schritte { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; font-size: var(--s-1); }
+  .schritte li { display: grid; grid-template-columns: 8rem minmax(0, 1fr); gap: 10px; }
+  .schritte li b { font-weight: 600; }
+  @media (max-width: 420px) { .schritte li { grid-template-columns: minmax(0, 1fr); gap: 0; } }
+  .b1 { --ink: var(--tiefe); }
+  .b1 .farbe { background: radial-gradient(circle at 36% 34%, var(--papier) 0 9%, var(--jelly) 10% 42%, var(--tiefe) 44%); box-shadow: inset 0 0 0 2px var(--nonphoto); }
+  .b2 { --ink: var(--petrol); }
+  .b2 .farbe { background: var(--papier); box-shadow: inset 0 0 0 2px var(--petrol), 0 0 0 4px var(--papier), 0 0 0 5px var(--nonphoto); }
+  .b3 { --ink: var(--magenta-tinte); }
+  .b3 .farbe { background: conic-gradient(var(--pink) 0 33%, var(--gelb) 0 66%, var(--blau) 0); }
+
+  /* Tafeln */
+  .tafel { overflow-x: auto; border-top: 1px solid var(--tinte); }
+  table { width: 100%; border-collapse: collapse; font-size: var(--s-1); line-height: 1.45; min-width: 640px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 14px 10px 0; border-bottom: 1px solid var(--haar); }
+  th { font-family: var(--f-mono); font-weight: 400; letter-spacing: 0.08em; text-transform: uppercase; color: var(--grau); }
+  td:first-child { font-weight: 600; }
+  kbd { font-family: var(--f-mono); font-size: 0.92em; padding: 1px 5px; border: 1px solid var(--haar); border-bottom-width: 2px; border-radius: 4px; background: var(--papier); white-space: nowrap; }
+
+  .liste { margin: 0; padding-left: 1.1em; display: grid; gap: 10px; max-width: 80ch; }
+  .zwei { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 22px 30px; align-items: start; }
   .zwei > * { min-width: 0; }
+  .stapel { display: grid; gap: 14px; align-content: start; }
   figure { margin: 0; display: grid; gap: 8px; }
-  figure img, figure video { width: 100%; height: auto; display: block; border-radius: 6px; background: var(--raum); }
-  figcaption { font-size: var(--s-1); color: var(--grau); line-height: 1.45; }
+  figure video { width: 100%; height: auto; display: block; border-radius: 4px; background: var(--tiefe); }
+  figcaption { font-size: var(--s-1); color: var(--grau); }
+  .empfehlung { border-left: 3px solid var(--pink); padding-left: 18px; display: grid; gap: 12px; }
+  .empfehlung p { font-size: var(--s1); line-height: 1.42; max-width: 60ch; }
 
-  .falten { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-  .falten figure { gap: 4px; }
-  @media (max-width: 640px) { .falten { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .schriftfeld { margin-top: 64px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); border-top: 1px solid var(--tinte); }
+  .schriftfeld div { display: grid; gap: 2px; padding: 10px 12px 10px 0; border-bottom: 1px solid var(--haar); min-width: 0; }
+  .schriftfeld span:first-child { font-family: var(--f-mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--grau); }
+  .schriftfeld span:last-child { font-size: var(--s-1); overflow-wrap: anywhere; }
 
-  /* Projektionssymbol (ISO 5456-2, Methode 1) */
-  .symbol { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
-  .symbol svg { flex: none; }
-
-  /* Drei Säulen */
-  .saeulen { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 26px; }
-  .saeule { display: grid; gap: 12px; align-content: start; min-width: 0; }
-  .saeule h3 { font-size: var(--s2); font-weight: 800; }
-  .saeule .regel { font-family: var(--f-display); font-weight: 500; font-size: 1.05rem; color: var(--jelly); }
-
-  /* Grammatik */
-  .gesten { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 12px; }
-  .geste { display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--linie); border-radius: 6px; background: var(--tinte-2); min-width: 0; }
-  .geste svg { width: 56px; height: 56px; }
-  .geste b { display: block; font-weight: 600; }
-  .geste span { font-size: var(--s-1); color: var(--grau); line-height: 1.4; display: block; }
-
-  /* Licht */
-  .lichter { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 18px; }
-
-  /* Ausprobieren */
-  .probe { display: grid; gap: 14px; }
-  .probe iframe { width: 100%; height: min(72vh, 620px); border: 0; border-radius: 6px; background: var(--raum); display: block; }
-  .startfeld { position: relative; border-radius: 6px; overflow: hidden; background: var(--raum); aspect-ratio: 16 / 10; max-width: 100%; display: grid; place-items: center; }
-  .startfeld img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.55; }
-  .knopf.gross { position: relative; font-size: 0.95rem; padding: 14px 20px; background: var(--tinte); border-color: var(--flieder); cursor: pointer; color: var(--papier); }
-  .knoepfe { display: flex; flex-wrap: wrap; gap: 8px; }
-  .knopf { font-family: var(--f-mono); font-size: var(--s-1); padding: 9px 12px; border: 1px solid var(--linie); border-radius: 999px; color: var(--papier); text-decoration: none; background: var(--tinte-2); }
-  .knopf:hover { border-color: var(--flieder); }
-
-  /* Andere Felder */
-  .felder { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 0 28px; }
-  .feld { display: grid; grid-template-columns: 7.5rem 1fr; gap: 12px; padding-block: 14px; border-top: 1px solid var(--linie); min-width: 0; }
-  .feld .mono { padding-top: 3px; }
-  .feld b { display: block; font-weight: 600; }
-  .feld span { color: var(--grau); font-size: 0.95rem; }
-
-  /* Blickwinkel */
-  .winkel { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 14px; }
-  .karte { padding: 16px; border: 1px solid var(--linie); border-radius: 6px; display: grid; gap: 8px; align-content: start; min-width: 0; }
-  .karte h3 { font-size: 1.05rem; }
-  .karte p { font-size: 0.95rem; color: var(--grau); }
-  .karte .gut { color: var(--papier); }
-  .karte .gut::before { content: '+ '; color: var(--jelly); font-family: var(--f-mono); }
-  .karte .haken::before { content: '− '; color: var(--rosa); font-family: var(--f-mono); }
-
-  .liste { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; max-width: 72ch; }
-  .liste li { padding-left: 1.4rem; position: relative; }
-  .liste li::before { content: ''; position: absolute; left: 0; top: 0.62em; width: 0.6rem; height: 1px; background: var(--grau); }
-
-  .fragen { counter-reset: f; display: grid; gap: 12px; padding: 0; margin: 0; list-style: none; }
-  .fragen li { counter-increment: f; display: grid; grid-template-columns: 2.2rem 1fr; gap: 10px; align-items: baseline; }
-  .fragen li::before { content: counter(f); font-family: var(--f-display); font-weight: 800; color: var(--jelly); font-size: 1.2rem; }
-
-  /* Schriftfeld wie auf einer Zeichnung */
-  .schriftfeld { margin-top: 64px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); border: 1px solid var(--linie); border-radius: 4px; }
-  .schriftfeld div { padding: 10px 12px; border-right: 1px solid var(--linie); border-bottom: 1px solid var(--linie); display: grid; gap: 2px; min-width: 0; }
-  .schriftfeld div span:first-child { font-family: var(--f-mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--grau); }
-  .schriftfeld div span:last-child { font-family: var(--f-mono); font-size: var(--s-1); color: var(--papier); overflow-wrap: anywhere; }
-
-  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+  @media (prefers-reduced-motion: reduce) { .oeffnen { transition: none; } }
 </style>
 
-<div class="blatt">
-
+<div class="heft">
   <header class="kopf">
     <div class="zeile">
-      <span class="mono">WESEN-EDITOR · VISION · 12.11.2026</span>
-      <span class="mono">PROJEKTIONSMETHODE 1</span>
+      <span class="eyebrow">Kurven im Raum · Runde 2 · 13.11.2026</span>
+      <span class="mono">drei Vollbild-Prototypen</span>
     </div>
-    <h1 class="titel">Kurven im Raum</h1>
-    <p class="satz">Das Wesen steht in einer Ecke aus Papier. Seine Schatten an den Wänden sind die Ansichten. <em>Eine Hand formt, zwei Finger schauen.</em> Was du tust, zeigt sich in Licht, nicht in Worten.</p>
-    <div>
-      <div class="buehne">
-        <video id="held" src="filme/vogel.mp4" poster="bilder/vogel_raum.jpg" muted loop playsinline autoplay preload="metadata"></video>
-      </div>
-      <div class="unter">
-        <span class="klein">Dein „strange bird“ im Raum: zwei Geisterfinger drehen, die Form rastet in der Seitenansicht ein und wird zu ihrem Schatten. Danach dreht der Raum wieder auf, und ein Kneifen faltet die Ecke zu deinem Blatt.</span>
-      </div>
-    </div>
+    <h1 class="titel" aria-label="Kurven-Werkstatt">
+      <span class="platte p-gelb" aria-hidden="true">Kurven-Werkstatt</span>
+      <span class="platte p-pink" aria-hidden="true">Kurven-Werkstatt</span>
+      <span class="platte p-blau" aria-hidden="true">Kurven-Werkstatt</span>
+    </h1>
+    <p class="satz">Drei neue Layouts für deinen Kurven-Editor, jedes eine eigene Seite über den ganzen Bildschirm. Zuerst für Maus und Tastatur gebaut, auf dem iPad mit Finger und Pencil.</p>
   </header>
 
-  <div class="falz" role="presentation"></div>
+  <div class="passer" role="presentation"></div>
 
-  <section aria-labelledby="fund">
-    <span class="eyebrow">Der Fund</span>
-    <h2 id="fund">Deine vier Fenster sind eine aufgeklappte Raumecke</h2>
-    <div class="zwei">
-      <div style="display:grid;gap:16px">
-        <p>Seite oben links, Front rechts daneben, Top darunter: Das ist exakt die europäische Projektionsmethode (ISO 5456-2, Methode 1). Bei ihr steht das Objekt zwischen dir und der Wand und wirft seine Ansicht nach hinten, wie einen Schatten.</p>
-        <p>Klappt man die drei Wände einer Raumecke flach, entsteht dein Blatt. Der Editor muss das nicht erklären. Er faltet es vor deinen Augen.</p>
-        <div class="symbol">
-          <svg width="96" height="46" viewBox="0 0 96 46" role="img" aria-label="Symbol der Projektionsmethode 1: Kegelstumpf, rechts daneben seine Ansicht als zwei Kreise">
-            <path d="M6 15 L44 6 L44 40 L6 31 Z" fill="none" stroke="#f3eff8" stroke-width="1.6"/>
-            <line x1="2" y1="23" x2="48" y2="23" stroke="#a59db1" stroke-width="0.8" stroke-dasharray="5 2 1 2"/>
-            <circle cx="72" cy="23" r="17" fill="none" stroke="#f3eff8" stroke-width="1.6"/>
-            <circle cx="72" cy="23" r="8" fill="none" stroke="#f3eff8" stroke-width="1.6"/>
-            <line x1="52" y1="23" x2="93" y2="23" stroke="#a59db1" stroke-width="0.8" stroke-dasharray="5 2 1 2"/>
-            <line x1="72" y1="3" x2="72" y2="43" stroke="#a59db1" stroke-width="0.8" stroke-dasharray="5 2 1 2"/>
-          </svg>
-          <span class="klein">Das Zeichen, das auf jeder solchen Zeichnung im Schriftfeld steht.</span>
-        </div>
-      </div>
-      <figure>
-        <img src="bilder/heute.jpg" alt="Der Editor heute: vier Fenster mit den Titeln Seite, Front, Top und 3D" loading="lazy">
-        <figcaption>Heute: vier Fenster mit Titeln, Knöpfen und je eigenem Zoom (/editor, 11.11.).</figcaption>
-      </figure>
-    </div>
-    <div class="falten">
-      <figure><img src="bilder/falten_0.jpg" alt="Raumecke, gefaltet" loading="lazy"><figcaption>Raum</figcaption></figure>
-      <figure><img src="bilder/falten_33.jpg" alt="Wände klappen auf" loading="lazy"><figcaption>die Wände klappen um ihre Kanten</figcaption></figure>
-      <figure><img src="bilder/falten_66.jpg" alt="fast flach" loading="lazy"><figcaption>die Form gleitet in ihre Ecke</figcaption></figure>
-      <figure><img src="bilder/falten_100.jpg" alt="Blatt mit vier Ansichten" loading="lazy"><figcaption>Blatt: ein Maßstab, keine Titel</figcaption></figure>
+  <section aria-labelledby="geaendert">
+    <span class="eyebrow">Deine Rückmeldung zu Runde 1</span>
+    <h2 id="geaendert">Was sich geändert hat</h2>
+    <div class="antworten">
+      <div class="antwort"><q>mit der Maus am Desktop nicht bedienbar</q><p>Links ziehen auf leerer Fläche oder auf dem Wesen dreht, wie heute im Editor. Die rechte Taste zeichnet, das Rad zoomt. Beim Start führt eine Geistermaus die Gesten einmal vor; <kbd>?</kbd> zeigt sie wieder.</p></div>
+      <div class="antwort"><q>erwartet, dass du das Layout veränderst</q><p>Keine vier Fenster mehr und keine Raumecke. Die Bullaugen holen die Ansichten zum Zeiger, das Modellblatt legt ein Turnaround an, die Drei Platten drucken die Ansichten übereinander.</p></div>
+      <div class="antwort"><q>anständige Fullscreenprototypen</q><p>Jede Variante ist eine eigene Seite über den ganzen Bildschirm und startet mit deinem strange bird.</p></div>
     </div>
   </section>
 
-  <div class="falz" role="presentation"></div>
+  <div class="passer" role="presentation"></div>
 
-  <section aria-labelledby="saeulen">
-    <span class="eyebrow">Das Konzept</span>
-    <h2 id="saeulen">Raum, Hand, Licht</h2>
-    <div class="saeulen">
-      <div class="saeule">
-        <h3>Raum</h3>
-        <p class="regel">Es gibt keine Fenster, nur einen Raum, der sich falten lässt.</p>
-        <p>Drei Zustände derselben Szene: <b>Raum</b> (das Jelly-Wesen vor seinen Schatten), <b>Blatt</b> (aufgefaltet, alle Ansichten in einem Maßstab), <b>Blick</b> (eine Ansicht groß). Dazwischen gibt es keine Knöpfe, nur Bewegung.</p>
-        <p>Fasst du einen Punkt, laufen Ordnungslinien zu seinen Bildern in den anderen Ansichten, im Raum senkrecht auf die Wände, auf dem Blatt über die 45°-Gehrung der Zeichner.</p>
-      </div>
-      <div class="saeule">
-        <h3>Hand</h3>
-        <p class="regel">Ein Finger macht. Zwei Finger schauen. Ein ruhender Finger hält.</p>
-        <p>Auf einem Ding formst du es, auf der Leere zeichnest du. Was ein Strich bedeutet, sagt seine Form: quer über den Körper ein Loop, geschlossen eine Form, Zickzack löscht, nachfahren tuscht.</p>
-        <p>Keine Werkzeugleiste, kein L, F, P oder O. Auf dem Mac gilt dieselbe Grammatik mit Maus und Trackpad, die Tasten bleiben als zweiter Weg.</p>
-      </div>
-      <div class="saeule">
-        <h3>Licht</h3>
-        <p class="regel">Dunkles Cockpit: Nichts leuchtet ohne Anlass.</p>
-        <p>Zu sehen sind das Wesen, seine Linien und Punkte. Alles andere erscheint, wenn es gebraucht wird: ein Lichtring als Vorschau des Loops, ein Zirkel für den Einfluss, Seifenhaut, wo die Haut sich neu findet, eine Röntgenlinse, der Passer für die Pose.</p>
-        <p>Jede Geste zeigt ihr Ergebnis, bevor du loslässt.</p>
+  <section class="bogen b1" aria-labelledby="bullaugen">
+    <div class="film"><video src="filme/bullaugen.mp4" poster="bilder/bullaugen.jpg" autoplay muted loop playsinline preload="metadata" aria-label="Film: Bullaugen, die Geistermaus führt vor"></video></div>
+    <div class="text">
+      <div class="name"><span class="farbe" aria-hidden="true"></span><h2 id="bullaugen">Bullaugen</h2></div>
+      <p class="leit">Eine große Ansicht. Die anderen kommen zu dir.</p>
+      <p>Das Wesen steht auf einem Drehteller und füllt den Bildschirm. Seite, Front und Top sind runde Bullaugen. In Ruhe liegen sie klein am Rand, jedes dort, wo seine Kamera steht; dreht man das Wesen, wandern sie mit. Zeigst du auf einen Punkt, schwimmen sie heran, setzen sich neben das Wesen und zeigen die Stelle aus ihrer Richtung. Im Bullauge arbeitest du wie in der großen Ansicht.</p>
+      <ul class="schritte">
+        <li><b>Leere ziehen</b><span>drehen; nahe einer Achse rastet es ein, und die Ansicht wird parallel</span></li>
+        <li><b>auf Punkt zeigen</b><span>die Bullaugen kommen; beim Ziehen zeigen sie den Punkt mit</span></li>
+        <li><b>Bullauge klicken</b><span>die Kamera fliegt auf seine Achse (<kbd>1</kbd> <kbd>3</kbd> <kbd>7</kbd>, zurück mit <kbd>0</kbd>)</span></li>
+      </ul>
+      <a class="oeffnen" href="bullaugen.html" target="_blank" rel="noopener">Vollbild öffnen <span class="pfeil" aria-hidden="true">↗</span></a>
+      <div class="wertung">
+        <div><span>Stark</span><span>Das Wesen hat den ganzen Bildschirm. Die anderen Ansichten erscheinen dort, wo du arbeitest, und ihre Lage zeigt ohne ein Wort, aus welcher Richtung sie schauen.</span></div>
+        <div><span>Schwach</span><span>Solange du an einer Stelle arbeitest, verdecken die Bullaugen einen Teil des Wesens. Den Überblick über alle Ansichten gibt es nur klein am Rand.</span></div>
       </div>
     </div>
   </section>
 
-  <div class="falz" role="presentation"></div>
+  <div class="passer" role="presentation"></div>
 
-  <section aria-labelledby="raum">
-    <span class="eyebrow">Raum</span>
-    <h2 id="raum">Ein Raum, drei Zustände</h2>
-    <div class="zwei">
-      <figure>
-        <img src="bilder/vogel_raum.jpg" alt="strange bird im Raum mit seinen drei Ansichten an den Wänden" loading="lazy">
-        <figcaption>Raum: das Jelly vor seinen Schatten. Drehen mit zwei Fingern; nahe einer Achse rastet die Kamera ein, das Jelly wird durchsichtig, und der Schatten an der Wand wird die Ansicht (im Film oben).</figcaption>
-      </figure>
-      <figure>
-        <img src="bilder/vogel_blatt.jpg" alt="Blatt mit dem strange bird und Ordnungslinien" loading="lazy">
-        <figcaption>Blatt: Ein gewählter Punkt zieht gepunktete Ordnungslinien, gleiche Höhe zur Front, gleiche Länge zum Top, die Breite über die Gehrungslinie im Feld unten rechts.</figcaption>
-      </figure>
-    </div>
-    <div class="zwei">
-      <figure>
-        <img src="bilder/fisch_raum.jpg" alt="teat firefish im Raum" loading="lazy">
-        <figcaption>„teat firefish“ im Raum. Die Wände tragen deine Illustration (Platten, Kontur, langer Schatten). Das halbtransparente Jelly lässt sie durchscheinen.</figcaption>
-      </figure>
-      <figure>
-        <img src="bilder/telefon_raum.jpg" alt="Raum auf dem Telefon" loading="lazy" style="max-width:300px;justify-self:center">
-        <figcaption style="text-align:center">Auf dem Telefon ist der Raum eine einzige Ansicht. Er braucht keine vier kleinen Fenster.</figcaption>
-      </figure>
-    </div>
-  </section>
-
-  <div class="falz" role="presentation"></div>
-
-  <section aria-labelledby="hand">
-    <span class="eyebrow">Hand</span>
-    <h2 id="hand">Eine Grammatik für alles</h2>
-    <div class="gesten">
-      <div class="geste"><svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="20" cy="36" r="7" fill="none" stroke="#3bfcf2" stroke-width="2"/><path d="M20 36 C 28 24, 36 20, 46 12" stroke="#f3eff8" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="46" cy="12" r="3" fill="#f3eff8"/></svg><div><b>Ein Finger auf einem Ding</b><span>formen: Punkt, Griff oder Linie ziehen</span></div></div>
-      <div class="geste"><svg viewBox="0 0 56 56" aria-hidden="true"><ellipse cx="28" cy="28" rx="13" ry="16" fill="none" stroke="#a59db1" stroke-width="1.2" stroke-dasharray="3 3"/><path d="M8 10 L 48 46" stroke="#d4b3f5" stroke-width="2.2" stroke-linecap="round"/></svg><div><b>Strich quer über den Körper</b><span>neuer Loop; ein Lichtring zeigt ihn vorher</span></div></div>
-      <div class="geste"><svg viewBox="0 0 56 56" aria-hidden="true"><ellipse cx="28" cy="28" rx="20" ry="20" fill="none" stroke="#a59db1" stroke-width="1.2" stroke-dasharray="3 3"/><path d="M28 18 a 9 9 0 1 1 -0.1 0" stroke="#936ffb" stroke-width="2.2" fill="none"/></svg><div><b>Geschlossen auf der Haut</b><span>Form (Auge, Maul); ein Magnet zieht das Ende an</span></div></div>
-      <div class="geste"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M12 20 L 22 30 L 30 16 L 38 32 L 46 20" stroke="#ff72a9" stroke-width="2.2" fill="none" stroke-linejoin="round" stroke-linecap="round"/></svg><div><b>Kritzeln</b><span>nimmt eine Schicht weg: Ecke, Kante, Punkt, Linie</span></div></div>
-      <div class="geste"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M8 34 C 20 20, 36 20, 48 34" stroke="#a59db1" stroke-width="1.4" fill="none" stroke-dasharray="4 3"/><path d="M8 34 C 20 20, 30 19.6, 36 22" stroke="#f3eff8" stroke-width="3.6" fill="none" stroke-linecap="round"/></svg><div><b>Eine Linie entlangfahren</b><span>tuschen: das Stück wird Kante</span></div></div>
-      <div class="geste"><svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="16" cy="40" r="6" fill="#a59db1"/><circle cx="16" cy="40" r="11" fill="none" stroke="#a59db1" stroke-width="1"/><circle cx="38" cy="16" r="6" fill="none" stroke="#3bfcf2" stroke-width="2"/><circle cx="38" cy="16" r="27" fill="none" stroke="#936ffb" stroke-width="1" stroke-dasharray="2 3"/></svg><div><b>Ein ruhender zweiter Finger</b><span>Zirkel: Sein Abstand ist der Einfluss. Auf einem Punkt: der Griff knickt</span></div></div>
-      <div class="geste"><svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="20" cy="28" r="6" fill="none" stroke="#3bfcf2" stroke-width="2"/><circle cx="36" cy="28" r="6" fill="none" stroke="#3bfcf2" stroke-width="2"/><path d="M12 44 C 22 50, 34 50, 44 44" stroke="#f3eff8" stroke-width="1.6" fill="none"/><path d="M44 44 l -4 -1 m 4 1 l -2 4" stroke="#f3eff8" stroke-width="1.6"/></svg><div><b>Zwei Finger ziehen und kneifen</b><span>drehen, zoomen, weit heraus: auffalten</span></div></div>
-      <div class="geste"><svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="20" cy="28" r="6" fill="#f3eff8"/><circle cx="36" cy="28" r="6" fill="#f3eff8"/><path d="M28 12 a 16 16 0 1 0 14 8" stroke="#a59db1" stroke-width="1.2" fill="none" stroke-dasharray="3 3"/></svg><div><b>Zwei Finger tippen</b><span>einen Schritt zurück (drei Finger: vor). Halten und schieben spult die Zeit</span></div></div>
-      <div class="geste"><svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="20" fill="none" stroke="#d4b3f5" stroke-width="1.4"/><circle cx="28" cy="28" r="6" fill="#f3eff8"/><path d="M14 22 h28 M14 34 h28" stroke="#a59db1" stroke-width="1" stroke-dasharray="2 2"/></svg><div><b>Halten</b><span>auf der Form: Röntgen. Auf der Leere: zeig mir, was geht</span></div></div>
-      <div class="geste"><svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="18" cy="30" r="5" fill="none" stroke="#3bfcf2" stroke-width="2"/><circle cx="30" cy="30" r="5" fill="none" stroke="#3bfcf2" stroke-width="2"/><circle cx="42" cy="30" r="5" fill="none" stroke="#3bfcf2" stroke-width="2"/></svg><div><b>1×, 2×, 3× tippen</b><span>Punkt, ganzer Loop, alles. Auf einer Linie setzt ein Tipp einen Punkt</span></div></div>
-      <div class="geste"><svg viewBox="0 0 56 56" aria-hidden="true"><path d="M10 40 C 14 24, 22 18, 30 18" stroke="#a59db1" stroke-width="1.4" fill="none" stroke-dasharray="3 3"/><path d="M30 18 C 38 18, 44 24, 46 40" stroke="#ff72a9" stroke-width="2" fill="none"/><path d="M30 18 C 36 30, 42 34, 46 40" stroke="#936ffb" stroke-width="2" fill="none"/><circle cx="30" cy="18" r="4" fill="#f3eff8"/></svg><div><b>Ins Maul greifen</b><span>aufziehen ist die Pose. Der Passer zeigt Grundform und Pose</span></div></div>
-    </div>
-    <div class="zwei">
-      <figure>
-        <video src="filme/werkstatt.mp4" poster="bilder/schnitt_vorschau.jpg" muted loop playsinline autoplay preload="metadata"></video>
-        <figcaption>Aus der Kugel ein Wesen: Punkt ziehen (Ordnungslinien zu den Wänden, Seifenhaut), Strich quer = Loop mit Lichtring, Auge als geschlossene Form, Kritzeln löscht einen Punkt, zwei Finger tippen holen ihn zurück.</figcaption>
-      </figure>
-      <div style="display:grid;gap:12px;align-content:start">
-        <p><b>Was wegfällt:</b> Werkzeugleiste (Loop, Form, Stift, Einfluss, Fressen), die Regler Maul und Kopf, Neu/Sichern/Laden, Fenstertitel, Wenden-Knöpfe, Hilfetexte, Statuszeile.</p>
-        <p><b>Was bleibt:</b> dein Datenmodell (mitte, ring, paar, Punkte, Griffe, Kanten, Spiegel, Maul, Pose), der Look der Blaupause, das Jelly, deine Tasten als zweiter Weg.</p>
-        <p class="klein">Mac: Klick = Tippen, Trackpad mit zwei Fingern = drehen, Rad während eines Zugs = Einfluss, ⇧ = ruhender Finger, ⌥ = Röntgen, Tab = falten, 1/3/7 = Seite/Front/Top wie Blenders Ziffernblock.</p>
+  <section class="bogen b2" aria-labelledby="modellblatt">
+    <div class="film"><video src="filme/modellblatt.mp4" poster="bilder/modellblatt.jpg" autoplay muted loop playsinline preload="metadata" aria-label="Film: Modellblatt, die Geistermaus führt vor"></video></div>
+    <div class="text">
+      <div class="name"><span class="farbe" aria-hidden="true"></span><h2 id="modellblatt">Modellblatt</h2></div>
+      <p class="leit">Das Blatt, das Figurenzeichner ohnehin anlegen.</p>
+      <p>Ein Turnaround auf Papier: Front, Dreiviertel, Seite, Dreiviertel hinten und Rücken in einer Reihe, darunter die Draufsicht und das Wesen in Farbe von vorn und von hinten. Alles im selben Maßstab. Zeigst du auf einen Punkt, läuft seine Höhe als Linie durch alle Ansichten und seine Länge bis in die Draufsicht. In jeder Ansicht wird gleich gearbeitet, auch in den schrägen.</p>
+      <ul class="schritte">
+        <li><b>Leere ziehen</b><span>alle Ansichten drehen sich zugleich; loslassen, und das Blatt federt zurück</span></li>
+        <li><b>Punkt ziehen</b><span>rote Höhenlinie durch das ganze Blatt, alle Ansichten folgen</span></li>
+        <li><b>Rad</b><span>ins Blatt hinein und heraus (<kbd>1</kbd> <kbd>3</kbd> <kbd>7</kbd> fahren an eine Ansicht heran)</span></li>
+      </ul>
+      <a class="oeffnen" href="modellblatt.html" target="_blank" rel="noopener">Vollbild öffnen <span class="pfeil" aria-hidden="true">↗</span></a>
+      <div class="wertung">
+        <div><span>Stark</span><span>Sieben Ansichten zugleich, auch die schrägen, in denen man Formen am besten beurteilt. Die Konstruktionslinien zeigen, ob alles zusammenpasst. Wer Figuren zeichnet, kennt diese Form.</span></div>
+        <div><span>Schwach</span><span>Jede Ansicht ist kleiner als heute; auf dem Laptop zoomt man öfter. Bei jeder Änderung rechnet das ganze Blatt Kontur und Schatten neu; auf deinem Mac gemessen habe ich das nicht.</span></div>
       </div>
     </div>
   </section>
 
-  <div class="falz" role="presentation"></div>
+  <div class="passer" role="presentation"></div>
 
-  <section aria-labelledby="licht">
-    <span class="eyebrow">Licht</span>
-    <h2 id="licht">Bedeutung ohne Worte</h2>
-    <div class="lichter">
-      <figure><img src="bilder/schnitt_vorschau.jpg" alt="Lichtring als Vorschau des Loops" loading="lazy"><figcaption><b>Lichtring.</b> Während des Strichs läuft der künftige Loop um den Körper, auch auf den Wänden.</figcaption></figure>
-      <figure><img src="bilder/zirkel.jpg" alt="Zirkel mit zwei Fingern" loading="lazy"><figcaption><b>Zirkel.</b> Der ruhende zweite Finger setzt den Einfluss; die Haut leuchtet bis dorthin, mit wandernden Ringen.</figcaption></figure>
-      <figure><img src="bilder/roentgen.jpg" alt="Röntgenlinse" loading="lazy"><figcaption><b>Röntgen.</b> Halten öffnet eine Linse. Darin ist das Jelly durchsichtig, und Linien dahinter werden greifbar.</figcaption></figure>
-      <figure><img src="bilder/pose_raum.jpg" alt="Kugel mit geöffnetem Maul" loading="lazy"><figcaption><b>Pose ohne Regler</b> (erster Wurf). Eine breite Form vorn über die Mitte wird das Maul. Hineingreifen und aufziehen ist die Pose; im Blatt laufen die Platten auseinander.</figcaption></figure>
+  <section class="bogen b3" aria-labelledby="platten">
+    <div class="film"><video src="filme/platten.mp4" poster="bilder/platten.jpg" autoplay muted loop playsinline preload="metadata" aria-label="Film: Drei Platten, die Geistermaus führt vor"></video></div>
+    <div class="text">
+      <div class="name"><span class="farbe" aria-hidden="true"></span><h2 id="platten">Drei Platten</h2></div>
+      <p class="leit">Drei Ansichten auf einem Bogen, gedruckt wie mit dem Risograph.</p>
+      <p>Seite in Pink, Front in Gelb, Top in Blau. Die Platten liegen Mitte auf Mitte im selben Maßstab übereinander und mischen sich wie Farbe auf Papier. So hat jede Ansicht den ganzen Bildschirm, und was du in einer änderst, siehst du in den anderen an derselben Stelle. Die Platte, an deren Linien du arbeitest, druckt kräftig, die anderen blass.</p>
+      <ul class="schritte">
+        <li><b>Passerkreuz ziehen</b><span>die Platte gleitet heraus und bleibt auf ihrer gemeinsamen Achse (Front waagerecht, Top senkrecht)</span></li>
+        <li><b><kbd>Tab</kbd></b><span>alle Platten nebeneinander wie im heutigen Editor; noch einmal: wieder übereinander</span></li>
+        <li><b>blasse Linie</b><span>kurz darauf zeigen, und ihre Platte wird die kräftige (<kbd>1</kbd> <kbd>3</kbd> <kbd>7</kbd> wählen direkt)</span></li>
+      </ul>
+      <a class="oeffnen" href="platten.html" target="_blank" rel="noopener">Vollbild öffnen <span class="pfeil" aria-hidden="true">↗</span></a>
+      <div class="wertung">
+        <div><span>Stark</span><span>Die größten Ansichten aller Varianten und die Wirkung einer Änderung in allen Ansichten auf einen Blick. <kbd>Tab</kbd> macht aus dem Druck in einer Bewegung das heutige Layout.</span></div>
+        <div><span>Schwach</span><span>Übereinander braucht Eingewöhnung, bis die Farben fest zu den Ansichten gehören. Statt deiner weißen Illustration gibt es Rasterpunkte.</span></div>
+      </div>
     </div>
+  </section>
+
+  <div class="passer" role="presentation"></div>
+
+  <section aria-labelledby="bedienung">
+    <span class="eyebrow">In allen drei Varianten gleich</span>
+    <h2 id="bedienung">Die Bedienung</h2>
+    <div class="tafel">
+      <table>
+        <thead><tr><th>Handlung</th><th>Maus und Tastatur</th><th>iPad</th></tr></thead>
+        <tbody>
+          <tr><td>Drehen</td><td>links ziehen auf leerer Fläche oder auf dem Wesen; mit Schwung, beim Loslassen einrasten</td><td>ein Finger</td></tr>
+          <tr><td>Punkt, Griff, Linie bewegen</td><td>links ziehen; eine Linie biegt sich, längs nachgefahren wird sie Kante</td><td>Finger oder Pencil</td></tr>
+          <tr><td>Wählen</td><td>Klick, <kbd>⇧</kbd> + Klick dazu; Klick auf eine Linie wählt den ganzen Loop; <kbd>⌘A</kbd> alles</td><td>tippen</td></tr>
+          <tr><td>Punkt setzen</td><td>Doppelklick auf eine Linie (die Perle zeigt vorher, wo)</td><td>doppelt tippen</td></tr>
+          <tr><td>Ecke ↔ glatt</td><td>Doppelklick auf einen Punkt</td><td>doppelt tippen</td></tr>
+          <tr><td>Zeichnen</td><td>rechte Taste ziehen, oder <kbd>⌥</kbd> + links, oder <kbd>P</kbd> schaltet den Stift an: quer über den Umriss = neuer Loop, geschlossen = Form, Zickzack = weg</td><td>Pencil, oder lange drücken und ziehen</td></tr>
+          <tr><td>Zoom</td><td>Rad am Zeiger, Trackpad kneifen</td><td>zwei Finger kneifen</td></tr>
+          <tr><td>Einfluss beim Ziehen</td><td>Rad während des Zugs, wie <kbd>O</kbd> in Blender</td><td>zweiter Finger als Zirkel</td></tr>
+          <tr><td>Schwenken</td><td>mittlere Taste, <kbd>Leertaste</kbd> + ziehen oder <kbd>⇧</kbd> + Leere ziehen</td><td>zwei Finger</td></tr>
+          <tr><td>Zurück, vor</td><td><kbd>⌘Z</kbd>, <kbd>⇧⌘Z</kbd></td><td>zwei Finger tippen, drei Finger tippen</td></tr>
+          <tr><td>Ansichten</td><td><kbd>1</kbd> Seite, <kbd>3</kbd> Front, <kbd>7</kbd> Top, <kbd>0</kbd> zurück; <kbd>F</kbd> oder Doppelklick ins Leere: einpassen</td><td>doppelt tippen ins Leere</td></tr>
+          <tr><td>Weiteres</td><td><kbd>⌫</kbd> löschen, <kbd>K</kbd> Kante, <kbd>X</kbd> halten: Röntgen, <kbd>Esc</kbd>, <kbd>?</kbd> Vorführung, <kbd>Tab</kbd> Platten nebeneinander</td><td>–</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="klein">Der Zeiger zeigt vorher, was ein Zug tun wird: Bogen = drehen, Ring = greifen, Perle mit Kreuz = Punkt setzen, Feder = zeichnen.</p>
+  </section>
+
+  <div class="passer" role="presentation"></div>
+
+  <section aria-labelledby="abwaegung">
+    <span class="eyebrow">Meine Einschätzung, nicht gemessen</span>
+    <h2 id="abwaegung">Nebeneinander</h2>
+    <div class="tafel">
+      <table>
+        <thead><tr><th></th><th>Bullaugen</th><th>Modellblatt</th><th>Drei Platten</th></tr></thead>
+        <tbody>
+          <tr><td>Platz je Ansicht</td><td>groß für eine, klein für die anderen</td><td>klein, dafür sieben</td><td>alle groß</td></tr>
+          <tr><td>Alle Ansichten zugleich</td><td>beim Arbeiten an einer Stelle</td><td>immer</td><td>immer, übereinander</td></tr>
+          <tr><td>Schräge Ansichten</td><td>die große Ansicht dreht frei</td><td>zwei feste Dreiviertel, alle drehbar</td><td>nur beim Drehen</td></tr>
+          <tr><td>Eingewöhnung</td><td>gering</td><td>gering, wenn man Turnarounds kennt</td><td>hoch</td></tr>
+          <tr><td>Laptop</td><td>gut</td><td>mit Zoom</td><td>gut</td></tr>
+          <tr><td>Erster Eindruck</td><td>die Bullaugen, die heranschwimmen</td><td>das Blatt, das sich als Ganzes dreht</td><td>der Druck</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="empfehlung">
+      <span class="eyebrow">Empfehlung</span>
+      <p>Probier jede Variante zehn Minuten mit dem strange bird. Ich erwarte, dass das Modellblatt für Proportionen und Überblick am meisten taugt und die Bullaugen für die Arbeit an einer Stelle. Beides zusammen wäre der nächste Schritt: das Modellblatt als Grundlayout, und ein Doppelklick auf eine Ansicht macht sie groß, während die anderen als Bullaugen zum Zeiger kommen.</p>
+    </div>
+  </section>
+
+  <div class="passer" role="presentation"></div>
+
+  <section aria-labelledby="gelernt">
+    <span class="eyebrow">Beim Bauen</span>
+    <h2 id="gelernt">Was die Tests gezeigt haben</h2>
     <ul class="liste">
-      <li><b>Seifenhaut:</b> Wo sich die Haut gerade neu findet, schillert sie kurz wie Frei Ottos Seifenfilme und erstarrt beim Loslassen. So sieht man, wie weit ein Zug reicht.</li>
-      <li><b>Einrasten:</b> Nahe einer Achse wird das Jelly durchsichtig, und sein Schatten an der Wand wird die Ansicht.</li>
-      <li><b>Kopfschütteln</b> statt Fehlermeldung. <b>Wackeln</b> nach dem Loslassen. <b>Atmen</b>, kaum merklich, wenn niemand zieht.</li>
-      <li><b>Passer:</b> Bei offenem Maul trägt die rosa Platte die Grundform und die lila Platte die Pose.</li>
-      <li><b>Ton</b> (aus, mit M an): Zupfen, Reißverschluss, Rascheln. Nur als zweiter Kanal, wie in der SATIN-Studie zur Kurvengüte.</li>
+      <li><b>Bullaugen dicht am Punkt stören.</b> Im ersten Wurf hingen sie am Zeiger, stark vergrößert, und deckten das halbe Wesen zu. Jetzt suchen sie in ihrer Richtung einen freien Platz neben dem Wesen und zeigen gut die Hälfte davon, so dass man sieht, wo man ist.</li>
+      <li><b>Ein gedrehtes Modellblatt ist kein Modellblatt.</b> Zuerst rastete das Drehen in 45°-Schritten ein; dann zeigten die schmalen Plätze von Front und Rücken breite Ansichten. Jetzt federt das Blatt immer zurück, das Drehen ist ein Umschauen.</li>
+      <li><b>Platten dürfen nicht flackern.</b> Würde jede Linie unter dem Zeiger sofort ihre Platte nach vorn holen, wechselten die Platten beim Überfahren ständig. Sie wechseln erst nach kurzem Verweilen oder sofort beim Klick.</li>
+      <li><b>Geprüft mit echten Mauszügen</b> (Playwright, Chromium mit Software-Grafik): Klick wählt, Doppelklick setzt einen Punkt, rechts ziehen schneidet einen Loop, <kbd>⌘Z</kbd> nimmt ihn zurück, das Rad zoomt, die Leertaste schwenkt, Zickzack löscht einen Punkt. Finger und Pencil nur mit künstlichen Ereignissen. Nicht geprüft: iPad, Safari, dein Mac, die Bildrate.</li>
+      <li><b>Wie in Runde 1</b> rechnet die Haut ein Ersatzverfahren durch die Linien, nicht dein Löser. Der Code des Editors und die Zweige der anderen Sitzung sind nicht berührt.</li>
     </ul>
   </section>
 
-  <div class="falz" role="presentation"></div>
+  <div class="passer" role="presentation"></div>
 
-  <section aria-labelledby="probe" class="probe">
-    <span class="eyebrow">Ausprobieren</span>
-    <h2 id="probe">Der Prototyp</h2>
-    <p>Eine Seite, alles darin. Auf dem Telefon mit Fingern, auf dem Mac mit Maus und Trackpad. Ein Finger auf der Leere zieht einen Strich; zwei Finger drehen.</p>
-    <div class="startfeld" id="startfeld">
-      <img src="bilder/schnitt_vorschau.jpg" alt="" aria-hidden="true">
-      <button type="button" id="starten" class="knopf gross">Hier starten (Kugel)</button>
+  <section aria-labelledby="runde1">
+    <span class="eyebrow">Zum Vergleich</span>
+    <h2 id="runde1">Runde 1: die Raumecke</h2>
+    <div class="zwei">
+      <figure>
+        <video src="filme/werkstatt.mp4" poster="bilder/vogel_raum.jpg" muted loop playsinline controls preload="none"></video>
+        <figcaption>Runde 1: die Ansichten als Wände einer Raumecke, aufgefaltet zum Blatt, bedient mit Fingern.</figcaption>
+      </figure>
+      <div class="stapel b1">
+        <p>Die Raumecke ist jetzt auch mit der Maus bedienbar: links ziehen auf Leere oder Haut dreht, die rechte Taste zeichnet. Sonst ist sie unverändert.</p>
+        <a class="oeffnen" href="vision.html#vogel" target="_blank" rel="noopener">Raumecke öffnen <span class="pfeil" aria-hidden="true">↗</span></a>
+      </div>
     </div>
-    <div class="knoepfe">
-      <a class="knopf" href="vision.html#kugel" target="_blank" rel="noopener">Kugel · ganzer Bildschirm</a>
-      <a class="knopf" href="vision.html#vogel" target="_blank" rel="noopener">strange bird</a>
-      <a class="knopf" href="vision.html#fisch" target="_blank" rel="noopener">teat firefish</a>
-      <a class="knopf" href="vision.html#vogel-blatt" target="_blank" rel="noopener">Blatt</a>
-      <a class="knopf" href="vision.html#kugel-seite" target="_blank" rel="noopener">Blick Seite</a>
-      <a class="knopf" href="vision.html#kugel-leeredreht" target="_blank" rel="noopener">Variante: Leere dreht</a>
-      <a class="knopf" href="vision.html#kugel-ton" target="_blank" rel="noopener">mit Ton</a>
-      <a class="knopf" href="vision.html#kugel-zeigen" target="_blank" rel="noopener">Geisterhand zeigt es</a>
-    </div>
-    <p class="klein">Die Haut rechnet hier ein Ersatzverfahren (Verformung mit radialen Basisfunktionen durch die Proben der Linien), nicht dein Löser. Sie geht genau durch die Linien, bläst sich aber nicht auf wie deine, und Kanten sind gezeichnet, nicht gerechnet.</p>
-  </section>
-
-  <div class="falz" role="presentation"></div>
-
-  <section aria-labelledby="felder">
-    <span class="eyebrow">Recherche</span>
-    <h2 id="felder">Was andere Felder schon wussten</h2>
-    <div class="felder">
-      <div class="feld"><span class="mono">ZEICHNEN</span><div><b>Glass Box, ISO 5456-2</b><span>Ansichten sind Projektionen auf die Wände eines Kastens. Daraus wird das Falten.</span></div></div>
-      <div class="feld"><span class="mono">SCHIFFBAU</span><div><b>Linienriss und Straken</b><span>Ein Rumpf in drei Ansichten aus Linien. Daher kommen deine Wörter Spant und Loft. Daraus werden die Ordnungslinien.</span></div></div>
-      <div class="feld"><span class="mono">HCI 1992</span><div><b>Interactive Shadows</b><span>Herndon et al.: Schatten eines Objekts als Griffe; man bewegt den Schatten, das Objekt folgt eingeschränkt. Daraus werden die bearbeitbaren Wände.</span></div></div>
-      <div class="feld"><span class="mono">BILDHAUEREI</span><div><b>Rodin</b><span>alle Profile zeichnen; Formen als „projectures of interior volumes“, die von innen drängen. Das ist die Haut zwischen den Linien.</span></div></div>
-      <div class="feld"><span class="mono">ARCHITEKTUR</span><div><b>Frei Otto</b><span>Die Seifenhaut findet ihre Form zwischen Drähten. Daraus wird die Seifenhaut im Zug.</span></div></div>
-      <div class="feld"><span class="mono">LUFTFAHRT</span><div><b>Dark Cockpit</b><span>Nichts leuchtet, solange alles normal ist. Das ist die Grundregel der Oberfläche.</span></div></div>
-      <div class="feld"><span class="mono">HCI 2000</span><div><b>Raskin: Quasimodus, Monotonie</b><span>Für jede Aufgabe ein Weg, Zustände nur, solange ein Finger liegt. Das ist dein „alles soll gleich funktionieren“.</span></div></div>
-      <div class="feld"><span class="mono">HCI 2004</span><div><b>CrossY, SKETCH, Teddy</b><span>Durchkreuzen statt Klicken, Gesten statt Menüs, Umriss aufblasen</span></div></div>
-      <div class="feld"><span class="mono">GRAFIK 2007</span><div><b>FiberMesh</b><span>Kurven auf der Fläche bleiben Griffe: das wissenschaftliche Vorbild für „Kurven sind die Wahrheit“</span></div></div>
-      <div class="feld"><span class="mono">HCI 2013</span><div><b>Feedforward</b><span>Vermeulen et al.: zeigen, was eine Geste tun wird, bevor man sie beendet</span></div></div>
-      <div class="feld"><span class="mono">SPIELE</span><div><b>Townscaper, Tiny Glade, Spore</b><span>klare Arbeitsteilung mit dem Algorithmus; jede Handlung sofort und weich; das Wesen lebt</span></div></div>
-      <div class="feld"><span class="mono">APPS 2012</span><div><b>Paper, Procreate</b><span>Zeit zurückspulen mit zwei Fingern; zwei Finger tippen = zurück</span></div></div>
-    </div>
-    <p class="klein">Rund 50 Quellen mit Links und Gegenstimmen: <span class="mono">docs/look/editor/vision/RECHERCHE.md</span> im Zweig <span class="mono">claude/meme-curves-editor-concept-s65kq1</span>.</p>
-  </section>
-
-  <div class="falz" role="presentation"></div>
-
-  <section aria-labelledby="winkel">
-    <span class="eyebrow">Prüfung</span>
-    <h2 id="winkel">Aus acht Blickwinkeln</h2>
-    <div class="winkel">
-      <div class="karte"><h3>Illustrator (du)</h3><p class="gut">Die Wände sind deine Illustrationen; Tusche und Bleistift sind Zeichnerbegriffe.</p><p class="haken">Im Raum dominiert das Jelly. Genau gezeichnet wird im Blick, eine Kneifbewegung entfernt.</p></div>
-      <div class="karte"><h3>Bildhauer</h3><p class="gut">Profile umrunden, zwei Hände am Ton (der ruhende Finger).</p><p class="haken">Direktes Drücken der Haut fehlt; ein Finger auf der Haut zeichnet.</p></div>
-      <div class="karte"><h3>Architekt</h3><p class="gut">Eine Ordnung statt eines Effekts: Blatt = Abwicklung, Blick = ein Feld daraus.</p><p class="haken">Drei Wände konkurrieren mit dem Wesen. Darum bleiben sie dunkel.</p></div>
-      <div class="karte"><h3>Ingenieur</h3><p class="gut">Kein Eingriff in den Löser. Die Wände sind drei Renderziele. Gemessen am „teat firefish“ (27 770 Punkte): Greifen einmal 30 ms, danach 2,4 ms je Bild im Median (höchstens 6,2 ms).</p><p class="haken">Nichts davon ist auf dem iPhone gemessen.</p></div>
-      <div class="karte"><h3>Spieledesigner</h3><p class="gut">Keine Fehlerzustände, nur Zurück. Jede Geste hat ein Echo.</p><p class="haken">„Leben“ ist erst angedeutet (Atmen, Wackeln).</p></div>
-      <div class="karte"><h3>Kind</h3><p class="gut">Ein Finger zeichnet: sofort belohnend. Zwei Finger drehen wie in Karten.</p><p class="haken">Zwei Finger tippen = zurück findet man nicht allein. Die Geisterhand zeigt es einmal.</p></div>
-      <div class="karte"><h3>Skeptiker</h3><p class="gut">Eine Regel statt vieler, Vorschau vor jeder Handlung, Tasten als zweiter Weg.</p><p class="haken">Zirkel und Zeitspulen sind schwer zu entdecken. „Leere zeichnet“ bricht deine Gewohnheit „Grund ziehen dreht“, deshalb gibt es die Variante.</p></div>
-      <div class="karte"><h3>Barrierefreiheit</h3><p class="gut">Bedeutung liegt nie nur in der Farbe, sondern auch in Lage und Form. Seifenhaut und Bewegung lassen sich abschalten.</p><p class="haken">Ohne Beschriftung gibt es nichts für Bildschirmleser.</p></div>
-    </div>
-  </section>
-
-  <div class="falz" role="presentation"></div>
-
-  <section aria-labelledby="verworfen">
-    <span class="eyebrow">Unterwegs verworfen</span>
-    <h2 id="verworfen">Was ich ausprobiert und gelassen habe</h2>
-    <ul class="liste">
-      <li><b>Zeit mit zwei Fingern drehen</b> (wie ein Uhrzeiger zurück): Paper von FiftyThree hatte das, und Rezensenten rieten, zu kreisen statt zu drehen, weil man es mit dem Kneifen verwechselt. Hier: zwei Finger tippen = zurück, zwei Finger still halten und schieben = spulen.</li>
-      <li><b>Kneifen über einer Linie macht sie zur Kante</b> (wie Papier falten): schön, kollidiert aber mit dem Zoom. Nachfahren (Tusche) ist eindeutig.</li>
-      <li><b>Doppeltippen schaltet um</b> (Ecke, Kante): bricht die Regel „mehr tippen, mehr nehmen“, die du dir für die Auswahl wie in Blender gewünscht hast (Doppelklick = ganzer Loop).</li>
-      <li><b>Ein Gitter wie bei D'Arcy Thompson</b>, um Proportionen zu verziehen (großer Kopf, langer Leib), und <b>Varianten züchten</b> wie bei Picbreeder: reizvoll für ein Wesen-Spiel, aber eigene Werkzeuge. Ausblick, nicht Kern.</li>
-      <li><b>Wände immer hell</b>: das Jelly verliert davor seine Leuchtkraft. Die Wände sind dunkel wie deine Fenster, ihr Inhalt leuchtet.</li>
-      <li><b>Seifenhaut am ganzen Körper</b>: der erste Versuch ließ das ganze Wesen regenbogenbunt werden. Jetzt schillert nur der Bereich, der sich am stärksten bewegt.</li>
-    </ul>
-  </section>
-
-  <div class="falz" role="presentation"></div>
-
-  <section aria-labelledby="ehrlich">
-    <span class="eyebrow">Stand</span>
-    <h2 id="ehrlich">Was der Prototyp ist und was nicht</h2>
-    <ul class="liste">
-      <li><b>Gebaut und mit echten Zügen geprüft</b> (Chromium, Maus und simulierte Finger): Raum, Blatt, Blick, Faltung, Ordnungslinien, bearbeitbare Wände, Ziehen mit Einfluss, Schneiden, Formen, Tuschen, Kritzeln, Punkt setzen, Zurück und Vor, Röntgen, Einrasten, deine drei Formen.</li>
-      <li><b>Gefunden und behoben:</b> Bei doppelter Pixeldichte (iPhone, Retina-Mac) waren Wandbilder und Blatt leer, weil three.js den Ausschnitt auch in Renderzielen mit der Pixeldichte malnimmt. Dazu ein Speicherleck in den Linienpuffern (im Blatt wurde jedes Bild nach kurzer Zeit 1 bis 2 s lang, danach stetig 17 ms Bildabstand im Browser ohne Grafikkarte), und Gesten, die unter Last falsch erkannt wurden. Sie richten sich jetzt nach dem Zeitstempel der Finger.</li>
-      <li><b>Erster Wurf:</b> die Pose übers Maul (einfacher Kieferknochen), die Gestenhilfe, der Ton.</li>
-      <li><b>Nicht geprüft:</b> iPhone, Safari, echte Finger, dein Auge. In der Cloud gibt es keine echte Grafikkarte.</li>
-      <li><b>Nicht berührt:</b> der Code des Editors und die Zweige der anderen Sitzung. Alles liegt unter <span class="mono">docs/look/editor/vision/</span>.</li>
-    </ul>
-  </section>
-
-  <div class="falz" role="presentation"></div>
-
-  <section aria-labelledby="fragen">
-    <span class="eyebrow">Deine Entscheidungen</span>
-    <h2 id="fragen">Fünf Fragen</h2>
-    <ol class="fragen">
-      <li><span><b>Raumecke als 3D-Fenster</b> im Editor: ja, nein oder als Schalter?</span></li>
-      <li><span><b>Leere zeichnet</b> (Vision) oder <b>Leere dreht</b> wie heute? Beide sind im Prototyp.</span></li>
-      <li><span><b>Ein Maßstab</b> für alle Ansichten im Blatt statt vier eigener Zooms?</span></li>
-      <li><span><b>Tusche und Kritzeln</b> statt K und ⌫ (die Tasten bleiben)?</span></li>
-      <li><span><b>Seifenhaut:</b> zeigt sie dir, wie weit ein Zug reicht, oder lenkt sie ab?</span></li>
-    </ol>
-    <p class="klein">Übernahme in Schritten, jeder einzeln, ohne den Löser: 1 Blatt mit einem Maßstab und Ordnungslinien · 2 Raumecke als 3D-Fenster · 3 Grammatik · 4 Lichtsignale · 5 Falten · 6 Pose übers Maul, sobald das Maul eigene Geometrie hat.</p>
   </section>
 
   <footer class="schriftfeld" aria-label="Schriftfeld">
-    <div><span>Benennung</span><span>Kurven im Raum</span></div>
-    <div><span>Projektionsmethode</span><span>1 (ISO 5456-2)</span></div>
-    <div><span>Datum</span><span>12.11.2026</span></div>
+    <div><span>Benennung</span><span>Kurven-Werkstatt, Runde 2</span></div>
+    <div><span>Datum</span><span>13.11.2026</span></div>
     <div><span>Zweig</span><span>claude/meme-curves-editor-concept-s65kq1</span></div>
-    <div><span>Unterlagen</span><span>KONZEPT.md · RECHERCHE.md · prototyp/</span></div>
+    <div><span>Quelle</span><span>docs/look/editor/vision/prototyp/src/werkstatt/</span></div>
+    <div><span>Plan</span><span>docs/look/editor/vision/PLAN-2.md</span></div>
     <div><span>Geprüft</span><span>Florian (steht aus)</span></div>
   </footer>
 </div>
 
 <script>
-  // Der Prototyp lädt erst auf Wunsch (er zeichnet ständig und braucht die Grafikkarte)
-  document.getElementById('starten').addEventListener('click', () => {
-    const f = document.createElement('iframe');
-    f.src = 'vision.html#kugel';
-    f.title = 'Prototyp: Kurven im Raum';
-    f.allow = 'fullscreen';
-    document.getElementById('startfeld').replaceWith(f);
-  });
   // Bei reduzierter Bewegung: Filme nicht von selbst abspielen
   try {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
