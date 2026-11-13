@@ -227,6 +227,33 @@ umgestülpt); der Umriss des Lochs bleibt, wie er geschnitten wurde (Halbmesser 
 erst, wenn der Schnitt fest ist. Der Zug braucht mit dieser Regel keinen Schnitt (er bleibt wie heute), und der Schnitt gibt
 wieder eine gewöhnliche gespiegelte Haut: Der Donut hängt damit nicht mehr am Umbau auf die halbe Haut.
 
+**Schritt 4a, der Donut im Bau-Fenster (Florian am 13.11. nachts: „Donut bauen“).** Gebaut wird in `form-bau` (Port 5197) auf
+der heutigen Haut (ganze Haut mit Spiegelpaaren). Florians Fenster (5194) bleibt, wie es ist, bis er die Übernahme freigibt. Der
+Umbau auf die halbe Haut wird Schritt 4b (Tempo, weniger Buchführung) und ist für den Donut nicht nötig. Etappen, jede mit
+ihrer sichtbaren Probe:
+1. **Der Schnitt im Kern** (`packages/shape/src/dicht/mitteSchnitt.ts`): wo die Pfade der Linien die Mitte kreuzen und welche
+   Punkte dahinter liegen; „fest machen“ (die Haut an der Mitte schneiden und mit ihrem Spiegelbild verbinden, Punkte dicht an
+   der Mitte kommen dabei auf die Mitte; die Linien an der Mitte teilen, die neuen Enden behalten ihren Knick; der Rand jedes
+   Lochs wird ein Loop mit Kante und mit Punkten an den Kreuzungen). **Probe:** Tests im Kern (Kugel mit drei Loops, grobes und
+   feines Netz: spiegelgleich, geschlossen, nichts hinter der Mitte, Linien auf ihren Pfaden), und die Donut-Probe rechnet mit
+   der Kernfunktion dieselben Zahlen wie in der Übergabe 7.3.
+2. **Lose anzeigen:** In den Blättern erscheinen Punkte, wo eine Linie die Mitte kreuzt (sie folgen dem Zug), und der Punkt
+   hinter der Mitte ist markiert. Ziehen, Loslassen und Zurückziehen bleiben wie heute. **Probe:** Bildschirmfotos mit dem Punkt
+   hinter der Mitte und nach dem Zurückziehen.
+3. **Fest machen:** Den markierten Punkt löschen schneidet (⌘Z führt zurück). Der Rand ist danach ein gewöhnlicher Loop mit
+   Kante, auswählbar, mit Punkten an den Kreuzungen. **Probe:** Bildschirmfotos vor und nach dem Löschen in gleicher Ansicht; die
+   Haut bewegt sich dabei nicht mehr als im Kern gemessen (großes Loch bis rund 7), die Rechnung kommt zur Ruhe, danach lässt sich
+   weiterziehen.
+4. **Rund:** „Kante aus“ (Taste K) am Rand macht die Haut glatt, „Kante an“ wieder kantig. **Probe:** Bildschirmfoto; der Knick
+   am Rand ist so groß wie eine Dreiecksreihe daneben.
+5. **Seine Formen und die Grenzen:** dieselbe Folge an einer seiner Formen aus `wesen/`; in der Pose und am Maul eine Meldung
+   statt eines Schnitts. Danach Übergabe und sein Urteil im Bau-Fenster.
+
+**Festlegungen dazu (er kann widersprechen):** Fest gemacht wird alles, was hinter der Mitte liegt, nicht nur die Stelle des
+gelöschten Punkts. „Kante aus“ am Rand gibt es erst nach dem Festmachen. Der Umriss des Lochs bleibt, wie er geschnitten wurde.
+Liegt nur ein Griff hinter der Mitte und kein Punkt, bleibt die Stelle lose (offen, was dann fest macht). **Abbruch:** Hält eine
+Etappe nach ihrem Aufwand (je ein halber bis ein Tag) nicht: anhalten und es sagen.
+
 - **Was du danach siehst:**
   - Jede neue Form beginnt als gespiegelte Kugel, **die Mittellinie ist von Anfang an eingezeichnet**.
   - Ziehen fühlt sich direkt an: Die Haut ist in jedem Bild fertig, nach dem Loslassen passiert nichts mehr.
