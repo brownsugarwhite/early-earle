@@ -53,6 +53,11 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   (Fenster), `form-maul-einfach.ts` (Kern, mit Bildblatt; `OHNE_MITTE=1`, `MITTE=1`, `DREIECKE=3000`), `form-linien.ts` (eine
   gesicherte Form lesen: Punkte, Griffe, Knicke), Test `maulFormen.test.ts`. Die erste Fassung (durchgestanzt, Querlinie) liegt
   in `90b98322`.
+- **Kante mit eigenem Winkel** (Beweis vom 13.11., nur als Probe `form-kante-winkel.ts`, am Löser nichts geändert): Die erste
+  Reihe der Haut innen an einer harten Linie wird je Runde um die Linie gedreht geführt (ein Loop ohne Kette, dessen Proben je
+  einen Punkt der Haut binden: `ecken: [v, a, b]`, `b: [1, 0, 0]`). Hält auf drei Netzen und an „simple_mouth_more simple“
+  (95° an den Lippen, 72° bis 74° am Mundwinkel). Ohne die Führung läuft der Winkel davon; hinter der starren Reihe ist das
+  Innere unruhig. Der Einbau steht aus (Plan, Schritt 6).
 - **Linienbreiten** (13.11.): 3 Bildpunkte am Knick, ein halber an runden Punkten, dazwischen verjüngt (`haerteBei` im Kern;
   `baenderZeigen` mit Breite je Punkt, in den Blättern `kantenFlaeche` und die Klasse `kante-band`). Probe:
   `GPU=1 node scripts/pruefen/form-kante-verjuengung-fenster.mjs`.
