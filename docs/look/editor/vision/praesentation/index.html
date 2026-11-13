@@ -94,7 +94,21 @@
     transition: transform 160ms ease, box-shadow 160ms ease;
   }
   .oeffnen:hover { transform: translateY(-1px); box-shadow: 0 6px 18px -8px var(--ink, var(--tinte)); }
-  .oeffnen .pfeil { font-family: var(--f-mono); }
+  .oeffnen { border: 0; cursor: pointer; }
+  /* Vollbild-Zeichen: vier Ecken */
+  .voll { width: 14px; height: 14px; flex: none; background:
+    linear-gradient(currentColor, currentColor) 0 0 / 5px 2px no-repeat, linear-gradient(currentColor, currentColor) 0 0 / 2px 5px no-repeat,
+    linear-gradient(currentColor, currentColor) 100% 0 / 5px 2px no-repeat, linear-gradient(currentColor, currentColor) 100% 0 / 2px 5px no-repeat,
+    linear-gradient(currentColor, currentColor) 0 100% / 5px 2px no-repeat, linear-gradient(currentColor, currentColor) 0 100% / 2px 5px no-repeat,
+    linear-gradient(currentColor, currentColor) 100% 100% / 5px 2px no-repeat, linear-gradient(currentColor, currentColor) 100% 100% / 2px 5px no-repeat; }
+  /* Bühne: der Prototyp über der ganzen Seite, im Vollbild über dem ganzen Bildschirm */
+  [hidden] { display: none !important; }
+  .buehne { position: fixed; inset: 0; z-index: 50; background: var(--tiefe); }
+  .buehne iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+  .buehne .leiste { position: absolute; z-index: 2; top: calc(10px + env(safe-area-inset-top, 0px)); right: calc(10px + env(safe-area-inset-right, 0px)); display: flex; gap: 8px; }
+  .buehne .leiste button { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.4); background: rgba(10, 28, 37, 0.6); color: var(--papier); font: 600 20px/1 var(--f-text); }
+  .buehne .leiste button:hover { background: rgba(10, 28, 37, 0.85); }
   .wertung { display: grid; gap: 10px; }
   .wertung div { display: grid; grid-template-columns: 4.4rem minmax(0, 1fr); gap: 10px; align-items: baseline; font-size: var(--s-1); line-height: 1.5; }
   .wertung span:first-child { font-family: var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--grau); }
@@ -174,7 +188,7 @@
         <li><b>auf Punkt zeigen</b><span>die Bullaugen kommen; beim Ziehen zeigen sie den Punkt mit</span></li>
         <li><b>Bullauge klicken</b><span>die Kamera fliegt auf seine Achse (<kbd>1</kbd> <kbd>3</kbd> <kbd>7</kbd>, zurück mit <kbd>0</kbd>)</span></li>
       </ul>
-      <a class="oeffnen" href="bullaugen.html" target="_blank" rel="noopener">Vollbild öffnen <span class="pfeil" aria-hidden="true">↗</span></a>
+      <button type="button" class="oeffnen" data-seite="bullaugen.html">Im Vollbild starten <span class="voll" aria-hidden="true"></span></button>
       <div class="wertung">
         <div><span>Stark</span><span>Das Wesen hat den ganzen Bildschirm. Die anderen Ansichten erscheinen dort, wo du arbeitest, und ihre Lage zeigt ohne ein Wort, aus welcher Richtung sie schauen.</span></div>
         <div><span>Schwach</span><span>Solange du an einer Stelle arbeitest, verdecken die Bullaugen einen Teil des Wesens. Den Überblick über alle Ansichten gibt es nur klein am Rand.</span></div>
@@ -195,7 +209,7 @@
         <li><b>Punkt ziehen</b><span>rote Höhenlinie durch das ganze Blatt, alle Ansichten folgen</span></li>
         <li><b>Rad</b><span>ins Blatt hinein und heraus (<kbd>1</kbd> <kbd>3</kbd> <kbd>7</kbd> fahren an eine Ansicht heran)</span></li>
       </ul>
-      <a class="oeffnen" href="modellblatt.html" target="_blank" rel="noopener">Vollbild öffnen <span class="pfeil" aria-hidden="true">↗</span></a>
+      <button type="button" class="oeffnen" data-seite="modellblatt.html">Im Vollbild starten <span class="voll" aria-hidden="true"></span></button>
       <div class="wertung">
         <div><span>Stark</span><span>Sieben Ansichten zugleich, auch die schrägen, in denen man Formen am besten beurteilt. Die Konstruktionslinien zeigen, ob alles zusammenpasst. Wer Figuren zeichnet, kennt diese Form.</span></div>
         <div><span>Schwach</span><span>Jede Ansicht ist kleiner als heute; auf dem Laptop zoomt man öfter. Bei jeder Änderung rechnet das ganze Blatt Kontur und Schatten neu; auf deinem Mac gemessen habe ich das nicht.</span></div>
@@ -216,7 +230,7 @@
         <li><b><kbd>Tab</kbd></b><span>alle Platten nebeneinander wie im heutigen Editor; noch einmal: wieder übereinander</span></li>
         <li><b>blasse Linie</b><span>kurz darauf zeigen, und ihre Platte wird die kräftige (<kbd>1</kbd> <kbd>3</kbd> <kbd>7</kbd> wählen direkt)</span></li>
       </ul>
-      <a class="oeffnen" href="platten.html" target="_blank" rel="noopener">Vollbild öffnen <span class="pfeil" aria-hidden="true">↗</span></a>
+      <button type="button" class="oeffnen" data-seite="platten.html">Im Vollbild starten <span class="voll" aria-hidden="true"></span></button>
       <div class="wertung">
         <div><span>Stark</span><span>Die größten Ansichten aller Varianten und die Wirkung einer Änderung in allen Ansichten auf einen Blick. <kbd>Tab</kbd> macht aus dem Druck in einer Bewegung das heutige Layout.</span></div>
         <div><span>Schwach</span><span>Übereinander braucht Eingewöhnung, bis die Farben fest zu den Ansichten gehören. Statt deiner weißen Illustration gibt es Rasterpunkte.</span></div>
@@ -248,7 +262,7 @@
         </tbody>
       </table>
     </div>
-    <p class="klein">Der Zeiger zeigt vorher, was ein Zug tun wird: Bogen = drehen, Ring = greifen, Perle mit Kreuz = Punkt setzen, Feder = zeichnen.</p>
+    <p class="klein">Der Zeiger zeigt vorher, was ein Zug tun wird: Bogen = drehen, Ring = greifen, Perle mit Kreuz = Punkt setzen, Feder = zeichnen. Ein Prototyp startet im Vollbild des Browsers; <kbd>Esc</kbd> verlässt das Vollbild, das × oben rechts schließt den Prototyp.</p>
   </section>
 
   <div class="passer" role="presentation"></div>
@@ -301,7 +315,7 @@
       </figure>
       <div class="stapel b1">
         <p>Die Raumecke ist jetzt auch mit der Maus bedienbar: links ziehen auf Leere oder Haut dreht, die rechte Taste zeichnet. Sonst ist sie unverändert.</p>
-        <a class="oeffnen" href="vision.html#vogel" target="_blank" rel="noopener">Raumecke öffnen <span class="pfeil" aria-hidden="true">↗</span></a>
+        <button type="button" class="oeffnen" data-seite="vision.html#vogel">Raumecke im Vollbild <span class="voll" aria-hidden="true"></span></button>
       </div>
     </div>
   </section>
@@ -316,7 +330,60 @@
   </footer>
 </div>
 
+<div class="buehne" id="buehne" hidden>
+  <div class="leiste">
+    <button type="button" id="wieder-voll" aria-label="Wieder Vollbild" hidden><span class="voll" aria-hidden="true"></span></button>
+    <button type="button" id="schliessen" aria-label="Prototyp schließen">&times;</button>
+  </div>
+</div>
+
 <script>
+  // Prototypen laufen in der Seite (ein eigener Tab wird von Claude gesperrt) und gehen per Klick ins Vollbild des Browsers.
+  // Lehnt der Browser das Vollbild ab (oder verlässt man es mit Esc), bleibt der Prototyp über der ganzen Seite offen.
+  const buehne = document.getElementById('buehne');
+  const wiederVoll = document.getElementById('wieder-voll');
+  let zuletzt = null;
+  const imVollbild = () => document.fullscreenElement || document.webkitFullscreenElement;
+  function vollbild() {
+    const f = buehne.requestFullscreen || buehne.webkitRequestFullscreen;
+    if (!f) return;
+    try {
+      const p = f.call(buehne);
+      if (p && p.catch) p.catch(() => { wiederVoll.hidden = false; });
+    } catch (e) { wiederVoll.hidden = false; }
+  }
+  function starten(seite, knopf) {
+    zuletzt = knopf;
+    for (const v of document.querySelectorAll('.bogen video')) v.pause();
+    const f = document.createElement('iframe');
+    f.src = seite;
+    f.title = 'Prototyp';
+    f.allow = 'fullscreen';
+    buehne.prepend(f);
+    buehne.hidden = false;
+    wiederVoll.hidden = true;
+    vollbild();
+    f.addEventListener('load', () => { try { f.contentWindow.focus(); } catch (e) {} f.focus(); });
+  }
+  function schliessen() {
+    const f = buehne.querySelector('iframe');
+    if (f) f.remove();
+    buehne.hidden = true;
+    if (imVollbild()) {
+      const x = document.exitFullscreen || document.webkitExitFullscreen;
+      try { const p = x.call(document); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+    }
+    for (const v of document.querySelectorAll('.bogen video')) { try { v.play().catch(() => {}); } catch (e) {} }
+    if (zuletzt) zuletzt.focus();
+  }
+  for (const k of document.querySelectorAll('[data-seite]')) k.addEventListener('click', () => starten(k.dataset.seite, k));
+  document.getElementById('schliessen').addEventListener('click', schliessen);
+  wiederVoll.addEventListener('click', vollbild);
+  const wechsel = () => { if (!buehne.hidden) wiederVoll.hidden = !!imVollbild() || !(buehne.requestFullscreen || buehne.webkitRequestFullscreen); };
+  document.addEventListener('fullscreenchange', wechsel);
+  document.addEventListener('webkitfullscreenchange', wechsel);
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && !buehne.hidden && !imVollbild()) schliessen(); });
+
   // Bei reduzierter Bewegung: Filme nicht von selbst abspielen
   try {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
