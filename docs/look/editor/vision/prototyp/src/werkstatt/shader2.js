@@ -145,3 +145,78 @@ void main(){
   dichte *= clamp(korn, 0.0, 1.0) * uDichte;
   gl_FragColor = vec4(mix(vec3(1.0), uFarbe, clamp(dichte, 0.0, 1.0)), 1.0);
 }`;
+
+// ---------- Werft (Runde 3) ----------
+// Kontur im Raum: ein schmaler Rand außen um den Umriss (aus einer Maske, 24 Proben je Bildpunkt)
+export const konturFS = /* glsl */ `
+precision highp float;
+uniform sampler2D uMaske; uniform vec2 uAufl; uniform float uR, uAlpha; uniform vec3 uFarbe;
+void main(){
+  vec2 p = gl_FragCoord.xy;
+  float m = texture2D(uMaske, p / uAufl).a;
+  float nah = 0.0;
+  for (int i = 0; i < 12; i++) {
+    float w = float(i) * 0.5235988;
+    vec2 o = vec2(cos(w), sin(w));
+    nah = max(nah, texture2D(uMaske, (p + o * uR) / uAufl).a);
+    nah = max(nah, texture2D(uMaske, (p + o * uR * 0.5) / uAufl).a);
+  }
+  float rand = nah * (1.0 - m);
+  if (rand < 0.01) discard;
+  gl_FragColor = vec4(uFarbe, rand * uAlpha);
+}`;
+
+// Fläche, in der eine Kurve gezogen wird: Glas mit feinem Raster, zum Rand hin weich
+export const ebeneVS = /* glsl */ `
+varying vec2 vQ;
+void main(){ vQ = position.xy; gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0); }`;
+export const ebeneFS = /* glsl */ `
+precision highp float;
+uniform vec3 uFarbe; uniform float uAlpha, uRaster; uniform vec2 uGroesse;
+varying vec2 vQ;
+void main(){
+  vec2 q = abs(vQ);
+  float rand = (1.0 - smoothstep(0.62, 1.0, q.x)) * (1.0 - smoothstep(0.62, 1.0, q.y));
+  vec2 k = vQ * uGroesse / uRaster;
+  vec2 f = abs(fract(k - 0.5) - 0.5) / max(fwidth(k), vec2(1e-4));
+  float linie = 1.0 - min(min(f.x, f.y), 1.0);
+  float a = (0.07 + 0.30 * linie) * rand * uAlpha;
+  gl_FragColor = vec4(uFarbe, a);
+}`;
+
+// Boden: Scheibe mit Rand und Raststrichen, darauf der Grundriss (Draufsicht des Wesens) als Linie mit Schatten
+export const bodenFS = /* glsl */ `
+precision highp float;
+uniform float uRast, uZielWinkel, uAlpha;
+uniform vec3 uFarbe;
+uniform sampler2D uGrundriss; uniform float uTexel;
+varying vec2 vQ;
+void main(){
+  float r = length(vQ);
+  if (r > 1.03) discard;
+  float aa = fwidth(r) * 1.2 + 1e-4;
+  float a = atan(vQ.y, vQ.x);
+  float hof = (1.0 - smoothstep(0.0, 1.0, r)) * 0.22;
+  float ring = smoothstep(0.988 - aa, 0.988, r) * (1.0 - smoothstep(1.0, 1.0 + aa, r));
+  float k = a / 0.78539816;
+  float fk = abs(fract(k + 0.5) - 0.5) * 0.78539816 * r;
+  float achse = step(mod(floor(k + 0.5), 2.0), 0.5);
+  float lang = mix(0.045, 0.10, achse);
+  float strich = (1.0 - smoothstep(0.0035, 0.0035 + aa, fk)) * smoothstep(0.988 - lang - aa, 0.988 - lang, r) * (1.0 - smoothstep(0.988, 0.988 + aa, r));
+  float d = abs(mod(a - uZielWinkel + 3.14159265, 6.2831853) - 3.14159265);
+  float ziel = (1.0 - smoothstep(0.02, 0.06, d)) * uRast;
+  // Grundriss
+  vec2 uv = vec2(vQ.x * 0.5 + 0.5, 0.5 - vQ.y * 0.5);
+  float m = texture2D(uGrundriss, uv).a;
+  float e = 0.0;
+  for (int i = 0; i < 8; i++) {
+    float w = float(i) * 0.7853982;
+    e = max(e, abs(texture2D(uGrundriss, uv + vec2(cos(w), sin(w)) * uTexel * 1.6).a - m));
+  }
+  float riss = smoothstep(0.2, 0.8, e);
+  float schatten = m * 0.30;
+  float linie = max(max(ring * 0.42, strich * (0.30 + 0.25 * achse + 0.45 * ziel)), riss * 0.7);
+  float alpha = max(linie, max(hof, schatten)) * uAlpha;
+  vec3 c = uFarbe * (linie / max(linie + hof + schatten, 1e-4)) * (1.0 + ziel * 0.6);
+  gl_FragColor = vec4(c, alpha);
+}`;

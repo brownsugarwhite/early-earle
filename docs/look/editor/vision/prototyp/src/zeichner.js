@@ -118,7 +118,7 @@ export class Zeichner {
         uFeldA: { value: null }, uFeldB: { value: null }, uKoerper: { value: null }, uMaske: { value: null },
         uAufl: { value: new THREE.Vector2() }, uPx: { value: 1 },
         uGrund: { value: farbe('grund') }, uPetrol: { value: farbe('petrol') }, uRosa: { value: farbe('rosa') }, uLila: { value: farbe('lila') },
-        uKontur: { value: 0.07 }, uPasser: { value: 0.016 }, uSchatten: { value: 0.36 }, uHinten: { value: 0 }, uPose: { value: 0 }, uSchattenLang: { value: 4000 },
+        uKontur: { value: 0.07 }, uPasser: { value: 0.016 }, uSchatten: { value: 0.36 }, uHinten: { value: 0 }, uPose: { value: 0 }, uSchattenLang: { value: 4000 }, uDeck: { value: 1 },
       },
       depthTest: false,
       depthWrite: false,
@@ -136,7 +136,7 @@ export class Zeichner {
           uAufl: this.U.uAufl, uZeit: this.U.uZeit,
           uBreite: { value: 1.3 }, uBreiteKante: { value: 3.6 },
           uFarbe: { value: farbe('petrol') }, uWahl: { value: farbe('lila') }, uHell: { value: new THREE.Vector3(1, 1, 1) },
-          uVerdeckt: { value: verdeckt ? 1 : 0 }, uStrich: { value: 6 }, uAlpha: { value: verdeckt ? 0.22 : 1 },
+          uVerdeckt: { value: verdeckt ? 1 : 0 }, uStrich: { value: 6 }, uAlpha: { value: verdeckt ? 0.22 : 1 }, uGestrichelt: { value: 1 },
           uTiefe: { value: null }, uMitTiefe: { value: 0 }, uRect: { value: new THREE.Vector4() },
         },
         transparent: true,
@@ -149,7 +149,7 @@ export class Zeichner {
     this.punktMat = new THREE.ShaderMaterial({
       vertexShader: S.punktVS,
       fragmentShader: S.punktFS,
-      uniforms: { uAufl: this.U.uAufl, uZeit: this.U.uZeit, uFarbe: { value: farbe('petrol') }, uWahl: { value: farbe('lila') }, uHell: { value: new THREE.Vector3(1, 1, 1) }, uLampe: { value: new THREE.Vector3(0, 0, 0) }, uSkala: { value: 1 }, uDeck: { value: 1 } },
+      uniforms: { uAufl: this.U.uAufl, uZeit: this.U.uZeit, uFarbe: { value: farbe('petrol') }, uWahl: { value: farbe('lila') }, uHell: { value: new THREE.Vector3(1, 1, 1) }, uLampe: { value: new THREE.Vector3(0, 0, 0) }, uSkala: { value: 1 }, uDeck: { value: 1 }, uLampeMin: { value: 0.16 } },
       transparent: true,
       depthWrite: false,
       depthTest: true,
@@ -179,7 +179,7 @@ export class Zeichner {
     });
 
     this.koerper = null;
-    const LA = { position: 3, vor: 3, nach: 3, seite: 1, kante: 1, bogen: 1, zustand: 1, tusche: 1 };
+    const LA = { position: 3, vor: 3, nach: 3, seite: 1, kante: 1, bogen: 1, zustand: 1, tusche: 1, gewicht: 1 };
     this.linienSicht = new THREE.Mesh(new THREE.BufferGeometry(), this.linieSicht);
     this.linienVerd = new THREE.Mesh(new THREE.BufferGeometry(), this.linieVerdeckt);
     this.linienSicht.alle = [this.linienSicht, this.linienVerd];
@@ -276,7 +276,7 @@ export class Zeichner {
     }
     puffer.sichern(n, ni);
     const pos = puffer.arr('position'), vor = puffer.arr('vor'), nach = puffer.arr('nach');
-    const seite = puffer.arr('seite'), kante = puffer.arr('kante'), bogen = puffer.arr('bogen'), zustand = puffer.arr('zustand'), tusche = puffer.arr('tusche');
+    const seite = puffer.arr('seite'), kante = puffer.arr('kante'), bogen = puffer.arr('bogen'), zustand = puffer.arr('zustand'), tusche = puffer.arr('tusche'), gewicht = puffer.arr('gewicht');
     const idx = puffer.mesh.geometry.index.array;
     let o = 0, oi = 0;
     for (const z of zuege) {
@@ -299,7 +299,7 @@ export class Zeichner {
           pos[o3] = P[i][0]; pos[o3 + 1] = P[i][1]; pos[o3 + 2] = P[i][2];
           vor[o3] = pv[0]; vor[o3 + 1] = pv[1]; vor[o3 + 2] = pv[2];
           nach[o3] = pn[0]; nach[o3 + 1] = pn[1]; nach[o3 + 2] = pn[2];
-          seite[o] = s; kante[o] = ka; bogen[o] = b; zustand[o] = zu; tusche[o] = tu;
+          seite[o] = s; kante[o] = ka; bogen[o] = b; zustand[o] = zu; tusche[o] = tu; gewicht[o] = z.gewicht ?? 1;
           o++;
         }
       }

@@ -14,6 +14,7 @@ const GLYPHEN = {
   schwenken: url(saum('<path d="M16 5 v22 M5 16 h22"/><path d="M13 8 l3 -3 l3 3 M13 24 l3 3 l3 -3 M8 13 l-3 3 l3 3 M24 13 l3 3 l-3 3"/>'), 16, 16, 'move'),
   linse: url(saum('<circle cx="16" cy="16" r="9"/><circle cx="16" cy="16" r="1.4" fill="#fff"/>'), 16, 16, 'pointer'),
   passer: url(saum('<circle cx="16" cy="16" r="6"/><path d="M16 5 v22 M5 16 h22"/>'), 16, 16, 'move'),
+  formen: url(saum('<circle cx="16" cy="16" r="10" stroke-dasharray="2.6 3.2"/><circle cx="16" cy="16" r="2.2" fill="#fff"/>'), 16, 16, 'grab'),
   zeigen: 'default',
 };
 

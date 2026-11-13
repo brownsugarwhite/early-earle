@@ -41,7 +41,7 @@ export function mausAnbinden(app, el) {
   function zielHolen(x, y) {
     return app.layoutTreffer(x, y) || app.treffer(x, y, { sofort: true });
   }
-  const istDing = (a) => a === 'punkt' || a === 'griff' || a === 'linie' || a === 'maul';
+  const istDing = (a) => a === 'punkt' || a === 'griff' || a === 'linie' || a === 'maul' || (a === 'haut' && !!app.hautFormbar);
 
   // ---------------- Zeiger runter ----------------
   function runter(e) {
@@ -67,8 +67,9 @@ export function mausAnbinden(app, el) {
     }
     const knopf = e.button ?? 0;
     einer = { id: e.pointerId, typ, knopf, x0: x, y0: y, x, y, lx: x, ly: y, t0: jetzt(), art: 'warten', ziel: null, mod: mods(e), v: [0, 0] };
-    if (typ === 'mouse' && knopf === 1) return beginne('schwenken');
+    if (typ === 'mouse' && knopf === 1) return beginne(app.mitteDreht ? 'drehen' : 'schwenken');
     if (typ === 'mouse' && knopf === 2) return beginne('strich');
+    if (typ === 'mouse' && e.altKey && app.altDreht) return beginne('drehen');
     if (typ === 'mouse' && (stift || e.altKey)) return beginne('strich');
     einer.ziel = zielHolen(x, y);
     const a = einer.ziel.art;
@@ -236,7 +237,8 @@ export function mausAnbinden(app, el) {
     let art = 'drehen';
     if (einer) {
       art = { zug: 'ziehen', drehen: 'drehen', schwenken: 'schwenken', strich: 'stift', layout: app.layoutZeiger ? app.layoutZeiger(einer.ziel) : 'passer', langBereit: 'stift' }[einer.art] || 'drehen';
-      if (einer.art === 'warten') art = istDing(einer.ziel.art) ? 'ziehen' : einer.ziel.art === 'layout' ? (app.layoutZeiger ? app.layoutZeiger(einer.ziel) : 'passer') : 'drehen';
+      if (einer.art === 'warten') art = istDing(einer.ziel.art) ? (einer.ziel.art === 'haut' ? 'formen' : 'ziehen') : einer.ziel.art === 'layout' ? (app.layoutZeiger ? app.layoutZeiger(einer.ziel) : 'passer') : 'drehen';
+      if (einer.art === 'zug' && einer.ziel && einer.ziel.art === 'haut') art = 'formen';
     } else if (leertaste) art = 'schwenken';
     else if (app.stiftAn()) art = 'stift';
     else {
@@ -244,6 +246,7 @@ export function mausAnbinden(app, el) {
       if (n && n.art === 'layout') art = app.layoutZeiger ? app.layoutZeiger(n) : 'passer';
       else if (n && (n.art === 'punkt' || n.art === 'griff' || n.art === 'maul')) art = 'greifen';
       else if (n && n.art === 'linie') art = 'perle';
+      else if (n && n.art === 'haut' && app.hautFormbar) art = 'formen';
       else if (n && n.art === 'nichts') art = 'zeigen';
     }
     zeigerSetzen(el, art);
@@ -255,6 +258,10 @@ export function mausAnbinden(app, el) {
     if (e.preventDefault) e.preventDefault();
     if (app.vorfuehrungStoppen && !e.geist) app.vorfuehrungStoppen();
     const [x, y] = pos(e);
+    if (app.zug && app.radImZug && app.radImZug(e.deltaY)) {
+      if (einer) app.zugBewegen(einer.x, einer.y);
+      return;
+    }
     if (app.zug && app.zug.art === 'punkt') {
       app.einfluss = clamp((app.einfluss || 0.18 * app.groesse) * Math.exp(-e.deltaY * 0.0035), 0, 3 * app.groesse);
       if (app.einfluss < 0.05 * app.groesse) app.einfluss = 0;
@@ -295,10 +302,8 @@ export function mausAnbinden(app, el) {
     if (k === 'x') return app.haltenStart({ art: 'haut' }, app.maus.x, app.maus.y);
     if (k === 'k') return app.auswahlKante();
     if (k === 'f') return app.einpassen();
-    if (k === '1') return app.ansichtTaste('seite');
-    if (k === '3') return app.ansichtTaste('front');
-    if (k === '7') return app.ansichtTaste('top');
-    if (k === '0') return app.ansichtTaste('raum');
+    const ansicht = { 1: 'seite', 3: 'front', 7: 'top', 0: 'raum' }[k];
+    if (ansicht) return app.ansichtDruck ? app.ansichtDruck(ansicht) : app.ansichtTaste(ansicht);
     if (k === 'm' && app.tonUmschalten) return app.tonUmschalten();
     if (app.layoutTaste) app.layoutTaste(e.key);
   }
@@ -307,6 +312,8 @@ export function mausAnbinden(app, el) {
     if (e.key === ' ') { leertaste = false; zeigerArt(); }
     if (e.key === 'Alt') zeigerArt();
     if ((e.key || '').toLowerCase() === 'x') app.haltenEnde();
+    const ansicht = { 1: 'seite', 3: 'front', 7: 'top', 0: 'raum' }[(e.key || '').toLowerCase()];
+    if (ansicht && app.ansichtLos) app.ansichtLos(ansicht);
   }
 
   el.addEventListener('pointerdown', runter);

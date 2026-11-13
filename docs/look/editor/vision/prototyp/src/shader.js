@@ -229,6 +229,7 @@ uniform vec2 uAufl; uniform float uPx; // Bildpunkte je Einheit Kontur (Zoom)
 uniform vec3 uGrund, uPetrol, uRosa, uLila;
 uniform float uKontur, uPasser, uSchatten, uHinten, uPose;
 uniform float uSchattenLang; // größte Länge des langen Schattens (Bildpunkte)
+uniform float uDeck; // Deckkraft (Überblendung)
 varying vec2 vUv;
 float abstand(sampler2D f, vec2 p){
   vec2 s = texture2D(f, p / uAufl).xy;
@@ -269,13 +270,13 @@ void main(){
   // Körper (Pose) obenauf
   vec4 k = texture2D(uKoerper, vUv);
   c = mix(c, k.rgb, k.a);
-  gl_FragColor = vec4(c, 1.0);
+  gl_FragColor = vec4(c, uDeck);
 }`;
 
 // ---------- Linien als Bänder ----------
 export const linieVS = /* glsl */ `
 attribute vec3 vor; attribute vec3 nach; attribute float seite; attribute float kante; attribute float bogen;
-attribute float zustand; attribute float tusche;
+attribute float zustand; attribute float tusche; attribute float gewicht;
 uniform vec2 uAufl; uniform float uBreite, uBreiteKante;
 varying float vKante; varying float vBogen; varying float vZustand; varying float vTusche; varying float vSeite; varying float vPx;
 void main(){
@@ -286,7 +287,7 @@ void main(){
   vec2 t = sc - sb; if (length(t) < 1e-6) t = vec2(1.0, 0.0);
   t = normalize(t);
   vec2 n = vec2(-t.y, t.x);
-  float w = mix(uBreite, uBreiteKante, kante) * (1.0 + 0.6 * step(1.5, zustand));
+  float w = mix(uBreite, uBreiteKante, kante) * (1.0 + 0.6 * step(1.5, zustand)) * gewicht;
   vec2 s = sa + n * seite * w * 0.5;
   gl_Position = vec4(s / (uAufl * 0.5) * a.w, a.z - 0.0008 * a.w, a.w);
   vKante = kante; vBogen = bogen; vZustand = zustand; vTusche = tusche; vSeite = seite; vPx = w;
@@ -294,12 +295,12 @@ void main(){
 
 export const linieFS = /* glsl */ `
 precision highp float;
-uniform vec3 uFarbe, uWahl, uHell; uniform float uVerdeckt, uStrich, uAlpha, uZeit;
+uniform vec3 uFarbe, uWahl, uHell; uniform float uVerdeckt, uStrich, uAlpha, uZeit, uGestrichelt;
 uniform sampler2D uTiefe; uniform float uMitTiefe; uniform vec2 uAufl; uniform vec4 uRect;
 varying float vKante; varying float vBogen; varying float vZustand; varying float vTusche; varying float vSeite; varying float vPx;
 void main(){
-  // Strichelung nur, wo keine Kante ist
-  float strich = step(0.5, fract(vBogen * uStrich));
+  // Strichelung nur, wo keine Kante ist (und nur so stark, wie uGestrichelt sagt)
+  float strich = mix(1.0, step(0.5, fract(vBogen * uStrich)), uGestrichelt);
   float voll = max(step(0.5, vKante), strich);
   float a = mix(0.85, 1.0, vKante) * voll;
   // Rand weich
@@ -331,30 +332,34 @@ precision highp float;
 uniform vec3 uFarbe, uWahl, uHell; uniform float uZeit;
 uniform vec3 uLampe; // Taschenlampe: Bildpunkt x, y und Halbmesser (0 = aus); außerhalb nur ein Hauch
 uniform float uDeck; // Deckkraft aller Punkte (1 = voll)
+uniform float uLampeMin; // Deckkraft außerhalb des Lichts
 varying vec2 vE; varying float vZustand; varying float vGr;
 void main(){
-  float r = length(vE);
+  // Ecken (Zustand + 10) sind Rauten, glatte Punkte Kreise
+  float raute = step(9.5, vZustand);
+  float zs = vZustand - 10.0 * raute;
+  float r = mix(length(vE), (abs(vE.x) + abs(vE.y)) * 0.80, raute);
   float lampe = 1.0;
-  if (uLampe.z > 0.0 && (vZustand < 0.5 || (vZustand > 4.5 && vZustand < 5.5))) {
+  if (uLampe.z > 0.0 && (zs < 0.5 || (zs > 4.5 && zs < 5.5))) {
     float d = distance(gl_FragCoord.xy, uLampe.xy);
-    lampe = mix(0.16, 1.0, 1.0 - smoothstep(uLampe.z * 0.45, uLampe.z, d));
+    lampe = mix(uLampeMin, 1.0, 1.0 - smoothstep(uLampe.z * 0.45, uLampe.z, d));
   }
   float aa = 1.5 / max(vGr, 1.0);
   // 0 Punkt, 1 Nähe, 2 gewählt, 3 Griffspitze, 4 Perle (neuer Punkt), 5 Zwilling, 6 verweigert
   vec3 c; float a;
-  if (vZustand > 3.5 && vZustand < 4.5) {
+  if (zs > 3.5 && zs < 4.5) {
     float ring = smoothstep(0.55 - aa, 0.55, r) * (1.0 - smoothstep(0.85, 0.85 + aa, r));
     float kern = 1.0 - smoothstep(0.25, 0.25 + aa, r);
     c = uWahl; a = max(ring, kern) * (0.75 + 0.25 * sin(uZeit * 8.0));
-  } else if (vZustand > 2.5 && vZustand < 3.5) {
+  } else if (zs > 2.5 && zs < 3.5) {
     float ring = smoothstep(0.5 - aa, 0.5, r) * (1.0 - smoothstep(0.95, 0.95 + aa, r));
     c = uFarbe; a = ring;
   } else {
     float saum = 1.0 - smoothstep(1.0 - aa, 1.0, r);
     float kern = 1.0 - smoothstep(0.62 - aa, 0.62, r);
     c = mix(uHell, uFarbe, kern);
-    if (vZustand > 1.5 && vZustand < 2.5) c = mix(uHell, uWahl, kern);
-    if (vZustand > 4.5 && vZustand < 5.5) c = mix(uHell, uWahl * 0.8 + 0.2, kern);
+    if (zs > 1.5 && zs < 2.5) c = mix(uHell, uWahl, kern);
+    if (zs > 4.5 && zs < 5.5) c = mix(uHell, uWahl * 0.8 + 0.2, kern);
     a = saum;
   }
   a *= lampe * uDeck;
