@@ -6,6 +6,7 @@
 // Ausgabe: je Fall wenige Zeilen; mit BLATT=<pfad ohne Endung> die Bilder als HTML (dann aus apps/editor
 // `HOEHE=100 node scripts/pruefen/html-shot.mjs --jpg <pfad>-*.html`).
 //   FALL=ruessel,horn,biegen,formen (Komma-Liste, Standard alle)   DREIECKE=2000
+//   FALL=tempo: der Löser `direkt`, wie ihn das Fenster benutzt (`LoopZug`, je Bild eine Runde), an „strange bird“ und Firefish
 // Geprüft und verworfen (Schalter bleiben zum Nachrechnen): neue Haut mit der heutigen Rechnung runden, während der Rest fest steht.
 //   RUNDEN=geometrie|gleich (Standard aus)   BEREICH=punkte (neue Punkte und RINGE Ringe darum) | feld (das ganze Feld zwischen den
 //   Linien, wenn mindestens der Anteil ANTEIL seiner Punkte neu ist). Auf einem Teil der Haut kommt die heutige Rechnung nicht zur
@@ -535,7 +536,56 @@ function formen(): void {
   }
 }
 
+// ---- Tempo des Lösers `direkt` (wie ihn das Fenster benutzt): je Bild eine Runde ----------------------------------------------
+function tempo(): void {
+  for (const name of ['strange bird', 'teat firefish']) {
+    const { h, loops } = formLaden(name);
+    // der höchste Punkt aller Loops (am strange bird die Hornspitze) in 30 Bildern um 70 hinauf, je Bild eine Runde
+    let spitze: { li: number; pi: number; y: number; kreuzung?: number } | null = null;
+    loops.forEach((l, li) => l.punkte.forEach((p, pi) => (!spitze || p.cur.y > spitze.y ? (spitze = { li, pi, y: p.cur.y, kreuzung: p.kreuzung }) : 0)));
+    const sp = spitze!;
+    const verschBei = (weit: number): (Float64Array | null)[] =>
+      loops.map((l, li) => {
+        let irgend = false;
+        const D: V3[] = l.punkte.map((p, pi) => {
+          const mit = (li === sp.li && pi === sp.pi) || (sp.kreuzung !== undefined && p.kreuzung === sp.kreuzung);
+          if (mit) irgend = true;
+          return mit ? { x: 0.3 * weit, y: weit, z: 0 } : { x: 0, y: 0, z: 0 };
+        });
+        return irgend ? verschiebungLaengs(l, D) : null;
+      });
+    const t0 = performance.now();
+    const z = new LoopZug(h, loops, null, false, 'direkt');
+    const greifen = performance.now() - t0;
+    const BILDER = 30;
+    const zeiten: number[] = [];
+    const fehler: number[] = [];
+    const genau = kopie(h);
+    for (let k = 1; k <= BILDER; k++) {
+      const v = verschBei((70 * k) / BILDER);
+      const t = performance.now();
+      z.schritt(v, 1);
+      zeiten.push(performance.now() - t);
+      if (k === 10 || k === 20 || k === BILDER) {
+        // wie weit ist die Haut nach diesem Bild von der fertigen Lösung für diese Lagen? (eigener Löser, viele Runden)
+        genau.pos.set(h.pos);
+        const zg = new LoopZug(genau, loops, null, false, 'direkt');
+        // der zweite Löser beginnt an der bewegten Haut; sein Stand ist ein anderer. Darum nur der Weg bis zur Ruhe desselben Lösers:
+        void zg;
+        const vor = Float64Array.from(h.pos);
+        const kop = Float64Array.from(h.pos);
+        for (let r = 0; r < 12; r++) z.schritt(v, 1);
+        fehler.push(weg(vor, h.pos));
+        h.pos.set(kop);
+      }
+    }
+    const sz = [...zeiten].sort((a, b) => a - b);
+    console.log(`Tempo „direkt“ an ${name} (${h.n} Punkte): Greifen ${greifen.toFixed(0)} ms; ${BILDER} Bilder, höchster Punkt um 70 hinauf, je Bild eine Runde: Median ${sz[BILDER >> 1]!.toFixed(1)} ms, größte ${sz[BILDER - 1]!.toFixed(1)} ms; nach Bild 10 / 20 / 30 noch ${fehler.map((f) => z2(f)).join(' · ')} von der fertigen Lösung entfernt`);
+  }
+}
+
 const t0 = performance.now();
+if (FAELLE.includes('tempo')) tempo();
 if (FAELLE.includes('ruessel')) ruessel();
 if (FAELLE.includes('horn')) horn();
 if (FAELLE.includes('biegen')) biegen();

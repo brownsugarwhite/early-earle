@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { HautDirekt, linienDrehung } from './direkt';
 import { hautNormalenMax } from './kurven';
 import { dreiLoops, falten, rundheit } from './kurvenFaelle';
-import { bindungenAus, zieleAus } from './loops';
+import { LoopZug, bindungenAus, zieleAus } from './loops';
 import { linienRichtung } from './richtung';
 
 describe('Haut direkt aus den Linien (Beweis)', () => {
@@ -92,5 +92,40 @@ describe('Haut direkt, fester Stand und mitdrehende Normalen (zweiter Beweis)', 
     const schritte = zu(gebogen, true);
     expect(schritte).toBeLessThan(60);
     expect(weg(h.pos, genau)).toBeLessThan(0.05);
+  });
+
+  it('der Löser „direkt“ eines Zugs: dieselbe Haut wie die genaue Lösung, ohne neu zu zerlegen; unbewegt bleibt sie stehen', () => {
+    // genau: festen Stand anlegen, Normalen mitdrehen, lösen
+    const genauH = dreiLoops();
+    const ruhe = genauH.loops.map((l) => Float64Array.from(l.ruhe));
+    const gebogen = ruhe.map((L) => biegen(L, 25));
+    {
+      const { h, loops } = genauH;
+      const h0 = { ...h, pos: Float64Array.from(h.pos) };
+      const plan = bindungenAus(h, loops);
+      const nor = hautNormalenMax(h);
+      const d = new HautDirekt(h, plan.bind, { stand: true });
+      const feld = d.normalenDrehen(linienDrehung(h0, loops, plan, ruhe, gebogen, linienRichtung(h0, loops, plan, ruhe, nor), linienRichtung(h0, loops, plan, gebogen, nor)));
+      d.lagenLoesen(zieleAus(plan, gebogen), feld);
+    }
+    // im Zug: je Runde zwei Schritte Nachführen
+    const { h, loops } = dreiLoops();
+    const vorher = Float64Array.from(h.pos);
+    const z = new LoopZug(h, loops, null, false, 'direkt');
+    const still = loops.map(() => null);
+    z.schritt(still, 1);
+    let m = 0;
+    for (let i = 0; i < vorher.length; i++) m = Math.max(m, Math.abs(h.pos[i]! - vorher[i]!));
+    expect(m).toBeLessThan(1e-6);
+    const versch = gebogen.map((L, li) => Float64Array.from(L, (x, k) => x - ruhe[li]![k]!));
+    for (let r = 0; r < 12; r++) z.schritt(versch, 1);
+    m = 0;
+    for (let i = 0; i < vorher.length; i++) m = Math.max(m, Math.abs(h.pos[i]! - genauH.h.pos[i]!));
+    expect(m).toBeLessThan(0.02);
+    // und zurück
+    for (let r = 0; r < 12; r++) z.schritt(still, 1);
+    m = 0;
+    for (let i = 0; i < vorher.length; i++) m = Math.max(m, Math.abs(h.pos[i]! - vorher[i]!));
+    expect(m).toBeLessThan(0.02);
   });
 });

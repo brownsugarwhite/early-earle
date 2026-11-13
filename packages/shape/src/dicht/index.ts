@@ -66,6 +66,8 @@ export {
   type ZeichnungsStueck,
   LoopZug,
   loopStruktur,
+  direktLoeserFuer,
+  hartePunkte,
   bereichUm,
   bindungenAus,
   blickTiefe,
@@ -118,6 +120,7 @@ export {
   verschiebungLaengs,
   zieleAus,
 } from './loops';
+export { type DirektLoeser } from './direktZug';
 export { loopEinsetzen } from './einsetzen';
 export { bernstein, stueckAnpassen, stueckNaechstes, stueckPunkt, stueckTeilen } from './pfad';
 export { type Verdichtet, nadelnZusammenlegen, verdichten } from './verdichten';

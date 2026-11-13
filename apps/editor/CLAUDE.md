@@ -31,6 +31,10 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   ab; `&fein=0|1|2|3` legt die Stufen der Verfeinerung fest, `&ruhe=<n>` die Durchgänge beim Beruhigen der Normalen. Rechnung in
   `src/form/glattPlan.ts`, Einbau in `kurven.ts` (`glattAnlegen`, `glattZeigen`, `hautMaterial`). Test-Haken `__kurven.glatt()`
   (null mit `&anzeige=grob`) und `__kurven.zeichnenMs()`.
+- **„Form halten“** (B als Schalter, seit dem 13.11. im Bau-Zweig zum Ausprobieren): Knopf oder Taste H, `&ziehen=direkt` /
+  `&ziehen=rund`. An: Ein Zug bewegt die Haut direkt mit den Linien (`LoopZug` mit der Art `direkt`, `dicht/direktZug.ts`),
+  nach dem Loslassen wird nur verdichtet, nichts setzt sich. Der Löser wird in der Ruhe vorbereitet (`direktBereiten`).
+  Probe `scripts/pruefen/form-halten-probe.mjs`. Haken `__kurven.halten(an?)`, `zeiten().halten`.
 - Test-Haken im Fenster: `window.__kurven` (`zeiten()`, `lagen`, `loops`, `ablage`, `beschaeftigt` …).
 
 ## Prüfen
@@ -81,5 +85,7 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
 - Mit dem kleinen Rechennetz hat die Startkugel 1 500 Punkte und eine Startkante von rund 15. Proben, die feste Punktzahlen
   oder Orte auf dem alten Startnetz erwarten, mit `&netz=dicht` laufen lassen. Ein überall gleich grobes Netz (`&genauHaut=0`)
   lässt kleine Details zusammenfallen: Die Verfeinerung nach Krümmung gehört zum kleinen Netz.
+- Wer in der Ruhe etwas vorbereitet (wie `direktBereiten`), darf die Lagen der Haut nicht anfassen, auch nicht um
+  Rundungsreste: `standZahl` ändert sich sonst, und der Hintergrund beginnt immer wieder von vorn.
 - **Vor Arbeit an `kurven.ts` oder am Löser lesen:** `docs/verlauf/2026-11-11-uebergabe-kurven.md`, Abschnitt 3 (Karte von
   `kurven.ts`) und Abschnitt 4 (Fallen, was schon kaputtging).

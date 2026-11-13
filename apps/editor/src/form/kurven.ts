@@ -28,6 +28,7 @@
 
 import {
   type Ansicht,
+  type DirektLoeser,
   type GriffVersatz,
   type HautArt,
   type Einbettung,
@@ -44,6 +45,7 @@ import {
   type V3,
   type ZeichnungsStueck,
   bereichUm,
+  direktLoeserFuer,
   eckenAuto,
   einfluss,
   ergaenzen,
@@ -311,6 +313,43 @@ const RICHTUNG_OPT: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: bool
 /** Der Zug löst nur einen Bereich um die bewegten Stellen (mit Gedächtnis und in der Pose); aus den Kurven die ganze Haut */
 const mitBereich = (): boolean => grund !== null || HAUT !== 'kurven';
 /**
+ * „Form halten“ (Plan vom 12.11., Anhang A.3: B als Schalter, 13.11.; zum Ausprobieren im Bau-Fenster). An: Ein Zug bewegt die Haut
+ * direkt mit den Linien (Löser `direkt` im Kern, `direktZug.ts`). Was schon Haut ist, behält seine Wölbung, nichts rundet neu, hin
+ * und zurück gibt dieselbe Haut. Nach dem Loslassen wird nur verdichtet; die heutige Rechnung setzt nichts, auch nicht nach einem
+ * neuen Loop. Im Zug wird nicht verfeinert. Aus: alles wie bisher. Nur in der Grundform. Knopf „Form halten“, Taste H,
+ * `?ziehen=direkt` (an) oder `?ziehen=rund` (aus); sonst gilt, was zuletzt geschaltet war. Neue Haut runden kann dieser Löser
+ * nicht (aus der Kugel gezogen entsteht ein Keil): dafür den Schalter aus.
+ */
+let direktAn = ((w) => (w === 'direkt' ? true : w === 'rund' ? false : haltenGemerkt()))(new URLSearchParams(location.search).get('ziehen'));
+/** der Schalter übersteht das Neuladen (nicht unter einer Fernsteuerung, dort gilt nur die Adresse; `?ziehen=rund` schaltet ihn aus) */
+function haltenGemerkt(): boolean {
+  try {
+    return !navigator.webdriver && localStorage.getItem('ee-form-halten') === '1';
+  } catch {
+    return false;
+  }
+}
+const direktGilt = (): boolean => direktAn && !mitBereich();
+/** der vorbereitete Löser `direkt` für den Stand von jetzt (das Greifen wartet dann nicht auf das Zerlegen) */
+let direktBereit: { stand: string; haut: Haut; loeser: DirektLoeser } | null = null;
+/** so lange hielt das letzte Vorbereiten den Hauptthread an (ms, zum Messen) */
+let letztesDirektBereiten = 0;
+/** den vorbereiteten Löser nehmen, wenn er zum Stand von jetzt gehört (er gilt für einen Zug) */
+function direktNehmen(): DirektLoeser | null {
+  const b = direktBereit;
+  direktBereit = null;
+  return b && b.haut === haut && b.stand === standZahl() ? b.loeser : null;
+}
+/** in der Ruhe: den Löser `direkt` für den Stand von jetzt anlegen (einmal je Stand; nicht, solange noch verdichtet oder gesetzt wird) */
+function direktBereiten(): void {
+  if (!direktGilt() || zug || nachlauf || ruheOffen || (aufraeumen && (aufraeumen.verdichten || aufraeumen.setzen))) return;
+  const stand = standZahl();
+  if (direktBereit && direktBereit.haut === haut && direktBereit.stand === stand) return;
+  const t0 = performance.now();
+  direktBereit = { stand, haut, loeser: direktLoeserFuer(haut, loops) };
+  letztesDirektBereiten = Math.round(performance.now() - t0);
+}
+/**
  * Die Linie ist ihr Pfad (07.11., Florian: „ja genau zur Bézier-Kurve machen“): In der Grundform ist das Ziel jeder Probe eines Loops
  * mit Pfad genau der Pfad an ihrer Stelle, die Haut folgt, und die Punkte bleiben, wohin sie gezogen werden. In der Pose (ihre Linien
  * sind gedrehte Linien der Grundform, die Griffe daran abgelesen) folgen die Linien wie bisher den Änderungen ihres Pfads.
@@ -553,6 +592,7 @@ const leinwand = document.getElementById('leinwand') as HTMLCanvasElement;
 const statusZeile = document.getElementById('status') as HTMLSpanElement;
 const knopfLoop = document.getElementById('knopf-loop') as HTMLButtonElement;
 const knopfO = document.getElementById('knopf-o') as HTMLButtonElement;
+const knopfHalten = document.getElementById('knopf-halten') as HTMLButtonElement | null;
 
 const renderer = new WebGLRenderer({ canvas: leinwand, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -1889,6 +1929,7 @@ function allesZeigen(): void {
   knopfStift.setAttribute('aria-pressed', String(modus === 'stift'));
   knopfO.setAttribute('aria-pressed', String(oAn));
   knopfO.textContent = oAn ? `Einfluss O · ${Math.round(radius)}` : 'Einfluss O';
+  knopfHalten?.setAttribute('aria-pressed', String(direktAn));
   statusZeigen();
   vorrechnenPlanen();
   behaltenPlanen();
@@ -1920,7 +1961,10 @@ function vorrechnenPlanen(): void {
     vorrechnenUhr = null;
     if (mitBereich() || zug || nachlauf) return;
     // über die ganze Haut nach der Geometrie rechnet der Hintergrund, was für den Stand offen ist (G4.4)
-    if (ruheImHintergrund()) return;
+    const imHintergrund = ruheImHintergrund();
+    // „Form halten“: den Löser für das nächste Greifen anlegen (hier im Fenster; steht noch ein Verdichten an, erst danach)
+    direktBereiten();
+    if (imHintergrund) return;
     // ohne Hintergrund rechnet das Fenster selbst, was offen ist (wie bis G4)
     if (ruheOffen) {
       const r = ruheOffen;
@@ -2010,7 +2054,7 @@ function statusZeigen(): void {
     zug?.offen || nachlauf ? ' (rechnet)' : gegriffen ? ' (der Griff wartet, bis die Haut steht)' : aufraeumen?.setzen ? ' (rechnet im Hintergrund)' : aufraeumen?.verdichten ? ' (verfeinert im Hintergrund)' : '';
   statusZeile.textContent =
     (meldung ? meldung + rechnet : '') ||
-    `${loops.length} Loops · ${punkte} Punkte (${kreuz} Kreuzungen) · Zug ${ms.toFixed(1)} ms${rechnet} · zerlegen ${letzteZerlegung} ms · ` +
+    `${direktGilt() ? 'Form halten · ' : ''}${loops.length} Loops · ${punkte} Punkte (${kreuz} Kreuzungen) · Zug ${ms.toFixed(1)} ms${rechnet} · zerlegen ${letzteZerlegung} ms · ` +
       `Bereich ${letzterBereich} von ${haut.n}` +
       (letzteVerdichtung
         ? ` · verdichtet +${letzteVerdichtung.neu}${letzteVerdichtung.gelegt ? ` −${letzteVerdichtung.gelegt}` : ''} (${letzteVerdichtung.ms} ms)`
@@ -2186,6 +2230,8 @@ function loeserHaut(): { h: Haut; aus: Uint8Array | null } {
  * Feld (gemessen: Lappen unter einem Pilzrand, 12 umgeklappt; über die ganze Haut keine).
  */
 function loeserFuer(bewegt: readonly V3[], r: number, ecken: Iterable<number>): LoopZug {
+  // „Form halten“: die Haut folgt den Linien direkt (in der Grundform ist die Haut des Lösers die ganze Haut)
+  if (direktGilt()) return new LoopZug(haut, loops, null, false, 'direkt', GEWICHTE, { direkt: direktNehmen() });
   const { h, aus } = loeserHaut();
   const art: HautArt = mitBereich() ? 'gedaechtnis' : 'kurven';
   const bereich = mitBereich() ? bereichUm(h, bewegt, r, ecken) : null;
@@ -2830,7 +2876,7 @@ function zugRechnen(): void {
   zeiten.push(performance.now() - t0);
   if (zeiten.length > 200) zeiten.shift();
   // über die ganze Haut nach der Geometrie: verfeinern, sobald sie gestreckt wird
-  if (neuesZiel && LIVE && GEWICHTE === 'geometrie' && !z.griff && !z.begrenzt && !verfeinerung && !eingetroffen && letzteMaus && (gestreckt() || linieUngenau(z)) && umgeschlageneZahl() <= z.umgAnfang) {
+  if (neuesZiel && LIVE && GEWICHTE === 'geometrie' && z.loeser.art !== 'direkt' && !z.griff && !z.begrenzt && !verfeinerung && !eingetroffen && letzteMaus && (gestreckt() || linieUngenau(z)) && umgeschlageneZahl() <= z.umgAnfang) {
     const [X, Y] = letzteMaus;
     if (HINTERGRUND) stufeImHintergrund(z, X, Y);
     else zugStufe(z, X, Y);
@@ -3365,7 +3411,7 @@ function nachlaufRechnen(): void {
 function aufraeumenImFenster(): void {
   const vor = haut;
   nachVerdichten();
-  if (haut !== vor) {
+  if (haut !== vor && !direktGilt()) {
     nachLoesenOffen = haut;
     nachVerfeinert = 0;
   }
@@ -3386,7 +3432,7 @@ function ruheImHintergrund(): boolean {
   // Hintergrund
   if (nachLoesenOffen === haut) {
     nachLoesenOffen = null;
-    ruheOffen = { setzen: true, nurInRuhe: false, verdichten: true, ziele: null };
+    if (!direktGilt()) ruheOffen = { setzen: true, nurInRuhe: false, verdichten: true, ziele: null };
   }
   if (ruheOffen) aufraeumenStarten(ruheOffen);
   else if (standFertig !== stand && !vorlageGenau(stand)) aufraeumenStarten({ setzen: false, nurInRuhe: false, verdichten: false, ziele: null });
@@ -3415,6 +3461,8 @@ function aufraeumenStarten(opt: RuheOffen): void {
     } else if (opt.verdichten) aufraeumenImFenster();
     return;
   }
+  // „Form halten“: Der Hintergrund verdichtet nur; gesetzt wird mit der heutigen Rechnung nichts (keine Runden)
+  const halten = direktGilt();
   const id = ++verfeinerungsNr;
   if (nachbarnGemerkt?.haut !== haut) nachbarnGemerkt = { haut, flach: nachbarnFlach(haut) };
   // die Verschiebungen gelten nur für die Loops, für die sie gerechnet sind
@@ -3430,18 +3478,18 @@ function aufraeumenStarten(opt: RuheOffen): void {
     maxKante: 1.75 * MK,
     opt: verdichtenOptionen(false),
     optNurTeilen: verdichtenOptionen(true),
-    nachverfeinern: GENAU > 0 ? 3 : 0,
+    nachverfeinern: GENAU > 0 && !halten ? 3 : 0,
     kruemmung: KRUEMMUNG,
     gewichte: GEWICHTE,
     loeserOpt: RICHTUNG_OPT,
     ruhe: RUHE,
-    maxRunden: RUNDEN_NEU,
-    zuerstSetzen: opt.setzen,
+    maxRunden: halten ? 0 : RUNDEN_NEU,
+    zuerstSetzen: opt.setzen && !halten,
     ziele,
     maxRundenZuerst: NACH_RUNDEN,
     nurInRuhe: opt.nurInRuhe,
   };
-  aufraeumen = { id, netz: haut, stand: standZahl(), t0: performance.now(), setzen: opt.setzen, nurInRuhe: opt.nurInRuhe, verdichten: verdichtet };
+  aufraeumen = { id, netz: haut, stand: standZahl(), t0: performance.now(), setzen: opt.setzen && !halten, nurInRuhe: opt.nurInRuhe, verdichten: verdichtet };
   aufgeraeumt = null;
   zwischenstand = null;
   auftraegeOffen++;
@@ -3575,7 +3623,11 @@ function aufgeraeumtAnwenden(): void {
   };
   // hat sich an der Haut nichts geändert (nur die Zerlegung kam), bleibt alles, wie es gezeigt ist
   if (neueHaut || !gilt) allesZeigen();
-  else statusZeigen();
+  else {
+    statusZeigen();
+    // „Form halten“: Das Verdichten hat nichts geändert, der Stand ist fertig: den Löser für das nächste Greifen anlegen
+    if (direktGilt()) vorrechnenPlanen();
+  }
   letzterAuftrag.einwechseln = Math.round(performance.now() - t0);
 }
 
@@ -3682,7 +3734,7 @@ function zugEnde(ok: boolean): void {
       else nachVerdichten();
       // aus den Kurven: das verdichtete Netz setzt sich gleich danach in der Ruhe (die neuen Punkte liegen erst nur rund zwischen den
       // alten); beim Loslassen zu lösen hieß, dort auf das Zerlegen des neuen Netzes zu warten (0,6 s bei 15 000 Punkten)
-      if (!mitBereich() && haut !== vorVerdichten) {
+      if (!mitBereich() && haut !== vorVerdichten && z.loeser.art !== 'direkt') {
         nachLoesenOffen = haut;
         nachVerfeinert = 0;
       }
@@ -3693,6 +3745,8 @@ function zugEnde(ok: boolean): void {
     }
   } else {
     for (const l of loops) for (const p of l.punkte) p.cur = { ...p.ref };
+    // „Form halten“: nur gewählt, nichts gezogen: Der Löser dieses Griffs hat nichts gerechnet und gilt weiter für den Stand
+    if (z.loeser.art === 'direkt' && !direktBereit && direktGilt()) direktBereit = { stand: standZahl(), haut, loeser: z.loeser.loeser as DirektLoeser };
   }
   allesZeigen();
   letztesLoslassen = Math.round(performance.now() - tLos);
@@ -3798,6 +3852,8 @@ function loopSchneiden(a: Ansicht, A: [number, number], B: [number, number]): vo
  * Hintergrund setzt sie (G4.4). Bis dahin setzte sie erst der erste Griff, sichtbar als Ruck über die ganze Haut.
  */
 function ruheNoetig(): void {
+  // „Form halten“: Ein neuer Loop liegt auf der Haut, wie sie ist; sie setzt sich nicht
+  if (direktGilt()) return;
   if (!LOOP_SETZEN || !mitNachlauf() || !zerleger()) return;
   // Erst wenn sich Loops kreuzen, halten sie die Haut. Mit einem einzelnen Ring ist die Form nicht bestimmt: Gemessen schwingt ein
   // neuer Löser dann bis 149 Einheiten je Runde aus, braucht 23 bis 36 Runden und landet je nach Netz woanders (bei 11 000 Punkten
@@ -3973,6 +4029,23 @@ function hautNeuRechnen(versch: readonly (Float64Array | null)[] = loops.map(() 
   }
   vorrechnenAus();
   eckenAuto(loops);
+  if (direktGilt()) {
+    // „Form halten“: Die Linien gehen auf ihre neuen Pfade (gelöschte Punkte, geknickte Griffe), die Haut folgt ihnen direkt. Eine
+    // Kante an oder aus ändert die Haut so nicht; das zeigt erst die heutige Rechnung (Schalter aus).
+    const t0 = performance.now();
+    const z = new LoopZug(haut, loops, null, false, 'direkt', GEWICHTE, { direkt: direktNehmen() });
+    z.schritt(
+      loops.map((l, li) => (exakt(l) ? pfadVersatz(l, z.start[li]!) : versch[li]!)),
+      12,
+    );
+    festlegenAlle();
+    kreuzungenSuchen();
+    nachVerdichten();
+    letzteZerlegung = z.loeser.zeitZerlegen;
+    letzterBereich = z.loeser.anzahl;
+    letztesNeuRechnen = Math.round(performance.now() - t0);
+    return;
+  }
   // über die ganze Haut nach der Geometrie rechnet das der Hintergrund (G4.4, `ruheImHintergrund`): Das Fenster hielt hier 0,4 / 0,9 /
   // 2,5 s an (Kante an bei 5 200 / 11 000 / 23 400 Punkten). `sofort`: im Fenster wie bis dahin (wer gleich danach weiterrechnet)
   if (!sofort && mitNachlauf() && zerleger()) {
@@ -4554,6 +4627,24 @@ knopfO.addEventListener('click', () => {
   oAn = !oAn;
   allesZeigen();
 });
+/** „Form halten“ an oder aus (nicht mitten in einem Zug) */
+function haltenSchalten(an = !direktAn): void {
+  if (zug) return;
+  direktAn = an;
+  direktBereit = null;
+  try {
+    localStorage.setItem('ee-form-halten', an ? '1' : '0');
+  } catch {
+    // ohne Speicher gilt der Schalter bis zum Neuladen
+  }
+  meldung = direktAn
+    ? grund
+      ? 'Form halten: gilt in der Grundform (in der Pose rechnet es wie bisher).'
+      : 'Form halten an: Ziehen bewegt die Haut direkt, nichts rundet neu.'
+    : 'Form halten aus: Ziehen rundet die Haut wie bisher.';
+  allesZeigen();
+}
+knopfHalten?.addEventListener('click', () => haltenSchalten());
 
 window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
@@ -4610,6 +4701,8 @@ window.addEventListener('keydown', (e) => {
   } else if (k === 'o') {
     oAn = !oAn;
     allesZeigen();
+  } else if (k === 'h') {
+    haltenSchalten();
   } else if (e.key === 'Home') {
     // Pos1: alle Blätter wieder ganz zeigen
     for (const a of ['seite', 'front', 'top'] as const) {
@@ -5449,8 +5542,15 @@ if (BEHALTEN) behaltenesHolen();
       ...(orte ? { umgeschlagenWo: wo } : {}),
     };
   },
+  /** „Form halten“ setzen oder lesen */
+  halten: (an?: boolean): boolean => {
+    if (an !== undefined && an !== direktAn) haltenSchalten(an);
+    return direktAn;
+  },
   zeiten: () => ({
     zug: [...zeiten],
+    /** „Form halten“: an, der Löser für den Stand liegt bereit, so lange dauerte das letzte Vorbereiten (ms) */
+    halten: { an: direktAn, gilt: direktGilt(), bereit: direktBereit !== null && direktBereit.haut === haut, bereiten: letztesDirektBereiten },
     zerlegen: letzteZerlegung,
     bereich: letzterBereich,
     verdichtung: letzteVerdichtung,
