@@ -96,7 +96,16 @@ export type Loop = {
    * der ersten; die Zahl ist der Winkel in Grad, um den die gerechnete Lage offen ist („zu“ dreht der Kieferknochen um ihn zurück).
    */
   maulLinie?: number;
+  /**
+   * Abzweigung (14.11.): Eine offene Linie (Art `ring`), deren Ende nicht auf der Mittelebene liegt, sondern an einem Punkt einer
+   * anderen Linie hängt und ihn mit ihr teilt (gleiche `kreuzung`): [Anfang, Ende]. Fehlt die Angabe, liegen beide Enden auf der
+   * Mittelebene (der Ring wie bisher). Eine Abzweigung gehört wie Ring und Paar zur Hälfte z ≥ 0, ihr Spiegelbild zur anderen.
+   */
+  haengt?: readonly [boolean, boolean];
 };
+
+/** Das Ende einer offenen Linie liegt auf der Mittelebene (dort geht sie in ihr Spiegelbild über): 0 der Anfang, 1 das Ende */
+export const endeAufMitte = (l: Loop, ende: 0 | 1): boolean => l.art === 'ring' && !l.haengt?.[ende];
 
 /** Blattkoordinaten (u, v) und Tiefe zum Betrachter: Seite von +z, Front von −x, Top von +y */
 export const blickUV = (a: Ansicht, p: V3): [number, number] => (a === 'seite' ? [p.x, p.y] : a === 'front' ? [p.z, p.y] : [p.x, p.z]);
@@ -143,10 +152,8 @@ export function hautLagen(h: Haut, l: Loop): Float64Array {
     out[3 * i + 1] = q.y;
     out[3 * i + 2] = l.art === 'mitte' ? 0 : q.z;
   });
-  if (l.art === 'ring') {
-    out[2] = 0;
-    out[3 * l.proben.length - 1] = 0;
-  }
+  if (endeAufMitte(l, 0)) out[2] = 0;
+  if (endeAufMitte(l, 1)) out[3 * l.proben.length - 1] = 0;
   return out;
 }
 
@@ -771,10 +778,8 @@ export function verschiebungLaengs(l: Loop, D: readonly V3[], griffe?: readonly 
     out[3 * j + 2] = h00 * a.d.z + h01 * b.d.z + b1 * a.aus.z + b2 * b.ein.z;
   }
   if (l.art === 'mitte') for (let j = 0; j < n; j++) out[3 * j + 2] = 0;
-  if (l.art === 'ring') {
-    out[2] = 0;
-    out[3 * n - 1] = 0;
-  }
+  if (endeAufMitte(l, 0)) out[2] = 0;
+  if (endeAufMitte(l, 1)) out[3 * n - 1] = 0;
   return out;
 }
 
@@ -888,10 +893,13 @@ export function kruemmungsKetten(plan: BindungsPlan, loops: readonly Loop[]): Kr
       let q = pi + d;
       let s2 = sp;
       if (l.art === 'ring') {
+        // hinter einem Ende auf der Mittelebene liegt das Spiegelbild; hinter einem Ende, das an einer anderen Linie hängt, nichts
         if (q < 0) {
+          if (!endeAufMitte(l, 0)) continue;
           q = -q;
           s2 = 1 - sp;
         } else if (q > n - 1) {
+          if (!endeAufMitte(l, 1)) continue;
           q = 2 * (n - 1) - q;
           s2 = 1 - sp;
         }
@@ -1071,7 +1079,7 @@ export function festlegen(h: Haut, l: Loop, punkteLesen = true): void {
   l.ruhe = hautLagen(h, l);
   for (const p of l.punkte) {
     const q = punkteLesen ? stelleBei(l, l.ruhe, p.s) : { ...p.cur };
-    if (l.art === 'mitte' || (l.art === 'ring' && (p.s <= 1e-6 || p.s >= l.laenge - 1e-6))) q.z = 0;
+    if (l.art === 'mitte' || (p.s <= 1e-6 && endeAufMitte(l, 0)) || (p.s >= l.laenge - 1e-6 && endeAufMitte(l, 1))) q.z = 0;
     p.ref = q;
     p.cur = { ...q };
   }
@@ -1222,7 +1230,9 @@ export function eckenAuto(loops: readonly Loop[]): void {
 export function ringEnde(l: Loop, i: number): 'anfang' | 'ende' | null {
   const p = l.punkte[i];
   if (l.art !== 'ring' || !p) return null;
-  return p.s <= 1e-6 ? 'anfang' : p.s >= l.laenge - 1e-6 ? 'ende' : null;
+  // ein Ende, das an einer anderen Linie hängt (Abzweigung), ist kein Spiegelpunkt
+  if (p.s <= 1e-6) return endeAufMitte(l, 0) ? 'anfang' : null;
+  return p.s >= l.laenge - 1e-6 && endeAufMitte(l, 1) ? 'ende' : null;
 }
 
 const gespiegelt = (v: V3): V3 => ({ x: v.x, y: v.y, z: -v.z });
@@ -1330,10 +1340,8 @@ export function pfadLagen(l: Loop, P?: readonly V3[], G?: readonly { ein: V3; au
     }
   }
   if (l.art === 'mitte') for (let j = 0; j < n; j++) out[3 * j + 2] = 0;
-  if (l.art === 'ring') {
-    out[2] = 0;
-    out[3 * n - 1] = 0;
-  }
+  if (endeAufMitte(l, 0)) out[2] = 0;
+  if (endeAufMitte(l, 1)) out[3 * n - 1] = 0;
   return out;
 }
 
@@ -1384,10 +1392,8 @@ export function pfadKanten(l: Loop, P?: readonly V3[], G?: readonly { ein: V3; a
       const jb = drin[q + 1]!.j;
       const k: [V3, V3, V3, V3] = [bluete(u, u, u), bluete(u, u, v), bluete(u, v, v), bluete(v, v, v)];
       if (l.art === 'mitte') for (const p of k) p.z = 0;
-      if (l.art === 'ring') {
-        if (ja === 0) k[0].z = 0;
-        if (jb === n - 1) k[3].z = 0;
-      }
+      if (ja === 0 && endeAufMitte(l, 0)) k[0].z = 0;
+      if (jb === n - 1 && endeAufMitte(l, 1)) k[3].z = 0;
       aus.push({ ja, jb, a: l.proben[ja]!.ecken[0]!, b: l.proben[jb]!.ecken[0]!, k });
     }
   }
@@ -2042,11 +2048,11 @@ export function griffeAnlegen(l: Loop, L: Float64Array = l.ruhe, genau = false, 
   const n = l.proben.length;
   if (l.art === 'ring' && n > 1) {
     const ende = (j: number): V3 => ({ ...lage(L, j), z: 0 });
-    if (!l.punkte.some((p) => p.s <= 1e-6)) {
+    if (endeAufMitte(l, 0) && !l.punkte.some((p) => p.s <= 1e-6)) {
       const q = ende(0);
       l.punkte.unshift({ s: 0, ref: q, cur: { ...q }, vonSelbst: true });
     }
-    if (!l.punkte.some((p) => p.s >= l.laenge - 1e-6)) {
+    if (endeAufMitte(l, 1) && !l.punkte.some((p) => p.s >= l.laenge - 1e-6)) {
       const q = ende(n - 1);
       l.punkte.push({ s: l.laenge, ref: q, cur: { ...q }, vonSelbst: true });
     }
@@ -2228,9 +2234,9 @@ export function griffeSetzen(l: Loop, i: number, ein: V3, aus: V3): Float64Array
     }
   }
   if (l.art === 'mitte') for (let j = 0; j < l.proben.length; j++) d[3 * j + 2] = 0;
-  if (l.art === 'ring' && l.proben.length) {
-    d[2] = 0;
-    d[3 * l.proben.length - 1] = 0;
+  if (l.proben.length) {
+    if (endeAufMitte(l, 0)) d[2] = 0;
+    if (endeAufMitte(l, 1)) d[3 * l.proben.length - 1] = 0;
   }
   p.ein = { ...ein };
   p.aus = { ...aus };
@@ -2384,9 +2390,9 @@ export function punkteLoeschen(l: Loop, weg: ReadonlySet<LoopPunkt>): Float64Arr
   }
   if (!irgend) return null;
   if (l.art === 'mitte') for (let j = 0; j < l.proben.length; j++) d[3 * j + 2] = 0;
-  if (l.art === 'ring' && l.proben.length) {
-    d[2] = 0;
-    d[3 * l.proben.length - 1] = 0;
+  if (l.proben.length) {
+    if (endeAufMitte(l, 0)) d[2] = 0;
+    if (endeAufMitte(l, 1)) d[3 * l.proben.length - 1] = 0;
   }
   return d;
 }

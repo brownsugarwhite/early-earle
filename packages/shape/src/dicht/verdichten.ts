@@ -28,7 +28,7 @@
 // Einsetzen eines Loops fallen Punkte der Linie, die fast aufeinander liegen, zusammen (`nadelnZusammenlegen`).
 
 import { type Haut, type V3, hautAus } from './kurven';
-import { type Loop, type Probe, hatPfad, kanteBei, pfadBei } from './loops';
+import { type Loop, type Probe, endeAufMitte, hatPfad, kanteBei, pfadBei } from './loops';
 
 const KEY = 2 ** 22;
 const schluessel = (a: number, b: number): number => (a < b ? a * KEY + b : b * KEY + a);
@@ -1109,10 +1109,8 @@ export function verdichten(
       ruhe[3 * j + 1] = pos[3 * v + 1]!;
       ruhe[3 * j + 2] = l.art === 'mitte' ? 0 : pos[3 * v + 2]!;
     });
-    if (l.art === 'ring') {
-      ruhe[2] = 0;
-      ruhe[3 * k.length - 1] = 0;
-    }
+    if (endeAufMitte(l, 0)) ruhe[2] = 0;
+    if (endeAufMitte(l, 1)) ruhe[3 * k.length - 1] = 0;
     return {
       ...l,
       proben: k.map((v) => punktProbe(neuNr[v]!)),

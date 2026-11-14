@@ -75,6 +75,14 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   ohne Linien durchs Maul** (Kugel, Strich in Seite oder Front). Kreuzt eine andere Linie das Maul (Mittellinie, Loop auf einer
   Seite: so sind Florians Formen), verlieren die Lippen ihre Paarung, und `MITTE=1` erfüllt den Punkt „fern vom Maul bleibt die
   Form“ nicht (siehe Fallen). Nicht weiterbauen, bevor das Maul-System beschrieben ist (`docs/UEBERGABE.md`, Abschnitt 7.16).
+- **Abzweigungen** (14.11.; bisher nur im Kern, Etappe 1 des Zwischenschritts im Plan): eine offene Linie, die an Punkten anderer
+  Linien hängt und sie mit ihnen teilt. Im Modell ein `ring` mit `Loop.haengt = [Anfang, Ende]`; `endeAufMitte(l, 0 | 1)` sagt, ob
+  ein Ende auf der Mittelebene liegt (der Ring wie bisher) oder hängt. `abzweigen(h, loops, von, nach, id, naechsteKreuzung)` in
+  `einsetzen.ts` legt sie von Punkt zu Punkt an: Weg = Schnitt der Haut mit der Ebene durch beide Punkte und ihre mittlere Normale,
+  jede gekreuzte Kante geteilt (spiegelgleich, andere Ketten bekommen den Punkt). Danach `eckenAuto` und `griffeAnlegen`. Probe
+  `form-abzweigung.ts` (Florians Beispiel: Kreis mit vier Punkten, Kreuz, Punkt in der Kreuzung herausgezogen; `KANTE=1`), Test
+  `abzweigung.test.ts`. **Noch nicht gebaut:** P im Fenster, Sichern und Laden (`haengt`), Löschen, ein Ende auf der Mitte, Start
+  oder Ende auf einer Linie ohne Punkt, Punkte dazwischen.
 - **Linienbreiten** (13.11.): 3 Bildpunkte am Knick, ein halber an runden Punkten, dazwischen verjüngt (`haerteBei` im Kern;
   `baenderZeigen` mit Breite je Punkt, in den Blättern `kantenFlaeche` und die Klasse `kante-band`). Probe:
   `GPU=1 node scripts/pruefen/form-kante-verjuengung-fenster.mjs`.
@@ -203,6 +211,12 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   um 9 ein. Florians Formen haben Mittellinien mit 4 bis 38 Punkten.
 - `punktEinfuegen` mit `aufPfad` setzt den Punkt an den Teilungspunkt des Stücks beim Anteil der Bogenlänge; auf einem langen
   Stück liegt der einige Einheiten neben der Stelle, an der sich die Ketten kreuzen (gemessen 6,5 auf einem Stück über 210°).
+- Ein offenes Ende liegt seit dem 14.11. nicht mehr immer auf der Mittelebene: nach `endeAufMitte(l, 0 | 1)` fragen, nicht nach
+  `art === 'ring'`. Umgestellt sind `loops.ts` (Lagen, Pfad, Griffe, `ringEnde`, Nachbarn längs der Kette), `loopNeu`,
+  `loopErgaenzt` und das Ende von `verdichten`. Noch nicht durchgesehen: die übrigen Stellen in `verdichten.ts`, `folgen.ts`,
+  `mitteSchnitt.ts`, `raumlinien.ts`, `richtung.ts`, `kurvenFaelle.ts`, `kantenWinkel.ts`, das Fenster (33 Stellen) und `ablage.ts`.
+- Das Bildblatt des Kerns (`blattSchreiben`) zeichnet Linien nur vor der Mitte des Bilds und schließt geschlossene Linien nicht:
+  für ein sauberes Bild die Linien selbst übergeben (`fertig`), die Mitte des Bilds hinter die Stelle legen.
 - Nach dem Einsetzen einer spitzen Form die Nadeln wegräumen (`nadelnZusammenlegen`, im Fenster `nadelnWeg`), bevor weiter
   gerechnet wird. Fallen zwei Punkte der Linie auf einen Ort, ordnet `hautAus` die Spiegelpartner über gerundete Lagen falsch zu,
   und alles, was danach das Netz neu aufbaut, scheitert (so fiel `knickReihe` aus).

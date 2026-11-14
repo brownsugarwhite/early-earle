@@ -87,6 +87,7 @@ export {
   bindungenAus,
   blickTiefe,
   blickUV,
+  endeAufMitte,
   eckenAuto,
   festlegen,
   formAusZeichnung,
@@ -137,7 +138,7 @@ export {
   zieleAus,
 } from './loops';
 export { type DirektLoeser } from './direktZug';
-export { einsetzenGrund, loopEinsetzen } from './einsetzen';
+export { type Anker, abzweigen, einsetzenGrund, loopEinsetzen } from './einsetzen';
 export { type MitteSchnitt, hinterDerMitte, mitteFestmachen, mitteKreuzungen } from './mitteSchnitt';
 export { bernstein, stueckAnpassen, stueckNaechstes, stueckPunkt, stueckTeilen } from './pfad';
 export { type Verdichtet, nadelnZusammenlegen, verdichten } from './verdichten';
