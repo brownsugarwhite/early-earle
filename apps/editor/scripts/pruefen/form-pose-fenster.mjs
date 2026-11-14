@@ -9,6 +9,7 @@
 //   4  Derselbe Zug fern vom Maul (ein Punkt 25 nach oben), einmal in der Grundform, einmal in der Pose: dieselbe Haut (in der Ruhe
 //      verglichen, höchstens 0,5 auseinander).
 //   5  Die Regler ändern die Ruhe der Pose nicht (bitgleich).
+//   6  In der Pose kein Löschen und kein neuer Punkt (Meldung, nichts ändert sich).
 // Aufruf aus apps/editor: GPU=1 [NAME=…] [RING=…] node scripts/pruefen/form-pose-fenster.mjs [bild-ohne-endung]
 import { chromium } from '@playwright/test';
 
@@ -238,6 +239,33 @@ let lippenZug = null;
   const ruheZurueck = await K('ruheLagen');
   ok('⌘Z: die Ruhe der Pose wie vor dem Zug', groesster(ruheZurueck, ruheVor) < 1e-9, `größter Unterschied ${groesster(ruheZurueck, ruheVor) === Infinity ? 'andere Punktzahl' : groesster(ruheZurueck, ruheVor).toExponential(1)}`);
   void T;
+}
+
+// ---------- 6. in der Pose kein Löschen und kein neuer Punkt ----------
+{
+  const vor = await K('loops');
+  const L = vor.find((l) => l.id === RING);
+  const p = [...L.punkte].filter((q) => q.sichtbar).sort((a, b) => a.ref.y - b.ref.y)[0];
+  const q = await bild('seite', p.ref);
+  await seite.mouse.click(q.x, q.y);
+  await ruhig();
+  await seite.keyboard.press('Delete');
+  await ruhig();
+  const m1 = await K('meldung');
+  const nach1 = await K('loops');
+  ok('in der Pose löschen: nichts wird gelöscht, eine Meldung sagt warum', nach1.length === vor.length && nach1.every((l, i) => l.punkte.length === vor[i].punkte.length) && /in der Grundform/.test(m1), m1);
+  // Doppelklick auf die Lippenlinie zwischen ihren Punkten
+  let j = 0;
+  for (let i = 1; i < L.s.length; i++) if (Math.abs(L.s[i] - 0.3 * L.laenge) < Math.abs(L.s[j] - 0.3 * L.laenge)) j = i;
+  const d = await bild('seite', { x: L.ruhe[3 * j], y: L.ruhe[3 * j + 1], z: L.ruhe[3 * j + 2] });
+  await seite.mouse.dblclick(d.x, d.y);
+  await ruhig();
+  const m2 = await K('meldung');
+  const nach2 = await K('loops');
+  ok('in der Pose Doppelklick auf eine Linie: kein neuer Punkt', nach2.every((l, i) => l.punkte.length === vor[i].punkte.length) && /in der Grundform/.test(m2), m2);
+  const leer = await bild('seite', { x: 0, y: 900, z: 0 });
+  await seite.mouse.click(leer.x, leer.y);
+  await ruhig();
 }
 
 // ---------- 5. die Regler ändern die Ruhe nicht ----------

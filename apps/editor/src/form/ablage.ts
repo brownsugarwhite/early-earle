@@ -18,7 +18,14 @@ export type WesenStand = {
   ids: [number, number];
   maul: { id: number } | null;
   /** `linien` (seit 14.11.): je Linie der Versatz ihrer Punkte und Griffe gegen die Grundform, in der Ruhe der Pose */
-  pose: { kiefer: number; schaedel: number; delta: Float64Array | null; linien?: { id: number; punkte: { d: V3; ein: V3 | null; aus: V3 | null }[] }[] | null };
+  pose: {
+    kiefer: number;
+    schaedel: number;
+    delta: Float64Array | null;
+    linien?: { id: number; punkte: { d: V3; ein: V3 | null; aus: V3 | null }[] }[] | null;
+    /** in der Pose gesichert: `haut` und `loops` sind ihre Ruhe (fehlt: ein Stand von vor dem 14.11., dort die gedrehte Lage) */
+    inRuhe?: boolean;
+  };
   /** in der Pose: die Grundform dazu (`haut` und `loops` sind dann die Pose) */
   grund: { haut: FlacheHaut; loops: Loop[] } | null;
   /**

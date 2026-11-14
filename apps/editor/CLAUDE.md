@@ -75,6 +75,17 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   ohne Linien durchs Maul** (Kugel, Strich in Seite oder Front). Kreuzt eine andere Linie das Maul (Mittellinie, Loop auf einer
   Seite: so sind Florians Formen), verlieren die Lippen ihre Paarung, und `MITTE=1` erfüllt den Punkt „fern vom Maul bleibt die
   Form“ nicht (siehe Fallen). Nicht weiterbauen, bevor das Maul-System beschrieben ist (`docs/UEBERGABE.md`, Abschnitt 7.16).
+- **Die Pose rechnet in ihrer Ruhe** (Schritt 5, Etappe 2, 14.11.; nur in `form-bau`): In der Pose sind `haut` und `loops` die
+  Ruhe der Pose (Grundform plus Versatz), `grund` die Grundform. Die Knochen drehen nur, was gezeigt wird: `hautZeigen`,
+  `baenderZeigen` und `blattZeichnen` laufen über `alsAnzeige` (dort stehen in `haut` und `loops` die gedrehten Kopien,
+  `inAnzeige` ist wahr; auch `zug.lagen` und `zug.griffeNeu` sind dann gedreht). Die Abbildung eines Zugs gilt für das Gezeigte
+  und wird je Punkt mit dessen Winkel zurückgedreht (`inDerRuhe`); die Regler setzen nur die Winkel. Gespeichert wird die Pose als
+  Versatz gegen die Grundform: `pose.delta` (Haut) und `pose.linien` (Punkte und Griffe der Linien). **Am geformten Maul** ist
+  die Ruhe der Pose eine Form wie die Grundform (dieselbe Rechnung, genaue Linien, Setzen und Aufräumen im Hintergrund); neue
+  Punkte, Linien und Löschen gibt es dort nicht (`nurInGrundform`). **Am Maul aus der schmalen Form** bleibt die Rechnung wie
+  bis zum 14.11. (`altePose`). Die Haken der Proben melden in der Pose das Gezeigte; `ruheLagen`, `ruheLoops`,
+  `ruheUmgeschlagen` geben die Ruhe. Probe: `GPU=1 [NAME=…] [RING=…] node scripts/pruefen/form-pose-fenster.mjs` (an „maul
+  handgemacht test“).
 - **Abzweigungen** (14.11.; nur in `form-bau`, Zwischenschritt im Plan): eine offene Linie, die an Punkten anderer Linien hängt
   und sie mit ihnen teilt (gleiche `kreuzung`). Im Modell ein `ring` mit `Loop.haengt = [Anfang, Ende]`; `endeAufMitte(l, 0 | 1)`
   sagt, ob ein Ende auf der Mittelebene liegt (der Ring wie bisher) oder hängt. **Im Fenster, mit P:** Klick auf einen Punkt oder
@@ -230,6 +241,12 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
 - Eine lange Linie mit nur zwei Punkten kann der Haut nicht folgen: Ihr einzelnes Kurvenstück wird der Pfad, und `linienAufPfad`
   zieht die Haut dorthin (gemessen: Eine Abzweigung vom Flügel von „test_kaputt“ zur Mitte verzog die ganze Form, 38 Dreiecke
   umgeschlagen). Deshalb `griffeAnlegen(…, punkteBis)` bei Abzweigungen. Dieselbe Schwäche haben Loops mit zwei Punkten.
+- In der Pose außerhalb von `alsAnzeige` nie davon ausgehen, dass `haut` und `loops` die gezeigte Lage sind (das war bis zum
+  14.11. so). Wer einen Ort im Blatt braucht (Treffer, Mitte der Auswahl), dreht ihn mit dem Winkel seines Punkts (`gedreht`,
+  `winkelBei`) oder rechnet in `alsAnzeige`. Ein Stand, der vor dem 14.11. in der Pose gesichert wurde, enthält die gedrehte Lage:
+  `standAnwenden` dreht ihn einmal zurück (`pose.inRuhe` fehlt dort).
+- Zieht man an „maul handgemacht test“ die Spitze des Unterkiefers (ein Punkt an der Mittelebene) 25 nach unten, schlagen 8 bis
+  10 kleine Dreiecke an der Mitte um, in der Grundform wie in der Pose. Das ist keine Sache der Pose.
 - **P wird geklickt, nicht gezogen** (Florian, 14.11.: „es werden keine punkte gesetzt wenn ich mit p auf eine linie klicke. Das
   wekzeug springt dann sofort wieder raus“): Die erste Fassung kannte nur Drücken, Ziehen, Loslassen; ein Klick galt als Anfang
   und Ende am selben Ort. Jede Geste eines Werkzeugs zuerst mit einzelnen Klicks prüfen, die Probe genauso.

@@ -1170,6 +1170,19 @@ function poseBetreten(): boolean {
   return true;
 }
 
+/**
+ * In der Pose (am geformten Maul) gibt es keine neuen Punkte und Linien und kein Löschen: Sie ist dieselbe Form in einer anderen
+ * Lage, ihre Linien sind die der Grundform plus Versatz (Florian, 13.11.: „Ich verstehe, dass ich keine neuen Edgeloops oder Punkte
+ * in der Pose hinzufügen kann, aber verschieben und bearbeiten sollte ich alles ohne Probleme können“). Wahr: `was` geht hier nicht
+ * (die Meldung steht). Am Maul aus der schmalen Form bleibt es wie bisher erlaubt.
+ */
+function nurInGrundform(was: string): boolean {
+  if (!grund || altePose()) return false;
+  meldung = `${was} in der Grundform (erst „Fressen“ aus): Die Pose ist dieselbe Form in einer anderen Lage, mit denselben Punkten und Linien`;
+  statusZeigen();
+  return true;
+}
+
 /** Nach einem Schritt in der Pose: Blendshape (Ruhe der Pose minus Grundform) merken */
 function poseSichern(): void {
   if (!grund || grund.haut.pos.length !== haut.pos.length) return;
@@ -4422,6 +4435,7 @@ function verdichtetesNetz(nurTeilen = false): Verdichtet | null {
 // ---------- Loops schneiden, Formen zeichnen, Punkte setzen und löschen ----------
 
 function loopSchneiden(a: Ansicht, A: [number, number], B: [number, number]): void {
+  if (nurInGrundform('Einen Loop schneidest du')) return;
   const l = loopAusSchnitt(haut, a, A, B, naechsteId, 10 / skala(a));
   if (!l) {
     meldung = 'Kein Loop: die Linie quer über den Körper ziehen';
@@ -4841,6 +4855,7 @@ function maulLinieErstellen(a: Ansicht, roh: [number, number][]): void {
 
 function formErstellen(a: Ansicht, roh: [number, number][]): void {
   if (roh.length < 8) return;
+  if (nurInGrundform('Eine Form zeichnest du')) return;
   // ein offener Strich (Anfang und Ende weiter auseinander als 0,6 seiner Länge): das Maul aus einer Linie
   {
     let lang = 0;
@@ -4974,6 +4989,7 @@ function punktAufLinie(a: Ansicht, l: Loop, X: number, Y: number, m: boolean): {
 function punktAmKlick(a: Ansicht, id: number, X: number, Y: number, m: boolean): void {
   const l = loops[loopNr(id)];
   if (!l) return;
+  if (nurInGrundform('Einen Punkt setzt du')) return;
   const vorher = schnappschuss();
   const r = punktAufLinie(a, l, X, Y, m);
   if (!r.neu) return;
@@ -5027,6 +5043,7 @@ function loeschen(): void {
     mitteFest();
     return;
   }
+  if (auswahl.length && nurInGrundform('Punkte und Linien löschst du')) return;
   const punkte = auswahl.filter((w) => w.i >= 0).map((w) => loops[loopNr(w.l)]?.punkte[w.i]);
   const ganz = new Set(auswahl.filter((w) => w.i < 0).map((w) => w.l));
   const eigene = new Set(punkte.filter((p) => p && p.kreuzung === undefined));
@@ -5187,6 +5204,10 @@ function stiftFertig(): void {
   const st = stift;
   stift = null;
   modus = 'frei';
+  if (nurInGrundform('Eine Form zeichnest du')) {
+    allesZeigen();
+    return;
+  }
   if (!st || st.anker.length < 3) {
     meldung = 'Stift: mindestens drei Punkte, dann den ersten anklicken (oder ⏎)';
     allesZeigen();
@@ -5860,7 +5881,8 @@ function standJetzt(): WesenStand {
     loops,
     ids: [naechsteId, naechsteKreuzung],
     maul: maul ? { id: maul.id } : null,
-    pose: { kiefer: pose.kiefer, schaedel: pose.schaedel, delta: pose.delta },
+    // `inRuhe`: In der Pose sind `haut` und `loops` dieses Stands ihre Ruhe (bis zum 14.11. die gedrehte Lage)
+    pose: { kiefer: pose.kiefer, schaedel: pose.schaedel, delta: pose.delta, linien: pose.linien ?? null, inRuhe: true },
     grund: grund ? { haut: hautFlach(grund.haut), loops: grund.loops } : null,
     ruhe: ruheOffen ? { setzen: ruheOffen.setzen, nurInRuhe: ruheOffen.nurInRuhe, verdichten: ruheOffen.verdichten, ziele: ruheOffen.ziele } : null,
     sicht: { seite: { ...ausschnitt.seite }, front: { ...ausschnitt.front }, top: { ...ausschnitt.top } },
@@ -5894,7 +5916,7 @@ function standAnwenden(st: WesenStand): string {
     auswahl: [],
     ids: [st.ids[0], st.ids[1]],
     maul: st.maul ? { id: st.maul.id } : null,
-    pose: { kiefer: st.pose.kiefer, schaedel: st.pose.schaedel, delta: st.pose.delta ? Float64Array.from(st.pose.delta) : null },
+    pose: { kiefer: st.pose.kiefer, schaedel: st.pose.schaedel, delta: st.pose.delta ? Float64Array.from(st.pose.delta) : null, linien: st.pose.linien ?? null },
     grund: g && st.grund ? { haut: g, pos: Float64Array.from(g.pos), loops: st.grund.loops.map(kopieLoop) } : null,
     ruhe: st.ruhe ? { setzen: st.ruhe.setzen === true, nurInRuhe: st.ruhe.nurInRuhe === true, verdichten: st.ruhe.verdichten === true, ziele: zieleAus(st) } : null,
     mk: st.mk,
@@ -5918,6 +5940,19 @@ function standAnwenden(st: WesenStand): string {
   spur = null;
   stift = null;
   wiederherstellen(s);
+  // Ein Stand, der vor dem 14.11. in der Pose gesichert wurde, enthält ihre gedrehte Lage: einmal in ihre Ruhe zurückgedreht, die
+  // Linien dort neu abgelesen
+  if (grund && st.pose.inRuhe !== true) {
+    const k = poseKnochen();
+    if (k) {
+      haut.pos.set(knochenDrehen(haut.pos, k.theta, k.G, true));
+      const genau = !altePose();
+      for (const l of loops) {
+        festlegen(haut, l);
+        if (hatGriffe(l)) griffeAnlegen(l, l.ruhe, genau);
+      }
+    }
+  }
   // ein Loop, der in diesem Stand nur auf der Haut liegt, wird jetzt eingesetzt (`einsetzenNachholen`)
   if (einsetzenNachholen()) {
     meldung = 'Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.';

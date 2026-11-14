@@ -58,7 +58,14 @@ function standAus(dreiecke = 1200): WesenStand {
     loops,
     ids: [3, 5],
     maul: { id: 2 },
-    pose: { kiefer: 30, schaedel: 12.5, delta: Float64Array.from({ length: 3 * h.n }, (_, i) => Math.sin(i)) },
+    // die Linien der Pose als Versatz (14.11.) und die Angabe, dass `haut` und `loops` in der Pose ihre Ruhe sind
+    pose: {
+      kiefer: 30,
+      schaedel: 12.5,
+      delta: Float64Array.from({ length: 3 * h.n }, (_, i) => Math.sin(i)),
+      linien: [{ id: 1, punkte: [{ d: { x: 1 / 3, y: -0.25, z: 2 }, ein: { x: 0.1, y: 0.2, z: 0.3 }, aus: null }] }],
+      inRuhe: true,
+    },
     grund: null,
     ruhe: { setzen: true, nurInRuhe: false, verdichten: true, ziele: [Float64Array.from({ length: 3 * loops[0]!.proben.length }, (_, i) => i / 7), null] },
     sicht: { seite: { cx: 12, cy: -3, zoom: 3 }, front: { cx: 0, cy: 0, zoom: 1 }, top: { cx: 0, cy: 0, zoom: 1 } },
@@ -93,6 +100,8 @@ describe('Wesen als Datei', () => {
     expect(Array.from(zurueck.haut.nbStart)).toEqual(Array.from(st.haut.nbStart));
     expect(Array.from(zurueck.haut.nb)).toEqual(Array.from(st.haut.nb));
     expect(bits(zurueck.pose.delta!)).toEqual(bits(st.pose.delta!));
+    expect(zurueck.pose.linien).toEqual(st.pose.linien);
+    expect(zurueck.pose.inRuhe).toBe(true);
     // die Loops: Proben, Stellen, Punkte samt Griffen und Schaltern
     expect(zurueck.loops.length).toBe(st.loops.length);
     zurueck.loops.forEach((l, i) => {
