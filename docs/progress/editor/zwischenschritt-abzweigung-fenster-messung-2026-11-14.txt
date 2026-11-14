@@ -1,10 +1,11 @@
-Zwischenschritt „Abzweigungen“, Etappe 3: Fenster-Probe im Bau-Fenster an Florians Form „test_kaputt“ (14.11.2026)
+Zwischenschritt „Abzweigungen“: Fenster-Probe im Bau-Fenster an Florians Form „test_kaputt“, mit Klicks (14.11.2026, 11:20 Uhr)
 Probe: apps/editor/scripts/pruefen/form-abzweigung-fenster.mjs (Aufruf aus apps/editor: GPU=1 node scripts/pruefen/form-abzweigung-fenster.mjs)
 
      „test_kaputt“ geladen ("geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18): 2137 Punkte, 4 Linien (ring 5P, ring 5P, paar 4P, mitte 4P)
 gut  der Kreis: eine Linie dazu, vier Punkte: paar, 4 Punkte; 
-gut  P von Punkt 0 zu Punkt 2: eine Abzweigung: Abzweigung: Die Linie hängt an beiden Punkten und teilt sie (wer einen zieht, zieht beide Linien). · Doppelklick setzt Punkte auf sie · ⌘Z nimmt sie zurück
-gut  P von Punkt 1 zu Punkt 3: die zweite: Abzweigung: Die Linie hängt an beiden Punkten und teilt sie (wer einen zieht, zieht beide Linien). · Doppelklick setzt Punkte auf sie · ⌘Z nimmt sie zurück
+gut  P, Klick auf einen Punkt: Die Abzweigung beginnt, das Werkzeug bleibt an: Abzweigung: Sie beginnt hier. Klick auf die Haut setzt einen Punkt (Klicken und Ziehen: glatt), Klick auf einen anderen Punkt oder eine andere Linie beendet sie · ⌫ letzter Punkt zurück · Esc bricht ab
+gut  Klick auf den gegenüberliegenden Punkt: eine Abzweigung: Abzweigung: Die Linie hängt an beiden Punkten und teilt sie (wer einen zieht, zieht beide Linien). · Doppelklick setzt Punkte auf sie · ⌘Z nimmt sie zurück
+gut  in einem Zug von Punkt 1 zu Punkt 3 gezogen: die zweite: Abzweigung: Die Linie hängt an beiden Punkten und teilt sie (wer einen zieht, zieht beide Linien). · Doppelklick setzt Punkte auf sie · ⌘Z nimmt sie zurück
 gut  jede hängt an zwei Punkten des Kreises und teilt sie: Enden K10 K11 K12 K13; größter Abstand Ende–Punkt 0.0e+0
 gut  in der Kreuzung liegt ein gemeinsamer Punkt: bei (-53,8 47,5 168,2)
 gut  die Form bleibt: Ausdehnung wie vorher, die Punkte des Kreises am Ort: Ausdehnung um höchstens 0,00 anders, Punkte des Kreises um höchstens 0,00 bewegt
@@ -15,7 +16,9 @@ gut  der Kreis allein lässt sich nicht löschen: An dieser Linie hängen 2 Abzw
 gut  ein Punkt, an dem eine Abzweigung hängt, bleibt: Dieser Punkt bleibt, solange eine Abzweigung an ihm hängt (die Abzweigung selbst lässt sich löschen)
 gut  eine Abzweigung lässt sich löschen: Die Punkte des Kreises bleiben und sind dort wieder gewöhnliche Punkte: 6 Linien (vorher 7); Kreuzungen an den Punkten des Kreises: K10 – K11 –; 
 gut  ⌘Z: die Abzweigung ist wieder da
-gut  P von einer Stelle auf einer Linie zu einem Punkt des Kreises: Dort entsteht ein Punkt, die Abzweigung hängt an ihm: Linie 1 (ring): 5 → 6 Punkte; Abzweigung: Die Linie hängt an beiden Punkten und teilt sie (wer einen zieht, zieht beide Linien). · Doppelklick setzt Punkte auf sie · ⌘Z n
+gut  P, Klick auf eine Linie ohne Punkt: Der Punkt ist sofort gesetzt, das Werkzeug bleibt an: Linie 1 (ring): 5 → 6 Punkte; Abzweigung: Sie beginnt hier (der Punkt ist gesetzt). Klick auf die Haut setzt einen Punkt (Klicken und Ziehen: glatt), Klick auf einen anderen Punkt oder eine andere Linie beendet sie · ⌫ letzter Punkt zurück · Esc bricht ab
+gut  Esc: abgebrochen, der Punkt ist wieder weg: 5 Punkte
+gut  Klick auf die Linie, Klick auf die Haut, Klick auf einen Punkt des Kreises: eine Abzweigung mit einem eigenen Punkt dazwischen: Linie 1: 5 → 6 Punkte; die Abzweigung hat 3 Punkte (K15, Ecke, K11); Abzweigung: Die Linie hängt an beiden Punkten und teilt sie (wer einen zieht, zieht beide Linien). · Doppelklick setzt Punkte auf sie · ⌘Z nimmt sie zurück
 gut  danach: die Form bleibt, nichts umgeschlagen, spiegelgleich: Ausdehnung um höchstens 0,00 anders; umgeschlagen 0
 gut  P von einem Punkt zu seinem Spiegelbild: eine Linie, die am Punkt hängt und auf der Mitte endet: Abzweigung zum Spiegelbild: Die Linie endet auf der Mitte und läuft dort rund in ihre andere Hälfte. · ⌘Z nimmt sie zurück
 gut  danach: die Form bleibt, nichts umgeschlagen, spiegelgleich: Ausdehnung um höchstens 0,00 anders; umgeschlagen 0; die Linie hat 5 Punkte
