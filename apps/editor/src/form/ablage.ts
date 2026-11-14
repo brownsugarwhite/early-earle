@@ -17,12 +17,16 @@ export type WesenStand = {
   /** nächste Kennung für Loops und für Kreuzungen */
   ids: [number, number];
   maul: { id: number } | null;
-  /** `linien` (seit 14.11.): je Linie der Versatz ihrer Punkte und Griffe gegen die Grundform, in der Ruhe der Pose */
+  /**
+   * `linien` (seit 14.11.): je Linie der Versatz ihrer Punkte und Griffe gegen die Grundform, in der Ruhe der Pose; dazu die Stelle
+   * `s` jedes Punkts und die Länge der Linie, als der Versatz gemerkt wurde (daran findet die Pose ihre Punkte wieder, wenn die
+   * Grundform inzwischen Punkte bekommen oder verloren hat)
+   */
   pose: {
     kiefer: number;
     schaedel: number;
     delta: Float64Array | null;
-    linien?: { id: number; punkte: { d: V3; ein: V3 | null; aus: V3 | null }[] }[] | null;
+    linien?: { id: number; laenge?: number; punkte: { s?: number; d: V3; ein: V3 | null; aus: V3 | null }[] }[] | null;
     /** in der Pose gesichert: `haut` und `loops` sind ihre Ruhe (fehlt: ein Stand von vor dem 14.11., dort die gedrehte Lage) */
     inRuhe?: boolean;
   };

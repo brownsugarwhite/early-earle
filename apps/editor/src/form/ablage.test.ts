@@ -63,7 +63,7 @@ function standAus(dreiecke = 1200): WesenStand {
       kiefer: 30,
       schaedel: 12.5,
       delta: Float64Array.from({ length: 3 * h.n }, (_, i) => Math.sin(i)),
-      linien: [{ id: 1, punkte: [{ d: { x: 1 / 3, y: -0.25, z: 2 }, ein: { x: 0.1, y: 0.2, z: 0.3 }, aus: null }] }],
+      linien: [{ id: 1, laenge: 123.5, punkte: [{ s: 0.1 + 0.2, d: { x: 1 / 3, y: -0.25, z: 2 }, ein: { x: 0.1, y: 0.2, z: 0.3 }, aus: null }] }],
       inRuhe: true,
     },
     grund: null,

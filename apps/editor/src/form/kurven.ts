@@ -97,6 +97,7 @@ import {
   mundwinkelProbe,
   pfadAbweichung,
   pfadKanten,
+  pfadLagen,
   pfadParameter,
   pfadVersatz,
   punktEinfuegen,
@@ -294,7 +295,9 @@ let maul: MaulZustand = null;
  * keiner).
  */
 /** je Linie der Versatz ihrer Punkte und Griffe gegen die Grundform (in der Ruhe der Pose); fehlt eine Linie: ohne Versatz */
-type PoseLinie = { id: number; punkte: { d: V3; ein: V3 | null; aus: V3 | null }[] };
+type PoseVersatz = { d: V3; ein: V3 | null; aus: V3 | null };
+/** `laenge` und `s`: Länge der Linie und Stelle jedes Punkts, als der Versatz gemerkt wurde (fehlen in Ständen vom 14.11. vormittags) */
+type PoseLinie = { id: number; laenge?: number; punkte: (PoseVersatz & { s?: number })[] };
 type PoseStand = { kiefer: number; schaedel: number; delta: Float64Array | null; linien?: PoseLinie[] | null };
 let pose: PoseStand = { kiefer: 30, schaedel: 0, delta: null };
 /** In der Pose: die Grundform. `haut` und `loops` sind dann die Pose, wie sie zu sehen ist (dasselbe Netz, posierte Lagen). */
@@ -378,6 +381,8 @@ const RICHTUNG_OPT: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: bool
  * Rechnung, dieselben Linien (Etappe 2b).
  */
 const altePose = (): boolean => grund !== null && !maulIstGeformt();
+/** so weit darf die Haut der Pose beim Betreten neben ihren Linien liegen, bevor sie daraufgesetzt wird */
+const POSE_GENAU = 0.05;
 const mitBereich = (): boolean => altePose() || HAUT !== 'kurven';
 /**
  * „Form halten“ (Plan vom 12.11., Anhang A.3: B als Schalter, 13.11.). An: Ein Zug bewegt die Haut direkt mit den Linien (Löser
@@ -1144,7 +1149,8 @@ function poseBetreten(): boolean {
   grund = g;
   // die Ruhe der Pose: mit ihr wird gerechnet, gedreht wird erst beim Zeigen (`alsAnzeige`)
   haut = { ...g.haut, pos: ruhe };
-  let angepasst = false;
+  /** Linien, die an der Haut der Pose abgelesen wurden (statt Grundform plus Versatz) */
+  const abgelesen = new Set<Loop>();
   loops = g.loops.map((x) => {
     const c = kopieLoop(x);
     if (alt) {
@@ -1155,9 +1161,10 @@ function poseBetreten(): boolean {
     }
     // Die Pose ist eine zweite Lage derselben Linien: ihre Punkte und Griffe = die der Grundform plus Versatz
     const v = pose.linien?.find((y) => y.id === x.id);
-    if (v && v.punkte.length === c.punkte.length) {
+    const versatz = v ? poseVersatzFuer(v, c) : null;
+    if (versatz) {
       c.punkte.forEach((q, i) => {
-        const o = v.punkte[i]!;
+        const o = versatz[i]!;
         q.ref = { x: q.ref.x + o.d.x, y: q.ref.y + o.d.y, z: q.ref.z + o.d.z };
         q.cur = { ...q.ref };
         if (q.ein && o.ein) q.ein = { x: q.ein.x + o.ein.x, y: q.ein.y + o.ein.y, z: q.ein.z + o.ein.z };
@@ -1168,15 +1175,101 @@ function poseBetreten(): boolean {
       // ein Blendshape ohne gespeicherte Linien (eine Pose von vor dem 14.11.): Die Linien werden einmal an der Haut der Pose abgelesen
       festlegen(haut, c);
       if (hatGriffe(c)) griffeAnlegen(c, c.ruhe, true);
-      angepasst = true;
+      abgelesen.add(c);
     } else festlegen(haut, c, false);
     return c;
   });
-  // (abgelesene Linien liegen nicht ganz auf ihrem Pfad: Die Haut setzt sich auf sie)
-  if (angepasst) linienAufPfad();
+  // Die Haut der Pose (Grundform plus Blendshape) setzt sich auf ihre Linien (Grundform plus Versatz). Eine Linie mit Versatz behält
+  // dabei die Stelle jeder Probe auf dem Pfad: Es ist dieselbe wie in der Grundform, sonst rückte die Grundform beim Verlassen nach.
+  // Nötig, wo die Grundform inzwischen neue Punkte im Netz bekam (ihr Blendshape ist nur aus den Nachbarn gemittelt), und für
+  // abgelesene Linien (sie liegen nicht ganz auf ihrem Pfad).
+  if (!alt) linienAufPfad(undefined, { behalten: (l) => !abgelesen.has(l), ab: POSE_GENAU });
   geometrieNeu();
   meldung = '';
   return true;
+}
+
+/**
+ * Der Versatz einer Linie der Pose für die Punkte, die ihre Linie der Grundform jetzt hat (Schritt 5, Etappe 3: die Pose geht mit).
+ * Gemerkt ist er je Punkt, mit der Stelle `s` des Punkts. Ein Punkt an derselben Stelle behält seinen Versatz. Ein neuer Punkt der
+ * Grundform (Doppelklick, neue Kreuzung) hat sein Stück dort geteilt (`punktEinfuegen`: de Casteljau beim Anteil von s). Der Versatz
+ * der Pose längs eines Stücks ist selbst ein kubisches Stück (seine Kontrollpunkte: der Versatz der zwei Punkte und ihrer
+ * Griffspitzen) und wird an derselben Stelle geteilt: Die Linie der Pose bleibt genau, wie sie war, und der neue Punkt liegt auf ihr.
+ * Ein gelöschter Punkt fällt weg; seine Nachbarn behalten ihre Griffe wie in der Grundform. Null: kein Zusammenhang mehr (andere
+ * Länge, ein Punkt außerhalb der alten Stücke, gemerkt ohne Stellen und mit anderer Punktzahl) — dann wird die Linie an der Haut der
+ * Pose abgelesen. Hat die Linie dieselbe Punktzahl, aber fast überall andere Stellen (ein geschlossener Loop hat seinen Anfang
+ * verschoben, `pfadParameter`), gilt der Versatz der Reihe nach.
+ */
+function poseVersatzFuer(v: PoseLinie, l: Loop): PoseVersatz[] | null {
+  const A = v.punkte;
+  const m = A.length;
+  const n = l.punkte.length;
+  const L = v.laenge;
+  if (L === undefined || A.some((x) => x.s === undefined)) return m === n ? A : null;
+  const eps = 1e-6 * Math.max(1, l.laenge);
+  if (Math.abs(L - l.laenge) > eps) return m === n ? A : null;
+  const zu = l.art !== 'ring';
+  // wo jeder Punkt von jetzt in den alten Stücken liegt: auf einem alten Punkt oder im Stück k (vom alten Punkt k zum nächsten) bei t
+  type Ort = { auf: number } | { k: number; t: number };
+  let treffer = 0;
+  const orte: (Ort | null)[] = l.punkte.map((p) => {
+    const auf = A.findIndex((x) => Math.abs(x.s! - p.s) <= eps);
+    if (auf >= 0) {
+      treffer++;
+      return { auf };
+    }
+    for (let k = 0; k < (zu ? m : m - 1); k++) {
+      const s0 = A[k]!.s!;
+      const s1 = k + 1 < m ? A[k + 1]!.s! : A[0]!.s! + L;
+      // (das letzte Stück eines geschlossenen Loops läuft über das Ende hinaus: Stellen vor dem ersten Punkt zählen dort weiter)
+      const x = k === m - 1 && p.s < s0 ? p.s + L : p.s;
+      if (x > s0 && x < s1) return { k, t: (x - s0) / (s1 - s0) };
+    }
+    return null;
+  });
+  if (m === n && treffer === n) return orte.map((o) => A[(o as { auf: number }).auf]!);
+  if (m === n && 2 * treffer <= n) return A;
+  if (treffer === 0 || orte.some((o) => o === null)) return null;
+  const misch = (p: V3, q: V3, t: number): V3 => ({ x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t, z: p.z + (q.z - p.z) * t });
+  const mal = (p: V3, f: number): V3 => ({ x: p.x * f, y: p.y * f, z: p.z * f });
+  const weg = (p: V3, q: V3): V3 => ({ x: p.x - q.x, y: p.y - q.y, z: p.z - q.z });
+  /** Blüte des Versatzes im alten Stück k (Kontrollpunkte des Teilstücks von a bis b: b(a,a,a), b(a,a,b), b(a,b,b), b(b,b,b)) */
+  const bluete = (k: number, t1: number, t2: number, t3: number): V3 | null => {
+    const a = A[k]!;
+    const b = A[(k + 1) % m]!;
+    if (!a.aus || !b.ein) return null;
+    const C = [a.d, plus3(a.d, a.aus), plus3(b.d, b.ein), b.d] as const;
+    const a01 = misch(C[0], C[1], t1);
+    const a12 = misch(C[1], C[2], t1);
+    const a23 = misch(C[2], C[3], t1);
+    return misch(misch(a01, a12, t2), misch(a12, a23, t2), t3);
+  };
+  const out: PoseVersatz[] = [];
+  for (let i = 0; i < n; i++) {
+    const o = orte[i]!;
+    const vorher = zu || i > 0 ? orte[(i - 1 + n) % n]! : null;
+    const nachher = zu || i < n - 1 ? orte[(i + 1) % n]! : null;
+    if ('auf' in o) {
+      const a = A[o.auf]!;
+      // Die Griffe werden kürzer, wo ein neuer Punkt das Stück daneben geteilt hat. Am Ende eines Rings auf der Mitte ist der zweite
+      // Griff das Spiegelbild des ersten: Er wird mit ihm kürzer.
+      const fAus = nachher && 'k' in nachher && nachher.k === o.auf ? nachher.t : 1;
+      const fEin = vorher && 'k' in vorher && vorher.k === (o.auf - 1 + m) % m && (zu || o.auf > 0) ? 1 - vorher.t : 1;
+      const amAnfang = !zu && i === 0 && endeAufMitte(l, 0);
+      const amEnde = !zu && i === n - 1 && endeAufMitte(l, 1);
+      out.push({ d: a.d, ein: a.ein ? mal(a.ein, amAnfang ? fAus : fEin) : null, aus: a.aus ? mal(a.aus, amEnde ? fEin : fAus) : null });
+      continue;
+    }
+    // ein neuer Punkt im alten Stück k: sein Teilstück reicht bis zu den Nachbarn von jetzt, soweit sie im selben Stück liegen
+    const a = vorher && 'k' in vorher && vorher.k === o.k && vorher.t < o.t ? vorher.t : 0;
+    const b = nachher && 'k' in nachher && nachher.k === o.k && nachher.t > o.t ? nachher.t : 1;
+    const M = bluete(o.k, o.t, o.t, o.t);
+    const E = bluete(o.k, a, o.t, o.t);
+    const U = bluete(o.k, o.t, o.t, b);
+    if (!M || !E || !U) return null;
+    out.push({ d: M, ein: weg(E, M), aus: weg(U, M) });
+  }
+  return out;
 }
 
 /**
@@ -1206,7 +1299,7 @@ function poseSichern(): void {
         const b = basis.find((x) => x.id === l.id);
         if (!b || b.punkte.length !== l.punkte.length) return [];
         const weg = (p: V3 | undefined, q: V3 | undefined): V3 | null => (p && q ? { x: p.x - q.x, y: p.y - q.y, z: p.z - q.z } : null);
-        return [{ id: l.id, punkte: l.punkte.map((p, i) => ({ d: weg(p.ref, b.punkte[i]!.ref)!, ein: weg(p.ein, b.punkte[i]!.ein), aus: weg(p.aus, b.punkte[i]!.aus) })) }];
+        return [{ id: l.id, laenge: b.laenge, punkte: l.punkte.map((p, i) => ({ s: b.punkte[i]!.s, d: weg(p.ref, b.punkte[i]!.ref)!, ein: weg(p.ein, b.punkte[i]!.ein), aus: weg(p.aus, b.punkte[i]!.aus) })) }];
       });
 }
 
@@ -1358,13 +1451,59 @@ function grundLoopsAus(h: Haut, alt: readonly Loop[]): Loop[] {
 function poseVerlassen(): void {
   if (!grund) return;
   poseSichern();
+  const ruhe = haut.pos;
   const basis = grund.haut;
   loops = grundLoopsAus(basis, grund.loops);
   haut = basis;
   grund = null;
   geometrieNeu();
   // was in der Pose an Punkten oder Loops dazukam, liest seine Griffe an der Linie der Grundform ab: auch diese Linien genau auf ihren Pfad
-  linienAufPfad();
+  if (linienAufPfad() && pose.delta && ruhe.length === haut.pos.length) {
+    // Die Grundform hat sich dabei bewegt: Der Blendshape zählt gegen die Grundform, wie sie jetzt ist (sonst wäre die Pose beim
+    // nächsten Betreten eine andere als die verlassene)
+    for (let i = 0; i < ruhe.length; i++) pose.delta[i] = ruhe[i]! - haut.pos[i]!;
+  }
+}
+
+/**
+ * In der Pose, nach einem Netzwechsel: Ein neuer Punkt des Netzes auf einer Linie (ab `abPunkt`) liegt in der Grundform genau auf dem
+ * Pfad ihrer Linie, an derselben Stelle wie in der Pose (eine Probe hat in beiden dasselbe t). Er bekäme sonst die Lage der Pose
+ * minus den Blendshape seiner Nachbarn: Wo sich der Versatz einer Linie längs ändert, liegt das bis 2 neben dem Pfad der Grundform
+ * (gemessen an „maul handgemacht test“ nach einem Zug an der Lippe). Beim Verlassen rückte `linienAufPfad` die Grundform dann
+ * zurecht, nachdem der Blendshape schon gemerkt war: Verlassen und wieder betreten gab eine andere Pose (Haut bis 1,9 anders, die
+ * Lippenlinie 2 neben ihrem Pfad). Die Punkte, die es schon gab, bleiben in der Grundform, wo sie sind.
+ */
+function grundAufPfad(abPunkt: number): void {
+  const g = grund;
+  const d = pose.delta;
+  if (!g || !d || altePose()) return;
+  const B = g.haut.pos;
+  const R = haut.pos;
+  const setzen = (v: number, x: number, y: number, z: number): void => {
+    B[3 * v] = x;
+    B[3 * v + 1] = y;
+    B[3 * v + 2] = z;
+    d[3 * v] = R[3 * v]! - x;
+    d[3 * v + 1] = R[3 * v + 1]! - y;
+    d[3 * v + 2] = R[3 * v + 2]! - z;
+  };
+  let geaendert = false;
+  for (const l of g.loops) {
+    const P = hatPfad(l) ? pfadLagen(l) : null;
+    if (!P) continue;
+    l.proben.forEach((pr, j) => {
+      // (nur eingesetzte Linien: die Probe ist ein Punkt des Netzes)
+      const v = pr.ecken[0];
+      if (v < abPunkt || pr.ecken[1] !== v || pr.ecken[2] !== v) return;
+      const q = lageAus(P, j);
+      if (Math.hypot(B[3 * v]! - q.x, B[3 * v + 1]! - q.y, B[3 * v + 2]! - q.z) <= 1e-9) return;
+      setzen(v, q.x, q.y, q.z);
+      const w = g.haut.spiegel[v]!;
+      if (w !== v && w >= abPunkt) setzen(w, q.x, q.y, -q.z);
+      geaendert = true;
+    });
+  }
+  if (geaendert) for (const l of g.loops) festlegen(g.haut, l, false);
 }
 
 /** Zuordnung für ein Netz, das nur gewachsen ist: die alten Punkte bleiben vorn, neue ab `nAlt` */
@@ -1397,6 +1536,7 @@ function netzGewachsen(nAlt: number, alt: Int32Array, vorher: { theta: Float64Ar
     const gh: Haut = { pos: basis, tri: haut.tri, n: haut.n, nachbarn: haut.nachbarn, spiegel: haut.spiegel };
     grund = { haut: gh, loops: grundLoopsAus(gh, g.loops) };
     pose.delta = d;
+    grundAufPfad(m);
   } else if (pose.delta && pose.delta.length === 3 * nAlt) pose.delta = ergaenzen(haut, umordnen(pose.delta, 3), m, 3, true);
 }
 
@@ -4871,15 +5011,17 @@ let letztesNeuRechnen = 0;
  * Loops: so bis 2,2, im Mittel 0,4; aus den Kurven bis 8,9, im Mittel 3,5). Was nur um den Rest des Lösers daneben liegt, holt der
  * nächste Zug.
  */
-function linienAufPfad(neu?: Loop): boolean {
+function linienAufPfad(neu?: Loop, opt: { behalten?: (l: Loop) => boolean; ab?: number } = {}): boolean {
   if (altePose()) return false;
   const versch: (Float64Array | null)[] = loops.map(() => null);
   const bewegt: V3[] = [];
   const ecken = new Set<number>();
+  const ab = opt.ab ?? 0.05 * MK;
   let weit = 0;
   loops.forEach((l, li) => {
-    if (!exakt(l) || (l !== neu && pfadAbweichung(l) < 0.05 * MK)) return;
-    pfadParameter(l);
+    if (!exakt(l) || (l !== neu && pfadAbweichung(l) < ab)) return;
+    // (`behalten`: Die Proben bleiben an ihrer Stelle auf dem Pfad, die Haut geht dorthin; sonst bekommt jede die nächste Stelle)
+    if (!opt.behalten?.(l)) pfadParameter(l);
     const d = pfadVersatz(l)!;
     versch[li] = d;
     for (let j = 0; j < l.proben.length; j++) {

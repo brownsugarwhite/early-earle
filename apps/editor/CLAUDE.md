@@ -91,6 +91,15 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   `ruheLagen`, `ruheLoops`, `ruheUmgeschlagen` geben die Ruhe, `pfadRest` misst in der Ruhe, `pfadRestGezeigt` die gezeichnete
   Linie gegen die gezeigte Haut, `blaetterMs` das Zeichnen der Blätter. Probe: `GPU=1 [NAME=…] [RING=…] node
   scripts/pruefen/form-pose-fenster.mjs` (an „maul handgemacht test“).
+- **Die Pose geht mit der Grundform mit** (Schritt 5, Etappe 3, 14.11.; nur in `form-bau`): Pose = Grundform plus Versatz, für
+  die Haut je Punkt des Netzes (`pose.delta`), für die Linien je Punkt und Griff (`pose.linien`, dazu die Stelle `s` jedes Punkts
+  und die Länge der Linie). Drei Dinge halten das zusammen: (1) Wächst das Netz in der Pose, liegt ein neuer Punkt auf einer
+  Linie in der Grundform genau auf deren Pfad, an derselben Stelle wie in der Pose (`grundAufPfad` in `netzGewachsen`). (2) Beim
+  Verlassen zählt der Blendshape gegen die Grundform, wie sie danach ist (`poseVerlassen`). (3) Beim Betreten bekommt jede Linie
+  ihren Versatz für die Punkte, die sie jetzt hat (`poseVersatzFuer`: gleiche Stelle = gleicher Punkt; ein neuer Punkt teilt den
+  Versatz, wie er das Stück der Grundform geteilt hat; ohne Zusammenhang wird die Linie an der Haut der Pose abgelesen), und die
+  Haut der Pose setzt sich auf ihre Linien, jede Probe an ihrer Stelle (`linienAufPfad` mit `behalten`, ab `POSE_GENAU`). Probe:
+  `GPU=1 [NUR=0ABCD] [DIAG=1] node scripts/pruefen/form-pose-mitgehen-fenster.mjs` (gemeinsame Teile in `form-pose-teile.mjs`).
 - **Abzweigungen** (14.11.; nur in `form-bau`, Zwischenschritt im Plan): eine offene Linie, die an Punkten anderer Linien hängt
   und sie mit ihnen teilt (gleiche `kreuzung`). Im Modell ein `ring` mit `Loop.haengt = [Anfang, Ende]`; `endeAufMitte(l, 0 | 1)`
   sagt, ob ein Ende auf der Mittelebene liegt (der Ring wie bisher) oder hängt. **Im Fenster, mit P:** Klick auf einen Punkt oder
@@ -144,7 +153,8 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   des Plans: dann ist die Hälfte die Wahrheit.)
 - **Ein Ring ist die Hälfte z ≥ 0**, seine Enden liegen auf der Mittelebene; dort hat ein Punkt zwei Griffe.
 - **Eine Kreuzung ist ein Punkt:** Punkte zweier Loops mit derselben `kreuzung`-Nummer sind derselbe Ort.
-- **Linie = Bézier-Pfad nur in der Grundform.** In der Pose rechnet ein anderer Löser (`HautZiele`, mit Gedächtnis).
+- **Linie = Bézier-Pfad** in der Grundform und, seit dem 14.11. in `form-bau`, in der Pose am geformten Maul. In der Pose am
+  Maul aus der schmalen Form (`altePose`) rechnet ein anderer Löser (`HautZiele`, mit Gedächtnis).
 - **Werte je Punkt nach jedem Netzwechsel umordnen** (Blendshape, Knochenwinkel, Stand des Lösers).
 - **Der Stand entscheidet:** Was der Hintergrund rechnet, gehört zu einem Stand (`standZahl`) und wird nur angewendet, wenn er
   noch derselbe ist.
@@ -257,6 +267,16 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   handgemacht test“ bis 13,26 neben der gezeigten Haut (die Haut selbst stimmte; Stand 2c, am 14.11. behoben). Wer in der Pose
   etwas aus `l.punkte` und den Griffen der gedrehten Kopie zeichnet oder misst, nimmt den Pfad der Ruhe und dreht je Stelle
   (`stueckeGezeigt`, `pfadStuecke`). Nicht gemessen: Im Übergang ist ein Griff nicht genau die Tangente der gezeigten Linie.
+- **Pose und Grundform teilen die Stelle jeder Probe auf ihrem Pfad** (dasselbe t in beiden). Wer nur auf einer Seite die
+  Stellen neu vergibt (`pfadParameter`, in `linienAufPfad` ohne `behalten`), verschiebt die andere beim nächsten Wechsel längs
+  ihrer Linien. Und: Ein Wert, der für neue Punkte des Netzes aus den Nachbarn gemittelt wird (Blendshape, Lage der Grundform),
+  stimmt an einer Linie nicht, wo sich ihr Versatz längs ändert (gemessen bis 2 daneben): dort aus dem Pfad nehmen.
+- Das gemeinsame Netz richtet sich nach der Lage, in der gerade gearbeitet wird: Ein Zug in der Pose verfeinert und räumt auch
+  das Netz der Grundform auf (ihre gebliebenen Punkte liegen, wo sie lagen; die Fläche weicht um die Feinheit des Netzes ab).
+- Proben im Blatt: Im Seitenblatt liegen Punkte verschiedener Linien hintereinander; die Maus greift, was vorn liegt (so zog eine
+  Probe statt eines Lippenpunkts die Kreuzung am Gaumen). Punkte wählen, vor und hinter denen kein anderer liegt (`freiImBlatt`
+  in `form-pose-mitgehen-fenster.mjs`). Das erste „Fressen“ richtet das Maul ein und ordnet dabei die Punkte der Linie neu: den
+  Stand der Grundform erst nach einem ersten An und Aus nehmen.
 - **P wird geklickt, nicht gezogen** (Florian, 14.11.: „es werden keine punkte gesetzt wenn ich mit p auf eine linie klicke. Das
   wekzeug springt dann sofort wieder raus“): Die erste Fassung kannte nur Drücken, Ziehen, Loslassen; ein Klick galt als Anfang
   und Ende am selben Ort. Jede Geste eines Werkzeugs zuerst mit einzelnen Klicks prüfen, die Probe genauso.
