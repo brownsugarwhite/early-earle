@@ -1,0 +1,59 @@
+// Aufruf aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/teilA/e1-reihe-k2.ts
+// Umgebung: LAGE (karte|band, Liste mit Komma), J (fest; sonst Standard), FAELLE, AUS (JSON-Zeilen), WULST (px), ECKE (eckeMin),
+// VERL (Feld hinter dem Mundwinkel verlängert, in Feldradien), FELD (begradigt|kompakt), KAPPE (Radien, 0 = ganz begradigt),
+// FAECHER (tutte|kreis), NAHT (bogen|karte|bogenKarte), A0 (alt|editor; Standard auf K2: editor), A0PLAN (JSON, ergänzt den Bauplan
+// von A0), NR (Ausgleich der Stufennaht, Runden), SPITZEN (0 = Spitzen von A0 nicht übernehmen), LAH (1 = Lippenziel auf der Haut
+// von A0, `lippeAufHaut`; dann zusätzlich `ziel` = größter Abstand des Ziels zur gezeichneten Linie), LEITER (1 = Leiter, E2.6)
+// Ganze Reihe des Kernrings nach dem Standard (Plan 21.10.): A0 wie im Editor, Feld auf K2 begradigt bis 1,5 Radien, Schlitz
+// genau auf der Linie, Reihenzahl konform (10 … 16), Fächer um c als Halbkreis, Naht nach Bogenlänge (umparametrisierte Karte),
+// ein Ausgleich der Stufennaht, Ausgleich außen, letzte Lippenspanne 0,15 Feldkante, Spitzen von A0 übernommen, ohne
+// Lippenwulst. Je ausgeglichenem Fall: Haut gegen A0 (max/99 %), Knick im Feld und am Mundwinkel (je gegen A0, ohne die Umgebung
+// von Spitzen), umgeklappte Zellen, Viereckgüte, Lippe, außen, Spiegel, Zeit. Am Ende die Zusammenfassung je Lage.
+import { appendFileSync } from 'node:fs';
+import { einsatzAblauf, einsatzFaelle, einsatzFall } from '../../../../../packages/shape/src/kern/pruefen/einsatzFall';
+import { hautGuete } from '../../../../../packages/shape/src/kern/einsatz/topologie';
+import { abtasten3 } from '../../../../../packages/shape/src/versuch/linie3d';
+
+const NUR = process.env.FAELLE?.split(',');
+const LAGEN = (process.env.LAGE ?? 'karte').split(',') as ('karte' | 'band')[];
+const zeilen: Record<string, Record<string, number | string>[]> = {};
+for (const [art, anfang, form] of einsatzFaelle()) {
+  const name = `${art}/${anfang}/${form}`;
+  if (NUR && !NUR.includes(name)) continue;
+  const f = einsatzFall(art, anfang, form, { ...(process.env.VERL ? { verlaengerung: Number(process.env.VERL) } : {}), ...(process.env.FELD ? { feld: process.env.FELD as 'begradigt' | 'kompakt' } : {}), ...(process.env.KAPPE ? { kappe: Number(process.env.KAPPE) } : {}), ...(process.env.A0 === 'editor' ? { a0: { art: 'editor' as const, ...(process.env.A0PLAN ? { plan: JSON.parse(process.env.A0PLAN) } : {}) } } : process.env.A0 === 'alt' ? { a0: { art: 'alt' as const } } : {}), ...(process.env.LAH ? { lippeAufHaut: process.env.LAH !== '0' } : {}) });
+  if (!f || 'fehler' in f || f.hautAbstand > 1) continue;
+  for (const lage of LAGEN) {
+    const t0 = performance.now();
+    let z: Record<string, number | string>;
+    try {
+      const { t, lippe, g, ms } = einsatzAblauf(f, { lage, ...(process.env.ECKE ? { eckeMin: Number(process.env.ECKE) } : {}), ...(process.env.FAECHER ? { faecher: process.env.FAECHER as 'tutte' | 'kreis' } : {}), ...(process.env.NAHT ? { naht: process.env.NAHT as 'bogen' | 'karte' } : {}), ...(process.env.NR ? { nahtAusgleich: Number(process.env.NR) } : {}), ...(process.env.SPITZEN ? { spitzen: process.env.SPITZEN !== '0' } : {}), ...(process.env.LEITER ? { leiter: process.env.LEITER !== '0' } : {}), ...(process.env.J ? { J: Number(process.env.J) } : lage === 'band' ? { J: 10 } : {}) }, process.env.WULST ? { wulst: Number(process.env.WULST) } : {});
+      let spiegel = 0;
+      for (let v = t.nAlt; v < g.kaefig.n; v++) {
+        const s = t.spiegel[v]!;
+        if (s >= 0 && s !== v && (g.xyz[3 * s] !== g.xyz[3 * v] || g.xyz[3 * s + 1] !== g.xyz[3 * v + 1] || g.xyz[3 * s + 2] !== -g.xyz[3 * v + 2]!)) spiegel++;
+      }
+      const gu = hautGuete(t);
+      const fe = lippe.fehler;
+      // Abstand des Lippenziels zur gezeichneten Linie (nur mit LAH verschieden)
+      const roh = abtasten3(f.maulLinie, 64) as [number, number, number][];
+      const ziel = f.lippenZiel();
+      let zielLinie = 0;
+      for (let i = 0; i < ziel.length; i++) zielLinie = Math.max(zielLinie, Math.hypot(ziel[i]![0] - roh[i]![0], ziel[i]![1] - roh[i]![1], ziel[i]![2] - roh[i]![2]) * 461);
+      z = { name, lage, m: t.m, M: t.M, J: t.J, ziel: zielLinie, leiter: t.leiter ? `${t.leiter.seite}/${t.leiter.q}/${t.leiter.t}` : '', haut: ms.hautMax, haut99: ms.hautP99, knick: ms.falten, knickA0: ms.faltenA0, ecke: ms.faltenEcke, eckeA0: ms.faltenEckeA0, umgeklappt: t.umgeklappt, winkelMin: gu.winkelMin, seitenMax: gu.seitenMax, lippe: Math.max(fe.seite, fe.front, fe.top, fe.raum), aussen: ms.aussen, spiegel, zeit: (performance.now() - t0) / 1000 };
+    } catch (e) {
+      z = { name, lage, fehler: (e as Error).message };
+    }
+    (zeilen[lage] ??= []).push(z);
+    if (process.env.AUS) appendFileSync(process.env.AUS, `${JSON.stringify(z)}\n`);
+    const n = (k: string, d = 2) => (typeof z[k] === 'number' ? (z[k] as number).toFixed(d) : '–');
+    console.log(z.fehler ? `${name.padEnd(22)} ${lage}: Fehler ${z.fehler}` : `${name.padEnd(22)} ${lage} m ${z.m} J ${z.J}: Haut ${n('haut')} (99 % ${n('haut99')}) · Knick ${n('knick', 1)}° (A0 ${n('knickA0', 1)}°) · Ecke ${n('ecke', 1)}° (A0 ${n('eckeA0', 1)}°) · umgeklappt ${z.umgeklappt} · Güte ${n('winkelMin', 0)}°/${n('seitenMax', 1)} · Lippe ${n('lippe')} px (Ziel ${n('ziel')}) · außen ${z.aussen} · Spiegel ${z.spiegel} · ${n('zeit', 1)} s`);
+  }
+}
+for (const [lage, zs] of Object.entries(zeilen)) {
+  const ok = zs.filter((z) => !z.fehler);
+  const ohne = ok.filter((z) => !String(z.name).startsWith('rex') && !String(z.name).startsWith('robbe'));
+  const haut = ohne.map((z) => z.haut as number).sort((a, b) => a - b);
+  console.log(
+    `\n${lage}: ${ok.length} Fälle (${zs.length - ok.length} Fehler) · Haut ≤ 0,25 px in ${haut.filter((h) => h <= 0.25).length}/${haut.length} (ohne Rex/Robbe), Median ${haut[haut.length >> 1]?.toFixed(2)}, max ${haut[haut.length - 1]?.toFixed(2)} · Ecke ≤ A0 + 2° in ${ok.filter((z) => (z.ecke as number) <= (z.eckeA0 as number) + 2).length}/${ok.length} · Knick > 30° in ${ok.filter((z) => (z.knick as number) > 30).length} · umgeklappt in ${ok.filter((z) => (z.umgeklappt as number) > 0).length} · Lippe ≤ 1 px in ${ok.filter((z) => (z.lippe as number) <= 1).length}/${ok.length} · außen ≠ 0 in ${ok.filter((z) => z.aussen !== 0).length} · Spiegel ≠ 0 in ${ok.filter((z) => z.spiegel !== 0).length}`,
+  );
+}

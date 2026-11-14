@@ -1,0 +1,46 @@
+Kugel nur mit Mittellinie (1500 Punkte, vorher bis 0,22 von der Kugel): heute 0,22 (8 Runden) · A 0,22 (0,14 % vom Radius) · B 0,22
+   A fünfmal neu angelegt und gerechnet: Weg der Fläche je Mal 0,00 · 0,00 · 0,00 · 0,00 · 0,00, danach 0,22 von der Kugel
+Kugel mit drei Loops (1784 Punkte, vorher bis 0,43 von der Kugel): heute 0,43 (7 Runden) · A 0,43 (0,28 % vom Radius) · B 0,43
+   A fünfmal neu angelegt und gerechnet: Weg der Fläche je Mal 0,02 · 0,02 · 0,02 · 0,02 · 0,02, danach 0,43 von der Kugel
+Schlauch (1284 Punkte, Radius 50, Ringe bei 0 und ±100; Dicke zwischen den Ringen vorher 49,94), das Stück zwischen den Ringen auf doppelte Länge:
+   heute (2 Runden): Dicke 49,85 (49,24–50,29; -0,19 %, kleinster -1,4 %, größter 0,7 %), ganz bis 2,42 von der Kapsel, Knicke über 60° 0, umgestülpt 0
+   A (37 Durchgänge, 34 ms): Dicke 49,86 (49,56–50,00; -0,17 %, kleinster -0,8 %, größter 0,1 %), ganz bis 12,69 von der Kapsel, Knicke über 60° 30, umgestülpt 0
+   B (33 ms): Dicke 49,90 (49,56–50,10; -0,09 %, kleinster -0,8 %, größter 0,3 %), ganz bis 0,73 von der Kapsel, Knicke über 60° 0, umgestülpt 0
+   A dreimal neu angelegt: Weg der Fläche je Mal (Mittel/größter) 0,80/18,67 · 1,37/21,90 · 2,33/21,27, danach bis 13,28 von der Kapsel, Knicke über 60° 231, umgestülpt 62
+   B dreimal neu angelegt, Normalen behalten: Weg der Fläche je Mal (Mittel/größter) 0,02/0,10 · 0,01/0,04 · 0,00/0,03, danach bis 0,85 von der Kapsel, Knicke über 60° 0, umgestülpt 0
+   B dreimal neu angelegt, Normalen neu von der Haut gelesen: Weg der Fläche je Mal (Mittel/größter) 0,07/0,50 · 0,07/0,49 · 0,07/0,47, danach bis 2,30 von der Kapsel, Knicke über 60° 0, umgestülpt 0
+Rüssel aus zwei Profillinien (Kappe der Kugel in 8 Schritten um 160 nach vorn, je Schritt verdichtet), Querschnitt in der Mitte:
+   heute: Höhe 86,1, Breite 88,3, Breite zu Höhe 1,03, 1822 Punkte, Knicke über 60° 0, umgestülpt 0
+   A: Höhe 86,7, Breite 31,6, Breite zu Höhe 0,36, 2091 Punkte, Knicke über 60° 104, umgestülpt 22
+   B: Höhe 86,1, Breite 166,6, Breite zu Höhe 1,94, 2000 Punkte, Knicke über 60° 1, umgestülpt 0
+Horn am strange bird (7628 Punkte): Spitze bei y = 466 um 70 nach oben. Querschnitt des Horns (Ausdehnung in x × in z) bei 40 %, 60 %, 80 % seiner Länge:
+   vorher: 143,1 × 62,1 · 112,5 × 64,9 · 76,4 × 63,2
+   heute (13 Runden): 156,0 × 71,9 · 121,0 × 74,6 · 81,6 × 69,3 · Knicke über 60° 57, umgestülpt 2
+   heute ohne Zug (23 Runden, nur gesetzt): 149,0 × 67,3 · 115,1 × 70,5 · 77,0 × 70,7
+   A: 142,9 × 56,6 · 109,7 × 63,7 · 74,5 × 61,2 · Knicke über 60° 522, umgestülpt 76
+   B: 147,8 × 61,9 · 114,3 × 65,7 · 78,8 × 64,9 · Knicke über 60° 45, umgestülpt 2 (vorher Knicke über 60° 43, umgestülpt 2)
+   B hin und zurück: größter Unterschied 0.0e+0 (ein Rechnen 236 ms, davon Zerlegen 224 ms, Einsetzen 4 ms) · ohne Zug gegen die geladene Fläche: Mittel 0,15, 95 % 0,53, größter 1,40
+   A hin und zurück: größter Unterschied 2.0e-4
+   B nach dem Zug dreimal neu angelegt, Normalen behalten: Weg der Fläche je Mal (Mittel/größter) 0,04/0,82 · 0,02/0,28 · 0,02/0,23 · Horn 146,1 × 61,2 · 115,4 × 64,6 · 76,8 × 63,7
+   B nach dem Zug dreimal neu angelegt, Normalen neu von der Haut gelesen: Weg der Fläche je Mal (Mittel/größter) 0,13/1,07 · 0,11/1,00 · 0,10/0,94 · Horn 147,5 × 59,7 · 117,3 × 65,9 · 78,2 × 65,2
+strange bird (7628 Punkte, 9 Loops; geladen: Knicke über 60° 43, umgestülpt 2), nichts gezogen, Abstand zur geladenen Fläche:
+   heute (23 Runden): Mittel 1,37, 95 % 5,57, größter 29,56 · Knicke über 60° 53, umgestülpt 2
+   A (284 ms): Mittel 4,15, 95 % 16,74, größter 52,19 · Knicke über 60° 504, umgestülpt 82
+   B (266 ms): Mittel 0,15, 95 % 0,53, größter 1,40 · Knicke über 60° 41, umgestülpt 2
+   B noch dreimal neu angelegt, Normalen behalten: Weg der Fläche je Mal (Mittel/größter) 0,02/0,22 · 0,01/0,13 · 0,01/0,09, danach Knicke über 60° 41, umgestülpt 2
+   B noch dreimal neu angelegt, Normalen neu von der Haut gelesen: Weg der Fläche je Mal (Mittel/größter) 0,12/1,05 · 0,10/1,00 · 0,09/0,95, danach Knicke über 60° 41, umgestülpt 0
+teat firefish (11765 Punkte, 17 Loops; geladen: Knicke über 60° 43, umgestülpt 0), nichts gezogen, Abstand zur geladenen Fläche:
+   heute (12 Runden): Mittel 0,09, 95 % 0,29, größter 1,75 · Knicke über 60° 40, umgestülpt 0
+   A (11912 ms): Mittel 4,86, 95 % 26,40, größter 69,22 · Knicke über 60° 603, umgestülpt 112
+   B (381 ms): Mittel 0,10, 95 % 0,39, größter 0,95 · Knicke über 60° 41, umgestülpt 0
+   B noch dreimal neu angelegt, Normalen behalten: Weg der Fläche je Mal (Mittel/größter) 0,02/0,23 · 0,01/0,12 · 0,01/0,08, danach Knicke über 60° 36, umgestülpt 0
+   B noch dreimal neu angelegt, Normalen neu von der Haut gelesen: Weg der Fläche je Mal (Mittel/größter) 0,08/0,75 · 0,07/0,70 · 0,06/0,67, danach Knicke über 60° 36, umgestülpt 0
+test_kaputt (2166 Punkte, 4 Loops; geladen: Knicke über 60° 0, umgestülpt 0), nichts gezogen, Abstand zur geladenen Fläche:
+   heute (6 Runden): Mittel 0,08, 95 % 0,29, größter 0,80 · Knicke über 60° 0, umgestülpt 0
+   A (55 ms): Mittel 2,40, 95 % 8,43, größter 18,08 · Knicke über 60° 104, umgestülpt 10
+   B (51 ms): Mittel 0,10, 95 % 0,44, größter 0,84 · Knicke über 60° 0, umgestülpt 0
+   B noch dreimal neu angelegt, Normalen behalten: Weg der Fläche je Mal (Mittel/größter) 0,01/0,17 · 0,01/0,09 · 0,00/0,06, danach Knicke über 60° 0, umgestülpt 0
+   B noch dreimal neu angelegt, Normalen neu von der Haut gelesen: Weg der Fläche je Mal (Mittel/größter) 0,07/0,61 · 0,05/0,50 · 0,04/0,41, danach Knicke über 60° 0, umgestülpt 0
+Schlauch gestreckt auf 3680 und auf 1070 Punkten, Punkte des groben Netzes gegen die feine Fläche:
+   heute: Mittel 0,14, 95 % 0,46, größter 0,77 · A: Mittel 0,31, 95 % 0,98, größter 1,24 · B: Mittel 0,10, 95 % 0,32, größter 0,61
+43 s

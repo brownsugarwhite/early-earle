@@ -1,212 +1,1327 @@
-# Übergabe (aktueller Stand)
+# Übergabe (Stand 14.11.2026, 14:10 Uhr: **Schritt 5, Etappe 2 und 3 sind im Bau-Fenster (5197) gebaut** (Abschnitte 7.18, 7.19 und Plan): In der Pose rechnet das Fenster mit ihrer Ruhe, die Knochen drehen nur die Anzeige; am geformten Maul ist die Pose eine Form wie die Grundform. **Etappe 3 (Florian: „Etappe 3“):** Die Pose geht mit der Grundform mit. Verlassen und wieder betreten gibt dieselbe Pose (vorher bis 1,9 anders, die Lippenlinie 2 neben ihrem Pfad); Punkte der Grundform ziehen, ein neuer Punkt auf einer Linie, eine neue Linie: Der Zug an der Lippe bleibt, die Linien der Pose behalten ihren Verlauf (nach einem neuen Punkt 0,03 statt 2,44). Probe an „maul handgemacht test“: alle Punkte erfüllt. Offen in Etappe 2: Beim Zug an der Kieferspitze schlagen 8 bis 10 kleine Dreiecke an der Mitte um (in der Grundform auch). Offen in Schritt 5: Etappe 4 und 5. Florians Urteil steht aus; in seinem Fenster (5194) ist davon nichts. **Davor am 14.11.:** der Zwischenschritt „Abzweigungen“ (7.17; Florian zur zweiten Fassung: „Ja, weiter Schritt 5“). **Reihenfolge (Florian, 14.11.):** Abzweigungen, Schritt 5, dann 4c. **Schritt 6 (Maul) ist angehalten** und bekommt eine eigene Sitzung, vielleicht zusammen mit Zähnen (7.16). Schritt 7 kommt später, ob und wie ist offen. Zu Schritt 1, 2, 4a und 4b: „das sieht gut aus bis jetzt“)
 
-> Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**: Wo stehen wir, was ist offen, was ist der nächste Schritt. Historie in Git.
+**Pause bis Dienstag, 17.11.2026** (Florian, 14.11., 14:20 Uhr: sein Wochenlimit ist fast voll; „Wir machen am Dienstag hier
+weiter. Ich sammle bis dahin Feedback für dich.“). Alles ist gesichert und gepusht: Code auf `claude/form-bau` (`08c5b111`),
+Dokumente auf der gemeinsamen Linie. **Zuerst am Dienstag: seine Rückmeldung zu Abzweigungen und zu Schritt 5, Etappe 2 und 3,
+lesen (alles nur im Bau-Fenster 5197), dann seine Wahl:** Etappe 4 (beide Seiten frei, zuerst der kleine Beweis), erst
+nachbessern, was er gefunden hat, oder die umgeschlagenen Dreiecke an der Mitte. Nichts davon ist in seinem Fenster (5194);
+übernommen wird erst nach seinem Wort. Das Bau-Fenster startet aus dem Arbeitsbaum `form-bau` mit
+`EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort`.
 
-**Stand:** 2026-10-08 früh (Nachtschicht, zweiter Block), Sitzung „Wesen-Werkstatt“ (Florians Mac, Branch `main`). Pläne: [`docs/plans/2026-10-07-wesen-werkstatt.md`](plans/2026-10-07-wesen-werkstatt.md) (v1) und [`docs/plans/2026-10-07-wesen-werkstatt-v2.md`](plans/2026-10-07-wesen-werkstatt-v2.md) (Lückenliste). **Zielsystem:** [`docs/look/wesen-refs/ZIELSYSTEM.md`](look/wesen-refs/ZIELSYSTEM.md) — gemessene Zieltabelle je Wesen aus Florians 19 Bildern (`docs/look/wesen-refs/`, Ausschnitte in `crops/`, Messwerkzeug `scripts/wesen/messen.mjs`). **Nur Florians Prompt und die 19 Bilder sind Referenz.** Florian will heute gemeinsam weitermachen (Look-Abnahme Rex).
+Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
+Altlasten, Florians frühere Urteile) liegt unverändert in
+[`verlauf/2026-11-11-uebergabe-kurven.md`](verlauf/2026-11-11-uebergabe-kurven.md).
 
-## Milestone 1 (erster Block): das Maul als Lippenschnitt
+## 1. Worum es geht
 
-Haut geschlossen vermascht, entlang der Maullinie aufgeschnitten (Rand doppelt, Maultasche mit Gaumen/Rachen/Boden), Kiefergewichte hart je Seite, Rig mit Öffnungsweite (`maul.oeffnung`), geschwungene Maullinie, Zähne mit Größenprofil auf dem Rand, Zunge als Körper, Zahnfleischsaum, Lippenband als Abstandsfeld. Details: Commit feb49b0 und `packages/creature/src/mesh/mundschnitt.ts`.
+- **Plan:** [`plans/2026-11-12-schnell-glatt-exakt.md`](plans/2026-11-12-schnell-glatt-exakt.md). Florian am 12.11.: „Ok,
+  fangen wir an.“ Die Entscheidungen aus Abschnitt 5 gelten wie empfohlen, solange er nichts anderes sagt (eine Linie, alte
+  Arbeitsbäume weg, Auswahl = Linienstück und Feld, Verschmelzen an der Mitte umkehrbar wie Blenders Mirror, Posen speichern
+  ihre Linien, `/editor` erst nach Schritt 7 nachziehen).
+- **Seine Anforderungen** (12.11., im Plan aufgenommen): Tempo wie ZBrush oder Blender mit Subsurf; Farbstufen wie eine scharfe
+  Vektorlinie; die Haut soll sich weiter organisch aufblasen, aber nicht reißen, nicht kollabieren; Grundform immer gespiegelt
+  mit der Mittellinie von Anfang an; über die Mitte ziehen ergibt einen sauberen Loop (Donut); Posen bedienen wie die Basis;
+  Maul als eigene Geometrie, Loops um einen Kiefer; Kanten und Flächen auswählen, Doppelklick = ganzer Loop.
+- **Arbeitsweise** (Plan, Abschnitt 6): keine Messreihen im Hintergrund, keine Agenten-Fächer, je Schritt eine vorher
+  festgelegte sichtbare Probe, Vergleichsbild vor dem Einbau, nie unter seinem Fenster bauen.
 
-## Milestone 2 (dieser Block): Körper und Kopf nach den Bildern
+## 2. Stand der Schritte
 
-Florian: „Es geht um die Körperform … der Tiger sieht nicht zu 1 % aus wie die Vorlage.“ Befund nach Bild 2 (Florians Skizze), 5, 9, 12, 14: alle Wesen sind **eine Masse**, der Kopf ein großes Volumen vorn oben, das Kinn hängt über der Brust, die Rückenlinie läuft von der Schulter in den Hinterkopf; der Rumpf ist klein (Rex: Kopf 0,6 H auf Rumpf 0,42 H und Beinen 0,18 H), Beine sind Säulen darunter.
+| Schritt | Stand |
+| --- | --- |
+| 0 Aufräumen | **erledigt** (12.11., Einzelheiten unten) |
+| 1 Glatte Anzeige | **eingebaut und Standard** (Abschnitt 4). Florian am 12.11.: „Ja, übernehmen“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&anzeige=grob` zeigt zum Vergleich die Anzeige davor. Sein Urteil nach dem Arbeiten damit steht aus **Florian am 14.11. zu Schritt 1, 2, 4a und 4b: „das sieht gut aus bis jetzt“.** |
+| 2 Kleines Rechennetz | **eingebaut und Standard** (Abschnitt 5): rund 40 % der Punkte, im Zug 16 bis 20 ms je Bild. Florian am 12.11. nachts, vom Handy aus: „ja“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&netz=dicht` ist das Netz davor. Sein Urteil nach dem Arbeiten damit steht aus. Nicht gebaut: Zeichnen gegen die feine Fläche **Florian am 14.11. zu Schritt 1, 2, 4a und 4b: „das sieht gut aus bis jetzt“.** |
+| 3 Beweis „Haut direkt aus den Linien“ | **abgeschlossen, die heutige Rechnung bleibt** (Abschnitt 6, 13.11.): Die Haut nur aus den Linien (A) scheitert zwischen wenigen Linien und an seinen drei Formen. Der Teil B (fertige Haut direkt bewegen) hält rechnerisch; als Schalter „Form halten“ im Bau-Fenster ausprobiert, Florian: „Gefällt nicht“. Knopf und Taste sind wieder weg; der Code liegt nur auf `claude/form-bau` hinter `?ziehen=direkt` |
+| 4 Echte Spiegelung (mit der heutigen Rechnung) | **4a, der Donut, ist in Florians Fenster (Abschnitt 7.4, 13.11.):** nach seiner zweiten Regel; sein Urteil steht aus. **4b, erster Teil, ist seit dem 13.11. nachmittags in Florians Fenster (Abschnitt 7.5):** Der Löser rechnet auf der Hälfte (zwei halb so große Systeme, Krümmung auf der Hälfte), das Netz im Fenster bleibt ganz; Rechnen je Bild 10,3 → 7,1 ms am „teat firefish“, Zerlegen rund 50 %, gleiche Form; dazu „flüssig zuerst“ (eine weitere Runde je Bild nur, wenn sie ins Bild passt). Sein Urteil zum Tempo steht aus **Florian am 14.11. zu Schritt 1, 2, 4a und 4b: „das sieht gut aus bis jetzt“.** |
+| 4c Rest der halben Haut | **fest vorgemerkt** (Plan, „Schritt 4c“; Florian am 13.11.: „es soll nicht vergessen werden“): Gewichte und Vermessen auf der Hälfte (Runde von 73 % auf 50 bis 60 %), die einzelnen langsamen Bilder, Verdichten und Anzeige auf der Hälfte, das Netz selbst als Hälfte. Kommt nach den Posen wieder auf den Tisch und muss gebaut sein, bevor Shader, Materialien, Fell oder Zusatzteile beginnen. Seine heutigen Formen sind kein Maßstab für das Tempo |
+| Zwischenschritt Abzweigungen (vor Schritt 5) | **Im Bau-Fenster gebaut; Florian zur zweiten Fassung (Klicks): „Ja, weiter Schritt 5“** (Abschnitt 7.17; Florian am 14.11.: „Ja, so bauen“; die erste Fassung, nur Ziehen, konnte er nicht bedienen): Mit P auf einen Punkt oder eine Linie klicken, Punkte auf die Haut setzen, auf einen anderen Punkt oder eine andere Linie klicken; die neue Linie hängt an Anfang und Ende und teilt die Punkte, kreuzt sie andere, entsteht ein gemeinsamer Punkt, zum Spiegelbild endet sie auf der Mitte. Probe an „test_kaputt“ mit Klicks: 22 Punkte erfüllt. **Offen:** der Griff eines glatt gesetzten Punkts, wie gezogen |
+| 5 Posen wie die Basis | **Etappe 2 und 3 im Bau-Fenster gebaut, Florians Urteil steht aus** (Abschnitte 7.18 und 7.19, 14.11.). Etappe 2: Die Ruhe der Pose ist die Wahrheit, die Knochen drehen nur die Anzeige; am geformten Maul rechnet die Pose wie die Grundform, ihre Linien sind genau ihr Pfad und als Versatz gespeichert; in der Pose keine neuen Punkte, Linien und kein Löschen. Nicht erfüllt: 8 bis 10 umgeschlagene Dreiecke an der Mitte beim Zug an der Kieferspitze (in der Grundform auch 8). Etappe 3: Die Pose geht mit der Grundform mit; verlassen und wieder betreten gibt dieselbe Pose, ein neuer Punkt der Grundform teilt den Versatz genau; Probe an „maul handgemacht test“ erfüllt. Etappe 1 (Beweis) war mit der Gegenprobe an seiner Form erledigt (7.6, 7.8). **Offen:** Etappe 4 (beide Seiten frei, eigener kleiner Beweis zuerst), 5 (sein Ablauf) |
+| 6 Maul | **Angehalten (Florian, 14.11.):** „Das Maul formt sich und das ist ok“; alles Weitere braucht „ein eigenes System und Definition“ in einer eigenen großen Sitzung (Abschnitt 7.16: sein Wort, der Stand, die offenen Fragen). **Im Bau-Fenster steht** (nicht in seinem Fenster): (7.13) „Maul formen“ in dritter Fassung: Die Maullinie trägt ihren Knick selbst (95° an den Lippen, 70° am Mundwinkel), ohne Mittellinie, animiert; mit einer Mittellinie durch beide Lippen gilt die zweite Fassung (7.11). (7.14) „Fressen“ und die Regler am geformten Maul. (7.11) Linien mit Verjüngung. (7.16) Das Maul aus nur einer Linie: hält an einer Form ohne Linien durchs Maul, an seinen Formen nicht. **Sein Einwand zur dritten Fassung:** Die fest eingeklappte Wulst ist nicht, was er erwartet; Linien, die er nachträglich durchs Maul zieht, stören sich an ihr; liegt ein Maul über einer Kreuzung, muss er die Kreuzungspunkte von Hand zurechtlegen. **Offen:** das Maul-System (zuerst die Beschreibung der Fälle), geschlossene Mäuler (dürfen später kommen), runde Lippen, Tiefe der Tasche, Knick von Hand. Das Maul aus der schmalen Form mit eingesetztem Inneren besteht daneben weiter |
+| 7 Auswahl wie in Blender | **zurückgestellt** (Florian, 14.11.): „eher später“; er ist nicht sicher, ob es das braucht und wie es umgesetzt werden kann |
 
-- **Zwei Kopfarten, ein Grundblob** (`sdf/build.ts`):
-  - *Kopf im Rumpf* (`hals.laenge` = 0 — Grundblob, Fisch, Aal, Drache): der Kopf ist das obere Vorderteil des Domes. `kopfImRumpf` formt das Dome-Profil mit Landmarken um die Maullinie: Schnauze (Oberkiefer, Höhe aus `maul.oberkiefer`), Kinn (Unterkiefer, `maul.unterkiefer`, `maul.biss`), Kehle (nur bei großem Kopf, `kopf.groesse`), Kopfband breiter/tiefer (`kopf.groesse`), Gesicht schmaler als die Schultern durch **Ei-Querschnitte** (`LoftStation.taper`, aus `kopf.schnauzeDicke` < 0,7), kantige Kiefer (`maul.kante`). Mit Standardwerten bleibt der Dome unverändert (PezenPez).
-  - *Eigener Kopf* (`hals.laenge` > 0 — Rex, Katze, Hund, Giraffe): Kopf-Loft am Halsende. Neu bei **kurzem Hals** (≈ 0,05): Kopfmitte knapp über den Schultern, vorn über der Brust (`hals.ansatz` wirkt jetzt auch bei kurzem Hals), weite Verschmelzung (k = 1,2 · Kopfradius: Schulter → Hinterkopf ohne Kerbe), Schädel ohne Schnauze kugelig (Abfall erst ab u ≈ 0,8, Katze), Kieferkante nur an Schnauze und Kinn. `kopf.groesse` bis 3, `koerper.hoehe` ab 0,3.
-- **Neigung** (`koerper.neigung`, jetzt bis 0,5 H): verschiebt die **waagerechten Scheiben** des Rumpfs nach vorn (vorher kippte der ganze Dome, der Bauch sank in den Boden). Standfläche bleibt flach, der Rücken wird zur geraden Schräge (Bild 2, Rex). Der Maulträger hat dafür eine **Mittellinie** (`MouthHost.center`): Maullinie, Mundwinkel, Augen und Gelenk werden von der Scheibenmitte aus gemessen.
-- **Kopfmaße im Körperträger**: `MouthHost.headHeight` (Kinn … Scheitel) für Öffnungsweite, Linienschwung und Augengröße; `MouthHost.jawDepth` = Kinnband, damit Brust und Bauch beim Öffnen nicht mitschwingen (Kiefer-Auslauf 0,95 … 1,3 statt 1,6).
-- **Lochmaul öffnet wieder** (war seit dem Lippenschnitt tot): das Spitzmund-Feld drückt die beiden Ränder **senkrecht zur Maullinie** auseinander (Halbkreisprofil, voll in der Mitte, null am Winkel; Haut läuft als Lippenring aus, Tasche mit ihrer Tiefe). Die alte radiale Weitung vom Zentrum konnte den Schlitz nicht öffnen, weil der Rand durch das Zentrum läuft. Kugelfisch: rundes O mit Lippenring; Giraffe: O/Bohne vorn an der Schnauze.
-- **W-Lippe und Nasenspiegel** (Katze, Hund — Bild 8/9): `maul.wForm` hebt die Maullinie in der Mitte an und senkt beidseits Lappen (nur beim Keilmaul), darüber sitzt ein flacher Nasenknubbel auf der Schnauze (`nase`, Ellipsoid, folgt dem Oberkiefer). Tiger zu: W-Linie, Nase, zwei Fänge außen (`wesen-vergleich-vierbeiner-zu.png`). Farbe des Nasenspiegels folgt mit dem Material (K2).
-- **Beinlage** `unterkoerper.beine.lage` (0 vorn unter der Brust — sitzende Katze; 1 hinten — Rex). Schwanz setzt in der echten Rückenfläche an.
-- **Rechtwinkliges Gitter mit Verfeinerung** (`contourDual` `refine`, Bau `verfeinerung`) gebaut, **standardmäßig aus**: ganze Achsenstreifen werden feiner, bei Kopf ≈ Körperbreite 2,5 × Vertices und Zeit (Rex 88³: 1,6 → 4,4 s) für kaum sichtbaren Gewinn.
-- **Werkzeuge**: Seitenansicht `seite` in Lab (Knopf „Seite“) und Harness (`EE_ANSICHT=seite`, Dateien `…-seite.png`); **Silhouetten-Werkzeug** `apps/game/src/lab/wesen/profil.test.ts` (ASCII-Seiten-/Vorderansicht aus dem SDF mit Lippen-, Winkel-, Augenhöhe — in Sekunden statt GPU-Render): `EE_PROFIL=keil,vierbeiner npx vitest run src/lab/wesen/profil.test.ts` in `apps/game`.
-- **Vorlagen** Rex und Tiger neu aus den Landmarken (Rex: Rumpf 0,42, Kopf 2,15, Beine 0,8 hinten; Tiger: Rumpf 0,68, Kugelkopf 1,11, Maul tief im Kopf, Pfoten vorn). Bilder: `docs/progress/wesen-vergleich-{keil,vierbeiner}-auf[-seite].png`, Kontaktbogen `wesen-lab-kontaktbogen-auf.png`.
+**Schritt 0, was getan ist:**
+- `claude/editor-grundlayout` ist in `claude/form-spiegel` geführt (`3f8e09e7`); liegengebliebene Änderungen im Hauptordner sind
+  committet (`04ee4606`).
+- 13 alte Arbeitsbäume gelöscht (rund 7 GB). Ungespeicherte Reste liegen als Zweige `bergung/2026-11-12-…` (sieben Stück);
+  alle früheren Zweige bestehen weiter.
+- `CLAUDE.md` (271 KB → wenige Seiten), `apps/editor/CLAUDE.md` (115 KB → kurz) und diese Übergabe (103 KB → kurz) sind neu
+  geschrieben; die alten Texte liegen unverändert in `docs/verlauf/`. Die technischen Fallen von Spiel, Renderer und Cloud
+  stehen jetzt in `docs/FALLEN.md`.
+- Neuer Bau-Arbeitsbaum `.claude/worktrees/form-bau` (Zweig `claude/form-bau`, Port 5197, Eintrag `kurven-bau`).
+- **Noch nicht aufgeräumt (Plan, Anhang B: erst nach Schritt 4, und nur mit Florians Ja):** die 30 Schalter in `kurven.ts`,
+  die alte Rechnung mit ihren Schutzregeln, `form.html`, die 232 Dateien unter `apps/editor/scripts/pruefen/`.
 
-Prüfungen: `pnpm typecheck`, `pnpm lint`, Wesen-Tests 18/18, Game-Tests 256/256 (+1 Werkzeug übersprungen), GPU-Harness grün.
+## 3. Wo was läuft
 
-## Block 3 (08.10. morgens, nach Florians erstem Blick): Übergänge, Zwischenstufen, Zähne, Beine
+- **Florians Fenster:** Port 5194 aus `.claude/worktrees/form-alt` (Zweig `claude/form-spiegel`). Adresse
+  `http://localhost:5194/kurven.html?gewichte=geometrie`. **Dort arbeitet auch die Sitzung „Blaupause Editor Design Iteration“
+  an `/editor`** (`editor.html`, `editor.ts`, `blaupause.ts`); am 12.11. lagen dort ihre ungespeicherten Änderungen. Vor jedem
+  Commit in `form-alt`: `git status`, nur eigene Dateien stagen.
+- **Gebaut wird in `.claude/worktrees/form-bau`** (Port 5197). Ein fertiger Schritt kommt erst nach Florians Ja nach
+  `claude/form-spiegel`, und zwar so (am 12.11. bei Schritt 1 so gemacht): zuerst in `form-bau` `git merge claude/form-spiegel`
+  und dort prüfen, dann in `form-alt` `git merge --ff-only claude/form-bau`. Das lädt sein Fenster neu, also vorher ansagen.
+- **Zweige zusammenhalten:** Die Design-Sitzung committet Doku im Hauptordner auf `claude/editor-grundlayout` und Code in
+  `form-alt` auf `claude/form-spiegel`. Am Ende eines Schritts in `form-alt` `git merge claude/editor-grundlayout` (nur Doku),
+  danach im Hauptordner `git merge --ff-only claude/form-spiegel`.
 
-Florian: „Zähne sitzen je nach Maul nicht gut, Zwischenstufen Loch ↔ Keil sehen nicht gut aus, das Mesh geht nicht glatt in Hals und Schwanz über, Beinform und -dicke, Gesichter, W‑Maul für Hunde.“
+## 4. Schritt 1, glatte Anzeige: gebaut, gemessen, seit dem 12.11. Standard
 
-- **Reihen-Harness** `EE_REIHE=<vorlage>:<pfad>=a,b,c` (eine Vorlage, ein Regler, Stufen nebeneinander; `docs/progress/wesen-reihe-*.png`) — damit Zwischenstufen sichtbar werden: `maul.form` 0…1 und `maul.hoehe` 0,15…0,9 am Grundblob.
-- **Übergänge**: Hals‑S‑Bogen beginnt mit senkrechter Tangente (kein Knick am Rumpf); **Schwanz und Schlange setzen im Rumpfkern an** (Wirbelsäule mit 0,8 · Rumpfradius, dünner Anhang mit kleinem Trichter) und verjüngen sich außerhalb — kein Rohr aus einer Wand; Wurzelstationen im Rumpf gehören dem **Rumpfknochen** (sonst springen Gewichte und Musterkoordinaten als Zickzack auf der Flanke — war der Tiger‑Rumpf).
-- **Zähne**: Länge auf den Gegenkiefer begrenzt (Oberzähne ≤ Unterkiefertiefe, Unterzähne ≤ Oberkopf; `aussen` darf darüber), Wurzel tiefer unter der Lippe (geschlossen keine weißen Punkte mehr). Lippenband‑Vorgabe schmaler (0,15) und hell (`#c9a6d6`), Linienschwung‑Vorgabe 0,12.
-- **Beine** (Bild 12): Keule außen an der tiefen Hüfte, kleine Verschmelzung (Mulde statt Fillet — die große Verschmelzung machte Rex zum Sack), längerer Fuß, **drei Zehen** als Kapseln. Rex steht auf zwei Säulen mit Pfoten.
-- **Gesichtsregler** `kopf.wangen` (breite Backen unter den Augen, Katze) und `kopf.stirn` (hohe runde Stirn … flacher Schädel) im Kopf‑Loft; Lab‑Gruppe „Gesicht“.
-- **Drache ohne Unterkiefer** (Bild 5 rechts) als aufrechter Sack im Kopf‑im‑Rumpf‑Modus: Maullinie tief (0,36), kein Unterkiefer, das ganze Oberteil klappt am langen Hebel zurück (`oeffnungOben` 1), Riesenfänge außen, **Hauer aus der Brustkante** (untere Zähne auch ohne Unterkiefer, wenn `hauer` > 0).
-- **Schlangenkörper** (Bild 13) als dicker Bogen mit gleichmäßiger Krümmung: steigt hinter dem Kopf auf, wölbt sich nach hinten, die Spitze kommt dahinter herunter (`einrollen` = Gesamtdrehung bis ≈ 206°), seitlich ausgebaucht, nie unter den Boden; Wurzel so dick wie der Kopf (`dicke` 1 ≈ 0,8 · Kopfradius). Aal‑Vorlage danach.
-- **Auflösung** per Adresse `&res=128` (Lab) bzw. `EE_RES=128` (Harness, Dateien `-r128`) für Qualitätsvergleiche. Der helle „Absatz“ am Giraffenhals ist keine Geometrie (Stationen stetig, bei 128³ gleich), sondern die harte Cel‑Stufe auf der Schulterrundung → Stil „Kantenfederung“/Airbrush‑Vorgabe.
-- **Lider** (Bild 10): Oberlid als Halbkugel‑Kappe aus Hautmaterial (`createLidMaterial`, Stufen des Körpers) am Augapfel, in Ruhe nach hinten gekippt (nur ein Saum), beim Blinzeln nach vorn über den Augapfel (Sichel). Standbilder: `creature.blinkHold` bzw. Harness `EE_BLINK=1` (Dateien `-augenzu`).
-- **Höhlenring** (Bild 10/11): dunkler, kühler Ring auf der Haut um jeden Augapfel aus dem Abstand zum Augenzentrum im Ruheraum (`ringCount`/`ringStaerke` aus `augen.ring`; nicht bei Schlitzaugen). Halslängen‑Regler erklärt den Moduswechsel (0 = Kopf im Rumpf, ab 0,05 eigener Kopf).
-- **Silhouetten‑Überdeckung** im Harness (`scripts/wesen/iou.mjs`, ZIELSYSTEM §3.8): je Vorlage mit Referenzausschnitt steht in Konsole und Bildunterschrift „Überdeckung x,xx (B/H Render | Referenz)“ — gleiche Höhe, mittig, 256²‑Raster. Grob (Blickwinkel, fehlende Elemente wie Flügel/Fell), aber als Verlaufszahl ehrlich. **Ausgangswerte 08.10.** (Bögen‑Kamera): Rex 0,52 · Kugelfisch 0,74 · Drache 0,60 · Giraffe 0,62 · Aal 0,55 · Retriever 0,54 · Tiger 0,58. Eine seitlichere Kamera (Gier 0,95) brachte die Seitenverhältnisse näher an die Bögen, die Überdeckung aber nicht höher — Bögen‑Kamera bleibt wie sie war.
-- **Stil im Harness**: `EE_STIL=federung=1,verlauf=1,korn=0.45` setzt Werte des Licht‑&‑Shader‑Tabs für den Lauf (Dateien `-stil`). Befund: weiche Federung/Verlauf ändern die Bilder kaum (Vorgabe ist schon 0,7/0,8); der helle Streifen am Giraffenhals ist der **scharfe Eigenschatten** des Halses auf der Schulter (Schattenkarte), keine Stufe und keine Geometrie.
-- **Retriever‑Vorlage** (Bild 8): eigener Kopf mit langer Schnauze, W‑Lippe und Nase, vier Pfoten, Bogenschwanz; Fell/Ohren später als Elemente.
+**Florian am 12.11.: „Spalte 3 einbauen“** (aus dem Vergleichsbild `docs/progress/editor/anzeige-vergleich-…-2026-11-12.jpg`:
+gekrümmte Dreiecke, ruhig schattiert). Gebaut im Arbeitsbaum `form-bau` hinter dem Schalter `&anzeige=glatt`. **Florian am
+12.11.: „Ja, übernehmen“.** Seitdem ist die glatte Anzeige der Standard von `kurven.html` und liegt auf
+`claude/form-spiegel`: Sein Fenster `http://localhost:5194/kurven.html?gewichte=geometrie` zeigt sie. `&anzeige=grob` zeigt zum
+Vergleich die Anzeige bis zum 12.11. (die Rechenpunkte selbst). `/editor` (`editor.ts`) hat sie noch nicht; das kommt nach
+Schritt 7.
 
-## Block 4 (08.10. mittags): Grundform zurück, Maul reißt weit auf, nichts reißt
+**Was die glatte Anzeige tut** (nur Anzeige, die Rechnung ist unverändert):
+- **Verfeinerte Haut** (`apps/editor/src/form/glattPlan.ts`, `GlattPlan`: Zuordnung einmal je Netzstand, Lagen und Normalen je
+  Bild; angelegt in `glattAnlegen`, gezeigt in `glattZeigen` in `kurven.ts`). Neue Punkte liegen in der Mitte der gewölbten Kante,
+  auf Linien in der Mitte ihres Pfadstücks (`pfadKanten` im Kern; im Zug mit den Punkten und Griffen des Zugs). Die Fläche geht
+  durch alle Rechenpunkte, nichts schwingt über.
+- **Normalen als Feld:** je Rechenpunkt nach Max (1999), dreimal beruhigt mit Gewichten nach den Mittelwert-Koordinaten, dann mit
+  den Lagen verfeinert. **Befund des Tages:** Die Wellen und Stufen in den Farbflächen kamen vor allem aus den Normalen des
+  ungleichmäßigen Netzes (nach der Fläche gewichtet kippen sie zur dichteren Seite), nicht aus zu wenigen Dreiecken. Die
+  Farbstufen laufen deshalb schon ohne Verfeinerung ruhig.
+- **Farbstufe** einen Bildpunkt breit geglättet (`hautMaterial`); **an der Spiegelebene je Bildpunkt geschnitten** (Merkmal
+  `aSeite`): Der Rand eines Lochs über die Mitte ist glatt statt gezackt.
+- **Stufen:** im Zug bis 6 000 Punkte eine, darüber keine; 200 ms nach der letzten Änderung zwei (höchstens 700 000 Dreiecke,
+  sonst eine). Schalter: `&fein=0|1|2|3` legt die Stufen fest, `&ruhe=<n>` die Durchgänge des Beruhigens (`-1`: Normalen wie im
+  Vergleichsbild).
+- Die groben Puffer (`hautLagen`, `anzeigeZ`, `indexOhneAnliegende`) bleiben wie vorher: An ihnen messen die Proben, an ihnen
+  hängen die Strahltreffer.
 
-Florian: zu viel außerhalb der Grundform (Tatzen/Details später, er modelliert Vorlagen in Blender); kantige Katzengesichter; dicke Schenkel seitlich hoch am Rumpf; viel mehr Zähne bei Rex/Drache; **alle Tiere reißen das Maul so weit auf, dass sie ein anderes verschlingen**; Drache geschwungen mit langem Unterkiefer am Hals; Retriever‑W deutlicher; Bohne; Augengröße/Schenkel weiter einstellbar. Zweite Nachricht: **Unterkiefer darf nie durch den Körper fahren oder Lücken reißen**, am Limit öffnet der Oberkiefer weiter; der lange Unterkiefer am Hals stufenlos. Dritte: Zähne gebogen, Verlauf Beige → hell.
+**Bilder** (`docs/progress/editor/`, je links die grobe Anzeige bis zum 12.11., rechts die glatte): `anzeige-fenster-strange-bird-2026-11-12.jpg`,
+`anzeige-fenster-strange-bird-nah-2026-11-12.jpg` (Front bei 260 %), `anzeige-fenster-teat-firefish-2026-11-12.jpg`,
+`anzeige-fenster-test_kaputt-2026-11-12.jpg`, `anzeige-fenster-ueber-die-mitte-2026-11-12.jpg` (Punkt über die Mitte gezogen: der
+Lochrand), `anzeige-pose-maul-grob-glatt-2026-11-12.jpg` (Fressen-Pose, Maul 45°, Kopf 10°).
 
-- **Kiefergelenk auf der Mundwinkel‑Linie** (`mouth.ts`): davor sind Ober‑ und Unterkiefer starr, am Winkel selbst ist der Hebel null (nichts reißt an der Schlitzspitze). Dahinter laufen beide über **Ketten** aus: Kehlkette (`kehle0/1`, ⅔ und ⅓ des Unterkieferwinkels, unter dem Kinn nach Tiefe) und Nackenkette (`nacken0/1`, hinter dem Oberkiefer nach Lage); Gewichte je Vertex über `jawParts`/`upperParts` → `descriptors.ts` verteilt auf die Kette (keine Positions‑Blends über große Winkel mehr → Dehnung ≤ ≈ 2, Test `mouth/kette.test.ts`). Rachenwand mit Seiten‑Verlauf (mischt beide Kiefer, langer Schlund).
-- **Öffnung = Randabstand vorn** (`pose.ts`): `maul.oeffnung` 1 = 1,6 Kopfhöhen; jeder Kiefer dreht bis 72°; der Unterkiefer nur bis zur **Geometrie‑Schranke** (`lowerAngleMax`: Rand, Kinnboden und Biegezone werden abgetastet und um das Gelenk gedreht, bis ein Punkt den Boden erreicht oder in den starren Rumpf eintaucht — auch nach hinten) und bis zum **Faltbudget** (die Biegezone nimmt ≈ 60 % ihrer Länge auf, sonst schiebt sich der Kiefer durch die Haut darunter). Was fehlt, übernimmt der Oberkiefer. **`maul.kehle`** (Kehlsack 0…1) verlängert die Biegezone bis zur Brust → der Unterkiefer darf weiter und wird beim Öffnen lang (Drache).
-- **`maul.bohne`** (−1…1): Oberkiefer rollt beim Öffnen seitlich (bis ≈ 34°), Lochmaul öffnet einseitig weiter → Bohnenform (Giraffe, Retriever).
-- **Zähne**: dichter (`zaehne.dichte` bis 1,5, Abstand ≥ 0,45 Zahngröße), **gebogen** (`zaehne.biegung`, Krümmung zum Rachen — die Instanz richtet ihre Biegeseite nach innen, `Tooth.inward`), **Verlauf Beige → hell** zur Spitze (Zahnmaterial, Vorgabe `#e6d1a6`).
-- **Beine** (Grundform): dicke Schenkel seitlich am Rumpf, Hüfthöhe `unterkoerper.beine.hoehe` (bis zur Schulter, „fast aus dem Hals“), kleine Verschmelzung; Schenkel bis 1,5, Dicke bis 1,5; keine Zehen mehr. `koerper.bogen` (S‑Schwung des Rumpfs, Drache). Kantige Katze: `maul.kante` flacht die Schnauzenfront ab, Kinn als Platte, Exponent nur an Schnauze und Kinn; Kopfverschmelzung klein (`k` 0,22–0,4 · Kopfradius), damit Gesichtsformen stehen bleiben. W‑Lippe stärker, Nase höher. Augengröße bis 1,6.
+**Gemessen** (ohne Bildschirm, „strange bird“, 16 010 Punkte, derselbe Zug; Zeiten nur als Verhältnisse lesen):
+- Abstand der Bilder im Zug: Median 21 ms grob, 23 ms glatt (keine Stufe: 2,6 ms je Bild, Linienbänder 0,5 ms). Mit
+  einer Stufe wären es 26 ms (4,2 ms und 2,0 ms für die Bänder auf dem Pfad). Die Löserrunde kostet 17,5 ms: Sie bestimmt das
+  Tempo, nicht die Anzeige. Das ändert erst Schritt 2.
+- Zeichnen aller vier Felder: 8 ms grob; glatt 7 ms ohne Stufe, 9 ms mit einer, 12 ms mit zweien (512 000
+  Dreiecke). Ein Blatt kostet rund 1 ms, der feste Teil je Bild rund 5 ms.
+- Nach dem Loslassen: einmal ein Bild von bis zu 57 ms, wenn die Stufen der Ruhe angelegt werden (grob 31 ms).
+- Rechnung allein, 16 386 Punkte: 2,4 ms ohne Stufe, 3,3 ms mit einer, 7,0 ms mit zweien.
 
-- **Nachgezogen**: Bohne stärker (bis ≈ 50°, Lochmaul‑Seite 1:1), Kopf‑Loft mit eigenem Exponenten für die **untere Hälfte** (`LoftStation.nB`): Schädel rund, Kiefer/Schnauze kantig (Tiger zu liest sich jetzt als grimmige Katze); Rex kleiner auf längeren Beinen; Kamera rahmt die Pose. Werkzeug `scripts/wesen/ausschnitt.mjs` (Nahaufnahme aus Harness‑Bildern).
+**Geprüft:** Maul-Probe (`form-maul-loop.mjs`) und Probe der Fressen-Pose (`form-fressen-pose.mjs`: Maul, Zug an der Lippe in der
+Pose, Knochen, zurück in die Grundform, Loop schneiden, ⌘Z) mit der glatten Anzeige: keine offenen Kanten, ⌘Z genau, keine
+Fehler. Im Bild sehen Maul und Pose aus wie mit der groben Anzeige, die Farbflächen des Körpers sind ruhiger. Die kleine Schlaufe
+der Linie am Mundwinkel und die Kerbe am Rand des Inneren gibt es in beiden Anzeigen; sie gehören zu Schritt 6. Tests:
+`apps/editor/src/form/glattPlan.test.ts` (schnelle Rechnung gegen die Fassung des Vergleichsbilds; Normalen an einer Kugel mit
+ungleichmäßigem Netz und an einem Grat), `packages/shape/src/dicht/linieAufPfad.test.ts` (Pfadstücke je Kante). Neue Proben in
+`apps/editor/scripts/pruefen/`: `anzeige-vorher-nachher.mjs`, `bilder-nebeneinander.mjs`, `anzeige-zeichnen-zeit.mjs`;
+`form-gesichert-zug.mjs` nennt die Kosten der Anzeige je Bild.
 
-## Block 5 (08.10. nachmittags): Stampfer, ω‑Lippe, organische Zahnreihen
+**Offen in Schritt 1:**
+1. **Florians Urteil nach dem Arbeiten in seinem Fenster** (5194) steht aus. Stört ihn etwas: `&anzeige=grob` zeigt die alte
+   Anzeige, an der Rechnung hat sich nichts geändert.
+2. Strahltreffer (Zeichnen, Greifen) gegen die feine Fläche: auf Schritt 2 verschoben. Bei den heutigen Punktzahlen liegt die
+   grobe Fläche nur Bruchteile einer Einheit neben der feinen.
+3. Das Innere des Mauls hat dieselbe geglättete Farbstufe, wird aber nicht verfeinert.
+4. Nicht Sache der Anzeige: Wo die gerechnete Haut selbst wellig ist (kleine Knicke an den Linien, fast ebene Flächen), laufen
+   die Farbstufen ruhig, aber in Wellen. Das ist Schritt 3.
 
-Florian: W beim Goldie nicht hunde-/katzentypisch; Oberschenkel passen gar nicht, Beine viel dicker, Form und Füße wie beim Rex (Bild 12) = **Saugnapfform**; Unterkiefer soll weiter runter können oder am Hals liegen (Drache: Maul geht nach oben auf; Rex/Goldie: beide Richtungen, der Unterkörper passt sich an); Drachen‑Hauer geschlossen prüfen; Zähne organischer wie in den Referenzen.
+## 5. Schritt 2, kleines Rechennetz: gebaut, gemessen, seit dem 12.11. nachts Standard
 
-- **Beine** (`sdf/build.ts`): dicke Säule aus dem Rumpf (Radius 0,1 H + 0,2 · Dicke + 0,15 · Schenkel; Rex ≈ Rumpfbreite), kaum verjüngt, am Boden **Saugnapf** (weitet sich über die letzten ≈ 20 % auf den Fußradius, flache Standfläche mit runder Kante, vorn etwas länger), weiche Verschmelzung (k ≈ 0,1–0,18 H). Keine Zehen.
-- **ω‑Lippe** (`mouth.ts`): schmale Spitze unter der Nase (Philtrum), Lefzen hängen dicht daneben tief (u ≈ 0,26), zum Winkel steigt die Linie (Lächeln). Nase sitzt über der Spitze.
-- **Zahnreihen** (`mesh/build.ts`): Abstand aus Dichte **und** Zahnbreite (große Zähne nehmen mehr Platz), Fänge mit Spitze bei u ≈ 0,2, nach hinten kleiner, Wechsel groß/klein (`streuung`), vorn leicht nach vorn geneigt, Biegung nach innen.
-- **Unterkiefer‑Spielraum**: Faltbudget 1,1 · Biegezone (die Ketten biegen statt zu stauchen); Rex `kehle` 0,6, Retriever 0,5 → der Unterkörper (Kehle → Brust) folgt dem Unterkiefer; Drache `oeffnungOben` 0,5 → Maul geht nach oben auf. Zahnlängen: außen liegende Fänge dürfen bis zum Dreifachen der Kiefertiefe hinausragen (Drache geschlossen, Bild 5 rechts).
+Gebaut am 12.11. nachts im Arbeitsbaum `form-bau`. **Florian am selben Abend auf die Frage, ob es in sein Fenster soll:
+„ja“** (er antwortete vom Handy aus; sein Urteil am Fenster steht aus). Seitdem liegt es auf `claude/form-spiegel`: Sein
+Fenster `http://localhost:5194/kurven.html?gewichte=geometrie` rechnet mit dem kleinen Netz. `&netz=dicht` ist das Netz wie
+bis zum 12.11. (zum Vergleich, im selben Fenster).
 
-## Block 6 (08.10. nachmittags): Silhouetten aus den Bildern, Kieferbreiten, Scharte, Augen
+**Was gebaut ist** (`apps/editor/src/form/kurven.ts`, im Kern nur eine Option in `packages/shape/src/dicht/verdichten.ts`):
+- **Startnetz mit einem Drittel der Dreiecke** (`DREIECKE` 2 000 statt 6 000 bestellt; die Startkante ist rund 15 statt 8,6
+  Einheiten lang, die Startkugel hat 1 500 statt 5 200 Punkte). Alle Maße, die an der Startkante hängen, gehen mit.
+- **Dichter, wo die Form es braucht:** an den Linien wie bisher nach ihrem Pfad (`GENAU`), neu in der Haut nach ihrer Krümmung
+  (`GENAU_HAUT`, den Schalter gab es seit dem 08.11. als Versuch; jetzt Standard mit eigener Genauigkeit `GENAU_FLAECHE` = 1/16
+  der Startkante, im Kern die Option `genauFlaeche`). Eine Kante wird geteilt, wo die runde Fläche zwischen ihren Enden weiter
+  als das von ihr abweicht.
+- **Formen mit feinerem Netz werden beim Übernehmen vergröbert** (`netzVergroebern` in `standAnwenden`: geladen, behalten). Die
+  Punkte, die bleiben, bleiben, wo sie sind: Die Form ist nach dem Laden dieselbe; neu gerechnet wird sie wie bisher erst beim
+  nächsten Griff. Die Statuszeile nennt es („Rechennetz 27 770 → 11 449 Punkte“). Nicht in der Pose gesicherte Formen.
+- **Behaltene Form:** Sie kommt auch nach dem Wechsel der Dichte zurück (`START_FORM`; vorher hing sie an der Zahl der
+  Dreiecke). Der Browser behält je Netz eine eigene (`FACH_ZULETZT`: „zuletzt-klein“ und „zuletzt“): Beim ersten Start mit dem
+  kleinen Netz kommt einmal die Form aus „zuletzt“, vergröbert; „zuletzt“ selbst bleibt, wie es war, und `&netz=dicht` zeigt
+  sie dort in der alten Dichte.
+- **Anzeige im Zug:** dieselben Stufen wie in der Ruhe, solange es höchstens 260 000 Dreiecke werden (`GLATT_IM_ZUG`), sonst
+  eine weniger. Vogel und test_kaputt haben im Zug zwei Stufen (kein Umschalten nach dem Loslassen), der Firefish eine.
 
-Florian: W nur am Oberkiefer mit **Scharte** in der Mitte, zu weich; zu viele unschöne Ecken/Übergänge; **Augen verzogen**; Ober‑/Unterkieferbreite getrennt (Platz für Zähne, die geschlossen vorbeischauen); kantiger Kopf trifft den Tiger nicht; W geschlossen mit Verbindung zur Nase; Formen müssen weicher ineinander übergehen, Kurven „nicht Earle genug“; **größere Schritte, viel näher an die Referenz**.
+**Befunde:**
+- **Ein überall gleich grobes Netz reicht nicht.** Florians drei Formen sahen damit gleich aus und liefen mit 60 Bildern, aber ein
+  kleines Detail fiel zusammen (Florians Ohr vom 08.11., `form-detail-probe.mjs`: flach auf der Linie, 6 umgeklappte Dreiecke).
+  Mit der Verfeinerung nach Krümmung ist es rund wie mit dem alten Netz. Bild: `docs/progress/editor/netz-klein-ohr-2026-11-12.jpg`.
+- **Der alte Einwand gegen `GENAU_HAUT` gilt nicht mehr** (am 08.11. verworfen, damals hing die Form am Netz). Gemessen mit
+  `form-explosion-probe.mjs`, kleines Netz gegen das Netz bis zum 12.11., Knicke über 60° / umgeklappt: Rüssel mit um 90°
+  gedrehtem Griff 1/0 gegen 10/0, langer Hammer 0/0 gegen 0/0, Ei mit Überhang 0/0 gegen 4/0, Schlaufe (die Linie kreuzt sich
+  selbst, in jeder Fassung kaputt) 119/26 gegen 128/26.
+- **Genauigkeit der Haut:** mit 1/40 wie die Linien blieben am Firefish 20 122 Punkte (34 ms je Bild); mit 1/12 9 944 (18 ms),
+  das Ohr noch rund; mit 1/8 klappen am Ohr 4 Dreiecke um. 1/16 lässt Abstand zu dieser Grenze.
+- **Das Beruhigen der Normalen braucht es weiter** (Vergleich `&ruhe=0` am Vogel: ohne laufen die Farbflächen fleckig).
+- **„strange bird“ steht, wie gesichert, nicht in der Ruhe der Rechnung:** Beim ersten Neurechnen geht eine Stelle bei
+  (156, −12, ±54) um rund 19 Einheiten, mit dem alten Netz genauso wie mit dem neuen. Das ist kein Befund von Schritt 2, aber
+  es heißt: Der erste Griff an dieser Form ruckt dort.
 
-- **Seitenprofil aus der Referenz** (`koerper.seitenprofil` {vorn, hinten, breite?, scheitel}): **Bézier‑Kontrollwerte** (Grad 7) der Ausdehnung vorn/hinten je Höhe, aus der Pixelmaske per kleinster Quadrate angepasst (`scripts/wesen/seitenprofil.mjs <messung.json> --vorn rechts --n 8 --scheitel 0.55 [--klammer-hinten 0.7]`): glatte Earle‑Kurve statt Zacken; Anhängsel oben (Ohren) fallen weg, Flügel/Hauer per Klammer. Die **Kreiskappe** (`scheitel`) wird vor der Anpassung herausgerechnet und im Loft wieder multipliziert — so schließt der Kopf rund (eine Bézier‑Kurve kann keine senkrechte Tangente). Die Loft‑Tiefen vorn/hinten sind dann die gezeichnete Silhouette, Bauch/Buckel/Landmarken entfallen (Ei‑Verjüngung und Kieferkante bleiben). Tiger = Bild 9, Rex = Bild 5 links (Flügel geklammert), Drache = Bild 5 rechts geschlossen (`messung/drache-zu.json`). Erste Fassung ohne Kappe ergab Eimer (flacher Deckel).
-- **Kieferbreite** `maul.kieferbreite` (−1 … 1): Loft‑Stationen haben eine eigene Halbbreite der unteren Hälfte (`LoftStation.wxB`); Dome: Kinnband bzw. Kopfband schmaler, Kopf‑Loft: untere/obere Hälfte. Tiger −0,3, Drache −0,5 (Hauer außen).
-- **Scharte und Nase**: `gesicht` am Bau (Nase, Philtrum‑Strecke Lippenspitze → Nasenunterkante) → **Uniforms** (`naseMitte`, `philtrumA/B`, `gesichtAn`) → Shader zeichnet Nase (`farben.nase`: Retriever schwarz, Tiger rosa) und Scharte **pixelscharf** aus Abständen im Ruheraum (wie die Schlitzaugen; eine Vertex‑Maske war ausgefressen). Lippenband nur oben: `region.y` trägt das Vorzeichen der Seite, `lippenBandUnten` 0,25 bei ω‑Mäulern. ω schmaler (Spitze 0,08, Lefzen tiefer), Nase eine Nasenbreite über der Spitze.
-- **Augen**: Augenwulst‑Beule entfernt (machte Ecken), Höhle nur für tief liegende Typen (Drache/Schlange) oder `augen.tiefe` > 0,3; gemalte Schlitzaugen liegen glatt auf der Haut.
+**Gemessen** (ohne Bildschirm, derselbe Zug je Form mit `form-gesichert-zug.mjs`; Zeiten nur als Verhältnisse lesen):
 
-- **Silhouetten‑Editor im Lab** (Tab Körper, `SeitenprofilEditor.tsx`): die beiden Bézier‑Kurven (vorn, hinten) über der Höhe mit **ziehbaren Kontrollpunkten** (8 je Seite, waagerecht), Scheitel‑Regler (Kreiskappe), Spiegeln, Entfernen; „Silhouette zeichnen“ legt ein Profil an. Dafür gedacht: Ansicht „Seite“ + Referenzbild‑Overlay → Florian zieht die Earle‑Kurve selbst gegen sein Bild, in Minuten statt über Regler‑Runden. Jeder Zug ist ein Verlaufsschritt (Rückgängig), Vorlagen speichern das Profil mit.
+| Form | Punkte | Greifen | Bilder im Zug (Median / 95 %) | Rechenrunde | ruht nach |
+| --- | --- | --- | --- | --- | --- |
+| teat firefish, Netz bis 12.11. | 27 770 | 321 ms | 44 / 66 ms | 32,7 ms | 2,1 s |
+| teat firefish, kleines Rechennetz | 11 449 | 201 ms | 20 / 36 ms | 11,9 ms | 0,4 s |
+| strange bird, Netz bis 12.11. | 16 010 | 262 ms | 24 / 45 ms | 18,4 ms | 2,2 s |
+| strange bird, kleines Rechennetz | 7 437 | 208 ms | 16 / 21 ms | 7,5 ms | 0,9 s |
+| test_kaputt, Netz bis 12.11. | 6 217 | 160 ms | 15 / 32 ms | 9,7 ms | 0,6 s |
+| test_kaputt, kleines Rechennetz | 2 137 | 129 ms | 17 / 30 ms | 7,4 ms | 0,2 s |
 
-- **Vorderansicht im Silhouetten‑Editor**: zweite Zeichnung (Breite über der Höhe, symmetrisch); bis zum ersten Zug folgt die Breite dem Mittel aus vorn/hinten, danach eigene Kurve (`seitenprofil.breite`), „Breite = Mittel“ setzt zurück.
-- **Maul‑Editor** (Tab Maul, `MaulEditor.tsx`): zwei Schemazeichnungen mit Griffen statt Regler — Seite (Kopf‑Oval, Maullinie: Griff vorn = Maulhöhe, Griff am Winkel = Winkel nach hinten + Neigung, Griff dazwischen = Schwung) und Vorn (Linie von Winkel zu Winkel: Spitze = W‑Form, Winkel = Breite, Griff unten = Öffnungsweite). Die Griffe setzen dieselben Bauplan‑Werte wie die Regler.
-- **Nase getrennt vom W** (`maul.nase`): Katzen haben Nase + Scharte ohne ω (Bild 9: kantig, nur kleine Striche vorn), Hunde ω + Nase (Bild 8). **Überbiss** (`maul.biss` > 0) setzt die untere Hälfte des Kopf‑Lofts vorn zurück → die Oberlippe hängt über den Unterkiefer (W nur oben, „wie in der Realität“). Tiger: `wForm` 0, `nase` 0,8, `biss` 0,5, `kante` 1, `rundung` 0,85 (offen bohnenförmig), `lippe` 0,06.
-- **Kopf wandert stufenlos** (Florian: „sofort nach oben, sobald Hals > 0“): bei Halslänge → 0 sitzt der Kopf tief im Rumpf (Halsbasis um 0,42 H abgesenkt, Tropfen aus, Verschmelzung groß) und steigt mit der Halslänge über ≈ 0,35 nach oben (`sink = 1 − smoothstep(0, 0.35, laenge)`).
+- Laden bis zur Ruhe: Firefish 1,7 s → 1,8 s, Vogel 0,8 s → 1,3 s (das Vergröbern kostet 0,1 bis 0,5 s, der Hintergrund danach
+  ist schneller).
+- Form vorher und nachher übereinander, beide einmal neu gerechnet (`netz-vorher-nachher.mjs`, `SETZEN=1`): Von Umriss und
+  Linien des alten Bilds liegen am Vogel 31, am Firefish 16, an test_kaputt 0 Bildpunkte neben dem neuen (Bild je 2 400 × 1 504).
+  Bilder: `docs/progress/editor/netz-klein-<form>-2026-11-12.jpg` (links vorher, Mitte nachher, rechts übereinander).
+- Zum Vergleich das überall gleich grobe Netz (ohne `GENAU_HAUT`): Firefish 7 762 Punkte, 17 ms je Bild.
 
-- **Lippenschnitt‑Fenster**: der Schnitt gilt nur für Haut nahe am Lippenradius (0,6 … 1,5 ×, als stetiges Fenster in der Mundwinkel‑Maske `G`); Schwanz, Beine oder Rumpf auf gleicher Höhe bleiben ungeschnitten (versunkener Kopf mit weit hinten liegenden Winkeln riss sonst Extraschlitze, Test `mundschnitt.test.ts`). Halsstationen, die im Rumpf liegen, entfallen im Achsen‑Loft (Monotonie, Test `stetig.test.ts`).
-- Vorlagen: Kopf auf den Schultern = Halslänge **0,18** (Rex, Tiger, Retriever); Reihe `wesen-reihe-giraffe-hals.laenge-zu-seite.png` zeigt den stufenlosen Aufstieg 0 → 0,7.
+**Geprüft:** Typen, Lint der geänderten Dateien, Tests im Fenster (24) und im Kern (137; neu: eigene Genauigkeit der Haut am
+Ohr in `linieAufPfad.test.ts`). Im Fenster auf dem kleinen Netz: Maul als Loop (`form-maul-loop.mjs`) und Fressen-Pose
+(`form-fressen-pose.mjs`): keine offenen Kanten, nichts umgeklappt, ⌘Z genau, keine Fehler; die weiten Züge und das Ohr wie oben.
+Neue Proben: `netz-vorher-nachher.mjs` (Bild), `form-netz-kleiner.ts` (im Kern: eine gesicherte Form vergröbern, Zeit je
+Runde, Abstand der Häute).
 
-**Befund dieses Blocks, ehrlich:** die gemessenen Silhouetten allein machen die Tiere noch nicht erkennbar — Bild 9 (Tiger) ist eine Dreiviertelansicht, Bild 5 (Rex) enthält Flügel/Füße, und der Dome kann einen überhängenden Kopf nur als Belt‑Form. Der Tiger liest sich mit eigenem Kugelkopf über dem Rumpfprofil besser (Überdeckung 0,70), der Rex mit eigenem Kopf. Die Form‑Lücke schließt am schnellsten **Florians Hand**: Silhouetten im Editor ziehen oder Blender‑Master (Mesh → Distanzfeld, noch zu bauen).
+**Offen in Schritt 2:**
+1. **Florians Urteil nach dem Arbeiten in seinem Fenster** (5194) steht aus. Stört ihn etwas: `&netz=dicht` ist das Netz wie
+   vorher; die Form, die sein Browser bis zum Wechsel behalten hatte, liegt dort unverändert.
+2. **Zeichnen und Greifen gegen die feine Fläche** (Plan: „Zeichnen auf der Haut trifft die glatte Anzeige“): nicht gebaut. Die
+   groben Dreiecke liegen an der Startkugel 0,2 Einheiten unter der gezeigten Fläche (vorher 0,06), an engen Stellen bis rund
+   1: Eine neu gezeichnete Linie liegt um so viel innen. Nachgesehen am Ring um einen Rüssel (`form-explosion-probe.mjs`,
+   `FALL=e`, Bild nach dem Ring, kleines Netz gegen `&netz=dicht`): In der ganzen Ansicht ist keine Einschnürung zu sehen. Nicht
+   dringend; wenn es gebaut wird, dann als Anheben der neuen Punkte einer Linie auf die runde Fläche gleich nach dem Einsetzen.
+3. **„Zwischen eng benachbarten Linien mindestens zwei Kanten“** (Plan, Anhang A.2) ist nicht als eigene Regel gebaut. Die
+   Verfeinerung nach Krümmung hat den Fall des Ohrs gelöst; bleibt ein schmaler Streifen zwischen zwei Linien flach (dann gibt
+   es dort keine Krümmung, die verfeinert), wäre das die nächste Regel.
+4. **Sichern überschreibt mit dem kleinen Netz:** Eine geladene alte Form ist im Fenster vergröbert; wer sie unter demselben
+   Namen sichert, ersetzt die Datei. Die drei Formen in `wesen/` liegen in git.
+5. Die Proben unter `scripts/pruefen/`, die feste Orte oder Punktzahlen der Startkugel erwarten, sind mit dem neuen Standard
+   nicht durchgesehen (mit `&netz=dicht` laufen sie wie bisher).
 
-## Block 7 (08.10. abends): Linien weg, Lippenlinie als Kieferwechsel, Schädel kippt, Beine getrennt, Laufdemo
+**Danach:** Schritt 3 (Abschnitt 6).
 
-Florians Rückmeldungen dazwischen: (a) „Beim Öffnen schiebt sich die Schnauze oft in die Stirn/den Oberkopf — mehr Geometrie muss mit dem Maul mitbewegt werden und flüssiger hinten in den Körper übergehen.“ (b) „Die Beine verschmelzen noch; im Idealfall einstellbar, ob sie verschmelzen sollen. Demo‑Laufanimation zum Testen der Beine.“
+## 6. Schritt 3, Beweis „Haut direkt aus den Linien“: gerechnet am 13.11., hält so nicht
 
-- **Dünne helle Linien über Rumpf und Beine** (Tiger, Rex, Goldie): das Vorzeichen der Lippenseite steckte im Kantenabstand (`region.y`); zwischen Nachbarn verschiedener Seite lief der Wert durch null und der Shader zeichnete dort das Lippenband als Zickzack. Jetzt eigener Kanal `seite` (`CreatureBuild.seite`, `eeExtra.w`, Puffer 15 Floats), Band = Abstand × Seitenfaktor → keine Linien mehr. Lippenband unten bei ω‑Mäulern 0,1 (W nur oben sichtbar).
-- **Zweiter Knick auf Kopfmitte**: Breite (`wxB`), Kante (`nB`) und Überbiss (`endRoundB`) der unteren Kopfhälfte wechselten an der **Stationsmitte** der Loft‑Querschnitte, nicht an der Maullinie — darum lag beim Tiger/Goldie eine gezackte Kante über dem W. Jetzt `LoftStation.split` (Trennhöhe je Station = Lippenlinie `lipHeight(u)` aus `mouth.ts`, mit Neigung, Schwung, ω) und `band` (weicher S‑Wechsel, ⅒ Kopfradius), Vorderkante der Unterform getrennt (`wyL`): die Oberlippe hängt als Wulst über den schmaleren, kürzeren Unterkiefer, der Schädel bleibt rund. Falle: der Loft übergibt die Querschnittsrichtung als **Einheitsvektor** (cb ∈ −1…1), die Trennhöhe ist in Längeneinheiten → Höhe des Flächenpunkts ≈ cb · mittlerer Radius (gemessen mit Profil‑Bisektion, erst dann stimmte es).
-- **Schädelgelenk** (`MouthGeometry.skullHinge`, `upperLever`): der Oberkiefer kippt nicht mehr um die Mundwinkel, sondern mit Stirn und Augen als ganzer Schädel um ein Gelenk hinter dem Kopf (0,55 der Rampe hinter dem Kiefergelenk, höchstens am Hinterkopf); dahinter läuft die Drehung über die Nackenkette (Zone `wSkull`, Ausblendung max(0,35 H, 0,8 Rampe)) in Hals und Rumpf aus. Der **Unterkiefer hängt am Schädel**: sein Gelenk wandert mit der Kippung (Versatz δ = (R_o − I)(J − A)), seine Drehung um die Kieferachse bleibt absolut → die Öffnung vorn ist weiterhin 2 L sin((|θo| + θu)/2), die Mundwinkel reißen nicht. Kehlkette trägt ⅔/⅓ von Versatz und Kieferdrehung; der übrige Kippanteil der Unterseite läuft über die Nackenkette (`jawParts` liefert `f` und `ft`, alle Kettenteile eines Vertex werden in einem Zug aus Rumpf/Hals genommen, Summe ≤ 1). Dehnungstest: Drache 1,8 · Grundblob 3,1 · Rex 2,5 (< 3,2). Erste Fassungen (Gelenk ganz hinten, Kehle mit vollem Versatz) rissen am Kehlende (bis 8,3) — Diagnose über die schlimmsten Kanten mit ihren Knochengewichten.
-- **Beine getrennt**: Verschmelzgruppe im Distanzfeld (`PrimBase.blendGroup`/`kIntra`, `evalScene` und `evalSceneDetailed` vereinigen Gruppenmitglieder erst untereinander, dann die Gruppe mit `k` in den Rest). Regler `unterkoerper.beine.verschmelzen` 0 (getrennt, Standard) … 1 (ein Sockel); mit dem Rumpf verschmelzen die Schenkel immer.
-- **Demo‑Gang** (Lab‑Knopf „Laufen“, `?laufen=1`, Store `laufen`): Hüfte schwingt um die Querachse, Knie knickt im Schwung, Fuß hält die Sohle, Körper wippt; Zweibeiner gegenphasig, Vierbeiner diagonal, Achtbeiner wechselnd (`CreatureMesh.laufen`, Amplitude blendet weich ein/aus). Kein Bodenkontaktmodell — nur zum Prüfen der Beinform in Bewegung.
-- Bilder: `wesen-vergleich-{retriever,vierbeiner,keil}-{zu,auf}.png` (DPR 2), Seitenansichten `wesen-lab-{retriever,vierbeiner}-zu-seite-seite.png`.
-- **Nachtrag (später am Abend):** (1) „Reißverschluss“ am Hinterkopf des Tigers = Sprung der Musterkoordinaten an der Gruppengrenze (Bogenlänge/Winkel aus verschiedenen Mittellinien) → `computeDescriptors` mischt die Wirbelsäulen‑Koordinaten über die Gruppen der vier Knochen und legt jede Gruppe an der Wurzel an die Rumpf‑Bogenlänge an (`sOff`/`sSign`, Beine rückwärts). (2) Haarfeine helle Linie über Hinterkopf/Schulter = Sprung des Kantenabstands (Vorgabewert 1e3 außerhalb des Schnittfensters) unter der ableitungsbasierten Glättung des Lippenbands → Abstand für alle Vertices, Glättungsbreite ≤ ½ Band. (3) Florian: Schwanz flüssiger (Kanten, Knubbel) → Trichter des Anhangs ganz im Rumpf, außen sofort Schwanzdicke, Verschmelzung ≈ 3 Schwanzdicken; Verjüngung erst langsam. (4) Florian: Oberschenkel schwingt beim Laufen zu heftig (hohe Hüfte), „etwas Hüftschwung“ → Hüftamplitude 0,26 rad · (1 − 0,4 · Hüfthöhe), Becken dreht (±0,11 rad) und kippt (±0,05) mit dem hinteren linken Bein, Schultern halb dagegen, Rumpf pendelt seitlich.
+Bericht mit allen Zahlen: [`research/2026-11-13-beweis-haut-direkt.md`](research/2026-11-13-beweis-haut-direkt.md). Bilder:
+`docs/progress/editor/schritt3-{kugel,schlauch,ruessel,horn,strange-bird,teat-firefish,test_kaputt}-2026-11-13.jpg`, Ausgabe
+des Laufs: `schritt3-messung-2026-11-13.txt`. **Florian hat die Bilder noch nicht beurteilt.**
 
-**Befund, ehrlich:** Offen ist der ganze Kopf jetzt eine Masse (keine Schnauze mehr in der Stirn), aber bei Tiger/Rex trägt der Oberkiefer 72°, weil der Unterkiefer am Boden/Rumpf nur 6–16° bekommt — das Tier schaut dann senkrecht nach oben (Pez‑Look). Die Bögen zeigen eher 30–40° Schädel und 60–70° Unterkiefer; dafür müsste der Unterkiefer unter die Brust dürfen oder der Rumpf vorn Platz lassen (Rumpfprofil). Der Tiger hat hinter dem Kopf eine Rinne zwischen Hals‑Loft und Rumpfkuppel (im Seitenbild als Reißverschluss sichtbar) — nächster Punkt.
+**Was gebaut ist** (nur Kern und Proben, nur auf `claude/form-bau`; `kurven.ts` und der Löser des Fensters sind unberührt):
+- `packages/shape/src/dicht/direkt.ts` (`HautDirekt`): `richtungVerteilen` (Normalen von den Linien über die Haut) und
+  `lagenLoesen` (Lagen aus Linien und Normalen, eine Lösung). Test `direkt.test.ts`.
+- `apps/editor/scripts/pruefen/form-direkt.ts` (die Fälle, je mit „heute“, A und B), `form-direkt-faelle.ts` (Kugel, Schlauch,
+  gesicherte Formen laden wie das Fenster), `form-direkt-blatt.ts` (Bilder aus dem Kern als HTML). `html-shot.mjs` nimmt jetzt
+  `BREITE` und `HOEHE`.
 
-## Block 8 (08.10. spätabends): Lefzen als Lappen, Zähne am Rundmaul, Kieferstufe, echter Hüftschwung
+**Zwei Fassungen wurden gegen „heute“ gerechnet:**
+- **A, wie geplant:** Richtung aus dem Liniennetz (`linienRichtung`), über die Haut verteilt, daraus die Lagen. Nichts von
+  der Haut.
+- **B, nur die zweite Hälfte:** die Normalen der Haut beim Anfassen bleiben, daraus und aus den Linien die Lagen.
 
-Florians Rückmeldungen: (a) „Laufen ist schon besser — etwas mehr **echten Hüftschwung** mit abknickender Wirbelsäule, damit der Hintern hin und her wackelt wie bei Goldies.“ (b) „Das W‑Maul ist noch nicht gut: nur OBEN am OBERKIEFER, NICHT unten, nur die äußere Geometrie, nicht Zähne oder Maulinnenraum — wie 2 Lappen, die übers Maul drüberhängen. Die Maulkurve soll sich auch in die andere Richtung bewegen lassen (Drache). Beim Rundmaul stimmen die Zähne noch gar nicht.“ (c) „Schmalerer/kürzerer Oberkiefer soll bei der Öffnung wirklich kleiner sein und in den Unterkiefer passen (oder umgekehrt); aktuell bleibt das Maul fast bündig — kein Platz für Hauer. Zähne dürfen sich nicht durch die Kiefer bohren.“
+| Fall | heute | A | B |
+| --- | --- | --- | --- |
+| Kugel nur mit Mittellinie | bleibt | bleibt (0,14 % vom Radius) | bleibt |
+| Schlauch, zwischen den Ringen doppelt so lang | Dicke −0,2 %, Enden bis 2,4 daneben | Dicke −0,2 %, Enden keilförmig (bis 12,7 von 50) | Dicke −0,1 %, Enden bis 0,7 |
+| Rüssel aus zwei Profillinien, Breite zu Höhe | 1,03 (rund) | 0,36 (flach), umgestülpt | 1,94 (kann nichts Neues runden) |
+| Horn am „strange bird“ um 70 verlängert, Dicke | +16 · +15 · +10 % | −9 · −2 · −3 %, 76 Dreiecke umgestülpt | −0 · +1 · +3 % |
+| seine drei Formen, nichts gezogen (Mittel / größter Abstand) | 1,37 / 29,6 · 0,09 / 1,8 · 0,08 / 0,8 | 4,2 / 52 · 4,9 / 69 · 2,4 / 18, dazu 82 · 112 · 10 umgestülpte Dreiecke | 0,15 / 1,4 · 0,10 / 0,9 · 0,10 / 0,8, keine neuen |
+| hin und zurück | rechnet in Runden | 0,0002 | bitgleich |
 
-- **Lefzen als eigene Lappen** (`mesh/build.ts`, nach dem Lippenschnitt): die Maullinie (Schnitt, Zahnreihen, Tasche, Trennhöhe im Kopf‑Loft) ist jetzt **glatt** (`lipHeight` ohne ω); bei `wForm` > 0 hängen zwei dünne Schalen des Oberkiefers über die Linie (`lefzenTiefe(u)`: null am Philtrum und hinten, Scheitel bei u ≈ 0,26, Tiefe 0,16 · wForm · Kopfhöhe). Gitter 13 × 6 je Seite über der Haut (Feldgradient als Normale), Außen‑ und Innenlage als Schale (Dicke 2 % H), Kanten geschlossen, Seite +1 (Oberkiefer), Lippenband an der Lefzenkante (Kantenabstand). Das W entsteht außen aus den zwei Lappen und der sichtbaren Linie am Philtrum. Nase/Scharte unverändert (Uniforms).
-- **Maulschwung in beide Richtungen**: `maul.schwung` −1 … 1 (negativ wölbt die Linie hinter der Schnauze nach oben — Drache, Bild 5 rechts); Maul‑Editor zieht den Griff entsprechend.
-- **Zähne am Rundmaul**: Die Lippen weiten sich beim Lochmaul im Shader (Spitzmund‑Feld), die Zähne blieben am geschlossenen Rand stehen (Reihe `wesen-reihe-aal-maul.form-auf.png` vorher: eine Zahnlinie quer durchs offene Loch). Jetzt trägt jeder Zahn seinen Spitzmund‑Versatz (`Tooth.pucker`, dieselbe Formel wie die Haut am Rand) und rückt mit der Öffnung (Mesh: Instanzmatrizen je Bild; CPU: `posedTeeth`); bei voller Öffnung zeigt er zur Mitte des Lochs (Mischung mit der Keilrichtung nach `form`); Fänge/Größenwechsel sind Keil‑Merkmale (× `form`), das Rundmaul bekommt eine gleichmäßige Reihe (Aal, Bild 16).
-- **Kieferstufe** (`sdf/build.ts`, Kopf‑Loft): der Breiten‑/Längenwechsel der beiden Kieferformen liegt ganz auf der Seite des **größeren** Kiefers — der Schnitt läuft an der Innenkante der Stufe, am Fuß des kleineren Kiefers (`split = Lippenlinie ± Band`, Vorzeichen aus dem Breitenunterschied, weich). Unterbiss (`biss` < 0, `kieferbreite` > 0): der Unterkiefer behält die Stufe als **Plateau**, seine Zähne/Hauer stehen darauf außerhalb des Oberkiefers; Überbiss: der Oberkiefer behält sie als **Sohle**, seine Fänge hängen außen über den Unterkiefer (`stufeBei(φ)` misst die Stufe am Feld; Versatz 0,55 … 0,9 der Stufe nach `zaehne.aussen`). `biss` < 0 verkürzt jetzt die Oberform vorn (Bulldogge).
-- **Falle Kieferstufe**: liegt der Schnitt genau auf der fast waagerechten Stufenfläche, ist die Höhe dort kaum verschieden und der Schnitt springt radial hin und her — die Ränder zerfransen (Kammzähne ohne Zähne sichtbar, `wesen-reihe-vierbeiner-zaehne.groesse-auf.png` vorher). Deshalb beginnt die Stufe erst 0,4 Band über bzw. unter der Linie (`split = Linie ± 1,4 · Band`): der Schnitt bleibt auf der steilen Fläche des kleineren Kiefers.
-- **Hüftschwung**: das Becken (`koerperUnten`) dreht um eine senkrechte Achse **an der Brust** (Drehung ±0,2 rad plus Versatz, Brust steht, Hinterteil schlägt aus), kippt ±0,06 rad zur Seite des vorschwingenden hinteren linken Beins; Mitte und Schultern drehen je zur Hälfte zurück (Wirbelsäule knickt, Kopf ruhig), der Schwanz wedelt mit. Oberschenkel‑Amplitude 0,26 · (1 − 0,4 · Hüfthöhe).
+**Befunde:**
+1. **A hält nicht.** Erstens fehlt zwischen wenigen Linien eine Angabe: Gleichmäßig verteilte Normalen gehören zu einer Fläche
+   mit überall gleicher Wölbung. Kugel und Schlauch zwischen Ringen bleiben deshalb genau, ein Ende mit runder Kappe wird ein
+   Keil, ein Rüssel flach. Zweitens trägt die Richtung aus dem Liniennetz nur an der Kugel (0,5°): An seinen Formen weicht sie
+   je Linie im Mittel bis 15° von der Haut ab, an einzelnen Stellen bis 68°.
+2. **B hält, wo schon Haut ist.** Die Dicke bleibt beim Strecken und Verlängern, hin und zurück ist bitgleich, seine Formen
+   bleiben stehen. Gerechnet wird einmal (Zerlegen rund 230 ms bei 7 600 Punkten, Einsetzen 3 bis 4 ms).
+3. **Die heutige Rechnung lässt das Horn schon beim Anfassen aufgehen** (ohne Zug, bis zur Ruhe: +8 bis +12 %). Die gesicherte
+   Form ruht für sie nicht. Das ist messbar das, was Florian als „bläst sich auf“ beschreibt.
+4. **Fallen für B:** Die Normalen müssen ein gemerkter Stand sein. Liest man sie nach jedem Rechnen neu von der Haut, kriecht
+   die Fläche je Mal um 0,4 bis 1,0. Nach einem Zug neu angelegt (Normalen gemerkt) bewegt sie sich im Mittel um 0,04, an der
+   größten Stelle einmal um 0,8, dann 0,3 und 0,2; das Kriterium 0,18 ist dort nicht erfüllt. Drehen ist nicht gebaut (im
+   Horn-Fall blieben die Normalen einfach stehen). Neue Haut runden kann B nicht.
+5. Das Kriterium „ein Viertel der Punkte gibt dieselbe Form“ ist nicht gezeigt (heute 0,14 / 0,77, B 0,10 / 0,61 gegen
+   erlaubte 0,18); die Startnetze selbst liegen schon 0,2 bis 0,7 auseinander.
 
-## Block 9 (08.10. nachts): zwei Maulränder, getrennte Kiefer, Maullinie als Punkte
+**Zweiter Beweis „B“ (13.11., Florian: „ok, prüfe B“).** Kriterien vorher im Plan festgelegt (Anhang A.3). Probe
+`apps/editor/scripts/pruefen/form-direkt-b.ts` (20 s), Bilder `schritt3b-{ruessel,ruessel-laenger,horn,biegen}-2026-11-13.jpg`,
+Ausgabe `schritt3b-messung-2026-11-13.txt`. Florian hat die Bilder noch nicht beurteilt.
 
-Florian: (1) W‑Maul macht eine Kante unter der Schnauze; (2) Giraffe: große Tropfennase über dem Maul, das sich bohnenförmig darunter öffnet, Tiger eher Lochmaul; (3) **ungleich große Kiefer dürfen nicht mehr bündig schließen** — der größere Kiefer hat das größere Maulteil, Hauer wachsen in die freie Stelle (Drache); (4) Tiger‑Gesicht nach Bild 9 am weitesten weg; (5) Maulschwung über Punkte im Editor, runder; (6) obere und untere Maulseite getrennt in Breite und Länge.
+- **Dazugebaut in `HautDirekt`:** fester Stand (Option `stand`: die Haut beim Anfassen ist genau die Lösung für unbewegte
+  Linien; die Normalen werden jedes Mal von der Haut gelesen und müssen kein gemerkter Stand mehr sein), Mitdrehen der Normalen
+  mit den Linien (`linienDrehung`, `normalenDrehen`), Nachführen ohne neues Zerlegen (`lagenNachfuehren`).
+- **Erfüllt:** Anfassen bewegt nichts (0,0000003; heute im Mittel 1,33 · 0,09 · 0,08 an seinen drei Formen), hin und zurück
+  0,0000002, nach dem Loslassen 0,0000002, Horn um 30° gebogen ohne neue Knicke und ohne umgestülpte Dreiecke.
+- **Knapp nicht erfüllt (Kriterium 3 %):** Horn verlängert, dasselbe Stück Haut +3,2 · +1,3 · +0,7 % (heute +12,6 · +8,9 ·
+  +5,7 %); Horn gebogen +3,4 · +3,6 · +2,5 % (heute +6,8 · +11,8 · +13,2 %); Rüssel verlängert +5,2 · −1,6 · +1,0 % (heute
+  −8,1 · −4,8 · +3,3 %).
+- **Nicht erfüllt:** Rüssel aus der Kugel. B allein gibt einen breiten Keil (1,96). Die heutige Rechnung auf einen Teil der
+  Haut zu beschränken (neue Punkte mit Ringen oder ganze Felder zwischen den Linien) geht nicht: Sie kommt nicht zur Ruhe,
+  stülpt um oder läuft davon. **B ersetzt die heutige Rechnung also nicht; beides zusammen geht nur als Schalter.**
+- **Tempo im Kern** (7 628 Punkte): Greifen 240 ms; Zug ohne Drehung 3 bis 4 ms je Bild; Zug mit Drehung 80 ms je Bild, so wie
+  es gebaut ist (je Bild 8 Schritte Nachführen und neuer Aufbau der Zeilen).
+- **Fallen:** `linienRichtung` liest die mittlere Kantenlänge an der Haut, die man ihr gibt; für hin und zurück muss das die
+  Haut vom Anfassen sein. `flaechenAbstand` findet Abstände über etwa der Zellengröße nicht sicher (für große Abstände eine
+  große Zelle nehmen).
 
-- **Zwei Maulränder** (`mesh/mundschnitt.ts`): der Lippenschnitt schneidet bei einer Kieferstufe zweimal — Oberkieferrand auf der Oberform, Unterkieferrand auf der Unterform (Kurven `lipHObenAt`/`lipHUntenAt` = Maullinie ± Stufe aus `host.kieferStufe(u)`), die Haut der Stufe dazwischen entfällt, die Tasche spannt den Spalt auf (Unterreihe nach φ interpoliert, Reißverschluss zu den echten Unterrand‑Vertices). Geschlossen bleibt das Maul dort sichtbar offen: Rex‑Reihe `wesen-reihe-keil-maul.kieferbreite-{zu,auf}.png` zeigt bei −0,7 die Fänge außen über dem schmalen Unterkiefer, bei +0,7 die Hauer auf dem Plateau neben dem schmalen Oberkiefer. Zu den Mundwinkeln laufen beide Ränder in der Stufenmitte zusammen. Zähne stehen auf ihrem eigenen Rand (kein `stufeBei`‑Versatz mehr). Bei gleich breiten Kiefern ein Rand wie bisher.
-- **Nur Breite macht zwei Ränder**: eine Längendifferenz (`biss`, `oberkieferLaenge` > `unterkieferLaenge`) ist die Nase, die über das Maul hängt — darunter schließt das Maul bündig (Goldie, Giraffe). Falle: die Stationsbreiten werden vorn auch durch den kürzeren Kiefer kleiner und sahen wie eine Breitenstufe aus (Maul klaffte) → Stufe aus den Breitenreglern, nicht aus den Stationen; Stufe proportional zum Unterschied (voll ab ⅕ Kopfradius).
-- **Getrennte Maulseiten**: `maul.oberkieferBreite`, `unterkieferBreite` (0,4 … 1,6), `oberkieferLaenge`, `unterkieferLaenge` (0,4 … 1,3); die längere Seite bestimmt die Kopflänge vorn, die kürzere endet früher (`biss` bleibt als Zusatz, Unterbiss verkürzt jetzt die Oberform). Giraffe: Oberkiefer 1,15 lang / Unterkiefer 0,85 → Tropfennase, `form` 0,45 → Bohne darunter.
-- **Maullinie als Punkte** (`maul.linie`, Bézier‑Kontrollwerte in Kopfhöhen über u): im Maul‑Editor (Seite) vier ziehbare Punkte auf der Linie; der erste Zug übernimmt die Regler‑Form (Neigung/Schwung) als Start, „Linie zurück auf Regler“ löscht sie. `lipHeight` nimmt die Linie, wenn gesetzt (ersetzt Neigung und Schwung; Höhe und Winkel bleiben).
-- **Lefzenansatz ohne Kante**: der Lappen liegt oben bündig auf der Haut (Versatz 0) und hebt sich erst im unteren Drittel ab; Innenlage dünner zum Ansatz.
-- **Tiger nach Bild 9 (erster Durchgang):** neue Regler `kopf.backen` (Unterkieferbacken hinter den Mundwinkeln: der Kopf wird unten breiter als oben, Backenbart) und `muster.gesichtHell` (Bauchfarbe um Maul und Augen über die Gesichtsmaske: weiße Schnauze, Kinn, Backen). Vorlage: Kopf 2,2 auf sichtbarem Hals 0,3, kurze flache Front (`laenge` 0,8, `schnauze` 0, `kante` 1), Stirn 0,25, Backen 0,6, Augen klein, hoch und weit auseinander, Maul vorn kurz (`winkel` 0,15, `breite` 0,55) mit kleinem Katzen‑W (`wForm` 0,45) und großer Nase, Bauchlinie 0,42. Lesbar als Katze, aber noch weit von der Vorlage: die Front müsste eine **flache breite Platte** mit schmalen Schlitzaugen und zusammengezogenen Brauen sein, der Rumpf ein hohes Ei statt einer Kugel. Nächster Schritt: Gesichtsplatte als eigene Form (Front‑Profil im Editor zeichnen) und Schlitzaugen als schmale gelbe Mandeln.
-- **Raubkatzenkopf, zweiter Durchgang (Florians Markierung: runde Basis + klare Formen):** zwei Rundbox‑Formen im Kopfrahmen (`CustomPrim` mit `sdRoundBoxLocal`): **Nasenband** (`kopf.nasenband`, breites flaches Band von der Stirn zwischen den Augen zur Nase, ragt 0,1 Kopfradius vor) und **Kastenmaul** (`maul.kasten`, Maul und Kinn als Block vor dem Schädel, ragt 0,14 vor, Kinn markant); beide weich angeschlossen (k 0,1/0,12 Kopfradius). Geschlossen ergibt die Maullinie mit Winkeln unter der Mitte (`neigung` −0,35, `winkel` 0,12, `breite` 0,5, `wForm` 0) plus Philtrum den „Mercedes‑Stern“ mit der Nase oben; offen (`form` 0,5, `rundung` 1) wird der Schlitz ein fast rundes Maul, das Kinn geht als Block nach unten. Augen rund — Schlitzaugen als schmale gelbe Mandeln bleiben offen; Kanten der Boxen eher hart (k erhöhen, wenn Florian weicher will).
-- **Nach Florians Skizze (dritter Durchgang):** Kastenmaul ragt jetzt deutlich vor den Schädel (0,05 … 0,47 Kopfradius), reicht bis unter ihn (Kinn), große Rundung 0,17 und leichte Verjüngung zum Kinn (organischer); Nasenband als flaches **Trapez** (schmal an der Stirn, breit zur Nase). Maul‑Editor: Linienpunkte wirkten nicht (`Math.round` auf das Array ergab NaN → Änderung verworfen) — behoben; Linienpunkte kleiner, der Punkt am Mundwinkel folgt dem Winkelgriff.
-- **Aufreißen beim freien Kopf (Florian: Geometrie fuhr in Stirn und Unterkörper, der Hinterkopf stand still):** (1) der **Kopfknochen selbst** kippt und hebt sich mit (`jawTransforms` liefert `kopf = tilt(kopfFrei)`, `CreatureMesh.applyPose` setzt alle Kieferknochen als absolute Transformationen und rechnet die Kinder relativ zum bewegten Kopf: Lokal = Welt(Eltern)⁻¹ · Welt, Welt = Abs · T(pos)); alles mit Restgewicht auf dem Kopf (Hinterkopf, Augen, Mundwinkel) bewegt sich mit — die Mundwinkel rissen sonst 23‑fach. Der Kippanteil kommt aus den Knochengruppen (`fKnochen`: Kopf/Kiefer 1, Halsknochen 1 → 0, Rumpf 0) und läuft so über den Hals aus. (2) **Anheben** `lift` = 0,14 Kopfhöhen · `kopfFrei` (smoothstep der Halslänge 0,1 … 0,3) bei voller Öffnung, auch in der Unterkiefer‑Schranke mitgerechnet. (3) **Kiefergelenk am Hinterkopf** beim freien Kopf (`zHinge` = min(Mundwinkel, −0,4 · jointBack), mit `kopfFrei` geblendet): bei kurzem Katzenmaul lag das Gelenk direkt hinter den Mundwinkeln (Hebel 0,33) — beide Kiefer liefen sofort in die 72°‑Sättigung, der Schädel kippte wie ein Pez‑Spender. Jetzt Tiger: Unterkiefer 30°, Schädel 7° bei `oeffnung` 0,6 (Vorlage; 1,0 = 1,6 Kopfhöhen bleibt möglich). Versunkener Kopf (Rex) unverändert (Test `kette.test`). (4) Die **Zacken auf der Flanke** waren das Spitzmund‑Feld: Reichweite bis 1,3 Kopfhöhen vom Rand mit Wurzelkante bei den Mundwinkeln — jetzt ≤ 0,45 Kopfhöhen und weg vom Rand weicheres Profil.
-- **Kastenmaul nach Florians Zeichnung:** zur Nase hin breiter (Trapez, oben 1,35 ×, Kinn 0,65 ×), nach unten lang bis unter den Schädel; **Nase als flaches Dreieck direkt vorn auf der Oberkante des Kastens**, so breit wie der Kasten (Keil‑Form im Feld + Dreiecksmaske im Shader: Uniforms `naseOben` (xyz Oben, w Höhe), `naseRechts`; Höhe 0 = runde Nase wie bisher).
-- **Nasenband als Rampe** (Florian: „die Verbindung von Nase zur Stirn soll eine Linie sein“): eine schräge Rundbox, deren Oberseite in einer Geraden von der Schädelfläche auf Augenhöhe (am Feld abgetastet) zur Oberkante des Kastens läuft; an der Nase so breit wie der Kasten, zur Stirn halb so breit (`trapezZ`), eigener Rahmen (`rundbox` nimmt `frame`). Füllt die Stufe zwischen rundem Schädel und vorstehendem Kasten.
-- **Kasten folgt der Maulhöhe** (`maul.hoehe`): Maullinie bei 45 % der Kastenhöhe (Florian konnte das Maul über Kasten und Nase schieben); Reihe `wesen-reihe-vierbeiner-maul.hoehe-zu.png`.
-- **Schwanz**: `schwanz.spitze` (Dicke am Ende relativ zum Ansatz, 0,2 … 1,6 — Keule wie Bild 9) und `schwanz.schwung` (Bogen in der Mitte ±1); Dickenverlauf als Bogen Ansatz → leichte Taille → Spitze. Tiger: Spitze 1,3, Schwung 0,2.
-- **Maultasche glatt** (Florian: „wie eine Blume mit ausgefransten Blüten statt eines runden Lochs mit scharfen Kanten“): die Spalten der Tasche gehen nicht mehr vom je eigenen, unregelmäßigen Schnittpunkt aus, sondern von einer Gauß‑geglätteten Randkurve (σ = θ/9), die zu den Mundwinkeln hin ausläuft (dort zöge sie die Basis seitlich weg — verdrehte Vierecke, weiße Löcher); die Ränder selbst bleiben exakt (scharfe Kante). Gitternormalen (Spalte × Zeile) statt Facetten und **ein** Vorzeichen für das ganze Gitter statt je Dreieck gegen ein Zentrum (das kippte an den flachen Winkeln → weggeklappte Dreiecke). Aal und Tiger offen: runde glatte Höhle.
-- **Shader‑Agent (parallel, eigener Branch, zusammengeführt in aed8eb5):** Glimmer der festen Blobs (Bild 18), mehr Linienzonen kombinierbar mit Mustern/Schuppen, Jelly (Lavalampen‑Organ, Bläschen ohne Outline, Bodenschatten mit Abstand zum Rand). Integration durch die Leitung nach Bericht.
+**B als Schalter im Bau-Fenster (13.11. vormittags, Florian: „B ausprobieren“).** Probe und Abbruch standen vorher im Plan (Anhang
+A.3). Nur `claude/form-bau`; sein Fenster auf 5194 ist unberührt.
 
-## Block Shader (08.10., parallel, Branch `worktree-agent-aa50889d187f72b82`): Glimmer, Jelly, Zonen, Musterbibliothek
+- **Ausprobieren** (so war es am 13.11.; seit seinem „Gefällt nicht“ gibt es nur noch die Adresse):
+  `http://localhost:5197/kurven.html?gewichte=geometrie&ziehen=direkt`; die Statuszeile beginnt dann mit „Form halten“.
+  Knopf, Taste H und das Merken über das Neuladen sind wieder entfernt. Läuft der Server nicht: Eintrag `kurven-bau` in `.claude/launch.json` oder
+  `EDITOR_WEB=1 pnpm -C <form-bau> --filter @ee/editor exec vite --port 5197 --strictPort`. Seine drei Formen liegen dort in
+  `wesen/` (Laden).
+- **Was der Schalter tut:** An: Ein Zug an Punkten oder Griffen bewegt die Haut direkt mit den Linien (Löser `direkt`); nach
+  dem Loslassen wird nur verdichtet; die heutige Rechnung setzt nichts, auch nicht nach einem neuen Loop; gelöschte Punkte und
+  geknickte Griffe gehen denselben Weg; im Zug wird nicht verfeinert. Aus: alles wie bisher. Nur in der Grundform (die Pose
+  rechnet wie bisher). Eine Kante an oder aus ändert die Haut mit dem Schalter an nicht.
+- **Gebaut:** Kern: `HautDirekt` mit festen Feldern je Bild (`bereiten`, `drehungSetzen`, `nachfuehrenSchnell`; der
+  Vorkonditionierer dreht mit den Normalen mit), `dicht/direktZug.ts` (`DirektLoeser`), `LoopZug` mit der Art `direkt`,
+  `direktLoeserFuer`. Fenster (`kurven.ts`, `kurven.html`): `direktAn`, `direktGilt`, `direktBereiten` (legt den Löser in der
+  Ruhe nach jeder Änderung an, damit das Greifen nicht wartet), `haltenSchalten`; Eingriffe in `loeserFuer`, `zugRechnen`,
+  `zugEnde`, `aufraeumenStarten` (keine Runden), `ruheNoetig`, `hautNeuRechnen`; Haken `__kurven.halten()` und
+  `zeiten().halten`. Probe `apps/editor/scripts/pruefen/form-halten-probe.mjs`.
+- **Gemessen im Bau-Fenster** (`GPU=1`, höchster Punkt 70 hinauf; Ausgabe `docs/progress/editor/halten-fenster-messung-2026-11-13.txt`,
+  Bildschirmfotos `halten-fenster-{an,aus}-2026-11-13.jpg`):
 
-Florian: „Vor allem der Glimmer meiner festen Grundwesen ist noch nicht gut, und mehr Muster-Linien … mehr als Bauch- und Rückenlinien, kombinierbar mit Mustern oder Schuppen. Jelly: die dunklere Bubble organisch wie in einer Lavalampe, die weißen Bubbles ohne Outline, der untere große Schatten immer mit etwas Abstand zum Wesenrand.“
+  | | strange bird an | aus | teat firefish an | aus |
+  | --- | --- | --- | --- | --- |
+  | gegriffen, nicht gezogen | 0,00 | 0,00 | 0,00 | 0,00 |
+  | hinauf und zurück, neben der Haut von vorher | 0,00 | bis 19,6 | 0,00 | bis 2,1 |
+  | Bilder im Zug, Abstand Median / 95 % | 14 / 37 ms | 16 / 21 ms | 19 / 44 ms | 20 / 34 ms |
+  | Rechnen je Bild | 9,7 ms | 6,9 ms | 15,0 ms | 10,7 ms |
+  | nach dem Loslassen neben der Fläche in der Ruhe | bis 0,35 | bis 2,2 | 0,00 | bis 0,31 |
+  | Vorbereiten nach jeder Änderung (hält das Fenster an) | 0,3 bis 0,4 s | – | 0,45 s | – |
 
-- **Glimmer** (`earleCreature.ts`, Bild 18 oben): Korn im Körperraum, das mit der Bildschirmgröße skaliert (zwei Oktaven Wertrauschen, gemischt wie Mipmaps → ein Korn ≈ 3 Pixel, nah wie auf dem Brett, zu feine Oktaven blenden aus), gegen den Ton gerastert (im Licht mehr helle, im Schatten mehr dunkle Körner). Mit Glimmer: Lichtseite warm bei gleicher Helligkeit (Lila → Rosa, Türkis → Gelbgrün), Schattenseite kühl (Blauviolett, Blautürkis), helle Körner warm, dunkle kühl, dazu wenige weiche Funken, deren Dichte mit dem Licht wächst (langsames Funkeln 9–25 s, eigene Neigung → sie wandern, wenn sich das Wesen dreht). Regler `muster.glimmer` (je Wesen, mal Stil-Glimmer) und Farbe `muster.farben.glimmer`. Vorlagen `fest` (Lila, Bild 18 links) und `grundform10` (Türkis mit Gelbglimmer, Bild 18 rechts) Glimmer 1; Tiervorlagen 0,1 (die Bögen 3/5/6/8/9 zeigen Korn, keinen Glimmer). Shader-Uhr `zeit` läuft nur beim lebenden Wesen (Standbild bleibt gleich).
-- **Jelly** (`jelly.ts`, Bild 1): der dunkle Klumpen ist eine **Lavalampe** — Abstandsfeld aus drei weich verschmolzenen Tropfen (Hauptklumpen steigt, sinkt, atmet; zwei Tropfen kreisen auf unrunden Bahnen, Perioden 50–90 s, nie hektisch), entlang des Blicks mit 28 Kugelschritten abgetastet, auch innen weiter: der kleinste Abstand längs des Strahls ist über die Kante stetig → scharf und geglättet (ein Abbruch beim ersten Treffer zeichnete Höhenlinien). **Bodenlappen** = Ellipsoid aus der gemessenen Grundfläche des Körpers (`measureJellyFloor`: 72 % der Breite bei ¼ Höhe, 11–46 % der Höhe) → hält immer Abstand zum Rand; die Randabdunklung unten und die Boden-Verdickung sind weg, der Lappen ist dunkler als der Klumpen (Bild 1 gemessen: L 106 gegen 148). **Bläschen** weiche, leicht getönte helle Scheiben ohne Ring. Der dunkle Glasrand (eine Kontur) ist einem breiten Saum gewichen (Lichtseite heller, Schattenseite satter, unten nicht). Glanz nur auf der oberen Rundung rechts (die zweite Spiegelung unten rechts ist weg).
-- **Zonen** (`muster.ts` `zonenMaske`, Schema `muster.zone1–3`, Panel-Gruppen „Zonen“ und „Zone 1–3“): **Art** (Bauch, Latz/Kehle, Rückenstreifen, Band, Augenmaske, Socken, Schwanzspitze), **Lage**, **Breite**, **Federung**, **Farbe** und **Musterbezug** (ohne Muster · Muster drüber · im Zonenton · nur hier · nur hier im Zonenton). Jede Grenze ist ein Abstand in Körpereinheiten, leicht gewellt (`muster.zittern`), weich-hart gefedert — eine Fläche, nie eine Linie. Latz: Bogen vorn vom Boden bis zur Lage; Rückenstreifen mit Pinselspitzen an beiden Enden; Band waagerecht in der Gesamthöhe; Augenmaske = Ovale um die Augen (bei großer Breite ein Band, Lage hoch = Brauenpunkte); Socken/Schwanzspitze aus der neuen **Teil-Koordinate** (`eeTeil`, Beine −t, Schwanz/Schlange +t, aus Teilgruppe und Knochenkette, `teilKoordinate`). Flächen werden erst als Farbrolle gemischt und dann einmal schattiert (Schuppenrelief und Rim nehmen die Zonenfarbe). Vorlagen: Tiger mit weißem Latz (Streifen bleiben draußen), Aal/Schlange mit hellem Bauch ohne Schuppen. Die Muster-Ergänzungen der Vorlagen stehen getrennt am Ende von `presets.ts` (`MUSTER_ERGAENZUNG`), damit Form- und Musterarbeit nicht dieselbe Zeile ändern.
-- **Muster waren größtenteils unsichtbar (Falle, behoben):** TSL rechnet einen Knoten, den mehrere `If`-Zweige nutzen, nur in dem Zweig, der ihn zuerst baut — in allen anderen Zweigen ist er 0. In `musterMasks` galten `uArc`, `vArc`, `freq`, `soft` nur im Streifen-Zweig: **Schuppen, Platten, Punkte, Rosetten und Flecken zeichneten nie** (Aal ohne Schuppen, Giraffe einfarbig). Gemeinsame Werte jetzt vor den Zweigen mit `.toVar()`. Dazu: `hash` aus three/tsl macht negative Startwerte zu 0 (alle Zellen mit negativer Kennung gleich), und die lineare Kennung x + 57y + 113z kollidiert entlang (−1, 2, −1) → Streifen und Webmuster im feinen Korn; jetzt `hashPos` und verkettetes `hash3`.
-- **Musterbibliothek überarbeitet** (Bild 3/13/17): Schuppen als gerundete Sechsecke (die alte Fuge lag bei Abstand 0,44 — größer als jeder Abstand im Gitter), zum Bauch hin kleiner; Streifen als Pinselstriche mit schwankendem Druck, an den Flanken breit; Rosetten als unterbrochene Ringe mit warmem Kern, dazwischen Punkte; Punkte dichter; Salamander länglich; Koi großflächig; alle Kanten weich-hart (pixelscharf geglättet statt verschmiert). Die Bauch-Ausblendung der Muster ist schwächer (helle Bäuche machen jetzt Zonen).
-- **Werkzeuge:** `apps/game/e2e/wesen-zonen-shots.spec.ts` — Musterzonen nach Bild 17 (Krokodil, Orca, Clownfisch, Schuppenband, Tiger, schwarz-loh, Rex, Aal), Lavalampe über die Zeit, Musterbibliothek, Panel: `EE_SHOTS=1 E2E_PORT=4485 [EE_FAELLE=krokodil,orca] [EE_SHOTS_TAG=x] node apps/game/scripts/e2e.mjs e2e/wesen-zonen-shots.spec.ts`. Tests `apps/game/src/lab/wesen/zonen.test.ts` (Schema, Panel, Vorlagen) und `packages/render/src/creature2/zonen.test.ts` (Teil-Koordinate, Uniforms).
-- **Bilder** (`docs/progress/`): `wesen-vergleich-jelly-shader[-vorher].png` und `wesen-vergleich-fest-shader[-vorher].png` (Render | Bild 1 bzw. 18, DPR 2), `wesen-lab-grundform10-shader.png` (Türkis mit Gelbglimmer), `wesen-jelly-lavalampe-shader.png` (0–60 s), `wesen-zonen-kontaktbogen-shader.png`, `wesen-musterbibliothek-shader.png`, `wesen-lab-panel-muster-shader.png`, `wesen-lab-kontaktbogen-zu-shader.png` (alle Vorlagen), `wesen-lab-kontaktbogen-brett-shader.png` (Spielgröße), Platten vorher/nachher `wesen-lab-giraffe-shader-vorher.png` / `wesen-vergleich-giraffe-zu-shader.png`.
+  Der Abbruch (über 30 ms je Bild am Firefish) greift nicht. Die 0,35 nach dem Loslassen entstehen, wo das Verdichten Punkte
+  zusammenlegt (im Mittel 0,00).
+- **Offen und nicht geprüft:** Florians Urteil (Gefühl beim Ziehen). Einzelne Bilder dauern länger als heute (95 % 37 bis 44 ms
+  gegen 21 bis 34 ms). Das Vorbereiten läuft im Fenster, nicht im Hintergrund: Greift er in den 0,3 bis 0,45 s danach, wartet
+  der Griff. Neue Haut rundet der Schalter nicht (Rüssel aus der Kugel wird ein Keil): dafür Schalter aus; schaltet er danach
+  wieder aus und zieht, rundet die heutige Rechnung alles neu. Pose, Maul und `/editor` sind nicht angefasst.
+- **Fallen:** Das Vorbereiten darf die Haut nicht anfassen (auch nicht um Rundungsreste): Die Standzahl änderte sich sonst,
+  und der Hintergrund begann endlos von vorn. `nachfuehrenSchnell` rechnet je Runde zwei Schritte von den Lagen der Haut aus;
+  ohne den mitdrehenden Vorkonditionierer kam es bei großen Drehungen je Runde nur um ein Viertel näher.
 
-**Befund, ehrlich:** (1) Glimmer: Korn und Farbverschiebung liegen gemessen nah an Bild 18 (Lila Mitte `#a48fba` gegen `#b299ca`, Kornstreuung ≈ 10 gegen ≈ 11), aber die Türkis-Lichtseite ist grauer als das Gelbgrün der Referenz und Lila unten dunkler (L 92 gegen 126); das Licht kommt nach Stil von vorn rechts oben, in Bild 18 eher von rechts. (2) Jelly: Formen, Abstände und Bläschen stimmen; Farbe blasser und die Oberseite dunkler als Bild 1 (L 189 gegen 219); die Lavalampe bewegt sich nur im Lab (Standbilder stehen). (3) Zonen: Latz, Band, Maske, Socken und Bauch sichtbar geprüft; Rückenstreifen und Schwanzspitze liegen in der Bögen-Kamera meist auf der abgewandten Seite (Rex zeigt den Streifen auf dem Kopf, die Schwanzspitze ist nur im Test geprüft); auf Schlangenwindungen beziehen sich Bauch/Rücken noch auf den Rumpf. (4) Schuppen (und Streifen mit Drehung) haben an der Rückenmitte eine Naht, weil der Umfangswinkel bei ±π springt. (5) Rosetten noch kleiner und lichter als in Bild 17. (6) Kosten: Korn mit zwei Rauschoktaven und verkettetem Hash, Zellmuster mit dreimal so vielen Hashes — auf dem iPhone noch nicht gemessen.
+**Florian am 13.11. vormittags, nach dem Ausprobieren: „Gefällt nicht“** (ohne Begründung). Damit gilt der Abbruch aus dem Plan:
+B kommt nicht in sein Fenster. Knopf und Taste sind aus dem Bau-Fenster wieder entfernt; der Weg bleibt zum Nachrechnen hinter
+`?ziehen=direkt` und dem Haken `__kurven.halten(true)` liegen (Kern `dicht/direkt.ts`, `dicht/direktZug.ts`, Tests, Proben).
+Die heutige Rechnung bleibt die einzige im Fenster. Weiter nach Plan mit Schritt 4.
 
-## Block 10 (09.10. früh): Kästen oben/unten, Bohne, Maulspalt (Drache), glatte Höhle, Zunge, Zähne beim Öffnen
+**Nachrechnen:** aus `packages/shape` `BLATT=<pfad ohne Endung> npx vite-node ../../apps/editor/scripts/pruefen/form-direkt.ts`
+(rund 45 s; `FALL=kugel,schlauch,ruessel,horn,formen,viertel`) und genauso `form-direkt-b.ts` (20 s;
+`FALL=ruessel,horn,biegen,formen`), dann aus `apps/editor`
+`HOEHE=100 node scripts/pruefen/html-shot.mjs --jpg <pfad>-*.html`.
 
-Florian: Zähne sitzen beim Öffnen oft nicht mehr; Tiger offen deutlich runder/bohnenförmiger, geschlossen kantig; Höhe und Dicke von Ober‑ und Unterkasten einstellbar; Maulinneres „zerfressen“; offene Mäuler immer als schöne Bohne; **Drache: das Maul erstreckt sich über den kompletten langen Hals** (längste Bohne von der Seite); Zunge nicht schön. Skizze: Maulinneres als glatte runde Höhle, Zunge als pralles Kissen.
+## 7. Schritt 4, zwei kleine Beweise „Donut“ (13.11.): Mit Florians Regel wird der Rand glatt und das Loch rund
 
-- **Zähne beim Öffnen** (Lab, Florians Bildschirmfoto ohne Zähne): zwei Ursachen. (1) Der Spitzmund‑Versatz der Zähne (`Tooth.pucker` · `spitzmund`) stand im Instanzraum **vor** der Knochendrehung, die Haut addiert ihn **nach** dem Skinning ungedreht — beim Unterkiefer (45°) wanderten die Zähne um ¼ Kopfhöhe ins Fleisch, oben um 0,1. Jetzt wird der Versatz mit der inversen absoluten Kieferdrehung (`absRot` aus `applyPose`) in den Knochenraum gedreht; CPU‑`posedTeeth` addiert ihn nach der Drehung. Nachgewiesen per Skript im Lab (Hautvertex am Rand vs. Zahnlage). (2) Florians Lab hing nach dem Shader‑Merge in einem halb geladenen Modulzustand (HMR: „does not provide an export named ZONEN_ARTEN“) — **nach dem Pull den Dev‑Server neu starten**.
-- **Kastenmaul in zwei Kästen**: `maul.kastenObenHoehe/-Tiefe`, `kastenUntenHoehe/-Tiefe` (0,3 … 2): Oberkasten von der Lippe bis zur Nasenkante (oben breiter, Trapez −0,25), Kinnkasten darunter (zum Kinn schmaler), beide überlappen an der Lippe; der Kasten folgt weiterhin `maul.hoehe`.
-- **Bohnenprofil der Öffnung** (`bohneProfil(u, side)`, Lochmaul‑Anteil): Oberlippe spitzer (Exponent 0,72), Unterlippe voll und rund (0,42) — auch für die Zahn‑Versätze. Tiger `form` 0,35: offen rund/Bohne, geschlossen kantig durch die Kästen.
-- **Maulspalt** `maul.spalt` (0 … 1): der untere Maulrand wandert als Bohne (voll vorn, null an den Winkeln) bis knapp über den Trägerboden — die Haut dazwischen wird Tasche, die Lippenränder sind dauerhaft getrennt (Drache: `hoehe` 0,55, `spalt` 0,9 → Maul über den ganzen Hals, Zähne unten auf der Brust). Dafür hat `MouthGeometry` je Rand eine eigene Radiuskurve (`lipRObenAt/UntenAt`, gemessen am Feld), der Schnitt‑Fensterradius und die Entfernung der Zwischenhaut nehmen beide Radien (der Unterrand liegt auf dem breiteren Rumpf).
-- **Glatte Höhle** (`mundschnitt.ts`). Erst drei Fallen nacheinander: (a) ein Vorzeichen fürs ganze Gitter kippte bei weiten Keilmäulern (Goldie, Rex: Tasche weiß = Rückseiten); (b) je Dreieck gegen ein Zentrum kippte an den flachen Mundwinkeln (Löcher); (c) das Spaltenvorzeichen allein ließ den Gaumenbogen vorn weiß. Dann der Drache: weißer Fächer über dem ganzen Maulboden, weil beide Dreiecke eines Vierecks unter **verschiedene** Regeln fielen (Wölbung vs. Spaltenvorzeichen) und die geometrischen Normalen der extrem gestreckten Splitter (Spaltenabstand ≈ ¼ Zelle, Zeilenabstand bis zur halben Tiefe) unzuverlässig sind — gemessen: in den Bändern zum Ober‑ und Unterrand war je ein Drittel der Vierecke gegenläufig. **Jetzt:** jedes Viereck bekommt eine **ideale Normale** aus dem glatten Gitter (Spaltenrichtung × Zeilenrichtung am Viereckmittel, Randzeilen aus den geglätteten Kurven), Vorzeichen zum **Höhlenzentrum** der Spalte (Mitte zwischen den Rändern, halbe Tiefe); entartete Vierecke (Spitzen) erben von der nächsten Spalte; die echten Dreiecke werden so gewickelt, dass ihre Normale mit der idealen übereinstimmt, Gitternormalen nach derselben Regel. Spaltenrichtung `w` zeigt vorn zur Achse und seitlich/hinten zunehmend geradeaus nach hinten (sonst faltete sich das Gitter); Spalten gehen von einer Gauß‑geglätteten Randkurve aus (σ = θ/9, zu den Winkeln auslaufend), die ersten drei Zeilen tragen das Voxel‑Zickzack des echten Rands ausklingend mit, die Ränder bleiben exakt.
-- **Weiße Zacken am Unterrand (Drache)**, per Raycast im Lab nachgewiesen: es waren die **Reißverschluss‑Dreiecke** zwischen den interpolierten Unterrand‑Vertices (Zeile m der Tasche, auf den Spalten des Oberrands) und den echten Schnittvertices. In Ruhe entartet (Fläche ≈ 0), in der Pose geöffnet, weil die interpolierten Vertices nach Kieferfeld und Gewichtsglättung um einige Prozent andere Knochengewichte bekamen als ihre Nachbarn (0,76 gegen 0,97 Kiefer bei 1,5 mm Abstand). Jetzt liefert der Schnitt je interpoliertem Vertex seine beiden Eltern und den Mischanteil (`MundSchnitt.interpEltern`); `build.ts` setzt Gewichte, Spine, AO, Dicke und Spitzmund‑Feld dieser Vertices auf die Mischung der Eltern — der Reißverschluss bleibt in jeder Pose zu. Werkzeug dafür (Browser, `__wesenLab`): Strahlen durch die Pixel, erster Treffer rückseitig und kein vorderseitiger dahinter = weißes Pixel; Drehteller vorher `turntable.spin = false`.
-- **Zunge** als pralles Kissen (geschlossene Fläche, oben gewölbt mit Rinne, unten flach, runde Spitze), breiter (0,85 Halbbreite) und länger (0,88 Tiefe), Dicke halbe Breite.
-- Offen: Pez‑Blick bei `oeffnung` 1 (Kiefer in der Sättigung), Augen als Mandeln, Drachen‑Kopf über dem Spalt (der Oberkiefer ist bei `hoehe` 0,55 noch ein halber Körper), Rex‑Rumpf.
+### 7.1 Erster Beweis: verschmelzen allein (13.11. vormittags)
 
-## Block 11 (09.10. vormittags): Öffnungsarten (Ziehen), weiche Wange hinter den Winkeln, Stufe nur im Maulsektor, Nasentropfen
+Der Plan verlangt vor dem Umbau auf die halbe Haut ein Bild: „Griff durch die Mitte → Loch mit glattem Rand; zurück → Form wie
+vorher.“ Probe im Kern: `apps/editor/scripts/pruefen/form-donut.ts` (aus `packages/shape`,
+`BLATT=<pfad ohne Endung> npx vite-node ../../apps/editor/scripts/pruefen/form-donut.ts`), Bild
+`docs/progress/editor/schritt4-donut-2026-11-13.jpg`. Am Fenster ist nichts geändert.
 
-Florian: bei tiefem Maul muss der Oberkiefer beim Öffnen **nach oben fahren** statt nur nach hinten zu kippen; mehr Einstellmöglichkeiten, wie sich das Maul öffnet (Kippen oder Auseinanderziehen); die Übergänge Unter-/Oberkiefer werfen eine Kante seitlich am Oberkiefer entlang (Drache); Giraffe offen „zerrissen“, Nasentropfen deutlich größer, Kante zwischen den Kiefern weg.
+**Fall:** Kugel mit drei Loops (1 784 Punkte), der Punkt an der Seite (Kreuzung der beiden Ringe) um 190 durch die Spiegelebene
+gezogen.
 
-- **Öffnungsart** (`maul.ziehen` 0 … 1, `maul.ziehenOben` 0 … 1): Anteil der Öffnung, der durch Auseinanderziehen entlang „oben“ des Trägers statt durch Drehung geschieht; `ziehenOben` verteilt ihn auf Oberkiefer (fährt hoch) und Unterkiefer (senkt sich). Der Unterkiefer senkt sich höchstens bis zur **Bodenschranke** (`MouthGeometry.lowerDropMax`: tiefster Abtastpunkt von Kiefer und Kehlkette über dem Boden, plus Kopfhebung), den Rest übernimmt oben. Eine Formel in `pose.ts` (`JawPose.upperRise/lowerDrop`, Versätze in `jawTransforms`) und `CreatureMesh.applyPose`. Vorlage „Maul unten“: `ziehen` 0,7, `ziehenOben` 1, `oeffnung` 0,45 — der Körper hebt sich, die Unterlippe bleibt am Boden. Test `mouth/ziehen.test.ts` (reines Ziehen: Oberrand hebt sich um die Öffnung, Unterrand bleibt; hohes Maul: Unterkiefer senkt sich bis zur Schranke; Mischung).
-- **Giraffe „zerrissen“** (Lab-Messung: 46 Dreiecke dehnen sich beim Öffnen auf das 2,5-fache, alle Haut, Vertices mit **harten Gegenseiten** in einem Dreieck, 0,03 … 0,16 vom Rand): Die Seite der Hautvertices kam bis 0,6 rad hinter die Mundwinkel hart aus der Maullinie (+1/−1); seit das Kiefergelenk des freien Kopfs am Hinterkopf sitzt, hat die Wange hinter den Winkeln Hebel und riss zwischen Oberkiefer- und Unterkieferseite auf. Jetzt läuft die Seite hinter den Winkeln über 0,55 rad in die **weiche Seite nach Höhe** aus (`MouthGeometry.seiteFeld`, dieselbe S-Kurve wie `jawParts` ohne Seite), `jawParts/upperParts` mischen linear nach der Seite. Die Höhle ist jetzt eine glatte Bohne.
-- **Kante seitlich am Oberkiefer entlang**: (a) Körperträger (Drache): die Kieferbreite (`maul.kieferbreite`) verengte den Rumpf ringsum als Gürtel — jetzt gilt sie nur im **Maulsektor** (`LoftStation.wxSektor/sektor`, Winkel ab vorn, Sektor = θ − 0,15, Auslauf 0,7 rad). (b) Freier Kopf (Giraffe, Tiger): das Trennband der Kieferhälften (`splitBand`) ist jetzt je Station — an den Lippen ⅒ Kopfradius, hinter den Mundwinkeln bis 0,45 Kopfradius (die Breitenstufe wird zum weichen Verlauf über die Wange), und wo die kürzere Unterform endet, ×3,5 (die Unterseite des überhängenden Oberkiefers rundet sich). Giraffe: Kieferbreiten gleich (die Kante war die Breitenstufe), Längen 1,15/0,85 bleiben (Überhang).
-- **Nasentropfen** `kopf.nasentropfen` (0 … 2, Vorgabe 0,5 = bisherige Wölbung, wächst mit der Schnauzenlänge; ab 0,5 auch breiter). Giraffe 1,3.
-- **Wulst am Schwanzansatz** (Florian, fester Blob mit Bogenschwanz): Messung (Rumpfhaut mit Schwanz gegen das Feld ohne Schwanz) — die weiche Vereinigung mit k = 3 Schwanzdicken hob die Haut rund um die Wurzel um k/4 ≈ 4–5 % der Körperhöhe als Hügel, zusätzlich lag der breite Trichter (2,5 Dicken) bei schmalem Rumpf innerhalb k unter der Flanke und blähte sie entlang seiner Bahn auf. Jetzt: Anhang-Schwänze haben außen einen flachen **Flare** zur Wurzel (1,7 Dicken über gut ein Drittel der Länge, wie der Katzenschwanz in Bild 9), die Vereinigung ist klein (1,6 Dicken, 0,07 … 0,2 H), der Trichter innen ist fast zylindrisch und bleibt mindestens k unter der Haut (`rMinBody − k`). Aufblähung halbiert (2–3 % H, nur im Fillet), Flanke unverändert. Tiger/Retriever/Giraffe gegengeprüft. **Florians Bild war aber der Rex (Wirbelsäulenschwanz):** dort ragte ein Zylinder von 0,8 Rumpfradius hinten aus dem gerundeten Rumpf, die Vereinigung (k = 0,3 H) legte entlang der Schnittkurve den Wulst über die Flanke. Jetzt folgt der Wurzelquerschnitt des Wirbelsäulenschwanzes **Scheibe für Scheibe dem Rumpf** (Halbbreite und Höhenspanne der Rumpfscheibe in der jeweiligen Tiefe hinter der Achse, 0,9 → 1,0 knapp innen) bis zur Übernahme bei 55 % der Rumpftiefe; dahinter läuft jede Halbachse mit der dort gemessenen Steigung weiter und geht über 30 % der Länge in den eigenen Dickenverlauf (Dicke → Taille → Spitze) über; k = 0,12 H. Der Austritt ist tangential: von der Seite eine durchgehende Rückenlinie Rumpf → Schwanz (Bild 5/11), von schräg hinten keine Wulst.
-- Offen: beim reinen Ziehen ist der Rachen ein gerader Schlauch (die Taschenwand mischt beide Kiefer linear) — Mischung mit Kippen sieht besser aus; hinter dem Drachen-Mundwinkel bleibt eine kurze auslaufende Rille (Sektorauslauf); Giraffenkopf wirkt knollig (Tropfen + rundes Band), Feinschliff mit Florian.
+| Fassung | Rand des Lochs (Knick quer über den Rand, Mittel / größter) | Sonst |
+| --- | --- | --- |
+| heute: ganze Haut gerechnet, jede Hälfte bis zur Ebene gezeigt | 97° / 113° (scharfe Kante) | Loch mit Halbmesser 74 bis 93; 9 Runden; an der gerechneten Haut nichts umgestülpt |
+| verschmolzen (an der Ebene geschnitten, mit dem Spiegelbild verbunden), Rand frei | 22° / 84° | das Loch verzieht sich (Halbmesser 52 bis 111), Haut bis 32 neben heute, 17 Knicke über 60° |
+| verschmolzen, Rand als Linie der Mittelebene | 32° / 111° | Loch bleibt (75 bis 92), Haut bis 13 neben heute, 9 Knicke |
+| verschmolzen, Rand als Linie, die keine Wölbung vorgibt (Ecken) | 77° / 150° | Loch bleibt, 60 Knicke |
+| zurückgezogen (heute) | – | Kugel wieder da: im Mittel 0,11, größter 0,4 neben vorher, nichts umgestülpt |
 
-## Was noch nicht stimmt (nach Florians Bildern)
+**Befunde:**
+1. **„Zurück → Form wie vorher“ hält schon heute** (ganze Haut als Wahrheit, die Anzeige schneidet ab).
+2. **„Loch mit glattem Rand“ hält so nicht.** Verschmelzen macht aus den beiden Hälften eine Haut, aber die Linien enden an der
+   Mitte mit ihrem Knick, und die heutige Rechnung liest die Wölbung an den Linien an der Haut ab: Die Kante bleibt. Ohne Linie
+   am Rand glättet sie mehr, dafür wandert das Loch. (Damals geschlossen: „braucht eine eigene Regel für die Wölbung am Rand“.
+   Das stimmt nicht, siehe 7.2: Es fehlten die glatten Punkte an den neuen Kreuzungen.)
+3. **Der Schnitt an der Ebene trägt:** Hälfte abschneiden und spiegeln gibt genau das Bild von heute als eine geschlossene Haut
+   (1 523 statt 1 784 Punkte), und die heutige Rechnung läuft darauf ohne davonzulaufen (`verschmelzen` in der Probe; teilt auch
+   die Loops an der Ebene in Stücke). Das ist der Baustein für „die Hälfte ist die Wahrheit“.
 
-1. **Rex**: dicke Stampfer mit Saugnapf‑Füßen stehen; der Rumpf ist noch ein Sack ohne Brust und der Schenkel von der Seite keine Keule — Florians Blender‑Vorlage abwarten; Flügel/Stummelarme später (eigene Elemente).
-2. **Tiger**: runder Schädel, kantige Schnauze mit W‑Lippe und Nase, Brauen über Schlitzaugen, dicke Schenkel seitlich — geschlossen jetzt eine grimmige Katze; von der Seite wirkt der Rumpf noch kastig (Buckel reduziert), Brustwulst (weißer Kragen), Nasenfarbe und kräftigere Streifen fehlen.
-3. **Kopfprofile** weiter aus Bild 11/6/9 verfeinern (Braue, Schnauzenrücken, Wangen → evtl. `kopf.wangen`).
-4. **Shading** zu glatt/„CG“ (Bögen: Airbrush, kühle gesättigte Schatten, Korn); Bauch-/Rücken-Linie hart.
-5. **Drache**: geschlossen hängen die Hauer jetzt außen (Fänge bis zum Dreifachen der Kiefertiefe), offen ein riesiges Maul nach vorn/oben; der Gürtel um den Körper ist weg (Block 11), eine kurze Rille hinter dem Winkel bleibt; der untere Lippenring bleibt flach (Kinnband), Unterkiefer dreht wegen Bauch/Boden kaum — dafür jetzt `maul.ziehen`.
-6. **Augen**: Höhlenring und Oberlid da; Unterlid, Blickrichtung und Ausdrücke (Spirale, X) fehlen; Giraffen‑Augapfel noch halb aufgesetzt.
-7. **Silhouetten‑Überdeckung** gebaut; Werte liegen um 0,5–0,75 — die großen Abweichungen sind Masseverteilung (Rumpf zu schmal/hoch gegenüber den Bögen) und fehlende Elemente.
-8. Ohren, Hörner, Flügel, dünne Schwänze, Spinnenbeine, Rückenschuppen: **eigene Elemente** (Florian), nicht Teil der Masse.
+**Florian am 13.11. vormittags zum Bild** (wörtlich im Plan, Abschnitt 5, Punkt 4): Er stellt sich den Donut anders vor. An den
+neuen Kreuzungen (wo die gezogenen Linien die Mitte treffen) sollen **Punkte ohne Knick** entstehen, das Loch bekommt einen
+**neuen Edgeloop**; der gezogene Punkt ist nur im Zug noch sichtbar und vom neuen Mesh gelöst; **beim Loslassen verschwindet er,
+kein Zurückziehen** („so ähnlich wie Blenders Mirror mit Clipping“). Das ersetzt Entscheidung 4 des Plans (umkehrbare Naht). Auf
+die Frage „jetzt daran feilen oder erst die halbe Haut“ habe ich den kleinen Beweis empfohlen; Florian: **„Donut beweisen“**.
 
-## Stand jetzt (09.10. mittags)
+### 7.2 Zweiter Beweis: der Donut mit Florians Regel (13.11. mittags)
 
-- Alles auf `main` (c99f3ac), Arbeitsbaum sauber, alle Prüfungen grün (Typen, 24 Creature-Tests, 261 Game-Tests, Lint). Zuletzt: Block 10 (Kästen, Bohne, Maulspalt, glatte Höhle, Zähne beim Öffnen), Block 11 (Öffnungsart Ziehen/Kippen, weiche Wange hinter den Winkeln, Breitenstufe nur im Maulsektor, Nasentropfen) und die Schwanzansätze (Anhang mit Flare, Wirbelsäule als Fortsetzung des Rumpfs).
-- **Florian testet jetzt den Editor ausgiebig und sammelt Feedback** (sein Wochenlimit war am 09.10. erschöpft). Nächster Block = seine gesammelte Liste abarbeiten; bis dahin nichts eigenmächtig umbauen.
-- Vor dem Testen: `git pull`, dann den Dev-Server **neu starten** (HMR ließ das Lab nach größeren Merges in halbem Modulzustand, z. B. ohne Zähne).
-- Harness für Bilder: `EE_SHOTS=1 EE_VORLAGEN=<ids> [EE_MAUL=auf|zu] [EE_ANSICHT=seite] E2E_PORT=4471 node apps/game/scripts/e2e.mjs e2e/wesen-shots.spec.ts` (vom Repo-Wurzelverzeichnis, nicht während Florian seinen Server 5173 benutzt).
+Probe im Kern: `apps/editor/scripts/pruefen/form-donut-regel.ts` (aus `packages/shape`,
+`TIEF=190 GRIFFE=anteil,lang BREITE=1560 BLATT=<pfad ohne Endung> npx vite-node ../../apps/editor/scripts/pruefen/form-donut-regel.ts`;
+gemeinsame Teile beider Proben in `form-donut-teile.ts`). Bilder: `docs/progress/editor/schritt4-donut-regel-2026-11-13.jpg`
+(großes Loch) und `schritt4-donut-regel-klein-2026-11-13.jpg` (der Punkt gerade erst über die Mitte), alle Zahlen in
+`schritt4-donut-regel-messung-2026-11-13.txt`. **Florian hat die Bilder noch nicht beurteilt.** Am Fenster ist nichts geändert.
 
-## Nächste Schritte
+**Die Regel, wie sie gerechnet ist** (derselbe Fall wie in 7.1, die Linien wie im Fenster genau auf ihren Pfaden):
+1. Beim Loslassen wird die Hälfte an der Ebene abgeschnitten und mit ihrem Spiegelbild verbunden (`verschmelzen`).
+2. Der Pfad jeder geschnittenen Linie wird an der Ebene geteilt (de Casteljau: Was über der Ebene liegt, behält genau seine
+   Form; der gezogene Punkt darunter fällt weg). Das neue Ende ist ein **Punkt ohne Knick**: Sein Griff steht senkrecht zur
+   Ebene, die Linie läuft rund in ihr Spiegelbild (so endet im Kern jeder Ring). Seine Länge: was vom Griff des geteilten Stücks
+   senkrecht zur Ebene zeigt (die kleinste Änderung des Griffs, die den Punkt glatt macht).
+3. **Der Rand des Lochs ist ein neuer Loop** der Mittelebene durch diese neuen Enden (die neuen Kreuzungen). Jeder seiner Punkte
+   ist glatt, der Loop so rund wie möglich (Richtung parallel zur Sehne der Nachbarpunkte, Grifflänge wie ein Kreisbogen).
+4. Die heutige Rechnung rechnet unverändert weiter, bis die Haut steht; danach verdichtet das Netz wie nach jedem Zug.
 
-0. Mit Florian: Silhouetten im Editor gegen seine Bilder ziehen (Seite + Overlay), dann Kopf/Maul darauf abstimmen; Blender‑Master als Mesh → Distanzfeld planen (K0‑Erweiterung), wenn die Kurven nicht reichen.
-0a. Kleiner Musterrest am Tigerschwanz‑Ansatz (Keil aus dichten Streifen: der Umfang der Musterkoordinaten springt von Rumpf auf dünnen Schwanz — Umfang im Ansatz vom Rumpf übernehmen oder Muster dort ausblenden); Öffnungsverteilung (Schädel ≈ 30–40°, Unterkiefer mehr) prüfen: Unterkiefer‑Schranke mit angehobenem Gelenk neu abtasten oder Rumpf vorn freiräumen; Laufdemo mit echtem Bodenkontakt (Fuß bleibt stehen) erst im Teil Spielfeld.
+| Fall (Kugel mit drei Loops, Standardnetz) | heute gezeigt | mit der Regel |
+| --- | --- | --- |
+| großes Loch (Punkt um 190 gezogen, 41 hinter die Mitte) | Loch eckig, Halbmesser 77 bis 92; Knick quer über den Rand im Mittel 96°, größter 111° | Loch rund, 91,1 bis 91,8; Knick 18° / 27° (eine Reihe daneben 19°); 3 + 8 Runden bis zur Ruhe, nichts umgestülpt; die Linien gehen dafür 10 (Ringe) und 17 (Rand) |
+| mittleres Loch (165, 16 dahinter) | 54 bis 62; 124° / 133° | 60,6 bis 62,1; 20° / 32° (daneben 15°); 3 + 8 Runden |
+| gerade erst über die Mitte (150,5; 1,1 dahinter) | 16 bis 18; 161° / 167° | 16,0 bis 18,7; 38° / 61° (daneben 22°); 3 + 9 Runden; die Linien gehen 13,5 |
+| großes Loch, viermal so viele Dreiecke | 96° / 110° | 91,0 bis 91,7; 12° / 24° (daneben 11°); 13 + 9 Runden, nichts umgestülpt |
 
-1. Florians Blick auf Block 3 (Rex mit Beinen, Tiger mit Backen, Retriever, Drache, Aal) — Bilder in `docs/progress/wesen-vergleich-*`.
-2. Shading nach den Bögen (Airbrush‑Vorgabe: Kantenfederung, kühle satte Schatten, Korn) — betrifft jede Vorlage, mit Florian live.
-3. Augen bündig mit Ring, Lider/Blinzeln (K3); Eigene Elemente: Ohren, Hörner, Flügel, Flossen, Rückenkamm, Fell (K5/K6).
-4. Stufen‑Reihe (Größenreihe) im Lab; Überdeckung je Vorlage als Verlaufszahl mitführen.
+**Befunde:**
+1. **Die Regel hält, die heutige Rechnung genügt.** Alle vier Kriterien aus dem Plan sind am großen Loch erfüllt: keine Kante
+   am Rand, in den Schnitten keine Spitze (durch eine Linie und zwischen den Linien); der Knick quer über den Rand ist so groß
+   wie eine Reihe daneben (und wird mit feinerem Netz kleiner: Er ist das Netz, kein Grat); das Loch hat keine Ecken; die
+   Rechnung steht nach 3 + 8 Runden, weitere 100 Runden bewegen die Haut höchstens 0,03.
+2. **Die Länge des neuen Griffs entscheidet, wie rund der Schlauch wird und ob die Form springt.** Mit dem senkrechten Anteil
+   (die Regel) ändert sich die Form wenig, auch wenn der Punkt gerade erst über die Mitte kommt (die Linien gehen 13,5). Behält
+   der Griff seine ganze Länge (`GRIFFE=lang`, im Bild die dritte Spalte), ist der Schlauch beim großen Loch runder (Knick 15°),
+   aber gerade erst über die Mitte gezogen springt die Kugel zu einem dicken Ring (die Linien gehen 43). Florian kann den
+   Griff danach von Hand länger ziehen; die dritte Spalte zeigt, was das bewirkt. Nach dem Verlauf der abgeschnittenen Linie
+   angepasst (`GRIFFE=angepasst`) wird der Griff null lang, und die Spitze bleibt (88°).
+3. **Sauber schneiden.** Wird dicht neben einem Netzpunkt geschnitten, bleiben schmale Dreiecke; auf dem Standardnetz ohne
+   Folgen, mit viermal so vielen Dreiecken kam die Rechnung daran nicht zur Ruhe (eine Spitze am Rand, 152 umgestülpt). Die
+   Probe legt solche Punkte selbst auf die Ebene (`verschmelzen` mit `fangen`, ein Viertel einer Kante); damit ist auch das
+   feine Netz sauber. Das gehört in den Bau.
+4. **Verworfen:** Der neue Rand hält nur den Ort und gibt keine Wölbung vor (`RAND=ort`): Die Rechnung kommt nicht zur Ruhe.
 
-## Fallen / Hinweise
+**Nicht gerechnet (gehört zum Bau):**
+- **Der Zug selbst.** Gerechnet ist der Stand nach dem Loslassen. Florians Bild verlangt das neue Mesh schon im Zug. Vorschlag:
+  beim ersten Durchstoßen einmal schneiden (ein kurzes Stocken wie beim Greifen), danach wandern nur noch die Linien (das Loch
+  wächst mit dem Zug, der gezogene Punkt bleibt als loser Griff sichtbar); zurück über die Mitte im selben Zug nimmt den Schnitt
+  zurück.
+- Ein Loch, das kleiner ist als eine Netzkante (der allererste Moment), seine eigenen Formen, eine Linie allein oder mehr als
+  zwei durch die Mitte, Linien mit Kante durch die Mitte, das Maul, die Pose.
 
-- **Nur Florians 19 Bilder** sind Referenz; nichts anderes öffnen oder suchen.
-- Das Mesh ist **geschlossen** gebaut; `maul.oeffnung` = Öffnungsweite (Anteil der **Kopfhöhe**, in beiden Kopfarten); Harness `EE_MAUL=zu|auf|bau`.
-- Kopfarten: `hals.laenge` 0 → Kopf im Rumpf; > 0 → eigener Kopf (kurzer Hals ≈ 0,05 setzt ihn auf die Schultern). Mundwinkel (`maul.winkel`) und Augenlage (`augen.lage`) sind Winkel um den **Träger** — beim Körperträger die Körpermitte, beim Kopf die Kopfmitte; Vorlagen entsprechend verschieden.
-- Lofts: gerade Teile im Achsenmodus (Mittenversatz je Scheibe erlaubt), gebogene im Segmentmodus; `taper` = Ei-Verjüngung nach vorn; fast doppelte Nachbarpunkte werden verschmolzen, offene Enden ohne Kappe rund geschlossen.
-- Culling nur außerhalb des Hüllquaders (`bd > 0`), sonst Risse. Stetigkeitstest `sdf/stetig.test.ts`.
-- Kiefer-/Oberkiefergewichte: hart je Seite (`seite` aus dem Lippenschnitt), aus allen Knochen; Kiefertiefe aus `MouthHost.jawDepth`. Oberkiefer/Nacken drehen um `skullHinge`, Unterkiefer/Kehle um `jawHinge` plus Versatz des Gelenks; beim freien Kopf kippt der Kopfknochen mit (`kopfFrei`). `pose.ts` (absolut, CPU) und `CreatureMesh.applyPose` (Knochen, relativ zum Elternknochen) müssen dieselbe Formel haben — Lokal = Welt(Eltern)⁻¹ · Abs · T(pos).
-- Loft‑Querschnitt: `sectionRadius(s, ca, cb)` bekommt die **Einheitsrichtung**; Trennhöhen (`split`, `band`) sind Längen → über cb · Radius vergleichen.
-- Deskriptor-Puffer: 16 Floats (Spine 4, Region 4, Extra 4 = AO, Dicke, Kante, Unterlippenseite, Pucker 3, Teil 1 = Beine −t / Schwanz +t).
-- **TSL-Zweige:** Werte, die mehrere `If`-Zweige teilen, vor den Zweigen mit `.toVar()` festhalten — sonst rechnet TSL sie nur im ersten Zweig, der sie baut, und in den anderen sind sie 0 (so waren Schuppen, Platten, Punkte, Rosetten unsichtbar). `hash()` aus three/tsl nur mit nicht negativen Ganzzahlen füttern (`hashPos`, `hash3` in `muster.ts`).
-- Lab per Browser-Klicks ist unzuverlässig (Referenzen veralten); Bilder immer über den Harness, Formen schnell über `profil.test.ts`.
-- Vorschau der Leitung: `game-dev-http` (5174); Florians Server 5173 nicht anfassen.
+Gefragt hatte ich danach „Halbe Haut bauen“ oder „Erst am Donut feilen“; Florian hat stattdessen seine Regel geändert (7.3).
+
+### 7.3 Florians zweite Regel: Der Rand bleibt erst eine Kante (13.11. mittags)
+
+Florian (wörtlich im Plan, Abschnitt 5, Punkt 4): „Der neue Loop soll nicht gleich rund sein, sondern wie vorher eine Kante. An
+den neuen Kreuzungen bilden sich Punkte, und der durch die Mitte gezogene Griff bleibt sichtbar, aber ist markiert. Ich kann ihn
+auch löschen, dann ist kein Rückführen mehr möglich. Wenn ich die Kante dann selektiere und ihre Kantigkeit auf 0 stelle, erhalte
+ich ja den runden Donut. Wäre das eleganter? Oder habe ich einen Denkfehler?“
+
+**Was das heißt:**
+- **Lose** (der markierte Punkt ist noch da): alles wie heute. Die ganze Haut wird gerechnet, jede Hälfte bis zur Mitte gezeigt,
+  der Rand ist die Kante von heute, zurückziehen geht. Neu sind nur Anzeigen: Punkte, wo die Linien die Mitte kreuzen (sie
+  folgen dem gezogenen Punkt), und die Markierung des Punkts hinter der Mitte.
+- **Fest** (der markierte Punkt gelöscht): geschnitten wie in 7.2, aber die neuen Enden behalten den Griff des geteilten Stücks
+  (die Linien knicken an der Mitte wie vorher, Ecken von selbst), der Rand ist ein Loop mit Kante.
+- **Rund:** „Kante aus“ am Rand, mit der Regel, die der Editor für jede Kante schon hat (`kantenKnicken`: Die Ecken von selbst
+  werden glatt, ihre Griffe kommen auf eine Gerade, die Längen bleiben).
+
+**Nachgerechnet** (dieselbe Probe mit `GRIFFE=kante`; Bilder `docs/progress/editor/schritt4-donut-kante-2026-11-13.jpg`, großes
+Loch, und `schritt4-donut-kante-klein-2026-11-13.jpg`; Zahlen am Ende von `schritt4-donut-regel-messung-2026-11-13.txt`).
+**Florian hat die Bilder noch nicht beurteilt.**
+
+| Fall | fest gemacht (Rand ist eine Kante) | danach „Kante aus“ |
+| --- | --- | --- |
+| großes Loch (190) | die Haut liegt bis 6,9 (im Mittel 1,8) neben dem vorher Gezeigten; Knick am Rand 71° / 109° (vorher 96° / 111°); 1 + 6 Runden | Haut glatt: Knick am Rand 15° / 29° (daneben 14°), nichts umgestülpt, 4 + 8 Runden; die Linien gehen 20; der Umriss des Lochs bleibt (77 bis 92, Ecken an den vier Punkten) |
+| gerade erst über die Mitte (150,5) | bis 2,2, im Mittel 0,04 | glatt (14° / 25°); die Linien gehen 48 (aus der Kugel mit Delle wird ein dicker Ring) |
+
+**Befunde:**
+1. **Die Regel ist die bessere.** Beim Ziehen und Loslassen kann nichts springen (es ist der Stand von heute), Schneiden und
+   Runden sind zwei eigene Schritte mit vorhandenen Werkzeugen (Punkt löschen, Kante aus), und meine beiden Festlegungen aus 7.2
+   (Grifflänge, runder Rand) fallen als Automatik weg.
+2. **Rund geht erst, wenn der Schnitt fest ist** (lose laufen die Hälften in der Rechnung noch durcheinander). Vorschlag:
+   „Kante aus“ an einem losen Rand macht den Schnitt gleich mit fest (⌘Z führt zurück).
+3. **„Kante aus“ rundet die Haut, nicht den Umriss des Lochs.** Der bleibt, wie er geschnitten wurde; rund wird er über die
+   vier Punkte des neuen Loops und ihre Griffe (von Hand, oder als eigener Schritt wie in 7.2).
+4. **Festmachen bewegt die Haut ein wenig** (großes Loch bis 6,9): Nach dem Schnitt rundet sich an der Kante jede Seite für
+   sich. Ob das ganz zu vermeiden ist, ist offen.
+5. **Der Donut braucht die halbe Haut nicht.** Der Zug bleibt wie heute, und der Schnitt gibt wieder eine gewöhnliche
+   gespiegelte Haut, auf der das Fenster weiterarbeiten kann (so rechnet die Probe). Der offene Punkt aus 7.2 („der Zug selbst
+   ist nicht gerechnet“) entfällt mit dieser Regel.
+
+Gefragt war: „Donut bauen“ oder „Erst die halbe Haut“. **Florian: „Donut bauen“.**
+
+### 7.4 Schritt 4a: der Donut, gebaut im Bau-Fenster und in Florians Fenster übernommen (13.11. mittags)
+
+Gebaut in `form-bau` (Port 5197, `http://localhost:5197/kurven.html?gewichte=geometrie`; der Server ist die Vorschau der
+Sitzung, Eintrag `kurven-bau`), Etappen 1 bis 5 aus dem Plan (Schritt 4a), und noch am selben Abend in sein Fenster übernommen
+(unten). **Florians Urteil steht aus.**
+
+**Was das Fenster jetzt tut:**
+- **Lose** (ein Punkt ist über die Mitte gezogen): Ziehen, Loslassen und Zurückziehen wie bisher. In den Blättern steht ein
+  kleiner heller Punkt, wo eine Linie die Mitte kreuzt (er folgt dem Zug), der Punkt hinter der Mitte ist orange markiert, und
+  die Statuszeile sagt „ein Punkt hinter der Mitte (löschen macht den Schnitt fest)“.
+- **Fest:** Den markierten Punkt wählen und löschen (⌫). Die Haut wird an der Mitte geschnitten, die Linien enden dort mit ihrem
+  Knick (Rauten: Ecken an der Kante), der Rand des Lochs ist ein Loop mit Kante und ist gleich gewählt. ⌘Z führt zurück.
+- **Rund:** K am gewählten Rand (Kante aus); K noch einmal macht ihn wieder kantig.
+- **Weiter:** Die Punkte des Rands sind gewöhnliche Punkte (ziehen, Griffe); der Umriss des Lochs wird über sie rund.
+
+**Wo es liegt:** Kern `packages/shape/src/dicht/mitteSchnitt.ts` (`mitteKreuzungen`, `hinterDerMitte`, `mitteFestmachen`; Tests
+`mitteSchnitt.test.ts`). Fenster `apps/editor/src/form/kurven.ts`: in `blattZeichnen` die Punkte an den Kreuzungen und die
+Klasse `hinter`, `hinterDerMitteZahl` (Statuszeile), `mitteFest`, am Anfang von `loeschen` die Weiche; drei Regeln am Ende des
+Kurven-Blocks in `form.css`. Keine neuen Felder im Stand. Proben: `apps/editor/scripts/pruefen/form-donut-fenster.mjs` (im
+Fenster: `GPU=1 node scripts/pruefen/form-donut-fenster.mjs`, mit `NAME=<Form>` an einer gesicherten Form) und
+`form-donut-regel.ts` mit `GRIFFE=kern` (der Baustein rechnet dieselben Zahlen wie 7.3).
+
+**Gemessen im Bau-Fenster** (Zahlen `docs/progress/editor/schritt4a-donut-fenster-messung-2026-11-13.txt`, Bild
+`schritt4a-donut-fenster-2026-11-13.jpg`; gezogen wird die Kreuzung zweier Ringe an der Seite bis 40 hinter die Mitte):
+
+| Fall | fest gemacht: die gezeigte Haut neben der von vorher (größter Abstand / Mittel) | Knick quer über den Rand: mit Kante → nach K | Probe |
+| --- | --- | --- | --- |
+| Kugel mit zwei Ringen und der Mittellinie | 6,4 / 1,7 | 82° → 26° | alles gut |
+| `test_kaputt` | 4,7 / 0,3 | 65° → 15° | alles gut |
+| `teat firefish` (11 400 Punkte) | 4,7 / 0,1 | 55° → 14° | alles gut |
+| `strange bird` (Zug nur 12 hinter die Mitte) | 2,7 / 0,1 | 98° → 17° | Grenze, siehe unten |
+
+„Alles gut“ heißt: lose stehen die Punkte an den Kreuzungen, der Punkt ist markiert; zurückgezogen ist nichts mehr markiert;
+fest gemacht gibt es die Linienstücke und den Rand mit Kante, nichts ist umgeschlagen oder schwarz, die Haut ist spiegelgleich;
+K macht den Rand glatt und wieder kantig; ein Punkt des Rands lässt sich danach ziehen und bleibt in der Mitte; ⌘Z führt bis
+zum losen Stand zurück; keine Fehler in der Konsole.
+
+**Grenzen und Offenes:**
+1. **`strange bird`, Kreuzung der Ringe bei (30, −28, 148):** Schon der lose Zug stülpt dort 15 % der gezeigten Haut um (schwarz
+   im Fenster; das ist der Zug von heute, nicht der Schnitt), und das Loch reicht bis an den Umriss der Form (der Rand bekommt
+   zwei Punkte mit der Mittellinie). Fest machen ändert daran nichts, „Kante aus“ mindert es auf 3 %. An so einer Stelle lässt
+   sich heute kein sauberer Donut ziehen.
+2. Fest gemacht wird alles, was hinter der Mitte liegt, nicht nur die Stelle des gelöschten Punkts.
+3. Liegt nur ein Griff hinter der Mitte und kein Punkt, erscheinen die Punkte an den Kreuzungen, aber nichts macht fest.
+4. In der Pose und mit einem Maul kommt eine Meldung statt eines Schnitts (seine drei Formen haben beides nicht; an einer Form
+   mit Maul ist das nicht geprüft).
+5. Ein Loch, das den Umriss durchbricht oder kleiner ist als ein Dreieck: Meldung, nichts ändert sich (`fehler` im Kern).
+6. Der Umriss des Lochs bleibt bei „Kante aus“, wie er geschnitten wurde.
+7. Fest machen bewegt die Haut ein wenig (Tabelle): An der Kante rundet sich jede Seite für sich.
+8. Sichern und Laden einer fest gemachten Form ist nicht eigens geprüft.
+
+**In Florians Fenster seit dem 13.11. mittags (er: „Übernehmen“):** `claude/form-bau` ist nach `claude/form-spiegel`
+zusammengeführt (`e511d990`, ohne Konflikte); damit liegt dort auch der Code, der bisher nur in `form-bau` lag (der Schnitt im
+Kern, die Proben zu Schritt 3 und 4, „Form halten“ hinter `?ziehen=direkt`). Geprüft im Arbeitsbaum `form-alt`: Typen, die Tests
+zum Schnitt und zum Fenster, und `form-donut-fenster.mjs` gegen `http://localhost:5194/…`: alles gut, dieselben Zahlen wie im
+Bau-Fenster. **Der Server auf 5194 lief nach der Zusammenführung nicht mehr** (vorher hörte ein Prozess auf dem Port; ob die
+Zusammenführung ihn beendet hat oder die App, ließ sich nicht feststellen). Er ist neu gestartet (Eintrag `kurven-alt`) und
+hängt seitdem an der bauenden Sitzung; läuft er nicht, startet ihn `kurven-alt` wieder. `claude/form-bau`,
+`claude/form-spiegel` und `claude/editor-grundlayout` stehen auf demselben Stand.
+
+**Als Nächstes:** Florians Urteil im Fenster. Danach nach seiner Wahl: am Donut weiter (die offenen Punkte oben), Schritt 4b
+(halbe Haut) oder Schritt 5 (Posen).
+
+### 7.5 Schritt 4b, erster Teil: die Rechnung auf der Hälfte (13.11. mittags, Florian: „kannst du halbe Haut machen“)
+
+Gebaut in `form-bau` (Port 5197); **seit dem 13.11. nachmittags in Florians Fenster (5194)** (er: „Dann mach erstmal weiter, wie du
+empfiehlst“; `claude/form-bau` nach `claude/form-spiegel`, Stand `b8d3f656`). Geprüft dort: Die Donut-Probe meldet „alles gut“,
+`kurven.html` und `/editor` laden ohne Fehler. Er war unterwegs und hat es noch nicht gesehen; sein Urteil zum Tempo steht aus.
+
+**Was gebaut ist** (anders als im Plan zuerst beschrieben, mit weniger Risiko): Das Netz im Fenster bleibt ganz (Verdichten,
+Anzeige, Sichern, Posen unverändert). Gefaltet wird dort, wo die Zeit bleibt, im Löser `HautAusKurven` (Option `halb`):
+- **Lagen:** statt eines Systems über alle Punkte zwei halb so große (x und y: ein Punkt und sein Spiegelbild sind eine
+  Unbekannte; z: ebenso mit Vorzeichen, die Punkte der Mittelebene fallen heraus). Rechte Seite gefaltet, gelöst, zurück auf alle
+  Punkte (`lagen`, `faltungAnlegen`, `gefaltet`).
+- **Krümmung:** dieselben konjugierten Gradienten, jede Größe nur an einem Punkt je Spiegelpaar, Vorkonditionierer gefaltet.
+- **Vorlage und Auftrag** (Zerlegen im Hintergrund) tragen die zwei Systeme der Lagen (`HautVorlage.sysZ`,
+  `vorlageAusSystemen`); der Schlüssel der Struktur endet dann auf „:h“, eine Vorlage der anderen Art wird nicht genommen.
+- **Bitgleich schneller, auch über die ganze Haut:** zwei Spalten beim Lösen ausgeschrieben (`loesenZwei`), der Kotangens je
+  Halbkante einmal statt dreimal (`intrinsisch.ts`), Vermessen ohne `forEach`.
+- **Im Fenster** Standard (`?halb=0` rechnet zum Vergleichen über die ganze Haut). Dazu **„flüssig zuerst“**: Eine weitere Runde
+  im selben Bild gibt es nur, wenn sie samt Anzeige in 14,5 ms passt (`BILD_MS`, `bildRestMs`; `?bildms=0` ist das alte feste
+  Budget, `?budget=<ms>` stellt es). Anlass: Mit der kürzeren Runde passten am „strange bird“ zwei in die 12 ms, und jedes
+  zwanzigste Bild kam erst nach 35 statt nach 21 ms.
+
+**Gemessen** (alles in `docs/progress/editor/schritt4b-halb-messung-2026-11-13.txt`; Kern: `form-halb.ts`, Fenster:
+`form-halten-probe.mjs` mit `HALTEN=0`, je ein Lauf):
+
+| Form (Punkte) | Kern: Runde / Zerlegen, halb gegen ganz | Häute auseinander | Fenster: Rechnen je Bild | Bilder im Zug (Median / 95 %) | Ruhe nach dem Loslassen |
+| --- | --- | --- | --- | --- | --- |
+| `test_kaputt` (2 100) | 80 % / 79 % | 0,002 | 5,7 → 4,2 ms | 17 / 27 → 17 / 27 ms | 0,2 → 0,2 s |
+| `strange bird` (7 400) | 73 % / 53 % | 0,02 | 6,6 → 4,7 ms | 16 / 21 → 17 / 21 ms | 1,2 → 0,6 s |
+| `teat firefish` (11 400) | 73 % / 51 % | 0,08 | 10,3 → 7,1 ms | 18 / 32 → 16 / 35 ms | 0,7 → 0,6 s |
+
+**Befunde:**
+1. **Gleiche Form.** Derselbe Zug ganz und halb gerechnet liegt nach 60 Runden höchstens 0,08 Einheiten auseinander; Knicke und
+   umgeschlagene Dreiecke sind bei beiden gleich (am „strange bird“ 55 Knicke über 60° und 2 umgeschlagene, am „teat firefish“
+   39 und 0). Im Fenster: Die Donut-Probe meldet an Kugel und `test_kaputt` „alles gut“; am `teat firefish` meldet sie in
+   manchen Läufen zwei umgeschlagene Dreiecke nach „über die Mitte und zurück“, über die ganze Haut gerechnet genauso (siehe
+   Fallen). Grobe Züge an `test_kaputt` (`form-ablauf-probe.mjs`): wie vorher, Rauminhalt und Fläche 100,0 %, nichts
+   umgeschlagen. **Maul und Pose** (`form-fressen-pose.mjs` mit `&netz=dicht`: Maul zeichnen, Fressen, in der Pose ziehen,
+   zurück, in der Grundform einen Ring schneiden und ziehen, wieder Fressen, ⌘Z): ganz und halb dasselbe Ergebnis (keine offenen
+   Kanten, nichts umgeschlagen, ⌘Z bis zum Anfang). In der Pose rechnet die halbe Rechnung nicht mit (dort gilt der Löser mit
+   Bereich); sie greift nur in der Grundform über die ganze Haut.
+2. **Das Tempo steigt um rund ein Drittel, nicht auf das Doppelte.** Die Gegenprüfung vom 10.11. hatte für das Lösen 34 %
+   gemessen; heute macht das Lösen nur noch die Hälfte einer Runde aus (der Rest ist Vermessen und die Gewichte nach der
+   Geometrie), und zwei halbe Systeme zu lesen kostet mehr als ein Drittel eines ganzen. Im Kern: Runde 73 %, Zerlegen 51 %.
+3. **Die Bilder im Zug ändern sich nur am größten seiner Formen:** dort im Median alle 16 statt 18 ms; jedes zwanzigste braucht
+   weiter doppelt so lange (32 und 35 ms). An den beiden kleineren war schon vorher eine Runde je Bild fertig; dort wird nur
+   das Rechnen kürzer (Reserve) und am „strange bird“ die Ruhe nach dem Loslassen (1,2 → 0,6 s).
+4. **Nicht gebaut** (nur im Kern, brächte die Runde von 73 % auf 50 bis 60 %): die Gewichte nach der Geometrie (heute der
+   größte Posten einer Runde, 37 %) und das Vermessen auf der Hälfte rechnen. Schwierig daran: Die Gewichte tauschen Kanten,
+   auch solche auf der Mittelebene; dort entstünden Dreiecke über beide Hälften. An seinen heutigen Formen änderte das die
+   Bilder nicht mehr (eine Runde passt ins Bild), nur die Reserve für größere Formen. Auch nicht gebaut: Verdichten und Anzeige
+   auf der Hälfte, das Netz selbst als Hälfte (der große Umbau aus dem Plan).
+
+**Fallen dabei:** `loesenSpalten` mit 2 oder 4 Spalten läuft über den allgemeinen Weg (je Spalte rund viermal so langsam wie die
+ausgeschriebenen); zwei umgeschlagene Dreiecke nach „über die Mitte und zurück“ am Firefish kommen mit und ohne halbe Rechnung
+vor (je einmal in zwei bis drei Läufen), sie hängen am Lauf.
+
+**Florians Antwort (13.11. nachmittags):** „Dann mach erstmal weiter, wie du empfiehlst, aber es soll nicht vergessen werden. Wir
+werden das Tempo noch brauchen, wenn Shader, Materialien, Fell und Zusatzteile wie Flügel und Beine dazukommen. Meine Formen sind
+momentan beliebige Testformen und haben nichts mit den Wesen zu tun.“ Also: übernommen, weiter mit den Posen; der Rest der halben
+Haut steht als **Schritt 4c** fest im Plan. Befund 4 oben („an seinen heutigen Formen änderte das die Bilder nicht mehr“) ist
+kein Grund, ihn zurückzustellen: Seine Formen sind kein Maßstab für das Tempo.
+
+### 7.6 Schritt 5, Etappe 1: kleiner Beweis „die Pose in ihrer Ruhe rechnen“ (13.11. nachmittags): hält nicht wie festgelegt, angehalten
+
+**Vorweg (13.11., 17:15 Uhr): Was hier scheitert, ist das Maul aus der schmalen Form (die verborgene Fläche zwischen den Lippen),
+nicht die Pose. An Florians von Hand geformtem Maul hält derselbe Beweis; siehe 7.8.**
+
+**Was geprüft wurde** (Plan, Nachtrag zu Schritt 5): Weil die heutige Rechnung bleibt, wäre eine Pose eine zweite Lage derselben
+Form (Versatz der Linien, Blendshape der Haut), gerechnet in ihrer Ruhe (vor den Knochen, das Maul ist zu) mit der Rechnung der
+Grundform; die Knochen drehen nur die Anzeige, ein Zug im Blatt wird mit dem Winkel seines Punkts zurückgedreht. Gebaut ist
+davon nichts, im Fenster ändert sich nichts.
+
+**Probe:** `form-pose-ruhe.ts` (Kern) an einer Kugel mit einem Ring und einem Maul aus der Seite, im Bau-Fenster gezeichnet
+(`form-pose-ruhe-fenster.mjs`; die Form liegt unter `apps/editor/scripts/pruefen/formen/pose-maul-kugel.eewesen`), Maul 30°
+offen. Drei Züge, jeder von demselben Stand: unterster Punkt der Unterlippe 25 nach unten, derselbe 25 nach oben, der Punkt oben
+auf dem Ring 40 nach oben. Bild `docs/progress/editor/schritt5-pose-ruhe-2026-11-13.jpg` (links jeweils die Pose von heute, aus
+dem Fenster abgelesen), Zahlen `docs/progress/editor/schritt5-pose-ruhe-messung-2026-11-13.txt`. Alle Bewegungen sind gegen die
+zur Ruhe gerechnete Haut der Fassung gemessen (Halbmesser der Kugel 150).
+
+| Fassung an den Lippen | ohne Zug (20 Runden) | Lippe nach unten: Haut fern vom Maul | Lippe nach oben: Haut fern vom Maul | Punkt am Ring: größte Bewegung |
+| --- | --- | --- | --- | --- |
+| (a) die verborgene Fläche der Öffnung rechnet mit (Rechnung der Grundform, unverändert) | 0,03 | 10,7 | 31,7 (der Kopf verzieht sich sichtbar) | 40,0 (wie die Grundform) |
+| (b) die Lippen sind eine Kante | 0,12 (der Wechsel zur Kante einmal 0,6) | 0,95 | 0,92 | 56,8 (bläst anders auf) |
+| (c) die Öffnung ist aus der Rechnung genommen | der Wechsel allein: 35,7 | 1,8 | 2,2 | 39,9 |
+
+In allen Fällen: nichts umgeschlagen, Ruhe nach 43 bis 73 Runden, Linien genau auf ihren Pfaden (0,00), Grundform bitgleich.
+
+**Befunde:**
+1. **Die Rechnung der Grundform kann die Pose rechnen** (Kriterien 1 und 5 erfüllt; 2 für (a)). Daran scheitert es nicht.
+2. **(a) scheitert an den Lippen** (Kriterium 4): Ein Zug an der Lippe nimmt die Haut über den ganzen Kopf mit. Nach oben läuft
+   die Unterlippe in der Ruhe der Pose durch die Oberlippe (dort ist das Maul zu, die Lippen liegen rund 18 auseinander), die
+   verborgene Fläche stülpt sich um, die Form verzieht sich. Das ist kein Randfall: Ein Maul ist in der Ruhe fast zu, jeder Zug
+   der Lippen aufeinander zu führt dorthin.
+3. **(b) hält die Züge an der Lippe am Ort und sauber** (auch nach oben), ändert aber, wie die Form sich aufbläst: Ein Zug fern
+   vom Maul bewegt die Haut um 56,8 statt 40,0 (Kriterium 3). Die Kante lässt die Haut am Maul los. Gälte die Kante nur in der
+   Pose, verhielte sich die Pose dort anders als die Grundform; gälte sie auch in der Grundform, änderte sich die Grundform mit
+   Maul.
+4. **(c) scheidet aus:** Mit einem Loch fällt die Form zusammen (35,7). Die Rechnung über die ganze Haut braucht eine
+   geschlossene Haut. In der gezeigten Lage (Maul offen) zu rechnen hieße mit dem Maul von heute: entweder dieses Loch, oder die
+   verborgene Fläche überspannt das offene Maul (am 05.11. klappte sie dort um; heute nicht neu gerechnet).
+5. **Die Ursache ist das Maul von heute, nicht die Pose:** Die Haut ist am Maul geschlossen, nur die Anzeige schneidet auf.
+   Erwartung, nicht gerechnet: Mit dem Maul als eigener Geometrie (Schritt 6: zwei Lippenlinien, die Höhle als Haut) gibt es
+   keine verborgene Fläche; dann lässt sich die Pose in der gezeigten Lage rechnen, dort liegt nichts aufeinander.
+6. **Grenzen der Probe:** eine Form mit nur zwei Loops (der härteste Fall „wenige Linien“; mit mehr Linien wandert die Haut
+   weniger mit, das ist nicht gemessen), ein Maul aus der Seite, 30°. Die Linie des Mauls kreuzt sich bei (b) in der Ruhe selbst;
+   ob das Fenster das verträgt, ist offen.
+7. **Nebenbefund am Stand von heute:** Nach „Fressen“ aus steht die Grundform nicht ganz (bis 1,6 bis zur Ruhe):
+   `poseVerlassen` legt die Linien auf ihre Pfade, gesetzt wird die Haut erst beim nächsten Griff. Nicht behoben.
+
+**Florians Antwort (13.11. nachmittags): „ja, dann erst das Maul“.** Der Beweis dazu steht in 7.7; er hält nicht. Damit ist die
+Fassung (b) wieder im Spiel.
+
+### 7.7 Schritt 6, kleiner Beweis „das Maul als eigene Geometrie“ (13.11., 16:45 Uhr): hält nicht, angehalten
+
+**Vorweg (13.11., 17:15 Uhr): Dieser Beweis hat das Falsche geprüft, Befund 2 und die Folgerung in Befund 5 gelten so nicht.
+Geprüft war ein fertiges, fast geschlossenes Inneres, auf einmal eingeschweißt; ein Maul, das wie jede Form mit Linien geformt
+wird, hält die Rechnung. Siehe 7.8.**
+
+**Was geprüft wurde** (Plan, Nachtrag zu Schritt 6, mit Entwurf): Das Maul wird Haut. Die verborgene Fläche der Öffnung fällt
+weg, Gaumen und Boden werden an den Lippen eingeschweißt (eine Tasche, die Haut bleibt geschlossen); darauf rechnet die Rechnung
+der Grundform. Gebaut ist davon nichts, im Fenster ändert sich nichts.
+
+**Probe:** `form-maul-haut.ts` (Kern) an derselben Kugel mit Ring und Maul (`formen/pose-maul-kugel.eewesen`). Bild
+`docs/progress/editor/schritt6-maul-haut-2026-11-13.jpg` (links das Maul als Haut vor der Rechnung, daneben was die Rechnung
+daraus macht, rechts der geschnittene Loop um den Unterkiefer), Zahlen und die Diagnose Runde für Runde in
+`docs/progress/editor/schritt6-maul-haut-messung-2026-11-13.txt`.
+
+| Kriterium | Ergebnis |
+| --- | --- |
+| 1 Das Maul ist Haut | **hält:** geschlossen, spiegelgleich, nichts verdreht, Lippen genau auf ihrer Linie (3 062 Punkte, vergleichmäßigt 2 147) |
+| 2 Die Höhle hält | **hält nicht:** In acht Fassungen hält die Vorsicht die Rechnung nach acht Runden an, die Höhle ist dann weit auseinandergelaufen; Runde für Runde angesehen (drei Fassungen) bewegen sich freie Punkte der Höhle schon in der ersten Runde 37 bis 98 weit |
+| 3 Loop um den Unterkiefer | **zur Hälfte:** Der Schnitt gibt den Ring (außen ums Kinn, innen über den Boden); der Kern setzt ihn an keiner von neun Stellen ins Netz ein |
+| 4 Öffnen und Schließen, 5 Zug an der Lippe | nicht mehr gerechnet |
+
+**Die acht Fassungen zu Kriterium 2** (größte Bewegung außen): Höhle flach, feines Gitter, Lippen als Kante (0,7 außen, die
+Höhle läuft davon) · flach, vergleichmäßigt, Lippen glatt (663) · flach, vergleichmäßigt, Kante (202) · flach, vergleichmäßigt,
+Kante und Mittellinie durch die Höhle (51) · gewölbt wie in der Anzeige von heute, in denselben vier Fassungen (0,7 / 435 /
+184 / 57). In allen: „steht fest“ nach acht Runden, das heißt angehalten, nicht zur Ruhe gekommen.
+
+**Befunde:**
+1. **Einschweißen geht.** Die Bauart der Anzeige (`maulAmLoop`: Gaumen an der Oberlippe, Boden an der Unterlippe, zwischen den
+   Mundwinkeln treffen sie sich) gibt eine geschlossene Haut, wenn die Punkte an den Lippen verschmolzen werden.
+2. **Die Rechnung von heute hält keine Höhle.** Sie macht die Haut zwischen den Linien so rund wie möglich und nimmt die
+   Krümmung an den Linien von der Haut selbst ab. Bei der gewölbten Höhle laufen Punkte mitten im Gaumen davon, bei der flachen
+   die hinten, wo Gaumen und Boden in einem Knick zusammenlaufen. Dieselbe Schwäche wie „bläst auf oder kollabiert“ zwischen
+   wenigen Linien, hier in ihrer härtesten Form.
+3. **Der Knick hinten und an den Mundwinkeln bräuchte eine harte Linie**, die es im Linienmodell nicht gibt: Sie liefe von
+   Mundwinkel zu Mundwinkel durch das Innere, also weder von Mitte zu Mitte (Ring) noch geschlossen (Mitte, Paar).
+4. **Nicht geprüft:** die Höhle mit mehreren Linien gefasst (dazu müsste der Kern den Loop um den Kiefer einsetzen können);
+   eine Höhle mit runden Mundwinkeln; die Höhle aus der Rechnung genommen (sie folgte dann den Lippen wie heute in der Anzeige;
+   für Florian sähe das aus wie heute).
+5. **Folgerung:** Das Maul als Tasche in derselben Haut geht mit der heutigen Rechnung nicht. „Loops um einen Kiefer“ gibt es
+   so nur, wenn der Unterkiefer ein eigenes Teil mit eigener Haut ist (zwei runde Körper, jeder von der heutigen Rechnung
+   gehalten). Das ist ein eigener Entwurf und gehört zu „Teile anfügen“ (Flügel, Beine).
+
+**Gefragt war Florian (13.11., 16:45 Uhr)** nach „Posen mit Kante“, „Kiefer als Teil“ oder „Erst die Hälfte“. Seine Antwort war
+ein Widerspruch; siehe 7.8.
+
+### 7.8 Berichtigung: An Florians von Hand geformtem Maul halten beide Beweise (13.11., 17:15 Uhr)
+
+**Florian zum Ergebnis von 7.7:** „Ich verstehe das Problem nicht. Ich kann doch jedes beliebige Maul auch mit dem jetzigen Mesh
+von Hand formen, und es kollabiert nichts, und es wird nichts komisch aufgeblasen. Ich denke, du verkomplizierst da etwas oder
+hast mich missverstanden. Schau es dir nochmal an.“ **Und zu 7.6:** „Auch bei deinem fehlgeschlagenen Posenbeweis. Ich verstehe
+das Problem nicht. Ich verstehe, dass ich keine neuen Edgeloops oder Punkte in der Pose hinzufügen kann, aber verschieben und
+bearbeiten sollte ich alles ohne Probleme können. Dann ist es ja ein einfacher Morph der Punkte und Handles von einer zur anderen
+Position, während die Kieferknochen sich bewegen.“ Er hat dazu seine Form gesichert: **`wesen/maul handgemacht test.eewesen`**
+(3 485 Punkte, 13 Loops): zwei Kiefer, dazwischen die Bucht; die Lippenlinie ist Loop 14 (Ring, Kante), Loop 15 läuft nur um den
+Oberkiefer, Loop 16 nur um den Unterkiefer.
+
+**Was falsch war:**
+- 7.7 hat nicht „ein Maul in derselben Haut“ geprüft, sondern eine Konstruktion: das Innere der Anzeige (oder eine flache
+  Fassung davon) fast geschlossen, mit einem Knick hinten und fast ohne Linien, auf einmal eingeschweißt. Daraus habe ich
+  geschlossen, die Rechnung halte keine Höhle. Seine Formen zeigen täglich das Gegenteil (auch „teat firefish“ hat tiefe
+  Buchten).
+- 7.6 ist an der verborgenen Fläche zwischen den Lippen gescheitert. Die hat nur das Maul aus der schmalen Form; ein geformtes
+  Maul hat sie nicht.
+- Sein Wunsch vom 12.11. („echte eigene Geometrie“, Loops nur um einen Kiefer, Kiefer nicht mehr an den alten Linien) ist an
+  einem von Hand geformten Maul schon erfüllt. Ich hatte ihn als „die schmale Form in eine Höhle umbauen“ gelesen.
+
+**Gegenproben** (Zahlen `docs/progress/editor/schritt5-6-gegenprobe-geformt-messung-2026-11-13.txt`):
+1. **Ein Maul mit Linien geformt** (`form-maul-geformt.ts`; Kugel mit drei Loops, Punkte für die Lippen, der Punkt vorn in 40
+   Schritten 110 nach innen): steht nach 84 Runden, Bucht 110 tief, nichts umgeschlagen, Linien genau auf ihren Pfaden. Bild
+   `docs/progress/editor/schritt6-maul-geformt-2026-11-13.jpg`.
+2. **Seine Form, Knochen und Pose** (`form-pose-geformt.ts`, `LIPPE=14`; Bild
+   `docs/progress/editor/schritt5-pose-geformt-2026-11-13.jpg`):
+   - Die Form steht (zur Ruhe in 8 Runden, dabei 0,07 bewegt; Knicke über 60° 96, umgeschlagen 8 als Ausgangswert).
+   - **Knochen:** Aus der Lippenlinie liest `maulAmLoop` Gelenk und Gewichte (Mundwinkel hinten in der Bucht; 226 Punkte drehen
+     ganz, 400 zum Teil). Der Unterkiefer dreht als Ganzes. An seiner Spitze, wo die Lippenlinie endet, knickt die Haut: 20°
+     weiter offen 12 umgeschlagen (4 mehr), 20° weiter zu 28 (20 mehr). **Die Maul-Funktion von heute ginge an dieser Form
+     nicht:** Sie nähme die Innenseiten der Kiefer als Öffnung (622 Dreiecke), schnitte sie weg und setzte ein eigenes Inneres
+     ein.
+   - **Pose** (20° weiter offen; der Zug zurückgedreht, Rechnung der Grundform unverändert): Punkt der Unterlippe 25 nach unten
+     und 25 nach oben: steht nach 43 Runden, fern vom Maul 0,00, Linien 0,00 neben ihrem Pfad, keine neuen umgeschlagenen
+     Dreiecke. 70 nach oben: steht nach 54 Runden, 8 umgeschlagene mehr. Punkt fern vom Maul 25 nach außen: steht nach 42.
+
+**Was daraus folgt** (im Plan als Berichtigung):
+- Das Maul ist, was er formt. Eine eingeschweißte Höhle braucht es nicht.
+- **Schritt 6 neu (klein): die Maul-Funktion für ein geformtes Maul.** Lippenlinie wählen, „Fressen“: Gelenk und Gewichte, nichts
+  schneiden, nichts einsetzen; den Knick an der Kieferspitze beheben. Das Maul aus der schmalen Form bleibt daneben bestehen.
+- **Schritt 5:** Pose = dieselben Punkte und Griffe an anderen Lagen, dazu die Knochen (Nachtrag im Plan). Die Fassungen (b)
+  und (c) aus 7.6 und die Frage nach der Kante am Maul entfallen für ein geformtes Maul.
+- Reihenfolge: erst Schritt 6 neu (ohne Knochen gibt es an seiner Form keine Pose), dann Schritt 5.
+
+**Grenzen:** eine Form, nur im Kern, die Gewichte von heute. Im Fenster ist nichts gebaut und nichts geändert.
+
+**Gefragt war Florian (13.11., 17:15 Uhr),** ob es so richtig verstanden ist. Seine Antwort steht in 7.9: Das Maul soll
+weiter automatisch entstehen.
+
+### 7.9 Schritt 6 neu: das Maul automatisch geformt, wie von Hand (13.11., 17:30 Uhr): der Beweis hält
+
+**Florian:** „Das Maul soll aber an einem gewählten Edgeloop immer noch automatisch entstehen. Ist das dann noch so? Im Grunde
+machst du ja nur die Kante hart und verbindest von der Seite die gegenüberliegenden Seiten. Das sollte automatisch passieren
+können. Das Maul ist dann einfach eine Form wie von Hand gemacht, nur automatisiert. Ich kann weitere Edgeloops auch im Inneren
+einziehen und später Zahnfleisch, Zähne und Zunge genau einstellen. (Zähne und Zahnfleisch und Zunge machen wir jetzt noch
+nicht.) Geht das so, wie ich es hier erklärt habe? Die Spiegelkante ist zur Stabilisation der Form ja sowieso schon von Anfang
+an gegeben. Daher bläst sich eigentlich auch nicht mehr so viel auf, und es sollte problemlos gehen.“
+
+**Antwort: ja.** Probe `form-maul-automatisch.ts` (Kern) an der Kugel mit Ring und Maullinie
+(`formen/pose-maul-kugel.eewesen`); Bild `docs/progress/editor/schritt6-maul-automatisch-2026-11-13.jpg`, Zahlen
+`docs/progress/editor/schritt6-maul-automatisch-messung-2026-11-13.txt`. Nichts wird hineingebaut, es wird nur an Linien gezogen:
+1. Die Maullinie wird eine Kante (die Lippen).
+2. Mittellinie (falls sie fehlt) und eine **Querlinie durch beide Mundwinkel**: ein Ring um den Kopf in der Ebene des Mauls. Er
+   kreuzt die Mittellinie vorn zwischen den Lippen und die Maullinie in den Mundwinkeln; das Stück dazwischen ist hart. Das ist
+   „die gegenüberliegenden Seiten verbinden“, als Linie.
+3. **Durchstanzen:** Die Mittellinie bekommt im Maul die Punkte und Griffe der Maullinie, flach auf die Mittelebene gelegt; die
+   Kreuzung vorn wandert dabei zwischen die Mundwinkel, das Stück der Querlinie bis zum Mundwinkel wird gerade. In 8 Stufen zu 8
+   Schritten, nach jeder Stufe verfeinert wie nach einem Zug.
+
+**Florian zum ersten Bild (13.11., 17:35 Uhr; dort wurde nur die Kreuzung nach innen gezogen, die Mittellinie lief als gerades V
+nach hinten):** „Das Maul sieht aber auf deinen Bildern noch falsch aus. Es soll aussehen, als wäre der Edgeloop von der
+Seitenansicht durchgestanzt mit genau der Form des Maulloops von der Seite. Das heißt, die Mittellinie muss von der Seite exakt
+den Shape der Maullinie haben. Verstehst du. Aber der Weg ist grundsätzlich richtig.“ Daraus ist Schritt 3 oben geworden.
+
+| Geprüft | Ergebnis |
+| --- | --- |
+| Das Maul formen | steht; nichts umgeschlagen; Vorsicht 0; Linien 0,08 neben ihrem Pfad; außen bis 3,0 bewegt (mit dem Verfeinern unterwegs) |
+| Durchgestanzt | **die Mittellinie liegt im Maul höchstens 0,27 neben der Maullinie von der Seite**; die Flächen zwischen Lippe und Mitte weichen noch bis 9,8 ab (im Mittel 2,4) |
+| Loop nur um den Unterkiefer, Loop nur um den Oberkiefer | beide lassen sich schneiden und einsetzen; danach Ruhe nach 7 Runden, nichts umgeschlagen |
+| Kieferknochen 30° offen | nichts umgeschlagen (Gelenk am Mundwinkel; Gewichte außen wie heute, innen Boden ganz, Gaumen gar nicht) |
+| Zum Vergleich: dieselbe Form auf einmal hineingebaut, mit der Verbindung hinten als harter Linie | kommt nicht zur Ruhe (Vorsicht hält nach acht Runden an; 99 umgeschlagen) |
+
+**Befunde:**
+1. Der Unterschied zu 7.7 ist das Formen in Schritten. Die Form ist dieselbe (Gaumen und Boden als Flächen zwischen den Lippen
+   und der Linie von Mundwinkel zu Mundwinkel).
+2. Die Verbindung von Mundwinkel zu Mundwinkel braucht keine neue Art Linie: Sie ist das innere Stück eines gewöhnlichen Rings
+   um den Kopf, der durch die Mundwinkel läuft.
+3. Was 7.7 nicht konnte (den Loop um einen Kiefer einsetzen), geht hier.
+
+**Offen aus der Probe:** eine Form, nur im Kern. Die Flächen innen sind noch nicht genau durchgestanzt (zwischen Lippe und
+Mitte liegt keine Linie, die Rechnung rundet dort); Vorschlag: an jedem Punkt der Maullinie eine Querlinie wie am Mundwinkel,
+innen gerade von der Lippe zur Mitte, außen ein Loop um den Kiefer. Die Maullinie bekommt am Mundwinkel einen zweiten Punkt
+dicht neben dem vorhandenen. Die Gewichte innen sind grob; geöffnet ist die Fläche hinten am Gelenk zackig. Glatte Lippen
+(Kante aus) sind nicht geprüft.
+
+**Etappen** (Plan, „Schritt 6, wie Florian ihn beschreibt“): 1. „Maul“ formt automatisch (Kern und Fenster); 2. Kieferknochen am
+geformten Maul, auch am von Hand geformten; 3. danach Schritt 5 (Posen).
+
+**Florians Antwort (13.11.):** „Bau mal, ich muss es mir anschauen.“ Siehe 7.10.
+
+### 7.10 Schritt 6, Etappe 1: „Maul formen“ im Bau-Fenster gebaut (13.11., 18:40 Uhr)
+
+Gebaut in `form-bau` (Port 5197); **in Florians Fenster (5194) ist davon nichts.** Er sieht es sich im Bau-Fenster an.
+
+**Was gebaut ist:**
+- **Kern:** `maulFormen(haut, loops, maulId, opt)` in `packages/shape/src/dicht/maulFormen.ts` (Test `maulFormen.test.ts`). Rein:
+  Haut und Loops bleiben, zurück kommen die neue Haut, die neuen Loops, `alt` (für `netzGewachsen`) und die Zähler, oder
+  `fehler` mit dem Grund. Ablauf wie in 7.9: Mundwinkel sicherstellen, Maullinie hart (und `maulGeformt` am Ring),
+  Mittellinie (vorhandene durch beide Lippen, sonst angelegt), Querlinie durch beide Mundwinkel (hart nur von der Mitte bis zum
+  Mundwinkel, dahinter ein Punkt ohne Kante), dann durchstanzen in 8 Stufen zu 8 Schritten, nach jeder Stufe verfeinert.
+  `opt.zwischen` ruft nach jedem Abschnitt (zum Messen oder später zum Zeigen).
+- **Fenster:** Knopf „Maul formen“ (`kurven.html`, `kurven.ts`: `maulFormenGewaehlt`): am gewählten Ring, nur in der Grundform.
+  Erst die Meldung, dann wird gerechnet (an der Kugel 0,7 s, so lange steht das Fenster); ⌘Z führt zurück. Ein Maul der alten
+  Art an derselben Linie entfällt dabei. `maulAnlegen` weist einen geformten Ring ab: „Fressen“ und die Regler geben dort eine
+  Meldung, bis Etappe 2 gebaut ist. `/editor` ist nicht angefasst.
+
+**Probe im Fenster** (`GPU=1 node scripts/pruefen/form-maul-formen-fenster.mjs <bild>`, Kugel, schmale Form in der Seite vorn
+über den Umriss, dann der Knopf), alle Punkte erfüllt:
+
+| Geprüft | Ergebnis |
+| --- | --- |
+| Formen | „Maul geformt (0,7 s)“; 1 586 → 1 761 Punkte; drei Loops (Maullinie mit Kante, Mittellinie mit 11 Punkten, Querlinie mit 4) |
+| Nichts umgeschlagen, spiegelgleich | 0; Abweichung 0 |
+| Durchgestanzt | die Mittellinie liegt im Maul (19 Stellen) höchstens 0,15 neben der Maullinie von der Seite |
+| Hinter dem Maul bleibt die Form | größte Abweichung von der Kugel 4,2 (Halbmesser 150) |
+| An der Unterlippe ziehen | wie jeder Zug, nichts umgeschlagen |
+| „Fressen“ am geformten Maul | Meldung statt der alten Anzeige |
+| ⌘Z | genau wie vor dem Formen |
+| Konsole | keine Fehler |
+
+Bild: `docs/progress/editor/schritt6-maul-formen-fenster-2026-11-13.jpg`. Dazu: 152 Tests im Kern (`src/dicht/`,
+`zerlegung.test.ts`), 24 im Fenster, Typen und Lint sauber; die Donut-Probe und die Fressen-Probe (Maul der alten Art) laufen
+wie vorher.
+
+**Beim Einbau gefunden und behoben** (beides war in der Probe 7.9 nicht aufgefallen, weil die Form dort schon einen Ring hatte):
+1. **Die Kugel wurde zur Zitrone.** Die neue Mittellinie hatte nur die zwei Punkte an den Lippen; ihr Pfad lief in einem Stück
+   um den ganzen Körper und verzog die Form beim Setzen um 21. Jetzt bekommen die neuen Linien Punkte, wo sie nötig sind
+   (`griffeAnlegen` mit `punkteBis`): 1,7.
+2. **Die Kante der Querlinie reichte um den ganzen Kopf** (eine Kante an einem Punkt reicht bis zum Nachbarpunkt). Jetzt liegt
+   dicht hinter dem Mundwinkel ein Punkt ohne Kante.
+3. Die Kreuzung der Querlinie mit der Maullinie nimmt den Mundwinkel selbst (kein zweiter Punkt daneben mehr).
+
+**Offen:**
+- **Etappe 2:** Kieferknochen am geformten Maul (Gelenk an den Mundwinkeln; Gewichte außen wie heute, innen weich vom Boden zum
+  Gaumen; „Fressen“ und Regler ohne Schneiden und Einsetzen), auch am von Hand geformten Maul (dort der Knick an der
+  Kieferspitze, 7.8).
+- Die Flächen zwischen Lippe und Mitte sind noch nicht genau durchgestanzt (7.9: bis 9,8 daneben); Vorschlag: Querlinien an
+  jedem Punkt der Maullinie, innen gerade.
+- Hinter dem Maul setzt sich die Haut an der neuen Querlinie um bis zu 6 (Kern) bzw. 4 (Fenster); das tut jede neue Linie.
+- Die Querlinie läuft außen um den ganzen Kopf, weil es Linien nur von Mitte zu Mitte gibt. Ob Florian sie dort will, ist
+  offen.
+- Geprüft an der Kugel. An einer seiner Formen ist der Knopf noch nicht probiert; eine Mittellinie, die es schon gibt, wird
+  benutzt, wenn sie durch beide Lippen läuft (bei Formen mit Löchern gibt es mehrere Linien der Mitte).
+- Das Formen steht 0,7 s lang im Fenster; bei großen Formen länger (nicht gemessen).
+
+### 7.11 Schritt 6, zweite Fassung: einfaches Maul, animiert; Linien mit Verjüngung (13.11., 20:45 Uhr)
+
+Florian hat sich 7.10 im Bau-Fenster angesehen, zwei eigene Modelle gesichert (`wesen/simple_mouth.eewesen`,
+`wesen/simple_mouth_more simple.eewesen`) und dreimal geschrieben; seine Worte stehen im Plan (Schritt 6, „Zweite Fassung“).
+Kurz: grundsätzlich gut, aber die Form im Maul ist zu kompliziert und die zusätzlichen Punkte braucht es nicht; die Zitrone ist
+ohne Haltelinien logisch; Kanten sind falsch gefasst (ein Punkt knickt an einer Kreuzung in eine Richtung und läuft in die
+andere rund); die Basis ist sein einfaches Maul (Lippen hart, an den Lippen 90 bis 100° ins Maul geknickt, am Mundwinkel rund
+70°), am liebsten ganz ohne Punkt und ohne Mittellinie; das Formen soll organisch animiert sein; Knicke 3 Bildpunkte, runde
+Linien so fein wie möglich, dazwischen verjüngt; ein Maul soll auch nur eine Linie sein können.
+
+**Gebaut in `form-bau` (5197); in Florians Fenster (5194) ist davon nichts:**
+- **Kern:** `maulFormen` neu (`packages/shape/src/dicht/maulFormen.ts`): Maullinie hart wie mit K, Mittellinie durch beide Lippen
+  (fehlt sie: angelegt, nachdem die Lippen hart sind, nur mit den zwei Punkten dort), dann dreht sich ihr Griff nach innen an
+  beiden Lippen in 8 Stufen zu 8 Schritten bis zum Knick von 95° (`knick`), Länge für eine Tasche von 0,55 des Wegs zum
+  Mundwinkel (`tiefe`); nach jeder Stufe verfeinert. `maulFormenSchritte` ist dasselbe als Folge von Zwischenständen (je Runde
+  einer). `ohneMitte` entfernt eine nur zum Formen angelegte Mittellinie am Ende wieder (zum Ansehen). Sicherung: Wächst das
+  Netz über alle Maßen oder sind die Lagen nicht endlich, kommt `fehler` zurück.
+- **Kern:** `haerteBei(l, loops)` in `loops.ts`: Härte je Probe für die Anzeige (1 am Knick, 0 an runden Stützstellen,
+  dazwischen gleichmäßig). Die Rechnung nimmt weiter `kanteBei`.
+- **Fenster** (`kurven.ts`): `maulFormenGewaehlt` startet den Lauf, `maulSchritt` rechnet je Bild zwei Runden weiter und zeigt
+  den Stand (`&maulRunden=<n>`); Eingaben sind so lange gesperrt; ⌘Z führt hinter das Formen zurück; ein zweites Mal formen ist
+  erlaubt. `&maulMitte=0` schaltet `ohneMitte` ein. Bänder im 3D mit Breite je Punkt (`bandGeometrie`), in den Blättern die
+  Kante als Fläche (`kantenFlaeche`, Klasse `kante-band` in `form.css`), Linien 0,5 Bildpunkte, gewählte 1,25. K: Bleibt eine
+  Linie hart, weil eine kreuzende dort knickt, sagt es die Meldung.
+
+**Proben, alle erfüllt:**
+- Fenster, „Maul formen“ (`GPU=1 node scripts/pruefen/form-maul-formen-fenster.mjs <bild>`): geformt in 2,0 s, 98 von 100
+  Bildern mit Bewegung; 1 586 → 1 653 Punkte; zwei Loops, die Mittellinie mit zwei Punkten, Knick 95,0° und 95,0°, die
+  Lippenlinie läuft an der Mitte rund durch; umgeschlagen 2; spiegelgleich; hinter dem Maul bis 24,8 neben der Kugel (Zitrone);
+  „Fressen“ gibt die Meldung; ein Zug an der Unterlippe läuft; K lässt die Form stehen (bewegt 0,00); ⌘Z genau wie davor;
+  keine Fehler in der Konsole.
+- Fenster, Verjüngung (`form-kante-verjuengung-fenster.mjs`): Ring mit drei Punkten, K am mittleren: 3,00 Bildpunkte am Punkt,
+  0,50 an den Nachbarn.
+- Kern: 154 Tests (`src/dicht/`, `zerlegung.test.ts`), 24 im Fenster, Typen und Lint sauber.
+- Bilder: `docs/progress/editor/schritt6-maul-einfach-fenster-2026-11-13.jpg` (Fenster nach dem Formen),
+  `schritt6-maul-einfach-2026-11-13.jpg` (sein Modell „simple_mouth“ über dem automatisch geformten, aus dem Kern),
+  `kanten-verjuengung-fenster-2026-11-13.jpg`.
+
+**Gemessen (Plan, Tabelle): Ohne Mittellinie ist der Knick an den Lippen nicht eingestellt.** Mit Mittellinie 98° und 98° auf
+zwei Netzen, Tasche 0,45 und 0,47. Ohne sie auf dem Netz des Fensters 93° und 100° mit einer Tasche von 0,82, auf einem
+feineren 39° und 68° mit 0,23. Deshalb bleibt die Mittellinie im Standard stehen.
+
+**Beim Bauen gefunden:**
+1. Eine neue Mittellinie mit zwei glatten Punkten (angelegt, bevor die Lippen hart sind) zerdrückt die Kugel (Pfad bis 190
+   daneben), und das Verfeinern lief auf 433 000 Punkte. Jetzt wird sie nach den harten Lippen angelegt (dann ist sie dort eine
+   Ecke, jede Seite bekommt ihre Griffe für sich: die Zitrone, bis 28), und das Formen bricht ab, wenn das Netz davonläuft.
+2. „Kante aus“ mit selbsttätigem Glätten der kreuzenden Linie stülpt an der Mittellinie mit zwei Punkten den Körper um.
+   Zurückgenommen.
+3. Die Zählung „umgeschlagen“ des Kerns (`falten`) meldet an beiden Modellen von Florian 6 Dreiecke am Mundwinkel; das
+   automatisch geformte Maul liegt je nach Netz bei 0 bis 12 (das Fenster zählt 2).
+
+**Offen (Florians Wort steht aus; im Plan als „Kanten neu“ und als Fragen):**
+- Die Kante, die ihren Winkel selbst trägt (Beweis im Kern, Kriterium im Plan). Erst damit hält sein zweites Modell (nur die
+  Maullinie) den Knick, und K bekommt an der Lippe einen klaren Sinn.
+- Was die 70° am Mundwinkel meinen, und ob „Maul formen“ den Mundwinkel nach innen ziehen soll.
+- Ecke und glatt an einer Kreuzung je Linie (heute im Fenster für alle Linien zusammen).
+- Das Maul aus nur einer Linie (geschlossen unsichtbar): mit Etappe 2.
+- Etappe 2: Kieferknochen am geformten Maul. Danach Schritt 5.
+- An einer seiner Formen ist der Knopf noch nicht probiert. `/editor` ist nicht angefasst.
+
+### 7.12 Beweis „die Kante trägt ihren Winkel selbst“ (13.11., 21:20 Uhr): hält
+
+Florian auf die zwei Fragen aus 7.11: „Ja, es meint den Knick quer an den Mundwinkeln nach innen. Mache gerne erstmal das bzw.
+den Beweis.“ Die 70° sind also der Knick der Haut quer über die Maullinie am Mundwinkel.
+
+**Die Probe** (`apps/editor/scripts/pruefen/form-kante-winkel.ts`, aus `packages/shape` mit `npx vite-node …`; `DREIECKE=2000|
+3000|6000`, `NAME=<gesicherte Form>`, `LIPPE`, `WINKEL`, `LOSLASSEN=1`, `MEHR=<Runden>`, `AUS=<datei.html>`): Kugel mit der
+schmalen Form ums Maul, hart, sonst keine Linie. Am Löser ist nichts geändert: Die erste Reihe der Haut innen an der Linie
+(`reiheAnlegen`: was die Linie umschließt, die Punkte neben ihr) ist ein Loop ohne Kette, dessen Proben je einen Punkt der Haut
+binden (`reihenLoop`). Seine Ziele werden vor jedem Schritt neu gerechnet (`reihenZiele`): jeder Punkt um die Linie gedreht, bis
+er um den Winkel gegen die Haut außen in den Körper knickt (`rahmen`: Tangente, Richtung der Haut außen, ihre Normale); Abstand
+längs und quer wie beim Anlegen. Gedreht wird vom Knick der Form zum Soll in 12 Stufen zu 6 Schritten, nach jeder Stufe
+verfeinert, am Ende gesetzt.
+
+**Ergebnis:** die Tabelle im Plan (Schritt 6, „Beweis“). Kugel auf drei Netzen: 95,0°/95,0°, 95,1°/94,1°, 95,0°/95,0° an den
+Lippen, 74,0°, 72,2°, 72,3° am Mundwinkel, Tasche 0,18 bis 0,20, die Haut steht. Florians „simple_mouth_more simple“: von
+126,8°/116,4° auf 93,6°/94,6°, Mundwinkel von 43,5° auf 72,0°, steht, nichts umgeschlagen. Alle Punkte des Kriteriums erfüllt;
+die 6 umgeschlagenen Dreiecke auf dem Netz des Fensters sind schon ohne jeden Winkel da (vom Verfeinern am spitzen Mundwinkel).
+
+**Was der Beweis nicht zeigt:**
+- Die Führung steht nur in der Probe. Ohne sie läuft der Winkel wieder davon (76°/80°, 132°/106°, 69°/66°; an seiner Form
+  111°/107°): Sie muss in jede Rechnung (Zug, Nachlauf, Hintergrund), also in `LoopZug` oder in den Löser.
+- Hinter der starren ersten Reihe ist das Innere unruhig (an seiner Form im Bild zu sehen; 400 Runden mehr ändern es nicht).
+- Die Tiefe der Tasche ergibt sich (an der Kugel 0,2 des Wegs zum Mundwinkel).
+- Genau am Mundwinkel gibt es innen keine Punkte der Haut; der Knick ist dort nicht gemessen.
+
+**Als Nächstes (Florians Wort steht aus):** der Einbau in drei Etappen (Plan, „Vorschlag für den Einbau“): im Löser als weiches
+Ziel der Ebene statt als starre Bindung; der Winkel als Angabe an der Linie; „Maul formen“ darauf, ohne Mittellinie.
+
+### 7.13 Eingebaut: Die Kante trägt ihren Winkel selbst, „Maul formen“ in dritter Fassung (13.11., 22:15 Uhr)
+
+Florian nach dem Beweis (7.12): „Dann mache Etappe 1.“ Gebaut in `form-bau` (5197); in seinem Fenster (5194) ist davon nichts.
+
+**Abweichung von der Ankündigung:** Die erste Reihe sollte im Löser „beweglich statt starr“ werden, damit das Innere ruhiger
+wird. Die Messung vorher zeigt: Die Unruhe kommt nicht von der starren Reihe. Sein Modell hat gesichert 5,6° mittleren Knick
+zwischen Nachbardreiecken im Maul, nach bloßem Neurechnen ohne Winkeländerung 7,3°, mit dem Winkel geformt 6,1°; die erste Reihe
+selbst ist die ruhigste (4,2°). Mein Bild vom Beweis war flach schattiert. Die Reihe bleibt deshalb geführt wie im Beweis (jede
+Runde neu gebunden); sie quer fest und in der Ebene frei zu machen, hieße den Löser umbauen (eine Matrix für x, y, z).
+
+**Kern:**
+- `packages/shape/src/dicht/kantenWinkel.ts` (Test `kantenWinkel.test.ts`): `LoopPunkt.knick` (Grad, nach innen), `knickSoll`
+  (gleitet zwischen den Punkten mit Angabe), `knickReihe` (erste Reihe innen an einem eingesetzten Ring: was die Linie umschließt
+  = alle Teile der Haut außer dem größten), `knickRahmen`, `knickZiele` (jeder Punkt um die Linie gedreht, Abstand wie beim
+  Anlegen; die Reihe geht mit dem Ziel der Linie mit), `knickLoop` (die Reihe als Loop ohne Kette: Proben `ecken: [v, a, b]`,
+  `b: [1, 0, 0]`), `knickQuer` (Messung), `knickFuehrungen`.
+- `LoopZug` (`loops.ts`): legt mit der Art `kurven` die Führungen an, bindet sie hinter den Loops der Form und rechnet ihre
+  Ziele in `schritt` vor jeder Runde neu (dann je Aufruf des Lösers eine Runde). `start` und `lagen` bleiben auf die Loops der
+  Form beschränkt. `loopStruktur` rechnet die Führungen mit (sonst passte eine fertige Zerlegung nicht).
+- `maulFormen.ts`: Weg „Kante“ (Standard ohne Mittellinie durch beide Lippen): Mundwinkel, Lippen hart, Angaben an beiden Enden
+  und am Mundwinkel vom gemessenen Knick in 12 Stufen zu 6 Schritten zum Soll (`knick` 95, `knickWinkel` 70), nach jeder Stufe
+  verfeinert, am Ende gesetzt. Die harte Linie wird vorher nicht allein gesetzt (das verzöge die Kugel um 9). Weg „Mittellinie“
+  wie in 7.11 (vorhandene Mittellinie durch beide Lippen, oder `weg: 'mitte'`). `ohneMitte` gibt es nicht mehr.
+
+**Fenster (`kurven.ts`):** `?maulWeg=mitte` (zweite Fassung zum Vergleich), Meldung „… trägt ihren Knick selbst“, `kanteSetzen`
+löscht mit „Kante aus“ auch `knick`, der Streuwert des Stands enthält `knick`, Prüfhaken `loops()` mit `knick` und
+`knickGemessen(id)`. Sichern und Laden behalten die Angabe (`ablage.test.ts`).
+
+**Proben, alle erfüllt:**
+- `GPU=1 node scripts/pruefen/form-maul-formen-fenster.mjs <bild>` (Kugel): geformt in 1,6 s, 76 von 78 Bildern mit Bewegung;
+  1 586 → 1 733 Punkte; ein Loop; Angaben 95°, 70°, 95°; gemessen 95,0° und 95,0°, Mundwinkel 71,9°; hinter dem Maul 4,4 neben
+  der Kugel; umgeschlagen 0; nach einem Zug an der Unterlippe 95,0° und 95,0°; ⌘Z genau wie davor; keine Fehler.
+- `GPU=1 NAME="simple_mouth_more simple" node scripts/pruefen/form-maul-formen-form.mjs <bild>`: von 126,8° und 116,4° auf 93,6°
+  und 94,6°, Mundwinkel von 43,5° auf 71,9°; 4,5 s; umgeschlagen 0; nach einem Zug am Mundwinkel 93,6° und 94,4°; ⌘Z genau wie
+  geladen.
+- Kern: `form-kante-winkel.ts` (formt jetzt mit `maulFormen`): drei Netze 92,5° bis 95,1° an den Lippen, 72,3° bis 73,8° am
+  Mundwinkel. 158 Tests im Kern, 24 im Fenster, Typen und Lint sauber; Donut-Probe und Verjüngungs-Probe wie vorher.
+- Bilder: `docs/progress/editor/schritt6-maul-kante-fenster-2026-11-13.jpg`, `schritt6-maul-kante-florian-vorher-2026-11-13.jpg`,
+  `schritt6-maul-kante-florian-nachher-2026-11-13.jpg`.
+
+**Offen:**
+- **K macht die Lippen nicht rund:** Nach „Kante aus“ misst die weiche Linie am Knick eine riesige Krümmung, die Rechnung im
+  Hintergrund läuft auseinander, das Fenster meldet es und behält die Form (der Knick steht dann noch in der Haut, die Linie
+  trägt ihn aber nicht mehr). Erst klären, was „rund“ am Maul heißen soll.
+- Der Körper einer Kugel ohne Haltelinien verformt sich über sehr viele Runden langsam weiter (Kern: 14 nach 300 Runden), das
+  Maul bleibt (0,9). An seinem Modell bleibt beides.
+- Die Angabe lässt sich nicht von Hand setzen. Sie gilt nur an eingesetzten Ringen, nur in der Grundform (in der Pose rechnet
+  `HautZiele` ohne Führung).
+- Tiefe der Tasche nicht eingestellt. Genau am Mundwinkel liegt innen kein Punkt der Haut.
+- Formen dauert an seinem Modell 4,5 s (`&maulRunden=4` halbiert es).
+- Etappe 2 (Kieferknochen am geformten Maul, das Maul aus nur einer Linie), danach Schritt 5.
+
+### 7.14 Schritt 6, Etappe 2: Kieferknochen am geformten Maul (13.11., 22:50 Uhr)
+
+Florian: „Dann mache mal Kieferknochen. Bei rundem Maul meine ich nur die Lippe wird abgerundet.“ Gebaut in `form-bau` (5197);
+in seinem Fenster (5194) ist davon nichts.
+
+**Kern:**
+- `maulGeformtAmLoop(h, l, ecke, opt)` in `packages/shape/src/dicht/maulLoop.ts`: das geformte Maul für die Knochen. Gleiche
+  Gestalt wie `maulAmLoop` (`MaulAmLoop`), aber `offen` überall 0, `kantenOffen` leer, kein Inneres. Gewichte: außen das Feld von
+  `maulAmLoop` mit `kieferWieLippe` (jeder Kiefer reicht mindestens so weit, wie seine Lippe lang ist: `kieferFeld` mit
+  `dickeMin`); innen harmonisch von der Unterlippe (1) zur Oberlippe (0), der Übergang zwischen ¼ und ¾ (nahe einer Lippe dreht
+  die Haut ganz mit ihr); außen die ersten drei Reihen neben den Lippen harmonisch zwischen Lippe und Feld; am Ende genau
+  spiegelgleich gemacht. `wieVorher` wie bei `maulAmLoop`.
+- `LoopZug` führt die erste Reihe einer Linie mit Knick jetzt auch in der Pose (`gedaechtnis`), nicht nur in der Grundform.
+
+**Fenster (`kurven.ts`):** `maulSchnitt` wählt nach `maulGeformt` zwischen `maulGeformtAmLoop` und `maulAmLoop`
+(`maulAktuell`). `maulAnlegen` nimmt geformte Ringe an; ein harter Ring ohne die Angabe wird dabei ein geformtes Maul; ein
+vorhandener Mundwinkel bleibt. `hautZeigen` schneidet am geformten Maul nichts weg und zeigt kein eingesetztes Inneres
+(`maulIstGeformt`); die Statuszeile meldet dort nicht mehr „Loop schneidet nicht“. Prüfhaken `loops()` mit `geformt`.
+
+**Proben:**
+- Kern: `form-kiefer-geformt.ts` (`NAME`, `RING`, `KIEFER=20,40`, `AUS`), Tabelle im Plan. Vorher/nachher an „simple_mouth_more
+  simple“: 0 → 2 → 6 umgeschlagen und große Flächen von hinten, jetzt 0 → 0 → 0; an „maul handgemacht test“ 8 → 8 → 18, jetzt
+  8 → 8 → 8 (der Zacken an der Kieferspitze ist weg).
+- Fenster: `GPU=1 [NAME=… RING=…] [ALT=1] node scripts/pruefen/form-kiefer-fenster.mjs <bild>`: Kugel, „simple_mouth_more
+  simple“, „maul handgemacht test“ (`RING=14`), und das Maul bisher (`ALT=1`): alles gut. `form-maul-formen-fenster.mjs`
+  prüft jetzt, dass „Fressen“ am geformten Maul angeht und nichts wegschneidet.
+- 159 Tests im Kern, 24 im Fenster, Typen und Lint sauber, Donut-Probe wie vorher.
+- Bilder: `docs/progress/editor/schritt6-kiefer-florian-zu-2026-11-13.jpg`, `schritt6-kiefer-florian-offen-2026-11-13.jpg`,
+  `schritt6-kiefer-kugel-offen-2026-11-13.jpg`, `schritt6-kiefer-zwei-kiefer-2026-11-13.jpg`.
+
+**Offen:**
+- **Das Maul aus nur einer Linie** (Florian: gefalteter Edgeloop, Lippen aufeinander, geschlossen unsichtbar): nicht gebaut.
+  Entwurf und Beweis im Kern stehen in 7.15 (der Vorschlag mit dem Schnitt aus `maul.ts` ist damit ersetzt).
+- **Runde Lippen:** „nur die Lippe wird abgerundet“. K an der Maullinie rundet noch nichts (7.13).
+- Flache Tasche an der schmalen Form: offen eine gedehnte Wand dicht hinter den Lippen. Tiefe nicht einstellbar.
+- Schritt 5 (Pose als Morph mit der Rechnung der Grundform) ist nicht gebaut; in der Pose rechnet `HautZiele`.
+- Der Regler schließt nicht über die Grundform hinaus.
+
+### 7.15 Das Maul aus nur einer Linie: Entwurf und Beweis im Kern (13.11., 23:50 Uhr)
+
+Florian: „ok, dann weiter mit dem maul“. **Im Fenster ist nichts gebaut; im Kern ist nichts geändert.** Neu sind nur die Probe
+`apps/editor/scripts/pruefen/form-maul-linie.ts`, zwei Bilder und die Messdatei. Der ganze Text mit Tabelle steht im Plan,
+Schritt 6, „Das Maul aus nur einer Linie“.
+
+- **Entwurf:** Die eine Linie ist die Oberlippe. Die Unterlippe ist ihr um den Mundwinkel gedrehtes Abbild (20°; Punkte und
+  Griffe, „Zwilling“). Beide sind der gefaltete Ring; daraus wird ein geformtes Maul wie bisher. Gerechnet wird immer diese
+  leicht geöffnete Lage. Gezeigt wird es zu: Der Kieferknochen dreht um denselben Winkel zurück, die Unterlippe (Gewicht 1) liegt
+  dann genau auf der Oberlippe (Gewicht 0). Geschlossen fasst man nur die Oberlippe an, der Zwilling folgt.
+- **Aufruf** (aus `packages/shape`, wenige Sekunden):
+  `RINGE=-10,70 AUS=<blatt.html> npx vite-node ../../apps/editor/scripts/pruefen/form-maul-linie.ts`, dann
+  `node apps/editor/scripts/pruefen/html-shot.mjs --jpg <blatt.html>`. Stellgrößen: `WINKEL0` (20), `DREIECKE` (2000), `AUF` (30),
+  `BOGEN` (6), `RINGE` (ohne: die Kugel allein).
+- **Hält in jedem Lauf, der sich rechnen lässt:** zu liegen die Lippen aufeinander (vorn 0,00, größter Spalt 0,08 bis 0,32: so
+  genau gibt das Netz jede Linie wieder); die Rechnung steht; die Zwillinge bleiben beim Formen genau; um 30° geöffnet sind die
+  Lippen vorn 47 auseinander, dahinter eine runde Tasche; mit zwei Haltelinien bleibt der Körper stehen (fern 0,2 bis 0,3).
+- **Hält nicht: der Mundwinkel auf dem groben Netz** (2 000 Dreiecke, so groß wie das Rechennetz des Fensters). Auf dem letzten
+  Zehntel der Linie ist die Tasche dünner als die Maschen: 0 bis 6 Dreiecke außen umgeschlagen, die Tasche tritt an 0 bis 3
+  Stellen durch die Haut, je nach Lauf. Schon in der gerechneten Lage, also eine Schwäche von „Maul formen“ an einer spitzen
+  Ecke; auf 6 000 Dreiecken sauber. Unter etwa 16° wird der Keil zu dünn (8° lässt sich nicht einsetzen).
+- **Naht außen, zu:** im Mittel 3,2° bis 5,1° Knick; im flach schattierten Bild eine feine Naht und eine kleine Delle am
+  Mundwinkel. „Quasi unsichtbar“ entscheidet Florian im Fenster.
+- **Nicht geprüft:** mit einer Mittellinie durch das Maul (ihre Kreuzung an der Unterlippe muss mit dem Zwilling gehen; „Maul
+  formen“ nimmt dann den Weg über die Mittellinie); an Florians Formen; alles im Fenster.
+- **Nicht weiterverfolgt:** das geformte Maul in der Rechnung zudrücken. Die Probe dazu war am Mundwinkel falsch gebaut und ist
+  nicht im Repo; sie beweist nichts. Dagegen spricht: Haut läge auf Haut (Knick unter 90°), am gefalteten Mundwinkel hat die
+  Linie keine Richtung (`tangente` in `kantenWinkel.ts`), das Verdichten legt die dünne Tasche zusammen.
+- **Was der Bau wäre** (nach seinem Wort, im Bau-Fenster): 1. die spitze Ecke am Mundwinkel (Kriterium: auf dem Rechennetz des
+  Fensters außen nichts umgeschlagen, nichts tritt durch die Haut; Kugel und „simple_mouth_more simple“); 2. mit F eine offene
+  Linie zeichnen (Zwilling anlegen, Maullinie sofort Kante, „Maul formen“ animiert); 3. Regler „Maul“ mit „zu“ bei 0
+  (`knochenWinkel` klemmt heute negative Winkel auf 0); 4. Zwillingsregel beim Ziehen, Probe mit Mittellinie; 5. Linie
+  ausblendbar, Naht glatt schattiert.
+- **Fallen** (auch in `apps/editor/CLAUDE.md`): Der Mundwinkel muss vor `griffeAnlegen` eine Ecke sein; die Maullinie muss von
+  Anfang an eine Kante sein (sonst zieht der Keil eine Kugel ohne Haltelinien zusammen); die Zählung „umgeschlagen“ über die
+  ganze Haut zählt die zusammengefaltete Tasche mit, deshalb zählt die Probe außen und Tasche getrennt.
+- Bilder: `docs/progress/editor/schritt6-maul-linie-2026-11-13.jpg` (2 000 Dreiecke), `schritt6-maul-linie-feines-netz-2026-11-13.jpg`
+  (6 000); Zahlen: `schritt6-maul-linie-messung-2026-11-13.txt`.
+
+### 7.16 Das Maul aus nur einer Linie im Bau-Fenster; Florian hält an: Das Maul bekommt ein eigenes System (14.11., 09:20 Uhr)
+
+**Florian am 14.11., mitten in der Prüfung (wörtlich):**
+
+> Ich unterbreche dich hier, da ich alte Muster wiedererkenne. Das Maul formt sich und das ist ok. Meine Sonderwünsche mit dem
+> geschlossenen maul in jeder Position und wie sich die mundhöle formen soll ist ok, aber noch nicht gut. Das braucht noch sehr viel
+> polishing. Dazu brauchst du genauere beschreibungen für die verschiedenen fälle sonst läuft es zu unendlichen testreihen. Ein wesen
+> ohne jede kurve das ein maul bekommt ist ein edgcase. Geschlossene münder müssen gehen, können wenn das technisch besser ist aber
+> auch später eingebaut werden. Sag mir mal wo wir in dieser session aktuell stehen. Wir haben wieder zwischenschritte eingebaut und
+> punkte vor und zurückgestellt im plan. Zur info. Das Maul mit der feste eingeklappten wulst ist nicht was ich erwarte. wenn ich
+> nachträglich linien durchs maul ziehe stören diese festen wulsten...Es gilt also zu überlegen was eine saubereere lösung wäre. Auch
+> wenn ich ein maul über eine vorhanden kreuzung lege muss ich erst mit handarbeit die kreuzungspunkte zurechtlegen. Das ist noch
+> nicht gut. Da die kreuzungspunkte gelöscht bzw automatisch optimal in die maultasche wandern müssen. Das braucht alles ein eigenes
+> system und definition. Der weg stimmt schonmal, aber das sollten wir in einer eigenen großen session angehen.
+
+**Was daraus folgt** (die Lesart der bauenden Sitzung; mit ihm abstimmen, bevor gebaut wird):
+
+- Am Maul wird nichts weitergebaut und nichts weiter vermessen, bis seine Fälle beschrieben sind. Die Maul-Sitzung beginnt mit der
+  Beschreibung (er beschreibt, die Sitzung fragt nach und schreibt mit), dann je Fall eine Probe an seiner Form.
+- Maßstab sind Formen mit Linien. Eine Form ohne jede Linie, die ein Maul bekommt, ist ein Randfall. Dieser Block hat den größten
+  Teil seiner Zeit in genau diesem Randfall verbracht (siehe „Wie der Block lief“).
+- „Fest eingeklappte Wulst“ meint nach dieser Lesart das geformte Maul der dritten Fassung (7.13): die Maullinie als harte Kante
+  mit 95° an den Lippen und 70° am Mundwinkel, die Tasche dahinter als Haut. Linien, die er danach durchs Maul zieht, stoßen an
+  diese Wulst. Gesucht ist eine sauberere Lösung, keine Nachbesserung der Winkel.
+- Kreuzungen unter einem Maul sollen von selbst verschwinden oder an die beste Stelle in der Tasche wandern. Heute legt er sie von
+  Hand zurecht.
+- Geschlossene Mäuler müssen gehen, dürfen aber später kommen, wenn das technisch besser ist.
+- „Der Weg stimmt schonmal“: Die Richtung (das Maul formt sich aus seiner Linie, die Tasche ist Haut) bleibt.
+
+**Was im Bau-Fenster steht** (Port 5197, Zweig `claude/form-bau`: `a500a7b5`, `86c421b6`, `effe1f24`; in seinem Fenster nichts):
+Mit F ein offener Strich (Seite: von vor dem Umriss zum Mundwinkel; Front oder Top: über die Mitte) wird ein Maul aus einer Linie.
+Die Linie ist die Oberlippe, die Unterlippe ihr um 20° um den Mundwinkel gedrehtes Abbild; es formt sich gleich, animiert, über
+„Maul formen“ in dritter Fassung. Gerechnet wird die leicht geöffnete Lage. „Fressen“ mit dem Regler „Maul“ ganz links zeigt es
+zu, nach rechts öffnet es. In der Grundform zieht ein Punkt einer Lippe seinen Zwilling mit; Doppelklick legt Punkt und Zwilling
+an; ⌘Z nimmt Linie und Maul zusammen zurück. In der Pose wird die Maullinie nicht gezogen.
+
+**Was hält** (gemessen an der Kugel ohne weitere Linien, Rechennetz des Fensters; Bilder
+[`gerechnet`](progress/editor/schritt6-maul-linie-fenster-gerechnet-2026-11-14.jpg),
+[`zu`](progress/editor/schritt6-maul-linie-fenster-zu-2026-11-14.jpg)):
+
+| | Strich in der Seite | Strich in der Front |
+| --- | --- | --- |
+| Formen | 1,5 s, animiert | 1,5 s |
+| Lippen als Abbilder | Abweichung 0 | 0 |
+| Knick gemessen | 93,3° und 94,6° an den Lippen, 73,8° am Mundwinkel | 95,0° und 94,0°, 81,8° |
+| umgeschlagen (außen und Tasche gemischt gezählt) | 0 | 0 |
+| fern vom Maul (hintere Hälfte, Abstand von der Mitte) | 150,0 bis 150,2 → 150,1 bis 150,2 | ebenso |
+| „Fressen“, Regler ganz links | vorn 0,00, größter Spalt 0,22 | 0,00 und 0,15 |
+| Regler 30° und 55° | Lippen vorn 48,7 und 86,9 auseinander | |
+| an der Oberlippe und am Mundwinkel gezogen | die Unterlippe geht mit, danach zu: Spalt 0,30 und 0,32 | nicht geprüft |
+
+Fenster-Probe `form-maul-linie-fenster.mjs`: 24 Punkte in der Seite, alle erfüllt; Front alle erfüllt. Kern-Probe
+`form-maul-linie.ts`: 12 Läufe (2 000, 3 000, 6 000 Dreiecke; 8° bis 24°; mit und ohne Haltelinien), 11 erfüllen alle vier
+Punkte ([Messwerte](progress/editor/schritt6-maul-linie-messung-2026-11-14.txt)). 169 Tests im Kern, 24 im Editor; die bisherigen
+Maul-Proben (`form-maul-formen-fenster`, `form-maul-formen-form`, `form-kiefer-fenster` an der Kugel und an
+„simple_mouth_more simple“) melden „alles gut“. Heute nicht neu gelaufen: `form-donut-fenster`, `form-kante-verjuengung-fenster`.
+
+**Was nicht hält:**
+
+1. **Linien, die das Maul kreuzen (so sind seine Formen).** An „test_kaputt“ (Strich in der Seite von −178/−60 nach −55/−52):
+   Das Maul formt sich in 1,1 s, die Form bleibt ([Bild](progress/editor/schritt6-maul-linie-test_kaputt-geformt-2026-11-14.jpg)).
+   Aber die Mittellinie bekommt an der Unterlippe zwei Punkte am selben Ort, der Loop auf einer Seite bekommt nur an der Unterlippe
+   eine Kreuzung, und die Maullinie hat 6 statt 7 Punkte: Die Lippen sind nicht mehr gepaart. Zu liegen sie vorn 2,63 auseinander
+   (größter Spalt 2,84), an den Kreuzungen stehen dunkle Keile, und der untere Umriss der Form geht in der Pose sichtbar mit dem
+   Kiefer mit ([Bild](progress/editor/schritt6-maul-linie-test_kaputt-zu-2026-11-14.jpg); die Bewegung des Umrisses ist nicht
+   gemessen). Ursache der fehlenden Kreuzung: Die Suche hält einen Fund für schon vorhanden, wenn ein Kreuzungspunkt desselben
+   Linienpaars näher als zwei mittlere Kanten liegt; die Lippen liegen enger beieinander.
+2. **Eine Mittellinie ohne eigene Punkte verliert ihre Form**, sobald ein Maul sie kreuzt
+   ([Bild](progress/editor/schritt6-maul-linie-mittellinie-ohne-punkte-2026-11-14.jpg)): Abstand der hinteren Hälfte von der Mitte
+   150 → 49 bis 205. Das ist kein Fehler des neuen Mauls, sondern des Editors: Mit dem bisherigen Maul aus zwei Linien geschieht
+   dasselbe (150 → 50 bis 170). Ein geschlossener Loop bekommt mit seinen ersten zwei Punkten einen Pfad aus zwei Kurvenstücken,
+   auch wenn die seinen Verlauf nicht beschreiben. Hat die Mittellinie nur zwei Punkte aus einem Ring, bricht das Maul aus einer
+   Linie ab („die Mittellinie hat an einer Lippe keinen Griff nach außen“). Seine Formen haben Mittellinien mit 4 bis 38 Punkten.
+3. **Feines Netz (`&netz=dicht`):** Das Formen lief bei 4 900 Punkten in der letzten Stufe davon (ein Punkt der Rückwand der
+   Tasche; die Ursache ist nicht gefunden). Jetzt setzt es dann mit halb so großen Stufen neu an und kommt durch, braucht aber
+   21 s, und man sieht den ersten Versuch ausbrechen.
+4. **Kern, Kugel allein, 8°:** geöffnet zählen in der Tasche 4 Dreiecke als umgeschlagen statt 2 (das Fenster rechnet immer 20°).
+5. **Nicht gebaut:** Bearbeiten im geschlossenen Zustand (gehört zu Schritt 5), die Linie ausblenden und die Naht glätten („quasi
+   unsichtbar“).
+
+Die Einzelheiten zum Code und alle Fallen stehen in `apps/editor/CLAUDE.md` („Maul aus nur einer Linie“ und die Fallen ab „Eine
+schmale Form als einzige runde Linie“).
+
+**Wie der Block lief** (damit die nächste Sitzung es anders macht): Geprüft wurde zuerst und am längsten an der Kugel ohne Linien
+(die Spitze am Mundwinkel, das Aufblasen der Kugel, das feine Netz). Seine Formen mit Linien kamen erst am Ende dran, und dort
+liegen die eigentlichen Fragen. Aus einer Probe je Schritt wurden Reihen (zwölf Läufe im Kern, vier Varianten im Fenster).
+Die Regel für die Maul-Sitzung: zuerst an seiner Form mit Linien, je Fall eine Probe, die vorher mit ihm beschrieben ist.
+
+**Fragen für die Beschreibung des Maul-Systems** (Vorschlag der bauenden Sitzung; er ergänzt und entscheidet):
+
+1. Die Lippe: Wie geht die Haut von außen in die Tasche über, wenn nicht als fest eingeklappte Wulst? Was bestimmt, wie rund sie
+   ist?
+2. Linien durchs Maul: Was tut eine Linie, die er nachträglich durchs Maul zieht (in die Tasche laufen, über die Öffnung springen,
+   an der Lippe enden)? Gilt für die Mittellinie dasselbe wie für jede andere?
+3. Kreuzungen unter einem neuen Maul: Wann werden sie gelöscht, wann wandern sie in die Tasche, und wohin dort?
+4. Grundform: Ist das Maul in der Grundform zu oder leicht offen? Heute wird es 20° offen gerechnet, „zu“ dreht der Kieferknochen;
+   dabei bewegt sich die Form unter dem Maul mit, sie ist zu also nicht genau die Form von vor dem Strich.
+5. Geschlossen: Was heißt „quasi unsichtbar“ (keine Linie, glatte Naht)? Was lässt sich im geschlossenen Zustand ziehen?
+6. Die Tasche: wie tief, welche Form, wovon hängt das ab? Der Mundwinkel: spitz oder rund?
+7. Der Kiefer: Welcher Teil der Form geht beim Öffnen mit?
+8. Welche seiner Formen sind die Fälle, an denen geprüft wird?
+
+### 7.17 Neue Reihenfolge und der Zwischenschritt „Abzweigungen“ (14.11., 10:20 Uhr)
+
+**Florian am 14.11. (wörtlich):**
+
+> Deine Urteile zu 1, 2, 4a und 4b....das sieht gut aus bis jetzt
+>
+> Dann lass uns einen zwischenschritt einbauen, den wir auch fürs maul später gut nutzen können.
+>
+> Aktuell kann ch mit dem werkzeug p nicht direkt von vorhandenenlinien weiterziehen. Ich will zum beispiel bei einem edgeloop mit
+> 4 punkten (z.B. kreis), die gegenüberliegenden punkte verbinden können, indem ich mit p von einem punkt zum anderen ziehe. Wenn
+> ich das bei beiden paaren mache ergibt sich dadurch ein kreuz mit einem punkt in der kreuzung, die ich sehr exakt formen
+> kann...z.B zu einem horn.
+> Damit kann ich z.B. auch 2 mundwinkel verbinden und so die tiefe der maultasche bearbeiten wenn da noch kein loop läuft. Also
+> grundsätzlich soll man von jeder linie und von jedem punkt aus eine verbundene abzweigung erstellen können. So reduzieren sich
+> auch die doppelten punkte an engen stellen, da ich so genau arbeiten kann und punkte mehrfach verwenden kann.
+>
+> Dann machen wir erst schritt 5, dann 4c.
+>
+> Das Maul bekommt dann eine eigene session, vllt zusammen mit Zähnen und auch an der selktion wie bei blender können wir dann
+> eher später arbeiten. Ich bin noch nicht sicher obe es das braucht und wie genau das umgesetzt werden kann.
+
+**Was daraus folgt:**
+
+- Zu Schritt 1, 2, 4a und 4b: „das sieht gut aus bis jetzt“. Das ist kein Abschluss, aber sein Urteil bisher.
+- Reihenfolge: Zwischenschritt „Abzweigungen“, dann Schritt 5 (Posen), dann 4c (Rest der halben Haut).
+- Das Maul bekommt eine eigene Sitzung, vielleicht zusammen mit Zähnen (7.16). Schritt 7 (Auswahl) kommt später; ob es das
+  braucht und wie, ist offen.
+
+**Der Zwischenschritt** steht mit Struktur, Fällen und Etappen im Plan („Zwischenschritt (14.11.): Abzweigungen“, vor Schritt 5).
+Kurz: Es gibt offene Linien; jedes Ende liegt auf der Mitte (wie heute beim Ring) oder hängt an einem Punkt einer anderen Linie
+und teilt ihn mit ihr. Mit P zieht man sie von einem Punkt oder einer Linie zu einem Punkt oder einer Linie, direkt (kürzester
+Weg über die Haut) oder mit Punkten dazwischen. Offen ist nur, ob eine Abzweigung auch frei auf der Haut enden darf.
+
+**Nachgelesen dafür (Code, nichts gemessen):** `stiftFertig` in `kurven.ts` verlangt mindestens drei Anker und legt die
+geschlossene Form mit `formAusZeichnung` auf die Haut. `Loop.art` ist `mitte`, `ring` oder `paar`; offen ist nur der Ring, und
+sein Ende gilt überall als Spiegelpunkt (`ringEnde`, z = 0). Rund 170 Stellen in Kern und Fenster fragen nach der Art einer
+Linie. `loopEinsetzen` hat für Mitte, Ring und Paar je einen eigenen Weg; die gemeinsamen Teile (`einsetzen(proben)`: Weg über
+die Kanten von Probe zu Probe) lassen sich für eine Kette von Punkt zu Punkt nutzen.
+
+**Etappe 1, der kleine Beweis im Kern (14.11., 10:30 Uhr): hält.** Probe `apps/editor/scripts/pruefen/form-abzweigung.ts`
+(Aufruf aus `packages/shape`; `AUS=<datei.html>` schreibt das Blatt, `KANTE=1` macht den Kreis zur Kante), Bild
+[`zwischenschritt-abzweigung-2026-11-14.jpg`](progress/editor/zwischenschritt-abzweigung-2026-11-14.jpg), Messwerte daneben,
+Tabelle im Plan. Kugel mit drei Linien und einem Kreis mit vier Punkten: Die zwei Abzweigungen von Punkt zu gegenüberliegendem
+Punkt lassen sich einsetzen und teilen die Punkte des Kreises; in ihrer Kreuzung liegt ein gemeinsamer Punkt; um 90 herausgezogen
+entsteht ein Horn entlang der vier Linienstücke (die Haut steht, umgeschlagen 0, Spitze 0,00 neben dem Ziel); der Kreis bewegt
+sich nicht. Die Haut außerhalb geht bei rundem Kreis bis 4,0 mit, mit dem Kreis als Kante gar nicht.
+
+Gebaut dafür, nur auf `claude/form-bau`: `Loop.haengt` und `endeAufMitte` (`loops.ts`), `abzweigen` (`einsetzen.ts`),
+`abzweigung.test.ts`. Für alle bisherigen Linien ändert sich nichts (169 Tests im Kern, 24 im Editor, `form-donut-fenster` und
+`form-maul-formen-fenster` „alles gut“). Was noch fehlt und welche Stellen noch nicht durchgesehen sind: `apps/editor/CLAUDE.md`
+(„Abzweigungen“ und die Falle „Ein offenes Ende liegt …“).
+
+**Als Nächstes, nach seinem Wort:** Etappe 2 (offene Linien überall im Kern: Verdichten, Löschen, Sichern und Laden, das Ende auf
+der Mitte, Start und Ende auf einer Linie ohne Punkt), dann Etappe 3 (P im Bau-Fenster nach den Fällen 1 bis 8). Offen ist seine
+Antwort, ob eine Abzweigung auch frei auf der Haut enden darf.
+
+**Etappe 2 und 3 (14.11., bis 11:05 Uhr): im Bau-Fenster gebaut, bis auf Fall 4.** Florian: „Ja, so bauen“ (eine Abzweigung
+endet immer an einem Punkt, auf einer Linie oder auf der Mitte). Tabelle der Probe und die drei Dinge, die beim Bauen dazukamen
+(Punkte dazwischen nur, wo nötig; vorhandene Punkte werden mitbenutzt; der kürzere Weg), stehen im Plan. Bilder aus dem
+Bau-Fenster an „test_kaputt“: [Kreuz](progress/editor/zwischenschritt-abzweigung-fenster-kreuz-2026-11-14.jpg),
+[Horn](progress/editor/zwischenschritt-abzweigung-fenster-horn-2026-11-14.jpg),
+[zur Mitte](progress/editor/zwischenschritt-abzweigung-fenster-zur-mitte-2026-11-14.jpg).
+
+- **Bedienung (seit 11:20 Uhr, nach Florians Meldung „es werden keine punkte gesetzt wenn ich mit p auf eine linie klicke. Das
+  wekzeug springt dann sofort wieder raus“):** P wählen. Klick auf einen Punkt oder eine Linie: Dort beginnt die Abzweigung, auf
+  einer Linie ohne Punkt entsteht er sofort, das Werkzeug bleibt an. Klick auf die Haut: ein Punkt dazwischen (Klick = Ecke,
+  Klicken und Ziehen = glatt). Klick auf einen anderen Punkt oder eine andere Linie: Ende. ⌫ nimmt den letzten Punkt zurück, Esc
+  bricht ab. In einem Zug vom Anfang zum Ende ziehen geht auch. Im Blatt Front oder Top vom Punkt auf das Spiegelbild seiner
+  Linie: Die Linie endet auf der Mitte. Beginnt der erste Klick nicht auf einem Punkt oder einer Linie, zeichnet P wie bisher
+  eine geschlossene Form.
+- **Löschen:** Die Abzweigung löschen lässt die Punkte der anderen Linie stehen. Ein Punkt, an dem eine Abzweigung hängt, bleibt.
+  Eine Linie, an der Abzweigungen hängen, lässt sich nur zusammen mit ihnen löschen (neu festgelegt; Florian kann es ändern).
+- **Geprüft:** `GPU=1 node scripts/pruefen/form-abzweigung-fenster.mjs` (aus `apps/editor`; 22 Punkte an „test_kaputt“, mit Klicks), 175 Tests
+  im Kern, 24 im Editor, Typen, Lint; `form-donut-fenster`, `form-maul-formen-fenster`, `form-kiefer-fenster`,
+  `form-maul-linie-fenster` wie vorher.
+- **Nicht gebaut:** der Griff eines glatt gesetzten Punkts, wie er gezogen wurde. **Nicht geprüft:** in der Pose, über die Mitte gezogen, Knick an
+  einer Abzweigung, seine anderen Formen, das feine Netz.
+- **Code:** `packages/shape/src/dicht/einsetzen.ts` (`abzweigen`), `loops.ts` (`haengt`, `endeAufMitte`), `richtung.ts`;
+  `apps/editor/src/form/kurven.ts` (Abschnitt „Abzweigung mit P“, `loeschen`, `punktAufLinie`). Einzelheiten und Fallen:
+  `apps/editor/CLAUDE.md`.
+
+### 7.18 Schritt 5, Etappe 2: Die Pose rechnet in ihrer Ruhe, am geformten Maul wie die Grundform (14.11., 12:20 Uhr)
+
+**Florian am 14.11. nach der zweiten Fassung der Abzweigungen:** „Ja, weiter Schritt 5“.
+
+**Was gebaut ist** (nur `claude/form-bau`: `40ef2045` 2a, `27bdc077` 2b, `9ce2013d` 2c, danach die berichtigte Anzeige der
+Linien; in seinem Fenster nichts):
+
+- **2a:** In der Pose sind `haut` und `loops` im Fenster die Ruhe der Pose (Grundform plus Versatz). Gezeichnet wird ihre
+  gedrehte Kopie (`alsAnzeige`); ein Zug im Blatt wird je Punkt mit dessen Winkel zurückgedreht (`inDerRuhe`); die Regler setzen
+  nur die Winkel, gerechnet und neu abgelesen wird nichts. Vorher: gezeigt und bearbeitet wurde die gedrehte Lage, die Griffe der
+  Linien nach jedem Dreh neu abgelesen.
+- **2b:** Am geformten Maul ist die Ruhe der Pose eine Form wie die Grundform: dieselbe Rechnung über die ganze Haut (mit
+  Krümmung, Setzen und Aufräumen im Hintergrund), die Linien genau ihr Pfad. Die Linien der Pose werden als Versatz ihrer Punkte
+  und Griffe gegen die Grundform gespeichert (`pose.linien`, neben dem Blendshape `pose.delta`).
+- **2c:** In der Pose gibt es am geformten Maul keine neuen Punkte und Linien und kein Löschen (Meldung). Ein Stand, der vor dem
+  14.11. in der Pose gesichert wurde, wird beim Laden einmal in die Ruhe zurückgedreht.
+- **Am Maul aus der schmalen Form** (mit eingesetztem Inneren) rechnet die Pose weiter wie bis zum 14.11. (im Bereich, Linien
+  nicht genau), nur in ihrer Ruhe: Seine verborgene Öffnung verträgt die Rechnung über die ganze Haut nicht (7.6).
+- **Anzeige der Linien berichtigt (12:20 Uhr):** Beim Ansehen des Bildpaars fiel auf, dass die dünnen Linien in der Pose neben
+  der Haut lagen. Ursache: Seit 2b zeichnete das Blatt sie als Kurven aus gedrehten Punkten und Griffen; wo sich der Winkel der
+  Knochen längs der Linie ändert, ist das nicht die gedrehte Linie (gemessen bis 13,26 neben der gezeigten Haut; die Haut selbst
+  stimmte). Jetzt wird der Pfad der Ruhe Stelle für Stelle mit dem Winkel der Haut dort gedreht (im Blatt `stueckeGezeigt`, für
+  die Bänder im 3D-Bild und die glatte Kante der Haut `pfadStuecke`): 0,03. Ausschnitte
+  [vorher](progress/editor/schritt5-pose-linien-vorher-2026-11-14.jpg) und
+  [nachher](progress/editor/schritt5-pose-linien-nachher-2026-11-14.jpg). Die drei Blätter werden in der Pose mit einem Drehen
+  gezeichnet (`blaetterZeichnen`): 2,3 ms, in der Grundform 1,7 ms.
+
+**Gemessen an „maul handgemacht test“** (Probe `form-pose-fenster.mjs`; Tabelle im Plan,
+[Messwerte](progress/editor/schritt5-pose-fenster-messung-2026-11-14.txt), Bildpaar
+[vorher](progress/editor/schritt5-pose-zug-vorher-2026-11-14.jpg) und
+[nachher](progress/editor/schritt5-pose-zug-nachher-2026-11-14.jpg)): Punkt der Unterlippe (die Kieferspitze) in der Pose 25
+nach unten: fern vom Maul bewegt sich die Haut 0,17 (vorher 4,39; dabei fiel das Netz von 3 485 auf 2 926 Punkte), die Linien
+liegen 0,00 neben ihrem Pfad (vorher bis 12,67); derselbe Zug fern vom Maul gibt in der Pose dieselbe Haut wie in der Grundform
+(0,00, vorher 5,96 auseinander); die Regler ändern die Ruhe nicht; ⌘Z führt zurück; Löschen und Doppelklick werden abgelehnt.
+
+**Nicht erfüllt:** „Nichts schlägt zusätzlich um“. Beim Zug an der Kieferspitze schlagen 8 bis 10 kleine Dreiecke an der
+Mittelebene um (16 bis 18 statt 8); derselbe Zug in der Grundform schlägt dort auch 8 um. Es liegt an diesem Zug an der Mitte,
+nicht an der Pose; behoben ist es nicht. Am Maul aus der schmalen Form, in der Front gezeichnet: nach dem Zug an der Lippe 2
+umgeschlagene Dreiecke (vorher 0).
+
+**Geprüft (nach der Berichtigung der Anzeige noch einmal):** `form-pose-fenster` (16 von 17 Punkten), `form-kiefer-fenster` (Kugel, „simple_mouth_more simple“, „maul
+handgemacht test“, schmale Form), `form-maul-linie-fenster`, `form-abzweigung-fenster`, `form-maul-formen-fenster`,
+24 Tests im Editor, Typen, Lint; vor der Berichtigung auch `form-fressen-pose` (alte Probe, Seite und Front, gegen den Stand
+davor verglichen).
+
+**Offen in Schritt 5:** Etappe 3 (die Pose geht mit der Grundform mit: Die Versätze sind da; geprüft ist das Mitgehen nur mit
+der alten Fressen-Probe am Maul aus der schmalen Form), Etappe 4 (beide Seiten frei: eigener kleiner Beweis zuerst), Etappe 5
+(sein Ablauf an einer seiner Formen, sein Urteil). Nicht geprüft: Sichern und Laden in der Pose im Fenster (nur der Test des
+Formats), das feine Netz, G/S/R mit ganzen Loops über Kiefer und Schädel hinweg.
+
+### 7.19 Schritt 5, Etappe 3: Die Pose geht mit der Grundform mit (14.11., 14:10 Uhr)
+
+**Florian am 14.11. nach Etappe 2:** „Etappe 3“.
+
+**Die Probe** `form-pose-mitgehen-fenster.mjs` (Kriterien im Plan, vor dem Messen festgelegt): in der Pose einen Punkt der
+Unterlippe 15 nach unten ziehen, zurück in die Grundform; dort (0) nichts ändern, (A) einen Punkt fern vom Maul ziehen, (B) einen
+Punkt der Lippenlinie ziehen, (C) neben dem gezogenen Punkt einen Punkt einfügen, (D) eine Linie quer über den Körper schneiden;
+nach jedem wieder in die Pose und zurück.
+
+**Was der Stand nach Etappe 2 ergab** (13 Punkte nicht erfüllt): Schon ohne jede Änderung war die Pose nach Verlassen und
+Wiederbetreten eine andere (Haut bis 1,93 anders, die Lippenlinie 2,07 neben ihrem Pfad, gezeichnet 1,15 neben der Haut). Nach
+einem neuen Punkt auf der Lippenlinie änderte diese in der Pose ihren Verlauf um 2,44, die Haut am Maul um 1,37. Reine Züge an
+Punkten der Grundform (A, B) und die neue Linie (D) übernahm die Pose schon richtig.
+
+**Was gebaut ist** (nur `claude/form-bau`; in seinem Fenster nichts):
+
+- **3a:** Ein neuer Punkt des Netzes auf einer Linie liegt in der Grundform genau auf deren Pfad, an derselben Stelle wie in der
+  Pose (`grundAufPfad`; vorher: Lage der Pose minus der gemittelte Blendshape der Nachbarn, bis 2 daneben, und beim Verlassen
+  rückte die Grundform zurecht, nachdem der Blendshape schon gemerkt war). Der Blendshape zählt beim Verlassen gegen die
+  Grundform, wie sie danach ist. Beim Betreten setzt sich die Haut der Pose auf ihre Linien, jede Probe an ihrer Stelle.
+- **3b:** Der Versatz einer Linie merkt sich die Stelle jedes Punkts. Ein neuer Punkt der Grundform teilt den Versatz an
+  derselben Stelle, an der er das Stück der Grundform geteilt hat (`poseVersatzFuer`): Die Linie der Pose bleibt, wie sie war.
+  Ein gelöschter Punkt fällt weg. Eine neue Linie wird in der Pose weiter an deren Haut abgelesen.
+
+**Gemessen an „maul handgemacht test“** (Tabelle im Plan, [Messwerte](progress/editor/schritt5-pose-mitgehen-messung-2026-11-14.txt),
+Bildpaar: die Pose [vor](progress/editor/schritt5-pose-mitgehen-vorher-2026-11-14.jpg) und
+[nach](progress/editor/schritt5-pose-mitgehen-nachher-2026-11-14.jpg) den Änderungen der Grundform): alle Punkte erfüllt.
+Verlassen und wieder betreten: Haut 0,00, Linien 0,00. Der Zug an der Lippe bleibt in allen Fällen (0,00). Nach dem neuen Punkt
+behält die Lippenlinie in der Pose ihren Verlauf (0,03 statt 2,44), die Haut am Maul bleibt (0,00 statt 1,37). Verlassen: die
+Grundform bitgleich.
+
+**Zur Kenntnis:** Ein Zug in der Pose ändert das gemeinsame Netz (3 485 → 3 459 Punkte). Die gebliebenen Punkte der Grundform
+liegen, wo sie lagen, ihre Linien sind dieselben; die Flächen liegen bis 0,57 auseinander (die Feinheit des Netzes, wie nach
+jedem Zug in der Grundform).
+
+**Geprüft:** `form-pose-mitgehen-fenster` (57 Punkte), `form-pose-fenster` (16 von 17, offen wie in 7.18), `form-kiefer-fenster`
+(Kugel, „maul handgemacht test“, schmale Form), `form-maul-linie-fenster`, `form-abzweigung-fenster`,
+`form-maul-formen-fenster`, `form-fressen-pose` (alte Probe: läuft wie vorher), 24 Tests im Editor, Typen, Lint.
+
+**Nicht geprüft:** ein gelöschter Punkt und eine gelöschte Linie der Grundform, G/S/R an ganzen Loops der Grundform, mehrere
+neue Punkte im selben Stück, das feine Netz, Sichern und Laden dazwischen.
+
+**Offen in Schritt 5:** Etappe 4 (beide Seiten frei: eigener kleiner Beweis zuerst), Etappe 5 (sein Ablauf an einer seiner
+Formen, sein Urteil); aus Etappe 2 die umgeschlagenen Dreiecke an der Mitte beim Zug an der Kieferspitze.
+
+## 8. Offen aus der Zeit davor
+
+Florians Blick auf G4, auf Sichern und Laden und auf G5 Teil 1 steht aus. Die offenen Entscheidungen der alten Übergabe
+(Abschnitt 5 dort: „Punkte wo nötig“, weich überblenden beim Einwechseln, Linie kehrt um, Vorsicht und Schutz) erledigen sich
+zum Teil mit den Schritten 2 bis 4 und werden dort wieder aufgegriffen, nicht vorher.

@@ -1,0 +1,1333 @@
+# form-griffe-probe-versionen.mjs, 11.11.2026: Griffe drehen, verdrehen, zurückdrehen; Stände im Vergleich; Sprung nach dem Loslassen
+# Port 5193 = heutiger Stand (6ba0bcb3), mit ?gewichte=geometrie die Geometrie-Rechnung, ohne die alte (gleiche Gewichte);
+# Port 5194 = Vergleichs-Arbeitsbaum form-alt auf dem genannten älteren Stand
+
+## TEST=dreh von der Kugel an, heutiger Stand
+### jetzt-geo-a
+Port 5193/kurven.html?gewichte=geometrie · FORM=kugel-a · 1:ring 5 Punkte, 69 Proben · 2:ring 5 Punkte, 95 Proben · 3:paar 4 Punkte, 187 Proben · 4:mitte 4 Punkte, 127 Proben (127 Punkte des Netzes in der Mittelebene)
+Anfang: 6129 Punkte · Rauminhalt 127.2 % · Knicke über 60° 2, über 150° 0 · umgeschlagen 0
+1 spielen: oberster Punkt der Mitte 50 hinauf, 30 hinunter, 60 hinauf, zurück
+   gehalten: 6213 Punkte · Rauminhalt 127.2 % · Knicke über 60° 2, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.3 s (sichtbar 0.3 s, größte Bewegung 517.7) · 6213 Punkte · Rauminhalt 127.2 % · Knicke über 60° 2, über 150° 0 · umgeschlagen 0
+2 anderer Griff: vorderster Punkt der Mitte, Griff aus um 40° gedreht
+   gehalten: 6213 Punkte · Rauminhalt 128.3 % · Knicke über 60° 2, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6228 Punkte · Rauminhalt 128.3 % · Knicke über 60° 2, über 150° 0 · umgeschlagen 0
+3 derselbe Griff zurück (−40°)
+   gehalten: 6228 Punkte · Rauminhalt 127.2 % · Knicke über 60° 2, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6228 Punkte · Rauminhalt 127.2 % · Knicke über 60° 2, über 150° 0 · umgeschlagen 0
+4 Griff aus am obersten Punkt der Mitte verdreht (auf die Gegenseite) und losgelassen
+   gehalten: 6228 Punkte · Rauminhalt 116.3 % · Knicke über 60° 127, über 150° 36 · umgeschlagen 46
+   danach:   bewegt sich noch 0.3 s (sichtbar 0.2 s, größte Bewegung 0.5) · 6228 Punkte · Rauminhalt 116.3 % · Knicke über 60° 133, über 150° 50 · umgeschlagen 54 · Meldung: Loop 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+5 zurückgedreht (wieder auf die Gegenseite)
+   gehalten: 6228 Punkte · Rauminhalt 127.2 % · Knicke über 60° 2, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6272 Punkte · Rauminhalt 127.2 % · Knicke über 60° 2, über 150° 0 · umgeschlagen 0
+   gegen vor dem Verdrehen: Rauminhalt 100.0 %, Knicke über 150° 0 → 0, umgeschlagen 0 → 0
+6 weiterarbeiten: oberster Punkt 40 hinauf und zurück
+   gehalten: 6272 Punkte · Rauminhalt 127.2 % · Knicke über 60° 2, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6272 Punkte · Rauminhalt 127.2 % · Knicke über 60° 2, über 150° 0 · umgeschlagen 0
+7 noch einmal: 40 hinunter und zurück
+   gehalten: 6272 Punkte · Rauminhalt 127.2 % · Knicke über 60° 2, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6272 Punkte · Rauminhalt 127.2 % · Knicke über 60° 2, über 150° 0 · umgeschlagen 0
+Konsole: keine Fehler
+
+### jetzt-geo-kugel-b
+Port 5193/kurven.html?gewichte=geometrie · FORM=kugel-b · 1:mitte 4 Punkte, 128 Proben (128 Punkte des Netzes in der Mittelebene) · 2:ring 5 Punkte, 69 Proben · 3:ring 5 Punkte, 96 Proben · 4:paar 4 Punkte, 172 Proben
+Anfang: 5976 Punkte · Rauminhalt 122.9 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0
+1 spielen: oberster Punkt der Mitte 50 hinauf, 30 hinunter, 60 hinauf, zurück
+   gehalten: 6078 Punkte · Rauminhalt 122.9 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6072 Punkte · Rauminhalt 122.9 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0
+2 anderer Griff: vorderster Punkt der Mitte, Griff aus um 40° gedreht (GRIFF NICHT GETROFFEN)
+   gehalten: 6072 Punkte · Rauminhalt 122.9 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6072 Punkte · Rauminhalt 122.9 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0
+3 derselbe Griff zurück (−40°) (GRIFF NICHT GETROFFEN)
+   gehalten: 6072 Punkte · Rauminhalt 122.9 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6072 Punkte · Rauminhalt 122.9 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0
+4 Griff aus am obersten Punkt der Mitte verdreht (auf die Gegenseite) und losgelassen
+   gehalten: 6072 Punkte · Rauminhalt 116.5 % · Knicke über 60° 120, über 150° 24 · umgeschlagen 40
+   danach:   bewegt sich noch 0.1 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6072 Punkte · Rauminhalt 116.5 % · Knicke über 60° 120, über 150° 26 · umgeschlagen 40 · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+5 zurückgedreht (wieder auf die Gegenseite)
+   gehalten: 6072 Punkte · Rauminhalt 122.9 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6074 Punkte · Rauminhalt 122.9 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0
+   gegen vor dem Verdrehen: Rauminhalt 100.0 %, Knicke über 150° 0 → 0, umgeschlagen 0 → 0
+6 weiterarbeiten: oberster Punkt 40 hinauf und zurück
+   gehalten: 6074 Punkte · Rauminhalt 122.9 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6074 Punkte · Rauminhalt 122.9 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0
+7 noch einmal: 40 hinunter und zurück
+   gehalten: 6074 Punkte · Rauminhalt 122.8 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6074 Punkte · Rauminhalt 122.8 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0
+Konsole: keine Fehler
+
+### jetzt-gleich-kugel-a
+Port 5193/kurven.html · FORM=kugel-a · 1:ring 5 Punkte, 69 Proben · 2:ring 5 Punkte, 95 Proben · 3:paar 4 Punkte, 195 Proben · 4:mitte 4 Punkte, 126 Proben (126 Punkte des Netzes in der Mittelebene)
+Anfang: 6052 Punkte · Rauminhalt 125.9 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+1 spielen: oberster Punkt der Mitte 50 hinauf, 30 hinunter, 60 hinauf, zurück
+   gehalten: 6052 Punkte · Rauminhalt 125.9 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 2.1) · 6028 Punkte · Rauminhalt 125.9 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+2 anderer Griff: vorderster Punkt der Mitte, Griff aus um 40° gedreht
+   gehalten: 6028 Punkte · Rauminhalt 127.2 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.5) · 6035 Punkte · Rauminhalt 127.1 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+3 derselbe Griff zurück (−40°)
+   gehalten: 6035 Punkte · Rauminhalt 125.9 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.3) · 6033 Punkte · Rauminhalt 125.9 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+4 Griff aus am obersten Punkt der Mitte verdreht (auf die Gegenseite) und losgelassen
+   gehalten: 6033 Punkte · Rauminhalt 114.8 % · Knicke über 60° 36, über 150° 10 · umgeschlagen 6
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6033 Punkte · Rauminhalt 114.8 % · Knicke über 60° 36, über 150° 10 · umgeschlagen 6 · Meldung: Loop 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+5 zurückgedreht (wieder auf die Gegenseite)
+   gehalten: 6033 Punkte · Rauminhalt 125.9 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.4) · 6037 Punkte · Rauminhalt 125.9 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+   gegen vor dem Verdrehen: Rauminhalt 100.0 %, Knicke über 150° 0 → 0, umgeschlagen 0 → 0
+6 weiterarbeiten: oberster Punkt 40 hinauf und zurück
+   gehalten: 6037 Punkte · Rauminhalt 125.9 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.1) · 6035 Punkte · Rauminhalt 125.9 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+7 noch einmal: 40 hinunter und zurück
+   gehalten: 6035 Punkte · Rauminhalt 125.9 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6035 Punkte · Rauminhalt 125.9 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+Konsole: keine Fehler
+
+### jetzt-gleich-kugel-b
+Port 5193/kurven.html · FORM=kugel-b · 1:mitte 4 Punkte, 129 Proben (129 Punkte des Netzes in der Mittelebene) · 2:ring 5 Punkte, 69 Proben · 3:ring 5 Punkte, 94 Proben · 4:paar 4 Punkte, 194 Proben
+Anfang: 5989 Punkte · Rauminhalt 122.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+1 spielen: oberster Punkt der Mitte 50 hinauf, 30 hinunter, 60 hinauf, zurück
+   gehalten: 5989 Punkte · Rauminhalt 122.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 0.8) · 5957 Punkte · Rauminhalt 122.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+2 anderer Griff: vorderster Punkt der Mitte, Griff aus um 40° gedreht (GRIFF NICHT GETROFFEN)
+   gehalten: 5957 Punkte · Rauminhalt 122.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5957 Punkte · Rauminhalt 122.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+3 derselbe Griff zurück (−40°) (GRIFF NICHT GETROFFEN)
+   gehalten: 5957 Punkte · Rauminhalt 122.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5957 Punkte · Rauminhalt 122.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+4 Griff aus am obersten Punkt der Mitte verdreht (auf die Gegenseite) und losgelassen
+   gehalten: 5957 Punkte · Rauminhalt 114.7 % · Knicke über 60° 54, über 150° 10 · umgeschlagen 12
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5957 Punkte · Rauminhalt 114.7 % · Knicke über 60° 54, über 150° 10 · umgeschlagen 12 · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+5 zurückgedreht (wieder auf die Gegenseite)
+   gehalten: 5957 Punkte · Rauminhalt 122.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.2) · 5951 Punkte · Rauminhalt 122.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+   gegen vor dem Verdrehen: Rauminhalt 100.0 %, Knicke über 150° 0 → 0, umgeschlagen 0 → 0
+6 weiterarbeiten: oberster Punkt 40 hinauf und zurück
+   gehalten: 5951 Punkte · Rauminhalt 122.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5951 Punkte · Rauminhalt 122.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+7 noch einmal: 40 hinunter und zurück
+   gehalten: 5951 Punkte · Rauminhalt 122.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5951 Punkte · Rauminhalt 122.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+Konsole: keine Fehler
+
+## TEST=dreh von der Kugel an, Stand 75b94733 (09.11., vor dieser Sitzung)
+### 75b94733-geo-kugel-a
+Port 5194/kurven.html?gewichte=geometrie · FORM=kugel-a · 1:ring 5 Punkte, 69 Proben · 2:ring 5 Punkte, 95 Proben · 3:paar 4 Punkte, 193 Proben · 4:mitte 4 Punkte, 261 Proben (127 Punkte des Netzes in der Mittelebene: LIEGT NUR AUF)
+Anfang: 6113 Punkte · Rauminhalt 126.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+1 spielen: oberster Punkt der Mitte 50 hinauf, 30 hinunter, 60 hinauf, zurück
+   gehalten: 6237 Punkte · Rauminhalt 126.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.3) · 6229 Punkte · Rauminhalt 126.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+2 anderer Griff: vorderster Punkt der Mitte, Griff aus um 40° gedreht
+   gehalten: 6229 Punkte · Rauminhalt 127.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 1.1 s (sichtbar 1.1 s, größte Bewegung 2.1, Netz 3-mal gewechselt) · 6341 Punkte · Rauminhalt 127.0 % · Knicke über 60° 65, über 150° 42 · umgeschlagen 66
+3 derselbe Griff zurück (−40°)
+   gehalten: 6341 Punkte · Rauminhalt 126.4 % · Knicke über 60° 61, über 150° 39 · umgeschlagen 59
+   danach:   bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.2, Netz 1-mal gewechselt) · 6328 Punkte · Rauminhalt 126.4 % · Knicke über 60° 50, über 150° 44 · umgeschlagen 60
+4 Griff aus am obersten Punkt der Mitte verdreht (auf die Gegenseite) und losgelassen
+   gehalten: 6328 Punkte · Rauminhalt 117.8 % · Knicke über 60° 122, über 150° 40 · umgeschlagen 78
+   danach:   bewegt sich noch 1.4 s (sichtbar 1.4 s, größte Bewegung 8.7, Netz 3-mal gewechselt) · 6382 Punkte · Rauminhalt 118.6 % · Knicke über 60° 198, über 150° 72 · umgeschlagen 108
+5 zurückgedreht (wieder auf die Gegenseite)
+   gehalten: 6382 Punkte · Rauminhalt 126.2 % · Knicke über 60° 123, über 150° 69 · umgeschlagen 83
+   danach:   bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 1.4) · 6410 Punkte · Rauminhalt 126.5 % · Knicke über 60° 109, über 150° 60 · umgeschlagen 86
+   gegen vor dem Verdrehen: Rauminhalt 100.0 %, Knicke über 150° 44 → 60, umgeschlagen 60 → 86
+6 weiterarbeiten: oberster Punkt 40 hinauf und zurück
+   gehalten: 6410 Punkte · Rauminhalt 126.5 % · Knicke über 60° 124, über 150° 74 · umgeschlagen 94
+   danach:   bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.3) · 6401 Punkte · Rauminhalt 126.4 % · Knicke über 60° 126, über 150° 65 · umgeschlagen 93
+7 noch einmal: 40 hinunter und zurück
+   gehalten: 6401 Punkte · Rauminhalt 126.3 % · Knicke über 60° 119, über 150° 65 · umgeschlagen 96
+   danach:   bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.1) · 6399 Punkte · Rauminhalt 126.4 % · Knicke über 60° 124, über 150° 69 · umgeschlagen 96
+Konsole: keine Fehler
+
+### 75b94733-geo-kugel-b
+Port 5194/kurven.html?gewichte=geometrie · FORM=kugel-b · 1:mitte 4 Punkte, 128 Proben (128 Punkte des Netzes in der Mittelebene) · 2:ring 5 Punkte, 69 Proben · 3:ring 5 Punkte, 94 Proben · 4:paar 4 Punkte, 192 Proben
+Anfang: 6014 Punkte · Rauminhalt 123.5 % · Knicke über 60° 8, über 150° 0 · umgeschlagen 0
+1 spielen: oberster Punkt der Mitte 50 hinauf, 30 hinunter, 60 hinauf, zurück
+   gehalten: 6082 Punkte · Rauminhalt 123.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.1) · 6080 Punkte · Rauminhalt 123.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+2 anderer Griff: vorderster Punkt der Mitte, Griff aus um 40° gedreht (GRIFF NICHT GETROFFEN)
+   gehalten: 6080 Punkte · Rauminhalt 123.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6080 Punkte · Rauminhalt 123.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+3 derselbe Griff zurück (−40°) (GRIFF NICHT GETROFFEN)
+   gehalten: 6080 Punkte · Rauminhalt 123.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6080 Punkte · Rauminhalt 123.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+4 Griff aus am obersten Punkt der Mitte verdreht (auf die Gegenseite) und losgelassen
+   gehalten: 6080 Punkte · Rauminhalt 116.8 % · Knicke über 60° 70, über 150° 12 · umgeschlagen 18
+   danach:   bewegt sich noch 0.5 s (sichtbar 0.5 s, größte Bewegung 0.5, Netz 1-mal gewechselt) · 6002 Punkte · Rauminhalt 116.6 % · Knicke über 60° 38, über 150° 8 · umgeschlagen 4
+5 zurückgedreht (wieder auf die Gegenseite)
+   gehalten: 6002 Punkte · Rauminhalt 123.1 % · Knicke über 60° 12, über 150° 0 · umgeschlagen 2
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 5.1) · 6126 Punkte · Rauminhalt 123.5 % · Knicke über 60° 12, über 150° 0 · umgeschlagen 2
+   gegen vor dem Verdrehen: Rauminhalt 100.0 %, Knicke über 150° 0 → 0, umgeschlagen 0 → 2
+6 weiterarbeiten: oberster Punkt 40 hinauf und zurück
+   gehalten: 6126 Punkte · Rauminhalt 123.6 % · Knicke über 60° 12, über 150° 0 · umgeschlagen 2
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6120 Punkte · Rauminhalt 123.5 % · Knicke über 60° 12, über 150° 0 · umgeschlagen 2
+7 noch einmal: 40 hinunter und zurück
+   gehalten: 6120 Punkte · Rauminhalt 123.5 % · Knicke über 60° 12, über 150° 6 · umgeschlagen 2
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6120 Punkte · Rauminhalt 123.5 % · Knicke über 60° 12, über 150° 0 · umgeschlagen 2
+Konsole: keine Fehler
+
+### 75b94733-gleich-kugel-a
+Port 5194/kurven.html · FORM=kugel-a · 1:ring 5 Punkte, 69 Proben · 2:ring 5 Punkte, 95 Proben · 3:paar 4 Punkte, 195 Proben · 4:mitte 4 Punkte, 260 Proben (126 Punkte des Netzes in der Mittelebene: LIEGT NUR AUF)
+Anfang: 6018 Punkte · Rauminhalt 125.6 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 2
+1 spielen: oberster Punkt der Mitte 50 hinauf, 30 hinunter, 60 hinauf, zurück
+   gehalten: 6018 Punkte · Rauminhalt 126.3 % · Knicke über 60° 14, über 150° 6 · umgeschlagen 4
+   danach:   bewegt sich noch 0.4 s (sichtbar 0.0 s, größte Bewegung 0.5, Netz 1-mal gewechselt) · 6066 Punkte · Rauminhalt 125.9 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 2
+2 anderer Griff: vorderster Punkt der Mitte, Griff aus um 40° gedreht
+   gehalten: 6066 Punkte · Rauminhalt 127.0 % · Knicke über 60° 9, über 150° 0 · umgeschlagen 2
+   danach:   bewegt sich noch 0.9 s (sichtbar 0.9 s, größte Bewegung 1.8, Netz 3-mal gewechselt) · 6188 Punkte · Rauminhalt 126.7 % · Knicke über 60° 80, über 150° 29 · umgeschlagen 56
+3 derselbe Griff zurück (−40°)
+   gehalten: 6188 Punkte · Rauminhalt 126.1 % · Knicke über 60° 88, über 150° 45 · umgeschlagen 64
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 0.7) · 6148 Punkte · Rauminhalt 126.0 % · Knicke über 60° 84, über 150° 40 · umgeschlagen 66
+4 Griff aus am obersten Punkt der Mitte verdreht (auf die Gegenseite) und losgelassen
+   gehalten: 6148 Punkte · Rauminhalt 118.5 % · Knicke über 60° 258, über 150° 93 · umgeschlagen 132
+   danach:   bewegt sich noch 0.9 s (sichtbar 0.9 s, größte Bewegung 1.4, Netz 3-mal gewechselt) · 6260 Punkte · Rauminhalt 118.4 % · Knicke über 60° 285, über 150° 117 · umgeschlagen 163
+5 zurückgedreht (wieder auf die Gegenseite)
+   gehalten: 6260 Punkte · Rauminhalt 125.3 % · Knicke über 60° 172, über 150° 80 · umgeschlagen 94
+   danach:   bewegt sich noch 0.5 s (sichtbar 0.5 s, größte Bewegung 0.8, Netz 1-mal gewechselt) · 6243 Punkte · Rauminhalt 125.4 % · Knicke über 60° 186, über 150° 96 · umgeschlagen 126
+   gegen vor dem Verdrehen: Rauminhalt 99.5 %, Knicke über 150° 40 → 96, umgeschlagen 66 → 126
+6 weiterarbeiten: oberster Punkt 40 hinauf und zurück
+   gehalten: 6243 Punkte · Rauminhalt 125.7 % · Knicke über 60° 181, über 150° 108 · umgeschlagen 165
+   danach:   bewegt sich noch 0.7 s (sichtbar 0.7 s, größte Bewegung 0.6, Netz 2-mal gewechselt) · 6225 Punkte · Rauminhalt 125.6 % · Knicke über 60° 170, über 150° 114 · umgeschlagen 156
+7 noch einmal: 40 hinunter und zurück
+   gehalten: 6225 Punkte · Rauminhalt 125.6 % · Knicke über 60° 174, über 150° 80 · umgeschlagen 142
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.5) · 6213 Punkte · Rauminhalt 125.5 % · Knicke über 60° 165, über 150° 89 · umgeschlagen 140
+Konsole: keine Fehler
+
+### 75b94733-gleich-kugel-b
+Port 5194/kurven.html · FORM=kugel-b · 1:mitte 4 Punkte, 128 Proben (128 Punkte des Netzes in der Mittelebene) · 2:ring 5 Punkte, 69 Proben · 3:ring 5 Punkte, 94 Proben · 4:paar 4 Punkte, 194 Proben
+Anfang: 5996 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+1 spielen: oberster Punkt der Mitte 50 hinauf, 30 hinunter, 60 hinauf, zurück
+   gehalten: 5996 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.0) · 5970 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+2 anderer Griff: vorderster Punkt der Mitte, Griff aus um 40° gedreht (GRIFF NICHT GETROFFEN)
+   gehalten: 5970 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5970 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+3 derselbe Griff zurück (−40°) (GRIFF NICHT GETROFFEN)
+   gehalten: 5970 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5970 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+4 Griff aus am obersten Punkt der Mitte verdreht (auf die Gegenseite) und losgelassen
+   gehalten: 5970 Punkte · Rauminhalt 114.5 % · Knicke über 60° 86, über 150° 12 · umgeschlagen 24
+   danach:   bewegt sich noch 0.7 s (sichtbar 0.0 s, größte Bewegung 0.2, Netz 2-mal gewechselt) · 5924 Punkte · Rauminhalt 114.8 % · Knicke über 60° 32, über 150° 2 · umgeschlagen 2
+5 zurückgedreht (wieder auf die Gegenseite)
+   gehalten: 5924 Punkte · Rauminhalt 122.2 % · Knicke über 60° 18, über 150° 8 · umgeschlagen 4
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.5) · 5950 Punkte · Rauminhalt 122.2 % · Knicke über 60° 18, über 150° 8 · umgeschlagen 4
+   gegen vor dem Verdrehen: Rauminhalt 99.8 %, Knicke über 150° 0 → 8, umgeschlagen 0 → 4
+6 weiterarbeiten: oberster Punkt 40 hinauf und zurück
+   gehalten: 5950 Punkte · Rauminhalt 122.2 % · Knicke über 60° 18, über 150° 8 · umgeschlagen 4
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5950 Punkte · Rauminhalt 122.2 % · Knicke über 60° 18, über 150° 8 · umgeschlagen 4
+7 noch einmal: 40 hinunter und zurück
+   gehalten: 5950 Punkte · Rauminhalt 122.2 % · Knicke über 60° 18, über 150° 8 · umgeschlagen 4
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5950 Punkte · Rauminhalt 122.2 % · Knicke über 60° 18, über 150° 8 · umgeschlagen 4
+Konsole: keine Fehler
+
+## TEST=dreh von der Kugel an, Stand 640c2595 (08.11., vor der Geometrie-Rechnung)
+### 640c2595-geo-kugel-a
+Port 5194/kurven.html?gewichte=geometrie · FORM=kugel-a · 1:ring 5 Punkte, 69 Proben · 2:ring 5 Punkte, 95 Proben · 3:paar 4 Punkte, 195 Proben · 4:mitte 4 Punkte, 260 Proben (126 Punkte des Netzes in der Mittelebene: LIEGT NUR AUF)
+Anfang: 6018 Punkte · Rauminhalt 125.6 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 2
+1 spielen: oberster Punkt der Mitte 50 hinauf, 30 hinunter, 60 hinauf, zurück
+   gehalten: 6018 Punkte · Rauminhalt 126.3 % · Knicke über 60° 14, über 150° 6 · umgeschlagen 4
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.8) · 6066 Punkte · Rauminhalt 125.9 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 2
+2 anderer Griff: vorderster Punkt der Mitte, Griff aus um 40° gedreht
+   gehalten: 6066 Punkte · Rauminhalt 127.0 % · Knicke über 60° 9, über 150° 0 · umgeschlagen 2
+   danach:   bewegt sich noch 0.9 s (sichtbar 0.9 s, größte Bewegung 1.8, Netz 3-mal gewechselt) · 6188 Punkte · Rauminhalt 126.7 % · Knicke über 60° 78, über 150° 26 · umgeschlagen 54
+3 derselbe Griff zurück (−40°)
+   gehalten: 6188 Punkte · Rauminhalt 126.1 % · Knicke über 60° 88, über 150° 46 · umgeschlagen 64
+   danach:   bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.2, Netz 1-mal gewechselt) · 6150 Punkte · Rauminhalt 126.0 % · Knicke über 60° 83, über 150° 47 · umgeschlagen 64
+4 Griff aus am obersten Punkt der Mitte verdreht (auf die Gegenseite) und losgelassen
+   gehalten: 6150 Punkte · Rauminhalt 118.6 % · Knicke über 60° 270, über 150° 89 · umgeschlagen 128
+   danach:   bewegt sich noch 0.9 s (sichtbar 0.9 s, größte Bewegung 1.5, Netz 3-mal gewechselt) · 6264 Punkte · Rauminhalt 117.6 % · Knicke über 60° 253, über 150° 113 · umgeschlagen 149
+5 zurückgedreht (wieder auf die Gegenseite)
+   gehalten: 6264 Punkte · Rauminhalt 125.3 % · Knicke über 60° 198, über 150° 112 · umgeschlagen 117
+   danach:   bewegt sich noch 0.7 s (sichtbar 0.7 s, größte Bewegung 0.7, Netz 2-mal gewechselt) · 6252 Punkte · Rauminhalt 125.4 % · Knicke über 60° 197, über 150° 116 · umgeschlagen 144
+   gegen vor dem Verdrehen: Rauminhalt 99.5 %, Knicke über 150° 47 → 116, umgeschlagen 64 → 144
+6 weiterarbeiten: oberster Punkt 40 hinauf und zurück
+   gehalten: 6252 Punkte · Rauminhalt 125.8 % · Knicke über 60° 185, über 150° 126 · umgeschlagen 159
+   danach:   bewegt sich noch 0.9 s (sichtbar 0.9 s, größte Bewegung 0.6, Netz 3-mal gewechselt) · 6255 Punkte · Rauminhalt 125.7 % · Knicke über 60° 180, über 150° 128 · umgeschlagen 155
+7 noch einmal: 40 hinunter und zurück
+   gehalten: 6255 Punkte · Rauminhalt 125.6 % · Knicke über 60° 171, über 150° 106 · umgeschlagen 132
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 0.8) · 6251 Punkte · Rauminhalt 125.6 % · Knicke über 60° 172, über 150° 106 · umgeschlagen 134
+Konsole: keine Fehler
+
+### 640c2595-geo-kugel-b
+Port 5194/kurven.html?gewichte=geometrie · FORM=kugel-b · 1:mitte 4 Punkte, 128 Proben (128 Punkte des Netzes in der Mittelebene) · 2:ring 5 Punkte, 69 Proben · 3:ring 5 Punkte, 94 Proben · 4:paar 4 Punkte, 194 Proben
+Anfang: 5996 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+1 spielen: oberster Punkt der Mitte 50 hinauf, 30 hinunter, 60 hinauf, zurück
+   gehalten: 5996 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.0) · 5970 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+2 anderer Griff: vorderster Punkt der Mitte, Griff aus um 40° gedreht (GRIFF NICHT GETROFFEN)
+   gehalten: 5970 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5970 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+3 derselbe Griff zurück (−40°) (GRIFF NICHT GETROFFEN)
+   gehalten: 5970 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5970 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+4 Griff aus am obersten Punkt der Mitte verdreht (auf die Gegenseite) und losgelassen
+   gehalten: 5970 Punkte · Rauminhalt 114.5 % · Knicke über 60° 86, über 150° 12 · umgeschlagen 24
+   danach:   bewegt sich noch 0.7 s (sichtbar 0.0 s, größte Bewegung 0.2, Netz 2-mal gewechselt) · 5924 Punkte · Rauminhalt 114.8 % · Knicke über 60° 32, über 150° 2 · umgeschlagen 2
+5 zurückgedreht (wieder auf die Gegenseite)
+   gehalten: 5924 Punkte · Rauminhalt 122.2 % · Knicke über 60° 18, über 150° 8 · umgeschlagen 4
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.5) · 5950 Punkte · Rauminhalt 122.2 % · Knicke über 60° 18, über 150° 8 · umgeschlagen 4
+   gegen vor dem Verdrehen: Rauminhalt 99.8 %, Knicke über 150° 0 → 8, umgeschlagen 0 → 4
+6 weiterarbeiten: oberster Punkt 40 hinauf und zurück
+   gehalten: 5950 Punkte · Rauminhalt 122.2 % · Knicke über 60° 18, über 150° 8 · umgeschlagen 4
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5950 Punkte · Rauminhalt 122.2 % · Knicke über 60° 18, über 150° 8 · umgeschlagen 4
+7 noch einmal: 40 hinunter und zurück
+   gehalten: 5950 Punkte · Rauminhalt 122.2 % · Knicke über 60° 18, über 150° 8 · umgeschlagen 4
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5950 Punkte · Rauminhalt 122.2 % · Knicke über 60° 18, über 150° 8 · umgeschlagen 4
+Konsole: keine Fehler
+
+### 640c2595-gleich-kugel-a
+Port 5194/kurven.html · FORM=kugel-a · 1:ring 5 Punkte, 69 Proben · 2:ring 5 Punkte, 95 Proben · 3:paar 4 Punkte, 195 Proben · 4:mitte 4 Punkte, 260 Proben (126 Punkte des Netzes in der Mittelebene: LIEGT NUR AUF)
+Anfang: 6018 Punkte · Rauminhalt 125.6 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 2
+1 spielen: oberster Punkt der Mitte 50 hinauf, 30 hinunter, 60 hinauf, zurück
+   gehalten: 6018 Punkte · Rauminhalt 126.3 % · Knicke über 60° 14, über 150° 6 · umgeschlagen 4
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.8) · 6066 Punkte · Rauminhalt 125.9 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 2
+2 anderer Griff: vorderster Punkt der Mitte, Griff aus um 40° gedreht
+   gehalten: 6066 Punkte · Rauminhalt 127.0 % · Knicke über 60° 9, über 150° 0 · umgeschlagen 2
+   danach:   bewegt sich noch 0.9 s (sichtbar 0.9 s, größte Bewegung 2.0, Netz 3-mal gewechselt) · 6188 Punkte · Rauminhalt 126.7 % · Knicke über 60° 81, über 150° 31 · umgeschlagen 56
+3 derselbe Griff zurück (−40°)
+   gehalten: 6188 Punkte · Rauminhalt 126.1 % · Knicke über 60° 84, über 150° 46 · umgeschlagen 60
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 0.7) · 6154 Punkte · Rauminhalt 126.0 % · Knicke über 60° 78, über 150° 42 · umgeschlagen 64
+4 Griff aus am obersten Punkt der Mitte verdreht (auf die Gegenseite) und losgelassen
+   gehalten: 6154 Punkte · Rauminhalt 118.7 % · Knicke über 60° 247, über 150° 77 · umgeschlagen 118
+   danach:   bewegt sich noch 1.0 s (sichtbar 1.0 s, größte Bewegung 1.4, Netz 3-mal gewechselt) · 6254 Punkte · Rauminhalt 117.8 % · Knicke über 60° 263, über 150° 109 · umgeschlagen 165
+5 zurückgedreht (wieder auf die Gegenseite)
+   gehalten: 6254 Punkte · Rauminhalt 125.2 % · Knicke über 60° 148, über 150° 102 · umgeschlagen 95
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.0) · 6230 Punkte · Rauminhalt 125.2 % · Knicke über 60° 163, über 150° 90 · umgeschlagen 107
+   gegen vor dem Verdrehen: Rauminhalt 99.3 %, Knicke über 150° 42 → 90, umgeschlagen 64 → 107
+6 weiterarbeiten: oberster Punkt 40 hinauf und zurück
+   gehalten: 6230 Punkte · Rauminhalt 125.4 % · Knicke über 60° 197, über 150° 110 · umgeschlagen 134
+   danach:   bewegt sich noch 0.9 s (sichtbar 0.0 s, größte Bewegung 0.5, Netz 3-mal gewechselt) · 6244 Punkte · Rauminhalt 125.3 % · Knicke über 60° 203, über 150° 117 · umgeschlagen 154
+7 noch einmal: 40 hinunter und zurück
+   gehalten: 6244 Punkte · Rauminhalt 125.4 % · Knicke über 60° 189, über 150° 99 · umgeschlagen 128
+   danach:   bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.4, Netz 1-mal gewechselt) · 6222 Punkte · Rauminhalt 125.4 % · Knicke über 60° 187, über 150° 105 · umgeschlagen 134
+Konsole: keine Fehler
+
+### 640c2595-gleich-kugel-b
+Port 5194/kurven.html · FORM=kugel-b · 1:mitte 4 Punkte, 128 Proben (128 Punkte des Netzes in der Mittelebene) · 2:ring 5 Punkte, 69 Proben · 3:ring 5 Punkte, 94 Proben · 4:paar 4 Punkte, 194 Proben
+Anfang: 6000 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+1 spielen: oberster Punkt der Mitte 50 hinauf, 30 hinunter, 60 hinauf, zurück
+   gehalten: 6000 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.0) · 5976 Punkte · Rauminhalt 122.4 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+2 anderer Griff: vorderster Punkt der Mitte, Griff aus um 40° gedreht (GRIFF NICHT GETROFFEN)
+   gehalten: 5976 Punkte · Rauminhalt 122.4 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5976 Punkte · Rauminhalt 122.4 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+3 derselbe Griff zurück (−40°) (GRIFF NICHT GETROFFEN)
+   gehalten: 5976 Punkte · Rauminhalt 122.4 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5976 Punkte · Rauminhalt 122.4 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+4 Griff aus am obersten Punkt der Mitte verdreht (auf die Gegenseite) und losgelassen
+   gehalten: 5976 Punkte · Rauminhalt 114.5 % · Knicke über 60° 88, über 150° 12 · umgeschlagen 24
+   danach:   bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 1.0, Netz 1-mal gewechselt) · 5932 Punkte · Rauminhalt 114.6 % · Knicke über 60° 36, über 150° 0 · umgeschlagen 2
+5 zurückgedreht (wieder auf die Gegenseite)
+   gehalten: 5932 Punkte · Rauminhalt 122.1 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.4) · 5960 Punkte · Rauminhalt 122.2 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   gegen vor dem Verdrehen: Rauminhalt 99.8 %, Knicke über 150° 0 → 0, umgeschlagen 0 → 0
+6 weiterarbeiten: oberster Punkt 40 hinauf und zurück
+   gehalten: 5960 Punkte · Rauminhalt 122.2 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.2) · 5958 Punkte · Rauminhalt 122.2 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+7 noch einmal: 40 hinunter und zurück
+   gehalten: 5958 Punkte · Rauminhalt 122.1 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5958 Punkte · Rauminhalt 122.1 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+Konsole: keine Fehler
+
+## TEST=dreh von der Kugel an, Stand a0d2f959 (07.11.)
+### a0d2f959-geo-kugel-a
+Port 5194/kurven.html?gewichte=geometrie · FORM=kugel-a · 1:ring 5 Punkte, 69 Proben · 2:ring 5 Punkte, 93 Proben · 3:paar 4 Punkte, 194 Proben · 4:mitte 4 Punkte, 260 Proben (126 Punkte des Netzes in der Mittelebene: LIEGT NUR AUF)
+Anfang: 6016 Punkte · Rauminhalt 125.6 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 2
+1 spielen: oberster Punkt der Mitte 50 hinauf, 30 hinunter, 60 hinauf, zurück
+   gehalten: 6016 Punkte · Rauminhalt 126.3 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 2
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.6) · 6076 Punkte · Rauminhalt 125.9 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 2
+2 anderer Griff: vorderster Punkt der Mitte, Griff aus um 40° gedreht
+   gehalten: 6076 Punkte · Rauminhalt 127.0 % · Knicke über 60° 13, über 150° 1 · umgeschlagen 2
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 4.4) · 6142 Punkte · Rauminhalt 126.8 % · Knicke über 60° 62, über 150° 20 · umgeschlagen 38
+3 derselbe Griff zurück (−40°)
+   gehalten: 6142 Punkte · Rauminhalt 126.1 % · Knicke über 60° 73, über 150° 35 · umgeschlagen 50
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.0) · 6144 Punkte · Rauminhalt 126.0 % · Knicke über 60° 75, über 150° 41 · umgeschlagen 54
+4 Griff aus am obersten Punkt der Mitte verdreht (auf die Gegenseite) und losgelassen
+   gehalten: 6144 Punkte · Rauminhalt 117.9 % · Knicke über 60° 201, über 150° 60 · umgeschlagen 97
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 6.8) · 6172 Punkte · Rauminhalt 117.7 % · Knicke über 60° 181, über 150° 84 · umgeschlagen 103
+5 zurückgedreht (wieder auf die Gegenseite)
+   gehalten: 6172 Punkte · Rauminhalt 125.4 % · Knicke über 60° 188, über 150° 99 · umgeschlagen 118
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.4) · 6180 Punkte · Rauminhalt 125.5 % · Knicke über 60° 184, über 150° 108 · umgeschlagen 134
+   gegen vor dem Verdrehen: Rauminhalt 99.6 %, Knicke über 150° 41 → 108, umgeschlagen 54 → 134
+6 weiterarbeiten: oberster Punkt 40 hinauf und zurück
+   gehalten: 6180 Punkte · Rauminhalt 125.8 % · Knicke über 60° 188, über 150° 120 · umgeschlagen 137
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 0.8) · 6187 Punkte · Rauminhalt 125.7 % · Knicke über 60° 175, über 150° 119 · umgeschlagen 136
+7 noch einmal: 40 hinunter und zurück
+   gehalten: 6187 Punkte · Rauminhalt 125.7 % · Knicke über 60° 163, über 150° 108 · umgeschlagen 111
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 0.6) · 6207 Punkte · Rauminhalt 125.7 % · Knicke über 60° 167, über 150° 109 · umgeschlagen 115
+Konsole: keine Fehler
+
+### a0d2f959-geo-kugel-b
+Port 5194/kurven.html?gewichte=geometrie · FORM=kugel-b · 1:mitte 4 Punkte, 128 Proben (128 Punkte des Netzes in der Mittelebene) · 2:ring 5 Punkte, 69 Proben · 3:ring 5 Punkte, 91 Proben · 4:paar 4 Punkte, 193 Proben
+Anfang: 5996 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+1 spielen: oberster Punkt der Mitte 50 hinauf, 30 hinunter, 60 hinauf, zurück
+   gehalten: 5996 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.0) · 5974 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+2 anderer Griff: vorderster Punkt der Mitte, Griff aus um 40° gedreht (GRIFF NICHT GETROFFEN)
+   gehalten: 5974 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5974 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+3 derselbe Griff zurück (−40°) (GRIFF NICHT GETROFFEN)
+   gehalten: 5974 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5974 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+4 Griff aus am obersten Punkt der Mitte verdreht (auf die Gegenseite) und losgelassen
+   gehalten: 5974 Punkte · Rauminhalt 114.4 % · Knicke über 60° 62, über 150° 8 · umgeschlagen 12
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 4.5) · 5892 Punkte · Rauminhalt 114.8 % · Knicke über 60° 48, über 150° 4 · umgeschlagen 8
+5 zurückgedreht (wieder auf die Gegenseite)
+   gehalten: 5892 Punkte · Rauminhalt 122.2 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 0.6) · 5932 Punkte · Rauminhalt 122.2 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   gegen vor dem Verdrehen: Rauminhalt 99.8 %, Knicke über 150° 0 → 0, umgeschlagen 0 → 0
+6 weiterarbeiten: oberster Punkt 40 hinauf und zurück
+   gehalten: 5932 Punkte · Rauminhalt 122.2 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.2) · 5934 Punkte · Rauminhalt 122.2 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+7 noch einmal: 40 hinunter und zurück
+   gehalten: 5934 Punkte · Rauminhalt 122.2 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5934 Punkte · Rauminhalt 122.2 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+Konsole: keine Fehler
+
+### a0d2f959-gleich-kugel-a
+Port 5194/kurven.html · FORM=kugel-a · 1:ring 5 Punkte, 69 Proben · 2:ring 5 Punkte, 93 Proben · 3:paar 4 Punkte, 194 Proben · 4:mitte 4 Punkte, 260 Proben (126 Punkte des Netzes in der Mittelebene: LIEGT NUR AUF)
+Anfang: 6008 Punkte · Rauminhalt 125.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 2
+1 spielen: oberster Punkt der Mitte 50 hinauf, 30 hinunter, 60 hinauf, zurück
+   gehalten: 6008 Punkte · Rauminhalt 126.2 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 2
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.8) · 6068 Punkte · Rauminhalt 125.8 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 2
+2 anderer Griff: vorderster Punkt der Mitte, Griff aus um 40° gedreht
+   gehalten: 6068 Punkte · Rauminhalt 126.9 % · Knicke über 60° 11, über 150° 0 · umgeschlagen 2
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 4.4) · 6138 Punkte · Rauminhalt 126.7 % · Knicke über 60° 61, über 150° 18 · umgeschlagen 38
+3 derselbe Griff zurück (−40°)
+   gehalten: 6138 Punkte · Rauminhalt 126.0 % · Knicke über 60° 102, über 150° 39 · umgeschlagen 60
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.1) · 6136 Punkte · Rauminhalt 126.0 % · Knicke über 60° 92, über 150° 47 · umgeschlagen 66
+4 Griff aus am obersten Punkt der Mitte verdreht (auf die Gegenseite) und losgelassen
+   gehalten: 6136 Punkte · Rauminhalt 117.0 % · Knicke über 60° 181, über 150° 64 · umgeschlagen 86
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 8.6) · 6194 Punkte · Rauminhalt 117.0 % · Knicke über 60° 151, über 150° 59 · umgeschlagen 93
+5 zurückgedreht (wieder auf die Gegenseite)
+   gehalten: 6194 Punkte · Rauminhalt 125.4 % · Knicke über 60° 152, über 150° 93 · umgeschlagen 107
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.0) · 6216 Punkte · Rauminhalt 125.4 % · Knicke über 60° 147, über 150° 90 · umgeschlagen 114
+   gegen vor dem Verdrehen: Rauminhalt 99.5 %, Knicke über 150° 47 → 90, umgeschlagen 66 → 114
+6 weiterarbeiten: oberster Punkt 40 hinauf und zurück
+   gehalten: 6216 Punkte · Rauminhalt 125.7 % · Knicke über 60° 171, über 150° 101 · umgeschlagen 127
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 0.7) · 6212 Punkte · Rauminhalt 125.6 % · Knicke über 60° 165, über 150° 100 · umgeschlagen 144
+7 noch einmal: 40 hinunter und zurück
+   gehalten: 6212 Punkte · Rauminhalt 125.6 % · Knicke über 60° 172, über 150° 82 · umgeschlagen 126
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.4) · 6212 Punkte · Rauminhalt 125.7 % · Knicke über 60° 166, über 150° 99 · umgeschlagen 129
+Konsole: keine Fehler
+
+### a0d2f959-gleich-kugel-b
+Port 5194/kurven.html · FORM=kugel-b · 1:mitte 4 Punkte, 128 Proben (128 Punkte des Netzes in der Mittelebene) · 2:ring 5 Punkte, 69 Proben · 3:ring 5 Punkte, 91 Proben · 4:paar 4 Punkte, 193 Proben
+Anfang: 5996 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+1 spielen: oberster Punkt der Mitte 50 hinauf, 30 hinunter, 60 hinauf, zurück
+   gehalten: 5996 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.0) · 5974 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+2 anderer Griff: vorderster Punkt der Mitte, Griff aus um 40° gedreht (GRIFF NICHT GETROFFEN)
+   gehalten: 5974 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5974 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+3 derselbe Griff zurück (−40°) (GRIFF NICHT GETROFFEN)
+   gehalten: 5974 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5974 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+4 Griff aus am obersten Punkt der Mitte verdreht (auf die Gegenseite) und losgelassen
+   gehalten: 5974 Punkte · Rauminhalt 114.4 % · Knicke über 60° 62, über 150° 8 · umgeschlagen 12
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 4.5) · 5892 Punkte · Rauminhalt 114.8 % · Knicke über 60° 48, über 150° 4 · umgeschlagen 8
+5 zurückgedreht (wieder auf die Gegenseite)
+   gehalten: 5892 Punkte · Rauminhalt 122.2 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 0.6) · 5932 Punkte · Rauminhalt 122.2 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   gegen vor dem Verdrehen: Rauminhalt 99.8 %, Knicke über 150° 0 → 0, umgeschlagen 0 → 0
+6 weiterarbeiten: oberster Punkt 40 hinauf und zurück
+   gehalten: 5932 Punkte · Rauminhalt 122.2 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.2) · 5934 Punkte · Rauminhalt 122.2 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+7 noch einmal: 40 hinunter und zurück
+   gehalten: 5934 Punkte · Rauminhalt 122.2 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+   danach:   bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5934 Punkte · Rauminhalt 122.2 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+Konsole: keine Fehler
+
+## TEST=alle an test_kaputt, heutiger Stand (jeder Griff 40° und zurück, verdreht und zurück)
+### jetzt-geo-alle-test_kaputt
+geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Port 5193/kurven.html?gewichte=geometrie · FORM=test_kaputt · 1:ring 5 Punkte, 77 Proben · 2:ring 5 Punkte, 102 Proben · 3:paar 4 Punkte, 183 Proben · 4:mitte 4 Punkte, 125 Proben (125 Punkte des Netzes in der Mittelebene)
+Anfang: 6217 Punkte · Rauminhalt 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Meldung: Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.
+36 Griffe; je Griff: 40° drehen und zurück, verdrehen und zurück (jeder Fall auf der frisch geladenen Form)
+Loop 1 (ring) Punkt 0 bei (150, 8, 0), Griff ein
+   40°      hin: 0.4 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+Loop 1 (ring) Punkt 0 bei (150, 8, 0), Griff aus
+   40°      hin: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+Loop 1 (ring) Punkt 1 bei (145, 8, 43), Griff ein
+   40°      hin: 0.3 s (sichtbar 0.0), 97.6 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 96.2 %, Knicke 116/32, umg 30 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+Loop 1 (ring) Punkt 1 bei (145, 8, 43), Griff aus
+   40°      hin: 0.2 s (sichtbar 0.0), 97.6 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.3 s (sichtbar 0.3), 96.3 %, Knicke 130/40, umg 50 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+Loop 1 (ring) Punkt 2 bei (-11, 8, 148), Griff ein
+   40°      hin: 0.2 s (sichtbar 0.0), 99.9 %, Knicke 0/0, umg 0 · zurück: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.7 s (sichtbar 0.7), 94.5 %, Knicke 110/26, umg 34 · zurück: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+Loop 1 (ring) Punkt 2 bei (-11, 8, 148), Griff aus
+   40°      hin: 0.2 s (sichtbar 0.0), 99.9 %, Knicke 0/0, umg 0 · zurück: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.1 s (sichtbar 0.1), 94.9 %, Knicke 128/26, umg 52 · zurück: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+Loop 1 (ring) Punkt 3 bei (-144, 9, 43), Griff ein
+   40°      hin: 0.3 s (sichtbar 0.0), 101.0 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 97.6 %, Knicke 86/34, umg 20 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+Loop 1 (ring) Punkt 3 bei (-144, 9, 43), Griff aus
+   40°      hin: 0.2 s (sichtbar 0.0), 101.0 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 97.6 %, Knicke 54/6, umg 10 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+Loop 1 (ring) Punkt 4 bei (-150, 9, 0), Griff ein
+   40°      hin: 0.2 s (sichtbar 0.0), 98.3 %, Knicke 0/0, umg 0 NICHT GETROFFEN · zurück: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+   verdreht hin: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 NICHT GETROFFEN · zurück: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+Loop 1 (ring) Punkt 4 bei (-150, 9, 0), Griff aus
+   40°      hin: 0.2 s (sichtbar 0.0), 101.7 %, Knicke 0/0, umg 0 NICHT GETROFFEN · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+   verdreht hin: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 NICHT GETROFFEN · zurück: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+Loop 2 (ring) Punkt 0 bei (-12, 150, 0), Griff ein
+   40°      hin: 0.4 s (sichtbar 0.0), 98.1 %, Knicke 1/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.2 s (sichtbar 0.0), 99.7 %, Knicke 0/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 99.7 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+Loop 2 (ring) Punkt 0 bei (-12, 150, 0), Griff aus
+   40°      hin: 0.5 s (sichtbar 0.0), 101.7 %, Knicke 0/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.2 s (sichtbar 0.0), 99.7 %, Knicke 0/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 99.7 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+Loop 2 (ring) Punkt 1 bei (-12, 114, 250), Griff ein
+   40°      hin: 0.3 s (sichtbar 0.0), 98.1 %, Knicke 32/8, umg 4 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 8/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 96.8 %, Knicke 22/4, umg 4 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 2/0, umg 0
+Loop 2 (ring) Punkt 1 bei (-12, 114, 250), Griff aus
+   40°      hin: 0.5 s (sichtbar 0.0), 98.1 %, Knicke 30/6, umg 4 · zurück: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 96.8 %, Knicke 28/4, umg 4 · zurück: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+Loop 2 (ring) Punkt 2 bei (-11, 8, 148), Griff ein
+   40°      hin: 0.2 s (sichtbar 0.0), 101.8 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.5 s (sichtbar 0.0), 98.9 %, Knicke 10/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+Loop 2 (ring) Punkt 2 bei (-11, 8, 148), Griff aus
+   40°      hin: 0.3 s (sichtbar 0.0), 101.8 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.5 s (sichtbar 0.2), 98.9 %, Knicke 12/0, umg 0 · zurück: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+Loop 2 (ring) Punkt 3 bei (-9, -148, 24), Griff ein
+   40°      hin: 0.2 s (sichtbar 0.0), 96.4 %, Knicke 0/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 94.5 %, Knicke 110/24, umg 30 · zurück: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+Loop 2 (ring) Punkt 3 bei (-9, -148, 24), Griff aus
+   40°      hin: 0.2 s (sichtbar 0.0), 96.4 %, Knicke 0/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 94.4 %, Knicke 66/18, umg 18 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+Loop 2 (ring) Punkt 4 bei (-9, -150, 0), Griff ein
+   40°      hin: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 1/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+Loop 2 (ring) Punkt 4 bei (-9, -150, 0), Griff aus
+   40°      hin: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 1/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+Loop 3 (paar) Punkt 0 bei (-144, 9, 43), Griff ein
+   40°      hin: 0.5 s (sichtbar 0.0), 126.2 %, Knicke 0/0, umg 0 NICHT GETROFFEN · zurück: 0.3 s (sichtbar 0.0), 97.3 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+   verdreht hin: 0.6 s (sichtbar 0.6), 112.8 %, Knicke 539/200, umg 182 NICHT GETROFFEN · zurück: 0.7 s (sichtbar 0.7), 152.1 %, Knicke 233/88, umg 62 NICHT GETROFFEN
+Loop 3 (paar) Punkt 0 bei (-144, 9, 43), Griff aus
+   40°      hin: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 NICHT GETROFFEN · zurück: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+   verdreht hin: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 NICHT GETROFFEN · zurück: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+Loop 3 (paar) Punkt 1 bei (-12, 114, 250), Griff ein
+   40°      hin: 0.3 s (sichtbar 0.0), 98.8 %, Knicke 0/0, umg 0 · zurück: 0.5 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.5 s (sichtbar 0.0), 85.6 %, Knicke 46/12, umg 4 · zurück: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 8/0, umg 0
+Loop 3 (paar) Punkt 1 bei (-12, 114, 250), Griff aus
+   40°      hin: 0.3 s (sichtbar 0.0), 98.8 %, Knicke 0/0, umg 0 · zurück: 0.5 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.7 s (sichtbar 0.1), 85.4 %, Knicke 56/10, umg 2 · zurück: 0.5 s (sichtbar 0.0), 100.0 %, Knicke 10/0, umg 0
+Loop 3 (paar) Punkt 2 bei (145, 8, 43), Griff ein
+   40°      hin: 0.3 s (sichtbar 0.0), 98.9 %, Knicke 0/0, umg 0 · zurück: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 90.8 %, Knicke 156/24, umg 36 NICHT GETROFFEN · zurück: 0.3 s (sichtbar 0.1), 85.1 %, Knicke 276/54, umg 88
+Loop 3 (paar) Punkt 2 bei (145, 8, 43), Griff aus
+   40°      hin: 0.3 s (sichtbar 0.0), 98.9 %, Knicke 0/0, umg 0 · zurück: 0.5 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 92.6 %, Knicke 268/44, umg 68 NICHT GETROFFEN · zurück: 0.7 s (sichtbar 0.6), 83.3 %, Knicke 270/98, umg 74
+Loop 3 (paar) Punkt 3 bei (-9, -148, 24), Griff ein
+   40°      hin: 0.3 s (sichtbar 0.0), 101.2 %, Knicke 0/0, umg 0 NICHT GETROFFEN · zurück: 0.0 s (sichtbar 0.0), 101.2 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+   verdreht hin: 0.0 s (sichtbar 0.0), 102.3 %, Knicke 57/0, umg 0 NICHT GETROFFEN · zurück: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+Loop 3 (paar) Punkt 3 bei (-9, -148, 24), Griff aus
+   40°      hin: 0.3 s (sichtbar 0.0), 101.2 %, Knicke 0/0, umg 0 NICHT GETROFFEN · zurück: 0.6 s (sichtbar 0.0), 119.0 %, Knicke 5/0, umg 0 NICHT GETROFFEN
+   verdreht hin: 0.0 s (sichtbar 0.0), 102.4 %, Knicke 53/0, umg 0 NICHT GETROFFEN · zurück: 0.0 s (sichtbar 0.0), 102.4 %, Knicke 53/0, umg 0 NICHT GETROFFEN
+Loop 4 (mitte) Punkt 0 bei (-9, -150, 0), Griff ein
+   40°      hin: 0.3 s (sichtbar 0.0), 101.3 %, Knicke 0/0, umg 0 · zurück: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 102.3 %, Knicke 61/4, umg 2 · zurück: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+Loop 4 (mitte) Punkt 0 bei (-9, -150, 0), Griff aus
+   40°      hin: 0.3 s (sichtbar 0.0), 101.3 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 102.3 %, Knicke 55/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+Loop 4 (mitte) Punkt 1 bei (-150, 9, 0), Griff ein
+   40°      hin: 0.4 s (sichtbar 0.0), 101.7 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 98.5 %, Knicke 55/2, umg 18 · zurück: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+Loop 4 (mitte) Punkt 1 bei (-150, 9, 0), Griff aus
+   40°      hin: 0.4 s (sichtbar 0.0), 101.7 %, Knicke 0/0, umg 0 · zurück: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 98.5 %, Knicke 61/6, umg 12 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+Loop 4 (mitte) Punkt 2 bei (-12, 150, 0), Griff ein
+   40°      hin: 0.2 s (sichtbar 0.0), 99.7 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.3 s (sichtbar 0.2), 91.8 %, Knicke 138/48, umg 42 · zurück: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+Loop 4 (mitte) Punkt 2 bei (-12, 150, 0), Griff aus
+   40°      hin: 0.2 s (sichtbar 0.0), 99.7 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.1 s (sichtbar 0.0), 89.8 %, Knicke 70/24, umg 36 · zurück: 0.4 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+Loop 4 (mitte) Punkt 3 bei (150, 8, 0), Griff ein
+   40°      hin: 0.2 s (sichtbar 0.0), 97.6 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 98.1 %, Knicke 83/14, umg 22 · zurück: 0.3 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+Loop 4 (mitte) Punkt 3 bei (150, 8, 0), Griff aus
+   40°      hin: 0.3 s (sichtbar 0.0), 97.6 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 98.1 %, Knicke 43/2, umg 6 · zurück: 0.2 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0
+Konsole: keine Fehler
+fertig
+
+### jetzt-gleich-alle-test_kaputt
+geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Port 5193/kurven.html · FORM=test_kaputt · 1:ring 5 Punkte, 77 Proben · 2:ring 5 Punkte, 102 Proben · 3:paar 4 Punkte, 183 Proben · 4:mitte 4 Punkte, 125 Proben (125 Punkte des Netzes in der Mittelebene)
+Anfang: 6217 Punkte · Rauminhalt 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Meldung: Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.
+36 Griffe; je Griff: 40° drehen und zurück, verdrehen und zurück (jeder Fall auf der frisch geladenen Form)
+Loop 1 (ring) Punkt 0 bei (150, 8, 0), Griff ein
+   40°      hin: 0.4 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+Loop 1 (ring) Punkt 0 bei (150, 8, 0), Griff aus
+   40°      hin: 0.4 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+Loop 1 (ring) Punkt 1 bei (145, 8, 43), Griff ein
+   40°      hin: 0.2 s (sichtbar 0.2), 96.8 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 99.5 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 94.8 %, Knicke 26/10, umg 14 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+Loop 1 (ring) Punkt 1 bei (145, 8, 43), Griff aus
+   40°      hin: 0.2 s (sichtbar 0.2), 96.8 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 99.5 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 94.8 %, Knicke 42/10, umg 10 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+Loop 1 (ring) Punkt 2 bei (-11, 8, 148), Griff ein
+   40°      hin: 0.2 s (sichtbar 0.2), 99.3 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 99.5 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 92.8 %, Knicke 60/10, umg 12 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+Loop 1 (ring) Punkt 2 bei (-11, 8, 148), Griff aus
+   40°      hin: 0.2 s (sichtbar 0.2), 99.3 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 99.5 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 92.8 %, Knicke 62/8, umg 8 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+Loop 1 (ring) Punkt 3 bei (-144, 9, 43), Griff ein
+   40°      hin: 0.2 s (sichtbar 0.2), 100.7 %, Knicke 0/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 96.4 %, Knicke 30/6, umg 8 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+Loop 1 (ring) Punkt 3 bei (-144, 9, 43), Griff aus
+   40°      hin: 0.2 s (sichtbar 0.2), 100.7 %, Knicke 0/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 96.4 %, Knicke 30/8, umg 14 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+Loop 1 (ring) Punkt 4 bei (-150, 9, 0), Griff ein
+   40°      hin: 0.2 s (sichtbar 0.2), 97.6 %, Knicke 0/0, umg 0 NICHT GETROFFEN · zurück: 0.2 s (sichtbar 0.0), 99.5 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+   verdreht hin: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0 NICHT GETROFFEN · zurück: 0.0 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+Loop 1 (ring) Punkt 4 bei (-150, 9, 0), Griff aus
+   40°      hin: 0.2 s (sichtbar 0.0), 101.2 %, Knicke 0/0, umg 0 NICHT GETROFFEN · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+   verdreht hin: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0 NICHT GETROFFEN · zurück: 0.0 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+Loop 2 (ring) Punkt 0 bei (-12, 150, 0), Griff ein
+   40°      hin: 0.2 s (sichtbar 0.2), 97.8 %, Knicke 1/0, umg 0 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.2 s (sichtbar 0.2), 99.2 %, Knicke 0/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 99.2 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+Loop 2 (ring) Punkt 0 bei (-12, 150, 0), Griff aus
+   40°      hin: 0.4 s (sichtbar 0.0), 101.1 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.2 s (sichtbar 0.2), 99.2 %, Knicke 0/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 99.2 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+Loop 2 (ring) Punkt 1 bei (-12, 114, 250), Griff ein
+   40°      hin: 0.4 s (sichtbar 0.4), 97.5 %, Knicke 36/6, umg 8 · zurück: 0.2 s (sichtbar 0.2), 99.5 %, Knicke 12/0, umg 2
+   verdreht hin: 0.0 s (sichtbar 0.0), 95.9 %, Knicke 24/6, umg 6 · zurück: 0.2 s (sichtbar 0.2), 99.5 %, Knicke 0/0, umg 0
+Loop 2 (ring) Punkt 1 bei (-12, 114, 250), Griff aus
+   40°      hin: 0.4 s (sichtbar 0.4), 97.5 %, Knicke 36/6, umg 8 · zurück: 0.2 s (sichtbar 0.2), 99.5 %, Knicke 12/0, umg 2
+   verdreht hin: 0.0 s (sichtbar 0.0), 95.8 %, Knicke 22/4, umg 4 · zurück: 0.2 s (sichtbar 0.2), 99.5 %, Knicke 0/0, umg 0
+Loop 2 (ring) Punkt 2 bei (-11, 8, 148), Griff ein
+   40°      hin: 0.2 s (sichtbar 0.2), 101.5 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.2 s (sichtbar 0.2), 99.2 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.2), 99.3 %, Knicke 0/0, umg 0
+Loop 2 (ring) Punkt 2 bei (-11, 8, 148), Griff aus
+   40°      hin: 0.2 s (sichtbar 0.2), 101.5 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.2 s (sichtbar 0.2), 99.1 %, Knicke 2/0, umg 0 · zurück: 0.4 s (sichtbar 0.0), 99.5 %, Knicke 0/0, umg 0
+Loop 2 (ring) Punkt 3 bei (-9, -148, 24), Griff ein
+   40°      hin: 0.2 s (sichtbar 0.2), 96.0 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 92.9 %, Knicke 56/6, umg 10 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+Loop 2 (ring) Punkt 3 bei (-9, -148, 24), Griff aus
+   40°      hin: 0.2 s (sichtbar 0.2), 96.0 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 92.7 %, Knicke 32/2, umg 2 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+Loop 2 (ring) Punkt 4 bei (-9, -150, 0), Griff ein
+   40°      hin: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 1/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+Loop 2 (ring) Punkt 4 bei (-9, -150, 0), Griff aus
+   40°      hin: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 1/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0 · zurück: 0.0 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+Loop 3 (paar) Punkt 0 bei (-144, 9, 43), Griff ein
+   40°      hin: 0.5 s (sichtbar 0.0), 125.8 %, Knicke 0/0, umg 0 NICHT GETROFFEN · zurück: 0.5 s (sichtbar 0.0), 96.3 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+   verdreht hin: 1.5 s (sichtbar 0.0), 110.1 %, Knicke 28/16, umg 10 NICHT GETROFFEN · zurück: 2.5 s (sichtbar 2.5), 146.2 %, Knicke 77/26, umg 12 NICHT GETROFFEN
+Loop 3 (paar) Punkt 0 bei (-144, 9, 43), Griff aus
+   40°      hin: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 NICHT GETROFFEN · zurück: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+   verdreht hin: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 NICHT GETROFFEN · zurück: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+Loop 3 (paar) Punkt 1 bei (-12, 114, 250), Griff ein
+   40°      hin: 0.6 s (sichtbar 0.0), 98.1 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.6 s (sichtbar 0.6), 85.6 %, Knicke 48/20, umg 14 · zurück: 0.2 s (sichtbar 0.2), 99.3 %, Knicke 0/0, umg 0
+Loop 3 (paar) Punkt 1 bei (-12, 114, 250), Griff aus
+   40°      hin: 0.4 s (sichtbar 0.4), 98.1 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.8 s (sichtbar 0.8), 85.8 %, Knicke 30/4, umg 6 · zurück: 0.4 s (sichtbar 0.4), 99.2 %, Knicke 0/0, umg 0
+Loop 3 (paar) Punkt 2 bei (145, 8, 43), Griff ein
+   40°      hin: 0.2 s (sichtbar 0.2), 98.5 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.8 s (sichtbar 0.8), 89.4 %, Knicke 82/26, umg 34 NICHT GETROFFEN · zurück: 0.9 s (sichtbar 0.9), 85.3 %, Knicke 58/8, umg 8
+Loop 3 (paar) Punkt 2 bei (145, 8, 43), Griff aus
+   40°      hin: 0.2 s (sichtbar 0.2), 98.5 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.8 s (sichtbar 0.8), 89.7 %, Knicke 50/18, umg 20 NICHT GETROFFEN · zurück: 0.9 s (sichtbar 0.9), 85.4 %, Knicke 76/8, umg 6
+Loop 3 (paar) Punkt 3 bei (-9, -148, 24), Griff ein
+   40°      hin: 0.2 s (sichtbar 0.2), 100.4 %, Knicke 0/0, umg 0 NICHT GETROFFEN · zurück: 0.0 s (sichtbar 0.0), 100.4 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+   verdreht hin: 0.0 s (sichtbar 0.0), 100.0 %, Knicke 67/4, umg 6 NICHT GETROFFEN · zurück: 0.2 s (sichtbar 0.2), 99.5 %, Knicke 0/0, umg 0 NICHT GETROFFEN
+Loop 3 (paar) Punkt 3 bei (-9, -148, 24), Griff aus
+   40°      hin: 0.2 s (sichtbar 0.2), 100.4 %, Knicke 0/0, umg 0 NICHT GETROFFEN · zurück: 0.7 s (sichtbar 0.0), 117.1 %, Knicke 3/0, umg 0 NICHT GETROFFEN
+   verdreht hin: 0.0 s (sichtbar 0.0), 99.9 %, Knicke 69/4, umg 2 NICHT GETROFFEN · zurück: 0.0 s (sichtbar 0.0), 99.9 %, Knicke 69/4, umg 2 NICHT GETROFFEN
+Loop 4 (mitte) Punkt 0 bei (-9, -150, 0), Griff ein
+   40°      hin: 0.4 s (sichtbar 0.0), 100.5 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 99.9 %, Knicke 63/6, umg 6 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+Loop 4 (mitte) Punkt 0 bei (-9, -150, 0), Griff aus
+   40°      hin: 0.4 s (sichtbar 0.0), 100.5 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 99.9 %, Knicke 75/4, umg 2 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+Loop 4 (mitte) Punkt 1 bei (-150, 9, 0), Griff ein
+   40°      hin: 0.2 s (sichtbar 0.2), 101.1 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 96.3 %, Knicke 44/6, umg 6 · zurück: 0.2 s (sichtbar 0.2), 99.5 %, Knicke 0/0, umg 0
+Loop 4 (mitte) Punkt 1 bei (-150, 9, 0), Griff aus
+   40°      hin: 0.2 s (sichtbar 0.2), 101.1 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 96.3 %, Knicke 66/16, umg 20 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+Loop 4 (mitte) Punkt 2 bei (-12, 150, 0), Griff ein
+   40°      hin: 0.2 s (sichtbar 0.2), 99.1 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 90.9 %, Knicke 30/8, umg 8 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+Loop 4 (mitte) Punkt 2 bei (-12, 150, 0), Griff aus
+   40°      hin: 0.2 s (sichtbar 0.2), 99.1 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 90.9 %, Knicke 24/4, umg 4 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+Loop 4 (mitte) Punkt 3 bei (150, 8, 0), Griff ein
+   40°      hin: 0.2 s (sichtbar 0.2), 96.7 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 95.1 %, Knicke 54/8, umg 8 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+Loop 4 (mitte) Punkt 3 bei (150, 8, 0), Griff aus
+   40°      hin: 0.2 s (sichtbar 0.2), 96.7 %, Knicke 0/0, umg 0 · zurück: 0.2 s (sichtbar 0.0), 99.4 %, Knicke 0/0, umg 0
+   verdreht hin: 0.0 s (sichtbar 0.0), 95.0 %, Knicke 40/2, umg 6 · zurück: 0.2 s (sichtbar 0.2), 99.4 %, Knicke 0/0, umg 0
+Konsole: keine Fehler
+
+## TEST=sprung (Sprung nach dem Loslassen, mit Vorzug), heutiger Stand
+### sprung-geo-test_kaputt
+geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Port 5193/kurven.html?gewichte=geometrie · FORM=test_kaputt · 1:ring 5 Punkte, 77 Proben · 2:ring 5 Punkte, 102 Proben · 3:paar 4 Punkte, 183 Proben · 4:mitte 4 Punkte, 125 Proben (125 Punkte des Netzes in der Mittelebene)
+Anfang: 6217 Punkte · Rauminhalt 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Meldung: Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.
+oben (-12, 150, 0) um 60: nach dem Loslassen bewegt sich die Haut noch 0.5 s (sichtbar 0.0 s, Netz 1-mal gewechselt) · Rauminhalt gehalten 115.1 % → in Ruhe 115.1 % · Ausdehnung ändert sich danach um 0.0 · Punkte 6229 → 6357 · Knicke über 150° 0 → 0, umgeschlagen 0 → 0
+unten (-9, -150, 0) um 60: nach dem Loslassen bewegt sich die Haut noch 0.3 s (sichtbar 0.0 s, Netz 1-mal gewechselt) · Rauminhalt gehalten 99.9 % → in Ruhe 99.9 % · Ausdehnung ändert sich danach um 0.0 · Punkte 6357 → 6458 · Knicke über 150° 0 → 0, umgeschlagen 0 → 0
+vorn (-150, 9, 0) um 60: nach dem Loslassen bewegt sich die Haut noch 0.3 s (sichtbar 0.0 s, Netz 1-mal gewechselt) · Rauminhalt gehalten 102.7 % → in Ruhe 102.7 % · Ausdehnung ändert sich danach um 0.0 · Punkte 6319 → 6368 · Knicke über 150° 0 → 0, umgeschlagen 0 → 0
+außen (-12, 114, 250) um 60: nach dem Loslassen bewegt sich die Haut noch 0.3 s (sichtbar 0.0 s, Netz 1-mal gewechselt) · Rauminhalt gehalten 108.3 % → in Ruhe 108.3 % · Ausdehnung ändert sich danach um 0.0 · Punkte 6435 → 6713 · Knicke über 150° 0 → 0, umgeschlagen 0 → 0
+Konsole: keine Fehler
+
+### sprung-gleich-test_kaputt
+geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Port 5193/kurven.html · FORM=test_kaputt · 1:ring 5 Punkte, 77 Proben · 2:ring 5 Punkte, 102 Proben · 3:paar 4 Punkte, 183 Proben · 4:mitte 4 Punkte, 125 Proben (125 Punkte des Netzes in der Mittelebene)
+Anfang: 6217 Punkte · Rauminhalt 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Meldung: Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.
+oben (-12, 150, 0) um 60: nach dem Loslassen bewegt sich die Haut noch 0.2 s (sichtbar 0.2 s) · Rauminhalt gehalten 114.8 % → in Ruhe 114.6 % · Ausdehnung ändert sich danach um 0.0 · Punkte 6217 → 6287 · Knicke über 150° 0 → 0, umgeschlagen 0 → 0
+unten (-9, -150, 0) um 60: nach dem Loslassen bewegt sich die Haut noch 0.4 s (sichtbar 0.4 s, Netz 1-mal gewechselt) · Rauminhalt gehalten 99.2 % → in Ruhe 99.4 % · Ausdehnung ändert sich danach um 0.0 · Punkte 6217 → 6432 · Knicke über 150° 0 → 0, umgeschlagen 0 → 0
+vorn (-150, 9, 0) um 60: nach dem Loslassen bewegt sich die Haut noch 0.4 s (sichtbar 0.0 s, Netz 1-mal gewechselt) · Rauminhalt gehalten 102.6 % → in Ruhe 102.5 % · Ausdehnung ändert sich danach um 0.0 · Punkte 6217 → 6372 · Knicke über 150° 0 → 0, umgeschlagen 0 → 0
+außen (-12, 114, 250) um 60: nach dem Loslassen bewegt sich die Haut noch 0.4 s (sichtbar 0.4 s, Netz 1-mal gewechselt) · Rauminhalt gehalten 107.5 % → in Ruhe 107.3 % · Ausdehnung ändert sich danach um 0.0 · Punkte 6217 → 6645 · Knicke über 150° 0 → 0, umgeschlagen 0 → 0
+Konsole: keine Fehler
+
+### sprung2-geo-strange bird
+geladen: „strange bird“ (16010 Punkte im Netz, 9 Loops mit 55 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Port 5193/kurven.html?gewichte=geometrie · FORM=strange bird · 1:ring 5 Punkte, 150 Proben · 2:ring 9 Punkte, 137 Proben · 3:mitte 16 Punkte, 316 Proben (316 Punkte des Netzes in der Mittelebene) · 4:paar 7 Punkte, 202 Proben · 7:ring 3 Punkte, 28 Proben · 8:ring 4 Punkte, 64 Proben · 11:ring 5 Punkte, 154 Proben · 12:ring 3 Punkte, 51 Proben · 13:ring 3 Punkte, 47 Proben
+Anfang: 16010 Punkte · Rauminhalt 100.0 % · Knicke über 60° 54, über 150° 4 · umgeschlagen 4
+oben (46, 466, 44) um 60 (Vorzug: 1.8 s, sichtbar 0.0 s): nach dem Loslassen bewegt sich die Haut noch 1.3 s (sichtbar 0.0 s, Netz 1-mal gewechselt) · Rauminhalt gehalten 103.2 % → in Ruhe 103.2 % · Ausdehnung ändert sich danach um 0.0 · Punkte 16072 → 16588 · Knicke über 150° 6 → 0, umgeschlagen 4 → 2
+unten (-85, -135, 0) um 60 (Vorzug: 2.0 s, sichtbar 0.0 s): nach dem Loslassen bewegt sich die Haut noch 1.1 s (sichtbar 0.0 s, Netz 1-mal gewechselt) · Rauminhalt gehalten 103.0 % → in Ruhe 103.0 % · Ausdehnung ändert sich danach um 0.0 · Punkte 16046 → 16228 · Knicke über 150° 6 → 6, umgeschlagen 4 → 4
+vorn (-542, 128, 0) um 60 (Vorzug: 1.7 s, sichtbar 0.0 s): nach dem Loslassen bewegt sich die Haut noch 1.0 s (sichtbar 0.0 s, Netz 1-mal gewechselt) · Rauminhalt gehalten 100.4 % → in Ruhe 100.4 % · Ausdehnung ändert sich danach um 0.0 · Punkte 16046 → 16218 · Knicke über 150° 6 → 6, umgeschlagen 4 → 2
+außen (30, -28, 148) um 60 (Vorzug: 2.1 s, sichtbar 0.0 s): nach dem Loslassen bewegt sich die Haut noch 2.1 s (sichtbar 0.0 s, Netz 1-mal gewechselt) · Rauminhalt gehalten 114.3 % → in Ruhe 114.3 % · Ausdehnung ändert sich danach um 0.0 · Punkte 16054 → 16470 · Knicke über 150° 6 → 0, umgeschlagen 4 → 2
+Konsole: keine Fehler
+
+### sprung2-gleich-strange bird
+geladen: „strange bird“ (16010 Punkte im Netz, 9 Loops mit 55 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Port 5193/kurven.html · FORM=strange bird · 1:ring 5 Punkte, 150 Proben · 2:ring 9 Punkte, 137 Proben · 3:mitte 16 Punkte, 316 Proben (316 Punkte des Netzes in der Mittelebene) · 4:paar 7 Punkte, 202 Proben · 7:ring 3 Punkte, 28 Proben · 8:ring 4 Punkte, 64 Proben · 11:ring 5 Punkte, 154 Proben · 12:ring 3 Punkte, 51 Proben · 13:ring 3 Punkte, 47 Proben
+Anfang: 16010 Punkte · Rauminhalt 100.0 % · Knicke über 60° 54, über 150° 4 · umgeschlagen 4
+oben (46, 466, 44) um 60 (Vorzug: 0.0 s, sichtbar 0.0 s): nach dem Loslassen bewegt sich die Haut noch 2.3 s (sichtbar 0.0 s, Netz 1-mal gewechselt) · Rauminhalt gehalten 102.5 % → in Ruhe 102.7 % · Ausdehnung ändert sich danach um 0.3 · Punkte 16010 → 16408 · Knicke über 150° 4 → 0, umgeschlagen 4 → 2
+unten (-85, -135, 0) um 60 (Vorzug: 0.0 s, sichtbar 0.0 s): nach dem Loslassen bewegt sich die Haut noch 0.8 s (sichtbar 0.8 s) · Rauminhalt gehalten 103.2 % → in Ruhe 103.2 % · Ausdehnung ändert sich danach um 0.0 · Punkte 16010 → 16158 · Knicke über 150° 4 → 4, umgeschlagen 4 → 4
+vorn (-542, 128, 0) um 60 (Vorzug: 0.0 s, sichtbar 0.0 s): nach dem Loslassen bewegt sich die Haut noch 0.7 s (sichtbar 0.7 s) · Rauminhalt gehalten 100.4 % → in Ruhe 100.4 % · Ausdehnung ändert sich danach um 0.0 · Punkte 16010 → 16168 · Knicke über 150° 4 → 4, umgeschlagen 4 → 2
+außen (30, -28, 148) um 60 (Vorzug: 0.0 s, sichtbar 0.0 s): nach dem Loslassen bewegt sich die Haut noch 2.5 s (sichtbar 0.0 s, Netz 2-mal gewechselt) · Rauminhalt gehalten 114.2 % → in Ruhe 114.0 % · Ausdehnung ändert sich danach um 0.0 · Punkte 16010 → 16244 · Knicke über 150° 4 → 0, umgeschlagen 4 → 2
+Konsole: keine Fehler
+
+### sprung2-geo-teat firefish
+geladen: „teat firefish“ (27770 Punkte im Netz, 17 Loops mit 90 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Port 5193/kurven.html?gewichte=geometrie · FORM=teat firefish · 1:ring 7 Punkte, 155 Proben · 2:ring 4 Punkte, 96 Proben · 4:mitte 38 Punkte, 746 Proben (746 Punkte des Netzes in der Mittelebene) · 5:ring 2 Punkte, 47 Proben · 6:ring 3 Punkte, 39 Proben · 7:ring 5 Punkte, 154 Proben · 8:ring 3 Punkte, 71 Proben · 9:ring 3 Punkte, 32 Proben · 10:ring 3 Punkte, 94 Proben · 11:ring 3 Punkte, 84 Proben · 12:ring 2 Punkte, 35 Proben · 13:ring 2 Punkte, 35 Proben · 14:ring 3 Punkte, 41 Proben · 15:ring 3 Punkte, 60 Proben · 16:ring 2 Punkte, 33 Proben · 17:ring 2 Punkte, 23 Proben · 18:ring 5 Punkte, 156 Proben
+Anfang: 27770 Punkte · Rauminhalt 100.0 % · Knicke über 60° 59, über 150° 9 · umgeschlagen 0
+oben (-48, 582, 0) um 60 (Vorzug: 2.1 s, sichtbar 0.0 s): nach dem Loslassen bewegt sich die Haut noch 5.5 s (sichtbar 0.0 s, Netz 1-mal gewechselt) · Rauminhalt gehalten 100.1 % → in Ruhe 100.1 % · Ausdehnung ändert sich danach um 0.0 · Punkte 27772 → 27860 · Knicke über 150° 9 → 9, umgeschlagen 0 → 0
+unten (36, -165, 0) um 60 (Vorzug: 1.7 s, sichtbar 0.0 s): nach dem Loslassen bewegt sich die Haut noch 2.2 s (sichtbar 0.0 s, Netz 1-mal gewechselt) · Rauminhalt gehalten 101.9 % → in Ruhe 101.9 % · Ausdehnung ändert sich danach um 0.0 · Punkte 27772 → 27833 · Knicke über 150° 9 → 0, umgeschlagen 0 → 0
+vorn (-752, 182, 0) um 60 (Vorzug: 2.0 s, sichtbar 0.0 s): nach dem Loslassen bewegt sich die Haut noch 2.2 s (sichtbar 0.0 s, Netz 1-mal gewechselt) · Rauminhalt gehalten 101.0 % → in Ruhe 101.0 % · Ausdehnung ändert sich danach um 0.1 · Punkte 27772 → 27961 · Knicke über 150° 9 → 9, umgeschlagen 0 → 0
+außen (-53, 60, 319) um 60 (Vorzug: 2.2 s, sichtbar 0.0 s): nach dem Loslassen bewegt sich die Haut noch 2.3 s (sichtbar 0.0 s, Netz 1-mal gewechselt) · Rauminhalt gehalten 104.0 % → in Ruhe 104.0 % · Ausdehnung ändert sich danach um 0.0 · Punkte 27772 → 28180 · Knicke über 150° 9 → 9, umgeschlagen 0 → 0
+Konsole: keine Fehler
+
+### sprung2-gleich-teat firefish
+geladen: „teat firefish“ (27770 Punkte im Netz, 17 Loops mit 90 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Port 5193/kurven.html · FORM=teat firefish · 1:ring 7 Punkte, 155 Proben · 2:ring 4 Punkte, 96 Proben · 4:mitte 38 Punkte, 746 Proben (746 Punkte des Netzes in der Mittelebene) · 5:ring 2 Punkte, 47 Proben · 6:ring 3 Punkte, 39 Proben · 7:ring 5 Punkte, 154 Proben · 8:ring 3 Punkte, 71 Proben · 9:ring 3 Punkte, 32 Proben · 10:ring 3 Punkte, 94 Proben · 11:ring 3 Punkte, 84 Proben · 12:ring 2 Punkte, 35 Proben · 13:ring 2 Punkte, 35 Proben · 14:ring 3 Punkte, 41 Proben · 15:ring 3 Punkte, 60 Proben · 16:ring 2 Punkte, 33 Proben · 17:ring 2 Punkte, 23 Proben · 18:ring 5 Punkte, 156 Proben
+Anfang: 27770 Punkte · Rauminhalt 100.0 % · Knicke über 60° 59, über 150° 9 · umgeschlagen 0
+oben (-48, 582, 0) um 60 (Vorzug: 2.8 s, sichtbar 2.8 s): nach dem Loslassen bewegt sich die Haut noch 1.5 s (sichtbar 1.5 s) · Rauminhalt gehalten 100.1 % → in Ruhe 100.1 % · Ausdehnung ändert sich danach um 0.0 · Punkte 27784 → 27864 · Knicke über 150° 0 → 0, umgeschlagen 0 → 0
+unten (36, -165, 0) um 60 (Vorzug: 1.6 s, sichtbar 1.6 s): nach dem Loslassen bewegt sich die Haut noch 1.6 s (sichtbar 1.6 s) · Rauminhalt gehalten 101.9 % → in Ruhe 101.9 % · Ausdehnung ändert sich danach um 0.0 · Punkte 27782 → 27819 · Knicke über 150° 0 → 0, umgeschlagen 0 → 0
+vorn (-752, 182, 0) um 60 (Vorzug: 1.6 s, sichtbar 1.6 s): nach dem Loslassen bewegt sich die Haut noch 5.1 s (sichtbar 0.0 s, Netz 2-mal gewechselt) · Rauminhalt gehalten 101.0 % → in Ruhe 101.0 % · Ausdehnung ändert sich danach um 0.1 · Punkte 27782 → 27957 · Knicke über 150° 0 → 0, umgeschlagen 0 → 0
+außen (-53, 60, 319) um 60 (Vorzug: 1.6 s, sichtbar 1.6 s): nach dem Loslassen bewegt sich die Haut noch 3.3 s (sichtbar 3.3 s, Netz 1-mal gewechselt) · Rauminhalt gehalten 103.7 % → in Ruhe 103.8 % · Ausdehnung ändert sich danach um 0.0 · Punkte 27782 → 28096 · Knicke über 150° 0 → 0, umgeschlagen 0 → 0
+Konsole: keine Fehler
+
+## TEST=zufall (Zufallsfolgen), heutiger Stand
+### zufall-geo-test_kaputt-1
+geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Port 5193/kurven.html?gewichte=geometrie · FORM=test_kaputt · 1:ring 5 Punkte, 77 Proben · 2:ring 5 Punkte, 102 Proben · 3:paar 4 Punkte, 183 Proben · 4:mitte 4 Punkte, 125 Proben (125 Punkte des Netzes in der Mittelebene)
+Anfang: 6217 Punkte · Rauminhalt 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Meldung: Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.
+1 Griff aus von 3:0 um 34° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6217 Punkte · Rauminhalt 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+2 Punkt 3:2 in top um (-47, 0, 3): bewegt sich noch 0.7 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6147 Punkte · Rauminhalt 88.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+3 Punkt 1:2 in seite um (45, 20, 0): bewegt sich noch 0.4 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 5941 Punkte · Rauminhalt 85.9 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+4 Punkt 2:3 in seite um (-20, 10, 0): bewegt sich noch 0.1 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5945 Punkte · Rauminhalt 85.7 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+5 Punkt 3:3 in seite um (-57, -17, 0): bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6151 Punkte · Rauminhalt 90.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+6 Griff ein von 4:0 um 70° drehen: bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6201 Punkte · Rauminhalt 90.9 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0
+7 Punkt 1:3 in seite um (0, 45, 0): bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6283 Punkte · Rauminhalt 92.4 % · Knicke über 60° 3, über 150° 0 · umgeschlagen 0
+8 Griff ein von 1:3 um -22° drehen: bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6289 Punkte · Rauminhalt 91.3 % · Knicke über 60° 3, über 150° 0 · umgeschlagen 0
+9 Punkt 3:3 in top um (-52, 0, 36): bewegt sich noch 0.6 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6617 Punkte · Rauminhalt 94.9 % · Knicke über 60° 5, über 150° 0 · umgeschlagen 0
+10 Griff aus von 2:3 verdrehen: bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.1, Netz 1-mal gewechselt) · 6435 Punkte · Rauminhalt 83.3 % · Knicke über 60° 27, über 150° 0 · umgeschlagen 2 ◀ UMGEKLAPPT 0 → 2
+11 Griff aus von 3:3 um -22° drehen: bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6433 Punkte · Rauminhalt 84.2 % · Knicke über 60° 23, über 150° 2 · umgeschlagen 0
+12 Griff aus von 4:1 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6433 Punkte · Rauminhalt 80.0 % · Knicke über 60° 99, über 150° 4 · umgeschlagen 12 · Meldung: Loop 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+13 Griff aus von 4:1 zurückdrehen: bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6419 Punkte · Rauminhalt 84.2 % · Knicke über 60° 23, über 150° 2 · umgeschlagen 0
+14 Punkt 3:3 in top um (-23, 0, 19): bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6479 Punkte · Rauminhalt 85.8 % · Knicke über 60° 25, über 150° 2 · umgeschlagen 0
+15 Punkt 1:2 in front um (0, -10, -50): bewegt sich noch 0.4 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6333 Punkte · Rauminhalt 74.6 % · Knicke über 60° 25, über 150° 2 · umgeschlagen 0
+16 Griff ein von 1:4 verdrehen: bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6319 Punkte · Rauminhalt 74.6 % · Knicke über 60° 25, über 150° 2 · umgeschlagen 0
+17 Griff ein von 1:1 verdrehen: bewegt sich noch 1.3 s (sichtbar 0.2 s, größte Bewegung 1.4, Netz 1-mal gewechselt) · 6365 Punkte · Rauminhalt 74.6 % · Knicke über 60° 139, über 150° 30 · umgeschlagen 42 ◀ UMGEKLAPPT 0 → 42 · KNICKE 2 → 30
+18 Griff ein von 1:1 zurückdrehen: bewegt sich noch 0.4 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6349 Punkte · Rauminhalt 74.7 % · Knicke über 60° 31, über 150° 8 · umgeschlagen 2
+19 Punkt 2:0 in seite um (-17, -34, 0): bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6299 Punkte · Rauminhalt 66.5 % · Knicke über 60° 31, über 150° 8 · umgeschlagen 2
+20 Griff aus von 3:0 um -60° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6299 Punkte · Rauminhalt 66.5 % · Knicke über 60° 31, über 150° 8 · umgeschlagen 2
+21 Griff aus von 2:4 verdrehen: bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6299 Punkte · Rauminhalt 66.6 % · Knicke über 60° 31, über 150° 10 · umgeschlagen 2
+22 Griff aus von 2:4 zurückdrehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6299 Punkte · Rauminhalt 66.6 % · Knicke über 60° 31, über 150° 10 · umgeschlagen 2
+23 Griff aus von 4:1 um -33° drehen: bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6277 Punkte · Rauminhalt 65.9 % · Knicke über 60° 32, über 150° 10 · umgeschlagen 2
+24 Griff ein von 4:3 um -27° drehen: bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6281 Punkte · Rauminhalt 65.9 % · Knicke über 60° 32, über 150° 10 · umgeschlagen 2
+25 Punkt 2:2 in top um (33, 0, -21): bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6197 Punkte · Rauminhalt 61.4 % · Knicke über 60° 68, über 150° 26 · umgeschlagen 10 ◀ UMGEKLAPPT 2 → 10 · KNICKE 10 → 26
+26 Griff ein von 4:2 um -35° drehen: bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6139 Punkte · Rauminhalt 59.8 % · Knicke über 60° 64, über 150° 20 · umgeschlagen 10
+27 Griff aus von 1:1 verdrehen: bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6173 Punkte · Rauminhalt 60.1 % · Knicke über 60° 64, über 150° 6 · umgeschlagen 6
+28 Griff aus von 1:1 zurückdrehen: bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6145 Punkte · Rauminhalt 59.8 % · Knicke über 60° 72, über 150° 20 · umgeschlagen 6 ◀ KNICKE 6 → 20
+29 Punkt 1:3 in seite um (13, -26, 0): bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6111 Punkte · Rauminhalt 59.0 % · Knicke über 60° 74, über 150° 20 · umgeschlagen 10 ◀ UMGEKLAPPT 6 → 10
+30 Griff ein von 2:4 um 37° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6111 Punkte · Rauminhalt 59.0 % · Knicke über 60° 74, über 150° 20 · umgeschlagen 10
+5 von 30 Schritten auffällig
+Konsole: keine Fehler
+
+### zufall-geo-test_kaputt-2
+geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Port 5193/kurven.html?gewichte=geometrie · FORM=test_kaputt · 1:ring 5 Punkte, 77 Proben · 2:ring 5 Punkte, 102 Proben · 3:paar 4 Punkte, 183 Proben · 4:mitte 4 Punkte, 125 Proben (125 Punkte des Netzes in der Mittelebene)
+Anfang: 6217 Punkte · Rauminhalt 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Meldung: Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.
+1 Punkt 3:1 in front um (0, -53, -49): bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 5911 Punkte · Rauminhalt 85.7 % · Knicke über 60° 16, über 150° 0 · umgeschlagen 2 ◀ UMGEKLAPPT 0 → 2
+2 Griff ein von 2:1 um 30° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5911 Punkte · Rauminhalt 84.8 % · Knicke über 60° 42, über 150° 14 · umgeschlagen 18 · Meldung: Loop 2 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+3 Griff ein von 2:4 um 38° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5911 Punkte · Rauminhalt 84.8 % · Knicke über 60° 42, über 150° 14 · umgeschlagen 20 · Meldung: Loop 2 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+4 Griff ein von 4:0 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5911 Punkte · Rauminhalt 85.6 % · Knicke über 60° 95, über 150° 34 · umgeschlagen 26 · Meldung: Loop 2, 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz
+5 Griff ein von 4:0 zurückdrehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5911 Punkte · Rauminhalt 85.8 % · Knicke über 60° 130, über 150° 50 · umgeschlagen 32 · Meldung: Loop 2, 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz
+6 Griff aus von 4:1 um -43° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5911 Punkte · Rauminhalt 84.1 % · Knicke über 60° 136, über 150° 44 · umgeschlagen 28 · Meldung: Loop 2, 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz
+7 Griff ein von 2:0 um -68° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5911 Punkte · Rauminhalt 85.0 % · Knicke über 60° 134, über 150° 44 · umgeschlagen 28 · Meldung: Loop 2, 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz
+8 Griff ein von 4:0 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5911 Punkte · Rauminhalt 84.9 % · Knicke über 60° 82, über 150° 16 · umgeschlagen 22 · Meldung: Loop 2 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+9 Griff ein von 4:0 zurückdrehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5911 Punkte · Rauminhalt 84.6 % · Knicke über 60° 61, über 150° 14 · umgeschlagen 20 · Meldung: Loop 2 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+10 Griff aus von 3:0 um 42° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5911 Punkte · Rauminhalt 84.6 % · Knicke über 60° 61, über 150° 14 · umgeschlagen 20
+11 Griff aus von 4:0 um 52° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5911 Punkte · Rauminhalt 84.5 % · Knicke über 60° 79, über 150° 14 · umgeschlagen 20 · Meldung: Loop 2 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+12 Griff aus von 3:0 um 36° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5911 Punkte · Rauminhalt 84.5 % · Knicke über 60° 79, über 150° 14 · umgeschlagen 20
+13 Punkt 4:3 in front um (0, -6, 20): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5893 Punkte · Rauminhalt 84.3 % · Knicke über 60° 64, über 150° 12 · umgeschlagen 16 · Meldung: Loop 2 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+14 Griff aus von 2:2 um 42° drehen: bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 5875 Punkte · Rauminhalt 86.4 % · Knicke über 60° 72, über 150° 6 · umgeschlagen 12
+15 Griff aus von 1:3 um 30° drehen: bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 5867 Punkte · Rauminhalt 87.0 % · Knicke über 60° 62, über 150° 6 · umgeschlagen 6
+16 Griff ein von 2:1 um -62° drehen: bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 5899 Punkte · Rauminhalt 89.0 % · Knicke über 60° 42, über 150° 6 · umgeschlagen 4
+17 Punkt 1:3 in front um (0, -36, 24): bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6035 Punkte · Rauminhalt 94.0 % · Knicke über 60° 34, über 150° 0 · umgeschlagen 0
+18 Punkt 2:4 in seite um (62, 8, 0): bewegt sich noch 0.4 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6128 Punkte · Rauminhalt 94.4 % · Knicke über 60° 32, über 150° 8 · umgeschlagen 4 ◀ UMGEKLAPPT 0 → 4 · KNICKE 0 → 8
+19 Griff ein von 3:3 um -53° drehen: bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6174 Punkte · Rauminhalt 93.1 % · Knicke über 60° 55, über 150° 4 · umgeschlagen 0
+20 Griff aus von 1:0 um 26° drehen: bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6176 Punkte · Rauminhalt 93.1 % · Knicke über 60° 55, über 150° 4 · umgeschlagen 0
+21 Punkt 3:3 in front um (0, -50, -10): bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6362 Punkte · Rauminhalt 103.5 % · Knicke über 60° 49, über 150° 9 · umgeschlagen 8 ◀ UMGEKLAPPT 0 → 8 · KNICKE 4 → 9
+22 Griff ein von 4:1 um 42° drehen: bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6370 Punkte · Rauminhalt 104.7 % · Knicke über 60° 40, über 150° 9 · umgeschlagen 8
+23 Griff aus von 1:2 um 35° drehen: bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6338 Punkte · Rauminhalt 104.1 % · Knicke über 60° 40, über 150° 9 · umgeschlagen 8
+24 Griff aus von 1:4 um -28° drehen: bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6334 Punkte · Rauminhalt 104.2 % · Knicke über 60° 40, über 150° 9 · umgeschlagen 8
+25 Punkt 2:4 in top um (14, 0, -31): bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6340 Punkte · Rauminhalt 104.2 % · Knicke über 60° 42, über 150° 9 · umgeschlagen 6
+26 Griff aus von 2:1 um -40° drehen: bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6344 Punkte · Rauminhalt 105.0 % · Knicke über 60° 42, über 150° 9 · umgeschlagen 6
+27 Punkt 4:3 in front um (0, -35, 66): bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6342 Punkte · Rauminhalt 104.1 % · Knicke über 60° 45, über 150° 9 · umgeschlagen 6
+28 Punkt 3:3 in front um (0, 30, 25): bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6368 Punkte · Rauminhalt 99.9 % · Knicke über 60° 37, über 150° 0 · umgeschlagen 0
+29 Punkt 2:4 in seite um (53, 49, 0): bewegt sich noch 0.7 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6529 Punkte · Rauminhalt 99.2 % · Knicke über 60° 79, über 150° 15 · umgeschlagen 4 ◀ UMGEKLAPPT 0 → 4 · KNICKE 0 → 15
+30 Griff aus von 1:0 um 59° drehen: bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6495 Punkte · Rauminhalt 99.2 % · Knicke über 60° 67, über 150° 10 · umgeschlagen 0
+4 von 30 Schritten auffällig
+Konsole: keine Fehler
+
+### zufall-geo-vogel-1
+geladen: „strange bird“ (16010 Punkte im Netz, 9 Loops mit 55 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Port 5193/kurven.html?gewichte=geometrie · FORM=strange bird · 1:ring 5 Punkte, 150 Proben · 2:ring 9 Punkte, 137 Proben · 3:mitte 16 Punkte, 316 Proben (316 Punkte des Netzes in der Mittelebene) · 4:paar 7 Punkte, 202 Proben · 7:ring 3 Punkte, 28 Proben · 8:ring 4 Punkte, 64 Proben · 11:ring 5 Punkte, 154 Proben · 12:ring 3 Punkte, 51 Proben · 13:ring 3 Punkte, 47 Proben
+Anfang: 16010 Punkte · Rauminhalt 100.0 % · Knicke über 60° 54, über 150° 4 · umgeschlagen 4
+1 Griff aus von 8:0 um 34° drehen: bewegt sich noch 2.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 16032 Punkte · Rauminhalt 100.0 % · Knicke über 60° 87, über 150° 13 · umgeschlagen 4 ◀ KNICKE 4 → 13 · BEWEGT SICH 2.3 s
+2 Punkt 8:2 in top um (-47, 0, 3): bewegt sich noch 0.8 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 16030 Punkte · Rauminhalt 99.8 % · Knicke über 60° 87, über 150° 13 · umgeschlagen 4
+3 Punkt 2:3 in seite um (45, 20, 0): bewegt sich noch 1.9 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 16260 Punkte · Rauminhalt 99.6 % · Knicke über 60° 123, über 150° 15 · umgeschlagen 6 ◀ UMGEKLAPPT 4 → 6
+4 Punkt 4:6 in seite um (-20, 10, 0): bewegt sich noch 1.9 s (sichtbar 0.1 s, größte Bewegung 0.7, Netz 1-mal gewechselt) · 16278 Punkte · Rauminhalt 99.0 % · Knicke über 60° 133, über 150° 15 · umgeschlagen 4
+5 Punkt 8:3 in seite um (-57, -17, 0): bewegt sich noch 2.0 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 16367 Punkte · Rauminhalt 98.1 % · Knicke über 60° 133, über 150° 9 · umgeschlagen 4
+6 Griff ein von 11:1 um 70° drehen: bewegt sich noch 3.3 s (sichtbar 0.1 s, größte Bewegung 0.5, Netz 1-mal gewechselt) · 16543 Punkte · Rauminhalt 87.0 % · Knicke über 60° 171, über 150° 25 · umgeschlagen 12 ◀ UMGEKLAPPT 4 → 12 · KNICKE 9 → 25 · BEWEGT SICH 3.3 s
+7 Punkt 3:12 in seite um (0, 45, 0): bewegt sich noch 1.9 s (sichtbar 0.0 s, größte Bewegung 0.4, Netz 1-mal gewechselt) · 16505 Punkte · Rauminhalt 86.4 % · Knicke über 60° 142, über 150° 8 · umgeschlagen 2
+8 Griff ein von 2:6 um -22° drehen: bewegt sich noch 0.9 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 16519 Punkte · Rauminhalt 86.1 % · Knicke über 60° 142, über 150° 8 · umgeschlagen 2
+9 Punkt 8:3 in top um (-52, 0, 36): bewegt sich noch 1.9 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 16546 Punkte · Rauminhalt 85.9 % · Knicke über 60° 138, über 150° 8 · umgeschlagen 2
+10 Griff aus von 3:10 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16546 Punkte · Rauminhalt 86.0 % · Knicke über 60° 158, über 150° 16 · umgeschlagen 8 · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+11 Griff aus von 11:5 um -22° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16546 Punkte · Rauminhalt 85.9 % · Knicke über 60° 158, über 150° 18 · umgeschlagen 8 · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+12 Griff aus von 12:0 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16546 Punkte · Rauminhalt 84.9 % · Knicke über 60° 186, über 150° 18 · umgeschlagen 8 · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+13 Griff aus von 12:0 zurückdrehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16546 Punkte · Rauminhalt 84.9 % · Knicke über 60° 186, über 150° 18 · umgeschlagen 8
+14 Punkt 11:5 in top um (-23, 0, 19): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16546 Punkte · Rauminhalt 84.6 % · Knicke über 60° 186, über 150° 18 · umgeschlagen 8 · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+15 Punkt 2:3 in front um (0, -10, -50): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16546 Punkte · Rauminhalt 81.5 % · Knicke über 60° 326, über 150° 58 · umgeschlagen 42 · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+16 Griff ein von 1:4 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16546 Punkte · Rauminhalt 81.3 % · Knicke über 60° 326, über 150° 56 · umgeschlagen 48 · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+17 Griff ein von 2:2 verdrehen: bewegt sich noch 0.1 s (sichtbar 0.0 s, größte Bewegung 0.2) · 16546 Punkte · Rauminhalt 81.8 % · Knicke über 60° 322, über 150° 60 · umgeschlagen 50 · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+18 Griff ein von 2:2 zurückdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16546 Punkte · Rauminhalt 81.5 % · Knicke über 60° 338, über 150° 58 · umgeschlagen 50 · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+19 Punkt 3:1 in seite um (-17, -34, 0): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16546 Punkte · Rauminhalt 82.7 % · Knicke über 60° 341, über 150° 58 · umgeschlagen 48 · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+20 Griff aus von 8:0 um -60° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16546 Punkte · Rauminhalt 83.2 % · Knicke über 60° 331, über 150° 50 · umgeschlagen 48 · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+3 von 20 Schritten auffällig
+Konsole: keine Fehler
+
+### zufall-gleich-test_kaputt-1
+geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Port 5193/kurven.html · FORM=test_kaputt · 1:ring 5 Punkte, 77 Proben · 2:ring 5 Punkte, 102 Proben · 3:paar 4 Punkte, 183 Proben · 4:mitte 4 Punkte, 125 Proben (125 Punkte des Netzes in der Mittelebene)
+Anfang: 6217 Punkte · Rauminhalt 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Meldung: Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.
+1 Griff aus von 3:0 um 34° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6217 Punkte · Rauminhalt 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+2 Punkt 3:2 in top um (-47, 0, 3): bewegt sich noch 0.6 s (sichtbar 0.0 s, größte Bewegung 0.5, Netz 1-mal gewechselt) · 6075 Punkte · Rauminhalt 88.7 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0
+3 Punkt 1:2 in seite um (45, 20, 0): bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 8.9) · 5825 Punkte · Rauminhalt 86.1 % · Knicke über 60° 10, über 150° 6 · umgeschlagen 2 ◀ UMGEKLAPPT 0 → 2 · KNICKE 0 → 6
+4 Punkt 2:3 in seite um (-20, 10, 0): bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 2.5) · 5803 Punkte · Rauminhalt 85.9 % · Knicke über 60° 8, über 150° 6 · umgeschlagen 2
+5 Punkt 3:3 in seite um (-57, -17, 0): bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 0.6, Netz 1-mal gewechselt) · 6009 Punkte · Rauminhalt 91.0 % · Knicke über 60° 7, über 150° 6 · umgeschlagen 2
+6 Griff ein von 4:0 um 70° drehen: bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 0.5, Netz 1-mal gewechselt) · 6025 Punkte · Rauminhalt 90.7 % · Knicke über 60° 12, über 150° 6 · umgeschlagen 2
+7 Punkt 1:3 in seite um (0, 45, 0): bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.7) · 6091 Punkte · Rauminhalt 92.2 % · Knicke über 60° 8, über 150° 6 · umgeschlagen 2
+8 Griff ein von 1:3 um -22° drehen: bewegt sich noch 0.4 s (sichtbar 0.0 s, größte Bewegung 0.1, Netz 1-mal gewechselt) · 6091 Punkte · Rauminhalt 90.9 % · Knicke über 60° 8, über 150° 6 · umgeschlagen 2
+9 Punkt 3:3 in top um (-52, 0, 36): bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 0.5, Netz 1-mal gewechselt) · 6357 Punkte · Rauminhalt 94.4 % · Knicke über 60° 8, über 150° 6 · umgeschlagen 2
+10 Griff aus von 2:3 verdrehen: bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 1.0, Netz 1-mal gewechselt) · 6191 Punkte · Rauminhalt 84.8 % · Knicke über 60° 54, über 150° 16 · umgeschlagen 8 ◀ UMGEKLAPPT 2 → 8 · KNICKE 6 → 16
+11 Griff aus von 3:3 um -22° drehen: bewegt sich noch 0.5 s (sichtbar 0.5 s, größte Bewegung 0.7, Netz 1-mal gewechselt) · 6173 Punkte · Rauminhalt 85.2 % · Knicke über 60° 58, über 150° 12 · umgeschlagen 6
+12 Griff aus von 4:1 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6173 Punkte · Rauminhalt 79.7 % · Knicke über 60° 121, über 150° 26 · umgeschlagen 20 · Meldung: Loop 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+13 Griff aus von 4:1 zurückdrehen: bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 2.0) · 6159 Punkte · Rauminhalt 85.2 % · Knicke über 60° 54, über 150° 14 · umgeschlagen 10
+14 Punkt 3:3 in top um (-23, 0, 19): bewegt sich noch 0.4 s (sichtbar 0.0 s, größte Bewegung 0.3, Netz 1-mal gewechselt) · 6249 Punkte · Rauminhalt 87.1 % · Knicke über 60° 48, über 150° 14 · umgeschlagen 10
+15 Punkt 1:2 in front um (0, -10, -50): bewegt sich noch 0.6 s (sichtbar 0.6 s, größte Bewegung 0.6, Netz 2-mal gewechselt) · 6101 Punkte · Rauminhalt 75.7 % · Knicke über 60° 42, über 150° 8 · umgeschlagen 6
+16 Griff ein von 1:4 verdrehen: bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 0.6, Netz 1-mal gewechselt) · 6075 Punkte · Rauminhalt 75.7 % · Knicke über 60° 40, über 150° 8 · umgeschlagen 6
+17 Griff ein von 1:1 verdrehen: bewegt sich noch 0.4 s (sichtbar 0.0 s, größte Bewegung 0.2, Netz 1-mal gewechselt) · 6077 Punkte · Rauminhalt 75.7 % · Knicke über 60° 112, über 150° 20 · umgeschlagen 20 ◀ UMGEKLAPPT 6 → 20 · KNICKE 8 → 20
+18 Griff ein von 1:1 zurückdrehen: bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.6) · 6069 Punkte · Rauminhalt 75.7 % · Knicke über 60° 46, über 150° 8 · umgeschlagen 6
+19 Punkt 2:0 in seite um (-17, -34, 0): bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 2.4) · 6015 Punkte · Rauminhalt 67.3 % · Knicke über 60° 46, über 150° 8 · umgeschlagen 6
+20 Griff aus von 3:0 um -60° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6015 Punkte · Rauminhalt 67.3 % · Knicke über 60° 46, über 150° 8 · umgeschlagen 6
+21 Griff aus von 2:4 verdrehen: bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.8) · 6005 Punkte · Rauminhalt 67.3 % · Knicke über 60° 56, über 150° 8 · umgeschlagen 6
+22 Griff aus von 2:4 zurückdrehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6005 Punkte · Rauminhalt 67.3 % · Knicke über 60° 56, über 150° 8 · umgeschlagen 6
+23 Griff aus von 4:1 um -33° drehen: bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 0.6) · 5975 Punkte · Rauminhalt 66.5 % · Knicke über 60° 50, über 150° 8 · umgeschlagen 6
+24 Griff ein von 4:3 um -27° drehen: bewegt sich noch 0.5 s (sichtbar 0.5 s, größte Bewegung 0.9, Netz 1-mal gewechselt) · 6005 Punkte · Rauminhalt 66.7 % · Knicke über 60° 50, über 150° 8 · umgeschlagen 6
+25 Punkt 2:2 in top um (33, 0, -21): bewegt sich noch 0.8 s (sichtbar 0.8 s, größte Bewegung 1.4, Netz 3-mal gewechselt) · 5935 Punkte · Rauminhalt 61.7 % · Knicke über 60° 88, über 150° 16 · umgeschlagen 12 ◀ UMGEKLAPPT 6 → 12 · KNICKE 8 → 16
+26 Griff ein von 4:2 um -35° drehen: bewegt sich noch 0.6 s (sichtbar 0.6 s, größte Bewegung 4.7) · 5837 Punkte · Rauminhalt 60.3 % · Knicke über 60° 92, über 150° 20 · umgeschlagen 18 ◀ UMGEKLAPPT 12 → 18
+27 Griff aus von 1:1 verdrehen: bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 0.9, Netz 1-mal gewechselt) · 5839 Punkte · Rauminhalt 60.7 % · Knicke über 60° 82, über 150° 14 · umgeschlagen 12
+28 Griff aus von 1:1 zurückdrehen: bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 0.8, Netz 1-mal gewechselt) · 5817 Punkte · Rauminhalt 60.3 % · Knicke über 60° 80, über 150° 14 · umgeschlagen 12
+29 Punkt 1:3 in seite um (13, -26, 0): bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 5.8) · 5737 Punkte · Rauminhalt 59.2 % · Knicke über 60° 98, über 150° 14 · umgeschlagen 20 ◀ UMGEKLAPPT 12 → 20
+30 Griff ein von 2:4 um 37° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5737 Punkte · Rauminhalt 59.2 % · Knicke über 60° 98, über 150° 14 · umgeschlagen 20
+6 von 30 Schritten auffällig
+Konsole: keine Fehler
+
+### zufall-gleich-test_kaputt-2
+geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Port 5193/kurven.html · FORM=test_kaputt · 1:ring 5 Punkte, 77 Proben · 2:ring 5 Punkte, 102 Proben · 3:paar 4 Punkte, 183 Proben · 4:mitte 4 Punkte, 125 Proben (125 Punkte des Netzes in der Mittelebene)
+Anfang: 6217 Punkte · Rauminhalt 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Meldung: Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.
+1 Punkt 3:1 in front um (0, -53, -49): bewegt sich noch 0.6 s (sichtbar 0.6 s, größte Bewegung 6.2) · 5871 Punkte · Rauminhalt 85.4 % · Knicke über 60° 14, über 150° 6 · umgeschlagen 2 ◀ UMGEKLAPPT 0 → 2 · KNICKE 0 → 6
+2 Griff ein von 2:1 um 30° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5871 Punkte · Rauminhalt 84.5 % · Knicke über 60° 44, über 150° 6 · umgeschlagen 10 · Meldung: Loop 2 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+3 Griff ein von 2:4 um 38° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5871 Punkte · Rauminhalt 84.5 % · Knicke über 60° 44, über 150° 6 · umgeschlagen 10 · Meldung: Loop 2 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+4 Griff ein von 4:0 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5871 Punkte · Rauminhalt 85.0 % · Knicke über 60° 94, über 150° 25 · umgeschlagen 12 · Meldung: Loop 2, 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz
+5 Griff ein von 4:0 zurückdrehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5871 Punkte · Rauminhalt 85.0 % · Knicke über 60° 129, über 150° 38 · umgeschlagen 14 · Meldung: Loop 2, 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz
+6 Griff aus von 4:1 um -43° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5871 Punkte · Rauminhalt 83.3 % · Knicke über 60° 123, über 150° 30 · umgeschlagen 14 · Meldung: Loop 2, 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz
+7 Griff ein von 2:0 um -68° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5871 Punkte · Rauminhalt 84.2 % · Knicke über 60° 121, über 150° 30 · umgeschlagen 14 · Meldung: Loop 2, 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz
+8 Griff ein von 4:0 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5871 Punkte · Rauminhalt 84.5 % · Knicke über 60° 94, über 150° 10 · umgeschlagen 8 · Meldung: Loop 2 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+9 Griff ein von 4:0 zurückdrehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5871 Punkte · Rauminhalt 84.2 % · Knicke über 60° 58, über 150° 6 · umgeschlagen 8 · Meldung: Loop 2 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+10 Griff aus von 3:0 um 42° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5871 Punkte · Rauminhalt 84.2 % · Knicke über 60° 58, über 150° 6 · umgeschlagen 8
+11 Griff aus von 4:0 um 52° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5871 Punkte · Rauminhalt 84.2 % · Knicke über 60° 75, über 150° 6 · umgeschlagen 8 · Meldung: Loop 2 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+12 Griff aus von 3:0 um 36° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5871 Punkte · Rauminhalt 84.2 % · Knicke über 60° 75, über 150° 6 · umgeschlagen 8
+13 Punkt 4:3 in front um (0, -6, 20): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5871 Punkte · Rauminhalt 84.0 % · Knicke über 60° 78, über 150° 6 · umgeschlagen 8 · Meldung: Loop 2 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+14 Griff aus von 2:2 um 42° drehen: bewegt sich noch 0.4 s (sichtbar 0.0 s, größte Bewegung 0.5, Netz 1-mal gewechselt) · 5831 Punkte · Rauminhalt 86.8 % · Knicke über 60° 58, über 150° 10 · umgeschlagen 8
+15 Griff aus von 1:3 um 30° drehen: bewegt sich noch 0.4 s (sichtbar 0.2 s, größte Bewegung 1.5) · 5817 Punkte · Rauminhalt 87.6 % · Knicke über 60° 54, über 150° 10 · umgeschlagen 6
+16 Griff ein von 2:1 um -62° drehen: bewegt sich noch 0.6 s (sichtbar 0.6 s, größte Bewegung 1.0, Netz 2-mal gewechselt) · 5803 Punkte · Rauminhalt 89.6 % · Knicke über 60° 42, über 150° 0 · umgeschlagen 2
+17 Punkt 1:3 in front um (0, -36, 24): bewegt sich noch 0.4 s (sichtbar 0.0 s, größte Bewegung 0.1, Netz 1-mal gewechselt) · 5923 Punkte · Rauminhalt 94.3 % · Knicke über 60° 42, über 150° 0 · umgeschlagen 2
+18 Punkt 2:4 in seite um (62, 8, 0): bewegt sich noch 0.4 s (sichtbar 0.0 s, größte Bewegung 0.1, Netz 1-mal gewechselt) · 6000 Punkte · Rauminhalt 94.6 % · Knicke über 60° 32, über 150° 0 · umgeschlagen 2
+19 Griff ein von 3:3 um -53° drehen: bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 0.9, Netz 1-mal gewechselt) · 6048 Punkte · Rauminhalt 93.2 % · Knicke über 60° 65, über 150° 10 · umgeschlagen 8 ◀ UMGEKLAPPT 2 → 8 · KNICKE 0 → 10
+20 Griff aus von 1:0 um 26° drehen: bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.3) · 6036 Punkte · Rauminhalt 93.2 % · Knicke über 60° 65, über 150° 10 · umgeschlagen 8
+21 Punkt 3:3 in front um (0, -50, -10): bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 2.8) · 6118 Punkte · Rauminhalt 103.9 % · Knicke über 60° 64, über 150° 17 · umgeschlagen 20 ◀ UMGEKLAPPT 8 → 20 · KNICKE 10 → 17
+22 Griff ein von 4:1 um 42° drehen: bewegt sich noch 0.4 s (sichtbar 0.0 s, größte Bewegung 0.2, Netz 1-mal gewechselt) · 6120 Punkte · Rauminhalt 105.2 % · Knicke über 60° 56, über 150° 21 · umgeschlagen 18
+23 Griff aus von 1:2 um 35° drehen: bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.7) · 6082 Punkte · Rauminhalt 105.1 % · Knicke über 60° 56, über 150° 19 · umgeschlagen 16
+24 Griff aus von 1:4 um -28° drehen: bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 0.5) · 6088 Punkte · Rauminhalt 105.1 % · Knicke über 60° 56, über 150° 19 · umgeschlagen 16
+25 Punkt 2:4 in top um (14, 0, -31): bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 2.4) · 6088 Punkte · Rauminhalt 105.1 % · Knicke über 60° 62, über 150° 18 · umgeschlagen 18 ◀ UMGEKLAPPT 16 → 18
+26 Griff aus von 2:1 um -40° drehen: bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.9) · 6076 Punkte · Rauminhalt 105.8 % · Knicke über 60° 56, über 150° 20 · umgeschlagen 18
+27 Punkt 4:3 in front um (0, -35, 66): bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.1) · 6074 Punkte · Rauminhalt 104.9 % · Knicke über 60° 57, über 150° 20 · umgeschlagen 18
+28 Punkt 3:3 in front um (0, 30, 25): bewegt sich noch 0.4 s (sichtbar 0.0 s, größte Bewegung 0.2, Netz 1-mal gewechselt) · 6116 Punkte · Rauminhalt 100.4 % · Knicke über 60° 40, über 150° 8 · umgeschlagen 4
+29 Punkt 2:4 in seite um (53, 49, 0): bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 0.9, Netz 1-mal gewechselt) · 6343 Punkte · Rauminhalt 99.7 % · Knicke über 60° 77, über 150° 29 · umgeschlagen 6 ◀ UMGEKLAPPT 4 → 6 · KNICKE 8 → 29
+30 Griff aus von 1:0 um 59° drehen: bewegt sich noch 0.4 s (sichtbar 0.0 s, größte Bewegung 0.1, Netz 1-mal gewechselt) · 6307 Punkte · Rauminhalt 99.7 % · Knicke über 60° 75, über 150° 25 · umgeschlagen 6
+5 von 30 Schritten auffällig
+Konsole: keine Fehler
+
+### zufall-gleich-vogel-1
+geladen: „strange bird“ (16010 Punkte im Netz, 9 Loops mit 55 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Port 5193/kurven.html · FORM=strange bird · 1:ring 5 Punkte, 150 Proben · 2:ring 9 Punkte, 137 Proben · 3:mitte 16 Punkte, 316 Proben (316 Punkte des Netzes in der Mittelebene) · 4:paar 7 Punkte, 202 Proben · 7:ring 3 Punkte, 28 Proben · 8:ring 4 Punkte, 64 Proben · 11:ring 5 Punkte, 154 Proben · 12:ring 3 Punkte, 51 Proben · 13:ring 3 Punkte, 47 Proben
+Anfang: 16010 Punkte · Rauminhalt 100.0 % · Knicke über 60° 54, über 150° 4 · umgeschlagen 4
+1 Griff aus von 8:0 um 34° drehen: bewegt sich noch 2.2 s (sichtbar 2.2 s, größte Bewegung 21.6) · 15992 Punkte · Rauminhalt 99.6 % · Knicke über 60° 93, über 150° 32 · umgeschlagen 6 ◀ UMGEKLAPPT 4 → 6 · KNICKE 4 → 32 · BEWEGT SICH 2.2 s
+2 Punkt 8:2 in top um (-47, 0, 3): bewegt sich noch 1.5 s (sichtbar 0.0 s, größte Bewegung 0.4, Netz 1-mal gewechselt) · 15958 Punkte · Rauminhalt 99.3 % · Knicke über 60° 86, über 150° 25 · umgeschlagen 4
+3 Punkt 2:3 in seite um (45, 20, 0): bewegt sich noch 1.6 s (sichtbar 1.6 s, größte Bewegung 0.6, Netz 1-mal gewechselt) · 16086 Punkte · Rauminhalt 99.2 % · Knicke über 60° 140, über 150° 35 · umgeschlagen 14 ◀ UMGEKLAPPT 4 → 14 · KNICKE 25 → 35
+4 Punkt 4:6 in seite um (-20, 10, 0): bewegt sich noch 0.7 s (sichtbar 0.7 s, größte Bewegung 2.6) · 16082 Punkte · Rauminhalt 98.5 % · Knicke über 60° 136, über 150° 29 · umgeschlagen 6
+5 Punkt 8:3 in seite um (-57, -17, 0): bewegt sich noch 1.5 s (sichtbar 0.0 s, größte Bewegung 0.2, Netz 1-mal gewechselt) · 16107 Punkte · Rauminhalt 97.3 % · Knicke über 60° 136, über 150° 27 · umgeschlagen 6
+6 Griff ein von 11:1 um 70° drehen: bewegt sich noch 2.1 s (sichtbar 0.0 s, größte Bewegung 0.3, Netz 2-mal gewechselt) · 16113 Punkte · Rauminhalt 86.2 % · Knicke über 60° 148, über 150° 27 · umgeschlagen 6 ◀ BEWEGT SICH 2.1 s
+7 Punkt 3:12 in seite um (0, 45, 0): bewegt sich noch 1.5 s (sichtbar 1.5 s, größte Bewegung 0.5, Netz 1-mal gewechselt) · 16073 Punkte · Rauminhalt 85.7 % · Knicke über 60° 159, über 150° 31 · umgeschlagen 8 ◀ UMGEKLAPPT 6 → 8
+8 Griff ein von 2:6 um -22° drehen: bewegt sich noch 1.5 s (sichtbar 1.5 s, größte Bewegung 0.7, Netz 1-mal gewechselt) · 16065 Punkte · Rauminhalt 85.5 % · Knicke über 60° 159, über 150° 33 · umgeschlagen 14 ◀ UMGEKLAPPT 8 → 14
+9 Punkt 8:3 in top um (-52, 0, 36): bewegt sich noch 2.3 s (sichtbar 2.3 s, größte Bewegung 1.1, Netz 1-mal gewechselt) · 16090 Punkte · Rauminhalt 85.1 % · Knicke über 60° 161, über 150° 37 · umgeschlagen 12 ◀ BEWEGT SICH 2.3 s
+10 Griff aus von 3:10 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16090 Punkte · Rauminhalt 85.3 % · Knicke über 60° 181, über 150° 46 · umgeschlagen 20 · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+11 Griff aus von 11:5 um -22° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16090 Punkte · Rauminhalt 85.2 % · Knicke über 60° 181, über 150° 46 · umgeschlagen 20 · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+12 Griff aus von 12:0 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16090 Punkte · Rauminhalt 84.0 % · Knicke über 60° 209, über 150° 44 · umgeschlagen 20 · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+13 Griff aus von 12:0 zurückdrehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16090 Punkte · Rauminhalt 84.0 % · Knicke über 60° 209, über 150° 44 · umgeschlagen 20
+14 Punkt 11:5 in top um (-23, 0, 19): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16090 Punkte · Rauminhalt 83.7 % · Knicke über 60° 209, über 150° 44 · umgeschlagen 20 · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+15 Punkt 2:3 in front um (0, -10, -50): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16090 Punkte · Rauminhalt 79.5 % · Knicke über 60° 313, über 150° 74 · umgeschlagen 46 · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+16 Griff ein von 1:4 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16090 Punkte · Rauminhalt 79.3 % · Knicke über 60° 312, über 150° 68 · umgeschlagen 42 · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+17 Griff ein von 2:2 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16090 Punkte · Rauminhalt 79.5 % · Knicke über 60° 310, über 150° 66 · umgeschlagen 40 · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+18 Griff ein von 2:2 zurückdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16090 Punkte · Rauminhalt 79.3 % · Knicke über 60° 308, über 150° 72 · umgeschlagen 40 · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+19 Punkt 3:1 in seite um (-17, -34, 0): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16090 Punkte · Rauminhalt 80.4 % · Knicke über 60° 308, über 150° 68 · umgeschlagen 40 · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+20 Griff aus von 8:0 um -60° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 16090 Punkte · Rauminhalt 80.7 % · Knicke über 60° 302, über 150° 51 · umgeschlagen 40 · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+6 von 20 Schritten auffällig
+Konsole: keine Fehler
+
+## TEST=zufall von der Kugel an (Mitte zuerst): heutiger Stand und Stand 640c2595 (08.11.); Reihe auf Florians Wort hin abgebrochen, unvollständige Läufe sind dabei
+### vz-640c2595-gleich-1
+Port 5194/kurven.html · FORM=kugel-b · 1:mitte 4 Punkte, 128 Proben (128 Punkte des Netzes in der Mittelebene) · 2:ring 5 Punkte, 69 Proben · 3:ring 5 Punkte, 94 Proben · 4:paar 4 Punkte, 194 Proben
+Anfang: 5996 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+1 Griff aus von 3:0 um 34° drehen (Griff nicht getroffen): bewegt sich noch 0.4 s (sichtbar 0.0 s, größte Bewegung 0.4, Netz 1-mal gewechselt) · 5932 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+2 Punkt 3:3 in top um (-47, 0, 3): bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 2.2) · 5948 Punkte · Rauminhalt 123.4 % · Knicke über 60° 20, über 150° 6 · umgeschlagen 2 ◀ UMGEKLAPPT 0 → 2 · KNICKE 0 → 6
+3 Punkt 1:1 in seite um (45, 20, 0): bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.6) · 5996 Punkte · Rauminhalt 129.3 % · Knicke über 60° 20, über 150° 2 · umgeschlagen 2
+4 Punkt 2:3 in seite um (-20, 10, 0): bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.1) · 6034 Punkte · Rauminhalt 134.8 % · Knicke über 60° 20, über 150° 2 · umgeschlagen 2
+5 Punkt 3:3 in seite um (-57, -17, 0): bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.4, Netz 1-mal gewechselt) · 6278 Punkte · Rauminhalt 140.5 % · Knicke über 60° 28, über 150° 12 · umgeschlagen 8 ◀ UMGEKLAPPT 2 → 8 · KNICKE 2 → 12
+6 Griff ein von 4:0 um 70° drehen: bewegt sich noch 0.7 s (sichtbar 0.7 s, größte Bewegung 0.5, Netz 2-mal gewechselt) · 6466 Punkte · Rauminhalt 141.0 % · Knicke über 60° 38, über 150° 12 · umgeschlagen 8
+7 Punkt 1:3 in seite um (0, 45, 0): bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.4, Netz 1-mal gewechselt) · 6430 Punkte · Rauminhalt 140.0 % · Knicke über 60° 25, über 150° 0 · umgeschlagen 2
+8 Griff ein von 1:2 um -22° drehen: bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.8) · 6430 Punkte · Rauminhalt 137.9 % · Knicke über 60° 25, über 150° 0 · umgeschlagen 2
+9 Punkt 3:4 in top um (-52, 0, 36): bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 2.3) · 6418 Punkte · Rauminhalt 138.9 % · Knicke über 60° 26, über 150° 0 · umgeschlagen 4 ◀ UMGEKLAPPT 2 → 4
+10 Griff aus von 2:3 verdrehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6418 Punkte · Rauminhalt 138.9 % · Knicke über 60° 26, über 150° 0 · umgeschlagen 4
+11 Griff aus von 3:4 um -22° drehen (Griff nicht getroffen): bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 2.0) · 6404 Punkte · Rauminhalt 133.4 % · Knicke über 60° 20, über 150° 0 · umgeschlagen 2
+12 Griff aus von 4:1 verdrehen: bewegt sich noch 0.5 s (sichtbar 0.5 s, größte Bewegung 4.6, Netz 1-mal gewechselt) · 6124 Punkte · Rauminhalt 112.9 % · Knicke über 60° 78, über 150° 12 · umgeschlagen 12 ◀ UMGEKLAPPT 2 → 12 · KNICKE 0 → 12
+13 Griff aus von 4:1 zurückdrehen: bewegt sich noch 0.7 s (sichtbar 0.0 s, größte Bewegung 0.3, Netz 2-mal gewechselt) · 6374 Punkte · Rauminhalt 134.1 % · Knicke über 60° 40, über 150° 8 · umgeschlagen 8
+14 Punkt 3:4 in top um (-23, 0, 19): bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.6) · 6358 Punkte · Rauminhalt 134.4 % · Knicke über 60° 40, über 150° 8 · umgeschlagen 8
+15 Punkt 1:1 in front um (0, -10, -50): bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 0.5) · 6350 Punkte · Rauminhalt 131.2 % · Knicke über 60° 40, über 150° 8 · umgeschlagen 8
+16 Griff ein von 1:3 verdrehen: bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 6.8) · 6438 Punkte · Rauminhalt 131.1 % · Knicke über 60° 80, über 150° 16 · umgeschlagen 14 ◀ UMGEKLAPPT 8 → 14 · KNICKE 8 → 16
+17 Griff ein von 1:1 verdrehen: bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.4, Netz 1-mal gewechselt) · 6415 Punkte · Rauminhalt 123.5 % · Knicke über 60° 95, über 150° 30 · umgeschlagen 18 ◀ UMGEKLAPPT 14 → 18 · KNICKE 16 → 30
+18 Griff ein von 1:1 zurückdrehen: bewegt sich noch 0.7 s (sichtbar 0.0 s, größte Bewegung 0.2, Netz 2-mal gewechselt) · 6425 Punkte · Rauminhalt 131.4 % · Knicke über 60° 69, über 150° 16 · umgeschlagen 14
+19 Punkt 2:0 in seite um (-17, -34, 0): bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.4, Netz 1-mal gewechselt) · 6421 Punkte · Rauminhalt 129.3 % · Knicke über 60° 77, über 150° 12 · umgeschlagen 12
+20 Griff aus von 3:0 um -60° drehen (Griff nicht getroffen): bewegt sich noch 0.6 s (sichtbar 0.6 s, größte Bewegung 0.6, Netz 1-mal gewechselt) · 6437 Punkte · Rauminhalt 127.1 % · Knicke über 60° 84, über 150° 8 · umgeschlagen 14 ◀ UMGEKLAPPT 12 → 14
+21 Griff aus von 2:4 verdrehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6437 Punkte · Rauminhalt 127.1 % · Knicke über 60° 84, über 150° 8 · umgeschlagen 14
+22 Punkt 1:0 in top um (-7, 0, -39): bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.2) · 6439 Punkte · Rauminhalt 126.8 % · Knicke über 60° 90, über 150° 8 · umgeschlagen 16 ◀ UMGEKLAPPT 14 → 16
+23 Punkt 4:0 in top um (18, 0, -65): bewegt sich noch 0.7 s (sichtbar 0.7 s, größte Bewegung 0.8, Netz 2-mal gewechselt) · 6455 Punkte · Rauminhalt 115.8 % · Knicke über 60° 166, über 150° 13 · umgeschlagen 34 ◀ UMGEKLAPPT 16 → 34 · KNICKE 8 → 13
+24 Punkt 1:0 in front um (0, 51, -12): bewegt sich noch 0.7 s (sichtbar 0.7 s, größte Bewegung 7.4, Netz 2-mal gewechselt) · 6444 Punkte · Rauminhalt 116.8 % · Knicke über 60° 212, über 150° 30 · umgeschlagen 46 ◀ UMGEKLAPPT 34 → 46 · KNICKE 13 → 30
+25 Griff aus von 4:1 verdrehen: bewegt sich noch 0.5 s (sichtbar 0.5 s, größte Bewegung 9.9, Netz 1-mal gewechselt) · 5939 Punkte · Rauminhalt 99.8 % · Knicke über 60° 316, über 150° 87 · umgeschlagen 81 ◀ UMGEKLAPPT 46 → 81 · KNICKE 30 → 87
+26 Griff aus von 4:1 zurückdrehen: bewegt sich noch 1.0 s (sichtbar 1.0 s, größte Bewegung 35.2, Netz 3-mal gewechselt) · 6266 Punkte · Rauminhalt 116.9 % · Knicke über 60° 238, über 150° 35 · umgeschlagen 47
+27 Punkt 2:1 in seite um (74, -16, 0): bewegt sich noch 1.3 s (sichtbar 1.3 s, größte Bewegung 26.6, Netz 3-mal gewechselt) · 7371 Punkte · Rauminhalt 141.3 % · Knicke über 60° 245, über 150° 35 · umgeschlagen 61 ◀ UMGEKLAPPT 47 → 61
+28 Punkt 1:1 in seite um (-51, 44, 0): bewegt sich noch 1.3 s (sichtbar 1.3 s, größte Bewegung 44.1, Netz 3-mal gewechselt) · 7783 Punkte · Rauminhalt 155.4 % · Knicke über 60° 549, über 150° 134 · umgeschlagen 186 ◀ UMGEKLAPPT 61 → 186 · KNICKE 35 → 134
+29 Griff ein von 1:0 um 46° drehen: bewegt sich noch über 30 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 2-mal gewechselt) · 45515 Punkte · Rauminhalt 56.8 % · Knicke über 60° 63855, über 150° 33827 · umgeschlagen 36657 ◀ UMGEKLAPPT 186 → 36657 · KNICKE 134 → 33827 · BEWEGT SICH über 30 s
+30 Punkt 2:3 in seite um (4, -52, 0): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 45515 Punkte · Rauminhalt 56.8 % · Knicke über 60° 63855, über 150° 33827 · umgeschlagen 36657
+14 von 30 Schritten auffällig
+Konsole: RangeError: Invalid typed array length: -1422199020 | RangeError: Invalid typed array length: -1422199020 | RangeError: Invalid typed array length: -1422199020
+
+### vz-640c2595-gleich-2
+Port 5194/kurven.html · FORM=kugel-b · 1:mitte 4 Punkte, 128 Proben (128 Punkte des Netzes in der Mittelebene) · 2:ring 5 Punkte, 69 Proben · 3:ring 5 Punkte, 94 Proben · 4:paar 4 Punkte, 194 Proben
+Anfang: 5996 Punkte · Rauminhalt 122.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+1 Punkt 3:1 in front um (0, -53, -49): bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 5.7) · 5744 Punkte · Rauminhalt 104.5 % · Knicke über 60° 138, über 150° 48 · umgeschlagen 38 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) ◀ UMGEKLAPPT 0 → 38 · KNICKE 0 → 48
+2 Griff ein von 2:1 um 30° drehen (Griff nicht getroffen): bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 1.7, Netz 1-mal gewechselt) · 5674 Punkte · Rauminhalt 105.5 % · Knicke über 60° 108, über 150° 48 · umgeschlagen 28 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0)
+3 Griff ein von 2:4 um 38° drehen (Griff nicht getroffen): bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 6.2) · 5596 Punkte · Rauminhalt 101.6 % · Knicke über 60° 198, über 150° 58 · umgeschlagen 46 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) ◀ UMGEKLAPPT 28 → 46 · KNICKE 48 → 58
+4 Griff ein von 4:0 verdrehen: bewegt sich noch 0.6 s (sichtbar 0.6 s, größte Bewegung 5.8, Netz 2-mal gewechselt) · 5544 Punkte · Rauminhalt 94.2 % · Knicke über 60° 216, über 150° 48 · umgeschlagen 50 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) ◀ UMGEKLAPPT 46 → 50
+5 Griff ein von 4:0 zurückdrehen: bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 4.3) · 5434 Punkte · Rauminhalt 103.1 % · Knicke über 60° 132, über 150° 40 · umgeschlagen 28 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0)
+6 Griff aus von 4:1 um -43° drehen: bewegt sich noch 0.6 s (sichtbar 0.6 s, größte Bewegung 0.7, Netz 2-mal gewechselt) · 5294 Punkte · Rauminhalt 101.9 % · Knicke über 60° 162, über 150° 56 · umgeschlagen 36 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) ◀ UMGEKLAPPT 28 → 36 · KNICKE 40 → 56
+7 Griff ein von 2:0 um -68° drehen (Griff nicht getroffen): bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 1.0, Netz 1-mal gewechselt) · 5030 Punkte · Rauminhalt 78.3 % · Knicke über 60° 146, über 150° 38 · umgeschlagen 32 · davon an der Mittelkante 2 und 4 (nah an ihr 4 und 10)
+8 Griff ein von 4:0 verdrehen: bewegt sich noch 0.5 s (sichtbar 0.5 s, größte Bewegung 0.9, Netz 2-mal gewechselt) · 5046 Punkte · Rauminhalt 71.4 % · Knicke über 60° 164, über 150° 36 · umgeschlagen 38 · davon an der Mittelkante 2 und 2 (nah an ihr 2 und 4) ◀ UMGEKLAPPT 32 → 38
+9 Griff ein von 4:0 zurückdrehen: bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 1.1, Netz 1-mal gewechselt) · 4926 Punkte · Rauminhalt 74.0 % · Knicke über 60° 162, über 150° 36 · umgeschlagen 42 · davon an der Mittelkante 2 und 4 (nah an ihr 2 und 6) ◀ UMGEKLAPPT 38 → 42
+10 Griff aus von 3:0 um 42° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 4926 Punkte · Rauminhalt 74.0 % · Knicke über 60° 162, über 150° 36 · umgeschlagen 42 · davon an der Mittelkante 2 und 4 (nah an ihr 2 und 6)
+11 Griff aus von 4:0 um 52° drehen: bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.3, Netz 1-mal gewechselt) · 4954 Punkte · Rauminhalt 71.5 % · Knicke über 60° 166, über 150° 42 · umgeschlagen 38 · davon an der Mittelkante 2 und 2 (nah an ihr 6 und 12) ◀ KNICKE 36 → 42
+12 Griff aus von 3:0 um 36° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 4954 Punkte · Rauminhalt 71.5 % · Knicke über 60° 166, über 150° 42 · umgeschlagen 38 · davon an der Mittelkante 2 und 2 (nah an ihr 6 und 12)
+13 Punkt 4:5 in front um (0, -6, 20): bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.6) · 4952 Punkte · Rauminhalt 78.0 % · Knicke über 60° 164, über 150° 40 · umgeschlagen 42 · davon an der Mittelkante 2 und 2 (nah an ihr 4 und 4) ◀ UMGEKLAPPT 38 → 42
+14 Griff aus von 2:3 um 42° drehen (Griff nicht getroffen): bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.4, Netz 2-mal gewechselt) · 4920 Punkte · Rauminhalt 78.8 % · Knicke über 60° 162, über 150° 48 · umgeschlagen 38 · davon an der Mittelkante 2 und 2 (nah an ihr 4 und 4) ◀ KNICKE 40 → 48
+15 Griff aus von 1:2 um 30° drehen: bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 2.7) · 4850 Punkte · Rauminhalt 78.9 % · Knicke über 60° 181, über 150° 50 · umgeschlagen 44 · davon an der Mittelkante 0 und 0 (nah an ihr 2 und 0) ◀ UMGEKLAPPT 38 → 44
+16 Griff ein von 2:2 um -62° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 4850 Punkte · Rauminhalt 78.9 % · Knicke über 60° 181, über 150° 50 · umgeschlagen 44 · davon an der Mittelkante 0 und 0 (nah an ihr 2 und 0)
+17 Punkt 1:3 in front um (0, -36, 24): bewegt sich noch 0.6 s (sichtbar 0.0 s, größte Bewegung 0.4, Netz 2-mal gewechselt) · 5007 Punkte · Rauminhalt 80.3 % · Knicke über 60° 180, über 150° 54 · umgeschlagen 46 · davon an der Mittelkante 0 und 0 (nah an ihr 2 und 0) ◀ UMGEKLAPPT 44 → 46
+18 Punkt 2:6 in seite um (62, 8, 0): bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 3.2) · 4981 Punkte · Rauminhalt 79.5 % · Knicke über 60° 197, über 150° 50 · umgeschlagen 46 · davon an der Mittelkante 0 und 0 (nah an ihr 2 und 0)
+19 Griff ein von 3:3 um -53° drehen: bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.0) · 5001 Punkte · Rauminhalt 82.0 % · Knicke über 60° 207, über 150° 50 · umgeschlagen 46 · davon an der Mittelkante 0 und 0 (nah an ihr 2 und 0)
+20 Griff aus von 1:0 um 26° drehen: bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.2) · 5027 Punkte · Rauminhalt 81.2 % · Knicke über 60° 220, über 150° 50 · umgeschlagen 46 · davon an der Mittelkante 0 und 0 (nah an ihr 2 und 0)
+21 Punkt 3:4 in front um (0, -50, -10): bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 0.5, Netz 1-mal gewechselt) · 5309 Punkte · Rauminhalt 83.9 % · Knicke über 60° 222, über 150° 50 · umgeschlagen 46 · davon an der Mittelkante 0 und 0 (nah an ihr 2 und 0)
+22 Griff ein von 4:2 um 42° drehen (Griff nicht getroffen): bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 0.7, Netz 1-mal gewechselt) · 5237 Punkte · Rauminhalt 80.5 % · Knicke über 60° 253, über 150° 58 · umgeschlagen 62 · davon an der Mittelkante 2 und 0 (nah an ihr 16 und 12) ◀ UMGEKLAPPT 46 → 62 · KNICKE 50 → 58
+23 Griff aus von 1:2 um 35° drehen: bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.4) · 5195 Punkte · Rauminhalt 81.3 % · Knicke über 60° 241, über 150° 68 · umgeschlagen 66 · davon an der Mittelkante 2 und 0 (nah an ihr 16 und 18) ◀ UMGEKLAPPT 62 → 66 · KNICKE 58 → 68
+24 Griff aus von 1:3 um -28° drehen: bewegt sich noch 0.4 s (sichtbar 0.0 s, größte Bewegung 0.3, Netz 1-mal gewechselt) · 5212 Punkte · Rauminhalt 81.9 % · Knicke über 60° 233, über 150° 64 · umgeschlagen 64 · davon an der Mittelkante 2 und 0 (nah an ihr 16 und 16)
+25 Punkt 2:5 in top um (14, 0, -31): bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 4.7, Netz 1-mal gewechselt) · 5252 Punkte · Rauminhalt 80.8 % · Knicke über 60° 328, über 150° 84 · umgeschlagen 81 · davon an der Mittelkante 4 und 4 (nah an ihr 35 und 38) ◀ UMGEKLAPPT 64 → 81 · KNICKE 64 → 84
+26 Griff aus von 2:2 um -40° drehen: bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 3.8) · 5229 Punkte · Rauminhalt 78.2 % · Knicke über 60° 324, über 150° 90 · umgeschlagen 76 · davon an der Mittelkante 8 und 6 (nah an ihr 32 und 40) ◀ KNICKE 84 → 90
+27 Punkt 4:5 in front um (0, -35, 66): bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 4.8, Netz 1-mal gewechselt) · 5502 Punkte · Rauminhalt 98.4 % · Knicke über 60° 303, über 150° 88 · umgeschlagen 73 · davon an der Mittelkante 1 und 4 (nah an ihr 25 und 38)
+28 Punkt 3:4 in front um (0, 30, 25): bewegt sich noch 0.8 s (sichtbar 0.8 s, größte Bewegung 4.4, Netz 3-mal gewechselt) · 5485 Punkte · Rauminhalt 95.7 % · Knicke über 60° 315, über 150° 89 · umgeschlagen 72 · davon an der Mittelkante 2 und 5 (nah an ihr 24 und 39)
+29 Punkt 2:6 in seite um (53, 49, 0): bewegt sich noch 0.9 s (sichtbar 0.9 s, größte Bewegung 5.0, Netz 3-mal gewechselt) · 5737 Punkte · Rauminhalt 95.0 % · Knicke über 60° 293, über 150° 77 · umgeschlagen 66 · davon an der Mittelkante 5 und 2 (nah an ihr 20 und 29)
+30 Griff aus von 1:0 um 59° drehen: bewegt sich noch 0.9 s (sichtbar 0.9 s, größte Bewegung 9.0, Netz 3-mal gewechselt) · 5776 Punkte · Rauminhalt 89.9 % · Knicke über 60° 315, über 150° 83 · umgeschlagen 76 · davon an der Mittelkante 14 und 4 (nah an ihr 29 und 37) ◀ UMGEKLAPPT 66 → 76 · KNICKE 77 → 83
+16 von 30 Schritten auffällig
+Konsole: keine Fehler
+
+### vz-6ba0bcb3-geo-1
+Port 5193/kurven.html?gewichte=geometrie · FORM=kugel-b · 1:mitte 4 Punkte, 128 Proben (128 Punkte des Netzes in der Mittelebene) · 2:ring 5 Punkte, 69 Proben · 3:ring 5 Punkte, 96 Proben · 4:paar 4 Punkte, 172 Proben
+Anfang: 5970 Punkte · Rauminhalt 122.9 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0
+1 Griff aus von 3:0 um 34° drehen: bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 5982 Punkte · Rauminhalt 124.4 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0
+2 Punkt 3:3 in top um (-47, 0, 3): bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6008 Punkte · Rauminhalt 125.1 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0
+3 Punkt 1:1 in seite um (45, 20, 0): bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6096 Punkte · Rauminhalt 131.4 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0
+4 Punkt 2:3 in seite um (-20, 10, 0): bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6174 Punkte · Rauminhalt 138.9 % · Knicke über 60° 19, über 150° 0 · umgeschlagen 0
+5 Punkt 3:3 in seite um (-57, -17, 0): bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6482 Punkte · Rauminhalt 144.1 % · Knicke über 60° 19, über 150° 0 · umgeschlagen 0
+6 Griff ein von 4:0 um 70° drehen: bewegt sich noch 1.0 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 6944 Punkte · Rauminhalt 151.4 % · Knicke über 60° 24, über 150° 9 · umgeschlagen 0 · davon an der Mittelkante 0 und 9 (nah an ihr 0 und 9) ◀ KNICKE 0 → 9
+7 Punkt 1:3 in seite um (0, 45, 0): bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 7002 Punkte · Rauminhalt 150.7 % · Knicke über 60° 25, über 150° 9 · umgeschlagen 0 · davon an der Mittelkante 0 und 9 (nah an ihr 0 und 9)
+8 Griff ein von 1:2 um -22° drehen: bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 7006 Punkte · Rauminhalt 149.8 % · Knicke über 60° 26, über 150° 11 · umgeschlagen 0 · davon an der Mittelkante 0 und 11 (nah an ihr 0 und 11)
+9 Punkt 3:4 in top um (-52, 0, 36): bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 7002 Punkte · Rauminhalt 150.2 % · Knicke über 60° 26, über 150° 11 · umgeschlagen 0 · davon an der Mittelkante 0 und 11 (nah an ihr 0 und 11)
+10 Griff aus von 2:3 verdrehen: bewegt sich noch 1.8 s (sichtbar 0.4 s, größte Bewegung 2.5, Netz 1-mal gewechselt) · 7066 Punkte · Rauminhalt 148.8 % · Knicke über 60° 108, über 150° 46 · umgeschlagen 28 · davon an der Mittelkante 0 und 10 (nah an ihr 0 und 10) ◀ UMGEKLAPPT 0 → 28 · KNICKE 11 → 46
+11 Griff aus von 3:4 um -22° drehen: bewegt sich noch 0.7 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 7040 Punkte · Rauminhalt 146.5 % · Knicke über 60° 110, über 150° 22 · umgeschlagen 16 · davon an der Mittelkante 0 und 4 (nah an ihr 0 und 4)
+12 Griff aus von 4:1 verdrehen: bewegt sich noch 1.0 s (sichtbar 0.2 s, größte Bewegung 1.0, Netz 1-mal gewechselt) · 6718 Punkte · Rauminhalt 125.7 % · Knicke über 60° 177, über 150° 44 · umgeschlagen 24 · davon an der Mittelkante 0 und 8 (nah an ihr 0 und 8) ◀ UMGEKLAPPT 16 → 24 · KNICKE 22 → 44
+13 Griff aus von 4:1 zurückdrehen: bewegt sich noch 0.4 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 7036 Punkte · Rauminhalt 146.5 % · Knicke über 60° 112, über 150° 22 · umgeschlagen 16 · davon an der Mittelkante 0 und 4 (nah an ihr 0 und 4)
+14 Punkt 3:4 in top um (-23, 0, 19): bewegt sich noch 0.6 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 7054 Punkte · Rauminhalt 146.5 % · Knicke über 60° 119, über 150° 22 · umgeschlagen 16 · davon an der Mittelkante 0 und 4 (nah an ihr 0 und 4)
+15 Punkt 1:1 in front um (0, -10, -50): bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 7048 Punkte · Rauminhalt 142.8 % · Knicke über 60° 119, über 150° 21 · umgeschlagen 16 · davon an der Mittelkante 0 und 3 (nah an ihr 0 und 3)
+16 Griff ein von 1:3 verdrehen: bewegt sich noch 0.1 s (sichtbar 0.0 s, größte Bewegung 0.1) · 7048 Punkte · Rauminhalt 142.7 % · Knicke über 60° 171, über 150° 44 · umgeschlagen 28 · davon an der Mittelkante 2 und 10 (nah an ihr 12 und 26) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+17 Griff ein von 1:1 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 7048 Punkte · Rauminhalt 143.0 % · Knicke über 60° 233, über 150° 66 · umgeschlagen 34 · davon an der Mittelkante 4 und 32 (nah an ihr 18 und 48) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+18 Griff ein von 1:1 zurückdrehen: bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 5.3) · 7048 Punkte · Rauminhalt 279.0 % · Knicke über 60° 232, über 150° 72 · umgeschlagen 60 · davon an der Mittelkante 2 und 24 (nah an ihr 12 und 32) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+19 Punkt 2:0 in seite um (-17, -34, 0): bewegt sich noch 0.6 s (sichtbar 0.5 s, größte Bewegung 3.8) · 7048 Punkte · Rauminhalt 141.2 % · Knicke über 60° 1522, über 150° 509 · umgeschlagen 556 · davon an der Mittelkante 4 und 27 (nah an ihr 20 und 47) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+20 Griff aus von 3:0 um -60° drehen: bewegt sich noch 0.6 s (sichtbar 0.6 s, größte Bewegung 1.9) · 7048 Punkte · Rauminhalt 138.1 % · Knicke über 60° 1541, über 150° 603 · umgeschlagen 610 · davon an der Mittelkante 4 und 27 (nah an ihr 20 und 47) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+21 Griff aus von 2:4 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 7048 Punkte · Rauminhalt 138.4 % · Knicke über 60° 1556, über 150° 559 · umgeschlagen 594 · davon an der Mittelkante 4 und 27 (nah an ihr 20 und 47) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+22 Griff aus von 2:4 zurückdrehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 7048 Punkte · Rauminhalt 138.4 % · Knicke über 60° 1556, über 150° 559 · umgeschlagen 594 · davon an der Mittelkante 4 und 27 (nah an ihr 20 und 47)
+23 Griff aus von 4:1 um -33° drehen: bewegt sich noch 0.6 s (sichtbar 0.6 s, größte Bewegung 7.0) · 7048 Punkte · Rauminhalt 138.8 % · Knicke über 60° 1505, über 150° 565 · umgeschlagen 598 · davon an der Mittelkante 4 und 29 (nah an ihr 20 und 43) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+24 Griff ein von 4:3 um -27° drehen: bewegt sich noch 0.7 s (sichtbar 0.7 s, größte Bewegung 4.4) · 7048 Punkte · Rauminhalt 141.8 % · Knicke über 60° 1500, über 150° 566 · umgeschlagen 632 · davon an der Mittelkante 4 und 34 (nah an ihr 22 und 48) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+25 Punkt 2:2 in top um (33, 0, -21): bewegt sich noch 0.7 s (sichtbar 0.6 s, größte Bewegung 2.7) · 7544 Punkte · Rauminhalt 132.6 % · Knicke über 60° 310, über 150° 148 · umgeschlagen 72 · davon an der Mittelkante 0 und 34 (nah an ihr 6 und 46) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+26 Griff ein von 4:2 um -35° drehen: bewegt sich noch 0.7 s (sichtbar 0.7 s, größte Bewegung 0.8) · 7544 Punkte · Rauminhalt 132.0 % · Knicke über 60° 280, über 150° 134 · umgeschlagen 60 · davon an der Mittelkante 0 und 32 (nah an ihr 6 und 44) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+27 Griff aus von 1:1 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 7544 Punkte · Rauminhalt 131.9 % · Knicke über 60° 316, über 150° 137 · umgeschlagen 68 · davon an der Mittelkante 4 und 39 (nah an ihr 12 und 53) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+28 Griff aus von 1:1 zurückdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 7544 Punkte · Rauminhalt 2270.8 % · Knicke über 60° 456, über 150° 132 · umgeschlagen 146 · davon an der Mittelkante 2 und 24 (nah an ihr 46 und 60) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+29 Punkt 1:3 in seite um (13, -26, 0): bewegt sich noch 0.7 s (sichtbar 0.7 s, größte Bewegung 12.6) · 7544 Punkte · Rauminhalt 149.0 % · Knicke über 60° 2465, über 150° 896 · umgeschlagen 812 · davon an der Mittelkante 6 und 26 (nah an ihr 46 und 66) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+30 Griff ein von 2:4 um 37° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 7544 Punkte · Rauminhalt 149.0 % · Knicke über 60° 2465, über 150° 896 · umgeschlagen 812 · davon an der Mittelkante 6 und 26 (nah an ihr 46 und 66)
+3 von 30 Schritten auffällig
+Konsole: keine Fehler
+
+### vz-6ba0bcb3-geo-2
+Port 5193/kurven.html?gewichte=geometrie · FORM=kugel-b · 1:mitte 4 Punkte, 128 Proben (128 Punkte des Netzes in der Mittelebene) · 2:ring 5 Punkte, 69 Proben · 3:ring 5 Punkte, 96 Proben · 4:paar 4 Punkte, 172 Proben
+Anfang: 5970 Punkte · Rauminhalt 122.9 % · Knicke über 60° 4, über 150° 0 · umgeschlagen 0
+1 Punkt 3:1 in front um (0, -53, -49): bewegt sich noch 0.7 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 5686 Punkte · Rauminhalt 104.9 % · Knicke über 60° 40, über 150° 18 · umgeschlagen 8 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) ◀ UMGEKLAPPT 0 → 8 · KNICKE 0 → 18
+2 Griff ein von 2:1 um 30° drehen: bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 5656 Punkte · Rauminhalt 103.1 % · Knicke über 60° 40, über 150° 22 · umgeschlagen 6 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0)
+3 Griff ein von 2:4 um 38° drehen: bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 5652 Punkte · Rauminhalt 102.7 % · Knicke über 60° 40, über 150° 22 · umgeschlagen 8 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) ◀ UMGEKLAPPT 6 → 8
+4 Griff ein von 4:0 verdrehen: bewegt sich noch 0.7 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 5712 Punkte · Rauminhalt 88.1 % · Knicke über 60° 153, über 150° 50 · umgeschlagen 24 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) ◀ UMGEKLAPPT 8 → 24 · KNICKE 22 → 50
+5 Griff ein von 4:0 zurückdrehen: bewegt sich noch 0.7 s (sichtbar 0.2 s, größte Bewegung 1.6, Netz 1-mal gewechselt) · 5676 Punkte · Rauminhalt 102.7 % · Knicke über 60° 48, über 150° 28 · umgeschlagen 10 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0)
+6 Griff aus von 4:1 um -43° drehen: bewegt sich noch 0.4 s (sichtbar 0.0 s, größte Bewegung 0.0, Netz 1-mal gewechselt) · 5596 Punkte · Rauminhalt 101.6 % · Knicke über 60° 62, über 150° 30 · umgeschlagen 14 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) ◀ UMGEKLAPPT 10 → 14
+7 Griff ein von 2:0 um -68° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5596 Punkte · Rauminhalt 100.0 % · Knicke über 60° 66, über 150° 36 · umgeschlagen 16 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+8 Griff ein von 4:0 verdrehen: bewegt sich noch 0.3 s (sichtbar 0.3 s, größte Bewegung 3.4) · 5596 Punkte · Rauminhalt 90.5 % · Knicke über 60° 264, über 150° 92 · umgeschlagen 88 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+9 Griff ein von 4:0 zurückdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5596 Punkte · Rauminhalt 100.1 % · Knicke über 60° 78, über 150° 36 · umgeschlagen 22 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+10 Griff aus von 3:0 um 42° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5596 Punkte · Rauminhalt 100.9 % · Knicke über 60° 76, über 150° 36 · umgeschlagen 22 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+11 Griff aus von 4:0 um 52° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5596 Punkte · Rauminhalt 100.2 % · Knicke über 60° 105, über 150° 42 · umgeschlagen 20 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+12 Griff aus von 3:0 um 36° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5596 Punkte · Rauminhalt 100.5 % · Knicke über 60° 106, über 150° 42 · umgeschlagen 20 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+13 Punkt 4:3 in front um (0, -6, 20): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5570 Punkte · Rauminhalt 105.3 % · Knicke über 60° 84, über 150° 24 · umgeschlagen 10 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+14 Griff aus von 2:2 um 42° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5570 Punkte · Rauminhalt 104.9 % · Knicke über 60° 84, über 150° 24 · umgeschlagen 10 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+15 Griff aus von 1:2 um 30° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5570 Punkte · Rauminhalt 104.9 % · Knicke über 60° 84, über 150° 24 · umgeschlagen 10 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0)
+16 Griff ein von 2:1 um -62° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5570 Punkte · Rauminhalt 108.0 % · Knicke über 60° 84, über 150° 24 · umgeschlagen 10 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+17 Punkt 1:3 in front um (0, -36, 24): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5578 Punkte · Rauminhalt 110.0 % · Knicke über 60° 84, über 150° 18 · umgeschlagen 8 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+18 Punkt 2:4 in seite um (62, 8, 0): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5570 Punkte · Rauminhalt 94.4 % · Knicke über 60° 84, über 150° 25 · umgeschlagen 8 · davon an der Mittelkante 0 und 7 (nah an ihr 0 und 7) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+19 Griff ein von 3:3 um -53° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5570 Punkte · Rauminhalt 95.2 % · Knicke über 60° 88, über 150° 26 · umgeschlagen 8 · davon an der Mittelkante 0 und 8 (nah an ihr 0 und 8) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+20 Griff aus von 1:0 um 26° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5570 Punkte · Rauminhalt 95.2 % · Knicke über 60° 88, über 150° 26 · umgeschlagen 8 · davon an der Mittelkante 0 und 8 (nah an ihr 0 und 8)
+21 Punkt 3:4 in front um (0, -50, -10): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5749 Punkte · Rauminhalt 98.3 % · Knicke über 60° 91, über 150° 24 · umgeschlagen 8 · davon an der Mittelkante 0 und 6 (nah an ihr 0 und 6) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+22 Griff ein von 4:1 um 42° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5749 Punkte · Rauminhalt 101.4 % · Knicke über 60° 91, über 150° 20 · umgeschlagen 10 · davon an der Mittelkante 0 und 6 (nah an ihr 0 und 6) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+23 Griff aus von 1:2 um 35° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5749 Punkte · Rauminhalt 100.6 % · Knicke über 60° 91, über 150° 14 · umgeschlagen 10 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+24 Griff aus von 1:3 um -28° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5749 Punkte · Rauminhalt 100.1 % · Knicke über 60° 92, über 150° 22 · umgeschlagen 10 · davon an der Mittelkante 0 und 8 (nah an ihr 0 und 8) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+25 Punkt 2:4 in top um (14, 0, -31): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5821 Punkte · Rauminhalt 99.4 % · Knicke über 60° 76, über 150° 12 · umgeschlagen 6 · davon an der Mittelkante 0 und 4 (nah an ihr 0 und 4) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+26 Griff aus von 2:1 um -40° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5821 Punkte · Rauminhalt 99.2 % · Knicke über 60° 76, über 150° 12 · umgeschlagen 6 · davon an der Mittelkante 0 und 4 (nah an ihr 0 und 4) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+27 Punkt 4:3 in front um (0, -35, 66): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6185 Punkte · Rauminhalt 119.0 % · Knicke über 60° 60, über 150° 11 · umgeschlagen 6 · davon an der Mittelkante 0 und 3 (nah an ihr 0 und 3) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+28 Punkt 3:4 in front um (0, 30, 25): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6177 Punkte · Rauminhalt 115.1 % · Knicke über 60° 60, über 150° 10 · umgeschlagen 6 · davon an der Mittelkante 0 und 2 (nah an ihr 0 und 2) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+29 Punkt 2:4 in seite um (53, 49, 0): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6097 Punkte · Rauminhalt 111.6 % · Knicke über 60° 49, über 150° 8 · umgeschlagen 6 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+30 Griff aus von 1:0 um 59° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6097 Punkte · Rauminhalt 111.6 % · Knicke über 60° 49, über 150° 8 · umgeschlagen 6 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0)
+4 von 30 Schritten auffällig
+Konsole: keine Fehler
+
+### vz-6ba0bcb3-gleich-1
+Port 5193/kurven.html · FORM=kugel-b · 1:mitte 4 Punkte, 129 Proben (129 Punkte des Netzes in der Mittelebene) · 2:ring 5 Punkte, 69 Proben · 3:ring 5 Punkte, 94 Proben · 4:paar 4 Punkte, 194 Proben
+Anfang: 5989 Punkte · Rauminhalt 122.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+1 Griff aus von 3:0 um 34° drehen: bewegt sich noch 0.4 s (sichtbar 0.0 s, größte Bewegung 0.1, Netz 1-mal gewechselt) · 5962 Punkte · Rauminhalt 124.1 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+2 Punkt 3:3 in top um (-47, 0, 3): bewegt sich noch 0.4 s (sichtbar 0.0 s, größte Bewegung 0.1, Netz 1-mal gewechselt) · 5998 Punkte · Rauminhalt 125.0 % · Knicke über 60° 12, über 150° 0 · umgeschlagen 2 · davon an der Mittelkante 0 und 0 (nah an ihr 2 und 0) ◀ UMGEKLAPPT 0 → 2
+3 Punkt 1:1 in seite um (45, 20, 0): bewegt sich noch 0.6 s (sichtbar 0.0 s, größte Bewegung 0.3, Netz 2-mal gewechselt) · 6036 Punkte · Rauminhalt 130.7 % · Knicke über 60° 12, über 150° 0 · umgeschlagen 2 · davon an der Mittelkante 0 und 0 (nah an ihr 2 und 0)
+4 Punkt 2:3 in seite um (-20, 10, 0): bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 0.7) · 6094 Punkte · Rauminhalt 137.6 % · Knicke über 60° 22, über 150° 0 · umgeschlagen 2 · davon an der Mittelkante 0 und 0 (nah an ihr 2 und 0)
+5 Punkt 3:3 in seite um (-57, -17, 0): bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 3.6) · 6358 Punkte · Rauminhalt 143.3 % · Knicke über 60° 19, über 150° 0 · umgeschlagen 0
+6 Griff ein von 4:0 um 70° drehen: bewegt sich noch 0.7 s (sichtbar 0.7 s, größte Bewegung 0.5, Netz 2-mal gewechselt) · 6674 Punkte · Rauminhalt 148.4 % · Knicke über 60° 25, über 150° 4 · umgeschlagen 0 · davon an der Mittelkante 0 und 4 (nah an ihr 0 und 4)
+7 Punkt 1:3 in seite um (0, 45, 0): bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.3, Netz 1-mal gewechselt) · 6646 Punkte · Rauminhalt 147.1 % · Knicke über 60° 26, über 150° 4 · umgeschlagen 0 · davon an der Mittelkante 0 und 4 (nah an ihr 0 und 4)
+8 Griff ein von 1:2 um -22° drehen: bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 1.6) · 6644 Punkte · Rauminhalt 146.2 % · Knicke über 60° 26, über 150° 8 · umgeschlagen 0 · davon an der Mittelkante 0 und 8 (nah an ihr 0 und 8)
+9 Punkt 3:4 in top um (-52, 0, 36): bewegt sich noch 0.5 s (sichtbar 0.0 s, größte Bewegung 0.2, Netz 1-mal gewechselt) · 6648 Punkte · Rauminhalt 146.9 % · Knicke über 60° 27, über 150° 8 · umgeschlagen 0 · davon an der Mittelkante 0 und 8 (nah an ihr 0 und 8)
+10 Griff aus von 2:3 verdrehen: bewegt sich noch 0.7 s (sichtbar 0.0 s, größte Bewegung 0.2, Netz 2-mal gewechselt) · 6710 Punkte · Rauminhalt 145.5 % · Knicke über 60° 60, über 150° 11 · umgeschlagen 8 · davon an der Mittelkante 0 und 7 (nah an ihr 0 und 7) ◀ UMGEKLAPPT 0 → 8
+11 Griff aus von 3:4 um -22° drehen: bewegt sich noch 0.8 s (sichtbar 0.8 s, größte Bewegung 0.5, Netz 2-mal gewechselt) · 6704 Punkte · Rauminhalt 146.4 % · Knicke über 60° 90, über 150° 14 · umgeschlagen 4 · davon an der Mittelkante 0 und 10 (nah an ihr 0 und 10)
+12 Griff aus von 4:1 verdrehen: bewegt sich noch 0.9 s (sichtbar 0.9 s, größte Bewegung 1.4, Netz 3-mal gewechselt) · 6410 Punkte · Rauminhalt 124.3 % · Knicke über 60° 121, über 150° 14 · umgeschlagen 8 · davon an der Mittelkante 0 und 8 (nah an ihr 0 und 8) ◀ UMGEKLAPPT 4 → 8
+13 Griff aus von 4:1 zurückdrehen: bewegt sich noch 0.7 s (sichtbar 0.0 s, größte Bewegung 0.4, Netz 2-mal gewechselt) · 6754 Punkte · Rauminhalt 146.5 % · Knicke über 60° 106, über 150° 15 · umgeschlagen 2 · davon an der Mittelkante 0 und 9 (nah an ihr 0 und 9)
+14 Punkt 3:4 in top um (-23, 0, 19): bewegt sich noch 0.3 s (sichtbar 0.3 s, größte Bewegung 1.1) · 6772 Punkte · Rauminhalt 146.6 % · Knicke über 60° 113, über 150° 15 · umgeschlagen 2 · davon an der Mittelkante 0 und 9 (nah an ihr 0 und 9)
+15 Punkt 1:1 in front um (0, -10, -50): bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.1) · 6768 Punkte · Rauminhalt 142.8 % · Knicke über 60° 113, über 150° 14 · umgeschlagen 2 · davon an der Mittelkante 0 und 8 (nah an ihr 0 und 8)
+16 Griff ein von 1:3 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6768 Punkte · Rauminhalt 142.4 % · Knicke über 60° 128, über 150° 18 · umgeschlagen 4 · davon an der Mittelkante 0 und 8 (nah an ihr 2 und 12) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+17 Griff ein von 1:1 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6768 Punkte · Rauminhalt 142.4 % · Knicke über 60° 197, über 150° 38 · umgeschlagen 20 · davon an der Mittelkante 12 und 20 (nah an ihr 18 und 30) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+18 Griff ein von 1:1 zurückdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6768 Punkte · Rauminhalt 219.5 % · Knicke über 60° 198, über 150° 24 · umgeschlagen 16 · davon an der Mittelkante 8 und 14 (nah an ihr 8 und 20) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+19 Punkt 2:0 in seite um (-17, -34, 0): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6768 Punkte · Rauminhalt 145.7 % · Knicke über 60° 315, über 150° 111 · umgeschlagen 112 · davon an der Mittelkante 8 und 11 (nah an ihr 8 und 17) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+20 Griff aus von 3:0 um -60° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6768 Punkte · Rauminhalt 141.8 % · Knicke über 60° 334, über 150° 110 · umgeschlagen 110 · davon an der Mittelkante 8 und 10 (nah an ihr 8 und 16) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+21 Griff aus von 2:4 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6768 Punkte · Rauminhalt 145.5 % · Knicke über 60° 319, über 150° 124 · umgeschlagen 104 · davon an der Mittelkante 8 und 16 (nah an ihr 8 und 22) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+22 Griff aus von 2:4 zurückdrehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6768 Punkte · Rauminhalt 145.5 % · Knicke über 60° 319, über 150° 124 · umgeschlagen 104 · davon an der Mittelkante 8 und 16 (nah an ihr 8 und 22)
+23 Griff aus von 4:1 um -33° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6768 Punkte · Rauminhalt 142.9 % · Knicke über 60° 268, über 150° 80 · umgeschlagen 58 · davon an der Mittelkante 8 und 16 (nah an ihr 8 und 22) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+24 Griff ein von 4:3 um -27° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6768 Punkte · Rauminhalt 146.1 % · Knicke über 60° 268, über 150° 121 · umgeschlagen 58 · davon an der Mittelkante 6 und 31 (nah an ihr 8 und 33) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+25 Punkt 2:2 in top um (33, 0, -21): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6768 Punkte · Rauminhalt 138.4 % · Knicke über 60° 250, über 150° 87 · umgeschlagen 46 · davon an der Mittelkante 6 und 29 (nah an ihr 8 und 33) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+26 Griff ein von 4:2 um -35° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6768 Punkte · Rauminhalt 138.4 % · Knicke über 60° 197, über 150° 77 · umgeschlagen 36 · davon an der Mittelkante 6 und 27 (nah an ihr 8 und 31) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+27 Griff aus von 1:1 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6768 Punkte · Rauminhalt 138.3 % · Knicke über 60° 235, über 150° 86 · umgeschlagen 50 · davon an der Mittelkante 8 und 32 (nah an ihr 10 und 36) · Meldung: Loop 1 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+28 Griff aus von 1:1 zurückdrehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6768 Punkte · Rauminhalt 138.3 % · Knicke über 60° 235, über 150° 86 · umgeschlagen 50 · davon an der Mittelkante 8 und 32 (nah an ihr 10 und 36) · Meldung: Hier ist die Haut auseinandergelaufen. Der Zug ist zurückgenommen, die Form steht wieder w
+29 Punkt 1:3 in seite um (13, -26, 0): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6768 Punkte · Rauminhalt 138.3 % · Knicke über 60° 235, über 150° 86 · umgeschlagen 50 · davon an der Mittelkante 8 und 32 (nah an ihr 10 und 36) · Meldung: Hier ist die Haut auseinandergelaufen. Der Zug ist zurückgenommen, die Form steht wieder w
+30 Griff ein von 2:4 um 37° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6768 Punkte · Rauminhalt 138.3 % · Knicke über 60° 235, über 150° 86 · umgeschlagen 50 · davon an der Mittelkante 8 und 32 (nah an ihr 10 und 36)
+3 von 30 Schritten auffällig
+Konsole: keine Fehler
+
+### vz-6ba0bcb3-gleich-2
+Port 5193/kurven.html · FORM=kugel-b · 1:mitte 4 Punkte, 129 Proben (129 Punkte des Netzes in der Mittelebene) · 2:ring 5 Punkte, 69 Proben · 3:ring 5 Punkte, 94 Proben · 4:paar 4 Punkte, 194 Proben
+Anfang: 5989 Punkte · Rauminhalt 122.5 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 0
+1 Punkt 3:1 in front um (0, -53, -49): bewegt sich noch 0.6 s (sichtbar 0.6 s, größte Bewegung 2.7, Netz 1-mal gewechselt) · 5779 Punkte · Rauminhalt 105.5 % · Knicke über 60° 96, über 150° 54 · umgeschlagen 26 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) ◀ UMGEKLAPPT 0 → 26 · KNICKE 0 → 54
+2 Griff ein von 2:1 um 30° drehen: bewegt sich noch 0.3 s (sichtbar 0.2 s, größte Bewegung 4.3) · 5651 Punkte · Rauminhalt 103.7 % · Knicke über 60° 38, über 150° 12 · umgeschlagen 4 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0)
+3 Griff ein von 2:4 um 38° drehen: bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 4.4) · 5617 Punkte · Rauminhalt 103.4 % · Knicke über 60° 34, über 150° 14 · umgeschlagen 4 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0)
+4 Griff ein von 4:0 verdrehen: bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 1.2, Netz 1-mal gewechselt) · 5613 Punkte · Rauminhalt 88.6 % · Knicke über 60° 123, über 150° 36 · umgeschlagen 16 · davon an der Mittelkante 0 und 8 (nah an ihr 0 und 10) ◀ UMGEKLAPPT 4 → 16 · KNICKE 14 → 36
+5 Griff ein von 4:0 zurückdrehen: bewegt sich noch 0.2 s (sichtbar 0.2 s, größte Bewegung 0.8) · 5603 Punkte · Rauminhalt 103.6 % · Knicke über 60° 42, über 150° 12 · umgeschlagen 6 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0)
+6 Griff aus von 4:1 um -43° drehen: bewegt sich noch 0.4 s (sichtbar 0.4 s, größte Bewegung 0.9, Netz 1-mal gewechselt) · 5537 Punkte · Rauminhalt 102.5 % · Knicke über 60° 50, über 150° 18 · umgeschlagen 6 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) ◀ KNICKE 12 → 18
+7 Griff ein von 2:0 um -68° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 100.9 % · Knicke über 60° 54, über 150° 16 · umgeschlagen 6 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+8 Griff ein von 4:0 verdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 87.1 % · Knicke über 60° 146, über 150° 18 · umgeschlagen 18 · davon an der Mittelkante 0 und 0 (nah an ihr 2 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+9 Griff ein von 4:0 zurückdrehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 100.8 % · Knicke über 60° 54, über 150° 16 · umgeschlagen 8 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+10 Griff aus von 3:0 um 42° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 101.7 % · Knicke über 60° 54, über 150° 16 · umgeschlagen 6 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+11 Griff aus von 4:0 um 52° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 100.8 % · Knicke über 60° 80, über 150° 16 · umgeschlagen 6 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+12 Griff aus von 3:0 um 36° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 101.1 % · Knicke über 60° 82, über 150° 16 · umgeschlagen 6 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+13 Punkt 4:3 in front um (0, -6, 20): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 106.1 % · Knicke über 60° 78, über 150° 16 · umgeschlagen 6 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+14 Griff aus von 2:2 um 42° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 106.0 % · Knicke über 60° 102, über 150° 22 · umgeschlagen 12 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+15 Griff aus von 1:2 um 30° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 106.0 % · Knicke über 60° 102, über 150° 22 · umgeschlagen 12 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0)
+16 Griff ein von 2:1 um -62° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 110.2 % · Knicke über 60° 83, über 150° 12 · umgeschlagen 4 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+17 Punkt 1:3 in front um (0, -36, 24): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 112.0 % · Knicke über 60° 87, über 150° 10 · umgeschlagen 4 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+18 Punkt 2:4 in seite um (62, 8, 0): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 96.8 % · Knicke über 60° 85, über 150° 26 · umgeschlagen 6 · davon an der Mittelkante 0 und 10 (nah an ihr 0 und 10) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+19 Griff ein von 3:3 um -53° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 98.2 % · Knicke über 60° 97, über 150° 26 · umgeschlagen 6 · davon an der Mittelkante 0 und 10 (nah an ihr 0 und 10) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+20 Griff aus von 1:0 um 26° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 98.2 % · Knicke über 60° 97, über 150° 26 · umgeschlagen 6 · davon an der Mittelkante 0 und 10 (nah an ihr 0 und 10)
+21 Punkt 3:4 in front um (0, -50, -10): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 100.9 % · Knicke über 60° 99, über 150° 27 · umgeschlagen 6 · davon an der Mittelkante 0 und 11 (nah an ihr 0 und 11) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+22 Griff ein von 4:1 um 42° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 104.0 % · Knicke über 60° 89, über 150° 21 · umgeschlagen 6 · davon an der Mittelkante 0 und 9 (nah an ihr 0 und 9) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+23 Griff aus von 1:2 um 35° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 103.3 % · Knicke über 60° 90, über 150° 12 · umgeschlagen 4 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+24 Griff aus von 1:3 um -28° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 103.0 % · Knicke über 60° 94, über 150° 19 · umgeschlagen 4 · davon an der Mittelkante 0 und 7 (nah an ihr 0 und 7) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+25 Punkt 2:4 in top um (14, 0, -31): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 102.2 % · Knicke über 60° 87, über 150° 14 · umgeschlagen 6 · davon an der Mittelkante 0 und 2 (nah an ihr 0 und 2) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+26 Griff aus von 2:1 um -40° drehen: bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 102.4 % · Knicke über 60° 88, über 150° 14 · umgeschlagen 6 · davon an der Mittelkante 0 und 2 (nah an ihr 0 und 2) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+27 Punkt 4:3 in front um (0, -35, 66): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 123.4 % · Knicke über 60° 74, über 150° 16 · umgeschlagen 8 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+28 Punkt 3:4 in front um (0, 30, 25): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 119.8 % · Knicke über 60° 74, über 150° 16 · umgeschlagen 8 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+29 Punkt 2:4 in seite um (53, 49, 0): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 116.5 % · Knicke über 60° 79, über 150° 12 · umgeschlagen 8 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) · Meldung: Loop 3 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bl
+30 Griff aus von 1:0 um 59° drehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 5537 Punkte · Rauminhalt 116.5 % · Knicke über 60° 79, über 150° 12 · umgeschlagen 8 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0)
+3 von 30 Schritten auffällig
+Konsole: keine Fehler
+
+### vz-75b94733-geo-1
+Port 5194/kurven.html?gewichte=geometrie · FORM=kugel-b · 1:mitte 4 Punkte, 128 Proben (128 Punkte des Netzes in der Mittelebene) · 2:ring 5 Punkte, 69 Proben · 3:ring 5 Punkte, 94 Proben · 4:paar 4 Punkte, 192 Proben
+Anfang: 6004 Punkte · Rauminhalt 123.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+1 Griff aus von 3:0 um 34° drehen (Griff nicht getroffen): bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.2) · 5978 Punkte · Rauminhalt 123.8 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+2 Punkt 3:3 in top um (-47, 0, 3): bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.1) · 6040 Punkte · Rauminhalt 124.5 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+3 Punkt 1:1 in seite um (45, 20, 0): bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.2) · 6152 Punkte · Rauminhalt 130.4 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+4 Punkt 2:3 in seite um (-20, 10, 0): bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.1) · 6222 Punkte · Rauminhalt 136.4 % · Knicke über 60° 10, über 150° 0 · umgeschlagen 0
+5 Punkt 3:3 in seite um (-57, -17, 0): bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.4) · 6464 Punkte · Rauminhalt 141.6 % · Knicke über 60° 18, über 150° 0 · umgeschlagen 0
+6 Griff ein von 4:0 um 70° drehen: bewegt sich noch 0.7 s (sichtbar 0.0 s, größte Bewegung 0.1, Netz 2-mal gewechselt) · 6700 Punkte · Rauminhalt 143.2 % · Knicke über 60° 24, über 150° 0 · umgeschlagen 2 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) ◀ UMGEKLAPPT 0 → 2
+7 Punkt 1:3 in seite um (0, 45, 0): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6746 Punkte · Rauminhalt 142.9 % · Knicke über 60° 25, über 150° 0 · umgeschlagen 2 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0)
+8 Griff ein von 1:2 um -22° drehen: bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.2) · 6772 Punkte · Rauminhalt 141.0 % · Knicke über 60° 23, über 150° 0 · umgeschlagen 2 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0)
+9 Punkt 3:4 in top um (-52, 0, 36): bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.2) · 6770 Punkte · Rauminhalt 141.4 % · Knicke über 60° 22, über 150° 0 · umgeschlagen 2 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0)
+10 Griff aus von 2:3 verdrehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 6770 Punkte · Rauminhalt 141.4 % · Knicke über 60° 22, über 150° 0 · umgeschlagen 2 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0)
+11 Griff aus von 3:4 um -22° drehen (Griff nicht getroffen): bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.2) · 6784 Punkte · Rauminhalt 135.7 % · Knicke über 60° 12, über 150° 0 · umgeschlagen 2 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0)
+12 Griff aus von 4:1 verdrehen: bewegt sich noch 0.5 s (sichtbar 0.5 s, größte Bewegung 2.0, Netz 1-mal gewechselt) · 6478 Punkte · Rauminhalt 114.6 % · Knicke über 60° 98, über 150° 16 · umgeschlagen 16 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0) ◀ UMGEKLAPPT 2 → 16 · KNICKE 0 → 16
+13 Griff aus von 4:1 zurückdrehen: bewegt sich noch 0.6 s (sichtbar 0.0 s, größte Bewegung 0.3, Netz 1-mal gewechselt) · 6864 Punkte · Rauminhalt 135.7 % · Knicke über 60° 62, über 150° 8 · umgeschlagen 8 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0)
+14 Punkt 3:4 in top um (-23, 0, 19): bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.1) · 6832 Punkte · Rauminhalt 135.8 % · Knicke über 60° 64, über 150° 10 · umgeschlagen 8 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0)
+15 Punkt 1:1 in front um (0, -10, -50): bewegt sich noch 0.2 s (sichtbar 0.0 s, größte Bewegung 0.1) · 6832 Punkte · Rauminhalt 132.9 % · Knicke über 60° 64, über 150° 10 · umgeschlagen 8 · davon an der Mittelkante 0 und 0 (nah an ihr 0 und 0)
+16 Griff ein von 1:3 verdrehen: bewegt sich noch 0.6 s (sichtbar 0.6 s, größte Bewegung 1.6, Netz 1-mal gewechselt) · 6888 Punkte · Rauminhalt 133.0 % · Knicke über 60° 109, über 150° 20 · umgeschlagen 26 · davon an der Mittelkante 2 und 4 (nah an ihr 18 und 10) ◀ UMGEKLAPPT 8 → 26 · KNICKE 10 → 20
+17 Griff ein von 1:1 verdrehen: bewegt sich noch 1.1 s (sichtbar 0.0 s, größte Bewegung 0.3, Netz 3-mal gewechselt) · 6983 Punkte · Rauminhalt 119.8 % · Knicke über 60° 124, über 150° 20 · umgeschlagen 38 · davon an der Mittelkante 16 und 4 (nah an ihr 28 und 8) ◀ UMGEKLAPPT 26 → 38
+18 Griff ein von 1:1 zurückdrehen: bewegt sich noch 0.6 s (sichtbar 0.6 s, größte Bewegung 0.8, Netz 1-mal gewechselt) · 7079 Punkte · Rauminhalt 129.6 % · Knicke über 60° 112, über 150° 16 · umgeschlagen 34 · davon an der Mittelkante 14 und 4 (nah an ihr 24 und 4)
+19 Punkt 2:0 in seite um (-17, -34, 0): bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.2) · 7069 Punkte · Rauminhalt 127.5 % · Knicke über 60° 115, über 150° 14 · umgeschlagen 26 · davon an der Mittelkante 6 und 2 (nah an ihr 16 und 2)
+20 Griff aus von 3:0 um -60° drehen (Griff nicht getroffen): bewegt sich noch 0.3 s (sichtbar 0.3 s, größte Bewegung 4.1) · 7146 Punkte · Rauminhalt 127.2 % · Knicke über 60° 125, über 150° 22 · umgeschlagen 26 · davon an der Mittelkante 8 und 0 (nah an ihr 12 und 2) ◀ KNICKE 14 → 22
+21 Griff aus von 2:4 verdrehen (Griff nicht getroffen): bewegt sich noch 0.0 s (sichtbar 0.0 s, größte Bewegung 0.0) · 7146 Punkte · Rauminhalt 127.2 % · Knicke über 60° 125, über 150° 22 · umgeschlagen 26 · davon an der Mittelkante 8 und 0 (nah an ihr 12 und 2)
+22 Punkt 1:0 in top um (-7, 0, -39): bewegt sich noch 0.3 s (sichtbar 0.0 s, größte Bewegung 0.4) · 7154 Punkte · Rauminhalt 126.9 % · Knicke über 60° 125, über 150° 22 · umgeschlagen 24 · davon an der Mittelkante 8 und 0 (nah an ihr 10 und 2)
+23 Punkt 4:0 in top um (18, 0, -65): bewegt sich noch 1.1 s (sichtbar 0.0 s, größte Bewegung 0.4, Netz 3-mal gewechselt) · 7114 Punkte · Rauminhalt 115.8 % · Knicke über 60° 205, über 150° 30 · umgeschlagen 40 · davon an der Mittelkante 12 und 4 (nah an ihr 22 und 10) ◀ UMGEKLAPPT 24 → 40 · KNICKE 22 → 30
+24 Punkt 1:0 in front um (0, 51, -12): bewegt sich noch 0.9 s (sichtbar 0.0 s, größte Bewegung 0.4, Netz 2-mal gewechselt) · 7159 Punkte · Rauminhalt 116.6 % · Knicke über 60° 212, über 150° 34 · umgeschlagen 36 · davon an der Mittelkante 9 und 6 (nah an ihr 14 und 14)
+25 Griff aus von 4:1 verdrehen: bewegt sich noch 0.9 s (sichtbar 0.9 s, größte Bewegung 2.3, Netz 2-mal gewechselt) · 6572 Punkte · Rauminhalt 99.6 % · Knicke über 60° 246, über 150° 53 · umgeschlagen 49 · davon an der Mittelkante 11 und 7 (nah an ihr 15 und 13) ◀ UMGEKLAPPT 36 → 49 · KNICKE 34 → 53
+26 Griff aus von 4:1 zurückdrehen: bewegt sich noch 0.6 s (sichtbar 0.6 s, größte Bewegung 5.6, Netz 1-mal gewechselt) · 7013 Punkte · Rauminhalt 119.1 % · Knicke über 60° 215, über 150° 40 · umgeschlagen 40 · davon an der Mittelkante 13 und 12 (nah an ihr 18 und 16)
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+page.waitForTimeout: Target page, context or browser has been closed
+    at ruhe (/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/form-zuerst/apps/editor/scripts/pruefen/form-griffe-probe-versionen.mjs:79:17)
+    at async ziehen (/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/form-zuerst/apps/editor/scripts/pruefen/form-griffe-probe-versionen.mjs:210:13)
+    at async zufallsSchritte (/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/form-zuerst/apps/editor/scripts/pruefen/form-griffe-probe-versionen.mjs:318:11)
+    at async file:///Users/bsw/Projekte/playground/early-earle/.claude/worktrees/form-zuerst/apps/editor/scripts/pruefen/form-griffe-probe-versionen.mjs:490:24 {
+  log: []
+}
+
+Node.js v25.8.1
+
+## Kern, form-gesichert-stabil.ts: gewöhnliche Punktzüge, beide Rechnungen (Vogel 30/60 mit SETZEN=60, Firefish 60/150 an 24 Punkten)
+### kern-geo-vogel-gesetzt
+strange bird.eewesen: 16010 Punkte, 9 Loops, größte Koordinate 542 · Züge 30/60 in 20 Schritten, dann 80 Runden
+zerlegt in 958 ms
+gesetzt in 60 Runden: die Haut ging bis 19.3 Einheiten, letzte Runde 0.002; umgeschlagene Dreiecke 4 → 6
+284 Fälle an 29 Punkten
+Ergebnis (alle Loops eingesetzt): zur Ruhe 283, kriecht 0, schwingt 1, wächst 0, davongelaufen 0 (von 284) · Schritt verkleinert oder stehen geblieben in 0 Fällen · im Zug mehr umgeschlagene Dreiecke als beim Greifen in 84 Fällen, am Ende noch in 81
+
+### kern-gleich-vogel-gesetzt
+strange bird.eewesen: 16010 Punkte, 9 Loops, größte Koordinate 542 · Züge 30/60 in 20 Schritten, dann 80 Runden
+zerlegt in 947 ms
+gesetzt in 60 Runden: die Haut ging bis 0.1 Einheiten, letzte Runde 0.002; umgeschlagene Dreiecke 4 → 4
+284 Fälle an 29 Punkten
+Ergebnis (gleiche Gewichte) (alle Loops eingesetzt): zur Ruhe 282, kriecht 2, schwingt 0, wächst 0, davongelaufen 0 (von 284) · Schritt verkleinert oder stehen geblieben in 0 Fällen · im Zug mehr umgeschlagene Dreiecke als beim Greifen in 86 Fällen, am Ende noch in 81
+
+### kern-geo-firefish
+teat firefish.eewesen: 27770 Punkte, 17 Loops, größte Koordinate 754 · Züge 60/150 in 20 Schritten, dann 80 Runden
+zerlegt in 2039 ms
+196 Fälle an 24 Punkten
+WAECHST  4:12 (-386, 416, 0) Kreuzung hinauf 150: Runden nach dem Zug 80, Weg zuletzt 0.178, größte Koordinate im Verlauf 754, umgeschlagene Dreiecke im Zug bis 20 mehr, am Ende 26 mehr · Wege 0.98 1.03 0.80 0.47 0.49 0.43 … 0.65 1.04 4.19 4.27 2.74 1.17 0.50 0.35 0.16 0.18
+Ergebnis (alle Loops eingesetzt): zur Ruhe 188, kriecht 4, schwingt 3, wächst 1, davongelaufen 0 (von 196) · Schritt verkleinert oder stehen geblieben in 3 Fällen · im Zug mehr umgeschlagene Dreiecke als beim Greifen in 89 Fällen, am Ende noch in 90
+
+### kern-gleich-firefish
+teat firefish.eewesen: 27770 Punkte, 17 Loops, größte Koordinate 754 · Züge 60/150 in 20 Schritten, dann 80 Runden
+zerlegt in 2067 ms
+196 Fälle an 24 Punkten
+Ergebnis (gleiche Gewichte) (alle Loops eingesetzt): zur Ruhe 192, kriecht 2, schwingt 2, wächst 0, davongelaufen 0 (von 196) · Schritt verkleinert oder stehen geblieben in 0 Fällen · im Zug mehr umgeschlagene Dreiecke als beim Greifen in 97 Fällen, am Ende noch in 92
+
+## form-ablauf-probe.mjs: die zwölf groben Abläufe an test_kaputt mit der alten Rechnung (zwei Läufe)
+### gleich-zwoelf-1
+geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Anfang: 6217 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0 · Meldung: Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.
+
+Schritt 1 „zug front 4:oben 0,50,0>0,-30,0>0,60,0>0,0,0“
+   gehalten:  6217 Punkte · größte Koordinate 260 · Rauminhalt 99.4 % · Fläche 99.7 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6199 Punkte · größte Koordinate 260 · Rauminhalt 99.4 % · Fläche 99.8 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 2 „zug front 4:oben 0,-60,0>0,40,0>0,-40,0“
+   gehalten:  6199 Punkte · größte Koordinate 260 · Rauminhalt 89.5 % · Fläche 96.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6157 Punkte · größte Koordinate 260 · Rauminhalt 89.4 % · Fläche 96.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 3 „zug front 3:unten 0,0,-60>0,0,0“
+   gehalten:  6157 Punkte · größte Koordinate 260 · Rauminhalt 89.4 % · Fläche 96.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6153 Punkte · größte Koordinate 260 · Rauminhalt 89.4 % · Fläche 96.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 4 „zug front 3:unten 0,0,-40>0,0,10>0,0,-80>0,0,0“
+   gehalten:  6153 Punkte · größte Koordinate 260 · Rauminhalt 89.4 % · Fläche 96.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.1 s): 6153 Punkte · größte Koordinate 260 · Rauminhalt 89.4 % · Fläche 96.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 5 „zug front 3:aussen 0,0,-200>0,0,-300>0,0,0“
+   gehalten:  6153 Punkte · größte Koordinate 260 · Rauminhalt 89.4 % · Fläche 96.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6155 Punkte · größte Koordinate 260 · Rauminhalt 89.3 % · Fläche 96.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 6 „griff front 3:aussen aus 0,0,-200>0,0,0“
+   gehalten:  6155 Punkte · größte Koordinate 260 · Rauminhalt 89.3 % · Fläche 96.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6145 Punkte · größte Koordinate 260 · Rauminhalt 89.3 % · Fläche 96.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 7 „zug seite 4:oben -160,-13,0>0,0,0“
+   gehalten:  6145 Punkte · größte Koordinate 260 · Rauminhalt 89.3 % · Fläche 96.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.1 s): 6145 Punkte · größte Koordinate 260 · Rauminhalt 89.3 % · Fläche 96.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 8 „zug front 3:unten 0,0,-60“
+   gehalten:  6145 Punkte · größte Koordinate 260 · Rauminhalt 87.1 % · Fläche 95.0 % · Knicke über 60° 8, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6067 Punkte · größte Koordinate 260 · Rauminhalt 87.1 % · Fläche 95.0 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 2 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 9 „zug front 3:unten 0,0,40 @3“
+   gehalten:  6067 Punkte · größte Koordinate 260 · Rauminhalt 92.4 % · Fläche 98.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6221 Punkte · größte Koordinate 260 · Rauminhalt 92.3 % · Fläche 98.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 10 „zug front 4:oben 0,40,0>0,-20,0>0,0,0“
+   gehalten:  6221 Punkte · größte Koordinate 260 · Rauminhalt 92.3 % · Fläche 98.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6213 Punkte · größte Koordinate 260 · Rauminhalt 92.3 % · Fläche 98.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 11 „griff seite 4:oben aus -200,-17,0“
+   gehalten:  6213 Punkte · größte Koordinate 260 · Rauminhalt 87.6 % · Fläche 98.7 % · Knicke über 60° 60, über 150° 14 · umgeschlagen 10 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.1 s): 6213 Punkte · größte Koordinate 260 · Rauminhalt 87.6 % · Fläche 98.7 % · Knicke über 60° 60, über 150° 14 · umgeschlagen 10 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0 · Meldung: Loop 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bleibt, wie es ist, bi
+
+Schritt 12 „griff seite 4:oben aus 200,17,0“
+   gehalten:  6213 Punkte · größte Koordinate 260 · Rauminhalt 92.3 % · Fläche 98.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6207 Punkte · größte Koordinate 260 · Rauminhalt 92.3 % · Fläche 98.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Konsole: keine Fehler
+
+### gleich-zwoelf-2
+geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18 Punkten) · ⌘Z bringt das Wesen von vorher zurück
+Anfang: 6217 Punkte · größte Koordinate 260 · Rauminhalt 100.0 % · Fläche 100.0 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0 · Meldung: Ein Loop lag nur auf der Haut und ist jetzt ins Netz eingesetzt.
+
+Schritt 1 „zug front 4:oben 0,50,0>0,-30,0>0,60,0>0,0,0“
+   gehalten:  6217 Punkte · größte Koordinate 260 · Rauminhalt 99.4 % · Fläche 99.7 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.3 s): 6199 Punkte · größte Koordinate 260 · Rauminhalt 99.4 % · Fläche 99.8 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 2 „zug front 4:oben 0,-60,0>0,40,0>0,-40,0“
+   gehalten:  6199 Punkte · größte Koordinate 260 · Rauminhalt 89.5 % · Fläche 96.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6157 Punkte · größte Koordinate 260 · Rauminhalt 89.4 % · Fläche 96.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 3 „zug front 3:unten 0,0,-60>0,0,0“
+   gehalten:  6157 Punkte · größte Koordinate 260 · Rauminhalt 89.4 % · Fläche 96.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6153 Punkte · größte Koordinate 260 · Rauminhalt 89.4 % · Fläche 96.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 4 „zug front 3:unten 0,0,-40>0,0,10>0,0,-80>0,0,0“
+   gehalten:  6153 Punkte · größte Koordinate 260 · Rauminhalt 89.4 % · Fläche 96.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.1 s): 6153 Punkte · größte Koordinate 260 · Rauminhalt 89.4 % · Fläche 96.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 5 „zug front 3:aussen 0,0,-200>0,0,-300>0,0,0“
+   gehalten:  6153 Punkte · größte Koordinate 260 · Rauminhalt 89.4 % · Fläche 96.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6155 Punkte · größte Koordinate 260 · Rauminhalt 89.3 % · Fläche 96.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 6 „griff front 3:aussen aus 0,0,-200>0,0,0“
+   gehalten:  6155 Punkte · größte Koordinate 260 · Rauminhalt 89.3 % · Fläche 96.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6145 Punkte · größte Koordinate 260 · Rauminhalt 89.3 % · Fläche 96.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 7 „zug seite 4:oben -160,-13,0>0,0,0“
+   gehalten:  6145 Punkte · größte Koordinate 260 · Rauminhalt 89.3 % · Fläche 96.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.1 s): 6145 Punkte · größte Koordinate 260 · Rauminhalt 89.3 % · Fläche 96.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 8 „zug front 3:unten 0,0,-60“
+   gehalten:  6145 Punkte · größte Koordinate 260 · Rauminhalt 87.1 % · Fläche 95.0 % · Knicke über 60° 8, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6067 Punkte · größte Koordinate 260 · Rauminhalt 87.1 % · Fläche 95.0 % · Knicke über 60° 6, über 150° 0 · umgeschlagen 2 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 9 „zug front 3:unten 0,0,40 @3“
+   gehalten:  6067 Punkte · größte Koordinate 260 · Rauminhalt 92.4 % · Fläche 98.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.4 s): 6221 Punkte · größte Koordinate 260 · Rauminhalt 92.3 % · Fläche 98.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 10 „zug front 4:oben 0,40,0>0,-20,0>0,0,0“
+   gehalten:  6221 Punkte · größte Koordinate 260 · Rauminhalt 92.3 % · Fläche 98.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6213 Punkte · größte Koordinate 260 · Rauminhalt 92.3 % · Fläche 98.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Schritt 11 „griff seite 4:oben aus -200,-17,0“
+   gehalten:  6213 Punkte · größte Koordinate 260 · Rauminhalt 87.6 % · Fläche 98.7 % · Knicke über 60° 60, über 150° 12 · umgeschlagen 10 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.1 s): 6213 Punkte · größte Koordinate 260 · Rauminhalt 87.6 % · Fläche 98.7 % · Knicke über 60° 60, über 150° 12 · umgeschlagen 10 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0 · Meldung: Loop 4 kreuzt sich selbst (ein Griff verdreht?). Die Haut ist dort umgeklappt; das Netz bleibt, wie es ist, bi
+
+Schritt 12 „griff seite 4:oben aus 200,17,0“
+   gehalten:  6213 Punkte · größte Koordinate 260 · Rauminhalt 92.3 % · Fläche 98.4 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+   in Ruhe (nach 0.2 s): 6207 Punkte · größte Koordinate 260 · Rauminhalt 92.3 % · Fläche 98.5 % · Knicke über 60° 0, über 150° 0 · umgeschlagen 0 · Schutz: zurückgenommen 0, Fehler 0, Schritt verkleinert 0
+
+Konsole: keine Fehler
+

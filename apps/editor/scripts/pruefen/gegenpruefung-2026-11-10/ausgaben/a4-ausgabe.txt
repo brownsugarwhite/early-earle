@@ -1,0 +1,26 @@
+
+## 5.222 Punkte (Kugel, drei Loops)
+Nachbau der Zerlegung gegen den Code: nnz(L) gleich, größter Unterschied der Werte 0.0e+0
+Zerlegen im Kern (Median/Minimum aus 7, mit Vorbehalt): Aufbau 17.5 / 15.9 ms, Baum + Muster + Werte 83.4 / 80.3 ms; Nachbau allein 86.4 / 81.4 ms; innere Schleife 63,8 Mio. Durchläufe
+Örtliche Änderung (Fleck von im Mittel 99 Punkten, 60 Stellen): neu zu rechnen wären die Zeilen aller Vorfahren im Eliminationsbaum = 79–93 % der Rechenarbeit (Median 81 %)
+Superknoten: 1.793 für 5.222 Spalten (im Mittel 2.9 breit), 89 % der Einträge von L in Superknoten ab Breite 4; dichte Blöcke 661.113 Werte gegen nnz(L) 616.127
+| Lösen, 3 Spalten (JavaScript) | Median ms | Minimum ms | Unterschied zum Code |
+| --- | --- | --- | --- |
+| Code heute (`loesenSpalten(rhs, 3)`, zerlegung.ts 289–318) | 6.35 | 5.73 | – |
+| drei Spalten ausgeschrieben, getrennte Felder | 1.71 | 1.58 | 9.5e-11 |
+| Superknoten (dichte Blöcke bis 64 breit) | 2.36 | 2.11 | 1.8e-10 |
+Eine Runde des Lösers „gleich“ (ganze Haut, in Ruhe): Median 9.95 / Minimum 8.92 ms; davon Lagen lösen 6.45 ms, vermessen 1.17 ms (Mittel)
+Daten für C/WebAssembly: /private/tmp/claude-501/-Users-bsw-Projekte-playground-early-earle/cd6b728b-2b03-4c6a-894a-49c1ae978b51/scratchpad/w1/matrix-5222.bin (14,0 MB)
+
+## 10.964 Punkte (Kugel, drei Loops)
+Nachbau der Zerlegung gegen den Code: nnz(L) gleich, größter Unterschied der Werte 0.0e+0
+Zerlegen im Kern (Median/Minimum aus 7, mit Vorbehalt): Aufbau 37.9 / 34.3 ms, Baum + Muster + Werte 271.8 / 261.8 ms; Nachbau allein 261.2 / 256.8 ms; innere Schleife 211,9 Mio. Durchläufe
+Örtliche Änderung (Fleck von im Mittel 99 Punkten, 60 Stellen): neu zu rechnen wären die Zeilen aller Vorfahren im Eliminationsbaum = 77–92 % der Rechenarbeit (Median 79 %)
+Superknoten: 3.723 für 10.964 Spalten (im Mittel 2.9 breit), 90 % der Einträge von L in Superknoten ab Breite 4; dichte Blöcke 1.595.439 Werte gegen nnz(L) 1.498.335
+| Lösen, 3 Spalten (JavaScript) | Median ms | Minimum ms | Unterschied zum Code |
+| --- | --- | --- | --- |
+| Code heute (`loesenSpalten(rhs, 3)`, zerlegung.ts 289–318) | 15.20 | 14.48 | – |
+| drei Spalten ausgeschrieben, getrennte Felder | 3.99 | 3.75 | 5.5e-10 |
+| Superknoten (dichte Blöcke bis 64 breit) | 5.33 | 5.02 | 7.2e-10 |
+Eine Runde des Lösers „gleich“ (ganze Haut, in Ruhe): Median 21.43 / Minimum 19.86 ms; davon Lagen lösen 15.64 ms, vermessen 1.66 ms (Mittel)
+Daten für C/WebAssembly: /private/tmp/claude-501/-Users-bsw-Projekte-playground-early-earle/cd6b728b-2b03-4c6a-894a-49c1ae978b51/scratchpad/w1/matrix-10964.bin (33,5 MB)

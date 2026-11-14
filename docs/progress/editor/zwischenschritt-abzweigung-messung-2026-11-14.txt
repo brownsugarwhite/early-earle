@@ -1,0 +1,25 @@
+Zwischenschritt „Abzweigungen“, Etappe 1: Messwerte im Kern (14.11.2026)
+Probe: apps/editor/scripts/pruefen/form-abzweigung.ts (Aufruf aus packages/shape). Kugel (Halbmesser 150) mit drei Linien, ein Kreis mit vier Punkten in einem Feld dazwischen,
+zwei Abzweigungen von Punkt zu gegenüberliegendem Punkt, der gemeinsame Punkt in ihrer Kreuzung um 90 nach außen gezogen.
+
+--- der Kreis rund (das Bild)
+Kugel mit 3 Linien und dem Kreis: 1866 Punkte, mittlere Kante 13,7; der Kreis hat 4 Punkte, seine Mitte liegt bei (-60,0 62,0 114,8)
+   gesetzt: 7 Runden, steht; Linien bis 0,00 neben ihren Pfaden; außerhalb des Kreises bis 0,26 neben der Kugel; umgeschlagen 0
+   Abzweigung 1 (Punkt 0 → Punkt 2): eingesetzt, 18 Stellen, Länge 87,1; ihre Enden liegen 0,35 und 0,15 neben den Punkten des Kreises; sie teilt die Punkte: ja
+   Abzweigung 2 (Punkt 1 → Punkt 3): eingesetzt, 20 Stellen, Länge 86,5; ihre Enden liegen 0,26 und 0,27 neben den Punkten des Kreises; sie teilt die Punkte: ja
+   Kreuzung: ein gemeinsamer Punkt bei (-62,7 64,7 119,6), 6,1 von der Mitte des Kreises; die beiden Linien lagen dort 0,06 auseinander
+   gesetzt: 5 Runden, steht; Linien bis 0,00 neben ihren Pfaden; außerhalb bis 0,28 neben der Kugel; umgeschlagen 0
+Herausgezogen um 90: 2016 Punkte, 101 Runden, steht; die Spitze liegt 0,00 neben dem Ziel und steht 89,7 über der Kugel; die zwei Linien liegen bis 0,00 neben ihren Pfaden; umgeschlagen 0
+   der Kreis: seine Punkte haben sich um höchstens 0,00 bewegt, er liegt bis 0,00 neben seinem Pfad; sein Halbmesser auf der Haut ist 43,3; weiter als 76 von seiner Mitte liegt die Haut bis 4,03 neben der Kugel (vorher 0,26), weiter als 114 bis 2,52
+Kriterien: 1 einsetzen und an den Punkten enden hält; 2 gemeinsamer Punkt in der Kreuzung hält; 3 Spitze folgt den Linien, steht, nichts schlägt um hält; 4 Kreis und Form außerhalb bleiben HÄLT NICHT
+
+--- der Kreis als Kante (KANTE=1)
+Kugel mit 3 Linien und dem Kreis: 1866 Punkte, mittlere Kante 13,7; der Kreis hat 4 Punkte, seine Mitte liegt bei (-60,0 62,0 114,8)
+   gesetzt: 7 Runden, steht; Linien bis 0,00 neben ihren Pfaden; außerhalb des Kreises bis 0,26 neben der Kugel; umgeschlagen 0
+   Abzweigung 1 (Punkt 0 → Punkt 2): eingesetzt, 18 Stellen, Länge 87,2; ihre Enden liegen 0,35 und 0,15 neben den Punkten des Kreises; sie teilt die Punkte: ja
+   Abzweigung 2 (Punkt 1 → Punkt 3): eingesetzt, 20 Stellen, Länge 86,6; ihre Enden liegen 0,26 und 0,27 neben den Punkten des Kreises; sie teilt die Punkte: ja
+   Kreuzung: ein gemeinsamer Punkt bei (-62,9 64,9 119,8), 6,5 von der Mitte des Kreises; die beiden Linien lagen dort 0,06 auseinander
+   gesetzt: 4 Runden, steht; Linien bis 0,00 neben ihren Pfaden; außerhalb bis 0,26 neben der Kugel; umgeschlagen 0
+Herausgezogen um 90: 2012 Punkte, 105 Runden, steht; die Spitze liegt 0,00 neben dem Ziel und steht 90,1 über der Kugel; die zwei Linien liegen bis 0,00 neben ihren Pfaden; umgeschlagen 0
+   der Kreis: seine Punkte haben sich um höchstens 0,00 bewegt, er liegt bis 0,00 neben seinem Pfad; sein Halbmesser auf der Haut ist 43,3; weiter als 76 von seiner Mitte liegt die Haut bis 0,26 neben der Kugel (vorher 0,26), weiter als 114 bis 0,26
+Kriterien: 1 einsetzen und an den Punkten enden hält; 2 gemeinsamer Punkt in der Kreuzung hält; 3 Spitze folgt den Linien, steht, nichts schlägt um hält; 4 Kreis und Form außerhalb bleiben hält

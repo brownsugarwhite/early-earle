@@ -1,0 +1,61 @@
+
+=== strange bird: 9 Loops, 20 Felder auf der gezeichneten Hälfte (Fläche der Hälfte 50,0 % des Ganzen)
+   Feld  Fläche  Seiten  Ränder  Loops am Rand                 | Haut → Coons-Fläche aus den vier Randkurven (Einheiten; in % der Feldgröße √Fläche)
+     25   14,6 %     3         1  1-4-2                        | 
+     38   12,3 %     4         1  3-1-4-11                     | Median 2,3, 99 % 20,5, größter 21,7  (9 %)
+     23    8,9 %     5         1  4-1-3-8-2                    | 
+     36    8,4 %     5         1  7-3-11-4-2                   | 
+     34    7,4 %     3         1  2-4-11                       | 
+     32    7,2 %     4         1  11-4-1-2                     | Median 1,0, 99 % 9,3, größter 10,5  (5 %)
+      1    6,7 %     6         1  1-4-2-8-12-3                 | 
+     14    5,6 %     5         1  8-2-13-3-12                  | 
+     37    5,1 %     4         1  3-13-2-8                     | Median 3,4, 99 % 13,2, größter 13,5  (8 %)
+      3    4,6 %     4         1  1-3-11-4                     | Median 0,8, 99 % 3,3, größter 3,5  (2 %)
+      9    3,6 %     4         1  4-11-2-1                     | Median 0,6, 99 % 4,9, größter 5,0  (4 %)
+     11    3,0 %     5         1  7-2-4-11-3                   | 
+      5    2,6 %     3         1  3-12-8                       | 
+     13    2,5 %     3         1  3-8-12                       | 
+      7    2,2 %     3         1  1-2-4                        | 
+     30    1,8 %     3         1  13-3-2                       | 
+     20    1,7 %     3         1  13-2-3                       | 
+     17    1,7 %     3         1  2-7-3                        | 
+     19    0,1 %     3         1  4-2-11                       | 
+     27    0,0 %     3         1  3-7-2                        | 
+   nach Seiten: 3: 10 Felder, 34,6 % der Fläche · 4: 5 Felder, 32,8 % der Fläche · 5: 4 Felder, 25,8 % der Fläche · 6 und mehr: 1 Felder, 6,7 % der Fläche
+   vierseitige Felder: Haut bis 21,7 Einheiten neben der Coons-Fläche; nach Fläche gewichtet im Mittel größter Abstand 13,6 Einheiten = 6 % der Feldgröße
+   Knick zwischen benachbarten Coons-Flächen an der gemeinsamen Linie (117 Stellen, 3 Nachbarschaften): Median 12,1°, 90 % 23,6°, größter 25,9° · je Nachbarschaft: 32|38 Median 11,7° / größter 20,6°, 3|9 Median 17,4° / größter 25,9°, 9|32 Median 9,0° / größter 23,8°
+   /Users/bsw/Projekte/playground/early-earle/.claude/worktrees/form-zuerst/apps/editor/pruefen-ausgabe/loft/strange-bird-felder.html
+
+=== teat firefish: 17 Loops, 27 Felder auf der gezeichneten Hälfte (Fläche der Hälfte 50,0 % des Ganzen)
+   Feld  Fläche  Seiten  Ränder  Loops am Rand                 | Haut → Coons-Fläche aus den vier Randkurven (Einheiten; in % der Feldgröße √Fläche)
+     15   14,7 %     6         1  18-7-4-10-1-2                | 
+     13    8,6 %     4         1  1-10-4-2                     | Median 1,1, 99 % 3,8, größter 3,9  (1 %)
+     20    6,1 %     5         1  18-4-5-4-7                   | 
+     33    5,6 %     5         1  4-12-4-1-11                  | 
+      8    5,5 %     4         1  1-2-4-18                     | Median 0,5, 99 % 3,3, größter 3,4  (2 %)
+      6    5,3 %     5         1  8-4-2-18-1                   | 
+     21    4,7 %     4         1  1-11-4-10                    | Median 1,0, 99 % 4,0, größter 4,1  (2 %)
+     29    4,6 %     3         1  1-4-11                       | 
+      1    4,5 %     3         1  1-8-4                        | 
+     31    4,5 %     6         1  4-13-4-11-1-10               | 
+     17    4,5 %     5         1  4-6-7-18-2                   | 
+     35    4,2 %     2         1  4-12                         | 
+     41    3,2 %     3         1  15-14-4                      | 
+     24    3,2 %     2         1  4-5                          | 
+      5    3,2 %     4         1  1-18-4-8                     | Median 4,0, 99 % 29,7, größter 31,5  (19 %)
+      3    2,8 %     3         1  8-1-4                        | 
+     47    2,5 %     5         1  4-16-4-14-15                 | 
+     36    2,1 %     3         1  7-9-4                        | 
+     43    1,7 %     5         1  4-14-15-4-13                 | 
+     26    1,5 %     3         1  7-4-9                        | 
+     50    1,3 %     2         1  17-4                         | 
+     27    1,2 %     4         1  7-6-4-18                     | Median 0,3, 99 % 1,7, größter 1,8  (2 %)
+     45    1,2 %     3         1  14-4-15                      | 
+     52    1,0 %     4         1  4-17-4-16                    | Median 0,4, 99 % 2,5, größter 2,6  (3 %)
+     11    0,9 %     3         1  2-1-18                       | 
+     38    0,9 %     4         1  6-4-9-7                      | Median 0,1, 99 % 0,9, größter 0,9  (1 %)
+     39    0,5 %     4         1  7-9-4-6                      | Median 0,0, 99 % 0,7, größter 0,8  (1 %)
+   nach Seiten: 2: 3 Felder, 8,7 % der Fläche · 3: 8 Felder, 20,8 % der Fläche · 4: 8 Felder, 25,5 % der Fläche · 5: 6 Felder, 25,7 % der Fläche · 6 und mehr: 2 Felder, 19,2 % der Fläche
+   vierseitige Felder: Haut bis 31,5 Einheiten neben der Coons-Fläche; nach Fläche gewichtet im Mittel größter Abstand 6,9 Einheiten = 4 % der Feldgröße
+   Knick zwischen benachbarten Coons-Flächen an der gemeinsamen Linie (195 Stellen, 5 Nachbarschaften): Median 3,8°, 90 % 9,3°, größter 12,6° · je Nachbarschaft: 13|21 Median 8,5° / größter 12,6°, 8|13 Median 2,8° / größter 9,7°, 5|8 Median 1,7° / größter 7,8°, 27|39 Median 2,2° / größter 4,0°, 38|39 Median 5,1° / größter 5,7°
+   /Users/bsw/Projekte/playground/early-earle/.claude/worktrees/form-zuerst/apps/editor/pruefen-ausgabe/loft/teat-firefish-felder.html

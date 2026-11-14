@@ -1,0 +1,614 @@
+/* Form zuerst (04.11.2026): kleines Fenster zum Anfassen — Seite zeichnen, runde Form sehen. */
+:root {
+  --papier: #efe9dd;
+  --linie: #1f1a17;
+  --leise: #8a8072;
+  --naht: rgba(31, 26, 23, 0.1);
+  --oberlippe: #c8372d;
+  --unterlippe: #2f5fc4;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--papier);
+  color: var(--linie);
+  overflow: hidden;
+}
+
+#leinwand {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
+
+#raster {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.feld {
+  position: relative;
+  background: transparent;
+  outline: 1px solid var(--naht);
+  overflow: hidden;
+}
+
+.feld header {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: var(--leise);
+  pointer-events: none;
+  user-select: none;
+}
+
+.feld footer {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 10px;
+  font-size: 12px;
+  color: var(--leise);
+  pointer-events: none;
+  user-select: none;
+}
+
+.blatt {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: default;
+}
+
+/* gleichwertige Ansichten: die Zeichnung farbig unter dem schwarzen Umriss des Modells */
+.blatt .vorgabe {
+  fill: none;
+  stroke: #0e9f8e;
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+/* Front und Top: die gespiegelte Hälfte leiser als die gezeichnete */
+.blatt .spiegel {
+  fill: none;
+  stroke: var(--linie);
+  stroke-width: 1.5px;
+  stroke-opacity: 0.35;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.blatt .linie {
+  fill: none;
+  stroke: var(--linie);
+  stroke-width: 2.5px;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  /* Klicks gehen an die breite Trefferlinie darunter */
+  pointer-events: none;
+}
+
+/* Teile: verdeckte Stücke eines Umrisses blass gestrichelt */
+.blatt .verdeckt {
+  fill: none;
+  stroke: var(--linie);
+  stroke-width: 1.2px;
+  stroke-opacity: 0.4;
+  stroke-dasharray: 5 4;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+/* Naht ziehen: Fadenkreuz überall in der Seite, die Naht als gestrichelter Strich */
+.blatt.naht,
+.blatt.naht * {
+  cursor: crosshair;
+}
+
+.blatt .entwurf.naht {
+  stroke-dasharray: 6 4;
+  stroke-opacity: 0.8;
+}
+
+/* beim Ziehen: hier würde beim Loslassen geteilt */
+.blatt .naht-vorschau {
+  fill: none;
+  stroke: #0e9f8e;
+  stroke-width: 2.5px;
+  stroke-dasharray: 7 4;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.blatt .treffer {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 16px;
+  vector-effect: non-scaling-stroke;
+  cursor: copy;
+}
+
+.blatt .treffer-kante {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14px;
+  vector-effect: non-scaling-stroke;
+  cursor: pointer;
+}
+
+.blatt .kante {
+  fill: var(--linie);
+  pointer-events: none;
+}
+
+.blatt .kante-weich {
+  fill: none;
+  stroke: var(--linie);
+  stroke-width: 1px;
+  stroke-dasharray: 5 4;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.blatt .entwurf {
+  fill: none;
+  stroke: var(--linie);
+  stroke-width: 2px;
+  stroke-opacity: 0.5;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.blatt .lpunkt {
+  fill: var(--papier);
+  stroke: var(--linie);
+  stroke-width: 1.2px;
+  vector-effect: non-scaling-stroke;
+  cursor: grab;
+}
+
+.blatt .lpunkt.gewaehlt {
+  fill: var(--linie);
+}
+
+.blatt .punkt {
+  fill: var(--papier);
+  stroke: var(--linie);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  cursor: grab;
+}
+
+.blatt .punkt.gewaehlt {
+  fill: var(--linie);
+}
+
+/* Linien auf der Form (?linien): Punkte wie die des Umrisses; Knoten (geteilt mit einer anderen Linie) grau gefüllt, Anfang und
+   Ende auf dem Umriss der Seite klein und fest */
+.blatt .rpunkt {
+  fill: var(--papier);
+  stroke: var(--linie);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  cursor: grab;
+}
+
+.blatt .rpunkt.knoten {
+  fill: var(--leise);
+}
+
+.blatt .rpunkt.gewaehlt {
+  fill: var(--linie);
+}
+
+.blatt .rpunkt.ende {
+  fill: var(--linie);
+  stroke: none;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Enden eines Profils auf der Achse: liegen fest an der Ausdehnung der Seite */
+.blatt .punkt.fest {
+  cursor: default;
+}
+
+#feld-3d {
+  cursor: grab;
+}
+
+/* Maul (Probe 04.11.): Linie wie eine harte Kante, die Unterlippe beim Öffnen leiser daneben */
+.blatt .maul {
+  fill: none;
+  stroke: var(--linie);
+  stroke-width: 2.5px;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.blatt .maul.unten {
+  stroke-opacity: 0.45;
+}
+
+/* getrennte Kiefer: Oberlippe rot, Unterlippe blau, ihre Punkte ebenso */
+.blatt .maul.lippe-oben {
+  stroke: var(--oberlippe);
+}
+
+.blatt .maul.lippe-unten {
+  stroke: var(--unterlippe);
+}
+
+.blatt .lpunkt.lippe-oben,
+.blatt .punkt.lippe-oben {
+  stroke: var(--oberlippe);
+}
+
+.blatt .punkt.lippe-oben.gewaehlt {
+  fill: var(--oberlippe);
+}
+
+.blatt .punkt.lippe-unten {
+  stroke: var(--unterlippe);
+}
+
+.blatt .punkt.lippe-unten.gewaehlt {
+  fill: var(--unterlippe);
+}
+
+/* die Front des Mauls zwischen den Anfängen der Lippen: kein Rand der Form */
+.blatt .maulfront {
+  fill: none;
+  stroke: var(--linie);
+  stroke-width: 1.5px;
+  stroke-opacity: 0.35;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.blatt .lpunkt.lippe-oben.gewaehlt {
+  fill: var(--oberlippe);
+}
+
+.blatt .lpunkt.lippe-unten {
+  stroke: var(--unterlippe);
+}
+
+.blatt .lpunkt.lippe-unten.gewaehlt {
+  fill: var(--unterlippe);
+}
+
+/* die Linie schneidet nicht (zu kurz oder nicht vom Umriss in die Form) */
+.blatt .maul.fehlt {
+  stroke: #b0412e;
+  stroke-dasharray: 6 4;
+}
+
+/* oben rechts im 3D-Blatt: Spielnetz und Maul */
+.regler-leiste {
+  position: absolute;
+  top: 8px;
+  right: 14px;
+  max-width: calc(100% - 28px);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px 22px;
+}
+
+/* Knopf „Kiefer trennen“ und die Wahl Ober / Unter */
+.regler.knopf,
+.kiefer-wahl button {
+  font: inherit;
+  font-size: 13px;
+  color: var(--linie);
+  background: transparent;
+  border: 1px solid var(--leise);
+  border-radius: 12px;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+
+.regler.knopf[aria-pressed='true'] {
+  background: var(--linie);
+  border-color: var(--linie);
+  color: var(--papier);
+}
+
+.regler.knopf:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Neu, Sichern, Laden: drei Knöpfe dicht beieinander; darunter das Feld für den Namen bzw. die Liste der gesicherten Wesen */
+.regler.ablage {
+  gap: 6px;
+}
+
+.ablage-feld {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px 8px;
+  font-size: 13px;
+  color: var(--leise);
+  /* viele gesicherte Wesen: Die Liste bleibt vier Zeilen hoch und rollt, statt das 3D zu verdecken */
+  max-height: 124px;
+  overflow-y: auto;
+}
+
+.ablage-feld[hidden] {
+  display: none;
+}
+
+/* das Wesen, das „Laden“ oder „Neu“ zuletzt ersetzt hat (liegt nur im Browser, nicht im Ordner) */
+.ablage-feld .eintrag.davor {
+  border-style: dashed;
+}
+
+.ablage-feld input[type='text'] {
+  font: inherit;
+  font-size: 13px;
+  width: 200px;
+  color: var(--linie);
+  background: transparent;
+  border: 1px solid var(--leise);
+  border-radius: 12px;
+  padding: 2px 10px;
+  outline: none;
+}
+
+.ablage-feld input[type='text']:focus {
+  border-color: var(--linie);
+}
+
+#teile-wert {
+  font-variant-numeric: tabular-nums;
+}
+
+.kiefer-wahl {
+  gap: 0;
+}
+
+.kiefer-wahl button:first-child {
+  border-radius: 12px 0 0 12px;
+  border-right: none;
+}
+
+.kiefer-wahl button:last-child {
+  border-radius: 0 12px 12px 0;
+}
+
+.kiefer-wahl button[data-kiefer='0'][aria-pressed='true'] {
+  background: var(--oberlippe);
+  border-color: var(--oberlippe);
+  color: var(--papier);
+}
+
+.kiefer-wahl button[data-kiefer='1'][aria-pressed='true'] {
+  background: var(--unterlippe);
+  border-color: var(--unterlippe);
+  color: var(--papier);
+}
+
+.regler {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--leise);
+  cursor: default;
+  user-select: none;
+}
+
+.regler[hidden] {
+  display: none;
+}
+
+.regler input[type='range'] {
+  width: 130px;
+  accent-color: var(--linie);
+}
+
+/* Pose: Kreis des Pinsels */
+.blatt .pinsel {
+  fill: none;
+  stroke: var(--linie);
+  stroke-width: 1px;
+  stroke-dasharray: 4 4;
+  stroke-opacity: 0.6;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.regler input[type='checkbox'] {
+  accent-color: var(--linie);
+}
+
+#spielnetz-info {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Kurven als Wahrheit (05.11., kurven.html): Kurven auf der Form türkis, ihre Punkte als Bézier-Punkte, der Umriss nur Shader */
+.blatt .kurve {
+  fill: none;
+  stroke: #0e9f8e;
+  stroke-width: 1.6px;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.blatt .kurve.gewaehlt {
+  stroke: #0a5f56;
+  stroke-width: 2.4px;
+}
+
+.blatt .kurve.spiegel {
+  stroke-opacity: 0.4;
+}
+
+/* Maul als Loop (05.11.): der Loop des Mauls in Lippenfarbe */
+.blatt .kurve.maul {
+  stroke: #b0413a;
+}
+
+.blatt .kpunkt {
+  fill: var(--papier);
+  stroke: #0a5f56;
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  cursor: grab;
+}
+
+.blatt .kpunkt.spiegel {
+  stroke-opacity: 0.45;
+}
+
+.blatt .kpunkt.gewaehlt {
+  fill: #0a5f56;
+}
+
+.blatt .kpunkt.bewegt {
+  fill: #9fd8cf;
+}
+
+/* Ende eines Loops auf dem Startumriss: folgt ihm, nicht greifbar */
+.blatt .kende {
+  fill: #0a5f56;
+  stroke: none;
+  pointer-events: none;
+}
+
+.blatt .griff {
+  fill: var(--papier);
+  stroke: #0a5f56;
+  stroke-width: 1.2px;
+  vector-effect: non-scaling-stroke;
+  cursor: grab;
+}
+
+.blatt .stift-anker {
+  fill: var(--papier);
+  stroke: #0a5f56;
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.blatt .stift-anker.erster {
+  fill: #0a5f56;
+}
+
+.blatt .entwurf.stift {
+  stroke: #0a5f56;
+  stroke-opacity: 0.8;
+}
+
+.blatt .griff-linie {
+  stroke: #0a5f56;
+  stroke-width: 1px;
+  stroke-opacity: 0.7;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.blatt .einfluss {
+  fill: none;
+  stroke: #0a5f56;
+  stroke-width: 1px;
+  stroke-dasharray: 4 4;
+  stroke-opacity: 0.7;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.blatt.loop,
+.blatt.loop *,
+.blatt.form,
+.blatt.form * {
+  cursor: crosshair;
+}
+
+/* Nur Loops: breite unsichtbare Linie zum Greifen eines ganzen Loops, Kreuzungen als gefüllte Punkte */
+.blatt .kurve-treffer {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 12px;
+  vector-effect: non-scaling-stroke;
+  cursor: pointer;
+}
+
+/* Kanten eines Loops: schwarz und breit */
+.blatt .kante-hart {
+  stroke: var(--linie);
+  stroke-width: 3px;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.blatt .kante-hart.spiegel {
+  stroke-opacity: 0.4;
+}
+
+.blatt .kpunkt.kreuz {
+  fill: #9fd8cf;
+  stroke-width: 2px;
+}
+
+.blatt .kpunkt.kreuz.gewaehlt {
+  fill: #0a5f56;
+}
+
+/* Über die Mitte gezogen (13.11.): der Punkt hinter der Mitte ist markiert; wo eine Linie die Mitte kreuzt, ein Punkt, der noch lose ist */
+.blatt .kpunkt.hinter {
+  stroke: #c8672d;
+  fill: #f6dcc6;
+}
+
+.blatt .kpunkt.hinter.gewaehlt {
+  fill: #c8672d;
+}
+
+.blatt .mitte-kreuz {
+  fill: var(--papier);
+  stroke: var(--linie);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+#status {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ecke als Raute (glatt bleibt der Kreis) */
+.blatt .kpunkt.ecke {
+  stroke-linejoin: round;
+}

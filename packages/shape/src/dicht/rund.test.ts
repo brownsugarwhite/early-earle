@@ -1,0 +1,278 @@
+import { describe, expect, it } from 'vitest';
+import { type BreitenPunkt, profilBreite } from './ansichten';
+import type { KantenLinie } from './kanten';
+import { rundAusSeite } from './rund';
+import type { UmrissPunkt } from './umriss';
+
+/** Größter Winkel zwischen Nachbardreiecken (Grad), nur Dreiecke, deren Ecken alle die Bedingung erfüllen. */
+function groessterKnick(indizes: Uint32Array, pos: Float32Array, nahe: (x: number, y: number, z: number) => boolean): number {
+  const fn: number[] = [];
+  for (let t = 0; t < indizes.length; t += 3) {
+    const a = indizes[t]!;
+    const b = indizes[t + 1]!;
+    const c = indizes[t + 2]!;
+    const abx = pos[3 * b]! - pos[3 * a]!;
+    const aby = pos[3 * b + 1]! - pos[3 * a + 1]!;
+    const abz = pos[3 * b + 2]! - pos[3 * a + 2]!;
+    const acx = pos[3 * c]! - pos[3 * a]!;
+    const acy = pos[3 * c + 1]! - pos[3 * a + 1]!;
+    const acz = pos[3 * c + 2]! - pos[3 * a + 2]!;
+    const x = aby * acz - abz * acy;
+    const y = abz * acx - abx * acz;
+    const z = abx * acy - aby * acx;
+    const l = Math.hypot(x, y, z) || 1;
+    fn.push(x / l, y / l, z / l);
+  }
+  const kante = new Map<string, number>();
+  let groesst = 0;
+  for (let t = 0; t < indizes.length / 3; t++) {
+    const ecken = [indizes[3 * t]!, indizes[3 * t + 1]!, indizes[3 * t + 2]!];
+    if (!ecken.every((v) => nahe(pos[3 * v]!, pos[3 * v + 1]!, pos[3 * v + 2]!))) continue;
+    for (let e = 0; e < 3; e++) {
+      const a = ecken[e]!;
+      const b = ecken[(e + 1) % 3]!;
+      const k = a < b ? `${a},${b}` : `${b},${a}`;
+      const u = kante.get(k);
+      if (u === undefined) {
+        kante.set(k, t);
+        continue;
+      }
+      const d = fn[3 * t]! * fn[3 * u]! + fn[3 * t + 1]! * fn[3 * u + 1]! + fn[3 * t + 2]! * fn[3 * u + 2]!;
+      groesst = Math.max(groesst, (Math.acos(Math.max(-1, Math.min(1, d))) * 180) / Math.PI);
+    }
+  }
+  return groesst;
+}
+
+const kreis = (r: number, n = 4): UmrissPunkt[] => Array.from({ length: n }, (_, i) => ({ x: r * Math.cos((2 * Math.PI * i) / n), y: r * Math.sin((2 * Math.PI * i) / n) }));
+
+/** Jede Kante gehört zu genau zwei Dreiecken. */
+function geschlossen(indizes: Uint32Array): boolean {
+  const kanten = new Map<string, number>();
+  for (let t = 0; t < indizes.length; t += 3) {
+    for (let e = 0; e < 3; e++) {
+      const a = indizes[t + e]!;
+      const b = indizes[t + ((e + 1) % 3)]!;
+      const k = a < b ? `${a},${b}` : `${b},${a}`;
+      kanten.set(k, (kanten.get(k) ?? 0) + 1);
+    }
+  }
+  for (const n of kanten.values()) if (n !== 2) return false;
+  return true;
+}
+
+describe('runder Körper aus dem Seitenumriss', () => {
+  it('ein Kreis wird eine Kugel', () => {
+    const netz = rundAusSeite(kreis(100), { dreiecke: 20000 });
+    const n = netz.positionen.length / 3;
+    let fehler = 0;
+    for (let v = 0; v < n; v++) {
+      const r = Math.hypot(netz.positionen[3 * v]!, netz.positionen[3 * v + 1]!, netz.positionen[3 * v + 2]!);
+      fehler = Math.max(fehler, Math.abs(r - 100));
+    }
+    expect(fehler).toBeLessThan(1);
+    expect(geschlossen(netz.indizes)).toBe(true);
+  });
+
+  it('ein Streifen wird eine runde Röhre', () => {
+    // Stadion: Länge 400, Halbbreite 40
+    const s: UmrissPunkt[] = [
+      { x: -200, y: -40, ecke: true },
+      { x: 0, y: -40, ecke: true },
+      { x: 200, y: -40, ecke: true },
+      { x: 200, y: 40, ecke: true },
+      { x: 0, y: 40, ecke: true },
+      { x: -200, y: 40, ecke: true },
+    ];
+    const netz = rundAusSeite(s, { dreiecke: 30000 });
+    const n = netz.positionen.length / 3;
+    let fehler = 0;
+    let gezaehlt = 0;
+    for (let v = 0; v < n; v++) {
+      const x = netz.positionen[3 * v]!;
+      if (Math.abs(x) > 60) continue;
+      const r = Math.hypot(netz.positionen[3 * v + 1]!, netz.positionen[3 * v + 2]!);
+      fehler = Math.max(fehler, Math.abs(r - 40));
+      gezaehlt++;
+    }
+    expect(gezaehlt).toBeGreaterThan(50);
+    expect(fehler).toBeLessThan(1);
+    expect(geschlossen(netz.indizes)).toBe(true);
+  });
+
+  it('eine harte Linie wird ein Grat, eine weiche bleibt rund', () => {
+    // senkrechte Linie quer über die Flanke der Kugel
+    const linie = (breite: number): KantenLinie => ({
+      punkte: [
+        { x: 0, y: -80, breite },
+        { x: 0, y: 0, breite },
+        { x: 0, y: 80, breite },
+      ],
+    });
+    const naheLinie = (x: number, y: number, z: number) => Math.abs(x) < 12 && Math.abs(y) < 40 && z > 0;
+    const hart = rundAusSeite(kreis(100), { dreiecke: 20000, linien: [linie(3)] });
+    const weich = rundAusSeite(kreis(100), { dreiecke: 20000, linien: [linie(0)] });
+    const knickHart = groessterKnick(hart.indizes, hart.positionen, naheLinie);
+    const knickWeich = groessterKnick(weich.indizes, weich.positionen, naheLinie);
+    expect(knickHart).toBeGreaterThan(20);
+    expect(knickWeich).toBeLessThan(8);
+    // die Linie bleibt auf der Kugel: der Punkt auf der Linie liegt weiter auf r = 100
+    let naechster = Infinity;
+    let r = 0;
+    for (let v = 0; v < hart.positionen.length / 3; v++) {
+      const x = hart.positionen[3 * v]!;
+      const y = hart.positionen[3 * v + 1]!;
+      const z = hart.positionen[3 * v + 2]!;
+      const d = Math.hypot(x, y);
+      if (z > 0 && d < naechster) {
+        naechster = d;
+        r = Math.hypot(x, y, z);
+      }
+    }
+    expect(Math.abs(r - 100)).toBeLessThan(1.5);
+    expect(hart.kanten.length).toBe(2);
+    expect(geschlossen(hart.indizes)).toBe(true);
+  });
+
+  it('Front und Top strecken die Tiefe, die Seite bleibt', () => {
+    // halbe Breite des Körpers je Höhe (Front) bzw. je Stelle längs (Top), aus den Netzpunkten
+    const umriss = (pos: Float32Array, achse: 0 | 1, r0: number, dr: number, n: number) => {
+      const w = new Float64Array(n);
+      for (let v = 0; v < pos.length / 3; v++) {
+        const i = Math.round((pos[3 * v + achse]! - r0) / dr);
+        if (i >= 0 && i < n) w[i] = Math.max(w[i]!, Math.abs(pos[3 * v + 2]!));
+      }
+      return w;
+    };
+    const vergleich = (pos: Float32Array, achse: 0 | 1, p: readonly BreitenPunkt[]) => {
+      // von 15 % bis 85 % der Ausdehnung (an den Spitzen ist das Netz zu grob für einen Vergleich je Zeile)
+      const soll = profilBreite(p, -100, 100, -100, 4, 51);
+      const ist = umriss(pos, achse, -100, 4, 51);
+      let f = 0;
+      for (let i = 8; i <= 42; i++) f = Math.max(f, Math.abs(ist[i]! - soll[i]!));
+      return f;
+    };
+    const ausdehnung = (pos: Float32Array): [number, number] => {
+      let x = 0;
+      let y = 0;
+      for (let v = 0; v < pos.length / 3; v++) {
+        x = Math.max(x, Math.abs(pos[3 * v]!));
+        y = Math.max(y, Math.abs(pos[3 * v + 1]!));
+      }
+      return [x, y];
+    };
+    const front: BreitenPunkt[] = [
+      { laengs: 0, quer: 0 },
+      { laengs: 0.5, quer: 60 },
+      { laengs: 1, quer: 0 },
+    ];
+    const top: BreitenPunkt[] = [
+      { laengs: 0, quer: 0 },
+      { laengs: 0.3, quer: 60 },
+      { laengs: 0.75, quer: 35 },
+      { laengs: 1, quer: 0 },
+    ];
+    const nurFront = rundAusSeite(kreis(100), { dreiecke: 30000, front });
+    expect(vergleich(nurFront.positionen, 1, front)).toBeLessThan(3);
+    const nurTop = rundAusSeite(kreis(100), { dreiecke: 30000, top });
+    expect(vergleich(nurTop.positionen, 0, top)).toBeLessThan(3);
+    const beide = rundAusSeite(kreis(100), { dreiecke: 30000, front, top });
+    expect(vergleich(beide.positionen, 1, front)).toBeLessThan(4);
+    expect(vergleich(beide.positionen, 0, top)).toBeLessThan(4);
+    // die Seite bleibt
+    for (const netz of [nurFront, nurTop, beide]) {
+      const [x, y] = ausdehnung(netz.positionen);
+      expect(Math.abs(x - 100)).toBeLessThan(1);
+      expect(Math.abs(y - 100)).toBeLessThan(1);
+      expect(geschlossen(netz.indizes)).toBe(true);
+    }
+  });
+
+  it('ein gezogener Linienpunkt behält seine Tiefe, die Form wächst zu ihm', () => {
+    const kugel = kreis(100);
+    // waagerechte Linie über die Flanke; den mittleren Punkt 30 aus der Form gezogen (Kugel dort: √(100² − 40²) = 91,65)
+    const tief = Math.sqrt(100 * 100 - 40 * 40) + 30;
+    const linie: KantenLinie = {
+      punkte: [
+        { x: -50, y: 40, breite: 3 },
+        { x: 0, y: 40, breite: 3, z: tief },
+        { x: 50, y: 40, breite: 3 },
+      ],
+      bezug: kugel,
+    };
+    const netz = rundAusSeite(kugel, { dreiecke: 20000, linien: [linie] });
+    expect(netz.linienZ[0]![1]).toBeCloseTo(tief, 6);
+    const l0 = netz.kanten[0]!.lagen;
+    const n = l0.length / 3;
+    // die Linie geht durch den gezogenen Punkt, ihre Enden liegen auf der Kugel
+    let mitte = 0;
+    for (let i = 0; i < n; i++) if (Math.abs(l0[3 * i]!) < Math.abs(l0[3 * mitte]!)) mitte = i;
+    expect(Math.abs(l0[3 * mitte + 2]! - tief)).toBeLessThan(0.5);
+    for (const i of [0, n - 1]) expect(Math.abs(Math.hypot(l0[3 * i]!, l0[3 * i + 1]!, l0[3 * i + 2]!) - 100)).toBeLessThan(1);
+    // die Form reicht bis zum gezogenen Punkt
+    let naechst = Infinity;
+    for (let v = 0; v < netz.positionen.length / 3; v++) {
+      naechst = Math.min(naechst, Math.hypot(netz.positionen[3 * v]!, netz.positionen[3 * v + 1]! - 40, netz.positionen[3 * v + 2]! - tief));
+    }
+    expect(naechst).toBeLessThan(netz.zelle);
+    expect(geschlossen(netz.indizes)).toBe(true);
+  });
+
+  it('eine Linie bleibt an Ort und Stelle, die Form wächst zu ihr (Wulst)', () => {
+    // Linie quer über den Scheitel, gezeichnet auf der Kugel; danach den oberen Punkt unter die Linie ziehen
+    const kugel = kreis(100);
+    const gedrueckt: UmrissPunkt[] = kugel.map((p) => (p.y > 50 ? { x: p.x, y: 55 } : p));
+    const linie = (breite: number): KantenLinie => ({
+      punkte: [
+        { x: -45, y: 62, breite },
+        { x: 0, y: 75, breite },
+        { x: 45, y: 62, breite },
+      ],
+      bezug: kugel,
+    });
+    const hart = rundAusSeite(gedrueckt, { dreiecke: 20000, linien: [linie(3)] });
+    const weich = rundAusSeite(gedrueckt, { dreiecke: 20000, linien: [linie(0)] });
+    // die Linie liegt weiter auf der Kugel, auf der sie gezeichnet wurde
+    const l0 = hart.kanten[0]!.lagen;
+    let neben = 0;
+    for (let i = 0; i < l0.length / 3; i++) neben = Math.max(neben, Math.abs(Math.hypot(l0[3 * i]!, l0[3 * i + 1]!, l0[3 * i + 2]!) - 100));
+    expect(neben).toBeLessThan(1);
+    for (const netz of [hart, weich]) {
+      const lagen = netz.kanten[0]!.lagen;
+      const n = lagen.length / 3;
+      // die Form reicht bis zur Linie: zu jeder Probe liegt ein Netzpunkt in der Nähe
+      let weitest = 0;
+      for (let i = 0; i < n; i++) {
+        let naechst = Infinity;
+        for (let v = 0; v < netz.positionen.length / 3; v++) {
+          naechst = Math.min(
+            naechst,
+            Math.hypot(netz.positionen[3 * v]! - lagen[3 * i]!, netz.positionen[3 * v + 1]! - lagen[3 * i + 1]!, netz.positionen[3 * v + 2]! - lagen[3 * i + 2]!),
+          );
+        }
+        weitest = Math.max(weitest, naechst);
+      }
+      expect(weitest).toBeLessThan(netz.zelle);
+      // …und in der Seite nicht darüber hinaus (die Linie ist dort der Umriss)
+      let ueber = 0;
+      for (let v = 0; v < netz.positionen.length / 3; v++) {
+        const x = netz.positionen[3 * v]!;
+        if (x < lagen[0]! || x > lagen[3 * (n - 1)]!) continue;
+        let i = 0;
+        while (i < n - 2 && lagen[3 * (i + 1)]! < x) i++;
+        const t = (x - lagen[3 * i]!) / (lagen[3 * (i + 1)]! - lagen[3 * i]! || 1);
+        ueber = Math.max(ueber, netz.positionen[3 * v + 1]! - (lagen[3 * i + 1]! + t * (lagen[3 * (i + 1) + 1]! - lagen[3 * i + 1]!)));
+      }
+      expect(ueber).toBeLessThan(3);
+    }
+    // mit Härte ein Knick an der Linie, ohne eine runde Wulst
+    const naheMitte = (x: number, y: number, z: number) => Math.abs(x) < 25 && y > 40 && z > 0;
+    const knickHart = groessterKnick(hart.indizes, hart.positionen, naheMitte);
+    const knickWeich = groessterKnick(weich.indizes, weich.positionen, naheMitte);
+    // gemessen: hart 105°, weich 10° (Kuppe vom Radius der Höhe, auf Rasterweite abgetastet)
+    expect(knickHart).toBeGreaterThan(60);
+    expect(knickWeich).toBeLessThan(15);
+    expect(geschlossen(hart.indizes)).toBe(true);
+    expect(geschlossen(weich.indizes)).toBe(true);
+  });
+});

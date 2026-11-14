@@ -1,0 +1,84 @@
+
+=== 6000 Dreiecke, Loops ring → mitte → ring2, setzen: jeder, höchstens 60 Runden ===
+  Kugel: 4706 Punkte, Halbmesser (kleinster / Mittel / größter) 150.0 / 150.2 / 150.2
+  Loop 1 (ring): 4966 Punkte, 2 Punkte am Loop, Pfad ja
+  setzen nach Loop 1: 23 Runden (steht), zerlegt 177 ms · Punkte wandern insgesamt bis 12.4 · Halbmesser 148.1 / 150.4 / 152.2
+    Form je Runde:    48 144 42 14 21 2.00 6.66 3.50 3.14 1.59 1.15 1.08 0.80 0.96 0.43 0.97 0.70 0.08 0.06 0.06 0.05 0.06 0.04
+    Gleiten je Runde: 48 144 42 14 21 2.00 6.66 3.52 3.15 1.59 1.15 1.09 0.81 0.97 0.43 0.98 0.70 0.08 0.06 0.06 0.05 0.06 0.04
+  Loop 2 (mitte): 4966 Punkte, 2 Punkte am Loop, Pfad ja
+  setzen nach Loop 2: 5 Runden (steht), zerlegt 143 ms · Punkte wandern insgesamt bis 1.6 · Halbmesser 148.1 / 150.5 / 152.6
+    Form je Runde:    1.59 0.17 0.09 0.09 0.02
+    Gleiten je Runde: 1.59 0.23 0.16 0.10 0.03
+  Loop 3 (ring2): 5222 Punkte, 3 Punkte am Loop, Pfad ja
+  setzen nach Loop 3: 6 Runden (steht), zerlegt 134 ms · Punkte wandern insgesamt bis 0.2 · Halbmesser 148.1 / 150.4 / 152.6
+    Form je Runde:    1.88 3.15 0.98 0.40 0.05 0.02
+    Gleiten je Runde: 1.90 3.16 0.98 0.40 0.05 0.02
+
+=== 14000 Dreiecke, Loops ring → mitte → ring2, setzen: jeder, höchstens 60 Runden ===
+  Kugel: 10216 Punkte, Halbmesser (kleinster / Mittel / größter) 150.0 / 150.2 / 150.2
+  Loop 1 (ring): 10592 Punkte, 2 Punkte am Loop, Pfad ja
+  setzen nach Loop 1: 36 Runden (steht), zerlegt 407 ms · Punkte wandern insgesamt bis 15.0 · Halbmesser 146.7 / 150.2 / 152.9
+    Form je Runde:    40 149 90 23 2.66 4.26 4.40 4.18 4.13 4.14 4.16 4.17 4.05 3.78 3.25 2.71 1.34 0.81 1.19 1.92 2.41 0.84 0.40 0.17 … 0.08 0.18 0.07 0.04
+    Gleiten je Runde: 40 149 90 23 2.66 4.26 4.40 4.18 4.13 4.14 4.16 4.17 4.05 3.78 3.25 2.71 1.34 0.81 1.20 1.92 2.42 0.84 0.40 0.17 … 0.08 0.18 0.07 0.05
+  Loop 2 (mitte): 10592 Punkte, 2 Punkte am Loop, Pfad ja
+  setzen nach Loop 2: 7 Runden (steht), zerlegt 346 ms · Punkte wandern insgesamt bis 1.6 · Halbmesser 145.3 / 150.3 / 154.3
+    Form je Runde:    1.65 0.26 0.14 0.20 0.08 0.06 0.01
+    Gleiten je Runde: 1.65 0.48 0.19 0.21 0.08 0.06 0.01
+  Loop 3 (ring2): 10964 Punkte, 3 Punkte am Loop, Pfad ja
+  setzen nach Loop 3: 5 Runden (steht), zerlegt 358 ms · Punkte wandern insgesamt bis 0.2 · Halbmesser 145.3 / 150.2 / 154.3
+    Form je Runde:    1.56 3.23 1.53 0.36 0.04
+    Gleiten je Runde: 1.61 3.24 1.53 0.36 0.04
+
+=== 30000 Dreiecke, Loops ring → mitte → ring2, setzen: jeder, höchstens 60 Runden ===
+  Kugel: 22310 Punkte, Halbmesser (kleinster / Mittel / größter) 150.0 / 150.2 / 150.2
+  Loop 1 (ring): 22858 Punkte, 2 Punkte am Loop, Pfad ja
+  setzen nach Loop 1: 60 Runden (steht NICHT), zerlegt 1198 ms · Punkte wandern insgesamt bis 26.7 · Halbmesser 123.5 / 149.3 / 169.4
+    Form je Runde:    12 50 77 47 4.00 4.51 3.78 3.05 2.63 2.28 1.86 1.36 0.84 0.43 0.52 0.51 0.51 0.72 1.23 2.47 1.60 1.29 0.90 0.49 … 1.73 1.35 2.53 1.07
+    Gleiten je Runde: 12 50 77 47 4.01 4.51 3.78 3.05 2.63 2.28 1.86 1.36 0.85 0.46 0.52 0.51 0.51 0.72 1.23 2.47 1.60 1.29 0.91 0.50 … 1.73 1.35 2.53 1.07
+  Loop 2 (mitte): 22858 Punkte, 2 Punkte am Loop, Pfad ja
+  setzen nach Loop 2: 14 Runden (steht), zerlegt 1084 ms · Punkte wandern insgesamt bis 2.7 · Halbmesser 122.1 / 149.6 / 168.3
+    Form je Runde:    2.70 0.57 0.51 0.46 0.13 0.07 0.06 0.08 0.09 0.11 0.14 0.06 0.05 0.04
+    Gleiten je Runde: 2.70 1.36 0.62 0.47 0.13 0.07 0.07 0.08 0.10 0.12 0.14 0.06 0.05 0.04
+  Loop 3 (ring2): 23408 Punkte, 3 Punkte am Loop, Pfad ja
+  setzen nach Loop 3: 6 Runden (steht), zerlegt 1070 ms · Punkte wandern insgesamt bis 0.3 · Halbmesser 122.1 / 149.5 / 168.3
+    Form je Runde:    1.06 2.57 1.64 0.33 0.06 0.02
+    Gleiten je Runde: 1.12 2.60 1.65 0.33 0.06 0.02
+
+=== 14000 Dreiecke, Loops ring, setzen: ende, höchstens 60 Runden ===
+  Kugel: 10216 Punkte, Halbmesser (kleinster / Mittel / größter) 150.0 / 150.2 / 150.2
+  Loop 1 (ring): 10592 Punkte, 2 Punkte am Loop, Pfad ja
+  setzen nach Loop 1: 36 Runden (steht), zerlegt 413 ms · Punkte wandern insgesamt bis 15.0 · Halbmesser 146.7 / 150.2 / 152.9
+    Form je Runde:    40 149 90 23 2.66 4.26 4.40 4.18 4.13 4.14 4.16 4.17 4.05 3.78 3.25 2.71 1.34 0.81 1.19 1.92 2.41 0.84 0.40 0.17 … 0.08 0.18 0.07 0.04
+    Gleiten je Runde: 40 149 90 23 2.66 4.26 4.40 4.18 4.13 4.14 4.16 4.17 4.05 3.78 3.25 2.71 1.34 0.81 1.20 1.92 2.42 0.84 0.40 0.17 … 0.08 0.18 0.07 0.05
+
+=== 14000 Dreiecke, Loops mitte, setzen: ende, höchstens 60 Runden ===
+  Kugel: 10216 Punkte, Halbmesser (kleinster / Mittel / größter) 150.0 / 150.2 / 150.2
+  Loop 1 (mitte): 10216 Punkte, 0 Punkte am Loop, Pfad nein
+  setzen nach Loop 1: 2 Runden (steht), zerlegt 386 ms · Punkte wandern insgesamt bis 0.3 · Halbmesser 149.8 / 150.0 / 150.2
+    Form je Runde:    0.28 0.02
+    Gleiten je Runde: 0.29 0.06
+
+=== 14000 Dreiecke, Loops ring → mitte, setzen: ende, höchstens 60 Runden ===
+  Kugel: 10216 Punkte, Halbmesser (kleinster / Mittel / größter) 150.0 / 150.2 / 150.2
+  Loop 1 (ring): 10592 Punkte, 2 Punkte am Loop, Pfad ja
+  Loop 2 (mitte): 10592 Punkte, 2 Punkte am Loop, Pfad ja
+  setzen nach Loop 2: 7 Runden (steht), zerlegt 410 ms · Punkte wandern insgesamt bis 2.0 · Halbmesser 148.1 / 150.4 / 152.2
+    Form je Runde:    4.94 12 8.52 0.39 0.22 0.10 0.04
+    Gleiten je Runde: 4.94 12 8.52 0.40 0.22 0.10 0.04
+
+=== 14000 Dreiecke, Loops ring → ring2, setzen: ende, höchstens 60 Runden ===
+  Kugel: 10216 Punkte, Halbmesser (kleinster / Mittel / größter) 150.0 / 150.2 / 150.2
+  Loop 1 (ring): 10592 Punkte, 2 Punkte am Loop, Pfad ja
+  Loop 2 (ring2): 10964 Punkte, 3 Punkte am Loop, Pfad ja
+  setzen nach Loop 2: 22 Runden (steht), zerlegt 439 ms · Punkte wandern insgesamt bis 5.4 · Halbmesser 148.1 / 150.6 / 152.2
+    Form je Runde:    11 40 31 5.02 1.45 0.21 0.39 0.43 0.45 0.43 0.41 0.37 0.30 0.22 0.10 0.08 0.08 0.06 0.14 0.08 0.05 0.02
+    Gleiten je Runde: 11 40 31 5.02 1.45 0.22 0.39 0.43 0.45 0.43 0.41 0.37 0.30 0.22 0.10 0.08 0.08 0.06 0.14 0.08 0.05 0.02
+
+=== 14000 Dreiecke, Loops ring → mitte → ring2, setzen: ende, höchstens 60 Runden ===
+  Kugel: 10216 Punkte, Halbmesser (kleinster / Mittel / größter) 150.0 / 150.2 / 150.2
+  Loop 1 (ring): 10592 Punkte, 2 Punkte am Loop, Pfad ja
+  Loop 2 (mitte): 10592 Punkte, 2 Punkte am Loop, Pfad ja
+  Loop 3 (ring2): 10964 Punkte, 3 Punkte am Loop, Pfad ja
+  setzen nach Loop 3: 6 Runden (steht), zerlegt 421 ms · Punkte wandern insgesamt bis 2.0 · Halbmesser 148.1 / 150.7 / 152.2
+    Form je Runde:    2.87 8.26 4.60 0.33 0.05 0.05
+    Gleiten je Runde: 2.87 8.28 4.60 0.34 0.06 0.05

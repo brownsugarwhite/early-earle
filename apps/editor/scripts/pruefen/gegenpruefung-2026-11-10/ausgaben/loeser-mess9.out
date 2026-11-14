@@ -1,0 +1,7 @@
+Kern (10.11., G4): Was kostet ein neuer Löser mitten im Zug? loeser/mess9.ts
+=== 5222 Punkte: Anlegen mit Zerlegen 187 ms; die letzten Runden des alten Lösers (Zeit/Schritte beim Verteilen): 5.4 ms/4 5.7 ms/3 5.5 ms/4 5.3 ms/4 ===
+  neuer Löser mit Vorlage: Anlegen 6.2 ms; seine ersten Runden: 9.3 ms/5 6.1 ms/4 5.6 ms/4 5.6 ms/4 5.9 ms/4 6.0 ms/4
+=== 10964 Punkte: Anlegen mit Zerlegen 431 ms; die letzten Runden des alten Lösers (Zeit/Schritte beim Verteilen): 11.3 ms/4 11.0 ms/3 11.8 ms/4 10.4 ms/3 ===
+  neuer Löser mit Vorlage: Anlegen 15.9 ms; seine ersten Runden: 23.6 ms/6 13.0 ms/4 12.1 ms/4 12.5 ms/4 12.0 ms/4 11.6 ms/4
+=== 23406 Punkte: Anlegen mit Zerlegen 1125 ms; die letzten Runden des alten Lösers (Zeit/Schritte beim Verteilen): 26.8 ms/4 27.0 ms/4 29.6 ms/5 29.1 ms/5 ===
+  neuer Löser mit Vorlage: Anlegen 29.4 ms; seine ersten Runden: 42.9 ms/6 30.4 ms/6 31.1 ms/6 31.6 ms/7 30.0 ms/6 27.7 ms/4

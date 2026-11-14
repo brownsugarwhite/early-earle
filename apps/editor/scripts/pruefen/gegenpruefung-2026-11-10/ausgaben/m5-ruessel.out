@@ -1,0 +1,16 @@
+Fall ruessel; mittlere Kante 8.09
+verdichtet: 5222 → 6873 Punkte
+  Loslassen → verdichtet (kein Löser): bis 1.04 (99 % 0.37, Mittel 0.025; 2 Punkte über 1) bei (427, 33, -6)
+  heute: vier Runden nach dem Verdichten (der Sprung): bis 35.08 (99 % 30.70, Mittel 3.924; 5446 Punkte über 1) bei (256, 66, -95)
+  Ausgleich δ × 300 (Kugel = 1): Median 0.100, 95 % 1.507, größter 5.957
+  mit Ausgleich: vier Runden nach dem Verdichten: bis 1.04 (99 % 0.37, Mittel 0.025; 2 Punkte über 1) bei (427, 33, 6)
+  mit Ausgleich: 30 Runden weiter (bleibt es stehen?): bis 0.04 (99 % 0.04, Mittel 0.006; 0 Punkte über 1) bei (184, 82, -108)
+  mit Ausgleich: Loslassen → nach 34 Runden: bis 1.04 (99 % 0.37, Mittel 0.027; 2 Punkte über 1) bei (427, 33, -6)
+
+weiterziehen, 20 Mausschritte in dieselbe Richtung, kein weiteres Verdichten:
+  heute (nach dem Sprung, ohne Ausgleich): je Mausschritt fern vom Zug höchstens 0.47; nach dem Loslassen noch bis 0.40 (Mittel 0.038); {"offen":0,"mehr":0,"entartet":0,"doppelt":0,"umgeklappt":0}
+  mit Ausgleich, δ bleibt: je Mausschritt fern vom Zug höchstens 0.47; nach dem Loslassen noch bis 1.47 (Mittel 0.047); {"offen":0,"mehr":0,"entartet":0,"doppelt":0,"umgeklappt":0}
+  mit Ausgleich, δ klingt über den Zug ab: je Mausschritt fern vom Zug höchstens 0.48; nach dem Loslassen noch bis 1.86 (Mittel 0.160); {"offen":0,"mehr":0,"entartet":0,"doppelt":0,"umgeklappt":4}
+  Endform: heute ↔ Ausgleich bleibt: bis 61.62 (99 % 54.16, Mittel 7.330; 7764 Punkte über 1) bei (368, 46, -110)
+  Endform: heute ↔ Ausgleich abgeklungen: bis 5.72 (99 % 4.79, Mittel 0.434; 1812 Punkte über 1) bei (377, 49, -45)
+exit 0

@@ -1,0 +1,133 @@
+Schritt 4a, der Donut im Bau-Fenster (13.11.2026): Probe apps/editor/scripts/pruefen/form-donut-fenster.mjs gegen http://localhost:5197/kurven.html?gewichte=geometrie
+
+== Kugel mit zwei Ringen und der Mittellinie ==
+gut  drei Loops: 1 ring, 2 mitte, 3 ring
+     schwarz gezeigt am Anfang: 0 Dreiecke (0,0 % der Fläche)
+gut  vorher nichts an der Mitte
+     gezogen wird der Punkt bei (10,0, -0,0, 147,5) um 187,5 über die Mitte
+gut  lose: Punkte an den Kreuzungen mit der Mitte: 12 in den drei Blättern (je Blatt 4)
+gut  lose: der gezogene Punkt ist markiert: 10 markierte Punkte gezeichnet; Status: „ein Punkt hinter der Mitte (löschen macht den Schnitt fest) · 3 Loops …“
+gut  lose: nichts umgeschlagen: umgeschlagen 0 (vorher 0)
+     schwarz gezeigt, lose: 0 Dreiecke (0,0 % der Fläche)
+gut  zurückgezogen: keine Punkte an der Mitte, kein Punkt markiert
+gut  zurückgezogen: nichts umgeschlagen: umgeschlagen 0
+gut  der gezogene Punkt ist gewählt: [{"l":3,"i":1}]
+gut  fest: Meldung: Schnitt an der Mitte fest: Der Rand des Lochs ist ein Loop mit Kante (K macht ihn rund, ⌘Z führt zurück)
+gut  fest: die geschnittenen Linien sind Stücke, dazu der Rand: 4 ring, 5 ring, 2 mitte, 6 ring, 7 ring, 8 mitte Kante
+gut  fest: der Rand ist ein Loop mit Kante und Punkten an den Kreuzungen: Loop 8, 4 Punkte: (10,0, -90,5) mit 6 ring; (90,9, -0,0) mit 4 ring; (10,0, 90,6) mit 7 ring; (-72,6, -0,0) mit 5 ring
+gut  fest: nichts mehr lose
+gut  fest: der Rand ist gewählt
+gut  fest: nichts umgeschlagen, spiegelgleich: umgeschlagen 0, Symmetrie 0.0e+0
+     die gezeigte Haut liegt gleich nach dem Löschen höchstens 3,86 (im Mittel 0,12) neben der von vorher, nach dem Setzen 6,42 (im Mittel 1,71); 1642 → 1416 Punkte; Knick quer über den Rand im Mittel 82,1°, größter 101,6°
+gut  fest: die Haut bleibt, wo sie gezeigt war: höchstens 6,42
+     schwarz gezeigt, fest: 0 Dreiecke (0,0 % der Fläche)
+gut  rund: Kante aus: keine Kante
+gut  rund: der Rand ist glatt: Knick quer über den Rand im Mittel 26,0°, größter 34,7° (mit Kante 82,1°)
+gut  rund: nichts umgeschlagen, spiegelgleich: umgeschlagen 0
+     schwarz gezeigt, rund: 0 Dreiecke (0,0 % der Fläche)
+gut  weiterziehen: ein Punkt des Rands folgt der Maus und bleibt in der Mitte: von x = 90,9 nach 110,9, z = 0,00
+gut  weiterziehen: nichts umgeschlagen, spiegelgleich, nichts lose: umgeschlagen 0, 1502 → 1500 Punkte; schwarz gezeigt: 0 Dreiecke (0,0 % der Fläche)
+     (Auswahl nach ⌘Z: [{"l":8,"i":1}])
+gut  Kante wieder an: kantig: Knick im Mittel 65,3°
+gut  ⌘Z: wieder lose: 3 Loops
+gut  keine Fehler in der Konsole
+alles gut
+
+== test_kaputt (NAME=test_kaputt) ==
+test_kaputt: geladen: „test_kaputt“ (6217 Punkte im Netz, 4 Loops mit 18 Punkten) · Rechennet · 2137 Punkte, 4 Loops
+     schwarz gezeigt am Anfang: 0 Dreiecke (0,0 % der Fläche)
+gut  vorher nichts an der Mitte
+     gezogen wird der Punkt bei (-10,6, 8,5, 147,6) um 187,6 über die Mitte
+gut  lose: Punkte an den Kreuzungen mit der Mitte: 12 in den drei Blättern (je Blatt 4)
+gut  lose: der gezogene Punkt ist markiert: 10 markierte Punkte gezeichnet; Status: „ein Punkt hinter der Mitte (löschen macht den Schnitt fest) · 4 Loops …“
+gut  lose: nichts umgeschlagen: umgeschlagen 0 (vorher 0)
+     schwarz gezeigt, lose: 0 Dreiecke (0,0 % der Fläche)
+gut  zurückgezogen: keine Punkte an der Mitte, kein Punkt markiert
+gut  zurückgezogen: nichts umgeschlagen: umgeschlagen 0
+gut  der gezogene Punkt ist gewählt: [{"l":2,"i":2}]
+gut  fest: Meldung: Schnitt an der Mitte fest: Der Rand des Lochs ist ein Loop mit Kante (K macht ihn rund, ⌘Z führt zurück)
+gut  fest: die geschnittenen Linien sind Stücke, dazu der Rand: 5 ring, 6 ring, 7 ring, 8 ring, 3 paar, 4 mitte, 9 mitte Kante
+gut  fest: der Rand ist ein Loop mit Kante und Punkten an den Kreuzungen: Loop 9, 4 Punkte: (-9,7, -70,2) mit 8 ring; (55,1, 8,1) mit 5 ring; (-11,1, 42,8) mit 7 ring; (-72,6, 8,8) mit 6 ring
+gut  fest: nichts mehr lose
+gut  fest: der Rand ist gewählt
+gut  fest: nichts umgeschlagen, spiegelgleich: umgeschlagen 0, Symmetrie 0.0e+0
+     die gezeigte Haut liegt gleich nach dem Löschen höchstens 4,11 (im Mittel 0,06) neben der von vorher, nach dem Setzen 4,45 (im Mittel 0,32); 2377 → 2262 Punkte; Knick quer über den Rand im Mittel 65,5°, größter 93,1°
+gut  fest: die Haut bleibt, wo sie gezeigt war: höchstens 4,45
+     schwarz gezeigt, fest: 0 Dreiecke (0,0 % der Fläche)
+gut  rund: Kante aus: keine Kante
+gut  rund: der Rand ist glatt: Knick quer über den Rand im Mittel 14,4°, größter 25,6° (mit Kante 65,5°)
+gut  rund: nichts umgeschlagen, spiegelgleich: umgeschlagen 0
+     schwarz gezeigt, rund: 0 Dreiecke (0,0 % der Fläche)
+gut  weiterziehen: ein Punkt des Rands folgt der Maus und bleibt in der Mitte: von x = 55,1 nach 75,1, z = 0,00
+gut  weiterziehen: nichts umgeschlagen, spiegelgleich, nichts lose: umgeschlagen 0, 2336 → 2339 Punkte; schwarz gezeigt: 0 Dreiecke (0,0 % der Fläche)
+     (Auswahl nach ⌘Z: [{"l":9,"i":1}])
+gut  Kante wieder an: kantig: Knick im Mittel 44,9°
+gut  ⌘Z: wieder lose: 4 Loops
+gut  keine Fehler in der Konsole
+alles gut
+
+== teat firefish (NAME="teat firefish") ==
+teat firefish: geladen: „teat firefish“ (27770 Punkte im Netz, 17 Loops mit 90 Punkten) · Reche · 11449 Punkte, 17 Loops
+     schwarz gezeigt am Anfang: 0 Dreiecke (0,0 % der Fläche)
+gut  vorher nichts an der Mitte
+     gezogen wird der Punkt bei (-52,8, 59,8, 318,7) um 358,7 über die Mitte
+gut  lose: Punkte an den Kreuzungen mit der Mitte: 12 in den drei Blättern (je Blatt 4)
+gut  lose: der gezogene Punkt ist markiert: 10 markierte Punkte gezeichnet; Status: „ein Punkt hinter der Mitte (löschen macht den Schnitt fest) · 17 Loops…“
+gut  lose: nichts umgeschlagen: umgeschlagen 0 (vorher 0)
+     schwarz gezeigt, lose: 0 Dreiecke (0,0 % der Fläche)
+gut  zurückgezogen: keine Punkte an der Mitte, kein Punkt markiert
+gut  zurückgezogen: nichts umgeschlagen: umgeschlagen 0
+gut  der gezogene Punkt ist gewählt: [{"l":2,"i":1}]
+gut  fest: Meldung: Schnitt an der Mitte fest: Der Rand des Lochs ist ein Loop mit Kante (K macht ihn rund, ⌘Z führt zurück)
+gut  fest: die geschnittenen Linien sind Stücke, dazu der Rand: 19 ring, 20 ring, 21 ring, 22 ring, 4 mitte, 5 ring, 6 ring, 7 ring, 8 ring, 9 ring, 10 ring, 11 ring, 12 ring, 13 ring, 14 ring, 15 ring, 16 ring, 17 ring, 18 ring, 23 mitte Kante
+gut  fest: der Rand ist ein Loop mit Kante und Punkten an den Kreuzungen: Loop 23, 4 Punkte: (-132,4, 18,6) mit 21 ring; (-82,9, 81,7) mit 20 ring; (-7,1, 62,8) mit 22 ring; (-43,0, 40,2) mit 19 ring
+gut  fest: nichts mehr lose
+gut  fest: der Rand ist gewählt
+gut  fest: nichts umgeschlagen, spiegelgleich: umgeschlagen 0, Symmetrie 0.0e+0
+     die gezeigte Haut liegt gleich nach dem Löschen höchstens 3,77 (im Mittel 0,01) neben der von vorher, nach dem Setzen 4,75 (im Mittel 0,11); 12093 → 11871 Punkte; Knick quer über den Rand im Mittel 55,6°, größter 119,3°
+gut  fest: die Haut bleibt, wo sie gezeigt war: höchstens 4,75
+     schwarz gezeigt, fest: 0 Dreiecke (0,0 % der Fläche)
+gut  rund: Kante aus: keine Kante
+gut  rund: der Rand ist glatt: Knick quer über den Rand im Mittel 12,4°, größter 54,4° (mit Kante 55,6°)
+gut  rund: nichts umgeschlagen, spiegelgleich: umgeschlagen 0
+     schwarz gezeigt, rund: 0 Dreiecke (0,0 % der Fläche)
+gut  weiterziehen: ein Punkt des Rands folgt der Maus und bleibt in der Mitte: von x = -7,1 nach 12,9, z = 0,00
+gut  weiterziehen: nichts umgeschlagen, spiegelgleich, nichts lose: umgeschlagen 0, 11877 → 11875 Punkte; schwarz gezeigt: 0 Dreiecke (0,0 % der Fläche)
+     (Auswahl nach ⌘Z: [{"l":23,"i":2}])
+gut  Kante wieder an: kantig: Knick im Mittel 27,6°
+gut  ⌘Z: wieder lose: 17 Loops
+gut  keine Fehler in der Konsole
+alles gut
+
+== strange bird (NAME="strange bird" ZUGBLATT=top TIEF=160): Schon der lose Zug stülpt hier die Haut um (heutiges Verhalten) ==
+strange bird: geladen: „strange bird“ (16010 Punkte im Netz, 9 Loops mit 55 Punkten) · Rechenn · 7437 Punkte, 9 Loops
+     schwarz gezeigt am Anfang: 4 Dreiecke (0,0 % der Fläche)
+gut  vorher nichts an der Mitte
+     gezogen wird der Punkt bei (30,0, -28,2, 148,1) um 160,0 über die Mitte
+gut  lose: Punkte an den Kreuzungen mit der Mitte: 12 in den drei Blättern (je Blatt 4)
+gut  lose: der gezogene Punkt ist markiert: 10 markierte Punkte gezeichnet; Status: „ein Punkt hinter der Mitte (löschen macht den Schnitt fest) · 9 Loops …“
+FEHL lose: nichts umgeschlagen: umgeschlagen 2 (vorher 0)
+     schwarz gezeigt, lose: 1758 Dreiecke (14,7 % der Fläche)
+gut  zurückgezogen: keine Punkte an der Mitte, kein Punkt markiert
+FEHL zurückgezogen: nichts umgeschlagen: umgeschlagen 2
+gut  der gezogene Punkt ist gewählt: [{"l":2,"i":4}]
+gut  fest: Meldung: Schnitt an der Mitte fest: Der Rand des Lochs ist ein Loop mit Kante (K macht ihn rund, ⌘Z führt zurück)
+gut  fest: die geschnittenen Linien sind Stücke, dazu der Rand: 14 ring, 15 ring, 16 ring, 17 ring, 3 mitte, 4 paar, 7 ring, 8 ring, 11 ring, 12 ring, 13 ring, 18 mitte Kante
+FEHL fest: der Rand ist ein Loop mit Kante und Punkten an den Kreuzungen: Loop 18, 6 Punkte: (7,1, -44,6) mit 15 ring; (56,9, -59,1) mit 16 ring; (69,9, -14,7) mit 3 mitte; (45,5, 40,7) mit 14 ring; (11,8, -4,9) mit 3 mitte; (9,8, -12,1) mit 17 ring
+gut  fest: nichts mehr lose
+gut  fest: der Rand ist gewählt
+FEHL fest: nichts umgeschlagen, spiegelgleich: umgeschlagen 4, Symmetrie 0.0e+0
+     die gezeigte Haut liegt gleich nach dem Löschen höchstens 1,92 (im Mittel 0,01) neben der von vorher, nach dem Setzen 2,73 (im Mittel 0,09); 7889 → 7839 Punkte; Knick quer über den Rand im Mittel 96,8°, größter 155,8°
+gut  fest: die Haut bleibt, wo sie gezeigt war: höchstens 2,73
+     schwarz gezeigt, fest: 1782 Dreiecke (14,6 % der Fläche)
+gut  rund: Kante aus: keine Kante
+gut  rund: der Rand ist glatt: Knick quer über den Rand im Mittel 16,5°, größter 31,2° (mit Kante 96,8°)
+FEHL rund: nichts umgeschlagen, spiegelgleich: umgeschlagen 2
+     schwarz gezeigt, rund: 560 Dreiecke (3,3 % der Fläche)
+gut  weiterziehen: ein Punkt des Rands folgt der Maus und bleibt in der Mitte: von x = 69,9 nach 90,5, z = 0,00
+FEHL weiterziehen: nichts umgeschlagen, spiegelgleich, nichts lose: umgeschlagen 6, 7837 → 7828 Punkte; schwarz gezeigt: 574 Dreiecke (3,5 % der Fläche)
+     (Auswahl nach ⌘Z: [{"l":18,"i":2}])
+gut  Kante wieder an: kantig: Knick im Mittel 51,6°
+gut  ⌘Z: wieder lose: 9 Loops
+gut  keine Fehler in der Konsole
+6 Punkte FEHLEN

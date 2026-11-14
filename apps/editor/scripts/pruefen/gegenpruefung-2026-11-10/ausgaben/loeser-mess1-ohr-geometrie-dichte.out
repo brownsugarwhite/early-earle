@@ -1,0 +1,23 @@
+Nachmessung 10.11. (einzeln, nacheinander): FALL=ohr GEWICHTE=geometrie DREIECKE=6000|14000|30000 NACH=6 bzw. NACH=100, loeser/mess1.ts
+
+=== ohr, geometrie, 5222 Punkte (10440 Dreiecke), Anlegen 185 ms ===
+A Kosten (30 Runden im Zug, außen gemessen 12.78 ms je Runde):
+  vermessen (mit Normalen) 6 % · intrinsisch 8 % · Krümmung verteilen 30 % (PCG-Schritte je Runde 4.43) · Lagen lösen 49 % · Rest 7 %
+  absolut (Vorbehalt): vermessen 0.82, intrinsisch 1.08, Krümmung 3.80, lösen 6.23, Rest 0.86 ms
+  Runde 1: 1.1981 · Runde 2: 0.9562 · Runde 3: 0.2090 · Runde 4: 0.2029 · Runde 6: 0.0392 (seit Zugende 1.261)
+
+=== ohr, geometrie, 10964 Punkte (21924 Dreiecke), Anlegen 419–423 ms ===
+A Kosten (außen gemessen 32.06 ms je Runde):
+  vermessen 5 % · intrinsisch 8 % · Krümmung verteilen 33 % (PCG-Schritte je Runde 4.83) · Lagen lösen 48 % · Rest 6 %
+  absolut (Vorbehalt): vermessen 1.65, intrinsisch 2.67, Krümmung 10.67, lösen 15.24, Rest 1.83 ms
+  Runde 1: 1.6678 · 2: 0.6000 · 3: 0.4029 · 4: 0.4569 · 6: 0.3317 · 10: 0.0691 · 15: 0.0141 · 20: 0.0084 · 100: 0.0102
+  seit Zugende: Runde 6 3.171 · Runde 10 3.521 · Runde 100 3.462
+  Faktor je Runde: Runden 2→10 0.763, 10→30 0.899, 30→100 1.003
+
+=== ohr, geometrie, 23406 Punkte (46808 Dreiecke), Anlegen 1056–1239 ms ===
+A Kosten (außen gemessen 72.70 ms je Runde):
+  vermessen 4 % · intrinsisch 6 % · Krümmung verteilen 35 % (PCG-Schritte je Runde 4.63) · Lagen lösen 52 % · Rest 4 %
+  absolut (Vorbehalt): vermessen 2.85, intrinsisch 4.24, Krümmung 25.15, lösen 37.45, Rest 3.00 ms
+  Runde 1: 2.7132 · 2: 2.8421 · 3: 2.1642 · 4: 3.0943 · 6: 3.7035 · 10: 0.4154 · 15: 0.4690 · 20: 0.8901 · 30: 0.1214 · 40: 0.0449 · 100: 0.0433
+  seit Zugende: Runde 6 14.530 · Runde 10 14.497 · Runde 20 18.946 · Runde 40 19.098 · Runde 100 18.976
+  Faktor je Runde: Runden 2→10 0.786, 10→30 0.940, 30→100 0.985

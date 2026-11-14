@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wesen-Editor</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* Wesen-Editor „/editor“ (11.11.2026): vier randlose 3D-Fenster im Raster 2 × 2 über einer Leinwand, darunter eine schmale Leiste; die
+   Einstellungen klappen über den Fenstern auf, ohne sie zu verschieben. Eine feste Optik nach Florians Logo-Vorlage (kein helles oder
+   dunkles Thema). Dieselbe Seite baut das Artefakt (docs/look/editor/blaupause/teststand/bau.mjs). */
+:root {
+  --tinte: #17131b;
+  --weiss: #ffffff;
+  --mitte: #5b5363;
+  --hell: #c9c0d2;
+  --platte-a: #ff72a9;
+  --platte-b: #936ffb;
+  --auswahl: #936ffb;
+  --schrift-fett: 'Archivo', 'Arial Black', 'Helvetica Neue', sans-serif;
+  --schrift-mass: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; margin: 0; }
+body { background: var(--tinte); color: var(--weiss); font: 14px var(--schrift-mass); overflow: hidden; }
+[hidden] { display: none !important; }
+#leinwand { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+#app { position: relative; height: 100%; display: grid; grid-template-rows: minmax(0, 1fr) auto; }
+#raster { position: relative; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; touch-action: none; }
+.fenster {
+  position: relative; min-width: 0; min-height: 0; overflow: hidden; color: var(--weiss);
+  padding-block: 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  user-select: none; -webkit-user-select: none;
+}
+.fenster:nth-child(odd) { border-right: 2px solid var(--mitte); }
+.fenster:nth-child(-n+2) { border-bottom: 2px solid var(--mitte); }
+.kopf { position: relative; z-index: 1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; pointer-events: none; padding-right: 150px; }
+.name { font-family: var(--schrift-fett); font-stretch: 125%; font-weight: 900; font-size: clamp(16px, 1.9vw, 27px); line-height: 1; text-transform: uppercase; letter-spacing: 0.01em; }
+.fenster.frei .name { font-weight: 200; }
+.lage { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+.knoepfe { position: absolute; z-index: 3; top: 10px; right: max(16px, env(safe-area-inset-right, 0px)); display: flex; gap: 6px; }
+.wenden, .wahl3d {
+  background: transparent; color: inherit; border: 1.5px solid currentColor; border-radius: 0;
+  font: 700 10px/1 var(--schrift-mass); letter-spacing: 0.12em; text-transform: uppercase; padding: 6px 9px; cursor: pointer;
+}
+/* das SVG über jedem Fenster: unsichtbare Treffer und die Vorschau der Werkzeuge */
+.blatt { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; touch-action: none; cursor: grab; display: block; }
+.fenster.zieht .blatt { cursor: grabbing; }
+.fenster.punkt .blatt { cursor: pointer; }
+.blatt.loop, .blatt.form, .blatt.stift { cursor: crosshair; }
+.blatt .kurve-treffer { fill: none; stroke: transparent; stroke-width: 12px; vector-effect: non-scaling-stroke; cursor: pointer; }
+.blatt circle.kpunkt { fill: transparent; stroke: none; cursor: pointer; }
+.blatt circle.griff { fill: transparent; stroke: none; cursor: grab; }
+.blatt .einfluss { fill: none; stroke: var(--auswahl); stroke-width: 1.5px; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.blatt .entwurf { fill: none; stroke: var(--auswahl); stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.blatt .griff-linie { stroke: var(--auswahl); stroke-width: 1px; vector-effect: non-scaling-stroke; pointer-events: none; }
+.blatt rect.griff { fill: var(--auswahl); pointer-events: none; }
+/* Leiste: eine Zeile mit dem Knopf „Einstellungen“ und der Statuszeile; die Einstellungen klappen darüber auf */
+#leiste {
+  position: relative; z-index: 5; background: var(--tinte); color: var(--weiss); border-top: 2px solid var(--mitte);
+  padding-block: 7px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.zeile { display: flex; align-items: center; gap: 14px; min-width: 0; }
+#status { flex: 1; min-width: 0; font-size: 10px; letter-spacing: 0.06em; color: var(--hell); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#menue {
+  position: absolute; left: 0; right: 0; bottom: 100%;
+  background: var(--tinte); border-top: 2px solid var(--mitte);
+  padding-block: 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 26px; max-height: 62vh; overflow-y: auto;
+}
+.gruppe { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 0; }
+.titel { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--hell); margin-right: 10px; }
+button.wahl, #menue-knopf, #ablage-feld .knopf {
+  background: transparent; color: var(--weiss); border: 1.5px solid var(--mitte); border-radius: 0; margin-left: -1.5px;
+  font: 700 10px/1 var(--schrift-mass); letter-spacing: 0.1em; text-transform: uppercase; padding: 7px 10px; cursor: pointer;
+}
+#menue-knopf { margin-left: 0; flex: none; }
+#menue-knopf::after { content: ' ▴'; }
+#menue-knopf[aria-expanded="true"]::after { content: ' ▾'; }
+button.wahl[aria-pressed="true"], #menue-knopf[aria-expanded="true"], #ablage-feld .knopf[aria-pressed="true"] { background: var(--weiss); color: var(--tinte); border-color: var(--weiss); position: relative; }
+button.wahl:focus-visible, #menue-knopf:focus-visible, .wenden:focus-visible, .wahl3d:focus-visible { outline: 2px solid var(--auswahl); outline-offset: 2px; }
+.regler { display: flex; align-items: center; gap: 8px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--hell); margin-left: 12px; }
+.regler input[type="range"] { width: 110px; accent-color: var(--platte-a); }
+.zahl { min-width: 40px; font-variant-numeric: tabular-nums; color: var(--weiss); }
+#tiefe { width: 90px; margin-left: 10px; accent-color: var(--platte-b); }
+.farbfeld { display: flex; align-items: center; gap: 6px; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; margin-right: 12px; cursor: pointer; color: var(--hell); }
+.farbfeld input { width: 30px; height: 24px; padding: 0; border: 1.5px solid var(--weiss); border-radius: 0; background: none; cursor: pointer; }
+.hinweis { flex-basis: 100%; font-size: 10px; line-height: 1.6; letter-spacing: 0.05em; color: var(--hell); max-width: 120ch; margin: 0; }
+.hinweis b { color: var(--weiss); font-weight: 700; }
+#ablage-feld { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; flex-basis: 100%; }
+#ablage-feld input { font: 12px var(--schrift-mass); padding: 6px 8px; background: transparent; color: var(--weiss); border: 1.5px solid var(--mitte); border-radius: 0; }
+@media (max-width: 700px) { .kopf { padding-right: 120px; } .lage { display: none; } }
+</style>
+</head>
+<body>
+<canvas id="leinwand"></canvas>
+<div id="app">
+  <main id="raster">
+    <section class="fenster" id="feld-seite"><div class="kopf"><span class="name">Seite</span><span class="lage"></span></div><div class="knoepfe"><button class="wenden" type="button" title="Dieses Fenster um 180° wenden">Wenden</button></div><svg class="blatt" id="blatt-seite" aria-label="Seite"></svg></section>
+    <section class="fenster" id="feld-front"><div class="kopf"><span class="name">Front</span><span class="lage"></span></div><div class="knoepfe"><button class="wenden" type="button" title="Dieses Fenster um 180° wenden">Wenden</button></div><svg class="blatt" id="blatt-front" aria-label="Front"></svg></section>
+    <section class="fenster" id="feld-top"><div class="kopf"><span class="name">Top</span><span class="lage"></span></div><div class="knoepfe"><button class="wenden" type="button" title="Dieses Fenster um 180° wenden">Wenden</button></div><svg class="blatt" id="blatt-top" aria-label="Top"></svg></section>
+    <section class="fenster" id="feld-3d"><div class="kopf"><span class="name">3D</span><span class="lage"></span></div><div class="knoepfe"><button class="wahl3d" type="button" id="knopf-papier3d" aria-pressed="false" title="Material im 3D: Jelly des Spiels oder Papier der Blaupause">Jelly</button><button class="wenden" type="button" title="Dieses Fenster um 180° wenden">Wenden</button></div><svg class="blatt" id="blatt-drei" aria-label="3D"></svg></section>
+  </main>
+  <nav id="leiste" aria-label="Einstellungen und Status">
+    <div id="menue" hidden>
+      <div class="gruppe"><span class="titel">Form</span>
+        <button class="wahl" type="button" id="form-kugel" data-form="kugel">Kugel</button>
+        <!--FORM_KNOEPFE-->
+        <button class="wahl" type="button" id="knopf-neu" title="Neues Wesen: wieder die Startform (⌘Z bringt das jetzige zurück)">Neu</button>
+        <button class="wahl" type="button" id="knopf-sichern" aria-pressed="false" title="Das Wesen unter einem Namen sichern (⌘S; es liegt dann im Ordner wesen/)">Sichern</button>
+        <button class="wahl" type="button" id="knopf-laden" aria-pressed="false" title="Ein gesichertes Wesen laden (⌘Z bringt das jetzige zurück)">Laden</button>
+        <div id="ablage-feld" hidden></div>
+      </div>
+      <div class="gruppe"><span class="titel">Werkzeug</span>
+        <button class="wahl" type="button" id="knopf-loop" aria-pressed="false" title="Loop quer über den Körper schneiden (L), nur in der Hausansicht">Loop L</button>
+        <button class="wahl" type="button" id="knopf-form" aria-pressed="false" title="Geschlossene Form auf die Haut zeichnen (F), nur in der Hausansicht">Form F</button>
+        <button class="wahl" type="button" id="knopf-stift" aria-pressed="false" title="Stift wie Illustrator (P), nur in der Hausansicht">Stift P</button>
+        <button class="wahl" type="button" id="knopf-o" aria-pressed="false" title="Einflusskreis wie in Blender (O), Größe mit [ ]">Einfluss O</button>
+      </div>
+      <div class="gruppe"><span class="titel">Pose</span>
+        <button class="wahl" type="button" id="knopf-pose" aria-pressed="false" title="Fressen-Pose: Punkte und Griffe ziehen formt die Pose, die Grundform bleibt (erst eine schmale Form ums Maul zeichnen)">Fressen</button>
+        <label class="regler" id="maul-regler" for="maul-oeffnung">Maul <input id="maul-oeffnung" type="range" min="0" max="55" step="0.5" value="30"></label>
+        <label class="regler" id="kopf-regler" for="kopf-oeffnung">Kopf <input id="kopf-oeffnung" type="range" min="0" max="40" step="0.5" value="0"></label>
+      </div>
+      <div class="gruppe"><span class="titel">Outline</span>
+        <label class="regler" for="kontur">Kontur <input id="kontur" type="range" min="4" max="60" step="1" value="28"><span class="zahl" id="kontur-zahl">28 px</span></label>
+        <label class="regler" for="rand">Rand <input id="rand" type="range" min="0" max="40" step="1" value="12"><span class="zahl" id="rand-zahl">12 px</span></label>
+        <label class="regler" for="schatten" title="Der lange flache Schatten nach links unten (0 = aus)">Schatten <input id="schatten" type="range" min="0" max="80" step="1" value="36"><span class="zahl" id="schatten-zahl">36 %</span></label>
+        <button class="wahl" type="button" id="sch-extrusion" data-s="extrusion" title="Die rosa Extrusion nach links unten wie die Seitenflächen der Buchstaben (Farbe: Körper Schatten). Aus: Rosa und Lila sind innen gleich breit">Extrusion</button>
+      </div>
+      <div class="gruppe"><span class="titel">Passer</span>
+        <button class="wahl" type="button" id="pa-tiktok" data-s="tiktok" title="Die Kontur aus zwei versetzten Platten in Rosa und Lila, Petrol, wo sie sich überdecken (wie der Passer der Blaupause); aus: die Kontur wirft ihren Schatten auf den Rand">TikTok</button>
+        <button class="wahl" type="button" id="pa-blick" data-s="pBlick" title="Versatz nach dem Blick: von vorn Rosa nach rechts oben und Lila nach links unten (ohne TikTok: der Schatten nach unten), von der Seite keiner, von hinten umgekehrt">Blick</button>
+        <button class="wahl" type="button" id="pa-wandel" data-s="pWandel" title="Der Rand zeigt die Grundform, Kontur und Körper die Pose">Wandel</button>
+        <button class="wahl" type="button" id="pa-tiefe" data-s="pTiefe">Tiefe</button>
+        <input type="range" id="tiefe" min="0.02" max="0.4" step="0.01" value="0.14" title="Stärke der Tiefe: wie weit Nahes und Fernes auseinanderlaufen" aria-label="Stärke der Tiefe">
+        <button class="wahl" type="button" id="pa-schraeg" data-s="tiefeSchraeg" style="margin-left: 10px" title="Richtung der Tiefe: schräg wie beim Blick, sonst waagerecht">schräg</button>
+      </div>
+      <div class="gruppe"><span class="titel">Anzeige</span>
+        <button class="wahl" type="button" id="li-mass" data-s="linienMass" title="Linien und Punkte wachsen mit dem Zoom wie die Outlines">Linien wachsen mit</button>
+        <button class="wahl" type="button" id="sch-durchsicht" data-s="durchsicht" title="Verdeckte Linien und Punkte blass zeigen und greifbar machen (X)">Durchsicht X</button>
+        <button class="wahl" type="button" id="sch-umschalt" data-s="umschalt" title="Wie die Umschalttaste gehalten: die Bögen drehen sich in die Knickrichtung, Ziehen knickt">Knick ⇧</button>
+        <button class="wahl" type="button" id="sch-lava" data-s="lava" title="Die dunklen Blasen im Jelly bewegen sich wie in einer Lavalampe (aus: sie stehen still)">Lava bewegt</button>
+        <button class="wahl" type="button" id="sch-kontakt" data-s="kontaktBoden" title="Jelly: der Bodenkontakt wie echt, eine Ellipse am Boden, wo das Wesen aufliegt, durchs Glas gesehen (je höher der Blick, desto größer und blasser); aus: das flache Band über der unteren Kontur wie bis zum 12.11.">Kontakt am Boden</button>
+      </div>
+      <div class="gruppe"><span class="titel">Farben</span>
+        <label class="farbfeld" for="f-grund">Grund <input type="color" id="f-grund" data-farbe="grund" value="#17131b"></label>
+        <label class="farbfeld" for="f-grund-h">Grund hinten <input type="color" id="f-grund-h" data-farbe="grundHinten" value="#b3d4ff"></label>
+        <label class="farbfeld" for="f-kontur">Kontur <input type="color" id="f-kontur" data-farbe="kontur" value="#003f4e"></label>
+        <label class="farbfeld" for="f-va">Verlauf links <input type="color" id="f-va" data-farbe="verlaufA" value="#ff72a9"></label>
+        <label class="farbfeld" for="f-vb">Verlauf rechts <input type="color" id="f-vb" data-farbe="verlaufB" value="#936ffb"></label>
+        <label class="farbfeld" for="f-ks">Körper Schatten <input type="color" id="f-ks" data-farbe="koerperSchatten" value="#ff72a9"></label>
+        <label class="farbfeld" for="f-aus">Auswahl <input type="color" id="f-aus" data-farbe="auswahl" value="#936ffb"></label>
+      </div>
+      <p class="hinweis"><b>Grund ziehen</b> dreht das Fenster, es rastet innerhalb von 9° ein · <b>Rad</b> zoomt, zwei Finger verschieben · <b>Doppelklick auf den Grund</b>: Hausansicht, ganze Form (Pos1: alle Fenster) · <b>Punkt</b> anklicken und ziehen · <b>Griff am Bogen ziehen</b>: das gerade Paar gleitet · <b>mit ⇧</b>: die Bögen drehen sich in die Knickrichtung und sitzen am wahren Ende ihres Griffs, Ziehen bewegt nur diesen Griff (Ecke) · <b>Doppelklick auf eine Linie</b>: neuer Punkt · <b>Doppelklick auf Punkt oder Griff</b>: Ecke ↔ glatt · <b>K</b> Kante an/aus · <b>⌫</b> löschen · <b>G/S/R</b> · <b>⌘Z</b> zurück · <b>L F P</b> nur in der Hausansicht von Seite, Front, Top</p>
+    </div>
+    <div class="zeile">
+      <button id="menue-knopf" type="button" aria-expanded="false" aria-controls="menue">Einstellungen</button>
+      <span id="status" role="status"></span>
+    </div>
+  </nav>
+</div>
+<!--FORMEN-->
+<script type="module" src="./src/form/editor.ts"></script>
+</body>
+</html>

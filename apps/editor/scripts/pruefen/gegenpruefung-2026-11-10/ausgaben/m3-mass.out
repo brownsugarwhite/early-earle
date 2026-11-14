@@ -1,0 +1,40 @@
+=== (a) genaue Kugel R = 150 ===
+Startnetz 4706 Punkte, mittlere Kante 8.63
+  Maß × 2R mit Normalen nach Fläche: Mittel 0.915, Streuung 0.089, 5 % 0.725, 95 % 1.000, kleinstes 0.598, größtes 1.055 (4706 Punkte)
+  Maß × 2R mit wahren Normalen:      Mittel 1.000, Streuung 0.000, 5 % 1.000, 95 % 1.000, kleinstes 1.000, größtes 1.000 (4706 Punkte)
+  Laplace je Punkt: Normalanteil Median 0.247, Tangentialanteil Median 1.348, 95 % 3.310 (Einheiten)
+
+mit drei eingesetzten Loops: 5222 Punkte (+516); 644 Punkte auf Linien, 730 daneben
+  Punkte auf den Linien von der Kugel (− = innen): Mittel -0.060, Streuung 0.040, 5 % -0.126, 95 % 0.000, kleinstes -0.141, größtes 0.003 (644 Punkte)
+  Punkte neben den Linien von der Kugel:           Mittel -0.010, Streuung 0.013, 5 % -0.037, 95 % 0.002, kleinstes -0.068, größtes 0.017 (730 Punkte)
+  Maß × 2R (Normalen nach Fläche) auf den Linien: Mittel 0.604, Streuung 0.338, 5 % 0.123, 95 % 1.016, kleinstes 0.027, größtes 2.349 (644 Punkte)
+  Maß × 2R (Normalen nach Fläche) neben den Linien: Mittel 1.079, Streuung 0.156, 5 % 0.881, 95 % 1.313, kleinstes 0.531, größtes 2.316 (730 Punkte)
+  Maß × 2R (Normalen nach Fläche) sonst: Mittel 0.919, Streuung 0.093, 5 % 0.731, 95 % 1.018, kleinstes 0.598, größtes 1.152 (3848 Punkte)
+  Maß × 2R (wahre Normalen) auf den Linien: Mittel 0.763, Streuung 0.319, 5 % 0.309, 95 % 1.141, kleinstes -0.154, größtes 2.509 (644 Punkte)
+  Maß × 2R (wahre Normalen) neben den Linien: Mittel 1.105, Streuung 0.133, 5 % 1.000, 95 % 1.324, kleinstes 0.605, größtes 2.346 (730 Punkte)
+  Maß × 2R (wahre Normalen) sonst: Mittel 1.001, Streuung 0.022, 5 % 0.997, 95 % 1.027, kleinstes 0.754, größtes 1.144 (3848 Punkte)
+  alle Punkte genau auf die Kugel gelegt, Maß × 2R (Normalen nach Fläche) auf den Linien: Mittel 0.836, Streuung 0.154, 5 % 0.541, 95 % 1.000, kleinstes 0.114, größtes 1.080 (644 Punkte)
+  alle Punkte genau auf die Kugel gelegt, Maß × 2R (Normalen nach Fläche) sonst: Mittel 0.918, Streuung 0.090, 5 % 0.730, 95 % 1.001, kleinstes 0.598, größtes 1.041 (3848 Punkte)
+
+Kugel geteilt (Kanten über 1,0 MK), alle Punkte genau auf der Kugel: 4706 → 11878
+  Maß × 2R (Normalen nach Fläche) nachher, alle: Mittel 0.990, Streuung 0.029, 5 % 0.937, 95 % 1.012, kleinstes 0.498, größtes 1.034 (11878 Punkte)
+  an den alten Punkten geändert um: Mittel 0.078, 95 % 0.249, größtes 0.394
+  an den neuen Punkten: Mittel 1.001, Streuung 0.006, 5 % 0.992, 95 % 1.012, kleinstes 0.971, größtes 1.024 (7172 Punkte)
+
+=== (b) genaues Ellipsoid, Kugelnetz in x × 2 ===
+  gestreckt: Maß / (H/2), wahre Normalen, Rumpf: Mittel 0.727, Streuung 0.114, 5 % 0.548, 95 % 0.927, kleinstes 0.489, größtes 1.030 (3815 Punkte)
+  gestreckt: Maß / (H/2), Normalen nach Fläche, Rumpf: Mittel 0.667, Streuung 0.126, 5 % 0.480, 95 % 0.903, kleinstes 0.351, größtes 1.030 (3815 Punkte)
+  verdichtet wie nach einem Zug: 4706 → 6971 Punkte (+2851, 293 zusammengelegt, 734 gedreht), alle genau auf der Fläche
+  verdichtet: Maß / (H/2), wahre Normalen, Rumpf: Mittel 0.827, Streuung 0.098, 5 % 0.671, 95 % 1.010, kleinstes 0.592, größtes 1.146 (5928 Punkte)
+  verdichtet: Maß / (H/2), Normalen nach Fläche, Rumpf: Mittel 0.793, Streuung 0.105, 5 % 0.647, 95 % 0.985, kleinstes 0.380, größtes 1.145 (5928 Punkte)
+  alte, unbewegte Punkte im Rumpf: Maß nachher / vorher, wahre Normalen: Mittel 1.161, Streuung 0.137, 5 % 1.000, 95 % 1.393, kleinstes 0.985, größtes 1.874 (3809 Punkte)
+  alte, unbewegte Punkte im Rumpf: Maß nachher / vorher, Normalen nach Fläche: Mittel 1.197, Streuung 0.196, 5 % 1.000, 95 % 1.551, kleinstes 0.677, größtes 2.041 (3809 Punkte)
+
+=== (b) genaues Ellipsoid, Kugelnetz in x × 4 ===
+  gestreckt: Maß / (H/2), wahre Normalen, Rumpf: Mittel 0.297, Streuung 0.094, 5 % 0.178, 95 % 0.476, kleinstes 0.152, größtes 0.611 (3815 Punkte)
+  gestreckt: Maß / (H/2), Normalen nach Fläche, Rumpf: Mittel 0.273, Streuung 0.092, 5 % 0.159, 95 % 0.456, kleinstes 0.114, größtes 0.606 (3815 Punkte)
+  verdichtet wie nach einem Zug: 4706 → 14101 Punkte (+13943, 2274 zusammengelegt, 2046 gedreht), alle genau auf der Fläche
+  verdichtet: Maß / (H/2), wahre Normalen, Rumpf: Mittel 0.665, Streuung 0.134, 5 % 0.461, 95 % 0.900, kleinstes 0.307, größtes 1.335 (12550 Punkte)
+  verdichtet: Maß / (H/2), Normalen nach Fläche, Rumpf: Mittel 0.648, Streuung 0.134, 5 % 0.451, 95 % 0.886, kleinstes 0.233, größtes 1.336 (12550 Punkte)
+  alte, unbewegte Punkte im Rumpf: Maß nachher / vorher, wahre Normalen: Mittel 2.515, Streuung 0.743, 5 % 1.538, 95 % 3.908, kleinstes 1.054, größtes 4.919 (3801 Punkte)
+  alte, unbewegte Punkte im Rumpf: Maß nachher / vorher, Normalen nach Fläche: Mittel 2.563, Streuung 0.792, 5 % 1.551, 95 % 4.025, kleinstes 1.147, größtes 5.425 (3801 Punkte)

@@ -1,0 +1,65 @@
+Schritt 6, kleiner Beweis „das Maul als eigene Geometrie“ (13.11.2026)
+Probe: apps/editor/scripts/pruefen/form-maul-haut.ts (Form: formen/pose-maul-kugel.eewesen)
+Aufruf aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/form-maul-haut.ts   (HOEHLE=gewoelbt: das Innere der Anzeige von heute; DIAG=1: Runde für Runde)
+Kugel mit Halbmesser 150. „steht fest“ heißt: Die Vorsicht hat die Rechnung angehalten, sie ist nicht zur Ruhe gekommen.
+
+== Höhle flach (Gaumen und Boden als ebene Flächen zwischen den Lippen) ==
+Form von heute: 1682 Punkte, 2 Loops; zur Ruhe gerechnet in 15 Runden
+1. Maul als Haut (Höhle flach): 3062 Punkte (1426 in der Höhle), 6120 Dreiecke; offene Kanten 0, verdrehte 0, Punkte ohne Spiegelbild 0, Proben ohne Punkt 0; Gaumen bis 17,5 über der Achse, Boden bis 18,5 darunter, auf der falschen Seite 0
+   Lippen neben ihrer Linie: 0,00
+2. Die Höhle in der Rechnung der Grundform
+   wie angelegt (feines Gitter), Lippen als Kante: steht nach 8 Runden; außen bis 0,74 bewegt; Gaumen bis 0,0 über der Achse, Boden bis 617,3 darunter, auf der falschen Seite 783; umgeschlagen 1368; Vorsicht 4, steht fest
+   Netz vergleichmäßigt: 2147 Punkte (512 in der Höhle); offene Kanten 0, verdrehte 0, ohne Spiegelbild 0; Gaumen bis 17,5 über der Achse, Boden bis 18,5 darunter, auf der falschen Seite 0
+   vergleichmäßigt, Lippen glatt: steht nach 8 Runden; außen bis 663,22 bewegt; Gaumen bis 1583,6 über der Achse, Boden bis 8,4 darunter, auf der falschen Seite 246; umgeschlagen 641; Vorsicht 4, steht fest
+   vergleichmäßigt, Lippen als Kante: steht nach 8 Runden; außen bis 202,43 bewegt; Gaumen bis 8,7 über der Achse, Boden bis 2453,5 darunter, auf der falschen Seite 223; umgeschlagen 644; Vorsicht 4, steht fest
+   Mittellinie: 87 Proben, davon 20 in der Höhle, 5 Punkte (3 Ecken); Netz 2147 Punkte; {"offen":0,"verdreht":0,"ohneSpiegel":0}
+   vergleichmäßigt, Lippen als Kante, Mittellinie durch die Höhle: steht nach 8 Runden; außen bis 50,66 bewegt; Gaumen bis 33,0 über der Achse, Boden bis 18,5 darunter, auf der falschen Seite 172; umgeschlagen 258; Vorsicht 4, steht fest
+   Mittellinie: mitte, 87 Proben, davon 20 in der Höhle, 5 Punkte (3 Ecken); Netz 2147 Punkte; {"offen":0,"verdreht":0,"ohneSpiegel":0}
+      (geschnitten: ring, 42 Proben von (-101,4, -110,9, 0,0) bis (-101,4, -31,4, 0,0), Länge 247,4; lässt sich nicht einsetzen)
+      (geschnitten: ring, 45 Proben von (-98,4, -113,8, 0,0) bis (-98,4, -32,2, 0,0), Länge 253,4; lässt sich nicht einsetzen)
+      (geschnitten: ring, 42 Proben von (-104,4, -30,5, 0,0) bis (-104,4, -108,1, 0,0), Länge 241,3; lässt sich nicht einsetzen)
+      (geschnitten: ring, 44 Proben von (-94,4, -33,4, 0,0) bis (-94,4, -117,0, 0,0), Länge 260,2; lässt sich nicht einsetzen)
+      (geschnitten: ring, 41 Proben von (-108,4, -29,5, 0,0) bis (-108,4, -104,1, 0,0), Länge 232,6; lässt sich nicht einsetzen)
+      (geschnitten: ring, 46 Proben von (-89,4, -34,7, 0,0) bis (-89,4, -121,0, 0,0), Länge 268,3; lässt sich nicht einsetzen)
+      (geschnitten: ring, 44 Proben von (-113,4, -98,5, 0,0) bis (-113,4, -29,2, 0,0), Länge 219,1; lässt sich nicht einsetzen)
+      (geschnitten: ring, 52 Proben von (-83,4, -125,1, 0,0) bis (-83,4, -36,1, 0,0), Länge 277,2; lässt sich nicht einsetzen)
+      (geschnitten: ring, 39 Proben von (-119,4, -29,8, 0,0) bis (-119,4, -91,0, 0,0), Länge 197,2; lässt sich nicht einsetzen)
+   Loop um den Unterkiefer: lässt sich nicht schneiden oder einsetzen
+
+== Höhle gewölbt (das Innere, das die Anzeige heute einsetzt) ==
+1. Maul als Haut (Höhle gewölbt wie in der Anzeige von heute): 2694 Punkte (1058 in der Höhle), 5384 Dreiecke; offene Kanten 0, verdrehte 0, Punkte ohne Spiegelbild 0, Proben ohne Punkt 0; Gaumen bis 55,7 über der Achse, Boden bis 48,4 darunter, auf der falschen Seite 0
+   Lippen neben ihrer Linie: 0,00
+2. Die Höhle in der Rechnung der Grundform
+   wie angelegt (feines Gitter), Lippen als Kante: steht nach 8 Runden; außen bis 0,74 bewegt; Gaumen bis 911,8 über der Achse, Boden bis 398,1 darunter, auf der falschen Seite 14; umgeschlagen 65; Vorsicht 4, steht fest
+   Netz vergleichmäßigt: 2121 Punkte (512 in der Höhle); offene Kanten 0, verdrehte 0, ohne Spiegelbild 0; Gaumen bis 55,7 über der Achse, Boden bis 48,4 darunter, auf der falschen Seite 0
+   vergleichmäßigt, Lippen glatt: steht nach 8 Runden; außen bis 435,33 bewegt; Gaumen bis 259,1 über der Achse, Boden bis 1,0 darunter, auf der falschen Seite 275; umgeschlagen 429; Vorsicht 4, steht fest
+   vergleichmäßigt, Lippen als Kante: steht nach 8 Runden; außen bis 183,94 bewegt; Gaumen bis 1036,1 über der Achse, Boden bis 8,1 darunter, auf der falschen Seite 231; umgeschlagen 684; Vorsicht 4, steht fest
+   Mittellinie: 91 Proben, davon 25 in der Höhle, 5 Punkte (3 Ecken); Netz 2121 Punkte; {"offen":0,"verdreht":0,"ohneSpiegel":0}
+   vergleichmäßigt, Lippen als Kante, Mittellinie durch die Höhle: steht nach 8 Runden; außen bis 57,27 bewegt; Gaumen bis 151,1 über der Achse, Boden bis 48,4 darunter, auf der falschen Seite 54; umgeschlagen 214; Vorsicht 4, steht fest
+   Mittellinie: mitte, 91 Proben, davon 25 in der Höhle, 5 Punkte (3 Ecken); Netz 2121 Punkte; {"offen":0,"verdreht":0,"ohneSpiegel":0}
+      (geschnitten: ring, 47 Proben von (-101,4, -110,9, 0,0) bis (-101,4, -64,0, 0,0), Länge 253,0; lässt sich nicht einsetzen)
+      (geschnitten: ring, 47 Proben von (-98,4, -113,8, 0,0) bis (-98,4, -65,4, 0,0), Länge 258,9; lässt sich nicht einsetzen)
+      (geschnitten: ring, 47 Proben von (-104,4, -62,7, 0,0) bis (-104,4, -108,1, 0,0), Länge 246,9; lässt sich nicht einsetzen)
+      (geschnitten: ring, 50 Proben von (-94,4, -66,7, 0,0) bis (-94,4, -117,0, 0,0), Länge 265,7; lässt sich nicht einsetzen)
+      (geschnitten: ring, 42 Proben von (-108,4, -60,9, 0,0) bis (-108,4, -104,1, 0,0), Länge 238,2; lässt sich nicht einsetzen)
+      (geschnitten: ring, 52 Proben von (-89,4, -67,7, 0,0) bis (-89,4, -121,0, 0,0), Länge 273,5; lässt sich nicht einsetzen)
+      (geschnitten: ring, 43 Proben von (-113,4, -98,5, 0,0) bis (-113,4, -58,7, 0,0), Länge 224,2; lässt sich nicht einsetzen)
+      (geschnitten: ring, 53 Proben von (-83,4, -125,1, 0,0) bis (-83,4, -65,9, 0,0), Länge 281,5; lässt sich nicht einsetzen)
+      (geschnitten: ring, 40 Proben von (-119,4, -56,1, 0,0) bis (-119,4, -91,0, 0,0), Länge 201,8; lässt sich nicht einsetzen)
+   Loop um den Unterkiefer: lässt sich nicht schneiden oder einsetzen
+
+== Diagnose, Höhle flach, Lippen als Kante, Mittellinie durch die Höhle: die ersten zwei Runden ==
+Runde 1: größte Bewegung je Teil: Körper 8,81, Gaumen 71,40, Boden 97,66, Achse 90,14; Vorsicht 0
+     Punkt 2029 (Boden): 97,7 weit; lag bei (-55,3, -24,8, -77,1), Höhe über der Achse -5,5, vom Mundwinkel 5,5; 6 Nachbarn, davon auf Linien 0
+     Punkt 2047 (Boden): 97,7 weit; lag bei (-55,3, -24,8, 77,1), Höhe über der Achse -5,5, vom Mundwinkel 5,5; 6 Nachbarn, davon auf Linien 0
+     Punkt 1998 (Boden): 97,5 weit; lag bei (-55,8, -27,0, -76,8), Höhe über der Achse -7,7, vom Mundwinkel 7,8; 6 Nachbarn, davon auf Linien 0
+     Punkt 2016 (Boden): 97,5 weit; lag bei (-55,8, -27,0, 76,8), Höhe über der Achse -7,7, vom Mundwinkel 7,8; 6 Nachbarn, davon auf Linien 0
+     Punkt 1997 (Boden): 96,0 weit; lag bei (-55,8, -27,0, -85,3), Höhe über der Achse -7,7, vom Mundwinkel 7,8; 6 Nachbarn, davon auf Linien 0
+     Punkt 2017 (Boden): 96,0 weit; lag bei (-55,8, -27,0, 85,3), Höhe über der Achse -7,7, vom Mundwinkel 7,8; 6 Nachbarn, davon auf Linien 0
+Runde 2: größte Bewegung je Teil: Körper 42,28, Gaumen 390,81, Boden 519,89, Achse 486,22; Vorsicht 0
+     Punkt 2029 (Boden): 519,9 weit; lag bei (23,5, -16,6, -20,0), Höhe über der Achse 2,2, vom Mundwinkel 78,5; 6 Nachbarn, davon auf Linien 0
+     Punkt 2047 (Boden): 519,9 weit; lag bei (23,5, -16,6, 20,0), Höhe über der Achse 2,2, vom Mundwinkel 78,5; 6 Nachbarn, davon auf Linien 0
+     Punkt 1998 (Boden): 519,0 weit; lag bei (22,5, -18,3, -19,2), Höhe über der Achse 0,6, vom Mundwinkel 77,5; 6 Nachbarn, davon auf Linien 0
+     Punkt 2016 (Boden): 519,0 weit; lag bei (22,5, -18,3, 19,2), Höhe über der Achse 0,6, vom Mundwinkel 77,5; 6 Nachbarn, davon auf Linien 0
+     Punkt 2030 (Boden): 509,0 weit; lag bei (18,3, -17,1, -9,1), Höhe über der Achse 1,8, vom Mundwinkel 73,4; 6 Nachbarn, davon auf Linien 0
+     Punkt 2046 (Boden): 509,0 weit; lag bei (18,3, -17,1, 9,1), Höhe über der Achse 1,8, vom Mundwinkel 73,4; 6 Nachbarn, davon auf Linien 0

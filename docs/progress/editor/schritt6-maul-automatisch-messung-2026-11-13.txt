@@ -1,0 +1,19 @@
+Schritt 6: das Maul automatisch geformt, wie von Hand, von der Seite durchgestanzt (13.11.2026)
+Florian: „Im Grunde machst du ja nur die Kante hart und verbindest von der Seite die gegenüberliegenden Seiten.“ Und zum ersten Bild: „Es soll aussehen, als wäre der Edgeloop von der Seitenansicht durchgestanzt mit genau der Form des Maulloops von der Seite. Das heißt, die Mittellinie muss von der Seite exakt den Shape der Maullinie haben.“
+Probe: apps/editor/scripts/pruefen/form-maul-automatisch.ts (Form: formen/pose-maul-kugel.eewesen); Aufruf aus packages/shape mit npx vite-node; DEBUG=1 gibt Punkte und Griffe aus
+
+Form: 1682 Punkte, 2 Loops; Maullinie Loop 2: Lippen vorn bei (-145,5, -36,4) und (-150,0, -3,3), Mundwinkel bei (-55,0, -20,0, 137,9)
+Mittellinie Loop 3: 74 Proben; Punkte (60,0, -137,7, 0,0 K1) (148,5, -20,4, 0,0 K7) (60,0, 137,7, 0,0 K2) (-150,0, -3,3, 0,0 K4 Ecke) (-148,7, -19,9, 0,0 K8) (-145,5, -36,4, 0,0 K3 Ecke)
+Querlinie Loop 4 (ring): 77 Proben; Punkte (-148,6, -19,8, 0,0 K8) (-55,0, -20,0, 137,9 K6 Ecke) (60,0, -20,2, 134,3 K5) (148,4, -20,4, 0,0 K7)
+Maullinie: Punkte (-145,5, -36,4, 0,0 K3) (-115,0, -29,0, 92,0) (-55,0, -20,1, 137,9 K6) (-55,0, -20,0, 137,9 Ecke) (-115,0, -11,0, 95,7) (-150,0, -3,3, 0,0 K4)
+Kreuzung vorn zwischen den Lippen: (-148,6, -19,8, 0,0); Kreuzung mit der Maullinie am Mundwinkel: (-55,0, -20,0, 137,9)
+vor dem Zug: steht nach 5 Runden; Knicke über 60° 0, umgeschlagen 0
+Durchstanzen: die Mittellinie bekommt im Maul 3 Punkte der Maullinie (rückwärts durchlaufen); Mittellinie jetzt 8 Punkte
+Durchgestanzt in 8 Stufen zu 8 Schritten (172 Runden, Netz 1834 → 1850 Punkte): steht (6 Runden am Ende); außen bis 3,02 bewegt; Linien bis 0,08 neben ihrem Pfad; Knicke über 60° 106, umgeschlagen 0; Vorsicht 0
+   wie durchgestanzt: Mittellinie im Maul (20 Stellen) höchstens 0,27 neben der Maullinie von der Seite; Flächen innen (168 Punkte) höchstens 9,83, im Mittel 2,38
+Loops nur um einen Kiefer: Schnitt durch den Unterkiefer: Ring um den Unterkiefer, von (-101,4, -111,0) bis (-101,4, -31,4), 45 Proben; Schnitt durch den Oberkiefer: Ring um den Oberkiefer, von (-101,4, -8,6) bis (-101,4, 110,7), 49 Proben; danach steht nach 7 Runden, umgeschlagen 0
+Kieferknochen: Unterkiefer 30° geöffnet (Gelenk am Mundwinkel, Gewichte außen wie heute, innen dreht der Boden ganz mit): Knicke über 60° 110 → 100, umgeschlagen 0 → 0
+
+== Zum Vergleich: dieselbe Form auf einmal hineingebaut (form-maul-haut.ts, Höhle flach), mit der Verbindung hinten als harter Linie ==
+   Florians Beschreibung (feines Gitter): Lippen hart, Seiten verbunden, Verbindung hinten als harte Linie, Mittellinie: steht nach 8 Runden; außen bis 0,58 bewegt; Gaumen bis 18,1 über der Achse, Boden bis 27,2 darunter, auf der falschen Seite 152; umgeschlagen 1223; Vorsicht 4, steht fest
+   Florians Beschreibung (vergleichmäßigt): Lippen hart, Seiten verbunden, Verbindung hinten als harte Linie, Mittellinie: steht nach 8 Runden; außen bis 6,16 bewegt; Gaumen bis 19,1 über der Achse, Boden bis 19,4 darunter, auf der falschen Seite 4; umgeschlagen 99; Vorsicht 4, steht fest

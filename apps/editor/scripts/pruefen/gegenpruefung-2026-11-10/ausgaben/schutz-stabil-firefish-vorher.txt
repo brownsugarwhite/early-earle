@@ -1,0 +1,11 @@
+teat firefish.eewesen: 27770 Punkte, 17 Loops, größte Koordinate 754 · Züge 150/300 in 10 Schritten, dann 50 Runden
+zerlegt in 2133 ms
+424 Fälle an 48 Punkten
+WAECHST  4:18 (-48, 582, 0) hinab 150: Runden nach dem Zug 50, Weg zuletzt 1.306, größte Koordinate im Verlauf 754 · Wege 3.83 1.41 1.20 2.41 2.48 2.64 … 0.49 0.51 1.45 0.84 0.32 0.37 0.48 1.10 1.04 1.31
+DAVON    4:15 (-290, 439, 0) Kreuzung hinauf 150: Runden nach dem Zug 27, Weg zuletzt 88024.354, größte Koordinate im Verlauf 91123 · Wege 10.98 5.56 3.74 6.79 11.38 14.57 … 2266.27 2437.94 771.87 194.64 124.33 263.01 1413.72 839.16 4762.90 88024.35
+WAECHST  4:28 (315, 257, 0) hinab 300: Runden nach dem Zug 50, Weg zuletzt 0.300, größte Koordinate im Verlauf 754 · Wege 9.33 3.97 2.78 2.50 1.81 1.50 … 0.13 0.16 0.24 0.21 1.42 4.20 4.15 1.88 0.85 0.30
+WAECHST  4:26 (-171, 222, 0) Kreuzung vor 300: Runden nach dem Zug 50, Weg zuletzt 0.361, größte Koordinate im Verlauf 754 · Wege 4.93 3.61 2.99 2.29 2.52 1.74 … 0.18 0.47 0.44 0.92 1.19 0.92 1.14 0.75 0.44 0.36
+WAECHST  4:25 (-371, 200, 0) Kreuzung zurück 300: Runden nach dem Zug 50, Weg zuletzt 0.428, größte Koordinate im Verlauf 754 · Wege 5.74 4.02 2.86 0.95 0.73 0.48 … 0.31 0.58 0.58 0.71 1.70 2.47 2.25 1.75 1.15 0.43
+WAECHST  4:35 (363, 5, 0) Kreuzung zurück 300: Runden nach dem Zug 50, Weg zuletzt 5.097, größte Koordinate im Verlauf 754 · Wege 2.92 1.73 2.13 3.10 2.61 1.59 … 0.21 0.26 0.49 0.33 1.81 1.02 8.32 4.60 4.49 5.10
+WAECHST  1:1 (121, -81, 179) Kreuzung zurück 150: Runden nach dem Zug 50, Weg zuletzt 0.604, größte Koordinate im Verlauf 754 · Wege 3.58 3.07 1.80 1.43 1.12 0.90 … 0.28 0.31 0.48 0.61 0.74 1.05 1.19 0.96 0.91 0.60
+Ergebnis (ohne Vorsicht): zur Ruhe 319, kriecht 64, schwingt 34, wächst 6, davongelaufen 1 (von 424) · Schritt verkleinert oder stehen geblieben in 0 Fällen
