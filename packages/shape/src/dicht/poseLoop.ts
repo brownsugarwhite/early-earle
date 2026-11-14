@@ -16,10 +16,14 @@ import type { MaulSchnitt } from './maul';
 /** Knochen der Pose in Grad: Unterkiefer öffnet nach unten, Schädel kippt nach oben */
 export type Knochen = { kiefer: number; schaedel: number };
 
-/** Drehwinkel je Punkt der Haut (Bogenmaß) für die Knochen der Pose, nach den Gewichten des Maulschnitts */
-export function knochenWinkel(m: MaulSchnitt, k: Knochen): Float64Array {
+/**
+ * Drehwinkel je Punkt der Haut (Bogenmaß) für die Knochen der Pose, nach den Gewichten des Maulschnitts. `zuBis` (Grad): so weit
+ * darf der Unterkiefer unter die gerechnete Lage schließen (das Maul aus einer Linie ist um diesen Winkel offen gerechnet,
+ * `Loop.maulLinie`; bei −`zuBis` liegen seine Lippen aufeinander). Sonst schließt er nicht über die gerechnete Lage hinaus.
+ */
+export function knochenWinkel(m: MaulSchnitt, k: Knochen, zuBis = 0): Float64Array {
   const n = m.gewicht.length;
-  const a = (Math.max(0, k.kiefer) * Math.PI) / 180;
+  const a = (Math.max(-Math.max(0, zuBis), k.kiefer) * Math.PI) / 180;
   const s = (Math.max(0, k.schaedel) * Math.PI) / 180;
   const theta = new Float64Array(n);
   for (let v = 0; v < n; v++) theta[v] = m.drehsinn * (a * m.gewicht[v]! - s * m.gewichtOben[v]!);

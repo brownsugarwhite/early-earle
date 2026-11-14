@@ -141,6 +141,79 @@ export function knickReihe(h: Haut, l: Loop): KnickReihe | null {
   return R.punkte.length ? R : null;
 }
 
+/**
+ * Brücken: Kanten der Haut innen, die zwei Punkte der Linie direkt verbinden (ohne längs der Linie zu laufen). An ihnen liegt innen
+ * kein Punkt der Haut, der sich führen ließe: Die Haut überspannt die Linie dort flach (am spitzen Ende einer schmalen Form, wo
+ * beide Lippen dicht beieinander liegen, auf den letzten Einheiten vor dem Mundwinkel). Zurück je Brücke ihre Mitte, zum Teilen
+ * (`kantenTeilenMit`): Danach liegt innen an jedem Punkt der Linie ein Punkt der Haut. Nur für einen eingesetzten Ring.
+ */
+export function knickBruecken(h: Haut, l: Loop): { u: number; v: number; f: number }[] {
+  if (l.art !== 'ring' || l.proben.length < 3) return [];
+  if (!l.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2])) return [];
+  const halb = l.proben.map((p) => p.ecken[0]);
+  const kette = [...halb];
+  for (let j = halb.length - 2; j >= 1; j--) {
+    const s = h.spiegel[halb[j]!]!;
+    if (s < 0) return [];
+    kette.push(s);
+  }
+  const m = kette.length;
+  const aufKette = new Int32Array(h.n).fill(-1);
+  kette.forEach((v, k) => {
+    if (aufKette[v]! < 0) aufKette[v] = k;
+  });
+  const laengs = (a: number, b: number): boolean => {
+    const d = Math.abs(aufKette[a]! - aufKette[b]!);
+    return d === 1 || d === m - 1;
+  };
+  // die Dreiecke in Gebiete teilen, getrennt durch die Kanten der Linie; innen ist jedes Gebiet außer dem größten
+  const T = h.tri.length / 3;
+  const anKante = new Map<number, number[]>();
+  const key = (a: number, b: number): number => (a < b ? a * h.n + b : b * h.n + a);
+  for (let t = 0; t < T; t++)
+    for (let e = 0; e < 3; e++) {
+      const k = key(h.tri[3 * t + e]!, h.tri[3 * t + ((e + 1) % 3)]!);
+      const liste = anKante.get(k);
+      if (liste) liste.push(t);
+      else anKante.set(k, [t]);
+    }
+  const gebiet = new Int32Array(T).fill(-1);
+  const groesse: number[] = [];
+  for (let t0 = 0; t0 < T; t0++) {
+    if (gebiet[t0]! >= 0) continue;
+    const nr = groesse.length;
+    let zahl = 0;
+    const stapel = [t0];
+    gebiet[t0] = nr;
+    while (stapel.length) {
+      const t = stapel.pop()!;
+      zahl++;
+      for (let e = 0; e < 3; e++) {
+        const a = h.tri[3 * t + e]!;
+        const b = h.tri[3 * t + ((e + 1) % 3)]!;
+        if (aufKette[a]! >= 0 && aufKette[b]! >= 0 && laengs(a, b)) continue;
+        for (const u of anKante.get(key(a, b)) ?? []) {
+          if (gebiet[u]! >= 0) continue;
+          gebiet[u] = nr;
+          stapel.push(u);
+        }
+      }
+    }
+    groesse.push(zahl);
+  }
+  if (groesse.length < 2) return [];
+  const aussen = groesse.indexOf(Math.max(...groesse));
+  const aus: { u: number; v: number; f: number }[] = [];
+  for (const [k, ts] of anKante) {
+    const a = Math.floor(k / h.n);
+    const b = k % h.n;
+    if (aufKette[a]! < 0 || aufKette[b]! < 0 || laengs(a, b)) continue;
+    if (!ts.some((t) => gebiet[t] !== aussen)) continue;
+    aus.push({ u: a, v: b, f: 0.5 });
+  }
+  return aus;
+}
+
 /** An einem Punkt der Linie: Tangente, die Richtung der Haut außen von der Linie weg, ihre Normale nach außen; null ohne Haut außen */
 export function knickRahmen(h: Haut, R: KnickReihe, k: number): { t: V3; uAussen: V3; nAussen: V3 } | null {
   const x = R.kette[k]!;

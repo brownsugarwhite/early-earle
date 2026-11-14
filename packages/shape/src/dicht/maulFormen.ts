@@ -32,8 +32,8 @@
 // zweite Fassung (ihr Griff nach innen knickt; an einer Kreuzung ist der Knick der kreuzenden Linie die Kante).
 
 import type { HautGewichte, HautOptionen } from './ausKurven';
-import { loopEinsetzen } from './einsetzen';
-import { knickQuer, knickReihe } from './kantenWinkel';
+import { kantenTeilenMit, loopEinsetzen } from './einsetzen';
+import { knickBruecken, knickQuer, knickReihe } from './kantenWinkel';
 import type { Haut, V3 } from './kurven';
 import {
   type Loop,
@@ -282,8 +282,27 @@ export function* maulFormenSchritte(h0: Haut, loops0: readonly Loop[], maulId: n
     return endlich() ? null : 'die Haut kommt beim Formen nicht zur Ruhe';
   };
 
+  /**
+   * Brücken teilen (14.11.): Wo eine Kante der Haut innen beide Lippen direkt verbindet (am Mundwinkel einer spitzen Form, auf den
+   * letzten Einheiten), liegt innen kein Punkt, der sich führen ließe; die Haut überspannte das Maul dort flach, und am Übergang zur
+   * Tasche verhedderten sich die Dreiecke. Nach dem Teilen liegt innen an jedem Punkt der Linie ein Punkt der Haut.
+   */
+  const brueckenTeilen = (): void => {
+    for (let g = 0; g < 4; g++) {
+      const B = knickBruecken(haut, finde(maulId));
+      if (B.length === 0) return;
+      const r = kantenTeilenMit(haut, loops, B);
+      if (!r) return;
+      her = Int32Array.from({ length: r.haut.n }, (_, v) => (v < her.length ? her[v]! : -1));
+      haut = r.haut;
+      loops = r.loops;
+      netzNeu = true;
+    }
+  };
+
   // ---------- Weg „Kante“ (dritte Fassung): Die Maullinie trägt ihren Knick selbst, es kommt keine Linie dazu ----------
   if (wegKante) {
+    brueckenTeilen();
     // Angaben an den beiden Enden des Rings (die Lippen an der Mitte) und am Mundwinkel; dazwischen gleitet der Knick. Gedreht wird
     // vom Knick, den die Haut dort jetzt hat, in Stufen zum Soll: Die erste Reihe innen wird dabei in jeder Runde geführt (`LoopZug`).
     const wo = (L: Loop): LoopPunkt[] => [L.punkte[0]!, L.punkte.find((p) => p.mundwinkel)!, L.punkte[L.punkte.length - 1]!];
@@ -318,6 +337,7 @@ export function* maulFormenSchritte(h0: Haut, loops0: readonly Loop[], maulId: n
       });
       const fehler = verfeinern();
       if (fehler) return { fehler };
+      brueckenTeilen();
       opt.zwischen?.(`Stufe ${b}`, haut, loops, her);
     }
     const steht = yield* rechnen('setzen');

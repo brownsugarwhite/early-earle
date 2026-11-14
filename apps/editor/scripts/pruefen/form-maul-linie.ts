@@ -25,7 +25,7 @@
 // Aufruf aus packages/shape: npx vite-node ../../apps/editor/scripts/pruefen/form-maul-linie.ts
 //   DREIECKE=2000   WINKEL0=20 (so weit ist die gerechnete Lage offen)   AUF=30   BOGEN=6 (Schwung der Linie)   AUS=<datei.html>
 //   RINGE=-10,70 (Haltelinien: Ringe um den Körper an diesen Stellen x; ohne Angabe die Kugel allein)
-import { loopEinsetzen } from '../../../../packages/shape/src/dicht/einsetzen';
+import { einsetzenGrund, loopEinsetzen } from '../../../../packages/shape/src/dicht/einsetzen';
 import { knickRahmen, knickReihe } from '../../../../packages/shape/src/dicht/kantenWinkel';
 import { type Haut, type V3, hautAus } from '../../../../packages/shape/src/dicht/kurven';
 import { type Loop, LoopZug, formAusZeichnung, griffeAnlegen, hautLagen, istSichtbar, kanteBei, mittlereKante, pfadLagen } from '../../../../packages/shape/src/dicht/loops';
@@ -33,7 +33,7 @@ import { maulFormen } from '../../../../packages/shape/src/dicht/maulFormen';
 import { maulGeformtAmLoop } from '../../../../packages/shape/src/dicht/maulLoop';
 import { knochenDrehen } from '../../../../packages/shape/src/dicht/poseLoop';
 import { rundAusSeite } from '../../../../packages/shape/src/dicht/rund';
-import { verdichten } from '../../../../packages/shape/src/dicht/verdichten';
+import { nadelnZusammenlegen, verdichten } from '../../../../packages/shape/src/dicht/verdichten';
 import { type BlattBild, type BlattLinie, type BlattSchnitt, blattSchreiben } from './form-direkt-blatt';
 import { type Schnitt, mitSchnitten, verdichtenWieImFenster } from './form-direkt-faelle';
 
@@ -98,7 +98,7 @@ const MAUL = loops.length + 1;
   const form = formAusZeichnung(haut, 'seite', uv, [0, iK, 2 * N + 1 - iK], MAUL);
   if (!form) throw new Error('die Zeichnung ergibt keine Form');
   const r0 = loopEinsetzen(haut, [...loops, form], loops.length);
-  if (!r0) throw new Error('die Form lässt sich nicht einsetzen');
+  if (!r0) throw new Error(`die Form lässt sich nicht einsetzen (${einsetzenGrund})`);
   // der Mundwinkel ist eine Ecke (dort kehrt die Linie um): vor dem Anlegen der Griffe, sonst werden sie dort wie an einem glatten
   // Punkt angepasst
   const l0 = r0.loops[r0.loops.length - 1]!;
@@ -108,6 +108,14 @@ const MAUL = loops.length + 1;
   griffeAnlegen(l0, l0.ruhe, true);
   haut = r0.haut;
   loops = r0.loops;
+  // wie das Fenster gleich nach dem Einsetzen: Nadeln an der neuen Linie zusammenlegen (an der Spitze des Keils liegen ihre Punkte dicht)
+  if (process.env.NADELN !== '0') {
+    const v = nadelnZusammenlegen(haut, loops, mk);
+    if (v) {
+      haut = v.haut;
+      loops = v.loops;
+    }
+  }
 }
 const finde = (): Loop => loops.find((l) => l.id === MAUL)!;
 
@@ -316,8 +324,8 @@ if (reiheInnen)
     if (e.some((v) => reiheInnen.innen[v]) || e.every((v) => reiheInnen.aufKette[v]! >= 0)) taschenDreieck[t] = 1;
   }
 /** Schnitt der Haut mit der Ebene z = z0, nur vorn am Maul: Strecken in der Seite, dazu ob die Strecke zur Tasche gehört */
-function schnittStrecken(H: Haut, z0: number): [number, number, number, number, number][] {
-  const out: [number, number, number, number, number][] = [];
+function schnittStrecken(H: Haut, z0: number): [number, number, number, number, number, number][] {
+  const out: [number, number, number, number, number, number][] = [];
   for (let k = 0; k < H.tri.length; k += 3) {
     const pkt: [number, number][] = [];
     for (let e = 0; e < 3; e++) {
@@ -327,7 +335,7 @@ function schnittStrecken(H: Haut, z0: number): [number, number, number, number, 
       const g = (a.z - z0) / (a.z - b.z);
       pkt.push([a.x + g * (b.x - a.x), a.y + g * (b.y - a.y)]);
     }
-    if (pkt.length === 2 && Math.max(pkt[0]![0], pkt[1]![0]) < -20) out.push([pkt[0]![0], pkt[0]![1], pkt[1]![0], pkt[1]![1], taschenDreieck[k / 3]!]);
+    if (pkt.length === 2 && Math.max(pkt[0]![0], pkt[1]![0]) < -20) out.push([pkt[0]![0], pkt[0]![1], pkt[1]![0], pkt[1]![1], taschenDreieck[k / 3]!, k / 3]);
   }
   return out;
 }
@@ -376,6 +384,17 @@ function kreuzungen(H: Haut): { aussen: number; durch: number; innen: number; wo
         else if (a[4] || b[4]) zahl.durch++;
         else zahl.aussen++;
         if (!(a[4] && b[4])) orte.push(`x ${z1(x)}, y ${z1(y)}, z ${z1(z0)}`);
+        if (process.env.DIAG && !(a[4] && b[4])) {
+          const art = (v: number): string => (!reiheInnen ? '?' : reiheInnen.aufKette[v]! >= 0 ? `L${reiheInnen.aufKette[v]}` : reiheInnen.innen[v] ? 'i' : 'a');
+          const dr = (t: number): string =>
+            [0, 1, 2]
+              .map((e) => {
+                const v = H.tri[3 * t + e]!;
+                return `${art(v)}#${v}(${z1(H.pos[3 * v]!)} ${z1(H.pos[3 * v + 1]!)} ${z1(H.pos[3 * v + 2]!)})`;
+              })
+              .join(' ');
+          console.log(`      DIAG z ${z1(z0)}: ${a[4] ? 'Tasche' : 'außen'} [${dr(a[5])}]  ×  ${b[4] ? 'Tasche' : 'außen'} [${dr(b[5])}]`);
+        }
       }
   }
   zahl.wo = orte.join('; ');
@@ -508,6 +527,25 @@ if (AUS) {
         mass: 430,
         mitte: [0, 0, 0],
       },
+      ...(process.env.NAH
+        ? [
+            {
+              titel: 'Der Mundwinkel, vergrößert',
+              bilder: [
+                bild('zu', zu.H, ''),
+                bild('zu, ohne Linien', zu.H, '', false),
+                bild('wie gerechnet', gerechnet.H, ''),
+                bild('auf', auf.H, ''),
+              ].map((b) => ({ ...b, schnitt: [] })),
+              blicke: [
+                ['Seite', 0, 0, 0.85],
+                ['von hinten oben', -60, 35, 0.85],
+              ] as const,
+              mass: 70,
+              mitte: [W.ref.x - 12, W.ref.y - 4, W.ref.z] as const,
+            },
+          ]
+        : []),
     ],
     1640,
     'Schwarze Linien: Kante an (die Lippen). Rot: eine Fläche, deren Rückseite man sieht. Flach schattiert, damit jeder Knick zu sehen ist (das übertreibt gegenüber dem Fenster). Unter jedem Bild der Schnitt durch die Mitte.',

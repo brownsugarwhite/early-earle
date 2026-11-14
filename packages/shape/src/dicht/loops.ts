@@ -91,6 +91,11 @@ export type Loop = {
    * wird. Fehlt: An ihm entsteht das Maul wie bisher erst in der Anzeige (die Fläche wird weggeschnitten, das Innere eingesetzt).
    */
   maulGeformt?: boolean;
+  /**
+   * Das Maul aus nur einer Linie (14.11., `maulLinie.ts`): Die zweite Lippe dieses Rings ist das um den Mundwinkel gedrehte Abbild
+   * der ersten; die Zahl ist der Winkel in Grad, um den die gerechnete Lage offen ist („zu“ dreht der Kieferknochen um ihn zurück).
+   */
+  maulLinie?: number;
 };
 
 /** Blattkoordinaten (u, v) und Tiefe zum Betrachter: Seite von +z, Front von −x, Top von +y */
