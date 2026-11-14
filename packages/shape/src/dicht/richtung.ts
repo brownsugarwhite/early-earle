@@ -78,11 +78,15 @@ export function linienRichtung(
     const n = l.proben.length;
     const p = (k: number): V => {
       if (l.art === 'ring') {
+        // hinter einem Ende auf der Mittelebene liegt das Spiegelbild; hinter einem Ende, das an einer anderen Linie hängt
+        // (Abzweigung, `Loop.haengt`), nichts: Dort zählt das Ende selbst
         if (k < 0) {
+          if (l.haengt?.[0]) return lage(li, 0);
           const q = lage(li, Math.min(-k, n - 1));
           return [q[0], q[1], -q[2]];
         }
         if (k > n - 1) {
+          if (l.haengt?.[1]) return lage(li, n - 1);
           const q = lage(li, Math.max(2 * (n - 1) - k, 0));
           return [q[0], q[1], -q[2]];
         }

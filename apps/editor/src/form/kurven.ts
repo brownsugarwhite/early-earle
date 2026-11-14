@@ -46,6 +46,7 @@ import {
   type ZeichnungsStueck,
   bereichUm,
   direktLoeserFuer,
+  abzweigen,
   eckenAuto,
   einfluss,
   ergaenzen,
@@ -111,6 +112,7 @@ import {
   systemAusDaten,
   verschiebungLaengs,
   einsetzenGrund,
+  endeAufMitte,
   istMaulLinie,
   maulLinieAusZeichnung,
   obereLippe,
@@ -1043,7 +1045,7 @@ function innenZeigen(): void {
  */
 function maulAnlegen(): boolean {
   if (maul && loops[loopNr(maul.id)]?.art === 'ring') return true;
-  const l = auswahl.map((w) => loops[loopNr(w.l)]).find((x) => x?.art === 'ring');
+  const l = auswahl.map((w) => loops[loopNr(w.l)]).find((x) => x?.art === 'ring' && !x.haengt);
   // Ein harter Ring ist ein geformtes Maul (von Hand oder mit „Maul formen“): Was er umschließt, sind Gaumen und Boden, echte Haut.
   // Die Knochen schneiden dort nichts weg (Etappe 2, 13.11.; die schmale Form bisher ist eine weiche Linie auf geschlossener Haut).
   if (l && !l.maulGeformt && l.kante && l.punkte.every((p) => p.kante !== false)) l.maulGeformt = true;
@@ -1304,7 +1306,7 @@ function maulFormenGewaehlt(standDavor?: Schnappschuss): void {
     statusZeigen();
     return;
   }
-  const l = auswahl.map((w) => loops[loopNr(w.l)]).find((x) => x?.art === 'ring');
+  const l = auswahl.map((w) => loops[loopNr(w.l)]).find((x) => x?.art === 'ring' && !x.haengt);
   if (!l) {
     meldung = 'Maul formen: erst mit F eine schmale Form ums Maul zeichnen (vorn über den Umriss oder über die Mitte) und wählen';
     statusZeigen();
@@ -2189,6 +2191,7 @@ function blattZeichnen(a: Ansicht): void {
   if (entwurf && entwurf.a === a) el.append(element('line', 'entwurf', { x1: entwurf.x0, y1: entwurf.y0, x2: entwurf.x1, y2: entwurf.y1 }));
   if (spur && spur.a === a) el.append(element('polyline', 'entwurf', { points: spur.p.map((q) => q.join(',')).join(' ') }));
   if (stift && stift.a === a) stiftZeichnen(el, a, rp);
+  if (abzweig && abzweig.a === a) abzweigZeichnen(el, a);
 }
 
 function allesZeigen(): void {
@@ -2456,7 +2459,7 @@ function abbildung(z: Zug, X: number, Y: number): (p: V3) => V3 {
 
 /** Punkt einer Linie in der Mittelebene bzw. am Ende eines Rings: z bleibt 0; Ringe nicht unter die Mitte */
 function zFest(l: Loop, s: number): boolean {
-  return l.art === 'mitte' || (l.art === 'ring' && (s <= 1e-6 || s >= l.laenge - 1e-6));
+  return l.art === 'mitte' || (s <= 1e-6 && endeAufMitte(l, 0)) || (s >= l.laenge - 1e-6 && endeAufMitte(l, 1));
 }
 
 /** größter Abstand der Proben eines Loops von seiner ersten */
@@ -2590,7 +2593,7 @@ function mitRest(z: Zug, li: number, d: Float64Array | null): Float64Array | nul
  */
 function zGrenzen(l: Loop, _S: Float64Array, d: Float64Array): void {
   const n = l.proben.length;
-  for (let j = 0; j < n; j++) if (l.art === 'mitte' || (l.art === 'ring' && (j === 0 || j === n - 1))) d[3 * j + 2] = 0;
+  for (let j = 0; j < n; j++) if (l.art === 'mitte' || (j === 0 && endeAufMitte(l, 0)) || (j === n - 1 && endeAufMitte(l, 1))) d[3 * j + 2] = 0;
 }
 /** `zGrenzen` hat seit dem letzten Zurücksetzen eine Linie an der Mittelebene gehalten (für `Zug.begrenzt`) */
 let anMitteGehalten = false;
@@ -4734,9 +4737,11 @@ function stelleAmPfad(a: Ansicht, l: Loop, X: number, Y: number, m: boolean): nu
  * Punkt liegt (im Blatt näher als 3 Bildpunkte). Vorher galt „nicht näher als eine Startkante in s“: s ist aber die Stelle beim Anlegen,
  * nach einem weiten Zug lagen in diesem Abstand bis 25 Einheiten Linie (am herausgezogenen Ohr ließ sich neben den Punkten keiner setzen).
  */
-function punktAmKlick(a: Ansicht, id: number, X: number, Y: number, m: boolean): void {
-  const l = loops[loopNr(id)];
-  if (!l) return;
+/**
+ * Der Punkt der Linie an der Stelle (X, Y) im Blatt: der vorhandene, wenn dort einer liegt (näher als 3 Bildpunkte), sonst ein neuer
+ * (wie beim Doppelklick; die Linie ändert sich nicht). `neu`: Er wurde eingefügt.
+ */
+function punktAufLinie(a: Ansicht, l: Loop, X: number, Y: number, m: boolean): { p: LoopPunkt; neu: boolean } {
   let bs = 0;
   if (exakt(l)) bs = stelleAmPfad(a, l, X, Y, m);
   else {
@@ -4759,19 +4764,27 @@ function punktAmKlick(a: Ansicht, id: number, X: number, Y: number, m: boolean):
     }
   }
   const s = skala(a);
-  if (
-    l.punkte.some((p) => {
-      const [x, y] = imBlatt(a, m ? spiegeln(p.ref) : p.ref);
-      return Math.hypot(x - X, y - Y) * s < 3;
-    })
-  )
-    return;
-  zurueck.push(schnappschuss());
+  const da = l.punkte.find((p) => {
+    if (!istSichtbar(p)) return false;
+    const [x, y] = imBlatt(a, m ? spiegeln(p.ref) : p.ref);
+    return Math.hypot(x - X, y - Y) * s < 3;
+  });
+  if (da) return { p: da, neu: false };
   const p = punktEinfuegen(l, bs, undefined, exakt(l));
   // (am Maul aus einer Linie bekommt die andere Lippe den Zwilling)
   if (!grund && istMaulLinie(l)) zwillingeAngleichen(l);
+  return { p, neu: true };
+}
+
+function punktAmKlick(a: Ansicht, id: number, X: number, Y: number, m: boolean): void {
+  const l = loops[loopNr(id)];
+  if (!l) return;
+  const vorher = schnappschuss();
+  const r = punktAufLinie(a, l, X, Y, m);
+  if (!r.neu) return;
+  zurueck.push(vorher);
   linienAufPfad();
-  auswahl = [{ l: id, i: l.punkte.indexOf(p) }];
+  auswahl = [{ l: id, i: l.punkte.indexOf(r.p) }];
   allesZeigen();
 }
 
@@ -4822,6 +4835,26 @@ function loeschen(): void {
   const punkte = auswahl.filter((w) => w.i >= 0).map((w) => loops[loopNr(w.l)]?.punkte[w.i]);
   const ganz = new Set(auswahl.filter((w) => w.i < 0).map((w) => w.l));
   const eigene = new Set(punkte.filter((p) => p && p.kreuzung === undefined));
+  // Abzweigungen: Ein hängendes Ende braucht einen Punkt einer anderen Linie. Geht die letzte Linie, an der es hängt, bleibt die
+  // Abzweigung nicht ohne Halt zurück: erst sie löschen (oder beide zusammen wählen)
+  {
+    const lose = loops.filter(
+      (x) =>
+        x.haengt &&
+        !ganz.has(x.id) &&
+        ([0, 1] as const).some((ende) => {
+          if (!x.haengt![ende]) return false;
+          const k = x.punkte[ende === 0 ? 0 : x.punkte.length - 1]?.kreuzung;
+          const hielt = (l: Loop): boolean => l !== x && l.punkte.some((q) => q.kreuzung === k);
+          return k !== undefined && loops.some((l) => ganz.has(l.id) && hielt(l)) && !loops.some((l) => !ganz.has(l.id) && hielt(l));
+        }),
+    );
+    if (lose.length) {
+      meldung = `An dieser Linie ${lose.length === 1 ? 'hängt eine Abzweigung' : `hängen ${lose.length} Abzweigungen`}: erst sie löschen oder zusammen mit ihr wählen (⇧-Klick)`;
+      statusZeigen();
+      return;
+    }
+  }
   // das Maul aus einer Linie: Mit einem Punkt geht sein Zwilling auf der anderen Lippe (ist der eine Kreuzung, bleiben beide); der
   // Mundwinkel bleibt, er hält das Maul
   if (!grund)
@@ -4845,7 +4878,11 @@ function loeschen(): void {
       }
     }
   if (eigene.size === 0 && ganz.size === 0) {
-    if (punkte.length) meldung = 'Kreuzungen bleiben, solange sich die Loops kreuzen';
+    if (punkte.length) {
+      // der Punkt, an dem eine Abzweigung hängt (ihr eigenes Ende oder der Punkt der anderen Linie)
+      const haengtDort = punkte.some((p) => p?.kreuzung !== undefined && loops.some((x) => x.haengt && ([0, 1] as const).some((ende) => x.haengt![ende] && x.punkte[ende === 0 ? 0 : x.punkte.length - 1]?.kreuzung === p.kreuzung)));
+      meldung = haengtDort ? 'Dieser Punkt bleibt, solange eine Abzweigung an ihm hängt (die Abzweigung selbst lässt sich löschen)' : 'Kreuzungen bleiben, solange sich die Loops kreuzen';
+    }
     statusZeigen();
     return;
   }
@@ -4859,8 +4896,13 @@ function loeschen(): void {
   const bleiben = loops.map((l) => !ganz.has(l.id));
   loops = loops.filter((_, i) => bleiben[i]);
   const verschBleiben = versch.filter((_, i) => bleiben[i]);
-  // Kreuzungen mit einem gelöschten Loop werden gewöhnliche Punkte: Die anderen Loops behalten ihre Linie und ihre Griffe
-  for (const l of loops) for (const p of l.punkte) if (p.kreuzung !== undefined && wegKreuz.has(p.kreuzung)) delete p.kreuzung;
+  // Kreuzungen mit einem gelöschten Loop werden gewöhnliche Punkte: Die anderen Loops behalten ihre Linie und ihre Griffe. Teilen
+  // sich noch zwei Linien den Punkt (eine Abzweigung hing an einer Kreuzung), bleibt er ihr gemeinsamer
+  {
+    const zahl = new Map<number, number>();
+    for (const l of loops) for (const p of l.punkte) if (p.kreuzung !== undefined) zahl.set(p.kreuzung, (zahl.get(p.kreuzung) ?? 0) + 1);
+    for (const l of loops) for (const p of l.punkte) if (p.kreuzung !== undefined && wegKreuz.has(p.kreuzung) && (zahl.get(p.kreuzung) ?? 0) < 2) delete p.kreuzung;
+  }
   eckenAuto(loops);
   kantenKnicken(loops, vorherEcken).forEach((d, li) => {
     if (!d) return;
@@ -4999,6 +5041,99 @@ function stiftFertig(): void {
   allesZeigen();
 }
 
+// ---------- Abzweigung mit P (Zwischenschritt, 14.11.) ----------
+
+/**
+ * Abzweigung (Florian, 14.11.: „grundsätzlich soll man von jeder linie und von jedem punkt aus eine verbundene abzweigung erstellen
+ * können“): Mit P auf einem Punkt oder einer Linie drücken, zu einem anderen Punkt oder einer anderen Linie ziehen, loslassen. Die
+ * neue Linie nimmt den geraden Weg über die Haut, hängt an beiden Punkten und teilt sie mit ihren Linien (`abzweigen` im Kern); auf
+ * einer Linie ohne Punkt entsteht dort einer. Vom Punkt zu seinem Spiegelbild gezogen endet sie auf der Mitte.
+ */
+type AbzweigOrt = { id: number; i: number; m: boolean; X: number; Y: number };
+/** so weit (in mittleren Kanten) darf der Pfad einer neuen Abzweigung neben ihrem Weg über die Haut liegen, bevor sie Punkte dazwischen bekommt */
+const ABZWEIG_GENAU = 0.25;
+let abzweig: { a: Ansicht; von: AbzweigOrt } | null = null;
+
+/** der Punkt oder die Linie unter dem Zeiger (kein Griff): wo eine Abzweigung beginnen oder enden kann */
+function abzweigOrt(el: Element | null | undefined, X: number, Y: number): AbzweigOrt | null {
+  const l = el?.getAttribute('data-l');
+  if (!el || l === null || l === undefined || el.getAttribute('data-g')) return null;
+  if (loopNr(Number(l)) < 0) return null;
+  return { id: Number(l), i: Number(el.getAttribute('data-i') ?? -1), m: el.getAttribute('data-m') === '1', X, Y };
+}
+
+/** das Gummiband vom Anfang zur Maus */
+function abzweigZeichnen(el: SVGElement, a: Ansicht): void {
+  const o = abzweig!.von;
+  const l = loops[loopNr(o.id)];
+  const p = o.i >= 0 ? l?.punkte[o.i] : undefined;
+  const [x0, y0] = p ? imBlatt(a, o.m ? spiegeln(p.ref) : p.ref) : [o.X, o.Y];
+  if (maus && maus.a === a) el.append(element('line', 'entwurf stift', { x1: x0, y1: y0, x2: maus.X, y2: maus.Y }));
+}
+
+function abzweigungErstellen(a: Ansicht, von: AbzweigOrt, nach: AbzweigOrt | null): void {
+  if (grund) {
+    meldung = 'Eine Abzweigung entsteht in der Grundform (erst „Fressen“ aus)';
+    return;
+  }
+  if (!nach) {
+    meldung = 'Abzweigung: mit P auf einem Punkt oder einer Linie drücken, zu einem anderen Punkt oder einer anderen Linie ziehen und dort loslassen';
+    return;
+  }
+  const vorher = schnappschuss();
+  const zurueckMit = (text: string): void => {
+    wiederherstellen(vorher);
+    meldung = text;
+  };
+  /** der Punkt am Ort: der getroffene, oder der an dieser Stelle der Linie (dort entsteht einer, wenn keiner liegt) */
+  const punktAm = (o: AbzweigOrt): { l: Loop; p: LoopPunkt } | null => {
+    const l = loops[loopNr(o.id)];
+    if (!l) return null;
+    const p = o.i >= 0 ? l.punkte[o.i] : punktAufLinie(a, l, o.X, o.Y, o.m).p;
+    return p ? { l, p } : null;
+  };
+  // beide Punkte fassen, erst danach ihre Nummern lesen (ein neuer Punkt verschiebt die Nummern der Punkte seiner Linie)
+  const pv = punktAm(von);
+  const pn = punktAm(nach);
+  if (!pv || !pn) return zurueckMit('Abzweigung: Der Punkt am Anfang oder am Ende ließ sich nicht fassen');
+  const avJetzt = { loop: loops.indexOf(pv.l), punkt: pv.l.punkte.indexOf(pv.p) };
+  const an = { loop: loops.indexOf(pn.l), punkt: pn.l.punkte.indexOf(pn.p) };
+  const gleich = avJetzt.loop === an.loop && avJetzt.punkt === an.punkt;
+  const mitte = (x: { loop: number; punkt: number }): boolean => Math.abs(loops[x.loop]!.punkte[x.punkt]!.ref.z) < 1e-9;
+  // über die Mitte: nur zum Spiegelbild des eigenen Anfangs (dann endet die Linie auf der Mitte); Punkte auf der Mitte sind ihr eigenes
+  const drueben = von.m !== nach.m && !mitte(avJetzt) && !mitte(an);
+  if (gleich && !drueben) return zurueckMit('Abzweigung: Anfang und Ende sind derselbe Punkt');
+  if (drueben && !gleich) return zurueckMit('Abzweigung: Über die Mitte führt sie nur zum Spiegelbild ihres Anfangs (oder sie endet an einem Punkt der Mittellinie)');
+  const nAlt = haut.n;
+  const r = abzweigen(haut, loops, avJetzt, drueben ? 'spiegel' : an, naechsteId, naechsteKreuzung);
+  if ('fehler' in r) return zurueckMit(`Abzweigung geht so nicht: ${r.fehler}`);
+  const id = naechsteId++;
+  haut = r.haut;
+  loops = r.loops;
+  naechsteKreuzung = r.naechsteKreuzung;
+  netzGewachsen(nAlt, nurGewachsen(haut.n, nAlt), null);
+  // wie nach jedem neuen Loop: Kreuzungen mit den anderen Linien, Ecken an Kanten, Griffe aus dem Verlauf, Nadeln weg
+  kreuzungenSuchen(loops[loops.length - 1]);
+  eckenAuto(loops);
+  const neu = loops[loops.length - 1]!;
+  // Punkte dazwischen nur, wo die Linie sonst weiter als eine Viertelkante von der Haut wegspränge (ein langer Weg über gewölbte
+  // Haut lässt sich mit einem Kurvenstück nicht beschreiben: Am 14.11. verzog eine Abzweigung vom Flügel zur Mitte die ganze Form)
+  const punkteVorher = neu.punkte.length;
+  griffeAnlegen(neu, neu.ruhe, true, ABZWEIG_GENAU * MK);
+  const dazu = neu.punkte.filter(istSichtbar).length - punkteVorher;
+  nadelnWeg();
+  geometrieNeu();
+  linienAufPfad(loops.find((x) => x.id === id));
+  einsetzenNachholen();
+  ruheNoetig();
+  zurueck.push(vorher);
+  auswahl = [{ l: id, i: -1 }];
+  const mitPunkten = dazu > 0 ? ` Sie hat ${dazu === 1 ? 'einen Punkt' : `${dazu} Punkte`} dazwischen bekommen, damit sie der Haut folgt.` : '';
+  meldung = drueben
+    ? `Abzweigung zum Spiegelbild: Die Linie endet auf der Mitte und läuft dort rund in ihre andere Hälfte.${mitPunkten} · ⌘Z nimmt sie zurück`
+    : `Abzweigung: Die Linie hängt an beiden Punkten und teilt sie (wer einen zieht, zieht beide Linien).${mitPunkten} · Doppelklick setzt Punkte auf sie · ⌘Z nimmt sie zurück`;
+}
+
 // ---------- Maus und Tasten ----------
 
 let maus: { a: Ansicht; X: number; Y: number } | null = null;
@@ -5043,6 +5178,15 @@ function druecken(a: Ansicht, e: PointerEvent): void {
     return;
   }
   if (modus === 'stift') {
+    // auf einem Punkt oder einer Linie begonnen (und noch kein Punkt gesetzt): eine Abzweigung
+    const ort = stift ? null : abzweigOrt(e.target as Element, X, Y);
+    if (ort) {
+      abzweig = { a, von: ort };
+      maus = { a, X, Y };
+      blaetter[a].setPointerCapture(e.pointerId);
+      blattZeichnen(a);
+      return;
+    }
     if (stiftDruecken(a, X, Y)) blaetter[a].setPointerCapture(e.pointerId);
     return;
   }
@@ -5112,6 +5256,10 @@ function bewegen(a: Ansicht, e: PointerEvent): void {
     blattZeichnen(a);
     return;
   }
+  if (abzweig && abzweig.a === a) {
+    blattZeichnen(a);
+    return;
+  }
   if (stift && stift.a === a) {
     stiftBewegen(X, Y);
     blattZeichnen(a);
@@ -5120,9 +5268,27 @@ function bewegen(a: Ansicht, e: PointerEvent): void {
   if (zug && !zug.modal && zug.ansicht === a) zugBewegen(X, Y);
 }
 
-function loslassen(a: Ansicht): void {
+function loslassen(a: Ansicht, e: PointerEvent | null): void {
   if (schwenk && schwenk.a === a) {
     schwenk = null;
+    return;
+  }
+  if (abzweig && abzweig.a === a) {
+    const von = abzweig.von;
+    abzweig = null;
+    modus = 'frei';
+    // worauf losgelassen wurde: der oberste Punkt oder die oberste Linie dieses Blatts unter dem Zeiger
+    let nach: AbzweigOrt | null = null;
+    if (e) {
+      const [X, Y] = blattPunkt(a, e);
+      for (const el of document.elementsFromPoint(e.clientX, e.clientY)) {
+        if (!blaetter[a].contains(el)) continue;
+        nach = abzweigOrt(el, X, Y);
+        if (nach) break;
+      }
+    }
+    abzweigungErstellen(a, von, nach);
+    allesZeigen();
     return;
   }
   if (entwurf && entwurf.a === a) {
@@ -5159,8 +5325,8 @@ for (const a of ['seite', 'front', 'top'] as const) {
   const el = blaetter[a];
   el.addEventListener('pointerdown', (e) => druecken(a, e));
   el.addEventListener('pointermove', (e) => bewegen(a, e));
-  el.addEventListener('pointerup', () => loslassen(a));
-  el.addEventListener('pointercancel', () => loslassen(a));
+  el.addEventListener('pointerup', (e) => loslassen(a, e));
+  el.addEventListener('pointercancel', () => loslassen(a, null));
   el.addEventListener('contextmenu', (e) => e.preventDefault());
   // Rad und Pinch zoomen zum Zeiger, zwei Finger auf dem Trackpad verschieben (wie im Editor); nicht passiv, sonst zoomt die Seite
   el.addEventListener(
@@ -5292,6 +5458,7 @@ window.addEventListener('keydown', (e) => {
     entwurf = null;
     spur = null;
     stift = null;
+    abzweig = null;
     auswahl = [];
     meldung = '';
     allesZeigen();
@@ -5994,6 +6161,7 @@ if (BEHALTEN) behaltenesHolen();
     loops.map((l) => ({
       id: l.id,
       art: l.art,
+      haengt: l.haengt ?? null,
       proben: l.proben.length,
       laenge: l.laenge,
       punkte: l.punkte.map((p) => ({

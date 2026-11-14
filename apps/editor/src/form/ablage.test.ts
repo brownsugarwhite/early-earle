@@ -46,6 +46,8 @@ function standAus(dreiecke = 1200): WesenStand {
   // das Maul aus einer Linie (14.11.): der Winkel der gerechneten Lage am Loop bleibt beim Sichern und Laden
   loops[0]!.maulLinie = 20;
   loops[0]!.maulGeformt = true;
+  // eine Abzweigung (14.11.): welches Ende an einer anderen Linie hängt, bleibt beim Sichern und Laden
+  loops[0]!.haengt = [true, false];
   // ein paar Zahlen, die als Text leicht leiden: sehr klein, negativ null, lange Brüche
   h.pos[0] = 1 / 3;
   h.pos[1] = -0;

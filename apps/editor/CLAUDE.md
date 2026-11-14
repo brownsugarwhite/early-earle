@@ -75,14 +75,20 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   ohne Linien durchs Maul** (Kugel, Strich in Seite oder Front). Kreuzt eine andere Linie das Maul (Mittellinie, Loop auf einer
   Seite: so sind Florians Formen), verlieren die Lippen ihre Paarung, und `MITTE=1` erfüllt den Punkt „fern vom Maul bleibt die
   Form“ nicht (siehe Fallen). Nicht weiterbauen, bevor das Maul-System beschrieben ist (`docs/UEBERGABE.md`, Abschnitt 7.16).
-- **Abzweigungen** (14.11.; bisher nur im Kern, Etappe 1 des Zwischenschritts im Plan): eine offene Linie, die an Punkten anderer
-  Linien hängt und sie mit ihnen teilt. Im Modell ein `ring` mit `Loop.haengt = [Anfang, Ende]`; `endeAufMitte(l, 0 | 1)` sagt, ob
-  ein Ende auf der Mittelebene liegt (der Ring wie bisher) oder hängt. `abzweigen(h, loops, von, nach, id, naechsteKreuzung)` in
-  `einsetzen.ts` legt sie von Punkt zu Punkt an: Weg = Schnitt der Haut mit der Ebene durch beide Punkte und ihre mittlere Normale,
-  jede gekreuzte Kante geteilt (spiegelgleich, andere Ketten bekommen den Punkt). Danach `eckenAuto` und `griffeAnlegen`. Probe
-  `form-abzweigung.ts` (Florians Beispiel: Kreis mit vier Punkten, Kreuz, Punkt in der Kreuzung herausgezogen; `KANTE=1`), Test
-  `abzweigung.test.ts`. **Noch nicht gebaut:** P im Fenster, Sichern und Laden (`haengt`), Löschen, ein Ende auf der Mitte, Start
-  oder Ende auf einer Linie ohne Punkt, Punkte dazwischen.
+- **Abzweigungen** (14.11.; nur in `form-bau`, Zwischenschritt im Plan): eine offene Linie, die an Punkten anderer Linien hängt
+  und sie mit ihnen teilt (gleiche `kreuzung`). Im Modell ein `ring` mit `Loop.haengt = [Anfang, Ende]`; `endeAufMitte(l, 0 | 1)`
+  sagt, ob ein Ende auf der Mittelebene liegt (der Ring wie bisher) oder hängt. **Im Fenster:** P auf einem Punkt oder einer Linie
+  drücken, zu einem anderen Punkt oder einer anderen Linie ziehen, loslassen (`abzweig`, `abzweigOrt`, `abzweigungErstellen`; auf
+  einer Linie ohne Punkt entsteht dort einer, `punktAufLinie`); vom Punkt auf das Spiegelbild seiner Linie gezogen endet die Linie
+  auf der Mitte. **Im Kern:** `abzweigen(h, loops, von, nach | 'spiegel', id, naechsteKreuzung)` in `einsetzen.ts`: Weg = Schnitt
+  der Haut mit der Ebene durch beide Punkte und ihre mittlere Normale, die kürzere der zwei Richtungen; jede gekreuzte Kante wird
+  geteilt (spiegelgleich, andere Ketten bekommen den Punkt). Kommt der Weg einem Punkt einer eingesetzten Linie näher als
+  `ABZWEIG_NAH` (0,5) mittlere Kanten, läuft er über diesen Punkt und teilt ihn. Danach `kreuzungenSuchen`, `eckenAuto`,
+  `griffeAnlegen` mit Punkten dazwischen nur, wo der Pfad sonst weiter als `ABZWEIG_GENAU` (0,25) Kanten neben dem Weg läge.
+  Löschen: Ein Punkt, an dem eine Abzweigung hängt, bleibt; eine Linie, an der Abzweigungen hängen, geht nur zusammen mit ihnen.
+  Proben: `form-abzweigung.ts` (Kern, Florians Beispiel; `KANTE=1`), `GPU=1 [NAME=…] node
+  scripts/pruefen/form-abzweigung-fenster.mjs` (Fenster, an „test_kaputt“), Test `abzweigung.test.ts`. **Noch nicht gebaut:**
+  Punkte dazwischen beim Zeichnen (Fall 4 im Plan), ein freies Ende.
 - **Linienbreiten** (13.11.): 3 Bildpunkte am Knick, ein halber an runden Punkten, dazwischen verjüngt (`haerteBei` im Kern;
   `baenderZeigen` mit Breite je Punkt, in den Blättern `kantenFlaeche` und die Klasse `kante-band`). Probe:
   `GPU=1 node scripts/pruefen/form-kante-verjuengung-fenster.mjs`.
@@ -213,8 +219,18 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Stück liegt der einige Einheiten neben der Stelle, an der sich die Ketten kreuzen (gemessen 6,5 auf einem Stück über 210°).
 - Ein offenes Ende liegt seit dem 14.11. nicht mehr immer auf der Mittelebene: nach `endeAufMitte(l, 0 | 1)` fragen, nicht nach
   `art === 'ring'`. Umgestellt sind `loops.ts` (Lagen, Pfad, Griffe, `ringEnde`, Nachbarn längs der Kette), `loopNeu`,
-  `loopErgaenzt` und das Ende von `verdichten`. Noch nicht durchgesehen: die übrigen Stellen in `verdichten.ts`, `folgen.ts`,
-  `mitteSchnitt.ts`, `raumlinien.ts`, `richtung.ts`, `kurvenFaelle.ts`, `kantenWinkel.ts`, das Fenster (33 Stellen) und `ablage.ts`.
+  `loopErgaenzt`, das Ende von `verdichten`, `richtung.ts` und im Fenster `zFest`, `zGrenzen` und die Auswahl fürs Maul (eine
+  Abzweigung ist kein Maul-Ring). `ablage.ts` trägt `haengt` von selbst (Test). Noch nicht durchgesehen: `mitteSchnitt.ts` (eine
+  Abzweigung über die Mitte gezogen), `kantenWinkel.ts` (Knick an einer Abzweigung), `folgen.ts`, `raumlinien.ts`, die Pose.
+- Eine lange Linie mit nur zwei Punkten kann der Haut nicht folgen: Ihr einzelnes Kurvenstück wird der Pfad, und `linienAufPfad`
+  zieht die Haut dorthin (gemessen: Eine Abzweigung vom Flügel von „test_kaputt“ zur Mitte verzog die ganze Form, 38 Dreiecke
+  umgeschlagen). Deshalb `griffeAnlegen(…, punkteBis)` bei Abzweigungen. Dieselbe Schwäche haben Loops mit zwei Punkten.
+- `kreuzungenSuchen` hält auch ein knappes Vorbeilaufen (näher als `TOL`) am Ende einer Linie für eine Kreuzung und setzt dort
+  einen zweiten Punkt an dieselbe Stelle. `abzweigen` führt den Weg deshalb über nahe Punkte; für andere neue Linien gilt das nicht.
+- Im Fenster sind die Punkte der Spiegelseite nicht zu greifen: Unter dem Zeiger liegt dort die gespiegelte Linie (`data-m="1"`,
+  ohne `data-i`); `punktAufLinie` findet den Punkt an der Stelle.
+- Verläuft eine Abzweigung flach neben ihrer Linie los, kreuzt ihr Weg (ein ebener Schnitt) dieselbe Linie nach einer Weile noch
+  einmal; dazwischen liegen beide dicht beieinander. Das ist richtig gerechnet, aber selten gewollt.
 - Das Bildblatt des Kerns (`blattSchreiben`) zeichnet Linien nur vor der Mitte des Bilds und schließt geschlossene Linien nicht:
   für ein sauberes Bild die Linien selbst übergeben (`fertig`), die Mitte des Bilds hinter die Stelle legen.
 - Nach dem Einsetzen einer spitzen Form die Nadeln wegräumen (`nadelnZusammenlegen`, im Fenster `nadelnWeg`), bevor weiter

@@ -5,7 +5,7 @@
 // Punkte des Netzes, Härte heißt: Sie glätten nicht über die Linie hinweg.
 
 import { type Haut, type V3, hautAus, hautNormalen } from './kurven';
-import { type Loop, type Probe, endeAufMitte, spiegelProbe } from './loops';
+import { type Loop, type Probe, endeAufMitte, mittlereKante, spiegelProbe } from './loops';
 
 /** Ein Punkt auf einer Kante (u, v) beim Anteil f von u nach v */
 type Kantenpunkt = { u: number; v: number; f: number };
@@ -948,6 +948,9 @@ export function loopEinsetzen(h: Haut, loops: readonly Loop[], nr: number): { ha
 /** Ein Punkt einer Linie: die Linie (Nummer in der Liste) und der Punkt (Nummer in ihren Punkten) */
 export type Anker = { loop: number; punkt: number };
 
+/** so nah (in mittleren Kanten, längs der gekreuzten Linie) muss eine Abzweigung an einem Punkt vorbeikommen, damit sie durch ihn läuft */
+const ABZWEIG_NAH = 0.5;
+
 /**
  * Abzweigung (14.11.; Florian: „grundsätzlich soll man von jeder linie und von jedem punkt aus eine verbundene abzweigung erstellen
  * können“): eine offene Linie vom Punkt `von` zum Punkt `nach` zweier eingesetzter Linien (oder derselben), auf dem geraden Weg über
@@ -958,6 +961,9 @@ export type Anker = { loop: number; punkt: number };
  * der Linie entsteht mit). So ist die Kette gleich da, ohne Ablaufen von Probe zu Probe, und andere Linien, deren Kette gekreuzt
  * wird, bekommen den Punkt in ihre Kette: Dort kreuzen sich die Linien an einem gemeinsamen Punkt des Netzes.
  *
+ * `nach` = `'spiegel'`: zum Spiegelbild des Startpunkts. Die Linie endet dann auf der Mittelebene (dort läuft sie wie ein Ring rund
+ * in ihr Spiegelbild) und hängt nur am Anfang.
+ *
  * Zurück: die neue Haut und alle Loops, die Abzweigung hinten angefügt (noch ohne Griffe: `griffeAnlegen`), oder der Grund, warum
  * es so nicht geht. Haut und Loops der Eingabe bleiben unberührt.
  */
@@ -965,7 +971,7 @@ export function abzweigen(
   h: Haut,
   loops: readonly Loop[],
   von: Anker,
-  nach: Anker,
+  nach: Anker | 'spiegel',
   id: number,
   naechsteKreuzung: number,
 ): { haut: Haut; loops: Loop[]; naechsteKreuzung: number } | { fehler: string } {
@@ -1001,111 +1007,293 @@ export function abzweigen(
   };
   const a = eckeAm(von);
   if (typeof a === 'string') return { fehler: `Anfang: ${a}` };
-  const c = eckeAm(nach);
+  const zurMitte = nach === 'spiegel';
+  const c = zurMitte ? haut.spiegel[a]! : eckeAm(nach);
   if (typeof c === 'string') return { fehler: `Ende: ${c}` };
+  if (zurMitte && (c < 0 || c === a)) return { fehler: 'der Punkt liegt auf der Mitte (er ist sein eigenes Spiegelbild)' };
   if (a === c) return { fehler: 'Anfang und Ende sind derselbe Punkt' };
+  const aufMitte = (v: number): boolean => Math.abs(haut.pos[3 * v + 2]!) < 1e-9;
+  if (aufMitte(a) && aufMitte(c)) return { fehler: 'beide Punkte liegen auf der Mitte (zwischen ihnen läuft die Mittellinie)' };
 
-  // ---------- der Schnitt von a nach c ----------
-  const A = lage(haut.pos, a);
-  const C = lage(haut.pos, c);
-  const nor = hautNormalen(haut);
-  const richtung = minus(C, A);
-  const lang = Math.hypot(richtung.x, richtung.y, richtung.z);
-  if (lang < 1e-9) return { fehler: 'Anfang und Ende liegen am selben Ort' };
-  const einheit = (v: number): V3 => {
-    const q = lage(nor, v);
-    const l = Math.hypot(q.x, q.y, q.z) || 1;
-    return { x: q.x / l, y: q.y / l, z: q.z / l };
-  };
-  const na = einheit(a);
-  const nc = einheit(c);
-  const N = { x: na.x + nc.x, y: na.y + nc.y, z: na.z + nc.z };
-  let m = kreuzProd(richtung, N);
-  const ml = Math.hypot(m.x, m.y, m.z);
-  if (ml < 1e-9 * lang) return { fehler: 'zwischen den Punkten liegt die Haut gegenüber (kein gerader Weg über die Haut)' };
-  m = { x: m.x / ml, y: m.y / ml, z: m.z / ml };
-  // Abstand von der Ebene mit Vorzeichen; ein Punkt genau auf der Ebene zählt zur positiven Seite (der Weg läuft dicht an ihm vorbei)
-  const seite = (v: number): number => {
-    const x = punktProd(minus(lage(haut.pos, v), A), m);
-    return Math.abs(x) < 1e-9 * lang ? 1e-9 * lang : x;
-  };
-  const L = laufVon(haut);
-  const weg: Kantenpunkt[] = [];
-  const kreuzung = (u: number, v: number): Kantenpunkt => {
-    const su = seite(u);
-    const sv = seite(v);
-    return { u, v, f: Math.max(0.02, Math.min(0.98, su / (su - sv))) };
-  };
+  // ---------- der Schnitt von Punkt zu Punkt ----------
+  if (abstandV(lage(haut.pos, a), lage(haut.pos, c)) < 1e-9) return { fehler: 'Anfang und Ende liegen am selben Ort' };
   const ort = (k: Kantenpunkt): V3 => {
     const p = lage(haut.pos, k.u);
     const q = lage(haut.pos, k.v);
     return { x: p.x + k.f * (q.x - p.x), y: p.y + k.f * (q.y - p.y), z: p.z + k.f * (q.z - p.z) };
   };
-  if (!haut.nachbarn[a]!.includes(c)) {
-    // das erste Dreieck: an a, die Ebene trennt seine beiden anderen Ecken, und der Schnitt liegt in Richtung c
-    let t = -1;
-    let k: Kantenpunkt | null = null;
-    let gut = 0;
+  /**
+   * Der Weg vom Punkt `von` des Netzes zum Punkt `ziel` über die gekreuzten Kanten im Netz von jetzt (leer: Sie sind Nachbarn);
+   * `ziel` = `'mitte'`: zum Spiegelbild von `von`, bis zur ersten Kante in der Mittelebene. Oder der Grund, warum es keinen gibt.
+   */
+  const wegZwischen = (von0: number, ziel: number | 'mitte'): Kantenpunkt[] | string => {
+    const zurEbene = ziel === 'mitte';
+    const z0 = zurEbene ? haut.spiegel[von0]! : ziel;
+    if (z0 < 0 || z0 === von0) return 'der Punkt liegt auf der Mitte (er ist sein eigenes Spiegelbild)';
+    if (!zurEbene && haut.nachbarn[von0]!.includes(z0)) return [];
+    const A = lage(haut.pos, von0);
+    const C = lage(haut.pos, z0);
+    const richtung = minus(C, A);
+    const lang = Math.hypot(richtung.x, richtung.y, richtung.z);
+    if (lang < 1e-9) return 'Anfang und Ende liegen am selben Ort';
+    const nor = hautNormalen(haut);
+    const einheit = (v: number): V3 => {
+      const q = lage(nor, v);
+      const l = Math.hypot(q.x, q.y, q.z) || 1;
+      return { x: q.x / l, y: q.y / l, z: q.z / l };
+    };
+    const na = einheit(von0);
+    const nc = einheit(z0);
+    let m = kreuzProd(richtung, { x: na.x + nc.x, y: na.y + nc.y, z: na.z + nc.z });
+    const ml = Math.hypot(m.x, m.y, m.z);
+    if (ml < 1e-9 * lang) return 'zwischen den Punkten liegt die Haut gegenüber (kein gerader Weg über die Haut)';
+    m = { x: m.x / ml, y: m.y / ml, z: m.z / ml };
+    // Abstand von der Ebene mit Vorzeichen; ein Punkt genau auf der Ebene zählt zur positiven Seite (der Weg läuft dicht an ihm vorbei)
+    const seite = (v: number): number => {
+      const x = punktProd(minus(lage(haut.pos, v), A), m);
+      return Math.abs(x) < 1e-9 * lang ? 1e-9 * lang : x;
+    };
+    const kreuzung = (u: number, v: number): Kantenpunkt => {
+      const su = seite(u);
+      const sv = seite(v);
+      return { u, v, f: Math.max(0.02, Math.min(0.98, su / (su - sv))) };
+    };
+    const L = laufVon(haut);
+    // Der Schnitt läuft vom Anfang aus in zwei Richtungen um die Form. Jede wird verfolgt: von einem Dreieck am Anfang, dessen beide
+    // andere Ecken die Ebene trennt, über die gekreuzten Kanten, bis das Ende erreicht ist. Genommen wird der kürzere Weg.
+    const laufe = (t0: number, k0: Kantenpunkt): Kantenpunkt[] | null => {
+      const w0: Kantenpunkt[] = [];
+      let t = t0;
+      let k = k0;
+      for (let schritt = 0; schritt <= haut.tri.length; schritt++) {
+        w0.push(k);
+        // zum Spiegelbild: Der Weg endet auf der ersten Kante, die in der Mittelebene liegt
+        if (zurEbene && aufMitte(k.u) && aufMitte(k.v)) return w0;
+        const nachbarn: number[] = (L.kanten.get(schluessel(haut.n, k.u, k.v)) ?? []).filter((x) => x !== t);
+        if (nachbarn.length !== 1) return null;
+        t = nachbarn[0]!;
+        const ku = k.u;
+        const kv = k.v;
+        const w = ecken(haut, t).find((v) => v !== ku && v !== kv)!;
+        if (!zurEbene && w === z0) return w0;
+        if (w === von0) return null;
+        k = seite(w) > 0 === seite(ku) > 0 ? kreuzung(kv, w) : kreuzung(ku, w);
+      }
+      return null;
+    };
+    const laengeVon = (w0: readonly Kantenpunkt[]): number => {
+      let sum = 0;
+      let vor = A;
+      for (const k of w0) {
+        const q = ort(k);
+        sum += abstandV(vor, q);
+        vor = q;
+      }
+      return zurEbene ? sum : sum + abstandV(vor, C);
+    };
+    let best: Kantenpunkt[] | null = null;
+    let kurz = Infinity;
     for (let x = 0; x < haut.tri.length / 3; x++) {
       const e = ecken(haut, x);
-      if (!e.includes(a)) continue;
-      const [b, d] = e.filter((v) => v !== a) as [number, number];
+      if (!e.includes(von0)) continue;
+      const [b, d] = e.filter((v) => v !== von0) as [number, number];
       if (seite(b) > 0 === seite(d) > 0) continue;
-      const kk = kreuzung(b, d);
-      const vor = punktProd(minus(ort(kk), A), richtung);
-      if (vor > gut) {
-        gut = vor;
-        t = x;
-        k = kk;
+      const w0 = laufe(x, kreuzung(b, d));
+      if (!w0) continue;
+      const lw = laengeVon(w0);
+      if (lw < kurz) {
+        kurz = lw;
+        best = w0;
       }
     }
-    if (t < 0 || !k) return { fehler: 'vom Anfang aus führt kein Weg über die Haut zum Ende' };
-    for (let schritt = 0; ; schritt++) {
-      if (schritt > haut.tri.length) return { fehler: 'der Weg über die Haut erreicht das Ende nicht' };
-      weg.push(k);
-      const nachbarn: number[] = (L.kanten.get(schluessel(haut.n, k.u, k.v)) ?? []).filter((x) => x !== t);
-      if (nachbarn.length !== 1) return { fehler: 'der Weg läuft über einen Rand der Haut' };
-      t = nachbarn[0]!;
-      const w = ecken(haut, t).find((v) => v !== k!.u && v !== k!.v)!;
-      if (w === c) break;
-      if (w === a) return { fehler: 'der Weg über die Haut läuft im Kreis' };
-      k = seite(w) > 0 === seite(k.u) > 0 ? kreuzung(k.v, w) : kreuzung(k.u, w);
+    return best ?? (zurEbene ? 'vom Punkt aus führt kein gerader Weg über die Haut zur Mitte' : 'vom Anfang aus führt kein gerader Weg über die Haut zum Ende');
+  };
+
+  // ---------- Punkte mehrfach verwenden ----------
+  // Kommt der Weg einem Punkt einer eingesetzten Linie näher als `ABZWEIG_NAH` mittlere Kanten, läuft er durch diesen Punkt und
+  // teilt ihn (Florian, 14.11.: „So reduzieren sich auch die doppelten punkte an engen stellen, da ich […] punkte mehrfach verwenden
+  // kann“): Der Weg wird dann in zwei Stücken gesucht, zum Punkt hin und von ihm weiter. Sonst bekäme die neue Linie dort eine
+  // eigene Kreuzung dicht daneben, oder das Fenster hielte ein knappes Vorbeilaufen am Ende einer Linie für eine Kreuzung und setzte
+  // einen zweiten Punkt an dieselbe Stelle; beides gibt Splitter im Netz (gemessen an „test_kaputt“: vier umgeschlagene Dreiecke).
+  // Kreuzt der Weg eine Linie dicht an einem Punkt, an dem noch kein Punkt des Netzes liegt, wird ihre Kette dort geteilt und der
+  // Weg neu gesucht.
+  const nah = ABZWEIG_NAH * mittlereKante(h);
+  /** je Kante einer Kette: die Linie und die Stelle (Nummer der Kette) */
+  const kettenKanten = (): Map<number, { li: number; j: number; j2: number }> => {
+    const aus = new Map<number, { li: number; j: number; j2: number }>();
+    liste.forEach((l, li) => {
+      if (!l.proben.every(istPunktProbe)) return;
+      const n = l.proben.length;
+      for (let j = 0; j < (l.art !== 'ring' ? n : n - 1); j++) aus.set(schluessel(haut.n, l.proben[j]!.ecken[0], l.proben[(j + 1) % n]!.ecken[0]), { li, j, j2: (j + 1) % n });
+    });
+    return aus;
+  };
+  /** der Punkt des Netzes an einem Punkt der Linie (seine Stelle in der Kette), sonst −1 */
+  const eckeVon = (l: Loop, q: { s: number }): number => {
+    const tol = 1e-6 * Math.max(1, l.laenge);
+    for (let j = 0; j < l.proben.length; j++) if (Math.abs(l.s[j]! - q.s) <= tol) return l.proben[j]!.ecken[0];
+    return l.art !== 'ring' && Math.abs(l.laenge - q.s) <= tol ? l.proben[0]!.ecken[0] : -1;
+  };
+  /** Abstand des Orts P von der Strecke zwischen X und Y */
+  const zurStrecke = (P: V3, X: V3, Y: V3): number => {
+    const d = minus(Y, X);
+    const dd = punktProd(d, d);
+    const t = dd > 1e-18 ? Math.max(0, Math.min(1, punktProd(minus(P, X), d) / dd)) : 0;
+    return abstandV(P, { x: X.x + t * d.x, y: X.y + t * d.y, z: X.z + t * d.z });
+  };
+  type Station = { kante: Kantenpunkt } | { ecke: number };
+  /** die Stationen des Wegs von `von0` nach `ziel`: Kreuzungen, dazwischen die Punkte, durch die er läuft */
+  const stationenVon = (von0: number, ziel: number | 'mitte', punktEcken: ReadonlySet<number>, benutzt: Set<number>, tiefe: number): Station[] | string => {
+    const w = wegZwischen(von0, ziel);
+    if (typeof w === 'string') return w;
+    if (tiefe < 6) {
+      const orte = [lage(haut.pos, von0), ...w.map(ort), ...(ziel === 'mitte' ? [] : [lage(haut.pos, ziel)])];
+      let naechster = -1;
+      let weit = nah;
+      for (const v of punktEcken) {
+        if (benutzt.has(v)) continue;
+        const P = lage(haut.pos, v);
+        let d = Infinity;
+        for (let j = 0; j + 1 < orte.length; j++) d = Math.min(d, zurStrecke(P, orte[j]!, orte[j + 1]!));
+        if (d < weit) {
+          weit = d;
+          naechster = v;
+        }
+      }
+      if (naechster >= 0) {
+        benutzt.add(naechster);
+        const s1 = stationenVon(von0, naechster, punktEcken, benutzt, tiefe + 1);
+        const s2 = typeof s1 === 'string' ? s1 : stationenVon(naechster, ziel, punktEcken, benutzt, tiefe + 1);
+        // (geht es über den Punkt nicht, bleibt der Weg, wie er war)
+        if (typeof s1 !== 'string' && typeof s2 !== 'string') return [...s1, { ecke: naechster }, ...s2];
+      }
     }
-  }
-  const kette = [a];
-  if (weg.length) {
-    const r = kantenTeilen(haut, weg);
+    return w.map((k) => ({ kante: k }));
+  };
+  /** kommt keine Kante und kein Punkt zweimal vor? */
+  const einmalig = (st: readonly Station[]): boolean => {
+    const gesehen = new Set<string>();
+    for (const x of st) {
+      const key = 'kante' in x ? `k${schluessel(haut.n, x.kante.u, x.kante.v)}` : `e${x.ecke}`;
+      if (gesehen.has(key)) return false;
+      gesehen.add(key);
+    }
+    return true;
+  };
+  const zielEcke: number | 'mitte' = zurMitte ? 'mitte' : c;
+  let stationen: Station[] = [];
+  for (let runde = 0; ; runde++) {
+    // die Punkte des Netzes, an denen ein sichtbarer Punkt einer eingesetzten Linie sitzt
+    const punktEcken = new Set<number>();
+    for (const l of liste) {
+      if (!l.proben.every(istPunktProbe)) continue;
+      for (const q of l.punkte) {
+        if (q.vonSelbst) continue;
+        const v = eckeVon(l, q);
+        if (v >= 0) punktEcken.add(v);
+      }
+    }
+    const benutzt = new Set<number>(zurMitte ? [a] : [a, c]);
+    let st = stationenVon(a, zielEcke, punktEcken, benutzt, 0);
+    if (typeof st !== 'string' && !einmalig(st)) st = stationenVon(a, zielEcke, punktEcken, benutzt, 99);
+    if (typeof st === 'string') return { fehler: st };
+    stationen = st;
+    // Kreuzungen auf der Kette einer Linie dicht an einem ihrer Punkte, an dem noch kein Punkt des Netzes liegt: dort teilen
+    const ketten = kettenKanten();
+    const teilen: Kantenpunkt[] = [];
+    for (const x of stationen) {
+      if (!('kante' in x)) continue;
+      const k = x.kante;
+      const e = ketten.get(schluessel(haut.n, k.u, k.v));
+      if (!e) continue;
+      const l = liste[e.li]!;
+      const s0 = l.s[e.j]!;
+      const s1 = e.j2 > e.j ? l.s[e.j2]! : l.laenge;
+      const fc = k.u === l.proben[e.j]!.ecken[0] ? k.f : 1 - k.f;
+      const sk = s0 + fc * (s1 - s0);
+      // der nächste sichtbare Punkt der Linie längs ihr (geschlossen: auch über das Ende hinweg)
+      let best: (typeof l.punkte)[number] | null = null;
+      let weit = nah;
+      for (const q of l.punkte) {
+        if (q.vonSelbst) continue;
+        let d = Math.abs(q.s - sk);
+        if (l.art !== 'ring') d = Math.min(d, l.laenge - d);
+        if (d < weit) {
+          weit = d;
+          best = q;
+        }
+      }
+      if (!best || eckeVon(l, best) >= 0) continue;
+      const n = l.proben.length;
+      for (let j = 0; j < (l.art !== 'ring' ? n : n - 1); j++) {
+        const j2 = (j + 1) % n;
+        const t0 = l.s[j]!;
+        const t1 = j2 > j ? l.s[j2]! : l.laenge;
+        if (best.s <= t0 || best.s >= t1) continue;
+        teilen.push({ u: l.proben[j]!.ecken[0], v: l.proben[j2]!.ecken[0], f: (best.s - t0) / (t1 - t0) });
+        break;
+      }
+    }
+    if (teilen.length === 0 || runde >= 6) break;
+    const r = kantenTeilen(haut, teilen);
     const andere = r ? loopsNachTeilen(haut, r.haut, r.geteilt, liste) : null;
-    if (!r || !andere) return { fehler: 'der Weg lässt sich nicht ins Netz einsetzen (er kreuzt die Mittelebene oder eine Linie, die nur aufliegt)' };
-    for (const k of weg) kette.push(r.geteilt.get(schluessel(haut.n, k.u, k.v))!);
+    if (!r || !andere) break;
     haut = r.haut;
     liste = andere;
   }
-  kette.push(c);
+  const kette = [a];
+  const durchEcken: number[] = [];
+  {
+    const kanten = stationen.flatMap((x) => ('kante' in x ? [x.kante] : []));
+    let geteilt: ReadonlyMap<number, number> = new Map();
+    const nAlt = haut.n;
+    if (kanten.length) {
+      const r = kantenTeilen(haut, kanten);
+      const andere = r ? loopsNachTeilen(haut, r.haut, r.geteilt, liste) : null;
+      if (!r || !andere) return { fehler: 'der Weg lässt sich nicht ins Netz einsetzen (er kreuzt die Mittelebene oder eine Linie, die nur aufliegt)' };
+      geteilt = r.geteilt;
+      haut = r.haut;
+      liste = andere;
+    }
+    for (const x of stationen) {
+      if ('kante' in x) kette.push(geteilt.get(schluessel(nAlt, x.kante.u, x.kante.v))!);
+      else {
+        kette.push(x.ecke);
+        durchEcken.push(x.ecke);
+      }
+    }
+  }
+  if (!zurMitte) kette.push(c);
+  else if (kette.length < 2 || !aufMitte(kette[kette.length - 1]!)) return { fehler: 'der Weg über die Haut erreicht die Mitte nicht' };
+  // jeder Schritt der Kette muss eine Kante des Netzes sein
+  for (let j = 0; j + 1 < kette.length; j++) if (!haut.nachbarn[kette[j]!]!.includes(kette[j + 1]!)) return { fehler: 'der Weg lässt sich nicht ins Netz einsetzen (zwei seiner Punkte sind nicht verbunden)' };
 
   // ---------- die Linie: an beiden Enden hängt sie am Punkt der anderen ----------
   const pa = liste[von.loop]!.punkte[von.punkt]!;
-  const pc = liste[nach.loop]!.punkte[nach.punkt]!;
   if (pa.kreuzung === undefined) pa.kreuzung = naechsteKreuzung++;
-  if (pc.kreuzung === undefined) pc.kreuzung = naechsteKreuzung++;
-  const roh: Loop = {
-    id,
-    art: 'ring',
-    haengt: [true, true],
-    proben: [],
-    s: new Float64Array(0),
-    laenge: 0,
-    ruhe: new Float64Array(0),
-    punkte: [
-      { s: 0, ref: { ...pa.ref }, cur: { ...pa.ref }, kreuzung: pa.kreuzung },
-      { s: 1, ref: { ...pc.ref }, cur: { ...pc.ref }, kreuzung: pc.kreuzung },
-    ],
-  };
+  const anfang = { s: 0, ref: { ...pa.ref }, cur: { ...pa.ref }, kreuzung: pa.kreuzung };
+  const roh: Loop = { id, art: 'ring', haengt: [true, !zurMitte], proben: [], s: new Float64Array(0), laenge: 0, ruhe: new Float64Array(0), punkte: [] };
   // die Lagen der Enden: die der Punkte, an denen sie hängt (die Kette endet dort am Punkt des Netzes)
   const neu = loopNeu(haut, roh, kette);
-  neu.punkte = [
-    { ...roh.punkte[0]!, s: 0 },
-    { ...roh.punkte[1]!, s: neu.laenge },
-  ];
+  neu.punkte = [anfang];
+  // die Punkte, durch die sie läuft: Sie teilt sie mit ihren Linien
+  for (const u of durchEcken) {
+    const dort: (typeof pa)[] = [];
+    for (const l of liste) {
+      if (!l.proben.every(istPunktProbe)) continue;
+      for (const q of l.punkte) if (!q.vonSelbst && eckeVon(l, q) === u) dort.push(q);
+    }
+    const erster = dort[0];
+    if (!erster) continue;
+    const k = dort.find((q) => q.kreuzung !== undefined)?.kreuzung ?? naechsteKreuzung++;
+    for (const q of dort) if (q.kreuzung === undefined) q.kreuzung = k;
+    neu.punkte.push({ s: neu.s[kette.indexOf(u)]!, ref: { ...erster.ref }, cur: { ...erster.ref }, kreuzung: k });
+  }
+  if (!zurMitte) {
+    const pc = liste[nach.loop]!.punkte[nach.punkt]!;
+    if (pc.kreuzung === undefined) pc.kreuzung = naechsteKreuzung++;
+    neu.punkte.push({ s: neu.laenge, ref: { ...pc.ref }, cur: { ...pc.ref }, kreuzung: pc.kreuzung });
+  }
+  neu.punkte.sort((p, q) => p.s - q.s);
   return { haut, loops: [...liste, neu], naechsteKreuzung };
 }
