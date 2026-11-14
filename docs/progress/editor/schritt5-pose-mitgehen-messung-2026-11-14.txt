@@ -1,0 +1,123 @@
+Schritt 5, Etappe 3: Fenster-Probe „die Pose geht mit der Grundform mit“ an Florians Form „maul handgemacht test“ (14.11.2026)
+Probe: apps/editor/scripts/pruefen/form-pose-mitgehen-fenster.mjs (Aufruf aus apps/editor: GPU=1 node scripts/pruefen/form-pose-mitgehen-fenster.mjs)
+
+--- vorher (Stand nach Etappe 2; die Probe prüfte damals noch „dieselbe Fläche“ als Punkt, seitdem steht dort eine Zeile zur Kenntnis)
+gut  „maul handgemacht test“ geladen, die Lippenlinie (Loop 14) gewählt
+gut  „Fressen“: die Pose ist an
+gut  „Fressen“ wieder an
+gut  nach dem Zug liegen die Linien der Pose höchstens 0,5 neben ihrem Pfad: größte Abweichung 0,00
+gut  in der Pose einen Punkt der Unterlippe 15 nach unten gezogen: Punkt 4 der Lippenlinie, Versatz gegen die Grundform (-7,5 -13,0 0,0); umgeschlagen gezeigt 8 (Pose davor 8, Grundform 8)
+FEHL nach dem Zug in der Pose ist die Grundform dieselbe Fläche (höchstens 0,05) mit denselben Linien (höchstens 0,05): Fläche 0,57 (3485 → 3461 Punkte), Linien 0,00
+gut  0 (nichts geändert): die Pose ist an
+FEHL 0 (nichts geändert): die Haut der Pose ist dieselbe wie beim Verlassen (höchstens 0,05): 1,93
+gut  0 (nichts geändert): der Zug an der Lippe bleibt (höchstens 0,05): Versatz (-7,5 -13,0 0,0), 0,00 anders als vorher
+gut  0 (nichts geändert): jeder Punkt der Linien behält seinen Versatz samt Griffen (höchstens 0,05): 0,00
+FEHL 0 (nichts geändert): die Linien liegen höchstens 0,5 neben ihrem Pfad: größte Abweichung 2,07 (Loop 14)
+FEHL 0 (nichts geändert): gezeichnet liegt jede Linie höchstens 0,5 neben der gezeigten Haut: größte Abweichung 1,15 (Loop 14)
+gut  0 (nichts geändert): spiegelgleich
+gut  0 (nichts geändert): nichts schlägt zusätzlich um: gezeigt 8, Grundform 8 (vor den Änderungen 8 und 8)
+gut  0 (nichts geändert): Verlassen: die Grundform bitgleich wie vor dem Betreten: größter Unterschied 0.0e+0
+gut  A (Punkt von Loop 7 fern vom Maul um 15 gezogen): ein reiner Zug (die Linien haben dieselben Punkte wie vorher): 287,4 vom Maul, 32,2 frei; Punkte 65 → 65, Netz 3461 → 3459, umgeschlagen 8 → 8
+gut  A (Punkt von Loop 7 fern vom Maul um 15 gezogen): die Pose ist an
+gut  A (Punkt von Loop 7 fern vom Maul um 15 gezogen): der Zug an der Lippe bleibt (höchstens 0,05): Versatz (-7,5 -13,0 0,0), 0,00 anders als vorher
+gut  A (Punkt von Loop 7 fern vom Maul um 15 gezogen): jeder Punkt der Linien behält seinen Versatz samt Griffen (höchstens 0,05): 0,00
+gut  A (Punkt von Loop 7 fern vom Maul um 15 gezogen): am Maul bleibt die Haut der Pose (höchstens 0,5): 0,20 (3461 → 3459 Punkte)
+gut  A (Punkt von Loop 7 fern vom Maul um 15 gezogen): die Pose zeigt die Änderung der Grundform (um den gezogenen Punkt höchstens 0,5 neben der Grundform): 0,00 (Netz 3461 → 3459 Punkte)
+FEHL A (Punkt von Loop 7 fern vom Maul um 15 gezogen): die Linien liegen höchstens 0,5 neben ihrem Pfad: größte Abweichung 2,10 (Loop 14)
+FEHL A (Punkt von Loop 7 fern vom Maul um 15 gezogen): gezeichnet liegt jede Linie höchstens 0,5 neben der gezeigten Haut: größte Abweichung 1,17 (Loop 14)
+gut  A (Punkt von Loop 7 fern vom Maul um 15 gezogen): spiegelgleich
+gut  A (Punkt von Loop 7 fern vom Maul um 15 gezogen): nichts schlägt zusätzlich um: gezeigt 8, Grundform 8 (vor den Änderungen 8 und 8)
+gut  A (Punkt von Loop 7 fern vom Maul um 15 gezogen): Verlassen: die Grundform bitgleich wie vor dem Betreten: größter Unterschied 0.0e+0
+gut  B (Punkt der Lippenlinie 10 nach oben): ein reiner Zug am Punkt 2 der Lippenlinie: in der Grundform um 10,0 bewegt; Punkte 65 → 65, umgeschlagen 8 → 8
+gut  B (Punkt der Lippenlinie 10 nach oben): die Pose ist an
+gut  B (Punkt der Lippenlinie 10 nach oben): der Zug an der Lippe bleibt (höchstens 0,05): Versatz (-7,5 -13,0 0,0), 0,00 anders als vorher
+gut  B (Punkt der Lippenlinie 10 nach oben): jeder Punkt der Linien behält seinen Versatz samt Griffen (höchstens 0,05): 0,00
+FEHL B (Punkt der Lippenlinie 10 nach oben): die Linien liegen höchstens 0,5 neben ihrem Pfad: größte Abweichung 2,10 (Loop 14)
+FEHL B (Punkt der Lippenlinie 10 nach oben): gezeichnet liegt jede Linie höchstens 0,5 neben der gezeigten Haut: größte Abweichung 1,17 (Loop 14)
+gut  B (Punkt der Lippenlinie 10 nach oben): spiegelgleich
+gut  B (Punkt der Lippenlinie 10 nach oben): nichts schlägt zusätzlich um: gezeigt 8, Grundform 8 (vor den Änderungen 8 und 8)
+gut  B (Punkt der Lippenlinie 10 nach oben): Verlassen: die Grundform bitgleich wie vor dem Betreten: größter Unterschied 0.0e+0
+gut  C (neuer Punkt auf der Lippenlinie): die Lippenlinie hat einen Punkt mehr: 8 → 9 Punkte; 
+gut  C (neuer Punkt auf der Lippenlinie): die Pose ist an
+FEHL C (neuer Punkt auf der Lippenlinie): der Zug an der Lippe bleibt (höchstens 0,5): Versatz (-6,8 -11,0 -0,2), 2,10 anders als vorher
+gut  C (neuer Punkt auf der Lippenlinie): der neue Punkt liegt auf der Linie der Pose, wie sie war (höchstens 0,5): 0,00
+FEHL C (neuer Punkt auf der Lippenlinie): jede Linie behält in der Pose ihren Verlauf (höchstens 0,5): 2,44 (Loop 14)
+FEHL C (neuer Punkt auf der Lippenlinie): am Maul bleibt die Haut der Pose (höchstens 0,5): 1,37 (3459 → 3459 Punkte)
+gut  C (neuer Punkt auf der Lippenlinie): die Linien liegen höchstens 0,5 neben ihrem Pfad: größte Abweichung 0,02
+gut  C (neuer Punkt auf der Lippenlinie): gezeichnet liegt jede Linie höchstens 0,5 neben der gezeigten Haut: größte Abweichung 0,03
+gut  C (neuer Punkt auf der Lippenlinie): spiegelgleich
+gut  C (neuer Punkt auf der Lippenlinie): nichts schlägt zusätzlich um: gezeigt 8, Grundform 8 (vor den Änderungen 8 und 8)
+FEHL C (neuer Punkt auf der Lippenlinie): Verlassen: die Grundform bitgleich wie vor dem Betreten: größter Unterschied 4.0e-5
+gut  D (Linie quer über den Körper geschnitten): eine neue Linie: bei x = 69,0: Loop 17 mit 2 Punkten; andere Punktzahl: Loop 3: 17 → 18, Loop 11: 4 → 5; 
+gut  D (Linie quer über den Körper geschnitten): die Pose ist an
+gut  D (Linie quer über den Körper geschnitten): der Zug an der Lippe bleibt (höchstens 0,05): Versatz (-6,8 -11,0 -0,2), 0,00 anders als vorher
+gut  D (Linie quer über den Körper geschnitten): jede alte Linie behält in der Pose ihren Verlauf (höchstens 0,5): 0,07 (Loop 11)
+gut  D (Linie quer über den Körper geschnitten): am Maul bleibt die Haut der Pose (höchstens 0,5): 0,01 (3459 → 3499 Punkte)
+gut  D (Linie quer über den Körper geschnitten): die Linien liegen höchstens 0,5 neben ihrem Pfad: größte Abweichung 0,01
+gut  D (Linie quer über den Körper geschnitten): gezeichnet liegt jede Linie höchstens 0,5 neben der gezeigten Haut: größte Abweichung 0,03
+gut  D (Linie quer über den Körper geschnitten): spiegelgleich
+gut  D (Linie quer über den Körper geschnitten): nichts schlägt zusätzlich um: gezeigt 8, Grundform 8 (vor den Änderungen 8 und 8)
+FEHL D (Linie quer über den Körper geschnitten): Verlassen: die Grundform bitgleich wie vor dem Betreten: größter Unterschied 5.1e-6
+gut  keine Fehler in der Konsole
+13 Punkte nicht erfüllt
+
+--- nachher (3a und 3b)
+gut  „maul handgemacht test“ geladen, die Lippenlinie (Loop 14) gewählt
+gut  „Fressen“: die Pose ist an
+gut  „Fressen“ wieder an
+gut  nach dem Zug liegen die Linien der Pose höchstens 0,5 neben ihrem Pfad: größte Abweichung 0,00
+gut  in der Pose einen Punkt der Unterlippe 15 nach unten gezogen: Punkt 4 der Lippenlinie, Versatz gegen die Grundform (-7,5 -13,0 0,0); umgeschlagen gezeigt 8 (Pose davor 8, Grundform 8)
+gut  nach dem Zug in der Pose hat die Grundform dieselben Linien (höchstens 0,05): 0,00
+     das gemeinsame Netz danach: 3485 → 3459 Punkte, davon 3453 am selben Ort (noch in der Pose: 3453 von 3459; beim Verlassen bewegt: 0,00); neue Punkte bis 0,57 neben der alten Fläche der Grundform, entfallene bis 0,48 neben der neuen
+gut  0 (nichts geändert): die Pose ist an
+gut  0 (nichts geändert): die Haut der Pose ist dieselbe wie beim Verlassen (höchstens 0,05): 0,00
+gut  0 (nichts geändert): der Zug an der Lippe bleibt (höchstens 0,05): Versatz (-7,5 -13,0 0,0), 0,00 anders als vorher
+gut  0 (nichts geändert): jeder Punkt der Linien behält seinen Versatz samt Griffen (höchstens 0,05): 0,00
+gut  0 (nichts geändert): die Linien liegen höchstens 0,5 neben ihrem Pfad: größte Abweichung 0,00
+gut  0 (nichts geändert): gezeichnet liegt jede Linie höchstens 0,5 neben der gezeigten Haut: größte Abweichung 0,03
+gut  0 (nichts geändert): spiegelgleich
+gut  0 (nichts geändert): nichts schlägt zusätzlich um: gezeigt 8, Grundform 8 (vor den Änderungen 8 und 8)
+gut  0 (nichts geändert): Verlassen: die Grundform bitgleich wie vor dem Betreten: größter Unterschied 0.0e+0
+gut  A (Punkt von Loop 7 fern vom Maul um 15 gezogen): ein reiner Zug (die Linien haben dieselben Punkte wie vorher): 287,4 vom Maul, 32,2 frei; Punkte 65 → 65, Netz 3459 → 3457, umgeschlagen 8 → 8
+gut  A (Punkt von Loop 7 fern vom Maul um 15 gezogen): die Pose ist an
+gut  A (Punkt von Loop 7 fern vom Maul um 15 gezogen): der Zug an der Lippe bleibt (höchstens 0,05): Versatz (-7,5 -13,0 0,0), 0,00 anders als vorher
+gut  A (Punkt von Loop 7 fern vom Maul um 15 gezogen): jeder Punkt der Linien behält seinen Versatz samt Griffen (höchstens 0,05): 0,00
+gut  A (Punkt von Loop 7 fern vom Maul um 15 gezogen): am Maul bleibt die Haut der Pose (höchstens 0,5): 0,11 (3459 → 3457 Punkte)
+gut  A (Punkt von Loop 7 fern vom Maul um 15 gezogen): die Pose zeigt die Änderung der Grundform (um den gezogenen Punkt höchstens 0,5 neben der Grundform): 0,00 (Netz 3459 → 3457 Punkte)
+gut  A (Punkt von Loop 7 fern vom Maul um 15 gezogen): die Linien liegen höchstens 0,5 neben ihrem Pfad: größte Abweichung 0,00
+gut  A (Punkt von Loop 7 fern vom Maul um 15 gezogen): gezeichnet liegt jede Linie höchstens 0,5 neben der gezeigten Haut: größte Abweichung 0,03
+gut  A (Punkt von Loop 7 fern vom Maul um 15 gezogen): spiegelgleich
+gut  A (Punkt von Loop 7 fern vom Maul um 15 gezogen): nichts schlägt zusätzlich um: gezeigt 8, Grundform 8 (vor den Änderungen 8 und 8)
+gut  A (Punkt von Loop 7 fern vom Maul um 15 gezogen): Verlassen: die Grundform bitgleich wie vor dem Betreten: größter Unterschied 0.0e+0
+gut  B (Punkt der Lippenlinie 10 nach oben): ein reiner Zug am Punkt 2 der Lippenlinie: in der Grundform um 10,0 bewegt; Punkte 65 → 65, umgeschlagen 8 → 8
+gut  B (Punkt der Lippenlinie 10 nach oben): die Pose ist an
+gut  B (Punkt der Lippenlinie 10 nach oben): der Zug an der Lippe bleibt (höchstens 0,05): Versatz (-7,5 -13,0 0,0), 0,00 anders als vorher
+gut  B (Punkt der Lippenlinie 10 nach oben): jeder Punkt der Linien behält seinen Versatz samt Griffen (höchstens 0,05): 0,00
+gut  B (Punkt der Lippenlinie 10 nach oben): die Linien liegen höchstens 0,5 neben ihrem Pfad: größte Abweichung 0,00
+gut  B (Punkt der Lippenlinie 10 nach oben): gezeichnet liegt jede Linie höchstens 0,5 neben der gezeigten Haut: größte Abweichung 0,03
+gut  B (Punkt der Lippenlinie 10 nach oben): spiegelgleich
+gut  B (Punkt der Lippenlinie 10 nach oben): nichts schlägt zusätzlich um: gezeigt 8, Grundform 8 (vor den Änderungen 8 und 8)
+gut  B (Punkt der Lippenlinie 10 nach oben): Verlassen: die Grundform bitgleich wie vor dem Betreten: größter Unterschied 0.0e+0
+gut  C (neuer Punkt auf der Lippenlinie): die Lippenlinie hat einen Punkt mehr: 8 → 9 Punkte; 
+gut  C (neuer Punkt auf der Lippenlinie): die Pose ist an
+gut  C (neuer Punkt auf der Lippenlinie): der Zug an der Lippe bleibt (höchstens 0,5): Versatz (-7,5 -13,0 0,0), 0,00 anders als vorher
+gut  C (neuer Punkt auf der Lippenlinie): der neue Punkt liegt auf der Linie der Pose, wie sie war (höchstens 0,5): 0,00
+gut  C (neuer Punkt auf der Lippenlinie): jede Linie behält in der Pose ihren Verlauf (höchstens 0,5): 0,03 (Loop 14)
+gut  C (neuer Punkt auf der Lippenlinie): am Maul bleibt die Haut der Pose (höchstens 0,5): 0,00 (3457 → 3457 Punkte)
+gut  C (neuer Punkt auf der Lippenlinie): die Linien liegen höchstens 0,5 neben ihrem Pfad: größte Abweichung 0,00
+gut  C (neuer Punkt auf der Lippenlinie): gezeichnet liegt jede Linie höchstens 0,5 neben der gezeigten Haut: größte Abweichung 0,03
+gut  C (neuer Punkt auf der Lippenlinie): spiegelgleich
+gut  C (neuer Punkt auf der Lippenlinie): nichts schlägt zusätzlich um: gezeigt 8, Grundform 8 (vor den Änderungen 8 und 8)
+gut  C (neuer Punkt auf der Lippenlinie): Verlassen: die Grundform bitgleich wie vor dem Betreten: größter Unterschied 0.0e+0
+gut  D (Linie quer über den Körper geschnitten): eine neue Linie: bei x = 69,0: Loop 17 mit 2 Punkten; andere Punktzahl: Loop 3: 17 → 18, Loop 11: 4 → 5; 
+gut  D (Linie quer über den Körper geschnitten): die Pose ist an
+gut  D (Linie quer über den Körper geschnitten): der Zug an der Lippe bleibt (höchstens 0,05): Versatz (-7,5 -13,0 0,0), 0,00 anders als vorher
+gut  D (Linie quer über den Körper geschnitten): jede alte Linie behält in der Pose ihren Verlauf (höchstens 0,5): 0,07 (Loop 11)
+gut  D (Linie quer über den Körper geschnitten): am Maul bleibt die Haut der Pose (höchstens 0,5): 0,01 (3457 → 3497 Punkte)
+gut  D (Linie quer über den Körper geschnitten): die Linien liegen höchstens 0,5 neben ihrem Pfad: größte Abweichung 0,00
+gut  D (Linie quer über den Körper geschnitten): gezeichnet liegt jede Linie höchstens 0,5 neben der gezeigten Haut: größte Abweichung 0,03
+gut  D (Linie quer über den Körper geschnitten): spiegelgleich
+gut  D (Linie quer über den Körper geschnitten): nichts schlägt zusätzlich um: gezeigt 8, Grundform 8 (vor den Änderungen 8 und 8)
+gut  D (Linie quer über den Körper geschnitten): Verlassen: die Grundform bitgleich wie vor dem Betreten: größter Unterschied 0.0e+0
+gut  keine Fehler in der Konsole
+alle Punkte erfüllt
