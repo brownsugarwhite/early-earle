@@ -35,7 +35,11 @@ Gefühl in Ruhe an seinem Entwurf prüfen, ohne den Editor anzufassen, an dem di
 - **Drei Stufen:** (1) Anflug: Die nächste Linie schwillt an, spitz wie ein Pinselstrich, weich in ihre Breite auslaufend, und
   gleitet mit. (2) Tropfen: Nahe genug löst sich ein Tropfen und hängt an der Zeigerspitze, mit Hals zur Linie; ein Punkt in der Nähe
   springt selbst und schwillt zum Tropfen, alle Linien durch ihn schwellen (an Kreuzungen der Stern). Zu weit weg: Er fließt zurück.
-  (3) Greifen: Drücken hält den Tropfen am Zeiger bis zum Loslassen; die Stelle springt zum Zeiger und folgt ihm mit kurzer Feder.
+  (3) Greifen: Drücken hält den Tropfen am Zeiger bis zum Loslassen. **Seit Florians erstem Urteil (14.11., abends: „sehr gut, bei
+  Klick soll aber nicht der Punkt/Linie zum Cursor gleiten. Umgekehrt wäre es cooler … gerne animiert“):** Beim Drücken bleibt die
+  Stelle, wo sie ist; der gezeichnete Zeiger gleitet auf sie (Feder „Zeiger gleitet“), der Tropfen fließt mit ihm hinein. Beim Ziehen
+  folgt die Stelle genau der Bewegung der Maus, der Zeiger sitzt auf ihr; beim Loslassen gleitet er zurück unter die Maus. Geprüft:
+  beim Klick 0,000 px Bewegung der Stelle, im Zug liegt der Zeiger 0,000 px auf Punkt bzw. Linie.
 - **Zeichnen:** WebGL2, alles sind Kapseln mit zwei Radien. Linien vereinigen sich hart (Kreuzungen scharf wie gezeichnet), Punkte,
   Tropfen und Hälse weich (sie fließen in die Linie). Haarlinien decken so viel, wie sie breit sind.
 - **Probe:** Vergleichsbild an den vier Stellen seines Entwurfs, gleicher Ausschnitt

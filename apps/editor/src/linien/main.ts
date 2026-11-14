@@ -9,7 +9,7 @@ import { FluessigeAnzeige } from './fluessig';
 import { type FischDaten, netzAusDaten } from './netz';
 import { type Ansicht, GRUNDWERTE, Verhalten, type Werte } from './verhalten';
 
-const SPEICHER = 'linien-probe-werte-3';
+const SPEICHER = 'linien-probe-werte-4';
 const lesen = (): Partial<Werte> => {
   try {
     const roh = localStorage.getItem(SPEICHER);
@@ -258,8 +258,8 @@ const REGLER: { gruppe: string; k: keyof Werte; name: string; min: number; max: 
   { gruppe: 'Federn', k: 'schwellD', name: 'Schwellen: Ruhe', min: 0.1, max: 1.5, schritt: 0.01 },
   { gruppe: 'Federn', k: 'zurueckHz', name: 'Zurück: Tempo', min: 1, max: 20, schritt: 0.1 },
   { gruppe: 'Federn', k: 'zurueckD', name: 'Zurück: Ruhe', min: 0.1, max: 1.5, schritt: 0.01 },
-  { gruppe: 'Federn', k: 'greifHz', name: 'Ziehen: Tempo', min: 2, max: 40, schritt: 0.5 },
-  { gruppe: 'Federn', k: 'greifD', name: 'Ziehen: Ruhe', min: 0.1, max: 1.5, schritt: 0.01 },
+  { gruppe: 'Federn', k: 'greifHz', name: 'Zeiger gleitet: Tempo', min: 2, max: 40, schritt: 0.5 },
+  { gruppe: 'Federn', k: 'greifD', name: 'Zeiger gleitet: Ruhe', min: 0.1, max: 1.5, schritt: 0.01 },
   { gruppe: 'Zeiger', k: 'zeigerGroesse', name: 'Größe', min: 4, max: 32, schritt: 0.5 },
   { gruppe: 'Zeiger', k: 'zeigerLinie', name: 'Linie', min: 0.1, max: 2, schritt: 0.05 },
 ];

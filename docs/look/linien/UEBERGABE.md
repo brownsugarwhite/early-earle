@@ -12,7 +12,8 @@ Florians Entwürfe liegen hier (`2026-11-14-florian-fisch-entwurf.webp` und `…
 | Seite | `http://localhost:5199/linien.html` (`?info=1` zeigt Bilder je Sekunde und Kapseln, `?bild=1` ohne Leiste) |
 | Code | `apps/editor/src/linien/`: `netz.ts` (Linien, Punkte, Abtasten, Ziehen), `fluessig.ts` (Anzeige, WebGL2), `verhalten.ts` (Anflug, Tropfen, Greifen, Werte), `feder.ts`, `main.ts` (Seite, Feinregler), `fisch.json` |
 | Fisch aus dem Entwurf | `apps/editor/scripts/linien/fisch-aus-entwurf.mjs` (Aufruf im Kopf der Datei; braucht das Bild als BMP über `sips`) |
-| Vergleichsbilder | `apps/editor/scripts/linien/vergleich.mjs` → `docs/progress/linien/<name>-vergleich-gesamt.jpg`, `…-nah.jpg` |
+| Vergleichsbilder | `apps/editor/scripts/linien/vergleich.mjs` → `docs/progress/linien/<datum>-vergleich-gesamt.jpg`, `…-nah.jpg` |
+| Film | `apps/editor/scripts/linien/film.mjs <ziel.mp4>` (Ablauf in `BAHN`, Bild für Bild, 60 je Sekunde, ffmpeg) |
 
 ## Bedienung der Seite
 
@@ -24,8 +25,11 @@ Knöpfe: 100 %, Einpassen, Entwurf (seine Zeichnung darunter, E), Wachsen mit Zo
 
 - Gebaut und an seinem Entwurf verglichen (Bilder `docs/progress/linien/2026-11-14-vergleich-*.jpg`): Stärken, Punkte, Zeiger, Stern an
   Kreuzungen, Linse an der Linie, Tropfen an der Spitze.
-- Geprüft im Fenster: Punkt und Kreuzung ziehen, Stelle einer Linie ziehen (die Linie liegt danach 0,04 Punkte unter dem Zeiger).
-- Florians Urteil steht aus. Fragen an ihn: Punktgröße (Durchmesser oder Radius), ob „Mesh“ auch die Haut im 3D meint.
+- Florian zur ersten Fassung (14.11., abends): „sehr gut“, aber beim Klick soll nicht die Stelle zum Zeiger gleiten, sondern
+  umgekehrt, animiert. Umgebaut: Der gezeichnete Zeiger gleitet auf Punkt oder Linie (`versatz` in `verhalten.ts`), die Stelle folgt
+  der Maus genau, beim Loslassen gleitet der Zeiger zurück. Geprüft mit den Test-Haken: Stelle beim Klick 0,000 bewegt, Zeiger im
+  Zug 0,000 auf der Stelle, Versatz nach dem Loslassen 0. Film neu (`docs/progress/linien/2026-11-14-film.mp4`, `film.mjs`).
+- Offen: Punktgröße (Durchmesser oder Radius) und ob „Mesh“ auch die Haut im 3D meint; danach der Einbau in die Blätter.
 
 ## Fallen
 

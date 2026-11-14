@@ -6,8 +6,9 @@
  * 2. **Tropfen:** Nahe genug löst sich ein Tropfen aus der Linie und hängt an der Spitze des Zeigers, mit einem Hals zur Linie. Ein
  *    Punkt in der Nähe springt selbst zum Zeiger (Feder mit Überschwingen); dann schwellen alle Linien durch ihn an (an einer Kreuzung
  *    der Stern aus dem Entwurf). Linien neigen sich leicht zum Tropfen. Geht der Zeiger zu weit weg, fließt der Tropfen zurück.
- * 3. **Greifen:** Drücken, solange ein Tropfen hängt: Er bleibt am Zeiger, bis man loslässt. Die Stelle springt zum Zeiger und folgt
- *    ihm mit einer kurzen Feder; so zieht der Tropfen Punkt, Kreuzung oder Linie mit.
+ * 3. **Greifen:** Drücken, solange ein Tropfen hängt: Nicht die Stelle springt zum Zeiger, der Zeiger gleitet zur Stelle (Florian,
+ *    14.11.: „umgekehrt wäre es cooler“), der Tropfen fließt mit ihm in seinen Punkt oder seine Linie zurück. Beim Ziehen folgt die
+ *    Stelle genau der Bewegung der Maus, der Zeiger sitzt auf ihr; beim Loslassen gleitet er zurück unter die Maus.
  *
  * Linien vereinigen sich hart (Kreuzungen bleiben scharf wie gezeichnet); Punkte, Tropfen und Hälse verschmelzen weich mit allem.
  * Längen in Punkten des Entwurfs; die Anzeige rechnet in Gerätepunkte um.
@@ -39,7 +40,7 @@ export interface Werte {
   /** Verschmelzen von Punkten, Tropfen und Hälsen nahe am Zeiger und fern davon */
   weich: number;
   weichGrund: number;
-  /** Federn (Hz, Dämpfung) */
+  /** Federn (Hz, Dämpfung); greif: der Zeiger gleitet beim Greifen zur Stelle und beim Loslassen zurück */
   sprungHz: number;
   sprungD: number;
   schwellHz: number;
@@ -78,8 +79,8 @@ export const GRUNDWERTE: Werte = {
   schwellD: 0.85,
   zurueckHz: 5.5,
   zurueckD: 0.38,
-  greifHz: 14,
-  greifD: 0.8,
+  greifHz: 8,
+  greifD: 0.72,
   zeigerGroesse: 9.5,
   zeigerLinie: 0.5,
 };
@@ -142,7 +143,10 @@ export class Verhalten {
   /** je Linie: Stärke der Schwellung und ihre Mitte (Bogenlänge) */
   private schwell: { st: Feder1; s: Feder1 }[] = [];
   tropfen: Tropfen[] = [];
-  private griff: { ziel: Ziel; start: Netz; ax: number; ay: number; zug: Feder2; los: boolean } | null = null;
+  /** Zug: Ziel, Netz und Stelle beim Drücken, Maus beim Drücken */
+  private griff: { ziel: Ziel; start: Netz; ax: number; ay: number; mx: number; my: number } | null = null;
+  /** Versatz des gezeichneten Zeigers gegen die Maus (Punkte des Entwurfs): beim Greifen sitzt er auf der Stelle */
+  private versatz = new Feder2(0, 0);
   private zurueck: Netz[] = [];
   private puffer = new Float32Array(PRIM_FELDER * 8192);
   private schritt0 = 2;
@@ -186,7 +190,7 @@ export class Verhalten {
   }
 
   rueckgaengig(): boolean {
-    if (this.griff && !this.griff.los) return false;
+    if (this.griff) return false;
     const n = this.zurueck.pop();
     if (!n) return false;
     this.netz = n;
@@ -207,11 +211,11 @@ export class Verhalten {
   }
 
   zeigerWeg(): void {
-    if (this.griff && !this.griff.los) return;
+    if (this.griff) return;
     this.zeiger.da = false;
   }
 
-  /** Drücken: greift den Tropfen, der gerade am Zeiger hängt */
+  /** Drücken: greift den Tropfen, der gerade am Zeiger hängt; der Zeiger gleitet zu seiner Stelle */
   druecken(): boolean {
     this.zeiger.gedrueckt = true;
     const t = this.tropfen.find((q) => q.zustand === 'folgt');
@@ -219,23 +223,30 @@ export class Verhalten {
     t.zustand = 'gegriffen';
     this.zurueck.push(netzKopie(this.netz));
     if (this.zurueck.length > 60) this.zurueck.shift();
-    this.griff = { ziel: { ...t.ziel }, start: netzKopie(this.netz), ax: t.ax, ay: t.ay, zug: new Feder2(0, 0), los: false };
-    t.pos.setzen(this.zeiger.x, this.zeiger.y);
+    const z = this.zeiger;
+    this.griff = { ziel: { ...t.ziel }, start: netzKopie(this.netz), ax: t.ax, ay: t.ay, mx: z.x, my: z.y };
+    this.versatz.zx = t.ax - z.x;
+    this.versatz.zy = t.ay - z.y;
     return true;
   }
 
+  /** Loslassen: die Stelle bleibt, wo sie ist; der Zeiger gleitet zurück unter die Maus */
   loslassen(): void {
     this.zeiger.gedrueckt = false;
-    const g = this.griff;
-    if (!g) return;
-    g.los = true;
-    g.zug.zx = this.zeiger.x - g.ax;
-    g.zug.zy = this.zeiger.y - g.ay;
+    if (!this.griff) return;
+    this.griff = null;
+    this.versatz.zx = 0;
+    this.versatz.zy = 0;
     for (const t of this.tropfen) if (t.zustand === 'gegriffen') t.zustand = 'folgt';
   }
 
   get greift(): boolean {
-    return !!this.griff && !this.griff.los;
+    return !!this.griff;
+  }
+
+  /** wo der Zeiger gezeichnet wird (Punkte des Entwurfs) */
+  private gezeichnet(): [number, number] {
+    return [this.zeiger.x + this.versatz.x, this.zeiger.y + this.versatz.y];
   }
 
   private fang(z: Ziel): number {
@@ -304,17 +315,17 @@ export class Verhalten {
    * Entwurf). Dicht an der Stelle ohne Versatz; liegt die Stelle hinter dem Zeiger, sitzt der Tropfen auf der Spitze.
    */
   private haengtAn(t: Tropfen): [number, number] {
-    const z = this.zeiger;
+    const [zx, zy] = this.gezeichnet();
     const r = this.werte.punktRadius * this.g;
-    const dx = t.ax - z.x;
-    const dy = t.ay - z.y;
+    const dx = t.ax - zx;
+    const dy = t.ay - zy;
     const L = Math.hypot(dx, dy);
-    if (L < 1e-6) return [z.x, z.y];
+    if (L < 1e-6) return [zx, zy];
     const ux = dx / L;
     const uy = dy / L;
     const hinter = Math.min(1, Math.max(0, ux * ACHSE[0]! + uy * ACHSE[1]!));
     const f = glatt(0.6 * r, 2.6 * r, L) * (1 - hinter) * 0.6 * r;
-    return [z.x + ux * f, z.y + uy * f];
+    return [zx + ux * f, zy + uy * f];
   }
 
   /** Bogenlänge eines Punkts auf einer Linie (erstes Vorkommen) oder −1 */
@@ -331,9 +342,12 @@ export class Verhalten {
     const w = this.werte;
     const z = this.zeiger;
     let bewegt = false;
-    this.feld.zx = z.x;
-    this.feld.zy = z.y;
-    this.feld.schritt(dt, this.greift ? w.greifHz : 9, 0.85);
+    // der gezeichnete Zeiger gleitet (beim Greifen zur Stelle, beim Loslassen zurück)
+    this.versatz.schritt(dt, w.greifHz, w.greifD);
+    const [gx, gy] = this.gezeichnet();
+    this.feld.zx = gx;
+    this.feld.zy = gy;
+    this.feld.schritt(dt, 9, 0.85);
     this.feldStaerke.ziel = z.da ? 1 : 0;
     this.feldStaerke.schritt(dt, 4, 1);
     this.zeigerSkala.ziel = z.gedrueckt ? 0.86 : 1;
@@ -341,20 +355,16 @@ export class Verhalten {
     z.vx *= Math.exp(-dt * 8);
     z.vy *= Math.exp(-dt * 8);
 
-    // Zug
+    // Zug: die Stelle folgt genau der Bewegung der Maus seit dem Drücken (nichts springt)
     const g = this.griff;
     if (g) {
-      if (!g.los) {
-        g.zug.zx = z.x - g.ax;
-        g.zug.zy = z.y - g.ay;
-      }
-      g.zug.schritt(dt, w.greifHz, w.greifD);
+      const dx = z.x - g.mx;
+      const dy = z.y - g.my;
       this.netz = netzKopie(g.start);
-      if (g.ziel.art === 'punkt') punktZiehen(g.start, this.netz, g.ziel.pi, g.zug.x, g.zug.y);
-      else stelleZiehen(g.start, this.netz, g.ziel.li, g.ziel.si, g.ziel.t, g.zug.x, g.zug.y);
+      if (g.ziel.art === 'punkt') punktZiehen(g.start, this.netz, g.ziel.pi, dx, dy);
+      else stelleZiehen(g.start, this.netz, g.ziel.li, g.ziel.si, g.ziel.t, dx, dy);
       this.abtasten();
       bewegt = true;
-      if (g.los && g.zug.ruhig(0.005)) this.griff = null;
     }
 
     // Ziel unter dem Zeiger (nicht während eines Zugs)
@@ -411,10 +421,12 @@ export class Verhalten {
       }
       const r = w.punktRadius * this.g;
       if (t.zustand === 'gegriffen') {
-        t.pos.x = t.pos.zx = z.x;
-        t.pos.y = t.pos.zy = z.y;
-        t.pos.vx = z.vx;
-        t.pos.vy = z.vy;
+        // der Tropfen sitzt am gleitenden Zeiger und fließt mit ihm in seine Stelle
+        const [gx2, gy2] = this.gezeichnet();
+        t.pos.x = t.pos.zx = gx2;
+        t.pos.y = t.pos.zy = gy2;
+        t.pos.vx = z.vx + this.versatz.vx;
+        t.pos.vy = z.vy + this.versatz.vy;
         t.r.ziel = w.tropfen * 1.08;
         t.hals.ziel = 1;
       } else if (t.zustand === 'folgt') {
@@ -480,7 +492,7 @@ export class Verhalten {
       if (!S.st.ruhig(0.002) || !S.s.ruhig(0.02)) bewegt = true;
     });
 
-    if (!this.feld.ruhig(0.01) || !this.feldStaerke.ruhig(0.002) || !this.zeigerSkala.ruhig(0.002)) bewegt = true;
+    if (!this.feld.ruhig(0.01) || !this.feldStaerke.ruhig(0.002) || !this.zeigerSkala.ruhig(0.002) || !this.versatz.ruhig(0.005)) bewegt = true;
     if (Math.hypot(z.vx, z.vy) > 0.5) bewegt = true;
     const f = this.tropfen.find((t) => t.zustand !== 'zurueck');
     this.stat = { tropfen: this.tropfen.length, ziel: f ? (f.ziel.art === 'punkt' ? `Punkt ${f.ziel.pi}` : `Linie ${f.ziel.li}`) : '' };
@@ -642,8 +654,8 @@ export class Verhalten {
     let zeiger: Szene['zeiger'] = null;
     if (this.zeiger.da && this.zeigerZeigen) {
       const L = w.zeigerGroesse * D * this.zeigerSkala.x;
-      const ax = this.zeiger.sx * D;
-      const ay = this.zeiger.sy * D;
+      const ax = (this.zeiger.sx + this.versatz.x * a.z) * D;
+      const ay = (this.zeiger.sy + this.versatz.y * a.z) * D;
       zeiger = {
         ax,
         ay,
