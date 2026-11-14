@@ -408,6 +408,45 @@ ein gerader Weg über die Haut). Drei Tests (`abzweigung.test.ts`).
 Ende auf einer Linie ohne Punkt (Fall 2 und 5), Punkte dazwischen (Fall 4), seine Formen. Beobachtung: Der Punkt in der Kreuzung
 liegt 6,1 neben der Mitte des Kreises, weil der Kreis auf der schrägen Haut nicht genau rund liegt; das ist kein Fehler des Wegs.
 
+**Etappe 2 und 3, gebaut am 14.11. bis 11:05 Uhr im Bau-Fenster** (Florian: „Ja, so bauen“; eine Abzweigung endet immer an einem
+Punkt, auf einer Linie oder auf der Mitte). Gebaut sind die Fälle 1, 2, 3, 5, 6, 7 und 8: mit P auf einem Punkt oder einer Linie
+drücken, zu einem anderen Punkt oder einer anderen Linie ziehen, loslassen. **Fall 4 (Punkte dazwischen beim Zeichnen) ist nicht
+gebaut.** In seinem Fenster (5194) ist nichts davon.
+
+Probe im Bau-Fenster an seiner Form „test_kaputt“ (`form-abzweigung-fenster.mjs`, 19 Punkte, alle erfüllt;
+[Messwerte](../progress/editor/zwischenschritt-abzweigung-fenster-messung-2026-11-14.txt); Bilder
+[Kreuz](../progress/editor/zwischenschritt-abzweigung-fenster-kreuz-2026-11-14.jpg),
+[Horn](../progress/editor/zwischenschritt-abzweigung-fenster-horn-2026-11-14.jpg),
+[zur Mitte](../progress/editor/zwischenschritt-abzweigung-fenster-zur-mitte-2026-11-14.jpg)):
+
+| Schritt der Probe | Ergebnis |
+| --- | --- |
+| Kreis mit vier Punkten (Stift) in ein Feld, dann P von Punkt zu gegenüberliegendem Punkt, zweimal | zwei Abzweigungen, jede hängt an zwei Punkten des Kreises und teilt sie; in der Kreuzung ein gemeinsamer Punkt; die Form bleibt (Ausdehnung 0,00 anders), nichts umgeschlagen |
+| den Punkt in der Kreuzung um 60 herausgezogen | beide Linien gehen mit, der Kreis bleibt (0,00), nichts umgeschlagen |
+| Löschen | der Kreis allein nicht (an ihm hängen die Abzweigungen), ein Punkt mit Abzweigung nicht, eine Abzweigung ja (die Punkte des Kreises werden wieder gewöhnliche Punkte); ⌘Z bringt sie zurück |
+| P von einer Stelle auf einer Linie ohne Punkt zu einem Punkt des Kreises | dort entsteht ein Punkt, die Abzweigung hängt an ihm; die Form bleibt |
+| P von einem Punkt zum Spiegelbild (Front) | eine Linie, die am Punkt hängt und auf der Mitte endet; sie läuft unterwegs durch einen vorhandenen Punkt und teilt ihn; die Form bleibt, nichts umgeschlagen |
+| ⌘Z bis zum Anfang | die Form wie geladen |
+
+**Drei Dinge kamen beim Bauen dazu** (alle drei gelten für jede Linie, keines nennt eine Form):
+
+1. **Punkte dazwischen nur, wo sie nötig sind.** Eine lange Abzweigung über gewölbte Haut lässt sich mit einem Kurvenstück nicht
+   beschreiben: Ohne Punkte dazwischen verzog die Linie vom Flügel zur Mitte die ganze Form. Jetzt bekommt eine Abzweigung Punkte
+   dazwischen, wo ihr Pfad sonst weiter als eine Viertelkante neben ihrem Weg über die Haut läge; kurze gerade Verbindungen (das
+   Kreuz im Kreis) bekommen keine. Die Meldung sagt, wie viele es sind.
+2. **Vorhandene Punkte werden mitbenutzt.** Kommt der Weg einem Punkt einer Linie näher als eine halbe Kante, läuft er durch
+   diesen Punkt und teilt ihn, statt dicht daneben eine eigene Kreuzung zu bekommen (sonst: zwei Punkte an derselben Stelle, vier
+   umgeschlagene Dreiecke).
+3. **Der kürzere Weg.** Der gerade Weg über die Haut läuft in zwei Richtungen um die Form; genommen wird der kürzere.
+
+**Neu festgelegt, er kann es ändern:** Eine Linie, an der Abzweigungen hängen, lässt sich nicht allein löschen (Meldung; zusammen
+mit ihnen gewählt geht es).
+
+**Offen:** Fall 4 (Punkte dazwischen beim Zeichnen: Start anklicken, Punkte setzen, auf Punkt oder Linie enden). Eine Abzweigung,
+die flach neben ihrer Linie losläuft, kreuzt sie nach einer Weile noch einmal (richtig gerechnet, selten gewollt). Nicht geprüft:
+in der Pose (dort gibt es eine Meldung), über die Mitte gezogen (`mitteSchnitt`), Kante an einer Abzweigung mit Knick, seine
+anderen Formen, das feine Netz. Sein Urteil steht aus.
+
 **Regeln für diesen Schritt (Lehre vom 14.11.):** Geprüft wird an Formen mit Linien. Je Etappe eine Probe, keine Reihen. Kommt
 ein neuer Fall dazu, wird er hier aufgeschrieben und mit ihm geklärt, bevor er gebaut wird.
 
