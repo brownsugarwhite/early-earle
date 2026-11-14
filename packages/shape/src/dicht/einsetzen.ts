@@ -948,8 +948,11 @@ export function loopEinsetzen(h: Haut, loops: readonly Loop[], nr: number): { ha
 /** Ein Punkt einer Linie: die Linie (Nummer in der Liste) und der Punkt (Nummer in ihren Punkten) */
 export type Anker = { loop: number; punkt: number };
 
-/** so nah (in mittleren Kanten, längs der gekreuzten Linie) muss eine Abzweigung an einem Punkt vorbeikommen, damit sie durch ihn läuft */
+/** so nah (in mittleren Kanten) muss eine Abzweigung an einem Punkt vorbeikommen, damit sie durch ihn läuft */
 const ABZWEIG_NAH = 0.5;
+
+/** Ein Punkt, den Florian beim Zeichnen einer Abzweigung dazwischen setzt: sein Ort auf der Haut (Seite z ≥ 0), Ecke oder glatt */
+export type AbzweigPunkt = { ort: V3; ecke: boolean };
 
 /**
  * Abzweigung (14.11.; Florian: „grundsätzlich soll man von jeder linie und von jedem punkt aus eine verbundene abzweigung erstellen
@@ -964,6 +967,9 @@ const ABZWEIG_NAH = 0.5;
  * `nach` = `'spiegel'`: zum Spiegelbild des Startpunkts. Die Linie endet dann auf der Mittelebene (dort läuft sie wie ein Ring rund
  * in ihr Spiegelbild) und hängt nur am Anfang.
  *
+ * `ueber`: Punkte dazwischen, der Reihe nach (mit dem Stift gesetzt). Der Weg läuft von Punkt zu Punkt gerade über die Haut; jeder
+ * wird ein Punkt der neuen Linie.
+ *
  * Zurück: die neue Haut und alle Loops, die Abzweigung hinten angefügt (noch ohne Griffe: `griffeAnlegen`), oder der Grund, warum
  * es so nicht geht. Haut und Loops der Eingabe bleiben unberührt.
  */
@@ -974,6 +980,7 @@ export function abzweigen(
   nach: Anker | 'spiegel',
   id: number,
   naechsteKreuzung: number,
+  ueber: readonly AbzweigPunkt[] = [],
 ): { haut: Haut; loops: Loop[]; naechsteKreuzung: number } | { fehler: string } {
   let haut = h;
   let liste: Loop[] = loops.map((l) => ({ ...l, punkte: l.punkte.map((q) => ({ ...q })) }));
@@ -1013,7 +1020,7 @@ export function abzweigen(
   if (zurMitte && (c < 0 || c === a)) return { fehler: 'der Punkt liegt auf der Mitte (er ist sein eigenes Spiegelbild)' };
   if (a === c) return { fehler: 'Anfang und Ende sind derselbe Punkt' };
   const aufMitte = (v: number): boolean => Math.abs(haut.pos[3 * v + 2]!) < 1e-9;
-  if (aufMitte(a) && aufMitte(c)) return { fehler: 'beide Punkte liegen auf der Mitte (zwischen ihnen läuft die Mittellinie)' };
+  if (ueber.length === 0 && aufMitte(a) && aufMitte(c)) return { fehler: 'beide Punkte liegen auf der Mitte (zwischen ihnen läuft die Mittellinie)' };
 
   // ---------- der Schnitt von Punkt zu Punkt ----------
   if (abstandV(lage(haut.pos, a), lage(haut.pos, c)) < 1e-9) return { fehler: 'Anfang und Ende liegen am selben Ort' };
@@ -1180,8 +1187,99 @@ export function abzweigen(
     }
     return true;
   };
+  // ---------- die gesetzten Punkte dazwischen: je einer ein Punkt des Netzes ----------
+  const mkH = mittlereKante(h);
+  /** ein Punkt des Netzes am Ort P auf der Haut: ein vorhandener dicht dabei, sonst wird dort eine Kante oder ein Dreieck geteilt */
+  const eckeBei = (P: V3): number | string => {
+    let nahe = -1;
+    let dn = Infinity;
+    for (let v = 0; v < haut.n; v++) {
+      const d = abstandV(P, lage(haut.pos, v));
+      if (d < dn) {
+        dn = d;
+        nahe = v;
+      }
+    }
+    if (dn < 0.15 * mkH) return nahe;
+    // das Dreieck, in dem der Ort liegt (unter denen, über denen er steht, das nächste)
+    let tBest = -1;
+    let bBest: [number, number, number] = [0, 0, 0];
+    let dBest = Infinity;
+    for (let t = 0; t < haut.tri.length / 3; t++) {
+      const [A, B, C] = ecken(haut, t).map((v) => lage(haut.pos, v)) as [V3, V3, V3];
+      const n = kreuzProd(minus(B, A), minus(C, A));
+      const nn = punktProd(n, n);
+      if (nn < 1e-18) continue;
+      const hoch = punktProd(minus(P, A), n) / Math.sqrt(nn);
+      if (Math.abs(hoch) >= dBest) continue;
+      const f = hoch / Math.sqrt(nn);
+      const Q = { x: P.x - f * n.x, y: P.y - f * n.y, z: P.z - f * n.z };
+      const b1 = punktProd(kreuzProd(minus(C, B), minus(Q, B)), n) / nn;
+      const b2 = punktProd(kreuzProd(minus(A, C), minus(Q, C)), n) / nn;
+      const b3 = 1 - b1 - b2;
+      if (Math.min(b1, b2, b3) < -1e-6) continue;
+      dBest = Math.abs(hoch);
+      tBest = t;
+      bBest = [b1, b2, b3];
+    }
+    if (tBest < 0) return 'ein gesetzter Punkt liegt nicht auf der Haut';
+    const e = ecken(haut, tBest);
+    const klein = bBest.indexOf(Math.min(...bBest));
+    if (bBest[klein]! < 0.08) {
+      // dicht an der Kante gegenüber dieser Ecke: die Kante dort teilen
+      const u = e[(klein + 1) % 3]!;
+      const v = e[(klein + 2) % 3]!;
+      const bu = bBest[(klein + 1) % 3]!;
+      const bv = bBest[(klein + 2) % 3]!;
+      const r = kantenTeilen(haut, [{ u, v, f: Math.max(0.05, Math.min(0.95, bv / (bu + bv))) }]);
+      const andere = r ? loopsNachTeilen(haut, r.haut, r.geteilt, liste) : null;
+      if (!r || !andere) return 'ein gesetzter Punkt lässt sich hier nicht ins Netz setzen';
+      const w = r.geteilt.get(schluessel(haut.n, u, v))!;
+      haut = r.haut;
+      liste = andere;
+      return w;
+    }
+    const q = e.map((v) => lage(haut.pos, v));
+    const Q = {
+      x: bBest[0] * q[0]!.x + bBest[1] * q[1]!.x + bBest[2] * q[2]!.x,
+      y: bBest[0] * q[0]!.y + bBest[1] * q[1]!.y + bBest[2] * q[2]!.y,
+      z: bBest[0] * q[0]!.z + bBest[1] * q[1]!.z + bBest[2] * q[2]!.z,
+    };
+    const r = dreieckTeilen(haut, tBest, Q);
+    const andere = r ? loopsNachTeilen(haut, r.haut, new Map(), liste) : null;
+    if (!r || !andere) return 'ein gesetzter Punkt lässt sich hier nicht ins Netz setzen (er liegt auf der Mitte oder hat kein Spiegelbild)';
+    haut = r.haut;
+    liste = andere;
+    return r.w;
+  };
+  /** die gesetzten Punkte als Punkte des Netzes, der Reihe nach (ohne die, die auf den Anfang, das Ende oder den vorigen fallen) */
+  const gesetzt: { v: number; ecke: boolean }[] = [];
+  for (const u of ueber) {
+    const v = eckeBei(u.ort);
+    if (typeof v === 'string') return { fehler: v };
+    if (v === a || (!zurMitte && v === c) || gesetzt.some((x) => x.v === v)) continue;
+    gesetzt.push({ v, ecke: u.ecke });
+  }
+
   const zielEcke: number | 'mitte' = zurMitte ? 'mitte' : c;
   let stationen: Station[] = [];
+  /** der ganze Weg: vom Anfang über die gesetzten Punkte zum Ende, jedes Stück für sich gesucht */
+  const alleStationen = (punktEcken: ReadonlySet<number>, tiefe: number): Station[] | string => {
+    const benutzt = new Set<number>([a, ...gesetzt.map((x) => x.v), ...(zurMitte ? [] : [c])]);
+    const halte: (number | 'mitte')[] = [...gesetzt.map((x) => x.v), zielEcke];
+    const aus: Station[] = [];
+    let von0 = a;
+    for (const ziel of halte) {
+      const st = stationenVon(von0, ziel, punktEcken, benutzt, tiefe);
+      if (typeof st === 'string') return st;
+      aus.push(...st);
+      if (ziel !== zielEcke && ziel !== 'mitte') {
+        aus.push({ ecke: ziel });
+        von0 = ziel;
+      }
+    }
+    return aus;
+  };
   for (let runde = 0; ; runde++) {
     // die Punkte des Netzes, an denen ein sichtbarer Punkt einer eingesetzten Linie sitzt
     const punktEcken = new Set<number>();
@@ -1193,14 +1291,21 @@ export function abzweigen(
         if (v >= 0) punktEcken.add(v);
       }
     }
-    const benutzt = new Set<number>(zurMitte ? [a] : [a, c]);
-    let st = stationenVon(a, zielEcke, punktEcken, benutzt, 0);
-    if (typeof st !== 'string' && !einmalig(st)) st = stationenVon(a, zielEcke, punktEcken, benutzt, 99);
+    let st = alleStationen(punktEcken, 0);
+    if (typeof st !== 'string' && !einmalig(st)) st = alleStationen(punktEcken, 99);
     if (typeof st === 'string') return { fehler: st };
     stationen = st;
+    // Eine Kante, die der Weg zweimal kreuzt (er kehrt an einem gesetzten Punkt um wie eine Haarnadel), wird zwischen den beiden
+    // Kreuzungen geteilt; danach wird der Weg neu gesucht (wie am Mundwinkel einer schmalen Form, `doppeltGekreuzt`)
+    const doppelt = doppeltGekreuzt(
+      haut,
+      stationen.flatMap((x) => ('kante' in x ? [x.kante] : [])),
+    );
+    if (!doppelt) return { fehler: 'der Weg kehrt an derselben Stelle einer Kante um (die gesetzten Punkte liegen dafür zu dicht beieinander)' };
+    if (doppelt.length && runde >= 12) return { fehler: 'der Weg kreuzt eine Kante mehrfach (die gesetzten Punkte liegen dafür zu dicht beieinander)' };
     // Kreuzungen auf der Kette einer Linie dicht an einem ihrer Punkte, an dem noch kein Punkt des Netzes liegt: dort teilen
     const ketten = kettenKanten();
-    const teilen: Kantenpunkt[] = [];
+    const teilen: Kantenpunkt[] = [...doppelt];
     for (const x of stationen) {
       if (!('kante' in x)) continue;
       const k = x.kante;
@@ -1234,10 +1339,13 @@ export function abzweigen(
         break;
       }
     }
-    if (teilen.length === 0 || runde >= 6) break;
+    if (teilen.length === 0 || runde >= 12) break;
     const r = kantenTeilen(haut, teilen);
     const andere = r ? loopsNachTeilen(haut, r.haut, r.geteilt, liste) : null;
-    if (!r || !andere) break;
+    if (!r || !andere) {
+      if (doppelt.length) return { fehler: 'der Weg kreuzt eine Kante mehrfach, und sie lässt sich dort nicht teilen' };
+      break;
+    }
     haut = r.haut;
     liste = andere;
   }
@@ -1284,7 +1392,15 @@ export function abzweigen(
       for (const q of l.punkte) if (!q.vonSelbst && eckeVon(l, q) === u) dort.push(q);
     }
     const erster = dort[0];
-    if (!erster) continue;
+    if (!erster) {
+      // ein gesetzter Punkt, an dem keine andere Linie einen Punkt hat: ein eigener Punkt der neuen Linie
+      const eigen = gesetzt.find((x) => x.v === u);
+      if (eigen) {
+        const q = lage(haut.pos, u);
+        neu.punkte.push(eigen.ecke ? { s: neu.s[kette.indexOf(u)]!, ref: q, cur: { ...q }, ecke: true } : { s: neu.s[kette.indexOf(u)]!, ref: q, cur: { ...q } });
+      }
+      continue;
+    }
     const k = dort.find((q) => q.kreuzung !== undefined)?.kreuzung ?? naechsteKreuzung++;
     for (const q of dort) if (q.kreuzung === undefined) q.kreuzung = k;
     neu.punkte.push({ s: neu.s[kette.indexOf(u)]!, ref: { ...erster.ref }, cur: { ...erster.ref }, kreuzung: k });

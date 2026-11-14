@@ -46,6 +46,7 @@ import {
   type ZeichnungsStueck,
   bereichUm,
   direktLoeserFuer,
+  type AbzweigPunkt,
   abzweigen,
   eckenAuto,
   einfluss,
@@ -113,6 +114,7 @@ import {
   verschiebungLaengs,
   einsetzenGrund,
   endeAufMitte,
+  strahl,
   istMaulLinie,
   maulLinieAusZeichnung,
   obereLippe,
@@ -2191,7 +2193,7 @@ function blattZeichnen(a: Ansicht): void {
   if (entwurf && entwurf.a === a) el.append(element('line', 'entwurf', { x1: entwurf.x0, y1: entwurf.y0, x2: entwurf.x1, y2: entwurf.y1 }));
   if (spur && spur.a === a) el.append(element('polyline', 'entwurf', { points: spur.p.map((q) => q.join(',')).join(' ') }));
   if (stift && stift.a === a) stiftZeichnen(el, a, rp);
-  if (abzweig && abzweig.a === a) abzweigZeichnen(el, a);
+  if (abzweig && abzweig.a === a) abzweigZeichnen(el, a, rp);
 }
 
 function allesZeigen(): void {
@@ -5045,14 +5047,29 @@ function stiftFertig(): void {
 
 /**
  * Abzweigung (Florian, 14.11.: „grundsätzlich soll man von jeder linie und von jedem punkt aus eine verbundene abzweigung erstellen
- * können“): Mit P auf einem Punkt oder einer Linie drücken, zu einem anderen Punkt oder einer anderen Linie ziehen, loslassen. Die
- * neue Linie nimmt den geraden Weg über die Haut, hängt an beiden Punkten und teilt sie mit ihren Linien (`abzweigen` im Kern); auf
- * einer Linie ohne Punkt entsteht dort einer. Vom Punkt zu seinem Spiegelbild gezogen endet sie auf der Mitte.
+ * können“). Mit P:
+ * - Klick auf einen Punkt oder eine Linie: Dort beginnt sie (auf einer Linie ohne Punkt entsteht er sofort). Das Werkzeug bleibt an.
+ * - Klick auf die Haut: ein Punkt dazwischen (Klick = Ecke, Klicken und Ziehen = glatt). ⌫ nimmt den letzten zurück.
+ * - Klick auf einen anderen Punkt oder eine andere Linie: Dort endet sie. Esc bricht ab.
+ * - Oder in einem Zug: auf dem Anfang drücken, zum Ende ziehen, loslassen.
+ * Die neue Linie nimmt von Punkt zu Punkt den geraden Weg über die Haut, hängt an Anfang und Ende und teilt die Punkte mit ihren
+ * Linien (`abzweigen` im Kern). Vom Punkt auf das Spiegelbild seiner Linie endet sie auf der Mitte.
  */
 type AbzweigOrt = { id: number; i: number; m: boolean; X: number; Y: number };
 /** so weit (in mittleren Kanten) darf der Pfad einer neuen Abzweigung neben ihrem Weg über die Haut liegen, bevor sie Punkte dazwischen bekommt */
 const ABZWEIG_GENAU = 0.25;
-let abzweig: { a: Ansicht; von: AbzweigOrt } | null = null;
+let abzweig: {
+  a: Ansicht;
+  von: AbzweigOrt;
+  /** die Taste ist seit dem ersten Druck noch unten */
+  zieht: boolean;
+  /** nach dem ersten Klick: der Punkt, an dem sie beginnt, und der Stand davor (für ⌘Z und den Abbruch) */
+  start: { id: number; p: LoopPunkt; m: boolean } | null;
+  vorher: Schnappschuss | null;
+  /** die gesetzten Punkte dazwischen; `ankerZieht`: Der letzte wird gerade gezogen (sein Griff) */
+  anker: StiftAnker[];
+  ankerZieht: boolean;
+} | null = null;
 
 /** der Punkt oder die Linie unter dem Zeiger (kein Griff): wo eine Abzweigung beginnen oder enden kann */
 function abzweigOrt(el: Element | null | undefined, X: number, Y: number): AbzweigOrt | null {
@@ -5061,30 +5078,106 @@ function abzweigOrt(el: Element | null | undefined, X: number, Y: number): Abzwe
   if (loopNr(Number(l)) < 0) return null;
   return { id: Number(l), i: Number(el.getAttribute('data-i') ?? -1), m: el.getAttribute('data-m') === '1', X, Y };
 }
-
-/** das Gummiband vom Anfang zur Maus */
-function abzweigZeichnen(el: SVGElement, a: Ansicht): void {
-  const o = abzweig!.von;
-  const l = loops[loopNr(o.id)];
-  const p = o.i >= 0 ? l?.punkte[o.i] : undefined;
-  const [x0, y0] = p ? imBlatt(a, o.m ? spiegeln(p.ref) : p.ref) : [o.X, o.Y];
-  if (maus && maus.a === a) el.append(element('line', 'entwurf stift', { x1: x0, y1: y0, x2: maus.X, y2: maus.Y }));
+/** der oberste Punkt oder die oberste Linie dieses Blatts unter dem Zeiger */
+function abzweigOrtUnter(a: Ansicht, e: { clientX: number; clientY: number }): AbzweigOrt | null {
+  const [X, Y] = blattPunkt(a, e);
+  for (const el of document.elementsFromPoint(e.clientX, e.clientY)) {
+    if (!blaetter[a].contains(el)) continue;
+    const o = abzweigOrt(el, X, Y);
+    if (o) return o;
+  }
+  return null;
+}
+/** wo der Anfang im Blatt liegt */
+function abzweigAnfangImBlatt(a: Ansicht): [number, number] {
+  const ab = abzweig!;
+  const p = ab.start?.p ?? (ab.von.i >= 0 ? loops[loopNr(ab.von.id)]?.punkte[ab.von.i] : undefined);
+  const m = ab.start ? ab.start.m : ab.von.m;
+  return p ? imBlatt(a, m ? spiegeln(p.ref) : p.ref) : [ab.von.X, ab.von.Y];
+}
+/** ist der Ort der Anfang selbst (sein Punkt, ein Punkt einer anderen Linie an derselben Kreuzung, oder die Linie dicht an ihm)? */
+function abzweigIstAnfang(a: Ansicht, o: AbzweigOrt): boolean {
+  const ab = abzweig;
+  if (!ab) return false;
+  const [x0, y0] = abzweigAnfangImBlatt(a);
+  if (Math.hypot(o.X - x0, o.Y - y0) * skala(a) < 6) return true;
+  if (!ab.start || o.i < 0) return false;
+  const q = loops[loopNr(o.id)]?.punkte[o.i];
+  return q === ab.start.p || (q?.kreuzung !== undefined && q.kreuzung === ab.start.p.kreuzung);
 }
 
-function abzweigungErstellen(a: Ansicht, von: AbzweigOrt, nach: AbzweigOrt | null): void {
-  if (grund) {
-    meldung = 'Eine Abzweigung entsteht in der Grundform (erst „Fressen“ aus)';
-    return;
+/** das Gummiband vom Anfang über die gesetzten Punkte zur Maus */
+function abzweigZeichnen(el: SVGElement, a: Ansicht, rp: number): void {
+  const ab = abzweig!;
+  const [x0, y0] = abzweigAnfangImBlatt(a);
+  let d = `M ${x0} ${y0}`;
+  for (const p of ab.anker) d += ` L ${p.X} ${p.Y}`;
+  if (maus && maus.a === a && !ab.ankerZieht) d += ` L ${maus.X} ${maus.Y}`;
+  el.append(element('path', 'entwurf stift', { d }));
+  el.append(element('rect', 'stift-anker erster', { x: x0 - rp, y: y0 - rp, width: 2 * rp, height: 2 * rp }));
+  for (const p of ab.anker) {
+    el.append(element('rect', 'stift-anker', { x: p.X - rp, y: p.Y - rp, width: 2 * rp, height: 2 * rp }));
+    // ein gezogener Punkt wird glatt: sein Griff, wie gezogen (er zeigt nur an, dass er glatt ist; die Linie rundet sich dort)
+    if (p.aus) el.append(element('line', 'griff-linie', { x1: p.X - p.aus[0], y1: p.Y - p.aus[1], x2: p.X + p.aus[0], y2: p.Y + p.aus[1] }));
   }
-  if (!nach) {
-    meldung = 'Abzweigung: mit P auf einem Punkt oder einer Linie drücken, zu einem anderen Punkt oder einer anderen Linie ziehen und dort loslassen';
-    return;
-  }
+}
+
+const ABZWEIG_WEITER = 'Klick auf die Haut setzt einen Punkt (Klicken und Ziehen: glatt), Klick auf einen anderen Punkt oder eine andere Linie beendet sie · ⌫ letzter Punkt zurück · Esc bricht ab';
+
+/** der erste Klick: Die Abzweigung beginnt hier; auf einer Linie ohne Punkt entsteht er sofort. Das Werkzeug bleibt an */
+function abzweigBeginnen(): void {
+  const ab = abzweig;
+  if (!ab) return;
+  const ende = (text: string): void => {
+    abzweig = null;
+    modus = 'frei';
+    meldung = text;
+  };
+  if (grund) return ende('Eine Abzweigung entsteht in der Grundform (erst „Fressen“ aus)');
+  const l = loops[loopNr(ab.von.id)];
+  if (!l) return ende('');
   const vorher = schnappschuss();
+  let p: LoopPunkt | undefined;
+  let neu = false;
+  if (ab.von.i >= 0) p = l.punkte[ab.von.i];
+  else {
+    const r = punktAufLinie(ab.a, l, ab.von.X, ab.von.Y, ab.von.m);
+    p = r.p;
+    neu = r.neu;
+    if (neu) linienAufPfad();
+  }
+  if (!p) return ende('');
+  ab.start = { id: l.id, p, m: ab.von.m };
+  ab.vorher = vorher;
+  meldung = `Abzweigung: Sie beginnt hier${neu ? ' (der Punkt ist gesetzt)' : ''}. ${ABZWEIG_WEITER}`;
+}
+
+/** abbrechen: Der Stand von vor dem ersten Klick (ein dafür gesetzter Punkt ist wieder weg) */
+function abzweigAbbrechen(): void {
+  const ab = abzweig;
+  abzweig = null;
+  if (ab?.vorher) wiederherstellen(ab.vorher);
+}
+
+/**
+ * Die Abzweigung anlegen: von `von` (oder vom schon gefassten Anfang) über die gesetzten Punkte nach `nach`. `vorher`: der Stand
+ * vor dem ersten Klick, falls der Anfang schon gefasst ist.
+ */
+function abzweigungErstellen(
+  a: Ansicht,
+  von: AbzweigOrt,
+  nach: AbzweigOrt | null,
+  anfang: { id: number; p: LoopPunkt; m: boolean } | null = null,
+  standDavor: Schnappschuss | null = null,
+  anker: readonly StiftAnker[] = [],
+): void {
+  const vorher = standDavor ?? schnappschuss();
   const zurueckMit = (text: string): void => {
     wiederherstellen(vorher);
     meldung = text;
   };
+  if (grund) return zurueckMit('Eine Abzweigung entsteht in der Grundform (erst „Fressen“ aus)');
+  if (!nach) return zurueckMit('Abzweigung: Sie endet an einem Punkt oder auf einer Linie (dort klicken oder loslassen)');
   /** der Punkt am Ort: der getroffene, oder der an dieser Stelle der Linie (dort entsteht einer, wenn keiner liegt) */
   const punktAm = (o: AbzweigOrt): { l: Loop; p: LoopPunkt } | null => {
     const l = loops[loopNr(o.id)];
@@ -5093,7 +5186,8 @@ function abzweigungErstellen(a: Ansicht, von: AbzweigOrt, nach: AbzweigOrt | nul
     return p ? { l, p } : null;
   };
   // beide Punkte fassen, erst danach ihre Nummern lesen (ein neuer Punkt verschiebt die Nummern der Punkte seiner Linie)
-  const pv = punktAm(von);
+  const la = anfang ? loops[loopNr(anfang.id)] : undefined;
+  const pv = anfang ? (la?.punkte.includes(anfang.p) ? { l: la, p: anfang.p } : null) : punktAm(von);
   const pn = punktAm(nach);
   if (!pv || !pn) return zurueckMit('Abzweigung: Der Punkt am Anfang oder am Ende ließ sich nicht fassen');
   const avJetzt = { loop: loops.indexOf(pv.l), punkt: pv.l.punkte.indexOf(pv.p) };
@@ -5101,11 +5195,20 @@ function abzweigungErstellen(a: Ansicht, von: AbzweigOrt, nach: AbzweigOrt | nul
   const gleich = avJetzt.loop === an.loop && avJetzt.punkt === an.punkt;
   const mitte = (x: { loop: number; punkt: number }): boolean => Math.abs(loops[x.loop]!.punkte[x.punkt]!.ref.z) < 1e-9;
   // über die Mitte: nur zum Spiegelbild des eigenen Anfangs (dann endet die Linie auf der Mitte); Punkte auf der Mitte sind ihr eigenes
-  const drueben = von.m !== nach.m && !mitte(avJetzt) && !mitte(an);
+  const vonM = anfang ? anfang.m : von.m;
+  const drueben = vonM !== nach.m && !mitte(avJetzt) && !mitte(an);
   if (gleich && !drueben) return zurueckMit('Abzweigung: Anfang und Ende sind derselbe Punkt');
   if (drueben && !gleich) return zurueckMit('Abzweigung: Über die Mitte führt sie nur zum Spiegelbild ihres Anfangs (oder sie endet an einem Punkt der Mittellinie)');
+  // die gesetzten Punkte: ihr Ort auf der Haut unter dem Blatt, auf der Seite z ≥ 0
+  const ueber: AbzweigPunkt[] = [];
+  for (const k of anker) {
+    const [u, v] = uvAus(a, k.X, k.Y);
+    const t = strahl(haut, a, u, v);
+    if (!t) return zurueckMit('Abzweigung: Ein gesetzter Punkt liegt nicht auf dem Körper');
+    ueber.push({ ort: t.p.z < 0 ? spiegeln(t.p) : t.p, ecke: k.aus === null });
+  }
   const nAlt = haut.n;
-  const r = abzweigen(haut, loops, avJetzt, drueben ? 'spiegel' : an, naechsteId, naechsteKreuzung);
+  const r = abzweigen(haut, loops, avJetzt, drueben ? 'spiegel' : an, naechsteId, naechsteKreuzung, ueber);
   if ('fehler' in r) return zurueckMit(`Abzweigung geht so nicht: ${r.fehler}`);
   const id = naechsteId++;
   haut = r.haut;
@@ -5132,6 +5235,29 @@ function abzweigungErstellen(a: Ansicht, von: AbzweigOrt, nach: AbzweigOrt | nul
   meldung = drueben
     ? `Abzweigung zum Spiegelbild: Die Linie endet auf der Mitte und läuft dort rund in ihre andere Hälfte.${mitPunkten} · ⌘Z nimmt sie zurück`
     : `Abzweigung: Die Linie hängt an beiden Punkten und teilt sie (wer einen zieht, zieht beide Linien).${mitPunkten} · Doppelklick setzt Punkte auf sie · ⌘Z nimmt sie zurück`;
+}
+
+/** Druck mit P, während eine Abzweigung begonnen ist: auf einem Punkt oder einer Linie endet sie, auf der Haut entsteht ein Punkt */
+function abzweigWeiter(a: Ansicht, e: PointerEvent, X: number, Y: number): void {
+  const ab = abzweig!;
+  if (ab.a !== a || !ab.start) return;
+  const o = abzweigOrt(e.target as Element, X, Y);
+  if (o && abzweigIstAnfang(a, o)) {
+    meldung = `Abzweigung: Das ist ihr Anfang. ${ABZWEIG_WEITER}`;
+    statusZeigen();
+    return;
+  }
+  if (o) {
+    abzweig = null;
+    modus = 'frei';
+    abzweigungErstellen(a, ab.von, o, ab.start, ab.vorher, ab.anker);
+    allesZeigen();
+    return;
+  }
+  ab.anker.push({ X, Y, aus: null });
+  ab.ankerZieht = true;
+  blaetter[a].setPointerCapture(e.pointerId);
+  blattZeichnen(a);
 }
 
 // ---------- Maus und Tasten ----------
@@ -5178,10 +5304,15 @@ function druecken(a: Ansicht, e: PointerEvent): void {
     return;
   }
   if (modus === 'stift') {
+    // eine begonnene Abzweigung: der nächste Punkt oder ihr Ende
+    if (abzweig) {
+      abzweigWeiter(a, e, X, Y);
+      return;
+    }
     // auf einem Punkt oder einer Linie begonnen (und noch kein Punkt gesetzt): eine Abzweigung
     const ort = stift ? null : abzweigOrt(e.target as Element, X, Y);
     if (ort) {
-      abzweig = { a, von: ort };
+      abzweig = { a, von: ort, zieht: true, start: null, vorher: null, anker: [], ankerZieht: false };
       maus = { a, X, Y };
       blaetter[a].setPointerCapture(e.pointerId);
       blattZeichnen(a);
@@ -5257,6 +5388,13 @@ function bewegen(a: Ansicht, e: PointerEvent): void {
     return;
   }
   if (abzweig && abzweig.a === a) {
+    // ein gesetzter Punkt wird gezogen: sein Griff (unter 3 px bleibt er eine Ecke), wie beim Stift
+    if (abzweig.ankerZieht) {
+      const k = abzweig.anker[abzweig.anker.length - 1]!;
+      const dx = X - k.X;
+      const dy = Y - k.Y;
+      k.aus = Math.hypot(dx, dy) * skala(a) > 3 ? [dx, dy] : null;
+    }
     blattZeichnen(a);
     return;
   }
@@ -5274,20 +5412,25 @@ function loslassen(a: Ansicht, e: PointerEvent | null): void {
     return;
   }
   if (abzweig && abzweig.a === a) {
-    const von = abzweig.von;
-    abzweig = null;
-    modus = 'frei';
-    // worauf losgelassen wurde: der oberste Punkt oder die oberste Linie dieses Blatts unter dem Zeiger
-    let nach: AbzweigOrt | null = null;
-    if (e) {
-      const [X, Y] = blattPunkt(a, e);
-      for (const el of document.elementsFromPoint(e.clientX, e.clientY)) {
-        if (!blaetter[a].contains(el)) continue;
-        nach = abzweigOrt(el, X, Y);
-        if (nach) break;
-      }
+    const ab = abzweig;
+    if (ab.ankerZieht) {
+      ab.ankerZieht = false;
+      blattZeichnen(a);
+      return;
     }
-    abzweigungErstellen(a, von, nach);
+    if (!ab.zieht) return;
+    ab.zieht = false;
+    // in einem Zug: auf einem anderen Punkt oder einer anderen Linie losgelassen
+    const nach = e ? abzweigOrtUnter(a, e) : null;
+    if (nach && !abzweigIstAnfang(a, nach)) {
+      abzweig = null;
+      modus = 'frei';
+      abzweigungErstellen(a, ab.von, nach);
+      allesZeigen();
+      return;
+    }
+    // ein Klick: Hier beginnt sie, das Werkzeug bleibt an
+    abzweigBeginnen();
     allesZeigen();
     return;
   }
@@ -5363,6 +5506,7 @@ knopfForm.addEventListener('click', () => {
   allesZeigen();
 });
 knopfStift.addEventListener('click', () => {
+  if (abzweig) abzweigAbbrechen();
   modus = modus === 'stift' ? 'frei' : 'stift';
   stift = null;
   allesZeigen();
@@ -5410,6 +5554,28 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (zug) return;
+  // eine begonnene Abzweigung: ⌫ nimmt den letzten gesetzten Punkt zurück (ohne einen bricht es ab), ⏎ sagt, wo sie enden kann;
+  // Esc und jedes andere Werkzeug brechen ab
+  if (abzweig) {
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      if (abzweig.anker.length) abzweig.anker.pop();
+      else {
+        abzweigAbbrechen();
+        modus = 'frei';
+        meldung = '';
+      }
+      allesZeigen();
+      e.preventDefault();
+      return;
+    }
+    if (e.key === 'Enter') {
+      meldung = `Abzweigung: Sie endet an einem Punkt oder auf einer Linie. ${ABZWEIG_WEITER}`;
+      statusZeigen();
+      e.preventDefault();
+      return;
+    }
+    if (e.key === 'Escape' || k === 'p' || k === 'l' || k === 'f') abzweigAbbrechen();
+  }
   // beim Zeichnen mit dem Stift: ⏎ schließt, ⌫ nimmt den letzten Punkt zurück, Esc bricht ab
   if (stift) {
     if (e.key === 'Enter') {

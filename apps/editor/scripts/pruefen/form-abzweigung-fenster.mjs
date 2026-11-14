@@ -3,11 +3,13 @@
 // indem ich mit p von einem punkt zum anderen ziehe. Wenn ich das bei beiden paaren mache ergibt sich dadurch ein kreuz mit einem
 // punkt in der kreuzung, die ich sehr exakt formen kann...z.B zu einem horn.“
 //   1  Seine Form laden (NAME, Standard „test_kaputt“: vier Linien). Mit dem Stift einen Kreis mit vier Punkten in ein Feld zeichnen.
-//   2  P: von Punkt 0 zu Punkt 2 ziehen, dann von Punkt 1 zu Punkt 3: zwei Abzweigungen, jede hängt an zwei Punkten des Kreises und
-//      teilt sie; in der Kreuzung ein gemeinsamer Punkt. Die Form bleibt.
+//   2  P: Klick auf Punkt 0, Klick auf Punkt 2 (nach dem ersten Klick bleibt das Werkzeug an); dann in einem Zug von Punkt 1 zu
+//      Punkt 3 gezogen: zwei Abzweigungen, jede hängt an zwei Punkten des Kreises und teilt sie; in der Kreuzung ein gemeinsamer
+//      Punkt. Die Form bleibt.
 //   3  Den Punkt in der Kreuzung herausziehen (Front, zur Seite): beide Linien gehen mit, der Kreis bleibt.
 //   4  Löschen: der Kreis allein nicht (an ihm hängen Abzweigungen), ein Punkt mit Abzweigung nicht; eine Abzweigung ja.
-//   5  P von einer Stelle auf einer Linie (ohne Punkt) zu einem Punkt des Kreises: Dort entsteht ein Punkt.
+//   5  P: Klick auf eine Stelle einer Linie ohne Punkt (der Punkt entsteht sofort, das Werkzeug bleibt an), Esc nimmt ihn zurück.
+//      Noch einmal: Klick auf die Linie, Klick auf die Haut (ein Punkt dazwischen), Klick auf einen Punkt des Kreises.
 //   6  P von einem Punkt des Kreises zu seinem Spiegelbild (Front): Die Linie endet auf der Mitte.
 //   7  ⌘Z bis zum Anfang: die Form wie geladen.
 // Aufruf aus apps/editor: GPU=1 [NAME="test_kaputt"] node scripts/pruefen/form-abzweigung-fenster.mjs [bild-ohne-endung]
@@ -115,12 +117,26 @@ const KP = kreis.punkte.map((p) => p.ref);
 const kastenVorher = kasten(mitKreis.lagen);
 
 // ---------- 2. die gegenüberliegenden Punkte verbinden ----------
-const m1 = await abzweigen('seite', KP[0], KP[2]);
+// mit zwei Klicks: Nach dem ersten bleibt das Werkzeug an, nichts ist gewählt, noch keine neue Linie
+await seite.keyboard.press('p');
+{
+  const q = await bild('seite', KP[0]);
+  await seite.mouse.click(q.x, q.y);
+  await ruhig();
+}
+const mBeginn = await K('meldung');
+ok('P, Klick auf einen Punkt: Die Abzweigung beginnt, das Werkzeug bleibt an', /^Abzweigung: Sie beginnt hier/.test(mBeginn) && (await K('loops')).length === mitKreis.loops.length, mBeginn);
+{
+  const q = await bild('seite', KP[2]);
+  await seite.mouse.click(q.x, q.y);
+  await ruhig();
+}
+const m1 = await K('meldung');
 const nach1 = await K('loops');
-ok('P von Punkt 0 zu Punkt 2: eine Abzweigung', nach1.length === mitKreis.loops.length + 1 && nach1.at(-1).art === 'ring' && nach1.at(-1).haengt?.[0] === true && nach1.at(-1).haengt?.[1] === true, m1);
+ok('Klick auf den gegenüberliegenden Punkt: eine Abzweigung', nach1.length === mitKreis.loops.length + 1 && nach1.at(-1).art === 'ring' && nach1.at(-1).haengt?.[0] === true && nach1.at(-1).haengt?.[1] === true, m1);
 const m2 = await abzweigen('seite', KP[1], KP[3]);
 const nach2 = { lagen: await K('lagen'), loops: await K('loops') };
-ok('P von Punkt 1 zu Punkt 3: die zweite', nach2.loops.length === mitKreis.loops.length + 2 && nach2.loops.at(-1).haengt?.[0] === true, m2);
+ok('in einem Zug von Punkt 1 zu Punkt 3 gezogen: die zweite', nach2.loops.length === mitKreis.loops.length + 2 && nach2.loops.at(-1).haengt?.[0] === true, m2);
 {
   const kr = nach2.loops.find((l) => l.id === kreis.id);
   const [a1, a2] = nach2.loops.slice(-2);
@@ -287,11 +303,11 @@ const kastenHorn = kasten(await K('lagen'));
   ok('⌘Z: die Abzweigung ist wieder da', (await K('loops')).length === zahl && (await K('loops')).at(-1).haengt?.[0] === true);
 }
 
-// ---------- 5. Start auf einer Linie ohne Punkt ----------
+// ---------- 5. Start auf einer Linie ohne Punkt; Abbruch; ein Punkt dazwischen ----------
 {
   const L0 = await K('loops');
-  // die Linie der geladenen Form, die im Blatt Seite dem Kreis am nächsten kommt: von ihrer nächsten freien Stelle zum nächsten
-  // Punkt des Kreises
+  // die Linie der geladenen Form, die im Blatt Seite dem Kreis am nächsten kommt: ihre nächste freie Stelle, und der Punkt des
+  // Kreises, der ihr am nächsten liegt
   let wirt = null;
   let stelle = null;
   let zielPunkt = null;
@@ -318,23 +334,55 @@ const kastenHorn = kasten(await K('lagen'));
         zielPunkt = q;
       }
     }
+  }
+  const punkteWirt = async () => (await K('loops')).find((l) => l.id === wirt.id).punkte.length;
+  const w0 = wirt ? L0.find((l) => l.id === wirt.id).punkte.length : 0;
+  // Klick auf die Linie: Der Punkt entsteht sofort; Esc nimmt ihn zurück
+  if (wirt) {
     await seite.keyboard.press('p');
-    await ziehen(stelle, zielPunkt);
+    await seite.mouse.click(stelle.x, stelle.y);
+    await ruhig();
+  }
+  const m5a = await K('meldung');
+  ok('P, Klick auf eine Linie ohne Punkt: Der Punkt ist sofort gesetzt, das Werkzeug bleibt an', !!wirt && (await punkteWirt()) === w0 + 1 && /der Punkt ist gesetzt/.test(m5a) && (await K('loops')).length === L0.length, wirt ? `Linie ${wirt.id} (${wirt.art}): ${w0} → ${await punkteWirt()} Punkte; ${m5a}` : 'keine freie Stelle auf einer Linie gefunden');
+  await seite.keyboard.press('Escape');
+  await ruhig();
+  ok('Esc: abgebrochen, der Punkt ist wieder weg', !!wirt && (await punkteWirt()) === w0 && (await K('loops')).length === L0.length, wirt ? `${await punkteWirt()} Punkte` : '');
+  // noch einmal, mit einem Punkt dazwischen (auf der Haut, wo nichts liegt)
+  let dazwischen = null;
+  if (wirt) {
+    await seite.keyboard.press('p');
+    await seite.mouse.click(stelle.x, stelle.y);
+    await ruhig();
+    // eine freie Stelle auf der Haut neben der Mitte zwischen Anfang und Ende (nichts unter dem Zeiger, etwas Abstand zu beiden)
+    const mx = (stelle.x + zielPunkt.x) / 2;
+    const my = (stelle.y + zielPunkt.y) / 2;
+    suche: for (const r of [14, 20, 26, 10]) {
+      for (let w = 0; w < 12; w++) {
+        const q = { x: mx + r * Math.cos((w * Math.PI) / 6), y: my + r * Math.sin((w * Math.PI) / 6) };
+        if (Math.hypot(q.x - stelle.x, q.y - stelle.y) < 10 || Math.hypot(q.x - zielPunkt.x, q.y - zielPunkt.y) < 10) continue;
+        const o = await obenauf(q);
+        if (o && o.l === null && o.g === null) {
+          dazwischen = q;
+          break suche;
+        }
+      }
+    }
+    if (dazwischen) {
+      await seite.mouse.click(dazwischen.x, dazwischen.y);
+      await seite.waitForTimeout(120);
+    }
+    await seite.mouse.click(zielPunkt.x, zielPunkt.y);
+    await ruhig();
   }
   const m5 = await K('meldung');
   const L1 = await K('loops');
   const neu = L1.at(-1);
-  const w0 = wirt ? L0.find((l) => l.id === wirt.id) : null;
   const w1 = wirt ? L1.find((l) => l.id === wirt.id) : null;
-  if (process.env.DIAG && w1) {
-    const zeile = (l) => `${l.id} ${l.art}${l.haengt ? ' hängt' : ''}: ${l.punkte.map((q) => `(${z1(q.ref.x)} ${z1(q.ref.y)} ${z1(q.ref.z)}${q.kreuzung !== null ? ` K${q.kreuzung}` : ''}${q.sichtbar ? '' : ' verborgen'})`).join(' ')}`;
-    console.log(`     Stelle im Bild (${z1(stelle.x)} ${z1(stelle.y)})`);
-    for (const l of L1) console.log(`     ${zeile(l)}`);
-  }
   ok(
-    'P von einer Stelle auf einer Linie zu einem Punkt des Kreises: Dort entsteht ein Punkt, die Abzweigung hängt an ihm',
-    !!wirt && L1.length === L0.length + 1 && neu.haengt?.[0] === true && neu.haengt?.[1] === true && w1.punkte.length === w0.punkte.length + 1 && w1.punkte.some((p) => p.kreuzung !== null && p.kreuzung === neu.punkte[0].kreuzung) && L1.find((l) => l.id === kreis.id).punkte.length === 4,
-    wirt ? `Linie ${wirt.id} (${wirt.art}): ${w0.punkte.length} → ${w1.punkte.length} Punkte; ${m5}` : 'keine freie Stelle auf einer Linie gefunden',
+    'Klick auf die Linie, Klick auf die Haut, Klick auf einen Punkt des Kreises: eine Abzweigung mit einem eigenen Punkt dazwischen',
+    !!wirt && !!dazwischen && L1.length === L0.length + 1 && neu.haengt?.[0] === true && neu.haengt?.[1] === true && w1.punkte.length === w0 + 1 && w1.punkte.some((p) => p.kreuzung !== null && p.kreuzung === neu.punkte[0].kreuzung) && neu.punkte.filter((p) => p.sichtbar && p.kreuzung === null).length >= 1 && L1.find((l) => l.id === kreis.id).punkte.length === 4,
+    wirt ? `Linie ${wirt.id}: ${w0} → ${w1.punkte.length} Punkte; die Abzweigung hat ${neu.punkte.length} Punkte (${neu.punkte.map((p) => (p.kreuzung === null ? (p.ecke ? 'Ecke' : 'glatt') : `K${p.kreuzung}`)).join(', ')}); ${m5}` : 'keine freie Stelle auf einer Linie gefunden',
   );
   {
     const kb = kasten(await K('lagen'));

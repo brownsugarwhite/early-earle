@@ -173,6 +173,36 @@ describe('Abzweigung: eine offene Linie hängt an Punkten einer anderen', () => 
     for (let j = 0; j + 1 < ast.proben.length; j++) expect(r3.haut.nachbarn[ast.proben[j]!.ecken[0]]!).toContain(ast.proben[j + 1]!.ecken[0]);
   });
 
+  it('über gesetzte Punkte: Jeder wird ein Punkt der Linie (Ecke oder glatt), der Weg läuft von Punkt zu Punkt', () => {
+    const { haut, loops, mk } = kugelMitKreis();
+    const kreis = loops[0]!;
+    // zwei Orte im Kreis, neben der geraden Verbindung von Punkt 0 zu Punkt 2 (auf die Kugel gelegt)
+    const aufKugel = (x: number, y: number): { x: number; y: number; z: number } => ({ x, y, z: Math.sqrt(150 * 150 - x * x - y * y) });
+    const P0 = kreis.punkte[0]!.ref;
+    const P2 = kreis.punkte[2]!.ref;
+    const u1 = aufKugel(P0.x + 0.33 * (P2.x - P0.x), P0.y + 0.33 * (P2.y - P0.y) + 14);
+    const u2 = aufKugel(P0.x + 0.66 * (P2.x - P0.x), P0.y + 0.66 * (P2.y - P0.y) - 12);
+    const r = abzweigen(haut, loops, { loop: 0, punkt: 0 }, { loop: 0, punkt: 2 }, 2, 1, [
+      { ort: u1, ecke: true },
+      { ort: u2, ecke: false },
+    ]);
+    if ('fehler' in r) throw new Error(r.fehler);
+    const ast = r.loops[1]!;
+    expect(ast.punkte.length).toBe(4);
+    expect(ast.punkte.map((p) => p.kreuzung)).toEqual([1, undefined, undefined, 2]);
+    expect(ast.punkte[1]!.ecke).toBe(true);
+    expect(ast.punkte[2]!.ecke).toBeUndefined();
+    // die gesetzten Punkte liegen, wo sie gesetzt wurden (auf einem Punkt des Netzes), in dieser Reihenfolge längs der Linie
+    expect(weit([u1.x, u1.y, u1.z], ast.punkte[1]!.ref)).toBeLessThan(0.3 * mk);
+    expect(weit([u2.x, u2.y, u2.z], ast.punkte[2]!.ref)).toBeLessThan(0.3 * mk);
+    expect(ast.punkte[1]!.s).toBeLessThan(ast.punkte[2]!.s);
+    // die Kette ist eine Folge von Kanten des Netzes, und das Netz bleibt spiegelgleich
+    for (let j = 0; j + 1 < ast.proben.length; j++) expect(r.haut.nachbarn[ast.proben[j]!.ecken[0]]!).toContain(ast.proben[j + 1]!.ecken[0]);
+    for (const p of ast.proben) expect(r.haut.spiegel[p.ecken[0]]!).toBeGreaterThanOrEqual(0);
+    griffeAnlegen(ast, ast.ruhe, true);
+    expect(hatPfad(ast)).toBe(true);
+  });
+
   it('sagt, warum es nicht geht', () => {
     const { haut, loops } = kugelMitKreis();
     const gleich = abzweigen(haut, loops, { loop: 0, punkt: 1 }, { loop: 0, punkt: 1 }, 2, 1);

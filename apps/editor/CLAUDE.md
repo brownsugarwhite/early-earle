@@ -77,18 +77,23 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Form“ nicht (siehe Fallen). Nicht weiterbauen, bevor das Maul-System beschrieben ist (`docs/UEBERGABE.md`, Abschnitt 7.16).
 - **Abzweigungen** (14.11.; nur in `form-bau`, Zwischenschritt im Plan): eine offene Linie, die an Punkten anderer Linien hängt
   und sie mit ihnen teilt (gleiche `kreuzung`). Im Modell ein `ring` mit `Loop.haengt = [Anfang, Ende]`; `endeAufMitte(l, 0 | 1)`
-  sagt, ob ein Ende auf der Mittelebene liegt (der Ring wie bisher) oder hängt. **Im Fenster:** P auf einem Punkt oder einer Linie
-  drücken, zu einem anderen Punkt oder einer anderen Linie ziehen, loslassen (`abzweig`, `abzweigOrt`, `abzweigungErstellen`; auf
-  einer Linie ohne Punkt entsteht dort einer, `punktAufLinie`); vom Punkt auf das Spiegelbild seiner Linie gezogen endet die Linie
-  auf der Mitte. **Im Kern:** `abzweigen(h, loops, von, nach | 'spiegel', id, naechsteKreuzung)` in `einsetzen.ts`: Weg = Schnitt
-  der Haut mit der Ebene durch beide Punkte und ihre mittlere Normale, die kürzere der zwei Richtungen; jede gekreuzte Kante wird
-  geteilt (spiegelgleich, andere Ketten bekommen den Punkt). Kommt der Weg einem Punkt einer eingesetzten Linie näher als
+  sagt, ob ein Ende auf der Mittelebene liegt (der Ring wie bisher) oder hängt. **Im Fenster, mit P:** Klick auf einen Punkt oder
+  eine Linie beginnt sie (`abzweigBeginnen`: auf einer Linie ohne Punkt entsteht er sofort, `punktAufLinie`; das Werkzeug bleibt
+  an), Klick auf die Haut setzt einen Punkt dazwischen (Klick = Ecke, Klicken und Ziehen = glatt), Klick auf einen anderen Punkt
+  oder eine andere Linie beendet sie (`abzweigWeiter` → `abzweigungErstellen`); ⌫ nimmt den letzten Punkt zurück, Esc bricht ab
+  (`abzweigAbbrechen`). Oder in einem Zug: auf dem Anfang drücken, auf dem Ende loslassen. Vom Punkt auf das Spiegelbild seiner
+  Linie endet sie auf der Mitte. **Im Kern:** `abzweigen(h, loops, von, nach | 'spiegel', id, naechsteKreuzung, ueber)` in
+  `einsetzen.ts`: von Punkt zu Punkt (auch über die gesetzten, `AbzweigPunkt`) der Schnitt der Haut mit der Ebene durch beide
+  Punkte und ihre mittlere Normale, die kürzere der zwei Richtungen; jede gekreuzte Kante wird geteilt (spiegelgleich, andere
+  Ketten bekommen den Punkt); ein gesetzter Punkt wird ein Punkt des Netzes (`eckeBei`). Kommt der Weg einem Punkt einer
+  eingesetzten Linie näher als
   `ABZWEIG_NAH` (0,5) mittlere Kanten, läuft er über diesen Punkt und teilt ihn. Danach `kreuzungenSuchen`, `eckenAuto`,
   `griffeAnlegen` mit Punkten dazwischen nur, wo der Pfad sonst weiter als `ABZWEIG_GENAU` (0,25) Kanten neben dem Weg läge.
   Löschen: Ein Punkt, an dem eine Abzweigung hängt, bleibt; eine Linie, an der Abzweigungen hängen, geht nur zusammen mit ihnen.
   Proben: `form-abzweigung.ts` (Kern, Florians Beispiel; `KANTE=1`), `GPU=1 [NAME=…] node
-  scripts/pruefen/form-abzweigung-fenster.mjs` (Fenster, an „test_kaputt“), Test `abzweigung.test.ts`. **Noch nicht gebaut:**
-  Punkte dazwischen beim Zeichnen (Fall 4 im Plan), ein freies Ende.
+  scripts/pruefen/form-abzweigung-fenster.mjs` (Fenster, an „test_kaputt“, mit Klicks), Test `abzweigung.test.ts`. **Noch nicht
+  gebaut:** der Griff eines glatt gesetzten Punkts, wie er gezogen wurde (der Punkt wird nur glatt, seine Griffe passt
+  `griffeAnlegen` an), ein freies Ende.
 - **Linienbreiten** (13.11.): 3 Bildpunkte am Knick, ein halber an runden Punkten, dazwischen verjüngt (`haerteBei` im Kern;
   `baenderZeigen` mit Breite je Punkt, in den Blättern `kantenFlaeche` und die Klasse `kante-band`). Probe:
   `GPU=1 node scripts/pruefen/form-kante-verjuengung-fenster.mjs`.
@@ -225,6 +230,12 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
 - Eine lange Linie mit nur zwei Punkten kann der Haut nicht folgen: Ihr einzelnes Kurvenstück wird der Pfad, und `linienAufPfad`
   zieht die Haut dorthin (gemessen: Eine Abzweigung vom Flügel von „test_kaputt“ zur Mitte verzog die ganze Form, 38 Dreiecke
   umgeschlagen). Deshalb `griffeAnlegen(…, punkteBis)` bei Abzweigungen. Dieselbe Schwäche haben Loops mit zwei Punkten.
+- **P wird geklickt, nicht gezogen** (Florian, 14.11.: „es werden keine punkte gesetzt wenn ich mit p auf eine linie klicke. Das
+  wekzeug springt dann sofort wieder raus“): Die erste Fassung kannte nur Drücken, Ziehen, Loslassen; ein Klick galt als Anfang
+  und Ende am selben Ort. Jede Geste eines Werkzeugs zuerst mit einzelnen Klicks prüfen, die Probe genauso.
+- Kehrt der Weg einer Abzweigung an einem gesetzten Punkt um wie eine Haarnadel, kreuzt er dieselbe Kante zweimal: `abzweigen`
+  teilt sie zwischen den Kreuzungen und sucht neu (`doppeltGekreuzt`, wie am Mundwinkel). Ohne das waren zwei Punkte der Kette
+  nicht verbunden.
 - `kreuzungenSuchen` hält auch ein knappes Vorbeilaufen (näher als `TOL`) am Ende einer Linie für eine Kreuzung und setzt dort
   einen zweiten Punkt an dieselbe Stelle. `abzweigen` führt den Weg deshalb über nahe Punkte; für andere neue Linien gilt das nicht.
 - Im Fenster sind die Punkte der Spiegelseite nicht zu greifen: Unter dem Zeiger liegt dort die gespiegelte Linie (`data-m="1"`,
