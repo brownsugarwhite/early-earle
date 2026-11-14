@@ -533,6 +533,37 @@ verborgene Fläche mehr; dann lässt sich die Pose in der gezeigten Lage rechnen
 Florians Entscheidung:** Schritt 6 vor Schritt 5 ziehen (empfohlen), die Posen jetzt mit (b) bauen (nur in der Pose ist die
 Maullinie eine Kante), oder inzwischen Schritt 4c.
 
+**Schritt 5, Etappe 2, begonnen am 14.11. um 11:40 Uhr** (Florian: „Ja, weiter Schritt 5“). Etappe 1 ist mit der Gegenprobe an
+seiner Form erledigt (Übergabe 7.8: An einem geformten Maul ist ein Zug in der Ruhe der Pose ein gewöhnlicher Zug). Nachgelesen im
+Fenster, wie die Pose heute gebaut ist:
+
+- Gezeigt und bearbeitet wird die gedrehte Lage (`haut` und `loops` sind in der Pose die gedrehten Kopien). Der Blendshape wird
+  nach jedem Zug zurückgedreht und gemerkt.
+- Die Linien sind in der Pose nicht „genau ihr Pfad“; ihre Griffe werden nach jedem Dreh neu an der gedrehten Linie abgelesen.
+- Die Rechnung läuft in der Pose abgespeckt: ohne die Krümmung der Linien, ohne Setzen und Aufräumen im Hintergrund, ohne die
+  Rechnung auf der Hälfte. Deshalb verhält sich die Haut in der Pose anders als in der Grundform.
+
+**So wird Etappe 2 gebaut:** Die Ruhe der Pose ist die Wahrheit, die Knochen drehen nur die Anzeige. In der Pose sind Haut und
+Linien im Fenster die Ruhe der Pose (Grundform plus Versatz); gezeichnet wird ihre gedrehte Kopie. Ein Zug im Blatt wird je Punkt
+mit dem Winkel dieses Punkts zurückgedreht. Die Regler rechnen nichts neu.
+
+- **2a, Umbau ohne sichtbare Änderung:** Betreten, Verlassen, Regler, Ziehen, ⌘Z, Sichern laufen über die Ruhe der Pose; die
+  Anzeige dreht. **Probe:** die vorhandenen Proben zur Pose (`form-kiefer-fenster` an der Kugel und an „simple_mouth_more
+  simple“, `form-maul-linie-fenster`) melden dasselbe wie vorher.
+- **2b, in der Pose wie in der Grundform:** Die Linien der Pose sind genau ihr Pfad; ihre Punkte und Griffe werden als Versatz
+  gegen die Grundform gespeichert; dieselbe Rechnung wie in der Grundform. **Probe an „maul handgemacht test“** (seine Form, sein
+  Fall aus 7.8), Kriterien vorher festgelegt: (1) Betreten und Verlassen ohne Zug: Grundform bitgleich, die Pose danach dieselbe
+  (höchstens 0,05). (2) Punkt der Unterlippe in der Pose 25 nach unten: Er liegt gezeigt dort, wohin er gezogen wurde; fern vom
+  Maul bewegt sich die Haut höchstens 1; nichts schlägt zusätzlich um; die Linien liegen höchstens 0,5 neben ihrem Pfad.
+  (3) Derselbe Zug fern vom Maul in der Grundform und in der Pose gibt dieselbe Haut (in der Ruhe verglichen, höchstens 0,5).
+  (4) Die Regler ändern die Ruhe nicht (bitgleich). (5) ⌘Z führt zurück. Dazu ein Bildpaar vorher und nachher.
+- **2c:** In der Pose keine neuen Punkte und Loops und kein Löschen (Meldung); Formen, die in der alten Pose gesichert wurden,
+  werden beim Laden umgerechnet.
+
+Das Maul aus der schmalen Form (mit eingesetztem Inneren) bleibt in der Pose bedienbar wie heute: Seine Öffnung wird wie bisher
+aus der Rechnung genommen. Hält 2a nach einem halben Tag nicht (die vorhandenen Proben laufen nicht wie vorher): anhalten und es
+sagen.
+
 ### Schritt 6: Maul als eigene Geometrie (4 bis 6 Tage, Entwurf und kleiner Beweis zuerst)
 
 - **Was du danach siehst:** Das Maul ist ein echter Teil der Haut: Ober- und Unterlippe sind zwei Linien, die sich an den
