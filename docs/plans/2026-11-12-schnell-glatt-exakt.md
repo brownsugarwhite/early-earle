@@ -564,6 +564,35 @@ Das Maul aus der schmalen Form (mit eingesetztem Inneren) bleibt in der Pose bed
 aus der Rechnung genommen. Hält 2a nach einem halben Tag nicht (die vorhandenen Proben laufen nicht wie vorher): anhalten und es
 sagen.
 
+**Etappe 2, gebaut am 14.11. bis 12:05 Uhr im Bau-Fenster** (2a, 2b und 2c; in seinem Fenster nichts). Probe
+`form-pose-fenster.mjs` an seiner Form „maul handgemacht test“
+([Messwerte vorher und nachher](../progress/editor/schritt5-pose-fenster-messung-2026-11-14.txt); Bildpaar
+[vorher](../progress/editor/schritt5-pose-zug-vorher-2026-11-14.jpg),
+[nachher](../progress/editor/schritt5-pose-zug-nachher-2026-11-14.jpg): derselbe Zug an der Kieferspitze in der Pose):
+
+| Kriterium | vorher (die Pose wie bis zum 14.11.) | nachher |
+| --- | --- | --- |
+| 1 Betreten und Verlassen ohne Zug | Grundform bitgleich, Pose dieselbe | ebenso |
+| 2 Punkt der Unterlippe 25 nach unten: liegt, wohin er gezogen wurde | 0,03 daneben | 0,00 |
+| 2 fern vom Maul bewegt sich die Haut höchstens 1 | **4,39** (das Netz fiel dabei von 3 485 auf 2 926 Punkte) | 0,17 |
+| 2 die Linien liegen höchstens 0,5 neben ihrem Pfad | **12,67** | 0,00 |
+| 2 nichts schlägt zusätzlich um | **10 statt 8** | **16 bis 18 statt 8** |
+| 3 derselbe Zug fern vom Maul in Pose und Grundform: dieselbe Haut (höchstens 0,5) | **5,96** auseinander | 0,00, dieselbe Punktzahl |
+| 4 die Regler ändern die Ruhe nicht | bitgleich | bitgleich |
+| 5 ⌘Z | zurück | zurück |
+| 2c in der Pose kein Löschen, kein neuer Punkt | (erlaubt) | Meldung, nichts ändert sich |
+
+**Ein Kriterium ist nicht erfüllt:** Beim Zug an der Kieferspitze schlagen 8 bis 10 kleine Dreiecke an der Mittelebene um.
+Derselbe Zug in der Grundform schlägt dort ebenfalls 8 um: Es liegt an diesem Zug an der Mitte, nicht an der Pose; behoben ist es
+nicht. Die vorhandenen Proben zur Pose (`form-kiefer-fenster` an der Kugel, an „simple_mouth_more simple“ und an „maul
+handgemacht test“, `form-maul-linie-fenster`) melden dasselbe wie vor dem Umbau; an der Kugel hält die Pose jetzt den Knick an
+den Lippen (95,0° und 94,1°).
+
+**Was anders gebaut ist als geplant:** Am Maul aus der schmalen Form (mit eingesetztem Inneren) rechnet die Pose weiter wie bis
+zum 14.11., nur in ihrer Ruhe statt in der gedrehten Lage. Dort in der Front gezeichnet schlagen nach dem Zug an der Lippe 2
+Dreiecke um, vorher keins. **Noch offen in Schritt 5:** Etappe 3 (die Pose geht mit der Grundform mit; die Versätze sind schon
+da, geprüft ist es nur mit der alten Fressen-Probe), Etappe 4 (beide Seiten frei), Etappe 5 (sein Ablauf, sein Urteil).
+
 ### Schritt 6: Maul als eigene Geometrie (4 bis 6 Tage, Entwurf und kleiner Beweis zuerst)
 
 - **Was du danach siehst:** Das Maul ist ein echter Teil der Haut: Ober- und Unterlippe sind zwei Linien, die sich an den
