@@ -297,6 +297,13 @@ type PoseStand = { kiefer: number; schaedel: number; delta: Float64Array | null 
 let pose: PoseStand = { kiefer: 30, schaedel: 0, delta: null };
 /** In der Pose: die Grundform. `haut` und `loops` sind dann die Pose, wie sie zu sehen ist (dasselbe Netz, posierte Lagen). */
 let grund: { haut: Haut; loops: Loop[] } | null = null;
+/**
+ * Die Pose zeigen (Schritt 5, 14.11.): In der Pose sind `haut` und `loops` die Ruhe der Pose (Grundform plus Blendshape), mit ihr
+ * wird gerechnet. Die Knochen drehen nur, was gezeigt wird: Solange gezeichnet wird (`alsAnzeige`), stehen in `haut` und `loops`
+ * die gedrehten Kopien, und `inAnzeige` ist wahr.
+ */
+let inAnzeige = false;
+let anzeigeHaut: { von: Haut; haut: Haut } | null = null;
 /** nach jedem Zug verdichten (`?verdichten=0` schaltet es zum Vergleich ab) */
 const VERDICHTEN = new URLSearchParams(location.search).get('verdichten') !== '0';
 /** die Krümmung der Haut folgt den Loops (`?kruemmung=0`: jeder Punkt behält seine, zum Vergleich) */
@@ -1112,16 +1119,16 @@ function poseBetreten(): boolean {
     meldung = 'Das Maul schneidet nicht (ist die Form als Kette ins Netz eingesetzt?)';
     return false;
   }
-  const v = l.proben[mundwinkelVon(l)]!.ecken[0];
   const d = pose.delta && pose.delta.length === haut.pos.length ? pose.delta : null;
   const ruhe = d ? Float64Array.from(haut.pos, (x, i) => x + d[i]!) : Float64Array.from(haut.pos);
   const g = { haut, loops };
   grund = g;
-  haut = { ...g.haut, pos: knochenDrehen(ruhe, knochenJetzt(m), { x: ruhe[3 * v]!, y: ruhe[3 * v + 1]! }) };
+  // die Ruhe der Pose: mit ihr wird gerechnet, gedreht wird erst beim Zeigen (`alsAnzeige`)
+  haut = { ...g.haut, pos: ruhe };
   loops = g.loops.map((x) => {
     const c = kopieLoop(x);
     festlegen(haut, c);
-    // die Griffe der gedrehten Linien (ohne neue Ecken: was in der Pose knickt, gehört der Pose)
+    // die Griffe der Linien der Pose (ohne neue Ecken: was in der Pose knickt, gehört der Pose)
     if (hatGriffe(c)) griffeAnlegen(c, c.ruhe);
     return c;
   });
@@ -1130,15 +1137,119 @@ function poseBetreten(): boolean {
   return true;
 }
 
-/** Nach einem Schritt in der Pose: Blendshape (zurückgedreht minus Grundform) merken */
+/** Nach einem Schritt in der Pose: Blendshape (Ruhe der Pose minus Grundform) merken */
 function poseSichern(): void {
-  if (!grund) return;
-  const k = poseKnochen();
-  if (!k) return;
-  const ruhe = knochenDrehen(haut.pos, k.theta, k.G, true);
-  const d = new Float64Array(ruhe.length);
-  for (let i = 0; i < d.length; i++) d[i] = ruhe[i]! - grund.haut.pos[i]!;
+  if (!grund || grund.haut.pos.length !== haut.pos.length) return;
+  const d = new Float64Array(haut.pos.length);
+  for (let i = 0; i < d.length; i++) d[i] = haut.pos[i]! - grund.haut.pos[i]!;
   pose.delta = d;
+}
+
+// ---------- Die Pose zeigen: Die Knochen drehen nur, was gezeigt wird ----------
+
+/** Punkt p um das Gelenk G um den Winkel t gedreht (in der Seite; die Tiefe bleibt), wie `knochenDrehen` je Punkt des Netzes */
+function gedreht(p: V3, t: number, G: V2): V3 {
+  if (t === 0) return p;
+  const c = Math.cos(t);
+  const si = Math.sin(t);
+  const dx = p.x - G.x;
+  const dy = p.y - G.y;
+  return { x: G.x + c * dx - si * dy, y: G.y + si * dx + c * dy, z: p.z };
+}
+/** ein Vektor (ein Griff, eine Verschiebung) um den Winkel t gedreht */
+function vektorGedreht(v: V3, t: number): V3 {
+  if (t === 0) return v;
+  const c = Math.cos(t);
+  const si = Math.sin(t);
+  return { x: c * v.x - si * v.y, y: si * v.x + c * v.y, z: v.z };
+}
+/** der Drehwinkel je Probe einer Linie (aus den Winkeln der Punkte des Netzes, an denen sie hängt) */
+function winkelJeProbe(theta: Float64Array, l: Loop): Float64Array {
+  return Float64Array.from(l.proben, (q) => q.b[0]! * theta[q.ecken[0]]! + q.b[1]! * theta[q.ecken[1]]! + q.b[2]! * theta[q.ecken[2]]!);
+}
+/** der Drehwinkel an der Stelle s einer Linie: zwischen ihren Proben nach s gemittelt */
+function winkelBei(l: Loop, tj: Float64Array, s: number): number {
+  const n = l.proben.length;
+  if (n === 0) return 0;
+  const zu = l.art !== 'ring';
+  for (let j = 0; j < (zu ? n : n - 1); j++) {
+    const j2 = (j + 1) % n;
+    const s0 = l.s[j]!;
+    const s1 = j2 > j ? l.s[j2]! : l.laenge;
+    if (s < s0 - 1e-9 || s > s1 + 1e-9) continue;
+    const f = s1 > s0 ? (s - s0) / (s1 - s0) : 0;
+    return (1 - f) * tj[j]! + f * tj[j2]!;
+  }
+  return s <= l.s[0]! ? tj[0]! : tj[n - 1]!;
+}
+/** die gedrehte Kopie einer Linie der Pose: ihre Lagen je Probe, ihre Punkte und Griffe, jedes mit seinem Winkel */
+function loopGedreht(l: Loop, theta: Float64Array, G: V2): Loop {
+  const tj = winkelJeProbe(theta, l);
+  const ruhe = new Float64Array(l.ruhe.length);
+  for (let j = 0; j < tj.length; j++) {
+    const q = gedreht(lageAus(l.ruhe, j), tj[j]!, G);
+    ruhe[3 * j] = q.x;
+    ruhe[3 * j + 1] = q.y;
+    ruhe[3 * j + 2] = q.z;
+  }
+  const punkte = l.punkte.map((q) => {
+    const t = winkelBei(l, tj, q.s);
+    return { ...q, ref: gedreht(q.ref, t, G), cur: gedreht(q.cur, t, G), ...(q.ein ? { ein: vektorGedreht(q.ein, t) } : {}), ...(q.aus ? { aus: vektorGedreht(q.aus, t) } : {}) };
+  });
+  return { ...l, ruhe, punkte };
+}
+
+/**
+ * In der Pose `f` so ausführen, dass `haut` und `loops` die gezeigte (gedrehte) Pose sind; danach stehen wieder die der Ruhe da.
+ * Auch was ein laufender Zug zum Zeichnen bereithält (Lagen und Griffe der Linien an ihrem Ziel), ist währenddessen gedreht. In der
+ * Grundform und geschachtelt: einfach `f`.
+ */
+function alsAnzeige<T>(f: () => T): T {
+  const k = grund && !inAnzeige ? poseKnochen() : null;
+  if (!k) return f();
+  if (!anzeigeHaut || anzeigeHaut.von !== haut) anzeigeHaut = { von: haut, haut: { ...haut, pos: new Float64Array(haut.pos.length) } };
+  anzeigeHaut.haut.pos.set(knochenDrehen(haut.pos, k.theta, k.G));
+  const ruhe = { haut, loops };
+  const z = zug;
+  const zr = z ? { lagen: z.lagen, griffeNeu: z.griffeNeu } : null;
+  if (z) {
+    const tj = loops.map((l) => winkelJeProbe(k.theta, l));
+    z.lagen = z.lagen.map((L, li) => {
+      const t = tj[li];
+      if (!t || L.length !== 3 * t.length) return L;
+      const out = new Float64Array(L.length);
+      for (let j = 0; j < t.length; j++) {
+        const q = gedreht(lageAus(L, j), t[j]!, k.G);
+        out[3 * j] = q.x;
+        out[3 * j + 1] = q.y;
+        out[3 * j + 2] = q.z;
+      }
+      return out;
+    });
+    z.griffeNeu = z.griffeNeu.map((g, li) => {
+      const l = loops[li];
+      const t = tj[li];
+      if (!g || !l || !t) return g;
+      return g.map((x, i) => {
+        const w = winkelBei(l, t, l.punkte[i]?.s ?? 0);
+        return { ein: vektorGedreht(x.ein, w), aus: vektorGedreht(x.aus, w) };
+      });
+    });
+  }
+  haut = anzeigeHaut.haut;
+  loops = ruhe.loops.map((l) => loopGedreht(l, k.theta, k.G));
+  inAnzeige = true;
+  try {
+    return f();
+  } finally {
+    haut = ruhe.haut;
+    loops = ruhe.loops;
+    inAnzeige = false;
+    if (z && zr) {
+      z.lagen = zr.lagen;
+      z.griffeNeu = zr.griffeNeu;
+    }
+  }
 }
 
 /**
@@ -1209,8 +1320,8 @@ function netzGewachsen(nAlt: number, alt: Int32Array, vorher: { theta: Float64Ar
   };
   const g = grund;
   if (g && vorher) {
-    const theta = ergaenzen(haut, umordnen(vorher.theta, 1), m, 1);
-    const ruhe = knochenDrehen(haut.pos, theta, vorher.G, true);
+    // (in der Pose ist `haut` ihre Ruhe: nichts zurückzudrehen)
+    const ruhe = haut.pos;
     const dAlt = umordnen(g.haut.pos, 3);
     for (let i = 0; i < dAlt.length; i++) dAlt[i] = ruhe[i]! - dAlt[i]!;
     const d = ergaenzen(haut, dAlt, m, 3, true);
@@ -1218,27 +1329,15 @@ function netzGewachsen(nAlt: number, alt: Int32Array, vorher: { theta: Float64Ar
     const gh: Haut = { pos: basis, tri: haut.tri, n: haut.n, nachbarn: haut.nachbarn, spiegel: haut.spiegel };
     grund = { haut: gh, loops: grundLoopsAus(gh, g.loops) };
     pose.delta = d;
-    // die Gewichte gelten für das neue Netz (neu geschnitten); die Pose daraus neu gedreht
-    const k = poseKnochen();
-    if (k) haut.pos.set(knochenDrehen(ruhe, k.theta, k.G));
-    for (const l of loops) festlegen(haut, l);
   } else if (pose.delta && pose.delta.length === 3 * nAlt) pose.delta = ergaenzen(haut, umordnen(pose.delta, 3), m, 3, true);
 }
 
-/** Knochen setzen (Grad); in die Pose, falls nötig. Die Ruhe der Pose bleibt, die Pose wird neu gedreht. */
+/** Knochen setzen (Grad); in die Pose, falls nötig. Die Ruhe der Pose bleibt, gerechnet wird nichts: Nur die Anzeige dreht anders. */
 function knochenSetzen(kiefer: number, schaedel: number): boolean {
   if (!poseBetreten()) return false;
-  const vor = poseKnochen();
-  if (!vor) return false;
-  const ruhe = knochenDrehen(haut.pos, vor.theta, vor.G, true);
+  if (!poseKnochen()) return false;
   pose.kiefer = kiefer;
   pose.schaedel = schaedel;
-  haut.pos.set(knochenDrehen(ruhe, knochenJetzt(vor.m), vor.G));
-  for (const l of loops) {
-    festlegen(haut, l);
-    // die Linien sind mitgedreht: ihre Griffe auch (neu abgelesen)
-    if (hatGriffe(l)) griffeAnlegen(l, l.ruhe);
-  }
   return true;
 }
 
@@ -1466,6 +1565,7 @@ function indexOhneAnliegende(I: Uint32Array, Z: Float64Array): Uint32Array {
 /** die Normalen der Haut, wie sie zuletzt gezeigt wurde (für das Maß, ob die Form noch in Bewegung ist: `rundeMitWeg`) */
 let normalenGezeigt: { haut: Haut; nor: Float64Array } | null = null;
 function hautZeigen(): void {
+  if (grund && !inAnzeige) return alsAnzeige(hautZeigen);
   const m = maulAktuell();
   maulGezeigt = null;
   // (am geformten Maul wird nichts weggeschnitten und nichts eingesetzt: Gaumen und Boden sind die Haut selbst)
@@ -1868,6 +1968,7 @@ const breiteBei = (haerte: number, fein: number): number => fein + (BREITE_KNICK
 
 let baenderMs = 0;
 function baenderZeigen(): void {
+  if (grund && !inAnzeige) return alsAnzeige(baenderZeigen);
   const baenderT0 = performance.now();
   const lagen = aktuelleLagen();
   const fein = Math.max(BREITE_FEIN, 1 / renderer.getPixelRatio());
@@ -2060,6 +2161,7 @@ let entwurf: { a: Ansicht; x0: number; y0: number; x1: number; y1: number } | nu
 let spur: { a: Ansicht; p: [number, number][] } | null = null;
 
 function blattZeichnen(a: Ansicht): void {
+  if (grund && !inAnzeige) return alsAnzeige(() => blattZeichnen(a));
   const el = blaetter[a];
   const r = felder[a].getBoundingClientRect();
   const s = skala(a);
@@ -2837,7 +2939,26 @@ function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spieg
     }
   });
   const loeser = loeserFuer(bewegt, r, ecken);
-  const pivot = zentren.reduce((s, p) => ({ x: s.x + p.x / zentren.length, y: s.y + p.y / zentren.length, z: s.z + p.z / zentren.length }), { x: 0, y: 0, z: 0 });
+  // die Mitte der Auswahl, um die die Maus dreht und skaliert: wie sie gezeigt wird (in der Pose gedreht, jeder Ort mit seinem Winkel)
+  const zentrenGezeigt: V3[] = [];
+  {
+    const ruhe = inDerRuhe((q) => q);
+    const kn = grund ? poseKnochen() : null;
+    for (const w of auswahl) {
+      const l = loops[loopNr(w.l)];
+      if (!l) continue;
+      if (!kn) continue;
+      if (w.i < 0) {
+        const tj = winkelJeProbe(kn.theta, l);
+        for (let j = 0; j < l.proben.length; j += 2) zentrenGezeigt.push(gedreht(lageAus(l.ruhe, j), tj[j]!, kn.G));
+      } else {
+        const p = l.punkte[w.i];
+        if (p) zentrenGezeigt.push(gedreht(p.ref, ruhe.winkel(l, w.i), kn.G));
+      }
+    }
+  }
+  const zg = zentrenGezeigt.length === zentren.length ? zentrenGezeigt : zentren;
+  const pivot = zg.reduce((s, p) => ({ x: s.x + p.x / zg.length, y: s.y + p.y / zg.length, z: s.z + p.z / zg.length }), { x: 0, y: 0, z: 0 });
   if (ganze.size > 0 && [...ganze].every((li) => loops[li]!.art !== 'paar')) pivot.z = 0;
   zug = {
     modal,
@@ -2857,7 +2978,7 @@ function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spieg
     lagen: loeser.start,
     versch: loops.map(() => null),
     bewegt: false,
-    mitte: zentren.length === 1 ? { ...zentren[0]! } : pivot,
+    mitte: zg.length === 1 ? { ...zg[0]! } : pivot,
     griff: null,
     griffVersatz: {},
     radius: r,
@@ -2878,6 +2999,28 @@ function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spieg
   return true;
 }
 
+/**
+ * Die Abbildung eines Zugs gilt für das, was gezeigt wird. In der Pose ist das die gedrehte Lage, gerechnet wird in ihrer Ruhe: Für
+ * jeden Punkt einer Linie (und jede Probe) wird sein Ort mit seinem Winkel gedreht, abgebildet und zurückgedreht („Ein Zug im Blatt
+ * wird mit dem Winkel seines Punkts zurückgedreht“, Plan Schritt 5). In der Grundform: die Abbildung selbst.
+ */
+function inDerRuhe(f: (p: V3) => V3): { punkt: (l: Loop, i: number) => (p: V3) => V3; probe: (l: Loop, j: number) => (p: V3) => V3; winkel: (l: Loop, i: number) => number } {
+  const kn = grund && !inAnzeige ? poseKnochen() : null;
+  if (!kn) return { punkt: () => f, probe: () => f, winkel: () => 0 };
+  const je = new Map<Loop, Float64Array>();
+  const tj = (l: Loop): Float64Array => {
+    let t = je.get(l);
+    if (!t) {
+      t = winkelJeProbe(kn.theta, l);
+      je.set(l, t);
+    }
+    return t;
+  };
+  const mit = (t: number): ((p: V3) => V3) => (t === 0 ? f : (p) => gedreht(f(gedreht(p, t, kn.G)), -t, kn.G));
+  const winkel = (l: Loop, i: number): number => winkelBei(l, tj(l), l.punkte[i]?.s ?? 0);
+  return { punkt: (l, i) => mit(winkel(l, i)), probe: (l, j) => mit(tj(l)[j] ?? 0), winkel };
+}
+
 /** Wohin Punkt p mit dem Gewicht g unter der Abbildung f geht (Mittelebene und Enden eines Rings auf z = 0, Ring und Paar nicht darunter) */
 function punktNach(l: Loop, p: LoopPunkt, g: number, f: (p: V3) => V3): V3 {
   const q = f(p.ref);
@@ -2893,6 +3036,8 @@ function punktNach(l: Loop, p: LoopPunkt, g: number, f: (p: V3) => V3): V3 {
  * Griffspitzen je mit ihrem Gewicht (`griffeProportional`). Ein Loop ohne Pfad (geschlossen, höchstens ein Punkt) folgt je Probe.
  */
 function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
+  // in der Pose gilt `f` für die gezeigte Lage: je Punkt und Probe in die Ruhe zurückgedreht
+  const ruhe = inDerRuhe(f);
   // Am Maul aus einer Linie zieht ein Punkt seinen Zwilling mit; liegt der an einer Kreuzung, geht der Punkt des anderen Loops mit ihm.
   // Deshalb zuerst die Mäuler aus einer Linie: Sie geben vor, wohin solche Kreuzungen gehen (`kreuzD`).
   const kreuzD = new Map<number, V3>();
@@ -2906,14 +3051,14 @@ function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
     const ganz = z.ganze.has(li);
     if (!hatPfad(l) && (ganz || z.probenW[li])) {
       if (ganz && hatGriffe(l)) {
-        const D = l.punkte.map((p) => {
-          const q = f(p.ref);
+        const D = l.punkte.map((p, i) => {
+          const q = ruhe.punkt(l, i)(p.ref);
           return { x: q.x - p.ref.x, y: q.y - p.ref.y, z: q.z - p.ref.z };
         });
         z.griffeNeu[li] = griffeNach(
           l,
           D,
-          l.punkte.map((_, i) => griffeAbbilden(l, i, f, 1)),
+          l.punkte.map((_, i) => griffeAbbilden(l, i, ruhe.punkt(l, i), 1)),
         );
       } else if (!ganz) z.neuAblesen.add(li);
       const w = ganz ? null : z.probenW[li];
@@ -2922,7 +3067,7 @@ function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
         const g = w ? w[j]! : 1;
         if (!g) continue;
         const p = lageAus(S, j);
-        const q = f(p);
+        const q = ruhe.probe(l, j)(p);
         d[3 * j] = g * (q.x - p.x);
         d[3 * j + 1] = g * (q.y - p.y);
         d[3 * j + 2] = g * (q.z - p.z);
@@ -2941,7 +3086,7 @@ function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
           return { ...k };
         }
         irgend = true;
-        const q = punktNach(l, p, g, f);
+        const q = punktNach(l, p, g, ruhe.punkt(l, i));
         return { x: q.x - p.ref.x, y: q.y - p.ref.y, z: q.z - p.ref.z };
       });
       // wie in Illustrator: Beim Drehen und Skalieren drehen und skalieren die Griffe der Punkte mit (beim Verschieben gehen sie
@@ -2951,10 +3096,10 @@ function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
         const o = z.griffW.get(k);
         if (o) {
           irgend = true;
-          return griffeProportional(l, i, f, z.punktW.get(k) ?? 0, o.ein, o.aus);
+          return griffeProportional(l, i, ruhe.punkt(l, i), z.punktW.get(k) ?? 0, o.ein, o.aus);
         }
         const g = z.punktW.get(k);
-        return g && (ganz || z.modal === 's' || z.modal === 'r') ? griffeAbbilden(l, i, f, g) : undefined;
+        return g && (ganz || z.modal === 's' || z.modal === 'r') ? griffeAbbilden(l, i, ruhe.punkt(l, i), g) : undefined;
       });
       // das Maul aus einer Linie: Die geführte Lippe wird das gedrehte Abbild der führenden (die mit dem gezogenen Punkt)
       const zw = irgend && !grund ? zwillinge(l) : null;
@@ -3012,8 +3157,10 @@ function zugBewegen(X: number, Y: number): void {
     const p = l.punkte[i]!;
     // ein glatter Punkt wird eine Ecke, wenn er als Ecke zu sehen ist (an einer Kreuzung mit einer Ecke) oder am Spiegelpunkt liegt
     if (istEckeVonSelbst(p) || (!istEcke(p) && (ringEnde(l, i) || eckeGezeigt(li, i)))) p.ecke = true;
-    const d = inWelt(z.ansicht, X - z.x0, Y - z.y0);
-    if (z.spiegel) d.z = -d.z;
+    const dGezeigt = inWelt(z.ansicht, X - z.x0, Y - z.y0);
+    if (z.spiegel) dGezeigt.z = -dGezeigt.z;
+    // in der Pose ist der Griff gedreht zu sehen: seine Verschiebung mit dem Winkel seines Punkts zurück in die Ruhe
+    const d = vektorGedreht(dGezeigt, -inDerRuhe((q) => q).winkel(l, i));
     z.griffVersatz = griffZiehen(l, i, seite, d);
     let versatz: (GriffVersatz | undefined)[] = l.punkte.map((_, k) => (k === i ? z.griffVersatz : undefined));
     const still = l.punkte.map(() => ({ x: 0, y: 0, z: 0 }));
@@ -3036,11 +3183,12 @@ function zugBewegen(X: number, Y: number): void {
   } else {
     const f = abbildung(z, X, Y);
     z.versch = verschiebungen(z, f).map((d, li) => mitRest(z, li, d));
+    const ruhe = inDerRuhe(f);
     loops.forEach((l, li) =>
       l.punkte.forEach((p, i) => {
         const g = z.punktW.get(`${li}:${i}`) ?? 0;
         const mit = z.punktD[li]?.[i];
-        p.cur = mit ? { x: p.ref.x + mit.x, y: p.ref.y + mit.y, z: p.ref.z + mit.z } : g ? punktNach(l, p, g, f) : { ...p.ref };
+        p.cur = mit ? { x: p.ref.x + mit.x, y: p.ref.y + mit.y, z: p.ref.z + mit.z } : g ? punktNach(l, p, g, ruhe.punkt(l, i)) : { ...p.ref };
       }),
     );
     if (z.mitte) z.mitte = f(z.pivot);
@@ -6671,3 +6819,14 @@ if (BEHALTEN) behaltenesHolen();
     return m.map((x) => Math.round(x * 10) / 10);
   },
 };
+
+// In der Pose melden die Haken, was gezeigt wird (die gedrehte Lage), nicht die Ruhe der Pose (`ruheLagen` gibt die Ruhe)
+{
+  const haken = (window as unknown as { __kurven: Record<string, unknown> }).__kurven;
+  for (const name of ['loops', 'lagen', 'roh', 'maulLinie', 'umgeschlagen', 'symmetrie', 'knickGemessen', 'knick', 'knickAm', 'griffe', 'maul', 'masse', 'pfadRest']) {
+    const f = haken[name] as ((...a: unknown[]) => unknown) | undefined;
+    if (f) haken[name] = (...a: unknown[]): unknown => alsAnzeige(() => f(...a));
+  }
+  haken.ruheLagen = (): number[] => Array.from(haut.pos);
+  haken.ruheLoops = (): { id: number; punkte: { ref: V3; ein: V3 | null; aus: V3 | null }[] }[] => loops.map((l) => ({ id: l.id, punkte: l.punkte.map((q) => ({ ref: q.ref, ein: q.ein ?? null, aus: q.aus ?? null })) }));
+}
