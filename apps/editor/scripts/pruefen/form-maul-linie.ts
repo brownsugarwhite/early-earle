@@ -30,7 +30,7 @@ import { knickBruecken, knickRahmen, knickReihe } from '../../../../packages/sha
 import { type Haut, type V3, hautAus } from '../../../../packages/shape/src/dicht/kurven';
 import { falten } from '../../../../packages/shape/src/dicht/kurvenFaelle';
 import { type Loop, LoopZug, formAusZeichnung, griffeAnlegen, hautLagen, istSichtbar, kanteBei, mittlereKante, pfadLagen } from '../../../../packages/shape/src/dicht/loops';
-import { maulFormen } from '../../../../packages/shape/src/dicht/maulFormen';
+import { maulFormen, maulFormenSchritte } from '../../../../packages/shape/src/dicht/maulFormen';
 import { maulGeformtAmLoop } from '../../../../packages/shape/src/dicht/maulLoop';
 import { knochenDrehen } from '../../../../packages/shape/src/dicht/poseLoop';
 import { rundAusSeite } from '../../../../packages/shape/src/dicht/rund';
@@ -229,6 +229,56 @@ function nachVerdichten(): void {
 }
 
 // ---------- 2. „Maul formen“ wie bisher (die leicht geöffnete Lage ist die gerechnete) ----------
+if (process.env.SCHRITTE_DIAG) {
+  // Runde für Runde: wo sich die Haut am weitesten bewegt (zum Nachsehen, wenn das Formen davonläuft)
+  const lauf = maulFormenSchritte(haut, loops, MAUL, { naechsteId: MAUL + 1, naechsteKreuzung: 100, verdichten: { maxKante: 1.75 * mk, opt } });
+  let vor: Float64Array | null = null;
+  let nr = 0;
+  for (;;) {
+    const st = lauf.next();
+    if (st.done) {
+      console.log(`   SCHRITTE Ende: ${'fehler' in st.value ? st.value.fehler : 'geformt'}`);
+      break;
+    }
+    nr++;
+    const P = st.value.haut.pos;
+    if (nr === 1 || st.value.netzNeu) {
+      // Punkte fast am selben Ort (unter 0,01) und Punkte ohne oder mit falschem Spiegelbild
+      const H = st.value.haut;
+      const nah: string[] = [];
+      const idx = [...Array(H.n).keys()].sort((a, b) => P[3 * a]! - P[3 * b]!);
+      for (let i = 0; i < idx.length; i++)
+        for (let j = i + 1; j < idx.length && P[3 * idx[j]!]! - P[3 * idx[i]!]! < 0.01; j++) {
+          const a = idx[i]!;
+          const b = idx[j]!;
+          if (Math.hypot(P[3 * a]! - P[3 * b]!, P[3 * a + 1]! - P[3 * b + 1]!, P[3 * a + 2]! - P[3 * b + 2]!) < 0.01) nah.push(`${a}/${b} bei (${z1(P[3 * a]!)} ${z1(P[3 * a + 1]!)} ${z1(P[3 * a + 2]!)})`);
+        }
+      let falsch = 0;
+      for (let v = 0; v < H.n; v++) {
+        const sp = H.spiegel[v]!;
+        if (sp < 0 || Math.abs(P[3 * v]! - P[3 * sp]!) + Math.abs(P[3 * v + 1]! - P[3 * sp + 1]!) + Math.abs(P[3 * v + 2]! + P[3 * sp + 2]!) > 1e-6) falsch++;
+      }
+      if (nah.length || falsch) console.log(`   SCHRITTE ${nr} (${st.value.was}), neues Netz mit ${H.n} Punkten: ${nah.length} Paare fast am selben Ort ${nah.slice(0, 6).join('; ')}; ${falsch} Punkte ohne oder mit falschem Spiegelbild`);
+    }
+    let weit = 0;
+    let wo = -1;
+    if (vor && vor.length === P.length)
+      for (let v = 0; v < P.length / 3; v++) {
+        const d = Math.hypot(P[3 * v]! - vor[3 * v]!, P[3 * v + 1]! - vor[3 * v + 1]!, P[3 * v + 2]! - vor[3 * v + 2]!);
+        if (d > weit) {
+          weit = d;
+          wo = v;
+        }
+      }
+    if (weit > Number(process.env.SCHRITTE_DIAG) || !Number.isFinite(weit)) {
+      const L = st.value.loops.find((l) => l.id === MAUL)!;
+      const auf = L.proben.findIndex((p) => p.ecken[0] === wo || st.value.haut.spiegel[p.ecken[0]] === wo);
+      console.log(`   SCHRITTE ${nr} (${st.value.was}): Punkt ${wo} bewegt sich ${z2(weit)} nach (${z1(P[3 * wo]!)} ${z1(P[3 * wo + 1]!)} ${z1(P[3 * wo + 2]!)})${auf >= 0 ? `, Stelle ${auf} der Maullinie von ${L.proben.length}` : ''}; ${P.length / 3} Punkte`);
+    }
+    vor = Float64Array.from(P);
+  }
+  process.exit(0);
+}
 if (process.env.DIAG) {
   const l = finde();
   const R = knickReihe(haut, l);
@@ -238,6 +288,8 @@ const geformt = maulFormen(haut, loops, MAUL, {
   naechsteId: MAUL + 1,
   naechsteKreuzung: 100,
   verdichten: { maxKante: 1.75 * mk, opt },
+  ...(process.env.UMKREIS !== undefined ? { umkreis: Number(process.env.UMKREIS) } : {}),
+  ...(process.env.STUFEN ? { stufen: Number(process.env.STUFEN) } : {}),
   ...(process.env.DIAG
     ? {
         zwischen: (was: string, H: Haut) => {

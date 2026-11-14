@@ -85,10 +85,11 @@ export type MaulFormenOptionen = {
   /** nach jedem Abschnitt gerufen (zum Zeigen oder Messen): Name, Haut und Loops von jetzt, und `alt` wie im Ergebnis */
   zwischen?: (was: string, haut: Haut, loops: readonly Loop[], alt: Int32Array) => void;
   /**
-   * Weg „Kante“: Gerechnet wird nur im Umkreis des Mauls, so weit um die Maullinie, wie dieser Anteil ihrer Ausdehnung reicht
-   * (Standard 0,75); die Form fern davon bleibt stehen. Über die ganze Haut gerechnet hält eine Form ohne weitere Linien ihre Größe
-   * nicht: Die Maullinie ist eine Kante und gibt keine Krümmung vor (gemessen am Maul aus einer Linie an der Kugel: nach zwei
-   * Stufen von 150 auf 200 aufgeblasen, nach vier auf 420). `0`: über die ganze Haut wie bis zum 14.11.
+   * Weg „Kante“: Die Haut fern vom Maul wird beim Formen an ihrem Ort gehalten: alles weiter von der Maullinie, als dieser Anteil
+   * ihrer Ausdehnung reicht (Standard 0,75). Sonst hält eine Form ohne weitere Linien ihre Größe nicht: Die Maullinie ist eine
+   * Kante und gibt keine Krümmung vor (gemessen am Maul aus einer Linie an der Kugel: nach zwei Stufen von 150 auf 200
+   * aufgeblasen, nach vier auf 420). Gehalten wird mit Bindungen, gerechnet weiter über die ganze Haut (nur im Umkreis gerechnet
+   * lief auf einem feinen Netz die Tasche davon). `0`: nichts wird gehalten, wie bis zum 14.11.
    */
   umkreis?: number;
 };
@@ -135,6 +136,18 @@ export function maulFormen(h0: Haut, loops0: readonly Loop[], maulId: number, op
  * weitergerechnet werden: nur lesen), am Ende das Ergebnis.
  */
 export function* maulFormenSchritte(h0: Haut, loops0: readonly Loop[], maulId: number, opt: MaulFormenOptionen): Generator<MaulStand, MaulGeformt | { fehler: string }, void> {
+  // Läuft die Rechnung davon (auf einem feinen Netz kann in einer Stufe ein Punkt der Tasche ausbrechen; gemessen bei 4 900 Punkten
+  // in der letzten von zwölf Stufen), wird von vorn mit doppelt so vielen, halb so großen Stufen geformt, höchstens zweimal
+  let r = yield* einVersuch(h0, loops0, maulId, opt, 1);
+  for (let mal = 2; mal <= 4 && 'fehler' in r && DAVONGELAUFEN.has(r.fehler); mal *= 2) r = yield* einVersuch(h0, loops0, maulId, opt, mal);
+  return r;
+}
+
+const NETZ_WAECHST = 'die Haut trägt das Maul so nicht (das Netz wächst beim Formen über alle Maßen)';
+const KEINE_RUHE = 'die Haut kommt beim Formen nicht zur Ruhe';
+const DAVONGELAUFEN: ReadonlySet<string> = new Set([NETZ_WAECHST, KEINE_RUHE]);
+
+function* einVersuch(h0: Haut, loops0: readonly Loop[], maulId: number, opt: MaulFormenOptionen, feiner: number): Generator<MaulStand, MaulGeformt | { fehler: string }, void> {
   let stufen = Math.max(1, opt.stufen ?? 8);
   let schritte = Math.max(1, opt.schritte ?? 8);
   const knick = ((opt.knick ?? 95) * Math.PI) / 180;
@@ -152,11 +165,14 @@ export function* maulFormenSchritte(h0: Haut, loops0: readonly Loop[], maulId: n
   if (!L0.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2])) return { fehler: 'die Maullinie liegt nur auf der Haut (nicht ins Netz eingesetzt)' };
   if (!hatPfad(L0)) return { fehler: 'die Maullinie hat noch keine Griffe' };
 
-  /** der Bereich, in dem gerechnet wird (Weg „Kante“: der Umkreis des Mauls; sonst die ganze Haut) */
-  let imUmkreis = false;
-  const umkreis = (): Uint8Array | null => {
+  /**
+   * Was beim Formen stehen bleibt (Weg „Kante“): die Haut fern vom Maul, als Loop ohne Kette, der je Punkt seinen Ort hält (wie die
+   * Führung des Knicks, `knickLoop`; die Spiegelhälfte geht mit). Null: nichts wird gehalten.
+   */
+  let haltenFern = false;
+  const halteLoop = (): Loop | null => {
     const anteil = opt.umkreis ?? 0.75;
-    if (!imUmkreis || !(anteil > 0)) return null;
+    if (!haltenFern || !(anteil > 0)) return null;
     const L = finde(maulId);
     const n = L.proben.length;
     const P: V3[] = [];
@@ -165,12 +181,34 @@ export function* maulFormenSchritte(h0: Haut, loops0: readonly Loop[], maulId: n
     const m = { x: (P[0]!.x + P[n - 1]!.x) / 2, y: (P[0]!.y + P[n - 1]!.y) / 2, z: 0 };
     let weit = 0;
     for (const q of P) weit = Math.max(weit, Math.hypot(q.x - m.x, q.y - m.y, q.z - m.z));
-    return bereichUm(
+    const nah = bereichUm(
       haut,
       P.filter((_, j) => j % 2 === 0 || j === n - 1),
       anteil * weit,
       L.proben.map((q) => q.ecken[0]),
     );
+    // auf anderen Linien liegt schon eine Bindung
+    const aufLinie = new Uint8Array(haut.n);
+    for (const l of loops)
+      for (const q of l.proben)
+        for (const v of q.ecken) {
+          aufLinie[v] = 1;
+          const sv = haut.spiegel[v]!;
+          if (sv >= 0) aufLinie[sv] = 1;
+        }
+    const um: number[][] = Array.from({ length: haut.n }, () => []);
+    for (let f = 0; f < haut.tri.length / 3; f++) for (let e = 0; e < 3; e++) um[haut.tri[3 * f + e]!]!.push(f);
+    const fern: number[] = [];
+    for (let v = 0; v < haut.n; v++) if (!nah[v] && !aufLinie[v] && haut.pos[3 * v + 2]! >= -1e-9 && um[v]!.length > 0) fern.push(v);
+    if (fern.length === 0) return null;
+    const proben = fern.map((v) => {
+      const f = um[v]![0]!;
+      const andere = [haut.tri[3 * f]!, haut.tri[3 * f + 1]!, haut.tri[3 * f + 2]!].filter((x) => x !== v);
+      return { ecken: [v, andere[0]!, andere[1]!] as [number, number, number], b: [1, 0, 0] as [number, number, number] };
+    });
+    const ruhe = new Float64Array(3 * fern.length);
+    fern.forEach((v, i) => ruhe.set([haut.pos[3 * v]!, haut.pos[3 * v + 1]!, haut.pos[3 * v + 2]!], 3 * i));
+    return { id: -1000, art: 'paar', proben, s: Float64Array.from(proben, (_, i) => i), laenge: Math.max(1, proben.length), ruhe, punkte: [] };
   };
 
   let netzNeu = true;
@@ -184,9 +222,11 @@ export function* maulFormenSchritte(h0: Haut, loops0: readonly Loop[], maulId: n
    * `vorSchritt` mit dem Anteil des Wegs (dort ändern sich die Griffe, der Pfad wandert, die Haut folgt). Ergebnis: Die Haut steht.
    */
   function* rechnen(was: string, n = 0, vorSchritt?: (f: number) => void): Generator<MaulStand, boolean, void> {
-    const z = new LoopZug(haut, loops, umkreis(), true, 'kurven', opt.gewichte ?? 'geometrie', opt.loeser ?? { halb: true });
+    const halt = halteLoop();
+    const z = new LoopZug(haut, halt ? [...loops, halt] : loops, null, true, 'kurven', opt.gewichte ?? 'geometrie', opt.loeser ?? { halb: true });
     const start = loops.map((l) => Float64Array.from(l.ruhe));
-    const versch = (): Float64Array[] => loops.map((l, i) => Float64Array.from(pfadLagen(l) ?? start[i]!, (x, k) => x - start[i]![k]!));
+    const still = halt ? [new Float64Array(halt.ruhe.length)] : [];
+    const versch = (): Float64Array[] => [...loops.map((l, i) => Float64Array.from(pfadLagen(l) ?? start[i]!, (x, k) => x - start[i]![k]!)), ...still];
     const zeigen = (): MaulStand => {
       for (const l of loops) l.ruhe = hautLagen(haut, l);
       return stand(was);
@@ -280,7 +320,7 @@ export function* maulFormenSchritte(h0: Haut, loops0: readonly Loop[], maulId: n
   const wegKante = mitteId === undefined && opt.weg !== 'mitte';
   if (wegKante) {
     // kleinere Stufen (gemessen an Florians Modell: 12 zu 6 formt ruhiger als 8 zu 8, nichts schlägt um)
-    stufen = Math.max(1, opt.stufen ?? 12);
+    stufen = feiner * Math.max(1, opt.stufen ?? 12);
     schritte = Math.max(1, opt.schritte ?? 6);
   } else {
     yield* rechnen('Lippen hart');
@@ -305,10 +345,10 @@ export function* maulFormenSchritte(h0: Haut, loops0: readonly Loop[], maulId: n
       loops = v.loops;
       netzNeu = true;
       for (const l of loops) for (const q of l.punkte) q.cur = { ...q.ref };
-      if (haut.n > grenze) return 'die Haut trägt das Maul so nicht (das Netz wächst beim Formen über alle Maßen)';
+      if (haut.n > grenze) return NETZ_WAECHST;
       if (v.gelegt === 0 && v.neu === 0) break;
     }
-    return endlich() ? null : 'die Haut kommt beim Formen nicht zur Ruhe';
+    return endlich() ? null : KEINE_RUHE;
   };
 
   /**
@@ -331,7 +371,7 @@ export function* maulFormenSchritte(h0: Haut, loops0: readonly Loop[], maulId: n
 
   // ---------- Weg „Kante“ (dritte Fassung): Die Maullinie trägt ihren Knick selbst, es kommt keine Linie dazu ----------
   if (wegKante) {
-    imUmkreis = true;
+    haltenFern = true;
     // zuerst verfeinern wie nach jedem Zug (14.11.): Eine Linie, die gerade erst eingesetzt wurde (das Maul aus einer Linie wird
     // gleich nach dem Zeichnen geformt), hat an ihrer Spitze noch Splitter; im Fenster räumt sonst die Ruhe nach dem Zeichnen auf
     {
@@ -377,7 +417,7 @@ export function* maulFormenSchritte(h0: Haut, loops0: readonly Loop[], maulId: n
       opt.zwischen?.(`Stufe ${b}`, haut, loops, her);
     }
     const steht = yield* rechnen('setzen');
-    if (!endlich()) return { fehler: 'die Haut kommt beim Formen nicht zur Ruhe' };
+    if (!endlich()) return { fehler: KEINE_RUHE };
     return { haut, loops, alt: her, naechsteId, naechsteKreuzung, mitte: -1, mitteNeu: false, runden, steht };
   }
 
@@ -475,6 +515,6 @@ export function* maulFormenSchritte(h0: Haut, loops0: readonly Loop[], maulId: n
     opt.zwischen?.(`Stufe ${b}`, haut, loops, her);
   }
   const steht = yield* rechnen('setzen');
-  if (!endlich()) return { fehler: 'die Haut kommt beim Formen nicht zur Ruhe' };
+  if (!endlich()) return { fehler: KEINE_RUHE };
   return { haut, loops, alt: her, naechsteId, naechsteKreuzung, mitte: mitteId, mitteNeu, runden, steht };
 }

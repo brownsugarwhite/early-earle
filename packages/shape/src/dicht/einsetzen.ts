@@ -14,6 +14,7 @@ const lage = (P: ArrayLike<number>, i: number): V3 => ({ x: P[3 * i]!, y: P[3 * 
 const schluessel = (n: number, a: number, b: number): number => (a < b ? a * n + b : b * n + a);
 const minus = (a: V3, b: V3): V3 => ({ x: a.x - b.x, y: a.y - b.y, z: a.z - b.z });
 const punktProd = (a: V3, b: V3): number => a.x * b.x + a.y * b.y + a.z * b.z;
+const abstandV = (a: V3, b: V3): number => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
 const kreuzProd = (a: V3, b: V3): V3 => ({ x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x });
 
 /** Netz zum Ablaufen: Dreiecke je Kante, Dreieck je Eckentripel */
@@ -726,155 +727,201 @@ export function loopEinsetzen(h: Haut, loops: readonly Loop[], nr: number): { ha
     return { haut, loops: liste };
   }
   if (l.art === 'ring') {
-    // ganzer Ring: die Hälfte von Ende zu Ende abgelaufen, dazu ihr Spiegelbild zurück (ohne die Enden auf der Mitte)
-    let proben: readonly Probe[] = l.proben;
-    // Kehren (14.11.): Wo die Linie umkehrt (die Spitze einer schmalen Form, der Mundwinkel eines Keils), liegt ihre Probe mitten in
-    // einem Dreieck, und der Weg lief bisher über dieselbe Kante hinein und hinaus: Hin und Zurück fielen weg, die Spitze war
-    // abgeschnitten (gemessen bis 14 Einheiten), und später wurde ihr Endpunkt quer über fremde Dreiecke zur Spitze gezogen (dort
-    // verhedderte sich das Netz). Jetzt bekommt das Netz genau an der Kehre einen Punkt (das Dreieck wird in drei geteilt) und vor
-    // ihr einen zweiten: Die Kante zwischen beiden läuft längs der Spitze. Der Weg kreuzt sie dicht an der Kehre; die eine Lippe
-    // kommt von der einen Seite, die andere geht auf der anderen, und keine Speiche des neuen Punkts wird zweimal gekreuzt.
-    {
-      const ort = (pr: Probe): V3 => {
-        const q = { x: 0, y: 0, z: 0 };
-        for (let e = 0; e < 3; e++) {
-          const c = lage(haut.pos, pr.ecken[e]!);
-          q.x += pr.b[e]! * c.x;
-          q.y += pr.b[e]! * c.y;
-          q.z += pr.b[e]! * c.z;
-        }
-        return q;
-      };
-      for (let j = 1; j + 1 < proben.length; j++) {
-        const pr = proben[j]!;
-        if (istPunktProbe(pr) || pr.b.some((x) => x < 1e-3)) continue;
-        const [A, B, C] = [ort(proben[j - 1]!), ort(pr), ort(proben[j + 1]!)];
-        const ein = minus(B, A);
-        const aus = minus(C, B);
-        const le = Math.hypot(ein.x, ein.y, ein.z);
-        const la = Math.hypot(aus.x, aus.y, aus.z);
-        if (le < 1e-9 || la < 1e-9 || punktProd(ein, aus) / (le * la) > Math.cos((140 * Math.PI) / 180)) continue;
-        const t = laufVon(haut).dreieck.get([...pr.ecken].sort((x, y) => x - y).join());
-        if (t === undefined) continue;
-        const alt = haut;
-        const eAlt = ecken(alt, t);
-        // die Richtung der Spitze: von der Mitte der beiden Nachbarn zur Kehre, in der Ebene des Dreiecks
-        const q = eAlt.map((v) => lage(alt.pos, v));
-        const nor = kreuzProd(minus(q[1]!, q[0]!), minus(q[2]!, q[0]!));
-        const nl = Math.hypot(nor.x, nor.y, nor.z) || 1;
-        const nn = { x: nor.x / nl, y: nor.y / nl, z: nor.z / nl };
-        let achse = { x: B.x - (A.x + C.x) / 2, y: B.y - (A.y + C.y) / 2, z: B.z - (A.z + C.z) / 2 };
-        const an = punktProd(achse, nn);
-        achse = { x: achse.x - an * nn.x, y: achse.y - an * nn.y, z: achse.z - an * nn.z };
-        const al = Math.hypot(achse.x, achse.y, achse.z);
-        if (al < 1e-9) continue;
-        achse = { x: achse.x / al, y: achse.y / al, z: achse.z / al };
-        // die Kante des Dreiecks vor der Spitze und wie weit es bis zu ihr ist
-        let vor: { k: number; f: number; s: number } | null = null;
-        for (let k = 0; k < 3; k++) {
-          const qu = q[k]!;
-          const kv = minus(q[(k + 1) % 3]!, qu);
-          const w0 = minus(qu, B);
-          const nenner = punktProd(kreuzProd(achse, kv), nn);
-          if (Math.abs(nenner) < 1e-12) continue;
-          const sx = punktProd(kreuzProd(w0, kv), nn) / nenner;
-          const f = punktProd(kreuzProd(w0, achse), nn) / nenner;
-          if (sx <= 1e-9 || f < -1e-6 || f > 1 + 1e-6) continue;
-          if (!vor || sx < vor.s) vor = { k, f: Math.max(0.1, Math.min(0.9, f)), s: sx };
-        }
-        if (!vor) continue;
-        // 1. der Punkt genau an der Kehre
-        const r1 = dreieckTeilen(alt, t, B);
-        if (!r1) continue;
-        // 2. der Punkt vor ihr: im Teil des Dreiecks, das vor der Spitze liegt (an der Kante `vor`), ein Stück längs der Richtung; liegt
-        // die Kehre dicht an dieser Kante, wird stattdessen die Kante dort geteilt, wo die Richtung sie trifft
-        const u = eAlt[vor.k]!;
-        const v = eAlt[(vor.k + 1) % 3]!;
-        const mass = (Math.hypot(...Object.values(minus(q[1]!, q[0]!))) + Math.hypot(...Object.values(minus(q[2]!, q[1]!))) + Math.hypot(...Object.values(minus(q[0]!, q[2]!)))) / 3;
-        let h2: Haut | null = null;
-        let w2 = -1;
-        let geteilt2: ReadonlyMap<number, number> = new Map();
-        if (vor.s >= 0.1 * mass) {
-          const d = Math.min(0.25 * mass, 0.5 * vor.s);
-          let t2 = -1;
-          for (let k = 0; k < r1.haut.tri.length / 3 && t2 < 0; k++) {
-            const e = ecken(r1.haut, k);
-            if (e.includes(r1.w) && e.includes(u) && e.includes(v)) t2 = k;
+    // ganzer Ring: die Hälfte von Ende zu Ende abgelaufen, dazu ihr Spiegelbild zurück (ohne die Enden auf der Mitte). Erst mit den
+    // Punkten an den Kehren; geht der Weg so nicht auf, ohne sie (wie bis zum 14.11.: Die Spitze wird dann abgeschnitten).
+    const anfang = { haut, liste: [...liste] };
+    const ring = (mitKehren: boolean): boolean => {
+      let proben: readonly Probe[] = l.proben;
+      // Kehren (14.11.): Wo die Linie umkehrt (die Spitze einer schmalen Form, der Mundwinkel eines Keils), liegt ihre Probe mitten
+      // in einem Dreieck, und der Weg lief bisher über dieselbe Kante hinein und hinaus: Hin und Zurück fielen weg, die Spitze war
+      // abgeschnitten (gemessen bis 14 Einheiten), und später wurde ihr Endpunkt quer über fremde Dreiecke zur Spitze gezogen (dort
+      // verhedderte sich das Netz). Jetzt bekommt das Netz zwei Punkte auf der Geraden durch die Kehre längs der Spitze, einen vor
+      // ihr und einen hinter ihr (zwischen den Lippen), verbunden durch eine Kante; der Weg kreuzt diese Kante genau an der Kehre:
+      // Die eine Lippe kommt von der einen Seite, die andere geht auf der anderen. Auf der Kehre selbst sitzt kein Punkt des Netzes
+      // (zwei Punkte am selben Ort verträgt der Aufbau der Spiegelpartner nicht, `hautAus`).
+      if (mitKehren) {
+        const ort = (pr: Probe): V3 => {
+          const q = { x: 0, y: 0, z: 0 };
+          for (let e = 0; e < 3; e++) {
+            const c = lage(haut.pos, pr.ecken[e]!);
+            q.x += pr.b[e]! * c.x;
+            q.y += pr.b[e]! * c.y;
+            q.z += pr.b[e]! * c.z;
           }
-          const r2 = t2 >= 0 ? dreieckTeilen(r1.haut, t2, { x: B.x + d * achse.x, y: B.y + d * achse.y, z: B.z + d * achse.z }) : null;
-          if (r2) {
-            h2 = r2.haut;
-            w2 = r2.w;
+          return q;
+        };
+        for (let j = 1; j + 1 < proben.length; j++) {
+          const pr = proben[j]!;
+          if (istPunktProbe(pr) || pr.b.some((x) => x < 1e-3)) continue;
+          const [A, B, C] = [ort(proben[j - 1]!), ort(pr), ort(proben[j + 1]!)];
+          const ein = minus(B, A);
+          const aus = minus(C, B);
+          const le = Math.hypot(ein.x, ein.y, ein.z);
+          const la = Math.hypot(aus.x, aus.y, aus.z);
+          if (le < 1e-9 || la < 1e-9 || punktProd(ein, aus) / (le * la) > Math.cos((140 * Math.PI) / 180)) continue;
+          const t = laufVon(haut).dreieck.get([...pr.ecken].sort((x, y) => x - y).join());
+          if (t === undefined) continue;
+          const alt = haut;
+          const eAlt = ecken(alt, t);
+          // die Richtung der Spitze: von der Mitte der beiden Nachbarn zur Kehre, in der Ebene des Dreiecks
+          const q = eAlt.map((v) => lage(alt.pos, v));
+          const nor = kreuzProd(minus(q[1]!, q[0]!), minus(q[2]!, q[0]!));
+          const nl = Math.hypot(nor.x, nor.y, nor.z) || 1;
+          const nn = { x: nor.x / nl, y: nor.y / nl, z: nor.z / nl };
+          let achse = { x: B.x - (A.x + C.x) / 2, y: B.y - (A.y + C.y) / 2, z: B.z - (A.z + C.z) / 2 };
+          const an = punktProd(achse, nn);
+          achse = { x: achse.x - an * nn.x, y: achse.y - an * nn.y, z: achse.z - an * nn.z };
+          const al = Math.hypot(achse.x, achse.y, achse.z);
+          if (al < 1e-9) continue;
+          achse = { x: achse.x / al, y: achse.y / al, z: achse.z / al };
+          // wo die Gerade das Dreieck verlässt: die Kante, die Stelle auf ihr und der Weg bis dorthin, nach vorn und nach hinten
+          const treffer = (vz: 1 | -1): { k: number; f: number; s: number } | null => {
+            let best: { k: number; f: number; s: number } | null = null;
+            const r = { x: vz * achse.x, y: vz * achse.y, z: vz * achse.z };
+            for (let k = 0; k < 3; k++) {
+              const qu = q[k]!;
+              const kv = minus(q[(k + 1) % 3]!, qu);
+              const w0 = minus(qu, B);
+              const nenner = punktProd(kreuzProd(r, kv), nn);
+              if (Math.abs(nenner) < 1e-12) continue;
+              const sx = punktProd(kreuzProd(w0, kv), nn) / nenner;
+              const f = punktProd(kreuzProd(w0, r), nn) / nenner;
+              if (sx <= 1e-9 || f < -1e-6 || f > 1 + 1e-6) continue;
+              if (!best || sx < best.s) best = { k, f: Math.max(0.1, Math.min(0.9, f)), s: sx };
+            }
+            return best;
+          };
+          const vor = treffer(1);
+          const hinter = treffer(-1);
+          if (!vor || !hinter || vor.k === hinter.k) continue;
+          const mass = (abstandV(q[1]!, q[0]!) + abstandV(q[2]!, q[1]!) + abstandV(q[0]!, q[2]!)) / 3;
+          // je Seite ein Punkt: im Innern des Dreiecks, ein Stück längs der Geraden; liegt die Kehre dort dicht an der Kante des
+          // Dreiecks, wird stattdessen diese Kante geteilt, wo die Gerade sie trifft. Erst der vordere, dann der hintere: Der
+          // zweite entsteht in einem Dreieck, das den ersten als Ecke hat, und ist deshalb durch eine Kante mit ihm verbunden.
+          let jetzt: Haut = alt;
+          const geteilt: ReadonlyMap<number, number>[] = [];
+          const zwischen: Haut[] = [];
+          const punktSetzen = (tr: { k: number; f: number; s: number }, vz: 1 | -1, mitEcke: number): number => {
+            const u = eAlt[tr.k]!;
+            const v = eAlt[(tr.k + 1) % 3]!;
+            const hier = jetzt;
+            if (tr.s >= 0.1 * mass) {
+              const d = vz * Math.min(0.25 * mass, 0.5 * tr.s);
+              const P = { x: B.x + d * achse.x, y: B.y + d * achse.y, z: B.z + d * achse.z };
+              // das Dreieck, in dem dieser Ort liegt: aus dem alten entstanden (Ecken des alten oder der Punkt davor)
+              let t2 = -1;
+              for (let k = 0; k < hier.tri.length / 3 && t2 < 0; k++) {
+                const e = ecken(hier, k);
+                if (e.some((x) => x !== mitEcke && !eAlt.includes(x))) continue;
+                if (mitEcke >= 0 && !e.includes(mitEcke)) continue;
+                const [U, V, W] = e.map((x) => lage(hier.pos, x)) as [V3, V3, V3];
+                const n2 = kreuzProd(minus(V, U), minus(W, U));
+                const d2 = punktProd(n2, n2);
+                if (d2 < 1e-18) continue;
+                const b1 = punktProd(kreuzProd(minus(W, V), minus(P, V)), n2) / d2;
+                const b2 = punktProd(kreuzProd(minus(U, W), minus(P, W)), n2) / d2;
+                if (b1 > 1e-6 && b2 > 1e-6 && 1 - b1 - b2 > 1e-6) t2 = k;
+              }
+              const r = t2 >= 0 ? dreieckTeilen(hier, t2, P) : null;
+              if (!r) return -1;
+              zwischen.push(r.haut);
+              geteilt.push(new Map());
+              jetzt = r.haut;
+              return r.w;
+            }
+            const r = kantenTeilen(hier, [{ u, v, f: tr.f }]);
+            const w = r?.geteilt.get(schluessel(hier.n, u, v));
+            if (!r || w === undefined) return -1;
+            zwischen.push(r.haut);
+            geteilt.push(r.geteilt);
+            jetzt = r.haut;
+            return w;
+          };
+          const wVor = punktSetzen(vor, 1, -1);
+          if (wVor < 0) continue;
+          const wHinter = punktSetzen(hinter, -1, wVor);
+          const fertig: Haut = jetzt;
+          if (wHinter < 0 || !fertig.nachbarn[wVor]!.includes(wHinter)) continue;
+          // die Kehre selbst: auf der Kante zwischen beiden, an der Stelle, die ihr am nächsten liegt
+          const Pv = lage(fertig.pos, wVor);
+          const Ph = lage(fertig.pos, wHinter);
+          const kante = minus(Pv, Ph);
+          const g = Math.max(0.05, Math.min(0.95, punktProd(minus(B, Ph), kante) / (punktProd(kante, kante) || 1)));
+          const dritte = fertig.nachbarn[wVor]!.find((x) => x !== wHinter && fertig.nachbarn[wHinter]!.includes(x));
+          if (dritte === undefined) continue;
+          // die anderen Proben und die anderen Loops durch beide Schritte nachführen
+          let um: (Probe | null)[] = [...proben];
+          let andere: Loop[] | null = liste;
+          let von: Haut = alt;
+          for (let k = 0; k < zwischen.length; k++) {
+            const nach = zwischen[k]!;
+            const vorher = von;
+            um = um.map((p, i) => (i === j || !p ? p : probeUmlegen(vorher, nach, p)));
+            andere = andere ? loopsNachTeilen(vorher, nach, geteilt[k]!, andere, nr) : null;
+            von = nach;
           }
-        } else {
-          const r2 = kantenTeilen(r1.haut, [{ u, v, f: vor.f }]);
-          const w = r2?.geteilt.get(schluessel(r1.haut.n, u, v));
-          if (r2 && w !== undefined) {
-            h2 = r2.haut;
-            w2 = w;
-            geteilt2 = r2.geteilt;
-          }
+          if (um.some((p) => !p) || !andere) return !!ohne('Kehre: eine Probe oder ein Loop findet seinen Ort nicht');
+          um[j] = { ecken: [wHinter, wVor, dritte], b: [1 - g, g, 0] };
+          haut = fertig;
+          proben = um as Probe[];
+          liste = andere;
+          kehrenFest.push(wVor, wHinter);
         }
-        if (!h2 || w2 < 0 || !h2.nachbarn[r1.w]!.includes(w2)) continue;
-        haut = h2;
-        const um = proben.map((p, k) => {
-          if (k === j) return p;
-          const p1 = probeUmlegen(alt, r1.haut, p);
-          return p1 ? probeUmlegen(r1.haut, haut, p1) : null;
-        });
-        if (um.some((p) => !p)) return ohne('Kehre: eine Probe findet ihr Dreieck nicht');
-        // die Kehre selbst: dicht am Punkt an der Kehre, auf der Kante nach vorn
-        const dritte = haut.nachbarn[r1.w]!.find((x) => x !== w2 && haut.nachbarn[w2]!.includes(x));
-        if (dritte === undefined) return ohne('Kehre: die neue Kante hat kein Dreieck');
-        um[j] = { ecken: [r1.w, w2, dritte], b: [0.97, 0.03, 0] };
-        proben = um as Probe[];
-        const a1 = loopsNachTeilen(alt, r1.haut, new Map(), liste, nr);
-        const andere = a1 ? loopsNachTeilen(r1.haut, haut, geteilt2, a1, nr) : null;
-        if (!andere) return ohne('Kehre: ein anderer Loop lässt sich nicht nachführen');
-        liste = andere;
-        kehrenFest.push(r1.w, w2);
       }
+      let L = laufVon(haut);
+      let halb: Kantenpunkt[] | null = null;
+      let ganz: Kantenpunkt[] = [];
+      const sp = (w: number) => haut.spiegel[w]!;
+      // Am spitzen Ende einer schmalen Form (am Mundwinkel eines Keils) läuft der Ring zweimal durch dieselben Dreiecke: Jede Kante,
+      // die er zweimal kreuzt, wird vorher zwischen den beiden Kreuzungen geteilt (14.11.; bis dahin ließ sich so ein Ring nur
+      // einsetzen, wenn das Netz zufällig passte: 8° nie, 20° je nach Netz).
+      for (let runde = 0; ; runde++) {
+        const orte = proben.map((p) => ortVon(L, p));
+        if (orte.some((o) => !o)) return !!ohne(`Runde ${runde}: eine Probe hat kein Dreieck`);
+        halb = wegOffen(L, orte as Ort[]);
+        if (!halb) return !!ohne(`Runde ${runde}: der Weg lässt sich nicht ablaufen`);
+        const innen = halb.slice(1, -1);
+        if (innen.some((k) => sp(k.u) < 0 || sp(k.v) < 0)) return false;
+        ganz = [...halb, ...innen.reverse().map((k) => ({ u: sp(k.u), v: sp(k.v), f: k.f }))];
+        const doppelt = doppeltGekreuzt(haut, ganz);
+        if (!doppelt) return !!ohne(`Runde ${runde}: zwei Kreuzungen an derselben Stelle einer Kante`);
+        if (doppelt.length === 0) break;
+        if (runde >= 12) return !!ohne('nach zwölf Runden kreuzt der Weg noch Kanten doppelt');
+        const alt = haut;
+        const r = kantenTeilen(alt, doppelt);
+        if (!r) return !!ohne(`Runde ${runde}: eine doppelt gekreuzte Kante läuft quer über die Mitte`);
+        haut = r.haut;
+        const um = proben.map((p) => probeUmlegen(alt, haut, p));
+        if (um.some((p) => !p)) return !!ohne(`Runde ${runde}: eine Probe findet ihr Dreieck nicht`);
+        proben = um as Probe[];
+        // die anderen Loops: eingesetzte bekommen die neuen Punkte in ihre Kette, aufliegende ihre Proben in die neuen Dreiecke
+        const andere = loopsNachTeilen(alt, haut, r.geteilt, liste, nr);
+        if (!andere) return false;
+        liste = andere;
+        alleNeu.push(...r.geteilt.values());
+        L = laufVon(haut);
+      }
+      const neu = einsetzenWeg(L, ganz);
+      if (!neu) return !!ohne('der Weg lässt sich nicht einsetzen (eine Kante oder ein Dreieck käme zweimal vor)');
+      // die Hälfte z ≥ 0: die ersten Punkte des Wegs, ihre Enden genau auf der Mitte
+      const kette = neu.slice(0, halb.length);
+      if (kette.slice(1, -1).some((w) => haut.pos[3 * w + 2]! < -1e-6)) return false;
+      for (const w of [kette[0]!, kette[kette.length - 1]!]) haut.pos[3 * w + 2] = 0;
+      liste[nr] = loopNeu(haut, l, kette);
+      return true;
+    };
+    if (!ring(true)) {
+      haut = anfang.haut;
+      liste = [...anfang.liste];
+      alleNeu.length = 0;
+      kehrenFest.length = 0;
+      const grund = einsetzenGrund;
+      if (!ring(false)) {
+        einsetzenGrund = einsetzenGrund || grund;
+        return null;
+      }
+      einsetzenGrund = '';
     }
-    let L = laufVon(haut);
-    let halb: Kantenpunkt[] | null = null;
-    let ganz: Kantenpunkt[] = [];
-    const sp = (w: number) => haut.spiegel[w]!;
-    // Am spitzen Ende einer schmalen Form (am Mundwinkel eines Keils) läuft der Ring zweimal durch dieselben Dreiecke: Jede Kante,
-    // die er zweimal kreuzt, wird vorher zwischen den beiden Kreuzungen geteilt (14.11.; bis dahin ließ sich so ein Ring nur
-    // einsetzen, wenn das Netz zufällig passte: 8° nie, 20° je nach Netz).
-    for (let runde = 0; ; runde++) {
-      const orte = proben.map((p) => ortVon(L, p));
-      if (orte.some((o) => !o)) return ohne(`Runde ${runde}: eine Probe hat kein Dreieck`);
-      halb = wegOffen(L, orte as Ort[]);
-      if (!halb) return ohne(`Runde ${runde}: der Weg lässt sich nicht ablaufen`);
-      const innen = halb.slice(1, -1);
-      if (innen.some((k) => sp(k.u) < 0 || sp(k.v) < 0)) return null;
-      ganz = [...halb, ...innen.reverse().map((k) => ({ u: sp(k.u), v: sp(k.v), f: k.f }))];
-      const doppelt = doppeltGekreuzt(haut, ganz);
-      if (!doppelt) return ohne(`Runde ${runde}: zwei Kreuzungen an derselben Stelle einer Kante`);
-      if (doppelt.length === 0) break;
-      if (runde >= 12) return ohne('nach zwölf Runden kreuzt der Weg noch Kanten doppelt');
-      const alt = haut;
-      const r = kantenTeilen(alt, doppelt);
-      if (!r) return ohne(`Runde ${runde}: eine doppelt gekreuzte Kante läuft quer über die Mitte`);
-      haut = r.haut;
-      const um = proben.map((p) => probeUmlegen(alt, haut, p));
-      if (um.some((p) => !p)) return ohne(`Runde ${runde}: eine Probe findet ihr Dreieck nicht`);
-      proben = um as Probe[];
-      // die anderen Loops: eingesetzte bekommen die neuen Punkte in ihre Kette, aufliegende ihre Proben in die neuen Dreiecke
-      const andere = loopsNachTeilen(alt, haut, r.geteilt, liste, nr);
-      if (!andere) return null;
-      liste = andere;
-      alleNeu.push(...r.geteilt.values());
-      L = laufVon(haut);
-    }
-    const neu = einsetzenWeg(L, ganz);
-    if (!neu) return ohne('der Weg lässt sich nicht einsetzen (eine Kante oder ein Dreieck käme zweimal vor)');
-    // die Hälfte z ≥ 0: die ersten Punkte des Wegs, ihre Enden genau auf der Mitte
-    const kette = neu.slice(0, halb.length);
-    if (kette.slice(1, -1).some((w) => haut.pos[3 * w + 2]! < -1e-6)) return null;
-    for (const w of [kette[0]!, kette[kette.length - 1]!]) haut.pos[3 * w + 2] = 0;
-    liste[nr] = loopNeu(haut, l, kette);
   } else {
     const neu = einsetzen(l.proben);
     if (!neu) return null;

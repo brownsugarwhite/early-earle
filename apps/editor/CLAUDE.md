@@ -71,7 +71,10 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   `zuBis`). In der Grundform zieht ein Punkt seinen Zwilling mit (`verschiebungen`, `Zug.punktD`; Griffe in `zugBewegen`);
   Kreuzungen, Doppelklick und Löschen halten die Lippen gepaart; der Mundwinkel bleibt Ecke. In der Pose wird die Maullinie nicht
   gezogen (`maulLinieInPose`): Bearbeiten im geschlossenen Zustand gehört zu Schritt 5. Proben: `form-maul-linie.ts` (Kern),
-  `GPU=1 [ANSICHT=front] [MITTE=1] node scripts/pruefen/form-maul-linie-fenster.mjs`.
+  `GPU=1 [ANSICHT=front] [MITTE=1] node scripts/pruefen/form-maul-linie-fenster.mjs`. **Stand 14.11.: hält nur an einer Form
+  ohne Linien durchs Maul** (Kugel, Strich in Seite oder Front). Kreuzt eine andere Linie das Maul (Mittellinie, Loop auf einer
+  Seite: so sind Florians Formen), verlieren die Lippen ihre Paarung, und `MITTE=1` erfüllt den Punkt „fern vom Maul bleibt die
+  Form“ nicht (siehe Fallen). Nicht weiterbauen, bevor das Maul-System beschrieben ist (`docs/UEBERGABE.md`, Abschnitt 7.16).
 - **Linienbreiten** (13.11.): 3 Bildpunkte am Knick, ein halber an runden Punkten, dazwischen verjüngt (`haerteBei` im Kern;
   `baenderZeigen` mit Breite je Punkt, in den Blättern `kantenFlaeche` und die Klasse `kante-band`). Probe:
   `GPU=1 node scripts/pruefen/form-kante-verjuengung-fenster.mjs`.
@@ -176,13 +179,30 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   bekommt er dort einen unsinnig langen Griff (gemessen 12 Millionen, das Netz wuchs danach auf 131 000 Punkte).
 - Eine schmale Form als einzige runde Linie zieht eine Kugel ohne Haltelinien zusammen: Eine Maullinie ist von Anfang an eine
   Kante. Und umgekehrt: Mit einer Kante als einziger Linie hält über die ganze Haut gerechnet nichts die Größe (beim Formen
-  blies sich die Kugel von 150 auf 420 auf). „Maul formen“ ohne Mittellinie rechnet deshalb nur im Umkreis des Mauls
-  (`MaulFormenOptionen.umkreis`).
+  blies sich die Kugel von 150 auf 420 auf). „Maul formen“ ohne Mittellinie hält deshalb die Haut fern vom Maul mit Bindungen
+  an ihrem Ort (`halteLoop`; weiter als `MaulFormenOptionen.umkreis` × Ausdehnung der Maullinie, Standard 0,75) und rechnet über
+  die ganze Haut. Nur im Umkreis gerechnet lief auf dem feinen Netz die Tasche davon.
+- „Maul formen“ (Weg „Kante“) kann auf einem feinen Netz davonlaufen (4 900 Punkte: in der letzten von zwölf Stufen bricht ein
+  Punkt der Rückwand der Tasche aus; Ursache nicht behoben). `maulFormenSchritte` formt dann von vorn mit doppelt so vielen,
+  halb so großen Stufen (höchstens zweimal). Im Fenster sieht man den ersten Versuch ausbrechen, bevor es neu ansetzt
+  (`&netz=dicht`: 21 s, Meldungen „Computed radius is NaN“ in der Konsole): Davonlaufen früher erkennen, den Stand nicht zeigen.
 - `loopEinsetzen` (Ring), seit dem 14.11.: An einer Kehre der Linie (über 140°, der Mundwinkel eines Keils) setzt es zwei Punkte
-  ins Netz (an der Kehre und davor) und lässt den Weg über die Kante zwischen ihnen umkehren; Kanten, die der Weg zweimal kreuzt,
-  werden vorher zwischen den Kreuzungen geteilt (`kantenTeilen`, spiegelgleich); beim Ablaufen wird das Startdreieck quer zur
-  Kante gewählt. Vorher war die Spitze bis 14 Einheiten abgeschnitten, und ihr Endpunkt wurde später quer über fremde Dreiecke
-  gezogen. `einsetzenGrund` sagt, warum es null ergab.
+  ins Netz, auf der Achse durch die Kehre einen davor und einen dahinter (keinen auf der Kehre selbst: zwei Punkte der Kette am
+  selben Ort brechen die Spiegelzuordnung), und lässt den Weg auf der Kante zwischen ihnen umkehren, genau an der Kehre. Kanten,
+  die der Weg zweimal kreuzt, werden vorher zwischen den Kreuzungen geteilt (`kantenTeilen`, spiegelgleich); beim Ablaufen wird
+  das Startdreieck quer zur Kante gewählt. Geht es mit Kehren nicht, wird ohne sie eingesetzt (wie vorher: die Spitze bis 14
+  Einheiten abgeschnitten). `einsetzenGrund` sagt, warum es null ergab.
+- Kreuzungen an einer schmalen Form: `kreuzungenSuchen` hält einen Fund für schon vorhanden, wenn ein Kreuzungspunkt desselben
+  Loop-Paars näher als 8 × `TOL` liegt (2 mittlere Kanten, im Rechennetz rund 30). Liegen die Lippen enger beieinander, bekommt
+  die zweite Lippe ihre Kreuzung nicht oder später doppelt (an `test_kaputt`: zwei Punkte der Mittellinie am selben Ort, die
+  Maullinie mit 6 statt 7 Punkten, `zwillinge` null, das Maul schließt mit 2,8 Spalt).
+- Ein geschlossener Loop ohne Punkte (mit L geschnitten) bekommt mit seinen ersten zwei Punkten einen Pfad (`punktEinfuegen`,
+  `vorher <= 1`), auch wenn zwei Kurvenstücke seinen Verlauf nicht beschreiben. Liegen beide Punkte dicht beieinander (die
+  Kreuzungen mit einem Maul), verliert er seine Form: Mittellinie an der Kugel, Abstand der hinteren Hälfte von der Mitte 150 →
+  49 bis 205, mit dem Maul aus zwei Linien genauso. Schon ein Ring quer durch eine Mittellinie ohne Punkte drückt die Kugel vorn
+  um 9 ein. Florians Formen haben Mittellinien mit 4 bis 38 Punkten.
+- `punktEinfuegen` mit `aufPfad` setzt den Punkt an den Teilungspunkt des Stücks beim Anteil der Bogenlänge; auf einem langen
+  Stück liegt der einige Einheiten neben der Stelle, an der sich die Ketten kreuzen (gemessen 6,5 auf einem Stück über 210°).
 - Nach dem Einsetzen einer spitzen Form die Nadeln wegräumen (`nadelnZusammenlegen`, im Fenster `nadelnWeg`), bevor weiter
   gerechnet wird. Fallen zwei Punkte der Linie auf einen Ort, ordnet `hautAus` die Spiegelpartner über gerundete Lagen falsch zu,
   und alles, was danach das Netz neu aufbaut, scheitert (so fiel `knickReihe` aus).

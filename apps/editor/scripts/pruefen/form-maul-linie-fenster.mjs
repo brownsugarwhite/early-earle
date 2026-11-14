@@ -90,7 +90,20 @@ if (MITTE) {
 const loopsDavor = (await K('loops')).length;
 
 // 1. der offene Strich; das Fenster formt gleich
-const anfang = (await K('lagen')).length / 3;
+const lagenAnfang = await K('lagen');
+const anfang = lagenAnfang.length / 3;
+/** die hintere Hälfte der Form (x > 0, fern vom Maul): kleinster und größter Abstand ihrer Punkte von der Mitte */
+const hinten = (P) => {
+  let klein = Infinity;
+  let gross = 0;
+  for (let i = 0; i < P.length; i += 3) {
+    if (P[i] <= 0) continue;
+    const r = Math.hypot(P[i], P[i + 1], P[i + 2]);
+    klein = Math.min(klein, r);
+    gross = Math.max(gross, r);
+  }
+  return { klein, gross };
+};
 await seite.keyboard.press('f');
 const filmP = seite.evaluate(
   () =>
@@ -181,6 +194,12 @@ const woUmgeschlagen = async () => {
 // Mundwinkel zählt mit, an Florians Modellen 6; außen und Tasche getrennt gezählt ist es 0, Kern-Probe `form-maul-linie.ts`)
 ok('umgeschlagen: höchstens die Wand der Tasche am Mundwinkel (2)', umg <= 2, `umgeschlagen ${umg}${umg ? `: ${(await woUmgeschlagen()).join('; ')}` : ''}`);
 ok('spiegelgleich', (await K('symmetrie')) < 1e-6, `Abweichung ${(await K('symmetrie')).toExponential(1)}`);
+{
+  // eine Form ohne weitere Linien hält ihre Größe nur, weil „Maul formen“ die Haut fern vom Maul an ihrem Ort hält
+  const a = hinten(lagenAnfang);
+  const b = hinten(nach.lagen);
+  ok('fern vom Maul bleibt die Form (hintere Hälfte, Abstand von der Mitte)', Math.abs(b.klein - a.klein) < 1.5 && Math.abs(b.gross - a.gross) < 1.5, `${z1(a.klein)} bis ${z1(a.gross)} → ${z1(b.klein)} bis ${z1(b.gross)}`);
+}
 if (BILD) await seite.screenshot({ path: `${BILD}-2-gerechnet.jpg`, type: 'jpeg', quality: 88 });
 
 // 3. „Fressen“: der Regler zählt von „zu“
