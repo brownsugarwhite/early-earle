@@ -918,6 +918,27 @@ Zustand, Ausblenden).
 4. Die Zwillingsregel beim Ziehen im geschlossenen Zustand; Probe mit einer Mittellinie durch das Maul.
 5. Die Linie ausblendbar, die Naht glatt schattiert; dann sein Blick auf „quasi unsichtbar“.
 
+**Das Maul aus nur einer Linie: im Bau-Fenster gebaut (14.11.); Florian hält Schritt 6 an.** Von der Liste oben sind die Punkte
+1 bis 3 gebaut (die Kette kehrt genau am Mundwinkel um; F mit offenem Strich; der Regler zählt von „zu“), Punkt 4 zum Teil (die
+Lippen gehen in der Grundform zusammen, nicht im geschlossenen Zustand; mit einer Mittellinie durchs Maul hält es nicht), Punkt 5
+nicht. Es hält an einer Form ohne Linien durchs Maul und hält nicht an seinen Formen, wo Linien das Maul kreuzen. Messwerte,
+Bilder und die Liste dessen, was nicht hält: `docs/UEBERGABE.md`, Abschnitt 7.16.
+
+Florian am 14.11. (wörtlich, vollständig in der Übergabe): „Das Maul formt sich und das ist ok. Meine Sonderwünsche mit dem
+geschlossenen maul in jeder Position und wie sich die mundhöle formen soll ist ok, aber noch nicht gut. […] Dazu brauchst du
+genauere beschreibungen für die verschiedenen fälle sonst läuft es zu unendlichen testreihen. Ein wesen ohne jede kurve das ein
+maul bekommt ist ein edgcase. Geschlossene münder müssen gehen, können wenn das technisch besser ist aber auch später eingebaut
+werden. […] Das Maul mit der feste eingeklappten wulst ist nicht was ich erwarte. wenn ich nachträglich linien durchs maul ziehe
+stören diese festen wulsten... […] Auch wenn ich ein maul über eine vorhanden kreuzung lege muss ich erst mit handarbeit die
+kreuzungspunkte zurechtlegen. […] Da die kreuzungspunkte gelöscht bzw automatisch optimal in die maultasche wandern müssen. Das
+braucht alles ein eigenes system und definition. Der weg stimmt schonmal, aber das sollten wir in einer eigenen großen session
+angehen.“
+
+**Folge für den Plan:** Der Rest von Schritt 6 wird ein eigener Abschnitt „Maul-System“ mit eigener Sitzung: zuerst die
+Beschreibung der Fälle (Lippe ohne feste Wulst, Linien durchs Maul, Kreuzungen unter einem Maul, geschlossene Mäuler, Tasche,
+Kiefer; Fragenliste in der Übergabe 7.16), dann je Fall eine Probe an seiner Form mit Linien. Bis dahin wird am Maul nichts
+gebaut und nichts in sein Fenster geführt. Die Reihenfolge der übrigen Schritte (5 Posen, 4c, 7 Auswahl) entscheidet Florian.
+
 ### Schritt 7: Auswahl wie in Blender (2 bis 3 Tage)
 
 - **Was du danach siehst:** Du wählst Punkte, **Kanten** (das Linienstück zwischen zwei Punkten) und **Flächen** (das Feld
