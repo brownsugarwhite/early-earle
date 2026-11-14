@@ -6,7 +6,7 @@
 // Im Kopf steht an der Stelle jedes Felds ein Verweis. So bleibt jede Zahl Bit für Bit, und das Packen kostet im Fenster nur das JSON
 // der Loops (als Text allein wären es bei 26 000 Punkten rund 3 MB Zahlen und 30 bis 40 ms im Hauptthread, nach jedem Zug).
 // Ohne DOM: Das Fenster, die Tests und die Messskripte (`scripts/pruefen/form-netzguete.ts`) lesen dieselbe Datei.
-import type { Loop } from '@ee/shape/dicht';
+import type { Loop, V3 } from '@ee/shape/dicht';
 import type { FlacheHaut } from './verfeinern';
 
 export type WesenStand = {
@@ -17,7 +17,8 @@ export type WesenStand = {
   /** nächste Kennung für Loops und für Kreuzungen */
   ids: [number, number];
   maul: { id: number } | null;
-  pose: { kiefer: number; schaedel: number; delta: Float64Array | null };
+  /** `linien` (seit 14.11.): je Linie der Versatz ihrer Punkte und Griffe gegen die Grundform, in der Ruhe der Pose */
+  pose: { kiefer: number; schaedel: number; delta: Float64Array | null; linien?: { id: number; punkte: { d: V3; ein: V3 | null; aus: V3 | null }[] }[] | null };
   /** in der Pose: die Grundform dazu (`haut` und `loops` sind dann die Pose) */
   grund: { haut: FlacheHaut; loops: Loop[] } | null;
   /**

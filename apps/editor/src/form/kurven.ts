@@ -293,7 +293,9 @@ let maul: MaulZustand = null;
  * Die Fressen-Pose: Knochen (Grad) und Blendshape, je Punkt der Haut die Verschiebung gegen die Grundform vor den Knochen (null:
  * keiner).
  */
-type PoseStand = { kiefer: number; schaedel: number; delta: Float64Array | null };
+/** je Linie der Versatz ihrer Punkte und Griffe gegen die Grundform (in der Ruhe der Pose); fehlt eine Linie: ohne Versatz */
+type PoseLinie = { id: number; punkte: { d: V3; ein: V3 | null; aus: V3 | null }[] };
+type PoseStand = { kiefer: number; schaedel: number; delta: Float64Array | null; linien?: PoseLinie[] | null };
 let pose: PoseStand = { kiefer: 30, schaedel: 0, delta: null };
 /** In der Pose: die Grundform. `haut` und `loops` sind dann die Pose, wie sie zu sehen ist (dasselbe Netz, posierte Lagen). */
 let grund: { haut: Haut; loops: Loop[] } | null = null;
@@ -360,7 +362,14 @@ const RICHTUNG_OPT: { richtung?: boolean; maxNormalen?: boolean; vorsicht?: bool
   ...(NORMALFLUSS === '1' ? { normalfluss: true } : NORMALFLUSS === '0' ? { normalfluss: false } : {}),
 };
 /** Der Zug löst nur einen Bereich um die bewegten Stellen (mit Gedächtnis und in der Pose); aus den Kurven die ganze Haut */
-const mitBereich = (): boolean => grund !== null || HAUT !== 'kurven';
+/**
+ * Die Pose rechnet wie bis zum 14.11. (im Bereich, die Linien nicht genau ihr Pfad, ohne Setzen und Aufräumen): nur noch am Maul aus
+ * der schmalen Form. Seine verborgene Öffnung verträgt die Rechnung über die ganze Haut nicht (Plan, Schritt 5, Etappe 1: Ein Zug an
+ * der Lippe nahm die Haut fern vom Maul mit). An einem geformten Maul ist die Ruhe der Pose eine Form wie die Grundform: dieselbe
+ * Rechnung, dieselben Linien (Etappe 2b).
+ */
+const altePose = (): boolean => grund !== null && !maulIstGeformt();
+const mitBereich = (): boolean => altePose() || HAUT !== 'kurven';
 /**
  * „Form halten“ (Plan vom 12.11., Anhang A.3: B als Schalter, 13.11.). An: Ein Zug bewegt die Haut direkt mit den Linien (Löser
  * `direkt` im Kern, `direktZug.ts`). Was schon Haut ist, behält seine Wölbung, nichts rundet neu, hin und zurück gibt dieselbe
@@ -395,7 +404,7 @@ function direktBereiten(): void {
  * mit Pfad genau der Pfad an ihrer Stelle, die Haut folgt, und die Punkte bleiben, wohin sie gezogen werden. In der Pose (ihre Linien
  * sind gedrehte Linien der Grundform, die Griffe daran abgelesen) folgen die Linien wie bisher den Änderungen ihres Pfads.
  */
-const exakt = (l: Loop): boolean => grund === null && hatPfad(l);
+const exakt = (l: Loop): boolean => !altePose() && hatPfad(l);
 /**
  * Zum Vergleich (`?punkte=noetig`): Ein geschnittener oder mit F gezeichneter Loop bekommt beim Anlegen Punkte, bis seine Linie höchstens
  * 0,05 Kanten (≈ 0,4) neben ihrem Pfad liegt. Florians Wahl ist ohne Zusatzpunkte.
@@ -1121,17 +1130,41 @@ function poseBetreten(): boolean {
   }
   const d = pose.delta && pose.delta.length === haut.pos.length ? pose.delta : null;
   const ruhe = d ? Float64Array.from(haut.pos, (x, i) => x + d[i]!) : Float64Array.from(haut.pos);
+  const alt = !maulIstGeformt();
   const g = { haut, loops };
   grund = g;
   // die Ruhe der Pose: mit ihr wird gerechnet, gedreht wird erst beim Zeigen (`alsAnzeige`)
   haut = { ...g.haut, pos: ruhe };
+  let angepasst = false;
   loops = g.loops.map((x) => {
     const c = kopieLoop(x);
-    festlegen(haut, c);
-    // die Griffe der Linien der Pose (ohne neue Ecken: was in der Pose knickt, gehört der Pose)
-    if (hatGriffe(c)) griffeAnlegen(c, c.ruhe);
+    if (alt) {
+      festlegen(haut, c);
+      // die Griffe der Linien der Pose (ohne neue Ecken: was in der Pose knickt, gehört der Pose)
+      if (hatGriffe(c)) griffeAnlegen(c, c.ruhe);
+      return c;
+    }
+    // Die Pose ist eine zweite Lage derselben Linien: ihre Punkte und Griffe = die der Grundform plus Versatz
+    const v = pose.linien?.find((y) => y.id === x.id);
+    if (v && v.punkte.length === c.punkte.length) {
+      c.punkte.forEach((q, i) => {
+        const o = v.punkte[i]!;
+        q.ref = { x: q.ref.x + o.d.x, y: q.ref.y + o.d.y, z: q.ref.z + o.d.z };
+        q.cur = { ...q.ref };
+        if (q.ein && o.ein) q.ein = { x: q.ein.x + o.ein.x, y: q.ein.y + o.ein.y, z: q.ein.z + o.ein.z };
+        if (q.aus && o.aus) q.aus = { x: q.aus.x + o.aus.x, y: q.aus.y + o.aus.y, z: q.aus.z + o.aus.z };
+      });
+      festlegen(haut, c, false);
+    } else if (d) {
+      // ein Blendshape ohne gespeicherte Linien (eine Pose von vor dem 14.11.): Die Linien werden einmal an der Haut der Pose abgelesen
+      festlegen(haut, c);
+      if (hatGriffe(c)) griffeAnlegen(c, c.ruhe, true);
+      angepasst = true;
+    } else festlegen(haut, c, false);
     return c;
   });
+  // (abgelesene Linien liegen nicht ganz auf ihrem Pfad: Die Haut setzt sich auf sie)
+  if (angepasst) linienAufPfad();
   geometrieNeu();
   meldung = '';
   return true;
@@ -1143,6 +1176,16 @@ function poseSichern(): void {
   const d = new Float64Array(haut.pos.length);
   for (let i = 0; i < d.length; i++) d[i] = haut.pos[i]! - grund.haut.pos[i]!;
   pose.delta = d;
+  // die Linien der Pose als Versatz gegen die der Grundform (Punkt für Punkt; am Maul aus der schmalen Form wie bisher keine)
+  const basis = grund.loops;
+  pose.linien = altePose()
+    ? null
+    : loops.flatMap((l): PoseLinie[] => {
+        const b = basis.find((x) => x.id === l.id);
+        if (!b || b.punkte.length !== l.punkte.length) return [];
+        const weg = (p: V3 | undefined, q: V3 | undefined): V3 | null => (p && q ? { x: p.x - q.x, y: p.y - q.y, z: p.z - q.z } : null);
+        return [{ id: l.id, punkte: l.punkte.map((p, i) => ({ d: weg(p.ref, b.punkte[i]!.ref)!, ein: weg(p.ein, b.punkte[i]!.ein), aus: weg(p.aus, b.punkte[i]!.aus) })) }];
+      });
 }
 
 // ---------- Die Pose zeigen: Die Knochen drehen nur, was gezeigt wird ----------
@@ -1319,7 +1362,8 @@ function netzGewachsen(nAlt: number, alt: Int32Array, vorher: { theta: Float64Ar
     return out;
   };
   const g = grund;
-  if (g && vorher) {
+  void vorher;
+  if (g) {
     // (in der Pose ist `haut` ihre Ruhe: nichts zurückzudrehen)
     const ruhe = haut.pos;
     const dAlt = umordnen(g.haut.pos, 3);
@@ -2603,7 +2647,7 @@ function stueckUm(l: Loop, k: number, mark: Uint8Array): number {
  */
 let loeserHautStand: { haut: Haut; offen: Uint8Array; h: Haut; aus: Uint8Array } | null = null;
 function loeserHaut(): { h: Haut; aus: Uint8Array | null } {
-  const m = grund ? maulAktuell() : null;
+  const m = altePose() ? maulAktuell() : null;
   if (!m || m.offen.length !== haut.tri.length / 3) return { h: haut, aus: null };
   const st = loeserHautStand;
   if (st && st.haut === haut && st.offen === m.offen) return { h: { ...st.h, pos: haut.pos }, aus: st.aus };
@@ -2643,7 +2687,7 @@ function loeserFuer(bewegt: readonly V3[], r: number, ecken: Iterable<number>): 
   // Struktur passt, sonst zerlegt er selbst)
   const vorlage = mitBereich() ? null : (naechsteVorlage ?? (GEWICHTE === 'geometrie' ? vorlageBereit : null));
   naechsteVorlage = null;
-  return new LoopZug(h, loops, bereich, KRUEMMUNG && !grund, art, GEWICHTE, vorlage ? { vorlage, ...RICHTUNG_OPT } : RICHTUNG_OPT);
+  return new LoopZug(h, loops, bereich, KRUEMMUNG && !altePose(), art, GEWICHTE, vorlage ? { vorlage, ...RICHTUNG_OPT } : RICHTUNG_OPT);
 }
 
 /** Löser für die Stücke um Punkt k des Loops li (Griff ziehen oder ausrichten) */
@@ -3504,7 +3548,7 @@ function stufeImHintergrund(z: Zug, X: number, Y: number): void {
     loops: festgelegt,
     maxKante: 1.75 * MK,
     opt: verdichtenOptionen(),
-    kruemmung: KRUEMMUNG && !grund,
+    kruemmung: KRUEMMUNG && !altePose(),
     gewichte: GEWICHTE,
     loeserOpt: RICHTUNG_OPT,
   };
@@ -3639,7 +3683,7 @@ function zerleger(): Worker | null {
         aufgeraeumt = null;
         zwischenstand = null;
         let imFenster = 'im Fenster gerechnet';
-        if (!zug && !grund && f.netz === haut && f.stand === standZahl()) {
+        if (!zug && !altePose() && f.netz === haut && f.stand === standZahl()) {
           const r = ruheOffen;
           ruheOffen = null;
           // scheitert dieselbe Rechnung auch im Fenster, bleibt die Form, wie sie ist (der Fehler darf hier nicht weiterlaufen)
@@ -3898,7 +3942,7 @@ function nachlaufRechnen(): void {
   const n = nachlauf;
   if (!n) return;
   // ein neuer Zug bewegt sich, oder jemand hat den Stand geändert: Der Nachlauf endet, wo er ist
-  if (zug?.bewegt || grund || n.netz !== haut || n.lagen !== lagenZahl(haut.pos) || n.loops !== loopsZahl()) {
+  if (zug?.bewegt || altePose() || n.netz !== haut || n.lagen !== lagenZahl(haut.pos) || n.loops !== loopsZahl()) {
     nachlauf = null;
     statusZeigen();
     // ohne neuen Zug: die Zerlegung für das nächste Greifen wie sonst in der Ruhe vorrechnen
@@ -4038,7 +4082,7 @@ function zwischenAnwenden(): void {
   zwischenstand = null;
   if (!f || !d || d.id !== f.id) return;
   // inzwischen hat jemand den Stand geändert: Der Auftrag gehört nicht mehr dazu (sein Ergebnis verfällt dann auch)
-  if (grund || f.netz !== haut || d.pos.length !== haut.pos.length || f.stand !== standZahl()) return;
+  if (altePose() || f.netz !== haut || d.pos.length !== haut.pos.length || f.stand !== standZahl()) return;
   const t0 = performance.now();
   haut.pos.set(d.pos);
   festlegenAlle();
@@ -4076,7 +4120,7 @@ let gegriffen: { a: Ansicht; X: number; Y: number; m: boolean; griff: { id: numb
 const GRIFF_WARTEN_MS = 4000;
 /** der Hintergrund bringt für genau diesen Stand noch, was der Griff braucht (die gesetzte Haut, die Zerlegung), oder beginnt gleich damit */
 const griffWartet = (): boolean => {
-  if (grund || !mitNachlauf() || hintergrundAus) return false;
+  if (altePose() || !mitNachlauf() || hintergrundAus) return false;
   const stand = standZahl();
   if (hintergrundGescheitert === stand) return false;
   const f = aufraeumen && aufraeumen.netz === haut && aufraeumen.stand === stand ? aufraeumen : null;
@@ -4109,7 +4153,7 @@ function aufgeraeumtAnwenden(): void {
   const t0 = performance.now();
   // inzwischen hat jemand den Stand geändert: Das Ergebnis gehört nicht mehr dazu (was offen war, bleibt offen: In der Ruhe beginnt
   // ein Auftrag für den neuen Stand)
-  const gilt = !grund && f.netz === haut && f.stand === standZahl();
+  const gilt = !altePose() && f.netz === haut && f.stand === standZahl();
   let neueHaut = false;
   if (gilt) {
     if (d.geaendert && d.haut && d.loops) {
@@ -4119,7 +4163,8 @@ function aufgeraeumtAnwenden(): void {
         haut = hautAusFlach(d.haut);
         // die Linien des feineren Netzes (ihre Proben) mit den Punkten von jetzt
         loops = loops.map((jetzt, li) => ({ ...jetzt, proben: fertig[li]!.proben, s: fertig[li]!.s, ruhe: fertig[li]!.ruhe, punkte: jetzt.punkte.map((p) => ({ ...p })) }));
-        netzGewachsen(nAlt, d.alt, null);
+        // (in der Pose bekommt die Grundform dieselben Punkte)
+        netzGewachsen(nAlt, d.alt, grund ? poseKnochen() : null);
         geometrieNeu();
         letzteVerdichtung = { neu: d.neu, gelegt: d.gelegt, ms: Math.round(d.ms[0]!) };
       } else haut.pos.set(d.haut.pos); // dasselbe Netz, gesetzt
@@ -4364,7 +4409,7 @@ function verdichtenOptionen(nurTeilen = false): VerdichtenOptionen {
   // nur in der Grundform: Dort ist die Linie ihr Pfad. In der Pose liegt sie neben ihm (die Punkte werden von der posierten Linie
   // abgelesen, die Griffe sind die der Grundform); nach dem Pfad geteilt wurde dort laufend neu vernetzt (Fressen-Probe: 572 neue,
   // 741 zusammengelegte Punkte, danach 2 umgeklappt)
-  const genau = GENAU > 0 && grund === null ? { genau: GENAU * MK, genauHaut: GENAU_HAUT, genauFlaeche: GENAU_FLAECHE * MK } : {};
+  const genau = GENAU > 0 && !altePose() ? { genau: GENAU * MK, genauHaut: GENAU_HAUT, genauFlaeche: GENAU_FLAECHE * MK } : {};
   return WINKEL ? { winkel: 25, minKante: MK / 3, verborgen, flachSchutz: FLACH_SCHUTZ } : { verborgen, kurz: nurTeilen ? 0 : KURZ * MK, ...genau, flachSchutz: FLACH_SCHUTZ };
 }
 
@@ -4576,7 +4621,7 @@ function kanteSetzen(): void {
  * so viel bewegen sich die Linien dabei (gelöschte Punkte, je Loop 3 je Probe). In der Pose nur, wenn sich Linien bewegen.
  */
 function hautNeuRechnen(versch: readonly (Float64Array | null)[] = loops.map(() => null), sofort = false): void {
-  if (grund) {
+  if (altePose()) {
     // in der Pose nur, wenn Linien sich bewegt haben (gelöschte Punkte): um sie herum
     if (!versch.some((d) => d)) return;
     const bewegt: V3[] = [];
@@ -4656,7 +4701,7 @@ let letztesNeuRechnen = 0;
  * nächste Zug.
  */
 function linienAufPfad(neu?: Loop): boolean {
-  if (grund) return false;
+  if (altePose()) return false;
   const versch: (Float64Array | null)[] = loops.map(() => null);
   const bewegt: V3[] = [];
   const ecken = new Set<number>();
@@ -6823,10 +6868,11 @@ if (BEHALTEN) behaltenesHolen();
 // In der Pose melden die Haken, was gezeigt wird (die gedrehte Lage), nicht die Ruhe der Pose (`ruheLagen` gibt die Ruhe)
 {
   const haken = (window as unknown as { __kurven: Record<string, unknown> }).__kurven;
-  for (const name of ['loops', 'lagen', 'roh', 'maulLinie', 'umgeschlagen', 'symmetrie', 'knickGemessen', 'knick', 'knickAm', 'griffe', 'maul', 'masse', 'pfadRest']) {
+  for (const name of ['loops', 'lagen', 'roh', 'maulLinie', 'umgeschlagen', 'symmetrie', 'knickGemessen', 'knick', 'knickAm', 'griffe', 'maul', 'masse']) {
     const f = haken[name] as ((...a: unknown[]) => unknown) | undefined;
     if (f) haken[name] = (...a: unknown[]): unknown => alsAnzeige(() => f(...a));
   }
   haken.ruheLagen = (): number[] => Array.from(haut.pos);
+  haken.ruheUmgeschlagen = (): number => umgeschlageneZahl();
   haken.ruheLoops = (): { id: number; punkte: { ref: V3; ein: V3 | null; aus: V3 | null }[] }[] => loops.map((l) => ({ id: l.id, punkte: l.punkte.map((q) => ({ ref: q.ref, ein: q.ein ?? null, aus: q.aus ?? null })) }));
 }
