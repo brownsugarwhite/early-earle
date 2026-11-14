@@ -5,7 +5,7 @@ Verweise. Verlauf, Messwerte und Florians Rückmeldungen gehören in `docs/` (Pl
 unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.2026 liegt in
 [`docs/verlauf/2026-11-12-projektgedaechtnis-verlauf.md`](docs/verlauf/2026-11-12-projektgedaechtnis-verlauf.md).
 
-## Stand (12.11.2026)
+## Stand (14.11.2026)
 
 - **Projekt:** levelbasiertes 2048 im Earle-Stil. Prototyp 1 ist abgeschlossen (Archiv-Zweig `prototyp-1`,
   [`docs/prototyp/README.md`](docs/prototyp/README.md)). Die Produktion läuft in vier Teilen (Map, Spielfeld, Charaktere, UI).
@@ -19,7 +19,11 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   am 12.11. freigegeben („Ok, fangen wir an“). Schritte: 0 Aufräumen, 1 glatte Anzeige, 2 kleines Rechennetz, 3 Beweis „Haut
   direkt aus den Linien“, 4 echte Spiegelung und neue Rechnung ins Fenster, 5 Posen wie die Basis, 6 Maul als eigene Geometrie,
   7 Auswahl wie in Blender. Fest vorgemerkt ist **4c, der Rest der halben Haut** (Florian, 13.11.: „es soll nicht vergessen
-  werden“; das Tempo wird für Shader, Materialien, Fell und Zusatzteile gebraucht). **Wo wir stehen und was als Nächstes kommt: [`docs/UEBERGABE.md`](docs/UEBERGABE.md).**
+  werden“; das Tempo wird für Shader, Materialien, Fell und Zusatzteile gebraucht). **Reihenfolge seit dem 14.11. (Florian):**
+  zuerst der Zwischenschritt „Abzweigungen“ (mit P von jedem Punkt und jeder Linie aus eine verbundene Linie ziehen), dann
+  Schritt 5, dann 4c. Schritt 6 (Maul) ist angehalten und bekommt eine eigene Sitzung, vielleicht zusammen mit Zähnen: zuerst
+  beschreibt er die Fälle, dann wird gebaut. Schritt 7 kommt später, ob und wie ist offen. **Wo wir stehen und was als Nächstes
+  kommt: [`docs/UEBERGABE.md`](docs/UEBERGABE.md).**
 - **Design-Strang daneben (eigene Sitzung):** `/editor` (`apps/editor/editor.html`, `src/form/editor.ts`,
   `src/form/blaupause.ts`) zeigt denselben Editor im Layout der Blaupause. Einstieg:
   [`docs/look/editor/blaupause/UEBERGABE.md`](docs/look/editor/blaupause/UEBERGABE.md). `editor.ts` ist eine Kopie von
