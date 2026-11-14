@@ -1,4 +1,4 @@
-# Übergabe (Stand 14.11.2026, 12:05 Uhr: **Schritt 5, Etappe 2 ist im Bau-Fenster (5197) gebaut** (Abschnitt 7.18 und Plan): In der Pose rechnet das Fenster mit ihrer Ruhe, die Knochen drehen nur die Anzeige; am geformten Maul ist die Pose eine Form wie die Grundform (dieselbe Rechnung, genaue Linien, Punkte und Griffe als Versatz gespeichert). Probe an Florians Form „maul handgemacht test“: fern vom Maul bewegt ein Zug an der Lippe die Haut 0,17 statt 4,39, die Linien liegen auf ihrem Pfad, derselbe Zug gibt in Pose und Grundform dieselbe Haut. Nicht erfüllt: Beim Zug an der Kieferspitze schlagen 8 bis 10 kleine Dreiecke an der Mitte um (in der Grundform bei demselben Zug auch). Offen in Schritt 5: Etappe 3 bis 5. Florians Urteil steht aus; in seinem Fenster (5194) ist davon nichts. **Davor am 14.11.:** der Zwischenschritt „Abzweigungen“ (7.17; Florian zur zweiten Fassung: „Ja, weiter Schritt 5“). **Reihenfolge (Florian, 14.11.):** Abzweigungen, Schritt 5, dann 4c. **Schritt 6 (Maul) ist angehalten** und bekommt eine eigene Sitzung, vielleicht zusammen mit Zähnen (7.16). Schritt 7 kommt später, ob und wie ist offen. Zu Schritt 1, 2, 4a und 4b: „das sieht gut aus bis jetzt“)
+# Übergabe (Stand 14.11.2026, 12:20 Uhr: **Schritt 5, Etappe 2 ist im Bau-Fenster (5197) gebaut** (Abschnitt 7.18 und Plan): In der Pose rechnet das Fenster mit ihrer Ruhe, die Knochen drehen nur die Anzeige; am geformten Maul ist die Pose eine Form wie die Grundform (dieselbe Rechnung, genaue Linien, Punkte und Griffe als Versatz gespeichert). Probe an Florians Form „maul handgemacht test“: fern vom Maul bewegt ein Zug an der Lippe die Haut 0,17 statt 4,39, die Linien liegen auf ihrem Pfad, derselbe Zug gibt in Pose und Grundform dieselbe Haut. Nicht erfüllt: Beim Zug an der Kieferspitze schlagen 8 bis 10 kleine Dreiecke an der Mitte um (in der Grundform bei demselben Zug auch). Offen in Schritt 5: Etappe 3 bis 5. Florians Urteil steht aus; in seinem Fenster (5194) ist davon nichts. **Davor am 14.11.:** der Zwischenschritt „Abzweigungen“ (7.17; Florian zur zweiten Fassung: „Ja, weiter Schritt 5“). **Reihenfolge (Florian, 14.11.):** Abzweigungen, Schritt 5, dann 4c. **Schritt 6 (Maul) ist angehalten** und bekommt eine eigene Sitzung, vielleicht zusammen mit Zähnen (7.16). Schritt 7 kommt später, ob und wie ist offen. Zu Schritt 1, 2, 4a und 4b: „das sieht gut aus bis jetzt“)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -1217,11 +1217,12 @@ Bau-Fenster an „test_kaputt“: [Kreuz](progress/editor/zwischenschritt-abzwei
   `apps/editor/src/form/kurven.ts` (Abschnitt „Abzweigung mit P“, `loeschen`, `punktAufLinie`). Einzelheiten und Fallen:
   `apps/editor/CLAUDE.md`.
 
-### 7.18 Schritt 5, Etappe 2: Die Pose rechnet in ihrer Ruhe, am geformten Maul wie die Grundform (14.11., 12:05 Uhr)
+### 7.18 Schritt 5, Etappe 2: Die Pose rechnet in ihrer Ruhe, am geformten Maul wie die Grundform (14.11., 12:20 Uhr)
 
 **Florian am 14.11. nach der zweiten Fassung der Abzweigungen:** „Ja, weiter Schritt 5“.
 
-**Was gebaut ist** (nur `claude/form-bau`: `40ef2045` 2a, `27bdc077` 2b, danach 2c; in seinem Fenster nichts):
+**Was gebaut ist** (nur `claude/form-bau`: `40ef2045` 2a, `27bdc077` 2b, `9ce2013d` 2c, danach die berichtigte Anzeige der
+Linien; in seinem Fenster nichts):
 
 - **2a:** In der Pose sind `haut` und `loops` im Fenster die Ruhe der Pose (Grundform plus Versatz). Gezeichnet wird ihre
   gedrehte Kopie (`alsAnzeige`); ein Zug im Blatt wird je Punkt mit dessen Winkel zurückgedreht (`inDerRuhe`); die Regler setzen
@@ -1234,6 +1235,14 @@ Bau-Fenster an „test_kaputt“: [Kreuz](progress/editor/zwischenschritt-abzwei
   14.11. in der Pose gesichert wurde, wird beim Laden einmal in die Ruhe zurückgedreht.
 - **Am Maul aus der schmalen Form** (mit eingesetztem Inneren) rechnet die Pose weiter wie bis zum 14.11. (im Bereich, Linien
   nicht genau), nur in ihrer Ruhe: Seine verborgene Öffnung verträgt die Rechnung über die ganze Haut nicht (7.6).
+- **Anzeige der Linien berichtigt (12:20 Uhr):** Beim Ansehen des Bildpaars fiel auf, dass die dünnen Linien in der Pose neben
+  der Haut lagen. Ursache: Seit 2b zeichnete das Blatt sie als Kurven aus gedrehten Punkten und Griffen; wo sich der Winkel der
+  Knochen längs der Linie ändert, ist das nicht die gedrehte Linie (gemessen bis 13,26 neben der gezeigten Haut; die Haut selbst
+  stimmte). Jetzt wird der Pfad der Ruhe Stelle für Stelle mit dem Winkel der Haut dort gedreht (im Blatt `stueckeGezeigt`, für
+  die Bänder im 3D-Bild und die glatte Kante der Haut `pfadStuecke`): 0,03. Ausschnitte
+  [vorher](progress/editor/schritt5-pose-linien-vorher-2026-11-14.jpg) und
+  [nachher](progress/editor/schritt5-pose-linien-nachher-2026-11-14.jpg). Die drei Blätter werden in der Pose mit einem Drehen
+  gezeichnet (`blaetterZeichnen`): 2,3 ms, in der Grundform 1,7 ms.
 
 **Gemessen an „maul handgemacht test“** (Probe `form-pose-fenster.mjs`; Tabelle im Plan,
 [Messwerte](progress/editor/schritt5-pose-fenster-messung-2026-11-14.txt), Bildpaar
@@ -1248,9 +1257,10 @@ Mittelebene um (16 bis 18 statt 8); derselbe Zug in der Grundform schlägt dort 
 nicht an der Pose; behoben ist es nicht. Am Maul aus der schmalen Form, in der Front gezeichnet: nach dem Zug an der Lippe 2
 umgeschlagene Dreiecke (vorher 0).
 
-**Geprüft:** `form-pose-fenster` (14 von 15 Punkten), `form-kiefer-fenster` (Kugel, „simple_mouth_more simple“, „maul
+**Geprüft (nach der Berichtigung der Anzeige noch einmal):** `form-pose-fenster` (16 von 17 Punkten), `form-kiefer-fenster` (Kugel, „simple_mouth_more simple“, „maul
 handgemacht test“, schmale Form), `form-maul-linie-fenster`, `form-abzweigung-fenster`, `form-maul-formen-fenster`,
-`form-fressen-pose` (alte Probe, Seite und Front, gegen den Stand davor verglichen), 24 Tests im Editor, Typen, Lint.
+24 Tests im Editor, Typen, Lint; vor der Berichtigung auch `form-fressen-pose` (alte Probe, Seite und Front, gegen den Stand
+davor verglichen).
 
 **Offen in Schritt 5:** Etappe 3 (die Pose geht mit der Grundform mit: Die Versätze sind da; geprüft ist das Mitgehen nur mit
 der alten Fressen-Probe am Maul aus der schmalen Form), Etappe 4 (beide Seiten frei: eigener kleiner Beweis zuerst), Etappe 5

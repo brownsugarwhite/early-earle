@@ -564,7 +564,8 @@ Das Maul aus der schmalen Form (mit eingesetztem Inneren) bleibt in der Pose bed
 aus der Rechnung genommen. Hält 2a nach einem halben Tag nicht (die vorhandenen Proben laufen nicht wie vorher): anhalten und es
 sagen.
 
-**Etappe 2, gebaut am 14.11. bis 12:05 Uhr im Bau-Fenster** (2a, 2b und 2c; in seinem Fenster nichts). Probe
+**Etappe 2, gebaut am 14.11. bis 12:20 Uhr im Bau-Fenster** (2a, 2b, 2c und die berichtigte Anzeige der Linien; in seinem
+Fenster nichts). Probe
 `form-pose-fenster.mjs` an seiner Form „maul handgemacht test“
 ([Messwerte vorher und nachher](../progress/editor/schritt5-pose-fenster-messung-2026-11-14.txt); Bildpaar
 [vorher](../progress/editor/schritt5-pose-zug-vorher-2026-11-14.jpg),
@@ -581,12 +582,21 @@ sagen.
 | 4 die Regler ändern die Ruhe nicht | bitgleich | bitgleich |
 | 5 ⌘Z | zurück | zurück |
 | 2c in der Pose kein Löschen, kein neuer Punkt | (erlaubt) | Meldung, nichts ändert sich |
+| gezeigt liegt jede gezeichnete Linie höchstens 0,5 neben der gezeigten Haut | (die Linie wurde durch ihre Lagen gezeichnet) | 0,03 (nach 2c zuerst **13,26**, siehe unten) |
 
 **Ein Kriterium ist nicht erfüllt:** Beim Zug an der Kieferspitze schlagen 8 bis 10 kleine Dreiecke an der Mittelebene um.
 Derselbe Zug in der Grundform schlägt dort ebenfalls 8 um: Es liegt an diesem Zug an der Mitte, nicht an der Pose; behoben ist es
 nicht. Die vorhandenen Proben zur Pose (`form-kiefer-fenster` an der Kugel, an „simple_mouth_more simple“ und an „maul
 handgemacht test“, `form-maul-linie-fenster`) melden dasselbe wie vor dem Umbau; an der Kugel hält die Pose jetzt den Knick an
 den Lippen (95,0° und 94,1°).
+
+**Ein Fehler der Anzeige, beim Ansehen des Bildpaars gefunden und am 14.11. um 12:20 Uhr behoben:** Nach 2b zeichnete das Blatt
+die Linien der Pose als Kurven aus gedrehten Punkten und Griffen. Wo sich der Winkel der Knochen längs einer Linie ändert
+(zwischen Kiefer und Schädel), ist das nicht die gedrehte Linie: Sie lag bis 13,26 neben der gezeigten Haut (die Haut selbst
+stimmte; [Ausschnitt vorher](../progress/editor/schritt5-pose-linien-vorher-2026-11-14.jpg),
+[nachher](../progress/editor/schritt5-pose-linien-nachher-2026-11-14.jpg)). Jetzt wird der Pfad der Ruhe Stelle für Stelle mit
+dem Winkel der Haut dort gedreht, im Blatt, an den Bändern im 3D-Bild und an der glatten Kante der Haut: 0,03. Die Probe misst
+es seitdem mit. Die drei Blätter zu zeichnen dauert in der Pose 2,3 ms (Grundform 1,7 ms).
 
 **Was anders gebaut ist als geplant:** Am Maul aus der schmalen Form (mit eingesetztem Inneren) rechnet die Pose weiter wie bis
 zum 14.11., nur in ihrer Ruhe statt in der gedrehten Lage. Dort in der Front gezeichnet schlagen nach dem Zug an der Lippe 2

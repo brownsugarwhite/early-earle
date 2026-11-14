@@ -18,22 +18,27 @@ FEHL derselbe Zug fern vom Maul (Punkt von Loop 12, 394,4 vom Maul, 25 nach oben
 gut  keine Fehler in der Konsole
 4 Punkte nicht erfüllt
 
---- nachher (2b und 2c: die Pose rechnet wie die Grundform)
+--- nachher (2b, 2c und die berichtigte Anzeige der Linien: die Pose rechnet wie die Grundform)
 gut  „maul handgemacht test“ geladen, die Lippenlinie (Loop 14) gewählt
 gut  „Fressen“: die Pose ist an: Unterkiefer 30°, Schädel 0°; 
 gut  aus: die Grundform bitgleich: größter Unterschied 0.0e+0
 gut  wieder an: die Pose wie beim ersten Mal: größter Unterschied 0,00
+     die drei Blätter zeichnen: in der Pose 2,30 ms, in der Grundform 1,70 ms
 gut  Punkt der Unterlippe 25 nach unten: Er liegt gezeigt dort, wohin er gezogen wurde: (-183,8 -100,1) → (-183,8 -125,1), 0,00 neben dem Ziel
-gut  fern vom Maul bewegt sich die Haut höchstens 1: 0,17 (3485 → 3472 Punkte)
-FEHL nichts schlägt zusätzlich um: umgeschlagen 16 gezeigt, 16 in der Ruhe der Pose (in der Pose davor 8 gezeigt und 8 in der Ruhe, Grundform 8)
+gut  fern vom Maul bewegt sich die Haut höchstens 1: 0,18 (3485 → 3496 Punkte)
+FEHL nichts schlägt zusätzlich um: umgeschlagen 18 gezeigt, 18 in der Ruhe der Pose (in der Pose davor 8 gezeigt und 8 in der Ruhe, Grundform 8)
 gut  die Linien liegen höchstens 0,5 neben ihrem Pfad: größte Abweichung 0,00
+gut  gezeigt liegt jede gezeichnete Linie höchstens 0,5 neben der gezeigten Haut: größte Abweichung 0,03 (Loop 9); vor dem Zug 0,03 (Loop 9)
 gut  spiegelgleich
 gut  ⌘Z: die Ruhe der Pose wie vor dem Zug: größter Unterschied 0.0e+0
 gut  in der Pose löschen: nichts wird gelöscht, eine Meldung sagt warum: Punkte und Linien löschst du in der Grundform (erst „Fressen“ aus): Die Pose ist dieselbe Form in einer anderen Lage, mit denselben Punkten und Linien
 gut  in der Pose Doppelklick auf eine Linie: kein neuer Punkt: Einen Punkt setzt du in der Grundform (erst „Fressen“ aus): Die Pose ist dieselbe Form in einer anderen Lage, mit denselben Punkten und Linien
 gut  die Regler ändern die Ruhe der Pose nicht: Ruhe: größter Unterschied 0.0e+0; gezeigt bei 45° um 43,4 anders
 gut  zurück in der Grundform: bitgleich wie am Anfang: größter Unterschied 0.0e+0
-gut  derselbe Zug fern vom Maul (Punkt von Loop 12, 394,5 vom Maul, 25 nach oben): in der Pose dieselbe Haut wie in der Grundform: größter Abstand der beiden Häute 0,00 (3473 und 3473 Punkte)
-     derselbe Zug an der Lippe in der Grundform (um -12,5 / -21,7): umgeschlagen 16 (in der Pose 16 in der Ruhe, 16 gezeigt; davor 8)
+gut  derselbe Zug fern vom Maul (Punkt von Loop 12, 394,5 vom Maul, 25 nach oben): in der Pose dieselbe Haut wie in der Grundform: größter Abstand der beiden Häute 0,01 (3473 und 3473 Punkte)
+     derselbe Zug an der Lippe in der Grundform (um -12,5 / -21,7): umgeschlagen 16 (in der Pose 18 in der Ruhe, 18 gezeigt; davor 8)
 gut  keine Fehler in der Konsole
 1 Punkt nicht erfüllt
+
+--- zum Vergleich, Stand 2c vor der Berichtigung der Anzeige (die Linie im Blatt aus gedrehten Punkten und Griffen gezeichnet)
+FEHL gezeigt liegt jede gezeichnete Linie höchstens 0,5 neben der gezeigten Haut: größte Abweichung 13,26 (Loop 6); vor dem Zug 13,26 (Loop 6)
