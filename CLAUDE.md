@@ -28,6 +28,10 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   `src/form/blaupause.ts`) zeigt denselben Editor im Layout der Blaupause. Einstieg:
   [`docs/look/editor/blaupause/UEBERGABE.md`](docs/look/editor/blaupause/UEBERGABE.md). `editor.ts` ist eine Kopie von
   `kurven.ts` und wird erst nach Schritt 7 nachgezogen.
+- **Look-Strang „Linien, Punkte, Zeiger“ (eigene Sitzung, seit 14.11.):** Florians Wunsch nach dünnen Linien, magnetischen Tropfen
+  und flüssigem Schwellen, zuerst als 2D-Probe an seinem Fisch (`apps/editor/linien.html`, Port 5199). Plan
+  `docs/plans/2026-11-14-linien-zeiger-tropfen.md`, Übergabe `docs/look/linien/UEBERGABE.md`. Sein Urteil steht aus; in den Editor
+  kommt es erst danach.
 - **Eingefroren (Wissen, nicht weiterbauen):** der Käfig-Weg vom 13.10. bis 04.11. (`packages/shape/src/kern/`, der alte
   Electron-Editor `pnpm editor`) und `form.html`.
 - **Florians Testformen:** `wesen/` (teat firefish, strange bird, test_kaputt). Fertige Wesen gibt es nicht; die Formen sind
@@ -47,6 +51,7 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   arbeitet auch die Design-Sitzung an `/editor`. An `kurven.ts` und am Rechenkern dort nichts ändern; nur geprüfte Stände
   hineinführen und Florian vorher sagen, dass sich sein Fenster ändert.
 - **`.claude/worktrees/form-bau`** (Zweig `claude/form-bau`, Port 5197, Eintrag `kurven-bau`): hier wird der Plan gebaut.
+- **`.claude/worktrees/look-linien`** (Zweig `claude/look-linien`, Port 5199, Eintrag `linien-look`): Probe „Linien, Punkte, Zeiger“.
 - `early-earle-meshy` (Nachbarordner) sind Florians Meshy-Tests. Alte Stände liegen als Zweige `bergung/…`.
 
 ## Menschen

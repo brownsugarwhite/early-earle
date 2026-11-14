@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Linien · Probe</title>
+    <link rel="stylesheet" href="./src/linien/linien.css" />
+  </head>
+  <body>
+    <div id="buehne">
+      <img id="entwurf" alt="" draggable="false" />
+      <canvas id="leinwand"></canvas>
+    </div>
+    <footer id="leiste">
+      <span class="titel">Linien · Probe</span>
+      <span id="zoom" class="wert">100 %</span>
+      <button type="button" id="knopf-100" title="100 % (⇧0)">100 %</button>
+      <button type="button" id="knopf-einpassen" title="Einpassen (⇧1)">Einpassen</button>
+      <button type="button" id="knopf-entwurf" aria-pressed="false" title="Florians Entwurf darunter (E)">Entwurf</button>
+      <button type="button" id="knopf-wachsen" aria-pressed="true" title="Linien wachsen mit dem Zoom">Wachsen mit Zoom</button>
+      <button type="button" id="knopf-regler" aria-pressed="false" title="Feinregler (R)">Feinregler</button>
+      <button type="button" id="knopf-zurueck" title="⌘Z">Zurück</button>
+      <button type="button" id="knopf-reset">Fisch neu</button>
+      <span class="hilfe">Zeiger an Linie oder Punkt · drücken und ziehen · Pinch oder ⌘ + Rad zoomt · zwei Finger oder Leertaste verschieben</span>
+      <span id="info" class="wert"></span>
+    </footer>
+    <aside id="regler" hidden>
+      <div id="regler-liste"></div>
+      <div class="regler-knoepfe">
+        <button type="button" id="knopf-grundwerte">Grundwerte</button>
+        <button type="button" id="knopf-kopieren">Werte kopieren</button>
+      </div>
+    </aside>
+    <script type="module" src="./src/linien/main.ts"></script>
+  </body>
+</html>
