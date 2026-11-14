@@ -42,6 +42,8 @@ for (const a of AUSSCHNITTE) {
   await page.evaluate(
     ({ z, x0, y0 }) => {
       const L = window.__linien;
+      // wie Florians Nahbild: alles vergrößert, also wächst die Linie mit
+      L.ansicht.wachsen = true;
       L.ansicht.z = z;
       L.ansicht.ox = -x0 * z;
       L.ansicht.oy = -y0 * z;

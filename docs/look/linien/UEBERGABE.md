@@ -31,6 +31,8 @@ Knöpfe: 100 %, Einpassen, Entwurf (seine Zeichnung darunter, E), Wachsen mit Zo
   der Maus genau, beim Loslassen gleitet der Zeiger zurück. Geprüft mit den Test-Haken: Stelle beim Klick 0,000 bewegt, Zeiger im
   Zug 0,000 auf der Stelle, Versatz nach dem Loslassen 0. Film neu (`docs/progress/linien/2026-11-14-film.mp4`, `film.mjs`).
 - Punkte: 2,5 px Durchmesser (Florian: „Durchmesser soll gelten“).
+- Linienstärke wächst beim Zoomen standardmäßig nicht mit (Florian); Schalter „Wachsen mit Zoom“ bleibt. Geprüft: innen 0,25 px
+  und Punkt 2,5 px Durchmesser bei 100 % und 400 % gleich, mit Schalter bei 400 % viermal so groß.
 - **Im Raum** (Florian: „auf ein 3D-Modell übertragen, damit ich es im Raum testen kann“): `raum.html` mit seinen Formen aus `wesen/`
   (Plan, Schritt 1b). Haut weiß mit Umriss als Hülle, Linien und Punkte projiziert, Verdecktes je Bildpunkt grün, Ziehen mit weichem
   Feld als Ersatz für den Löser. Geprüft mit `__raum` (Kreuzung folgt der Maus genau). Film `2026-11-14-raum-film.mp4`.

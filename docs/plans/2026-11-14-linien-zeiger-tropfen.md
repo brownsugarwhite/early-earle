@@ -48,6 +48,9 @@ Gefühl in Ruhe an seinem Entwurf prüfen, ohne den Editor anzufassen, an dem di
 ## Entschieden
 
 - **Punkte: 2,5 px Durchmesser** (Florian, 14.11., abends: „Durchmesser soll gelten“).
+- **Linienstärke wächst beim Zoomen nicht mit** (Florian, 14.11., spätabends: „als Standard soll die Linienstärke nicht
+  mitskalieren. Als Schalter kannst du es drin lassen“): In 2D ist „Wachsen mit Zoom“ jetzt aus (Schalter bleibt); im Raum waren die
+  Breiten schon fest. Vergleichsbilder und 2D-Film schalten es für den vergrößerten Ausschnitt ein.
 
 ## Schritt 1b (gebaut, 14.11., abends): im Raum
 

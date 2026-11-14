@@ -18,7 +18,8 @@ entwurf.src = entwurfUrl;
 const anzeige = new FluessigeAnzeige(leinwand);
 const daten = fischDaten as unknown as FischDaten;
 const verhalten = new Verhalten(netzAusDaten(daten), werte);
-const ansicht: Ansicht = { z: 1, ox: 0, oy: 0, dpr: Math.min(window.devicePixelRatio || 1, 3), wachsen: true };
+// Linienstärke bleibt beim Zoomen gleich (Florian, 14.11.: „als Standard soll die Linienstärke nicht mitskalieren“); Schalter „Wachsen mit Zoom“
+const ansicht: Ansicht = { z: 1, ox: 0, oy: 0, dpr: Math.min(window.devicePixelRatio || 1, 3), wachsen: false };
 const info = new URLSearchParams(location.search).get('info') === '1';
 // ?bild=1: ohne Leiste (für Vergleichsbilder)
 if (new URLSearchParams(location.search).get('bild') === '1') document.body.classList.add('bild');

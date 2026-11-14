@@ -63,6 +63,8 @@ await page.waitForFunction(() => window.__linien !== undefined);
 await page.evaluate(
   ({ Z, MITTE, B, H }) => {
     const L = window.__linien;
+    // vergrößert gezeigt wie Florians Nahbild: die Linie wächst mit
+    L.ansicht.wachsen = true;
     L.ansicht.z = Z;
     L.ansicht.ox = B / 2 - MITTE[0] * Z;
     L.ansicht.oy = H / 2 - MITTE[1] * Z;
