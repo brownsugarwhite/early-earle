@@ -1,4 +1,4 @@
-# Übergabe (Stand 13.11.2026, 23:50 Uhr: Schritt 6, das Maul aus nur einer Linie: Entwurf und Beweis im Kern (Abschnitt 7.15), im Fenster ist davon nichts gebaut. Die Linie ist die Oberlippe, die Unterlippe ihr um 20° gedrehtes Abbild; gerechnet wird leicht geöffnet, „zu“ dreht der Kieferknochen. Hält: zu liegen die Lippen aufeinander, geöffnet eine echte Tasche, die Rechnung steht. Hält nicht: der Mundwinkel auf dem groben Netz (einzelne umgeschlagene Dreiecke). Wartet auf Florians Wort zum Bau. Davor im Bau-Fenster (5197) gebaut (7.13, 7.14): Die Kante trägt ihren Winkel selbst, „Maul formen“ ohne Mittellinie, „Fressen“ und die Regler am geformten Maul; Florians Urteil dazu steht aus. Offen am Maul: runde Lippen (Florian: nur die Lippe wird abgerundet), die Tiefe der Tasche; danach Schritt 5 (Posen). In seinem Fenster (5194) ist von Schritt 6 nichts. Schritt 4b, erster Teil, ist in seinem Fenster (Abschnitt 7.5); der Rest der halben Haut ist als Schritt 4c fest vorgemerkt. Schritt 3 ist abgeschlossen, die heutige Rechnung bleibt. Zu Schritt 1, 2, dem Donut (4a) und der halben Rechnung steht sein Urteil aus)
+# Übergabe (Stand 14.11.2026, 09:30 Uhr: **Schritt 6 ist angehalten.** Florian am 14.11.: „Das Maul formt sich und das ist ok“; die fest eingeklappte Wulst, Linien durchs Maul, Kreuzungen unter einem Maul und geschlossene Mäuler brauchen „ein eigenes System und Definition“ in einer eigenen großen Sitzung, mit genauen Beschreibungen der Fälle statt Testreihen (Abschnitt 7.16: sein Wort, der Stand, die offenen Fragen). Das Maul aus nur einer Linie ist im Bau-Fenster (5197) gebaut: Es hält an einer Form ohne Linien durchs Maul und hält nicht an seinen Formen, wo Linien das Maul kreuzen. Am Maul wird bis zur Beschreibung nichts gebaut. In seinem Fenster (5194) ist von Schritt 6 nichts. Offen im Plan: Schritt 5 (Posen), 4c (vorgemerkt), das Maul-System, Schritt 7; zu Schritt 1, 2, dem Donut (4a) und der halben Rechnung (4b) steht sein Urteil aus. Womit es weitergeht, entscheidet Florian)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -28,7 +28,7 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | 4 Echte Spiegelung (mit der heutigen Rechnung) | **4a, der Donut, ist in Florians Fenster (Abschnitt 7.4, 13.11.):** nach seiner zweiten Regel; sein Urteil steht aus. **4b, erster Teil, ist seit dem 13.11. nachmittags in Florians Fenster (Abschnitt 7.5):** Der Löser rechnet auf der Hälfte (zwei halb so große Systeme, Krümmung auf der Hälfte), das Netz im Fenster bleibt ganz; Rechnen je Bild 10,3 → 7,1 ms am „teat firefish“, Zerlegen rund 50 %, gleiche Form; dazu „flüssig zuerst“ (eine weitere Runde je Bild nur, wenn sie ins Bild passt). Sein Urteil zum Tempo steht aus |
 | 4c Rest der halben Haut | **fest vorgemerkt** (Plan, „Schritt 4c“; Florian am 13.11.: „es soll nicht vergessen werden“): Gewichte und Vermessen auf der Hälfte (Runde von 73 % auf 50 bis 60 %), die einzelnen langsamen Bilder, Verdichten und Anzeige auf der Hälfte, das Netz selbst als Hälfte. Kommt nach den Posen wieder auf den Tisch und muss gebaut sein, bevor Shader, Materialien, Fell oder Zusatzteile beginnen. Seine heutigen Formen sind kein Maßstab für das Tempo |
 | 5 Posen wie die Basis | **Entwurf steht, Gegenprobe an Florians Form hält** (Abschnitte 7.6 und 7.8, 13.11.): Eine Pose ist dieselbe Form mit anderen Lagen der Punkte und Griffe, dazu die Knochen (Florian: „ein einfacher Morph der Punkte und Handles […], während die Kieferknochen sich bewegen“). Der erste Beweis war am Maul aus der schmalen Form gescheitert (verborgene Fläche); am von Hand geformten Maul ist ein Zug in der Pose ein gewöhnlicher Zug. Gebaut ist nichts; kommt nach Schritt 6 |
-| 6 Maul | **Im Bau-Fenster gebaut, Florians Urteil steht aus:** (7.13) Die Kante trägt ihren Winkel selbst; „Maul formen“ macht die Maullinie hart und gibt ihr den Knick vor (95° an den Lippen, 70° am Mundwinkel), ohne Mittellinie und ohne Punkt im Maul, animiert; mit einer vorhandenen Mittellinie durch beide Lippen gilt die zweite Fassung (7.11). (7.14, Etappe 2) „Fressen“ und die Regler am geformten Maul: Der Unterkiefer dreht um den Mundwinkel, nichts wird weggeschnitten oder eingesetzt; auch am von Hand geformten Maul (harter Ring). Dazu Linien mit Verjüngung (7.11). **Das Maul aus nur einer Linie:** Entwurf und Beweis im Kern stehen (7.15), gebaut ist nichts; wartet auf sein Wort. **Offen:** runde Lippen (nur die Lippe wird abgerundet), Tiefe der Tasche, die Angabe des Knicks von Hand, die spitze Ecke am Mundwinkel; danach Schritt 5. Das Maul aus der schmalen Form mit eingesetztem Inneren besteht daneben weiter |
+| 6 Maul | **Angehalten (Florian, 14.11.):** „Das Maul formt sich und das ist ok“; alles Weitere braucht „ein eigenes System und Definition“ in einer eigenen großen Sitzung (Abschnitt 7.16: sein Wort, der Stand, die offenen Fragen). **Im Bau-Fenster steht** (nicht in seinem Fenster): (7.13) „Maul formen“ in dritter Fassung: Die Maullinie trägt ihren Knick selbst (95° an den Lippen, 70° am Mundwinkel), ohne Mittellinie, animiert; mit einer Mittellinie durch beide Lippen gilt die zweite Fassung (7.11). (7.14) „Fressen“ und die Regler am geformten Maul. (7.11) Linien mit Verjüngung. (7.16) Das Maul aus nur einer Linie: hält an einer Form ohne Linien durchs Maul, an seinen Formen nicht. **Sein Einwand zur dritten Fassung:** Die fest eingeklappte Wulst ist nicht, was er erwartet; Linien, die er nachträglich durchs Maul zieht, stören sich an ihr; liegt ein Maul über einer Kreuzung, muss er die Kreuzungspunkte von Hand zurechtlegen. **Offen:** das Maul-System (zuerst die Beschreibung der Fälle), geschlossene Mäuler (dürfen später kommen), runde Lippen, Tiefe der Tasche, Knick von Hand. Das Maul aus der schmalen Form mit eingesetztem Inneren besteht daneben weiter |
 | 7 Auswahl wie in Blender | offen |
 
 **Schritt 0, was getan ist:**
@@ -1032,6 +1032,108 @@ Schritt 6, „Das Maul aus nur einer Linie“.
   ganze Haut zählt die zusammengefaltete Tasche mit, deshalb zählt die Probe außen und Tasche getrennt.
 - Bilder: `docs/progress/editor/schritt6-maul-linie-2026-11-13.jpg` (2 000 Dreiecke), `schritt6-maul-linie-feines-netz-2026-11-13.jpg`
   (6 000); Zahlen: `schritt6-maul-linie-messung-2026-11-13.txt`.
+
+### 7.16 Das Maul aus nur einer Linie im Bau-Fenster; Florian hält an: Das Maul bekommt ein eigenes System (14.11., 09:30 Uhr)
+
+**Florian am 14.11., mitten in der Prüfung (wörtlich):**
+
+> Ich unterbreche dich hier, da ich alte Muster wiedererkenne. Das Maul formt sich und das ist ok. Meine Sonderwünsche mit dem
+> geschlossenen maul in jeder Position und wie sich die mundhöle formen soll ist ok, aber noch nicht gut. Das braucht noch sehr viel
+> polishing. Dazu brauchst du genauere beschreibungen für die verschiedenen fälle sonst läuft es zu unendlichen testreihen. Ein wesen
+> ohne jede kurve das ein maul bekommt ist ein edgcase. Geschlossene münder müssen gehen, können wenn das technisch besser ist aber
+> auch später eingebaut werden. Sag mir mal wo wir in dieser session aktuell stehen. Wir haben wieder zwischenschritte eingebaut und
+> punkte vor und zurückgestellt im plan. Zur info. Das Maul mit der feste eingeklappten wulst ist nicht was ich erwarte. wenn ich
+> nachträglich linien durchs maul ziehe stören diese festen wulsten...Es gilt also zu überlegen was eine saubereere lösung wäre. Auch
+> wenn ich ein maul über eine vorhanden kreuzung lege muss ich erst mit handarbeit die kreuzungspunkte zurechtlegen. Das ist noch
+> nicht gut. Da die kreuzungspunkte gelöscht bzw automatisch optimal in die maultasche wandern müssen. Das braucht alles ein eigenes
+> system und definition. Der weg stimmt schonmal, aber das sollten wir in einer eigenen großen session angehen.
+
+**Was daraus folgt** (die Lesart der bauenden Sitzung; mit ihm abstimmen, bevor gebaut wird):
+
+- Am Maul wird nichts weitergebaut und nichts weiter vermessen, bis seine Fälle beschrieben sind. Die Maul-Sitzung beginnt mit der
+  Beschreibung (er beschreibt, die Sitzung fragt nach und schreibt mit), dann je Fall eine Probe an seiner Form.
+- Maßstab sind Formen mit Linien. Eine Form ohne jede Linie, die ein Maul bekommt, ist ein Randfall. Dieser Block hat den größten
+  Teil seiner Zeit in genau diesem Randfall verbracht (siehe „Wie der Block lief“).
+- „Fest eingeklappte Wulst“ meint nach dieser Lesart das geformte Maul der dritten Fassung (7.13): die Maullinie als harte Kante
+  mit 95° an den Lippen und 70° am Mundwinkel, die Tasche dahinter als Haut. Linien, die er danach durchs Maul zieht, stoßen an
+  diese Wulst. Gesucht ist eine sauberere Lösung, keine Nachbesserung der Winkel.
+- Kreuzungen unter einem Maul sollen von selbst verschwinden oder an die beste Stelle in der Tasche wandern. Heute legt er sie von
+  Hand zurecht.
+- Geschlossene Mäuler müssen gehen, dürfen aber später kommen, wenn das technisch besser ist.
+- „Der Weg stimmt schonmal“: Die Richtung (das Maul formt sich aus seiner Linie, die Tasche ist Haut) bleibt.
+
+**Was im Bau-Fenster steht** (Port 5197, Zweig `claude/form-bau`: `a500a7b5`, `86c421b6`, `effe1f24`; in seinem Fenster nichts):
+Mit F ein offener Strich (Seite: von vor dem Umriss zum Mundwinkel; Front oder Top: über die Mitte) wird ein Maul aus einer Linie.
+Die Linie ist die Oberlippe, die Unterlippe ihr um 20° um den Mundwinkel gedrehtes Abbild; es formt sich gleich, animiert, über
+„Maul formen“ in dritter Fassung. Gerechnet wird die leicht geöffnete Lage. „Fressen“ mit dem Regler „Maul“ ganz links zeigt es
+zu, nach rechts öffnet es. In der Grundform zieht ein Punkt einer Lippe seinen Zwilling mit; Doppelklick legt Punkt und Zwilling
+an; ⌘Z nimmt Linie und Maul zusammen zurück. In der Pose wird die Maullinie nicht gezogen.
+
+**Was hält** (gemessen an der Kugel ohne weitere Linien, Rechennetz des Fensters; Bilder
+[`gerechnet`](progress/editor/schritt6-maul-linie-fenster-gerechnet-2026-11-14.jpg),
+[`zu`](progress/editor/schritt6-maul-linie-fenster-zu-2026-11-14.jpg)):
+
+| | Strich in der Seite | Strich in der Front |
+| --- | --- | --- |
+| Formen | 1,5 s, animiert | 1,5 s |
+| Lippen als Abbilder | Abweichung 0 | 0 |
+| Knick gemessen | 93,3° und 94,6° an den Lippen, 73,8° am Mundwinkel | 95,0° und 94,0°, 81,8° |
+| umgeschlagen (außen und Tasche gemischt gezählt) | 0 | 0 |
+| fern vom Maul (hintere Hälfte, Abstand von der Mitte) | 150,0 bis 150,2 → 150,1 bis 150,2 | ebenso |
+| „Fressen“, Regler ganz links | vorn 0,00, größter Spalt 0,22 | 0,00 und 0,15 |
+| Regler 30° und 55° | Lippen vorn 48,7 und 86,9 auseinander | |
+| an der Oberlippe und am Mundwinkel gezogen | die Unterlippe geht mit, danach zu: Spalt 0,30 und 0,32 | nicht geprüft |
+
+Fenster-Probe `form-maul-linie-fenster.mjs`: 24 Punkte in der Seite, alle erfüllt; Front alle erfüllt. Kern-Probe
+`form-maul-linie.ts`: 12 Läufe (2 000, 3 000, 6 000 Dreiecke; 8° bis 24°; mit und ohne Haltelinien), 11 erfüllen alle vier
+Punkte ([Messwerte](progress/editor/schritt6-maul-linie-messung-2026-11-14.txt)). 169 Tests im Kern, 24 im Editor; die bisherigen
+Maul-Proben (`form-maul-formen-fenster`, `form-maul-formen-form`, `form-kiefer-fenster` an der Kugel und an
+„simple_mouth_more simple“) melden „alles gut“. Heute nicht neu gelaufen: `form-donut-fenster`, `form-kante-verjuengung-fenster`.
+
+**Was nicht hält:**
+
+1. **Linien, die das Maul kreuzen (so sind seine Formen).** An „test_kaputt“ (Strich in der Seite von −178/−60 nach −55/−52):
+   Das Maul formt sich in 1,1 s, die Form bleibt ([Bild](progress/editor/schritt6-maul-linie-test_kaputt-geformt-2026-11-14.jpg)).
+   Aber die Mittellinie bekommt an der Unterlippe zwei Punkte am selben Ort, der Loop auf einer Seite bekommt nur an der Unterlippe
+   eine Kreuzung, und die Maullinie hat 6 statt 7 Punkte: Die Lippen sind nicht mehr gepaart. Zu liegen sie vorn 2,63 auseinander
+   (größter Spalt 2,84), an den Kreuzungen stehen dunkle Keile, und der untere Umriss der Form geht in der Pose sichtbar mit dem
+   Kiefer mit ([Bild](progress/editor/schritt6-maul-linie-test_kaputt-zu-2026-11-14.jpg); die Bewegung des Umrisses ist nicht
+   gemessen). Ursache der fehlenden Kreuzung: Die Suche hält einen Fund für schon vorhanden, wenn ein Kreuzungspunkt desselben
+   Linienpaars näher als zwei mittlere Kanten liegt; die Lippen liegen enger beieinander.
+2. **Eine Mittellinie ohne eigene Punkte verliert ihre Form**, sobald ein Maul sie kreuzt
+   ([Bild](progress/editor/schritt6-maul-linie-mittellinie-ohne-punkte-2026-11-14.jpg)): Abstand der hinteren Hälfte von der Mitte
+   150 → 49 bis 205. Das ist kein Fehler des neuen Mauls, sondern des Editors: Mit dem bisherigen Maul aus zwei Linien geschieht
+   dasselbe (150 → 50 bis 170). Ein geschlossener Loop bekommt mit seinen ersten zwei Punkten einen Pfad aus zwei Kurvenstücken,
+   auch wenn die seinen Verlauf nicht beschreiben. Hat die Mittellinie nur zwei Punkte aus einem Ring, bricht das Maul aus einer
+   Linie ab („die Mittellinie hat an einer Lippe keinen Griff nach außen“). Seine Formen haben Mittellinien mit 4 bis 38 Punkten.
+3. **Feines Netz (`&netz=dicht`):** Das Formen lief bei 4 900 Punkten in der letzten Stufe davon (ein Punkt der Rückwand der
+   Tasche; die Ursache ist nicht gefunden). Jetzt setzt es dann mit halb so großen Stufen neu an und kommt durch, braucht aber
+   21 s, und man sieht den ersten Versuch ausbrechen.
+4. **Kern, Kugel allein, 8°:** geöffnet zählen in der Tasche 4 Dreiecke als umgeschlagen statt 2 (das Fenster rechnet immer 20°).
+5. **Nicht gebaut:** Bearbeiten im geschlossenen Zustand (gehört zu Schritt 5), die Linie ausblenden und die Naht glätten („quasi
+   unsichtbar“).
+
+Die Einzelheiten zum Code und alle Fallen stehen in `apps/editor/CLAUDE.md` („Maul aus nur einer Linie“ und die Fallen ab „Eine
+schmale Form als einzige runde Linie“).
+
+**Wie der Block lief** (damit die nächste Sitzung es anders macht): Geprüft wurde zuerst und am längsten an der Kugel ohne Linien
+(die Spitze am Mundwinkel, das Aufblasen der Kugel, das feine Netz). Seine Formen mit Linien kamen erst am Ende dran, und dort
+liegen die eigentlichen Fragen. Aus einer Probe je Schritt wurden Reihen (zwölf Läufe im Kern, vier Varianten im Fenster).
+Die Regel für die Maul-Sitzung: zuerst an seiner Form mit Linien, je Fall eine Probe, die vorher mit ihm beschrieben ist.
+
+**Fragen für die Beschreibung des Maul-Systems** (Vorschlag der bauenden Sitzung; er ergänzt und entscheidet):
+
+1. Die Lippe: Wie geht die Haut von außen in die Tasche über, wenn nicht als fest eingeklappte Wulst? Was bestimmt, wie rund sie
+   ist?
+2. Linien durchs Maul: Was tut eine Linie, die er nachträglich durchs Maul zieht (in die Tasche laufen, über die Öffnung springen,
+   an der Lippe enden)? Gilt für die Mittellinie dasselbe wie für jede andere?
+3. Kreuzungen unter einem neuen Maul: Wann werden sie gelöscht, wann wandern sie in die Tasche, und wohin dort?
+4. Grundform: Ist das Maul in der Grundform zu oder leicht offen? Heute wird es 20° offen gerechnet, „zu“ dreht der Kieferknochen;
+   dabei bewegt sich die Form unter dem Maul mit, sie ist zu also nicht genau die Form von vor dem Strich.
+5. Geschlossen: Was heißt „quasi unsichtbar“ (keine Linie, glatte Naht)? Was lässt sich im geschlossenen Zustand ziehen?
+6. Die Tasche: wie tief, welche Form, wovon hängt das ab? Der Mundwinkel: spitz oder rund?
+7. Der Kiefer: Welcher Teil der Form geht beim Öffnen mit?
+8. Welche seiner Formen sind die Fälle, an denen geprüft wird?
 
 ## 8. Offen aus der Zeit davor
 
