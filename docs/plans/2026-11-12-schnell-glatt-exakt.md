@@ -1,7 +1,9 @@
 # Plan: schnell, glatt, exakt (12.11.2026)
 
 **Status: freigegeben am 12.11.2026** (Florian: „Ok, fangen wir an“; die Entscheidungen aus Abschnitt 5 gelten wie empfohlen,
-solange er nichts anderes sagt). Der Stand je Schritt steht in `docs/UEBERGABE.md`. Basis ist
+solange er nichts anderes sagt). **Reihenfolge seit dem 14.11.2026 (Florian):** Zwischenschritt „Abzweigungen“ (unten, vor
+Schritt 5), dann Schritt 5, dann 4c; Schritt 6 (Maul) ist angehalten und bekommt eine eigene Sitzung, vielleicht zusammen mit
+Zähnen; Schritt 7 kommt später, ob und wie ist offen. Der Stand je Schritt steht in `docs/UEBERGABE.md`. Basis ist
 `kurven.html?gewichte=geometrie` (Zweig `claude/form-spiegel`, Port 5194). Der Plan ersetzt die offenen Reste von G5 und G6
 und ordnet die Wege A bis D ein.
 
@@ -315,6 +317,73 @@ Was offen ist, in der Reihenfolge, in der ich es bauen würde:
 
 Jeder Teil mit seiner Probe wie in 4b (derselbe Zug vorher und nachher: gleiche Form, Zeiten im Kern, Bilder im Fenster), dazu
 eine größere Prüfform als seine drei Testformen (etwa ein Körper mit vier angesetzten Teilen), damit die Reserve sichtbar wird.
+
+### Zwischenschritt (14.11.): Abzweigungen. Mit P von jedem Punkt und jeder Linie aus weiterziehen (2 bis 3 Tage, kleiner Beweis zuerst)
+
+Florian am 14.11. (wörtlich):
+
+> Deine Urteile zu 1, 2, 4a und 4b....das sieht gut aus bis jetzt
+>
+> Dann lass uns einen zwischenschritt einbauen, den wir auch fürs maul später gut nutzen können.
+>
+> Aktuell kann ch mit dem werkzeug p nicht direkt von vorhandenenlinien weiterziehen. Ich will zum beispiel bei einem edgeloop mit
+> 4 punkten (z.B. kreis), die gegenüberliegenden punkte verbinden können, indem ich mit p von einem punkt zum anderen ziehe. Wenn
+> ich das bei beiden paaren mache ergibt sich dadurch ein kreuz mit einem punkt in der kreuzung, die ich sehr exakt formen
+> kann...z.B zu einem horn.
+> Damit kann ich z.B. auch 2 mundwinkel verbinden und so die tiefe der maultasche bearbeiten wenn da noch kein loop läuft. Also
+> grundsätzlich soll man von jeder linie und von jedem punkt aus eine verbundene abzweigung erstellen können. So reduzieren sich
+> auch die doppelten punkte an engen stellen, da ich so genau arbeiten kann und punkte mehrfach verwenden kann.
+>
+> Dann machen wir erst schritt 5, dann 4c.
+>
+> Das Maul bekommt dann eine eigene session, vllt zusammen mit Zähnen und auch an der selktion wie bei blender können wir dann
+> eher später arbeiten. Ich bin noch nicht sicher obe es das braucht und wie genau das umgesetzt werden kann.
+
+**Was heute ist:** P zeichnet nur geschlossene Formen (mindestens drei Punkte, dann schließen), unabhängig von den vorhandenen
+Linien. Jede Linie ist ein geschlossener Loop (Mitte, Paar) oder ein Ring, dessen zwei Enden auf der Mittelebene liegen. Eine
+Linie, die an einem Punkt einer anderen beginnt oder endet, kennt das Modell nicht. Wo sich zwei Linien kreuzen, hat jede ihren
+eigenen Punkt; die beiden gehören zusammen und gehen beim Ziehen miteinander.
+
+**Die Struktur (eine Regel):** Es gibt offene Linien. Jedes ihrer zwei Enden liegt entweder auf der Mittelebene (dort läuft die
+Linie rund in ihr Spiegelbild, wie heute der Ring) oder hängt an einem Punkt einer anderen Linie. Der Ring von heute ist der Fall
+„beide Enden auf der Mitte“. Ein hängendes Ende teilt seinen Punkt mit der anderen Linie wie eine Kreuzung: Wer den Punkt zieht,
+zieht beide. Sonst ist die offene Linie eine Linie wie jede andere: Punkte, Griffe, Kante an und aus, Kreuzungen, gespiegelt.
+
+**Die Fälle** (so ist seine Beschreibung gelesen; er streicht, was nicht stimmt):
+
+1. Start auf einem Punkt: Die neue Linie beginnt dort und teilt den Punkt.
+2. Start auf einer Linie, wo kein Punkt liegt: Dort entsteht ein Punkt (wie beim Doppelklick), die Linie beginnt an ihm.
+3. Direkt verbinden: mit P auf einem Punkt drücken, zum anderen ziehen, loslassen. Die Linie läuft auf dem kürzesten Weg über die
+   Haut vom einen zum anderen und hat dazwischen keine Punkte. Das geht auch dort, wo man die Haut im Blatt nicht sieht (von
+   Mundwinkel zu Mundwinkel durch die Tasche).
+4. Mit Punkten dazwischen: mit P auf den Start klicken, dann Punkte setzen wie heute (Klick = Ecke, Klicken und Ziehen = glatt),
+   zum Schluss auf einen Punkt oder eine Linie klicken.
+5. Ende auf einem Punkt oder auf einer Linie: wie der Start (Fall 1 und 2).
+6. Kreuzt die neue Linie eine andere, entsteht dort wie heute ein gemeinsamer Punkt (sein Kreuz im Kreis: der Punkt in der Mitte).
+7. Über die Mitte gezogen (von einem Punkt zu seinem Spiegelbild, etwa Mundwinkel zu Mundwinkel): eine Linie, deren Hälfte auf
+   der Mittelebene endet.
+8. Löschen: Wird die Abzweigung gelöscht, bleiben die Punkte der anderen Linie stehen. Ein Punkt, an dem eine Abzweigung hängt,
+   lässt sich nicht löschen, solange sie dort hängt (Meldung).
+9. **Offen, seine Entscheidung:** Darf eine Abzweigung auch frei auf der Haut enden? Im ersten Bau endet sie immer an einem
+   Punkt, auf einer Linie oder auf der Mitte.
+
+**Nicht in diesem Schritt:** das Maul (die Linie von Mundwinkel zu Mundwinkel ist hier nur das Werkzeug; was sie mit der Tasche
+macht, gehört in die Maul-Sitzung), Posen (Schritt 5), Auswahl (Schritt 7).
+
+**Etappen, je eine sichtbare Probe:**
+
+- **Etappe 1, kleiner Beweis im Kern** (ein halber Tag; hält er dann nicht: anhalten und es sagen). Sein Beispiel: Kugel, ein
+  Kreis mit vier Punkten, die gegenüberliegenden Punkte verbunden, der Punkt in der Kreuzung herausgezogen. Ein Bild, vorher und
+  nachher. Kriterien: (1) Beide Linien lassen sich einsetzen und enden genau an den Punkten des Kreises. (2) In der Kreuzung
+  liegt ein gemeinsamer Punkt. (3) Herausgezogen entsteht eine Spitze, die den vier Linienstücken folgt; die Haut steht, nichts
+  schlägt um. (4) Der Kreis und die Form außerhalb bleiben.
+- **Etappe 2, Kern:** offene Linien überall, wo Linien vorkommen (Griffe, Ziehen, Verdichten, Löschen, Sichern und Laden). Probe:
+  die Tests des Kerns, dazu das Beispiel aus Etappe 1 als Test.
+- **Etappe 3, Bau-Fenster:** P nach den Fällen 1 bis 8. Probe im Fenster: sein Beispiel mit der Maus, und an einer seiner Formen
+  eine Abzweigung zwischen zwei vorhandenen Punkten.
+
+**Regeln für diesen Schritt (Lehre vom 14.11.):** Geprüft wird an Formen mit Linien. Je Etappe eine Probe, keine Reihen. Kommt
+ein neuer Fall dazu, wird er hier aufgeschrieben und mit ihm geklärt, bevor er gebaut wird.
 
 ### Schritt 5: Posen wie die Basis (3 bis 4 Tage)
 

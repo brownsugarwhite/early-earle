@@ -1,4 +1,4 @@
-# Übergabe (Stand 14.11.2026, 09:30 Uhr: **Schritt 6 ist angehalten.** Florian am 14.11.: „Das Maul formt sich und das ist ok“; die fest eingeklappte Wulst, Linien durchs Maul, Kreuzungen unter einem Maul und geschlossene Mäuler brauchen „ein eigenes System und Definition“ in einer eigenen großen Sitzung, mit genauen Beschreibungen der Fälle statt Testreihen (Abschnitt 7.16: sein Wort, der Stand, die offenen Fragen). Das Maul aus nur einer Linie ist im Bau-Fenster (5197) gebaut: Es hält an einer Form ohne Linien durchs Maul und hält nicht an seinen Formen, wo Linien das Maul kreuzen. Am Maul wird bis zur Beschreibung nichts gebaut. In seinem Fenster (5194) ist von Schritt 6 nichts. Offen im Plan: Schritt 5 (Posen), 4c (vorgemerkt), das Maul-System, Schritt 7; zu Schritt 1, 2, dem Donut (4a) und der halben Rechnung (4b) steht sein Urteil aus. Womit es weitergeht, entscheidet Florian)
+# Übergabe (Stand 14.11.2026, 10:30 Uhr: **Neue Reihenfolge (Florian, 14.11.):** zuerst der Zwischenschritt „Abzweigungen“ (mit P von jedem Punkt und jeder Linie aus eine verbundene Linie ziehen; Abschnitt 7.17 und Plan), dann Schritt 5, dann 4c. **Schritt 6 (Maul) ist angehalten** und bekommt eine eigene Sitzung, vielleicht zusammen mit Zähnen (Abschnitt 7.16: sein Wort, der Stand, die offenen Fragen); bis dahin am Maul nichts bauen. Schritt 7 kommt später, ob und wie ist offen. Zu Schritt 1, 2, 4a und 4b sagt er: „das sieht gut aus bis jetzt“. Vom Zwischenschritt steht der Entwurf mit den Fällen im Plan; gebaut ist noch nichts. In seinem Fenster (5194) ist von Schritt 6 und vom Zwischenschritt nichts)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -22,14 +22,15 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | Schritt | Stand |
 | --- | --- |
 | 0 Aufräumen | **erledigt** (12.11., Einzelheiten unten) |
-| 1 Glatte Anzeige | **eingebaut und Standard** (Abschnitt 4). Florian am 12.11.: „Ja, übernehmen“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&anzeige=grob` zeigt zum Vergleich die Anzeige davor. Sein Urteil nach dem Arbeiten damit steht aus |
-| 2 Kleines Rechennetz | **eingebaut und Standard** (Abschnitt 5): rund 40 % der Punkte, im Zug 16 bis 20 ms je Bild. Florian am 12.11. nachts, vom Handy aus: „ja“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&netz=dicht` ist das Netz davor. Sein Urteil nach dem Arbeiten damit steht aus. Nicht gebaut: Zeichnen gegen die feine Fläche |
+| 1 Glatte Anzeige | **eingebaut und Standard** (Abschnitt 4). Florian am 12.11.: „Ja, übernehmen“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&anzeige=grob` zeigt zum Vergleich die Anzeige davor. Sein Urteil nach dem Arbeiten damit steht aus **Florian am 14.11. zu Schritt 1, 2, 4a und 4b: „das sieht gut aus bis jetzt“.** |
+| 2 Kleines Rechennetz | **eingebaut und Standard** (Abschnitt 5): rund 40 % der Punkte, im Zug 16 bis 20 ms je Bild. Florian am 12.11. nachts, vom Handy aus: „ja“; seitdem auf der gemeinsamen Linie und in seinem Fenster. `&netz=dicht` ist das Netz davor. Sein Urteil nach dem Arbeiten damit steht aus. Nicht gebaut: Zeichnen gegen die feine Fläche **Florian am 14.11. zu Schritt 1, 2, 4a und 4b: „das sieht gut aus bis jetzt“.** |
 | 3 Beweis „Haut direkt aus den Linien“ | **abgeschlossen, die heutige Rechnung bleibt** (Abschnitt 6, 13.11.): Die Haut nur aus den Linien (A) scheitert zwischen wenigen Linien und an seinen drei Formen. Der Teil B (fertige Haut direkt bewegen) hält rechnerisch; als Schalter „Form halten“ im Bau-Fenster ausprobiert, Florian: „Gefällt nicht“. Knopf und Taste sind wieder weg; der Code liegt nur auf `claude/form-bau` hinter `?ziehen=direkt` |
-| 4 Echte Spiegelung (mit der heutigen Rechnung) | **4a, der Donut, ist in Florians Fenster (Abschnitt 7.4, 13.11.):** nach seiner zweiten Regel; sein Urteil steht aus. **4b, erster Teil, ist seit dem 13.11. nachmittags in Florians Fenster (Abschnitt 7.5):** Der Löser rechnet auf der Hälfte (zwei halb so große Systeme, Krümmung auf der Hälfte), das Netz im Fenster bleibt ganz; Rechnen je Bild 10,3 → 7,1 ms am „teat firefish“, Zerlegen rund 50 %, gleiche Form; dazu „flüssig zuerst“ (eine weitere Runde je Bild nur, wenn sie ins Bild passt). Sein Urteil zum Tempo steht aus |
+| 4 Echte Spiegelung (mit der heutigen Rechnung) | **4a, der Donut, ist in Florians Fenster (Abschnitt 7.4, 13.11.):** nach seiner zweiten Regel; sein Urteil steht aus. **4b, erster Teil, ist seit dem 13.11. nachmittags in Florians Fenster (Abschnitt 7.5):** Der Löser rechnet auf der Hälfte (zwei halb so große Systeme, Krümmung auf der Hälfte), das Netz im Fenster bleibt ganz; Rechnen je Bild 10,3 → 7,1 ms am „teat firefish“, Zerlegen rund 50 %, gleiche Form; dazu „flüssig zuerst“ (eine weitere Runde je Bild nur, wenn sie ins Bild passt). Sein Urteil zum Tempo steht aus **Florian am 14.11. zu Schritt 1, 2, 4a und 4b: „das sieht gut aus bis jetzt“.** |
 | 4c Rest der halben Haut | **fest vorgemerkt** (Plan, „Schritt 4c“; Florian am 13.11.: „es soll nicht vergessen werden“): Gewichte und Vermessen auf der Hälfte (Runde von 73 % auf 50 bis 60 %), die einzelnen langsamen Bilder, Verdichten und Anzeige auf der Hälfte, das Netz selbst als Hälfte. Kommt nach den Posen wieder auf den Tisch und muss gebaut sein, bevor Shader, Materialien, Fell oder Zusatzteile beginnen. Seine heutigen Formen sind kein Maßstab für das Tempo |
+| Zwischenschritt Abzweigungen (vor Schritt 5) | **Entwurf im Plan, gebaut ist nichts** (Abschnitt 7.17; Florian am 14.11.): Mit P von jedem Punkt und jeder Linie aus eine verbundene Linie ziehen; offene Linien, deren Enden auf der Mitte liegen oder an einem Punkt einer anderen Linie hängen. Etappe 1 ist der kleine Beweis im Kern an seinem Beispiel (Kreis mit vier Punkten, Kreuz, Punkt in der Kreuzung herausgezogen) |
 | 5 Posen wie die Basis | **Entwurf steht, Gegenprobe an Florians Form hält** (Abschnitte 7.6 und 7.8, 13.11.): Eine Pose ist dieselbe Form mit anderen Lagen der Punkte und Griffe, dazu die Knochen (Florian: „ein einfacher Morph der Punkte und Handles […], während die Kieferknochen sich bewegen“). Der erste Beweis war am Maul aus der schmalen Form gescheitert (verborgene Fläche); am von Hand geformten Maul ist ein Zug in der Pose ein gewöhnlicher Zug. Gebaut ist nichts; kommt nach Schritt 6 |
 | 6 Maul | **Angehalten (Florian, 14.11.):** „Das Maul formt sich und das ist ok“; alles Weitere braucht „ein eigenes System und Definition“ in einer eigenen großen Sitzung (Abschnitt 7.16: sein Wort, der Stand, die offenen Fragen). **Im Bau-Fenster steht** (nicht in seinem Fenster): (7.13) „Maul formen“ in dritter Fassung: Die Maullinie trägt ihren Knick selbst (95° an den Lippen, 70° am Mundwinkel), ohne Mittellinie, animiert; mit einer Mittellinie durch beide Lippen gilt die zweite Fassung (7.11). (7.14) „Fressen“ und die Regler am geformten Maul. (7.11) Linien mit Verjüngung. (7.16) Das Maul aus nur einer Linie: hält an einer Form ohne Linien durchs Maul, an seinen Formen nicht. **Sein Einwand zur dritten Fassung:** Die fest eingeklappte Wulst ist nicht, was er erwartet; Linien, die er nachträglich durchs Maul zieht, stören sich an ihr; liegt ein Maul über einer Kreuzung, muss er die Kreuzungspunkte von Hand zurechtlegen. **Offen:** das Maul-System (zuerst die Beschreibung der Fälle), geschlossene Mäuler (dürfen später kommen), runde Lippen, Tiefe der Tasche, Knick von Hand. Das Maul aus der schmalen Form mit eingesetztem Inneren besteht daneben weiter |
-| 7 Auswahl wie in Blender | offen |
+| 7 Auswahl wie in Blender | **zurückgestellt** (Florian, 14.11.): „eher später“; er ist nicht sicher, ob es das braucht und wie es umgesetzt werden kann |
 
 **Schritt 0, was getan ist:**
 - `claude/editor-grundlayout` ist in `claude/form-spiegel` geführt (`3f8e09e7`); liegengebliebene Änderungen im Hauptordner sind
@@ -1134,6 +1135,45 @@ Die Regel für die Maul-Sitzung: zuerst an seiner Form mit Linien, je Fall eine 
 6. Die Tasche: wie tief, welche Form, wovon hängt das ab? Der Mundwinkel: spitz oder rund?
 7. Der Kiefer: Welcher Teil der Form geht beim Öffnen mit?
 8. Welche seiner Formen sind die Fälle, an denen geprüft wird?
+
+### 7.17 Neue Reihenfolge und der Zwischenschritt „Abzweigungen“ (14.11., 10:30 Uhr)
+
+**Florian am 14.11. (wörtlich):**
+
+> Deine Urteile zu 1, 2, 4a und 4b....das sieht gut aus bis jetzt
+>
+> Dann lass uns einen zwischenschritt einbauen, den wir auch fürs maul später gut nutzen können.
+>
+> Aktuell kann ch mit dem werkzeug p nicht direkt von vorhandenenlinien weiterziehen. Ich will zum beispiel bei einem edgeloop mit
+> 4 punkten (z.B. kreis), die gegenüberliegenden punkte verbinden können, indem ich mit p von einem punkt zum anderen ziehe. Wenn
+> ich das bei beiden paaren mache ergibt sich dadurch ein kreuz mit einem punkt in der kreuzung, die ich sehr exakt formen
+> kann...z.B zu einem horn.
+> Damit kann ich z.B. auch 2 mundwinkel verbinden und so die tiefe der maultasche bearbeiten wenn da noch kein loop läuft. Also
+> grundsätzlich soll man von jeder linie und von jedem punkt aus eine verbundene abzweigung erstellen können. So reduzieren sich
+> auch die doppelten punkte an engen stellen, da ich so genau arbeiten kann und punkte mehrfach verwenden kann.
+>
+> Dann machen wir erst schritt 5, dann 4c.
+>
+> Das Maul bekommt dann eine eigene session, vllt zusammen mit Zähnen und auch an der selktion wie bei blender können wir dann
+> eher später arbeiten. Ich bin noch nicht sicher obe es das braucht und wie genau das umgesetzt werden kann.
+
+**Was daraus folgt:**
+
+- Zu Schritt 1, 2, 4a und 4b: „das sieht gut aus bis jetzt“. Das ist kein Abschluss, aber sein Urteil bisher.
+- Reihenfolge: Zwischenschritt „Abzweigungen“, dann Schritt 5 (Posen), dann 4c (Rest der halben Haut).
+- Das Maul bekommt eine eigene Sitzung, vielleicht zusammen mit Zähnen (7.16). Schritt 7 (Auswahl) kommt später; ob es das
+  braucht und wie, ist offen.
+
+**Der Zwischenschritt** steht mit Struktur, Fällen und Etappen im Plan („Zwischenschritt (14.11.): Abzweigungen“, vor Schritt 5).
+Kurz: Es gibt offene Linien; jedes Ende liegt auf der Mitte (wie heute beim Ring) oder hängt an einem Punkt einer anderen Linie
+und teilt ihn mit ihr. Mit P zieht man sie von einem Punkt oder einer Linie zu einem Punkt oder einer Linie, direkt (kürzester
+Weg über die Haut) oder mit Punkten dazwischen. Offen ist nur, ob eine Abzweigung auch frei auf der Haut enden darf.
+
+**Nachgelesen dafür (Code, nichts gemessen):** `stiftFertig` in `kurven.ts` verlangt mindestens drei Anker und legt die
+geschlossene Form mit `formAusZeichnung` auf die Haut. `Loop.art` ist `mitte`, `ring` oder `paar`; offen ist nur der Ring, und
+sein Ende gilt überall als Spiegelpunkt (`ringEnde`, z = 0). Rund 170 Stellen in Kern und Fenster fragen nach der Art einer
+Linie. `loopEinsetzen` hat für Mitte, Ring und Paar je einen eigenen Weg; die gemeinsamen Teile (`einsetzen(proben)`: Weg über
+die Kanten von Probe zu Probe) lassen sich für eine Kette von Punkt zu Punkt nutzen.
 
 ## 8. Offen aus der Zeit davor
 
