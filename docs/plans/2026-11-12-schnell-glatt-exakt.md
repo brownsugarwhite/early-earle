@@ -603,6 +603,83 @@ zum 14.11., nur in ihrer Ruhe statt in der gedrehten Lage. Dort in der Front gez
 Dreiecke um, vorher keins. **Noch offen in Schritt 5:** Etappe 3 (die Pose geht mit der Grundform mit; die Versätze sind schon
 da, geprüft ist es nur mit der alten Fressen-Probe), Etappe 4 (beide Seiten frei), Etappe 5 (sein Ablauf, sein Urteil).
 
+**Schritt 5, Etappe 3, begonnen am 14.11. um 13:45 Uhr** (Florian: „Etappe 3“). Nachgelesen im Fenster, wie die Pose heute
+Änderungen der Grundform übernimmt:
+
+- **Haut:** Der Blendshape hängt an den Punkten des Netzes. Nach jedem Netzwechsel in der Grundform wird er umgeordnet
+  (`netzGewachsen`). Passt seine Länge beim Betreten nicht zum Netz, fällt er ohne Meldung weg.
+- **Linien:** Der Versatz hängt an der Reihenfolge der Punkte einer Linie. Hat eine Linie der Grundform inzwischen eine andere
+  Punktzahl (neuer Punkt, gelöschter Punkt, neue Kreuzung), wird ihr Versatz verworfen; die Linie wird an der Haut der Pose neu
+  abgelesen, ihre Griffe neu angepasst. Bei gleicher Zahl, aber anderen Punkten (einer gelöscht, einer neu) träfe der Versatz die
+  falschen Punkte.
+
+**Probe** `form-pose-mitgehen-fenster.mjs` an „maul handgemacht test“, mit der Maus: in der Pose einen Punkt der Unterlippe 15
+nach unten ziehen; zurück in die Grundform; dort nacheinander **(A)** einen Punkt fern vom Maul 15 ziehen (danach verfeinert
+sich das Netz; zuerst 25 nach oben geplant, das zog die Linie über eine andere und gab neue Kreuzungen: Das ist Fall D), **(B)** einen Punkt der Lippenlinie 10 ziehen, **(C)** neben dem gezogenen Punkt einen Punkt auf der Lippenlinie
+einfügen, **(D)** eine Linie quer über den Körper schneiden. Nach jeder Änderung wieder in die Pose und zurück.
+
+**Kriterien, vorher festgelegt** (zuerst am heutigen Stand gemessen, gebaut wird nur, wo sie nicht halten):
+
+1. **Der Zug an der Lippe bleibt:** Der Versatz des gezogenen Punkts gegen die Grundform ist derselbe wie vorher (A, B: höchstens
+   0,05; C, D: höchstens 0,5).
+2. **Die Linien der Pose gehen mit:** Jeder Punkt, den es vorher gab, behält seinen Versatz samt Griffen (A, B: höchstens 0,05).
+   Nach C und D behält jede alte Linie in der Pose ihren Verlauf (höchstens 0,5 neben dem vorigen), der neue Punkt liegt auf der
+   Linie der Pose (höchstens 0,5).
+3. **Die Haut der Pose bleibt,** wo sich die Grundform nicht geändert hat (am Maul bei A, C und D: höchstens 0,5), und zeigt die
+   Änderung der Grundform (bei A am gezogenen Punkt: höchstens 0,5 neben der Grundform).
+4. **Nichts geht kaputt:** Linien höchstens 0,5 neben ihrem Pfad, gezeichnet höchstens 0,5 neben der gezeigten Haut,
+   spiegelgleich, nichts schlägt zusätzlich um, keine Fehler in der Konsole.
+5. **Verlassen:** Die Grundform ist bitgleich wie vor dem Betreten.
+
+Dazu ein Bildpaar: die Pose vor und nach den Änderungen der Grundform, gleiche Ansicht.
+
+**Etappe 3, gebaut am 14.11. bis 14:10 Uhr im Bau-Fenster** (in seinem Fenster nichts). Die Probe bekam vor dem Bauen noch den
+einfachsten Fall dazu: **(0)** nichts ändern, nur verlassen und wieder betreten. Ergebnis an „maul handgemacht test“
+([Messwerte vorher und nachher](../progress/editor/schritt5-pose-mitgehen-messung-2026-11-14.txt); Bildpaar: die Pose
+[vor](../progress/editor/schritt5-pose-mitgehen-vorher-2026-11-14.jpg) und
+[nach](../progress/editor/schritt5-pose-mitgehen-nachher-2026-11-14.jpg) den Änderungen A bis D der Grundform):
+
+| Kriterium | vorher (Stand nach Etappe 2) | nachher |
+| --- | --- | --- |
+| 0 nichts geändert, verlassen und wieder betreten: die Haut der Pose ist dieselbe (höchstens 0,05) | **1,93** anders | 0,00 |
+| 0, A, B: die Linien liegen höchstens 0,5 neben ihrem Pfad | **2,07 bis 2,10** (die Lippenlinie) | 0,00 |
+| 0, A, B: gezeichnet liegt jede Linie höchstens 0,5 neben der gezeigten Haut | **1,15 bis 1,17** | 0,03 |
+| 1 der Zug an der Lippe bleibt: 0, A, B, D | 0,00 | 0,00 |
+| 1 der Zug an der Lippe bleibt: C (neuer Punkt daneben) | **2,10** anders | 0,00 |
+| 2 jeder Punkt behält seinen Versatz samt Griffen (0, A, B) | 0,00 | 0,00 |
+| 2 C: jede Linie behält in der Pose ihren Verlauf | **2,44** (die Lippenlinie) | 0,03 |
+| 2 C: der neue Punkt liegt auf der Linie der Pose | 0,00 | 0,00 |
+| 2 D: jede alte Linie behält ihren Verlauf (zwei Linien bekamen eine Kreuzung dazu) | 0,07 | 0,07 |
+| 3 am Maul bleibt die Haut der Pose: A, C, D | 0,20, **1,37**, 0,01 | 0,11, 0,00, 0,01 |
+| 3 A: die Pose zeigt die Änderung der Grundform | 0,00 | 0,00 |
+| 4 spiegelgleich, nichts schlägt zusätzlich um, keine Fehler | erfüllt | erfüllt |
+| 5 Verlassen: die Grundform bitgleich | nach C um 4·10⁻⁵, nach D um 5·10⁻⁶ daneben | bitgleich |
+
+**Was es war und was gebaut ist:**
+
+- **3a, verlassen und wieder betreten gibt dieselbe Pose.** Verfeinert sich in der Pose das gemeinsame Netz, bekam ein neuer Punkt
+  der Grundform die Lage der Pose minus den gemittelten Blendshape seiner Nachbarn. An einer Linie, deren Versatz sich längs
+  ändert (die gezogene Lippe), lag er damit bis 2 neben dem Pfad der Grundform. Beim Verlassen rückte das Fenster die Grundform
+  zurecht, nachdem der Blendshape schon gemerkt war: Die nächste Pose war eine andere. Jetzt liegt ein neuer Punkt auf einer
+  Linie in der Grundform genau auf deren Pfad, an derselben Stelle wie in der Pose (`grundAufPfad`); der Blendshape zählt beim
+  Verlassen gegen die Grundform, wie sie danach ist; und beim Betreten setzt sich die Haut der Pose auf ihre Linien, jede Probe
+  an ihrer Stelle (`linienAufPfad` mit `behalten`; nötig, wo die Grundform inzwischen neue Punkte im Netz bekam).
+- **3b, neue Punkte der Grundform.** Der Versatz einer Linie merkt sich zu jedem Punkt dessen Stelle. Hat die Linie der
+  Grundform einen Punkt dazubekommen (Doppelklick, neue Kreuzung), wird der Versatz an derselben Stelle geteilt wie das Stück
+  der Grundform (`poseVersatzFuer`): Die Linie der Pose bleibt genau, wie sie war, der neue Punkt liegt auf ihr. Vorher wurde
+  die ganze Linie an der Haut der Pose neu abgelesen und änderte ihren Verlauf um 2,4. Ein gelöschter Punkt fällt weg, seine
+  Nachbarn behalten ihre Griffe. Eine neue Linie der Grundform wird in der Pose weiter an deren Haut abgelesen.
+
+**Zur Kenntnis (kein Kriterium):** Ein Zug in der Pose ändert das gemeinsame Netz (an dieser Form 3 485 → 3 459 Punkte). Die
+Punkte der Grundform, die es danach noch gibt, liegen, wo sie lagen (3 453 von 3 459; 6 sind neu); die Linien der Grundform sind
+dieselben. Die Flächen liegen dabei bis 0,57 auseinander: Das ist die Feinheit des Netzes, wie nach jedem Zug in der Grundform
+auch.
+
+**Nicht geprüft:** ein gelöschter Punkt und eine gelöschte Linie der Grundform, G/S/R an ganzen Loops der Grundform, mehrere
+Punkte im selben Stück, das feine Netz, Sichern und Laden dazwischen, die Pose am Maul aus der schmalen Form (dort nur die alte
+Fressen-Probe, sie läuft wie vorher). **Noch offen in Schritt 5:** Etappe 4 (beide Seiten frei, eigener kleiner Beweis zuerst),
+Etappe 5 (sein Ablauf, sein Urteil).
+
 ### Schritt 6: Maul als eigene Geometrie (4 bis 6 Tage, Entwurf und kleiner Beweis zuerst)
 
 - **Was du danach siehst:** Das Maul ist ein echter Teil der Haut: Ober- und Unterlippe sind zwei Linien, die sich an den
