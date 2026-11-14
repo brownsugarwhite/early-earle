@@ -306,6 +306,15 @@ let grund: { haut: Haut; loops: Loop[] } | null = null;
  */
 let inAnzeige = false;
 let anzeigeHaut: { von: Haut; haut: Haut } | null = null;
+/** solange `alsAnzeige` zeichnet: die Linien der Ruhe, die Griffe eines laufenden Zugs in der Ruhe und die Knochen (sonst null) */
+let anzeigeVon: {
+  loops: Loop[];
+  griffeNeu: ({ ein: V3; aus: V3 }[] | null)[] | null;
+  theta: Float64Array;
+  G: V2;
+  /** je Linie, einmal je Zeichnen gerechnet: ihre gebogenen Stücke (`stueckeGezeigt`) */
+  gebogen: Map<number, (V3[] | null)[] | null>;
+} | null = null;
 /** nach jedem Zug verdichten (`?verdichten=0` schaltet es zum Vergleich ab) */
 const VERDICHTEN = new URLSearchParams(location.search).get('verdichten') !== '0';
 /** die Krümmung der Haut folgt den Loops (`?kruemmung=0`: jeder Punkt behält seine, zum Vergleich) */
@@ -1294,6 +1303,7 @@ function alsAnzeige<T>(f: () => T): T {
   }
   haut = anzeigeHaut.haut;
   loops = ruhe.loops.map((l) => loopGedreht(l, k.theta, k.G));
+  anzeigeVon = { loops: ruhe.loops, griffeNeu: zr?.griffeNeu ?? null, theta: k.theta, G: k.G, gebogen: new Map() };
   inAnzeige = true;
   try {
     return f();
@@ -1301,6 +1311,7 @@ function alsAnzeige<T>(f: () => T): T {
     haut = ruhe.haut;
     loops = ruhe.loops;
     inAnzeige = false;
+    anzeigeVon = null;
     if (z && zr) {
       z.lagen = zr.lagen;
       z.griffeNeu = zr.griffeNeu;
@@ -1420,7 +1431,7 @@ for (const r of [maulRegler, kopfRegler]) {
     reglerZeigen();
     hautZeigen();
     baenderZeigen();
-    for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
+    blaetterZeichnen();
     statusZeigen();
   });
   r.addEventListener('change', () => {
@@ -1533,7 +1544,7 @@ function maulSchritt(): void {
     if (netzNeu) geometrieNeu();
     hautZeigen();
     baenderZeigen();
-    for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
+    blaetterZeichnen();
     return;
   }
   const r = st.value;
@@ -1826,6 +1837,23 @@ function glattAnlegen(I: Uint32Array): GlattStand {
 /** Die Pfadstücke eines Loops, wie er jetzt ist (im Zug mit den Punkten und Griffen des Zugs), je Probenpaar */
 function pfadStuecke(l: Loop, li: number): ReturnType<typeof pfadKanten> {
   if (!exakt(l)) return null;
+  // In der Pose gezeigt: die Stücke des Pfads der Ruhe, jedes an seinen zwei Enden mit dem Winkel der Haut dort gedreht (die Enden
+  // liegen damit genau wie die Haut, die inneren Kontrollpunkte gehen mit ihrem Ende). Aus den gedrehten Punkten und Griffen der
+  // ganzen Linie gebildet läge der Pfad neben der Haut, wo sich der Winkel der Knochen längs der Linie ändert (`stueckeGezeigt`).
+  const R = inAnzeige ? anzeigeVon : null;
+  if (R) {
+    const lr = R.loops[li];
+    if (!lr) return null;
+    const st = pfadKanten(lr, zug && !zug.griff ? lr.punkte.map((p) => p.cur) : undefined, (zug ? R.griffeNeu?.[li] : null) ?? undefined);
+    if (!st) return null;
+    const tj = winkelJeProbe(R.theta, lr);
+    return st.map((e) => {
+      const ta = tj[e.ja]!;
+      const tb = tj[e.jb]!;
+      const k: [V3, V3, V3, V3] = [gedreht(e.k[0], ta, R.G), gedreht(e.k[1], ta, R.G), gedreht(e.k[2], tb, R.G), gedreht(e.k[3], tb, R.G)];
+      return { ...e, k };
+    });
+  }
   const P = zug && !zug.griff ? l.punkte.map((p) => p.cur) : undefined;
   return pfadKanten(l, P, zug?.griffeNeu[li] ?? undefined);
 }
@@ -2115,14 +2143,137 @@ function pfadKurven(a: Ansicht, l: Loop, sp: boolean, li = -1): string {
   };
   const neu = zug && li >= 0 ? zug.griffeNeu[li] : null;
   const ort = (p: LoopPunkt): V3 => (zug && !zug.griff ? p.cur : p.ref);
+  // in der Pose: Stücke, längs derer sich der Winkel der Knochen ändert, als gedrehte Abtastung des Pfads der Ruhe
+  const gebogen = li >= 0 ? stueckeGezeigt(li) : null;
   let d = `M ${B(ort(P[0]!))}`;
   for (let i = 0; i < (zu ? m : m - 1); i++) {
     const k = (i + 1) % m;
     const A = P[i]!;
     const E = P[k]!;
+    const g = gebogen?.[i];
+    if (g) {
+      for (let j = 1; j < g.length; j++) d += ` L ${B(g[j]!)}`;
+      continue;
+    }
     d += ` C ${B(plus3(ort(A), neu?.[i]?.aus ?? A.aus!))} ${B(plus3(ort(E), neu?.[k]?.ein ?? E.ein!))} ${B(ort(E))}`;
   }
   return zu ? `${d} Z` : d;
+}
+
+/** Abtastungen je Stück einer Linie, die sich in der Pose biegt (dazu kommt jede ihrer Proben in dem Stück) */
+const POSE_ABTASTEN = 12;
+/** Ort eines kubischen Stücks mit den Kontrollpunkten A, a, b, E beim Parameter t */
+const kubisch = (A: V3, a: V3, b: V3, E: V3, t: number): V3 => {
+  const v = 1 - t;
+  const c0 = v * v * v;
+  const c1 = 3 * v * v * t;
+  const c2 = 3 * v * t * t;
+  const c3 = t * t * t;
+  return { x: c0 * A.x + c1 * a.x + c2 * b.x + c3 * E.x, y: c0 * A.y + c1 * a.y + c2 * b.y + c3 * E.y, z: c0 * A.z + c1 * a.z + c2 * b.z + c3 * E.z };
+};
+/**
+ * In der Pose je Stück der Linie `li` (von Punkt zu Punkt): die gezeigte Kurve als Folge von Orten, wo sich der Winkel der Knochen
+ * längs des Stücks ändert, sonst null. Ändert er sich nicht, dreht sich das Stück starr, und die Kurve aus den gedrehten Punkten und
+ * Griffen ist genau. Ändert er sich, ist das gedrehte Stück keine Bézier-Kurve aus gedrehten Punkten und Griffen mehr (so gezeichnet
+ * lag die Linie an „maul handgemacht test“ bis 13 neben der gezeigten Haut): Dann wird der Pfad der Ruhe abgetastet und jeder Ort
+ * mit dem Winkel seiner Stelle gedreht, wie die Haut dort (eine Probe hat ihren Platz bei t = (s − s0) / (s1 − s0) ihres Stücks). Im
+ * Zug mit den Punkten und Griffen des Zugs (in der Ruhe). Null außerhalb der Anzeige einer Pose.
+ */
+function stueckeGezeigt(li: number): (V3[] | null)[] | null {
+  const R = inAnzeige ? anzeigeVon : null;
+  if (!R) return null;
+  const schon = R.gebogen.get(li);
+  if (schon !== undefined) return schon;
+  const l = R.loops[li];
+  let out: (V3[] | null)[] | null = null;
+  if (l && hatPfad(l)) {
+    const P = l.punkte;
+    const m = P.length;
+    const n = l.proben.length;
+    const zu = l.art !== 'ring';
+    const tj = winkelJeProbe(R.theta, l);
+    const neu = zug ? R.griffeNeu?.[li] : null;
+    const ort = (p: LoopPunkt): V3 => (zug && !zug.griff ? p.cur : p.ref);
+    out = [];
+    for (let i = 0; i < (zu ? m : m - 1); i++) {
+      const k = (i + 1) % m;
+      const s0 = P[i]!.s;
+      const s1 = k > i ? P[k]!.s : P[k]!.s + l.laenge;
+      const h = s1 - s0;
+      // Knoten: die Enden des Stücks und jede Probe darin, mit ihrem Winkel (dazwischen ändert er sich gleichmäßig)
+      const kn: { t: number; w: number }[] = [{ t: 0, w: winkelBei(l, tj, s0) }];
+      if (h > 1e-9)
+        for (let j = 0; j < n; j++) {
+          const x = zu && l.s[j]! < s0 ? l.s[j]! + l.laenge : l.s[j]!;
+          if (x > s0 + 1e-9 && x < s1 - 1e-9) kn.push({ t: (x - s0) / h, w: tj[j]! });
+        }
+      kn.push({ t: 1, w: winkelBei(l, tj, P[k]!.s) });
+      kn.sort((p, q) => p.t - q.t);
+      let min = Infinity;
+      let max = -Infinity;
+      for (const q of kn) {
+        min = Math.min(min, q.w);
+        max = Math.max(max, q.w);
+      }
+      if (max - min < 1e-9) {
+        out.push(null);
+        continue;
+      }
+      const A = ort(P[i]!);
+      const E = ort(P[k]!);
+      const a = plus3(A, neu?.[i]?.aus ?? P[i]!.aus!);
+      const b = plus3(E, neu?.[k]?.ein ?? P[k]!.ein!);
+      // abgetastet an jeder Probe und dazwischen gleichmäßig
+      const folge: V3[] = [];
+      let q = 0;
+      let gleich = 1;
+      const an = (t: number): void => {
+        while (q + 2 < kn.length && kn[q + 1]!.t < t) q++;
+        const c = kn[q]!;
+        const e = kn[q + 1]!;
+        const f = e.t - c.t > 1e-12 ? Math.min(1, Math.max(0, (t - c.t) / (e.t - c.t))) : 0;
+        folge.push(gedreht(kubisch(A, a, b, E, t), c.w + f * (e.w - c.w), R.G));
+      };
+      for (let x = 0; x < kn.length; x++) {
+        const t = kn[x]!.t;
+        for (; gleich < POSE_ABTASTEN && gleich / POSE_ABTASTEN < t - 1e-9; gleich++) an(gleich / POSE_ABTASTEN);
+        if (Math.abs(gleich / POSE_ABTASTEN - t) <= 1e-9) gleich++;
+        an(t);
+      }
+      out.push(folge);
+    }
+  }
+  R.gebogen.set(li, out);
+  return out;
+}
+/** Wie weit die Linie `li`, wie das Blatt sie zeichnet, höchstens neben ihren gezeigten Lagen liegt (für die Probe der Pose) */
+function gezeichnetNeben(l: Loop, li: number): number {
+  if (!exakt(l)) return 0;
+  const gebogen = stueckeGezeigt(li);
+  const P = l.punkte;
+  const m = P.length;
+  const folge: V3[] = [];
+  for (let i = 0; i < (l.art !== 'ring' ? m : m - 1); i++) {
+    const k = (i + 1) % m;
+    const g = gebogen?.[i];
+    if (g) folge.push(...g);
+    else for (let j = 0; j <= 48; j++) folge.push(kubisch(P[i]!.ref, plus3(P[i]!.ref, P[i]!.aus!), plus3(P[k]!.ref, P[k]!.ein!), P[k]!.ref, j / 48));
+  }
+  let neben = 0;
+  for (let j = 0; j < l.proben.length; j++) {
+    const p = lageAus(l.ruhe, j);
+    let d = Infinity;
+    for (let q = 0; q + 1 < folge.length; q++) {
+      const a = folge[q]!;
+      const b = folge[q + 1]!;
+      const ab = { x: b.x - a.x, y: b.y - a.y, z: b.z - a.z };
+      const ll = ab.x * ab.x + ab.y * ab.y + ab.z * ab.z;
+      const t = ll > 1e-18 ? Math.min(1, Math.max(0, ((p.x - a.x) * ab.x + (p.y - a.y) * ab.y + (p.z - a.z) * ab.z) / ll)) : 0;
+      d = Math.min(d, Math.hypot(p.x - a.x - t * ab.x, p.y - a.y - t * ab.y, p.z - a.z - t * ab.z));
+    }
+    neben = Math.max(neben, d);
+  }
+  return neben;
 }
 
 /**
@@ -2217,6 +2368,12 @@ function griffeZumZeigen(): { li: number; i: number; ein: V3 | null; aus: V3 | n
 let entwurf: { a: Ansicht; x0: number; y0: number; x1: number; y1: number } | null = null;
 let spur: { a: Ansicht; p: [number, number][] } | null = null;
 
+/** alle drei Blätter neu zeichnen; in der Pose wird dafür nur einmal gedreht (je Blatt einzeln kostete es an einer Form 0,7 ms mehr) */
+function blaetterZeichnen(): void {
+  alsAnzeige(() => {
+    for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
+  });
+}
 function blattZeichnen(a: Ansicht): void {
   if (grund && !inAnzeige) return alsAnzeige(() => blattZeichnen(a));
   const el = blaetter[a];
@@ -2366,7 +2523,7 @@ function allesZeigen(): void {
   eckenAuto(loops);
   hautZeigen();
   baenderZeigen();
-  for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
+  blaetterZeichnen();
   knopfLoop.setAttribute('aria-pressed', String(modus === 'loop'));
   knopfForm.setAttribute('aria-pressed', String(modus === 'form'));
   knopfStift.setAttribute('aria-pressed', String(modus === 'stift'));
@@ -2461,7 +2618,7 @@ function vorrechnenPlanen(): void {
     letztesNachLoesen = Math.round(performance.now() - t0);
     hautZeigen();
     baenderZeigen();
-    for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
+    blaetterZeichnen();
     statusZeigen();
   }, 30);
 }
@@ -3262,7 +3419,7 @@ function zugBewegen(X: number, Y: number): void {
     z.zielNeu = true;
     z.offen = true;
     z.nachRunden = 0;
-    for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
+    blaetterZeichnen();
     merke(messung.maus, performance.now() - tm);
     return;
   }
@@ -3274,7 +3431,7 @@ function zugBewegen(X: number, Y: number): void {
   if (!z.griff && !oAn && weit > 0.5 * z.radius) zugStufe(z, X, Y);
   hautZeigen();
   baenderZeigen();
-  for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
+  blaetterZeichnen();
   statusZeigen();
 }
 
@@ -3634,7 +3791,7 @@ function einwechseln(f: Verfeinert, daten: ZerlegungsDaten[]): void {
   letzteHintergrundMs = Math.round(performance.now() - f.t0);
   hautZeigen();
   baenderZeigen();
-  for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
+  blaetterZeichnen();
   statusZeigen();
   merke(messung.einwechseln, performance.now() - t0);
   einwechslungTeile = [t1 - t0, t2 - t1, t3 - t2, t4 - t3, performance.now() - t4].map(Math.round);
@@ -3987,7 +4144,7 @@ function nachlaufRechnen(): void {
     nachZugAufraeumen();
     // ohne Hintergrund hat das Fenster selbst verdichtet: alles neu zeigen (und in der Ruhe setzen)
     if (!aufraeumen) allesZeigen();
-    else for (const a of ['seite', 'front', 'top'] as const) blattZeichnen(a);
+    else blaetterZeichnen();
   } else n.lagen = lagenZahl(haut.pos);
   hautZeigen();
   baenderZeigen();
@@ -6585,6 +6742,18 @@ if (BEHALTEN) behaltenesHolen();
   auswahl: () => auswahl,
   /** je Loop: wie weit seine Linie höchstens neben ihrem Pfad liegt (an gleicher Stelle; 0 ohne Pfad) */
   pfadRest: (): number[] => loops.map((l) => pfadAbweichung(l)),
+  /** am Gezeigten: wie weit die Linie, wie das Blatt sie zeichnet, höchstens neben ihren gezeigten Lagen liegt (in der Pose gedreht) */
+  pfadRestGezeigt: (): number[] => alsAnzeige(() => loops.map((l, li) => gezeichnetNeben(l, li))),
+  /** die drei Blätter `n`-mal neu zeichnen: Dauer eines Durchgangs in ms (Median) */
+  blaetterMs: (n = 20): number => {
+    const ms: number[] = [];
+    for (let i = 0; i < n; i++) {
+      const t0 = performance.now();
+      blaetterZeichnen();
+      ms.push(performance.now() - t0);
+    }
+    return ms.sort((x, y) => x - y)[n >> 1]!;
+  },
   /** Knick der Linie an einem Punkt (Grad): Richtung hinein gegen hinaus, je Seite für sich gemessen */
   knickAm: (id: number, i: number): number => {
     const l = loops[loopNr(id)];

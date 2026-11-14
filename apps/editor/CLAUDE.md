@@ -83,9 +83,14 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   Versatz gegen die Grundform: `pose.delta` (Haut) und `pose.linien` (Punkte und Griffe der Linien). **Am geformten Maul** ist
   die Ruhe der Pose eine Form wie die Grundform (dieselbe Rechnung, genaue Linien, Setzen und Aufräumen im Hintergrund); neue
   Punkte, Linien und Löschen gibt es dort nicht (`nurInGrundform`). **Am Maul aus der schmalen Form** bleibt die Rechnung wie
-  bis zum 14.11. (`altePose`). Die Haken der Proben melden in der Pose das Gezeigte; `ruheLagen`, `ruheLoops`,
-  `ruheUmgeschlagen` geben die Ruhe. Probe: `GPU=1 [NAME=…] [RING=…] node scripts/pruefen/form-pose-fenster.mjs` (an „maul
-  handgemacht test“).
+  bis zum 14.11. (`altePose`). **Der Pfad einer Linie wird in der Pose aus der Ruhe genommen** und Stelle für Stelle mit dem
+  Winkel der Haut dort gedreht (`anzeigeVon` hält dafür die Linien der Ruhe, solange gezeichnet wird): im Blatt
+  `stueckeGezeigt` (Stücke, längs derer sich der Winkel ändert, abgetastet; die übrigen als Kurve wie in der Grundform), für die
+  Bänder im 3D-Bild und die glatte Kante der Haut `pfadStuecke` (je Kante der Haut das Stück der Ruhe, an seinen Enden gedreht).
+  Die drei Blätter zeichnet `blaetterZeichnen` mit einem Drehen für alle. Die Haken der Proben melden in der Pose das Gezeigte;
+  `ruheLagen`, `ruheLoops`, `ruheUmgeschlagen` geben die Ruhe, `pfadRest` misst in der Ruhe, `pfadRestGezeigt` die gezeichnete
+  Linie gegen die gezeigte Haut, `blaetterMs` das Zeichnen der Blätter. Probe: `GPU=1 [NAME=…] [RING=…] node
+  scripts/pruefen/form-pose-fenster.mjs` (an „maul handgemacht test“).
 - **Abzweigungen** (14.11.; nur in `form-bau`, Zwischenschritt im Plan): eine offene Linie, die an Punkten anderer Linien hängt
   und sie mit ihnen teilt (gleiche `kreuzung`). Im Modell ein `ring` mit `Loop.haengt = [Anfang, Ende]`; `endeAufMitte(l, 0 | 1)`
   sagt, ob ein Ende auf der Mittelebene liegt (der Ring wie bisher) oder hängt. **Im Fenster, mit P:** Klick auf einen Punkt oder
@@ -247,6 +252,11 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   `standAnwenden` dreht ihn einmal zurück (`pose.inRuhe` fehlt dort).
 - Zieht man an „maul handgemacht test“ die Spitze des Unterkiefers (ein Punkt an der Mittelebene) 25 nach unten, schlagen 8 bis
   10 kleine Dreiecke an der Mitte um, in der Grundform wie in der Pose. Das ist keine Sache der Pose.
+- Eine Bézier-Kurve, die sich mit den Knochen dreht, ist nur dort wieder die Kurve aus gedrehten Punkten und Griffen, wo sich
+  der Winkel längs des Stücks nicht ändert. Im Übergang zwischen Kiefer und Schädel lag die so gezeichnete Linie an „maul
+  handgemacht test“ bis 13,26 neben der gezeigten Haut (die Haut selbst stimmte; Stand 2c, am 14.11. behoben). Wer in der Pose
+  etwas aus `l.punkte` und den Griffen der gedrehten Kopie zeichnet oder misst, nimmt den Pfad der Ruhe und dreht je Stelle
+  (`stueckeGezeigt`, `pfadStuecke`). Nicht gemessen: Im Übergang ist ein Griff nicht genau die Tangente der gezeigten Linie.
 - **P wird geklickt, nicht gezogen** (Florian, 14.11.: „es werden keine punkte gesetzt wenn ich mit p auf eine linie klicke. Das
   wekzeug springt dann sofort wieder raus“): Die erste Fassung kannte nur Drücken, Ziehen, Loslassen; ein Klick galt als Anfang
   und Ende am selben Ort. Jede Geste eines Werkzeugs zuerst mit einzelnen Klicks prüfen, die Probe genauso.

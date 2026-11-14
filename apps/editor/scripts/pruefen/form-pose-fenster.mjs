@@ -162,6 +162,7 @@ ok(`„${NAME}“ geladen, die Lippenlinie (Loop ${RING}) gewählt`, await waehl
 await ruhig();
 const grund0 = await K('lagen');
 const umg0 = await K('umgeschlagen');
+const blaetterGrund = await K('blaetterMs');
 
 // ---------- 2. an, aus, an ----------
 await seite.click('#knopf-pose');
@@ -178,6 +179,7 @@ const pose2 = await K('lagen');
 ok('wieder an: die Pose wie beim ersten Mal', groesster(pose2, pose1) <= 0.05, `größter Unterschied ${groesster(pose2, pose1) === Infinity ? 'andere Punktzahl' : z2(groesster(pose2, pose1))}`);
 const umgPose = await K('umgeschlagen');
 const umgRuhe0 = await K('ruheUmgeschlagen');
+console.log(`     die drei Blätter zeichnen: in der Pose ${z2(await K('blaetterMs'))} ms, in der Grundform ${z2(blaetterGrund)} ms`);
 if (BILD) await seite.screenshot({ path: `${BILD}-1-pose.jpg`, type: 'jpeg', quality: 88 });
 
 // ---------- 3. an der Unterlippe ziehen ----------
@@ -188,6 +190,7 @@ let lippenZug = null;
   // der unterste sichtbare Punkt der Lippenlinie, wie gezeigt
   const p = [...L.punkte].filter((q) => q.sichtbar).sort((a, b) => a.ref.y - b.ref.y)[0];
   const ruheVor = await K('ruheLagen');
+  const nebenVor = await K('pfadRestGezeigt');
   const gezeigtVor = await K('lagen');
   const iP = L.punkte.indexOf(p);
   const ruheP0 = (await K('ruheLoops')).find((l) => l.id === RING).punkte[iP].ref;
@@ -233,6 +236,8 @@ let lippenZug = null;
   }
   const rest = await K('pfadRest');
   ok('die Linien liegen höchstens 0,5 neben ihrem Pfad', Math.max(...rest) <= 0.5, `größte Abweichung ${z2(Math.max(...rest))}`);
+  const nebenNach = await K('pfadRestGezeigt');
+  ok('gezeigt liegt jede gezeichnete Linie höchstens 0,5 neben der gezeigten Haut', Math.max(...nebenNach) <= 0.5, `größte Abweichung ${z2(Math.max(...nebenNach))} (Loop ${nebenNach.indexOf(Math.max(...nebenNach))}); vor dem Zug ${z2(Math.max(...nebenVor))} (Loop ${nebenVor.indexOf(Math.max(...nebenVor))})`);
   ok('spiegelgleich', (await K('symmetrie')) < 1e-6);
   if (BILD) await seite.screenshot({ path: `${BILD}-2-gezogen.jpg`, type: 'jpeg', quality: 88 });
   await zurueck();
