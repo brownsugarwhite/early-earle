@@ -409,9 +409,8 @@ Ende auf einer Linie ohne Punkt (Fall 2 und 5), Punkte dazwischen (Fall 4), sein
 liegt 6,1 neben der Mitte des Kreises, weil der Kreis auf der schrägen Haut nicht genau rund liegt; das ist kein Fehler des Wegs.
 
 **Etappe 2 und 3, gebaut am 14.11. bis 11:05 Uhr im Bau-Fenster** (Florian: „Ja, so bauen“; eine Abzweigung endet immer an einem
-Punkt, auf einer Linie oder auf der Mitte). Gebaut sind die Fälle 1, 2, 3, 5, 6, 7 und 8: mit P auf einem Punkt oder einer Linie
-drücken, zu einem anderen Punkt oder einer anderen Linie ziehen, loslassen. **Fall 4 (Punkte dazwischen beim Zeichnen) ist nicht
-gebaut.** In seinem Fenster (5194) ist nichts davon.
+Punkt, auf einer Linie oder auf der Mitte). Gebaut waren um 11:05 Uhr die Fälle 1, 2, 3, 5, 6, 7 und 8, aber nur als „drücken,
+ziehen, loslassen“; Fall 4 und das Klicken kamen um 11:20 Uhr dazu (Nachtrag unten). In seinem Fenster (5194) ist nichts davon.
 
 Probe im Bau-Fenster an seiner Form „test_kaputt“ (`form-abzweigung-fenster.mjs`, 19 Punkte, alle erfüllt;
 [Messwerte](../progress/editor/zwischenschritt-abzweigung-fenster-messung-2026-11-14.txt); Bilder
@@ -442,7 +441,18 @@ Probe im Bau-Fenster an seiner Form „test_kaputt“ (`form-abzweigung-fenster.
 **Neu festgelegt, er kann es ändern:** Eine Linie, an der Abzweigungen hängen, lässt sich nicht allein löschen (Meldung; zusammen
 mit ihnen gewählt geht es).
 
-**Offen:** Fall 4 (Punkte dazwischen beim Zeichnen: Start anklicken, Punkte setzen, auf Punkt oder Linie enden). Eine Abzweigung,
+**Nachtrag, 14.11., 11:20 Uhr: P wird geklickt; Fall 4 ist gebaut.** Florian nach dem ersten Ausprobieren: „ich kann es im
+editor nicht bauen. es werden keine punkte gesetzt wenn ich mit p auf eine linie klicke. Das wekzeug springt dann sofort wieder
+raus und der punkt, der loop ist ausgewählt“. Gebaut war nur „drücken, ziehen, loslassen“; ein einzelner Klick galt als Anfang
+und Ende am selben Ort. Jetzt: Klick auf einen Punkt oder eine Linie beginnt die Abzweigung (auf einer Linie ohne Punkt entsteht
+er sofort, das Werkzeug bleibt an), Klick auf die Haut setzt einen Punkt dazwischen (Klick = Ecke, Klicken und Ziehen = glatt),
+Klick auf einen anderen Punkt oder eine andere Linie beendet sie; ⌫ nimmt den letzten Punkt zurück, Esc bricht ab. In einem Zug
+vom Anfang zum Ende ziehen geht weiter. Die Probe klickt jetzt wie er (22 Punkte an „test_kaputt“, alle erfüllt). Dazu im Kern:
+Der Weg läuft von gesetztem Punkt zu gesetztem Punkt; kreuzt er dabei dieselbe Kante zweimal (eine Haarnadel), wird sie
+dazwischen geteilt.
+
+**Offen:** Der Griff eines glatt gesetzten Punkts wird nicht so übernommen, wie er gezogen wurde (der Punkt wird glatt, seine
+Griffe ergeben sich aus dem Verlauf). Eine Abzweigung,
 die flach neben ihrer Linie losläuft, kreuzt sie nach einer Weile noch einmal (richtig gerechnet, selten gewollt). Nicht geprüft:
 in der Pose (dort gibt es eine Meldung), über die Mitte gezogen (`mitteSchnitt`), Kante an einer Abzweigung mit Knick, seine
 anderen Formen, das feine Netz. Sein Urteil steht aus.
