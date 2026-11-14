@@ -1,4 +1,4 @@
-# Übergabe (Stand 14.11.2026, 10:30 Uhr: **Neue Reihenfolge (Florian, 14.11.):** zuerst der Zwischenschritt „Abzweigungen“ (mit P von jedem Punkt und jeder Linie aus eine verbundene Linie ziehen; Abschnitt 7.17 und Plan), dann Schritt 5, dann 4c. **Schritt 6 (Maul) ist angehalten** und bekommt eine eigene Sitzung, vielleicht zusammen mit Zähnen (Abschnitt 7.16: sein Wort, der Stand, die offenen Fragen); bis dahin am Maul nichts bauen. Schritt 7 kommt später, ob und wie ist offen. Zu Schritt 1, 2, 4a und 4b sagt er: „das sieht gut aus bis jetzt“. Vom Zwischenschritt steht der Entwurf mit den Fällen im Plan; gebaut ist noch nichts. In seinem Fenster (5194) ist von Schritt 6 und vom Zwischenschritt nichts)
+# Übergabe (Stand 14.11.2026, 10:35 Uhr: **Neue Reihenfolge (Florian, 14.11.):** zuerst der Zwischenschritt „Abzweigungen“ (mit P von jedem Punkt und jeder Linie aus eine verbundene Linie ziehen; Abschnitt 7.17 und Plan), dann Schritt 5, dann 4c. **Vom Zwischenschritt hält Etappe 1, der Beweis im Kern** (sein Beispiel: Kreis mit vier Punkten, Kreuz, Punkt in der Kreuzung herausgezogen); im Fenster ist davon nichts gebaut, als Nächstes kämen Etappe 2 (Kern) und 3 (P im Bau-Fenster), nach seinem Wort. **Schritt 6 (Maul) ist angehalten** und bekommt eine eigene Sitzung, vielleicht zusammen mit Zähnen (Abschnitt 7.16: sein Wort, der Stand, die offenen Fragen); bis dahin am Maul nichts bauen. Schritt 7 kommt später, ob und wie ist offen. Zu Schritt 1, 2, 4a und 4b sagt er: „das sieht gut aus bis jetzt“. In seinem Fenster (5194) ist von Schritt 6 und vom Zwischenschritt nichts)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -27,7 +27,7 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | 3 Beweis „Haut direkt aus den Linien“ | **abgeschlossen, die heutige Rechnung bleibt** (Abschnitt 6, 13.11.): Die Haut nur aus den Linien (A) scheitert zwischen wenigen Linien und an seinen drei Formen. Der Teil B (fertige Haut direkt bewegen) hält rechnerisch; als Schalter „Form halten“ im Bau-Fenster ausprobiert, Florian: „Gefällt nicht“. Knopf und Taste sind wieder weg; der Code liegt nur auf `claude/form-bau` hinter `?ziehen=direkt` |
 | 4 Echte Spiegelung (mit der heutigen Rechnung) | **4a, der Donut, ist in Florians Fenster (Abschnitt 7.4, 13.11.):** nach seiner zweiten Regel; sein Urteil steht aus. **4b, erster Teil, ist seit dem 13.11. nachmittags in Florians Fenster (Abschnitt 7.5):** Der Löser rechnet auf der Hälfte (zwei halb so große Systeme, Krümmung auf der Hälfte), das Netz im Fenster bleibt ganz; Rechnen je Bild 10,3 → 7,1 ms am „teat firefish“, Zerlegen rund 50 %, gleiche Form; dazu „flüssig zuerst“ (eine weitere Runde je Bild nur, wenn sie ins Bild passt). Sein Urteil zum Tempo steht aus **Florian am 14.11. zu Schritt 1, 2, 4a und 4b: „das sieht gut aus bis jetzt“.** |
 | 4c Rest der halben Haut | **fest vorgemerkt** (Plan, „Schritt 4c“; Florian am 13.11.: „es soll nicht vergessen werden“): Gewichte und Vermessen auf der Hälfte (Runde von 73 % auf 50 bis 60 %), die einzelnen langsamen Bilder, Verdichten und Anzeige auf der Hälfte, das Netz selbst als Hälfte. Kommt nach den Posen wieder auf den Tisch und muss gebaut sein, bevor Shader, Materialien, Fell oder Zusatzteile beginnen. Seine heutigen Formen sind kein Maßstab für das Tempo |
-| Zwischenschritt Abzweigungen (vor Schritt 5) | **Entwurf im Plan, gebaut ist nichts** (Abschnitt 7.17; Florian am 14.11.): Mit P von jedem Punkt und jeder Linie aus eine verbundene Linie ziehen; offene Linien, deren Enden auf der Mitte liegen oder an einem Punkt einer anderen Linie hängen. Etappe 1 ist der kleine Beweis im Kern an seinem Beispiel (Kreis mit vier Punkten, Kreuz, Punkt in der Kreuzung herausgezogen) |
+| Zwischenschritt Abzweigungen (vor Schritt 5) | **Etappe 1 hält (Beweis im Kern, 14.11.), im Fenster ist nichts gebaut** (Abschnitt 7.17; Florian am 14.11.): Mit P von jedem Punkt und jeder Linie aus eine verbundene Linie ziehen; offene Linien, deren Enden auf der Mitte liegen oder an einem Punkt einer anderen Linie hängen. Etappe 1 ist der kleine Beweis im Kern an seinem Beispiel (Kreis mit vier Punkten, Kreuz, Punkt in der Kreuzung herausgezogen) |
 | 5 Posen wie die Basis | **Entwurf steht, Gegenprobe an Florians Form hält** (Abschnitte 7.6 und 7.8, 13.11.): Eine Pose ist dieselbe Form mit anderen Lagen der Punkte und Griffe, dazu die Knochen (Florian: „ein einfacher Morph der Punkte und Handles […], während die Kieferknochen sich bewegen“). Der erste Beweis war am Maul aus der schmalen Form gescheitert (verborgene Fläche); am von Hand geformten Maul ist ein Zug in der Pose ein gewöhnlicher Zug. Gebaut ist nichts; kommt nach Schritt 6 |
 | 6 Maul | **Angehalten (Florian, 14.11.):** „Das Maul formt sich und das ist ok“; alles Weitere braucht „ein eigenes System und Definition“ in einer eigenen großen Sitzung (Abschnitt 7.16: sein Wort, der Stand, die offenen Fragen). **Im Bau-Fenster steht** (nicht in seinem Fenster): (7.13) „Maul formen“ in dritter Fassung: Die Maullinie trägt ihren Knick selbst (95° an den Lippen, 70° am Mundwinkel), ohne Mittellinie, animiert; mit einer Mittellinie durch beide Lippen gilt die zweite Fassung (7.11). (7.14) „Fressen“ und die Regler am geformten Maul. (7.11) Linien mit Verjüngung. (7.16) Das Maul aus nur einer Linie: hält an einer Form ohne Linien durchs Maul, an seinen Formen nicht. **Sein Einwand zur dritten Fassung:** Die fest eingeklappte Wulst ist nicht, was er erwartet; Linien, die er nachträglich durchs Maul zieht, stören sich an ihr; liegt ein Maul über einer Kreuzung, muss er die Kreuzungspunkte von Hand zurechtlegen. **Offen:** das Maul-System (zuerst die Beschreibung der Fälle), geschlossene Mäuler (dürfen später kommen), runde Lippen, Tiefe der Tasche, Knick von Hand. Das Maul aus der schmalen Form mit eingesetztem Inneren besteht daneben weiter |
 | 7 Auswahl wie in Blender | **zurückgestellt** (Florian, 14.11.): „eher später“; er ist nicht sicher, ob es das braucht und wie es umgesetzt werden kann |
@@ -1034,7 +1034,7 @@ Schritt 6, „Das Maul aus nur einer Linie“.
 - Bilder: `docs/progress/editor/schritt6-maul-linie-2026-11-13.jpg` (2 000 Dreiecke), `schritt6-maul-linie-feines-netz-2026-11-13.jpg`
   (6 000); Zahlen: `schritt6-maul-linie-messung-2026-11-13.txt`.
 
-### 7.16 Das Maul aus nur einer Linie im Bau-Fenster; Florian hält an: Das Maul bekommt ein eigenes System (14.11., 09:30 Uhr)
+### 7.16 Das Maul aus nur einer Linie im Bau-Fenster; Florian hält an: Das Maul bekommt ein eigenes System (14.11., 09:20 Uhr)
 
 **Florian am 14.11., mitten in der Prüfung (wörtlich):**
 
@@ -1136,7 +1136,7 @@ Die Regel für die Maul-Sitzung: zuerst an seiner Form mit Linien, je Fall eine 
 7. Der Kiefer: Welcher Teil der Form geht beim Öffnen mit?
 8. Welche seiner Formen sind die Fälle, an denen geprüft wird?
 
-### 7.17 Neue Reihenfolge und der Zwischenschritt „Abzweigungen“ (14.11., 10:30 Uhr)
+### 7.17 Neue Reihenfolge und der Zwischenschritt „Abzweigungen“ (14.11., 10:20 Uhr)
 
 **Florian am 14.11. (wörtlich):**
 
@@ -1174,6 +1174,23 @@ geschlossene Form mit `formAusZeichnung` auf die Haut. `Loop.art` ist `mitte`, `
 sein Ende gilt überall als Spiegelpunkt (`ringEnde`, z = 0). Rund 170 Stellen in Kern und Fenster fragen nach der Art einer
 Linie. `loopEinsetzen` hat für Mitte, Ring und Paar je einen eigenen Weg; die gemeinsamen Teile (`einsetzen(proben)`: Weg über
 die Kanten von Probe zu Probe) lassen sich für eine Kette von Punkt zu Punkt nutzen.
+
+**Etappe 1, der kleine Beweis im Kern (14.11., 10:30 Uhr): hält.** Probe `apps/editor/scripts/pruefen/form-abzweigung.ts`
+(Aufruf aus `packages/shape`; `AUS=<datei.html>` schreibt das Blatt, `KANTE=1` macht den Kreis zur Kante), Bild
+[`zwischenschritt-abzweigung-2026-11-14.jpg`](progress/editor/zwischenschritt-abzweigung-2026-11-14.jpg), Messwerte daneben,
+Tabelle im Plan. Kugel mit drei Linien und einem Kreis mit vier Punkten: Die zwei Abzweigungen von Punkt zu gegenüberliegendem
+Punkt lassen sich einsetzen und teilen die Punkte des Kreises; in ihrer Kreuzung liegt ein gemeinsamer Punkt; um 90 herausgezogen
+entsteht ein Horn entlang der vier Linienstücke (die Haut steht, umgeschlagen 0, Spitze 0,00 neben dem Ziel); der Kreis bewegt
+sich nicht. Die Haut außerhalb geht bei rundem Kreis bis 4,0 mit, mit dem Kreis als Kante gar nicht.
+
+Gebaut dafür, nur auf `claude/form-bau`: `Loop.haengt` und `endeAufMitte` (`loops.ts`), `abzweigen` (`einsetzen.ts`),
+`abzweigung.test.ts`. Für alle bisherigen Linien ändert sich nichts (169 Tests im Kern, 24 im Editor, `form-donut-fenster` und
+`form-maul-formen-fenster` „alles gut“). Was noch fehlt und welche Stellen noch nicht durchgesehen sind: `apps/editor/CLAUDE.md`
+(„Abzweigungen“ und die Falle „Ein offenes Ende liegt …“).
+
+**Als Nächstes, nach seinem Wort:** Etappe 2 (offene Linien überall im Kern: Verdichten, Löschen, Sichern und Laden, das Ende auf
+der Mitte, Start und Ende auf einer Linie ohne Punkt), dann Etappe 3 (P im Bau-Fenster nach den Fällen 1 bis 8). Offen ist seine
+Antwort, ob eine Abzweigung auch frei auf der Haut enden darf.
 
 ## 8. Offen aus der Zeit davor
 

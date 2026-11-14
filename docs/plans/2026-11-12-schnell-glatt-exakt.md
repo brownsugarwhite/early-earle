@@ -382,6 +382,32 @@ macht, gehört in die Maul-Sitzung), Posen (Schritt 5), Auswahl (Schritt 7).
 - **Etappe 3, Bau-Fenster:** P nach den Fällen 1 bis 8. Probe im Fenster: sein Beispiel mit der Maus, und an einer seiner Formen
   eine Abzweigung zwischen zwei vorhandenen Punkten.
 
+**Etappe 1, gerechnet am 14.11. um 10:30 Uhr: Der Beweis hält** (Probe `apps/editor/scripts/pruefen/form-abzweigung.ts`, Bild
+[`zwischenschritt-abzweigung-2026-11-14.jpg`](../progress/editor/zwischenschritt-abzweigung-2026-11-14.jpg),
+[Messwerte](../progress/editor/zwischenschritt-abzweigung-messung-2026-11-14.txt)). Die Form: eine Kugel mit drei Linien, in
+einem Feld dazwischen ein Kreis mit vier Punkten (Halbmesser 43 auf der Haut).
+
+| | gemessen |
+| --- | --- |
+| die zwei Abzweigungen | eingesetzt, 18 und 20 Stellen, Länge 87; ihre Enden sitzen auf der Kette des Kreises, 0,15 bis 0,35 neben seinen Punkten, und teilen die Punkte mit ihm |
+| die Kreuzung | ein gemeinsamer Punkt, die Linien lagen dort 0,06 auseinander; gesetzt nach 5 Runden, nichts umgeschlagen |
+| Punkt in der Kreuzung um 90 herausgezogen (9 Stufen, dazwischen verfeinert) | 2 016 Punkte, 101 Runden, die Haut steht; die Spitze liegt 0,00 neben dem Ziel und steht 89,7 über der Kugel; die Linien liegen 0,00 neben ihren Pfaden; umgeschlagen 0 |
+| der Kreis | seine Punkte bewegen sich um 0,00 |
+| die Haut außerhalb des Kreises | Kreis rund: geht bis 4,0 mit (weiter als 76 von seiner Mitte; weiter als 114 noch 2,5). Kreis als Kante: bleibt (0,26 wie vorher) |
+
+Kriterien 1 bis 3 halten. Kriterium 4 hält für den Kreis; für die Haut außerhalb hält es nur, wenn der Kreis eine Kante ist.
+Über einen runden Kreis rundet die Haut hinweg, wie über jede runde Linie heute: Der Fuß des Horns läuft außen aus. Auf der
+anderen Seite steht das Spiegelbild des Horns.
+
+Gebaut dafür im Kern (nur `claude/form-bau`; für alle bisherigen Linien ändert sich nichts, 169 Tests und zwei Fenster-Proben wie
+vorher): die Angabe `Loop.haengt` (dieses Ende hängt an einer anderen Linie statt auf der Mitte zu liegen) mit `endeAufMitte`,
+und `abzweigen` (von Punkt zu Punkt: der Weg ist der Schnitt der Haut mit der Ebene durch beide Punkte und ihre mittlere Normale,
+ein gerader Weg über die Haut). Drei Tests (`abzweigung.test.ts`).
+
+**Nicht geprüft und nicht gebaut:** alles im Fenster (P), Sichern und Laden, Löschen, das Ende auf der Mitte (Fall 7), Start oder
+Ende auf einer Linie ohne Punkt (Fall 2 und 5), Punkte dazwischen (Fall 4), seine Formen. Beobachtung: Der Punkt in der Kreuzung
+liegt 6,1 neben der Mitte des Kreises, weil der Kreis auf der schrägen Haut nicht genau rund liegt; das ist kein Fehler des Wegs.
+
 **Regeln für diesen Schritt (Lehre vom 14.11.):** Geprüft wird an Formen mit Linien. Je Etappe eine Probe, keine Reihen. Kommt
 ein neuer Fall dazu, wird er hier aufgeschrieben und mit ihm geklärt, bevor er gebaut wird.
 
