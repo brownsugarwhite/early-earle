@@ -39,6 +39,7 @@ import {
   type Loop,
   type LoopPunkt,
   LoopZug,
+  bereichUm,
   eckenAuto,
   griffeAnlegen,
   hatPfad,
@@ -83,6 +84,13 @@ export type MaulFormenOptionen = {
   knickWinkel?: number;
   /** nach jedem Abschnitt gerufen (zum Zeigen oder Messen): Name, Haut und Loops von jetzt, und `alt` wie im Ergebnis */
   zwischen?: (was: string, haut: Haut, loops: readonly Loop[], alt: Int32Array) => void;
+  /**
+   * Weg „Kante“: Gerechnet wird nur im Umkreis des Mauls, so weit um die Maullinie, wie dieser Anteil ihrer Ausdehnung reicht
+   * (Standard 0,75); die Form fern davon bleibt stehen. Über die ganze Haut gerechnet hält eine Form ohne weitere Linien ihre Größe
+   * nicht: Die Maullinie ist eine Kante und gibt keine Krümmung vor (gemessen am Maul aus einer Linie an der Kugel: nach zwei
+   * Stufen von 150 auf 200 aufgeblasen, nach vier auf 420). `0`: über die ganze Haut wie bis zum 14.11.
+   */
+  umkreis?: number;
 };
 
 export type MaulGeformt = {
@@ -144,6 +152,27 @@ export function* maulFormenSchritte(h0: Haut, loops0: readonly Loop[], maulId: n
   if (!L0.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2])) return { fehler: 'die Maullinie liegt nur auf der Haut (nicht ins Netz eingesetzt)' };
   if (!hatPfad(L0)) return { fehler: 'die Maullinie hat noch keine Griffe' };
 
+  /** der Bereich, in dem gerechnet wird (Weg „Kante“: der Umkreis des Mauls; sonst die ganze Haut) */
+  let imUmkreis = false;
+  const umkreis = (): Uint8Array | null => {
+    const anteil = opt.umkreis ?? 0.75;
+    if (!imUmkreis || !(anteil > 0)) return null;
+    const L = finde(maulId);
+    const n = L.proben.length;
+    const P: V3[] = [];
+    for (let j = 0; j < n; j++) P.push(lage(haut.pos, L.proben[j]!.ecken[0]));
+    // die Ausdehnung der Maullinie: von der Mitte ihrer Enden zum fernsten ihrer Punkte
+    const m = { x: (P[0]!.x + P[n - 1]!.x) / 2, y: (P[0]!.y + P[n - 1]!.y) / 2, z: 0 };
+    let weit = 0;
+    for (const q of P) weit = Math.max(weit, Math.hypot(q.x - m.x, q.y - m.y, q.z - m.z));
+    return bereichUm(
+      haut,
+      P.filter((_, j) => j % 2 === 0 || j === n - 1),
+      anteil * weit,
+      L.proben.map((q) => q.ecken[0]),
+    );
+  };
+
   let netzNeu = true;
   const stand = (was: string): MaulStand => {
     const st = { haut, loops, netzNeu, was };
@@ -155,7 +184,7 @@ export function* maulFormenSchritte(h0: Haut, loops0: readonly Loop[], maulId: n
    * `vorSchritt` mit dem Anteil des Wegs (dort ändern sich die Griffe, der Pfad wandert, die Haut folgt). Ergebnis: Die Haut steht.
    */
   function* rechnen(was: string, n = 0, vorSchritt?: (f: number) => void): Generator<MaulStand, boolean, void> {
-    const z = new LoopZug(haut, loops, null, true, 'kurven', opt.gewichte ?? 'geometrie', opt.loeser ?? { halb: true });
+    const z = new LoopZug(haut, loops, umkreis(), true, 'kurven', opt.gewichte ?? 'geometrie', opt.loeser ?? { halb: true });
     const start = loops.map((l) => Float64Array.from(l.ruhe));
     const versch = (): Float64Array[] => loops.map((l, i) => Float64Array.from(pfadLagen(l) ?? start[i]!, (x, k) => x - start[i]![k]!));
     const zeigen = (): MaulStand => {
@@ -302,6 +331,13 @@ export function* maulFormenSchritte(h0: Haut, loops0: readonly Loop[], maulId: n
 
   // ---------- Weg „Kante“ (dritte Fassung): Die Maullinie trägt ihren Knick selbst, es kommt keine Linie dazu ----------
   if (wegKante) {
+    imUmkreis = true;
+    // zuerst verfeinern wie nach jedem Zug (14.11.): Eine Linie, die gerade erst eingesetzt wurde (das Maul aus einer Linie wird
+    // gleich nach dem Zeichnen geformt), hat an ihrer Spitze noch Splitter; im Fenster räumt sonst die Ruhe nach dem Zeichnen auf
+    {
+      const fehler = verfeinern();
+      if (fehler) return { fehler };
+    }
     brueckenTeilen();
     // Angaben an den beiden Enden des Rings (die Lippen an der Mitte) und am Mundwinkel; dazwischen gleitet der Knick. Gedreht wird
     // vom Knick, den die Haut dort jetzt hat, in Stufen zum Soll: Die erste Reihe innen wird dabei in jeder Runde geführt (`LoopZug`).

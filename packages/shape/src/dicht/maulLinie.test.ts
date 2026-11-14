@@ -263,6 +263,13 @@ describe('Das Maul aus nur einer Linie', () => {
     if ('fehler' in r) throw new Error(r.fehler);
     const l = r.loops.find((x) => x.id === 1)!;
     expect(l.maulGeformt).toBe(true);
+    // die Kugel hat keine weitere Linie: Gerechnet wird nur im Umkreis des Mauls, hinten bleibt sie, wie sie war (über die ganze Haut
+    // gerechnet blies sie sich beim Formen auf: nach zwei Stufen von 150 auf 200)
+    let hinten = 0;
+    let vorher = 0;
+    for (let v = 0; v < h0.n; v++) if (h0.pos[3 * v]! > 60) vorher = Math.max(vorher, Math.abs(Math.hypot(h0.pos[3 * v]!, h0.pos[3 * v + 1]!, h0.pos[3 * v + 2]!) - 150));
+    for (let v = 0; v < r.haut.n; v++) if (r.haut.pos[3 * v]! > 60) hinten = Math.max(hinten, Math.abs(Math.hypot(r.haut.pos[3 * v]!, r.haut.pos[3 * v + 1]!, r.haut.pos[3 * v + 2]!) - 150));
+    expect(hinten).toBeLessThan(vorher + 0.5);
     // „Maul formen“ lässt die Lippen Abbilder voneinander
     expect(zwillingsFehler(l, obereLippe(l))!).toBeLessThan(1e-6);
     const W = l.punkte.find((p) => p.mundwinkel)!;

@@ -43,6 +43,9 @@ function standAus(dreiecke = 1200): WesenStand {
   // die Kante trägt ihren Winkel selbst (13.11.): Die Angabe am Punkt bleibt beim Sichern und Laden
   loops[0]!.punkte[0]!.knick = 95;
   if (loops[0]!.punkte[1]) loops[0]!.punkte[1]!.knick = 72.5;
+  // das Maul aus einer Linie (14.11.): der Winkel der gerechneten Lage am Loop bleibt beim Sichern und Laden
+  loops[0]!.maulLinie = 20;
+  loops[0]!.maulGeformt = true;
   // ein paar Zahlen, die als Text leicht leiden: sehr klein, negativ null, lange Brüche
   h.pos[0] = 1 / 3;
   h.pos[1] = -0;

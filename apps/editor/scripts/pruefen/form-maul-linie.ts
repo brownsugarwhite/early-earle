@@ -26,8 +26,9 @@
 //   DREIECKE=2000   WINKEL0=20 (so weit ist die gerechnete Lage offen)   AUF=30   BOGEN=6 (Schwung der Linie)   AUS=<datei.html>
 //   RINGE=-10,70 (Haltelinien: Ringe um den Körper an diesen Stellen x; ohne Angabe die Kugel allein)
 import { einsetzenGrund, loopEinsetzen } from '../../../../packages/shape/src/dicht/einsetzen';
-import { knickRahmen, knickReihe } from '../../../../packages/shape/src/dicht/kantenWinkel';
+import { knickBruecken, knickRahmen, knickReihe } from '../../../../packages/shape/src/dicht/kantenWinkel';
 import { type Haut, type V3, hautAus } from '../../../../packages/shape/src/dicht/kurven';
+import { falten } from '../../../../packages/shape/src/dicht/kurvenFaelle';
 import { type Loop, LoopZug, formAusZeichnung, griffeAnlegen, hautLagen, istSichtbar, kanteBei, mittlereKante, pfadLagen } from '../../../../packages/shape/src/dicht/loops';
 import { maulFormen } from '../../../../packages/shape/src/dicht/maulFormen';
 import { maulGeformtAmLoop } from '../../../../packages/shape/src/dicht/maulLoop';
@@ -220,14 +221,61 @@ function nachVerdichten(): void {
   console.log(`Kugel: ${haut.n} Punkte, mittlere Kante ${z1(mk)}; die Maullinie hat ${L.punkte.length} Punkte (${L.punkte.filter(istSichtbar).length} sichtbar), ${L.proben.length} Stellen`);
   console.log(`   gezeichnet: die zweite Lippe weicht bis ${z2(zwillingsFehler(L))} vom gedrehten Abbild der ersten ab (${WINKEL0}° um den Mundwinkel)`);
   const s = zwillingeSetzen(4);
-  nachVerdichten();
+  // (VOR=0: ohne das Verdichten vor dem Formen, zum Nachstellen des Ablaufs im Fenster)
+  if (process.env.VOR !== '0') nachVerdichten();
   let breit = 0;
   for (let v = 0; v < haut.n; v++) breit = Math.max(breit, haut.pos[3 * v]!);
   console.log(`   als Abbild gesetzt: ${s.runden} Runden, ${s.steht ? 'steht' : 'STEHT NICHT'}; Abweichung ${z2(zwillingsFehler(finde()))}; ${haut.n} Punkte; die Form reicht hinten bis x ${z1(breit)} (vorher ${R0})`);
 }
 
 // ---------- 2. „Maul formen“ wie bisher (die leicht geöffnete Lage ist die gerechnete) ----------
-const geformt = maulFormen(haut, loops, MAUL, { naechsteId: MAUL + 1, naechsteKreuzung: 100, verdichten: { maxKante: 1.75 * mk, opt } });
+if (process.env.DIAG) {
+  const l = finde();
+  const R = knickReihe(haut, l);
+  console.log(`   DIAG vor dem Formen: ${haut.n} Punkte, Kette ${l.proben.length}; innen ${R ? R.innen.reduce((a, b) => a + b, 0) : 'keine Reihe'}; erste Reihe ${R ? R.punkte.length : 0}; Brücken ${knickBruecken(haut, l).length}`);
+}
+const geformt = maulFormen(haut, loops, MAUL, {
+  naechsteId: MAUL + 1,
+  naechsteKreuzung: 100,
+  verdichten: { maxKante: 1.75 * mk, opt },
+  ...(process.env.DIAG
+    ? {
+        zwischen: (was: string, H: Haut) => {
+          let hinten = -Infinity;
+          let oben = -Infinity;
+          let unten = Infinity;
+          for (let v = 0; v < H.n; v++) {
+            hinten = Math.max(hinten, H.pos[3 * v]!);
+            oben = Math.max(oben, H.pos[3 * v + 1]!);
+            unten = Math.min(unten, H.pos[3 * v + 1]!);
+          }
+          console.log(`   DIAG ${was}: ${H.n} Punkte; hinten bis x ${z1(hinten)}, y ${z1(unten)} bis ${z1(oben)}`);
+          if (process.env.HALT_STUFE && was === `Stufe ${process.env.HALT_STUFE}` && AUS) {
+            blattSchreiben(
+              AUS,
+              `Zwischenstand ${was}`,
+              [
+                {
+                  titel: `${was}: ${H.n} Punkte`,
+                  bilder: [{ name: was, h: { ...H, pos: Float64Array.from(H.pos) }, loops: [], fertig: { linien: [], punkte: [] } }],
+                  blicke: [
+                    ['Seite', 0, 0, 0.85],
+                    ['schräg von vorn', 50, 12, 0.85],
+                    ['von hinten', 180, 0, 0.85],
+                  ],
+                  mass: 520,
+                  mitte: [0, 0, 0],
+                },
+              ],
+              1640,
+              'Zwischenstand beim Formen',
+            );
+            throw new Error(`angehalten nach ${was}: ${AUS}`);
+          }
+        },
+      }
+    : {}),
+});
 if ('fehler' in geformt) throw new Error(geformt.fehler);
 haut = geformt.haut;
 loops = geformt.loops;
@@ -465,6 +513,7 @@ function messen(name: string, grad: number): Messung {
   }
   console.log(`Die Kugel ${RINGE.length ? `mit ${RINGE.length} Haltelinien` : 'ohne Haltelinien'} nach dem Formen: außen am Maul bis ${z1(nb.nah)}, fern bis ${z1(nb.fern)} neben der Kugel von vorher; Ausdehnung x ${z1(lo[0]!)} bis ${z1(hi[0]!)}, y ${z1(lo[1]!)} bis ${z1(hi[1]!)}, z bis ${z1(hi[2]!)}`);
 }
+console.log(`Über die ganze Haut gezählt wie im Fenster (jedes Dreieck gegen die Normalen seiner Ecken, außen und Tasche gemischt): umgeschlagen ${falten(haut).umgeklappt}`);
 console.log(`Die drei Lagen (gerechnet ist die mittlere; ${haut.n} Punkte, ${taschenDreieck.reduce((a, b) => a + b, 0)} Dreiecke in der Tasche):`);
 const zu = messen('zu', -WINKEL0);
 const gerechnet = messen(`wie gerechnet (${WINKEL0}°)`, 0);

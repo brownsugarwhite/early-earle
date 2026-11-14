@@ -110,6 +110,15 @@ import {
   einbettungAuswerten,
   systemAusDaten,
   verschiebungLaengs,
+  einsetzenGrund,
+  istMaulLinie,
+  maulLinieAusZeichnung,
+  obereLippe,
+  zwillinge,
+  zwillingeAngleichen,
+  zwillingeFestlegen,
+  zwillingeSetzen,
+  zwillingsFehler,
 } from '@ee/shape/dicht';
 import {
   BackSide,
@@ -593,6 +602,8 @@ function kreuzungenSuchen(nur?: Loop): number {
       }
     }
   }
+  // am Maul aus einer Linie bekommt ein neuer Punkt einer Lippe (eine Kreuzung) seinen Zwilling auf der anderen
+  if (!grund) for (const l of loops) if (istMaulLinie(l) && hatPfad(l)) zwillingeAngleichen(l);
   return zahl;
 }
 
@@ -1056,6 +1067,21 @@ function maulAnlegen(): boolean {
 // ---------- Fressen-Pose ----------
 
 /**
+ * So weit ist das Maul in der gerechneten Lage offen (Grad): bei einem Maul aus einer Linie ihr Winkel (`Loop.maulLinie`), sonst 0.
+ * Der Regler „Maul“ zählt von „zu“: Bei 0 dreht der Kiefer um diesen Winkel zurück, die Lippen liegen aufeinander.
+ */
+function maulZu(): number {
+  if (!maul) return 0;
+  const id = maul.id;
+  return (grund ? grund.loops : loops).find((x) => x.id === id)?.maulLinie ?? 0;
+}
+/** Drehwinkel je Punkt für den Stand der Regler (beim Maul aus einer Linie gegen die gerechnete Lage: Regler minus ihre Öffnung) */
+function knochenJetzt(m: MaulAmLoop): Float64Array {
+  const zu = maulZu();
+  return knochenWinkel(m, { kiefer: pose.kiefer - zu, schaedel: pose.schaedel }, zu);
+}
+
+/**
  * Knochen der Pose: der Maulschnitt der Grundform (seine Gewichte), der Drehwinkel je Punkt und das Gelenk. Das Gelenk ist der
  * Mundwinkel, wie er jetzt liegt (er dreht selbst nicht mit: in der Pose liegt er dort, wo in ihrer Ruhe).
  */
@@ -1066,7 +1092,7 @@ function poseKnochen(): { m: MaulAmLoop; theta: Float64Array; G: V2; l: Loop; ec
   if (!l) return null;
   const ecke = mundwinkelVon(l);
   const v = l.proben[ecke]!.ecken[0];
-  return { m, theta: knochenWinkel(m, pose), G: { x: haut.pos[3 * v]!, y: haut.pos[3 * v + 1]! }, l, ecke };
+  return { m, theta: knochenJetzt(m), G: { x: haut.pos[3 * v]!, y: haut.pos[3 * v + 1]! }, l, ecke };
 }
 
 /**
@@ -1087,7 +1113,7 @@ function poseBetreten(): boolean {
   const ruhe = d ? Float64Array.from(haut.pos, (x, i) => x + d[i]!) : Float64Array.from(haut.pos);
   const g = { haut, loops };
   grund = g;
-  haut = { ...g.haut, pos: knochenDrehen(ruhe, knochenWinkel(m, pose), { x: ruhe[3 * v]!, y: ruhe[3 * v + 1]! }) };
+  haut = { ...g.haut, pos: knochenDrehen(ruhe, knochenJetzt(m), { x: ruhe[3 * v]!, y: ruhe[3 * v + 1]! }) };
   loops = g.loops.map((x) => {
     const c = kopieLoop(x);
     festlegen(haut, c);
@@ -1203,7 +1229,7 @@ function knochenSetzen(kiefer: number, schaedel: number): boolean {
   const ruhe = knochenDrehen(haut.pos, vor.theta, vor.G, true);
   pose.kiefer = kiefer;
   pose.schaedel = schaedel;
-  haut.pos.set(knochenDrehen(ruhe, knochenWinkel(vor.m, pose), vor.G));
+  haut.pos.set(knochenDrehen(ruhe, knochenJetzt(vor.m), vor.G));
   for (const l of loops) {
     festlegen(haut, l);
     // die Linien sind mitgedreht: ihre Griffe auch (neu abgelesen)
@@ -1271,7 +1297,7 @@ const MAUL_WEG = new URLSearchParams(location.search).get('maulWeg') === 'mitte'
 const MAUL_BILD_MS = 12;
 const MAUL_BILD_RUNDEN = Number(new URLSearchParams(location.search).get('maulRunden') ?? 2);
 let maulLauf: { lauf: ReturnType<typeof maulFormenSchritte>; id: number; vorher: Schnappschuss; nAlt: number; t0: number } | null = null;
-function maulFormenGewaehlt(): void {
+function maulFormenGewaehlt(standDavor?: Schnappschuss): void {
   if (zug || maulLauf) return;
   if (grund) {
     meldung = 'Das Maul wird in der Grundform geformt (erst „Fressen“ aus)';
@@ -1286,7 +1312,7 @@ function maulFormenGewaehlt(): void {
   }
   // der Stand davor, samt dem Maul der Anzeige an dieser Linie (Fläche weggeschnitten, Inneres eingesetzt): Es entfällt, seine
   // Fläche wird jetzt die Form
-  const vorher = schnappschuss();
+  const vorher = standDavor ?? schnappschuss();
   if (maul?.id === l.id) maul = null;
   maulLauf = {
     lauf: maulFormenSchritte(haut, loops, l.id, {
@@ -1366,12 +1392,19 @@ function maulSchritt(): void {
   auswahl = [{ l: m.id, i: -1 }];
   const dazu = r.mitte < 0 ? ' und trägt ihren Knick selbst (95° an den Lippen, 70° am Mundwinkel)' : r.mitteNeu ? ', dazu kam die Mittellinie: Sie knickt an beiden Lippen ins Maul' : ', die Mittellinie knickt an beiden Lippen ins Maul';
   meldung = `Maul geformt (${((performance.now() - m.t0) / 1000).toFixed(1)} s${r.steht ? '' : '; die Haut steht noch nicht'}): Die Maullinie ist eine Kante${dazu} · ⌘Z führt zurück`;
+  // das Maul aus einer Linie: Es ist gleich das Maul der Form (der Regler zählt von „zu“), und seine Lippen bleiben gepaart
+  const geformt = loops[loopNr(m.id)];
+  if (geformt && istMaulLinie(geformt)) {
+    zwillingeAngleichen(geformt);
+    maul = { id: m.id };
+    meldung = `Maul aus einer Linie (${((performance.now() - m.t0) / 1000).toFixed(1)} s): Gerechnet wird es ${geformt.maulLinie}° offen, so siehst du es jetzt. „Fressen“ mit dem Regler „Maul“ ganz links zeigt es zu. Zieh an einer Lippe, die andere geht mit · ⌘Z nimmt es zurück`;
+  }
   geometrieNeu();
   ruheNoetig();
   reglerZeigen();
   allesZeigen();
 }
-knopfMaul?.addEventListener('click', maulFormenGewaehlt);
+knopfMaul?.addEventListener('click', () => maulFormenGewaehlt());
 
 /**
  * Die Anzeige spiegelt wie der Mirror-Modifier in Blender (11.11., Florian: „ich kann ganz normal über die Spiegelkante ziehen und
@@ -2357,6 +2390,11 @@ type Zug = {
   weite: number;
   /** je Loop die Griffe seiner Punkte, wie sie nach dem Zug sind (null: unverändert); gesetzt erst beim Übernehmen */
   griffeNeu: ({ ein: V3; aus: V3 }[] | null)[];
+  /**
+   * je Loop die Verschiebung seiner Punkte, wo sie nicht allein aus der Abbildung des Zugs folgt (null: wie üblich): am Maul aus einer
+   * Linie zieht ein Punkt seinen Zwilling auf der anderen Lippe mit (`zwillingeSetzen`)
+   */
+  punktD: (V3[] | null)[];
   /** mit O verschobene Loops (je Probe, nicht über ihre Punkte): ihre Griffe werden danach aus der Linie neu abgelesen */
   neuAblesen: Set<number>;
   /**
@@ -2561,6 +2599,7 @@ let anMitteGehalten = false;
 function griffZugStarten(a: Ansicht, X: number, Y: number, spiegel: boolean, li: number, i: number, seite: 'ein' | 'aus'): boolean {
   const p = loops[li]?.punkte[i];
   if (!p) return false;
+  if (maulLinieInPose(li)) return false;
   const loeser = stueckLoeser(li, i);
   zug = {
     modal: null,
@@ -2587,6 +2626,7 @@ function griffZugStarten(a: Ansicht, X: number, Y: number, spiegel: boolean, li:
     weite0: 0,
     weite: 0,
     griffeNeu: loops.map(() => null),
+    punktD: loops.map(() => null),
     neuAblesen: new Set(),
     zielNeu: false,
     offen: false,
@@ -2630,8 +2670,17 @@ function eckeGezeigt(li: number, i: number): boolean {
 function eckeUmschalten(id: number, i: number): void {
   const li0 = loopNr(id);
   if (!loops[li0]?.punkte[i]) return;
+  // das Maul aus einer Linie: Der Mundwinkel bleibt eine Ecke (dort kehrt die Linie um), und mit einem Punkt schaltet sein Zwilling
+  const zwl = grund ? null : zwillinge(loops[li0]!);
+  if (zwl && zwl.iW === i) {
+    meldung = 'Der Mundwinkel bleibt eine Ecke (dort kehrt die Maullinie um)';
+    statusZeigen();
+    return;
+  }
   const vorher = schnappschuss();
   const alle = punkteAnKreuzung(li0, i);
+  const paar = zwl?.paare.find(([a, b]) => a === i || b === i);
+  if (paar) for (const x of punkteAnKreuzung(li0, paar[0] === i ? paar[1] : paar[0])) if (!alle.some(([lj, k]) => lj === x[0] && k === x[1])) alle.push(x);
   const neu = !eckeGezeigt(li0, i);
   const vorherEcken = new Set(loops.flatMap((l) => l.punkte.filter(istEckeVonSelbst)));
   for (const [lj, j] of alle) {
@@ -2677,8 +2726,18 @@ function eckeUmschalten(id: number, i: number): void {
   allesZeigen();
 }
 
+/** In der Pose gewählt: ein Maul aus einer Linie (seine Lippen werden in der Grundform gezogen, dort gehen beide zusammen) */
+function maulLinieInPose(li: number): boolean {
+  const l = loops[li];
+  if (!grund || !l || !istMaulLinie(l)) return false;
+  meldung = 'Die Maullinie ziehst du in der Grundform („Fressen“ aus): Dort gehen beide Lippen zusammen';
+  statusZeigen();
+  return true;
+}
+
 function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spiegel: boolean, rMin = 0): boolean {
   if (auswahl.length === 0) return false;
+  if (auswahl.some((w) => maulLinieInPose(loopNr(w.l)))) return false;
   const ganze = new Set<number>();
   const punktW = new Map<string, number>();
   const kreuzWahl = new Set<number>();
@@ -2800,6 +2859,7 @@ function zugStarten(modal: Zug['modal'], a: Ansicht, X: number, Y: number, spieg
     weite0: 0,
     weite: 0,
     griffeNeu: loops.map(() => null),
+    punktD: loops.map(() => null),
     neuAblesen: new Set(),
     zielNeu: false,
     offen: false,
@@ -2828,11 +2888,16 @@ function punktNach(l: Loop, p: LoopPunkt, g: number, f: (p: V3) => V3): V3 {
  * Griffspitzen je mit ihrem Gewicht (`griffeProportional`). Ein Loop ohne Pfad (geschlossen, höchstens ein Punkt) folgt je Probe.
  */
 function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
-  return loops.map((l, li) => {
+  // Am Maul aus einer Linie zieht ein Punkt seinen Zwilling mit; liegt der an einer Kreuzung, geht der Punkt des anderen Loops mit ihm.
+  // Deshalb zuerst die Mäuler aus einer Linie: Sie geben vor, wohin solche Kreuzungen gehen (`kreuzD`).
+  const kreuzD = new Map<number, V3>();
+  const aus: (Float64Array | null)[] = loops.map(() => null);
+  const eine = (l: Loop, li: number): Float64Array | null => {
     const n = l.proben.length;
     const S = z.loeser.start[li]!;
     let d: Float64Array | null = null;
     z.griffeNeu[li] = null;
+    z.punktD[li] = null;
     const ganz = z.ganze.has(li);
     if (!hatPfad(l) && (ganz || z.probenW[li])) {
       if (ganz && hatGriffe(l)) {
@@ -2859,9 +2924,17 @@ function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
       }
     } else {
       let irgend = false;
+      let gefuehrt = false;
       const D = l.punkte.map((p, i) => {
         const g = z.punktW.get(`${li}:${i}`);
-        if (!g) return { x: 0, y: 0, z: 0 };
+        if (!g) {
+          // ein Punkt an einer Kreuzung, die ein Zwilling mitnimmt
+          const k = p.kreuzung !== undefined ? kreuzD.get(p.kreuzung) : undefined;
+          if (!k) return { x: 0, y: 0, z: 0 };
+          irgend = true;
+          gefuehrt = true;
+          return { ...k };
+        }
         irgend = true;
         const q = punktNach(l, p, g, f);
         return { x: q.x - p.ref.x, y: q.y - p.ref.y, z: q.z - p.ref.z };
@@ -2878,6 +2951,28 @@ function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
         const g = z.punktW.get(k);
         return g && (ganz || z.modal === 's' || z.modal === 'r') ? griffeAbbilden(l, i, f, g) : undefined;
       });
+      // das Maul aus einer Linie: Die geführte Lippe wird das gedrehte Abbild der führenden (die mit dem gezogenen Punkt)
+      const zw = irgend && !grund ? zwillinge(l) : null;
+      if (zw) {
+        const gewicht = (von: number, bis: number): number => {
+          let summe = 0;
+          for (let i = von; i <= bis; i++) summe += z.punktW.get(`${li}:${i}`) ?? 0;
+          return summe;
+        };
+        const fuehrt = gewicht(zw.iW + 1, l.punkte.length - 1) > gewicht(0, zw.iW - 1) ? 'zweite' : 'erste';
+        const G = griffeNach(l, D, griffe);
+        const orte = l.punkte.map((p, i) => ({ x: p.ref.x + D[i]!.x, y: p.ref.y + D[i]!.y, z: p.ref.z + D[i]!.z }));
+        if (zwillingeSetzen(l, orte, G, fuehrt)) {
+          l.punkte.forEach((p, i) => {
+            D[i] = { x: orte[i]!.x - p.ref.x, y: orte[i]!.y - p.ref.y, z: orte[i]!.z - p.ref.z };
+            const e = p.ein ?? { x: 0, y: 0, z: 0 };
+            const a = p.aus ?? { x: 0, y: 0, z: 0 };
+            griffe[i] = { ein: { x: G[i]!.ein.x - e.x, y: G[i]!.ein.y - e.y, z: G[i]!.ein.z - e.z }, aus: { x: G[i]!.aus.x - a.x, y: G[i]!.aus.y - a.y, z: G[i]!.aus.z - a.z } };
+            if (p.kreuzung !== undefined) kreuzD.set(p.kreuzung, D[i]!);
+          });
+          z.punktD[li] = D;
+        }
+      } else if (gefuehrt) z.punktD[li] = D;
       if (irgend) {
         d = verschiebungLaengs(l, D, griffe);
         if (hatGriffe(l)) z.griffeNeu[li] = griffeNach(l, D, griffe);
@@ -2885,7 +2980,14 @@ function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[] {
     }
     if (d) zGrenzen(l, S, d);
     return d;
+  };
+  loops.forEach((l, li) => {
+    if (istMaulLinie(l)) aus[li] = eine(l, li);
   });
+  loops.forEach((l, li) => {
+    if (!istMaulLinie(l)) aus[li] = eine(l, li);
+  });
+  return aus;
 }
 
 function zugBewegen(X: number, Y: number): void {
@@ -2908,16 +3010,32 @@ function zugBewegen(X: number, Y: number): void {
     const d = inWelt(z.ansicht, X - z.x0, Y - z.y0);
     if (z.spiegel) d.z = -d.z;
     z.griffVersatz = griffZiehen(l, i, seite, d);
-    z.versch = loops.map((_, k) => mitRest(z, k, k === li ? griffVerschiebung(l, z.loeser.start[li]!, i, z.griffVersatz) : null));
-    const versatz = l.punkte.map((_, k) => (k === i ? z.griffVersatz : undefined));
-    z.griffeNeu = loops.map((_, k) => (k === li && hatGriffe(l) ? griffeNach(l, l.punkte.map(() => ({ x: 0, y: 0, z: 0 })), versatz) : null));
+    let versatz: (GriffVersatz | undefined)[] = l.punkte.map((_, k) => (k === i ? z.griffVersatz : undefined));
+    const still = l.punkte.map(() => ({ x: 0, y: 0, z: 0 }));
+    // am Maul aus einer Linie geht der Griff des Zwillings mit (am Mundwinkel führt die Lippe, zu der der gezogene Griff zeigt)
+    const zw = grund ? null : zwillinge(l);
+    if (zw) {
+      const G = griffeNach(l, still, versatz);
+      const orte = l.punkte.map((q) => ({ ...q.ref }));
+      if (zwillingeSetzen(l, orte, G, i < zw.iW || (i === zw.iW && seite === 'ein') ? 'erste' : 'zweite'))
+        versatz = l.punkte.map((q, k) => {
+          const e = q.ein ?? { x: 0, y: 0, z: 0 };
+          const a = q.aus ?? { x: 0, y: 0, z: 0 };
+          return { ein: { x: G[k]!.ein.x - e.x, y: G[k]!.ein.y - e.y, z: G[k]!.ein.z - e.z }, aus: { x: G[k]!.aus.x - a.x, y: G[k]!.aus.y - a.y, z: G[k]!.aus.z - a.z } };
+        });
+    }
+    const dGriff = verschiebungLaengs(l, still, versatz);
+    zGrenzen(l, z.loeser.start[li]!, dGriff);
+    z.versch = loops.map((_, k) => mitRest(z, k, k === li ? dGriff : null));
+    z.griffeNeu = loops.map((_, k) => (k === li && hatGriffe(l) ? griffeNach(l, still, versatz) : null));
   } else {
     const f = abbildung(z, X, Y);
     z.versch = verschiebungen(z, f).map((d, li) => mitRest(z, li, d));
     loops.forEach((l, li) =>
       l.punkte.forEach((p, i) => {
         const g = z.punktW.get(`${li}:${i}`) ?? 0;
-        p.cur = g ? punktNach(l, p, g, f) : { ...p.ref };
+        const mit = z.punktD[li]?.[i];
+        p.cur = mit ? { x: p.ref.x + mit.x, y: p.ref.y + mit.y, z: p.ref.z + mit.z } : g ? punktNach(l, p, g, f) : { ...p.ref };
       }),
     );
     if (z.mitte) z.mitte = f(z.pivot);
@@ -3907,6 +4025,23 @@ function zugGriffeUebernehmen(z: Zug): void {
   });
 }
 
+/** Am Maul aus einer Linie: Knickt ein Punkt (eine Ecke von Hand), knickt sein Zwilling auch */
+function zwillingsEcken(): void {
+  if (grund) return;
+  for (const l of loops) {
+    const zw = zwillinge(l);
+    if (!zw) continue;
+    for (const [i, j] of zw.paare) {
+      const a = l.punkte[i]!;
+      const b = l.punkte[j]!;
+      if (a.ecke === true || b.ecke === true) {
+        a.ecke = true;
+        b.ecke = true;
+      }
+    }
+  }
+}
+
 /** Mit O je Probe verschobene Loops: ihre Griffe aus der neuen Linie ablesen (nach dem Festlegen) */
 function zugGriffeAblesen(z: Zug): void {
   for (const li of z.neuAblesen) {
@@ -3963,6 +4098,7 @@ function zugEnde(ok: boolean): void {
     zugGriffeUebernehmen(z);
     festlegenAlle();
     zugGriffeAblesen(z);
+    zwillingsEcken();
     kreuzungenSuchen();
     if (imHintergrund) {
       // ein geschlossener Loop, der durch eine neue Kreuzung seinen zweiten Punkt (und damit einen Pfad) bekam: genau auf ihn
@@ -4424,8 +4560,99 @@ function vereinfachen(p: readonly [number, number][], tol: number): number[] {
   return [...bleibt.keys()].filter((i) => bleibt[i]);
 }
 
+/**
+ * Das Maul aus nur einer Linie (14.11., Florian: „Ein Maul soll auch nur eine Linie sein können. Wenn ich nur eine Linie einzeichne,
+ * ist das wie ein an den Mundwinkeln gefalteter Edgeloop, dessen Lippen exakt aufeinander liegen“): Ein offener Strich mit F, in der
+ * Seite vom Umriss vorn bis zum Mundwinkel (ein Ende vor dem Körper), in Front und Top über die Mitte oder von ihr aus. Die Linie
+ * ist die Oberlippe; die Unterlippe ist ihr um den Mundwinkel gedrehtes Abbild (`maulLinie.ts`), beide zusammen ein Ring, der gleich
+ * zum Maul geformt wird (`maulFormenGewaehlt`, animiert). Gerechnet wird diese leicht geöffnete Lage; der Regler „Maul“ zählt von
+ * „zu“ (`maulZu`). Zieht man an einer Lippe, geht die andere mit (`verschiebungen`).
+ */
+function maulLinieErstellen(a: Ansicht, roh: [number, number][]): void {
+  if (grund) {
+    meldung = 'Ein Maul aus einer Linie entsteht in der Grundform (erst „Fressen“ aus)';
+    return;
+  }
+  if (loops.some(istMaulLinie)) {
+    meldung = 'Diese Form hat schon ein Maul aus einer Linie';
+    return;
+  }
+  const s = skala(a);
+  // eine glatte offene Kurve durch die Stützstellen des Strichs
+  const idx = vereinfachen(roh, 4 / s);
+  const st = idx.map((i) => {
+    const [u, v] = uvAus(a, roh[i]![0], roh[i]![1]);
+    return { x: u, y: v, z: 0 };
+  });
+  const m = st.length;
+  const drittel = (p: V3, q: V3): V3 => ({ x: (q.x - p.x) / 3, y: (q.y - p.y) / 3, z: 0 });
+  const k: Kurve = { art: 'ring', punkte: st.map((p, i) => (i === 0 ? { ...p, aus: drittel(p, st[1]!) } : i === m - 1 ? { ...p, ein: drittel(p, st[m - 2]!) } : p)) };
+  const { p, t } = kurveAbtasten(k, 0.6 * MK);
+  const uv = p.map((q): [number, number] => [q.x, q.y]);
+  // Punkte werden die Stützstellen im Innern des Strichs (seine Enden nicht: das eine liegt vor dem Körper oder auf der Mitte, das
+  // andere ist der Mundwinkel)
+  const knoten = t.map((x, i) => (x === 0 && i > 0 ? i : -1)).filter((i) => i >= 0);
+  const neu = maulLinieAusZeichnung(haut, a, uv, knoten, naechsteId, MK);
+  if ('fehler' in neu) {
+    meldung = `Maul aus einer Linie: ${neu.fehler}`;
+    return;
+  }
+  const vorher = schnappschuss();
+  naechsteId++;
+  loops.push(neu);
+  einsetzenLetzten();
+  let l = loops[loops.length - 1]!;
+  if (!l.proben.every((q) => q.ecken[0] === q.ecken[1] && q.ecken[1] === q.ecken[2])) {
+    wiederherstellen(vorher);
+    meldung = `Maul aus einer Linie: Die Linie ließ sich hier nicht ins Netz einsetzen${einsetzenGrund ? ` (${einsetzenGrund})` : ''}. Bitte etwas anders zeichnen.`;
+    return;
+  }
+  // die Unterlippe genau als Abbild der gezeichneten Linie (Kreuzungen auf ihr gehen mit), dann alle Linien auf ihre Pfade
+  zwillingeAngleichen(l);
+  const bewegt = zwillingeFestlegen(l, obereLippe(l));
+  if (!bewegt) {
+    wiederherstellen(vorher);
+    meldung = 'Maul aus einer Linie: Die beiden Lippen ließen sich nicht paaren. Bitte etwas anders zeichnen.';
+    return;
+  }
+  for (const i of bewegt) {
+    const q = l.punkte[i]!;
+    if (q.kreuzung === undefined) continue;
+    for (const o of loops) {
+      if (o === l) continue;
+      for (const r of o.punkte) {
+        if (r.kreuzung !== q.kreuzung) continue;
+        r.ref = { ...q.ref };
+        r.cur = { ...q.ref };
+      }
+    }
+  }
+  linienAufPfad(l);
+  linienAufPfad();
+  einsetzenNachholen();
+  l = loops.find((x) => x.id === neu.id)!;
+  auswahl = [{ l: l.id, i: -1 }];
+  // gleich formen (der Stand davor ist der vor dem Strich: ⌘Z nimmt Linie und Maul zusammen zurück)
+  maulFormenGewaehlt(vorher);
+  if (!maulLauf) {
+    // das Formen begann nicht: die Linie bleibt als Kante stehen
+    zurueck.push(vorher);
+    ruheNoetig();
+  }
+}
+
 function formErstellen(a: Ansicht, roh: [number, number][]): void {
   if (roh.length < 8) return;
+  // ein offener Strich (Anfang und Ende weiter auseinander als 0,6 seiner Länge): das Maul aus einer Linie
+  {
+    let lang = 0;
+    for (let i = 1; i < roh.length; i++) lang += Math.hypot(roh[i]![0] - roh[i - 1]![0], roh[i]![1] - roh[i - 1]![1]);
+    const offen = Math.hypot(roh[roh.length - 1]![0] - roh[0]![0], roh[roh.length - 1]![1] - roh[0]![1]);
+    if (offen > 0.6 * lang) {
+      maulLinieErstellen(a, roh);
+      return;
+    }
+  }
   const s = skala(a);
   // geschlossen: in zwei Hälften vereinfachen (Anfang bis zum fernsten Punkt und zurück), sonst fällt die erste Strecke auf
   // Länge null und es bleiben keine Punkte
@@ -4541,6 +4768,8 @@ function punktAmKlick(a: Ansicht, id: number, X: number, Y: number, m: boolean):
     return;
   zurueck.push(schnappschuss());
   const p = punktEinfuegen(l, bs, undefined, exakt(l));
+  // (am Maul aus einer Linie bekommt die andere Lippe den Zwilling)
+  if (!grund && istMaulLinie(l)) zwillingeAngleichen(l);
   linienAufPfad();
   auswahl = [{ l: id, i: l.punkte.indexOf(p) }];
   allesZeigen();
@@ -4593,6 +4822,28 @@ function loeschen(): void {
   const punkte = auswahl.filter((w) => w.i >= 0).map((w) => loops[loopNr(w.l)]?.punkte[w.i]);
   const ganz = new Set(auswahl.filter((w) => w.i < 0).map((w) => w.l));
   const eigene = new Set(punkte.filter((p) => p && p.kreuzung === undefined));
+  // das Maul aus einer Linie: Mit einem Punkt geht sein Zwilling auf der anderen Lippe (ist der eine Kreuzung, bleiben beide); der
+  // Mundwinkel bleibt, er hält das Maul
+  if (!grund)
+    for (const l of loops) {
+      const zw = zwillinge(l);
+      if (!zw) continue;
+      const w = l.punkte[zw.iW]!;
+      if (eigene.delete(w)) meldung = 'Der Mundwinkel bleibt (er hält das Maul); die ganze Linie lässt sich löschen';
+      for (const [i, j] of zw.paare) {
+        const a = l.punkte[i]!;
+        const b = l.punkte[j]!;
+        if (!eigene.has(a) && !eigene.has(b)) continue;
+        if (a.kreuzung !== undefined || b.kreuzung !== undefined) {
+          eigene.delete(a);
+          eigene.delete(b);
+          meldung = 'Dieser Punkt bleibt: Sein Zwilling auf der anderen Lippe ist eine Kreuzung';
+        } else {
+          eigene.add(a);
+          eigene.add(b);
+        }
+      }
+    }
   if (eigene.size === 0 && ganz.size === 0) {
     if (punkte.length) meldung = 'Kreuzungen bleiben, solange sich die Loops kreuzen';
     statusZeigen();
@@ -5758,6 +6009,8 @@ if (BEHALTEN) behaltenesHolen();
         ein: p.ein ?? null,
         aus: p.aus ?? null,
       })),
+      /** das Maul aus einer Linie: so weit ist die gerechnete Lage offen (Grad); null: kein solches */
+      maulLinie: l.maulLinie ?? null,
       pfad: hatGriffe(l),
       /** ins Netz eingesetzt (jede Probe ein Punkt des Netzes); sonst liegt der Loop nur auf der Haut */
       eingesetzt: l.proben.every((p) => p.ecken[0] === p.ecken[1] && p.ecken[1] === p.ecken[2]),
@@ -5826,6 +6079,34 @@ if (BEHALTEN) behaltenesHolen();
         if (Number.isFinite(x)) w.push(x);
       }
     return { enden, mundwinkel: w.length ? w.reduce((a, b) => a + b, 0) / w.length : NaN };
+  },
+  /**
+   * das Maul aus einer Linie: sein Loop, der Winkel der gerechneten Lage, wie weit die Lippen vom Abbild abweichen, die Zahl der
+   * Punktpaare (−1: nicht paarweise), der größte Abstand der beiden Lippen im Netz, wie es jetzt liegt (null: kein solches Maul)
+   */
+  maulLinie: (): { id: number; winkel: number; fehler: number | null; paare: number; spalt: number; vorn: number } | null => {
+    const l = loops.find(istMaulLinie);
+    if (!l) return null;
+    const zw = zwillinge(l);
+    const ecke = mundwinkelVon(l);
+    const K = l.proben.map((p) => lageAus(haut.pos, p.ecken[0]));
+    const eine = K.slice(0, ecke + 1);
+    const andere = K.slice(ecke);
+    const zur = (q: V3, Z: readonly V3[]): number => {
+      let best = Infinity;
+      for (let i = 0; i + 1 < Z.length; i++) {
+        const u = Z[i]!;
+        const v = Z[i + 1]!;
+        const uv = { x: v.x - u.x, y: v.y - u.y, z: v.z - u.z };
+        const t = Math.max(0, Math.min(1, ((q.x - u.x) * uv.x + (q.y - u.y) * uv.y + (q.z - u.z) * uv.z) / (uv.x * uv.x + uv.y * uv.y + uv.z * uv.z || 1)));
+        best = Math.min(best, Math.hypot(q.x - u.x - t * uv.x, q.y - u.y - t * uv.y, q.z - u.z - t * uv.z));
+      }
+      return best;
+    };
+    let spalt = 0;
+    for (const q of andere) spalt = Math.max(spalt, zur(q, eine));
+    for (const q of eine) spalt = Math.max(spalt, zur(q, andere));
+    return { id: l.id, winkel: l.maulLinie ?? 0, fehler: grund ? null : zwillingsFehler(l, obereLippe(l)), paare: zw ? zw.paare.length : -1, spalt, vorn: abstand(K[0]!, K[K.length - 1]!) };
   },
   /** das Maul: Loop, Öffnung, Dreiecke der Öffnung und des Inneren, umgeschlagene Dreiecke und offene Kanten wie gezeigt */
   maul: (orte = false) => {

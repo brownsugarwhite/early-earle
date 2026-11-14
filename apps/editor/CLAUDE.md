@@ -62,10 +62,16 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   `maulSchnitt`. Nichts wird weggeschnitten oder eingesetzt; der Kiefer reicht so weit unter die Lippe, wie sie lang ist; innen
   weich vom Boden zum Gaumen. Proben: `form-kiefer-geformt.ts` (Kern, Bildblatt zu und offen), `GPU=1 [NAME=… RING=…] [ALT=1]
   node scripts/pruefen/form-kiefer-fenster.mjs`.
-- **Maul aus nur einer Linie** (13.11. nachts: Entwurf und Beweis im Kern, im Fenster nichts gebaut): Die Linie ist die
-  Oberlippe, die Unterlippe ihr um 20° um den Mundwinkel gedrehtes Abbild (Punkte und Griffe); gerechnet wird diese leicht
-  geöffnete Lage als geformtes Maul, „zu“ dreht der Kieferknochen um denselben Winkel zurück. Probe `form-maul-linie.ts`
-  (`WINKEL0`, `RINGE=-10,70`, `DREIECKE`, `AUS`); Stand und Zahlen im Plan, Schritt 6.
+- **Maul aus nur einer Linie** (14.11.; nur in `form-bau`): Ein offener Strich mit F (Seite: vom Umriss vorn, ein Ende vor dem
+  Körper, zum Mundwinkel; Front und Top: über die Mitte gezogen oder von ihr aus) wird ein Ring mit `maulLinie` (Grad, 20): Die
+  Linie ist die Oberlippe, die Unterlippe ihr um den Mundwinkel gedrehtes Abbild (Kern `maulLinie.ts`: `maulLinieAusZeichnung`,
+  `zwillinge`, `zwillingeSetzen`, `zwillingeFestlegen`, `zwillingeAngleichen`). Er wird gleich geformt
+  (`maulLinieErstellen` → `maulFormenGewaehlt(standDavor)`: ein ⌘Z nimmt Linie und Maul zurück) und ist dann das Maul der Form.
+  Gerechnet wird diese leicht geöffnete Lage; der Regler „Maul“ zählt von „zu“ (`maulZu`, `knochenJetzt`; `knochenWinkel` mit
+  `zuBis`). In der Grundform zieht ein Punkt seinen Zwilling mit (`verschiebungen`, `Zug.punktD`; Griffe in `zugBewegen`);
+  Kreuzungen, Doppelklick und Löschen halten die Lippen gepaart; der Mundwinkel bleibt Ecke. In der Pose wird die Maullinie nicht
+  gezogen (`maulLinieInPose`): Bearbeiten im geschlossenen Zustand gehört zu Schritt 5. Proben: `form-maul-linie.ts` (Kern),
+  `GPU=1 [ANSICHT=front] [MITTE=1] node scripts/pruefen/form-maul-linie-fenster.mjs`.
 - **Linienbreiten** (13.11.): 3 Bildpunkte am Knick, ein halber an runden Punkten, dazwischen verjüngt (`haerteBei` im Kern;
   `baenderZeigen` mit Breite je Punkt, in den Blättern `kantenFlaeche` und die Klasse `kante-band`). Probe:
   `GPU=1 node scripts/pruefen/form-kante-verjuengung-fenster.mjs`.
@@ -168,12 +174,20 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
   spiegelgleich).
 - Ein Punkt, an dem eine Linie umkehrt (der Mundwinkel eines Keils), muss vor `griffeAnlegen` eine Ecke sein; als glatter Punkt
   bekommt er dort einen unsinnig langen Griff (gemessen 12 Millionen, das Netz wuchs danach auf 131 000 Punkte).
-- Eine schmale Form als einzige runde Linie zieht eine Kugel ohne Haltelinien zusammen (hinten von 150 auf 58 bis 99 in 80 bis
-  190 Runden): Eine Maullinie ist von Anfang an eine Kante.
-- `knochenWinkel` klemmt negative Winkel auf 0. Für „zu“ unter der gerechneten Lage dreht die Probe `form-maul-linie.ts` selbst
-  (`knochenDrehen` mit negativem Winkel); im Fenster gibt es das noch nicht.
-- `loopEinsetzen` setzt einen Keil, der am Mundwinkel dünner als etwa 16° ist, nicht verlässlich ein (8° bei 2 000 Dreiecken,
-  12° bei 6 000: null).
+- Eine schmale Form als einzige runde Linie zieht eine Kugel ohne Haltelinien zusammen: Eine Maullinie ist von Anfang an eine
+  Kante. Und umgekehrt: Mit einer Kante als einziger Linie hält über die ganze Haut gerechnet nichts die Größe (beim Formen
+  blies sich die Kugel von 150 auf 420 auf). „Maul formen“ ohne Mittellinie rechnet deshalb nur im Umkreis des Mauls
+  (`MaulFormenOptionen.umkreis`).
+- `loopEinsetzen` (Ring), seit dem 14.11.: An einer Kehre der Linie (über 140°, der Mundwinkel eines Keils) setzt es zwei Punkte
+  ins Netz (an der Kehre und davor) und lässt den Weg über die Kante zwischen ihnen umkehren; Kanten, die der Weg zweimal kreuzt,
+  werden vorher zwischen den Kreuzungen geteilt (`kantenTeilen`, spiegelgleich); beim Ablaufen wird das Startdreieck quer zur
+  Kante gewählt. Vorher war die Spitze bis 14 Einheiten abgeschnitten, und ihr Endpunkt wurde später quer über fremde Dreiecke
+  gezogen. `einsetzenGrund` sagt, warum es null ergab.
+- Nach dem Einsetzen einer spitzen Form die Nadeln wegräumen (`nadelnZusammenlegen`, im Fenster `nadelnWeg`), bevor weiter
+  gerechnet wird. Fallen zwei Punkte der Linie auf einen Ort, ordnet `hautAus` die Spiegelpartner über gerundete Lagen falsch zu,
+  und alles, was danach das Netz neu aufbaut, scheitert (so fiel `knickReihe` aus).
+- `umgeschlageneZahl` und `falten` zählen jedes Dreieck gegen die Normalen seiner Ecken, außen und Tasche gemischt: Die steile
+  Wand der Tasche am Mundwinkel zählt mit (an der Kugel 2), ein gefaltetes Maul viel mehr. Getrennt zählt `form-maul-linie.ts`.
 - Kern-Bilder (`blattSchreiben`) sind flach schattiert und übertreiben jede Unruhe; ob etwas ruhig aussieht, im Fenster ansehen
   (Unruhe messen: `form-kante-winkel.ts`, Knick zwischen Nachbardreiecken; Florians Modelle liegen gesichert bei 5,6° bis 6,3°,
   nach jedem Neurechnen bei rund 7°).
