@@ -21,7 +21,7 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   7 Auswahl wie in Blender. Fest vorgemerkt ist **4c, der Rest der halben Haut** (Florian, 13.11.: „es soll nicht vergessen
   werden“; das Tempo wird für Shader, Materialien, Fell und Zusatzteile gebraucht). **Reihenfolge seit dem 14.11. (Florian):**
   zuerst der Zwischenschritt „Abzweigungen“ (mit P von jedem Punkt und jeder Linie aus eine verbundene Linie ziehen), dann
-  Schritt 5, dann 4c. Schritt 6 (Maul) ist angehalten und bekommt eine eigene Sitzung, vielleicht zusammen mit Zähnen: zuerst
+  Schritt 5, dann 4c. **Stand 14.11. nachmittags:** Abzweigungen und Schritt 5, Etappe 2 und 3, stehen im Bau-Fenster (5197), nicht in Florians Fenster; er sammelt bis Dienstag, 17.11., Rückmeldung. Schritt 6 (Maul) ist angehalten und bekommt eine eigene Sitzung, vielleicht zusammen mit Zähnen: zuerst
   beschreibt er die Fälle, dann wird gebaut. Schritt 7 kommt später, ob und wie ist offen. **Wo wir stehen und was als Nächstes
   kommt: [`docs/UEBERGABE.md`](docs/UEBERGABE.md).**
 - **Design-Strang daneben (eigene Sitzung):** `/editor` (`apps/editor/editor.html`, `src/form/editor.ts`,
