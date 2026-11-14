@@ -14,6 +14,8 @@ export interface Punkt {
   y: number;
   sichtbar: boolean;
   verdeckt: boolean;
+  /** im Raum: Tiefe zum Betrachter (die Anzeige entscheidet je Bildpunkt, ob der Punkt verdeckt ist) */
+  z?: number;
 }
 
 export interface Stueck {
@@ -112,6 +114,8 @@ export interface LinienProben {
   laenge: number;
   /** Bogenlänge, an der jedes Stück beginnt (eins mehr als Stücke: das Ende) */
   stueckS: Float32Array;
+  /** im Raum: Tiefe zum Betrachter je Probe */
+  z?: Float32Array;
 }
 
 /** Bogenlänge eines Stücks über eine feine Tabelle; liefert t für gleichmäßige Schritte */

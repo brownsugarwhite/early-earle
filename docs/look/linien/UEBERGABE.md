@@ -1,4 +1,4 @@
-# Übergabe: Linien, Punkte, Zeiger (Stand 14.11.2026, abends)
+# Übergabe: Linien, Punkte, Zeiger (Stand 14.11.2026, spätabends)
 
 Eigener Strang. Plan: [`docs/plans/2026-11-14-linien-zeiger-tropfen.md`](../../plans/2026-11-14-linien-zeiger-tropfen.md).
 Florians Entwürfe liegen hier (`2026-11-14-florian-fisch-entwurf.webp` und `…-nah.webp`); vor jedem Urteil öffnen.
@@ -14,6 +14,7 @@ Florians Entwürfe liegen hier (`2026-11-14-florian-fisch-entwurf.webp` und `…
 | Fisch aus dem Entwurf | `apps/editor/scripts/linien/fisch-aus-entwurf.mjs` (Aufruf im Kopf der Datei; braucht das Bild als BMP über `sips`) |
 | Vergleichsbilder | `apps/editor/scripts/linien/vergleich.mjs` → `docs/progress/linien/<datum>-vergleich-gesamt.jpg`, `…-nah.jpg` |
 | Film | `apps/editor/scripts/linien/film.mjs <ziel.mp4>` (Ablauf in `BAHN`, Bild für Bild, 60 je Sekunde, ffmpeg) |
+| Raum | `http://localhost:5199/raum.html` (`?form=<Name>`); `src/linien/raum.ts`, `raum-main.ts`; Film `scripts/linien/raum-film.mjs` |
 
 ## Bedienung der Seite
 
@@ -29,12 +30,19 @@ Knöpfe: 100 %, Einpassen, Entwurf (seine Zeichnung darunter, E), Wachsen mit Zo
   umgekehrt, animiert. Umgebaut: Der gezeichnete Zeiger gleitet auf Punkt oder Linie (`versatz` in `verhalten.ts`), die Stelle folgt
   der Maus genau, beim Loslassen gleitet der Zeiger zurück. Geprüft mit den Test-Haken: Stelle beim Klick 0,000 bewegt, Zeiger im
   Zug 0,000 auf der Stelle, Versatz nach dem Loslassen 0. Film neu (`docs/progress/linien/2026-11-14-film.mp4`, `film.mjs`).
-- Offen: Punktgröße (Durchmesser oder Radius) und ob „Mesh“ auch die Haut im 3D meint; danach der Einbau in die Blätter.
+- Punkte: 2,5 px Durchmesser (Florian: „Durchmesser soll gelten“).
+- **Im Raum** (Florian: „auf ein 3D-Modell übertragen, damit ich es im Raum testen kann“): `raum.html` mit seinen Formen aus `wesen/`
+  (Plan, Schritt 1b). Haut weiß mit Umriss als Hülle, Linien und Punkte projiziert, Verdecktes je Bildpunkt grün, Ziehen mit weichem
+  Feld als Ersatz für den Löser. Geprüft mit `__raum` (Kreuzung folgt der Maus genau). Film `2026-11-14-raum-film.mp4`.
+- Offen: ob „Mesh“ auch ein Nachschwingen der Haut meint; danach der Einbau in die Blätter des Editors.
 
 ## Fallen
 
 - Das Vorschaufenster der Sitzung ist oft verborgen; dann läuft `requestAnimationFrame` nicht. Prüfen mit `__linien.zeigerHin(x, y)`
-  und `__linien.vorspulen(ms)` (rechnet die Federn ohne Bildtakt) oder mit `vergleich.mjs` (eigener Browser).
+  und `__linien.vorspulen(ms)` (rechnet die Federn ohne Bildtakt; im Raum `__raum`) oder mit `vergleich.mjs` (eigener Browser).
+- Im Raum: Die Haut der Formen läuft an der Spiegelebene durch sich selbst; ohne den Schnitt wie im Editor (`hautSeiten`, jede Hälfte
+  an der Ebene abgeschnitten) gibt es Fehler am Umriss. Die Hülle für den Umriss nur mit Rückseiten zeichnen, sonst schlägt sie an
+  schrägen Flächen durch die Haut.
 - Der Entwurf ist dreifach exportiert: Einheit überall „Punkt des Entwurfs“ = Bildpunkt / 3. Die Zeigerspitzen in `vergleich.mjs`
   sind aus dem Nahbild abgelesen (auf etwa einen Punkt genau).
 - An den Stellen, an denen im Entwurf schon Zeiger, Tropfen und Sterne gezeichnet sind, hält das Skelett die Linien nicht: Dort sind

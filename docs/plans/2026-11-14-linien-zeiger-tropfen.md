@@ -45,11 +45,35 @@ Gefühl in Ruhe an seinem Entwurf prüfen, ohne den Editor anzufassen, an dem di
 - **Probe:** Vergleichsbild an den vier Stellen seines Entwurfs, gleicher Ausschnitt
   (`docs/progress/linien/2026-11-14-vergleich-*.jpg`, Skript `scripts/linien/vergleich.mjs`).
 
+## Entschieden
+
+- **Punkte: 2,5 px Durchmesser** (Florian, 14.11., abends: „Durchmesser soll gelten“).
+
+## Schritt 1b (gebaut, 14.11., abends): im Raum
+
+Florian: „Es gefällt mir schon mal gut. Kannst du es auf ein 3D-Modell übertragen, damit ich es im Raum testen kann?“
+
+- Seite `apps/editor/raum.html` (Port 5199; `?form=<Name>`, Standard „teat firefish“, alle Formen aus `wesen/` als Knöpfe). Code
+  `src/linien/raum.ts` (Form laden, Linien in 3D, Kamera, Ziehen), `raum-main.ts` (Seite), dazu dieselbe Anzeige und dasselbe
+  Verhalten wie in 2D.
+- **Aussehen:** Haut weiß wie im Entwurf, Umriss 1 px als Hülle (Rückseiten, so zeigt sie sich nur am Rand und an Falten),
+  „Schattierung“ schaltet leichte Stufen zu. Linien als Bézier-Pfade durch ihre Punkte wie im Editor (Ring = Hälfte und Spiegelhälfte,
+  Paar = Loop und Zwilling), Kreuzungen sind ein Punkt. Verdeckt (hinter der Haut) wird je Bildpunkt grün, nach der Tiefe. Die Haut
+  ist an der Spiegelebene abgeschnitten wie im Editor (`anzeigeZ`).
+- **Verhalten:** wie in 2D, auf den Bildschirm projiziert; gegriffen wird nur, was man sieht.
+- **Ziehen:** Die Stelle folgt der Maus in der Bildebene (beim Klick springt nichts, der Zeiger gleitet auf die Stelle). Haut, Punkte
+  und Griffe gehen mit einem weichen Feld um die Stelle mit, spiegelgleich; Punkte der Mitte bleiben auf der Mitte. **Das ist nur ein
+  Ersatz für den Löser:** Im Editor rechnet die Haut wie gewohnt aus den Linien.
+- Bedienung: daneben ziehen oder zwei Finger drehen, Pinch zoomt, ⇧ + ziehen verschiebt, 1/2/3/4 Seite, Front, Top, schräg.
+- Geprüft im Fenster: Kreuzung beim Klick 0,000 bewegt, gezogen genau um die Mausbewegung (40/−30 px), Zeiger im Zug auf ihr, danach
+  zurück unter der Maus. Film `docs/progress/linien/2026-11-14-raum-film.mp4` (`scripts/linien/raum-film.mjs`, Linien dort doppelt so
+  breit, damit man sie im Film sieht).
+
 ## Offen (Florians Wort fehlt)
 
-1. Punkte 2,5 px Durchmesser (wie gezeichnet) oder 2,5 px Radius (wie geschrieben)?
-2. „Mesh“: Gebaut ist das Netz aus Linien und Punkten. Soll auch die Haut im 3D-Fenster beim Ziehen weich nachschwingen?
-3. Werte: Er stellt sie im Feinregler ein und schickt sie mit „Werte kopieren“.
+1. „Mesh“: Gebaut ist das Netz aus Linien und Punkten; im Raum geht die Haut beim Ziehen mit einem weichen Feld mit. Soll die Haut auch
+   nachschwingen?
+2. Werte: Er stellt sie im Feinregler ein und schickt sie mit „Werte kopieren“ (2D und Raum teilen sich die Werte).
 
 ## Schritt 2 (vorgeschlagen, erst nach seinem Urteil): in den Editor
 

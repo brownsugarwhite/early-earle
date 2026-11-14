@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Linien · Raum</title>
+    <link rel="stylesheet" href="./src/linien/linien.css" />
+  </head>
+  <body>
+    <div id="buehne">
+      <canvas id="leinwand"></canvas>
+    </div>
+    <footer id="leiste">
+      <span class="titel">Linien · Raum</span>
+      <span id="formen"></span>
+      <button type="button" id="knopf-seite" title="Seite (1)">Seite</button>
+      <button type="button" id="knopf-front" title="Front (2)">Front</button>
+      <button type="button" id="knopf-top" title="Top (3)">Top</button>
+      <button type="button" id="knopf-schraeg" title="Schräg (4)">Schräg</button>
+      <button type="button" id="knopf-schattierung" aria-pressed="false" title="leichte Schattierung (S)">Schattierung</button>
+      <button type="button" id="knopf-regler" aria-pressed="false" title="Feinregler (R)">Feinregler</button>
+      <button type="button" id="knopf-zurueck" title="⌘Z">Zurück</button>
+      <span class="hilfe">Zeiger an Linie oder Punkt · drücken und ziehen · daneben ziehen oder zwei Finger: drehen · Pinch: zoomen · ⇧ + ziehen: verschieben</span>
+      <span id="info" class="wert"></span>
+    </footer>
+    <aside id="regler" hidden>
+      <div id="regler-liste"></div>
+      <div class="regler-knoepfe">
+        <button type="button" id="knopf-grundwerte">Grundwerte</button>
+        <button type="button" id="knopf-kopieren">Werte kopieren</button>
+      </div>
+    </aside>
+    <script type="module" src="./src/linien/raum-main.ts"></script>
+  </body>
+</html>

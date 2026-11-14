@@ -93,9 +93,25 @@ export interface Ansicht {
   dpr: number;
   /** Linien, Punkte und Tropfen wachsen mit dem Zoom (wie eine Illustration) */
   wachsen: boolean;
+  /** alles Aussehen (Breiten, Punkte, Tropfen, Fangradien) mal diesem Maß; fehlt: 1 */
+  massstab?: number;
 }
 
-type Ziel = { art: 'punkt'; pi: number } | { art: 'linie'; li: number; si: number; t: number; s: number };
+export type Ziel = { art: 'punkt'; pi: number } | { art: 'linie'; li: number; si: number; t: number; s: number };
+
+/**
+ * Der Raum (3D-Probe): Er liefert jedes Bild das projizierte Netz (`setzeNetz`) und verformt selbst, wenn gezogen wird. Die Lagen sind
+ * dann Bildschirmpunkte; die Anzeige entscheidet je Bildpunkt nach der Tiefe, was verdeckt ist.
+ */
+export interface Raum {
+  ziehenBeginnen(ziel: Ziel): void;
+  /** Bewegung der Maus seit dem Drücken (Bildschirmpunkte) */
+  ziehen(dx: number, dy: number): void;
+  ziehenEnden(): void;
+  /** wo die gegriffene Stelle jetzt liegt (Bildschirmpunkte) */
+  stelle(ziel: Ziel): [number, number] | null;
+  rueckgaengig(): boolean;
+}
 
 interface Tropfen {
   ziel: Ziel;
@@ -154,6 +170,8 @@ export class Verhalten {
   private g = 1;
   /** für Vergleichsbilder: den Zeiger nicht zeichnen */
   zeigerZeigen = true;
+  /** gesetzt: 3D-Probe (siehe `Raum`) */
+  raum: Raum | null = null;
   /** für die Anzeige: Stand der letzten Szene */
   stat = { tropfen: 0, ziel: '' };
 
@@ -166,7 +184,8 @@ export class Verhalten {
 
   /** Abtastschritt (Punkte des Entwurfs) so, dass auf dem Bildschirm rund 3 Punkte zwischen zwei Proben liegen */
   setzeAnsicht(a: Ansicht): void {
-    this.g = a.wachsen ? 1 : 1 / a.z;
+    this.g = (a.wachsen ? 1 : 1 / a.z) * (a.massstab ?? 1);
+    if (this.raum) return;
     const s = Math.min(4, Math.max(0.25, 3 / a.z));
     if (Math.abs(s - this.schritt0) / this.schritt0 > 0.25) {
       this.schritt0 = s;
@@ -174,7 +193,15 @@ export class Verhalten {
     }
   }
 
+  /** im Raum: das projizierte Netz dieses Bilds */
+  setzeNetz(netz: Netz, proben: LinienProben[]): void {
+    this.netz = netz;
+    this.proben = proben;
+    while (this.schwell.length < this.proben.length) this.schwell.push({ st: new Feder1(0), s: new Feder1(0) });
+  }
+
   abtasten(): void {
+    if (this.raum) return;
     const w = this.werte;
     const br = { umriss: w.umriss, innen: w.innen, kanteMax: w.kanteMax, kanteMin: w.kanteMin };
     this.proben = this.netz.linien.map((_, li) => linieAbtasten(this.netz, li, this.schritt0, br));
@@ -191,6 +218,10 @@ export class Verhalten {
 
   rueckgaengig(): boolean {
     if (this.griff) return false;
+    if (this.raum) {
+      this.tropfen = [];
+      return this.raum.rueckgaengig();
+    }
     const n = this.zurueck.pop();
     if (!n) return false;
     this.netz = n;
@@ -221,10 +252,15 @@ export class Verhalten {
     const t = this.tropfen.find((q) => q.zustand === 'folgt');
     if (!t) return false;
     t.zustand = 'gegriffen';
-    this.zurueck.push(netzKopie(this.netz));
-    if (this.zurueck.length > 60) this.zurueck.shift();
     const z = this.zeiger;
-    this.griff = { ziel: { ...t.ziel }, start: netzKopie(this.netz), ax: t.ax, ay: t.ay, mx: z.x, my: z.y };
+    if (this.raum) {
+      this.raum.ziehenBeginnen({ ...t.ziel });
+      this.griff = { ziel: { ...t.ziel }, start: this.netz, ax: t.ax, ay: t.ay, mx: z.x, my: z.y };
+    } else {
+      this.zurueck.push(netzKopie(this.netz));
+      if (this.zurueck.length > 60) this.zurueck.shift();
+      this.griff = { ziel: { ...t.ziel }, start: netzKopie(this.netz), ax: t.ax, ay: t.ay, mx: z.x, my: z.y };
+    }
     this.versatz.zx = t.ax - z.x;
     this.versatz.zy = t.ay - z.y;
     return true;
@@ -235,6 +271,7 @@ export class Verhalten {
     this.zeiger.gedrueckt = false;
     if (!this.griff) return;
     this.griff = null;
+    this.raum?.ziehenEnden();
     this.versatz.zx = 0;
     this.versatz.zy = 0;
     for (const t of this.tropfen) if (t.zustand === 'gegriffen') t.zustand = 'folgt';
@@ -280,7 +317,8 @@ export class Verhalten {
       if (st && linieOk) return { ziel: { art: 'linie', li: st.li, si: st.si, t: st.t, s: st.s }, x: st.x, y: st.y, d: st.d, verdeckt: st.verdeckt };
       return null;
     };
-    return suche(0) ?? suche(1);
+    // im Raum greift man nur, was man sieht
+    return suche(0) ?? (this.raum ? null : suche(1));
   }
 
   private gleichesZiel(a: Ziel, b: Ziel): boolean {
@@ -360,10 +398,13 @@ export class Verhalten {
     if (g) {
       const dx = z.x - g.mx;
       const dy = z.y - g.my;
-      this.netz = netzKopie(g.start);
-      if (g.ziel.art === 'punkt') punktZiehen(g.start, this.netz, g.ziel.pi, dx, dy);
-      else stelleZiehen(g.start, this.netz, g.ziel.li, g.ziel.si, g.ziel.t, dx, dy);
-      this.abtasten();
+      if (this.raum) this.raum.ziehen(dx, dy);
+      else {
+        this.netz = netzKopie(g.start);
+        if (g.ziel.art === 'punkt') punktZiehen(g.start, this.netz, g.ziel.pi, dx, dy);
+        else stelleZiehen(g.start, this.netz, g.ziel.li, g.ziel.si, g.ziel.t, dx, dy);
+        this.abtasten();
+      }
       bewegt = true;
     }
 
@@ -414,10 +455,8 @@ export class Verhalten {
         t.ax = p.x;
         t.ay = p.y;
       } else if (t.zustand === 'gegriffen' && g) {
-        const l = this.netz.linien[t.ziel.li]!;
-        const [x, y] = bezier(kontrollpunkte(this.netz, l, t.ziel.si), t.ziel.t);
-        t.ax = x;
-        t.ay = y;
+        const st = this.raum ? this.raum.stelle(t.ziel) : bezier(kontrollpunkte(this.netz, this.netz.linien[t.ziel.li]!, t.ziel.si), t.ziel.t);
+        if (st) [t.ax, t.ay] = st;
       }
       const r = w.punktRadius * this.g;
       if (t.zustand === 'gegriffen') {
@@ -539,14 +578,15 @@ export class Verhalten {
 
   szene(a: Ansicht): Szene {
     const w = this.werte;
-    const s = a.wachsen ? a.z : 1;
+    const s = (a.wachsen ? a.z : 1) * (a.massstab ?? 1);
     const D = a.dpr;
+    const raum = !!this.raum;
     const X = (x: number): number => (x * a.z + a.ox) * D;
     const Y = (y: number): number => (y * a.z + a.oy) * D;
     const R = (r: number): number => r * s * D;
     let n = 0;
-    /** art 0: Linie (harte Vereinigung), 1: Punkt, Tropfen, Hals (weich) */
-    const push = (x0: number, y0: number, x1: number, y1: number, r0: number, r1: number, gruppe: number, schicht: number, art: number): void => {
+    /** art 0: Linie (harte Vereinigung), 1: Punkt, Tropfen, Hals (weich); schicht 2: nach Tiefe (z0, z1) */
+    const push = (x0: number, y0: number, x1: number, y1: number, r0: number, r1: number, gruppe: number, schicht: number, art: number, z0 = 0, z1 = 0): void => {
       if ((n + 1) * PRIM_FELDER > this.puffer.length) {
         const neu = new Float32Array(this.puffer.length * 2);
         neu.set(this.puffer);
@@ -561,7 +601,11 @@ export class Verhalten {
       b[o + 4] = r0;
       b[o + 5] = r1;
       b[o + 6] = gruppe;
-      b[o + 7] = schicht + 2 * art;
+      b[o + 7] = schicht + 4 * art;
+      b[o + 8] = z0;
+      b[o + 9] = z1;
+      b[o + 10] = 0;
+      b[o + 11] = 0;
       n++;
     };
     let gruppe = 0;
@@ -585,10 +629,10 @@ export class Verhalten {
       const vx = new Float32Array(P.n);
       const vy = new Float32Array(P.n);
       this.neigung(li, P, vx, vy);
-      for (const sch of [0, 1]) {
+      for (const sch of raum ? [2] : [0, 1]) {
         let etwas = false;
         for (let k = 0; k + 1 < P.n; k++) {
-          if (P.schicht[k] !== sch) continue;
+          if (!raum && P.schicht[k] !== sch) continue;
           push(
             X(P.x[k]! + vx[k]!),
             Y(P.y[k]! + vy[k]!),
@@ -599,6 +643,8 @@ export class Verhalten {
             gruppe,
             sch,
             0,
+            P.z?.[k] ?? 0,
+            P.z?.[k + 1] ?? 0,
           );
           etwas = true;
         }
@@ -610,13 +656,14 @@ export class Verhalten {
     for (const t of this.tropfen) if (t.ziel.art === 'punkt') alsTropfen.add(t.ziel.pi);
     this.netz.punkte.forEach((p, pi) => {
       if (!p.sichtbar || alsTropfen.has(pi)) return;
-      push(X(p.x), Y(p.y), X(p.x), Y(p.y), R(w.punktRadius), R(w.punktRadius), gruppe++, p.verdeckt ? 1 : 0, 1);
+      push(X(p.x), Y(p.y), X(p.x), Y(p.y), R(w.punktRadius), R(w.punktRadius), gruppe++, raum ? 2 : p.verdeckt ? 1 : 0, 1, p.z ?? 0, p.z ?? 0);
     });
     // Tropfen mit Hals
     const felder: number[] = [];
     felder.push(X(this.feld.x), Y(this.feld.y), R(w.reichweite), this.feldStaerke.x);
     for (const t of this.tropfen) {
-      const sch = t.verdeckt ? 1 : 0;
+      // Tropfen und Hals hängen am Zeiger: im Raum immer vorn
+      const sch = !raum && t.verdeckt ? 1 : 0;
       const r = w.punktRadius * t.r.x;
       let ox = (t.pos.x - t.ax) * w.spannung * t.hals.x;
       let oy = (t.pos.y - t.ay) * w.spannung * t.hals.x;

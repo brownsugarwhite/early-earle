@@ -7,26 +7,10 @@ import entwurfUrl from '../../../../docs/look/linien/2026-11-14-florian-fisch-en
 import fischDaten from './fisch.json';
 import { FluessigeAnzeige } from './fluessig';
 import { type FischDaten, netzAusDaten } from './netz';
-import { type Ansicht, GRUNDWERTE, Verhalten, type Werte } from './verhalten';
+import { BREITEN, reglerBauen, werteLesen } from './regler';
+import { type Ansicht, Verhalten, type Werte } from './verhalten';
 
-const SPEICHER = 'linien-probe-werte-4';
-const lesen = (): Partial<Werte> => {
-  try {
-    const roh = localStorage.getItem(SPEICHER);
-    return roh ? (JSON.parse(roh) as Partial<Werte>) : {};
-  } catch {
-    return {};
-  }
-};
-const schreiben = (w: Werte): void => {
-  try {
-    localStorage.setItem(SPEICHER, JSON.stringify(w));
-  } catch {
-    // ohne Speicher geht es auch
-  }
-};
-
-const werte: Werte = { ...GRUNDWERTE, ...lesen() };
+const werte: Werte = werteLesen();
 const buehne = document.getElementById('buehne') as HTMLDivElement;
 const leinwand = document.getElementById('leinwand') as HTMLCanvasElement;
 const entwurf = document.getElementById('entwurf') as HTMLImageElement;
@@ -234,83 +218,12 @@ knopfRegler.onclick = () => {
 
 // ---------- Feinregler ----------
 
-const REGLER: { gruppe: string; k: keyof Werte; name: string; min: number; max: number; schritt: number }[] = [
-  { gruppe: 'Florians Vorgaben', k: 'umriss', name: 'Umriss', min: 0.1, max: 3, schritt: 0.05 },
-  { gruppe: 'Florians Vorgaben', k: 'innen', name: 'Innen', min: 0.05, max: 2, schritt: 0.05 },
-  { gruppe: 'Florians Vorgaben', k: 'kanteMax', name: 'Kante', min: 0.1, max: 3, schritt: 0.05 },
-  { gruppe: 'Florians Vorgaben', k: 'kanteMin', name: 'Kante verjüngt auf', min: 0.05, max: 2, schritt: 0.05 },
-  { gruppe: 'Florians Vorgaben', k: 'punktRadius', name: 'Punkt (Radius)', min: 0.25, max: 4, schritt: 0.05 },
-  { gruppe: 'Schwellen', k: 'schwellen', name: 'Stärke', min: 0, max: 6, schritt: 0.05 },
-  { gruppe: 'Schwellen', k: 'reichweite', name: 'Länge längs der Linie', min: 4, max: 100, schritt: 1 },
-  { gruppe: 'Schwellen', k: 'anflug', name: 'Anflug (× Tropfenabstand)', min: 1, max: 6, schritt: 0.1 },
-  { gruppe: 'Tropfen', k: 'tropfen', name: 'Größe (× Punkt)', min: 0.5, max: 3, schritt: 0.05 },
-  { gruppe: 'Tropfen', k: 'fangPunkt', name: 'Punkt springt ab', min: 1, max: 40, schritt: 0.5 },
-  { gruppe: 'Tropfen', k: 'fangLinie', name: 'Tropfen aus der Linie ab', min: 0, max: 30, schritt: 0.5 },
-  { gruppe: 'Tropfen', k: 'halten', name: 'Hals hält (× Abstand)', min: 1, max: 4, schritt: 0.05 },
-  { gruppe: 'Tropfen', k: 'hals', name: 'Hals (Breite)', min: 0, max: 4, schritt: 0.05 },
-  { gruppe: 'Tropfen', k: 'spannung', name: 'Linie neigt sich', min: 0, max: 0.6, schritt: 0.01 },
-  { gruppe: 'Tropfen', k: 'dehnung', name: 'Dehnung im Tempo', min: 0, max: 0.04, schritt: 0.001 },
-  { gruppe: 'Flüssig', k: 'weich', name: 'Verschmelzen am Zeiger', min: 0, max: 6, schritt: 0.05 },
-  { gruppe: 'Flüssig', k: 'weichGrund', name: 'Verschmelzen überall', min: 0, max: 2, schritt: 0.05 },
-  { gruppe: 'Federn', k: 'sprungHz', name: 'Sprung: Tempo', min: 1, max: 20, schritt: 0.1 },
-  { gruppe: 'Federn', k: 'sprungD', name: 'Sprung: Ruhe', min: 0.1, max: 1.5, schritt: 0.01 },
-  { gruppe: 'Federn', k: 'schwellHz', name: 'Schwellen: Tempo', min: 1, max: 30, schritt: 0.1 },
-  { gruppe: 'Federn', k: 'schwellD', name: 'Schwellen: Ruhe', min: 0.1, max: 1.5, schritt: 0.01 },
-  { gruppe: 'Federn', k: 'zurueckHz', name: 'Zurück: Tempo', min: 1, max: 20, schritt: 0.1 },
-  { gruppe: 'Federn', k: 'zurueckD', name: 'Zurück: Ruhe', min: 0.1, max: 1.5, schritt: 0.01 },
-  { gruppe: 'Federn', k: 'greifHz', name: 'Zeiger gleitet: Tempo', min: 2, max: 40, schritt: 0.5 },
-  { gruppe: 'Federn', k: 'greifD', name: 'Zeiger gleitet: Ruhe', min: 0.1, max: 1.5, schritt: 0.01 },
-  { gruppe: 'Zeiger', k: 'zeigerGroesse', name: 'Größe', min: 4, max: 32, schritt: 0.5 },
-  { gruppe: 'Zeiger', k: 'zeigerLinie', name: 'Linie', min: 0.1, max: 2, schritt: 0.05 },
-];
-const BREITEN = new Set<keyof Werte>(['umriss', 'innen', 'kanteMax', 'kanteMin']);
-const liste = document.getElementById('regler-liste') as HTMLDivElement;
-const regler = new Map<keyof Werte, { input: HTMLInputElement; zahl: HTMLSpanElement }>();
-let gruppe = '';
-for (const r of REGLER) {
-  if (r.gruppe !== gruppe) {
-    gruppe = r.gruppe;
-    const h = document.createElement('h3');
-    h.textContent = gruppe;
-    liste.append(h);
-  }
-  const label = document.createElement('label');
-  const name = document.createElement('span');
-  name.textContent = r.name;
-  const zahl = document.createElement('span');
-  zahl.className = 'zahl';
-  const input = document.createElement('input');
-  input.type = 'range';
-  input.min = String(r.min);
-  input.max = String(r.max);
-  input.step = String(r.schritt);
-  input.value = String(werte[r.k]);
-  zahl.textContent = String(werte[r.k]);
-  input.addEventListener('input', () => {
-    werte[r.k] = Number(input.value);
-    zahl.textContent = input.value;
-    if (BREITEN.has(r.k)) verhalten.abtasten();
-    schreiben(werte);
-    anstossen();
-  });
-  label.append(name, zahl, input);
-  liste.append(label);
-  regler.set(r.k, { input, zahl });
-}
-(document.getElementById('knopf-grundwerte') as HTMLButtonElement).onclick = () => {
-  Object.assign(werte, GRUNDWERTE);
-  for (const [k, { input, zahl }] of regler) {
-    input.value = String(werte[k]);
-    zahl.textContent = String(werte[k]);
-  }
-  verhalten.abtasten();
-  schreiben(werte);
+const fein = reglerBauen(document.getElementById('regler-liste') as HTMLDivElement, werte, (k) => {
+  if (k === 'alle' || BREITEN.has(k as keyof Werte)) verhalten.abtasten();
   anstossen();
-};
-(document.getElementById('knopf-kopieren') as HTMLButtonElement).onclick = () => {
-  const geaendert = Object.fromEntries(Object.entries(werte).filter(([k, v]) => GRUNDWERTE[k as keyof Werte] !== v));
-  void navigator.clipboard?.writeText(JSON.stringify(geaendert, null, 1));
-};
+});
+(document.getElementById('knopf-grundwerte') as HTMLButtonElement).onclick = fein.grundwerte;
+(document.getElementById('knopf-kopieren') as HTMLButtonElement).onclick = fein.kopieren;
 
 // Test-Haken für Proben: Zeiger setzen (Bildschirmpunkte) und die Zeit vorspulen (ohne Bildtakt, z. B. im verborgenen Fenster)
 const vorspulen = (ms: number): void => {
