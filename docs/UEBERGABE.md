@@ -1,4 +1,4 @@
-# Übergabe (Stand 14.11.2026, 11:20 Uhr: **Der Zwischenschritt „Abzweigungen“ ist im Bau-Fenster (5197) gebaut** (Abschnitt 7.17 und Plan): Mit P auf einen Punkt oder eine Linie klicken (dort beginnt sie; auf einer Linie entsteht der Punkt sofort), auf die Haut klicken setzt Punkte dazwischen, ein Klick auf einen anderen Punkt oder eine andere Linie beendet sie; in einem Zug ziehen geht auch. Die Linie hängt an Anfang und Ende und teilt die Punkte; vom Punkt zum Spiegelbild endet sie auf der Mitte. Probe an Florians Form „test_kaputt“, mit Klicks: 22 Punkte erfüllt. Florian hatte die erste Fassung (nur Ziehen) am 14.11. nicht bedienen können; seitdem wird geklickt. Sein Urteil zur neuen Fassung steht aus; in seinem Fenster (5194) ist davon nichts. **Reihenfolge (Florian, 14.11.):** Abzweigungen, dann Schritt 5, dann 4c. **Schritt 6 (Maul) ist angehalten** und bekommt eine eigene Sitzung, vielleicht zusammen mit Zähnen (Abschnitt 7.16); bis dahin am Maul nichts bauen. Schritt 7 kommt später, ob und wie ist offen. Zu Schritt 1, 2, 4a und 4b sagt er: „das sieht gut aus bis jetzt“)
+# Übergabe (Stand 14.11.2026, 12:05 Uhr: **Schritt 5, Etappe 2 ist im Bau-Fenster (5197) gebaut** (Abschnitt 7.18 und Plan): In der Pose rechnet das Fenster mit ihrer Ruhe, die Knochen drehen nur die Anzeige; am geformten Maul ist die Pose eine Form wie die Grundform (dieselbe Rechnung, genaue Linien, Punkte und Griffe als Versatz gespeichert). Probe an Florians Form „maul handgemacht test“: fern vom Maul bewegt ein Zug an der Lippe die Haut 0,17 statt 4,39, die Linien liegen auf ihrem Pfad, derselbe Zug gibt in Pose und Grundform dieselbe Haut. Nicht erfüllt: Beim Zug an der Kieferspitze schlagen 8 bis 10 kleine Dreiecke an der Mitte um (in der Grundform bei demselben Zug auch). Offen in Schritt 5: Etappe 3 bis 5. Florians Urteil steht aus; in seinem Fenster (5194) ist davon nichts. **Davor am 14.11.:** der Zwischenschritt „Abzweigungen“ (7.17; Florian zur zweiten Fassung: „Ja, weiter Schritt 5“). **Reihenfolge (Florian, 14.11.):** Abzweigungen, Schritt 5, dann 4c. **Schritt 6 (Maul) ist angehalten** und bekommt eine eigene Sitzung, vielleicht zusammen mit Zähnen (7.16). Schritt 7 kommt später, ob und wie ist offen. Zu Schritt 1, 2, 4a und 4b: „das sieht gut aus bis jetzt“)
 
 Diese Datei wird am Ende jedes Arbeitsblocks **überschrieben**. Die Übergabe vom 11.11. (Karte von `kurven.ts`, Fallen, Proben,
 Altlasten, Florians frühere Urteile) liegt unverändert in
@@ -27,8 +27,8 @@ Altlasten, Florians frühere Urteile) liegt unverändert in
 | 3 Beweis „Haut direkt aus den Linien“ | **abgeschlossen, die heutige Rechnung bleibt** (Abschnitt 6, 13.11.): Die Haut nur aus den Linien (A) scheitert zwischen wenigen Linien und an seinen drei Formen. Der Teil B (fertige Haut direkt bewegen) hält rechnerisch; als Schalter „Form halten“ im Bau-Fenster ausprobiert, Florian: „Gefällt nicht“. Knopf und Taste sind wieder weg; der Code liegt nur auf `claude/form-bau` hinter `?ziehen=direkt` |
 | 4 Echte Spiegelung (mit der heutigen Rechnung) | **4a, der Donut, ist in Florians Fenster (Abschnitt 7.4, 13.11.):** nach seiner zweiten Regel; sein Urteil steht aus. **4b, erster Teil, ist seit dem 13.11. nachmittags in Florians Fenster (Abschnitt 7.5):** Der Löser rechnet auf der Hälfte (zwei halb so große Systeme, Krümmung auf der Hälfte), das Netz im Fenster bleibt ganz; Rechnen je Bild 10,3 → 7,1 ms am „teat firefish“, Zerlegen rund 50 %, gleiche Form; dazu „flüssig zuerst“ (eine weitere Runde je Bild nur, wenn sie ins Bild passt). Sein Urteil zum Tempo steht aus **Florian am 14.11. zu Schritt 1, 2, 4a und 4b: „das sieht gut aus bis jetzt“.** |
 | 4c Rest der halben Haut | **fest vorgemerkt** (Plan, „Schritt 4c“; Florian am 13.11.: „es soll nicht vergessen werden“): Gewichte und Vermessen auf der Hälfte (Runde von 73 % auf 50 bis 60 %), die einzelnen langsamen Bilder, Verdichten und Anzeige auf der Hälfte, das Netz selbst als Hälfte. Kommt nach den Posen wieder auf den Tisch und muss gebaut sein, bevor Shader, Materialien, Fell oder Zusatzteile beginnen. Seine heutigen Formen sind kein Maßstab für das Tempo |
-| Zwischenschritt Abzweigungen (vor Schritt 5) | **Im Bau-Fenster gebaut, Florians Urteil zur zweiten Fassung steht aus** (Abschnitt 7.17; Florian am 14.11.: „Ja, so bauen“; die erste Fassung, nur Ziehen, konnte er nicht bedienen): Mit P auf einen Punkt oder eine Linie klicken, Punkte auf die Haut setzen, auf einen anderen Punkt oder eine andere Linie klicken; die neue Linie hängt an Anfang und Ende und teilt die Punkte, kreuzt sie andere, entsteht ein gemeinsamer Punkt, zum Spiegelbild endet sie auf der Mitte. Probe an „test_kaputt“ mit Klicks: 22 Punkte erfüllt. **Offen:** der Griff eines glatt gesetzten Punkts, wie gezogen |
-| 5 Posen wie die Basis | **Entwurf steht, Gegenprobe an Florians Form hält** (Abschnitte 7.6 und 7.8, 13.11.): Eine Pose ist dieselbe Form mit anderen Lagen der Punkte und Griffe, dazu die Knochen (Florian: „ein einfacher Morph der Punkte und Handles […], während die Kieferknochen sich bewegen“). Der erste Beweis war am Maul aus der schmalen Form gescheitert (verborgene Fläche); am von Hand geformten Maul ist ein Zug in der Pose ein gewöhnlicher Zug. Gebaut ist nichts; kommt nach Schritt 6 |
+| Zwischenschritt Abzweigungen (vor Schritt 5) | **Im Bau-Fenster gebaut; Florian zur zweiten Fassung (Klicks): „Ja, weiter Schritt 5“** (Abschnitt 7.17; Florian am 14.11.: „Ja, so bauen“; die erste Fassung, nur Ziehen, konnte er nicht bedienen): Mit P auf einen Punkt oder eine Linie klicken, Punkte auf die Haut setzen, auf einen anderen Punkt oder eine andere Linie klicken; die neue Linie hängt an Anfang und Ende und teilt die Punkte, kreuzt sie andere, entsteht ein gemeinsamer Punkt, zum Spiegelbild endet sie auf der Mitte. Probe an „test_kaputt“ mit Klicks: 22 Punkte erfüllt. **Offen:** der Griff eines glatt gesetzten Punkts, wie gezogen |
+| 5 Posen wie die Basis | **Etappe 2 im Bau-Fenster gebaut, Florians Urteil steht aus** (Abschnitt 7.18, 14.11.): Die Ruhe der Pose ist die Wahrheit, die Knochen drehen nur die Anzeige; am geformten Maul rechnet die Pose wie die Grundform, ihre Linien sind genau ihr Pfad und als Versatz gespeichert; in der Pose keine neuen Punkte, Linien und kein Löschen. Probe an „maul handgemacht test“: fern vom Maul 0,17 statt 4,39, Linien 0,00 statt 12,67 neben dem Pfad, derselbe Zug in Pose und Grundform 0,00 statt 5,96 auseinander. Nicht erfüllt: 8 bis 10 umgeschlagene Dreiecke an der Mitte beim Zug an der Kieferspitze (in der Grundform auch 8). Etappe 1 (Beweis) war mit der Gegenprobe an seiner Form erledigt (7.6, 7.8). **Offen:** Etappe 3 (die Pose geht mit der Grundform mit), 4 (beide Seiten frei), 5 (sein Ablauf) |
 | 6 Maul | **Angehalten (Florian, 14.11.):** „Das Maul formt sich und das ist ok“; alles Weitere braucht „ein eigenes System und Definition“ in einer eigenen großen Sitzung (Abschnitt 7.16: sein Wort, der Stand, die offenen Fragen). **Im Bau-Fenster steht** (nicht in seinem Fenster): (7.13) „Maul formen“ in dritter Fassung: Die Maullinie trägt ihren Knick selbst (95° an den Lippen, 70° am Mundwinkel), ohne Mittellinie, animiert; mit einer Mittellinie durch beide Lippen gilt die zweite Fassung (7.11). (7.14) „Fressen“ und die Regler am geformten Maul. (7.11) Linien mit Verjüngung. (7.16) Das Maul aus nur einer Linie: hält an einer Form ohne Linien durchs Maul, an seinen Formen nicht. **Sein Einwand zur dritten Fassung:** Die fest eingeklappte Wulst ist nicht, was er erwartet; Linien, die er nachträglich durchs Maul zieht, stören sich an ihr; liegt ein Maul über einer Kreuzung, muss er die Kreuzungspunkte von Hand zurechtlegen. **Offen:** das Maul-System (zuerst die Beschreibung der Fälle), geschlossene Mäuler (dürfen später kommen), runde Lippen, Tiefe der Tasche, Knick von Hand. Das Maul aus der schmalen Form mit eingesetztem Inneren besteht daneben weiter |
 | 7 Auswahl wie in Blender | **zurückgestellt** (Florian, 14.11.): „eher später“; er ist nicht sicher, ob es das braucht und wie es umgesetzt werden kann |
 
@@ -1216,6 +1216,46 @@ Bau-Fenster an „test_kaputt“: [Kreuz](progress/editor/zwischenschritt-abzwei
 - **Code:** `packages/shape/src/dicht/einsetzen.ts` (`abzweigen`), `loops.ts` (`haengt`, `endeAufMitte`), `richtung.ts`;
   `apps/editor/src/form/kurven.ts` (Abschnitt „Abzweigung mit P“, `loeschen`, `punktAufLinie`). Einzelheiten und Fallen:
   `apps/editor/CLAUDE.md`.
+
+### 7.18 Schritt 5, Etappe 2: Die Pose rechnet in ihrer Ruhe, am geformten Maul wie die Grundform (14.11., 12:05 Uhr)
+
+**Florian am 14.11. nach der zweiten Fassung der Abzweigungen:** „Ja, weiter Schritt 5“.
+
+**Was gebaut ist** (nur `claude/form-bau`: `40ef2045` 2a, `27bdc077` 2b, danach 2c; in seinem Fenster nichts):
+
+- **2a:** In der Pose sind `haut` und `loops` im Fenster die Ruhe der Pose (Grundform plus Versatz). Gezeichnet wird ihre
+  gedrehte Kopie (`alsAnzeige`); ein Zug im Blatt wird je Punkt mit dessen Winkel zurückgedreht (`inDerRuhe`); die Regler setzen
+  nur die Winkel, gerechnet und neu abgelesen wird nichts. Vorher: gezeigt und bearbeitet wurde die gedrehte Lage, die Griffe der
+  Linien nach jedem Dreh neu abgelesen.
+- **2b:** Am geformten Maul ist die Ruhe der Pose eine Form wie die Grundform: dieselbe Rechnung über die ganze Haut (mit
+  Krümmung, Setzen und Aufräumen im Hintergrund), die Linien genau ihr Pfad. Die Linien der Pose werden als Versatz ihrer Punkte
+  und Griffe gegen die Grundform gespeichert (`pose.linien`, neben dem Blendshape `pose.delta`).
+- **2c:** In der Pose gibt es am geformten Maul keine neuen Punkte und Linien und kein Löschen (Meldung). Ein Stand, der vor dem
+  14.11. in der Pose gesichert wurde, wird beim Laden einmal in die Ruhe zurückgedreht.
+- **Am Maul aus der schmalen Form** (mit eingesetztem Inneren) rechnet die Pose weiter wie bis zum 14.11. (im Bereich, Linien
+  nicht genau), nur in ihrer Ruhe: Seine verborgene Öffnung verträgt die Rechnung über die ganze Haut nicht (7.6).
+
+**Gemessen an „maul handgemacht test“** (Probe `form-pose-fenster.mjs`; Tabelle im Plan,
+[Messwerte](progress/editor/schritt5-pose-fenster-messung-2026-11-14.txt), Bildpaar
+[vorher](progress/editor/schritt5-pose-zug-vorher-2026-11-14.jpg) und
+[nachher](progress/editor/schritt5-pose-zug-nachher-2026-11-14.jpg)): Punkt der Unterlippe (die Kieferspitze) in der Pose 25
+nach unten: fern vom Maul bewegt sich die Haut 0,17 (vorher 4,39; dabei fiel das Netz von 3 485 auf 2 926 Punkte), die Linien
+liegen 0,00 neben ihrem Pfad (vorher bis 12,67); derselbe Zug fern vom Maul gibt in der Pose dieselbe Haut wie in der Grundform
+(0,00, vorher 5,96 auseinander); die Regler ändern die Ruhe nicht; ⌘Z führt zurück; Löschen und Doppelklick werden abgelehnt.
+
+**Nicht erfüllt:** „Nichts schlägt zusätzlich um“. Beim Zug an der Kieferspitze schlagen 8 bis 10 kleine Dreiecke an der
+Mittelebene um (16 bis 18 statt 8); derselbe Zug in der Grundform schlägt dort auch 8 um. Es liegt an diesem Zug an der Mitte,
+nicht an der Pose; behoben ist es nicht. Am Maul aus der schmalen Form, in der Front gezeichnet: nach dem Zug an der Lippe 2
+umgeschlagene Dreiecke (vorher 0).
+
+**Geprüft:** `form-pose-fenster` (14 von 15 Punkten), `form-kiefer-fenster` (Kugel, „simple_mouth_more simple“, „maul
+handgemacht test“, schmale Form), `form-maul-linie-fenster`, `form-abzweigung-fenster`, `form-maul-formen-fenster`,
+`form-fressen-pose` (alte Probe, Seite und Front, gegen den Stand davor verglichen), 24 Tests im Editor, Typen, Lint.
+
+**Offen in Schritt 5:** Etappe 3 (die Pose geht mit der Grundform mit: Die Versätze sind da; geprüft ist das Mitgehen nur mit
+der alten Fressen-Probe am Maul aus der schmalen Form), Etappe 4 (beide Seiten frei: eigener kleiner Beweis zuerst), Etappe 5
+(sein Ablauf an einer seiner Formen, sein Urteil). Nicht geprüft: Sichern und Laden in der Pose im Fenster (nur der Test des
+Formats), das feine Netz, G/S/R mit ganzen Loops über Kiefer und Schädel hinweg.
 
 ## 8. Offen aus der Zeit davor
 
