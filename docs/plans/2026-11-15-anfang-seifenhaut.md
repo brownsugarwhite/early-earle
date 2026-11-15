@@ -150,3 +150,67 @@ Freihand, Platzen und Schatten auf dem Papier fehlen noch.
 2. Papier oder Nacht als Grund für den Anfang?
 3. Nachschwingen und Rückweg: so lassen, mehr oder weniger (die Feinregler zeigen die Werte)?
 4. Soll die Kamera nach dem Aufblasen näher heran, damit die Form größer zum Bearbeiten ist?
+
+## Runde 2 (15.11.2026, abends): Florians Rückmeldung (wörtlich)
+
+> „Sehr gut gemacht schonmal. Die Materialien sind gut. Seifenhaut und Höhenlinien gefallen mir auch am besten. Auf dunklem
+> Grund ist es noch nicht sehr gut.
+>
+> Bei der Introanimation bin ich noch nicht überzeugt. Das Ziehen an der Blase in der Mitte gefällt mir als Idee sehr gut, das
+> möchte ich weiterentwickeln.
+>
+> Kannst du die Schrift am Anfang gegen die Schriftart Lobster ersetzen. Lobster wird die Schrift für Editor und das Game werden.
+> Für Überschriften und Ähnliches …
+>
+> Nach der Eingabe mit Enter soll das Aufblasen anders laufen. In einer anderen Sitzung haben wir mit Projektionen gearbeitet. Die
+> gezeichnete Linie soll sich wie der Schatten von der Seite zu seiner Position bewegen und die Projektionsflächen sollen sich als
+> leichter Schatten an den Wänden der vier Kanten absetzen. An den Projektionen sind bei Hover über die entsprechende Wand die
+> Linien zu sehen. In der Mitte ist die Seifenblase. Es soll alles ganz fein und elegant sein und Lobster soll als brutalistisches
+> Element einen Kontrast erzeugen.
+>
+> Die Seifenblase in der Mitte selbst soll keine Bedienlinien anzeigen (auch nicht die Spiegellinie) und nur durch Ziehen,
+> Aufblasen, Glätten usw. bedienbar sein … das kommt im Detail später …
+>
+> An den Projektionen bediene ich die Kurven. Bei Drehung zu einer Projektion morpht die Blase zur jeweiligen Ansicht mit Kurven,
+> wie wir es in der anderen Session schon erarbeitet haben.
+>
+> Die gezeichnete Spiegellinie bewegt sich also zu ihrer Wand und wird da zum Schatten. Die Seifenblase bläst sich dabei
+> physikalisch korrekt an Ort und Stelle aus der Silhouette auf. Das muss noch deutlich besser, organischer und realistischer
+> werden. Als würde man wirklich eine Form, die mit Seife bespannt ist, in eine Richtung bewegen, und durch den Fahrtwind bläst sich
+> dadurch eine Blase in der Form auf. Die Seifenblase muss beim Zurückfahren noch eine Weile an der Outline hängen, während der
+> vordere Teil sich aufbläst, und dann, wenn die Spannung zu groß ist, zur Blase werden. Das soll so realistisch wie möglich
+> animiert sein.“
+
+Die „andere Sitzung“ ist die Vision „Kurven-Editor, Runde 4: Die Ecke“ (Cloud-Zweig `claude/meme-curves-editor-concept-s65kq1`,
+`docs/look/editor/vision/PLAN-4.md`): Seite, Front und Top als Projektionen an unsichtbaren Wänden, auf den Achsen der Morph zur
+flachen Ansicht, Start mit P und Aufblasen.
+
+### Wie ich es lese (Vorschlag)
+
+- **Der Raum ist ein Kasten**, in den man von vorn hineinschaut: die Rückwand hinter der Blase, vier Wände an den vier Rändern des
+  Bildes (links, rechts, Boden, Decke). Die Wände selbst sind nicht gezeichnet; man sieht sie nur an den leichten Schatten.
+  Rückwand = Seite (dorthin wandert die gezeichnete Linie), links und rechts = Front und Rück, Boden und Decke = Top und Unten
+  (je Achse dieselbe Form gespiegelt). Der Kasten öffnet sich mit einem Dolly-Zoom: Die Blase bleibt gleich groß, die Tiefe
+  erscheint.
+- **Der Film reißt ab wie beim Seifenblasenmachen.** Der Rahmen (die gezeichnete Linie) fährt nach hinten zur Rückwand. Die Haut
+  hängt an ihm; vorn bläst sie sich auf, dazwischen spannt sich ein Schlauch. Wird er zu lang (wie beim Katenoid zwischen zwei
+  Ringen, ab etwa dem 0,66-Fachen des Durchmessers), schnürt er sich ein, bis der Hals reißt. Die Blase schließt sich hinten
+  (erst spitz, dann rund) und schwingt nach; der Rest der Haut schnappt zurück in den Rahmen, fährt mit ihm zur Rückwand und wird
+  dort zum Schatten der Seite. Die Blase bleibt an Ort und Stelle.
+- **Die Blase zeigt keine Linien** (auch nicht die Spiegellinie). Die Linien zeigen sich an den Wänden beim Darüberfahren, mit dem
+  Namen der Ansicht in Lobster.
+- **Lobster** für den Gruß und die Namen der Wände: groß, schwer, gegen die feinen Haarlinien.
+- Material: Seifenhaut und Höhenlinien bleiben vorn; Nacht wird nicht weiter verfolgt.
+
+### Probe (festgelegt)
+
+1. Im Film sieht man nacheinander: Haut hängt am Rahmen, vorn bläst sie sich auf, Schlauch, Hals, Abriss, hinten schließt sie
+   sich, Nachschwingen; der Rest schnappt in den Rahmen und wird an der Rückwand zum Schatten.
+2. Kein Sprung beim Abriss: Zwischen dem letzten Bild davor und dem ersten danach bewegt sich kein Punkt der Haut mehr als 2 px.
+3. 60 Bilder je Sekunde beim Aufblasen.
+4. Gruß in Lobster; Schatten an Rückwand und vier Wänden; beim Darüberfahren die Linien der Wand.
+
+### Nicht in dieser Runde
+
+Bedienen der Kurven an den Wänden und der Morph der Blase zur Ansicht beim Drehen (aus der Ecke übernehmen, eigener Schritt);
+Ziehen, Aufblasen, Glätten an der Blase (kommt im Detail später).
