@@ -312,7 +312,7 @@ Momente von 0,35 bis 3,6 s).
 **Ehrlich:** Wie stark es wobbeln soll, wie rund die Blase anfangs ist und wie weit die Kamera zur Seite dreht, sind Geschmack;
 alles liegt in den Feinreglern („Seifenblase“, „Kamera“).
 
-## Runde 5 (16.11.2026): Plan nach Florians Rückmeldung
+## Runde 5 (15.11.2026, spätabends): Plan nach Florians Rückmeldung
 
 Florian (wörtlich): „Ok, schon besser. Es ist mir aber noch nicht realistisch genug. Ich sehe noch, dass sie sich noch zu sehr aus
 der Spiegellinie aufbläst, und diese ist am Anfang der Animation noch klar zu erkennen. Wenn ich eine Seifenblasenkontur schnell
@@ -350,3 +350,51 @@ zusammenspielen und die Bedienung muss noch ausgeklügelter sein.“
 
 **Probe:** Film mit Entstehung, Abriss, Morph (1, 3, 7, 0) und Viereransicht; 60 Bilder je Sekunde beim Aufblasen; Abriss ohne
 Sprung; im Browser mit echter Maus: Punkt in der Seitenansicht ziehen, die Blase folgt.
+
+### Gebaut (Runde 5)
+
+**Was sich an seiner Form (Fisch) geändert hat:**
+- **Die Blase entsteht von der Mitte aus, nicht mehr aus der Spiegellinie.** Nach ↩ wölbt sich zuerst eine kleine Kuppel in der
+  Mitte der Fläche (0,1 s), sie breitet sich nach außen aus, während der Rahmen nach hinten gerissen wird und der Abstand zur
+  Silhouette wächst (0,2–0,4 s). Die flache Haut zwischen Kuppel und Rahmen wird dabei zum Schlauch, der sich zum runden Hals
+  einschnürt und bei 0,47 s reißt. Danach schnalzt die runde Blase mit Überschwingen in die Form (Feder 2,6 Hz, schwach gedämpft)
+  und schwingt aus.
+- **Der Hals ist ein eigenes glattes Netz** (44 Ringe entlang des Schlauchs): Der Querschnitt wird zum Hals hin rund wie bei echter
+  Seifenhaut, keine Kante aus Dreiecken mehr. Beim Abriss gehen die beiden Hälften in die Rückseite der Blase und in den Rest im
+  Rahmen über (in wenigen Bildern überblendet).
+- **Schneller Zug, Kamera zugleich:** Der Rahmen wird mit einem Ruck nach hinten gezogen; gleichzeitig fährt die Kamera in 0,95 s
+  in die leichte 3D-Lage (24° zur Seite, 14° von oben) mit Dolly-Zoom. Kein Schwenk zur Seite mehr.
+- **Würfel statt Ecke:** sechs unsichtbare Wände, Schatten nur auf den von der Kamera abgewandten (höchstens drei zugleich); beim
+  Drehen wechselt der Schatten weich auf die Gegenwand. Die Schatten sind weich wie echte: je Achse ein Bild des Umrisses, zweimal
+  weichgezeichnet (enger Kern, weiter Halbschatten), auf die Wand multipliziert. Keine Namen mehr an den Wänden; drei feinste
+  Haarlinien an der fernen Ecke.
+- **Ansichten fahren:** 1 Seite, 3 Front, 7 Top, 0 Raum. Die Kamera dreht in 0,62 s auf die Achse und wird dabei mit einem
+  Dolly-Zoom flach (bis 4° Öffnung); die Blase wird ruhiger, der Raum blendet aus. Die Linien der Ansicht erscheinen erst nahe der
+  Achse (beim Drehen von einer Ansicht zur nächsten bleibt nur die Blase). In der Seite sind die Punkte ziehbar, die Blase folgt
+  sofort. Tippen bleibt in der Ansicht, Halten (länger als 0,3 s) schaut nur kurz hin. Lässt man beim Drehen von Hand nahe einer
+  Achse los (unter 9°), rastet die Ansicht ein.
+- **Viereransicht (4):** Seite oben links, Front oben rechts, Top unten links, Raum unten rechts; die drei Felder gleiten aus den
+  Schatten an den Wänden an ihren Platz, der Raum zieht sich ins vierte Feld. Noch einmal 4 klappt zurück.
+- Fassung jetzt mit M (die Ziffern sind die Ansichten).
+
+**Probe:**
+- **Takt:** im Browserfenster (1440 × 900, doppelte Dichte, 120-Hz-Bildschirm) beim Aufblasen Median 8,4 ms (120 Bilder je Sekunde),
+  95 % unter 16,7 ms, auch nach einer Pause von 2,5 s. Eine leere Seite ohne Zeichnen hat in diesem Fenster dieselbe Verteilung; das
+  Aufblasen kostet also keine Bilder. Im Testbrowser ohne Bildschirm fielen bei doppelter Dichte nach einer Pause in den ersten 0,6 s
+  einzelne Bilder aus (bei einfacher Dichte nicht); im echten Fenster nicht gesehen. Die Shader der Schatten werden jetzt beim Laden
+  übersetzt (vorher ein Bild mit 59 ms bei 0,7 s).
+- **Abriss ohne Sprung:** über den Abriss 3,3 px je Bild, davor 1,2 px, danach 13 px (der Schnalz). Übergang Blatt → Rahmen 0,19 px.
+- **Ansichten:** Bild mit Raum, Seite, Front, Top, halber Fahrt und Viereransicht; im Film ein Punkt in der Seite gezogen, die
+  Blase folgt.
+
+**Bilder und Film:** `docs/progress/anfang/2026-11-15-r5-film.mp4` (ganzer Ablauf: zeichnen, ↩, über die Wände, Hauch, an der
+Blase ziehen, 1 mit gezogenem Punkt, 3, 7, 0, 4 und zurück), `…-r5-ablauf-papier.png` (zwölf Momente von 0 bis 3 s),
+`…-r5-ansichten.png`.
+
+**Ehrlich:**
+- Die Kuppel beginnt am Schwerpunkt der Fläche. Bei einer Form, deren Schwerpunkt außerhalb liegt (etwa ein C), ist das nicht
+  geprüft.
+- Front und Top zeigen nur den Umriss von dort; ziehbar sind bisher nur die Punkte in der Seite.
+- Die Front zeigt beim Fisch die Flossen als Raute vor dem Körper (der Umriss von vorn). Ob er dort andere Linien erwartet, ist offen.
+- Wie schnell Zug und Schnalz sind und wie stark es schwingt, ist Geschmack; alles in den Feinreglern („Rahmen“, „Blase wächst von
+  der Mitte“, „Schnalz in die Form“, „Kamera“).

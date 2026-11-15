@@ -79,7 +79,7 @@ for (const grund of GRUENDE) {
   for (const f of LISTE) {
     html += `<h2>${f + 1} · ${NAMEN[f]}</h2><div class="reihe" style="flex-wrap:wrap;width:${5 * (360 + 10)}px">`;
     for (const T of MOMENTE)
-      html += `<div class="z"><img width="360" src="data:image/png;base64,${bilder[`${grund}-${f}-${T}`]}"><div class="t">${T === 0 ? 'geschlossen, vor ↩' : `${T.toFixed(1).replace('.', ',')} s`}</div></div>`;
+      html += `<div class="z"><img width="360" src="data:image/png;base64,${bilder[`${grund}-${f}-${T}`]}"><div class="t">${T === 0 ? 'geschlossen, vor ↩' : `${String(Math.round(T * 100) / 100).replace('.', ',')} s`}</div></div>`;
     html += '</div>';
   }
   await blatt(html, 48 + 5 * 370, 800, path.join(ziel, `${praefix}-ablauf-${grund}.png`));

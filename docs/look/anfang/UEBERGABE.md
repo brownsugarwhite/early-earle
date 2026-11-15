@@ -1,6 +1,6 @@
-# Übergabe: Anfang einer Form und Seifenhaut (Stand 15.11.2026, nachts, Runde 4: mehr Seifenblase)
+# Übergabe: Anfang einer Form und Seifenhaut (Stand 15.11.2026, spätabends, Runde 5)
 
-Eigener Strang neben „Linien, Punkte, Zeiger“. Konzept, Ergebnis und Fragen an Florian:
+Eigener Strang neben „Linien, Punkte, Zeiger“. Konzept, Florians Rückmeldungen wörtlich, Ergebnisse und Fragen:
 [`docs/plans/2026-11-15-anfang-seifenhaut.md`](../../plans/2026-11-15-anfang-seifenhaut.md). Florians Materialentwurf (keine feste
 Vorlage): `2026-11-15-entwurf-materialien.webp` hier im Ordner.
 
@@ -11,61 +11,62 @@ Vorlage): `2026-11-15-entwurf-materialien.webp` hier im Ordner.
 | Arbeitsbaum | `.claude/worktrees/anfang`, Zweig `claude/anfang` (von `claude/form-spiegel`, 23aa8e7d) |
 | Server | Eintrag `anfang` in `.claude/launch.json`, Port 5203 (auch uncommittet im Hauptordner, weil das Vorschauwerkzeug dort liest) |
 | Seite | `http://localhost:5203/anfang.html` (`?info=1` Takt und Netz, `?bild=1` ohne Leiste und Zeiger, `?film=1` ohne Leiste mit Zeiger, `&fassung=0–3`, `&nacht=1`) |
-| Code | `apps/editor/src/anfang/`: `main.ts` (Seite, Ablauf, Kamera, Eingaben, Test-Haken `__anfang`), `stift.ts` (P, Kapseln), `form.ts` (Netz, Poisson, Körper, Strahl), `aufblasen.ts` (Ablauf als Funktion der Zeit), `haut.ts` (Farbtafel, Shader, Durchgänge), `regler.ts`, `fluessig.ts` (Kopie aus dem Linien-Strang, Stand d762e508) |
-| Skripte | `apps/editor/scripts/anfang/`: `bilder.mjs` (`MOMENTE=…`, `FASSUNGEN=0,3`, `GRUND=papier`), `film.mjs` (`KURZ=1`, `TITEL=…`, `DPR=…`), `nah.mjs` (Abriss groß), `takt.mjs` (Probe 1 und 3), `fisch.mjs` (Testform) |
+| Code | `apps/editor/src/anfang/`: `main.ts` (Seite, Ablauf, Raum, Kamera, Ansichten, Viereransicht, Eingaben, Test-Haken `__anfang`), `stift.ts` (P, Kapseln), `form.ts` (Netz, Poisson, Körper mit Schlauch, runde Blase, Strahl), `aufblasen.ts` (Ablauf als Funktion der Zeit, Grundwerte), `haut.ts` (Farbtafel, Shader, Durchgänge, Felder, Aufwärmen), `schatten.ts` (weiche Schatten an den Wänden), `regler.ts`, `fluessig.ts` (Kopie aus dem Linien-Strang, Stand d762e508) |
+| Skripte | `apps/editor/scripts/anfang/`: `film.mjs` (ganzer Ablauf mit Ansichten; `KURZ=1`, `TITEL=…`, `DPR=…`), `bilder.mjs` (`MOMENTE=…`, `FASSUNGEN=0,3`, `GRUND=papier`), `ansichten.mjs` (Raum, Seite, Front, Top, halbe Fahrt, Viereransicht), `nah.mjs` (Abriss groß), `takt.mjs` (Übergang und Takt; `FASSUNGEN=…`, `WARTE=<ms>`, `DPR=…`), `fisch.mjs` (Testform) |
 | Schrift | `assets/fonts/lobster/Lobster-Regular.ttf` (SIL OFL, `OFL.txt` daneben), eingebunden in `src/anfang/anfang.css` |
-| Bilder, Filme | `docs/progress/anfang/` |
+| Bilder, Filme | `docs/progress/anfang/` (Runde 5: `2026-11-15-r5-film.mp4`, `…-r5-ablauf-papier.png`, `…-r5-ansichten.png`) |
 
-## Stand Runde 2
+## Stand
 
-Florians Rückmeldung (wörtlich im Plan, Abschnitt „Runde 2“): Seifenhaut und Höhenlinien gefallen, Nacht noch nicht; Aufblasen neu (Rahmen fährt zur Wand und wird Schatten, Haut hängt, reißt ab), Kasten mit Schatten an den Wänden, Linien nur beim Darüberfahren, Lobster. Gebaut und geprüft, sein Urteil steht aus. Nicht gebaut: Morph zur Ansicht beim Drehen und Bedienen der Kurven an den Wänden (aus der Ecke der Vision übernehmen, Cloud-Zweig `claude/meme-curves-editor-concept-s65kq1`), Ziehen, Aufblasen, Glätten an der Blase (kommt im Detail später).
-
-## Stand Runde 3
-
-Florian: „ich meinte Ecke und die Beschriftung soll auch auf den Boden projiziert sein“. Gebaut: Ecke aus Rückwand (Seite), linker Wand (Front) und Boden (Top), drei Haarlinien vom Eckpunkt, Namen in Lobster flach auf dem Boden (grau, beim Darüberfahren dunkel), Kamera 32°/22° mit eingepasstem Abstand. Sein Urteil steht aus.
-
-## Stand Runde 4
-
-Florian: mehr bubbly, mehr wobbeln, dann erst die Form; Hals und Abriss deutlicher; bessere Dynamik, mehr Wow. Gebaut: erst runde, pralle Blase (Rand geglättet, Inneres harmonisch), kräftiges Schwingen nach dem Abriss (länglich ↔ flach, seitlich, Welle vom Abrisspunkt), die Form wächst heraus; Kamera beim Hängen 58° zur Seite, danach in die Ecke; Hals bis 88 % zu, reißt in 0,09 s. Sein Urteil steht aus.
+- **Runde 2:** Rahmen fährt zur Wand und wird Schatten, Haut hängt und reißt ab, Linien an den Wänden beim Darüberfahren, Lobster.
+- **Runde 3:** Ecke statt Kasten, Namen in Lobster auf dem Boden (in Runde 5 wieder entfernt, Florian: keine großen Labels).
+- **Runde 4:** erst runde, pralle Blase, kräftiges Schwingen, dann die Form; Kamera beim Hängen zur Seite.
+- **Runde 5 (gebaut, sein Urteil steht aus):** Florian: „noch zu sehr aus der Spiegellinie“, Hals „billig und kantig“, Dynamik „zu
+  zäh“, Projektion auf allen Seiten (höchstens drei), keine Labels, weiche Schatten, Morph zu den Ansichten, Viereransicht. Gebaut:
+  Kuppel in der Mitte wächst nach außen, Rock wird Schlauch, runder Hals als eigenes Netz, Abriss bei 0,47 s, Schnalz in die Form;
+  schneller Zug mit gleichzeitiger Kamerafahrt (24°/14°); Würfel mit weichen Schatten auf den abgewandten Wänden; Ansichten 1, 3, 7, 0
+  (Drehen und Dolly-Zoom in 0,62 s) und 4. Einzelheiten und offene Punkte im Plan, Abschnitt „Gebaut (Runde 5)“.
+- **Nicht gebaut:** Punkte in Front und Top ziehen; Ziehen, Aufblasen, Glätten an der Blase (kommt im Detail später); Nacht ist
+  weiter nicht gut.
 
 ## Bedienung
 
 P ist das einzige Werkzeug: Klick Ecke, Ziehen rund, ⌥ bricht den Griff, am ersten Punkt schließen (oder ↩), ⌫ letzter Punkt
-zurück (geschlossen: öffnet), Esc verwirft. Geschlossen ziehen sich Punkte noch. ↩ bläst auf. Danach: über eine Wand oder ihren Namen am Boden fahren
-zeigt ihre Linien, der Name wird dunkel, an der Blase ziehen dehnt, daneben ziehen dreht, Rad zoomt, Leertaste noch einmal, Esc oder ⌫
-zurück aufs Blatt (der Film läuft rückwärts). 1–4 Fassung, N Nacht, R Feinregler.
+zurück (geschlossen: öffnet), Esc verwirft. ↩ bläst auf. Danach: über eine Wand fahren zeigt den Umriss von ihrer Achse, an der Blase
+ziehen dehnt, daneben ziehen dreht (beim Loslassen nahe einer Achse, unter 9°, rastet die Ansicht ein), Rad zoomt, Leertaste noch
+einmal, Esc oder ⌫ zurück aufs Blatt. 1 Seite (Punkte ziehbar, die Blase folgt), 3 Front, 7 Top, 0 Raum: tippen bleibt, halten
+schaut kurz hin. 4 Viereransicht an und aus. M Fassung, N Nacht, R Feinregler.
 
 ## Fallen
 
-- Zwei Leinwände übereinander: unten three.js (Haut, in ein Halbfloat-Ziel, am Ende nach sRGB), oben die flüssige Anzeige (WebGL2,
-  eigener Kontext). Für Verdecktes bekommt die obere den Körper nur als Tiefe (`koerperZeigen: false`); die Tiefe ist −z der Ansicht,
-  wie bei den Kapseln. Der Ring liegt genau auf der Haut: ohne `bias` flackert er.
-- Durchsichtige Fassungen zeichnen je Seite zwei Durchgänge (Durchlass multiplizieren, Spiegelung addieren), hinten vor vorn. Die
-  Rückseite zeigt sich erst, wenn sie sich vom Film löst (`hintenSichtbar`), sonst kämpfen zwei gleiche Flächen.
-- Vorder- und Rückseite haben je eigene Randpunkte (gleiche Lage). Die Normale am Rand mischt beide erst, wenn die Form zu ist (`zu`);
-  in der Phase „eine Fläche“ hätte die Summe sonst die Länge 0.
-- Normalen nach dem Winkel gewichten, nicht nach der Fläche: Auf dem ungleichen Netz (Reihen am Rand) kippen sie sonst, und harte
-  Spiegelungen zeigen das Netz.
-- Der Takt des Browsers rechnet nichts, solange `__anfang.film(true)` gilt; Filme rechnen Bild für Bild mit `__anfang.bild(1/60)`.
-  `__anfang.zeit(T)` hält die Zeit des Aufblasens fest (auch die Uhr des Materials), für genau wiederholbare Standbilder.
-- Ein Druck mit `aufDerHaut` für einen Punkt außerhalb der Form trifft den nächsten Randpunkt, also die Haut: Zum Drehen im Film
-  einen Punkt deutlich daneben nehmen.
-
-- **Runde 2:** Drei Flächen auf einem flachen Netz (`Koerper`: vorn 0..n−1, hinten n..2n−1, Rahmen 2n..3n−1); die Haut der Blase
-  und der Rest im Rahmen sind zwei Geometrien auf Teilstücken derselben Puffer (`subarray`). Vor dem Abriss ist alles hinter dem
-  Hals unsichtbar (`sicht` je Punkt), nicht weggeschnitten.
-- Abriss ohne Sprung nur, weil der Schlauch bei `schnitt` = 1 genau die beiden Trichter ist, mit denen es weitergeht: Wer das
-  Profil (`trichter`) oder die Lage des Halses ändert, muss beides an beiden Stellen ändern (`Koerper.setzen`, beide Zweige).
-- Wände: Die Blase wird im Shader auf die Wand gelegt und mit MIN gemischt (Überdeckungen nicht doppelt dunkel). An der Rückwand
-  löst die Projektion der Blase den Rest im Rahmen ab, sobald er ganz Schatten ist (gleiche Form, gleiche Farbe).
-- Ecke (`eckeRechnen`): Wände bei `xl`, `yb`, `zw`; der Abstand der Kamera am Ende kommt aus `einpassen` (Halbierung, alle wichtigen Punkte im Bild). Wer Namen, Schatten oder die Kamera verschiebt, bekommt den Abstand neu.
-- Namen am Boden (`Haut.setzeNamen`): die Schrift wird erst gezeichnet, wenn Lobster geladen ist (`document.fonts.load`); danach meldet sie ihr Seitenverhältnis, und die Ecke wird neu gerechnet. Darüberfahren prüft auf dem Boden zuerst die Rechtecke der Namen.
-- Alle Shader werden in `setzeKoerper` übersetzt (`renderer.compile`), sonst stockt ein Bild, wenn die Wände erscheinen.
-- `__anfang.aufDerWand(i, a, b)` gibt einen Punkt auf Wand i (0 Rückwand, 1 links, 2 Boden) im Bild, `aufDemNamen(i)` die Mitte eines Namens; `abriss()`
-  misst den Abriss (Sprung und Schritte davor und danach).
-- **Runde 4:** Die runde Blase ist eine zweite Lage je Punkt (`runderUmriss`): Rand 140-mal längs des Rands geglättet, auf die
-  Fläche der Form vergrößert, das Innere harmonisch (`dirichletLoesen` mit dem Versatz des Rands; derselbe Löser wie die Poisson-
-  Gleichung). Einfaches Glätten des ganzen Netzes faltete an der Flosse. Vor dem Abriss läuft der Schlauch vom Umfang der runden
-  Blase zum Hals am Rahmen (gezeichnete Form); nach dem Abriss mischt die Rückseite vom Trichter (gezeichnete Form) zur runden.
-- Die Kamera nimmt Drehung und Neigung aus dem Ablauf (`moment` → `gier`, `neigung`), der Abstand am Ende kommt weiter aus
-  `einpassen` (für die Werte am Ende).
+- Zwei Leinwände übereinander: unten three.js (Haut, in ein Halbfloat-Ziel mit 4× MSAA, am Ende nach sRGB), oben die flüssige
+  Anzeige (WebGL2, eigener Kontext). Für Verdecktes bekommt die obere den Körper nur als Tiefe (`koerperZeigen: false`). Der Ring
+  liegt genau auf der Haut: ohne `bias` flackert er.
+- Durchsichtige Fassungen zeichnen je Seite zwei Durchgänge (Durchlass multiplizieren, Spiegelung addieren), hinten vor vorn.
+- `Koerper`: vorn 0..n−1, hinten n..2n−1, Rahmen 2n..3n−1 auf denselben Puffern (`subarray`), dazu der Schlauch als eigenes Netz
+  (`schlauch`, Ring = Randpunkte × 44 Zeilen). Vor dem Abriss ist alles hinter dem Hals unsichtbar (`sicht` je Punkt).
+- **Abriss ohne Sprung** nur, weil der Schlauch am Abriss genau in die Trichter von Rückseite und Rahmen übergeht (kurz überblendet,
+  `seitRiss`): Wer Hals (`halsOrt`, Profil `trichter`) oder Schlauch ändert, ändert beide Seiten in `Koerper.setzen` und prüft mit
+  `__anfang.abriss()` (Sprung kleiner als die Schritte danach).
+- **Farben der Dehnung:** Bezug ist die Blase in Ruhe (`bezugRuhe` nach `setzen(moment(99))`), dann `bezugJetzt` für den Anfang.
+  Mit dem flachen Film als Bezug ist die Kuppel in der Mitte rund 30-fach gedehnt und wird weiß. Im Shader ist die Dehnung auf
+  0,55 bis 6 begrenzt.
+- **Schatten** (`schatten.ts`): je Achse ein Bild des Umrisses (384²), nur wenn eine Wand dieser Achse zu sehen ist, zweimal
+  weichgezeichnet (Kern ein Viertel, Halbschatten = `weich` in Welt). Die Wände multiplizieren (Zero/SrcColor) und liegen ohne Tiefe in
+  der Szene der Haut (renderOrder −20). Der alte Weg (Blase im Shader auf die Wand gelegt, `uSchatten`) ist abgeschaltet.
+- **Raum und flache Ansichten:** `raumSicht()` = (1 − flach)²: Wände und Ecklinien sind in flachen Ansichten aus, auch beim Drehen
+  von einer zur nächsten. Die Linien einer Ansicht erscheinen nur nahe ihrer Achse (Blickrichtung · Achse über 0,97), sonst stünden
+  sie beim Drehen schräg im Bild.
+- **Viereransicht:** drei orthografische Kameras, mit Viewport und Scissor ins selbe Ziel gezeichnet (nur die Blase); der Raum
+  schrumpft über die Projektionsmatrix ins vierte Feld. Die Linien der Felder zeichnet die obere Leinwand (`linienDerFelder`).
+- **Aufwärmen beim Laden** (`aufwaermen` in `main.ts` und `Haut`): eine kleine Probeblase wird einmal unsichtbar gezeichnet, mit
+  Schlauch und allen sechs Wänden. Ohne das übersetzt der Browser die Schatten-Shader mitten im ersten Aufblasen (ein Bild 59 ms).
+- **Takt messen** im Browserfenster des Vorschauwerkzeugs (Größe auf 1440 × 900 stellen, danach zurück), immer gegen eine leere
+  Seite: Das Fenster hat bei 120 Hz von sich aus etwa jedes neunte Bild bei 60 Hz. Der Testbrowser ohne Bildschirm zeigt bei doppelter
+  Dichte nach Pausen Aussetzer, die das echte Fenster nicht hat.
+- Normalen nach dem Winkel gewichten, nicht nach der Fläche (sonst zeigen harte Spiegelungen das Netz). Die runde Blase ist eine
+  zweite Lage je Punkt (`runderUmriss`: Rand geglättet, Fläche gleich, Inneres harmonisch mit `dirichletLoesen`); einfaches Glätten
+  des ganzen Netzes faltete an der Flosse.
+- Filme: `__anfang.film(true)` hält den Takt des Browsers an, dann rechnet nur `__anfang.bild(1/60)`; `__anfang.zeit(T)` hält die
+  Zeit fest (auch die Uhr des Materials). `aufDerHaut` für einen Punkt außerhalb der Form trifft den nächsten Randpunkt: Zum Drehen
+  im Film deutlich daneben drücken. `aufDerWand(i, a, b)`: 0 hinten, 1 seitlich, 2 unten (die jeweils ferne Wand).
