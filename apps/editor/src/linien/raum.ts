@@ -290,20 +290,31 @@ export class Raum3D implements Raum, StiftWerk {
   private dreh: {
     z: RichtungZiel;
     H: V3;
+    /** Griffe am Anfang dieser Ebene (nach einem Wechsel mit ⇧ der Stand beim Wechsel) und beim Drücken */
     A0: V3;
     P0: V3;
+    A0start: V3;
+    P0start: V3;
+    rhoStart: number;
     armG: number;
     gegenG: number;
     armZw: number;
     gegenZw: number;
+    /** Senkrechte der Haut am Punkt; Ebene des Rings: Achse, Grundrichtungen, Mitte (auf der Haut am Punkt, beim Kegel darüber) */
+    n: V3;
     achse: V3;
     e1: V3;
     e2: V3;
+    mitte: V3;
     rho0: number;
     flach: boolean;
     hs: [number, number];
     s0: [number, number];
     vz: number;
+    /** ⇧: aus der Haut (Ebene aus Richtung und Senkrechter); sonst um die Senkrechte */
+    kippen: boolean;
+    /** der Ring schwenkt nach einem Wechsel mit ⇧ von seiner alten Lage in die neue */
+    schwenk: { mitte: V3; e1: V3; e2: V3; r: number; f: Feder1 } | null;
     knick0: boolean;
     los: boolean;
     partner: Feder1;
@@ -2187,34 +2198,30 @@ export class Raum3D implements Raum, StiftWerk {
     const tiefe = this.schirm(H)[2];
     const mpp = (2 * tiefe * Math.tan(this.fov / 2)) / this.h;
     const rho0 = Math.max(len, hebel * mpp);
-    const hs3 = this.schirm(H);
-    const s03 = this.schirm(plus3(H, mal3(e1, rho0)));
-    const hs: [number, number] = [hs3[0], hs3[1]];
-    const s0: [number, number] = [s03[0], s03[1]];
-    // fast von der Kante gesehen: den Winkel auf dem Bildschirm messen (gleiche Achse, Drehsinn wie auf dem Bild)
-    const blickRichtung = einheit3(minus3(H, this.kamera.auge));
-    const flach = Math.abs(punkt3(blickRichtung, achse)) < Math.sin((20 * Math.PI) / 180);
-    const e = 0.05;
-    const s1 = this.schirm(plus3(H, mal3(plus3(mal3(e1, Math.cos(e)), mal3(e2, Math.sin(e))), rho0)));
-    const vz = Math.sign(winkelDiff(Math.atan2(s1[1] - hs[1], s1[0] - hs[0]), Math.atan2(s0[1] - hs[1], s0[0] - hs[0]))) || 1;
+    const ansicht = this.ringAufSchirm(H, achse, e1, e2, rho0);
     this.standMerken();
+    const P0 = this.lage(this.griffe, g.gegen);
     this.dreh = {
       z,
       H,
       A0,
-      P0: this.lage(this.griffe, g.gegen),
+      P0,
+      A0start: A0,
+      P0start: P0,
+      rhoStart: rho0,
       armG: g.arm,
       gegenG: g.gegen,
       armZw: this.griffZwilling(g.arm),
       gegenZw: this.griffZwilling(g.gegen),
+      n,
       achse,
       e1,
       e2,
+      mitte: H,
       rho0,
-      flach,
-      hs,
-      s0,
-      vz,
+      ...ansicht,
+      kippen,
+      schwenk: null,
       knick0: this.knick[z.li]?.[z.k] ?? false,
       los: false,
       partner: new Feder1(0),
@@ -2222,12 +2229,88 @@ export class Raum3D implements Raum, StiftWerk {
       faktor: 1,
       eingerastet: false,
     };
-    return s0;
+    return ansicht.s0;
   }
 
-  drehenZiehen(cx: number, cy: number, alt: boolean, dt: number): void {
+  /** wie der Ring auf dem Bildschirm liegt: fast von der Kante gesehen misst das Drehen den Winkel auf dem Bildschirm */
+  private ringAufSchirm(mitte: V3, achse: V3, e1: V3, e2: V3, rho: number): { flach: boolean; hs: [number, number]; s0: [number, number]; vz: number } {
+    const hs3 = this.schirm(mitte);
+    const s03 = this.schirm(plus3(mitte, mal3(e1, rho)));
+    const hs: [number, number] = [hs3[0], hs3[1]];
+    const s0: [number, number] = [s03[0], s03[1]];
+    const blickRichtung = einheit3(minus3(mitte, this.kamera.auge));
+    const flach = Math.abs(punkt3(blickRichtung, achse)) < Math.sin((20 * Math.PI) / 180);
+    const e = 0.05;
+    const s1 = this.schirm(plus3(mitte, mal3(plus3(mal3(e1, Math.cos(e)), mal3(e2, Math.sin(e))), rho)));
+    const vz = Math.sign(winkelDiff(Math.atan2(s1[1] - hs[1], s1[0] - hs[0]), Math.atan2(s0[1] - hs[1], s0[0] - hs[0]))) || 1;
+    return { flach, hs, s0, vz };
+  }
+
+  /**
+   * ⇧ während des Drehens (Florian, 15.11.: „dynamisch, auch wenn ich das handle schon im griff habe“): Der Ring wechselt die Ebene
+   * am jetzigen Stand, ohne dass der Griff springt; er schwenkt sichtbar um die Linie des Griffs. Mit ⇧ steht er aus der Haut (Ebene
+   * aus Richtung und Senkrechter); ohne ⇧ dreht der Griff um die Senkrechte der Haut und behält seine Neigung (ein Kegel).
+   */
+  private ebeneWechseln(kippen: boolean): void {
     const D = this.dreh;
     if (!D) return;
+    const A = minus3(this.lage(this.griffe, D.armG), D.H);
+    const la = laenge3(A);
+    if (la < this.radius * 1e-9) return;
+    const dir = einheit3(A);
+    const L = D.rho0 * D.faktor;
+    const S = plus3(D.H, mal3(dir, L));
+    const n = D.n;
+    let achse: V3;
+    let e1: V3;
+    let e2: V3;
+    let mitte: V3;
+    let rho: number;
+    if (kippen) {
+      // aus der Haut: die Ebene aus der Richtung des Griffs und der Senkrechten
+      e1 = dir;
+      let q = minus3(n, mal3(dir, punkt3(n, dir)));
+      if (laenge3(q) < 1e-6) q = kreuz3(dir, v3(1, 0, 0));
+      e2 = einheit3(q);
+      achse = einheit3(kreuz3(e1, e2));
+      mitte = D.H;
+      rho = L;
+    } else {
+      // auf der Haut: um die Senkrechte, die Neigung bleibt (der Ring liegt auf der Höhe der Spitze)
+      const quer = minus3(dir, mal3(n, punkt3(dir, n)));
+      if (laenge3(quer) < 0.1) return;
+      e1 = einheit3(quer);
+      e2 = kreuz3(n, e1);
+      achse = n;
+      mitte = plus3(D.H, mal3(n, punkt3(dir, n) * L));
+      rho = L * laenge3(quer);
+    }
+    D.schwenk = { mitte: D.mitte, e1: einheit3(minus3(S, D.mitte)), e2: kreuz3(D.achse, einheit3(minus3(S, D.mitte))), r: laenge3(minus3(S, D.mitte)), f: new Feder1(0) };
+    D.schwenk.f.ziel = 1;
+    const knick = D.knick0 || D.los;
+    D.A0 = plus3(D.H, A);
+    // rund dreht die Gegenseite mit (vom jetzigen Stand aus); geknickt steht sie, wo sie beim Drücken stand
+    D.P0 = knick ? D.P0start : this.lage(this.griffe, D.gegenG);
+    D.partner.setzen(0);
+    D.achse = achse;
+    D.e1 = e1;
+    D.e2 = e2;
+    D.mitte = mitte;
+    D.rho0 = rho;
+    D.winkel = 0;
+    D.faktor = 1;
+    D.kippen = kippen;
+    Object.assign(D, this.ringAufSchirm(mitte, achse, e1, e2, rho));
+  }
+
+  drehenZiehen(cx: number, cy: number, alt: boolean, dt: number, kippen?: boolean): void {
+    const D = this.dreh;
+    if (!D) return;
+    if (kippen !== undefined && kippen !== D.kippen) this.ebeneWechseln(kippen);
+    if (D.schwenk) {
+      D.schwenk.f.schritt(dt, 5, 0.9);
+      if (D.schwenk.f.ruhig(0.002)) D.schwenk = null;
+    }
     let phi: number;
     let r: number;
     if (!D.flach) {
@@ -2235,7 +2318,7 @@ export class Raum3D implements Raum, StiftWerk {
       const { o, d } = this.strahl(cx, cy);
       const nenner = punkt3(d, D.achse);
       if (Math.abs(nenner) < 1e-9) return;
-      const v = minus3(plus3(o, mal3(d, punkt3(minus3(D.H, o), D.achse) / nenner)), D.H);
+      const v = minus3(plus3(o, mal3(d, punkt3(minus3(D.mitte, o), D.achse) / nenner)), D.mitte);
       phi = Math.atan2(punkt3(v, D.e2), punkt3(v, D.e1));
       r = Math.hypot(punkt3(v, D.e1), punkt3(v, D.e2));
     } else {
@@ -2277,8 +2360,8 @@ export class Raum3D implements Raum, StiftWerk {
     else if (D.los) {
       this.knickRichtung(D.z.li, D.z.k, true, D.armZw);
       // die Gegenseite steht wieder, wo sie war (ihre Feder ist vielleicht noch unterwegs)
-      this.griffSetzen(D.gegenG, D.P0);
-      if (D.gegenZw >= 0 && D.gegenZw !== D.armG) this.griffSetzen(D.gegenZw, spiegel3(D.P0));
+      this.griffSetzen(D.gegenG, D.P0start);
+      if (D.gegenZw >= 0 && D.gegenZw !== D.armG) this.griffSetzen(D.gegenZw, spiegel3(D.P0start));
     }
     this.dreh = null;
   }
@@ -2287,16 +2370,30 @@ export class Raum3D implements Raum, StiftWerk {
     const D = this.dreh;
     if (!D) return null;
     const R = D.rho0 * D.faktor;
-    const auf = (c: number, s: number, rr: number): V3 => plus3(D.H, plus3(mal3(D.e1, c * rr), mal3(D.e2, s * rr)));
+    const auf = (c: number, s: number, rr: number): V3 => plus3(D.mitte, plus3(mal3(D.e1, c * rr), mal3(D.e2, s * rr)));
     const ring: number[] = [];
     const n = 120;
+    // nach einem Wechsel mit ⇧ schwenkt der Ring von seiner alten Lage in die neue (Mitte, Ebene und Radius gleiten)
+    const S = D.schwenk;
+    const f = S ? Math.min(1, Math.max(0, S.f.x)) : 1;
+    const spitzeNeu = auf(Math.cos(D.winkel), Math.sin(D.winkel), R);
+    const rm = S ? plus3(S.mitte, mal3(minus3(D.mitte, S.mitte), f)) : D.mitte;
+    const rr = S ? S.r + (R - S.r) * f : R;
+    let u = D.e1;
+    let w2 = D.e2;
+    if (S) {
+      // die Spitze bleibt auf dem Ring; die Ebene dreht sich um sie
+      u = einheit3(minus3(spitzeNeu, rm));
+      const zw = plus3(mal3(S.e2, 1 - f), mal3(kreuz3(D.achse, u), f));
+      w2 = einheit3(minus3(zw, mal3(u, punkt3(zw, u))));
+    }
     for (let i = 0; i <= n; i++) {
       const w = (2 * Math.PI * i) / n;
-      ring.push(...this.schirm(auf(Math.cos(w), Math.sin(w), R)));
+      ring.push(...this.schirm(plus3(rm, plus3(mal3(u, Math.cos(w) * rr), mal3(w2, Math.sin(w) * rr)))));
     }
     const rund = !(D.knick0 || D.los) || D.eingerastet;
-    const alt = [...this.schirm(D.H), ...this.schirm(auf(1, 0, D.rho0))];
-    if (rund) alt.push(...this.schirm(D.H), ...this.schirm(plus3(D.H, mal3(einheit3(minus3(D.P0, D.H)), D.rho0))));
+    const alt = [...this.schirm(D.H), ...this.schirm(plus3(D.H, mal3(einheit3(minus3(D.A0start, D.H)), D.rhoStart)))];
+    if (rund) alt.push(...this.schirm(D.H), ...this.schirm(plus3(D.H, mal3(einheit3(minus3(D.P0start, D.H)), D.rhoStart))));
     return {
       ring,
       nabe: this.schirm(D.H),

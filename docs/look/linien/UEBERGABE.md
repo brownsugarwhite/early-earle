@@ -26,7 +26,7 @@ Florians Entwürfe liegen hier (`2026-11-14-florian-fisch-entwurf.webp` und `…
 
 Zeiger an Linie oder Punkt, drücken und ziehen. Pinch oder ⌘ + Rad zoomt, zwei Finger oder Leertaste verschieben, ⌘Z zurück.
 Auf der Linie nahe am Punkt: Richtung drehen (⌥ knickt, zurück in die Flucht rastet ein, Doppelklick: Knick ↔ rund); im Raum auf
-der Haut, ⇧ beim Drücken aus der Haut.
+der Haut, ⇧ (auch während des Haltens) aus der Haut.
 Auswahl (V): Klick wählt einen Punkt (⇧ dazu oder weg), Ziehen im Leeren zieht einen Rahmen, Doppelklick auf eine Linie wählt den
 Loop, gewählte gehen beim Ziehen zusammen mit, ⌫ löscht, Esc leert, ⌘A alle.
 P (wie Illustrator): Klick Ecke, Ziehen rund, ⌥ bricht, ⇧ 45°, Leertaste verschiebt beim Ziehen den Punkt, Klick auf den letzten
@@ -77,6 +77,9 @@ Browser, „Werte kopieren“ legt die geänderten als JSON in die Zwischenablag
   die Kreuzungen im Raum: auf der Haut gesucht, beim Fertigwerden als gemeinsamer Punkt samt Spiegelbild eingesetzt
   (`kreuzungFinden`, `kreuzungTeilen` in `raum.ts`); ⌫ lässt geteilte Punkte stehen wie im Editor. Sein Urteil steht aus. Offen:
   seine Tastenbelegung, Einbau in den Editor.
+- **15.11. abends, Florian:** ⇧ soll auch während des Haltens kippen. Gebaut: Der Ring schwenkt um die Linie des Griffs aus der Haut
+  und zurück, ohne Sprung; ohne ⇧ dreht der Griff mit seiner Neigung um die Senkrechte (Nachtrag im Plan „Richtungen statt Griffe“,
+  Film `2026-11-15-kippen-film.mp4`).
 
 ## Fallen
 

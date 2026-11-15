@@ -315,7 +315,7 @@ export class Verhalten {
   raum: Raum | null = null;
   /** Werkzeug P: Tropfen auf Linien zeigen, Drücken setzt dort einen Punkt */
   stift = false;
-  /** ⌥ gehalten (Richtung losreißen, nicht einrasten); ⇧ beim Drücken (im Raum: aus der Haut kippen statt auf ihr drehen) */
+  /** ⌥ gehalten (Richtung losreißen, nicht einrasten); ⇧ (im Raum: aus der Haut kippen statt auf ihr drehen, auch während des Drehens) */
   alt = false;
   kippen = false;
   private dreher2d = new Dreher2D(
@@ -1179,7 +1179,7 @@ export class Verhalten {
           this.versatz.zx = g.spitze[0] - g.mx;
           this.versatz.zy = g.spitze[1] - g.my;
         }
-        this.dreher.drehenZiehen(g.spitze[0] + dx, g.spitze[1] + dy, this.alt, dt);
+        this.dreher.drehenZiehen(g.spitze[0] + dx, g.spitze[1] + dy, this.alt, dt, this.kippen);
         this.drehBildLetzt = this.dreher.drehBild() ?? this.drehBildLetzt;
       } else if (this.raum) {
         if (g.mehrere) this.raum.punkteZiehen(dx, dy);

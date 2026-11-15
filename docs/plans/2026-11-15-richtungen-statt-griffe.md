@@ -165,7 +165,7 @@ Frage 5 (Kante entlang B) betrifft die Haut im Editor, nicht die Probe; sie blei
 - **Grenzen der Probe:**
   - Die Haut folgt im Raum dem Drehen nicht (dort rechnet im Editor der Löser). Die Linie gleitet über die Haut oder hebt sich aus
     ihr.
-  - ⇧ gilt ab dem Drücken; während des Ziehens umschalten geht noch nicht.
+  - ~~⇧ gilt ab dem Drücken; während des Ziehens umschalten geht noch nicht.~~ Seit dem 15.11. abends gebaut (Nachtrag unten).
   - Sieht man den Ring flacher als 20°, gilt der Winkel um den Punkt auf dem Bildschirm (in der Seite etwa das Kippen an der Flanke).
   - Am Spiegelpunkt ist die Gegenseite das Spiegelbild: Drehen macht dort ein V, wie im Editor.
   - Der erste Klick eines Doppelklicks legt einen leeren Schritt fürs Zurück an.
@@ -177,3 +177,17 @@ Frage 5 (Kante entlang B) betrifft die Haut im Editor, nicht die Probe; sie blei
 3. Im 3D auf der Haut als Standard und ⇧ für „aus der Haut“ (Vorschlag), oder wie in Blender in der Bildebene?
 4. Schwung durch Ziehen nach außen und innen, mit Rasten am Ring (Vorschlag), oder getrennt?
 5. Stimmt die Lesart „Knickt A an der Kreuzung, liegt dort eine Kante entlang B“?
+
+## Nachtrag 15.11. abends: ⇧ während des Haltens
+
+Florian: „kann die drehung des kreises bei druck auf shift, dynamisch passieren, auch wenn ich das handle schon im griff habe?
+aktuell muss ich absetzen und dann neu mit shitf drücken.“
+
+- **Gebaut (Raum):** ⇧ gilt jetzt auch während des Haltens. Drückt man ⇧, wechselt der Ring die Ebene am jetzigen Stand: Er schwenkt
+  in rund 0,2 s um die Linie des Griffs aus der Haut hoch (Ebene aus Richtung und Senkrechter), der Griff springt nicht. Lässt man
+  ⇧ los, legt sich der Ring wieder; der Griff behält seine Neigung und dreht um die Senkrechte der Haut weiter (ein Kegel, der Ring
+  liegt auf der Höhe der Spitze). Code: `ebeneWechseln` in `raum.ts`; `drehenZiehen` bekommt `kippen`.
+- **Probe** (`richtung-probe.mjs`, `kippenDynamisch`, vorher festgelegt): kein Sprung beim Drücken und Loslassen von ⇧ (Abweichung
+  3·10⁻¹⁶ und 8·10⁻⁹ des Radius), der Ring schwenkt sichtbar (Anteil 0,25 nach einem Bild) und steht dann senkrecht zur Haut, 25°
+  aus der Haut, danach 30° um die Senkrechte bei gleicher Neigung (25,000°). Die übrigen Prüfungen unverändert.
+- **Film:** `docs/progress/linien/2026-11-15-kippen-film.mp4` (Skript `scripts/linien/kippen-film.mjs`).

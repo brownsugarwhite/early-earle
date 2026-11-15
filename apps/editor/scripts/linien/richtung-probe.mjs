@@ -215,9 +215,10 @@ const r3 = await page.evaluate(() => {
     const D = R.dreh;
     const c = Math.cos((wGrad * Math.PI) / 180);
     const s = Math.sin((wGrad * Math.PI) / 180);
-    const T = { x: D.H.x + D.rho0 * (c * D.e1.x + s * D.e2.x), y: D.H.y + D.rho0 * (c * D.e1.y + s * D.e2.y), z: D.H.z + D.rho0 * (c * D.e1.z + s * D.e2.z) };
+    const M = D.mitte ?? D.H;
+    const T = { x: M.x + D.rho0 * (c * D.e1.x + s * D.e2.x), y: M.y + D.rho0 * (c * D.e1.y + s * D.e2.y), z: M.z + D.rho0 * (c * D.e1.z + s * D.e2.z) };
     const ts = R.schirm(T);
-    Q.zeigerHin(v.griff.mx + ts[0] - D.s0[0], v.griff.my + ts[1] - D.s0[1], 16);
+    Q.zeigerHin(v.griff.mx + ts[0] - v.griff.spitze[0], v.griff.my + ts[1] - v.griff.spitze[1], 16);
     Q.vorspulen(700);
   };
   /** Winkel einer Richtung um die Achse gegen ihre Lage vorher (Grad), ihr Anteil längs der Achse und ihre Länge */
@@ -280,6 +281,63 @@ const r3 = await page.evaluate(() => {
   out.kippen20 = { flach: D2.flach, winkelZurSenkrechten: +(zuN(B0) - zuN(B1)).toFixed(4), um: um(B0, B1, D2.achse) };
   v.loslassen();
   v.kippen = false;
+  Q.vorspulen(500);
+  R.rueckgaengig();
+  // ⇧ während des Haltens (Florian, 15.11.): auf der Haut 20° drehen, ⇧ an (kein Sprung, der Ring schwenkt), 25° aus der Haut,
+  // ⇧ aus (kein Sprung), 30° weiter: um die Senkrechte, die Neigung bleibt
+  aufNadel();
+  v.kippen = false;
+  v.druecken();
+  Q.vorspulen(60);
+  const D4 = R.dreh;
+  const nH = D4.n;
+  const neigung = (p) => grad(Math.asin(dot(p, nH) / len(p)));
+  const arm = () => sub(lage(R.griffe, D4.armG), D4.H);
+  drehenUm(20);
+  const K1 = arm();
+  v.kippen = true;
+  Q.vorspulen(16);
+  const K2 = arm();
+  const schwenk1 = R.dreh.schwenk ? R.dreh.schwenk.f.x : null;
+  Q.vorspulen(80);
+  const schwenk2 = R.dreh.schwenk ? R.dreh.schwenk.f.x : null;
+  Q.vorspulen(500);
+  const schwenkFertig = R.dreh.schwenk === null;
+  const aufrecht = Math.abs(dot(R.dreh.achse, nH));
+  drehenUm(25);
+  const K3 = arm();
+  v.kippen = false;
+  Q.vorspulen(16);
+  const K4 = arm();
+  Q.vorspulen(500);
+  drehenUm(30);
+  const K5 = arm();
+  const sprung = (p, q) => len(sub(p, q)) / R.radius;
+  const quer = (p) => sub(p, { x: nH.x * dot(p, nH), y: nH.y * dot(p, nH), z: nH.z * dot(p, nH) });
+  const azimut = (p, q) => {
+    const a = quer(p);
+    const b = quer(q);
+    return grad(Math.acos(Math.min(1, Math.max(-1, dot(a, b) / (len(a) * len(b))))));
+  };
+  out.kippenDynamisch = {
+    sprungBeiShift: sprung(K1, K2),
+    schwenk: [schwenk1, schwenk2, schwenkFertig],
+    ringAchseZurSenkrechten: +aufrecht.toFixed(4),
+    neigungVorher: +neigung(K2).toFixed(3),
+    neigungMitShift: +neigung(K3).toFixed(3),
+    sprungBeiLoslassen: sprung(K3, K4),
+    neigungDanach: +neigung(K5).toFixed(3),
+    azimutDanach: +azimut(K4, K5).toFixed(3),
+  };
+  out.kippenDynamisch.bestanden =
+    out.kippenDynamisch.sprungBeiShift < 1e-6 &&
+    out.kippenDynamisch.sprungBeiLoslassen < 1e-6 &&
+    schwenk1 !== null && schwenk1 > 0 && schwenk1 < 1 && schwenk2 > schwenk1 && schwenkFertig &&
+    aufrecht < 0.01 &&
+    Math.abs(out.kippenDynamisch.neigungMitShift - out.kippenDynamisch.neigungVorher) > 10 &&
+    Math.abs(out.kippenDynamisch.neigungDanach - out.kippenDynamisch.neigungMitShift) < 0.5 &&
+    out.kippenDynamisch.azimutDanach > 10;
+  v.loslassen();
   Q.vorspulen(500);
   R.rueckgaengig();
   // ⌥: geknickt um 30°, dann Einrasten

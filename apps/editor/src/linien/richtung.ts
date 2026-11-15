@@ -48,8 +48,8 @@ export interface Dreher {
    * Proben. Ergebnis: Spitze des Hebels (dorthin gleitet der Zeiger) oder null.
    */
   drehenBeginnen(z: RichtungZiel, kippen: boolean, hebel: number): [number, number] | null;
-  /** Zeiger in Einheiten der Proben; `alt`: ⌥ gehalten */
-  drehenZiehen(cx: number, cy: number, alt: boolean, dt: number): void;
+  /** Zeiger in Einheiten der Proben; `alt`: ⌥ gehalten; `kippen` (nur im Raum): ⇧ gerade gehalten, die Ebene wechselt dynamisch */
+  drehenZiehen(cx: number, cy: number, alt: boolean, dt: number, kippen?: boolean): void;
   drehenEnden(): void;
   drehBild(): DrehBild | null;
   /** Doppelklick: Knick ↔ rund. Ergebnis: jetzt rund (dann `ausrichten` von 0 bis 1 animieren), jetzt Knick, oder null */

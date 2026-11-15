@@ -186,7 +186,9 @@ window.addEventListener('keydown', (e) => {
     anstossen();
   }
   if (e.key === 'Shift') {
+    // ⇧ kippt den Ring einer Richtung aus der Haut, auch wenn sie schon gehalten wird
     verhalten.umschalt = true;
+    verhalten.kippen = true;
     anstossen();
   }
   if (e.code === 'Space') verhalten.leertaste = true;
@@ -222,6 +224,7 @@ window.addEventListener('keyup', (e) => {
   }
   if (e.key === 'Shift') {
     verhalten.umschalt = false;
+    verhalten.kippen = false;
     anstossen();
   }
   if (e.code === 'Space') verhalten.leertaste = false;
