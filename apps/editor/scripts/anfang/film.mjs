@@ -123,13 +123,34 @@ await fahren([ruecken.x + 18, ruecken.y - 46], 0.7);
 await warten(0.25);
 await page.mouse.up();
 await warten(0.6);
-const kopfRand = await auf(-1.6, 0.2);
-await fahren([kopfRand.x - 140, kopfRand.y + 20], 0.6);
+// 6 · Ansichten: 1 Seite (Punkt ziehen, die Blase folgt), 3 Front, 7 Top, 0 Raum, 4 vier Ansichten
+const taste = async (k) => {
+  await page.keyboard.down(k);
+  await bild();
+  await page.keyboard.up(k);
+};
+await fahren([1100, 120], 0.4);
+await taste('1');
+await warten(0.9);
+const pkt = await page.evaluate(() => window.__anfang.punktImBild(1));
+await fahren([pkt.x, pkt.y], 0.6);
+await warten(0.15);
 await page.mouse.down();
 await bild();
-await fahren([kopfRand.x + 90, kopfRand.y + 50], 1.3);
+await fahren([pkt.x + 10, pkt.y - 55], 0.8);
 await page.mouse.up();
-await warten(1.4);
+await warten(0.5);
+await fahren([1100, 120], 0.4);
+await taste('3');
+await warten(1.1);
+await taste('7');
+await warten(1.1);
+await taste('0');
+await warten(1.0);
+await taste('4');
+await warten(1.6);
+await taste('4');
+await warten(1.0);
 
 await browser.close();
 console.log(`${nr} Bilder`);

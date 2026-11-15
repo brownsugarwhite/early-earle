@@ -11,7 +11,7 @@
  * Kamera das Blatt genau so, wie es gezeichnet wurde. Danach öffnet ein Dolly-Zoom den Kasten (die Blase bleibt gleich groß).
  */
 
-import { Color, Matrix4, PerspectiveCamera, Vector2, Vector3, WebGLRenderer } from 'three';
+import { Color, Matrix4, OrthographicCamera, PerspectiveCamera, Vector2, Vector3, WebGLRenderer } from 'three';
 import { glatt, type Masse, type Moment, moment } from './aufblasen';
 import { FluessigeAnzeige, type Szene } from './fluessig';
 import { FLACH, Koerper, netzAusUmriss } from './form';
@@ -62,6 +62,39 @@ let film = 0;
 /** Uhr des Materials (s) */
 let uhr = 0;
 const nutzer = { gier: 0, neigung: 0, zoom: 1 };
+/**
+ * Ansicht (Florian, 16.11.: „automatischer Morph zu den Seitenansichten … elegant und harmonisch … optimal zur Bedienung“): Raum oder
+ * eine der drei Achsen. Auf einer Achse wird die Kamera mit einem Dolly-Zoom flach (fast parallel), die Blase ruhig, und die Linien
+ * dieser Ansicht erscheinen; an der Seite lassen sich die Punkte ziehen, die Blase folgt. 1 Seite, 3 Front, 7 Top, 0 Raum; tippen
+ * bleibt, halten schaut kurz hin; nahe einer Achse rastet das Drehen ein.
+ */
+type Ansicht = 'raum' | 'seite' | 'front' | 'top';
+let ansicht: Ansicht = 'raum';
+/** 0 = Raum (perspektivisch), 1 = flache Ansicht */
+let flach = 0;
+let ansichtFahrt: { von: [number, number, number]; nach: [number, number, number]; t: number } | null = null;
+let tasteGehalten: { taste: string; seit: number; vorher: Ansicht } | null = null;
+/** Punkt der Linie, der in der Seitenansicht gezogen wird */
+let punktZug: { i: number } | null = null;
+let punktUnterZeiger = -1;
+let umbauZeit = 0;
+const ANSICHT_DAUER = 0.62;
+/**
+ * Viereransicht (Taste 4, wie in der Ecke): Seite oben links, Front oben rechts, Top unten links, Raum unten rechts. Die Ansichten
+ * gleiten von ihren Schatten an den Wänden in ihre Felder, der Raum zieht sich ins vierte Feld zusammen. Alle drei flachen Felder im
+ * selben Maßstab; in der Seite lassen sich die Punkte ziehen, im Raum dreht man wie sonst.
+ */
+let vier = 0;
+let vierZiel = 0;
+let vierFahrt: { von: number; t: number } | null = null;
+type Feld = { x: number; y: number; w: number; h: number };
+const FELD_ACHSEN = ['seite', 'front', 'top'] as const;
+type FeldAchse = (typeof FELD_ACHSEN)[number];
+/** Kameras und Rechtecke der flachen Felder im letzten Bild (für Linien und Ziehen) */
+const feldStand: Partial<Record<FeldAchse, { kamera: OrthographicCamera; rect: Feld }>> = {};
+const FOV_FLACH = 4;
+/** Drehung (Grad) und Neigung jeder Ansicht, als Ziel der ganzen Kamera */
+const ANSICHT_WINKEL: Record<Ansicht, [number, number] | null> = { raum: null, seite: [0, 0], front: [-90, 0], top: [0, 89.4] };
 let drehen: { x: number; y: number; gier: number; neigung: number } | null = null;
 let zug: { x: number; y: number; start: Float32Array; gewicht: Float32Array; zFaktor: Float32Array; hinten: boolean; tiefe: number } | null = null;
 const hauch = { pos: new Vector3(1e6, 1e6, 1e6), staerke: 0, ziel: 0 };
@@ -195,16 +228,22 @@ function wandGewichte(): number[] {
   return [g(d.x), g(-d.x), g(d.y), g(-d.y), g(d.z), g(-d.z)];
 }
 
+/** wie viel vom Raum zu sehen ist: in einer flachen Ansicht nichts, auch nicht beim Drehen von einer flachen Ansicht zur nächsten */
+function raumSicht(): number {
+  return (1 - flach) * (1 - flach);
+}
+
 function waendeFuer(m: Moment | null): WandStaerke[] {
   if (!raum || !m) return [];
   const g = wandGewichte();
+  const r = raumSicht();
   const aus: WandStaerke[] = [];
   for (let k = 0; k < 6; k++) {
     const achse = Math.floor(k / 2) as 0 | 1 | 2;
     const seite = (k % 2 === 0 ? -1 : 1) as -1 | 1;
     // die Wand hinter der Blase (z) übernimmt den Rest im Rahmen, die übrigen erscheinen nach dem Abriss
     const zeit = achse === 2 ? m.schatten : m.waende;
-    aus.push({ achse, seite, staerke: g[k]! * zeit });
+    aus.push({ achse, seite, staerke: g[k]! * zeit * r });
   }
   return aus;
 }
@@ -248,6 +287,29 @@ function netzBauen(): void {
   raumRechnen();
   netzZeit = performance.now();
   Object.assign(stat, { netzMs: flach.stat.ms, punkte: flach.stat.punkte, dreiecke: flach.stat.dreiecke, fehlend: flach.stat.fehlendeRandkanten, schritte: flach.stat.schritte });
+}
+
+/**
+ * Beim Laden: eine kleine runde Probeblase einmal unsichtbar zeichnen (mit Schlauch und Wandschatten), dann wieder weg. So stockt das
+ * erste Aufblasen nicht, weil der Browser Shader und Zustände der Grafik schon kennt.
+ */
+function aufwaermen(): void {
+  const x: number[] = [];
+  const y: number[] = [];
+  for (let i = 0; i < 24; i++) {
+    x.push(60 * Math.cos((2 * Math.PI * i) / 24));
+    y.push(60 * Math.sin((2 * Math.PI * i) / 24));
+  }
+  const k = new Koerper(netzAusUmriss({ x, y, anker: [0, 6, 12, 18] }, { punkte: 300 }));
+  k.setzen(FLACH);
+  k.dehnungRechnen();
+  haut.setzeKoerper(k);
+  haut.hochladen();
+  kamera.position.set(0, 0, 600);
+  kamera.lookAt(0, 0, 0);
+  kamera.updateMatrixWorld();
+  haut.aufwaermen(kamera);
+  haut.setzeKoerper(null);
 }
 
 // ---------- Ablauf ----------
@@ -294,6 +356,12 @@ function nochEinmal(): void {
   nutzer.gier = 0;
   nutzer.neigung = 0;
   nutzer.zoom = 1;
+  ansicht = 'raum';
+  flach = 0;
+  ansichtFahrt = null;
+  vier = 0;
+  vierZiel = 0;
+  vierFahrt = null;
   zustand = 'auf';
   T = 0;
   anstossen();
@@ -309,6 +377,12 @@ function neu(): void {
   nutzer.gier = 0;
   nutzer.neigung = 0;
   nutzer.zoom = 1;
+  ansicht = 'raum';
+  flach = 0;
+  ansichtFahrt = null;
+  vier = 0;
+  vierZiel = 0;
+  vierFahrt = null;
   film = 0;
   anstossen();
 }
@@ -325,7 +399,18 @@ function kameraSetzen(m: Moment | null): void {
   // Maßstab der Ebene z = 0: am Anfang 1 (das Blatt), am Ende so, dass die Ecke ins Bild passt
   const ende = k ? H / 2 / (k.abstand * Math.tan((werte.fov * Math.PI) / 360)) : 1;
   const massstab = 1 + (ende - 1) * f;
-  const abstand = (H / 2 / (Math.tan(halb) * massstab)) * (1 + (nutzer.zoom - 1) * f);
+  let abstand = (H / 2 / (Math.tan(halb) * massstab)) * (1 + (nutzer.zoom - 1) * f);
+  // flache Ansicht: Dolly-Zoom auf einen engen Winkel; dabei rückt die Blase so nah, dass sie das Bild gut füllt (zum Bearbeiten)
+  if (flach > 1e-4 && k) {
+    const fovF = fov + (FOV_FLACH - fov) * flach;
+    const tanF = Math.tan((fovF * Math.PI) / 360);
+    const gleich = abstand * (Math.tan(halb) / tanF);
+    const [hx, hy] = ansicht === 'front' ? [k.tiefe, k.ry] : ansicht === 'top' ? [k.rx, k.tiefe] : [k.rx, k.ry];
+    const pxw = Math.min((0.31 * H) / Math.max(1, hy), (0.36 * W) / Math.max(1, hx));
+    const nah = H / 2 / (pxw * tanF);
+    abstand = gleich + (nah - gleich) * flach;
+    kamera.fov = fovF;
+  }
   const ziel = new Vector3((k?.cx ?? 0) * f, (k?.cy ?? 0) * f, 0);
   // Drehung aus dem Ablauf (beim Hängen zur Seite, danach in die Ecke), dazu die Drehung von Hand
   const gier = (((m?.gier ?? 0) * Math.PI) / 180) + nutzer.gier * f;
@@ -337,6 +422,148 @@ function kameraSetzen(m: Moment | null): void {
   kamera.far = abstand * 30;
   kamera.updateProjectionMatrix();
   kamera.updateMatrixWorld();
+  // Viereransicht: der Raum zieht sich ins vierte Feld zusammen (Projektion verkleinert und verschoben)
+  const v = glatt(vier);
+  if (v > 1e-4) {
+    const R = felder().raum;
+    const sc = 1 + (1.45 * Math.min(R.w / W, R.h / H) - 1) * v;
+    const ox = (((R.x + R.w / 2) / W) * 2 - 1) * v;
+    const oy = (1 - ((R.y + R.h / 2) / H) * 2) * v;
+    kamera.projectionMatrix.premultiply(new Matrix4().set(sc, 0, 0, ox, 0, sc, 0, oy, 0, 0, 1, 0, 0, 0, 0, 1));
+    kamera.projectionMatrixInverse.copy(kamera.projectionMatrix).invert();
+  }
+}
+
+/** Felder der Viereransicht (CSS-Pixel); unten bleibt Platz für die Leiste */
+function felder(): Record<FeldAchse | 'raum', Feld> {
+  const rand = 14;
+  const fuge = 12;
+  const unten = document.body.classList.contains('bild') ? rand : 70;
+  const qw = (W - 2 * rand - fuge) / 2;
+  const qh = (H - rand - unten - fuge) / 2;
+  return {
+    seite: { x: rand, y: rand, w: qw, h: qh },
+    front: { x: rand + qw + fuge, y: rand, w: qw, h: qh },
+    top: { x: rand, y: rand + qh + fuge, w: qw, h: qh },
+    raum: { x: rand + qw + fuge, y: rand + qh + fuge, w: qw, h: qh },
+  };
+}
+
+function vierUmschalten(an?: boolean): void {
+  if (zustand !== 'ruhe') return;
+  vierZiel = (an ?? vierZiel < 0.5) ? 1 : 0;
+  vierFahrt = { von: vier, t: 0 };
+  if (vierZiel > 0.5 && ansicht !== 'raum') ansichtSetzen('raum');
+  anstossen();
+}
+
+/** flache Kamera eines Felds: alle drei im selben Maßstab, Blick längs ihrer Achse */
+function feldKamera(n: FeldAchse, rect: Feld): OrthographicCamera {
+  const e = raum!;
+  const asp = rect.w / Math.max(1, rect.h);
+  // halbe Höhe des Ausschnitts: alle drei Ansichten passen mit Rand in ihr Feld
+  const h0 = 1.22 * Math.max(e.ry, e.tiefe, e.rx / asp, e.tiefe / asp);
+  const c = new OrthographicCamera(-h0 * asp, h0 * asp, h0, -h0, 1, 20 * e.L);
+  const d = 6 * e.L;
+  if (n === 'seite') {
+    c.position.set(e.cx, e.cy, d);
+    c.up.set(0, 1, 0);
+  } else if (n === 'front') {
+    c.position.set(e.cx - d, e.cy, 0);
+    c.up.set(0, 1, 0);
+  } else {
+    c.position.set(e.cx, e.cy + d, 0);
+    c.up.set(0, 0, -1);
+  }
+  c.lookAt(e.cx, e.cy, 0);
+  c.updateProjectionMatrix();
+  c.updateMatrixWorld();
+  return c;
+}
+
+/** Punkt (Welt) im Feld einer flachen Kamera → Gerätepunkte */
+function feldProjizieren(p: Vector3, c: OrthographicCamera, rect: Feld): [number, number] {
+  const q = p.clone().project(c);
+  return [(rect.x + (q.x * 0.5 + 0.5) * rect.w) * D, (rect.y + (0.5 - q.y * 0.5) * rect.h) * D];
+}
+
+/** Lage der Felder in diesem Bild: vom Schatten an der Wand (Raum) ins eigene Feld */
+function felderJetzt(vp: Matrix4): { n: FeldAchse; rect: Feld; kamera: OrthographicCamera }[] {
+  const e = raum;
+  if (!e || vier < 0.02) return [];
+  const v = glatt(vier);
+  const F = felder();
+  const g6 = wandGewichte();
+  const s = [g6[0]! >= g6[1]! ? -1 : 1, g6[2]! >= g6[3]! ? -1 : 1, g6[4]! >= g6[5]! ? -1 : 1];
+  return FELD_ACHSEN.map((n) => {
+    // Rechteck des Schattens an seiner Wand (Raum, verkleinert mit), als Anfang der Fahrt
+    const ecken: Vector3[] = [];
+    for (const a of [-1, 1])
+      for (const b of [-1, 1])
+        ecken.push(
+          n === 'seite'
+            ? new Vector3(e.cx + a * e.rx, e.cy + b * e.ry, s[2]! * e.L)
+            : n === 'front'
+              ? new Vector3(e.cx + s[0]! * e.L, e.cy + b * e.ry, a * e.tiefe)
+              : new Vector3(e.cx + a * e.rx, e.cy + s[1]! * e.L, b * e.tiefe),
+        );
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (const p of ecken) {
+      const [px, py] = projizieren(p, vp);
+      x0 = Math.min(x0, px / D);
+      x1 = Math.max(x1, px / D);
+      y0 = Math.min(y0, py / D);
+      y1 = Math.max(y1, py / D);
+    }
+    const ziel = F[n];
+    const rect: Feld = {
+      x: x0 + (ziel.x - x0) * v,
+      y: y0 + (ziel.y - y0) * v,
+      w: Math.max(4, x1 - x0 + (ziel.w - (x1 - x0)) * v),
+      h: Math.max(4, y1 - y0 + (ziel.h - (y1 - y0)) * v),
+    };
+    const kamera = feldKamera(n, rect);
+    feldStand[n] = { kamera, rect };
+    return { n, rect, kamera };
+  });
+}
+
+/** Linien in den flachen Feldern: Seite mit ihren Punkten (ziehbar), Front und Top als Umriss */
+function linienDerFelder(liste: { n: FeldAchse; rect: Feld; kamera: OrthographicCamera }[]): void {
+  const k = koerper;
+  if (!k) return;
+  const s = Math.min(1, Math.max(0, (vier - 0.45) / 0.55));
+  if (s < 0.01) return;
+  const r0 = (LOOK.umriss / 2) * D * s;
+  for (const { n, rect, kamera: c } of liste) {
+    const g = K.neueGruppe();
+    if (n === 'seite') {
+      const ab = stift.abtasten(1.5);
+      const nn = ab.x.length;
+      const p = (i: number): [number, number] => feldProjizieren(new Vector3(ab.x[i]! - W / 2, H / 2 - ab.y[i]!, 0), c, rect);
+      let vor = p(nn - 1);
+      for (let i = 0; i < nn; i++) {
+        const q = p(i);
+        K.push(vor[0], vor[1], q[0], q[1], r0, r0, g, 0, false);
+        vor = q;
+      }
+      stift.anker.forEach((a, i) => {
+        const [px, py] = feldProjizieren(new Vector3(a.x - W / 2, H / 2 - a.y, 0), c, rect);
+        const rp = (i === punktUnterZeiger || punktZug?.i === i ? LOOK.tropfen : LOOK.punktRadius) * D * s;
+        K.push(px, py, px, py, rp, rp, K.neueGruppe(), 0, true);
+      });
+    } else {
+      const seg = k.umriss(n === 'front' ? 0 : 1);
+      for (let i = 0; i < seg.length; i += 6) {
+        const [ax, ay] = feldProjizieren(new Vector3(seg[i]!, seg[i + 1]!, seg[i + 2]!), c, rect);
+        const [bx, by] = feldProjizieren(new Vector3(seg[i + 3]!, seg[i + 4]!, seg[i + 5]!), c, rect);
+        K.push(ax, ay, bx, by, r0, r0, g, 0, false);
+      }
+    }
+  }
 }
 
 // ---------- Bild ----------
@@ -422,6 +649,34 @@ function bild(dt: number): boolean {
     koerper.dehnungRechnen();
     haut.hochladen();
   }
+  // Fahrt in eine Ansicht (Drehen und Dolly-Zoom zugleich)
+  if (ansichtFahrt) {
+    ansichtFahrt.t += dt / ANSICHT_DAUER;
+    const t = Math.min(1, ansichtFahrt.t);
+    const e = t * t * t * (t * (t * 6 - 15) + 10);
+    const [g0, n0, f0] = ansichtFahrt.von;
+    const [g1, n1, f1] = ansichtFahrt.nach;
+    nutzer.gier = g0 + (g1 - g0) * e;
+    nutzer.neigung = n0 + (n1 - n0) * e;
+    flach = f0 + (f1 - f0) * e;
+    if (t >= 1) ansichtFahrt = null;
+    aktiv = true;
+  }
+  if (zustand !== 'ruhe' && zustand !== 'auf' && flach > 0) flach = 0;
+  if (vierFahrt) {
+    vierFahrt.t += dt / ANSICHT_DAUER;
+    vier = vierFahrt.von + (vierZiel - vierFahrt.von) * Math.min(1, vierFahrt.t);
+    if (vierFahrt.t >= 1) {
+      vier = vierZiel;
+      vierFahrt = null;
+    }
+    aktiv = true;
+  }
+  if (zustand !== 'ruhe' && vier > 0) {
+    vier = 0;
+    vierZiel = 0;
+    vierFahrt = null;
+  }
   kameraSetzen(zustand === 'blatt' ? null : m);
   // Fahrtwind: die Farben fließen gegen die Drehung
   const gierJetzt = Math.atan2(kamera.position.x - (raum?.cx ?? 0), kamera.position.z);
@@ -459,20 +714,27 @@ function bild(dt: number): boolean {
     wind,
     dicke: werte.dicke,
     spannung: werte.spannung,
-    sicht: werte.sicht,
+    sicht: werte.sicht * (1 - 0.55 * flach),
     wuerfel: raum && m ? wuerfelVon(raum) : null,
     waende: waendeFuer(m),
     weich: werte.weich * (raum?.R ?? 200),
     schattenFarbe,
   };
-  haut.zeichnen(kamera, w);
+  const vp = new Matrix4().multiplyMatrices(kamera.projectionMatrix, kamera.matrixWorldInverse);
+  const feldListe = felderJetzt(vp);
+  haut.zeichnen(
+    kamera,
+    w,
+    feldListe.map((f) => ({ kamera: f.kamera, x: Math.round(f.rect.x * D), y: Math.round(f.rect.y * D), b: Math.max(1, Math.round(f.rect.w * D)), h: Math.max(1, Math.round(f.rect.h * D)) })),
+  );
   // Linien
   K.leeren();
-  const vp = new Matrix4().multiplyMatrices(kamera.projectionMatrix, kamera.matrixWorldInverse);
   if (zustand === 'blatt') {
     stift.kapseln(K, D, true);
   } else if (koerper && F && raum && m) {
     linienImRaum(vp, m);
+    if (flach > 0.01) linienDerAnsicht(vp);
+    if (feldListe.length) linienDerFelder(feldListe);
   }
   if (stift.zeiger.da) K.felder.push(stift.zeiger.x * D, stift.zeiger.y * D, 22 * D, 0.7);
   const szene: Szene = {
@@ -499,7 +761,9 @@ function bild(dt: number): boolean {
           ? ''
           : 'am ersten Punkt schließen · ↩ schließt · ⌫ zurück'
       : zustand === 'ruhe'
-        ? 'über eine Wand fahren: ihre Linien · an der Blase ziehen: dehnen · daneben ziehen: drehen · Leertaste: noch einmal · Esc: zurück aufs Blatt'
+        ? ansicht === 'seite'
+          ? 'Punkte ziehen: die Blase folgt · 0 Raum · 3 Front · 7 Top'
+          : '1 Seite · 3 Front · 7 Top · 0 Raum · 4 vier Ansichten · über eine Wand fahren: ihre Linien · an der Blase ziehen: dehnen · daneben ziehen: drehen'
         : '';
   if (hinweis.textContent !== h) hinweis.textContent = h;
   stat.bildMs = performance.now() - t0;
@@ -539,7 +803,7 @@ function linienImRaum(vp: Matrix4, m: Moment): void {
   }
   // Kanten der fernen Ecke: drei feinste Haarlinien vom Eckpunkt aus (die Ecke wechselt mit der Kamera)
   const g6 = wandGewichte();
-  const kanten = werte.kanten * m.waende;
+  const kanten = werte.kanten * m.waende * raumSicht();
   if (kanten > 0.01) {
     const s = [g6[0]! >= g6[1]! ? -1 : 1, g6[2]! >= g6[3]! ? -1 : 1, g6[4]! >= g6[5]! ? -1 : 1];
     const st = Math.min(Math.max(g6[0]!, g6[1]!), Math.max(g6[2]!, g6[3]!), Math.max(g6[4]!, g6[5]!));
@@ -611,6 +875,116 @@ function strahl(x: number, y: number): { o: Vector3; d: Vector3 } {
   return { o, d: p.sub(o).normalize() };
 }
 
+/** in eine Ansicht fahren (Raum oder Achse): Drehen und Dolly-Zoom zugleich, kürzester Weg */
+function ansichtSetzen(ziel: Ansicht): void {
+  if (zustand !== 'ruhe' && zustand !== 'auf') return;
+  const w = ANSICHT_WINKEL[ziel];
+  const g1 = w ? (w[0] * Math.PI) / 180 - (werte.gier * Math.PI) / 180 : 0;
+  const n1 = w ? (w[1] * Math.PI) / 180 - (werte.neigung * Math.PI) / 180 : 0;
+  // kürzester Weg um die Hochachse
+  let g0 = nutzer.gier;
+  while (g0 - g1 > Math.PI) g0 -= 2 * Math.PI;
+  while (g1 - g0 > Math.PI) g0 += 2 * Math.PI;
+  ansichtFahrt = { von: [g0, nutzer.neigung, flach], nach: [g1, n1, w ? 1 : 0], t: 0 };
+  ansicht = ziel;
+  punktZug = null;
+  anstossen();
+}
+
+/** nahe einer Achse: einrasten (nach dem Drehen von Hand) */
+function einrasten(): void {
+  const g = ((werte.gier * Math.PI) / 180 + nutzer.gier) * (180 / Math.PI);
+  const n = ((werte.neigung * Math.PI) / 180 + nutzer.neigung) * (180 / Math.PI);
+  const nah = (a: number, b: number): number => {
+    let d = (((a - b) % 360) + 540) % 360 - 180;
+    d = Math.abs(d);
+    return d;
+  };
+  for (const a of ['seite', 'front', 'top'] as const) {
+    const w = ANSICHT_WINKEL[a]!;
+    const dn = Math.abs(n - w[1]);
+    if (a === 'top' ? dn < 9 : dn < 9 && nah(g, w[0]) < 9) {
+      ansichtSetzen(a);
+      return;
+    }
+  }
+}
+
+/** Linien der flachen Ansicht: Seite = die gezeichnete Linie mit ihren Punkten (ziehbar), Front und Top = Umriss der Blase */
+function linienDerAnsicht(vp: Matrix4): void {
+  const k = koerper!;
+  // nur nahe der Achse der Ansicht (beim Drehen von einer Ansicht zur nächsten stünde die Linie sonst schräg im Bild)
+  const blick = new Vector3();
+  kamera.getWorldDirection(blick);
+  const achse = ansicht === 'seite' ? new Vector3(0, 0, -1) : ansicht === 'front' ? new Vector3(1, 0, 0) : new Vector3(0, -1, 0);
+  const t = Math.min(1, Math.max(0, (blick.dot(achse) - 0.97) / 0.025));
+  const s = flach * flach * t * t * (3 - 2 * t);
+  if (s < 0.01) return;
+  const r0 = (LOOK.umriss / 2) * D * s;
+  if (ansicht === 'seite') {
+    const ab = stift.abtasten(1.5);
+    const g = K.neueGruppe();
+    const n = ab.x.length;
+    const p = (i: number): [number, number] => {
+      const [a, b] = projizieren(new Vector3(ab.x[i]! - W / 2, H / 2 - ab.y[i]!, 0), vp);
+      return [a, b];
+    };
+    let vor = p(n - 1);
+    for (let i = 0; i < n; i++) {
+      const q = p(i);
+      K.push(vor[0], vor[1], q[0], q[1], r0, r0, g, 0, false);
+      vor = q;
+    }
+    stift.anker.forEach((a, i) => {
+      const [px, py] = projizieren(new Vector3(a.x - W / 2, H / 2 - a.y, 0), vp);
+      const rp = (i === punktUnterZeiger || punktZug?.i === i ? LOOK.tropfen : LOOK.punktRadius) * D * s;
+      K.push(px, py, px, py, rp, rp, K.neueGruppe(), 0, true);
+    });
+  } else if (ansicht === 'front' || ansicht === 'top') {
+    const seg = k.umriss(ansicht === 'front' ? 0 : 1);
+    const g = K.neueGruppe();
+    for (let i = 0; i < seg.length; i += 6) {
+      const [ax, ay] = projizieren(new Vector3(seg[i]!, seg[i + 1]!, seg[i + 2]!), vp);
+      const [bx, by] = projizieren(new Vector3(seg[i + 3]!, seg[i + 4]!, seg[i + 5]!), vp);
+      K.push(ax, ay, bx, by, r0, r0, g, 0, false);
+    }
+  }
+}
+
+/** Punkt der Linie unter dem Zeiger in der Seitenansicht (−1 = keiner) */
+function punktSuchen(x: number, y: number): number {
+  const feld = vier > 0.9 ? feldStand.seite : undefined;
+  if (!feld && (ansicht !== 'seite' || flach < 0.85)) return -1;
+  const vp = new Matrix4().multiplyMatrices(kamera.projectionMatrix, kamera.matrixWorldInverse);
+  let best = -1;
+  let bd = 12;
+  stift.anker.forEach((a, i) => {
+    const w0 = new Vector3(a.x - W / 2, H / 2 - a.y, 0);
+    const [px, py] = feld ? feldProjizieren(w0, feld.kamera, feld.rect) : projizieren(w0, vp);
+    const d = Math.hypot(px / D - x, py / D - y);
+    if (d < bd) {
+      bd = d;
+      best = i;
+    }
+  });
+  return best;
+}
+
+/** nach dem Ziehen eines Punkts: Netz neu, die Blase in Ruhe in der neuen Form (die Kamera bleibt, wo sie ist) */
+function blaseNeu(): void {
+  if (!koerper) return;
+  const alt = raum;
+  netzBauen();
+  if (!koerper || !alt) return;
+  raum = alt;
+  const ms = masse();
+  koerper.setzen(moment(99, ms, werte).lage);
+  koerper.bezugRuhe();
+  koerper.dehnungRechnen();
+  haut.hochladen();
+  umbauZeit = performance.now();
+}
+
 /** Wand unter dem Zeiger (nur die drei sichtbaren, fernen Wände), −1 = keine */
 function wandSuchen(x: number, y: number): number {
   const e = raum;
@@ -660,7 +1034,38 @@ leinwandLinien.addEventListener('pointermove', (e) => {
   const [x, y] = lageIm(e);
   stift.alt = e.altKey;
   stift.bewegen(x, y);
-  if (drehen) {
+  if (punktZug) {
+    const feld = vier > 0.9 ? feldStand.seite : undefined;
+    let wx: number | null = null;
+    let wy = 0;
+    if (feld) {
+      // im Feld der Seite: flache Kamera, Punkt in der Ebene z = 0
+      const nx = ((x - feld.rect.x) / feld.rect.w) * 2 - 1;
+      const ny = 1 - ((y - feld.rect.y) / feld.rect.h) * 2;
+      const p = new Vector3(nx, ny, 0).unproject(feld.kamera);
+      wx = p.x;
+      wy = p.y;
+    } else {
+      const { o, d } = strahl(x, y);
+      if (Math.abs(d.z) > 1e-9) {
+        const t = -o.z / d.z;
+        wx = o.x + d.x * t;
+        wy = o.y + d.y * t;
+      }
+    }
+    if (wx !== null) {
+      const a = stift.anker[punktZug.i]!;
+      a.x = wx + W / 2;
+      a.y = H / 2 - wy;
+      stift.stand++;
+      if (performance.now() - umbauZeit > 110) blaseNeu();
+    }
+  } else if (drehen) {
+    if (ansicht !== 'raum') {
+      // Drehen verlässt die flache Ansicht: wieder Raum
+      ansicht = 'raum';
+      ansichtFahrt = { von: [nutzer.gier, nutzer.neigung, flach], nach: [nutzer.gier, nutzer.neigung, 0], t: 0 };
+    }
     nutzer.gier = drehen.gier - ((x - drehen.x) * Math.PI) / 520;
     nutzer.neigung = Math.max(-1.1, Math.min(1.1, drehen.neigung + ((y - drehen.y) * Math.PI) / 520));
   } else if (zug && koerper) {
@@ -681,8 +1086,9 @@ leinwandLinien.addEventListener('pointermove', (e) => {
       k.versatz[i * 3 + 2] = zug.start[i * 3 + 2]! + g * zug.zFaktor[i]! * dw.z * (zug.hinten ? -1 : 1);
     }
   } else {
-    const aufBlase = hauchSuchen(x, y);
-    wandUnterZeiger = aufBlase ? -1 : wandSuchen(x, y);
+    punktUnterZeiger = punktSuchen(x, y);
+    const aufBlase = punktUnterZeiger < 0 && hauchSuchen(x, y);
+    wandUnterZeiger = aufBlase || punktUnterZeiger >= 0 || flach > 0.5 ? -1 : wandSuchen(x, y);
   }
   anstossen();
 });
@@ -699,6 +1105,8 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
   stift.bewegen(x, y);
   if (zustand === 'blatt') {
     stift.druecken(x, y);
+  } else if (zustand === 'ruhe' && koerper && punktSuchen(x, y) >= 0) {
+    punktZug = { i: punktSuchen(x, y) };
   } else if (zustand === 'ruhe' && koerper) {
     const { o, d } = strahl(x, y);
     const t = koerper.treffen(o.x, o.y, o.z, d.x, d.y, d.z);
@@ -730,6 +1138,12 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
 const loslassen = (e: PointerEvent): void => {
   if (leinwandLinien.hasPointerCapture(e.pointerId)) leinwandLinien.releasePointerCapture(e.pointerId);
   stift.loslassen();
+  if (drehen) einrasten();
+  if (punktZug) {
+    blaseNeu();
+    raumRechnen();
+  }
+  punktZug = null;
   drehen = null;
   zug = null;
   anstossen();
@@ -773,7 +1187,16 @@ window.addEventListener('keydown', (e) => {
   } else if (k === ' ') {
     e.preventDefault();
     nochEinmal();
-  } else if (k >= '1' && k <= '4') fassungSetzen((Number(k) - 1) as Fassung);
+  } else if (k === '4' && zustand === 'ruhe') {
+    if (e.repeat) return;
+    vierUmschalten();
+  } else if ((k === '1' || k === '3' || k === '7' || k === '0') && zustand !== 'blatt') {
+    if (e.repeat) return;
+    if (vierZiel > 0.5) vierUmschalten(false);
+    const ziel: Ansicht = k === '1' ? 'seite' : k === '3' ? 'front' : k === '7' ? 'top' : 'raum';
+    tasteGehalten = { taste: k, seit: performance.now(), vorher: ansicht };
+    ansichtSetzen(ziel);
+  } else if (k === 'm' || k === 'M') fassungSetzen(((fassung + 1) % FASSUNGEN.length) as Fassung);
   else if (k === 'n' || k === 'N') nachtSetzen(!nacht);
   else if (k === 'r' || k === 'R') reglerZeigen(regler.hidden);
   else return;
@@ -781,6 +1204,11 @@ window.addEventListener('keydown', (e) => {
 });
 window.addEventListener('keyup', (e) => {
   stift.alt = e.altKey;
+  // gehalten (länger als 0,3 s): nur kurz hingeschaut, zurück
+  if (tasteGehalten && e.key === tasteGehalten.taste) {
+    if (performance.now() - tasteGehalten.seit > 300) ansichtSetzen(tasteGehalten.vorher);
+    tasteGehalten = null;
+  }
 });
 
 // ---------- Leiste ----------
@@ -837,6 +1265,7 @@ $('titel').textContent = mitZeigerImBild ? (params.get('titel') ?? '') : '';
 
 new ResizeObserver(groesse).observe(buehne);
 groesse();
+aufwaermen();
 void document.fonts?.ready.then(() => anstossen());
 
 // ---------- Test-Haken ----------
@@ -993,6 +1422,22 @@ const haken = {
     const vp = new Matrix4().multiplyMatrices(kamera.projectionMatrix, kamera.matrixWorldInverse);
     const [sx, sy] = projizieren(p, vp);
     return { x: sx / D, y: sy / D };
+  },
+  ansicht(a: Ansicht): void {
+    ansichtSetzen(a);
+  },
+  vier(an: boolean): void {
+    vierUmschalten(an);
+  },
+  /** Punkt i der Linie im Bild (CSS-Pixel), in der Seitenansicht oder im Feld der Seite */
+  punktImBild(i: number): { x: number; y: number } | null {
+    const a = stift.anker[i];
+    if (!a) return null;
+    const w0 = new Vector3(a.x - W / 2, H / 2 - a.y, 0);
+    const feld = vier > 0.9 ? feldStand.seite : undefined;
+    const vp = new Matrix4().multiplyMatrices(kamera.projectionMatrix, kamera.matrixWorldInverse);
+    const [px, py] = feld ? feldProjizieren(w0, feld.kamera, feld.rect) : projizieren(w0, vp);
+    return { x: px / D, y: py / D };
   },
   stand(): Record<string, unknown> {
     return { zustand, T, fassung, nacht, ...stat, anker: stift.anker.length, geschlossen: stift.geschlossen, wand: wandUnterZeiger };

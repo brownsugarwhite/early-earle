@@ -21,10 +21,10 @@ import {
   BackSide,
   BufferAttribute,
   BufferGeometry,
+  type Camera,
   Color,
   CustomBlending,
   DataTexture,
-  DoubleSide,
   FloatType,
   FrontSide,
   HalfFloatType,
@@ -586,6 +586,30 @@ export class Haut {
     this.renderer.compile(this.szene, new OrthographicCamera(-1, 1, 1, -1, 0, 1));
   }
 
+  /**
+   * Einmal unsichtbar alles zeichnen, was das Aufblasen braucht (Blase, Rahmen, Schlauch, die Schatten auf allen sechs Wänden), ins
+   * eigene Ziel, ohne es zu zeigen. Der Browser übersetzt Shader und Zustände der Grafik sonst erst, wenn sie mitten im ersten
+   * Aufblasen sichtbar werden (dort fielen rund ein Dutzend Bilder aus). Braucht einen Körper (`setzeKoerper`).
+   */
+  aufwaermen(kamera: PerspectiveCamera): void {
+    if (!this.koerper) return;
+    const r = this.renderer;
+    const sichtbar = this.netze.map((n) => n.visible);
+    for (const n of this.netze) n.visible = true;
+    const waende: WandStaerke[] = [];
+    for (const achse of [0, 1, 2] as const) for (const seite of [-1, 1] as const) waende.push({ achse, seite, staerke: 0.01 });
+    const halb = Math.max(1, this.koerper.flach.radius) * 2;
+    this.schatten.aktualisieren(r, { mitte: new Vector3(), halb: new Vector3(halb, halb, halb) }, waende, halb * 0.1, new Color(0.9, 0.9, 0.9));
+    this.schatten.gruppe.visible = true;
+    r.setRenderTarget(this.ziel);
+    r.setClearColor(PAPIER, 1);
+    r.clear(true, true, false);
+    r.render(this.szene, kamera);
+    r.setRenderTarget(null);
+    r.compile(this.ende.szene, this.ende.kamera);
+    this.netze.forEach((n, i) => (n.visible = sichtbar[i]!));
+  }
+
   /** nach `Koerper.setzen`: Lagen, Normalen, Dehnung, Sichtbarkeit hochladen */
   hochladen(): void {
     for (const g of [this.geoBlase, this.geoRahmen, this.geoSchlauch]) {
@@ -594,7 +618,11 @@ export class Haut {
     }
   }
 
-  zeichnen(kamera: PerspectiveCamera, w: HautWerte): void {
+  /**
+   * Bild zeichnen: die Hauptansicht, dazu (Viereransicht) weitere Felder mit eigener Kamera, nur die Blase, ruhig.
+   * Felder in Gerätepunkten, Ursprung oben links.
+   */
+  zeichnen(kamera: PerspectiveCamera, w: HautWerte, felder: { kamera: Camera; x: number; y: number; b: number; h: number }[] = []): void {
     const r = this.renderer;
     const durch = DURCHSICHTIG[w.fassung]!;
     const setzen = (m: ShaderMaterial, anteil: number): void => {
@@ -636,6 +664,29 @@ export class Haut {
     r.setClearColor(grund, 1);
     r.clear(true, true, false);
     r.render(this.szene, kamera);
+    if (felder.length) {
+      // Felder: nur die Blase (keine Wände, kein Rahmen, kein Schlauch), ruhig wie in der flachen Ansicht
+      const sichtbar = this.netze.map((n) => n.visible);
+      for (const n of this.netze) n.visible = n.visible && this.mats.includes(n.material as ShaderMaterial);
+      const wandSichtbar = this.schatten.gruppe.visible;
+      this.schatten.gruppe.visible = false;
+      for (const m of this.mats) m.uniforms.uSicht!.value = (w.nacht ? 0.8 : 1) * w.sicht * 0.45;
+      const H = this.ziel.height;
+      for (const f of felder) {
+        const y = H - f.y - f.h;
+        this.ziel.viewport.set(f.x, y, f.b, f.h);
+        this.ziel.scissor.set(f.x, y, f.b, f.h);
+        this.ziel.scissorTest = true;
+        r.setRenderTarget(this.ziel);
+        r.clear(true, true, false);
+        r.render(this.szene, f.kamera);
+      }
+      this.ziel.viewport.set(0, 0, this.ziel.width, this.ziel.height);
+      this.ziel.scissor.set(0, 0, this.ziel.width, this.ziel.height);
+      this.ziel.scissorTest = false;
+      this.netze.forEach((n, i) => (n.visible = sichtbar[i]!));
+      this.schatten.gruppe.visible = wandSichtbar;
+    }
     r.setRenderTarget(null);
     r.render(this.ende.szene, this.ende.kamera);
   }

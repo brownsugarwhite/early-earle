@@ -868,7 +868,6 @@ export class Koerper {
   setzen(l: Lage): void {
     const F = this.flach;
     const n = F.n;
-    const nb = F.nb;
     const P = this.pos;
     const S = this.sicht;
     const s = this.fuelle;
