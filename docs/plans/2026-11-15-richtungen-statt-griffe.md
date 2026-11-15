@@ -131,7 +131,13 @@ an einer Kreuzung klar, welche der vier Richtungen dreht: die, deren Linie man b
    `eckeUmschalten` und `eckeGezeigt` in `kurven.ts`, also den Kern des Editors. Das geschieht im Bau-Fenster und abgestimmt mit dem
    Plan „schnell, glatt, exakt“ (Pause bis 17.11.).
 
-## Fragen an Florian
+## Freigabe (15.11.)
+
+Florian: „Ja, so bauen“. Damit gelten die Vorschläge zu den Fragen 1 bis 4: Griff nur beim Halten; Knicken mit ⌥, Runden durch
+Einrasten oder Doppelklick; im 3D auf der Haut, mit ⇧ aus der Haut; Schwung durch Ziehen nach außen und innen mit Rasten am Ring.
+Frage 5 (Kante entlang B) betrifft die Haut im Editor, nicht die Probe; sie bleibt offen. Gebaut wird Schritt 1 der „Nächsten Schritte“.
+
+## Fragen an Florian (vor der Freigabe)
 
 1. Griff nur, solange man ihn hält (Vorschlag), oder beim gewählten Punkt dauerhaft sichtbar?
 2. Knicken mit ⌥ beim Ziehen, Runden durch Einrasten oder Doppelklick (Vorschlag)?
