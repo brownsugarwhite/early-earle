@@ -28,6 +28,9 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   `src/form/blaupause.ts`) zeigt denselben Editor im Layout der Blaupause. Einstieg:
   [`docs/look/editor/blaupause/UEBERGABE.md`](docs/look/editor/blaupause/UEBERGABE.md). `editor.ts` ist eine Kopie von
   `kurven.ts` und wird erst nach Schritt 7 nachgezogen.
+- **Strang „Anfang einer Form und Seifenhaut“ (eigene Sitzung, seit 15.11.):** leeres Blatt mit „draw a silhouette“, Loop mit P,
+  ↩ bläst ihn als Seifenhaut auf; vier Fassungen des Materials. Probe `anfang.html` (Port 5203, Arbeitsbaum `anfang`), Einstieg:
+  [`docs/look/anfang/UEBERGABE.md`](docs/look/anfang/UEBERGABE.md). Sein Urteil steht aus.
 - **Eingefroren (Wissen, nicht weiterbauen):** der Käfig-Weg vom 13.10. bis 04.11. (`packages/shape/src/kern/`, der alte
   Electron-Editor `pnpm editor`) und `form.html`.
 - **Florians Testformen:** `wesen/` (teat firefish, strange bird, test_kaputt). Fertige Wesen gibt es nicht; die Formen sind
@@ -47,6 +50,7 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   arbeitet auch die Design-Sitzung an `/editor`. An `kurven.ts` und am Rechenkern dort nichts ändern; nur geprüfte Stände
   hineinführen und Florian vorher sagen, dass sich sein Fenster ändert.
 - **`.claude/worktrees/form-bau`** (Zweig `claude/form-bau`, Port 5197, Eintrag `kurven-bau`): hier wird der Plan gebaut.
+- **`.claude/worktrees/anfang`** (Zweig `claude/anfang`, Port 5203, Eintrag `anfang`): Anfang einer Form und Seifenhaut.
 - `early-earle-meshy` (Nachbarordner) sind Florians Meshy-Tests. Alte Stände liegen als Zweige `bergung/…`.
 
 ## Menschen

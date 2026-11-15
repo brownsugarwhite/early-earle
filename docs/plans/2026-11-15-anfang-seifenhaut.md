@@ -94,3 +94,59 @@ Grund jeweils Papier (wie der Editor) oder Nacht (dunkel, wie der Entwurf).
   3. 60 Bilder je Sekunde am Mac während des Aufblasens.
   4. Film des Ablaufs und ein Bildstreifen je Fassung an derselben Form, gleiche Ansicht: `docs/progress/anfang/`.
 - Später, nicht jetzt: Freihandwerkzeug; Einbau in den Editor; Platzen und Schatten auf dem Papier, falls die Probe sie braucht.
+
+## Gebaut (15.11.2026, abends)
+
+Probe `http://localhost:5203/anfang.html` (Eintrag `anfang`), Zweig `claude/anfang`. Sein Urteil steht aus.
+
+- **Blatt und P:** leeres Papier, „draw a silhouette“ in der Mitte (Serifenschrift, verblasst mit dem ersten Punkt). P wie in
+  Illustrator: Klick Ecke, Ziehen rund (Griffe als Haarlinien mit Perlen), ⌥ bricht den Griff, am ersten Punkt öffnet sich ein Ring,
+  Klick oder ↩ schließt, eine Welle läuft einmal um den Loop; ⌫ nimmt den letzten Punkt zurück (ist der Loop zu: öffnet ihn), Esc
+  verwirft. Der Faden schwillt zum Tropfen an der Feder an; der Tropfen hängt als Feder am Zeiger. Linien, Punkte und Zeiger zeichnet
+  eine Kopie der flüssigen Anzeige des Linien-Strangs (Stand d762e508). Geschlossen spannt sich die Haut im Loop (0,6 s).
+- **Aufblasen (↩):** Der Ring weicht nach hinten aus (20 % des Kameraabstands), die Haut bleibt zurück und wölbt sich nach vorn
+  (eine Fläche), nach 0,24 s löst sich die hintere Hälfte und schlägt zum Spiegelbild durch. Beides gedämpfte Federn (vorn 2,1 Hz,
+  hinten 1,8 Hz, rund 25 % Überschwingen), dazu Stauchen in der Ebene beim Überschwingen und eine Welle vom Rand zur Mitte. Die Kamera
+  dreht sich in 1,8 s um 32° zur Seite und 13° nach oben. Der Loop bleibt als Haarlinie auf der Form, Verdecktes grün.
+- **Haut aus dem Loop:** flaches Netz (Rand, Reihen am Rand nach dem Bogen, Gitter innen, Delaunay), Wölbung √h mit −Δh = 4
+  (Kotangens, PCG). Am Fisch: 5 806 Punkte, 11 310 Dreiecke je Seite, 45–90 ms, keine fehlende Randkante.
+- **Material:** Farbtafel der dünnen Schicht spektral gerechnet (`duennschichtTafel`), vier Fassungen, Grund Papier oder Nacht (N).
+  Gedehnte Haut wird dünner und wechselt die Farbe (beim Aufblasen blühen die Farben auf und beruhigen sich danach), der Zeiger haucht
+  die Haut an, Drehen der Ansicht schiebt die Farben (Fahrtwind). An der Haut ziehen dehnt sie (weiches Feld, spiegelgleich, weich
+  begrenzt, damit sie nie faltet).
+- **Feinregler (R):** Rückweg, Federn vorn und hinten, Stauchen, Welle, Kamera, Fülle, Dicke der Haut, „Dehnung färbt“, Farben der
+  Seifenhaut; im Browser behalten, „Werte kopieren“ für die Weitergabe.
+
+**Probe (festgelegt, alle gehalten):**
+
+| | Ergebnis |
+| --- | --- |
+| 1 · Übergang vom Blatt in den Raum | Anker 0,00 px, Rand höchstens 0,19 px vom gezeichneten Loop (Grenze 0,5 px) |
+| 2 · Rand, Falten, Ruhe | Rand geschlossen (Vorder- und Rückseite teilen die Lage), keine Falten beim Aufblasen, sichtbar still nach etwa 2 s |
+| 3 · Bildtakt beim Aufblasen | Median 16,7 ms, 95 % 16,7 ms in allen vier Fassungen (1440 × 900, doppelte Dichte, GPU) |
+| 4 · Film und Bilder | `docs/progress/anfang/` (unten) |
+
+Skripte in `apps/editor/scripts/anfang/`: `bilder.mjs` (Bildstreifen je Fassung, Ruhe groß), `film.mjs` (ganzer Ablauf mit
+echten Mausereignissen; `KURZ=1` nur Aufblasen und Drehen), `takt.mjs` (Probe 1 und 3).
+
+**Bilder und Filme:**
+- `2026-11-15-film-ablauf.mp4`: leeres Blatt, Fisch mit P, schließen, ↩, Zeiger auf der Haut, an der Haut ziehen, drehen (17 s).
+- `2026-11-15-film-vergleich.mp4`: die vier Fassungen nebeneinander, Aufblasen und Drehen (5,7 s).
+- `2026-11-15-ablauf-papier.png`, `…-ablauf-nacht.png`: je Fassung sechs Momente (geschlossen, 0,2 / 0,4 / 0,7 / 1,1 / 2,6 s).
+- `2026-11-15-ruhe-papier.png`, `…-ruhe-nacht.png`: die vier Fassungen in Ruhe, groß.
+
+**Was ich sehe (ehrlich):** Seifenhaut und Höhenlinien tragen am weitesten; Horizont ist auf Papier am stärksten und am meisten
+Earle (hartes Land, heller Himmel, Regenbogen nur an der Kante); Irisdruck wirkt wie Perlmutt, ist aber am unruhigsten. Nacht trägt
+die Seifenhaut (Farben nur in den Lichtern) und die Höhenlinien; Horizont und Irisdruck sind dort schwach. Der Hauch ist zart (auf
+Standbildern kaum zu sehen), die Spannung beim Ziehen deutlich. Die Kanten der Spiegelung zeigen an manchen Stellen noch das
+Dreiecksnetz (Horizont am ehesten).
+
+**Grenzen:** Die Haut der Probe ist ein eigenes Netz, nicht der Löser des Editors; Ziehen an der Haut ist ein weiches Feld, kein
+Werkzeug des Editors (dort kommt die Dehnung aus den Linien). Ein Loop, der sich selbst kreuzt, wird nach gerade/ungerade gefüllt.
+Freihand, Platzen und Schatten auf dem Papier fehlen noch.
+
+**Fragen an Florian:**
+1. Welche Fassung (oder welche Mischung) soll das Grundmaterial werden?
+2. Papier oder Nacht als Grund für den Anfang?
+3. Nachschwingen und Rückweg: so lassen, mehr oder weniger (die Feinregler zeigen die Werte)?
+4. Soll die Kamera nach dem Aufblasen näher heran, damit die Form größer zum Bearbeiten ist?

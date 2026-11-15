@@ -20,6 +20,13 @@
       "port": 5197
     },
     {
+      "name": "anfang",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["EDITOR_WEB=1", "pnpm", "-C", "/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/anfang", "--filter", "@ee/editor", "exec", "vite", "--port", "5203", "--strictPort"],
+      "port": 5203,
+      "url": "http://localhost:5203"
+    },
+    {
       "name": "game-dev",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@ee/game", "exec", "vite", "--port", "5173", "--strictPort"],
