@@ -295,7 +295,9 @@ const gewaehlt1 = await page.evaluate(() => [...window.__linien.verhalten.auswah
 const aussen = await page.evaluate(
   ([a, b]) => {
     const v = window.__linien.verhalten;
-    const i = v.netz.punkte.findIndex((p) => p.sichtbar && !(p.x >= a[0] - 6 && p.x <= b[0] + 6 && p.y >= a[1] - 6 && p.y <= b[1] + 6) && Math.hypot(p.x - 313, p.y - 150) < 40);
+    // ein Punkt außerhalb, der nur auf einer Linie liegt (geteilte bleiben beim Löschen)
+    const einmal = (i) => v.netz.linien.filter((l) => l.punkte.includes(i)).length === 1;
+    const i = v.netz.punkte.findIndex((p, i) => p.sichtbar && einmal(i) && !(p.x >= a[0] - 6 && p.x <= b[0] + 6 && p.y >= a[1] - 6 && p.y <= b[1] + 6) && Math.hypot(p.x - 313, p.y - 150) < 40);
     return { i, x: v.netz.punkte[i].x, y: v.netz.punkte[i].y };
   },
   rahmen,
@@ -325,12 +327,20 @@ await page.mouse.up();
 await warten(200);
 const nachZug = await stand();
 const zugAbw = Math.max(...gewaehlt2.map((p) => Math.hypot(nachZug.punkte[p].x - vorZug.punkte[p].x - weg[0], nachZug.punkte[p].y - vorZug.punkte[p].y - weg[1])));
-// ⌫: die gewählten Punkte verschwinden, geschlossene Linien bleiben geschlossen
+// ⌫: die gewählten Punkte verschwinden, geschlossene Linien bleiben geschlossen; geteilte (Kreuzungen, Enden von Abzweigungen)
+// bleiben und bleiben gewählt
 const zuVor = nachZug.linien.filter((l) => l.zu).length;
+const geteiltVor = gewaehlt2.filter((p) => nachZug.linien.filter((l) => l.punkte.includes(p)).length >= 2);
+const lageGeteilt = geteiltVor.map((p) => [nachZug.punkte[p].x, nachZug.punkte[p].y]);
+const lageWeg = gewaehlt2.filter((p) => !geteiltVor.includes(p)).map((p) => [nachZug.punkte[p].x, nachZug.punkte[p].y]);
 await page.keyboard.press('Backspace');
 await warten(400);
 const nachLoeschen = await stand();
 const zuNach = nachLoeschen.linien.filter((l) => l.zu).length;
+const gewaehltNach = await page.evaluate(() => [...window.__linien.verhalten.auswahl]);
+const da = (q) => nachLoeschen.punkte.some((p) => p.s && Math.hypot(p.x - q[0], p.y - q[1]) < 1e-6);
+const geteiltBleiben = lageGeteilt.every(da) && gewaehltNach.length === lageGeteilt.length;
+const wegSindWeg = lageWeg.length > 0 && lageWeg.every((q) => !da(q));
 aus.kriterien.auswahl = {
   imRahmenSoll: imRahmen.length,
   rahmenGenau: JSON.stringify(gewaehlt1) === JSON.stringify(imRahmen),
@@ -340,7 +350,9 @@ aus.kriterien.auswahl = {
   punkteNachher: nachLoeschen.punkte.length,
   geschlosseneVorher: zuVor,
   geschlosseneNachher: zuNach,
-  bestanden: JSON.stringify(gewaehlt1) === JSON.stringify(imRahmen) && gewaehlt2.includes(aussen.i) && zugAbw < 0.01 && zuNach === zuVor,
+  geteiltBleiben,
+  wegSindWeg,
+  bestanden: JSON.stringify(gewaehlt1) === JSON.stringify(imRahmen) && gewaehlt2.includes(aussen.i) && zugAbw < 0.01 && zuNach === zuVor && geteiltBleiben && wegSindWeg,
 };
 await bild('10 · ⌫: gelöscht, die Linie läuft weiter', AUGE);
 // 5 · Feinheiten wie in Illustrator: ⇧ rastet den Griff in 45°, Leertaste verschiebt beim Ziehen den Punkt, Klick auf den letzten

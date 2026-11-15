@@ -1624,6 +1624,12 @@ export class Raum3D implements Raum, StiftWerk {
     this.entStapel = [];
     this.entVorher = null;
     if (!e || e.li < 0) return -1;
+    // wo die neue Linie andere kreuzt, teilen beide einen Punkt (spiegelgleich); eine nach der anderen, jede frisch gesucht
+    for (let runde = 0; runde < 60; runde++) {
+      const k = this.kreuzungFinden(e.li, [e.zw]);
+      if (!k) break;
+      this.kreuzungTeilen(e.li, e.zw, k);
+    }
     const l = this.linien[e.li]!;
     const z = this.linien[e.zw]!;
     const ende = l.stuecke[l.stuecke.length - 1]!.b;
@@ -1721,6 +1727,184 @@ export class Raum3D implements Raum, StiftWerk {
     F.spiegel = proben(true);
     F.welt = p;
     return F;
+  }
+
+  // ---------- Kreuzungen im Raum ----------
+
+  /** Proben eines Stücks so, wie es gezeigt wird (mit P gezeichnet: auf der Haut), bei gleichen Parametern */
+  private stueckProben(l: Linie3, st: Stueck3): Float64Array {
+    if (l.aufHaut) return this.stueckAufHaut(st);
+    const k = this.kontrolle(st);
+    const n = 24;
+    const aus = new Float64Array((n + 1) * 3);
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const u = 1 - t;
+      const b = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
+      for (let c = 0; c < 3; c++) {
+        const ach = c === 0 ? 'x' : c === 1 ? 'y' : 'z';
+        aus[i * 3 + c] = b[0]! * k[0]![ach] + b[1]! * k[1]![ach] + b[2]! * k[2]![ach] + b[3]! * k[3]![ach];
+      }
+    }
+    return aus;
+  }
+
+  /**
+   * Erste Kreuzung der Linie li (ohne die Linien in `ohne`) mit einer anderen, auf der Haut gesucht: Stücke, die sich näher als
+   * 3 % des Radius kommen, deren Haut in dieselbe Richtung zeigt (nicht über eine dünne Stelle hinweg) und die sich in der Ebene der
+   * Haut dort schneiden; genau mit Newton in dieser Ebene. Kreuzungen an den Enden eines Stücks zählen nicht (dort hängt es schon).
+   */
+  kreuzungFinden(li: number, ohne: readonly number[]): { si: number; t: number; lj: number; sj: number; u: number } | null {
+    const l = this.linien[li];
+    if (!l) return null;
+    const tol = this.radius * 0.03;
+    const rand = this.radius * 0.006;
+    const box = (P: Float64Array): number[] => {
+      const b = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+      for (let i = 0; i < P.length; i += 3)
+        for (let c = 0; c < 3; c++) {
+          b[c] = Math.min(b[c]!, P[i + c]!);
+          b[c + 3] = Math.max(b[c + 3]!, P[i + c]!);
+        }
+      return b;
+    };
+    const ueber = (a: number[], b: number[]): boolean => a[0]! - tol <= b[3]! && b[0]! - tol <= a[3]! && a[1]! - tol <= b[4]! && b[1]! - tol <= a[4]! && a[2]! - tol <= b[5]! && b[2]! - tol <= a[5]!;
+    const andere: { lj: number; sj: number; Q: Float64Array; b: number[] }[] = [];
+    this.linien.forEach((L, lj) => {
+      if (lj === li || ohne.includes(lj)) return;
+      L.stuecke.forEach((st, sj) => {
+        const Q = this.stueckProben(L, st);
+        andere.push({ lj, sj, Q, b: box(Q) });
+      });
+    });
+    const lage = (P: Float64Array, i: number): V3 => v3(P[i * 3]!, P[i * 3 + 1]!, P[i * 3 + 2]!);
+    for (let si = 0; si < l.stuecke.length; si++) {
+      const st = l.stuecke[si]!;
+      const D = this.stueckProben(l, st);
+      const bD = box(D);
+      const nD = D.length / 3 - 1;
+      const kA = this.kontrolle(st);
+      const A0 = this.lage(this.anker, st.a);
+      const A1 = this.lage(this.anker, st.b);
+      for (const o of andere) {
+        if (!ueber(bD, o.b)) continue;
+        const nQ = o.Q.length / 3 - 1;
+        for (let i = 0; i < nD; i++) {
+          const p0 = lage(D, i);
+          const p1 = lage(D, i + 1);
+          for (let j = 0; j < nQ; j++) {
+            const q0 = lage(o.Q, j);
+            const q1 = lage(o.Q, j + 1);
+            if (Math.min(p0.x, p1.x) - tol > Math.max(q0.x, q1.x) || Math.min(q0.x, q1.x) - tol > Math.max(p0.x, p1.x)) continue;
+            if (Math.min(p0.y, p1.y) - tol > Math.max(q0.y, q1.y) || Math.min(q0.y, q1.y) - tol > Math.max(p0.y, p1.y)) continue;
+            if (Math.min(p0.z, p1.z) - tol > Math.max(q0.z, q1.z) || Math.min(q0.z, q1.z) - tol > Math.max(p0.z, p1.z)) continue;
+            // Ebene der Haut am Stück der neuen Linie
+            const mitte = mal3(plus3(p0, p1), 0.5);
+            const n = this.aufHaut(mitte).n;
+            let e1 = minus3(p1, p0);
+            e1 = minus3(e1, mal3(n, punkt3(e1, n)));
+            if (laenge3(e1) < 1e-12) continue;
+            e1 = einheit3(e1);
+            const e2 = kreuz3(n, e1);
+            const pr = (p: V3): [number, number] => [punkt3(p, e1), punkt3(p, e2)];
+            const [ax, ay] = pr(p0);
+            const [bx, by] = pr(p1);
+            const [cx, cy] = pr(q0);
+            const [dx, dy] = pr(q1);
+            const ux = bx - ax;
+            const uy = by - ay;
+            const vx = dx - cx;
+            const vy = dy - cy;
+            const det = ux * vy - uy * vx;
+            if (Math.abs(det) < 1e-12) continue;
+            const a = ((cx - ax) * vy - (cy - ay) * vx) / det;
+            const b = ((cx - ax) * uy - (cy - ay) * ux) / det;
+            if (a < 0 || a >= 1 || b < 0 || b >= 1) continue;
+            const pa = plus3(p0, mal3(minus3(p1, p0), a));
+            const qb = plus3(q0, mal3(minus3(q1, q0), b));
+            if (laenge3(minus3(pa, qb)) > tol) continue;
+            // nicht über eine dünne Stelle: die Haut am anderen Stück zeigt dorthin, wohin sie hier zeigt
+            if (punkt3(this.aufHaut(qb).n, n) < 0.3) continue;
+            let t = (i + a) / nD;
+            let u = (j + b) / nQ;
+            // genau: Newton auf beiden Kurven in der Ebene der Haut
+            const kB = this.kontrolle(this.linien[o.lj]!.stuecke[o.sj]!);
+            const bez = (k: V3[], s: number): V3 => {
+              const w = 1 - s;
+              return plus3(plus3(mal3(k[0]!, w * w * w), mal3(k[1]!, 3 * w * w * s)), plus3(mal3(k[2]!, 3 * w * s * s), mal3(k[3]!, s * s * s)));
+            };
+            const abl = (k: V3[], s: number): V3 => {
+              const w = 1 - s;
+              return plus3(plus3(mal3(minus3(k[1]!, k[0]!), 3 * w * w), mal3(minus3(k[2]!, k[1]!), 6 * w * s)), mal3(minus3(k[3]!, k[2]!), 3 * s * s));
+            };
+            for (let it = 0; it < 12; it++) {
+              const F = minus3(bez(kA, t), bez(kB, u));
+              const f1 = punkt3(F, e1);
+              const f2 = punkt3(F, e2);
+              if (f1 * f1 + f2 * f2 < 1e-18 * this.radius * this.radius) break;
+              const d1 = abl(kA, t);
+              const d2 = abl(kB, u);
+              const j11 = punkt3(d1, e1);
+              const j12 = -punkt3(d2, e1);
+              const j21 = punkt3(d1, e2);
+              const j22 = -punkt3(d2, e2);
+              const dj = j11 * j22 - j12 * j21;
+              if (Math.abs(dj) < 1e-12) break;
+              t = Math.min(1, Math.max(0, t - (f1 * j22 - j12 * f2) / dj));
+              u = Math.min(1, Math.max(0, u - (j11 * f2 - j21 * f1) / dj));
+            }
+            const Q = bez(kB, u);
+            if (laenge3(minus3(Q, A0)) < rand || laenge3(minus3(Q, A1)) < rand) continue;
+            if (laenge3(minus3(bez(kA, t), pa)) > tol * 3) continue;
+            return { si, t, lj: o.lj, sj: o.sj, u };
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  /** ein Anker einer Linie wird ein anderer (der gemeinsame der Kreuzung); seine Griffe gehen um den Unterschied mit */
+  private ankerErsetzen(li: number, alt: number, neu: number): void {
+    const l = this.linien[li];
+    if (!l || alt === neu) return;
+    const d = minus3(this.lage(this.anker, neu), this.lage(this.anker, alt));
+    for (const st of l.stuecke) {
+      if (st.a === alt) {
+        st.a = neu;
+        this.griffSetzen(st.g1, plus3(this.lage(this.griffe, st.g1), d));
+      }
+      if (st.b === alt) {
+        st.b = neu;
+        this.griffSetzen(st.g2, plus3(this.lage(this.griffe, st.g2), d));
+      }
+    }
+    l.anker = ankerVon(l);
+    this.ankerSichtbar[alt] = 0;
+  }
+
+  /**
+   * Eine Kreuzung einsetzen (wie im Editor ein gemeinsamer Punkt): auf der gekreuzten Linie ein Punkt (oder einer, der schon fast dort
+   * liegt), ebenso auf ihrem Spiegelbild; die neue Linie und ihr Spiegelbild werden dort geteilt und teilen diese Punkte.
+   */
+  private kreuzungTeilen(li: number, zw: number, k: { si: number; t: number; lj: number; sj: number; u: number }): void {
+    const Lj = this.linien[k.lj]!;
+    const Q = this.bezier3(k.lj, k.sj, k.u);
+    const nahe = this.radius * 0.006;
+    let q = Lj.anker.find((a) => this.ankerSichtbar[a] && laenge3(minus3(this.lage(this.anker, a), Q)) < nahe) ?? -1;
+    let qS: number;
+    if (q < 0) {
+      const sp = this.zwilling(k.lj, k.sj);
+      q = this.teilen(k.lj, k.sj, k.u);
+      if (sp) qS = this.teilen(sp.li, sp.li === k.lj && sp.si > k.sj ? sp.si + 1 : sp.si, sp.rueckwaerts ? 1 - k.u : k.u);
+      else qS = q;
+    } else qS = this.spiegelAnker(q);
+    const m = this.teilen(li, k.si, k.t);
+    this.ankerErsetzen(li, m, q);
+    if (zw >= 0) {
+      const mS = this.teilen(zw, k.si, k.t);
+      this.ankerErsetzen(zw, mS, qS);
+    }
   }
 
   // ---------- Auswahl im Raum ----------

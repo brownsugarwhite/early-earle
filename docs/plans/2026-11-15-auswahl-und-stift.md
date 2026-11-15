@@ -220,6 +220,13 @@ der Haut).
   neue Linie liegen auf der Haut.
 - **Auswahl:** Klick, ⇧, Rahmen, Doppelklick auf eine Linie (der Loop mit Welle), Ziehen aller gewählten, ⌫ (die Punkte vergehen,
   die Linie läuft angepasst weiter), Esc, ⌘A. Gewählt: Tropfen mit ruhigem kleinem Stern. Im Raum wählt der Rahmen nur Sichtbares.
+  Punkte, die zwei Linien teilen (Kreuzungen, Enden von Abzweigungen), bleiben bei ⌫ stehen und gewählt, wie im Editor
+  („Kreuzungen bleiben, solange sich die Loops kreuzen“).
+- **Kreuzungen im Raum** (nachgebaut am selben Abend, Florian: „Kreuzungen bauen“): Gesucht wird auf der Haut, unabhängig von der
+  Ansicht, also auch hinten: Stücke, die sich näher als 3 % des Radius kommen, deren Haut in dieselbe Richtung zeigt (nicht über eine
+  dünne Stelle hinweg) und die sich in der Ebene der Haut schneiden; genau mit Newton in dieser Ebene. Eingesetzt wird, wenn die
+  Linie fertig ist, eine Kreuzung nach der anderen: ein gemeinsamer Punkt auf der gekreuzten Linie und sein Spiegelbild, die neue
+  Linie und ihr Spiegelbild werden dort geteilt. Beim Zeichnen wachsen sie als Vorschau, wo beide auf dem Bildschirm gleich tief liegen.
 
 Probe (vorher festgelegt, alles im echten Fenster mit Maus und Tasten):
 
@@ -233,7 +240,9 @@ Probe (vorher festgelegt, alles im echten Fenster mit Maus und Tasten):
 | ⇧ 45°, Leertaste verschiebt den Punkt (Griff bleibt), Klick auf den letzten Punkt zieht den Griff ein | 45,000°, (4, 3) genau, ja |
 | Raum: Ring Mitte – Flanke – Mitte an „teat firefish“ | geschlossen, beide Enden genau z = 0, Spiegelbild genau (0), Punkte auf der Haut (0,002 % des Radius) |
 | Raum: Faden auf der sichtbaren Seite nie grün | an drei Stellen 0 falsch grün; grün nur, wo er wirklich unter den Körper läuft |
-| Raum: Rahmen, Ziehen, ⌫, ⌥ + Ziehen dreht | nur Sichtbares gewählt, gegriffener Punkt genau (der zweite 0,26 px, Perspektive), Ring bleibt zu, dreht |
+| Raum: Kreuzungen des Rings mit vorhandenen Linien | 2 gemeinsame Punkte (ein Spiegelpaar), danach keine Kreuzung ohne Punkt, die gekreuzten Linien behalten ihren Verlauf (Abweichung 0,0002 % des Radius, so genau misst die Probe) |
+| Raum: Rahmen, Ziehen, ⌫, ⌥ + Ziehen dreht | nur Sichtbares gewählt, gegriffener Punkt genau (die anderen 0,26 und 0,03 px, Perspektive), Ring bleibt zu, die Kreuzung bleibt stehen und gewählt, dreht |
+| ⌫ lässt geteilte Punkte stehen (2D) | ja, sie bleiben gewählt; die übrigen sind weg |
 
 Proben: `apps/editor/scripts/linien/stift-zeichnen-probe.mjs`, `stift-raum-probe.mjs` (Ausgabe JSON). Bilder
 `docs/progress/linien/2026-11-15-stift-probe-2d.png` und `…-raum.png`; Filme vom echten Verhalten `…-stift-film-2d.mp4` (32 s) und
@@ -241,7 +250,6 @@ Proben: `apps/editor/scripts/linien/stift-zeichnen-probe.mjs`, `stift-raum-probe
 
 Grenzen und offen:
 
-- Im Raum entstehen noch keine Punkte, wo die neue Linie vorhandene kreuzt (in 2D schon).
 - Die Linie im Raum liegt in der Anzeige auf der Haut; gerechnet ist sie ein Bézier-Pfad durch ihre Punkte (im Editor folgt die Haut
   ohnehin den Linien).
 - Liegen mehrere gewählte Punkte auf einer Linie, fließen ihre Sterne zu einer längeren Schwellung zusammen.

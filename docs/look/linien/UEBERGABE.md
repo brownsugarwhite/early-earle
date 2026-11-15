@@ -73,8 +73,10 @@ Browser, „Werte kopieren“ legt die geänderten als JSON in die Zwischenablag
     Auswahl mit Tropfen und kleinem Stern, Rahmen): Plan und zwölf Bilder; vier Fragen an ihn.
 - **15.11. abends:** Seine Antworten (wörtlich im Plan): Abzweigung, Ziehen an jedem Punkt (zweites Griffpaar), nur Loops, ↩ schließt,
   Esc bricht ab, ⌥ + Ziehen dreht im Raum, Auswahl wie im Bild. **Gebaut in 2D und im Raum**, beide Proben halten alle Kriterien
-  (Tabelle im Plan, Abschnitt „Gebaut“), Filme `2026-11-15-stift-film-2d.mp4` und `…-raum.mp4`. Sein Urteil steht aus. Offen:
-  Kreuzungen im Raum (dort entstehen noch keine Punkte, wo die neue Linie Linien kreuzt), seine Tastenbelegung, Einbau in den Editor.
+  (Tabelle im Plan, Abschnitt „Gebaut“), Filme `2026-11-15-stift-film-2d.mp4` und `…-raum.mp4`. Danach (er: „Kreuzungen bauen“)
+  die Kreuzungen im Raum: auf der Haut gesucht, beim Fertigwerden als gemeinsamer Punkt samt Spiegelbild eingesetzt
+  (`kreuzungFinden`, `kreuzungTeilen` in `raum.ts`); ⌫ lässt geteilte Punkte stehen wie im Editor. Sein Urteil steht aus. Offen:
+  seine Tastenbelegung, Einbau in den Editor.
 
 ## Fallen
 
@@ -85,6 +87,10 @@ Browser, „Werte kopieren“ legt die geänderten als JSON in die Zwischenablag
 - Proben mit P: Wer auf eine vorhandene Linie oder einen Punkt klickt, macht eine Abzweigung (sie endet am nächsten Vorhandenen).
   Freie Stellen suchen (`stift-raum-probe.mjs`, `freieStelle`); der Tropfen hält 1,8 Fangradien, nach dem Überqueren einer Linie
   zieht Drücken daneben noch sie statt eines Rahmens (`stift-film.mjs` sucht den Anfang des Rahmens fern von allen Linien).
+- Kreuzungen im Raum sucht `kreuzungFinden` auf der Haut, nicht auf dem Bildschirm (sonst fehlen die verdeckten). Die vorhandenen
+  Linien liegen nur ungefähr auf der Haut: Toleranz 3 % des Radius, und die Haut an beiden Stücken muss in dieselbe Richtung zeigen,
+  sonst entstünden Kreuzungen über dünne Stellen hinweg. Eingesetzt wird eine nach der anderen, jede frisch gesucht (keine Rechnung
+  mit verschobenen Nummern).
 - Im Raum liegt eine mit P gezeichnete Linie nur in der Anzeige auf der Haut (`aufHaut`: Proben auf den nächsten Hautpunkt gelegt);
   ihre Bézier-Punkte und Griffe bleiben die Wahrheit. `Raum3D.schritte` ist das Zurück (der Name `zurueck` gehört zu `StiftWerk`).
 

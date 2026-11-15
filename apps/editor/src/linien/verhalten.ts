@@ -162,6 +162,8 @@ export interface Raum extends Dreher, StiftWerk {
   punkteLoeschen(pis: number[]): boolean;
   /** der Punkt liegt vor der Haut (für den Rahmen: im Raum wählt er nur, was man sieht) */
   ankerZuSehen(pi: number): boolean;
+  /** so weit darf etwas hinter der Haut liegen und gilt doch als auf ihr (Tiefe, Bildschirmpunkte der Anzeige) */
+  bias(): number;
 }
 
 /**
@@ -932,9 +934,15 @@ export class Verhalten {
     this.rahmenAus = { r: [Math.min(r.x0, r.x1), Math.min(r.y0, r.y1), Math.max(r.x0, r.x1), Math.max(r.y0, r.y1)], ziel, f };
   }
 
-  /** ⌫: Die gewählten Punkte vergehen, die Linie läuft durch die Nachbarn weiter */
+  /**
+   * ⌫: Die gewählten Punkte vergehen, die Linie läuft durch die Nachbarn weiter. Punkte, die zwei Linien teilen (Kreuzungen, Enden
+   * von Abzweigungen), bleiben wie im Editor („Kreuzungen bleiben, solange sich die Loops kreuzen“); sie bleiben gewählt.
+   */
   private auswahlLoeschen(): boolean {
-    const weg = [...this.auswahl];
+    const geteilt = (p: number): boolean => this.netz.linien.filter((l) => l.punkte.includes(p)).length >= 2;
+    const bleiben = [...this.auswahl].filter(geteilt);
+    const weg = [...this.auswahl].filter((p) => !geteilt(p));
+    if (!weg.length) return false;
     for (const p of weg) {
       const P = this.netz.punkte[p];
       if (!P) continue;
@@ -945,10 +953,21 @@ export class Verhalten {
     this.auswahlLeeren();
     this.tropfen = [];
     this.wellen = [];
-    if (this.raum) return this.raum.punkteLoeschen(weg);
+    if (this.raum) {
+      const ok = this.raum.punkteLoeschen(weg);
+      this.waehlen(bleiben, false);
+      return ok;
+    }
     this.zurueckMerken();
-    this.netz = punkteLoeschen(this.netz, new Set(weg)).netz;
+    const { netz, nummer } = punkteLoeschen(this.netz, new Set(weg));
+    this.netz = netz;
     this.abtasten();
+    // die geteilten bleiben gewählt (mit ihren neuen Nummern)
+    this.auswahlF.clear();
+    this.waehlen(
+      bleiben.map((p) => nummer[p]!).filter((p) => p >= 0),
+      false,
+    );
     return true;
   }
 
@@ -1565,18 +1584,21 @@ export class Verhalten {
       c.push(c.X(F.x[k]!), c.Y(F.y[k]!), c.X(F.x[k + 1]!), c.Y(F.y[k + 1]!), c.R(halb(F.s[k]!)), c.R(halb(F.s[k + 1]!)), g, sch, 0, F.z?.[k] ?? 0, F.z?.[k + 1] ?? 0);
     }
     // wo der Faden Linien kreuzt, entsteht dort ein Punkt: er wächst, sobald das Ende über die Linie hinaus ist
-    if (c.raum) return;
     for (const q of this.fadenKreuzungen(F)) {
       const f = glatt(0, 6 * this.g, L - q.s);
       if (f < 0.02) continue;
       const r = w.punktRadius * f;
-      c.push(c.X(q.x), c.Y(q.y), c.X(q.x), c.Y(q.y), c.R(r), c.R(r), c.gruppe(), 0, 1);
+      c.push(c.X(q.x), c.Y(q.y), c.X(q.x), c.Y(q.y), c.R(r), c.R(r), c.gruppe(), c.raum ? 2 : 0, 1, q.z, q.z);
     }
   }
 
-  /** wo der Faden (Polygon) die Linien kreuzt (nicht die eigene, nicht verdeckt), mit Bogenlänge auf dem Faden */
-  private fadenKreuzungen(F: FadenProben): { x: number; y: number; s: number }[] {
-    const aus: { x: number; y: number; s: number }[] = [];
+  /**
+   * Wo der Faden (Polygon) die Linien kreuzt (nicht die eigene, nicht verdeckt), mit Bogenlänge auf dem Faden. Im Raum zählt eine
+   * Kreuzung auf dem Bildschirm nur, wo beide gleich tief liegen (auf derselben Haut, nicht eine vor der anderen).
+   */
+  private fadenKreuzungen(F: FadenProben): { x: number; y: number; z: number; s: number }[] {
+    const aus: { x: number; y: number; z: number; s: number }[] = [];
+    const tief = this.raum ? 2 * this.raum.bias() : Infinity;
     const rand = 1.5 * this.g;
     let x0 = Infinity;
     let y0 = Infinity;
@@ -1590,7 +1612,7 @@ export class Verhalten {
     }
     for (const P of this.suchProben()) {
       for (let j = 0; j + 1 < P.n; j++) {
-        if (P.schicht[j] === 1) continue;
+        if (!this.raum && P.schicht[j] === 1) continue;
         const bx = P.x[j]!;
         const by = P.y[j]!;
         const cx = P.x[j + 1]!;
@@ -1610,7 +1632,10 @@ export class Verhalten {
           if (tt < 0 || tt >= 1 || ss < 0 || ss >= 1) continue;
           const s = F.s[i]! + (F.s[i + 1]! - F.s[i]!) * tt;
           if (s < rand || s > F.laenge - rand) continue;
-          aus.push({ x: ax + ux * tt, y: ay + uy * tt, s });
+          const zF = F.z ? F.z[i]! + (F.z[i + 1]! - F.z[i]!) * tt : 0;
+          const zP = P.z ? P.z[j]! + (P.z[j + 1]! - P.z[j]!) * ss : 0;
+          if (Math.abs(zF - zP) > tief) continue;
+          aus.push({ x: ax + ux * tt, y: ay + uy * tt, z: zF, s });
         }
       }
     }
@@ -1648,11 +1673,11 @@ export class Verhalten {
       // wo die Linie schon Linien kreuzt: dort entstehen Punkte, wenn sie fertig ist
       const l = e.li >= 0 ? this.netz.linien[e.li] : undefined;
       const PL = e.li >= 0 ? this.proben[e.li] : undefined;
-      if (l && PL && !c.raum) {
+      if (l && PL) {
         const eigene = l.punkte.map((p) => this.netz.punkte[p]!);
         for (const q of this.fadenKreuzungen(PL)) {
           if (eigene.some((p) => Math.hypot(p.x - q.x, p.y - q.y) < 1.5 * this.g)) continue;
-          c.push(c.X(q.x), c.Y(q.y), c.X(q.x), c.Y(q.y), c.R(w.punktRadius), c.R(w.punktRadius), c.gruppe(), 0, 1);
+          c.push(c.X(q.x), c.Y(q.y), c.X(q.x), c.Y(q.y), c.R(w.punktRadius), c.R(w.punktRadius), c.gruppe(), c.raum ? 2 : 0, 1, q.z, q.z);
         }
       }
       // der Griff, mit dem die nächste Verbindung den letzten Punkt verlässt

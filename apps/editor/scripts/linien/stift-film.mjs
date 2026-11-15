@@ -55,7 +55,13 @@ if (!raum) {
   const P3 = [311, 230];
   const P4 = [290, 203];
   const G = 11;
-  const eye = await page.evaluate(() => [54, 61, 48].map((i) => [window.__linien.verhalten.netz.punkte[i].x, window.__linien.verhalten.netz.punkte[i].y]));
+  // zwei Punkte am Auge (Abzweigung) und einer außerhalb des Rahmens, der nur auf einer Linie liegt (geteilte bleiben beim Löschen)
+  const eye = await page.evaluate(() => {
+    const v = window.__linien.verhalten;
+    const einmal = (i) => v.netz.linien.filter((l) => l.punkte.includes(i)).length === 1;
+    const i = v.netz.punkte.findIndex((p, i) => p.sichtbar && einmal(i) && !(p.x >= 290 && p.x <= 336 && p.y >= 120 && p.y <= 164) && Math.hypot(p.x - 313, p.y - 150) < 48);
+    return [54, 61, i].map((k) => [v.netz.punkte[k].x, v.netz.punkte[k].y]);
+  });
   const plus = (p, d) => [p[0] + d[0], p[1] + d[1]];
   // der Rahmen beginnt im Leeren: nahe der Ecke die Stelle, die am weitesten von allen Linien und Punkten weg ist (auch jenseits des
   // Haltens, sonst hängt der Tropfen der zuletzt überquerten Linie noch am Zeiger, und Drücken zieht die Linie)
@@ -130,7 +136,7 @@ if (!raum) {
     geh([352, 150], 0.9),
     { dauer: 0.5 },
   ];
-  ausschnitt = { x: B / 2 - 300, y: H / 2 - 210, width: 600, height: 420 };
+  ausschnitt = { x: B / 2 - 300, y: 76, width: 600, height: 452 };
 } else {
   await page.goto(`${URL}/raum.html?bild=1`);
   await page.waitForFunction(() => window.__raum && window.__raum.raum.hautTri.length > 0);

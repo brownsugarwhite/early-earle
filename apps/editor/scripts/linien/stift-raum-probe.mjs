@@ -177,6 +177,24 @@ await hin([unten[0] + 4, unten[1] + 6]);
 const gruen3 = await fadenGruen();
 blick = [(Bp[0] + unten[0]) / 2, (Bp[1] + unten[1]) / 2];
 await bild('3 · unten an der Mitte: einrasten');
+// Verlauf aller vorhandenen Linien vor dem Fertigwerden (die Kreuzungen dürfen ihn nicht ändern)
+const verlaufVorher = await page.evaluate(() => {
+  const R = window.__raum.raum;
+  return R.linien.map((l) => {
+    if (l.aufHaut) return null;
+    const pts = [];
+    for (const st of l.stuecke) {
+      const k = R.kontrolle(st);
+      for (let i = 0; i <= 200; i++) {
+        const t = i / 200;
+        const u = 1 - t;
+        const b = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
+        pts.push(['x', 'y', 'z'].map((a) => b[0] * k[0][a] + b[1] * k[1][a] + b[2] * k[2][a] + b[3] * k[3][a]));
+      }
+    }
+    return pts;
+  });
+});
 await ziehen(unten, await richtung(plan.unten, [0, 0, -1], 34));
 await page.evaluate(() => window.__raum.vorspulen(250));
 blick = [(oben[0] + unten[0]) / 2, (oben[1] + unten[1]) / 2];
@@ -208,12 +226,52 @@ const ergebnis = await page.evaluate((radius) => {
   for (const i of an) hautAbw = Math.max(hautAbw, Math.hypot(...Object.values(((p) => { const h = R.aufHaut(p).p; return { x: h.x - p.x, y: h.y - p.y, z: h.z - p.z }; })(lage(i)))));
   return { zu: l.zu, aufHaut: !!l.aufHaut, anker: an.length, aufDerMitte: mitte.length, mitteZ: mitte.map((i) => lage(i).z), spiegelAbw, hautAbwAnteil: hautAbw / radius, linien: R.linien.length };
 }, plan.radius);
+// Kreuzungen: Punkte des Rings, die auch auf anderen Linien liegen; danach keine Kreuzung mehr ohne Punkt; die gekreuzten Linien
+// behalten genau ihren Verlauf
+const kreuz = await page.evaluate((vorher) => {
+  const R = window.__raum.raum;
+  const li = R.linien.findIndex((l) => l.aufHaut && l.zu);
+  const ring = R.linien[li];
+  // gemeinsame Punkte neben der Mitte (auf der Mitte hängen Anfang und Ende)
+  const geteilt = ring.anker.filter((a) => Math.abs(R.anker[a * 3 + 2]) > R.radius * 1e-9 && R.linien.some((l, lj) => lj !== li && l.anker.includes(a)));
+  const offen = R.kreuzungFinden(li, []);
+  // Abstand jeder Probe der Linie jetzt vom Verlauf vorher (Polygon)
+  let verlauf = 0;
+  vorher.forEach((P, lj) => {
+    if (!P) return;
+    const l = R.linien[lj];
+    for (const st of l.stuecke) {
+      const k = R.kontrolle(st);
+      for (let i = 0; i <= 20; i++) {
+        const t = i / 20;
+        const u = 1 - t;
+        const b = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
+        const p = ['x', 'y', 'z'].map((a) => b[0] * k[0][a] + b[1] * k[1][a] + b[2] * k[2][a] + b[3] * k[3][a]);
+        let m = Infinity;
+        for (let j = 0; j + 1 < P.length; j++) {
+          const a = P[j];
+          const v = [P[j + 1][0] - a[0], P[j + 1][1] - a[1], P[j + 1][2] - a[2]];
+          const l2 = v[0] ** 2 + v[1] ** 2 + v[2] ** 2;
+          const f = l2 > 0 ? Math.min(1, Math.max(0, ((p[0] - a[0]) * v[0] + (p[1] - a[1]) * v[1] + (p[2] - a[2]) * v[2]) / l2)) : 0;
+          m = Math.min(m, Math.hypot(p[0] - a[0] - v[0] * f, p[1] - a[1] - v[1] * f, p[2] - a[2] - v[2] * f));
+        }
+        verlauf = Math.max(verlauf, m);
+      }
+    }
+  });
+  return { geteilt: geteilt.length, offen, verlaufAnteil: verlauf / R.radius };
+}, verlaufVorher);
 const gruen = [gruen1, gruen2, gruen3];
 aus.kriterien.ring = {
   ...ergebnis,
+  kreuzungen: kreuz,
   fadenGruen: gruen,
   bestanden:
     ergebnis.zu &&
+    kreuz.geteilt >= 2 &&
+    kreuz.geteilt % 2 === 0 &&
+    kreuz.offen === null &&
+    kreuz.verlaufAnteil < 0.002 &&
     ergebnis.aufDerMitte === 2 &&
     ergebnis.mitteZ.every((z) => z === 0) &&
     ergebnis.spiegelAbw < 1e-6 * plan.radius &&
@@ -267,14 +325,19 @@ await warten(200);
 const nachher = await page.evaluate((ids) => ids.map((i) => { const p = window.__raum.verhalten.netz.punkte[i]; return [p.x, p.y]; }), gewaehlt);
 const zugAbw = nachher.map((q, i) => Math.hypot(q[0] - vorher[i][0] - weg[0], q[1] - vorher[i][1] - weg[1]));
 await bild('8 · zusammen gezogen');
+const geteiltVor = await page.evaluate((ids) => {
+  const R = window.__raum.raum;
+  return ids.filter((a) => R.linien.filter((l) => l.anker.includes(a)).length >= 2);
+}, gewaehlt);
 await page.keyboard.press('Backspace');
 await page.evaluate(() => window.__raum.vorspulen(500));
-await bild('9 · ⌫: gelöscht, der Ring bleibt geschlossen');
-const ringNach = await page.evaluate(() => {
+await bild('9 · ⌫: gelöscht, der Ring bleibt geschlossen, die Kreuzung bleibt');
+const ringNach = await page.evaluate((geteilt) => {
   const R = window.__raum.raum;
+  const v = window.__raum.verhalten;
   const l = R.linien.find((q) => q.aufHaut);
-  return l ? { zu: l.zu, anker: l.anker.length } : null;
-});
+  return l ? { zu: l.zu, anker: l.anker.length, geteiltBleiben: geteilt.every((a) => l.anker.includes(a) && v.auswahl.has(a)), geteilt: geteilt.length } : null;
+}, geteiltVor);
 // ⌥ + Ziehen im Leeren dreht die Ansicht
 const gier0 = await page.evaluate(() => window.__raum.raum.gier.ziel);
 await hin([B - 60, 60]);
@@ -292,7 +355,7 @@ aus.kriterien.auswahl = {
   zugAbweichungPx: zugAbw.map((d) => +d.toFixed(3)),
   ringNachLoeschen: ringNach,
   altDreht: +(gier1 - gier0).toFixed(4),
-  bestanden: JSON.stringify(sollRahmen) === JSON.stringify(gewaehlt) && zugAbw[0] < 0.01 && Math.max(...zugAbw) < 1.5 && !!ringNach && ringNach.zu && Math.abs(gier1 - gier0) > 0.1,
+  bestanden: JSON.stringify(sollRahmen) === JSON.stringify(gewaehlt) && zugAbw[0] < 0.01 && Math.max(...zugAbw) < 1.5 && !!ringNach && ringNach.zu && ringNach.geteiltBleiben && Math.abs(gier1 - gier0) > 0.1,
 };
 aus.fehler = fehler;
 console.log(JSON.stringify(aus, null, 1));
