@@ -1,4 +1,4 @@
-# Übergabe: Linien, Punkte, Zeiger (Stand 15.11.2026, mittags)
+# Übergabe: Linien, Punkte, Zeiger (Stand 15.11.2026, nachmittags)
 
 Eigener Strang. Plan: [`docs/plans/2026-11-14-linien-zeiger-tropfen.md`](../../plans/2026-11-14-linien-zeiger-tropfen.md). Konzept
 zur Freigabe: [`docs/plans/2026-11-15-richtungen-statt-griffe.md`](../../plans/2026-11-15-richtungen-statt-griffe.md).
@@ -19,6 +19,8 @@ Florians Entwürfe liegen hier (`2026-11-14-florian-fisch-entwurf.webp` und `…
 | Werkzeug P | Probe `scripts/linien/stift-probe.mjs` (2D und Raum, Ausgabe JSON), Bild `scripts/linien/stift-bild.mjs` |
 | Konzeptbilder | `scripts/linien/konzept-bilder.mjs` (2D, sechs Bilder), `konzept-raum.mjs` (Raum, drei Bilder) → `docs/progress/linien/2026-11-15-konzept-*.png` |
 | Richtungen | Code `src/linien/richtung.ts` (+ `verhalten.ts`, `raum.ts`, `netz.ts`); Probe `scripts/linien/richtung-probe.mjs`; Bilder `richtung-bilder.mjs`; Film `richtung-film.mjs` → `docs/progress/linien/2026-11-15-richtung-*` |
+| Zeiger bleibt, Schwellung fließt | Vorher und nachher auf demselben Weg, mit Messwerten: `scripts/linien/fliessen-film.mjs` (lädt den alten Stand aus git ins Fenster) → `docs/progress/linien/2026-11-15-fliessen-*` |
+| Konzept Auswahl und P | Plan `docs/plans/2026-11-15-auswahl-und-stift.md`; Bilder `scripts/linien/konzept-stift.mjs` (2D, neun) und `konzept-stift-raum.mjs` (Raum, drei) → `docs/progress/linien/2026-11-15-konzept-stift-*` |
 
 ## Bedienung der Seite
 
@@ -51,10 +53,27 @@ Knöpfe: 100 %, Einpassen, Entwurf (seine Zeichnung darunter, E), Wachsen mit Zo
     oder Doppelklick rundet, an der Kreuzung je Linie. Im 3D auf der Haut, mit ⇧ aus der Haut. Seine Antworten auf die fünf Fragen
     stehen aus; erst danach die Konzept-Probe bauen.
   - **Freigegeben** („Ja, so bauen“) und **gebaut**: Ergebnisse der Probe, Bilder, Film und Grenzen im Konzept, Abschnitt „Gebaut“.
-    Sein Urteil steht aus. Danach: Einbau in den Editor (Schritt 2 des Strangs; Knick je Linie ändert `eckeUmschalten`/`eckeGezeigt`
-    in `kurven.ts`, im Bau-Fenster, abgestimmt mit dem Plan „schnell, glatt, exakt“).
+    Danach: Einbau in den Editor (Schritt 2 des Strangs; Knick je Linie ändert `eckeUmschalten`/`eckeGezeigt` in `kurven.ts`, im
+    Bau-Fenster, abgestimmt mit dem Plan „schnell, glatt, exakt“).
+- **15.11. nachmittags, Florian zur gebauten Probe:** „Das Konzept an sich hast du sehr gut gemacht!“ Dazu zwei Wünsche und neue
+  Punkte (wörtlich im Plan [`2026-11-15-auswahl-und-stift.md`](../../plans/2026-11-15-auswahl-und-stift.md)).
+  - **Gebaut:** Der Zeiger bleibt nach dem Klick auf der Stelle und findet erst mit der Bewegung der Maus zu ihr zurück (40 px
+    Weg: knapp zwei Drittel); was er trifft, entscheidet der gezeichnete Zeiger. Schwellung und Nadel sind eine Form aus Federn (Mitte,
+    Reichweite und Höhe je Seite, Taille), die Spindel fließt in die Nadel. Gemessen gegen den Stand vom Mittag (`fliessen-film.mjs`):
+    zwei Buckel 10 Bilder → 0, Stärke beim Wechsel 50 % → 91 %, Zeiger nach dem Klick 6,75 px → 0 vom Punkt.
+    `richtung-probe.mjs` prüft jetzt „Zeiger bleibt“ statt „Versatz 0“.
+  - **Konzept „Auswahl und Werkzeug P“** (P wie in Illustrator, im Netz anhängen und kreuzen, Ring um den Körper über die Mitte,
+    Auswahl mit Tropfen und kleinem Stern, Rahmen): Plan und zwölf Bilder; vier Fragen an ihn. **Erst nach seinem Wort bauen.**
 
 ## Fallen
+
+- Vorher und nachher im selben Fenster: Den alten Stand einer Datei holt `git show`, `typescript` übersetzt ihn, und Playwright
+  liefert ihn unter einer eigenen Adresse aus (`page.route`); die übrigen Module kommen vom Server (`fliessen-film.mjs`). So kommt
+  nichts davon ins Repo.
+- Die Nadel an Punkt 55, Linie 2 ist knapp 29 Einheiten lang (langer Schwung): Wege, die die Spindel zeigen sollen, außerhalb
+  beginnen (Länge mit `nadelLaenge` lesen).
+- Ein Ring im Raum als Schnitt der Haut mit einer Ebene (`konzept-stift-raum.mjs`): Am Kopf von „teat firefish“ schneidet die Ebene
+  auch die Flanken der Beulen; am Schwanz ist es eine saubere Röhre. Die schräge Hausansicht sieht die Ebene fast von der Kante.
 
 - Konzeptbilder im Raum: Die Bildschleife der Seite läuft nach `formLaden` noch ein paar Bilder und zeichnet über eigene Szenen;
   vor dem Zeichnen kurz warten (`konzept-raum.mjs`, `ausgang`). Verdeckte Haarlinien (grün, 0,25 px) sind auf Bildern kaum zu sehen;

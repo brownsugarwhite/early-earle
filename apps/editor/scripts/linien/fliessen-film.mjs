@@ -91,7 +91,6 @@ const start = await page.evaluate(
         }
       return { extra, s: Q.s };
     };
-    const D = a.dpr;
     window.__vn = {
       alt,
       neu,
