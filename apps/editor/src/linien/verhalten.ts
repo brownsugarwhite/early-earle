@@ -8,7 +8,13 @@
  *    der Stern aus dem Entwurf). Linien neigen sich leicht zum Tropfen. Geht der Zeiger zu weit weg, fließt der Tropfen zurück.
  * 3. **Greifen:** Drücken, solange ein Tropfen hängt: Nicht die Stelle springt zum Zeiger, der Zeiger gleitet zur Stelle (Florian,
  *    14.11.: „umgekehrt wäre es cooler“), der Tropfen fließt mit ihm in seinen Punkt oder seine Linie zurück. Beim Ziehen folgt die
- *    Stelle genau der Bewegung der Maus, der Zeiger sitzt auf ihr; beim Loslassen gleitet er zurück unter die Maus.
+ *    Stelle genau der Bewegung der Maus, der Zeiger sitzt auf ihr. Beim Loslassen bleibt er dort (Florian, 15.11.: „nach dem Klick
+ *    auf dem Punkt bleiben statt zurückzugleiten“); erst wenn die Maus sich bewegt, findet er nach und nach wieder zu ihr. Was der
+ *    Zeiger trifft, entscheidet der gezeichnete Zeiger, nicht die unsichtbare Maus.
+ *
+ * Schwellung und Nadel sind eine Form (Florian, 15.11.: „es soll immer fließen und nicht springen“): Mitte, Reichweite und Höhe je
+ * Seite und die Taille sind Federn. Am Zeiger ist sie eine Spindel, an einem Punkt die Nadel; wechselt das Ziel, fließt die eine in
+ * die andere, statt dass eine verschwindet und die andere erscheint.
  *
  * Werkzeug P (Florian, 15.11.: „die Punkte auf der Linie sollen nur erscheinen, wenn ich mit Werkzeug P einen Punkt auf Linien setzen
  * kann, sonst nur die Verdickung“): Ohne P zeigt eine Linie unter dem Zeiger nur ihre Schwellung, gegriffen und gezogen wird sie wie
@@ -141,6 +147,29 @@ export interface Raum extends Dreher {
   rueckgaengig(): boolean;
 }
 
+/**
+ * Schwellung einer Linie: eine Form längs der Bogenlänge. Mitte `c`; nach kleineren Bogenlängen (Seite „ein“) reicht sie `a` weit
+ * mit Höhe `ha` und Taille `ta`, nach größeren (Seite „aus“) `b`, `hb`, `tb`. Spindel: a = b = Reichweite, Höhen 1. Nadel: Mitte am
+ * Punkt, Reichweite je Seite der Schwung, die Gegenseite niedriger oder null, geknickt mit Taille. `nadel`: Anteil Nadel (für das
+ * weiche Feld am Punkt `pi`).
+ */
+interface Schwellung {
+  st: Feder1;
+  c: Feder1;
+  a: Feder1;
+  b: Feder1;
+  ha: Feder1;
+  hb: Feder1;
+  ta: Feder1;
+  tb: Feder1;
+  nadel: Feder1;
+  pi: number;
+}
+type SchwellZiel = { c: number; a: number; b: number; ha: number; hb: number; ta: number; tb: number; st: number; nadel: number; pi: number };
+
+/** so weit (Bildschirmpunkte, mal Maßstab) muss die Maus gehen, bis der Zeiger zu gut zwei Dritteln wieder bei ihr ist */
+const ZURUECK_WEG = 40;
+
 interface Tropfen {
   ziel: Ziel;
   verdeckt: boolean;
@@ -157,11 +186,6 @@ const glocke3 = (x: number): number => {
   const a = Math.min(1, Math.abs(x));
   const u = 1 - a * a;
   return u * u * u;
-};
-/** Verlauf der Schwellung längs der Linie: in der Mitte spitz wie ein Pinselstrich, am Ende ohne Knick in die Grundbreite */
-const spindel = (x: number): number => {
-  const a = Math.min(1, Math.abs(x));
-  return Math.pow(1 - a, 1.6);
 };
 const glatt = (a: number, b: number, x: number): number => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
@@ -184,8 +208,8 @@ export class Verhalten {
   private feld = new Feder2(0, 0);
   private feldStaerke = new Feder1(0);
   private zeigerSkala = new Feder1(1);
-  /** je Linie: Stärke der Schwellung und ihre Mitte (Bogenlänge) */
-  private schwell: { st: Feder1; s: Feder1 }[] = [];
+  /** je Linie: ihre Schwellung (Spindel am Zeiger oder Nadel am Punkt, eine Form) */
+  private schwell: Schwellung[] = [];
   tropfen: Tropfen[] = [];
   /** Zug: Ziel, Netz und Stelle beim Drücken, Maus beim Drücken */
   private griff: {
@@ -223,8 +247,8 @@ export class Verhalten {
       this.abtasten();
     },
   );
-  /** je Linie: Nadel einer Richtung (Stärke, Gegenseite, Taille am Punkt) */
-  private nadel: { st: Feder1; partner: Feder1; taille: Feder1; k: number; seite: Seite }[] = [];
+  /** Zoom der Ansicht (für den Weg, auf dem der Zeiger zur Maus zurückfindet) */
+  private zoom = 1;
   /** Ring und Griff wachsen aus dem Punkt und fließen zurück; nach dem Loslassen bleibt das letzte Bild, bis sie verschwunden sind */
   private ring = new Feder1(0);
   private drehBildLetzt: DrehBild | null = null;
@@ -236,10 +260,11 @@ export class Verhalten {
     return this.raum ?? this.dreher2d;
   }
 
-  /** Federn je Linie (Schwellung, Nadel) für neue Linien anlegen */
+  /** Federn je Linie (Schwellung) für neue Linien anlegen */
   private federnAnlegen(): void {
-    while (this.schwell.length < this.proben.length) this.schwell.push({ st: new Feder1(0), s: new Feder1(0) });
-    while (this.nadel.length < this.proben.length) this.nadel.push({ st: new Feder1(0), partner: new Feder1(0), taille: new Feder1(0), k: 0, seite: 'aus' });
+    const f = (x: number): Feder1 => new Feder1(x);
+    while (this.schwell.length < this.proben.length)
+      this.schwell.push({ st: f(0), c: f(0), a: f(1), b: f(1), ha: f(1), hb: f(1), ta: f(0), tb: f(0), nadel: f(0), pi: -1 });
   }
   /** für die Anzeige: Stand der letzten Szene */
   stat = { tropfen: 0, ziel: '' };
@@ -254,6 +279,7 @@ export class Verhalten {
   /** Abtastschritt (Punkte des Entwurfs) so, dass auf dem Bildschirm rund 3 Punkte zwischen zwei Proben liegen */
   setzeAnsicht(a: Ansicht): void {
     this.g = (a.wachsen ? 1 : 1 / a.z) * (a.massstab ?? 1);
+    this.zoom = a.z;
     if (this.raum) return;
     const s = Math.min(4, Math.max(0.25, 3 / a.z));
     if (Math.abs(s - this.schritt0) / this.schritt0 > 0.25) {
@@ -303,18 +329,38 @@ export class Verhalten {
   }
 
   zeigerSetzen(x: number, y: number, sx: number, sy: number, dt: number): void {
-    if (this.zeiger.da && dt > 0) {
+    const z = this.zeiger;
+    if (z.da && dt > 0) {
       const a = Math.min(1, dt / 0.05);
-      this.zeiger.vx += ((x - this.zeiger.x) / dt - this.zeiger.vx) * a;
-      this.zeiger.vy += ((y - this.zeiger.y) / dt - this.zeiger.vy) * a;
+      z.vx += ((x - z.x) / dt - z.vx) * a;
+      z.vy += ((y - z.y) / dt - z.vy) * a;
     }
-    if (!this.zeiger.da) this.feld.setzen(x, y);
-    Object.assign(this.zeiger, { x, y, sx, sy, da: true });
+    // nach dem Loslassen sitzt der Zeiger noch auf der Stelle; er findet zur Maus zurück, während sie sich bewegt (auf dem Bildschirm
+    // gemessen: Verschieben der Ansicht zählt nicht), nie von selbst
+    if (z.da && !this.griff) {
+      const weg = Math.hypot(sx - z.sx, sy - z.sy);
+      if (weg > 0) {
+        const f = Math.exp(-weg / (ZURUECK_WEG * this.g * this.zoom));
+        const v = this.versatz;
+        v.x *= f;
+        v.y *= f;
+        v.zx *= f;
+        v.zy *= f;
+        v.vx *= f;
+        v.vy *= f;
+      }
+    }
+    if (!z.da) {
+      this.versatz.setzen(0, 0);
+      this.feld.setzen(x, y);
+    }
+    Object.assign(z, { x, y, sx, sy, da: true });
   }
 
   zeigerWeg(): void {
     if (this.griff) return;
     this.zeiger.da = false;
+    this.versatz.setzen(0, 0);
   }
 
   /** Drücken: greift den Tropfen, der gerade am Zeiger hängt; der Zeiger gleitet zu seiner Stelle */
@@ -396,7 +442,10 @@ export class Verhalten {
     if (this.zurueck.length > 60) this.zurueck.shift();
   }
 
-  /** Loslassen: die Stelle bleibt, wo sie ist; der Zeiger gleitet zurück unter die Maus */
+  /**
+   * Loslassen: Die Stelle bleibt, wo sie ist, und der Zeiger auf ihr (gleitet er noch hin, kommt er an). Zur Maus findet er erst
+   * zurück, wenn sie sich bewegt (`zeigerSetzen`).
+   */
   loslassen(): void {
     this.zeiger.gedrueckt = false;
     if (!this.griff) return;
@@ -405,8 +454,6 @@ export class Verhalten {
       this.dreher.drehenEnden();
     } else this.raum?.ziehenEnden();
     this.griff = null;
-    this.versatz.zx = 0;
-    this.versatz.zy = 0;
     for (const t of this.tropfen) if (t.zustand === 'gegriffen') t.zustand = 'folgt';
   }
 
@@ -423,10 +470,10 @@ export class Verhalten {
     return (z.art === 'punkt' ? this.werte.fangPunkt : this.werte.fangLinie) * this.g;
   }
 
-  /** bester Kandidat unter dem Zeiger: Punkte vor Linien, Tinte vor Verdecktem */
+  /** bester Kandidat unter dem (gezeichneten) Zeiger: Punkte vor Linien, Tinte vor Verdecktem */
   private kandidat(): { ziel: Ziel; x: number; y: number; d: number; verdeckt: boolean } | null {
     const w = this.werte;
-    const { x, y } = this.zeiger;
+    const [x, y] = this.gezeichnet();
     const fp = w.fangPunkt * this.g;
     const fl = w.fangLinie * this.g;
     const suche = (schicht: 0 | 1): { ziel: Ziel; x: number; y: number; d: number; verdeckt: boolean } | null => {
@@ -449,7 +496,7 @@ export class Verhalten {
       }
       if (st && linieOk) {
         // nahe an einem Punkt: seine Richtung (nicht mit P, dort setzt die Linie Punkte)
-        const r = this.stift ? null : this.richtungBei(st);
+        const r = this.stift ? null : this.richtungBei(st, this.richtungJetzt());
         if (r) return { ziel: r, x: st.x, y: st.y, d: st.d, verdeckt: st.verdeckt };
         return { ziel: { art: 'linie', li: st.li, si: st.si, t: st.t, s: st.s }, x: st.x, y: st.y, d: st.d, verdeckt: st.verdeckt };
       }
@@ -486,8 +533,17 @@ export class Verhalten {
     return Math.max((this.werte.fangPunkt + 10) * this.g, Math.min(Math.hypot(g[0], g[1]), 0.45 * stueck));
   }
 
-  /** Richtung unter einer Stelle der Linie: Die Stelle liegt auf der Nadel eines sichtbaren Punkts dieser Linie */
-  private richtungBei(st: LinienTreffer): RichtungZiel | null {
+  /** die Richtung, an der der Tropfen gerade hängt, oder null */
+  private richtungJetzt(): RichtungZiel | null {
+    const t = this.tropfen.find((q) => q.zustand === 'folgt');
+    return t?.ziel.art === 'richtung' ? t.ziel : null;
+  }
+
+  /**
+   * Richtung unter einer Stelle der Linie: Die Stelle liegt auf der Nadel eines sichtbaren Punkts dieser Linie. Die Nadel, an der der
+   * Zeiger schon hängt (`halten`), reicht ein Siebtel weiter, damit es an ihrem Ende nicht hin und her springt.
+   */
+  private richtungBei(st: LinienTreffer, halten: RichtungZiel | null = null): RichtungZiel | null {
     const l = this.netz.linien[st.li];
     const P = this.proben[st.li];
     if (!l || !P) return null;
@@ -502,7 +558,8 @@ export class Verhalten {
         while (ds <= -L / 2) ds += L;
       }
       const seite: Seite = ds >= 0 ? 'aus' : 'ein';
-      const n = this.nadelLaenge(st.li, k, seite);
+      const gehalten = !!halten && halten.li === st.li && halten.k === k && halten.seite === seite;
+      const n = this.nadelLaenge(st.li, k, seite) * (gehalten ? 8 / 7 : 1);
       if (n > 0 && Math.abs(ds) <= n && Math.abs(ds) < bd) {
         bd = Math.abs(ds);
         best = { art: 'richtung', pi, li: st.li, k, seite };
@@ -607,13 +664,14 @@ export class Verhalten {
       bewegt = true;
     }
 
-    // Ziel unter dem Zeiger (nicht während eines Zugs)
+    // Ziel unter dem Zeiger (nicht während eines Zugs); es zählt der gezeichnete Zeiger
     const folgt = this.tropfen.find((t) => t.zustand === 'folgt');
+    const [zx, zy] = this.gezeichnet();
     if (!this.greift) {
       const k = z.da ? this.kandidat() : null;
       if (folgt) {
         const halten = this.fang(folgt.ziel) * w.halten;
-        const dAnker = Math.hypot(z.x - folgt.ax, z.y - folgt.ay);
+        const dAnker = Math.hypot(zx - folgt.ax, zy - folgt.ay);
         if (k && this.gleichesZiel(folgt.ziel, k.ziel)) {
           if (k.ziel.art !== 'punkt') {
             folgt.ziel = k.ziel;
@@ -634,7 +692,7 @@ export class Verhalten {
           folgt.zustand = 'zurueck';
         } else if (folgt.ziel.art === 'linie') {
           // ohne neuen Kandidaten gleitet der Anker auf seiner Linie mit
-          const st = naechsteStelle([this.proben[folgt.ziel.li]!], z.x, z.y);
+          const st = naechsteStelle([this.proben[folgt.ziel.li]!], zx, zy);
           if (st) {
             folgt.ziel = { art: 'linie', li: folgt.ziel.li, si: st.si, t: st.t, s: st.s };
             folgt.ax = st.x;
@@ -699,65 +757,73 @@ export class Verhalten {
       (t) => !(t.zustand === 'zurueck' && t.pos.ruhig(0.03 * this.g) && (t.ziel.art === 'punkt' ? t.r.ruhig(0.01) : t.r.x < 0.03)),
     );
 
-    // Schwellen: die Linien des Ziels, beim Anflug die nächste Linie
-    const ziele = new Map<number, { s: number; staerke: number }>();
+    // Schwellung je Linie: Spindel am Ziel und beim Anflug, Nadel an einer Richtung. Eine Form: Wechselt das Ziel, fließt sie hinüber
+    const ziele = new Map<number, SchwellZiel>();
     const aktiv = this.tropfen.find((t) => t.zustand === 'gegriffen') ?? this.tropfen.find((t) => t.zustand === 'folgt');
+    const bild = this.griff?.ziel.art === 'richtung' ? this.drehBildLetzt : null;
+    const Rl = w.reichweite * this.g;
+    const spindelZiel = (c: number, st: number): SchwellZiel => ({ c, a: Rl, b: Rl, ha: 1, hb: 1, ta: 0, tb: 0, st, nadel: 0, pi: -1 });
     if (aktiv) {
       if (aktiv.ziel.art === 'linie') {
         const P = this.proben[aktiv.ziel.li]!;
         const si = aktiv.ziel.si;
         const s = aktiv.zustand === 'gegriffen' ? P.stueckS[si]! + aktiv.ziel.t * (P.stueckS[si + 1]! - P.stueckS[si]!) : aktiv.ziel.s;
-        ziele.set(aktiv.ziel.li, { s, staerke: 1 });
+        ziele.set(aktiv.ziel.li, spindelZiel(s, 1));
       } else if (aktiv.ziel.art === 'punkt') {
         const pi = aktiv.ziel.pi;
         this.netz.linien.forEach((_, li) => {
           const s = this.sVonPunkt(li, pi);
-          if (s >= 0) ziele.set(li, { s, staerke: 1 });
+          if (s >= 0) ziele.set(li, spindelZiel(s, 1));
         });
+      } else {
+        const nz = this.nadelZiel(aktiv.ziel, bild ? bild.rund : null, 1);
+        if (nz) ziele.set(aktiv.ziel.li, nz);
       }
     } else if (z.da) {
+      // Anflug: Die nächste Linie schwillt schon in der Form an, die sie beim Treffen hat (nahe am Punkt als Nadel)
       const vor = w.fangLinie * w.anflug * this.g;
-      const st = naechsteStelle(this.proben, z.x, z.y, 0) ?? naechsteStelle(this.proben, z.x, z.y, 1);
-      if (st && st.d < vor) ziele.set(st.li, { s: st.s, staerke: 0.8 * glatt(0, 1, 1 - st.d / vor) });
+      const st = naechsteStelle(this.proben, zx, zy, 0) ?? naechsteStelle(this.proben, zx, zy, 1);
+      if (st && st.d < vor) {
+        const staerke = 0.8 * glatt(0, 1, 1 - st.d / vor);
+        const r = this.stift ? null : this.richtungBei(st);
+        ziele.set(st.li, (r ? this.nadelZiel(r, null, staerke) : null) ?? spindelZiel(st.s, staerke));
+      }
     }
     this.schwell.forEach((S, li) => {
       const zl = ziele.get(li);
-      S.st.ziel = zl ? zl.staerke : 0;
+      S.st.ziel = zl ? zl.st : 0;
+      const formen = [S.c, S.a, S.b, S.ha, S.hb, S.ta, S.tb, S.nadel];
       if (zl) {
-        if (S.st.x < 0.02) S.s.setzen(zl.s);
-        else {
-          // auf geschlossenen Linien den kurzen Weg nehmen
-          let ziel = zl.s;
+        const werte = [zl.c, zl.a, zl.b, zl.ha, zl.hb, zl.ta, zl.tb, zl.nadel];
+        if (S.st.x < 0.02) {
+          // aus der Ruhe steht die Form gleich da, nur ihre Stärke wächst
+          formen.forEach((F, i) => F.setzen(werte[i]!));
+        } else {
+          // auf geschlossenen Linien nimmt die Mitte den kurzen Weg
           const L = this.proben[li]!.laenge;
+          let c = zl.c;
           if (this.netz.linien[li]!.zu) {
-            while (ziel - S.s.x > L / 2) ziel -= L;
-            while (S.s.x - ziel > L / 2) ziel += L;
+            while (c - S.c.x > L / 2) c -= L;
+            while (S.c.x - c > L / 2) c += L;
           }
-          S.s.ziel = ziel;
+          werte[0] = c;
+          formen.forEach((F, i) => (F.ziel = werte[i]!));
         }
+        if (zl.pi >= 0) S.pi = zl.pi;
       }
+      // die Mitte folgt dem Zeiger straff; fließt sie in eine Nadel hinein oder aus ihr heraus, weicher
+      const zurNadel = Math.max(S.nadel.x, S.nadel.ziel);
       S.st.schritt(dt, w.schwellHz, w.schwellD);
-      S.s.schritt(dt, 12, 1);
-      if (!S.st.ruhig(0.002) || !S.s.ruhig(0.02)) bewegt = true;
-    });
-    // Nadel der Richtung unter dem Zeiger: rund mit der Gegenseite, geknickt allein und mit Taille am Punkt
-    const richtung = aktiv?.ziel.art === 'richtung' ? aktiv.ziel : null;
-    const bild = this.griff?.ziel.art === 'richtung' ? this.drehBildLetzt : null;
-    this.nadel.forEach((N, li) => {
-      const an = !!richtung && richtung.li === li;
-      if (richtung && an) {
-        N.k = richtung.k;
-        N.seite = richtung.seite;
-        const l = this.netz.linien[li]!;
-        const rund = bild ? bild.rund : !istKnick(l, N.k);
-        N.partner.ziel = rund && armGriff(l, N.k, GEGEN[N.seite]) ? 0.7 : 0;
-        N.taille.ziel = rund ? 0 : 1;
-      }
-      N.st.ziel = an ? 1 : 0;
-      N.st.schritt(dt, w.schwellHz, w.schwellD);
-      N.partner.schritt(dt, 8, 0.8);
-      N.taille.schritt(dt, 9, 0.6);
-      if (!N.st.ruhig(0.002) || !N.partner.ruhig(0.002) || !N.taille.ruhig(0.002)) bewegt = true;
+      S.c.schritt(dt, 12 - 4.5 * zurNadel, 1);
+      S.a.schritt(dt, 9, 0.9);
+      S.b.schritt(dt, 9, 0.9);
+      S.ha.schritt(dt, 8, 0.85);
+      S.hb.schritt(dt, 8, 0.85);
+      S.ta.schritt(dt, 9, 0.6);
+      S.tb.schritt(dt, 9, 0.6);
+      S.nadel.schritt(dt, 8, 0.9);
+      if (!S.st.ruhig(0.002)) bewegt = true;
+      else if (S.st.x > 0.002 && (formen.slice(0, 3).some((F) => !F.ruhig(0.02)) || formen.slice(3).some((F) => !F.ruhig(0.002)))) bewegt = true;
     });
     // Ring und Griff wachsen beim Drehen aus dem Punkt und fließen danach in ihn zurück
     this.ring.ziel = this.griff?.ziel.art === 'richtung' ? 1 : 0;
@@ -774,32 +840,62 @@ export class Verhalten {
   }
 
   /**
-   * Nadel: Die Linie schwillt vom Punkt aus an, auf der Seite der Richtung voll, auf der Gegenseite (rund) schwächer, so weit die
-   * Nadel reicht, spitz auslaufend; geknickt mit Taille am Punkt. Schreibt in `extra` (halbe Zusatzbreite), wo sie breiter ist.
+   * Ziel der Schwellung an einer Richtung, die Nadel: Mitte am Punkt; auf der Seite der Richtung voll, so weit ihr Schwung reicht;
+   * die Gegenseite rund schwächer (0,7), geknickt gar nicht, dafür eine Taille am Punkt. `rund`: beim Drehen aus dem Drehbild, sonst
+   * aus dem Netz.
    */
-  private nadelBreite(li: number, P: LinienProben, zu: boolean, extra: Float32Array): void {
-    const N = this.nadel[li];
-    if (!N || N.st.x < 1e-3) return;
+  private nadelZiel(r: RichtungZiel, rund: boolean | null, st: number): SchwellZiel | null {
+    const l = this.netz.linien[r.li];
+    const s0 = this.proben[r.li]?.stueckS[r.k];
+    if (!l || s0 === undefined) return null;
+    const istRund = rund ?? !istKnick(l, r.k);
+    const gegen = istRund && armGriff(l, r.k, GEGEN[r.seite]) ? 0.7 : 0;
+    const knick = istRund ? 0 : 1;
+    const aus = r.seite === 'aus';
+    return {
+      c: s0,
+      a: this.nadelLaenge(r.li, r.k, 'ein'),
+      b: this.nadelLaenge(r.li, r.k, 'aus'),
+      ha: aus ? gegen : 1,
+      hb: aus ? 1 : gegen,
+      ta: aus ? 0 : knick,
+      tb: aus ? knick : 0,
+      st,
+      nadel: 1,
+      pi: r.pi,
+    };
+  }
+
+  /**
+   * Breite der Schwellung je Probe (halbe Zusatzbreite nach `extra`): von der Mitte aus zu jeder Seite (1 − x)^1,6 über ihre
+   * Reichweite, mal ihrer Höhe (in der Mitte spitz wie ein Pinselstrich, am Ende ohne Knick in die Grundbreite); mit Taille schnürt
+   * sie sich zur Mitte hin ein.
+   */
+  private schwellBreite(li: number, P: LinienProben, zu: boolean, extra: Float32Array): void {
+    const S = this.schwell[li];
+    if (!S || S.st.x < 1e-3) return;
     const w = this.werte;
-    const s0 = P.stueckS[N.k];
-    if (s0 === undefined) return;
-    const laenge = { aus: this.nadelLaenge(li, N.k, 'aus'), ein: this.nadelLaenge(li, N.k, 'ein') };
     const L = P.laenge;
+    let mitte = S.c.x;
+    if (zu) {
+      mitte %= L;
+      if (mitte < 0) mitte += L;
+    }
     for (let k = 0; k < P.n; k++) {
-      let ds = P.s[k]! - s0;
+      let ds = P.s[k]! - mitte;
       if (zu) {
         while (ds > L / 2) ds -= L;
         while (ds <= -L / 2) ds += L;
       }
-      const seite: Seite = ds >= 0 ? 'aus' : 'ein';
-      const Ln = laenge[seite];
-      if (Ln <= 0) continue;
-      const x = Math.abs(ds) / Ln;
+      const rechts = ds >= 0;
+      const weit = rechts ? S.b.x : S.a.x;
+      if (weit <= 1e-3) continue;
+      const x = Math.abs(ds) / weit;
       if (x >= 1) continue;
-      const eigen = seite === N.seite;
-      let f = Math.pow(1 - x, 1.6) * (eigen ? 1 : N.partner.x);
-      if (eigen) f *= 1 - N.taille.x * (1 - glatt(0.05, 0.32, x));
-      const e = 0.5 * w.schwellen * N.st.x * f;
+      let f = Math.pow(1 - x, 1.6) * Math.max(0, rechts ? S.hb.x : S.ha.x);
+      const t = Math.min(1, Math.max(0, rechts ? S.tb.x : S.ta.x));
+      if (t > 1e-3) f *= 1 - t * (1 - glatt(0.05, 0.32, x));
+      const e = 0.5 * w.schwellen * S.st.x * f;
       if (e > extra[k]!) extra[k] = e;
     }
   }
@@ -878,21 +974,8 @@ export class Verhalten {
     // Linien
     this.proben.forEach((P, li) => {
       const zu = this.netz.linien[li]!.zu;
-      const S = this.schwell[li]!;
-      const st = S.st.x;
       const extra = new Float32Array(P.n);
-      if (st > 1e-3) {
-        const Rl = w.reichweite * this.g;
-        const L = P.laenge;
-        let mitte = S.s.x % L;
-        if (mitte < 0) mitte += L;
-        for (let k = 0; k < P.n; k++) {
-          let ds = Math.abs(P.s[k]! - mitte);
-          if (zu) ds = Math.min(ds, L - ds);
-          if (ds < Rl) extra[k] = 0.5 * w.schwellen * st * spindel(ds / Rl);
-        }
-      }
-      this.nadelBreite(li, P, zu, extra);
+      this.schwellBreite(li, P, zu, extra);
       const vx = new Float32Array(P.n);
       const vy = new Float32Array(P.n);
       this.neigung(li, P, vx, vy);
@@ -964,12 +1047,11 @@ export class Verhalten {
       }
       if (felder.length < 32) felder.push(X((t.pos.x + ax) / 2), Y((t.pos.y + ay) / 2), R(L / 2 / this.g + 4 * w.punktRadius), Math.max(t.r.x, t.hals.x));
     }
-    // Nadel: weich durch den Punkt, wenn rund (geknickt sitzt er hart als Fuge)
-    this.nadel.forEach((N, li) => {
-      if (N.st.x < 0.01) return;
-      const pi = this.netz.linien[li]?.punkte[N.k];
-      const p = pi === undefined ? undefined : this.netz.punkte[pi];
-      if (p && felder.length < 32) felder.push(X(p.x), Y(p.y), R(5 * w.punktRadius), N.st.x * (1 - N.taille.x));
+    // Nadel: weich durch den Punkt, wenn rund (geknickt sitzt er hart als Fuge); das Feld wächst mit dem Anteil Nadel
+    this.schwell.forEach((S) => {
+      const st = S.st.x * Math.min(1, Math.max(0, S.nadel.x)) * (1 - Math.min(1, Math.max(0, S.ta.x, S.tb.x)));
+      const p = S.pi >= 0 ? this.netz.punkte[S.pi] : undefined;
+      if (st >= 0.01 && p && felder.length < 32) felder.push(X(p.x), Y(p.y), R(5 * w.punktRadius), st);
     });
     // Drehen: Ring (im Raum nach Tiefe verdeckt), alte Richtung grün, Griff als Haarlinie mit weichem Fuß und Perle, Nabe
     const B = this.drehBildLetzt;

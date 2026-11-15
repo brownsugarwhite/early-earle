@@ -103,9 +103,16 @@ const r2 = await page.evaluate(() => {
     zeigerAufSpitze: +z1.zeigerAufSpitze.toFixed(4),
   };
   const vorLos = proben();
+  // seit dem 15.11. nachmittags (Florian): Der Zeiger bleibt nach dem Loslassen an der Spitze, statt zur Maus zurückzugleiten
+  const zeigerVorLos = [v.zeiger.x + v.versatz.x, v.zeiger.y + v.versatz.y];
   v.loslassen();
   L.vorspulen(700);
-  out.los = { abweichung: abw(proben(), vorLos), versatz: +Math.hypot(v.versatz.x, v.versatz.y).toFixed(4), knick: !!v.netz.linien[LI].knick?.[stelle()] };
+  const zeigerNachLos = [v.zeiger.x + v.versatz.x, v.zeiger.y + v.versatz.y];
+  out.los = {
+    abweichung: abw(proben(), vorLos),
+    zeigerBleibt: +Math.hypot(zeigerNachLos[0] - zeigerVorLos[0], zeigerNachLos[1] - zeigerVorLos[1]).toFixed(4),
+    knick: !!v.netz.linien[LI].knick?.[stelle()],
+  };
   v.rueckgaengig();
   out.zurueck = { aus: +wd(w(griff('aus')), w(ga0)).toFixed(4) };
   // 2. mit ⌥ geknickt um 30°
