@@ -1,11 +1,19 @@
 /**
- * Ablauf des Aufblasens (Probe „Anfang einer Form“, 15.11.2026): alles als Funktion der Zeit seit ↩, damit Film und Probe Bild
- * für Bild genau wiederholbar sind.
+ * Ablauf des Aufblasens (Probe „Anfang einer Form“, Runde 2, 15.11.2026): alles als Funktion der Zeit seit ↩, damit Film und
+ * Probe Bild für Bild genau wiederholbar sind.
  *
- * Bild: Ein Ring mit Seifenhaut wird nach hinten gezogen. Die Haut bleibt im Fahrtwind zurück und wölbt sich nach vorn (eine
- * einzige Fläche), dann löst sich die hintere Hälfte, schlägt durch den Ring und schließt die Form spiegelgleich. Beides sind
- * gedämpfte Federn (geschlossene Lösung), die Form schwingt also zwei-, dreimal nach. Was über die ideale, ruhige Wölbung
- * hinausschwingt, staucht die Form in der Ebene ein wenig (und umgekehrt), dazu läuft eine Welle vom Rand zur Mitte.
+ * Wie beim Seifenblasenmachen (Florian: „Die Seifenblase muss beim Zurückfahren noch eine Weile an der Outline hängen, während der
+ * vordere Teil sich aufbläst, und dann, wenn die Spannung zu groß ist, zur Blase werden“):
+ *
+ * 1. Der Rahmen (die gezeichnete Linie) fährt nach hinten zur Rückwand des Kastens.
+ * 2. Die Haut hängt an ihm. Vorn bläst sie sich auf (eine Kuppel an Ort und Stelle), dazwischen spannt sich ein Schlauch vom Rahmen
+ *    bis zum größten Umfang der Blase.
+ * 3. Wird der Schlauch zu lang, schnürt er sich ein. Zwischen zwei Ringen hält eine Seifenhaut nur bis zu einem Abstand von etwa
+ *    dem 1,3-Fachen des Halbmessers (Katenoid); danach fällt der Hals in sich zusammen, immer schneller, bis er reißt.
+ * 4. Die Blase schließt sich hinten, erst spitz, dann rund, und schwingt nach; sie federt dabei etwas nach vorn (der Zug des
+ *    Schlauchs ist weg). Der Rest der Haut schnappt zurück in den Rahmen, fährt mit ihm zur Rückwand und wird dort zum Schatten.
+ *
+ * Alle Federn sind geschlossen gelöst (keine Schritte), siehe `feder`.
  */
 
 import type { Lage } from './form';
@@ -16,7 +24,6 @@ export function feder(t: number, x0: number, v0: number, ziel: number, hz: numbe
   const w = 2 * Math.PI * hz;
   const c1 = x0 - ziel;
   if (zeta >= 1) {
-    // kritisch gedämpft (für zeta ≥ 1 genügt hier die Grenze)
     const c2 = v0 + w * c1;
     const e = Math.exp(-w * t);
     return { x: ziel + (c1 + c2 * t) * e, v: (c2 - w * (c1 + c2 * t)) * e };
@@ -31,85 +38,166 @@ export function feder(t: number, x0: number, v0: number, ziel: number, hz: numbe
   return { x, v };
 }
 
-function glatt(x: number): number {
+export function glatt(x: number): number {
   const t = Math.min(1, Math.max(0, x));
   return t * t * t * (t * (t * 6 - 15) + 10);
 }
 
+function weich(a: number, b: number, x: number): number {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
 export interface Werte {
-  /** wie weit der Ring zurückweicht (Anteil am Kameraabstand) */
-  rueck: number;
-  /** Vorderseite: Beginn (s), Tempo (Hz), Dämpfung */
-  vornAb: number;
+  /** Rahmen: Dauer bis zur Rückwand (s) */
+  rahmenDauer: number;
+  /** Hals: reißt ab Schlauchlänge = hals · Halbmesser (Katenoid etwa 1,3), fällt in `halsDauer` s zusammen, sitzt beim Anteil `halsOrt` vom Rahmen */
+  hals: number;
+  halsDauer: number;
+  halsOrt: number;
+  /** Kuppel vorn beim Hängen: Tempo, Dämpfung */
   vornHz: number;
   vornD: number;
-  /** Rückseite löst sich (s), Tempo, Dämpfung */
-  hintenAb: number;
+  /** nach dem Abriss: Nachschwingen der Kuppel (Tempo, Dämpfung, Stoß), Schließen hinten, Zurückschnappen im Rahmen */
+  nachHz: number;
+  nachD: number;
+  stoss: number;
   hintenHz: number;
   hintenD: number;
-  /** Stauchen in der Ebene je Überschwingen, Welle */
+  rahmenHz: number;
+  rahmenD: number;
+  /** wie weit der Schlauch die Blase nach hinten zieht (× Halbmesser), Stauchen beim Nachschwingen, Welle */
+  zug: number;
   quer: number;
   welle: number;
-  /** Kamera: Drehung zur Seite und von oben (Grad), Dauer (s) */
+  /** Kamera: Öffnungswinkel am Ende (Dolly-Zoom, die Blase bleibt gleich groß), Dauer, Drehung zur Seite und von oben (Grad) */
+  fov: number;
+  kameraDauer: number;
   gier: number;
   neigung: number;
-  kameraDauer: number;
 }
 
 export const GRUNDWERTE: Werte = {
-  rueck: 0.2,
-  vornAb: 0.05,
-  vornHz: 2.1,
-  vornD: 0.38,
-  hintenAb: 0.24,
-  hintenHz: 1.8,
-  hintenD: 0.42,
-  quer: 0.16,
-  welle: 0.06,
-  gier: 32,
+  rahmenDauer: 1.9,
+  hals: 1.45,
+  halsDauer: 0.16,
+  halsOrt: 0.42,
+  vornHz: 1.45,
+  vornD: 0.72,
+  nachHz: 2.3,
+  nachD: 0.3,
+  stoss: 1.1,
+  hintenHz: 2.7,
+  hintenD: 0.34,
+  rahmenHz: 5.5,
+  rahmenD: 0.26,
+  zug: 0.1,
+  quer: 0.12,
+  welle: 0.035,
+  fov: 46,
+  kameraDauer: 1.15,
+  gier: 34,
   neigung: 13,
-  kameraDauer: 1.7,
 };
 
-/** so lange dauert es, bis alles ruht (s) */
-export const DAUER = 2.6;
+/** Maße der Form im Raum */
+export interface Masse {
+  /** Halbmesser für den Hals (aus der Fläche) und Tiefe der Rückwand (Welt) */
+  a: number;
+  Zw: number;
+}
 
 export interface Moment {
   lage: Lage;
-  /** 0..1: Kamera am Ende (Ziel, Abstand) und Drehung */
+  /** Zeitpunkt des Abrisses (s) und bis wann sich alles bewegt */
+  riss: number;
+  dauer: number;
+  /** 0..1: Kamera (Dolly-Zoom, Ziel zur Mitte der Blase) */
   fahrt: number;
-  dreh: number;
-  /** Anteil der Rückseite (zeigt sich, sobald sie sich vom Film löst) */
-  hintenSichtbar: number;
-  /** 0..1: wie weit die Form steht (für Farben und Deckung) */
-  fertig: number;
+  /** 0..1: Rest der Haut im Rahmen wird zum Schatten der Seite; Schatten an den Wänden; die Linie des Rahmens */
+  schatten: number;
+  waende: number;
+  linie: number;
 }
 
-/** Zustand T Sekunden nach ↩; D = Rückweg des Rings in Welt-Einheiten */
-export function moment(T: number, D: number, w: Werte = GRUNDWERTE): Moment {
-  // Ring: weicht zurück, eine Spur über das Ziel hinaus
-  const ring = feder(T, 0, 0, 1, 1.15, 0.78).x;
-  const zr = -D * ring;
-  // Vorderseite: Feder ab vornAb
-  const v = feder(T - w.vornAb, 0, 0, 1, w.vornHz, w.vornD);
-  const vorn = T > w.vornAb ? v.x : 0;
-  // ideale, ruhige Wölbung (kritisch gedämpft, gleiches Tempo): was darüber hinausschwingt, ist das Nachschwingen
-  const ideal = T > w.vornAb ? feder(T - w.vornAb, 0, 0, 1, w.vornHz, 1).x : 0;
-  // Rückseite: bis hintenAb derselbe Film knapp hinter der Vorderseite, dann eine eigene Feder zum Spiegelbild
-  let hinten: number;
-  if (T <= w.hintenAb) hinten = vorn * 0.985;
-  else {
-    const s = feder(w.hintenAb - w.vornAb, 0, 0, 1, w.vornHz, w.vornD);
-    hinten = feder(T - w.hintenAb, s.x * 0.985, s.v * 0.985, -1, w.hintenHz, w.hintenD).x;
+/** Zeitpunkt, an dem der Schlauch die Länge `hals · a` erreicht (Anfang des Zusammenfallens) */
+function halsBeginnt(m: Masse, w: Werte): number {
+  const zf = (t: number): number => m.Zw * glatt(t / w.rahmenDauer);
+  const grenze = w.hals * m.a;
+  if (zf(w.rahmenDauer) < grenze) return w.rahmenDauer;
+  let lo = 0;
+  let hi = w.rahmenDauer;
+  for (let k = 0; k < 40; k++) {
+    const mid = (lo + hi) / 2;
+    if (zf(mid) < grenze) lo = mid;
+    else hi = mid;
   }
-  const quer = -w.quer * (vorn - ideal);
-  const welle = w.welle * Math.exp(-Math.max(0, T - 0.25) / 0.5) * glatt((T - 0.05) / 0.25);
-  const zu = Math.max(0, Math.min(1, -hinten / Math.max(0.05, vorn)));
+  return hi;
+}
+
+/** Zustand T Sekunden nach ↩ */
+export function moment(T: number, m: Masse, w: Werte = GRUNDWERTE): Moment {
+  const zfBei = (t: number): number => -m.Zw * glatt(t / w.rahmenDauer);
+  const T1 = halsBeginnt(m, w);
+  const riss = T1 + w.halsDauer;
+  const kuppel = (t: number): { x: number; v: number } => (t > 0.04 ? feder(t - 0.04, 0, 0, 0.95, w.vornHz, w.vornD) : { x: 0, v: 0 });
+  // Zug des Schlauchs an der Blase (vor dem Abriss): wächst mit der Länge des Schlauchs
+  const zugBei = (t: number): number => {
+    const l = Math.min(1.2, -zfBei(t) / Math.max(1, w.hals * m.a));
+    return -w.zug * m.a * weich(0, 1.2, l) * (t < riss ? 1 : 0);
+  };
+  const zf = zfBei(T);
+  const lage: Lage = {
+    ze: 0,
+    vorn: 0,
+    hinten: 0,
+    quer: 0,
+    welle: 0,
+    phase: 0,
+    zu: 1,
+    zf,
+    zn: 0,
+    schnitt: 0,
+    gerissen: false,
+    rahmen: 0,
+    znRiss: 0,
+    zfRiss: 0,
+  };
+  if (T < riss) {
+    const l = Math.min(1, -zf / Math.max(1, w.hals * m.a));
+    lage.schnitt = T < T1 ? 0.3 * l * l : 0.3 + 0.7 * ((T - T1) / w.halsDauer) ** 2;
+    lage.vorn = kuppel(T).x;
+    lage.ze = zugBei(T);
+    lage.zn = zf + w.halsOrt * (lage.ze - zf);
+  } else {
+    const tau = T - riss;
+    const kp = kuppel(riss);
+    // knapp vor dem Abriss: Lage von Blase, Hals und Rahmen
+    const zeP = zugBei(riss - 1e-4);
+    const zfP = zfBei(riss);
+    const znP = zfP + w.halsOrt * (zeP - zfP);
+    const v = feder(tau, kp.x, kp.v + w.stoss, 1, w.nachHz, w.nachD);
+    lage.vorn = v.x;
+    lage.ze = feder(tau, zeP, 0, 0, 2.0, 0.36).x;
+    lage.hinten = feder(tau, 0, 0, 1, w.hintenHz, w.hintenD).x;
+    lage.rahmen = feder(tau, 0, 0, 1, w.rahmenHz, w.rahmenD).x;
+    lage.quer = -w.quer * (v.x - 1);
+    lage.welle = w.welle * Math.exp(-tau / 0.45) * weich(0, 0.08, tau);
+    lage.phase = 1.7 * tau;
+    lage.schnitt = 1;
+    lage.gerissen = true;
+    lage.zn = znP;
+    lage.znRiss = znP;
+    lage.zfRiss = zfP;
+  }
+  const dauer = Math.max(riss + 1.9, w.rahmenDauer + 0.9, w.kameraDauer + 0.2);
   return {
-    lage: { zr, vorn, hinten, quer, welle, phase: 1.6 * T, zu },
-    fahrt: glatt(T / (w.kameraDauer * 0.75)),
-    dreh: glatt((T - 0.1) / w.kameraDauer),
-    hintenSichtbar: glatt((0.02 - hinten) / 0.25),
-    fertig: glatt(T / 1.4),
+    lage,
+    riss,
+    dauer,
+    fahrt: glatt(T / w.kameraDauer),
+    schatten: weich(w.rahmenDauer - 0.3, w.rahmenDauer + 0.45, T),
+    waende: weich(riss + 0.1, riss + 1.0, T),
+    linie: 1 - weich(w.rahmenDauer - 0.05, w.rahmenDauer + 0.55, T),
   };
 }

@@ -1,4 +1,4 @@
-# Übergabe: Anfang einer Form und Seifenhaut (Stand 15.11.2026, abends)
+# Übergabe: Anfang einer Form und Seifenhaut (Stand 15.11.2026, spätabends, Runde 2)
 
 Eigener Strang neben „Linien, Punkte, Zeiger“. Konzept, Ergebnis und Fragen an Florian:
 [`docs/plans/2026-11-15-anfang-seifenhaut.md`](../../plans/2026-11-15-anfang-seifenhaut.md). Florians Materialentwurf (keine feste
@@ -12,15 +12,20 @@ Vorlage): `2026-11-15-entwurf-materialien.webp` hier im Ordner.
 | Server | Eintrag `anfang` in `.claude/launch.json`, Port 5203 (auch uncommittet im Hauptordner, weil das Vorschauwerkzeug dort liest) |
 | Seite | `http://localhost:5203/anfang.html` (`?info=1` Takt und Netz, `?bild=1` ohne Leiste und Zeiger, `?film=1` ohne Leiste mit Zeiger, `&fassung=0–3`, `&nacht=1`) |
 | Code | `apps/editor/src/anfang/`: `main.ts` (Seite, Ablauf, Kamera, Eingaben, Test-Haken `__anfang`), `stift.ts` (P, Kapseln), `form.ts` (Netz, Poisson, Körper, Strahl), `aufblasen.ts` (Ablauf als Funktion der Zeit), `haut.ts` (Farbtafel, Shader, Durchgänge), `regler.ts`, `fluessig.ts` (Kopie aus dem Linien-Strang, Stand d762e508) |
-| Skripte | `apps/editor/scripts/anfang/`: `bilder.mjs`, `film.mjs` (`KURZ=1`, `TITEL=…`, `DPR=…`), `takt.mjs`, `fisch.mjs` (Testform) |
+| Skripte | `apps/editor/scripts/anfang/`: `bilder.mjs` (`MOMENTE=…`, `FASSUNGEN=0,3`, `GRUND=papier`), `film.mjs` (`KURZ=1`, `TITEL=…`, `DPR=…`), `nah.mjs` (Abriss groß), `takt.mjs` (Probe 1 und 3), `fisch.mjs` (Testform) |
+| Schrift | `assets/fonts/lobster/Lobster-Regular.ttf` (SIL OFL, `OFL.txt` daneben), eingebunden in `src/anfang/anfang.css` |
 | Bilder, Filme | `docs/progress/anfang/` |
+
+## Stand Runde 2
+
+Florians Rückmeldung (wörtlich im Plan, Abschnitt „Runde 2“): Seifenhaut und Höhenlinien gefallen, Nacht noch nicht; Aufblasen neu (Rahmen fährt zur Wand und wird Schatten, Haut hängt, reißt ab), Kasten mit Schatten an den Wänden, Linien nur beim Darüberfahren, Lobster. Gebaut und geprüft, sein Urteil steht aus. Nicht gebaut: Morph zur Ansicht beim Drehen und Bedienen der Kurven an den Wänden (aus der Ecke der Vision übernehmen, Cloud-Zweig `claude/meme-curves-editor-concept-s65kq1`), Ziehen, Aufblasen, Glätten an der Blase (kommt im Detail später).
 
 ## Bedienung
 
 P ist das einzige Werkzeug: Klick Ecke, Ziehen rund, ⌥ bricht den Griff, am ersten Punkt schließen (oder ↩), ⌫ letzter Punkt
-zurück (geschlossen: öffnet), Esc verwirft. Geschlossen ziehen sich Punkte noch. ↩ bläst auf. Danach: daneben ziehen dreht, Rad
-zoomt, an der Haut ziehen dehnt, Leertaste noch einmal, Esc oder ⌫ zurück aufs Blatt (der Film läuft rückwärts). 1–4 Fassung,
-N Nacht, R Feinregler.
+zurück (geschlossen: öffnet), Esc verwirft. Geschlossen ziehen sich Punkte noch. ↩ bläst auf. Danach: über eine Wand fahren
+zeigt ihre Linien und ihren Namen, an der Blase ziehen dehnt, daneben ziehen dreht, Rad zoomt, Leertaste noch einmal, Esc oder ⌫
+zurück aufs Blatt (der Film läuft rückwärts). 1–4 Fassung, N Nacht, R Feinregler.
 
 ## Fallen
 
@@ -37,3 +42,15 @@ N Nacht, R Feinregler.
   `__anfang.zeit(T)` hält die Zeit des Aufblasens fest (auch die Uhr des Materials), für genau wiederholbare Standbilder.
 - Ein Druck mit `aufDerHaut` für einen Punkt außerhalb der Form trifft den nächsten Randpunkt, also die Haut: Zum Drehen im Film
   einen Punkt deutlich daneben nehmen.
+
+- **Runde 2:** Drei Flächen auf einem flachen Netz (`Koerper`: vorn 0..n−1, hinten n..2n−1, Rahmen 2n..3n−1); die Haut der Blase
+  und der Rest im Rahmen sind zwei Geometrien auf Teilstücken derselben Puffer (`subarray`). Vor dem Abriss ist alles hinter dem
+  Hals unsichtbar (`sicht` je Punkt), nicht weggeschnitten.
+- Abriss ohne Sprung nur, weil der Schlauch bei `schnitt` = 1 genau die beiden Trichter ist, mit denen es weitergeht: Wer das
+  Profil (`trichter`) oder die Lage des Halses ändert, muss beides an beiden Stellen ändern (`Koerper.setzen`, beide Zweige).
+- Wände: Die Blase wird im Shader auf die Wand gelegt und mit MIN gemischt (Überdeckungen nicht doppelt dunkel). An der Rückwand
+  löst die Projektion der Blase den Rest im Rahmen ab, sobald er ganz Schatten ist (gleiche Form, gleiche Farbe).
+- Der Kasten wird so breit, dass die Kamera am Ende in ihm steht (`kastenRechnen`); sonst sieht man bei 34° eine Wand von außen.
+- Alle Shader werden in `setzeKoerper` übersetzt (`renderer.compile`), sonst stockt ein Bild, wenn die Wände erscheinen.
+- `__anfang.aufDerWand(i, a, b)` gibt einen Punkt auf Wand i (0 Rück, 1 links, 2 rechts, 3 Boden, 4 Decke) im Bild; `abriss()`
+  misst den Abriss (Sprung und Schritte davor und danach).

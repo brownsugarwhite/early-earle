@@ -638,53 +638,77 @@ function poisson(X: Float64Array, Y: Float64Array, T: Uint32Array, n: number, nb
 
 // ---------- der Körper im Raum ----------
 
-/** Wie weit die Haut gerade ist (aus der Zeit des Aufblasens, siehe `aufblasen.ts`) */
+/**
+ * Wie weit die Haut gerade ist (aus der Zeit des Aufblasens, siehe `aufblasen.ts`). Drei Flächen auf demselben flachen Netz:
+ * vorn (Kuppel, Rand am größten Umfang), hinten (vor dem Abriss die Hälfte des Schlauchs bis zum Hals, danach die Rückseite der
+ * Blase, erst spitz, dann rund) und der Rest im Rahmen (vor dem Abriss die andere Hälfte des Schlauchs, danach die flache Haut im
+ * Rahmen). Der Hals ist die Linie gleicher Wölbung u = `schnitt`; dahinter ist der Schlauch offen (unsichtbar).
+ */
 export interface Lage {
-  /** Ring (Umriss) in der Tiefe */
-  zr: number;
-  /** Wölbung vorn und hinten (1 und −1 = fertig) */
+  /** größter Umfang der Blase in der Tiefe; Kuppel vorn (1 = fertig); Rückseite (0 = spitz wie beim Abriss, 1 = rund) */
+  ze: number;
   vorn: number;
   hinten: number;
-  /** in der Ebene gestaucht (+) oder gedehnt (−) um den Schwerpunkt */
+  /** in der Ebene gestaucht (+) oder gedehnt (−) um den Schwerpunkt; Welle über die Haut (Stärke, Phase) */
   quer: number;
-  /** Welle über die Haut: Stärke und Phase */
   welle: number;
   phase: number;
-  /** wie weit sich Vorder- und Rückseite am Rand schon zu einem Körper geschlossen haben (0..1) */
+  /** wie weit Vorder- und Rückseite am Umfang eine gemeinsame Normale haben (0..1) */
   zu: number;
+  /** Rahmen und Hals in der Tiefe; Hals als Anteil der Wölbung (0 = am Rand, 1 = zugeschnürt) */
+  zf: number;
+  zn: number;
+  schnitt: number;
+  /** nach dem Abriss: der Rest im Rahmen ist flach (1) oder noch spitz zum Hals (0); Lage von Hals und Rahmen beim Abriss */
+  gerissen: boolean;
+  rahmen: number;
+  znRiss: number;
+  zfRiss: number;
+}
+
+export const FLACH: Lage = { ze: 0, vorn: 0, hinten: 0, quer: 0, welle: 0, phase: 0, zu: 1, zf: 0, zn: 0, schnitt: 0, gerissen: false, rahmen: 0, znRiss: 0, zfRiss: 0 };
+
+/** Profil eines Trichters vom Rand (v = 0) zum Hals (v = 1): am Hals läuft die Haut längs der Tiefe (wie beim Katenoid) */
+function trichter(v: number): number {
+  return 1 - Math.sqrt(Math.max(0, 1 - v));
 }
 
 export class Koerper {
   readonly flach: FlachNetz;
-  /** Punkte: vorn 0..n−1, hinten n..2n−1 (gleiche Reihenfolge) */
+  /** Punkte: vorn 0..n−1, hinten n..2n−1, Rahmen 2n..3n−1 (je dieselbe Reihenfolge wie das flache Netz) */
   readonly anzahl: number;
   readonly pos: Float32Array;
   readonly normal: Float32Array;
+  /** Dreiecke der Blase (vorn, hinten umgekehrt) und des Rahmens (lokal 0..n−1) */
   readonly index: Uint32Array;
-  /** Wölbung 0..1 (oben 1), Seite (+1 vorn, −1 hinten), Lage im Blatt (für Muster, um 0, Radius 1) */
+  readonly indexRahmen: Uint32Array;
+  /** Wölbung 0..1 (oben 1), Seite (+1 vorn, −1 hinten, 0 Rahmen), Lage im Blatt (für Muster, um 0, Radius 1) */
   readonly hoehe: Float32Array;
   readonly seite: Float32Array;
   readonly blatt: Float32Array;
-  /** Dehnung der Haut gegen die Bezugsfläche (1 = ungedehnt) */
+  /** Dehnung der Haut gegen den Bezug (1 = ungedehnt); Sichtbarkeit (hinter dem Hals ist der Schlauch offen) */
   readonly dehnung: Float32Array;
-  /** Fläche je Punkt jetzt und als Bezug (Bezug folgt langsam: die Haut beruhigt sich) */
+  readonly sicht: Float32Array;
   private flaeche: Float64Array;
   private bezug: Float64Array;
   /** Fülle: Höhe = fuelle · √h */
   fuelle = 0.72;
   /** Verformung durch Ziehen (Welt), je Punkt der flachen Seite; die Rückseite gespiegelt */
   readonly versatz: Float32Array;
+  /** Kanten der Blase mit ihren zwei Dreiecken (für Umrisse an den Wänden) */
+  private kanten: Int32Array | null = null;
 
   constructor(flach: FlachNetz) {
     this.flach = flach;
     const n = flach.n;
-    this.anzahl = 2 * n;
+    this.anzahl = 3 * n;
     this.pos = new Float32Array(this.anzahl * 3);
     this.normal = new Float32Array(this.anzahl * 3);
     this.hoehe = new Float32Array(this.anzahl);
     this.seite = new Float32Array(this.anzahl);
     this.blatt = new Float32Array(this.anzahl * 2);
     this.dehnung = new Float32Array(this.anzahl).fill(1);
+    this.sicht = new Float32Array(this.anzahl).fill(1);
     this.flaeche = new Float64Array(this.anzahl);
     this.bezug = new Float64Array(this.anzahl);
     this.versatz = new Float32Array(n * 3);
@@ -694,46 +718,75 @@ export class Koerper {
       idx[t] = T[t]!;
       idx[t + 1] = T[t + 1]!;
       idx[t + 2] = T[t + 2]!;
-      // hinten umgekehrt
       idx[T.length + t] = n + T[t]!;
       idx[T.length + t + 1] = n + T[t + 2]!;
       idx[T.length + t + 2] = n + T[t + 1]!;
     }
     this.index = idx;
+    this.indexRahmen = Uint32Array.from(T);
     const r = flach.radius || 1;
-    for (let s = 0; s < 2; s++)
+    for (let s = 0; s < 3; s++)
       for (let i = 0; i < n; i++) {
         const v = s * n + i;
         this.hoehe[v] = flach.qMax > 0 ? flach.q[i]! / flach.qMax : 0;
-        this.seite[v] = s === 0 ? 1 : -1;
+        this.seite[v] = s === 0 ? 1 : s === 1 ? -1 : 0;
         this.blatt[v * 2] = (flach.x[i]! - flach.cx) / r;
         this.blatt[v * 2 + 1] = (flach.y[i]! - flach.cy) / r;
+        this.bezug[v] = flach.punktFlaeche[i]!;
       }
-    for (let s = 0; s < 2; s++) for (let i = 0; i < n; i++) this.bezug[s * n + i] = flach.punktFlaeche[i]!;
   }
 
-  /** Lage setzen: Punkte, Normalen, Fläche je Punkt; danach `dehnungRechnen` */
+  /** Lage setzen: Punkte, Normalen, Fläche je Punkt, Sichtbarkeit; danach `dehnungRechnen` */
   setzen(l: Lage): void {
     const F = this.flach;
     const n = F.n;
     const P = this.pos;
+    const S = this.sicht;
     const s = this.fuelle;
     const k = 1 + l.quer;
     const V = this.versatz;
-    for (let seite = 0; seite < 2; seite++) {
-      const a = seite === 0 ? l.vorn : l.hinten;
-      const sz = seite === 0 ? 1 : -1;
-      for (let i = 0; i < n; i++) {
-        const v = seite * n + i;
-        const qi = F.q[i]!;
-        const rel = F.qMax > 0 ? qi / F.qMax : 0;
-        const welle = 1 + l.welle * Math.sin(6.2832 * (1.25 * (1 - rel) - l.phase)) * (1 - rel * 0.5);
-        P[v * 3] = F.cx + (F.x[i]! - F.cx) * k + V[i * 3]!;
-        P[v * 3 + 1] = F.cy + (F.y[i]! - F.cy) * k + V[i * 3 + 1]!;
-        P[v * 3 + 2] = l.zr + a * s * qi * welle + sz * V[i * 3 + 2]!;
+    const qm = F.qMax || 1;
+    const schnitt = Math.max(1e-4, l.schnitt);
+    for (let i = 0; i < n; i++) {
+      const qi = F.q[i]!;
+      const u = qi / qm;
+      const x = F.x[i]!;
+      const y = F.y[i]!;
+      const xs = F.cx + (x - F.cx) * k + V[i * 3]!;
+      const ys = F.cy + (y - F.cy) * k + V[i * 3 + 1]!;
+      const welle = 1 + l.welle * Math.sin(6.2832 * (1.25 * (1 - u) - l.phase)) * (1 - u * 0.5);
+      // vorn: Kuppel
+      P[i * 3] = xs;
+      P[i * 3 + 1] = ys;
+      P[i * 3 + 2] = l.ze + l.vorn * s * qi * welle + V[i * 3 + 2]!;
+      S[i] = 1;
+      // hinten und Rahmen
+      const h = n + i;
+      const r = 2 * n + i;
+      if (!l.gerissen) {
+        const sichtbar = 1 - weich(schnitt - 0.025, schnitt + 0.004, u);
+        const tv = u <= schnitt ? trichter(u / schnitt) : 1;
+        P[h * 3] = x;
+        P[h * 3 + 1] = y;
+        P[h * 3 + 2] = l.ze - (l.ze - l.zn) * tv;
+        P[r * 3] = x;
+        P[r * 3 + 1] = y;
+        P[r * 3 + 2] = l.zf + (l.zn - l.zf) * tv;
+        S[h] = sichtbar;
+        S[r] = sichtbar;
+      } else {
+        const tv = trichter(u);
+        P[h * 3] = xs;
+        P[h * 3 + 1] = ys;
+        P[h * 3 + 2] = l.ze - ((1 - l.hinten) * (l.ze - l.znRiss) * tv + l.hinten * s * qi * welle) - V[i * 3 + 2]!;
+        P[r * 3] = x;
+        P[r * 3 + 1] = y;
+        P[r * 3 + 2] = l.zf + (l.znRiss - l.zfRiss) * tv * (1 - l.rahmen);
+        S[h] = 1;
+        S[r] = 1;
       }
     }
-    this.normalenUndDehnung(l.zu);
+    this.normalenUndFlaeche(l.zu);
   }
 
   /**
@@ -757,19 +810,16 @@ export class Koerper {
   /** Bezug auf die flache Haut zurücksetzen (vor dem Aufblasen) */
   bezugFlach(): void {
     const n = this.flach.n;
-    for (let s = 0; s < 2; s++) for (let i = 0; i < n; i++) this.bezug[s * n + i] = this.flach.punktFlaeche[i]!;
+    for (let s = 0; s < 3; s++) for (let i = 0; i < n; i++) this.bezug[s * n + i] = this.flach.punktFlaeche[i]!;
   }
 
-  private normalenUndDehnung(zu: number): void {
+  private dreiecke(I: Uint32Array, versatz: number): void {
     const N = this.normal;
     const P = this.pos;
-    const I = this.index;
-    N.fill(0);
-    this.flaeche.fill(0);
     for (let t = 0; t < I.length; t += 3) {
-      const a = I[t]!;
-      const b = I[t + 1]!;
-      const c = I[t + 2]!;
+      const a = I[t]! + versatz;
+      const b = I[t + 1]! + versatz;
+      const c = I[t + 2]! + versatz;
       const ux = P[b * 3]! - P[a * 3]!;
       const uy = P[b * 3 + 1]! - P[a * 3 + 1]!;
       const uz = P[b * 3 + 2]! - P[a * 3 + 2]!;
@@ -780,8 +830,8 @@ export class Koerper {
       const ny = uz * vx - ux * vz;
       const nz = ux * vy - uy * vx;
       const l2 = Math.sqrt(nx * nx + ny * ny + nz * nz);
-      const f = l2 / 6;
       if (l2 < 1e-20) continue;
+      const f = l2 / 6;
       // nach dem Winkel an der Ecke gewichtet (nach der Fläche kippen die Normalen auf ungleichem Netz zur dichteren Seite)
       const wx = P[c * 3]! - P[b * 3]!;
       const wy = P[c * 3 + 1]! - P[b * 3 + 1]!;
@@ -808,7 +858,15 @@ export class Koerper {
       this.flaeche[b]! += f;
       this.flaeche[c]! += f;
     }
-    // Rand: beide Seiten treffen sich; geschlossen gilt die gemeinsame Normale
+  }
+
+  private normalenUndFlaeche(zu: number): void {
+    const N = this.normal;
+    N.fill(0);
+    this.flaeche.fill(0);
+    this.dreiecke(this.index, 0);
+    this.dreiecke(this.indexRahmen, 2 * this.flach.n);
+    // Umfang: Vorder- und Rückseite treffen sich; sind sie eine Haut, gilt die gemeinsame Normale
     const F = this.flach;
     const n = F.n;
     for (let i = 0; i < F.nb; i++) {
@@ -839,12 +897,62 @@ export class Koerper {
       } else {
         N[v * 3] = 0;
         N[v * 3 + 1] = 0;
-        N[v * 3 + 2] = v < n ? 1 : -1;
+        N[v * 3 + 2] = v < n ? 1 : v < 2 * n ? -1 : 1;
       }
     }
   }
 
-  /** Strahl gegen die Haut (nur Vorderseiten des Strahls), Ergebnis: Abstand, Punkt, Dreieck; null = vorbei */
+  /**
+   * Umriss der Blase von der Achse `achse` (0 x, 1 y, 2 z) aus: Kanten, an denen die Haut von der Achse weg- und wieder herkippt.
+   * Ergebnis: je Kante sechs Zahlen (Anfang und Ende, Welt).
+   */
+  umriss(achse: 0 | 1 | 2): Float32Array {
+    const I = this.index;
+    const P = this.pos;
+    if (!this.kanten) {
+      const karte = new Map<number, number>();
+      const liste: number[] = [];
+      const m = this.anzahl;
+      for (let t = 0; t < I.length / 3; t++)
+        for (let k = 0; k < 3; k++) {
+          const a = I[t * 3 + k]!;
+          const b = I[t * 3 + ((k + 1) % 3)]!;
+          const s = Math.min(a, b) * m + Math.max(a, b);
+          const vorher = karte.get(s);
+          if (vorher === undefined) karte.set(s, liste.length / 4), liste.push(a, b, t, -1);
+          else liste[vorher * 4 + 3] = t;
+        }
+      this.kanten = Int32Array.from(liste);
+    }
+    const nT = I.length / 3;
+    const seite = new Float32Array(nT);
+    for (let t = 0; t < nT; t++) {
+      const a = I[t * 3]! * 3;
+      const b = I[t * 3 + 1]! * 3;
+      const c = I[t * 3 + 2]! * 3;
+      const ux = P[b]! - P[a]!;
+      const uy = P[b + 1]! - P[a + 1]!;
+      const uz = P[b + 2]! - P[a + 2]!;
+      const vx = P[c]! - P[a]!;
+      const vy = P[c + 1]! - P[a + 1]!;
+      const vz = P[c + 2]! - P[a + 2]!;
+      seite[t] = achse === 0 ? uy * vz - uz * vy : achse === 1 ? uz * vx - ux * vz : ux * vy - uy * vx;
+    }
+    const aus: number[] = [];
+    const K = this.kanten;
+    for (let e = 0; e < K.length; e += 4) {
+      const t1 = K[e + 2]!;
+      const t2 = K[e + 3]!;
+      if (t2 < 0) continue;
+      if (seite[t1]! > 0 === seite[t2]! > 0) continue;
+      const a = K[e]! * 3;
+      const b = K[e + 1]! * 3;
+      aus.push(P[a]!, P[a + 1]!, P[a + 2]!, P[b]!, P[b + 1]!, P[b + 2]!);
+    }
+    return Float32Array.from(aus);
+  }
+
+  /** Strahl gegen die Blase, Ergebnis: Abstand, Punkt, Dreieck; null = vorbei */
   treffen(ox: number, oy: number, oz: number, dx: number, dy: number, dz: number): { t: number; x: number; y: number; z: number; tri: number } | null {
     const P = this.pos;
     const I = this.index;
@@ -885,4 +993,9 @@ export class Koerper {
     if (bt < 0) return null;
     return { t: best, x: ox + dx * best, y: oy + dy * best, z: oz + dz * best, tri: bt };
   }
+}
+
+function weich(a: number, b: number, x: number): number {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
 }

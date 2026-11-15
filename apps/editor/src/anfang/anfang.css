@@ -1,4 +1,12 @@
 /* Probe „Anfang einer Form“ (15.11.2026): ein fast leeres Blatt, die Bedienung so leise wie in der Linien-Probe */
+/* Lobster (Pablo Impallari, SIL OFL): Schrift für Überschriften im Editor und im Spiel (Florian, 15.11.) */
+@font-face {
+  font-family: 'Lobster';
+  src: url('../../../../assets/fonts/lobster/Lobster-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
 :root {
   --tinte: #1f1a17;
   --leise: rgba(31, 26, 23, 0.46);
@@ -45,12 +53,12 @@ body {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
-  font-size: 30px;
+  font-family: 'Lobster', 'Iowan Old Style', Georgia, serif;
+  font-size: 46px;
   font-weight: 400;
   letter-spacing: 0.005em;
   color: var(--tinte);
-  opacity: 0.86;
+  opacity: 1;
   pointer-events: none;
   user-select: none;
   white-space: nowrap;
@@ -63,6 +71,25 @@ body {
   opacity: 0;
   filter: blur(3px);
   transform: translate(-50%, -54%);
+}
+/* Namen der Wände (Lobster), sichtbar beim Darüberfahren */
+#namen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+#namen .name {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: 'Lobster', Georgia, serif;
+  font-size: 30px;
+  line-height: 1;
+  color: var(--tinte);
+  opacity: 0;
+  white-space: nowrap;
+  padding: 0 0 6px;
+  will-change: transform, opacity;
 }
 #leiste > #hinweis {
   flex: 1 0 100%;
@@ -183,6 +210,9 @@ button[aria-pressed='true'] {
   #gruss {
     font-size: 24px;
   }
+}
+body.standbild #gruss {
+  transition: none;
 }
 body.bild #leiste,
 body.bild #hinweis {

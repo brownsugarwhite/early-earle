@@ -24,11 +24,13 @@ import {
   Color,
   CustomBlending,
   DataTexture,
+  DoubleSide,
   FloatType,
   FrontSide,
   HalfFloatType,
   LinearFilter,
   Mesh,
+  MinEquation,
   NoBlending,
   OneFactor,
   OneMinusSrcAlphaFactor,
@@ -122,6 +124,8 @@ attribute float aHoehe;
 attribute float aSeite;
 attribute vec2 aBlatt;
 attribute float aDehnung;
+attribute float aSicht;
+varying float vSicht;
 varying vec3 vPos;
 varying vec3 vNormal;
 varying float vHoehe;
@@ -136,6 +140,7 @@ void main() {
   vSeite = aSeite;
   vBlatt = aBlatt;
   vDehnung = aDehnung;
+  vSicht = aSicht;
   gl_Position = projectionMatrix * viewMatrix * w;
 }
 `;
@@ -157,6 +162,10 @@ uniform vec2 uWind;
 uniform float uDicke;
 uniform float uSpannung;
 uniform float uSicht;
+uniform int uRahmen;
+uniform float uSchatten;
+uniform vec3 uSchattenFarbe;
+varying float vSicht;
 varying vec3 vPos;
 varying vec3 vNormal;
 varying float vHoehe;
@@ -262,7 +271,21 @@ void main() {
   float d = dickeHier(hauch);
   float opd = gangunterschied(d, cosI);
   vec3 R = reflect(-V, N);
-  float a = uAnteil;
+  float a = uAnteil * vSicht;
+  // der Rest im Rahmen wird zum Schatten: die Haut verblasst, ein leichter grauer Schatten bleibt
+  float schatten = uRahmen == 1 ? uSchatten : 0.0;
+  if (uRahmen == 1 && uPass != 0) {
+    if (uPass == 1) {
+      float F0 = 0.02 + 0.98 * pow(1.0 - cosI, 5.0);
+      vec3 Rs = min(tafel(opd) * (0.077 * uSicht) * (F0 / 0.02), vec3(1.0)) * a * (1.0 - schatten);
+      gl_FragColor = vec4(mix(vec3(1.0) - Rs, uSchattenFarbe, schatten * a), 1.0);
+    } else {
+      float F0 = 0.02 + 0.98 * pow(1.0 - cosI, 5.0);
+      vec3 Rs = min(tafel(opd) * (0.077 * uSicht) * (F0 / 0.02), vec3(1.0)) * a * (1.0 - schatten);
+      gl_FragColor = vec4(Rs * atelier(R), 1.0);
+    }
+    return;
+  }
 
   if (uFassung == 0) {
     // Seifenhaut: Spiegelung = Schichtfarbe · Fresnel; Durchlass = 1 − Spiegelung
@@ -358,15 +381,52 @@ void main() {
 }
 `;
 
+// ---------- Schatten an den Wänden ----------
+
+/** Die Blase, auf eine Wand gelegt (Achse 0 x, 1 y, 2 z, Wand bei `uWand`): ein leichter Schatten, Überdeckungen nicht doppelt (MIN) */
+const WAND_VERTEX = /* glsl */ `
+uniform int uAchse;
+uniform float uWand;
+uniform float uZ;
+void main() {
+  vec4 w = modelMatrix * vec4(position, 1.0);
+  if (uAchse == 0) w.x = uWand;
+  else if (uAchse == 1) w.y = uWand;
+  else w.z = uWand;
+  if (uAchse != 2) w.z += uZ;
+  gl_Position = projectionMatrix * viewMatrix * w;
+}
+`;
+const WAND_FRAGMENT = /* glsl */ `
+precision highp float;
+uniform vec3 uFarbe;
+uniform float uStaerke;
+void main() {
+  gl_FragColor = vec4(mix(vec3(1.0), uFarbe, uStaerke), 1.0);
+}
+`;
+
+/** eine Wand des Kastens: Achse, Lage, Stärke des Schattens (0..1) */
+export interface Wand {
+  achse: 0 | 1 | 2;
+  lage: number;
+  staerke: number;
+  /** Versatz des Schattens in der Tiefe (Wände ringsum: weiter hinten als die Blase) */
+  z?: number;
+}
+
 // ---------- Haut: Netze, Ziel, Bild ----------
 
 export interface HautWerte {
   fassung: Fassung;
   nacht: boolean;
   zeit: number;
-  /** 0..1: Anteil der Vorderseite (Einblenden) und der Rückseite (erst wenn sie sich löst) */
+  /** 0..1: Anteil der Vorderseite (Einblenden) und der Rückseite (erst wenn sie sich löst); Rest im Rahmen (0 = weg) */
   vorn: number;
   hinten: number;
+  rahmen: number;
+  /** der Rest im Rahmen wird zum Schatten (0..1) */
+  schatten: number;
   /** deckende Fassungen: 0 = noch Film, 1 = deckend */
   deckung: number;
   hauch: Vector3;
@@ -377,6 +437,9 @@ export interface HautWerte {
   dicke: number;
   spannung: number;
   sicht: number;
+  /** Wände des Kastens mit ihren Schatten, Farbe der Schatten (linear) */
+  waende: Wand[];
+  schattenFarbe: Color;
 }
 
 export const PAPIER = new Color('#ffffff');
@@ -389,9 +452,13 @@ export class Haut {
   private ziel: WebGLRenderTarget;
   private ende: { szene: Scene; kamera: OrthographicCamera; material: ShaderMaterial };
   private tafel: Texture;
-  private geo: BufferGeometry | null = null;
+  private geoBlase: BufferGeometry | null = null;
+  private geoRahmen: BufferGeometry | null = null;
   private netze: Mesh[] = [];
+  /** Durchgänge: Blase (hinten ×, hinten +, vorn ×, vorn +, deckend), Rahmen (dieselben fünf), Wände (je eine) */
   private mats: ShaderMaterial[] = [];
+  private matsRahmen: ShaderMaterial[] = [];
+  private matsWand: ShaderMaterial[] = [];
   private koerper: Koerper | null = null;
 
   constructor(renderer: WebGLRenderer) {
@@ -417,7 +484,27 @@ export class Haut {
     const s = new Scene();
     s.add(new Mesh(quad, material));
     this.ende = { szene: s, kamera: new OrthographicCamera(-1, 1, 1, -1, 0, 1), material };
-    // vier Durchgänge für durchsichtige Fassungen (hinten ×, hinten +, vorn ×, vorn +) und einer für deckende
+    this.mats = this.durchgaenge(0);
+    this.matsRahmen = this.durchgaenge(1);
+    for (let i = 0; i < 5; i++)
+      this.matsWand.push(
+        new ShaderMaterial({
+          vertexShader: WAND_VERTEX,
+          fragmentShader: WAND_FRAGMENT,
+          uniforms: { uAchse: { value: 0 }, uWand: { value: 0 }, uZ: { value: 0 }, uFarbe: { value: new Color(0.9, 0.9, 0.9) }, uStaerke: { value: 0 } },
+          depthTest: false,
+          depthWrite: false,
+          side: DoubleSide,
+          blending: CustomBlending,
+          blendEquation: MinEquation,
+          blendSrc: OneFactor,
+          blendDst: OneFactor,
+        }),
+      );
+  }
+
+  /** vier Durchgänge für durchsichtige Fassungen (hinten ×, hinten +, vorn ×, vorn +) und einer für deckende */
+  private durchgaenge(rahmen: 0 | 1): ShaderMaterial[] {
     const basis = (): ShaderMaterial =>
       new ShaderMaterial({
         vertexShader: VERTEX,
@@ -438,6 +525,9 @@ export class Haut {
           uDicke: { value: 520 },
           uSpannung: { value: 1 },
           uSicht: { value: 3 },
+          uRahmen: { value: rahmen },
+          uSchatten: { value: 0 },
+          uSchattenFarbe: { value: new Color(0.9, 0.9, 0.9) },
         },
         depthWrite: false,
         depthTest: true,
@@ -470,7 +560,7 @@ export class Haut {
     deckend.blendDst = OneMinusSrcAlphaFactor;
     deckend.blendSrcAlpha = OneFactor;
     deckend.blendDstAlpha = OneMinusSrcAlphaFactor;
-    this.mats = [mal(BackSide, 1), mal(BackSide, 2), mal(FrontSide, 1), mal(FrontSide, 2), deckend];
+    return [mal(BackSide, 1), mal(BackSide, 2), mal(FrontSide, 1), mal(FrontSide, 2), deckend];
   }
 
   groesse(b: number, h: number, dpr: number): void {
@@ -482,40 +572,54 @@ export class Haut {
   setzeKoerper(k: Koerper | null): void {
     for (const m of this.netze) this.szene.remove(m);
     this.netze = [];
-    this.geo?.dispose();
-    this.geo = null;
+    this.geoBlase?.dispose();
+    this.geoRahmen?.dispose();
+    this.geoBlase = null;
+    this.geoRahmen = null;
     this.koerper = k;
     if (!k) return;
-    const g = new BufferGeometry();
-    g.setAttribute('position', new BufferAttribute(k.pos, 3));
-    g.setAttribute('normal', new BufferAttribute(k.normal, 3));
-    g.setAttribute('aHoehe', new BufferAttribute(k.hoehe, 1));
-    g.setAttribute('aSeite', new BufferAttribute(k.seite, 1));
-    g.setAttribute('aBlatt', new BufferAttribute(k.blatt, 2));
-    g.setAttribute('aDehnung', new BufferAttribute(k.dehnung, 1));
-    g.setIndex(new BufferAttribute(k.index, 1));
-    this.geo = g;
-    this.netze = this.mats.map((m, i) => {
+    const n = k.flach.n;
+    const geo = (von: number, bis: number, index: Uint32Array): BufferGeometry => {
+      const g = new BufferGeometry();
+      g.setAttribute('position', new BufferAttribute(k.pos.subarray(von * 3, bis * 3), 3));
+      g.setAttribute('normal', new BufferAttribute(k.normal.subarray(von * 3, bis * 3), 3));
+      g.setAttribute('aHoehe', new BufferAttribute(k.hoehe.subarray(von, bis), 1));
+      g.setAttribute('aSeite', new BufferAttribute(k.seite.subarray(von, bis), 1));
+      g.setAttribute('aBlatt', new BufferAttribute(k.blatt.subarray(von * 2, bis * 2), 2));
+      g.setAttribute('aDehnung', new BufferAttribute(k.dehnung.subarray(von, bis), 1));
+      g.setAttribute('aSicht', new BufferAttribute(k.sicht.subarray(von, bis), 1));
+      g.setIndex(new BufferAttribute(index, 1));
+      return g;
+    };
+    this.geoBlase = geo(0, 2 * n, k.index);
+    this.geoRahmen = geo(2 * n, 3 * n, k.indexRahmen);
+    const dazu = (g: BufferGeometry, m: ShaderMaterial, ordnung: number): void => {
       const mesh = new Mesh(g, m);
-      mesh.renderOrder = i;
+      mesh.renderOrder = ordnung;
       mesh.frustumCulled = false;
       this.szene.add(mesh);
-      return mesh;
-    });
+      this.netze.push(mesh);
+    };
+    this.matsWand.forEach((m, i) => dazu(this.geoBlase!, m, -20 + i));
+    this.matsRahmen.forEach((m, i) => dazu(this.geoRahmen!, m, -10 + i));
+    this.mats.forEach((m, i) => dazu(this.geoBlase!, m, i));
+    // alle Shader jetzt übersetzen, nicht erst, wenn sie mitten im Aufblasen sichtbar werden (sonst stockt ein Bild)
+    for (const mesh of this.netze) mesh.visible = true;
+    this.renderer.compile(this.szene, new OrthographicCamera(-1, 1, 1, -1, 0, 1));
   }
 
-  /** nach `Koerper.setzen`: Lagen, Normalen und Dehnung hochladen */
+  /** nach `Koerper.setzen`: Lagen, Normalen, Dehnung, Sichtbarkeit hochladen */
   hochladen(): void {
-    const g = this.geo;
-    if (!g) return;
-    for (const n of ['position', 'normal', 'aDehnung']) (g.getAttribute(n) as BufferAttribute).needsUpdate = true;
-    g.computeBoundingSphere();
+    for (const g of [this.geoBlase, this.geoRahmen]) {
+      if (!g) continue;
+      for (const n of ['position', 'normal', 'aDehnung', 'aSicht']) (g.getAttribute(n) as BufferAttribute).needsUpdate = true;
+    }
   }
 
   zeichnen(kamera: PerspectiveCamera, w: HautWerte): void {
     const r = this.renderer;
     const durch = DURCHSICHTIG[w.fassung]!;
-    this.mats.forEach((m, i) => {
+    const setzen = (m: ShaderMaterial, anteil: number): void => {
       const u = m.uniforms;
       u.uZeit!.value = w.zeit;
       u.uFassung!.value = w.fassung;
@@ -528,12 +632,34 @@ export class Haut {
       u.uDicke!.value = w.dicke;
       u.uSpannung!.value = w.spannung;
       u.uSicht!.value = w.nacht ? w.sicht * 0.8 : w.sicht;
-      // Rückseite (Durchgänge 0 und 1) erst, wenn sie sich vom Film gelöst hat
-      u.uAnteil!.value = i < 2 ? w.hinten : w.vorn;
+      u.uSchatten!.value = w.schatten;
+      (u.uSchattenFarbe!.value as Color).copy(w.schattenFarbe);
+      u.uAnteil!.value = anteil;
+    };
+    // Blase: Rückseite (Durchgänge 0 und 1) erst, wenn sie sich vom Film gelöst hat
+    this.mats.forEach((m, i) => setzen(m, i < 2 ? w.hinten : w.vorn));
+    // Rahmen: immer als durchsichtige Seifenhaut (vier Durchgänge), bis er zum Schatten geworden ist
+    this.matsRahmen.forEach((m) => setzen(m, w.rahmen));
+    this.matsWand.forEach((m, i) => {
+      const wand = w.waende[i];
+      m.uniforms.uAchse!.value = wand?.achse ?? 0;
+      m.uniforms.uWand!.value = wand?.lage ?? 0;
+      m.uniforms.uZ!.value = wand?.z ?? 0;
+      m.uniforms.uStaerke!.value = wand?.staerke ?? 0;
+      (m.uniforms.uFarbe!.value as Color).copy(w.schattenFarbe);
     });
-    this.netze.forEach((mesh, i) => {
-      mesh.visible = durch ? i < 4 : i === 4;
-    });
+    let k = 0;
+    for (const mesh of this.netze) {
+      const m = mesh.material as ShaderMaterial;
+      const i = this.mats.indexOf(m);
+      const j = this.matsRahmen.indexOf(m);
+      const v = this.matsWand.indexOf(m);
+      if (i >= 0) mesh.visible = durch ? i < 4 : i === 4;
+      else if (j >= 0) mesh.visible = j < 4 && w.rahmen > 1e-3;
+      else if (v >= 0) mesh.visible = (w.waende[v]?.staerke ?? 0) > 1e-3;
+      k++;
+    }
+    void k;
     const grund = (w.nacht ? NACHT : PAPIER).clone();
     r.setRenderTarget(this.ziel);
     r.setClearColor(grund, 1);

@@ -13,7 +13,8 @@ const praefix = process.argv[3] ?? '2026-11-15';
 const B = 1200;
 const H = 800;
 const NAMEN = ['Seifenhaut', 'Irisdruck', 'Horizont', 'Höhenlinien'];
-const MOMENTE = [0, 0.2, 0.4, 0.7, 1.1, 2.6];
+const MOMENTE = (process.env.MOMENTE ?? '0,0.3,0.6,0.8,0.88,0.95,1.1,1.4,2.0,3.2').split(',').map(Number);
+const LISTE = (process.env.FASSUNGEN ?? '0,3').split(',').map(Number);
 const GRUENDE = (process.env.GRUND ?? 'papier,nacht').split(',');
 
 fs.mkdirSync(ziel, { recursive: true });
@@ -25,11 +26,11 @@ page.on('console', (m) => {
 await page.goto(`${URL}/anfang.html?bild=1`);
 await page.waitForFunction(() => window.__anfang);
 
-const zelle = { x: 320, y: 215, width: 560, height: 370 };
+const zelle = { x: 0, y: 0, width: 1200, height: 800 };
 const bilder = {};
 for (const grund of GRUENDE) {
   await page.evaluate((n) => window.__anfang.nacht(n), grund === 'nacht');
-  for (let f = 0; f < 4; f++) {
+  for (const f of LISTE) {
     await page.evaluate(
       ([f, fisch]) => {
         window.__anfang.fassung(f);
@@ -55,7 +56,7 @@ for (const grund of GRUENDE) {
       window.__anfang.bild();
     });
     await page.waitForTimeout(60);
-    const gross = await page.screenshot({ clip: { x: 300, y: 200, width: 600, height: 400 } });
+    const gross = await page.screenshot({ clip: { x: 150, y: 100, width: 900, height: 600 } });
     bilder[`${grund}-${f}-gross`] = gross.toString('base64');
   }
 }
@@ -75,15 +76,15 @@ const stil = `body{margin:0;padding:24px;font:15px/1.35 -apple-system,system-ui,
   img{display:block;border:1px solid #e6e3df}.t{color:#6d6560;font-size:13px;margin:2px 0 14px}h2{font-size:15px;margin:10px 0 6px}`;
 for (const grund of GRUENDE) {
   let html = `<style>${stil}</style>`;
-  for (let f = 0; f < 4; f++) {
-    html += `<h2>${f + 1} · ${NAMEN[f]}</h2><div class="reihe">`;
+  for (const f of LISTE) {
+    html += `<h2>${f + 1} · ${NAMEN[f]}</h2><div class="reihe" style="flex-wrap:wrap;width:${5 * (360 + 10)}px">`;
     for (const T of MOMENTE)
-      html += `<div class="z"><img width="${zelle.width / 2}" src="data:image/png;base64,${bilder[`${grund}-${f}-${T}`]}"><div class="t">${T === 0 ? 'geschlossen, vor ↩' : `${T.toFixed(1).replace('.', ',')} s`}</div></div>`;
+      html += `<div class="z"><img width="360" src="data:image/png;base64,${bilder[`${grund}-${f}-${T}`]}"><div class="t">${T === 0 ? 'geschlossen, vor ↩' : `${T.toFixed(1).replace('.', ',')} s`}</div></div>`;
     html += '</div>';
   }
-  await blatt(html, 24 * 2 + MOMENTE.length * (zelle.width / 2 + 12), 1400, path.join(ziel, `${praefix}-ablauf-${grund}.png`));
+  await blatt(html, 48 + 5 * 370, 800, path.join(ziel, `${praefix}-ablauf-${grund}.png`));
   let gross = `<style>${stil}</style><div class="reihe" style="flex-wrap:wrap;width:${2 * 610}px">`;
-  for (let f = 0; f < 4; f++)
+  for (const f of LISTE)
     gross += `<div class="z"><img width="600" src="data:image/png;base64,${bilder[`${grund}-${f}-gross`]}"><div class="t">${f + 1} · ${NAMEN[f]}, in Ruhe</div></div>`;
   gross += '</div>';
   await blatt(gross, 2 * 610 + 48, 900, path.join(ziel, `${praefix}-ruhe-${grund}.png`));

@@ -1,25 +1,29 @@
 /**
- * Probe „Anfang einer Form“ (Florian, 15.11.2026): ein fast leeres Blatt mit „draw a silhouette“, ein Loop mit P, ↩ zieht den Ring
- * zurück und der Fahrtwind bläst die Seifenhaut zur Form auf. Seite: `anfang.html`. Konzept:
+ * Probe „Anfang einer Form“ (Florian, 15.11.2026, Runde 2): ein fast leeres Blatt mit „draw a silhouette“ (Lobster), ein Loop mit
+ * P. ↩: Der Rahmen (die gezeichnete Linie) fährt nach hinten zur Rückwand eines Kastens, die Seifenhaut hängt an ihm, bläst sich
+ * vorn an Ort und Stelle auf, schnürt sich ein, reißt ab und wird zur Blase; der Rest im Rahmen wird an der Rückwand zum Schatten
+ * der Seite. An den vier Wänden um die Blase liegen leichte Schatten der übrigen Ansichten; fährt man über eine Wand, zeigt sie
+ * ihre Linien und ihren Namen. Die Blase selbst zeigt keine Linien. Seite: `anfang.html`. Plan:
  * `docs/plans/2026-11-15-anfang-seifenhaut.md`.
  *
  * Zwei Leinwände übereinander: unten die Haut (three.js, `haut.ts`), oben Linien, Punkte und Zeiger (flüssige Anzeige, Kopie aus
  * dem Linien-Strang). Welt = CSS-Pixel des Blatts, y nach oben, Mitte des Fensters im Ursprung; im ersten Bild nach ↩ sieht die
- * Kamera das Blatt genau so, wie es gezeichnet wurde.
+ * Kamera das Blatt genau so, wie es gezeichnet wurde. Danach öffnet ein Dolly-Zoom den Kasten (die Blase bleibt gleich groß).
  */
 
-import { Matrix4, PerspectiveCamera, Vector2, Vector3, WebGLRenderer } from 'three';
-import { DAUER, type Moment, moment } from './aufblasen';
+import { Color, Matrix4, PerspectiveCamera, Vector2, Vector3, WebGLRenderer } from 'three';
+import { glatt, type Masse, type Moment, moment } from './aufblasen';
+import { FluessigeAnzeige, type Szene } from './fluessig';
+import { FLACH, Koerper, netzAusUmriss } from './form';
+import { FASSUNGEN, type Fassung, Haut, type HautWerte, type Wand } from './haut';
 import { reglerBauen, type Werte, werteLesen } from './regler';
-import { FluessigeAnzeige, type Koerper as AnzeigeKoerper, type Szene } from './fluessig';
-import { Koerper, type Lage, netzAusUmriss } from './form';
-import { FASSUNGEN, type Fassung, Haut, type HautWerte } from './haut';
 import { Kapseln, LOOK, Stift } from './stift';
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 const params = new URLSearchParams(location.search);
 // ?bild=1: ohne Leiste und Zeiger (Vergleichsbilder); ?film=1: ohne Leiste, mit Zeiger
 if (params.get('bild') === '1' || params.get('film') === '1') document.body.classList.add('bild');
+if (params.get('bild') === '1') document.body.classList.add('standbild');
 const mitZeigerImBild = params.get('film') === '1';
 const mitInfo = params.get('info') === '1';
 
@@ -29,13 +33,15 @@ const leinwandLinien = $<HTMLCanvasElement>('linien');
 const gruss = $<HTMLDivElement>('gruss');
 const hinweis = $<HTMLDivElement>('hinweis');
 const infoAnzeige = $<HTMLSpanElement>('info');
+const namenEbene = $<HTMLDivElement>('namen');
 
 const renderer = new WebGLRenderer({ canvas: leinwandHaut, antialias: false, alpha: false, powerPreference: 'high-performance' });
 const haut = new Haut(renderer);
 const anzeige = new FluessigeAnzeige(leinwandLinien);
 const stift = new Stift();
 const K = new Kapseln();
-const kamera = new PerspectiveCamera(26, 1, 1, 1e6);
+const FOV0 = 26;
+const kamera = new PerspectiveCamera(FOV0, 1, 1, 1e6);
 
 type Zustand = 'blatt' | 'auf' | 'ruhe' | 'ab';
 let zustand: Zustand = 'blatt';
@@ -61,11 +67,9 @@ let zug: { x: number; y: number; start: Float32Array; gewicht: Float32Array; zFa
 const hauch = { pos: new Vector3(1e6, 1e6, 1e6), staerke: 0, ziel: 0 };
 const wind = new Vector2();
 let letzteDrehung = { gier: 0, neigung: 0 };
-let unruhe = 0;
-let netzId = 0;
 /** Werte der Feinregler (Ablauf und Material), im Browser behalten */
 const werte: Werte = werteLesen();
-const stat = { fps: 0, bildMs: 0, netzMs: 0, punkte: 0, dreiecke: 0, fehlend: 0, schritte: 0 };
+const stat = { fps: 0, bildMs: 0, netzMs: 0, punkte: 0, dreiecke: 0, fehlend: 0, schritte: 0, riss: 0 };
 
 const TINTE: [number, number, number] = [0x1f / 255, 0x1a / 255, 0x17 / 255];
 const GRUEN: [number, number, number] = [0xb9 / 255, 0xd1 / 255, 0xb4 / 255];
@@ -73,6 +77,87 @@ const TINTE_NACHT: [number, number, number] = [0xf1 / 255, 0xec / 255, 0xe3 / 25
 const GRUEN_NACHT: [number, number, number] = [0x4f / 255, 0x6e / 255, 0x66 / 255];
 const PAPIER_RGB: [number, number, number] = [1, 1, 1];
 const NACHT_RGB: [number, number, number] = [0x12 / 255, 0x1a / 255, 0x28 / 255];
+
+// ---------- Kasten ----------
+
+/**
+ * Der Kasten um die Blase, in den man von vorn schaut: Rückwand (Seite) hinter der Blase, vier Wände an den Rändern des Bildes
+ * (links Hinten, rechts Front, unten Top, oben Unten; je Achse dieselbe Form gespiegelt). Die Wände sind nicht gezeichnet; man
+ * sieht sie an den Schatten. Die Wände links, rechts, oben und unten reichen bis `zf` nach vorn (dort beginnt das Bild).
+ */
+interface Kasten {
+  cx: number;
+  cy: number;
+  X: number;
+  Y: number;
+  Zw: number;
+  Zf: number;
+  /** halbe Ausdehnung der Blase in x und y (Welt), größte Tiefe einer Seite */
+  rx: number;
+  ry: number;
+  tiefe: number;
+  /** so viel kleiner erscheint die Blase am Ende (1 = gleich groß) */
+  massstab: number;
+}
+let kasten: Kasten | null = null;
+
+const WAND_NAMEN = ['Seite', 'Hinten', 'Front', 'Top', 'Unten'] as const;
+/** gerade unter dem Zeiger: Wand 0..4 oder −1 */
+let wandUnterZeiger = -1;
+const wandSicht = [0, 0, 0, 0, 0];
+const namen: HTMLDivElement[] = WAND_NAMEN.map((n) => {
+  const d = document.createElement('div');
+  d.className = 'name';
+  d.textContent = n;
+  namenEbene.append(d);
+  return d;
+});
+
+function kastenRechnen(): void {
+  if (!koerper) {
+    kasten = null;
+    return;
+  }
+  const F = koerper.flach;
+  let rx = 0;
+  let ry = 0;
+  for (let i = 0; i < F.nb; i++) {
+    rx = Math.max(rx, Math.abs(F.x[i]! - F.cx));
+    ry = Math.max(ry, Math.abs(F.y[i]! - F.cy));
+  }
+  const tiefe = koerper.fuelle * F.qMax;
+  const k = Math.max(1, (1.5 * rx) / (0.4 * W), (1.7 * ry) / (0.4 * H));
+  // die Kamera steht am Ende im Kasten (sonst sieht man eine Wand von außen): Abstand wie in `kameraSetzen`
+  const halb = (werte.fov * Math.PI) / 360;
+  const abstand = (H / 2 / Math.tan(halb)) * k;
+  const X = Math.max(0.4 * W * k, 1.15 * abstand * Math.abs(Math.sin((werte.gier * Math.PI) / 180)), 1.6 * rx);
+  const Y = Math.max(0.4 * H * k, 1.15 * abstand * Math.abs(Math.sin((werte.neigung * Math.PI) / 180)), 1.7 * ry);
+  const Zw = Math.max(0.85 * Math.min(X, Y), 1.4 * tiefe) + tiefe;
+  kasten = { cx: F.cx, cy: F.cy, X, Y, Zw, Zf: 0.55 * Math.min(X, Y), rx, ry, tiefe, massstab: 1 / k };
+}
+
+function masse(): Masse {
+  const F = koerper!.flach;
+  return { a: Math.sqrt(Math.abs(F.flaeche) / Math.PI), Zw: kasten!.Zw };
+}
+
+/** Schatten an den Wänden ringsum liegen weiter hinten als die Blase (wie von einem Licht schräg von vorn), mitten auf der Wand */
+function schattenZ(): number {
+  return kasten ? -0.45 * kasten.Zw : 0;
+}
+
+function waendeFuer(m: Moment | null): Wand[] {
+  const k = kasten;
+  if (!k || !m) return [];
+  const rest = m.schatten >= 0.999 ? 1 : 0;
+  return [
+    { achse: 2, lage: -k.Zw, staerke: rest },
+    { achse: 0, lage: k.cx - k.X, staerke: m.waende, z: schattenZ() },
+    { achse: 0, lage: k.cx + k.X, staerke: m.waende, z: schattenZ() },
+    { achse: 1, lage: k.cy - k.Y, staerke: m.waende, z: schattenZ() },
+    { achse: 1, lage: k.cy + k.Y, staerke: m.waende, z: schattenZ() },
+  ];
+}
 
 // ---------- Größe ----------
 
@@ -86,22 +171,19 @@ function groesse(): void {
   haut.groesse(W, H, D);
   anzeige.groesse(W * D, H * D);
   kamera.aspect = W / H;
-  L0 = H / 2 / Math.tan((kamera.fov * Math.PI) / 360);
-  kamera.near = L0 * 0.05;
-  kamera.far = L0 * 20;
-  kamera.updateProjectionMatrix();
+  L0 = H / 2 / Math.tan((FOV0 * Math.PI) / 360);
   if (zustand === 'blatt') netzStand = -1;
+  else kastenRechnen();
   anstossen();
 }
 
 // ---------- Netz ----------
 
-const flachLage = (): Lage => ({ zr: 0, vorn: 0, hinten: 0, quer: 0, welle: 0, phase: 0, zu: 0 });
-
 function netzBauen(): void {
   netzStand = stift.stand;
   if (!stift.geschlossen) {
     koerper = null;
+    kasten = null;
     haut.setzeKoerper(null);
     return;
   }
@@ -109,11 +191,11 @@ function netzBauen(): void {
   const flach = netzAusUmriss({ x: ab.x.map((x) => x - W / 2), y: ab.y.map((y) => H / 2 - y), anker: ab.anker });
   koerper = new Koerper(flach);
   koerper.fuelle = werte.fuelle;
-  koerper.setzen(flachLage());
+  koerper.setzen(FLACH);
   koerper.dehnungRechnen();
   haut.setzeKoerper(koerper);
   haut.hochladen();
-  netzId++;
+  kastenRechnen();
   netzZeit = performance.now();
   Object.assign(stat, { netzMs: flach.stat.ms, punkte: flach.stat.punkte, dreiecke: flach.stat.dreiecke, fehlend: flach.stat.fehlendeRandkanten, schritte: flach.stat.schritte });
 }
@@ -126,6 +208,7 @@ function aufblasen(): void {
   if (!koerper) return;
   koerper.versatz.fill(0);
   koerper.bezugFlach();
+  kastenRechnen();
   zustand = 'auf';
   T = 0;
   film = 1;
@@ -137,7 +220,7 @@ function ablassen(): void {
   zug = null;
   drehen = null;
   zustand = 'ab';
-  T = Math.min(T, DAUER);
+  if (koerper && kasten) T = Math.min(T, moment(0, masse(), werte).dauer);
   anstossen();
 }
 
@@ -162,6 +245,7 @@ function neu(): void {
   T = 0;
   stift.abbrechen();
   koerper = null;
+  kasten = null;
   haut.setzeKoerper(null);
   nutzer.gier = 0;
   nutzer.neigung = 0;
@@ -172,18 +256,25 @@ function neu(): void {
 
 // ---------- Kamera ----------
 
+/** Dolly-Zoom vom Blatt in den Kasten: der Öffnungswinkel wächst, die Blase bleibt (fast) gleich groß, die Tiefe erscheint */
 function kameraSetzen(m: Moment | null): void {
-  const F = koerper?.flach;
-  const Dr = werte.rueck * L0;
-  const f = m ? m.fahrt : 0;
-  const d = m ? m.dreh : 0;
-  const ziel = new Vector3((F?.cx ?? 0) * f, (F?.cy ?? 0) * f, -Dr * f);
-  const abstand = (L0 + 0.85 * Dr * f) * (1 + (nutzer.zoom - 1) * d);
-  const gier = ((werte.gier * Math.PI) / 180 + nutzer.gier) * d;
-  const neigung = ((werte.neigung * Math.PI) / 180 + nutzer.neigung) * d;
+  const k = kasten;
+  const f = m && k ? m.fahrt : 0;
+  const fov = FOV0 + (werte.fov - FOV0) * f;
+  const halb = (fov * Math.PI) / 360;
+  kamera.fov = fov;
+  // Maßstab der Ebene z = 0: am Anfang 1 (das Blatt), am Ende so, dass der Kasten ins Bild passt
+  const massstab = 1 + ((k?.massstab ?? 1) - 1) * f;
+  const abstand = (H / 2 / (Math.tan(halb) * massstab)) * (1 + (nutzer.zoom - 1) * f);
+  const ziel = new Vector3((k?.cx ?? 0) * f, (k?.cy ?? 0) * f, 0);
+  const gier = ((werte.gier * Math.PI) / 180) * f + nutzer.gier * f;
+  const neigung = ((werte.neigung * Math.PI) / 180) * f + nutzer.neigung * f;
   kamera.position.set(ziel.x + abstand * Math.sin(gier) * Math.cos(neigung), ziel.y + abstand * Math.sin(neigung), ziel.z + abstand * Math.cos(gier) * Math.cos(neigung));
   kamera.up.set(0, 1, 0);
   kamera.lookAt(ziel);
+  kamera.near = abstand * 0.05;
+  kamera.far = abstand * 30;
+  kamera.updateProjectionMatrix();
   kamera.updateMatrixWorld();
 }
 
@@ -193,6 +284,8 @@ let laeuft = false;
 let letzte = 0;
 let bilder = 0;
 let bilderSeit = performance.now();
+/** Film: der Takt des Browsers rechnet nichts, nur `__anfang.bild` (Bild für Bild genau wiederholbar) */
+let angehalten = false;
 
 function anstossen(): void {
   if (laeuft) return;
@@ -200,9 +293,6 @@ function anstossen(): void {
   letzte = performance.now();
   requestAnimationFrame(schleife);
 }
-
-/** Film: der Takt des Browsers rechnet nichts, nur `__anfang.bild` (Bild für Bild genau wiederholbar) */
-let angehalten = false;
 
 function schleife(t: number): void {
   const dt = Math.min(1 / 30, Math.max(0, (t - letzte) / 1000));
@@ -222,10 +312,9 @@ function schleife(t: number): void {
   else laeuft = false;
 }
 
-function projizieren(p: Vector3, vp: Matrix4, ansicht: Matrix4): [number, number, number] {
+function projizieren(p: Vector3, vp: Matrix4): [number, number, number] {
   const c = p.clone().applyMatrix4(vp);
-  const e = p.clone().applyMatrix4(ansicht);
-  return [(c.x * 0.5 + 0.5) * W * D, (0.5 - c.y * 0.5) * H * D, -e.z];
+  return [(c.x * 0.5 + 0.5) * W * D, (0.5 - c.y * 0.5) * H * D, c.z];
 }
 
 /** ein Bild; true: es bewegt sich noch etwas */
@@ -245,11 +334,12 @@ function bild(dt: number): boolean {
   if (zustand === 'blatt' && !stift.geschlossen) film = 0;
   // Zeit des Aufblasens
   let m: Moment | null = null;
-  if (zustand !== 'blatt' && koerper) {
+  if (zustand !== 'blatt' && koerper && kasten) {
+    const dauer = moment(0, masse(), werte).dauer;
     if (festeZeit !== null) T = festeZeit;
     else if (zustand === 'auf') T += dt;
     else if (zustand === 'ab') T -= dt * 1.5;
-    if (zustand === 'auf' && T >= DAUER) zustand = 'ruhe';
+    if (zustand === 'auf' && T >= dauer) zustand = 'ruhe';
     if (zustand === 'ab' && T <= 0) {
       T = 0;
       zustand = 'blatt';
@@ -258,44 +348,49 @@ function bild(dt: number): boolean {
       nutzer.neigung = 0;
       nutzer.zoom = 1;
     }
-    m = moment(Math.max(0, Math.min(T, DAUER)), werte.rueck * L0, werte);
-    if (zustand !== 'ruhe' || zug) {
-      koerper.setzen(zustand === 'blatt' ? flachLage() : m.lage);
-    }
-    // Farben der Dehnung: während des Aufblasens bezogen auf den flachen Film, danach beruhigen sie sich
-    const tau = zustand === 'auf' && T < 1.1 ? 0 : zug ? 3.5 : 1.6;
-    unruhe = koerper.dehnungRechnen(dt, tau);
+    m = moment(Math.max(0, Math.min(T, dauer)), masse(), werte);
+    stat.riss = m.riss;
+    if (zustand !== 'ruhe' || zug) koerper.setzen(zustand === 'blatt' ? FLACH : m.lage);
+    // Farben der Dehnung: bis kurz nach dem Abriss bezogen auf den flachen Film, danach beruhigen sie sich
+    const tau = zustand === 'auf' && T < m.riss + 0.35 ? 0 : zug ? 3.5 : 1.6;
+    const unruhe = koerper.dehnungRechnen(dt, tau);
     haut.hochladen();
     aktiv = aktiv || zustand !== 'ruhe' || unruhe > 2e-3 || zug !== null;
   } else if (koerper && zustand === 'blatt') {
-    koerper.setzen(flachLage());
+    koerper.setzen(FLACH);
     koerper.dehnungRechnen();
     haut.hochladen();
   }
   kameraSetzen(zustand === 'blatt' ? null : m);
   // Fahrtwind: die Farben fließen gegen die Drehung
-  const gierJetzt = Math.atan2(kamera.position.x - (koerper?.flach.cx ?? 0), kamera.position.z);
+  const gierJetzt = Math.atan2(kamera.position.x - (kasten?.cx ?? 0), kamera.position.z);
   const neigungJetzt = kamera.position.y;
   if (dt > 0) {
-    const dg = gierJetzt - letzteDrehung.gier;
-    const dn = (neigungJetzt - letzteDrehung.neigung) / Math.max(1, L0);
-    wind.x -= dg * 0.9;
-    wind.y += dn * 0.9;
+    wind.x -= (gierJetzt - letzteDrehung.gier) * 0.9;
+    wind.y += ((neigungJetzt - letzteDrehung.neigung) / Math.max(1, L0)) * 0.9;
   }
   letzteDrehung = { gier: gierJetzt, neigung: neigungJetzt };
   // Hauch: Feder zur Lage des Zeigers auf der Haut
   hauch.staerke += (hauch.ziel - hauch.staerke) * (1 - Math.exp(-dt / 0.18));
   if (Math.abs(hauch.ziel - hauch.staerke) > 1e-3) aktiv = true;
-  if (zustand === 'ruhe') aktiv = aktiv || hauch.staerke > 1e-3;
+  // Wände: Linien und Namen blenden weich ein und aus
+  for (let i = 0; i < 5; i++) {
+    const ziel = zustand === 'ruhe' && wandUnterZeiger === i ? 1 : 0;
+    wandSicht[i]! += (ziel - wandSicht[i]!) * (1 - Math.exp(-dt / 0.12));
+    if (Math.abs(ziel - wandSicht[i]!) > 2e-3) aktiv = true;
+  }
   // Haut
   const F = koerper?.flach;
+  const schattenFarbe = new Color().setScalar(1 - werte.schatten);
   const w: HautWerte = {
     fassung,
     nacht,
     zeit: uhr,
     vorn: zustand === 'blatt' ? film : 1,
-    hinten: m ? m.hintenSichtbar : 0,
-    deckung: zustand === 'blatt' ? 0.42 * film : 0.42 + 0.58 * (m?.fertig ?? 1),
+    hinten: m ? 1 : 0,
+    rahmen: m ? (m.schatten >= 0.999 ? 0 : 1) : 0,
+    schatten: m ? m.schatten : 0,
+    deckung: zustand === 'blatt' ? 0.42 * film : 0.42 + 0.58 * glatt(T / 1.4),
     hauch: hauch.pos,
     hauchStaerke: hauch.staerke,
     hauchRadius: Math.max(24, (F?.radius ?? 200) * 0.2),
@@ -303,49 +398,19 @@ function bild(dt: number): boolean {
     dicke: werte.dicke,
     spannung: werte.spannung,
     sicht: werte.sicht,
+    waende: waendeFuer(m),
+    schattenFarbe,
   };
   haut.zeichnen(kamera, w);
   // Linien
   K.leeren();
-  let koerperAnzeige: AnzeigeKoerper | null = null;
+  const vp = new Matrix4().multiplyMatrices(kamera.projectionMatrix, kamera.matrixWorldInverse);
   if (zustand === 'blatt') {
     stift.kapseln(K, D, true);
-  } else if (koerper && F) {
-    const vp = new Matrix4().multiplyMatrices(kamera.projectionMatrix, kamera.matrixWorldInverse);
-    const ansicht = kamera.matrixWorldInverse;
-    const nb = F.nb;
-    const sx = new Float32Array(nb);
-    const sy = new Float32Array(nb);
-    const sz = new Float32Array(nb);
-    const p = new Vector3();
-    for (let i = 0; i < nb; i++) {
-      p.set(koerper.pos[i * 3]!, koerper.pos[i * 3 + 1]!, koerper.pos[i * 3 + 2]!);
-      const [a, b, c] = projizieren(p, vp, ansicht);
-      sx[i] = a;
-      sy[i] = b;
-      sz[i] = c;
-    }
-    const g = K.neueGruppe();
-    const r = (LOOK.umriss / 2) * D;
-    for (let i = 0; i < nb; i++) {
-      const j = (i + 1) % nb;
-      K.push(sx[i]!, sy[i]!, sx[j]!, sy[j]!, r, r, g, 2, false, sz[i]!, sz[j]!);
-    }
-    for (const a of F.anker) K.push(sx[a]!, sy[a]!, sx[a]!, sy[a]!, LOOK.punktRadius * D, LOOK.punktRadius * D, K.neueGruppe(), 2, true, sz[a]!, sz[a]!);
-    if (stift.zeiger.da) K.felder.push(stift.zeiger.x * D, stift.zeiger.y * D, 22 * D, 0.7);
-    koerperAnzeige = {
-      pos: koerper.pos,
-      normal: koerper.normal,
-      index: koerper.index,
-      projektion: new Float32Array(vp.elements),
-      ansicht: new Float32Array(ansicht.elements),
-      schattierung: 0,
-      umriss: 0,
-      geaendert: true,
-      netz: netzId,
-      wicklung: 1,
-    };
+  } else if (koerper && F && kasten && m) {
+    linienImRaum(vp, m);
   }
+  if (stift.zeiger.da) K.felder.push(stift.zeiger.x * D, stift.zeiger.y * D, 22 * D, 0.7);
   const szene: Szene = {
     prim: K.puffer,
     anzahl: K.n,
@@ -355,12 +420,12 @@ function bild(dt: number): boolean {
     tinte: nacht ? TINTE_NACHT : TINTE,
     gruen: nacht ? GRUEN_NACHT : GRUEN,
     zeiger: stift.zeiger.da && (!document.body.classList.contains('bild') || mitZeigerImBild) ? Stift.zeigerForm(stift.zeiger.x, stift.zeiger.y, D) : null,
-    koerper: koerperAnzeige,
-    bias: Math.max(2, (F?.radius ?? 100) * 0.02),
+    koerper: null,
     koerperZeigen: false,
     papier: nacht ? NACHT_RGB : PAPIER_RGB,
   };
   anzeige.zeichnen(szene);
+  namenSetzen(vp);
   // Text
   gruss.classList.toggle('weg', !(zustand === 'blatt' && stift.leer));
   const h =
@@ -371,13 +436,135 @@ function bild(dt: number): boolean {
           ? ''
           : 'am ersten Punkt schließen · ↩ schließt · ⌫ zurück'
       : zustand === 'ruhe'
-        ? 'daneben ziehen: drehen · an der Haut ziehen: dehnen · Leertaste: noch einmal · Esc: zurück aufs Blatt'
+        ? 'über eine Wand fahren: ihre Linien · an der Blase ziehen: dehnen · daneben ziehen: drehen · Leertaste: noch einmal · Esc: zurück aufs Blatt'
         : '';
   if (hinweis.textContent !== h) hinweis.textContent = h;
   stat.bildMs = performance.now() - t0;
   if (mitInfo)
-    infoAnzeige.textContent = `${stat.fps.toFixed(0)} B/s · Bild ${stat.bildMs.toFixed(1)} ms · Netz ${stat.punkte} P, ${stat.dreiecke} D, ${stat.netzMs.toFixed(0)} ms, ${stat.schritte} Schritte, ${stat.fehlend} fehlend · ${zustand} ${T.toFixed(2)} s`;
+    infoAnzeige.textContent = `${stat.fps.toFixed(0)} B/s · Bild ${stat.bildMs.toFixed(1)} ms · Netz ${stat.punkte} P, ${stat.dreiecke} D, ${stat.netzMs.toFixed(0)} ms · Abriss ${stat.riss.toFixed(2)} s · ${zustand} ${T.toFixed(2)} s`;
   return aktiv;
+}
+
+/** Linien im Raum: der Rahmen auf dem Weg zur Rückwand (verblasst dort), an der Wand unter dem Zeiger ihre Linien */
+function linienImRaum(vp: Matrix4, m: Moment): void {
+  const k = koerper!;
+  const F = k.flach;
+  const kz = kasten!;
+  const n = F.n;
+  const p = new Vector3();
+  const r0 = (LOOK.umriss / 2) * D;
+  // Rahmen: der Rand des Rests im Rahmen (Punkte 2n … 2n + nb − 1); an der Rückwand nur beim Darüberfahren
+  const staerke = Math.max(m.linie, wandSicht[0]!);
+  if (staerke > 0.01) {
+    const sx = new Float32Array(F.nb);
+    const sy = new Float32Array(F.nb);
+    for (let i = 0; i < F.nb; i++) {
+      const v = 2 * n + i;
+      p.set(k.pos[v * 3]!, k.pos[v * 3 + 1]!, k.pos[v * 3 + 2]!);
+      const [a, b] = projizieren(p, vp);
+      sx[i] = a;
+      sy[i] = b;
+    }
+    const g = K.neueGruppe();
+    const r = r0 * staerke;
+    for (let i = 0; i < F.nb; i++) {
+      const j = (i + 1) % F.nb;
+      K.push(sx[i]!, sy[i]!, sx[j]!, sy[j]!, r, r, g, 0, false);
+    }
+    const rp = LOOK.punktRadius * D * staerke;
+    for (const a of F.anker) K.push(sx[a]!, sy[a]!, sx[a]!, sy[a]!, rp, rp, K.neueGruppe(), 0, true);
+  }
+  // Kanten des Kastens: die Rückwand und die vier Kanten nach vorn, feinste Haarlinien, erscheinen mit den Schatten
+  const kanten = werte.kanten * m.waende;
+  if (kanten > 0.01) {
+    const x0 = kz.cx - kz.X;
+    const x1 = kz.cx + kz.X;
+    const y0 = kz.cy - kz.Y;
+    const y1 = kz.cy + kz.Y;
+    const z0 = -kz.Zw;
+    const z1 = kz.Zf * 3;
+    const ecken = [
+      [x0, y0, z0, x1, y0, z0],
+      [x1, y0, z0, x1, y1, z0],
+      [x1, y1, z0, x0, y1, z0],
+      [x0, y1, z0, x0, y0, z0],
+      [x0, y0, z0, x0, y0, z1],
+      [x1, y0, z0, x1, y0, z1],
+      [x1, y1, z0, x1, y1, z1],
+      [x0, y1, z0, x0, y1, z1],
+    ];
+    const g = K.neueGruppe();
+    const r = 0.14 * D * kanten;
+    for (const e of ecken) {
+      // vorn abschneiden, bevor die Kante hinter die Kamera läuft
+      const a = new Vector3(e[0], e[1], e[2]);
+      const b = new Vector3(e[3], e[4], e[5]);
+      const st = 24;
+      let vorher: [number, number] | null = null;
+      for (let s = 0; s <= st; s++) {
+        const q = a.clone().lerp(b, s / st);
+        const c = q.clone().applyMatrix4(vp);
+        const vorKamera = q.clone().applyMatrix4(kamera.matrixWorldInverse).z < -kamera.near * 2;
+        if (!vorKamera || Math.abs(c.x) > 3 || Math.abs(c.y) > 3) {
+          vorher = null;
+          continue;
+        }
+        const pp: [number, number] = [(c.x * 0.5 + 0.5) * W * D, (0.5 - c.y * 0.5) * H * D];
+        if (vorher) K.push(vorher[0], vorher[1], pp[0], pp[1], r, r, g, 0, false);
+        vorher = pp;
+      }
+    }
+  }
+  // Wände links, rechts, unten, oben: Umriss der Blase von ihrer Achse, auf die Wand gelegt
+  for (let wnd = 1; wnd < 5; wnd++) {
+    const s = wandSicht[wnd]!;
+    if (s < 0.01) continue;
+    const achse = wnd <= 2 ? 0 : 1;
+    const lage = wnd === 1 ? kz.cx - kz.X : wnd === 2 ? kz.cx + kz.X : wnd === 3 ? kz.cy - kz.Y : kz.cy + kz.Y;
+    const seg = k.umriss(achse);
+    const g = K.neueGruppe();
+    const r = r0 * s;
+    for (let e = 0; e < seg.length; e += 6) {
+      const a = new Vector3(seg[e]!, seg[e + 1]!, seg[e + 2]!);
+      const b = new Vector3(seg[e + 3]!, seg[e + 4]!, seg[e + 5]!);
+      if (achse === 0) {
+        a.x = lage;
+        b.x = lage;
+      } else {
+        a.y = lage;
+        b.y = lage;
+      }
+      a.z += schattenZ();
+      b.z += schattenZ();
+      const [ax, ay] = projizieren(a, vp);
+      const [bx, by] = projizieren(b, vp);
+      K.push(ax, ay, bx, by, r, r, g, 0, false);
+    }
+  }
+}
+
+/** Namen der Wände (Lobster) an ihren Schatten, sichtbar beim Darüberfahren */
+function namenSetzen(vp: Matrix4): void {
+  const kz = kasten;
+  namen.forEach((d, i) => {
+    const s = kz && zustand !== 'blatt' ? wandSicht[i]! : 0;
+    d.style.opacity = s.toFixed(3);
+    if (!kz || s < 0.01) return;
+    // Anker: über dem Schatten auf der Wand
+    const t = kz.tiefe;
+    const a =
+      i === 0
+        ? new Vector3(kz.cx - kz.rx, kz.cy + kz.ry * 1.18, -kz.Zw)
+        : i === 1
+          ? new Vector3(kz.cx - kz.X, kz.cy + kz.ry * 1.25, schattenZ() + t)
+          : i === 2
+            ? new Vector3(kz.cx + kz.X, kz.cy + kz.ry * 1.25, schattenZ() + t)
+            : i === 3
+              ? new Vector3(kz.cx - kz.rx, kz.cy - kz.Y, schattenZ() - t * 1.3)
+              : new Vector3(kz.cx - kz.rx, kz.cy + kz.Y, schattenZ() - t * 1.3);
+    const [x, y] = projizieren(a, vp);
+    d.style.transform = `translate(${(x / D).toFixed(1)}px, ${(y / D).toFixed(1)}px) translate(${i === 2 ? '-100%' : '0'}, -100%)`;
+  });
 }
 
 // ---------- Eingaben ----------
@@ -393,17 +580,52 @@ function strahl(x: number, y: number): { o: Vector3; d: Vector3 } {
   return { o, d: p.sub(o).normalize() };
 }
 
-function hauchSuchen(x: number, y: number): void {
+/** Wand unter dem Zeiger (vom Kasten aus gesehen die erste, die der Strahl trifft), −1 = keine */
+function wandSuchen(x: number, y: number): number {
+  const kz = kasten;
+  if (!kz || zustand !== 'ruhe') return -1;
+  const { o, d } = strahl(x, y);
+  let best = -1;
+  let bt = Infinity;
+  const pruefen = (i: number, achse: 0 | 1 | 2, lage: number): void => {
+    const dd = achse === 0 ? d.x : achse === 1 ? d.y : d.z;
+    const oo = achse === 0 ? o.x : achse === 1 ? o.y : o.z;
+    if (Math.abs(dd) < 1e-9) return;
+    const t = (lage - oo) / dd;
+    if (t <= 0 || t >= bt) return;
+    const px = o.x + d.x * t;
+    const py = o.y + d.y * t;
+    const pz = o.z + d.z * t;
+    const inX = px >= kz.cx - kz.X - 1 && px <= kz.cx + kz.X + 1;
+    const inY = py >= kz.cy - kz.Y - 1 && py <= kz.cy + kz.Y + 1;
+    const inZ = pz >= -kz.Zw - 1 && pz <= kz.Zf;
+    if ((achse === 2 && inX && inY) || (achse === 0 && inY && inZ) || (achse === 1 && inX && inZ)) {
+      bt = t;
+      best = i;
+    }
+  };
+  pruefen(0, 2, -kz.Zw);
+  pruefen(1, 0, kz.cx - kz.X);
+  pruefen(2, 0, kz.cx + kz.X);
+  pruefen(3, 1, kz.cy - kz.Y);
+  pruefen(4, 1, kz.cy + kz.Y);
+  return best;
+}
+
+function hauchSuchen(x: number, y: number): boolean {
   if (!koerper || zustand !== 'ruhe') {
     hauch.ziel = 0;
-    return;
+    return false;
   }
   const { o, d } = strahl(x, y);
   const t = koerper.treffen(o.x, o.y, o.z, d.x, d.y, d.z);
   if (t) {
     hauch.pos.set(t.x, t.y, t.z);
     hauch.ziel = 1;
-  } else hauch.ziel = 0;
+    return true;
+  }
+  hauch.ziel = 0;
+  return false;
 }
 
 leinwandLinien.addEventListener('pointermove', (e) => {
@@ -419,9 +641,7 @@ leinwandLinien.addEventListener('pointermove', (e) => {
     const s = (zug.tiefe * 2 * Math.tan((kamera.fov * Math.PI) / 360)) / H;
     const rechts = new Vector3().setFromMatrixColumn(kamera.matrixWorld, 0);
     const oben = new Vector3().setFromMatrixColumn(kamera.matrixWorld, 1);
-    const dx = (x - zug.x) * s;
-    const dy = (y - zug.y) * s;
-    const dw = rechts.multiplyScalar(dx).add(oben.multiplyScalar(-dy));
+    const dw = rechts.multiplyScalar((x - zug.x) * s).add(oben.multiplyScalar(-(y - zug.y) * s));
     // weich begrenzt: weiter als ein Viertel der Form gibt die Haut kaum nach (so faltet sie nie)
     const grenze = F.radius * 0.25;
     const l = dw.length();
@@ -432,7 +652,10 @@ leinwandLinien.addEventListener('pointermove', (e) => {
       k.versatz[i * 3 + 1] = zug.start[i * 3 + 1]! + g * dw.y;
       k.versatz[i * 3 + 2] = zug.start[i * 3 + 2]! + g * zug.zFaktor[i]! * dw.z * (zug.hinten ? -1 : 1);
     }
-  } else hauchSuchen(x, y);
+  } else {
+    const aufBlase = hauchSuchen(x, y);
+    wandUnterZeiger = aufBlase ? -1 : wandSuchen(x, y);
+  }
   anstossen();
 });
 
@@ -452,7 +675,7 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     const { o, d } = strahl(x, y);
     const t = koerper.treffen(o.x, o.y, o.z, d.x, d.y, d.z);
     if (t && !e.shiftKey) {
-      // an der Haut ziehen: weiches Feld um die Stelle, spiegelgleich, die Mitte bleibt in der Ebene
+      // an der Blase ziehen: weiches Feld um die Stelle, spiegelgleich, der Umfang bleibt in der Ebene
       const F = koerper.flach;
       const n = F.n;
       const hinten = t.tri >= F.tri.length / 3;
@@ -489,6 +712,7 @@ leinwandLinien.addEventListener('pointerleave', () => {
   if (stift.zieht || drehen || zug) return;
   stift.zeiger.da = false;
   hauch.ziel = 0;
+  wandUnterZeiger = -1;
   anstossen();
 });
 leinwandLinien.addEventListener(
@@ -563,9 +787,12 @@ nachtSetzen(nacht);
 const regler = $<HTMLElement>('regler');
 const reglerKnopf = $('knopf-regler');
 const reglerTeile = reglerBauen($('regler-liste'), werte, (k) => {
-  if (k === 'fuelle' && koerper) koerper.fuelle = werte.fuelle;
-  if (zustand === 'ruhe' && koerper) {
-    koerper.setzen(moment(DAUER, werte.rueck * L0, werte).lage);
+  if (k === 'fuelle' && koerper) {
+    koerper.fuelle = werte.fuelle;
+    kastenRechnen();
+  }
+  if (zustand === 'ruhe' && koerper && kasten) {
+    koerper.setzen(moment(T, masse(), werte).lage);
     koerper.dehnungRechnen();
     haut.hochladen();
   }
@@ -582,6 +809,7 @@ $('titel').textContent = mitZeigerImBild ? (params.get('titel') ?? '') : '';
 
 new ResizeObserver(groesse).observe(buehne);
 groesse();
+void document.fonts?.ready.then(() => anstossen());
 
 // ---------- Test-Haken ----------
 
@@ -612,9 +840,9 @@ const haken = {
   zeit(t: number | null): void {
     festeZeit = t;
     if (t !== null && zustand === 'blatt') aufblasen();
-    if (t !== null) {
+    if (t !== null && koerper && kasten) {
       T = t;
-      zustand = t >= DAUER ? 'ruhe' : 'auf';
+      zustand = t >= moment(0, masse(), werte).dauer ? 'ruhe' : 'auf';
     }
     anstossen();
   },
@@ -635,35 +863,29 @@ const haken = {
     stift.bewegen(x, y);
     hauchSuchen(x, y);
   },
-  druecken(x: number, y: number): void {
-    stift.bewegen(x, y);
-    stift.druecken(x, y);
-  },
-  loslassen(): void {
-    stift.loslassen();
-  },
-  taste(k: string): void {
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: k }));
-  },
-  /** Probe 1: Abstand (px) zwischen gezeichnetem Loop und dem Ring im ersten Bild nach ↩ */
+  /** Probe 1: Abstand (px) zwischen gezeichnetem Loop und dem Rahmen im ersten Bild nach ↩ */
   uebergang(): { anker: number; rand: number } {
     if (!stift.geschlossen) return { anker: NaN, rand: NaN };
     if (!koerper || netzStand !== stift.stand) netzBauen();
     const k = koerper!;
-    const m = moment(0, werte.rueck * L0, werte);
+    kastenRechnen();
+    const m = moment(0, masse(), werte);
     k.setzen(m.lage);
     kameraSetzen(m);
     const vp = new Matrix4().multiplyMatrices(kamera.projectionMatrix, kamera.matrixWorldInverse);
     const ab = stift.abtasten(0.25);
+    const n = k.flach.n;
     let anker = 0;
     k.flach.anker.forEach((vi, j) => {
       const a = stift.anker[j]!;
-      const [sx, sy] = projizieren(new Vector3(k.pos[vi * 3]!, k.pos[vi * 3 + 1]!, k.pos[vi * 3 + 2]!), vp, kamera.matrixWorldInverse);
+      const v = 2 * n + vi;
+      const [sx, sy] = projizieren(new Vector3(k.pos[v * 3]!, k.pos[v * 3 + 1]!, k.pos[v * 3 + 2]!), vp);
       anker = Math.max(anker, Math.hypot(sx / D - a.x, sy / D - a.y));
     });
     let rand = 0;
     for (let i = 0; i < k.flach.nb; i++) {
-      const [sx, sy] = projizieren(new Vector3(k.pos[i * 3]!, k.pos[i * 3 + 1]!, k.pos[i * 3 + 2]!), vp, kamera.matrixWorldInverse);
+      const v = 2 * n + i;
+      const [sx, sy] = projizieren(new Vector3(k.pos[v * 3]!, k.pos[v * 3 + 1]!, k.pos[v * 3 + 2]!), vp);
       let best = Infinity;
       for (let j = 0; j < ab.x.length; j++) best = Math.min(best, Math.hypot(sx / D - ab.x[j]!, sy / D - ab.y[j]!));
       rand = Math.max(rand, best);
@@ -671,7 +893,45 @@ const haken = {
     anstossen();
     return { anker, rand };
   },
-  /** ein Punkt der Form im Bild (CSS-Pixel): Anteile (−1..1) des Rahmens um den Schwerpunkt, auf der Vorderseite der Haut */
+  /**
+   * Probe 2: größter Sprung eines sichtbaren Punkts der Haut über den Abriss hinweg (Welt = px auf dem Blatt), zwischen dem
+   * letzten Bild davor und dem ersten danach (60 Bilder je Sekunde)
+   */
+  abriss(): { riss: number; davor: number; sprung: number; danach: number; jeFlaeche: number[]; uAmMeisten: number } {
+    if (!koerper || !kasten) return { riss: NaN, davor: NaN, sprung: NaN, danach: NaN, jeFlaeche: [], uAmMeisten: NaN };
+    const k = koerper;
+    const ms = masse();
+    const riss = moment(0, ms, werte).riss;
+    const lagen = (t: number): { p: Float32Array; s: Float32Array } => {
+      k.setzen(moment(t, ms, werte).lage);
+      return { p: k.pos.slice(), s: k.sicht.slice() };
+    };
+    // vier Bilder im Abstand 1/60 s, der Abriss liegt zwischen dem zweiten und dritten
+    const b = [lagen(riss - 3 / 120), lagen(riss - 1 / 120), lagen(riss + 1 / 120), lagen(riss + 3 / 120)];
+    const n = k.flach.n;
+    const weit = (a: { p: Float32Array; s: Float32Array }, c: { p: Float32Array; s: Float32Array }, je?: number[], wo?: { d: number; u: number }): number => {
+      let m = 0;
+      for (let v = 0; v < k.anzahl; v++) {
+        if (a.s[v]! < 0.5 || c.s[v]! < 0.5) continue;
+        const d = Math.hypot(c.p[v * 3]! - a.p[v * 3]!, c.p[v * 3 + 1]! - a.p[v * 3 + 1]!, c.p[v * 3 + 2]! - a.p[v * 3 + 2]!);
+        m = Math.max(m, d);
+        if (je) je[Math.floor(v / n)] = Math.max(je[Math.floor(v / n)]!, d);
+        if (wo && d > wo.d) {
+          wo.d = d;
+          wo.u = k.hoehe[v]!;
+        }
+      }
+      return m;
+    };
+    const jeFlaeche = [0, 0, 0];
+    const wo = { d: 0, u: 0 };
+    const davor = weit(b[0]!, b[1]!);
+    const sprung = weit(b[1]!, b[2]!, jeFlaeche, wo);
+    const danach = weit(b[2]!, b[3]!);
+    k.setzen(moment(T, ms, werte).lage);
+    return { riss, davor, sprung, danach, jeFlaeche, uAmMeisten: wo.u };
+  },
+  /** ein Punkt der Blase im Bild (CSS-Pixel): Anteile (−1..1) des Rahmens um den Schwerpunkt, auf der Vorderseite */
   aufDerHaut(fx: number, fy: number): { x: number; y: number } | null {
     if (!koerper) return null;
     const F = koerper.flach;
@@ -687,11 +947,27 @@ const haken = {
       }
     }
     const vp = new Matrix4().multiplyMatrices(kamera.projectionMatrix, kamera.matrixWorldInverse);
-    const [sx, sy] = projizieren(new Vector3(koerper.pos[best * 3]!, koerper.pos[best * 3 + 1]!, koerper.pos[best * 3 + 2]!), vp, kamera.matrixWorldInverse);
+    const [sx, sy] = projizieren(new Vector3(koerper.pos[best * 3]!, koerper.pos[best * 3 + 1]!, koerper.pos[best * 3 + 2]!), vp);
+    return { x: sx / D, y: sy / D };
+  },
+  /** ein Punkt auf einer Wand im Bild (CSS-Pixel): Wand 0..4, Lage als Anteile (−1..1) der Wand */
+  aufDerWand(i: number, fa: number, fb: number): { x: number; y: number } | null {
+    const kz = kasten;
+    if (!kz) return null;
+    const zmid = (-kz.Zw + kz.Zf) / 2;
+    const zhalb = (kz.Zf + kz.Zw) / 2;
+    const p =
+      i === 0
+        ? new Vector3(kz.cx + fa * kz.X, kz.cy + fb * kz.Y, -kz.Zw)
+        : i <= 2
+          ? new Vector3(i === 1 ? kz.cx - kz.X : kz.cx + kz.X, kz.cy + fb * kz.Y, zmid + fa * zhalb)
+          : new Vector3(kz.cx + fa * kz.X, i === 3 ? kz.cy - kz.Y : kz.cy + kz.Y, zmid + fb * zhalb);
+    const vp = new Matrix4().multiplyMatrices(kamera.projectionMatrix, kamera.matrixWorldInverse);
+    const [sx, sy] = projizieren(p, vp);
     return { x: sx / D, y: sy / D };
   },
   stand(): Record<string, unknown> {
-    return { zustand, T, fassung, nacht, ...stat, anker: stift.anker.length, geschlossen: stift.geschlossen };
+    return { zustand, T, fassung, nacht, ...stat, anker: stift.anker.length, geschlossen: stift.geschlossen, wand: wandUnterZeiger };
   },
 };
 (window as unknown as { __anfang: typeof haken }).__anfang = haken;

@@ -100,8 +100,15 @@ await warten(0.5);
 // 4 · ↩: aufblasen
 await page.keyboard.press('Enter');
 await warten(2.7);
-// 5 · Zeiger auf der Haut (Hauch), an der Haut ziehen (Spannung), Ansicht drehen (Fahrtwind)
+// 5 · über die Wände fahren (Linien und Name), Zeiger auf der Blase (Hauch), an der Blase ziehen (Spannung), Ansicht drehen
 const auf = async (fx, fy) => page.evaluate(([fx, fy]) => window.__anfang.aufDerHaut(fx, fy), [fx, fy]);
+const wand = async (i, a, b) => page.evaluate(([i, a, b]) => window.__anfang.aufDerWand(i, a, b), [i, a, b]);
+const rueck = await wand(0, 0.55, -0.15);
+await fahren([rueck.x, rueck.y], 0.8);
+await warten(0.9);
+const boden = await wand(3, 0.05, -0.1);
+await fahren([boden.x, boden.y], 0.7);
+await warten(0.9);
 const kopf = await auf(-0.35, 0.05);
 await fahren([kopf.x, kopf.y], 0.7);
 const ruecken = await auf(0.05, 0.42);

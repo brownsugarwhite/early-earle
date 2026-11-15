@@ -214,3 +214,47 @@ flachen Ansicht, Start mit P und Aufblasen.
 
 Bedienen der Kurven an den Wänden und der Morph der Blase zur Ansicht beim Drehen (aus der Ecke übernehmen, eigener Schritt);
 Ziehen, Aufblasen, Glätten an der Blase (kommt im Detail später).
+
+### Gebaut (Runde 2, 15.11. abends)
+
+- **Lobster** liegt im Repo (`assets/fonts/lobster/`, Lizenz SIL OFL, aus dem Repository von Google Fonts): der Gruß
+  „draw a silhouette“ (46 px) und die Namen der Wände (Seite, Hinten, Front, Top, Unten).
+- **Abriss wie beim Seifenblasenmachen:** drei Flächen auf demselben flachen Netz (vorn die Kuppel; hinten erst die Hälfte des
+  Schlauchs bis zum Hals, nach dem Abriss die Rückseite der Blase; der Rest im Rahmen). Der Hals ist die Linie gleicher Wölbung
+  u = `schnitt`, dahinter ist der Schlauch offen. Er schnürt sich langsam ein, solange der Schlauch kürzer als 1,45 × Halbmesser
+  ist, danach fällt er in 0,16 s zusammen (Abriss am Fisch bei 0,97 s). Weil beide Hälften des Schlauchs beim Abriss genau die
+  beiden Trichter sind, mit denen es danach weitergeht, gibt es keinen Sprung. Danach: Rückseite erst spitz, dann rund (Feder
+  2,7 Hz), Kuppel mit Stoß und Nachschwingen (2,3 Hz), die Blase federt etwas nach vorn (der Zug des Schlauchs ist weg), der Rest
+  schnappt in den Rahmen (5,5 Hz) und fährt mit ihm zur Rückwand. Gedehnte Haut wird dünner und färbt sich, am Hals am stärksten.
+- **Kasten:** Dolly-Zoom von 26° auf 46° (die Blase bleibt gleich groß), Kamera am Ende 34° zur Seite und 13° von oben, im Kasten.
+  Kanten des Kastens als feinste Haarlinien. Rückwand: der Rest im Rahmen wird zum Schatten der Seite. Links, rechts, Boden, Decke:
+  leichte Schatten der Blase von der Seite, von vorn und von oben (etwa 7 % dunkler als Weiß, Feinregler), etwas nach hinten
+  gerückt, damit sie mitten auf ihrer Wand liegen.
+- **Die Blase zeigt keine Linien.** Fährt man über eine Wand, erscheinen ihre Linien (Rückwand: die gezeichnete Linie mit ihren
+  Punkten; sonst der Umriss der Blase von dieser Achse) und ihr Name in Lobster. An der Blase ziehen dehnt sie (wie Runde 1),
+  daneben ziehen dreht die Ansicht.
+- Feinregler (R) neu: Rahmen, Hängen und Abreißen, Kuppel, nach dem Abriss, Kamera, Form, Material, Schatten, Kanten.
+
+**Probe (festgelegt):**
+
+| | Ergebnis |
+| --- | --- |
+| 1 · Ablauf im Film | Hängen, Schlauch, Abriss, hinten schließen, Nachschwingen, Rest wird an der Rückwand zum Schatten: `2026-11-15-r2-film-seifenhaut.mp4`, Nahbilder `…-r2-abriss-nah.png` |
+| 2 · kein Sprung beim Abriss | gehalten, aber anders als vorher formuliert: Die Vorderseite bewegt sich über den Abriss 1 px; der Hals selbst ist schnell (rund 30 px je Bild davor, 26 px über den Abriss, 32 px danach), also gleichmäßig, ohne Sprung. Die Grenze „2 px für jeden Punkt“ war falsch gewählt: Ein Hals reißt in Millisekunden. Messung: `__anfang.abriss()` |
+| 3 · 60 Bilder je Sekunde | gehalten: in allen vier Fassungen 95 % der Bilder unter 16,8 ms (`takt.mjs`), nachdem alle Shader vorab übersetzt werden; vorher stockte ein Bild, als die Wände sichtbar wurden |
+| 4 · Lobster, Schatten, Darüberfahren | gehalten (im Browser mit echter Maus geprüft: Rückwand „Seite“ mit Linie und Punkten, Boden „Top“ mit Umriss, linke Wand „Hinten“) |
+
+**Bilder und Filme (Runde 2):** `2026-11-15-r2-film-seifenhaut.mp4` und `…-r2-film-hoehenlinien.mp4` (leeres Blatt, Fisch mit P,
+↩, Abriss, Kasten, über Rückwand und Boden fahren, an der Blase ziehen, drehen), `…-r2-ablauf-papier.png` (zehn Momente je
+Fassung), `…-r2-ruhe-papier.png`, `…-r2-abriss-nah.png`.
+
+**Was ich sehe (ehrlich):** Die Kette stimmt und läuft flüssig; der Schlauch ist aber mit der sehr durchsichtigen Seifenhaut
+zart, und mit 34° liegt der Hals zum Teil hinter der Blase. Von der Seite (Feinregler „zur Seite“ höher) sieht man ihn besser.
+Schatten haben harte Kanten. Im hohen, schmalen Fenster (Handy) liegt die linke Wand außerhalb des Bildes.
+
+**Fragen an Florian (Runde 2):**
+1. Ist der Kasten so gemeint (Rückwand mit der Seite, vier Wände an den Rändern), oder eher die Ecke aus der anderen Sitzung (zwei
+   Wände und Boden)?
+2. Kanten des Kastens als Haarlinien: ja, oder nur die Schatten?
+3. Abriss: so, langsamer hängen, oder die Kamera mehr zur Seite, damit man den Hals sieht?
+4. Als Nächstes der Morph zur Ansicht beim Drehen zu einer Wand und das Bedienen der Kurven dort (aus der Ecke übernehmen)?
