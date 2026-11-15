@@ -107,6 +107,8 @@ let leertaste = false;
 let letzteZeit = 0;
 
 function zeigerAus(e: PointerEvent): void {
+  // ⌥: eine Richtung losreißen (Knick), nicht einrasten
+  verhalten.alt = e.altKey;
   const r = leinwand.getBoundingClientRect();
   const sx = e.clientX - r.left;
   const sy = e.clientY - r.top;
@@ -165,6 +167,10 @@ leinwand.addEventListener(
 );
 window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLInputElement) return;
+  if (e.key === 'Alt') {
+    verhalten.alt = true;
+    anstossen();
+  }
   if (e.code === 'Space') {
     leertaste = true;
     leinwand.classList.add('schwenken');
@@ -180,6 +186,10 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'Escape') stiftSetzen(false);
 });
 window.addEventListener('keyup', (e) => {
+  if (e.key === 'Alt') {
+    verhalten.alt = false;
+    anstossen();
+  }
   if (e.code === 'Space') {
     leertaste = false;
     if (!schwenk) leinwand.classList.remove('schwenken');

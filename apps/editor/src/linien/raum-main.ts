@@ -117,6 +117,8 @@ function groesse(): void {
 let dreh: { x: number; y: number; schieben: boolean } | null = null;
 let letzteZeit = 0;
 function zeigerAus(e: PointerEvent | WheelEvent): void {
+  // ⌥: eine Richtung losreißen (Knick), nicht einrasten
+  verhalten.alt = e.altKey;
   const r = leinwand.getBoundingClientRect();
   const sx = e.clientX - r.left;
   const sy = e.clientY - r.top;
@@ -139,7 +141,9 @@ leinwand.addEventListener('pointermove', (e) => {
 leinwand.addEventListener('pointerdown', (e) => {
   leinwand.setPointerCapture(e.pointerId);
   zeigerAus(e);
-  if (e.button === 0 && !e.shiftKey && verhalten.druecken()) {
+  // ⇧ an einer Richtung: aus der Haut kippen; ⇧ daneben: verschieben
+  verhalten.kippen = e.shiftKey;
+  if (e.button === 0 && verhalten.druecken()) {
     anstossen();
     return;
   }
@@ -172,6 +176,10 @@ leinwand.addEventListener(
 );
 window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLInputElement) return;
+  if (e.key === 'Alt') {
+    verhalten.alt = true;
+    anstossen();
+  }
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
     if (verhalten.rueckgaengig()) anstossen();
     e.preventDefault();
@@ -183,6 +191,12 @@ window.addEventListener('keydown', (e) => {
   else if (e.key.toLowerCase() === 'r' && !e.metaKey) knopfRegler.click();
   else if (e.key.toLowerCase() === 'p' && !e.metaKey) stiftSetzen(!verhalten.stift);
   else if (e.key === 'Escape') stiftSetzen(false);
+});
+window.addEventListener('keyup', (e) => {
+  if (e.key === 'Alt') {
+    verhalten.alt = false;
+    anstossen();
+  }
 });
 window.addEventListener('resize', groesse);
 

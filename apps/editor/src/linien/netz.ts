@@ -33,6 +33,63 @@ export interface Linie {
   /** Punkte der Linie der Reihe nach; bei einer geschlossenen Linie schließt das letzte Stück zum ersten Punkt */
   punkte: number[];
   stuecke: Stueck[];
+  /**
+   * Je Stelle in `punkte`: Die beiden Richtungen der Linie an diesem Punkt sind geknickt (jede dreht für sich); fehlt oder false: rund
+   * (sie liegen auf einer Geraden und drehen zusammen). An einer Kreuzung hat jede Linie ihren eigenen Zustand.
+   */
+  knick?: boolean[];
+}
+
+/** Richtung einer Linie an einem Punkt: das Stück, das dort beginnt (aus), oder das, das dort endet (ein) */
+export type Seite = 'aus' | 'ein';
+
+/** Stück, zu dem die Richtung gehört, oder −1 (Ende einer offenen Linie) */
+export function armStueck(l: Linie, k: number, seite: Seite): number {
+  const m = l.punkte.length;
+  if (seite === 'aus') return l.zu || k < m - 1 ? k % l.stuecke.length : -1;
+  return l.zu || k > 0 ? (k - 1 + m) % m : -1;
+}
+
+/** Griff der Richtung (vom Punkt aus) oder null */
+export function armGriff(l: Linie, k: number, seite: Seite): [number, number] | null {
+  const si = armStueck(l, k, seite);
+  if (si < 0) return null;
+  const s = l.stuecke[si]!;
+  return seite === 'aus' ? [s.g1x, s.g1y] : [s.g2x, s.g2y];
+}
+
+export function armGriffSetzen(l: Linie, k: number, seite: Seite, g: readonly [number, number]): void {
+  const si = armStueck(l, k, seite);
+  if (si < 0) return;
+  const s = l.stuecke[si]!;
+  if (seite === 'aus') {
+    s.g1x = g[0];
+    s.g1y = g[1];
+  } else {
+    s.g2x = g[0];
+    s.g2y = g[1];
+  }
+}
+
+export const istKnick = (l: Linie, k: number): boolean => !!l.knick?.[k];
+
+/**
+ * Knick je Punkt aus der Form: Die beiden Griffe liegen nicht auf einer Geraden (mehr als `grenzeGrad` daneben) oder einer hat die
+ * Länge null. Für Formen ohne gespeicherten Zustand (Florians Fisch aus dem Entwurf).
+ */
+export function knickeErkennen(n: Netz, grenzeGrad = 10): void {
+  const c = Math.cos((grenzeGrad * Math.PI) / 180);
+  for (const l of n.linien) {
+    l.knick = l.punkte.map((_, k) => {
+      const a = armGriff(l, k, 'aus');
+      const e = armGriff(l, k, 'ein');
+      if (!a || !e) return false;
+      const la = Math.hypot(a[0], a[1]);
+      const le = Math.hypot(e[0], e[1]);
+      if (la < 1e-6 || le < 1e-6) return true;
+      return -(a[0] * e[0] + a[1] * e[1]) / (la * le) < c;
+    });
+  }
 }
 
 export interface Netz {
@@ -48,7 +105,7 @@ export interface FischDaten {
 }
 
 export function netzAusDaten(d: FischDaten): Netz {
-  return {
+  const n: Netz = {
     punkte: d.punkte.map((p) => ({ x: p.x, y: p.y, sichtbar: !p.stuetze, verdeckt: !!p.verdeckt })),
     linien: d.linien.map((l) => ({
       zu: l.zu,
@@ -56,12 +113,14 @@ export function netzAusDaten(d: FischDaten): Netz {
       stuecke: l.stuecke.map((s) => ({ g1x: s.g1[0], g1y: s.g1[1], g2x: s.g2[0], g2y: s.g2[1], art: s.art })),
     })),
   };
+  knickeErkennen(n);
+  return n;
 }
 
 export function netzKopie(n: Netz): Netz {
   return {
     punkte: n.punkte.map((p) => ({ ...p })),
-    linien: n.linien.map((l) => ({ zu: l.zu, punkte: l.punkte.slice(), stuecke: l.stuecke.map((s) => ({ ...s })) })),
+    linien: n.linien.map((l) => ({ zu: l.zu, punkte: l.punkte.slice(), stuecke: l.stuecke.map((s) => ({ ...s })), ...(l.knick ? { knick: l.knick.slice() } : {}) })),
   };
 }
 
@@ -92,6 +151,7 @@ export function punktEinsetzen(n: Netz, li: number, si: number, t: number): numb
   const hinten: Stueck = { g1x: ex - px, g1y: ey - py, g2x: cx - x3, g2y: cy - y3, art: s.art };
   l.stuecke.splice(si, 1, vorn, hinten);
   l.punkte.splice(si + 1, 0, pi);
+  l.knick?.splice(si + 1, 0, false);
   return pi;
 }
 

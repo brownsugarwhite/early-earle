@@ -14,7 +14,8 @@ import type { WesenStand } from '../form/ablage';
 import { hautAusFlach } from '../form/verfeinern';
 import { Feder1 } from './feder';
 import type { Koerper } from './fluessig';
-import type { Linie, LinienProben, Netz } from './netz';
+import type { Art, Linie, LinienProben, Netz, Seite } from './netz';
+import { type DrehBild, RASTEN, type RichtungZiel, schwungFaktor, winkelDiff } from './richtung';
 import type { Raum, Werte, Ziel } from './verhalten';
 
 type V3 = { x: number; y: number; z: number };
@@ -38,7 +39,26 @@ interface Stand3 {
   griffe: Float64Array;
   sichtbar: Uint8Array;
   linien: Linie3[];
+  knick: boolean[][];
 }
+
+// ---------- Vektoren ----------
+
+const v3 = (x: number, y: number, z: number): V3 => ({ x, y, z });
+const plus3 = (a: V3, b: V3): V3 => v3(a.x + b.x, a.y + b.y, a.z + b.z);
+const minus3 = (a: V3, b: V3): V3 => v3(a.x - b.x, a.y - b.y, a.z - b.z);
+const mal3 = (a: V3, f: number): V3 => v3(a.x * f, a.y * f, a.z * f);
+const punkt3 = (a: V3, b: V3): number => a.x * b.x + a.y * b.y + a.z * b.z;
+const kreuz3 = (a: V3, b: V3): V3 => v3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
+const laenge3 = (a: V3): number => Math.hypot(a.x, a.y, a.z);
+const einheit3 = (a: V3): V3 => mal3(a, 1 / (laenge3(a) || 1));
+const spiegel3 = (a: V3): V3 => v3(a.x, a.y, -a.z);
+/** a um die Achse k (Einheit) um den Winkel w drehen (Rodrigues) */
+const drehe3 = (a: V3, k: V3, w: number): V3 => {
+  const c = Math.cos(w);
+  const s = Math.sin(w);
+  return plus3(plus3(mal3(a, c), mal3(kreuz3(k, a), s)), mal3(k, punkt3(k, a) * (1 - c)));
+};
 const linienKopie = (ls: readonly Linie3[]): Linie3[] => ls.map((l) => ({ zu: l.zu, anker: l.anker.slice(), stuecke: l.stuecke.map((s) => ({ ...s })) }));
 function anhaengen(a: Float64Array, p: V3): Float64Array {
   const n = new Float64Array(a.length + 3);
@@ -166,6 +186,35 @@ export class Raum3D implements Raum {
     griffe0: Float64Array;
   } | null = null;
   private zurueck: Stand3[] = [];
+  /** je Linie und Stelle (Anfang des Stücks): Knick der Linie an diesem Punkt, erst aus der Form erkannt, dann von Hand */
+  knick: boolean[][] = [];
+  private kamera = { auge: v3(0, 0, 1), vor: v3(0, 0, -1), rechts: v3(1, 0, 0), oben: v3(0, 1, 0), tan: 0.27, aspekt: 1 };
+  /** Drehen einer Richtung (siehe `richtung.ts`): Nabe, Griffe, Ebene (Achse, e1, e2), Hebel, Zustand */
+  private dreh: {
+    z: RichtungZiel;
+    H: V3;
+    A0: V3;
+    P0: V3;
+    armG: number;
+    gegenG: number;
+    armZw: number;
+    gegenZw: number;
+    achse: V3;
+    e1: V3;
+    e2: V3;
+    rho0: number;
+    flach: boolean;
+    hs: [number, number];
+    s0: [number, number];
+    vz: number;
+    knick0: boolean;
+    los: boolean;
+    partner: Feder1;
+    winkel: number;
+    faktor: number;
+    eingerastet: boolean;
+  } | null = null;
+  private ausr: { armG: number; armZw: number; H: V3; A0: V3; achse: V3; winkel: number } | null = null;
   /** Werkzeug P hat eben einen Punkt gesetzt: Setzen und das Ziehen danach sind ein Schritt fürs Zurück */
   private gesetzt = false;
   schattierung = 0;
@@ -416,6 +465,21 @@ export class Raum3D implements Raum {
         }
       }
     }
+    // Knick je Linie und Punkt aus der Form: die beiden Griffe nicht auf einer Geraden (mehr als 10° daneben)
+    const grenze = Math.cos((10 * Math.PI) / 180);
+    const lageAus = (arr: number[], i: number): V3 => v3(arr[i * 3]!, arr[i * 3 + 1]!, arr[i * 3 + 2]!);
+    this.knick = this.linien.map((l) =>
+      l.stuecke.map((st, k) => {
+        const vor = l.stuecke[(k - 1 + l.stuecke.length) % l.stuecke.length]!;
+        const H = lageAus(ankerPos, st.a);
+        const a = minus3(lageAus(griffPos, st.g1), H);
+        const e = minus3(lageAus(griffPos, vor.g2), H);
+        const la = laenge3(a);
+        const le = laenge3(e);
+        if (la < 1e-9 || le < 1e-9) return true;
+        return -punkt3(a, e) / (la * le) < grenze;
+      }),
+    );
     // Anker je Linie: genau einer je Stück (Anfang des Stücks)
     for (const l of this.linien) l.anker = l.stuecke.map((s) => s.a);
     this.anker = Float64Array.from(ankerPos);
@@ -479,6 +543,10 @@ export class Raum3D implements Raum {
     const ziel = { x: this.zielX.x, y: this.zielY.x, z: this.zielZ.x };
     const auge = { x: ziel.x + d * Math.cos(n) * Math.sin(g), y: ziel.y + d * Math.sin(n), z: ziel.z + d * Math.cos(n) * Math.cos(g) };
     this.ansicht = blick(auge, ziel, { x: 0, y: 1, z: 0 });
+    // für Strahlen durch den Bildschirm (Drehen auf einer Ebene)
+    const vor = einheit3(minus3(ziel, auge));
+    const rechts = einheit3(kreuz3(vor, v3(0, 1, 0)));
+    this.kamera = { auge, vor, rechts, oben: kreuz3(rechts, vor), tan: Math.tan(this.fov / 2), aspekt: b / h };
     const nah = Math.max(this.radius * 0.02, d - this.radius * 3);
     this.projektion = perspektive(this.fov, b / h, nah, d + this.radius * 3);
     this.pv = mal(this.projektion, this.ansicht);
@@ -522,13 +590,28 @@ export class Raum3D implements Raum {
       return z > sicht.tiefe[py * sicht.b + px]! + bias;
     };
     // Punkte
-    const punkte = [];
+    const punkte: Netz['punkte'] = [];
     const nA = this.ankerSichtbar.length;
     for (let i = 0; i < nA; i++) {
       this.auf(this.anker[i * 3]!, this.anker[i * 3 + 1]!, this.anker[i * 3 + 2]!, tmp, 0);
       punkte.push({ x: tmp[0]!, y: tmp[1]!, z: tmp[2]!, sichtbar: !!this.ankerSichtbar[i], verdeckt: verdecktBei(tmp[0]!, tmp[1]!, tmp[2]!) });
     }
-    const linien: Linie[] = this.linien.map((l) => ({ zu: l.zu, punkte: l.anker.slice(), stuecke: [] }));
+    // Linien mit ihren Griffen auf dem Bildschirm (für die Länge der Nadeln) und dem Knick je Punkt
+    const linien: Linie[] = this.linien.map((l, li) => ({
+      zu: l.zu,
+      punkte: l.anker.slice(),
+      stuecke: l.stuecke.map((st) => {
+        const a = punkte[st.a]!;
+        const b = punkte[st.b]!;
+        this.auf(this.griffe[st.g1 * 3]!, this.griffe[st.g1 * 3 + 1]!, this.griffe[st.g1 * 3 + 2]!, tmp, 0);
+        const g1x = tmp[0]! - a.x;
+        const g1y = tmp[1]! - a.y;
+        this.auf(this.griffe[st.g2 * 3]!, this.griffe[st.g2 * 3 + 1]!, this.griffe[st.g2 * 3 + 2]!, tmp, 0);
+        const art: Art = st.kante ? 'kante' : 'innen';
+        return { g1x, g1y, g2x: tmp[0]! - b.x, g2y: tmp[1]! - b.y, art };
+      }),
+      knick: this.knick[li]?.slice() ?? [],
+    }));
     // Proben je Linie
     const proben: LinienProben[] = this.linien.map((l) => {
       const xs: number[] = [];
@@ -672,8 +755,8 @@ export class Raum3D implements Raum {
   }
 
   private stelle3(ziel: Ziel): V3 {
-    if (ziel.art === 'punkt') return { x: this.anker[ziel.pi * 3]!, y: this.anker[ziel.pi * 3 + 1]!, z: this.anker[ziel.pi * 3 + 2]! };
-    return this.bezier3(ziel.li, ziel.si, ziel.t);
+    if (ziel.art === 'linie') return this.bezier3(ziel.li, ziel.si, ziel.t);
+    return { x: this.anker[ziel.pi * 3]!, y: this.anker[ziel.pi * 3 + 1]!, z: this.anker[ziel.pi * 3 + 2]! };
   }
 
   /** Gewicht des Felds an einem Punkt der Welt (auf die Seite z ≥ 0 gefaltet) */
@@ -771,6 +854,7 @@ export class Raum3D implements Raum {
       griffe: this.griffe.slice(),
       sichtbar: this.ankerSichtbar.slice(),
       linien: linienKopie(this.linien),
+      knick: this.knick.map((k) => k.slice()),
     });
     if (this.zurueck.length > 40) this.zurueck.shift();
   }
@@ -830,6 +914,7 @@ export class Raum3D implements Raum {
     this.griffe = anhaengen(anhaengen(this.griffe, D), E);
     l.stuecke.splice(si, 1, { a: st.a, b: pi, g1: st.g1, g2: gD, kante: st.kante }, { a: pi, b: st.b, g1: gD + 1, g2: st.g2, kante: st.kante });
     l.anker = l.stuecke.map((s) => s.a);
+    this.knick[li]?.splice(si + 1, 0, false);
     return pi;
   }
 
@@ -844,6 +929,264 @@ export class Raum3D implements Raum {
     return pi;
   }
 
+  // ---------- Richtungen drehen (Konzept „Richtungen statt Griffe“) ----------
+
+  /** Strahl vom Auge durch einen Bildschirmpunkt */
+  private strahl(sx: number, sy: number): { o: V3; d: V3 } {
+    const k = this.kamera;
+    const nx = (2 * sx) / this.b - 1;
+    const ny = 1 - (2 * sy) / this.h;
+    return { o: k.auge, d: einheit3(plus3(k.vor, plus3(mal3(k.rechts, nx * k.tan * k.aspekt), mal3(k.oben, ny * k.tan)))) };
+  }
+
+  private schirm(p: V3): [number, number, number] {
+    const o = [0, 0, 0];
+    this.auf(p.x, p.y, p.z, o, 0);
+    return [o[0]!, o[1]!, o[2]!];
+  }
+
+  /** Griffe einer Richtung (Linie li, Stelle k): ihr eigener, der ihrer Gegenseite und der Anker */
+  private armGriffe(li: number, k: number, seite: Seite): { arm: number; gegen: number; anker: number } | null {
+    const l = this.linien[li];
+    if (!l) return null;
+    const m = l.stuecke.length;
+    const st = l.stuecke[k];
+    const vor = l.stuecke[(k - 1 + m) % m];
+    if (!st || !vor) return null;
+    return seite === 'aus' ? { arm: st.g1, gegen: vor.g2, anker: st.a } : { arm: vor.g2, gegen: st.g1, anker: st.a };
+  }
+
+  /** Spiegelbild eines Griffs oder −1 (liegt er auf der Mitte, ist er sein eigenes) */
+  private griffZwilling(gi: number): number {
+    const p = this.lage(this.griffe, gi);
+    const eps = this.radius * 1e-5;
+    if (Math.abs(p.z) < eps) return -1;
+    const G = this.griffe;
+    for (let j = 0; j < G.length / 3; j++) {
+      if (j !== gi && Math.abs(G[j * 3]! - p.x) < eps && Math.abs(G[j * 3 + 1]! - p.y) < eps && Math.abs(G[j * 3 + 2]! + p.z) < eps) return j;
+    }
+    return -1;
+  }
+
+  /** zu welcher Linie und Stelle ein Griff als Richtung gehört */
+  private armVon(gi: number): { li: number; k: number } | null {
+    for (let li = 0; li < this.linien.length; li++) {
+      const l = this.linien[li]!;
+      const m = l.stuecke.length;
+      for (let k = 0; k < m; k++) {
+        if (l.stuecke[k]!.g1 === gi) return { li, k };
+        if (l.stuecke[k]!.g2 === gi) return { li, k: (k + 1) % m };
+      }
+    }
+    return null;
+  }
+
+  private griffSetzen(gi: number, p: V3): void {
+    this.griffe[gi * 3] = p.x;
+    this.griffe[gi * 3 + 1] = p.y;
+    this.griffe[gi * 3 + 2] = p.z;
+  }
+
+  private knickSetzen(li: number, k: number, an: boolean, zwilling: number): void {
+    if (this.knick[li]) this.knick[li]![k] = an;
+    const z = zwilling >= 0 ? this.armVon(zwilling) : null;
+    if (z && this.knick[z.li]) this.knick[z.li]![z.k] = an;
+  }
+
+  /** Senkrechte der Haut an einem Anker: an einer Kreuzung aus den Richtungen beider Linien, sonst vom nächsten Punkt der Haut */
+  private normaleBei(anker: number, li: number, d: V3): V3 {
+    const H = this.lage(this.anker, anker);
+    const P = this.anzeigePos;
+    const N = this.hautNormal;
+    let best = -1;
+    let bd = Infinity;
+    for (let v = 0; v < P.length / 3; v++) {
+      const q = (P[v * 3]! - H.x) ** 2 + (P[v * 3 + 1]! - H.y) ** 2 + (P[v * 3 + 2]! - H.z) ** 2;
+      if (q < bd) {
+        bd = q;
+        best = v;
+      }
+    }
+    const haut = best >= 0 ? einheit3(v3(N[best * 3]!, N[best * 3 + 1]!, N[best * 3 + 2]!)) : v3(0, 0, 1);
+    for (let lj = 0; lj < this.linien.length; lj++) {
+      if (lj === li) continue;
+      const st = this.linien[lj]!.stuecke.find((s) => s.a === anker);
+      if (!st) continue;
+      const n = kreuz3(d, minus3(this.lage(this.griffe, st.g1), H));
+      if (laenge3(n) < 1e-9 * laenge3(d) * laenge3(d)) continue;
+      const e = einheit3(n);
+      return punkt3(e, haut) < 0 ? mal3(e, -1) : e;
+    }
+    return haut;
+  }
+
+  drehenBeginnen(z: RichtungZiel, kippen: boolean, hebel: number): [number, number] | null {
+    const g = this.armGriffe(z.li, z.k, z.seite);
+    if (!g) return null;
+    const H = this.lage(this.anker, g.anker);
+    const A0 = this.lage(this.griffe, g.arm);
+    const d = minus3(A0, H);
+    const len = laenge3(d);
+    if (len < this.radius * 1e-6) return null;
+    const n = this.normaleBei(g.anker, z.li, d);
+    // auf der Haut: um die Senkrechte; aus der Haut (⇧): in der Ebene aus Richtung und Senkrechter
+    let e1 = minus3(d, mal3(n, punkt3(d, n)));
+    e1 = laenge3(e1) > 1e-9 * len ? einheit3(e1) : einheit3(kreuz3(n, v3(1, 0, 0)));
+    const achse = kippen ? einheit3(kreuz3(e1, n)) : n;
+    const e2 = kippen ? n : kreuz3(n, e1);
+    const tiefe = this.schirm(H)[2];
+    const mpp = (2 * tiefe * Math.tan(this.fov / 2)) / this.h;
+    const rho0 = Math.max(len, hebel * mpp);
+    const hs3 = this.schirm(H);
+    const s03 = this.schirm(plus3(H, mal3(e1, rho0)));
+    const hs: [number, number] = [hs3[0], hs3[1]];
+    const s0: [number, number] = [s03[0], s03[1]];
+    // fast von der Kante gesehen: den Winkel auf dem Bildschirm messen (gleiche Achse, Drehsinn wie auf dem Bild)
+    const blickRichtung = einheit3(minus3(H, this.kamera.auge));
+    const flach = Math.abs(punkt3(blickRichtung, achse)) < Math.sin((20 * Math.PI) / 180);
+    const e = 0.05;
+    const s1 = this.schirm(plus3(H, mal3(plus3(mal3(e1, Math.cos(e)), mal3(e2, Math.sin(e))), rho0)));
+    const vz = Math.sign(winkelDiff(Math.atan2(s1[1] - hs[1], s1[0] - hs[0]), Math.atan2(s0[1] - hs[1], s0[0] - hs[0]))) || 1;
+    this.standMerken();
+    this.dreh = {
+      z,
+      H,
+      A0,
+      P0: this.lage(this.griffe, g.gegen),
+      armG: g.arm,
+      gegenG: g.gegen,
+      armZw: this.griffZwilling(g.arm),
+      gegenZw: this.griffZwilling(g.gegen),
+      achse,
+      e1,
+      e2,
+      rho0,
+      flach,
+      hs,
+      s0,
+      vz,
+      knick0: this.knick[z.li]?.[z.k] ?? false,
+      los: false,
+      partner: new Feder1(0),
+      winkel: 0,
+      faktor: 1,
+      eingerastet: false,
+    };
+    return s0;
+  }
+
+  drehenZiehen(cx: number, cy: number, alt: boolean, dt: number): void {
+    const D = this.dreh;
+    if (!D) return;
+    let phi: number;
+    let r: number;
+    if (!D.flach) {
+      // der Zeiger auf der Ebene des Rings: Die Richtung zeigt genau auf ihn
+      const { o, d } = this.strahl(cx, cy);
+      const nenner = punkt3(d, D.achse);
+      if (Math.abs(nenner) < 1e-9) return;
+      const v = minus3(plus3(o, mal3(d, punkt3(minus3(D.H, o), D.achse) / nenner)), D.H);
+      phi = Math.atan2(punkt3(v, D.e2), punkt3(v, D.e1));
+      r = Math.hypot(punkt3(v, D.e1), punkt3(v, D.e2));
+    } else {
+      const a = winkelDiff(Math.atan2(cy - D.hs[1], cx - D.hs[0]), Math.atan2(D.s0[1] - D.hs[1], D.s0[0] - D.hs[0]));
+      phi = a * D.vz;
+      r = (D.rho0 * Math.hypot(cx - D.hs[0], cy - D.hs[1])) / (Math.hypot(D.s0[0] - D.hs[0], D.s0[1] - D.hs[1]) || 1);
+    }
+    D.winkel = phi;
+    D.faktor = schwungFaktor(r / D.rho0);
+    if (alt && !D.knick0) D.los = true;
+    const knick = D.knick0 || D.los;
+    if (knick) {
+      D.partner.ziel = 0;
+      D.partner.schritt(dt, 7, 0.75);
+    } else D.partner.setzen(phi);
+    let A = mal3(drehe3(minus3(D.A0, D.H), D.achse, phi), D.faktor);
+    const Pv = drehe3(minus3(D.P0, D.H), D.achse, D.partner.x);
+    D.eingerastet = false;
+    if (knick && !alt) {
+      const c = -punkt3(einheit3(A), einheit3(Pv));
+      if (Math.acos(Math.min(1, Math.max(-1, c))) < RASTEN) {
+        A = mal3(einheit3(Pv), -laenge3(A));
+        D.eingerastet = true;
+      }
+    }
+    const An = plus3(D.H, A);
+    const Pn = plus3(D.H, Pv);
+    this.griffSetzen(D.armG, An);
+    this.griffSetzen(D.gegenG, Pn);
+    // spiegelgleich; am Spiegelpunkt ist die Gegenseite das Spiegelbild der Richtung
+    if (D.armZw >= 0) this.griffSetzen(D.armZw, spiegel3(An));
+    if (D.gegenZw >= 0 && D.gegenZw !== D.armG) this.griffSetzen(D.gegenZw, spiegel3(Pn));
+  }
+
+  drehenEnden(): void {
+    const D = this.dreh;
+    if (!D) return;
+    if (D.eingerastet) this.knickSetzen(D.z.li, D.z.k, false, D.armZw);
+    else if (D.los) {
+      this.knickSetzen(D.z.li, D.z.k, true, D.armZw);
+      // die Gegenseite steht wieder, wo sie war (ihre Feder ist vielleicht noch unterwegs)
+      this.griffSetzen(D.gegenG, D.P0);
+      if (D.gegenZw >= 0 && D.gegenZw !== D.armG) this.griffSetzen(D.gegenZw, spiegel3(D.P0));
+    }
+    this.dreh = null;
+  }
+
+  drehBild(): DrehBild | null {
+    const D = this.dreh;
+    if (!D) return null;
+    const R = D.rho0 * D.faktor;
+    const auf = (c: number, s: number, rr: number): V3 => plus3(D.H, plus3(mal3(D.e1, c * rr), mal3(D.e2, s * rr)));
+    const ring: number[] = [];
+    const n = 120;
+    for (let i = 0; i <= n; i++) {
+      const w = (2 * Math.PI * i) / n;
+      ring.push(...this.schirm(auf(Math.cos(w), Math.sin(w), R)));
+    }
+    const rund = !(D.knick0 || D.los) || D.eingerastet;
+    const alt = [...this.schirm(D.H), ...this.schirm(auf(1, 0, D.rho0))];
+    if (rund) alt.push(...this.schirm(D.H), ...this.schirm(plus3(D.H, mal3(einheit3(minus3(D.P0, D.H)), D.rho0))));
+    return {
+      ring,
+      nabe: this.schirm(D.H),
+      spitze: this.schirm(auf(Math.cos(D.winkel), Math.sin(D.winkel), R)),
+      alt,
+      rund,
+      eingerastet: D.eingerastet,
+    };
+  }
+
+  knickUmschalten(z: RichtungZiel): boolean | null {
+    const g = this.armGriffe(z.li, z.k, z.seite);
+    if (!g) return null;
+    this.standMerken();
+    const war = this.knick[z.li]?.[z.k] ?? false;
+    const armZw = this.griffZwilling(g.arm);
+    this.knickSetzen(z.li, z.k, !war, armZw);
+    this.ausr = null;
+    if (!war) return false;
+    // jetzt rund: die Richtung dreht sich (animiert) in die Flucht ihrer Gegenseite
+    const H = this.lage(this.anker, g.anker);
+    const A0 = minus3(this.lage(this.griffe, g.arm), H);
+    const ziel = mal3(einheit3(minus3(this.lage(this.griffe, g.gegen), H)), -1);
+    const ax = kreuz3(einheit3(A0), ziel);
+    const s = laenge3(ax);
+    const winkel = Math.atan2(s, punkt3(einheit3(A0), ziel));
+    const achse = s > 1e-9 ? mal3(ax, 1 / s) : einheit3(kreuz3(ziel, v3(0, 0, 1)));
+    this.ausr = { armG: g.arm, armZw, H, A0, achse, winkel };
+    return true;
+  }
+
+  ausrichten(t: number): void {
+    const a = this.ausr;
+    if (!a) return;
+    const p = plus3(a.H, drehe3(a.A0, a.achse, a.winkel * Math.min(1, t)));
+    this.griffSetzen(a.armG, p);
+    if (a.armZw >= 0) this.griffSetzen(a.armZw, spiegel3(p));
+    if (t >= 1) this.ausr = null;
+  }
+
   rueckgaengig(): boolean {
     const z = this.zurueck.pop();
     if (!z) return false;
@@ -852,7 +1195,10 @@ export class Raum3D implements Raum {
     this.griffe = z.griffe;
     this.ankerSichtbar = z.sichtbar;
     this.linien = z.linien;
+    this.knick = z.knick;
     this.gesetzt = false;
+    this.dreh = null;
+    this.ausr = null;
     this.anzeigeRechnen();
     this.geaendert = true;
     this.zug = null;
