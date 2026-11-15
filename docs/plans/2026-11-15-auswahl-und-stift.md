@@ -1,8 +1,8 @@
 # Auswahl und Werkzeug P: Konzept (15.11.2026)
 
 Teil des Strangs „Linien, Punkte, Zeiger“ ([Plan vom 14.11.](2026-11-14-linien-zeiger-tropfen.md), [Richtungen statt
-Griffe](2026-11-15-richtungen-statt-griffe.md)). **Konzept zur Freigabe.** Gebaut sind davon nur die zwei Verbesserungen im
-Abschnitt „Schon gebaut“. Die Bilder sind gestellte Standbilder im echten Look der Proben, noch kein Verhalten:
+Griffe](2026-11-15-richtungen-statt-griffe.md)). **Freigegeben am 15.11. abends** mit Florians Antworten auf die vier Fragen
+(Abschnitt „Florians Antworten“ am Ende; wo sie von den Tabellen abweichen, gelten sie). Die Bilder sind gestellte Standbilder im echten Look der Proben, noch kein Verhalten:
 
 - `docs/progress/linien/2026-11-15-konzept-stift-2d.png`: an seinem Fisch. Ein Loop unter dem Auge, die Auswahl am Auge; neun
   Bilder.
@@ -154,3 +154,52 @@ Das ist der Teil, den Illustrator nicht kennt; er kommt aus den Abzweigungen im 
    Anfang, Esc oder ↩?
 3. Rahmen im Raum: Ziehen im Leeren wie in 2D, die Ansicht dreht mit zwei Fingern oder ⌥ + Ziehen (Vorschlag), oder ⌘ + Ziehen?
 4. Gewählt: Tropfen mit ruhigem kleinem Stern (Vorschlag), oder deutlicher?
+
+## Florians Antworten (15.11. abends, wörtlich) und was daraus folgt
+
+> „1. Abzweigung beginnen. schon der erste punkt soll ziehbar sein um eine kurve zu erzeugen.
+> 2. Linie ist fertig wenn sich der loop schließt. Man kann mit esc abbrechen. Aber im gegensatz zum jetzigen editor, soll man wenn
+> ma eine linie beginnt und auf einen anderen punkt die verbindung zieht auch dieser ziehbar sein und das ist dann sein zweites
+> handlepaar des punktes. Beim schließen eines loops auch wie bei illustrator auch den letzten verbindenden punt ziehen um die
+> exakte endverbindung/krümmung einzustellen. Nicht einfach rund verbinden...wenn zwei (oder mehr) punkte verbunden sind und ich
+> enter drücke, soll auch die linie entstehen. Offene enden soll es nicht geben. Nur loop. Ich bin nicht sicher ob der aktuelle
+> editor das zulässt.
+> 3. ⌥ + Ziehen...die genaue tastenbelegung müssen woir später noch ausarbeiten
+> 4. Versuchen wirs erstmal so“
+
+Damit gilt für den Bau (ersetzt die Zeilen oben, wo sie abweichen):
+
+- **Ziehen an jedem Punkt, auch am ersten und am letzten.** Beginnt die Linie auf einem vorhandenen Punkt (oder auf einer Linie,
+  dort entsteht er), gibt Ziehen ihr dort Schwung. Endet sie auf einem vorhandenen Punkt oder einer Linie, gibt Ziehen dort genauso
+  Schwung. Das ist das zweite Griffpaar des Punkts: Seine eigene Linie behält ihr Paar, die neue bekommt ein eigenes. Beim Ziehen
+  zeigen sich beide Griffe des Paars.
+- **Schließen wie in Illustrator:** Ziehen auf dem ersten Punkt stellt die Krümmung der Verbindung genau ein. Ohne ⌥ ändern sich
+  beide Griffe des ersten Punkts (er bleibt rund), mit ⌥ nur der Griff der Schlussverbindung.
+- **Keine offenen Enden, nur Loops.** Eine Linie ist fertig, sobald sie kein offenes Ende mehr hat: Sie schließt sich auf ihrem
+  ersten Punkt, oder sie hängt mit beiden Enden an Vorhandenem (Abzweigung). Frei begonnen läuft sie durch Vorhandenes hindurch,
+  bis sie sich schließt.
+- **↩ schließt:** Sind zwei oder mehr Punkte verbunden, verbindet ↩ den letzten mit dem ersten, wie ein Klick auf den ersten Punkt.
+- **Esc bricht ab:** Die angefangene Linie verschwindet samt ihren Kreuzungspunkten. Ein Punkt, den P auf eine vorhandene Linie
+  gesetzt hat, bleibt (das ist das Punktsetzen von heute).
+- **Im Raum:** Ziehen im Leeren zieht den Rahmen, ⌥ + Ziehen dreht die Ansicht, ⌥ + ⇧ + Ziehen verschiebt sie (wie Blender mit
+  nachgebildeter Mitteltaste), zwei Finger drehen, Pinch zoomt. Vorläufig, die Tastenbelegung arbeiten wir später aus.
+- **Gewählt:** Tropfen mit ruhigem kleinem Stern, wie im Bild.
+- Werkzeuge: P zeichnet, V (oder Esc, wenn nichts gezeichnet wird) wählt aus.
+
+Zu seiner Frage, ob der Editor das zulässt: Im Bau-Fenster (Abzweigungen vom 14.11.) ist eine Linie schon entweder geschlossen oder
+sie hängt an beiden Enden an Punkten anderer Linien (ein Ende darf auf der Mitte liegen, mit dem Spiegelbild ist sie dann ein Ring).
+Ein freies offenes Ende gibt es dort nicht. Es fehlen dort das Ziehen am ersten und letzten Punkt, ↩ und das Schließen mit Ziehen.
+
+### Probe nach dem Bau (an seine Antworten angepasst)
+
+- **2D, sein Fisch:**
+  - Ein Loop mit vier Punkten, zwei geklickt, zwei gezogen (einer mit ⌥), geschlossen mit Ziehen auf dem ersten Punkt: geschlossen,
+    vier Punkte plus Kreuzungen, Griffe genau wie gezogen (Abweichung unter 0,01), die Linie nach jedem Klick genau der Faden davor.
+  - Eine Abzweigung von Punkt zu Punkt, an beiden Enden gezogen: Beide Punkte haben ihr altes Griffpaar unverändert und für die neue
+    Linie den gezogenen Griff.
+  - Ein freier Anfang, zwei Punkte, ↩: geschlossen. Esc mitten im Zeichnen: Das Netz ist wieder wie vorher.
+- **Raum, „teat firefish“:** Ring von der Mitte über die Flanke zur Mitte: beide Enden genau auf z = 0, das Spiegelbild genau
+  gespiegelt, alle Punkte auf der Haut (unter 0,5 % des Radius), der Faden auf der sichtbaren Seite nie grün.
+- **Auswahl:** Rahmen wählt genau die Punkte darin, ⇧ fügt hinzu; Ziehen bewegt alle gewählten genau um den Mausweg; ⌫ löscht, die
+  Linie bleibt geschlossen.
+- Ein Film je Probe vom echten Verhalten.
