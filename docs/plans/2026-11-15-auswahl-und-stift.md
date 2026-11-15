@@ -203,3 +203,48 @@ Ein freies offenes Ende gibt es dort nicht. Es fehlen dort das Ziehen am ersten 
 - **Auswahl:** Rahmen wählt genau die Punkte darin, ⇧ fügt hinzu; Ziehen bewegt alle gewählten genau um den Mausweg; ⌫ löscht, die
   Linie bleibt geschlossen.
 - Ein Film je Probe vom echten Verhalten.
+
+## Gebaut (15.11. abends)
+
+In beiden Proben (`linien.html`, `raum.html`, Port 5199), mit seinen Antworten. Code: `apps/editor/src/linien/stift.ts` (P, Rechnung
+in 2D, Schnittstelle `StiftWerk`), `auswahl.ts` (Auswahl in 2D), `verhalten.ts` (Ablauf und Aussehen), `raum.ts` (P und Auswahl auf
+der Haut).
+
+- **P:** Der Tropfen hängt an der Feder; ein Klick lässt ihn als Punkt fallen, an der Feder wächst ein neuer nach. Der Faden ist die
+  nächste Linie genau so, wie sie wird, und schwillt zum Tropfen hin an; wo er Linien kreuzt, wachsen Punkte. Ziehen zieht beide
+  Griffe aus dem Punkt (Haarlinie mit Perle), ⌥ bricht (die alte Lage grün), ⇧ 45°, Leertaste verschiebt den Punkt. Am ersten Punkt
+  öffnet sich ein Ring; Klick oder Ziehen schließt, ↩ ebenso, eine Welle läuft einmal herum. Esc bricht ab, ⌫ nimmt den letzten
+  Punkt zurück. Auf Vorhandenem beginnen oder enden ist eine Abzweigung mit eigenem Griffpaar dort.
+- **Im Raum:** Punkte entstehen auf der Haut, die Spiegelseite zeichnet mit (grün dahinter). Nahe der Mitte zeigt sie sich als
+  Punktreihe, P rastet ein; von der Mitte über die Flanke zurück zur Mitte wird mit dem Spiegelbild ein Ring. Der Faden und die
+  neue Linie liegen auf der Haut.
+- **Auswahl:** Klick, ⇧, Rahmen, Doppelklick auf eine Linie (der Loop mit Welle), Ziehen aller gewählten, ⌫ (die Punkte vergehen,
+  die Linie läuft angepasst weiter), Esc, ⌘A. Gewählt: Tropfen mit ruhigem kleinem Stern. Im Raum wählt der Rahmen nur Sichtbares.
+
+Probe (vorher festgelegt, alles im echten Fenster mit Maus und Tasten):
+
+| Kriterium | Ergebnis |
+| --- | --- |
+| 2D Loop: vier Punkte (zwei geklickt, zwei gezogen, einer mit ⌥), geschlossen mit Ziehen | geschlossen, 4 Punkte + 2 Kreuzungen, Abweichung von den gezogenen Griffen 0,00008 |
+| Linie nach dem Klick = Faden davor | Abweichung 0,00002 |
+| Abzweigung von Punkt zu Punkt, an beiden Enden gezogen | hängt an beiden, Griffe genau wie gezogen, alte Griffpaare unverändert |
+| ↩ schließt, Esc stellt das Netz wieder her | ja, ja |
+| Rahmen wählt genau die Punkte darin, ⇧ dazu, Ziehen um den Mausweg, ⌫ hält Loops geschlossen | ja (Abweichung 0) |
+| ⇧ 45°, Leertaste verschiebt den Punkt (Griff bleibt), Klick auf den letzten Punkt zieht den Griff ein | 45,000°, (4, 3) genau, ja |
+| Raum: Ring Mitte – Flanke – Mitte an „teat firefish“ | geschlossen, beide Enden genau z = 0, Spiegelbild genau (0), Punkte auf der Haut (0,002 % des Radius) |
+| Raum: Faden auf der sichtbaren Seite nie grün | an drei Stellen 0 falsch grün; grün nur, wo er wirklich unter den Körper läuft |
+| Raum: Rahmen, Ziehen, ⌫, ⌥ + Ziehen dreht | nur Sichtbares gewählt, gegriffener Punkt genau (der zweite 0,26 px, Perspektive), Ring bleibt zu, dreht |
+
+Proben: `apps/editor/scripts/linien/stift-zeichnen-probe.mjs`, `stift-raum-probe.mjs` (Ausgabe JSON). Bilder
+`docs/progress/linien/2026-11-15-stift-probe-2d.png` und `…-raum.png`; Filme vom echten Verhalten `…-stift-film-2d.mp4` (32 s) und
+`…-stift-film-raum.mp4` (24 s), Skript `stift-film.mjs`. `richtung-probe.mjs` hält unverändert.
+
+Grenzen und offen:
+
+- Im Raum entstehen noch keine Punkte, wo die neue Linie vorhandene kreuzt (in 2D schon).
+- Die Linie im Raum liegt in der Anzeige auf der Haut; gerechnet ist sie ein Bézier-Pfad durch ihre Punkte (im Editor folgt die Haut
+  ohnehin den Linien).
+- Liegen mehrere gewählte Punkte auf einer Linie, fließen ihre Sterne zu einer längeren Schwellung zusammen.
+- Nach dem Überqueren einer Linie hält der Tropfen sie noch 1,8 Fangradien weit: Drücken knapp daneben zieht die Linie statt eines
+  Rahmens.
+- Die Tastenbelegung ist vorläufig (seine Antwort 3).

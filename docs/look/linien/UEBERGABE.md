@@ -1,4 +1,4 @@
-# Übergabe: Linien, Punkte, Zeiger (Stand 15.11.2026, nachmittags)
+# Übergabe: Linien, Punkte, Zeiger (Stand 15.11.2026, abends)
 
 Eigener Strang. Plan: [`docs/plans/2026-11-14-linien-zeiger-tropfen.md`](../../plans/2026-11-14-linien-zeiger-tropfen.md). Konzept
 zur Freigabe: [`docs/plans/2026-11-15-richtungen-statt-griffe.md`](../../plans/2026-11-15-richtungen-statt-griffe.md).
@@ -16,7 +16,7 @@ Florians Entwürfe liegen hier (`2026-11-14-florian-fisch-entwurf.webp` und `…
 | Vergleichsbilder | `apps/editor/scripts/linien/vergleich.mjs` → `docs/progress/linien/<datum>-vergleich-gesamt.jpg`, `…-nah.jpg` |
 | Film | `apps/editor/scripts/linien/film.mjs <ziel.mp4>` (Ablauf in `BAHN`, Bild für Bild, 60 je Sekunde, ffmpeg) |
 | Raum | `http://localhost:5199/raum.html` (`?form=<Name>`); `src/linien/raum.ts`, `raum-main.ts`; Film `scripts/linien/raum-film.mjs` |
-| Werkzeug P | Probe `scripts/linien/stift-probe.mjs` (2D und Raum, Ausgabe JSON), Bild `scripts/linien/stift-bild.mjs` |
+| Werkzeug P und Auswahl (seit 15.11. abends) | Code `src/linien/stift.ts` (P wie Illustrator, Schnittstelle `StiftWerk`, Rechnung 2D), `auswahl.ts` (Auswahl 2D), im Raum in `raum.ts` (Haut treffen, auflegen, Mitte); Proben `scripts/linien/stift-zeichnen-probe.mjs` (2D) und `stift-raum-probe.mjs` (Raum), Filme `stift-film.mjs 2d|raum` → `docs/progress/linien/2026-11-15-stift-*`. Die alte `stift-probe.mjs` (Punkt setzen und gleich ziehen) ist abgelöst |
 | Konzeptbilder | `scripts/linien/konzept-bilder.mjs` (2D, sechs Bilder), `konzept-raum.mjs` (Raum, drei Bilder) → `docs/progress/linien/2026-11-15-konzept-*.png` |
 | Richtungen | Code `src/linien/richtung.ts` (+ `verhalten.ts`, `raum.ts`, `netz.ts`); Probe `scripts/linien/richtung-probe.mjs`; Bilder `richtung-bilder.mjs`; Film `richtung-film.mjs` → `docs/progress/linien/2026-11-15-richtung-*` |
 | Zeiger bleibt, Schwellung fließt | Vorher und nachher auf demselben Weg, mit Messwerten: `scripts/linien/fliessen-film.mjs` (lädt den alten Stand aus git ins Fenster) → `docs/progress/linien/2026-11-15-fliessen-*` |
@@ -27,8 +27,15 @@ Florians Entwürfe liegen hier (`2026-11-14-florian-fisch-entwurf.webp` und `…
 Zeiger an Linie oder Punkt, drücken und ziehen. Pinch oder ⌘ + Rad zoomt, zwei Finger oder Leertaste verschieben, ⌘Z zurück.
 Auf der Linie nahe am Punkt: Richtung drehen (⌥ knickt, zurück in die Flucht rastet ein, Doppelklick: Knick ↔ rund); im Raum auf
 der Haut, ⇧ beim Drücken aus der Haut.
-Knöpfe: 100 %, Einpassen, Entwurf (seine Zeichnung darunter, E), Wachsen mit Zoom, P · Punkt setzen (P, Esc beendet), Feinregler
-(R; Werte bleiben im Browser, „Werte kopieren“ legt die geänderten als JSON in die Zwischenablage), Zurück, Fisch neu.
+Auswahl (V): Klick wählt einen Punkt (⇧ dazu oder weg), Ziehen im Leeren zieht einen Rahmen, Doppelklick auf eine Linie wählt den
+Loop, gewählte gehen beim Ziehen zusammen mit, ⌫ löscht, Esc leert, ⌘A alle.
+P (wie Illustrator): Klick Ecke, Ziehen rund, ⌥ bricht, ⇧ 45°, Leertaste verschiebt beim Ziehen den Punkt, Klick auf den letzten
+Punkt zieht seinen Griff ein; am ersten Punkt der Ring (Klick oder Ziehen schließt), ↩ schließt, ⌫ nimmt den letzten Punkt zurück,
+Esc bricht ab. Auf Vorhandenem beginnen oder enden: Abzweigung (Ziehen gibt dort ein zweites Griffpaar). Im Raum auf der Haut,
+spiegelgleich, an der Mitte rastet P ein (von Mitte zu Mitte: Ring); Ziehen im Leeren: Rahmen, ⌥ + Ziehen dreht, ⌥ + ⇧ + Ziehen
+verschiebt, zwei Finger drehen.
+Knöpfe: 100 %, Einpassen, Entwurf (seine Zeichnung darunter, E), Wachsen mit Zoom, P · Zeichnen, Feinregler (R; Werte bleiben im
+Browser, „Werte kopieren“ legt die geänderten als JSON in die Zwischenablage), Zurück, Fisch neu.
 
 ## Stand
 
@@ -63,9 +70,23 @@ Knöpfe: 100 %, Einpassen, Entwurf (seine Zeichnung darunter, E), Wachsen mit Zo
     zwei Buckel 10 Bilder → 0, Stärke beim Wechsel 50 % → 91 %, Zeiger nach dem Klick 6,75 px → 0 vom Punkt.
     `richtung-probe.mjs` prüft jetzt „Zeiger bleibt“ statt „Versatz 0“.
   - **Konzept „Auswahl und Werkzeug P“** (P wie in Illustrator, im Netz anhängen und kreuzen, Ring um den Körper über die Mitte,
-    Auswahl mit Tropfen und kleinem Stern, Rahmen): Plan und zwölf Bilder; vier Fragen an ihn. **Erst nach seinem Wort bauen.**
+    Auswahl mit Tropfen und kleinem Stern, Rahmen): Plan und zwölf Bilder; vier Fragen an ihn.
+- **15.11. abends:** Seine Antworten (wörtlich im Plan): Abzweigung, Ziehen an jedem Punkt (zweites Griffpaar), nur Loops, ↩ schließt,
+  Esc bricht ab, ⌥ + Ziehen dreht im Raum, Auswahl wie im Bild. **Gebaut in 2D und im Raum**, beide Proben halten alle Kriterien
+  (Tabelle im Plan, Abschnitt „Gebaut“), Filme `2026-11-15-stift-film-2d.mp4` und `…-raum.mp4`. Sein Urteil steht aus. Offen:
+  Kreuzungen im Raum (dort entstehen noch keine Punkte, wo die neue Linie Linien kreuzt), seine Tastenbelegung, Einbau in den Editor.
 
 ## Fallen
+
+- Kreuzungen setzt P erst ein, wenn die Linie fertig ist: Ziehen am ersten Punkt beim Schließen ändert noch das erste Stück; früher
+  eingesetzte Kreuzungspunkte blieben dann neben der Kurve liegen. Bis dahin zeigt das Verhalten sie als Vorschau.
+- Im Raum misst die Anzeige „verdeckt“ nur nahe am Zeiger (Tiefenbild um ihn). Der Rahmen prüft deshalb jeden Punkt mit einem Strahl
+  (`ankerZuSehen`), und `__raum.vorspulen` holt das Tiefenbild wie der Bildtakt; ohne es greift eine Probe Linien auf der Rückseite.
+- Proben mit P: Wer auf eine vorhandene Linie oder einen Punkt klickt, macht eine Abzweigung (sie endet am nächsten Vorhandenen).
+  Freie Stellen suchen (`stift-raum-probe.mjs`, `freieStelle`); der Tropfen hält 1,8 Fangradien, nach dem Überqueren einer Linie
+  zieht Drücken daneben noch sie statt eines Rahmens (`stift-film.mjs` sucht den Anfang des Rahmens fern von allen Linien).
+- Im Raum liegt eine mit P gezeichnete Linie nur in der Anzeige auf der Haut (`aufHaut`: Proben auf den nächsten Hautpunkt gelegt);
+  ihre Bézier-Punkte und Griffe bleiben die Wahrheit. `Raum3D.schritte` ist das Zurück (der Name `zurueck` gehört zu `StiftWerk`).
 
 - Vorher und nachher im selben Fenster: Den alten Stand einer Datei holt `git show`, `typescript` übersetzt ihn, und Playwright
   liefert ihn unter einer eigenen Adresse aus (`page.route`); die übrigen Module kommen vom Server (`fliessen-film.mjs`). So kommt
