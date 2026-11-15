@@ -72,25 +72,6 @@ body {
   filter: blur(3px);
   transform: translate(-50%, -54%);
 }
-/* Namen der Wände (Lobster), sichtbar beim Darüberfahren */
-#namen {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-#namen .name {
-  position: absolute;
-  left: 0;
-  top: 0;
-  font-family: 'Lobster', Georgia, serif;
-  font-size: 30px;
-  line-height: 1;
-  color: var(--tinte);
-  opacity: 0;
-  white-space: nowrap;
-  padding: 0 0 6px;
-  will-change: transform, opacity;
-}
 #leiste > #hinweis {
   flex: 1 0 100%;
   text-align: center;

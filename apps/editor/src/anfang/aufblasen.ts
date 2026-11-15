@@ -96,8 +96,8 @@ export const GRUNDWERTE: Werte = {
   welle: 0.035,
   fov: 46,
   kameraDauer: 1.15,
-  gier: 34,
-  neigung: 13,
+  gier: 32,
+  neigung: 22,
 };
 
 /** Maße der Form im Raum */

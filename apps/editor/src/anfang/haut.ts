@@ -21,6 +21,7 @@ import {
   BackSide,
   BufferAttribute,
   BufferGeometry,
+  CanvasTexture,
   Color,
   CustomBlending,
   DataTexture,
@@ -29,6 +30,7 @@ import {
   FrontSide,
   HalfFloatType,
   LinearFilter,
+  LinearMipmapLinearFilter,
   Mesh,
   MinEquation,
   NoBlending,
@@ -415,6 +417,47 @@ export interface Wand {
   z?: number;
 }
 
+// ---------- Namen auf dem Boden ----------
+
+/** Namen der Wände in Lobster, flach auf dem Boden (Florian, 15.11.: „die Beschriftung soll auch auf den Boden projiziert sein“) */
+const NAME_VERTEX = /* glsl */ `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
+}
+`;
+const NAME_FRAGMENT = /* glsl */ `
+precision highp float;
+uniform sampler2D uTex;
+uniform vec3 uFarbe;
+uniform float uStaerke;
+varying vec2 vUv;
+void main() {
+  float a = texture2D(uTex, vUv).a * uStaerke;
+  gl_FragColor = vec4(uFarbe * a, a);
+}
+`;
+
+/** ein Name auf dem Boden: Mitte, Leserichtung (Länge = Breite), Richtung der Oberkante der Buchstaben (Länge = Höhe) */
+export interface NameAmBoden {
+  text: string;
+  mitte: Vector3;
+  u: Vector3;
+  v: Vector3;
+}
+
+/** je Bild: wie stark der Name zu sehen ist (mit den Schatten) und wie weit er hervortritt (beim Darüberfahren dunkel) */
+export interface NameZustand {
+  staerke: number;
+  hervor: number;
+}
+
+const NAME_GRAU = new Color().setScalar(0.42);
+const NAME_TINTE = new Color('#1f1a17');
+const NAME_NACHT = new Color().setScalar(0.08);
+const NAME_NACHT_HELL = new Color('#f1ece3');
+
 // ---------- Haut: Netze, Ziel, Bild ----------
 
 export interface HautWerte {
@@ -440,6 +483,8 @@ export interface HautWerte {
   /** Wände des Kastens mit ihren Schatten, Farbe der Schatten (linear) */
   waende: Wand[];
   schattenFarbe: Color;
+  /** Namen auf dem Boden (in der Reihenfolge von `setzeNamen`) */
+  namen: NameZustand[];
 }
 
 export const PAPIER = new Color('#ffffff');
@@ -460,6 +505,7 @@ export class Haut {
   private matsRahmen: ShaderMaterial[] = [];
   private matsWand: ShaderMaterial[] = [];
   private koerper: Koerper | null = null;
+  private namen: { mesh: Mesh; mat: ShaderMaterial; text: string; tex: CanvasTexture | null }[] = [];
 
   constructor(renderer: WebGLRenderer) {
     this.renderer = renderer;
@@ -563,6 +609,83 @@ export class Haut {
     return [mal(BackSide, 1), mal(BackSide, 2), mal(FrontSide, 1), mal(FrontSide, 2), deckend];
   }
 
+  /**
+   * Namen auf dem Boden setzen (Lage und Größe); die Schrift wird einmal in ein Bild gezeichnet, sobald Lobster geladen ist.
+   * `format` meldet das Seitenverhältnis des Bilds (Breite : Höhe), damit die Fläche dazu passt.
+   */
+  setzeNamen(liste: NameAmBoden[], format: (i: number, verhaeltnis: number) => void): void {
+    liste.forEach((n, i) => {
+      let e = this.namen[i];
+      if (!e) {
+        const g = new BufferGeometry();
+        g.setAttribute('position', new BufferAttribute(new Float32Array(12), 3));
+        g.setAttribute('uv', new BufferAttribute(new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), 2));
+        g.setIndex([0, 1, 2, 2, 1, 3]);
+        const mat = new ShaderMaterial({
+          vertexShader: NAME_VERTEX,
+          fragmentShader: NAME_FRAGMENT,
+          uniforms: { uTex: { value: null }, uFarbe: { value: new Color() }, uStaerke: { value: 0 } },
+          depthTest: false,
+          depthWrite: false,
+          transparent: true,
+          side: DoubleSide,
+          blending: CustomBlending,
+          blendEquation: AddEquation,
+          blendSrc: OneFactor,
+          blendDst: OneMinusSrcAlphaFactor,
+        });
+        const mesh = new Mesh(g, mat);
+        mesh.renderOrder = -15;
+        mesh.frustumCulled = false;
+        mesh.visible = false;
+        this.szene.add(mesh);
+        e = { mesh, mat, text: '', tex: null };
+        this.namen[i] = e;
+      }
+      const P = (e.mesh.geometry.getAttribute('position') as BufferAttribute).array as Float32Array;
+      const ecke = (a: number, b: number, k: number): void => {
+        P[k * 3] = n.mitte.x + n.u.x * a + n.v.x * b;
+        P[k * 3 + 1] = n.mitte.y + n.u.y * a + n.v.y * b;
+        P[k * 3 + 2] = n.mitte.z + n.u.z * a + n.v.z * b;
+      };
+      ecke(-0.5, -0.5, 0);
+      ecke(0.5, -0.5, 1);
+      ecke(-0.5, 0.5, 2);
+      ecke(0.5, 0.5, 3);
+      (e.mesh.geometry.getAttribute('position') as BufferAttribute).needsUpdate = true;
+      if (e.text !== n.text) {
+        e.text = n.text;
+        const eintrag = e;
+        const zeichnen = (): void => {
+          const c = document.createElement('canvas');
+          const ctx = c.getContext('2d')!;
+          const gr = 200;
+          ctx.font = `${gr}px Lobster`;
+          const b = Math.ceil(ctx.measureText(n.text).width + gr * 0.3);
+          c.width = b;
+          c.height = Math.round(gr * 1.3);
+          ctx.font = `${gr}px Lobster`;
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'alphabetic';
+          ctx.fillText(n.text, b / 2, gr * 1.02);
+          eintrag.tex?.dispose();
+          const t = new CanvasTexture(c);
+          t.minFilter = LinearMipmapLinearFilter;
+          t.magFilter = LinearFilter;
+          t.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+          t.needsUpdate = true;
+          eintrag.tex = t;
+          eintrag.mat.uniforms.uTex!.value = t;
+          format(i, c.width / c.height);
+        };
+        const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
+        if (fonts) void fonts.load('200px Lobster').then(zeichnen, zeichnen);
+        else zeichnen();
+      }
+    });
+  }
+
   groesse(b: number, h: number, dpr: number): void {
     this.ziel.setSize(Math.max(1, Math.round(b * dpr)), Math.max(1, Math.round(h * dpr)));
     this.ende.material.uniforms.uGroesse!.value.set(b * dpr, h * dpr);
@@ -660,6 +783,15 @@ export class Haut {
       k++;
     }
     void k;
+    this.namen.forEach((e, i) => {
+      const z = w.namen[i];
+      const s = z && e.tex ? z.staerke : 0;
+      e.mesh.visible = s > 1e-3;
+      e.mat.uniforms.uStaerke!.value = s;
+      const grau = w.nacht ? NAME_NACHT : NAME_GRAU;
+      const tinte = w.nacht ? NAME_NACHT_HELL : NAME_TINTE;
+      (e.mat.uniforms.uFarbe!.value as Color).copy(grau).lerp(tinte, z?.hervor ?? 0);
+    });
     const grund = (w.nacht ? NACHT : PAPIER).clone();
     r.setRenderTarget(this.ziel);
     r.setClearColor(grund, 1);

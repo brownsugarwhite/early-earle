@@ -21,10 +21,11 @@ for (const T of MOMENTE) {
     window.__anfang.bild();
   }, T);
   await page.waitForTimeout(50);
-  bilder.push((await page.screenshot({ clip: { x: 260, y: 170, width: 680, height: 460 } })).toString('base64'));
+  const clip = process.env.CLIP === 'ganz' ? { x: 0, y: 0, width: 1200, height: 800 } : { x: 260, y: 170, width: 680, height: 460 };
+  bilder.push((await page.screenshot({ clip, scale: process.env.CLIP === 'ganz' ? 'css' : 'device' })).toString('base64'));
 }
-const p = await browser.newPage({ viewport: { width: 5 * 470 + 40, height: 900 } });
-await p.setContent(`<style>body{margin:0;padding:16px;font:14px -apple-system,sans-serif;color:#555;display:flex;flex-wrap:wrap;gap:10px}img{width:460px;border:1px solid #eee;display:block}</style>${bilder.map((b, i) => `<div><img src="data:image/png;base64,${b}"><div>${MOMENTE[i].toFixed(2).replace('.', ',')} s</div></div>`).join('')}`);
+const p = await browser.newPage({ viewport: { width: process.env.CLIP === 'ganz' ? 2 * 910 + 40 : 5 * 470 + 40, height: 900 } });
+await p.setContent(`<style>body{margin:0;padding:16px;font:14px -apple-system,sans-serif;color:#555;display:flex;flex-wrap:wrap;gap:10px}img{width:${process.env.CLIP === 'ganz' ? 900 : 460}px;border:1px solid #eee;display:block}</style>${bilder.map((b, i) => `<div><img src="data:image/png;base64,${b}"><div>${MOMENTE[i].toFixed(2).replace('.', ',')} s</div></div>`).join('')}`);
 await p.waitForTimeout(150);
 await p.screenshot({ path: ziel, fullPage: true });
 await browser.close();

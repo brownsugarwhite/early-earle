@@ -258,3 +258,25 @@ Schatten haben harte Kanten. Im hohen, schmalen Fenster (Handy) liegt die linke 
 2. Kanten des Kastens als Haarlinien: ja, oder nur die Schatten?
 3. Abriss: so, langsamer hängen, oder die Kamera mehr zur Seite, damit man den Hals sieht?
 4. Als Nächstes der Morph zur Ansicht beim Drehen zu einer Wand und das Bedienen der Kurven dort (aus der Ecke übernehmen)?
+
+## Runde 3 (15.11.2026, spätabends): Ecke statt Kasten
+
+Florian (wörtlich, „janice“ gelesen als „ja, ich“): „janice meinte ecke und die beschriftung soll auch auf den boden projeziert sein“
+
+**Gebaut:**
+- **Ecke wie in der Vision „Ecke“:** drei unsichtbare Flächen, die sich hinter der Blase in einem Punkt treffen: Rückwand mit der
+  Seite (dorthin fährt der Rahmen und wird Schatten), linke Wand mit der Front, Boden mit Top. Rechte Wand und Decke sind weg. Statt
+  der Kanten des Kastens drei feinste Haarlinien vom Eckpunkt aus.
+- **Namen auf dem Boden:** Seite, Front und Top liegen in Lobster flach auf dem Boden, vor ihrer Wand (Front längs der linken Wand,
+  Seite vor der Rückwand, Top vor dem Schatten von oben), in der Tiefe gestreckt wie Schrift auf einer Straße, damit sie sich von
+  schräg oben lesen. Grau wie ein Schatten, dunkel, solange der Zeiger über ihrer Wand oder auf dem Namen liegt; dann zeigt die
+  Wand auch ihre Linien.
+- **Kamera:** 32° zur Seite, 22° von oben (vorher 13°; sonst liest man den Boden nicht). Der Abstand am Ende wird so gesucht, dass
+  Blase, Schatten, Ecke und Namen ins Bild passen, in jedem Format (auch hoch und schmal).
+- Probe: 60 Bilder je Sekunde (95 % unter 16,8 ms), Übergang 0,19 px; Darüberfahren im Film und im Browser geprüft.
+
+**Bilder und Film:** `docs/progress/anfang/2026-11-15-r3-film-ecke.mp4` (ganzer Ablauf mit Darüberfahren), `…-r3-ecke.png`
+(unterwegs und in Ruhe), `…-r3-ecke-darueber.png` (Seite, Front, Top beim Darüberfahren).
+
+**Offen (Fragen an Florian):** Namen immer grau sichtbar oder nur beim Darüberfahren; das Quadrat am Boden aus der Vision (Feld des
+2048-Spiels) dazu; als Nächstes der Morph zur Ansicht beim Drehen zu einer Wand und das Bedienen der Kurven dort.

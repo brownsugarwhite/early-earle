@@ -1,4 +1,4 @@
-# Übergabe: Anfang einer Form und Seifenhaut (Stand 15.11.2026, spätabends, Runde 2)
+# Übergabe: Anfang einer Form und Seifenhaut (Stand 15.11.2026, spätabends, Runde 3: Ecke)
 
 Eigener Strang neben „Linien, Punkte, Zeiger“. Konzept, Ergebnis und Fragen an Florian:
 [`docs/plans/2026-11-15-anfang-seifenhaut.md`](../../plans/2026-11-15-anfang-seifenhaut.md). Florians Materialentwurf (keine feste
@@ -20,11 +20,15 @@ Vorlage): `2026-11-15-entwurf-materialien.webp` hier im Ordner.
 
 Florians Rückmeldung (wörtlich im Plan, Abschnitt „Runde 2“): Seifenhaut und Höhenlinien gefallen, Nacht noch nicht; Aufblasen neu (Rahmen fährt zur Wand und wird Schatten, Haut hängt, reißt ab), Kasten mit Schatten an den Wänden, Linien nur beim Darüberfahren, Lobster. Gebaut und geprüft, sein Urteil steht aus. Nicht gebaut: Morph zur Ansicht beim Drehen und Bedienen der Kurven an den Wänden (aus der Ecke der Vision übernehmen, Cloud-Zweig `claude/meme-curves-editor-concept-s65kq1`), Ziehen, Aufblasen, Glätten an der Blase (kommt im Detail später).
 
+## Stand Runde 3
+
+Florian: „ich meinte Ecke und die Beschriftung soll auch auf den Boden projiziert sein“. Gebaut: Ecke aus Rückwand (Seite), linker Wand (Front) und Boden (Top), drei Haarlinien vom Eckpunkt, Namen in Lobster flach auf dem Boden (grau, beim Darüberfahren dunkel), Kamera 32°/22° mit eingepasstem Abstand. Sein Urteil steht aus.
+
 ## Bedienung
 
 P ist das einzige Werkzeug: Klick Ecke, Ziehen rund, ⌥ bricht den Griff, am ersten Punkt schließen (oder ↩), ⌫ letzter Punkt
-zurück (geschlossen: öffnet), Esc verwirft. Geschlossen ziehen sich Punkte noch. ↩ bläst auf. Danach: über eine Wand fahren
-zeigt ihre Linien und ihren Namen, an der Blase ziehen dehnt, daneben ziehen dreht, Rad zoomt, Leertaste noch einmal, Esc oder ⌫
+zurück (geschlossen: öffnet), Esc verwirft. Geschlossen ziehen sich Punkte noch. ↩ bläst auf. Danach: über eine Wand oder ihren Namen am Boden fahren
+zeigt ihre Linien, der Name wird dunkel, an der Blase ziehen dehnt, daneben ziehen dreht, Rad zoomt, Leertaste noch einmal, Esc oder ⌫
 zurück aufs Blatt (der Film läuft rückwärts). 1–4 Fassung, N Nacht, R Feinregler.
 
 ## Fallen
@@ -50,7 +54,8 @@ zurück aufs Blatt (der Film läuft rückwärts). 1–4 Fassung, N Nacht, R Fein
   Profil (`trichter`) oder die Lage des Halses ändert, muss beides an beiden Stellen ändern (`Koerper.setzen`, beide Zweige).
 - Wände: Die Blase wird im Shader auf die Wand gelegt und mit MIN gemischt (Überdeckungen nicht doppelt dunkel). An der Rückwand
   löst die Projektion der Blase den Rest im Rahmen ab, sobald er ganz Schatten ist (gleiche Form, gleiche Farbe).
-- Der Kasten wird so breit, dass die Kamera am Ende in ihm steht (`kastenRechnen`); sonst sieht man bei 34° eine Wand von außen.
+- Ecke (`eckeRechnen`): Wände bei `xl`, `yb`, `zw`; der Abstand der Kamera am Ende kommt aus `einpassen` (Halbierung, alle wichtigen Punkte im Bild). Wer Namen, Schatten oder die Kamera verschiebt, bekommt den Abstand neu.
+- Namen am Boden (`Haut.setzeNamen`): die Schrift wird erst gezeichnet, wenn Lobster geladen ist (`document.fonts.load`); danach meldet sie ihr Seitenverhältnis, und die Ecke wird neu gerechnet. Darüberfahren prüft auf dem Boden zuerst die Rechtecke der Namen.
 - Alle Shader werden in `setzeKoerper` übersetzt (`renderer.compile`), sonst stockt ein Bild, wenn die Wände erscheinen.
-- `__anfang.aufDerWand(i, a, b)` gibt einen Punkt auf Wand i (0 Rück, 1 links, 2 rechts, 3 Boden, 4 Decke) im Bild; `abriss()`
+- `__anfang.aufDerWand(i, a, b)` gibt einen Punkt auf Wand i (0 Rückwand, 1 links, 2 Boden) im Bild, `aufDemNamen(i)` die Mitte eines Namens; `abriss()`
   misst den Abriss (Sprung und Schritte davor und danach).

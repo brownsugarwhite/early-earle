@@ -19,7 +19,7 @@ export interface Werte extends AblaufWerte {
 
 export const GRUNDWERTE: Werte = { ...ABLAUF, fuelle: 0.72, dicke: 470, spannung: 1, sicht: 3, schatten: 0.14, kanten: 0.6 };
 
-const SPEICHER = 'anfang-probe-werte-3';
+const SPEICHER = 'anfang-probe-werte-4';
 
 export function werteLesen(): Werte {
   try {
