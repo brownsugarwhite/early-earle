@@ -1187,6 +1187,24 @@ export class Raum3D implements Raum {
     if (t >= 1) this.ausr = null;
   }
 
+  // ---------- Auswahl (vorläufig: einzeln wie bisher) ----------
+
+  punkteZiehenBeginnen(pis: number[]): void {
+    if (pis[0] !== undefined) this.ziehenBeginnen({ art: 'punkt', pi: pis[0] });
+  }
+
+  punkteZiehen(dx: number, dy: number): void {
+    this.ziehen(dx, dy);
+  }
+
+  punkteZiehenEnden(): void {
+    this.ziehenEnden();
+  }
+
+  punkteLoeschen(_pis: number[]): boolean {
+    return false;
+  }
+
   rueckgaengig(): boolean {
     const z = this.zurueck.pop();
     if (!z) return false;

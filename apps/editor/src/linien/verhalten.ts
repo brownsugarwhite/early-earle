@@ -18,7 +18,16 @@
  *
  * Werkzeug P (Florian, 15.11.: „die Punkte auf der Linie sollen nur erscheinen, wenn ich mit Werkzeug P einen Punkt auf Linien setzen
  * kann, sonst nur die Verdickung“): Ohne P zeigt eine Linie unter dem Zeiger nur ihre Schwellung, gegriffen und gezogen wird sie wie
- * bisher. Mit P hängt dort der Tropfen; Drücken setzt ihn als Punkt auf die Linie (er bleibt gegriffen, Ziehen verschiebt ihn gleich).
+ * bisher. Mit P hängt dort der Tropfen.
+ *
+ * Seit dem 15.11. abends zeichnet P wie in Illustrator (Rechnung in `stift.ts`): An der Feder hängt ein Tropfen; ein Klick lässt ihn
+ * als Punkt fallen, vom letzten Punkt spannt sich der Faden (die nächste Linie, genau wie sie wird) zum Zeiger. Ziehen zieht Griffe als
+ * Haarlinien mit Perlen aus dem Punkt, ⌥ bricht sie, ⇧ rastet in 45°. Am ersten Punkt öffnet sich ein Ring, ein Klick schließt, eine
+ * Welle läuft einmal herum. An Vorhandenem hängt die Linie an (Punkt oder Linie), wo der Faden Linien kreuzt, teilen beide einen Punkt.
+ *
+ * Auswahl (ohne P, `auswahl.ts`): Klick wählt einen Punkt (er bleibt ein Tropfen, seine Linien schwellen ruhig an), ⇧ nimmt dazu oder
+ * weg, Ziehen im Leeren zieht einen Rahmen, Doppelklick auf eine Linie wählt den ganzen Loop. Gewählte gehen beim Ziehen zusammen
+ * mit, ⌫ löscht sie.
  *
  * Richtungen (Konzept „Richtungen statt Griffe“, 15.11., `richtung.ts`): Auf der Linie nahe an einem Punkt schwillt sie vom Punkt aus
  * an, so weit ihr Schwung reicht (Nadel): rund auf beiden Seiten, geknickt nur auf einer, mit Taille am Punkt. Drücken: Der Zeiger
@@ -29,8 +38,9 @@
  * Längen in Punkten des Entwurfs; die Anzeige rechnet in Gerätepunkte um.
  */
 
+import { punkteDerLinie, punkteImRahmen, punkteLoeschen, punkteZiehen } from './auswahl';
 import { Feder1, Feder2 } from './feder';
-import { PRIM_FELDER, type Szene } from './fluessig';
+import { MAX_FELDER, PRIM_FELDER, type Szene } from './fluessig';
 import {
   type LinienProben,
   type LinienTreffer,
@@ -44,11 +54,11 @@ import {
   linieAbtasten,
   naechsteStelle,
   netzKopie,
-  punktEinsetzen,
   punktZiehen,
   stelleZiehen,
 } from './netz';
 import { type DrehBild, type Dreher, Dreher2D, GEGEN, type RichtungZiel } from './richtung';
+import { type EntwurfInfo, type FadenEnde, type FadenProben, Stift2D, type StiftOrt, type StiftWerk, type V2 } from './stift';
 
 export interface Werte {
   /** Florians Vorgaben: Breiten (voll), Punktradius */
@@ -145,6 +155,11 @@ export interface Raum extends Dreher {
   /** Werkzeug P: Punkt auf Stück si der Linie li beim Parameter t setzen; Ergebnis: seine Nummer (wie im projizierten Netz) */
   punktEinsetzen(li: number, si: number, t: number): number | null;
   rueckgaengig(): boolean;
+  /** Auswahl: mehrere Punkte zusammen ziehen (Bewegung der Maus seit dem Drücken, Bildschirmpunkte) und löschen */
+  punkteZiehenBeginnen(pis: number[]): void;
+  punkteZiehen(dx: number, dy: number): void;
+  punkteZiehenEnden(): void;
+  punkteLoeschen(pis: number[]): boolean;
 }
 
 /**
@@ -169,6 +184,61 @@ type SchwellZiel = { c: number; a: number; b: number; ha: number; hb: number; ta
 
 /** so weit (Bildschirmpunkte, mal Maßstab) muss die Maus gehen, bis der Zeiger zu gut zwei Dritteln wieder bei ihr ist */
 const ZURUECK_WEG = 40;
+/** unter so vielen Bildschirmpunkten Weg ist Drücken und Loslassen ein Klick (kein Ziehen) */
+const KLICK_WEG = 3;
+
+/** was ein Klick mit P gerade täte */
+type StiftZiel =
+  | { art: 'frei'; x: number; y: number; mitte: boolean }
+  | { art: 'punkt'; pi: number; x: number; y: number }
+  | { art: 'linie'; li: number; si: number; t: number; x: number; y: number }
+  | { art: 'schluss'; x: number; y: number }
+  | { art: 'letzter'; x: number; y: number };
+
+/**
+ * Ziehen der Griffe an einem Punkt der neuen Linie: am ersten (`erster`), an einem neuen (`neu`), an Vorhandenem (`anschluss`, sein
+ * zweites Griffpaar), beim Schließen auf dem ersten (`schluss`) oder auf dem letzten (`letzter`: Klick zieht seinen Griff ein).
+ */
+interface StiftZug {
+  art: 'erster' | 'neu' | 'anschluss' | 'schluss' | 'letzter';
+  /** Maus beim Drücken (Netz-Einheiten; die Leertaste schiebt sie mit dem Punkt mit) und im letzten Bild */
+  mx: number;
+  my: number;
+  lx: number;
+  ly: number;
+  bewegt: boolean;
+  gebrochen: boolean;
+  /** Griffe, wie sie gerade stehen (vom Punkt aus): `aus` in Zugrichtung, `gegen` die andere Seite; `fest`: beim Brechen stehen geblieben */
+  aus: V2;
+  gegen: V2;
+  fest: V2 | null;
+  /** der Punkt ist neu (die Leertaste darf ihn verschieben) */
+  frei: boolean;
+}
+
+/** was die Zeichenhilfen von `szene` brauchen: Kapsel anhängen, Lagen und Breiten in Gerätepunkte, Felder, neue Gruppe */
+interface Zeichnen {
+  push: (x0: number, y0: number, x1: number, y1: number, r0: number, r1: number, gruppe: number, schicht: number, art: number, z0?: number, z1?: number) => void;
+  X: (x: number) => number;
+  Y: (y: number) => number;
+  R: (r: number) => number;
+  felder: number[];
+  gruppe: () => number;
+  raum: boolean;
+}
+
+const LEER: LinienProben = {
+  n: 0,
+  x: new Float32Array(0),
+  y: new Float32Array(0),
+  s: new Float32Array(0),
+  si: new Int32Array(0),
+  t: new Float32Array(0),
+  halb: new Float32Array(0),
+  schicht: new Uint8Array(0),
+  laenge: 0,
+  stueckS: new Float32Array(1),
+};
 
 interface Tropfen {
   ziel: Ziel;
@@ -223,6 +293,10 @@ export class Verhalten {
     spitze?: [number, number];
     zeit?: number;
     gleitet?: boolean;
+    /** gewählte Punkte, die zusammen mitgehen */
+    mehrere?: number[] | undefined;
+    /** weiter als ein Klick gezogen */
+    bewegt?: boolean;
   } | null = null;
   /** Versatz des gezeichneten Zeigers gegen die Maus (Punkte des Entwurfs): beim Greifen sitzt er auf der Stelle */
   private versatz = new Feder2(0, 0);
@@ -256,6 +330,38 @@ export class Verhalten {
   private klick: { ziel: RichtungZiel; t: number } | null = null;
   private ausrichtung: Feder1 | null = null;
 
+  /** Werkzeug P: die Rechnung (2D auf dem Netz; im Raum setzt raum-main den Raum ein) */
+  werk: StiftWerk;
+  /** ⇧ gehalten (45°, Auswahl dazu), Leertaste gehalten (beim Ziehen eines Griffs: den Punkt verschieben) */
+  umschalt = false;
+  leertaste = false;
+  private stiftZug: StiftZug | null = null;
+  private stiftZiel: StiftZiel | null = null;
+  /** wie die Linie begann (Esc: ein Schritt fürs Zurück nur, wenn P dabei einen Punkt auf eine Linie gesetzt hat) */
+  private stiftStart: StiftOrt['art'] | null = null;
+  /** Ring am ersten Punkt (0 … 1) und wo er steht */
+  private schlussRing = new Feder1(0);
+  private schlussOrt: [number, number, number] = [0, 0, 0];
+  /** Tropfen an der Feder: Lage, Größe (0 … 1) */
+  private federPos = new Feder2(0, 0);
+  private federR = new Feder1(0);
+  /** Wellen längs einer Linie (nach dem Schließen, beim Wählen eines Loops) */
+  private wellen: { li: number; s0: number; zeit: number; dauer: number }[] = [];
+  /** Griffe, die in ihren Punkt zurückfließen (Netz-Einheiten) */
+  private dornenAus: { x: number; y: number; z: number; gx: number; gy: number; f: Feder1 }[] = [];
+  /** gelöschte Punkte, die vergehen */
+  private geister: { x: number; y: number; z: number; r: Feder1 }[] = [];
+  /** gewählte Punkte und wie weit sie angeschwollen sind */
+  auswahl = new Set<number>();
+  private auswahlF = new Map<number, Feder1>();
+  /** Rahmen beim Ziehen im Leeren (Netz-Einheiten); danach zieht er sich um die Auswahl zusammen und vergeht */
+  private rahmen: { x0: number; y0: number; x1: number; y1: number; plus: boolean; vorher: Set<number> } | null = null;
+  private rahmenAus: { r: [number, number, number, number]; ziel: [number, number, number, number]; f: Feder1 } | null = null;
+  /** Drücken auf einen Punkt: ob er schon gewählt war (Loslassen ohne Ziehen entscheidet) */
+  private klickPunkt: { pi: number; war: boolean; umschalt: boolean } | null = null;
+  /** für den Doppelklick auf eine Linie */
+  private linienKlick: { li: number; t: number } | null = null;
+
   private get dreher(): Dreher {
     return this.raum ?? this.dreher2d;
   }
@@ -273,6 +379,15 @@ export class Verhalten {
     this.netz = netz;
     this.ursprung = netzKopie(netz);
     this.werte = werte;
+    this.werk = new Stift2D(
+      () => this.netz,
+      (n) => {
+        this.netz = n;
+        this.abtasten();
+      },
+      () => this.proben,
+      () => 1 / this.zoom,
+    );
     this.abtasten();
   }
 
@@ -292,6 +407,7 @@ export class Verhalten {
   setzeNetz(netz: Netz, proben: LinienProben[]): void {
     this.netz = netz;
     this.proben = proben;
+    if (this.schwell.length > proben.length) this.schwell.length = proben.length;
     this.federnAnlegen();
   }
 
@@ -300,19 +416,28 @@ export class Verhalten {
     const w = this.werte;
     const br = { umriss: w.umriss, innen: w.innen, kanteMax: w.kanteMax, kanteMin: w.kanteMin };
     this.proben = this.netz.linien.map((_, li) => linieAbtasten(this.netz, li, this.schritt0, br));
+    if (this.schwell.length > this.proben.length) this.schwell.length = this.proben.length;
     this.federnAnlegen();
   }
 
   zuruecksetzen(): void {
+    if (this.werk.entwurf()) this.werk.abbrechen();
+    this.stiftZug = null;
     this.zurueck.push(netzKopie(this.netz));
     this.netz = netzKopie(this.ursprung);
     this.tropfen = [];
     this.griff = null;
+    this.auswahlLeeren();
+    this.wellen = [];
     this.abtasten();
   }
 
   rueckgaengig(): boolean {
-    if (this.griff) return false;
+    if (this.griff || this.stiftZug) return false;
+    // beim Zeichnen: den letzten Punkt zurücknehmen (wie ⌘Z mit P in Illustrator)
+    if (this.stift && this.werk.entwurf()) return this.eingabe('loeschen');
+    this.auswahlLeeren();
+    this.wellen = [];
     this.ausrichtung = null;
     this.drehBildLetzt = null;
     if (this.raum) {
@@ -337,7 +462,7 @@ export class Verhalten {
     }
     // nach dem Loslassen sitzt der Zeiger noch auf der Stelle; er findet zur Maus zurück, während sie sich bewegt (auf dem Bildschirm
     // gemessen: Verschieben der Ansicht zählt nicht), nie von selbst
-    if (z.da && !this.griff) {
+    if (z.da && !this.zieht) {
       const weg = Math.hypot(sx - z.sx, sy - z.sy);
       if (weg > 0) {
         const f = Math.exp(-weg / (ZURUECK_WEG * this.g * this.zoom));
@@ -358,46 +483,43 @@ export class Verhalten {
   }
 
   zeigerWeg(): void {
-    if (this.griff) return;
+    if (this.zieht || this.rahmen) return;
     this.zeiger.da = false;
     this.versatz.setzen(0, 0);
   }
 
-  /** Drücken: greift den Tropfen, der gerade am Zeiger hängt; der Zeiger gleitet zu seiner Stelle */
+  /** ein Zug läuft (Stelle, Richtung oder Griff mit P): Der Zeiger sitzt auf ihm */
+  private get zieht(): boolean {
+    return !!this.griff || !!this.stiftZug;
+  }
+
+  /** hängt gerade ein Tropfen am Zeiger (dann gilt Drücken ihm, nicht dem Leeren) */
+  get haengt(): boolean {
+    return this.tropfen.some((q) => q.zustand === 'folgt');
+  }
+
+  /**
+   * Drücken: mit P setzt es einen Punkt (oder schließt, hängt an); sonst greift es den Tropfen, der gerade am Zeiger hängt (der Zeiger
+   * gleitet zu seiner Stelle), oder beginnt im Leeren einen Rahmen. Ein Punkt wird dabei gewählt.
+   */
   druecken(): boolean {
     this.zeiger.gedrueckt = true;
+    if (this.stift) return this.stiftDruecken();
     const t = this.tropfen.find((q) => q.zustand === 'folgt');
-    if (!t) return false;
+    if (!t) return this.rahmenBeginnen();
     if (t.ziel.art === 'richtung') return this.richtungDruecken(t);
+    if (t.ziel.art === 'linie' && this.loopKlick(t.ziel.li, t.ziel.s)) return true;
+    if (t.ziel.art === 'punkt') this.punktKlick(t.ziel.pi);
     t.zustand = 'gegriffen';
     const z = this.zeiger;
-    // mit P: der Tropfen wird ein Punkt auf der Linie (die Linie behält ihren Verlauf), gegriffen wie jeder Punkt
-    if (this.stift && t.ziel.art === 'linie') {
-      const { li, si, t: tt } = t.ziel;
-      if (!this.raum) {
-        this.zurueck.push(netzKopie(this.netz));
-        if (this.zurueck.length > 60) this.zurueck.shift();
-      }
-      const pi = this.raum ? this.raum.punktEinsetzen(li, si, tt) : punktEinsetzen(this.netz, li, si, tt);
-      if (pi !== null) {
-        t.ziel = { art: 'punkt', pi };
-        if (!this.raum) this.abtasten();
-      }
-      if (this.raum) {
-        this.raum.ziehenBeginnen({ ...t.ziel });
-        this.griff = { ziel: { ...t.ziel }, start: this.netz, ax: t.ax, ay: t.ay, mx: z.x, my: z.y };
-      } else this.griff = { ziel: { ...t.ziel }, start: netzKopie(this.netz), ax: t.ax, ay: t.ay, mx: z.x, my: z.y };
-      this.versatz.zx = t.ax - z.x;
-      this.versatz.zy = t.ay - z.y;
-      return true;
-    }
+    const mehrere = t.ziel.art === 'punkt' && this.auswahl.size > 1 && this.auswahl.has(t.ziel.pi) ? [...this.auswahl] : undefined;
     if (this.raum) {
-      this.raum.ziehenBeginnen({ ...t.ziel });
-      this.griff = { ziel: { ...t.ziel }, start: this.netz, ax: t.ax, ay: t.ay, mx: z.x, my: z.y };
+      if (mehrere) this.raum.punkteZiehenBeginnen(mehrere);
+      else this.raum.ziehenBeginnen({ ...t.ziel });
+      this.griff = { ziel: { ...t.ziel }, start: this.netz, ax: t.ax, ay: t.ay, mx: z.x, my: z.y, mehrere, bewegt: false };
     } else {
-      this.zurueck.push(netzKopie(this.netz));
-      if (this.zurueck.length > 60) this.zurueck.shift();
-      this.griff = { ziel: { ...t.ziel }, start: netzKopie(this.netz), ax: t.ax, ay: t.ay, mx: z.x, my: z.y };
+      this.zurueckMerken();
+      this.griff = { ziel: { ...t.ziel }, start: netzKopie(this.netz), ax: t.ax, ay: t.ay, mx: z.x, my: z.y, mehrere, bewegt: false };
     }
     this.versatz.zx = t.ax - z.x;
     this.versatz.zy = t.ay - z.y;
@@ -448,17 +570,392 @@ export class Verhalten {
    */
   loslassen(): void {
     this.zeiger.gedrueckt = false;
-    if (!this.griff) return;
-    if (this.griff.ziel.art === 'richtung') {
+    if (this.stiftZug) {
+      this.stiftLoslassen();
+      return;
+    }
+    if (this.rahmen) {
+      this.rahmenEnden();
+      return;
+    }
+    const g = this.griff;
+    if (!g) return;
+    if (g.ziel.art === 'richtung') {
       this.drehBildLetzt = this.dreher.drehBild() ?? this.drehBildLetzt;
       this.dreher.drehenEnden();
-    } else this.raum?.ziehenEnden();
+    } else {
+      if (g.mehrere) this.raum?.punkteZiehenEnden();
+      else this.raum?.ziehenEnden();
+      if (!g.bewegt) {
+        // ein Klick: nichts verschoben, kein Schritt fürs Zurück; er entscheidet nur über die Auswahl
+        if (this.raum) this.raum.rueckgaengig();
+        else {
+          this.netz = netzKopie(g.start);
+          this.zurueck.pop();
+          this.abtasten();
+        }
+        const k = this.klickPunkt;
+        if (k && g.ziel.art === 'punkt' && k.pi === g.ziel.pi) {
+          if (k.umschalt && k.war) this.abwaehlen(k.pi);
+          else if (!k.umschalt && k.war && this.auswahl.size > 1) this.waehlen([k.pi], false);
+        }
+      }
+    }
+    this.klickPunkt = null;
     this.griff = null;
     for (const t of this.tropfen) if (t.zustand === 'gegriffen') t.zustand = 'folgt';
   }
 
+  // ---------- Werkzeug P ----------
+
+  /** am ersten Punkt (Ring): Ein Klick schließt; ein wenig Halten, damit der Ring nicht flackert */
+  private schlussNahe(e: EntwurfInfo): boolean {
+    if (e.anzahl < 2) return false;
+    const P = this.netz.punkte[e.erster];
+    if (!P) return false;
+    const [zx, zy] = this.gezeichnet();
+    return Math.hypot(P.x - zx, P.y - zy) < this.werte.fangPunkt * this.g * (this.schlussRing.ziel > 0.5 ? 1.3 : 1);
+  }
+
+  /** was ein Klick mit P gerade täte */
+  private stiftZielBestimmen(): StiftZiel | null {
+    const [zx, zy] = this.gezeichnet();
+    const e = this.werk.entwurf();
+    if (e && this.schlussNahe(e)) {
+      const P = this.netz.punkte[e.erster]!;
+      return { art: 'schluss', x: P.x, y: P.y };
+    }
+    const t = this.tropfen.find((q) => q.zustand === 'folgt');
+    if (t?.ziel.art === 'punkt') return { art: 'punkt', pi: t.ziel.pi, x: t.ax, y: t.ay };
+    if (t?.ziel.art === 'linie') return { art: 'linie', li: t.ziel.li, si: t.ziel.si, t: t.ziel.t, x: t.ax, y: t.ay };
+    if (e) {
+      const L = this.netz.punkte[e.letzter];
+      if (L && Math.hypot(L.x - zx, L.y - zy) < 0.6 * this.werte.fangPunkt * this.g) return { art: 'letzter', x: L.x, y: L.y };
+    }
+    const o = this.werk.ortFrei(zx, zy);
+    return o ? { art: 'frei', x: o.x, y: o.y, mitte: o.mitte } : null;
+  }
+
+  private stiftDruecken(): boolean {
+    const z = this.zeiger;
+    const ziel = this.stiftZielBestimmen();
+    if (!ziel) return false;
+    const e = this.werk.entwurf();
+    const ort = (q: StiftZiel): StiftOrt | null =>
+      q.art === 'punkt' ? { art: 'punkt', pi: q.pi } : q.art === 'linie' ? { art: 'linie', li: q.li, si: q.si, t: q.t } : q.art === 'frei' ? { art: 'frei', x: q.x, y: q.y } : null;
+    let art: StiftZug['art'];
+    let p: number | null = null;
+    if (!e) {
+      const o = ort(ziel);
+      if (!o) return false;
+      if (!this.raum) this.zurueckMerken();
+      p = this.werk.beginnen(o);
+      if (p === null) {
+        if (!this.raum) this.zurueck.pop();
+        return false;
+      }
+      this.stiftStart = o.art;
+      art = 'erster';
+    } else if (ziel.art === 'schluss') {
+      this.werk.schliessen();
+      art = 'schluss';
+    } else if (ziel.art === 'letzter') {
+      art = 'letzter';
+    } else {
+      const o = ort(ziel)!;
+      // der Griff des bisher letzten Punkts fließt in ihn zurück (er steckt jetzt in der Verbindung)
+      this.dornAusblenden(e.letzter, e.aus);
+      p = this.werk.weiter(o);
+      if (p === null) return false;
+      art = ziel.art === 'frei' ? 'neu' : 'anschluss';
+    }
+    this.stiftZug = { art, mx: z.x, my: z.y, lx: z.x, ly: z.y, bewegt: false, gebrochen: false, aus: [0, 0], gegen: [0, 0], fest: null, frei: ziel.art === 'frei' };
+    // der Zeiger gleitet auf den Punkt; ab da ist er die Spitze des Griffs
+    this.versatz.zx = ziel.x - z.x;
+    this.versatz.zy = ziel.y - z.y;
+    if (p !== null) this.tropfenFaellt(p, ziel);
+    return true;
+  }
+
+  /**
+   * Der Tropfen fällt: frei aus der Feder in den neuen Punkt (er fließt hinein und wird so klein wie ein Punkt; an der Feder bildet sich
+   * ein neuer); an Vorhandenem fließt der Tropfen, der dort hing, in den Punkt zurück.
+   */
+  private tropfenFaellt(p: number, ziel: StiftZiel): void {
+    const w = this.werte;
+    const haengt = this.tropfen.find((q) => q.zustand === 'folgt');
+    if (ziel.art === 'frei') {
+      if (haengt) haengt.zustand = 'zurueck';
+      const t = this.neuerTropfen({ ziel: { art: 'punkt', pi: p }, x: ziel.x, y: ziel.y, verdeckt: false });
+      t.pos.setzen(this.federPos.x, this.federPos.y);
+      t.pos.vx = this.federPos.vx;
+      t.pos.vy = this.federPos.vy;
+      t.r.setzen(w.tropfen * Math.max(0.3, this.federR.x));
+      t.hals.setzen(1);
+      t.zustand = 'zurueck';
+      this.federR.setzen(0);
+    } else if (haengt) {
+      haengt.zustand = 'zurueck';
+      haengt.ziel = { art: 'punkt', pi: p };
+    }
+  }
+
+  /** ein Griff fließt in seinen Punkt zurück */
+  private dornAusblenden(pi: number, g: V2): void {
+    const P = this.netz.punkte[pi];
+    if (!P || Math.hypot(g[0], g[1]) < 1e-6) return;
+    const f = new Feder1(1);
+    f.ziel = 0;
+    this.dornenAus.push({ x: P.x, y: P.y, z: P.z ?? 0, gx: g[0], gy: g[1], f });
+  }
+
+  /** Ziehen mit P: der Griff folgt der Maus genau (⇧ rastet in 45°, ⌥ bricht, Leertaste verschiebt den Punkt) */
+  private stiftZiehen(): void {
+    const sz = this.stiftZug!;
+    const z = this.zeiger;
+    const e = this.werk.entwurf();
+    if (!e) return;
+    // Leertaste: der neue Punkt geht mit der Maus, der Griff bleibt
+    if (this.leertaste && sz.frei && (sz.art === 'neu' || sz.art === 'erster')) {
+      const dx = z.x - sz.lx;
+      const dy = z.y - sz.ly;
+      if (dx || dy) {
+        const P = this.netz.punkte[e.letzter];
+        if (P) this.werk.letztenVerschieben(P.x + dx, P.y + dy);
+        sz.mx += dx;
+        sz.my += dy;
+      }
+    }
+    sz.lx = z.x;
+    sz.ly = z.y;
+    let h: V2 = [z.x - sz.mx, z.y - sz.my];
+    const weg = Math.hypot(h[0], h[1]) * this.zoom;
+    if (!sz.bewegt && weg < KLICK_WEG) return;
+    sz.bewegt = true;
+    if (this.umschalt) {
+      const L = Math.hypot(h[0], h[1]);
+      const a = Math.round(Math.atan2(h[1], h[0]) / (Math.PI / 4)) * (Math.PI / 4);
+      h = [L * Math.cos(a), L * Math.sin(a)];
+    }
+    const neg: V2 = [-h[0], -h[1]];
+    if (this.alt && !sz.gebrochen && sz.art !== 'letzter') {
+      sz.gebrochen = true;
+      sz.fest = sz.art === 'schluss' ? [sz.aus[0], sz.aus[1]] : [sz.gegen[0], sz.gegen[1]];
+    }
+    switch (sz.art) {
+      case 'erster':
+        sz.aus = h;
+        sz.gegen = sz.gebrochen ? sz.fest! : neg;
+        this.werk.griffeErster(h, sz.gebrochen ? null : neg);
+        break;
+      case 'neu':
+      case 'anschluss':
+        sz.aus = h;
+        sz.gegen = sz.gebrochen ? sz.fest! : neg;
+        this.werk.griffeLetzter(h, sz.gebrochen ? null : neg);
+        break;
+      case 'schluss':
+        // die Zugrichtung ist der Griff zur ersten Verbindung, die andere Seite kommt aus der Schlussverbindung; ⌥: nur sie
+        sz.aus = sz.gebrochen ? sz.fest! : h;
+        sz.gegen = neg;
+        this.werk.griffeErster(sz.gebrochen ? null : h, neg);
+        break;
+      case 'letzter':
+        // ein neuer Griff aus dem letzten Punkt, unabhängig von seinem anderen (Knick)
+        sz.aus = h;
+        this.werk.griffeLetzter(h, null);
+        break;
+    }
+  }
+
+  private stiftLoslassen(): void {
+    const sz = this.stiftZug!;
+    this.stiftZug = null;
+    const e = this.werk.entwurf();
+    if (!e) return;
+    const knick = !sz.bewegt || sz.gebrochen;
+    switch (sz.art) {
+      case 'erster':
+        this.werk.knickSetzen(true, knick);
+        break;
+      case 'neu':
+        this.werk.knickSetzen(false, knick);
+        break;
+      case 'anschluss':
+        // an Vorhandenem: fertig, wenn auch der Anfang hängt; frei begonnen zeichnet sie durch den Punkt weiter
+        if (e.haengt) this.linieFertig(0);
+        else this.werk.knickSetzen(false, knick);
+        break;
+      case 'schluss':
+        if (sz.bewegt) this.werk.knickSetzen(true, sz.gebrochen);
+        this.linieFertig(0);
+        break;
+      case 'letzter':
+        if (!sz.bewegt) {
+          this.dornAusblenden(e.letzter, e.aus);
+          this.werk.griffeLetzter([0, 0], null);
+        } else this.werk.knickSetzen(false, true);
+        break;
+    }
+  }
+
+  /** die Linie ist fertig: eine Welle läuft einmal über sie */
+  private linieFertig(s0: number): void {
+    const e = this.werk.entwurf();
+    if (e && e.aus[0] ** 2 + e.aus[1] ** 2 > 0) this.dornAusblenden(e.letzter, e.aus);
+    const li = this.werk.fertig();
+    this.stiftStart = null;
+    if (li >= 0) this.welleStarten(li, s0);
+  }
+
+  /** Tasten: ↩ schließt, Esc bricht ab (oder leert die Auswahl), ⌫ nimmt den letzten Punkt zurück (oder löscht die gewählten), ⌘A alle */
+  eingabe(taste: 'enter' | 'esc' | 'loeschen' | 'alle'): boolean {
+    const e = this.stift ? this.werk.entwurf() : null;
+    if (this.stiftZug || this.griff) return false;
+    if (taste === 'enter') {
+      if (!e || e.anzahl < 2) return false;
+      this.dornAusblenden(e.letzter, e.aus);
+      this.werk.schliessen();
+      this.linieFertig(0);
+      return true;
+    }
+    if (taste === 'esc') {
+      if (e) {
+        this.dornAusblenden(e.letzter, e.aus);
+        this.werk.abbrechen();
+        if (!this.raum && this.stiftStart !== 'linie') this.zurueck.pop();
+        this.stiftStart = null;
+        this.tropfen = this.tropfen.filter((t) => t.ziel.art !== 'punkt' || t.ziel.pi < this.netz.punkte.length);
+        return true;
+      }
+      if (this.auswahl.size) {
+        this.auswahlLeeren();
+        return true;
+      }
+      return false;
+    }
+    if (taste === 'loeschen') {
+      if (e) {
+        this.dornAusblenden(e.letzter, e.aus);
+        if (!this.werk.zurueck()) {
+          if (!this.raum && this.stiftStart !== 'linie') this.zurueck.pop();
+          this.stiftStart = null;
+        }
+        this.tropfen = this.tropfen.filter((t) => t.ziel.art !== 'punkt' || t.ziel.pi < this.netz.punkte.length);
+        return true;
+      }
+      if (!this.stift && this.auswahl.size) return this.auswahlLoeschen();
+      return false;
+    }
+    // ⌘A
+    if (this.stift) return false;
+    this.waehlen(
+      this.netz.punkte.flatMap((p, i) => (p.sichtbar ? [i] : [])),
+      false,
+    );
+    return true;
+  }
+
+  /** P an oder aus; beim Ausschalten bricht eine angefangene Linie ab */
+  stiftSchalten(an: boolean): void {
+    if (!an && this.werk.entwurf()) this.eingabe('esc');
+    this.stift = an;
+    this.stiftZiel = null;
+  }
+
+  // ---------- Auswahl ----------
+
+  private waehlen(pis: readonly number[], dazu: boolean): void {
+    if (!dazu) this.auswahl.clear();
+    for (const p of pis) this.auswahl.add(p);
+  }
+
+  private abwaehlen(pi: number): void {
+    this.auswahl.delete(pi);
+  }
+
+  auswahlLeeren(): void {
+    this.auswahl.clear();
+  }
+
+  /** Drücken auf einen Punkt: Ein ungewählter wird gewählt (mit ⇧ dazu); ein gewählter bleibt es, damit alle zusammen mitgehen */
+  private punktKlick(pi: number): void {
+    const war = this.auswahl.has(pi);
+    this.klickPunkt = { pi, war, umschalt: this.umschalt };
+    if (!war) this.waehlen([pi], this.umschalt);
+  }
+
+  /** Doppelklick auf eine Linie: alle ihre Punkte, der ganze Loop; eine Welle läuft die Linie entlang */
+  private loopKlick(li: number, s: number): boolean {
+    const jetzt = performance.now();
+    const k = this.linienKlick;
+    this.linienKlick = { li, t: jetzt };
+    if (!k || k.li !== li || jetzt - k.t > 350) return false;
+    this.linienKlick = null;
+    this.waehlen(punkteDerLinie(this.netz, li), this.umschalt);
+    this.welleStarten(li, s);
+    return true;
+  }
+
+  private rahmenBeginnen(): boolean {
+    const [x, y] = this.gezeichnet();
+    this.rahmen = { x0: x, y0: y, x1: x, y1: y, plus: this.umschalt, vorher: new Set(this.auswahl) };
+    this.rahmenAus = null;
+    return true;
+  }
+
+  /** Loslassen: Der Rahmen zieht sich um die Auswahl zusammen und vergeht */
+  private rahmenEnden(): void {
+    const r = this.rahmen!;
+    this.rahmen = null;
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (const p of this.auswahl) {
+      const P = this.netz.punkte[p];
+      if (!P) continue;
+      x0 = Math.min(x0, P.x);
+      x1 = Math.max(x1, P.x);
+      y0 = Math.min(y0, P.y);
+      y1 = Math.max(y1, P.y);
+    }
+    const rand = 5 * this.g;
+    const mx = (r.x0 + r.x1) / 2;
+    const my = (r.y0 + r.y1) / 2;
+    const ziel: [number, number, number, number] = Number.isFinite(x0) ? [x0 - rand, y0 - rand, x1 + rand, y1 + rand] : [mx, my, mx, my];
+    const f = new Feder1(1);
+    f.ziel = 0;
+    this.rahmenAus = { r: [Math.min(r.x0, r.x1), Math.min(r.y0, r.y1), Math.max(r.x0, r.x1), Math.max(r.y0, r.y1)], ziel, f };
+  }
+
+  /** ⌫: Die gewählten Punkte vergehen, die Linie läuft durch die Nachbarn weiter */
+  private auswahlLoeschen(): boolean {
+    const weg = [...this.auswahl];
+    for (const p of weg) {
+      const P = this.netz.punkte[p];
+      if (!P) continue;
+      const r = new Feder1(1.3);
+      r.ziel = 0;
+      this.geister.push({ x: P.x, y: P.y, z: P.z ?? 0, r });
+    }
+    this.auswahlLeeren();
+    this.tropfen = [];
+    this.wellen = [];
+    if (this.raum) return this.raum.punkteLoeschen(weg);
+    this.zurueckMerken();
+    this.netz = punkteLoeschen(this.netz, new Set(weg)).netz;
+    this.abtasten();
+    return true;
+  }
+
+  private welleStarten(li: number, s0: number): void {
+    this.wellen = this.wellen.filter((w) => w.li !== li);
+    this.wellen.push({ li, s0, zeit: 0, dauer: 0.85 });
+  }
+
   get greift(): boolean {
-    return !!this.griff;
+    return !!this.griff || !!this.stiftZug;
   }
 
   /** wo der Zeiger gezeichnet wird (Punkte des Entwurfs) */
@@ -470,24 +967,41 @@ export class Verhalten {
     return (z.art === 'punkt' ? this.werte.fangPunkt : this.werte.fangLinie) * this.g;
   }
 
+  /** die Proben zum Treffen: ohne die Linie, die P gerade zeichnet */
+  private suchProben(): readonly LinienProben[] {
+    const e = this.stift ? this.werk.entwurf() : null;
+    if (!e || e.li < 0) return this.proben;
+    return this.proben.map((P, li) => (li === e.li ? LEER : P));
+  }
+
   /** bester Kandidat unter dem (gezeichneten) Zeiger: Punkte vor Linien, Tinte vor Verdecktem */
   private kandidat(): { ziel: Ziel; x: number; y: number; d: number; verdeckt: boolean } | null {
     const w = this.werte;
     const [x, y] = this.gezeichnet();
     const fp = w.fangPunkt * this.g;
     const fl = w.fangLinie * this.g;
+    // beim Zeichnen mit P: nicht die eigene Linie; am ersten Punkt schließt der Ring
+    const e = this.stift ? this.werk.entwurf() : null;
+    if (e && this.schlussNahe(e)) return null;
+    const ohne = new Set<number>();
+    if (e) {
+      ohne.add(e.erster);
+      ohne.add(e.letzter);
+      for (const p of e.li >= 0 ? (this.netz.linien[e.li]?.punkte ?? []) : []) ohne.add(p);
+    }
+    const proben = this.suchProben();
     const suche = (schicht: 0 | 1): { ziel: Ziel; x: number; y: number; d: number; verdeckt: boolean } | null => {
       let bp = -1;
       let bd = Infinity;
       this.netz.punkte.forEach((p, i) => {
-        if (!p.sichtbar || (p.verdeckt ? 1 : 0) !== schicht) return;
+        if (!p.sichtbar || (p.verdeckt ? 1 : 0) !== schicht || ohne.has(i)) return;
         const d = Math.hypot(p.x - x, p.y - y);
         if (d < bd) {
           bd = d;
           bp = i;
         }
       });
-      const st = naechsteStelle(this.proben, x, y, schicht);
+      const st = naechsteStelle(proben, x, y, schicht);
       const linieOk = st && st.d < fl;
       // ein Punkt gewinnt, wenn er im Fangradius liegt und die Linie nicht deutlich näher ist
       if (bp >= 0 && bd < fp && (!linieOk || bd - st.d < fp * 0.5)) {
@@ -634,6 +1148,7 @@ export class Verhalten {
     if (g) {
       const dx = z.x - g.mx;
       const dy = z.y - g.my;
+      if (!g.bewegt && Math.hypot(dx, dy) * this.zoom >= KLICK_WEG) g.bewegt = true;
       if (g.ziel.art === 'richtung' && g.spitze) {
         // der Zeiger gleitet an die Spitze des Griffs, sobald man hält oder zieht; die Richtung zeigt auf ihn
         g.zeit = (g.zeit ?? 0) + dt;
@@ -644,13 +1159,29 @@ export class Verhalten {
         }
         this.dreher.drehenZiehen(g.spitze[0] + dx, g.spitze[1] + dy, this.alt, dt);
         this.drehBildLetzt = this.dreher.drehBild() ?? this.drehBildLetzt;
-      } else if (this.raum) this.raum.ziehen(dx, dy);
-      else {
+      } else if (this.raum) {
+        if (g.mehrere) this.raum.punkteZiehen(dx, dy);
+        else this.raum.ziehen(dx, dy);
+      } else {
         this.netz = netzKopie(g.start);
-        if (g.ziel.art === 'punkt') punktZiehen(g.start, this.netz, g.ziel.pi, dx, dy);
+        if (g.mehrere) punkteZiehen(g.start, this.netz, g.mehrere, dx, dy);
+        else if (g.ziel.art === 'punkt') punktZiehen(g.start, this.netz, g.ziel.pi, dx, dy);
         else if (g.ziel.art === 'linie') stelleZiehen(g.start, this.netz, g.ziel.li, g.ziel.si, g.ziel.t, dx, dy);
         this.abtasten();
       }
+      bewegt = true;
+    }
+    // Ziehen mit P: Griffe
+    if (this.stiftZug) {
+      this.stiftZiehen();
+      bewegt = true;
+    }
+    // Rahmen: gewählt ist, was er umschließt (mit ⇧ dazu), schon während er gezogen wird
+    if (this.rahmen) {
+      const r = this.rahmen;
+      [r.x1, r.y1] = this.gezeichnet();
+      const drin = punkteImRahmen(this.netz, r.x0, r.y0, r.x1, r.y1).filter((p) => !this.raum || !this.netz.punkte[p]!.verdeckt);
+      this.auswahl = new Set(r.plus ? [...r.vorher, ...drin] : drin);
       bewegt = true;
     }
     // Doppelklick zum Runden: Die Richtung dreht sich in die Flucht ihrer Gegenseite
@@ -667,7 +1198,7 @@ export class Verhalten {
     // Ziel unter dem Zeiger (nicht während eines Zugs); es zählt der gezeichnete Zeiger
     const folgt = this.tropfen.find((t) => t.zustand === 'folgt');
     const [zx, zy] = this.gezeichnet();
-    if (!this.greift) {
+    if (!this.zieht && !this.rahmen) {
       const k = z.da ? this.kandidat() : null;
       if (folgt) {
         const halten = this.fang(folgt.ziel) * w.halten;
@@ -690,7 +1221,7 @@ export class Verhalten {
           this.neuerTropfen(k);
         } else if (!z.da || dAnker > halten) {
           folgt.zustand = 'zurueck';
-        } else if (folgt.ziel.art === 'linie') {
+        } else if (folgt.ziel.art === 'linie' && this.proben[folgt.ziel.li]) {
           // ohne neuen Kandidaten gleitet der Anker auf seiner Linie mit
           const st = naechsteStelle([this.proben[folgt.ziel.li]!], zx, zy);
           if (st) {
@@ -757,6 +1288,55 @@ export class Verhalten {
       (t) => !(t.zustand === 'zurueck' && t.pos.ruhig(0.03 * this.g) && (t.ziel.art === 'punkt' ? t.r.ruhig(0.01) : t.r.x < 0.03)),
     );
 
+    // Werkzeug P: was ein Klick täte, der Tropfen an der Feder, der Ring am ersten Punkt
+    if (this.stift && !this.zieht) this.stiftZiel = z.da ? this.stiftZielBestimmen() : null;
+    if (!this.stift) this.stiftZiel = null;
+    const schluss = this.stiftZiel?.art === 'schluss' || this.stiftZug?.art === 'schluss';
+    if (schluss) {
+      const e = this.werk.entwurf();
+      const P = e ? this.netz.punkte[e.erster] : undefined;
+      if (P) this.schlussOrt = [P.x, P.y, P.z ?? 0];
+    }
+    this.schlussRing.ziel = schluss ? 1 : 0;
+    this.schlussRing.schritt(dt, 9, 0.75);
+    const haengtEiner = this.tropfen.some((t) => t.zustand === 'folgt');
+    const federZeigen = this.stift && z.da && !this.stiftZug && !haengtEiner && (this.stiftZiel?.art === 'frei' || this.stiftZiel?.art === 'letzter');
+    this.federR.ziel = federZeigen ? 1 : 0;
+    this.federR.schritt(dt, 7, 0.5);
+    {
+      // er hängt an der Spitze, die Spitze sitzt knapp in seinem Rand (wie im Konzeptbild)
+      const rT = w.punktRadius * w.tropfen * this.g;
+      this.federPos.zx = zx - ACHSE[0]! * 0.62 * rT;
+      this.federPos.zy = zy - ACHSE[1]! * 0.62 * rT;
+      if (this.federR.x < 0.02 && this.federR.ziel === 0) this.federPos.setzen(this.federPos.zx, this.federPos.zy);
+      this.federPos.schritt(dt, 13, 0.55);
+    }
+    if (!this.schlussRing.ruhig(0.002) || !this.federR.ruhig(0.002) || (this.federR.x > 0.01 && !this.federPos.ruhig(0.02 * this.g))) bewegt = true;
+    // Wellen, zurückfließende Griffe, vergehende Punkte
+    for (const W of this.wellen) W.zeit += dt;
+    this.wellen = this.wellen.filter((W) => W.zeit < W.dauer && W.li < this.proben.length);
+    for (const d of this.dornenAus) d.f.schritt(dt, 7, 1);
+    this.dornenAus = this.dornenAus.filter((d) => d.f.x > 0.01);
+    for (const q of this.geister) q.r.schritt(dt, 6, 0.9);
+    this.geister = this.geister.filter((q) => q.r.x > 0.02);
+    if (this.wellen.length || this.dornenAus.length || this.geister.length) bewegt = true;
+    // Auswahl: gewählte schwellen ruhig an, abgewählte fließen zurück
+    for (const p of this.auswahl) if (!this.auswahlF.has(p)) this.auswahlF.set(p, new Feder1(0));
+    for (const [p, F] of this.auswahlF) {
+      F.ziel = this.auswahl.has(p) ? 1 : 0;
+      F.schritt(dt, 6, 0.8);
+      if (F.ziel === 0 && F.x < 0.01) this.auswahlF.delete(p);
+      else if (!F.ruhig(0.002)) bewegt = true;
+    }
+    if (this.rahmenAus) {
+      const A = this.rahmenAus;
+      A.f.schritt(dt, 4.5, 1);
+      const k = 1 - Math.exp(-dt * 14);
+      for (let i = 0; i < 4; i++) A.r[i] = A.r[i]! + (A.ziel[i]! - A.r[i]!) * k;
+      if (A.f.x < 0.01) this.rahmenAus = null;
+      bewegt = true;
+    }
+
     // Schwellung je Linie: Spindel am Ziel und beim Anflug, Nadel an einer Richtung. Eine Form: Wechselt das Ziel, fließt sie hinüber
     const ziele = new Map<number, SchwellZiel>();
     const aktiv = this.tropfen.find((t) => t.zustand === 'gegriffen') ?? this.tropfen.find((t) => t.zustand === 'folgt');
@@ -782,7 +1362,8 @@ export class Verhalten {
     } else if (z.da) {
       // Anflug: Die nächste Linie schwillt schon in der Form an, die sie beim Treffen hat (nahe am Punkt als Nadel)
       const vor = w.fangLinie * w.anflug * this.g;
-      const st = naechsteStelle(this.proben, zx, zy, 0) ?? naechsteStelle(this.proben, zx, zy, 1);
+      const such = this.suchProben();
+      const st = naechsteStelle(such, zx, zy, 0) ?? naechsteStelle(such, zx, zy, 1);
       if (st && st.d < vor) {
         const staerke = 0.8 * glatt(0, 1, 1 - st.d / vor);
         const r = this.stift ? null : this.richtungBei(st);
@@ -900,6 +1481,274 @@ export class Verhalten {
     }
   }
 
+  /** gewählte Punkte: ihre Linien schwellen ruhig an (kleiner Stern, 0,42 der Reichweite, Höhe 0,3) */
+  private auswahlBreite(li: number, P: LinienProben, zu: boolean, extra: Float32Array): void {
+    if (!this.auswahlF.size) return;
+    const w = this.werte;
+    const L = P.laenge;
+    const R0 = 0.42 * w.reichweite * this.g;
+    for (const [pi, F] of this.auswahlF) {
+      if (F.x < 0.005) continue;
+      const s0 = this.sVonPunkt(li, pi);
+      if (s0 < 0) continue;
+      for (let k = 0; k < P.n; k++) {
+        let ds = Math.abs(P.s[k]! - s0);
+        if (zu) ds = Math.min(ds, L - ds);
+        if (ds >= R0) continue;
+        const e = 0.5 * w.schwellen * 0.3 * F.x * Math.pow(1 - ds / R0, 1.6);
+        if (e > extra[k]!) extra[k] = e;
+      }
+    }
+  }
+
+  /** Wellen: eine Schwellung läuft einmal die Linie entlang (vorn voll, hinten flacher), schwillt an und vergeht */
+  private wellenBreite(li: number, P: LinienProben, zu: boolean, extra: Float32Array): void {
+    const w = this.werte;
+    const L = P.laenge;
+    for (const W of this.wellen) {
+      if (W.li !== li || L <= 0) continue;
+      const u = Math.min(1, W.zeit / W.dauer);
+      const fort = glatt(0, 1, u);
+      const c = zu ? W.s0 + fort * L : fort * L;
+      const reich = Math.min(0.2 * L, 2 * w.reichweite * this.g);
+      const st = 0.65 * Math.sin(Math.PI * u);
+      for (let k = 0; k < P.n; k++) {
+        let ds = P.s[k]! - c;
+        if (zu) {
+          while (ds > L / 2) ds -= L;
+          while (ds <= -L / 2) ds += L;
+        }
+        if (Math.abs(ds) >= reich) continue;
+        const e = 0.5 * w.schwellen * st * Math.pow(1 - Math.abs(ds) / reich, 1.6) * (ds >= 0 ? 1 : 0.55);
+        if (e > extra[k]!) extra[k] = e;
+      }
+    }
+  }
+
+  /** Griff als Haarlinie mit weichem Fuß am Punkt und Perle an der Spitze (wie beim Drehen); f: wie weit er da ist */
+  private dornZeichnen(c: Zeichnen, hx: number, hy: number, tx: number, ty: number, perle: number, f = 1): void {
+    const w = this.werte;
+    const L = Math.hypot(tx - hx, ty - hy);
+    if (L < 1e-4 || f < 0.01) return;
+    const fuss = Math.min(L, 4 * this.g);
+    const fx = hx + ((tx - hx) / L) * fuss;
+    const fy = hy + ((ty - hy) / L) * fuss;
+    c.push(c.X(hx), c.Y(hy), c.X(fx), c.Y(fy), c.R(0.55 * f), c.R(w.innen / 2), c.gruppe(), 0, 1);
+    c.push(c.X(fx), c.Y(fy), c.X(tx), c.Y(ty), c.R(w.innen / 2), c.R(w.innen / 2), c.gruppe(), 0, 0);
+    c.push(c.X(tx), c.Y(ty), c.X(tx), c.Y(ty), c.R(w.punktRadius * perle * f), c.R(w.punktRadius * perle * f), c.gruppe(), 0, 1);
+    if (c.felder.length < MAX_FELDER * 4) c.felder.push(c.X(tx), c.Y(ty), c.R(4), f);
+  }
+
+  /** Haarlinie zwischen zwei Lagen, grün (die alte Lage eines Griffs) */
+  private geistZeichnen(c: Zeichnen, x0: number, y0: number, x1: number, y1: number): void {
+    const w = this.werte;
+    c.push(c.X(x0), c.Y(y0), c.X(x1), c.Y(y1), c.R(w.innen / 2), c.R(w.innen / 2), c.gruppe(), 1, 0);
+  }
+
+  /** Faden: die nächste Linie genau so, wie sie wird; frei schwillt sein Ende zum Tropfen an der Feder hin an */
+  private fadenZeichnen(c: Zeichnen, F: FadenProben, frei: boolean): void {
+    const w = this.werte;
+    const L = F.laenge;
+    const hals = Math.min(0.22 * L, 16 * this.g);
+    const rEnde = 0.55 * Math.max(0, this.federR.x);
+    const halb = (s: number): number => {
+      if (!frei || hals <= 0) return w.innen / 2;
+      const f = Math.max(0, (s - (L - hals)) / hals);
+      return w.innen / 2 + Math.max(0, rEnde - w.innen / 2) * Math.pow(f, 2.2);
+    };
+    const g = c.gruppe();
+    const sch = c.raum ? 2 : 0;
+    for (let k = 0; k + 1 < F.n; k++) {
+      c.push(c.X(F.x[k]!), c.Y(F.y[k]!), c.X(F.x[k + 1]!), c.Y(F.y[k + 1]!), c.R(halb(F.s[k]!)), c.R(halb(F.s[k + 1]!)), g, sch, 0, F.z?.[k] ?? 0, F.z?.[k + 1] ?? 0);
+    }
+    // wo der Faden Linien kreuzt, entsteht dort ein Punkt: er wächst, sobald das Ende über die Linie hinaus ist
+    if (c.raum) return;
+    for (const q of this.fadenKreuzungen(F)) {
+      const f = glatt(0, 6 * this.g, L - q.s);
+      if (f < 0.02) continue;
+      const r = w.punktRadius * f;
+      c.push(c.X(q.x), c.Y(q.y), c.X(q.x), c.Y(q.y), c.R(r), c.R(r), c.gruppe(), 0, 1);
+    }
+  }
+
+  /** wo der Faden (Polygon) die Linien kreuzt (nicht die eigene, nicht verdeckt), mit Bogenlänge auf dem Faden */
+  private fadenKreuzungen(F: FadenProben): { x: number; y: number; s: number }[] {
+    const aus: { x: number; y: number; s: number }[] = [];
+    const rand = 1.5 * this.g;
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (let i = 0; i < F.n; i++) {
+      x0 = Math.min(x0, F.x[i]!);
+      x1 = Math.max(x1, F.x[i]!);
+      y0 = Math.min(y0, F.y[i]!);
+      y1 = Math.max(y1, F.y[i]!);
+    }
+    for (const P of this.suchProben()) {
+      for (let j = 0; j + 1 < P.n; j++) {
+        if (P.schicht[j] === 1) continue;
+        const bx = P.x[j]!;
+        const by = P.y[j]!;
+        const cx = P.x[j + 1]!;
+        const cy = P.y[j + 1]!;
+        if (Math.max(bx, cx) < x0 || Math.min(bx, cx) > x1 || Math.max(by, cy) < y0 || Math.min(by, cy) > y1) continue;
+        const vx = cx - bx;
+        const vy = cy - by;
+        for (let i = 0; i + 1 < F.n; i++) {
+          const ax = F.x[i]!;
+          const ay = F.y[i]!;
+          const ux = F.x[i + 1]! - ax;
+          const uy = F.y[i + 1]! - ay;
+          const d = ux * vy - uy * vx;
+          if (Math.abs(d) < 1e-12) continue;
+          const tt = ((bx - ax) * vy - (by - ay) * vx) / d;
+          const ss = ((bx - ax) * uy - (by - ay) * ux) / d;
+          if (tt < 0 || tt >= 1 || ss < 0 || ss >= 1) continue;
+          const s = F.s[i]! + (F.s[i + 1]! - F.s[i]!) * tt;
+          if (s < rand || s > F.laenge - rand) continue;
+          aus.push({ x: ax + ux * tt, y: ay + uy * tt, s });
+        }
+      }
+    }
+    return aus;
+  }
+
+  /** Ring (Haarlinie) um einen Punkt */
+  private ringZeichnen(c: Zeichnen, x: number, y: number, z: number, rho: number, halb: number): void {
+    const g = c.gruppe();
+    const n = 48;
+    for (let i = 0; i < n; i++) {
+      const a = (2 * Math.PI * i) / n;
+      const b = (2 * Math.PI * (i + 1)) / n;
+      c.push(c.X(x + rho * Math.cos(a)), c.Y(y + rho * Math.sin(a)), c.X(x + rho * Math.cos(b)), c.Y(y + rho * Math.sin(b)), c.R(halb), c.R(halb), g, c.raum ? 2 : 0, 0, z, z);
+    }
+  }
+
+  private stiftZeichnen(c: Zeichnen): void {
+    const w = this.werte;
+    const e = this.stift ? this.werk.entwurf() : null;
+    // Faden vom letzten Punkt zum Zeiger (oder zu dem, woran er gleich hängt)
+    if (e && !this.stiftZug) {
+      const zl = this.stiftZiel;
+      let ende: FadenEnde | null = null;
+      let gEnde: V2 = [0, 0];
+      if (zl?.art === 'schluss') {
+        ende = { art: 'schluss' };
+        gEnde = e.einErster;
+      } else if (zl?.art === 'punkt') ende = { art: 'punkt', pi: zl.pi };
+      else if (zl?.art === 'linie') ende = { art: 'linie', li: zl.li, si: zl.si, t: zl.t };
+      else if (zl?.art === 'frei') ende = { art: 'frei', x: zl.x, y: zl.y };
+      const F = ende ? this.werk.faden(ende, gEnde) : null;
+      if (F) this.fadenZeichnen(c, F, zl?.art === 'frei');
+      // wo die Linie schon Linien kreuzt: dort entstehen Punkte, wenn sie fertig ist
+      const l = e.li >= 0 ? this.netz.linien[e.li] : undefined;
+      const PL = e.li >= 0 ? this.proben[e.li] : undefined;
+      if (l && PL && !c.raum) {
+        const eigene = l.punkte.map((p) => this.netz.punkte[p]!);
+        for (const q of this.fadenKreuzungen(PL)) {
+          if (eigene.some((p) => Math.hypot(p.x - q.x, p.y - q.y) < 1.5 * this.g)) continue;
+          c.push(c.X(q.x), c.Y(q.y), c.X(q.x), c.Y(q.y), c.R(w.punktRadius), c.R(w.punktRadius), c.gruppe(), 0, 1);
+        }
+      }
+      // der Griff, mit dem die nächste Verbindung den letzten Punkt verlässt
+      const P = this.netz.punkte[e.letzter];
+      if (P && (e.aus[0] || e.aus[1])) this.dornZeichnen(c, P.x, P.y, P.x + e.aus[0], P.y + e.aus[1], 0.6, 0.85);
+    }
+    // beim Ziehen: beide Griffe aus dem Punkt; gebrochen steht die alte Lage grün
+    const sz = this.stiftZug;
+    if (e && sz && sz.bewegt) {
+      const pi = sz.art === 'erster' || sz.art === 'schluss' ? e.erster : e.letzter;
+      const P = this.netz.punkte[pi];
+      if (P) {
+        const zug: V2 = sz.art === 'schluss' && sz.gebrochen ? [-sz.gegen[0], -sz.gegen[1]] : sz.aus;
+        const andere: V2 = sz.art === 'schluss' ? (sz.gebrochen ? sz.aus : sz.gegen) : sz.gegen;
+        if (sz.gebrochen) this.geistZeichnen(c, P.x, P.y, P.x - zug[0], P.y - zug[1]);
+        if (sz.art !== 'letzter' && (andere[0] || andere[1])) this.dornZeichnen(c, P.x, P.y, P.x + andere[0], P.y + andere[1], 0.7);
+        this.dornZeichnen(c, P.x, P.y, P.x + zug[0], P.y + zug[1], 0.8);
+      }
+    }
+    // Griffe, die in ihren Punkt zurückfließen
+    for (const d of this.dornenAus) this.dornZeichnen(c, d.x, d.y, d.x + d.gx * d.f.x, d.y + d.gy * d.f.x, 0.6, d.f.x);
+    // Ring am ersten Punkt: schließen
+    const f = this.schlussRing.x;
+    if (f > 0.01) {
+      const [px, py, pz] = this.schlussOrt;
+      this.ringZeichnen(c, px, py, pz, (2.2 + 1.1 * Math.min(1, f)) * w.punktRadius * this.g, (w.innen * 0.45 + 0.1) * Math.min(1, f));
+      if (c.felder.length < MAX_FELDER * 4) c.felder.push(c.X(px), c.Y(py), c.R(7), Math.min(1, f));
+    }
+    // Tropfen an der Feder, mit weichem Hals zur Spitze
+    const r = w.punktRadius * w.tropfen * this.federR.x;
+    if (r > 0.01 && this.zeiger.da) {
+      const [tx, ty] = this.gezeichnet();
+      const cx = this.federPos.x;
+      const cy = this.federPos.y;
+      let ex = -this.federPos.vx * w.dehnung;
+      let ey = -this.federPos.vy * w.dehnung;
+      const el = Math.hypot(ex, ey);
+      const emax = 1.6 * r * this.g;
+      if (el > emax) {
+        ex *= emax / el;
+        ey *= emax / el;
+      }
+      const rr = r / Math.sqrt(1 + Math.min(el, emax) / this.g / (4 * r));
+      c.push(c.X(cx), c.Y(cy), c.X(cx + ex), c.Y(cy + ey), c.R(rr), c.R(rr * 0.5), c.gruppe(), 0, 1);
+      c.push(c.X(cx), c.Y(cy), c.X(tx), c.Y(ty), c.R(r * 0.55), c.R(0.12), c.gruppe(), 0, 1);
+      if (c.felder.length < MAX_FELDER * 4) c.felder.push(c.X(cx), c.Y(cy), c.R(3.2 * r), Math.min(1, this.federR.x));
+    }
+  }
+
+  private auswahlZeichnen(c: Zeichnen): void {
+    const w = this.werte;
+    // gewählte Punkte verschmelzen weich mit ihren Linien (so viele, wie Felder frei sind; die nächsten am Zeiger zuerst)
+    if (this.auswahlF.size) {
+      const [zx, zy] = this.gezeichnet();
+      const liste = [...this.auswahlF].flatMap(([pi, F]) => {
+        const p = this.netz.punkte[pi];
+        return p && F.x > 0.01 ? [{ p, f: F.x, d: Math.hypot(p.x - zx, p.y - zy) }] : [];
+      });
+      liste.sort((a, b) => a.d - b.d);
+      for (const q of liste) {
+        if (c.felder.length >= MAX_FELDER * 4) break;
+        c.felder.push(c.X(q.p.x), c.Y(q.p.y), c.R(3.5 * w.punktRadius), q.f);
+      }
+    }
+    // Rahmen: Haarlinie mit runden Ecken
+    const rahmen = (x0: number, y0: number, x1: number, y1: number, f: number): void => {
+      const [xa, xb] = [Math.min(x0, x1), Math.max(x0, x1)];
+      const [ya, yb] = [Math.min(y0, y1), Math.max(y0, y1)];
+      const rc = Math.min(6 * this.g, (xb - xa) / 2, (yb - ya) / 2);
+      const b = w.innen * 0.75 * f;
+      if (b < 0.005) return;
+      const g = c.gruppe();
+      const linie = (ax: number, ay: number, bx: number, by: number): void => c.push(c.X(ax), c.Y(ay), c.X(bx), c.Y(by), c.R(b), c.R(b), g, 0, 0);
+      linie(xa + rc, ya, xb - rc, ya);
+      linie(xa + rc, yb, xb - rc, yb);
+      linie(xa, ya + rc, xa, yb - rc);
+      linie(xb, ya + rc, xb, yb - rc);
+      const ecke = (cx: number, cy: number, w0: number): void => {
+        for (let i = 0; i < 8; i++) {
+          const p = w0 + ((Math.PI / 2) * i) / 8;
+          const q = w0 + ((Math.PI / 2) * (i + 1)) / 8;
+          linie(cx + rc * Math.cos(p), cy + rc * Math.sin(p), cx + rc * Math.cos(q), cy + rc * Math.sin(q));
+        }
+      };
+      if (rc > 0) {
+        ecke(xb - rc, yb - rc, 0);
+        ecke(xa + rc, yb - rc, Math.PI / 2);
+        ecke(xa + rc, ya + rc, Math.PI);
+        ecke(xb - rc, ya + rc, (3 * Math.PI) / 2);
+      }
+    };
+    if (this.rahmen) rahmen(this.rahmen.x0, this.rahmen.y0, this.rahmen.x1, this.rahmen.y1, 1);
+    if (this.rahmenAus) rahmen(...this.rahmenAus.r, this.rahmenAus.f.x);
+    // gelöschte Punkte vergehen
+    for (const q of this.geister) {
+      const r = w.punktRadius * q.r.x;
+      c.push(c.X(q.x), c.Y(q.y), c.X(q.x), c.Y(q.y), c.R(r), c.R(r), c.gruppe(), c.raum ? 2 : 0, 1, q.z, q.z);
+    }
+  }
+
   /** Neigung der Linien zu den Tropfen hin: Versatz je Probe */
   private neigung(li: number, P: LinienProben, vx: Float32Array, vy: Float32Array): void {
     const w = this.werte;
@@ -976,6 +1825,8 @@ export class Verhalten {
       const zu = this.netz.linien[li]!.zu;
       const extra = new Float32Array(P.n);
       this.schwellBreite(li, P, zu, extra);
+      this.auswahlBreite(li, P, zu, extra);
+      this.wellenBreite(li, P, zu, extra);
       const vx = new Float32Array(P.n);
       const vy = new Float32Array(P.n);
       this.neigung(li, P, vx, vy);
@@ -1006,7 +1857,9 @@ export class Verhalten {
     for (const t of this.tropfen) if (t.ziel.art === 'punkt') alsTropfen.add(t.ziel.pi);
     this.netz.punkte.forEach((p, pi) => {
       if (!p.sichtbar || alsTropfen.has(pi)) return;
-      push(X(p.x), Y(p.y), X(p.x), Y(p.y), R(w.punktRadius), R(w.punktRadius), gruppe++, raum ? 2 : p.verdeckt ? 1 : 0, 1, p.z ?? 0, p.z ?? 0);
+      // gewählt: ein Tropfen, ein wenig größer
+      const r = w.punktRadius * (1 + 0.6 * (this.auswahlF.get(pi)?.x ?? 0));
+      push(X(p.x), Y(p.y), X(p.x), Y(p.y), R(r), R(r), gruppe++, raum ? 2 : p.verdeckt ? 1 : 0, 1, p.z ?? 0, p.z ?? 0);
     });
     // Tropfen mit Hals
     const felder: number[] = [];
@@ -1045,13 +1898,13 @@ export class Verhalten {
         const rr = r / Math.sqrt(1 + e / (4 * r));
         push(X(t.pos.x), Y(t.pos.y), X(t.pos.x + ex), Y(t.pos.y + ey), R(rr), R(rr * 0.5), gruppe++, sch, 1);
       }
-      if (felder.length < 32) felder.push(X((t.pos.x + ax) / 2), Y((t.pos.y + ay) / 2), R(L / 2 / this.g + 4 * w.punktRadius), Math.max(t.r.x, t.hals.x));
+      if (felder.length < MAX_FELDER * 4) felder.push(X((t.pos.x + ax) / 2), Y((t.pos.y + ay) / 2), R(L / 2 / this.g + 4 * w.punktRadius), Math.max(t.r.x, t.hals.x));
     }
     // Nadel: weich durch den Punkt, wenn rund (geknickt sitzt er hart als Fuge); das Feld wächst mit dem Anteil Nadel
     this.schwell.forEach((S) => {
       const st = S.st.x * Math.min(1, Math.max(0, S.nadel.x)) * (1 - Math.min(1, Math.max(0, S.ta.x, S.tb.x)));
       const p = S.pi >= 0 ? this.netz.punkte[S.pi] : undefined;
-      if (st >= 0.01 && p && felder.length < 32) felder.push(X(p.x), Y(p.y), R(5 * w.punktRadius), st);
+      if (st >= 0.01 && p && felder.length < MAX_FELDER * 4) felder.push(X(p.x), Y(p.y), R(5 * w.punktRadius), st);
     });
     // Drehen: Ring (im Raum nach Tiefe verdeckt), alte Richtung grün, Griff als Haarlinie mit weichem Fuß und Perle, Nabe
     const B = this.drehBildLetzt;
@@ -1079,10 +1932,14 @@ export class Verhalten {
         push(X(hx), Y(hy), X(fx), Y(fy), R(0.55), R(w.innen / 2), gruppe++, 0, 1);
         push(X(fx), Y(fy), X(sp[0]), Y(sp[1]), R(w.innen / 2), R(w.innen / 2), gruppe++, 0, 0);
         push(X(sp[0]), Y(sp[1]), X(sp[0]), Y(sp[1]), R(w.punktRadius * 0.8 * f), R(w.punktRadius * 0.8 * f), gruppe++, 0, 1);
-        if (felder.length < 32) felder.push(X(sp[0]), Y(sp[1]), R(4), f);
+        if (felder.length < MAX_FELDER * 4) felder.push(X(sp[0]), Y(sp[1]), R(4), f);
       }
       push(X(hx), Y(hy), X(hx), Y(hy), R(w.punktRadius * 1.1), R(w.punktRadius * 1.1), gruppe++, 0, 1);
     }
+    // Werkzeug P und Auswahl: Faden, Griffe, Ring, Tropfen an der Feder, Rahmen, vergehende Punkte
+    const c: Zeichnen = { push, X, Y, R, felder, gruppe: () => gruppe++, raum };
+    this.stiftZeichnen(c);
+    this.auswahlZeichnen(c);
     // Zeiger: Spitze oben links, schlicht
     let zeiger: Szene['zeiger'] = null;
     if (this.zeiger.da && this.zeigerZeigen) {

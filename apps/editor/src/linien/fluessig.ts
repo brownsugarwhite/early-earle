@@ -21,6 +21,8 @@ const LISTE_BREITE = 2048;
  * Art = Schicht (0 Tinte, 1 verdeckt, 2 nach Tiefe) + 4 · Form (0 Linie, hart; 1 Punkt, Tropfen, Hals, weich).
  */
 export const PRIM_FELDER = 12;
+/** so viele Felder der Weichheit nimmt die Anzeige (je vier Werte) */
+export const MAX_FELDER = 16;
 
 export interface Koerper {
   pos: Float32Array;
@@ -47,7 +49,7 @@ export interface Szene {
   /** weich verschmelzen: k = k0 + k1 · Feld (Gerätepunkte) */
   k0: number;
   k1: number;
-  /** Felder der Weichheit: je vier Werte x, y, Radius, Stärke (Gerätepunkte), höchstens 8 */
+  /** Felder der Weichheit: je vier Werte x, y, Radius, Stärke (Gerätepunkte), höchstens `MAX_FELDER` */
   felder: number[];
   tinte: [number, number, number];
   gruen: [number, number, number];
@@ -78,7 +80,7 @@ uniform float uHoehe;
 uniform float uK0;
 uniform float uK1;
 uniform int uFelder;
-uniform vec4 uFeld[8];
+uniform vec4 uFeld[${MAX_FELDER}];
 uniform vec3 uTinte;
 uniform vec3 uGruen;
 uniform int uZeigerDa;
@@ -156,7 +158,7 @@ void main() {
     grundA = 1.0;
   }
   float fl = 0.0;
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < ${MAX_FELDER}; i++) {
     if (i >= uFelder) break;
     fl = max(fl, glocke(length(p - uFeld[i].xy), uFeld[i].z) * uFeld[i].w);
   }
@@ -600,9 +602,9 @@ export class FluessigeAnzeige {
     gl.uniform1f(this.uni.uHoehe!, this.hoehe);
     gl.uniform1f(this.uni.uK0!, sz.k0);
     gl.uniform1f(this.uni.uK1!, sz.k1);
-    const nf = Math.min(8, Math.floor(sz.felder.length / 4));
+    const nf = Math.min(MAX_FELDER, Math.floor(sz.felder.length / 4));
     gl.uniform1i(this.uni.uFelder!, nf);
-    const fd = new Float32Array(32);
+    const fd = new Float32Array(MAX_FELDER * 4);
     fd.set(sz.felder.slice(0, nf * 4));
     gl.uniform4fv(this.uni.uFeld!, fd);
     gl.uniform3fv(this.uni.uTinte!, sz.tinte);

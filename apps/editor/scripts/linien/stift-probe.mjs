@@ -1,4 +1,6 @@
 // Probe Werkzeug P (Florian, 15.11.): ohne P nur die Schwellung, mit P Tropfen und Punkt setzen, Linie unverändert, Zurück.
+// Abgelöst am 15.11. abends: P zeichnet seitdem wie in Illustrator (Drücken und Ziehen zieht Griffe, verschiebt keinen Punkt);
+// die Probe dafür ist stift-zeichnen-probe.mjs.
 // Aufruf aus apps/editor, Server auf 5199: node scripts/linien/stift-probe.mjs
 import { chromium } from '@playwright/test';
 const URL = 'http://localhost:5199';

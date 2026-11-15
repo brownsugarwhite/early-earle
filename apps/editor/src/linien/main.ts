@@ -107,8 +107,9 @@ let leertaste = false;
 let letzteZeit = 0;
 
 function zeigerAus(e: PointerEvent): void {
-  // ⌥: eine Richtung losreißen (Knick), nicht einrasten
+  // ⌥: eine Richtung losreißen (Knick), nicht einrasten; ⇧: 45° mit P, Auswahl dazu
   verhalten.alt = e.altKey;
+  verhalten.umschalt = e.shiftKey;
   const r = leinwand.getBoundingClientRect();
   const sx = e.clientX - r.left;
   const sy = e.clientY - r.top;
@@ -171,27 +172,51 @@ window.addEventListener('keydown', (e) => {
     verhalten.alt = true;
     anstossen();
   }
+  if (e.key === 'Shift') {
+    verhalten.umschalt = true;
+    anstossen();
+  }
   if (e.code === 'Space') {
     leertaste = true;
-    leinwand.classList.add('schwenken');
+    // beim Ziehen eines Griffs mit P verschiebt die Leertaste den Punkt (wie in Illustrator), sonst verschiebt sie die Ansicht
+    verhalten.leertaste = true;
+    if (!verhalten.greift) leinwand.classList.add('schwenken');
     e.preventDefault();
   } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
     if (verhalten.rueckgaengig()) anstossen();
+    e.preventDefault();
+  } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
+    if (verhalten.eingabe('alle')) anstossen();
     e.preventDefault();
   } else if (e.shiftKey && e.code === 'Digit0') zeigen(1);
   else if (e.shiftKey && e.code === 'Digit1') zeigen('einpassen');
   else if (e.key.toLowerCase() === 'e' && !e.metaKey) knopfEntwurf.click();
   else if (e.key.toLowerCase() === 'r' && !e.metaKey) knopfRegler.click();
-  else if (e.key.toLowerCase() === 'p' && !e.metaKey) stiftSetzen(!verhalten.stift);
-  else if (e.key === 'Escape') stiftSetzen(false);
+  else if (e.key.toLowerCase() === 'p' && !e.metaKey) stiftSetzen(true);
+  else if (e.key.toLowerCase() === 'v' && !e.metaKey) stiftSetzen(false);
+  else if (e.key === 'Enter') {
+    if (verhalten.eingabe('enter')) anstossen();
+  } else if (e.key === 'Backspace' || e.key === 'Delete') {
+    if (verhalten.eingabe('loeschen')) anstossen();
+    e.preventDefault();
+  } else if (e.key === 'Escape') {
+    // Esc: angefangene Linie abbrechen, sonst Auswahl leeren, sonst P beenden
+    if (verhalten.eingabe('esc')) anstossen();
+    else stiftSetzen(false);
+  }
 });
 window.addEventListener('keyup', (e) => {
   if (e.key === 'Alt') {
     verhalten.alt = false;
     anstossen();
   }
+  if (e.key === 'Shift') {
+    verhalten.umschalt = false;
+    anstossen();
+  }
   if (e.code === 'Space') {
     leertaste = false;
+    verhalten.leertaste = false;
     if (!schwenk) leinwand.classList.remove('schwenken');
   }
 });
@@ -205,9 +230,9 @@ const knopfEntwurf = document.getElementById('knopf-entwurf') as HTMLButtonEleme
 const knopfRegler = document.getElementById('knopf-regler') as HTMLButtonElement;
 const knopfWachsen = document.getElementById('knopf-wachsen') as HTMLButtonElement;
 const knopfStift = document.getElementById('knopf-stift') as HTMLButtonElement;
-/** Werkzeug P: nur dann hängt an einer Linie ein Tropfen, und Drücken setzt dort einen Punkt */
+/** Werkzeug P (zeichnen wie in Illustrator) oder Auswahl (V); beim Wechsel bricht eine angefangene Linie ab */
 function stiftSetzen(an: boolean): void {
-  verhalten.stift = an;
+  verhalten.stiftSchalten(an);
   knopfStift.setAttribute('aria-pressed', String(an));
   anstossen();
 }
