@@ -176,6 +176,8 @@ window.addEventListener('keydown', (e) => {
   else if (e.shiftKey && e.code === 'Digit1') zeigen('einpassen');
   else if (e.key.toLowerCase() === 'e' && !e.metaKey) knopfEntwurf.click();
   else if (e.key.toLowerCase() === 'r' && !e.metaKey) knopfRegler.click();
+  else if (e.key.toLowerCase() === 'p' && !e.metaKey) stiftSetzen(!verhalten.stift);
+  else if (e.key === 'Escape') stiftSetzen(false);
 });
 window.addEventListener('keyup', (e) => {
   if (e.code === 'Space') {
@@ -192,6 +194,14 @@ const infoAnzeige = document.getElementById('info') as HTMLSpanElement;
 const knopfEntwurf = document.getElementById('knopf-entwurf') as HTMLButtonElement;
 const knopfRegler = document.getElementById('knopf-regler') as HTMLButtonElement;
 const knopfWachsen = document.getElementById('knopf-wachsen') as HTMLButtonElement;
+const knopfStift = document.getElementById('knopf-stift') as HTMLButtonElement;
+/** Werkzeug P: nur dann hängt an einer Linie ein Tropfen, und Drücken setzt dort einen Punkt */
+function stiftSetzen(an: boolean): void {
+  verhalten.stift = an;
+  knopfStift.setAttribute('aria-pressed', String(an));
+  anstossen();
+}
+knopfStift.onclick = () => stiftSetzen(!verhalten.stift);
 const reglerFeld = document.getElementById('regler') as HTMLElement;
 (document.getElementById('knopf-100') as HTMLButtonElement).onclick = () => zeigen(1);
 (document.getElementById('knopf-einpassen') as HTMLButtonElement).onclick = () => zeigen('einpassen');

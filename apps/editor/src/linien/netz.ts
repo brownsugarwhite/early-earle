@@ -65,6 +65,36 @@ export function netzKopie(n: Netz): Netz {
   };
 }
 
+/**
+ * Werkzeug P: einen Punkt auf die Linie setzen. Stück si wird beim Parameter t geteilt (de Casteljau), die Linie behält genau ihren
+ * Verlauf. Ergebnis: Nummer des neuen Punkts.
+ */
+export function punktEinsetzen(n: Netz, li: number, si: number, t: number): number {
+  const l = n.linien[li]!;
+  const s = l.stuecke[si]!;
+  const [x0, y0, x1, y1, x2, y2, x3, y3] = kontrollpunkte(n, l, si);
+  const m = (a: number, b: number): number => a + (b - a) * t;
+  const ax = m(x0, x1);
+  const ay = m(y0, y1);
+  const bx = m(x1, x2);
+  const by = m(y1, y2);
+  const cx = m(x2, x3);
+  const cy = m(y2, y3);
+  const dx = m(ax, bx);
+  const dy = m(ay, by);
+  const ex = m(bx, cx);
+  const ey = m(by, cy);
+  const px = m(dx, ex);
+  const py = m(dy, ey);
+  const pi = n.punkte.length;
+  n.punkte.push({ x: px, y: py, sichtbar: true, verdeckt: s.art === 'verdeckt' });
+  const vorn: Stueck = { g1x: ax - x0, g1y: ay - y0, g2x: dx - px, g2y: dy - py, art: s.art };
+  const hinten: Stueck = { g1x: ex - px, g1y: ey - py, g2x: cx - x3, g2y: cy - y3, art: s.art };
+  l.stuecke.splice(si, 1, vorn, hinten);
+  l.punkte.splice(si + 1, 0, pi);
+  return pi;
+}
+
 /** Anfangs- und Endpunkt des Stücks si der Linie l */
 export function stueckEnden(l: Linie, si: number): [number, number] {
   return [l.punkte[si]!, l.punkte[(si + 1) % l.punkte.length]!];

@@ -10,13 +10,28 @@
  *    14.11.: „umgekehrt wäre es cooler“), der Tropfen fließt mit ihm in seinen Punkt oder seine Linie zurück. Beim Ziehen folgt die
  *    Stelle genau der Bewegung der Maus, der Zeiger sitzt auf ihr; beim Loslassen gleitet er zurück unter die Maus.
  *
+ * Werkzeug P (Florian, 15.11.: „die Punkte auf der Linie sollen nur erscheinen, wenn ich mit Werkzeug P einen Punkt auf Linien setzen
+ * kann, sonst nur die Verdickung“): Ohne P zeigt eine Linie unter dem Zeiger nur ihre Schwellung, gegriffen und gezogen wird sie wie
+ * bisher. Mit P hängt dort der Tropfen; Drücken setzt ihn als Punkt auf die Linie (er bleibt gegriffen, Ziehen verschiebt ihn gleich).
+ *
  * Linien vereinigen sich hart (Kreuzungen bleiben scharf wie gezeichnet); Punkte, Tropfen und Hälse verschmelzen weich mit allem.
  * Längen in Punkten des Entwurfs; die Anzeige rechnet in Gerätepunkte um.
  */
 
 import { Feder1, Feder2 } from './feder';
 import { PRIM_FELDER, type Szene } from './fluessig';
-import { type LinienProben, type Netz, bezier, kontrollpunkte, linieAbtasten, naechsteStelle, netzKopie, punktZiehen, stelleZiehen } from './netz';
+import {
+  type LinienProben,
+  type Netz,
+  bezier,
+  kontrollpunkte,
+  linieAbtasten,
+  naechsteStelle,
+  netzKopie,
+  punktEinsetzen,
+  punktZiehen,
+  stelleZiehen,
+} from './netz';
 
 export interface Werte {
   /** Florians Vorgaben: Breiten (voll), Punktradius */
@@ -110,6 +125,8 @@ export interface Raum {
   ziehenEnden(): void;
   /** wo die gegriffene Stelle jetzt liegt (Bildschirmpunkte) */
   stelle(ziel: Ziel): [number, number] | null;
+  /** Werkzeug P: Punkt auf Stück si der Linie li beim Parameter t setzen; Ergebnis: seine Nummer (wie im projizierten Netz) */
+  punktEinsetzen(li: number, si: number, t: number): number | null;
   rueckgaengig(): boolean;
 }
 
@@ -172,6 +189,8 @@ export class Verhalten {
   zeigerZeigen = true;
   /** gesetzt: 3D-Probe (siehe `Raum`) */
   raum: Raum | null = null;
+  /** Werkzeug P: Tropfen auf Linien zeigen, Drücken setzt dort einen Punkt */
+  stift = false;
   /** für die Anzeige: Stand der letzten Szene */
   stat = { tropfen: 0, ziel: '' };
 
@@ -226,7 +245,7 @@ export class Verhalten {
     if (!n) return false;
     this.netz = n;
     this.griff = null;
-    this.tropfen = this.tropfen.filter((t) => t.ziel.art === 'punkt' && t.zustand !== 'gegriffen');
+    this.tropfen = this.tropfen.filter((t) => t.ziel.art === 'punkt' && t.zustand !== 'gegriffen' && t.ziel.pi < n.punkte.length);
     this.abtasten();
     return true;
   }
@@ -253,6 +272,26 @@ export class Verhalten {
     if (!t) return false;
     t.zustand = 'gegriffen';
     const z = this.zeiger;
+    // mit P: der Tropfen wird ein Punkt auf der Linie (die Linie behält ihren Verlauf), gegriffen wie jeder Punkt
+    if (this.stift && t.ziel.art === 'linie') {
+      const { li, si, t: tt } = t.ziel;
+      if (!this.raum) {
+        this.zurueck.push(netzKopie(this.netz));
+        if (this.zurueck.length > 60) this.zurueck.shift();
+      }
+      const pi = this.raum ? this.raum.punktEinsetzen(li, si, tt) : punktEinsetzen(this.netz, li, si, tt);
+      if (pi !== null) {
+        t.ziel = { art: 'punkt', pi };
+        if (!this.raum) this.abtasten();
+      }
+      if (this.raum) {
+        this.raum.ziehenBeginnen({ ...t.ziel });
+        this.griff = { ziel: { ...t.ziel }, start: this.netz, ax: t.ax, ay: t.ay, mx: z.x, my: z.y };
+      } else this.griff = { ziel: { ...t.ziel }, start: netzKopie(this.netz), ax: t.ax, ay: t.ay, mx: z.x, my: z.y };
+      this.versatz.zx = t.ax - z.x;
+      this.versatz.zy = t.ay - z.y;
+      return true;
+    }
     if (this.raum) {
       this.raum.ziehenBeginnen({ ...t.ziel });
       this.griff = { ziel: { ...t.ziel }, start: this.netz, ax: t.ax, ay: t.ay, mx: z.x, my: z.y };
@@ -450,15 +489,18 @@ export class Verhalten {
 
     // Tropfen bewegen
     for (const t of this.tropfen) {
+      // ohne P zeigt eine Linie keinen Tropfen, nur ihre Schwellung (der Tropfen bleibt als Merker, wohin gegriffen wird)
+      const zeigen = t.ziel.art === 'punkt' || this.stift ? 1 : 0;
       if (t.ziel.art === 'punkt') {
-        const p = this.netz.punkte[t.ziel.pi]!;
+        // im Raum: ein eben gesetzter Punkt kommt erst mit dem nächsten Bild ins projizierte Netz
+        const p = this.netz.punkte[t.ziel.pi];
+        if (!p) continue;
         t.ax = p.x;
         t.ay = p.y;
       } else if (t.zustand === 'gegriffen' && g) {
         const st = this.raum ? this.raum.stelle(t.ziel) : bezier(kontrollpunkte(this.netz, this.netz.linien[t.ziel.li]!, t.ziel.si), t.ziel.t);
         if (st) [t.ax, t.ay] = st;
       }
-      const r = w.punktRadius * this.g;
       if (t.zustand === 'gegriffen') {
         // der Tropfen sitzt am gleitenden Zeiger und fließt mit ihm in seine Stelle
         const [gx2, gy2] = this.gezeichnet();
@@ -466,20 +508,21 @@ export class Verhalten {
         t.pos.y = t.pos.zy = gy2;
         t.pos.vx = z.vx + this.versatz.vx;
         t.pos.vy = z.vy + this.versatz.vy;
-        t.r.ziel = w.tropfen * 1.08;
-        t.hals.ziel = 1;
+        t.r.ziel = w.tropfen * 1.08 * zeigen;
+        t.hals.ziel = zeigen;
       } else if (t.zustand === 'folgt') {
         [t.pos.zx, t.pos.zy] = this.haengtAn(t);
         t.pos.schritt(dt, w.sprungHz, w.sprungD);
-        // ein Tropfen aus der Linie wächst, wie er sich von ihr löst; dicht an der Linie geht er in ihr auf
-        t.r.ziel = w.tropfen * (t.ziel.art === 'punkt' ? 1 : glatt(1.2 * r, 3.2 * r, Math.hypot(z.x - t.ax, z.y - t.ay)));
-        t.hals.ziel = 1;
+        // mit P ist der Tropfen der Punkt, der entsteht: auch dicht an der Linie so groß wie ein Tropfen (eine Perle in der Schwellung,
+        // sonst ginge er in ihr unter); löst er sich, hängt er am Zeiger
+        t.r.ziel = w.tropfen * zeigen;
+        t.hals.ziel = zeigen;
       } else {
         t.pos.zx = t.ax;
         t.pos.zy = t.ay;
         t.pos.schritt(dt, w.zurueckHz, w.zurueckD);
         t.r.ziel = t.ziel.art === 'punkt' ? 1 : 0;
-        t.hals.ziel = 1;
+        t.hals.ziel = zeigen;
       }
       t.r.schritt(dt, 8, 0.5);
       t.hals.schritt(dt, 10, 0.9);

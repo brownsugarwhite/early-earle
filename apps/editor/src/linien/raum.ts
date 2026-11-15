@@ -31,6 +31,23 @@ interface Linie3 {
   anker: number[];
   stuecke: Stueck3[];
 }
+/** ein Schritt fürs Zurück: Geometrie und Aufbau der Linien (Werkzeug P ändert ihn) */
+interface Stand3 {
+  haut: Float32Array;
+  anker: Float64Array;
+  griffe: Float64Array;
+  sichtbar: Uint8Array;
+  linien: Linie3[];
+}
+const linienKopie = (ls: readonly Linie3[]): Linie3[] => ls.map((l) => ({ zu: l.zu, anker: l.anker.slice(), stuecke: l.stuecke.map((s) => ({ ...s })) }));
+function anhaengen(a: Float64Array, p: V3): Float64Array {
+  const n = new Float64Array(a.length + 3);
+  n.set(a);
+  n[a.length] = p.x;
+  n[a.length + 1] = p.y;
+  n[a.length + 2] = p.z;
+  return n;
+}
 
 // ---------- Matrizen (Spalten, wie WebGL) ----------
 
@@ -103,9 +120,9 @@ const glatt = (a: number, b: number, x: number): number => {
 
 export class Raum3D implements Raum {
   /** Geometrie (verformbar): Anker (Punkte der Linien, Kreuzungen geteilt), Griffspitzen absolut, Haut */
-  anker = new Float64Array(0);
-  ankerSichtbar = new Uint8Array(0);
-  griffe = new Float64Array(0);
+  anker: Float64Array = new Float64Array(0);
+  ankerSichtbar: Uint8Array = new Uint8Array(0);
+  griffe: Float64Array = new Float64Array(0);
   linien: Linie3[] = [];
   hautPos = new Float32Array(0);
   hautTri = new Uint32Array(0);
@@ -148,7 +165,9 @@ export class Raum3D implements Raum {
     anker0: Float64Array;
     griffe0: Float64Array;
   } | null = null;
-  private zurueck: { haut: Float32Array; anker: Float64Array; griffe: Float64Array }[] = [];
+  private zurueck: Stand3[] = [];
+  /** Werkzeug P hat eben einen Punkt gesetzt: Setzen und das Ziehen danach sind ein Schritt fürs Zurück */
+  private gesetzt = false;
   schattierung = 0;
 
   laden(stand: WesenStand): void {
@@ -668,8 +687,8 @@ export class Raum3D implements Raum {
     const seite = p.z < 0 ? -1 : 1;
     const v = this.ansicht;
     const tiefe = -(v[2]! * p.x + v[6]! * p.y + v[10]! * p.z + v[14]!);
-    this.zurueck.push({ haut: this.hautPos.slice(), anker: this.anker.slice(), griffe: this.griffe.slice() });
-    if (this.zurueck.length > 40) this.zurueck.shift();
+    if (!this.gesetzt) this.standMerken();
+    this.gesetzt = false;
     this.zug = {
       p0: { x: p.x, y: p.y, z: Math.abs(p.z) },
       seite,
@@ -743,12 +762,97 @@ export class Raum3D implements Raum {
     return [o[0]!, o[1]!];
   }
 
+  // ---------- Werkzeug P ----------
+
+  private standMerken(): void {
+    this.zurueck.push({
+      haut: this.hautPos.slice(),
+      anker: this.anker.slice(),
+      griffe: this.griffe.slice(),
+      sichtbar: this.ankerSichtbar.slice(),
+      linien: linienKopie(this.linien),
+    });
+    if (this.zurueck.length > 40) this.zurueck.shift();
+  }
+
+  private lage(a: Float64Array, i: number): V3 {
+    return { x: a[i * 3]!, y: a[i * 3 + 1]!, z: a[i * 3 + 2]! };
+  }
+
+  /** die vier Kontrollpunkte eines Stücks */
+  private kontrolle(st: Stueck3): V3[] {
+    return [this.lage(this.anker, st.a), this.lage(this.griffe, st.g1), this.lage(this.griffe, st.g2), this.lage(this.anker, st.b)];
+  }
+
+  /** das Spiegelbild eines Stücks (gleiche oder umgekehrte Richtung); liegt es selbst auf der Mitte, keins */
+  private zwilling(li: number, si: number): { li: number; si: number; rueckwaerts: boolean } | null {
+    const k = this.kontrolle(this.linien[li]!.stuecke[si]!);
+    const eps = this.radius * 1e-5;
+    const gespiegelt = (p: V3, q: V3): boolean => Math.abs(p.x - q.x) < eps && Math.abs(p.y - q.y) < eps && Math.abs(p.z + q.z) < eps;
+    for (let lj = 0; lj < this.linien.length; lj++) {
+      const L = this.linien[lj]!;
+      for (let sj = 0; sj < L.stuecke.length; sj++) {
+        if (lj === li && sj === si) continue;
+        const q = this.kontrolle(L.stuecke[sj]!);
+        if (k.every((p, j) => gespiegelt(p, q[j]!))) return { li: lj, si: sj, rueckwaerts: false };
+        if (k.every((p, j) => gespiegelt(p, q[3 - j]!))) return { li: lj, si: sj, rueckwaerts: true };
+      }
+    }
+    return null;
+  }
+
+  /** Stück si der Linie li beim Parameter t teilen (de Casteljau, der Verlauf bleibt); Ergebnis: der neue Anker */
+  private teilen(li: number, si: number, t: number): number {
+    const l = this.linien[li]!;
+    const st = l.stuecke[si]!;
+    const [P0, P1, P2, P3] = this.kontrolle(st) as [V3, V3, V3, V3];
+    const m = (a: V3, b: V3): V3 => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t });
+    const A = m(P0, P1);
+    const B = m(P1, P2);
+    const C = m(P2, P3);
+    const D = m(A, B);
+    const E = m(B, C);
+    const M = m(D, E);
+    const pi = this.ankerSichtbar.length;
+    this.anker = anhaengen(this.anker, M);
+    const sicht = new Uint8Array(pi + 1);
+    sicht.set(this.ankerSichtbar);
+    sicht[pi] = 1;
+    this.ankerSichtbar = sicht;
+    const setzen = (i: number, p: V3): void => {
+      this.griffe[i * 3] = p.x;
+      this.griffe[i * 3 + 1] = p.y;
+      this.griffe[i * 3 + 2] = p.z;
+    };
+    setzen(st.g1, A);
+    setzen(st.g2, C);
+    const gD = this.griffe.length / 3;
+    this.griffe = anhaengen(anhaengen(this.griffe, D), E);
+    l.stuecke.splice(si, 1, { a: st.a, b: pi, g1: st.g1, g2: gD, kante: st.kante }, { a: pi, b: st.b, g1: gD + 1, g2: st.g2, kante: st.kante });
+    l.anker = l.stuecke.map((s) => s.a);
+    return pi;
+  }
+
+  /** Werkzeug P: einen Punkt auf die Linie setzen, spiegelgleich auch auf ihr Spiegelbild */
+  punktEinsetzen(li: number, si: number, t: number): number | null {
+    if (!this.linien[li]?.stuecke[si]) return null;
+    this.standMerken();
+    this.gesetzt = true;
+    const zw = this.zwilling(li, si);
+    const pi = this.teilen(li, si, t);
+    if (zw) this.teilen(zw.li, zw.li === li && zw.si > si ? zw.si + 1 : zw.si, zw.rueckwaerts ? 1 - t : t);
+    return pi;
+  }
+
   rueckgaengig(): boolean {
     const z = this.zurueck.pop();
     if (!z) return false;
     this.hautPos.set(z.haut);
-    this.anker.set(z.anker);
-    this.griffe.set(z.griffe);
+    this.anker = z.anker;
+    this.griffe = z.griffe;
+    this.ankerSichtbar = z.sichtbar;
+    this.linien = z.linien;
+    this.gesetzt = false;
     this.anzeigeRechnen();
     this.geaendert = true;
     this.zug = null;

@@ -181,6 +181,8 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === '4') ansichtWechseln('schraeg');
   else if (e.key.toLowerCase() === 's' && !e.metaKey) knopfSchattierung.click();
   else if (e.key.toLowerCase() === 'r' && !e.metaKey) knopfRegler.click();
+  else if (e.key.toLowerCase() === 'p' && !e.metaKey) stiftSetzen(!verhalten.stift);
+  else if (e.key === 'Escape') stiftSetzen(false);
 });
 window.addEventListener('resize', groesse);
 
@@ -190,6 +192,14 @@ const infoAnzeige = document.getElementById('info') as HTMLSpanElement;
 const knopfRegler = document.getElementById('knopf-regler') as HTMLButtonElement;
 const knopfSchattierung = document.getElementById('knopf-schattierung') as HTMLButtonElement;
 const reglerFeld = document.getElementById('regler') as HTMLElement;
+const knopfStift = document.getElementById('knopf-stift') as HTMLButtonElement;
+/** Werkzeug P: nur dann hängt an einer Linie ein Tropfen, und Drücken setzt dort einen Punkt (spiegelgleich) */
+function stiftSetzen(an: boolean): void {
+  verhalten.stift = an;
+  knopfStift.setAttribute('aria-pressed', String(an));
+  anstossen();
+}
+knopfStift.onclick = () => stiftSetzen(!verhalten.stift);
 function ansichtWechseln(a: 'seite' | 'front' | 'top' | 'schraeg'): void {
   raum.zeigeAnsicht(a);
   anstossen();
