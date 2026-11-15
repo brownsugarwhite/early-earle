@@ -674,35 +674,39 @@ function poisson(X: Float64Array, Y: Float64Array, T: Uint32Array, n: number, nb
 // ---------- der Körper im Raum ----------
 
 /**
- * Wie weit die Haut gerade ist (aus der Zeit des Aufblasens, siehe `aufblasen.ts`). Drei Flächen auf demselben flachen Netz:
- * vorn (Kuppel, Rand am größten Umfang), hinten (vor dem Abriss die Hälfte des Schlauchs bis zum Hals, danach die Rückseite der
- * Blase, erst spitz, dann rund) und der Rest im Rahmen (vor dem Abriss die andere Hälfte des Schlauchs, danach die flache Haut im
- * Rahmen). Der Hals ist die Linie gleicher Wölbung u = `schnitt`; dahinter ist der Schlauch offen (unsichtbar).
+ * Wie weit die Haut gerade ist (aus der Zeit des Aufblasens, siehe `aufblasen.ts`; Runde 5: Entstehung von der Mitte aus).
+ *
+ * Vier Flächen: vorn die Blase (Kuppel, auf demselben flachen Netz, am Anfang klein in der Mitte, `fuss` wächst bis 1), hinten
+ * ihre Rückseite (erst nach dem Abriss: Trichter zum Abrisspunkt, dann rund), der Rest im Rahmen (im Blatt die ganze flache Haut,
+ * nach dem Abriss Trichter zum Abrisspunkt, der flach in den Rahmen schnappt) und dazwischen der Schlauch (eigenes Netz: Ring ×
+ * Länge vom Umfang der Blase zum Rahmen; am Anfang ein flacher Rock um die kleine Kuppel, dann ein Schlauch, der sich zum runden
+ * Hals einschnürt). Beim Abriss gehen die Hälften des Schlauchs in die Rückseite und den Rest im Rahmen über (kurz überblendet).
  */
 export interface Lage {
-  /** größter Umfang der Blase in der Tiefe; Kuppel vorn (1 = fertig); Rückseite (0 = spitz wie beim Abriss, 1 = rund) */
+  /** im Blatt (vor ↩): nur die flache Haut im Rahmen */
+  imBlatt: boolean;
+  /** Umfang der Blase in der Tiefe; Höhe der Kuppel (1 = Form); Rückseite (0 = Trichter, 1 = rund) */
   ze: number;
   vorn: number;
   hinten: number;
+  /** Größe der Blase um ihre Mitte (am Anfang klein, 1 = ganz) */
+  fuss: number;
   /** in der Ebene gestaucht (+) oder gedehnt (−) um den Schwerpunkt; Welle über die Haut (Stärke, Phase) */
   quer: number;
   welle: number;
   phase: number;
   /** wie weit Vorder- und Rückseite am Umfang eine gemeinsame Normale haben (0..1) */
   zu: number;
-  /** Rahmen und Hals in der Tiefe; Hals als Anteil der Wölbung (0 = am Rand, 1 = zugeschnürt) */
+  /** Rahmen in der Tiefe; Hals des Schlauchs: wie eng (0 offen, 1 zu) und wo (0 an der Blase, 1 am Rahmen) */
   zf: number;
-  zn: number;
-  schnitt: number;
-  /** nach dem Abriss: der Rest im Rahmen ist flach (1) oder noch spitz zum Hals (0); Lage von Hals und Rahmen beim Abriss */
-  gerissen: boolean;
+  eng: number;
+  halsOrt: number;
+  /** Zeit seit dem Abriss (s; < 0 davor); Rest im Rahmen flach (1) oder noch Trichter (0); Abrisspunkt und Rahmen beim Abriss (Tiefe) */
+  seitRiss: number;
   rahmen: number;
-  znRiss: number;
+  hz: number;
   zfRiss: number;
-  /**
-   * rund wie eine Seifenblase (1) oder die gezeichnete Form (0): Umriss und Netz geglättet, dazu praller; länglich in der Tiefe
-   * (1 = Form, die Breite gleicht es aus), seitliches Schwappen (± in x, ∓ in y), Welle vom Abrisspunkt (Stärke, Ort 0..3)
-   */
+  /** rund wie eine Seifenblase (1) oder die gezeichnete Form (0; darunter überschwingt sie), länglich in der Tiefe, seitliches Schwappen, Welle vom Abrisspunkt */
   rund: number;
   zStreck: number;
   schwapp: number;
@@ -711,19 +715,21 @@ export interface Lage {
 }
 
 export const FLACH: Lage = {
+  imBlatt: true,
   ze: 0,
   vorn: 0,
   hinten: 0,
+  fuss: 1,
   quer: 0,
   welle: 0,
   phase: 0,
   zu: 1,
   zf: 0,
-  zn: 0,
-  schnitt: 0,
-  gerissen: false,
-  rahmen: 0,
-  znRiss: 0,
+  eng: 0,
+  halsOrt: 0.5,
+  seitRiss: -1,
+  rahmen: 1,
+  hz: 0,
   zfRiss: 0,
   rund: 0,
   zStreck: 1,
@@ -732,10 +738,13 @@ export const FLACH: Lage = {
   rieselOrt: 0,
 };
 
-/** Profil eines Trichters vom Rand (v = 0) zum Hals (v = 1): am Hals läuft die Haut längs der Tiefe (wie beim Katenoid) */
+/** Profil eines Trichters vom Rand (v = 0) zum Abrisspunkt (v = 1): dort läuft die Haut längs der Tiefe */
 function trichter(v: number): number {
   return 1 - Math.sqrt(Math.max(0, 1 - v));
 }
+
+/** Zeilen des Schlauchs (Länge); Spalten = Punkte des Rands */
+export const SCHLAUCH_ZEILEN = 44;
 
 export class Koerper {
   readonly flach: FlachNetz;
@@ -746,28 +755,45 @@ export class Koerper {
   /** Dreiecke der Blase (vorn, hinten umgekehrt) und des Rahmens (lokal 0..n−1) */
   readonly index: Uint32Array;
   readonly indexRahmen: Uint32Array;
-  /** Wölbung 0..1 (oben 1), Seite (+1 vorn, −1 hinten, 0 Rahmen), Lage im Blatt (für Muster, um 0, Radius 1) */
+  /** Wölbung 0..1 (oben 1), Seite (+1 vorn, −1 hinten, 0 Rahmen), Lage im Blatt beim Start (für Muster, um 0, Radius 1) */
   readonly hoehe: Float32Array;
   readonly seite: Float32Array;
   readonly blatt: Float32Array;
-  /** Dehnung der Haut gegen den Bezug (1 = ungedehnt); Sichtbarkeit (hinter dem Hals ist der Schlauch offen) */
+  /** Dehnung der Haut gegen den Bezug (1 = ungedehnt); Sichtbarkeit */
   readonly dehnung: Float32Array;
   readonly sicht: Float32Array;
   private flaeche: Float64Array;
   private bezug: Float64Array;
+  /** Schlauch: (Zeilen + 1) × nb Punkte, eigene Puffer wie die Haut */
+  readonly schlauch: {
+    pos: Float32Array;
+    normal: Float32Array;
+    hoehe: Float32Array;
+    seite: Float32Array;
+    blatt: Float32Array;
+    dehnung: Float32Array;
+    sicht: Float32Array;
+    index: Uint32Array;
+    flaeche: Float64Array;
+    bezug: Float64Array;
+  };
   /** Fülle: Höhe = fuelle · √h */
   fuelle = 0.72;
   /** Verformung durch Ziehen (Welt), je Punkt der flachen Seite; die Rückseite gespiegelt */
   readonly versatz: Float32Array;
   /** Kanten der Blase mit ihren zwei Dreiecken (für Umrisse an den Wänden) */
   private kanten: Int32Array | null = null;
-  /** die runde Blase: Lage je Punkt im Blatt, geglättet (Rand längs des Rands, innen wie ein Fell), Fläche wie die Form */
+  /** die runde Blase: Lage je Punkt im Blatt (Rand geglättet, Inneres harmonisch), Fläche wie die Form */
   private xr: Float64Array;
   private yr: Float64Array;
+  /** Mitte des Rahmens (Mittel der Randpunkte) */
+  private rmx: number;
+  private rmy: number;
 
   constructor(flach: FlachNetz) {
     this.flach = flach;
     const n = flach.n;
+    const nb = flach.nb;
     this.anzahl = 3 * n;
     this.pos = new Float32Array(this.anzahl * 3);
     this.normal = new Float32Array(this.anzahl * 3);
@@ -794,6 +820,14 @@ export class Koerper {
     const rund = runderUmriss(flach);
     this.xr = rund.x;
     this.yr = rund.y;
+    let mx = 0;
+    let my = 0;
+    for (let i = 0; i < nb; i++) {
+      mx += flach.x[i]!;
+      my += flach.y[i]!;
+    }
+    this.rmx = mx / nb;
+    this.rmy = my / nb;
     const r = flach.radius || 1;
     for (let s = 0; s < 3; s++)
       for (let i = 0; i < n; i++) {
@@ -804,25 +838,56 @@ export class Koerper {
         this.blatt[v * 2 + 1] = (flach.y[i]! - flach.cy) / r;
         this.bezug[v] = flach.punktFlaeche[i]!;
       }
+    // Schlauch: Ring × Länge, Dreiecke mit der Außenseite nach außen
+    const K = SCHLAUCH_ZEILEN;
+    const m = (K + 1) * nb;
+    const sx: number[] = [];
+    for (let j = 0; j < K; j++)
+      for (let i = 0; i < nb; i++) {
+        const a = j * nb + i;
+        const b = j * nb + ((i + 1) % nb);
+        const c = (j + 1) * nb + i;
+        const d = (j + 1) * nb + ((i + 1) % nb);
+        sx.push(a, c, b, b, c, d);
+      }
+    this.schlauch = {
+      pos: new Float32Array(m * 3),
+      normal: new Float32Array(m * 3),
+      hoehe: new Float32Array(m),
+      seite: new Float32Array(m),
+      blatt: new Float32Array(m * 2),
+      dehnung: new Float32Array(m).fill(1),
+      sicht: new Float32Array(m),
+      index: Uint32Array.from(sx),
+      flaeche: new Float64Array(m),
+      bezug: new Float64Array(m).fill(1),
+    };
   }
 
   /** Lage setzen: Punkte, Normalen, Fläche je Punkt, Sichtbarkeit; danach `dehnungRechnen` */
   setzen(l: Lage): void {
     const F = this.flach;
     const n = F.n;
+    const nb = F.nb;
     const P = this.pos;
     const S = this.sicht;
     const s = this.fuelle;
-    const k = 1 + l.quer;
     const V = this.versatz;
     const qm = F.qMax || 1;
-    const schnitt = Math.max(1e-4, l.schnitt);
-    // runde Blase: geglättete Lage, praller (Höhe × (1 + 0,3 · rund)); länglich in der Tiefe, die Breite gleicht es aus
-    const ru = Math.max(0, Math.min(1, l.rund));
-    const hoch = (1 + 0.3 * ru) * l.zStreck;
+    // runde Blase: geglättete Lage, praller (Höhe × (1 + 0,3 · rund)); länglich in der Tiefe, die Breite gleicht es aus. Unter 0
+    // überschwingt die Form (die Flossen schießen etwas über ihr Ziel hinaus)
+    const ru = Math.min(1, l.rund);
+    const hoch = (1 + 0.3 * Math.max(0, ru)) * l.zStreck;
     const breit = 1 / Math.sqrt(Math.max(0.2, l.zStreck));
-    const kx = k * breit * (1 + l.schwapp);
-    const ky = k * breit * (1 - l.schwapp);
+    const k = (1 + l.quer) * breit * l.fuss;
+    const kx = k * (1 + l.schwapp);
+    const ky = k * (1 - l.schwapp);
+    const kz = l.fuss;
+    const nach = l.seitRiss >= 0;
+    const ueb = nach ? weich(0, 0.08, l.seitRiss) : 0;
+    // Abrisspunkt: auf der Achse des Schlauchs beim Hals
+    const hx = F.cx + (this.rmx - F.cx) * l.halsOrt;
+    const hy = F.cy + (this.rmy - F.cy) * l.halsOrt;
     for (let i = 0; i < n; i++) {
       const qi = F.q[i]!;
       const u = qi / qm;
@@ -836,41 +901,115 @@ export class Koerper {
       // Welle vom Abrisspunkt: läuft über die Rückseite (Ort 0 … 1), den Umfang (1) und die Vorderseite (1 … 2) bis nach vorn
       const rv = l.riesel > 0 ? 1 + l.riesel * Math.exp(-(((1 + u - l.rieselOrt) / 0.28) ** 2)) : 1;
       const rh = l.riesel > 0 ? 1 + l.riesel * Math.exp(-(((1 - u - l.rieselOrt) / 0.28) ** 2)) : 1;
-      // vorn: Kuppel
-      P[i * 3] = xs;
-      P[i * 3 + 1] = ys;
-      P[i * 3 + 2] = l.ze + l.vorn * s * qi * welle * hoch * rv + V[i * 3 + 2]!;
-      S[i] = 1;
-      // hinten und Rahmen
       const h = n + i;
       const r = 2 * n + i;
-      if (!l.gerissen) {
-        const sichtbar = 1 - weich(schnitt - 0.025, schnitt + 0.004, u);
-        const tv = u <= schnitt ? trichter(u / schnitt) : 1;
-        // der Schlauch läuft vom Umfang der runden Blase (tv = 0) zum Hals am Rahmen (tv = 1, die gezeichnete Form)
-        P[h * 3] = xs + (x - xs) * tv;
-        P[h * 3 + 1] = ys + (y - ys) * tv;
-        P[h * 3 + 2] = l.ze - (l.ze - l.zn) * tv;
-        P[r * 3] = x;
-        P[r * 3 + 1] = y;
-        P[r * 3 + 2] = l.zf + (l.zn - l.zf) * tv;
-        S[h] = sichtbar;
-        S[r] = sichtbar;
-      } else {
-        const tv = trichter(u);
-        // erst der Trichter zum Abrisspunkt (wie beim Abriss), dann die runde Rückseite
-        const zum = tv * (1 - Math.min(1, Math.max(0, l.hinten)));
-        P[h * 3] = xs + (x - xs) * zum;
-        P[h * 3 + 1] = ys + (y - ys) * zum;
-        P[h * 3 + 2] = l.ze - ((1 - l.hinten) * (l.ze - l.znRiss) * tv + l.hinten * s * qi * welle * hoch * rh) - V[i * 3 + 2]!;
-        P[r * 3] = x;
-        P[r * 3 + 1] = y;
-        P[r * 3 + 2] = l.zf + (l.znRiss - l.zfRiss) * tv * (1 - l.rahmen);
-        S[h] = 1;
-        S[r] = 1;
-      }
+      // vorn: Kuppel (wächst mit dem Fuß, eine kleine Blase ist auch flacher)
+      P[i * 3] = xs;
+      P[i * 3 + 1] = ys;
+      P[i * 3 + 2] = l.ze + l.vorn * kz * s * qi * welle * hoch * rv + V[i * 3 + 2]!;
+      // hinten: erst nach dem Abriss (Trichter zum Abrisspunkt, dann rund)
+      const tv = trichter(u);
+      const zum = tv * (1 - Math.min(1, Math.max(0, l.hinten)));
+      P[h * 3] = xs + (hx - xs) * zum;
+      P[h * 3 + 1] = ys + (hy - ys) * zum;
+      P[h * 3 + 2] = l.ze - ((1 - l.hinten) * (l.ze - l.hz) * tv + l.hinten * kz * s * qi * welle * hoch * rh) - V[i * 3 + 2]!;
+      // Rest im Rahmen: im Blatt flach; nach dem Abriss Trichter zum Abrisspunkt, der flach in den Rahmen schnappt
+      const zr = l.imBlatt ? 0 : nach ? tv * (1 - l.rahmen) : 0;
+      P[r * 3] = x + (hx - x) * zr;
+      P[r * 3 + 1] = y + (hy - y) * zr;
+      P[r * 3 + 2] = l.zf + (l.hz - l.zfRiss) * zr;
+      S[i] = l.imBlatt ? 0 : 1;
+      S[h] = l.imBlatt ? 0 : ueb;
+      S[r] = l.imBlatt ? 1 : ueb;
     }
     this.normalenUndFlaeche(l.zu);
+    this.schlauchSetzen(l, nach ? 1 - ueb : l.imBlatt ? 0 : 1);
+  }
+
+  /**
+   * Schlauch vom Umfang der Blase (Zeile 0, die Randpunkte der Vorderseite) zum Rahmen (letzte Zeile, gezeichnete Form in der Tiefe
+   * des Rahmens). Längs: die Lage im Blatt ändert sich an der Blase langsam (die Haut verlässt die Kuppel längs der Tiefe), die Tiefe
+   * gleichmäßig. Am Hals zieht sich der Querschnitt zur Achse und wird dabei rund (wie echte Seifenhaut).
+   */
+  private schlauchSetzen(l: Lage, sicht: number): void {
+    const F = this.flach;
+    const nb = F.nb;
+    const K = SCHLAUCH_ZEILEN;
+    const S = this.schlauch;
+    const P = this.pos;
+    let ex = 0;
+    let ey = 0;
+    for (let i = 0; i < nb; i++) {
+      ex += P[i * 3]!;
+      ey += P[i * 3 + 1]!;
+    }
+    ex /= nb;
+    ey /= nb;
+    const vn = Math.min(0.92, Math.max(0.08, l.halsOrt));
+    const glocke = (v: number): number => Math.sin(Math.PI * v) ** 2 * Math.exp(-(((v - vn) / 0.3) ** 2));
+    const g0 = glocke(vn) || 1;
+    const dx = new Float64Array(nb);
+    const dy = new Float64Array(nb);
+    for (let j = 0; j <= K; j++) {
+      const v = j / K;
+      const a = v * v * (3 - 2 * v);
+      const cx = ex + (this.rmx - ex) * a;
+      const cy = ey + (this.rmy - ey) * a;
+      const z = l.ze + (l.zf - l.ze) * v;
+      const b = (l.eng * glocke(v)) / g0;
+      let rm = 0;
+      for (let i = 0; i < nb; i++) {
+        const bx = P[i * 3]! + (F.x[i]! - P[i * 3]!) * a;
+        const by = P[i * 3 + 1]! + (F.y[i]! - P[i * 3 + 1]!) * a;
+        dx[i] = bx - cx;
+        dy[i] = by - cy;
+        rm += Math.hypot(dx[i]!, dy[i]!);
+      }
+      rm /= nb;
+      const runden = Math.min(1, 1.25 * b);
+      const zieh = 1 - Math.min(1, b);
+      for (let i = 0; i < nb; i++) {
+        const r = Math.hypot(dx[i]!, dy[i]!) || 1;
+        const qx = dx[i]! + ((dx[i]! / r) * rm - dx[i]!) * runden;
+        const qy = dy[i]! + ((dy[i]! / r) * rm - dy[i]!) * runden;
+        const o = (j * nb + i) * 3;
+        S.pos[o] = cx + qx * zieh;
+        S.pos[o + 1] = cy + qy * zieh;
+        S.pos[o + 2] = z;
+      }
+    }
+    S.sicht.fill(sicht);
+    // Normalen und Fläche aus dem Gitter
+    const N = S.normal;
+    const Q = S.pos;
+    const at = (i: number, j: number, c: number): number => Q[(Math.min(K, Math.max(0, j)) * nb + ((i + nb) % nb)) * 3 + c]!;
+    for (let j = 0; j <= K; j++)
+      for (let i = 0; i < nb; i++) {
+        const tix = at(i + 1, j, 0) - at(i - 1, j, 0);
+        const tiy = at(i + 1, j, 1) - at(i - 1, j, 1);
+        const tiz = at(i + 1, j, 2) - at(i - 1, j, 2);
+        const tvx = at(i, j + 1, 0) - at(i, j - 1, 0);
+        const tvy = at(i, j + 1, 1) - at(i, j - 1, 1);
+        const tvz = at(i, j + 1, 2) - at(i, j - 1, 2);
+        let nx = tvy * tiz - tvz * tiy;
+        let ny = tvz * tix - tvx * tiz;
+        let nz = tvx * tiy - tvy * tix;
+        const l2 = Math.hypot(nx, ny, nz);
+        const o = (j * nb + i) * 3;
+        if (l2 > 1e-12) {
+          nx /= l2;
+          ny /= l2;
+          nz /= l2;
+        } else {
+          nx = 0;
+          ny = 0;
+          nz = -1;
+        }
+        N[o] = nx;
+        N[o + 1] = ny;
+        N[o + 2] = nz;
+        S.flaeche[j * nb + i] = l2 / 4 + 1e-9;
+      }
   }
 
   /**
@@ -879,19 +1018,50 @@ export class Koerper {
    */
   dehnungRechnen(dt = 0, beruhigen = 0): number {
     let rest = 0;
-    if (dt > 0 && beruhigen > 0) {
-      const f = 1 - Math.exp(-dt / beruhigen);
-      for (let v = 0; v < this.anzahl; v++) {
-        const d = this.flaeche[v]! - this.bezug[v]!;
-        this.bezug[v]! += d * f;
-        rest = Math.max(rest, Math.abs(d) / Math.max(1e-9, this.flaeche[v]!));
+    const f = dt > 0 && beruhigen > 0 ? 1 - Math.exp(-dt / beruhigen) : 0;
+    const folgen = (fl: Float64Array, bz: Float64Array, de: Float32Array): void => {
+      for (let v = 0; v < fl.length; v++) {
+        if (f > 0) {
+          const d = fl[v]! - bz[v]!;
+          bz[v]! += d * f;
+          rest = Math.max(rest, Math.abs(d) / Math.max(1e-9, fl[v]!));
+        }
+        de[v] = fl[v]! / Math.max(1e-9, bz[v]!);
       }
-    }
-    for (let v = 0; v < this.anzahl; v++) this.dehnung[v] = this.flaeche[v]! / Math.max(1e-9, this.bezug[v]!);
+    };
+    folgen(this.flaeche, this.bezug, this.dehnung);
+    folgen(this.schlauch.flaeche, this.schlauch.bezug, this.schlauch.dehnung);
     return rest;
   }
 
-  /** Bezug auf die flache Haut zurücksetzen (vor dem Aufblasen) */
+  /** Die Blase in Ruhe ist der Bezug ihrer Farben (vorher gesetzt: die Lage am Ende): Beim Wachsen blühen die Farben auf und kommen dort an */
+  bezugRuhe(): void {
+    const n = this.flach.n;
+    for (let v = 0; v < 2 * n; v++) this.bezug[v] = this.flaeche[v]!;
+  }
+
+  /**
+   * Beim Start des Aufblasens (vorher gesetzt: die Lage am Anfang): die Lage im Blatt für die Muster (so fließen die Farben der flachen
+   * Haut ohne Sprung weiter) und der Bezug des Schlauchs (der flache Rock ist ungedehnt; was sich danach dehnt, färbt sich).
+   */
+  bezugJetzt(): void {
+    const F = this.flach;
+    const r = F.radius || 1;
+    const n = F.n;
+    for (let v = 0; v < 2 * n; v++) {
+      this.blatt[v * 2] = (this.pos[v * 3]! - F.cx) / r;
+      this.blatt[v * 2 + 1] = (this.pos[v * 3 + 1]! - F.cy) / r;
+    }
+    for (let i = 0; i < n; i++) this.bezug[2 * n + i] = F.punktFlaeche[i]!;
+    const S = this.schlauch;
+    for (let v = 0; v < S.flaeche.length; v++) {
+      S.bezug[v] = S.flaeche[v]!;
+      S.blatt[v * 2] = (S.pos[v * 3]! - F.cx) / r;
+      S.blatt[v * 2 + 1] = (S.pos[v * 3 + 1]! - F.cy) / r;
+    }
+  }
+
+  /** Bezug auf die flache Haut zurücksetzen (im Blatt) */
   bezugFlach(): void {
     const n = this.flach.n;
     for (let s = 0; s < 3; s++) for (let i = 0; i < n; i++) this.bezug[s * n + i] = this.flach.punktFlaeche[i]!;

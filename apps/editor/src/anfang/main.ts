@@ -15,7 +15,8 @@ import { Color, Matrix4, PerspectiveCamera, Vector2, Vector3, WebGLRenderer } fr
 import { glatt, type Masse, type Moment, moment } from './aufblasen';
 import { FluessigeAnzeige, type Szene } from './fluessig';
 import { FLACH, Koerper, netzAusUmriss } from './form';
-import { FASSUNGEN, type Fassung, Haut, type HautWerte, type Wand } from './haut';
+import { FASSUNGEN, type Fassung, Haut, type HautWerte } from './haut';
+import type { WandStaerke, Wuerfel } from './schatten';
 import { reglerBauen, type Werte, werteLesen } from './regler';
 import { Kapseln, LOOK, Stift } from './stift';
 
@@ -77,45 +78,36 @@ const GRUEN_NACHT: [number, number, number] = [0x4f / 255, 0x6e / 255, 0x66 / 25
 const PAPIER_RGB: [number, number, number] = [1, 1, 1];
 const NACHT_RGB: [number, number, number] = [0x12 / 255, 0x1a / 255, 0x28 / 255];
 
-// ---------- Ecke ----------
+// ---------- Würfel ----------
 
 /**
- * Die Ecke (Florian, 15.11.: „ich meinte Ecke“, wie in der Vision „Ecke“ vom 13.11.): drei unsichtbare Flächen hinter der Blase, die
- * sich in einem Punkt treffen. Rückwand (z = −zw) mit der Seite (dorthin fährt der Rahmen), linke Wand (x = xl) mit der Front, Boden
- * (y = yb) mit Top. Man sieht sie an ihren leichten Schatten, an drei feinsten Kanten und an ihren Namen in Lobster, die auf dem
- * Boden liegen. Am Ende schaut die Kamera schräg von rechts oben in die Ecke; ihr Abstand ist so gewählt, dass Blase, Schatten und
- * Namen ins Bild passen (auch im hohen, schmalen Fenster).
+ * Der Würfel um die Blase (Florian, 16.11.: „wie bei dem ersten Versuch der anderen Session mit der Ecke … an allen Seiten … immer
+ * max 3 gleichzeitig sichtbar“): sechs unsichtbare Wände; je Achse trägt die Wand den Schatten, die von der Kamera abgewandt ist.
+ * Beim Drehen wechselt er weich auf die Gegenwand. Man sieht die Wände an ihren weichen Schatten und an den drei Kanten der fernen
+ * Ecke. Am Ende schaut die Kamera schräg von oben in die Ecke; ihr Abstand ist so gewählt, dass Blase und Schatten ins Bild passen.
  */
-interface Ecke {
+interface Raum {
   cx: number;
   cy: number;
-  xl: number;
-  yb: number;
-  zw: number;
-  /** halbe Ausdehnung der Blase in x und y (Welt), größte Tiefe einer Seite, Maß der Ecke */
+  /** halbe Kantenlänge des Würfels */
+  L: number;
+  /** halbe Ausdehnung der Blase in x und y (Welt), größte Tiefe einer Seite, Maß der Form */
   rx: number;
   ry: number;
   tiefe: number;
   R: number;
-  /** Lage der Schatten an der linken Wand und am Boden in der Tiefe (etwas zur Ecke hin) */
-  sz: number;
   /** Abstand der Kamera zur Mitte der Blase am Ende */
   abstand: number;
-  /** Namen auf dem Boden: Mitte, Leserichtung (Länge = Breite), Richtung der Oberkante der Buchstaben (Länge = Tiefe) */
-  namen: { mitte: Vector3; u: Vector3; v: Vector3 }[];
 }
-let ecke: Ecke | null = null;
+let raum: Raum | null = null;
 
-const WAND_NAMEN = ['Seite', 'Front', 'Top'] as const;
-/** gerade unter dem Zeiger: Wand 0 (Rückwand), 1 (links), 2 (Boden) oder −1 */
+/** Wand 0..5 = Achse · 2 + (Seite > 0 ? 1 : 0); gerade unter dem Zeiger oder −1 */
 let wandUnterZeiger = -1;
-const wandSicht = [0, 0, 0];
-/** Seitenverhältnis der Namen (Breite : Höhe des Bilds der Schrift), sobald Lobster geladen ist */
-const namenFormat = [3.2, 3.2, 2.0];
+const wandSicht = [0, 0, 0, 0, 0, 0];
 
-function eckeRechnen(): void {
+function raumRechnen(): void {
   if (!koerper) {
-    ecke = null;
+    raum = null;
     return;
   }
   const F = koerper.flach;
@@ -127,37 +119,18 @@ function eckeRechnen(): void {
   }
   const tiefe = koerper.fuelle * F.qMax;
   const R = Math.max(rx, ry);
-  const xl = F.cx - rx - 0.8 * R;
-  const yb = F.cy - ry - 0.55 * R;
-  const zw = tiefe + 0.9 * R;
-  const sz = -0.3 * zw;
-  // Namen: Buchstabenhöhe, auf dem Boden in die Tiefe gestreckt (so lesen sie sich von schräg oben besser, wie Schrift auf einer Straße)
-  const h = 0.3 * R;
-  const streck = 1.9;
-  const boden = yb + 0.5;
-  const name = (i: number, mitte: Vector3, u: Vector3, v: Vector3) => ({ mitte, u: u.multiplyScalar(h * namenFormat[i]!), v: v.multiplyScalar(h * streck) });
-  const tiefeName = h * streck;
-  const namen = [
-    name(0, new Vector3(F.cx + 0.45 * rx, boden, -zw + tiefeName / 2 + 0.08 * R), new Vector3(1, 0, 0), new Vector3(0, 0, -1)),
-    name(1, new Vector3(xl + tiefeName / 2 + 0.08 * R, boden, sz + tiefe + 0.35 * R), new Vector3(0, 0, -1), new Vector3(-1, 0, 0)),
-    name(2, new Vector3(F.cx, boden, sz + tiefe + tiefeName / 2 + 0.12 * R), new Vector3(1, 0, 0), new Vector3(0, 0, -1)),
-  ];
-  const e: Ecke = { cx: F.cx, cy: F.cy, xl, yb, zw, rx, ry, tiefe, R, sz, abstand: L0, namen };
-  ecke = e;
+  const L = Math.max(rx, ry, tiefe) + 0.55 * R;
+  const e: Raum = { cx: F.cx, cy: F.cy, L, rx, ry, tiefe, R, abstand: L0 };
+  raum = e;
   e.abstand = einpassen(e);
-  haut.setzeNamen(
-    WAND_NAMEN.map((t, i) => ({ text: t, mitte: namen[i]!.mitte, u: namen[i]!.u, v: namen[i]!.v })),
-    (i, format) => {
-      if (Math.abs(namenFormat[i]! - format) > 0.01) {
-        namenFormat[i] = format;
-        eckeRechnen();
-      }
-    },
-  );
+}
+
+function wuerfelVon(e: Raum): Wuerfel {
+  return { mitte: new Vector3(e.cx, e.cy, 0), halb: new Vector3(e.L, e.L, e.L) };
 }
 
 /** Kamera am Ende (Drehung und Neigung aus den Werten, Ziel Mitte der Blase) mit Abstand d */
-function kameraAmEnde(e: Ecke, d: number, cam: PerspectiveCamera): void {
+function kameraAmEnde(e: Raum, d: number, cam: PerspectiveCamera): void {
   const gier = (werte.gier * Math.PI) / 180;
   const neigung = (werte.neigung * Math.PI) / 180;
   cam.fov = werte.fov;
@@ -171,25 +144,25 @@ function kameraAmEnde(e: Ecke, d: number, cam: PerspectiveCamera): void {
   cam.updateMatrixWorld();
 }
 
-/** kleinster Abstand, bei dem Blase, Schatten, Ecke und Namen ins Bild passen (Rand frei, unten Platz für die Leiste) */
-function einpassen(e: Ecke): number {
+/** kleinster Abstand, bei dem Blase, die drei fernen Schatten und ihre Ecke ins Bild passen */
+function einpassen(e: Raum): number {
   const cam = new PerspectiveCamera();
+  const sx = Math.sign(Math.sin((werte.gier * Math.PI) / 180)) || 1;
+  const sy = Math.sign(Math.sin((werte.neigung * Math.PI) / 180)) || 1;
   const pkt: Vector3[] = [];
-  for (const sx of [-1, 1])
-    for (const sy of [-1, 1]) {
-      for (const sz of [-1, 1]) pkt.push(new Vector3(e.cx + sx * e.rx, e.cy + sy * e.ry, sz * e.tiefe));
-      pkt.push(new Vector3(e.cx + sx * e.rx, e.cy + sy * e.ry, -e.zw));
-      pkt.push(new Vector3(e.xl, e.cy + sy * e.ry, e.sz + sx * e.tiefe));
-      pkt.push(new Vector3(e.cx + sx * e.rx, e.yb, e.sz + sy * e.tiefe));
+  for (const a of [-1, 1])
+    for (const b of [-1, 1]) {
+      for (const c of [-1, 1]) pkt.push(new Vector3(e.cx + a * e.rx, e.cy + b * e.ry, c * e.tiefe));
+      pkt.push(new Vector3(e.cx + a * e.rx, e.cy + b * e.ry, -e.L));
+      pkt.push(new Vector3(e.cx - sx * e.L, e.cy + b * e.ry, a * e.tiefe));
+      pkt.push(new Vector3(e.cx + a * e.rx, e.cy - sy * e.L, b * e.tiefe));
     }
-  pkt.push(new Vector3(e.xl, e.yb, -e.zw));
-  for (const n of e.namen)
-    for (const a of [-0.5, 0.5]) for (const b of [-0.5, 0.5]) pkt.push(n.mitte.clone().addScaledVector(n.u, a).addScaledVector(n.v, b));
+  pkt.push(new Vector3(e.cx - sx * e.L, e.cy - sy * e.L, -e.L));
   const passt = (d: number): boolean => {
     kameraAmEnde(e, d, cam);
     for (const p of pkt) {
       const c = p.clone().project(cam);
-      if (c.z > 1 || Math.abs(c.x) > 0.88 || c.y > 0.86 || c.y < -0.72) return false;
+      if (c.z > 1 || Math.abs(c.x) > 0.9 || c.y > 0.88 || c.y < -0.74) return false;
     }
     return true;
   };
@@ -206,18 +179,34 @@ function einpassen(e: Ecke): number {
 
 function masse(): Masse {
   const F = koerper!.flach;
-  return { a: Math.sqrt(Math.abs(F.flaeche) / Math.PI), Zw: ecke!.zw };
+  return { a: Math.sqrt(Math.abs(F.flaeche) / Math.PI), Zw: raum!.L };
 }
 
-function waendeFuer(m: Moment | null): Wand[] {
-  const e = ecke;
-  if (!e || !m) return [];
-  const rest = m.schatten >= 0.999 ? 1 : 0;
-  return [
-    { achse: 2, lage: -e.zw, staerke: rest },
-    { achse: 0, lage: e.xl, staerke: m.waende, z: e.sz },
-    { achse: 1, lage: e.yb, staerke: m.waende, z: e.sz },
-  ];
+/** Gewicht je Wand (0..5): die von der Kamera abgewandte Seite jeder Achse, weich beim Wechsel auf die Gegenwand */
+function wandGewichte(): number[] {
+  const e = raum;
+  if (!e) return [0, 0, 0, 0, 0, 0];
+  const d = kamera.position.clone().sub(new Vector3(e.cx, e.cy, 0)).normalize();
+  const g = (x: number): number => {
+    const t = Math.min(1, Math.max(0, (x - 0.03) / 0.17));
+    return t * t * (3 - 2 * t);
+  };
+  // Kamera auf der +Seite einer Achse → Schatten auf der −Wand
+  return [g(d.x), g(-d.x), g(d.y), g(-d.y), g(d.z), g(-d.z)];
+}
+
+function waendeFuer(m: Moment | null): WandStaerke[] {
+  if (!raum || !m) return [];
+  const g = wandGewichte();
+  const aus: WandStaerke[] = [];
+  for (let k = 0; k < 6; k++) {
+    const achse = Math.floor(k / 2) as 0 | 1 | 2;
+    const seite = (k % 2 === 0 ? -1 : 1) as -1 | 1;
+    // die Wand hinter der Blase (z) übernimmt den Rest im Rahmen, die übrigen erscheinen nach dem Abriss
+    const zeit = achse === 2 ? m.schatten : m.waende;
+    aus.push({ achse, seite, staerke: g[k]! * zeit });
+  }
+  return aus;
 }
 
 // ---------- Größe ----------
@@ -234,7 +223,7 @@ function groesse(): void {
   kamera.aspect = W / H;
   L0 = H / 2 / Math.tan((FOV0 * Math.PI) / 360);
   if (zustand === 'blatt') netzStand = -1;
-  else eckeRechnen();
+  else raumRechnen();
   anstossen();
 }
 
@@ -244,7 +233,7 @@ function netzBauen(): void {
   netzStand = stift.stand;
   if (!stift.geschlossen) {
     koerper = null;
-    ecke = null;
+    raum = null;
     haut.setzeKoerper(null);
     return;
   }
@@ -256,7 +245,7 @@ function netzBauen(): void {
   koerper.dehnungRechnen();
   haut.setzeKoerper(koerper);
   haut.hochladen();
-  eckeRechnen();
+  raumRechnen();
   netzZeit = performance.now();
   Object.assign(stat, { netzMs: flach.stat.ms, punkte: flach.stat.punkte, dreiecke: flach.stat.dreiecke, fehlend: flach.stat.fehlendeRandkanten, schritte: flach.stat.schritte });
 }
@@ -268,8 +257,13 @@ function aufblasen(): void {
   if (!koerper || netzStand !== stift.stand) netzBauen();
   if (!koerper) return;
   koerper.versatz.fill(0);
-  koerper.bezugFlach();
-  eckeRechnen();
+  raumRechnen();
+  // der Anfang des Aufblasens ist der Bezug: ungedehnt, Muster ohne Sprung zur flachen Haut
+  const ms0 = masse();
+  koerper.setzen(moment(99, ms0, werte).lage);
+  koerper.bezugRuhe();
+  koerper.setzen(moment(0, ms0, werte).lage);
+  koerper.bezugJetzt();
   zustand = 'auf';
   T = 0;
   film = 1;
@@ -281,7 +275,7 @@ function ablassen(): void {
   zug = null;
   drehen = null;
   zustand = 'ab';
-  if (koerper && ecke) T = Math.min(T, moment(0, masse(), werte).dauer);
+  if (koerper && raum) T = Math.min(T, moment(0, masse(), werte).dauer);
   anstossen();
 }
 
@@ -290,9 +284,13 @@ function nochEinmal(): void {
     aufblasen();
     return;
   }
-  if (!koerper) return;
+  if (!koerper || !raum) return;
   koerper.versatz.fill(0);
-  koerper.bezugFlach();
+  const ms0 = masse();
+  koerper.setzen(moment(99, ms0, werte).lage);
+  koerper.bezugRuhe();
+  koerper.setzen(moment(0, ms0, werte).lage);
+  koerper.bezugJetzt();
   nutzer.gier = 0;
   nutzer.neigung = 0;
   nutzer.zoom = 1;
@@ -306,7 +304,7 @@ function neu(): void {
   T = 0;
   stift.abbrechen();
   koerper = null;
-  ecke = null;
+  raum = null;
   haut.setzeKoerper(null);
   nutzer.gier = 0;
   nutzer.neigung = 0;
@@ -319,7 +317,7 @@ function neu(): void {
 
 /** Dolly-Zoom vom Blatt in den Kasten: der Öffnungswinkel wächst, die Blase bleibt (fast) gleich groß, die Tiefe erscheint */
 function kameraSetzen(m: Moment | null): void {
-  const k = ecke;
+  const k = raum;
   const f = m && k ? m.fahrt : 0;
   const fov = FOV0 + (werte.fov - FOV0) * f;
   const halb = (fov * Math.PI) / 360;
@@ -397,7 +395,7 @@ function bild(dt: number): boolean {
   if (zustand === 'blatt' && !stift.geschlossen) film = 0;
   // Zeit des Aufblasens
   let m: Moment | null = null;
-  if (zustand !== 'blatt' && koerper && ecke) {
+  if (zustand !== 'blatt' && koerper && raum) {
     const dauer = moment(0, masse(), werte).dauer;
     if (festeZeit !== null) T = festeZeit;
     else if (zustand === 'auf') T += dt;
@@ -426,7 +424,7 @@ function bild(dt: number): boolean {
   }
   kameraSetzen(zustand === 'blatt' ? null : m);
   // Fahrtwind: die Farben fließen gegen die Drehung
-  const gierJetzt = Math.atan2(kamera.position.x - (ecke?.cx ?? 0), kamera.position.z);
+  const gierJetzt = Math.atan2(kamera.position.x - (raum?.cx ?? 0), kamera.position.z);
   const neigungJetzt = kamera.position.y;
   if (dt > 0) {
     wind.x -= (gierJetzt - letzteDrehung.gier) * 0.9;
@@ -437,7 +435,7 @@ function bild(dt: number): boolean {
   hauch.staerke += (hauch.ziel - hauch.staerke) * (1 - Math.exp(-dt / 0.18));
   if (Math.abs(hauch.ziel - hauch.staerke) > 1e-3) aktiv = true;
   // Wände: Linien und Namen blenden weich ein und aus
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 6; i++) {
     const ziel = zustand === 'ruhe' && wandUnterZeiger === i ? 1 : 0;
     wandSicht[i]! += (ziel - wandSicht[i]!) * (1 - Math.exp(-dt / 0.12));
     if (Math.abs(ziel - wandSicht[i]!) > 2e-3) aktiv = true;
@@ -449,10 +447,11 @@ function bild(dt: number): boolean {
     fassung,
     nacht,
     zeit: uhr,
-    vorn: zustand === 'blatt' ? film : 1,
-    hinten: m ? 1 : 0,
-    rahmen: m ? (m.schatten >= 0.999 ? 0 : 1) : 0,
-    schatten: m ? m.schatten : 0,
+    vorn: 1,
+    hinten: 1,
+    rahmen: m ? 1 - m.schatten : film,
+    schatten: 0,
+    schlauch: !!m && m.lage.seitRiss < 0.1,
     deckung: zustand === 'blatt' ? 0.42 * film : 0.42 + 0.58 * glatt(T / 1.4),
     hauch: hauch.pos,
     hauchStaerke: hauch.staerke,
@@ -461,9 +460,10 @@ function bild(dt: number): boolean {
     dicke: werte.dicke,
     spannung: werte.spannung,
     sicht: werte.sicht,
+    wuerfel: raum && m ? wuerfelVon(raum) : null,
     waende: waendeFuer(m),
+    weich: werte.weich * (raum?.R ?? 200),
     schattenFarbe,
-    namen: m ? WAND_NAMEN.map((_, i) => ({ staerke: m!.waende, hervor: wandSicht[i]! })) : [],
   };
   haut.zeichnen(kamera, w);
   // Linien
@@ -471,7 +471,7 @@ function bild(dt: number): boolean {
   const vp = new Matrix4().multiplyMatrices(kamera.projectionMatrix, kamera.matrixWorldInverse);
   if (zustand === 'blatt') {
     stift.kapseln(K, D, true);
-  } else if (koerper && F && ecke && m) {
+  } else if (koerper && F && raum && m) {
     linienImRaum(vp, m);
   }
   if (stift.zeiger.da) K.felder.push(stift.zeiger.x * D, stift.zeiger.y * D, 22 * D, 0.7);
@@ -512,7 +512,7 @@ function bild(dt: number): boolean {
 function linienImRaum(vp: Matrix4, m: Moment): void {
   const k = koerper!;
   const F = k.flach;
-  const e = ecke!;
+  const e = raum!;
   const n = F.n;
   const p = new Vector3();
   const r0 = (LOOK.umriss / 2) * D;
@@ -537,25 +537,21 @@ function linienImRaum(vp: Matrix4, m: Moment): void {
     const rp = LOOK.punktRadius * D * staerke;
     for (const a of F.anker) K.push(sx[a]!, sy[a]!, sx[a]!, sy[a]!, rp, rp, K.neueGruppe(), 0, true);
   }
-  // Kanten der Ecke: drei feinste Haarlinien vom Eckpunkt aus (Rückwand und Boden, Rückwand und linke Wand, linke Wand und Boden)
+  // Kanten der fernen Ecke: drei feinste Haarlinien vom Eckpunkt aus (die Ecke wechselt mit der Kamera)
+  const g6 = wandGewichte();
   const kanten = werte.kanten * m.waende;
   if (kanten > 0.01) {
-    const L = 6 * e.R;
-    const c = [e.xl, e.yb, -e.zw];
-    const enden = [
-      [e.xl + L, e.yb, -e.zw],
-      [e.xl, e.yb + L, -e.zw],
-      [e.xl, e.yb, -e.zw + L],
-    ];
+    const s = [g6[0]! >= g6[1]! ? -1 : 1, g6[2]! >= g6[3]! ? -1 : 1, g6[4]! >= g6[5]! ? -1 : 1];
+    const st = Math.min(Math.max(g6[0]!, g6[1]!), Math.max(g6[2]!, g6[3]!), Math.max(g6[4]!, g6[5]!));
+    const c = new Vector3(e.cx + s[0]! * e.L, e.cy + s[1]! * e.L, s[2]! * e.L);
+    const enden = [c.clone().setX(e.cx - s[0]! * e.L), c.clone().setY(e.cy - s[1]! * e.L), c.clone().setZ(-s[2]! * e.L)];
     const g = K.neueGruppe();
-    const r = 0.14 * D * kanten;
-    for (const z of enden) {
-      const a = new Vector3(c[0], c[1], c[2]);
-      const b = new Vector3(z[0], z[1], z[2]);
-      const st = 32;
+    const r = 0.14 * D * kanten * st;
+    for (const b of enden) {
+      const steps = 32;
       let vorher: [number, number] | null = null;
-      for (let s = 0; s <= st; s++) {
-        const q = a.clone().lerp(b, s / st);
+      for (let k2 = 0; k2 <= steps; k2++) {
+        const q = c.clone().lerp(b, k2 / steps);
         const vorKamera = q.clone().applyMatrix4(kamera.matrixWorldInverse).z < -kamera.near * 2;
         const cc = q.clone().applyMatrix4(vp);
         if (!vorKamera || Math.abs(cc.x) > 3 || Math.abs(cc.y) > 3) {
@@ -563,35 +559,43 @@ function linienImRaum(vp: Matrix4, m: Moment): void {
           continue;
         }
         const pp: [number, number] = [(cc.x * 0.5 + 0.5) * W * D, (0.5 - cc.y * 0.5) * H * D];
-        if (vorher) K.push(vorher[0], vorher[1], pp[0], pp[1], r, r, g, 0, false);
+        if (vorher && r > 0.01) K.push(vorher[0], vorher[1], pp[0], pp[1], r, r, g, 0, false);
         vorher = pp;
       }
     }
   }
-  // linke Wand und Boden: Umriss der Blase von ihrer Achse, auf die Wand gelegt (etwas zur Ecke hin wie der Schatten)
-  for (let wnd = 1; wnd < 3; wnd++) {
-    const s = wandSicht[wnd]!;
-    if (s < 0.01) continue;
-    const achse = wnd === 1 ? 0 : 1;
-    const lage = wnd === 1 ? e.xl : e.yb;
+  // Wand unter dem Zeiger: der Umriss der Blase von ihrer Achse, auf die Wand gelegt (an der Seite mit den Punkten der Linie)
+  for (let w = 0; w < 6; w++) {
+    const sw = wandSicht[w]!;
+    if (sw < 0.01) continue;
+    const achse = Math.floor(w / 2) as 0 | 1 | 2;
+    const seite = w % 2 === 0 ? -1 : 1;
+    const lage = (achse === 0 ? e.cx : achse === 1 ? e.cy : 0) + seite * e.L;
     const seg = k.umriss(achse);
     const g = K.neueGruppe();
-    const r = r0 * s;
+    const r = r0 * sw;
+    const legen = (x: number, y: number, z: number): [number, number] => {
+      const q = new Vector3(x, y, z);
+      if (achse === 0) q.x = lage;
+      else if (achse === 1) q.y = lage;
+      else q.z = lage;
+      const [a, b] = projizieren(q, vp);
+      return [a, b];
+    };
     for (let i = 0; i < seg.length; i += 6) {
-      const a = new Vector3(seg[i]!, seg[i + 1]!, seg[i + 2]! + e.sz);
-      const b = new Vector3(seg[i + 3]!, seg[i + 4]!, seg[i + 5]! + e.sz);
-      if (achse === 0) {
-        a.x = lage;
-        b.x = lage;
-      } else {
-        a.y = lage;
-        b.y = lage;
-      }
-      const [ax, ay] = projizieren(a, vp);
-      const [bx, by] = projizieren(b, vp);
+      const [ax, ay] = legen(seg[i]!, seg[i + 1]!, seg[i + 2]!);
+      const [bx, by] = legen(seg[i + 3]!, seg[i + 4]!, seg[i + 5]!);
       K.push(ax, ay, bx, by, r, r, g, 0, false);
     }
+    if (achse === 2) {
+      const rp = LOOK.punktRadius * D * sw;
+      for (const a of F.anker) {
+        const [px, py] = legen(k.pos[a * 3]!, k.pos[a * 3 + 1]!, 0);
+        K.push(px, py, px, py, rp, rp, K.neueGruppe(), 0, true);
+      }
+    }
   }
+
 }
 
 // ---------- Eingaben ----------
@@ -607,44 +611,30 @@ function strahl(x: number, y: number): { o: Vector3; d: Vector3 } {
   return { o, d: p.sub(o).normalize() };
 }
 
-/** Wand unter dem Zeiger: Rückwand 0, linke Wand 1, Boden 2 (oder der Name einer Wand auf dem Boden), −1 = keine */
+/** Wand unter dem Zeiger (nur die drei sichtbaren, fernen Wände), −1 = keine */
 function wandSuchen(x: number, y: number): number {
-  const e = ecke;
+  const e = raum;
   if (!e || zustand !== 'ruhe') return -1;
   const { o, d } = strahl(x, y);
-  const weit = 6 * e.R;
+  const g6 = wandGewichte();
+  const mitte = [e.cx, e.cy, 0];
   let best = -1;
   let bt = Infinity;
-  let treffer: Vector3 | null = null;
-  const pruefen = (i: number, achse: 0 | 1 | 2, lage: number): void => {
+  for (let w = 0; w < 6; w++) {
+    if (g6[w]! < 0.5) continue;
+    const achse = Math.floor(w / 2);
+    const seite = w % 2 === 0 ? -1 : 1;
     const dd = achse === 0 ? d.x : achse === 1 ? d.y : d.z;
     const oo = achse === 0 ? o.x : achse === 1 ? o.y : o.z;
-    if (Math.abs(dd) < 1e-9) return;
-    const t = (lage - oo) / dd;
-    if (t <= 0 || t >= bt) return;
+    if (Math.abs(dd) < 1e-9) continue;
+    const t = (mitte[achse]! + seite * e.L - oo) / dd;
+    if (t <= 0 || t >= bt) continue;
     const q = o.clone().addScaledVector(d, t);
-    // jede Fläche reicht von der Ecke aus nach rechts, oben und vorn
-    const inX = q.x >= e.xl - 1 && q.x <= e.xl + weit;
-    const inY = q.y >= e.yb - 1 && q.y <= e.yb + weit;
-    const inZ = q.z >= -e.zw - 1 && q.z <= -e.zw + weit;
-    if ((achse === 2 && inX && inY) || (achse === 0 && inY && inZ) || (achse === 1 && inX && inZ)) {
+    const p = [q.x - mitte[0]!, q.y - mitte[1]!, q.z - mitte[2]!];
+    const drin = [0, 1, 2].every((a) => a === achse || Math.abs(p[a]!) <= e.L + 1);
+    if (drin) {
       bt = t;
-      best = i;
-      treffer = q;
-    }
-  };
-  pruefen(0, 2, -e.zw);
-  pruefen(1, 0, e.xl);
-  pruefen(2, 1, e.yb);
-  // auf dem Boden: liegt der Zeiger auf einem Namen, gilt dessen Wand
-  if (best === 2 && treffer) {
-    const q = treffer as Vector3;
-    for (let i = 0; i < e.namen.length; i++) {
-      const nm = e.namen[i]!;
-      const dq = q.clone().sub(nm.mitte);
-      const a = dq.dot(nm.u) / nm.u.lengthSq();
-      const b = dq.dot(nm.v) / nm.v.lengthSq();
-      if (Math.abs(a) <= 0.5 && Math.abs(b) <= 0.5) return i;
+      best = w;
     }
   }
   return best;
@@ -825,11 +815,11 @@ nachtSetzen(nacht);
 const regler = $<HTMLElement>('regler');
 const reglerKnopf = $('knopf-regler');
 const reglerTeile = reglerBauen($('regler-liste'), werte, () => {
-  if (koerper && ecke) {
+  if (koerper && raum) {
     koerper.fuelle = werte.fuelle;
-    eckeRechnen();
+    raumRechnen();
   }
-  if (zustand === 'ruhe' && koerper && ecke) {
+  if (zustand === 'ruhe' && koerper && raum) {
     koerper.setzen(moment(T, masse(), werte).lage);
     koerper.dehnungRechnen();
     haut.hochladen();
@@ -878,7 +868,7 @@ const haken = {
   zeit(t: number | null): void {
     festeZeit = t;
     if (t !== null && zustand === 'blatt') aufblasen();
-    if (t !== null && koerper && ecke) {
+    if (t !== null && koerper && raum) {
       T = t;
       zustand = t >= moment(0, masse(), werte).dauer ? 'ruhe' : 'auf';
     }
@@ -906,7 +896,7 @@ const haken = {
     if (!stift.geschlossen) return { anker: NaN, rand: NaN };
     if (!koerper || netzStand !== stift.stand) netzBauen();
     const k = koerper!;
-    eckeRechnen();
+    raumRechnen();
     const m = moment(0, masse(), werte);
     k.setzen(m.lage);
     kameraSetzen(m);
@@ -936,7 +926,7 @@ const haken = {
    * letzten Bild davor und dem ersten danach (60 Bilder je Sekunde)
    */
   abriss(): { riss: number; davor: number; sprung: number; danach: number; jeFlaeche: number[]; uAmMeisten: number } {
-    if (!koerper || !ecke) return { riss: NaN, davor: NaN, sprung: NaN, danach: NaN, jeFlaeche: [], uAmMeisten: NaN };
+    if (!koerper || !raum) return { riss: NaN, davor: NaN, sprung: NaN, danach: NaN, jeFlaeche: [], uAmMeisten: NaN };
     const k = koerper;
     const ms = masse();
     const riss = moment(0, ms, werte).riss;
@@ -988,26 +978,20 @@ const haken = {
     const [sx, sy] = projizieren(new Vector3(koerper.pos[best * 3]!, koerper.pos[best * 3 + 1]!, koerper.pos[best * 3 + 2]!), vp);
     return { x: sx / D, y: sy / D };
   },
-  /** ein Punkt auf einer Wand im Bild (CSS-Pixel): Wand 0 (Rückwand), 1 (links), 2 (Boden); Lage als Anteile (−1..1) um die Schatten */
+  /** ein Punkt auf einer der drei fernen Wände im Bild (CSS-Pixel): 0 hinten (z), 1 seitlich (x), 2 unten (y); Lage als Anteile (−1..1) */
   aufDerWand(i: number, fa: number, fb: number): { x: number; y: number } | null {
-    const e = ecke;
+    const e = raum;
     if (!e) return null;
+    const g6 = wandGewichte();
+    const s = [g6[0]! >= g6[1]! ? -1 : 1, g6[2]! >= g6[3]! ? -1 : 1, g6[4]! >= g6[5]! ? -1 : 1];
     const p =
       i === 0
-        ? new Vector3(e.cx + fa * 1.5 * e.rx, e.cy + fb * 1.3 * e.ry, -e.zw)
+        ? new Vector3(e.cx + fa * 1.2 * e.rx, e.cy + fb * 1.2 * e.ry, s[2]! * e.L)
         : i === 1
-          ? new Vector3(e.xl, e.cy + fb * 1.3 * e.ry, e.sz + fa * 1.5 * e.tiefe)
-          : new Vector3(e.cx + fa * 1.5 * e.rx, e.yb, e.sz + fb * 1.5 * e.tiefe);
+          ? new Vector3(e.cx + s[0]! * e.L, e.cy + fb * 1.2 * e.ry, fa * 1.2 * e.tiefe)
+          : new Vector3(e.cx + fa * 1.2 * e.rx, e.cy + s[1]! * e.L, fb * 1.2 * e.tiefe);
     const vp = new Matrix4().multiplyMatrices(kamera.projectionMatrix, kamera.matrixWorldInverse);
     const [sx, sy] = projizieren(p, vp);
-    return { x: sx / D, y: sy / D };
-  },
-  /** Mitte eines Namens auf dem Boden im Bild (CSS-Pixel) */
-  aufDemNamen(i: number): { x: number; y: number } | null {
-    const e = ecke;
-    if (!e || !e.namen[i]) return null;
-    const vp = new Matrix4().multiplyMatrices(kamera.projectionMatrix, kamera.matrixWorldInverse);
-    const [sx, sy] = projizieren(e.namen[i]!.mitte.clone(), vp);
     return { x: sx / D, y: sy / D };
   },
   stand(): Record<string, unknown> {

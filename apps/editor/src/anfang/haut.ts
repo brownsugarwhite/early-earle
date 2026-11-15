@@ -21,7 +21,6 @@ import {
   BackSide,
   BufferAttribute,
   BufferGeometry,
-  CanvasTexture,
   Color,
   CustomBlending,
   DataTexture,
@@ -30,9 +29,7 @@ import {
   FrontSide,
   HalfFloatType,
   LinearFilter,
-  LinearMipmapLinearFilter,
   Mesh,
-  MinEquation,
   NoBlending,
   OneFactor,
   OneMinusSrcAlphaFactor,
@@ -50,6 +47,7 @@ import {
   ZeroFactor,
 } from 'three';
 import type { Koerper } from './form';
+import { type WandStaerke, WandSchatten, type Wuerfel } from './schatten';
 
 export const FASSUNGEN = ['Seifenhaut', 'Irisdruck', 'Horizont', 'Höhenlinien'] as const;
 export type Fassung = 0 | 1 | 2 | 3;
@@ -197,7 +195,8 @@ float dickeHier(out float hauch) {
   float n = 0.62 * rauschen(vec3(p * 1.45 + w * 1.5, t * 1.4)) + 0.26 * rauschen(vec3(p * 3.3 + w * 0.9, t * 2.1));
   float d = uDicke * (1.0 + 0.62 * n);
   d *= mix(1.22, 0.74, smoothstep(-1.0, 1.0, vBlatt.y));
-  d *= pow(max(vDehnung, 0.12), -uSpannung);
+  // gedehnt dünner, gestaucht dicker, beides begrenzt (sonst wird stark Gedehntes farblos weiß und stark Gestauchtes blass)
+  d *= pow(clamp(vDehnung, 0.55, 6.0), -uSpannung);
   vec3 dp = vPos - uHauch;
   hauch = exp(-dot(dp, dp) / (uHauchRadius * uHauchRadius)) * uHauchStaerke;
   d *= 1.0 - 0.62 * hauch;
@@ -384,81 +383,6 @@ void main() {
 }
 `;
 
-// ---------- Schatten an den Wänden ----------
-
-/** Die Blase, auf eine Wand gelegt (Achse 0 x, 1 y, 2 z, Wand bei `uWand`): ein leichter Schatten, Überdeckungen nicht doppelt (MIN) */
-const WAND_VERTEX = /* glsl */ `
-uniform int uAchse;
-uniform float uWand;
-uniform float uZ;
-void main() {
-  vec4 w = modelMatrix * vec4(position, 1.0);
-  if (uAchse == 0) w.x = uWand;
-  else if (uAchse == 1) w.y = uWand;
-  else w.z = uWand;
-  if (uAchse != 2) w.z += uZ;
-  gl_Position = projectionMatrix * viewMatrix * w;
-}
-`;
-const WAND_FRAGMENT = /* glsl */ `
-precision highp float;
-uniform vec3 uFarbe;
-uniform float uStaerke;
-void main() {
-  gl_FragColor = vec4(mix(vec3(1.0), uFarbe, uStaerke), 1.0);
-}
-`;
-
-/** eine Wand des Kastens: Achse, Lage, Stärke des Schattens (0..1) */
-export interface Wand {
-  achse: 0 | 1 | 2;
-  lage: number;
-  staerke: number;
-  /** Versatz des Schattens in der Tiefe (Wände ringsum: weiter hinten als die Blase) */
-  z?: number;
-}
-
-// ---------- Namen auf dem Boden ----------
-
-/** Namen der Wände in Lobster, flach auf dem Boden (Florian, 15.11.: „die Beschriftung soll auch auf den Boden projiziert sein“) */
-const NAME_VERTEX = /* glsl */ `
-varying vec2 vUv;
-void main() {
-  vUv = uv;
-  gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
-}
-`;
-const NAME_FRAGMENT = /* glsl */ `
-precision highp float;
-uniform sampler2D uTex;
-uniform vec3 uFarbe;
-uniform float uStaerke;
-varying vec2 vUv;
-void main() {
-  float a = texture2D(uTex, vUv).a * uStaerke;
-  gl_FragColor = vec4(uFarbe * a, a);
-}
-`;
-
-/** ein Name auf dem Boden: Mitte, Leserichtung (Länge = Breite), Richtung der Oberkante der Buchstaben (Länge = Höhe) */
-export interface NameAmBoden {
-  text: string;
-  mitte: Vector3;
-  u: Vector3;
-  v: Vector3;
-}
-
-/** je Bild: wie stark der Name zu sehen ist (mit den Schatten) und wie weit er hervortritt (beim Darüberfahren dunkel) */
-export interface NameZustand {
-  staerke: number;
-  hervor: number;
-}
-
-const NAME_GRAU = new Color().setScalar(0.42);
-const NAME_TINTE = new Color('#1f1a17');
-const NAME_NACHT = new Color().setScalar(0.08);
-const NAME_NACHT_HELL = new Color('#f1ece3');
-
 // ---------- Haut: Netze, Ziel, Bild ----------
 
 export interface HautWerte {
@@ -469,8 +393,9 @@ export interface HautWerte {
   vorn: number;
   hinten: number;
   rahmen: number;
-  /** der Rest im Rahmen wird zum Schatten (0..1) */
+  /** der Rest im Rahmen wird zum Schatten (0..1); der Schlauch ist zu sehen (vor dem Abriss und kurz danach) */
   schatten: number;
+  schlauch: boolean;
   /** deckende Fassungen: 0 = noch Film, 1 = deckend */
   deckung: number;
   hauch: Vector3;
@@ -481,11 +406,11 @@ export interface HautWerte {
   dicke: number;
   spannung: number;
   sicht: number;
-  /** Wände des Kastens mit ihren Schatten, Farbe der Schatten (linear) */
-  waende: Wand[];
+  /** Würfel und Stärke seiner sechs Wände (höchstens drei sichtbar), wie weich (Welt), Farbe des vollen Schattens (linear) */
+  wuerfel: Wuerfel | null;
+  waende: WandStaerke[];
+  weich: number;
   schattenFarbe: Color;
-  /** Namen auf dem Boden (in der Reihenfolge von `setzeNamen`) */
-  namen: NameZustand[];
 }
 
 export const PAPIER = new Color('#ffffff');
@@ -500,13 +425,14 @@ export class Haut {
   private tafel: Texture;
   private geoBlase: BufferGeometry | null = null;
   private geoRahmen: BufferGeometry | null = null;
+  private geoSchlauch: BufferGeometry | null = null;
   private netze: Mesh[] = [];
   /** Durchgänge: Blase (hinten ×, hinten +, vorn ×, vorn +, deckend), Rahmen (dieselben fünf), Wände (je eine) */
   private mats: ShaderMaterial[] = [];
   private matsRahmen: ShaderMaterial[] = [];
-  private matsWand: ShaderMaterial[] = [];
   private koerper: Koerper | null = null;
-  private namen: { mesh: Mesh; mat: ShaderMaterial; text: string; tex: CanvasTexture | null }[] = [];
+  /** weiche Schatten an den Wänden des Würfels */
+  readonly schatten = new WandSchatten();
 
   constructor(renderer: WebGLRenderer) {
     this.renderer = renderer;
@@ -533,21 +459,7 @@ export class Haut {
     this.ende = { szene: s, kamera: new OrthographicCamera(-1, 1, 1, -1, 0, 1), material };
     this.mats = this.durchgaenge(0);
     this.matsRahmen = this.durchgaenge(1);
-    for (let i = 0; i < 5; i++)
-      this.matsWand.push(
-        new ShaderMaterial({
-          vertexShader: WAND_VERTEX,
-          fragmentShader: WAND_FRAGMENT,
-          uniforms: { uAchse: { value: 0 }, uWand: { value: 0 }, uZ: { value: 0 }, uFarbe: { value: new Color(0.9, 0.9, 0.9) }, uStaerke: { value: 0 } },
-          depthTest: false,
-          depthWrite: false,
-          side: DoubleSide,
-          blending: CustomBlending,
-          blendEquation: MinEquation,
-          blendSrc: OneFactor,
-          blendDst: OneFactor,
-        }),
-      );
+    this.szene.add(this.schatten.gruppe);
   }
 
   /** vier Durchgänge für durchsichtige Fassungen (hinten ×, hinten +, vorn ×, vorn +) und einer für deckende */
@@ -610,83 +522,6 @@ export class Haut {
     return [mal(BackSide, 1), mal(BackSide, 2), mal(FrontSide, 1), mal(FrontSide, 2), deckend];
   }
 
-  /**
-   * Namen auf dem Boden setzen (Lage und Größe); die Schrift wird einmal in ein Bild gezeichnet, sobald Lobster geladen ist.
-   * `format` meldet das Seitenverhältnis des Bilds (Breite : Höhe), damit die Fläche dazu passt.
-   */
-  setzeNamen(liste: NameAmBoden[], format: (i: number, verhaeltnis: number) => void): void {
-    liste.forEach((n, i) => {
-      let e = this.namen[i];
-      if (!e) {
-        const g = new BufferGeometry();
-        g.setAttribute('position', new BufferAttribute(new Float32Array(12), 3));
-        g.setAttribute('uv', new BufferAttribute(new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), 2));
-        g.setIndex([0, 1, 2, 2, 1, 3]);
-        const mat = new ShaderMaterial({
-          vertexShader: NAME_VERTEX,
-          fragmentShader: NAME_FRAGMENT,
-          uniforms: { uTex: { value: null }, uFarbe: { value: new Color() }, uStaerke: { value: 0 } },
-          depthTest: false,
-          depthWrite: false,
-          transparent: true,
-          side: DoubleSide,
-          blending: CustomBlending,
-          blendEquation: AddEquation,
-          blendSrc: OneFactor,
-          blendDst: OneMinusSrcAlphaFactor,
-        });
-        const mesh = new Mesh(g, mat);
-        mesh.renderOrder = -15;
-        mesh.frustumCulled = false;
-        mesh.visible = false;
-        this.szene.add(mesh);
-        e = { mesh, mat, text: '', tex: null };
-        this.namen[i] = e;
-      }
-      const P = (e.mesh.geometry.getAttribute('position') as BufferAttribute).array as Float32Array;
-      const ecke = (a: number, b: number, k: number): void => {
-        P[k * 3] = n.mitte.x + n.u.x * a + n.v.x * b;
-        P[k * 3 + 1] = n.mitte.y + n.u.y * a + n.v.y * b;
-        P[k * 3 + 2] = n.mitte.z + n.u.z * a + n.v.z * b;
-      };
-      ecke(-0.5, -0.5, 0);
-      ecke(0.5, -0.5, 1);
-      ecke(-0.5, 0.5, 2);
-      ecke(0.5, 0.5, 3);
-      (e.mesh.geometry.getAttribute('position') as BufferAttribute).needsUpdate = true;
-      if (e.text !== n.text) {
-        e.text = n.text;
-        const eintrag = e;
-        const zeichnen = (): void => {
-          const c = document.createElement('canvas');
-          const ctx = c.getContext('2d')!;
-          const gr = 200;
-          ctx.font = `${gr}px Lobster`;
-          const b = Math.ceil(ctx.measureText(n.text).width + gr * 0.3);
-          c.width = b;
-          c.height = Math.round(gr * 1.3);
-          ctx.font = `${gr}px Lobster`;
-          ctx.fillStyle = '#ffffff';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'alphabetic';
-          ctx.fillText(n.text, b / 2, gr * 1.02);
-          eintrag.tex?.dispose();
-          const t = new CanvasTexture(c);
-          t.minFilter = LinearMipmapLinearFilter;
-          t.magFilter = LinearFilter;
-          t.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
-          t.needsUpdate = true;
-          eintrag.tex = t;
-          eintrag.mat.uniforms.uTex!.value = t;
-          format(i, c.width / c.height);
-        };
-        const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
-        if (fonts) void fonts.load('200px Lobster').then(zeichnen, zeichnen);
-        else zeichnen();
-      }
-    });
-  }
-
   groesse(b: number, h: number, dpr: number): void {
     this.ziel.setSize(Math.max(1, Math.round(b * dpr)), Math.max(1, Math.round(h * dpr)));
     this.ende.material.uniforms.uGroesse!.value.set(b * dpr, h * dpr);
@@ -698,9 +533,12 @@ export class Haut {
     this.netze = [];
     this.geoBlase?.dispose();
     this.geoRahmen?.dispose();
+    this.geoSchlauch?.dispose();
     this.geoBlase = null;
     this.geoRahmen = null;
+    this.geoSchlauch = null;
     this.koerper = k;
+    this.schatten.setzeBlase(null);
     if (!k) return;
     const n = k.flach.n;
     const geo = (von: number, bis: number, index: Uint32Array): BufferGeometry => {
@@ -717,6 +555,18 @@ export class Haut {
     };
     this.geoBlase = geo(0, 2 * n, k.index);
     this.geoRahmen = geo(2 * n, 3 * n, k.indexRahmen);
+    // Schlauch: eigene Puffer (Ring × Länge)
+    const S = k.schlauch;
+    const gs = new BufferGeometry();
+    gs.setAttribute('position', new BufferAttribute(S.pos, 3));
+    gs.setAttribute('normal', new BufferAttribute(S.normal, 3));
+    gs.setAttribute('aHoehe', new BufferAttribute(S.hoehe, 1));
+    gs.setAttribute('aSeite', new BufferAttribute(S.seite, 1));
+    gs.setAttribute('aBlatt', new BufferAttribute(S.blatt, 2));
+    gs.setAttribute('aDehnung', new BufferAttribute(S.dehnung, 1));
+    gs.setAttribute('aSicht', new BufferAttribute(S.sicht, 1));
+    gs.setIndex(new BufferAttribute(S.index, 1));
+    this.geoSchlauch = gs;
     const dazu = (g: BufferGeometry, m: ShaderMaterial, ordnung: number): void => {
       const mesh = new Mesh(g, m);
       mesh.renderOrder = ordnung;
@@ -724,9 +574,13 @@ export class Haut {
       this.szene.add(mesh);
       this.netze.push(mesh);
     };
-    this.matsWand.forEach((m, i) => dazu(this.geoBlase!, m, -20 + i));
     this.matsRahmen.forEach((m, i) => dazu(this.geoRahmen!, m, -10 + i));
+    // der Schlauch ist Seifenhaut wie der Rest im Rahmen (dieselben Durchgänge), gezeichnet zwischen Rahmen und Blase
+    this.matsRahmen.forEach((m, i) => {
+      if (i < 4) dazu(this.geoSchlauch!, m, -5 + i);
+    });
     this.mats.forEach((m, i) => dazu(this.geoBlase!, m, i));
+    this.schatten.setzeBlase(this.geoBlase);
     // alle Shader jetzt übersetzen, nicht erst, wenn sie mitten im Aufblasen sichtbar werden (sonst stockt ein Bild)
     for (const mesh of this.netze) mesh.visible = true;
     this.renderer.compile(this.szene, new OrthographicCamera(-1, 1, 1, -1, 0, 1));
@@ -734,7 +588,7 @@ export class Haut {
 
   /** nach `Koerper.setzen`: Lagen, Normalen, Dehnung, Sichtbarkeit hochladen */
   hochladen(): void {
-    for (const g of [this.geoBlase, this.geoRahmen]) {
+    for (const g of [this.geoBlase, this.geoRahmen, this.geoSchlauch]) {
       if (!g) continue;
       for (const n of ['position', 'normal', 'aDehnung', 'aSicht']) (g.getAttribute(n) as BufferAttribute).needsUpdate = true;
     }
@@ -764,35 +618,19 @@ export class Haut {
     this.mats.forEach((m, i) => setzen(m, i < 2 ? w.hinten : w.vorn));
     // Rahmen: immer als durchsichtige Seifenhaut (vier Durchgänge), bis er zum Schatten geworden ist
     this.matsRahmen.forEach((m) => setzen(m, w.rahmen));
-    this.matsWand.forEach((m, i) => {
-      const wand = w.waende[i];
-      m.uniforms.uAchse!.value = wand?.achse ?? 0;
-      m.uniforms.uWand!.value = wand?.lage ?? 0;
-      m.uniforms.uZ!.value = wand?.z ?? 0;
-      m.uniforms.uStaerke!.value = wand?.staerke ?? 0;
-      (m.uniforms.uFarbe!.value as Color).copy(w.schattenFarbe);
-    });
     let k = 0;
     for (const mesh of this.netze) {
       const m = mesh.material as ShaderMaterial;
       const i = this.mats.indexOf(m);
       const j = this.matsRahmen.indexOf(m);
-      const v = this.matsWand.indexOf(m);
       if (i >= 0) mesh.visible = durch ? i < 4 : i === 4;
-      else if (j >= 0) mesh.visible = j < 4 && w.rahmen > 1e-3;
-      else if (v >= 0) mesh.visible = (w.waende[v]?.staerke ?? 0) > 1e-3;
+      else if (j >= 0) mesh.visible = j < 4 && w.rahmen > 1e-3 && (mesh.geometry !== this.geoSchlauch || w.schlauch);
       k++;
     }
     void k;
-    this.namen.forEach((e, i) => {
-      const z = w.namen[i];
-      const s = z && e.tex ? z.staerke : 0;
-      e.mesh.visible = s > 1e-3;
-      e.mat.uniforms.uStaerke!.value = s;
-      const grau = w.nacht ? NAME_NACHT : NAME_GRAU;
-      const tinte = w.nacht ? NAME_NACHT_HELL : NAME_TINTE;
-      (e.mat.uniforms.uFarbe!.value as Color).copy(grau).lerp(tinte, z?.hervor ?? 0);
-    });
+    if (w.wuerfel) this.schatten.aktualisieren(r, w.wuerfel, w.waende, w.weich, w.schattenFarbe);
+    else this.schatten.gruppe.visible = false;
+    this.schatten.gruppe.visible = !!w.wuerfel;
     const grund = (w.nacht ? NACHT : PAPIER).clone();
     r.setRenderTarget(this.ziel);
     r.setClearColor(grund, 1);

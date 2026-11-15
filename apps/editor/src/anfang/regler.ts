@@ -12,14 +12,15 @@ export interface Werte extends AblaufWerte {
   dicke: number;
   spannung: number;
   sicht: number;
-  /** wie dunkel die Schatten an den Wänden sind (0 = weiß); wie stark die Kanten des Kastens gezeichnet sind (0 = gar nicht) */
+  /** wie dunkel die Schatten an den Wänden sind (0 = weiß), wie weich (Anteil der Größe der Blase); wie stark die Kanten der Ecke gezeichnet sind */
   schatten: number;
+  weich: number;
   kanten: number;
 }
 
-export const GRUNDWERTE: Werte = { ...ABLAUF, fuelle: 0.72, dicke: 470, spannung: 1, sicht: 3, schatten: 0.14, kanten: 0.6 };
+export const GRUNDWERTE: Werte = { ...ABLAUF, fuelle: 0.72, dicke: 470, spannung: 1, sicht: 3, schatten: 0.16, weich: 0.09, kanten: 0.6 };
 
-const SPEICHER = 'anfang-probe-werte-5';
+const SPEICHER = 'anfang-probe-werte-6';
 
 export function werteLesen(): Werte {
   try {
@@ -39,25 +40,27 @@ function werteSchreiben(w: Werte): void {
 }
 
 const REGLER: { gruppe: string; k: keyof Werte; name: string; min: number; max: number; schritt: number }[] = [
-  { gruppe: 'Rahmen', k: 'rahmenDauer', name: 'bis zur Rückwand (s)', min: 0.8, max: 5, schritt: 0.05 },
-  { gruppe: 'Rahmen', k: 'ruck', name: 'losgerissen (1 = gleichmäßig)', min: 1, max: 4, schritt: 0.05 },
-  { gruppe: 'Hängen und Abreißen', k: 'hals', name: 'reißt ab Länge (× Halbmesser)', min: 0.5, max: 3, schritt: 0.05 },
-  { gruppe: 'Hängen und Abreißen', k: 'halsEng', name: 'Hals vor dem Abriss (Anteil)', min: 0.3, max: 0.98, schritt: 0.01 },
-  { gruppe: 'Hängen und Abreißen', k: 'halsDauer', name: 'Hals reißt in (s)', min: 0.02, max: 0.5, schritt: 0.01 },
-  { gruppe: 'Hängen und Abreißen', k: 'halsOrt', name: 'Hals sitzt (Anteil vom Rahmen)', min: 0.1, max: 0.9, schritt: 0.01 },
-  { gruppe: 'Hängen und Abreißen', k: 'zug', name: 'Schlauch zieht die Blase (× Halbmesser)', min: 0, max: 0.4, schritt: 0.01 },
-  { gruppe: 'Blase beim Hängen', k: 'prall', name: 'prall (1 = Form)', min: 0.6, max: 1.8, schritt: 0.01 },
-  { gruppe: 'Blase beim Hängen', k: 'vornHz', name: 'Tempo (Hz)', min: 0.3, max: 5, schritt: 0.05 },
-  { gruppe: 'Blase beim Hängen', k: 'vornD', name: 'Ruhe (Dämpfung)', min: 0.05, max: 1, schritt: 0.01 },
-  { gruppe: 'Blase beim Hängen', k: 'stroemung', name: 'Strömung zieht sie länglich', min: 0, max: 0.6, schritt: 0.01 },
-  { gruppe: 'Seifenblase', k: 'rund', name: 'erst rund (0 = gleich die Form)', min: 0, max: 1, schritt: 0.05 },
-  { gruppe: 'Seifenblase', k: 'formZeit', name: 'Form wächst heraus in (s)', min: 0.2, max: 3, schritt: 0.05 },
-  { gruppe: 'Seifenblase', k: 'wobbel', name: 'Wobbeln (Stärke)', min: 0, max: 2.5, schritt: 0.05 },
-  { gruppe: 'Seifenblase', k: 'wobbelHz', name: 'Wobbeln (Hz)', min: 0.5, max: 6, schritt: 0.05 },
-  { gruppe: 'Seifenblase', k: 'wobbelAb', name: 'Wobbeln klingt ab in (s)', min: 0.1, max: 3, schritt: 0.05 },
-  { gruppe: 'Seifenblase', k: 'schwapp', name: 'seitlich schwappen', min: 0, max: 0.4, schritt: 0.01 },
-  { gruppe: 'Seifenblase', k: 'schwappHz', name: 'seitlich (Hz)', min: 0.5, max: 8, schritt: 0.05 },
-  { gruppe: 'Seifenblase', k: 'riesel', name: 'Welle vom Abriss', min: 0, max: 0.5, schritt: 0.01 },
+  { gruppe: 'Rahmen', k: 'rahmenDauer', name: 'bis zur Rückwand (s)', min: 0.3, max: 3, schritt: 0.05 },
+  { gruppe: 'Rahmen', k: 'ruck', name: 'losgerissen (1 = gleichmäßig)', min: 0.5, max: 5, schritt: 0.05 },
+  { gruppe: 'Blase wächst von der Mitte', k: 'fuss0', name: 'Größe am Anfang', min: 0.05, max: 1, schritt: 0.01 },
+  { gruppe: 'Blase wächst von der Mitte', k: 'fussHz', name: 'wächst (Hz)', min: 0.3, max: 6, schritt: 0.05 },
+  { gruppe: 'Blase wächst von der Mitte', k: 'fussD', name: 'wächst: Ruhe', min: 0.05, max: 1, schritt: 0.01 },
+  { gruppe: 'Blase wächst von der Mitte', k: 'prall', name: 'prall (1 = Form)', min: 0.5, max: 2, schritt: 0.01 },
+  { gruppe: 'Blase wächst von der Mitte', k: 'vornHz', name: 'Kuppel (Hz)', min: 0.3, max: 6, schritt: 0.05 },
+  { gruppe: 'Blase wächst von der Mitte', k: 'vornD', name: 'Kuppel: Ruhe', min: 0.05, max: 1, schritt: 0.01 },
+  { gruppe: 'Hals und Abriss', k: 'hals', name: 'reißt ab Länge (× Halbmesser)', min: 0.3, max: 3, schritt: 0.05 },
+  { gruppe: 'Hals und Abriss', k: 'halsEng', name: 'Hals vor dem Abriss (Anteil zu)', min: 0.2, max: 0.99, schritt: 0.01 },
+  { gruppe: 'Hals und Abriss', k: 'halsDauer', name: 'reißt in (s)', min: 0.02, max: 0.4, schritt: 0.01 },
+  { gruppe: 'Hals und Abriss', k: 'halsOrt', name: 'Hals sitzt (0 Blase, 1 Rahmen)', min: 0.1, max: 0.9, schritt: 0.01 },
+  { gruppe: 'Hals und Abriss', k: 'zug', name: 'Schlauch zieht die Blase (× Halbmesser)', min: 0, max: 0.4, schritt: 0.01 },
+  { gruppe: 'Schnalz in die Form', k: 'schnalzHz', name: 'Tempo (Hz)', min: 0.5, max: 8, schritt: 0.05 },
+  { gruppe: 'Schnalz in die Form', k: 'schnalzD', name: 'Ruhe (wenig = mehr Überschwingen)', min: 0.05, max: 1, schritt: 0.01 },
+  { gruppe: 'Schnalz in die Form', k: 'wobbel', name: 'Wobbeln (Stärke)', min: 0, max: 2.5, schritt: 0.05 },
+  { gruppe: 'Schnalz in die Form', k: 'wobbelHz', name: 'Wobbeln (Hz)', min: 0.5, max: 6, schritt: 0.05 },
+  { gruppe: 'Schnalz in die Form', k: 'wobbelAb', name: 'Wobbeln klingt ab in (s)', min: 0.1, max: 3, schritt: 0.05 },
+  { gruppe: 'Schnalz in die Form', k: 'schwapp', name: 'seitlich schwappen', min: 0, max: 0.4, schritt: 0.01 },
+  { gruppe: 'Schnalz in die Form', k: 'schwappHz', name: 'seitlich (Hz)', min: 0.5, max: 8, schritt: 0.05 },
+  { gruppe: 'Schnalz in die Form', k: 'riesel', name: 'Welle vom Abriss', min: 0, max: 0.5, schritt: 0.01 },
   { gruppe: 'Nach dem Abriss', k: 'nachHz', name: 'Kuppel schwingt (Hz)', min: 0.5, max: 5, schritt: 0.05 },
   { gruppe: 'Nach dem Abriss', k: 'nachD', name: 'Kuppel: Ruhe', min: 0.05, max: 1, schritt: 0.01 },
   { gruppe: 'Nach dem Abriss', k: 'stoss', name: 'Stoß beim Abriss', min: 0, max: 4, schritt: 0.05 },
@@ -67,15 +70,16 @@ const REGLER: { gruppe: string; k: keyof Werte; name: string; min: number; max: 
   { gruppe: 'Nach dem Abriss', k: 'rahmenD', name: 'Rest: Ruhe', min: 0.05, max: 1, schritt: 0.01 },
   { gruppe: 'Nach dem Abriss', k: 'quer', name: 'Stauchen in der Ebene', min: 0, max: 0.5, schritt: 0.01 },
   { gruppe: 'Nach dem Abriss', k: 'welle', name: 'Welle über die Haut', min: 0, max: 0.2, schritt: 0.005 },
-  { gruppe: 'Kamera', k: 'fov', name: 'Öffnung am Ende (°)', min: 26, max: 80, schritt: 1 },
-  { gruppe: 'Kamera', k: 'gierAbriss', name: 'zur Seite beim Abriss (°)', min: 0, max: 85, schritt: 1 },
-  { gruppe: 'Kamera', k: 'gier', name: 'zur Seite am Ende (°)', min: -45, max: 60, schritt: 1 },
-  { gruppe: 'Kamera', k: 'neigung', name: 'von oben am Ende (°)', min: -10, max: 45, schritt: 1 },
+  { gruppe: 'Kamera', k: 'fov', name: 'Öffnung am Ende (°)', min: 20, max: 80, schritt: 1 },
+  { gruppe: 'Kamera', k: 'kameraDauer', name: 'Fahrt (s)', min: 0.2, max: 3, schritt: 0.05 },
+  { gruppe: 'Kamera', k: 'gier', name: 'zur Seite (°)', min: -60, max: 60, schritt: 1 },
+  { gruppe: 'Kamera', k: 'neigung', name: 'von oben (°)', min: -30, max: 45, schritt: 1 },
   { gruppe: 'Form', k: 'fuelle', name: 'Fülle', min: 0.3, max: 1.3, schritt: 0.01 },
   { gruppe: 'Material', k: 'dicke', name: 'Dicke der Haut (nm)', min: 100, max: 1200, schritt: 5 },
   { gruppe: 'Material', k: 'spannung', name: 'Dehnung färbt', min: 0, max: 3, schritt: 0.05 },
   { gruppe: 'Material', k: 'sicht', name: 'Farben der Seifenhaut', min: 0.5, max: 8, schritt: 0.1 },
-  { gruppe: 'Material', k: 'schatten', name: 'Schatten an den Wänden', min: 0, max: 0.3, schritt: 0.005 },
+  { gruppe: 'Material', k: 'schatten', name: 'Schatten an den Wänden', min: 0, max: 0.4, schritt: 0.005 },
+  { gruppe: 'Material', k: 'weich', name: 'Schatten weich', min: 0, max: 0.3, schritt: 0.005 },
   { gruppe: 'Material', k: 'kanten', name: 'Kanten der Ecke', min: 0, max: 1, schritt: 0.05 },
 ];
 
