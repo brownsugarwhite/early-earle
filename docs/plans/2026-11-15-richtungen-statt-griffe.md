@@ -137,6 +137,39 @@ Florian: „Ja, so bauen“. Damit gelten die Vorschläge zu den Fragen 1 bis 4:
 Einrasten oder Doppelklick; im 3D auf der Haut, mit ⇧ aus der Haut; Schwung durch Ziehen nach außen und innen mit Rasten am Ring.
 Frage 5 (Kante entlang B) betrifft die Haut im Editor, nicht die Probe; sie bleibt offen. Gebaut wird Schritt 1 der „Nächsten Schritte“.
 
+## Gebaut (15.11.): Konzept-Probe in 2D und im Raum
+
+- **Code:** `apps/editor/src/linien/richtung.ts` (Drehen in 2D, gemeinsame Regeln), Knick je Linie und Punkt im Netz (`netz.ts`,
+  `knick`, aus der Form erkannt: Griffe mehr als 10° neben einer Geraden), Nadel, Ring, Griff, alte Richtung, ⌥, Einrasten und
+  Doppelklick im Verhalten (`verhalten.ts`), Drehen um eine Achse an der Form im Raum (`raum.ts`: `drehenBeginnen` …).
+- **Bedienung, 2D** (`linien.html`): Zeiger auf die Linie nahe am Punkt (Nadel, mindestens Fangradius + 10 px lang), drücken und
+  ziehen dreht. ⌥ beim Ziehen knickt, zurück in die Flucht rastet ein, Doppelklick auf die Nadel schaltet Knick und rund. Am Punkt
+  selbst bleibt der Stern zum Verschieben, weiter weg auf der Linie die Spindel zum Biegen, mit P die Perle.
+- **Bedienung, Raum** (`raum.html`): dasselbe, gedreht wird auf der Haut. ⇧ beim Drücken kippt aus der Haut; ⇧ daneben verschiebt
+  weiter die Ansicht. Spiegelgleich: Das Spiegelbild der Richtung dreht mit.
+- **Probe** `scripts/linien/richtung-probe.mjs` (festgelegt vor dem Bau):
+  - 2D: rund 30,000° auf beiden Seiten, geknickt 30° und 0° auf der Gegenseite.
+  - 2D: Beim Drücken und Loslassen weicht keine Probe der Linien ab (0), der Zeiger sitzt genau auf der Griffspitze.
+  - 2D: Einrasten und Doppelklick (von 25° aus) enden 0° neben der Flucht. Der Schwung bleibt am Ring 1,0 und wird auf 1,5-fachem
+    Abstand 1,4.
+  - Raum, auf der Haut: 30,000°, der Anteil längs der Achse bleibt (10⁻¹⁵), die Länge bleibt. Die Spitze liegt auf dem Bildschirm
+    genau in Richtung des Zeigers (0,000°), das Spiegelbild genau gespiegelt (0).
+  - Raum, mit ⇧ (schräg gesehen): Der Winkel zur Senkrechten der Haut ändert sich um 20,000°. Mit ⌥: 30° und 0° auf der Gegenseite.
+  - Mit echten Maus- und Tastenereignissen geprüft: 30° rund, mit gehaltenem ⌥ 20° nur diese Seite, danach Knick.
+- **Bilder und Film** vom echten Verhalten, gleiche Ansicht wie die Konzeptbilder:
+  `docs/progress/linien/2026-11-15-richtung-2d.png`, `…-richtung-raum.png`, `…-richtung-film.mp4` (14,6 s:
+  - Stern, Nadel, Drücken, rund drehen;
+  - mit ⌥ knicken, einrasten, loslassen).
+
+  Skripte `scripts/linien/richtung-bilder.mjs` und `richtung-film.mjs`.
+- **Grenzen der Probe:**
+  - Die Haut folgt im Raum dem Drehen nicht (dort rechnet im Editor der Löser). Die Linie gleitet über die Haut oder hebt sich aus
+    ihr.
+  - ⇧ gilt ab dem Drücken; während des Ziehens umschalten geht noch nicht.
+  - Sieht man den Ring flacher als 20°, gilt der Winkel um den Punkt auf dem Bildschirm (in der Seite etwa das Kippen an der Flanke).
+  - Am Spiegelpunkt ist die Gegenseite das Spiegelbild: Drehen macht dort ein V, wie im Editor.
+  - Der erste Klick eines Doppelklicks legt einen leeren Schritt fürs Zurück an.
+
 ## Fragen an Florian (vor der Freigabe)
 
 1. Griff nur, solange man ihn hält (Vorschlag), oder beim gewählten Punkt dauerhaft sichtbar?

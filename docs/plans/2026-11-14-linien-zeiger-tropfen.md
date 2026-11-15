@@ -78,8 +78,8 @@ Florian: „Es gefällt mir schon mal gut. Kannst du es auf ein 3D-Modell übert
 ## Offen (Florians Wort fehlt)
 
 0. **Konzept „Richtungen statt Griffe“** (15.11.): wie Griffe aussehen, ob es sie braucht, Knick je Richtung an der Kreuzung, Drehen im
-   Raum: [`2026-11-15-richtungen-statt-griffe.md`](2026-11-15-richtungen-statt-griffe.md) mit Bildern; seine Antworten auf die fünf
-   Fragen dort stehen aus. Sein Urteil zur Probe bisher (15.11.): „schön, der liquid effect und tropfen effect wirkt gut. Die genauen
+   Raum: [`2026-11-15-richtungen-statt-griffe.md`](2026-11-15-richtungen-statt-griffe.md). Freigegeben („Ja, so bauen“) und am
+   selben Tag als Probe gebaut; sein Urteil steht aus. Sein Urteil zur Probe bisher (15.11.): „schön, der liquid effect und tropfen effect wirkt gut. Die genauen
    einstellungen muss ich noch testen.“
 
 1. „Mesh“: Gebaut ist das Netz aus Linien und Punkten; im Raum geht die Haut beim Ziehen mit einem weichen Feld mit. Soll die Haut auch

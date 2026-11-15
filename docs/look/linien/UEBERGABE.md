@@ -1,4 +1,4 @@
-# Übergabe: Linien, Punkte, Zeiger (Stand 15.11.2026, vormittags)
+# Übergabe: Linien, Punkte, Zeiger (Stand 15.11.2026, mittags)
 
 Eigener Strang. Plan: [`docs/plans/2026-11-14-linien-zeiger-tropfen.md`](../../plans/2026-11-14-linien-zeiger-tropfen.md). Konzept
 zur Freigabe: [`docs/plans/2026-11-15-richtungen-statt-griffe.md`](../../plans/2026-11-15-richtungen-statt-griffe.md).
@@ -18,10 +18,13 @@ Florians Entwürfe liegen hier (`2026-11-14-florian-fisch-entwurf.webp` und `…
 | Raum | `http://localhost:5199/raum.html` (`?form=<Name>`); `src/linien/raum.ts`, `raum-main.ts`; Film `scripts/linien/raum-film.mjs` |
 | Werkzeug P | Probe `scripts/linien/stift-probe.mjs` (2D und Raum, Ausgabe JSON), Bild `scripts/linien/stift-bild.mjs` |
 | Konzeptbilder | `scripts/linien/konzept-bilder.mjs` (2D, sechs Bilder), `konzept-raum.mjs` (Raum, drei Bilder) → `docs/progress/linien/2026-11-15-konzept-*.png` |
+| Richtungen | Code `src/linien/richtung.ts` (+ `verhalten.ts`, `raum.ts`, `netz.ts`); Probe `scripts/linien/richtung-probe.mjs`; Bilder `richtung-bilder.mjs`; Film `richtung-film.mjs` → `docs/progress/linien/2026-11-15-richtung-*` |
 
 ## Bedienung der Seite
 
 Zeiger an Linie oder Punkt, drücken und ziehen. Pinch oder ⌘ + Rad zoomt, zwei Finger oder Leertaste verschieben, ⌘Z zurück.
+Auf der Linie nahe am Punkt: Richtung drehen (⌥ knickt, zurück in die Flucht rastet ein, Doppelklick: Knick ↔ rund); im Raum auf
+der Haut, ⇧ beim Drücken aus der Haut.
 Knöpfe: 100 %, Einpassen, Entwurf (seine Zeichnung darunter, E), Wachsen mit Zoom, P · Punkt setzen (P, Esc beendet), Feinregler
 (R; Werte bleiben im Browser, „Werte kopieren“ legt die geänderten als JSON in die Zwischenablage), Zurück, Fisch neu.
 
@@ -47,6 +50,9 @@ Knöpfe: 100 %, Einpassen, Entwurf (seine Zeichnung darunter, E), Wachsen mit Zo
     nahe am Punkt (Nadel), der Griff erscheint nur beim Halten (Haarlinie mit Perle), ein Ring zeigt die Ebene. ⌥ knickt, Einrasten
     oder Doppelklick rundet, an der Kreuzung je Linie. Im 3D auf der Haut, mit ⇧ aus der Haut. Seine Antworten auf die fünf Fragen
     stehen aus; erst danach die Konzept-Probe bauen.
+  - **Freigegeben** („Ja, so bauen“) und **gebaut**: Ergebnisse der Probe, Bilder, Film und Grenzen im Konzept, Abschnitt „Gebaut“.
+    Sein Urteil steht aus. Danach: Einbau in den Editor (Schritt 2 des Strangs; Knick je Linie ändert `eckeUmschalten`/`eckeGezeigt`
+    in `kurven.ts`, im Bau-Fenster, abgestimmt mit dem Plan „schnell, glatt, exakt“).
 
 ## Fallen
 
@@ -54,6 +60,10 @@ Knöpfe: 100 %, Einpassen, Entwurf (seine Zeichnung darunter, E), Wachsen mit Zo
   vor dem Zeichnen kurz warten (`konzept-raum.mjs`, `ausgang`). Verdeckte Haarlinien (grün, 0,25 px) sind auf Bildern kaum zu sehen;
   zum Prüfen dicker zeichnen.
 - `page.locator(…).screenshot` kennt kein `clip` (es nimmt das ganze Element); für Ausschnitte `page.screenshot({ clip })`.
+- Doppelklick auf eine Richtung zählt die echte Zeit (`performance.now()`, 350 ms). Proben, die schneller als eine Hand mehrmals
+  drücken, setzen vorher `verhalten.klick = null`, sonst wird der zweite Druck ein Doppelklick.
+- Wege in Filmen nicht vorausrechnen, wenn sich die Linie dazwischen dreht: Die Stelle auf der Nadel aus dem Stand im Fenster lesen
+  (`richtung-film.mjs`); sonst greift der Zeiger die Nadel der anderen Linie an der Kreuzung.
 
 - Das Vorschaufenster der Sitzung ist oft verborgen; dann läuft `requestAnimationFrame` nicht. Prüfen mit `__linien.zeigerHin(x, y)`
   und `__linien.vorspulen(ms)` (rechnet die Federn ohne Bildtakt; im Raum `__raum`) oder mit `vergleich.mjs` (eigener Browser).
