@@ -919,8 +919,10 @@ export class Koerper {
           const b = I[t * 3 + ((k + 1) % 3)]!;
           const s = Math.min(a, b) * m + Math.max(a, b);
           const vorher = karte.get(s);
-          if (vorher === undefined) karte.set(s, liste.length / 4), liste.push(a, b, t, -1);
-          else liste[vorher * 4 + 3] = t;
+          if (vorher === undefined) {
+            karte.set(s, liste.length / 4);
+            liste.push(a, b, t, -1);
+          } else liste[vorher * 4 + 3] = t;
         }
       this.kanten = Int32Array.from(liste);
     }
