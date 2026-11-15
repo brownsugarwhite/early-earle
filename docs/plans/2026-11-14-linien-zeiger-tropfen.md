@@ -51,6 +51,9 @@ Gefühl in Ruhe an seinem Entwurf prüfen, ohne den Editor anzufassen, an dem di
 - **Linienstärke wächst beim Zoomen nicht mit** (Florian, 14.11., spätabends: „als Standard soll die Linienstärke nicht
   mitskalieren. Als Schalter kannst du es drin lassen“): In 2D ist „Wachsen mit Zoom“ jetzt aus (Schalter bleibt); im Raum waren die
   Breiten schon fest. Vergleichsbilder und 2D-Film schalten es für den vergrößerten Ausschnitt ein.
+- **Punkt auf der Linie nur mit P** (Florian, 15.11.: „die punkte auf der linie sollen nur erscheinen wenn ich mit werkzeug p einen
+  punkt auf linien setzen kann. sonst nur die verdickung.“): gebaut in 2D und im Raum, Einzelheiten im
+  [Konzept vom 15.11.](2026-11-15-richtungen-statt-griffe.md), Abschnitt „Schon gebaut“.
 
 ## Schritt 1b (gebaut, 14.11., abends): im Raum
 
@@ -73,6 +76,11 @@ Florian: „Es gefällt mir schon mal gut. Kannst du es auf ein 3D-Modell übert
   breit, damit man sie im Film sieht).
 
 ## Offen (Florians Wort fehlt)
+
+0. **Konzept „Richtungen statt Griffe“** (15.11.): wie Griffe aussehen, ob es sie braucht, Knick je Richtung an der Kreuzung, Drehen im
+   Raum: [`2026-11-15-richtungen-statt-griffe.md`](2026-11-15-richtungen-statt-griffe.md) mit Bildern; seine Antworten auf die fünf
+   Fragen dort stehen aus. Sein Urteil zur Probe bisher (15.11.): „schön, der liquid effect und tropfen effect wirkt gut. Die genauen
+   einstellungen muss ich noch testen.“
 
 1. „Mesh“: Gebaut ist das Netz aus Linien und Punkten; im Raum geht die Haut beim Ziehen mit einem weichen Feld mit. Soll die Haut auch
    nachschwingen?

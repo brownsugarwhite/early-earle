@@ -1,6 +1,7 @@
-# Übergabe: Linien, Punkte, Zeiger (Stand 14.11.2026, spätabends)
+# Übergabe: Linien, Punkte, Zeiger (Stand 15.11.2026, vormittags)
 
-Eigener Strang. Plan: [`docs/plans/2026-11-14-linien-zeiger-tropfen.md`](../../plans/2026-11-14-linien-zeiger-tropfen.md).
+Eigener Strang. Plan: [`docs/plans/2026-11-14-linien-zeiger-tropfen.md`](../../plans/2026-11-14-linien-zeiger-tropfen.md). Konzept
+zur Freigabe: [`docs/plans/2026-11-15-richtungen-statt-griffe.md`](../../plans/2026-11-15-richtungen-statt-griffe.md).
 Florians Entwürfe liegen hier (`2026-11-14-florian-fisch-entwurf.webp` und `…-nah.webp`); vor jedem Urteil öffnen.
 
 ## Wo was liegt
@@ -15,12 +16,14 @@ Florians Entwürfe liegen hier (`2026-11-14-florian-fisch-entwurf.webp` und `…
 | Vergleichsbilder | `apps/editor/scripts/linien/vergleich.mjs` → `docs/progress/linien/<datum>-vergleich-gesamt.jpg`, `…-nah.jpg` |
 | Film | `apps/editor/scripts/linien/film.mjs <ziel.mp4>` (Ablauf in `BAHN`, Bild für Bild, 60 je Sekunde, ffmpeg) |
 | Raum | `http://localhost:5199/raum.html` (`?form=<Name>`); `src/linien/raum.ts`, `raum-main.ts`; Film `scripts/linien/raum-film.mjs` |
+| Werkzeug P | Probe `scripts/linien/stift-probe.mjs` (2D und Raum, Ausgabe JSON), Bild `scripts/linien/stift-bild.mjs` |
+| Konzeptbilder | `scripts/linien/konzept-bilder.mjs` (2D, sechs Bilder), `konzept-raum.mjs` (Raum, drei Bilder) → `docs/progress/linien/2026-11-15-konzept-*.png` |
 
 ## Bedienung der Seite
 
 Zeiger an Linie oder Punkt, drücken und ziehen. Pinch oder ⌘ + Rad zoomt, zwei Finger oder Leertaste verschieben, ⌘Z zurück.
-Knöpfe: 100 %, Einpassen, Entwurf (seine Zeichnung darunter, E), Wachsen mit Zoom, Feinregler (R; Werte bleiben im Browser,
-„Werte kopieren“ legt die geänderten als JSON in die Zwischenablage), Zurück, Fisch neu.
+Knöpfe: 100 %, Einpassen, Entwurf (seine Zeichnung darunter, E), Wachsen mit Zoom, P · Punkt setzen (P, Esc beendet), Feinregler
+(R; Werte bleiben im Browser, „Werte kopieren“ legt die geänderten als JSON in die Zwischenablage), Zurück, Fisch neu.
 
 ## Stand
 
@@ -37,8 +40,20 @@ Knöpfe: 100 %, Einpassen, Entwurf (seine Zeichnung darunter, E), Wachsen mit Zo
   (Plan, Schritt 1b). Haut weiß mit Umriss als Hülle, Linien und Punkte projiziert, Verdecktes je Bildpunkt grün, Ziehen mit weichem
   Feld als Ersatz für den Löser. Geprüft mit `__raum` (Kreuzung folgt der Maus genau). Film `2026-11-14-raum-film.mp4`.
 - Offen: ob „Mesh“ auch ein Nachschwingen der Haut meint; danach der Einbau in die Blätter des Editors.
+- **15.11.:** Florian: „schön, der liquid effect und tropfen effect wirkt gut. Die genauen einstellungen muss ich noch testen.“
+  - **P-Regel gebaut:** Punkt auf der Linie nur mit P, sonst nur die Verdickung. Mit P setzt Drücken den Punkt (im Raum
+    spiegelgleich); geprüft mit `stift-probe.mjs`, Bild `2026-11-15-stift.png`.
+  - **Konzept „Richtungen statt Griffe“** geschrieben, mit Bildern im echten Look. Kern: keine schwebenden Griffe; man fasst die Linie
+    nahe am Punkt (Nadel), der Griff erscheint nur beim Halten (Haarlinie mit Perle), ein Ring zeigt die Ebene. ⌥ knickt, Einrasten
+    oder Doppelklick rundet, an der Kreuzung je Linie. Im 3D auf der Haut, mit ⇧ aus der Haut. Seine Antworten auf die fünf Fragen
+    stehen aus; erst danach die Konzept-Probe bauen.
 
 ## Fallen
+
+- Konzeptbilder im Raum: Die Bildschleife der Seite läuft nach `formLaden` noch ein paar Bilder und zeichnet über eigene Szenen;
+  vor dem Zeichnen kurz warten (`konzept-raum.mjs`, `ausgang`). Verdeckte Haarlinien (grün, 0,25 px) sind auf Bildern kaum zu sehen;
+  zum Prüfen dicker zeichnen.
+- `page.locator(…).screenshot` kennt kein `clip` (es nimmt das ganze Element); für Ausschnitte `page.screenshot({ clip })`.
 
 - Das Vorschaufenster der Sitzung ist oft verborgen; dann läuft `requestAnimationFrame` nicht. Prüfen mit `__linien.zeigerHin(x, y)`
   und `__linien.vorspulen(ms)` (rechnet die Federn ohne Bildtakt; im Raum `__raum`) oder mit `vergleich.mjs` (eigener Browser).
