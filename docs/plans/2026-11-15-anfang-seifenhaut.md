@@ -311,3 +311,42 @@ Momente von 0,35 bis 3,6 s).
 
 **Ehrlich:** Wie stark es wobbeln soll, wie rund die Blase anfangs ist und wie weit die Kamera zur Seite dreht, sind Geschmack;
 alles liegt in den Feinreglern („Seifenblase“, „Kamera“).
+
+## Runde 5 (16.11.2026): Plan nach Florians Rückmeldung
+
+Florian (wörtlich): „Ok, schon besser. Es ist mir aber noch nicht realistisch genug. Ich sehe noch, dass sie sich noch zu sehr aus
+der Spiegellinie aufbläst, und diese ist am Anfang der Animation noch klar zu erkennen. Wenn ich eine Seifenblasenkontur schnell
+zurückziehe, würde die Bubble anders entstehen. Zuerst würde sich die Mitte dehnen und es würde sich dann langsam nach außen
+ausbreiten, wobei die Entfernung zur Silhouette wächst, und am Schluss würde es mit einem überschwingenden Schnalz zur Form werden.
+[…] Die Haut am Hals sieht noch nicht optimal und etwas ‚billig und kantig‘ aus. Auch die Dynamik der Bewegung ist zu zäh und nicht
+elegant genug. Die Outline muss mit einem schnellen Zug nach hinten abgezogen werden, wobei die Kamera gleichzeitig in die leichte
+3D-Position bewegt. Alles elegant, recht schnell und flüssig.
+Momentan ist die Projektion auch falsch. Ich hatte mir das so vorgestellt wie bei dem ersten Versuch der anderen Session mit der
+Ecke … also an allen Seiten … immer max 3 gleichzeitig sichtbar. Bitte doch nicht die großen Labels an die Wände schreiben, und kann
+der Schatten an den Wänden realistischer aussehen mit realistischem Weichzeichner.
+Kannst du den automatischen Morph zu den Seitenansichten auch schon animieren? Er soll ebenso elegant und harmonisch sein und optimal
+zur Bedienung beitragen. Auch das Aufklappen zur Viereransicht wie bei Ecke soll möglich sein. Aber alles soll noch harmonischer
+zusammenspielen und die Bedienung muss noch ausgeklügelter sein.“
+
+### Wie ich es baue
+
+1. **Entstehung von der Mitte aus.** Der Rahmen wird schnell nach hinten gerissen (in etwa 0,85 s an der Wand). Die Haut ist am
+   Anfang eine kleine Kuppel in der Mitte des Rahmens, um sie herum die flache Haut bis zum Rahmen (ein Rock). Die Kuppel wächst
+   nach außen, während der Rahmen sich entfernt; der Rock wird zum Schlauch. Der Schlauch schnürt sich ein und reißt. Danach
+   schnalzt die runde Blase mit Überschwingen in die Form (Feder statt langsamem Herauswachsen), dazu das Schwingen.
+2. **Schlauch als eigenes glattes Netz** (Ring × Länge, rund am Hals) statt der Linien gleicher Wölbung: Am Hals wird der Querschnitt
+   rund, wie bei echter Seifenhaut; kein Rand aus Dreiecken. Beim Abriss gehen die beiden Hälften in die Rückseite der Blase und in
+   die Haut im Rahmen über (kurz überblendet).
+3. **Schnell und flüssig:** Die Kamera fährt gleichzeitig mit dem Zug in eine leichte 3D-Lage (etwa 24° zur Seite, 14° von oben,
+   Dolly-Zoom); kein Schwenk zur Seite mehr. Alles in etwa 1,6 s, Ruhe nach etwa 2,2 s.
+4. **Würfel statt Ecke:** sechs unsichtbare Wände; je Achse trägt die Wand, die von der Kamera abgewandt ist, den Schatten (also
+   höchstens drei zugleich), beim Drehen wechselt er weich auf die Gegenwand. Die drei Kanten der fernen Ecke als Haarlinien.
+   **Weiche Schatten:** je Achse ein Bild des Umrisses, weichgezeichnet (enger Kern, weiter Halbschatten). Keine Namen an den Wänden.
+5. **Morph zu den Ansichten:** 1 Seite, 3 Front, 7 Top, 0 Raum. Die Kamera dreht auf die Achse und wird mit einem Dolly-Zoom flach;
+   die Blase wird ruhig, und die Linien dieser Ansicht erscheinen auf ihr (Seite: die gezeichnete Linie mit Punkten, ziehbar, die
+   Blase folgt; Front und Top: ihr Umriss). Tippen bleibt, Halten schaut kurz hin. Nahe einer Achse rastet die Ansicht beim Drehen ein.
+6. **Viereransicht (4):** Seite oben links, Front oben rechts, Top unten links, Raum unten rechts (wie die Ecke); die Felder klappen
+   aus den Wänden auf, der Raum zieht sich ins vierte Feld.
+
+**Probe:** Film mit Entstehung, Abriss, Morph (1, 3, 7, 0) und Viereransicht; 60 Bilder je Sekunde beim Aufblasen; Abriss ohne
+Sprung; im Browser mit echter Maus: Punkt in der Seitenansicht ziehen, die Blase folgt.
