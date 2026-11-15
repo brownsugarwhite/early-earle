@@ -111,7 +111,7 @@ const WAND_NAMEN = ['Seite', 'Front', 'Top'] as const;
 let wandUnterZeiger = -1;
 const wandSicht = [0, 0, 0];
 /** Seitenverhältnis der Namen (Breite : Höhe des Bilds der Schrift), sobald Lobster geladen ist */
-let namenFormat = [3.2, 3.2, 2.0];
+const namenFormat = [3.2, 3.2, 2.0];
 
 function eckeRechnen(): void {
   if (!koerper) {
@@ -823,7 +823,7 @@ nachtSetzen(nacht);
 
 const regler = $<HTMLElement>('regler');
 const reglerKnopf = $('knopf-regler');
-const reglerTeile = reglerBauen($('regler-liste'), werte, (k) => {
+const reglerTeile = reglerBauen($('regler-liste'), werte, () => {
   if (koerper && ecke) {
     koerper.fuelle = werte.fuelle;
     eckeRechnen();
