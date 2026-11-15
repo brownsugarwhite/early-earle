@@ -25,8 +25,9 @@ export type StiftOrt = { art: 'frei'; x: number; y: number } | { art: 'punkt'; p
 export type FadenEnde = StiftOrt | { art: 'schluss' };
 
 export interface EntwurfInfo {
-  /** die angefangene Linie im Netz (−1: noch keine Verbindung) */
+  /** die angefangene Linie im Netz (−1: noch keine Verbindung) und im Raum ihr Spiegelbild (sonst −1) */
   li: number;
+  zwilling: number;
   /** erster Punkt (dort schließt sie) und letzter (dort hängt der Faden) */
   erster: number;
   letzter: number;
@@ -48,6 +49,9 @@ export interface FadenProben {
   z?: Float32Array;
   s: Float32Array;
   laenge: number;
+  /** im Raum: das Spiegelbild des Fadens und die Lagen auf der Haut (Welt, je drei Werte) */
+  spiegel?: FadenProben;
+  welt?: Float64Array;
 }
 
 /** was das Verhalten zum Zeichnen mit P braucht; in 2D `Stift2D`, im Raum `Raum3D` */
@@ -55,6 +59,8 @@ export interface StiftWerk {
   entwurf(): EntwurfInfo | null;
   /** Ort eines neuen Punkts unter (x, y) oder null (im Raum: neben der Form); `mitte`: auf der Spiegelebene eingerastet */
   ortFrei(x: number, y: number): { x: number; y: number; mitte: boolean } | null;
+  /** im Raum: Punktreihe der Mitte nahe (x, y), je Punkt x, y, Tiefe, Gewicht (in 2D keine) */
+  mittePunkte(x: number, y: number, r: number): number[];
   /** Linie beginnen; Ergebnis: Nummer ihres ersten Punkts */
   beginnen(o: StiftOrt): number | null;
   /** nächster Punkt (frei) oder Anschluss an Vorhandenes; die Verbindung vom letzten Punkt entsteht (Griff am Ende null) */
@@ -285,11 +291,15 @@ export class Stift2D implements StiftWerk {
   entwurf(): EntwurfInfo | null {
     const e = this.e;
     if (!e) return null;
-    return { li: e.li, erster: e.erster, letzter: e.letzter, anzahl: e.anzahl, haengt: e.haengt, aus: e.aus, einErster: e.einErster };
+    return { li: e.li, zwilling: -1, erster: e.erster, letzter: e.letzter, anzahl: e.anzahl, haengt: e.haengt, aus: e.aus, einErster: e.einErster };
   }
 
   ortFrei(x: number, y: number): { x: number; y: number; mitte: boolean } {
     return { x, y, mitte: false };
+  }
+
+  mittePunkte(): number[] {
+    return [];
   }
 
   /** Punkt zu einem Ort: frei neu, vorhanden, oder auf der Linie eingesetzt */

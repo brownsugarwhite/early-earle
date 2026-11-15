@@ -145,7 +145,7 @@ export type Ziel = { art: 'punkt'; pi: number } | { art: 'linie'; li: number; si
  * Der Raum (3D-Probe): Er liefert jedes Bild das projizierte Netz (`setzeNetz`) und verformt selbst, wenn gezogen wird. Die Lagen sind
  * dann Bildschirmpunkte; die Anzeige entscheidet je Bildpunkt nach der Tiefe, was verdeckt ist.
  */
-export interface Raum extends Dreher {
+export interface Raum extends Dreher, StiftWerk {
   ziehenBeginnen(ziel: Ziel): void;
   /** Bewegung der Maus seit dem Drücken (Bildschirmpunkte) */
   ziehen(dx: number, dy: number): void;
@@ -160,6 +160,8 @@ export interface Raum extends Dreher {
   punkteZiehen(dx: number, dy: number): void;
   punkteZiehenEnden(): void;
   punkteLoeschen(pis: number[]): boolean;
+  /** der Punkt liegt vor der Haut (für den Rahmen: im Raum wählt er nur, was man sieht) */
+  ankerZuSehen(pi: number): boolean;
 }
 
 /**
@@ -667,9 +669,10 @@ export class Verhalten {
       this.dornAusblenden(e.letzter, e.aus);
       p = this.werk.weiter(o);
       if (p === null) return false;
-      art = ziel.art === 'frei' ? 'neu' : 'anschluss';
+      // auf der Mitte (im Raum) hängt die Linie wie an Vorhandenem
+      art = ziel.art === 'frei' && !ziel.mitte ? 'neu' : 'anschluss';
     }
-    this.stiftZug = { art, mx: z.x, my: z.y, lx: z.x, ly: z.y, bewegt: false, gebrochen: false, aus: [0, 0], gegen: [0, 0], fest: null, frei: ziel.art === 'frei' };
+    this.stiftZug = { art, mx: z.x, my: z.y, lx: z.x, ly: z.y, bewegt: false, gebrochen: false, aus: [0, 0], gegen: [0, 0], fest: null, frei: ziel.art === 'frei' && !ziel.mitte };
     // der Zeiger gleitet auf den Punkt; ab da ist er die Spitze des Griffs
     this.versatz.zx = ziel.x - z.x;
     this.versatz.zy = ziel.y - z.y;
@@ -971,7 +974,7 @@ export class Verhalten {
   private suchProben(): readonly LinienProben[] {
     const e = this.stift ? this.werk.entwurf() : null;
     if (!e || e.li < 0) return this.proben;
-    return this.proben.map((P, li) => (li === e.li ? LEER : P));
+    return this.proben.map((P, li) => (li === e.li || li === e.zwilling ? LEER : P));
   }
 
   /** bester Kandidat unter dem (gezeichneten) Zeiger: Punkte vor Linien, Tinte vor Verdecktem */
@@ -987,7 +990,7 @@ export class Verhalten {
     if (e) {
       ohne.add(e.erster);
       ohne.add(e.letzter);
-      for (const p of e.li >= 0 ? (this.netz.linien[e.li]?.punkte ?? []) : []) ohne.add(p);
+      for (const li of [e.li, e.zwilling]) for (const p of li >= 0 ? (this.netz.linien[li]?.punkte ?? []) : []) ohne.add(p);
     }
     const proben = this.suchProben();
     const suche = (schicht: 0 | 1): { ziel: Ziel; x: number; y: number; d: number; verdeckt: boolean } | null => {
@@ -1180,7 +1183,7 @@ export class Verhalten {
     if (this.rahmen) {
       const r = this.rahmen;
       [r.x1, r.y1] = this.gezeichnet();
-      const drin = punkteImRahmen(this.netz, r.x0, r.y0, r.x1, r.y1).filter((p) => !this.raum || !this.netz.punkte[p]!.verdeckt);
+      const drin = punkteImRahmen(this.netz, r.x0, r.y0, r.x1, r.y1).filter((p) => !this.raum || this.raum.ankerZuSehen(p));
       this.auswahl = new Set(r.plus ? [...r.vorher, ...drin] : drin);
       bewegt = true;
     }
@@ -1641,6 +1644,7 @@ export class Verhalten {
       else if (zl?.art === 'frei') ende = { art: 'frei', x: zl.x, y: zl.y };
       const F = ende ? this.werk.faden(ende, gEnde) : null;
       if (F) this.fadenZeichnen(c, F, zl?.art === 'frei');
+      if (F?.spiegel) this.fadenZeichnen(c, F.spiegel, false);
       // wo die Linie schon Linien kreuzt: dort entstehen Punkte, wenn sie fertig ist
       const l = e.li >= 0 ? this.netz.linien[e.li] : undefined;
       const PL = e.li >= 0 ? this.proben[e.li] : undefined;
@@ -1670,6 +1674,16 @@ export class Verhalten {
     }
     // Griffe, die in ihren Punkt zurückfließen
     for (const d of this.dornenAus) this.dornZeichnen(c, d.x, d.y, d.x + d.gx * d.f.x, d.y + d.gy * d.f.x, 0.6, d.f.x);
+    // im Raum: nahe der Mitte zeigt sie sich als Punktreihe auf der Haut
+    if (this.stift && c.raum && this.zeiger.da && !this.stiftZug) {
+      const [zx, zy] = this.gezeichnet();
+      const m = this.werk.mittePunkte(zx, zy, 42 * this.g);
+      for (let i = 0; i + 3 < m.length; i += 4) {
+        const r = 0.55 * w.punktRadius * glatt(0, 0.6, m[i + 3]!);
+        if (r < 0.03) continue;
+        c.push(c.X(m[i]!), c.Y(m[i + 1]!), c.X(m[i]!), c.Y(m[i + 1]!), c.R(r), c.R(r), c.gruppe(), 2, 1, m[i + 2]!, m[i + 2]!);
+      }
+    }
     // Ring am ersten Punkt: schließen
     const f = this.schlussRing.x;
     if (f > 0.01) {

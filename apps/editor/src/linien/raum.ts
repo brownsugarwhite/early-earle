@@ -16,6 +16,7 @@ import { Feder1 } from './feder';
 import type { Koerper } from './fluessig';
 import type { Art, Linie, LinienProben, Netz, Seite } from './netz';
 import { type DrehBild, RASTEN, type RichtungZiel, schwungFaktor, winkelDiff } from './richtung';
+import type { EntwurfInfo, FadenEnde, FadenProben, StiftOrt, StiftWerk, V2 } from './stift';
 import type { Raum, Werte, Ziel } from './verhalten';
 
 type V3 = { x: number; y: number; z: number };
@@ -29,8 +30,34 @@ interface Stueck3 {
 }
 interface Linie3 {
   zu: boolean;
+  /** Anker der Reihe nach (geschlossen: je Stück sein Anfang; offen dazu das Ende) */
   anker: number[];
   stuecke: Stueck3[];
+  /** mit P gezeichnet: gezeigt wird sie auf die Haut gelegt (sie läuft über die Haut, nie durch sie) */
+  aufHaut?: boolean;
+}
+/** Gitter über die Punkte der gezeigten Haut, Dreiecke je Punkt, Kugeln je Dreieck (für Strahlen) */
+interface Gitter {
+  stand: number;
+  zelle: number;
+  karte: Map<number, number[]>;
+  anfang: Int32Array;
+  liste: Int32Array;
+  kugel: Float32Array;
+}
+/** Zustand der Linie, die P gerade zeichnet: sie und ihr Spiegelbild, Griffe als Vektoren in der Welt */
+interface Entwurf3 {
+  li: number;
+  zw: number;
+  erster: number;
+  letzter: number;
+  anzahl: number;
+  haengt: boolean;
+  mitteAnfang: boolean;
+  aus: V3;
+  einErster: V3;
+  knickErster: boolean;
+  start: StiftOrt['art'];
 }
 /** ein Schritt fürs Zurück: Geometrie und Aufbau der Linien (Werkzeug P ändert ihn) */
 interface Stand3 {
@@ -59,7 +86,77 @@ const drehe3 = (a: V3, k: V3, w: number): V3 => {
   const s = Math.sin(w);
   return plus3(plus3(mal3(a, c), mal3(kreuz3(k, a), s)), mal3(k, punkt3(k, a) * (1 - c)));
 };
-const linienKopie = (ls: readonly Linie3[]): Linie3[] => ls.map((l) => ({ zu: l.zu, anker: l.anker.slice(), stuecke: l.stuecke.map((s) => ({ ...s })) }));
+const linienKopie = (ls: readonly Linie3[]): Linie3[] =>
+  ls.map((l) => ({ zu: l.zu, anker: l.anker.slice(), stuecke: l.stuecke.map((s) => ({ ...s })), ...(l.aufHaut ? { aufHaut: true } : {}) }));
+/** Anker einer Linie aus ihren Stücken */
+const ankerVon = (l: Linie3): number[] => (l.zu || !l.stuecke.length ? l.stuecke.map((s) => s.a) : [...l.stuecke.map((s) => s.a), l.stuecke[l.stuecke.length - 1]!.b]);
+const zellSchluessel = (ix: number, iy: number, iz: number): number => ((ix + 2048) * 4096 + (iy + 2048)) * 4096 + (iz + 2048);
+/** nächster Punkt des Dreiecks abc zu p (Ericson, „Real-Time Collision Detection“, 5.1.5) */
+function naechsterAufDreieck(p: V3, a: V3, b: V3, c: V3): V3 {
+  const ab = minus3(b, a);
+  const ac = minus3(c, a);
+  const ap = minus3(p, a);
+  const d1 = punkt3(ab, ap);
+  const d2 = punkt3(ac, ap);
+  if (d1 <= 0 && d2 <= 0) return a;
+  const bp = minus3(p, b);
+  const d3 = punkt3(ab, bp);
+  const d4 = punkt3(ac, bp);
+  if (d3 >= 0 && d4 <= d3) return b;
+  const vc = d1 * d4 - d3 * d2;
+  if (vc <= 0 && d1 >= 0 && d3 <= 0) return plus3(a, mal3(ab, d1 / (d1 - d3)));
+  const cp = minus3(p, c);
+  const d5 = punkt3(ab, cp);
+  const d6 = punkt3(ac, cp);
+  if (d6 >= 0 && d5 <= d6) return c;
+  const vb = d5 * d2 - d1 * d6;
+  if (vb <= 0 && d2 >= 0 && d6 <= 0) return plus3(a, mal3(ac, d2 / (d2 - d6)));
+  const va = d3 * d6 - d5 * d4;
+  if (va <= 0 && d4 - d3 >= 0 && d5 - d6 >= 0) return plus3(b, mal3(minus3(c, b), (d4 - d3) / (d4 - d3 + (d5 - d6))));
+  const den = 1 / (va + vb + vc);
+  return plus3(a, plus3(mal3(ab, vb * den), mal3(ac, vc * den)));
+}
+/** ein Stück durch die Proben (3D), Griffe in den Richtungen tA und tB, Längen nach den kleinsten Quadraten (wie `stueckAnpassen`) */
+function stueckAnpassen3(pts: readonly V3[], tA: V3, tB: V3): [number, number] {
+  const N = pts.length;
+  const A = pts[0]!;
+  const B = pts[N - 1]!;
+  const sehne = laenge3(minus3(B, A));
+  const u = new Float64Array(N);
+  for (let i = 1; i < N; i++) u[i] = u[i - 1]! + laenge3(minus3(pts[i]!, pts[i - 1]!));
+  const L = u[N - 1]! || 1;
+  for (let i = 0; i < N; i++) u[i] = u[i]! / L;
+  let c00 = 0;
+  let c01 = 0;
+  let c11 = 0;
+  let x0 = 0;
+  let x1 = 0;
+  for (let i = 0; i < N; i++) {
+    const t = u[i]!;
+    const v = 1 - t;
+    const b0 = v * v * v;
+    const b1 = 3 * v * v * t;
+    const b2 = 3 * v * t * t;
+    const b3 = t * t * t;
+    const a1 = mal3(tA, b1);
+    const a2 = mal3(tB, b2);
+    c00 += punkt3(a1, a1);
+    c01 += punkt3(a1, a2);
+    c11 += punkt3(a2, a2);
+    const r = minus3(pts[i]!, plus3(mal3(A, b0 + b1), mal3(B, b2 + b3)));
+    x0 += punkt3(r, a1);
+    x1 += punkt3(r, a2);
+  }
+  const det = c00 * c11 - c01 * c01;
+  let a = sehne / 3;
+  let b = sehne / 3;
+  if (Math.abs(det) > 1e-12) {
+    a = (x0 * c11 - x1 * c01) / det;
+    b = (c00 * x1 - c01 * x0) / det;
+  }
+  if (!(a > 1e-6 * sehne) || !(b > 1e-6 * sehne)) a = b = sehne / 3;
+  return [a, b];
+}
 function anhaengen(a: Float64Array, p: V3): Float64Array {
   const n = new Float64Array(a.length + 3);
   n.set(a);
@@ -138,7 +235,7 @@ const glatt = (a: number, b: number, x: number): number => {
   return t * t * (3 - 2 * t);
 };
 
-export class Raum3D implements Raum {
+export class Raum3D implements Raum, StiftWerk {
   /** Geometrie (verformbar): Anker (Punkte der Linien, Kreuzungen geteilt), Griffspitzen absolut, Haut */
   anker: Float64Array = new Float64Array(0);
   ankerSichtbar: Uint8Array = new Uint8Array(0);
@@ -185,7 +282,7 @@ export class Raum3D implements Raum {
     anker0: Float64Array;
     griffe0: Float64Array;
   } | null = null;
-  private zurueck: Stand3[] = [];
+  private schritte: Stand3[] = [];
   /** je Linie und Stelle (Anfang des Stücks): Knick der Linie an diesem Punkt, erst aus der Form erkannt, dann von Hand */
   knick: boolean[][] = [];
   private kamera = { auge: v3(0, 0, 1), vor: v3(0, 0, -1), rechts: v3(1, 0, 0), oben: v3(0, 1, 0), tan: 0.27, aspekt: 1 };
@@ -275,7 +372,7 @@ export class Raum3D implements Raum {
     }
     this.anzeigeTri = Uint32Array.from(behalten);
     this.linienBauen(loops);
-    this.zurueck = [];
+    this.schritte = [];
     this.zug = null;
     this.netzNr++;
     this.geaendert = true;
@@ -302,6 +399,7 @@ export class Raum3D implements Raum {
 
   /** gezeigte Lagen (jede Hälfte an der Ebene abgeschnitten) und ihre Normalen */
   private anzeigeRechnen(): void {
+    this.hautStand++;
     const P = this.hautPos;
     const A = this.anzeigePos;
     const S = this.seite;
@@ -580,6 +678,7 @@ export class Raum3D implements Raum {
     sicht: { x0: number; y0: number; b: number; h: number; tiefe: Float32Array; dpr: number } | null,
   ): { netz: Netz; proben: LinienProben[] } {
     this.matrizen(b, h);
+    this.bildNr++;
     const tmp = [0, 0, 0];
     const bias = this.bias();
     const verdecktBei = (x: number, y: number, z: number): boolean => {
@@ -631,6 +730,8 @@ export class Raum3D implements Raum {
       const K = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
       l.stuecke.forEach((st, si) => {
         stueckS.push(s);
+        // mit P gezeichnet: auf die Haut gelegt
+        const D = l.aufHaut ? this.stueckAufHaut(st) : null;
         const A = st.a * 3;
         const B = st.b * 3;
         const G1 = st.g1 * 3;
@@ -659,9 +760,18 @@ export class Raum3D implements Raum {
           const b1 = 3 * u * u * t;
           const b2 = 3 * u * t * t;
           const b3 = t * t * t;
-          const x = b0 * K[0]! + b1 * K[3]! + b2 * K[6]! + b3 * K[9]!;
-          const y = b0 * K[1]! + b1 * K[4]! + b2 * K[7]! + b3 * K[10]!;
-          const z = b0 * K[2]! + b1 * K[5]! + b2 * K[8]! + b3 * K[11]!;
+          let x = b0 * K[0]! + b1 * K[3]! + b2 * K[6]! + b3 * K[9]!;
+          let y = b0 * K[1]! + b1 * K[4]! + b2 * K[7]! + b3 * K[10]!;
+          let z = b0 * K[2]! + b1 * K[5]! + b2 * K[8]! + b3 * K[11]!;
+          if (D) {
+            const m = D.length / 3 - 1;
+            const f = t * m;
+            const i0 = Math.min(m - 1, Math.floor(f));
+            const r = f - i0;
+            x = D[i0 * 3]! + (D[i0 * 3 + 3]! - D[i0 * 3]!) * r;
+            y = D[i0 * 3 + 1]! + (D[i0 * 3 + 4]! - D[i0 * 3 + 1]!) * r;
+            z = D[i0 * 3 + 2]! + (D[i0 * 3 + 5]! - D[i0 * 3 + 2]!) * r;
+          }
           this.auf(x, y, z, tmp, 0);
           if (xs.length) {
             s += Math.hypot(tmp[0]! - px, tmp[1]! - py);
@@ -847,16 +957,31 @@ export class Raum3D implements Raum {
 
   // ---------- Werkzeug P ----------
 
-  private standMerken(): void {
-    this.zurueck.push({
+  private standKopie(): Stand3 {
+    return {
       haut: this.hautPos.slice(),
       anker: this.anker.slice(),
       griffe: this.griffe.slice(),
       sichtbar: this.ankerSichtbar.slice(),
       linien: linienKopie(this.linien),
       knick: this.knick.map((k) => k.slice()),
-    });
-    if (this.zurueck.length > 40) this.zurueck.shift();
+    };
+  }
+
+  private standMerken(): void {
+    this.schritte.push(this.standKopie());
+    if (this.schritte.length > 40) this.schritte.shift();
+  }
+
+  private standLaden(z: Stand3): void {
+    this.hautPos.set(z.haut);
+    this.anker = z.anker.slice();
+    this.griffe = z.griffe.slice();
+    this.ankerSichtbar = z.sichtbar.slice();
+    this.linien = linienKopie(z.linien);
+    this.knick = z.knick.map((k) => k.slice());
+    this.anzeigeRechnen();
+    this.geaendert = true;
   }
 
   private lage(a: Float64Array, i: number): V3 {
@@ -913,7 +1038,7 @@ export class Raum3D implements Raum {
     const gD = this.griffe.length / 3;
     this.griffe = anhaengen(anhaengen(this.griffe, D), E);
     l.stuecke.splice(si, 1, { a: st.a, b: pi, g1: st.g1, g2: gD, kante: st.kante }, { a: pi, b: st.b, g1: gD + 1, g2: st.g2, kante: st.kante });
-    l.anker = l.stuecke.map((s) => s.a);
+    l.anker = ankerVon(l);
     this.knick[li]?.splice(si + 1, 0, false);
     return pi;
   }
@@ -927,6 +1052,847 @@ export class Raum3D implements Raum {
     const pi = this.teilen(li, si, t);
     if (zw) this.teilen(zw.li, zw.li === li && zw.si > si ? zw.si + 1 : zw.si, zw.rueckwaerts ? 1 - t : t);
     return pi;
+  }
+
+  // ---------- Haut: treffen, nächster Punkt, Mitte (für P im Raum) ----------
+
+  /** zählt jede Änderung der gezeigten Haut (Gitter, Mitte und aufgelegte Linien rechnen danach neu) */
+  private hautStand = 0;
+  private gitter: Gitter | null = null;
+  private mitteCache: { stand: number; stuecke: Float64Array; normalen: Float32Array } | null = null;
+  /** je Stück einer aufgelegten Linie: die Kurve auf der Haut (Proben bei gleichen Parametern) */
+  private aufgelegt = new WeakMap<Stueck3, { schluessel: string; p: Float64Array }>();
+
+  private gitterBauen(): Gitter {
+    const G = this.gitter;
+    if (G && G.stand === this.hautStand) return G;
+    const P = this.anzeigePos;
+    const T = this.anzeigeTri;
+    const nv = P.length / 3;
+    const h = this.radius / 40;
+    const karte = new Map<number, number[]>();
+    for (let v = 0; v < nv; v++) {
+      const k = zellSchluessel(Math.floor(P[v * 3]! / h), Math.floor(P[v * 3 + 1]! / h), Math.floor(P[v * 3 + 2]! / h));
+      const liste = karte.get(k);
+      if (liste) liste.push(v);
+      else karte.set(k, [v]);
+    }
+    const nt = T.length / 3;
+    const anfang = new Int32Array(nv + 1);
+    for (let i = 0; i < T.length; i++) anfang[T[i]! + 1] = anfang[T[i]! + 1]! + 1;
+    for (let v = 0; v < nv; v++) anfang[v + 1] = anfang[v + 1]! + anfang[v]!;
+    const fuell = anfang.slice(0, nv);
+    const liste = new Int32Array(T.length);
+    for (let t = 0; t < nt; t++)
+      for (let j = 0; j < 3; j++) {
+        const v = T[t * 3 + j]!;
+        liste[fuell[v]!] = t;
+        fuell[v] = fuell[v]! + 1;
+      }
+    const kugel = new Float32Array(nt * 4);
+    for (let t = 0; t < nt; t++) {
+      const a = T[t * 3]! * 3;
+      const b = T[t * 3 + 1]! * 3;
+      const c = T[t * 3 + 2]! * 3;
+      const mx = (P[a]! + P[b]! + P[c]!) / 3;
+      const my = (P[a + 1]! + P[b + 1]! + P[c + 1]!) / 3;
+      const mz = (P[a + 2]! + P[b + 2]! + P[c + 2]!) / 3;
+      let r = 0;
+      for (const q of [a, b, c]) r = Math.max(r, Math.hypot(P[q]! - mx, P[q + 1]! - my, P[q + 2]! - mz));
+      kugel.set([mx, my, mz, r * 1.001], t * 4);
+    }
+    this.gitter = { stand: this.hautStand, zelle: h, karte, anfang, liste, kugel };
+    return this.gitter;
+  }
+
+  /** erster Treffer des Strahls durch den Bildschirmpunkt mit der gezeigten Haut: Lage, Senkrechte (nach außen) */
+  private strahlTreffer(sx: number, sy: number): { p: V3; n: V3 } | null {
+    const { o, d } = this.strahl(sx, sy);
+    const G = this.gitterBauen();
+    const P = this.anzeigePos;
+    const T = this.anzeigeTri;
+    const K = G.kugel;
+    const N = this.hautNormal;
+    let best = Infinity;
+    let bi = -1;
+    let bu = 0;
+    let bv = 0;
+    const nt = T.length / 3;
+    for (let i = 0; i < nt; i++) {
+      const cx = K[i * 4]! - o.x;
+      const cy = K[i * 4 + 1]! - o.y;
+      const cz = K[i * 4 + 2]! - o.z;
+      const r = K[i * 4 + 3]!;
+      const tc = cx * d.x + cy * d.y + cz * d.z;
+      if (tc + r < 0 || tc - r > best) continue;
+      if (cx * cx + cy * cy + cz * cz - tc * tc > r * r) continue;
+      const a = T[i * 3]! * 3;
+      const b = T[i * 3 + 1]! * 3;
+      const c = T[i * 3 + 2]! * 3;
+      const e1x = P[b]! - P[a]!;
+      const e1y = P[b + 1]! - P[a + 1]!;
+      const e1z = P[b + 2]! - P[a + 2]!;
+      const e2x = P[c]! - P[a]!;
+      const e2y = P[c + 1]! - P[a + 1]!;
+      const e2z = P[c + 2]! - P[a + 2]!;
+      const px = d.y * e2z - d.z * e2y;
+      const py = d.z * e2x - d.x * e2z;
+      const pz = d.x * e2y - d.y * e2x;
+      const det = e1x * px + e1y * py + e1z * pz;
+      if (Math.abs(det) < 1e-14) continue;
+      const inv = 1 / det;
+      const tx = o.x - P[a]!;
+      const ty = o.y - P[a + 1]!;
+      const tz = o.z - P[a + 2]!;
+      const u = (tx * px + ty * py + tz * pz) * inv;
+      if (u < 0 || u > 1) continue;
+      const qx = ty * e1z - tz * e1y;
+      const qy = tz * e1x - tx * e1z;
+      const qz = tx * e1y - ty * e1x;
+      const v = (d.x * qx + d.y * qy + d.z * qz) * inv;
+      if (v < 0 || u + v > 1) continue;
+      const t = (e2x * qx + e2y * qy + e2z * qz) * inv;
+      if (t > 1e-9 && t < best) {
+        best = t;
+        bi = i;
+        bu = u;
+        bv = v;
+      }
+    }
+    if (bi < 0) return null;
+    const ia = T[bi * 3]! * 3;
+    const ib = T[bi * 3 + 1]! * 3;
+    const ic = T[bi * 3 + 2]! * 3;
+    const w = 1 - bu - bv;
+    const n = einheit3(v3(w * N[ia]! + bu * N[ib]! + bv * N[ic]!, w * N[ia + 1]! + bu * N[ib + 1]! + bv * N[ic + 1]!, w * N[ia + 2]! + bu * N[ib + 2]! + bv * N[ic + 2]!));
+    return { p: plus3(o, mal3(d, best)), n };
+  }
+
+  /** nächster Punkt der gezeigten Haut zu q (über das Gitter, dann genau auf den Dreiecken um den nächsten Punkt) und die Senkrechte */
+  private aufHaut(q: V3): { p: V3; n: V3 } {
+    const G = this.gitterBauen();
+    const P = this.anzeigePos;
+    const h = G.zelle;
+    const ix = Math.floor(q.x / h);
+    const iy = Math.floor(q.y / h);
+    const iz = Math.floor(q.z / h);
+    let bv = -1;
+    let bd = Infinity;
+    const pruefen = (v: number): void => {
+      const d = (P[v * 3]! - q.x) ** 2 + (P[v * 3 + 1]! - q.y) ** 2 + (P[v * 3 + 2]! - q.z) ** 2;
+      if (d < bd) {
+        bd = d;
+        bv = v;
+      }
+    };
+    for (let s = 0; s <= 12; s++) {
+      for (let dx = -s; dx <= s; dx++)
+        for (let dy = -s; dy <= s; dy++)
+          for (let dz = -s; dz <= s; dz++) {
+            if (Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz)) !== s) continue;
+            const liste = G.karte.get(zellSchluessel(ix + dx, iy + dy, iz + dz));
+            if (liste) for (const v of liste) pruefen(v);
+          }
+      if (bv >= 0 && Math.sqrt(bd) <= s * h) break;
+    }
+    if (bv < 0) for (let v = 0; v < P.length / 3; v++) pruefen(v);
+    const T = this.anzeigeTri;
+    let best = this.lage(P as unknown as Float64Array, bv);
+    let bestD = Math.sqrt(bd);
+    for (let k = G.anfang[bv]!; k < G.anfang[bv + 1]!; k++) {
+      const t = G.liste[k]!;
+      const c = naechsterAufDreieck(q, this.lage(P as unknown as Float64Array, T[t * 3]!), this.lage(P as unknown as Float64Array, T[t * 3 + 1]!), this.lage(P as unknown as Float64Array, T[t * 3 + 2]!));
+      const d = laenge3(minus3(c, q));
+      if (d < bestD) {
+        bestD = d;
+        best = c;
+      }
+    }
+    const N = this.hautNormal;
+    return { p: best, n: einheit3(v3(N[bv * 3]!, N[bv * 3 + 1]!, N[bv * 3 + 2]!)) };
+  }
+
+  /** Schnitt der Haut mit der Spiegelebene (z = 0): Stücke (je sechs Werte) und je Stück die Senkrechte der Haut dort */
+  private mitteStuecke(): { stuecke: Float64Array; normalen: Float32Array } {
+    const M = this.mitteCache;
+    if (M && M.stand === this.hautStand) return M;
+    const P = this.hautPos;
+    const T = this.hautTri;
+    const N = this.hautNormal;
+    const aus: number[] = [];
+    const nor: number[] = [];
+    for (let t = 0; t < T.length; t += 3) {
+      const ecken = [T[t]!, T[t + 1]!, T[t + 2]!];
+      const pts: number[] = [];
+      for (let j = 0; j < 3; j++) {
+        const a = ecken[j]!;
+        const b = ecken[(j + 1) % 3]!;
+        const za = P[a * 3 + 2]!;
+        const zb = P[b * 3 + 2]!;
+        if (za < 0 === zb < 0) continue;
+        const f = za / (za - zb);
+        pts.push(P[a * 3]! + (P[b * 3]! - P[a * 3]!) * f, P[a * 3 + 1]! + (P[b * 3 + 1]! - P[a * 3 + 1]!) * f, 0);
+      }
+      if (pts.length !== 6) continue;
+      aus.push(...pts);
+      const a = ecken[0]! * 3;
+      nor.push(N[a]!, N[a + 1]!, 0);
+    }
+    this.mitteCache = { stand: this.hautStand, stuecke: Float64Array.from(aus), normalen: Float32Array.from(nor) };
+    return this.mitteCache;
+  }
+
+  /** die Mitte auf dem Bildschirm (einmal je Bild): je Stück x, y, Tiefe beider Enden */
+  private bildNr = 0;
+  private mitteSchirmCache: { bild: number; stand: number; xy: Float64Array } | null = null;
+  private mitteSchirm(): Float64Array {
+    const c = this.mitteSchirmCache;
+    if (c && c.bild === this.bildNr && c.stand === this.hautStand) return c.xy;
+    const { stuecke } = this.mitteStuecke();
+    const xy = new Float64Array(stuecke.length);
+    const o = [0, 0, 0];
+    for (let i = 0; i < stuecke.length; i += 3) {
+      this.auf(stuecke[i]!, stuecke[i + 1]!, stuecke[i + 2]!, o, 0);
+      xy[i] = o[0]!;
+      xy[i + 1] = o[1]!;
+      xy[i + 2] = o[2]!;
+    }
+    this.mitteSchirmCache = { bild: this.bildNr, stand: this.hautStand, xy };
+    return xy;
+  }
+
+  /** nächster sichtbarer Punkt der Mitte zum Bildschirmpunkt, höchstens `r` entfernt (Bildschirmpunkte) */
+  private mitteNahe(sx: number, sy: number, r: number): { p: V3; sx: number; sy: number } | null {
+    const { stuecke } = this.mitteStuecke();
+    const S = this.mitteSchirm();
+    let best: { p: V3; sx: number; sy: number; d: number } | null = null;
+    for (let i = 0; i < stuecke.length; i += 6) {
+      const ax = S[i]!;
+      const ay = S[i + 1]!;
+      const vx = S[i + 3]! - ax;
+      const vy = S[i + 4]! - ay;
+      if (Math.min(ax, ax + vx) > sx + r || Math.max(ax, ax + vx) < sx - r || Math.min(ay, ay + vy) > sy + r || Math.max(ay, ay + vy) < sy - r) continue;
+      const l2 = vx * vx + vy * vy;
+      const f = l2 > 0 ? Math.min(1, Math.max(0, ((sx - ax) * vx + (sy - ay) * vy) / l2)) : 0;
+      const qx = ax + vx * f;
+      const qy = ay + vy * f;
+      const d = Math.hypot(qx - sx, qy - sy);
+      if (d < r && (!best || d < best.d)) {
+        const A = v3(stuecke[i]!, stuecke[i + 1]!, stuecke[i + 2]!);
+        const B = v3(stuecke[i + 3]!, stuecke[i + 4]!, stuecke[i + 5]!);
+        best = { p: plus3(A, mal3(minus3(B, A), f)), sx: qx, sy: qy, d };
+      }
+    }
+    if (!best) return null;
+    // sichtbar: Der Strahl dorthin trifft die Haut dort, nicht davor
+    const h = this.strahlTreffer(best.sx, best.sy);
+    if (!h || laenge3(minus3(h.p, best.p)) > this.radius * 0.03) return null;
+    return best;
+  }
+
+  /** Ort auf der Haut unter dem Bildschirmpunkt; nahe der Mitte rastet er auf ihr ein */
+  private ortAufHaut(sx: number, sy: number): { p: V3; n: V3; mitte: boolean; sx: number; sy: number } | null {
+    const m = this.mitteNahe(sx, sy, this.fangMitte);
+    if (m) return { p: v3(m.p.x, m.p.y, 0), n: this.aufHaut(m.p).n, mitte: true, sx: m.sx, sy: m.sy };
+    const t = this.strahlTreffer(sx, sy);
+    if (!t) return null;
+    return { p: t.p, n: t.n, mitte: false, sx, sy };
+  }
+
+  /** so nah (Bildschirmpunkte) rastet P auf der Mitte ein */
+  fangMitte = 9;
+
+  /** ein Anker ist zu sehen: Der Strahl zu ihm trifft die Haut nicht weit vor ihm (für den Rahmen; die Anzeige misst nur am Zeiger) */
+  ankerZuSehen(ai: number): boolean {
+    const p = this.lage(this.anker, ai);
+    const s = this.schirm(p);
+    const h = this.strahlTreffer(s[0], s[1]);
+    if (!h) return true;
+    const t = this.schirm(h.p);
+    return s[2] <= t[2] + this.bias();
+  }
+
+  ortFrei(x: number, y: number): { x: number; y: number; mitte: boolean } | null {
+    const o = this.ortAufHaut(x, y);
+    return o ? { x: o.sx, y: o.sy, mitte: o.mitte } : null;
+  }
+
+  /** Punktreihe der Mitte nahe am Zeiger (nur, was zum Betrachter zeigt): je Punkt x, y, Tiefe, Gewicht */
+  mittePunkte(sx: number, sy: number, r: number): number[] {
+    const { stuecke, normalen } = this.mitteStuecke();
+    const S = this.mitteSchirm();
+    const aus: number[] = [];
+    const auge = this.kamera.auge;
+    for (let i = 0, j = 0; i < stuecke.length; i += 6, j += 3) {
+      const qx = (S[i]! + S[i + 3]!) / 2;
+      const qy = (S[i + 1]! + S[i + 4]!) / 2;
+      const d = Math.hypot(qx - sx, qy - sy);
+      if (d >= r) continue;
+      const M = v3((stuecke[i]! + stuecke[i + 3]!) / 2, (stuecke[i + 1]! + stuecke[i + 4]!) / 2, 0);
+      const n = v3(normalen[j]!, normalen[j + 1]!, normalen[j + 2]!);
+      if (punkt3(n, minus3(auge, M)) <= 0) continue;
+      aus.push(qx, qy, (S[i + 2]! + S[i + 5]!) / 2, 1 - d / r);
+    }
+    return aus;
+  }
+
+  /** ein Griff aus einem Vektor auf dem Bildschirm (vom Anker aus): in der Ebene der Haut am Anker, wohin der Zeiger zeigt */
+  private griffVektor(A: V3, v: V2): V3 {
+    if (Math.hypot(v[0], v[1]) < 1e-9) return v3(0, 0, 0);
+    const n = this.aufHaut(A).n;
+    const s = this.schirm(A);
+    const { o, d } = this.strahl(s[0] + v[0], s[1] + v[1]);
+    const nenner = punkt3(d, n);
+    if (Math.abs(nenner) > 0.15) {
+      const t = punkt3(minus3(A, o), n) / nenner;
+      if (t > 0) return minus3(plus3(o, mal3(d, t)), A);
+    }
+    // fast von der Kante gesehen: auf dem Bildschirm verschoben, in die Ebene gelegt
+    const k = this.kamera;
+    const mpp = (2 * s[2] * Math.tan(this.fov / 2)) / this.h;
+    const D = mal3(minus3(mal3(k.rechts, v[0]), mal3(k.oben, v[1])), mpp);
+    return minus3(D, mal3(n, punkt3(D, n)));
+  }
+
+  /** die Kurve eines Stücks auf der Haut (Enden bleiben die Anker), bei gleichen Parametern */
+  private aufHautLegen(k: readonly V3[], n: number): Float64Array {
+    const aus = new Float64Array((n + 1) * 3);
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const u = 1 - t;
+      const b = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
+      let q = v3(0, 0, 0);
+      for (let j = 0; j < 4; j++) q = plus3(q, mal3(k[j]!, b[j]!));
+      if (i > 0 && i < n) q = this.aufHaut(q).p;
+      aus[i * 3] = q.x;
+      aus[i * 3 + 1] = q.y;
+      aus[i * 3 + 2] = q.z;
+    }
+    return aus;
+  }
+
+  private stueckAufHaut(st: Stueck3): Float64Array {
+    const k = this.kontrolle(st);
+    const schluessel = `${this.hautStand}|${k.map((p) => `${p.x},${p.y},${p.z}`).join('|')}`;
+    const c = this.aufgelegt.get(st);
+    if (c && c.schluessel === schluessel) return c.p;
+    const p = this.aufHautLegen(k, 32);
+    this.aufgelegt.set(st, { schluessel, p });
+    return p;
+  }
+
+  // ---------- Werkzeug P wie in Illustrator (im Raum: auf der Haut, spiegelgleich) ----------
+
+  private ent: Entwurf3 | null = null;
+  private entStapel: { stand: Stand3; ent: Entwurf3 }[] = [];
+  private entVorher: Stand3 | null = null;
+
+  private ankerNeu(p: V3, sichtbar = true): number {
+    const i = this.ankerSichtbar.length;
+    this.anker = anhaengen(this.anker, p);
+    const s = new Uint8Array(i + 1);
+    s.set(this.ankerSichtbar);
+    s[i] = sichtbar ? 1 : 0;
+    this.ankerSichtbar = s;
+    return i;
+  }
+
+  private griffNeu(p: V3): number {
+    this.griffe = anhaengen(this.griffe, p);
+    return this.griffe.length / 3 - 1;
+  }
+
+  private aufMitte(ai: number): boolean {
+    return Math.abs(this.anker[ai * 3 + 2]!) < this.radius * 1e-5;
+  }
+
+  /** Spiegelbild eines Ankers (auf der Mitte: er selbst); fehlt es, entsteht es */
+  private spiegelAnker(ai: number): number {
+    if (this.aufMitte(ai)) return ai;
+    const p = this.lage(this.anker, ai);
+    const eps = this.radius * 1e-5;
+    const A = this.anker;
+    for (let j = 0; j < A.length / 3; j++) {
+      if (j !== ai && Math.abs(A[j * 3]! - p.x) < eps && Math.abs(A[j * 3 + 1]! - p.y) < eps && Math.abs(A[j * 3 + 2]! + p.z) < eps) return j;
+    }
+    return this.ankerNeu(spiegel3(p), !!this.ankerSichtbar[ai]);
+  }
+
+  private entKopie(e: Entwurf3): Entwurf3 {
+    return { ...e, aus: { ...e.aus }, einErster: { ...e.einErster } };
+  }
+
+  entwurf(): EntwurfInfo | null {
+    const e = this.ent;
+    if (!e) return null;
+    const vek = (ai: number, v: V3): V2 => {
+      const A = this.lage(this.anker, ai);
+      const a = this.schirm(A);
+      const b = this.schirm(plus3(A, v));
+      return [b[0] - a[0], b[1] - a[1]];
+    };
+    return { li: e.li, zwilling: e.zw, erster: e.erster, letzter: e.letzter, anzahl: e.anzahl, haengt: e.haengt, aus: vek(e.letzter, e.aus), einErster: vek(e.erster, e.einErster) };
+  }
+
+  /** einen Punkt auf eine Linie setzen, ohne eigenen Schritt fürs Zurück */
+  private einsetzenStill(li: number, si: number, t: number): number {
+    const zw = this.zwilling(li, si);
+    const pi = this.teilen(li, si, t);
+    if (zw) this.teilen(zw.li, zw.li === li && zw.si > si ? zw.si + 1 : zw.si, zw.rueckwaerts ? 1 - t : t);
+    this.geaendert = true;
+    return pi;
+  }
+
+  beginnen(o: StiftOrt): number | null {
+    let a: number;
+    let mitte = false;
+    if (o.art === 'frei') {
+      const t = this.ortAufHaut(o.x, o.y);
+      if (!t) return null;
+      this.standMerken();
+      this.entVorher = this.standKopie();
+      a = t.mitte ? this.ankerNeu(t.p) : this.ankerNeu(t.p);
+      if (!t.mitte) this.spiegelAnker(a);
+      mitte = t.mitte;
+    } else if (o.art === 'punkt') {
+      this.standMerken();
+      this.entVorher = this.standKopie();
+      a = o.pi;
+      mitte = this.aufMitte(a);
+    } else {
+      this.standMerken();
+      a = this.einsetzenStill(o.li, o.si, o.t);
+      this.entVorher = this.standKopie();
+      mitte = this.aufMitte(a);
+    }
+    this.ent = { li: -1, zw: -1, erster: a, letzter: a, anzahl: 1, haengt: o.art !== 'frei' || mitte, mitteAnfang: mitte, aus: v3(0, 0, 0), einErster: v3(0, 0, 0), knickErster: true, start: o.art };
+    this.entStapel = [];
+    return a;
+  }
+
+  weiter(o: StiftOrt): number | null {
+    const e = this.ent;
+    if (!e) return null;
+    const vorher = { stand: this.standKopie(), ent: this.entKopie(e) };
+    let p: number;
+    if (o.art === 'frei') {
+      const t = this.ortAufHaut(o.x, o.y);
+      if (!t) return null;
+      p = this.ankerNeu(t.p);
+      if (!t.mitte) this.spiegelAnker(p);
+    } else if (o.art === 'punkt') p = o.pi;
+    else p = this.einsetzenStill(o.li, o.si, o.t);
+    this.entStapel.push(vorher);
+    const A = this.lage(this.anker, e.letzter);
+    const B = this.lage(this.anker, p);
+    const st: Stueck3 = { a: e.letzter, b: p, g1: this.griffNeu(plus3(A, e.aus)), g2: this.griffNeu(B), kante: false };
+    const stS: Stueck3 = {
+      a: this.spiegelAnker(e.letzter),
+      b: this.spiegelAnker(p),
+      g1: this.griffNeu(spiegel3(plus3(A, e.aus))),
+      g2: this.griffNeu(spiegel3(B)),
+      kante: false,
+    };
+    if (e.li < 0) {
+      const l: Linie3 = { zu: false, anker: [], stuecke: [st], aufHaut: true };
+      const z: Linie3 = { zu: false, anker: [], stuecke: [stS], aufHaut: true };
+      l.anker = ankerVon(l);
+      z.anker = ankerVon(z);
+      this.linien.push(l, z);
+      this.knick.push([e.knickErster, true], [e.knickErster, true]);
+      e.li = this.linien.length - 2;
+      e.zw = this.linien.length - 1;
+    } else {
+      for (const [li, s] of [
+        [e.li, st],
+        [e.zw, stS],
+      ] as const) {
+        const l = this.linien[li]!;
+        l.stuecke.push(s);
+        l.anker = ankerVon(l);
+        this.knick[li]!.push(true);
+      }
+    }
+    e.letzter = p;
+    e.anzahl++;
+    e.aus = v3(0, 0, 0);
+    this.geaendert = true;
+    return p;
+  }
+
+  /** Griff `g` (Nummer) auf die Lage p, und sein Spiegelbild in der Spiegellinie */
+  private griffMitSpiegel(li: number, zw: number, si: number, ende: 'g1' | 'g2', p: V3): void {
+    const st = this.linien[li]?.stuecke[si];
+    const sp = this.linien[zw]?.stuecke[si];
+    if (st) this.griffSetzen(st[ende], p);
+    if (sp) this.griffSetzen(sp[ende], spiegel3(p));
+  }
+
+  griffeLetzter(aus: V2 | null, ein: V2 | null): void {
+    const e = this.ent;
+    if (!e) return;
+    const A = this.lage(this.anker, e.letzter);
+    if (aus) e.aus = this.griffVektor(A, aus);
+    if (ein) {
+      const v = this.griffVektor(A, ein);
+      if (e.li < 0 || e.anzahl === 1) e.einErster = v;
+      else this.griffMitSpiegel(e.li, e.zw, this.linien[e.li]!.stuecke.length - 1, 'g2', plus3(A, v));
+    }
+  }
+
+  griffeErster(aus: V2 | null, ein: V2 | null): void {
+    const e = this.ent;
+    if (!e) return;
+    const A = this.lage(this.anker, e.erster);
+    if (aus) {
+      const v = this.griffVektor(A, aus);
+      if (e.li >= 0) this.griffMitSpiegel(e.li, e.zw, 0, 'g1', plus3(A, v));
+      else e.aus = v;
+    }
+    if (ein) {
+      e.einErster = this.griffVektor(A, ein);
+      const l = e.li >= 0 ? this.linien[e.li] : undefined;
+      if (l?.zu) this.griffMitSpiegel(e.li, e.zw, l.stuecke.length - 1, 'g2', plus3(A, e.einErster));
+    }
+  }
+
+  knickSetzen(erster: boolean, an: boolean): void {
+    const e = this.ent;
+    if (!e) return;
+    if (erster && e.li < 0) {
+      e.knickErster = an;
+      return;
+    }
+    for (const li of [e.li, e.zw]) {
+      const k = this.knick[li];
+      const l = this.linien[li];
+      if (k && l) k[erster ? 0 : l.anker.length - 1] = an;
+    }
+  }
+
+  letztenVerschieben(x: number, y: number): void {
+    const e = this.ent;
+    if (!e) return;
+    const t = this.ortAufHaut(x, y);
+    if (!t) return;
+    const alt = this.lage(this.anker, e.letzter);
+    const d = minus3(t.p, alt);
+    const setzeAnker = (ai: number, p: V3): void => {
+      this.anker[ai * 3] = p.x;
+      this.anker[ai * 3 + 1] = p.y;
+      this.anker[ai * 3 + 2] = p.z;
+    };
+    const sp = this.spiegelAnker(e.letzter);
+    setzeAnker(e.letzter, t.p);
+    if (sp !== e.letzter) setzeAnker(sp, spiegel3(t.p));
+    if (e.li >= 0 && e.anzahl > 1) {
+      const si = this.linien[e.li]!.stuecke.length - 1;
+      const g = this.lage(this.griffe, this.linien[e.li]!.stuecke[si]!.g2);
+      this.griffMitSpiegel(e.li, e.zw, si, 'g2', plus3(g, d));
+    }
+  }
+
+  schliessen(): void {
+    const e = this.ent;
+    if (!e || e.li < 0) return;
+    const A = this.lage(this.anker, e.letzter);
+    const P0 = this.lage(this.anker, e.erster);
+    const st: Stueck3 = { a: e.letzter, b: e.erster, g1: this.griffNeu(plus3(A, e.aus)), g2: this.griffNeu(plus3(P0, e.einErster)), kante: false };
+    const stS: Stueck3 = {
+      a: this.spiegelAnker(e.letzter),
+      b: this.spiegelAnker(e.erster),
+      g1: this.griffNeu(spiegel3(plus3(A, e.aus))),
+      g2: this.griffNeu(spiegel3(plus3(P0, e.einErster))),
+      kante: false,
+    };
+    for (const [li, s] of [
+      [e.li, st],
+      [e.zw, stS],
+    ] as const) {
+      const l = this.linien[li]!;
+      l.stuecke.push(s);
+      l.zu = true;
+      l.anker = ankerVon(l);
+    }
+    e.aus = v3(0, 0, 0);
+    this.geaendert = true;
+  }
+
+  fertig(): number {
+    const e = this.ent;
+    this.ent = null;
+    this.entStapel = [];
+    this.entVorher = null;
+    if (!e || e.li < 0) return -1;
+    const l = this.linien[e.li]!;
+    const z = this.linien[e.zw]!;
+    const ende = l.stuecke[l.stuecke.length - 1]!.b;
+    if (!l.zu && e.mitteAnfang && this.aufMitte(ende)) {
+      // Ring um den Körper: die Hälfte vorwärts, ihr Spiegelbild rückwärts, ein geschlossener Zug
+      const rueck = z.stuecke
+        .slice()
+        .reverse()
+        .map((s) => ({ a: s.b, b: s.a, g1: s.g2, g2: s.g1, kante: s.kante }));
+      const ring: Linie3 = { zu: true, anker: [], stuecke: [...l.stuecke, ...rueck], aufHaut: true };
+      ring.anker = ankerVon(ring);
+      const kl = this.knick[e.li] ?? [];
+      const m = l.stuecke.length;
+      // Knick je Anker: der Hälfte wie gezeichnet; an der Mitte, ob die beiden Griffe in einer Flucht liegen
+      const knick = ring.anker.map((ai, k) => {
+        if (k > 0 && k < m) return kl[k] ?? false;
+        if (k > m) return kl[2 * m - k] ?? false;
+        const H = this.lage(this.anker, ai);
+        const vor = ring.stuecke[(k - 1 + ring.stuecke.length) % ring.stuecke.length]!;
+        const a = minus3(this.lage(this.griffe, ring.stuecke[k]!.g1), H);
+        const b = minus3(this.lage(this.griffe, vor.g2), H);
+        const la = laenge3(a);
+        const lb = laenge3(b);
+        if (la < 1e-9 || lb < 1e-9) return true;
+        return -punkt3(a, b) / (la * lb) < Math.cos((10 * Math.PI) / 180);
+      });
+      this.linien.splice(e.zw, 1);
+      this.knick.splice(e.zw, 1);
+      this.linien[e.li] = ring;
+      this.knick[e.li] = knick;
+    }
+    this.geaendert = true;
+    return e.li;
+  }
+
+  abbrechen(): void {
+    const e = this.ent;
+    if (e && this.entVorher) {
+      this.standLaden(this.entVorher);
+      // ein Schritt fürs Zurück nur, wenn P einen Punkt auf eine Linie gesetzt hat
+      if (e.start !== 'linie') this.schritte.pop();
+    }
+    this.ent = null;
+    this.entStapel = [];
+    this.entVorher = null;
+  }
+
+  zurueck(): boolean {
+    if (!this.ent) return false;
+    const s = this.entStapel.pop();
+    if (!s) {
+      this.abbrechen();
+      return false;
+    }
+    this.standLaden(s.stand);
+    this.ent = s.ent;
+    return true;
+  }
+
+  faden(ende: FadenEnde, gEnde: V2): FadenProben | null {
+    const e = this.ent;
+    if (!e) return null;
+    void gEnde;
+    const A = this.lage(this.anker, e.letzter);
+    let E: V3;
+    let gE = v3(0, 0, 0);
+    if (ende.art === 'schluss') {
+      E = this.lage(this.anker, e.erster);
+      gE = e.einErster;
+    } else if (ende.art === 'punkt') E = this.lage(this.anker, ende.pi);
+    else if (ende.art === 'linie') E = this.bezier3(ende.li, ende.si, ende.t);
+    else {
+      const t = this.ortAufHaut(ende.x, ende.y);
+      if (!t) return null;
+      E = t.p;
+    }
+    const k = [A, plus3(A, e.aus), plus3(E, gE), E];
+    const p = this.aufHautLegen(k, 40);
+    const proben = (spiegel: boolean): FadenProben => {
+      const n = p.length / 3;
+      const x = new Float32Array(n);
+      const y = new Float32Array(n);
+      const z = new Float32Array(n);
+      const s = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        const q = this.schirm(v3(p[i * 3]!, p[i * 3 + 1]!, spiegel ? -p[i * 3 + 2]! : p[i * 3 + 2]!));
+        x[i] = q[0];
+        y[i] = q[1];
+        z[i] = q[2];
+        if (i) s[i] = s[i - 1]! + Math.hypot(x[i]! - x[i - 1]!, y[i]! - y[i - 1]!);
+      }
+      return { n, x, y, z, s, laenge: s[n - 1]! };
+    };
+    const F = proben(false);
+    F.spiegel = proben(true);
+    F.welt = p;
+    return F;
+  }
+
+  // ---------- Auswahl im Raum ----------
+
+  private mehrZug: {
+    zentren: V3[];
+    fest: Set<number>;
+    seite: number;
+    rechts: V3;
+    oben: V3;
+    massProPunkt: number;
+    haut0: Float32Array;
+    anker0: Float64Array;
+    griffe0: Float64Array;
+  } | null = null;
+
+  punkteZiehenBeginnen(pis: number[]): void {
+    if (!pis.length) return;
+    this.standMerken();
+    const v = this.ansicht;
+    const p0 = this.lage(this.anker, pis[0]!);
+    const tiefe = -(v[2]! * p0.x + v[6]! * p0.y + v[10]! * p0.z + v[14]!);
+    const fest = new Set<number>();
+    for (const p of pis) {
+      fest.add(p);
+      fest.add(this.spiegelAnker(p));
+    }
+    this.mehrZug = {
+      zentren: pis.map((p) => {
+        const q = this.lage(this.anker, p);
+        return v3(q.x, q.y, Math.abs(q.z));
+      }),
+      fest,
+      seite: p0.z < 0 ? -1 : 1,
+      rechts: { x: v[0]!, y: v[4]!, z: v[8]! },
+      oben: { x: v[1]!, y: v[5]!, z: v[9]! },
+      massProPunkt: (2 * tiefe * Math.tan(this.fov / 2)) / this.h,
+      haut0: this.hautPos.slice(),
+      anker0: this.anker.slice(),
+      griffe0: this.griffe.slice(),
+    };
+  }
+
+  /** alle gewählten gehen genau um den Mausweg mit (in der Bildebene, spiegelgleich), Haut und Griffe mit weichem Feld um jeden */
+  punkteZiehen(dx: number, dy: number): void {
+    const zg = this.mehrZug;
+    if (!zg) return;
+    const k = zg.massProPunkt;
+    const D = {
+      x: (zg.rechts.x * dx - zg.oben.x * dy) * k,
+      y: (zg.rechts.y * dx - zg.oben.y * dy) * k,
+      z: (zg.rechts.z * dx - zg.oben.z * dy) * k * zg.seite,
+    };
+    const mitteBreite = this.radius * 0.02;
+    const R = this.einfluss * this.radius;
+    const gewicht = (x: number, y: number, z: number): number => {
+      let w = 0;
+      for (const c of zg.zentren) w = Math.max(w, glocke(Math.hypot(x - c.x, y - c.y, Math.abs(z) - c.z) / R));
+      return w;
+    };
+    const feld = (quelle: ArrayLike<number>, ziel: Float32Array | Float64Array, festeAnker: boolean): void => {
+      for (let i = 0; i < quelle.length; i += 3) {
+        const x = quelle[i]!;
+        const y = quelle[i + 1]!;
+        const z = quelle[i + 2]!;
+        const w = festeAnker && zg.fest.has(i / 3) ? 1 : gewicht(x, y, z);
+        const vz = z >= 0 ? 1 : -1;
+        const aufMitte = Math.abs(z) < this.radius * 1e-5;
+        ziel[i] = x + D.x * w;
+        ziel[i + 1] = y + D.y * w;
+        ziel[i + 2] = aufMitte ? z : z + D.z * w * vz * glatt(0, mitteBreite, Math.abs(z));
+      }
+    };
+    feld(zg.haut0, this.hautPos, false);
+    feld(zg.anker0, this.anker, true);
+    feld(zg.griffe0, this.griffe, false);
+    this.anzeigeRechnen();
+    this.geaendert = true;
+  }
+
+  punkteZiehenEnden(): void {
+    this.mehrZug = null;
+  }
+
+  /** Punkte löschen (mit ihren Spiegelbildern): Die Linie läuft durch die Nachbarn weiter, so nah am alten Verlauf wie möglich */
+  punkteLoeschen(pis: number[]): boolean {
+    if (!pis.length) return false;
+    this.standMerken();
+    const weg = new Set<number>();
+    for (const p of pis) {
+      weg.add(p);
+      weg.add(this.spiegelAnker(p));
+    }
+    const linien: Linie3[] = [];
+    const knicke: boolean[][] = [];
+    this.linien.forEach((l, li) => {
+      const an = ankerVon(l);
+      const np = an.length;
+      const raus = an.map((a) => weg.has(a));
+      const kn = this.knick[li] ?? [];
+      if (!raus.some(Boolean)) {
+        linien.push(l);
+        knicke.push(kn);
+        return;
+      }
+      if (raus.filter((r) => !r).length < 2) return;
+      const neu: Linie3 = { zu: l.zu, anker: [], stuecke: [], ...(l.aufHaut ? { aufHaut: true } : {}) };
+      const nk: boolean[] = [];
+      const m = l.stuecke.length;
+      const zusammen = (i: number, j: number): Stueck3 => {
+        const pts: V3[] = [];
+        for (let q = i; q < j; q++) {
+          const k = this.kontrolle(l.stuecke[q % m]!);
+          for (let r = q === i ? 0 : 1; r <= 16; r++) {
+            const t = r / 16;
+            const u = 1 - t;
+            const b = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t];
+            let p = v3(0, 0, 0);
+            for (let c = 0; c < 4; c++) p = plus3(p, mal3(k[c]!, b[c]!));
+            pts.push(p);
+          }
+        }
+        const erstes = l.stuecke[i % m]!;
+        const letztes = l.stuecke[(j - 1) % m]!;
+        const A = pts[0]!;
+        const B = pts[pts.length - 1]!;
+        let tA = minus3(this.lage(this.griffe, erstes.g1), A);
+        if (laenge3(tA) < 1e-9) tA = minus3(pts[1]!, A);
+        let tB = minus3(this.lage(this.griffe, letztes.g2), B);
+        if (laenge3(tB) < 1e-9) tB = minus3(pts[pts.length - 2]!, B);
+        tA = einheit3(tA);
+        tB = einheit3(tB);
+        const [a, b] = stueckAnpassen3(pts, tA, tB);
+        return { a: erstes.a, b: letztes.b, g1: this.griffNeu(plus3(A, mal3(tA, a))), g2: this.griffNeu(plus3(B, mal3(tB, b))), kante: erstes.kante };
+      };
+      if (l.zu) {
+        const start = raus.indexOf(false);
+        let i = start;
+        do {
+          let j = i + 1;
+          while (raus[j % np]) j++;
+          nk.push(kn[i % np] ?? false);
+          neu.stuecke.push(j === i + 1 ? { ...l.stuecke[i % m]! } : zusammen(i, j));
+          i = j;
+        } while (i % np !== start);
+      } else {
+        const a = raus.indexOf(false);
+        const b = raus.lastIndexOf(false);
+        let i = a;
+        nk.push(kn[a] ?? false);
+        while (i < b) {
+          let j = i + 1;
+          while (raus[j]) j++;
+          neu.stuecke.push(j === i + 1 ? { ...l.stuecke[i]! } : zusammen(i, j));
+          nk.push(kn[j] ?? false);
+          i = j;
+        }
+      }
+      neu.anker = ankerVon(neu);
+      linien.push(neu);
+      knicke.push(nk);
+    });
+    this.linien = linien;
+    this.knick = knicke;
+    // Anker ohne Linie sind nicht mehr zu sehen
+    const benutzt = new Set<number>();
+    for (const l of linien) for (const a of l.anker) benutzt.add(a);
+    const s = this.ankerSichtbar.slice();
+    for (let i = 0; i < s.length; i++) if (!benutzt.has(i)) s[i] = 0;
+    this.ankerSichtbar = s;
+    this.geaendert = true;
+    return true;
   }
 
   // ---------- Richtungen drehen (Konzept „Richtungen statt Griffe“) ----------
@@ -987,7 +1953,7 @@ export class Raum3D implements Raum {
     this.griffe[gi * 3 + 2] = p.z;
   }
 
-  private knickSetzen(li: number, k: number, an: boolean, zwilling: number): void {
+  private knickRichtung(li: number, k: number, an: boolean, zwilling: number): void {
     if (this.knick[li]) this.knick[li]![k] = an;
     const z = zwilling >= 0 ? this.armVon(zwilling) : null;
     if (z && this.knick[z.li]) this.knick[z.li]![z.k] = an;
@@ -1123,9 +2089,9 @@ export class Raum3D implements Raum {
   drehenEnden(): void {
     const D = this.dreh;
     if (!D) return;
-    if (D.eingerastet) this.knickSetzen(D.z.li, D.z.k, false, D.armZw);
+    if (D.eingerastet) this.knickRichtung(D.z.li, D.z.k, false, D.armZw);
     else if (D.los) {
-      this.knickSetzen(D.z.li, D.z.k, true, D.armZw);
+      this.knickRichtung(D.z.li, D.z.k, true, D.armZw);
       // die Gegenseite steht wieder, wo sie war (ihre Feder ist vielleicht noch unterwegs)
       this.griffSetzen(D.gegenG, D.P0);
       if (D.gegenZw >= 0 && D.gegenZw !== D.armG) this.griffSetzen(D.gegenZw, spiegel3(D.P0));
@@ -1163,7 +2129,7 @@ export class Raum3D implements Raum {
     this.standMerken();
     const war = this.knick[z.li]?.[z.k] ?? false;
     const armZw = this.griffZwilling(g.arm);
-    this.knickSetzen(z.li, z.k, !war, armZw);
+    this.knickRichtung(z.li, z.k, !war, armZw);
     this.ausr = null;
     if (!war) return false;
     // jetzt rund: die Richtung dreht sich (animiert) in die Flucht ihrer Gegenseite
@@ -1187,27 +2153,10 @@ export class Raum3D implements Raum {
     if (t >= 1) this.ausr = null;
   }
 
-  // ---------- Auswahl (vorläufig: einzeln wie bisher) ----------
-
-  punkteZiehenBeginnen(pis: number[]): void {
-    if (pis[0] !== undefined) this.ziehenBeginnen({ art: 'punkt', pi: pis[0] });
-  }
-
-  punkteZiehen(dx: number, dy: number): void {
-    this.ziehen(dx, dy);
-  }
-
-  punkteZiehenEnden(): void {
-    this.ziehenEnden();
-  }
-
-  punkteLoeschen(_pis: number[]): boolean {
-    return false;
-  }
-
   rueckgaengig(): boolean {
-    const z = this.zurueck.pop();
+    const z = this.schritte.pop();
     if (!z) return false;
+    this.mehrZug = null;
     this.hautPos.set(z.haut);
     this.anker = z.anker;
     this.griffe = z.griffe;

@@ -343,6 +343,70 @@ aus.kriterien.auswahl = {
   bestanden: JSON.stringify(gewaehlt1) === JSON.stringify(imRahmen) && gewaehlt2.includes(aussen.i) && zugAbw < 0.01 && zuNach === zuVor,
 };
 await bild('10 · ⌫: gelöscht, die Linie läuft weiter', AUGE);
+// 5 · Feinheiten wie in Illustrator: ⇧ rastet den Griff in 45°, Leertaste verschiebt beim Ziehen den Punkt, Klick auf den letzten
+// Punkt zieht seinen Griff ein; dann Esc
+await page.keyboard.press('p');
+await warten();
+const F1 = [372, 205];
+const F2 = [392, 214];
+await klick(F1);
+await hin(F2);
+await page.mouse.down();
+await warten(40);
+await page.keyboard.down('Shift');
+{
+  // 30° gezogen, mit ⇧ 45°
+  const L = 10;
+  const [x, y] = S([F2[0] + L * Math.cos(Math.PI / 6), F2[1] + L * Math.sin(Math.PI / 6)]);
+  await page.mouse.move(x, y, { steps: 8 });
+  await warten(60);
+}
+const griff45 = await page.evaluate(() => window.__linien.verhalten.werk.entwurf().aus);
+await page.keyboard.up('Shift');
+await warten(60);
+// Leertaste: der Punkt geht mit, der Griff bleibt
+const vorLeer = await page.evaluate(() => {
+  const v = window.__linien.verhalten;
+  const e = v.werk.entwurf();
+  return { p: { ...v.netz.punkte[e.letzter] }, aus: e.aus };
+});
+await page.keyboard.down('Space');
+{
+  const [x, y] = S([F2[0] + 10 * Math.cos(Math.PI / 6) + 4, F2[1] + 10 * Math.sin(Math.PI / 6) + 3]);
+  await page.mouse.move(x, y, { steps: 8 });
+  await warten(60);
+}
+await page.keyboard.up('Space');
+const nachLeer = await page.evaluate(() => {
+  const v = window.__linien.verhalten;
+  const e = v.werk.entwurf();
+  return { p: { ...v.netz.punkte[e.letzter] }, aus: e.aus };
+});
+await page.mouse.up();
+await warten();
+// Klick auf den letzten Punkt: sein Griff fließt in ihn zurück
+await hin([nachLeer.p.x, nachLeer.p.y]);
+await page.mouse.down();
+await warten(40);
+await page.mouse.up();
+await warten(300);
+const nachEinziehen = await page.evaluate(() => window.__linien.verhalten.werk.entwurf().aus);
+await page.keyboard.press('Escape');
+await warten(200);
+const w45 = (Math.atan2(griff45[1], griff45[0]) * 180) / Math.PI;
+const verschoben = [nachLeer.p.x - vorLeer.p.x, nachLeer.p.y - vorLeer.p.y];
+aus.kriterien.feinheiten = {
+  griffWinkel: +w45.toFixed(3),
+  leertastePunkt: verschoben.map((v) => +v.toFixed(3)),
+  leertasteGriffGleich: Math.hypot(nachLeer.aus[0] - vorLeer.aus[0], nachLeer.aus[1] - vorLeer.aus[1]) < 1e-6,
+  eingezogen: nachEinziehen,
+  bestanden:
+    Math.abs(w45 - 45) < 1e-6 &&
+    Math.hypot(verschoben[0] - 4, verschoben[1] - 3) < 0.01 &&
+    Math.hypot(nachLeer.aus[0] - vorLeer.aus[0], nachLeer.aus[1] - vorLeer.aus[1]) < 1e-6 &&
+    nachEinziehen[0] === 0 &&
+    nachEinziehen[1] === 0,
+};
 aus.fehler = fehler;
 console.log(JSON.stringify(aus, null, 1));
 

@@ -17,6 +17,7 @@ const anzeige = new FluessigeAnzeige(leinwand);
 const raum = new Raum3D();
 const verhalten = new Verhalten({ punkte: [], linien: [] }, werte);
 verhalten.raum = raum;
+verhalten.werk = raum;
 const ansicht: Ansicht = { z: 1, ox: 0, oy: 0, dpr: Math.min(window.devicePixelRatio || 1, 3), wachsen: false, massstab: 1 };
 const info = frage.get('info') === '1';
 if (frage.get('bild') === '1') document.body.classList.add('bild');
@@ -117,8 +118,9 @@ function groesse(): void {
 let dreh: { x: number; y: number; schieben: boolean } | null = null;
 let letzteZeit = 0;
 function zeigerAus(e: PointerEvent | WheelEvent): void {
-  // ⌥: eine Richtung losreißen (Knick), nicht einrasten
+  // ⌥: eine Richtung losreißen (Knick), nicht einrasten; ⇧: 45° mit P, Auswahl dazu
   verhalten.alt = e.altKey;
+  verhalten.umschalt = e.shiftKey;
   const r = leinwand.getBoundingClientRect();
   const sx = e.clientX - r.left;
   const sy = e.clientY - r.top;
@@ -141,13 +143,16 @@ leinwand.addEventListener('pointermove', (e) => {
 leinwand.addEventListener('pointerdown', (e) => {
   leinwand.setPointerCapture(e.pointerId);
   zeigerAus(e);
-  // ⇧ an einer Richtung: aus der Haut kippen; ⇧ daneben: verschieben
+  // ⇧ an einer Richtung: aus der Haut kippen. Im Leeren (Florian, 15.11. abends, vorläufig): Ziehen zieht den Rahmen, ⌥ + Ziehen
+  // dreht die Ansicht, ⌥ + ⇧ + Ziehen verschiebt sie (wie Blender mit nachgebildeter Mitteltaste); zwei Finger drehen, Pinch zoomt
   verhalten.kippen = e.shiftKey;
-  if (e.button === 0 && verhalten.druecken()) {
+  const ansicht = e.button === 1 || (e.altKey && !verhalten.haengt);
+  if (e.button === 0 && !ansicht) {
+    verhalten.druecken();
     anstossen();
     return;
   }
-  dreh = { x: e.clientX, y: e.clientY, schieben: e.shiftKey || e.button === 1 };
+  dreh = { x: e.clientX, y: e.clientY, schieben: e.shiftKey };
   leinwand.classList.add('schwenken');
   anstossen();
 });
@@ -180,8 +185,21 @@ window.addEventListener('keydown', (e) => {
     verhalten.alt = true;
     anstossen();
   }
+  if (e.key === 'Shift') {
+    verhalten.umschalt = true;
+    anstossen();
+  }
+  if (e.code === 'Space') verhalten.leertaste = true;
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
     if (verhalten.rueckgaengig()) anstossen();
+    e.preventDefault();
+  } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
+    if (verhalten.eingabe('alle')) anstossen();
+    e.preventDefault();
+  } else if (e.key === 'Enter') {
+    if (verhalten.eingabe('enter')) anstossen();
+  } else if (e.key === 'Backspace' || e.key === 'Delete') {
+    if (verhalten.eingabe('loeschen')) anstossen();
     e.preventDefault();
   } else if (e.key === '1') ansichtWechseln('seite');
   else if (e.key === '2') ansichtWechseln('front');
@@ -189,14 +207,24 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === '4') ansichtWechseln('schraeg');
   else if (e.key.toLowerCase() === 's' && !e.metaKey) knopfSchattierung.click();
   else if (e.key.toLowerCase() === 'r' && !e.metaKey) knopfRegler.click();
-  else if (e.key.toLowerCase() === 'p' && !e.metaKey) stiftSetzen(!verhalten.stift);
-  else if (e.key === 'Escape') stiftSetzen(false);
+  else if (e.key.toLowerCase() === 'p' && !e.metaKey) stiftSetzen(true);
+  else if (e.key.toLowerCase() === 'v' && !e.metaKey) stiftSetzen(false);
+  else if (e.key === 'Escape') {
+    // Esc: angefangene Linie abbrechen, sonst Auswahl leeren, sonst P beenden
+    if (verhalten.eingabe('esc')) anstossen();
+    else stiftSetzen(false);
+  }
 });
 window.addEventListener('keyup', (e) => {
   if (e.key === 'Alt') {
     verhalten.alt = false;
     anstossen();
   }
+  if (e.key === 'Shift') {
+    verhalten.umschalt = false;
+    anstossen();
+  }
+  if (e.code === 'Space') verhalten.leertaste = false;
 });
 window.addEventListener('resize', groesse);
 
@@ -207,9 +235,9 @@ const knopfRegler = document.getElementById('knopf-regler') as HTMLButtonElement
 const knopfSchattierung = document.getElementById('knopf-schattierung') as HTMLButtonElement;
 const reglerFeld = document.getElementById('regler') as HTMLElement;
 const knopfStift = document.getElementById('knopf-stift') as HTMLButtonElement;
-/** Werkzeug P: nur dann hängt an einer Linie ein Tropfen, und Drücken setzt dort einen Punkt (spiegelgleich) */
+/** Werkzeug P (zeichnen wie in Illustrator, auf der Haut, spiegelgleich) oder Auswahl (V) */
 function stiftSetzen(an: boolean): void {
-  verhalten.stift = an;
+  verhalten.stiftSchalten(an);
   knopfStift.setAttribute('aria-pressed', String(an));
   anstossen();
 }
@@ -261,13 +289,19 @@ const fein = reglerBauen(document.getElementById('regler-liste') as HTMLDivEleme
 (document.getElementById('knopf-grundwerte') as HTMLButtonElement).onclick = fein.grundwerte;
 (document.getElementById('knopf-kopieren') as HTMLButtonElement).onclick = fein.kopieren;
 
-// Test-Haken: Zeiger setzen (Bildschirmpunkte), Zeit vorspulen (ohne Bildtakt)
+// Test-Haken: Zeiger setzen (Bildschirmpunkte), Zeit vorspulen (ohne Bildtakt; das Tiefenbild um den Zeiger aus dem letzten Bild,
+// wie im Bildtakt, damit nur Sichtbares gegriffen wird)
 const vorspulen = (ms: number): void => {
   const dt = 1 / 240;
+  const z = verhalten.zeiger;
+  const D = ansicht.dpr;
+  const m = ansicht.massstab ?? 1;
+  const s = z.da ? anzeige.tiefeBei(z.sx * D, z.sy * D, (werte.fangPunkt * 2.5 * m + 16) * D) : null;
+  const sicht = s ? { ...s, dpr: D } : null;
   for (let t = 0; t < ms / 1000; t += dt) {
     raum.kameraSchritt(dt);
     const r = buehne.getBoundingClientRect();
-    const { netz, proben } = raum.projizieren(r.width, r.height, werte, ansicht.massstab ?? 1, null);
+    const { netz, proben } = raum.projizieren(r.width, r.height, werte, ansicht.massstab ?? 1, sicht);
     verhalten.setzeNetz(netz, proben);
     verhalten.setzeAnsicht(ansicht);
     verhalten.schritt(dt);
