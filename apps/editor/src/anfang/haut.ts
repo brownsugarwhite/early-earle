@@ -201,7 +201,8 @@ float dickeHier(out float hauch) {
   vec3 dp = vPos - uHauch;
   hauch = exp(-dot(dp, dp) / (uHauchRadius * uHauchRadius)) * uHauchStaerke;
   d *= 1.0 - 0.62 * hauch;
-  return d;
+  // nie dünner als die erste Ordnung (gold, weiß): so bleibt der gedehnte Hals sichtbar, statt schwarz und unsichtbar zu werden
+  return max(d, 165.0);
 }
 
 float gangunterschied(float d, float cosI) {

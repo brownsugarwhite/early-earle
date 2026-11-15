@@ -329,8 +329,9 @@ function kameraSetzen(m: Moment | null): void {
   const massstab = 1 + (ende - 1) * f;
   const abstand = (H / 2 / (Math.tan(halb) * massstab)) * (1 + (nutzer.zoom - 1) * f);
   const ziel = new Vector3((k?.cx ?? 0) * f, (k?.cy ?? 0) * f, 0);
-  const gier = ((werte.gier * Math.PI) / 180) * f + nutzer.gier * f;
-  const neigung = ((werte.neigung * Math.PI) / 180) * f + nutzer.neigung * f;
+  // Drehung aus dem Ablauf (beim Hängen zur Seite, danach in die Ecke), dazu die Drehung von Hand
+  const gier = (((m?.gier ?? 0) * Math.PI) / 180) + nutzer.gier * f;
+  const neigung = (((m?.neigung ?? 0) * Math.PI) / 180) + nutzer.neigung * f;
   kamera.position.set(ziel.x + abstand * Math.sin(gier) * Math.cos(neigung), ziel.y + abstand * Math.sin(neigung), ziel.z + abstand * Math.cos(gier) * Math.cos(neigung));
   kamera.up.set(0, 1, 0);
   kamera.lookAt(ziel);

@@ -30,8 +30,8 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   `kurven.ts` und wird erst nach Schritt 7 nachgezogen.
 - **Strang „Anfang einer Form und Seifenhaut“ (eigene Sitzung, seit 15.11.):** leeres Blatt mit „draw a silhouette“, Loop mit P,
   ↩: Der Rahmen fährt zur Rückwand einer Ecke und wird Schatten, die Haut hängt, reißt ab und wird zur Blase; Namen der Wände
-  in Lobster auf dem Boden (Runde 3). Probe `anfang.html` (Port 5203, Arbeitsbaum `anfang`), Einstieg:
-  [`docs/look/anfang/UEBERGABE.md`](docs/look/anfang/UEBERGABE.md). Sein Urteil zu Runde 3 steht aus.
+  in Lobster auf dem Boden; erst runde Seifenblase, wobbelt, dann die Form (Runde 4). Probe `anfang.html` (Port 5203, Arbeitsbaum `anfang`), Einstieg:
+  [`docs/look/anfang/UEBERGABE.md`](docs/look/anfang/UEBERGABE.md). Sein Urteil zu Runde 4 steht aus.
 - **Eingefroren (Wissen, nicht weiterbauen):** der Käfig-Weg vom 13.10. bis 04.11. (`packages/shape/src/kern/`, der alte
   Electron-Editor `pnpm editor`) und `form.html`.
 - **Florians Testformen:** `wesen/` (teat firefish, strange bird, test_kaputt). Fertige Wesen gibt es nicht; die Formen sind

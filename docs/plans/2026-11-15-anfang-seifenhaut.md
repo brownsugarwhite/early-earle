@@ -280,3 +280,34 @@ Florian (wörtlich, „janice“ gelesen als „ja, ich“): „janice meinte ec
 
 **Offen (Fragen an Florian):** Namen immer grau sichtbar oder nur beim Darüberfahren; das Quadrat am Boden aus der Vision (Feld des
 2048-Spiels) dazu; als Nächstes der Morph zur Ansicht beim Drehen zu einer Wand und das Bedienen der Kurven dort.
+
+## Runde 4 (15.11.2026, nachts): mehr Seifenblase
+
+Florian (wörtlich): „die animation noch mehr bubbly, die form soll bei der animation mehr wobbeln und dann erst die eigentliche
+form bilden wie eine echte seifenblase. die verbindung/hals und abriss sollen noch deutlicher sichtbar sein. und es soll eine
+bessere dynamik haben. Es muss noch eleganter und realistischer und mit mehr wow effekt sein“
+
+**Gebaut:**
+- **Erst eine runde Seifenblase, dann die Form.** Die Blase vorn ist beim Hängen eine pralle, runde Blase: Der Umriss ist
+  geglättet (dünne Teile wie Flossen ziehen sich ein, die Fläche bleibt), das Innere folgt harmonisch (Laplace-Gleichung mit dem
+  Versatz des Rands; so faltet das Netz nicht, ein erster Versuch mit einfachem Glätten faltete an der Flosse und wirkte knautschig),
+  dazu um 30 % praller. In der Strömung ist sie länglich. Nach dem Abriss wächst die gezeichnete Form in 1,15 s aus ihr heraus.
+- **Kräftiges Wobbeln nach dem Abriss:** länglich und flach im Wechsel (2,3 Hz, der Stoß des Abrisses staucht sie zuerst flach),
+  seitliches Schwappen (3,1 Hz), eine Welle läuft vom Abrisspunkt über die Rückseite und den Umfang bis nach vorn; dazu wie vorher
+  Stoß der Kuppel, hinten erst spitz dann rund, Zurückfedern nach vorn.
+- **Hals und Abriss deutlicher:** Beim Hängen dreht die Kamera auf 58° zur Seite, so sieht man Blase, Schlauch und Rahmen
+  nebeneinander; erst nach dem Abriss schwenkt sie in die Ecke (32°/22°). Der Hals schnürt sich mit der Länge bis auf 88 % zu und
+  reißt dann in 0,09 s. Der gedehnte Schlauch wird nie dünner als die erste Ordnung der Farben (gold, weiß), damit er sichtbar bleibt.
+- **Dynamik:** Der Rahmen wird zügig losgerissen und gleitet dann langsamer zur Rückwand (2,2 s); der Rest im Rahmen schnappt wie ein
+  Trommelfell zurück (7 Hz). Abriss am Fisch nach 1,33 s.
+- Feinregler neu geordnet: Rahmen, Hängen und Abreißen, Blase beim Hängen, Seifenblase (erst rund, Form wächst heraus, Wobbeln,
+  Schwappen, Welle vom Abriss), nach dem Abriss, Kamera (zur Seite beim Abriss, am Ende), Material.
+
+**Probe:** 60 Bilder je Sekunde in allen vier Fassungen (95 % unter 16,8 ms). Abriss stetig: über den Abriss 14 px, davor 15 px je
+Bild (der Hals), die Vorderseite 3 px; danach schnappt der Rest im Rahmen schnell (43 px je Bild, gewollt). Übergang 0,19 px.
+
+**Bilder und Film:** `docs/progress/anfang/2026-11-15-r4-film-seifenblase.mp4` (ganzer Ablauf), `…-r4-ablauf.png` (zehn
+Momente von 0,35 bis 3,6 s).
+
+**Ehrlich:** Wie stark es wobbeln soll, wie rund die Blase anfangs ist und wie weit die Kamera zur Seite dreht, sind Geschmack;
+alles liegt in den Feinreglern („Seifenblase“, „Kamera“).

@@ -1,4 +1,4 @@
-# Übergabe: Anfang einer Form und Seifenhaut (Stand 15.11.2026, spätabends, Runde 3: Ecke)
+# Übergabe: Anfang einer Form und Seifenhaut (Stand 15.11.2026, nachts, Runde 4: mehr Seifenblase)
 
 Eigener Strang neben „Linien, Punkte, Zeiger“. Konzept, Ergebnis und Fragen an Florian:
 [`docs/plans/2026-11-15-anfang-seifenhaut.md`](../../plans/2026-11-15-anfang-seifenhaut.md). Florians Materialentwurf (keine feste
@@ -23,6 +23,10 @@ Florians Rückmeldung (wörtlich im Plan, Abschnitt „Runde 2“): Seifenhaut u
 ## Stand Runde 3
 
 Florian: „ich meinte Ecke und die Beschriftung soll auch auf den Boden projiziert sein“. Gebaut: Ecke aus Rückwand (Seite), linker Wand (Front) und Boden (Top), drei Haarlinien vom Eckpunkt, Namen in Lobster flach auf dem Boden (grau, beim Darüberfahren dunkel), Kamera 32°/22° mit eingepasstem Abstand. Sein Urteil steht aus.
+
+## Stand Runde 4
+
+Florian: mehr bubbly, mehr wobbeln, dann erst die Form; Hals und Abriss deutlicher; bessere Dynamik, mehr Wow. Gebaut: erst runde, pralle Blase (Rand geglättet, Inneres harmonisch), kräftiges Schwingen nach dem Abriss (länglich ↔ flach, seitlich, Welle vom Abrisspunkt), die Form wächst heraus; Kamera beim Hängen 58° zur Seite, danach in die Ecke; Hals bis 88 % zu, reißt in 0,09 s. Sein Urteil steht aus.
 
 ## Bedienung
 
@@ -59,3 +63,9 @@ zurück aufs Blatt (der Film läuft rückwärts). 1–4 Fassung, N Nacht, R Fein
 - Alle Shader werden in `setzeKoerper` übersetzt (`renderer.compile`), sonst stockt ein Bild, wenn die Wände erscheinen.
 - `__anfang.aufDerWand(i, a, b)` gibt einen Punkt auf Wand i (0 Rückwand, 1 links, 2 Boden) im Bild, `aufDemNamen(i)` die Mitte eines Namens; `abriss()`
   misst den Abriss (Sprung und Schritte davor und danach).
+- **Runde 4:** Die runde Blase ist eine zweite Lage je Punkt (`runderUmriss`): Rand 140-mal längs des Rands geglättet, auf die
+  Fläche der Form vergrößert, das Innere harmonisch (`dirichletLoesen` mit dem Versatz des Rands; derselbe Löser wie die Poisson-
+  Gleichung). Einfaches Glätten des ganzen Netzes faltete an der Flosse. Vor dem Abriss läuft der Schlauch vom Umfang der runden
+  Blase zum Hals am Rahmen (gezeichnete Form); nach dem Abriss mischt die Rückseite vom Trichter (gezeichnete Form) zur runden.
+- Die Kamera nimmt Drehung und Neigung aus dem Ablauf (`moment` → `gier`, `neigung`), der Abstand am Ende kommt weiter aus
+  `einpassen` (für die Werte am Ende).

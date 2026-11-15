@@ -535,8 +535,16 @@ export function netzAusUmriss(u: Umriss, opts: { punkte?: number } = {}): FlachN
   };
 }
 
-function poisson(X: Float64Array, Y: Float64Array, T: Uint32Array, n: number, nb: number): { h: Float64Array; schritte: number; flaecheJe: Float64Array } {
-  // Gewichte je Kante sammeln
+/** Kotangens-Laplace des flachen Netzes (dünn besetzt) und Fläche je Punkt */
+interface Laplace {
+  zahl: Int32Array;
+  nach: Int32Array;
+  w: Float64Array;
+  diag: Float64Array;
+  flaecheJe: Float64Array;
+}
+
+function laplaceBauen(X: ArrayLike<number>, Y: ArrayLike<number>, T: Uint32Array, n: number): Laplace {
   const gew = new Map<number, number>();
   const flaecheJe = new Float64Array(n);
   const add = (i: number, j: number, w: number): void => {
@@ -560,7 +568,6 @@ function poisson(X: Float64Array, Y: Float64Array, T: Uint32Array, n: number, nb
       add(i, j, 0.5 * cot);
     }
   }
-  // dünn besetzt: je Punkt Nachbarn und Gewichte
   const zahl = new Int32Array(n + 1);
   for (const k of gew.keys()) {
     const i = Math.floor(k / n);
@@ -582,9 +589,27 @@ function poisson(X: Float64Array, Y: Float64Array, T: Uint32Array, n: number, nb
   }
   const diag = new Float64Array(n);
   for (let i = 0; i < n; i++) for (let e = zahl[i]!; e < zahl[i + 1]!; e++) diag[i]! += w[e]!;
-  const h = new Float64Array(n);
+  return { zahl, nach, w, diag, flaecheJe };
+}
+
+/**
+ * Löst Σ w_ij (x_i − x_j) = rechts_i für die inneren Punkte (i ≥ nb), am Rand x = rand (PCG mit Diagonale). Ergebnis: x für alle
+ * Punkte und die Zahl der Schritte.
+ */
+function dirichletLoesen(L: Laplace, n: number, nb: number, rechts: Float64Array, rand: Float64Array | null): { x: Float64Array; schritte: number } {
+  const { zahl, nach, w, diag } = L;
+  const x = new Float64Array(n);
   const b = new Float64Array(n);
-  for (let i = nb; i < n; i++) b[i] = 4 * flaecheJe[i]!;
+  for (let i = 0; i < nb; i++) x[i] = rand ? rand[i]! : 0;
+  for (let i = nb; i < n; i++) {
+    let s = rechts[i]!;
+    if (rand)
+      for (let e = zahl[i]!; e < zahl[i + 1]!; e++) {
+        const j = nach[e]!;
+        if (j < nb) s += w[e]! * rand[j]!;
+      }
+    b[i] = s;
+  }
   const mul = (v: Float64Array, aus: Float64Array): void => {
     for (let i = nb; i < n; i++) {
       let s = diag[i]! * v[i]!;
@@ -599,7 +624,8 @@ function poisson(X: Float64Array, Y: Float64Array, T: Uint32Array, n: number, nb
   const z = new Float64Array(n);
   const p = new Float64Array(n);
   const Ap = new Float64Array(n);
-  mul(h, Ap);
+  const y = new Float64Array(n);
+  mul(y, Ap);
   let bn = 0;
   for (let i = nb; i < n; i++) {
     r[i] = b[i]! - Ap[i]!;
@@ -619,7 +645,7 @@ function poisson(X: Float64Array, Y: Float64Array, T: Uint32Array, n: number, nb
     const alpha = rz / pAp;
     let rn = 0;
     for (let i = nb; i < n; i++) {
-      h[i]! += alpha * p[i]!;
+      y[i]! += alpha * p[i]!;
       r[i]! -= alpha * Ap[i]!;
       rn += r[i]! * r[i]!;
     }
@@ -633,7 +659,16 @@ function poisson(X: Float64Array, Y: Float64Array, T: Uint32Array, n: number, nb
     rz = rzNeu;
     for (let i = nb; i < n; i++) p[i] = z[i]! + beta * p[i]!;
   }
-  return { h, schritte, flaecheJe };
+  for (let i = nb; i < n; i++) x[i] = y[i]!;
+  return { x, schritte };
+}
+
+function poisson(X: Float64Array, Y: Float64Array, T: Uint32Array, n: number, nb: number): { h: Float64Array; schritte: number; flaecheJe: Float64Array } {
+  const L = laplaceBauen(X, Y, T, n);
+  const rechts = new Float64Array(n);
+  for (let i = nb; i < n; i++) rechts[i] = 4 * L.flaecheJe[i]!;
+  const { x, schritte } = dirichletLoesen(L, n, nb, rechts, null);
+  return { h: x, schritte, flaecheJe: L.flaecheJe };
 }
 
 // ---------- der Körper im Raum ----------
@@ -664,9 +699,38 @@ export interface Lage {
   rahmen: number;
   znRiss: number;
   zfRiss: number;
+  /**
+   * rund wie eine Seifenblase (1) oder die gezeichnete Form (0): Umriss und Netz geglättet, dazu praller; länglich in der Tiefe
+   * (1 = Form, die Breite gleicht es aus), seitliches Schwappen (± in x, ∓ in y), Welle vom Abrisspunkt (Stärke, Ort 0..3)
+   */
+  rund: number;
+  zStreck: number;
+  schwapp: number;
+  riesel: number;
+  rieselOrt: number;
 }
 
-export const FLACH: Lage = { ze: 0, vorn: 0, hinten: 0, quer: 0, welle: 0, phase: 0, zu: 1, zf: 0, zn: 0, schnitt: 0, gerissen: false, rahmen: 0, znRiss: 0, zfRiss: 0 };
+export const FLACH: Lage = {
+  ze: 0,
+  vorn: 0,
+  hinten: 0,
+  quer: 0,
+  welle: 0,
+  phase: 0,
+  zu: 1,
+  zf: 0,
+  zn: 0,
+  schnitt: 0,
+  gerissen: false,
+  rahmen: 0,
+  znRiss: 0,
+  zfRiss: 0,
+  rund: 0,
+  zStreck: 1,
+  schwapp: 0,
+  riesel: 0,
+  rieselOrt: 0,
+};
 
 /** Profil eines Trichters vom Rand (v = 0) zum Hals (v = 1): am Hals läuft die Haut längs der Tiefe (wie beim Katenoid) */
 function trichter(v: number): number {
@@ -697,6 +761,9 @@ export class Koerper {
   readonly versatz: Float32Array;
   /** Kanten der Blase mit ihren zwei Dreiecken (für Umrisse an den Wänden) */
   private kanten: Int32Array | null = null;
+  /** die runde Blase: Lage je Punkt im Blatt, geglättet (Rand längs des Rands, innen wie ein Fell), Fläche wie die Form */
+  private xr: Float64Array;
+  private yr: Float64Array;
 
   constructor(flach: FlachNetz) {
     this.flach = flach;
@@ -724,6 +791,9 @@ export class Koerper {
     }
     this.index = idx;
     this.indexRahmen = Uint32Array.from(T);
+    const rund = runderUmriss(flach);
+    this.xr = rund.x;
+    this.yr = rund.y;
     const r = flach.radius || 1;
     for (let s = 0; s < 3; s++)
       for (let i = 0; i < n; i++) {
@@ -747,18 +817,29 @@ export class Koerper {
     const V = this.versatz;
     const qm = F.qMax || 1;
     const schnitt = Math.max(1e-4, l.schnitt);
+    // runde Blase: geglättete Lage, praller (Höhe × (1 + 0,3 · rund)); länglich in der Tiefe, die Breite gleicht es aus
+    const ru = Math.max(0, Math.min(1, l.rund));
+    const hoch = (1 + 0.3 * ru) * l.zStreck;
+    const breit = 1 / Math.sqrt(Math.max(0.2, l.zStreck));
+    const kx = k * breit * (1 + l.schwapp);
+    const ky = k * breit * (1 - l.schwapp);
     for (let i = 0; i < n; i++) {
       const qi = F.q[i]!;
       const u = qi / qm;
       const x = F.x[i]!;
       const y = F.y[i]!;
-      const xs = F.cx + (x - F.cx) * k + V[i * 3]!;
-      const ys = F.cy + (y - F.cy) * k + V[i * 3 + 1]!;
+      const xb = x + (this.xr[i]! - x) * ru;
+      const yb = y + (this.yr[i]! - y) * ru;
+      const xs = F.cx + (xb - F.cx) * kx + V[i * 3]!;
+      const ys = F.cy + (yb - F.cy) * ky + V[i * 3 + 1]!;
       const welle = 1 + l.welle * Math.sin(6.2832 * (1.25 * (1 - u) - l.phase)) * (1 - u * 0.5);
+      // Welle vom Abrisspunkt: läuft über die Rückseite (Ort 0 … 1), den Umfang (1) und die Vorderseite (1 … 2) bis nach vorn
+      const rv = l.riesel > 0 ? 1 + l.riesel * Math.exp(-(((1 + u - l.rieselOrt) / 0.28) ** 2)) : 1;
+      const rh = l.riesel > 0 ? 1 + l.riesel * Math.exp(-(((1 - u - l.rieselOrt) / 0.28) ** 2)) : 1;
       // vorn: Kuppel
       P[i * 3] = xs;
       P[i * 3 + 1] = ys;
-      P[i * 3 + 2] = l.ze + l.vorn * s * qi * welle + V[i * 3 + 2]!;
+      P[i * 3 + 2] = l.ze + l.vorn * s * qi * welle * hoch * rv + V[i * 3 + 2]!;
       S[i] = 1;
       // hinten und Rahmen
       const h = n + i;
@@ -766,8 +847,9 @@ export class Koerper {
       if (!l.gerissen) {
         const sichtbar = 1 - weich(schnitt - 0.025, schnitt + 0.004, u);
         const tv = u <= schnitt ? trichter(u / schnitt) : 1;
-        P[h * 3] = x;
-        P[h * 3 + 1] = y;
+        // der Schlauch läuft vom Umfang der runden Blase (tv = 0) zum Hals am Rahmen (tv = 1, die gezeichnete Form)
+        P[h * 3] = xs + (x - xs) * tv;
+        P[h * 3 + 1] = ys + (y - ys) * tv;
         P[h * 3 + 2] = l.ze - (l.ze - l.zn) * tv;
         P[r * 3] = x;
         P[r * 3 + 1] = y;
@@ -776,9 +858,11 @@ export class Koerper {
         S[r] = sichtbar;
       } else {
         const tv = trichter(u);
-        P[h * 3] = xs;
-        P[h * 3 + 1] = ys;
-        P[h * 3 + 2] = l.ze - ((1 - l.hinten) * (l.ze - l.znRiss) * tv + l.hinten * s * qi * welle) - V[i * 3 + 2]!;
+        // erst der Trichter zum Abrisspunkt (wie beim Abriss), dann die runde Rückseite
+        const zum = tv * (1 - Math.min(1, Math.max(0, l.hinten)));
+        P[h * 3] = xs + (x - xs) * zum;
+        P[h * 3 + 1] = ys + (y - ys) * zum;
+        P[h * 3 + 2] = l.ze - ((1 - l.hinten) * (l.ze - l.znRiss) * tv + l.hinten * s * qi * welle * hoch * rh) - V[i * 3 + 2]!;
         P[r * 3] = x;
         P[r * 3 + 1] = y;
         P[r * 3 + 2] = l.zf + (l.znRiss - l.zfRiss) * tv * (1 - l.rahmen);
@@ -1001,3 +1085,60 @@ function weich(a: number, b: number, x: number): number {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
 }
+
+/**
+ * Die runde Blase zur Form: der Rand wird längs des Rands geglättet (viele Durchgänge, dünne Teile wie Flossen ziehen sich ein) und
+ * auf die Fläche der Form vergrößert; das Innere folgt harmonisch (Laplace-Gleichung mit dem Versatz des Rands). So faltet das Netz
+ * nicht, und jede Stelle der Form hat ihre Stelle in der runden Blase.
+ */
+function runderUmriss(F: FlachNetz): { x: Float64Array; y: Float64Array } {
+  const n = F.n;
+  const nb = F.nb;
+  let bx = Float64Array.from(F.x.subarray(0, nb));
+  let by = Float64Array.from(F.y.subarray(0, nb));
+  const flaeche = (px: Float64Array, py: Float64Array): number => {
+    let s = 0;
+    for (let i = 0, j = nb - 1; i < nb; j = i++) s += px[j]! * py[i]! - px[i]! * py[j]!;
+    return Math.abs(s / 2);
+  };
+  const A0 = flaeche(bx, by);
+  for (let pass = 0; pass < 140; pass++) {
+    const nx = new Float64Array(nb);
+    const ny = new Float64Array(nb);
+    for (let i = 0; i < nb; i++) {
+      const a = (i - 1 + nb) % nb;
+      const c = (i + 1) % nb;
+      nx[i] = bx[i]! + 0.5 * ((bx[a]! + bx[c]!) / 2 - bx[i]!);
+      ny[i] = by[i]! + 0.5 * ((by[a]! + by[c]!) / 2 - by[i]!);
+    }
+    bx = nx;
+    by = ny;
+  }
+  let mx = 0;
+  let my = 0;
+  for (let i = 0; i < nb; i++) {
+    mx += bx[i]!;
+    my += by[i]!;
+  }
+  mx /= nb;
+  my /= nb;
+  const s = Math.sqrt(A0 / Math.max(1e-9, flaeche(bx, by)));
+  const dx = new Float64Array(nb);
+  const dy = new Float64Array(nb);
+  for (let i = 0; i < nb; i++) {
+    dx[i] = F.cx + (bx[i]! - mx) * s - F.x[i]!;
+    dy[i] = F.cy + (by[i]! - my) * s - F.y[i]!;
+  }
+  const L = laplaceBauen(F.x, F.y, F.tri, n);
+  const null0 = new Float64Array(n);
+  const vx = dirichletLoesen(L, n, nb, null0, dx).x;
+  const vy = dirichletLoesen(L, n, nb, null0, dy).x;
+  const x = new Float64Array(n);
+  const y = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    x[i] = F.x[i]! + vx[i]!;
+    y[i] = F.y[i]! + vy[i]!;
+  }
+  return { x, y };
+}
+
