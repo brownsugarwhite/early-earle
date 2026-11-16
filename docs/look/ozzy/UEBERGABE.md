@@ -241,7 +241,12 @@ mit ⇧ in jede Richtung (eingerastet die harte Kante wie in der Blaupause), Fro
 Raum dunkle Wände für Projektionen, die man von hinten sieht, beim Einrasten wächst die Wand zum Blatt und ein Blatt schiebt sich durch
 die Blase. Probe `ozzy-ansichten-fenster.mjs`, Film [`2026-11-16-wenden.mp4`](../../progress/ozzy/2026-11-16-wenden.mp4), Bilder
 [`2026-11-16-kante.png`](../../progress/ozzy/2026-11-16-kante.png), [`2026-11-16-waende.png`](../../progress/ozzy/2026-11-16-waende.png);
-sein Urteil steht aus. Nächster Schritt: S5 (Lasso L).
+sein Urteil steht aus.
+
+**S5 gebaut (16.11. abends, `4608e8b8`):** Lasso (L, Knopf ganz links): Schlinge als Haarlinie, gewählt schon beim Ziehen, ⇧ dazu, ⌥ weg,
+Tropfen in der Naht, zieht sich zur Auswahl zusammen; an einer Wand umfahren ist im Werk gewählt und überall markiert. Probe
+`ozzy-lasso-fenster.mjs`, Film [`2026-11-16-lasso.mp4`](../../progress/ozzy/2026-11-16-lasso.mp4). Nächster Schritt: S6 (Richtungen,
+Animationen und Regler wie in der Studie).
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**
 [`docs/plans/2026-11-16-ozzy-weiter.md`](../../plans/2026-11-16-ozzy-weiter.md): Schritte S1 bis S13 (Messen, Seifenhaut gleitet, Tempo,
@@ -277,7 +282,7 @@ aber mehr, nach seinem Auftrag (Plan Abschnitt 3, A1 bis A18) geordnet. Was er b
 Blatt: P, N (Freihand), e (Ellipse), E (Würfel), V oder Esc (Auswahl); ↩ schließt eine Linie mit P, auf einer geschlossenen
 Silhouette bläst ↩ auf; ⌫ letzter Punkt oder Auswahl; ⌘Z. Raum: Ziehen ins Leere dreht, in jeder Ansicht, auch eingerastet (nahe einer der
 sechs Ansichten rastet es ein, mit Schwung); ⇧ + Ziehen in einer eingerasteten Ansicht dreht das Blatt in jede Richtung (losgelassen
-zurück oder, über die Hälfte, auf die Rückseite: dunkel), ⇧ + Doppelklick wendet zurück, ⇧ + 1/3/7 die Ansicht von hinten; Punkte der
+zurück oder, über die Hälfte, auf die Rückseite: dunkel), ⇧ + Doppelklick wendet zurück, ⇧ + 1/3/7 die Ansicht von hinten; L Lasso (Schlinge wählt, ⇧ dazu, ⌥ weg, V zurück); Punkte der
 Seite ziehen (an der Wand, im Feld, eingerastet; das Werk rechnet), seit 5.2 alle Linien auf allen Flächen: Punkte, Linien und
 Richtungen ziehen, Doppelklick auf eine Richtung Knick ↔ rund, ⌥ beim Drücken knickt, ins Leere eingerastet und in den Feldern ein
 Rahmen, K Kante, ⌫ löscht die Auswahl (ohne Auswahl Luft ablassen), Esc leert die Auswahl, ⌘A alle; Menü „Ozzy“ → Laden; ⌘Z im Werk zurück, 1 Seite, 3 Front, 7 Top, 0 Raum (tippen
@@ -298,6 +303,10 @@ Raum → Blatt), ⌫ Luft ablassen, M Fassung. Prüfhaken `window.__ozzy` (u. a.
   Haut löscht vor jedem `render` (`autoClear`), für den Grund ist es dort kurz aus; `HautWerte.hinten` ist der Anteil der Rückseite der
   Blase, nicht die dunklen Flächen. Filme Bild für Bild: `__ozzy.film(true)`, `__ozzy.bild(1/60)` (`scripts/ozzy/wenden-film.mjs`);
   Haken `dunkelBei(x, y)`, `wandMitte(achse)`.
+- **Lasso (S5):** in der Linien-Studie (`verhalten.ts`: `lassoDruecken`, `lasso`, `lassoAus`, `punkteImLasso` in `auswahl.ts`); Ozzy ruft
+  es mit dem Werkzeug `lasso` vor allen anderen Griffen (auch vor dem Wenden mit ⇧). Die Auswahl im Netz ist je Fläche; damit ein an
+  einer Wand umfahrener Punkt im Werk gewählt bleibt, nimmt das Lasso alle Punkte desselben Werkpunkts mit (`Raum.gleiche`, in
+  `werkBlatt.ts`). Sonst nimmt der Abgleich (`auswahlAbgleichen`) ihn wieder weg, weil seine Bilder an den anderen Wänden außerhalb liegen.
 - **Wechsel zwischen zwei Ansichten:** `ansichtFahrt.senke` senkt `flach` unterwegs (bis 0,7 bei 90°), `vonAnsicht` merkt die Ansicht,
   aus der die Fahrt kommt (ihre Wand wandert zurück). Ohne die Senke war mitten in der Drehung nichts zu sehen.
 - **Auf dem Blatt liest die Anzeige „innen“ als „Umriss“** (`Blatt`, `Proxy` auf die Werte), damit P-Linien 1 px breit sind; die

@@ -135,6 +135,12 @@ anderen Wände blenden beim Einrasten noch aus (sie stehen dann fast auf der Kan
 **S5 Lasso (L).** Ein Werkzeug „Lasso“: Ziehen zeichnet eine flüssige Schlinge (eine Linie der Anzeige, die sich am Ende wie ein
 Tropfen schließt); gewählt ist, was sie umschließt, auf allen Flächen; ⇧ nimmt dazu, ⌥ nimmt weg. *Probe:* an „strange bird“ in der
 Seite, an einer Wand und in einem Feld; gewählt sind genau die umschlossenen Punkte; Film.
+*Gebaut (16.11. abends, `4608e8b8`):* Knopf ganz links in der Leiste und Taste L (V oder L zurück); Ziehen zeichnet überall eine
+Schlinge als Haarlinie (auch über Punkten, dreht nicht), gewählt ist schon beim Ziehen, was sie umschließt (nur Sichtbares), ⇧ dazu,
+⌥ weg; beim Loslassen fließt ein Tropfen in die Naht, die Schlinge zieht sich zur Auswahl zusammen und vergeht. Ein Punkt, den sie an
+einer Wand umfährt, ist im Werk gewählt und auf allen Flächen markiert. *Probe* `ozzy-lasso-fenster.mjs` (sechs Kriterien, alles
+gut), *Film* [`2026-11-16-lasso.mp4`](../progress/ozzy/2026-11-16-lasso.mp4), *Bild* [`2026-11-16-lasso.png`](../progress/ozzy/2026-11-16-lasso.png).
+Sein Urteil steht aus. Noch nicht: Gewähltes quillt kurz (Idee 3), der Zeiger als Schlinge (Idee 8).
 
 **S6 Richtungen wie in der Studie.** ⇧ kippt die Richtung aus der Ebene der Ansicht (auch während des Haltens; der Ring schwenkt um
 die Linie des Griffs), wie im Raum der Linien-Studie, gerechnet als Griff des Werks; ⌥ knickt auch während des Drehens. Dazu die
