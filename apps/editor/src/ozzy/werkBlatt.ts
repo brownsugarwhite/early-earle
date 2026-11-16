@@ -14,6 +14,7 @@
 import { type Ansicht, type LoopPunkt, hatGriffe, istSichtbar } from '@ee/shape/dicht';
 import * as werk from '../form/werk';
 import { type Art, type Breiten, type Linie, type LinienProben, type Netz, type Punkt, type Stueck, armGriff } from '../linien/netz';
+import { Feder1 } from '../linien/feder';
 import { type DrehBild, Dreher2D, type RichtungZiel } from '../linien/richtung';
 import type { EntwurfInfo, FadenEnde, FadenProben, StiftOrt, V2 } from '../linien/stift';
 import type { Raum, Ziel } from '../linien/verhalten';
@@ -604,6 +605,7 @@ export class WerkBlatt implements Raum {
     // ⇧ (S6b, wie im Raum der Studie, auch erst während des Drehens): Der Griff kippt aus der Ebene; ⇧ los: weiter in der Ebene drehen
     if (d && kippen && !d.kipp) this.kippenBeginnen(d, cx, cy);
     if (d && !kippen && d.kipp) this.kippenEnden(d);
+    this.schwenkSchritt(dt, !!d?.kipp);
     if (d?.kipp) {
       this.kippenZiehen(d, d.kipp, cx, cy, alt, dt);
       return;
@@ -667,14 +669,18 @@ export class WerkBlatt implements Raum {
     const uy = T[1] - P[1];
     const lu = Math.max(1e-6, Math.hypot(ux, uy));
     const R = Math.max(40, lu);
-    d.kipp = { h0: h, ebene: e, n, L, b0: Math.atan2(hn, Math.max(1e-9, le)), w: [-uy / lu, ux / lu], sx: cx, sy: cy, k: Math.PI / 2 / R };
+    const b0 = Math.atan2(hn, Math.max(1e-9, le));
+    d.kipp = { h0: h, ebene: e, n, L, b0, w: [-uy / lu, ux / lu], sx: cx, sy: cy, k: Math.PI / 2 / R };
     d.los = true;
     d.gekippt = true;
+    // der Ring schwenkt um die Linie des Griffs (die Feder läuft weiter, wenn er gerade zurückschwenkt)
+    this.schwenk = { p: [P[0], P[1]], u: [ux / lu, uy / lu], w: [-uy / lu, ux / lu], R: lu / Math.max(0.25, Math.cos(b0)), beta: b0, f: this.schwenk?.f ?? new Feder1(0) };
   }
 
   private kippenZiehen(d: NonNullable<WerkBlatt['dz']>, K: Kipp, cx: number, cy: number, alt: boolean, dt: number): void {
     const s = (cx - K.sx) * K.w[0] + (cy - K.sy) * K.w[1];
     const b = Math.max(-1.48, Math.min(1.48, K.b0 + s * K.k));
+    if (this.schwenk) this.schwenk.beta = b;
     const c = Math.cos(b) * K.L;
     const t = Math.sin(b) * K.L;
     const h = { x: K.ebene.x * c + K.n.x * t, y: K.ebene.y * c + K.n.y * t, z: K.ebene.z * c + K.n.z * t };
@@ -738,6 +744,7 @@ export class WerkBlatt implements Raum {
   drehenEnden(): void {
     const d = this.dz;
     this.dz = null;
+    this.schwenk = null;
     this.dreher.drehenEnden();
     if (!d?.los) return;
     if (werk.G.gegriffen) werk.G.gegriffen = null;
@@ -748,7 +755,35 @@ export class WerkBlatt implements Raum {
   }
 
   drehBild(): DrehBild | null {
-    return this.dreher.drehBild();
+    const b = this.dreher.drehBild();
+    const S = this.schwenk;
+    if (!b || !S || S.f.x < 0.002) return b;
+    // ⇧ (S6c, wie im Raum der Studie): Der Ring schwenkt um die Linie des Griffs aus der Ebene; eingerastet sieht man ihn dann fast von
+    // der Kante (eine schmale Ellipse), die Spitze läuft auf ihm, wie weit der Griff gekippt ist
+    const f = Math.min(1, Math.max(0, S.f.x));
+    const sq = 1 - f * (1 - 0.14);
+    const { p, u, w, R } = S;
+    const ring: number[] = [];
+    const n = 120;
+    for (let i = 0; i <= n; i++) {
+      const a = (2 * Math.PI * i) / n;
+      ring.push(p[0] + R * (Math.cos(a) * u[0] + Math.sin(a) * sq * w[0]), p[1] + R * (Math.cos(a) * u[1] + Math.sin(a) * sq * w[1]), 0);
+    }
+    const be = S.beta;
+    const spitze: [number, number, number] = [p[0] + R * (Math.cos(be) * u[0] + Math.sin(be) * sq * w[0]), p[1] + R * (Math.cos(be) * u[1] + Math.sin(be) * sq * w[1]), 0];
+    return { ...b, ring, nabe: [p[0], p[1], 0], spitze };
+  }
+
+  /** der Ring beim Kippen: Mitte, Richtung des Griffs und quer dazu (Bild), Halbmesser, Winkel des Griffs aus der Ebene, Feder des Schwenks */
+  private schwenk: { p: [number, number]; u: [number, number]; w: [number, number]; R: number; beta: number; f: Feder1 } | null = null;
+
+  /** der Schwenk folgt ⇧ (eine Feder wie in der Studie); nach dem Loslassen von ⇧ schwenkt er zurück */
+  private schwenkSchritt(dt: number, an: boolean): void {
+    const S = this.schwenk;
+    if (!S) return;
+    S.f.ziel = an ? 1 : 0;
+    S.f.schritt(dt, 5, 0.9);
+    if (!an && S.f.x < 0.002) this.schwenk = null;
   }
 
   /** Doppelklick auf eine Richtung: Knick ↔ rund (im Werk Ecke ↔ glatt); zurück: jetzt rund */
