@@ -157,6 +157,24 @@ const zeiger = { x: -1e6, y: -1e6, da: false };
 const massstab = { ziel: 1, jetzt: 1, seitRuhe: 0, nachfuehren: false };
 const WEISS = new Color(1, 1, 1);
 const stat = { fps: 0, bildMs: 0, netzMs: 0, punkte: 0, dreiecke: 0, werkMs: 0 };
+/**
+ * Messen (S1 im Plan „wie es weitergeht“): je Bild Rechenzeit und Abstand zum vorigen Bild; mit `pixel` dazu, wie stark sich das Bild
+ * der Haut in einem Bereich gegen das vorige ändert (mittlere und 99-%-Änderung je Bildpunkt, 0 bis 255); mit `still` steht die Zeit
+ * der Seifenhaut (ihr Fließen), dann ist jede Änderung ohne Bewegung ein Sprung. `netz` zählt die Netzwechsel des Werks.
+ */
+const mess = {
+  an: false,
+  pixel: false,
+  still: false,
+  bereich: null as { x: number; y: number; w: number; h: number } | null,
+  vorher: null as Uint8Array | null,
+  puffer: null as Uint8Array | null,
+  netzWechsel: 0,
+  letzte: 0,
+  bilder: [] as { t: number; ms: number; abstand: number; diff: number; p99: number; netz: number; stufen: number; punkte: number; teile: number[] }[],
+  /** Zeit je Teil des Bilds (ms): Rechnung des Werks, Haut der Anzeige, Linien (Netz und Verhalten), Seifenhaut zeichnen, Linien zeichnen */
+  teile: [0, 0, 0, 0, 0],
+};
 
 // ---------- Werk (Phase 3) ----------
 
@@ -226,6 +244,7 @@ const werkBeschaeftigt = (): boolean =>
 // genauso geschieht: ein gelöschtes Maul aufräumen, Ecken an Kanten, den Löser für den nächsten Griff vorbereiten)
 Object.assign(werk.anzeige, {
   geometrieNeu: () => {
+    mess.netzWechsel++;
     werk.teilungNeu();
     werkHaut.topologieNeu();
     werkNeu = true;
@@ -646,7 +665,9 @@ function uebergabeLagen(w: number): Float64Array {
  */
 function werkBild(dt: number, m: Moment | null): boolean {
   if (!werkForm) return false;
+  const tw = performance.now();
   werk.bildRechnen();
+  mess.teile[0] = performance.now() - tw;
   let aktiv = werkBeschaeftigt();
   // übergeben wird erst, wenn das Werk seine Form gerechnet hat (die Blase reißt früh ab, das Werk setzt die Haut dann noch)
   const bereit = !werkBeschaeftigt() && werk.ruheOffen === null;
@@ -676,7 +697,9 @@ function werkBild(dt: number, m: Moment | null): boolean {
     if (werkNeu || !werkGezeigt) werkZuletzt = jetzt;
     werkNeu = false;
     // in der Pose die Haut, wie sie zu sehen ist (die Knochen drehen sie; wie `hautZeigen` im Prüffenster)
+    const th = performance.now();
     werk.alsAnzeige(() => werkHaut.rechnen(schnalz ? uebergabeLagen(w) : null, voll, dt, schnalz ? 0 : 1.6));
+    mess.teile[1] = performance.now() - th;
     haut.blaseErsetzen(werkHaut.netz);
     werkGezeigt = true;
     aktiv = aktiv || schnalz || jetzt - werkZuletzt < 2500;
@@ -991,7 +1014,7 @@ function bild(dt: number): boolean {
   const t0 = performance.now();
   let aktiv = false;
   if (festeZeit !== null) dt = 1 / 60;
-  uhr = festeZeit !== null ? 7 + festeZeit : uhr + dt;
+  uhr = festeZeit !== null ? 7 + festeZeit : mess.still ? uhr : uhr + dt;
   if (zustand === 'blatt') aktiv = blatt.schritt(dt) || aktiv;
   // Netz zur Silhouette (beim Ziehen höchstens alle 110 ms)
   const stand = blatt.stand;
@@ -1030,6 +1053,7 @@ function bild(dt: number): boolean {
     haut.hochladen();
   }
   // das Werk: sein Bildtakt und, ab dem Abriss, seine Haut
+  mess.teile = [0, 0, 0, 0, 0];
   aktiv = werkBild(dt, m) || aktiv;
   // hat das Werk nach einem Handgriff ausgerechnet: der Raum folgt der Form (nur bei großen Änderungen)
   const beschaeftigt = werkBeschaeftigt();
@@ -1135,7 +1159,42 @@ function bild(dt: number): boolean {
     schattenFarbe: WEISS,
     papier: poseTon > 1e-3 ? WEISS.clone().lerp(POSE_PAPIER, poseTon) : null,
   };
+  const tz = performance.now();
   haut.zeichnen(kam.aktiv, w, []);
+  mess.teile[3] = performance.now() - tz;
+  let diff = -1;
+  let p99 = -1;
+  if (mess.an && mess.pixel && mess.bereich) {
+    // das Bild der Haut im Bereich gegen das vorige (gleich nach dem Zeichnen, im selben Takt)
+    const b = mess.bereich;
+    renderer.setRenderTarget(null);
+    const gl = renderer.getContext();
+    if (!mess.puffer || mess.puffer.length !== b.w * b.h * 4) mess.puffer = new Uint8Array(b.w * b.h * 4);
+    gl.readPixels(b.x, b.y, b.w, b.h, gl.RGBA, gl.UNSIGNED_BYTE, mess.puffer);
+    const v = mess.vorher;
+    if (v && v.length === mess.puffer.length) {
+      const hist = new Uint32Array(256);
+      let summe = 0;
+      const P = mess.puffer;
+      for (let i = 0; i < P.length; i += 4) {
+        const d = Math.max(Math.abs(P[i]! - v[i]!), Math.abs(P[i + 1]! - v[i + 1]!), Math.abs(P[i + 2]! - v[i + 2]!));
+        summe += d;
+        hist[d]!++;
+      }
+      const n = P.length / 4;
+      diff = summe / n;
+      let k = 0;
+      p99 = 255;
+      for (let j = 0; j < 256; j++) {
+        k += hist[j]!;
+        if (k >= 0.99 * n) {
+          p99 = j;
+          break;
+        }
+      }
+    }
+    mess.vorher = Uint8Array.from(mess.puffer);
+  }
   // Linien
   let szene: Szene;
   if (zustand === 'blatt') {
@@ -1150,7 +1209,9 @@ function bild(dt: number): boolean {
       if (vier > 0.02) felderLinien(vp);
     }
     if (koerper && raum && m && werkGezeigt) {
+      const tl = performance.now();
       const r = werkLinien(vp, m, dt);
+      mess.teile[2] = performance.now() - tl;
       zeigerBearbeiten = r.zeiger;
       aktiv = r.aktiv || aktiv;
     } else bearbeitenAn = false;
@@ -1167,7 +1228,9 @@ function bild(dt: number): boolean {
       zeiger: !zeigerZeigen ? null : bearbeitenAn ? (zeigerBearbeiten ?? null) : zeigerForm(zeiger.x, zeiger.y),
     };
   }
+  const ta = performance.now();
   anzeige.zeichnen(szene);
+  mess.teile[4] = performance.now() - ta;
   maulUiZeigen();
   // Text
   gruss.classList.toggle('weg', !(zustand === 'blatt' && blatt.leer));
@@ -1201,6 +1264,11 @@ function bild(dt: number): boolean {
   if (meldung.text && performance.now() - meldung.seit < MELDUNG_MS) aktiv = true;
   if (hinweis.textContent !== hm) hinweis.textContent = hm;
   stat.bildMs = performance.now() - t0;
+  if (mess.an) {
+    const t = performance.now();
+    mess.bilder.push({ t, ms: stat.bildMs, abstand: mess.letzte ? t - mess.letzte : 0, diff, p99, netz: mess.netzWechsel, stufen: werkHaut.stufen, punkte: werk.haut.n, teile: [...mess.teile] });
+    mess.letzte = t;
+  }
   if (mitInfo)
     infoAnzeige.textContent = `${stat.fps.toFixed(0)} B/s · Bild ${stat.bildMs.toFixed(1)} ms · Netz ${stat.punkte} P, ${stat.dreiecke} D · ${zustand} ${T.toFixed(2)} s · p ${flach.toFixed(2)}${werkForm ? ` · Werk ${werk.haut.n} P, Anzeige ${werkHaut.stufen} St. ${werkHaut.ms.toFixed(1)} ms` : ''}`;
   return aktiv;
@@ -2688,6 +2756,52 @@ const haken = {
   werkImBild: (q: { x: number; y: number; z: number }): { x: number; y: number } => {
     const [x, y] = projizieren(werkInWelt(q), vpJetzt());
     return { x: x / D, y: y / D };
+  },
+  /**
+   * Messen an oder aus (S1). `pixel`: das Bild der Haut im Bereich vergleichen (Bereich in CSS-Pixeln; ohne: um die Form); `still`:
+   * die Zeit der Seifenhaut steht. Aus: die Bilder seit dem Einschalten.
+   */
+  messen: (an: boolean, o: { pixel?: boolean; still?: boolean; bereich?: { x: number; y: number; w: number; h: number } } = {}) => {
+    if (an) {
+      let b = o.bereich ?? null;
+      if (!b && werkHaut.netz) {
+        // um die Form: der Kasten ihrer gezeigten Haut im Bild
+        const P = werkHaut.netz.pos;
+        const vp = vpJetzt();
+        let x0 = Infinity;
+        let x1 = -Infinity;
+        let y0 = Infinity;
+        let y1 = -Infinity;
+        for (let i = 0; i < P.length; i += 30) {
+          const [x, y] = projizieren(new Vector3(P[i]!, P[i + 1]!, P[i + 2]!), vp);
+          x0 = Math.min(x0, x / D);
+          x1 = Math.max(x1, x / D);
+          y0 = Math.min(y0, y / D);
+          y1 = Math.max(y1, y / D);
+        }
+        b = { x: x0 - 10, y: y0 - 10, w: x1 - x0 + 20, h: y1 - y0 + 20 };
+      }
+      mess.an = true;
+      mess.pixel = !!o.pixel && !!b;
+      mess.still = !!o.still;
+      mess.bilder = [];
+      mess.vorher = null;
+      mess.letzte = 0;
+      if (b) {
+        const x = Math.max(0, Math.round(b.x * D));
+        const w = Math.min(Math.round(W * D) - x, Math.round(b.w * D));
+        const h = Math.min(Math.round(H * D), Math.round(b.h * D));
+        const y = Math.max(0, Math.round((H - b.y - b.h) * D));
+        mess.bereich = { x, y, w: Math.max(1, w), h: Math.max(1, h) };
+      }
+      anstossen();
+      return null;
+    }
+    mess.an = false;
+    mess.still = false;
+    const b = mess.bilder;
+    mess.bilder = [];
+    return b;
   },
   /** P an oder aus (wie die Taste P) */
   stift: (an: boolean): boolean => {
