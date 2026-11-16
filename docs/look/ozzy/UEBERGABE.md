@@ -253,7 +253,11 @@ Beim Kippen schwenkt der Ring um die Linie des Griffs. Reglerwerte: vorerst die 
 
 
 **S7 gebaut (`26de280e`):** Verdecktes grün und fein auf allen Flächen (Tiefenkarte der Haut je Achse, `werkBlatt.karteFuer`, `hinten`,
-`verdeckteProben`; `Flaeche.vorn` aus `ebene` und `feldFlaeche`); Probe `ozzy-verdeckt-fenster.mjs`. Nächster Schritt: S8 (P statt L).
+`verdeckteProben`; `Flaeche.vorn` aus `ebene` und `feldFlaeche`); Probe `ozzy-verdeckt-fenster.mjs`. 
+
+**S8 gebaut, gerade (`f7c50fa9`):** P, zwei Klicks im Leeren über die Form hinweg, ↩: ein Loop rundum wie L (`werk.loopSchneiden`). Gebogen
+kann es der Kern nicht (nur ebene Schnitte): Punkt für die Kern-Sitzung, Ozzy meldet es. Probe `ozzy-p-schnitt-fenster.mjs`. Nächster
+Schritt: S9 (Start ohne Linie, zur Wahl).
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**
 [`docs/plans/2026-11-16-ozzy-weiter.md`](../../plans/2026-11-16-ozzy-weiter.md): Schritte S1 bis S13 (Messen, Seifenhaut gleitet, Tempo,

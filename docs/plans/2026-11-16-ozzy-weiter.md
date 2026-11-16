@@ -173,6 +173,10 @@ Form, im Leeren enden**: Dann wird es ein Loop rundum, dessen Ansicht genau die 
 gezeichnet). Vorher zeigt ein Lichtring, wo er um die Form läuft. *Beweis zuerst:* gerade gezogen gibt es denselben Loop wie L im
 Prüffenster (`loopSchneiden`); gebogen liegt die Seite des Rings höchstens 0,5 px neben der Zeichnung; nichts springt. Hält der
 gebogene Fall mit den Handgriffen des Werks nicht, sage ich es (dann ist es ein Punkt für die Kern-Sitzung).
+*Gebaut (16.11. abends, `f7c50fa9`):* Gerade: P, Klick im Leeren, Klick im Leeren auf der anderen Seite, ↩ → `werk.loopSchneiden` wie L
+(außerhalb der Form prüft die Tiefenkarte aus S7). *Beweis* `ozzy-p-schnitt-fenster.mjs`: neuer Ring an „strange bird“ höchstens
+0,11 px neben der Geraden, ein ⌘Z. **Gebogen hält nicht:** Der Kern kennt nur den ebenen Schnitt (`loopAusSchnitt`); ein Schnitt längs
+einer gebogenen Zeichnung ist ein Punkt für die Kern-Sitzung. Ozzy meldet es. Noch nicht: der Lichtring vorher.
 
 **S9 Start ohne Linie an der Spiegelkante (Wahl).** Nach dem Aufblasen ohne Linie, wie Sitzung 4 an ihrer Startkugel: Die Haut ist
 dann genau die aufgeblasene und bleibt es, bis die erste Linie kommt. *Beweis:* Die Haut steht, nichts kriecht; was die erste Linie
