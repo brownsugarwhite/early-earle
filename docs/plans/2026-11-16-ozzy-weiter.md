@@ -154,8 +154,10 @@ Werte im Repo, nicht nur im Browser). *Probe:* Film Studie neben Ozzy, gleiche B
 Ecke, neuer Zug am Griff; für ⌘Z ein Schritt). Probe `ozzy-richtung-fenster.mjs` (alles gut). **S6b** (`660c2b29`): ⇧ kippt eine Richtung aus der
 Ebene der Ansicht (auch erst während des Drehens): Ziehen quer zum Griff neigt ihn, Länge und Richtung in der Ebene bleiben; ⇧ los dreht
 wieder in der Ebene; ein ⌘Z. Dafür im Werk ein neuer Handgriff aus bestehenden, `zugGriffRaum` (Florian: „Ja, ergänzen“; die Rechnung
-bleibt). Offen: **S6c** Animationen Bild für Bild mit der Studie vergleichen (dazu der Ring, der beim Kippen um die Linie des Griffs
-schwenkt), **S6d** Florians Reglerwerte (er kopiert sie in der Studie mit „Werte kopieren“).
+bleibt). **S6c** (`c12ee4b6`): Beim Kippen schwenkt der Ring um die Linie des Griffs (Feder wie in der Studie);
+eingerastet eine schmale Ellipse längs des Griffs, die Spitze läuft auf ihr. Die übrigen Animationen (Punkte, Linien, Tropfen, Nadeln,
+Auswahl) zeichnet Ozzy mit demselben Verhalten wie die Studie. **S6d:** Florian (16.11. abends): „lass die reglerwerte erstmal wie den
+standard der anderen session. Das muss ich erst noch festlegen.“ Ozzy nimmt die Grundwerte der Studie.
 
 **S7 Verdecktes grün.** Linien hinter der Form zeigt jede Ansicht grün und fein (wie die Studie), die vorderen schwarz; an Kreuzungen
 mit dem Umriss wechselt es weich. Gerechnet je Probe aus der Haut des Werks (Strahl in Blickrichtung der Ansicht). *Probe:* Bild der

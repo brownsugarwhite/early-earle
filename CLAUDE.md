@@ -16,7 +16,7 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   [`docs/plans/2026-11-16-ozzy.md`](docs/plans/2026-11-16-ozzy.md), **Stand: [`docs/look/ozzy/UEBERGABE.md`](docs/look/ozzy/UEBERGABE.md).**
   Gebaut: Stand 0, Phase 1 (Werk `src/form/werk.ts`), 3 (Form aus der Silhouette, Weg A), 5 (Laden, alle Linien auf allen Flächen mit
   der Bedienung der Linien-Studie über `werkBlatt.ts`, P, Freihand, Maul, Pose), 6 (Pinsel „Ziehen“ über O; keine Höhenlinien über der
-  Blase). **Plan weiter** [`docs/plans/2026-11-16-ozzy-weiter.md`](docs/plans/2026-11-16-ozzy-weiter.md): S1 bis S5 gebaut (bis Lasso), nächstes S6. **Florian
+  Blase). **Plan weiter** [`docs/plans/2026-11-16-ozzy-weiter.md`](docs/plans/2026-11-16-ozzy-weiter.md): S1 bis S6 gebaut (bis Kippen mit ⇧), nächstes S7. **Florian
   (16.11.): Am Rechenkern ändert Ozzy nichts und optimiert nichts, das macht die Kern-Sitzung; kein Unterschied zwischen seinen Kurven
   und dem Modell wie in Sitzung 4.**
 - **Der Kern** („Kurven als Wahrheit“, seit 05.11.): Linien (Loops mit Bézier-Punkten und Griffen, Kreuzungen, Kante an/aus) sind

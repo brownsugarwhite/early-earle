@@ -248,8 +248,9 @@ Tropfen in der Naht, zieht sich zur Auswahl zusammen; an einer Wand umfahren ist
 `ozzy-lasso-fenster.mjs`, Film [`2026-11-16-lasso.mp4`](../../progress/ozzy/2026-11-16-lasso.mp4). 
 
 **S6a und S6b gebaut (bis `660c2b29`):** ⌥ knickt auch während des Drehens einer Richtung; ⇧ kippt sie aus der Ebene (Länge und Richtung
-in der Ebene bleiben; im Werk der neue Handgriff `zugGriffRaum`, mit Florians Zustimmung). Probe `ozzy-richtung-fenster.mjs`. Offen in S6:
-Animationen wie in der Studie und der schwenkende Ring beim Kippen (S6c), Florians Reglerwerte aus der Studie (S6d, er kopiert sie).
+in der Ebene bleiben; im Werk der neue Handgriff `zugGriffRaum`, mit Florians Zustimmung). Probe `ozzy-richtung-fenster.mjs`. **S6c** (`c12ee4b6`):
+Beim Kippen schwenkt der Ring um die Linie des Griffs. Reglerwerte: vorerst die Grundwerte der Studie, Florian legt sie später fest.
+Nächster Schritt: S7 (Verdecktes grün).
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**
 [`docs/plans/2026-11-16-ozzy-weiter.md`](../../plans/2026-11-16-ozzy-weiter.md): Schritte S1 bis S13 (Messen, Seifenhaut gleitet, Tempo,
