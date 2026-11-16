@@ -57,6 +57,32 @@ if (art === 'kopf') {
   ];
   spalten = 4;
 }
+// art 'clip': ein Clip über den Mischer abgespielt, Einzelbilder in festen Abständen (CLIP=name, BILDER=n, ABSTAND=s)
+const posenFest: Pose[] = [];
+if (art === 'clip') {
+  const { Spieler } = await import('../../src/maskottchen/spieler');
+  const { CLIP } = await import('../../src/maskottchen/clips');
+  const name = process.env.CLIP ?? 'laufen';
+  const bilder = Number(process.env.BILDER ?? 12);
+  const abstand = Number(process.env.ABSTAND ?? (CLIP[name]!.dauer / bilder));
+  const sp = new Spieler(figur, process.env.VON ?? 'stehen');
+  sp.update(0.016);
+  sp.spiele(name, Number(process.env.BLEND ?? 0.01));
+  let t = 0;
+  const schritt = 1 / 120;
+  for (let i = 0; i < bilder; i++) {
+    while (t < i * abstand - 1e-9) {
+      sp.update(schritt);
+      t += schritt;
+    }
+    const p = { ...sp.update(0.0001) };
+    p.x = p.x - (sp.x - 800) * (process.env.MITLAUFEN ? 1 : 0);
+    posenFest.push(p);
+    felder.push({ pose: {}, text: `${name} ${(i * abstand).toFixed(2)} s` });
+  }
+  rahmen = [-200, -60, 2000, 1640];
+  spalten = Number(process.env.SPALTEN ?? 6);
+}
 const [rx, ry, rw, rh] = [rahmen[0], rahmen[1], rahmen[2] - rahmen[0], rahmen[3] - rahmen[1]];
 const zeilen = Math.ceil(felder.length / spalten);
 const S = Number(process.env.MASSSTAB ?? 0.22);
@@ -66,8 +92,8 @@ let inhalt = '';
 felder.forEach((f, i) => {
   const x = (i % spalten) * fw;
   const y = Math.floor(i / spalten) * fh;
-  const pose: Pose = { ...RUHE, ...f.pose };
-  figur.boden(pose, art === 'beine' ? 1 : 0);
+  const pose: Pose = posenFest[i] ?? { ...RUHE, ...f.pose };
+  if (!posenFest[i]) figur.boden(pose, art === 'beine' ? 1 : 0);
   const teile = figur.zeichenteile(pose);
   inhalt += `<g transform="translate(${x},${y}) scale(${S}) translate(${-rx},${-ry})">`;
   inhalt += `<line x1="${rx}" y1="1573" x2="${rx + rw}" y2="1573" stroke="#ddd" stroke-width="4"/>`;

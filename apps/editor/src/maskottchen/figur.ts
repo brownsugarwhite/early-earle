@@ -92,7 +92,25 @@ function rueckseiten(name: string, eigen: Record<number, Float32Array>, form: An
       for (let o = 2; o < 6; o++) k[i * 6 + o] = (s[i * 6 + o]! + h[i * 6 + o]!) / 2;
     }
     eigen[135] = k;
-  } else if (name === 'schopf' || name === 'ohrH' || name === 'ohrV') {
+  }
+  if (name === 'schopf') {
+    // im Profil: dieselbe Flamme (nur wenig kleiner), hinter das vordere Ohr geschoben; sie gleitet, statt zu schrumpfen
+    let cx = 0;
+    let cy = 0;
+    const q = eigen[15]!;
+    for (let i = 0; i < n; i++) {
+      cx += q[i * 6]!;
+      cy += q[i * 6 + 1]!;
+    }
+    cx /= n;
+    cy /= n;
+    const k = 0.6;
+    const ziel = [1108 - 1150, 168 - 700];
+    const p = q.slice();
+    ankerAffin(p, n, k, 0, 0, k, ziel[0]! - cx * k, ziel[1]! - cy * k);
+    eigen[90] = p;
+  }
+  if (name === 'schopf' || name === 'ohrH' || name === 'ohrV') {
     // hinten wie vorn: Ohren und Schopf gehen beim Weiterdrehen denselben Weg zurück (von hinten sieht man nicht, welches Ohr
     // welches ist). Nichts kreuzt, nichts klappt um, keine Form wird dünn.
     eigen[180] = eigen[0]!.slice();

@@ -222,3 +222,108 @@ input[type='range'] {
     border-top: 1px solid var(--haar);
   }
 }
+
+/* ---------- Bibliothek ---------- */
+.liste {
+  display: grid;
+  gap: 6px;
+}
+.knopf.klein {
+  padding: 4px 9px;
+  font-size: 11px;
+}
+
+/* ---------- Filmstreifen ---------- */
+.streifen {
+  display: grid;
+  gap: 6px;
+}
+.schritt {
+  border: 1px solid var(--haar);
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: grid;
+  gap: 4px;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+.schritt.an {
+  border-color: var(--tinte);
+  background: var(--hauch);
+}
+.schritt label {
+  color: var(--leise);
+  font-size: 11px;
+}
+.schritt input[type='number'] {
+  width: 64px;
+  font: inherit;
+  border: 1px solid var(--haar);
+  border-radius: 8px;
+  padding: 2px 6px;
+  margin-left: 4px;
+}
+.schritt .werkzeuge {
+  display: flex;
+  gap: 4px;
+}
+.schritt .werkzeuge button {
+  appearance: none;
+  border: 1px solid var(--haar);
+  background: var(--papier);
+  border-radius: 8px;
+  width: 26px;
+  height: 22px;
+  cursor: pointer;
+  font: inherit;
+}
+
+/* ---------- Steuerung (Touch) ---------- */
+#steuerung {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 44px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  pointer-events: none;
+  gap: 12px;
+}
+#steuerung > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  pointer-events: auto;
+  max-width: 60%;
+  justify-content: flex-end;
+}
+#steuerung .links {
+  justify-content: flex-start;
+}
+#steuerung button {
+  appearance: none;
+  min-width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  border: 1px solid var(--haar);
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--tinte);
+  font: 600 15px/1 system-ui, sans-serif;
+  padding: 0 14px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 200ms var(--feder), background 120ms ease;
+}
+#steuerung button.an {
+  background: var(--tinte);
+  color: var(--papier);
+  transform: scale(0.94);
+}
+@media (hover: hover) and (pointer: fine) {
+  #steuerung button {
+    min-width: 44px;
+    height: 44px;
+    font-size: 13px;
+  }
+}
