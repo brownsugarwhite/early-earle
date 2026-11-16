@@ -67,44 +67,51 @@ zuordnet; keine Zeile von Hand umgeschrieben außer der Sperre der Eingaben beim
 Fenster-Proben vorher und nachher mit denselben Urteilen (die 2 umgeschlagenen Dreiecke einer ersten Abzweigungs-Probe vorher kamen in
 3 weiteren Läufen des alten Stands nicht wieder: Streuung der Uhr).
 
-## Phase 3: Beweis „Form aus der Silhouette“ (16.11. nachmittags): hält nicht, Florian entscheidet
+## Florians Regel (16.11. nachmittags)
+
+„Hauptsache am Rechenkern wird nicht verändert […] Der Kern ist noch nicht perfekt und das muss [Sitzung 4] machen, also daran nichts
+ändern oder optimieren.“ Und: „Ich will aber keinen Unterschied zwischen meinen Kurven und dem Modell, wie es bei Sitzung 4 ist.“
+Ozzy benutzt die Rechnung, wie sie ist (`packages/shape` und die Rechnung im Werk); was sie nicht kann, ist Arbeit für die
+Kern-Sitzung. Der Vorschlag „Formschicht“ (eine Schicht über der Haut aus den Linien) ist damit vom Tisch.
+
+**Zur Frage, ob die Trennung nötig war:** `claude/ozzy` ist eine Abzweigung vom Stand der wartenden Sitzung 4 (`claude/form-bau`,
+14.11.); Design, Material und Animationen kommen in eigenen Dateien dazu (`src/ozzy/`, `src/linien/`, `src/anfang/`). Getrennt
+wurde nur `kurven.ts`, weil dort die Rechnung des Fensters (Stand, Züge, Hintergrund, Maul, Pose) mit der alten Bedienung verwoben
+war: Ozzy braucht genau diese Rechnung ohne die alte Bedienung, ohne Kopie (zwei Rechnungen liefen auseinander). Der Schnitt hat
+nichts umgeschrieben (neun Fenster-Proben gleich) und ist wiederholbar: `apps/editor/scripts/werk-schnitt/schnitt.mjs` (Anleitung im
+Kopf; geprüft, dass er aus dem alten `kurven.ts` genau `werk.ts` und `kurven.ts` von 5039cead macht). Arbeitet Sitzung 4 weiter,
+dann am besten im Arbeitsbaum `ozzy` (die Funktionen heißen gleich, sie stehen in `werk.ts`, Liste:
+[`werk-schnittplan.md`](werk-schnittplan.md)); baut sie doch in ihrem alten Zweig in `kurven.ts`, wird der Schnitt wiederholt.
+
+## Phase 3: Form aus der Silhouette (16.11. nachmittags): Weg A gebaut
 
 **Gebaut:** `neuAusUmriss(anker)` im Werk: Silhouette rund aufgeblasen (`rundAusSeite`, so dicht wie die Startform), die Silhouette ist
-die Linie der Mitte (Anker = Punkte, Griffe = Griffe, Ecken, wo die Richtung wechselt), ein Schritt für ⌘Z. Prüfhaken
+die Linie der Mitte (Anker = Punkte, Griffe = Griffe, Ecken, wo die Richtung wechselt), ein Schritt für ⌘Z. Dann rechnet das Werk die
+Haut gleich über die ganze Form aus dieser Linie (`hautNeuRechnen`, wie nach „Kante an/aus“): Die Form ist, was die Rechnung aus der
+Linie macht (Weg A, Florian). Am Kern und an den bestehenden Funktionen des Werks ist nichts geändert. Prüfhaken
 `__kurven.ablage.neuAusUmriss`, Probe `apps/editor/scripts/pruefen/ozzy-silhouette-fenster.mjs`. Ozzy ruft es noch nicht.
 
-**Ergebnis** ([Messung](../../progress/ozzy/2026-11-16-silhouette-beweis.md), [Bild](../../progress/ozzy/2026-11-16-silhouette-ruck.png)):
-Linie genau auf der Zeichnung, Anfassen ohne Zug bewegt nichts (0,000). Aber **der erste Zug springt**: Mit nur einer Linie setzt das
-Werk die Haut nicht, der erste Zug rechnet sie aus der Linie neu, und die Rechnung hat ihre eigene Rundung (Fisch: Schwanz so dick
-wie hoch, Sprung bis 17,5; Ellipse bis 18,5). Mit zwei kreuzenden Linien gleich nach dem Aufblasen liegt der Fisch danach noch bis 13
-neben der aufgeblasenen Form, die Ellipse bis 1,7. Dazu ein kleiner Rest an spitzen Ecken im groben Rechennetz (Schwanzspitze 0,63
-außerhalb, 4 umgeschlagene Dreiecke; bei 14 000 Dreiecken keine).
-
-**Die zwei Wege** (Florians Entscheidung steht aus):
-- **A, Form der Rechnung** (heutige Rechnung, etwa ein halber Block): `neuAusUmriss` setzt die Haut gleich nach dem Aufblasen aus der
-  Linie, in Ozzy ist das der Schnalz am Ende des Aufblasens; danach springt nichts mehr. Front und Top macht die Rechnung (der Fisch
-  bekommt einen dicken Schwanz), dünner wird er mit Linien in Top und Front.
-- **B, Formschicht** (Rechnung erweitert, 2 bis 3 Blöcke, Beweis im Kern zuerst): Über der Haut aus den Linien liegt eine Schicht,
-  je Punkt ein Abstand längs der Normalen, wie der Blendshape der Pose über der Grundform. Das Aufblasen legt sie an (die Form ist
-  genau die aufgeblasene), eine neue Linie ändert die Form nicht (die Schicht wird neu bezogen), ein Zug an einer Linie rundet die Haut
-  wie heute, die Schicht geht mit. Später schreibt der Pinsel an der Blase (Phase 6) in dieselbe Schicht. Formen ohne Schicht (alle
-  bisherigen) rechnen genau wie heute. Nicht „Form halten“ (13.11. abgelehnt): Dort ging die fertige Haut starr mit, nichts rundete
-  neu. Kriterien für den Beweis: nach dem Aufblasen genau die aufgeblasene Form, Anfassen und erster Zug abseits unter 0,2; eine
-  neue Linie ändert die Form um weniger als 0,2; nach dem Loslassen kriecht nichts; an Florians Formen (ohne Schicht) dieselben
-  Ergebnisse wie heute.
+**Ergebnis** ([Messung](../../progress/ozzy/2026-11-16-silhouette-beweis.md)): Linie genau auf der Zeichnung und auf ihrem Pfad,
+keine umgeschlagenen Dreiecke, die Form steht, Anfassen ohne Zug bewegt nichts (0,000), im ersten Bild des ersten Zugs bewegt sich
+nichts weiter als die Maus (vorher sprang die Haut bis 17,5), nach dem Loslassen kriecht nichts. Offen, aber so rechnet der Kern:
+An den Einbuchtungen der Schwanzwurzel wölbt sich die Haut bis 2,0 über die Linie, und die Rechnung macht Front und Top selbst (der
+Fischschwanz wird so dick wie hoch; [Bild](../../progress/ozzy/2026-11-16-silhouette-ruck.png), rechts). Dünner wird er mit Linien
+in Top und Front. Weil eine einzige Linie die ganze Form bestimmt, formt ein Zug an ihr die ganze Haut mit (12 nach oben: abseits
+bis 4 beim Fisch, 7 bei der Ellipse); mit mehr Linien wird das örtlicher.
 
 ## Was noch fehlt (nächste Schritte, Plan Abschnitt 8)
 
 1. ~~Phase 1, das Werk lösen~~: gebaut (oben). Kleiner Rest: `allesZeigen` tut in der Hülle Werk-Arbeit; für Ozzy eine
    Funktion `geaendert()` im Werk daraus machen.
-2. **Phase 3, die Kern-Form:** zuerst Florians Wahl zwischen A und B (oben). Dann ruft Ozzy `neuAusUmriss` am Ende des Aufblasens
+2. **Phase 3, die Kern-Form in Ozzy:** Ozzy ruft `neuAusUmriss` am Ende des Aufblasens
    (Silhouette in Welt-Einheiten des Werks: Größe wie die Startkugel, Halbmesser 150; Ozzy rechnet mit einem Faktor um), Wände,
    Felder und eingerastete Ansicht zeigen die Linien des Werks, die Blase ist die glatte Anzeige des Werks mit der Seifenhaut. Das
    Werk liest seine Schalter aus der Adresse (`location.search`): Ozzy braucht dieselben wie das Standardfenster
    (`gewichte=geometrie`).
 3. **Phase 5, Bearbeiten über das Werk:** an Wänden, Feldern und eingerastet: Auswahl, Ziehen, Richtungen, P (Loop rundum statt L,
    Form, Abzweigung), Freihand, Kante, ⌫, ⌘Z; Maul und Pose.
-4. Danach: Pinsel an der Blase (Phase 6, Beweis im Kern zuerst), eine Leinwand für Haut und Linien, Würfel als Quader, Finger.
+4. Danach: Pinsel an der Blase (Phase 6: nur, was die Rechnung kann, also Ziehen wie O; Aufblasen, Absaugen, Glätten sind Arbeit
+   der Kern-Sitzung), eine Leinwand für Haut und Linien, Würfel als Quader, Finger.
 
 ## Bedienung
 

@@ -1,0 +1,50 @@
+{
+ "huelleQuellen": [
+  "three",
+  "../viewports/ansicht2d"
+ ],
+ "grenze": [
+  "hautZeigen",
+  "baenderZeigen",
+  "blaetterZeichnen",
+  "blattZeichnen",
+  "statusZeigen",
+  "reglerZeigen",
+  "innenZeigen",
+  "glattZeigen",
+  "allesZeigen",
+  "rendern",
+  "sagen",
+  "ausschnittGeaendert",
+  "glattInRuhe",
+  "geometrieNeu",
+  "eingabenSperren",
+  "teilungNeu",
+  "glattAnlegen",
+  "skala"
+ ],
+ "zwang": {
+  "glattOffen": "huelle",
+  "glattInRuhe": "huelle"
+ },
+ "geteilt": [],
+ "typen": {
+  "geometrieNeu": "() => void",
+  "reglerZeigen": "() => void",
+  "allesZeigen": "() => void",
+  "skala": "(a: Ansicht) => number",
+  "ausschnittGeaendert": "(a: Ansicht) => void",
+  "statusZeigen": "() => void",
+  "eingabenSperren": "(an: boolean) => void",
+  "hautZeigen": "() => void",
+  "baenderZeigen": "() => void",
+  "blattZeichnen": "(a: Ansicht) => void",
+  "glattInRuhe": "() => void",
+  "rendern": "() => void",
+  "innenZeigen": "() => void",
+  "glattZeigen": "() => void",
+  "sagen": "(text: string) => void",
+  "teilungNeu": "() => void",
+  "glattAnlegen": "() => void"
+ }
+}

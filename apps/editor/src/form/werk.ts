@@ -5288,7 +5288,11 @@ export function neuAusUmriss(anker: readonly SilhouettenAnker[]): string {
   // die Linie genau auf ihren Pfad, die Haut folgt
   linienAufPfad(mitte);
   einsetzenNachholen();
-  ruheNoetig();
+  // Die Form ist, was die Rechnung aus der Linie macht (Florian, 16.11.: kein Unterschied zwischen seinen Kurven und dem Modell wie in
+  // Sitzung 4). Ein neuer Loop allein setzt die Haut nicht (`ruheNoetig`: erst wenn sich Linien kreuzen); dann setzte sie der erste
+  // Griff, sichtbar als Sprung (gemessen am Fisch bis 17,5). Hier rechnet das Werk sie gleich über die ganze Haut neu, wie nach „Kante
+  // an/aus“ (`hautNeuRechnen`, im Hintergrund).
+  hautNeuRechnen();
   G.auswahl = [];
   G.meldung = '';
   return `Neue Form aus der Silhouette: ${haut.n.toLocaleString('de-DE')} Punkte, ${n} Punkte auf der Linie${netzText}`;

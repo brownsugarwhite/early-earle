@@ -15,8 +15,9 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   Ecke/Werft, Bleistift) mit dem vollen Kern von Sitzung 4 zusammen. Seite `apps/editor/ozzy.html`, Code `apps/editor/src/ozzy/`.
   Plan: [`docs/plans/2026-11-16-ozzy.md`](docs/plans/2026-11-16-ozzy.md). **Wo wir stehen und was als Nächstes kommt:
   [`docs/look/ozzy/UEBERGABE.md`](docs/look/ozzy/UEBERGABE.md).** Gebaut: Stand 0, Phase 1 (das Werk `src/form/werk.ts`).
-  Phase 3: Der Beweis „Form aus der Silhouette“ hält nicht (der erste Zug springt, die Rechnung hat ihre eigene Rundung); Florian
-  wählt zwischen A „Form der Rechnung“ und B „Formschicht“ (Übergabe).
+  Phase 3: `neuAusUmriss` (Form aus der Silhouette, Weg A: die Form ist, was die Rechnung aus der Linie macht), Ozzy ruft es noch
+  nicht. **Florian (16.11.): Am Rechenkern ändert Ozzy nichts und optimiert nichts, das macht die Kern-Sitzung; kein Unterschied
+  zwischen seinen Kurven und dem Modell wie in Sitzung 4.**
 - **Der Kern** („Kurven als Wahrheit“, seit 05.11.): Linien (Loops mit Bézier-Punkten und Griffen, Kreuzungen, Kante an/aus) sind
   die Wahrheit; darunter ein dichtes Dreiecksnetz, dessen Haut aus den Linien gerechnet wird; gespiegelt; Maul; Fressen-Pose.
   Rechenkern `packages/shape/src/dicht/` und `loeser/`. Das alte Fenster `kurven.html?gewichte=geometrie` (`src/form/kurven.ts`)

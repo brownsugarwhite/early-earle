@@ -1,14 +1,18 @@
 // Ozzy, Phase 3, der kleine Beweis (Plan 2026-11-16-ozzy.md, Abschnitt 8): Hält eine Form, deren einzige Linie die Silhouette ist?
 // Im Prüffenster kurven.html: `__kurven.ablage.neuAusUmriss(anker)` bläst die Silhouette rund auf, die Silhouette wird die Linie der
 // Mitte (ihre Anker die Punkte, ihre Griffe die Griffe). Zwei Silhouetten: ein Fisch (Schwanz mit vier Ecken) und eine Ellipse.
-// Kriterien (vorher festgelegt):
+// Weg A (Florian, 16.11.: am Rechenkern nichts ändern, kein Unterschied zwischen seinen Kurven und dem Modell wie in Sitzung 4): Die
+// Form ist, was die Rechnung aus der Linie macht; `neuAusUmriss` rechnet die Haut gleich über die ganze Haut neu (`hautNeuRechnen`).
+// Kriterien (vorher festgelegt; 3b am 16.11. nachmittags geändert, siehe unten):
 //   1  Die Seite deckt sich mit der Zeichnung: Punkte und Griffe der Linie sind die gezeichneten; die Linie liegt höchstens 0,5 neben
-//      ihrem Pfad; kein Punkt der Haut liegt in der Seite weiter als 0,5 außerhalb der Silhouette. Kein umgeschlagenes Dreieck.
+//      ihrem Pfad; kein Punkt der Haut liegt in der Seite weiter als 0,5 außerhalb der Silhouette. Kein umgeschlagenes Dreieck. Die
+//      Form steht: in weiteren 1,5 s bewegt sie sich um weniger als 0,2.
 //   2  Anfassen ohne Zug (Maus auf einem Punkt der Linie drücken und loslassen, zweimal an verschiedenen Punkten): Die Haut bewegt
 //      sich um weniger als 0,2.
-//   3  Der erste Zug ruckt nicht: einen Punkt der Linie 12 Einheiten nach oben ziehen. Im ersten Bild (1 Einheit gezogen) bewegt sich
-//      kein Punkt der Haut weiter als 2, abseits (weiter als 120 vom Griff) keiner weiter als 0,2; nach dem Loslassen bleibt die Haut
-//      abseits (weniger als 0,2).
+//   3  Der erste Zug ruckt nicht: einen Punkt der Linie 12 Einheiten nach oben ziehen. (a) Im ersten Bild, in dem sich die Haut bewegt,
+//      bewegt sich keiner ihrer Punkte weiter als der Mausweg + 1, abseits (weiter als 120 vom Griff) keiner weiter als 0,2. (b) Nach
+//      dem Loslassen kriecht nichts (in weiteren 1,5 s weniger als 0,2). Bis zum Weg A hieß 3b „abseits bleibt die Haut“: Wo eine
+//      einzige Linie die ganze Form bestimmt, formt ihre Änderung die ganze Haut um; das ist jetzt eine Messung.
 // Aufruf aus apps/editor: GPU=1 node scripts/pruefen/ozzy-silhouette-fenster.mjs [bild-ohne-endung]
 //   KURVEN_URL (Standard http://localhost:5205/kurven.html?gewichte=geometrie)   FORM=fisch|ellipse|beide (Standard beide)
 import { chromium } from '@playwright/test';
@@ -210,6 +214,13 @@ for (const name of WAHL === 'beide' ? ['fisch', 'ellipse'] : [WAHL]) {
   ok('in der Seite keine Haut außerhalb der Silhouette (höchstens 0,5)', raus <= 0.5, `${z3(raus)} weit draußen; ${lagen.length / 3} Punkte`);
   const umg = await K('umgeschlagen');
   ok('kein umgeschlagenes Dreieck', umg === 0, `${umg}`);
+  {
+    const tri = await K('dreiecke');
+    await seite.waitForTimeout(1500);
+    await ruhig();
+    const steht = zurFlaeche(await K('lagen'), lagen, tri);
+    ok('die Form steht (in 1,5 s weniger als 0,2)', steht < 0.2, z3(steht));
+  }
   if (BILD) await seite.screenshot({ path: `${BILD}-${name}.jpg`, type: 'jpeg', quality: 88 });
 
   // ----- 2. Anfassen ohne Zug -----
@@ -249,25 +260,35 @@ for (const name of WAHL === 'beide' ? ['fisch', 'ellipse'] : [WAHL]) {
       await seite.mouse.move(p0.x + i * proEinheit.x, p0.y + i * proEinheit.y);
       await bilder();
       if (!erst) {
-        const b = bewegung(vor, await K('lagen'), ort, 120);
-        if (b.anders || b.alle > 1e-6) {
-          erst = b;
+        // Abstand zur Fläche davor (das Netz kann im ersten Bild wechseln: ein verfeinertes kommt aus dem Hintergrund)
+        const jetzt = await K('lagen');
+        const alle = zurFlaeche(jetzt, vor, vorTri);
+        if (alle > 0.05) {
+          erst = { alle, abseits: zurFlaeche(jetzt, vor, vorTri, ort, 120), punkte: `${vor.length / 3} → ${jetzt.length / 3} Punkte` };
           schritt = i;
         }
       }
     }
+    // (bis zum Weg A: „abseits unter 0,2“; wo eine einzige Linie die ganze Form bestimmt, formt schon ein kleiner Zug die ganze Haut
+    // um. Ein Sprung ist, was sich weiter bewegt als die Maus: vor Weg A im ersten Bild 17,5 bei 3 Einheiten Mausweg)
     ok(
-      `erstes Bild, in dem sich die Haut bewegt (Maus ${schritt} Einheiten weit; der Griff wartete ${warten} ms): kein Ruck (höchstens Mausweg + 1, abseits unter 0,2)`,
-      !!erst && !erst.anders && erst.alle < schritt + 1 && erst.abseits < 0.2,
-      erst ? erst.anders || `größte Bewegung ${z3(erst.alle)}, abseits ${z3(erst.abseits)}` : 'keine Bewegung',
+      `erstes Bild, in dem sich die Haut bewegt (Maus ${schritt} Einheiten weit; der Griff wartete ${warten} ms): kein Sprung (alles höchstens Mausweg + 1, abseits höchstens Mausweg)`,
+      !!erst && erst.alle <= schritt + 1 && erst.abseits <= schritt,
+      erst ? `größte Bewegung ${z3(erst.alle)}, abseits ${z3(erst.abseits)}; ${erst.punkte}` : 'keine Bewegung',
     );
     await seite.waitForTimeout(120);
     await seite.mouse.up();
     await ruhig();
-    const weg = zurFlaeche(await K('lagen'), vor, vorTri, ort, 120);
+    const nach = await K('lagen');
+    const nachTri = await K('dreiecke');
+    const weg = zurFlaeche(nach, vor, vorTri, ort, 120);
     const nl = (await K('loops'))[0];
     const gezogen = nl.punkte.reduce((x, y) => (Math.hypot(y.ref.x - a.x, y.ref.y - a.y - 12) < Math.hypot(x.ref.x - a.x, x.ref.y - a.y - 12) ? y : x));
-    ok('nach dem Zug: der Punkt ist oben, abseits bleibt die Haut (unter 0,2)', Math.abs(gezogen.ref.y - a.y - 12) < 1.5 && weg < 0.2, `Punkt ${z2(gezogen.ref.y - a.y)} nach oben; abseits höchstens ${z3(weg)} neben der Haut davor; ${(await K('lagen')).length / 3} Punkte, umgeschlagen ${await K('umgeschlagen')}`);
+    await seite.waitForTimeout(1500);
+    await ruhig();
+    const kriecht = zurFlaeche(await K('lagen'), nach, nachTri);
+    ok('nach dem Loslassen: der Punkt ist oben, nichts kriecht (in 1,5 s weniger als 0,2)', Math.abs(gezogen.ref.y - a.y - 12) < 1.5 && kriecht < 0.2, `Punkt ${z2(gezogen.ref.y - a.y)} nach oben; kriecht ${z3(kriecht)}; ${nach.length / 3} Punkte, umgeschlagen ${await K('umgeschlagen')}`);
+    console.log(`     Messung: durch den Zug liegt die Haut abseits (über 120 vom Griff) bis ${z2(weg)} neben der Haut davor`);
     if (BILD) await seite.screenshot({ path: `${BILD}-${name}-gezogen.jpg`, type: 'jpeg', quality: 88 });
   }
 
@@ -281,9 +302,7 @@ for (const name of WAHL === 'beide' ? ['fisch', 'ellipse'] : [WAHL]) {
     const jetzt = await K('lagen');
     const weg = zurFlaeche(jetzt, vor, vorTri);
     const ls = await K('loops');
-    let raus = 0;
-    for (let i = 0; i < jetzt.length; i += 3) raus = Math.max(raus, aussen(vieleck(f.anker), jetzt[i], jetzt[i + 1]));
-    console.log(`     Messung, Ring bei x = 30: ${ls.map((l) => `${l.art} ${l.punkte.length}P`).join(', ')}; die Haut liegt danach bis ${z2(weg)} neben der Haut davor; in der Seite bis ${z2(raus)} außerhalb der Silhouette; umgeschlagen ${await K('umgeschlagen')}; ${await K('meldung')}`);
+    console.log(`     Messung, Ring bei x = 30: ${ls.map((l) => `${l.art} ${l.punkte.length}P`).join(', ')}; die Haut liegt danach bis ${z2(weg)} neben der Haut davor; umgeschlagen ${await K('umgeschlagen')}; ${await K('meldung')}`);
     if (BILD) await seite.screenshot({ path: `${BILD}-${name}-ring.jpg`, type: 'jpeg', quality: 88 });
     await seite.keyboard.press('Escape');
   }
