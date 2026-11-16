@@ -244,6 +244,25 @@ abgeschlossen.**
 **S12 iPad mit Stift (Schritt für Schritt, gemeinsam).** Erst: Stift = Zeiger (mit Schweben über dem Bildschirm, wo das iPad es kann),
 zwei Finger drehen, schwenken und zoomen, Tasten als kleine Knöpfe (Ansichten, Vier, Zurück, Löschen, Kante, Werkzeuge); dann Florians
 Rückmeldung am Gerät. *Probe:* am iPad im Simulator und an seinem Gerät.
+*Erster Schritt (Florian: „Ja, S12“), Vorschlag, den er am Gerät beurteilt:*
+- **Stift = Zeiger:** Der Stift macht alles wie die Maus (Punkte, Linien, Griffe, P, Lasso, ins Leere ziehen dreht). Schwebt er über dem
+  Bildschirm (iPad mit Schweben), zeigt Ozzy den Zeiger und das Anschwellen wie bei der Maus.
+- **Finger:** Ein Finger dreht (wie Ziehen ins Leere). Solange noch kein Stift da war, macht ein Finger alles wie die Maus (ohne Stift
+  bleibt Ozzy bedienbar); ab dem ersten Stift ändern Finger nichts mehr an der Form (eine aufgelegte Hand zieht keinen Punkt).
+- **Zwei Finger:** auseinander und zusammen zoomt (zu den Fingern hin), gemeinsam verschieben schwenkt, verdrehen dreht um die Hochachse
+  (wie Apples Vorschau für 3D); beim Loslassen rastet es nahe einer Ansicht ein wie mit der Maus. Schwenken ist neu (auch am Mac nicht da):
+  ein Versatz des Bilds, den „Einpassen“ (Pos1) zurücksetzt; in den Vier Ansichten gilt er nicht.
+- **Tasten als kleine Knöpfe** (nur auf Geräten mit Berührung): Raum, Seite, Front, Top, Vier · ↩, Esc · Zurück, Löschen, Kante,
+  Einpassen; die Werkzeuge stehen schon in der Leiste. Die Knöpfe lösen genau das aus, was die Taste tut.
+- *Probe:* im iPad-Simulator (Safari) ein Bild mit den Knöpfen und je eine Geste (ein Finger dreht, zwei Finger zoomen und schwenken,
+  Knopf „Seite“ rastet ein); dazu in Chromium mit nachgestellter Berührung und Stift: Finger ändert nach dem Stift keinen Punkt, Stift
+  zieht einen Punkt, zwei Finger zoomen, schwenken und drehen. Für sein iPad muss der Server im WLAN erreichbar sein (Frage an Florian).
+*Gebaut (erster Schritt):* wie oben; Safaris eigene Gesten für zwei Finger sind auf der Seite abgeschaltet, auf Geräten mit Berührung
+zeigt die Hinweiszeile nur Meldungen (die Tastenhinweise gelten dort nicht). Probe `ozzy-ipad-fenster.mjs` (Chromium, nachgestellt): 1
+bis 7 halten. Im iPad-Simulator (Safari, iPad Pro 13 Zoll): Knöpfe stehen unten, „Seite“ rastet ein, zwei Finger zoomen zu den Fingern hin,
+„Einpassen“ setzt zurück, verdreht dreht den Raum; Bild [`2026-11-16-ipad.png`](../progress/ozzy/2026-11-16-ipad.png). Der Simulator
+zeichnet langsam und die Seifenhaut blass (Grenze des Simulators); Schweben und Druck des Stifts gibt es dort nicht, das zeigt erst sein
+Gerät.
 
 **S13 liquid drop weiter** (Florian wählt aus Abschnitt 5).
 

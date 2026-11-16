@@ -125,8 +125,8 @@ let netzZeit = 0;
 let film = 0;
 /** Uhr des Materials (s) */
 let uhr = 0;
-/** Drehung von Hand (zur Lage am Ende des Aufblasens) und Zoom von Hand */
-const nutzer = { gier: 0, neigung: 0, zoom: 1 };
+/** Drehung von Hand (zur Lage am Ende des Aufblasens), Zoom von Hand und (S12) Schwenk von Hand: Versatz des Bilds in Bildpunkten */
+const nutzer = { gier: 0, neigung: 0, zoom: 1, schwenkX: 0, schwenkY: 0 };
 
 /** Ansicht: Raum oder eine Achse; `flach` 0 = Raum, 1 = genau parallel auf der Achse */
 type Ansicht = 'raum' | 'seite' | 'front' | 'top';
@@ -883,6 +883,8 @@ function nochEinmal(): void {
   koerper.bezugJetzt();
   nutzer.gier = 0;
   nutzer.neigung = 0;
+  nutzer.schwenkX = 0;
+  nutzer.schwenkY = 0;
   ansicht = 'raum';
   flach = 0;
   ansichtFahrt = null;
@@ -912,6 +914,8 @@ function neu(): void {
   nutzer.gier = 0;
   nutzer.neigung = 0;
   nutzer.zoom = 1;
+  nutzer.schwenkX = 0;
+  nutzer.schwenkY = 0;
   ansicht = 'raum';
   flach = 0;
   ansichtFahrt = null;
@@ -946,6 +950,12 @@ function kameraSetzen(m: Moment | null): void {
   const tiefe = e ? 3 * e.L + e.R : 4000;
   const lage: KameraLage = { gier, neigung, ziel, s, p, fov: werte.fov };
   const c = kam.stellen(lage, W, H, tiefe);
+  // S12: Schwenken (zwei Finger): ein Versatz des ganzen Bilds; in den Vier Ansichten gilt er nicht (er vergeht beim Auffalten)
+  const sv = (1 - glatt(vier)) * f;
+  if (sv > 1e-4 && (nutzer.schwenkX !== 0 || nutzer.schwenkY !== 0)) {
+    c.projectionMatrix.premultiply(new Matrix4().makeTranslation((2 * nutzer.schwenkX * sv) / W, (-2 * nutzer.schwenkY * sv) / H, 0));
+    c.projectionMatrixInverse.copy(c.projectionMatrix).invert();
+  }
   lageRaum = lage;
   tiefeRaum = tiefe;
   projRaum.copy(c.projectionMatrix);
@@ -1593,6 +1603,7 @@ function bild(dt: number): boolean {
   mess.teile[4] = performance.now() - ta;
   hintenZeigen();
   maulUiZeigen();
+  tastenStand();
   // Text
   gruss.classList.toggle('weg', !(zustand === 'blatt' && blatt.leer));
   const h =
@@ -1623,7 +1634,9 @@ function bild(dt: number): boolean {
         : '';
   // eine Meldung des Werks (das Maul, P, die Pose) steht ein paar Sekunden statt des Hinweises
   if (werk.G.meldung !== meldung.text) meldung = { text: werk.G.meldung, seit: performance.now() };
-  const hm = meldung.text && zustand === 'ruhe' && performance.now() - meldung.seit < MELDUNG_MS ? meldung.text : h;
+  // S12: mit Stift und Fingern gibt es die Tasten nicht, die der Hinweis nennt: dort nur die Meldungen (und „↩ aufblasen“ auf dem Blatt)
+  const ohneTasten = zustand !== 'blatt' && (document.body.classList.contains('beruehrung') || GROB.matches);
+  const hm = meldung.text && zustand === 'ruhe' && performance.now() - meldung.seit < MELDUNG_MS ? meldung.text : ohneTasten ? '' : h;
   if (meldung.text && performance.now() - meldung.seit < MELDUNG_MS) aktiv = true;
   if (hinweis.textContent !== hm) hinweis.textContent = hm;
   stat.bildMs = performance.now() - t0;
@@ -1633,7 +1646,7 @@ function bild(dt: number): boolean {
     mess.letzte = t;
   }
   if (mitInfo)
-    infoAnzeige.textContent = `${stat.fps.toFixed(0)} B/s · Bild ${stat.bildMs.toFixed(1)} ms · Netz ${stat.punkte} P, ${stat.dreiecke} D · ${zustand} ${T.toFixed(2)} s · p ${flach.toFixed(2)}${werkForm ? ` · Werk ${werk.haut.n} P, Anzeige ${werkHaut.stufen} St. ${werkHaut.ms.toFixed(1)} ms` : ''}`;
+    infoAnzeige.textContent = `Finger ${finger.size}${geste ? ' Geste' : ''} · Zoom ${nutzer.zoom.toFixed(2)} · ${Object.entries(zeigerZaehler).map(([k, v]) => `${k} ${v}`).join(', ')} · ${stat.fps.toFixed(0)} B/s · Bild ${stat.bildMs.toFixed(1)} ms · Netz ${stat.punkte} P, ${stat.dreiecke} D · ${zustand} ${T.toFixed(2)} s · p ${flach.toFixed(2)}${werkForm ? ` · Werk ${werk.haut.n} P, Anzeige ${werkHaut.stufen} St. ${werkHaut.ms.toFixed(1)} ms` : ''}`;
   return aktiv;
 }
 
@@ -2592,6 +2605,195 @@ function punktLage(x: number, y: number, pz: NonNullable<typeof punktZug>): [num
 
 let letzteZeit = 0;
 
+/** Drehen von Hand löst eine eingerastete Ansicht: nur die Parallele löst sich (die Drehung gehört der Hand, S4) */
+function ansichtLoesen(): void {
+  if (ansicht === 'raum') return;
+  const vorher = ansicht;
+  const heimVorher = heimJetzt();
+  ansicht = 'raum';
+  gewendet = false;
+  ansichtFahrt = { von: [nutzer.gier, nutzer.neigung, flach], nach: [nutzer.gier, nutzer.neigung, 0], t: 0, nurFlach: true, vonAnsicht: vorher, heimVon: heimVorher };
+}
+
+// ---------- S12: Stift und Finger (iPad) ----------
+//
+// Der Stift ist der Zeiger: Er macht alles wie die Maus, schwebend zeigt er Zeiger und Anschwellen. Ein Finger dreht; solange noch kein
+// Stift da war, macht er alles wie die Maus (ab dem ersten Stift ändern Finger nichts mehr an der Form). Zwei Finger: auseinander und
+// zusammen zoomt zu den Fingern hin, verschieben schwenkt, verdrehen dreht um die Hochachse (wie Apples Vorschau für 3D); beim Loslassen
+// rastet es nahe einer Ansicht ein. Diese Weiche hört vor der Bühne zu (Fangphase am Fenster) und lässt alles andere durch.
+
+/** Finger auf der Bühne (Kennung → Lage, CSS); ob schon ein Stift da war */
+const finger = new Map<number, { x: number; y: number }>();
+let stiftGesehen = false;
+/** die Geste mit zwei Fingern; danach tut der verbliebene Finger nichts mehr, bis er abhebt */
+let geste: { d0: number; w0: number; m0: { x: number; y: number }; zoom0: number; gier0: number; sx0: number; sy0: number; gedreht: boolean } | null = null;
+let gesteRest = false;
+/** so weit müssen zwei Finger verdreht sein, bevor es dreht (sonst dreht schon das Zoomen) */
+const GESTE_DREHEN_AB = (6 * Math.PI) / 180;
+
+/** zum Prüfen (`?info=1`): die letzten Zeiger nach Art und Ereignis */
+const zeigerZaehler: Record<string, number> = {};
+// Safari (iPad) hat eigene Gesten für zwei Finger (die Seite zoomen): Ozzy übernimmt sie selbst
+for (const art of ['gesturestart', 'gesturechange', 'gestureend'])
+  document.addEventListener(art, (e) => e.preventDefault(), { passive: false } as AddEventListenerOptions);
+
+/** auf Geräten mit Stift oder Berührung: die Knöpfe für die Tasten */
+function beruehrungZeigen(): void {
+  if (!document.body.classList.contains('beruehrung')) document.body.classList.add('beruehrung');
+}
+
+function zweiFinger(): [{ x: number; y: number }, { x: number; y: number }] | null {
+  const f = [...finger.values()];
+  return f.length >= 2 ? [f[0]!, f[1]!] : null;
+}
+
+function gesteBeginnen(): void {
+  const ab = zweiFinger();
+  if (!ab) return;
+  const [a, b] = ab;
+  geste = {
+    d0: Math.max(1, Math.hypot(b.x - a.x, b.y - a.y)),
+    w0: Math.atan2(b.y - a.y, b.x - a.x),
+    m0: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+    zoom0: nutzer.zoom,
+    gier0: nutzer.gier,
+    sx0: nutzer.schwenkX,
+    sy0: nutzer.schwenkY,
+    gedreht: false,
+  };
+  schwung = null;
+}
+
+function gesteBewegen(): void {
+  const ab = zweiFinger();
+  if (!geste || !ab) return;
+  const [a, b] = ab;
+  const d = Math.max(1, Math.hypot(b.x - a.x, b.y - a.y));
+  const w = Math.atan2(b.y - a.y, b.x - a.x);
+  const m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  // zoomen zu den Fingern hin: Was unter ihrer Mitte lag, bleibt unter ihr
+  const z = Math.max(0.3, Math.min(4, (geste.zoom0 * d) / geste.d0));
+  const qx = (geste.m0.x - (W / 2 + geste.sx0)) / geste.zoom0;
+  const qy = (geste.m0.y - (H / 2 + geste.sy0)) / geste.zoom0;
+  nutzer.zoom = z;
+  if (vier < 0.5) {
+    nutzer.schwenkX = m.x - W / 2 - qx * z;
+    nutzer.schwenkY = m.y - H / 2 - qy * z;
+  }
+  // verdrehen: um die Hochachse, erst ab einem kleinen Winkel (dann ohne Sprung von dort aus)
+  let dw = Math.atan2(Math.sin(w - geste.w0), Math.cos(w - geste.w0));
+  if (!geste.gedreht && Math.abs(dw) > GESTE_DREHEN_AB) {
+    geste.gedreht = true;
+    geste.w0 = w;
+    geste.gier0 = nutzer.gier;
+    dw = 0;
+    ansichtLoesen();
+  }
+  // wie ein Teller auf dem Tisch: im Uhrzeigersinn verdreht, dreht sich die Form von oben gesehen mit (ihre vordere Seite folgt dem unteren
+  // Finger)
+  if (geste.gedreht) nutzer.gier = geste.gier0 + dw;
+}
+
+function gesteEnden(): void {
+  if (geste?.gedreht) {
+    const ziel = ansichtNahe(nutzer.gier, nutzer.neigung);
+    if (ziel) ansichtSetzen(ziel.a, ziel.hinten);
+  }
+  geste = null;
+}
+
+for (const art of ['pointerdown', 'pointerup', 'pointercancel'] as const)
+  window.addEventListener(
+    art,
+    (e) => {
+      if (mitInfo) zeigerZaehler[`${e.pointerType} ${art.slice(7)}`] = (zeigerZaehler[`${e.pointerType} ${art.slice(7)}`] ?? 0) + 1;
+    },
+    { capture: true },
+  );
+window.addEventListener(
+  'pointerdown',
+  (e) => {
+    if (e.target !== leinwandLinien) return;
+    if (e.pointerType === 'pen') {
+      stiftGesehen = true;
+      beruehrungZeigen();
+      return;
+    }
+    if (e.pointerType !== 'touch') return;
+    beruehrungZeigen();
+    const [x, y] = lageIm(e);
+    finger.set(e.pointerId, { x, y });
+    if (finger.size === 2 && zustand === 'ruhe' && !geste) {
+      // zwei Finger: Was der erste begonnen hat, endet hier (Drehen hört einfach auf), dann die Geste
+      e.stopPropagation();
+      if (drehen) drehen = null;
+      else if (bearbeitenGedrueckt || pinselZug || wenden || raumStrich || raumAufzug || punktZug || zug || teiler.zug) loslassen(e);
+      try {
+        leinwandLinien.setPointerCapture(e.pointerId);
+      } catch {
+        // nachgestellte Ereignisse haben keinen echten Zeiger
+      }
+      gesteBeginnen();
+      anstossen();
+      return;
+    }
+    if (finger.size >= 2 || geste || gesteRest) {
+      e.stopPropagation();
+      return;
+    }
+    if (!stiftGesehen) return;
+    // ab dem ersten Stift dreht ein Finger nur (wie Ziehen ins Leere), auf dem leeren Blatt tut er nichts
+    e.stopPropagation();
+    if (zustand !== 'ruhe' || !koerper) return;
+    try {
+      leinwandLinien.setPointerCapture(e.pointerId);
+    } catch {
+      // nachgestellte Ereignisse haben keinen echten Zeiger
+    }
+    if (vier > 0.5) {
+      const R = felder().raum;
+      if (!(x >= R.x && y >= R.y)) vierUmschalten(false);
+    }
+    schwung = null;
+    drehen = { x, y, gier: nutzer.gier, neigung: nutzer.neigung, vg: 0, vn: 0, t: e.timeStamp, lx: x, ly: y };
+    anstossen();
+  },
+  { capture: true },
+);
+window.addEventListener(
+  'pointermove',
+  (e) => {
+    if (e.pointerType !== 'touch' || !finger.has(e.pointerId)) return;
+    const [x, y] = lageIm(e);
+    finger.set(e.pointerId, { x, y });
+    if (geste) {
+      e.stopPropagation();
+      gesteBewegen();
+      anstossen();
+    } else if (gesteRest) e.stopPropagation();
+  },
+  { capture: true },
+);
+const fingerWeg = (e: PointerEvent): void => {
+  if (e.pointerType !== 'touch' || !finger.has(e.pointerId)) return;
+  finger.delete(e.pointerId);
+  if (!geste && !gesteRest) return;
+  e.stopPropagation();
+  if (leinwandLinien.hasPointerCapture(e.pointerId)) leinwandLinien.releasePointerCapture(e.pointerId);
+  if (geste && finger.size < 2) {
+    gesteEnden();
+    gesteRest = finger.size > 0;
+  } else if (gesteRest && finger.size === 0) gesteRest = false;
+  anstossen();
+};
+window.addEventListener('pointerup', fingerWeg, { capture: true });
+window.addEventListener('pointercancel', fingerWeg, { capture: true });
+// unter dem Finger kein Zeiger (er läge unter der Fingerkuppe); nach den Ereignissen der Bühne
+for (const art of ['pointerdown', 'pointermove'] as const)
+  window.addEventListener(art, (e) => {
+    if (e.pointerType === 'touch' && e.target === leinwandLinien) zeiger.da = false;
+  });
+
 leinwandLinien.addEventListener('pointermove', (e) => {
   const [x, y] = lageIm(e);
   const dt = letzteZeit ? Math.min(0.1, (e.timeStamp - letzteZeit) / 1000) : 0;
@@ -2675,13 +2877,7 @@ leinwandLinien.addEventListener('pointermove', (e) => {
       if (performance.now() - umbauZeit > 110) blaseNeu();
     }
   } else if (drehen) {
-    if (ansicht !== 'raum') {
-      const vorher = ansicht;
-      const heimVorher = heimJetzt();
-      ansicht = 'raum';
-      gewendet = false;
-      ansichtFahrt = { von: [nutzer.gier, nutzer.neigung, flach], nach: [nutzer.gier, nutzer.neigung, 0], t: 0, nurFlach: true, vonAnsicht: vorher, heimVon: heimVorher };
-    }
+    ansichtLoesen();
     nutzer.gier = drehen.gier - ((x - drehen.x) * Math.PI) / 520;
     nutzer.neigung = Math.max(NEIGUNG_UNTEN, Math.min(NEIGUNG_OBEN, drehen.neigung + ((y - drehen.y) * Math.PI) / 520));
     // Geschwindigkeit (rad/s), geglättet: für den Schwung beim Loslassen
@@ -3080,6 +3276,8 @@ window.addEventListener('keydown', (e) => {
     ansichtSetzen(ziel);
   } else if (k === 'Home') {
     nutzer.zoom = 1;
+    nutzer.schwenkX = 0;
+    nutzer.schwenkY = 0;
     massstab.nachfuehren = true;
   } else if (zustand === 'blatt' && (k === 'p' || k === 'P')) waehlenTaste('p');
   else if (zustand === 'blatt' && (k === 'n' || k === 'N')) waehlenTaste('frei');
@@ -3101,6 +3299,28 @@ window.addEventListener('keyup', (e) => {
     tasteGehalten = null;
   }
 });
+
+// S12: Tasten als kleine Knöpfe (iPad): Jeder Knopf löst genau das aus, was seine Taste tut
+const tasten = $<HTMLElement>('tasten');
+function tasteSenden(key: string, meta: boolean): void {
+  const art = { key, metaKey: meta, bubbles: true, cancelable: true };
+  window.dispatchEvent(new KeyboardEvent('keydown', art));
+  window.dispatchEvent(new KeyboardEvent('keyup', art));
+}
+// ohne Fokus auf dem Knopf (sonst löste eine Taste der Tastatur ihn danach noch einmal aus)
+tasten.addEventListener('pointerdown', (e) => e.preventDefault());
+tasten.addEventListener('click', (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-taste]');
+  if (b?.dataset.taste) tasteSenden(b.dataset.taste, b.dataset.meta === '1');
+});
+let tastenStandVorher = '';
+/** die Ansicht, in der Ozzy steht, als gedrückter Knopf */
+function tastenStand(): void {
+  const jetzt = zustand === 'blatt' ? '' : vierZiel > 0.5 ? 'vier' : ansicht;
+  if (jetzt === tastenStandVorher) return;
+  tastenStandVorher = jetzt;
+  for (const b of tasten.querySelectorAll<HTMLButtonElement>('button[data-ansicht]')) b.setAttribute('aria-pressed', String(b.dataset.ansicht === jetzt));
+}
 
 function waehlenTaste(w: Werkzeug): void {
   blatt.werkzeugSetzen(w);
@@ -3339,6 +3559,8 @@ fressenMaul.max = String(MAUL_WINKEL_MAX);
 /** das Papier in der Pose (leicht getönt, aus dem Grün der Linien-Studie) und wie weit es gerade getönt ist */
 const POSE_PAPIER = new Color('#f1f6f0');
 let poseTon = 0;
+/** ein Gerät mit Berührung (S12) */
+const GROB = matchMedia('(any-pointer: coarse)');
 /** eine Meldung des Werks steht so lange in der Hinweiszeile (ms) */
 const MELDUNG_MS = 5000;
 let meldung = { text: '', seit: 0 };
@@ -3569,7 +3791,7 @@ const haken = {
     return b;
   },
   /** Blick: Ansicht, gewendet, wie flach, Gier und Neigung von Hand (rad), Maßstab (Bildpunkte je Pixel der Welt), Schwung */
-  blick: () => ({ ansicht, gewendet, flach, vier, gier: nutzer.gier, neigung: nutzer.neigung, massstab: massstab.jetzt * nutzer.zoom, schwung: schwung !== null, fahrt: ansichtFahrt !== null, wendet: wenden !== null, schwarz: kanteMitte, kanteSichtbar, rueckseite: rueckseite(ansicht), hinten: hintenJetzt?.zahl ?? 0, blatt: blattModus() }),
+  blick: () => ({ ansicht, gewendet, flach, vier, gier: nutzer.gier, neigung: nutzer.neigung, massstab: massstab.jetzt * nutzer.zoom, schwung: schwung !== null, fahrt: ansichtFahrt !== null, wendet: wenden !== null, schwarz: kanteMitte, kanteSichtbar, rueckseite: rueckseite(ansicht), hinten: hintenJetzt?.zahl ?? 0, blatt: blattModus(), zoom: nutzer.zoom, schwenk: [nutzer.schwenkX, nutzer.schwenkY], stift: stiftGesehen, finger: finger.size, geste: geste !== null }),
   /** wie dunkel die Rückseite an einem Punkt (CSS) ist, und die Mitte der fernen Wand einer Achse im Bild (CSS) */
   dunkelBei: (x: number, y: number) => hintenBei(hintenJetzt, x * D, y * D),
   wandMitte: (achse: 0 | 1 | 2) => {

@@ -507,3 +507,59 @@ body.bild #regler {
   opacity: 0.4;
   cursor: default;
 }
+
+/* S12: Tasten als kleine Knöpfe, nur auf Geräten mit Stift oder Berührung (oder sobald einer da war) */
+#tasten {
+  position: fixed;
+  left: 50%;
+  bottom: 40px;
+  transform: translateX(-50%);
+  display: none;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 0.5px solid var(--haar);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--papier) 90%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+@media (any-pointer: coarse) {
+  #tasten {
+    display: inline-flex;
+  }
+}
+body.beruehrung #tasten {
+  display: inline-flex;
+}
+body.bild #tasten {
+  display: none;
+}
+#tasten button {
+  border: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1;
+  border-radius: 999px;
+  -webkit-tap-highlight-color: transparent;
+}
+#tasten button.zeichen {
+  font-size: 16px;
+  padding: 3px 10px;
+}
+#tasten button[aria-pressed='true'] {
+  background: var(--tinte);
+  color: var(--papier);
+}
+#tasten button:active {
+  background: var(--haar);
+}
+#tasten .trenner {
+  width: 0.5px;
+  height: 14px;
+  margin: 0 3px;
+  background: var(--haar);
+}

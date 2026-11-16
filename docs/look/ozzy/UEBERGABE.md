@@ -273,7 +273,14 @@ Druck („Überschreiben“), ⌘S unter dem Namen der Form (`formSichern`, `sic
 Prüffenster, am Werk nichts geändert). Probe `ozzy-sichern-fenster.mjs`, 1 bis 5 halten (neu geladen genau gleich). Gefunden: Nach
 manchen Zügen hat ein Punkt der Haut keinen Spiegelpartner; die Prüfung der Ablage lehnte das beim Sichern und Laden ab, im Prüffenster
 genauso. Florian: „Ja, lockern“ → `ablage.ts` erlaubt Punkte ohne Spiegelbild (−1). Die Ursache im Verdichten steht im Plan des Kerns
-(A.4). Prüfhaken `standPruefen`. Nächstes: S12 iPad mit Stift. Nebenbei: Der Schalter „Linie an der Spiegelkante“
+(A.4). Prüfhaken `standPruefen`.
+
+**S12 (erster Schritt):** Stift = Zeiger (wie die Maus, schwebend Zeiger und Anschwellen); ein Finger dreht, ab dem ersten Stift ändern
+Finger nichts an der Form; zwei Finger zoomen zu den Fingern hin, schwenken (neu: `nutzer.schwenkX/Y`, ein Versatz der Projektion in
+`kameraSetzen`, vergeht in den Vier Ansichten, „Einpassen“/Pos1 setzt zurück) und drehen verdreht um die Hochachse (wie ein Teller).
+Die Weiche hört in der Fangphase am Fenster zu (`finger`, `geste`, `stiftGesehen`), Safaris eigene Gesten sind abgeschaltet. Knöpfe für
+die Tasten (`#tasten`, nur mit Berührung, lösen die Taste selbst aus). Probe `ozzy-ipad-fenster.mjs`; `?info=1` zeigt Finger und Zeiger.
+Offen: sein Urteil am Gerät; dafür muss der Server im WLAN erreichbar sein (seine Entscheidung). Nebenbei: Der Schalter „Linie an der Spiegelkante“
 stand im Raster der Regler zerdrückt (S9), jetzt in einer Zeile.
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**
