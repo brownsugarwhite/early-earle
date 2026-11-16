@@ -206,6 +206,18 @@ selbst anlegt (zwei Punkte fast am selben Ort). In einer Form zählt jetzt der O
   Prüffenster, Unterschied 0, Papier getönt; Zug in der Pose ein Schritt, ⌘Z genau; Fressen aus: Grundform genau, Papier weiß; Freihand
   an „test_kaputt“; keine Fehler). Bild [`2026-11-16-maul-pose.png`](../../progress/ozzy/2026-11-16-maul-pose.png).
 
+**Phase 6, der Pinsel „Ziehen“ an der Blase (gebaut, 16.11. nachmittags):** Über der Haut des Werks (im Raum und im Feld des Raums der
+Vier Ansichten; ⇧ dreht stattdessen) zeigt der Hauch der Seifenhaut den Pinsel und ein Tropfen den nächsten Punkt einer Linie im Radius
+(`werkHautTreffen`: Strahl gegen die Haut des Werks, wie gezeigt; `pinselPunkt`). Drücken wählt diesen Punkt und zieht ihn mit dem
+Einfluss O des Werks (`G.oAn`, `G.radius`, `zugStarten`; danach ist O wieder aus) im Blatt der Achse, die der Kamera am meisten zugewandt
+ist, in der Ebene durch den Punkt. Liegt keine Linie im Pinsel, sagt es die Hinweiszeile, und das Ziehen dreht. Radius: 0,4 der größten
+halben Ausdehnung der Form (`pinselNachForm`), [ und ] ändern ihn. Beim Ziehen blenden die Höhenlinien auf (`HautWerte.hoehen`, neu in
+`anfang/haut.ts`: die Linien der Fassung „Höhenlinien“ über der gewählten Fassung). Probe `apps/editor/scripts/pruefen/ozzy-pinsel-fenster.mjs`
+(gezeichnete Kugel und „teat firefish“, alle Kriterien; derselbe Zug im Prüffenster: dieselben Linien bis 0,00001). Bild
+[`2026-11-16-pinsel.png`](../../progress/ozzy/2026-11-16-pinsel.png). **Grenze (so rechnet der Kern):** Zwischen den Linien wirkt der
+Pinsel nur über den nächsten Punkt einer Linie; Aufblasen, Absaugen und Glätten der Haut selbst sind Arbeit der Kern-Sitzung. An der
+gezeichneten Kugel (nur die Linie der Mitte) fasst er deshalb nur nahe am Umriss.
+
 **Was dabei auffiel (offen):**
 - Eine Wand, die man fast streifend sieht, ist sehr empfindlich: 25 px nach rechts an der Wand der Front verschoben „test_kaputt“ um 70
   Einheiten in z (so rechnet die Perspektive). Genau arbeitet man eingerastet oder in den Feldern.
@@ -225,8 +237,8 @@ selbst anlegt (zwei Punkte fast am selben Ort). In einer Form zählt jetzt der O
    sind Florians Formen, nie überschreiben ohne Frage); in der Pose zeichnet `werkBlatt` Stücke, längs derer sich der Winkel der Knochen
    ändert, noch als Bézier aus gedrehten Punkten (im Prüffenster abgetastet, `stueckeGezeigt`: an „maul handgemacht test“ bis 13 daneben
    im Übergang Kiefer–Schädel; die Haut stimmt); das Maul aus einer Linie (offener Strich).
-4. Danach: Pinsel an der Blase (Phase 6: nur, was die Rechnung kann, also Ziehen wie O; Aufblasen, Absaugen, Glätten sind Arbeit
-   der Kern-Sitzung), eine Leinwand für Haut und Linien, Würfel als Quader, Finger.
+4. ~~Pinsel an der Blase (Phase 6)~~: gebaut (oben). Danach: Phase 7 (Feinschliff, Tempo, iPhone), eine Leinwand für Haut und Linien,
+   Würfel als Quader, Finger; die Leiste bekommt die Gruppe der Pinsel (E3), sobald es mehr als „Ziehen“ gibt.
 
 ## Bedienung
 

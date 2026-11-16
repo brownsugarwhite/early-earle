@@ -211,6 +211,14 @@ let raumWerkzeug: Werkzeug = 'auswahl';
 let raumStrich: { fl: number; st: Strich } | null = null;
 let raumAufzug: { fl: number; art: 'ellipse' | 'wuerfel'; von: { x: number; y: number }; bis: { x: number; y: number } } | null = null;
 const strichWerkzeug = (): boolean => raumWerkzeug === 'frei' || raumWerkzeug === 'ellipse' || raumWerkzeug === 'wuerfel';
+/** Pinsel „Ziehen“ an der Blase (Phase 6): Radius in Einheiten des Werks (wie der Einfluss O, [ und ] ändern ihn) */
+let pinselRadius = 90;
+/** der Punkt einer Linie, den der Pinsel gerade fassen würde (Kennung, Nummer, Spiegelbild, Welt) */
+let pinselZiel: { id: number; i: number; m: boolean; welt: Vector3 } | null = null;
+/** ein Zug des Pinsels: die Ebene des Blatts, in der gezogen wird */
+let pinselZug: { F: Flaeche } | null = null;
+/** wie weit die Höhenlinien gerade aufgeblendet sind (beim Pinseln 1) */
+let hoehenTon = 0;
 
 /** Rechnet das Werk noch (Zug, Nachlauf, Hintergrund, wartender Griff, Maul)? */
 const werkBeschaeftigt = (): boolean =>
@@ -472,6 +480,7 @@ function werkFormAnlegen(): void {
   werk.anzeige.allesZeigen();
   stat.werkMs = performance.now() - t0;
   werkForm = mitteLinie() ? { stand: blatt.stand, zurueck: werk.zurueck.length } : null;
+  pinselNachForm();
   uebergabe = null;
   werkNeu = true;
   if (!werkForm) console.warn(`Ozzy: ${text}`);
@@ -531,6 +540,7 @@ async function formLaden(name: string): Promise<string> {
   silhouette = blatt.silhouette();
   netzBauen();
   werkForm = { stand: blatt.stand, zurueck: werk.zurueck.length, geladen: name };
+  pinselNachForm();
   uebergabe = null;
   werkNeu = true;
   aufblasen();
@@ -1089,6 +1099,11 @@ function bild(dt: number): boolean {
   }
   letzteDrehung = { gier: gierJetzt, neigung: neigungJetzt };
   hauch.staerke += (hauch.ziel - hauch.staerke) * (1 - Math.exp(-dt / 0.18));
+  // beim Pinseln blenden die Höhenlinien auf (Phase 6)
+  const hoehenZiel = pinselZug ? 1 : 0;
+  hoehenTon += (hoehenZiel - hoehenTon) * (1 - Math.exp(-dt / 0.16));
+  if (Math.abs(hoehenZiel - hoehenTon) > 1e-3) aktiv = true;
+  else hoehenTon = hoehenZiel;
   // in der Pose tönt sich das Papier (E8)
   const tonZiel = werk.grund !== null && zustand === 'ruhe' ? 1 : 0;
   poseTon += (tonZiel - poseTon) * (1 - Math.exp(-dt / 0.22));
@@ -1116,7 +1131,7 @@ function bild(dt: number): boolean {
     deckung: (zustand === 'blatt' ? 0.42 * film : 0.42 + 0.58 * glatt(T / 1.4)) * (1 - weg),
     hauch: hauch.pos,
     hauchStaerke: hauch.staerke,
-    hauchRadius: Math.max(24, (F?.radius ?? 200) * 0.2),
+    hauchRadius: werkGezeigt ? pinselRadius / werkHaut.f : Math.max(24, (F?.radius ?? 200) * 0.2),
     wind,
     dicke: werte.dicke * (1 - 0.45 * weg),
     spannung: werte.spannung,
@@ -1126,6 +1141,7 @@ function bild(dt: number): boolean {
     weich: 0,
     schattenFarbe: WEISS,
     papier: poseTon > 1e-3 ? WEISS.clone().lerp(POSE_PAPIER, poseTon) : null,
+    hoehen: hoehenTon,
   };
   haut.zeichnen(kam.aktiv, w, []);
   // Linien
@@ -1179,7 +1195,7 @@ function bild(dt: number): boolean {
             ? werkGezeigt
               ? bearbeiten.stift
                 ? 'P an den Wänden: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen · auf Punkt oder Linie: Abzweigung · Esc'
-                : 'ins Leere ziehen: drehen · Punkte, Linien und Richtungen an den Wänden ziehen · P zeichnen · K Kante · ⌫ löschen · ⌘Z · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
+                : 'an der Blase ziehen: Pinsel ([ ] Größe) · ins Leere ziehen: drehen · Linien an den Wänden ziehen · P zeichnen · K Kante · ⌫ löschen · ⌘Z · 1 3 7 Ansichten · Tab vier'
               : 'ziehen: drehen · an der Blase ziehen · Punkte an der Wand der Seite ziehen · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
             : werkGezeigt
               ? bearbeiten.stift
@@ -1591,6 +1607,21 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
     }
   }
   if (bearbeitenAn && strichWerkzeug() && zeiger.da) K.punkt(zeiger.x * D, zeiger.y * D, linienWerte.punktRadius * linienWerte.tropfen * D);
+  // der Pinsel: am Punkt, den er fassen würde (oder gerade zieht), ein Tropfen
+  if (pinselZiel && (pinselZug || hauch.ziel > 0)) {
+    // im Zug geht der Tropfen mit dem Punkt (so, wie das Werk ihn gerade zeigt)
+    const z = pinselZiel;
+    const jetzt = pinselZug
+      ? werk.alsAnzeige(() => {
+          const p = werk.loops[werk.loopNr(z.id)]?.punkte[z.i];
+          if (!p) return z.welt;
+          const q = werk.zug && !werk.zug.griff ? p.cur : p.ref;
+          return werkInWelt(z.m ? { x: q.x, y: q.y, z: -q.z } : q);
+        })
+      : z.welt;
+    const [px, py] = projizieren(jetzt, vp);
+    K.punkt(px, py, linienWerte.punktRadius * linienWerte.tropfen * D);
+  }
   if (bearbeitenAn) {
     if (werkBlatt.struktur !== bearbeitenStruktur) {
       bearbeiten.tropfen = [];
@@ -1616,6 +1647,151 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
     if (A.zuSehen) K.punkt(p.x * D, p.y * D, linienWerte.punktRadius * D * Math.min(1, F.staerke));
   });
   return { zeiger: undefined, aktiv: false };
+}
+
+// ---------- Pinsel an der Blase (Phase 6) ----------
+
+/** Werk → Welt (in der Pose: so, wie gezeigt) */
+const werkInWelt = (q: { x: number; y: number; z: number }): Vector3 => new Vector3(q.x / werkHaut.f + werkHaut.mitte.x, q.y / werkHaut.f + werkHaut.mitte.y, q.z / werkHaut.f);
+
+/** der Strahl unter dem Zeiger trifft die Haut des Werks (wie sie zu sehen ist): Ort in Welt und Werk, oder null */
+function werkHautTreffen(x: number, y: number): { welt: Vector3; werk: { x: number; y: number; z: number } } | null {
+  const { o, d } = kam.strahl(x, y, W, H);
+  const f = werkHaut.f;
+  const ox = (o.x - werkHaut.mitte.x) * f;
+  const oy = (o.y - werkHaut.mitte.y) * f;
+  const oz = o.z * f;
+  return werk.alsAnzeige(() => {
+    const P = werk.haut.pos;
+    const T = werk.haut.tri;
+    let best = Infinity;
+    for (let t = 0; t < T.length; t += 3) {
+      const a = 3 * T[t]!;
+      const b = 3 * T[t + 1]!;
+      const c = 3 * T[t + 2]!;
+      const e1x = P[b]! - P[a]!;
+      const e1y = P[b + 1]! - P[a + 1]!;
+      const e1z = P[b + 2]! - P[a + 2]!;
+      const e2x = P[c]! - P[a]!;
+      const e2y = P[c + 1]! - P[a + 1]!;
+      const e2z = P[c + 2]! - P[a + 2]!;
+      const px = d.y * e2z - d.z * e2y;
+      const py = d.z * e2x - d.x * e2z;
+      const pz = d.x * e2y - d.y * e2x;
+      const det = e1x * px + e1y * py + e1z * pz;
+      if (Math.abs(det) < 1e-12) continue;
+      const inv = 1 / det;
+      const tx = ox - P[a]!;
+      const ty = oy - P[a + 1]!;
+      const tz = oz - P[a + 2]!;
+      const u = (tx * px + ty * py + tz * pz) * inv;
+      if (u < 0 || u > 1) continue;
+      const qx = ty * e1z - tz * e1y;
+      const qy = tz * e1x - tx * e1z;
+      const qz = tx * e1y - ty * e1x;
+      const v = (d.x * qx + d.y * qy + d.z * qz) * inv;
+      if (v < 0 || u + v > 1) continue;
+      const s = (e2x * qx + e2y * qy + e2z * qz) * inv;
+      if (s > 1e-6 && s < best) best = s;
+    }
+    if (!Number.isFinite(best)) return null;
+    const werkOrt = { x: ox + d.x * best, y: oy + d.y * best, z: oz + d.z * best };
+    return { welt: werkInWelt(werkOrt), werk: werkOrt };
+  });
+}
+
+/** der nächste sichtbare Punkt einer Linie (auch sein Spiegelbild) im Radius des Pinsels um einen Ort im Werk, wie gezeigt */
+function pinselPunkt(q: { x: number; y: number; z: number }): { id: number; i: number; m: boolean; welt: Vector3 } | null {
+  return werk.alsAnzeige(() => {
+    let best: { id: number; i: number; m: boolean; welt: Vector3 } | null = null;
+    let bd = pinselRadius;
+    for (const l of werk.loops) {
+      l.punkte.forEach((p, i) => {
+        if (p.vonSelbst) return;
+        for (const m of Math.abs(p.ref.z) > 1e-6 ? [false, true] : [false]) {
+          const r = m ? { x: p.ref.x, y: p.ref.y, z: -p.ref.z } : p.ref;
+          const dd = Math.hypot(r.x - q.x, r.y - q.y, r.z - q.z);
+          if (dd < bd) {
+            bd = dd;
+            best = { id: l.id, i, m, welt: werkInWelt(r) };
+          }
+        }
+      });
+    }
+    return best;
+  });
+}
+
+/** der Pinsel nach der Größe der Form: 0,4 ihrer größten halben Ausdehnung (Einheiten des Werks; an der Startkugel 60) */
+const PINSEL_ANTEIL = 0.4;
+function pinselNachForm(): void {
+  const P = werk.haut.pos;
+  const a = [Infinity, Infinity, Infinity];
+  const b = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < P.length; i += 3)
+    for (let k = 0; k < 3; k++) {
+      a[k] = Math.min(a[k]!, P[i + k]!);
+      b[k] = Math.max(b[k]!, P[i + k]!);
+    }
+  const r = Math.max((b[0]! - a[0]!) / 2, (b[1]! - a[1]!) / 2, (b[2]! - a[2]!) / 2);
+  if (r > 0 && Number.isFinite(r)) pinselRadius = PINSEL_ANTEIL * r;
+}
+
+/** wo der Pinsel wirkt: im Raum und im Feld des Raums der Vier Ansichten (eingerastet nicht: dort gibt es nur Linien) */
+function pinselHier(x: number, y: number): boolean {
+  if (zustand !== 'ruhe' || flach > 0.5) return false;
+  if (vier > 0.5) {
+    const R = felder().raum;
+    return x >= R.x && y >= R.y && x <= R.x + R.w && y <= R.y + R.h;
+  }
+  return vier < 0.1;
+}
+
+/** Drücken mit dem Pinsel: den nächsten Punkt fassen und mit O ziehen (im Blatt der Achse, die der Kamera am meisten zugewandt ist) */
+function pinselBeginnen(x: number, y: number): boolean {
+  const t = werkHautTreffen(x, y);
+  const z = t ? pinselPunkt(t.werk) : null;
+  if (!t) return false;
+  if (!z) {
+    werk.G.meldung = 'Pinsel: keine Linie in Reichweite. Näher an eine Linie oder den Pinsel größer ([ und ])';
+    return false;
+  }
+  const blick = new Vector3();
+  kam.aktiv.getWorldDirection(blick);
+  const ax = Math.abs(blick.x) >= Math.abs(blick.y) && Math.abs(blick.x) >= Math.abs(blick.z) ? 0 : Math.abs(blick.y) >= Math.abs(blick.z) ? 1 : 2;
+  const a = BLATT_DER_ACHSE[ax]!;
+  const F = ebene(a, ax === 0 ? z.welt.x : ax === 1 ? z.welt.y : z.welt.z, vpJetzt(), 1, 1, false);
+  const XY = F.her(x, y);
+  if (!XY) return false;
+  werk.G.auswahl = [{ l: z.id, i: z.i }];
+  werk.G.oAn = true;
+  werk.G.radius = pinselRadius;
+  werk.G.maus = { a, X: XY[0], Y: XY[1] };
+  if (werk.griffWartet()) werk.G.gegriffen = { a, X: XY[0], Y: XY[1], m: z.m, griff: null, seit: performance.now() };
+  else werk.zugStarten(null, a, XY[0], XY[1], z.m);
+  pinselZug = { F };
+  werkNeu = true;
+  return true;
+}
+
+function pinselBewegen(x: number, y: number): void {
+  const z = pinselZug;
+  const XY = z?.F.her(x, y);
+  if (!z || !XY) return;
+  werk.G.maus = { a: z.F.a, X: XY[0], Y: XY[1] };
+  if (werk.zug && !werk.zug.modal && werk.zug.ansicht === z.F.a) werk.zugBewegen(XY[0], XY[1]);
+}
+
+function pinselEnde(): void {
+  if (!pinselZug) return;
+  pinselZug = null;
+  if (werk.G.gegriffen) werk.G.gegriffen = null;
+  else if (werk.zug && !werk.zug.modal) werk.zugEnde(true);
+  // O ist nur der Pinsel: danach wieder aus (der Zug hat seine Gewichte beim Beginnen genommen)
+  werk.G.oAn = false;
+  // der Punkt unter dem Pinsel ergibt sich mit der nächsten Bewegung neu
+  pinselZiel = null;
+  werkNeu = true;
 }
 
 // ---------- Eingaben ----------
@@ -1839,6 +2015,11 @@ leinwandLinien.addEventListener('pointermove', (e) => {
     anstossen();
     return;
   }
+  if (pinselZug) {
+    pinselBewegen(x, y);
+    anstossen();
+    return;
+  }
   // Freihand und Formen im Raum
   if (raumStrich) {
     const ereignisse = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [];
@@ -1908,7 +2089,19 @@ leinwandLinien.addEventListener('pointermove', (e) => {
     const p = punktSuchen(x, y);
     punktUnterZeiger = p ? p.i : -1;
     teiler.ueber = amTeiler(x, y) ? 1 : 0;
-    const aufBlase = !p && !teiler.ueber && hauchSuchen(x, y);
+    // mit dem Werk: der Pinsel über seiner Haut (der Hauch zeigt Ort und Radius, ein Tropfen den Punkt, den er fassen würde)
+    let aufBlase = false;
+    pinselZiel = null;
+    if (werkGezeigt && bearbeitenAn && !bearbeiten.haengt && raumWerkzeug === 'auswahl' && !teiler.ueber && pinselHier(x, y)) {
+      const t = werkHautTreffen(x, y);
+      if (t) {
+        hauch.pos.copy(t.welt);
+        hauch.ziel = 1;
+        pinselZiel = pinselPunkt(t.werk);
+        aufBlase = true;
+      } else hauch.ziel = 0;
+    } else if (!werkGezeigt) aufBlase = !p && !teiler.ueber && hauchSuchen(x, y);
+    else hauch.ziel = 0;
     wandUnterZeiger = aufBlase || p ? -1 : wandSuchen(x, y);
     leinwandLinien.classList.toggle('teiler', teiler.ueber > 0);
   }
@@ -1968,6 +2161,11 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
       return;
     }
   }
+  // der Pinsel „Ziehen“ an der Haut des Werks (⇧ dreht stattdessen)
+  if (werkGezeigt && bearbeitenAn && raumWerkzeug === 'auswahl' && !e.shiftKey && pinselHier(x, y) && pinselBeginnen(x, y)) {
+    anstossen();
+    return;
+  }
   const p = punktSuchen(x, y);
   if (p) {
     punktZug = p;
@@ -2014,6 +2212,11 @@ const loslassen = (e: PointerEvent): void => {
   if (bearbeitenGedrueckt) {
     bearbeiten.loslassen();
     bearbeitenGedrueckt = false;
+    anstossen();
+    return;
+  }
+  if (pinselZug) {
+    pinselEnde();
     anstossen();
     return;
   }
@@ -2167,6 +2370,9 @@ window.addEventListener('keydown', (e) => {
     // gewählte Punkte löschen (im Werk), sonst Luft ablassen
     else if (bearbeitenAn && (bearbeiten.auswahl.size > 0 || (bearbeiten.stift && werkBlatt.entwurf()))) bearbeiten.eingabe('loeschen');
     else ablassen();
+  } else if ((k === '[' || k === ']') && zustand === 'ruhe' && werkGezeigt) {
+    // Radius des Pinsels (wie O im Prüffenster)
+    pinselRadius = Math.max(10, Math.min(600, pinselRadius * (k === ']' ? 1.2 : 1 / 1.2)));
   } else if ((k === 'p' || k === 'P') && zustand === 'ruhe' && werkGezeigt) stiftImRaum(!bearbeiten.stift);
   else if ((k === 'v' || k === 'V') && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('auswahl');
   else if ((k === 'n' || k === 'N') && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('frei');
@@ -2473,6 +2679,24 @@ const haken = {
       }
     }
     return { x: P.x[best]!, y: P.y[best]! };
+  },
+  /** der Pinsel (Phase 6): Radius (Werk), der Punkt, den er fassen würde, ob er zieht, Höhenlinien, Hauch, Blatt des Zugs */
+  pinsel: (radius?: number) => {
+    if (radius !== undefined) pinselRadius = radius;
+    return {
+      radius: pinselRadius,
+      ziel: pinselZiel ? { id: pinselZiel.id, i: pinselZiel.i, m: pinselZiel.m } : null,
+      zug: pinselZug !== null,
+      blatt: pinselZug?.F.a ?? null,
+      hoehen: hoehenTon,
+      hauch: hauch.staerke,
+      oAn: werk.G.oAn,
+    };
+  },
+  /** wo ein Ort des Werks (wie gezeigt) im Bild liegt (CSS-Pixel) */
+  werkImBild: (q: { x: number; y: number; z: number }): { x: number; y: number } => {
+    const [x, y] = projizieren(werkInWelt(q), vpJetzt());
+    return { x: x / D, y: y / D };
   },
   /** P an oder aus (wie die Taste P) */
   stift: (an: boolean): boolean => {

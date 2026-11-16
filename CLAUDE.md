@@ -19,7 +19,8 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   Aufblasen die Haut des Werks. Phase 5.1 und 5.2 (16.11. mittags): seine Formen laden (Menü „Ozzy“ → Laden, `?form=<Name>`); alle
   Linien des Werks auf Wänden, Feldern und eingerastet, bedient wie in der Linien-Studie (`werkBlatt.ts`: die Schnittstelle `Raum` der
   Studie aus dem Werk); 5.3 P (Form und Abzweigung) und Freihand; 5.4 Maul (Tropfen „Maul“), „Fressen“ mit Reglern, Pose wie im
-  Prüffenster. Phase 5 steht; sein Urteil steht aus. **Florian (16.11.): Am Rechenkern ändert Ozzy nichts und optimiert nichts, das macht die Kern-Sitzung; kein Unterschied
+  Prüffenster. Phase 6: Pinsel „Ziehen“ an der Blase (Einfluss O des Werks am nächsten Punkt einer Linie), Höhenlinien beim
+  Pinseln. Phasen 5 und 6 stehen; sein Urteil steht aus. **Florian (16.11.): Am Rechenkern ändert Ozzy nichts und optimiert nichts, das macht die Kern-Sitzung; kein Unterschied
   zwischen seinen Kurven und dem Modell wie in Sitzung 4.**
 - **Der Kern** („Kurven als Wahrheit“, seit 05.11.): Linien (Loops mit Bézier-Punkten und Griffen, Kreuzungen, Kante an/aus) sind
   die Wahrheit; darunter ein dichtes Dreiecksnetz, dessen Haut aus den Linien gerechnet wird; gespiegelt; Maul; Fressen-Pose.

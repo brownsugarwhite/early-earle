@@ -158,6 +158,7 @@ uniform float uDeckung;
 uniform vec3 uHauch;
 uniform float uHauchStaerke;
 uniform float uHauchRadius;
+uniform float uHoehen;
 uniform vec2 uWind;
 uniform float uDicke;
 uniform float uSpannung;
@@ -264,6 +265,19 @@ vec3 horizont(vec3 r, float versatz) {
   return c;
 }
 
+// Höhenlinien (die Linien der Fassung 3) als Überlagerung der anderen Fassungen: Farbe und Deckung (Ozzy: beim Pinseln, uHoehen)
+vec4 hoehenLinien(float hauch) {
+  float dIso = (60.0 + 1650.0 * pow(vHoehe, 0.85)) * pow(max(vDehnung, 0.12), -uSpannung) * (1.0 - 0.45 * hauch) * (1.0 + 0.05 * rauschen(vec3(vBlatt * 2.0, uZeit * 0.05)));
+  float v = dIso / 75.0;
+  float fw = fwidth(v);
+  float linie = 1.0 - smoothstep(0.0, 1.35 * fw, abs(fract(v + 0.5) - 0.5));
+  linie *= 1.0 - smoothstep(0.22, 0.45, fw);
+  vec3 farbe = tafel(floor(v + 0.5) * 75.0);
+  farbe = farbe / max(0.2, max(farbe.r, max(farbe.g, farbe.b)));
+  farbe = uNacht == 1 ? farbe : farbe * 0.82;
+  return vec4(farbe, linie * 0.92 * uHoehen);
+}
+
 void main() {
   vec3 N = normalize(vNormal);
   if (!gl_FrontFacing) N = -N;
@@ -296,8 +310,14 @@ void main() {
     vec3 Rf = film * (0.077 * uSicht) * (F / 0.02);
     Rf = mix(Rf, vec3(F), clamp(F * 1.4, 0.0, 1.0));
     Rf = min(Rf, vec3(1.0)) * a;
-    if (uPass == 1) gl_FragColor = vec4(vec3(1.0) - Rf * (uNacht == 1 ? 1.0 : 1.0), 1.0);
-    else gl_FragColor = vec4(Rf * atelier(R), 1.0);
+    if (uPass == 1) {
+      vec3 t = vec3(1.0) - Rf;
+      if (uHoehen > 0.001) {
+        vec4 h = hoehenLinien(hauch);
+        t *= mix(vec3(1.0), h.rgb, h.a * a);
+      }
+      gl_FragColor = vec4(t, 1.0);
+    } else gl_FragColor = vec4(Rf * atelier(R), 1.0);
     return;
   }
   if (uFassung == 2) {
@@ -309,8 +329,14 @@ void main() {
     vec3 film = tafel(opd);
     vec3 tint = mix(vec3(1.0), film / max(0.35, dot(film, vec3(0.3333))), 0.08);
     vec3 Rf = vec3(F) * tint * a;
-    if (uPass == 1) gl_FragColor = vec4(vec3(1.0) - Rf, 1.0);
-    else gl_FragColor = vec4(Rf * env, 1.0);
+    if (uPass == 1) {
+      vec3 t = vec3(1.0) - Rf;
+      if (uHoehen > 0.001) {
+        vec4 h = hoehenLinien(hauch);
+        t *= mix(vec3(1.0), h.rgb, h.a * a);
+      }
+      gl_FragColor = vec4(t, 1.0);
+    } else gl_FragColor = vec4(Rf * env, 1.0);
     return;
   }
   vec3 L = normalize(vec3(-0.45, 0.68, 0.58));
@@ -339,6 +365,10 @@ void main() {
     // Glanz: ein harter Fleck, im Licht
     float glanz = step(0.985, dot(R, normalize(vec3(-0.52, 0.6, 0.6))));
     c = mix(c, vec3(1.0), glanz * 0.85);
+    if (uHoehen > 0.001) {
+      vec4 h = hoehenLinien(hauch);
+      c = mix(c, h.rgb, h.a);
+    }
     gl_FragColor = vec4(c * uDeckung * a, uDeckung * a);
     return;
   }
@@ -390,6 +420,8 @@ export interface HautWerte {
   nacht: boolean;
   /** Farbe des Papiers (Ozzy: in der Pose leicht getönt); fehlt: weiß */
   papier?: Color | null;
+  /** 0..1: die Höhenlinien über der Fassung (Ozzy: beim Pinseln); fehlt: 0 */
+  hoehen?: number;
   zeit: number;
   /** 0..1: Anteil der Vorderseite (Einblenden) und der Rückseite (erst wenn sie sich löst); Rest im Rahmen (0 = weg) */
   vorn: number;
@@ -500,6 +532,7 @@ export class Haut {
           uHauch: { value: new Vector3(1e6, 1e6, 1e6) },
           uHauchStaerke: { value: 0 },
           uHauchRadius: { value: 60 },
+          uHoehen: { value: 0 },
           uWind: { value: new Vector2() },
           uDicke: { value: 520 },
           uSpannung: { value: 1 },
@@ -682,6 +715,7 @@ export class Haut {
       (u.uHauch!.value as Vector3).copy(w.hauch);
       u.uHauchStaerke!.value = w.hauchStaerke;
       u.uHauchRadius!.value = w.hauchRadius;
+      u.uHoehen!.value = w.hoehen ?? 0;
       (u.uWind!.value as Vector2).copy(w.wind);
       u.uDicke!.value = w.dicke;
       u.uSpannung!.value = w.spannung;
