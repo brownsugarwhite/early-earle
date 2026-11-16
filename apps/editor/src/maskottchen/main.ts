@@ -66,7 +66,7 @@ function gelaendeZeichnen(sp: Spieler): void {
 }
 /** Einblendungen am Kopf: „Wuff!“, Zzz, ? */
 function einblenden(p: Pose, clip: string, t: number, dy = 0): void {
-  const c = buehne.ctx;
+  const c = buehne.schriftCtx;
   const [kx, ky] = figur.kopfPunkt(p);
   const y = ky + dy;
   c.save();
@@ -306,6 +306,7 @@ function videoAufnehmen(): void {
   aufnahme = new MediaRecorder(strom, art ? { mimeType: art, videoBitsPerSecond: 6_000_000 } : undefined);
   aufnahme.ondataavailable = (e) => e.data.size && teile.push(e.data);
   aufnahme.onstop = () => {
+    buehne.inGrund = false;
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob(teile, { type: aufnahme?.mimeType || 'video/webm' }));
     a.download = `ozzy-filmstreifen.${(aufnahme?.mimeType ?? '').includes('mp4') ? 'mp4' : 'webm'}`;
@@ -315,6 +316,8 @@ function videoAufnehmen(): void {
   };
   filmSchleife = false;
   filmStart();
+  // aufgenommen wird der Grund: die Figur dorthin kopieren
+  buehne.inGrund = true;
   aufnahme.start();
   filmAufbauen();
 }
@@ -424,7 +427,7 @@ function spielenBild(dt: number): void {
   figurZeichnen(p, -spiel.hoehe);
   einblenden(p, spiel.spieler.clipName, spiel.spieler.clipZeit, -spiel.hoehe);
   if (spiel.meldung) {
-    const c = buehne.ctx;
+    const c = buehne.schriftCtx;
     buehne.bildschirm(c);
     c.fillStyle = buehne.farben.schwarz;
     c.font = '400 34px Lobster, Georgia, serif';
@@ -524,6 +527,9 @@ let angehalten = false;
 /** Raster aus Posen zeichnen: je Feld ein Weltausschnitt [x0, y0, x1, y1] */
 function blattZeichnen(posen: Pose[], texte: string[], spalten: number, rahmen: [number, number, number, number], ueber: number[][][] = []): void {
   angehalten = true;
+  // jede Figur in den Grund kopieren: Ausschnitt je Feld, Vorlage und Schrift liegen darüber
+  const inGrund = buehne.inGrund;
+  buehne.inGrund = true;
   const zeilen = Math.ceil(posen.length / spalten);
   const fw = buehne.breite / spalten;
   const fh = buehne.hoehe / zeilen;
@@ -576,6 +582,7 @@ function blattZeichnen(posen: Pose[], texte: string[], spalten: number, rahmen: 
     c.strokeStyle = 'rgba(31,26,23,0.08)';
     c.strokeRect(sx, sy, fw, fh);
   });
+  buehne.inGrund = inGrund;
 }
 function clipPosen(name: string, bilder: number, abstand: number, von = 'stehen', mitlaufen = true): Pose[] {
   const sp = new Spieler(figur, von);

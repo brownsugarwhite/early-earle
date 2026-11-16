@@ -17,8 +17,6 @@ export interface Zeichenteil {
   p: Float32Array;
   n: number;
   tiefe: number;
-  /** über dem Gesicht zeichnen (nicht nur in der flüssigen Maske), mit weißem Rand dieser Breite (Welt-Einheiten) */
-  rand?: number;
   /** scharf zeichnen (nicht in der flüssigen Maske), vor dem Gesicht: der Kinnhaken mit seiner spitzen Ecke */
   scharf?: boolean;
 }

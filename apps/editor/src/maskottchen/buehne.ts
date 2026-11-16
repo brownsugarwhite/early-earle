@@ -1,5 +1,6 @@
-// Bühne: drei Ebenen übereinander. Grund (2D: Papier, Level, Bodenlinie), Figur (WebGL: flüssig geglättet, oder direkt auf dem
-// Grund), Oben (2D: Sprechblasen, Staub, Zzz). Kamera: Welt in Logo-Koordinaten → Bildschirm.
+// Bühne: drei Ebenen übereinander. Grund (2D: Papier, Level, Bodenlinie), Figur (WebGL2: flüssig geglättet, ganz auf der
+// Grafikkarte), Oben (2D: Wuff!, Zzz, Meldungen). Kamera: Welt in Logo-Koordinaten → Bildschirm.
+// Für Prüfblätter und Aufnahmen (`inGrund`) wird jede Figur in den Grund kopiert, damit Ausschnitte und Linien darüber stimmen.
 import type { Zeichenteil } from './figur';
 import { Fluessig } from './fluessig';
 import { type Farben, pfadAus, zeichneTeile } from './zeichnen';
@@ -9,9 +10,9 @@ export class Buehne {
   readonly ctx: CanvasRenderingContext2D;
   readonly oben: HTMLCanvasElement;
   readonly obenCtx: CanvasRenderingContext2D;
-  private quelle = document.createElement('canvas');
-  private quelleCtx = this.quelle.getContext('2d')!;
   private fluessig: Fluessig | null = null;
+  /** Figuren in den Grund kopieren (Prüfblätter, Aufnahme), statt sie auf ihrer eigenen Ebene zu lassen */
+  inGrund = false;
   breite = 1;
   hoehe = 1;
   dpr = 1;
@@ -25,7 +26,6 @@ export class Buehne {
   glatt = 5;
   /** zur Fehlersuche: Teile bunt und durchscheinend zeichnen */
   bunt = false;
-  private figurGezeichnet = false;
 
   constructor(grund: HTMLCanvasElement, figurEbene: HTMLCanvasElement, oben: HTMLCanvasElement) {
     this.grund = grund;
@@ -36,8 +36,8 @@ export class Buehne {
       this.fluessig = new Fluessig(figurEbene);
     } catch {
       this.fluessig = null;
+      figurEbene.style.display = 'none';
     }
-    figurEbene.style.display = 'none';
     new ResizeObserver(() => this.groesse()).observe(grund);
     this.groesse();
   }
@@ -53,10 +53,16 @@ export class Buehne {
     this.hoehe = Math.max(1, r.height);
     const w = Math.round(this.breite * this.dpr);
     const h = Math.round(this.hoehe * this.dpr);
-    for (const c of [this.grund, this.oben, this.quelle]) {
+    for (const c of [this.grund, this.oben]) {
       if (c.width !== w) c.width = w;
       if (c.height !== h) c.height = h;
     }
+    this.fluessig?.groesse(w, h);
+  }
+
+  /** Ebene für Schrift über der Figur (Wuff!, Zzz, Meldungen): oben, oder der Grund, wenn die Figur dort liegt */
+  get schriftCtx(): CanvasRenderingContext2D {
+    return this.inGrund || !this.fluessigAn || this.bunt ? this.ctx : this.obenCtx;
   }
 
   /** Kamera so setzen, dass der Weltrahmen [x0, y0, x1, y1] mit Rand hineinpasst */
@@ -83,9 +89,7 @@ export class Buehne {
     c.fillRect(0, 0, this.grund.width, this.grund.height);
     this.obenCtx.setTransform(1, 0, 0, 1, 0, 0);
     this.obenCtx.clearRect(0, 0, this.oben.width, this.oben.height);
-    this.quelleCtx.setTransform(1, 0, 0, 1, 0, 0);
-    this.quelleCtx.clearRect(0, 0, this.quelle.width, this.quelle.height);
-    this.figurGezeichnet = false;
+    this.fluessig?.leeren();
     this.welt();
   }
 
@@ -93,7 +97,6 @@ export class Buehne {
   welt(): void {
     this.transform(this.ctx);
     this.transform(this.obenCtx);
-    this.transform(this.quelleCtx);
   }
 
   /** Transform für Bildschirmkoordinaten (CSS-Pixel) */
@@ -102,7 +105,8 @@ export class Buehne {
   }
 
   /** Eine Figur zeichnen. Flüssig: die schwarzen Teile hinter dem Gesicht als eine Maske verschmelzen (Kehlen zwischen den
-   *  Teilen, Spitzen bleiben spitz), dann Gesicht, Fenster, Loch und Nase scharf darüber. Gilt die aktuelle Transformation von ctx. */
+   *  Teilen, Spitzen bleiben spitz), dann Gesicht, Fenster, Loch und Nase scharf darüber. Gilt die aktuelle Transformation von ctx
+   *  (auch auf der Ebene der Figur). */
   figur(teile: Zeichenteil[]): void {
     if (this.bunt) {
       // zur Fehlersuche: jedes Teil in eigener Farbe, durchscheinend, mit Umriss
@@ -139,34 +143,25 @@ export class Buehne {
       zeichneTeile(this.ctx, teile, this.farben);
       return;
     }
-    // vorn: Gesicht, Fenster, Loch, Nase und alles mit Rand; die Nase verschmilzt zusätzlich mit dem Haar (in der Maske)
-    const vorn = (t: Zeichenteil) => t.farbe === 'weiss' || t.name === 'nase' || !!t.rand || !!t.scharf;
-    const q = this.quelleCtx;
-    q.setTransform(1, 0, 0, 1, 0, 0);
-    q.clearRect(0, 0, this.quelle.width, this.quelle.height);
-    q.setTransform(this.ctx.getTransform());
-    zeichneTeile(q, teile.filter((t) => t.farbe === 'schwarz' && !t.scharf), { schwarz: '#000000', weiss: '#000000' });
-    const sigma = this.glaette * this.kamera.massstab * this.dpr;
-    this.fluessig!.zeichnen(this.quelle, sigma, this.farben.schwarz, 0.5, this.glatt * this.kamera.massstab * this.dpr);
-    const c = this.ctx;
-    c.save();
-    c.setTransform(1, 0, 0, 1, 0, 0);
-    c.drawImage(this.fluessig!.leinwand, 0, 0);
-    c.restore();
-    for (const t of teile) {
-      if (!vorn(t)) continue;
-      c.beginPath();
-      pfadAus(t, c);
-      if (t.rand) {
-        c.lineJoin = 'round';
-        c.lineWidth = t.rand * 2;
-        c.strokeStyle = this.farben.weiss;
-        c.stroke();
-      }
-      c.fillStyle = t.farbe === 'schwarz' ? this.farben.schwarz : this.farben.weiss;
-      c.fill('nonzero');
+    const fl = this.fluessig!;
+    const massstab = this.kamera.massstab * this.dpr;
+    fl.figur(
+      teile,
+      this.ctx.getTransform(),
+      { sigma: this.glaette * massstab, sigmaGlatt: this.glatt * massstab, schwelle: 0.5, schwarz: this.farben.schwarz, weiss: this.farben.weiss },
+      // in der Maske: alle schwarzen Teile außer dem Kinnhaken
+      (t) => t.farbe === 'schwarz' && !t.scharf,
+      // vorn: Gesicht, Fenster, Loch, Nase (verschmilzt zusätzlich mit dem Haar) und der Kinnhaken
+      (t) => t.farbe === 'weiss' || t.name === 'nase' || !!t.scharf,
+    );
+    if (this.inGrund) {
+      const c = this.ctx;
+      c.save();
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.drawImage(fl.leinwand, 0, 0);
+      c.restore();
+      fl.leeren();
     }
-    this.figurGezeichnet = true;
   }
 
   /** (früher die zweite Ebene; jetzt wird jede Figur sofort fertig gezeichnet) */
