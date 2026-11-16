@@ -230,7 +230,14 @@ gezeichneten Kugel (nur die Linie der Mitte) fasst er deshalb nur nahe am Umriss
 
 ## Was noch fehlt (Stand 16.11. nachmittags; Florian: „wenn ich es mir ansehe fehlt noch einiges“)
 
-**Seine Rückmeldung danach und der Plan, wie es weitergeht (zur Freigabe):**
+**Stand nach dem neuen Plan (16.11. abends):** S1 gemessen, S2 und S3 zum Teil gebaut: Messblatt
+[`2026-11-16-messen.md`](../../progress/ozzy/2026-11-16-messen.md) (Werkzeug `__ozzy.messen`, Probe `ozzy-messen.mjs`). Die Haut
+springt beim Netzwechsel des Werks nicht mehr (Muster und Dehnung weitergereicht, `werkHaut.ts`), an der Übergabe beim Aufblasen nimmt
+sie beides von der Blase; in der Ruhe läuft kein Bild mehr, Drehen und Vier Ansichten 2,5 bis 4 ms je Bild, der Nachklang nach einem
+Handgriff 0,3 ms. Offen in S3: im Zug die Runde des Werks (rund 6 ms, Kern-Sitzung) und die glatte Anzeige (rund 5 ms). Nächster
+Schritt: S4.
+
+**Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**
 [`docs/plans/2026-11-16-ozzy-weiter.md`](../../plans/2026-11-16-ozzy-weiter.md): Schritte S1 bis S13 (Messen, Seifenhaut gleitet, Tempo,
 Drehen und Einrasten in jeder Ansicht mit Wenden, Lasso L, Richtungen und Animationen wie in der Studie, Verdecktes grün, P statt L,
 Start ohne Linie, Auffalten der Ecke, Sichern, iPad mit Stift, liquid drop), Ideen und sechs Fragen. Die Liste unten bleibt als

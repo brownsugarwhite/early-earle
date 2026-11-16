@@ -32,6 +32,24 @@ type Plan = {
   dehnung: Float32Array;
 };
 
+/** woher Muster und Dehnung kommen: Lagen (Werk) mit Lage im Blatt und Dehnung je Punkt (ein alter Plan oder die Blase) */
+type Quelle = { lagen: Float64Array; blattX: Float32Array; blattY: Float32Array; dehnung: Float32Array };
+
+/** jeder Punkt des Plans nimmt Muster und Dehnung vom nächsten Punkt der Quelle (der Bezug der Dehnung folgt daraus; Fläche vorher rechnen) */
+function uebernehmen(p: Plan, q: Quelle): void {
+  const L = p.lagen;
+  const N = p.quelle.length;
+  const naechster = naechsteSuche(q.lagen);
+  for (let d = 0; d < N; d++) {
+    const o = naechster(L[3 * d]!, L[3 * d + 1]!, L[3 * d + 2]!);
+    p.blattX[d] = q.blattX[o]!;
+    p.blattY[d] = q.blattY[o]!;
+    const de = Math.max(0.05, q.dehnung[o]!);
+    p.bezug[d] = p.flaeche[d]! / de;
+    p.dehnung[d] = de;
+  }
+}
+
 /**
  * Nächster Punkt einer Punktwolke (je drei Zahlen), über ein Gitter: Zelle so groß wie der mittlere Abstand, gesucht in wachsenden
  * Schalen. Für das Weiterreichen beim Netzwechsel (einmal je Wechsel, nicht je Bild).
@@ -117,6 +135,8 @@ export class WerkHaut {
   private alt: Plan | null = null;
   /** Bezug der Muster für diese Form (Mitte und Halbmesser im Blatt), fest, solange es dieselbe Form ist */
   private blattBezug: { cx: number; cy: number; r: number } | null = null;
+  /** beim nächsten Rechnen: Muster und Dehnung von der Blase der Studie übernehmen (die Übergabe beim Aufblasen) */
+  private blase: Quelle | null = null;
   private kanten: { index: Uint32Array; liste: Int32Array } | null = null;
 
   /** Neues Netz im Werk (nach `geometrieNeu`): Der Plan wird beim nächsten Rechnen neu angelegt */
@@ -124,6 +144,26 @@ export class WerkHaut {
     // der alte Plan bleibt bis zum neuen: Muster und Dehnung gehen an derselben Stelle weiter (S2, kein Sprung beim Netzwechsel)
     if (this.p) this.alt = this.p;
     this.p = null;
+  }
+
+  /**
+   * Die Übergabe von der Blase (S2): Beim nächsten Rechnen nimmt jeder Punkt der Anzeige Muster und Dehnung vom nächsten Punkt der
+   * Blase (ihre Lagen in der Welt, hier ins Werk umgerechnet), damit die Seifenhaut an der Übergabe gleich aussieht.
+   */
+  vonBlase(pos: ArrayLike<number>, blatt: ArrayLike<number>, dehnung: ArrayLike<number>, anzahl: number): void {
+    const lagen = new Float64Array(3 * anzahl);
+    const blattX = new Float32Array(anzahl);
+    const blattY = new Float32Array(anzahl);
+    const de = new Float32Array(anzahl);
+    for (let i = 0; i < anzahl; i++) {
+      lagen[3 * i] = (pos[3 * i]! - this.mitte.x) * this.f;
+      lagen[3 * i + 1] = (pos[3 * i + 1]! - this.mitte.y) * this.f;
+      lagen[3 * i + 2] = pos[3 * i + 2]! * this.f;
+      blattX[i] = blatt[2 * i]!;
+      blattY[i] = blatt[2 * i + 1]!;
+      de[i] = dehnung[i]!;
+    }
+    this.blase = { lagen, blattX, blattY, dehnung: de };
   }
 
   /** eine neue Form (aus der Silhouette, geladen, neu): Muster und Dehnung beginnen von vorn */
@@ -249,15 +289,7 @@ export class WerkHaut {
     const N = p.quelle.length;
     this.flaecheRechnen(p);
     if (alt && alt.lagen.length >= 3) {
-      const naechster = naechsteSuche(alt.lagen);
-      for (let d = 0; d < N; d++) {
-        const o = naechster(L[3 * d]!, L[3 * d + 1]!, L[3 * d + 2]!);
-        p.blattX[d] = alt.blattX[o]!;
-        p.blattY[d] = alt.blattY[o]!;
-        const de = Math.max(0.05, alt.dehnung[o]!);
-        p.bezug[d] = p.flaeche[d]! / de;
-        p.dehnung[d] = de;
-      }
+      uebernehmen(p, alt);
       return;
     }
     if (!this.blattBezug) {
@@ -293,6 +325,13 @@ export class WerkHaut {
     const t0 = performance.now();
     this.lagenLesen(g, vorgabe);
     const L = g.lagen;
+    // die Übergabe von der Blase: Muster und Dehnung an derselben Stelle wie auf der Blase
+    if (this.blase) {
+      this.flaecheRechnen(g);
+      uebernehmen(g, this.blase);
+      this.blase = null;
+      this.letzte = null;
+    }
     // Liegt die Haut genau wie beim letzten Mal, klingt nur die Dehnung nach (S3: vorher jedes Bild die ganze glatte Anzeige neu, rund
     // 5 ms, 2,5 s lang nach jedem Handgriff): kein neues Glätten, kein neuer Umriss, nur die Dehnung
     const v = this.letzte;

@@ -688,7 +688,11 @@ function werkBild(dt: number, m: Moment | null): boolean {
   let w = 1;
   if (schnalz) {
     const roh = 1 - m.lage.rund;
-    if (!uebergabeStart) uebergabeStart = { T, w0: roh };
+    if (!uebergabeStart) {
+      uebergabeStart = { T, w0: roh };
+      // Muster und Dehnung der Haut des Werks von der Blase (Vorder- und Rückseite), damit die Seifenhaut an der Übergabe nicht wechselt
+      if (koerper && params.get('uebergabeMuster') !== '0') werkHaut.vonBlase(koerper.pos, koerper.blatt, koerper.dehnung, 2 * koerper.flach.n);
+    }
     const { w0, T: Th } = uebergabeStart;
     w = w0 < 0.8 ? (roh - w0) / (1 - w0) : glatt(Math.min(1, Math.abs(T - Th) / 0.4));
   }
