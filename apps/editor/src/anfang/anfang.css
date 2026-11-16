@@ -1,0 +1,201 @@
+/* Probe „Anfang einer Form“ (15.11.2026): ein fast leeres Blatt, die Bedienung so leise wie in der Linien-Probe */
+/* Lobster (Pablo Impallari, SIL OFL): Schrift für Überschriften im Editor und im Spiel (Florian, 15.11.) */
+@font-face {
+  font-family: 'Lobster';
+  src: url('../../../../assets/fonts/lobster/Lobster-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+:root {
+  --tinte: #1f1a17;
+  --leise: rgba(31, 26, 23, 0.46);
+  --haar: rgba(31, 26, 23, 0.14);
+  --papier: #ffffff;
+  color-scheme: light;
+}
+body.nacht {
+  --tinte: #f1ece3;
+  --leise: rgba(241, 236, 227, 0.5);
+  --haar: rgba(241, 236, 227, 0.18);
+  --papier: #121a28;
+  color-scheme: dark;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--papier);
+  color: var(--tinte);
+  font: 12px/1.4 system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+  overflow: hidden;
+  overscroll-behavior: none;
+  transition: background-color 300ms ease;
+}
+#buehne {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+#haut,
+#linien {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+#linien {
+  cursor: none;
+}
+#gruss {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Lobster', 'Iowan Old Style', Georgia, serif;
+  font-size: 46px;
+  font-weight: 400;
+  letter-spacing: 0.005em;
+  color: var(--tinte);
+  opacity: 1;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  transition:
+    opacity 420ms ease,
+    filter 420ms ease,
+    transform 520ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+#gruss.weg {
+  opacity: 0;
+  filter: blur(3px);
+  transform: translate(-50%, -54%);
+}
+#leiste > #hinweis {
+  flex: 1 0 100%;
+  text-align: center;
+  color: var(--leise);
+  pointer-events: none;
+  user-select: none;
+  min-height: 1.4em;
+  margin-bottom: 10px;
+}
+#leiste {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  pointer-events: none;
+}
+#leiste > * {
+  pointer-events: auto;
+}
+#leiste .titel {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+#leiste .wert {
+  color: var(--leise);
+  font-variant-numeric: tabular-nums;
+}
+#leiste .hilfe {
+  color: var(--leise);
+  flex: 1 1 260px;
+}
+#fassungen {
+  display: inline-flex;
+  gap: 4px;
+}
+button {
+  font: inherit;
+  color: var(--tinte);
+  background: transparent;
+  border: 0.5px solid var(--haar);
+  border-radius: 999px;
+  padding: 2px 9px;
+  cursor: pointer;
+}
+button:hover {
+  border-color: var(--tinte);
+}
+button[aria-pressed='true'] {
+  background: var(--tinte);
+  color: var(--papier);
+  border-color: var(--tinte);
+}
+#regler {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  bottom: 64px;
+  width: 248px;
+  overflow: auto;
+  background: color-mix(in srgb, var(--papier) 94%, transparent);
+  border: 0.5px solid var(--haar);
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+}
+#regler h3 {
+  font-size: 11px;
+  font-weight: 600;
+  margin: 10px 0 4px;
+  color: var(--leise);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+#regler h3:first-child {
+  margin-top: 0;
+}
+#regler label {
+  display: grid;
+  grid-template-columns: 1fr 44px;
+  gap: 0 6px;
+  align-items: center;
+  margin: 2px 0;
+}
+#regler label span.zahl {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--leise);
+}
+#regler input[type='range'] {
+  grid-column: 1 / 3;
+  width: 100%;
+  margin: 0;
+  accent-color: var(--tinte);
+}
+.regler-knoepfe {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+/* Titel im Film (?film=1&titel=…) */
+#titel {
+  position: fixed;
+  left: 130px;
+  top: 100px;
+  font: 15px/1.3 system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+  color: var(--leise);
+  pointer-events: none;
+}
+@media (max-width: 640px) {
+  #leiste .hilfe {
+    display: none;
+  }
+  #gruss {
+    font-size: 24px;
+  }
+}
+body.standbild #gruss {
+  transition: none;
+}
+body.bild #leiste,
+body.bild #hinweis {
+  display: none;
+}

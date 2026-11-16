@@ -37,6 +37,10 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   Schwellung verfeinert, seit 15.11. abends Auswahl und Werkzeug P wie Illustrator, in 2D und im Raum
   (`docs/plans/2026-11-15-auswahl-und-stift.md`); sein Urteil steht aus. Übergabe `docs/look/linien/UEBERGABE.md`. In den
   Editor erst danach.
+- **Strang „Anfang einer Form und Seifenhaut“ (eigene Sitzung, seit 15.11.):** leeres Blatt mit „draw a silhouette“, Loop mit P,
+  ↩: Der Rahmen wird schnell nach hinten gezogen, die Blase wächst von der Mitte, reißt am runden Hals ab und schnalzt in die
+  Form; Würfel mit weichen Schatten (höchstens drei Wände), Ansichten 1/3/7/0 und 4 (Runde 5). Probe `anfang.html` (Port 5203,
+  Arbeitsbaum `anfang`), Einstieg: [`docs/look/anfang/UEBERGABE.md`](docs/look/anfang/UEBERGABE.md). Sein Urteil steht aus.
 - **Eingefroren (Wissen, nicht weiterbauen):** der Käfig-Weg vom 13.10. bis 04.11. (`packages/shape/src/kern/`, der alte
   Electron-Editor `pnpm editor`) und `form.html`.
 - **Florians Testformen:** `wesen/` (teat firefish, strange bird, test_kaputt). Fertige Wesen gibt es nicht; die Formen sind
@@ -57,6 +61,7 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   hineinführen und Florian vorher sagen, dass sich sein Fenster ändert.
 - **`.claude/worktrees/form-bau`** (Zweig `claude/form-bau`, Port 5197, Eintrag `kurven-bau`): hier wird der Plan gebaut.
 - **`.claude/worktrees/look-linien`** (Zweig `claude/look-linien`, Port 5199, Eintrag `linien-look`): Probe „Linien, Punkte, Zeiger“.
+- **`.claude/worktrees/anfang`** (Zweig `claude/anfang`, Port 5203, Eintrag `anfang`): Anfang einer Form und Seifenhaut.
 - `early-earle-meshy` (Nachbarordner) sind Florians Meshy-Tests. Alte Stände liegen als Zweige `bergung/…`.
 
 ## Menschen
