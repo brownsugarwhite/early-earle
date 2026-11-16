@@ -13,6 +13,10 @@ Gedächtnis des Electron-Editors (Käfig-Zeit) liegt in `docs/verlauf/2026-11-12
   der Rechnung nichts (Florian, 16.11.); `neuAusUmriss` (Form aus einer Silhouette) ist ein neuer Handgriff aus bestehenden.
   **Ozzy** (`ozzy.html`, `src/ozzy/`) benutzt dasselbe Werk: Haken in `main.ts`, Schalter in `adresse.ts`, die glatte Anzeige in
   `werkHaut.ts` (aus `glattAnlegen`/`glattZeigen` von `kurven.ts` übernommen: Ändert sich die Anzeige dort, hier nachziehen).
+  Bearbeiten in Ozzy (Phase 5.2): `werkBlatt.ts` ist der `Raum` der Linien-Studie (`src/linien/verhalten.ts`) aus dem Werk: je Bild alle
+  Linien des Werks auf allen Flächen als ein Netz (Bildschirm), Ziehen und Drehen als Handgriffe des Werks mit Blattkoordinaten
+  (`zugStarten`, `griffZugStarten`, `zugBewegen`, `zugEnde`). Probe `scripts/pruefen/ozzy-bearbeiten-fenster.mjs` (vergleicht mit
+  `kurven.html`).
 - **`editor.html` + `src/form/editor.ts`, `blaupause.ts`, `lava.ts`:** derselbe Editor im Layout der Blaupause (`/editor`).
   Gehört der Design-Sitzung; nicht anfassen. `editor.ts` ist eine Kopie von `kurven.ts`.
 - **`form.html` + `src/form/main.ts`** und alles übrige unter `src/` (Electron-App, Käfig-Editor): eingefroren.

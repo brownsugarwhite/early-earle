@@ -97,6 +97,8 @@ await bild('3-seite');
 const oben = linie.punkte.reduce((a, b) => (b.y > a.y ? b : a));
 const p = await O('seitenPunktImBild', oben.i);
 await seite.mouse.move(p.x, p.y);
+// seit Phase 5.2 greift das Verhalten der Studie: Der Tropfen muss erst am Zeiger hängen (wie bei Florian: zeigen, dann drücken)
+await seite.waitForTimeout(350);
 await seite.mouse.down();
 for (let i = 1; i <= 15; i++) {
   await seite.mouse.move(p.x, p.y - 2 * i);

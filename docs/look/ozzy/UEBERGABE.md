@@ -1,4 +1,4 @@
-# Übergabe: Ozzy (Stand 16.11.2026, vormittags)
+# Übergabe: Ozzy (Stand 16.11.2026, mittags)
 
 Ozzy ist der Editor für Florians Formen aus einem Guss (Florian, 16.11.: Name „Ozzy“, Designsystem „liquid drop“). Plan mit seinem
 Auftrag wörtlich, Bestandsaufnahme, acht Grundsätzen und acht Phasen: [`docs/plans/2026-11-16-ozzy.md`](../../plans/2026-11-16-ozzy.md).
@@ -138,14 +138,64 @@ geschlossen ist und ruht); das Muster der Seifenhaut wechselt bei der Übergabe 
 der Form des Werks); der Umriss in Front und Top zeigt auch innere Kanten (Verdecktes kommt mit Phase 4); der Raum (Abstand der Wände)
 richtet sich noch nach der Blase der Studie.
 
+## Phase 5.1 und 5.2: Laden und Bearbeiten über das Werk (16.11. mittags, gebaut)
+
+Florian: „mach Phase 5“. Etappen im Plan (Abschnitt 8, Phase 5): 5.1 Laden, 5.2 Linien und Bedienung (gebaut), 5.3 P und Freihand,
+5.4 Maul und Pose (offen).
+
+**5.1 Laden:** Menü „Ozzy“ (oben links) → „Laden“ listet die Ablage (`wesen/`); oder `ozzy.html?form=<Name>`. `formLaden` in `main.ts`:
+Das Werk lädt die Form wie das Prüffenster (`wesenLaden`, auf das kleine Netz vergröbert), ihre Linie der Mitte kommt als Zeichnung
+aufs Blatt (ohne Linie der Mitte eine Ellipse um ihre Seite), die Form bläst auf wie eine gezeichnete, nach dem Abriss zeigt die
+Seifenhaut die Haut des Werks. `werkForm.geladen` verhindert, dass `werkFormAnlegen` die Form aus der Zeichnung neu anlegt; ändert man
+die Zeichnung auf dem Blatt, entsteht eine neue Form aus ihr (wie bei einer gezeichneten). **Der Raum folgt jetzt der Form des Werks**
+(`werkMasseWelt`, `raumRechnen`; nach einem Handgriff nur, wenn sich die Größe um mehr als das Band `bw.band` ändert): Vorher nahm er
+die Blase, und an „test_kaputt“ lief das Feld Top über.
+
+**5.2 Linien und Bedienung:** Die Linien-Studie hängt ihre Bedienung über die Schnittstelle `Raum` an ein fremdes Modell (so lief ihre
+3D-Probe `raum.ts`). `src/ozzy/werkBlatt.ts` ist dieser Raum aus dem Werk:
+- **Netz je Bild** (`bauen`): alle Linien des Werks auf allen Flächen, in Bildschirmpunkten. Flächen (`flaechenJetzt` in `main.ts`): die
+  sichtbaren Wände (Front an der Wand x, Top am Boden, Seite an der Wand z), die eingerastete Ansicht (Ebene durch die Mitte der Form)
+  und die drei Felder der Vier Ansichten (beim Auf- und Zuklappen zwischen Wand und Feld gemischt). Je Fläche das Blatt ihrer Achse wie
+  im Prüffenster (`werk.imBlatt`); ein Punkt des Werks ist auf jeder Fläche ein Anker, an einer Kreuzung teilen sich die Linien den
+  Anker, in Front und Top kommt das Spiegelbild dazu (auf der Mittelebene derselbe Anker). Die Linie wird im Blatt als Bézier-Stück
+  abgetastet und dann auf die Fläche gebracht (an der Wand perspektivisch genau); Arten: Linie der Mitte in der Seite Umriss, Kanten
+  Kante (verjüngt), sonst innen. Linien ohne Pfad (noch ohne Griffe) nur zu sehen.
+- **Bedienung:** ein zweites `Verhalten` in `main.ts` (`bearbeiten`, Raum-Modus). Es bekommt die Flächen nur, wenn sie stehen (keine
+  Fahrt, Vier ganz auf oder zu, eingerastet ganz oder gar nicht); dazwischen zeichnet Ozzy dieselben Linien schlicht. Punkt ziehen →
+  `zugStarten`/`zugBewegen`/`zugEnde` mit den Blattkoordinaten der Fläche (der Zug beginnt erst nach 3 px; der wartende Griff wie im
+  Prüffenster), Linie ziehen → der ganze Loop (wie im Prüffenster), mehrere gewählte → zusammen, Richtung (Nadel) → `griffZugStarten`
+  (die Studie dreht im Bildschirm, die Spitze des Griffs geht im Werk dorthin; ⌥ beim Drücken macht den Punkt zur Ecke), Doppelklick auf
+  die Richtung → `eckeUmschalten`, ⌫ → `loeschen` (geteilte Punkte bleiben, wie in der Studie), K → `kanteSetzen`, ⌘Z → im Werk zurück
+  (nie hinter die geladene oder aufgeblasene Form), ⌘A alle, Esc leert die Auswahl. Ins Leere: im Raum (und im Feld des Raums) drehen,
+  eingerastet und in den Feldern ein Rahmen (E2). Die Auswahl gilt je Punkt des Werks auf allen Flächen (`auswahlAbgleichen`).
+
+**Belegt:** Probe `apps/editor/scripts/pruefen/ozzy-bearbeiten-fenster.mjs` („test_kaputt“), alle sechs Kriterien: Laden wie im
+Prüffenster (Unterschied 0); Zug an der Wand der Seite genau 30 px wie die Maus, ein Schritt; ⌘Z genau; Zug an der Wand der Front und
+eine Richtung an der Wand der Seite (−89,3° → −108,3° im Blatt, die Gegenseite in der Flucht); **derselbe Ablauf im Prüffenster mit
+denselben Verschiebungen im Blatt gibt dieselben Punkte und Griffe (höchstens 0,000015 daneben) und gleich viele umgeschlagene Dreiecke
+(10 und 10)**; keine Fehler. Die Probe von Phase 3 (`ozzy-werk-fenster.mjs`) hält weiter. Von Hand im Fenster: Rahmen, Zug im Feld der
+Front, K, ⌫ an „strange bird“ (Punkt der Mitte weg, ⌘Z zurück). Bilder: [`2026-11-16-bearbeiten.png`](../../progress/ozzy/2026-11-16-bearbeiten.png)
+(„strange bird“: Raum, Tropfen an der Wand, Nadel eingerastet, Vier Ansichten; `scripts/pruefen/ozzy-bearbeiten-bilder.mjs`).
+
+**Was dabei auffiel (offen):**
+- Eine Wand, die man fast streifend sieht, ist sehr empfindlich: 25 px nach rechts an der Wand der Front verschoben „test_kaputt“ um 70
+  Einheiten in z (so rechnet die Perspektive). Genau arbeitet man eingerastet oder in den Feldern.
+- Wechselt eine Wand beim Drehen unter die halbe Stärke, verschwinden ihre Punkte auf einmal (die Linien werden weich dünner).
+- In der Pose (5.4) zeichnet `werkBlatt` die Stücke als Bézier aus gedrehten Punkten; wo sich der Winkel längs eines Stücks ändert,
+  braucht es die abgetasteten Stücke (`stueckeGezeigt`) wie im Prüffenster.
+- ⌥ während des Drehens (nicht beim Drücken) knickt noch nicht; Kippen aus der Ebene (⇧) gibt es auf den flachen Flächen nicht.
+- Der Ring eines Rings (offene Linie) teilt seine Enden auf der Mittelebene mit dem Spiegelbild: In Front und Top lassen sie sich mit ⌫
+  nicht löschen (die Studie lässt geteilte Punkte stehen), in der Seite schon.
+
 ## Was noch fehlt (nächste Schritte, Plan Abschnitt 8)
 
 1. ~~Phase 1, das Werk lösen~~: gebaut (oben). Kleiner Rest: `allesZeigen` tut in der Hülle Werk-Arbeit (Ozzy tut sie in seinem Haken
    nach).
 2. ~~Phase 3, die Form des Werks in Ozzy~~: gebaut (oben); Feinschliff offen.
-3. **Phase 5, Bearbeiten über das Werk:** an Wänden, Feldern und eingerastet: Auswahl, Griffe, Richtungen, P (Loop rundum statt L,
-   Form, Abzweigung), Freihand, Kante, ⌫; Front und Top bearbeitbar (dort gibt es noch keine Linien); Maul und Pose. Punkte der Seite
-   ziehen geht schon.
+3. **Phase 5, Bearbeiten über das Werk:** 5.1 Laden und 5.2 Linien und Bedienung gebaut (oben). Offen: **5.3 P und Freihand** (Form,
+   Abzweigung, Loop rundum wie L; die Studie hat dafür `StiftWerk` in derselben Schnittstelle, in `werkBlatt.ts` noch leer: dort die
+   Handgriffe des Werks `stiftDruecken`/`stiftFertig`, `abzweigBeginnen`/`abzweigungErstellen`, `loopSchneiden` anschließen),
+   **5.4 Maul und Pose** (E8), Sichern im Menü (Vorsicht: `wesen/` sind Florians Formen, nie überschreiben ohne Frage).
 4. Danach: Pinsel an der Blase (Phase 6: nur, was die Rechnung kann, also Ziehen wie O; Aufblasen, Absaugen, Glätten sind Arbeit
    der Kern-Sitzung), eine Leinwand für Haut und Linien, Würfel als Quader, Finger.
 
@@ -153,7 +203,9 @@ richtet sich noch nach der Blase der Studie.
 
 Blatt: P, N (Freihand), e (Ellipse), E (Würfel), V oder Esc (Auswahl); ↩ schließt eine Linie mit P, auf einer geschlossenen
 Silhouette bläst ↩ auf; ⌫ letzter Punkt oder Auswahl; ⌘Z. Raum: Ziehen ins Leere dreht (nahe einer Achse rastet es ein), Punkte der
-Seite ziehen (an der Wand, im Feld, eingerastet; das Werk rechnet), ⌘Z im Werk zurück, 1 Seite, 3 Front, 7 Top, 0 Raum (tippen
+Seite ziehen (an der Wand, im Feld, eingerastet; das Werk rechnet), seit 5.2 alle Linien auf allen Flächen: Punkte, Linien und
+Richtungen ziehen, Doppelklick auf eine Richtung Knick ↔ rund, ⌥ beim Drücken knickt, ins Leere eingerastet und in den Feldern ein
+Rahmen, K Kante, ⌫ löscht die Auswahl (ohne Auswahl Luft ablassen), Esc leert die Auswahl, ⌘A alle; Menü „Ozzy“ → Laden; ⌘Z im Werk zurück, 1 Seite, 3 Front, 7 Top, 0 Raum (tippen
 bleibt, halten schaut kurz hin), Tab Vier Ansichten, Rad zoomt (Pos1 passt ein), Leertaste noch einmal aufblasen, Esc zurück (Vier →
 Raum → Blatt), ⌫ Luft ablassen, M Fassung. Prüfhaken `window.__ozzy` (u. a. `werk()`, `seitenLinie()`, `uebergabePruefen()`,
 `werkGrenzen()`).
@@ -174,6 +226,10 @@ Raum → Blatt), ⌫ Luft ablassen, M Fassung. Prüfhaken `window.__ozzy` (u. a.
 - **Das Werk rechnet im Takt der Bilder und im Hintergrund.** Proben nie im Schnelldurchlauf (`vorspulen`), solange das Werk rechnet
   oder gleich danach gezogen wird: Ohne vergehende Zeit endete ein Zug einmal anders (zerrissene Haut). Ozzys Schleife läuft, solange
   das Werk beschäftigt ist (`werkBeschaeftigt`).
+- **Erst zeigen, dann drücken:** Das Verhalten der Studie greift nur, was im Bild davor unter dem Zeiger hing (`haengt`). Proben fahren
+  den Zeiger hin, warten rund 300 ms und drücken dann; ohne Warten zieht eingerastet ein Rahmen statt des Punkts.
+- **`werkBlatt.bauen` läuft jedes Bild** (alle Linien auf allen Flächen); die Nummern der Anker gelten nur, solange sich der Aufbau
+  nicht ändert (`struktur`). Wer Nummern über Bilder hinweg hält (Auswahl), gleicht über `auswahlAbgleichen` ab.
 - **Die Nummern der Punkte im Werk folgen nicht der Zeichnung** (die Linie der Mitte beginnt, wo der Schnitt beginnt). Punkte über
   `seitenLinie().punkte` suchen.
 - **`werkHaut.ts` ist die glatte Anzeige aus `kurven.ts` (`glattAnlegen`, `glattZeigen`).** Ändert die Kern-Sitzung sie dort, hier

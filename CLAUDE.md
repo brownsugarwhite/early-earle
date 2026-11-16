@@ -16,7 +16,9 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   Plan: [`docs/plans/2026-11-16-ozzy.md`](docs/plans/2026-11-16-ozzy.md). **Wo wir stehen und was als Nächstes kommt:
   [`docs/look/ozzy/UEBERGABE.md`](docs/look/ozzy/UEBERGABE.md).** Gebaut: Stand 0, Phase 1 (das Werk `src/form/werk.ts`).
   Phase 3: `neuAusUmriss` (Form aus der Silhouette, Weg A: die Form ist, was die Rechnung aus der Linie macht); Ozzy zeigt nach dem
-  Aufblasen die Haut des Werks, Wände und Ansichten seine Linie, Punkte der Seite zieht das Werk. **Florian (16.11.): Am Rechenkern ändert Ozzy nichts und optimiert nichts, das macht die Kern-Sitzung; kein Unterschied
+  Aufblasen die Haut des Werks. Phase 5.1 und 5.2 (16.11. mittags): seine Formen laden (Menü „Ozzy“ → Laden, `?form=<Name>`); alle
+  Linien des Werks auf Wänden, Feldern und eingerastet, bedient wie in der Linien-Studie (`werkBlatt.ts`: die Schnittstelle `Raum` der
+  Studie aus dem Werk). Nächstes: 5.3 P und Freihand, 5.4 Maul und Pose. **Florian (16.11.): Am Rechenkern ändert Ozzy nichts und optimiert nichts, das macht die Kern-Sitzung; kein Unterschied
   zwischen seinen Kurven und dem Modell wie in Sitzung 4.**
 - **Der Kern** („Kurven als Wahrheit“, seit 05.11.): Linien (Loops mit Bézier-Punkten und Griffen, Kreuzungen, Kante an/aus) sind
   die Wahrheit; darunter ein dichtes Dreiecksnetz, dessen Haut aus den Linien gerechnet wird; gespiegelt; Maul; Fressen-Pose.

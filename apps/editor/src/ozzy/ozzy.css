@@ -350,6 +350,15 @@ body.info #info {
   border-radius: 50%;
   background: var(--tinte);
 }
+.laden-liste {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 2px 0 8px;
+}
+.laden-liste .leer {
+  color: var(--haar);
+}
 .regler-knoepfe {
   display: flex;
   flex-wrap: wrap;

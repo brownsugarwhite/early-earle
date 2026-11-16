@@ -19,7 +19,7 @@
 
 // muss zuerst geladen werden: die Schalter des Werks in der Adresse
 import './adresse';
-import { eckenAuto } from '@ee/shape/dicht';
+import { eckenAuto, istEcke } from '@ee/shape/dicht';
 import { Color, Matrix4, Vector2, Vector3, WebGLRenderer } from 'three';
 import { glatt, type Masse, type Moment, moment } from '../anfang/aufblasen';
 import { FLACH, Koerper, netzAusUmriss } from '../anfang/form';
@@ -27,9 +27,10 @@ import { FASSUNGEN, type Fassung, Haut, type HautWerte } from '../anfang/haut';
 import { GRUNDWERTE as BLASE_GRUNDWERTE, REGLER as BLASE_REGLER, type Werte as BlasenWerte } from '../anfang/regler';
 import { FluessigeAnzeige, type Szene } from '../linien/fluessig';
 import { REGLER as LINIEN_REGLER } from '../linien/regler';
-import { GRUNDWERTE as LINIEN_GRUNDWERTE, type Werte as LinienWerte } from '../linien/verhalten';
+import { GRUNDWERTE as LINIEN_GRUNDWERTE, type Ansicht as LinienAnsicht, Verhalten, type Werte as LinienWerte } from '../linien/verhalten';
 import * as werk from '../form/werk';
 import { WerkHaut, mitteLinie, mittePfad } from './werkHaut';
+import { type Flaeche, WerkBlatt } from './werkBlatt';
 import { type Anker, Blatt, FREIHAND_GRUNDWERTE, type FreihandWerte, type Werkzeug } from './blatt';
 import { Kamera, perspektiveBei } from './kamera';
 import { Kapseln } from './kapseln';
@@ -166,7 +167,7 @@ const werkHaut = new WerkHaut();
  * Die Form im Werk: aus welcher Silhouette (Stand des Blatts) und wie viele Schritte für ⌘Z das Werk danach schon hatte (davor liegt
  * seine Startkugel, dorthin geht ⌘Z in Ozzy nicht).
  */
-let werkForm: { stand: number; zurueck: number } | null = null;
+let werkForm: { stand: number; zurueck: number; geladen?: string } | null = null;
 /** Übergabe von der Blase: je Rechenpunkt des Werks drei Punkte der Blase und ihre Gewichte */
 let uebergabe: { koerper: Koerper; haut: typeof werk.haut; idx: Int32Array; gew: Float32Array; lagen: Float64Array } | null = null;
 /** zeigt die Seifenhaut die Haut des Werks; muss sie neu gerechnet werden (auch: in den Stufen der Ruhe); wann zuletzt geändert */
@@ -176,6 +177,33 @@ let uebergabeStart: { T: number; w0: number } | null = null;
 let werkNeu = false;
 let werkVoll = false;
 let werkZuletzt = 0;
+
+// ---------- Bearbeiten über das Werk (Phase 5.2) ----------
+
+/**
+ * Die Linien des Werks auf Wänden, Feldern und in der eingerasteten Ansicht, bedient wie in der Linien-Studie: ein `Verhalten` im
+ * Raum-Modus, dessen Raum das Werk ist (`werkBlatt.ts`). Es bekommt die Flächen nur, wenn sie stehen (keine Fahrt, kein Wechsel);
+ * dazwischen zeichnet Ozzy dieselben Linien schlicht.
+ */
+const werkBlatt = new WerkBlatt(
+  () => ({ umriss: linienWerte.umriss, innen: linienWerte.innen, kanteMax: linienWerte.kanteMax, kanteMin: linienWerte.kanteMin }),
+  () => [zeiger.x, zeiger.y],
+  () => bearbeiten.alt,
+  () => werkForm?.zurueck ?? Number.POSITIVE_INFINITY,
+  () => {
+    werkNeu = true;
+    anstossen();
+  },
+);
+const bearbeiten = new Verhalten({ punkte: [], linien: [] }, linienWerte);
+bearbeiten.raum = werkBlatt;
+bearbeiten.werk = werkBlatt;
+const bearbeitenAnsicht: LinienAnsicht = { z: 1, ox: 0, oy: 0, dpr: 1, wachsen: false };
+/** hat das Verhalten in diesem Bild die Flächen (sie stehen); wurde auf ihm gedrückt */
+let bearbeitenAn = false;
+let bearbeitenGedrueckt = false;
+let bearbeitenStruktur = '';
+let werkWarBeschaeftigt = false;
 
 /** Rechnet das Werk noch (Zug, Nachlauf, Hintergrund, wartender Griff, Maul)? */
 const werkBeschaeftigt = (): boolean =>
@@ -240,7 +268,41 @@ let raum: Raum | null = null;
 let wandUnterZeiger = -1;
 const wandSicht = [0, 0, 0, 0, 0, 0];
 
-function raumRechnen(): void {
+/** Maße der Form des Werks in der Welt (Mitte, halbe Ausdehnungen; die Tiefe von der Mittelebene), wenn das Werk eine hat */
+function werkMasseWelt(): { cx: number; cy: number; rx: number; ry: number; tiefe: number } | null {
+  if (!werkForm) return null;
+  const P = werk.haut.pos;
+  if (!P.length) return null;
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  let y0 = Infinity;
+  let y1 = -Infinity;
+  let z = 0;
+  for (let i = 0; i < P.length; i += 3) {
+    x0 = Math.min(x0, P[i]!);
+    x1 = Math.max(x1, P[i]!);
+    y0 = Math.min(y0, P[i + 1]!);
+    y1 = Math.max(y1, P[i + 1]!);
+    z = Math.max(z, Math.abs(P[i + 2]!));
+  }
+  const f = werkHaut.f;
+  return { cx: (x0 + x1) / 2 / f + werkHaut.mitte.x, cy: (y0 + y1) / 2 / f + werkHaut.mitte.y, rx: (x1 - x0) / 2 / f, ry: (y1 - y0) / 2 / f, tiefe: z / f };
+}
+
+/**
+ * Der Raum um die Form: Mitte, Abstand der Wände, Maße. Hat das Werk die Form, nach ihr (Phase 5: eine geladene Form ist oft tiefer als
+ * die Blase aus ihrer Seite), sonst nach der Blase. `band`: nur neu, wenn sich die Größe um mehr als diesen Anteil ändert oder die Mitte
+ * um mehr als ihn wandert (nach einem Zug: die Wände sollen nicht bei jedem Handgriff rücken).
+ */
+function raumRechnen(band = 0): void {
+  const w = werkMasseWelt();
+  if (w) {
+    const R = Math.max(w.rx, w.ry, w.tiefe, 1);
+    if (band > 0 && raum && Math.abs(R / raum.R - 1) <= band && Math.hypot(w.cx - raum.cx, w.cy - raum.cy) <= band * raum.R) return;
+    raum = { cx: w.cx, cy: w.cy, L: R * (1 + bw.waende), rx: w.rx, ry: w.ry, tiefe: w.tiefe, R };
+    massstab.ziel = (bw.groesse * Math.min(W, H)) / (2 * R);
+    return;
+  }
   if (!koerper) {
     raum = null;
     return;
@@ -373,7 +435,7 @@ function aufwaermen(): void {
  */
 function werkFormAnlegen(): void {
   if (!silhouette) return;
-  if (werkForm && werkForm.stand === blatt.stand && mitteLinie()) return;
+  if (werkForm && werkForm.stand === blatt.stand && (werkForm.geladen !== undefined || mitteLinie())) return;
   const ab = abtasten(silhouette, 2);
   let x0 = Infinity;
   let x1 = -Infinity;
@@ -406,6 +468,66 @@ function werkFormAnlegen(): void {
   uebergabe = null;
   werkNeu = true;
   if (!werkForm) console.warn(`Ozzy: ${text}`);
+}
+
+/** halbe Ausdehnung einer geladenen Form auf dem Blatt, als Anteil der kürzeren Seite des Fensters */
+const LADEN_GROESSE = 0.25;
+
+/**
+ * Eine gesicherte Form laden (Phase 5.1): Das Werk lädt sie wie das Prüffenster (`wesenLaden`, ein Schritt für ⌘Z dort). Ihre Linie
+ * der Mitte kommt als Zeichnung aufs Blatt (ohne Linie der Mitte: eine Ellipse um ihre Seite), und die Form bläst auf wie eine
+ * gezeichnete; nach dem Abriss zeigt die Seifenhaut die Haut des Werks. Das Werk legt dabei nichts neu an (`werkForm.geladen`):
+ * Solange die Zeichnung nicht geändert wird, bleibt die geladene Form mit allen Linien, auch nach Luftablassen und Aufblasen.
+ */
+async function formLaden(name: string): Promise<string> {
+  neu();
+  const text = await werk.wesenLaden(name);
+  if (!text.startsWith('geladen')) return text;
+  werk.anzeige.allesZeigen();
+  const P = werk.haut.pos;
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  let y0 = Infinity;
+  let y1 = -Infinity;
+  for (let i = 0; i < P.length; i += 3) {
+    x0 = Math.min(x0, P[i]!);
+    x1 = Math.max(x1, P[i]!);
+    y0 = Math.min(y0, P[i + 1]!);
+    y1 = Math.max(y1, P[i + 1]!);
+  }
+  const f = Math.max((x1 - x0) / 2, (y1 - y0) / 2, 1e-6) / (LADEN_GROESSE * Math.min(W, H));
+  werkHaut.f = f;
+  werkHaut.mitte = { x: -(x0 + x1) / 2 / f, y: -(y0 + y1) / 2 / f };
+  const bx = (x: number): number => W / 2 + x / f + werkHaut.mitte.x;
+  const by = (y: number): number => H / 2 - (y / f + werkHaut.mitte.y);
+  const m = mitteLinie();
+  let A: Anker[];
+  let ecken: boolean[];
+  if (m && m.l.punkte.length >= 2 && m.l.punkte.every((p) => p.ein && p.aus)) {
+    A = m.l.punkte.map((p) => ({ x: bx(p.ref.x), y: by(p.ref.y), ein: [p.ein!.x / f, -p.ein!.y / f], aus: [p.aus!.x / f, -p.aus!.y / f] }));
+    ecken = m.l.punkte.map((p) => istEcke(p));
+  } else {
+    const rx = (x1 - x0) / 2 / f;
+    const ry = (y1 - y0) / 2 / f;
+    const k = 0.5523;
+    const cx = W / 2;
+    const cy = H / 2;
+    A = [
+      { x: cx + rx, y: cy, ein: [0, k * ry], aus: [0, -k * ry] },
+      { x: cx, y: cy - ry, ein: [k * rx, 0], aus: [-k * rx, 0] },
+      { x: cx - rx, y: cy, ein: [0, -k * ry], aus: [0, k * ry] },
+      { x: cx, y: cy + ry, ein: [-k * rx, 0], aus: [k * rx, 0] },
+    ];
+    ecken = [false, false, false, false];
+  }
+  blatt.silhouetteErsetzen(A, ecken);
+  silhouette = blatt.silhouette();
+  netzBauen();
+  werkForm = { stand: blatt.stand, zurueck: werk.zurueck.length, geladen: name };
+  uebergabe = null;
+  werkNeu = true;
+  aufblasen();
+  return text;
 }
 
 /**
@@ -576,6 +698,8 @@ function aufblasen(): void {
   koerper.versatz.fill(0);
   raumRechnen();
   werkFormAnlegen();
+  // die Wände nach der Form des Werks
+  raumRechnen();
   massstab.jetzt = massstab.ziel;
   const ms0 = masse();
   koerper.setzen(moment(99, ms0, werte).lage);
@@ -887,6 +1011,10 @@ function bild(dt: number): boolean {
   }
   // das Werk: sein Bildtakt und, ab dem Abriss, seine Haut
   aktiv = werkBild(dt, m) || aktiv;
+  // hat das Werk nach einem Handgriff ausgerechnet: der Raum folgt der Form (nur bei großen Änderungen)
+  const beschaeftigt = werkBeschaeftigt();
+  if (werkWarBeschaeftigt && !beschaeftigt && zustand === 'ruhe') raumRechnen(bw.band);
+  werkWarBeschaeftigt = beschaeftigt;
   // Fahrt in eine Ansicht: Drehen und Parallele zugleich, die Größe bleibt
   if (ansichtFahrt) {
     ansichtFahrt.t += dt / Math.max(0.05, bw.fahrt);
@@ -989,12 +1117,19 @@ function bild(dt: number): boolean {
   } else {
     K.leeren();
     const vp = vpJetzt();
+    let zeigerBearbeiten: Szene['zeiger'] | undefined;
     if (koerper && raum && m) {
       wandLinien(vp, m);
       if (flach > 0.01) linienDerAnsicht(vp);
       if (vier > 0.02) felderLinien(vp);
     }
-    if (zeiger.da) K.felder.push(zeiger.x * D, zeiger.y * D, 22 * D, 0.7);
+    if (koerper && raum && m && werkGezeigt) {
+      const r = werkLinien(vp, m, dt);
+      zeigerBearbeiten = r.zeiger;
+      aktiv = r.aktiv || aktiv;
+    } else bearbeitenAn = false;
+    if (zeiger.da && !bearbeitenAn) K.felder.push(zeiger.x * D, zeiger.y * D, 22 * D, 0.7);
+    const zeigerZeigen = zeiger.da && (!document.body.classList.contains('bild') || mitZeigerImBild);
     szene = {
       prim: K.puffer,
       anzahl: K.n,
@@ -1003,7 +1138,7 @@ function bild(dt: number): boolean {
       felder: K.felder,
       tinte: TINTE,
       gruen: GRUEN,
-      zeiger: zeiger.da && (!document.body.classList.contains('bild') || mitZeigerImBild) ? zeigerForm(zeiger.x, zeiger.y) : null,
+      zeiger: !zeigerZeigen ? null : bearbeitenAn ? (zeigerBearbeiten ?? null) : zeigerForm(zeiger.x, zeiger.y),
     };
   }
   anzeige.zeichnen(szene);
@@ -1016,12 +1151,16 @@ function bild(dt: number): boolean {
         : ''
       : zustand === 'ruhe'
         ? vier > 0.5
-          ? 'Tab: zurück in den Raum · Tropfen in der Mitte ziehen: Felder · Punkte der Seite ziehen'
+          ? werkGezeigt
+            ? 'Punkte, Linien und Richtungen ziehen · ins Leere: Rahmen · K Kante · ⌫ löschen · ⌘Z · Tab: zurück in den Raum'
+            : 'Tab: zurück in den Raum · Tropfen in der Mitte ziehen: Felder · Punkte der Seite ziehen'
           : ansicht === 'raum'
             ? werkGezeigt
-              ? 'ziehen: drehen · Punkte an der Wand der Seite ziehen · ⌘Z · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
+              ? 'ins Leere ziehen: drehen · Punkte, Linien und Richtungen an den Wänden ziehen · K Kante · ⌫ löschen · ⌘Z · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
               : 'ziehen: drehen · an der Blase ziehen · Punkte an der Wand der Seite ziehen · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
-            : '0 Raum · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
+            : werkGezeigt
+              ? 'Punkte, Linien und Richtungen ziehen · ins Leere: Rahmen · K Kante · ⌫ löschen · ⌘Z · 0 Raum · 1 Seite · 3 Front · 7 Top'
+              : '0 Raum · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
         : '';
   if (hinweis.textContent !== h) hinweis.textContent = h;
   stat.bildMs = performance.now() - t0;
@@ -1090,6 +1229,8 @@ function wandLinien(vp: Matrix4, m: Moment): void {
   for (const achse of [0, 1, 2] as const) {
     const st = staerke[achse];
     if (st < 0.01) continue;
+    // mit dem Werk zeichnet `werkLinien` alle Linien; hier bleibt in Front und Top der Umriss der Haut
+    if (werkGezeigt && achse === 2) continue;
     const w = achse * 2 + (s[achse] > 0 ? 1 : 0);
     const ueber = wandSicht[w]!;
     const lage = mitte[achse]! + s[achse] * e.L;
@@ -1163,6 +1304,7 @@ function linienDerAnsicht(vp: Matrix4): void {
   const t = Math.min(1, Math.max(0, (blick.dot(achse) - 0.97) / 0.025));
   const s = flach * flach * t * t * (3 - 2 * t);
   if (s < 0.01) return;
+  if (werkGezeigt && ansicht === 'seite') return;
   const r0 = (linienWerte.umriss / 2) * D * s;
   const linie = ansicht === 'seite' ? seitenLinie(1.5) : null;
   if (linie) {
@@ -1219,6 +1361,7 @@ function felderLinien(vp: Matrix4): void {
     return [wx + (fx - wx) * v, wy + (fy - wy) * v];
   };
   for (const n of ['seite', 'front', 'top'] as const) {
+    if (werkGezeigt && n === 'seite') continue;
     const linie = n === 'seite' ? seitenLinie(2) : null;
     if (linie) {
       const xs: number[] = [];
@@ -1256,6 +1399,147 @@ function felderLinien(vp: Matrix4): void {
   K.push(rand * D, ty, (W - rand) * D, ty, rh, rh, g, 0, false);
   const anflug = teiler.zug ? 1 : teiler.ueber;
   K.punkt(tx, ty, linienWerte.punktRadius * D * (1 + (linienWerte.tropfen - 1) * anflug) * v);
+}
+
+// ---------- Linien des Werks auf den Flächen (Phase 5.2) ----------
+
+/** Blatt einer Achse (Einheiten des Werks, wie `werk.imBlatt`) → Welt, in der Ebene `lage` quer zur Achse */
+function blattInWelt(a: Flaeche['a'], X: number, Y: number, lage: number): Vector3 {
+  const f = werkHaut.f;
+  const { x: mx, y: my } = werkHaut.mitte;
+  return a === 'seite' ? new Vector3(X / f + mx, -Y / f + my, lage) : a === 'front' ? new Vector3(lage, -Y / f + my, X / f) : new Vector3(X / f + mx, lage, Y / f);
+}
+/** Welt → Blatt einer Achse */
+function weltInBlatt(a: Flaeche['a'], p: Vector3): [number, number] {
+  const f = werkHaut.f;
+  const { x: mx, y: my } = werkHaut.mitte;
+  return a === 'seite' ? [(p.x - mx) * f, -(p.y - my) * f] : a === 'front' ? [p.z * f, -(p.y - my) * f] : [(p.x - mx) * f, p.z * f];
+}
+const ACHSE_VON: Record<Flaeche['a'], 0 | 1 | 2> = { front: 0, top: 1, seite: 2 };
+const BLATT_DER_ACHSE: Flaeche['a'][] = ['front', 'top', 'seite'];
+
+/** eine Ebene quer zur Achse des Blatts (Wand oder eingerastete Ansicht), wie die Kamera sie sieht */
+function ebene(a: Flaeche['a'], lage: number, vp: Matrix4, staerke: number, breite: number): Flaeche {
+  const achse = ACHSE_VON[a];
+  return {
+    a,
+    staerke,
+    breite,
+    hin: (X, Y) => {
+      const [x, y] = projizieren(blattInWelt(a, X, Y, lage), vp);
+      return [x / D, y / D];
+    },
+    her: (x, y) => {
+      const { o, d } = kam.strahl(x, y, W, H);
+      const dd = achse === 0 ? d.x : achse === 1 ? d.y : d.z;
+      const oo = achse === 0 ? o.x : achse === 1 ? o.y : o.z;
+      if (Math.abs(dd) < 1e-9) return null;
+      return weltInBlatt(a, o.clone().addScaledVector(d, (lage - oo) / dd));
+    },
+  };
+}
+
+/** ein flaches Feld der Vier Ansichten; beim Auf- und Zuklappen zwischen Wand und Feld gemischt (wie `felderLinien`) */
+function feldFlaeche(n: FeldAchse, vp: Matrix4, F: ReturnType<typeof felder>, s4: number, v: number, sw: [number, number, number]): Flaeche {
+  const e = raum!;
+  const achse = ACHSE_VON[n];
+  const lage = [e.cx, e.cy, 0][achse]! + sw[achse] * e.L;
+  return {
+    a: n,
+    staerke: 1,
+    breite: 1,
+    hin: (X, Y) => {
+      const [fx, fy] = imFeld(n, blattInWelt(n, X, Y, 0), F, s4);
+      if (v > 0.999) return [fx / D, fy / D];
+      const [wx, wy] = projizieren(blattInWelt(n, X, Y, lage), vp);
+      return [(wx + (fx - wx) * v) / D, (wy + (fy - wy) * v) / D];
+    },
+    her: (x, y) => {
+      // ausFeld: Seite (x, y), Front (z, y), Top (x, z) der Welt
+      const [u, w] = ausFeld(n, x, y, F, s4);
+      return weltInBlatt(n, n === 'seite' ? new Vector3(u, w, 0) : n === 'front' ? new Vector3(0, w, u) : new Vector3(u, 0, w));
+    },
+  };
+}
+
+/** Flächen dieses Bilds mit den Linien des Werks, und ob sie stehen (dann bedient das Verhalten sie) */
+function flaechenJetzt(vp: Matrix4, m: Moment): { flaechen: Flaeche[]; stabil: boolean } {
+  const e = raum!;
+  const liste: Flaeche[] = [];
+  // Wände (wie `wandLinien`): die drei abgewandten, mit ihrer Stärke
+  const { s, staerke } = waendeJetzt(m);
+  for (const achse of [0, 1, 2] as const) {
+    if (staerke[achse] < 0.01) continue;
+    liste.push(ebene(BLATT_DER_ACHSE[achse]!, [e.cx, e.cy, 0][achse]! + s[achse] * e.L, vp, staerke[achse], bw.wandLinien));
+  }
+  // eingerastet (wie `linienDerAnsicht`): auf der Ebene durch die Mitte der Form
+  if (flach > 0.01 && ansicht !== 'raum') {
+    const blick = new Vector3();
+    kam.aktiv.getWorldDirection(blick);
+    const ach = ansicht === 'seite' ? new Vector3(0, 0, -1) : ansicht === 'front' ? new Vector3(1, 0, 0) : new Vector3(0, -1, 0);
+    const t = Math.min(1, Math.max(0, (blick.dot(ach) - 0.97) / 0.025));
+    const st = flach * flach * t * t * (3 - 2 * t);
+    if (st >= 0.01) liste.push(ebene(ansicht, ansicht === 'seite' ? 0 : ansicht === 'front' ? e.cx : e.cy, vp, st, 1));
+  }
+  // die drei flachen Felder
+  if (vier > 0.02) {
+    const F = felder();
+    const s4 = feldMassstab(F);
+    const g6 = wandGewichte();
+    const sw: [number, number, number] = [g6[0]! >= g6[1]! ? -1 : 1, g6[2]! >= g6[3]! ? -1 : 1, g6[4]! >= g6[5]! ? -1 : 1];
+    for (const n of ['seite', 'front', 'top'] as const) liste.push(feldFlaeche(n, vp, F, s4, glatt(vier), sw));
+  }
+  const ruhig = zustand === 'ruhe' && !ansichtFahrt && !vierFahrt;
+  const stabil = ruhig && (vier > 0.999 || (vier < 0.001 && (flach > 0.999 || flach < 0.001)));
+  return { flaechen: liste, stabil };
+}
+
+/**
+ * Die Linien des Werks auf allen Flächen. Stehen die Flächen, bedient das Verhalten der Linien-Studie sie (Linien, Punkte, Tropfen,
+ * Nadel, Auswahl, Zeiger); dazwischen zeichnet Ozzy dieselben Linien und Punkte schlicht.
+ */
+function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger'] | undefined; aktiv: boolean } {
+  const { flaechen, stabil } = flaechenJetzt(vp, m);
+  werkBlatt.bauen(flaechen);
+  bearbeitenAn = stabil;
+  if (!bearbeitenAn && bearbeitenGedrueckt) {
+    bearbeiten.loslassen();
+    bearbeitenGedrueckt = false;
+  }
+  // Linien ohne Pfad (noch keine Griffe): nur zu sehen
+  for (const r of werkBlatt.roh) {
+    const F = flaechen[r.fl]!;
+    K.zug(
+      r.x.map((v) => v * D),
+      r.y.map((v) => v * D),
+      (linienWerte.innen / 2) * D * F.breite * F.staerke,
+      false,
+    );
+  }
+  if (bearbeitenAn) {
+    if (werkBlatt.struktur !== bearbeitenStruktur) {
+      bearbeiten.tropfen = [];
+      bearbeitenStruktur = werkBlatt.struktur;
+    }
+    bearbeiten.setzeNetz(werkBlatt.netz, werkBlatt.proben);
+    bearbeiten.auswahl = werkBlatt.auswahlAbgleichen(bearbeiten.auswahl);
+    bearbeitenAnsicht.dpr = D;
+    bearbeiten.setzeAnsicht(bearbeitenAnsicht);
+    const aktiv = bearbeiten.schritt(dt);
+    const sz = bearbeiten.szene(bearbeitenAnsicht);
+    K.uebernehmen(sz);
+    return { zeiger: sz.zeiger, aktiv };
+  }
+  for (const P of werkBlatt.proben) {
+    const g = K.neueGruppe();
+    for (let j = 0; j + 1 < P.n; j++) K.push(P.x[j]! * D, P.y[j]! * D, P.x[j + 1]! * D, P.y[j + 1]! * D, P.halb[j]! * D, P.halb[j + 1]! * D, g, 0, false);
+  }
+  werkBlatt.netz.punkte.forEach((p, pi) => {
+    const A = werkBlatt.anker[pi]!;
+    const F = flaechen[A.fl]!;
+    if (A.zuSehen) K.punkt(p.x * D, p.y * D, linienWerte.punktRadius * D * Math.min(1, F.staerke));
+  });
+  return { zeiger: undefined, aktiv: false };
 }
 
 // ---------- Eingaben ----------
@@ -1298,7 +1582,8 @@ function einrasten(): void {
 
 /** Punkt der Silhouette unter dem Zeiger: an der Wand der Seite, in der eingerasteten Seite oder im Feld der Seite (−1 = keiner) */
 function punktSuchen(x: number, y: number): { i: number; ort: 'wand' | 'flach' | 'feld'; z: number } | null {
-  if (!raum || zustand !== 'ruhe') return null;
+  // mit dem Werk greift das Verhalten der Studie (`werkLinien`)
+  if (!raum || zustand !== 'ruhe' || werkGezeigt) return null;
   const linie = seitenLinie(4);
   if (!linie) return null;
   const vp = vpJetzt();
@@ -1468,6 +1753,16 @@ leinwandLinien.addEventListener('pointermove', (e) => {
     anstossen();
     return;
   }
+  // das Verhalten der Studie (Linien des Werks): Zeiger, Tropfen, Zug
+  if (zustand === 'ruhe' && werkGezeigt) {
+    bearbeiten.alt = e.altKey;
+    bearbeiten.umschalt = e.shiftKey;
+    bearbeiten.zeigerSetzen(x, y, x, y, dt);
+  }
+  if (bearbeitenGedrueckt) {
+    anstossen();
+    return;
+  }
   if (teiler.zug) {
     const rand = bw.vierRand;
     const oben = 64;
@@ -1551,6 +1846,22 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     anstossen();
     return;
   }
+  // Linien des Werks: Hängt ein Tropfen am Zeiger, gilt das Drücken ihm; ins Leere im Raum (und im Feld des Raums) dreht es, in einer
+  // flachen Ansicht zieht es einen Rahmen (E2)
+  if (bearbeitenAn) {
+    const R = vier > 0.5 ? felder().raum : null;
+    const imRaumFeld = !!R && x >= R.x && y >= R.y;
+    const imRaum = ansicht === 'raum' && flach < 0.5 && vier < 0.5;
+    if (bearbeiten.haengt || !(imRaum || imRaumFeld)) {
+      bearbeiten.alt = e.altKey;
+      bearbeiten.umschalt = e.shiftKey;
+      bearbeiten.zeigerSetzen(x, y, x, y, 0);
+      bearbeiten.druecken();
+      bearbeitenGedrueckt = true;
+      anstossen();
+      return;
+    }
+  }
   const p = punktSuchen(x, y);
   if (p) {
     punktZug = p;
@@ -1594,6 +1905,12 @@ const loslassen = (e: PointerEvent): void => {
     anstossen();
     return;
   }
+  if (bearbeitenGedrueckt) {
+    bearbeiten.loslassen();
+    bearbeitenGedrueckt = false;
+    anstossen();
+    return;
+  }
   if (drehen) einrasten();
   if (punktZug && werkGezeigt) {
     // losgelassen, bevor der Griff beginnen konnte: ein Klick (die Auswahl steht); sonst endet der Zug im Werk
@@ -1612,8 +1929,9 @@ const loslassen = (e: PointerEvent): void => {
 leinwandLinien.addEventListener('pointerup', loslassen);
 leinwandLinien.addEventListener('pointercancel', loslassen);
 leinwandLinien.addEventListener('pointerleave', () => {
-  if (drehen || zug || punktZug || teiler.zug) return;
+  if (drehen || zug || punktZug || teiler.zug || bearbeitenGedrueckt) return;
   zeiger.da = false;
+  bearbeiten.zeigerWeg();
   blatt.weg();
   hauch.ziel = 0;
   wandUnterZeiger = -1;
@@ -1649,6 +1967,8 @@ window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLInputElement) return;
   blatt.alt = e.altKey;
   blatt.umschalt = e.shiftKey;
+  bearbeiten.alt = e.altKey;
+  bearbeiten.umschalt = e.shiftKey;
   const k = e.key;
   if ((e.metaKey || e.ctrlKey) && k === ',') {
     e.preventDefault();
@@ -1658,13 +1978,21 @@ window.addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && k.toLowerCase() === 'z') {
     e.preventDefault();
     if (zustand === 'blatt' && blatt.rueckgaengig()) anstossen();
-    else if (zustand === 'ruhe' && werkForm && !werk.zug && werk.zurueck.length > werkForm.zurueck) {
+    else if (zustand === 'ruhe' && bearbeitenAn) {
+      // über das Verhalten (es räumt Tropfen und Auswahl auf), das im Werk zurückgeht
+      if (bearbeiten.rueckgaengig()) anstossen();
+    } else if (zustand === 'ruhe' && werkForm && !werk.zug && werk.zurueck.length > werkForm.zurueck) {
       // im Raum: ein Schritt im Werk zurück (nicht hinter die Form aus der Silhouette)
       const s = werk.zurueck.pop();
       if (s) werk.wiederherstellen(s);
       werk.anzeige.allesZeigen();
       anstossen();
     }
+    return;
+  }
+  if ((e.metaKey || e.ctrlKey) && k.toLowerCase() === 'a' && zustand === 'ruhe' && bearbeitenAn) {
+    e.preventDefault();
+    if (bearbeiten.eingabe('alle')) anstossen();
     return;
   }
   if (e.metaKey || e.ctrlKey) return;
@@ -1681,12 +2009,21 @@ window.addEventListener('keydown', (e) => {
         blatt.werkzeugSetzen('auswahl');
         leiste.setzen('auswahl');
       }
+    } else if (bearbeitenAn && (bearbeiten.auswahl.size > 0 || werk.G.auswahl.length > 0)) {
+      // zuerst die Auswahl leeren
+      bearbeiten.eingabe('esc');
+      werk.G.auswahl = [];
     } else if (vierZiel > 0.5) vierUmschalten(false);
     else if (ansicht !== 'raum') ansichtSetzen('raum');
     else ablassen();
   } else if (k === 'Backspace' || k === 'Delete') {
     if (zustand === 'blatt') blatt.eingabe('loeschen');
+    // gewählte Punkte löschen (im Werk), sonst Luft ablassen
+    else if (bearbeitenAn && bearbeiten.auswahl.size > 0) bearbeiten.eingabe('loeschen');
     else ablassen();
+  } else if ((k === 'k' || k === 'K') && zustand === 'ruhe' && werkGezeigt) {
+    // Kante an den gewählten Punkten oder Linien an und aus (im Werk)
+    if (werk.G.auswahl.length && !werk.zug) werk.kanteSetzen();
   } else if (k === ' ') {
     e.preventDefault();
     nochEinmal();
@@ -1711,6 +2048,8 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('keyup', (e) => {
   blatt.alt = e.altKey;
   blatt.umschalt = e.shiftKey;
+  bearbeiten.alt = e.altKey;
+  bearbeiten.umschalt = e.shiftKey;
   if (tasteGehalten && e.key === tasteGehalten.taste) {
     if (performance.now() - tasteGehalten.seit > 300) ansichtSetzen(tasteGehalten.vorher);
     tasteGehalten = null;
@@ -1733,6 +2072,35 @@ function reglerZeigen(an: boolean): void {
   marke.setAttribute('aria-expanded', String(an));
 }
 marke.addEventListener('click', () => reglerZeigen(regler.hidden));
+
+// Laden (Phase 5.1): die gesicherten Formen der Ablage, beim Aufklappen frisch gelesen
+const ladenListe = $<HTMLDivElement>('laden-liste');
+$<HTMLDetailsElement>('laden').addEventListener('toggle', (e) => {
+  if (!(e.currentTarget as HTMLDetailsElement).open) return;
+  void werk.ablageListe().then((liste) => {
+    ladenListe.replaceChildren();
+    if (!liste?.length) {
+      const leer = document.createElement('span');
+      leer.className = 'leer';
+      leer.textContent = liste ? 'keine Formen gesichert' : 'Ablage nicht erreichbar';
+      ladenListe.append(leer);
+      return;
+    }
+    for (const eintrag of liste) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = eintrag.name;
+      b.title = `${eintrag.punkte} Punkte · ${eintrag.loops} Linien`;
+      b.addEventListener('click', () => {
+        reglerZeigen(false);
+        void formLaden(eintrag.name).then((t) => {
+          if (!t.startsWith('geladen')) console.warn(`Ozzy: ${t}`);
+        });
+      });
+      ladenListe.append(b);
+    }
+  });
+});
 
 const fassungKnoepfe = $<HTMLSpanElement>('fassungen');
 FASSUNGEN.forEach((name, i) => {
@@ -1788,11 +2156,48 @@ $('knopf-neu').addEventListener('click', () => {
 new ResizeObserver(groesse).observe(buehne);
 groesse();
 aufwaermen();
-void document.fonts?.ready.then(() => anstossen());
+void document.fonts?.ready.then(() => {
+  anstossen();
+  // ?form=<Name>: diese gesicherte Form gleich laden
+  const name = params.get('form');
+  if (name) void formLaden(name).then((t) => console.info(`Ozzy: ${t}`));
+});
 
 // ---------- Test-Haken ----------
 
 const haken = {
+  /** eine gesicherte Form laden (wie Menü → Laden); zurück: die Meldung des Werks */
+  laden: (name: string): Promise<string> => formLaden(name),
+  /** Bearbeiten über das Werk: ob das Verhalten die Flächen hat, Netz, Flächen, Auswahl (Anker und im Werk) */
+  bearbeiten: () => ({
+    an: bearbeitenAn,
+    flaechen: werkBlatt.flaechen.map((f) => f.a),
+    punkte: werkBlatt.netz.punkte.length,
+    sichtbar: werkBlatt.netz.punkte.filter((p) => p.sichtbar).length,
+    linien: werkBlatt.netz.linien.length,
+    roh: werkBlatt.roh.length,
+    auswahl: [...bearbeiten.auswahl],
+    werkAuswahl: werk.G.auswahl.map((w) => ({ ...w })),
+    haengt: bearbeiten.haengt,
+    ziel: bearbeiten.stat.ziel,
+    schritte: werk.zurueck.length - (werkForm?.zurueck ?? 0),
+    beschaeftigt: werkBeschaeftigt(),
+    meldung: werk.G.meldung,
+  }),
+  /** wo ein Punkt des Werks (Loop-Kennung, Nummer) auf den Flächen mit diesem Blatt liegt (CSS-Pixel), ohne und mit Spiegelbild */
+  ankerImBild: (id: number, i: number, a?: Flaeche['a']): { x: number; y: number; fl: number; a: Flaeche['a']; m: boolean; sichtbar: boolean }[] =>
+    werkBlatt.anker.flatMap((A, pi) => {
+      const F = werkBlatt.flaechen[A.fl]!;
+      const p = werkBlatt.netz.punkte[pi]!;
+      return A.werk.some((w) => w.id === id && w.i === i) && (!a || F.a === a) ? [{ x: p.x, y: p.y, fl: A.fl, a: F.a, m: A.m, sichtbar: p.sichtbar }] : [];
+    }),
+  /** die Linien des Werks: je Loop Kennung, Art und Punkte (Einheiten des Werks, wie sie liegen) */
+  werkLinienDaten: () =>
+    werk.loops.map((l) => ({
+      id: l.id,
+      art: l.art,
+      punkte: l.punkte.map((p, i) => ({ i, x: p.ref.x, y: p.ref.y, z: p.ref.z, kreuzung: p.kreuzung ?? null, sichtbar: !p.vonSelbst, ecke: werk.eckeGezeigt(werk.loopNr(l.id), i), ein: p.ein ?? null, aus: p.aus ?? null })),
+    })),
   /** eine geschlossene Silhouette setzen (CSS-Pixel des Blatts), wie mit P gezeichnet */
   form(anker: { x: number; y: number; ein?: [number, number]; aus?: [number, number] }[]): void {
     neu();
