@@ -186,6 +186,11 @@ export class Leiste {
     for (const n of ['p', 'frei', 'formen'] as const) this.knoepfe.get(n)!.toggleAttribute('disabled', !an);
   }
 
+  /** ein Werkzeug an oder aus (im Raum: P, sobald das Werk die Form zeigt) */
+  erlauben(n: 'p' | 'frei' | 'formen', an: boolean): void {
+    this.knoepfe.get(n)!.toggleAttribute('disabled', !an);
+  }
+
   /** Lage der Leiste: unter dem Gruß in der Mitte oder oben */
   lage(oben: boolean): void {
     this.el.classList.toggle('oben', oben);

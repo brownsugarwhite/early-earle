@@ -15,7 +15,7 @@ import { type Ansicht, type LoopPunkt, hatGriffe, istSichtbar } from '@ee/shape/
 import * as werk from '../form/werk';
 import { type Art, type Breiten, type Linie, type LinienProben, type Netz, type Punkt, type Stueck, armGriff } from '../linien/netz';
 import { type DrehBild, Dreher2D, type RichtungZiel } from '../linien/richtung';
-import type { EntwurfInfo, FadenProben } from '../linien/stift';
+import type { EntwurfInfo, FadenEnde, FadenProben, StiftOrt, V2 } from '../linien/stift';
 import type { Raum, Ziel } from '../linien/verhalten';
 
 type V3 = { x: number; y: number; z: number };
@@ -31,7 +31,16 @@ export interface Flaeche {
   staerke: number;
   /** Breite der Linien mal diesem Maß (Wände) */
   breite: number;
+  /** liegt der Bildschirmpunkt auf der Fläche (Wand: in ihrem Viereck; Feld: in seinem Rahmen; eingerastet: überall) */
+  enthaelt(x: number, y: number): boolean;
 }
+
+/**
+ * Was mit P gerade gezeichnet wird (Etappe 5.3), auf einer Fläche, im Blatt ihrer Achse: eine Form (frei begonnen; fertig legt das Werk
+ * sie auf die Haut, `stiftFertig`) oder eine Abzweigung (auf einem Punkt oder einer Linie begonnen; sie endet an einem Punkt oder einer
+ * Linie, `abzweigungErstellen`). Anker im Blatt, Griffe gleich lang nach beiden Seiten (so nimmt das Werk sie).
+ */
+type Entwurf = { fl: number; a: Ansicht; anker: werk.StiftAnker[]; abzweig: boolean; nach: werk.AbzweigOrt | null };
 
 /** eine Linie, die (noch) kein Bézier-Pfad ist: nur zu sehen, als Streckenzug auf ihrer Fläche (Bildschirm) */
 export interface RoheLinie {
@@ -83,6 +92,9 @@ export class WerkBlatt implements Raum {
   private klickRueck = false;
   private gezeigteAuswahl = new Set<number>();
   private auswahlStruktur = '';
+  private ent: Entwurf | null = null;
+  /** Nummern des Entwurfs im zuletzt gebauten Netz: seine Linie (−1: noch keine Verbindung), erster und letzter Anker */
+  private entNetz = { li: -1, erster: -1, letzter: -1 };
 
   constructor(
     private readonly breiten: () => Breiten,
@@ -189,6 +201,53 @@ export class WerkBlatt implements Raum {
         });
       });
     });
+    this.entNetz = { li: -1, erster: -1, letzter: -1 };
+    const E = this.ent;
+    const FE = E ? flaechen[E.fl] : undefined;
+    if (E && FE) {
+      // der Anfang einer Abzweigung ist ein Punkt des Werks (sein Anker auf dieser Fläche); dann die gesetzten Anker
+      const idx: number[] = [];
+      const kontroll: number[][] = [];
+      const stuecke: Stueck[] = [];
+      const start = E.abzweig ? werk.G.abzweig?.start : null;
+      const blattAnker: werk.StiftAnker[] = [];
+      if (start) {
+        const li = werk.loopNr(start.id);
+        const i = werk.loops[li]?.punkte.indexOf(start.p) ?? -1;
+        const pi = anker.findIndex((A) => A.fl === E.fl && A.m === (start.m && Math.abs(start.p.ref.z) > MITTE) && A.werk.some((w) => w.id === start.id && w.i === i));
+        if (pi >= 0) {
+          idx.push(pi);
+          const [X, Y] = werk.imBlatt(E.a, start.m ? werk.spiegeln(start.p.ref) : start.p.ref);
+          blattAnker.push({ X, Y, aus: null });
+        }
+      }
+      for (const k of E.anker) {
+        const [x, y] = FE.hin(k.X, k.Y);
+        idx.push(punkte.length);
+        punkte.push({ x, y, sichtbar: true, verdeckt: false, z: 0 });
+        anker.push({ fl: E.fl, m: false, werk: [], zuSehen: true });
+        blattAnker.push(k);
+      }
+      if (idx.length) {
+        this.entNetz.erster = idx[0]!;
+        this.entNetz.letzter = idx[idx.length - 1]!;
+      }
+      if (idx.length >= 2) {
+        for (let k = 0; k + 1 < blattAnker.length; k++) {
+          const c = werk.stiftStueck(blattAnker[k]!, blattAnker[k + 1]!);
+          const s0 = FE.hin(...c[0]!);
+          const s1 = FE.hin(...c[1]!);
+          const s2 = FE.hin(...c[2]!);
+          const s3 = FE.hin(...c[3]!);
+          stuecke.push({ g1x: s1[0] - s0[0], g1y: s1[1] - s0[1], g2x: s2[0] - s3[0], g2y: s2[1] - s3[1], art: 'innen' });
+          kontroll.push(c.flat());
+        }
+        this.entNetz.li = linien.length;
+        linien.push({ zu: false, punkte: idx, stuecke });
+        infos.push({ fl: E.fl, id: -1, m: false });
+        proben.push(this.abtasten(FE, kontroll, stuecke, br));
+      }
+    }
     this.netz = { punkte, linien };
     this.proben = proben;
     this.anker = anker;
@@ -568,36 +627,259 @@ export class WerkBlatt implements Raum {
   /** das Werk richtet beim Runden gleich aus */
   ausrichten(): void {}
 
-  // ---------- Werkzeug P (kommt mit Etappe 5.3) ----------
+  // ---------- Werkzeug P (Etappe 5.3, Schnittstelle StiftWerk) ----------
+
+  /** Bildschirm → Blatt der Fläche des Entwurfs; ein Griff (Vektor im Bildschirm am Punkt) → Vektor im Blatt */
+  private blattVon(fl: number, x: number, y: number): [number, number] | null {
+    return this.flaechen[fl]?.her(x, y) ?? null;
+  }
+  private griffImBlatt(fl: number, k: werk.StiftAnker, g: V2): [number, number] | null {
+    const F = this.flaechen[fl];
+    if (!F) return null;
+    const [px, py] = F.hin(k.X, k.Y);
+    const q = F.her(px + g[0], py + g[1]);
+    return q ? [q[0] - k.X, q[1] - k.Y] : null;
+  }
+  /** Griff eines Ankers im Bildschirm (vom Punkt aus) */
+  private griffImBild(fl: number, k: werk.StiftAnker): V2 {
+    const F = this.flaechen[fl];
+    if (!F || !k.aus) return [0, 0];
+    const [px, py] = F.hin(k.X, k.Y);
+    const [qx, qy] = F.hin(k.X + k.aus[0], k.Y + k.aus[1]);
+    return [qx - px, qy - py];
+  }
+  /** die Fläche unter dem Zeiger, auf der P ansetzen kann (die stärkste, die ihn enthält) */
+  private flaecheUnter(x: number, y: number): number {
+    let best = -1;
+    this.flaechen.forEach((F, fl) => {
+      if (F.staerke >= 0.5 && F.enthaelt(x, y) && (best < 0 || F.staerke > this.flaechen[best]!.staerke)) best = fl;
+    });
+    return best;
+  }
+  /** ein Ort des Netzes als Ort des Werks für die Abzweigung (Punkt: seine Nummer; Linie: −1 und die Stelle im Blatt) */
+  private abzweigOrt(o: StiftOrt, fl: number): werk.AbzweigOrt | null {
+    if (o.art === 'punkt') {
+      const A = this.anker[o.pi];
+      const p = this.netz.punkte[o.pi];
+      const w = A?.werk[0];
+      const XY = A && p ? this.blattVon(A.fl, p.x, p.y) : null;
+      if (!A || !w || !XY || (fl >= 0 && A.fl !== fl)) return null;
+      return { id: w.id, i: w.i, m: A.m, X: XY[0], Y: XY[1] };
+    }
+    if (o.art === 'linie') {
+      const I = this.linien[o.li];
+      const st = this.stelle({ art: 'linie', li: o.li, si: o.si, t: o.t, s: 0 });
+      const XY = I && st ? this.blattVon(I.fl, st[0], st[1]) : null;
+      if (!I || I.id < 0 || !XY || (fl >= 0 && I.fl !== fl)) return null;
+      return { id: I.id, i: -1, m: I.m, X: XY[0], Y: XY[1] };
+    }
+    return null;
+  }
+  /** Anker eines Punkts des Werks auf einer Fläche im neu gebauten Netz */
+  private ankerVon(fl: number, id: number, i: number, m: boolean): number | null {
+    this.bauen(this.flaechen);
+    const pi = this.anker.findIndex((A) => A.fl === fl && A.m === m && A.werk.some((w) => w.id === id && w.i === i));
+    return pi >= 0 ? pi : null;
+  }
 
   entwurf(): EntwurfInfo | null {
-    return null;
+    const E = this.ent;
+    if (!E || this.entNetz.erster < 0) return null;
+    const letzter = E.anker[E.anker.length - 1];
+    const erster = E.anker[0];
+    const aus = letzter ? this.griffImBild(E.fl, letzter) : ([0, 0] as V2);
+    const g0 = erster && !E.abzweig ? this.griffImBild(E.fl, erster) : ([0, 0] as V2);
+    return {
+      li: this.entNetz.li,
+      zwilling: -1,
+      erster: this.entNetz.erster,
+      letzter: this.entNetz.letzter,
+      anzahl: E.anker.length,
+      haengt: E.abzweig,
+      aus,
+      einErster: [-g0[0], -g0[1]],
+    };
   }
-  ortFrei(): { x: number; y: number; mitte: boolean } | null {
-    return null;
+
+  ortFrei(x: number, y: number): { x: number; y: number; mitte: boolean } | null {
+    const fl = this.ent ? (this.flaechen[this.ent.fl]?.enthaelt(x, y) ? this.ent.fl : -1) : this.flaecheUnter(x, y);
+    return fl >= 0 ? { x, y, mitte: false } : null;
   }
+
   mittePunkte(): number[] {
     return [];
   }
-  beginnen(): number | null {
-    return null;
+
+  beginnen(o: StiftOrt): number | null {
+    if (werk.zug || werk.G.abzweig) return null;
+    if (o.art === 'frei') {
+      const fl = this.flaecheUnter(o.x, o.y);
+      const F = this.flaechen[fl];
+      const XY = F?.her(o.x, o.y);
+      if (!F || !XY) return null;
+      this.ent = { fl, a: F.a, anker: [{ X: XY[0], Y: XY[1], aus: null }], abzweig: false, nach: null };
+      this.bauen(this.flaechen);
+      this.geaendert();
+      return this.entNetz.erster;
+    }
+    // auf einem Punkt oder einer Linie: eine Abzweigung (im Werk beginnt sie dort; auf einer Linie entsteht der Punkt sofort)
+    const fl = o.art === 'punkt' ? (this.anker[o.pi]?.fl ?? -1) : (this.linien[o.li]?.fl ?? -1);
+    const F = this.flaechen[fl];
+    const von = this.abzweigOrt(o, fl);
+    if (!F || !von) return null;
+    werk.G.abzweig = { a: F.a, von, zieht: false, start: null, vorher: null, anker: [], ankerZieht: false };
+    werk.abzweigBeginnen();
+    const st = werk.G.abzweig?.start;
+    if (!st) {
+      werk.G.abzweig = null;
+      return null;
+    }
+    this.ent = { fl, a: F.a, anker: [], abzweig: true, nach: null };
+    werk.anzeige.allesZeigen();
+    this.bauen(this.flaechen);
+    this.geaendert();
+    return this.entNetz.erster >= 0 ? this.entNetz.erster : null;
   }
-  weiter(): number | null {
-    return null;
+
+  weiter(o: StiftOrt): number | null {
+    const E = this.ent;
+    if (!E) return null;
+    const F = this.flaechen[E.fl];
+    if (!F) return null;
+    // eine Abzweigung endet an einem Punkt oder einer Linie derselben Fläche
+    if (E.abzweig && o.art !== 'frei') {
+      const nach = this.abzweigOrt(o, E.fl);
+      if (!nach) return null;
+      if (nach.i < 0) {
+        // auf der Linie: der Punkt entsteht jetzt (so zeigt die Studie ihn gleich); fertig verbindet dorthin
+        const l = werk.loops[werk.loopNr(nach.id)];
+        if (!l) return null;
+        const r = werk.punktAufLinie(F.a, l, nach.X, nach.Y, nach.m);
+        nach.i = l.punkte.indexOf(r.p);
+      }
+      E.nach = nach;
+      return this.ankerVon(E.fl, nach.id, nach.i, nach.m && Math.abs(werk.loops[werk.loopNr(nach.id)]?.punkte[nach.i]?.ref.z ?? 0) > MITTE);
+    }
+    // sonst ein neuer Punkt. Hat P dabei Vorhandenes gefangen (die Studie fängt Linien im Umkreis), zählt in einer Form der Ort der
+    // Maus: Die Kreuzung mit der Linie legt das Werk selbst an; ein Punkt genau auf der Linie läge sonst gleich neben ihr
+    const xy = o.art === 'frei' ? ([o.x, o.y] as const) : this.zeiger();
+    const XY = F.her(xy[0], xy[1]);
+    if (!XY || !Number.isFinite(XY[0])) return null;
+    E.anker.push({ X: XY[0], Y: XY[1], aus: null });
+    this.bauen(this.flaechen);
+    this.geaendert();
+    return this.entNetz.letzter;
   }
-  griffeLetzter(): void {}
-  griffeErster(): void {}
+
+  griffeLetzter(aus: V2 | null): void {
+    const E = this.ent;
+    const k = E?.anker[E.anker.length - 1];
+    if (!E || !k || !aus) return;
+    k.aus = Math.hypot(aus[0], aus[1]) < 1e-6 ? null : this.griffImBlatt(E.fl, k, aus);
+    this.geaendert();
+  }
+
+  griffeErster(aus: V2 | null): void {
+    const E = this.ent;
+    const k = E && !E.abzweig ? E.anker[0] : undefined;
+    if (!E || !k || !aus) return;
+    k.aus = Math.hypot(aus[0], aus[1]) < 1e-6 ? null : this.griffImBlatt(E.fl, k, aus);
+    this.geaendert();
+  }
+
+  /** das Werk kennt je Anker nur gleich lange Griffe nach beiden Seiten oder eine Ecke: Knick bleibt beim gezogenen Griff */
   knickSetzen(): void {}
-  letztenVerschieben(): void {}
+
+  letztenVerschieben(x: number, y: number): void {
+    const E = this.ent;
+    const k = E?.anker[E.anker.length - 1];
+    const XY = E ? this.blattVon(E.fl, x, y) : null;
+    if (!k || !XY) return;
+    k.X = XY[0];
+    k.Y = XY[1];
+    this.geaendert();
+  }
+
+  /** eine Form schließt immer (das Werk legt geschlossene Formen auf die Haut) */
   schliessen(): void {}
+
   fertig(): number {
-    return -1;
+    const E = this.ent;
+    this.ent = null;
+    if (!E) return -1;
+    const vorher = werk.loops.length;
+    if (E.abzweig) {
+      const ab = werk.G.abzweig;
+      werk.G.abzweig = null;
+      if (!ab?.start) return -1;
+      werk.abzweigungErstellen(E.a, ab.von, E.nach, ab.start, ab.vorher, E.anker);
+    } else {
+      if (E.anker.length < 3) {
+        this.bauen(this.flaechen);
+        this.geaendert();
+        return -1;
+      }
+      werk.G.stift = { a: E.a, anker: E.anker, zieht: false };
+      werk.stiftFertig();
+    }
+    werk.anzeige.allesZeigen();
+    this.bauen(this.flaechen);
+    this.geaendert();
+    if (werk.loops.length <= vorher) return -1;
+    const id = werk.loops[werk.loops.length - 1]!.id;
+    return this.linien.findIndex((I) => I.fl === E.fl && I.id === id && !I.m);
   }
-  abbrechen(): void {}
+
+  abbrechen(): void {
+    const E = this.ent;
+    this.ent = null;
+    if (E?.abzweig) {
+      werk.abzweigAbbrechen();
+      werk.anzeige.allesZeigen();
+    }
+    this.bauen(this.flaechen);
+    this.geaendert();
+  }
+
   zurueck(): boolean {
-    return false;
+    const E = this.ent;
+    if (!E) return false;
+    if (E.anker.length <= (E.abzweig ? 0 : 1)) {
+      this.abbrechen();
+      return false;
+    }
+    E.anker.pop();
+    this.bauen(this.flaechen);
+    this.geaendert();
+    return true;
   }
-  faden(): FadenProben | null {
-    return null;
+
+  /** Vorschau vom letzten Punkt (mit seinem Griff) zum Ende mit Griff `gEnde`, im Bildschirm abgetastet */
+  faden(ende: FadenEnde, gEnde: V2): FadenProben | null {
+    const e = this.entwurf();
+    const L = e ? this.netz.punkte[e.letzter] : undefined;
+    if (!e || !L) return null;
+    let E: [number, number] | null = null;
+    if (ende.art === 'schluss') {
+      const P = this.netz.punkte[e.erster];
+      E = P ? [P.x, P.y] : null;
+    } else if (ende.art === 'frei') E = [ende.x, ende.y];
+    else if (ende.art === 'punkt') {
+      const P = this.netz.punkte[ende.pi];
+      E = P ? [P.x, P.y] : null;
+    } else E = this.stelle({ art: 'linie', li: ende.li, si: ende.si, t: ende.t, s: 0 });
+    if (!E) return null;
+    const k = [L.x, L.y, L.x + e.aus[0], L.y + e.aus[1], E[0] + gEnde[0], E[1] + gEnde[1], E[0], E[1]];
+    const n = 48;
+    const x = new Float32Array(n + 1);
+    const y = new Float32Array(n + 1);
+    const s = new Float32Array(n + 1);
+    for (let j = 0; j <= n; j++) {
+      const [px, py] = bez(k, j / n);
+      x[j] = px;
+      y[j] = py;
+      if (j) s[j] = s[j - 1]! + Math.hypot(px - x[j - 1]!, py - y[j - 1]!);
+    }
+    return { n: n + 1, x, y, s, laenge: s[n]!, z: new Float32Array(n + 1) };
   }
 }

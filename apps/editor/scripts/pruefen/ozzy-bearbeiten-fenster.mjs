@@ -5,11 +5,16 @@
 //   1  Laden: Form „test_kaputt“ (NAME) in Ozzy; das Werk hat dieselben Linien und Punkte wie das Prüffenster nach dem Laden.
 //   2  Zug an der Wand der Seite (ein Punkt, 30 Bildpunkte nach oben): Der Punkt folgt der Maus genau (höchstens 0,5 px), ein Schritt.
 //   3  ⌘Z: alle Punkte und Griffe genau wie vorher.
-//   4  Zug an der Wand der Front (ein Punkt, 25 Bildpunkte nach rechts), dann an der Wand der Seite eine Richtung gedreht (die Nadel am
+//   4  Zug an der Wand der Front (ein Punkt, 8 Bildpunkte nach rechts; die Wand liegt schräg, das sind gut 20 Einheiten), dann an der Wand der Seite eine Richtung gedreht (die Nadel am
 //      selben Punkt wie in 2, 40° um den Punkt): zwei Schritte; die Gegenrichtung bleibt in der Flucht (glatter Punkt).
 //   5  Derselbe Ablauf im Prüffenster (Verschiebungen im Blatt aus Ozzy übernommen): dieselben Punkte und Griffe (höchstens 0,01) und
 //      dieselbe Zahl umgeschlagener Dreiecke.
-//   6  Keine Fehler in der Konsole.
+//   6  P (Etappe 5.3), eingerastete Seite: vier Klicks auf den Körper und ein Klick auf den ersten Punkt legen im Werk eine Linie an;
+//      im Prüffenster gibt P an denselben Orten im Blatt dieselbe Linie. Sie liegt auf der Haut: so genau, wie die Haut nach dem
+//      Ausrechnen in beiden Fenstern gleich ist (höchstens 0,5 Einheiten).
+//   7  P von einem Punkt über einen gesetzten Punkt zu einem anderen Punkt: eine Abzweigung, wie im Prüffenster (ebenso höchstens 0,5),
+//      gleich viele umgeschlagene Dreiecke.
+//   8  Keine Fehler in der Konsole.
 // Aufruf aus apps/editor: GPU=1 [NAME="test_kaputt"] node scripts/pruefen/ozzy-bearbeiten-fenster.mjs [ordner für Bilder]
 //   OZZY_URL (Standard http://localhost:5205/ozzy.html), KURVEN_URL (Standard http://localhost:5205/kurven.html?gewichte=geometrie&behalten=0)
 import { chromium } from '@playwright/test';
@@ -106,7 +111,7 @@ ok('3 ⌘Z: alle Punkte und Griffe genau wie vorher', d3 <= 1e-9 && (await O('be
 const B = { id: 1, i: 1 };
 const bVor = punktO(L3, B.id, B.i);
 const f0 = (await O('ankerImBild', B.id, B.i, 'front')).find((q) => !q.m);
-await zieheO(f0, { x: f0.x + 25, y: f0.y });
+await zieheO(f0, { x: f0.x + 8, y: f0.y });
 const L4a = await linienO();
 const bNach = punktO(L4a, B.id, B.i);
 const dB = [blatt('front', bNach.ref)[0] - blatt('front', bVor.ref)[0], blatt('front', bNach.ref)[1] - blatt('front', bVor.ref)[1]];
@@ -144,6 +149,55 @@ await bild('4-nach');
 await oz.keyboard.press('Tab');
 await oz.waitForTimeout(1300);
 await bild('5-vier');
+await oz.keyboard.press('Tab');
+await oz.waitForTimeout(1300);
+
+// 6 und 7: P in der eingerasteten Seite (Orte im Blatt der Seite, Einheiten des Werks)
+const FORM = [
+  [-50, -80],
+  [20, -95],
+  [60, -45],
+  [-30, -40],
+];
+const klickO = async (x, y) => {
+  await oz.mouse.move(x, y, { steps: 4 });
+  await oz.waitForTimeout(320);
+  await oz.mouse.down();
+  await oz.waitForTimeout(80);
+  await oz.mouse.up();
+  await oz.waitForTimeout(320);
+};
+await oz.keyboard.press('1');
+await oz.waitForTimeout(1400);
+await O('stift', true);
+const nO6 = (await linienO()).length;
+for (const [X, Y] of FORM) {
+  const q = await O('flaecheHin', 'seite', X, Y);
+  await klickO(q.x, q.y);
+}
+{
+  const q = await O('flaecheHin', 'seite', FORM[0][0], FORM[0][1]);
+  await klickO(q.x, q.y);
+}
+await ruhigO();
+await bild('6-form');
+const L6 = await linienO();
+// Abzweigung: von Punkt 2 der Linie 1 (vorn) über einen gesetzten Punkt zu Punkt 0 der Linie der Mitte (unten)
+const ABZ_VON = { id: 1, i: 2 };
+const ABZ_NACH = { id: 4, i: 0 };
+const ABZ_MITTE = [10, 71];
+{
+  const v = (await O('ankerImBild', ABZ_VON.id, ABZ_VON.i, 'seite'))[0];
+  const n = (await O('ankerImBild', ABZ_NACH.id, ABZ_NACH.i, 'seite'))[0];
+  const m = await O('flaecheHin', 'seite', ABZ_MITTE[0], ABZ_MITTE[1]);
+  await klickO(v.x, v.y);
+  await klickO(m.x, m.y);
+  await klickO(n.x, n.y);
+}
+await ruhigO();
+await bild('7-abzweigung');
+const L7 = await linienO();
+const umO7 = (await O('werk')).umgeschlagen;
 
 // ---------- Prüffenster: derselbe Ablauf ----------
 const pf = await neueSeite();
@@ -203,6 +257,53 @@ const P5 = await linienP();
 const umP = await P('umgeschlagen');
 const d5 = unterschied(L4, P5);
 ok('5 im Prüffenster derselbe Ablauf: dieselben Punkte und Griffe, gleich viele umgeschlagene Dreiecke', d5 <= 0.01 && umO === umP, `größter Unterschied ${ze(d5)}; umgeschlagen Ozzy ${umO}, Prüffenster ${umP}`);
-ok('6 keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));
+// 6 und 7 im Prüffenster: P (Taste), Klicks an denselben Orten im Blatt der Seite
+const klickP = async (q) => {
+  await pf.mouse.move(q.x, q.y, { steps: 4 });
+  await pf.waitForTimeout(150);
+  await pf.mouse.down();
+  await pf.waitForTimeout(60);
+  await pf.mouse.up();
+  await pf.waitForTimeout(250);
+};
+const imBlattP = async (X, Y) => imBild('seite', { x: X, y: -Y, z: 0 });
+await pf.keyboard.press('p');
+for (const [X, Y] of FORM) await klickP(await imBlattP(X, Y));
+await klickP(await imBlattP(FORM[0][0], FORM[0][1]));
+await ruhigP();
+const P6 = await linienP();
+const neuO = L6.slice(nO6);
+const neuP = P6.slice(P5.length);
+const d6 = neuO.length === 1 && neuP.length === 1 ? unterschied(neuO, neuP) : Infinity;
+const d6alt = unterschied(L6.slice(0, nO6), P6.slice(0, P5.length));
+if (process.env.DIAG === '1') {
+  const r = (l) => l.punkte.map((p) => `${p.ref.x.toFixed(1)},${p.ref.y.toFixed(1)},${p.ref.z.toFixed(1)}${p.kreuzung !== null ? `k${p.kreuzung}` : ''}`).join(' ');
+  console.log(`  Ozzy:        ${neuO.map(r).join(' | ')}`);
+  console.log(`  Prüffenster: ${neuP.map(r).join(' | ')}`);
+}
+ok(
+  '6 P: eine Form in der eingerasteten Seite, wie im Prüffenster',
+  neuO.length === 1 && d6 <= 0.5,
+  `neu in Ozzy ${neuO.map((l) => `${l.art} mit ${l.punkte.length} Punkten`).join(', ') || 'nichts'}, im Prüffenster ${neuP.map((l) => `${l.art} mit ${l.punkte.length} Punkten`).join(', ') || 'nichts'}; die neue Linie höchstens ${ze(d6)} daneben, die alten ${ze(d6alt)}`,
+);
+{
+  const L = await linienP();
+  const v = punktO(L, ABZ_VON.id, ABZ_VON.i).ref;
+  const n = punktO(L, ABZ_NACH.id, ABZ_NACH.i).ref;
+  await pf.keyboard.press('p');
+  await klickP(await imBild('seite', v));
+  await klickP(await imBlattP(ABZ_MITTE[0], ABZ_MITTE[1]));
+  await klickP(await imBild('seite', n));
+}
+await ruhigP();
+const P7 = await linienP();
+const umP7 = await P('umgeschlagen');
+const d7 = L7.length === P7.length ? unterschied(L7, P7) : Infinity;
+ok(
+  '7 P: Abzweigung von Punkt zu Punkt, wie im Prüffenster',
+  L7.length === L6.length + 1 && L7[L7.length - 1].art === 'ring' && d7 <= 0.5 && umO7 === umP7,
+  `Linien Ozzy ${L6.length} → ${L7.length}, Prüffenster ${P6.length} → ${P7.length}; größter Unterschied ${ze(d7)}; umgeschlagen ${umO7} und ${umP7}`,
+);
+ok('8 keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));
 console.log(schlecht ? `${schlecht} nicht erfüllt` : 'alles gut');
 await browser.close();

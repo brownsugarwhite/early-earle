@@ -177,6 +177,17 @@ denselben Verschiebungen im Blatt gibt dieselben Punkte und Griffe (höchstens 0
 Front, K, ⌫ an „strange bird“ (Punkt der Mitte weg, ⌘Z zurück). Bilder: [`2026-11-16-bearbeiten.png`](../../progress/ozzy/2026-11-16-bearbeiten.png)
 („strange bird“: Raum, Tropfen an der Wand, Nadel eingerastet, Vier Ansichten; `scripts/pruefen/ozzy-bearbeiten-bilder.mjs`).
 
+**5.3 P (gebaut, 16.11. mittags):** Taste P oder die Leiste (im Raum mit dem Werk ist nur P an), Esc bricht ab oder schaltet P aus,
+↩ schließt, ⌫ nimmt den letzten Punkt zurück. `werkBlatt.ts` ist jetzt auch das `StiftWerk` der Studie: Frei begonnen zeichnet P eine
+**Form** auf der Fläche unter dem Zeiger (Anker im Blatt ihrer Achse; das Werk kennt je Anker nur gleich lange Griffe nach beiden Seiten,
+ein gebrochener Griff wird so gerade gezogen), geschlossen legt das Werk sie auf die Haut (`stiftFertig`; über die Mitte in Front und
+Top, vorn über den Umriss in der Seite wird sie ein Ring rundum: das ist „Loop rundum statt L“). Auf einem Punkt oder einer Linie
+begonnen ist es eine **Abzweigung** (`abzweigBeginnen`, gesetzte Punkte, Ende an Punkt oder Linie: `abzweigungErstellen`). Der Entwurf
+liegt im Netz des Verhaltens (`entNetz`), die Vorschau zum Zeiger ist `faden`. Probe: Kriterien 6 und 7 von `ozzy-bearbeiten-fenster.mjs`
+(Form und Abzweigung wie im Prüffenster, neue Linie höchstens 0,05 daneben, umgeschlagen 0 und 0). **Behoben:** P fängt Linien im
+Umkreis (rund 16 px, wie in der Studie); in einer Form setzte das den Punkt auf die Linie, 0,1 neben die Kreuzung, die das Werk dort
+selbst anlegt (zwei Punkte fast am selben Ort). In einer Form zählt jetzt der Ort der Maus. **Offen:** Freihand im Raum.
+
 **Was dabei auffiel (offen):**
 - Eine Wand, die man fast streifend sieht, ist sehr empfindlich: 25 px nach rechts an der Wand der Front verschoben „test_kaputt“ um 70
   Einheiten in z (so rechnet die Perspektive). Genau arbeitet man eingerastet oder in den Feldern.
@@ -192,10 +203,12 @@ Front, K, ⌫ an „strange bird“ (Punkt der Mitte weg, ⌘Z zurück). Bilder:
 1. ~~Phase 1, das Werk lösen~~: gebaut (oben). Kleiner Rest: `allesZeigen` tut in der Hülle Werk-Arbeit (Ozzy tut sie in seinem Haken
    nach).
 2. ~~Phase 3, die Form des Werks in Ozzy~~: gebaut (oben); Feinschliff offen.
-3. **Phase 5, Bearbeiten über das Werk:** 5.1 Laden und 5.2 Linien und Bedienung gebaut (oben). Offen: **5.3 P und Freihand** (Form,
-   Abzweigung, Loop rundum wie L; die Studie hat dafür `StiftWerk` in derselben Schnittstelle, in `werkBlatt.ts` noch leer: dort die
-   Handgriffe des Werks `stiftDruecken`/`stiftFertig`, `abzweigBeginnen`/`abzweigungErstellen`, `loopSchneiden` anschließen),
-   **5.4 Maul und Pose** (E8), Sichern im Menü (Vorsicht: `wesen/` sind Florians Formen, nie überschreiben ohne Frage).
+3. **Phase 5, Bearbeiten über das Werk:** 5.1 Laden, 5.2 Linien und Bedienung, 5.3 P gebaut (oben). Offen: **Freihand im Raum**
+   (geschlossener Strich auf einer Fläche → Anker mit Florians Bleistift-Einstellung wie auf dem Blatt → wie eine Form mit P; ein offener
+   Strich wäre im Werk das Maul aus einer Linie, gehört zu 5.4), **5.4 Maul und Pose** (E8: „Maul“ als Tropfen-Menü am gewählten Loop
+   → `maulFormenGewaehlt`; „Fressen“ mit Reglern oben rechts → `poseBetreten`/`knochenSetzen`; in der Pose Papier leicht getönt;
+   dafür in `werkBlatt.bauen` die gebogenen Stücke `stueckeGezeigt` und in `werkHaut` die gedrehte Haut der Anzeige prüfen), Sichern
+   im Menü (Vorsicht: `wesen/` sind Florians Formen, nie überschreiben ohne Frage).
 4. Danach: Pinsel an der Blase (Phase 6: nur, was die Rechnung kann, also Ziehen wie O; Aufblasen, Absaugen, Glätten sind Arbeit
    der Kern-Sitzung), eine Leinwand für Haut und Linien, Würfel als Quader, Finger.
 

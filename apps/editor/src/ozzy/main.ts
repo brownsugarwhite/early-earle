@@ -204,6 +204,7 @@ let bearbeitenAn = false;
 let bearbeitenGedrueckt = false;
 let bearbeitenStruktur = '';
 let werkWarBeschaeftigt = false;
+let pErlaubt = false;
 
 /** Rechnet das Werk noch (Zug, Nachlauf, Hintergrund, wartender Griff, Maul)? */
 const werkBeschaeftigt = (): boolean =>
@@ -716,6 +717,7 @@ function aufblasen(): void {
 
 function ablassen(): void {
   if (zustand === 'blatt') return;
+  if (bearbeiten.stift) stiftImRaum(false);
   zug = null;
   drehen = null;
   punktZug = null;
@@ -761,6 +763,7 @@ function nochEinmal(): void {
 
 /** zurück aufs leere Blatt (der Mülleimer im Raum); die Zeichnung bleibt für ⌘Z auf dem Blatt */
 function neu(): void {
+  if (bearbeiten.stift) bearbeiten.stiftSchalten(false);
   zustand = 'blatt';
   T = 0;
   blatt.leeren();
@@ -1152,14 +1155,20 @@ function bild(dt: number): boolean {
       : zustand === 'ruhe'
         ? vier > 0.5
           ? werkGezeigt
-            ? 'Punkte, Linien und Richtungen ziehen · ins Leere: Rahmen · K Kante · ⌫ löschen · ⌘Z · Tab: zurück in den Raum'
+            ? bearbeiten.stift
+              ? 'P: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen (Form) · auf Punkt oder Linie beginnen und enden (Abzweigung) · Esc'
+              : 'Punkte, Linien und Richtungen ziehen · ins Leere: Rahmen · P zeichnen · K Kante · ⌫ löschen · ⌘Z · Tab: zurück in den Raum'
             : 'Tab: zurück in den Raum · Tropfen in der Mitte ziehen: Felder · Punkte der Seite ziehen'
           : ansicht === 'raum'
             ? werkGezeigt
-              ? 'ins Leere ziehen: drehen · Punkte, Linien und Richtungen an den Wänden ziehen · K Kante · ⌫ löschen · ⌘Z · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
+              ? bearbeiten.stift
+                ? 'P an den Wänden: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen · auf Punkt oder Linie: Abzweigung · Esc'
+                : 'ins Leere ziehen: drehen · Punkte, Linien und Richtungen an den Wänden ziehen · P zeichnen · K Kante · ⌫ löschen · ⌘Z · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
               : 'ziehen: drehen · an der Blase ziehen · Punkte an der Wand der Seite ziehen · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
             : werkGezeigt
-              ? 'Punkte, Linien und Richtungen ziehen · ins Leere: Rahmen · K Kante · ⌫ löschen · ⌘Z · 0 Raum · 1 Seite · 3 Front · 7 Top'
+              ? bearbeiten.stift
+                ? 'P: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen (Form) · auf Punkt oder Linie beginnen und enden (Abzweigung) · Esc'
+                : 'Punkte, Linien und Richtungen ziehen · ins Leere: Rahmen · P zeichnen · K Kante · ⌫ löschen · ⌘Z · 0 Raum · 1 Seite · 3 Front · 7 Top'
               : '0 Raum · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
         : '';
   if (hinweis.textContent !== h) hinweis.textContent = h;
@@ -1418,24 +1427,33 @@ function weltInBlatt(a: Flaeche['a'], p: Vector3): [number, number] {
 const ACHSE_VON: Record<Flaeche['a'], 0 | 1 | 2> = { front: 0, top: 1, seite: 2 };
 const BLATT_DER_ACHSE: Flaeche['a'][] = ['front', 'top', 'seite'];
 
-/** eine Ebene quer zur Achse des Blatts (Wand oder eingerastete Ansicht), wie die Kamera sie sieht */
-function ebene(a: Flaeche['a'], lage: number, vp: Matrix4, staerke: number, breite: number): Flaeche {
+/** eine Ebene quer zur Achse des Blatts (Wand oder eingerastete Ansicht), wie die Kamera sie sieht; `wand`: nur ihr Viereck zählt */
+function ebene(a: Flaeche['a'], lage: number, vp: Matrix4, staerke: number, breite: number, wand: boolean): Flaeche {
   const achse = ACHSE_VON[a];
+  const e = raum!;
+  const her = (x: number, y: number): [number, number] | null => {
+    const { o, d } = kam.strahl(x, y, W, H);
+    const dd = achse === 0 ? d.x : achse === 1 ? d.y : d.z;
+    const oo = achse === 0 ? o.x : achse === 1 ? o.y : o.z;
+    if (Math.abs(dd) < 1e-9) return null;
+    return weltInBlatt(a, o.clone().addScaledVector(d, (lage - oo) / dd));
+  };
   return {
     a,
     staerke,
     breite,
+    enthaelt: (x, y) => {
+      if (!wand) return true;
+      const XY = her(x, y);
+      if (!XY) return false;
+      const p = blattInWelt(a, XY[0], XY[1], lage);
+      return Math.abs(p.x - e.cx) <= e.L && Math.abs(p.y - e.cy) <= e.L && Math.abs(p.z) <= e.L;
+    },
     hin: (X, Y) => {
       const [x, y] = projizieren(blattInWelt(a, X, Y, lage), vp);
       return [x / D, y / D];
     },
-    her: (x, y) => {
-      const { o, d } = kam.strahl(x, y, W, H);
-      const dd = achse === 0 ? d.x : achse === 1 ? d.y : d.z;
-      const oo = achse === 0 ? o.x : achse === 1 ? o.y : o.z;
-      if (Math.abs(dd) < 1e-9) return null;
-      return weltInBlatt(a, o.clone().addScaledVector(d, (lage - oo) / dd));
-    },
+    her,
   };
 }
 
@@ -1444,10 +1462,12 @@ function feldFlaeche(n: FeldAchse, vp: Matrix4, F: ReturnType<typeof felder>, s4
   const e = raum!;
   const achse = ACHSE_VON[n];
   const lage = [e.cx, e.cy, 0][achse]! + sw[achse] * e.L;
+  const r = F[n];
   return {
     a: n,
     staerke: 1,
     breite: 1,
+    enthaelt: (x, y) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h,
     hin: (X, Y) => {
       const [fx, fy] = imFeld(n, blattInWelt(n, X, Y, 0), F, s4);
       if (v > 0.999) return [fx / D, fy / D];
@@ -1470,7 +1490,7 @@ function flaechenJetzt(vp: Matrix4, m: Moment): { flaechen: Flaeche[]; stabil: b
   const { s, staerke } = waendeJetzt(m);
   for (const achse of [0, 1, 2] as const) {
     if (staerke[achse] < 0.01) continue;
-    liste.push(ebene(BLATT_DER_ACHSE[achse]!, [e.cx, e.cy, 0][achse]! + s[achse] * e.L, vp, staerke[achse], bw.wandLinien));
+    liste.push(ebene(BLATT_DER_ACHSE[achse]!, [e.cx, e.cy, 0][achse]! + s[achse] * e.L, vp, staerke[achse], bw.wandLinien, true));
   }
   // eingerastet (wie `linienDerAnsicht`): auf der Ebene durch die Mitte der Form
   if (flach > 0.01 && ansicht !== 'raum') {
@@ -1479,7 +1499,7 @@ function flaechenJetzt(vp: Matrix4, m: Moment): { flaechen: Flaeche[]; stabil: b
     const ach = ansicht === 'seite' ? new Vector3(0, 0, -1) : ansicht === 'front' ? new Vector3(1, 0, 0) : new Vector3(0, -1, 0);
     const t = Math.min(1, Math.max(0, (blick.dot(ach) - 0.97) / 0.025));
     const st = flach * flach * t * t * (3 - 2 * t);
-    if (st >= 0.01) liste.push(ebene(ansicht, ansicht === 'seite' ? 0 : ansicht === 'front' ? e.cx : e.cy, vp, st, 1));
+    if (st >= 0.01) liste.push(ebene(ansicht, ansicht === 'seite' ? 0 : ansicht === 'front' ? e.cx : e.cy, vp, st, 1, false));
   }
   // die drei flachen Felder
   if (vier > 0.02) {
@@ -1502,6 +1522,11 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
   const { flaechen, stabil } = flaechenJetzt(vp, m);
   werkBlatt.bauen(flaechen);
   bearbeitenAn = stabil;
+  // P in der Leiste, sobald das Werk bedient wird
+  if (bearbeitenAn !== pErlaubt) {
+    pErlaubt = bearbeitenAn;
+    leiste.erlauben('p', pErlaubt);
+  }
   if (!bearbeitenAn && bearbeitenGedrueckt) {
     bearbeiten.loslassen();
     bearbeitenGedrueckt = false;
@@ -1852,7 +1877,9 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     const R = vier > 0.5 ? felder().raum : null;
     const imRaumFeld = !!R && x >= R.x && y >= R.y;
     const imRaum = ansicht === 'raum' && flach < 0.5 && vier < 0.5;
-    if (bearbeiten.haengt || !(imRaum || imRaumFeld)) {
+    // mit P: auf einer Fläche setzt das Drücken einen Punkt (`ortFrei`), daneben dreht es weiter
+    const p = bearbeiten.stift && werkBlatt.ortFrei(x, y) !== null;
+    if (bearbeiten.haengt || p || !(imRaum || imRaumFeld)) {
       bearbeiten.alt = e.altKey;
       bearbeiten.umschalt = e.shiftKey;
       bearbeiten.zeigerSetzen(x, y, x, y, 0);
@@ -1951,8 +1978,20 @@ leinwandLinien.addEventListener(
 );
 
 function werkzeugGewaehlt(w: Werkzeug): void {
+  // im Raum (mit dem Werk): P an oder aus (Freihand und Formen kommen mit Etappe 5.3, zweiter Teil)
+  if (zustand === 'ruhe' && werkGezeigt) {
+    stiftImRaum(w === 'p');
+    return;
+  }
   if (zustand !== 'blatt') return;
   blatt.werkzeugSetzen(w);
+  anstossen();
+}
+
+/** P im Raum an oder aus (Etappe 5.3): eine angefangene Linie wird beim Ausschalten abgebrochen */
+function stiftImRaum(an: boolean): void {
+  bearbeiten.stiftSchalten(an);
+  leiste.setzen(an ? 'p' : 'auswahl');
   anstossen();
 }
 
@@ -2002,13 +2041,16 @@ window.addEventListener('keydown', (e) => {
   } else if (k === 'Enter') {
     if (zustand === 'blatt') {
       if (!blatt.eingabe('enter') && blatt.geschlossen) aufblasen();
-    }
+    } else if (bearbeitenAn) bearbeiten.eingabe('enter');
   } else if (k === 'Escape') {
     if (zustand === 'blatt') {
       if (!blatt.eingabe('esc')) {
         blatt.werkzeugSetzen('auswahl');
         leiste.setzen('auswahl');
       }
+    } else if (bearbeitenAn && bearbeiten.stift) {
+      // mit P: eine angefangene Linie abbrechen, sonst P aus
+      if (!bearbeiten.eingabe('esc')) stiftImRaum(false);
     } else if (bearbeitenAn && (bearbeiten.auswahl.size > 0 || werk.G.auswahl.length > 0)) {
       // zuerst die Auswahl leeren
       bearbeiten.eingabe('esc');
@@ -2019,9 +2061,11 @@ window.addEventListener('keydown', (e) => {
   } else if (k === 'Backspace' || k === 'Delete') {
     if (zustand === 'blatt') blatt.eingabe('loeschen');
     // gewählte Punkte löschen (im Werk), sonst Luft ablassen
-    else if (bearbeitenAn && bearbeiten.auswahl.size > 0) bearbeiten.eingabe('loeschen');
+    else if (bearbeitenAn && (bearbeiten.auswahl.size > 0 || (bearbeiten.stift && werkBlatt.entwurf()))) bearbeiten.eingabe('loeschen');
     else ablassen();
-  } else if ((k === 'k' || k === 'K') && zustand === 'ruhe' && werkGezeigt) {
+  } else if ((k === 'p' || k === 'P') && zustand === 'ruhe' && werkGezeigt) stiftImRaum(!bearbeiten.stift);
+  else if ((k === 'v' || k === 'V') && zustand === 'ruhe' && werkGezeigt) stiftImRaum(false);
+  else if ((k === 'k' || k === 'K') && zustand === 'ruhe' && werkGezeigt) {
     // Kante an den gewählten Punkten oder Linien an und aus (im Werk)
     if (werk.G.auswahl.length && !werk.zug) werk.kanteSetzen();
   } else if (k === ' ') {
@@ -2191,6 +2235,18 @@ const haken = {
       const p = werkBlatt.netz.punkte[pi]!;
       return A.werk.some((w) => w.id === id && w.i === i) && (!a || F.a === a) ? [{ x: p.x, y: p.y, fl: A.fl, a: F.a, m: A.m, sichtbar: p.sichtbar }] : [];
     }),
+  /** wo ein Ort im Blatt `a` (Einheiten des Werks, wie `werk.imBlatt`) auf der Fläche dieses Blatts liegt (CSS-Pixel); eingerastet oder Feld */
+  flaecheHin: (a: Flaeche['a'], X: number, Y: number): { x: number; y: number } | null => {
+    const F = werkBlatt.flaechen.find((f) => f.a === a);
+    if (!F) return null;
+    const [x, y] = F.hin(X, Y);
+    return { x, y };
+  },
+  /** P an oder aus (wie die Taste P) */
+  stift: (an: boolean): boolean => {
+    stiftImRaum(an);
+    return bearbeiten.stift;
+  },
   /** die Linien des Werks: je Loop Kennung, Art und Punkte (Einheiten des Werks, wie sie liegen) */
   werkLinienDaten: () =>
     werk.loops.map((l) => ({
