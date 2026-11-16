@@ -175,6 +175,14 @@ let tasteGehalten: { taste: string; seit: number; vorher: Ansicht } | null = nul
 /** Drehung und Neigung jeder Ansicht (Grad), als Ziel der ganzen Kamera */
 const ANSICHT_WINKEL: Record<Ansicht, [number, number] | null> = { raum: null, seite: [0, 0], front: [90, 0], top: [0, 90] };
 
+/**
+ * S10 (zum Ansehen, `?auffalten=1`): Beim Wechsel in die Vier Ansichten klappen die Wände der Ecke um ihre Kanten flach (die Seite bleibt,
+ * die Front klappt zur Seite, der Boden nach unten) und setzen sich in ihre Felder; zurück faltet es sich genauso.
+ */
+const AUFFALTEN = new URLSearchParams(location.search).get('auffalten') === '1';
+/** die Projektion der Kamera ohne das Zusammenziehen in das vierte Feld (für das Auffalten) */
+const projOhneVier = new Matrix4();
+
 /** Vier Ansichten (Tab): 0 = aus, 1 = an */
 let vier = 0;
 let vierZiel = 0;
@@ -929,6 +937,7 @@ function kameraSetzen(m: Moment | null): void {
   const ziel = new Vector3((e?.cx ?? 0) * f, (e?.cy ?? 0) * f, 0);
   const tiefe = e ? 3 * e.L + e.R : 4000;
   const c = kam.stellen({ gier, neigung, ziel, s, p, fov: werte.fov }, W, H, tiefe);
+  projOhneVier.copy(c.projectionMatrix);
   // Vier Ansichten: der Raum zieht sich ins vierte Feld zusammen (Projektion verkleinert und verschoben)
   const v = glatt(vier);
   if (v > 1e-4 && e) {
@@ -1424,7 +1433,8 @@ function waendeJetzt(m: Moment): { s: [number, number, number]; staerke: [number
   const r = raumSicht();
   const s: [number, number, number] = [g6[0]! >= g6[1]! ? -1 : 1, g6[2]! >= g6[3]! ? -1 : 1, g6[4]! >= g6[5]! ? -1 : 1];
   const zeit = [m.waende, m.waende, m.schatten];
-  const staerke = [0, 1, 2].map((a) => Math.max(g6[2 * a]!, g6[2 * a + 1]!) * r * zeit[a]! * (1 - glatt(vier))) as [number, number, number];
+  const weg = AUFFALTEN ? (vier > 0.001 ? 0 : 1) : 1 - glatt(vier);
+  const staerke = [0, 1, 2].map((a) => Math.max(g6[2 * a]!, g6[2 * a + 1]!) * r * zeit[a]! * weg) as [number, number, number];
   return { s, staerke };
 }
 
@@ -1586,6 +1596,13 @@ function felderLinien(vp: Matrix4): void {
     if (achse === 0) q.x = lage;
     else if (achse === 1) q.y = lage;
     else q.z = lage;
+    if (AUFFALTEN) {
+      // S10: wie die Linien des Werks (`feldFlaeche`): um die Kante geklappt, am Ende ins Feld
+      const vp0 = new Matrix4().multiplyMatrices(projOhneVier, kam.aktiv.matrixWorldInverse);
+      const [ux, uy] = projizieren(auffalten(n, q, sw, v), vp0);
+      const b = glatt(Math.min(1, Math.max(0, (v - 0.6) / 0.4)));
+      return [ux + (fx - ux) * b, uy + (fy - uy) * b];
+    }
     const [wx, wy] = projizieren(q, vp);
     return [wx + (fx - wx) * v, wy + (fy - wy) * v];
   };
@@ -1681,12 +1698,32 @@ function ebene(a: Flaeche['a'], lage: number, vp: Matrix4, staerke: number, brei
   };
 }
 
+/**
+ * S10: ein Punkt einer Wand, aufgeklappt (v = 0 … 1): Die Wand der Seite bleibt; die der Front dreht sich um ihre Kante mit der Seite
+ * nach außen, der Boden um seine Kante mit der Seite nach unten, bis beide in der Ebene der Seite liegen.
+ */
+function auffalten(n: FeldAchse, P: Vector3, sw: [number, number, number], v: number): Vector3 {
+  if (n === 'seite') return P;
+  const e = raum!;
+  const zh = sw[2] * e.L;
+  const th = (Math.PI / 2) * glatt(Math.min(1, v / 0.8));
+  const dz = P.z - zh;
+  const d = Math.abs(dz);
+  if (n === 'front') {
+    const xh = e.cx + sw[0] * e.L;
+    return new Vector3(xh + sw[0] * d * Math.sin(th), P.y, zh + dz * Math.cos(th));
+  }
+  const yh = e.cy + sw[1] * e.L;
+  return new Vector3(P.x, yh + sw[1] * d * Math.sin(th), zh + dz * Math.cos(th));
+}
+
 /** ein flaches Feld der Vier Ansichten; beim Auf- und Zuklappen zwischen Wand und Feld gemischt (wie `felderLinien`) */
 function feldFlaeche(n: FeldAchse, vp: Matrix4, F: ReturnType<typeof felder>, s4: number, v: number, sw: [number, number, number]): Flaeche {
   const e = raum!;
   const achse = ACHSE_VON[n];
   const lage = [e.cx, e.cy, 0][achse]! + sw[achse] * e.L;
   const r = F[n];
+  const vp0 = AUFFALTEN ? new Matrix4().multiplyMatrices(projOhneVier, kam.aktiv.matrixWorldInverse) : null;
   return {
     a: n,
     staerke: 1,
@@ -1697,6 +1734,12 @@ function feldFlaeche(n: FeldAchse, vp: Matrix4, F: ReturnType<typeof felder>, s4
     hin: (X, Y) => {
       const [fx, fy] = imFeld(n, blattInWelt(n, X, Y, 0), F, s4);
       if (v > 0.999) return [fx / D, fy / D];
+      if (vp0) {
+        // S10: die Wand klappt um ihre Kante (im Raum, wie er ohne Zusammenziehen zu sehen ist), am Ende setzt sie sich in ihr Feld
+        const [ux, uy] = projizieren(auffalten(n, blattInWelt(n, X, Y, lage), sw, v), vp0);
+        const b = glatt(Math.min(1, Math.max(0, (v - 0.6) / 0.4)));
+        return [(ux + (fx - ux) * b) / D, (uy + (fy - uy) * b) / D];
+      }
       const [wx, wy] = projizieren(blattInWelt(n, X, Y, lage), vp);
       return [(wx + (fx - wx) * v) / D, (wy + (fy - wy) * v) / D];
     },
