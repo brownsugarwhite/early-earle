@@ -634,6 +634,11 @@ export class Haut {
    * Statt der Blase des Körpers ein anderes Netz zeigen (Ozzy: die Haut des Werks), mit denselben Durchgängen der Seifenhaut; Rahmen
    * und Schlauch bleiben die des Körpers. `null`: wieder die Blase des Körpers. Dasselbe Netz noch einmal: nur die Werte hochladen.
    */
+  /** nur die Dehnung des fremden Netzes neu hochladen (Ozzy: die Lage der Haut ist dieselbe, die Farben der Dehnung klingen nach) */
+  dehnungErneuern(): void {
+    if (this.geoFremd) (this.geoFremd.getAttribute('aDehnung') as BufferAttribute).needsUpdate = true;
+  }
+
   blaseErsetzen(netz: HautNetz | null): void {
     if (netz && netz === this.fremd && this.geoFremd) {
       for (const n of ['position', 'normal', 'aHoehe', 'aSeite', 'aBlatt', 'aDehnung', 'aSicht']) (this.geoFremd.getAttribute(n) as BufferAttribute).needsUpdate = true;

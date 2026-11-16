@@ -32,6 +32,64 @@ type Plan = {
   dehnung: Float32Array;
 };
 
+/**
+ * Nächster Punkt einer Punktwolke (je drei Zahlen), über ein Gitter: Zelle so groß wie der mittlere Abstand, gesucht in wachsenden
+ * Schalen. Für das Weiterreichen beim Netzwechsel (einmal je Wechsel, nicht je Bild).
+ */
+function naechsteSuche(Q: Float64Array): (x: number, y: number, z: number) => number {
+  const n = Q.length / 3;
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let z0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  let z1 = -Infinity;
+  for (let i = 0; i < n; i++) {
+    x0 = Math.min(x0, Q[3 * i]!);
+    x1 = Math.max(x1, Q[3 * i]!);
+    y0 = Math.min(y0, Q[3 * i + 1]!);
+    y1 = Math.max(y1, Q[3 * i + 1]!);
+    z0 = Math.min(z0, Q[3 * i + 2]!);
+    z1 = Math.max(z1, Q[3 * i + 2]!);
+  }
+  const flaeche = 2 * ((x1 - x0) * (y1 - y0) + (y1 - y0) * (z1 - z0) + (x1 - x0) * (z1 - z0));
+  const h = Math.max(1e-6, Math.sqrt(Math.max(flaeche, 1e-9) / Math.max(1, n)) * 1.5);
+  const zelle = (v: number, a: number): number => Math.floor((v - a) / h);
+  const gitter = new Map<number, number[]>();
+  const schl = (i: number, j: number, k: number): number => (i * 73856093) ^ (j * 19349663) ^ (k * 83492791);
+  for (let i = 0; i < n; i++) {
+    const s = schl(zelle(Q[3 * i]!, x0), zelle(Q[3 * i + 1]!, y0), zelle(Q[3 * i + 2]!, z0));
+    const l = gitter.get(s);
+    if (l) l.push(i);
+    else gitter.set(s, [i]);
+  }
+  return (x, y, z) => {
+    const ci = zelle(x, x0);
+    const cj = zelle(y, y0);
+    const ck = zelle(z, z0);
+    let best = 0;
+    let bd = Infinity;
+    for (let r = 1; r <= 6; r++) {
+      for (let i = ci - r; i <= ci + r; i++)
+        for (let j = cj - r; j <= cj + r; j++)
+          for (let k = ck - r; k <= ck + r; k++) {
+            const l = gitter.get(schl(i, j, k));
+            if (!l) continue;
+            for (const q of l) {
+              const d = (Q[3 * q]! - x) ** 2 + (Q[3 * q + 1]! - y) ** 2 + (Q[3 * q + 2]! - z) ** 2;
+              if (d < bd) {
+                bd = d;
+                best = q;
+              }
+            }
+          }
+      // gefunden und die nächste Schale kann nichts Näheres bringen
+      if (bd < (r * h) ** 2) break;
+    }
+    return best;
+  };
+}
+
 /** Schlüssel einer Linienkante: Loop, Probe, Spiegelhälfte (wie `glattOrt` im Prüffenster) */
 const ort = (li: number, j: number, sp: boolean): number => (li * 1_000_000 + j) * 2 + (sp ? 1 : 0);
 const kennJetzt = (): string => `${werk.grund ? 'p' : 'g'}|${werk.loops.map((l) => `${l.id}.${l.proben.length}.${werk.exakt(l) ? 1 : 0}`).join(',')}`;
@@ -48,14 +106,30 @@ export class WerkHaut {
   geaendert = 0;
   /** zählt jede neue Lage der Anzeige (für Zwischenspeicher, die an der Haut hängen: Umriss) */
   version = 0;
+  /** im letzten Rechnen hat sich nur die Dehnung geändert (die Lage der Haut war dieselbe): nur sie neu hochladen */
+  nurDehnung = false;
+  private letzte: { plan: Plan; voll: boolean; lagen: Float64Array } | null = null;
   private umrissSpeicher = new Map<number, { version: number; netz: HautNetz | null; seg: Float32Array; t: number }>();
   /** ein Umriss ist älter als die Haut (im Zug höchstens alle `UMRISS_MS` neu): Die Anzeige braucht noch ein Bild */
   umrissVeraltet = false;
   private p: Plan | null = null;
+  /** der Plan vor dem letzten Netzwechsel (für das Weiterreichen von Muster und Dehnung) */
+  private alt: Plan | null = null;
+  /** Bezug der Muster für diese Form (Mitte und Halbmesser im Blatt), fest, solange es dieselbe Form ist */
+  private blattBezug: { cx: number; cy: number; r: number } | null = null;
   private kanten: { index: Uint32Array; liste: Int32Array } | null = null;
 
   /** Neues Netz im Werk (nach `geometrieNeu`): Der Plan wird beim nächsten Rechnen neu angelegt */
   topologieNeu(): void {
+    // der alte Plan bleibt bis zum neuen: Muster und Dehnung gehen an derselben Stelle weiter (S2, kein Sprung beim Netzwechsel)
+    if (this.p) this.alt = this.p;
+    this.p = null;
+  }
+
+  /** eine neue Form (aus der Silhouette, geladen, neu): Muster und Dehnung beginnen von vorn */
+  neueForm(): void {
+    this.blattBezug = null;
+    this.alt = null;
     this.p = null;
   }
 
@@ -122,9 +196,10 @@ export class WerkHaut {
       flaeche: new Float64Array(N),
       dehnung: new Float32Array(N).fill(1),
     };
-    // Lage im Blatt und Bezug der Dehnung: die Haut, wie sie jetzt ist
+    // Lage im Blatt und Bezug der Dehnung: aus dem Plan davor an derselben Stelle (Netzwechsel), sonst die Haut, wie sie jetzt ist
     this.lagenLesen(p, null);
-    this.bezugSetzen(p);
+    this.bezugSetzen(p, this.alt ?? this.p);
+    this.alt = null;
     return p;
   }
 
@@ -163,28 +238,46 @@ export class WerkHaut {
     }
   }
 
-  /** Bezug der Farben: die Haut, wie sie jetzt ist (Lage im Blatt für die Muster, Fläche je Punkt für die Dehnung) */
-  private bezugSetzen(p: Plan): void {
+  /**
+   * Bezug der Farben (Lage im Blatt für die Muster, Fläche je Punkt für die Dehnung). Gibt es einen Plan davor (Netzwechsel), nimmt
+   * jeder Punkt Muster und Dehnung vom nächsten Punkt des alten Plans: An derselben Stelle bleibt alles, wie es war (S2; vorher
+   * begannen beide neu, Muster nach dem Kasten der Form von jetzt, Dehnung 1, und die Haut sprang). Sonst: die Haut, wie sie jetzt ist,
+   * mit einem Bezug der Muster, der für diese Form fest bleibt.
+   */
+  private bezugSetzen(p: Plan, alt: Plan | null): void {
     const L = p.lagen;
     const N = p.quelle.length;
-    let x0 = Infinity;
-    let x1 = -Infinity;
-    let y0 = Infinity;
-    let y1 = -Infinity;
-    for (let d = 0; d < N; d++) {
-      x0 = Math.min(x0, L[3 * d]!);
-      x1 = Math.max(x1, L[3 * d]!);
-      y0 = Math.min(y0, L[3 * d + 1]!);
-      y1 = Math.max(y1, L[3 * d + 1]!);
+    this.flaecheRechnen(p);
+    if (alt && alt.lagen.length >= 3) {
+      const naechster = naechsteSuche(alt.lagen);
+      for (let d = 0; d < N; d++) {
+        const o = naechster(L[3 * d]!, L[3 * d + 1]!, L[3 * d + 2]!);
+        p.blattX[d] = alt.blattX[o]!;
+        p.blattY[d] = alt.blattY[o]!;
+        const de = Math.max(0.05, alt.dehnung[o]!);
+        p.bezug[d] = p.flaeche[d]! / de;
+        p.dehnung[d] = de;
+      }
+      return;
     }
-    const cx = (x0 + x1) / 2;
-    const cy = (y0 + y1) / 2;
-    const r = Math.max(1e-6, (x1 - x0) / 2, (y1 - y0) / 2);
+    if (!this.blattBezug) {
+      let x0 = Infinity;
+      let x1 = -Infinity;
+      let y0 = Infinity;
+      let y1 = -Infinity;
+      for (let d = 0; d < N; d++) {
+        x0 = Math.min(x0, L[3 * d]!);
+        x1 = Math.max(x1, L[3 * d]!);
+        y0 = Math.min(y0, L[3 * d + 1]!);
+        y1 = Math.max(y1, L[3 * d + 1]!);
+      }
+      this.blattBezug = { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, r: Math.max(1e-6, (x1 - x0) / 2, (y1 - y0) / 2) };
+    }
+    const { cx, cy, r } = this.blattBezug;
     for (let d = 0; d < N; d++) {
       p.blattX[d] = (L[3 * d]! - cx) / r;
       p.blattY[d] = (L[3 * d + 1]! - cy) / r;
     }
-    this.flaecheRechnen(p);
     p.bezug.set(p.flaeche);
   }
 
@@ -200,6 +293,32 @@ export class WerkHaut {
     const t0 = performance.now();
     this.lagenLesen(g, vorgabe);
     const L = g.lagen;
+    // Liegt die Haut genau wie beim letzten Mal, klingt nur die Dehnung nach (S3: vorher jedes Bild die ganze glatte Anzeige neu, rund
+    // 5 ms, 2,5 s lang nach jedem Handgriff): kein neues Glätten, kein neuer Umriss, nur die Dehnung
+    const v = this.letzte;
+    if (!vorgabe && this.netz && v && v.plan === g && v.voll === voll && v.lagen.length === L.length) {
+      let gleich = true;
+      for (let i = 0; i < L.length; i++)
+        if (L[i] !== v.lagen[i]) {
+          gleich = false;
+          break;
+        }
+      if (gleich) {
+        const k = dt > 0 && beruhigen > 0 ? 1 - Math.exp(-dt / beruhigen) : 0;
+        for (let d = 0; d < g.flaeche.length; d++) {
+          if (k > 0) g.bezug[d] = g.bezug[d]! + (g.flaeche[d]! - g.bezug[d]!) * k;
+          g.dehnung[d] = g.flaeche[d]! / Math.max(1e-9, g.bezug[d]!);
+        }
+        const de = g.plan.weiterreichen(this.stufen, g.dehnung);
+        const z = this.netz;
+        const n = z.pos.length / 3;
+        for (let i = 0; i < n; i++) z.dehnung[i] = de[i]!;
+        this.nurDehnung = true;
+        this.ms = performance.now() - t0;
+        return false;
+      }
+    }
+    this.nurDehnung = false;
     // Pfadstücke: erst jede Linienkante gerade, dann die Stücke der Loops, an die Punkte der Haut gelegt, wie sie gerade sind
     const K = g.pfade;
     g.kanten.forEach((k, i) => {
@@ -281,6 +400,14 @@ export class WerkHaut {
     this.ms = performance.now() - t0;
     if (!voll) this.geaendert = performance.now();
     this.version++;
+    if (!vorgabe) {
+      if (!this.letzte || this.letzte.lagen.length !== L.length) this.letzte = { plan: g, voll, lagen: Float64Array.from(L) };
+      else {
+        this.letzte.plan = g;
+        this.letzte.voll = voll;
+        this.letzte.lagen.set(L);
+      }
+    } else this.letzte = null;
     return neu;
   }
 

@@ -493,6 +493,7 @@ function werkFormAnlegen(): void {
     aus: [a.aus[0] * f, -a.aus[1] * f] as [number, number],
   }));
   const t0 = performance.now();
+  werkHaut.neueForm();
   const text = werk.neuAusUmriss(anker);
   werk.anzeige.allesZeigen();
   stat.werkMs = performance.now() - t0;
@@ -514,6 +515,7 @@ const LADEN_GROESSE = 0.25;
  */
 async function formLaden(name: string): Promise<string> {
   neu();
+  werkHaut.neueForm();
   const text = await werk.wesenLaden(name);
   if (!text.startsWith('geladen')) return text;
   werk.anzeige.allesZeigen();
@@ -700,7 +702,8 @@ function werkBild(dt: number, m: Moment | null): boolean {
     const th = performance.now();
     werk.alsAnzeige(() => werkHaut.rechnen(schnalz ? uebergabeLagen(w) : null, voll, dt, schnalz ? 0 : 1.6));
     mess.teile[1] = performance.now() - th;
-    haut.blaseErsetzen(werkHaut.netz);
+    if (werkHaut.nurDehnung) haut.dehnungErneuern();
+    else haut.blaseErsetzen(werkHaut.netz);
     werkGezeigt = true;
     aktiv = aktiv || schnalz || jetzt - werkZuletzt < 2500;
   }
@@ -804,6 +807,7 @@ function nochEinmal(): void {
 /** zurück aufs leere Blatt (der Mülleimer im Raum); die Zeichnung bleibt für ⌘Z auf dem Blatt */
 function neu(): void {
   if (bearbeiten.stift) bearbeiten.stiftSchalten(false);
+  werkHaut.neueForm();
   zustand = 'blatt';
   T = 0;
   blatt.leeren();
