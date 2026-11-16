@@ -176,14 +176,13 @@ let tasteGehalten: { taste: string; seit: number; vorher: Ansicht } | null = nul
 const ANSICHT_WINKEL: Record<Ansicht, [number, number] | null> = { raum: null, seite: [0, 0], front: [90, 0], top: [0, 90] };
 
 /**
- * S10 (zum Ansehen, `?auffalten=1`), zweite Fassung nach Florians Rückmeldung (16.11. abends: „Die seiten müssen wirklich aufklappen und
- * die projektionen dabei auf der fläche in position sliden. Das muss alles in einer gleichmäßigen bewegung erfolgen“): Die Felder sind ein
- * aufgeklapptes Kistennetz. Die Wand der Seite bleibt liegen, die der Front klappt um ihre Kante mit der Seite nach links, der Boden um
- * seine nach unten; die Kanten gleiten dabei zu den Teilern, und jede Zeichnung gleitet auf ihrer Wand an ihren Platz. Eine eigene Kamera
- * für die Zeichnungen fährt dabei vom Raum gerade auf die Seite (parallel, im Maßstab der Felder). Alles hängt an einer Zahl
+ * S10, das Auffalten (Florian, 16.11. abends: „Die seiten müssen wirklich aufklappen und die projektionen dabei auf der fläche in position
+ * sliden. Das muss alles in einer gleichmäßigen bewegung erfolgen“; die zweite Fassung: „ja standard“): Die Felder der Vier Ansichten sind
+ * ein aufgeklapptes Kistennetz. Die Wand der Seite bleibt liegen, die der Front klappt um ihre Kante mit der Seite nach links, der Boden
+ * um seine nach unten; die Kanten gleiten dabei zu den Teilern, und jede Zeichnung gleitet auf ihrer Wand an ihren Platz. Eine eigene
+ * Kamera für die Zeichnungen fährt dabei vom Raum gerade auf die Seite (parallel, im Maßstab der Felder). Alles hängt an einer Zahl
  * (`glatt(vier)`); die Blase gleitet mit der Kamera des Raums ins Raumfeld. Zurück faltet es sich genauso.
  */
-const AUFFALTEN = new URLSearchParams(location.search).get('auffalten') === '1';
 /** die Lage der Kamera des Raums in diesem Bild (ohne das Zusammenziehen ins vierte Feld) und wie tief ihre Szene reicht: Anfang der Fahrt */
 let lageRaum: KameraLage | null = null;
 let tiefeRaum = 1;
@@ -1071,7 +1070,7 @@ let faltJetzt: Falt | null = null;
 function faltRechnen(): Falt | null {
   const e = raum;
   const L0 = lageRaum;
-  if (!AUFFALTEN || !e || !L0 || vier <= 1e-3) return null;
+  if (!e || !L0 || vier <= 1e-3) return null;
   const v = glatt(vier);
   const F = felder();
   const s4 = feldMassstab(F);
@@ -1563,7 +1562,7 @@ function bild(dt: number): boolean {
       const tw = performance.now();
       wandLinien(vp, m);
       if (flach > 0.01) linienDerAnsicht(vp);
-      if (faltJetzt || vier > 0.02) felderLinien(vp, m);
+      if (faltJetzt) felderLinien(faltJetzt, m);
       mess.teile[5] = performance.now() - tw;
       if (werkHaut.umrissVeraltet) aktiv = true;
     }
@@ -1664,7 +1663,7 @@ function waendeJetzt(m: Moment, wieImRaum = false): { s: [number, number, number
   const s: [number, number, number] = [g6[0]! >= g6[1]! ? -1 : 1, g6[2]! >= g6[3]! ? -1 : 1, g6[4]! >= g6[5]! ? -1 : 1];
   const zeit = [m.waende, m.waende, m.schatten];
   // S10: beim Auffalten zeigen die Felder die Zeichnungen der Wände, von Anfang an (`wieImRaum`: die Stärke ohne die Vier Ansichten)
-  const weg = wieImRaum ? 1 : AUFFALTEN ? (vier > 1e-3 ? 0 : 1) : 1 - glatt(vier);
+  const weg = wieImRaum || vier <= 1e-3 ? 1 : 0;
   const staerke = [0, 1, 2].map((a) => Math.max(g6[2 * a]!, g6[2 * a + 1]!) * r * zeit[a]! * weg) as [number, number, number];
   return { s, staerke };
 }
@@ -1804,45 +1803,27 @@ function linienDerAnsicht(vp: Matrix4): void {
 }
 
 /**
- * Vier Ansichten: In den drei flachen Feldern nur Linien (Seite mit Punkten, Front und Top als Umriss). Beim Auf- und Zuklappen
- * gleitet jede Linie von ihrer Wand in ihr Feld (je Punkt zwischen den beiden Abbildungen gemischt). Dazu der Teiler: zwei
- * Haarlinien und der Tropfen an ihrer Kreuzung.
+ * Vier Ansichten: In den drei flachen Feldern nur Linien (Seite mit Punkten, Front und Top als Umriss). Beim Auf- und Zuklappen liegen
+ * sie auf den Wänden, die sich zu den Feldern aufklappen (S10, `faltPunkt`). Dazu der Teiler: zwei Haarlinien und der Tropfen an ihrer
+ * Kreuzung.
  */
-function felderLinien(vp: Matrix4, m: Moment): void {
+function felderLinien(f: Falt, m: Moment): void {
   const k = koerper!;
-  const e = raum!;
-  const F = felder();
-  const s4 = feldMassstab(F);
-  const v = glatt(vier);
-  const g6 = wandGewichte();
-  const sw: [number, number, number] = [g6[0]! >= g6[1]! ? -1 : 1, g6[2]! >= g6[3]! ? -1 : 1, g6[4]! >= g6[5]! ? -1 : 1];
-  const mitte = [e.cx, e.cy, 0];
+  const { F, s4, sw } = f;
+  const v = f.e;
   const r0 = (linienWerte.umriss / 2) * D;
-  const f = faltJetzt;
-  // S10: Linien und Punkte werden auf dem Weg von der Wand ins Feld so breit wie im Feld (an der Wand wie in `wandLinien`)
-  const st0 = f ? waendeJetzt(m, true).staerke : null;
+  // Linien und Punkte werden auf dem Weg von der Wand ins Feld so breit wie im Feld (an der Wand wie in `wandLinien`)
+  const st0 = waendeJetzt(m, true).staerke;
   const breite = (achse: number, punkt: boolean): number => {
-    if (!f || !st0) return 1;
     const ueber = wandSicht[achse * 2 + (sw[achse]! > 0 ? 1 : 0)]!;
     const w = punkt ? st0[achse]! * (0.55 + 0.45 * ueber) : bw.wandLinien * st0[achse]! * (0.82 + 0.18 * ueber);
-    return w + (1 - w) * f.e;
+    return w + (1 - w) * v;
   };
+  // auf der Wand, die sich aufklappt; die Zeichnung gleitet dabei an ihren Platz
   const mischen = (n: FeldAchse, p: Vector3): [number, number] => {
-    const [fx, fy] = imFeld(n, p, F, s4);
-    if (v > 0.999) return [fx, fy];
-    if (f) {
-      // S10: auf der Wand, die sich aufklappt; die Zeichnung gleitet dabei an ihren Platz
-      const [x, y] = projizieren(faltPunkt(n, p, f), f.vp);
-      return [x, y];
-    }
-    const achse = n === 'front' ? 0 : n === 'top' ? 1 : 2;
-    const q = p.clone();
-    const lage = mitte[achse]! + sw[achse] * e.L;
-    if (achse === 0) q.x = lage;
-    else if (achse === 1) q.y = lage;
-    else q.z = lage;
-    const [wx, wy] = projizieren(q, vp);
-    return [wx + (fx - wx) * v, wy + (fy - wy) * v];
+    if (v > 0.999) return imFeld(n, p, F, s4);
+    const [x, y] = projizieren(faltPunkt(n, p, f), f.vp);
+    return [x, y];
   };
   for (const n of ['seite', 'front', 'top'] as const) {
     if (werkGezeigt && n === 'seite' && mitteDa()) continue;
@@ -1879,7 +1860,7 @@ function felderLinien(vp: Matrix4, m: Moment): void {
   const rh = (linienWerte.innen / 2) * D * v;
   const anflug = teiler.zug ? 1 : teiler.ueber;
   const tropfen = linienWerte.punktRadius * D * (1 + (linienWerte.tropfen - 1) * anflug) * v;
-  if (f && st0 && v <= 0.999) {
+  if (v <= 0.999) {
     const [kx, ky] = faltKanten(f, werte.kanten * Math.min(st0[0], st0[1], st0[2]) * raumSicht(), rh);
     K.punkt(kx, ky, tropfen);
     return;
@@ -1945,33 +1926,30 @@ function ebene(a: Flaeche['a'], lage: number, vp: Matrix4, staerke: number, brei
   };
 }
 
-/** ein flaches Feld der Vier Ansichten; beim Auf- und Zuklappen zwischen Wand und Feld gemischt (wie `felderLinien`) */
-function feldFlaeche(n: FeldAchse, vp: Matrix4, F: ReturnType<typeof felder>, s4: number, v: number, sw: [number, number, number], st0: number[] | null): Flaeche {
+/** ein flaches Feld der Vier Ansichten; beim Auf- und Zuklappen auf seiner Wand, die sich aufklappt (wie `felderLinien`) */
+function feldFlaeche(n: FeldAchse, f: Falt, st0: number[]): Flaeche {
   const e = raum!;
+  const { F, s4, sw } = f;
   const achse = ACHSE_VON[n];
   const lage = [e.cx, e.cy, 0][achse]! + sw[achse] * e.L;
   const r = F[n];
-  const f = faltJetzt;
-  // S10: auf dem Weg von der Wand ins Feld so stark und breit wie an der Wand, am Ende wie im Feld
-  const t = f ? f.e : 1;
-  const st = f && st0 ? st0[achse]! : 1;
+  // auf dem Weg von der Wand ins Feld so stark und breit wie an der Wand, am Ende wie im Feld
+  const t = f.e;
+  const st = st0[achse]!;
   return {
     a: n,
     staerke: st + (1 - st) * t,
-    breite: f ? bw.wandLinien + (1 - bw.wandLinien) * t : 1,
+    breite: bw.wandLinien + (1 - bw.wandLinien) * t,
     // S7: ein Feld ist seine Wand, aufgeklappt: Betrachter auf der anderen Seite
     vorn: -sw[achse] || 1,
     enthaelt: (x, y) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h,
     hin: (X, Y) => {
-      const [fx, fy] = imFeld(n, blattInWelt(n, X, Y, 0), F, s4);
-      if (v > 0.999) return [fx / D, fy / D];
-      if (f) {
-        // S10: auf der Wand, die sich aufklappt (wie `felderLinien`)
-        const [ux, uy] = projizieren(faltPunkt(n, blattInWelt(n, X, Y, lage), f), f.vp);
-        return [ux / D, uy / D];
+      if (t > 0.999) {
+        const [fx, fy] = imFeld(n, blattInWelt(n, X, Y, 0), F, s4);
+        return [fx / D, fy / D];
       }
-      const [wx, wy] = projizieren(blattInWelt(n, X, Y, lage), vp);
-      return [(wx + (fx - wx) * v) / D, (wy + (fy - wy) * v) / D];
+      const [ux, uy] = projizieren(faltPunkt(n, blattInWelt(n, X, Y, lage), f), f.vp);
+      return [ux / D, uy / D];
     },
     her: (x, y) => {
       // ausFeld: Seite (x, y), Front (z, y), Top (x, z) der Welt
@@ -2012,13 +1990,9 @@ function flaechenJetzt(vp: Matrix4, m: Moment): { flaechen: Flaeche[]; stabil: b
     if (st >= 0.01) liste.push(ebene(ansicht, ansicht === 'seite' ? 0 : ansicht === 'front' ? e.cx : e.cy, vp, st, 1, false));
   }
   // die drei flachen Felder (S10: beim Auffalten von Anfang an, sie zeigen dann die Zeichnungen der Wände)
-  if (faltJetzt || vier > 0.02) {
-    const F = felder();
-    const s4 = feldMassstab(F);
-    const g6 = wandGewichte();
-    const sw: [number, number, number] = [g6[0]! >= g6[1]! ? -1 : 1, g6[2]! >= g6[3]! ? -1 : 1, g6[4]! >= g6[5]! ? -1 : 1];
-    const st0 = faltJetzt ? waendeJetzt(m, true).staerke : null;
-    for (const n of ['seite', 'front', 'top'] as const) liste.push(feldFlaeche(n, vp, F, s4, glatt(vier), sw, st0));
+  if (faltJetzt) {
+    const st0 = waendeJetzt(m, true).staerke;
+    for (const n of ['seite', 'front', 'top'] as const) liste.push(feldFlaeche(n, faltJetzt, st0));
   }
   const ruhig = zustand === 'ruhe' && !ansichtFahrt && !vierFahrt;
   const stabil = ruhig && (vier > 0.999 || (vier < 0.001 && (flach > 0.999 || flach < 0.001)));
@@ -3487,7 +3461,7 @@ const haken = {
     return { x: x / D, y: y / D };
   },
   /**
-   * S10 (Probe des Auffaltens, mit `?auffalten=1`): sechs Bezugspunkte der Zeichnungen (je Wand die Mitte der Form und ein Punkt daneben)
+   * S10 (Probe des Auffaltens): sechs Bezugspunkte der Zeichnungen (je Wand die Mitte der Form und ein Punkt daneben)
    * in diesem Bild (CSS), so wie die Linien sie zeigen: an der Wand, beim Auffalten oder im Feld
    */
   faltPunkte: () => {

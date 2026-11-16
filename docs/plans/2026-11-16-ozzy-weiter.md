@@ -217,8 +217,8 @@ gerade an ihren Platz gleitet (ohne das liefen sie erst nach außen und dann zur
 Haarlinien, die drei Kanten der Ecke gehen in sie über; die Teiler liegen auf den Kanten und gleiten mit (nichts doppelt). Alles hängt an
 einer Zahl. Probe `ozzy-auffalten-fenster.mjs`: im ersten Bild noch auf den Wänden (0,1 px), am Ende ohne Nachschieben, jede Zeichnung
 mit genau einem Gipfel der Geschwindigkeit, hin und zurück. Filme: [echt](../progress/ozzy/2026-11-16-vier-kistennetz.mp4),
-[dreifach langsamer](../progress/ozzy/2026-11-16-vier-kistennetz-zeitlupe.mp4); vorher wie oben. Sein Urteil entscheidet, ob es Standard
-wird.
+[dreifach langsamer](../progress/ozzy/2026-11-16-vier-kistennetz-zeitlupe.mp4); vorher wie oben. Florian: „ja standard“ → Tab faltet
+jetzt immer so auf (der Schalter `?auffalten` und die alte Überblendung sind weg). **S10 abgeschlossen.**
 
 **S11 Sichern.** Im Menü „Ozzy“: Sichern unter einem Namen (neu), Überschreiben nur nach Frage; ⌘S. *Probe:* sichern, neu laden,
 gleich.

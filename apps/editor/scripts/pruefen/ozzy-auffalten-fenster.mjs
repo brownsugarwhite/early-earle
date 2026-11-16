@@ -1,4 +1,5 @@
-// Ozzy, S10 im Plan „wie es weitergeht“ (16.11.2026): das Auffalten als Kistennetz (`?auffalten=1`), an „strange bird“ (NAME).
+// Ozzy, S10 im Plan „wie es weitergeht“ (16.11.2026): das Auffalten als Kistennetz (seit Florians „ja standard“ der Weg in die Vier
+// Ansichten), an „strange bird“ (NAME).
 // Sechs Bezugspunkte der Zeichnungen (je Wand die Mitte der Form und ein Punkt daneben), Bild für Bild (60 je Sekunde) hin und zurück.
 // Kriterien:
 //   1  Anfang: Im ersten Bild nach Tab liegt jede Zeichnung noch auf ihrer Wand (höchstens 2 px weg).
@@ -18,7 +19,7 @@ s.on('pageerror', (e) => fehler.push(String(e)));
 s.on('console', (m) => {
   if (m.type() === 'error') fehler.push(m.text());
 });
-await s.goto(`${basis}?form=${encodeURIComponent(NAME)}&auffalten=1`);
+await s.goto(`${basis}?form=${encodeURIComponent(NAME)}`);
 await s.waitForFunction(() => !!window.__ozzy);
 await s.waitForFunction(() => window.__ozzy.bearbeiten().an && !window.__ozzy.bearbeiten().beschaeftigt, null, { timeout: 90000 });
 await s.waitForTimeout(600);

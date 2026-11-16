@@ -1,5 +1,5 @@
 // Film: Wechsel in die Vier Ansichten und zurück (S10 im Plan „wie es weitergeht“, 16.11.2026), an „strange bird“ (NAME). Bild für Bild
-// (60 je Sekunde), dann MP4. Aufruf aus apps/editor, Ozzy auf 5205: [ZEITLUPE=3] node scripts/ozzy/vier-film.mjs <ziel.mp4> [zusatz der Adresse, z. B. auffalten=1]
+// (60 je Sekunde), dann MP4. Aufruf aus apps/editor, Ozzy auf 5205: [ZEITLUPE=3] node scripts/ozzy/vier-film.mjs <ziel.mp4> [zusatz der Adresse, z. B. ohneLinie=0]
 import { chromium } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
