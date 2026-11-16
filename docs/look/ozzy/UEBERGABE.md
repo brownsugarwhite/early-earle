@@ -1,4 +1,4 @@
-# Übergabe: Ozzy (Stand 16.11.2026)
+# Übergabe: Ozzy (Stand 16.11.2026, mittags)
 
 Ozzy ist der Editor für Florians Formen aus einem Guss (Florian, 16.11.: Name „Ozzy“, Designsystem „liquid drop“). Plan mit seinem
 Auftrag wörtlich, Bestandsaufnahme, acht Grundsätzen und acht Phasen: [`docs/plans/2026-11-16-ozzy.md`](../../plans/2026-11-16-ozzy.md).
@@ -43,12 +43,34 @@ parallele Arbeit an `kurven.ts` mehr; auch die offenen Punkte des Kerns werden h
   Aufblasen, Raum und Ansichten), Fassung der Haut (M), „Werte kopieren“, „Grundwerte“. Eigene Schlüssel im Browser
   (`ozzy-…`), die Studien behalten ihre.
 
+## Phase 1: das Werk (16.11. vormittags, gebaut)
+
+`apps/editor/src/form/kurven.ts` ist geteilt in **`werk.ts`** (Zustand und Handgriffe einer Form, Bildtakt `bildRechnen`, Hintergrund,
+Maul, Pose, Behalten; ohne DOM und ohne three.js) und die **Hülle `kurven.ts`** (three.js, SVG-Blätter, Knöpfe, Tasten, Zeiger,
+Startcode, Test-Haken `__kurven`). Verhaltensgleich: dieselben neun Fenster-Proben vorher und nachher (Tabelle unten).
+
+**Wie es gebaut ist** (mit einem Werkzeug, das `kurven.ts` mit dem TypeScript-Compiler liest und jede Anweisung auf oberster Ebene
+zuordnet; keine Zeile von Hand umgeschrieben außer der Sperre der Eingaben beim Maul):
+- **Werk** ist jede Anweisung, die weder DOM noch three.js braucht; Daten bleiben im Werk, außer nur die Hülle braucht sie. Der Startcode
+  des Fensters bleibt in der Hülle (gleiche Reihenfolge wie vorher). Das Werk gibt alles nach außen (`export`).
+- **Haken** (`anzeige` im Werk, Typ `Anzeige`): Wo das Werk die Anzeige ruft, ruft es `anzeige.…` (`geometrieNeu`, `reglerZeigen`,
+  `allesZeigen`, `skala`, `ausschnittGeaendert`, `statusZeigen`, `eingabenSperren`, `hautZeigen`, `baenderZeigen`, `blattZeichnen`,
+  `glattInRuhe`, `rendern`). Die Hülle setzt sie gleich nach `skala` (`Object.assign(anzeige, …)`); vorher sind es leere Haken
+  (`skala` gibt 1).
+- **Geteilter Zustand `G`** (im Werk): 23 Größen, die Werk und Hülle beide setzen (Auswahl, Werkzeugmodus, Meldung, Einfluss O,
+  Radius, Zeichnung im Gang, die Stände des Hintergrunds, `maul`, `neuZeichnen` …). Überall `G.name` statt `name`.
+- **Achtung:** `allesZeigen` steht in der Hülle und tut dort auch Werk-Arbeit (ein gelöschtes Maul aufräumen, `eckenAuto`,
+  `vorrechnenPlanen`, `behaltenPlanen`). Wer das Werk ohne `kurven.ts` benutzt (Ozzy), muss diese vier Dinge in seinem
+  `anzeige.allesZeigen` auch tun, oder das Werk bekommt dafür eine eigene Funktion `geaendert()` (nächster kleiner Schritt).
+
+**Belegt** ([`docs/progress/ozzy/2026-11-16-werk-proben.md`](../../progress/ozzy/2026-11-16-werk-proben.md)): Typen, Lint, die 24 Tests des Fensters; die neun
+Fenster-Proben vorher und nachher mit denselben Urteilen (die 2 umgeschlagenen Dreiecke einer ersten Abzweigungs-Probe vorher kamen in
+3 weiteren Läufen des alten Stands nicht wieder: Streuung der Uhr).
+
 ## Was noch fehlt (nächste Schritte, Plan Abschnitt 8)
 
-1. **Phase 1, das Werk lösen** (der wichtigste Schritt): den Zustand und die Handgriffe der Form aus `kurven.ts` in
-   `apps/editor/src/form/werk/` holen, verhaltensgleich, `kurven.html` als Hülle. **Genauer Schnittplan mit jeder Funktion, ihrem Ziel,
-   den vier nicht mechanischen Stellen, der Reihenfolge und den Proben: [`werk-schnittplan.md`](werk-schnittplan.md).** Heute nicht
-   begonnen: Es ist die größte einzelne Arbeit (7 224 Zeilen, 50 bekannte Fallen) und braucht eine frische Sitzung mit voller Länge.
+1. ~~Phase 1, das Werk lösen~~: gebaut (oben). Kleiner Rest: `allesZeigen` tut in der Hülle Werk-Arbeit; für Ozzy eine
+   Funktion `geaendert()` im Werk daraus machen.
 2. **Phase 3, die Kern-Form:** am Ende des Aufblasens steht die Form des Kerns (`rundAusSeite` und die Silhouette als Mittellinie);
    zuerst der kleine Beweis „ein einzelner Loop“ (Plan, Phase 3). Dann zeigen Wände, Felder und eingerastete Ansicht die Linien des
    Kerns, die Blase ist die glatte Anzeige des Kerns mit der Seifenhaut.

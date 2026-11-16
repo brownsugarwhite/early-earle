@@ -5,7 +5,9 @@ Gedächtnis des Electron-Editors (Käfig-Zeit) liegt in `docs/verlauf/2026-11-12
 
 ## Was hier liegt
 
-- **`kurven.html` + `src/form/kurven.ts`:** der Editor, der zählt (immer mit `?gewichte=geometrie`). Daneben `verfeinern.ts`
+- **`src/form/werk.ts`** (seit 16.11., Ozzy Phase 1): Zustand und Handgriffe einer Form, Bildtakt `bildRechnen`, ohne DOM und
+  three.js; die Anzeige über die Haken `anzeige`, geteilter Zustand `G`. **`kurven.html` + `src/form/kurven.ts`** ist die Hülle
+  darum (Anzeige, Tasten, Test-Haken): das Prüffenster des Kerns (immer mit `?gewichte=geometrie`). Daneben `verfeinern.ts`
   mit `verfeinern.worker.ts` (Rechnen im Hintergrund) und `ablage.ts` (Sichern und Laden, Dateien in `wesen/`).
 - **`editor.html` + `src/form/editor.ts`, `blaupause.ts`, `lava.ts`:** derselbe Editor im Layout der Blaupause (`/editor`).
   Gehört der Design-Sitzung; nicht anfassen. `editor.ts` ist eine Kopie von `kurven.ts`.
