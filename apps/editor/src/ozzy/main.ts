@@ -1320,7 +1320,9 @@ function bild(dt: number): boolean {
   // Text
   gruss.classList.toggle('weg', !(zustand === 'blatt' && blatt.leer));
   const h =
-    zustand === 'blatt'
+    zustand === 'ruhe' && werkGezeigt && raumWerkzeug === 'lasso'
+      ? 'Lasso: Punkte umfahren · ⇧ dazu · ⌥ weg · ⌫ löschen · K Kante · V oder L: zurück'
+      : zustand === 'blatt'
       ? blatt.geschlossen && !blatt.zeichnet
         ? '↩ aufblasen'
         : ''
@@ -1329,18 +1331,18 @@ function bild(dt: number): boolean {
           ? werkGezeigt
             ? bearbeiten.stift
               ? 'P: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen (Form) · auf Punkt oder Linie beginnen und enden (Abzweigung) · Esc'
-              : 'Punkte, Linien und Richtungen ziehen · ins Leere ziehen: drehen · P zeichnen · K Kante · ⌫ löschen · ⌘Z · Tab: zurück in den Raum'
+              : 'Punkte, Linien und Richtungen ziehen · ins Leere ziehen: drehen · P zeichnen · L Lasso · K Kante · ⌫ löschen · ⌘Z · Tab: zurück in den Raum'
             : 'Tab: zurück in den Raum · Tropfen in der Mitte ziehen: Felder · Punkte der Seite ziehen'
           : ansicht === 'raum'
             ? werkGezeigt
               ? bearbeiten.stift
                 ? 'P an den Wänden: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen · auf Punkt oder Linie: Abzweigung · Esc'
-                : 'an der Blase ziehen: Pinsel ([ ] Größe) · ins Leere ziehen: drehen · Linien an den Wänden ziehen · P zeichnen · K Kante · ⌫ löschen · ⌘Z · 1 3 7 Ansichten · Tab vier'
+                : 'an der Blase ziehen: Pinsel ([ ] Größe) · ins Leere ziehen: drehen · Linien an den Wänden ziehen · P zeichnen · L Lasso · K Kante · ⌫ löschen · ⌘Z · 1 3 7 Ansichten · Tab vier'
               : 'ziehen: drehen · an der Blase ziehen · Punkte an der Wand der Seite ziehen · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
             : werkGezeigt
               ? bearbeiten.stift
                 ? 'P: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen (Form) · auf Punkt oder Linie beginnen und enden (Abzweigung) · Esc'
-                : 'Punkte, Linien und Richtungen ziehen · ins Leere ziehen: drehen · P zeichnen · K Kante · ⌫ löschen · ⌘Z · 0 Raum · 1 Seite · 3 Front · 7 Top'
+                : 'Punkte, Linien und Richtungen ziehen · ins Leere ziehen: drehen · P zeichnen · L Lasso · K Kante · ⌫ löschen · ⌘Z · 0 Raum · 1 Seite · 3 Front · 7 Top'
               : '0 Raum · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
         : '';
   // eine Meldung des Werks (das Maul, P, die Pose) steht ein paar Sekunden statt des Hinweises
@@ -1717,7 +1719,7 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
   // P in der Leiste, sobald das Werk bedient wird
   if (bearbeitenAn !== pErlaubt) {
     pErlaubt = bearbeitenAn;
-    for (const n of ['p', 'frei', 'formen'] as const) leiste.erlauben(n, pErlaubt);
+    for (const n of ['p', 'frei', 'formen', 'lasso'] as const) leiste.erlauben(n, pErlaubt);
     // im Raum zeigt die Leiste das Werkzeug des Raums (anfangs die Auswahl, kein Tropfen), nicht das des Blatts
     if (pErlaubt) leiste.setzen(raumWerkzeug);
   }
@@ -2502,6 +2504,16 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     anstossen();
     return;
   }
+  // Lasso (S5, L): Ziehen zeichnet die Schlinge, überall (auch auf Punkten und Linien); ⇧ nimmt dazu, ⌥ weg
+  if (bearbeitenAn && raumWerkzeug === 'lasso') {
+    bearbeiten.alt = e.altKey;
+    bearbeiten.umschalt = e.shiftKey;
+    bearbeiten.zeigerSetzen(x, y, x, y, 0);
+    bearbeiten.lassoDruecken();
+    bearbeitenGedrueckt = true;
+    anstossen();
+    return;
+  }
   // ⇧ in einer eingerasteten Ansicht: wenden (ziehen dreht das Blatt; ⇧ + Doppelklick wendet ganz)
   if (e.shiftKey && ansicht !== 'raum' && flach > 0.9 && vier < 0.5 && !bearbeiten.haengt) {
     const jetzt = e.timeStamp;
@@ -2674,12 +2686,12 @@ leinwandLinien.addEventListener(
 );
 
 function werkzeugGewaehlt(w: Werkzeug): void {
-  // im Raum (mit dem Werk): P, Freihand und Formen auf den Flächen
+  // im Raum (mit dem Werk): P, Freihand, Formen und Lasso auf den Flächen
   if (zustand === 'ruhe' && werkGezeigt) {
     werkzeugImRaum(w);
     return;
   }
-  if (zustand !== 'blatt') return;
+  if (zustand !== 'blatt' || w === 'lasso') return;
   blatt.werkzeugSetzen(w);
   anstossen();
 }
@@ -2779,6 +2791,7 @@ window.addEventListener('keydown', (e) => {
     pinselRadius = Math.max(10, Math.min(600, pinselRadius * (k === ']' ? 1.2 : 1 / 1.2)));
   } else if ((k === 'p' || k === 'P') && zustand === 'ruhe' && werkGezeigt) stiftImRaum(!bearbeiten.stift);
   else if ((k === 'v' || k === 'V') && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('auswahl');
+  else if ((k === 'l' || k === 'L') && zustand === 'ruhe' && werkGezeigt && !e.metaKey && !e.ctrlKey) werkzeugImRaum(raumWerkzeug === 'lasso' ? 'auswahl' : 'lasso');
   else if ((k === 'n' || k === 'N') && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('frei');
   else if (k === 'e' && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('ellipse');
   else if (k === 'E' && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('wuerfel');
@@ -3040,6 +3053,8 @@ const haken = {
   /** eine gesicherte Form laden (wie Menü → Laden); zurück: die Meldung des Werks */
   laden: (name: string): Promise<string> => formLaden(name),
   /** Bearbeiten über das Werk: ob das Verhalten die Flächen hat, Netz, Flächen, Auswahl (Anker und im Werk) */
+  /** die Punkte, wie das Verhalten sie sieht (CSS-Pixel), für die Probe des Lassos */
+  netzPunkte: () => werkBlatt.netz.punkte.map((p, i) => ({ x: p.x, y: p.y, sichtbar: p.sichtbar, a: werkBlatt.flaechen[werkBlatt.anker[i]?.fl ?? -1]?.a ?? null, w: (werkBlatt.anker[i]?.werk ?? []).map((v) => `${v.id}.${v.i}`) })),
   bearbeiten: () => ({
     an: bearbeitenAn,
     flaechen: werkBlatt.flaechen.map((f) => f.a),

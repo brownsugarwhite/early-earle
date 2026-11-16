@@ -11,7 +11,9 @@ import type { Werkzeug } from './blatt';
 
 const SVG = 'http://www.w3.org/2000/svg';
 
-const ZEICHEN: Record<'p' | 'frei' | 'ellipse' | 'wuerfel' | 'muell', string> = {
+const ZEICHEN: Record<'lasso' | 'p' | 'frei' | 'ellipse' | 'wuerfel' | 'muell', string> = {
+  // Lasso: eine Schlinge mit Faden und Tropfen am Ende
+  lasso: '<path d="M10.6 3.6c3.6 0 6.2 1.8 6.2 4.2s-2.6 4.2-6.2 4.2c-1.3 0-2.5-.2-3.5-.6C5 10.6 3.8 9.3 3.8 7.8c0-2.4 3.1-4.2 6.8-4.2z" /><path d="M7.1 11.4c-.9 1.1-.8 2.4.3 3.1.9.6 1 1.4.5 2.1" /><circle cx="7.8" cy="17" r="1.05" class="voll" />',
   // Feder des Zeichenstifts
   p: '<path d="M10 2.6l4.4 6.8-2.3 5.4H7.9L5.6 9.4z" /><path d="M10 2.6v6.1" /><circle cx="10" cy="9.6" r="1.15" class="voll" /><path d="M7.7 17.3h4.6" />',
   // Bleistift
@@ -28,6 +30,7 @@ const NAMEN: Record<Werkzeug | 'muell', string> = {
   ellipse: 'Ellipse (E): ziehen, ⇧ Kreis, ⌥ aus der Mitte',
   wuerfel: 'Würfel (E): ziehen, ⇧ gleichseitig, ⌥ aus der Mitte',
   auswahl: 'Auswahl (V, Esc)',
+  lasso: 'Lasso (L): Punkte umfahren, ⇧ dazu, ⌥ weg (V zurück)',
   muell: 'Mülleimer: verwerfen (⌘Z holt es zurück)',
 };
 
@@ -96,6 +99,9 @@ export class Leiste {
       el.append(b);
       return b;
     };
+    const lasso = knopf('lasso', 'lasso', NAMEN.lasso);
+    lasso.addEventListener('click', () => this.waehlen(this.aktiv === 'lasso' ? 'auswahl' : 'lasso'));
+    lasso.toggleAttribute('disabled', true);
     knopf('p', 'p', NAMEN.p).addEventListener('click', () => this.waehlen('p'));
     knopf('frei', 'frei', NAMEN.frei).addEventListener('click', () => this.waehlen('frei'));
     const formen = knopf('formen', 'ellipse', NAMEN.ellipse);
@@ -187,7 +193,7 @@ export class Leiste {
   }
 
   /** ein Werkzeug an oder aus (im Raum: P, sobald das Werk die Form zeigt) */
-  erlauben(n: 'p' | 'frei' | 'formen', an: boolean): void {
+  erlauben(n: 'p' | 'frei' | 'formen' | 'lasso', an: boolean): void {
     this.knoepfe.get(n)!.toggleAttribute('disabled', !an);
   }
 

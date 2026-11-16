@@ -508,6 +508,30 @@ export class WerkBlatt implements Raum {
     return true;
   }
 
+  /** alle Punkte im Netz, die denselben Punkt des Werks zeigen (auf allen Flächen); je Aufbau einmal gerechnet */
+  gleiche(pi: number): number[] {
+    if (this.gleicheStruktur !== this.struktur) {
+      this.gleicheStruktur = this.struktur;
+      const nach = new Map<string, number[]>();
+      this.anker.forEach((A, k) => {
+        for (const w of A.werk) {
+          const key = `${w.id}.${w.i}`;
+          const l = nach.get(key);
+          if (l) l.push(k);
+          else nach.set(key, [k]);
+        }
+      });
+      this.gleicheListe = this.anker.map((A, k) => {
+        const s = new Set<number>([k]);
+        for (const w of A.werk) for (const q of nach.get(`${w.id}.${w.i}`) ?? []) s.add(q);
+        return [...s];
+      });
+    }
+    return this.gleicheListe[pi] ?? [pi];
+  }
+  private gleicheStruktur = '';
+  private gleicheListe: number[][] = [];
+
   bias(): number {
     return 1e6;
   }

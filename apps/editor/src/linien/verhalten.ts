@@ -38,7 +38,7 @@
  * Längen in Punkten des Entwurfs; die Anzeige rechnet in Gerätepunkte um.
  */
 
-import { punkteDerLinie, punkteImRahmen, punkteLoeschen, punkteZiehen } from './auswahl';
+import { punkteDerLinie, punkteImLasso, punkteImRahmen, punkteLoeschen, punkteZiehen } from './auswahl';
 import { Feder1, Feder2 } from './feder';
 import { MAX_FELDER, PRIM_FELDER, type Szene } from './fluessig';
 import {
@@ -162,6 +162,8 @@ export interface Raum extends Dreher, StiftWerk {
   punkteLoeschen(pis: number[]): boolean;
   /** der Punkt liegt vor der Haut (für den Rahmen: im Raum wählt er nur, was man sieht) */
   ankerZuSehen(pi: number): boolean;
+  /** Ozzy: alle Punkte im Netz, die dasselbe zeigen wie `pi` (derselbe Punkt auf allen Flächen); fehlt: nur `pi` */
+  gleiche?(pi: number): number[];
   /** so weit darf etwas hinter der Haut liegen und gilt doch als auf ihr (Tiefe, Bildschirmpunkte der Anzeige) */
   bias(): number;
 }
@@ -361,6 +363,12 @@ export class Verhalten {
   /** Rahmen beim Ziehen im Leeren (Netz-Einheiten); danach zieht er sich um die Auswahl zusammen und vergeht */
   private rahmen: { x0: number; y0: number; x1: number; y1: number; plus: boolean; vorher: Set<number> } | null = null;
   private rahmenAus: { r: [number, number, number, number]; ziel: [number, number, number, number]; f: Feder1 } | null = null;
+  /**
+   * Lasso (Ozzy, Werkzeug L): die gezeichnete Schlinge (Netz-Einheiten, x, y je Paar); gewählt ist schon beim Ziehen, was sie umschließt
+   * (⇧ dazu, ⌥ weg). Beim Loslassen schließt sie sich mit einem Tropfen an der Naht, zieht sich zur Auswahl zusammen und vergeht.
+   */
+  private lasso: { pfad: number[]; plus: boolean; minus: boolean; vorher: Set<number> } | null = null;
+  private lassoAus: { pfad: number[]; mitte: [number, number]; f: Feder1; tropfen: Feder1 } | null = null;
   /** Drücken auf einen Punkt: ob er schon gewählt war (Loslassen ohne Ziehen entscheidet) */
   private klickPunkt: { pi: number; war: boolean; umschalt: boolean } | null = null;
   /** für den Doppelklick auf eine Linie */
@@ -503,7 +511,7 @@ export class Verhalten {
   }
 
   zeigerWeg(): void {
-    if (this.zieht || this.rahmen) return;
+    if (this.zieht || this.rahmen || this.lasso) return;
     this.zeiger.da = false;
     this.versatz.setzen(0, 0);
   }
@@ -596,6 +604,10 @@ export class Verhalten {
     }
     if (this.rahmen) {
       this.rahmenEnden();
+      return;
+    }
+    if (this.lasso) {
+      this.lassoEnden();
       return;
     }
     const g = this.griff;
@@ -918,6 +930,48 @@ export class Verhalten {
     return true;
   }
 
+  /** Lasso beginnen (Ozzy, Werkzeug L), an der Stelle des Zeigers; ⇧ (`umschalt`) nimmt dazu, ⌥ (`alt`) nimmt weg */
+  lassoDruecken(): boolean {
+    this.zeiger.gedrueckt = true;
+    const [x, y] = this.gezeichnet();
+    this.lasso = { pfad: [x, y], plus: this.umschalt, minus: this.alt, vorher: new Set(this.auswahl) };
+    this.lassoAus = null;
+    return true;
+  }
+
+  /** läuft gerade ein Lasso */
+  get lassoAn(): boolean {
+    return this.lasso !== null;
+  }
+
+  /** Loslassen: Die Schlinge schließt sich (ein Tropfen an der Naht), zieht sich zur Mitte der Auswahl zusammen und vergeht */
+  private lassoEnden(): void {
+    const L = this.lasso!;
+    this.lasso = null;
+    let sx = 0;
+    let sy = 0;
+    let n = 0;
+    for (const p of this.auswahl) {
+      const P = this.netz.punkte[p];
+      if (!P) continue;
+      sx += P.x;
+      sy += P.y;
+      n++;
+    }
+    if (!n) {
+      for (let i = 0; i + 1 < L.pfad.length; i += 2) {
+        sx += L.pfad[i]!;
+        sy += L.pfad[i + 1]!;
+        n++;
+      }
+    }
+    const f = new Feder1(1);
+    f.ziel = 0;
+    const tropfen = new Feder1(0);
+    tropfen.ziel = 1;
+    this.lassoAus = { pfad: [...L.pfad], mitte: [sx / Math.max(1, n), sy / Math.max(1, n)], f, tropfen };
+  }
+
   private rahmenBeginnen(): boolean {
     const [x, y] = this.gezeichnet();
     this.rahmen = { x0: x, y0: y, x1: x, y1: y, plus: this.umschalt, vorher: new Set(this.auswahl) };
@@ -1222,6 +1276,21 @@ export class Verhalten {
       this.auswahl = new Set(r.plus ? [...r.vorher, ...drin] : drin);
       bewegt = true;
     }
+    // Lasso: die Schlinge wächst mit dem Zeiger; gewählt ist, was sie umschließt, schon beim Ziehen
+    if (this.lasso) {
+      const L = this.lasso;
+      const [x, y] = this.gezeichnet();
+      const n = L.pfad.length;
+      if (Math.hypot(x - L.pfad[n - 2]!, y - L.pfad[n - 1]!) > 1.5 * this.g) L.pfad.push(x, y);
+      let drin = punkteImLasso(this.netz, L.pfad).filter((p) => !this.raum || this.raum.ankerZuSehen(p));
+      // derselbe Punkt auf allen Flächen (Ozzy): Was die Schlinge an einer Wand umfährt, ist überall gewählt
+      if (this.raum?.gleiche) drin = [...new Set(drin.flatMap((p) => this.raum!.gleiche!(p)))];
+      if (L.minus) {
+        const weg = new Set(drin);
+        this.auswahl = new Set([...L.vorher].filter((p) => !weg.has(p)));
+      } else this.auswahl = new Set(L.plus ? [...L.vorher, ...drin] : drin);
+      bewegt = true;
+    }
     // Doppelklick zum Runden: Die Richtung dreht sich in die Flucht ihrer Gegenseite
     if (this.ausrichtung) {
       this.ausrichtung.schritt(dt, 6, 0.9);
@@ -1236,7 +1305,7 @@ export class Verhalten {
     // Ziel unter dem Zeiger (nicht während eines Zugs); es zählt der gezeichnete Zeiger
     const folgt = this.tropfen.find((t) => t.zustand === 'folgt');
     const [zx, zy] = this.gezeichnet();
-    if (!this.zieht && !this.rahmen) {
+    if (!this.zieht && !this.rahmen && !this.lasso) {
       const k = z.da ? this.kandidat() : null;
       if (folgt) {
         const halten = this.fang(folgt.ziel) * w.halten;
@@ -1372,6 +1441,21 @@ export class Verhalten {
       const k = 1 - Math.exp(-dt * 14);
       for (let i = 0; i < 4; i++) A.r[i] = A.r[i]! + (A.ziel[i]! - A.r[i]!) * k;
       if (A.f.x < 0.01) this.rahmenAus = null;
+      bewegt = true;
+    }
+    if (this.lassoAus) {
+      const A = this.lassoAus;
+      // erst schließt der Tropfen die Naht, dann zieht sich die Schlinge zusammen und vergeht
+      A.tropfen.schritt(dt, 4.5, 0.75);
+      if (A.tropfen.x > 0.6) {
+        A.f.schritt(dt, 1.4, 1);
+        const k = 1 - Math.exp(-dt * 3.5);
+        for (let i = 0; i + 1 < A.pfad.length; i += 2) {
+          A.pfad[i] = A.pfad[i]! + (A.mitte[0] - A.pfad[i]!) * k;
+          A.pfad[i + 1] = A.pfad[i + 1]! + (A.mitte[1] - A.pfad[i + 1]!) * k;
+        }
+      }
+      if (A.f.x < 0.01) this.lassoAus = null;
       bewegt = true;
     }
 
@@ -1797,6 +1881,28 @@ export class Verhalten {
     };
     if (this.rahmen) rahmen(this.rahmen.x0, this.rahmen.y0, this.rahmen.x1, this.rahmen.y1, 1);
     if (this.rahmenAus) rahmen(...this.rahmenAus.r, this.rahmenAus.f.x);
+    // Lasso: eine Haarlinie längs der Schlinge; zum Anfang hin offen (ein leiser Faden zeigt, wo sie sich schließt); beim Loslassen fließt
+    // ein Tropfen in die Naht
+    const schlinge = (pfad: number[], schluss: number, f: number, tropfen: number): void => {
+      const b = w.innen * 0.75 * f;
+      if (b < 0.005 || pfad.length < 4) return;
+      const g = c.gruppe();
+      const n = pfad.length;
+      for (let i = 0; i + 3 < n; i += 2) c.push(c.X(pfad[i]!), c.Y(pfad[i + 1]!), c.X(pfad[i + 2]!), c.Y(pfad[i + 3]!), c.R(b), c.R(b), g, 0, 0);
+      // die Naht: vom Ende zum Anfang, erst als Faden, beim Schließen voll
+      const bn = b * (0.35 + 0.65 * schluss);
+      c.push(c.X(pfad[n - 2]!), c.Y(pfad[n - 1]!), c.X(pfad[0]!), c.Y(pfad[1]!), c.R(bn), c.R(bn), g, 0, 0);
+      if (tropfen > 0.01) {
+        const r = w.punktRadius * 1.6 * Math.sin(Math.PI * Math.min(1, tropfen)) * f;
+        if (r > 0.01) {
+          const mx = (pfad[n - 2]! + pfad[0]!) / 2;
+          const my = (pfad[n - 1]! + pfad[1]!) / 2;
+          c.push(c.X(mx), c.Y(my), c.X(mx), c.Y(my), c.R(r), c.R(r), c.gruppe(), 0, 1);
+        }
+      }
+    };
+    if (this.lasso) schlinge(this.lasso.pfad, 0, 1, 0);
+    if (this.lassoAus) schlinge(this.lassoAus.pfad, Math.min(1, this.lassoAus.tropfen.x), Math.min(1, 2.2 * this.lassoAus.f.x), this.lassoAus.tropfen.x);
     // gelöschte Punkte vergehen
     for (const q of this.geister) {
       const r = w.punktRadius * q.r.x;

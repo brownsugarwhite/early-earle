@@ -19,7 +19,7 @@ import { type Linie, type Netz, bezier, kontrollpunkte, netzKopie } from '../lin
 import { type Ansicht, Verhalten, type Werte as LinienWerte } from '../linien/verhalten';
 import type { Kapseln } from './kapseln';
 
-export type Werkzeug = 'p' | 'frei' | 'ellipse' | 'wuerfel' | 'auswahl';
+export type Werkzeug = 'p' | 'frei' | 'ellipse' | 'wuerfel' | 'auswahl' | 'lasso';
 
 /** Anker der Silhouette: Lage und Griffe relativ zum Punkt (ein = zur vorigen Linie, aus = zur nächsten) */
 export interface Anker {

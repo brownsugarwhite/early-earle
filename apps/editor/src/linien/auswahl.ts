@@ -28,6 +28,36 @@ export function punkteImRahmen(n: Netz, x0: number, y0: number, x1: number, y1: 
   return aus;
 }
 
+/** sichtbare Punkte in einer Schlinge (Lasso; x, y je Paar, Netz-Einheiten; gerade-ungerade-Regel, offen zum Anfang hin geschlossen) */
+export function punkteImLasso(n: Netz, pfad: ArrayLike<number>): number[] {
+  const m = Math.floor(pfad.length / 2);
+  if (m < 3) return [];
+  let xa = Infinity;
+  let ya = Infinity;
+  let xb = -Infinity;
+  let yb = -Infinity;
+  for (let i = 0; i < m; i++) {
+    xa = Math.min(xa, pfad[2 * i]!);
+    xb = Math.max(xb, pfad[2 * i]!);
+    ya = Math.min(ya, pfad[2 * i + 1]!);
+    yb = Math.max(yb, pfad[2 * i + 1]!);
+  }
+  const aus: number[] = [];
+  n.punkte.forEach((p, k) => {
+    if (!p.sichtbar || p.x < xa || p.x > xb || p.y < ya || p.y > yb) return;
+    let drin = false;
+    for (let i = 0, j = m - 1; i < m; j = i++) {
+      const xi = pfad[2 * i]!;
+      const yi = pfad[2 * i + 1]!;
+      const xj = pfad[2 * j]!;
+      const yj = pfad[2 * j + 1]!;
+      if (yi > p.y !== yj > p.y && p.x < ((xj - xi) * (p.y - yi)) / (yj - yi) + xi) drin = !drin;
+    }
+    if (drin) aus.push(k);
+  });
+  return aus;
+}
+
 /** alle sichtbaren Punkte einer Linie (der ganze Loop) */
 export function punkteDerLinie(n: Netz, li: number): number[] {
   const l = n.linien[li];
