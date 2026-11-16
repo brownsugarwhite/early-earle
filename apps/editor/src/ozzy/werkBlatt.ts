@@ -355,6 +355,18 @@ export class WerkBlatt implements Raum {
     return K;
   }
 
+  /** S8: liegt eine Stelle im Blatt außerhalb der Form (dort zeigt die Tiefenkarte keine Haut) */
+  private aussen(a: Ansicht, X: number, Y: number): boolean {
+    const K = werk.alsAnzeige(() => this.karteFuer(a, 1));
+    if (!K) return false;
+    const w = werk.inWelt(a, X, Y);
+    const c = [w.x, w.y, w.z];
+    const iu = Math.floor((c[K.u]! - K.u0) / K.zelle);
+    const iv = Math.floor((c[K.v]! - K.v0) / K.zelle);
+    if (iu < 0 || iv < 0 || iu >= K.n || iv >= K.n) return true;
+    return !Number.isFinite(K.d[iv * K.n + iu]!);
+  }
+
   /** liegt ein Punkt (gezeigte Lage, Werk) hinter der Haut, von der Seite der Fläche aus gesehen */
   private hinten(K: Karte | null, p: V3): boolean {
     if (!K) return false;
@@ -1146,6 +1158,19 @@ export class WerkBlatt implements Raum {
       if (!ab?.start) return -1;
       werk.abzweigungErstellen(E.a, ab.von, E.nach, ab.start, ab.vorher, E.anker);
     } else {
+      // S8 (P statt L): im Leeren begonnen, über die Form, im Leeren geendet (zwei Klicks, ↩): ein Loop rundum wie L im Prüffenster
+      if (E.anker.length === 2 && this.aussen(E.a, E.anker[0]!.X, E.anker[0]!.Y) && this.aussen(E.a, E.anker[1]!.X, E.anker[1]!.Y)) {
+        const [A, B] = E.anker as [werk.StiftAnker, werk.StiftAnker];
+        const gerade = (k: werk.StiftAnker): boolean => !k.aus || Math.hypot(k.aus[0], k.aus[1]) < 1e-9;
+        if (gerade(A) && gerade(B)) werk.loopSchneiden(E.a, werk.uvAus(E.a, A.X, A.Y), werk.uvAus(E.a, B.X, B.Y));
+        else werk.G.meldung = 'Gebogen um die Form schneiden kann das Werk noch nicht (gerade geht: zwei Klicks, ↩)';
+        werk.anzeige.allesZeigen();
+        this.bauen(this.flaechen);
+        this.geaendert();
+        if (werk.loops.length <= vorher) return -1;
+        const id = werk.loops[werk.loops.length - 1]!.id;
+        return this.linien.findIndex((I) => I.fl === E.fl && I.id === id && !I.m);
+      }
       if (E.anker.length < 3) {
         this.bauen(this.flaechen);
         this.geaendert();
