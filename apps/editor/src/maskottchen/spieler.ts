@@ -2,7 +2,7 @@
 // Sprung in der Geometrie), bewegt Ozzy mit (Wurzelbewegung), setzt ihn auf seine Sohlen und legt die Federn darüber.
 // Blickrichtung: Clips sind für „nach rechts“ geschrieben; nach links wird die Pose gespiegelt (ψ → −ψ, θ → −θ, nahe und ferne
 // Beine getauscht). So geht „Umdrehen“ nahtlos in den nächsten Clip über.
-import { CLIP, type Clip } from './clips';
+import { CLIP, type Clip, type ClipKontext, KANTE, KONTEXT_STANDARD } from './clips';
 import { Federn } from './federn';
 import { Figur } from './figur';
 import { POSE_SCHLUESSEL, type Pose, RUHE } from './pose';
@@ -11,6 +11,15 @@ interface Eintrag {
   clip: Clip;
   start: number;
   richtung: 1 | -1;
+  kontext: ClipKontext;
+  /** um so viel liegt der Boden dieses Clips höher als der jetzige Grundboden (nach einer Stufe) */
+  stufeVersatz: number;
+}
+
+/** Gelände für Bibliothek und Filmstreifen: von x an gilt die Höhe h (bis zum nächsten Wechsel) */
+export interface Bodenwechsel {
+  x: number;
+  h: number;
 }
 
 export function spiegelPose(p: Pose): void {
@@ -29,6 +38,8 @@ export function spiegelPose(p: Pose): void {
   tausch('beinHN', 'beinHF');
   tausch('hubVN', 'hubVF');
   tausch('hubHN', 'hubHF');
+  tausch('stufeVN', 'stufeVF');
+  tausch('stufeHN', 'stufeHF');
 }
 
 const glatt = (x: number) => {
@@ -60,9 +71,13 @@ export class Spieler {
   private letztesFrei = 1;
   private geschw = 0;
 
+  /** Höhe des Bodens unter Ozzy (Stufen hoch und hinunter) und das Gelände, das die Treppen-Clips dabei gebaut haben */
+  hoehe = 0;
+  gelaende: Bodenwechsel[] = [];
+
   constructor(figur = new Figur(), start = 'stehen') {
     this.figur = figur;
-    this.aktuell = { clip: CLIP[start]!, start: 0, richtung: 1 };
+    this.aktuell = { clip: CLIP[start]!, start: 0, richtung: 1, kontext: KONTEXT_STANDARD, stufeVersatz: 0 };
   }
 
   get clipName(): string {
@@ -75,16 +90,34 @@ export class Spieler {
     return this.geschw;
   }
 
-  /** Clip wechseln; `ueberblenden` in Sekunden; `richtung` optional neu */
-  spiele(name: string, ueberblenden = 0.35, richtung?: 1 | -1): void {
+  /** Clip wechseln; `ueberblenden` in Sekunden; `richtung` optional neu; `kontext` (z. B. Höhe der Stufe) */
+  spiele(name: string, ueberblenden = 0.35, richtung?: 1 | -1, kontext: ClipKontext = KONTEXT_STANDARD): void {
     const clip = CLIP[name];
     if (!clip) return;
     if (clip.name === this.aktuell.clip.name && clip.schleife && richtung === undefined) return;
     this.vorher = this.aktuell;
-    this.aktuell = { clip, start: this.zeit, richtung: richtung ?? this.richtung };
+    this.aktuell = { clip, start: this.zeit, richtung: richtung ?? this.richtung, kontext, stufeVersatz: 0 };
     this.richtung = this.aktuell.richtung;
     this.blendStart = this.zeit;
     this.blendDauer = Math.max(0.0001, ueberblenden);
+    // eine Stufe im Gelände: ab der Kante (vor den Vorderfüßen) liegt der Boden höher oder tiefer
+    if (clip.treppe) {
+      const kante = this.x + this.richtung * KANTE;
+      const h = this.hoehe + clip.treppe * kontext.stufe;
+      if (this.richtung > 0) {
+        this.gelaende = [...this.gelaende.filter((w) => w.x < kante), { x: kante, h }];
+      } else {
+        const rechts = this.gelaendeHoehe(kante + 1);
+        this.gelaende = [{ x: -Infinity, h }, { x: kante, h: rechts }, ...this.gelaende.filter((w) => w.x > kante)];
+      }
+    }
+  }
+
+  /** Höhe des Geländes bei x (Bibliothek, Filmstreifen): Wechsel aufsteigend nach x, der letzte links von x gilt */
+  gelaendeHoehe(x: number): number {
+    let h = 0;
+    for (const w of this.gelaende) if (w.x <= x) h = w.h;
+    return h;
   }
 
   /** Pose eines Eintrags zur Weltzeit T (in Welt-Richtung) und seine Vorwärtsgeschwindigkeit */
@@ -94,7 +127,13 @@ export class Spieler {
     if (c.schleife) t = ((t % c.dauer) + c.dauer) % c.dauer;
     else t = Math.min(t, c.dauer);
     Object.assign(out, RUHE);
-    c.pose(t, out);
+    c.pose(t, out, e.kontext);
+    if (e.stufeVersatz) {
+      out.stufeVN -= e.stufeVersatz;
+      out.stufeVF -= e.stufeVersatz;
+      out.stufeHN -= e.stufeVersatz;
+      out.stufeHF -= e.stufeVersatz;
+    }
     // leise Lebenszeichen
     const l = c.leben ?? 0;
     if (l > 0) {
@@ -114,6 +153,12 @@ export class Spieler {
       const fertig = c.name;
       const naechste = c.danach ?? 'stehen';
       const r = c.wendet ? ((-this.aktuell.richtung) as 1 | -1) : this.aktuell.richtung;
+      // nach einer Stufe steht Ozzy auf dem neuen Boden: der wird der Grund, der Clip zählt ab da von ihm aus
+      if (c.treppe) {
+        const d = c.treppe * this.aktuell.kontext.stufe;
+        this.hoehe += d;
+        this.aktuell.stufeVersatz += d;
+      }
       this.beiEnde?.(fertig);
       // nur weiterschalten, wenn beiEnde nicht schon etwas anderes gestartet hat
       if (this.aktuell.clip.name === fertig) this.spiele(naechste, c.wendet ? 0.12 : 0.3, r);
@@ -124,6 +169,8 @@ export class Spieler {
     const w = this.vorher ? glatt((this.zeit - this.blendStart) / this.blendDauer) : 1;
     if (this.vorher && w < 1) {
       const v0 = this.auswerten(this.vorher, this.zeit, this.puffer2);
+      // Winkel über den kürzesten Weg: Nach einmal ganz herum (375°) dreht der Kopf nicht wieder zurück
+      for (const k of ['theta', 'psi'] as const) this.puffer2[k] += 360 * Math.round((this.puffer[k] - this.puffer2[k]) / 360);
       for (const k of POSE_SCHLUESSEL) p[k] = this.puffer2[k] + (this.puffer[k] - this.puffer2[k]) * w;
       v = v0 + (v - v0) * w;
       frei = (this.vorher.clip.frei ?? 1) + (frei - (this.vorher.clip.frei ?? 1)) * w;
@@ -148,11 +195,15 @@ export class Spieler {
   }
 
   /** frei gesetzte Lage (Spiel, Filmstreifen): x und Richtung sofort */
-  setzen(x: number, richtung: 1 | -1): void {
+  setzen(x: number, richtung: 1 | -1, gelaendeLeeren = true): void {
     this.x = x;
     this.richtung = richtung;
     this.aktuell.richtung = richtung;
     this.federn.zuruecksetzen();
+    if (gelaendeLeeren) {
+      this.hoehe = 0;
+      this.gelaende = [];
+    }
   }
 
   get frei(): number {

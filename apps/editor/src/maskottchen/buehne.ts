@@ -19,8 +19,10 @@ export class Buehne {
   kamera = { x: 900, y: 820, massstab: 0.3 };
   farben: Farben = { schwarz: '#1f1a17', weiss: '#ffffff' };
   hintergrund = '#ffffff';
-  /** Glätte der flüssigen Stufe in Welteinheiten (Logo-Bildpunkten); 0 = aus */
-  glaette = 14;
+  /** Glätte der flüssigen Stufe in Welteinheiten (Logo-Bildpunkten): so groß werden die Kehlen zwischen Teilen; 0 = aus */
+  glaette = 24;
+  /** zusätzlich nach außen runden (Welteinheiten): Ecken werden weich, Spitzen nur wenig stumpfer; 0 = Spitzen ganz spitz */
+  glatt = 5;
   /** zur Fehlersuche: Teile bunt und durchscheinend zeichnen */
   bunt = false;
   private figurGezeichnet = false;
@@ -105,7 +107,21 @@ export class Buehne {
     if (this.bunt) {
       // zur Fehlersuche: jedes Teil in eigener Farbe, durchscheinend, mit Umriss
       const c = this.ctx;
-      const farbe: Record<string, string> = { kopf: '#333', gesicht: '#f4c', ohrH: '#29f', ohrV: '#0b8', schopf: '#f80', nase: '#a00' };
+      const farbe: Record<string, string> = {
+        kopf: '#333',
+        gesicht: '#f4c',
+        ohrH: '#29f',
+        ohrV: '#0b8',
+        schopf: '#f80',
+        nase: '#a00',
+        rumpf: '#666',
+        kehle: '#c60',
+        beinVN: '#06c',
+        beinHN: '#90c',
+        beinVF: '#6af',
+        beinHF: '#c8f',
+        schwanz: '#8a0',
+      };
       for (const t of teile) {
         c.beginPath();
         pfadAus(t, c);
@@ -123,20 +139,33 @@ export class Buehne {
       zeichneTeile(this.ctx, teile, this.farben);
       return;
     }
-    const vorn = (t: Zeichenteil) => t.farbe === 'weiss' || t.name === 'nase';
+    // vorn: Gesicht, Fenster, Loch, Nase und alles mit Rand; die Nase verschmilzt zusätzlich mit dem Haar (in der Maske)
+    const vorn = (t: Zeichenteil) => t.farbe === 'weiss' || t.name === 'nase' || !!t.rand;
     const q = this.quelleCtx;
     q.setTransform(1, 0, 0, 1, 0, 0);
     q.clearRect(0, 0, this.quelle.width, this.quelle.height);
     q.setTransform(this.ctx.getTransform());
-    zeichneTeile(q, teile.filter((t) => !vorn(t)), { schwarz: '#000000', weiss: '#000000' });
+    zeichneTeile(q, teile.filter((t) => t.farbe === 'schwarz'), { schwarz: '#000000', weiss: '#000000' });
     const sigma = this.glaette * this.kamera.massstab * this.dpr;
-    this.fluessig!.zeichnen(this.quelle, sigma, this.farben.schwarz);
+    this.fluessig!.zeichnen(this.quelle, sigma, this.farben.schwarz, 0.5, this.glatt * this.kamera.massstab * this.dpr);
     const c = this.ctx;
     c.save();
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.drawImage(this.fluessig!.leinwand, 0, 0);
     c.restore();
-    zeichneTeile(c, teile.filter(vorn), this.farben);
+    for (const t of teile) {
+      if (!vorn(t)) continue;
+      c.beginPath();
+      pfadAus(t, c);
+      if (t.rand) {
+        c.lineJoin = 'round';
+        c.lineWidth = t.rand * 2;
+        c.strokeStyle = this.farben.weiss;
+        c.stroke();
+      }
+      c.fillStyle = t.farbe === 'schwarz' ? this.farben.schwarz : this.farben.weiss;
+      c.fill('nonzero');
+    }
     this.figurGezeichnet = true;
   }
 

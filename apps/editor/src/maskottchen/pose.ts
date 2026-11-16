@@ -36,6 +36,11 @@ export interface Pose {
   hubVF: number;
   hubHN: number;
   hubHF: number;
+  /** Höhe des Bodens unter jedem Fuß (Bildpunkte über dem Grundboden): Stufen hoch- und hinuntersteigen */
+  stufeVN: number;
+  stufeVF: number;
+  stufeHN: number;
+  stufeHF: number;
   /** Kopf: Blickwinkel (0 = Front, 15 = Logo, 90 = Profil, 180 = Hinterkopf) */
   theta: number;
   kopfNicken: number;
@@ -81,6 +86,10 @@ export const RUHE: Pose = {
   hubVF: 0,
   hubHN: 0,
   hubHF: 0,
+  stufeVN: 0,
+  stufeVF: 0,
+  stufeHN: 0,
+  stufeHF: 0,
   theta: 15,
   kopfNicken: 0,
   kopfNeigen: 0,

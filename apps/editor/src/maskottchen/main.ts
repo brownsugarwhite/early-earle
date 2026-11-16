@@ -4,7 +4,7 @@
 //   Filmstreifen Clips aneinanderreihen, Dauer und Übergang je Karte, abspielen, als Video (WebM) und JSON sichern
 //   Drehen       Kopf und Körper rundherum, Regler für jeden Wert der Pose
 import { Buehne } from './buehne';
-import { CLIP, CLIPS } from './clips';
+import { CLIP, CLIPS, KANTE, KONTEXT_STANDARD } from './clips';
 import { BODEN_Y, Figur } from './figur';
 import { type Pose, RUHE } from './pose';
 import { type Eingabe, LEVEL, Spiel } from './spiel';
@@ -39,6 +39,30 @@ function bodenLinie(): void {
   const halb = buehne.breite / buehne.kamera.massstab;
   c.fillStyle = 'rgba(31,26,23,0.16)';
   c.fillRect(buehne.kamera.x - halb, BODEN_Y, halb * 2, 4 / buehne.kamera.massstab);
+}
+/** Boden mit den Stufen, die Ozzy in Bibliothek und Filmstreifen hoch- und hinuntergestiegen ist */
+function gelaendeZeichnen(sp: Spieler): void {
+  const c = buehne.ctx;
+  const m = buehne.kamera.massstab;
+  const halb = buehne.breite / m;
+  const x0 = buehne.kamera.x - halb;
+  const x1 = buehne.kamera.x + halb;
+  const w = [{ x: -Infinity, h: 0 }, ...sp.gelaende];
+  for (let i = 0; i < w.length; i++) {
+    const a = Math.max(x0, w[i]!.x);
+    const b = Math.min(x1, w[i + 1]?.x ?? Infinity);
+    if (b <= a) continue;
+    const h = w[i]!.h;
+    const y = BODEN_Y - h;
+    if (h > 0) {
+      c.fillStyle = 'rgba(31,26,23,0.07)';
+      c.fillRect(a, y, b - a, h);
+    }
+    c.fillStyle = 'rgba(31,26,23,0.18)';
+    c.fillRect(a, y, b - a, 4 / m);
+    // Kante sichtbar machen
+    if (i > 0 && w[i]!.x > x0 && w[i]!.x < x1) c.fillRect(w[i]!.x - 2 / m, BODEN_Y - Math.max(h, w[i - 1]!.h), 4 / m, Math.abs(h - w[i - 1]!.h));
+  }
 }
 /** Einblendungen am Kopf: „Wuff!“, Zzz, ? */
 function einblenden(p: Pose, clip: string, t: number, dy = 0): void {
@@ -131,11 +155,11 @@ function bibliothekBild(dt: number): void {
   const p = bibSpieler.update(dt);
   // weit gelaufen: sanft zurück in die Mitte (Bühne bleibt im Bild)
   if (Math.abs(bibSpieler.x - 800) > 9000) bibSpieler.setzen(800 - Math.sign(bibSpieler.x - 800) * 3000, bibSpieler.richtung);
-  kameraFolgen(p.x, 0, dt);
+  kameraFolgen(p.x, bibSpieler.hoehe, dt);
   buehne.anfangen();
-  bodenLinie();
-  figurZeichnen(p);
-  einblenden(p, bibSpieler.clipName, bibSpieler.clipZeit);
+  gelaendeZeichnen(bibSpieler);
+  figurZeichnen(p, -bibSpieler.hoehe);
+  einblenden(p, bibSpieler.clipName, bibSpieler.clipZeit, -bibSpieler.hoehe);
   buehne.abschliessen();
   if (bibSpieler.clipName !== letzterClip) {
     letzterClip = bibSpieler.clipName;
@@ -314,11 +338,11 @@ function filmBild(dt: number): void {
     }
   }
   const p = filmSpieler.update(dt);
-  kameraFolgen(p.x, 0, dt);
+  kameraFolgen(p.x, filmSpieler.hoehe, dt);
   buehne.anfangen();
-  bodenLinie();
-  figurZeichnen(p);
-  einblenden(p, filmSpieler.clipName, filmSpieler.clipZeit);
+  gelaendeZeichnen(filmSpieler);
+  figurZeichnen(p, -filmSpieler.hoehe);
+  einblenden(p, filmSpieler.clipName, filmSpieler.clipZeit, -filmSpieler.hoehe);
   buehne.abschliessen();
   hud.textContent = filmLaeuft ? `${filmIndex + 1}/${film.length}: ${CLIP[filmSpieler.clipName]?.titel ?? ''}` : 'Abspielen drücken';
 }
@@ -328,7 +352,7 @@ const spiel = new Spiel(new Spieler(figur));
 spiel.neustart();
 const tasten = new Set<string>();
 let aktion: string | null = null;
-const AKTIONEN: Record<string, string> = { e: 'schnueffeln', q: 'umschauen', b: 'bellen', f: 'schuetteln', t: 'kopfSchief', z: 'ziel', k: 'kratzen', x: 'erstarren', r: 'wedeln' };
+const AKTIONEN: Record<string, string> = { e: 'schnueffeln', q: 'umschauen', b: 'bellen', f: 'schuetteln', t: 'kopfSchief', z: 'ziel', k: 'kratzen', x: 'erstarren', r: 'wedeln', v: 'zuwenden', h: 'abwenden' };
 window.addEventListener('keydown', (e) => {
   if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
   if (reiter === 'spielen' && [' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
@@ -342,8 +366,8 @@ function spielenAufbauen(): void {
   leiste.innerHTML = `<h2>Spielen</h2><p>Ozzy will zum Knochen. Er ist langsam, aber nicht aufzuhalten.</p>
   <h3>Tasten</h3>
   <p><b>← →</b> oder <b>A D</b> laufen · <b>Umschalt</b> eilen · <b>Leertaste</b>, <b>↑</b> oder <b>W</b> springen (kurz = klein) · <b>↓</b> oder <b>S</b> setzen/aufstehen</p>
-  <p><b>E</b> schnüffeln · <b>Q</b> umschauen · <b>B</b> bellen · <b>F</b> schütteln · <b>T</b> Kopf schief · <b>Z</b> Ziel fixieren · <b>K</b> kratzen · <b>X</b> erstarren · <b>R</b> wedeln</p>
-  <p>Steht er lange, setzt er sich, später legt er sich schlafen.</p>
+  <p><b>E</b> schnüffeln · <b>Q</b> umschauen · <b>B</b> bellen · <b>F</b> schütteln · <b>T</b> Kopf schief · <b>Z</b> Ziel fixieren · <b>K</b> kratzen · <b>X</b> erschrecken · <b>R</b> wedeln · <b>V</b> zu uns drehen · <b>H</b> Rücken zudrehen</p>
+  <p>Niedrige Stufen klettert er angestrengt hinauf und steigt sie vorsichtig hinunter; hohe muss er springen. Steht er lange, dreht er sich zu uns, setzt sich, später legt er sich schlafen.</p>
   <div class="reihe"><button class="knopf" id="s-neu">Von vorn</button></div>`;
   leiste.querySelector('#s-neu')!.addEventListener('click', () => spiel.neustart());
   steuerungZeigen(true);
@@ -437,7 +461,7 @@ const REGLER: [keyof Pose, string, number, number, number][] = [
 function drehenAufbauen(): void {
   leiste.innerHTML = `<h2>Drehen</h2><p>Kopf und Körper rundherum. Schlüssel sind Florians Ansichten: Front 0°, Logo 15°, Seite 90°; negativ gespiegelt. Hinten (über 90°) ist ein Entwurf ohne Vorlage.</p><div id="regler"></div>
   <h3>Anzeige</h3>
-  <label class="regler"><span>Flüssig</span><input id="glaette" type="range" min="0" max="20" step="0.5" value="${buehne.glaette}"/><span id="glaette-zahl"></span></label>
+  <label class="regler"><span>Flüssig</span><input id="glaette" type="range" min="0" max="50" step="1" value="${buehne.glaette}"/><span id="glaette-zahl"></span></label>
   <div class="reihe"><button class="knopf" id="ruhe">Logo-Pose</button></div>`;
   const gl = leiste.querySelector<HTMLInputElement>('#glaette')!;
   const glz = leiste.querySelector('#glaette-zahl')!;
@@ -522,7 +546,17 @@ function blattZeichnen(posen: Pose[], texte: string[], spalten: number, rahmen: 
     buehne.welt();
     c.fillStyle = 'rgba(31,26,23,0.12)';
     c.fillRect(x0, BODEN_Y, x1 - x0, 3 / m);
+    // Stufe (Treppen-Clips): Lage relativ zur Wurzel des Felds, Höhe; die Figur steht auf ihrem Grund
+    const st = (p as Pose & { _stufe?: { x: number; h: number; grund: number } })._stufe;
+    if (st) {
+      c.fillStyle = 'rgba(31,26,23,0.14)';
+      if (st.h > 0) c.fillRect(st.x, BODEN_Y - st.h, x1 - st.x, st.h);
+      else c.fillRect(x0, BODEN_Y, st.x - x0, -st.h);
+    }
+    c.save();
+    c.translate(0, st ? -st.grund : 0);
     buehne.figur(figur.zeichenteile(p));
+    c.restore();
     c.restore();
     buehne.bildschirm(c);
     c.fillStyle = '#1f1a17';
@@ -533,10 +567,12 @@ function blattZeichnen(posen: Pose[], texte: string[], spalten: number, rahmen: 
     c.strokeRect(sx, sy, fw, fh);
   });
 }
-function clipPosen(name: string, bilder: number, abstand: number, von = 'stehen'): Pose[] {
+function clipPosen(name: string, bilder: number, abstand: number, von = 'stehen', mitlaufen = true): Pose[] {
   const sp = new Spieler(figur, von);
   sp.update(0.016);
+  const start = sp.x;
   sp.spiele(name, 0.01);
+  const treppe = CLIP[name]?.treppe;
   const out: Pose[] = [];
   let t = 0;
   for (let i = 0; i < bilder; i++) {
@@ -544,8 +580,11 @@ function clipPosen(name: string, bilder: number, abstand: number, von = 'stehen'
       sp.update(1 / 120);
       t += 1 / 120;
     }
-    const p = { ...sp.update(0.0001) };
-    p.x -= sp.x - 800;
+    const p: Pose & { _stufe?: { x: number; h: number; grund: number } } = { ...sp.update(0.0001) };
+    const verschieben = mitlaufen ? sp.x - 800 : start - 800;
+    p.x -= verschieben;
+    // Stufe fürs Blatt: Kante relativ zum gezeichneten Ozzy; der Grund unter ihm steigt am Ende des Clips um die Stufe
+    if (treppe) p._stufe = { x: start + KANTE - verschieben, h: treppe * KONTEXT_STANDARD.stufe, grund: sp.hoehe };
     out.push(p);
   }
   return out;

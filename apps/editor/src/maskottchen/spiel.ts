@@ -2,6 +2,7 @@
 // rennt er gegen eine Stufe, stolpert er; steht er lange, setzt er sich, legt sich hin und schläft. Steuerung: Pfeile/WASD,
 // Umschalt = eilen, Leertaste/↑ = springen, ↓ = setzen/aufstehen, dazu Tasten für die Späße. Coyote-Zeit und Sprung-Puffer.
 import { BODEN_Y } from './figur';
+import { KANTE } from './clips';
 import type { Spieler } from './spieler';
 
 export interface Plattform {
@@ -29,6 +30,8 @@ const LUFT_TEMPO = 520;
 const COYOTE = 0.12;
 const PUFFER = 0.14;
 const FUSS_HALB = 470; // halbe Spanne der Sohlen
+/** so hohe Stufen klettert er hinauf (und so tiefe steigt er hinunter); höhere muss er springen */
+const KLETTER_MAX = 320;
 
 export interface Eingabe {
   links: boolean;
@@ -54,6 +57,8 @@ export class Spiel {
   geschafft = false;
   meldung = '';
   private meldungZeit = 0;
+  /** steigt gerade eine Stufe hoch oder hinunter: von welcher Höhe, um wie viel */
+  private klettern: { von: number; d: number } | null = null;
 
   constructor(spieler: Spieler) {
     this.spieler = spieler;
@@ -73,6 +78,13 @@ export class Spiel {
   boden(x: number): number {
     let h = 0;
     for (const p of LEVEL.plattformen) if (x + FUSS_HALB * 0.55 > p.x0 && x - FUSS_HALB * 0.55 < p.x1) h = Math.max(h, p.hoehe);
+    return h;
+  }
+
+  /** Höhe des Bodens genau bei x (für die Kante vor den Vorderfüßen) */
+  private bodenBei(x: number): number {
+    let h = 0;
+    for (const p of LEVEL.plattformen) if (x > p.x0 && x < p.x1) h = Math.max(h, p.hoehe);
     return h;
   }
 
@@ -99,10 +111,20 @@ export class Spiel {
     this.meldungZeit -= dt;
     if (this.meldungZeit <= 0) this.meldung = '';
     this.stolperSperre -= dt;
-    const beschaeftigt = ['umdrehen', 'stolpern', 'absprung', 'landung', 'hinsetzen', 'aufstehen', 'hinlegen', 'aufwachen', 'erstarren', 'bellen', 'schuetteln', 'kopfSchief', 'umschauen', 'kratzen', 'zielFixieren'].includes(clip);
+    const beschaeftigt = ['umdrehen', 'zuwenden', 'abwenden', 'stolpern', 'absprung', 'landung', 'hinsetzen', 'aufstehen', 'hinlegen', 'aufwachen', 'erstarren', 'bellen', 'schuetteln', 'kopfSchief', 'umschauen', 'kratzen', 'zielFixieren'].includes(clip);
     const etwas = richtung !== 0 || e.springen || e.runter || !!e.aktion;
     if (etwas) this.ruhe = 0;
     else this.ruhe += dt;
+
+    // Stufe hoch oder hinunter: Solange er klettert, bleibt der Grund, wo er war; danach steht er auf dem neuen
+    if (this.klettern) {
+      if (clip === 'hochklettern' || clip === 'runtersteigen') {
+        this.warRunter = e.runter;
+        return;
+      }
+      this.hoehe = this.klettern.von + this.klettern.d;
+      this.klettern = null;
+    }
 
     if (this.amBoden) {
       this.seitBoden = 0;
@@ -111,7 +133,7 @@ export class Spiel {
       else if (etwas && (clip === 'sitzen' || clip === 'hinsetzen') && !e.runter) sp.spiele('aufstehen', 0.25);
       else if (e.runter && !this.warRunter && (clip === 'stehen' || clip === 'anhalten')) sp.spiele('hinsetzen', 0.25);
       else if (e.aktion && !beschaeftigt) {
-        const name = { schnueffeln: 'schnueffeln', umschauen: 'umschauen', bellen: 'bellen', schuetteln: 'schuetteln', kopfSchief: 'kopfSchief', ziel: 'zielFixieren', kratzen: 'kratzen', erstarren: 'erstarren', wedeln: 'wedeln' }[e.aktion];
+        const name = { schnueffeln: 'schnueffeln', umschauen: 'umschauen', bellen: 'bellen', schuetteln: 'schuetteln', kopfSchief: 'kopfSchief', ziel: 'zielFixieren', kratzen: 'kratzen', erstarren: 'erstarren', wedeln: 'wedeln', zuwenden: 'zuwenden', abwenden: 'abwenden' }[e.aktion];
         if (name) sp.spiele(name, 0.25);
       }
       // springen (mit Puffer)
@@ -124,17 +146,29 @@ export class Spiel {
         if (richtung !== 0 && richtung !== sp.richtung) sp.spiele('umdrehen', 0.2);
         else if (richtung !== 0) {
           const block = this.blockiert(sp.x, richtung);
-          if (block) {
+          const vornTiefer = this.hoehe - this.bodenBei(sp.x + richtung * KANTE);
+          if (block && block.hoehe - this.hoehe <= KLETTER_MAX) {
+            // nicht springen müssen: angestrengt hochklettern
+            const d = block.hoehe - this.hoehe;
+            sp.x = richtung > 0 ? block.x0 - KANTE : block.x1 + KANTE;
+            sp.spiele('hochklettern', 0.3, richtung, { stufe: d });
+            this.klettern = { von: this.hoehe, d };
+          } else if (block) {
             if (this.stolperSperre <= 0 && (clip === 'laufen' || clip === 'eilen')) {
               sp.spiele('stolpern', 0.15);
               this.stolperSperre = 3;
               this.melden('Zu hoch. Springen!');
             } else if (clip !== 'stolpern' && clip !== 'stehen') sp.spiele('stehen', 0.3);
+          } else if (vornTiefer > 30 && vornTiefer <= KLETTER_MAX) {
+            // ein Absatz: vorsichtig hinuntersteigen statt hinunterzufallen
+            sp.spiele('runtersteigen', 0.3, richtung, { stufe: vornTiefer });
+            this.klettern = { von: this.hoehe, d: -vornTiefer };
           } else sp.spiele(e.eilen ? 'eilen' : 'laufen', clip === 'laufen' || clip === 'eilen' ? 0.4 : 0.3);
         } else if (clip === 'laufen' || clip === 'eilen') sp.spiele('anhalten', 0.25);
         else if (clip === 'schnueffeln' && this.ruhe > 4) sp.spiele('stehen', 0.5);
         // lange Ruhe: hinsetzen, später hinlegen und schlafen
-        if (clip === 'stehen' && this.ruhe > 7) sp.spiele('hinsetzen', 0.3);
+        if (clip === 'stehen' && this.ruhe > 5) sp.spiele('zuwenden', 0.3);
+        if (clip === 'vornStehen' && this.ruhe > 11) sp.spiele('hinsetzen', 0.4);
         if (clip === 'sitzen' && this.ruhe > 16) sp.spiele('hinlegen', 0.3);
       } else if (clip === 'sitzen' && this.ruhe > 16) sp.spiele('hinlegen', 0.3);
       // an der Stufe festhalten (Wurzelbewegung nicht durch die Wand)

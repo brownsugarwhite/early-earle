@@ -17,7 +17,8 @@ await seite.addStyleTag({ content: '#kopfzeile, #hud { display: none !important;
 const box = await seite.evaluate(
   ({ art, env }) => {
     const o = window.__ozzy;
-    o.buehne.glaette = Number(env.GLAETTE ?? 14);
+    if (env.GLAETTE) o.buehne.glaette = Number(env.GLAETTE);
+    if (env.GLATT) o.buehne.glatt = Number(env.GLATT);
     // zur Fehlersuche: weiße Teile durchscheinend färben (z. B. WEISS='rgba(255,0,0,0.45)')
     if (env.WEISS) o.buehne.farben = { ...o.buehne.farben, weiss: env.WEISS };
     // zur Fehlersuche: Teile ausblenden (z. B. OHNE=schopf,ohrV)
@@ -40,7 +41,7 @@ const box = await seite.evaluate(
     } else if (art === 'clip') {
       const n = Number(env.BILDER ?? 12);
       const a = Number(env.ABSTAND ?? 0.1);
-      posen = o.clipPosen(env.CLIP ?? 'laufen', n, a, env.VON ?? 'stehen');
+      posen = o.clipPosen(env.CLIP ?? 'laufen', n, a, env.VON ?? 'stehen', env.MITLAUFEN !== '0');
       texte = posen.map((_, i) => `${env.CLIP ?? 'laufen'} ${(i * a).toFixed(2)} s`);
       rahmen = [-250, -60, 2050, 1640];
     } else {

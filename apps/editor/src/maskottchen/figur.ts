@@ -17,6 +17,8 @@ export interface Zeichenteil {
   p: Float32Array;
   n: number;
   tiefe: number;
+  /** über dem Gesicht zeichnen (nicht nur in der flüssigen Maske), mit weißem Rand dieser Breite (Welt-Einheiten) */
+  rand?: number;
 }
 
 // ---- Maße (aus dem Logo und Florians Ansichten) ------------------------------------------------------------------------
@@ -112,12 +114,39 @@ function rueckseiten(name: string, eigen: Record<number, Float32Array>, form: An
     const l = F - 1;
     q90[l * 6 + 4] = (q90[F * 6]! - q90[l * 6]!) / 3;
     q90[l * 6 + 5] = (q90[F * 6 + 1]! - q90[l * 6 + 1]!) / 3;
-    eigen[135] = zusammen(eigen[90]!, n, 470, 30, 0.2, 0.72);
-    eigen[180] = zusammen(eigen[90]!, n, 500, 30, 0.02, 0.5);
+    // bei 60° ist die Kerbe schon fast zu (sonst blieben bis 75° Reste neben der Nase stehen)
+    const q60 = new Float32Array(q15.length);
+    for (let i = 0; i < q15.length; i++) q60[i] = q15[i]! + (q90[i]! - q15[i]!) * 0.6;
+    for (let i = D + 1; i < F; i++) {
+      q60[i * 6] = q60[D * 6]! + k * 2 * (q15[i * 6]! - q15[D * 6]!);
+      q60[i * 6 + 1] = q60[D * 6 + 1]! + k * 2 * (q15[i * 6 + 1]! - q15[D * 6 + 1]!);
+      for (let o = 2; o < 6; o++) q60[i * 6 + o] = k * 2 * q15[i * 6 + o]!;
+    }
+    q60[D * 6 + 4] = k * 2 * q15[D * 6 + 4]!;
+    q60[D * 6 + 5] = k * 2 * q15[D * 6 + 5]!;
+    q60[l * 6 + 4] = (q60[F * 6]! - q60[l * 6]!) / 3;
+    q60[l * 6 + 5] = (q60[F * 6 + 1]! - q60[l * 6 + 1]!) / 3;
+    eigen[60] = q60;
+    // von hinten verschwindet das Gesicht ganz im schwarzen Kopf (kein weißer Streifen am Rand)
+    // dreht er sich weg, wird es zur schmalen Wange am rechten Rand und verschwindet (ab 145° gar nicht mehr gezeichnet)
+    eigen[135] = zusammen(eigen[90]!, n, 455, 40, 0.07, 0.62);
+    eigen[180] = zusammen(eigen[90]!, n, 455, 40, 0, 0.3);
   } else if (name === 'nase') {
-    eigen[135] = eigen[90]!.slice();
-    eigen[180] = eigen[90]!.slice();
+    // dreht er sich weg, rückt die Nase mit der Schnauze hinter den Kopf (sie schwebt nicht vor ihm in der Luft)
+    eigen[135] = zusammen(eigen[90]!, n, 120, 0, 0.35, 1);
+    eigen[180] = zusammen(eigen[90]!, n, 120, 0, 0.2, 0.8);
   } else if (name === 'kopf') {
+    // Im Profil endet die Strähne über der Schnauze in der Nase (wie bei Florian), nicht als Keil, der sie nur berührt
+    const F = form.marken['F']!;
+    const X2 = form.marken['X2']!;
+    const k90 = eigen[90]!;
+    k90[F * 6] = 360;
+    k90[F * 6 + 1] = 60;
+    // der Rand vom Kinn (X2) herauf bleibt unter dem Gesicht: gerade auf F zu
+    k90[F * 6 + 2] = (k90[X2 * 6]! - 360) / 3;
+    k90[F * 6 + 3] = (k90[X2 * 6 + 1]! - 60) / 3;
+    k90[X2 * 6 + 4] = (360 - k90[X2 * 6]!) / 3;
+    k90[X2 * 6 + 5] = (60 - k90[X2 * 6 + 1]!) / 3;
     const h = eigen[0]!.slice(); // nicht gespiegelt: jeder Anker bleibt auf seiner Bildseite
     const von = form.marken['eV']!;
     for (let i = von; i < n; i++) {
@@ -137,6 +166,40 @@ function rueckseiten(name: string, eigen: Record<number, Float32Array>, form: An
     eigen[135] = k;
   }
   if (name === 'schopf') {
+    // Von vorn steht der Schopf aufrecht und spiegelgleich (zur Seite geneigt wie im Logo erst ab 15°): So ist Ozzy nach dem
+    // Umdrehen genau gespiegelt, und der Schopf legt sich beim Drehen durch die Front sanft auf die andere Seite.
+    const q0 = eigen[0]!;
+    const sig = [2, 1, 0, 4, 3];
+    const bx = (q0[3 * 6]! + q0[4 * 6]!) / 2;
+    const by = (q0[3 * 6 + 1]! + q0[4 * 6 + 1]!) / 2;
+    const w = -Math.atan2(q0[6]! - bx, -(q0[7]! - by));
+    const cw = Math.cos(w);
+    const sw = Math.sin(w);
+    const r = q0.slice();
+    for (let i = 0; i < n; i++) {
+      const x = r[i * 6]! - bx;
+      const y = r[i * 6 + 1]! - by;
+      r[i * 6] = bx + x * cw - y * sw;
+      r[i * 6 + 1] = by + x * sw + y * cw;
+      for (const o of [2, 4]) {
+        const hx = r[i * 6 + o]!;
+        const hy = r[i * 6 + o + 1]!;
+        r[i * 6 + o] = hx * cw - hy * sw;
+        r[i * 6 + o + 1] = hx * sw + hy * cw;
+      }
+    }
+    const u = new Float32Array(r.length);
+    for (let i = 0; i < n; i++) {
+      const j = sig[i]!;
+      u[i * 6] = (r[i * 6]! + (2 * bx - r[j * 6]!)) / 2 - bx;
+      u[i * 6 + 1] = (r[i * 6 + 1]! + r[j * 6 + 1]!) / 2;
+      // gespiegelt läuft der Umriss andersherum: Griff hinein des Partners wird Griff hinaus
+      u[i * 6 + 2] = (r[i * 6 + 2]! - r[j * 6 + 4]!) / 2;
+      u[i * 6 + 3] = (r[i * 6 + 3]! + r[j * 6 + 5]!) / 2;
+      u[i * 6 + 4] = (r[i * 6 + 4]! - r[j * 6 + 2]!) / 2;
+      u[i * 6 + 5] = (r[i * 6 + 5]! + r[j * 6 + 3]!) / 2;
+    }
+    eigen[0] = u;
     // Im Profil (Florians Seitenansicht) gibt es keinen eigenen Schopf: Er steckt im Haar. Dort ist er eine winzige Kopie der
     // Logo-Flamme an seinem Ansatz a, und der sitzt am oberen Rand des Gesichts (B, siehe Anhänge). Beim Drehen sinkt er also nur
     // in den Haaransatz, ohne sich zu verbiegen oder Kerben zu reißen.
@@ -192,10 +255,14 @@ export class Figur {
   ausblenden = new Set<string>();
 
   private anhangVersatz = new Map<string, { x: number[]; y: number[] }>();
+  private scheiben: Scheibe[];
 
   constructor() {
-    this.kopf = ankerFormenAnlegen(kopfAnker, ART_KOPF, rueckseiten, (name) => name === 'schopf');
+    // Der Schopf wird gespiegelt wie alles andere (Paare a–c und d–e), nicht mehr nur verschoben
+    const kopfRoh = kopfAnker.map((r) => (r.name === 'schopf' ? { ...r, sigma: [2, 1, 0, 4, 3] } : r));
+    this.kopf = ankerFormenAnlegen(kopfRoh, ART_KOPF, rueckseiten);
     this.koerper = ankerFormenAnlegen(koerperAnker, ART_KOERPER);
+    this.scheiben = rumpfScheiben(this.koerper.get('rumpf')!);
     // Versatz der Anhänge in den Ansichten (dort stimmt die Zeichnung)
     for (const a of ANHAENGE) {
       const kind = this.kopf.get(a.kind)!;
@@ -287,53 +354,106 @@ export class Figur {
     return Math.max(KASTEN.B / 2, (KASTEN.H - KASTEN.r) * Math.cos(b) + (KASTEN.B / 2 - KASTEN.r) * Math.sin(b) + KASTEN.r);
   }
 
-  /** Reichweite (Abstand nach unten vom Körperanker) der tiefsten Stütze bei Nicken p */
-  private reichweiten(pose: Pose, p: number): number {
+  /** Wie tief reicht ein Bein unter die Hüfte bei Kippung β: steht es (bis 40°), ist die Sohle flach und das Bein biegt sich
+   *  (Länge mal cos β); weiter gekippt (Sitzen, Liegen) ist es steif, die Kante der Sohle oder die runde Hüfte liegt unten. */
+  static beinTiefe(beta: number): number {
+    const steif = Figur.fussTiefe(beta);
+    return steif + (KASTEN.H * Math.cos(beta * RAD) - steif) * beinFlach(beta);
+  }
+
+  /**
+   * Stützen bei Nicken p. Stehende Beine sind weich (der Gips biegt und streckt sich ein wenig): Sie tragen gemeinsam, der Körper
+   * steht auf ihrer mittleren Länge (`weich`), `streu` sagt, wie ungleich sie dafür sein müssten. Steif liegende Beine und der
+   * weiche Rumpf (Hintern, Bauch) sind harte Stützen (`hart`): Tiefer als sie kann der Körper nicht.
+   */
+  private stuetzen(pose: Pose, p: number): { hart: number; weich: number; streu: number } {
     const sp = Math.sin(p * RAD);
     const cp = Math.cos(p * RAD);
     const q = pose.rollen * RAD;
-    let max = -Infinity;
     const cq = Math.cos(q);
+    let hart = -Infinity;
+    let wSumme = 0;
+    let rSumme = 0;
+    let r2Summe = 0;
+    const rs: number[] = [];
+    const ws: number[] = [];
+    let rOben = -Infinity;
     for (const b of BEINE) {
       const winkel = (pose[`bein${b.name}` as const] as number) - p;
       const hub = pose[`hub${b.name}` as const] as number;
       // gerechnet am wahren Ort des Beins (der Schatten-Versatz des fernen Beins ist nur eine Zeichnung)
       const [dy] = biegung(pose.biegen, b.X);
-      const hy = b.X * sp + dy * cp;
-      const hy2 = hy * cq - b.Z * Math.sin(q);
+      const hy = (b.X * sp + dy * cp) * cq - b.Z * Math.sin(q);
       // Kippung des Gipses aus Nicken und Wiegen zusammen
       const kipp = Math.acos(Math.max(-1, Math.min(1, Math.cos(winkel * RAD) * cq))) / RAD;
-      const r = hy2 + Figur.fussTiefe(kipp) - hub;
-      if (r > max) max = r;
+      const r = hy + Figur.beinTiefe(kipp) - hub + (pose[`stufe${b.name}` as const] as number);
+      const flach = beinFlach(winkel);
+      const w = flach * (1 - glatt01(hub / 2.5));
+      rs.push(r);
+      ws.push(w);
+      if (w > 0 && r > rOben) rOben = r;
+      if (flach < 0.5 && r > hart) hart = r;
     }
+    // ein Fuß, der weit über den anderen hängt (Hinterbeine beim Stolpern), steht nicht: er trägt nicht mit
+    let aSumme = 0;
+    let a1 = 0;
+    let a2 = 0;
+    for (let i = 0; i < rs.length; i++) {
+      // für die Streuung zählen alle stehenden Beine (sonst lohnte es sich, so zu kippen, dass nur noch zwei tragen)
+      if (ws[i]! > 0) {
+        aSumme += ws[i]!;
+        a1 += ws[i]! * rs[i]!;
+        a2 += ws[i]! * rs[i]! * rs[i]!;
+      }
+      const w = ws[i]! * (1 - glatt01((rOben - rs[i]! - 25) / 45));
+      if (w <= 0) continue;
+      wSumme += w;
+      rSumme += w * rs[i]!;
+      r2Summe += w * rs[i]! * rs[i]!;
+    }
+    void r2Summe;
     // der Rumpf (weich): seine Unterseite, gestaucht und gebogen wie gezeichnet
     for (const s of STUETZEN) {
       const [X, Y] = Figur.amRumpf(pose, s.X, s.Y);
-      const r = (X * sp + Y * cp) * Math.cos(q) - WEICH;
-      if (r > max) max = r;
+      const r = (X * sp + Y * cp) * cq - WEICH + (BODEN_Y - bodenUnter(pose, s.X));
+      if (r > hart) hart = r;
     }
-    return max;
+    const weich = wSumme > 0 ? rSumme / wSumme : -Infinity;
+    const mittel = aSumme > 0 ? a1 / aSumme : 0;
+    const streu = aSumme > 0 ? Math.sqrt(Math.max(0, a2 / aSumme - mittel * mittel)) : 0;
+    return { hart, weich, streu };
   }
 
-  /** Boden-Löser: Höhe (und mit `frei` auch das Nicken), so dass Ozzy auf seinen tiefsten Stützen ruht */
+  /** Reichweite (Abstand nach unten vom Körperanker bis zum Grundboden) bei Nicken p */
+  private reichweiten(pose: Pose, p: number): number {
+    const s = this.stuetzen(pose, p);
+    return Math.max(s.hart, s.weich);
+  }
+
+  /** Boden-Löser: Höhe (und mit `frei` auch das Nicken), so dass Ozzy auf seinen Beinen und Stützen ruht */
   boden(pose: Pose, frei = 0): void {
     if (pose.boden <= 0) return;
     let p = pose.nicken;
     if (frei > 0) {
+      // so tief wie möglich (Schwerkraft), aber die stehenden Beine möglichst gleich lang
+      const guete = (pp: number) => {
+        const s = this.stuetzen(pose, pp);
+        return Math.max(s.hart, s.weich) + 3 * s.streu;
+      };
       let best = p;
-      let bestY = -Infinity;
+      let bestG = Infinity;
       for (let d = -25; d <= 25; d += 1) {
-        const y = -this.reichweiten(pose, pose.nicken + d);
-        if (y > bestY + 1e-6) {
-          bestY = y;
+        const g = guete(pose.nicken + d);
+        if (g < bestG - 1e-6) {
+          bestG = g;
           best = pose.nicken + d;
         }
       }
       for (let schritt = 0.5; schritt > 0.02; schritt /= 2)
         for (const d of [-schritt, schritt]) {
-          const y = -this.reichweiten(pose, best + d);
-          if (y > bestY) {
-            bestY = y;
+          const g = guete(best + d);
+          if (g < bestG) {
+            bestG = g;
             best += d;
           }
         }
@@ -437,18 +557,105 @@ export class Figur {
     const c = Math.cos(winkel);
     const s = Math.sin(winkel);
     const [ax, ay] = this.koerperPunkt(pose, 0, 0, 0);
+    // die Kehle (Locke am Kinn) bleibt eine Bézier-Form mit Haut
     const haut = this.rumpfHaut(pose, sPsi, cPsi, ay, c, s);
-    for (const name of ['rumpf', 'kehle'] as const) {
-      const f = this.koerper.get(name)!;
-      const p = this.buf(name, f.n * 6);
-      f.auswerten(pose.psi, p);
-      const roh = name === 'kehle' ? p.slice() : null;
-      // Haut verformen: Anker und Griff-Endpunkte durch dasselbe Feld (so bleiben die Kurven glatt)
-      verformen(p, f.n, haut);
-      ankerAffin(p, f.n, c, -s, s, c, ax, ay);
-      if (roh) this.kehleAmKopf(pose, sPsi, roh, p, f.n);
-      teile.push({ name, farbe: 'schwarz', art: 'bezier', p, n: f.n, tiefe: name === 'kehle' ? 0.02 : 0 });
+    const f = this.koerper.get('kehle')!;
+    const p = this.buf('kehle', f.n * 6);
+    f.auswerten(pose.psi, p);
+    const roh = p.slice();
+    verformen(p, f.n, haut);
+    ankerAffin(p, f.n, c, -s, s, c, ax, ay);
+    this.kehleAmKopf(pose, sPsi, roh, p, f.n);
+    teile.push({ name: 'kehle', farbe: 'schwarz', art: 'bezier', p, n: f.n, tiefe: 0.02 });
+    // der Rumpf aus Querschnitten: je zwei benachbarte als konvexe Hülle, zusammen die Bohne in jeder Richtung
+    const ringe = this.querschnitte(pose);
+    for (let k = 0; k + 1 < ringe.length; k++) {
+      const h = konvexeHuelle(ringe[k]!.concat(ringe[k + 1]!));
+      const q = new Float32Array(h.length * 2);
+      h.forEach(([x, y], i) => {
+        q[i * 2] = x;
+        q[i * 2 + 1] = y;
+      });
+      teile.push({ name: 'rumpf', farbe: 'schwarz', art: 'vieleck', p: q, n: h.length, tiefe: 0 });
     }
+  }
+
+  /**
+   * Die Bohne im Raum: Querschnitte (Superellipsen) entlang des Körpers, oben und unten genau Florians Seitenansicht. Jeder Punkt
+   * wird verformt wie die Haut (Atmen, Strecken/Stauchen, Biegen, an steif gekippten Beinen mitdrehen), dann gedreht und
+   * projiziert wie der Körper (Nicken, Wiegen, Blickrichtung ψ) und am Boden weich platt gedrückt. Weil es dieselbe Form im Raum
+   * ist, stimmt die Silhouette in jeder Richtung: von der Seite, schräg, von vorn und von hinten.
+   */
+  private querschnitte(pose: Pose): [number, number][][] {
+    const at = pose.atmen * 0.012;
+    const st = pose.stauchen;
+    const sx = 1 + at - st * 0.5;
+    const sy = 1 + at + st;
+    const p = pose.nicken * RAD;
+    const q = pose.rollen * RAD;
+    const ps = pose.psi * RAD;
+    const cp = Math.cos(p);
+    const sp = Math.sin(p);
+    const cq = Math.cos(q);
+    const sq = Math.sin(q);
+    const cs = Math.cos(ps);
+    const ss = Math.sin(ps);
+    const ax = pose.x;
+    const ay = pose.y - pose.heben;
+    const R = 400;
+    // stehende Beine (flache Sohle) lassen die Naht, wo sie ist (das Bein biegt sich); steif gekippte nehmen die Haut mit
+    const huefte = BEINE.map((b) => {
+      const a = pose[`bein${b.name}` as const] as number;
+      return { X: b.X, Z: b.Z, w: -a * RAD * 0.5 * (1 - 0.4 * beinFlach(a - pose.nicken)) };
+    });
+    const [kopfDy, kopfSteig] = biegung(pose.biegen, KOPF.X);
+    const biegeDy = (X: number) => (X <= KOPF.X ? biegung(pose.biegen, X)[0] : kopfDy + kopfSteig * 60 * (1 - Math.exp(-(X - KOPF.X) / 60)));
+    const K = 22;
+    const e = 2 / QUER_N;
+    const out: [number, number][][] = [];
+    for (const sc of this.scheiben) {
+      const yc = (sc.oben + sc.unten) / 2;
+      const h = (sc.unten - sc.oben) / 2;
+      const ring: [number, number][] = [];
+      for (let j = 0; j < QUER; j++) {
+        const th = (2 * Math.PI * j) / QUER;
+        const c = Math.cos(th);
+        const s = Math.sin(th);
+        let X = sc.X * sx;
+        let Y = (yc + h * Math.sign(s) * Math.abs(s) ** e) * sy;
+        const Z = sc.breite * Math.sign(c) * Math.abs(c) ** e * sx;
+        Y += biegeDy(X);
+        for (const hf of huefte) {
+          if (!hf.w) continue;
+          const dX = X - hf.X;
+          const d = Math.hypot(dX, Y, Z - hf.Z);
+          if (d >= R) continue;
+          const u = 1 - d / R;
+          const w = hf.w * u * u * (3 - 2 * u);
+          const cw = Math.cos(w);
+          const sw = Math.sin(w);
+          const nY = dX * sw + Y * cw;
+          X = hf.X + dX * cw - Y * sw;
+          Y = nY;
+        }
+        const x1 = X * cp - Y * sp;
+        const y1 = X * sp + Y * cp;
+        const y2 = y1 * cq - Z * sq;
+        const z2 = y1 * sq + Z * cq;
+        let wx = ax + x1 * ss + z2 * cs;
+        let wy = ay + y2;
+        // Boden (weich): was darunter käme, drückt sich platt und quillt zur Seite
+        const pen = wy - bodenUnter(pose, sc.X);
+        if (pen > -7 * K) {
+          const druck = K * Math.log1p(Math.exp(pen / K));
+          wy -= druck;
+          wx += 0.32 * druck * Math.tanh((wx - ax) / 220);
+        }
+        ring.push([wx, wy]);
+      }
+      out.push(ring);
+    }
+    return out;
   }
 
   /**
@@ -521,23 +728,38 @@ export class Figur {
     const w = (pose.nicken + steigung) * sPsi * RAD;
     const c = Math.cos(w);
     const s = Math.sin(w);
+    // von hinten liegt der Ring vor dem Rumpf: ein schmaler weißer Rand trennt ihn (sonst sähe man nur das Loch)
+    const rand = 16 * glatt01((st - 60) / 200);
     for (const [name, f, p] of [
       ['schwanz', ring, pr],
       ['schwanzloch', loch, pl],
     ] as const) {
       ankerAffin(p, f.n, seite * c, -s, seite * s, c, sx, sy);
-      teile.push({ name, farbe: f.farbe, art: 'bezier', p, n: f.n, tiefe: st + 1 + (name === 'schwanzloch' ? 0.01 : 0) });
+      teile.push({
+        name,
+        farbe: f.farbe,
+        art: 'bezier',
+        p,
+        n: f.n,
+        tiefe: st + 1 + (name === 'schwanzloch' ? 0.01 : 0),
+        ...(name === 'schwanz' && rand > 0.5 ? { rand } : {}),
+      });
     }
   }
 
+  /**
+   * Ein Gipsbein. Steht es (bis 40° gekippt), bleibt die Sohle flach am Boden und der Gips biegt sich weich zwischen Hüfte und
+   * Fuß (oben bleibt er am Körper ausgerichtet, so ändert sich die Naht nie); er streckt oder staucht sich ein wenig, damit der
+   * Fuß genau auf seinem Boden steht (Stufen). Weiter gekippt (Sitzen, Liegen, Kratzen) ist er steif wie ein Brett.
+   */
   private bein(pose: Pose, b: Bein, sPsi: number, cPsi: number, teile: Zeichenteil[]): void {
     const alpha = pose[`bein${b.name}` as const] as number;
     const hub = pose[`hub${b.name}` as const] as number;
     // am wahren Ort gerechnet (Höhe, Tiefe), um den Schatten-Versatz nur im Bild verschoben
-    const [hx0, hy0, tiefe] = this.koerperPunkt(pose, b.X, biegung(pose.biegen, b.X)[0], b.Z);
+    const [hx0, hy, tiefe] = this.koerperPunkt(pose, b.X, biegung(pose.biegen, b.X)[0], b.Z);
     const hx = hx0 + (beinX(b, sPsi) - b.X) * sPsi;
-    const hy = hy0 - hub;
-    const a = (alpha - pose.nicken) * RAD;
+    const aWelt = alpha - pose.nicken;
+    const a = aWelt * RAD;
     const q = pose.rollen * RAD;
     const dX = Math.sin(a);
     const dY = Math.cos(a) * Math.cos(q);
@@ -546,15 +768,25 @@ export class Figur {
     const dy = dY;
     const lang = Math.hypot(dx, dy) || 1;
     const phi = Math.atan2(-dx, dy);
-    const cf = Math.cos(phi);
-    const sf = Math.sin(phi);
-    const setze = (pts: number[], breite = 1): Float32Array => {
+    const flach = beinFlach(aWelt);
+    const L = KASTEN.H;
+    // Fuß: wo das steife Bein ihn hätte. Ist er nah an seinem Boden, steht er genau darauf oder schwebt `hub` darüber (der Gips
+    // streckt oder staucht sich dafür, so steigt er auch auf Stufen); hängt er weit darüber (Stolpern), bleibt er, wo er ist.
+    const fx = hx - L * lang * Math.sin(phi);
+    const natuerlich = hy + L * lang * Math.cos(phi);
+    const boden = BODEN_Y - (pose[`stufe${b.name}` as const] as number);
+    const luecke = boden - natuerlich;
+    const nah = flach * Math.min(1, Math.max(0, pose.boden)) * (1 - glatt01((luecke - 25) / 45));
+    const fy = natuerlich - hub + (boden - natuerlich) * nah;
+    const koerperW = (pose.nicken * sPsi + pose.rollen * cPsi) * RAD;
+    // oben dreht der Gips gut halb mit (die Haut geht mit), unten steht die Sohle flach: Die Biegung verteilt sich weich
+    const weg = beinWeg(hx, hy, fx, fy, phi + (koerperW - phi) * flach * 0.4, phi * (1 - flach));
+    const setze = (pts: number[]): Float32Array => {
       const out = new Float32Array(pts.length);
       for (let i = 0; i < pts.length; i += 2) {
-        const x = pts[i]! * breite;
-        const y = pts[i + 1]! * lang;
-        out[i] = hx + x * cf - y * sf;
-        out[i + 1] = hy + x * sf + y * cf;
+        const [x, y] = weg(pts[i]!, pts[i + 1]!);
+        out[i] = x;
+        out[i + 1] = y;
       }
       return out;
     };
@@ -601,6 +833,8 @@ export class Figur {
     }
     for (const a of ANHAENGE) this.anhaengen(a, th, werte);
     reihe.forEach((name, k) => {
+      // von hinten ist das Gesicht ganz verdeckt (nicht einmal ein Punkt bleibt)
+      if (name === 'gesicht' && weg > 145) return;
       const f = this.kopf.get(name)!;
       const p = werte.get(name)!;
       this.ortlich(name, f, p, pose);
@@ -687,6 +921,155 @@ export class Figur {
   }
 }
 
+/** Wie sehr ein Bein „steht“ (Sohle flach, Gips biegt sich) statt steif zu kippen: bis 40° ganz, ab 70° gar nicht */
+export function beinFlach(winkel: number): number {
+  return 1 - glatt01((Math.abs(winkel) - 40) / 30);
+}
+
+/** Höhe des Bodens (Welt-y) unter der Stelle X des Körpers: zwischen dem Boden unter den Hinter- und den Vorderfüßen */
+function bodenUnter(pose: Pose, X: number): number {
+  const h = (pose.stufeHN + pose.stufeHF) / 2;
+  const v = (pose.stufeVN + pose.stufeVF) / 2;
+  return BODEN_Y - (h + (v - h) * glatt01((X + 323.5) / 537.5));
+}
+
+/**
+ * Weg eines Beins von der Hüfte zum Fuß: eine kubische Kurve, oben in Richtung `phiH`, unten in Richtung `phiF` (0 = senkrecht,
+ * dann liegt die Sohle flach). Ein Punkt der Ruheform (u quer, v längs, Hüfte bei v = 0, Sohle bei v = H) wird an die Stelle
+ * v/H der Kurve gesetzt, um u entlang ihrer Normalen verschoben. Die runde Kappe über der Hüfte dreht mit `phiH`.
+ */
+function beinWeg(hx: number, hy: number, fx: number, fy: number, phiH: number, phiF: number): (u: number, v: number) => [number, number] {
+  const len = Math.hypot(fx - hx, fy - hy) || 1;
+  const t0x = -Math.sin(phiH) * len;
+  const t0y = Math.cos(phiH) * len;
+  const t1x = -Math.sin(phiF) * len;
+  const t1y = Math.cos(phiF) * len;
+  const ch = Math.cos(phiH);
+  const sh = Math.sin(phiH);
+  return (u, v) => {
+    if (v <= 0) return [hx + u * ch - v * sh, hy + u * sh + v * ch];
+    const t = Math.min(1, v / KASTEN.H);
+    const t2 = t * t;
+    const t3 = t2 * t;
+    const h00 = 2 * t3 - 3 * t2 + 1;
+    const h10 = t3 - 2 * t2 + t;
+    const h01 = -2 * t3 + 3 * t2;
+    const h11 = t3 - t2;
+    const cx = h00 * hx + h10 * t0x + h01 * fx + h11 * t1x;
+    const cy = h00 * hy + h10 * t0y + h01 * fy + h11 * t1y;
+    const d00 = 6 * t2 - 6 * t;
+    const d10 = 3 * t2 - 4 * t + 1;
+    const d01 = -6 * t2 + 6 * t;
+    const d11 = 3 * t2 - 2 * t;
+    let tx = d00 * hx + d10 * t0x + d01 * fx + d11 * t1x;
+    let ty = d00 * hy + d10 * t0y + d01 * fy + d11 * t1y;
+    const l = Math.hypot(tx, ty) || 1;
+    tx /= l;
+    ty /= l;
+    return [cx + u * ty, cy - u * tx];
+  };
+}
+
+/** Konvexe Hülle (monotone Kette), Punkte als [x, y] */
+function konvexeHuelle(pts: [number, number][]): [number, number][] {
+  const p = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (p.length < 3) return p;
+  const kreuz = (o: [number, number], a: [number, number], b: [number, number]) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const unten: [number, number][] = [];
+  for (const q of p) {
+    while (unten.length >= 2 && kreuz(unten[unten.length - 2]!, unten[unten.length - 1]!, q) <= 0) unten.pop();
+    unten.push(q);
+  }
+  const oben: [number, number][] = [];
+  for (let i = p.length - 1; i >= 0; i--) {
+    const q = p[i]!;
+    while (oben.length >= 2 && kreuz(oben[oben.length - 2]!, oben[oben.length - 1]!, q) <= 0) oben.pop();
+    oben.push(q);
+  }
+  oben.pop();
+  unten.pop();
+  return unten.concat(oben);
+}
+
+// ---- Rumpf aus Querschnitten ---------------------------------------------------------------------------------------------
+/** Querschnitt des Rumpfs an der Stelle X (Körper vorn–hinten): oben/unten aus Florians Seitenansicht, Breite daraus abgeleitet */
+interface Scheibe {
+  X: number;
+  oben: number;
+  unten: number;
+  breite: number;
+}
+const SCHEIBEN = 58;
+const QUER = 18;
+/** Exponent der Querschnitte (Superellipse): 2 wäre eine Ellipse, größer wird es kastiger */
+const QUER_N = 2.5;
+/** größte halbe Breite (von vorn), passt zu Florians Frontansicht */
+const RUMPF_BREIT = 470;
+
+/** Querschnitte aus dem Umriss der Seitenansicht (90°): je Stelle X der höchste und der tiefste Punkt des Umrisses */
+function rumpfScheiben(f: AnkerForm): Scheibe[] {
+  const p = new Float32Array(f.n * 6);
+  f.auswerten(90, p);
+  const pts: [number, number][] = [];
+  for (let i = 0; i < f.n; i++) {
+    const j = (i + 1) % f.n;
+    const x0 = p[i * 6]!;
+    const y0 = p[i * 6 + 1]!;
+    const x3 = p[j * 6]!;
+    const y3 = p[j * 6 + 1]!;
+    const x1 = x0 + p[i * 6 + 4]!;
+    const y1 = y0 + p[i * 6 + 5]!;
+    const x2 = x3 + p[j * 6 + 2]!;
+    const y2 = y3 + p[j * 6 + 3]!;
+    for (let k = 0; k < 48; k++) {
+      const t = k / 48;
+      const u = 1 - t;
+      pts.push([
+        u * u * u * x0 + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t * t * t * x3,
+        u * u * u * y0 + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t * t * t * y3,
+      ]);
+    }
+  }
+  let minX = Infinity;
+  let maxX = -Infinity;
+  for (const [x] of pts) {
+    minX = Math.min(minX, x);
+    maxX = Math.max(maxX, x);
+  }
+  const out: Scheibe[] = [];
+  let hMax = 0;
+  for (let k = 0; k < SCHEIBEN; k++) {
+    // an den Enden dichter (dort ändert sich der Umriss am schnellsten)
+    const s = k / (SCHEIBEN - 1);
+    const X = minX + 1.5 + (maxX - minX - 3) * (0.5 - 0.5 * Math.cos(Math.PI * s));
+    let oben = Infinity;
+    let unten = -Infinity;
+    for (let i = 0; i < pts.length; i++) {
+      const [xa, ya] = pts[i]!;
+      const [xb, yb] = pts[(i + 1) % pts.length]!;
+      if ((xa - X) * (xb - X) <= 0 && xa !== xb) {
+        const y = ya + ((yb - ya) * (X - xa)) / (xb - xa);
+        oben = Math.min(oben, y);
+        unten = Math.max(unten, y);
+      }
+    }
+    if (!Number.isFinite(oben)) continue;
+    out.push({ X, oben, unten, breite: 0 });
+    hMax = Math.max(hMax, unten - oben);
+  }
+  // Breite: über die ganze Länge fast gleich (so breit wie in Florians Frontansicht, die Gipse sitzen innen), zu den Enden hin
+  // rundet sie sich wie eine Bohne von oben gesehen. (Die Höhe taugt dafür nicht: Über den Beinen ist der Umriss der Seite hoch,
+  // weil dort die Gipse ansetzen.)
+  void hMax;
+  const mitte = (minX + maxX) / 2;
+  const halb = (maxX - minX) / 2;
+  for (const sc of out) {
+    const u = Math.min(1, Math.abs(sc.X - mitte) / halb);
+    sc.breite = RUMPF_BREIT * Math.pow(Math.max(0, 1 - u ** 4), 0.25);
+  }
+  return out;
+}
+
 /** Eine Abbildung auf Anker und Griff-Endpunkte anwenden (die Griffe bleiben relativ): so folgt die ganze Kurve der Verformung */
 function verformen(p: Float32Array, n: number, fn: (x: number, y: number) => [number, number]): void {
   for (let i = 0; i < n; i++) {
@@ -706,15 +1089,16 @@ function verformen(p: Float32Array, n: number, fn: (x: number, y: number) => [nu
 
 // ---- Gips und Fenster ---------------------------------------------------------------------------------------------------
 /** Säule mit runder Hüfte (Halbkreis um die Hüfte, dreht ohne Ecken) und runden Sohlenecken; Hüfte im Ursprung, unten = +y */
-function saeuleUmriss(): number[] {
+/** Ruheform des Gipses (Hüfte im Ursprung, unten = +y): runde Kappe, Seiten fein unterteilt (sie biegen sich), runde Sohlenecken */
+const SAEULE: number[] = (() => {
   const { B, H, r } = KASTEN;
   const halb = B / 2;
   const pts: number[] = [];
-  // Hüfte: Halbkreis oben (von links über oben nach rechts)
   for (let k = 0; k <= 16; k++) {
     const a = Math.PI + (Math.PI * k) / 16;
     pts.push(halb * Math.cos(a), halb * Math.sin(a));
   }
+  for (let j = 1; j < 12; j++) pts.push(halb, ((H - r) * j) / 12);
   const bogen = (cx: number, cy: number, a0: number, a1: number) => {
     for (let k = 0; k <= 10; k++) {
       const a = a0 + ((a1 - a0) * k) / 10;
@@ -723,18 +1107,23 @@ function saeuleUmriss(): number[] {
   };
   bogen(halb - r, H - r, 0, Math.PI / 2);
   bogen(-halb + r, H - r, Math.PI / 2, Math.PI);
+  for (let j = 11; j >= 1; j--) pts.push(-halb, ((H - r) * j) / 12);
   return pts;
+})();
+function saeuleUmriss(): number[] {
+  return SAEULE;
 }
 function fensterUmriss(s: number): number[] {
   const { fensterB, fensterOben, fensterUnten } = KASTEN;
   const rx = (fensterB / 2) * s;
   const ry = fensterB / 2;
   const cy = fensterOben + ry;
-  const pts: number[] = [-rx, fensterUnten];
+  const pts: number[] = [];
+  for (let j = 0; j < 8; j++) pts.push(-rx, fensterUnten - ((fensterUnten - cy) * j) / 8);
   for (let k = 0; k <= 24; k++) {
     const a = Math.PI + (Math.PI * k) / 24;
     pts.push(rx * Math.cos(a), cy + ry * Math.sin(a));
   }
-  pts.push(rx, fensterUnten);
+  for (let j = 7; j >= 0; j--) pts.push(rx, fensterUnten - ((fensterUnten - cy) * j) / 8);
   return pts;
 }

@@ -66,3 +66,17 @@ Florians Rückmeldung (Übergabe, Abschnitt Runde 3) und was daraus wurde:
 | Kanten beim Drehen | ferner Schlitz fiel im Profil auf eine Linie; Teile morphten getrennt | Schlitz im Profil als winzige Kopie, Schopf sinkt in den Haaransatz, Anhänge halten die Nähte |
 
 Offen: die Kopfoberseite zwischen 40° und 70° (siehe Übergabe), Florians Urteil zu Timing und Witz.
+
+## Runde 4 (17.11.): Körper zuerst, Sohlen flach, Front und Rücken, Stufen
+
+| Rückmeldung | Ursache | Abhilfe |
+| --- | --- | --- |
+| Ecken am Übergang Körper–Beine; „der Körper ist das Wichtigste“ | kleine Kehlen; Beine kippten als ganze Kästen | stärker verflüssigt (Kehlen 24, außen leicht weich 5); Beine biegen sich, oben halb mit, unten flach |
+| Sohlen sollen nie kippen, Beine dürfen sich verformen | starre Säulen um die Hüfte gedreht | Gips als Kurve von der Hüfte zum Fuß, Sohle flach, streckt sich auf seinen Boden; weicher Boden-Löser |
+| Front- und Rückpose, alles smooth | Rumpf aus zwei gezeichneten Umrissen gemorpht (kastig bei 30–60°) | Körper aus Querschnitten im Raum: jede Richtung stimmt; von hinten Ringschwanz mit Rand, Gesicht verschwindet |
+| nach dem Drehen nicht spiegelverkehrt | Schopf wurde für links nur verschoben | Schopf gespiegelt (Paare), von vorn aufrecht |
+| Gesicht–Nase, Kinn | Strähne berührte die Nase nur; Nase nicht in der Maske | Strähne endet in der Nase, Nase verschmilzt mit dem Haar; Haken am Kinn folgt dem Kopf |
+| Umschauen dreht zurück | Mischen über 360° | Winkel über den kürzesten Weg |
+| Schnüffeln: Hinterteil hoch | Hinterbeine absichtlich in der Luft | alle Sohlen am Boden, Vorderbeine tasten |
+| Stufen klettern statt springen | gab es nicht | Fußfolge mit geplanten Tritten, Hinterbein rutscht einmal ab; im Spiel bis 320 hoch und runter |
+| Stolpern witziger | steifes Brett | Füße hängen, Gipse biegen sich, Nase im Boden, Hinterbeine strampeln, Plumps, Schütteln |

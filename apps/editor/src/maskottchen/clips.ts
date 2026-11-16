@@ -3,10 +3,10 @@
 // Ozzy ist alt, steifbeinig (Gips), neugierig und unbeirrbar. Komik aus Timing statt Übertreibung: Pausen, trockene Blicke,
 // kleine Bewegungen mit großer Wirkung (wie Gromit: alles spielt die Stirn).
 //
-// Gips heißt: Die Beine knicken nie, sie drehen nur in der Hüfte. Was ein Hund sonst mit den Knien macht, macht Ozzy mit dem
-// ganzen Körper: Er wiegt sich, um ein Bein vom Boden zu bekommen, kippt über die Kante der Sohle, rutscht mit steifen Beinen
-// auseinander, und die weiche Bohne fängt jeden Stoß ab (staucht, hängt durch, wabbelt nach). Sitzen, Liegen und Stolpern sind
-// ausgerechnet, nicht geschätzt: Die Sohlen bleiben am Boden, gekippt wird um die Kante, auf der er gerade steht.
+// Gips heißt: Die Beine knicken nie, sie drehen nur in der Hüfte. Steht ein Fuß, bleibt seine Sohle flach am Boden und der Gips
+// biegt sich ein wenig (lustig, nie geknickt). Was ein Hund sonst mit den Knien macht, macht Ozzy mit dem ganzen Körper: Er wiegt
+// sich, um ein Bein vom Boden zu bekommen, rutscht mit steifen Beinen auseinander, und die weiche Bohne fängt jeden Stoß ab
+// (staucht, hängt durch, wabbelt nach). Sitzen, Liegen, Stolpern und Stufen sind ausgerechnet, nicht geschätzt.
 import { type Schl, TAU, clamp, nachschwingen, puls, rausch, spurWert, spurenAnwenden, stufe } from './bewegung';
 import { Figur, KASTEN } from './figur';
 import type { Pose } from './pose';
@@ -27,8 +27,18 @@ export interface Clip {
   danach?: string;
   /** dreht Ozzy um (am Ende schaut er in die andere Richtung) */
   wendet?: boolean;
-  pose: (t: number, p: Pose) => void;
+  /** Stufe: Der Clip endet eine Stufe höher (1) oder tiefer (−1); die Kante liegt `KANTE` vor der Wurzel beim Start */
+  treppe?: 1 | -1;
+  pose: (t: number, p: Pose, k: ClipKontext) => void;
 }
+
+/** Was ein Clip vom Spiel wissen muss (z. B. wie hoch die Stufe ist) */
+export interface ClipKontext {
+  stufe: number;
+}
+export const KONTEXT_STANDARD: ClipKontext = { stufe: 170 };
+/** Abstand der Stufenkante vor der Wurzel, wenn ein Treppen-Clip beginnt (die Vorderfüße stehen kurz davor) */
+export const KANTE = 470;
 
 const RAD = Math.PI / 180;
 const H_BEIN = KASTEN.H;
@@ -43,7 +53,7 @@ const BEINE4 = ['VN', 'VF', 'HN', 'HF'] as const;
  * flach nach vorn, der Körper ist um 25° nach hinten gekippt und der Hintern sitzt auf (weich, er drückt sich platt).
  */
 function sitzLage(betaH: number): { nicken: number; vorn: number; hinten: number } {
-  const h = Figur.fussTiefe(betaH);
+  const h = Figur.beinTiefe(betaH);
   const nicken = Math.asin(clamp((h - H_BEIN) / HUEFTEN, -1, 1)) / RAD;
   return { nicken, vorn: nicken, hinten: betaH + nicken };
 }
@@ -59,17 +69,6 @@ function sitzSetzen(betaH: number, p: Pose): number {
 /** Wurzelbewegung beim Sitzen: Die Vorderfüße bleiben stehen, der Körper dreht um sie */
 const sitzWeg = (betaH: number) => 214 * (1 - Math.cos(sitzLage(betaH).nicken * RAD));
 
-/**
- * Kippen um die Kante einer Sohle (Gips, steif): Verschiebung des Körperankers in Blickrichtung bei Nicken p, damit die Kante am
- * Boden bleibt. Vorn kippt er über die Spitze der Vordersohle, hinten über die Ferse der Hintersohle; die Rundung rollt ab.
- */
-function kippWeg(p: number): number {
-  const w = p * RAD;
-  const r = KASTEN.r;
-  const kx = p >= 0 ? 214 + KASTEN.B / 2 - r : -323.5 - (KASTEN.B / 2 - r);
-  const ky = H_BEIN - r;
-  return kx * (1 - Math.cos(w)) + ky * Math.sin(w) + r * w;
-}
 /** Ableitung einer Verschiebung nach der Zeit (für `tempo`) */
 const ableitung = (d: (t: number) => number) => (t: number) => (d(t + 0.004) - d(Math.max(0, t - 0.004))) / (t > 0.004 ? 0.008 : t + 0.004);
 
@@ -124,8 +123,90 @@ function gangTempo(g: Gang): number {
   return (2 * H_BEIN * Math.sin(g.schritt * RAD)) / (g.stand * g.periode);
 }
 
-const LAUFEN: Gang = { periode: 1.36, schritt: 15, art: 'pass', stand: 0.6, hub: 4, wiegen: 6.5, klack: 0.032 };
-const EILEN: Gang = { periode: 0.46, schritt: 8, art: 'trab', stand: 0.52, hub: 6, wiegen: 2.5, klack: 0.045 };
+const LAUFEN: Gang = { periode: 1.36, schritt: 15, art: 'pass', stand: 0.6, hub: 5, wiegen: 8.5, klack: 0.045 };
+const EILEN: Gang = { periode: 0.46, schritt: 8, art: 'trab', stand: 0.52, hub: 7, wiegen: 3, klack: 0.055 };
+
+// ---- Fußfolge: jeder Fuß mit festen Tritten (Stufen hoch und hinunter) --------------------------------------------------
+interface Tritt {
+  heben: number;
+  setzen: number;
+  /** Ziel (relativ zur Wurzel beim Start); wird aus dem Weg der Wurzel geplant */
+  x: number;
+  /** ein Versuch, der nicht klappt: Der Fuß hebt sich, stößt an die Stufe und fällt zurück */
+  fehl?: boolean;
+}
+interface Fuss {
+  name: (typeof BEINE4)[number];
+  X: number;
+  tritte: Tritt[];
+}
+/**
+ * Plant die Tritte: Jeder Fuß setzt ein Stück vor seiner Hüfte auf (so weit, wie die Hüfte bis zum nächsten Heben weiterläuft),
+ * nie halb über der Kante (dann lieber ganz auf die Stufe oder noch davor).
+ */
+function trittePlanen(weg: (t: number) => number, zeiten: Record<(typeof BEINE4)[number], [number, number, boolean?][]>, kante: number): Fuss[] {
+  return BEINE4.map((name) => {
+    const X = name[0] === 'V' ? 214 : -323.5;
+    const z = zeiten[name];
+    let x = X;
+    const tritte: Tritt[] = z.map(([heben, setzen, fehl], i) => {
+      if (fehl) return { heben, setzen, x, fehl: true };
+      const naechst = z[i + 1]?.[0] ?? setzen + 0.6;
+      const huefte = weg(setzen) + X;
+      const vor = clamp((weg(naechst) - weg(setzen)) / 2, 10, 150);
+      let ziel = huefte + vor;
+      if (ziel > kante - 175 && ziel < kante + 175) ziel = kante + 175 - huefte <= 175 ? kante + 175 : kante - 175;
+      x = ziel;
+      return { heben, setzen, x: ziel };
+    });
+    return { name, X, tritte };
+  });
+}
+/** Lage eines Fußes zur Zeit t: x (relativ zur Wurzel beim Start), Höhe des Bodens darunter und Hub darüber */
+function fussZu(f: Fuss, t: number, boden: (x: number) => number): { x: number; stufe: number; hub: number; aufgesetzt: number } {
+  let x = f.X;
+  let aufgesetzt = -1;
+  for (const tr of f.tritte) {
+    if (t >= tr.setzen) {
+      x = tr.x;
+      aufgesetzt = tr.setzen;
+      continue;
+    }
+    if (t > tr.heben) {
+      const u = (t - tr.heben) / (tr.setzen - tr.heben);
+      const w = u * u * (3 - 2 * u);
+      const g0 = boden(x);
+      const g1 = boden(tr.x);
+      if (tr.fehl) {
+        // hoch, gegen die Stufe, zurück: nicht hoch genug
+        const hoch = Math.max(g0, boden(x + 180)) * 0.75;
+        return { x: x + 60 * Math.sin(u * Math.PI), stufe: g0, hub: hoch * Math.sin(u * Math.PI) ** 0.6, aufgesetzt: -1 };
+      }
+      const stufe = g0 + (g1 - g0) * w;
+      const hub = (Math.max(g0, g1) - stufe + 32) * Math.sin(u * Math.PI) ** 0.4;
+      return { x: x + (tr.x - x) * w, stufe, hub, aufgesetzt: -1 };
+    }
+    break;
+  }
+  return { x, stufe: boden(x), hub: 0, aufgesetzt };
+}
+/** Eine Fußfolge in die Pose: Winkel aus der Lage von Fuß und Hüfte, Kippen aus den Böden vorn und hinten, Klack beim Aufsetzen */
+function fussfolge(fuesse: Fuss[], weg: (t: number) => number, t: number, boden: (x: number) => number, p: Pose): number {
+  const lagen = fuesse.map((f) => fussZu(f, t, boden));
+  const vorn = (lagen[0]!.stufe + lagen[1]!.stufe) / 2;
+  const hinten = (lagen[2]!.stufe + lagen[3]!.stufe) / 2;
+  p.nicken = -Math.asin(clamp((vorn - hinten) / HUEFTEN, -0.8, 0.8)) / RAD;
+  let klack = 0;
+  fuesse.forEach((f, i) => {
+    const l = lagen[i]!;
+    const a = Math.asin(clamp((l.x - (weg(t) + f.X)) / H_BEIN, -0.62, 0.62)) / RAD;
+    p[`bein${f.name}`] = a + p.nicken;
+    p[`hub${f.name}`] = l.hub;
+    p[`stufe${f.name}`] = l.stufe;
+    if (l.aufgesetzt >= 0) klack += stoss(t - l.aufgesetzt);
+  });
+  return klack;
+}
 
 // ---- kleine Helfer ------------------------------------------------------------------------------------------------------
 /** Ohrzucken zur Zeit t0 (schnell spitz, dann zurück) */
@@ -137,6 +218,54 @@ const beine = (p: Pose, vorn: number, hinten: number) => {
   p.beinHN = hinten;
   p.beinHF = hinten;
 };
+
+/** Weg der Wurzel beim Klettern (relativ zum Start): heran, vorn hinauf, nachrücken, hinten hinauf, ankommen */
+const KLETTER_WEG = s([
+  [0, 0],
+  [1.15, 300, 'einaus'],
+  [1.95, 335, 'einaus'],
+  [3.45, 835, 'einaus'],
+  [4.55, 865, 'einaus'],
+  [5.3, 905, 'aus'],
+]);
+const kletterWeg = (t: number) => spurWert(KLETTER_WEG, t);
+const KLETTER_FUESSE = trittePlanen(
+  kletterWeg,
+  {
+    VN: [
+      [0.05, 0.42],
+      [0.95, 1.42],
+      [2.2, 2.6],
+      [3.0, 3.4],
+      [4.4, 4.75],
+    ],
+    VF: [
+      [0.42, 0.8],
+      [1.42, 1.9],
+      [2.6, 3.0],
+      [3.4, 3.8],
+      [4.75, 5.1],
+    ],
+    HN: [
+      [0.22, 0.6],
+      [0.95, 1.3],
+      [1.9, 2.3],
+      [2.7, 3.05, true],
+      [3.2, 3.75],
+      [4.3, 4.65],
+    ],
+    HF: [
+      [0.6, 0.98],
+      [1.35, 1.75],
+      [2.35, 2.75],
+      [3.8, 4.35],
+      [4.7, 5.05],
+    ],
+  },
+  KANTE,
+);
+/** Hinunter: dieselben Tritte, nur liegt der Boden hinter der Kante tiefer */
+const kletterBoden = (stufe: number) => (x: number) => (x > KANTE ? stufe : 0);
 
 // ---- Spuren, die mehrere Clips teilen ----------------------------------------------------------------------------------
 /** Hinsetzen: Winkel der Hinterbeine in der Welt. Erst schwingen sie bei geradem Körper bis zur Kante (35°, der Hintern hebt
@@ -165,21 +294,31 @@ const LIEG_BETA = s([
   [1.32, 60, 'sanft'],
   [1.5, 90, 'ein'],
 ]);
-/** Stolpern: Nicken über die Spitze der Vordersohlen (steif wie ein Brett), auf der Nase stehen bleiben, zurückplumpsen */
+/** Stolpern: Die Vorderfüße bleiben hängen, der Körper fährt über sie hinaus und kippt auf die Nase; auf der Nase bleibt er, die
+ *  Hinterbeine strampeln in der Luft; dann plumpst er zurück. `STOLPER_VOR`: wie weit die Hüften über die Füße hinaus sind. */
 const STOLPER_NICKEN = s([
   [0, 0],
-  [0.1, 1.5],
-  [0.74, 50, 'ein'],
-  [0.82, 47, 'aus'],
-  [0.92, 49.5, 'einaus'],
-  [1.75, 48.5],
-  [1.84, 46.5],
-  [2.14, -2.5, 'ein'],
-  [2.28, 0.8, 'aus'],
-  [2.45, 0, 'einaus'],
+  [0.12, 2],
+  [0.62, 48, 'ein'],
+  [0.7, 44, 'aus'],
+  [0.8, 47, 'einaus'],
+  [1.7, 46],
+  [1.8, 44],
+  [2.08, -3, 'ein'],
+  [2.22, 1, 'aus'],
+  [2.4, 0, 'einaus'],
 ]);
-/** Anhalten: Der Schwung kippt ihn über die Spitzen nach vorn, er wippt zurück und steht */
-const anhaltNicken = (t: number) => 9.5 * nachschwingen(t, 0.05, 1.2, 2.6);
+const STOLPER_VOR = s([
+  [0, 0],
+  [0.12, 0],
+  [0.62, 175, 'ein'],
+  [0.72, 160, 'aus'],
+  [1.7, 160],
+  [2.08, 40, 'ein'],
+  [2.5, 0, 'einaus'],
+]);
+/** Anhalten: Der Schwung trägt die Hüften über die stehenden Füße hinaus, die Gipse biegen sich, die Bohne wippt zurück */
+const anhaltVor = (t: number) => 80 * nachschwingen(t, 0.04, 1.15, 2.5);
 
 // ---- die Clips ----------------------------------------------------------------------------------------------------------
 export const CLIPS: Clip[] = [
@@ -254,15 +393,20 @@ export const CLIPS: Clip[] = [
   {
     name: 'anhalten',
     titel: 'Anhalten',
-    text: 'Bremsen mit Gipsbeinen: Der Schwung kippt ihn steif über die Spitzen der Vordersohlen, die Hinterbeine heben ab, er wippt zurück und steht.',
-    dauer: 1.7,
+    text: 'Bremsen mit Gipsbeinen: Die Sohlen bleiben stehen, der Schwung trägt den Körper weiter, die Gipse biegen sich nach hinten, und die Bohne wippt wie Pudding zurück, bis sie steht.',
+    dauer: 1.9,
     schleife: false,
     frei: 0,
     leben: 0.3,
     danach: 'stehen',
-    tempo: (t) => 220 * (1 - stufe(t, 0, 0.28)) + ableitung((u) => kippWeg(anhaltNicken(u)))(t),
+    tempo: (t) => 230 * (1 - stufe(t, 0, 0.18)) + ableitung(anhaltVor)(t),
     pose: (t, p) => {
-      p.nicken = anhaltNicken(t);
+      const vor = anhaltVor(t);
+      p.nicken = vor * 0.07;
+      const a = Math.asin(clamp(-vor / H_BEIN, -0.6, 0.6)) / RAD;
+      beine(p, a + p.nicken, a + p.nicken);
+      p.biegen = -vor * 0.12;
+      p.stauchen = -0.0004 * Math.abs(vor);
       p.theta = 72 - 52 * stufe(t, 0.7, 1.5);
       p.kopfNicken = 7 * nachschwingen(t, 0.12, 1.3, 2.6);
       p.ohrH = 10 * nachschwingen(t, 0.18, 1.5, 2.2);
@@ -406,24 +550,25 @@ export const CLIPS: Clip[] = [
   {
     name: 'schnueffeln',
     titel: 'Schnüffeln',
-    text: 'Nase am Boden, Hinterteil hoch, die Hinterbeine schweben steif in der Luft. Gründlich, Zentimeter für Zentimeter.',
+    text: 'Nase am Boden, alle vier Sohlen bleiben stehen: Die vorderen Gipse tasten sich ein Stück vor, der Hintern wackelt mit, der Schwanz wedelt. Gründlich, Zentimeter für Zentimeter.',
     dauer: 2.6,
     schleife: true,
-    frei: 0,
+    frei: 1,
     leben: 0.2,
     tempo: () => 30,
     pose: (t, p) => {
-      p.nicken = 13;
-      p.beinVN = 13 + 3 * Math.sin((t / 0.65) * TAU);
-      p.beinVF = 13 + 3 * Math.sin((t / 0.65) * TAU + Math.PI);
-      p.hubVN = 8 * Math.max(0, Math.sin((t / 0.65) * TAU));
-      p.hubVF = 8 * Math.max(0, Math.sin((t / 0.65) * TAU + Math.PI));
-      p.beinHN = 13;
-      p.beinHF = 13;
-      p.biegen = -8;
+      const tap = Math.sin((t / 0.65) * TAU);
+      p.beinVN = 15 + 4 * tap;
+      p.beinVF = 15 - 4 * tap;
+      p.hubVN = 6 * Math.max(0, tap);
+      p.hubVF = 6 * Math.max(0, -tap);
+      p.beinHN = 3;
+      p.beinHF = 3;
+      p.biegen = -6 + 2 * Math.sin((t / 1.3) * TAU);
+      p.rollen = 2.5 * Math.sin((t / 1.3) * TAU);
       p.theta = 70 + 6 * Math.sin((t / 2.6) * TAU);
-      p.kopfNicken = 34 + 3 * Math.sin((t / 0.65) * TAU);
-      p.kopfY = 70;
+      p.kopfNicken = 36 + 3 * tap;
+      p.kopfY = 95;
       p.nase = 0.8 * Math.max(0, Math.sin(t * 22)) * (0.6 + 0.4 * Math.sin(t * 3));
       p.schwanz = 18 + 6 * Math.sin((t / 0.9) * TAU);
       p.ohrH = -6;
@@ -586,32 +731,51 @@ export const CLIPS: Clip[] = [
   {
     name: 'stolpern',
     titel: 'Stolpern',
-    text: 'Die Vordersohlen bleiben hängen. Er kippt steif wie ein Brett über ihre Spitzen, bis die Nase den Boden berührt, die Hinterbeine in der Luft. So bleibt er und schaut uns an. Dann plumpst er zurück und geht weiter, als wäre nichts gewesen.',
-    dauer: 2.8,
+    text: 'Die Vordersohlen bleiben hängen. Der Rest fährt weiter: Die Gipse biegen sich nach hinten, er kippt auf die Nase, das Hinterteil in der Luft, die Hinterbeine strampeln ins Leere. So bleibt er und schaut uns an. Dann plumpst er zurück, schüttelt sich und geht weiter, als wäre nichts gewesen.',
+    dauer: 3.1,
     schleife: false,
     frei: 0,
     leben: 0,
     danach: 'stehen',
-    tempo: (t) => 230 * (1 - stufe(t, 0, 0.14)) + ableitung((u) => kippWeg(spurWert(STOLPER_NICKEN, u)))(t),
+    tempo: (t) => 230 * (1 - stufe(t, 0, 0.12)) + ableitung((u) => spurWert(STOLPER_VOR, u))(t),
     pose: (t, p) => {
       p.nicken = spurWert(STOLPER_NICKEN, t);
+      // Vorderfüße bleiben, wo sie hängen geblieben sind: Die Hüften sind `vor` weiter, die Gipse biegen sich nach hinten
+      const vor = spurWert(STOLPER_VOR, t);
+      const aV = Math.asin(clamp(-vor / H_BEIN, -0.62, 0.62)) / RAD;
+      p.beinVN = aV + p.nicken;
+      p.beinVF = aV + p.nicken;
+      // Hinterbeine: gehen mit dem Körper hoch und strampeln, solange er auf der Nase steht
+      const strampeln = stufe(t, 0.55, 0.75) * (1 - stufe(t, 1.65, 1.85));
+      p.beinHN = 16 * Math.sin(t * 2.6 * TAU) * strampeln;
+      p.beinHF = 16 * Math.sin(t * 2.6 * TAU + Math.PI) * strampeln;
       spurenAnwenden(
         {
           kopfNicken: s([
             [0, 0],
-            [0.5, 5],
-            [0.74, 24, 'ein'],
-            [0.84, 20, 'aus'],
-            [1.75, 20],
-            [2.1, 0],
-            [2.28, -5, 'aus'],
-            [2.5, 0],
+            [0.45, 6],
+            [0.62, 26, 'ein'],
+            [0.72, 20, 'aus'],
+            [1.7, 20],
+            [2.05, 0],
+            [2.22, -6, 'aus'],
+            [2.45, 0],
           ]),
           kopfY: s([
             [0, 0],
-            [0.74, 28, 'ein'],
-            [1.75, 28],
-            [2.1, 0],
+            [0.62, 60, 'ein'],
+            [0.7, 48, 'aus'],
+            [1.7, 50],
+            [2.05, 0],
+          ]),
+          kopfNeigen: s([
+            [0, 0],
+            [2.3, 0],
+            [2.4, 14],
+            [2.5, -12],
+            [2.6, 9],
+            [2.7, -5],
+            [2.8, 0, 'aus'],
           ]),
           // auf der Nase stehend schaut er zum Betrachter
           theta: s([
@@ -661,8 +825,12 @@ export const CLIPS: Clip[] = [
         t,
         p,
       );
-      p.stauchen = -0.04 * nachschwingen(t, 0.74, 3, 6) - 0.07 * nachschwingen(t, 2.14, 2.8, 5);
-      p.biegen = -14 * nachschwingen(t, 2.14, 2.4, 4.5);
+      p.stauchen = -0.05 * nachschwingen(t, 0.62, 3, 5) - 0.09 * nachschwingen(t, 2.08, 2.6, 4.2);
+      p.biegen = 10 * nachschwingen(t, 0.62, 2.6, 4) - 20 * nachschwingen(t, 2.08, 2.4, 4);
+      // nach dem Plumps schüttelt er die Ohren
+      p.ohrH += 18 * Math.sin(t * 8 * TAU) * puls(t, 2.3, 2.85);
+      p.ohrV -= 18 * Math.sin(t * 8 * TAU) * puls(t, 2.3, 2.85);
+      p.bart += 12 * Math.sin(t * 8 * TAU) * puls(t, 2.3, 2.85);
     },
   },
   {
@@ -980,6 +1148,169 @@ export const CLIPS: Clip[] = [
       p.stauchen = 0.06 * puls(t, 1.62, 1.95) - 0.03 * nachschwingen(t, 1.95, 2.6, 5);
     },
   },
+  {
+    name: 'hochklettern',
+    titel: 'Stufe hoch',
+    text: 'Kein Sprung, sondern Arbeit: Er schaut die Stufe hinauf, hievt erst die vorderen Gipse hinauf, rückt nach, das eine Hinterbein rutscht ab, beim zweiten Versuch klappt es, das letzte zieht er nach. Oben wackelt er kurz und schaut stolz.',
+    dauer: 5.6,
+    schleife: false,
+    frei: 0,
+    leben: 0.2,
+    danach: 'stehen',
+    treppe: 1,
+    tempo: ableitung(kletterWeg),
+    pose: (t, p, k) => {
+      const klack = fussfolge(KLETTER_FUESSE, kletterWeg, t, kletterBoden(k.stufe), p);
+      // Anstrengung: wackelt, Ohren zurück, entschlossen, der Schwanz steif hoch
+      const muehe = stufe(t, 0.8, 1.2) * (1 - stufe(t, 1.9, 2.2)) + stufe(t, 2.6, 3.0) * (1 - stufe(t, 4.3, 4.7));
+      p.rollen = 3.5 * Math.sin(t * 2.2 * TAU) * (0.4 + muehe) + 2.5 * rausch(t * 3, 4) * muehe;
+      p.brauenKipp = 6 + 8 * muehe;
+      p.ohrH = 12 * muehe;
+      p.ohrV = 12 * muehe;
+      p.schwanz = 10 + 14 * muehe + 4 * Math.sin(t * 3 * TAU) * muehe;
+      p.kopfNicken = -14 * stufe(t, 0.2, 0.6) * (1 - stufe(t, 0.9, 1.2)) + 8 * muehe;
+      p.theta = 78 + 4 * Math.sin(t * 1.1 * TAU) - 20 * puls(t, 4.8, 5.6);
+      p.brauen = 8 * puls(t, 2.7, 3.2) + 6 * puls(t, 4.9, 5.6);
+      p.stauchen = -0.05 * klack;
+      p.biegen = -12 * klack + 6 * muehe * Math.sin(t * 2.2 * TAU);
+      p.atmen = 1.6 * puls(t, 4.9, 5.6);
+    },
+  },
+  {
+    name: 'runtersteigen',
+    titel: 'Stufe runter',
+    text: 'Vorsichtig wie auf Glatteis: erst ein Gips hinunter, der Körper neigt sich, die Ohren fallen nach vorn, dann rutscht der Rest hinterher. Unten ein Wackeln und ein erleichterter Seufzer.',
+    dauer: 5.6,
+    schleife: false,
+    frei: 0,
+    leben: 0.2,
+    danach: 'stehen',
+    treppe: -1,
+    tempo: ableitung(kletterWeg),
+    pose: (t, p, k) => {
+      const klack = fussfolge(KLETTER_FUESSE, kletterWeg, t, kletterBoden(-k.stufe), p);
+      const vorsicht = stufe(t, 0.6, 1.0) * (1 - stufe(t, 4.4, 4.8));
+      p.rollen = 3 * Math.sin(t * 2.2 * TAU) * (0.5 + vorsicht);
+      p.brauen = 7 * vorsicht;
+      p.brauenKipp = -5 * vorsicht;
+      p.ohrH = -10 * vorsicht;
+      p.ohrV = -10 * vorsicht;
+      p.kopfNicken = 16 * vorsicht;
+      p.theta = 72 - 10 * vorsicht;
+      p.schwanz = -6 * vorsicht + 6;
+      p.stauchen = -0.06 * klack;
+      p.biegen = -14 * klack;
+      p.atmen = 2 * puls(t, 4.8, 5.6);
+    },
+  },
+  {
+    name: 'zuwenden',
+    titel: 'Zuwenden',
+    text: 'Der Kopf ist zuerst da, dann trippelt der Körper herum, bis Ozzy uns frontal ansieht.',
+    dauer: 1.7,
+    schleife: false,
+    frei: 1,
+    leben: 0.3,
+    danach: 'vornStehen',
+    pose: (t, p) => {
+      const k = stufe(t, 0.25, 1.4);
+      p.psi = 90 - 90 * k;
+      p.theta = 15 - 15 * stufe(t, 0, 0.45);
+      trippeln(t, 0.25, 1.15, p);
+      p.brauen = 7 * puls(t, 1.2, 1.7);
+      p.ohrH = -8 * puls(t, 1.2, 1.7);
+      p.ohrV = -8 * puls(t, 1.2, 1.7);
+    },
+  },
+  {
+    name: 'vornStehen',
+    titel: 'Frontal stehen',
+    text: 'Steht frontal da und guckt. Kopf schief, ein Ohr zuckt, ein Blick nach links und rechts, ob jemand zusieht. Er wiegt sich ein wenig.',
+    dauer: 6,
+    schleife: true,
+    frei: 0.6,
+    leben: 1,
+    pose: (t, p) => {
+      p.psi = 0;
+      p.theta = 4 * Math.sin((t / 6) * TAU) + spurWert(
+        s([
+          [0, 0],
+          [3.6, 0],
+          [3.9, -32, 'einaus'],
+          [4.5, -32],
+          [4.9, 30, 'einaus'],
+          [5.4, 30],
+          [6, 0, 'einaus'],
+        ]),
+        t,
+      );
+      p.kopfNeigen = 14 * puls(t, 1.2, 2.8);
+      p.brauen = 6 * puls(t, 1.1, 2.9);
+      p.ohrV = zucken(t, 0.6, 12);
+      p.ohrH = zucken(t, 3.0, 10);
+      p.rollen = 2 * Math.sin((t / 3) * TAU);
+      p.biegen = 2 * Math.sin((t / 3.4) * TAU);
+    },
+  },
+  {
+    name: 'abwenden',
+    titel: 'Rücken zudrehen',
+    text: 'Dreht uns den Rücken zu: Der Körper trippelt herum, der Kopf schaut noch einmal über die Schulter, dann steht er mit dem Hintern zu uns.',
+    dauer: 2.0,
+    schleife: false,
+    frei: 1,
+    leben: 0.3,
+    danach: 'hintenStehen',
+    pose: (t, p) => {
+      const k = stufe(t, 0.1, 1.4);
+      p.psi = 90 + 90 * k;
+      p.theta = 15 + 165 * stufe(t, 0.5, 1.9);
+      trippeln(t, 0.1, 1.2, p);
+      p.schwanz = 10 * puls(t, 1.3, 2.0);
+    },
+  },
+  {
+    name: 'hintenStehen',
+    titel: 'Von hinten',
+    text: 'Steht mit dem Rücken zu uns. Der Ringschwanz wedelt, und ab und zu schaut er über die Schulter, ob wir noch da sind.',
+    dauer: 5.5,
+    schleife: true,
+    frei: 0.6,
+    leben: 1,
+    pose: (t, p) => {
+      p.psi = 180;
+      p.theta = spurWert(
+        s([
+          [0, 180],
+          [2.8, 180],
+          [3.3, 112, 'einaus'],
+          [4.1, 112],
+          [4.6, 180, 'einaus'],
+        ]),
+        t,
+      );
+      p.brauen = 8 * puls(t, 3.2, 4.2);
+      p.schwanz = 12 + 20 * Math.sin((t / 0.32) * TAU) * puls(t, 0.6, 2.4);
+      p.rollen = 2.5 * Math.sin((t / 0.32) * TAU) * puls(t, 0.6, 2.4);
+      p.ohrV = zucken(t, 4.8, 10);
+    },
+  },
 ];
+
+/** kleine steife Trippelschritte beim Drehen auf der Stelle (das Wiegen hebt die Seite) */
+function trippeln(t: number, von: number, bis: number, p: Pose): void {
+  const tr = clamp((t - von) / (bis - von), 0, 1);
+  for (const [b, o] of [
+    ['VN', 0],
+    ['HF', 0],
+    ['VF', 0.5],
+    ['HN', 0.5],
+  ] as const) {
+    const f = (tr * 4 + o) % 1;
+    p[`bein${b}`] = tr > 0 && tr < 1 ? 7 * Math.sin(f * TAU) : 0;
+    p[`hub${b}`] = tr > 0 && tr < 1 ? 9 * Math.max(0, Math.sin(f * TAU)) : 0;
+  }
+  p.rollen = 3.5 * Math.sin(tr * 4 * TAU) * puls(tr, 0, 1);
+}
 
 export const CLIP: Record<string, Clip> = Object.fromEntries(CLIPS.map((c) => [c.name, c]));
