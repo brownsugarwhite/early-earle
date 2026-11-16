@@ -185,7 +185,7 @@ mit P tut (so rechnet Sitzung 4: aus einer einzigen Linie die ganze Haut). Flori
 `ozzy-ohne-linie-fenster.mjs`: Haut steht (3 s, 0,00), die erste Linie mit P (Ring) lässt sie stehen, der erste Zug baut das Netz neu.
 Gefunden: In der eingerasteten Seite ist ohne Linie nichts von der Form zu sehen (der Umriss der Seite ist die Linie der Mitte); wird
 „ohne“ der Grundwert, braucht die Seite einen Umriss aus der Haut wie Front und Top. Bild [`2026-11-16-ohne-linie.png`](../progress/ozzy/2026-11-16-ohne-linie.png).
-Grundwert: Florian entscheidet.
+Florian: „beides. ohne linie als standard und ein schalter im menü für mit linie“ → gebaut: ohne ist Standard, Menü „Linie an der Spiegelkante“, die Seite zeigt ohne Linie der Mitte den Umriss der Haut.
 
 **S10 Auffalten zur Viereransicht.** Die drei Wände der Ecke klappen um ihre Kanten flach (Boden nach unten, Seitenwand zur Seite,
 nach der Projektionsmethode 1), ihre Linien gehen mit, weil sie auf der Wand liegen; die Kamera wird dabei parallel; die Blase gleitet
