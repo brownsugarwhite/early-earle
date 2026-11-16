@@ -9,42 +9,26 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
 
 - **Projekt:** levelbasiertes 2048 im Earle-Stil. Prototyp 1 ist abgeschlossen (Archiv-Zweig `prototyp-1`,
   [`docs/prototyp/README.md`](docs/prototyp/README.md)). Die Produktion läuft in vier Teilen (Map, Spielfeld, Charaktere, UI).
-  **Gearbeitet wird am Teil Charaktere: dem Wesen-Editor.** Das alte Spiel (Brett, Karte, `packages/genome`,
+  **Gearbeitet wird am Teil Charaktere: dem Editor für die Formen.** Das alte Spiel (Brett, Karte, `packages/genome`,
   `render/src/creature`) bleibt unangetastet.
-- **Der Wesen-Editor ist `kurven.html?gewichte=geometrie`** („Kurven als Wahrheit“, seit 05.11.): Linien (Loops mit
-  Bézier-Punkten und Griffen, Kreuzungen, Kante an/aus) sind die Wahrheit; darunter liegt ein dichtes Dreiecksnetz, dessen Haut
-  aus den Linien gerechnet wird; gespiegelt; Maul als Loop; Fressen-Pose. Fenster: `apps/editor/src/form/kurven.ts`, Rechenkern:
-  `packages/shape/src/dicht/` und `packages/shape/src/loeser/`.
-- **Gültiger Plan:** [`docs/plans/2026-11-12-schnell-glatt-exakt.md`](docs/plans/2026-11-12-schnell-glatt-exakt.md), von Florian
-  am 12.11. freigegeben („Ok, fangen wir an“). Schritte: 0 Aufräumen, 1 glatte Anzeige, 2 kleines Rechennetz, 3 Beweis „Haut
-  direkt aus den Linien“, 4 echte Spiegelung und neue Rechnung ins Fenster, 5 Posen wie die Basis, 6 Maul als eigene Geometrie,
-  7 Auswahl wie in Blender. Fest vorgemerkt ist **4c, der Rest der halben Haut** (Florian, 13.11.: „es soll nicht vergessen
-  werden“; das Tempo wird für Shader, Materialien, Fell und Zusatzteile gebraucht). **Reihenfolge seit dem 14.11. (Florian):**
-  zuerst der Zwischenschritt „Abzweigungen“ (mit P von jedem Punkt und jeder Linie aus eine verbundene Linie ziehen), dann
-  Schritt 5, dann 4c. **Stand 14.11. nachmittags:** Abzweigungen und Schritt 5, Etappe 2 und 3, stehen im Bau-Fenster (5197), nicht in Florians Fenster; er sammelt bis Dienstag, 17.11., Rückmeldung. Schritt 6 (Maul) ist angehalten und bekommt eine eigene Sitzung, vielleicht zusammen mit Zähnen: zuerst
-  beschreibt er die Fälle, dann wird gebaut. Schritt 7 kommt später, ob und wie ist offen. **Wo wir stehen und was als Nächstes
-  kommt: [`docs/UEBERGABE.md`](docs/UEBERGABE.md).**
-- **Design-Strang daneben (eigene Sitzung):** `/editor` (`apps/editor/editor.html`, `src/form/editor.ts`,
-  `src/form/blaupause.ts`) zeigt denselben Editor im Layout der Blaupause. Einstieg:
-  [`docs/look/editor/blaupause/UEBERGABE.md`](docs/look/editor/blaupause/UEBERGABE.md). `editor.ts` ist eine Kopie von
-  `kurven.ts` und wird erst nach Schritt 7 nachgezogen.
-- **Neu (16.11.): Ozzy.** Die Studien (Aufblasen `claude/anfang`, Linien `claude/look-linien`, Ecke/Werft und Zeichenwerkzeuge
-  in der Cloud) werden mit dem Kern von Sitzung 4 zum Editor „Ozzy“ zusammengebaut, Designsystem „liquid drop“ (Florian). Plan
-  zur Freigabe: [`docs/plans/2026-11-16-ozzy.md`](docs/plans/2026-11-16-ozzy.md); offen vor allem, wer das Werk aus `kurven.ts`
-  löst (E1).
-- **Look-Strang „Linien, Punkte, Zeiger“ (eigene Sitzung, seit 14.11.):** dünne Linien, Tropfen, flüssiges Schwellen als Probe an
-  seinem Fisch und im Raum (`apps/editor/linien.html`, `raum.html`, Port 5199). Gebaut: „Richtungen statt Griffe“, Zeiger und
-  Schwellung verfeinert, seit 15.11. abends Auswahl und Werkzeug P wie Illustrator, in 2D und im Raum
-  (`docs/plans/2026-11-15-auswahl-und-stift.md`); sein Urteil steht aus. Übergabe `docs/look/linien/UEBERGABE.md`. In den
-  Editor erst danach.
-- **Strang „Anfang einer Form und Seifenhaut“ (eigene Sitzung, seit 15.11.):** leeres Blatt mit „draw a silhouette“, Loop mit P,
-  ↩: Der Rahmen wird schnell nach hinten gezogen, die Blase wächst von der Mitte, reißt am runden Hals ab und schnalzt in die
-  Form; Würfel mit weichen Schatten (höchstens drei Wände), Ansichten 1/3/7/0 und 4 (Runde 5). Probe `anfang.html` (Port 5203,
-  Arbeitsbaum `anfang`), Einstieg: [`docs/look/anfang/UEBERGABE.md`](docs/look/anfang/UEBERGABE.md). Sein Urteil steht aus.
-- **Eingefroren (Wissen, nicht weiterbauen):** der Käfig-Weg vom 13.10. bis 04.11. (`packages/shape/src/kern/`, der alte
-  Electron-Editor `pnpm editor`) und `form.html`.
-- **Florians Testformen:** `wesen/` (teat firefish, strange bird, test_kaputt). Fertige Wesen gibt es nicht; die Formen sind
-  beliebige Tests und kein Maßstab für das Tempo.
+- **Der Editor heißt Ozzy** (Florian, 16.11.), das Designsystem **liquid drop**. Ozzy baut die Studien (Aufblasen, Linien,
+  Ecke/Werft, Bleistift) mit dem vollen Kern von Sitzung 4 zusammen. Seite `apps/editor/ozzy.html`, Code `apps/editor/src/ozzy/`.
+  Plan: [`docs/plans/2026-11-16-ozzy.md`](docs/plans/2026-11-16-ozzy.md). **Wo wir stehen und was als Nächstes kommt:
+  [`docs/look/ozzy/UEBERGABE.md`](docs/look/ozzy/UEBERGABE.md).**
+- **Der Kern** („Kurven als Wahrheit“, seit 05.11.): Linien (Loops mit Bézier-Punkten und Griffen, Kreuzungen, Kante an/aus) sind
+  die Wahrheit; darunter ein dichtes Dreiecksnetz, dessen Haut aus den Linien gerechnet wird; gespiegelt; Maul; Fressen-Pose.
+  Rechenkern `packages/shape/src/dicht/` und `loeser/`. Das alte Fenster `kurven.html?gewichte=geometrie` (`src/form/kurven.ts`)
+  bleibt Prüffenster. Plan „schnell, glatt, exakt“ mit seinen offenen Punkten (4c Rest der halben Haut, Pose Etappe 4 und 5,
+  umgeschlagene Dreiecke an der Mitte, Griff bei Abzweigungen):
+  [`docs/plans/2026-11-12-schnell-glatt-exakt.md`](docs/plans/2026-11-12-schnell-glatt-exakt.md), Übergabe von Sitzung 4 (Stand
+  14.11.) in [`docs/UEBERGABE.md`](docs/UEBERGABE.md). Das Maul-System bekommt später eine eigene Sitzung; Schritt 7 kommt später.
+- **Studien (abgeschlossen, Feinschliff jetzt in Ozzy):** Linien `src/linien/` (`linien.html`, `raum.html`,
+  [`docs/look/linien/UEBERGABE.md`](docs/look/linien/UEBERGABE.md)); Aufblasen `src/anfang/` (`anfang.html`,
+  [`docs/look/anfang/UEBERGABE.md`](docs/look/anfang/UEBERGABE.md)); Ecke/Werft nur als Konzept im Cloud-Zweig
+  `claude/meme-curves-editor-concept-s65kq1`; Bleistift-Kern `packages/shape/src/zeichnen/`.
+- **Ruht:** `/editor` (Blaupause), der Käfig-Weg (`packages/shape/src/kern/`, Electron-Editor `pnpm editor`), `form.html`.
+- **Florians Testformen:** `wesen/` (teat firefish, strange bird, test_kaputt, maul handgemacht test). Beliebige Tests, kein
+  Maßstab für das Tempo.
 
 ## Grundidee (Florian, 15.10. und 05.11.)
 
@@ -54,14 +38,13 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
 
 ## Wo was läuft
 
-- **Eine Linie: Zweig `claude/form-spiegel`.** `claude/editor-grundlayout` (Hauptordner) hat denselben Inhalt und wird nur per
-  Fast-Forward nachgezogen. `main` steht auf dem 08.10. und bleibt unberührt.
-- **`.claude/worktrees/form-alt`** (Zweig `claude/form-spiegel`, Port 5194, Eintrag `kurven-alt`): **Florians Fenster.** Dort
-  arbeitet auch die Design-Sitzung an `/editor`. An `kurven.ts` und am Rechenkern dort nichts ändern; nur geprüfte Stände
-  hineinführen und Florian vorher sagen, dass sich sein Fenster ändert.
-- **`.claude/worktrees/form-bau`** (Zweig `claude/form-bau`, Port 5197, Eintrag `kurven-bau`): hier wird der Plan gebaut.
-- **`.claude/worktrees/look-linien`** (Zweig `claude/look-linien`, Port 5199, Eintrag `linien-look`): Probe „Linien, Punkte, Zeiger“.
-- **`.claude/worktrees/anfang`** (Zweig `claude/anfang`, Port 5203, Eintrag `anfang`): Anfang einer Form und Seifenhaut.
+- **Eine Linie: Zweig `claude/ozzy` (seit 16.11.)**, Arbeitsbaum `.claude/worktrees/ozzy`, Port 5205, Eintrag `ozzy`. Hier wird
+  gebaut, auch am Kern. `claude/editor-grundlayout` (Hauptordner) wird per Fast-Forward nachgezogen. `main` steht auf dem 08.10.
+  und bleibt unberührt.
+- **`.claude/worktrees/form-alt`** (Zweig `claude/form-spiegel`, Port 5194, Eintrag `kurven-alt`): **Florians altes Fenster**
+  (`kurven.html` ohne Maul formen und Pose vom 13./14.11.). Nichts ändern ohne sein Wort.
+- **Ruhen** (letzter Stand, nicht weiterbauen): `form-bau` (Sitzung 4 bis 14.11., Port 5197), `look-linien` (5199), `anfang`
+  (5203).
 - `early-earle-meshy` (Nachbarordner) sind Florians Meshy-Tests. Alte Stände liegen als Zweige `bergung/…`.
 
 ## Menschen
