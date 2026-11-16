@@ -5,7 +5,7 @@ Verweise. Verlauf, Messwerte und Florians Rückmeldungen gehören in `docs/` (Pl
 unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.2026 liegt in
 [`docs/verlauf/2026-11-12-projektgedaechtnis-verlauf.md`](docs/verlauf/2026-11-12-projektgedaechtnis-verlauf.md).
 
-## Stand (14.11.2026)
+## Stand (16.11.2026)
 
 - **Projekt:** levelbasiertes 2048 im Earle-Stil. Prototyp 1 ist abgeschlossen (Archiv-Zweig `prototyp-1`,
   [`docs/prototyp/README.md`](docs/prototyp/README.md)). Die Produktion läuft in vier Teilen (Map, Spielfeld, Charaktere, UI).
@@ -28,6 +28,10 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   `src/form/blaupause.ts`) zeigt denselben Editor im Layout der Blaupause. Einstieg:
   [`docs/look/editor/blaupause/UEBERGABE.md`](docs/look/editor/blaupause/UEBERGABE.md). `editor.ts` ist eine Kopie von
   `kurven.ts` und wird erst nach Schritt 7 nachgezogen.
+- **Neu (16.11.): Ozzy.** Die Studien (Aufblasen `claude/anfang`, Linien `claude/look-linien`, Ecke/Werft und Zeichenwerkzeuge
+  in der Cloud) werden mit dem Kern von Sitzung 4 zum Editor „Ozzy“ zusammengebaut, Designsystem „liquid drop“ (Florian). Plan
+  zur Freigabe: [`docs/plans/2026-11-16-ozzy.md`](docs/plans/2026-11-16-ozzy.md); offen vor allem, wer das Werk aus `kurven.ts`
+  löst (E1).
 - **Eingefroren (Wissen, nicht weiterbauen):** der Käfig-Weg vom 13.10. bis 04.11. (`packages/shape/src/kern/`, der alte
   Electron-Editor `pnpm editor`) und `form.html`.
 - **Florians Testformen:** `wesen/` (teat firefish, strange bird, test_kaputt). Fertige Wesen gibt es nicht; die Formen sind
