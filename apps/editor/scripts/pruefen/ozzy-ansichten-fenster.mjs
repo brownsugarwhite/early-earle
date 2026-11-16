@@ -6,9 +6,13 @@
 //   3  Gegenseiten: nahe der Front von hinten und der Seite von rechts rastet es dort ein, gewendet.
 //   4  Schwung: kurz angeschoben, bevor die Ansicht erreicht ist; der Schwung trägt hinein, und sie rastet ein.
 //   5  Wenden (S4b): In der eingerasteten Seite ⇧ + Ziehen um gut 50°: das Blatt dreht sich, beim Loslassen gleitet es zurück (nicht
-//      gewendet, kein Schwarz). ⇧ + Ziehen über die Hälfte (gut 110°): das Schwarz fließt schon im Zug herein, losgelassen rastet die
-//      Seite von rechts ein (gewendet, ganz schwarz). ⇧ + Doppelklick wendet zurück; ⇧ + 3: die Front von hinten.
+//      gewendet, die Mitte hell). ⇧ + Ziehen über die Hälfte (gut 110°): Die harte Kante ist schon im Zug über die Mitte gewandert,
+//      losgelassen rastet die Seite von rechts ein (gewendet, die Mitte dunkel). ⇧ + Doppelklick wendet zurück; ⇧ + 3: die Front von hinten.
 //   6  Keine Fehler in der Konsole.
+//   7  Wenden in jede Richtung (Florian, 16.11. abends): ⇧ + schräg ziehen, gut 50° weit: zurück in die Seite (hell); schräg weit über die
+//      Hälfte: auf die Rückseite (gewendet, dunkel).
+//   8  Raum von unten (Florian: „bottom, side (other side), back“): Von unten gesehen ist die Mitte dunkel; schräg darüber steht die harte
+//      Kante im Bild, die Mitte hell.
 // Aufruf aus apps/editor: GPU=1 [NAME=…] node scripts/pruefen/ozzy-ansichten-fenster.mjs [ordner für Bilder]
 import { chromium } from '@playwright/test';
 
@@ -136,6 +140,42 @@ ok('3 Gegenseiten: Front von hinten und Seite von rechts rasten gewendet ein', b
     !!w1 && w1.wendet && a1.ansicht === 'seite' && !a1.gewendet && a1.schwarz < 0.01 && !!w2 && w2.rueckseite && w2.schwarz > 0.5 && a2.ansicht === 'seite' && a2.gewendet && a2.schwarz > 0.99 && !a3.gewendet && a3.schwarz < 0.01 && a4.ansicht === 'front' && a4.gewendet && a4.schwarz > 0.99,
     `halb: im Zug Gier ${z1(grad(w1?.gier ?? 0))}°, danach ${lage(a1)}, Schwarz ${z1(a1.schwarz)}; über die Hälfte: im Zug Rückseite ${w2?.rueckseite}, Schwarz ${z1(w2?.schwarz ?? 0)}, danach ${lage(a2)}, Schwarz ${z1(a2.schwarz)}; ⇧ + Doppelklick: ${lage(a3)}; ⇧ + 3: ${lage(a4)}`,
   );
+}
+// 7 Wenden in jede Richtung
+{
+  await s.keyboard.press('1');
+  await s.waitForTimeout(1500);
+  const schraeg = async (dx, dy, name) => {
+    await s.mouse.move(700, 600);
+    await s.keyboard.down('Shift');
+    await s.mouse.down();
+    for (let k = 1; k <= 25; k++) {
+      await s.mouse.move(700 + (dx * k) / 25, 600 + (dy * k) / 25);
+      await s.waitForTimeout(30);
+    }
+    await s.waitForTimeout(350);
+    const im = await O('blick');
+    if (name) await bild(name);
+    await s.mouse.up();
+    await s.keyboard.up('Shift');
+    await s.waitForTimeout(1500);
+    return { im, da: await O('blick') };
+  };
+  const k1 = await schraeg(150, 100, '9-schraeg-halb');
+  const k2 = await schraeg(400, -120, '10-schraeg-weit');
+  ok('7 ⇧ + schräg ziehen: bis zur Hälfte zurück, weit darüber auf die Rückseite', k1.da.ansicht === 'seite' && !k1.da.gewendet && k1.da.schwarz < 0.01 && k2.im.rueckseite && k2.da.ansicht === 'seite' && k2.da.gewendet && k2.da.schwarz > 0.99, `schräg halb: im Zug Gier ${z1(grad(k1.im.gier))}°, Neigung ${z1(grad(k1.im.neigung))}°, danach ${lage(k1.da)}, dunkel ${z1(k1.da.schwarz)}; schräg weit: im Zug Rückseite ${k2.im.rueckseite}, danach ${lage(k2.da)}, dunkel ${z1(k2.da.schwarz)}`);
+}
+// 8 Raum von unten: dunkel; schräg darüber die Kante im Bild
+{
+  await s.keyboard.press('0');
+  await s.waitForTimeout(1500);
+  await zu(0, -100);
+  const u = await O('blick');
+  await bild('11-raum-unten');
+  await zu(0, -76);
+  const k = await O('blick');
+  await bild('12-raum-kante');
+  ok('8 Raum von unten: die Mitte dunkel; schräg darüber steht die Kante im Bild, die Mitte hell', u.ansicht === 'raum' && u.schwarz > 0.99 && k.ansicht === 'raum' && k.kanteSichtbar && k.schwarz < 0.01, `von unten ${lage(u)}, dunkel ${z1(u.schwarz)}; schräg ${lage(k)}, Kante im Bild ${k.kanteSichtbar}, dunkel ${z1(k.schwarz)}`);
 }
 ok('6 keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));
 console.log(schlecht ? `${schlecht} nicht erfüllt` : 'alles gut');

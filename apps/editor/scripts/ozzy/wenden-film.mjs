@@ -1,7 +1,7 @@
 // Film: Wenden in Ozzy (S4b im Plan „wie es weitergeht“, 16.11.2026), an „strange bird“ (NAME). Echte Maus- und Tastenereignisse;
 // Bild für Bild gerechnet (60 je Sekunde, der Takt der Seite steht), dann mit ffmpeg zu MP4. Oben rechts steht, was gedrückt wird.
-// Ablauf: 1 (Seite) · ⇧ + Ziehen unter der Hälfte (gleitet zurück) · ⇧ + Ziehen über die Hälfte (die schwarze Kante fließt herein,
-// gewendet) · ⇧ + Doppelklick (zurück) · ⇧ + 3 (Front von hinten) · 0 (Raum).
+// Ablauf: 1 (Seite) · ⇧ + Ziehen bis zur Hälfte (zurück) · ⇧ + schräg über die Hälfte (die harte Kante wandert durchs Bild, gewendet)
+// · ⇧ + Doppelklick (zurück) · 0 (Raum) · im Raum nach unten drehen (von unten: die Kante kommt herein) und zurück.
 // Aufruf aus apps/editor, Ozzy auf 5205: node scripts/ozzy/wenden-film.mjs [ziel.mp4]
 import { chromium } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
@@ -58,15 +58,15 @@ const fahren = async (nach, sek) => {
     await bild();
   }
 };
-/** ⇧ + Ziehen um dx (ins Leere), halten, loslassen */
-const wenden = async (dx, sek, halten) => {
-  await s.keyboard.down('Shift');
+/** ⇧ + Ziehen um (dx, dy) (ins Leere), halten, loslassen; ohne ⇧: drehen */
+const ziehen = async (dx, dy, sek, halten, umschalt = true) => {
+  if (umschalt) await s.keyboard.down('Shift');
   await s.mouse.down();
   await bild();
-  await fahren([maus[0] + dx, maus[1]], sek);
+  await fahren([maus[0] + dx, maus[1] + dy], sek);
   await warten(halten);
   await s.mouse.up();
-  await s.keyboard.up('Shift');
+  if (umschalt) await s.keyboard.up('Shift');
 };
 
 await s.mouse.move(maus[0], maus[1]);
@@ -74,28 +74,30 @@ await warten(0.6);
 await text('1 · Seite');
 await s.keyboard.press('1');
 await warten(1.4);
-await fahren([520, 800], 0.5);
-await text('⇧ + ziehen, bis zur Hälfte: gleitet zurück');
-await wenden(150, 1.0, 0.3);
-await warten(1.4);
-await text('⇧ + ziehen, über die Hälfte: gewendet');
-await fahren([520, 800], 0.4);
-await wenden(340, 1.6, 0.4);
+await fahren([520, 780], 0.5);
+await text('⇧ + ziehen, bis zur Hälfte: zurück');
+await ziehen(150, 0, 1.0, 0.3);
+await warten(1.3);
+await text('⇧ + schräg ziehen, über die Hälfte: Rückseite');
+await fahren([460, 720], 0.4);
+await ziehen(400, -110, 1.8, 0.4);
 await warten(1.6);
-await text('');
-await warten(0.6);
 await text('⇧ + Doppelklick: zurück');
-await fahren([900, 800], 0.4);
+await fahren([900, 780], 0.4);
 await s.keyboard.down('Shift');
 await s.mouse.dblclick(maus[0], maus[1]);
 await s.keyboard.up('Shift');
 await warten(1.5);
-await text('⇧ + 3 · Front von hinten');
-await s.keyboard.press('Shift+Digit3');
-await warten(1.6);
 await text('0 · Raum');
 await s.keyboard.press('0');
-await warten(1.6);
+await warten(1.5);
+await text('Raum: nach unten drehen (von unten gesehen)');
+await fahren([1250, 760], 0.4);
+await ziehen(0, -300, 1.8, 0.5, false);
+await warten(0.8);
+await text('und zurück');
+await ziehen(0, 300, 1.5, 0.3, false);
+await warten(1.2);
 
 await browser.close();
 fs.mkdirSync(path.dirname(ziel), { recursive: true });

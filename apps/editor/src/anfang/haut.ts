@@ -152,6 +152,8 @@ uniform float uOpdMax;
 uniform float uZeit;
 uniform int uFassung;
 uniform int uNacht;
+uniform vec3 uKante;
+uniform float uKanteHoehe;
 uniform int uPass;
 uniform float uAnteil;
 uniform float uDeckung;
@@ -172,6 +174,13 @@ varying float vHoehe;
 varying float vSeite;
 varying vec2 vBlatt;
 varying float vDehnung;
+
+// Nacht hier: ganz (Nacht der Studie) oder hinter der harten Kante (Ozzy: Wenden, Blick von hinten). Abstand eines Bildpunkts
+// (Gerätepunkte, y nach unten) = uKante.x · x + uKante.y · y + uKante.z, negativ = hinten
+float nachtHier() {
+  if (uNacht == 1) return 1.0;
+  return clamp(0.5 - (uKante.x * gl_FragCoord.x + uKante.y * (uKanteHoehe - gl_FragCoord.y) + uKante.z), 0.0, 1.0);
+}
 
 vec3 hash3(vec3 p) {
   p = vec3(dot(p, vec3(127.1, 311.7, 74.7)), dot(p, vec3(269.5, 183.3, 246.1)), dot(p, vec3(113.5, 271.9, 124.6)));
@@ -224,22 +233,28 @@ float kasten(vec3 r, vec3 dir, vec2 halb, float weich) {
   return 1.0 - smoothstep(-weich, weich, sd);
 }
 
-vec3 atelier(vec3 r) {
-  if (uNacht == 1) {
-    // Nacht: ein tiefer Raum mit hellem Streifen am Horizont, damit der Rand leuchtet
-    vec3 c = mix(vec3(0.010, 0.016, 0.030), vec3(0.060, 0.085, 0.140), smoothstep(-0.7, 0.05, r.y));
-    c = mix(c, vec3(0.030, 0.045, 0.085), smoothstep(0.05, 0.9, r.y));
-    c += vec3(0.10, 0.12, 0.18) * exp(-abs(r.y - 0.04) * 9.0);
-    c += vec3(2.4, 2.35, 2.25) * kasten(r, normalize(vec3(-0.52, 0.6, 0.6)), vec2(0.42, 0.24), 0.05);
-    c += vec3(0.9, 0.95, 1.1) * kasten(r, normalize(vec3(0.78, 0.18, 0.32)), vec2(0.16, 0.5), 0.06);
-    return c;
-  }
-  // Papier: ein heller Raum (das Blatt), unten etwas dunkler, zwei Leuchtflächen
+// Nacht: ein tiefer Raum mit hellem Streifen am Horizont, damit der Rand leuchtet
+vec3 atelierNacht(vec3 r) {
+  vec3 c = mix(vec3(0.010, 0.016, 0.030), vec3(0.060, 0.085, 0.140), smoothstep(-0.7, 0.05, r.y));
+  c = mix(c, vec3(0.030, 0.045, 0.085), smoothstep(0.05, 0.9, r.y));
+  c += vec3(0.10, 0.12, 0.18) * exp(-abs(r.y - 0.04) * 9.0);
+  c += vec3(2.4, 2.35, 2.25) * kasten(r, normalize(vec3(-0.52, 0.6, 0.6)), vec2(0.42, 0.24), 0.05);
+  c += vec3(0.9, 0.95, 1.1) * kasten(r, normalize(vec3(0.78, 0.18, 0.32)), vec2(0.16, 0.5), 0.06);
+  return c;
+}
+// Papier: ein heller Raum (das Blatt), unten etwas dunkler, zwei Leuchtflächen
+vec3 atelierTag(vec3 r) {
   vec3 c = mix(vec3(0.42, 0.43, 0.47), vec3(0.80, 0.81, 0.84), smoothstep(-0.55, 0.3, r.y));
   c = mix(c, vec3(0.90, 0.905, 0.92), smoothstep(0.3, 1.0, r.y));
   c += vec3(2.2) * kasten(r, normalize(vec3(-0.52, 0.6, 0.6)), vec2(0.42, 0.24), 0.05);
   c += vec3(1.1) * kasten(r, normalize(vec3(0.78, 0.18, 0.32)), vec2(0.16, 0.5), 0.06);
   return c;
+}
+vec3 atelier(vec3 r) {
+  float n = nachtHier();
+  if (n >= 1.0) return atelierNacht(r);
+  if (n <= 0.0) return atelierTag(r);
+  return mix(atelierTag(r), atelierNacht(r), n);
 }
 
 // abstrakter Horizont (Earle): Himmel und Land, harte Kante, Verlauf in jeder Fläche; versatz hebt die Kante (für die Aufspaltung)
@@ -247,10 +262,11 @@ vec3 horizont(vec3 r, float versatz) {
   float phi = atan(r.z, r.x);
   float h = 0.12 + 0.05 * sin(phi * 3.0 + 0.6) + 0.022 * sin(phi * 7.0 + 2.0) + versatz;
   float y = r.y;
-  vec3 himmelU = uNacht == 1 ? vec3(0.10, 0.12, 0.22) : vec3(1.0, 0.93, 0.84);
-  vec3 himmelO = uNacht == 1 ? vec3(0.010, 0.016, 0.045) : vec3(0.70, 0.80, 0.95);
-  vec3 landO = uNacht == 1 ? vec3(0.020, 0.10, 0.11) : vec3(0.09, 0.28, 0.31);
-  vec3 landU = uNacht == 1 ? vec3(0.002, 0.010, 0.020) : vec3(0.02, 0.07, 0.13);
+  float nh = nachtHier();
+  vec3 himmelU = mix(vec3(1.0, 0.93, 0.84), vec3(0.10, 0.12, 0.22), nh);
+  vec3 himmelO = mix(vec3(0.70, 0.80, 0.95), vec3(0.010, 0.016, 0.045), nh);
+  vec3 landO = mix(vec3(0.09, 0.28, 0.31), vec3(0.020, 0.10, 0.11), nh);
+  vec3 landU = mix(vec3(0.02, 0.07, 0.13), vec3(0.002, 0.010, 0.020), nh);
   vec3 himmel = mix(himmelU, himmelO, smoothstep(h, h + 0.95, y));
   vec3 land = mix(landO, landU, smoothstep(h, h - 0.85, y));
   // harte Kante, je Bildpunkt geglättet (auf der gekrümmten Haut ändert sich die Richtung schnell)
@@ -260,7 +276,7 @@ vec3 horizont(vec3 r, float versatz) {
   // eine kleine Sonne, hart
   vec3 s = normalize(vec3(-0.55, 0.42, 0.72));
   float sonne = smoothstep(0.9992, 0.99945, dot(r, s));
-  c = mix(c, uNacht == 1 ? vec3(1.6, 1.5, 1.3) : vec3(1.9, 1.75, 1.45), sonne);
+  c = mix(c, mix(vec3(1.9, 1.75, 1.45), vec3(1.6, 1.5, 1.3), nh), sonne);
   return c;
 }
 
@@ -296,7 +312,7 @@ void main() {
     vec3 Rf = film * (0.077 * uSicht) * (F / 0.02);
     Rf = mix(Rf, vec3(F), clamp(F * 1.4, 0.0, 1.0));
     Rf = min(Rf, vec3(1.0)) * a;
-    if (uPass == 1) gl_FragColor = vec4(vec3(1.0) - Rf * (uNacht == 1 ? 1.0 : 1.0), 1.0);
+    if (uPass == 1) gl_FragColor = vec4(vec3(1.0) - Rf, 1.0);
     else gl_FragColor = vec4(Rf * atelier(R), 1.0);
     return;
   }
@@ -317,9 +333,10 @@ void main() {
   float lam = dot(N, L);
   if (uFassung == 1) {
     // Irisdruck: drei harte Stufen, Verlauf je Stufe (höchstens etwa 35 % zur Nachbarstufe)
-    vec3 cL = uNacht == 1 ? vec3(0.42, 0.43, 0.52) : vec3(0.97, 0.955, 0.94);
-    vec3 cM = uNacht == 1 ? vec3(0.16, 0.18, 0.30) : vec3(0.74, 0.74, 0.86);
-    vec3 cS = uNacht == 1 ? vec3(0.05, 0.07, 0.15) : vec3(0.44, 0.50, 0.72);
+    float nf = nachtHier();
+    vec3 cL = mix(vec3(0.97, 0.955, 0.94), vec3(0.42, 0.43, 0.52), nf);
+    vec3 cM = mix(vec3(0.74, 0.74, 0.86), vec3(0.16, 0.18, 0.30), nf);
+    vec3 cS = mix(vec3(0.44, 0.50, 0.72), vec3(0.05, 0.07, 0.15), nf);
     vec3 grund;
     float stufe;
     if (lam > 0.36) { grund = mix(cL, cM, 0.32 * smoothstep(1.0, 0.36, lam)); stufe = 0.0; }
@@ -333,7 +350,7 @@ void main() {
     float opdQ = (floor(k) + 0.5 + (fract(k) - 0.5) * 0.3) * B;
     vec3 iris = tafel(opdQ);
     iris = iris / max(0.25, dot(iris, vec3(0.3333)));
-    iris = mix(vec3(1.0), iris, uNacht == 1 ? 0.45 : 0.62);
+    iris = mix(vec3(1.0), iris, mix(0.62, 0.45, nf));
     float stark = stufe == 0.0 ? 0.42 : stufe == 1.0 ? 0.55 : 0.36;
     vec3 c = grund * mix(vec3(1.0), iris, stark);
     // Glanz: ein harter Fleck, im Licht
@@ -343,8 +360,9 @@ void main() {
     return;
   }
   // Höhenlinien: weiße Haut, zwei leise Stufen; Linien gleicher Dicke, farbig nach der Tafel
-  vec3 hell = uNacht == 1 ? vec3(0.13, 0.15, 0.24) : vec3(0.985, 0.98, 0.975);
-  vec3 dunkel = uNacht == 1 ? vec3(0.05, 0.06, 0.12) : vec3(0.90, 0.895, 0.93);
+  float nl = nachtHier();
+  vec3 hell = mix(vec3(0.985, 0.98, 0.975), vec3(0.13, 0.15, 0.24), nl);
+  vec3 dunkel = mix(vec3(0.90, 0.895, 0.93), vec3(0.05, 0.06, 0.12), nl);
   vec3 grund = lam > 0.05 ? mix(hell, dunkel, 0.3 * smoothstep(1.0, 0.05, lam)) : mix(dunkel, dunkel * 0.93, smoothstep(0.05, -1.0, lam));
   float dIso = (60.0 + 1650.0 * pow(vHoehe, 0.85)) * pow(max(vDehnung, 0.12), -uSpannung) * (1.0 - 0.45 * hauch) * (1.0 + 0.05 * rauschen(vec3(vBlatt * 2.0, uZeit * 0.05)));
   float v = dIso / 75.0;
@@ -353,7 +371,7 @@ void main() {
   linie *= 1.0 - smoothstep(0.22, 0.45, fw);
   vec3 farbe = tafel(floor(v + 0.5) * 75.0);
   farbe = farbe / max(0.2, max(farbe.r, max(farbe.g, farbe.b)));
-  farbe = uNacht == 1 ? farbe : farbe * 0.82;
+  farbe = mix(farbe * 0.82, farbe, nl);
   vec3 c = mix(grund, farbe, linie * 0.92);
   gl_FragColor = vec4(c * uDeckung * a, uDeckung * a);
 }
@@ -380,6 +398,19 @@ void main() {
   // leichtes Rauschen gegen Stufen in weichen Verläufen
   float n = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
   gl_FragColor = vec4(c + n / 255.0, 1.0);
+}
+`;
+
+// der Grund hinter der harten Kante (Ozzy): dieselbe Kante wie in `nachtHier`, eine Gerätepunkt weich
+const HINTEN_FRAGMENT = /* glsl */ `
+precision highp float;
+uniform vec3 uKante;
+uniform float uKanteHoehe;
+uniform vec3 uFarbe;
+void main() {
+  float h = clamp(0.5 - (uKante.x * gl_FragCoord.x + uKante.y * (uKanteHoehe - gl_FragCoord.y) + uKante.z), 0.0, 1.0);
+  if (h <= 0.0) discard;
+  gl_FragColor = vec4(uFarbe, h);
 }
 `;
 
@@ -413,9 +444,16 @@ export interface HautWerte {
   waende: WandStaerke[];
   weich: number;
   schattenFarbe: Color;
+  /**
+   * Ozzy: die harte Kante zur Rückseite (Wenden, Blick von hinten). Abstand eines Bildpunkts (Gerätepunkte, y nach unten) =
+   * x · px + y · py + z; wo er negativ ist, ist der Grund `kanteFarbe` und die Haut spiegelt wie in der Nacht. Fehlt: überall vorn.
+   */
+  kante?: [number, number, number] | null;
+  kanteFarbe?: Color;
 }
 
 export const PAPIER = new Color('#ffffff');
+const KEINE_KANTE: [number, number, number] = [0, 0, 1e6];
 /** Nacht: tiefes Blau */
 export const NACHT = new Color('#121a28');
 
@@ -439,6 +477,8 @@ export class Haut {
   private renderer: WebGLRenderer;
   private ziel: WebGLRenderTarget;
   private ende: { szene: Scene; kamera: OrthographicCamera; material: ShaderMaterial };
+  /** der Grund hinter der harten Kante (Ozzy), nach dem Löschen vor der Haut gezeichnet */
+  private hintenGrund: { szene: Scene; material: ShaderMaterial };
   private tafel: Texture;
   private geoBlase: BufferGeometry | null = null;
   private geoRahmen: BufferGeometry | null = null;
@@ -477,6 +517,17 @@ export class Haut {
     const s = new Scene();
     s.add(new Mesh(quad, material));
     this.ende = { szene: s, kamera: new OrthographicCamera(-1, 1, 1, -1, 0, 1), material };
+    const grundMaterial = new ShaderMaterial({
+      vertexShader: ENDE_VERTEX,
+      fragmentShader: HINTEN_FRAGMENT,
+      uniforms: { uKante: { value: new Vector3(0, 0, 1e6) }, uKanteHoehe: { value: 1 }, uFarbe: { value: new Color(0, 0, 0) } },
+      depthTest: false,
+      depthWrite: false,
+      transparent: true,
+    });
+    const sg = new Scene();
+    sg.add(new Mesh(quad, grundMaterial));
+    this.hintenGrund = { szene: sg, material: grundMaterial };
     this.mats = this.durchgaenge(0);
     this.matsRahmen = this.durchgaenge(1);
     this.szene.add(this.schatten.gruppe);
@@ -494,6 +545,8 @@ export class Haut {
           uZeit: { value: 0 },
           uFassung: { value: 0 },
           uNacht: { value: 0 },
+          uKante: { value: new Vector3(0, 0, 1e6) },
+          uKanteHoehe: { value: 1 },
           uPass: { value: 0 },
           uAnteil: { value: 1 },
           uDeckung: { value: 1 },
@@ -683,6 +736,8 @@ export class Haut {
       u.uZeit!.value = w.zeit;
       u.uFassung!.value = w.fassung;
       u.uNacht!.value = w.nacht ? 1 : 0;
+      (u.uKante!.value as Vector3).set(...(w.kante ?? KEINE_KANTE));
+      u.uKanteHoehe!.value = this.ziel.height;
       u.uDeckung!.value = w.deckung;
       (u.uHauch!.value as Vector3).copy(w.hauch);
       u.uHauchStaerke!.value = w.hauchStaerke;
@@ -716,7 +771,18 @@ export class Haut {
     r.setRenderTarget(this.ziel);
     r.setClearColor(grund, 1);
     r.clear(true, true, false);
+    const autoLoeschen = r.autoClear;
+    if (w.kante && !w.nacht) {
+      // hinter der harten Kante der andere Grund (vor der Haut: Sie spiegelt und lässt durch wie überall); danach nicht mehr löschen
+      const u = this.hintenGrund.material.uniforms;
+      (u.uKante!.value as Vector3).set(...w.kante);
+      u.uKanteHoehe!.value = this.ziel.height;
+      (u.uFarbe!.value as Color).copy(w.kanteFarbe ?? NACHT);
+      r.autoClear = false;
+      r.render(this.hintenGrund.szene, this.ende.kamera);
+    }
     r.render(this.szene, kamera);
+    r.autoClear = autoLoeschen;
     if (felder.length) {
       // Felder: nur die Blase (keine Wände, kein Rahmen, kein Schlauch), ruhig wie in der flachen Ansicht
       const sichtbar = this.netze.map((n) => n.visible);

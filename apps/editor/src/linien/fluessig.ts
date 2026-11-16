@@ -58,6 +58,13 @@ export interface Szene {
   /** der Körper im Raum (sonst durchsichtig) und wie weit eine Kapsel hinter der Haut liegen darf, ohne verdeckt zu sein */
   koerper?: Koerper | null;
   bias?: number;
+  /**
+   * Ozzy: die harte Kante zur Rückseite (Wenden, Blick von hinten). Abstand eines Bildpunkts p (Gerätepunkte, y nach unten) =
+   * x · p.x + y · p.y + z; wo er negativ ist, tauschen Tinte und Papier. Fehlt: überall vorn.
+   */
+  kante?: [number, number, number] | null;
+  /** Farbe des Papiers (für den Tausch und die Füllung des Zeigers); fehlt: weiß */
+  papier?: [number, number, number];
 }
 
 const VERTEX = `#version 300 es
@@ -83,6 +90,8 @@ uniform int uFelder;
 uniform vec4 uFeld[${MAX_FELDER}];
 uniform vec3 uTinte;
 uniform vec3 uGruen;
+uniform vec3 uKante;
+uniform vec3 uPapier;
 uniform int uZeigerDa;
 uniform vec2 uZA;
 uniform vec2 uZB;
@@ -213,6 +222,10 @@ void main() {
   }
   float d0 = smin(dL.x, dB.x, k);
   float d1 = smin(dL.y, dB.y, k);
+  // hinter der harten Kante tauschen Tinte und Papier
+  float hinten = clamp(0.5 - (uKante.x * p.x + uKante.y * p.y + uKante.z), 0.0, 1.0);
+  vec3 tinte = mix(uTinte, uPapier, hinten);
+  vec3 papier = mix(uPapier, uTinte, hinten);
   // wo das weiche Minimum die Form verdickt, gilt die Verdickung als Breite
   float aG = deckung(d1, wE.y + max(dE.y - d1, 0.0));
   float aI = deckung(d0, wE.x + max(dE.x - d0, 0.0));
@@ -220,16 +233,16 @@ void main() {
   float a = grundA;
   c = uGruen * aG + c * (1.0 - aG);
   a = aG + a * (1.0 - aG);
-  c = uTinte * aI + c * (1.0 - aI);
+  c = tinte * aI + c * (1.0 - aI);
   a = aI + a * (1.0 - aI);
   if (uZeigerDa == 1) {
     float dz = dreieck(p, uZA, uZB, uZC);
     float fuell = clamp(0.5 - dz, 0.0, 1.0);
-    c = vec3(1.0) * fuell + c * (1.0 - fuell);
+    c = papier * fuell + c * (1.0 - fuell);
     a = fuell + a * (1.0 - fuell);
     // Rand innen an der Kante, so sitzt die Spitze genau auf der Stelle
     float rand = deckung(abs(dz + uZLinie * 0.5) - uZLinie * 0.5, uZLinie * 0.5);
-    c = uTinte * rand + c * (1.0 - rand);
+    c = tinte * rand + c * (1.0 - rand);
     a = rand + a * (1.0 - rand);
   }
   aus = vec4(c, a);
@@ -349,7 +362,7 @@ export class FluessigeAnzeige {
     this.gl = gl;
     gl.getExtension('EXT_color_buffer_float');
     this.prog = programm(gl, VERTEX, FRAGMENT, ['aPos']);
-    for (const n of ['uPrim', 'uKachel', 'uListe', 'uKoerperFarbe', 'uKoerperTiefe', 'uMitKoerper', 'uBias', 'uHoehe', 'uK0', 'uK1', 'uFelder', 'uFeld', 'uTinte', 'uGruen', 'uZeigerDa', 'uZA', 'uZB', 'uZC', 'uZLinie'])
+    for (const n of ['uPrim', 'uKachel', 'uListe', 'uKoerperFarbe', 'uKoerperTiefe', 'uMitKoerper', 'uBias', 'uHoehe', 'uK0', 'uK1', 'uFelder', 'uFeld', 'uTinte', 'uGruen', 'uKante', 'uPapier', 'uZeigerDa', 'uZA', 'uZB', 'uZC', 'uZLinie'])
       this.uni[n] = gl.getUniformLocation(this.prog, n);
     this.progK = programm(gl, KOERPER_VERTEX, KOERPER_FRAGMENT, ['aPos', 'aNormal']);
     for (const n of ['uProj', 'uAnsicht', 'uHuelle', 'uViewport', 'uSchattierung', 'uTinte']) this.uniK[n] = gl.getUniformLocation(this.progK, n);
@@ -609,6 +622,8 @@ export class FluessigeAnzeige {
     gl.uniform4fv(this.uni.uFeld!, fd);
     gl.uniform3fv(this.uni.uTinte!, sz.tinte);
     gl.uniform3fv(this.uni.uGruen!, sz.gruen);
+    gl.uniform3fv(this.uni.uKante!, sz.kante ?? [0, 0, 1e6]);
+    gl.uniform3fv(this.uni.uPapier!, sz.papier ?? [1, 1, 1]);
     const zg = sz.zeiger;
     gl.uniform1i(this.uni.uZeigerDa!, zg ? 1 : 0);
     if (zg) {
