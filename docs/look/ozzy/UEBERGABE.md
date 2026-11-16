@@ -236,11 +236,12 @@ springt beim Netzwechsel des Werks nicht mehr (Muster und Dehnung weitergereicht
 sie beides von der Blase; in der Ruhe läuft kein Bild mehr, Drehen und Vier Ansichten 2,5 bis 4 ms je Bild, der Nachklang nach einem
 Handgriff 0,3 ms. Offen in S3: im Zug die Runde des Werks (rund 6 ms, Kern-Sitzung) und die glatte Anzeige (rund 5 ms).
 
-**S4 gebaut (16.11. abends, bis `258a9f85`):** Drehen in jeder Ansicht, Einrasten in alle sechs (mit den Gegenseiten), Schwung, Wenden
-mit ⇧ in jede Richtung, die Rückseite hinter einer harten Kante wie in der Blaupause (Florian lehnte die erste Fassung mit fließender
-Welle ab), dieselbe Kante im Raum (von unten, von der anderen Seite, von hinten), Wechsel zwischen zwei Ansichten ohne leeren Moment.
-Probe `ozzy-ansichten-fenster.mjs`, Film [`2026-11-16-wenden.mp4`](../../progress/ozzy/2026-11-16-wenden.mp4), Bild
-[`2026-11-16-kante.png`](../../progress/ozzy/2026-11-16-kante.png); sein Urteil steht aus. Nächster Schritt: S5 (Lasso L).
+**S4 gebaut (16.11. abends, bis `49df2266`):** Drehen in jeder Ansicht, Einrasten in alle sechs (mit den Gegenseiten), Schwung, Wenden
+mit ⇧ in jede Richtung (eingerastet die harte Kante wie in der Blaupause), Front und Rückseite der Front getauscht (Florians Idee), im
+Raum dunkle Wände für Projektionen, die man von hinten sieht, beim Einrasten wächst die Wand zum Blatt und ein Blatt schiebt sich durch
+die Blase. Probe `ozzy-ansichten-fenster.mjs`, Film [`2026-11-16-wenden.mp4`](../../progress/ozzy/2026-11-16-wenden.mp4), Bilder
+[`2026-11-16-kante.png`](../../progress/ozzy/2026-11-16-kante.png), [`2026-11-16-waende.png`](../../progress/ozzy/2026-11-16-waende.png);
+sein Urteil steht aus. Nächster Schritt: S5 (Lasso L).
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**
 [`docs/plans/2026-11-16-ozzy-weiter.md`](../../plans/2026-11-16-ozzy-weiter.md): Schritte S1 bis S13 (Messen, Seifenhaut gleitet, Tempo,
@@ -287,15 +288,18 @@ Raum → Blatt), ⌫ Luft ablassen, M Fassung. Prüfhaken `window.__ozzy` (u. a.
 ## Fallen
 
 - **Vorschaufenster:** Es ist hochkant und schmal; für Florians Sicht auf 1440 × 900 stellen (`resize_window`), danach zurück.
-- **Wenden und Rückseite (S4b):** `kanteRechnen` (main.ts) rechnet je Bild die harte Kante wie `sigmaWerte` in der Blaupause, aus der
-  Blickrichtung und „vorn“ (`heimJetzt`: eingerastet die Vorderseite der Ansicht, im Raum seine Hausansicht, bei Fahrten dazwischen
-  gedreht). Haut (`HautWerte.kante`, Grund in `kanteFarbe`, Spiegelung wie in der Nacht je Bildpunkt) und Linien (`Szene.kante`: Tinte
-  und Papier tauschen) zeichnen die Rückseite selbst; Marke und Hinweis über `body.wende-an` mit `mix-blend-mode: difference`. Falle:
-  Der Zeichner der Haut löscht vor jedem `render` (`autoClear`); für den Grund hinter der Kante ist es dort kurz aus. Filme Bild für
-  Bild: `__ozzy.film(true)` hält den Takt an, `__ozzy.bild(1/60)` rechnet ein Bild (`scripts/ozzy/wenden-film.mjs`).
-- **Wechsel zwischen zwei Ansichten:** `ansichtFahrt.senke` senkt `flach` unterwegs (bis 0,7 bei 90°), `vonAnsicht` hält das alte Blatt
-  als Fläche, bis es verblasst ist. Ohne beides war mitten in der Drehung nichts zu sehen (die Linien gehören der Zielansicht, der Raum
-  kommt erst mit sinkendem `flach`).
+- **Rückseite (S4):** `hintenRechnen` (main.ts) gibt je Bild bis zu vier konvexe Flächen (je fünf Kanten, Gerätepunkte, innen positiv):
+  eingerastet (`blattModus`, auch beim Wenden) die Kante der Blaupause (`kanteImBlatt`, wie `sigmaWerte` in `/editor`); sonst jede Wand
+  des Würfels, deren Projektion man von hinten sieht (`wandFlaeche`, am Nahpunkt beschnitten). Die Wand der Ansicht, in die es einrastet
+  oder aus der es kommt (`blattAchsen`), wächst mit `flach` zum Blatt; ihre Zeichnung wandert in `flaechenJetzt` zur Mitte der Form.
+  `schnittRechnen` schiebt ein Blatt durch die Blase (`HautWerte.schnitt`, statt Verdunsten). Haut (`HautWerte.dunkel`, Grund in
+  `kanteFarbe`, Spiegelung wie in der Nacht) und Linien (`Szene.dunkel`) zeichnen die Flächen selbst; Marke und Hinweis über
+  `body.wende-an`. Die Front schaut seit `49df2266` nach −x (`VORN`, `ANSICHT_WINKEL`, `imFeld`/`ausFeld`). Fallen: Der Zeichner der
+  Haut löscht vor jedem `render` (`autoClear`), für den Grund ist es dort kurz aus; `HautWerte.hinten` ist der Anteil der Rückseite der
+  Blase, nicht die dunklen Flächen. Filme Bild für Bild: `__ozzy.film(true)`, `__ozzy.bild(1/60)` (`scripts/ozzy/wenden-film.mjs`);
+  Haken `dunkelBei(x, y)`, `wandMitte(achse)`.
+- **Wechsel zwischen zwei Ansichten:** `ansichtFahrt.senke` senkt `flach` unterwegs (bis 0,7 bei 90°), `vonAnsicht` merkt die Ansicht,
+  aus der die Fahrt kommt (ihre Wand wandert zurück). Ohne die Senke war mitten in der Drehung nichts zu sehen.
 - **Auf dem Blatt liest die Anzeige „innen“ als „Umriss“** (`Blatt`, `Proxy` auf die Werte), damit P-Linien 1 px breit sind; die
   Feinregler wirken trotzdem.
 - **`Verhalten.netzErsetzen`** (neu in `src/linien/verhalten.ts`) legt den Stand davor auf den Stapel für ⌘Z; Freihand, Formen und
