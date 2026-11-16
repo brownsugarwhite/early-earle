@@ -102,8 +102,9 @@ Abläufe, Ziel aus Grundsatz 3.
 
 **S4 Drehen und Einrasten in jeder Ansicht.** Ziehen ins Leere dreht überall, auch aus der eingerasteten Ansicht heraus (sie löst
 sich weich, die Blase kommt zurück); beim Loslassen nahe einer Achse rastet es ein, mit Schwung (das Ziel wird vorausberechnet).
-Gleich für Seite, Front, Top und ihre Gegenseiten. **Wenden:** ⇧ + 1/3/7 zeigt die Ansicht von der Gegenseite (Drehung um 180° in
-einer Bewegung); im eingerasteten Zustand wendet ⇧ + Doppelklick ins Leere. *Probe:* Film: Raum → Seite (durch Drehen) → heraus
+Gleich für Seite, Front, Top und ihre Gegenseiten. **Wenden** (Abschnitt 6): ⇧ + Ziehen dreht das Blatt, Loslassen gleitet zurück;
+über die Hälfte dreht der schwarze Grund als harte, flüssige Kante herein und es rastet gewendet ein (Linien weiß); ⇧ + Doppelklick
+und ⇧ + 1/3/7 wenden ebenso. *Probe:* Film: Raum → Seite (durch Drehen) → heraus
 → Front → wenden → Top → Raum, Größe der Form bleibt (±2 %), kein Sprung, eingerastet liegt der Umriss genau auf der Linie.
 
 **S5 Lasso (L).** Ein Werkzeug „Lasso“: Ziehen zeichnet eine flüssige Schlinge (eine Linie der Anzeige, die sich am Ende wie ein
@@ -163,7 +164,23 @@ Alles in derselben flüssigen Anzeige, die Linien und Punkte schon zeichnet (wei
 9. **Ordnungslinien als feine Fäden** zwischen den Ansichten, solange ein Punkt gefasst ist.
 10. **Ein Ansichts-Tropfen** in der Ecke zeigt, von wo man schaut; ziehen dreht, Tippen auf eine Seite rastet ein, ⇧ wendet.
 
-## 6. Zu entscheiden
+## 6. Entschieden (Florian, 16.11. nachmittags)
+
+> „wenden auch gerne so: mit shift+maus soll sich das blatt drehen aber beim loslassen wieder zurück in die blattansicht gleiten. Wie
+> in vorherigen editor layouts, soll der hintergrund als schwarze harte kante reindrehen wenn ich über die hälfte drehe und dann da
+> einrasten. schift doppelklick ist auch gut zusätzlich. das netz nimmt dann die kontrastfarbe weiß an. mal sehen wie das wirkt.
+> Gerne die harte kante auch wie eine flüssigkeit reinkommen lassen beim wenden. Es soll sehr elegant sein und intuitive bedienung
+> erleichtern. Sonst gerne alle ideeen zu liquid drop einbauen. je mehr desto besser:)“
+
+- **Wenden (F2):** ⇧ + Ziehen dreht das Blatt um seine senkrechte Achse; beim Loslassen gleitet es zurück in die Blattansicht. Ist
+  es über die Hälfte gedreht (über 90°), dreht der Grund als **schwarze, harte Kante** herein, wie eine Flüssigkeit, die über das
+  Blatt läuft, und es rastet auf der Rückseite ein: schwarzer Grund, Linien und Punkte in der Gegenfarbe Weiß (wie „von hinten
+  dunkel“ in der Blaupause). ⇧ + Doppelklick wendet ebenso. Zurück genauso. „Mal sehen, wie das wirkt“: zuerst als Film.
+- **liquid drop (F6):** alle Ideen aus Abschnitt 5, „je mehr, desto besser“ (S13, über die Schritte verteilt, wo sie hingehören).
+- **F1, F3, F4, F5:** wie vorgeschlagen (kein Rahmen neben dem Lasso; in einem flachen Feld faltet Ziehen ins Leere zurück in den
+  Raum und dreht; Start ohne Linie als Wahl; zuerst S1 bis S3).
+
+## 7. Zu entscheiden (Stand vor seiner Antwort)
 
 | | Frage | Vorschlag |
 | --- | --- | --- |
