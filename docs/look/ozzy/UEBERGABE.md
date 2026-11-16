@@ -46,7 +46,9 @@ parallele Arbeit an `kurven.ts` mehr; auch die offenen Punkte des Kerns werden h
 ## Was noch fehlt (nächste Schritte, Plan Abschnitt 8)
 
 1. **Phase 1, das Werk lösen** (der wichtigste Schritt): den Zustand und die Handgriffe der Form aus `kurven.ts` in
-   `apps/editor/src/form/werk/` holen, verhaltensgleich, `kurven.html` als Hülle; Proben vorher und nachher gleich (Liste im Plan).
+   `apps/editor/src/form/werk/` holen, verhaltensgleich, `kurven.html` als Hülle. **Genauer Schnittplan mit jeder Funktion, ihrem Ziel,
+   den vier nicht mechanischen Stellen, der Reihenfolge und den Proben: [`werk-schnittplan.md`](werk-schnittplan.md).** Heute nicht
+   begonnen: Es ist die größte einzelne Arbeit (7 224 Zeilen, 50 bekannte Fallen) und braucht eine frische Sitzung mit voller Länge.
 2. **Phase 3, die Kern-Form:** am Ende des Aufblasens steht die Form des Kerns (`rundAusSeite` und die Silhouette als Mittellinie);
    zuerst der kleine Beweis „ein einzelner Loop“ (Plan, Phase 3). Dann zeigen Wände, Felder und eingerastete Ansicht die Linien des
    Kerns, die Blase ist die glatte Anzeige des Kerns mit der Seifenhaut.
