@@ -1,4 +1,4 @@
-# Ozzy, Phase 3: Beweis „eine Form aus der Silhouette“ (16.11.2026, nachmittags)
+# Ozzy, Phase 3: Beweis „eine Form aus der Silhouette“ (16.11.2026, vormittags)
 
 **Gebaut:** `neuAusUmriss(anker)` im Werk (`apps/editor/src/form/werk.ts`). Die Silhouette wird mit `rundAusSeite` rund aufgeblasen
 (so dicht wie die Startform der Adresse), und sie selbst wird die Linie der Mitte: Anker sind die Punkte, Griffe die Griffe, wo die
@@ -42,7 +42,7 @@ Die heutige Rechnung macht aus den Linien ihre eigene runde Form. Die aufgeblase
 Linien. Zwei Wege standen zur Wahl: Das Aufblasen endet in der Form der Rechnung (A), oder die Rechnung bekommt eine Schicht, die
 die Dicke vom Aufblasen trägt (B). Florian hat A gewählt, B ändert die Rechnung (unten).
 
-## Weg A (Florian, 16.11. nachmittags)
+## Weg A (Florian, 16.11. vormittags)
 
 Florian: „Hauptsache am Rechenkern wird nicht verändert […] Ich will aber keinen Unterschied zwischen meinen Kurven und dem Modell,
 wie es bei Sitzung 4 ist.“ Damit gilt Weg A: Die Form ist, was die Rechnung aus der Linie macht. `neuAusUmriss` ruft nach dem

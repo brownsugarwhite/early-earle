@@ -417,6 +417,21 @@ export const PAPIER = new Color('#ffffff');
 /** Nacht: tiefes Blau */
 export const NACHT = new Color('#121a28');
 
+/**
+ * Ein Netz, das statt der Blase des Körpers gezeigt wird (Ozzy: die Haut des Werks), mit den Werten der Seifenhaut je Punkt: Höhe
+ * (0..1, für die Höhenlinien), Seite (+1 vorn, −1 hinten), Lage im Blatt (2 je Punkt, für die Muster), Dehnung, Sichtbarkeit.
+ */
+export interface HautNetz {
+  pos: Float32Array;
+  normal: Float32Array;
+  index: Uint32Array;
+  hoehe: Float32Array;
+  seite: Float32Array;
+  blatt: Float32Array;
+  dehnung: Float32Array;
+  sicht: Float32Array;
+}
+
 export class Haut {
   readonly szene = new Scene();
   private renderer: WebGLRenderer;
@@ -431,6 +446,9 @@ export class Haut {
   private mats: ShaderMaterial[] = [];
   private matsRahmen: ShaderMaterial[] = [];
   private koerper: Koerper | null = null;
+  /** ein fremdes Netz statt der Blase des Körpers (`blaseErsetzen`) und seine Puffer */
+  private fremd: HautNetz | null = null;
+  private geoFremd: BufferGeometry | null = null;
   /** weiche Schatten an den Wänden des Würfels */
   readonly schatten = new WandSchatten();
 
@@ -579,7 +597,7 @@ export class Haut {
     this.matsRahmen.forEach((m, i) => {
       if (i < 4) dazu(this.geoSchlauch!, m, -5 + i);
     });
-    this.mats.forEach((m, i) => dazu(this.geoBlase!, m, i));
+    this.mats.forEach((m, i) => dazu(this.geoFremd ?? this.geoBlase!, m, i));
     this.schatten.setzeBlase(this.geoBlase);
     // alle Shader jetzt übersetzen, nicht erst, wenn sie mitten im Aufblasen sichtbar werden (sonst stockt ein Bild)
     for (const mesh of this.netze) mesh.visible = true;
@@ -608,6 +626,34 @@ export class Haut {
     r.setRenderTarget(null);
     r.compile(this.ende.szene, this.ende.kamera);
     this.netze.forEach((n, i) => (n.visible = sichtbar[i]!));
+  }
+
+  /**
+   * Statt der Blase des Körpers ein anderes Netz zeigen (Ozzy: die Haut des Werks), mit denselben Durchgängen der Seifenhaut; Rahmen
+   * und Schlauch bleiben die des Körpers. `null`: wieder die Blase des Körpers. Dasselbe Netz noch einmal: nur die Werte hochladen.
+   */
+  blaseErsetzen(netz: HautNetz | null): void {
+    if (netz && netz === this.fremd && this.geoFremd) {
+      for (const n of ['position', 'normal', 'aHoehe', 'aSeite', 'aBlatt', 'aDehnung', 'aSicht']) (this.geoFremd.getAttribute(n) as BufferAttribute).needsUpdate = true;
+      return;
+    }
+    const alt = this.geoFremd;
+    this.fremd = netz;
+    this.geoFremd = null;
+    if (netz) {
+      const g = new BufferGeometry();
+      g.setAttribute('position', new BufferAttribute(netz.pos, 3));
+      g.setAttribute('normal', new BufferAttribute(netz.normal, 3));
+      g.setAttribute('aHoehe', new BufferAttribute(netz.hoehe, 1));
+      g.setAttribute('aSeite', new BufferAttribute(netz.seite, 1));
+      g.setAttribute('aBlatt', new BufferAttribute(netz.blatt, 2));
+      g.setAttribute('aDehnung', new BufferAttribute(netz.dehnung, 1));
+      g.setAttribute('aSicht', new BufferAttribute(netz.sicht, 1));
+      g.setIndex(new BufferAttribute(netz.index, 1));
+      this.geoFremd = g;
+    }
+    for (const mesh of this.netze) if (this.mats.includes(mesh.material as ShaderMaterial)) mesh.geometry = this.geoFremd ?? this.geoBlase!;
+    alt?.dispose();
   }
 
   /** nach `Koerper.setzen`: Lagen, Normalen, Dehnung, Sichtbarkeit hochladen */

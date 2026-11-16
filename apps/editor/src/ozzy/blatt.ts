@@ -185,6 +185,24 @@ export class Blatt {
     });
   }
 
+  /**
+   * Die Silhouette durch diese Anker ersetzen (Ozzy: die Linie des Werks zurück aufs Blatt, wenn die Luft abgelassen wird); `ecken`:
+   * je Anker, ob die Linie dort knickt. Andere Linien des Blatts bleiben. Ein Schritt für ⌘Z des Blatts.
+   */
+  silhouetteErsetzen(A: Anker[], ecken: boolean[]): void {
+    const alt = this.netz;
+    const li = this.silhouetteNr();
+    const n: Netz = {
+      punkte: alt.punkte.map((p) => ({ ...p })),
+      linien: alt.linien.filter((_, i) => i !== li).map((l) => ({ ...l, punkte: [...l.punkte], stuecke: l.stuecke.map((s) => ({ ...s })), ...(l.knick ? { knick: [...l.knick] } : {}) })),
+    };
+    pfadInsNetz(n, {
+      anker: A.map((a, i) => ({ x: a.x, y: a.y, ein: { x: a.ein[0], y: a.ein[1] }, aus: { x: a.aus[0], y: a.aus[1] }, ecke: ecken[i] ?? false })),
+      geschlossen: true,
+    });
+    this.verhalten.netzErsetzen(n);
+  }
+
   /** Kennzahl der Silhouette: ändert sich mit jedem Punkt und Griff */
   get stand(): number {
     const A = this.silhouette();

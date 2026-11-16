@@ -3,7 +3,7 @@
 // Mitte (ihre Anker die Punkte, ihre Griffe die Griffe). Zwei Silhouetten: ein Fisch (Schwanz mit vier Ecken) und eine Ellipse.
 // Weg A (Florian, 16.11.: am Rechenkern nichts ändern, kein Unterschied zwischen seinen Kurven und dem Modell wie in Sitzung 4): Die
 // Form ist, was die Rechnung aus der Linie macht; `neuAusUmriss` rechnet die Haut gleich über die ganze Haut neu (`hautNeuRechnen`).
-// Kriterien (vorher festgelegt; 3b am 16.11. nachmittags geändert, siehe unten):
+// Kriterien (vorher festgelegt; 3b am 16.11. vormittags geändert, siehe unten):
 //   1  Die Seite deckt sich mit der Zeichnung: Punkte und Griffe der Linie sind die gezeichneten; die Linie liegt höchstens 0,5 neben
 //      ihrem Pfad; kein Punkt der Haut liegt in der Seite weiter als 0,5 außerhalb der Silhouette. Kein umgeschlagenes Dreieck. Die
 //      Form steht: in weiteren 1,5 s bewegt sie sich um weniger als 0,2.

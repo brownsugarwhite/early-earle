@@ -1,4 +1,4 @@
-# Übergabe: Ozzy (Stand 16.11.2026, nachmittags)
+# Übergabe: Ozzy (Stand 16.11.2026, vormittags)
 
 Ozzy ist der Editor für Florians Formen aus einem Guss (Florian, 16.11.: Name „Ozzy“, Designsystem „liquid drop“). Plan mit seinem
 Auftrag wörtlich, Bestandsaufnahme, acht Grundsätzen und acht Phasen: [`docs/plans/2026-11-16-ozzy.md`](../../plans/2026-11-16-ozzy.md).
@@ -67,7 +67,7 @@ zuordnet; keine Zeile von Hand umgeschrieben außer der Sperre der Eingaben beim
 Fenster-Proben vorher und nachher mit denselben Urteilen (die 2 umgeschlagenen Dreiecke einer ersten Abzweigungs-Probe vorher kamen in
 3 weiteren Läufen des alten Stands nicht wieder: Streuung der Uhr).
 
-## Florians Regel (16.11. nachmittags)
+## Florians Regel (16.11. vormittags)
 
 „Hauptsache am Rechenkern wird nicht verändert […] Der Kern ist noch nicht perfekt und das muss [Sitzung 4] machen, also daran nichts
 ändern oder optimieren.“ Und: „Ich will aber keinen Unterschied zwischen meinen Kurven und dem Modell, wie es bei Sitzung 4 ist.“
@@ -83,7 +83,7 @@ Kopf; geprüft, dass er aus dem alten `kurven.ts` genau `werk.ts` und `kurven.ts
 dann am besten im Arbeitsbaum `ozzy` (die Funktionen heißen gleich, sie stehen in `werk.ts`, Liste:
 [`werk-schnittplan.md`](werk-schnittplan.md)); baut sie doch in ihrem alten Zweig in `kurven.ts`, wird der Schnitt wiederholt.
 
-## Phase 3: Form aus der Silhouette (16.11. nachmittags): Weg A gebaut
+## Phase 3: Form aus der Silhouette (16.11. vormittags): Weg A gebaut
 
 **Gebaut:** `neuAusUmriss(anker)` im Werk: Silhouette rund aufgeblasen (`rundAusSeite`, so dicht wie die Startform), die Silhouette ist
 die Linie der Mitte (Anker = Punkte, Griffe = Griffe, Ecken, wo die Richtung wechselt), ein Schritt für ⌘Z. Dann rechnet das Werk die
@@ -99,26 +99,64 @@ Fischschwanz wird so dick wie hoch; [Bild](../../progress/ozzy/2026-11-16-silhou
 in Top und Front. Weil eine einzige Linie die ganze Form bestimmt, formt ein Zug an ihr die ganze Haut mit (12 nach oben: abseits
 bis 4 beim Fisch, 7 bei der Ellipse); mit mehr Linien wird das örtlicher.
 
+## Phase 3: Ozzy zeigt die Form des Werks (16.11. vormittags, gebaut)
+
+**Ablauf:** ↩ legt die Form im Werk an (`werkFormAnlegen` in `main.ts`: Silhouette in Einheiten des Werks, größte halbe Ausdehnung
+150 wie die Startkugel, Mitte der Silhouette im Ursprung; `neuAusUmriss`, rund 110 bis 220 ms). Die Blase der Studie bläst wie bisher
+auf. Nach dem Abriss, sobald das Werk seine Form gerechnet hat, übernimmt die Haut des Werks die Blase: Jeder Rechenpunkt liegt zuerst
+auf der Blase (über das flache Netz der Silhouette, Vorder- oder Rückseite) und schnalzt mit der Feder der Blase (`rund`, gezählt ab
+der Übergabe) in die Form der Rechnung. Rahmen und Schlauch bleiben die der Studie. In der Ruhe zeigen Wände, Felder und die
+eingerastete Ansicht die Linie der Mitte des Werks (Seite, mit Punkten) und den Umriss der Haut des Werks (Front, Top). Punkte der Seite
+zieht das Werk (`werkGreifen`: Auswahl, `zugStarten`, `zugBewegen`, `zugEnde`, der wartende Griff wie im Prüffenster); ⌘Z im Raum geht
+im Werk zurück, nie hinter die Form aus der Silhouette. Beim Luftablassen wird die Linie des Werks die Zeichnung, wenn sie im Raum
+geändert wurde (`werkAufsBlatt`, ein Schritt für ⌘Z des Blatts); an der Haut des Werks zieht nichts (der Pinsel kommt mit Phase 6).
+
+**Teile:** `src/ozzy/adresse.ts` (die Schalter des Werks in der Adresse: `gewichte=geometrie` wie das Standardfenster, `behalten=0`,
+damit Ozzy dem Prüffenster auf demselben Port nichts überschreibt; muss das erste Import in `main.ts` sein), `src/ozzy/werkHaut.ts` (die
+glatte Anzeige der Haut des Werks wie in `kurven.ts` mit `GlattPlan`, dazu Höhe, Seite, Lage im Blatt und Dehnung je Punkt für die
+Seifenhaut, der Umriss je Achse, der Pfad der Linie der Mitte), in `src/anfang/haut.ts` neu `blaseErsetzen(netz)` (ein fremdes Netz
+statt der Blase des Körpers), in `src/ozzy/blatt.ts` neu `silhouetteErsetzen`. Die Haken des Werks setzt `main.ts` (`geometrieNeu`
+ruft `teilungNeu`, `allesZeigen` tut, was die Hülle dort am Werk tut). Am Werk und am Kern ist nichts geändert.
+
+**Belegt** (Probe `apps/editor/scripts/pruefen/ozzy-werk-fenster.mjs`, alle fünf Kriterien; Bild
+[`2026-11-16-werk-in-ozzy.png`](../../progress/ozzy/2026-11-16-werk-in-ozzy.png)): Form angelegt (7 Punkte); Übergabe im Mittel 0,15 px
+neben der Blase (einzelne Punkte bis 12 px, in Bewegung nicht zu sehen); in der Ruhe die Haut des Werks, die Linie der Seite genau auf
+der Zeichnung; Zug in der eingerasteten Seite 40 px nach oben, ein Schritt, ⌘Z genau zurück; keine Fehler. Derselbe Fisch im Prüffenster
+mit demselben Maßstab: dieselbe Haut (914 Punkte, 21 umgeschlagen), derselbe Zug dieselben 27 umgeschlagenen Dreiecke und dieselbe
+Meldung. Ozzy rechnet also wie das Prüffenster.
+
+**Für die Kern-Sitzung** (so rechnet der Kern, Ozzy ändert daran nichts):
+- An der dünnen Schwanzflosse dieses Fischs (Bilderbogen von Stand 0) faltet die Rechnung die Spitze: 21 umgeschlagene Dreiecke nach
+  dem Setzen; bei 1,5 % kleinerem Maßstab sind es 0. Ein Zug am oberen Punkt (35 Einheiten): 27, und „Hier ließ sich das Netz nicht
+  aufräumen (die Haut lief dabei auseinander)“.
+- Ohne vergehende Zeit (54 Bilder hintereinander gerechnet, nur in einer Probe) endete derselbe Zug einmal mit zerrissener Haut (330
+  umgeschlagen, ein Teil 376 Einheiten weit draußen), ohne dass der Schutz gegen das Davonlaufen griff; ⌘Z holte die Form zurück.
+- Mit der Silhouette als einziger Linie wölbt sich die Haut an Einbuchtungen bis 2 Einheiten über die Linie (siehe oben).
+
+**Offen in Ozzy (Feinschliff):** ↩ hält 110 bis 220 ms an (`neuAusUmriss` im Fenster; besser schon rechnen, sobald die Silhouette
+geschlossen ist und ruht); das Muster der Seifenhaut wechselt bei der Übergabe leicht (Lage im Blatt und Bezug der Dehnung kommen aus
+der Form des Werks); der Umriss in Front und Top zeigt auch innere Kanten (Verdecktes kommt mit Phase 4); der Raum (Abstand der Wände)
+richtet sich noch nach der Blase der Studie.
+
 ## Was noch fehlt (nächste Schritte, Plan Abschnitt 8)
 
-1. ~~Phase 1, das Werk lösen~~: gebaut (oben). Kleiner Rest: `allesZeigen` tut in der Hülle Werk-Arbeit; für Ozzy eine
-   Funktion `geaendert()` im Werk daraus machen.
-2. **Phase 3, die Kern-Form in Ozzy:** Ozzy ruft `neuAusUmriss` am Ende des Aufblasens
-   (Silhouette in Welt-Einheiten des Werks: Größe wie die Startkugel, Halbmesser 150; Ozzy rechnet mit einem Faktor um), Wände,
-   Felder und eingerastete Ansicht zeigen die Linien des Werks, die Blase ist die glatte Anzeige des Werks mit der Seifenhaut. Das
-   Werk liest seine Schalter aus der Adresse (`location.search`): Ozzy braucht dieselben wie das Standardfenster
-   (`gewichte=geometrie`).
-3. **Phase 5, Bearbeiten über das Werk:** an Wänden, Feldern und eingerastet: Auswahl, Ziehen, Richtungen, P (Loop rundum statt L,
-   Form, Abzweigung), Freihand, Kante, ⌫, ⌘Z; Maul und Pose.
+1. ~~Phase 1, das Werk lösen~~: gebaut (oben). Kleiner Rest: `allesZeigen` tut in der Hülle Werk-Arbeit (Ozzy tut sie in seinem Haken
+   nach).
+2. ~~Phase 3, die Form des Werks in Ozzy~~: gebaut (oben); Feinschliff offen.
+3. **Phase 5, Bearbeiten über das Werk:** an Wänden, Feldern und eingerastet: Auswahl, Griffe, Richtungen, P (Loop rundum statt L,
+   Form, Abzweigung), Freihand, Kante, ⌫; Front und Top bearbeitbar (dort gibt es noch keine Linien); Maul und Pose. Punkte der Seite
+   ziehen geht schon.
 4. Danach: Pinsel an der Blase (Phase 6: nur, was die Rechnung kann, also Ziehen wie O; Aufblasen, Absaugen, Glätten sind Arbeit
    der Kern-Sitzung), eine Leinwand für Haut und Linien, Würfel als Quader, Finger.
 
 ## Bedienung
 
 Blatt: P, N (Freihand), e (Ellipse), E (Würfel), V oder Esc (Auswahl); ↩ schließt eine Linie mit P, auf einer geschlossenen
-Silhouette bläst ↩ auf; ⌫ letzter Punkt oder Auswahl; ⌘Z. Raum: Ziehen ins Leere dreht (nahe einer Achse rastet es ein), an der
-Blase ziehen, Punkte der Seite ziehen, 1 Seite, 3 Front, 7 Top, 0 Raum (tippen bleibt, halten schaut kurz hin), Tab Vier Ansichten,
-Rad zoomt (Pos1 passt ein), Leertaste noch einmal aufblasen, Esc zurück (Vier → Raum → Blatt), ⌫ Luft ablassen, M Fassung.
+Silhouette bläst ↩ auf; ⌫ letzter Punkt oder Auswahl; ⌘Z. Raum: Ziehen ins Leere dreht (nahe einer Achse rastet es ein), Punkte der
+Seite ziehen (an der Wand, im Feld, eingerastet; das Werk rechnet), ⌘Z im Werk zurück, 1 Seite, 3 Front, 7 Top, 0 Raum (tippen
+bleibt, halten schaut kurz hin), Tab Vier Ansichten, Rad zoomt (Pos1 passt ein), Leertaste noch einmal aufblasen, Esc zurück (Vier →
+Raum → Blatt), ⌫ Luft ablassen, M Fassung. Prüfhaken `window.__ozzy` (u. a. `werk()`, `seitenLinie()`, `uebergabePruefen()`,
+`werkGrenzen()`).
 
 ## Fallen
 
@@ -131,6 +169,14 @@ Rad zoomt (Pos1 passt ein), Leertaste noch einmal aufblasen, Esc zurück (Vier �
   rechnet ihre Spiegelung mit `cameraPosition`). Nach `stellen` nie `updateProjectionMatrix` von außen rufen, wenn die Vier Ansichten
   die Projektion schon verkleinert haben (`kameraSetzen` multipliziert sie vorn an).
 - **Welt = CSS-Pixel des Blatts**, Mitte des Fensters im Ursprung (wie in der Aufblas-Studie): Ändert sich die Fenstergröße nach dem
-  Aufblasen, verschiebt sich die Zuordnung Blatt ↔ Welt (wie dort). Mit dem Werk fällt das weg (die Form trägt ihre Welt).
+  Aufblasen, verschiebt sich die Zuordnung Blatt ↔ Welt (wie dort). Das Werk rechnet in eigenen Einheiten: Welt = Werk / f + Mitte
+  (`werkHaut.f`, `werkHaut.mitte`).
+- **Das Werk rechnet im Takt der Bilder und im Hintergrund.** Proben nie im Schnelldurchlauf (`vorspulen`), solange das Werk rechnet
+  oder gleich danach gezogen wird: Ohne vergehende Zeit endete ein Zug einmal anders (zerrissene Haut). Ozzys Schleife läuft, solange
+  das Werk beschäftigt ist (`werkBeschaeftigt`).
+- **Die Nummern der Punkte im Werk folgen nicht der Zeichnung** (die Linie der Mitte beginnt, wo der Schnitt beginnt). Punkte über
+  `seitenLinie().punkte` suchen.
+- **`werkHaut.ts` ist die glatte Anzeige aus `kurven.ts` (`glattAnlegen`, `glattZeigen`).** Ändert die Kern-Sitzung sie dort, hier
+  nachziehen.
 - Die Fallen der Studien gelten weiter: `docs/look/anfang/UEBERGABE.md`, `docs/look/linien/UEBERGABE.md`; die des Kerns:
   `apps/editor/CLAUDE.md`.

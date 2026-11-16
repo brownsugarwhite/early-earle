@@ -11,6 +11,8 @@ Gedächtnis des Electron-Editors (Käfig-Zeit) liegt in `docs/verlauf/2026-11-12
   mit `verfeinern.worker.ts` (Rechnen im Hintergrund) und `ablage.ts` (Sichern und Laden, Dateien in `wesen/`).
   Der Schnitt `kurven.ts` → `werk.ts` + Hülle ist wiederholbar: `scripts/werk-schnitt/schnitt.mjs` (Anleitung im Kopf). Ozzy ändert an
   der Rechnung nichts (Florian, 16.11.); `neuAusUmriss` (Form aus einer Silhouette) ist ein neuer Handgriff aus bestehenden.
+  **Ozzy** (`ozzy.html`, `src/ozzy/`) benutzt dasselbe Werk: Haken in `main.ts`, Schalter in `adresse.ts`, die glatte Anzeige in
+  `werkHaut.ts` (aus `glattAnlegen`/`glattZeigen` von `kurven.ts` übernommen: Ändert sich die Anzeige dort, hier nachziehen).
 - **`editor.html` + `src/form/editor.ts`, `blaupause.ts`, `lava.ts`:** derselbe Editor im Layout der Blaupause (`/editor`).
   Gehört der Design-Sitzung; nicht anfassen. `editor.ts` ist eine Kopie von `kurven.ts`.
 - **`form.html` + `src/form/main.ts`** und alles übrige unter `src/` (Electron-App, Käfig-Editor): eingefroren.
