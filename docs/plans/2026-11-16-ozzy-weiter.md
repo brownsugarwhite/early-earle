@@ -210,6 +210,15 @@ der waagrechten das Top). Eine eigene Kamera für die Zeichnungen fährt in eine
 parallele Ansicht auf dieses Netz; Front und Boden drehen dabei um ihre Kanten, deren Lage von der Ecke zur Teilerlinie gleitet, und
 jede Zeichnung gleitet auf ihrer Wand an ihren Platz. Am Ende liegt alles genau in den Feldern (kein Nachschieben). Die Blase gleitet
 mit der Kamera des Raums ins Raumfeld. Die Ränder der Wände sind unterwegs als Haarlinien zu sehen.
+*Zweite Fassung gebaut (zum Ansehen, `?auffalten=1`):* Eine eigene Kamera der Zeichnungen dreht vom Raum gerade auf die Seite, wird
+parallel und wächst auf den Maßstab der Felder; die Mitte der Wand der Seite gleitet dabei auf gerader Bahn in ihr Feld. Front und Boden
+klappen um ihre Kanten (die Kanten gleiten zu den Teilern), ihre Zeichnungen gleiten auf der Wand so, dass ihre Mitte im Bild ebenfalls
+gerade an ihren Platz gleitet (ohne das liefen sie erst nach außen und dann zurück: das war das Wackeln). Die Ränder der Wände sind
+Haarlinien, die drei Kanten der Ecke gehen in sie über; die Teiler liegen auf den Kanten und gleiten mit (nichts doppelt). Alles hängt an
+einer Zahl. Probe `ozzy-auffalten-fenster.mjs`: im ersten Bild noch auf den Wänden (0,1 px), am Ende ohne Nachschieben, jede Zeichnung
+mit genau einem Gipfel der Geschwindigkeit, hin und zurück. Filme: [echt](../progress/ozzy/2026-11-16-vier-kistennetz.mp4),
+[dreifach langsamer](../progress/ozzy/2026-11-16-vier-kistennetz-zeitlupe.mp4); vorher wie oben. Sein Urteil entscheidet, ob es Standard
+wird.
 
 **S11 Sichern.** Im Menü „Ozzy“: Sichern unter einem Namen (neu), Überschreiben nur nach Frage; ⌘S. *Probe:* sichern, neu laden,
 gleich.

@@ -261,9 +261,12 @@ kann es der Kern nicht (nur ebene Schnitte): Punkt für die Kern-Sitzung, Ozzy m
 **S9 zur Wahl (`5759cbcc`):** `?ohneLinie=1` startet ohne Linie an der Spiegelkante; die Haut steht, der erste Loop mit P lässt sie
 stehen. Seit Florians Entscheidung ist „ohne“ der Standard; im Menü „Linie an der Spiegelkante“ (gemerkt im Browser); ohne Linie der Mitte zeigt die Seite den Umriss der Haut (`mitteDa`). 
 
-**S10 (bis `a8ea8659` + Film):** Die Felder liegen wie die aufgeklappte Ecke (Front oben links, Seite oben rechts, Top unter der Seite, Raum
-unten links). Das Auffalten selbst steht hinter `?auffalten=1` (`auffalten`, `projOhneVier`), Filme vorher/nachher in `docs/progress/ozzy/`.
-Sein Urteil steht aus; danach Standard und Feinschliff (der Boden verlässt kurz den Bildrand).
+**S10:** Die Felder liegen wie die aufgeklappte Ecke (Front oben links, Seite oben rechts, Top unter der Seite, Raum unten links). Das
+Auffalten steht hinter `?auffalten=1`; die erste Fassung fand Florian wackelig („von der dynamik schlechter als vorher“). Zweite Fassung
+als Kistennetz: `faltRechnen` (eigene Kamera `kamFalt`, Anfang `lageRaum`/`projRaum`; die Mitte der Wand der Seite gleitet gerade in ihr
+Feld), `aufWand`/`faltPunkt` (Front und Boden klappen um ihre Kanten, die Zeichnung gleitet auf der Wand, `kF`/`uF`/`kT`/`uT` halten
+ihre Mitte im Bild auf gerader Bahn), `faltKanten` (Ränder als Haarlinien, Teiler auf den Kanten). Probe `ozzy-auffalten-fenster.mjs`,
+Filme `2026-11-16-vier-kistennetz*.mp4` (echt und dreifach langsamer; `ZEITLUPE=3` im Filmskript). Sein Urteil steht aus; danach Standard.
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**
 [`docs/plans/2026-11-16-ozzy-weiter.md`](../../plans/2026-11-16-ozzy-weiter.md): Schritte S1 bis S13 (Messen, Seifenhaut gleitet, Tempo,

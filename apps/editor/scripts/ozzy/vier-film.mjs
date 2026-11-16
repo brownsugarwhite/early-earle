@@ -1,5 +1,5 @@
 // Film: Wechsel in die Vier Ansichten und zurück (S10 im Plan „wie es weitergeht“, 16.11.2026), an „strange bird“ (NAME). Bild für Bild
-// (60 je Sekunde), dann MP4. Aufruf aus apps/editor, Ozzy auf 5205: node scripts/ozzy/vier-film.mjs <ziel.mp4> [zusatz der Adresse, z. B. auffalten=1]
+// (60 je Sekunde), dann MP4. Aufruf aus apps/editor, Ozzy auf 5205: [ZEITLUPE=3] node scripts/ozzy/vier-film.mjs <ziel.mp4> [zusatz der Adresse, z. B. auffalten=1]
 import { chromium } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -9,6 +9,8 @@ import path from 'node:path';
 const ziel = process.argv[2] ?? '../../docs/progress/ozzy/vier.mp4';
 const zusatz = process.argv[3] ? `&${process.argv[3]}` : '';
 const NAME = process.env.NAME ?? 'strange bird';
+/** so viel langsamer als echt (die Fahrt dauert dann so viel länger im Film) */
+const ZEITLUPE = Number(process.env.ZEITLUPE ?? 1);
 const URL = process.env.OZZY_URL ?? 'http://localhost:5205/ozzy.html';
 const B = 1440;
 const H = 900;
@@ -26,7 +28,7 @@ await s.evaluate(() => window.__ozzy.film(true));
 let nr = 0;
 const warten = async (sek) => {
   for (let i = 0; i < Math.round(sek * 60); i++) {
-    await s.evaluate(() => window.__ozzy.bild(1 / 60));
+    await s.evaluate((z) => window.__ozzy.bild(1 / 60 / z), ZEITLUPE);
     await s.screenshot({ path: path.join(ordner, `${String(nr++).padStart(5, '0')}.jpg`), type: 'jpeg', quality: 90 });
   }
 };
