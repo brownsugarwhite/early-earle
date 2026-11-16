@@ -1476,6 +1476,10 @@ Beweis“. Offen ist Florians Entscheidung: weiter nach Plan, oder B als Schalte
   der Ebene, glatter Übergang ins Spiegelbild). Zieht die Haut dort wieder nach außen, werden sie frei. Die Anzeige schneidet je
   Bildpunkt. „Feste Linie“: die Randkette als Bézier-Loop anpassen und als Linie eintragen.
 - Angewendet (Pose): Netz = Hälfte plus Spiegelbild, am Rand verschweißt; feste Nummern (Spiegelbild von Punkt i ist n + i).
+- Befund aus Ozzy (16.11. abends, S11 Sichern): Nach einem gewöhnlichen Zug legt das Verdichten manchmal einen Punkt nahe der Mitte
+  ohne Spiegelbild an (`spiegel = −1`; strange bird, ein Punkt der Seite 30 px nach oben: 1 von 7 727 Punkten, bei z = 0,86; im
+  Prüffenster genauso). Die Ablage lehnte solche Stände bis dahin ab; mit Florians „Ja, lockern“ erlaubt `ablage.ts` jetzt −1 (nur
+  diese Prüfung, am Rechnen nichts geändert). Die Ursache im Verdichten bleibt Sache dieser Sitzung.
 
 ### A.5 Pose (Schritt 5)
 

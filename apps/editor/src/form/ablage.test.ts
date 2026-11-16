@@ -167,6 +167,19 @@ describe('Wesen als Datei', () => {
     const loopKaputt = standAus();
     loopKaputt.loops[0]!.proben[0]!.ecken[0] = loopKaputt.haut.n;
     expect(pruefen(loopKaputt)).toMatch(/Loop/);
+    // ein Spiegelpartner, den es nicht gibt
+    const spiegelKaputt = standAus();
+    spiegelKaputt.haut.spiegel[3] = spiegelKaputt.haut.n;
+    expect(pruefen(spiegelKaputt)).toMatch(/Spiegelpartner/);
     expect(pruefen(standAus())).toBeNull();
+  });
+
+  it('ein Punkt ohne Spiegelbild (−1, wie der Kern ihn beim Verdichten anlegt) ist erlaubt und kommt Bit für Bit zurück', () => {
+    const st = standAus();
+    st.haut.spiegel[3] = -1;
+    expect(pruefen(st)).toBeNull();
+    const zurueck = entpacken(zusammen(packen(st)));
+    expect(Array.from(zurueck.haut.spiegel)).toEqual(Array.from(st.haut.spiegel));
+    expect(zurueck.haut.spiegel[3]).toBe(-1);
   });
 });

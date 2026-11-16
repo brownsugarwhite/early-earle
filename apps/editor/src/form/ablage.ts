@@ -171,7 +171,9 @@ const hautFehler = (h: FlacheHaut | undefined, name: string): string | null => {
   for (let i = 0; i < h.pos.length; i++) if (!Number.isFinite(h.pos[i]!)) return `${name}: Lagen nicht endlich`;
   for (let i = 0; i < h.tri.length; i++) if (h.tri[i]! >= n) return `${name}: Dreieck zeigt auf einen Punkt, den es nicht gibt`;
   for (let i = 0; i < h.nb.length; i++) if (h.nb[i]! < 0 || h.nb[i]! >= n) return `${name}: Nachbar, den es nicht gibt`;
-  for (let v = 0; v < n; v++) if (h.spiegel[v]! < 0 || h.spiegel[v]! >= n) return `${name}: Spiegelpartner fehlt`;
+  // −1 heißt: ohne Spiegelbild. Der Kern legt solche Punkte beim Verdichten nahe der Mitte an und rechnet mit ihnen weiter; der Stand
+  // lässt sich dann sichern und laden wie jeder andere (Florian, 16.11.: „Ja, lockern“). Abgewiesen wird nur ein Verweis ins Leere.
+  for (let v = 0; v < n; v++) if (h.spiegel[v]! < -1 || h.spiegel[v]! >= n) return `${name}: Spiegelpartner, den es nicht gibt`;
   return null;
 };
 const loopsFehler = (loops: Loop[] | undefined, h: FlacheHaut, name: string): string | null => {

@@ -268,11 +268,12 @@ Feld), `aufWand`/`faltPunkt` (Front und Boden klappen um ihre Kanten, die Zeichn
 ihre Mitte im Bild auf gerader Bahn), `faltKanten` (Ränder als Haarlinien, Teiler auf den Kanten). Probe `ozzy-auffalten-fenster.mjs`,
 Filme `2026-11-16-vier-kistennetz*.mp4` (echt und dreifach langsamer; `ZEITLUPE=3` im Filmskript).
 
-**S11 (erster Teil):** Sichern im Menü (Feld über „Laden“, Name vorbelegt, ↩, Esc), ein fremder Name, den es schon gibt, erst beim zweiten
+**S11 (abgeschlossen):** Sichern im Menü (Feld über „Laden“, Name vorbelegt, ↩, Esc), ein fremder Name, den es schon gibt, erst beim zweiten
 Druck („Überschreiben“), ⌘S unter dem Namen der Form (`formSichern`, `sichernKurz`; dieselbe Ablage und dasselbe Format wie das
-Prüffenster, am Werk nichts geändert). Probe `ozzy-sichern-fenster.mjs` (1 und 2 halten). Offen: Nach manchen Zügen hat ein Punkt der
-Haut keinen Spiegelpartner; die Prüfung der Ablage (`ablage.ts`) lehnt das beim Sichern und Laden ab, im Prüffenster genauso. Florians
-Entscheidung steht aus (Prüfung lockern oder Kern-Sitzung). Prüfhaken `standPruefen`. Nebenbei: Der Schalter „Linie an der Spiegelkante“
+Prüffenster, am Werk nichts geändert). Probe `ozzy-sichern-fenster.mjs`, 1 bis 5 halten (neu geladen genau gleich). Gefunden: Nach
+manchen Zügen hat ein Punkt der Haut keinen Spiegelpartner; die Prüfung der Ablage lehnte das beim Sichern und Laden ab, im Prüffenster
+genauso. Florian: „Ja, lockern“ → `ablage.ts` erlaubt Punkte ohne Spiegelbild (−1). Die Ursache im Verdichten steht im Plan des Kerns
+(A.4). Prüfhaken `standPruefen`. Nächstes: S12 iPad mit Stift. Nebenbei: Der Schalter „Linie an der Spiegelkante“
 stand im Raster der Regler zerdrückt (S9), jetzt in einer Zeile.
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**

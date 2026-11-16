@@ -236,7 +236,10 @@ Linien, Punkte, Griffe und Haut gleich; die Probedateien werden danach gelöscht
 (strange bird, ein Punkt der Seite 30 px nach oben: 1 von 7 727 Punkten, bei z = 0,86). Die Prüfung der Ablage (`ablage.ts`, Sitzung 4)
 lehnt solche Stände beim Sichern und beim Laden ab („Haut: Spiegelpartner fehlt“); das Prüffenster scheitert bei demselben Zug genauso.
 Der Kern selbst kennt Punkte ohne Spiegelbild (`verdichten`, `mitteSchnitt`). Frage an Florian: die Prüfung lockern (nur diese eine
-Bedingung, am Rechnen ändert sich nichts) oder das der Kern-Sitzung überlassen.
+Bedingung, am Rechnen ändert sich nichts) oder das der Kern-Sitzung überlassen. Florian: „Ja, lockern“ → `ablage.ts` erlaubt −1 (ohne
+Spiegelbild), weist nur noch einen Verweis ins Leere ab; Test in `ablage.test.ts`. Probe 1 bis 5 halten: nach dem Zug ⌘S, neu geladen
+sind Linien, Punkte, Griffe und Haut genau gleich (Unterschied 0). Die Ursache im Verdichten steht im Plan des Kerns (A.4). **S11
+abgeschlossen.**
 
 **S12 iPad mit Stift (Schritt für Schritt, gemeinsam).** Erst: Stift = Zeiger (mit Schweben über dem Bildschirm, wo das iPad es kann),
 zwei Finger drehen, schwenken und zoomen, Tasten als kleine Knöpfe (Ansichten, Vier, Zurück, Löschen, Kante, Werkzeuge); dann Florians

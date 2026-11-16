@@ -16,14 +16,14 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   [`docs/plans/2026-11-16-ozzy.md`](docs/plans/2026-11-16-ozzy.md), **Stand: [`docs/look/ozzy/UEBERGABE.md`](docs/look/ozzy/UEBERGABE.md).**
   Gebaut: Stand 0, Phase 1 (Werk `src/form/werk.ts`), 3 (Form aus der Silhouette, Weg A), 5 (Laden, alle Linien auf allen Flächen mit
   der Bedienung der Linien-Studie über `werkBlatt.ts`, P, Freihand, Maul, Pose), 6 (Pinsel „Ziehen“ über O; keine Höhenlinien über der
-  Blase). **Plan weiter** [`docs/plans/2026-11-16-ozzy-weiter.md`](docs/plans/2026-11-16-ozzy-weiter.md): S1 bis S9 gebaut (S8 gerade, gebogen ist Kern-Sitzung; S9: ohne Linie an der Spiegelkante ist Standard, im Menü mit); S10 Felder neu und Auffalten als Kistennetz (Standard), nächstes S11. **Florian
+  Blase). **Plan weiter** [`docs/plans/2026-11-16-ozzy-weiter.md`](docs/plans/2026-11-16-ozzy-weiter.md): S1 bis S9 gebaut (S8 gerade, gebogen ist Kern-Sitzung; S9: ohne Linie an der Spiegelkante ist Standard, im Menü mit); S10 Auffalten als Kistennetz (Standard), S11 Sichern im Menü und ⌘S; nächstes S12. **Florian
   (16.11.): Am Rechenkern ändert Ozzy nichts und optimiert nichts, das macht die Kern-Sitzung; kein Unterschied zwischen seinen Kurven
   und dem Modell wie in Sitzung 4.**
 - **Der Kern** („Kurven als Wahrheit“, seit 05.11.): Linien (Loops mit Bézier-Punkten und Griffen, Kreuzungen, Kante an/aus) sind
   die Wahrheit; darunter ein dichtes Dreiecksnetz, dessen Haut aus den Linien gerechnet wird; gespiegelt; Maul; Fressen-Pose.
   Rechenkern `packages/shape/src/dicht/` und `loeser/`. Das alte Fenster `kurven.html?gewichte=geometrie` (`src/form/kurven.ts`)
   bleibt Prüffenster. Plan „schnell, glatt, exakt“ mit seinen offenen Punkten (4c Rest der halben Haut, Pose Etappe 4 und 5,
-  umgeschlagene Dreiecke an der Mitte, Griff bei Abzweigungen):
+  umgeschlagene Dreiecke an der Mitte, Griff bei Abzweigungen, Punkte ohne Spiegelbild nach dem Verdichten):
   [`docs/plans/2026-11-12-schnell-glatt-exakt.md`](docs/plans/2026-11-12-schnell-glatt-exakt.md), Übergabe von Sitzung 4 (Stand
   14.11.) in [`docs/UEBERGABE.md`](docs/UEBERGABE.md). Das Maul-System bekommt später eine eigene Sitzung; Schritt 7 kommt später.
 - **Studien (abgeschlossen, Feinschliff jetzt in Ozzy):** Linien `src/linien/` (`linien.html`, `raum.html`,
