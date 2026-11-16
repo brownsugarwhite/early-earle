@@ -1,0 +1,146 @@
+/* Probe „Linien, Punkte, Zeiger“ (14.11.2026): weißes Papier wie im Entwurf, die Bedienung so leise wie möglich */
+:root {
+  --tinte: #1f1a17;
+  --leise: rgba(31, 26, 23, 0.5);
+  --haar: rgba(31, 26, 23, 0.14);
+  --papier: #ffffff;
+  color-scheme: light;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--papier);
+  color: var(--tinte);
+  font: 12px/1.4 system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+#buehne {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+#leinwand {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: none;
+}
+#leinwand.schwenken {
+  cursor: grab;
+}
+#entwurf {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+  transition: opacity 160ms ease;
+}
+#entwurf.an {
+  opacity: 0.32;
+}
+#leiste {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  pointer-events: none;
+}
+#leiste > * {
+  pointer-events: auto;
+}
+#leiste .titel {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+#leiste .wert {
+  color: var(--leise);
+  font-variant-numeric: tabular-nums;
+}
+#leiste .hilfe {
+  color: var(--leise);
+  flex: 1 1 260px;
+}
+button {
+  font: inherit;
+  color: var(--tinte);
+  background: transparent;
+  border: 0.5px solid var(--haar);
+  border-radius: 999px;
+  padding: 2px 9px;
+  cursor: pointer;
+}
+button:hover {
+  border-color: var(--tinte);
+}
+button[aria-pressed='true'] {
+  background: var(--tinte);
+  color: var(--papier);
+  border-color: var(--tinte);
+}
+#regler {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  bottom: 48px;
+  width: 248px;
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.94);
+  border: 0.5px solid var(--haar);
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+}
+#regler h3 {
+  font-size: 11px;
+  font-weight: 600;
+  margin: 10px 0 4px;
+  color: var(--leise);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+#regler h3:first-child {
+  margin-top: 0;
+}
+#regler label {
+  display: grid;
+  grid-template-columns: 1fr 44px;
+  gap: 0 6px;
+  align-items: center;
+  margin: 2px 0;
+}
+#regler label span.zahl {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--leise);
+}
+#regler input[type='range'] {
+  grid-column: 1 / 3;
+  width: 100%;
+  margin: 0;
+  accent-color: var(--tinte);
+}
+.regler-knoepfe {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+@media (max-width: 640px) {
+  #leiste .hilfe {
+    display: none;
+  }
+}
+body.bild #leiste,
+body.bild #regler {
+  display: none;
+}

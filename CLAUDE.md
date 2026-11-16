@@ -32,6 +32,11 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   in der Cloud) werden mit dem Kern von Sitzung 4 zum Editor „Ozzy“ zusammengebaut, Designsystem „liquid drop“ (Florian). Plan
   zur Freigabe: [`docs/plans/2026-11-16-ozzy.md`](docs/plans/2026-11-16-ozzy.md); offen vor allem, wer das Werk aus `kurven.ts`
   löst (E1).
+- **Look-Strang „Linien, Punkte, Zeiger“ (eigene Sitzung, seit 14.11.):** dünne Linien, Tropfen, flüssiges Schwellen als Probe an
+  seinem Fisch und im Raum (`apps/editor/linien.html`, `raum.html`, Port 5199). Gebaut: „Richtungen statt Griffe“, Zeiger und
+  Schwellung verfeinert, seit 15.11. abends Auswahl und Werkzeug P wie Illustrator, in 2D und im Raum
+  (`docs/plans/2026-11-15-auswahl-und-stift.md`); sein Urteil steht aus. Übergabe `docs/look/linien/UEBERGABE.md`. In den
+  Editor erst danach.
 - **Eingefroren (Wissen, nicht weiterbauen):** der Käfig-Weg vom 13.10. bis 04.11. (`packages/shape/src/kern/`, der alte
   Electron-Editor `pnpm editor`) und `form.html`.
 - **Florians Testformen:** `wesen/` (teat firefish, strange bird, test_kaputt). Fertige Wesen gibt es nicht; die Formen sind
@@ -51,6 +56,7 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   arbeitet auch die Design-Sitzung an `/editor`. An `kurven.ts` und am Rechenkern dort nichts ändern; nur geprüfte Stände
   hineinführen und Florian vorher sagen, dass sich sein Fenster ändert.
 - **`.claude/worktrees/form-bau`** (Zweig `claude/form-bau`, Port 5197, Eintrag `kurven-bau`): hier wird der Plan gebaut.
+- **`.claude/worktrees/look-linien`** (Zweig `claude/look-linien`, Port 5199, Eintrag `linien-look`): Probe „Linien, Punkte, Zeiger“.
 - `early-earle-meshy` (Nachbarordner) sind Florians Meshy-Tests. Alte Stände liegen als Zweige `bergung/…`.
 
 ## Menschen
