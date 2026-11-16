@@ -11,19 +11,14 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   [`docs/prototyp/README.md`](docs/prototyp/README.md)). Die Produktion läuft in vier Teilen (Map, Spielfeld, Charaktere, UI).
   **Gearbeitet wird am Teil Charaktere: dem Editor für die Formen.** Das alte Spiel (Brett, Karte, `packages/genome`,
   `render/src/creature`) bleibt unangetastet.
-- **Der Editor heißt Ozzy** (Florian, 16.11.), das Designsystem **liquid drop**. Ozzy baut die Studien (Aufblasen, Linien,
-  Ecke/Werft, Bleistift) mit dem vollen Kern von Sitzung 4 zusammen. Seite `apps/editor/ozzy.html`, Code `apps/editor/src/ozzy/`.
-  Plan: [`docs/plans/2026-11-16-ozzy.md`](docs/plans/2026-11-16-ozzy.md). **Wo wir stehen und was als Nächstes kommt:
-  [`docs/look/ozzy/UEBERGABE.md`](docs/look/ozzy/UEBERGABE.md).** Gebaut: Stand 0, Phase 1 (das Werk `src/form/werk.ts`).
-  Phase 3: `neuAusUmriss` (Form aus der Silhouette, Weg A: die Form ist, was die Rechnung aus der Linie macht); Ozzy zeigt nach dem
-  Aufblasen die Haut des Werks. Phase 5.1 und 5.2 (16.11. mittags): seine Formen laden (Menü „Ozzy“ → Laden, `?form=<Name>`); alle
-  Linien des Werks auf Wänden, Feldern und eingerastet, bedient wie in der Linien-Studie (`werkBlatt.ts`: die Schnittstelle `Raum` der
-  Studie aus dem Werk); 5.3 P (Form und Abzweigung) und Freihand; 5.4 Maul (Tropfen „Maul“), „Fressen“ mit Reglern, Pose wie im
-  Prüffenster. Phase 6: Pinsel „Ziehen“ an der Blase (Einfluss O des Werks am nächsten Punkt einer Linie; keine Höhenlinien über
-  der Blasenhaut, Florian: „too much“). Phasen 5 und 6 stehen. **Wie es weitergeht (zur Freigabe):**
-  [`docs/plans/2026-11-16-ozzy-weiter.md`](docs/plans/2026-11-16-ozzy-weiter.md) (eine Bedienung für jede Ansicht, Lasso L, Wenden,
-  Auffalten der Ecke, Seifenhaut ohne Sprünge, Tempo, P statt L, iPad mit Stift). **Florian (16.11.): Am Rechenkern ändert Ozzy nichts und optimiert nichts, das macht die Kern-Sitzung; kein Unterschied
-  zwischen seinen Kurven und dem Modell wie in Sitzung 4.**
+- **Der Editor heißt Ozzy** (Florian, 16.11.), das Designsystem **liquid drop**: die Studien (Aufblasen, Linien, Ecke/Werft,
+  Bleistift) mit dem vollen Kern von Sitzung 4. Seite `apps/editor/ozzy.html`, Code `apps/editor/src/ozzy/`, Plan
+  [`docs/plans/2026-11-16-ozzy.md`](docs/plans/2026-11-16-ozzy.md), **Stand: [`docs/look/ozzy/UEBERGABE.md`](docs/look/ozzy/UEBERGABE.md).**
+  Gebaut: Stand 0, Phase 1 (Werk `src/form/werk.ts`), 3 (Form aus der Silhouette, Weg A), 5 (Laden, alle Linien auf allen Flächen mit
+  der Bedienung der Linien-Studie über `werkBlatt.ts`, P, Freihand, Maul, Pose), 6 (Pinsel „Ziehen“ über O; keine Höhenlinien über der
+  Blase). **Nächstes (zur Freigabe):** [`docs/plans/2026-11-16-ozzy-weiter.md`](docs/plans/2026-11-16-ozzy-weiter.md). **Florian
+  (16.11.): Am Rechenkern ändert Ozzy nichts und optimiert nichts, das macht die Kern-Sitzung; kein Unterschied zwischen seinen Kurven
+  und dem Modell wie in Sitzung 4.**
 - **Der Kern** („Kurven als Wahrheit“, seit 05.11.): Linien (Loops mit Bézier-Punkten und Griffen, Kreuzungen, Kante an/aus) sind
   die Wahrheit; darunter ein dichtes Dreiecksnetz, dessen Haut aus den Linien gerechnet wird; gespiegelt; Maul; Fressen-Pose.
   Rechenkern `packages/shape/src/dicht/` und `loeser/`. Das alte Fenster `kurven.html?gewichte=geometrie` (`src/form/kurven.ts`)
