@@ -3,8 +3,8 @@
 // An einer gezeichneten Kugel (nur die Linie der Mitte) und an „teat firefish“ (NAME); dort derselbe Zug im Prüffenster.
 // Kriterien (je Form):
 //   1  Über der Haut nahe einer Linie zeigt der Hauch den Pinsel, und es gibt einen Punkt, den er fassen würde.
-//   2  Drücken und 20 Bildpunkte nach oben ziehen: der Punkt bewegt sich, ein Schritt; während des Zugs die Höhenlinien (danach weg),
-//      O danach wieder aus.
+//   2  Drücken und 20 Bildpunkte nach oben ziehen: der Punkt bewegt sich, ein Schritt; O danach wieder aus. (Die Höhenlinien beim
+//      Ziehen hat Florian am 16.11. wieder herausgenommen: „too much“, nur die Seifenhaut mit ihrem Regenbogen.)
 //   3  ⌘Z: die Haut genau wie vorher.
 //   4  (nur „teat firefish“) Derselbe Zug im Prüffenster (derselbe Punkt gewählt, O an, derselbe Radius, dieselbe Verschiebung im Blatt):
 //      dieselben Linien (höchstens 0,01) und gleich viele umgeschlagene Dreiecke.
@@ -109,9 +109,9 @@ async function pinselProbe(name, mitPruefung) {
   const weg = Math.hypot(nachP.x - vorP.x, nachP.y - vorP.y, nachP.z - vorP.z);
   const umO = (await O('werk')).umgeschlagen;
   ok(
-    `${name} 2 gezogen: der Punkt bewegt sich, ein Schritt, Höhenlinien nur im Zug, O danach aus`,
-    weg > 1 && s1 === s0 + 1 && imZug.zug && imZug.hoehen > 0.9 && nach.hoehen < 0.01 && !nach.oAn,
-    `Punkt ${z2(weg)} Einheiten im Blatt ${imZug.blatt}, Schritte ${s0} → ${s1}, Höhenlinien im Zug ${z2(imZug.hoehen)}, danach ${z2(nach.hoehen)}; umgeschlagen ${umO}`,
+    `${name} 2 gezogen: der Punkt bewegt sich, ein Schritt, O danach aus`,
+    weg > 1 && s1 === s0 + 1 && imZug.zug && !nach.oAn,
+    `Punkt ${z2(weg)} Einheiten im Blatt ${imZug.blatt}, Schritte ${s0} → ${s1}; umgeschlagen ${umO}`,
   );
   if (ordner) await oz.screenshot({ path: `${ordner}/ozzy-pinsel-${name}-nach.png` });
   // für den Vergleich: was das Prüffenster tun soll

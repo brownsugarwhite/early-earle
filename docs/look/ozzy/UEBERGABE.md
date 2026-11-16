@@ -211,8 +211,8 @@ Vier Ansichten; ⇧ dreht stattdessen) zeigt der Hauch der Seifenhaut den Pinsel
 (`werkHautTreffen`: Strahl gegen die Haut des Werks, wie gezeigt; `pinselPunkt`). Drücken wählt diesen Punkt und zieht ihn mit dem
 Einfluss O des Werks (`G.oAn`, `G.radius`, `zugStarten`; danach ist O wieder aus) im Blatt der Achse, die der Kamera am meisten zugewandt
 ist, in der Ebene durch den Punkt. Liegt keine Linie im Pinsel, sagt es die Hinweiszeile, und das Ziehen dreht. Radius: 0,4 der größten
-halben Ausdehnung der Form (`pinselNachForm`), [ und ] ändern ihn. Beim Ziehen blenden die Höhenlinien auf (`HautWerte.hoehen`, neu in
-`anfang/haut.ts`: die Linien der Fassung „Höhenlinien“ über der gewählten Fassung). Probe `apps/editor/scripts/pruefen/ozzy-pinsel-fenster.mjs`
+halben Ausdehnung der Form (`pinselNachForm`), [ und ] ändern ihn. Die Höhenlinien beim Ziehen (geplant) hat Florian gleich wieder
+herausnehmen lassen („too much“, nur die Seifenhaut mit dem Regenbogen); `anfang/haut.ts` steht wie vor Phase 6. Probe `apps/editor/scripts/pruefen/ozzy-pinsel-fenster.mjs`
 (gezeichnete Kugel und „teat firefish“, alle Kriterien; derselbe Zug im Prüffenster: dieselben Linien bis 0,00001). Bild
 [`2026-11-16-pinsel.png`](../../progress/ozzy/2026-11-16-pinsel.png). **Grenze (so rechnet der Kern):** Zwischen den Linien wirkt der
 Pinsel nur über den nächsten Punkt einer Linie; Aufblasen, Absaugen und Glätten der Haut selbst sind Arbeit der Kern-Sitzung. An der

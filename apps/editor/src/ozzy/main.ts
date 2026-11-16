@@ -217,8 +217,6 @@ let pinselRadius = 90;
 let pinselZiel: { id: number; i: number; m: boolean; welt: Vector3 } | null = null;
 /** ein Zug des Pinsels: die Ebene des Blatts, in der gezogen wird */
 let pinselZug: { F: Flaeche } | null = null;
-/** wie weit die Höhenlinien gerade aufgeblendet sind (beim Pinseln 1) */
-let hoehenTon = 0;
 
 /** Rechnet das Werk noch (Zug, Nachlauf, Hintergrund, wartender Griff, Maul)? */
 const werkBeschaeftigt = (): boolean =>
@@ -1099,11 +1097,6 @@ function bild(dt: number): boolean {
   }
   letzteDrehung = { gier: gierJetzt, neigung: neigungJetzt };
   hauch.staerke += (hauch.ziel - hauch.staerke) * (1 - Math.exp(-dt / 0.18));
-  // beim Pinseln blenden die Höhenlinien auf (Phase 6)
-  const hoehenZiel = pinselZug ? 1 : 0;
-  hoehenTon += (hoehenZiel - hoehenTon) * (1 - Math.exp(-dt / 0.16));
-  if (Math.abs(hoehenZiel - hoehenTon) > 1e-3) aktiv = true;
-  else hoehenTon = hoehenZiel;
   // in der Pose tönt sich das Papier (E8)
   const tonZiel = werk.grund !== null && zustand === 'ruhe' ? 1 : 0;
   poseTon += (tonZiel - poseTon) * (1 - Math.exp(-dt / 0.22));
@@ -1141,7 +1134,6 @@ function bild(dt: number): boolean {
     weich: 0,
     schattenFarbe: WEISS,
     papier: poseTon > 1e-3 ? WEISS.clone().lerp(POSE_PAPIER, poseTon) : null,
-    hoehen: hoehenTon,
   };
   haut.zeichnen(kam.aktiv, w, []);
   // Linien
@@ -2680,7 +2672,7 @@ const haken = {
     }
     return { x: P.x[best]!, y: P.y[best]! };
   },
-  /** der Pinsel (Phase 6): Radius (Werk), der Punkt, den er fassen würde, ob er zieht, Höhenlinien, Hauch, Blatt des Zugs */
+  /** der Pinsel (Phase 6): Radius (Werk), der Punkt, den er fassen würde, ob er zieht, Hauch, Blatt des Zugs */
   pinsel: (radius?: number) => {
     if (radius !== undefined) pinselRadius = radius;
     return {
@@ -2688,7 +2680,6 @@ const haken = {
       ziel: pinselZiel ? { id: pinselZiel.id, i: pinselZiel.i, m: pinselZiel.m } : null,
       zug: pinselZug !== null,
       blatt: pinselZug?.F.a ?? null,
-      hoehen: hoehenTon,
       hauch: hauch.staerke,
       oAn: werk.G.oAn,
     };
