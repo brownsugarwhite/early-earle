@@ -181,6 +181,11 @@ einer gebogenen Zeichnung ist ein Punkt für die Kern-Sitzung. Ozzy meldet es. N
 **S9 Start ohne Linie an der Spiegelkante (Wahl).** Nach dem Aufblasen ohne Linie, wie Sitzung 4 an ihrer Startkugel: Die Haut ist
 dann genau die aufgeblasene und bleibt es, bis die erste Linie kommt. *Beweis:* Die Haut steht, nichts kriecht; was die erste Linie
 mit P tut (so rechnet Sitzung 4: aus einer einzigen Linie die ganze Haut). Florian entscheidet, was der Grundwert ist.
+*Gebaut zur Wahl (16.11. abends, `5759cbcc`):* `?ohneLinie=1` löscht nach dem Aufblasen die Linie der Mitte (Handgriff des Werks). *Beweis*
+`ozzy-ohne-linie-fenster.mjs`: Haut steht (3 s, 0,00), die erste Linie mit P (Ring) lässt sie stehen, der erste Zug baut das Netz neu.
+Gefunden: In der eingerasteten Seite ist ohne Linie nichts von der Form zu sehen (der Umriss der Seite ist die Linie der Mitte); wird
+„ohne“ der Grundwert, braucht die Seite einen Umriss aus der Haut wie Front und Top. Bild [`2026-11-16-ohne-linie.png`](../progress/ozzy/2026-11-16-ohne-linie.png).
+Grundwert: Florian entscheidet.
 
 **S10 Auffalten zur Viereransicht.** Die drei Wände der Ecke klappen um ihre Kanten flach (Boden nach unten, Seitenwand zur Seite,
 nach der Projektionsmethode 1), ihre Linien gehen mit, weil sie auf der Wand liegen; die Kamera wird dabei parallel; die Blase gleitet
