@@ -129,8 +129,11 @@ die Vier Ansichten mit); im Raum ist jede Wand, deren Projektion man von hinten 
 Einrasten wächst die Wand der Ansicht zum ganzen Blatt, ihre Zeichnung wandert zur Mitte der Form und wird das Blatt, und ein Blatt
 schiebt sich durch die Blase (sie verdunstet nicht mehr). So hat jede Projektion schon die Farbe, die sie eingerastet hat. Probe:
 acht Kriterien (neu: Hausansicht ohne dunkle Wand, vor der Front von hinten ihre Wand dunkel und eingerastet dunkel, von unten die
-Decke), Bild [`2026-11-16-waende.png`](../progress/ozzy/2026-11-16-waende.png), Film neu. Sein Urteil steht aus. Offen: Die beiden
-anderen Wände blenden beim Einrasten noch aus (sie stehen dann fast auf der Kante).
+Decke), Film neu. Danach Florian: „ich meinte nicht dass die wände
+schwarz sein sollen, das war vorher schon richtig mit der kante auch im raum. aber back war weiß und front war schwarz und beim
+einrasten hat es gewechselt. daher wollte ich die beiden ansichten tauschen.“ **Vierte Fassung** (`7c0cbbf8`): wieder die Kante im
+Raum (gegen seine Hausansicht, bei Fahrten gedreht), keine schwarzen Wände; der Tausch bleibt, ebenso das Blatt, das beim Einrasten durch
+die Blase schneidet, und die wandernde Zeichnung. Bild [`2026-11-16-kante-raum.png`](../progress/ozzy/2026-11-16-kante-raum.png).
 
 **S5 Lasso (L).** Ein Werkzeug „Lasso“: Ziehen zeichnet eine flüssige Schlinge (eine Linie der Anzeige, die sich am Ende wie ein
 Tropfen schließt); gewählt ist, was sie umschließt, auf allen Flächen; ⇧ nimmt dazu, ⌥ nimmt weg. *Probe:* an „strange bird“ in der

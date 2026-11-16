@@ -236,11 +236,11 @@ springt beim Netzwechsel des Werks nicht mehr (Muster und Dehnung weitergereicht
 sie beides von der Blase; in der Ruhe läuft kein Bild mehr, Drehen und Vier Ansichten 2,5 bis 4 ms je Bild, der Nachklang nach einem
 Handgriff 0,3 ms. Offen in S3: im Zug die Runde des Werks (rund 6 ms, Kern-Sitzung) und die glatte Anzeige (rund 5 ms).
 
-**S4 gebaut (16.11. abends, bis `49df2266`):** Drehen in jeder Ansicht, Einrasten in alle sechs (mit den Gegenseiten), Schwung, Wenden
-mit ⇧ in jede Richtung (eingerastet die harte Kante wie in der Blaupause), Front und Rückseite der Front getauscht (Florians Idee), im
-Raum dunkle Wände für Projektionen, die man von hinten sieht, beim Einrasten wächst die Wand zum Blatt und ein Blatt schiebt sich durch
-die Blase. Probe `ozzy-ansichten-fenster.mjs`, Film [`2026-11-16-wenden.mp4`](../../progress/ozzy/2026-11-16-wenden.mp4), Bilder
-[`2026-11-16-kante.png`](../../progress/ozzy/2026-11-16-kante.png), [`2026-11-16-waende.png`](../../progress/ozzy/2026-11-16-waende.png);
+**S4 gebaut (16.11. abends, bis `7c0cbbf8`):** Drehen in jeder Ansicht, Einrasten in alle sechs (mit den Gegenseiten), Schwung, Wenden
+mit ⇧ in jede Richtung; die Rückseite hinter der harten Kante der Blaupause, eingerastet und im Raum (gegen seine Hausansicht); Front und
+Rückseite der Front getauscht (Florians Idee, so schlägt beim Einrasten nichts mehr um); beim Einrasten schiebt sich ein Blatt durch die
+Blase. Probe `ozzy-ansichten-fenster.mjs`, Film [`2026-11-16-wenden.mp4`](../../progress/ozzy/2026-11-16-wenden.mp4), Bilder
+[`2026-11-16-kante.png`](../../progress/ozzy/2026-11-16-kante.png), [`2026-11-16-kante-raum.png`](../../progress/ozzy/2026-11-16-kante-raum.png);
 sein Urteil steht aus.
 
 **S5 gebaut (16.11. abends, `4608e8b8`):** Lasso (L, Knopf ganz links): Schlinge als Haarlinie, gewählt schon beim Ziehen, ⇧ dazu, ⌥ weg,
@@ -293,16 +293,14 @@ Raum → Blatt), ⌫ Luft ablassen, M Fassung. Prüfhaken `window.__ozzy` (u. a.
 ## Fallen
 
 - **Vorschaufenster:** Es ist hochkant und schmal; für Florians Sicht auf 1440 × 900 stellen (`resize_window`), danach zurück.
-- **Rückseite (S4):** `hintenRechnen` (main.ts) gibt je Bild bis zu vier konvexe Flächen (je fünf Kanten, Gerätepunkte, innen positiv):
-  eingerastet (`blattModus`, auch beim Wenden) die Kante der Blaupause (`kanteImBlatt`, wie `sigmaWerte` in `/editor`); sonst jede Wand
-  des Würfels, deren Projektion man von hinten sieht (`wandFlaeche`, am Nahpunkt beschnitten). Die Wand der Ansicht, in die es einrastet
-  oder aus der es kommt (`blattAchsen`), wächst mit `flach` zum Blatt; ihre Zeichnung wandert in `flaechenJetzt` zur Mitte der Form.
-  `schnittRechnen` schiebt ein Blatt durch die Blase (`HautWerte.schnitt`, statt Verdunsten). Haut (`HautWerte.dunkel`, Grund in
-  `kanteFarbe`, Spiegelung wie in der Nacht) und Linien (`Szene.dunkel`) zeichnen die Flächen selbst; Marke und Hinweis über
-  `body.wende-an`. Die Front schaut seit `49df2266` nach −x (`VORN`, `ANSICHT_WINKEL`, `imFeld`/`ausFeld`). Fallen: Der Zeichner der
-  Haut löscht vor jedem `render` (`autoClear`), für den Grund ist es dort kurz aus; `HautWerte.hinten` ist der Anteil der Rückseite der
-  Blase, nicht die dunklen Flächen. Filme Bild für Bild: `__ozzy.film(true)`, `__ozzy.bild(1/60)` (`scripts/ozzy/wenden-film.mjs`);
-  Haken `dunkelBei(x, y)`, `wandMitte(achse)`.
+- **Rückseite (S4):** `hintenRechnen` (main.ts) gibt je Bild die harte Kante der Blaupause als Fläche (`kanteMitHeim`, wie `sigmaWerte`
+  in `/editor`), gegen „vorn“ (`heimJetzt`: eingerastet die Vorderseite der Ansicht, im Raum seine Hausansicht, bei Fahrten gedreht).
+  Haut (`HautWerte.dunkel`, Grund in `kanteFarbe`, Spiegelung wie in der Nacht) und Linien (`Szene.dunkel`) zeichnen sie selbst (bis zu
+  vier Flächen sind möglich); Marke und Hinweis über `body.wende-an`. Beim Einrasten wandert die Zeichnung der Wand zur Mitte
+  (`blattAchsen`, `flaechenJetzt`), und `schnittRechnen` schiebt ein Blatt durch die Blase (`HautWerte.schnitt`). Die Front schaut seit
+  `49df2266` nach −x (`VORN`, `ANSICHT_WINKEL`, `imFeld`/`ausFeld`). Fallen: Der Zeichner der Haut löscht vor jedem `render`
+  (`autoClear`), für den Grund ist es dort kurz aus; `HautWerte.hinten` ist der Anteil der Rückseite der Blase, nicht die dunkle Fläche.
+  Filme Bild für Bild: `__ozzy.film(true)`, `__ozzy.bild(1/60)` (`scripts/ozzy/wenden-film.mjs`); Haken `dunkelBei(x, y)`.
 - **Lasso (S5):** in der Linien-Studie (`verhalten.ts`: `lassoDruecken`, `lasso`, `lassoAus`, `punkteImLasso` in `auswahl.ts`); Ozzy ruft
   es mit dem Werkzeug `lasso` vor allen anderen Griffen (auch vor dem Wenden mit ⇧). Die Auswahl im Netz ist je Fläche; damit ein an
   einer Wand umfahrener Punkt im Werk gewählt bleibt, nimmt das Lasso alle Punkte desselben Werkpunkts mit (`Raum.gleiche`, in
