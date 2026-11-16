@@ -136,9 +136,22 @@ let gewendet = false;
 let schwung: { vg: number; vn: number } | null = null;
 /** so lange (s) klingt der Schwung ab; so weit voraus (Zeitkonstante) wird das Ziel gerechnet */
 const SCHWUNG_TAU = 0.24;
+/**
+ * Wenden (S4b, Florian 16.11.): ⇧ + Ziehen in einer eingerasteten Ansicht dreht das Blatt wie eine Karte (die Kamera bleibt parallel, die
+ * Linien bleiben zu sehen); beim Loslassen gleitet es zurück oder, über die Hälfte gedreht, auf die Rückseite. Dort ist der Grund
+ * schwarz und die Linien weiß; das Schwarz fließt als harte, leicht wellige Kante herein.
+ */
+let wenden: { x: number; y: number; g0: number; n0: number; a: Ansicht } | null = null;
+/** die Linien der Ansicht bleiben zu sehen, solange gewendet wird und die Fahrt danach läuft */
+let wendenSicht = false;
+/** das Schwarz der Rückseite: wie weit hereingeflossen (0 … 1, Feder), aus welcher Richtung (−1 von links, +1 von rechts), Zeit der Welle */
+const wende = { ton: 0, v: 0, richtung: 1, zeit: 0, zuletzt: '' };
+let letzterUmschaltKlick = { t: 0, x: 0, y: 0 };
+/** die Blickrichtung der Vorderseite einer Ansicht (Seite schaut nach −z, Front nach +x, Top nach −y) */
+const VORN: Record<'seite' | 'front' | 'top', Vector3> = { seite: new Vector3(0, 0, -1), front: new Vector3(1, 0, 0), top: new Vector3(0, -1, 0) };
 let flach = 0;
 /** Fahrt in eine Ansicht (Gier, Neigung, flach); `nurFlach`: nur die Parallele löst sich, die Drehung gehört der Hand (S4) */
-let ansichtFahrt: { von: [number, number, number]; nach: [number, number, number]; t: number; nurFlach?: boolean } | null = null;
+let ansichtFahrt: { von: [number, number, number]; nach: [number, number, number]; t: number; nurFlach?: boolean; senke?: number; vonAnsicht?: Ansicht } | null = null;
 let tasteGehalten: { taste: string; seit: number; vorher: Ansicht } | null = null;
 /** Drehung und Neigung jeder Ansicht (Grad), als Ziel der ganzen Kamera */
 const ANSICHT_WINKEL: Record<Ansicht, [number, number] | null> = { raum: null, seite: [0, 0], front: [-90, 0], top: [0, 90] };
@@ -1095,6 +1108,8 @@ function bild(dt: number): boolean {
     }
     aktiv = true;
   }
+  // nach dem Wenden: Die Linien der Ansicht sind wieder nur nahe ihrer Achse zu sehen, sobald die Fahrt zu Ende ist
+  if (wendenSicht && !wenden && !ansichtFahrt) wendenSicht = false;
   // Fahrt in eine Ansicht: Drehen und Parallele zugleich, die Größe bleibt
   if (ansichtFahrt) {
     ansichtFahrt.t += dt / Math.max(0.05, bw.fahrt);
@@ -1106,7 +1121,9 @@ function bild(dt: number): boolean {
       nutzer.gier = g0 + (g1 - g0) * e;
       nutzer.neigung = n0 + (n1 - n0) * e;
     }
-    flach = f0 + (f1 - f0) * e;
+    // von einer eingerasteten Ansicht in eine andere: unterwegs löst sich das Blatt ein Stück (die Blase kommt zurück und verdunstet
+    // wieder), wie wenn man von Hand herausdreht und einrastet; sonst wäre mitten in der Drehung nichts zu sehen
+    flach = Math.max(0, f0 + (f1 - f0) * e - (ansichtFahrt.senke ?? 0) * Math.sin(Math.PI * e));
     if (t >= 1) ansichtFahrt = null;
     aktiv = true;
   }
@@ -1273,6 +1290,7 @@ function bild(dt: number): boolean {
   const ta = performance.now();
   anzeige.zeichnen(szene);
   mess.teile[4] = performance.now() - ta;
+  if (wendeZeigen(dt)) aktiv = true;
   maulUiZeigen();
   // Text
   gruss.classList.toggle('weg', !(zustand === 'blatt' && blatt.leer));
@@ -1448,7 +1466,7 @@ function linienDerAnsicht(vp: Matrix4): void {
   const blick = new Vector3();
   kam.aktiv.getWorldDirection(blick);
   const achse = ansicht === 'seite' ? new Vector3(0, 0, -1) : ansicht === 'front' ? new Vector3(1, 0, 0) : new Vector3(0, -1, 0);
-  const t = Math.min(1, Math.max(0, (Math.abs(blick.dot(achse)) - 0.97) / 0.025));
+  const t = wendenSicht ? 1 : Math.min(1, Math.max(0, (Math.abs(blick.dot(achse)) - 0.97) / 0.025));
   const s = flach * flach * t * t * (3 - 2 * t);
   if (s < 0.01) return;
   if (werkGezeigt && ansicht === 'seite') return;
@@ -1635,9 +1653,18 @@ function flaechenJetzt(vp: Matrix4, m: Moment): { flaechen: Flaeche[]; stabil: b
     const blick = new Vector3();
     kam.aktiv.getWorldDirection(blick);
     const ach = ansicht === 'seite' ? new Vector3(0, 0, -1) : ansicht === 'front' ? new Vector3(1, 0, 0) : new Vector3(0, -1, 0);
-    const t = Math.min(1, Math.max(0, (Math.abs(blick.dot(ach)) - 0.97) / 0.025));
+    const t = wendenSicht ? 1 : Math.min(1, Math.max(0, (Math.abs(blick.dot(ach)) - 0.97) / 0.025));
     const st = flach * flach * t * t * (3 - 2 * t);
     if (st >= 0.01) liste.push(ebene(ansicht, ansicht === 'seite' ? 0 : ansicht === 'front' ? e.cx : e.cy, vp, st, 1, false));
+  }
+  // auf dem Weg in eine andere Ansicht: Das Blatt, von dem die Fahrt kommt, dreht sich mit (wie eine Karte) und verblasst in der
+  // ersten Hälfte, während Raum und Blase kommen (sonst wäre zu Beginn der Fahrt nichts zu sehen)
+  const fv = ansichtFahrt;
+  if (fv && (fv.senke ?? 0) > 0 && fv.vonAnsicht && fv.vonAnsicht !== 'raum' && fv.vonAnsicht !== ansicht) {
+    const u = Math.min(1, fv.t / 0.45);
+    const st = flach * flach * (1 - u * u * (3 - 2 * u));
+    const a = fv.vonAnsicht;
+    if (st >= 0.01) liste.push(ebene(a, a === 'seite' ? 0 : a === 'front' ? e.cx : e.cy, vp, st, 1, false));
   }
   // die drei flachen Felder
   if (vier > 0.02) {
@@ -1921,25 +1948,96 @@ function ansichtSetzen(ziel: Ansicht, hinten = false): void {
   let g0 = nutzer.gier;
   while (g0 - g1 > Math.PI) g0 -= 2 * Math.PI;
   while (g1 - g0 > Math.PI) g0 += 2 * Math.PI;
-  ansichtFahrt = { von: [g0, nutzer.neigung, flach], nach: [g1, n1, w ? 1 : 0], t: 0 };
+  // dieselbe Ansicht von der anderen Seite: Das Blatt wendet sich (die Linien bleiben beim Drehen zu sehen)
+  if (ziel === ansicht && ziel !== 'raum' && flach > 0.5) wendenSicht = true;
+  const winkel = Math.hypot(g1 - g0, n1 - nutzer.neigung);
+  const senke = w && flach > 0.5 && !wendenSicht ? Math.min(0.7, (0.7 * winkel) / (Math.PI / 2)) : 0;
+  ansichtFahrt = { von: [g0, nutzer.neigung, flach], nach: [g1, n1, w ? 1 : 0], t: 0, senke, vonAnsicht: ansicht };
   ansicht = ziel;
   punktZug = null;
   anstossen();
 }
 
 /** die Ansicht (von den sechs: Seite, Front, Top und ihre Gegenseiten) nahe dieser Richtung (Gier, Neigung in rad von Hand), oder null */
-function ansichtNahe(gierHand: number, neigungHand: number): { a: Ansicht; hinten: boolean } | null {
+function ansichtNahe(gierHand: number, neigungHand: number, grenze = bw.einrasten): { a: Ansicht; hinten: boolean } | null {
   const g = ((werte.gier * Math.PI) / 180 + gierHand) * (180 / Math.PI);
   const n = ((werte.neigung * Math.PI) / 180 + neigungHand) * (180 / Math.PI);
   const nah = (a: number, b: number): number => Math.abs(((((a - b) % 360) + 540) % 360) - 180);
-  const grenze = bw.einrasten;
+  // die nächste der sechs Ansichten innerhalb der Grenze (Top und Unten: nur die Neigung zählt)
+  let best: { a: Ansicht; hinten: boolean } | null = null;
+  let bd = Infinity;
   for (const a of ['seite', 'front', 'top'] as const)
     for (const hinten of [false, true]) {
       const w = ansichtWinkel(a, hinten)!;
       const dn = Math.abs(n - w[1]);
-      if (a === 'top' ? dn < grenze : dn < grenze && nah(g, w[0]) < grenze) return { a, hinten };
+      const d = a === 'top' ? dn : Math.max(dn, nah(g, w[0]));
+      if (d < grenze && d < bd) {
+        bd = d;
+        best = { a, hinten };
+      }
     }
-  return null;
+  return best;
+}
+/** mit Schwung zieht eine Ansicht von weiter her an (Grad um das vorausberechnete Ziel) */
+const SCHWUNG_FANG = 20;
+
+/** sieht die Kamera gerade die Rückseite dieser Ansicht (gegen ihre Blickrichtung)? */
+function rueckseite(a: Ansicht): boolean {
+  if (a === 'raum') return false;
+  const blick = new Vector3();
+  kam.aktiv.getWorldDirection(blick);
+  return blick.dot(VORN[a]) < 0;
+}
+
+/** das Schwarz der Rückseite: Feder zum Ziel, die Kante als Vieleck mit Welle (clip-path); true, solange es sich bewegt */
+function wendeZeigen(dt: number): boolean {
+  // Wenden (das Blatt dreht sich wie eine Karte): schwarz, solange die Rückseite zu sehen ist. Fahrt in eine andere Ansicht: erst beim
+  // Ankommen auf einer Rückseite (unterwegs löst sich das Blatt, die Blase gehört aufs Weiß). Sonst: wie eingerastet.
+  const blattDa = ansicht !== 'raum' && vier < 0.5 && flach > 0.5;
+  const karte = wenden !== null || (ansichtFahrt !== null && wendenSicht);
+  const ankommen = ansichtFahrt === null || (ansichtFahrt.t > 0.5 && flach > 0.85);
+  const ziel = blattDa && (karte ? rueckseite(ansicht) : gewendet && ankommen) ? 1 : 0;
+  // Feder (leicht unterdämpft: die Kante schwappt ein wenig nach)
+  const k = 70;
+  const c = 2 * 0.72 * Math.sqrt(k);
+  wende.v += (k * (ziel - wende.ton) - c * wende.v) * dt;
+  wende.ton += wende.v * dt;
+  wende.zeit += dt;
+  const ruht = Math.abs(ziel - wende.ton) < 1e-3 && Math.abs(wende.v) < 1e-3;
+  if (ruht) {
+    wende.ton = ziel;
+    wende.v = 0;
+  }
+  const t = Math.max(0, Math.min(1, wende.ton));
+  document.body.classList.toggle('gewendet', t > 0.5);
+  let clip: string;
+  if (t < 0.001) clip = 'none';
+  else if (t > 0.999 && ruht) clip = 'full';
+  else {
+    // die Kante: senkrecht, in der Mitte vorauseilend (Meniskus), mit langen, weichen Wellen, die mitten im Fließen am stärksten sind
+    // (dicht abgetastet, damit sie flüssig wirkt und nicht gerissen)
+    const rand = 60;
+    const breite = W + 2 * rand;
+    const welle = 18 * Math.sin(Math.PI * t) + 0.5 * Math.abs(wende.v);
+    const punkte: string[] = [];
+    const n = Math.ceil((H + 20) / 8);
+    for (let i = 0; i <= n; i++) {
+      const y = -10 + ((H + 20) * i) / n;
+      const meniskus = 40 * Math.sin((Math.PI * i) / n) * Math.sin(Math.PI * t);
+      const w = welle * (Math.sin((2 * Math.PI * y) / 520 + wende.zeit * 3.2) + 0.4 * Math.sin((2 * Math.PI * y) / 270 - wende.zeit * 2.3) + 0.12 * Math.sin((2 * Math.PI * y) / 150 + wende.zeit * 4.1));
+      const xKante = wende.richtung < 0 ? -rand + t * breite + meniskus + w : W + rand - t * breite - meniskus + w;
+      punkte.push(`${xKante.toFixed(1)}px ${y.toFixed(1)}px`);
+    }
+    const aussen = wende.richtung < 0 ? [`${-rand}px ${H + 10}px`, `${-rand}px -10px`] : [`${W + rand}px ${H + 10}px`, `${W + rand}px -10px`];
+    clip = `polygon(${[...punkte, ...aussen].join(', ')})`;
+  }
+  if (clip !== wende.zuletzt) {
+    wende.zuletzt = clip;
+    wendeEl.style.display = clip === 'none' ? 'none' : 'block';
+    wendeEl.style.clipPath = clip === 'none' || clip === 'full' ? 'none' : clip;
+    document.body.classList.toggle('wende-an', clip !== 'none');
+  }
+  return !ruht;
 }
 
 /** nahe einer der sechs Ansichten: einrasten (nach dem Drehen von Hand) */
@@ -2136,6 +2234,15 @@ leinwandLinien.addEventListener('pointermove', (e) => {
     anstossen();
     return;
   }
+  if (wenden) {
+    if (wenden.a === 'top') nutzer.neigung = Math.max(NEIGUNG_UNTEN, Math.min(NEIGUNG_OBEN, wenden.n0 + ((y - wenden.y) * Math.PI) / 520));
+    else nutzer.gier = wenden.g0 - ((x - wenden.x) * Math.PI) / 520;
+    // das Schwarz kommt von der Seite, zu der die Hand zieht
+    const d = wenden.a === 'top' ? y - wenden.y : x - wenden.x;
+    if (Math.abs(d) > 2) wende.richtung = d > 0 ? -1 : 1;
+    anstossen();
+    return;
+  }
   // Freihand und Formen im Raum
   if (raumStrich) {
     const ereignisse = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [];
@@ -2260,6 +2367,25 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     anstossen();
     return;
   }
+  // ⇧ in einer eingerasteten Ansicht: wenden (ziehen dreht das Blatt; ⇧ + Doppelklick wendet ganz)
+  if (e.shiftKey && ansicht !== 'raum' && flach > 0.9 && vier < 0.5 && !bearbeiten.haengt) {
+    const jetzt = e.timeStamp;
+    if (jetzt - letzterUmschaltKlick.t < 350 && Math.hypot(x - letzterUmschaltKlick.x, y - letzterUmschaltKlick.y) < 8) {
+      letzterUmschaltKlick = { t: 0, x, y };
+      wende.richtung = 1;
+      wendenSicht = true;
+      ansichtSetzen(ansicht, !gewendet);
+      anstossen();
+      return;
+    }
+    letzterUmschaltKlick = { t: jetzt, x, y };
+    schwung = null;
+    ansichtFahrt = null;
+    wenden = { x, y, g0: nutzer.gier, n0: nutzer.neigung, a: ansicht };
+    wendenSicht = true;
+    anstossen();
+    return;
+  }
   // Linien des Werks: Hängt ein Tropfen am Zeiger, gilt das Drücken ihm; ins Leere im Raum (und im Feld des Raums) dreht es, in einer
   // flachen Ansicht zieht es einen Rahmen (E2)
   // Freihand und Formen: auf einer Fläche beginnt der Strich oder der Aufzug (daneben dreht es weiter)
@@ -2347,6 +2473,13 @@ const loslassen = (e: PointerEvent): void => {
     anstossen();
     return;
   }
+  if (wenden) {
+    const a = wenden.a;
+    wenden = null;
+    ansichtSetzen(a, rueckseite(a));
+    anstossen();
+    return;
+  }
   // Freihand und Formen: geschlossen wird es eine Linie auf der Haut (wie eine Form mit P)
   if (raumStrich || raumAufzug) {
     const pfad = raumStrich ? strichPfad(raumStrich.st, freihandWerte) : aufzugPfad(raumAufzug!.art, raumAufzug!.von, raumAufzug!.bis, e.shiftKey, e.altKey);
@@ -2361,9 +2494,12 @@ const loslassen = (e: PointerEvent): void => {
     // mit Schwung: Wohin käme die Drehung? Liegt das nahe einer Ansicht, rastet sie dort ein; sonst klingt sie aus (S4)
     const ruht = e.timeStamp - drehen.t > 60;
     const v = ruht ? { vg: 0, vn: 0 } : { vg: drehen.vg, vn: drehen.vn };
-    const ziel = ansichtNahe(nutzer.gier + v.vg * SCHWUNG_TAU, Math.max(NEIGUNG_UNTEN, Math.min(NEIGUNG_OBEN, nutzer.neigung + v.vn * SCHWUNG_TAU)));
+    const gVor = nutzer.gier + v.vg * SCHWUNG_TAU;
+    const nVor = Math.max(NEIGUNG_UNTEN, Math.min(NEIGUNG_OBEN, nutzer.neigung + v.vn * SCHWUNG_TAU));
+    const schnell = Math.hypot(v.vg, v.vn) > 0.6;
+    const ziel = ansichtNahe(gVor, nVor) ?? (schnell ? ansichtNahe(gVor, nVor, SCHWUNG_FANG) : null);
     if (ziel) ansichtSetzen(ziel.a, ziel.hinten);
-    else if (Math.hypot(v.vg, v.vn) > 0.6) schwung = { vg: v.vg, vn: v.vn };
+    else if (schnell) schwung = { vg: v.vg, vn: v.vn };
   }
   if (punktZug && werkGezeigt) {
     // losgelassen, bevor der Griff beginnen konnte: ein Klick (die Auswahl steht); sonst endet der Zug im Werk
@@ -2518,6 +2654,14 @@ window.addEventListener('keydown', (e) => {
   } else if (k === ' ') {
     e.preventDefault();
     nochEinmal();
+  } else if (e.shiftKey && (e.code === 'Digit1' || e.code === 'Digit3' || e.code === 'Digit7' || e.code === 'Numpad1' || e.code === 'Numpad3' || e.code === 'Numpad7') && zustand !== 'blatt') {
+    // ⇧ + 1/3/7: die Ansicht von der Gegenseite (ist sie es schon, wendet es zurück)
+    if (e.repeat) return;
+    if (vierZiel > 0.5) vierUmschalten(false);
+    const ziel: Ansicht = e.code.endsWith('1') ? 'seite' : e.code.endsWith('3') ? 'front' : 'top';
+    wende.richtung = 1;
+    wendenSicht = ansicht === ziel;
+    ansichtSetzen(ziel, ansicht === ziel ? !gewendet : true);
   } else if ((k === '1' || k === '3' || k === '7' || k === '0') && zustand !== 'blatt') {
     if (e.repeat) return;
     if (vierZiel > 0.5) vierUmschalten(false);
@@ -2647,6 +2791,7 @@ $('knopf-neu').addEventListener('click', () => {
 // ---------- Maul und Pose (Phase 5.4, E8) ----------
 
 const maulTropfen = $<HTMLButtonElement>('maul-tropfen');
+const wendeEl = $<HTMLDivElement>('wende');
 const fressen = $<HTMLElement>('fressen');
 const fressenKnopf = $<HTMLButtonElement>('fressen-knopf');
 const fressenMaul = $<HTMLInputElement>('fressen-maul');
@@ -2878,7 +3023,7 @@ const haken = {
     return b;
   },
   /** Blick: Ansicht, gewendet, wie flach, Gier und Neigung von Hand (rad), Maßstab (Bildpunkte je Pixel der Welt), Schwung */
-  blick: () => ({ ansicht, gewendet, flach, vier, gier: nutzer.gier, neigung: nutzer.neigung, massstab: massstab.jetzt * nutzer.zoom, schwung: schwung !== null, fahrt: ansichtFahrt !== null }),
+  blick: () => ({ ansicht, gewendet, flach, vier, gier: nutzer.gier, neigung: nutzer.neigung, massstab: massstab.jetzt * nutzer.zoom, schwung: schwung !== null, fahrt: ansichtFahrt !== null, wendet: wenden !== null, schwarz: wende.ton, rueckseite: rueckseite(ansicht) }),
   /** P an oder aus (wie die Taste P) */
   stift: (an: boolean): boolean => {
     stiftImRaum(an);

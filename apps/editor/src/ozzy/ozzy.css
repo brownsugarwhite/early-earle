@@ -41,6 +41,26 @@ body {
 #linien {
   cursor: none;
 }
+/* S4b, das Wenden: die Rückseite des Blatts. Eine weiße Fläche, die die Farben umkehrt (Papier schwarz, Linien weiß); ihr Rand fließt
+   als harte, leicht wellige Kante herein (clip-path aus main.ts) */
+#wende {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  mix-blend-mode: difference;
+  pointer-events: none;
+  display: none;
+}
+/* solange die Rückseite (auch nur zum Teil) zu sehen ist, kehren Marke und Hinweis ihre Farbe mit ihr um: Auf Weiß stehen sie wie
+   immer (Tinte, leise), auf Schwarz hell, und die Kante läuft durch sie hindurch */
+body.wende-an #marke {
+  color: #e0e5e8;
+  mix-blend-mode: difference;
+}
+body.wende-an #hinweis {
+  color: #67696b;
+  mix-blend-mode: difference;
+}
 
 /* ---------- Gruß ---------- */
 #gruss {

@@ -5,7 +5,10 @@
 //      die Front rastet ein.
 //   3  Gegenseiten: nahe der Front von hinten und der Seite von rechts rastet es dort ein, gewendet.
 //   4  Schwung: kurz angeschoben, bevor die Ansicht erreicht ist; der Schwung trägt hinein, und sie rastet ein.
-//   5  Keine Fehler in der Konsole.
+//   5  Wenden (S4b): In der eingerasteten Seite ⇧ + Ziehen um gut 50°: das Blatt dreht sich, beim Loslassen gleitet es zurück (nicht
+//      gewendet, kein Schwarz). ⇧ + Ziehen über die Hälfte (gut 110°): das Schwarz fließt schon im Zug herein, losgelassen rastet die
+//      Seite von rechts ein (gewendet, ganz schwarz). ⇧ + Doppelklick wendet zurück; ⇧ + 3: die Front von hinten.
+//   6  Keine Fehler in der Konsole.
 // Aufruf aus apps/editor: GPU=1 [NAME=…] node scripts/pruefen/ozzy-ansichten-fenster.mjs [ordner für Bilder]
 import { chromium } from '@playwright/test';
 
@@ -90,6 +93,50 @@ ok('3 Gegenseiten: Front von hinten und Seite von rechts rasten gewendet ein', b
   const b4 = await O('blick');
   ok('4 Schwung: kurz angeschoben, die Front von hinten rastet ein', b4.ansicht === 'front' && b4.gewendet && b4.flach > 0.99, `vor dem Anschieben ${lage(b)}; danach ${lage(b4)}`);
 }
-ok('5 keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));
+// 5 Wenden mit ⇧ (in der Seite)
+{
+  await s.keyboard.press('1');
+  await s.waitForTimeout(1400);
+  const wende = async (dx, n = 25) => {
+    await s.mouse.move(700, 820);
+    await s.keyboard.down('Shift');
+    await s.mouse.down();
+    let mitte = null;
+    for (let k = 1; k <= n; k++) {
+      await s.mouse.move(700 + (dx * k) / n, 820);
+      await s.waitForTimeout(30);
+      if (k === n) {
+        await s.waitForTimeout(350);
+        mitte = await O('blick');
+        if (Math.abs(dx) > 200) await bild('6-wenden-im-zug');
+      }
+    }
+    await s.mouse.up();
+    await s.keyboard.up('Shift');
+    await s.waitForTimeout(1500);
+    return mitte;
+  };
+  const w1 = await wende(150);
+  const a1 = await O('blick');
+  const w2 = await wende(330);
+  const a2 = await O('blick');
+  await bild('7-gewendet');
+  // ⇧ + Doppelklick: zurück
+  await s.keyboard.down('Shift');
+  await s.mouse.dblclick(700, 820);
+  await s.keyboard.up('Shift');
+  await s.waitForTimeout(1500);
+  const a3 = await O('blick');
+  await s.keyboard.press('Shift+Digit3');
+  await s.waitForTimeout(1500);
+  const a4 = await O('blick');
+  await bild('8-front-hinten');
+  ok(
+    '5 Wenden: halb gedreht gleitet zurück; über die Hälfte rastet die Gegenseite schwarz ein; ⇧ + Doppelklick zurück; ⇧ + 3 Front von hinten',
+    !!w1 && w1.wendet && a1.ansicht === 'seite' && !a1.gewendet && a1.schwarz < 0.01 && !!w2 && w2.rueckseite && w2.schwarz > 0.5 && a2.ansicht === 'seite' && a2.gewendet && a2.schwarz > 0.99 && !a3.gewendet && a3.schwarz < 0.01 && a4.ansicht === 'front' && a4.gewendet && a4.schwarz > 0.99,
+    `halb: im Zug Gier ${z1(grad(w1?.gier ?? 0))}°, danach ${lage(a1)}, Schwarz ${z1(a1.schwarz)}; über die Hälfte: im Zug Rückseite ${w2?.rueckseite}, Schwarz ${z1(w2?.schwarz ?? 0)}, danach ${lage(a2)}, Schwarz ${z1(a2.schwarz)}; ⇧ + Doppelklick: ${lage(a3)}; ⇧ + 3: ${lage(a4)}`,
+  );
+}
+ok('6 keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));
 console.log(schlecht ? `${schlecht} nicht erfüllt` : 'alles gut');
 await browser.close();
