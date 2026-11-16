@@ -424,6 +424,22 @@ export class Verhalten {
     this.federnAnlegen();
   }
 
+  /**
+   * Das Netz von außen ersetzen (Ozzy: Freihand, Formen, Mülleimer); der Stand davor kommt auf den Stapel für ⌘Z. Eine angefangene
+   * Linie mit P wird vorher abgebrochen.
+   */
+  netzErsetzen(neu: Netz): void {
+    if (this.werk.entwurf()) this.werk.abbrechen();
+    this.stiftZug = null;
+    this.zurueck.push(netzKopie(this.netz));
+    this.netz = neu;
+    this.tropfen = [];
+    this.griff = null;
+    this.auswahlLeeren();
+    this.wellen = [];
+    this.abtasten();
+  }
+
   zuruecksetzen(): void {
     if (this.werk.entwurf()) this.werk.abbrechen();
     this.stiftZug = null;

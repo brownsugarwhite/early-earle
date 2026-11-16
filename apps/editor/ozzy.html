@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Ozzy</title>
+    <link rel="stylesheet" href="./src/ozzy/ozzy.css" />
+  </head>
+  <body>
+    <div id="buehne">
+      <canvas id="haut"></canvas>
+      <div id="gruss">draw something</div>
+      <canvas id="linien"></canvas>
+    </div>
+    <button type="button" id="marke" aria-expanded="false" title="Menü und Feinregler (⌘,)">Ozzy</button>
+    <div id="hinweis"></div>
+    <span id="info"></span>
+    <aside id="regler" hidden>
+      <div class="regler-kopf">
+        <span class="regler-titel">Feinregler</span>
+        <span id="fassungen" aria-label="Fassung der Haut (M)"></span>
+      </div>
+      <div id="regler-liste"></div>
+      <div class="regler-knoepfe">
+        <button type="button" id="knopf-neu">Neu</button>
+        <button type="button" id="knopf-grundwerte">Grundwerte</button>
+        <button type="button" id="knopf-kopieren">Werte kopieren</button>
+      </div>
+    </aside>
+    <script type="module" src="./src/ozzy/main.ts"></script>
+  </body>
+</html>

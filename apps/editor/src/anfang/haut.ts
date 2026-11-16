@@ -622,7 +622,7 @@ export class Haut {
    * Bild zeichnen: die Hauptansicht, dazu (Viereransicht) weitere Felder mit eigener Kamera, nur die Blase, ruhig.
    * Felder in Gerätepunkten, Ursprung oben links.
    */
-  zeichnen(kamera: PerspectiveCamera, w: HautWerte, felder: { kamera: Camera; x: number; y: number; b: number; h: number }[] = []): void {
+  zeichnen(kamera: Camera, w: HautWerte, felder: { kamera: Camera; x: number; y: number; b: number; h: number }[] = []): void {
     const r = this.renderer;
     const durch = DURCHSICHTIG[w.fassung]!;
     const setzen = (m: ShaderMaterial, anteil: number): void => {

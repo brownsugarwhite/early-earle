@@ -39,7 +39,7 @@ function werteSchreiben(w: Werte): void {
   }
 }
 
-const REGLER: { gruppe: string; k: keyof Werte; name: string; min: number; max: number; schritt: number }[] = [
+export const REGLER: { gruppe: string; k: keyof Werte; name: string; min: number; max: number; schritt: number }[] = [
   { gruppe: 'Rahmen', k: 'rahmenDauer', name: 'bis zur Rückwand (s)', min: 0.3, max: 3, schritt: 0.05 },
   { gruppe: 'Rahmen', k: 'ruck', name: 'losgerissen (1 = gleichmäßig)', min: 0.5, max: 5, schritt: 0.05 },
   { gruppe: 'Blase wächst von der Mitte', k: 'fuss0', name: 'Größe am Anfang', min: 0.05, max: 1, schritt: 0.01 },

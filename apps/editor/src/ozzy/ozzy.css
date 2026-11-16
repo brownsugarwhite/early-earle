@@ -1,0 +1,389 @@
+/* Ozzy (16.11.2026): Designsystem „liquid drop“. Papier, Tinte, Haarlinien; Lobster für Gruß und Namen (Florian, 15.11.) */
+@font-face {
+  font-family: 'Lobster';
+  src: url('../../../../assets/fonts/lobster/Lobster-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+:root {
+  --tinte: #1f1a17;
+  --leise: rgba(31, 26, 23, 0.46);
+  --haar: rgba(31, 26, 23, 0.16);
+  --papier: #ffffff;
+  --gruen: #b9d1b4;
+  --feder: cubic-bezier(0.22, 1.18, 0.36, 1);
+  color-scheme: light;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--papier);
+  color: var(--tinte);
+  font: 12px/1.4 system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+#buehne {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+#haut,
+#linien {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+#linien {
+  cursor: none;
+}
+
+/* ---------- Gruß ---------- */
+#gruss {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  font-family: 'Lobster', 'Iowan Old Style', Georgia, serif;
+  font-size: 54px;
+  letter-spacing: 0.005em;
+  color: var(--tinte);
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  transition:
+    opacity 420ms ease,
+    filter 420ms ease,
+    transform 520ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+#gruss.weg {
+  opacity: 0;
+  filter: blur(3px);
+  transform: translate(-50%, -56%);
+}
+
+/* ---------- Leiste ---------- */
+#leiste {
+  position: fixed;
+  left: 50%;
+  top: calc(46% + 52px);
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 9px 7px;
+  border: 0.5px solid var(--haar);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--papier) 90%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition:
+    top 620ms var(--feder),
+    box-shadow 300ms ease;
+  z-index: 3;
+}
+#leiste.oben {
+  top: 14px;
+}
+#leiste .werkzeug {
+  position: relative;
+  width: 34px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--tinte);
+  cursor: pointer;
+  padding: 0;
+  border-radius: 999px;
+}
+#leiste .werkzeug svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.05;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  transition: stroke-width 260ms var(--feder);
+}
+#leiste .werkzeug svg .voll {
+  fill: currentColor;
+}
+#leiste .werkzeug svg .duenn {
+  stroke-width: 0.55;
+}
+#leiste .werkzeug:hover:not(:disabled) svg {
+  stroke-width: 1.55;
+}
+#leiste .werkzeug:disabled {
+  opacity: 0.26;
+  cursor: default;
+}
+#leiste .klapp-pfeil {
+  position: absolute;
+  right: 0;
+  bottom: 4px;
+  width: 8px;
+  height: 8px;
+}
+#leiste .klapp-pfeil svg {
+  width: 8px;
+  height: 8px;
+  stroke-width: 0.9;
+}
+#leiste .trenner {
+  width: 0.5px;
+  height: 18px;
+  margin: 0 5px;
+  background: var(--haar);
+}
+.leisten-tropfen {
+  position: absolute;
+  left: 0;
+  bottom: 3px;
+  width: 4.6px;
+  height: 4.6px;
+  border-radius: 50%;
+  background: var(--tinte);
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+/* Formen: ein kleiner Tropfen, der sich unter dem Knopf dehnt */
+#leiste .klapp {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 70px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 2px;
+  border: 0.5px solid var(--haar);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--papier) 94%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transform-origin: 50% 0;
+  animation: tropfen-auf 420ms var(--feder);
+}
+#leiste .klapp[hidden] {
+  display: none;
+}
+@keyframes tropfen-auf {
+  from {
+    transform: scale(0.35, 0.12);
+    opacity: 0;
+    border-radius: 50%;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* ---------- Marke und Menü ---------- */
+#marke {
+  position: fixed;
+  left: 16px;
+  top: 10px;
+  font-family: 'Lobster', Georgia, serif;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--tinte);
+  background: none;
+  border: 0;
+  padding: 4px 6px;
+  cursor: pointer;
+  z-index: 4;
+  transition: transform 300ms var(--feder);
+}
+#marke:hover {
+  transform: scale(1.06);
+}
+#hinweis {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  color: var(--leise);
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+}
+#info {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  color: var(--leise);
+  font-variant-numeric: tabular-nums;
+  display: none;
+}
+body.info #info {
+  display: block;
+}
+
+/* ---------- Feinregler ---------- */
+#regler {
+  position: fixed;
+  top: 52px;
+  left: 14px;
+  bottom: 44px;
+  width: 268px;
+  overflow: auto;
+  background: color-mix(in srgb, var(--papier) 95%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 0.5px solid var(--haar);
+  border-radius: 14px;
+  padding: 10px 14px 12px;
+  box-sizing: border-box;
+  z-index: 4;
+  transform-origin: 20px 0;
+  animation: tropfen-auf 460ms var(--feder);
+}
+#regler[hidden] {
+  display: none;
+}
+.regler-kopf {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.regler-titel {
+  font-family: 'Lobster', Georgia, serif;
+  font-size: 18px;
+}
+#fassungen {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+#regler h2 {
+  font-family: 'Lobster', Georgia, serif;
+  font-weight: 400;
+  font-size: 16px;
+  margin: 14px 0 2px;
+}
+#regler details {
+  border-top: 0.5px solid var(--haar);
+  padding: 2px 0;
+}
+#regler summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 5px 0;
+  color: var(--tinte);
+}
+#regler summary::-webkit-details-marker {
+  display: none;
+}
+#regler summary::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin: 0 7px 1px 1px;
+  border-radius: 50%;
+  background: var(--tinte);
+  transition: transform 300ms var(--feder);
+}
+#regler details[open] summary::before {
+  transform: scale(1.6);
+}
+#regler label {
+  display: grid;
+  grid-template-columns: 1fr 48px;
+  gap: 0 6px;
+  align-items: center;
+  margin: 3px 0 5px;
+}
+#regler label.anders > span:first-child::after {
+  content: ' ·';
+  color: var(--tinte);
+}
+#regler label span.zahl {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--leise);
+}
+#regler input[type='range'] {
+  grid-column: 1 / 3;
+  width: 100%;
+  margin: 2px 0 0;
+  height: 12px;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+}
+#regler input[type='range']::-webkit-slider-runnable-track {
+  height: 0.5px;
+  background: var(--tinte);
+}
+#regler input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.25px;
+  border-radius: 50%;
+  background: var(--tinte);
+  transition: transform 260ms var(--feder);
+}
+#regler input[type='range']:hover::-webkit-slider-thumb,
+#regler input[type='range']:active::-webkit-slider-thumb {
+  transform: scale(1.7);
+}
+#regler input[type='range']::-moz-range-track {
+  height: 0.5px;
+  background: var(--tinte);
+}
+#regler input[type='range']::-moz-range-thumb {
+  width: 7px;
+  height: 7px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--tinte);
+}
+.regler-knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+button {
+  font: inherit;
+  color: var(--tinte);
+  background: transparent;
+  border: 0.5px solid var(--haar);
+  border-radius: 999px;
+  padding: 2px 9px;
+  cursor: pointer;
+}
+#regler button:hover {
+  border-color: var(--tinte);
+}
+#regler button[aria-pressed='true'] {
+  background: var(--tinte);
+  color: var(--papier);
+  border-color: var(--tinte);
+}
+@media (max-width: 640px) {
+  #gruss {
+    font-size: 34px;
+  }
+  #hinweis {
+    display: none;
+  }
+}
+body.bild #leiste,
+body.bild #marke,
+body.bild #hinweis,
+body.bild #regler {
+  display: none;
+}
