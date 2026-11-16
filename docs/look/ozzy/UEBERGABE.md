@@ -230,6 +230,12 @@ gezeichneten Kugel (nur die Linie der Mitte) fasst er deshalb nur nahe am Umriss
 
 ## Was noch fehlt (Stand 16.11. nachmittags; Florian: „wenn ich es mir ansehe fehlt noch einiges“)
 
+**Seine Rückmeldung danach und der Plan, wie es weitergeht (zur Freigabe):**
+[`docs/plans/2026-11-16-ozzy-weiter.md`](../../plans/2026-11-16-ozzy-weiter.md): Schritte S1 bis S13 (Messen, Seifenhaut gleitet, Tempo,
+Drehen und Einrasten in jeder Ansicht mit Wenden, Lasso L, Richtungen und Animationen wie in der Studie, Verdecktes grün, P statt L,
+Start ohne Linie, Auffalten der Ecke, Sichern, iPad mit Stift, liquid drop), Ideen und sechs Fragen. Die Liste unten bleibt als
+Bestand.
+
 Phasen 0 bis 6 sind gebaut (Phase 2 und 4 als Teil von Stand 0); im Plan bleibt nur **Phase 7** (Feinschliff, Tempo, iPhone). Offen ist
 aber mehr, nach seinem Auftrag (Plan Abschnitt 3, A1 bis A18) geordnet. Was er beim Ansehen vermisst, entscheidet die Reihenfolge.
 

@@ -20,7 +20,9 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   Linien des Werks auf Wänden, Feldern und eingerastet, bedient wie in der Linien-Studie (`werkBlatt.ts`: die Schnittstelle `Raum` der
   Studie aus dem Werk); 5.3 P (Form und Abzweigung) und Freihand; 5.4 Maul (Tropfen „Maul“), „Fressen“ mit Reglern, Pose wie im
   Prüffenster. Phase 6: Pinsel „Ziehen“ an der Blase (Einfluss O des Werks am nächsten Punkt einer Linie; keine Höhenlinien über
-  der Blasenhaut, Florian: „too much“). Phasen 5 und 6 stehen. **Florian (16.11.): Am Rechenkern ändert Ozzy nichts und optimiert nichts, das macht die Kern-Sitzung; kein Unterschied
+  der Blasenhaut, Florian: „too much“). Phasen 5 und 6 stehen. **Wie es weitergeht (zur Freigabe):**
+  [`docs/plans/2026-11-16-ozzy-weiter.md`](docs/plans/2026-11-16-ozzy-weiter.md) (eine Bedienung für jede Ansicht, Lasso L, Wenden,
+  Auffalten der Ecke, Seifenhaut ohne Sprünge, Tempo, P statt L, iPad mit Stift). **Florian (16.11.): Am Rechenkern ändert Ozzy nichts und optimiert nichts, das macht die Kern-Sitzung; kein Unterschied
   zwischen seinen Kurven und dem Modell wie in Sitzung 4.**
 - **Der Kern** („Kurven als Wahrheit“, seit 05.11.): Linien (Loops mit Bézier-Punkten und Griffen, Kreuzungen, Kante an/aus) sind
   die Wahrheit; darunter ein dichtes Dreiecksnetz, dessen Haut aus den Linien gerechnet wird; gespiegelt; Maul; Fressen-Pose.
