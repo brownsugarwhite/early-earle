@@ -227,7 +227,13 @@ const werkHaut = new WerkHaut();
  * Die Form im Werk: aus welcher Silhouette (Stand des Blatts) und wie viele Schritte für ⌘Z das Werk danach schon hatte (davor liegt
  * seine Startkugel, dorthin geht ⌘Z in Ozzy nicht).
  */
-let werkForm: { stand: number; zurueck: number; geladen?: string } | null = null;
+let werkForm: { stand: number; zurueck: number; geladen?: string; ohneLinie?: boolean } | null = null;
+/**
+ * S9 (zur Wahl, Florian 16.11.: „Könnte ich auch ohne starten wie im editor bei der 4. session“): `?ohneLinie=1` löscht nach dem Aufblasen
+ * die Linie der Mitte (ein Handgriff des Werks), sobald die Haut des Werks gezeigt wird; die Haut bleibt, wie sie ist, bis eine Linie kommt.
+ */
+let hautKopie: Float64Array | null = null;
+const OHNE_LINIE = new URLSearchParams(location.search).get('ohneLinie') === '1';
 /** Übergabe von der Blase: je Rechenpunkt des Werks drei Punkte der Blase und ihre Gewichte */
 let uebergabe: { koerper: Koerper; haut: typeof werk.haut; idx: Int32Array; gew: Float32Array; lagen: Float64Array } | null = null;
 /** zeigt die Seifenhaut die Haut des Werks; muss sie neu gerechnet werden (auch: in den Stufen der Ruhe); wann zuletzt geändert */
@@ -509,7 +515,7 @@ function aufwaermen(): void {
  */
 function werkFormAnlegen(): void {
   if (!silhouette) return;
-  if (werkForm && werkForm.stand === blatt.stand && (werkForm.geladen !== undefined || mitteLinie())) return;
+  if (werkForm && werkForm.stand === blatt.stand && (werkForm.geladen !== undefined || mitteLinie() || werkForm.ohneLinie)) return;
   const ab = abtasten(silhouette, 2);
   let x0 = Infinity;
   let x1 = -Infinity;
@@ -751,6 +757,18 @@ function werkBild(dt: number, m: Moment | null): boolean {
     if (werkHaut.nurDehnung) haut.dehnungErneuern();
     else haut.blaseErsetzen(werkHaut.netz);
     werkGezeigt = true;
+    // S9: ohne Linie an der Spiegelkante (zur Wahl): nach dem Aufblasen die Linie der Mitte löschen, einmal je Form
+    if (OHNE_LINIE && werkForm && !werkForm.ohneLinie && werkForm.geladen === undefined && !werk.zug) {
+      const m = werk.loops.find((l) => l.art === 'mitte');
+      if (m) {
+        werk.G.auswahl = [{ l: m.id, i: -1 }];
+        werk.loeschen();
+        werk.G.auswahl = [];
+        werk.anzeige.allesZeigen();
+      }
+      werkForm.ohneLinie = true;
+      werkForm.zurueck = werk.zurueck.length;
+    }
     aktiv = aktiv || schnalz || jetzt - werkZuletzt < 2500;
   }
   return aktiv;
@@ -3300,6 +3318,17 @@ const haken = {
   /** Die Haut des Werks, wie sie ist (Einheiten des Werks): Lagen und Dreiecke */
   werkRoh: () => ({ pos: Array.from(werk.haut.pos), tri: Array.from(werk.haut.tri) }),
   /** Größte Koordinate und nicht endliche Werte: der Haut des Werks (Einheiten des Werks) und ihrer Anzeige (Welt) */
+  /** S9: die Haut des Werks merken und wie weit sie sich seitdem bewegt hat (Einheiten des Werks; −1: anderes Netz) */
+  hautMerken: () => {
+    hautKopie = Float64Array.from(werk.haut.pos);
+  },
+  hautVersatz: () => {
+    const P = werk.haut.pos;
+    if (!hautKopie || hautKopie.length !== P.length) return -1;
+    let m = 0;
+    for (let i = 0; i < P.length; i++) m = Math.max(m, Math.abs(P[i]! - hautKopie[i]!));
+    return m;
+  },
   werkGrenzen: () => {
     const g = (P: ArrayLike<number>): { max: number; nichtEndlich: number } => {
       let max = 0;
