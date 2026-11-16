@@ -199,7 +199,10 @@ die der Front klappt um ihre Kante, der Boden nach unten), landet die Front **li
 Projektionsmethode 1 für die Front seit dem Tausch (sie schaut von +x, also von rechts: Methode 1 legt sie links hin). Die Felder liegen
 heute anders: Seite oben links, Front oben rechts, Top unten links, Raum unten rechts. Für ein echtes Auffalten ohne Sprung brauchen die
 Felder die Lage der aufgeklappten Ecke: Front oben links, Seite oben rechts, Top unten rechts (unter der Seite), Raum unten links.
-Florian entscheidet, bevor der Film entsteht.
+Florian: „ja anpassen“ → die Felder liegen seit `2d2d88a3` so. Film als Beweis (`?auffalten=1`, noch nicht Standard):
+[vorher](../progress/ozzy/2026-11-16-vier-vorher.mp4), [nachher](../progress/ozzy/2026-11-16-vier-auffalten.mp4). Die Wände klappen um ihre
+Kanten im Raum (ohne Zusammenziehen), ab drei Fünfteln setzen sie sich in ihre Felder; nichts doppelt. Zu sehen: Der Boden verlässt
+beim Aufklappen kurz den Bildrand. Sein Urteil entscheidet, ob es Standard wird.
 
 **S11 Sichern.** Im Menü „Ozzy“: Sichern unter einem Namen (neu), Überschreiben nur nach Frage; ⌘S. *Probe:* sichern, neu laden,
 gleich.
