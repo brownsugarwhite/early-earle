@@ -162,12 +162,12 @@ let film: Schritt[] = (() => {
     { clip: 'stehen', dauer: 1.5, uebergang: 0.3 },
     { clip: 'zielFixieren', dauer: 1.8, uebergang: 0.3 },
     { clip: 'laufen', dauer: 4.5, uebergang: 0.4 },
-    { clip: 'stolpern', dauer: 2.1, uebergang: 0.15 },
+    { clip: 'stolpern', dauer: 2.8, uebergang: 0.15 },
     { clip: 'schuetteln', dauer: 1.7, uebergang: 0.3 },
     { clip: 'laufen', dauer: 3.4, uebergang: 0.4 },
-    { clip: 'anhalten', dauer: 1.5, uebergang: 0.25 },
+    { clip: 'anhalten', dauer: 1.7, uebergang: 0.25 },
     { clip: 'kopfSchief', dauer: 2.4, uebergang: 0.3 },
-    { clip: 'hinsetzen', dauer: 1.7, uebergang: 0.3 },
+    { clip: 'hinsetzen', dauer: 1.9, uebergang: 0.3 },
     { clip: 'sitzen', dauer: 3, uebergang: 0.3 },
   ];
 })();
@@ -495,10 +495,70 @@ function reiterSetzen(r: Reiter): void {
 for (const b of document.querySelectorAll<HTMLButtonElement>('#reiter button')) b.addEventListener('click', () => reiterSetzen(b.dataset['reiter'] as Reiter));
 reiterSetzen(reiter);
 
+// ---- Prüfblätter (für Proben: flüssig gezeichnet wie auf der Bühne) -------------------------------------------------------
+let angehalten = false;
+/** Raster aus Posen zeichnen: je Feld ein Weltausschnitt [x0, y0, x1, y1] */
+function blattZeichnen(posen: Pose[], texte: string[], spalten: number, rahmen: [number, number, number, number]): void {
+  angehalten = true;
+  const zeilen = Math.ceil(posen.length / spalten);
+  const fw = buehne.breite / spalten;
+  const fh = buehne.hoehe / zeilen;
+  const [x0, y0, x1, y1] = rahmen;
+  const m = Math.min(fw / (x1 - x0), (fh - 18) / (y1 - y0));
+  buehne.anfangen();
+  posen.forEach((p, i) => {
+    const sx = (i % spalten) * fw;
+    const sy = Math.floor(i / spalten) * fh;
+    buehne.kamera.massstab = m;
+    buehne.kamera.x = x0 + (buehne.breite / 2 - sx) / m;
+    buehne.kamera.y = y0 + (buehne.hoehe / 2 - sy) / m;
+    const c = buehne.ctx;
+    // jedes Feld für sich (nichts ragt ins Nachbarfeld)
+    c.save();
+    buehne.bildschirm(c);
+    c.beginPath();
+    c.rect(sx, sy, fw, fh);
+    c.clip();
+    buehne.welt();
+    c.fillStyle = 'rgba(31,26,23,0.12)';
+    c.fillRect(x0, BODEN_Y, x1 - x0, 3 / m);
+    buehne.figur(figur.zeichenteile(p));
+    c.restore();
+    buehne.bildschirm(c);
+    c.fillStyle = '#1f1a17';
+    c.font = '12px system-ui';
+    c.textAlign = 'left';
+    c.fillText(texte[i] ?? '', sx + 6, sy + fh - 6);
+    c.strokeStyle = 'rgba(31,26,23,0.08)';
+    c.strokeRect(sx, sy, fw, fh);
+  });
+}
+function clipPosen(name: string, bilder: number, abstand: number, von = 'stehen'): Pose[] {
+  const sp = new Spieler(figur, von);
+  sp.update(0.016);
+  sp.spiele(name, 0.01);
+  const out: Pose[] = [];
+  let t = 0;
+  for (let i = 0; i < bilder; i++) {
+    while (t < i * abstand - 1e-9) {
+      sp.update(1 / 120);
+      t += 1 / 120;
+    }
+    const p = { ...sp.update(0.0001) };
+    p.x -= sp.x - 800;
+    out.push(p);
+  }
+  return out;
+}
+
 let letzte = performance.now();
 function bild(jetzt: number): void {
   const dt = Math.min(0.05, Math.max(0, (jetzt - letzte) / 1000));
   letzte = jetzt;
+  if (angehalten) {
+    requestAnimationFrame(bild);
+    return;
+  }
   if (reiter === 'drehen') drehenBild();
   else if (reiter === 'bibliothek') bibliothekBild(dt);
   else if (reiter === 'film') filmBild(dt);
@@ -508,4 +568,17 @@ function bild(jetzt: number): void {
 requestAnimationFrame(bild);
 
 // Test-Haken
-(window as unknown as { __ozzy: unknown }).__ozzy = { figur, drehPose, buehne, bibSpieler, filmSpieler, spiel };
+(window as unknown as { __ozzy: unknown }).__ozzy = {
+  figur,
+  drehPose,
+  buehne,
+  bibSpieler,
+  filmSpieler,
+  spiel,
+  RUHE,
+  blattZeichnen,
+  clipPosen,
+  weiter: () => {
+    angehalten = false;
+  },
+};

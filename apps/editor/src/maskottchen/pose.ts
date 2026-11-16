@@ -18,8 +18,12 @@ export interface Pose {
   rollen: number;
   /** Körper anheben (Bildpunkte, + = hoch); der Boden-Löser setzt das selbst, wenn `boden` > 0 */
   heben: number;
-  /** Stauchen (+) / Strecken (−) des Rumpfs, Anteil */
+  /** Strecken (+, höher und schmaler) / Stauchen (−, flacher und breiter) des Rumpfs um die Hüftlinie, Anteil */
   stauchen: number;
+  /** Rumpf biegen wie eine Bohne (+ = Rücken rund nach oben, − = durchhängen), in Bildpunkten in der Mitte */
+  biegen: number;
+  /** Kinnstück (Bart) als Pendel vor/zurück (Grad, + = Spitze nach vorn; sichtbar von der Seite) */
+  bartDreh: number;
   /** Atem 0…1 */
   atmen: number;
   /** Beine: Schwung um die Hüfte (+ = Fuß nach vorn); V/H = vorn/hinten, N/F = nah/fern */
@@ -48,7 +52,7 @@ export interface Pose {
   brauenKipp: number;
   /** Nase: Schnüffeln (Anteil) */
   nase: number;
-  /** Bart schwingen (Grad) */
+  /** Kinnstück (Bart) als Pendel seitwärts (Grad; sichtbar von vorn) */
   bart: number;
   /** Schwanz drehen (Grad, + = hoch) und Ring drehen (Grad um die eigene Achse) */
   schwanz: number;
@@ -66,6 +70,8 @@ export const RUHE: Pose = {
   rollen: 0,
   heben: 0,
   stauchen: 0,
+  biegen: 0,
+  bartDreh: 0,
   atmen: 0,
   beinVN: 0,
   beinVF: 0,

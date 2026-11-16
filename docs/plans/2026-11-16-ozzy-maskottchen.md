@@ -50,3 +50,19 @@ Vorlagen `docs/look/maskottchen/`, Zweig `claude/maskottchen` (Arbeitsbaum `.cla
 - Logo-Pose gegen das Logo: `npx vite-node scripts/maskottchen/pose-svg.ts <svg>` und `node scripts/maskottchen/vergleich.mjs <svg> <diff.png>`.
 - Drehblätter: `ORDNER=… npx vite-node scripts/maskottchen/blatt.ts <name> kopf|koerper|ausdruck|beine`.
 - Formen neu bauen: `TOL=3 node scripts/maskottchen/teile-bauen.mjs` (aus `apps/editor`).
+
+## Runde 3 (16.11. nachts): Bohne, Gipse, Kinn, Wobbeln
+
+Florians Rückmeldung (Übergabe, Abschnitt Runde 3) und was daraus wurde:
+
+| Rückmeldung | Ursache | Abhilfe |
+| --- | --- | --- |
+| Körper soll sich als Bohne mit den Beinen mitbiegen, nie Kanten | Rumpf war starr, nur gedreht | Haut des Rumpfs (`rumpfHaut`): biegen, an den Hüften mitdrehen, stauchen, am Boden platt drücken; Anker und Griffe durch dieselbe Abbildung |
+| Stück am Kinn zu steif | Der schwarze Haken unter der Schnauze hing am Körper | `kehleAmKopf`: Spitze geht mit dem Kopf, Fuß an der Brust, dazu Pendel; weißes Kinn als Vorhang |
+| zu wenig wobbelig | Federn 10–20-mal zu schwach gekoppelt, Stöße abgeschnitten | Kopplung wie ein Pendel, Grenze auf die Änderung der Geschwindigkeit, wenig Dämpfung; neue Federn für Biegen und Nase |
+| Sitzen, Liegen, Stolpern falsch; Gipse nicht lesbar | Winkel geschätzt; Beine drehten beim Kippen gegen den Körper | ausgerechnet: Sitzen 25° zurück mit flachen Hinterbeinen, Liegen mit waagrechten Gipsen, Kippen steif um die Kante der Sohle |
+| Springen sieht nicht gut aus | kein Ausholen, keine Landung | Bohne holt aus und schnellt hoch, staucht und hängt beim Landen durch |
+| Laufen, Eilen nicht lustig genug | Bein „gehoben“ wie mit Knie | Wiegen hebt die Seite, Klack beim Aufsetzen, Kopf ruhig; Eilen als Trippeltrab |
+| Kanten beim Drehen | ferner Schlitz fiel im Profil auf eine Linie; Teile morphten getrennt | Schlitz im Profil als winzige Kopie, Schopf sinkt in den Haaransatz, Anhänge halten die Nähte |
+
+Offen: die Kopfoberseite zwischen 40° und 70° (siehe Übergabe), Florians Urteil zu Timing und Witz.

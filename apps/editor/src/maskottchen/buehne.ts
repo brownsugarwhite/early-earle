@@ -2,7 +2,7 @@
 // Grund), Oben (2D: Sprechblasen, Staub, Zzz). Kamera: Welt in Logo-Koordinaten → Bildschirm.
 import type { Zeichenteil } from './figur';
 import { Fluessig } from './fluessig';
-import { type Farben, zeichneTeile } from './zeichnen';
+import { type Farben, pfadAus, zeichneTeile } from './zeichnen';
 
 export class Buehne {
   readonly grund: HTMLCanvasElement;
@@ -20,7 +20,9 @@ export class Buehne {
   farben: Farben = { schwarz: '#1f1a17', weiss: '#ffffff' };
   hintergrund = '#ffffff';
   /** Glätte der flüssigen Stufe in Welteinheiten (Logo-Bildpunkten); 0 = aus */
-  glaette = 0;
+  glaette = 14;
+  /** zur Fehlersuche: Teile bunt und durchscheinend zeichnen */
+  bunt = false;
   private figurGezeichnet = false;
 
   constructor(grund: HTMLCanvasElement, figurEbene: HTMLCanvasElement, oben: HTMLCanvasElement) {
@@ -32,8 +34,8 @@ export class Buehne {
       this.fluessig = new Fluessig(figurEbene);
     } catch {
       this.fluessig = null;
-      figurEbene.style.display = 'none';
     }
+    figurEbene.style.display = 'none';
     new ResizeObserver(() => this.groesse()).observe(grund);
     this.groesse();
   }
@@ -97,22 +99,49 @@ export class Buehne {
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
   }
 
+  /** Eine Figur zeichnen. Flüssig: die schwarzen Teile hinter dem Gesicht als eine Maske verschmelzen (Kehlen zwischen den
+   *  Teilen, Spitzen bleiben spitz), dann Gesicht, Fenster, Loch und Nase scharf darüber. Gilt die aktuelle Transformation von ctx. */
   figur(teile: Zeichenteil[]): void {
-    if (this.fluessigAn) {
-      zeichneTeile(this.quelleCtx, teile, { schwarz: '#000000', weiss: '#ffffff' });
-      this.figurGezeichnet = true;
-    } else zeichneTeile(this.ctx, teile, this.farben);
+    if (this.bunt) {
+      // zur Fehlersuche: jedes Teil in eigener Farbe, durchscheinend, mit Umriss
+      const c = this.ctx;
+      const farbe: Record<string, string> = { kopf: '#333', gesicht: '#f4c', ohrH: '#29f', ohrV: '#0b8', schopf: '#f80', nase: '#a00' };
+      for (const t of teile) {
+        c.beginPath();
+        pfadAus(t, c);
+        c.globalAlpha = 0.45;
+        c.fillStyle = farbe[t.name] ?? (t.farbe === 'weiss' ? '#ddd' : '#777');
+        c.fill();
+        c.globalAlpha = 1;
+        c.lineWidth = 1.2 / this.kamera.massstab;
+        c.strokeStyle = farbe[t.name] ?? '#000';
+        c.stroke();
+      }
+      return;
+    }
+    if (!this.fluessigAn) {
+      zeichneTeile(this.ctx, teile, this.farben);
+      return;
+    }
+    const vorn = (t: Zeichenteil) => t.farbe === 'weiss' || t.name === 'nase';
+    const q = this.quelleCtx;
+    q.setTransform(1, 0, 0, 1, 0, 0);
+    q.clearRect(0, 0, this.quelle.width, this.quelle.height);
+    q.setTransform(this.ctx.getTransform());
+    zeichneTeile(q, teile.filter((t) => !vorn(t)), { schwarz: '#000000', weiss: '#000000' });
+    const sigma = this.glaette * this.kamera.massstab * this.dpr;
+    this.fluessig!.zeichnen(this.quelle, sigma, this.farben.schwarz);
+    const c = this.ctx;
+    c.save();
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.drawImage(this.fluessig!.leinwand, 0, 0);
+    c.restore();
+    zeichneTeile(c, teile.filter(vorn), this.farben);
+    this.figurGezeichnet = true;
   }
 
-  /** nach allen Figuren: die flüssige Stufe rechnen (oder die Figurenebene leeren) */
-  abschliessen(): void {
-    if (!this.fluessig) return;
-    const sichtbar = this.fluessigAn && this.figurGezeichnet;
-    this.fluessig.leinwand.style.visibility = sichtbar ? 'visible' : 'hidden';
-    if (!sichtbar) return;
-    const sigma = this.glaette * this.kamera.massstab * this.dpr;
-    this.fluessig.zeichnen(this.quelle, sigma, this.farben.schwarz, this.farben.weiss);
-  }
+  /** (früher die zweite Ebene; jetzt wird jede Figur sofort fertig gezeichnet) */
+  abschliessen(): void {}
 
   /** Welt → Bildschirm (CSS-Pixel) */
   zuBildschirm(x: number, y: number): [number, number] {

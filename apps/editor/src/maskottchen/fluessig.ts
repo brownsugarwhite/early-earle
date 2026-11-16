@@ -1,29 +1,26 @@
-// Flüssige Zeichenstufe: Die Figur wird erst ganz normal gezeichnet (Schwarz und Weiß auf durchsichtigem Grund), dann auf der
-// Grafikkarte leicht weichgezeichnet (Gauß, zwei Durchgänge) und wieder bei 50 % geschnitten, mit einer Kante von gut einem
-// Bildpunkt. Haarrisse zwischen Teilen schließen sich, Zacken an Ecken runden sich, dünne Splitter verschwinden; gerade und runde
-// Kanten bleiben, wo sie sind (die „Schließung“ der Bildverarbeitung als Unschärfe und Schwelle, wie beim „Gooey“-Effekt).
-// Zwei Masken werden getrennt geglättet: Schwarz (Tinte) und Figur (Deckung). So bleibt das weiße Gesicht vor dunklem Grund weiß.
+// Flüssiges Verschmelzen (liquid drop): Alle schwarzen Teile hinter dem Gesicht (Rumpf, Beine, Schwanz, Kehle, Ohren, Schopf,
+// Kopf) werden als eine Maske gezeichnet, auf der Grafikkarte weichgezeichnet (Gauß, zwei Durchgänge) und bei 50 % geschnitten;
+// das Ergebnis wird mit der ursprünglichen Maske vereinigt. Das ist die „Schließung“ der Bildverarbeitung: Wo Teile aneinander-
+// stoßen, entsteht eine runde Kehle (Bein in Bauch, Ohr in Kopf, Schwanz in Rücken), wo sie sich nähern, eine Brücke wie zwischen
+// zwei Tropfen. Nach außen gewölbte Spitzen bleiben spitz (die ursprüngliche Maske ist immer dabei). Gesicht, Fenster, Loch und Nase
+// zeichnet die Bühne danach scharf darüber.
 const VS = `attribute vec2 a; varying vec2 v; void main(){ v = a*0.5+0.5; gl_Position = vec4(a,0.,1.); }`;
 const KERN = `
-  vec2 s = vec2(0.0); float w = 0.0;
+  float s = 0.0; float w = 0.0;
   for (int i = -12; i <= 12; i++) {
     float x = float(i);
     float g = exp(-0.5 * x * x / (sigma * sigma));
-    vec4 c = texture2D(t, v + schritt * x);
-    s += probe(c) * g; w += g;
+    s += texture2D(t, v + schritt * x).a * g; w += g;
   }
   s /= w;`;
 const BLUR = `precision highp float; varying vec2 v; uniform sampler2D t; uniform vec2 schritt; uniform float sigma;
-vec2 probe(vec4 c){ return vec2(c.a * (1.0 - c.r), c.a); }
-void main(){ ${KERN} gl_FragColor = vec4(s.x, s.y, 0.0, 1.0); }`;
-const SCHWELLE = `precision highp float; varying vec2 v; uniform sampler2D t; uniform vec2 schritt; uniform float sigma; uniform float kante;
-uniform vec3 tinte; uniform vec3 papier;
-vec2 probe(vec4 c){ return c.rg; }
+void main(){ ${KERN} gl_FragColor = vec4(0.0, 0.0, 0.0, s); }`;
+const SCHLIESSEN = `precision highp float; varying vec2 v; uniform sampler2D t; uniform sampler2D roh; uniform vec2 schritt; uniform float sigma;
+uniform float kante; uniform float schwelle; uniform vec3 tinte;
 void main(){ ${KERN}
-  float schwarz = smoothstep(0.5 - kante, 0.5 + kante, s.x);
-  float deckung = smoothstep(0.5 - kante, 0.5 + kante, max(s.y, s.x));
-  vec3 f = mix(papier, tinte, deckung > 0.0 ? schwarz / deckung : 0.0);
-  gl_FragColor = vec4(f * deckung, deckung);
+  float zu = smoothstep(schwelle - kante, schwelle + kante, s);
+  float a = max(zu, texture2D(roh, v).a);
+  gl_FragColor = vec4(tinte * a, a);
 }`;
 
 function farbe(hex: string): [number, number, number] {
@@ -35,7 +32,7 @@ export class Fluessig {
   readonly leinwand: HTMLCanvasElement;
   private gl: WebGLRenderingContext;
   private progBlur: WebGLProgram;
-  private progSchwelle: WebGLProgram;
+  private progZu: WebGLProgram;
   private texQuelle: WebGLTexture;
   private texZwischen: WebGLTexture;
   private fb: WebGLFramebuffer;
@@ -64,7 +61,7 @@ export class Fluessig {
       return p;
     };
     this.progBlur = prog(BLUR);
-    this.progSchwelle = prog(SCHWELLE);
+    this.progZu = prog(SCHLIESSEN);
     const buf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
@@ -84,8 +81,8 @@ export class Fluessig {
     this.fb = gl.createFramebuffer()!;
   }
 
-  /** `quelle`: Leinwand mit der Figur (Schwarz/Weiß auf durchsichtig). sigma in Bildpunkten der Quelle. */
-  zeichnen(quelle: HTMLCanvasElement, sigma: number, tinte: string, papier: string): void {
+  /** `quelle`: Maske der schwarzen Teile (Deckung im Alphakanal). sigma in Bildpunkten der Quelle. */
+  zeichnen(quelle: HTMLCanvasElement, sigma: number, tinte: string, schwelle = 0.5): void {
     const gl = this.gl;
     const w = quelle.width;
     const h = quelle.height;
@@ -100,12 +97,13 @@ export class Fluessig {
       this.h = h;
     }
     gl.viewport(0, 0, w, h);
+    gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.texQuelle);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, quelle);
     const s = Math.max(0.35, sigma);
-    const schritt = Math.max(1, s / 4); // Abtastabstand, damit 25 Abgriffe bis ±3σ reichen
+    const schritt = Math.max(1, s / 4);
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fb);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.texZwischen, 0);
     gl.useProgram(this.progBlur);
@@ -116,14 +114,19 @@ export class Fluessig {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.useProgram(this.progZu);
+    gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.texZwischen);
-    gl.useProgram(this.progSchwelle);
-    gl.uniform1i(gl.getUniformLocation(this.progSchwelle, 't'), 0);
-    gl.uniform2f(gl.getUniformLocation(this.progSchwelle, 'schritt'), 0, schritt / h);
-    gl.uniform1f(gl.getUniformLocation(this.progSchwelle, 'sigma'), s / schritt);
-    gl.uniform1f(gl.getUniformLocation(this.progSchwelle, 'kante'), Math.min(0.5, 0.25 / s + 0.01));
-    gl.uniform3fv(gl.getUniformLocation(this.progSchwelle, 'tinte'), farbe(tinte));
-    gl.uniform3fv(gl.getUniformLocation(this.progSchwelle, 'papier'), farbe(papier));
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, this.texQuelle);
+    gl.uniform1i(gl.getUniformLocation(this.progZu, 't'), 0);
+    gl.uniform1i(gl.getUniformLocation(this.progZu, 'roh'), 1);
+    gl.uniform2f(gl.getUniformLocation(this.progZu, 'schritt'), 0, schritt / h);
+    gl.uniform1f(gl.getUniformLocation(this.progZu, 'sigma'), s / schritt);
+    gl.uniform1f(gl.getUniformLocation(this.progZu, 'kante'), Math.min(0.5, 0.22 / s + 0.01));
+    gl.uniform1f(gl.getUniformLocation(this.progZu, 'schwelle'), schwelle);
+    gl.uniform3fv(gl.getUniformLocation(this.progZu, 'tinte'), farbe(tinte));
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    gl.activeTexture(gl.TEXTURE0);
   }
 }
