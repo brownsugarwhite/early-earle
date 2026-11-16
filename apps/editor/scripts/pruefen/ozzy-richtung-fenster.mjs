@@ -94,6 +94,63 @@ await ruhig();
 const p2 = await punkt();
 const d2 = Math.max(Math.abs(p2.x - p0.x), Math.abs(p2.y - p0.y), Math.abs(p2.z - p0.z), ...['x', 'y', 'z'].flatMap((k) => [Math.abs((p2.ein?.[k] ?? 0) - (p0.ein?.[k] ?? 0)), Math.abs((p2.aus?.[k] ?? 0) - (p0.aus?.[k] ?? 0))]));
 ok('2 ein ⌘Z: wie vorher', schritte === 1 && !p2.ecke && d2 <= 1e-6, `Schritte der Geste ${schritte}, danach Ecke ${p2.ecke}, größter Unterschied ${d2.toExponential(1)}`);
+// 4 (S6b): ⇧ kippt die Richtung aus der Ebene: erst in der Ebene drehen, dann ⇧ halten und quer zum Griff ziehen
+{
+  // den Punkt wieder wählen (nach ⌘Z zeigt er seine Richtungen sonst nicht)
+  const c1 = (await O('ankerImBild', A.id, A.i, 'seite')).find((q) => !q.m);
+  await s.mouse.move(c1.x, c1.y);
+  await s.waitForTimeout(400);
+  await s.mouse.down();
+  await s.waitForTimeout(60);
+  await s.mouse.up();
+  await s.waitForTimeout(300);
+  await ruhig();
+  await s.waitForFunction(() => !window.__ozzy.werk().beschaeftigt && !window.__ozzy.werk().griffWartet, null, { timeout: 60000 });
+  const q0 = await punkt();
+  const phi2 = (-Math.atan2(q0.aus.y, q0.aus.x) * 180) / Math.PI;
+  const R3 = 40;
+  const an = (w, r) => [c0.x + r * Math.cos((w * Math.PI) / 180), c0.y + r * Math.sin((w * Math.PI) / 180)];
+  let [mx, my] = an(phi2, 12);
+  await s.mouse.move(mx, my);
+  await s.waitForTimeout(400);
+  await s.mouse.down();
+  await s.waitForTimeout(200);
+  for (let k = 1; k <= 25; k++) {
+    [mx, my] = an(phi2 + (45 * k) / 25, 12 + ((R3 - 12) * Math.min(1, k / 5)));
+    await s.mouse.move(mx, my);
+    await s.waitForTimeout(30);
+  }
+  await s.waitForTimeout(700);
+  await s.keyboard.down('Shift');
+  await s.mouse.move(mx + 0.5, my);
+  await s.waitForTimeout(500);
+  const qs = await punkt();
+  // quer zum Griff (im Bild) um 30 Punkte
+  const w = (phi2 + 45 + 90) * (Math.PI / 180);
+  for (let k = 1; k <= 12; k++) {
+    await s.mouse.move(mx + 0.5 + 30 * Math.cos(w) * (k / 12), my + 30 * Math.sin(w) * (k / 12));
+    await s.waitForTimeout(30);
+  }
+  await s.waitForTimeout(400);
+  if (ordner) await s.screenshot({ path: `${ordner}/ozzy-richtung-kippen.png` });
+  await s.mouse.up();
+  await s.keyboard.up('Shift');
+  await ruhig();
+  const q1 = await punkt();
+  const lang = (g) => Math.hypot(g.x, g.y, g.z);
+  const ebene = (g) => (Math.atan2(g.y, g.x) * 180) / Math.PI;
+  const schritte4 = (await O('bearbeiten')).schritte;
+  ok(
+    '4 ⇧ kippt die Richtung aus der Ebene: Tiefe kommt dazu, Länge und Richtung in der Ebene bleiben',
+    dw(ebene(qs.aus), ebene(q0.aus)) > 20 && Math.abs(q1.aus.z - qs.aus.z) > 0.3 * lang(qs.aus) && Math.abs(lang(q1.aus) / lang(qs.aus) - 1) < 0.03 && dw(ebene(q1.aus), ebene(qs.aus)) < 3,
+    `vorher in der Ebene ${z1(ebene(q0.aus))}°, Tiefe ${z1(q0.aus.z)}; bei ⇧: Länge ${z1(lang(qs.aus))}, in der Ebene ${z1(ebene(qs.aus))}°, Tiefe ${z1(qs.aus.z)}; danach Länge ${z1(lang(q1.aus))}, in der Ebene ${z1(ebene(q1.aus))}°, Tiefe ${z1(q1.aus.z)}; Schritte ${schritte4}`,
+  );
+  await s.keyboard.press('Meta+z');
+  await ruhig();
+  const q2 = await punkt();
+  const d4 = Math.max(...['x', 'y', 'z'].flatMap((k) => [Math.abs((q2.aus?.[k] ?? 0) - (q0.aus?.[k] ?? 0)), Math.abs((q2.ein?.[k] ?? 0) - (q0.ein?.[k] ?? 0))]));
+  ok('5 ein ⌘Z nimmt Drehen und Kippen zurück', schritte4 === 1 && d4 <= 1e-6, `Schritte ${schritte4}, größter Unterschied ${d4.toExponential(1)}`);
+}
 ok('3 keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));
 console.log(schlecht ? `${schlecht} nicht erfüllt` : 'alles gut');
 await browser.close();

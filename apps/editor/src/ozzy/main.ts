@@ -2323,6 +2323,7 @@ leinwandLinien.addEventListener('pointermove', (e) => {
   if (zustand === 'ruhe' && werkGezeigt) {
     bearbeiten.alt = e.altKey;
     bearbeiten.umschalt = e.shiftKey;
+    bearbeiten.kippen = e.shiftKey;
     if (!strichWerkzeug()) bearbeiten.zeigerSetzen(x, y, x, y, dt);
   }
   if (bearbeitenGedrueckt) {
@@ -2471,6 +2472,7 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
   if (bearbeitenAn && raumWerkzeug === 'lasso') {
     bearbeiten.alt = e.altKey;
     bearbeiten.umschalt = e.shiftKey;
+    bearbeiten.kippen = e.shiftKey;
     bearbeiten.zeigerSetzen(x, y, x, y, 0);
     bearbeiten.lassoDruecken();
     bearbeitenGedrueckt = true;
@@ -2513,6 +2515,7 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     if (bearbeiten.haengt || p) {
       bearbeiten.alt = e.altKey;
       bearbeiten.umschalt = e.shiftKey;
+      bearbeiten.kippen = e.shiftKey;
       bearbeiten.zeigerSetzen(x, y, x, y, 0);
       bearbeiten.druecken();
       bearbeitenGedrueckt = true;
@@ -2688,6 +2691,7 @@ window.addEventListener('keydown', (e) => {
   blatt.umschalt = e.shiftKey;
   bearbeiten.alt = e.altKey;
   bearbeiten.umschalt = e.shiftKey;
+  bearbeiten.kippen = e.shiftKey;
   const k = e.key;
   if ((e.metaKey || e.ctrlKey) && k === ',') {
     e.preventDefault();
@@ -2794,6 +2798,7 @@ window.addEventListener('keyup', (e) => {
   blatt.umschalt = e.shiftKey;
   bearbeiten.alt = e.altKey;
   bearbeiten.umschalt = e.shiftKey;
+  bearbeiten.kippen = e.shiftKey;
   if (tasteGehalten && e.key === tasteGehalten.taste) {
     if (performance.now() - tasteGehalten.seit > 300) ansichtSetzen(tasteGehalten.vorher);
     tasteGehalten = null;

@@ -10,6 +10,8 @@
 //   2  node apps/editor/scripts/werk-schnitt/schnitt.mjs <kurven.ts> <ausgabeordner>   (schreibt werk.ts, kurven.ts, zuordnung.txt)
 //   3  Was seit dem Schnitt im Werk dazukam, wieder einsetzen. Stand 16.11.: `SilhouettenAnker`, `SILHOUETTE_SCHRITT`, `neuAusUmriss`
 //      und die Importe `polygonFlaeche`, `umrissAbtasten` im Werk; in der Hülle der Prüfhaken `ablage.neuAusUmriss` und sein Import.
+//      Dazu (16.11. abends, Ozzy S6b, mit Florians Zustimmung): `griffImRaum` und `zugGriffRaum` vor `zugBewegen`, und in `zugBewegen`
+//      beim Griff `griffImRaum ? { ...griffImRaum } : inWelt(…)` statt `inWelt(…)`.
 // Geprüft am 16.11.: Aus `kurven.ts` von 179dfa4a (mit Schritt 1) entstehen genau `werk.ts` und `kurven.ts` von 5039cead.
 import fs from 'node:fs';
 import { createRequire } from 'node:module';

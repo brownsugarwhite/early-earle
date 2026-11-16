@@ -2651,6 +2651,24 @@ export function verschiebungen(z: Zug, f: (p: V3) => V3): (Float64Array | null)[
   return aus;
 }
 
+/**
+ * Ozzy, S6b (16.11.2026, mit Florians Zustimmung): Ein laufender Zug am Griff wird um eine Verschiebung im Raum gezogen (in der gezeigten
+ * Lage, wie `inWelt` sie gibt) statt in der Ebene des Blatts: so kippt ein Griff aus der Ebene der Ansicht. Ein neuer Handgriff aus
+ * bestehenden (`zugBewegen` mit derselben Rechnung); `griffImRaum` gilt nur während des Aufrufs.
+ */
+let griffImRaum: V3 | null = null;
+export function zugGriffRaum(d: V3): void {
+  const z = zug;
+  if (!z?.griff) return;
+  griffImRaum = d;
+  z.bewegt = true;
+  try {
+    zugBewegen(z.x0, z.y0);
+  } finally {
+    griffImRaum = null;
+  }
+}
+
 export function zugBewegen(X: number, Y: number): void {
   const z = zug;
   if (!z) return;
@@ -2668,7 +2686,7 @@ export function zugBewegen(X: number, Y: number): void {
     const p = l.punkte[i]!;
     // ein glatter Punkt wird eine Ecke, wenn er als Ecke zu sehen ist (an einer Kreuzung mit einer Ecke) oder am Spiegelpunkt liegt
     if (istEckeVonSelbst(p) || (!istEcke(p) && (ringEnde(l, i) || eckeGezeigt(li, i)))) p.ecke = true;
-    const dGezeigt = inWelt(z.ansicht, X - z.x0, Y - z.y0);
+    const dGezeigt = griffImRaum ? { ...griffImRaum } : inWelt(z.ansicht, X - z.x0, Y - z.y0);
     if (z.spiegel) dGezeigt.z = -dGezeigt.z;
     // in der Pose ist der Griff gedreht zu sehen: seine Verschiebung mit dem Winkel seines Punkts zurück in die Ruhe
     const d = vektorGedreht(dGezeigt, -inDerRuhe((q) => q).winkel(l, i));

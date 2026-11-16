@@ -62,7 +62,11 @@ const MITTE = 1e-6;
 const KLICK_WEG = 3;
 
 const plus = (p: V3, v: V3): V3 => ({ x: p.x + v.x, y: p.y + v.y, z: p.z + v.z });
-const glatt = (a: number, b: number, x: number): number => {
+/** ⇧ beim Drehen einer Richtung (S6b): Der Griff kippt aus der Ebene der Fläche; seine Richtung in der Ebene und seine Länge bleiben */
+type Kipp = { h0: V3; ebene: V3; n: V3; L: number; b0: number; w: [number, number]; sx: number; sy: number; k: number };
+/** die Tiefe einer Fläche (gezeigte Lage): senkrecht zu ihrem Blatt */
+const TIEFE: Record<Ansicht, V3> = { seite: { x: 0, y: 0, z: 1 }, front: { x: 1, y: 0, z: 0 }, top: { x: 0, y: 1, z: 0 } };
+const glatt =(a: number, b: number, x: number): number => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
 };
@@ -88,7 +92,7 @@ export class WerkBlatt implements Raum {
   /** Zug an einem Punkt, einer Linie oder mehreren Punkten: Fläche, Spiegelbild, Stelle beim Drücken (Bildschirm), schon im Werk? */
   private zg: { fl: number; m: boolean; sx: number; sy: number; los: boolean } | null = null;
   /** Drehen einer Richtung: Linie und Stelle im Netz, Punkt und Seite im Werk, Spitze des Griffs im Blatt beim Drücken */
-  private dz: { li: number; k: number; pi: number; seite: 'ein' | 'aus'; fl: number; m: boolean; id: number; i: number; X0: number; Y0: number; los: boolean; knick?: boolean; zurueck0?: number } | null = null;
+  private dz: { li: number; k: number; pi: number; seite: 'ein' | 'aus'; fl: number; m: boolean; id: number; i: number; X0: number; Y0: number; los: boolean; knick?: boolean; zurueck0?: number; gekippt?: boolean; kipp?: Kipp | null } | null = null;
   /** ein Klick ohne Zug: Die Studie ruft danach `rueckgaengig`, das hier nichts tun darf */
   private klickRueck = false;
   private gezeigteAuswahl = new Set<number>();
@@ -595,8 +599,15 @@ export class WerkBlatt implements Raum {
     return spitze;
   }
 
-  drehenZiehen(cx: number, cy: number, alt: boolean, dt: number): void {
+  drehenZiehen(cx: number, cy: number, alt: boolean, dt: number, kippen?: boolean): void {
     const d = this.dz;
+    // ⇧ (S6b, wie im Raum der Studie, auch erst während des Drehens): Der Griff kippt aus der Ebene; ⇧ los: weiter in der Ebene drehen
+    if (d && kippen && !d.kipp) this.kippenBeginnen(d, cx, cy);
+    if (d && !kippen && d.kipp) this.kippenEnden(d);
+    if (d?.kipp) {
+      this.kippenZiehen(d, d.kipp, cx, cy, alt, dt);
+      return;
+    }
     // ⌥ während des Drehens (S6, wie in der Studie): Der Punkt wird eine Ecke, wie mit ⌥ beim Drücken. Der laufende Zug am Griff
     // endet, die Ecke wird gesetzt, und es geht als neuer Zug am Griff weiter, von der Stelle, an der die Spitze jetzt ist (nur
     // Handgriffe des Werks; zwei Schritte für ⌘Z)
@@ -623,6 +634,70 @@ export class WerkBlatt implements Raum {
     this.dreher.drehenZiehen(cx, cy, alt, dt);
   }
 
+  /** Kippen beginnen: ein laufender Zug am Griff endet, ein neuer beginnt an der Spitze von jetzt (dort wird im Raum gezogen) */
+  private kippenBeginnen(d: NonNullable<WerkBlatt['dz']>, cx: number, cy: number): void {
+    const F = this.flaechen[d.fl];
+    const li = werk.loopNr(d.id);
+    if (!F || werk.G.gegriffen || werk.griffWartet()) return;
+    if (d.los && werk.zug && !werk.zug.modal) werk.zugEnde(true);
+    if (werk.zug) return;
+    const sp = this.griffSpitze(d);
+    // der Griff und sein Punkt, wie gezeigt (am Spiegelbild gespiegelt)
+    const h = werk.alsAnzeige(() => {
+      const q = werk.loops[li]?.punkte[d.i];
+      const g = q ? (d.seite === 'ein' ? q.ein : q.aus) : null;
+      return g ? { x: g.x, y: g.y, z: d.m ? -g.z : g.z } : null;
+    });
+    const ort = werk.alsAnzeige(() => {
+      const q = werk.loops[li]?.punkte[d.i];
+      return q ? werk.imBlatt(F.a, d.m ? werk.spiegeln(q.ref) : q.ref) : null;
+    });
+    if (!sp || !h || !ort) return;
+    if (!werk.griffZugStarten(F.a, sp[0], sp[1], d.m, li, d.i, d.seite)) return;
+    const n = TIEFE[F.a];
+    const L = Math.hypot(h.x, h.y, h.z);
+    const hn = h.x * n.x + h.y * n.y + h.z * n.z;
+    let e: V3 = { x: h.x - n.x * hn, y: h.y - n.y * hn, z: h.z - n.z * hn };
+    const le = Math.hypot(e.x, e.y, e.z);
+    e = le < 1e-9 * Math.max(1, L) ? (n.x ? { x: 0, y: 1, z: 0 } : { x: 1, y: 0, z: 0 }) : { x: e.x / le, y: e.y / le, z: e.z / le };
+    // im Bild: vom Punkt zur Spitze; quer dazu kippt das Ziehen (ein Viertelkreis auf die Länge des Griffs, mindestens 40 Punkte)
+    const P = F.hin(ort[0], ort[1]);
+    const T = F.hin(sp[0], sp[1]);
+    const ux = T[0] - P[0];
+    const uy = T[1] - P[1];
+    const lu = Math.max(1e-6, Math.hypot(ux, uy));
+    const R = Math.max(40, lu);
+    d.kipp = { h0: h, ebene: e, n, L, b0: Math.atan2(hn, Math.max(1e-9, le)), w: [-uy / lu, ux / lu], sx: cx, sy: cy, k: Math.PI / 2 / R };
+    d.los = true;
+    d.gekippt = true;
+  }
+
+  private kippenZiehen(d: NonNullable<WerkBlatt['dz']>, K: Kipp, cx: number, cy: number, alt: boolean, dt: number): void {
+    const s = (cx - K.sx) * K.w[0] + (cy - K.sy) * K.w[1];
+    const b = Math.max(-1.48, Math.min(1.48, K.b0 + s * K.k));
+    const c = Math.cos(b) * K.L;
+    const t = Math.sin(b) * K.L;
+    const h = { x: K.ebene.x * c + K.n.x * t, y: K.ebene.y * c + K.n.y * t, z: K.ebene.z * c + K.n.z * t };
+    werk.zugGriffRaum({ x: h.x - K.h0.x, y: h.y - K.h0.y, z: h.z - K.h0.z });
+    // die Anzeige der Studie zeigt die Spitze, wie der gekippte Griff im Bild liegt
+    const F = this.flaechen[d.fl];
+    const sp = this.griffSpitze(d);
+    if (F && sp) {
+      const T = F.hin(sp[0], sp[1]);
+      this.dreher.drehenZiehen(T[0], T[1], alt, dt);
+    }
+    this.geaendert();
+  }
+
+  /** ⇧ los: Der Zug im Raum endet, weiter wird in der Ebene gedreht (ein neuer Zug am Griff von der Spitze von jetzt) */
+  private kippenEnden(d: NonNullable<WerkBlatt['dz']>): void {
+    d.kipp = null;
+    if (werk.zug && !werk.zug.modal) werk.zugEnde(true);
+    d.los = false;
+    const sp = this.griffSpitze(d);
+    if (sp) [d.X0, d.Y0] = sp;
+  }
+
   /** die Spitze des gedrehten Griffs jetzt (Blatt der Fläche, wie gezeigt) */
   private griffSpitze(d: { fl: number; id: number; i: number; seite: 'ein' | 'aus'; m: boolean }): [number, number] | null {
     const F = this.flaechen[d.fl];
@@ -640,7 +715,7 @@ export class WerkBlatt implements Raum {
   /** die Studie hat die Richtung gedreht (im Netz): die Spitze des Griffs im Werk dorthin */
   private drehenSetzen(n: Netz): void {
     const d = this.dz;
-    if (!d) return;
+    if (!d || d.kipp) return;
     const F = this.flaechen[d.fl];
     const l = n.linien[d.li];
     const P = n.punkte[d.pi];
@@ -668,7 +743,7 @@ export class WerkBlatt implements Raum {
     if (werk.G.gegriffen) werk.G.gegriffen = null;
     else if (werk.zug && !werk.zug.modal) werk.zugEnde(true);
     // ⌥ mitten im Drehen gab drei Schritte (Zug, Ecke, Zug): für ⌘Z einer, der Stand vor der Geste
-    if (d.knick && d.zurueck0 !== undefined && werk.zurueck.length > d.zurueck0 + 1) werk.zurueck.splice(d.zurueck0 + 1);
+    if ((d.knick || d.gekippt) && d.zurueck0 !== undefined && werk.zurueck.length > d.zurueck0 + 1) werk.zurueck.splice(d.zurueck0 + 1);
     this.geaendert();
   }
 
