@@ -49,6 +49,51 @@ type V = { x: number; y: number };
 
 const leeresNetz = (): Netz => ({ punkte: [], linien: [] });
 
+/** ein Freihand-Strich im Zug: Glättung, geglättete Spur, rohe Lagen, Zeiger */
+export type Strich = { g: Glaettung; spur: V[]; roh: V[]; zeiger: V };
+
+/** einen Strich beginnen, mit Florians Einstellung (Nachlauf oder Faden); auf dem Blatt und im Raum (Phase 5) gleich */
+export function strichBeginnen(freihand: FreihandWerte, x: number, y: number, t: number): Strich {
+  const tau = freihand.glaettung * NACHLAUF_MS;
+  const g: Glaettung = freihand.faden >= 0.5 ? new Faden(freihand.glaettung * FADEN_PX) : new Nachlauf(tau);
+  const p = { x, y };
+  return { g, spur: [g.anfang(p, t)], roh: [p], zeiger: p };
+}
+
+/** das Ende eines Strichs: ein geschlossener Pfad (Anker mit Griffen, Treue nach Florians Einstellung), oder null (zu kurz) */
+export function strichPfad(st: Strich, freihand: FreihandWerte): Pfad | null {
+  st.spur.push(...st.g.ende(st.zeiger, SCHRITT_PX));
+  let laenge = 0;
+  for (let i = 1; i < st.spur.length; i++) laenge += Math.hypot(st.spur[i]!.x - st.spur[i - 1]!.x, st.spur[i]!.y - st.spur[i - 1]!.y);
+  if (laenge < 12) return null;
+  let spur: V[];
+  const schluss = schlussStelle(st.roh);
+  if (schluss > 0 && freihand.faden >= 0.5 && freihand.glaettung > 0) spur = fadenRund(st.roh.slice(0, schluss + 1), freihand.glaettung * FADEN_PX);
+  else {
+    const b = schlussStelle(st.spur);
+    spur = b > 0 ? st.spur.slice(0, b + 1) : st.spur;
+  }
+  const a = anpassen(spur, { treue: Math.max(0.5, freihand.treue), schritt: SCHRITT_PX, geschlossen: true });
+  return a.pfad.anker.length < 2 ? null : { anker: a.pfad.anker, geschlossen: true };
+}
+
+/** Ellipse oder Würfel (vorerst sein Umriss) aus einem Aufzug: ⇧ gleich, ⌥ aus der Mitte; null, wenn er zu klein ist */
+export function aufzugPfad(art: 'ellipse' | 'wuerfel', von: V, bis: V, umschalt: boolean, ausMitte: boolean): Pfad | null {
+  let dx = bis.x - von.x;
+  let dy = bis.y - von.y;
+  if (umschalt) {
+    const m = Math.max(Math.abs(dx), Math.abs(dy));
+    dx = Math.sign(dx || 1) * m;
+    dy = Math.sign(dy || 1) * m;
+  }
+  const cx = ausMitte ? von.x : von.x + dx / 2;
+  const cy = ausMitte ? von.y : von.y + dy / 2;
+  const rx = ausMitte ? Math.abs(dx) : Math.abs(dx) / 2;
+  const ry = ausMitte ? Math.abs(dy) : Math.abs(dy) / 2;
+  if (rx < 3 || ry < 3) return null;
+  return art === 'ellipse' ? ellipse(cx, cy, rx, ry) : rechteck(cx, cy, rx, ry);
+}
+
 /** Fläche (mit Vorzeichen) eines Vielecks */
 function flaeche(x: number[], y: number[]): number {
   let a = 0;
@@ -57,7 +102,7 @@ function flaeche(x: number[], y: number[]): number {
 }
 
 /** Nach einer Runde wieder nah am Anfang? Nummer der nächsten Stelle, sonst −1 (Überschießen fällt weg) */
-function schlussStelle(P: readonly V[]): number {
+export function schlussStelle(P: readonly V[]): number {
   let weg = 0;
   let best = -1;
   let bestD = Infinity;
@@ -117,7 +162,7 @@ export class Blatt {
   readonly verhalten: Verhalten;
   werkzeug: Werkzeug = 'p';
   readonly ansicht: Ansicht = { z: 1, ox: 0, oy: 0, dpr: 1, wachsen: false };
-  private strich: { g: Glaettung; spur: V[]; roh: V[]; zeiger: V } | null = null;
+  private strich: Strich | null = null;
   private aufzug: { von: V; bis: V } | null = null;
   umschalt = false;
   alt = false;
@@ -264,10 +309,7 @@ export class Blatt {
   druecken(x: number, y: number, t: number): void {
     this.zeiger(x, y, 0);
     if (this.werkzeug === 'frei') {
-      const tau = this.freihand.glaettung * NACHLAUF_MS;
-      const g: Glaettung = this.freihand.faden >= 0.5 ? new Faden(this.freihand.glaettung * FADEN_PX) : new Nachlauf(tau);
-      const p = { x, y };
-      this.strich = { g, spur: [g.anfang(p, t)], roh: [p], zeiger: p };
+      this.strich = strichBeginnen(this.freihand, x, y, t);
     } else if (this.werkzeug === 'ellipse' || this.werkzeug === 'wuerfel') {
       this.aufzug = { von: { x, y }, bis: { x, y } };
     } else this.verhalten.druecken();
@@ -315,41 +357,17 @@ export class Blatt {
     const st = this.strich;
     this.strich = null;
     if (!st) return;
-    st.spur.push(...st.g.ende(st.zeiger, SCHRITT_PX));
-    let laenge = 0;
-    for (let i = 1; i < st.spur.length; i++) laenge += Math.hypot(st.spur[i]!.x - st.spur[i - 1]!.x, st.spur[i]!.y - st.spur[i - 1]!.y);
-    if (laenge < 12) return;
-    let spur: V[];
-    const schluss = schlussStelle(st.roh);
-    if (schluss > 0 && this.freihand.faden >= 0.5 && this.freihand.glaettung > 0) spur = fadenRund(st.roh.slice(0, schluss + 1), this.freihand.glaettung * FADEN_PX);
-    else {
-      const b = schlussStelle(st.spur);
-      spur = b > 0 ? st.spur.slice(0, b + 1) : st.spur;
-    }
-    const a = anpassen(spur, { treue: Math.max(0.5, this.freihand.treue), schritt: SCHRITT_PX, geschlossen: true });
-    if (a.pfad.anker.length < 2) return;
+    const pfad = strichPfad(st, this.freihand);
+    if (!pfad) return;
     const n = netzKopie(this.netz);
-    pfadInsNetz(n, { anker: a.pfad.anker, geschlossen: true });
+    pfadInsNetz(n, pfad);
     this.verhalten.netzErsetzen(n);
   }
 
   private formPfad(): Pfad | null {
     const z = this.aufzug;
-    if (!z) return null;
-    let dx = z.bis.x - z.von.x;
-    let dy = z.bis.y - z.von.y;
-    if (this.umschalt) {
-      const m = Math.max(Math.abs(dx), Math.abs(dy));
-      dx = Math.sign(dx || 1) * m;
-      dy = Math.sign(dy || 1) * m;
-    }
-    const ausMitte = this.alt;
-    const cx = ausMitte ? z.von.x : z.von.x + dx / 2;
-    const cy = ausMitte ? z.von.y : z.von.y + dy / 2;
-    const rx = ausMitte ? Math.abs(dx) : Math.abs(dx) / 2;
-    const ry = ausMitte ? Math.abs(dy) : Math.abs(dy) / 2;
-    if (rx < 3 || ry < 3) return null;
-    return this.werkzeug === 'ellipse' ? ellipse(cx, cy, rx, ry) : rechteck(cx, cy, rx, ry);
+    if (!z || (this.werkzeug !== 'ellipse' && this.werkzeug !== 'wuerfel')) return null;
+    return aufzugPfad(this.werkzeug, z.von, z.bis, this.umschalt, this.alt);
   }
 
   private aufzugEnde(): void {

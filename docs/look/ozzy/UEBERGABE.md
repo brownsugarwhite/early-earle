@@ -188,6 +188,24 @@ liegt im Netz des Verhaltens (`entNetz`), die Vorschau zum Zeiger ist `faden`. P
 Umkreis (rund 16 px, wie in der Studie); in einer Form setzte das den Punkt auf die Linie, 0,1 neben die Kreuzung, die das Werk dort
 selbst anlegt (zwei Punkte fast am selben Ort). In einer Form zählt jetzt der Ort der Maus. **Offen:** Freihand im Raum.
 
+**5.4 Maul und Pose, Freihand im Raum (gebaut, 16.11. nachmittags):**
+- **Tropfen „Maul“** (`maulUiZeigen` in `main.ts`): Ist ein Ring gewählt (offen, nicht hängend; wie `maulAnlegen` ihn nimmt), hängt unter
+  seinem tiefsten sichtbaren Punkt ein Tropfen. An einer weichen Linie heißt er „Maul formen“ (`maulFormenGewaehlt`: das Werk formt in
+  Schritten, Ozzy sperrt so lange die Eingaben über `eingabenSperren`), an einer harten „Maul“ (`maulAnlegen`: sie ist das Maul). Am
+  einfachsten wählt man die Lippe mit einem Klick auf die Linie; ein Klick auf einen Punkt an einer Kreuzung wählt den Punkt der anderen
+  Linie (der Anker nimmt den ersten Eintrag), dann bleibt der Tropfen weg.
+- **„Fressen“ oben rechts** (sobald es ein Maul gibt): Knopf (`poseBetreten`/`poseVerlassen`) und Regler Maul 0 bis 55°, Kopf 0 bis 40°
+  (`knochenSetzen`; ein Schritt für ⌘Z je Loslassen, wie im Prüffenster). In der Pose rechnet `werkHaut` in `werk.alsAnzeige` (die Haut,
+  wie die Knochen sie drehen), `werkBlatt.bauen` ebenso; das Papier tönt sich leicht grün (`HautWerte.papier`, neu in `anfang/haut.ts`).
+- **Meldungen des Werks** stehen fünf Sekunden in der Hinweiszeile (vorher sah man in Ozzy keine).
+- **Freihand und Formen im Raum** (N, e, E oder die Leiste; Esc bricht ab oder geht zur Auswahl): Der Strich auf der Fläche unter dem
+  Zeiger wird mit Florians Einstellung ein geschlossener Pfad (`strichBeginnen`/`strichPfad`, jetzt aus `blatt.ts` geteilt), Ellipse und
+  Würfel ein Umriss (`aufzugPfad`); `werkBlatt.pfadAufHaut` legt ihn wie eine Form mit P auf die Haut. Ein offener Strich (im Prüffenster:
+  das Maul aus einer Linie) ist in Ozzy noch nicht angeschlossen.
+- **Probe** `apps/editor/scripts/pruefen/ozzy-maul-pose-fenster.mjs`: alle sechs Kriterien (Tropfen und Fressen; Haut der Pose wie im
+  Prüffenster, Unterschied 0, Papier getönt; Zug in der Pose ein Schritt, ⌘Z genau; Fressen aus: Grundform genau, Papier weiß; Freihand
+  an „test_kaputt“; keine Fehler). Bild [`2026-11-16-maul-pose.png`](../../progress/ozzy/2026-11-16-maul-pose.png).
+
 **Was dabei auffiel (offen):**
 - Eine Wand, die man fast streifend sieht, ist sehr empfindlich: 25 px nach rechts an der Wand der Front verschoben „test_kaputt“ um 70
   Einheiten in z (so rechnet die Perspektive). Genau arbeitet man eingerastet oder in den Feldern.
@@ -203,12 +221,10 @@ selbst anlegt (zwei Punkte fast am selben Ort). In einer Form zählt jetzt der O
 1. ~~Phase 1, das Werk lösen~~: gebaut (oben). Kleiner Rest: `allesZeigen` tut in der Hülle Werk-Arbeit (Ozzy tut sie in seinem Haken
    nach).
 2. ~~Phase 3, die Form des Werks in Ozzy~~: gebaut (oben); Feinschliff offen.
-3. **Phase 5, Bearbeiten über das Werk:** 5.1 Laden, 5.2 Linien und Bedienung, 5.3 P gebaut (oben). Offen: **Freihand im Raum**
-   (geschlossener Strich auf einer Fläche → Anker mit Florians Bleistift-Einstellung wie auf dem Blatt → wie eine Form mit P; ein offener
-   Strich wäre im Werk das Maul aus einer Linie, gehört zu 5.4), **5.4 Maul und Pose** (E8: „Maul“ als Tropfen-Menü am gewählten Loop
-   → `maulFormenGewaehlt`; „Fressen“ mit Reglern oben rechts → `poseBetreten`/`knochenSetzen`; in der Pose Papier leicht getönt;
-   dafür in `werkBlatt.bauen` die gebogenen Stücke `stueckeGezeigt` und in `werkHaut` die gedrehte Haut der Anzeige prüfen), Sichern
-   im Menü (Vorsicht: `wesen/` sind Florians Formen, nie überschreiben ohne Frage).
+3. **Phase 5, Bearbeiten über das Werk:** gebaut (5.1 bis 5.4, oben); sein Urteil steht aus. Offen: Sichern im Menü (Vorsicht: `wesen/`
+   sind Florians Formen, nie überschreiben ohne Frage); in der Pose zeichnet `werkBlatt` Stücke, längs derer sich der Winkel der Knochen
+   ändert, noch als Bézier aus gedrehten Punkten (im Prüffenster abgetastet, `stueckeGezeigt`: an „maul handgemacht test“ bis 13 daneben
+   im Übergang Kiefer–Schädel; die Haut stimmt); das Maul aus einer Linie (offener Strich).
 4. Danach: Pinsel an der Blase (Phase 6: nur, was die Rechnung kann, also Ziehen wie O; Aufblasen, Absaugen, Glätten sind Arbeit
    der Kern-Sitzung), eine Leinwand für Haut und Linien, Würfel als Quader, Finger.
 

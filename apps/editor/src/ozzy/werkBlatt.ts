@@ -17,6 +17,7 @@ import { type Art, type Breiten, type Linie, type LinienProben, type Netz, type 
 import { type DrehBild, Dreher2D, type RichtungZiel } from '../linien/richtung';
 import type { EntwurfInfo, FadenEnde, FadenProben, StiftOrt, V2 } from '../linien/stift';
 import type { Raum, Ziel } from '../linien/verhalten';
+import type { Pfad } from '@ee/shape/zeichnen';
 
 type V3 = { x: number; y: number; z: number };
 
@@ -648,8 +649,8 @@ export class WerkBlatt implements Raum {
     const [qx, qy] = F.hin(k.X + k.aus[0], k.Y + k.aus[1]);
     return [qx - px, qy - py];
   }
-  /** die Fläche unter dem Zeiger, auf der P ansetzen kann (die stärkste, die ihn enthält) */
-  private flaecheUnter(x: number, y: number): number {
+  /** die Fläche unter dem Zeiger, auf der P ansetzen kann (die stärkste, die ihn enthält); −1: keine */
+  flaecheUnter(x: number, y: number): number {
     let best = -1;
     this.flaechen.forEach((F, fl) => {
       if (F.staerke >= 0.5 && F.enthaelt(x, y) && (best < 0 || F.staerke > this.flaechen[best]!.staerke)) best = fl;
@@ -680,6 +681,31 @@ export class WerkBlatt implements Raum {
     this.bauen(this.flaechen);
     const pi = this.anker.findIndex((A) => A.fl === fl && A.m === m && A.werk.some((w) => w.id === id && w.i === i));
     return pi >= 0 ? pi : null;
+  }
+
+  /**
+   * Freihand und Formen im Raum (Etappe 5.3): ein geschlossener Pfad auf einer Fläche (Bildschirm) wird wie eine Form mit P auf die Haut
+   * gelegt (`stiftFertig`). Das Werk kennt je Anker nur gleich lange Griffe nach beiden Seiten: genommen wird der Griff nach vorn.
+   * Zurück: ob eine Linie dazukam.
+   */
+  pfadAufHaut(fl: number, pfad: Pfad): boolean {
+    const F = this.flaechen[fl];
+    if (!F || werk.zug || werk.G.abzweig || this.ent) return false;
+    const anker: werk.StiftAnker[] = [];
+    for (const k of pfad.anker) {
+      const XY = F.her(k.x, k.y);
+      if (!XY) return false;
+      const g = k.aus && !k.ecke ? F.her(k.x + k.aus.x, k.y + k.aus.y) : null;
+      anker.push({ X: XY[0], Y: XY[1], aus: g ? [g[0] - XY[0], g[1] - XY[1]] : null });
+    }
+    if (anker.length < 3) return false;
+    const vorher = werk.loops.length;
+    werk.G.stift = { a: F.a, anker, zieht: false };
+    werk.stiftFertig();
+    werk.anzeige.allesZeigen();
+    this.bauen(this.flaechen);
+    this.geaendert();
+    return werk.loops.length > vorher;
   }
 
   entwurf(): EntwurfInfo | null {

@@ -388,6 +388,8 @@ void main() {
 export interface HautWerte {
   fassung: Fassung;
   nacht: boolean;
+  /** Farbe des Papiers (Ozzy: in der Pose leicht getönt); fehlt: weiß */
+  papier?: Color | null;
   zeit: number;
   /** 0..1: Anteil der Vorderseite (Einblenden) und der Rückseite (erst wenn sie sich löst); Rest im Rahmen (0 = weg) */
   vorn: number;
@@ -705,7 +707,7 @@ export class Haut {
     if (w.wuerfel) this.schatten.aktualisieren(r, w.wuerfel, w.waende, w.weich, w.schattenFarbe);
     else this.schatten.gruppe.visible = false;
     this.schatten.gruppe.visible = !!w.wuerfel;
-    const grund = (w.nacht ? NACHT : PAPIER).clone();
+    const grund = (w.nacht ? NACHT : (w.papier ?? PAPIER)).clone();
     r.setRenderTarget(this.ziel);
     r.setClearColor(grund, 1);
     r.clear(true, true, false);

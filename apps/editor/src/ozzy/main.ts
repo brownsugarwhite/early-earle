@@ -19,7 +19,7 @@
 
 // muss zuerst geladen werden: die Schalter des Werks in der Adresse
 import './adresse';
-import { eckenAuto, istEcke } from '@ee/shape/dicht';
+import { MAUL_WINKEL_MAX, eckenAuto, istEcke } from '@ee/shape/dicht';
 import { Color, Matrix4, Vector2, Vector3, WebGLRenderer } from 'three';
 import { glatt, type Masse, type Moment, moment } from '../anfang/aufblasen';
 import { FLACH, Koerper, netzAusUmriss } from '../anfang/form';
@@ -31,7 +31,7 @@ import { GRUNDWERTE as LINIEN_GRUNDWERTE, type Ansicht as LinienAnsicht, Verhalt
 import * as werk from '../form/werk';
 import { WerkHaut, mitteLinie, mittePfad } from './werkHaut';
 import { type Flaeche, WerkBlatt } from './werkBlatt';
-import { type Anker, Blatt, FREIHAND_GRUNDWERTE, type FreihandWerte, type Werkzeug } from './blatt';
+import { type Anker, Blatt, FREIHAND_GRUNDWERTE, type FreihandWerte, type Strich, type Werkzeug, aufzugPfad, strichBeginnen, strichPfad } from './blatt';
 import { Kamera, perspektiveBei } from './kamera';
 import { Kapseln } from './kapseln';
 import { Leiste } from './leiste';
@@ -205,6 +205,12 @@ let bearbeitenGedrueckt = false;
 let bearbeitenStruktur = '';
 let werkWarBeschaeftigt = false;
 let pErlaubt = false;
+/** Werkzeug im Raum (mit dem Werk): Auswahl, P (über das Verhalten), Freihand, Ellipse, Würfel */
+let raumWerkzeug: Werkzeug = 'auswahl';
+/** Freihand und Formen im Raum (Etappe 5.3): ein Strich oder ein Aufzug auf einer Fläche (Bildschirm, CSS-Pixel) */
+let raumStrich: { fl: number; st: Strich } | null = null;
+let raumAufzug: { fl: number; art: 'ellipse' | 'wuerfel'; von: { x: number; y: number }; bis: { x: number; y: number } } | null = null;
+const strichWerkzeug = (): boolean => raumWerkzeug === 'frei' || raumWerkzeug === 'ellipse' || raumWerkzeug === 'wuerfel';
 
 /** Rechnet das Werk noch (Zug, Nachlauf, Hintergrund, wartender Griff, Maul)? */
 const werkBeschaeftigt = (): boolean =>
@@ -661,7 +667,8 @@ function werkBild(dt: number, m: Moment | null): boolean {
     werkVoll = false;
     if (werkNeu || !werkGezeigt) werkZuletzt = jetzt;
     werkNeu = false;
-    werkHaut.rechnen(schnalz ? uebergabeLagen(w) : null, voll, dt, schnalz ? 0 : 1.6);
+    // in der Pose die Haut, wie sie zu sehen ist (die Knochen drehen sie; wie `hautZeigen` im Prüffenster)
+    werk.alsAnzeige(() => werkHaut.rechnen(schnalz ? uebergabeLagen(w) : null, voll, dt, schnalz ? 0 : 1.6));
     haut.blaseErsetzen(werkHaut.netz);
     werkGezeigt = true;
     aktiv = aktiv || schnalz || jetzt - werkZuletzt < 2500;
@@ -717,7 +724,9 @@ function aufblasen(): void {
 
 function ablassen(): void {
   if (zustand === 'blatt') return;
-  if (bearbeiten.stift) stiftImRaum(false);
+  // die Werkzeuge des Raums aus; die Leiste zeigt wieder das des Blatts
+  if (bearbeiten.stift || strichWerkzeug()) werkzeugImRaum('auswahl');
+  leiste.setzen(blatt.werkzeug);
   zug = null;
   drehen = null;
   punktZug = null;
@@ -1080,6 +1089,11 @@ function bild(dt: number): boolean {
   }
   letzteDrehung = { gier: gierJetzt, neigung: neigungJetzt };
   hauch.staerke += (hauch.ziel - hauch.staerke) * (1 - Math.exp(-dt / 0.18));
+  // in der Pose tönt sich das Papier (E8)
+  const tonZiel = werk.grund !== null && zustand === 'ruhe' ? 1 : 0;
+  poseTon += (tonZiel - poseTon) * (1 - Math.exp(-dt / 0.22));
+  if (Math.abs(tonZiel - poseTon) > 1e-3) aktiv = true;
+  else poseTon = tonZiel;
   if (Math.abs(hauch.ziel - hauch.staerke) > 1e-3) aktiv = true;
   for (let i = 0; i < 6; i++) {
     const ziel = zustand === 'ruhe' && wandUnterZeiger === i ? 1 : 0;
@@ -1111,6 +1125,7 @@ function bild(dt: number): boolean {
     waende: [],
     weich: 0,
     schattenFarbe: WEISS,
+    papier: poseTon > 1e-3 ? WEISS.clone().lerp(POSE_PAPIER, poseTon) : null,
   };
   haut.zeichnen(kam.aktiv, w, []);
   // Linien
@@ -1145,6 +1160,7 @@ function bild(dt: number): boolean {
     };
   }
   anzeige.zeichnen(szene);
+  maulUiZeigen();
   // Text
   gruss.classList.toggle('weg', !(zustand === 'blatt' && blatt.leer));
   const h =
@@ -1171,7 +1187,11 @@ function bild(dt: number): boolean {
                 : 'Punkte, Linien und Richtungen ziehen · ins Leere: Rahmen · P zeichnen · K Kante · ⌫ löschen · ⌘Z · 0 Raum · 1 Seite · 3 Front · 7 Top'
               : '0 Raum · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
         : '';
-  if (hinweis.textContent !== h) hinweis.textContent = h;
+  // eine Meldung des Werks (das Maul, P, die Pose) steht ein paar Sekunden statt des Hinweises
+  if (werk.G.meldung !== meldung.text) meldung = { text: werk.G.meldung, seit: performance.now() };
+  const hm = meldung.text && zustand === 'ruhe' && performance.now() - meldung.seit < MELDUNG_MS ? meldung.text : h;
+  if (meldung.text && performance.now() - meldung.seit < MELDUNG_MS) aktiv = true;
+  if (hinweis.textContent !== hm) hinweis.textContent = hm;
   stat.bildMs = performance.now() - t0;
   if (mitInfo)
     infoAnzeige.textContent = `${stat.fps.toFixed(0)} B/s · Bild ${stat.bildMs.toFixed(1)} ms · Netz ${stat.punkte} P, ${stat.dreiecke} D · ${zustand} ${T.toFixed(2)} s · p ${flach.toFixed(2)}${werkForm ? ` · Werk ${werk.haut.n} P, Anzeige ${werkHaut.stufen} St. ${werkHaut.ms.toFixed(1)} ms` : ''}`;
@@ -1525,7 +1545,9 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
   // P in der Leiste, sobald das Werk bedient wird
   if (bearbeitenAn !== pErlaubt) {
     pErlaubt = bearbeitenAn;
-    leiste.erlauben('p', pErlaubt);
+    for (const n of ['p', 'frei', 'formen'] as const) leiste.erlauben(n, pErlaubt);
+    // im Raum zeigt die Leiste das Werkzeug des Raums (anfangs die Auswahl, kein Tropfen), nicht das des Blatts
+    if (pErlaubt) leiste.setzen(raumWerkzeug);
   }
   if (!bearbeitenAn && bearbeitenGedrueckt) {
     bearbeiten.loslassen();
@@ -1541,6 +1563,34 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
       false,
     );
   }
+  // Freihand und Formen im Zug: der Strich und die Form, dazu ein Tropfen am Zeiger (wie auf dem Blatt)
+  const rs = (linienWerte.umriss / 2) * D;
+  if (raumStrich) {
+    raumStrich.st.spur.push(...raumStrich.st.g.takt(performance.now()));
+    const sp = raumStrich.st.spur;
+    if (sp.length > 1) K.zug(sp.map((p) => p.x * D), sp.map((p) => p.y * D), rs, false);
+  }
+  if (raumAufzug) {
+    const pf = aufzugPfad(raumAufzug.art, raumAufzug.von, raumAufzug.bis, bearbeiten.umschalt, bearbeiten.alt);
+    if (pf) {
+      const xs: number[] = [];
+      const ys: number[] = [];
+      const A = pf.anker;
+      for (let i = 0; i < A.length; i++) {
+        const a = A[i]!;
+        const b = A[(i + 1) % A.length]!;
+        const k = [a.x, a.y, a.x + (a.aus?.x ?? 0), a.y + (a.aus?.y ?? 0), b.x + (b.ein?.x ?? 0), b.y + (b.ein?.y ?? 0), b.x, b.y];
+        for (let j = 0; j < 24; j++) {
+          const t = j / 24;
+          const u = 1 - t;
+          xs.push((u * u * u * k[0]! + 3 * u * u * t * k[2]! + 3 * u * t * t * k[4]! + t * t * t * k[6]!) * D);
+          ys.push((u * u * u * k[1]! + 3 * u * u * t * k[3]! + 3 * u * t * t * k[5]! + t * t * t * k[7]!) * D);
+        }
+      }
+      K.zug(xs, ys, rs, true);
+    }
+  }
+  if (bearbeitenAn && strichWerkzeug() && zeiger.da) K.punkt(zeiger.x * D, zeiger.y * D, linienWerte.punktRadius * linienWerte.tropfen * D);
   if (bearbeitenAn) {
     if (werkBlatt.struktur !== bearbeitenStruktur) {
       bearbeiten.tropfen = [];
@@ -1550,10 +1600,11 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
     bearbeiten.auswahl = werkBlatt.auswahlAbgleichen(bearbeiten.auswahl);
     bearbeitenAnsicht.dpr = D;
     bearbeiten.setzeAnsicht(bearbeitenAnsicht);
-    const aktiv = bearbeiten.schritt(dt);
+    const aktiv = bearbeiten.schritt(dt) || !!raumStrich || !!raumAufzug;
     const sz = bearbeiten.szene(bearbeitenAnsicht);
     K.uebernehmen(sz);
-    return { zeiger: sz.zeiger, aktiv };
+    // mit Freihand und Formen ist es Ozzys Zeiger (das Verhalten hat dann keinen)
+    return { zeiger: strichWerkzeug() ? (zeiger.da ? zeigerForm(zeiger.x, zeiger.y) : null) : sz.zeiger, aktiv };
   }
   for (const P of werkBlatt.proben) {
     const g = K.neueGruppe();
@@ -1782,9 +1833,27 @@ leinwandLinien.addEventListener('pointermove', (e) => {
   if (zustand === 'ruhe' && werkGezeigt) {
     bearbeiten.alt = e.altKey;
     bearbeiten.umschalt = e.shiftKey;
-    bearbeiten.zeigerSetzen(x, y, x, y, dt);
+    if (!strichWerkzeug()) bearbeiten.zeigerSetzen(x, y, x, y, dt);
   }
   if (bearbeitenGedrueckt) {
+    anstossen();
+    return;
+  }
+  // Freihand und Formen im Raum
+  if (raumStrich) {
+    const ereignisse = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [];
+    for (const ev of ereignisse.length ? ereignisse : [e]) {
+      const [ex, ey] = lageIm(ev);
+      const p = { x: ex, y: ey };
+      raumStrich.st.zeiger = p;
+      raumStrich.st.roh.push(p);
+      raumStrich.st.spur.push(...raumStrich.st.g.folge(p, ev.timeStamp));
+    }
+    anstossen();
+    return;
+  }
+  if (raumAufzug) {
+    raumAufzug.bis = { x, y };
     anstossen();
     return;
   }
@@ -1873,6 +1942,16 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
   }
   // Linien des Werks: Hängt ein Tropfen am Zeiger, gilt das Drücken ihm; ins Leere im Raum (und im Feld des Raums) dreht es, in einer
   // flachen Ansicht zieht es einen Rahmen (E2)
+  // Freihand und Formen: auf einer Fläche beginnt der Strich oder der Aufzug (daneben dreht es weiter)
+  if (bearbeitenAn && strichWerkzeug()) {
+    const fl = werkBlatt.flaecheUnter(x, y);
+    if (fl >= 0) {
+      if (raumWerkzeug === 'frei') raumStrich = { fl, st: strichBeginnen(freihandWerte, x, y, e.timeStamp) };
+      else raumAufzug = { fl, art: raumWerkzeug === 'ellipse' ? 'ellipse' : 'wuerfel', von: { x, y }, bis: { x, y } };
+      anstossen();
+      return;
+    }
+  }
   if (bearbeitenAn) {
     const R = vier > 0.5 ? felder().raum : null;
     const imRaumFeld = !!R && x >= R.x && y >= R.y;
@@ -1938,6 +2017,16 @@ const loslassen = (e: PointerEvent): void => {
     anstossen();
     return;
   }
+  // Freihand und Formen: geschlossen wird es eine Linie auf der Haut (wie eine Form mit P)
+  if (raumStrich || raumAufzug) {
+    const pfad = raumStrich ? strichPfad(raumStrich.st, freihandWerte) : aufzugPfad(raumAufzug!.art, raumAufzug!.von, raumAufzug!.bis, e.shiftKey, e.altKey);
+    const fl = raumStrich ? raumStrich.fl : raumAufzug!.fl;
+    raumStrich = null;
+    raumAufzug = null;
+    if (pfad) werkBlatt.pfadAufHaut(fl, pfad);
+    anstossen();
+    return;
+  }
   if (drehen) einrasten();
   if (punktZug && werkGezeigt) {
     // losgelassen, bevor der Griff beginnen konnte: ein Klick (die Auswahl steht); sonst endet der Zug im Werk
@@ -1978,9 +2067,9 @@ leinwandLinien.addEventListener(
 );
 
 function werkzeugGewaehlt(w: Werkzeug): void {
-  // im Raum (mit dem Werk): P an oder aus (Freihand und Formen kommen mit Etappe 5.3, zweiter Teil)
+  // im Raum (mit dem Werk): P, Freihand und Formen auf den Flächen
   if (zustand === 'ruhe' && werkGezeigt) {
-    stiftImRaum(w === 'p');
+    werkzeugImRaum(w);
     return;
   }
   if (zustand !== 'blatt') return;
@@ -1990,8 +2079,17 @@ function werkzeugGewaehlt(w: Werkzeug): void {
 
 /** P im Raum an oder aus (Etappe 5.3): eine angefangene Linie wird beim Ausschalten abgebrochen */
 function stiftImRaum(an: boolean): void {
-  bearbeiten.stiftSchalten(an);
-  leiste.setzen(an ? 'p' : 'auswahl');
+  werkzeugImRaum(an ? 'p' : 'auswahl');
+}
+
+/** ein Werkzeug im Raum: P geht über das Verhalten der Studie; Freihand, Ellipse und Würfel zeichnen auf der Fläche unter dem Zeiger */
+function werkzeugImRaum(w: Werkzeug): void {
+  raumWerkzeug = w;
+  bearbeiten.stiftSchalten(w === 'p');
+  if (strichWerkzeug()) bearbeiten.zeigerWeg();
+  raumStrich = null;
+  raumAufzug = null;
+  leiste.setzen(w);
   anstossen();
 }
 
@@ -2048,6 +2146,12 @@ window.addEventListener('keydown', (e) => {
         blatt.werkzeugSetzen('auswahl');
         leiste.setzen('auswahl');
       }
+    } else if (bearbeitenAn && (raumStrich || raumAufzug || strichWerkzeug())) {
+      // Freihand und Formen: den Strich abbrechen, sonst zurück zur Auswahl
+      if (raumStrich || raumAufzug) {
+        raumStrich = null;
+        raumAufzug = null;
+      } else werkzeugImRaum('auswahl');
     } else if (bearbeitenAn && bearbeiten.stift) {
       // mit P: eine angefangene Linie abbrechen, sonst P aus
       if (!bearbeiten.eingabe('esc')) stiftImRaum(false);
@@ -2064,7 +2168,10 @@ window.addEventListener('keydown', (e) => {
     else if (bearbeitenAn && (bearbeiten.auswahl.size > 0 || (bearbeiten.stift && werkBlatt.entwurf()))) bearbeiten.eingabe('loeschen');
     else ablassen();
   } else if ((k === 'p' || k === 'P') && zustand === 'ruhe' && werkGezeigt) stiftImRaum(!bearbeiten.stift);
-  else if ((k === 'v' || k === 'V') && zustand === 'ruhe' && werkGezeigt) stiftImRaum(false);
+  else if ((k === 'v' || k === 'V') && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('auswahl');
+  else if ((k === 'n' || k === 'N') && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('frei');
+  else if (k === 'e' && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('ellipse');
+  else if (k === 'E' && zustand === 'ruhe' && werkGezeigt) werkzeugImRaum('wuerfel');
   else if ((k === 'k' || k === 'K') && zustand === 'ruhe' && werkGezeigt) {
     // Kante an den gewählten Punkten oder Linien an und aus (im Werk)
     if (werk.G.auswahl.length && !werk.zug) werk.kanteSetzen();
@@ -2197,6 +2304,109 @@ $('knopf-neu').addEventListener('click', () => {
   reglerZeigen(false);
 });
 
+// ---------- Maul und Pose (Phase 5.4, E8) ----------
+
+const maulTropfen = $<HTMLButtonElement>('maul-tropfen');
+const fressen = $<HTMLElement>('fressen');
+const fressenKnopf = $<HTMLButtonElement>('fressen-knopf');
+const fressenMaul = $<HTMLInputElement>('fressen-maul');
+const fressenKopf = $<HTMLInputElement>('fressen-kopf');
+const fressenMaulZahl = $<HTMLSpanElement>('fressen-maul-zahl');
+const fressenKopfZahl = $<HTMLSpanElement>('fressen-kopf-zahl');
+fressenMaul.max = String(MAUL_WINKEL_MAX);
+/** das Papier in der Pose (leicht getönt, aus dem Grün der Linien-Studie) und wie weit es gerade getönt ist */
+const POSE_PAPIER = new Color('#f1f6f0');
+let poseTon = 0;
+/** eine Meldung des Werks steht so lange in der Hinweiszeile (ms) */
+const MELDUNG_MS = 5000;
+let meldung = { text: '', seit: 0 };
+
+/** der gewählte Ring, an dem ein Maul entstehen kann (offen, nicht hängend), wie ihn `maulAnlegen` im Werk nimmt */
+function maulRing(): (typeof werk.loops)[number] | null {
+  for (const w of werk.G.auswahl) {
+    const l = werk.loops[werk.loopNr(w.l)];
+    if (l?.art === 'ring' && !l.haengt) return l;
+  }
+  return null;
+}
+/** ein harter Ring ist schon ein geformtes Maul (wie in `maulAnlegen`) */
+const maulHart = (l: (typeof werk.loops)[number]): boolean => !!l.maulGeformt || (!!l.kante && l.punkte.every((p) => p.kante !== false));
+
+/** Tropfen und Regler nach dem Stand des Werks (jedes Bild, solange das Verhalten die Flächen hat) */
+function maulUiZeigen(): void {
+  const an = zustand === 'ruhe' && werkGezeigt && bearbeitenAn;
+  // der Tropfen hängt unter dem tiefsten sichtbaren Punkt der gewählten Linie
+  const l = an && !werk.grund && !werk.maulLauf && !werk.zug && !bearbeiten.stift ? maulRing() : null;
+  let ort: { x: number; y: number } | null = null;
+  if (l && werk.G.maul?.id !== l.id) {
+    werkBlatt.anker.forEach((A, pi) => {
+      const p = werkBlatt.netz.punkte[pi];
+      if (!p?.sichtbar || !A.werk.some((w) => w.id === l.id)) return;
+      if (!ort || p.y > ort.y) ort = { x: p.x, y: p.y };
+    });
+  }
+  const o = ort as { x: number; y: number } | null;
+  maulTropfen.hidden = !o;
+  if (o && l) {
+    const text = maulHart(l) ? 'Maul' : 'Maul formen';
+    if (maulTropfen.textContent !== text) maulTropfen.textContent = text;
+    maulTropfen.style.left = `${o.x.toFixed(1)}px`;
+    maulTropfen.style.top = `${(o.y + 14).toFixed(1)}px`;
+  }
+  // oben rechts „Fressen“, sobald es ein Maul gibt
+  fressen.hidden = !(an && werk.G.maul);
+  fressenKnopf.setAttribute('aria-pressed', String(werk.grund !== null));
+  if (!vorRegler) {
+    fressenMaul.value = String(werk.pose.kiefer);
+    fressenKopf.value = String(werk.pose.schaedel);
+  }
+  fressenMaulZahl.textContent = `${Number(fressenMaul.value).toFixed(0)}°`;
+  fressenKopfZahl.textContent = `${Number(fressenKopf.value).toFixed(0)}°`;
+}
+
+maulTropfen.addEventListener('click', () => {
+  const l = maulRing();
+  if (!l || werk.zug || werk.maulLauf || werk.grund) return;
+  // eine weiche Linie: das Maul formen (das Werk zeigt die Schritte und nimmt so lange nichts an); eine harte: sie ist das Maul
+  if (maulHart(l)) werk.maulAnlegen();
+  else werk.maulFormenGewaehlt();
+  werk.anzeige.allesZeigen();
+  anstossen();
+});
+fressenKnopf.addEventListener('click', () => {
+  if (werk.zug || werk.maulLauf) return;
+  if (werk.grund) werk.poseVerlassen();
+  else werk.poseBetreten();
+  werk.anzeige.allesZeigen();
+  werkNeu = true;
+  anstossen();
+});
+/** Stand vor dem Ziehen eines Reglers: ein Schritt für ⌘Z je Loslassen (wie im Prüffenster) */
+let vorRegler: werk.Schnappschuss | null = null;
+for (const r of [fressenMaul, fressenKopf]) {
+  r.addEventListener('pointerdown', () => {
+    vorRegler = werk.schnappschuss();
+  });
+  r.addEventListener('input', () => {
+    vorRegler ??= werk.schnappschuss();
+    if (!werk.knochenSetzen(Number(fressenMaul.value), Number(fressenKopf.value))) {
+      fressenMaul.value = String(werk.pose.kiefer);
+      fressenKopf.value = String(werk.pose.schaedel);
+    }
+    werkNeu = true;
+    anstossen();
+  });
+  r.addEventListener('change', () => {
+    const v = vorRegler;
+    vorRegler = null;
+    const anders =
+      v && (v.pose.kiefer !== werk.pose.kiefer || v.pose.schaedel !== werk.pose.schaedel || (v.grund === null) !== (werk.grund === null) || JSON.stringify(v.maul) !== JSON.stringify(werk.G.maul));
+    if (v && anders) werk.zurueck.push(v);
+    werk.anzeige.allesZeigen();
+    anstossen();
+  });
+}
+
 new ResizeObserver(groesse).observe(buehne);
 groesse();
 aufwaermen();
@@ -2242,6 +2452,28 @@ const haken = {
     const [x, y] = F.hin(X, Y);
     return { x, y };
   },
+  /** eine Stelle mitten auf einer Linie des Werks (Loop-Kennung) auf der Fläche mit diesem Blatt, weit weg von ihren Punkten (CSS-Pixel) */
+  linieImBild: (id: number, a: Flaeche['a']): { x: number; y: number } | null => {
+    const li = werkBlatt.linien.findIndex((I) => I.id === id && !I.m && werkBlatt.flaechen[I.fl]?.a === a);
+    const P = werkBlatt.proben[li];
+    const L = werkBlatt.netz.linien[li];
+    if (!P || !L || P.n < 3) return null;
+    // die Probe, die von allen Punkten der Linie am weitesten weg liegt
+    let best = 0;
+    let bd = -1;
+    for (let j = 0; j < P.n; j++) {
+      let d = Infinity;
+      for (const pi of L.punkte) {
+        const q = werkBlatt.netz.punkte[pi]!;
+        d = Math.min(d, Math.hypot(q.x - P.x[j]!, q.y - P.y[j]!));
+      }
+      if (d > bd) {
+        bd = d;
+        best = j;
+      }
+    }
+    return { x: P.x[best]!, y: P.y[best]! };
+  },
   /** P an oder aus (wie die Taste P) */
   stift: (an: boolean): boolean => {
     stiftImRaum(an);
@@ -2253,7 +2485,22 @@ const haken = {
       id: l.id,
       art: l.art,
       punkte: l.punkte.map((p, i) => ({ i, x: p.ref.x, y: p.ref.y, z: p.ref.z, kreuzung: p.kreuzung ?? null, sichtbar: !p.vonSelbst, ecke: werk.eckeGezeigt(werk.loopNr(l.id), i), ein: p.ein ?? null, aus: p.aus ?? null })),
+      geformt: l.maulGeformt ?? false,
+      kante: l.kante ?? null,
+      haengt: l.haengt ?? null,
     })),
+  /** Maul und Pose: das Maul (Loop-Kennung), in der Pose, Winkel der Knochen; die Haut, wie sie zu sehen ist (Einheiten des Werks) */
+  pose: (mitHaut = false) => ({
+    maul: werk.G.maul?.id ?? null,
+    an: werk.grund !== null,
+    kiefer: werk.pose.kiefer,
+    schaedel: werk.pose.schaedel,
+    lauf: werk.maulLauf !== null,
+    papier: poseTon,
+    tropfen: maulTropfen.hidden ? null : maulTropfen.textContent,
+    fressen: !fressen.hidden,
+    haut: mitHaut ? Array.from(werk.alsAnzeige(() => werk.haut.pos)) : null,
+  }),
   /** eine geschlossene Silhouette setzen (CSS-Pixel des Blatts), wie mit P gezeichnet */
   form(anker: { x: number; y: number; ein?: [number, number]; aus?: [number, number] }[]): void {
     neu();
