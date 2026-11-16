@@ -250,7 +250,10 @@ Tropfen in der Naht, zieht sich zur Auswahl zusammen; an einer Wand umfahren ist
 **S6a und S6b gebaut (bis `660c2b29`):** ⌥ knickt auch während des Drehens einer Richtung; ⇧ kippt sie aus der Ebene (Länge und Richtung
 in der Ebene bleiben; im Werk der neue Handgriff `zugGriffRaum`, mit Florians Zustimmung). Probe `ozzy-richtung-fenster.mjs`. **S6c** (`c12ee4b6`):
 Beim Kippen schwenkt der Ring um die Linie des Griffs. Reglerwerte: vorerst die Grundwerte der Studie, Florian legt sie später fest.
-Nächster Schritt: S7 (Verdecktes grün).
+
+
+**S7 gebaut (`26de280e`):** Verdecktes grün und fein auf allen Flächen (Tiefenkarte der Haut je Achse, `werkBlatt.karteFuer`, `hinten`,
+`verdeckteProben`; `Flaeche.vorn` aus `ebene` und `feldFlaeche`); Probe `ozzy-verdeckt-fenster.mjs`. Nächster Schritt: S8 (P statt L).
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**
 [`docs/plans/2026-11-16-ozzy-weiter.md`](../../plans/2026-11-16-ozzy-weiter.md): Schritte S1 bis S13 (Messen, Seifenhaut gleitet, Tempo,

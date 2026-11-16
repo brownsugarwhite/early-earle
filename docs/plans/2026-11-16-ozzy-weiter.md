@@ -162,6 +162,11 @@ standard der anderen session. Das muss ich erst noch festlegen.“ Ozzy nimmt di
 **S7 Verdecktes grün.** Linien hinter der Form zeigt jede Ansicht grün und fein (wie die Studie), die vorderen schwarz; an Kreuzungen
 mit dem Umriss wechselt es weich. Gerechnet je Probe aus der Haut des Werks (Strahl in Blickrichtung der Ansicht). *Probe:* Bild der
 drei Ansichten an „strange bird“ neben der Studie.
+*Gebaut (16.11. abends, `26de280e`):* Jede Fläche weiß, welche Seite zum Betrachter zeigt (`Flaeche.vorn`); aus der gezeigten Haut des
+Werks je Achse eine Tiefenkarte (128 × 128, im Zug höchstens alle 150 ms neu); Proben und Punkte hinter der Haut sind grün und fein
+(Schicht 1), der Umriss bleibt schwarz. *Probe* `ozzy-verdeckt-fenster.mjs` (alles gut), *Bild*
+[`2026-11-16-verdeckt.png`](../progress/ozzy/2026-11-16-verdeckt.png) (Front und Top). Neben der Studie verglichen ist es nicht (sie lädt
+seine Formen nicht).
 
 **S8 P statt L.** Zwei Wege, eine Linie rundum zu ziehen: von Linie zu Linie (gibt es: Abzweigung) und **im Leeren beginnen, über die
 Form, im Leeren enden**: Dann wird es ein Loop rundum, dessen Ansicht genau die gezeichnete Linie ist (gerade wie L, gebogen wie
