@@ -69,6 +69,9 @@ export interface Pose {
   schwanzDreh: number;
   /** Boden-Löser an (1) oder aus (0): an, wenn Ozzy steht oder läuft; aus beim Springen */
   boden: number;
+  /** wie weit sich ein stehender Fuß zu seinem Boden streckt (1: er bleibt stehen, bis er abhebt; 0: er hängt, sobald der Körper
+   *  ihn hebt, wie die Hinterbeine beim Stolpern) */
+  reichen: number;
 }
 
 export const RUHE: Pose = {
@@ -114,6 +117,7 @@ export const RUHE: Pose = {
   schwanz: 0,
   schwanzDreh: 0,
   boden: 1,
+  reichen: 1,
 };
 
 export type PoseTeil = Partial<Pose>;

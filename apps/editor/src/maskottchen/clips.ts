@@ -39,6 +39,8 @@ export interface ClipKontext {
   stufe: number;
   /** Höhe des Bodens unter einer Sohle, `dx` vor der Wurzel (in Blickrichtung), relativ zum Grund (nur für Clips mit `gelaende`) */
   boden?: (dx: number) => number;
+  /** Sekunden, seit der Clip läuft (ohne Schleife; nur für Clips mit `gelaende`) */
+  zeit?: number;
 }
 export const KONTEXT_STANDARD: ClipKontext = { stufe: 170 };
 /** Abstand der Stufenkante vor der Wurzel, wenn ein Treppen-Clip beginnt (die Vorderfüße stehen kurz davor) */
@@ -108,9 +110,11 @@ function sohleGanz(x: number, boden: (dx: number) => number): number {
 }
 /** Steht die ganze Sohle auf einer Ebene (keine Kante darunter; eine Rampe ist erlaubt)? */
 function sohleGanzAufEbene(x: number, boden: (dx: number) => number): boolean {
-  let vor = boden(x - SOHLE);
+  // mit etwas Abstand zur Kante (die gezeichnete Sohle steht nicht genau am geplanten Ort)
+  const halb = SOHLE + 15;
+  let vor = boden(x - halb);
   for (let i = -7; i <= 8; i++) {
-    const h = boden(x + (i / 8) * SOHLE);
+    const h = boden(x + (i / 8) * halb);
     if (Math.abs(h - vor) > 8) return false;
     vor = h;
   }
@@ -161,7 +165,8 @@ function gang(g: Gang, t: number, p: Pose, k?: ClipKontext): void {
       const tr = tritt(-f * T);
       alpha = Math.asin(clamp((tr.x - xh) / H_BEIN, -0.75, 0.75)) / RAD;
       grund = tr.g;
-      klack += stoss(f * T);
+      // Klack nur, wenn der Fuß in diesem Clip aufgesetzt hat (beim Loslaufen stand er schon)
+      if ((k?.zeit ?? Infinity) - f * T > 0.02) klack += stoss(f * T);
     } else {
       const u = (f - g.stand) / (1 - g.stand);
       const w = u * u * (3 - 2 * u);
@@ -817,6 +822,8 @@ export const CLIPS: Clip[] = [
     danach: 'stehen',
     tempo: (t) => 230 * (1 - stufe(t, 0, 0.12)) + ableitung((u) => spurWert(STOLPER_VOR, u))(t),
     pose: (t, p) => {
+      // die Hinterbeine sollen mit dem Körper in die Luft gehen, nicht am Boden kleben
+      p.reichen = 0;
       p.nicken = spurWert(STOLPER_NICKEN, t);
       // Vorderfüße bleiben, wo sie hängen geblieben sind: Die Hüften sind `vor` weiter, die Gipse biegen sich nach hinten
       const vor = spurWert(STOLPER_VOR, t);

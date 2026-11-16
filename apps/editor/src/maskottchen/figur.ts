@@ -918,12 +918,15 @@ export class Figur {
     // (stehend: ohne Hub; ein schwingender Fuß trägt in `stufe` seinen Weg durch die Luft)
     let hoechste = stufe;
     for (const n of ['VN', 'VF', 'HN', 'HF'] as const) if ((pose[`hub${n}`] as number) <= 0.01) hoechste = Math.max(hoechste, pose[`stufe${n}`] as number);
-    const tiefer = Math.min(150, hoechste - stufe);
+    // ein stehender Fuß bleibt auf seinem Boden und streckt sich, bis er abhebt (Hub); so springt er nicht hoch, wenn ein anderer
+    // Fuß abhebt und der Körper erst nachkommt
+    const steht = 150 * Math.max(0, Math.min(1, pose.reichen)) * (1 - glatt01(hub / 3));
+    const tiefer = Math.max(steht, Math.min(150, hoechste - stufe));
     const nah = flach * Math.min(1, Math.max(0, pose.boden)) * (1 - glatt01((luecke - 25 - tiefer) / 45));
-    // ein schwingender Fuß geht mindestens auf seiner Bahn über das Gelände (Bordstein, Kante)
+    // ein schwingender Fuß mit geplanter Bahn über Gelände (Bordstein, Kante) geht genau auf ihr (der Gips streckt oder staucht
+    // sich dafür); so fällt er nicht am Ende aus der Höhe, in die ihn das Kippen des Körpers gehoben hätte
     const bahn = pose[`bahn${b.name}` as const] as number;
-    const fyFrei = natuerlich - hub + (boden - natuerlich) * nah;
-    const fy = bahn > 0 ? Math.min(fyFrei, boden - hub - bahn) : fyFrei;
+    const fy = bahn > 0 ? boden - hub - bahn : natuerlich - hub + (boden - natuerlich) * nah;
     const koerperW = (pose.nicken * sPsi + pose.rollen * cPsi) * RAD;
     // oben dreht der Gips gut halb mit (die Haut geht mit), unten steht die Sohle flach: Die Biegung verteilt sich weich
     void koerperW;

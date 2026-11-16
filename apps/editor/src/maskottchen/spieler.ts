@@ -33,6 +33,36 @@ function nachfuehren(z: { wert: number; v: number }, ziel: number, w: number, dt
   z.wert = ziel + (y + c * dt) * ex;
   z.v = (z.v - w * c * dt) * ex;
 }
+
+/**
+ * Trägheit (Übergang zwischen zwei Clips): Der neue Clip gilt sofort; der Unterschied zum alten (Lage x0, Geschwindigkeit v0)
+ * klingt über die Dauer T als Polynom 5. Grades ab, das ohne Beschleunigung beginnt und mit Lage, Geschwindigkeit und
+ * Beschleunigung null endet: stetig in Lage und Geschwindigkeit. Der Schwung des alten Clips rollt aus (wird nicht abgebremst).
+ */
+class Abklingen {
+  private x0 = 0;
+  private v0 = 0;
+  private A = 0;
+  private B = 0;
+  private C = 0;
+  private T = 0;
+  anlegen(x0: number, v0: number, T: number): void {
+    T = Math.max(1e-3, T);
+    this.x0 = x0;
+    this.v0 = v0;
+    this.A = -(6 * v0 * T + 12 * x0) / (2 * T ** 5);
+    this.B = (16 * v0 * T + 30 * x0) / (2 * T ** 4);
+    this.C = -(12 * v0 * T + 20 * x0) / (2 * T ** 3);
+    this.T = Math.abs(x0) > 1e-7 || Math.abs(v0) > 1e-6 ? T : 0;
+  }
+  wert(t: number): number {
+    if (t >= this.T) return 0;
+    return ((((this.A * t + this.B) * t + this.C) * t + 0) * t + this.v0) * t + this.x0;
+  }
+}
+/** Kanäle, die der Übergang trägt (Lage x, y rechnen Wurzel und Löser) */
+const TRAEG_SCHLUESSEL = POSE_SCHLUESSEL.filter((k) => k !== 'x' && k !== 'y');
+const STUFEN = new Set<keyof Pose>(['stufeVN', 'stufeVF', 'stufeHN', 'stufeHF']);
 interface Haft {
   x: number;
   /** Boden (Welt, über BODEN_Y), auf den der Fuß zuläuft, und wo er gerade ist */
@@ -106,7 +136,22 @@ export class Spieler {
   private puffer: Pose = { ...RUHE };
   private puffer2: Pose = { ...RUHE };
   private letztesFrei = 1;
+  private letztesNeigen = 1;
   private geschw = 0;
+  /** Übergang: 'traegheit' (der neue Clip gilt sofort, der Unterschied klingt stetig ab) oder 'blenden' (zwei Clips
+   *  überblendet, wie bis Runde 4) */
+  uebergang: 'traegheit' | 'blenden' = 'traegheit';
+  /** die Pose des Clips im letzten und vorletzten Bild (vor Löser und Federn; Stufen in der Welt) und der Zeitschritt dazwischen */
+  private roh: Pose = { ...RUHE };
+  private rohVorher: Pose = { ...RUHE };
+  private rohDt = 0;
+  private rohGueltig = 0;
+  private abklingen = TRAEG_SCHLUESSEL.map(() => new Abklingen());
+  private abklingenTempo = new Abklingen();
+  private traegStart = -Infinity;
+  /** Löser-Gewichte des vorigen Clips (werden über den Übergang hinweg gemischt) */
+  private freiVorher = 1;
+  private neigenVorher = 1;
   /** Korrektur des Lösers am Nicken (Grad) und Höhe des Körpers (in der Welt), weich nachgeführt: Setzt ein Fuß auf oder
    *  wechseln die tragenden Beine, kippt und hebt sich der Körper ohne Ruck */
   private kipp = { wert: NaN, v: 0 };
@@ -165,11 +210,17 @@ export class Spieler {
     const clip = CLIP[name];
     if (!clip) return;
     if (clip.name === this.aktuell.clip.name && clip.schleife && richtung === undefined) return;
+    this.freiVorher = this.letztesFrei;
+    this.neigenVorher = this.letztesNeigen;
     this.vorher = this.aktuell;
     this.aktuell = { clip, start: this.zeit, richtung: richtung ?? this.richtung, kontext, stufeVersatz: 0, haft: this.haftNeu() };
     this.richtung = this.aktuell.richtung;
     this.blendStart = this.zeit;
     this.blendDauer = Math.max(0.0001, ueberblenden);
+    if (this.uebergang === 'traegheit') {
+      this.vorher = null;
+      this.traegheitAnlegen(this.blendDauer);
+    }
     // eine Stufe im Gelände: ab der Kante (vor den Vorderfüßen) liegt der Boden höher oder tiefer
     if (clip.treppe) {
       const kante = this.x + this.richtung * KANTE;
@@ -190,6 +241,36 @@ export class Spieler {
     return h;
   }
 
+  /** Übergang anlegen: Unterschied zwischen dem, was zuletzt galt (mit seiner Geschwindigkeit), und dem neuen Clip am Anfang */
+  private traegheitAnlegen(dauer: number): void {
+    this.traegStart = this.zeit;
+    if (this.rohGueltig < 1) {
+      for (const a of this.abklingen) a.anlegen(0, 0, dauer);
+      this.abklingenTempo.anlegen(0, 0, dauer);
+      return;
+    }
+    const h = 1 / 120;
+    const n0 = this.puffer;
+    const n1 = this.puffer2;
+    const t0 = this.auswerten(this.aktuell, this.zeit, n0, 0);
+    this.auswerten(this.aktuell, this.zeit + h, n1, 0);
+    const mitV = this.rohGueltig >= 2 && this.rohDt > 0;
+    TRAEG_SCHLUESSEL.forEach((k, i) => {
+      // die Stufen des Letzten in der Welt, die neuen zum jetzigen Grund
+      const stufe = STUFEN.has(k) ? this.hoehe : 0;
+      let x0 = (this.roh[k] as number) - stufe - (n0[k] as number);
+      // Winkel über den kürzesten Weg
+      if (k === 'theta' || k === 'psi') x0 -= 360 * Math.round(x0 / 360);
+      const winkel = k === 'theta' || k === 'psi';
+      const diff = (a: number, b: number) => (winkel ? a - b - 360 * Math.round((a - b) / 360) : a - b);
+      const vAlt = mitV ? diff(this.roh[k] as number, this.rohVorher[k] as number) / this.rohDt : 0;
+      const vNeu = diff(n1[k] as number, n0[k] as number) / h;
+      this.abklingen[i]!.anlegen(x0, mitV ? vAlt - vNeu : 0, dauer);
+    });
+    // Tempo der Wurzel (in der Welt)
+    this.abklingenTempo.anlegen(this.geschw - t0 * this.aktuell.richtung, 0, dauer);
+  }
+
   /** Pose eines Eintrags zur Weltzeit T (in Welt-Richtung) und seine Vorwärtsgeschwindigkeit */
   private auswerten(e: Eintrag, T: number, out: Pose, dt: number): number {
     const c = e.clip;
@@ -198,7 +279,9 @@ export class Spieler {
     else t = Math.min(t, c.dauer);
     Object.assign(out, RUHE);
     // Clips, die ihre Schritte selbst planen (Gang), fragen den Boden vor und hinter der Wurzel (relativ zum Grund)
-    const kontext: ClipKontext = c.gelaende ? { ...e.kontext, boden: (dx: number) => this.bodenBei(this.x + e.richtung * dx) - this.hoehe } : e.kontext;
+    const kontext: ClipKontext = c.gelaende
+      ? { ...e.kontext, zeit: T - e.start, boden: (dx: number) => this.bodenBei(this.x + e.richtung * dx) - this.hoehe }
+      : e.kontext;
     c.pose(t, out, kontext);
     if (e.stufeVersatz) {
       out.stufeVN -= e.stufeVersatz;
@@ -255,7 +338,19 @@ export class Spieler {
     // Clips, die ihre Stufe selbst planen, kippen selbst; alle anderen folgen dem Gelände
     let neigen = this.aktuell.clip.treppe ? 0 : 1;
     const w = this.vorher ? glatt((this.zeit - this.blendStart) / this.blendDauer) : 1;
-    if (this.vorher && w < 1) {
+    if (this.uebergang === 'traegheit') {
+      // der neue Clip sofort, dazu der abklingende Unterschied zum alten
+      Object.assign(p, this.puffer);
+      const tt = this.zeit - this.traegStart;
+      TRAEG_SCHLUESSEL.forEach((k, i) => {
+        const d = this.abklingen[i]!.wert(tt);
+        if (d) (p[k] as number) += d;
+      });
+      const gw = glatt(tt / this.blendDauer);
+      frei = this.freiVorher + (frei - this.freiVorher) * gw;
+      neigen = this.neigenVorher + (neigen - this.neigenVorher) * gw;
+      v += this.abklingenTempo.wert(tt) * this.aktuell.richtung;
+    } else if (this.vorher && w < 1) {
       const v0 = this.auswerten(this.vorher, this.zeit, this.puffer2, dt);
       // Winkel über den kürzesten Weg: Nach einmal ganz herum (375°) dreht der Kopf nicht wieder zurück
       for (const k of ['theta', 'psi'] as const) this.puffer2[k] += 360 * Math.round((this.puffer[k] - this.puffer2[k]) / 360);
@@ -268,6 +363,15 @@ export class Spieler {
       this.vorher = null;
     }
     this.letztesFrei = frei;
+    this.letztesNeigen = neigen;
+    // für den nächsten Übergang: was jetzt gilt (Stufen in der Welt)
+    const tausch = this.rohVorher;
+    this.rohVorher = this.roh;
+    this.roh = tausch;
+    Object.assign(this.roh, p);
+    for (const k of STUFEN) (this.roh[k] as number) += this.hoehe;
+    this.rohDt = dt;
+    this.rohGueltig = Math.min(2, this.rohGueltig + 1);
     // Wurzelbewegung in Blickrichtung (die Richtung des aktuellen Clips)
     this.geschw = v * this.aktuell.richtung;
     this.x += this.geschw * dt;
@@ -305,6 +409,10 @@ export class Spieler {
     for (const f of FUESSE) this.aktuell.haft[f] = { x: NaN, ziel: 0, wert: NaN, v: 0 };
     this.kipp.wert = NaN;
     this.reich.wert = NaN;
+    // kein Übergang über den Sprung hinweg
+    this.rohGueltig = 0;
+    for (const a of this.abklingen) a.anlegen(0, 0, 1);
+    this.abklingenTempo.anlegen(0, 0, 1);
     if (gelaendeLeeren) {
       this.hoehe = 0;
       this.gelaende = [];
