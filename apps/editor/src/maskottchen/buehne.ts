@@ -20,7 +20,7 @@ export class Buehne {
   farben: Farben = { schwarz: '#1f1a17', weiss: '#ffffff' };
   hintergrund = '#ffffff';
   /** Glätte der flüssigen Stufe in Welteinheiten (Logo-Bildpunkten): so groß werden die Kehlen zwischen Teilen; 0 = aus */
-  glaette = 24;
+  glaette = 32;
   /** zusätzlich nach außen runden (Welteinheiten): Ecken werden weich, Spitzen nur wenig stumpfer; 0 = Spitzen ganz spitz */
   glatt = 5;
   /** zur Fehlersuche: Teile bunt und durchscheinend zeichnen */
@@ -140,12 +140,12 @@ export class Buehne {
       return;
     }
     // vorn: Gesicht, Fenster, Loch, Nase und alles mit Rand; die Nase verschmilzt zusätzlich mit dem Haar (in der Maske)
-    const vorn = (t: Zeichenteil) => t.farbe === 'weiss' || t.name === 'nase' || !!t.rand;
+    const vorn = (t: Zeichenteil) => t.farbe === 'weiss' || t.name === 'nase' || !!t.rand || !!t.scharf;
     const q = this.quelleCtx;
     q.setTransform(1, 0, 0, 1, 0, 0);
     q.clearRect(0, 0, this.quelle.width, this.quelle.height);
     q.setTransform(this.ctx.getTransform());
-    zeichneTeile(q, teile.filter((t) => t.farbe === 'schwarz'), { schwarz: '#000000', weiss: '#000000' });
+    zeichneTeile(q, teile.filter((t) => t.farbe === 'schwarz' && !t.scharf), { schwarz: '#000000', weiss: '#000000' });
     const sigma = this.glaette * this.kamera.massstab * this.dpr;
     this.fluessig!.zeichnen(this.quelle, sigma, this.farben.schwarz, 0.5, this.glatt * this.kamera.massstab * this.dpr);
     const c = this.ctx;

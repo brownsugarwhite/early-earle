@@ -2,7 +2,7 @@
 // Richtung ψ; die Gipsbeine sind Säulen mit runder Hüfte (der dunkle Schatten daneben ist das ferne Bein, Florian 16.11.).
 // Die Teile hängen an 3D-Ankern (Hüften, Hals, Schwanzwurzel), werden gedreht, projiziert und nach Tiefe gezeichnet.
 // Ohren, Schopf und Schwanz werden gebogen (Wurzel fest, Spitze schwingt), nie wie Pappe gedreht oder gequetscht.
-import { type AnkerForm, ankerAffin, ankerDrehen, ankerFormenAnlegen } from './anker';
+import { AnkerForm, ankerAffin, ankerDrehen, ankerFormenAnlegen } from './anker';
 import { koerperAnker, kopfAnker } from './daten/anker';
 import type { Pose } from './pose';
 
@@ -19,6 +19,8 @@ export interface Zeichenteil {
   tiefe: number;
   /** über dem Gesicht zeichnen (nicht nur in der flüssigen Maske), mit weißem Rand dieser Breite (Welt-Einheiten) */
   rand?: number;
+  /** scharf zeichnen (nicht in der flüssigen Maske), vor dem Gesicht: der Kinnhaken mit seiner spitzen Ecke */
+  scharf?: boolean;
 }
 
 // ---- Maße (aus dem Logo und Florians Ansichten) ------------------------------------------------------------------------
@@ -256,6 +258,8 @@ export class Figur {
 
   private anhangVersatz = new Map<string, { x: number[]; y: number[] }>();
   private scheiben: Scheibe[];
+  /** Kinnhaken nach dem Blick des Kopfs: im Logo (15°) die Locke, im Profil (90°) Florians schlanker Sporn */
+  private kehleSeite: AnkerForm;
 
   constructor() {
     // Der Schopf wird gespiegelt wie alles andere (Paare a–c und d–e), nicht mehr nur verschoben
@@ -263,6 +267,24 @@ export class Figur {
     this.kopf = ankerFormenAnlegen(kopfRoh, ART_KOPF, rueckseiten);
     this.koerper = ankerFormenAnlegen(koerperAnker, ART_KOERPER);
     this.scheiben = rumpfScheiben(this.koerper.get('rumpf')!);
+    // Kinnhaken von der Seite: Florians Seitenansicht (spur-seite.json) zeigt einen schlanken Sporn, der vor dem weißen Kinn
+    // fast senkrecht aufsteigt, die Spitze unter der Schnauze, unten eine scharfe Ecke und darunter eine Kerbe zur Brust.
+    // Körperkoordinaten; Reihenfolge wie die Kehle: Spitze t, zwei Punkte der Vorderkante, Ecke o, innen i (in der Brust), u
+    // (unter dem Gesicht).
+    const kehle = koerperAnker.find((r) => r.name === 'kehle')!;
+    const sporn = [
+      689, -244, -58, 48, -0.7, 31.3,
+      687, -150, 4.3, -30.7, -7.1, 50.5,
+      655, 0, 13.4, -49.2, -7.2, 26.5,
+      625, 77, 10, -25.7, -51.7, -2.3,
+      470, 70, 51.7, 2.3, 15, -56.7,
+      515, -100, -15, 56.7, 58, -48,
+    ];
+    this.kehleSeite = new AnkerForm(
+      { ...kehle, ansichten: { 15: kehle.ansichten['90']!, 90: sporn }, ecken: { 15: kehle.ecken['90']!, 90: [[0, 1], [3, 1], [4, 1], [5, 1]] } },
+      'gerade',
+    );
+    this.kehleSeite.anlegen({ 15: Float32Array.from(kehle.ansichten['90']!), 90: Float32Array.from(sporn) }, null, false);
     // Versatz der Anhänge in den Ansichten (dort stimmt die Zeichnung)
     for (const a of ANHAENGE) {
       const kind = this.kopf.get(a.kind)!;
@@ -562,11 +584,19 @@ export class Figur {
     const f = this.koerper.get('kehle')!;
     const p = this.buf('kehle', f.n * 6);
     f.auswerten(pose.psi, p);
+    // von der Seite bestimmt der Blick des Kopfs die Form (Locke im Logo, Sporn im Profil); von vorn und hinten die Körperrichtung
+    const seitlich = sPsi * sPsi;
+    if (seitlich > 0.001) {
+      const q = this.buf('kehleSeite', f.n * 6);
+      const blick = Math.min(90, Math.max(15, Math.abs(((((pose.theta + 180) % 360) + 360) % 360) - 180)));
+      this.kehleSeite.auswerten(sPsi >= 0 ? blick : -blick, q);
+      for (let i = 0; i < p.length; i++) p[i] = p[i]! + (q[i]! - p[i]!) * seitlich;
+    }
     const roh = p.slice();
     verformen(p, f.n, haut);
     ankerAffin(p, f.n, c, -s, s, c, ax, ay);
     this.kehleAmKopf(pose, sPsi, roh, p, f.n);
-    teile.push({ name: 'kehle', farbe: 'schwarz', art: 'bezier', p, n: f.n, tiefe: 0.02 });
+    teile.push({ name: 'kehle', farbe: 'schwarz', art: 'bezier', p, n: f.n, tiefe: 0.02, scharf: true });
     // der Rumpf aus Querschnitten: je zwei benachbarte als konvexe Hülle, zusammen die Bohne in jeder Richtung
     const ringe = this.querschnitte(pose);
     for (let k = 0; k + 1 < ringe.length; k++) {
@@ -606,16 +636,36 @@ export class Figur {
     // stehende Beine (flache Sohle) lassen die Naht, wo sie ist (das Bein biegt sich); steif gekippte nehmen die Haut mit
     const huefte = BEINE.map((b) => {
       const a = pose[`bein${b.name}` as const] as number;
-      return { X: b.X, Z: b.Z, w: -a * RAD * 0.5 * (1 - 0.4 * beinFlach(a - pose.nicken)) };
+      return { X: b.X, Z: b.Z, w: -a * RAD * 0.5 };
     });
     const [kopfDy, kopfSteig] = biegung(pose.biegen, KOPF.X);
     const biegeDy = (X: number) => (X <= KOPF.X ? biegung(pose.biegen, X)[0] : kopfDy + kopfSteig * 60 * (1 - Math.exp(-(X - KOPF.X) / 60)));
     const K = 22;
     const e = 2 / QUER_N;
+    // Lücke zwischen den Beinen (von der Seite): von der Vorderkante der Hinterbeine bis zur Hinterkante der Vorderbeine auf
+    // Bauchhöhe (200 unter der Hüfte); darüber spannt sich in jedem Bild ein runder Bogen, Scheitel wie im Logo. So zeigt die
+    // Lücke nie Buckel, wenn die Beine schwingen.
+    const sPsi = Math.sin(ps);
+    let links = -Infinity;
+    let rechts = Infinity;
+    for (const b of BEINE) {
+      const a = ((pose[`bein${b.name}` as const] as number) - pose.nicken) * RAD;
+      const xb = beinX(b, sPsi) + 200 * Math.sin(a);
+      const halb = (KASTEN.B / 2) * Math.cos(a);
+      if (b.name[0] === 'H') links = Math.max(links, xb + halb);
+      else rechts = Math.min(rechts, xb - halb);
+    }
+    const mitte = (links + rechts) / 2;
+    const breit = Math.max(30, (rechts - links) / 2);
+    const lueckeBogen = (X: number) => {
+      const u = (X - mitte) / breit;
+      return Math.abs(u) <= 1 ? 138 + 62 * u * u : 232;
+    };
     const out: [number, number][][] = [];
     for (const sc of this.scheiben) {
-      const yc = (sc.oben + sc.unten) / 2;
-      const h = (sc.unten - sc.oben) / 2;
+      const unten = sc.bauch ? lueckeBogen(sc.X) : sc.unten;
+      const yc = (sc.oben + unten) / 2;
+      const h = (unten - sc.oben) / 2;
       const ring: [number, number][] = [];
       for (let j = 0; j < QUER; j++) {
         const th = (2 * Math.PI * j) / QUER;
@@ -728,22 +778,27 @@ export class Figur {
     const w = (pose.nicken + steigung) * sPsi * RAD;
     const c = Math.cos(w);
     const s = Math.sin(w);
-    // von hinten liegt der Ring vor dem Rumpf: ein schmaler weißer Rand trennt ihn (sonst sähe man nur das Loch)
-    const rand = 16 * glatt01((st - 60) / 200);
+    // von hinten liegt der Ring vor dem Rumpf und verschmilzt mit ihm (Florian: kein Rand): Dafür wird das Loch größer, so liest
+    // man den Ring trotzdem
+    const vorne = glatt01((st - 60) / 200);
+    if (vorne > 0) {
+      let mx = 0;
+      let my = 0;
+      for (let i = 0; i < loch.n; i++) {
+        mx += pl[i * 6]!;
+        my += pl[i * 6 + 1]!;
+      }
+      mx /= loch.n;
+      my /= loch.n;
+      const k = 1 + 0.4 * vorne;
+      ankerAffin(pl, loch.n, k, 0, 0, k, mx - mx * k, my - my * k);
+    }
     for (const [name, f, p] of [
       ['schwanz', ring, pr],
       ['schwanzloch', loch, pl],
     ] as const) {
       ankerAffin(p, f.n, seite * c, -s, seite * s, c, sx, sy);
-      teile.push({
-        name,
-        farbe: f.farbe,
-        art: 'bezier',
-        p,
-        n: f.n,
-        tiefe: st + 1 + (name === 'schwanzloch' ? 0.01 : 0),
-        ...(name === 'schwanz' && rand > 0.5 ? { rand } : {}),
-      });
+      teile.push({ name, farbe: f.farbe, art: 'bezier', p, n: f.n, tiefe: st + 1 + (name === 'schwanzloch' ? 0.01 : 0) });
     }
   }
 
@@ -780,7 +835,8 @@ export class Figur {
     const fy = natuerlich - hub + (boden - natuerlich) * nah;
     const koerperW = (pose.nicken * sPsi + pose.rollen * cPsi) * RAD;
     // oben dreht der Gips gut halb mit (die Haut geht mit), unten steht die Sohle flach: Die Biegung verteilt sich weich
-    const weg = beinWeg(hx, hy, fx, fy, phi + (koerperW - phi) * flach * 0.4, phi * (1 - flach));
+    void koerperW;
+    const weg = beinWeg(hx, hy, fx, fy, phi, phi * (1 - flach));
     const setze = (pts: number[]): Float32Array => {
       const out = new Float32Array(pts.length);
       for (let i = 0; i < pts.length; i += 2) {
@@ -940,10 +996,11 @@ function bodenUnter(pose: Pose, X: number): number {
  */
 function beinWeg(hx: number, hy: number, fx: number, fy: number, phiH: number, phiF: number): (u: number, v: number) => [number, number] {
   const len = Math.hypot(fx - hx, fy - hy) || 1;
-  const t0x = -Math.sin(phiH) * len;
-  const t0y = Math.cos(phiH) * len;
-  const t1x = -Math.sin(phiF) * len;
-  const t1y = Math.cos(phiF) * len;
+  // der Gips bleibt lange gerade (kräftige Tangente oben) und wird erst kurz vor der Sohle flach (schwache Tangente unten)
+  const t0x = -Math.sin(phiH) * len * 1.25;
+  const t0y = Math.cos(phiH) * len * 1.25;
+  const t1x = -Math.sin(phiF) * len * 0.45;
+  const t1y = Math.cos(phiF) * len * 0.45;
   const ch = Math.cos(phiH);
   const sh = Math.sin(phiH);
   return (u, v) => {
@@ -998,6 +1055,8 @@ interface Scheibe {
   oben: number;
   unten: number;
   breite: number;
+  /** liegt zwischen den Beinen: unten der Bogen der Lücke (je Bild neu) */
+  bauch: boolean;
 }
 const SCHEIBEN = 58;
 const QUER = 18;
@@ -1054,7 +1113,15 @@ function rumpfScheiben(f: AnkerForm): Scheibe[] {
       }
     }
     if (!Number.isFinite(oben)) continue;
-    out.push({ X, oben, unten, breite: 0 });
+    // Bauch zwischen den Beinen: In der Zeichnung hängt er dort als W mit zwei Tropfen, die in Ruhe genau hinter den Gipsen
+    // verschwinden. Im Gang schauen sie als Buckel heraus. Darum ein runder Bogen über der Lücke (Scheitel wie im Logo), der
+    // nach außen steil abfällt; unter den Gipsen reicht der Bauch tiefer (dort verdeckt). Gehen die Beine auseinander, wird die
+    // Lücke nur breiter.
+    // Bauch zwischen den Beinen: wird je Bild als Bogen zwischen die Innenkanten der Beine gespannt (siehe querschnitte);
+    // unter den Gipsen reicht er tief (dort verdeckt)
+    const bauch = Math.abs(X - 2) < 480;
+    if (bauch) unten = Math.max(unten, 232);
+    out.push({ X, oben, unten, breite: 0, bauch });
     hMax = Math.max(hMax, unten - oben);
   }
   // Breite: über die ganze Länge fast gleich (so breit wie in Florians Frontansicht, die Gipse sitzen innen), zu den Enden hin

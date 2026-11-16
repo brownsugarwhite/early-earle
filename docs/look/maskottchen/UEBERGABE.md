@@ -18,16 +18,21 @@ Prüfbilder: `docs/progress/maskottchen/` (Runde 3: `2026-11-16-r3-*`, Runde 4: 
 - **Körper aus Querschnitten** (`querschnitte` in `figur.ts`): Superellipsen entlang des Körpers, oben und unten genau Florians
   Seitenansicht, Breite wie seine Front, zu den Enden rund. Dadurch stimmt die Silhouette in jeder Richtung: Seite, schräg,
   frontal, von hinten.
-  - Haut im Raum: atmen, strecken/stauchen, biegen (`biegung`), an steif gekippten Beinen mitdrehen, am Boden platt drücken.
-  - Von hinten sitzt der Ringschwanz mit weißem Rand vor dem Rumpf.
+  - Haut im Raum: atmen, strecken/stauchen, biegen (`biegung`), an den Hüften mit den Beinen mitdrehen, am Boden platt drücken.
+  - Bauch zwischen den Beinen: In jedem Bild spannt sich ein runder Bogen zwischen die Innenkanten der Beine (`lueckeBogen`).
+    Darum zeigt die Lücke im Gang keine Buckel; die Tropfen der Zeichnung (W) sind ersetzt.
+  - Von hinten verschmilzt der Ringschwanz mit dem Rumpf, ohne Rand, das Loch wird dafür größer (Florian, 17.11.).
+- **Kinnhaken** (`kehle`, scharf gezeichnet, nicht in der flüssigen Maske): von der Seite nach dem Blick des Kopfs zwischen der
+  Locke des Logos (15°) und Florians schlankem Sporn aus der Seitenansicht (90°, `kehleSeite`). Die Spitze geht mit dem Kopf.
+  Prüfen gegen die Vorlage: `VORLAGE=spur-seite.json` legt Florians Seitenansicht rot über das Blatt.
 - **Beine** (`bein`, `beinWeg`, `beinFlach`):
-  - Bis 40° gekippt ist die Sohle flach am Boden und der Gips biegt sich weich. Oben dreht er gut halb mit, die Haut geht mit. Er streckt oder staucht sich, damit der Fuß genau auf seinem Boden steht, auch auf Stufen.
+  - Bis 40° gekippt ist die Sohle flach am Boden. Der Gips bleibt gerade und wird erst kurz vor der Sohle flach. Er streckt oder staucht sich, damit der Fuß genau auf seinem Boden steht, auch auf Stufen.
   - Gehobene Füße schweben `hub` über ihrem Boden.
   - Weiter gekippt (Sitzen, Liegen, Kratzen) ist der Gips steif wie ein Brett.
 - **Boden-Löser** (`stuetzen`, `boden`): Stehende Beine tragen gemeinsam (weich, Mittel ihrer Längen), steife Beine und der weiche
   Rumpf sind harte Stützen. Mit `frei` sucht er das Kippen, bei dem die Beine gleich lang sind. Böden je Fuß: `stufeVN … stufeHF`.
 - **Flüssig** (`fluessig.ts`, `buehne.ts`):
-  - Alle schwarzen Teile (auch die Nase) werden als eine Maske groß weichgezeichnet (`glaette` 24): Das gibt runde Kehlen an allen Nähten.
+  - Alle schwarzen Teile (auch die Nase, nicht der Kinnhaken) werden als eine Maske groß weichgezeichnet (`glaette` 32): Das gibt runde Kehlen an allen Nähten.
   - Dazu kommt ein kleines Weichzeichnen (`glatt` 5): Ecken werden weich, Spitzen nur wenig stumpfer.
 - **Federn** (`federn.ts`): wie Pendel gekoppelt, wenig gedämpft (Ohren, Schopf, Schwanz, Bart, Nase, Kopf, Stauchen, Biegen).
 - **Clips** (`clips.ts`):
@@ -62,10 +67,15 @@ Prüfbilder: `docs/progress/maskottchen/` (Runde 3: `2026-11-16-r3-*`, Runde 4: 
   - „Der Körper ist das Wichtigste.“
   - Front- und Rückpose: frontal stehen, den Rücken zudrehen, alles perfekt smooth.
 
+- Nachtrag 17.11. (nach den Prüfbildern):
+  - Im Gang zeigt der Übergang des Körpers zwischen den Beinen noch Stellen.
+  - Das Kinn ist zu rund, nicht wie die Vorlage von der Seite.
+  - Um den Schwanz soll keine zweite Outline liegen; lieber das Loch vergrößern, wenn der Ring im Körper aufgeht.
+
 ## Offen
 
 1. Kopf oben zwischen 40° und 70°: kleine weiße Kerben zwischen Ohr, Haarkappe und Gesichtsrand (Teile morphen getrennt). Eine
    gezeichnete Zwischenansicht (45°) mit denselben Ankern wäre die saubere Lösung.
-2. Kinn im Profil: Haken folgt dem Kopf, die weiße Ecke unten ist noch spitz; Florians Urteil abwarten.
-3. Ein kleiner weißer Punkt zwischen den Beinen in einzelnen Bildern des Gangs (Naht der Querschnitte mit den Schattenbeinen).
+2. Kinnhaken bei starkem Nicken: Er knickt leicht, wo Kopf und Brust ihn ziehen.
+3. Im Gang bleibt eine winzige Stufe, wo eine schwebende Schattensohle neben der stehenden aufsetzt (Hub 3).
 4. Witz und Timing (Laufen, Eilen, Stolpern, Stufen) beurteilt Florian live; Stärke der Federn und Glätte sind Stellgrößen.

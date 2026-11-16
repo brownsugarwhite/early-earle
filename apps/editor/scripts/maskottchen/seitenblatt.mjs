@@ -2,7 +2,22 @@
 // Posen und fotografiert es.
 //   ART=kopf|koerper|clip|posen  [WINKEL=0,15,…] [CLIP=laufen BILDER=12 ABSTAND=0.1] [POSEN='[{"theta":40}]'] [GLAETTE=14]
 //   node scripts/maskottchen/seitenblatt.mjs <aus.png>
+import { readFileSync } from 'node:fs';
 import { chromium } from '@playwright/test';
+
+// Vorlage darüberlegen: VORLAGE=spur-seite.json (Logo-Koordinaten, als rote Linien)
+const vorlage = process.env.VORLAGE
+  ? JSON.parse(readFileSync(new URL(`../../../../docs/look/maskottchen/${process.env.VORLAGE}`, import.meta.url), 'utf8')).umrisse.map((u) => {
+      const pts = [];
+      for (const [a, b, c, d] of u.stuecke)
+        for (let i = 0; i <= 8; i++) {
+          const t = i / 8;
+          const m = 1 - t;
+          pts.push([m * m * m * a[0] + 3 * m * m * t * b[0] + 3 * m * t * t * c[0] + t * t * t * d[0], m * m * m * a[1] + 3 * m * m * t * b[1] + 3 * m * t * t * c[1] + t * t * t * d[1]]);
+        }
+      return pts;
+    })
+  : [];
 
 const aus = process.argv[2] ?? '/tmp/blatt.png';
 const url = process.env.URL ?? 'http://localhost:5207/maskottchen.html?reiter=drehen';
@@ -15,7 +30,7 @@ await seite.goto(url);
 await seite.waitForFunction(() => (window).__ozzy);
 await seite.addStyleTag({ content: '#kopfzeile, #hud { display: none !important; }' });
 const box = await seite.evaluate(
-  ({ art, env }) => {
+  ({ art, env, vorlage }) => {
     const o = window.__ozzy;
     if (env.GLAETTE) o.buehne.glaette = Number(env.GLAETTE);
     if (env.GLATT) o.buehne.glatt = Number(env.GLATT);
@@ -50,11 +65,11 @@ const box = await seite.evaluate(
     }
     if (env.RAHMEN) rahmen = JSON.parse(env.RAHMEN);
     for (const p of posen) if (p.boden > 0 && art !== 'clip') o.figur.boden(p, 0);
-    o.blattZeichnen(posen, texte, Math.min(spalten, posen.length), rahmen);
+    o.blattZeichnen(posen, texte, Math.min(spalten, posen.length), rahmen, vorlage);
     const r = o.buehne.grund.getBoundingClientRect();
     return { x: r.x, y: r.y, w: r.width, h: r.height };
   },
-  { art, env: process.env },
+  { art, env: process.env, vorlage },
 );
 await seite.waitForTimeout(150);
 await seite.screenshot({ path: aus, clip: { x: box.x, y: box.y, width: box.w, height: box.h } });

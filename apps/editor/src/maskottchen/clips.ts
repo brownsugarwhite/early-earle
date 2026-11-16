@@ -123,8 +123,8 @@ function gangTempo(g: Gang): number {
   return (2 * H_BEIN * Math.sin(g.schritt * RAD)) / (g.stand * g.periode);
 }
 
-const LAUFEN: Gang = { periode: 1.36, schritt: 15, art: 'pass', stand: 0.6, hub: 5, wiegen: 8.5, klack: 0.045 };
-const EILEN: Gang = { periode: 0.46, schritt: 8, art: 'trab', stand: 0.52, hub: 7, wiegen: 3, klack: 0.055 };
+const LAUFEN: Gang = { periode: 1.36, schritt: 15, art: 'pass', stand: 0.6, hub: 3.2, wiegen: 8.5, klack: 0.045 };
+const EILEN: Gang = { periode: 0.46, schritt: 8, art: 'trab', stand: 0.52, hub: 4, wiegen: 3, klack: 0.055 };
 
 // ---- Fußfolge: jeder Fuß mit festen Tritten (Stufen hoch und hinunter) --------------------------------------------------
 interface Tritt {

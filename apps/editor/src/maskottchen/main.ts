@@ -522,7 +522,7 @@ reiterSetzen(reiter);
 // ---- Prüfblätter (für Proben: flüssig gezeichnet wie auf der Bühne) -------------------------------------------------------
 let angehalten = false;
 /** Raster aus Posen zeichnen: je Feld ein Weltausschnitt [x0, y0, x1, y1] */
-function blattZeichnen(posen: Pose[], texte: string[], spalten: number, rahmen: [number, number, number, number]): void {
+function blattZeichnen(posen: Pose[], texte: string[], spalten: number, rahmen: [number, number, number, number], ueber: number[][][] = []): void {
   angehalten = true;
   const zeilen = Math.ceil(posen.length / spalten);
   const fw = buehne.breite / spalten;
@@ -556,6 +556,16 @@ function blattZeichnen(posen: Pose[], texte: string[], spalten: number, rahmen: 
     c.save();
     c.translate(0, st ? -st.grund : 0);
     buehne.figur(figur.zeichenteile(p));
+    // Vorlage darüber (Prüfen gegen Florians Zeichnung): rote Linien in Weltkoordinaten
+    if (ueber.length) {
+      c.strokeStyle = 'rgba(220,30,30,0.85)';
+      c.lineWidth = 1.5 / m;
+      for (const linie of ueber) {
+        c.beginPath();
+        linie.forEach(([x, y], j) => (j ? c.lineTo(x!, y!) : c.moveTo(x!, y!)));
+        c.stroke();
+      }
+    }
     c.restore();
     c.restore();
     buehne.bildschirm(c);
