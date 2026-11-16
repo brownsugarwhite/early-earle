@@ -222,6 +222,21 @@ jetzt immer so auf (der Schalter `?auffalten` und die alte Überblendung sind we
 
 **S11 Sichern.** Im Menü „Ozzy“: Sichern unter einem Namen (neu), Überschreiben nur nach Frage; ⌘S. *Probe:* sichern, neu laden,
 gleich.
+*Bau (Florian: „ok s11“):* Dieselbe Ablage und dasselbe Format wie das Prüffenster (`wesen/<Name>.eewesen` über den Dev-Server, der ganze
+Stand des Werks: Linien, Punkte, Griffe, Kanten, Haut, Maul, Pose); was gesichert ist, zeigt „Laden“ und lädt es genau so wieder. Am Werk
+ändert sich nichts (es gibt seinen Stand schon her). Im Menü über „Laden“ ein Feld „Sichern“: Name (vorbelegt mit dem Namen der Form, wenn
+sie geladen oder schon gesichert ist) und Knopf, ↩ sichert, Esc schließt. Ein Name, den es schon gibt und der nicht der eigene ist, wird
+erst beim zweiten Druck überschrieben (der Knopf heißt dann „Überschreiben“, die Meldung sagt es). ⌘S sichert unter dem Namen der Form
+ohne Frage (wie im Prüffenster); hat sie noch keinen, öffnet ⌘S das Feld. Rechnet das Werk nach einem Zug noch, wird danach gesichert;
+ein Stand, der nicht in Ordnung ist, wird nicht gesichert (er überschriebe eine gute Datei). *Probe* `ozzy-sichern-fenster.mjs`: unter
+zwei neuen Namen sichern, die Frage beim fremden Namen (Datei unverändert bis zum zweiten Druck), einen Punkt ziehen, ⌘S, neu laden:
+Linien, Punkte, Griffe und Haut gleich; die Probedateien werden danach gelöscht.
+*Gebaut (erster Teil):* Feld, Frage und ⌘S wie beschrieben, Bild [`2026-11-16-sichern.png`](../progress/ozzy/2026-11-16-sichern.png); Probe
+1 und 2 halten. *Gefunden:* Nach einem Zug legt der Kern beim Verdichten manchmal einen Punkt nahe der Mitte ohne Spiegelpartner an
+(strange bird, ein Punkt der Seite 30 px nach oben: 1 von 7 727 Punkten, bei z = 0,86). Die Prüfung der Ablage (`ablage.ts`, Sitzung 4)
+lehnt solche Stände beim Sichern und beim Laden ab („Haut: Spiegelpartner fehlt“); das Prüffenster scheitert bei demselben Zug genauso.
+Der Kern selbst kennt Punkte ohne Spiegelbild (`verdichten`, `mitteSchnitt`). Frage an Florian: die Prüfung lockern (nur diese eine
+Bedingung, am Rechnen ändert sich nichts) oder das der Kern-Sitzung überlassen.
 
 **S12 iPad mit Stift (Schritt für Schritt, gemeinsam).** Erst: Stift = Zeiger (mit Schweben über dem Bildschirm, wo das iPad es kann),
 zwei Finger drehen, schwenken und zoomen, Tasten als kleine Knöpfe (Ansichten, Vier, Zurück, Löschen, Kante, Werkzeuge); dann Florians

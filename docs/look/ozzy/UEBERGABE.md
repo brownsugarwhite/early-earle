@@ -266,7 +266,14 @@ links). Tab faltet die Ecke auf (Florian: „ja standard“, kein Schalter mehr)
 schlechter als vorher“). Die Fassung als Kistennetz: `faltRechnen` (eigene Kamera `kamFalt`, Anfang `lageRaum`/`projRaum`; die Mitte der Wand der Seite gleitet gerade in ihr
 Feld), `aufWand`/`faltPunkt` (Front und Boden klappen um ihre Kanten, die Zeichnung gleitet auf der Wand, `kF`/`uF`/`kT`/`uT` halten
 ihre Mitte im Bild auf gerader Bahn), `faltKanten` (Ränder als Haarlinien, Teiler auf den Kanten). Probe `ozzy-auffalten-fenster.mjs`,
-Filme `2026-11-16-vier-kistennetz*.mp4` (echt und dreifach langsamer; `ZEITLUPE=3` im Filmskript). Nächstes: S11 Sichern.
+Filme `2026-11-16-vier-kistennetz*.mp4` (echt und dreifach langsamer; `ZEITLUPE=3` im Filmskript).
+
+**S11 (erster Teil):** Sichern im Menü (Feld über „Laden“, Name vorbelegt, ↩, Esc), ein fremder Name, den es schon gibt, erst beim zweiten
+Druck („Überschreiben“), ⌘S unter dem Namen der Form (`formSichern`, `sichernKurz`; dieselbe Ablage und dasselbe Format wie das
+Prüffenster, am Werk nichts geändert). Probe `ozzy-sichern-fenster.mjs` (1 und 2 halten). Offen: Nach manchen Zügen hat ein Punkt der
+Haut keinen Spiegelpartner; die Prüfung der Ablage (`ablage.ts`) lehnt das beim Sichern und Laden ab, im Prüffenster genauso. Florians
+Entscheidung steht aus (Prüfung lockern oder Kern-Sitzung). Prüfhaken `standPruefen`. Nebenbei: Der Schalter „Linie an der Spiegelkante“
+stand im Raster der Regler zerdrückt (S9), jetzt in einer Zeile.
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**
 [`docs/plans/2026-11-16-ozzy-weiter.md`](../../plans/2026-11-16-ozzy-weiter.md): Schritte S1 bis S13 (Messen, Seifenhaut gleitet, Tempo,

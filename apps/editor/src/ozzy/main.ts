@@ -28,6 +28,7 @@ import { GRUNDWERTE as BLASE_GRUNDWERTE, REGLER as BLASE_REGLER, type Werte as B
 import { FluessigeAnzeige, type Szene } from '../linien/fluessig';
 import { REGLER as LINIEN_REGLER } from '../linien/regler';
 import { GRUNDWERTE as LINIEN_GRUNDWERTE, type Ansicht as LinienAnsicht, Verhalten, type Werte as LinienWerte } from '../linien/verhalten';
+import { auskunft, packen, pruefen } from '../form/ablage';
 import * as werk from '../form/werk';
 import { WerkHaut, mitteLinie, mittePfad } from './werkHaut';
 import { type Flaeche, WerkBlatt } from './werkBlatt';
@@ -2976,6 +2977,12 @@ function muell(): void {
 }
 
 window.addEventListener('keydown', (e) => {
+  // ⌘S auch, wenn ein Regler den Fokus hat (sonst sichert der Browser die Seite); im Feld „Sichern“ gilt das Feld
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's' && e.target !== sichernName) {
+    e.preventDefault();
+    if (!e.repeat) sichernKurz();
+    return;
+  }
   if (e.target instanceof HTMLInputElement) return;
   blatt.alt = e.altKey;
   blatt.umschalt = e.shiftKey;
@@ -3153,6 +3160,120 @@ $<HTMLDetailsElement>('laden').addEventListener('toggle', (e) => {
     }
   });
 });
+
+/** eine Meldung sofort in die Hinweiszeile (auch dieselbe noch einmal) */
+function meldungZeigen(text: string): void {
+  werk.G.meldung = text;
+  meldung = { text, seit: performance.now() };
+  anstossen();
+}
+
+/**
+ * Die Form unter einem Namen sichern (S11): der ganze Stand des Werks (Linien, Punkte, Griffe, Kanten, Haut, Maul, Pose) als Datei in der
+ * Ablage, wie im Prüffenster (`wesen/<Name>.eewesen`); „Laden“ lädt sie genau so wieder. Zurück: Text für die Meldung.
+ */
+async function formSichern(name: string): Promise<string> {
+  if (zustand !== 'ruhe' || !werkForm) return 'Sichern: erst eine Form aufblasen';
+  // rechnet das Werk nach einem Zug noch, erst danach (bis dahin ist die Haut noch nicht die Form, die bleibt)
+  const rechnet = (): boolean => werk.zug !== null || werk.nachlauf !== null || werk.maulLauf !== null || werk.G.aufraeumen !== null;
+  for (const t0 = performance.now(); rechnet() && performance.now() - t0 < 5000; ) await new Promise((weiter) => setTimeout(weiter, 30));
+  if (werk.zug) return 'Sichern: bitte erst den Zug beenden';
+  const st = werk.standJetzt();
+  // ein Stand, der nicht in Ordnung ist, überschriebe sonst eine gute Datei (und ließe sich nicht wieder laden)
+  const mangel = pruefen(st);
+  if (mangel) return `Sichern geht so nicht: ${mangel} · ⌘Z führt zu einem Stand davor`;
+  const datei = new Blob(packen(st) as BlobPart[], { type: 'application/octet-stream' });
+  let antwort: Response | null = null;
+  try {
+    antwort = await fetch(werk.ABLAGE + encodeURIComponent(name), { method: 'PUT', body: datei });
+  } catch {
+    antwort = null;
+  }
+  if (!antwort?.ok) return antwort ? `Sichern fehlgeschlagen (${antwort.status} ${await antwort.text().catch(() => '')})` : 'Sichern: Ablage nicht erreichbar';
+  werk.G.ablageName = name;
+  return `gesichert: „${name}“ (${auskunft(st)}, ${(datei.size / 1e6).toFixed(1)} MB)`;
+}
+
+// Sichern (S11, Florian: „Sichern unter einem Namen, Überschreiben nur nach Frage; ⌘S“): im Menü ein Name und ein Knopf. Einen Namen, den
+// es schon gibt und der nicht der eigene ist, überschreibt erst der zweite Druck (die Frage steht auf dem Knopf und in der Meldung). ⌘S
+// sichert unter dem Namen der Form (geladen oder schon gesichert), ohne Namen öffnet es das Feld.
+const sichernDetails = $<HTMLDetailsElement>('sichern');
+const sichernName = $<HTMLInputElement>('sichern-name');
+const sichernKnopf = $<HTMLButtonElement>('sichern-knopf');
+let sichernVorhanden = new Set<string>();
+let sichernBestaetigt = '';
+let sichertGerade = false;
+sichernDetails.addEventListener('toggle', () => {
+  if (!sichernDetails.open) return;
+  sichernName.value = werk.G.ablageName;
+  sichernBestaetigt = '';
+  sichernKnopf.textContent = 'Sichern';
+  void werk.ablageListe().then((liste) => {
+    sichernVorhanden = new Set((liste ?? []).map((e) => e.name));
+  });
+  sichernName.focus();
+  sichernName.select();
+});
+function sichernOeffnen(): void {
+  reglerZeigen(true);
+  if (sichernDetails.open) {
+    sichernName.focus();
+    sichernName.select();
+  } else sichernDetails.open = true;
+}
+async function sichernUnter(name: string): Promise<void> {
+  if (sichertGerade) return;
+  sichertGerade = true;
+  sichernKnopf.disabled = true;
+  meldungZeigen(`sichere „${name}“ …`);
+  const text = await formSichern(name);
+  sichertGerade = false;
+  sichernKnopf.disabled = false;
+  meldungZeigen(text);
+  if (text.startsWith('gesichert')) {
+    sichernDetails.open = false;
+    reglerZeigen(false);
+  }
+}
+function sichernLos(): void {
+  const name = sichernName.value.trim().replace(/\s+/g, ' ');
+  if (!werk.nameGueltig(name)) {
+    meldungZeigen('Sichern: bitte einen Namen aus Buchstaben, Ziffern, Leerzeichen, Punkt, Strich (höchstens 60 Zeichen)');
+    return;
+  }
+  if (sichernVorhanden.has(name) && name !== werk.G.ablageName && sichernBestaetigt !== name) {
+    sichernBestaetigt = name;
+    sichernKnopf.textContent = 'Überschreiben';
+    meldungZeigen(`„${name}“ gibt es schon: noch einmal drücken überschreibt`);
+    return;
+  }
+  void sichernUnter(name);
+}
+sichernKnopf.addEventListener('click', sichernLos);
+sichernName.addEventListener('input', () => {
+  sichernBestaetigt = '';
+  sichernKnopf.textContent = 'Sichern';
+});
+sichernName.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's')) {
+    e.preventDefault();
+    sichernLos();
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    sichernDetails.open = false;
+    sichernName.blur();
+  }
+});
+/** ⌘S: ist das Feld offen, gilt, was darin steht; sonst unter dem Namen der Form, ohne Namen öffnet sich das Feld */
+function sichernKurz(): void {
+  if (zustand !== 'ruhe' || !werkForm) {
+    meldungZeigen('Sichern: erst eine Form aufblasen');
+    return;
+  }
+  if (sichernDetails.open && !regler.hidden) sichernLos();
+  else if (werk.G.ablageName) void sichernUnter(werk.G.ablageName);
+  else sichernOeffnen();
+}
 
 const fassungKnoepfe = $<HTMLSpanElement>('fassungen');
 FASSUNGEN.forEach((name, i) => {
@@ -3514,6 +3635,18 @@ const haken = {
       kante: l.kante ?? null,
       haengt: l.haengt ?? null,
     })),
+  /** S11: Ist der Stand des Werks so, dass er gesichert werden kann (die Prüfung der Ablage), und welche Punkte der Haut keinen Spiegelpartner haben */
+  standPruefen: () => {
+    const h = werk.haut;
+    const ohne: number[] = [];
+    for (let v = 0; v < h.n; v++) if (h.spiegel[v]! < 0 || h.spiegel[v]! >= h.n) ohne.push(v);
+    return {
+      mangel: pruefen(werk.standJetzt()),
+      n: h.n,
+      ohne: ohne.length,
+      lage: ohne.slice(0, 8).map((v) => [h.pos[3 * v]!, h.pos[3 * v + 1]!, h.pos[3 * v + 2]!]),
+    };
+  },
   /** Maul und Pose: das Maul (Loop-Kennung), in der Pose, Winkel der Knochen; die Haut, wie sie zu sehen ist (Einheiten des Werks) */
   pose: (mitHaut = false) => ({
     maul: werk.G.maul?.id ?? null,
@@ -3615,6 +3748,8 @@ const haken = {
       mitte: werkHaut.mitte,
       umgeschlagen: werk.umgeschlageneZahl(),
       meldung: werk.G.meldung,
+      /** S11: unter diesem Namen wurde die Form geladen oder zuletzt gesichert ('' = noch keiner) */
+      name: werk.G.ablageName,
     };
   },
   /** Punkt i der Linie der Seite (wie gezeigt: aus dem Werk oder dem Blatt) im Bild (CSS): eingerastet, im Feld oder an der Wand */

@@ -463,8 +463,8 @@ body.bild #regler {
   display: none;
 }
 
-/* S9: Schalter im Menü (Linie an der Spiegelkante) */
-.schalter {
+/* S9: Schalter im Menü (Linie an der Spiegelkante); mit der Kennung des Menüs, sonst gilt das Raster der Regler (`#regler label`) */
+#regler .schalter {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -473,7 +473,37 @@ body.bild #regler {
   cursor: pointer;
   user-select: none;
 }
-.schalter input {
+#regler .schalter input {
   margin: 0;
   accent-color: var(--tinte);
+}
+
+/* S11: Sichern im Menü (Name als Haarlinie, Knopf daneben) */
+.sichern-feld {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0 8px;
+}
+.sichern-feld input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: var(--tinte);
+  background: transparent;
+  border: 0;
+  border-bottom: 0.5px solid var(--haar);
+  border-radius: 0;
+  padding: 2px 0;
+  outline: none;
+}
+.sichern-feld input:focus {
+  border-bottom-color: var(--tinte);
+}
+.sichern-feld input::placeholder {
+  color: var(--haar);
+}
+.sichern-feld button:disabled {
+  opacity: 0.4;
+  cursor: default;
 }

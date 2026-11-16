@@ -27,6 +27,13 @@
         <span id="fassungen" aria-label="Fassung der Haut (M)"></span>
       </div>
       <label class="schalter" title="Nach dem Aufblasen die Linie an der Spiegelkante behalten (Standard: ohne, wie die Startkugel der Kern-Sitzung); gilt beim nächsten Aufblasen"><input type="checkbox" id="mit-linie" /> Linie an der Spiegelkante</label>
+      <details id="sichern">
+        <summary>Sichern</summary>
+        <div class="sichern-feld">
+          <input type="text" id="sichern-name" maxlength="60" placeholder="Name der Form" autocomplete="off" spellcheck="false" />
+          <button type="button" id="sichern-knopf">Sichern</button>
+        </div>
+      </details>
       <details id="laden">
         <summary>Laden</summary>
         <div id="laden-liste" class="laden-liste"></div>
