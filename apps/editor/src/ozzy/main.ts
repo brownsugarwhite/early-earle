@@ -130,8 +130,15 @@ const nutzer = { gier: 0, neigung: 0, zoom: 1 };
 /** Ansicht: Raum oder eine Achse; `flach` 0 = Raum, 1 = genau parallel auf der Achse */
 type Ansicht = 'raum' | 'seite' | 'front' | 'top';
 let ansicht: Ansicht = 'raum';
+/** eingerastet auf der Gegenseite (Seite von rechts, Front von hinten, Top von unten): S4, das Wenden */
+let gewendet = false;
+/** Schwung nach dem Loslassen beim Drehen (rad/s): dreht weiter und klingt ab; das Ziel wird vorausberechnet (S4) */
+let schwung: { vg: number; vn: number } | null = null;
+/** so lange (s) klingt der Schwung ab; so weit voraus (Zeitkonstante) wird das Ziel gerechnet */
+const SCHWUNG_TAU = 0.24;
 let flach = 0;
-let ansichtFahrt: { von: [number, number, number]; nach: [number, number, number]; t: number } | null = null;
+/** Fahrt in eine Ansicht (Gier, Neigung, flach); `nurFlach`: nur die Parallele löst sich, die Drehung gehört der Hand (S4) */
+let ansichtFahrt: { von: [number, number, number]; nach: [number, number, number]; t: number; nurFlach?: boolean } | null = null;
 let tasteGehalten: { taste: string; seit: number; vorher: Ansicht } | null = null;
 /** Drehung und Neigung jeder Ansicht (Grad), als Ziel der ganzen Kamera */
 const ANSICHT_WINKEL: Record<Ansicht, [number, number] | null> = { raum: null, seite: [0, 0], front: [-90, 0], top: [0, 90] };
@@ -143,7 +150,10 @@ let vierFahrt: { von: number; t: number } | null = null;
 /** Lage des Teilers: Florians Abweichung von der Lage aus den Maßen der Form (Anteile) und die Feder dorthin */
 const teiler = { bx: 0, by: 0, fx: 0.5, fy: 0.5, zug: false, ueber: 0 };
 
-let drehen: { x: number; y: number; gier: number; neigung: number } | null = null;
+let drehen: { x: number; y: number; gier: number; neigung: number; vg: number; vn: number; t: number; lx: number; ly: number } | null = null;
+/** Neigung von Hand (zur Neigung der Ansicht dazu): so weit, dass Top und Unten erreichbar sind (rad) */
+const NEIGUNG_UNTEN = -2.03;
+const NEIGUNG_OBEN = 1.25;
 let zug: { x: number; y: number; start: Float32Array; gewicht: Float32Array; zFaktor: Float32Array; hinten: boolean; tiefe: number } | null = null;
 /** Punkt der Silhouette, der gezogen wird; in welcher Ebene (z der Ebene, Feld der Seite oder Ebene der Ansicht) */
 let punktZug: { i: number; ort: 'wand' | 'flach' | 'feld'; z: number } | null = null;
@@ -1072,6 +1082,19 @@ function bild(dt: number): boolean {
   const beschaeftigt = werkBeschaeftigt();
   if (werkWarBeschaeftigt && !beschaeftigt && zustand === 'ruhe') raumRechnen(bw.band);
   werkWarBeschaeftigt = beschaeftigt;
+  // Schwung nach dem Drehen: dreht weiter, klingt ab; nahe einer Ansicht rastet es ein
+  if (schwung && !drehen) {
+    nutzer.gier += schwung.vg * dt;
+    nutzer.neigung = Math.max(NEIGUNG_UNTEN, Math.min(NEIGUNG_OBEN, nutzer.neigung + schwung.vn * dt));
+    const k = Math.exp(-dt / SCHWUNG_TAU);
+    schwung.vg *= k;
+    schwung.vn *= k;
+    if (Math.hypot(schwung.vg, schwung.vn) < 0.15) {
+      schwung = null;
+      einrasten();
+    }
+    aktiv = true;
+  }
   // Fahrt in eine Ansicht: Drehen und Parallele zugleich, die Größe bleibt
   if (ansichtFahrt) {
     ansichtFahrt.t += dt / Math.max(0.05, bw.fahrt);
@@ -1079,8 +1102,10 @@ function bild(dt: number): boolean {
     const e = t * t * t * (t * (t * 6 - 15) + 10);
     const [g0, n0, f0] = ansichtFahrt.von;
     const [g1, n1, f1] = ansichtFahrt.nach;
-    nutzer.gier = g0 + (g1 - g0) * e;
-    nutzer.neigung = n0 + (n1 - n0) * e;
+    if (!ansichtFahrt.nurFlach) {
+      nutzer.gier = g0 + (g1 - g0) * e;
+      nutzer.neigung = n0 + (n1 - n0) * e;
+    }
     flach = f0 + (f1 - f0) * e;
     if (t >= 1) ansichtFahrt = null;
     aktiv = true;
@@ -1261,7 +1286,7 @@ function bild(dt: number): boolean {
           ? werkGezeigt
             ? bearbeiten.stift
               ? 'P: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen (Form) · auf Punkt oder Linie beginnen und enden (Abzweigung) · Esc'
-              : 'Punkte, Linien und Richtungen ziehen · ins Leere: Rahmen · P zeichnen · K Kante · ⌫ löschen · ⌘Z · Tab: zurück in den Raum'
+              : 'Punkte, Linien und Richtungen ziehen · ins Leere ziehen: drehen · P zeichnen · K Kante · ⌫ löschen · ⌘Z · Tab: zurück in den Raum'
             : 'Tab: zurück in den Raum · Tropfen in der Mitte ziehen: Felder · Punkte der Seite ziehen'
           : ansicht === 'raum'
             ? werkGezeigt
@@ -1272,7 +1297,7 @@ function bild(dt: number): boolean {
             : werkGezeigt
               ? bearbeiten.stift
                 ? 'P: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen (Form) · auf Punkt oder Linie beginnen und enden (Abzweigung) · Esc'
-                : 'Punkte, Linien und Richtungen ziehen · ins Leere: Rahmen · P zeichnen · K Kante · ⌫ löschen · ⌘Z · 0 Raum · 1 Seite · 3 Front · 7 Top'
+                : 'Punkte, Linien und Richtungen ziehen · ins Leere ziehen: drehen · P zeichnen · K Kante · ⌫ löschen · ⌘Z · 0 Raum · 1 Seite · 3 Front · 7 Top'
               : '0 Raum · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
         : '';
   // eine Meldung des Werks (das Maul, P, die Pose) steht ein paar Sekunden statt des Hinweises
@@ -1423,7 +1448,7 @@ function linienDerAnsicht(vp: Matrix4): void {
   const blick = new Vector3();
   kam.aktiv.getWorldDirection(blick);
   const achse = ansicht === 'seite' ? new Vector3(0, 0, -1) : ansicht === 'front' ? new Vector3(1, 0, 0) : new Vector3(0, -1, 0);
-  const t = Math.min(1, Math.max(0, (blick.dot(achse) - 0.97) / 0.025));
+  const t = Math.min(1, Math.max(0, (Math.abs(blick.dot(achse)) - 0.97) / 0.025));
   const s = flach * flach * t * t * (3 - 2 * t);
   if (s < 0.01) return;
   if (werkGezeigt && ansicht === 'seite') return;
@@ -1610,7 +1635,7 @@ function flaechenJetzt(vp: Matrix4, m: Moment): { flaechen: Flaeche[]; stabil: b
     const blick = new Vector3();
     kam.aktiv.getWorldDirection(blick);
     const ach = ansicht === 'seite' ? new Vector3(0, 0, -1) : ansicht === 'front' ? new Vector3(1, 0, 0) : new Vector3(0, -1, 0);
-    const t = Math.min(1, Math.max(0, (blick.dot(ach) - 0.97) / 0.025));
+    const t = Math.min(1, Math.max(0, (Math.abs(blick.dot(ach)) - 0.97) / 0.025));
     const st = flach * flach * t * t * (3 - 2 * t);
     if (st >= 0.01) liste.push(ebene(ansicht, ansicht === 'seite' ? 0 : ansicht === 'front' ? e.cx : e.cy, vp, st, 1, false));
   }
@@ -1878,10 +1903,19 @@ function lageIm(e: PointerEvent | WheelEvent): [number, number] {
   return [e.clientX - r.left, e.clientY - r.top];
 }
 
-/** in eine Ansicht fahren (Raum oder Achse): Drehen und Parallele zugleich, kürzester Weg, die Größe bleibt */
-function ansichtSetzen(ziel: Ansicht): void {
-  if (zustand !== 'ruhe' && zustand !== 'auf') return;
+/** Winkel einer Ansicht (Grad, Gier und Neigung), auf Wunsch von der Gegenseite */
+function ansichtWinkel(ziel: Ansicht, hinten: boolean): [number, number] | null {
   const w = ANSICHT_WINKEL[ziel];
+  if (!w || !hinten) return w;
+  return ziel === 'top' ? [w[0], -w[1]] : [w[0] + 180, w[1]];
+}
+
+/** in eine Ansicht fahren (Raum oder Achse): Drehen und Parallele zugleich, kürzester Weg, die Größe bleibt; `hinten`: Gegenseite */
+function ansichtSetzen(ziel: Ansicht, hinten = false): void {
+  if (zustand !== 'ruhe' && zustand !== 'auf') return;
+  schwung = null;
+  gewendet = ziel !== 'raum' && hinten;
+  const w = ansichtWinkel(ziel, hinten);
   const g1 = w ? (w[0] * Math.PI) / 180 - (werte.gier * Math.PI) / 180 : 0;
   const n1 = w ? (w[1] * Math.PI) / 180 - (werte.neigung * Math.PI) / 180 : 0;
   let g0 = nutzer.gier;
@@ -1893,20 +1927,25 @@ function ansichtSetzen(ziel: Ansicht): void {
   anstossen();
 }
 
-/** nahe einer Achse: einrasten (nach dem Drehen von Hand) */
-function einrasten(): void {
-  const g = ((werte.gier * Math.PI) / 180 + nutzer.gier) * (180 / Math.PI);
-  const n = ((werte.neigung * Math.PI) / 180 + nutzer.neigung) * (180 / Math.PI);
+/** die Ansicht (von den sechs: Seite, Front, Top und ihre Gegenseiten) nahe dieser Richtung (Gier, Neigung in rad von Hand), oder null */
+function ansichtNahe(gierHand: number, neigungHand: number): { a: Ansicht; hinten: boolean } | null {
+  const g = ((werte.gier * Math.PI) / 180 + gierHand) * (180 / Math.PI);
+  const n = ((werte.neigung * Math.PI) / 180 + neigungHand) * (180 / Math.PI);
   const nah = (a: number, b: number): number => Math.abs(((((a - b) % 360) + 540) % 360) - 180);
   const grenze = bw.einrasten;
-  for (const a of ['seite', 'front', 'top'] as const) {
-    const w = ANSICHT_WINKEL[a]!;
-    const dn = Math.abs(n - w[1]);
-    if (a === 'top' ? dn < grenze : dn < grenze && nah(g, w[0]) < grenze) {
-      ansichtSetzen(a);
-      return;
+  for (const a of ['seite', 'front', 'top'] as const)
+    for (const hinten of [false, true]) {
+      const w = ansichtWinkel(a, hinten)!;
+      const dn = Math.abs(n - w[1]);
+      if (a === 'top' ? dn < grenze : dn < grenze && nah(g, w[0]) < grenze) return { a, hinten };
     }
-  }
+  return null;
+}
+
+/** nahe einer der sechs Ansichten: einrasten (nach dem Drehen von Hand) */
+function einrasten(): void {
+  const z = ansichtNahe(nutzer.gier, nutzer.neigung);
+  if (z) ansichtSetzen(z.a, z.hinten);
 }
 
 /** Punkt der Silhouette unter dem Zeiger: an der Wand der Seite, in der eingerasteten Seite oder im Feld der Seite (−1 = keiner) */
@@ -2141,10 +2180,21 @@ leinwandLinien.addEventListener('pointermove', (e) => {
   } else if (drehen) {
     if (ansicht !== 'raum') {
       ansicht = 'raum';
-      ansichtFahrt = { von: [nutzer.gier, nutzer.neigung, flach], nach: [nutzer.gier, nutzer.neigung, 0], t: 0 };
+      gewendet = false;
+      ansichtFahrt = { von: [nutzer.gier, nutzer.neigung, flach], nach: [nutzer.gier, nutzer.neigung, 0], t: 0, nurFlach: true };
     }
     nutzer.gier = drehen.gier - ((x - drehen.x) * Math.PI) / 520;
-    nutzer.neigung = Math.max(-1.25, Math.min(1.25, drehen.neigung + ((y - drehen.y) * Math.PI) / 520));
+    nutzer.neigung = Math.max(NEIGUNG_UNTEN, Math.min(NEIGUNG_OBEN, drehen.neigung + ((y - drehen.y) * Math.PI) / 520));
+    // Geschwindigkeit (rad/s), geglättet: für den Schwung beim Loslassen
+    const dtz = Math.max(1e-3, (e.timeStamp - drehen.t) / 1000);
+    const vg = (-(x - drehen.lx) * Math.PI) / 520 / dtz;
+    const vn = ((y - drehen.ly) * Math.PI) / 520 / dtz;
+    const a = Math.min(1, dtz / 0.05);
+    drehen.vg += (vg - drehen.vg) * a;
+    drehen.vn += (vn - drehen.vn) * a;
+    drehen.t = e.timeStamp;
+    drehen.lx = x;
+    drehen.ly = y;
   } else if (zug && koerper) {
     const k = koerper;
     const F = k.flach;
@@ -2223,12 +2273,9 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     }
   }
   if (bearbeitenAn) {
-    const R = vier > 0.5 ? felder().raum : null;
-    const imRaumFeld = !!R && x >= R.x && y >= R.y;
-    const imRaum = ansicht === 'raum' && flach < 0.5 && vier < 0.5;
     // mit P: auf einer Fläche setzt das Drücken einen Punkt (`ortFrei`), daneben dreht es weiter
     const p = bearbeiten.stift && werkBlatt.ortFrei(x, y) !== null;
-    if (bearbeiten.haengt || p || !(imRaum || imRaumFeld)) {
+    if (bearbeiten.haengt || p) {
       bearbeiten.alt = e.altKey;
       bearbeiten.umschalt = e.shiftKey;
       bearbeiten.zeigerSetzen(x, y, x, y, 0);
@@ -2270,11 +2317,14 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     zug = { x, y, start: koerper.versatz.slice(), gewicht, zFaktor, hinten, tiefe: 0 };
     hauch.ziel = 1;
     hauch.pos.set(t.x, t.y, t.z);
-  } else if (vier < 0.5 || (() => {
-    const R = felder().raum;
-    return x >= R.x && y >= R.y;
-  })()) {
-    drehen = { x, y, gier: nutzer.gier, neigung: nutzer.neigung };
+  } else {
+    // ins Leere: drehen, in jeder Ansicht (S4). In einem flachen Feld der Vier Ansichten klappen sie dabei zurück in den Raum (F3)
+    if (vier > 0.5) {
+      const R = felder().raum;
+      if (!(x >= R.x && y >= R.y)) vierUmschalten(false);
+    }
+    schwung = null;
+    drehen = { x, y, gier: nutzer.gier, neigung: nutzer.neigung, vg: 0, vn: 0, t: e.timeStamp, lx: x, ly: y };
   }
   anstossen();
 });
@@ -2307,7 +2357,14 @@ const loslassen = (e: PointerEvent): void => {
     anstossen();
     return;
   }
-  if (drehen) einrasten();
+  if (drehen) {
+    // mit Schwung: Wohin käme die Drehung? Liegt das nahe einer Ansicht, rastet sie dort ein; sonst klingt sie aus (S4)
+    const ruht = e.timeStamp - drehen.t > 60;
+    const v = ruht ? { vg: 0, vn: 0 } : { vg: drehen.vg, vn: drehen.vn };
+    const ziel = ansichtNahe(nutzer.gier + v.vg * SCHWUNG_TAU, Math.max(NEIGUNG_UNTEN, Math.min(NEIGUNG_OBEN, nutzer.neigung + v.vn * SCHWUNG_TAU)));
+    if (ziel) ansichtSetzen(ziel.a, ziel.hinten);
+    else if (Math.hypot(v.vg, v.vn) > 0.6) schwung = { vg: v.vg, vn: v.vn };
+  }
   if (punktZug && werkGezeigt) {
     // losgelassen, bevor der Griff beginnen konnte: ein Klick (die Auswahl steht); sonst endet der Zug im Werk
     if (werk.G.gegriffen) werk.G.gegriffen = null;
@@ -2820,6 +2877,8 @@ const haken = {
     mess.bilder = [];
     return b;
   },
+  /** Blick: Ansicht, gewendet, wie flach, Gier und Neigung von Hand (rad), Maßstab (Bildpunkte je Pixel der Welt), Schwung */
+  blick: () => ({ ansicht, gewendet, flach, vier, gier: nutzer.gier, neigung: nutzer.neigung, massstab: massstab.jetzt * nutzer.zoom, schwung: schwung !== null, fahrt: ansichtFahrt !== null }),
   /** P an oder aus (wie die Taste P) */
   stift: (an: boolean): boolean => {
     stiftImRaum(an);
