@@ -193,6 +193,14 @@ ins vierte Feld. Nichts wird zweimal gezeigt oder übergeben. Zurück faltet es 
 nachher, gleiche Ansicht), dann der Bau. *Probe:* Film; in keinem Bild eine Linie doppelt, kein Sprung in Lage oder Größe; Florian
 sieht.
 
+*Vor dem Film (16.11. abends):* Die Ecke im Raum liegt spiegelverkehrt zu den Feldern. In der Hausansicht des Raums (Kamera bei +x, +y,
++z) steht die Wand der Front links, die der Seite rechts, der Boden unten. Klappt man die Ecke geometrisch auf (die Wand der Seite bleibt,
+die der Front klappt um ihre Kante, der Boden nach unten), landet die Front **links** der Seite und das Top **unter** der Seite. Das ist
+Projektionsmethode 1 für die Front seit dem Tausch (sie schaut von +x, also von rechts: Methode 1 legt sie links hin). Die Felder liegen
+heute anders: Seite oben links, Front oben rechts, Top unten links, Raum unten rechts. Für ein echtes Auffalten ohne Sprung brauchen die
+Felder die Lage der aufgeklappten Ecke: Front oben links, Seite oben rechts, Top unten rechts (unter der Seite), Raum unten links.
+Florian entscheidet, bevor der Film entsteht.
+
 **S11 Sichern.** Im Menü „Ozzy“: Sichern unter einem Namen (neu), Überschreiben nur nach Frage; ⌘S. *Probe:* sichern, neu laden,
 gleich.
 
