@@ -10,7 +10,8 @@ Gedächtnis des Electron-Editors (Käfig-Zeit) liegt in `docs/verlauf/2026-11-12
   darum (Anzeige, Tasten, Test-Haken): das Prüffenster des Kerns (immer mit `?gewichte=geometrie`). Daneben `verfeinern.ts`
   mit `verfeinern.worker.ts` (Rechnen im Hintergrund) und `ablage.ts` (Sichern und Laden, Dateien in `wesen/`).
   Der Schnitt `kurven.ts` → `werk.ts` + Hülle ist wiederholbar: `scripts/werk-schnitt/schnitt.mjs` (Anleitung im Kopf). Ozzy ändert an
-  der Rechnung nichts (Florian, 16.11.); `neuAusUmriss` (Form aus einer Silhouette) ist ein neuer Handgriff aus bestehenden.
+  der Rechnung nichts (Florian, 16.11.); `neuAusUmriss` (Form aus einer Silhouette) und `zugGriffRaum` (S6b: ein Zug am Griff um eine
+Verschiebung im Raum, mit seiner Zustimmung) sind neue Handgriffe aus bestehenden; im Schnitt-Skript vermerkt.
   **Ozzy** (`ozzy.html`, `src/ozzy/`) benutzt dasselbe Werk: Haken in `main.ts`, Schalter in `adresse.ts`, die glatte Anzeige in
   `werkHaut.ts` (aus `glattAnlegen`/`glattZeigen` von `kurven.ts` übernommen: Ändert sich die Anzeige dort, hier nachziehen).
   Bearbeiten in Ozzy (Phase 5.2): `werkBlatt.ts` ist der `Raum` der Linien-Studie (`src/linien/verhalten.ts`) aus dem Werk: je Bild alle

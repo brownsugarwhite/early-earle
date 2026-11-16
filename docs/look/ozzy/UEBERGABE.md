@@ -247,8 +247,9 @@ sein Urteil steht aus.
 Tropfen in der Naht, zieht sich zur Auswahl zusammen; an einer Wand umfahren ist im Werk gewählt und überall markiert. Probe
 `ozzy-lasso-fenster.mjs`, Film [`2026-11-16-lasso.mp4`](../../progress/ozzy/2026-11-16-lasso.mp4). 
 
-**S6a gebaut (`f89955ce`):** ⌥ knickt auch während des Drehens einer Richtung; Probe `ozzy-richtung-fenster.mjs`. Offen in S6: ⇧ kippt aus
-der Ebene (S6b), Animationen wie in der Studie (S6c), Florians Reglerwerte aus der Studie (S6d, er kopiert sie).
+**S6a und S6b gebaut (bis `660c2b29`):** ⌥ knickt auch während des Drehens einer Richtung; ⇧ kippt sie aus der Ebene (Länge und Richtung
+in der Ebene bleiben; im Werk der neue Handgriff `zugGriffRaum`, mit Florians Zustimmung). Probe `ozzy-richtung-fenster.mjs`. Offen in S6:
+Animationen wie in der Studie und der schwenkende Ring beim Kippen (S6c), Florians Reglerwerte aus der Studie (S6d, er kopiert sie).
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**
 [`docs/plans/2026-11-16-ozzy-weiter.md`](../../plans/2026-11-16-ozzy-weiter.md): Schritte S1 bis S13 (Messen, Seifenhaut gleitet, Tempo,
