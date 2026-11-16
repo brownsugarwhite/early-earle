@@ -228,17 +228,30 @@ gezeichneten Kugel (nur die Linie der Mitte) fasst er deshalb nur nahe am Umriss
 - Der Ring eines Rings (offene Linie) teilt seine Enden auf der Mittelebene mit dem Spiegelbild: In Front und Top lassen sie sich mit ⌫
   nicht löschen (die Studie lässt geteilte Punkte stehen), in der Seite schon.
 
-## Was noch fehlt (nächste Schritte, Plan Abschnitt 8)
+## Was noch fehlt (Stand 16.11. nachmittags; Florian: „wenn ich es mir ansehe fehlt noch einiges“)
 
-1. ~~Phase 1, das Werk lösen~~: gebaut (oben). Kleiner Rest: `allesZeigen` tut in der Hülle Werk-Arbeit (Ozzy tut sie in seinem Haken
-   nach).
-2. ~~Phase 3, die Form des Werks in Ozzy~~: gebaut (oben); Feinschliff offen.
-3. **Phase 5, Bearbeiten über das Werk:** gebaut (5.1 bis 5.4, oben); sein Urteil steht aus. Offen: Sichern im Menü (Vorsicht: `wesen/`
-   sind Florians Formen, nie überschreiben ohne Frage); in der Pose zeichnet `werkBlatt` Stücke, längs derer sich der Winkel der Knochen
-   ändert, noch als Bézier aus gedrehten Punkten (im Prüffenster abgetastet, `stueckeGezeigt`: an „maul handgemacht test“ bis 13 daneben
-   im Übergang Kiefer–Schädel; die Haut stimmt); das Maul aus einer Linie (offener Strich).
-4. ~~Pinsel an der Blase (Phase 6)~~: gebaut (oben). Danach: Phase 7 (Feinschliff, Tempo, iPhone), eine Leinwand für Haut und Linien,
-   Würfel als Quader, Finger; die Leiste bekommt die Gruppe der Pinsel (E3), sobald es mehr als „Ziehen“ gibt.
+Phasen 0 bis 6 sind gebaut (Phase 2 und 4 als Teil von Stand 0); im Plan bleibt nur **Phase 7** (Feinschliff, Tempo, iPhone). Offen ist
+aber mehr, nach seinem Auftrag (Plan Abschnitt 3, A1 bis A18) geordnet. Was er beim Ansehen vermisst, entscheidet die Reihenfolge.
+
+- **Arbeiten können:** **Sichern** im Menü fehlt (Vorsicht: `wesen/` sind Florians Formen, nie ohne Frage überschreiben); ⌘Z endet an der
+  Grenze Blatt/Raum (im Raum nie hinter die aufgeblasene oder geladene Form).
+- **Blase (A9):** nur „Ziehen“ über die Linien (O). Aufblasen, Absaugen und Glätten der Haut selbst brauchen eine Änderung der Rechnung:
+  Kern-Sitzung. Die Gruppe der Pinsel in der Leiste (E3) kommt, wenn es mehr als einen gibt.
+- **Aufblasen (A4, Phase 3):** ↩ hält 110 bis 220 ms an; das Muster der Seifenhaut springt bei der Übergabe leicht; der Würfel ist nur ein
+  Rechteck (bläst wie ein Kissen auf; Beweis „Quader“ offen).
+- **Ansichten (A8, A10 bis A12, A15, Phase 4):** die Probe von Phase 4 an seinen drei Formen (Größe bleibt ±2 %, Umriss genau auf der
+  Linie, kein Zoom im Zug, Einpassen mit Ruheband) ist nie gelaufen; Front und Top zeigen im Umriss auch innere Kanten (Verdecktes);
+  an fast streifend gesehenen Wänden ist Ziehen sehr empfindlich; Punkte einer Wand verschwinden beim Drehen auf einmal.
+- **Bearbeiten (A7, A9, Phase 5):** in der Pose die Linien im Übergang Kiefer–Schädel als Bézier aus gedrehten Punkten (Prüffenster:
+  abgetastet, `stueckeGezeigt`); das Maul aus einer Linie (offener Strich); ⌥ knickt nur beim Drücken; Enden eines Rings in Front und Top
+  nicht löschbar; ein Klick auf einen Kreuzungspunkt wählt den Punkt der anderen Linie (der Tropfen „Maul“ kommt dann nicht).
+- **liquid drop (A17, A18):** Tropfen „Maul“, „Fressen“, Laden-Liste und Hinweiszeile sind schlicht; Übergänge und Wechsel noch weicher
+  (A15); die Linien innen (0,25 px) an den Wänden sind sehr fein.
+- **Phase 7:** seine gewählten Werte als Grundwerte, Tempo am Mac (120 Bilder je Sekunde nie gemessen) und auf dem iPhone 16, Bedienung
+  mit Fingern, Aufräumen.
+- **Nicht in Ozzy (Plan Abschnitt 11):** Maul-System (eigene Sitzung), Auswahl wie in Blender (Schritt 7), Teile anfügen, Fell, Look des
+  Spiels, Nacht, Backen fürs Spiel. **Kern-Sitzung:** 4c (Rest der halben Haut), Pose Etappe 4 und 5, umgeschlagene Dreiecke an der
+  Mitte und an dünnen Spitzen, Griff bei Abzweigungen, Pinsel zwischen den Linien.
 
 ## Bedienung
 
