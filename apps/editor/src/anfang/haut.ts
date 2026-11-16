@@ -42,6 +42,7 @@ import {
   type Texture,
   Vector2,
   Vector3,
+  Vector4,
   WebGLRenderTarget,
   type WebGLRenderer,
   ZeroFactor,
@@ -119,6 +120,30 @@ export function duennschichtTafel(stufen = 1024): Float32Array {
 
 // ---------- Shader ----------
 
+/**
+ * Ozzy: die Rückseite als bis zu vier konvexe Flächen im Bild, je bis zu fünf Kanten (Gerätepunkte, y nach unten; Abstand
+ * x · px + y · py + z, innen positiv, einen Gerätepunkt weich). Unbenutzte Kanten liegen weit draußen (0, 0, 1e6).
+ */
+export const HINTEN_KANTEN = 20;
+const HINTEN_GLSL = /* glsl */ `
+uniform vec3 uHinten[${HINTEN_KANTEN}];
+uniform int uHintenZahl;
+uniform float uKanteHoehe;
+float hintenBei(vec2 p) {
+  float h = 0.0;
+  for (int k = 0; k < 4; k++) {
+    if (k >= uHintenZahl) break;
+    float d = 1.0;
+    for (int e = 0; e < 5; e++) {
+      vec3 r = uHinten[k * 5 + e];
+      d = min(d, clamp(0.5 + r.x * p.x + r.y * p.y + r.z, 0.0, 1.0));
+    }
+    h = max(h, d);
+  }
+  return h;
+}
+`;
+
 const VERTEX = /* glsl */ `
 attribute float aHoehe;
 attribute float aSeite;
@@ -152,8 +177,7 @@ uniform float uOpdMax;
 uniform float uZeit;
 uniform int uFassung;
 uniform int uNacht;
-uniform vec3 uKante;
-uniform float uKanteHoehe;
+uniform vec4 uSchnitt;
 uniform int uPass;
 uniform float uAnteil;
 uniform float uDeckung;
@@ -175,11 +199,11 @@ varying float vSeite;
 varying vec2 vBlatt;
 varying float vDehnung;
 
-// Nacht hier: ganz (Nacht der Studie) oder hinter der harten Kante (Ozzy: Wenden, Blick von hinten). Abstand eines Bildpunkts
-// (Gerätepunkte, y nach unten) = uKante.x · x + uKante.y · y + uKante.z, negativ = hinten
+${HINTEN_GLSL}
+// Nacht hier: ganz (Nacht der Studie) oder auf einer Fläche der Rückseite (Ozzy: Wenden, Wände von hinten)
 float nachtHier() {
   if (uNacht == 1) return 1.0;
-  return clamp(0.5 - (uKante.x * gl_FragCoord.x + uKante.y * (uKanteHoehe - gl_FragCoord.y) + uKante.z), 0.0, 1.0);
+  return hintenBei(vec2(gl_FragCoord.x, uKanteHoehe - gl_FragCoord.y));
 }
 
 vec3 hash3(vec3 p) {
@@ -281,6 +305,8 @@ vec3 horizont(vec3 r, float versatz) {
 }
 
 void main() {
+  // Ozzy: ein Blatt schiebt sich durch die Blase (Einrasten): was dahinter liegt, ist weg
+  if (dot(uSchnitt.xyz, vPos) < uSchnitt.w) discard;
   vec3 N = normalize(vNormal);
   if (!gl_FrontFacing) N = -N;
   vec3 V = normalize(cameraPosition - vPos);
@@ -401,14 +427,13 @@ void main() {
 }
 `;
 
-// der Grund hinter der harten Kante (Ozzy): dieselbe Kante wie in `nachtHier`, eine Gerätepunkt weich
+// der Grund der Rückseite (Ozzy): dieselben Flächen wie in `nachtHier`
 const HINTEN_FRAGMENT = /* glsl */ `
 precision highp float;
-uniform vec3 uKante;
-uniform float uKanteHoehe;
 uniform vec3 uFarbe;
+${HINTEN_GLSL}
 void main() {
-  float h = clamp(0.5 - (uKante.x * gl_FragCoord.x + uKante.y * (uKanteHoehe - gl_FragCoord.y) + uKante.z), 0.0, 1.0);
+  float h = hintenBei(vec2(gl_FragCoord.x, uKanteHoehe - gl_FragCoord.y));
   if (h <= 0.0) discard;
   gl_FragColor = vec4(uFarbe, h);
 }
@@ -445,15 +470,29 @@ export interface HautWerte {
   weich: number;
   schattenFarbe: Color;
   /**
-   * Ozzy: die harte Kante zur Rückseite (Wenden, Blick von hinten). Abstand eines Bildpunkts (Gerätepunkte, y nach unten) =
-   * x · px + y · py + z; wo er negativ ist, ist der Grund `kanteFarbe` und die Haut spiegelt wie in der Nacht. Fehlt: überall vorn.
+   * Ozzy: die Rückseite als Flächen im Bild (`HINTEN_KANTEN` Kanten, je drei Werte, siehe `HINTEN_GLSL`; `zahl` Flächen). Dort ist
+   * der Grund `kanteFarbe`, und die Haut spiegelt wie in der Nacht. Fehlt: überall vorn.
    */
-  kante?: [number, number, number] | null;
+  dunkel?: { kanten: number[]; zahl: number } | null;
   kanteFarbe?: Color;
+  /** Ozzy: ein Blatt in der Blase (Einrasten): Die Haut bleibt nur, wo x · nx + y · ny + z · nz ≥ w (Welt); fehlt: ganz */
+  schnitt?: [number, number, number, number] | null;
 }
 
 export const PAPIER = new Color('#ffffff');
-const KEINE_KANTE: [number, number, number] = [0, 0, 1e6];
+const KEIN_SCHNITT: [number, number, number, number] = [0, 0, 0, -1];
+function keineKanten(): Vector3[] {
+  return Array.from({ length: HINTEN_KANTEN }, () => new Vector3(0, 0, 1e6));
+}
+function hintenSetzen(u: Record<string, { value: unknown }>, h: HautWerte['dunkel'], hoehe: number): void {
+  const a = u.uHinten!.value as Vector3[];
+  for (let i = 0; i < HINTEN_KANTEN; i++) {
+    if (h && i * 3 + 2 < h.kanten.length) a[i]!.set(h.kanten[i * 3]!, h.kanten[i * 3 + 1]!, h.kanten[i * 3 + 2]!);
+    else a[i]!.set(0, 0, 1e6);
+  }
+  u.uHintenZahl!.value = h ? Math.min(4, h.zahl) : 0;
+  u.uKanteHoehe!.value = hoehe;
+}
 /** Nacht: tiefes Blau */
 export const NACHT = new Color('#121a28');
 
@@ -520,7 +559,7 @@ export class Haut {
     const grundMaterial = new ShaderMaterial({
       vertexShader: ENDE_VERTEX,
       fragmentShader: HINTEN_FRAGMENT,
-      uniforms: { uKante: { value: new Vector3(0, 0, 1e6) }, uKanteHoehe: { value: 1 }, uFarbe: { value: new Color(0, 0, 0) } },
+      uniforms: { uHinten: { value: keineKanten() }, uHintenZahl: { value: 0 }, uKanteHoehe: { value: 1 }, uFarbe: { value: new Color(0, 0, 0) } },
       depthTest: false,
       depthWrite: false,
       transparent: true,
@@ -545,8 +584,10 @@ export class Haut {
           uZeit: { value: 0 },
           uFassung: { value: 0 },
           uNacht: { value: 0 },
-          uKante: { value: new Vector3(0, 0, 1e6) },
+          uHinten: { value: keineKanten() },
+          uHintenZahl: { value: 0 },
           uKanteHoehe: { value: 1 },
+          uSchnitt: { value: new Vector4(0, 0, 0, -1) },
           uPass: { value: 0 },
           uAnteil: { value: 1 },
           uDeckung: { value: 1 },
@@ -736,8 +777,9 @@ export class Haut {
       u.uZeit!.value = w.zeit;
       u.uFassung!.value = w.fassung;
       u.uNacht!.value = w.nacht ? 1 : 0;
-      (u.uKante!.value as Vector3).set(...(w.kante ?? KEINE_KANTE));
-      u.uKanteHoehe!.value = this.ziel.height;
+      hintenSetzen(u, w.dunkel, this.ziel.height);
+      const sn = w.schnitt ?? KEIN_SCHNITT;
+      (u.uSchnitt!.value as Vector4).set(sn[0], sn[1], sn[2], sn[3]);
       u.uDeckung!.value = w.deckung;
       (u.uHauch!.value as Vector3).copy(w.hauch);
       u.uHauchStaerke!.value = w.hauchStaerke;
@@ -772,11 +814,10 @@ export class Haut {
     r.setClearColor(grund, 1);
     r.clear(true, true, false);
     const autoLoeschen = r.autoClear;
-    if (w.kante && !w.nacht) {
-      // hinter der harten Kante der andere Grund (vor der Haut: Sie spiegelt und lässt durch wie überall); danach nicht mehr löschen
+    if (w.dunkel && w.dunkel.zahl > 0 && !w.nacht) {
+      // auf den Flächen der Rückseite der andere Grund (vor der Haut: Sie spiegelt und lässt durch wie überall); danach nicht mehr löschen
       const u = this.hintenGrund.material.uniforms;
-      (u.uKante!.value as Vector3).set(...w.kante);
-      u.uKanteHoehe!.value = this.ziel.height;
+      hintenSetzen(u, w.dunkel, this.ziel.height);
       (u.uFarbe!.value as Color).copy(w.kanteFarbe ?? NACHT);
       r.autoClear = false;
       r.render(this.hintenGrund.szene, this.ende.kamera);

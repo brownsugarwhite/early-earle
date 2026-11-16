@@ -59,10 +59,10 @@ export interface Szene {
   koerper?: Koerper | null;
   bias?: number;
   /**
-   * Ozzy: die harte Kante zur Rückseite (Wenden, Blick von hinten). Abstand eines Bildpunkts p (Gerätepunkte, y nach unten) =
-   * x · p.x + y · p.y + z; wo er negativ ist, tauschen Tinte und Papier. Fehlt: überall vorn.
+   * Ozzy: die Rückseite als bis zu vier konvexe Flächen, je fünf Kanten (Gerätepunkte, y nach unten; Abstand x · p.x + y · p.y + z,
+   * innen positiv; 20 Kanten zu drei Werten); dort tauschen Tinte und Papier. Fehlt: überall vorn.
    */
-  kante?: [number, number, number] | null;
+  dunkel?: { kanten: number[]; zahl: number } | null;
   /** Farbe des Papiers (für den Tausch und die Füllung des Zeigers); fehlt: weiß */
   papier?: [number, number, number];
 }
@@ -90,7 +90,8 @@ uniform int uFelder;
 uniform vec4 uFeld[${MAX_FELDER}];
 uniform vec3 uTinte;
 uniform vec3 uGruen;
-uniform vec3 uKante;
+uniform vec3 uHinten[20];
+uniform int uHintenZahl;
 uniform vec3 uPapier;
 uniform int uZeigerDa;
 uniform vec2 uZA;
@@ -152,6 +153,20 @@ float deckung(float d, float w) {
 
 vec4 texel(int i) {
   return texelFetch(uPrim, ivec2(i % PB, i / PB), 0);
+}
+
+float hintenBei(vec2 p) {
+  float h = 0.0;
+  for (int k = 0; k < 4; k++) {
+    if (k >= uHintenZahl) break;
+    float d = 1.0;
+    for (int e = 0; e < 5; e++) {
+      vec3 r = uHinten[k * 5 + e];
+      d = min(d, clamp(0.5 + r.x * p.x + r.y * p.y + r.z, 0.0, 1.0));
+    }
+    h = max(h, d);
+  }
+  return h;
 }
 
 void main() {
@@ -222,8 +237,8 @@ void main() {
   }
   float d0 = smin(dL.x, dB.x, k);
   float d1 = smin(dL.y, dB.y, k);
-  // hinter der harten Kante tauschen Tinte und Papier
-  float hinten = clamp(0.5 - (uKante.x * p.x + uKante.y * p.y + uKante.z), 0.0, 1.0);
+  // auf der Rückseite tauschen Tinte und Papier
+  float hinten = hintenBei(p);
   vec3 tinte = mix(uTinte, uPapier, hinten);
   vec3 papier = mix(uPapier, uTinte, hinten);
   // wo das weiche Minimum die Form verdickt, gilt die Verdickung als Breite
@@ -362,7 +377,7 @@ export class FluessigeAnzeige {
     this.gl = gl;
     gl.getExtension('EXT_color_buffer_float');
     this.prog = programm(gl, VERTEX, FRAGMENT, ['aPos']);
-    for (const n of ['uPrim', 'uKachel', 'uListe', 'uKoerperFarbe', 'uKoerperTiefe', 'uMitKoerper', 'uBias', 'uHoehe', 'uK0', 'uK1', 'uFelder', 'uFeld', 'uTinte', 'uGruen', 'uKante', 'uPapier', 'uZeigerDa', 'uZA', 'uZB', 'uZC', 'uZLinie'])
+    for (const n of ['uPrim', 'uKachel', 'uListe', 'uKoerperFarbe', 'uKoerperTiefe', 'uMitKoerper', 'uBias', 'uHoehe', 'uK0', 'uK1', 'uFelder', 'uFeld', 'uTinte', 'uGruen', 'uHinten', 'uHintenZahl', 'uPapier', 'uZeigerDa', 'uZA', 'uZB', 'uZC', 'uZLinie'])
       this.uni[n] = gl.getUniformLocation(this.prog, n);
     this.progK = programm(gl, KOERPER_VERTEX, KOERPER_FRAGMENT, ['aPos', 'aNormal']);
     for (const n of ['uProj', 'uAnsicht', 'uHuelle', 'uViewport', 'uSchattierung', 'uTinte']) this.uniK[n] = gl.getUniformLocation(this.progK, n);
@@ -622,7 +637,10 @@ export class FluessigeAnzeige {
     gl.uniform4fv(this.uni.uFeld!, fd);
     gl.uniform3fv(this.uni.uTinte!, sz.tinte);
     gl.uniform3fv(this.uni.uGruen!, sz.gruen);
-    gl.uniform3fv(this.uni.uKante!, sz.kante ?? [0, 0, 1e6]);
+    const hk = new Float32Array(60);
+    for (let i = 0; i < 20; i++) hk.set(sz.dunkel && i * 3 + 2 < sz.dunkel.kanten.length ? sz.dunkel.kanten.slice(i * 3, i * 3 + 3) : [0, 0, 1e6], i * 3);
+    gl.uniform3fv(this.uni.uHinten!, hk);
+    gl.uniform1i(this.uni.uHintenZahl!, sz.dunkel ? Math.min(4, sz.dunkel.zahl) : 0);
     gl.uniform3fv(this.uni.uPapier!, sz.papier ?? [1, 1, 1]);
     const zg = sz.zeiger;
     gl.uniform1i(this.uni.uZeigerDa!, zg ? 1 : 0);

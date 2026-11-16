@@ -11,8 +11,10 @@
 //   6  Keine Fehler in der Konsole.
 //   7  Wenden in jede Richtung (Florian, 16.11. abends): ⇧ + schräg ziehen, gut 50° weit: zurück in die Seite (hell); schräg weit über die
 //      Hälfte: auf die Rückseite (gewendet, dunkel).
-//   8  Raum von unten (Florian: „bottom, side (other side), back“): Von unten gesehen ist die Mitte dunkel; schräg darüber steht die harte
-//      Kante im Bild, die Mitte hell.
+//   8  Raum (Florian, 16.11. abends: „dass die entsprechenden projektionen auch schwarze wände haben wenn ich dahin gedreht habe“; Front
+//      und Rückseite der Front getauscht): In der Hausansicht ist keine Wand dunkel. Nahe der Front von hinten (noch nicht eingerastet)
+//      ist ihre Wand dunkel, eingerastet bleibt es dunkel (nichts kehrt sich um). Von unten ist die Decke dunkel, die Wand der Seite hell.
+// Seit dem Tausch schaut die Front nach −x: Von Hand liegt sie bei Gier +50°, die Front von hinten bei −130°.
 // Aufruf aus apps/editor: GPU=1 [NAME=…] node scripts/pruefen/ozzy-ansichten-fenster.mjs [ordner für Bilder]
 import { chromium } from '@playwright/test';
 
@@ -76,11 +78,11 @@ await zu(G0 + 3, N0);
 const b1 = await O('blick');
 await bild('2-seite');
 ok('1 Raum → nahe der Seite gedreht: die Seite rastet ein, der Maßstab bleibt', b1.ansicht === 'seite' && !b1.gewendet && b1.flach > 0.99 && Math.abs(b1.massstab / b0.massstab - 1) <= 0.02, `${lage(b1)}, Maßstab ${b0.massstab.toFixed(3)} → ${b1.massstab.toFixed(3)}`);
-const m2 = await zu(G0 - 90 + 2, N0);
+const m2 = await zu(G0 + 90 - 2, N0);
 const b2 = await O('blick');
 await bild('3-front');
-ok('2 aus der Seite heraus gedreht (im Zug gelöst, die Drehung folgt), nahe der Front: die Front rastet ein', !!m2 && m2.ansicht === 'raum' && Math.abs(grad(m2.gier) - G0) > 20 && b2.ansicht === 'front' && b2.flach > 0.99, `im Zug ${m2 ? lage(m2) : '–'}; danach ${lage(b2)}`);
-await zu(G0 + 90 - 3, N0 + 2);
+ok('2 aus der Seite heraus gedreht (im Zug gelöst, die Drehung folgt), nahe der Front: die Front rastet ein', !!m2 && m2.ansicht === 'raum' && Math.abs(grad(m2.gier) - G0) > 20 && b2.ansicht === 'front' && !b2.gewendet && b2.flach > 0.99, `im Zug ${m2 ? lage(m2) : '–'}; danach ${lage(b2)}`);
+await zu(G0 - 90 + 3, N0 + 2);
 const b3a = await O('blick');
 await bild('4-front-hinten');
 await zu(G0 + 180 + 2, N0);
@@ -95,7 +97,7 @@ ok('3 Gegenseiten: Front von hinten und Seite von rechts rasten gewendet ein', b
   const px = (-(rest * 0.55) * 520) / Math.PI;
   await ziehe(px, 0, 6, 16, 0);
   const b4 = await O('blick');
-  ok('4 Schwung: kurz angeschoben, die Front von hinten rastet ein', b4.ansicht === 'front' && b4.gewendet && b4.flach > 0.99, `vor dem Anschieben ${lage(b)}; danach ${lage(b4)}`);
+  ok('4 Schwung: kurz angeschoben, die Front rastet ein', b4.ansicht === 'front' && !b4.gewendet && b4.flach > 0.99, `vor dem Anschieben ${lage(b)}; danach ${lage(b4)}`);
 }
 // 5 Wenden mit ⇧ (in der Seite)
 {
@@ -165,17 +167,33 @@ ok('3 Gegenseiten: Front von hinten und Seite von rechts rasten gewendet ein', b
   const k2 = await schraeg(400, -120, '10-schraeg-weit');
   ok('7 ⇧ + schräg ziehen: bis zur Hälfte zurück, weit darüber auf die Rückseite', k1.da.ansicht === 'seite' && !k1.da.gewendet && k1.da.schwarz < 0.01 && k2.im.rueckseite && k2.da.ansicht === 'seite' && k2.da.gewendet && k2.da.schwarz > 0.99, `schräg halb: im Zug Gier ${z1(grad(k1.im.gier))}°, Neigung ${z1(grad(k1.im.neigung))}°, danach ${lage(k1.da)}, dunkel ${z1(k1.da.schwarz)}; schräg weit: im Zug Rückseite ${k2.im.rueckseite}, danach ${lage(k2.da)}, dunkel ${z1(k2.da.schwarz)}`);
 }
-// 8 Raum von unten: dunkel; schräg darüber die Kante im Bild
+// 8 Raum: Wände der Projektionen von hinten dunkel, beim Einrasten bleibt die Farbe
 {
   await s.keyboard.press('0');
-  await s.waitForTimeout(1500);
+  await s.waitForTimeout(1600);
+  const h0 = await O('blick');
+  await bild('11-raum-haus');
+  await zu(G0 - 90 + 14, N0 + 8);
+  const v = await O('blick');
+  const wx = await O('wandMitte', 0);
+  const dx = await O('dunkelBei', wx.x, wx.y);
+  await bild('12-raum-vor-front-hinten');
+  await zu(G0 - 90 + 2, N0);
+  const e = await O('blick');
+  await s.keyboard.press('0');
+  await s.waitForTimeout(1600);
   await zu(0, -100);
   const u = await O('blick');
-  await bild('11-raum-unten');
-  await zu(0, -76);
-  const k = await O('blick');
-  await bild('12-raum-kante');
-  ok('8 Raum von unten: die Mitte dunkel; schräg darüber steht die Kante im Bild, die Mitte hell', u.ansicht === 'raum' && u.schwarz > 0.99 && k.ansicht === 'raum' && k.kanteSichtbar && k.schwarz < 0.01, `von unten ${lage(u)}, dunkel ${z1(u.schwarz)}; schräg ${lage(k)}, Kante im Bild ${k.kanteSichtbar}, dunkel ${z1(k.schwarz)}`);
+  const wy = await O('wandMitte', 1);
+  const wz = await O('wandMitte', 2);
+  const dy = await O('dunkelBei', wy.x, wy.y);
+  const dz = await O('dunkelBei', wz.x, wz.y);
+  await bild('13-raum-unten');
+  ok(
+    '8 Raum: Hausansicht ohne dunkle Wand; vor der Front von hinten ihre Wand dunkel, eingerastet bleibt es dunkel; von unten die Decke dunkel, die Seite hell',
+    h0.ansicht === 'raum' && h0.hinten === 0 && v.ansicht === 'raum' && dx > 0.99 && e.ansicht === 'front' && e.gewendet && e.schwarz > 0.99 && u.ansicht === 'raum' && dy > 0.99 && dz < 0.01,
+    `Hausansicht: dunkle Flächen ${h0.hinten}; vor der Front von hinten: ${lage(v)}, Wand der Front dunkel ${z1(dx)}, Mitte ${z1(v.schwarz)}; eingerastet ${lage(e)}, dunkel ${z1(e.schwarz)}; von unten: Decke ${z1(dy)}, Wand der Seite ${z1(dz)}`,
+  );
 }
 ok('6 keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));
 console.log(schlecht ? `${schlecht} nicht erfüllt` : 'alles gut');

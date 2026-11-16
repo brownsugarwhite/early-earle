@@ -20,7 +20,7 @@
 // muss zuerst geladen werden: die Schalter des Werks in der Adresse
 import './adresse';
 import { MAUL_WINKEL_MAX, eckenAuto, istEcke } from '@ee/shape/dicht';
-import { Color, Matrix4, Vector2, Vector3, WebGLRenderer } from 'three';
+import { Color, Matrix4, Vector2, Vector3, Vector4, WebGLRenderer } from 'three';
 import { glatt, type Masse, type Moment, moment } from '../anfang/aufblasen';
 import { FLACH, Koerper, netzAusUmriss } from '../anfang/form';
 import { FASSUNGEN, type Fassung, Haut, type HautWerte } from '../anfang/haut';
@@ -32,7 +32,7 @@ import * as werk from '../form/werk';
 import { WerkHaut, mitteLinie, mittePfad } from './werkHaut';
 import { type Flaeche, WerkBlatt } from './werkBlatt';
 import { type Anker, Blatt, FREIHAND_GRUNDWERTE, type FreihandWerte, type Strich, type Werkzeug, aufzugPfad, strichBeginnen, strichPfad } from './blatt';
-import { Kamera, perspektiveBei, richtung } from './kamera';
+import { Kamera, perspektiveBei } from './kamera';
 import { Kapseln } from './kapseln';
 import { Leiste } from './leiste';
 import { type Bereich, type ReglerZeile, feinreglerBauen, werteLesen } from './regler';
@@ -146,8 +146,15 @@ const SCHWUNG_TAU = 0.24;
 let wenden: { x: number; y: number; g0: number; n0: number; a: Ansicht } | null = null;
 /** die Linien der Ansicht bleiben zu sehen, solange gewendet wird und die Fahrt danach läuft */
 let wendenSicht = false;
-/** die harte Kante in diesem Bild (Gerätepunkte, y nach unten: Abstand = x · px + y · py + z, negativ = hinten); null = keine */
-let kanteJetzt: [number, number, number] | null = null;
+/**
+ * Die Rückseite in diesem Bild: bis zu vier konvexe Flächen, je fünf Kanten (Gerätepunkte, y nach unten; Abstand x · px + y · py + z,
+ * innen positiv). Eingerastet die Kante der Blaupause; im Raum jede Wand, deren Projektion man von hinten sieht (Florian, 16.11. abends:
+ * „dass die entsprechenden projektionen auch schwarze wände haben wenn ich dahin gedreht habe“). null = keine.
+ */
+type Hinten = { kanten: number[]; zahl: number };
+let hintenJetzt: Hinten | null = null;
+/** beim Einrasten schiebt sich das Blatt durch die Blase: Die Haut bleibt nur vor ihm (Welt: n · p ≥ w); null = ganz */
+let schnittJetzt: [number, number, number, number] | null = null;
 /** wie weit die Mitte der Form hinten liegt (0 … 1, für Proben); ob irgendwo im Bild Rückseite zu sehen ist */
 let kanteMitte = 0;
 let kanteSichtbar = false;
@@ -157,13 +164,15 @@ const KANTE_FARBE = new Color('#1f1a17');
 const KANTE_A = 3.2;
 let letzterUmschaltKlick = { t: 0, x: 0, y: 0 };
 /** die Blickrichtung der Vorderseite einer Ansicht (Seite schaut nach −z, Front nach +x, Top nach −y) */
-const VORN: Record<'seite' | 'front' | 'top', Vector3> = { seite: new Vector3(0, 0, -1), front: new Vector3(1, 0, 0), top: new Vector3(0, -1, 0) };
+// Front schaut seit dem 16.11. abends nach −x (Florian: „front und back tauschen“): von der Seite, von der der Raum in seine Ecke schaut;
+// so sieht der Raum in seiner Hausansicht alle drei Projektionen von vorn
+const VORN: Record<'seite' | 'front' | 'top', Vector3> = { seite: new Vector3(0, 0, -1), front: new Vector3(-1, 0, 0), top: new Vector3(0, -1, 0) };
 let flach = 0;
 /** Fahrt in eine Ansicht (Gier, Neigung, flach); `nurFlach`: nur die Parallele löst sich, die Drehung gehört der Hand (S4) */
-let ansichtFahrt: { von: [number, number, number]; nach: [number, number, number]; t: number; nurFlach?: boolean; senke?: number; vonAnsicht?: Ansicht; heimVon?: Vector3 } | null = null;
+let ansichtFahrt: { von: [number, number, number]; nach: [number, number, number]; t: number; nurFlach?: boolean; senke?: number; vonAnsicht?: Ansicht } | null = null;
 let tasteGehalten: { taste: string; seit: number; vorher: Ansicht } | null = null;
 /** Drehung und Neigung jeder Ansicht (Grad), als Ziel der ganzen Kamera */
-const ANSICHT_WINKEL: Record<Ansicht, [number, number] | null> = { raum: null, seite: [0, 0], front: [-90, 0], top: [0, 90] };
+const ANSICHT_WINKEL: Record<Ansicht, [number, number] | null> = { raum: null, seite: [0, 0], front: [90, 0], top: [0, 90] };
 
 /** Vier Ansichten (Tab): 0 = aus, 1 = an */
 let vier = 0;
@@ -960,7 +969,7 @@ function imFeld(n: FeldAchse, p: Vector3, F: ReturnType<typeof felder>, s: numbe
   const r = F[n];
   const mx = r.x + r.w / 2;
   const my = r.y + r.h / 2;
-  const [u, v, uc, vc] = n === 'seite' ? [p.x, p.y, e.cx, e.cy] : n === 'front' ? [p.z, p.y, 0, e.cy] : [p.x, -p.z, e.cx, 0];
+  const [u, v, uc, vc] = n === 'seite' ? [p.x, p.y, e.cx, e.cy] : n === 'front' ? [-p.z, p.y, 0, e.cy] : [p.x, -p.z, e.cx, 0];
   return [(mx + (u - uc) * s) * D, (my - (v - vc) * s) * D];
 }
 
@@ -970,7 +979,7 @@ function ausFeld(n: FeldAchse, x: number, y: number, F: ReturnType<typeof felder
   const r = F[n];
   const u = (x - (r.x + r.w / 2)) / s;
   const v = -(y - (r.y + r.h / 2)) / s;
-  return n === 'seite' ? [e.cx + u, e.cy + v] : n === 'front' ? [u, e.cy + v] : [e.cx + u, -v];
+  return n === 'seite' ? [e.cx + u, e.cy + v] : n === 'front' ? [-u, e.cy + v] : [e.cx + u, -v];
 }
 
 function vierUmschalten(an?: boolean): void {
@@ -1176,7 +1185,8 @@ function bild(dt: number): boolean {
     }
   }
   kameraSetzen(zustand === 'blatt' ? null : m);
-  kanteJetzt = kanteRechnen();
+  hintenJetzt = hintenRechnen(m);
+  schnittJetzt = schnittRechnen();
   // Fahrtwind: die Farben fließen gegen die Drehung
   const gierJetzt = Math.atan2(kam.aktiv.position.x - (raum?.cx ?? 0), kam.aktiv.position.z);
   const neigungJetzt = Math.asin(Math.max(-1, Math.min(1, (kam.aktiv.position.y - (raum?.cy ?? 0)) / Math.max(1, kam.abstand))));
@@ -1200,7 +1210,8 @@ function bild(dt: number): boolean {
   // Haut (keine Schatten an den Wänden: dort stehen die Linien). Eingerastet ist nur der Umriss zu sehen (Florian, 16.11.): Die Blase
   // verdunstet beim Einrasten, die Haut wird dünner (die Farben laufen) und klar, und kommt beim Lösen genauso zurück.
   const F = koerper?.flach;
-  const weg = glatt(Math.min(1, flach * 1.2));
+  // eingerastet schiebt sich das Blatt durch die Blase (`schnittJetzt`), sie verdunstet nicht mehr (Florian, 16.11. abends: harte Kante)
+  const weg = 0;
   const w: HautWerte = {
     fassung,
     nacht: false,
@@ -1217,14 +1228,15 @@ function bild(dt: number): boolean {
     wind,
     dicke: werte.dicke * (1 - 0.45 * weg),
     spannung: werte.spannung,
-    sicht: werte.sicht * (1 - 0.55 * flach),
+    sicht: werte.sicht,
     wuerfel: null,
     waende: [],
     weich: 0,
     schattenFarbe: WEISS,
     papier: poseTon > 1e-3 ? WEISS.clone().lerp(POSE_PAPIER, poseTon) : null,
-    kante: kanteJetzt,
+    dunkel: hintenJetzt,
     kanteFarbe: KANTE_FARBE,
+    schnitt: schnittJetzt,
   };
   const tz = performance.now();
   haut.zeichnen(kam.aktiv, w, []);
@@ -1296,14 +1308,14 @@ function bild(dt: number): boolean {
       felder: K.felder,
       tinte: TINTE,
       gruen: GRUEN,
-      kante: kanteJetzt,
+      dunkel: hintenJetzt,
       zeiger: !zeigerZeigen ? null : bearbeitenAn ? (zeigerBearbeiten ?? null) : zeigerForm(zeiger.x, zeiger.y),
     };
   }
   const ta = performance.now();
   anzeige.zeichnen(szene);
   mess.teile[4] = performance.now() - ta;
-  kanteZeigen();
+  hintenZeigen();
   maulUiZeigen();
   // Text
   gruss.classList.toggle('weg', !(zustand === 'blatt' && blatt.leer));
@@ -1655,29 +1667,31 @@ function feldFlaeche(n: FeldAchse, vp: Matrix4, F: ReturnType<typeof felder>, s4
 function flaechenJetzt(vp: Matrix4, m: Moment): { flaechen: Flaeche[]; stabil: boolean } {
   const e = raum!;
   const liste: Flaeche[] = [];
-  // Wände (wie `wandLinien`): die drei abgewandten, mit ihrer Stärke
+  // Wände (wie `wandLinien`): die drei abgewandten, mit ihrer Stärke. Die Wand der Ansicht, in die es einrastet (oder aus der es kommt),
+  // wird zum Blatt: Ihre Zeichnung wandert zur Mitte der Form und wird so stark wie das Blatt (nichts wird überblendet oder doppelt gezeigt)
   const { s, staerke } = waendeJetzt(m);
+  const blatt = blattModus();
+  const achsen = blatt ? new Set<number>() : blattAchsen();
+  const pb = glatt(flach);
+  const g6 = wandGewichte();
   for (const achse of [0, 1, 2] as const) {
+    const wandLage = [e.cx, e.cy, 0][achse]! + s[achse] * e.L;
+    if (achsen.has(achse)) {
+      const mitteLage = [e.cx, e.cy, 0][achse]!;
+      const st = Math.max(staerke[achse], Math.max(g6[2 * achse]!, g6[2 * achse + 1]!) * flach * flach);
+      if (st >= 0.01) liste.push(ebene(BLATT_DER_ACHSE[achse]!, wandLage + (mitteLage - wandLage) * pb, vp, st, bw.wandLinien + (1 - bw.wandLinien) * pb, pb < 0.5));
+      continue;
+    }
     if (staerke[achse] < 0.01) continue;
-    liste.push(ebene(BLATT_DER_ACHSE[achse]!, [e.cx, e.cy, 0][achse]! + s[achse] * e.L, vp, staerke[achse], bw.wandLinien, true));
+    liste.push(ebene(BLATT_DER_ACHSE[achse]!, wandLage, vp, staerke[achse], bw.wandLinien, true));
   }
   // eingerastet (wie `linienDerAnsicht`): auf der Ebene durch die Mitte der Form
-  if (flach > 0.01 && ansicht !== 'raum') {
+  if (blatt && ansicht !== 'raum') {
     const blick = new Vector3();
     kam.aktiv.getWorldDirection(blick);
-    const ach = ansicht === 'seite' ? new Vector3(0, 0, -1) : ansicht === 'front' ? new Vector3(1, 0, 0) : new Vector3(0, -1, 0);
-    const t = wendenSicht ? 1 : Math.min(1, Math.max(0, (Math.abs(blick.dot(ach)) - 0.97) / 0.025));
+    const t = wendenSicht ? 1 : Math.min(1, Math.max(0, (Math.abs(blick.dot(VORN[ansicht])) - 0.97) / 0.025));
     const st = flach * flach * t * t * (3 - 2 * t);
     if (st >= 0.01) liste.push(ebene(ansicht, ansicht === 'seite' ? 0 : ansicht === 'front' ? e.cx : e.cy, vp, st, 1, false));
-  }
-  // auf dem Weg in eine andere Ansicht: Das Blatt, von dem die Fahrt kommt, dreht sich mit (wie eine Karte) und verblasst in der
-  // ersten Hälfte, während Raum und Blase kommen (sonst wäre zu Beginn der Fahrt nichts zu sehen)
-  const fv = ansichtFahrt;
-  if (fv && (fv.senke ?? 0) > 0 && fv.vonAnsicht && fv.vonAnsicht !== 'raum' && fv.vonAnsicht !== ansicht) {
-    const u = Math.min(1, fv.t / 0.45);
-    const st = flach * flach * (1 - u * u * (3 - 2 * u));
-    const a = fv.vonAnsicht;
-    if (st >= 0.01) liste.push(ebene(a, a === 'seite' ? 0 : a === 'front' ? e.cx : e.cy, vp, st, 1, false));
   }
   // die drei flachen Felder
   if (vier > 0.02) {
@@ -1953,7 +1967,6 @@ function ansichtWinkel(ziel: Ansicht, hinten: boolean): [number, number] | null 
 /** in eine Ansicht fahren (Raum oder Achse): Drehen und Parallele zugleich, kürzester Weg, die Größe bleibt; `hinten`: Gegenseite */
 function ansichtSetzen(ziel: Ansicht, hinten = false): void {
   if (zustand !== 'ruhe' && zustand !== 'auf') return;
-  const heimVorher = heimJetzt();
   schwung = null;
   gewendet = ziel !== 'raum' && hinten;
   const w = ansichtWinkel(ziel, hinten);
@@ -1966,7 +1979,7 @@ function ansichtSetzen(ziel: Ansicht, hinten = false): void {
   if (ziel === ansicht && ziel !== 'raum' && flach > 0.5) wendenSicht = true;
   const winkel = Math.hypot(g1 - g0, n1 - nutzer.neigung);
   const senke = w && flach > 0.5 && !wendenSicht ? Math.min(0.7, (0.7 * winkel) / (Math.PI / 2)) : 0;
-  ansichtFahrt = { von: [g0, nutzer.neigung, flach], nach: [g1, n1, w ? 1 : 0], t: 0, senke, vonAnsicht: ansicht, heimVon: heimVorher };
+  ansichtFahrt = { von: [g0, nutzer.neigung, flach], nach: [g1, n1, w ? 1 : 0], t: 0, senke, vonAnsicht: ansicht };
   ansicht = ziel;
   punktZug = null;
   anstossen();
@@ -2004,38 +2017,31 @@ function rueckseite(a: Ansicht): boolean {
 }
 
 /** das Schwarz der Rückseite: Feder zum Ziel, die Kante als Vieleck mit Welle (clip-path); true, solange es sich bewegt */
-/** „vorn“ einer Ansicht als Blickrichtung: eingerastet ihre Vorderseite, im Raum seine Hausansicht */
-function heimVon(a: Ansicht): Vector3 {
-  if (a !== 'raum') return VORN[a].clone();
-  return richtung((werte.gier * Math.PI) / 180, (werte.neigung * Math.PI) / 180).negate();
+/** eingerastet, ohne Fahrt in eine andere Ansicht (Wenden zählt dazu): Die Rückseite ist die Kante der Blaupause */
+function blattModus(): boolean {
+  if (ansicht === 'raum') return false;
+  if (wenden) return true;
+  if (ansichtFahrt) return wendenSicht && flach >= 0.999;
+  return flach >= 0.999;
 }
 
-/** zwischen zwei Richtungen auf der Kugel (e = 0 … 1) */
-function kugelMitte(a: Vector3, b: Vector3, e: number): Vector3 {
-  const w = Math.acos(Math.max(-1, Math.min(1, a.dot(b))));
-  if (w < 1e-4) return a.clone().lerp(b, e).normalize();
-  const s = Math.sin(w);
-  return a.clone().multiplyScalar(Math.sin((1 - e) * w) / s).add(b.clone().multiplyScalar(Math.sin(e * w) / s));
-}
-
-/** „vorn“ jetzt: während einer Fahrt dreht es mit von der alten Ansicht zur neuen (so springt die Kante nicht) */
-function heimJetzt(): Vector3 {
-  const ziel = heimVon(ansicht);
-  const f = ansichtFahrt;
-  if (!f?.heimVon) return ziel;
-  const t = Math.min(1, f.t);
-  return kugelMitte(f.heimVon, ziel, t * t * t * (t * (t * 6 - 15) + 10));
+/** Achsen, deren Wand gerade zum Blatt wird oder vom Blatt zurück: die Ansicht und, während einer Fahrt, die, aus der sie kommt */
+function blattAchsen(): Set<number> {
+  const s = new Set<number>();
+  if (ansicht !== 'raum') s.add(ACHSE_VON[ansicht]);
+  const v = ansichtFahrt?.vonAnsicht;
+  if (v && v !== 'raum') s.add(ACHSE_VON[v]);
+  return s;
 }
 
 /**
- * Die harte Kante zur Rückseite (wie `sigmaWerte` in der Blaupause): eine Gerade im Bild, senkrecht zur Projektion von „vorn“, im
- * Abstand A · cos(Winkel) · 1,5 · Halbmesser / sin(Winkel) von der Mitte der Form. Von vorn liegt sie weit draußen, bei 90° geht sie
- * durch die Mitte, darüber hinaus wird es dunkel. Gerätepunkte, y nach unten; null = keine (Blatt, Vier Ansichten).
+ * Die Kante der Blaupause im Blatt (wie `sigmaWerte` in `/editor`): eine Gerade im Bild, senkrecht zur Projektion von „vorn“ der
+ * Ansicht, im Abstand A · cos · 1,5 · Halbmesser / sin von der Mitte der Form; bei 90° geht sie durch die Mitte. Als Kante einer Fläche
+ * (innen = hinten).
  */
-function kanteRechnen(): [number, number, number] | null {
-  const e = raum;
-  if (!e || zustand === 'blatt' || vier > 0.5) return null;
-  const heim = heimJetzt();
+function kanteImBlatt(a: 'seite' | 'front' | 'top', vp: Matrix4): number[] {
+  const e = raum!;
+  const heim = VORN[a];
   const c = kam.aktiv;
   const vor = new Vector3();
   c.getWorldDirection(vor);
@@ -2043,7 +2049,6 @@ function kanteRechnen(): [number, number, number] | null {
   const ob = new Vector3().setFromMatrixColumn(c.matrixWorld, 1).normalize();
   // in der Blaupause sind Blick und „vorn“ Richtungen zur Kamera hin
   const fr = heim.clone().negate();
-  const vp = vpJetzt();
   const mitte = new Vector3(e.cx, e.cy, 0);
   const [mx, my] = projizieren(mitte, vp);
   const [rx, ry] = projizieren(mitte.clone().add(re), vp);
@@ -2052,19 +2057,122 @@ function kanteRechnen(): [number, number, number] | null {
   const nx = re.dot(fr);
   const ny = -ob.dot(fr);
   const len = Math.hypot(nx, ny);
-  if (len < 1e-6) return [0, 0, s0 >= 0 ? 1e6 : -1e6];
-  return [nx / len, ny / len, Math.max(-1e7, Math.min(1e7, (s0 - nx * mx - ny * my) / len))];
+  if (len < 1e-6) return [0, 0, s0 >= 0 ? -1e6 : 1e6];
+  return [-nx / len, -ny / len, -Math.max(-1e7, Math.min(1e7, (s0 - nx * mx - ny * my) / len))];
+}
+
+/** eine Wand (Würfelseite um die Form) als Fläche im Bild, am Nahpunkt der Kamera beschnitten; fünf Kanten, innen positiv; null = keine */
+function wandFlaeche(achse: 0 | 1 | 2, lage: number, halb: number, vp: Matrix4): number[] | null {
+  const e = raum!;
+  const m = [e.cx, e.cy, 0];
+  const u = (achse + 1) % 3;
+  const v = (achse + 2) % 3;
+  const ecken: Vector4[] = [];
+  for (const [su, sv] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
+    const q = [0, 0, 0];
+    q[achse] = lage;
+    q[u] = m[u]! + su * halb;
+    q[v] = m[v]! + sv * halb;
+    ecken.push(new Vector4(q[0], q[1], q[2], 1).applyMatrix4(vp));
+  }
+  const eps = 1e-4;
+  const poly: Vector4[] = [];
+  for (let i = 0; i < 4; i++) {
+    const a = ecken[i]!;
+    const b = ecken[(i + 1) % 4]!;
+    if (a.w > eps) poly.push(a);
+    if (a.w > eps !== b.w > eps) poly.push(a.clone().lerp(b, (eps - a.w) / (b.w - a.w)));
+  }
+  if (poly.length < 3) return null;
+  const P = poly.map((c) => [((c.x / c.w) * 0.5 + 0.5) * W * D, (0.5 - (c.y / c.w) * 0.5) * H * D] as const);
+  let fl = 0;
+  for (let i = 0; i < P.length; i++) fl += P[i]![0] * P[(i + 1) % P.length]![1] - P[(i + 1) % P.length]![0] * P[i]![1];
+  if (Math.abs(fl) < 2) return null;
+  const sg = fl > 0 ? 1 : -1;
+  const k: number[] = [];
+  for (let i = 0; i < P.length && k.length < 15; i++) {
+    const [x0, y0] = P[i]!;
+    const [x1, y1] = P[(i + 1) % P.length]!;
+    const len = Math.hypot(x1 - x0, y1 - y0);
+    if (len < 1e-9) continue;
+    const nx = (-(y1 - y0) * sg) / len;
+    const ny = ((x1 - x0) * sg) / len;
+    k.push(nx, ny, -(nx * x0 + ny * y0));
+  }
+  while (k.length < 15) k.push(0, 0, 1e6);
+  return k;
+}
+
+/**
+ * Die Rückseite in diesem Bild. Eingerastet (auch beim Wenden): die Kante der Blaupause. Sonst (Raum, Fahrten): jede Wand, deren
+ * Projektion man von hinten sieht, als dunkle Fläche mit harten Rändern; die Wand der Ansicht, in die es einrastet oder aus der es
+ * kommt, wächst dabei zum ganzen Blatt (so ist die Farbe beim Einrasten schon die des Blatts).
+ */
+function hintenRechnen(m: Moment | null): Hinten | null {
+  const e = raum;
+  if (!e || zustand === 'blatt' || vier > 0.02) return null;
+  const vp = vpJetzt();
+  if (blattModus()) return { kanten: [...kanteImBlatt(ansicht as 'seite' | 'front' | 'top', vp), 0, 0, 1e6, 0, 0, 1e6, 0, 0, 1e6, 0, 0, 1e6], zahl: 1 };
+  const z = m ? glatt(m.waende) : 1;
+  if (z < 0.01) return null;
+  const vor = new Vector3();
+  kam.aktiv.getWorldDirection(vor);
+  const g6 = wandGewichte();
+  const achsen = blattAchsen();
+  const pb = glatt(flach);
+  const kanten: number[] = [];
+  let zahl = 0;
+  for (const a of [0, 1, 2] as const) {
+    if (vor.dot(VORN[BLATT_DER_ACHSE[a]! as 'seite' | 'front' | 'top']) >= 0) continue;
+    const s = g6[2 * a]! >= g6[2 * a + 1]! ? -1 : 1;
+    const p = achsen.has(a) ? pb : 0;
+    const f = wandFlaeche(a, [e.cx, e.cy, 0][a]! + s * e.L, e.L * z * (1 + 60 * p * p * p), vp);
+    if (!f) continue;
+    kanten.push(...f);
+    zahl++;
+  }
+  return zahl ? { kanten, zahl } : null;
+}
+
+/** das Blatt, das sich beim Einrasten durch die Blase schiebt (beim Lösen zurück): von hinter der Form bis vor sie, mit `flach` */
+function schnittRechnen(): [number, number, number, number] | null {
+  const e = raum;
+  if (!e || zustand === 'blatt') return null;
+  const a = ansicht !== 'raum' ? ansicht : ansichtFahrt?.vonAnsicht;
+  if (!a || a === 'raum') return null;
+  const p = glatt(flach);
+  if (p < 1e-3) return null;
+  const achse = ACHSE_VON[a];
+  const mitte = [e.cx, e.cy, 0][achse]!;
+  const c = kam.aktiv.position;
+  const t = [c.x, c.y, c.z][achse]! - mitte >= 0 ? 1 : -1;
+  const halb = (achse === 0 ? e.rx : achse === 1 ? e.ry : e.tiefe) * 1.15 + 1;
+  const q = mitte + t * halb * (2 * p - 1);
+  const n = [0, 0, 0];
+  n[achse] = t;
+  return [n[0]!, n[1]!, n[2]!, t * q];
+}
+
+/** wie dunkel ein Bildpunkt ist (Gerätepunkte, wie im Shader) */
+function hintenBei(h: Hinten | null, x: number, y: number): number {
+  if (!h) return 0;
+  let best = 0;
+  for (let k = 0; k < Math.min(4, h.zahl); k++) {
+    let d = 1;
+    for (let j = 0; j < 5; j++) {
+      const i = (k * 5 + j) * 3;
+      d = Math.min(d, Math.max(0, Math.min(1, 0.5 + h.kanten[i]! * x + h.kanten[i + 1]! * y + h.kanten[i + 2]!)));
+    }
+    best = Math.max(best, d);
+  }
+  return best;
 }
 
 /** Marke und Hinweis kehren ihre Farbe um, solange Rückseite zu sehen ist; Werte für die Proben */
-function kanteZeigen(): void {
-  const k = kanteJetzt;
-  const ab = (x: number, y: number): number => (k ? k[0] * x + k[1] * y + k[2] : 1e6);
-  const wd = W * D;
-  const hd = H * D;
-  kanteSichtbar = !!k && Math.min(ab(0, 0), ab(wd, 0), ab(0, hd), ab(wd, hd)) < 0.5;
-  const m = raum ? projizieren(new Vector3(raum.cx, raum.cy, 0), vpJetzt()) : [wd / 2, hd / 2];
-  kanteMitte = Math.max(0, Math.min(1, 0.5 - ab(m[0]!, m[1]!)));
+function hintenZeigen(): void {
+  const m = raum ? projizieren(new Vector3(raum.cx, raum.cy, 0), vpJetzt()) : [(W * D) / 2, (H * D) / 2];
+  kanteMitte = hintenBei(hintenJetzt, m[0]!, m[1]!);
+  kanteSichtbar = !!hintenJetzt && hintenJetzt.zahl > 0;
   document.body.classList.toggle('wende-an', kanteSichtbar);
 }
 
@@ -2312,10 +2420,10 @@ leinwandLinien.addEventListener('pointermove', (e) => {
     }
   } else if (drehen) {
     if (ansicht !== 'raum') {
-      const heimVorher = heimJetzt();
+      const vorher = ansicht;
       ansicht = 'raum';
       gewendet = false;
-      ansichtFahrt = { von: [nutzer.gier, nutzer.neigung, flach], nach: [nutzer.gier, nutzer.neigung, 0], t: 0, nurFlach: true, heimVon: heimVorher };
+      ansichtFahrt = { von: [nutzer.gier, nutzer.neigung, flach], nach: [nutzer.gier, nutzer.neigung, 0], t: 0, nurFlach: true, vonAnsicht: vorher };
     }
     nutzer.gier = drehen.gier - ((x - drehen.x) * Math.PI) / 520;
     nutzer.neigung = Math.max(NEIGUNG_UNTEN, Math.min(NEIGUNG_OBEN, drehen.neigung + ((y - drehen.y) * Math.PI) / 520));
@@ -3047,7 +3155,18 @@ const haken = {
     return b;
   },
   /** Blick: Ansicht, gewendet, wie flach, Gier und Neigung von Hand (rad), Maßstab (Bildpunkte je Pixel der Welt), Schwung */
-  blick: () => ({ ansicht, gewendet, flach, vier, gier: nutzer.gier, neigung: nutzer.neigung, massstab: massstab.jetzt * nutzer.zoom, schwung: schwung !== null, fahrt: ansichtFahrt !== null, wendet: wenden !== null, schwarz: kanteMitte, kanteSichtbar, rueckseite: rueckseite(ansicht), kante: kanteJetzt }),
+  blick: () => ({ ansicht, gewendet, flach, vier, gier: nutzer.gier, neigung: nutzer.neigung, massstab: massstab.jetzt * nutzer.zoom, schwung: schwung !== null, fahrt: ansichtFahrt !== null, wendet: wenden !== null, schwarz: kanteMitte, kanteSichtbar, rueckseite: rueckseite(ansicht), hinten: hintenJetzt?.zahl ?? 0, blatt: blattModus() }),
+  /** wie dunkel die Rückseite an einem Punkt (CSS) ist, und die Mitte der fernen Wand einer Achse im Bild (CSS) */
+  dunkelBei: (x: number, y: number) => hintenBei(hintenJetzt, x * D, y * D),
+  wandMitte: (achse: 0 | 1 | 2) => {
+    const e = raum;
+    if (!e) return null;
+    const g6 = wandGewichte();
+    const q = [e.cx, e.cy, 0];
+    q[achse] = q[achse]! + (g6[2 * achse]! >= g6[2 * achse + 1]! ? -1 : 1) * e.L;
+    const [x, y] = projizieren(new Vector3(q[0], q[1], q[2]), vpJetzt());
+    return { x: x / D, y: y / D };
+  },
   /** P an oder aus (wie die Taste P) */
   stift: (an: boolean): boolean => {
     stiftImRaum(an);

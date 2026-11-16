@@ -1,7 +1,7 @@
 // Film: Wenden in Ozzy (S4b im Plan „wie es weitergeht“, 16.11.2026), an „strange bird“ (NAME). Echte Maus- und Tastenereignisse;
 // Bild für Bild gerechnet (60 je Sekunde, der Takt der Seite steht), dann mit ffmpeg zu MP4. Oben rechts steht, was gedrückt wird.
-// Ablauf: 1 (Seite) · ⇧ + Ziehen bis zur Hälfte (zurück) · ⇧ + schräg über die Hälfte (die harte Kante wandert durchs Bild, gewendet)
-// · ⇧ + Doppelklick (zurück) · 0 (Raum) · im Raum nach unten drehen (von unten: die Kante kommt herein) und zurück.
+// Ablauf (dritte Fassung, Front getauscht): Raum · zur Front von hinten drehen (ihre Wand wird schwarz) · einrasten (die Wand wird zum
+// Blatt, das Blatt schiebt sich durch die Blase) · ⇧ + Ziehen (wenden) · 0 (Raum, die Blase kommt aus dem Blatt) · von unten (Decke schwarz).
 // Aufruf aus apps/editor, Ozzy auf 5205: node scripts/ozzy/wenden-film.mjs [ziel.mp4]
 import { chromium } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
@@ -70,28 +70,24 @@ const ziehen = async (dx, dy, sek, halten, umschalt = true) => {
 };
 
 await s.mouse.move(maus[0], maus[1]);
-await warten(0.6);
-await text('1 · Seite');
-await s.keyboard.press('1');
-await warten(1.4);
-await fahren([520, 780], 0.5);
-await text('⇧ + ziehen, bis zur Hälfte: zurück');
-await ziehen(150, 0, 1.0, 0.3);
-await warten(1.3);
-await text('⇧ + schräg ziehen, über die Hälfte: Rückseite');
-await fahren([460, 720], 0.4);
-await ziehen(400, -110, 1.8, 0.4);
-await warten(1.6);
-await text('⇧ + Doppelklick: zurück');
-await fahren([900, 780], 0.4);
-await s.keyboard.down('Shift');
-await s.mouse.dblclick(maus[0], maus[1]);
-await s.keyboard.up('Shift');
-await warten(1.5);
 await text('0 · Raum');
-await s.keyboard.press('0');
+await warten(0.8);
+await text('Raum drehen, zur Front von hinten: ihre Wand wird schwarz');
+await fahren([1000, 780], 0.4);
+await ziehen(339, -58, 2.2, 0.5, false);
+await warten(0.9);
+await text('loslassen nahe der Ansicht: Die Wand wird zum Blatt');
+await fahren([1000, 780], 0.4);
+await ziehen(29, -11, 0.5, 0.3, false);
+await warten(1.6);
+await text('⇧ + ziehen: wenden');
+await fahren([480, 780], 0.4);
+await ziehen(340, 0, 1.8, 0.4);
 await warten(1.5);
-await text('Raum: nach unten drehen (von unten gesehen)');
+await text('0 · Raum: Das Blatt gibt die Blase frei');
+await s.keyboard.press('0');
+await warten(1.8);
+await text('Raum von unten: Die Decke wird schwarz');
 await fahren([1250, 760], 0.4);
 await ziehen(0, -300, 1.8, 0.5, false);
 await warten(0.8);
