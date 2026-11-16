@@ -1,0 +1,224 @@
+/* Ozzy läuft (16.11.2026): Bühne für das Maskottchen. Designsystem „liquid drop“ wie der Editor: Papier, Tinte, Haarlinien,
+   Lobster für Namen und Überschriften. */
+@font-face {
+  font-family: 'Lobster';
+  src: url('../../../../assets/fonts/lobster/Lobster-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+:root {
+  --tinte: #1f1a17;
+  --leise: rgba(31, 26, 23, 0.46);
+  --haar: rgba(31, 26, 23, 0.16);
+  --hauch: rgba(31, 26, 23, 0.05);
+  --papier: #ffffff;
+  --gruen: #b9d1b4;
+  --feder: cubic-bezier(0.22, 1.18, 0.36, 1);
+  --leiste: 320px;
+  color-scheme: light;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--papier);
+  color: var(--tinte);
+  font: 12px/1.45 system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#kopfzeile {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: var(--leiste);
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 20px;
+  z-index: 3;
+  pointer-events: none;
+}
+#kopfzeile h1 {
+  margin: 0;
+  font: 400 30px/1 'Lobster', Georgia, serif;
+  letter-spacing: 0.005em;
+  white-space: nowrap;
+}
+#kopfzeile h1 span {
+  color: var(--leise);
+}
+#reiter {
+  display: flex;
+  gap: 4px;
+  pointer-events: auto;
+}
+#reiter button,
+.knopf {
+  appearance: none;
+  border: 1px solid var(--haar);
+  background: var(--papier);
+  color: var(--tinte);
+  border-radius: 999px;
+  padding: 6px 13px;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 260ms var(--feder);
+}
+#reiter button:hover,
+.knopf:hover {
+  border-color: var(--leise);
+}
+#reiter button:active,
+.knopf:active {
+  transform: scale(0.96);
+}
+#reiter button[aria-selected='true'],
+.knopf.an {
+  background: var(--tinte);
+  border-color: var(--tinte);
+  color: var(--papier);
+}
+#buehne {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: var(--leiste);
+  overflow: hidden;
+  touch-action: none;
+}
+#leinwand,
+#figur,
+#oben {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+#figur,
+#oben {
+  pointer-events: none;
+}
+#hud {
+  position: absolute;
+  left: 20px;
+  bottom: 16px;
+  right: 20px;
+  pointer-events: none;
+  color: var(--leise);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+#leiste {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--leiste);
+  border-left: 1px solid var(--haar);
+  overflow-y: auto;
+  padding: 18px 18px 40px;
+  background: var(--papier);
+}
+#leiste h2 {
+  font: 400 22px/1.1 'Lobster', Georgia, serif;
+  margin: 4px 0 10px;
+}
+#leiste h3 {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--leise);
+  margin: 18px 0 8px;
+}
+#leiste p {
+  margin: 0 0 10px;
+  color: var(--leise);
+}
+.regler {
+  display: grid;
+  grid-template-columns: 92px 1fr 40px;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+}
+.regler span:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--leise);
+}
+input[type='range'] {
+  width: 100%;
+  accent-color: var(--tinte);
+}
+.reihe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.karte {
+  appearance: none;
+  border: 1px solid var(--haar);
+  background: var(--papier);
+  border-radius: 12px;
+  padding: 8px 10px;
+  text-align: left;
+  font: inherit;
+  color: var(--tinte);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    transform 260ms var(--feder),
+    background 160ms ease;
+}
+.karte:hover {
+  border-color: var(--leise);
+}
+.karte.an {
+  background: var(--hauch);
+  border-color: var(--tinte);
+}
+.karte b {
+  display: block;
+  font-weight: 600;
+}
+.karte small {
+  color: var(--leise);
+}
+
+@media (max-width: 760px) {
+  :root {
+    --leiste: 0px;
+  }
+  #kopfzeile {
+    right: 0;
+    height: auto;
+    padding: 12px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  #buehne {
+    right: 0;
+    bottom: 42vh;
+  }
+  #leiste {
+    top: auto;
+    width: 100%;
+    height: 42vh;
+    border-left: 0;
+    border-top: 1px solid var(--haar);
+  }
+}

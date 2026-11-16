@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Ozzy läuft</title>
+    <link rel="stylesheet" href="./src/maskottchen/maskottchen.css" />
+  </head>
+  <body>
+    <header id="kopfzeile">
+      <h1>Ozzy <span>läuft</span></h1>
+      <nav id="reiter" role="tablist">
+        <button type="button" role="tab" data-reiter="spielen">Spielen</button>
+        <button type="button" role="tab" data-reiter="bibliothek">Bibliothek</button>
+        <button type="button" role="tab" data-reiter="film">Filmstreifen</button>
+        <button type="button" role="tab" data-reiter="drehen">Drehen</button>
+      </nav>
+    </header>
+    <main id="buehne">
+      <canvas id="leinwand"></canvas>
+      <canvas id="figur"></canvas>
+      <canvas id="oben"></canvas>
+      <div id="hud"></div>
+    </main>
+    <aside id="leiste"></aside>
+    <script type="module" src="./src/maskottchen/main.ts"></script>
+  </body>
+</html>

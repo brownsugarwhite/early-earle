@@ -51,6 +51,13 @@
       "runtimeExecutable": "env",
       "runtimeArgs": ["NO_SSL=1", "pnpm", "--filter", "@ee/game", "exec", "vite", "--port", "5174", "--strictPort"],
       "port": 5174
+    },
+    {
+      "name": "maskottchen",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["EDITOR_WEB=1", "pnpm", "-C", "/Users/bsw/Projekte/playground/early-earle/.claude/worktrees/maskottchen", "--filter", "@ee/editor", "exec", "vite", "--port", "5207", "--strictPort"],
+      "port": 5207,
+      "url": "http://localhost:5207"
     }
   ]
 }
