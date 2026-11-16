@@ -238,6 +238,8 @@ import {
   wesenUebernehmen,
   wesenLaden,
   wesenNeu,
+  neuAusUmriss,
+  type SilhouettenAnker,
   bildRechnen,
   G,
   anzeige,
@@ -1897,6 +1899,12 @@ if (BEHALTEN) behaltenesHolen();
     laden: (name: string) => wesenLaden(name),
     liste: () => ablageListe(),
     neu: () => wesenNeu(),
+    /** neu aus einer Silhouette in der Seite (Ozzy, Phase 3) */
+    neuAusUmriss: (anker: SilhouettenAnker[]): string => {
+      const t = neuAusUmriss(anker);
+      allesZeigen();
+      return t;
+    },
     /** jetzt behalten und warten, bis es im Browser liegt */
     behalten: async (): Promise<number> => {
       behaltenJetzt();

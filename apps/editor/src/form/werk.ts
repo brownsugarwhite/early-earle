@@ -95,12 +95,14 @@ import {
   pfadLagen,
   pfadParameter,
   pfadVersatz,
+  polygonFlaeche,
   punktEinfuegen,
   punkteLoeschen,
   ringEnde,
   rundAusSeite,
   stueckNaechstes,
   stueckPunkt,
+  umrissAbtasten,
   nadelnZusammenlegen,
   verdichten,
   type Verdichtet,
@@ -5166,6 +5168,132 @@ export function wesenNeu(): string {
   if (BEHALTEN) void speicher('readwrite', (s) => s.delete(FACH_ZULETZT)).catch(() => undefined);
   return 'Neues Wesen · ⌘Z bringt das Wesen von vorher zurück';
 }
+
+/** Ein Anker einer gezeichneten Silhouette in der Seite (x, y nach oben): Lage und Bézier-Griffe als Vektoren vom Punkt aus */
+export type SilhouettenAnker = { x: number; y: number; ein: [number, number]; aus: [number, number] };
+/** so dicht wird die Silhouette für das Aufblasen abgetastet (Einheiten) */
+export const SILHOUETTE_SCHRITT = 1;
+
+/**
+ * Neu aus einer Silhouette (Ozzy, Phase 3): Die Form wird aus der Silhouette rund aufgeblasen (`rundAusSeite`, so dicht wie die
+ * Startform dieser Adresse), und die Silhouette selbst wird die Linie der Mitte: Florians Anker sind ihre Punkte, seine Griffe ihre
+ * Griffe; wo die Linie an einem Anker die Richtung wechselt, ist der Punkt eine Ecke. Ein Schritt für ⌘Z, wie Laden. Zurück: Text
+ * für die Statuszeile.
+ */
+export function neuAusUmriss(anker: readonly SilhouettenAnker[]): string {
+  const n = anker.length;
+  if (n < 2) return 'Neu aus der Silhouette: zu wenige Punkte';
+  const A = (i: number): SilhouettenAnker => anker[((i % n) + n) % n]!;
+  const v3 = (x: number, y: number): V3 => ({ x, y, z: 0 });
+  // Richtung, in der die Linie einen Anker erreicht und verlässt (ein Griff der Länge 0 zeigt auf den nächsten Kontrollpunkt)
+  const richtung = (...kandidaten: [number, number][]): [number, number] => {
+    for (const [x, y] of kandidaten) {
+      const L = Math.hypot(x, y);
+      if (L > 1e-6) return [x / L, y / L];
+    }
+    return [0, 0];
+  };
+  const ecke = anker.map((p, i) => {
+    const v = A(i - 1);
+    const w = A(i + 1);
+    const e = richtung([-p.ein[0], -p.ein[1]], [p.x - v.x - v.aus[0], p.y - v.y - v.aus[1]], [p.x - v.x, p.y - v.y]);
+    const a = richtung(p.aus, [w.x + w.ein[0] - p.x, w.y + w.ein[1] - p.y], [w.x - p.x, w.y - p.y]);
+    return e[0] * a[0] + e[1] * a[1] < Math.cos((3 * Math.PI) / 180);
+  });
+  // die Silhouette dicht abgetastet: Die Stücke des Umrisses (durch alle Punkte) gehen dann genau ihren Weg
+  const umriss: UmrissPunkt[] = [];
+  for (let i = 0; i < n; i++) {
+    const p = A(i);
+    const q = A(i + 1);
+    const grob = Math.hypot(p.aus[0], p.aus[1]) + Math.hypot(q.x + q.ein[0] - p.x - p.aus[0], q.y + q.ein[1] - p.y - p.aus[1]) + Math.hypot(q.ein[0], q.ein[1]);
+    const m = Math.max(2, Math.ceil(grob / SILHOUETTE_SCHRITT));
+    for (let j = 0; j < m; j++) {
+      const c = stueckPunkt(v3(p.x, p.y), v3(p.aus[0], p.aus[1]), v3(q.ein[0], q.ein[1]), v3(q.x, q.y), j / m);
+      umriss.push(j === 0 && ecke[i] ? { x: c.x, y: c.y, ecke: true } : { x: c.x, y: c.y });
+    }
+  }
+  const flaeche = polygonFlaeche(umrissAbtasten(umriss, 4).punkte);
+  const flaecheStart = polygonFlaeche(umrissAbtasten(startUmriss, 4).punkte);
+  if (!(flaeche > 1)) return 'Neu aus der Silhouette: keine Fläche';
+  // so dicht wie die Startform: gleiche Rasterweite, also etwa dieselbe mittlere Kante
+  const rund = rundAusSeite(umriss, { dreiecke: Math.max(200, Math.round((DREIECKE * flaeche) / flaecheStart)) });
+  const h = hautAus(rund.positionen, rund.indizes);
+  const netzText = wesenUebernehmen(
+    {
+      mk: mittlereKante(h),
+      haut: hautFlach(h),
+      loops: [],
+      ids: [1, 1],
+      maul: null,
+      pose: { kiefer: 0, schaedel: 0, delta: null, linien: null, inRuhe: true },
+      grund: null,
+      ruhe: null,
+      sicht: null,
+      zeit: new Date().toISOString(),
+      quelle: 'Silhouette',
+    },
+    '',
+  );
+  // die Linie der Mitte: der Schnitt der Haut mit der Mittelebene (wie ein senkrechter Schnitt durch die Front)
+  let yMin = Infinity;
+  let yMax = -Infinity;
+  for (const c of umriss) {
+    yMin = Math.min(yMin, c.y);
+    yMax = Math.max(yMax, c.y);
+  }
+  const l = loopAusSchnitt(haut, 'front', [0, -(yMax + 2 * MK)], [0, -(yMin - 2 * MK)], naechsteId, 1);
+  if (!l || l.art !== 'mitte') return `Neu aus der Silhouette: Die Linie der Mitte ließ sich nicht schneiden${netzText}`;
+  naechsteId++;
+  loops.push(l);
+  einsetzenLetzten(false);
+  const mitte = loops[loops.length - 1]!;
+  // je Anker die Stelle auf der Linie, die ihm am nächsten liegt
+  const R = mitte.ruhe;
+  const k = mitte.proben.length;
+  const stelle = (x: number, y: number): number => {
+    let best = Infinity;
+    let bs = 0;
+    for (let j = 0; j < k; j++) {
+      const j2 = (j + 1) % k;
+      const ax = R[3 * j]!;
+      const ay = R[3 * j + 1]!;
+      const dx = R[3 * j2]! - ax;
+      const dy = R[3 * j2 + 1]! - ay;
+      const L2 = dx * dx + dy * dy;
+      const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)) : 0;
+      const d = Math.hypot(ax + t * dx - x, ay + t * dy - y);
+      if (d < best) {
+        best = d;
+        const s1 = j2 === 0 ? mitte.laenge : mitte.s[j2]!;
+        bs = mitte.s[j]! + t * (s1 - mitte.s[j]!);
+      }
+    }
+    return bs % mitte.laenge;
+  };
+  const s = anker.map((p) => stelle(p.x, p.y));
+  // läuft die Linie andersherum als die Zeichnung, tauschen die Griffe ihre Rollen
+  let vor = 0;
+  for (let i = 0; i < n; i++) {
+    const d = (((s[(i + 1) % n]! - s[i]!) % mitte.laenge) + mitte.laenge) % mitte.laenge;
+    if (d < mitte.laenge / 2) vor++;
+  }
+  const gleich = 2 * vor >= n;
+  mitte.punkte = anker.map((p, i): LoopPunkt => {
+    const ein = gleich ? p.ein : p.aus;
+    const aus = gleich ? p.aus : p.ein;
+    return { s: s[i]!, ref: v3(p.x, p.y), cur: v3(p.x, p.y), ein: v3(ein[0], ein[1]), aus: v3(aus[0], aus[1]), ...(ecke[i] ? { ecke: true } : {}) };
+  });
+  mitte.punkte.sort((a, b) => a.s - b.s);
+  mitte.pfad = true;
+  // die Linie genau auf ihren Pfad, die Haut folgt
+  linienAufPfad(mitte);
+  einsetzenNachholen();
+  ruheNoetig();
+  G.auswahl = [];
+  G.meldung = '';
+  return `Neue Form aus der Silhouette: ${haut.n.toLocaleString('de-DE')} Punkte, ${n} Punkte auf der Linie${netzText}`;
+}
+
 export function bildRechnen(): void {
   if (G.fehlerProbe) {
     G.fehlerProbe = false;
