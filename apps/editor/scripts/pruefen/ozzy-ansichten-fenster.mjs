@@ -11,9 +11,9 @@
 //   6  Keine Fehler in der Konsole.
 //   7  Wenden in jede Richtung (Florian, 16.11. abends): ⇧ + schräg ziehen, gut 50° weit: zurück in die Seite (hell); schräg weit über die
 //      Hälfte: auf die Rückseite (gewendet, dunkel).
-//   8  Raum (Florian, 16.11. abends: „dass die entsprechenden projektionen auch schwarze wände haben wenn ich dahin gedreht habe“; Front
-//      und Rückseite der Front getauscht): In der Hausansicht ist keine Wand dunkel. Nahe der Front von hinten (noch nicht eingerastet)
-//      ist ihre Wand dunkel, eingerastet bleibt es dunkel (nichts kehrt sich um). Von unten ist die Decke dunkel, die Wand der Seite hell.
+//   8  Raum mit der harten Kante (Florian, 16.11. abends: „back war weiß und front war schwarz und beim einrasten hat es gewechselt“;
+//      Front und Rückseite der Front getauscht): In der Hausansicht keine Kante im Bild. Nahe der Front von hinten (noch nicht eingerastet)
+//      ist die Mitte dunkel und bleibt es eingerastet; nahe der Front hell und bleibt hell. Von unten ist die Mitte dunkel.
 // Seit dem Tausch schaut die Front nach −x: Von Hand liegt sie bei Gier +50°, die Front von hinten bei −130°.
 // Aufruf aus apps/editor: GPU=1 [NAME=…] node scripts/pruefen/ozzy-ansichten-fenster.mjs [ordner für Bilder]
 import { chromium } from '@playwright/test';
@@ -167,32 +167,32 @@ ok('3 Gegenseiten: Front von hinten und Seite von rechts rasten gewendet ein', b
   const k2 = await schraeg(400, -120, '10-schraeg-weit');
   ok('7 ⇧ + schräg ziehen: bis zur Hälfte zurück, weit darüber auf die Rückseite', k1.da.ansicht === 'seite' && !k1.da.gewendet && k1.da.schwarz < 0.01 && k2.im.rueckseite && k2.da.ansicht === 'seite' && k2.da.gewendet && k2.da.schwarz > 0.99, `schräg halb: im Zug Gier ${z1(grad(k1.im.gier))}°, Neigung ${z1(grad(k1.im.neigung))}°, danach ${lage(k1.da)}, dunkel ${z1(k1.da.schwarz)}; schräg weit: im Zug Rückseite ${k2.im.rueckseite}, danach ${lage(k2.da)}, dunkel ${z1(k2.da.schwarz)}`);
 }
-// 8 Raum: Wände der Projektionen von hinten dunkel, beim Einrasten bleibt die Farbe
+// 8 Raum: die Kante; beim Einrasten bleibt die Farbe
 {
   await s.keyboard.press('0');
   await s.waitForTimeout(1600);
   const h0 = await O('blick');
   await bild('11-raum-haus');
   await zu(G0 - 90 + 14, N0 + 8);
-  const v = await O('blick');
-  const wx = await O('wandMitte', 0);
-  const dx = await O('dunkelBei', wx.x, wx.y);
+  const v1 = await O('blick');
   await bild('12-raum-vor-front-hinten');
   await zu(G0 - 90 + 2, N0);
-  const e = await O('blick');
+  const e1 = await O('blick');
+  await s.keyboard.press('0');
+  await s.waitForTimeout(1600);
+  await zu(G0 + 90 - 14, N0 + 8);
+  const v2 = await O('blick');
+  await zu(G0 + 90 - 2, N0);
+  const e2 = await O('blick');
   await s.keyboard.press('0');
   await s.waitForTimeout(1600);
   await zu(0, -100);
   const u = await O('blick');
-  const wy = await O('wandMitte', 1);
-  const wz = await O('wandMitte', 2);
-  const dy = await O('dunkelBei', wy.x, wy.y);
-  const dz = await O('dunkelBei', wz.x, wz.y);
   await bild('13-raum-unten');
   ok(
-    '8 Raum: Hausansicht ohne dunkle Wand; vor der Front von hinten ihre Wand dunkel, eingerastet bleibt es dunkel; von unten die Decke dunkel, die Seite hell',
-    h0.ansicht === 'raum' && h0.hinten === 0 && v.ansicht === 'raum' && dx > 0.99 && e.ansicht === 'front' && e.gewendet && e.schwarz > 0.99 && u.ansicht === 'raum' && dy > 0.99 && dz < 0.01,
-    `Hausansicht: dunkle Flächen ${h0.hinten}; vor der Front von hinten: ${lage(v)}, Wand der Front dunkel ${z1(dx)}, Mitte ${z1(v.schwarz)}; eingerastet ${lage(e)}, dunkel ${z1(e.schwarz)}; von unten: Decke ${z1(dy)}, Wand der Seite ${z1(dz)}`,
+    '8 Raum mit der Kante: Hausansicht ohne Kante; vor der Front von hinten dunkel und eingerastet dunkel; vor der Front hell und eingerastet hell; von unten dunkel',
+    h0.ansicht === 'raum' && !h0.kanteSichtbar && v1.ansicht === 'raum' && v1.schwarz > 0.99 && e1.ansicht === 'front' && e1.gewendet && e1.schwarz > 0.99 && v2.ansicht === 'raum' && v2.schwarz < 0.01 && e2.ansicht === 'front' && !e2.gewendet && e2.schwarz < 0.01 && u.ansicht === 'raum' && u.schwarz > 0.99,
+    `Hausansicht: Kante im Bild ${h0.kanteSichtbar}; vor der Front von hinten ${lage(v1)}, dunkel ${z1(v1.schwarz)}; eingerastet ${lage(e1)}, dunkel ${z1(e1.schwarz)}; vor der Front ${lage(v2)}, dunkel ${z1(v2.schwarz)}; eingerastet ${lage(e2)}, dunkel ${z1(e2.schwarz)}; von unten dunkel ${z1(u.schwarz)}`,
   );
 }
 ok('6 keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));
