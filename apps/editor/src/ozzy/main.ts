@@ -960,11 +960,13 @@ function felder(): Record<FeldAchse | 'raum', Feld> & { tx: number; ty: number }
   const bhoch = H - oben - rand;
   const tx = rand + teiler.fx * bwid;
   const ty = oben + teiler.fy * bhoch;
+  // S10 (Florian 16.11. abends: „ja anpassen“): die Lage der aufgeklappten Ecke (Projektionsmethode 1 mit der Seite als Hauptansicht und
+  // der Front von rechts): Front oben links, Seite oben rechts, Top unter der Seite, der Raum unten links
   return {
-    seite: { x: rand, y: oben, w: tx - rand, h: ty - oben },
-    front: { x: tx, y: oben, w: W - rand - tx, h: ty - oben },
-    top: { x: rand, y: ty, w: tx - rand, h: H - rand - ty },
-    raum: { x: tx, y: ty, w: W - rand - tx, h: H - rand - ty },
+    front: { x: rand, y: oben, w: tx - rand, h: ty - oben },
+    seite: { x: tx, y: oben, w: W - rand - tx, h: ty - oben },
+    raum: { x: rand, y: ty, w: tx - rand, h: H - rand - ty },
+    top: { x: tx, y: ty, w: W - rand - tx, h: H - rand - ty },
     tx,
     ty,
   };
@@ -977,7 +979,8 @@ function teilerZiel(): [number, number] {
   const X = 2 * e.rx;
   const Y = 2 * e.ry;
   const Z = 2 * e.tiefe;
-  const fx = Math.min(0.82, Math.max(0.18, X / (X + Z) + teiler.bx));
+  // links steht die Front (Tiefe Z), rechts die Seite (Länge X)
+  const fx = Math.min(0.82, Math.max(0.18, Z / (X + Z) + teiler.bx));
   const fy = Math.min(0.82, Math.max(0.18, Y / (Y + Z) + teiler.by));
   return [fx, fy];
 }
