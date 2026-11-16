@@ -8,12 +8,20 @@ import type { Spieler } from './spieler';
 export interface Plattform {
   x0: number;
   x1: number;
-  hoehe: number; // über dem Boden
+  hoehe: number; // über dem Boden (bei einer Rampe: am Ende x1)
+  /** Rampe: Höhe am Anfang x0 (steigt gleichmäßig bis `hoehe` bei x1) */
+  rampe?: number;
 }
 
 export const LEVEL: { plattformen: Plattform[]; ziel: number; links: number; rechts: number } = {
   plattformen: [
+    // ein Bordstein: geht er im Gang hinauf und hinunter (vorn höher, dann hinten höher)
+    { x0: 1500, x1: 2300, hoehe: 90 },
+    // eine Rampe hinauf und ein Absatz, von dem aus die erste Stufe nur noch einen Schritt hoch ist
+    { x0: 2900, x1: 3700, hoehe: 150, rampe: 0 },
+    { x0: 3700, x1: 4200, hoehe: 150 },
     { x0: 4200, x1: 6400, hoehe: 260 },
+    { x0: 7000, x1: 7500, hoehe: 60 },
     { x0: 8200, x1: 10200, hoehe: 520 },
     { x0: 11800, x1: 13800, hoehe: 300 },
     { x0: 15600, x1: 16900, hoehe: 640 },
@@ -32,6 +40,19 @@ const PUFFER = 0.14;
 const FUSS_HALB = 470; // halbe Spanne der Sohlen
 /** so hohe Stufen klettert er hinauf (und so tiefe steigt er hinunter); höhere muss er springen */
 const KLETTER_MAX = 320;
+/** so hohe Stufen (und Absätze) nimmt er im Gang, jeder Fuß für sich */
+const SCHRITT_MAX = 110;
+
+/** Höhe einer Plattform bei x (−∞ außerhalb) */
+function plattformHoehe(p: Plattform, x: number): number {
+  if (x < p.x0 || x > p.x1) return -Infinity;
+  if (p.rampe === undefined) return p.hoehe;
+  return p.rampe + ((p.hoehe - p.rampe) * (x - p.x0)) / (p.x1 - p.x0);
+}
+/** Höhe der Wand, an die man von dieser Seite stößt */
+function wandHoehe(p: Plattform, richtung: number): number {
+  return richtung > 0 ? (p.rampe ?? p.hoehe) : p.hoehe;
+}
 
 export interface Eingabe {
   links: boolean;
@@ -62,6 +83,8 @@ export class Spiel {
 
   constructor(spieler: Spieler) {
     this.spieler = spieler;
+    // jeder Fuß kennt den Boden unter seiner Sohle
+    spieler.bodenFn = (x) => this.oberflaeche(x);
   }
 
   neustart(): void {
@@ -74,25 +97,30 @@ export class Spiel {
     this.ruhe = 0;
   }
 
-  /** Höhe der Oberfläche unter den Sohlen bei x */
+  /** Höhe der Oberfläche genau bei x (Boden 0, Plattformen, Rampen) */
+  oberflaeche(x: number): number {
+    let h = 0;
+    for (const p of LEVEL.plattformen) h = Math.max(h, plattformHoehe(p, x));
+    return h;
+  }
+
+  /** Höhe der Oberfläche unter den Sohlen bei x (das Höchste unter der Spanne der Füße) */
   boden(x: number): number {
     let h = 0;
-    for (const p of LEVEL.plattformen) if (x + FUSS_HALB * 0.55 > p.x0 && x - FUSS_HALB * 0.55 < p.x1) h = Math.max(h, p.hoehe);
+    for (let i = -4; i <= 4; i++) h = Math.max(h, this.oberflaeche(x + (i / 4) * FUSS_HALB * 0.55));
     return h;
   }
 
-  /** Höhe des Bodens genau bei x (für die Kante vor den Vorderfüßen) */
-  private bodenBei(x: number): number {
-    let h = 0;
-    for (const p of LEVEL.plattformen) if (x > p.x0 && x < p.x1) h = Math.max(h, p.hoehe);
-    return h;
-  }
-
-  /** Steht vor Ozzy (in Laufrichtung) eine Stufe, die höher ist als ein Schrittchen? */
-  private blockiert(x: number, richtung: number): Plattform | null {
+  /** Steht vor Ozzy (in Laufrichtung) eine Stufe, die höher ist als ein Schritt? Dann ihre Kante und Höhe */
+  private blockiert(x: number, richtung: number): { x0: number; x1: number; hoehe: number } | null {
     const vorn = x + richtung * FUSS_HALB;
-    for (const p of LEVEL.plattformen)
-      if (p.hoehe > this.hoehe + 70 && vorn > p.x0 && vorn < p.x1 && (richtung > 0 ? x < p.x0 : x > p.x1)) return p;
+    for (const p of LEVEL.plattformen) {
+      const h = wandHoehe(p, richtung);
+      // eine Wand nur, wo nebenan tiefer Boden ist (Absatz an Absatz zählt nur mit dem Unterschied)
+      const wand = h - this.oberflaeche(richtung > 0 ? p.x0 - 1 : p.x1 + 1);
+      if (wand > SCHRITT_MAX && h > this.hoehe + SCHRITT_MAX && vorn > p.x0 && vorn < p.x1 && (richtung > 0 ? x < p.x0 : x > p.x1))
+        return { x0: p.x0, x1: p.x1, hoehe: h };
+    }
     return null;
   }
 
@@ -146,7 +174,7 @@ export class Spiel {
         if (richtung !== 0 && richtung !== sp.richtung) sp.spiele('umdrehen', 0.2);
         else if (richtung !== 0) {
           const block = this.blockiert(sp.x, richtung);
-          const vornTiefer = this.hoehe - this.bodenBei(sp.x + richtung * KANTE);
+          const vornTiefer = this.hoehe - this.oberflaeche(sp.x + richtung * KANTE);
           if (block && block.hoehe - this.hoehe <= KLETTER_MAX) {
             // nicht springen müssen: angestrengt hochklettern
             const d = block.hoehe - this.hoehe;
@@ -159,7 +187,7 @@ export class Spiel {
               this.stolperSperre = 3;
               this.melden('Zu hoch. Springen!');
             } else if (clip !== 'stolpern' && clip !== 'stehen') sp.spiele('stehen', 0.3);
-          } else if (vornTiefer > 30 && vornTiefer <= KLETTER_MAX) {
+          } else if (vornTiefer > SCHRITT_MAX && vornTiefer <= KLETTER_MAX) {
             // ein Absatz: vorsichtig hinuntersteigen statt hinunterzufallen
             sp.spiele('runtersteigen', 0.3, richtung, { stufe: vornTiefer });
             this.klettern = { von: this.hoehe, d: -vornTiefer };
@@ -174,9 +202,9 @@ export class Spiel {
       // an der Stufe festhalten (Wurzelbewegung nicht durch die Wand)
       const b = this.blockiert(sp.x, sp.richtung);
       if (b) sp.x = sp.richtung > 0 ? Math.min(sp.x, b.x0 - FUSS_HALB) : Math.max(sp.x, b.x1 + FUSS_HALB);
-      // Kante: kein Boden mehr unter den Sohlen → fallen
+      // Kante: kein Boden mehr unter den Sohlen → fallen (ein Absatz bis zu einem Schritt wird gegangen)
       const unten = this.boden(sp.x);
-      if (unten < this.hoehe - 2) {
+      if (unten < this.hoehe - SCHRITT_MAX) {
         this.amBoden = false;
         this.vy = 0;
         this.seitBoden = 0;
@@ -213,6 +241,8 @@ export class Spiel {
     }
     this.warRunter = e.runter;
     sp.x = Math.min(LEVEL.rechts, Math.max(LEVEL.links, sp.x));
+    // Grund des Spielers: auf ihn beziehen sich Pose und Zeichnen (die Füße finden ihren Boden selbst)
+    sp.hoehe = this.hoehe;
     if (!this.geschafft && Math.abs(sp.x - LEVEL.ziel) < 500 && this.amBoden) {
       this.geschafft = true;
       sp.spiele('wedeln', 0.3);
@@ -226,8 +256,18 @@ export class Spiel {
     // Boden als dünne Linie
     c.fillRect(x0, BODEN_Y, x1 - x0, 14);
     for (const p of LEVEL.plattformen) {
+      if (p.rampe !== undefined) {
+        c.beginPath();
+        c.moveTo(p.x0, BODEN_Y + 14);
+        c.lineTo(p.x0, BODEN_Y - p.rampe);
+        c.lineTo(p.x1, BODEN_Y - p.hoehe);
+        c.lineTo(p.x1, BODEN_Y + 14);
+        c.closePath();
+        c.fill();
+        continue;
+      }
       const y = BODEN_Y - p.hoehe;
-      const r = 70;
+      const r = Math.min(70, p.hoehe / 2);
       c.beginPath();
       c.moveTo(p.x0, BODEN_Y + 14);
       c.lineTo(p.x0, y + r);

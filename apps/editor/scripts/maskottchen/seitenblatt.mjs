@@ -53,6 +53,13 @@ const box = await seite.evaluate(
       posen = w.map((psi) => ({ ...o.RUHE, psi, theta: Math.abs(psi) <= 90 ? psi / 6 : psi }));
       texte = w.map((t) => `ψ ${t}°`);
       rahmen = [-150, -20, 1750, 1640];
+    } else if (art === 'spiel') {
+      // Spiel: ab VON nach rechts laufen (EILEN=1: eilen), je ABSTAND Sekunden ein Bild, mit dem Gelände
+      const n = Number(env.BILDER ?? 12);
+      const a = Number(env.ABSTAND ?? 0.2);
+      posen = o.spielPosen(Number(env.VON ?? 1000), n, a, env.EILEN === '1', undefined, env.ALT === '1');
+      texte = posen.map((_, i) => `${(i * a).toFixed(2)} s`);
+      rahmen = [-150, -20, 1750, 1640];
     } else if (art === 'clip') {
       const n = Number(env.BILDER ?? 12);
       const a = Number(env.ABSTAND ?? 0.1);
@@ -64,7 +71,7 @@ const box = await seite.evaluate(
       texte = posen.map((p, i) => env.TEXTE?.split('|')[i] ?? '');
     }
     if (env.RAHMEN) rahmen = JSON.parse(env.RAHMEN);
-    for (const p of posen) if (p.boden > 0 && art !== 'clip') o.figur.boden(p, 0);
+    for (const p of posen) if (p.boden > 0 && art !== 'clip' && art !== 'spiel') o.figur.boden(p, 0);
     o.blattZeichnen(posen, texte, Math.min(spalten, posen.length), rahmen, vorlage);
     const r = o.buehne.grund.getBoundingClientRect();
     return { x: r.x, y: r.y, w: r.width, h: r.height };

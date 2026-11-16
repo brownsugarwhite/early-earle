@@ -4,7 +4,7 @@
 // Ohren, Schopf und Schwanz werden gebogen (Wurzel fest, Spitze schwingt), nie wie Pappe gedreht oder gequetscht.
 import { AnkerForm, ankerAffin, ankerDrehen, ankerFormenAnlegen } from './anker';
 import { koerperAnker, kopfAnker } from './daten/anker';
-import type { Pose } from './pose';
+import { type Pose, RUHE as RUHE_LEER } from './pose';
 
 export const BODEN_Y = 1573;
 const RAD = Math.PI / 180;
@@ -50,6 +50,16 @@ function beinX(b: Bein, sPsi: number): number {
   const rechts = b.Z < 0;
   return b.X + b.versatz * (rechts ? (1 - sPsi) / 2 : (1 + sPsi) / 2);
 }
+
+/** Hüfte eines Beins vorn–hinten, wie gezeichnet, in Blickrichtung (für Clips, die mit Blick nach rechts rechnen; ψ des Clips) */
+export function huefteVorn(name: Bein['name'], psi: number): number {
+  const b = BEINE.find((x) => x.name === name)!;
+  const s = Math.sin(psi * RAD);
+  return b.X + (beinX(b, s) - b.X) * s;
+}
+
+/** Abstand der Hüften vorn–hinten (für das Neigen nach dem Gelände) */
+const HUEFTEN = 214 + 323.5;
 
 /** Stützen des Rumpfs (Sitzen, Liegen, Kippen): Punkte seines Umrisses unten (Körperlage X, Y). Der Rumpf ist weich: Er darf um
  *  `WEICH` in den Boden sinken, die Haut drückt sich dort platt und quillt zur Seite. */
@@ -399,7 +409,8 @@ export class Figur {
     const ws: number[] = [];
     let rOben = -Infinity;
     for (const b of BEINE) {
-      const winkel = (pose[`bein${b.name}` as const] as number) - p;
+      // Winkel in der Welt: Kippt der Löser den Körper, bleiben die Beine in der Welt stehen (sie drehen in der Hüfte mit)
+      const winkel = (pose[`bein${b.name}` as const] as number) - pose.nicken;
       const hub = pose[`hub${b.name}` as const] as number;
       // gerechnet am wahren Ort des Beins (der Schatten-Versatz des fernen Beins ist nur eine Zeichnung)
       const [dy] = biegung(pose.biegen, b.X);
@@ -450,23 +461,73 @@ export class Figur {
     return Math.max(s.hart, s.weich);
   }
 
-  /** Boden-Löser: Höhe (und mit `frei` auch das Nicken), so dass Ozzy auf seinen Beinen und Stützen ruht */
-  boden(pose: Pose, frei = 0): void {
-    if (pose.boden <= 0) return;
-    let p = pose.nicken;
+  /** Welt-x der Sohle eines Beins (wie gezeichnet: das ferne Bein mit seinem Versatz) */
+  fussX(pose: Pose, name: Bein['name']): number {
+    const b = BEINE.find((x) => x.name === name)!;
+    const s = pose.psi * RAD;
+    const sPsi = Math.sin(s);
+    const cPsi = Math.cos(s);
+    const [hx0] = this.koerperPunkt(pose, b.X, biegung(pose.biegen, b.X)[0], b.Z);
+    const a = ((pose[`bein${b.name}` as const] as number) - pose.nicken) * RAD;
+    const dx = Math.sin(a) * sPsi + Math.cos(a) * Math.sin(pose.rollen * RAD) * cPsi;
+    return hx0 + (beinX(b, sPsi) - b.X) * sPsi + KASTEN.H * dx;
+  }
+
+  /**
+   * Neigen nach dem Gelände (Grad): Stehen die Vorderfüße höher als die Hinterfüße, hebt sich die Nase, so dass die Hüften den
+   * Unterschied ausgleichen. Gezählt wird der Boden der Füße, die stehen (schwebende kaum); stetig in den Böden.
+   */
+  static gelaendeNicken(pose: Pose): number {
+    let v = 0;
+    let vw = 0;
+    let h = 0;
+    let hw = 0;
+    for (const b of BEINE) {
+      const w = 0.05 + beinFlach((pose[`bein${b.name}` as const] as number) - pose.nicken) * (1 - glatt01((pose[`hub${b.name}` as const] as number) / 2.5));
+      const st = pose[`stufe${b.name}` as const] as number;
+      if (b.name[0] === 'V') {
+        v += w * st;
+        vw += w;
+      } else {
+        h += w * st;
+        hw += w;
+      }
+    }
+    return -Math.asin(Math.max(-0.8, Math.min(0.8, (v / vw - h / hw) / HUEFTEN))) / RAD;
+  }
+
+  /** Körper um `d` Grad kippen, die Beine bleiben in der Welt stehen */
+  static kippen(pose: Pose, d: number): void {
+    pose.nicken += d;
+    pose.beinVN += d;
+    pose.beinVF += d;
+    pose.beinHN += d;
+    pose.beinHF += d;
+  }
+
+  /**
+   * Ziel des Boden-Lösers: das Nicken (Grad), bei dem Ozzy auf seinen Beinen und Stützen ruht. Zuerst neigt er sich nach dem
+   * Gelände (`neigen`: Clips, die ihre Stufe selbst planen, kippen selbst), dann sucht er mit `frei` das Gleichgewicht: so tief wie
+   * möglich (Schwerkraft), die stehenden Beine möglichst gleich lang. Die Pose bleibt unverändert.
+   */
+  nickenZiel(pose: Pose, frei = 0, neigen = 1): number {
+    if (pose.boden <= 0) return pose.nicken;
+    const q = this.loeserPose;
+    Object.assign(q, pose);
+    if (neigen > 0) Figur.kippen(q, Figur.gelaendeNicken(q) * neigen * Math.min(1, q.boden));
+    let p = q.nicken;
     if (frei > 0) {
-      // so tief wie möglich (Schwerkraft), aber die stehenden Beine möglichst gleich lang
       const guete = (pp: number) => {
-        const s = this.stuetzen(pose, pp);
+        const s = this.stuetzen(q, pp);
         return Math.max(s.hart, s.weich) + 3 * s.streu;
       };
       let best = p;
       let bestG = Infinity;
       for (let d = -25; d <= 25; d += 1) {
-        const g = guete(pose.nicken + d);
+        const g = guete(q.nicken + d);
         if (g < bestG - 1e-6) {
           bestG = g;
-          best = pose.nicken + d;
+          best = q.nicken + d;
         }
       }
       for (let schritt = 0.5; schritt > 0.02; schritt /= 2)
@@ -477,11 +538,34 @@ export class Figur {
             best += d;
           }
         }
-      p = pose.nicken + (best - pose.nicken) * frei;
+      p = q.nicken + (best - q.nicken) * frei;
     }
-    const y = BODEN_Y - this.reichweiten(pose, p) + pose.heben;
+    return p;
+  }
+  private loeserPose: Pose = { ...RUHE_LEER };
+
+  /** Ozzy auf das Nicken p (Grad) kippen (die Beine bleiben in der Welt stehen); gibt die Reichweite zurück: so weit muss der
+   *  Körperanker über dem Grundboden stehen, damit er auf Beinen und Stützen ruht */
+  kippenAuf(pose: Pose, p: number): number {
+    Figur.kippen(pose, p - pose.nicken);
+    return this.reichweiten(pose, p);
+  }
+
+  /** Höhe aus der Reichweite r setzen (nach `boden` gewichtet; in der Luft hebt `heben`) */
+  static hoeheSetzen(pose: Pose, r: number): void {
+    const y = BODEN_Y - r + pose.heben;
     pose.y = pose.y + (y - pose.y) * pose.boden;
-    pose.nicken = p;
+  }
+
+  /** Ozzy um das Nicken p (Grad) kippen und auf Beine und Stützen setzen */
+  bodenSetzen(pose: Pose, p: number): void {
+    if (pose.boden <= 0) return;
+    Figur.hoeheSetzen(pose, this.kippenAuf(pose, p));
+  }
+
+  /** Boden-Löser in einem: Ziel-Nicken suchen und setzen */
+  boden(pose: Pose, frei = 0, neigen = 1): void {
+    this.bodenSetzen(pose, this.nickenZiel(pose, frei, neigen));
   }
 
   /** Alle Teile für eine Pose, nach Tiefe sortiert */
@@ -827,10 +911,19 @@ export class Figur {
     // streckt oder staucht sich dafür, so steigt er auch auf Stufen); hängt er weit darüber (Stolpern), bleibt er, wo er ist.
     const fx = hx - L * lang * Math.sin(phi);
     const natuerlich = hy + L * lang * Math.cos(phi);
-    const boden = BODEN_Y - (pose[`stufe${b.name}` as const] as number);
+    const stufe = pose[`stufe${b.name}` as const] as number;
+    const boden = BODEN_Y - stufe;
     const luecke = boden - natuerlich;
-    const nah = flach * Math.min(1, Math.max(0, pose.boden)) * (1 - glatt01((luecke - 25) / 45));
-    const fy = natuerlich - hub + (boden - natuerlich) * nah;
+    // Steht sein Boden tiefer als der der anderen stehenden Füße (Bordstein, Kante), reicht der Gips um so viel weiter hinab
+    // (stehend: ohne Hub; ein schwingender Fuß trägt in `stufe` seinen Weg durch die Luft)
+    let hoechste = stufe;
+    for (const n of ['VN', 'VF', 'HN', 'HF'] as const) if ((pose[`hub${n}`] as number) <= 0.01) hoechste = Math.max(hoechste, pose[`stufe${n}`] as number);
+    const tiefer = Math.min(150, hoechste - stufe);
+    const nah = flach * Math.min(1, Math.max(0, pose.boden)) * (1 - glatt01((luecke - 25 - tiefer) / 45));
+    // ein schwingender Fuß geht mindestens auf seiner Bahn über das Gelände (Bordstein, Kante)
+    const bahn = pose[`bahn${b.name}` as const] as number;
+    const fyFrei = natuerlich - hub + (boden - natuerlich) * nah;
+    const fy = bahn > 0 ? Math.min(fyFrei, boden - hub - bahn) : fyFrei;
     const koerperW = (pose.nicken * sPsi + pose.rollen * cPsi) * RAD;
     // oben dreht der Gips gut halb mit (die Haut geht mit), unten steht die Sohle flach: Die Biegung verteilt sich weich
     void koerperW;

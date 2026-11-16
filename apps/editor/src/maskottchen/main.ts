@@ -420,12 +420,12 @@ function spielenBild(dt: number): void {
   spiel.update(dt, eingabe);
   const p = spiel.spieler.update(dt);
   if (!spiel.amBoden) p.boden = 0;
-  kameraFolgen(p.x + spiel.spieler.richtung * 500, spiel.hoehe, dt);
+  kameraFolgen(p.x + spiel.spieler.richtung * 500, spiel.spieler.hoehe, dt);
   buehne.anfangen();
   const halb = buehne.breite / buehne.kamera.massstab;
   spiel.zeichnen(buehne.ctx, buehne.farben.schwarz, buehne.kamera.x - halb, buehne.kamera.x + halb);
-  figurZeichnen(p, -spiel.hoehe);
-  einblenden(p, spiel.spieler.clipName, spiel.spieler.clipZeit, -spiel.hoehe);
+  figurZeichnen(p, -spiel.spieler.hoehe);
+  einblenden(p, spiel.spieler.clipName, spiel.spieler.clipZeit, -spiel.spieler.hoehe);
   if (spiel.meldung) {
     const c = buehne.schriftCtx;
     buehne.bildschirm(c);
@@ -559,8 +559,19 @@ function blattZeichnen(posen: Pose[], texte: string[], spalten: number, rahmen: 
       if (st.h > 0) c.fillRect(st.x, BODEN_Y - st.h, x1 - st.x, st.h);
       else c.fillRect(x0, BODEN_Y, st.x - x0, -st.h);
     }
+    // Gelände (Spiel): Höhen an festen Stellen des Felds (Welt); die Figur steht auf ihrem Grund (wie auf der Bühne versetzt)
+    const gl = (p as Pose & { _gelaende?: { x: number[]; h: number[]; grund: number } })._gelaende;
+    if (gl) {
+      c.fillStyle = 'rgba(31,26,23,0.16)';
+      c.beginPath();
+      c.moveTo(gl.x[0]!, BODEN_Y + 400);
+      gl.x.forEach((x, j) => c.lineTo(x, BODEN_Y - gl.h[j]!));
+      c.lineTo(gl.x[gl.x.length - 1]!, BODEN_Y + 400);
+      c.closePath();
+      c.fill();
+    }
     c.save();
-    c.translate(0, st ? -st.grund : 0);
+    c.translate(0, st ? -st.grund : gl ? -gl.grund : 0);
     buehne.figur(figur.zeichenteile(p));
     // Vorlage darüber (Prüfen gegen Florians Zeichnung): rote Linien in Weltkoordinaten
     if (ueber.length) {
@@ -607,6 +618,43 @@ function clipPosen(name: string, bilder: number, abstand: number, von = 'stehen'
   return out;
 }
 
+/** Posen aus dem Spiel: Ozzy läuft ab `von` nach rechts (oder eilt), je `abstand` Sekunden ein Bild, mit dem Gelände darunter */
+function spielPosen(von: number, bilder: number, abstand: number, eilen = false, rahmen: [number, number] = [-150, 1750], wieFrueher = false): Pose[] {
+  const sp = new Spieler(figur);
+  const sg = new Spiel(sp);
+  // zum Vergleich wie bis Runde 4: alle Füße auf einer Höhe (dem Höchsten unter der Spanne der Füße)
+  if (wieFrueher) sp.bodenFn = () => sg.hoehe;
+  sg.neustart();
+  sp.setzen(von, 1);
+  sg.hoehe = sg.boden(von);
+  sp.hoehe = sg.hoehe;
+  sp.update(1 / 120);
+  const eingabe: Eingabe = { links: false, rechts: true, eilen, springen: false, runter: false, aktion: null };
+  const out: Pose[] = [];
+  const dt = 1 / 120;
+  let t = 0;
+  for (let i = 0; i < bilder; i++) {
+    while (t < i * abstand - 1e-9) {
+      sg.update(dt, eingabe);
+      const q = sp.update(dt);
+      if (!sg.amBoden) q.boden = 0;
+      t += dt;
+    }
+    const p: Pose & { _gelaende?: { x: number[]; h: number[]; grund: number } } = { ...sp.pose };
+    const verschieben = sp.x - 800;
+    p.x -= verschieben;
+    const xs: number[] = [];
+    const hs: number[] = [];
+    for (let x = rahmen[0]; x <= rahmen[1]; x += 10) {
+      xs.push(x);
+      hs.push(sg.oberflaeche(x + verschieben));
+    }
+    p._gelaende = { x: xs, h: hs, grund: sp.hoehe };
+    out.push(p);
+  }
+  return out;
+}
+
 let letzte = performance.now();
 function bild(jetzt: number): void {
   const dt = Math.min(0.05, Math.max(0, (jetzt - letzte) / 1000));
@@ -634,6 +682,7 @@ requestAnimationFrame(bild);
   RUHE,
   blattZeichnen,
   clipPosen,
+  spielPosen,
   weiter: () => {
     angehalten = false;
   },

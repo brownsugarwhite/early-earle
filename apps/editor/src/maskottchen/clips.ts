@@ -8,7 +8,7 @@
 // sich, um ein Bein vom Boden zu bekommen, rutscht mit steifen Beinen auseinander, und die weiche Bohne fängt jeden Stoß ab
 // (staucht, hängt durch, wabbelt nach). Sitzen, Liegen, Stolpern und Stufen sind ausgerechnet, nicht geschätzt.
 import { type Schl, TAU, clamp, nachschwingen, puls, rausch, spurWert, spurenAnwenden, stufe } from './bewegung';
-import { Figur, KASTEN } from './figur';
+import { Figur, KASTEN, huefteVorn } from './figur';
 import type { Pose } from './pose';
 
 export interface Clip {
@@ -29,12 +29,16 @@ export interface Clip {
   wendet?: boolean;
   /** Stufe: Der Clip endet eine Stufe höher (1) oder tiefer (−1); die Kante liegt `KANTE` vor der Wurzel beim Start */
   treppe?: 1 | -1;
+  /** plant den Boden je Fuß selbst (über `kontext.boden`); sonst setzt der Mischer jeden Fuß auf den Boden unter seiner Sohle */
+  gelaende?: boolean;
   pose: (t: number, p: Pose, k: ClipKontext) => void;
 }
 
 /** Was ein Clip vom Spiel wissen muss (z. B. wie hoch die Stufe ist) */
 export interface ClipKontext {
   stufe: number;
+  /** Höhe des Bodens unter einer Sohle, `dx` vor der Wurzel (in Blickrichtung), relativ zum Grund (nur für Clips mit `gelaende`) */
+  boden?: (dx: number) => number;
 }
 export const KONTEXT_STANDARD: ClipKontext = { stufe: 170 };
 /** Abstand der Stufenkante vor der Wurzel, wenn ein Treppen-Clip beginnt (die Vorderfüße stehen kurz davor) */
@@ -88,30 +92,102 @@ interface Gang {
 const versatz = (art: Gang['art']) =>
   art === 'pass' ? { VN: 0, HN: 0, VF: 0.5, HF: 0.5 } : { VN: 0, HF: 0, VF: 0.5, HN: 0.5 };
 
-/** Beine, Wiegen und Klack eines Schritts; die Höhe des Körpers ergibt sich aus den Sohlen (Boden-Löser) */
-function gang(g: Gang, t: number, p: Pose): void {
-  const phase = t / g.periode;
+// ---- Tritte auf Gelände -------------------------------------------------------------------------------------------------
+const SOHLE = KASTEN.B / 2;
+/** Boden, auf dem eine Sohle mit der Mitte bei x steht (das Höchste unter ihrem mittleren Teil) */
+function sohleMitte(x: number, boden: (dx: number) => number): number {
+  let h = -Infinity;
+  for (let i = -2; i <= 2; i++) h = Math.max(h, boden(x + (i / 2) * 0.3 * SOHLE));
+  return h;
+}
+/** das Höchste unter der ganzen Sohle (so hoch muss sie in der Luft mindestens sein) */
+function sohleGanz(x: number, boden: (dx: number) => number): number {
+  let h = -Infinity;
+  for (let i = -4; i <= 4; i++) h = Math.max(h, boden(x + (i / 4) * SOHLE));
+  return h;
+}
+/** Steht die ganze Sohle auf einer Ebene (keine Kante darunter; eine Rampe ist erlaubt)? */
+function sohleGanzAufEbene(x: number, boden: (dx: number) => number): boolean {
+  let vor = boden(x - SOHLE);
+  for (let i = -7; i <= 8; i++) {
+    const h = boden(x + (i / 8) * SOHLE);
+    if (Math.abs(h - vor) > 8) return false;
+    vor = h;
+  }
+  return true;
+}
+/** Tritt nicht auf eine Kante: den Schritt so wenig wie möglich kürzer oder länger machen (höchstens um ein gutes Viertel des
+ *  Beins; sonst steht die Sohle oben auf und ragt über die Kante) */
+function ausweichen(x: number, boden: (dx: number) => number): number {
+  if (sohleGanzAufEbene(x, boden)) return x;
+  for (let d = 10; d <= 110; d += 10) {
+    if (sohleGanzAufEbene(x - d, boden)) return x - d;
+    if (sohleGanzAufEbene(x + d, boden)) return x + d;
+  }
+  return x;
+}
+
+/**
+ * Beine, Wiegen und Klack eines Schritts; die Höhe des Körpers ergibt sich aus den Sohlen (Boden-Löser). Jeder Fuß setzt an
+ * einer festen Stelle auf und bleibt dort stehen, während die Hüfte darüber läuft (asin: die Sohle rutscht nicht). Mit Gelände
+ * (`k.boden`) weicht der Tritt einer Kante aus (Schritt kürzer oder länger), und der Fuß hebt die ganze Sohle über das Gelände:
+ * fast auf der Stelle hoch, oben vor, weich herunter (`bahn`). Auf ebenem Boden bleibt nur der Hauch `g.hub`.
+ */
+function gang(g: Gang, t: number, p: Pose, k?: ClipKontext): void {
+  const T = g.periode;
+  const phase = t / T;
   const A = g.schritt;
   const sA = Math.sin(A * RAD);
   const o = versatz(g.art);
+  const v = gangTempo(g);
+  const boden = k?.boden;
   let klack = 0;
   for (const b of BEINE4) {
     const f = (((phase + o[b]) % 1) + 1) % 1;
+    const xh = huefteVorn(b, p.psi);
+    /** Tritt, der zur Zeit tl (relativ zu jetzt) aufsetzt: Stelle (relativ zur Wurzel jetzt) und Boden */
+    const tritt = (tl: number): { x: number; g: number } => {
+      const soll = v * tl + xh + H_BEIN * sA;
+      if (!boden) return { x: soll, g: 0 };
+      const x = ausweichen(soll, boden);
+      // auf einer Ebene: ihr Boden; ragt die Sohle doch über eine Kante, steht sie oben auf (nie eingesunken)
+      return { x, g: sohleGanzAufEbene(x, boden) ? sohleMitte(x, boden) : sohleGanz(x, boden) };
+    };
     let alpha: number;
     let hub = 0;
+    let grund = 0;
+    let bahn = 0;
     if (f < g.stand) {
-      // Standphase: Sohle steht, die Hüfte läuft darüber (asin: die Sohle rutscht nicht)
-      const u = f / g.stand;
-      alpha = Math.asin(sA * (1 - 2 * u)) / RAD;
-      klack += stoss(f * g.periode);
+      const tr = tritt(-f * T);
+      alpha = Math.asin(clamp((tr.x - xh) / H_BEIN, -0.75, 0.75)) / RAD;
+      grund = tr.g;
+      klack += stoss(f * T);
     } else {
       const u = (f - g.stand) / (1 - g.stand);
       const w = u * u * (3 - 2 * u);
-      alpha = -A + 2 * A * w;
+      const von = tritt(-f * T);
+      const nach = tritt((1 - f) * T);
+      alpha = Math.asin(clamp((von.x + (nach.x - von.x) * w - xh) / H_BEIN, -0.75, 0.75)) / RAD;
       hub = g.hub * Math.sin(u * Math.PI);
+      grund = von.g + (nach.g - von.g) * w;
+      if (boden && (von.g !== nach.g || !sohleGanzAufEbene((von.x + nach.x) / 2, boden))) {
+        // so hoch muss die ganze Sohle über ihrem Weg mindestens sein (über den Boden hinaus, den sie gerade überquert)
+        let m = -Infinity;
+        for (let i = 0; i <= 16; i++) {
+          const uu = i / 16;
+          const ww = uu * uu * (3 - 2 * uu);
+          m = Math.max(m, sohleGanz(von.x + (nach.x - von.x) * ww, boden) - (von.g + (nach.g - von.g) * ww));
+        }
+        const hoch = Math.max(0, m) + 18 * stufe(m, 0, 10);
+        bahn = hoch * stufe(u, 0, 0.22) * (1 - stufe(u, 0.78, 1));
+      }
     }
     p[`bein${b}`] = alpha;
     p[`hub${b}`] = hub;
+    if (boden) {
+      p[`stufe${b}`] = grund;
+      p[`bahn${b}`] = bahn;
+    }
   }
   // die schwingende Seite hoch (rollen − = nahe Seite hoch)
   p.rollen = g.wiegen * Math.sin((phase - 0.06) * TAU);
@@ -348,9 +424,10 @@ export const CLIPS: Clip[] = [
     schleife: true,
     frei: 1,
     leben: 0.35,
+    gelaende: true,
     tempo: () => gangTempo(LAUFEN),
-    pose: (t, p) => {
-      gang(LAUFEN, t, p);
+    pose: (t, p, k) => {
+      gang(LAUFEN, t, p, k);
       const ph = (t / LAUFEN.periode) * TAU;
       p.theta = 80 + 2 * Math.sin(ph);
       p.brauenKipp = 6;
@@ -374,9 +451,10 @@ export const CLIPS: Clip[] = [
     schleife: true,
     frei: 1,
     leben: 0.2,
+    gelaende: true,
     tempo: () => gangTempo(EILEN),
-    pose: (t, p) => {
-      gang(EILEN, t, p);
+    pose: (t, p, k) => {
+      gang(EILEN, t, p, k);
       const ph = (t / EILEN.periode) * TAU;
       p.nicken = 3;
       p.theta = 84;

@@ -41,6 +41,11 @@ export interface Pose {
   stufeVF: number;
   stufeHN: number;
   stufeHF: number;
+  /** Bahn eines schwingenden Fußes über seinem Boden (Bildpunkte): mindestens so hoch geht die ganze Sohle über das Gelände */
+  bahnVN: number;
+  bahnVF: number;
+  bahnHN: number;
+  bahnHF: number;
   /** Kopf: Blickwinkel (0 = Front, 15 = Logo, 90 = Profil, 180 = Hinterkopf) */
   theta: number;
   kopfNicken: number;
@@ -90,6 +95,10 @@ export const RUHE: Pose = {
   stufeVF: 0,
   stufeHN: 0,
   stufeHF: 0,
+  bahnVN: 0,
+  bahnVF: 0,
+  bahnHN: 0,
+  bahnHF: 0,
   theta: 15,
   kopfNicken: 0,
   kopfNeigen: 0,
