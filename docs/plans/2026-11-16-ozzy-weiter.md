@@ -108,13 +108,21 @@ und ⇧ + 1/3/7 wenden ebenso. *Probe:* Film: Raum → Seite (durch Drehen) → 
 → Front → wenden → Top → Raum, Größe der Form bleibt (±2 %), kein Sprung, eingerastet liegt der Umriss genau auf der Linie.
 *Gebaut (16.11. abends, `95528538`, `f7afd001`):* Ziehen ins Leere dreht in jeder Ansicht (eingerastet löst sie sich; im flachen Feld
 klappen die Vier zurück); Einrasten in alle sechs Ansichten (Gegenseiten = gewendet); Schwung mit vorausberechnetem Ziel, mit Schwung
-fängt eine Ansicht im Umkreis von 20°. Wenden: ⇧ + Ziehen dreht das Blatt wie eine Karte, losgelassen gleitet es zurück, über die
-Hälfte fließt der schwarze Grund als weich gewellte harte Kante herein (eine weiße Fläche mit `mix-blend-mode: difference`, Rand als
-`clip-path`, Feder), Linien, Marke und Hinweis werden hell; ⇧ + Doppelklick und ⇧ + 1/3/7. Beim Wechsel zwischen zwei Ansichten
-(1 → 3) löst sich das Blatt unterwegs ein Stück (die Blase kommt kurz zurück), das alte Blatt dreht sich mit und verblasst; vorher war
-mittendrin nichts zu sehen. *Probe* `ozzy-ansichten-fenster.mjs` (sechs Kriterien, alles gut), *Film*
-[`2026-11-16-wenden.mp4`](../progress/ozzy/2026-11-16-wenden.mp4) (`scripts/ozzy/wenden-film.mjs`, Bild für Bild). Florians Urteil
-steht aus. Noch blass: die ersten und letzten Grad eines Wechsels zwischen zwei Ansichten.
+fängt eine Ansicht im Umkreis von 20°. Beim Wechsel zwischen zwei Ansichten (1 → 3) löst sich das Blatt unterwegs ein Stück (die
+Blase kommt kurz zurück), das alte Blatt dreht sich mit und verblasst; vorher war mittendrin nichts zu sehen. **Wenden, erste Fassung**
+(`f7afd001`): Das Schwarz floss als gewellte Kante von der Seite herein (Overlay mit `mix-blend-mode: difference`). Florian danach:
+„das wenden wirkt noch nicht gut. man sollte in alle richtungen drehen können und es snapt dann in der entsprechenden position zurück
+oder gewendet. bitte doch als harte kante die andere farbe einblenden und genauso wie wir das vorher schonmal gemacht hatten. Das hatte
+mir besser gefallen. Die überblende zurück in den editor gefällt mir noch nicht. Sollten wir dort vllt auch mit der harten kante
+arbeiten wenn ich zur bottom, side (other side) back perspektive in der projektionsansicht drehe? Wir könnten es mal versuchen.“
+**Zweite Fassung** (`258a9f85`): die Kante der Blaupause (`sigmaWerte` in `/editor`): Beim Drehen wandert eine gerade harte Kante
+durchs Bild, bei 90° durch die Mitte der Form; dahinter tauschen Papier und Tinte (Grund in Tinte, Linien hell, die Seifenhaut spiegelt
+wie in der Nacht der Aufblas-Studie, je Bildpunkt). ⇧ + Ziehen dreht in jede Richtung, losgelassen zurück oder auf die Rückseite, was
+näher ist; ⇧ + Doppelklick und ⇧ + 1/3/7. Im Raum gilt dieselbe Kante gegen seine Hausansicht: von unten, von der anderen Seite und
+von hinten wird es dunkel. *Probe* `ozzy-ansichten-fenster.mjs` (acht Kriterien, alles gut), *Film*
+[`2026-11-16-wenden.mp4`](../progress/ozzy/2026-11-16-wenden.mp4) (`scripts/ozzy/wenden-film.mjs`, Bild für Bild), *Bild*
+[`2026-11-16-kante.png`](../progress/ozzy/2026-11-16-kante.png). Sein Urteil steht aus. Offen: die Überblende zwischen Raum und
+eingerasteter Ansicht (Blase verdunstet), wenn er dort etwas anderes meint als die Kante.
 
 **S5 Lasso (L).** Ein Werkzeug „Lasso“: Ziehen zeichnet eine flüssige Schlinge (eine Linie der Anzeige, die sich am Ende wie ein
 Tropfen schließt); gewählt ist, was sie umschließt, auf allen Flächen; ⇧ nimmt dazu, ⌥ nimmt weg. *Probe:* an „strange bird“ in der

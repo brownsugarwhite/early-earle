@@ -236,10 +236,11 @@ springt beim Netzwechsel des Werks nicht mehr (Muster und Dehnung weitergereicht
 sie beides von der Blase; in der Ruhe läuft kein Bild mehr, Drehen und Vier Ansichten 2,5 bis 4 ms je Bild, der Nachklang nach einem
 Handgriff 0,3 ms. Offen in S3: im Zug die Runde des Werks (rund 6 ms, Kern-Sitzung) und die glatte Anzeige (rund 5 ms).
 
-**S4 gebaut (16.11. abends, bis `f7afd001`):** Drehen in jeder Ansicht, Einrasten in alle sechs (mit den Gegenseiten), Schwung, Wenden
-mit ⇧ (schwarze, flüssige Kante; Linien, Marke und Hinweis hell), Wechsel zwischen zwei Ansichten ohne leeren Moment. Probe
-`ozzy-ansichten-fenster.mjs`, Film [`2026-11-16-wenden.mp4`](../../progress/ozzy/2026-11-16-wenden.mp4); sein Urteil steht aus.
-Nächster Schritt: S5 (Lasso L).
+**S4 gebaut (16.11. abends, bis `258a9f85`):** Drehen in jeder Ansicht, Einrasten in alle sechs (mit den Gegenseiten), Schwung, Wenden
+mit ⇧ in jede Richtung, die Rückseite hinter einer harten Kante wie in der Blaupause (Florian lehnte die erste Fassung mit fließender
+Welle ab), dieselbe Kante im Raum (von unten, von der anderen Seite, von hinten), Wechsel zwischen zwei Ansichten ohne leeren Moment.
+Probe `ozzy-ansichten-fenster.mjs`, Film [`2026-11-16-wenden.mp4`](../../progress/ozzy/2026-11-16-wenden.mp4), Bild
+[`2026-11-16-kante.png`](../../progress/ozzy/2026-11-16-kante.png); sein Urteil steht aus. Nächster Schritt: S5 (Lasso L).
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**
 [`docs/plans/2026-11-16-ozzy-weiter.md`](../../plans/2026-11-16-ozzy-weiter.md): Schritte S1 bis S13 (Messen, Seifenhaut gleitet, Tempo,
@@ -274,8 +275,8 @@ aber mehr, nach seinem Auftrag (Plan Abschnitt 3, A1 bis A18) geordnet. Was er b
 
 Blatt: P, N (Freihand), e (Ellipse), E (Würfel), V oder Esc (Auswahl); ↩ schließt eine Linie mit P, auf einer geschlossenen
 Silhouette bläst ↩ auf; ⌫ letzter Punkt oder Auswahl; ⌘Z. Raum: Ziehen ins Leere dreht, in jeder Ansicht, auch eingerastet (nahe einer der
-sechs Ansichten rastet es ein, mit Schwung); ⇧ + Ziehen in einer eingerasteten Ansicht wendet das Blatt (über die Hälfte: Rückseite,
-schwarz), ⇧ + Doppelklick wendet zurück, ⇧ + 1/3/7 die Ansicht von hinten; Punkte der
+sechs Ansichten rastet es ein, mit Schwung); ⇧ + Ziehen in einer eingerasteten Ansicht dreht das Blatt in jede Richtung (losgelassen
+zurück oder, über die Hälfte, auf die Rückseite: dunkel), ⇧ + Doppelklick wendet zurück, ⇧ + 1/3/7 die Ansicht von hinten; Punkte der
 Seite ziehen (an der Wand, im Feld, eingerastet; das Werk rechnet), seit 5.2 alle Linien auf allen Flächen: Punkte, Linien und
 Richtungen ziehen, Doppelklick auf eine Richtung Knick ↔ rund, ⌥ beim Drücken knickt, ins Leere eingerastet und in den Feldern ein
 Rahmen, K Kante, ⌫ löscht die Auswahl (ohne Auswahl Luft ablassen), Esc leert die Auswahl, ⌘A alle; Menü „Ozzy“ → Laden; ⌘Z im Werk zurück, 1 Seite, 3 Front, 7 Top, 0 Raum (tippen
@@ -286,10 +287,12 @@ Raum → Blatt), ⌫ Luft ablassen, M Fassung. Prüfhaken `window.__ozzy` (u. a.
 ## Fallen
 
 - **Vorschaufenster:** Es ist hochkant und schmal; für Florians Sicht auf 1440 × 900 stellen (`resize_window`), danach zurück.
-- **Wenden (S4b):** Die Rückseite ist `#wende` (weiß, `mix-blend-mode: difference`) über der Bühne; `wendeZeigen` setzt Rand und Feder,
-  `body.wende-an` kehrt Marke und Hinweis mit um. Schwarz gilt beim Wenden (⇧, `wendenSicht`), solange die Rückseite zu sehen ist; bei
-  einer Fahrt in eine andere Ansicht erst beim Ankommen. Die Leiste bleibt hell. Filme Bild für Bild: `__ozzy.film(true)` hält den Takt
-  an, `__ozzy.bild(1/60)` rechnet ein Bild (`scripts/ozzy/wenden-film.mjs`).
+- **Wenden und Rückseite (S4b):** `kanteRechnen` (main.ts) rechnet je Bild die harte Kante wie `sigmaWerte` in der Blaupause, aus der
+  Blickrichtung und „vorn“ (`heimJetzt`: eingerastet die Vorderseite der Ansicht, im Raum seine Hausansicht, bei Fahrten dazwischen
+  gedreht). Haut (`HautWerte.kante`, Grund in `kanteFarbe`, Spiegelung wie in der Nacht je Bildpunkt) und Linien (`Szene.kante`: Tinte
+  und Papier tauschen) zeichnen die Rückseite selbst; Marke und Hinweis über `body.wende-an` mit `mix-blend-mode: difference`. Falle:
+  Der Zeichner der Haut löscht vor jedem `render` (`autoClear`); für den Grund hinter der Kante ist es dort kurz aus. Filme Bild für
+  Bild: `__ozzy.film(true)` hält den Takt an, `__ozzy.bild(1/60)` rechnet ein Bild (`scripts/ozzy/wenden-film.mjs`).
 - **Wechsel zwischen zwei Ansichten:** `ansichtFahrt.senke` senkt `flach` unterwegs (bis 0,7 bei 90°), `vonAnsicht` hält das alte Blatt
   als Fläche, bis es verblasst ist. Ohne beides war mitten in der Drehung nichts zu sehen (die Linien gehören der Zielansicht, der Raum
   kommt erst mit sinkendem `flach`).
