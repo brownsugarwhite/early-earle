@@ -35,7 +35,17 @@ export interface Flaeche {
   breite: number;
   /** liegt der Bildschirmpunkt auf der Fläche (Wand: in ihrem Viereck; Feld: in seinem Rahmen; eingerastet: überall) */
   enthaelt(x: number, y: number): boolean;
+  /** S7: welche Seite ihrer Achse zum Betrachter zeigt (+1 oder −1); was dahinter unter der Haut liegt, ist verdeckt (grün, fein) */
+  vorn?: number;
 }
+
+/** S7: Tiefenkarte der Haut längs einer Achse: je Zelle die vorderste Tiefe (zum Betrachter hin), für verdeckte Linien */
+type Karte = { a: number; u: number; v: number; vorn: number; u0: number; v0: number; zelle: number; n: number; d: Float32Array; toleranz: number; stand: string; zeit: number };
+/** so weit (Tiefe) muss eine Probe hinter der Haut liegen, um als verdeckt zu gelten: Anteil der Ausdehnung; Raster der Karte */
+const VERDECKT_TOLERANZ = 0.03;
+const KARTE_N = 128;
+/** verdeckt im Shader der Anzeige: weit hinter jeder Tiefe (ohne Körper ist sie 1e9, die Duldung 1e6) */
+const HINTEN_Z = 4e9;
 
 /**
  * Was mit P gerade gezeichnet wird (Etappe 5.3), auf einer Fläche, im Blatt ihrer Achse: eine Form (frei begonnen; fertig legt das Werk
@@ -138,6 +148,7 @@ export class WerkBlatt implements Raum {
         const a = F.a;
         const sichtbar = F.staerke >= 0.5;
         const schluessel = new Map<string, number>();
+        const karte = F.vorn ? this.karteFuer(a, F.vorn) : null;
         L.forEach((l, li) => {
           const P = l.punkte;
           for (const m of a !== 'seite' && l.art !== 'mitte' ? [false, true] : [false]) {
@@ -169,7 +180,8 @@ export class WerkBlatt implements Raum {
               if (pi === undefined) {
                 const [x, y] = F.hin(...blatt(q));
                 pi = punkte.length;
-                punkte.push({ x, y, sichtbar: sichtbar && istSichtbar(p), verdeckt: false, z: 0 });
+                const hin = this.hinten(karte, m ? werk.spiegeln(q) : q);
+                punkte.push({ x, y, sichtbar: sichtbar && istSichtbar(p), verdeckt: hin, z: hin ? HINTEN_Z : 0 });
                 anker.push({ fl, m: sm, werk: [], zuSehen: istSichtbar(p) });
                 schluessel.set(k, pi);
               } else if (istSichtbar(p)) {
@@ -183,6 +195,8 @@ export class WerkBlatt implements Raum {
             const n = P.length;
             const stuecke: Stueck[] = [];
             const kontroll: number[][] = [];
+            const k3: V3[][] = [];
+            const zeigen = (v: V3): V3 => (m ? werk.spiegeln(v) : v);
             const hart = (p: LoopPunkt): boolean => p.kante ?? l.kante ?? false;
             for (let i = 0; i < (zu ? n : n - 1); i++) {
               const j = (i + 1) % n;
@@ -199,10 +213,13 @@ export class WerkBlatt implements Raum {
               const art: Art = hart(P[i]!) || hart(P[j]!) ? 'kante' : l.art === 'mitte' && a === 'seite' ? 'umriss' : 'innen';
               stuecke.push({ g1x: s1[0] - s0[0], g1y: s1[1] - s0[1], g2x: s2[0] - s3[0], g2y: s2[1] - s3[1], art });
               kontroll.push([...b0, ...b1, ...b2, ...b3]);
+              k3.push([zeigen(A), zeigen(plus(A, neu?.[i]?.aus ?? P[i]!.aus!)), zeigen(plus(E, neu?.[j]?.ein ?? P[j]!.ein!)), zeigen(E)]);
             }
             linien.push({ zu, punkte: idx, stuecke, knick: P.map((_, i) => werk.eckeGezeigt(li, i)) });
             infos.push({ fl, id: l.id, m });
-            proben.push(this.abtasten(F, kontroll, stuecke, br));
+            const PR = this.abtasten(F, kontroll, stuecke, br);
+            this.verdeckteProben(PR, k3, stuecke, karte, br);
+            proben.push(PR);
           }
         });
       });
@@ -261,6 +278,121 @@ export class WerkBlatt implements Raum {
     this.roh = roh;
     this.flaechen = flaechen;
     this.struktur = `${flaechen.map((f) => f.a).join(',')}|${werk.loops.map((l) => `${l.id}.${l.punkte.length}.${werk.exakt(l) && hatGriffe(l) ? 1 : 0}`).join(',')}`;
+  }
+
+  // ---------- S7: Verdecktes grün ----------
+
+  private karten = new Map<string, Karte>();
+
+  /**
+   * Tiefenkarte der gezeigten Haut längs der Achse einer Fläche (je Zelle die vorderste Tiefe zum Betrachter hin). Neu, wenn sich die
+   * Haut ändert; im Zug höchstens alle 150 ms. Die Haut des Werks ist ganz (beide Hälften), die Linien liegen auf ihr.
+   */
+  private karteFuer(a: Ansicht, vorn: number): Karte | null {
+    const achse = a === 'seite' ? 2 : a === 'front' ? 0 : 1;
+    const schl = `${achse}|${vorn}`;
+    const alt = this.karten.get(schl);
+    const jetzt = performance.now();
+    const stand = werk.standZahl();
+    if (alt && (alt.stand === stand || (werk.zug && jetzt - alt.zeit < 150))) return alt;
+    const P = werk.haut.pos;
+    const T = werk.haut.tri;
+    if (!P?.length || !T?.length) return null;
+    const u = (achse + 1) % 3;
+    const v = (achse + 2) % 3;
+    let u0 = Infinity;
+    let u1 = -Infinity;
+    let v0 = Infinity;
+    let v1 = -Infinity;
+    for (let i = 0; i < P.length; i += 3) {
+      u0 = Math.min(u0, P[i + u]!);
+      u1 = Math.max(u1, P[i + u]!);
+      v0 = Math.min(v0, P[i + v]!);
+      v1 = Math.max(v1, P[i + v]!);
+    }
+    const span = Math.max(u1 - u0, v1 - v0, 1e-6);
+    const n = KARTE_N;
+    const rand = span * 0.02;
+    const zelle = (span + 2 * rand) / n;
+    u0 -= rand;
+    v0 -= rand;
+    const d = new Float32Array(n * n).fill(-Infinity);
+    for (let t = 0; t + 2 < T.length; t += 3) {
+      const i0 = 3 * T[t]!;
+      const i1 = 3 * T[t + 1]!;
+      const i2 = 3 * T[t + 2]!;
+      const ax = (P[i0 + u]! - u0) / zelle;
+      const ay = (P[i0 + v]! - v0) / zelle;
+      const bx = (P[i1 + u]! - u0) / zelle;
+      const by = (P[i1 + v]! - v0) / zelle;
+      const cx = (P[i2 + u]! - u0) / zelle;
+      const cy = (P[i2 + v]! - v0) / zelle;
+      const den = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
+      if (Math.abs(den) < 1e-12) continue;
+      const az = vorn * P[i0 + achse]!;
+      const bz = vorn * P[i1 + achse]!;
+      const cz = vorn * P[i2 + achse]!;
+      const x0 = Math.max(0, Math.floor(Math.min(ax, bx, cx)));
+      const x1 = Math.min(n - 1, Math.ceil(Math.max(ax, bx, cx)));
+      const y0 = Math.max(0, Math.floor(Math.min(ay, by, cy)));
+      const y1 = Math.min(n - 1, Math.ceil(Math.max(ay, by, cy)));
+      for (let y = y0; y <= y1; y++) {
+        for (let x = x0; x <= x1; x++) {
+          const px = x + 0.5;
+          const py = y + 0.5;
+          const w0 = ((by - cy) * (px - cx) + (cx - bx) * (py - cy)) / den;
+          const w1 = ((cy - ay) * (px - cx) + (ax - cx) * (py - cy)) / den;
+          const w2 = 1 - w0 - w1;
+          if (w0 < -1e-4 || w1 < -1e-4 || w2 < -1e-4) continue;
+          const z = w0 * az + w1 * bz + w2 * cz;
+          const k = y * n + x;
+          if (z > d[k]!) d[k] = z;
+        }
+      }
+    }
+    const K: Karte = { a: achse, u, v, vorn, u0, v0, zelle, n, d, toleranz: VERDECKT_TOLERANZ * span, stand, zeit: jetzt };
+    this.karten.set(schl, K);
+    return K;
+  }
+
+  /** liegt ein Punkt (gezeigte Lage, Werk) hinter der Haut, von der Seite der Fläche aus gesehen */
+  private hinten(K: Karte | null, p: V3): boolean {
+    if (!K) return false;
+    const c = [p.x, p.y, p.z];
+    const iu = Math.floor((c[K.u]! - K.u0) / K.zelle);
+    const iv = Math.floor((c[K.v]! - K.v0) / K.zelle);
+    if (iu < 0 || iv < 0 || iu >= K.n || iv >= K.n) return false;
+    const D = K.d[iv * K.n + iu]!;
+    return Number.isFinite(D) && K.vorn * c[K.a]! < D - K.toleranz;
+  }
+
+  /** Proben hinter der Haut: grün und fein (Schicht 1, im Shader hinter jeder Tiefe); der Umriss bleibt immer vorn */
+  private verdeckteProben(P: LinienProben, k3: V3[][], stuecke: Stueck[], K: Karte | null, br: Breiten): void {
+    if (!K) return;
+    const z = P.z ?? new Float32Array(P.n);
+    for (let k = 0; k < P.n; k++) {
+      const si = P.si[k]!;
+      const C = k3[si];
+      const st = stuecke[si];
+      let hin = false;
+      if (C && st && st.art !== 'umriss') {
+        const t = P.t[k]!;
+        const s = 1 - t;
+        const b0 = s * s * s;
+        const b1 = 3 * s * s * t;
+        const b2 = 3 * s * t * t;
+        const b3 = t * t * t;
+        hin = this.hinten(K, {
+          x: b0 * C[0]!.x + b1 * C[1]!.x + b2 * C[2]!.x + b3 * C[3]!.x,
+          y: b0 * C[0]!.y + b1 * C[1]!.y + b2 * C[2]!.y + b3 * C[3]!.y,
+          z: b0 * C[0]!.z + b1 * C[1]!.z + b2 * C[2]!.z + b3 * C[3]!.z,
+        });
+      }
+      z[k] = hin ? HINTEN_Z : 0;
+      P.schicht[k] = hin ? 1 : 0;
+      if (hin) P.halb[k] = Math.min(P.halb[k]!, br.innen / 2);
+    }
+    P.z = z;
   }
 
   /** Proben einer Linie wie `linieAbtasten` der Studie, aber auf der Fläche: im Blatt abgetastet, dann abgebildet */

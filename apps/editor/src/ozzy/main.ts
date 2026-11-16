@@ -1622,10 +1622,14 @@ function ebene(a: Flaeche['a'], lage: number, vp: Matrix4, staerke: number, brei
     if (Math.abs(dd) < 1e-9) return null;
     return weltInBlatt(a, o.clone().addScaledVector(d, (lage - oo) / dd));
   };
+  // S7: zum Betrachter zeigt die Seite der Achse, auf der die Kamera steht (eine Wand liegt immer auf der anderen)
+  const kp = kam.aktiv.position;
+  const vorn = Math.sign([kp.x, kp.y, kp.z][achse]! - [e.cx, e.cy, 0][achse]!) || 1;
   return {
     a,
     staerke,
     breite,
+    vorn,
     enthaelt: (x, y) => {
       if (!wand) return true;
       const XY = her(x, y);
@@ -1651,6 +1655,8 @@ function feldFlaeche(n: FeldAchse, vp: Matrix4, F: ReturnType<typeof felder>, s4
     a: n,
     staerke: 1,
     breite: 1,
+    // S7: ein Feld ist seine Wand, aufgeklappt: Betrachter auf der anderen Seite
+    vorn: -sw[achse] || 1,
     enthaelt: (x, y) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h,
     hin: (X, Y) => {
       const [fx, fy] = imFeld(n, blattInWelt(n, X, Y, 0), F, s4);
@@ -3022,6 +3028,13 @@ const haken = {
   laden: (name: string): Promise<string> => formLaden(name),
   /** Bearbeiten über das Werk: ob das Verhalten die Flächen hat, Netz, Flächen, Auswahl (Anker und im Werk) */
   /** die Punkte, wie das Verhalten sie sieht (CSS-Pixel), für die Probe des Lassos */
+  /** S7: Proben der Linien hinter der Haut (grün) und davor, über alle Flächen */
+  verdecktZahl: () => {
+    let hinten = 0;
+    let vorn = 0;
+    for (const P of werkBlatt.proben) for (let k = 0; k < P.n; k++) if (P.schicht[k] === 1) hinten++; else vorn++;
+    return [hinten, vorn];
+  },
   netzPunkte: () => werkBlatt.netz.punkte.map((p, i) => ({ x: p.x, y: p.y, sichtbar: p.sichtbar, a: werkBlatt.flaechen[werkBlatt.anker[i]?.fl ?? -1]?.a ?? null, w: (werkBlatt.anker[i]?.werk ?? []).map((v) => `${v.id}.${v.i}`) })),
   bearbeiten: () => ({
     an: bearbeitenAn,
