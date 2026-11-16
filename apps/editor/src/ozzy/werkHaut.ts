@@ -10,6 +10,8 @@ import type { HautNetz } from '../anfang/haut';
 import { GlattPlan, type LinienKante } from '../form/glattPlan';
 import * as werk from '../form/werk';
 
+/** so oft (ms) wird der Umriss höchstens neu gerechnet, während sich die Haut bewegt (S3); das letzte Bild bekommt den genauen */
+const UMRISS_MS = 50;
 /** Glätten der Normalen der Anzeige (wie `GLATT_RUHE` im Prüffenster, Standard 3) */
 const GLATT_RUHE = 3;
 
@@ -44,6 +46,11 @@ export class WerkHaut {
   stufen = 0;
   ms = 0;
   geaendert = 0;
+  /** zählt jede neue Lage der Anzeige (für Zwischenspeicher, die an der Haut hängen: Umriss) */
+  version = 0;
+  private umrissSpeicher = new Map<number, { version: number; netz: HautNetz | null; seg: Float32Array; t: number }>();
+  /** ein Umriss ist älter als die Haut (im Zug höchstens alle `UMRISS_MS` neu): Die Anzeige braucht noch ein Bild */
+  umrissVeraltet = false;
   private p: Plan | null = null;
   private kanten: { index: Uint32Array; liste: Int32Array } | null = null;
 
@@ -273,6 +280,7 @@ export class WerkHaut {
     this.stufen = stufen;
     this.ms = performance.now() - t0;
     if (!voll) this.geaendert = performance.now();
+    this.version++;
     return neu;
   }
 
@@ -282,9 +290,25 @@ export class WerkHaut {
   }
 
   /** Umriss der glatten Anzeige von einer Achse (0 = x, Front; 1 = y, Top; 2 = z, Seite): Strecken in der Welt, je 6 Zahlen */
-  umriss(achse: 0 | 1 | 2): Float32Array {
+  umriss(achse: 0 | 1 | 2, eilig = false): Float32Array {
+    // nur neu, wenn sich die Haut seit dem letzten Mal bewegt hat (S3: vorher jedes Bild aus dem feinen Netz); während sich die Haut
+    // bewegt (`eilig`) höchstens alle UMRISS_MS, und dann ist er veraltet, bis das nächste Bild ihn holt
+    const alt = this.umrissSpeicher.get(achse);
+    if (alt && alt.version === this.version && alt.netz === this.netz) return alt.seg;
+    const jetzt = performance.now();
+    if (alt && eilig && alt.netz === this.netz && jetzt - alt.t < UMRISS_MS) {
+      this.umrissVeraltet = true;
+      return alt.seg;
+    }
+    // Front und Top in einem Durchgang (dieselben Dreiecke, dieselben Kanten)
+    const beide = achse !== 2 ? this.umrissRechnen([0, 1]) : this.umrissRechnen([2]);
+    beide.forEach((seg, k) => this.umrissSpeicher.set(achse !== 2 ? k : 2, { version: this.version, netz: this.netz, seg, t: jetzt }));
+    return this.umrissSpeicher.get(achse)!.seg;
+  }
+
+  private umrissRechnen(achsen: (0 | 1 | 2)[]): Float32Array[] {
     const z = this.netz;
-    if (!z) return new Float32Array(0);
+    if (!z) return achsen.map(() => new Float32Array(0));
     const I = z.index;
     const P = z.pos;
     if (!this.kanten || this.kanten.index !== I) {
@@ -305,7 +329,8 @@ export class WerkHaut {
       this.kanten = { index: I, liste: Int32Array.from(liste) };
     }
     const nT = I.length / 3;
-    const seite = new Float32Array(nT);
+    // je Dreieck ein Bit je Achse: zeigt seine Fläche zur Achse hin
+    const bits = new Uint8Array(nT);
     for (let t = 0; t < nT; t++) {
       const a = I[t * 3]! * 3;
       const b = I[t * 3 + 1]! * 3;
@@ -316,20 +341,21 @@ export class WerkHaut {
       const vx = P[c]! - P[a]!;
       const vy = P[c + 1]! - P[a + 1]!;
       const vz = P[c + 2]! - P[a + 2]!;
-      seite[t] = achse === 0 ? uy * vz - uz * vy : achse === 1 ? uz * vx - ux * vz : ux * vy - uy * vx;
+      bits[t] = (uy * vz - uz * vy > 0 ? 1 : 0) | (uz * vx - ux * vz > 0 ? 2 : 0) | (ux * vy - uy * vx > 0 ? 4 : 0);
     }
-    const aus: number[] = [];
+    const ausListen: number[][] = achsen.map(() => []);
+    const masken = achsen.map((x) => 1 << x);
     const K = this.kanten.liste;
     for (let e = 0; e < K.length; e += 4) {
-      const t1 = K[e + 2]!;
       const t2 = K[e + 3]!;
       if (t2 < 0) continue;
-      if (seite[t1]! > 0 === seite[t2]! > 0) continue;
+      const wechsel = bits[K[e + 2]!]! ^ bits[t2]!;
+      if (!wechsel) continue;
       const a = K[e]! * 3;
       const b = K[e + 1]! * 3;
-      aus.push(P[a]!, P[a + 1]!, P[a + 2]!, P[b]!, P[b + 1]!, P[b + 2]!);
+      for (let k = 0; k < achsen.length; k++) if (wechsel & masken[k]!) ausListen[k]!.push(P[a]!, P[a + 1]!, P[a + 2]!, P[b]!, P[b + 1]!, P[b + 2]!);
     }
-    return Float32Array.from(aus);
+    return ausListen.map((l) => Float32Array.from(l));
   }
 
   /** Ausdehnung der Haut des Werks in der Welt, um die Mitte (für den Raum) */

@@ -54,19 +54,19 @@ const ablauf = async (form, name, f, o = {}) => {
   const ms = B.map((b) => b.ms);
   const ab = B.slice(1).map((b) => b.abstand);
   const sp = o.pixel ? spruenge(B, !!o.still) : [];
-  const beimNetz = sp.filter((b, i) => {
+  const beimNetz = sp.filter((b) => {
     const j = B.indexOf(b);
     return j > 0 && B[j].netz !== B[j - 1].netz;
   }).length;
   // Teile: Median je Teil (Werk rechnet, Haut der Anzeige, Linien, Seifenhaut zeichnen, Linien zeichnen)
-  const teile = [0, 1, 2, 3, 4].map((k) => z1(q(B.map((b) => b.teile[k]), 0.5))).join(' · ');
+  const teile = [0, 1, 2, 3, 4, 5].map((k) => z1(q(B.map((b) => b.teile[k] ?? 0), 0.5))).join(' · ');
   const zeile = `| ${form} | ${name} | ${B.length} | ${z1(q(ms, 0.5))} / ${z1(q(ms, 0.95))} | ${teile} | ${z1(q(ab, 0.5))} / ${z1(q(ab, 0.95))} | ${o.pixel ? `${sp.length}${sp.length ? ` (größte ${Math.max(...sp.map((b) => b.p99))}, beim Netzwechsel ${beimNetz})` : ''}` : '–'} |`;
   zeilen.push(zeile);
   console.log(zeile);
   return B;
 };
 
-zeilen.push('| Form | Ablauf | Bilder | Rechnen je Bild ms (Median / 95 %) | davon (Median): Werk · Haut · Linien · Seifenhaut zeichnen · Linien zeichnen | Abstand ms (Median / 95 %) | Sprünge der Haut |', '| --- | --- | --- | --- | --- | --- | --- |');
+zeilen.push('| Form | Ablauf | Bilder | Rechnen je Bild ms (Median / 95 %) | davon (Median): Werk · Haut · Linien · Seifenhaut zeichnen · Linien zeichnen · Wände und Umriss | Abstand ms (Median / 95 %) | Sprünge der Haut |', '| --- | --- | --- | --- | --- | --- | --- |');
 console.log(zeilen.join('\n'));
 for (const form of FORMEN) {
   // Laden und Aufblasen: die Messung läuft ab dem Laden, Bereich um die Mitte

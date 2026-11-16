@@ -173,7 +173,7 @@ const mess = {
   letzte: 0,
   bilder: [] as { t: number; ms: number; abstand: number; diff: number; p99: number; netz: number; stufen: number; punkte: number; teile: number[] }[],
   /** Zeit je Teil des Bilds (ms): Rechnung des Werks, Haut der Anzeige, Linien (Netz und Verhalten), Seifenhaut zeichnen, Linien zeichnen */
-  teile: [0, 0, 0, 0, 0],
+  teile: [0, 0, 0, 0, 0, 0],
 };
 
 // ---------- Werk (Phase 3) ----------
@@ -1006,7 +1006,8 @@ function seitenLinie(schritt: number): { pfad: number[]; punkte: { i: number; x:
 
 /** Umriss der Form von einer Achse (0 Front, 1 Top): der Haut des Werks, sobald sie zu sehen ist, sonst der Blase */
 function umrissJetzt(achse: 0 | 1): Float32Array {
-  return werkGezeigt ? werkHaut.umriss(achse) : koerper!.umriss(achse);
+  // während das Werk rechnet, darf der Umriss ein paar Bilder alt sein (`werkHaut.umrissVeraltet` holt das nächste Bild)
+  return werkGezeigt ? werkHaut.umriss(achse, werkBeschaeftigt()) : koerper!.umriss(achse);
 }
 
 /** ein Bild; true: es bewegt sich noch etwas */
@@ -1044,16 +1045,20 @@ function bild(dt: number): boolean {
     m = moment(Math.max(0, Math.min(T, dauer)), masse(), werte);
     if (zustand !== 'ruhe' || zug) koerper.setzen(zustand === 'blatt' ? FLACH : m.lage);
     const tau = zustand === 'auf' && T < m.riss + 0.35 ? 0 : zug ? 3.5 : 1.6;
-    const unruhe = koerper.dehnungRechnen(dt, tau);
-    haut.hochladen();
-    aktiv = aktiv || zustand !== 'ruhe' || unruhe > 2e-3 || zug !== null;
+    // zeigt die Seifenhaut die Haut des Werks, ruht die Blase der Studie: nicht mehr rechnen und hochladen (S3)
+    if (!(werkGezeigt && zustand === 'ruhe' && !zug)) {
+      const unruhe = koerper.dehnungRechnen(dt, tau);
+      haut.hochladen();
+      aktiv = aktiv || unruhe > 2e-3;
+    }
+    aktiv = aktiv || zustand !== 'ruhe' || zug !== null;
   } else if (koerper && zustand === 'blatt') {
     koerper.setzen(FLACH);
     koerper.dehnungRechnen();
     haut.hochladen();
   }
   // das Werk: sein Bildtakt und, ab dem Abriss, seine Haut
-  mess.teile = [0, 0, 0, 0, 0];
+  mess.teile = [0, 0, 0, 0, 0, 0];
   aktiv = werkBild(dt, m) || aktiv;
   // hat das Werk nach einem Handgriff ausgerechnet: der Raum folgt der Form (nur bei großen Änderungen)
   const beschaeftigt = werkBeschaeftigt();
@@ -1203,10 +1208,14 @@ function bild(dt: number): boolean {
     K.leeren();
     const vp = vpJetzt();
     let zeigerBearbeiten: Szene['zeiger'] | undefined;
+    werkHaut.umrissVeraltet = false;
     if (koerper && raum && m) {
+      const tw = performance.now();
       wandLinien(vp, m);
       if (flach > 0.01) linienDerAnsicht(vp);
       if (vier > 0.02) felderLinien(vp);
+      mess.teile[5] = performance.now() - tw;
+      if (werkHaut.umrissVeraltet) aktiv = true;
     }
     if (koerper && raum && m && werkGezeigt) {
       const tl = performance.now();
