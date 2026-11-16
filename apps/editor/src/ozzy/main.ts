@@ -3254,6 +3254,7 @@ const haken = {
       stufen: werkHaut.stufen,
       anzeigeMs: werkHaut.ms,
       feinePunkte: werkHaut.netz ? werkHaut.netz.pos.length / 3 : 0,
+      griffWartet: werk.griffWartet(),
       beschaeftigt: werkBeschaeftigt(),
       schritte: werkForm ? werk.zurueck.length - werkForm.zurueck : 0,
       f: werkHaut.f,

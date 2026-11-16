@@ -88,7 +88,7 @@ export class WerkBlatt implements Raum {
   /** Zug an einem Punkt, einer Linie oder mehreren Punkten: Fläche, Spiegelbild, Stelle beim Drücken (Bildschirm), schon im Werk? */
   private zg: { fl: number; m: boolean; sx: number; sy: number; los: boolean } | null = null;
   /** Drehen einer Richtung: Linie und Stelle im Netz, Punkt und Seite im Werk, Spitze des Griffs im Blatt beim Drücken */
-  private dz: { li: number; k: number; pi: number; seite: 'ein' | 'aus'; fl: number; m: boolean; id: number; i: number; X0: number; Y0: number; los: boolean } | null = null;
+  private dz: { li: number; k: number; pi: number; seite: 'ein' | 'aus'; fl: number; m: boolean; id: number; i: number; X0: number; Y0: number; los: boolean; knick?: boolean; zurueck0?: number } | null = null;
   /** ein Klick ohne Zug: Die Studie ruft danach `rueckgaengig`, das hier nichts tun darf */
   private klickRueck = false;
   private gezeigteAuswahl = new Set<number>();
@@ -590,13 +590,51 @@ export class WerkBlatt implements Raum {
       return werk.imBlatt(F.a, I.m ? werk.spiegeln(tip) : tip);
     });
     werk.G.auswahl = [{ l: I.id, i: z.k }];
-    this.dz = { li: z.li, k: z.k, pi: z.pi, seite: z.seite, fl: I.fl, m: I.m, id: I.id, i: z.k, X0, Y0, los: false };
+    this.dz = { li: z.li, k: z.k, pi: z.pi, seite: z.seite, fl: I.fl, m: I.m, id: I.id, i: z.k, X0, Y0, los: false, zurueck0: werk.zurueck.length };
     this.geaendert();
     return spitze;
   }
 
   drehenZiehen(cx: number, cy: number, alt: boolean, dt: number): void {
+    const d = this.dz;
+    // ⌥ während des Drehens (S6, wie in der Studie): Der Punkt wird eine Ecke, wie mit ⌥ beim Drücken. Der laufende Zug am Griff
+    // endet, die Ecke wird gesetzt, und es geht als neuer Zug am Griff weiter, von der Stelle, an der die Spitze jetzt ist (nur
+    // Handgriffe des Werks; zwei Schritte für ⌘Z)
+    if (d && alt && !d.knick) {
+      const li = werk.loopNr(d.id);
+      if (werk.eckeGezeigt(li, d.i)) d.knick = true;
+      else {
+        // ein laufender Zug endet und setzt danach neu an; ein wartender Griff (das Werk rechnet noch) bleibt und holt nach
+        if (d.los && werk.zug && !werk.zug.modal) {
+          werk.zugEnde(true);
+          d.los = false;
+        }
+        if (!werk.zug) {
+          werk.eckeUmschalten(d.id, d.i);
+          if (!d.los) {
+            const sp = this.griffSpitze(d);
+            if (sp) [d.X0, d.Y0] = sp;
+          }
+          d.knick = true;
+          this.geaendert();
+        }
+      }
+    }
     this.dreher.drehenZiehen(cx, cy, alt, dt);
+  }
+
+  /** die Spitze des gedrehten Griffs jetzt (Blatt der Fläche, wie gezeigt) */
+  private griffSpitze(d: { fl: number; id: number; i: number; seite: 'ein' | 'aus'; m: boolean }): [number, number] | null {
+    const F = this.flaechen[d.fl];
+    const li = werk.loopNr(d.id);
+    if (!F || !werk.loops[li]?.punkte[d.i]) return null;
+    return werk.alsAnzeige(() => {
+      const q = werk.loops[li]!.punkte[d.i]!;
+      const h = d.seite === 'ein' ? q.ein : q.aus;
+      if (!h) return null;
+      const tip = plus(q.ref, h);
+      return werk.imBlatt(F.a, d.m ? werk.spiegeln(tip) : tip);
+    });
   }
 
   /** die Studie hat die Richtung gedreht (im Netz): die Spitze des Griffs im Werk dorthin */
@@ -629,6 +667,8 @@ export class WerkBlatt implements Raum {
     if (!d?.los) return;
     if (werk.G.gegriffen) werk.G.gegriffen = null;
     else if (werk.zug && !werk.zug.modal) werk.zugEnde(true);
+    // ⌥ mitten im Drehen gab drei Schritte (Zug, Ecke, Zug): für ⌘Z einer, der Stand vor der Geste
+    if (d.knick && d.zurueck0 !== undefined && werk.zurueck.length > d.zurueck0 + 1) werk.zurueck.splice(d.zurueck0 + 1);
     this.geaendert();
   }
 
