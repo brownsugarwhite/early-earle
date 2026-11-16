@@ -80,3 +80,26 @@ Offen: die Kopfoberseite zwischen 40° und 70° (siehe Übergabe), Florians Urte
 | Schnüffeln: Hinterteil hoch | Hinterbeine absichtlich in der Luft | alle Sohlen am Boden, Vorderbeine tasten |
 | Stufen klettern statt springen | gab es nicht | Fußfolge mit geplanten Tritten, Hinterbein rutscht einmal ab; im Spiel bis 320 hoch und runter |
 | Stolpern witziger | steifes Brett | Füße hängen, Gipse biegen sich, Nase im Boden, Hinterbeine strampeln, Plumps, Schütteln |
+
+## Runde 5 (17.11.): Tempo, Gelände je Fuß, Übergänge ohne Sprung
+
+Florian: „Was mich gerade am meisten stört, ist die Performance, und Ozzy sollte dynamisch auf die Physik reagieren können, also
+wissen, wann er mit den Vorder- oder Hinterbeinen höher stehen muss, und alles muss noch dynamischer sein und perfekt ohne Sprung
+und direkter ineinander überlaufen.“ (Genauere Vorlagen für die Formen schickt er später als AI/SVG.)
+
+| Schritt | Probe vorher festgelegt | Stand |
+| --- | --- | --- |
+| 1. Tempo messen | `tempo.mjs`: Bildabstände in Chrome und WebKit (Safari), Mac- und iPhone-Größe | WebKit 43 ms je Bild, davon 31 ms Kopien Canvas ↔ Grafikkarte |
+| 2. Figur ganz auf der Grafikkarte | gleiche Ansicht alt/neu, Unterschied in Bildpunkten; Tempo erneut | 17 ms (60 Bilder/s) auch in WebKit; dabei Treppen in den Brücken gefunden und behoben (verkleinert weichzeichnen, B-Spline) |
+| 3. Gelände je Fuß | Blatt: Laufen über Bordstein und Rampe, Stehen an der Kante (vorn höher, hinten höher); Spiel: über kleine Stufen gehen | |
+| 4. Übergänge ohne Sprung | Kurven je Kanal über einen Wechsel (Lage und Geschwindigkeit stetig), Blatt der Übergänge | |
+| 5. Löser ohne Springen | Nicken und Höhe über die Zeit im Gang auf Gelände: keine Sprünge zwischen zwei Bildern | |
+
+Bau:
+- **Gelände je Fuß:** Der Spieler kennt den Boden (Spiel: Plattformen und Rampen; Bibliothek/Filmstreifen: die Stufen der
+  Treppen-Clips). Jeder Fuß bekommt den Boden unter seiner Sohle (wie gezeichnet, ferne Beine mit ihrem Versatz). Stehende Füße
+  haften (kein Flackern an der Kante). Der Gang plant jeden Schritt: Boden beim Abheben und beim Aufsetzen, dazwischen über das
+  Höchste hinweg. Der Körper neigt sich mit (vorn höher → Nase hoch), die Beine bleiben dabei in der Welt stehen.
+- **Übergänge:** statt Überblenden zweier Clips Trägheit (der neue Clip gilt sofort, der Unterschied klingt mit Lage und
+  Geschwindigkeit stetig ab).
+- **Federn** rechnen in der Welt (ein Wechsel des Grunds stößt sie nicht an); der Löser sucht vom letzten Bild aus.
