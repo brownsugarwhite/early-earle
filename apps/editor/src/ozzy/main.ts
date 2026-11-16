@@ -644,23 +644,25 @@ function bild(dt: number): boolean {
     wandSicht[i]! += (ziel - wandSicht[i]!) * (1 - Math.exp(-dt / 0.12));
     if (Math.abs(ziel - wandSicht[i]!) > 2e-3) aktiv = true;
   }
-  // Haut (keine Schatten an den Wänden: dort stehen die Linien)
+  // Haut (keine Schatten an den Wänden: dort stehen die Linien). Eingerastet ist nur der Umriss zu sehen (Florian, 16.11.): Die Blase
+  // verdunstet beim Einrasten, die Haut wird dünner (die Farben laufen) und klar, und kommt beim Lösen genauso zurück.
   const F = koerper?.flach;
+  const weg = glatt(Math.min(1, flach * 1.2));
   const w: HautWerte = {
     fassung,
     nacht: false,
     zeit: uhr,
-    vorn: 1,
-    hinten: 1,
+    vorn: 1 - weg,
+    hinten: 1 - weg,
     rahmen: m ? 1 - m.schatten : film,
     schatten: 0,
     schlauch: !!m && m.lage.seitRiss < 0.1,
-    deckung: zustand === 'blatt' ? 0.42 * film : 0.42 + 0.58 * glatt(T / 1.4),
+    deckung: (zustand === 'blatt' ? 0.42 * film : 0.42 + 0.58 * glatt(T / 1.4)) * (1 - weg),
     hauch: hauch.pos,
     hauchStaerke: hauch.staerke,
     hauchRadius: Math.max(24, (F?.radius ?? 200) * 0.2),
     wind,
-    dicke: werte.dicke,
+    dicke: werte.dicke * (1 - 0.45 * weg),
     spannung: werte.spannung,
     sicht: werte.sicht * (1 - 0.55 * flach),
     wuerfel: null,
@@ -1053,7 +1055,8 @@ function wandSuchen(x: number, y: number): number {
 
 /** Treffer auf der Blase (im Raum oder im vierten Feld) */
 function blaseTreffen(x: number, y: number): { x: number; y: number; z: number; tri: number } | null {
-  if (!koerper || zustand !== 'ruhe') return null;
+  // eingerastet ist die Blase ausgeblendet: dort gibt es nur die Linien
+  if (!koerper || zustand !== 'ruhe' || flach > 0.5) return null;
   if (vier > 0.5) {
     const R = felder().raum;
     if (x < R.x || y < R.y || x > R.x + R.w || y > R.y + R.h) return null;
