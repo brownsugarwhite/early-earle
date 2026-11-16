@@ -245,8 +245,10 @@ sein Urteil steht aus.
 
 **S5 gebaut (16.11. abends, `4608e8b8`):** Lasso (L, Knopf ganz links): Schlinge als Haarlinie, gewählt schon beim Ziehen, ⇧ dazu, ⌥ weg,
 Tropfen in der Naht, zieht sich zur Auswahl zusammen; an einer Wand umfahren ist im Werk gewählt und überall markiert. Probe
-`ozzy-lasso-fenster.mjs`, Film [`2026-11-16-lasso.mp4`](../../progress/ozzy/2026-11-16-lasso.mp4). Nächster Schritt: S6 (Richtungen,
-Animationen und Regler wie in der Studie).
+`ozzy-lasso-fenster.mjs`, Film [`2026-11-16-lasso.mp4`](../../progress/ozzy/2026-11-16-lasso.mp4). 
+
+**S6a gebaut (`f89955ce`):** ⌥ knickt auch während des Drehens einer Richtung; Probe `ozzy-richtung-fenster.mjs`. Offen in S6: ⇧ kippt aus
+der Ebene (S6b), Animationen wie in der Studie (S6c), Florians Reglerwerte aus der Studie (S6d, er kopiert sie).
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**
 [`docs/plans/2026-11-16-ozzy-weiter.md`](../../plans/2026-11-16-ozzy-weiter.md): Schritte S1 bis S13 (Messen, Seifenhaut gleitet, Tempo,
@@ -301,6 +303,9 @@ Raum → Blatt), ⌫ Luft ablassen, M Fassung. Prüfhaken `window.__ozzy` (u. a.
   `49df2266` nach −x (`VORN`, `ANSICHT_WINKEL`, `imFeld`/`ausFeld`). Fallen: Der Zeichner der Haut löscht vor jedem `render`
   (`autoClear`), für den Grund ist es dort kurz aus; `HautWerte.hinten` ist der Anteil der Rückseite der Blase, nicht die dunkle Fläche.
   Filme Bild für Bild: `__ozzy.film(true)`, `__ozzy.bild(1/60)` (`scripts/ozzy/wenden-film.mjs`); Haken `dunkelBei(x, y)`.
+- **Ein Griff kann warten:** Nach dem Laden rechnet das Werk im Hintergrund noch die Zerlegung; so lange wartet ein Griff an einer Richtung
+  (`werk.griffWartet()`, `G.gegriffen`, bis zu `GRIFF_WARTEN_MS` = 4 s) und holt dann nach. Proben warten auf `werk().griffWartet`
+  falsch, bevor sie drehen. Ohne ⌥ rastet eine Richtung nahe ihrer Flucht ein: kleine Drehungen (20° auf 12 px) bleiben ohne Wirkung.
 - **Lasso (S5):** in der Linien-Studie (`verhalten.ts`: `lassoDruecken`, `lasso`, `lassoAus`, `punkteImLasso` in `auswahl.ts`); Ozzy ruft
   es mit dem Werkzeug `lasso` vor allen anderen Griffen (auch vor dem Wenden mit ⇧). Die Auswahl im Netz ist je Fläche; damit ein an
   einer Wand umfahrener Punkt im Werk gewählt bleibt, nimmt das Lasso alle Punkte desselben Werkpunkts mit (`Raum.gleiche`, in

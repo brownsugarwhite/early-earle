@@ -150,6 +150,10 @@ die Linie des Griffs), wie im Raum der Linien-Studie, gerechnet als Griff des We
 Animationen an Punkten und Linien: Vergleich Bild für Bild mit der Studie an derselben Form, was fehlt, nachziehen. **Regler wie in
 der Studie:** Florian kopiert seine Werte in der Studie („Werte kopieren“), Ozzy nimmt sie als Grundwerte (und künftig liegen die
 Werte im Repo, nicht nur im Browser). *Probe:* Film Studie neben Ozzy, gleiche Bewegung; die Werte gleich.
+*Gebaut (16.11. abends):* **S6a** (`f89955ce`): ⌥ knickt auch während des Drehens einer Richtung (nur Handgriffe des Werks: Zug endet,
+Ecke, neuer Zug am Griff; für ⌘Z ein Schritt). Probe `ozzy-richtung-fenster.mjs` (alles gut). Offen: **S6b** ⇧ kippt aus der Ebene,
+**S6c** Animationen Bild für Bild mit der Studie vergleichen, **S6d** Florians Reglerwerte (er kopiert sie in der Studie mit „Werte
+kopieren“).
 
 **S7 Verdecktes grün.** Linien hinter der Form zeigt jede Ansicht grün und fein (wie die Studie), die vorderen schwarz; an Kreuzungen
 mit dem Umriss wechselt es weich. Gerechnet je Probe aus der Haut des Werks (Strahl in Blickrichtung der Ansicht). *Probe:* Bild der
