@@ -1,9 +1,32 @@
-# Übergabe: Ozzy, das Maskottchen (Stand 17.11.2026, Runde 4)
+# Übergabe: Ozzy, das Maskottchen (Stand 17.11.2026, Runde 5)
 
 Zweig `claude/maskottchen`, Arbeitsbaum `.claude/worktrees/maskottchen`, Seite `apps/editor/maskottchen.html` („Ozzy läuft“),
 Eintrag `maskottchen` in `.claude/launch.json` (Port 5207). Plan: [`docs/plans/2026-11-16-ozzy-maskottchen.md`](../../plans/2026-11-16-ozzy-maskottchen.md),
 Recherche: [`docs/research/2026-11-16-ozzy-morph-und-animation.md`](../../research/2026-11-16-ozzy-morph-und-animation.md).
-Prüfbilder: `docs/progress/maskottchen/` (Runde 3: `2026-11-16-r3-*`, Runde 4: `2026-11-17-r4-*`).
+Prüfbilder: `docs/progress/maskottchen/` (Runde 3: `2026-11-16-r3-*`, Runde 4: `2026-11-17-r4-*`, Runde 5: `2026-11-17-r5-*`).
+
+## Runde 5 (17.11.): Tempo, Gelände je Fuß, Übergänge ohne Sprung
+
+- **Tempo** (`fluessig.ts`, `buehne.ts`): Die Figur liegt ganz auf der Grafikkarte in ihrer eigenen Ebene (WebGL2). Die Maske wird als
+  Schablone gefüllt (Fächer zählen die Umläufe wie „nonzero“), mit Mehrfachabtastung, nur im Rahmen der Figur. Keine Kopien
+  Canvas ↔ Grafikkarte mehr (die kosteten in Safari rund 30 ms je Bild). WebKit in Mac-Größe: 43 → 17 ms je Bild, 60 Bilder/s, auch
+  in iPhone-Größe. Prüfblätter und Aufnahme kopieren die Figur in den Grund (`buehne.inGrund`); Schrift liegt auf der oberen Ebene
+  (`schriftCtx`).
+- **Glätten ohne Treppen:** Das große Weichzeichnen läuft auf einer verkleinerten Stufe (Mittel aus 2 × 2, bis σ 3–6 Punkte misst)
+  und wird als B-Spline gelesen. Vorher tastete es die scharfe Maske in Sprüngen ab, die Brücken (Hals, Schwanz, Bein am Bauch)
+  franzten treppig aus (`2026-11-17-r5-bruecken-*`).
+- **Gelände je Fuß** (`spieler.ts`, `figur.ts`, `clips.ts`, `spiel.ts`):
+  - Der Spieler kennt den Boden (`bodenFn`: im Spiel die Plattformen und neu Rampen; sonst die Stufen der Treppen-Clips). Jeder Fuß steht auf dem Boden unter seiner Sohle; stehende Füße haften, ein neuer Boden kommt weich nach.
+  - Der Körper neigt sich nach dem Gelände (`gelaendeNicken`, `kippen`: die Beine bleiben dabei in der Welt stehen).
+  - Ein stehender Fuß streckt sich zu seinem Boden, bis er abhebt (Kanal `reichen`, beim Stolpern 0).
+  - Der Gang plant Tritte: Jeder Fuß setzt an einer festen Stelle auf, weicht Kanten aus (Schritt kürzer oder länger, höchstens 110) und hebt die ganze Sohle über das Gelände (Kanal `bahn`). Klack nur, wenn ein Fuß im Clip aufgesetzt hat.
+  - Im Spiel nimmt er Stufen bis 110 im Gang (Bordstein 90, Absatz 110 nach einer Rampe), 110–320 klettert er, höhere springt er.
+- **Löser ohne Ruck:** Ziel-Nicken und Höhe werden kritisch gedämpft nachgeführt (`nickenZiel`, `kippenAuf`, `hoeheSetzen`); die
+  Federn rechnen in der Welt (ein Wechsel des Grunds stößt sie nicht an).
+- **Übergänge mit Trägheit** (`uebergang = 'traegheit'`, Schalter `'blenden'` für das alte Überblenden): Der neue Clip gilt sofort,
+  der Unterschied zum alten (Lage und Schwung je Kanal) klingt als Polynom 5. Grades ab; der Schwung rollt aus.
+- **Proben:** `tempo.mjs` (Bildabstände je Motor und Größe), `nebeneinander.mjs` (Vorher/Nachher), `spielbilder.mjs` (echter Takt
+  im Spiel), Prüfblatt `ART=spiel VON=… [ALT=1]` (Gelände; `ALT=1` rechnet wie bisher mit allen Füßen auf einer Höhe).
 
 ## Was steht
 
@@ -72,6 +95,10 @@ Prüfbilder: `docs/progress/maskottchen/` (Runde 3: `2026-11-16-r3-*`, Runde 4: 
   - Das Kinn ist zu rund, nicht wie die Vorlage von der Seite.
   - Um den Schwanz soll keine zweite Outline liegen; lieber das Loch vergrößern, wenn der Ring im Körper aufgeht.
 
+- 17.11. (Runde 5): „Was mich gerade am meisten stört, ist die Performance, und Ozzy sollte dynamisch auf die Physik reagieren
+  können, also wissen, wann er mit den Vorder- oder Hinterbeinen höher stehen muss, und alles muss noch dynamischer sein und
+  perfekt ohne Sprung und direkter ineinander überlaufen.“ Genauere Vorlagen für die Formen schickt er als AI/SVG.
+
 ## Offen
 
 1. Kopf oben zwischen 40° und 70°: kleine weiße Kerben zwischen Ohr, Haarkappe und Gesichtsrand (Teile morphen getrennt). Eine
@@ -79,3 +106,8 @@ Prüfbilder: `docs/progress/maskottchen/` (Runde 3: `2026-11-16-r3-*`, Runde 4: 
 2. Kinnhaken bei starkem Nicken: Er knickt leicht, wo Kopf und Brust ihn ziehen.
 3. Im Gang bleibt eine winzige Stufe, wo eine schwebende Schattensohle neben der stehenden aufsetzt (Hub 3).
 4. Witz und Timing (Laufen, Eilen, Stolpern, Stufen) beurteilt Florian live; Stärke der Federn und Glätte sind Stellgrößen.
+5. Runde 5:
+   - Beim Hinabsteigen der 260er-Stufe sackt der Körper vorn um rund 100 ab, wenn der nahe Vorderfuß abhebt (Choreografie des Kletter-Clips; jetzt über 0,1 s statt in einem Bild).
+   - Beim Eilen über eine 110er-Stufe hebt sich ein Fuß in 3 Bildern um 128 (der Trab-Schritt ist kurz).
+   - Weicht ein Tritt einer Kante weit aus, steht das Bein am Ende bis 33° schräg.
+   - Florians AI/SVG-Vorlagen für die Formen einarbeiten.

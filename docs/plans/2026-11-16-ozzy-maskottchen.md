@@ -91,9 +91,9 @@ und direkter ineinander überlaufen.“ (Genauere Vorlagen für die Formen schic
 | --- | --- | --- |
 | 1. Tempo messen | `tempo.mjs`: Bildabstände in Chrome und WebKit (Safari), Mac- und iPhone-Größe | WebKit 43 ms je Bild, davon 31 ms Kopien Canvas ↔ Grafikkarte |
 | 2. Figur ganz auf der Grafikkarte | gleiche Ansicht alt/neu, Unterschied in Bildpunkten; Tempo erneut | 17 ms (60 Bilder/s) auch in WebKit; dabei Treppen in den Brücken gefunden und behoben (verkleinert weichzeichnen, B-Spline) |
-| 3. Gelände je Fuß | Blatt: Laufen über Bordstein und Rampe, Stehen an der Kante (vorn höher, hinten höher); Spiel: über kleine Stufen gehen | |
-| 4. Übergänge ohne Sprung | Kurven je Kanal über einen Wechsel (Lage und Geschwindigkeit stetig), Blatt der Übergänge | |
-| 5. Löser ohne Springen | Nicken und Höhe über die Zeit im Gang auf Gelände: keine Sprünge zwischen zwei Bildern | |
+| 3. Gelände je Fuß | Blatt: Laufen über Bordstein und Rampe, Stehen an der Kante (vorn höher, hinten höher); Spiel: über kleine Stufen gehen | gebaut (1fafe70c, ef53762e): Bordstein, Rampe, 110er-Stufe im Gang; Vorher/Nachher `2026-11-17-r5-gelaende-*` |
+| 4. Übergänge ohne Sprung | Kurven je Kanal über einen Wechsel (Lage und Geschwindigkeit stetig), Blatt der Übergänge | Trägheit statt Überblenden: größter Knick am Kopf an 16 Wechseln 3,8 statt bis 59,6 |
+| 5. Löser ohne Springen | Nicken und Höhe über die Zeit im Gang auf Gelände: keine Sprünge zwischen zwei Bildern | Nicken springt höchstens 0,6° je Bild (vorher 2,6°), Höhe ≤ 5,4 im Gang wie auf ebenem Boden |
 
 Bau:
 - **Gelände je Fuß:** Der Spieler kennt den Boden (Spiel: Plattformen und Rampen; Bibliothek/Filmstreifen: die Stufen der
