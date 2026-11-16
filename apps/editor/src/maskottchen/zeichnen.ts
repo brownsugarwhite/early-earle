@@ -1,5 +1,5 @@
-// Zeichnen: jedes Teil als geschlossener Pfad. Glatte Stellen als Catmull-Rom (in kubische Bézier-Stücke umgerechnet),
-// an Ecken knickt der Pfad (einseitige Tangenten). Dasselbe als SVG für die Ausgabe.
+// Zeichnen: Bézier-Teile direkt aus Ankern und Griffen (wie in Illustrator), Vielecke (Gips, Fenster) als Linienzug.
+// Dasselbe als SVG für die Ausgabe.
 import type { Zeichenteil } from './figur';
 
 export interface Farben {
@@ -11,41 +11,22 @@ export const LOGO_FARBEN: Farben = { schwarz: '#000000', weiss: '#ffffff' };
 type Ziel = { moveTo(x: number, y: number): void; lineTo(x: number, y: number): void; bezierCurveTo(a: number, b: number, c: number, d: number, e: number, f: number): void; closePath(): void };
 
 export function pfadAus(t: Zeichenteil, ziel: Ziel): void {
-  const { p, n, ecken } = t;
+  const { p, n } = t;
   if (n < 2) return;
-  if (ecken === 'alle') {
+  if (t.art === 'vieleck') {
     ziel.moveTo(p[0]!, p[1]!);
     for (let i = 1; i < n; i++) ziel.lineTo(p[i * 2]!, p[i * 2 + 1]!);
     ziel.closePath();
     return;
   }
-  const x = (i: number) => p[((i + n) % n) * 2]!;
-  const y = (i: number) => p[((i + n) % n) * 2 + 1]!;
-  // Tangenten (ein- und ausgehend): glatt nach Catmull-Rom; an Ecken (Stärke g) zur Hälfte der Nachbarstrecke gezogen,
-  // damit eine Spitze spitz bleibt. Die Stärke geht beim Morphen stetig mit, Knicke blenden also ein und aus.
-  const tin = new Float32Array(n * 2);
-  const tout = new Float32Array(n * 2);
-  for (let i = 0; i < n; i++) {
-    const tx = (x(i + 1) - x(i - 1)) / 2;
-    const ty = (y(i + 1) - y(i - 1)) / 2;
-    const g = ecken ? ecken[i]! : 0;
-    if (g > 0) {
-      tin[i * 2] = tx + ((x(i) - x(i - 1)) * 0.5 - tx) * g;
-      tin[i * 2 + 1] = ty + ((y(i) - y(i - 1)) * 0.5 - ty) * g;
-      tout[i * 2] = tx + ((x(i + 1) - x(i)) * 0.5 - tx) * g;
-      tout[i * 2 + 1] = ty + ((y(i + 1) - y(i)) * 0.5 - ty) * g;
-    } else {
-      tin[i * 2] = tout[i * 2] = tx;
-      tin[i * 2 + 1] = tout[i * 2 + 1] = ty;
-    }
-  }
-  ziel.moveTo(x(0), y(0));
+  ziel.moveTo(p[0]!, p[1]!);
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n;
-    const dx = x(j) - x(i);
-    const dy = y(j) - y(i);
-    if (dx * dx + dy * dy < 1e-4) continue;
-    ziel.bezierCurveTo(x(i) + tout[i * 2]! / 3, y(i) + tout[i * 2 + 1]! / 3, x(j) - tin[j * 2]! / 3, y(j) - tin[j * 2 + 1]! / 3, x(j), y(j));
+    const ax = p[i * 6]!;
+    const ay = p[i * 6 + 1]!;
+    const bx = p[j * 6]!;
+    const by = p[j * 6 + 1]!;
+    ziel.bezierCurveTo(ax + p[i * 6 + 4]!, ay + p[i * 6 + 5]!, bx + p[j * 6 + 2]!, by + p[j * 6 + 3]!, bx, by);
   }
   ziel.closePath();
 }

@@ -20,7 +20,7 @@ export class Buehne {
   farben: Farben = { schwarz: '#1f1a17', weiss: '#ffffff' };
   hintergrund = '#ffffff';
   /** Glätte der flüssigen Stufe in Welteinheiten (Logo-Bildpunkten); 0 = aus */
-  glaette = 7;
+  glaette = 0;
   private figurGezeichnet = false;
 
   constructor(grund: HTMLCanvasElement, figurEbene: HTMLCanvasElement, oben: HTMLCanvasElement) {
