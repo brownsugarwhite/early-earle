@@ -203,6 +203,13 @@ Florian: „ja anpassen“ → die Felder liegen seit `2d2d88a3` so. Film als Be
 [vorher](../progress/ozzy/2026-11-16-vier-vorher.mp4), [nachher](../progress/ozzy/2026-11-16-vier-auffalten.mp4). Die Wände klappen um ihre
 Kanten im Raum (ohne Zusammenziehen), ab drei Fünfteln setzen sie sich in ihre Felder; nichts doppelt. Zu sehen: Der Boden verlässt
 beim Aufklappen kurz den Bildrand. Sein Urteil entscheidet, ob es Standard wird.
+Florian zum Film: „das aufklappen sieht nicht gut aus. Die seiten müssen wirklich aufklappen und die projektionen dabei auf der fläche in
+position sliden. Das muss alles in einer gleichmäßigen bewegung erfolgen. Momentan wackelt es und ist von der dynamik schlechter als
+vorher“. **Neuer Ansatz:** Die Felder sind ein aufgeklapptes Kistennetz (Seite, links an der senkrechten Teilerlinie die Front, unten an
+der waagrechten das Top). Eine eigene Kamera für die Zeichnungen fährt in einer Bewegung (eine Kurve für alles) vom Raum in die
+parallele Ansicht auf dieses Netz; Front und Boden drehen dabei um ihre Kanten, deren Lage von der Ecke zur Teilerlinie gleitet, und
+jede Zeichnung gleitet auf ihrer Wand an ihren Platz. Am Ende liegt alles genau in den Feldern (kein Nachschieben). Die Blase gleitet
+mit der Kamera des Raums ins Raumfeld. Die Ränder der Wände sind unterwegs als Haarlinien zu sehen.
 
 **S11 Sichern.** Im Menü „Ozzy“: Sichern unter einem Namen (neu), Überschreiben nur nach Frage; ⌘S. *Probe:* sichern, neu laden,
 gleich.
