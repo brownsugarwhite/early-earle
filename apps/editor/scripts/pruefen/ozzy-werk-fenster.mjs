@@ -22,7 +22,7 @@ seite.on('console', (m) => {
   if (m.type() === 'error') fehler.push(m.text());
 });
 seite.on('pageerror', (e) => fehler.push(String(e)));
-await seite.goto(`${basis}?bild=1`);
+await seite.goto(`${basis}?bild=1&ohneLinie=0`);
 await seite.waitForFunction(() => !!window.__ozzy);
 await seite.evaluate(() => document.fonts.ready);
 const O = (f, ...a) => seite.evaluate(([f2, a2]) => window.__ozzy[f2](...a2), [f, a]);

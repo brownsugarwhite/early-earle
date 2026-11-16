@@ -462,3 +462,18 @@ body.bild #hinweis,
 body.bild #regler {
   display: none;
 }
+
+/* S9: Schalter im Menü (Linie an der Spiegelkante) */
+.schalter {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 2px 0 10px;
+  color: var(--tinte);
+  cursor: pointer;
+  user-select: none;
+}
+.schalter input {
+  margin: 0;
+  accent-color: var(--tinte);
+}

@@ -233,7 +233,17 @@ let werkForm: { stand: number; zurueck: number; geladen?: string; ohneLinie?: bo
  * die Linie der Mitte (ein Handgriff des Werks), sobald die Haut des Werks gezeigt wird; die Haut bleibt, wie sie ist, bis eine Linie kommt.
  */
 let hautKopie: Float64Array | null = null;
-const OHNE_LINIE = new URLSearchParams(location.search).get('ohneLinie') === '1';
+/** S9 (Florian 16.11. abends: „ohne linie als standard und ein schalter im menü für mit linie“): im Menü gemerkt; `?ohneLinie=0|1` für Proben */
+let mitLinie = ((): boolean => {
+  const u = new URLSearchParams(location.search).get('ohneLinie');
+  if (u === '0') return true;
+  if (u === '1') return false;
+  try {
+    return localStorage.getItem('ozzy.mitLinie') === '1';
+  } catch {
+    return false;
+  }
+})();
 /** Übergabe von der Blase: je Rechenpunkt des Werks drei Punkte der Blase und ihre Gewichte */
 let uebergabe: { koerper: Koerper; haut: typeof werk.haut; idx: Int32Array; gew: Float32Array; lagen: Float64Array } | null = null;
 /** zeigt die Seifenhaut die Haut des Werks; muss sie neu gerechnet werden (auch: in den Stufen der Ruhe); wann zuletzt geändert */
@@ -758,7 +768,7 @@ function werkBild(dt: number, m: Moment | null): boolean {
     else haut.blaseErsetzen(werkHaut.netz);
     werkGezeigt = true;
     // S9: ohne Linie an der Spiegelkante (zur Wahl): nach dem Aufblasen die Linie der Mitte löschen, einmal je Form
-    if (OHNE_LINIE && werkForm && !werkForm.ohneLinie && werkForm.geladen === undefined && !werk.zug) {
+    if (!mitLinie && werkForm && !werkForm.ohneLinie && werkForm.geladen === undefined && !werk.zug) {
       const m = werk.loops.find((l) => l.art === 'mitte');
       if (m) {
         werk.G.auswahl = [{ l: m.id, i: -1 }];
@@ -1073,7 +1083,12 @@ function seitenLinie(schritt: number): { pfad: number[]; punkte: { i: number; x:
 }
 
 /** Umriss der Form von einer Achse (0 Front, 1 Top): der Haut des Werks, sobald sie zu sehen ist, sonst der Blase */
-function umrissJetzt(achse: 0 | 1): Float32Array {
+/** S9: Hat das Werk eine Linie der Mitte? Ohne sie zeigt auch die Seite den Umriss der Haut (wie Front und Top) */
+function mitteDa(): boolean {
+  return werk.loops.some((l) => l.art === 'mitte');
+}
+
+function umrissJetzt(achse: 0 | 1 | 2): Float32Array {
   // während das Werk rechnet, darf der Umriss ein paar Bilder alt sein (`werkHaut.umrissVeraltet` holt das nächste Bild)
   return werkGezeigt ? werkHaut.umriss(achse, werkBeschaeftigt()) : koerper!.umriss(achse);
 }
@@ -1441,7 +1456,7 @@ function wandLinien(vp: Matrix4, m: Moment): void {
     const st = staerke[achse];
     if (st < 0.01) continue;
     // mit dem Werk zeichnet `werkLinien` alle Linien; hier bleibt in Front und Top der Umriss der Haut
-    if (werkGezeigt && achse === 2) continue;
+    if (werkGezeigt && achse === 2 && mitteDa()) continue;
     const w = achse * 2 + (s[achse] > 0 ? 1 : 0);
     const ueber = wandSicht[w]!;
     const lage = mitte[achse]! + s[achse] * e.L;
@@ -1471,7 +1486,7 @@ function wandLinien(vp: Matrix4, m: Moment): void {
         K.punkt(px, py, linienWerte.punktRadius * D * gross * st * (0.55 + 0.45 * ueber));
       }
     } else {
-      const seg = achse === 2 ? k.umriss(2) : umrissJetzt(achse);
+      const seg = achse === 2 && !werkGezeigt ? k.umriss(2) : umrissJetzt(achse);
       const g = K.neueGruppe();
       for (let i = 0; i < seg.length; i += 6) {
         const [ax, ay] = legen(seg[i]!, seg[i + 1]!, seg[i + 2]!);
@@ -1515,7 +1530,7 @@ function linienDerAnsicht(vp: Matrix4): void {
   const t = wendenSicht ? 1 : Math.min(1, Math.max(0, (Math.abs(blick.dot(achse)) - 0.97) / 0.025));
   const s = flach * flach * t * t * (3 - 2 * t);
   if (s < 0.01) return;
-  if (werkGezeigt && ansicht === 'seite') return;
+  if (werkGezeigt && ansicht === 'seite' && mitteDa()) return;
   const r0 = (linienWerte.umriss / 2) * D * s;
   const linie = ansicht === 'seite' ? seitenLinie(1.5) : null;
   if (linie) {
@@ -1532,9 +1547,9 @@ function linienDerAnsicht(vp: Matrix4): void {
       const gross = p.i === punktUnterZeiger || punktZug?.i === p.i ? linienWerte.tropfen : 1;
       K.punkt(px, py, linienWerte.punktRadius * D * gross * s);
     }
-  } else if (ansicht === 'front' || ansicht === 'top') {
+  } else if (ansicht === 'front' || ansicht === 'top' || (ansicht === 'seite' && werkGezeigt)) {
     void k;
-    const seg = umrissJetzt(ansicht === 'front' ? 0 : 1);
+    const seg = umrissJetzt(ansicht === 'front' ? 0 : ansicht === 'top' ? 1 : 2);
     const g = K.neueGruppe();
     for (let i = 0; i < seg.length; i += 6) {
       const [ax, ay] = projizieren(new Vector3(seg[i]!, seg[i + 1]!, seg[i + 2]!), vp);
@@ -1572,7 +1587,7 @@ function felderLinien(vp: Matrix4): void {
     return [wx + (fx - wx) * v, wy + (fy - wy) * v];
   };
   for (const n of ['seite', 'front', 'top'] as const) {
-    if (werkGezeigt && n === 'seite') continue;
+    if (werkGezeigt && n === 'seite' && mitteDa()) continue;
     const linie = n === 'seite' ? seitenLinie(2) : null;
     if (linie) {
       const xs: number[] = [];
@@ -1588,9 +1603,9 @@ function felderLinien(vp: Matrix4): void {
         const gross = p.i === punktUnterZeiger || punktZug?.i === p.i ? linienWerte.tropfen : 1;
         K.punkt(px, py, linienWerte.punktRadius * D * gross);
       }
-    } else if (n !== 'seite') {
+    } else if (n !== 'seite' || werkGezeigt) {
       void k;
-      const seg = umrissJetzt(n === 'front' ? 0 : 1);
+      const seg = umrissJetzt(n === 'front' ? 0 : n === 'top' ? 1 : 2);
       const g = K.neueGruppe();
       for (let i = 0; i < seg.length; i += 6) {
         const [ax, ay] = mischen(n, new Vector3(seg[i]!, seg[i + 1]!, seg[i + 2]!));
@@ -2837,6 +2852,19 @@ function waehlenTaste(w: Werkzeug): void {
 // ---------- Leiste, Menü, Feinregler ----------
 
 const leiste = new Leiste(document.body, werkzeugGewaehlt, muell);
+
+// S9: Schalter im Menü „Linie an der Spiegelkante“ (gilt beim nächsten Aufblasen)
+const mitLinieSchalter = $<HTMLInputElement>('mit-linie');
+mitLinieSchalter.checked = mitLinie;
+mitLinieSchalter.addEventListener('change', () => {
+  mitLinie = mitLinieSchalter.checked;
+  try {
+    localStorage.setItem('ozzy.mitLinie', mitLinie ? '1' : '0');
+  } catch {
+    // ohne Speicher gilt es nur bis zum Neuladen
+  }
+  werk.G.meldung = mitLinie ? 'Beim nächsten Aufblasen bleibt die Linie an der Spiegelkante' : 'Beim nächsten Aufblasen ohne Linie an der Spiegelkante';
+});
 
 const regler = $<HTMLElement>('regler');
 const marke = $<HTMLButtonElement>('marke');
