@@ -1,5 +1,11 @@
 # Übergabe (Stand 14.11.2026, 14:10 Uhr: **Schritt 5, Etappe 2 und 3 sind im Bau-Fenster (5197) gebaut** (Abschnitte 7.18, 7.19 und Plan): In der Pose rechnet das Fenster mit ihrer Ruhe, die Knochen drehen nur die Anzeige; am geformten Maul ist die Pose eine Form wie die Grundform. **Etappe 3 (Florian: „Etappe 3“):** Die Pose geht mit der Grundform mit. Verlassen und wieder betreten gibt dieselbe Pose (vorher bis 1,9 anders, die Lippenlinie 2 neben ihrem Pfad); Punkte der Grundform ziehen, ein neuer Punkt auf einer Linie, eine neue Linie: Der Zug an der Lippe bleibt, die Linien der Pose behalten ihren Verlauf (nach einem neuen Punkt 0,03 statt 2,44). Probe an „maul handgemacht test“: alle Punkte erfüllt. Offen in Etappe 2: Beim Zug an der Kieferspitze schlagen 8 bis 10 kleine Dreiecke an der Mitte um (in der Grundform auch). Offen in Schritt 5: Etappe 4 und 5. Florians Urteil steht aus; in seinem Fenster (5194) ist davon nichts. **Davor am 14.11.:** der Zwischenschritt „Abzweigungen“ (7.17; Florian zur zweiten Fassung: „Ja, weiter Schritt 5“). **Reihenfolge (Florian, 14.11.):** Abzweigungen, Schritt 5, dann 4c. **Schritt 6 (Maul) ist angehalten** und bekommt eine eigene Sitzung, vielleicht zusammen mit Zähnen (7.16). Schritt 7 kommt später, ob und wie ist offen. Zu Schritt 1, 2, 4a und 4b: „das sieht gut aus bis jetzt“)
 
+**Fortsetzung (17.11.2026):** Seit dem 16.11. wird auf `claude/ozzy` gebaut, mit dem Werk aus dieser Sitzung (Ozzy:
+[`docs/look/ozzy/UEBERGABE.md`](look/ozzy/UEBERGABE.md)). Was hier offen blieb, die Prüfung von Ozzy (Übernahme der Technik, Tempo,
+Vorschläge) und der Einstieg für die nächste Sitzung stehen in
+[`docs/research/2026-11-17-ozzy-pruefung-und-uebergabe.md`](research/2026-11-17-ozzy-pruefung-und-uebergabe.md). Der Text darunter ist
+der Stand vom 14.11.
+
 **Pause bis Dienstag, 17.11.2026** (Florian, 14.11., 14:20 Uhr: sein Wochenlimit ist fast voll; „Wir machen am Dienstag hier
 weiter. Ich sammle bis dahin Feedback für dich.“). Alles ist gesichert und gepusht: Code auf `claude/form-bau` (`08c5b111`),
 Dokumente auf der gemeinsamen Linie. **Zuerst am Dienstag: seine Rückmeldung zu Abzweigungen und zu Schritt 5, Etappe 2 und 3,
