@@ -1,7 +1,10 @@
 # Plan: Ozzy stabil und schnell (17.11.2026)
 
-**Stand: Entwurf zur Freigabe.** Gebaut ist nichts. Alle Zahlen kommen aus Messungen dieser Sitzung im Testbrowser; der Arbeitsbaum
-wurde dafür nicht geändert (die Versuche ändern nur das ausgelieferte Modul für einen Lauf). Messblatt mit allen Tabellen und Bildern:
+**Stand: freigegeben am 17.11. nachts** (Florian: „Du kannst loslegen.“), mit drei Antworten (Abschnitt 6): Der Spiegel-Schalter
+ruht („Lassen wir das mit dem mirror modifier fürs erste. müssen wir noch genauer definieren.“), Flächen meint das Feld zwischen den
+Linien („Bei Flächen meine ich A“), „Gleiten passt so.“ Gebaut wird in der Reihenfolge der Etappen; was gebaut ist, steht je Schritt
+unter **Gebaut**. Die Zahlen des Entwurfs kommen aus Messungen im Testbrowser; der Arbeitsbaum wurde dafür nicht geändert (die Versuche
+ändern nur das ausgelieferte Modul für einen Lauf). Messblatt mit allen Tabellen und Bildern:
 [`docs/progress/ozzy/2026-11-17-messen-karte-zug-p.md`](../progress/ozzy/2026-11-17-messen-karte-zug-p.md).
 
 **Auftrag (Florian, 17.11. abends, gekürzt wörtlich):** „Die ganzen optimierungen und mene klarstelungen will ich in dieser sitzung
@@ -64,7 +67,7 @@ die bessere vorgehensweise ist. OK.“
 | A | Tempo I und die glatte Seifenhaut | Drehen pünktlich am Takt, der Zug deutlich flüssiger (rund 11 statt 19 ms je Bild), Seifenhaut ohne Scherben und in jeder Größe glatt |
 | B | Bedienung in Ozzy | Zeiger und Greifen direkt (Film zuerst), Wenden räumlich auch in den Feldern, Wireframe im Raum, die kleinen Stolpersteine weg |
 | C | Werkzeuge mit dem Kern | P überall gleich und gebogen rundum, Gleiten auf der Haut, Flächen wählen und bearbeiten; keine neuen umgeschlagenen Dreiecke |
-| D | Die Hälfte als Wahrheit, Spiegel-Schalter | die halbe Haut ganz (Schritt 4c), dein Schalter mit drei Stellungen |
+| D | Die Hälfte als Wahrheit (der Spiegel-Schalter ruht) | die halbe Haut ganz (Schritt 4c); der Schalter erst, wenn du ihn genauer beschrieben hast |
 | E | Tempo II | Löser aus dem Bildtakt, Haut auf der Grafikkarte: der Zug bei 120 |
 | F | Abschluss | `main.ts` aufgeteilt, Übergabe, vorbereitet für Maul, Posen und Teile |
 
@@ -100,10 +103,23 @@ mehrere Tage), nicht als Versprechen. Hält ein Beweis nach seinem Aufwand nicht
 
 **A0. Grundlinie (klein).** Das Messblatt von heute ist die Grundlinie. Dazu die Proben als eine Reihe (`ozzy-alle.mjs`: alle
 nacheinander, je Probe eine Zeile), damit nach jedem Schritt in sieben Minuten klar ist, dass nichts gebrochen ist.
+**Gebaut (17.11. nachts):** `apps/editor/scripts/pruefen/ozzy-alle.mjs` (alle oder nur die mit einem Wort im Namen).
 
 **A1. Dem Werk den Bildtakt richtig melden (klein).** Der Fehler aus dem Prüfbericht (3.1): Ozzy zeichnet nach `bildRechnen`, das Werk
 hält sein Bild für billig und rechnet bis zu 12 ms. Gebaut wird ein Setzer im Werk für „was das Bild sonst kostet“ und der Takt des
 Bildschirms statt fester 14,5 ms. Probe: `ozzy-zug-messen` (gemessen im Versuch: 18,8 → 14,6 ms; „maul handgemacht test“ 15,7 → 12,7).
+**Gebaut (17.11. nachts):** `werk.bildRestMelden` (Ozzy meldet am Ende jedes Bilds, was es ohne die Runden des Lösers gekostet hat).
+Gemessen: „strange bird“ 18,8 / 26,4 → **14,6 / 21,8 ms** je Bild im Zug (Werk 10,8 → 5,9), „maul handgemacht test“ 15,7 / 20,5 →
+12,9 / 19,7.
+- **Dabei gefunden und behoben:** Mit dem richtigen Bildtakt lief der Zug der Probe `ozzy-werk` (eine frische Form mit nur einer
+  Linie) in fünf von sechs Läufen davon. Ein neuer Löser bewegt die Haut in seinen ersten Runden weit (1,65 Einheiten je Runde,
+  ab etwa der sechsten 0,04); bekam er dort nur eine oder zwei Runden je Bild, während die Maus weiterzog, lief die Haut auseinander.
+  Jetzt laufen die ersten 16 Runden eines neuen Lösers mit dem festen Budget, erst danach gilt der Bildtakt (`ANLAUF_RUNDEN` im
+  Werk). Danach: acht von acht Läufen gut, die Probe viermal gut. Dass ein Löser so empfindlich anläuft, gehört zu C1.
+- **Nicht gebaut:** der Takt aus dem Bildschirm. Für 60 und 120 Bilder je Sekunde ergibt die Regel (87 % des Takts, bei schnellen
+  Bildschirmen im Zug jedes zweite Bild) genau die 14,5 ms von heute; ein eigener Takt lohnt erst mit Etappe E.
+- Beobachtet, für C1: An der Form der Probe (Fisch aus sieben Punkten) meldet das Werk nach dem Zug „Hier ließ sich das Netz nicht
+  aufräumen“ und zählt 27 umgeschlagene Dreiecke, mit und ohne A1.
 
 **A2. Seifenhaut stetig (klein bis mittel).** Du siehst: keine Scherben mehr, die Farben fließen; beim Ziehen zeigt die Dehnung weich,
 wo die Haut gestreckt wird.
@@ -198,14 +214,16 @@ verschieben, ohne dass die Form sich ändert. Zwei Fälle:
 - **Beweis im Kern, Kriterium vorher festgelegt:** an deinen drei Formen je eine weiche Linie um 10 und um 30 Einheiten gleiten
   lassen, dann über die ganze Haut bis zur Ruhe rechnen. Die Haut darf sich um höchstens 0,5 Einheiten bewegen (ein Viertel
   Bildpunkt bei normaler Größe). Hält das nicht, zeige ich dir Bild und Zahlen, und wir entscheiden, ob „fast unverändert“ reicht.
-- Bedienung (Vorschlag): ⌘ halten und ziehen gleitet (Punkt, Linie, Auswahl); auf dem iPad ein Knopf. Danach ein Film.
+- Bedienung: ⌘ halten und ziehen gleitet (Punkt, Linie, Auswahl); auf dem iPad ein Knopf. Danach ein Film. Florian, 17.11. nachts:
+  „Gleiten passt so.“ (⌘ + Ziehen; eine Kante wandert mit ihrer Linie, eine weiche Linie lässt die Form stehen, soweit der Beweis es
+  hergibt).
 
 **C4. Flächen wählen und bearbeiten (mittel; Bild zuerst).** Das ist Schritt 7 des Kern-Plans („Auswahl wie in Blender“): Punkte,
 Linienstücke und Flächen. Eine Fläche ist das Feld der Haut zwischen Linien; gewählt meint sie die Punkte auf ihrem Rand.
 - Du siehst: Ein Klick in ein Feld zwischen Linien wählt es (es tönt sich); an der gewählten Fläche ziehen bewegt sie; G, S und R
   wirken auf die Auswahl (auch für Punkte und Linien, das fehlt in Ozzy bisher). Ziehen an einer nicht gewählten Stelle dreht wie
   bisher. In jeder Ansicht gleich.
-- Ob ich „Flächen bearbeiten“ richtig verstehe, ist Frage 2 in Abschnitt 6.
+- Florian, 17.11. nachts: „Bei Flächen meine ich A“ (das Feld zwischen den Linien, wie die Flächenauswahl in Blender).
 
 ### Etappe D: Die Hälfte als Wahrheit und der Spiegel-Schalter
 
@@ -216,7 +234,9 @@ nicht mehr geben). Alte gesicherte Formen werden beim Laden zur Hälfte. Probe j
 bis 0,1), Zeiten im Kern, Bilder im Fenster; dazu eine größere Prüfform (ein Körper mit vier angesetzten Teilen), damit die Reserve
 sichtbar wird.
 
-**D2. Der Spiegel-Schalter (mittel; Beweis im Kern zuerst).** Ein Tropfen in der Leiste mit drei Stellungen, reihum:
+**D2. Der Spiegel-Schalter: ruht** (Florian, 17.11. nachts: „Lassen wir das mit dem mirror modifier fürs erste. müssen wir noch
+genauer definieren.“). Nicht bauen, bevor er die Stellungen beschrieben hat. Der Entwurf, wie er zur Freigabe vorlag (mittel; Beweis
+im Kern zuerst): ein Tropfen in der Leiste mit drei Stellungen, reihum:
 1. **Spiegel an, Clipping an (Standard).** Nichts geht durch die Mitte. Was die Mitte erreicht, verschmilzt mit seinem Spiegelbild:
    In der Mitte entsteht ein Loop, sein Rand ist rund.
 2. **Spiegel an, Clipping aus.** Nichts Neues verschmilzt; Teile dürfen durch die Mitte und durchdringen ihr Spiegelbild.
@@ -263,7 +283,10 @@ Spiegelbilds (die Pose mit zwei freien Seiten braucht sie); ein gemeinsamer Weg,
   unberührt. Jede Änderung unter `src` lädt Ozzy auf 5205 neu; Versuche laufen deshalb weiter als Flicken oder hinter einem Schalter.
 - Nach jeder Etappe: Übergabe überschreiben, Stand in `CLAUDE.md`, deine Abnahme.
 
-## 6. Drei Fragen an dich
+## 6. Drei Fragen an dich (beantwortet am 17.11. nachts)
+
+**Antworten:** 1. Spiegel-Schalter: „du hast recht. Lassen wir das mit dem mirror modifier fürs erste. müssen wir noch genauer
+definieren.“ 2. „Bei Flächen meine ich A“. 3. „Gleiten passt so.“ Freigabe: „Du kannst loslegen.“ Die Fragen, wie sie gestellt waren:
 
 **Frage 1, Spiegel-Schalter.** So lese ich dich; stimmt das?
 - (a) Mit Clipping verschmilzt, was die Mitte erreicht, **von selbst beim Loslassen**, und der Rand ist **sofort rund**. Das ersetzt

@@ -12,6 +12,10 @@
 //      und die Importe `polygonFlaeche`, `umrissAbtasten` im Werk; in der Hülle der Prüfhaken `ablage.neuAusUmriss` und sein Import.
 //      Dazu (16.11. abends, Ozzy S6b, mit Florians Zustimmung): `griffImRaum` und `zugGriffRaum` vor `zugBewegen`, und in `zugBewegen`
 //      beim Griff `griffImRaum ? { ...griffImRaum } : inWelt(…)` statt `inWelt(…)`.
+//      Dazu (17.11., Plan „Ozzy stabil und schnell“, A1): `bildRestGemeldet` und `bildRestMelden` nach `bildGerechnetMs`, und in der
+//      letzten Zeile von `bildRechnen` `bildRestGemeldet ?? performance.now() - bildT0 - bildGerechnetMs` statt der Messung allein.
+//      Dazu der Anlauf eines neuen Lösers: `ANLAUF_RUNDEN`, `loeserRunden` und in `zugRechnen` das Zählen der Runden je Löser; der
+//      Bildtakt gilt dort erst ab `ANLAUF_RUNDEN` Runden.
 // Geprüft am 16.11.: Aus `kurven.ts` von 179dfa4a (mit Schritt 1) entstehen genau `werk.ts` und `kurven.ts` von 5039cead.
 import fs from 'node:fs';
 import { createRequire } from 'node:module';

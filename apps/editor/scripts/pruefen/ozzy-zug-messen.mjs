@@ -1,20 +1,14 @@
 // Ozzy, Plan „Ozzy stabil und schnell“ (17.11.2026): der Zug an der Wand der Seite (1,5 s), je Fassung. Keine Prüfung, ein Werkzeug.
 // Je Lauf: Rechnen je Bild (Median / 95 %), davon Werk, glatte Haut und Linien (Median), Abstand der Bilder (im Testbrowser an 60 Hz
-// gebunden). Fassungen:
-//   wie gebaut
-//   Bildtakt gemeldet   Ozzy meldet dem Werk, was sein Bild ohne die Runden des Lösers kostet (Flicken; Prüfbericht vom 17.11., 3.1)
-//   eine Stufe          die glatte Anzeige mit einer statt zwei Stufen (`?fein=1`)
-//   beides
+// gebunden). Fassungen (`FASSUNGEN=ist,stufe`, Standard nur `ist`):
+//   ist     wie gebaut
+//   stufe   die glatte Anzeige mit einer festen Stufe (`?fein=1`)
+// (Die Fassung „Bildtakt gemeldet“ des Messblatts vom 17.11. ist seit A1 gebaut: Ozzy meldet dem Werk, was sein Bild kostet.)
 // Aufruf aus apps/editor, Ozzy auf 5205: [FORMEN="strange bird,maul handgemacht test"] node scripts/pruefen/ozzy-zug-messen.mjs
 import { auf, quantil, z1 } from './ozzy-teile.mjs';
 
-const TAKT = {
-  '**/src/form/werk.ts*': [['performance.now() - bildT0 - bildGerechnetMs', '(globalThis.__bildRest ?? (performance.now() - bildT0 - bildGerechnetMs))']],
-  '**/src/ozzy/main.ts*': [['stat.bildMs = performance.now() - t0;', 'stat.bildMs = performance.now() - t0; globalThis.__bildRest = stat.bildMs - mess.teile[0];']],
-};
-
-const lauf = async (form, name, { takt = false, fein = '' } = {}) => {
-  const { browser, s, O, geladen, fehler } = await auf({ form, extra: fein ? `fein=${fein}` : '', flicken: takt ? TAKT : {} });
+const lauf = async (form, name, { fein = '' } = {}) => {
+  const { browser, s, O, geladen, fehler } = await auf({ form, extra: fein ? `fein=${fein}` : '' });
   await geladen();
   await s.waitForTimeout(2500);
   const L = await O('werkLinienDaten');
@@ -42,9 +36,8 @@ const lauf = async (form, name, { takt = false, fein = '' } = {}) => {
 };
 
 console.log('| Form | Fassung | Bilder | Rechnen je Bild (Median / 95 %) | Werk · Haut · Linien (Median) | Abstand (Median / 95 %) | Netz |\n| --- | --- | --- | --- | --- | --- | --- |');
+const FASSUNGEN = (process.env.FASSUNGEN ?? 'ist').split(',');
 for (const form of (process.env.FORMEN ?? 'strange bird,maul handgemacht test').split(',')) {
-  await lauf(form, 'wie gebaut');
-  await lauf(form, 'Bildtakt gemeldet', { takt: true });
-  await lauf(form, 'eine Stufe', { fein: '1' });
-  await lauf(form, 'Bildtakt + eine Stufe', { takt: true, fein: '1' });
+  if (FASSUNGEN.includes('ist')) await lauf(form, 'wie gebaut');
+  if (FASSUNGEN.includes('stufe')) await lauf(form, 'eine Stufe', { fein: '1' });
 }

@@ -268,6 +268,24 @@ export const BILD_MS = Number(new URLSearchParams(location.search).get('bildms')
 export let bildRestMs = 6;
 /** in diesem Bild hat der Zug gerechnet: so lange (für `bildRestMs`) */
 export let bildGerechnetMs = -1;
+/**
+ * Eine Hülle, die erst nach `bildRechnen` zeichnet (Ozzy), meldet hier nach jedem Bild, was es ohne die Runden des Zugs gekostet hat
+ * (ms); das zählt dann statt der Messung in `bildRechnen`. Ohne die Meldung fiel `bildRestMs` dort gegen null, und das Werk rechnete
+ * bis `BUDGET_MS` je Bild (17.11., Plan „Ozzy stabil und schnell“, A1). `null`: wieder selbst messen (das Prüffenster meldet nichts).
+ */
+let bildRestGemeldet: number | null = null;
+export function bildRestMelden(ms: number | null): void {
+  bildRestGemeldet = ms;
+}
+/**
+ * Anlauf (17.11., A1): Die ersten Runden eines neuen Lösers laufen ohne Rücksicht auf den Bildtakt, nur mit dem festen Budget. Ein
+ * neuer Löser bewegt die Haut in seinen ersten Runden weit (gemessen an einer Form mit nur einer Linie, 914 Punkte: 1,65 Einheiten je
+ * Runde, ab etwa der sechsten 0,04), und diese Runden dauern länger. Bekam er dort je Bild nur eine oder zwei, während die Maus
+ * weiterzog, lief die Haut davon (Probe `ozzy-werk`, fünf von sechs Läufen, sobald Ozzy seine Bildkosten meldete; mit dem festen
+ * Budget in keinem von sechs).
+ */
+export const ANLAUF_RUNDEN = 16;
+const loeserRunden = new WeakMap<LoopZug, number>();
 export const RUHE = 0.05;
 
 export const kreis = (r: number): UmrissPunkt[] => [
@@ -2924,12 +2942,14 @@ export function zugRechnen(): void {
       return;
     }
     z.nachRunden++;
+    const runden = (loeserRunden.get(z.loeser) ?? 0) + 1;
+    loeserRunden.set(z.loeser, runden);
     if (weg < RUHE || z.nachRunden >= NACH_RUNDEN) {
       z.offen = false;
       break;
     }
     const jetzt = performance.now();
-    if (jetzt - t0 + (jetzt - tr) > (BILD_MS > 0 ? Math.min(BUDGET_MS, BILD_MS - bildRestMs) : BUDGET_MS)) break;
+    if (jetzt - t0 + (jetzt - tr) > (BILD_MS > 0 && runden >= ANLAUF_RUNDEN ? Math.min(BUDGET_MS, BILD_MS - bildRestMs) : BUDGET_MS)) break;
   }
   bildGerechnetMs = performance.now() - t0;
   zeiten.push(performance.now() - t0);
@@ -5347,5 +5367,5 @@ export function bildRechnen(): void {
     anzeige.rendern();
   }
   // was dieses Bild außer den Runden des Zugs gekostet hat (nur Bilder, in denen der Zug gerechnet hat), gleitend gemittelt
-  if (bildGerechnetMs >= 0) bildRestMs += 0.2 * (Math.min(40, performance.now() - bildT0 - bildGerechnetMs) - bildRestMs);
+  if (bildGerechnetMs >= 0) bildRestMs += 0.2 * (Math.min(40, bildRestGemeldet ?? performance.now() - bildT0 - bildGerechnetMs) - bildRestMs);
 }

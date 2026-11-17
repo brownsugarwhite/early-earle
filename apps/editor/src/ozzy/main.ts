@@ -2365,6 +2365,9 @@ function bild(dt: number): boolean {
   if (meldung.text && performance.now() - meldung.seit < MELDUNG_MS) aktiv = true;
   if (hinweisSetzen(hm, istMeldung)) aktiv = true;
   stat.bildMs = performance.now() - t0;
+  // A1 (17.11.): dem Werk melden, was dieses Bild ohne die Runden seines Lösers gekostet hat. Ozzy zeichnet erst nach `bildRechnen`;
+  // ohne die Meldung hielt das Werk sein Bild für umsonst und rechnete bis 12 ms je Bild
+  werk.bildRestMelden(stat.bildMs - Math.max(0, werk.bildGerechnetMs));
   if (mess.an) {
     const t = performance.now();
     mess.bilder.push({ t, ms: stat.bildMs, abstand: mess.letzte ? t - mess.letzte : 0, diff, p99, netz: mess.netzWechsel, stufen: werkHaut.stufen, punkte: werk.haut.n, teile: [...mess.teile] });
