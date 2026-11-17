@@ -37,6 +37,8 @@ export interface Flaeche {
   enthaelt(x: number, y: number): boolean;
   /** S7: welche Seite ihrer Achse zum Betrachter zeigt (+1 oder −1); was dahinter unter der Haut liegt, ist verdeckt (grün, fein) */
   vorn?: number;
+  /** S17: Bereich der Anzeige (Feld der Vier Ansichten), an dessen Rand ihre Linien und Punkte abgeschnitten werden; fehlt: keiner */
+  bereich?: number;
 }
 
 /** S7: Tiefenkarte der Haut längs einer Achse: je Zelle die vorderste Tiefe (zum Betrachter hin), für verdeckte Linien */
@@ -720,6 +722,12 @@ export class WerkBlatt implements Raum {
   roentgenWert = 0;
   roentgen(): boolean {
     return this.roentgenWert > 0.5;
+  }
+
+  /** S17: der Bereich der Anzeige je Linie oder Punkt des Netzes: der ihrer Fläche (Feld der Vier Ansichten), sonst keiner */
+  bereich(art: 'linie' | 'punkt', i: number): number {
+    const fl = art === 'linie' ? this.linien[i]?.fl : this.anker[i]?.fl;
+    return fl === undefined ? 0 : (this.flaechen[fl]?.bereich ?? 0);
   }
 
   private verdeckteProben(P: LinienProben, k3: V3[][], stuecke: Stueck[], K: Karte | null, br: Breiten): void {

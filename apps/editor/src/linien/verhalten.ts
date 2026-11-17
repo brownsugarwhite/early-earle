@@ -168,6 +168,8 @@ export interface Raum extends Dreher, StiftWerk {
   bias(): number;
   /** Ozzy (S14, Röntgen): solange das gilt, greift man im Raum auch Verdecktes (Punkte und Linien hinter der Form) */
   roentgen?(): boolean;
+  /** Ozzy (S17): der Bereich der Anzeige, an dessen Rand eine Linie oder ein Punkt des Netzes abgeschnitten wird (0 = keiner) */
+  bereich?(art: 'linie' | 'punkt', i: number): number;
 }
 
 /**
@@ -1968,7 +1970,7 @@ export class Verhalten {
     const R = (r: number): number => r * s * D;
     let n = 0;
     /** art 0: Linie (harte Vereinigung), 1: Punkt, Tropfen, Hals (weich); schicht 2: nach Tiefe (z0, z1) */
-    const push = (x0: number, y0: number, x1: number, y1: number, r0: number, r1: number, gruppe: number, schicht: number, art: number, z0 = 0, z1 = 0): void => {
+    const push = (x0: number, y0: number, x1: number, y1: number, r0: number, r1: number, gruppe: number, schicht: number, art: number, z0 = 0, z1 = 0, bereich = 0): void => {
       if ((n + 1) * PRIM_FELDER > this.puffer.length) {
         const neu = new Float32Array(this.puffer.length * 2);
         neu.set(this.puffer);
@@ -1983,7 +1985,7 @@ export class Verhalten {
       b[o + 4] = r0;
       b[o + 5] = r1;
       b[o + 6] = gruppe;
-      b[o + 7] = schicht + 4 * art;
+      b[o + 7] = schicht + 4 * art + 8 * bereich;
       b[o + 8] = z0;
       b[o + 9] = z1;
       b[o + 10] = 0;
@@ -2001,6 +2003,7 @@ export class Verhalten {
       const vx = new Float32Array(P.n);
       const vy = new Float32Array(P.n);
       this.neigung(li, P, vx, vy);
+      const bl = this.raum?.bereich?.('linie', li) ?? 0;
       for (const sch of raum ? [2] : [0, 1]) {
         let etwas = false;
         for (let k = 0; k + 1 < P.n; k++) {
@@ -2017,6 +2020,7 @@ export class Verhalten {
             0,
             P.z?.[k] ?? 0,
             P.z?.[k + 1] ?? 0,
+            bl,
           );
           etwas = true;
         }
@@ -2030,7 +2034,7 @@ export class Verhalten {
       if (!p.sichtbar || alsTropfen.has(pi)) return;
       // gewählt: ein Tropfen, ein wenig größer
       const r = w.punktRadius * (1 + 0.6 * (this.auswahlF.get(pi)?.x ?? 0));
-      push(X(p.x), Y(p.y), X(p.x), Y(p.y), R(r), R(r), gruppe++, raum ? 2 : p.verdeckt ? 1 : 0, 1, p.z ?? 0, p.z ?? 0);
+      push(X(p.x), Y(p.y), X(p.x), Y(p.y), R(r), R(r), gruppe++, raum ? 2 : p.verdeckt ? 1 : 0, 1, p.z ?? 0, p.z ?? 0, this.raum?.bereich?.('punkt', pi) ?? 0);
     });
     // Tropfen mit Hals
     const felder: number[] = [];

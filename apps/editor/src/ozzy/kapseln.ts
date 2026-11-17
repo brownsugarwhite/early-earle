@@ -3,7 +3,8 @@
  * Blatt mit P) lässt sich übernehmen und um eigene Kapseln ergänzen (Freihand, Formen, Wände, Felder, Teiler).
  *
  * Aufbau je Kapsel wie in der Anzeige: x0, y0, x1, y1 | r0, r1, Gruppe, Art | z0, z1, –, –. Art = Schicht (0 Tinte, 1 verdeckt,
- * 2 nach Tiefe) + 4 · Form (0 Linie, hart vereinigt; 1 Punkt, Tropfen, Hals, weich vereinigt).
+ * 2 nach Tiefe) + 4 · Form (0 Linie, hart vereinigt; 1 Punkt, Tropfen, Hals, weich vereinigt) + 8 · Bereich (S17: an dessen Rand
+ * abgeschnitten, 0 = keiner; gilt für alles, was gerade angehängt wird, `bereich`).
  */
 
 import { PRIM_FELDER, type Szene } from '../linien/fluessig';
@@ -15,11 +16,14 @@ export class Kapseln {
   felder: number[] = [];
   /** eigene Gruppen beginnen weit hinter denen einer übernommenen Szene */
   private gruppe = 1_000_000;
+  /** S17: der Bereich (Feld der Vier Ansichten), an dessen Rand alles abgeschnitten wird, was jetzt angehängt wird; 0 = keiner */
+  bereich = 0;
 
   leeren(): void {
     this.n = 0;
     this.felder = [];
     this.gruppe = 1_000_000;
+    this.bereich = 0;
   }
 
   neueGruppe(): number {
@@ -57,7 +61,7 @@ export class Kapseln {
     b[o + 4] = r0;
     b[o + 5] = r1;
     b[o + 6] = gruppe;
-    b[o + 7] = schicht + 4 * (weich ? 1 : 0);
+    b[o + 7] = schicht + 4 * (weich ? 1 : 0) + 8 * this.bereich;
     b[o + 8] = z0;
     b[o + 9] = z1;
     b[o + 10] = 0;

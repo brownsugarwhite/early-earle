@@ -211,6 +211,29 @@ const VORN_AB = 0.01;
 const VORN_ZIEL = 0.07;
 /** Lage des Teilers: Florians Abweichung von der Lage aus den Maßen der Form (Anteile) und die Feder dorthin */
 const teiler = { bx: 0, by: 0, fx: 0.5, fy: 0.5, zug: false, ueber: 0 };
+/**
+ * S17 (Florian, 17.11.: „Jedes Feld für sich“): Zoom und Verschiebung (CSS-Pixel) je Feld der Vier Ansichten. Sie bleiben beim Wechsel in
+ * den Raum und zurück; „Einpassen“ setzt sie zurück.
+ */
+type FeldBlick = { zoom: number; x: number; y: number };
+const feldBlick: Record<'seite' | 'front' | 'top' | 'raum', FeldBlick> = {
+  seite: { zoom: 1, x: 0, y: 0 },
+  front: { zoom: 1, x: 0, y: 0 },
+  top: { zoom: 1, x: 0, y: 0 },
+  raum: { zoom: 1, x: 0, y: 0 },
+};
+const FELD_ZOOM_MIN = 0.3;
+const FELD_ZOOM_MAX = 8;
+/** S17: Nummer des Bereichs der Anzeige je Feld (an seinem Rand wird abgeschnitten) */
+const BEREICH_VON = { seite: 1, front: 2, top: 3, raum: 4 } as const;
+/** S17: die Bereiche dieses Bilds für die Anzeige (vier Kanten je Feld, Gerätepunkte), leer außerhalb der Vier Ansichten */
+let bereicheJetzt: number[] = [];
+/** S17: Schwenken mit Leertaste + Ziehen (im Feld unter dem Zeiger oder in der Vollansicht) */
+let leertaste = false;
+/** seit wann die Leertaste gehalten wird und ob dabei geschwenkt wurde (kurz getippt ohne Schwenken: noch einmal aufblasen, wie bisher) */
+let leertasteSeit = 0;
+let leertasteGeschwenkt = false;
+let schwenkZug: { feld: 'seite' | 'front' | 'top' | 'raum' | null; x0: number; y0: number; bx: number; by: number } | null = null;
 
 let drehen: { x: number; y: number; gier: number; neigung: number; vg: number; vn: number; t: number; lx: number; ly: number } | null = null;
 /** Neigung von Hand (zur Neigung der Ansicht dazu): so weit, dass Top und Unten erreichbar sind (rad) */
@@ -987,10 +1010,12 @@ function kameraSetzen(m: Moment | null): void {
   if (v > 1e-4 && e) {
     // im vierten Feld füllt die Blase ihr Feld wie die Ansichten die ihren (ohne Wände)
     const R = felder().raum;
-    const scZiel = (bw.vierFuellung * 0.8 * Math.min(R.w, R.h)) / (2 * e.R * Math.max(1e-6, sEnde));
+    // S17: mit Zoom und Verschiebung des Felds
+    const b = feldBlick.raum;
+    const scZiel = (bw.vierFuellung * 0.8 * Math.min(R.w, R.h) * b.zoom) / (2 * e.R * Math.max(1e-6, sEnde));
     const sc = 1 + (scZiel - 1) * v;
-    const ox = (((R.x + R.w / 2) / W) * 2 - 1) * v;
-    const oy = (1 - ((R.y + R.h / 2) / H) * 2) * v;
+    const ox = (((R.x + R.w / 2 + b.x) / W) * 2 - 1) * v;
+    const oy = (1 - ((R.y + R.h / 2 + b.y) / H) * 2) * v;
     c.projectionMatrix.premultiply(new Matrix4().set(sc, 0, 0, ox, 0, sc, 0, oy, 0, 0, 1, 0, 0, 0, 0, 1));
     c.projectionMatrixInverse.copy(c.projectionMatrix).invert();
   }
@@ -1038,6 +1063,46 @@ function teilerZiel(): [number, number] {
   return [fx, fy];
 }
 
+/** S17: das Feld der Vier Ansichten unter dem Punkt (CSS-Pixel), solange sie offen sind; sonst null */
+function feldUnter(x: number, y: number): 'seite' | 'front' | 'top' | 'raum' | null {
+  if (vier < 0.999 || !raum || zustand !== 'ruhe') return null;
+  const F = felder();
+  for (const n of ['seite', 'front', 'top', 'raum'] as const) {
+    const r = F[n];
+    if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return n;
+  }
+  return null;
+}
+
+/** S17: ein Feld um den Faktor k zoomen, zum Punkt (x, y) hin (CSS-Pixel): Was dort liegt, bleibt dort */
+function feldZoomen(n: 'seite' | 'front' | 'top' | 'raum', k: number, x: number, y: number): void {
+  const r = felder()[n];
+  const b = feldBlick[n];
+  const z = Math.max(FELD_ZOOM_MIN, Math.min(FELD_ZOOM_MAX, b.zoom * k));
+  const mx = r.x + r.w / 2;
+  const my = r.y + r.h / 2;
+  const q = z / b.zoom;
+  b.x = x - (x - (mx + b.x)) * q - mx;
+  b.y = y - (y - (my + b.y)) * q - my;
+  b.zoom = z;
+}
+
+/** S17: Die Blase bleibt in ihrem Feld (Zoom des Raums): die Haut am Feld des Raums abgeschnitten, beim Aufklappen ab der Hälfte */
+let hautSchnitt = '';
+function feldHautSchneiden(): void {
+  const f = faltJetzt;
+  let wert = '';
+  if (f && raum) {
+    const R = f.F.raum;
+    const t = glatt(Math.max(0, Math.min(1, (f.e - 0.5) / 0.5)));
+    if (t > 1e-3) wert = `inset(${(R.y * t).toFixed(1)}px ${((W - R.x - R.w) * t).toFixed(1)}px ${((H - R.y - R.h) * t).toFixed(1)}px ${(R.x * t).toFixed(1)}px)`;
+  }
+  if (wert !== hautSchnitt) {
+    hautSchnitt = wert;
+    leinwandHaut.style.clipPath = wert;
+  }
+}
+
 /** gemeinsamer Maßstab der drei flachen Felder: Jede Ansicht passt in ihr Feld */
 function feldMassstab(F: ReturnType<typeof felder>): number {
   const e = raum!;
@@ -1052,18 +1117,22 @@ function feldMassstab(F: ReturnType<typeof felder>): number {
 function imFeld(n: FeldAchse, p: Vector3, F: ReturnType<typeof felder>, s: number): [number, number] {
   const e = raum!;
   const r = F[n];
-  const mx = r.x + r.w / 2;
-  const my = r.y + r.h / 2;
+  // S17: mit Zoom und Verschiebung des Felds
+  const b = feldBlick[n];
+  const mx = r.x + r.w / 2 + b.x;
+  const my = r.y + r.h / 2 + b.y;
+  const sz = s * b.zoom;
   const [u, v, uc, vc] = n === 'seite' ? [p.x, p.y, e.cx, e.cy] : n === 'front' ? [-p.z, p.y, 0, e.cy] : [p.x, -p.z, e.cx, 0];
-  return [(mx + (u - uc) * s) * D, (my - (v - vc) * s) * D];
+  return [(mx + (u - uc) * sz) * D, (my - (v - vc) * sz) * D];
 }
 
 /** im Feld (CSS) → Welt in der Ebene der Ansicht */
 function ausFeld(n: FeldAchse, x: number, y: number, F: ReturnType<typeof felder>, s: number): [number, number] {
   const e = raum!;
   const r = F[n];
-  const u = (x - (r.x + r.w / 2)) / s;
-  const v = -(y - (r.y + r.h / 2)) / s;
+  const b = feldBlick[n];
+  const u = (x - (r.x + r.w / 2 + b.x)) / (s * b.zoom);
+  const v = -(y - (r.y + r.h / 2 + b.y)) / (s * b.zoom);
   return n === 'seite' ? [e.cx + u, e.cy + v] : n === 'front' ? [-u, e.cy + v] : [e.cx + u, -v];
 }
 
@@ -1158,13 +1227,15 @@ function faltRechnen(): Falt | null {
   const vpRaum = new Matrix4().multiplyMatrices(projRaum, kam.aktiv.matrixWorldInverse);
   for (const n of ['front', 'top'] as const) {
     const front = n === 'front';
-    const mitte = front ? e.cy : e.cx;
+    // S17: die Mitte der Zeichnung landet in der Mitte des Felds samt seiner Verschiebung (`faltPunkt` mit p = Mitte)
+    const b = feldBlick[n];
+    const mitte = front ? e.cy - (b.y / s4) * v : e.cx + (b.x / s4) * v;
     const start = (front ? new Vector3(f.xh, e.cy, 0) : new Vector3(e.cx, f.yh, 0)).applyMatrix4(vpRaum);
     const Fd = F[n];
-    const X = start.x + ((2 * (Fd.x + Fd.w / 2)) / W - 1 - start.x) * v;
-    const Y = start.y + (1 - (2 * (Fd.y + Fd.h / 2)) / H - start.y) * v;
+    const X = start.x + ((2 * (Fd.x + Fd.w / 2 + b.x)) / W - 1 - start.x) * v;
+    const Y = start.y + (1 - (2 * (Fd.y + Fd.h / 2 + b.y)) / H - start.y) * v;
     const r0 = f.zh * sw[2];
-    const rm = r0 + ((front ? f.rFront : f.rTop) - r0) * v;
+    const rm = r0 + ((front ? f.rFront - b.x / s4 : f.rTop + b.y / s4) - r0) * v;
     const q0 = aufWand(n, rm, mitte, f);
     const qr = aufWand(n, rm + 1, mitte, f).sub(q0);
     const qu = aufWand(n, rm, mitte + 1, f).sub(q0);
@@ -1207,11 +1278,82 @@ function aufWand(n: 'front' | 'top', r: number, u: number, f: Falt): Vector3 {
 
 /** S10: ein Punkt der Zeichnung einer Wand beim Auffalten (es zählen nur seine Koordinaten in ihrer Ebene); bei e = 1 genau wie `imFeld` */
 function faltPunkt(n: FeldAchse, p: Vector3, f: Falt): Vector3 {
-  if (n === 'seite') return new Vector3(p.x, p.y, f.zh);
+  const e = raum!;
+  const t = f.e;
+  // S17: Zoom und Verschiebung des Felds: Die Zeichnung gleitet und wächst auf ihrer Wand, bis sie im Feld liegt wie `imFeld`
+  const b = feldBlick[n];
+  if (n === 'seite') {
+    const xz = e.cx + b.x / f.s4 + (p.x - e.cx) * b.zoom;
+    const yz = e.cy - b.y / f.s4 + (p.y - e.cy) * b.zoom;
+    return new Vector3(p.x + (xz - p.x) * t, p.y + (yz - p.y) * t, f.zh);
+  }
   // Abstand von der Kante: auf der Wand und im Feld; dazwischen gleitet die Zeichnung auf ihrer Wand
   const r0 = -(p.z - f.zh) * f.sw[2];
-  const rF = (n === 'front' ? f.rFront : f.rTop) + p.z;
-  return n === 'front' ? aufWand(n, r0 + (rF - r0) * f.e + f.kF, p.y + f.uF, f) : aufWand(n, r0 + (rF - r0) * f.e + f.kT, p.x + f.uT, f);
+  if (n === 'front') {
+    const rF = f.rFront - b.x / f.s4 + p.z * b.zoom;
+    const uF = e.cy - b.y / f.s4 + (p.y - e.cy) * b.zoom;
+    return aufWand(n, r0 + (rF - r0) * t + f.kF, p.y + (uF - p.y) * t + f.uF, f);
+  }
+  const rT = f.rTop + b.y / f.s4 + p.z * b.zoom;
+  const uT = e.cx + b.x / f.s4 + (p.x - e.cx) * b.zoom;
+  return aufWand(n, r0 + (rT - r0) * t + f.kT, p.x + (uT - p.x) * t + f.uT, f);
+}
+
+/** S17: Kanten eines konvexen Vierecks (Gerätepunkte) für die Anzeige: je Kante x, y, z mit x · p.x + y · p.y + z ≥ 0 innen */
+function bereichAus(ecken: [number, number][]): number[] {
+  const cx = ecken.reduce((a, q) => a + q[0], 0) / ecken.length;
+  const cy = ecken.reduce((a, q) => a + q[1], 0) / ecken.length;
+  const k: number[] = [];
+  for (let i = 0; i < 4; i++) {
+    const [ax, ay] = ecken[i]!;
+    const [bx, by] = ecken[(i + 1) % 4]!;
+    const l = Math.hypot(bx - ax, by - ay);
+    if (l < 1e-6) {
+      k.push(0, 0, 1e6);
+      continue;
+    }
+    let nx = -(by - ay) / l;
+    let ny = (bx - ax) / l;
+    if (nx * (cx - ax) + ny * (cy - ay) < 0) {
+      nx = -nx;
+      ny = -ny;
+    }
+    k.push(nx, ny, -(nx * ax + ny * ay));
+  }
+  return k;
+}
+
+/**
+ * S17: die Bereiche der Felder in diesem Bild (Gerätepunkte): offen die Felder selbst, beim Auf- und Zuklappen die Wände, die sich
+ * aufklappen (wie `faltKanten`); das Feld des Raums wächst vom ganzen Bild zu seinem Feld. Außerhalb der Vier Ansichten keine.
+ */
+function bereicheRechnen(): number[] {
+  const f = faltJetzt;
+  if (!f || !raum) return [];
+  const rand = (r: Feld): [number, number][] => [
+    [r.x * D, r.y * D],
+    [(r.x + r.w) * D, r.y * D],
+    [(r.x + r.w) * D, (r.y + r.h) * D],
+    [r.x * D, (r.y + r.h) * D],
+  ];
+  const B: number[][] = [];
+  if (f.e > 0.999) {
+    for (const n of ['seite', 'front', 'top'] as const) B[BEREICH_VON[n] - 1] = bereichAus(rand(f.F[n]));
+  } else {
+    const { xa, xb, ya, yb, rF, rT } = faltRahmen(f);
+    const z = f.zh;
+    const pr = (q: Vector3): [number, number] => {
+      const [x, y] = projizieren(q, f.vp);
+      return [x, y];
+    };
+    B[0] = bereichAus([pr(new Vector3(xa, ya, z)), pr(new Vector3(xb, ya, z)), pr(new Vector3(xb, yb, z)), pr(new Vector3(xa, yb, z))]);
+    B[1] = bereichAus([pr(aufWand('front', 0, ya, f)), pr(aufWand('front', rF, ya, f)), pr(aufWand('front', rF, yb, f)), pr(aufWand('front', 0, yb, f))]);
+    B[2] = bereichAus([pr(aufWand('top', 0, xa, f)), pr(aufWand('top', rT, xa, f)), pr(aufWand('top', rT, xb, f)), pr(aufWand('top', 0, xb, f))]);
+  }
+  const R = f.F.raum;
+  const t = f.e;
+  B[3] = bereichAus(rand({ x: R.x * t, y: R.y * t, w: W + (R.w - W) * t, h: H + (R.h - H) * t }));
+  return B.flat();
 }
 
 /** S10: die Wände beim Auffalten: die der Seite (x von xa bis xb, y von ya bis yb), wie weit die Front (rF) und der Boden (rT) reichen */
@@ -1567,6 +1709,8 @@ function bild(dt: number): boolean {
   }
   kameraSetzen(zustand === 'blatt' ? null : m);
   faltJetzt = zustand === 'blatt' ? null : faltRechnen();
+  bereicheJetzt = bereicheRechnen();
+  feldHautSchneiden();
   // S13 (10): der Ansichts-Tropfen zeigt, von wo die Kamera schaut (nur in der Ruhe)
   if (ansichtsTropfen.zeichnen(kam.aktiv, zustand === 'ruhe' && !!koerper && !document.body.classList.contains('bild'), dt)) aktiv = true;
   hintenJetzt = hintenRechnen();
@@ -1700,6 +1844,7 @@ function bild(dt: number): boolean {
       gruen: roentgen > 0 ? (GRUEN.map((g, i) => g + (GRUEN_ROENTGEN[i]! - g) * roentgen) as [number, number, number]) : GRUEN,
       dunkel: hintenJetzt,
       zeiger: !zeigerZeigen ? null : bearbeitenAn ? (zeigerBearbeiten ?? null) : zeigerForm(zeiger.x, zeiger.y),
+      bereiche: bereicheJetzt,
     };
     szene.zeigerUmriss = zeigerGestaltSchritt(szene.zeiger, dt);
     if (zeigerGestalt.gleitet) aktiv = true;
@@ -1726,8 +1871,8 @@ function bild(dt: number): boolean {
           ? werkGezeigt
             ? bearbeiten.stift
               ? 'P: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen (Form) · auf Punkt oder Linie beginnen und enden (Abzweigung) · Esc'
-              : 'Punkte, Linien und Richtungen ziehen · ins Leere ziehen: drehen · P zeichnen · L Lasso · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · Tab: zurück in den Raum'
-            : 'Tab: zurück in den Raum · Tropfen in der Mitte ziehen: Felder · Punkte der Seite ziehen'
+              : 'Punkte, Linien und Richtungen ziehen · ins Leere ziehen: drehen · Rad zoomt das Feld · Leertaste + Ziehen schwenkt · P zeichnen · L Lasso · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · Tab: zurück in den Raum'
+            : 'Tab: zurück in den Raum · Tropfen in der Mitte ziehen: Felder · Rad zoomt das Feld · Leertaste + Ziehen schwenkt · Punkte der Seite ziehen'
           : ansicht === 'raum'
             ? werkGezeigt
               ? bearbeiten.stift
@@ -2065,6 +2210,8 @@ function felderLinien(f: Falt, m: Moment): void {
   };
   for (const n of ['seite', 'front', 'top'] as const) {
     if (werkGezeigt && n === 'seite' && mitteDa()) continue;
+    // S17: was zu diesem Feld gehört, wird an seinem Rand abgeschnitten
+    K.bereich = BEREICH_VON[n];
     const achse = n === 'front' ? 0 : n === 'top' ? 1 : 2;
     const rl = r0 * breite(achse, false);
     const linie = n === 'seite' ? seitenLinie(2) : null;
@@ -2093,6 +2240,7 @@ function felderLinien(f: Falt, m: Moment): void {
       }
     }
   }
+  K.bereich = 0;
   // Teiler: zwei Haarlinien, an der Kreuzung ein Tropfen (schwillt beim Anflug, ist beim Ziehen ein Tropfen). S10: beim Auffalten liegen
   // sie auf den Kanten der Wände und gleiten mit ihnen (nichts doppelt)
   const rh = (linienWerte.innen / 2) * D * v;
@@ -2180,6 +2328,7 @@ function feldFlaeche(n: FeldAchse, f: Falt, st0: number[]): Flaeche {
     breite: bw.wandLinien + (1 - bw.wandLinien) * t,
     // S7: ein Feld ist seine Wand, aufgeklappt: Betrachter auf der anderen Seite
     vorn: -sw[achse] || 1,
+    bereich: BEREICH_VON[n],
     enthaelt: (x, y) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h,
     hin: (X, Y) => {
       if (t > 0.999) {
@@ -2259,12 +2408,14 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
   // Linien ohne Pfad (noch keine Griffe): nur zu sehen
   for (const r of werkBlatt.roh) {
     const F = flaechen[r.fl]!;
+    K.bereich = F.bereich ?? 0;
     K.zug(
       r.x.map((v) => v * D),
       r.y.map((v) => v * D),
       (linienWerte.innen / 2) * D * F.breite * F.staerke,
       false,
     );
+    K.bereich = 0;
   }
   // Freihand und Formen im Zug: der Strich und die Form, dazu ein Tropfen am Zeiger (wie auf dem Blatt)
   const rs = (linienWerte.umriss / 2) * D;
@@ -2992,7 +3143,18 @@ function ansichtLoesen(): void {
 const finger = new Map<number, { x: number; y: number }>();
 let stiftGesehen = false;
 /** die Geste mit zwei Fingern; danach tut der verbliebene Finger nichts mehr, bis er abhebt */
-let geste: { d0: number; w0: number; m0: { x: number; y: number }; zoom0: number; gier0: number; sx0: number; sy0: number; gedreht: boolean } | null = null;
+let geste: {
+  d0: number;
+  w0: number;
+  m0: { x: number; y: number };
+  zoom0: number;
+  gier0: number;
+  sx0: number;
+  sy0: number;
+  gedreht: boolean;
+  /** S17: in den Vier Ansichten das Feld, in dem die Finger liegen, und sein Zoom und seine Verschiebung beim Aufsetzen */
+  feld?: { n: 'seite' | 'front' | 'top' | 'raum'; zoom: number; x: number; y: number } | null;
+} | null = null;
 let gesteRest = false;
 /** so weit müssen zwei Finger verdreht sein, bevor es dreht (sonst dreht schon das Zoomen) */
 const GESTE_DREHEN_AB = (6 * Math.PI) / 180;
@@ -3027,6 +3189,8 @@ function gesteBeginnen(): void {
     sy0: nutzer.schwenkY,
     gedreht: false,
   };
+  const n = feldUnter(geste.m0.x, geste.m0.y);
+  geste.feld = n ? { n, zoom: feldBlick[n].zoom, x: feldBlick[n].x, y: feldBlick[n].y } : null;
   schwung = null;
 }
 
@@ -3038,10 +3202,23 @@ function gesteBewegen(): void {
   const w = Math.atan2(b.y - a.y, b.x - a.x);
   const m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
   // zoomen zu den Fingern hin: Was unter ihrer Mitte lag, bleibt unter ihr
+  // S17: in den Vier Ansichten zoomt und schwenkt das Feld, in dem die Finger liegen; was unter ihrer Mitte lag, bleibt unter ihr
+  const gf = geste.feld;
+  if (gf) {
+    const r = felder()[gf.n];
+    const b = feldBlick[gf.n];
+    const z = Math.max(FELD_ZOOM_MIN, Math.min(FELD_ZOOM_MAX, (gf.zoom * d) / geste.d0));
+    const qx = (geste.m0.x - (r.x + r.w / 2 + gf.x)) / gf.zoom;
+    const qy = (geste.m0.y - (r.y + r.h / 2 + gf.y)) / gf.zoom;
+    b.zoom = z;
+    b.x = m.x - (r.x + r.w / 2) - qx * z;
+    b.y = m.y - (r.y + r.h / 2) - qy * z;
+    if (gf.n !== 'raum') return;
+  }
   const z = Math.max(0.3, Math.min(4, (geste.zoom0 * d) / geste.d0));
   const qx = (geste.m0.x - (W / 2 + geste.sx0)) / geste.zoom0;
   const qy = (geste.m0.y - (H / 2 + geste.sy0)) / geste.zoom0;
-  nutzer.zoom = z;
+  if (!gf) nutzer.zoom = z;
   if (vier < 0.5) {
     nutzer.schwenkX = m.x - W / 2 - qx * z;
     nutzer.schwenkY = m.y - H / 2 - qy * z;
@@ -3177,6 +3354,20 @@ leinwandLinien.addEventListener('pointermove', (e) => {
     anstossen();
     return;
   }
+  // S17: Leertaste + Ziehen schwenkt
+  if (schwenkZug) {
+    const dx = x - schwenkZug.x0;
+    const dy = y - schwenkZug.y0;
+    if (schwenkZug.feld) {
+      feldBlick[schwenkZug.feld].x = schwenkZug.bx + dx;
+      feldBlick[schwenkZug.feld].y = schwenkZug.by + dy;
+    } else {
+      nutzer.schwenkX = schwenkZug.bx + dx;
+      nutzer.schwenkY = schwenkZug.by + dy;
+    }
+    anstossen();
+    return;
+  }
   // das Verhalten der Studie (Linien des Werks): Zeiger, Tropfen, Zug
   if (zustand === 'ruhe' && werkGezeigt) {
     bearbeiten.alt = e.altKey;
@@ -3305,6 +3496,14 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     return;
   }
   if (zustand !== 'ruhe' || !koerper) return;
+  // S17: Leertaste + Ziehen schwenkt das Feld unter dem Zeiger (in den Vier Ansichten) oder die ganze Ansicht
+  if (leertaste) {
+    const n = feldUnter(x, y);
+    schwenkZug = { feld: n, x0: x, y0: y, bx: n ? feldBlick[n].x : nutzer.schwenkX, by: n ? feldBlick[n].y : nutzer.schwenkY };
+    leertasteGeschwenkt = true;
+    anstossen();
+    return;
+  }
   if (amTeiler(x, y)) {
     teiler.zug = true;
     anstossen();
@@ -3409,6 +3608,11 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
 });
 
 const loslassen = (e: PointerEvent): void => {
+  if (schwenkZug) {
+    schwenkZug = null;
+    anstossen();
+    return;
+  }
   if (leinwandLinien.hasPointerCapture(e.pointerId)) leinwandLinien.releasePointerCapture(e.pointerId);
   if (zustand === 'blatt') {
     blatt.loslassen();
@@ -3474,8 +3678,11 @@ leinwandLinien.addEventListener(
   (e) => {
     e.preventDefault();
     if (zustand === 'ruhe') {
-      // Zoom von Hand: gilt in allen Ansichten, bis „Einpassen“ (Pos1)
-      nutzer.zoom = Math.max(0.3, Math.min(4, nutzer.zoom * Math.exp(-e.deltaY * 0.0015)));
+      // Zoom von Hand: gilt in allen Ansichten, bis „Einpassen“ (Pos1); S17: in den Vier Ansichten das Feld unter dem Zeiger, zu ihm hin
+      const [x, y] = lageIm(e);
+      const n = feldUnter(x, y);
+      if (n) feldZoomen(n, Math.exp(-e.deltaY * 0.0015), x, y);
+      else nutzer.zoom = Math.max(0.3, Math.min(4, nutzer.zoom * Math.exp(-e.deltaY * 0.0015)));
       anstossen();
     }
   },
@@ -3615,8 +3822,13 @@ window.addEventListener('keydown', (e) => {
       werk.kanteSetzen();
     }
   } else if (k === ' ') {
+    // S17: gehalten und gezogen schwenkt sie; kurz getippt bläst sie noch einmal auf (beim Loslassen)
     e.preventDefault();
-    nochEinmal();
+    if (!e.repeat && !leertaste) {
+      leertaste = true;
+      leertasteSeit = performance.now();
+      leertasteGeschwenkt = false;
+    }
   } else if (e.shiftKey && (e.code === 'Digit1' || e.code === 'Digit3' || e.code === 'Digit7' || e.code === 'Numpad1' || e.code === 'Numpad3' || e.code === 'Numpad7') && zustand !== 'blatt') {
     // ⇧ + 1/3/7: die Ansicht von der Gegenseite (ist sie es schon, wendet es zurück)
     if (e.repeat) return;
@@ -3635,6 +3847,12 @@ window.addEventListener('keydown', (e) => {
     nutzer.schwenkX = 0;
     nutzer.schwenkY = 0;
     massstab.nachfuehren = true;
+    // S17: auch die Felder der Vier Ansichten
+    for (const b of Object.values(feldBlick)) {
+      b.zoom = 1;
+      b.x = 0;
+      b.y = 0;
+    }
   } else if (zustand === 'blatt' && (k === 'p' || k === 'P')) waehlenTaste('p');
   else if (zustand === 'blatt' && (k === 'n' || k === 'N')) waehlenTaste('frei');
   else if (zustand === 'blatt' && k === 'e') waehlenTaste('ellipse');
@@ -3648,6 +3866,10 @@ window.addEventListener('keyup', (e) => {
   if (e.altKey !== altGehalten) {
     altGehalten = e.altKey;
     anstossen();
+  }
+  if (e.key === ' ' && leertaste) {
+    leertaste = false;
+    if (!leertasteGeschwenkt && !schwenkZug && performance.now() - leertasteSeit < 300 && !(e.target instanceof HTMLInputElement)) nochEinmal();
   }
   blatt.alt = e.altKey;
   blatt.umschalt = e.shiftKey;
@@ -3690,6 +3912,7 @@ let roentgen = 0;
 const roentgenKnopf = tasten.querySelector<HTMLButtonElement>('button[data-roentgen]');
 window.addEventListener('blur', () => {
   altGehalten = false;
+  leertaste = false;
   anstossen();
 });
 /** die Ansicht, in der Ozzy steht, als gedrückter Knopf */
@@ -4200,6 +4423,15 @@ const haken = {
     const [x, y] = F.hin(X, Y);
     return { x, y };
   },
+  /** umgekehrt: welcher Ort im Blatt `a` unter dem Bildschirmpunkt liegt (S17, Probe) */
+  flaecheHer: (a: Flaeche['a'], x: number, y: number): { X: number; Y: number } | null => {
+    const F = werkBlatt.flaechen.find((f) => f.a === a);
+    const XY = F?.her(x, y);
+    return XY ? { X: XY[0], Y: XY[1] } : null;
+  },
+  /** S17: die Felder der Vier Ansichten (CSS-Pixel) und Zoom und Verschiebung je Feld */
+  felderJetzt: () => (raum ? felder() : null),
+  feldBlick: () => JSON.parse(JSON.stringify(feldBlick)) as typeof feldBlick,
   /** eine Stelle mitten auf einer Linie des Werks (Loop-Kennung) auf der Fläche mit diesem Blatt, weit weg von ihren Punkten (CSS-Pixel) */
   linieImBild: (id: number, a: Flaeche['a']): { x: number; y: number } | null => {
     const li = werkBlatt.linien.findIndex((I) => I.id === id && !I.m && werkBlatt.flaechen[I.fl]?.a === a);

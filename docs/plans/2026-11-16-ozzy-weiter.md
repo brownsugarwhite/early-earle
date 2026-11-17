@@ -415,6 +415,16 @@ In zwei Teilen: **S17a** Zoomen und Schwenken je Feld, mit Schnitt am Rand und L
 *Probe:* in der Seite zum Kopf hin zoomen: der Punkt unter dem Zeiger bleibt (höchstens 1 px), Front, Top und Raum bleiben unverändert;
 schwenken in jedem Feld; nichts ragt über einen Feldrand; Tab zurück und wieder hin: am Ende genau das gezoomte Feld (höchstens 1 px), kein
 Sprung unterwegs; ein Punkt im gezoomten Feld lässt sich greifen und ziehen; die Front wenden; Bild.
+*S17a gebaut (17.11.):* `feldBlick` (Zoom und Verschiebung je Feld), `imFeld`/`ausFeld` mit ihnen, `feldZoomen` (zum Punkt hin), Rad über
+einem Feld, Leertaste + Ziehen (kurz getippt bläst die Leertaste weiter noch einmal auf), zwei Finger im Feld (im Raum dreht das Verdrehen
+weiter), Pos1 setzt alles zurück. Abschneiden am Feldrand in der Anzeige selbst (`fluessig.ts`: jede Kapsel kann einem konvexen Bereich
+gehören und wird an seinen vier Kanten genau geschnitten; Art + 8 · Bereich; die Linien-Studie gibt den Bereich je Linie und Punkt über
+`Raum.bereich` weiter). Beim Auf- und Zuklappen sind die Bereiche die Wände, die sich aufklappen; die Zeichnung gleitet und wächst auf
+ihnen (`faltPunkt`). Die Blase bleibt in ihrem Feld (die Haut wird ab der Hälfte des Aufklappens am Feld abgeschnitten). Probe
+`ozzy-feld-zoom-fenster.mjs` 1 bis 7 halten: der Ort unter dem Zeiger 0,0 px daneben bei 4,2-fachem Zoom, Front, Top und Raum unverändert
+(0,0 / 0,0 / 0,3 % der Bildpunkte), Schwenken 0,0 px, ein Punkt der gezoomten Seite folgt der Maus (0,0 px), Tab zurück und hin ohne
+Nachschieben, ein Gipfel je Punkt, am Ende 0,0 px; die Proben zu S10, S16 und zum Bearbeiten halten, beide Studien laufen. Bild
+[`2026-11-17-feld-zoom.png`](../progress/ozzy/2026-11-17-feld-zoom.png) (links offen, rechts die Seite gezoomt und die Front geschwenkt).
 
 **S18 Der Tropfen an der Ecke einer Einzelansicht.** In der eingerasteten Seite, Front und Top sitzt der Tropfen der Kreuzung an der Ecke
 des Bilds, an der in den Vier Ansichten ihre Kreuzung liegt: Seite unten links, Front unten rechts (der Ansichts-Tropfen rückt dafür nach

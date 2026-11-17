@@ -18,11 +18,14 @@ const PRIM_BREITE = 2049;
 const LISTE_BREITE = 2048;
 /**
  * Floats je Kapsel (drei Texel): x0, y0, x1, y1 | r0, r1, Gruppe, Art | z0, z1, –, – (Gerätepunkte; z = Tiefe zum Betrachter).
- * Art = Schicht (0 Tinte, 1 verdeckt, 2 nach Tiefe) + 4 · Form (0 Linie, hart; 1 Punkt, Tropfen, Hals, weich).
+ * Art = Schicht (0 Tinte, 1 verdeckt, 2 nach Tiefe) + 4 · Form (0 Linie, hart; 1 Punkt, Tropfen, Hals, weich) + 8 · Bereich (Ozzy, S17:
+ * 0 = überall, sonst die Nummer des Bereichs in `Szene.bereiche`, an dessen Rand die Kapsel abgeschnitten wird).
  */
 export const PRIM_FELDER = 12;
 /** so viele Felder der Weichheit nimmt die Anzeige (je vier Werte) */
 export const MAX_FELDER = 16;
+/** Ozzy (S17): so viele Bereiche, an deren Rand Kapseln abgeschnitten werden (je vier Kanten) */
+export const MAX_BEREICHE = 8;
 
 export interface Koerper {
   pos: Float32Array;
@@ -71,6 +74,12 @@ export interface Szene {
   dunkel?: { kanten: number[]; zahl: number } | null;
   /** Farbe des Papiers (für den Tausch und die Füllung des Zeigers); fehlt: weiß */
   papier?: [number, number, number];
+  /**
+   * Ozzy (S17): konvexe Bereiche (die Felder der Vier Ansichten), je vier Kanten zu drei Werten x, y, z (Gerätepunkte, y nach unten;
+   * Abstand x · p.x + y · p.y + z, innen positiv, x und y als Einheitsvektor), höchstens `MAX_BEREICHE`. Eine Kapsel mit Bereich k
+   * (Art, siehe `PRIM_FELDER`) ist nur in Bereich k zu sehen.
+   */
+  bereiche?: number[];
 }
 
 /** so viele Punkte hat der Umriss des Zeigers höchstens (wie `uZP` im Shader) */
@@ -101,6 +110,8 @@ uniform vec3 uTinte;
 uniform vec3 uGruen;
 uniform vec3 uHinten[20];
 uniform int uHintenZahl;
+uniform vec3 uBereich[${4 * 8}];
+uniform int uBereichZahl;
 uniform vec3 uPapier;
 uniform int uZeigerDa;
 uniform vec2 uZA;
@@ -186,6 +197,16 @@ vec4 texel(int i) {
   return texelFetch(uPrim, ivec2(i % PB, i / PB), 0);
 }
 
+// Ozzy (S17): Abstand vom Bereich b (außen positiv), aus seinen vier Kanten
+float bereichAbstand(vec2 p, int b) {
+  float d = -1e6;
+  for (int e = 0; e < 4; e++) {
+    vec3 r = uBereich[b * 4 + e];
+    d = max(d, -(r.x * p.x + r.y * p.y + r.z));
+  }
+  return d;
+}
+
 float hintenBei(vec2 p) {
   float h = 0.0;
   for (int k = 0; k < 4; k++) {
@@ -241,10 +262,12 @@ void main() {
         if (gd.y < dE.y) { dE.y = gd.y; wE.y = gw.y; }
       }
       gruppe = g;
-      form = int(B.w + 0.5) / 4;
+      form = (int(B.w + 0.5) / 4) % 2;
       gd = vec2(1e6);
     }
     float d = kapsel(p, A.xy, A.zw, B.x, B.y);
+    int bereich = int(B.w + 0.5) / 8;
+    if (bereich > 0 && bereich <= uBereichZahl) d = max(d, bereichAbstand(p, bereich - 1));
     if (d < 2.0 + k) {
       int art = int(B.w + 0.5);
       int schicht = art - 4 * (art / 4);
@@ -410,7 +433,7 @@ export class FluessigeAnzeige {
     this.gl = gl;
     gl.getExtension('EXT_color_buffer_float');
     this.prog = programm(gl, VERTEX, FRAGMENT, ['aPos']);
-    for (const n of ['uPrim', 'uKachel', 'uListe', 'uKoerperFarbe', 'uKoerperTiefe', 'uMitKoerper', 'uBias', 'uHoehe', 'uK0', 'uK1', 'uFelder', 'uFeld', 'uTinte', 'uGruen', 'uHinten', 'uHintenZahl', 'uPapier', 'uZeigerDa', 'uZA', 'uZB', 'uZC', 'uZLinie', 'uZP', 'uZPN', 'uZFuell', 'uZBox'])
+    for (const n of ['uPrim', 'uKachel', 'uListe', 'uKoerperFarbe', 'uKoerperTiefe', 'uMitKoerper', 'uBias', 'uHoehe', 'uK0', 'uK1', 'uFelder', 'uFeld', 'uTinte', 'uGruen', 'uHinten', 'uHintenZahl', 'uBereich', 'uBereichZahl', 'uPapier', 'uZeigerDa', 'uZA', 'uZB', 'uZC', 'uZLinie', 'uZP', 'uZPN', 'uZFuell', 'uZBox'])
       this.uni[n] = gl.getUniformLocation(this.prog, n);
     this.progK = programm(gl, KOERPER_VERTEX, KOERPER_FRAGMENT, ['aPos', 'aNormal']);
     for (const n of ['uProj', 'uAnsicht', 'uHuelle', 'uViewport', 'uSchattierung', 'uTinte']) this.uniK[n] = gl.getUniformLocation(this.progK, n);
@@ -674,6 +697,11 @@ export class FluessigeAnzeige {
     for (let i = 0; i < 20; i++) hk.set(sz.dunkel && i * 3 + 2 < sz.dunkel.kanten.length ? sz.dunkel.kanten.slice(i * 3, i * 3 + 3) : [0, 0, 1e6], i * 3);
     gl.uniform3fv(this.uni.uHinten!, hk);
     gl.uniform1i(this.uni.uHintenZahl!, sz.dunkel ? Math.min(4, sz.dunkel.zahl) : 0);
+    const nb = Math.min(MAX_BEREICHE, Math.floor((sz.bereiche?.length ?? 0) / 12));
+    const bk = new Float32Array(MAX_BEREICHE * 12);
+    if (sz.bereiche && nb > 0) bk.set(sz.bereiche.slice(0, nb * 12));
+    gl.uniform3fv(this.uni.uBereich!, bk);
+    gl.uniform1i(this.uni.uBereichZahl!, nb);
     gl.uniform3fv(this.uni.uPapier!, sz.papier ?? [1, 1, 1]);
     const zg = sz.zeiger;
     gl.uniform1i(this.uni.uZeigerDa!, zg ? 1 : 0);
