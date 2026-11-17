@@ -35,6 +35,7 @@ import { type Flaeche, WerkBlatt } from './werkBlatt';
 import { type Anker, Blatt, FREIHAND_GRUNDWERTE, type FreihandWerte, type Strich, type Werkzeug, aufzugPfad, strichBeginnen, strichPfad } from './blatt';
 import { Kamera, type KameraLage, perspektiveBei, richtung, winkelZu } from './kamera';
 import { Kapseln } from './kapseln';
+import { AnsichtsTropfen } from './ansichtsTropfen';
 import { Leiste } from './leiste';
 import { reglerDehnung, reglerTropfen } from './reglerTropfen';
 import { type Bereich, type ReglerZeile, feinreglerBauen, werteLesen } from './regler';
@@ -1475,6 +1476,8 @@ function bild(dt: number): boolean {
   }
   kameraSetzen(zustand === 'blatt' ? null : m);
   faltJetzt = zustand === 'blatt' ? null : faltRechnen();
+  // S13 (10): der Ansichts-Tropfen zeigt, von wo die Kamera schaut (nur in der Ruhe)
+  if (ansichtsTropfen.zeichnen(kam.aktiv, zustand === 'ruhe' && !!koerper && !document.body.classList.contains('bild'), dt)) aktiv = true;
   hintenJetzt = hintenRechnen();
   schnittJetzt = schnittRechnen();
   // Fahrtwind: die Farben fließen gegen die Drehung
@@ -2771,6 +2774,44 @@ function punktLage(x: number, y: number, pz: NonNullable<typeof punktZug>): [num
 
 let letzteZeit = 0;
 
+/** Drehen von Hand beginnen (Ziehen ins Leere, ein Finger, der Ansichts-Tropfen): Zeiger bei (x, y), CSS-Pixel */
+function drehenBeginnen(x: number, y: number, t: number): void {
+  schwung = null;
+  drehen = { x, y, gier: nutzer.gier, neigung: nutzer.neigung, vg: 0, vn: 0, t, lx: x, ly: y };
+}
+
+/** Drehen von Hand: Der Zeiger ist jetzt bei (x, y); eine eingerastete Ansicht löst sich */
+function drehenZiehen(x: number, y: number, t: number): void {
+  if (!drehen) return;
+  ansichtLoesen();
+  nutzer.gier = drehen.gier - ((x - drehen.x) * Math.PI) / 520;
+  nutzer.neigung = Math.max(NEIGUNG_UNTEN, Math.min(NEIGUNG_OBEN, drehen.neigung + ((y - drehen.y) * Math.PI) / 520));
+  // Geschwindigkeit (rad/s), geglättet: für den Schwung beim Loslassen
+  const dtz = Math.max(1e-3, (t - drehen.t) / 1000);
+  const vg = (-(x - drehen.lx) * Math.PI) / 520 / dtz;
+  const vn = ((y - drehen.ly) * Math.PI) / 520 / dtz;
+  const a = Math.min(1, dtz / 0.05);
+  drehen.vg += (vg - drehen.vg) * a;
+  drehen.vn += (vn - drehen.vn) * a;
+  drehen.t = t;
+  drehen.lx = x;
+  drehen.ly = y;
+}
+
+/** Drehen loslassen: mit Schwung. Wohin käme die Drehung? Liegt das nahe einer Ansicht, rastet sie dort ein; sonst klingt sie aus (S4) */
+function drehenLos(t: number): void {
+  if (!drehen) return;
+  const ruht = t - drehen.t > 60;
+  const v = ruht ? { vg: 0, vn: 0 } : { vg: drehen.vg, vn: drehen.vn };
+  const gVor = nutzer.gier + v.vg * SCHWUNG_TAU;
+  const nVor = Math.max(NEIGUNG_UNTEN, Math.min(NEIGUNG_OBEN, nutzer.neigung + v.vn * SCHWUNG_TAU));
+  const schnell = Math.hypot(v.vg, v.vn) > 0.6;
+  const ziel = ansichtNahe(gVor, nVor) ?? (schnell ? ansichtNahe(gVor, nVor, SCHWUNG_FANG) : null);
+  if (ziel) ansichtSetzen(ziel.a, ziel.hinten);
+  else if (schnell) schwung = { vg: v.vg, vn: v.vn };
+  drehen = null;
+}
+
 /** Drehen von Hand löst eine eingerastete Ansicht: nur die Parallele löst sich (die Drehung gehört der Hand, S4) */
 function ansichtLoesen(): void {
   if (ansicht === 'raum') return;
@@ -2920,8 +2961,7 @@ window.addEventListener(
       const R = felder().raum;
       if (!(x >= R.x && y >= R.y)) vierUmschalten(false);
     }
-    schwung = null;
-    drehen = { x, y, gier: nutzer.gier, neigung: nutzer.neigung, vg: 0, vn: 0, t: e.timeStamp, lx: x, ly: y };
+    drehenBeginnen(x, y, e.timeStamp);
     anstossen();
   },
   { capture: true },
@@ -3043,19 +3083,7 @@ leinwandLinien.addEventListener('pointermove', (e) => {
       if (performance.now() - umbauZeit > 110) blaseNeu();
     }
   } else if (drehen) {
-    ansichtLoesen();
-    nutzer.gier = drehen.gier - ((x - drehen.x) * Math.PI) / 520;
-    nutzer.neigung = Math.max(NEIGUNG_UNTEN, Math.min(NEIGUNG_OBEN, drehen.neigung + ((y - drehen.y) * Math.PI) / 520));
-    // Geschwindigkeit (rad/s), geglättet: für den Schwung beim Loslassen
-    const dtz = Math.max(1e-3, (e.timeStamp - drehen.t) / 1000);
-    const vg = (-(x - drehen.lx) * Math.PI) / 520 / dtz;
-    const vn = ((y - drehen.ly) * Math.PI) / 520 / dtz;
-    const a = Math.min(1, dtz / 0.05);
-    drehen.vg += (vg - drehen.vg) * a;
-    drehen.vn += (vn - drehen.vn) * a;
-    drehen.t = e.timeStamp;
-    drehen.lx = x;
-    drehen.ly = y;
+    drehenZiehen(x, y, e.timeStamp);
   } else if (zug && koerper) {
     const k = koerper;
     const F = k.flach;
@@ -3216,8 +3244,7 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
       const R = felder().raum;
       if (!(x >= R.x && y >= R.y)) vierUmschalten(false);
     }
-    schwung = null;
-    drehen = { x, y, gier: nutzer.gier, neigung: nutzer.neigung, vg: 0, vn: 0, t: e.timeStamp, lx: x, ly: y };
+    drehenBeginnen(x, y, e.timeStamp);
   }
   anstossen();
 });
@@ -3257,17 +3284,7 @@ const loslassen = (e: PointerEvent): void => {
     anstossen();
     return;
   }
-  if (drehen) {
-    // mit Schwung: Wohin käme die Drehung? Liegt das nahe einer Ansicht, rastet sie dort ein; sonst klingt sie aus (S4)
-    const ruht = e.timeStamp - drehen.t > 60;
-    const v = ruht ? { vg: 0, vn: 0 } : { vg: drehen.vg, vn: drehen.vn };
-    const gVor = nutzer.gier + v.vg * SCHWUNG_TAU;
-    const nVor = Math.max(NEIGUNG_UNTEN, Math.min(NEIGUNG_OBEN, nutzer.neigung + v.vn * SCHWUNG_TAU));
-    const schnell = Math.hypot(v.vg, v.vn) > 0.6;
-    const ziel = ansichtNahe(gVor, nVor) ?? (schnell ? ansichtNahe(gVor, nVor, SCHWUNG_FANG) : null);
-    if (ziel) ansichtSetzen(ziel.a, ziel.hinten);
-    else if (schnell) schwung = { vg: v.vg, vn: v.vn };
-  }
+  if (drehen) drehenLos(e.timeStamp);
   if (punktZug && werkGezeigt) {
     // losgelassen, bevor der Griff beginnen konnte: ein Klick (die Auswahl steht); sonst endet der Zug im Werk
     if (werk.G.gegriffen) werk.G.gegriffen = null;
@@ -3506,6 +3523,27 @@ function waehlenTaste(w: Werkzeug): void {
 // ---------- Leiste, Menü, Feinregler ----------
 
 const leiste = new Leiste(document.body, werkzeugGewaehlt, muell);
+
+// S13 (liquid drop, Idee 10): der Ansichts-Tropfen unten rechts; Tippen rastet ein (⇧ die Gegenseite, die Mitte der Raum), Ziehen dreht
+const ansichtsTropfen = new AnsichtsTropfen(
+  document.body,
+  {
+    setzen: (z) => {
+      if (zustand !== 'ruhe') return;
+      if (vierZiel > 0.5) vierUmschalten(false);
+      if (z.a === 'raum') ansichtSetzen('raum');
+      else {
+        wendenSicht = ansicht === z.a && gewendet !== z.hinten;
+        ansichtSetzen(z.a, z.hinten);
+      }
+    },
+    drehenBeginnen,
+    drehenZiehen,
+    drehenLos,
+    anstossen,
+  },
+  () => GROB.matches || document.body.classList.contains('beruehrung'),
+);
 
 // S9: Schalter im Menü „Linie an der Spiegelkante“ (gilt beim nächsten Aufblasen)
 const mitLinieSchalter = $<HTMLInputElement>('mit-linie');
@@ -4129,6 +4167,8 @@ const haken = {
       kante: l.kante ?? null,
       haengt: l.haengt ?? null,
     })),
+  /** S13 (10): der Ansichts-Tropfen: zu sehen, seine Tropfen im Fenster (CSS-Pixel) mit Tiefe zur Kamera, was das Schild sagt */
+  ansichtsTropfen: () => ansichtsTropfen.stand(),
   /** S13 (2): wie weit der Knopf eines Reglers (CSS-Auswahl) gerade gedehnt ist (1 = rund) */
   reglerDehnung: (auswahl: string): number => {
     const el = document.querySelector(auswahl);

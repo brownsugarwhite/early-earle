@@ -694,3 +694,38 @@ body.bild #tasten {
     opacity: 1;
   }
 }
+
+/* S13 (liquid drop, Idee 10): der Ansichts-Tropfen unten rechts (Zeichnung in ansichtsTropfen.ts) */
+#ansichts-tropfen {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  z-index: 3;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition:
+    opacity 280ms ease,
+    transform 460ms var(--feder);
+}
+#ansichts-tropfen:active {
+  cursor: grabbing;
+}
+#ansichts-tropfen.weg {
+  opacity: 0;
+  transform: scale(0.3);
+  pointer-events: none;
+}
+#ansichts-tropfen svg {
+  display: block;
+  overflow: visible;
+}
+body.bild #ansichts-tropfen {
+  display: none;
+}

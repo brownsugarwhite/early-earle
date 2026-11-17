@@ -327,8 +327,12 @@ Jede Idee nur in der Anzeige; am Werk ändert sich nichts.
   Betrachter zeigt, ist Tinte, was abgewandt ist, grün und fein wie Verdecktes. Er dreht sich mit der Kamera (rastet eine Ansicht ein,
   fließt ihr Tropfen in die Mitte). Über einem Tropfen quillt er auf, ein Schild sagt, wohin er führt („Front · 3“, „von hinten · ⇧3“).
   Ziehen an ihm dreht wie Ziehen ins Leere, Tippen auf einen Tropfen rastet dort ein, ⇧ und Tippen die Gegenseite, Tippen in die Mitte
-  führt zurück in den Raum. In den Vier Ansichten zeigt er den Raum. Nur Anzeige und Bedienung, am Werk nichts. Sein Urteil zum Entwurf
-  steht aus.
+  führt zurück in den Raum. In den Vier Ansichten zeigt er den Raum. Nur Anzeige und Bedienung, am Werk nichts. Florian: „Ja, so bauen“.
+  *Gebaut:* `ansichtsTropfen.ts` (SVG, je Bild aus der Kamera; Tropfen nach Tiefe geordnet, Aufquellen über dem Zeiger, Schild mit Faden),
+  in `main.ts` verdrahtet; das Drehen von Hand ist dafür in `drehenBeginnen`/`drehenZiehen`/`drehenLos` herausgelöst (Ziehen ins Leere,
+  ein Finger und der Tropfen drehen gleich). Probe `ozzy-ansichts-tropfen-fenster.mjs` 1 bis 8 halten; Bilder
+  [`2026-11-17-ansichts-tropfen.png`](../progress/ozzy/2026-11-17-ansichts-tropfen.png),
+  [`…-ueber.png`](../progress/ozzy/2026-11-17-ansichts-tropfen-ueber.png). **Alle zehn Ideen aus S13 sind gebaut.**
 
 Nicht in Ozzy: Pinsel Aufblasen, Absaugen, Glätten (Kern-Sitzung), das Maul-System (eigene Sitzung), iPhone.
 
