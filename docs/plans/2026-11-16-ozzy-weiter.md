@@ -460,6 +460,26 @@ Loslassen davor und dahinter; die Proportionen danach entsprechen dem Loslassen;
 dieser Ecke das Bild (Seite unten links, Front unten rechts, Top oben links; oben rechts der Raum, die Kiste klappt dabei zu). Der
 umgekehrte Weg von S18 und S19, mit derselben Haarlinie; wird mit ihnen gebaut.
 
+*S18, S19 und der Rückweg gebaut (17.11., Florian: „S18 und S19 zuerst“):* Ein Zug an der Kreuzung (`eckZug`), der über den erlaubten
+Bereich hinaus darf (`kreuzFrei`): Die Felder richten sich nach der freien Kreuzung, der Maßstab nach ihrer Lage im erlaubten Bereich; das
+Feld der Einzelansicht gleitet mit dem Anteil, um den die Kreuzung in ihre Ecke gerückt ist, zur Abbildung der Einzelansicht (`blickIn`:
+Zoom geometrisch, die Mitte der Form auf gerader Bahn; in der Ecke zeigt es genau sie, gewendet bleibt gewendet). **S18:** In der
+eingerasteten Seite, Front und Top sitzt der Tropfen an der Ecke (unten links, unten rechts, oben links; in der Front rückt der
+Ansichts-Tropfen nach oben); gezogen gleiten die anderen Ansichten von den Rändern herein, der Rand des erlaubten Bereichs ist die
+Haarlinie; davor losgelassen fährt die Kreuzung zurück in die Ecke (wieder die Einzelansicht, die Kamera hat sich nicht bewegt), dahinter
+bleiben die Vier Ansichten und das Feld des Raums dreht in den Raum. **S19:** Im Raum (nur vorn rechts oben, S16) sitzt der Punkt an der
+Ecke der Kiste; gezogen klappt sie mit dem Abstand vom Anfang auf (auf dem Kreis ganz), die Ecke der Kiste liegt dabei unter dem Zeiger
+(`faltAnker` in `faltRechnen`) und wird zur Kreuzung; davor losgelassen klappt sie zu, die Ecke fährt an ihren Platz. **Rückweg:** Der
+Tropfen der Vier Ansichten über die Haarlinie hinaus wird ein Zug zur nächsten Ecke: unten links die Seite, unten rechts die Front, oben
+links der Top (die Kamera rastet dort ein, während die Kreuzung in die Ecke fährt), oben rechts der Raum (die Kiste klappt zu; nur, wenn
+kein Feld gewendet ist). Doppelklick auf den Tropfen an der Ecke wie Tab. Nebenbei behoben: Beim Ziehen am Tropfen der Kreuzung rechnete
+der Zug waagrecht mit der Länge statt mit der Tiefe (seit S10): Die Kreuzung lief dem Zeiger davon, jetzt liegt sie unter ihm. Probe
+`ozzy-ecke-fenster.mjs` 1 bis 11 halten (Drücken 0,0 px, größter Schritt der Seite 3,1 px bei 4 px Zug, zurück 0,0 px, Kreuzung unter dem
+Loslassen 0,0 px, Rückweg ohne Sprung beim Wechsel 0,0 px, S19 Tropfen unter dem Zeiger 0,0 px, wieder zu 0,0 px, Doppelklick); die
+Proben zu S10, S16, S17, den Ansichten und dem Ansichts-Tropfen halten. Film in echter Geschwindigkeit
+[`2026-11-17-ecke.mp4`](../progress/ozzy/2026-11-17-ecke.mp4) (Seite → Vier → Seite, Raum → Vier → Raum), Bild
+[`2026-11-17-ecke.png`](../progress/ozzy/2026-11-17-ecke.png).
+
 **Rückmeldung vom 17.11., zweite (Florian, wörtlich):** „Noch eines: der look bei den linienansichten unterscheidet sich noch deutlich. in
 dr studie ist mehr verdeckt und die linien laufen sauber durch verjüngung in form. Können die kanten im raum statt auszufaden auch durch
 verjüngung und verdickung an ihre stelle gleiten? wenn ich den raum drehe und auch beim aufziehen in die 4ere ansicht. das würde gut zum

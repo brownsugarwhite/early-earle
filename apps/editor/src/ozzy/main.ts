@@ -237,6 +237,46 @@ const feldWende: Record<'seite' | 'front' | 'top', FeldWende> = {
 let feldWendenZug: { n: 'seite' | 'front' | 'top'; x0: number; y0: number; phi0: number } | null = null;
 /** S17b: Zuklappen wartet, bis gewendete Felder wieder vorn sind */
 let vierZuWartet = false;
+/**
+ * S18, S19 und der Rückweg (Florian, 17.11.): ein Zug an der Kreuzung der Vier Ansichten. Aus einer Einzelansicht (`einzel`, S18) zieht man
+ * sie aus der Ecke des Bilds ins Bild: Die anderen Ansichten gleiten herein, die eigene wird zu ihrem Feld. Aus dem Raum (`raum`, S19)
+ * zieht man die Ecke der Kiste: Sie klappt auf, gekoppelt an den Zug. Aus den Vier Ansichten (`vier`) über den erlaubten Bereich hinaus in
+ * eine Ecke: der Rückweg in die Ansicht dieser Ecke (oben rechts der Raum, die Kiste klappt zu). Nach dem Loslassen fährt die Kreuzung
+ * weiter (`fahrt`) und endet in den Vier Ansichten, der Einzelansicht oder dem Raum.
+ */
+type EckAnsicht = 'seite' | 'front' | 'top' | 'raum';
+type EckZug = {
+  art: 'einzel' | 'raum';
+  a: EckAnsicht;
+  /** die Einzelansicht: Mitte der Form im Bild (CSS-Pixel), Maßstab (CSS-Pixel je Einheit) */
+  einzel: { cx: number; cy: number; s: number } | null;
+  /** die Ecke der Kiste im Raum (CSS-Pixel) */
+  P0: [number, number];
+  /** Versatz vom Zeiger zur Kreuzung beim Greifen */
+  dx: number;
+  dy: number;
+  /** die Kreuzung jetzt (CSS-Pixel, im Bereich der Vier Ansichten) */
+  kx: number;
+  ky: number;
+  /** wie weit die Kiste offen ist (Art `raum`) */
+  e: number;
+  von: 'einzel' | 'raum' | 'vier';
+  fahrt: { kx0: number; ky0: number; kx1: number; ky1: number; e0: number; a0: [number, number]; t: number; dauer: number; ende: 'vier' | 'einzel' | 'raum' } | null;
+};
+let eckZug: EckZug | null = null;
+/** S18 und Rückweg: die Kreuzung frei, auch außerhalb des erlaubten Bereichs (CSS-Pixel); null = wie `teiler` */
+let kreuzFrei: [number, number] | null = null;
+/** S19: wohin die Ecke der Kiste beim Aufklappen kommt (CSS-Pixel); null = wie in S10 */
+let faltAnker: [number, number] | null = null;
+/** S18: Die Einzelansicht wird gerade zu ihrem Feld (ihre eigenen Linien schweigen, das Feld zeigt sie) */
+let einzelUebergang = false;
+/** der Tropfen an der Ecke schwillt beim Anflug (0 … 1) und ein Doppelklick auf ihn */
+let eckUeber = 0;
+let eckKlick = { t: 0, x: 0, y: 0 };
+/** wo der Tropfen der Kreuzung zuletzt gezeichnet wurde (CSS-Pixel; Probe) */
+let kreuzBild: [number, number] | null = null;
+/** S19: Halbmesser des Kreises, auf dem die Kiste ganz offen ist (Anteil der kürzeren Seite des Bilds) */
+const ECK_KREIS = 0.3;
 /** S17: Nummer des Bereichs der Anzeige je Feld (an seinem Rand wird abgeschnitten) */
 const BEREICH_VON = { seite: 1, front: 2, top: 3, raum: 4 } as const;
 /** S17: die Bereiche dieses Bilds für die Anzeige (vier Kanten je Feld, Gerätepunkte), leer außerhalb der Vier Ansichten */
@@ -1059,13 +1099,14 @@ type FeldAchse = 'seite' | 'front' | 'top';
  * Spalten sind so breit, wie die Form lang (x) und tief (z) ist, die Zeilen so hoch, wie sie hoch (y) und tief ist; der Teiler sitzt
  * damit an der Ecke ihres Quaders. Florians Zug am Tropfen verschiebt ihn (`teiler.bx`, `teiler.by`).
  */
-function felder(): Record<FeldAchse | 'raum', Feld> & { tx: number; ty: number } {
+function felder(fest = false): Record<FeldAchse | 'raum', Feld> & { tx: number; ty: number } {
   const rand = bw.vierRand;
   const oben = document.body.classList.contains('bild') ? rand : 64;
   const bwid = W - 2 * rand;
   const bhoch = H - oben - rand;
-  const tx = rand + teiler.fx * bwid;
-  const ty = oben + teiler.fy * bhoch;
+  // S18: die freie Kreuzung (`fest`: die im erlaubten Bereich, nach der sich der Maßstab richtet)
+  const tx = kreuzFrei && !fest ? kreuzFrei[0] : rand + teiler.fx * bwid;
+  const ty = kreuzFrei && !fest ? kreuzFrei[1] : oben + teiler.fy * bhoch;
   // S10 (Florian 16.11. abends: „ja anpassen“): die Lage der aufgeklappten Ecke (Projektionsmethode 1 mit der Seite als Hauptansicht und
   // der Front von rechts): Front oben links, Seite oben rechts, Top unter der Seite, der Raum unten links
   return {
@@ -1076,6 +1117,325 @@ function felder(): Record<FeldAchse | 'raum', Feld> & { tx: number; ty: number }
     tx,
     ty,
   };
+}
+
+/** S18: der Bereich der Vier Ansichten (CSS-Pixel) und darin der Bereich, in dem die Kreuzung liegt (18 % bis 82 %, wie `teilerZiel`) */
+function vierFlaeche(): { x0: number; y0: number; x1: number; y1: number; r: { x0: number; y0: number; x1: number; y1: number } } {
+  const rand = bw.vierRand;
+  const oben = document.body.classList.contains('bild') ? rand : 64;
+  const x0 = rand;
+  const y0 = oben;
+  const x1 = W - rand;
+  const y1 = H - rand;
+  return { x0, y0, x1, y1, r: { x0: x0 + 0.18 * (x1 - x0), y0: y0 + 0.18 * (y1 - y0), x1: x0 + 0.82 * (x1 - x0), y1: y0 + 0.82 * (y1 - y0) } };
+}
+
+/** S18: die Ecke, in der die Kreuzung liegt, wenn diese Ansicht das Bild füllt: Seite unten links, Front unten rechts, Top oben links, Raum oben rechts */
+function eckeVon(a: EckAnsicht): [number, number] {
+  const B = vierFlaeche();
+  return a === 'seite' ? [B.x0, B.y1] : a === 'front' ? [B.x1, B.y1] : a === 'top' ? [B.x0, B.y0] : [B.x1, B.y0];
+}
+
+/** S18: in den erlaubten Bereich geklemmt, und wie weit ein Punkt außerhalb liegt */
+function inBereich(x: number, y: number): [number, number] {
+  const r = vierFlaeche().r;
+  return [Math.min(r.x1, Math.max(r.x0, x)), Math.min(r.y1, Math.max(r.y0, y))];
+}
+function abstandVomBereich(x: number, y: number): number {
+  const [cx, cy] = inBereich(x, y);
+  return Math.hypot(x - cx, y - cy);
+}
+
+/** S18: wie weit die Kreuzung vom erlaubten Bereich in die Ecke der Ansicht gerückt ist (0 im Bereich, 1 in der Ecke) */
+function einzelAnteil(x: number, y: number, a: EckAnsicht): number {
+  const [ex, ey] = eckeVon(a);
+  const d = abstandVomBereich(ex, ey);
+  return d < 1e-6 ? 0 : Math.min(1, abstandVomBereich(x, y) / d);
+}
+
+/** S18 (Rückweg): die Ecke, der die Kreuzung am nächsten liegt; den Raum nur, wenn kein Feld gewendet ist (die Kiste klappt dorthin zu) */
+function naechsteEcke(x: number, y: number): EckAnsicht {
+  let best: EckAnsicht = 'seite';
+  let bd = Infinity;
+  for (const a of ['seite', 'front', 'top', 'raum'] as const) {
+    if (a === 'raum' && feldGewendet()) continue;
+    const [ex, ey] = eckeVon(a);
+    const d = Math.hypot(x - ex, y - ey);
+    if (d < bd) {
+      bd = d;
+      best = a;
+    }
+  }
+  return best;
+}
+
+/** S18: der Teiler so, dass die Kreuzung (im erlaubten Bereich) dort liegt, wo sie hin soll (wie der Zug am Tropfen) */
+function teilerAus(x: number, y: number): void {
+  const e2 = raum;
+  if (!e2) return;
+  const B = vierFlaeche();
+  const [cx, cy] = inBereich(x, y);
+  const X = 2 * e2.rx;
+  const Y = 2 * e2.ry;
+  const Z = 2 * e2.tiefe;
+  teiler.bx = (cx - B.x0) / (B.x1 - B.x0) - Z / (X + Z);
+  teiler.by = (cy - B.y0) / (B.y1 - B.y0) - Y / (Y + Z);
+}
+
+/**
+ * S18: Zoom und Verschiebung eines Felds, wie sie gerade wirken: Rückt die Kreuzung in die Ecke der Einzelansicht, gleiten sie mit ihr zur
+ * Abbildung der Einzelansicht (Zoom geometrisch, die Mitte der Form auf gerader Bahn); in der Ecke zeigt das Feld genau sie
+ */
+function blickIn(n: 'seite' | 'front' | 'top' | 'raum', F: ReturnType<typeof felder>, s: number): FeldBlick {
+  const b = feldBlick[n];
+  const z = eckZug;
+  if (!z || z.art !== 'einzel' || z.a !== n || !z.einzel || !kreuzFrei) return b;
+  const u = einzelAnteil(kreuzFrei[0], kreuzFrei[1], n);
+  if (u <= 0) return b;
+  const r = F[n];
+  const mx = r.x + r.w / 2;
+  const my = r.y + r.h / 2;
+  const zs = z.einzel.s / Math.max(1e-9, s);
+  return {
+    zoom: Math.exp(Math.log(b.zoom) + (Math.log(zs) - Math.log(b.zoom)) * u),
+    x: b.x + (z.einzel.cx - (mx + b.x)) * u,
+    y: b.y + (z.einzel.cy - (my + b.y)) * u,
+  };
+}
+
+/** S18, S19: wo der Tropfen der Kreuzung außerhalb der Vier Ansichten sitzt: in einer Einzelansicht an ihrer Ecke, im Raum an der Ecke der Kiste */
+function eckTropfenOrt(): [number, number] | null {
+  const e = raum;
+  if (zustand !== 'ruhe' || !e || eckZug || vier > 1e-3 || vierZiel > 0.5 || ansichtFahrt || vorDreh || wenden || drehen) return null;
+  if (ansicht !== 'raum') return flach >= 0.999 ? eckeVon(ansicht) : null;
+  // im Raum nur von vorn rechts oben (S16): dort liegen die Wände so, wie die Kiste aufklappt
+  if (flach > 1e-3 || !vorKiste(nutzer.gier, nutzer.neigung)) return null;
+  const P = projizieren(new Vector3(e.cx - e.L, e.cy - e.L, -e.L), vpJetzt());
+  return [P[0] / D, P[1] / D];
+}
+
+/** S18, S19: den Tropfen an der Ecke greifen (`eo`: wo er sitzt) */
+function eckZugBeginnen(eo: [number, number], x: number, y: number): void {
+  schwung = null;
+  vierFahrt = null;
+  vierWartet = false;
+  vierZuWartet = false;
+  vorDreh = null;
+  const basis = { P0: eo, dx: eo[0] - x, dy: eo[1] - y, kx: eo[0], ky: eo[1], fahrt: null };
+  if (ansicht !== 'raum') {
+    const a = ansicht;
+    const m = einzelAbbildung(a);
+    if (!m) return;
+    // die Einzelansicht wird ihr Feld: gewendet bleibt sie gewendet
+    feldWende[a].phi = m.phi;
+    feldWende[a].fahrt = null;
+    eckZug = { ...basis, art: 'einzel', a, einzel: { cx: m.cx, cy: m.cy, s: m.s }, e: 1, von: 'einzel' };
+    kreuzFrei = [eo[0], eo[1]];
+    einzelUebergang = true;
+    vier = 1;
+  } else {
+    for (const w of Object.values(feldWende)) {
+      w.phi = 0;
+      w.fahrt = null;
+    }
+    eckZug = { ...basis, art: 'raum', a: 'raum', einzel: null, e: 0, von: 'raum' };
+    faltAnker = [eo[0], eo[1]];
+    vier = 0;
+  }
+  vierZiel = 1;
+  teiler.zug = true;
+  teilerAus(eo[0], eo[1]);
+}
+
+/** S18 (Rückweg): aus dem Zug am Tropfen der Vier Ansichten wird ein Zug in eine Ecke, sobald er den erlaubten Bereich verlässt */
+function rueckwegBeginnen(x: number, y: number): void {
+  eckZug = { art: 'einzel', a: 'seite', einzel: null, P0: [0, 0], dx: 0, dy: 0, kx: x, ky: y, e: 1, von: 'vier', fahrt: null };
+  eckZugBewegen(x, y);
+}
+
+/** die Abbildung der Einzelansicht `a`, wie die Kamera sie nach dem Einrasten zeigen wird (Mitte der Form in der Mitte, samt Schwenk) */
+function einzelZiel(): { cx: number; cy: number; s: number } {
+  return { cx: W / 2 + nutzer.schwenkX, cy: H / 2 + nutzer.schwenkY, s: massstab.jetzt * nutzer.zoom };
+}
+
+/** die Ecke der Kiste im Raum, wie sie ohne Vier Ansichten im Bild läge (CSS-Pixel) */
+function raumEcke(): [number, number] {
+  const e = raum!;
+  const q = new Vector3(e.cx - e.L, e.cy - e.L, -e.L).applyMatrix4(new Matrix4().multiplyMatrices(projRaum, kam.aktiv.matrixWorldInverse));
+  return [((q.x + 1) / 2) * W, ((1 - q.y) / 2) * H];
+}
+
+/** S18, S19: der Zeiger ist jetzt bei (x, y) */
+function eckZugBewegen(x: number, y: number): void {
+  const z = eckZug;
+  if (!z) return;
+  const B = vierFlaeche();
+  const kx = Math.min(B.x1, Math.max(B.x0, x + z.dx));
+  const ky = Math.min(B.y1, Math.max(B.y0, y + z.dy));
+  z.kx = kx;
+  z.ky = ky;
+  teilerAus(kx, ky);
+  if (z.von === 'raum') {
+    // S19: wie weit vom Anfang, auf dem Kreis ganz offen; die Ecke bleibt unter dem Zeiger (am Ende die Kreuzung im erlaubten Bereich)
+    z.e = Math.min(1, Math.hypot(kx - z.P0[0], ky - z.P0[1]) / (ECK_KREIS * Math.min(W, H)));
+    const [cx, cy] = inBereich(kx, ky);
+    const w = glatt(z.e);
+    faltAnker = [kx + (cx - kx) * w, ky + (cy - ky) * w];
+    vier = z.e;
+    return;
+  }
+  if (z.von === 'vier') {
+    // Rückweg: im erlaubten Bereich die Vier Ansichten wie immer; draußen zur nächsten Ecke hin
+    const a = abstandVomBereich(kx, ky) > 1e-6 ? naechsteEcke(kx, ky) : z.a;
+    if (a === 'raum') {
+      const u = einzelAnteil(kx, ky, 'raum');
+      z.art = 'raum';
+      z.a = 'raum';
+      z.einzel = null;
+      z.P0 = raumEcke();
+      z.e = 1 - u;
+      kreuzFrei = null;
+      // die Ecke der Kiste rückt vom Zeiger zu ihrem Platz im Raum
+      faltAnker = [z.P0[0] + (kx - z.P0[0]) * z.e, z.P0[1] + (ky - z.P0[1]) * z.e];
+      vier = z.e;
+      return;
+    }
+    z.art = 'einzel';
+    z.a = a;
+    z.einzel = einzelZiel();
+    faltAnker = null;
+    vier = 1;
+  }
+  kreuzFrei = [kx, ky];
+}
+
+/** S18, S19: losgelassen: in den Vier Ansichten bleiben oder in die Einzelansicht oder den Raum fahren */
+function eckZugLos(): void {
+  const z = eckZug;
+  if (!z || z.fahrt) return;
+  const a0: [number, number] = faltAnker ? [faltAnker[0], faltAnker[1]] : [z.kx, z.ky];
+  if (z.art === 'raum') {
+    if (z.e >= 1 - 1e-6) {
+      eckZugEnde('vier');
+      return;
+    }
+    // nur gedrückt, nicht gezogen (der erste Klick eines Doppelklicks): gleich wieder zu
+    if (z.e < 1e-3) {
+      eckZugEnde('raum');
+      return;
+    }
+    // zu, wie die Kiste aufging: die Ecke fährt zurück an ihren Platz im Raum
+    z.fahrt = { kx0: z.kx, ky0: z.ky, kx1: z.kx, ky1: z.ky, e0: z.e, a0, t: 0, dauer: Math.max(0.12, 0.5 * z.e), ende: 'raum' };
+    return;
+  }
+  const u = einzelAnteil(z.kx, z.ky, z.a);
+  if (u <= 0) {
+    eckZugEnde('vier');
+    return;
+  }
+  const [ex, ey] = eckeVon(z.a);
+  // nur gedrückt, nicht gezogen (der erste Klick eines Doppelklicks): gleich wieder die Einzelansicht
+  if (z.von === 'einzel' && Math.hypot(z.kx - ex, z.ky - ey) < 0.5) {
+    eckZugEnde('einzel');
+    return;
+  }
+  let dauer = Math.max(0.12, 0.35 * u);
+  if (z.von === 'vier' && z.a !== 'raum') {
+    // Rückweg: die Kamera rastet in der Ansicht ein, während die Kreuzung in die Ecke fährt (danach zeigt die Kamera dasselbe Bild)
+    ansichtSetzen(z.a, Math.cos(feldWende[z.a].phi) < 0);
+    dauer = Math.max(dauer, bw.fahrt + 0.05);
+  }
+  z.fahrt = { kx0: z.kx, ky0: z.ky, kx1: ex, ky1: ey, e0: 1, a0, t: 0, dauer, ende: 'einzel' };
+}
+
+/** S18, S19: eine Fahrt nach dem Loslassen, Bild für Bild; true, solange sie läuft */
+function eckZugSchritt(dt: number): boolean {
+  const z = eckZug;
+  if (!z?.fahrt) return false;
+  const f = z.fahrt;
+  f.t += dt / f.dauer;
+  const t = Math.min(1, f.t);
+  const w = t * t * t * (t * (t * 6 - 15) + 10);
+  if (z.art === 'raum') {
+    z.e = f.e0 * (1 - w);
+    const k = f.e0 > 1e-9 ? z.e / f.e0 : 0;
+    faltAnker = [z.P0[0] + (f.a0[0] - z.P0[0]) * k, z.P0[1] + (f.a0[1] - z.P0[1]) * k];
+    vier = z.e;
+  } else {
+    z.kx = f.kx0 + (f.kx1 - f.kx0) * w;
+    z.ky = f.ky0 + (f.ky1 - f.ky0) * w;
+    kreuzFrei = [z.kx, z.ky];
+    teilerAus(z.kx, z.ky);
+  }
+  if (t >= 1) eckZugEnde(f.ende);
+  return true;
+}
+
+/** S18, S19: am Ende: Vier Ansichten, Einzelansicht oder Raum */
+function eckZugEnde(ende: 'vier' | 'einzel' | 'raum'): void {
+  const z = eckZug;
+  eckZug = null;
+  teiler.zug = false;
+  kreuzFrei = null;
+  faltAnker = null;
+  einzelUebergang = false;
+  vierFahrt = null;
+  if (ende === 'vier') {
+    vier = 1;
+    vierZiel = 1;
+    // aus einer Einzelansicht: das Feld des Raums zeigt wieder den Raum
+    if (z?.von === 'einzel' && ansicht !== 'raum') ansichtSetzen('raum');
+    return;
+  }
+  vier = 0;
+  vierZiel = 0;
+}
+
+/**
+ * S18, S19: Zeichen beim Zug: die Haarlinie, ab der es ganz die Vier Ansichten sind (Einzelansicht und Rückweg: der Rand des erlaubten
+ * Bereichs; Raum: ein Kreis um die Ecke der Kiste), und der Tropfen an der Ecke, solange nicht gezogen wird
+ */
+function eckZeichen(): void {
+  const h = (linienWerte.innen / 2) * D * 1.4;
+  const z = eckZug;
+  if (z && !z.fahrt && z.art === 'raum' && z.von === 'raum') {
+    const R = ECK_KREIS * Math.min(W, H);
+    const xs: number[] = [];
+    const ys: number[] = [];
+    for (let i = 0; i < 96; i++) {
+      xs.push((z.P0[0] + R * Math.cos((i / 96) * 2 * Math.PI)) * D);
+      ys.push((z.P0[1] + R * Math.sin((i / 96) * 2 * Math.PI)) * D);
+    }
+    K.zug(xs, ys, h, true);
+  } else if ((z && !z.fahrt && z.art === 'einzel') || (teiler.zug && !z)) {
+    const r = vierFlaeche().r;
+    const g = K.neueGruppe();
+    K.push(r.x0 * D, r.y0 * D, r.x1 * D, r.y0 * D, h, h, g, 0, false);
+    K.push(r.x1 * D, r.y0 * D, r.x1 * D, r.y1 * D, h, h, g, 0, false);
+    K.push(r.x1 * D, r.y1 * D, r.x0 * D, r.y1 * D, h, h, g, 0, false);
+    K.push(r.x0 * D, r.y1 * D, r.x0 * D, r.y0 * D, h, h, g, 0, false);
+  }
+  const P = eckTropfenOrt();
+  if (P) K.punkt(P[0] * D, P[1] * D, linienWerte.punktRadius * D * (1 + (linienWerte.tropfen - 1) * eckUeber));
+}
+
+/**
+ * S18: die Abbildung der Einzelansicht `a`, wie die Kamera sie gerade zeigt: Mitte der Form im Bild (CSS-Pixel), Maßstab (CSS-Pixel je
+ * Einheit) und ob sie gegenüber ihrem Feld der Vier Ansichten gespiegelt ist (dann zeigt das Feld sie gewendet, `feldWende`)
+ */
+function einzelAbbildung(a: 'seite' | 'front' | 'top'): { cx: number; cy: number; s: number; phi: number } | null {
+  const e = raum;
+  if (!e) return null;
+  const vp = vpJetzt();
+  const C = new Vector3(e.cx, e.cy, 0);
+  const [x0, y0] = projizieren(C, vp);
+  const [xu, yu] = projizieren(C.clone().add(a === 'front' ? new Vector3(0, 0, -1) : new Vector3(1, 0, 0)), vp);
+  const [xv, yv] = projizieren(C.clone().add(a === 'top' ? new Vector3(0, 0, -1) : new Vector3(0, 1, 0)), vp);
+  const su = (xu - x0) / D;
+  const sv = -(yv - y0) / D;
+  void yu;
+  void xv;
+  return { cx: x0 / D, cy: y0 / D, s: Math.max(Math.abs(su), Math.abs(sv)), phi: (a === 'top' ? sv : su) < 0 ? Math.PI : 0 };
 }
 
 /** Lage des Teilers aus den Maßen der Form (Anteile), dazu Florians Abweichung */
@@ -1132,8 +1492,10 @@ function feldHautSchneiden(): void {
 }
 
 /** gemeinsamer Maßstab der drei flachen Felder: Jede Ansicht passt in ihr Feld */
-function feldMassstab(F: ReturnType<typeof felder>): number {
+function feldMassstab(F0: ReturnType<typeof felder>): number {
   const e = raum!;
+  // S18: mit freier Kreuzung richtet er sich nach der Lage im erlaubten Bereich (sonst schrumpften die Ansichten mit ihren Feldern)
+  const F = kreuzFrei ? felder(true) : F0;
   const f = bw.vierFuellung;
   const X = 2 * e.rx;
   const Y = 2 * e.ry;
@@ -1145,8 +1507,8 @@ function feldMassstab(F: ReturnType<typeof felder>): number {
 function imFeld(n: FeldAchse, p: Vector3, F: ReturnType<typeof felder>, s: number): [number, number] {
   const e = raum!;
   const r = F[n];
-  // S17: mit Zoom und Verschiebung des Felds
-  const b = feldBlick[n];
+  // S17: mit Zoom und Verschiebung des Felds (S18: auf dem Weg zur Einzelansicht zu deren Abbildung hin)
+  const b = blickIn(n, F, s);
   const mx = r.x + r.w / 2 + b.x;
   const my = r.y + r.h / 2 + b.y;
   const sz = s * b.zoom;
@@ -1160,7 +1522,7 @@ function imFeld(n: FeldAchse, p: Vector3, F: ReturnType<typeof felder>, s: numbe
 function ausFeld(n: FeldAchse, x: number, y: number, F: ReturnType<typeof felder>, s: number): [number, number] {
   const e = raum!;
   const r = F[n];
-  const b = feldBlick[n];
+  const b = blickIn(n, F, s);
   const c0 = Math.cos(feldWende[n].phi);
   const c = Math.abs(c0) < 1e-3 ? (c0 < 0 ? -1e-3 : 1e-3) : c0;
   const u = (x - (r.x + r.w / 2 + b.x)) / (s * b.zoom * (n === 'top' ? 1 : c));
@@ -1231,8 +1593,20 @@ function faltRechnen(): Falt | null {
   const anker = new Vector3(e.cx, e.cy, sw[2] * e.L);
   const a0 = anker.clone().applyMatrix4(new Matrix4().multiplyMatrices(projRaum, kam.aktiv.matrixWorldInverse));
   const a = anker.clone().applyMatrix4(new Matrix4().multiplyMatrices(c.projectionMatrix, c.matrixWorldInverse));
-  const ox = a0.x + ((2 * mxS) / W - 1 - a0.x) * v - a.x;
-  const oy = a0.y + (1 - (2 * myS) / H - a0.y) * v - a.y;
+  let ox = a0.x + ((2 * mxS) / W - 1 - a0.x) * v - a.x;
+  let oy = a0.y + (1 - (2 * myS) / H - a0.y) * v - a.y;
+  if (faltAnker) {
+    // S19: Die Ecke der Kiste (wo die Kanten der Front und des Bodens die Seite treffen; am Ende die Kreuzung) liegt am Ziel des Zugs
+    const xh = e.cx + sw[0] * e.L;
+    const yh = e.cy + sw[1] * e.L;
+    const xhF = e.cx + (F.tx - mxS) / s4;
+    const yhF = e.cy - (F.ty - myS) / s4;
+    const ecke = new Vector3(xh + (xhF - xh) * v, yh + (yhF - yh) * v, sw[2] * e.L).applyMatrix4(
+      new Matrix4().multiplyMatrices(c.projectionMatrix, c.matrixWorldInverse),
+    );
+    ox = (2 * faltAnker[0]) / W - 1 - ecke.x;
+    oy = 1 - (2 * faltAnker[1]) / H - ecke.y;
+  }
   const proj = c.projectionMatrix.clone().premultiply(new Matrix4().set(1, 0, 0, ox, 0, 1, 0, oy, 0, 0, 1, 0, 0, 0, 0, 1));
   const vp = new Matrix4().multiplyMatrices(proj, c.matrixWorldInverse);
   const f: Falt = {
@@ -1460,13 +1834,18 @@ function faltKanten(f: Falt, k0: number, rt: number): [number, number] {
 }
 
 function vierUmschalten(an?: boolean): void {
-  if (zustand !== 'ruhe') return;
+  if (zustand !== 'ruhe' || eckZug) return;
   vierZiel = (an ?? vierZiel < 0.5) ? 1 : 0;
   if (vierZiel > 0.5 && ansicht !== 'raum') ansichtSetzen('raum');
   vierWartet = false;
   if (vierZiel > 0.5 && vier < 1e-3) {
     // S16: von hinten, unten oder links erst auf die Vorderseite der Kiste drehen (wie von Hand); aufgeklappt wird, sobald sie dort ist
     schwung = null;
+    // S17b: die Felder klappen ungewendet auf
+    for (const w of Object.values(feldWende)) {
+      w.phi = 0;
+      w.fahrt = null;
+    }
     const ziel = ansichtFahrt ? null : vorderseiteZiel();
     if (ziel) {
       const [G, N] = gesamtWinkel(nutzer.gier, nutzer.neigung);
@@ -1706,6 +2085,17 @@ function bild(dt: number): boolean {
     aktiv = true;
   }
   vierWarten();
+  // S18, S19: die Fahrt nach dem Loslassen des Tropfens an der Ecke; sein Anflug
+  if (eckZugSchritt(dt)) aktiv = true;
+  {
+    const P = eckTropfenOrt();
+    const ziel = P && zeiger.da && Math.hypot(zeiger.x - P[0], zeiger.y - P[1]) < 14 ? 1 : 0;
+    eckUeber += (ziel - eckUeber) * (1 - Math.exp(-dt / 0.12));
+    if (Math.abs(ziel - eckUeber) > 2e-3) aktiv = true;
+    leinwandLinien.classList.toggle('teiler', ziel > 0 || teiler.ueber > 0 || !!eckZug);
+    // in der Front liegt der Tropfen unten rechts: Der Ansichts-Tropfen rückt nach oben
+    document.getElementById('ansichts-tropfen')?.classList.toggle('hoch', ansicht === 'front' && flach > 0.5 && vier < 0.5 && !eckZug);
+  }
   // S17b: Wenden der Felder
   for (const w of Object.values(feldWende)) {
     if (!w.fahrt) continue;
@@ -1875,8 +2265,9 @@ function bild(dt: number): boolean {
     if (koerper && raum && m) {
       const tw = performance.now();
       wandLinien(vp, m);
-      if (flach > 0.01) linienDerAnsicht(vp);
+      if (flach > 0.01 && !einzelUebergang) linienDerAnsicht(vp);
       if (faltJetzt) felderLinien(faltJetzt, m);
+      eckZeichen();
       mess.teile[5] = performance.now() - tw;
       if (werkHaut.umrissVeraltet) aktiv = true;
     }
@@ -1928,18 +2319,18 @@ function bild(dt: number): boolean {
           ? werkGezeigt
             ? bearbeiten.stift
               ? 'P: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen (Form) · auf Punkt oder Linie beginnen und enden (Abzweigung) · Esc'
-              : 'Punkte, Linien und Richtungen ziehen · ins Leere ziehen: drehen · Rad zoomt das Feld · Leertaste + Ziehen schwenkt · ⇧ + Ziehen wendet · P zeichnen · L Lasso · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · Tab: zurück in den Raum'
+              : 'Punkte, Linien und Richtungen ziehen · ins Leere ziehen: drehen · Rad zoomt das Feld · Leertaste + Ziehen schwenkt · ⇧ + Ziehen wendet · Tropfen in eine Ecke: eine Ansicht · P zeichnen · L Lasso · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · Tab: zurück in den Raum'
             : 'Tab: zurück in den Raum · Tropfen in der Mitte ziehen: Felder · Rad zoomt das Feld · Leertaste + Ziehen schwenkt · Punkte der Seite ziehen'
           : ansicht === 'raum'
             ? werkGezeigt
               ? bearbeiten.stift
                 ? 'P an den Wänden: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen · auf Punkt oder Linie: Abzweigung · Esc'
-                : 'an der Blase ziehen: Pinsel ([ ] Größe) · ins Leere ziehen: drehen · Linien an den Wänden ziehen · P zeichnen · L Lasso · K Kante · ⌫ löschen · ⌘Z · 1 3 7 Ansichten · Tab vier'
+                : 'an der Blase ziehen: Pinsel ([ ] Größe) · ins Leere ziehen: drehen · Linien an den Wänden ziehen · Punkt an der Ecke ziehen: aufklappen · P zeichnen · L Lasso · K Kante · ⌫ löschen · ⌘Z · 1 3 7 Ansichten · Tab vier'
               : 'ziehen: drehen · an der Blase ziehen · Punkte an der Wand der Seite ziehen · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
             : werkGezeigt
               ? bearbeiten.stift
                 ? 'P: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen (Form) · auf Punkt oder Linie beginnen und enden (Abzweigung) · Esc'
-                : 'Punkte, Linien und Richtungen ziehen · ins Leere ziehen: drehen · P zeichnen · L Lasso · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · 0 Raum · 1 Seite · 3 Front · 7 Top'
+                : 'Punkte, Linien und Richtungen ziehen · ins Leere ziehen: drehen · Tropfen an der Ecke ziehen: Vier Ansichten · P zeichnen · L Lasso · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · 0 Raum · 1 Seite · 3 Front · 7 Top'
               : '0 Raum · 1 Seite · 3 Front · 7 Top · Tab vier Ansichten'
         : '';
   // eine Meldung des Werks (das Maul, P, die Pose) steht ein paar Sekunden statt des Hinweises
@@ -2306,8 +2697,10 @@ function felderLinien(f: Falt, m: Moment): void {
   if (v <= 0.999) {
     const [kx, ky] = faltKanten(f, werte.kanten * Math.min(st0[0], st0[1], st0[2]) * raumSicht(), rh);
     K.punkt(kx, ky, tropfen);
+    kreuzBild = [kx / D, ky / D];
     return;
   }
+  kreuzBild = [F.tx, F.ty];
   const g = K.neueGruppe();
   const rand = bw.vierRand;
   const oben = document.body.classList.contains('bild') ? rand : 64;
@@ -2427,7 +2820,7 @@ function flaechenJetzt(vp: Matrix4, m: Moment): { flaechen: Flaeche[]; stabil: b
     liste.push(ebene(BLATT_DER_ACHSE[achse]!, wandLage, vp, staerke[achse], bw.wandLinien, true));
   }
   // eingerastet (wie `linienDerAnsicht`): auf der Ebene durch die Mitte der Form
-  if (blatt && ansicht !== 'raum') {
+  if (blatt && ansicht !== 'raum' && !einzelUebergang) {
     const blick = new Vector3();
     kam.aktiv.getWorldDirection(blick);
     const t = wendenSicht ? 1 : Math.min(1, Math.max(0, (Math.abs(blick.dot(VORN[ansicht])) - 0.97) / 0.025));
@@ -2439,7 +2832,7 @@ function flaechenJetzt(vp: Matrix4, m: Moment): { flaechen: Flaeche[]; stabil: b
     const st0 = waendeJetzt(m, true).staerke;
     for (const n of ['seite', 'front', 'top'] as const) liste.push(feldFlaeche(n, faltJetzt, st0));
   }
-  const ruhig = zustand === 'ruhe' && !ansichtFahrt && !vierFahrt;
+  const ruhig = zustand === 'ruhe' && !ansichtFahrt && !vierFahrt && !eckZug;
   const stabil = ruhig && (vier > 0.999 || (vier < 0.001 && (flach > 0.999 || flach < 0.001)));
   return { flaechen: liste, stabil };
 }
@@ -2948,7 +3341,7 @@ function feldHinten(): Hinten | null {
     if (Math.abs(sn) < 1e-4 && c > 0) continue;
     const r = f.F[n];
     kanten.push(1, 0, -r.x * D, -1, 0, (r.x + r.w) * D, 0, 1, -r.y * D, 0, -1, (r.y + r.h) * D);
-    const b = feldBlick[n];
+    const b = blickIn(n, f.F, f.s4);
     const mx = (r.x + r.w / 2 + b.x) * D;
     const my = (r.y + r.h / 2 + b.y) * D;
     const ax = n === 'top' ? 0 : 1;
@@ -3525,14 +3918,20 @@ leinwandLinien.addEventListener('pointermove', (e) => {
     anstossen();
     return;
   }
-  if (teiler.zug) {
+  if (eckZug) {
+    if (!eckZug.fahrt) eckZugBewegen(x, y);
+  } else if (teiler.zug && raum && abstandVomBereich(x, y) > 0) {
+    // S18 (Rückweg): über den erlaubten Bereich hinaus wird es ein Zug in eine Ecke
+    rueckwegBeginnen(x, y);
+  } else if (teiler.zug) {
     const rand = bw.vierRand;
     const oben = 64;
     const e2 = raum!;
     const X = 2 * e2.rx;
     const Y = 2 * e2.ry;
     const Z = 2 * e2.tiefe;
-    teiler.bx = (x - rand) / (W - 2 * rand) - X / (X + Z);
+    // links steht die Front (Tiefe Z), wie in `teilerZiel` (bis 17.11. stand hier die Länge X: Die Kreuzung lief dem Zeiger waagrecht davon)
+    teiler.bx = (x - rand) / (W - 2 * rand) - Z / (X + Z);
     teiler.by = (y - oben) / (H - oben - rand) - Y / (Y + Z);
   } else if (punktZug && werkGezeigt) {
     // den Punkt der Linie im Werk ziehen (wartet der Griff noch, holt er die Maus später ein)
@@ -3587,7 +3986,8 @@ leinwandLinien.addEventListener('pointermove', (e) => {
     } else if (!werkGezeigt) aufBlase = !p && !teiler.ueber && hauchSuchen(x, y);
     else hauch.ziel = 0;
     wandUnterZeiger = aufBlase || p ? -1 : wandSuchen(x, y);
-    leinwandLinien.classList.toggle('teiler', teiler.ueber > 0);
+    const eo = eckTropfenOrt();
+    leinwandLinien.classList.toggle('teiler', teiler.ueber > 0 || !!eckZug || (!!eo && Math.hypot(x - eo[0], y - eo[1]) < 14));
   }
   anstossen();
 });
@@ -3617,6 +4017,21 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     const n = feldUnter(x, y);
     schwenkZug = { feld: n, x0: x, y0: y, bx: n ? feldBlick[n].x : nutzer.schwenkX, by: n ? feldBlick[n].y : nutzer.schwenkY };
     leertasteGeschwenkt = true;
+    anstossen();
+    return;
+  }
+  // S18, S19: der Tropfen an der Ecke (Einzelansicht) oder der Punkt an der Ecke der Kiste (Raum); Doppelklick wie Tab
+  const eo = eckTropfenOrt();
+  if (eo && Math.hypot(x - eo[0], y - eo[1]) < 14) {
+    const jetzt = e.timeStamp;
+    if (jetzt - eckKlick.t < 350 && Math.hypot(x - eckKlick.x, y - eckKlick.y) < 8) {
+      eckKlick = { t: 0, x, y };
+      vierUmschalten(true);
+      anstossen();
+      return;
+    }
+    eckKlick = { t: jetzt, x, y };
+    eckZugBeginnen(eo, x, y);
     anstossen();
     return;
   }
@@ -3742,6 +4157,11 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
 });
 
 const loslassen = (e: PointerEvent): void => {
+  if (eckZug) {
+    eckZugLos();
+    anstossen();
+    return;
+  }
   if (feldWendenZug) {
     // zur näheren Seite, wie in der Vollansicht
     const n = feldWendenZug.n;
@@ -4560,7 +4980,8 @@ const haken = {
     }),
   /** wo ein Ort im Blatt `a` (Einheiten des Werks, wie `werk.imBlatt`) auf der Fläche dieses Blatts liegt (CSS-Pixel); eingerastet oder Feld */
   flaecheHin: (a: Flaeche['a'], X: number, Y: number): { x: number; y: number } | null => {
-    const F = werkBlatt.flaechen.find((f) => f.a === a);
+    // in den Vier Ansichten das Feld (beim Einrasten aus ihnen heraus gibt es daneben die Wand, die im Feld des Raums zum Blatt wird)
+    const F = werkBlatt.flaechen.find((f) => f.a === a && (vier < 1e-3 || f.bereich !== undefined)) ?? werkBlatt.flaechen.find((f) => f.a === a);
     if (!F) return null;
     const [x, y] = F.hin(X, Y);
     return { x, y };
@@ -4573,6 +4994,18 @@ const haken = {
   },
   /** S17: die Felder der Vier Ansichten (CSS-Pixel) und Zoom und Verschiebung je Feld */
   felderJetzt: () => (raum ? felder() : null),
+  /** S18, S19: der Tropfen an der Ecke, der Zug an der Kreuzung, die freie Kreuzung, die Ecke der Kiste beim Aufklappen, der erlaubte Bereich */
+  eck: () => ({
+    ort: eckTropfenOrt(),
+    zug: eckZug ? { art: eckZug.art, a: eckZug.a, von: eckZug.von, e: eckZug.e, kx: eckZug.kx, ky: eckZug.ky, fahrt: !!eckZug.fahrt, P0: eckZug.P0 } : null,
+    kreuz: kreuzFrei,
+    anker: faltAnker,
+    bereich: raum ? vierFlaeche().r : null,
+    teiler: { bx: teiler.bx, by: teiler.by },
+    bild: vier > 1e-3 ? kreuzBild : null,
+    kreis: ECK_KREIS * Math.min(W, H),
+  }),
+  einzelAbbildung: () => (ansicht !== 'raum' ? einzelAbbildung(ansicht) : null),
   feldBlick: () => JSON.parse(JSON.stringify(feldBlick)) as typeof feldBlick,
   /** eine Stelle mitten auf einer Linie des Werks (Loop-Kennung) auf der Fläche mit diesem Blatt, weit weg von ihren Punkten (CSS-Pixel) */
   linieImBild: (id: number, a: Flaeche['a']): { x: number; y: number } | null => {

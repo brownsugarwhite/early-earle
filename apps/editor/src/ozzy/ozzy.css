@@ -729,3 +729,14 @@ body.bild #tasten {
 body.bild #ansichts-tropfen {
   display: none;
 }
+
+/* S18: in der Front liegt der Tropfen der Kreuzung unten rechts; der Ansichts-Tropfen rückt dafür nach oben */
+#ansichts-tropfen {
+  transition:
+    opacity 280ms ease,
+    transform 460ms var(--feder),
+    bottom 420ms var(--feder);
+}
+#ansichts-tropfen.hoch {
+  bottom: 74px;
+}

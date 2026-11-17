@@ -314,9 +314,12 @@ unten), die Probe zu S10 hält von vorn. Film [`2026-11-17-vier-hinten-vorher-na
 zurück), die Anzeige schneidet jede Kapsel an ihrem Feld ab (`fluessig.ts`: Bereiche, Art + 8 · Bereich; `Raum.bereich` in der
 Linien-Studie), Auf- und Zuklappen landen im gezoomten Feld; S17b Wenden je Feld (`feldWende`, ⇧ + Ziehen, ⇧ + Doppelklick, Kante und
 Rückseite wie in der Vollansicht, Tab wendet erst zurück). Proben `ozzy-feld-zoom-fenster.mjs`, `ozzy-feld-wenden-fenster.mjs`; Bilder
-`2026-11-17-feld-zoom.png`, `2026-11-17-feld-wenden.png`. **Freigegeben, als Nächstes:** S18 der Tropfen an der Ecke einer
-Einzelansicht, S19 der Punkt an der Ecke im Raum, beide mit Rückweg (Tropfen in eine Ecke ziehen); danach S20 Linienansichten wie in der
-Studie (Körper weiß mit Tiefe, Umriss als Hülle, Verdecktes je Bildpunkt; seine Bilder `docs/look/ozzy/2026-11-17-florian-linien-*.png`)
+`2026-11-17-feld-zoom.png`, `2026-11-17-feld-wenden.png`. **S18, S19 und Rückweg gebaut:** ein Zug an der Kreuzung (`eckZug`,
+`kreuzFrei`, `blickIn`, `faltAnker`): Tropfen an der Ecke der Einzelansicht ins Bild ziehen (Haarlinie = Rand des erlaubten Bereichs),
+Punkt an der Ecke der Kiste im Raum (Kreis als Haarlinie, die Kiste klappt mit dem Zug auf), der Tropfen der Vier Ansichten in eine Ecke
+(Seite, Front, Top rasten ein, oben rechts klappt die Kiste zu); Doppelklick wie Tab. Probe `ozzy-ecke-fenster.mjs`, Film
+`2026-11-17-ecke.mp4`. Nebenbei: Der Zug am Tropfen der Kreuzung rechnete waagrecht mit der Länge statt der Tiefe (seit S10), behoben.
+**Als Nächstes:** S20 Linienansichten wie in der Studie (Körper weiß mit Tiefe, Umriss als Hülle, Verdecktes je Bildpunkt; seine Bilder `docs/look/ozzy/2026-11-17-florian-linien-*.png`)
 und S21 Kanten gleiten statt auszublenden. Offen in Ozzy sonst: Kneifen zum Auffalten (geht in S19 auf), Würfel mit ebenen Flächen, Haut
 gleitet bei ⌘Z.
 
