@@ -22,7 +22,8 @@ Ansichten 16,8 → 10,3 ms, eingerastet 9,7 → 4,3 ms, nah herangezoomt 21,1 �
 Scherben und keine Sprünge mehr in der Seifenhaut. Messblätter:
 [`2026-11-17-messen-karte-zug-p.md`](../../progress/ozzy/2026-11-17-messen-karte-zug-p.md) (vorher),
 [`2026-11-17-messen-nach-a.md`](../../progress/ozzy/2026-11-17-messen-nach-a.md) (nach A). Sein Urteil zur Seifenhaut steht aus.
-Nächster Schritt: der Rest von B2 (Linien nur neu aufbauen, wenn sich etwas ändert; der weiße Körper an den Wänden), dann B3. Die Sitzung dieses Plans ist auch die des Kerns: Sie darf
+Die Linien werden nur noch neu aufgebaut, wenn sich etwas ändert (Linien je Bild im Raum 1,7 → 0,6 ms). Nächster Schritt: B3
+(Wireframe im Raum, Bild zuerst), dann B4; aus B2 offen: der weiße Körper an den Wänden (Vergleichsbild zuerst). Die Sitzung dieses Plans ist auch die des Kerns: Sie darf
 ihn ändern. Proben: `node scripts/pruefen/ozzy-alle.mjs` (alle 24 nacheinander); Werkzeuge zum Messen: `ozzy-karte-messen.mjs`,
 `ozzy-zug-messen.mjs`, `ozzy-p-ueberall.mjs`, `ozzy-zuege-zaehlen.mjs` (gemeinsame Teile in `ozzy-teile.mjs`).
 

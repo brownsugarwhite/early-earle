@@ -259,9 +259,25 @@ mit seinen Linien räumlich, parallel und genau wie in der einzelnen Ansicht; ü
 - **Probe** `apps/editor/scripts/pruefen/ozzy-wenden-raum-fenster.mjs`: Feld und einzelne Ansicht um 45° gewendet und gehalten: Die
   Punkte der Mitte rücken um cos 45° zusammen, der Punkt der Flanke und sein Spiegelbild liegen 0,00 Punkte neben der Rechnung der
   räumlichen Drehung (139 und 59 Punkte auseinander; flach wären es 0); losgelassen ist alles wieder, wo es war. Alle 24 Proben halten.
-- **Gemessen, noch nicht verbessert:** Linien bauen je Bild im Raum 1,8 ms, in den Vier Ansichten 2,6 ms (von 3,3 und 4,8 ms Rechnen).
-- **Offen aus B2:** Linien nur neu aufbauen, wenn sich etwas geändert hat; der weiße Körper auch an den Wänden des Raums
-  (Vergleichsbild zuerst); Wand und Kistennetz auf dieselbe Art Abbildung (dort ändert sich nichts Sichtbares).
+
+**Gebaut (17.11., 21 Uhr 45), zweiter Teil: Die Linien werden nur neu aufgebaut, wenn sich etwas geändert hat.** Am Bild ändert sich
+nichts. `werkBlatt.bauen` vergleicht eine Zeile aus allem, woran Netz und Proben hängen (`signatur`: der Stand des Werks, je Fläche
+ihre Abbildung an vier Orten samt Tiefe, Stärke, Breite und Seite, die Breiten der Linien, der Entwurf von P). Im Zug, in der Pose
+und solange etwas fließt (⌘Z, Tusche, neue Kreuzung), wird wie bisher in jedem Bild gebaut. Gemessen an „strange bird“, Zeiger in
+Bewegung, ein Lauf je Fassung:
+
+| | Linien je Bild | Rechnen je Bild (Median / 95 %) |
+| --- | --- | --- |
+| Raum, vorher | 1,7 ms | 3,0 / 3,7 ms |
+| Raum, jetzt | 0,6 ms | 2,2 / 3,2 ms |
+| Vier Ansichten, vorher | 2,3 ms | 4,3 / 5,0 ms |
+| Vier Ansichten, jetzt | 1,0 ms | 3,7 / 4,2 ms |
+
+Das Ziel „unter 0,3 ms“ ist nicht erreicht: Der Rest ist das Verhalten selbst (Tropfen, Schwellung, Szene), nicht mehr der Aufbau.
+Dreht sich die Ansicht, wird weiter in jedem Bild gebaut (die Abbildung ändert sich). Alle 24 Proben halten.
+
+**Offen aus B2:** beim Drehen nur die Lagen durch die Abbildung schicken, statt alles neu zu bauen; der weiße Körper auch an den
+Wänden des Raums (Vergleichsbild zuerst); Wand und Kistennetz auf dieselbe Art Abbildung (dort ändert sich nichts Sichtbares).
 
 **B3. Wireframe im Raum (klein bis mittel; Bild zuerst).** Vorschlag: eine Taste und ein Tropfen schalten im Raum zwischen Seifenhaut
 und Netz. Das Netz ist das dichte Netz der Rechnung (das, was wirklich gerechnet wird), als Haarlinien auf der gewölbten Fläche, vorn

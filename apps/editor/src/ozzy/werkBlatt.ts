@@ -207,9 +207,38 @@ export class WerkBlatt implements Raum {
 
   // ---------- Aufbau ----------
 
-  /** Netz und Proben aller Linien des Werks auf diesen Flächen (Bildschirm, CSS-Pixel) */
+  /**
+   * B2 (17.11.): woran Netz und Proben hängen, als eine Zeile: der Stand des Werks (Haut, Linien, Griffe, Kanten), jede Fläche (ihre
+   * Abbildung an vier Orten, Tiefe, Stärke, Breite, Seite), die Breiten und was mit P gerade entsteht. null: jetzt gilt keine Zeile
+   * (ein Zug läuft, die Pose dreht mit, etwas fließt): dann wird in jedem Bild gebaut.
+   */
+  private signatur(flaechen: Flaeche[]): string | null {
+    if (werk.zug || werk.grund !== null || werk.maulLauf !== null || this.fliesst) return null;
+    const teile: (string | number)[] = [werk.standZahl(), Object.values(this.breiten()).join(',')];
+    for (const F of flaechen) {
+      teile.push(F.a, F.staerke, F.breite, F.vorn ?? 0, F.bereich ?? 0, F.raeumlich ? 1 : 0, ...F.hin(0, 0), ...F.hin(100, 0), ...F.hin(0, 100), ...F.hin(70, -40, 60));
+      if (F.tiefe) teile.push(F.tiefe({ x: 0, y: 0, z: 0 }), F.tiefe({ x: 50, y: 30, z: 20 }));
+    }
+    const E = this.ent;
+    if (E) {
+      const st = E.abzweig ? werk.G.abzweig?.start : null;
+      teile.push(E.fl, E.a, E.abzweig ? 1 : 0, JSON.stringify(E.anker), JSON.stringify(E.nach ?? 0), st ? `${st.id}.${st.m ? 1 : 0}.${st.p.ref.x},${st.p.ref.y},${st.p.ref.z}` : '');
+    }
+    return teile.join('|');
+  }
+  /** die Zeile des letzten Aufbaus (null: der nächste baut in jedem Fall) */
+  private gebaut: string | null = null;
+
+  /**
+   * Netz und Proben aller Linien des Werks auf diesen Flächen (Bildschirm, CSS-Pixel). B2 (17.11.): Hat sich seit dem letzten Aufbau
+   * nichts geändert (`signatur`), gelten Netz und Proben weiter; bis dahin wurde in jedem Bild neu gebaut, auch wenn nur der Zeiger
+   * wanderte (1 bis 1,7 ms je Bild und viel Abfall).
+   */
   bauen(flaechen: Flaeche[], jetzt?: number): void {
     if (jetzt !== undefined) this.uhr = jetzt;
+    const zeile = this.signatur(flaechen);
+    if (zeile !== null && zeile === this.gebaut) return;
+    this.gebaut = null;
     const pSchl: string[] = [];
     const lSchl: string[] = [];
     const punkte: Punkt[] = [];
@@ -382,6 +411,8 @@ export class WerkBlatt implements Raum {
     this.linien = infos;
     this.roh = roh;
     this.flaechen = flaechen;
+    // gilt weiter, solange die Zeile dieselbe bleibt; nicht, wenn noch etwas fließt oder eine Linie ohne Pfad nur abgelesen wird
+    if (zeile !== null && !this.fliesst && !roh.length) this.gebaut = zeile;
     this.struktur = `${flaechen.map((f) => `${f.a}${f.raeumlich ? '*' : ''}`).join(',')}|${werk.loops.map((l) => `${l.id}.${l.punkte.length}.${werk.exakt(l) && hatGriffe(l) ? 1 : 0}`).join(',')}`;
   }
 

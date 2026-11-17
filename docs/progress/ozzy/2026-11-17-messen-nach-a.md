@@ -70,3 +70,17 @@ Alle 22 Fenster-Proben halten (`ozzy-alle.mjs`). Zwei Dinge fielen dabei auf, be
 - Ein Zug mit dem Einfluss O hängt davon ab, wann das Verfeinern aus dem Hintergrund eingewechselt wird: mitten in der Bewegung oder
   danach. An „teat firefish“ liegen die Nachbarpunkte je nachdem 1,4 Einheiten auseinander (bei einem Zug um 119). Die Probe
   `ozzy-pinsel` zieht deshalb jetzt rasch und hält, bis das Verfeinern da ist; so stimmen Ozzy und Prüffenster auf 1e-5 überein.
+
+## Nachtrag B2 (17.11., 21 Uhr 45): Linien je Bild
+
+`werkLinien` je Bild an „strange bird“, Zeiger in Bewegung, nichts gegriffen (ein Lauf je Fassung; Werkzeug: `mess.teile[2]` über den
+Haken `messen`). Vorher wurden Netz und Proben in jedem Bild neu gebaut, jetzt nur, wenn sich ihre Zeile ändert (`werkBlatt.signatur`).
+
+| | Linien je Bild | Rechnen je Bild (Median / 95 %) |
+| --- | --- | --- |
+| Raum, vorher | 1,7 ms | 3,0 / 3,7 ms |
+| Raum, jetzt | 0,6 ms | 2,2 / 3,2 ms |
+| Vier Ansichten, vorher | 2,3 ms | 4,3 / 5,0 ms |
+| Vier Ansichten, jetzt | 1,0 ms | 3,7 / 4,2 ms |
+
+Alle 24 Fenster-Proben halten (dazugekommen seit Etappe A: `ozzy-zeiger`, `ozzy-wenden-raum`).
