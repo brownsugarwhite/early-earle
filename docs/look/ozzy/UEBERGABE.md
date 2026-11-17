@@ -309,10 +309,16 @@ Kiste aufklappt), dreht Tab erst den Raum dorthin (`vorDreh`, Ziel `vorderseiteZ
 Kamera `VORN_AB` vor allen drei Wänden steht); das Schwarz wird beim Auf- und Zuklappen mit der Kamera des Aufklappens gerechnet, „vorn“
 dreht dabei zur Seite (`hintenRechnen`). Selbst drehen bricht das Warten ab. Probe `ozzy-auffalten-hinten-fenster.mjs` (von hinten, von
 unten), die Probe zu S10 hält von vorn. Film [`2026-11-17-vier-hinten-vorher-nachher.mp4`](../../progress/ozzy/2026-11-17-vier-hinten-vorher-nachher.mp4)
-(links vorher, rechts nachher, zweifach langsamer). Zwischen Drehen und Aufklappen wird es kurz langsamer (zwei Bewegungen). **Geplant,
-Freigabe offen:** S17 Zoomen, Schwenken und Wenden in den Vier Ansichten (Vorschlag gekoppelt wie eine technische Zeichnung), S18 der
-Tropfen an der Ecke einer Einzelansicht, S19 der Punkt an der Ecke im Raum. Offen in Ozzy sonst: Kneifen zum Auffalten (geht in S19
-auf), Würfel mit ebenen Flächen, Haut gleitet bei ⌘Z.
+(links vorher, rechts nachher, zweifach langsamer). Zwischen Drehen und Aufklappen wird es kurz langsamer (zwei Bewegungen). **S17 gebaut**
+(„Jedes Feld für sich“): S17a Zoomen und Schwenken je Feld (`feldBlick`; Rad über dem Feld, Leertaste + Ziehen, zwei Finger; Pos1 setzt
+zurück), die Anzeige schneidet jede Kapsel an ihrem Feld ab (`fluessig.ts`: Bereiche, Art + 8 · Bereich; `Raum.bereich` in der
+Linien-Studie), Auf- und Zuklappen landen im gezoomten Feld; S17b Wenden je Feld (`feldWende`, ⇧ + Ziehen, ⇧ + Doppelklick, Kante und
+Rückseite wie in der Vollansicht, Tab wendet erst zurück). Proben `ozzy-feld-zoom-fenster.mjs`, `ozzy-feld-wenden-fenster.mjs`; Bilder
+`2026-11-17-feld-zoom.png`, `2026-11-17-feld-wenden.png`. **Freigegeben, als Nächstes:** S18 der Tropfen an der Ecke einer
+Einzelansicht, S19 der Punkt an der Ecke im Raum, beide mit Rückweg (Tropfen in eine Ecke ziehen); danach S20 Linienansichten wie in der
+Studie (Körper weiß mit Tiefe, Umriss als Hülle, Verdecktes je Bildpunkt; seine Bilder `docs/look/ozzy/2026-11-17-florian-linien-*.png`)
+und S21 Kanten gleiten statt auszublenden. Offen in Ozzy sonst: Kneifen zum Auffalten (geht in S19 auf), Würfel mit ebenen Flächen, Haut
+gleitet bei ⌘Z.
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**
 [`docs/plans/2026-11-16-ozzy-weiter.md`](../../plans/2026-11-16-ozzy-weiter.md): Schritte S1 bis S13 (Messen, Seifenhaut gleitet, Tempo,

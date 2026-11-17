@@ -224,6 +224,19 @@ const feldBlick: Record<'seite' | 'front' | 'top' | 'raum', FeldBlick> = {
 };
 const FELD_ZOOM_MIN = 0.3;
 const FELD_ZOOM_MAX = 8;
+/**
+ * S17b: Wenden je Feld wie in der Vollansicht: der Winkel (0 vorn, π die Gegenseite; Seite und Front drehen um die Hochachse, der Top um die
+ * Querachse) und die Fahrt zum nächsten ganzen Wenden. Ein gewendetes Feld zeigt die Gegenseite, gespiegelt und dunkel wie die Rückseite.
+ */
+type FeldWende = { phi: number; fahrt: { von: number; nach: number; t: number; dauer: number } | null };
+const feldWende: Record<'seite' | 'front' | 'top', FeldWende> = {
+  seite: { phi: 0, fahrt: null },
+  front: { phi: 0, fahrt: null },
+  top: { phi: 0, fahrt: null },
+};
+let feldWendenZug: { n: 'seite' | 'front' | 'top'; x0: number; y0: number; phi0: number } | null = null;
+/** S17b: Zuklappen wartet, bis gewendete Felder wieder vorn sind */
+let vierZuWartet = false;
 /** S17: Nummer des Bereichs der Anzeige je Feld (an seinem Rand wird abgeschnitten) */
 const BEREICH_VON = { seite: 1, front: 2, top: 3, raum: 4 } as const;
 /** S17: die Bereiche dieses Bilds für die Anzeige (vier Kanten je Feld, Gerätepunkte), leer außerhalb der Vier Ansichten */
@@ -898,6 +911,11 @@ function ablassen(): void {
   vierFahrt = null;
   vorDreh = null;
   vierWartet = false;
+  vierZuWartet = false;
+  for (const w of Object.values(feldWende)) {
+    w.phi = 0;
+    w.fahrt = null;
+  }
   zustand = 'ab';
   // wurde die Form im Raum geändert, wird ihre Linie die Zeichnung, und die Blase entsteht neu aus ihr
   werkAufsBlatt();
@@ -934,6 +952,11 @@ function nochEinmal(): void {
   vierFahrt = null;
   vorDreh = null;
   vierWartet = false;
+  vierZuWartet = false;
+  for (const w of Object.values(feldWende)) {
+    w.phi = 0;
+    w.fahrt = null;
+  }
   zustand = 'auf';
   T = 0;
   anstossen();
@@ -968,6 +991,11 @@ function neu(): void {
   vierFahrt = null;
   vorDreh = null;
   vierWartet = false;
+  vierZuWartet = false;
+  for (const w of Object.values(feldWende)) {
+    w.phi = 0;
+    w.fahrt = null;
+  }
   film = 0;
   leiste.lage(false);
   leiste.zeichnenErlaubt(true);
@@ -1123,7 +1151,9 @@ function imFeld(n: FeldAchse, p: Vector3, F: ReturnType<typeof felder>, s: numbe
   const my = r.y + r.h / 2 + b.y;
   const sz = s * b.zoom;
   const [u, v, uc, vc] = n === 'seite' ? [p.x, p.y, e.cx, e.cy] : n === 'front' ? [-p.z, p.y, 0, e.cy] : [p.x, -p.z, e.cx, 0];
-  return [(mx + (u - uc) * sz) * D, (my - (v - vc) * sz) * D];
+  // S17b: gewendet (Seite und Front um die Hochachse, der Top um die Querachse)
+  const c = Math.cos(feldWende[n].phi);
+  return [(mx + (u - uc) * sz * (n === 'top' ? 1 : c)) * D, (my - (v - vc) * sz * (n === 'top' ? c : 1)) * D];
 }
 
 /** im Feld (CSS) → Welt in der Ebene der Ansicht */
@@ -1131,8 +1161,10 @@ function ausFeld(n: FeldAchse, x: number, y: number, F: ReturnType<typeof felder
   const e = raum!;
   const r = F[n];
   const b = feldBlick[n];
-  const u = (x - (r.x + r.w / 2 + b.x)) / (s * b.zoom);
-  const v = -(y - (r.y + r.h / 2 + b.y)) / (s * b.zoom);
+  const c0 = Math.cos(feldWende[n].phi);
+  const c = Math.abs(c0) < 1e-3 ? (c0 < 0 ? -1e-3 : 1e-3) : c0;
+  const u = (x - (r.x + r.w / 2 + b.x)) / (s * b.zoom * (n === 'top' ? 1 : c));
+  const v = -(y - (r.y + r.h / 2 + b.y)) / (s * b.zoom * (n === 'top' ? c : 1));
   return n === 'seite' ? [e.cx + u, e.cy + v] : n === 'front' ? [-u, e.cy + v] : [e.cx + u, -v];
 }
 
@@ -1449,7 +1481,13 @@ function vierUmschalten(an?: boolean): void {
     vierWarten();
   } else {
     vorDreh = null;
-    vierFahrt = { von: vier, t: 0 };
+    vierZuWartet = false;
+    // S17b: gewendete Felder wenden erst zurück, dann klappt die Kiste zu
+    if (vierZiel < 0.5 && vier > 0.999 && feldGewendet()) {
+      for (const n of ['seite', 'front', 'top'] as const) feldWendenFahrt(n, Math.round(feldWende[n].phi / (2 * Math.PI)) * 2 * Math.PI);
+      vierZuWartet = true;
+      vierFahrt = null;
+    } else vierFahrt = { von: vier, t: 0 };
   }
   anstossen();
 }
@@ -1668,6 +1706,23 @@ function bild(dt: number): boolean {
     aktiv = true;
   }
   vierWarten();
+  // S17b: Wenden der Felder
+  for (const w of Object.values(feldWende)) {
+    if (!w.fahrt) continue;
+    w.fahrt.t += dt / w.fahrt.dauer;
+    const t = Math.min(1, w.fahrt.t);
+    w.phi = w.fahrt.von + (w.fahrt.nach - w.fahrt.von) * t * t * t * (t * (t * 6 - 15) + 10);
+    if (t >= 1) {
+      w.phi = winkelZu(0, w.fahrt.nach);
+      if (Math.abs(w.phi + Math.PI) < 1e-9) w.phi = Math.PI;
+      w.fahrt = null;
+    }
+    aktiv = true;
+  }
+  if (vierZuWartet && (vierZiel > 0.5 || !feldGewendet())) {
+    vierZuWartet = false;
+    if (vierZiel < 0.5) vierFahrt = { von: vier, t: 0 };
+  }
   if (zustand !== 'ruhe' && zustand !== 'auf' && flach > 0) flach = 0;
   if (vierFahrt) {
     vierFahrt.t += dt / Math.max(0.05, bw.fahrt);
@@ -1768,7 +1823,7 @@ function bild(dt: number): boolean {
     weich: 0,
     schattenFarbe: WEISS,
     papier: poseTon > 1e-3 ? WEISS.clone().lerp(POSE_PAPIER, poseTon) : null,
-    dunkel: hintenJetzt,
+    dunkel: vier > 0.999 ? null : hintenJetzt,
     kanteFarbe: KANTE_FARBE,
     schnitt: schnittJetzt,
   };
@@ -1845,6 +1900,8 @@ function bild(dt: number): boolean {
       dunkel: hintenJetzt,
       zeiger: !zeigerZeigen ? null : bearbeitenAn ? (zeigerBearbeiten ?? null) : zeigerForm(zeiger.x, zeiger.y),
       bereiche: bereicheJetzt,
+      // S17b: die Rückseite gewendeter Felder malt die Anzeige der Linien selbst (die Haut ist aufs Feld des Raums beschnitten)
+      dunkelFuellen: vier > 0.999,
     };
     szene.zeigerUmriss = zeigerGestaltSchritt(szene.zeiger, dt);
     if (zeigerGestalt.gleitet) aktiv = true;
@@ -1871,7 +1928,7 @@ function bild(dt: number): boolean {
           ? werkGezeigt
             ? bearbeiten.stift
               ? 'P: Klick Ecke, Ziehen rund, auf dem ersten Punkt schließen (Form) · auf Punkt oder Linie beginnen und enden (Abzweigung) · Esc'
-              : 'Punkte, Linien und Richtungen ziehen · ins Leere ziehen: drehen · Rad zoomt das Feld · Leertaste + Ziehen schwenkt · P zeichnen · L Lasso · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · Tab: zurück in den Raum'
+              : 'Punkte, Linien und Richtungen ziehen · ins Leere ziehen: drehen · Rad zoomt das Feld · Leertaste + Ziehen schwenkt · ⇧ + Ziehen wendet · P zeichnen · L Lasso · K Kante · ⌥ Röntgen · ⌫ löschen · ⌘Z · Tab: zurück in den Raum'
             : 'Tab: zurück in den Raum · Tropfen in der Mitte ziehen: Felder · Rad zoomt das Feld · Leertaste + Ziehen schwenkt · Punkte der Seite ziehen'
           : ansicht === 'raum'
             ? werkGezeigt
@@ -2327,7 +2384,8 @@ function feldFlaeche(n: FeldAchse, f: Falt, st0: number[]): Flaeche {
     staerke: st + (1 - st) * t,
     breite: bw.wandLinien + (1 - bw.wandLinien) * t,
     // S7: ein Feld ist seine Wand, aufgeklappt: Betrachter auf der anderen Seite
-    vorn: -sw[achse] || 1,
+    // S17b: gewendet schaut der Betrachter von der anderen Seite
+    vorn: (Math.cos(feldWende[n].phi) >= 0 ? 1 : -1) * (-sw[achse] || 1),
     bereich: BEREICH_VON[n],
     enthaelt: (x, y) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h,
     hin: (X, Y) => {
@@ -2864,13 +2922,63 @@ function kanteMitHeim(heim: Vector3, vp: Matrix4, c: Camera = kam.aktiv): number
 function hintenRechnen(): Hinten | null {
   const e = raum;
   const f = faltJetzt;
-  if (!e || zustand === 'blatt' || (vier > 1e-3 && (!f || f.e > 0.999))) return null;
+  if (!e || zustand === 'blatt') return null;
+  if (vier > 1e-3 && (!f || f.e > 0.999)) return vier > 0.999 ? feldHinten() : null;
   const k = f ? kanteMitHeim(kugelMitte(heimJetzt(), VORN.seite, f.e), f.vp, kamFalt.aktiv) : kanteMitHeim(heimJetzt(), vpJetzt());
   const h: Hinten = { kanten: [...k, 0, 0, 1e6, 0, 0, 1e6, 0, 0, 1e6, 0, 0, 1e6], zahl: 1 };
   // nur, wenn sie ins Bild reicht (eine Halbebene: dann an einer Ecke)
   const wd = W * D;
   const hd = H * D;
   return Math.max(hintenBei(h, 0, 0), hintenBei(h, wd, 0), hintenBei(h, 0, hd), hintenBei(h, wd, hd)) > 0 ? h : null;
+}
+
+/**
+ * S17b: die Rückseite gewendeter Felder: je Feld sein Rahmen und die Kante wie in der Vollansicht (`kanteMitHeim`), quer zur Drehrichtung im
+ * Abstand A · cos · 1,5 · Halbmesser / sin von der Mitte der Zeichnung; ganz gewendet ist das ganze Feld dunkel
+ */
+function feldHinten(): Hinten | null {
+  const f = faltJetzt;
+  if (!raum || !f) return null;
+  const kanten: number[] = [];
+  let zahl = 0;
+  for (const n of ['seite', 'front', 'top'] as const) {
+    const phi = feldWende[n].phi;
+    const c = Math.cos(phi);
+    const sn = Math.sin(phi);
+    if (Math.abs(sn) < 1e-4 && c > 0) continue;
+    const r = f.F[n];
+    kanten.push(1, 0, -r.x * D, -1, 0, (r.x + r.w) * D, 0, 1, -r.y * D, 0, -1, (r.y + r.h) * D);
+    const b = feldBlick[n];
+    const mx = (r.x + r.w / 2 + b.x) * D;
+    const my = (r.y + r.h / 2 + b.y) * D;
+    const ax = n === 'top' ? 0 : 1;
+    const ay = n === 'top' ? 1 : 0;
+    if (Math.abs(sn) < 1e-4) kanten.push(0, 0, 1e6);
+    else {
+      const d = Math.min(1e7, (KANTE_A * c * 1.5 * raum.R * f.s4 * b.zoom * D) / Math.abs(sn));
+      const sg = Math.sign(sn);
+      kanten.push(sg * ax, sg * ay, -sg * (ax * mx + ay * my) - d);
+    }
+    zahl++;
+  }
+  return zahl ? { kanten, zahl } : null;
+}
+
+/** S17b: ein Feld fährt zum Winkel `ziel` (ein Vielfaches von π), so lang wie eine Fahrt in eine Ansicht je halbe Drehung */
+function feldWendenFahrt(n: 'seite' | 'front' | 'top', ziel: number): void {
+  const w = feldWende[n];
+  const winkel = Math.abs(ziel - w.phi);
+  if (winkel < 1e-4) {
+    w.phi = ziel;
+    w.fahrt = null;
+    return;
+  }
+  w.fahrt = { von: w.phi, nach: ziel, t: 0, dauer: Math.max(0.15, (bw.fahrt * winkel) / Math.PI) };
+}
+
+/** S17b: ist ein Feld gewendet (oder dreht es gerade)? */
+function feldGewendet(): boolean {
+  return Object.values(feldWende).some((w) => w.fahrt !== null || Math.cos(w.phi) < 0.9999);
 }
 
 /** das Blatt, das sich beim Einrasten durch die Blase schiebt (beim Lösen zurück): von hinter der Form bis vor sie, mit `flach` */
@@ -2911,7 +3019,8 @@ function hintenBei(h: Hinten | null, x: number, y: number): number {
 function hintenZeigen(): void {
   const m = raum ? projizieren(new Vector3(raum.cx, raum.cy, 0), vpJetzt()) : [(W * D) / 2, (H * D) / 2];
   kanteMitte = hintenBei(hintenJetzt, m[0]!, m[1]!);
-  kanteSichtbar = !!hintenJetzt && hintenJetzt.zahl > 0;
+  // S17b: die Rückseite gewendeter Felder kehrt Marke und Hinweis nicht um (sie liegen außerhalb der Felder)
+  kanteSichtbar = !!hintenJetzt && hintenJetzt.zahl > 0 && vier < 0.999;
   document.body.classList.toggle('wende-an', kanteSichtbar);
 }
 
@@ -3354,6 +3463,13 @@ leinwandLinien.addEventListener('pointermove', (e) => {
     anstossen();
     return;
   }
+  // S17b: ⇧ + Ziehen wendet das Feld (Seite und Front waagrecht, der Top senkrecht), so schnell wie das Wenden in der Vollansicht
+  if (feldWendenZug) {
+    const z = feldWendenZug;
+    feldWende[z.n].phi = z.phi0 + ((z.n === 'top' ? y - z.y0 : x - z.x0) * Math.PI) / 520;
+    anstossen();
+    return;
+  }
   // S17: Leertaste + Ziehen schwenkt
   if (schwenkZug) {
     const dx = x - schwenkZug.x0;
@@ -3509,6 +3625,24 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     anstossen();
     return;
   }
+  // S17b: ⇧ + Ziehen in einem flachen Feld wendet es, ⇧ + Doppelklick ganz (über einem Punkt oder einer Linie gilt ⇧ der Auswahl)
+  if (e.shiftKey && !bearbeiten.haengt) {
+    const n = feldUnter(x, y);
+    if (n && n !== 'raum') {
+      const jetzt = e.timeStamp;
+      if (jetzt - letzterUmschaltKlick.t < 350 && Math.hypot(x - letzterUmschaltKlick.x, y - letzterUmschaltKlick.y) < 8) {
+        letzterUmschaltKlick = { t: 0, x, y };
+        feldWendenFahrt(n, Math.round(feldWende[n].phi / Math.PI) * Math.PI + Math.PI);
+        anstossen();
+        return;
+      }
+      letzterUmschaltKlick = { t: jetzt, x, y };
+      feldWende[n].fahrt = null;
+      feldWendenZug = { n, x0: x, y0: y, phi0: feldWende[n].phi };
+      anstossen();
+      return;
+    }
+  }
   // Lasso (S5, L): Ziehen zeichnet die Schlinge, überall (auch auf Punkten und Linien); ⇧ nimmt dazu, ⌥ weg
   if (bearbeitenAn && raumWerkzeug === 'lasso') {
     bearbeiten.alt = e.altKey;
@@ -3608,6 +3742,14 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
 });
 
 const loslassen = (e: PointerEvent): void => {
+  if (feldWendenZug) {
+    // zur näheren Seite, wie in der Vollansicht
+    const n = feldWendenZug.n;
+    feldWendenZug = null;
+    feldWendenFahrt(n, Math.round(feldWende[n].phi / Math.PI) * Math.PI);
+    anstossen();
+    return;
+  }
   if (schwenkZug) {
     schwenkZug = null;
     anstossen();

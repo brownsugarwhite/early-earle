@@ -80,6 +80,8 @@ export interface Szene {
    * (Art, siehe `PRIM_FELDER`) ist nur in Bereich k zu sehen.
    */
   bereiche?: number[];
+  /** Ozzy (S17b): die Rückseite (`dunkel`) selbst füllen, mit der Farbe der Tinte (sonst malt sie die Haut darunter) */
+  dunkelFuellen?: boolean;
 }
 
 /** so viele Punkte hat der Umriss des Zeigers höchstens (wie `uZP` im Shader) */
@@ -112,6 +114,7 @@ uniform vec3 uHinten[20];
 uniform int uHintenZahl;
 uniform vec3 uBereich[${4 * 8}];
 uniform int uBereichZahl;
+uniform int uDunkelFuellen;
 uniform vec3 uPapier;
 uniform int uZeigerDa;
 uniform vec2 uZA;
@@ -300,6 +303,10 @@ void main() {
   float aI = deckung(d0, wE.x + max(dE.x - d0, 0.0));
   vec3 c = grund * grundA;
   float a = grundA;
+  if (uDunkelFuellen == 1) {
+    c = uTinte * hinten + c * (1.0 - hinten);
+    a = hinten + a * (1.0 - hinten);
+  }
   c = uGruen * aG + c * (1.0 - aG);
   a = aG + a * (1.0 - aG);
   c = tinte * aI + c * (1.0 - aI);
@@ -433,7 +440,7 @@ export class FluessigeAnzeige {
     this.gl = gl;
     gl.getExtension('EXT_color_buffer_float');
     this.prog = programm(gl, VERTEX, FRAGMENT, ['aPos']);
-    for (const n of ['uPrim', 'uKachel', 'uListe', 'uKoerperFarbe', 'uKoerperTiefe', 'uMitKoerper', 'uBias', 'uHoehe', 'uK0', 'uK1', 'uFelder', 'uFeld', 'uTinte', 'uGruen', 'uHinten', 'uHintenZahl', 'uBereich', 'uBereichZahl', 'uPapier', 'uZeigerDa', 'uZA', 'uZB', 'uZC', 'uZLinie', 'uZP', 'uZPN', 'uZFuell', 'uZBox'])
+    for (const n of ['uPrim', 'uKachel', 'uListe', 'uKoerperFarbe', 'uKoerperTiefe', 'uMitKoerper', 'uBias', 'uHoehe', 'uK0', 'uK1', 'uFelder', 'uFeld', 'uTinte', 'uGruen', 'uHinten', 'uHintenZahl', 'uBereich', 'uBereichZahl', 'uDunkelFuellen', 'uPapier', 'uZeigerDa', 'uZA', 'uZB', 'uZC', 'uZLinie', 'uZP', 'uZPN', 'uZFuell', 'uZBox'])
       this.uni[n] = gl.getUniformLocation(this.prog, n);
     this.progK = programm(gl, KOERPER_VERTEX, KOERPER_FRAGMENT, ['aPos', 'aNormal']);
     for (const n of ['uProj', 'uAnsicht', 'uHuelle', 'uViewport', 'uSchattierung', 'uTinte']) this.uniK[n] = gl.getUniformLocation(this.progK, n);
@@ -702,6 +709,7 @@ export class FluessigeAnzeige {
     if (sz.bereiche && nb > 0) bk.set(sz.bereiche.slice(0, nb * 12));
     gl.uniform3fv(this.uni.uBereich!, bk);
     gl.uniform1i(this.uni.uBereichZahl!, nb);
+    gl.uniform1i(this.uni.uDunkelFuellen!, sz.dunkelFuellen ? 1 : 0);
     gl.uniform3fv(this.uni.uPapier!, sz.papier ?? [1, 1, 1]);
     const zg = sz.zeiger;
     gl.uniform1i(this.uni.uZeigerDa!, zg ? 1 : 0);

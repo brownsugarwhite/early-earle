@@ -425,6 +425,16 @@ ihnen (`faltPunkt`). Die Blase bleibt in ihrem Feld (die Haut wird ab der Hälft
 (0,0 / 0,0 / 0,3 % der Bildpunkte), Schwenken 0,0 px, ein Punkt der gezoomten Seite folgt der Maus (0,0 px), Tab zurück und hin ohne
 Nachschieben, ein Gipfel je Punkt, am Ende 0,0 px; die Proben zu S10, S16 und zum Bearbeiten halten, beide Studien laufen. Bild
 [`2026-11-17-feld-zoom.png`](../progress/ozzy/2026-11-17-feld-zoom.png) (links offen, rechts die Seite gezoomt und die Front geschwenkt).
+*S17b gebaut (17.11.):* `feldWende` (Winkel je Feld; Seite und Front drehen um die Hochachse, der Top um die Querachse), in `imFeld` und
+`ausFeld` als Stauchung mit cos; ⇧ + Ziehen in einem flachen Feld dreht (so schnell wie das Wenden in der Vollansicht), los fährt es zur
+näheren Seite, ⇧ + Doppelklick wendet ganz; über einem Punkt oder einer Linie gilt ⇧ weiter der Auswahl. Die Rückseite wie in der
+Vollansicht: die Kante (`feldHinten`, Formel von `kanteMitHeim`) wandert quer durchs Feld und bleibt in ihm, gewendet ist das Feld dunkel,
+die Linien hell (die Anzeige der Linien füllt das Dunkel selbst, `dunkelFuellen`); Verdecktes von der anderen Seite gerechnet (`vorn`).
+Tab wendet gewendete Felder erst zurück, dann klappt die Kiste zu. Probe `ozzy-feld-wenden-fenster.mjs` 1 bis 6 halten (bei 45° quer
+0,71; gewendet 0,00 px gespiegelt, ganz dunkel; ein Punkt der gewendeten Front folgt der Maus; der Top wendet mit ⇧ + Doppelklick; Tab
+wendet zurück, die Kiste bleibt bis dahin offen); die Proben zu S17a, S10 und zu den Ansichten halten. Ein Punkt auf der Mittelebene, der von
+der Gegenseite hinter der Form liegt, ist dort verdeckt und wie überall nur mit Röntgen zu greifen. Bild
+[`2026-11-17-feld-wenden.png`](../progress/ozzy/2026-11-17-feld-wenden.png) (links die Front halb gedreht, rechts Front und Top gewendet).
 
 **S18 Der Tropfen an der Ecke einer Einzelansicht.** In der eingerasteten Seite, Front und Top sitzt der Tropfen der Kreuzung an der Ecke
 des Bilds, an der in den Vier Ansichten ihre Kreuzung liegt: Seite unten links, Front unten rechts (der Ansichts-Tropfen rückt dafür nach
