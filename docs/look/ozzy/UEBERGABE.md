@@ -25,8 +25,9 @@ Scherben und keine Sprünge mehr in der Seifenhaut. Messblätter:
 Die Linien werden nur noch neu aufgebaut, wenn sich etwas ändert (Linien je Bild im Raum 1,7 → 0,6 ms). B3 ist geklärt und gebaut: Florian
 meinte das **Kurvennetz auf der Form im Raum** („genau wie in den Projektionsflächen, aber im Raum“), nicht das Dreiecksnetz. Taste W
 schaltet im Raum zwischen Seifenhaut und Kurvennetz (weißer Körper mit Umriss, Linien und Punkte auf der Form, zu greifen wie auf den
-Flächen; Film `docs/progress/ozzy/2026-11-17-kurvennetz-im-raum.mp4`); sein Urteil steht aus, es fehlen noch P auf der Form und ein
-Knopf. Dann B4; aus B2 offen: der weiße Körper an den Wänden (Vergleichsbild zuerst). Die Sitzung dieses Plans ist auch die des Kerns: Sie darf
+Flächen; Film `docs/progress/ozzy/2026-11-17-kurvennetz-im-raum.mp4`). Sein Urteil (17.11.): „Ist erstmal ok so“, er sieht noch
+Unterschiede zur Studie (`raum.html`): **für den Feinschliff notiert**, mit Vergleichsbild und Liste im Plan unter B3. Es fehlen noch
+P auf der Form und das Feld des Raums in den Vier Ansichten. Dann B4; aus B2 offen: der weiße Körper an den Wänden (Vergleichsbild zuerst). Die Sitzung dieses Plans ist auch die des Kerns: Sie darf
 ihn ändern. Proben: `node scripts/pruefen/ozzy-alle.mjs` (alle 25 nacheinander); Werkzeuge zum Messen: `ozzy-karte-messen.mjs`,
 `ozzy-zug-messen.mjs`, `ozzy-p-ueberall.mjs`, `ozzy-zuege-zaehlen.mjs` (gemeinsame Teile in `ozzy-teile.mjs`).
 

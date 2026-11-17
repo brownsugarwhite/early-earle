@@ -5059,11 +5059,17 @@ window.addEventListener('blur', () => {
 });
 /** die Ansicht, in der Ozzy steht, als gedrückter Knopf */
 function tastenStand(): void {
+  // B3: der Knopf „Netz“ (Kurvennetz im Raum, wie W) zeigt, ob es gewählt ist
+  if (raumNetz !== netzKnopfStand) {
+    netzKnopfStand = raumNetz;
+    tasten.querySelector<HTMLButtonElement>('button[data-netz]')?.setAttribute('aria-pressed', String(raumNetz));
+  }
   const jetzt = zustand === 'blatt' ? '' : vierZiel > 0.5 ? 'vier' : ansicht;
   if (jetzt === tastenStandVorher) return;
   tastenStandVorher = jetzt;
   for (const b of tasten.querySelectorAll<HTMLButtonElement>('button[data-ansicht]')) b.setAttribute('aria-pressed', String(b.dataset.ansicht === jetzt));
 }
+let netzKnopfStand = false;
 
 function waehlenTaste(w: Werkzeug): void {
   blatt.werkzeugSetzen(w);

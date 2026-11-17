@@ -307,6 +307,25 @@ Prüfhilfe hinter `?netz=1` und `?netz=2` (für die umgeschlagenen Dreiecke in E
 - **Probe** `apps/editor/scripts/pruefen/ozzy-raum-netz-fenster.mjs` (einschalten, ein Punkt der Flanke bleibt beim Ziehen 0,00 Punkte
   unter dem Zeiger, Pinsel und Drehen, ausschalten). Alle 25 Proben halten.
 
+**Florians Urteil (17.11., 22 Uhr 30): „Ist erstmal ok so. Ich seh noch unterschiede zur studie in der ich es erarbeitet habe. Aber
+notiere das für den feinschliff.“** Welche Unterschiede, hat er nicht gesagt. **Für den Feinschliff notiert:**
+- Die Studie ist die Raum-Probe der Linien-Studie: `apps/editor/raum.html` (`src/linien/raum.ts`, `raum-main.ts`), Unterlagen in
+  [`docs/look/linien/UEBERGABE.md`](../look/linien/UEBERGABE.md). Beide mit derselben Form nebeneinander (links die Studie, rechts
+  Ozzy mit W): [`2026-11-17-kurvennetz-studie-gegen-ozzy.png`](../progress/ozzy/2026-11-17-kurvennetz-studie-gegen-ozzy.png).
+- Was mir am Bild und in den Unterlagen auffällt (meine Liste, von ihm nicht bestätigt; vor dem Feinschliff mit ihm an diesem Bild
+  durchgehen):
+  - **Größe und Blick:** In der Studie füllt die Form das Bild und steht in den Ansichten Seite, Front, Top und Schräg ohne Kiste;
+    in Ozzy steht sie klein in der Kiste des Raums. Bei gleicher Linienstärke wirkt das Netz in Ozzy dadurch dichter und dunkler.
+  - **Ton der inneren Linien:** In der Studie sind sie heller und zurückhaltender, Verdecktes ist kaum zu sehen.
+  - **P auf der Haut:** in der Studie spiegelgleich, rastet an der Mitte ein (von Mitte zu Mitte ein Ring), Kreuzungen werden auf der
+    Haut gesucht. In Ozzys Kurvennetz noch nicht gebaut.
+  - **Richtungen** drehen in der Studie auf der Haut, mit ⇧ aus der Haut. In Ozzy rechnen sie mit der Tiefe, geprüft ist es nicht.
+  - **Leere Stelle:** In der Studie zieht Ziehen im Leeren einen Rahmen, ⌥ + Ziehen dreht. In Ozzy dreht Ziehen im Leeren, gewählt
+    wird mit dem Lasso (L).
+  - **Ziehen:** In der Studie zieht ein weiches Feld (Ersatz für den Löser), in Ozzy rechnet das Werk; gezogen wird in der Ebene der
+    Ansicht, die dem Blick am nächsten liegt.
+  - **Schattierung:** Die Studie hat einen Knopf dafür (drei Stufen wie gedruckt); in Ozzy ist der Körper immer weiß.
+
 **B4. Die kleinen Stolpersteine (klein, je einer).**
 - Hinweiszeile: nur, was unter dem Zeiger mit dem Werkzeug gerade möglich ist (höchstens drei Angaben), der Rest hinter „?“.
 - Esc verlässt Werkzeug, Auswahl und Ansicht, lässt aber nicht mehr die Luft ab (dafür bleibt ⌫ ohne Auswahl). Vorschlag, dein Wort.
