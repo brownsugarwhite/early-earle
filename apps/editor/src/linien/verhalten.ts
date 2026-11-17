@@ -260,6 +260,11 @@ interface Tropfen {
   r: Feder1;
   hals: Feder1;
   zustand: 'folgt' | 'zurueck' | 'gegriffen';
+  /**
+   * B1 (17.11.): erst mit dem Drücken entstanden (`zielJetzt`), er hing nie am Zeiger. Gegriffen bleibt er an seiner Stelle, bis der
+   * Zeiger zu ihm geglitten ist (sonst spränge er für ein Bild zum Zeiger und zurück)
+   */
+  sitzt?: boolean;
 }
 
 const glocke3 = (x: number): number => {
@@ -639,7 +644,11 @@ export class Verhalten {
     }
     this.klickPunkt = null;
     this.griff = null;
-    for (const t of this.tropfen) if (t.zustand === 'gegriffen') t.zustand = 'folgt';
+    for (const t of this.tropfen)
+      if (t.zustand === 'gegriffen') {
+        t.zustand = 'folgt';
+        t.sitzt = false;
+      }
   }
 
   // ---------- Werkzeug P ----------
@@ -1070,6 +1079,83 @@ export class Verhalten {
     return this.proben.map((P, li) => (li === e.li || li === e.zwilling ? LEER : P));
   }
 
+  /**
+   * Das Ziel unter dem Zeiger: Der Tropfen, der an ihm hängt (`folgt`), bleibt, wechselt, löst sich oder entsteht. Nicht während eines
+   * Zugs; es zählt der gezeichnete Zeiger. Läuft in jedem Bild (`schritt`) und beim Drücken für genau diesen Ort (`zielJetzt`).
+   */
+  private zielSuchen(): void {
+    if (this.zieht || this.rahmen || this.lasso) return;
+    const w = this.werte;
+    const z = this.zeiger;
+    const folgt = this.tropfen.find((t) => t.zustand === 'folgt');
+    const [zx, zy] = this.gezeichnet();
+    const k = z.da ? this.kandidat() : null;
+    if (folgt) {
+      const halten = this.fang(folgt.ziel) * w.halten;
+      const dAnker = Math.hypot(zx - folgt.ax, zy - folgt.ay);
+      if (k && this.gleichesZiel(folgt.ziel, k.ziel)) {
+        if (k.ziel.art !== 'punkt') {
+          folgt.ziel = k.ziel;
+          folgt.ax = k.x;
+          folgt.ay = k.y;
+        }
+      } else if (
+        k &&
+        (dAnker > halten ||
+          (k.ziel.art === 'punkt' && folgt.ziel.art !== 'punkt') ||
+          k.ziel.art === 'richtung' ||
+          folgt.ziel.art === 'richtung' ||
+          k.d < dAnker - 4 * this.g)
+      ) {
+        folgt.zustand = 'zurueck';
+        this.neuerTropfen(k);
+      } else if (!z.da || dAnker > halten) {
+        folgt.zustand = 'zurueck';
+      } else if (folgt.ziel.art === 'linie' && this.proben[folgt.ziel.li]) {
+        // ohne neuen Kandidaten gleitet der Anker auf seiner Linie mit
+        const st = naechsteStelle([this.proben[folgt.ziel.li]!], zx, zy);
+        if (st) {
+          folgt.ziel = { art: 'linie', li: folgt.ziel.li, si: st.si, t: st.t, s: st.s };
+          folgt.ax = st.x;
+          folgt.ay = st.y;
+        }
+      }
+    } else if (k) {
+      const alt = this.tropfen.find((t) => t.zustand === 'zurueck' && this.gleichesZiel(t.ziel, k.ziel));
+      if (alt) {
+        alt.zustand = 'folgt';
+        if (k.ziel.art !== 'punkt') {
+          alt.ziel = k.ziel;
+          alt.ax = k.x;
+          alt.ay = k.y;
+        }
+      } else this.neuerTropfen(k);
+    }
+  }
+
+  /**
+   * B1 (17.11.): das Ziel für genau den Ort, an dem der Zeiger jetzt steht, ohne auf das nächste Bild zu warten (dieselbe Suche, nichts
+   * bewegt sich). Vor `druecken` aufzurufen: Mit Stift und Finger gibt es davor kein Zeigen, und eine rasche Maus ist dem Bild voraus;
+   * bis dahin griff das Drücken nur, was seit dem Bild davor am Zeiger hing. Ein Tropfen, der dabei erst entsteht, sitzt an seiner
+   * Stelle (`Tropfen.sitzt`).
+   */
+  zielJetzt(): void {
+    const vorher = this.tropfen.find((t) => t.zustand === 'folgt');
+    this.zielSuchen();
+    const jetzt = this.tropfen.find((t) => t.zustand === 'folgt');
+    if (jetzt && jetzt !== vorher) jetzt.sitzt = true;
+  }
+
+  /**
+   * B1 (17.11.): Der gezeichnete Zeiger liegt genau auf der Hand, in voller Größe und ungedrückt. Dann kann ihn der Zeiger des Systems
+   * vertreten (Ozzy, `?zeiger=system`); gezeichnet wird er nur, solange er sich von der Hand löst (Greifen, Gleiten, Rückweg).
+   */
+  get zeigerAnDerHand(): boolean {
+    const v = this.versatz;
+    const nah = 0.4 / this.zoom;
+    return !this.zeiger.gedrueckt && !this.zieht && !this.rahmen && !this.lasso && Math.hypot(v.x, v.y) < nah && Math.hypot(v.zx, v.zy) < nah && Math.abs(this.zeigerSkala.x - 1) < 0.01;
+  }
+
   /** bester Kandidat unter dem (gezeichneten) Zeiger: Punkte vor Linien, Tinte vor Verdecktem */
   private kandidat(): { ziel: Ziel; x: number; y: number; d: number; verdeckt: boolean } | null {
     const w = this.werte;
@@ -1315,52 +1401,8 @@ export class Verhalten {
     }
 
     // Ziel unter dem Zeiger (nicht während eines Zugs); es zählt der gezeichnete Zeiger
-    const folgt = this.tropfen.find((t) => t.zustand === 'folgt');
     const [zx, zy] = this.gezeichnet();
-    if (!this.zieht && !this.rahmen && !this.lasso) {
-      const k = z.da ? this.kandidat() : null;
-      if (folgt) {
-        const halten = this.fang(folgt.ziel) * w.halten;
-        const dAnker = Math.hypot(zx - folgt.ax, zy - folgt.ay);
-        if (k && this.gleichesZiel(folgt.ziel, k.ziel)) {
-          if (k.ziel.art !== 'punkt') {
-            folgt.ziel = k.ziel;
-            folgt.ax = k.x;
-            folgt.ay = k.y;
-          }
-        } else if (
-          k &&
-          (dAnker > halten ||
-            (k.ziel.art === 'punkt' && folgt.ziel.art !== 'punkt') ||
-            k.ziel.art === 'richtung' ||
-            folgt.ziel.art === 'richtung' ||
-            k.d < dAnker - 4 * this.g)
-        ) {
-          folgt.zustand = 'zurueck';
-          this.neuerTropfen(k);
-        } else if (!z.da || dAnker > halten) {
-          folgt.zustand = 'zurueck';
-        } else if (folgt.ziel.art === 'linie' && this.proben[folgt.ziel.li]) {
-          // ohne neuen Kandidaten gleitet der Anker auf seiner Linie mit
-          const st = naechsteStelle([this.proben[folgt.ziel.li]!], zx, zy);
-          if (st) {
-            folgt.ziel = { art: 'linie', li: folgt.ziel.li, si: st.si, t: st.t, s: st.s };
-            folgt.ax = st.x;
-            folgt.ay = st.y;
-          }
-        }
-      } else if (k) {
-        const alt = this.tropfen.find((t) => t.zustand === 'zurueck' && this.gleichesZiel(t.ziel, k.ziel));
-        if (alt) {
-          alt.zustand = 'folgt';
-          if (k.ziel.art !== 'punkt') {
-            alt.ziel = k.ziel;
-            alt.ax = k.x;
-            alt.ay = k.y;
-          }
-        } else this.neuerTropfen(k);
-      }
-    }
+    this.zielSuchen();
 
     // Tropfen bewegen
     for (const t of this.tropfen) {
@@ -1377,8 +1419,10 @@ export class Verhalten {
         if (st) [t.ax, t.ay] = st;
       }
       if (t.zustand === 'gegriffen') {
-        // der Tropfen sitzt am gleitenden Zeiger und fließt mit ihm in seine Stelle
-        const [gx2, gy2] = this.gezeichnet();
+        // der Tropfen sitzt am gleitenden Zeiger und fließt mit ihm in seine Stelle; einer, der erst mit dem Drücken entstand
+        // (`sitzt`), ist schon dort und wartet, bis der Zeiger angekommen ist
+        if (t.sitzt && Math.hypot(this.versatz.x - this.versatz.zx, this.versatz.y - this.versatz.zy) < 0.3 * this.g) t.sitzt = false;
+        const [gx2, gy2] = t.sitzt ? [t.ax, t.ay] : this.gezeichnet();
         t.pos.x = t.pos.zx = gx2;
         t.pos.y = t.pos.zy = gy2;
         t.pos.vx = z.vx + this.versatz.vx;

@@ -45,6 +45,9 @@ const params = new URLSearchParams(location.search);
 // ?bild=1: ohne Bedienung (Vergleichsbilder); ?film=1: ohne Bedienung, mit Zeiger; ?info=1: Takt
 if (params.get('bild') === '1' || params.get('film') === '1') document.body.classList.add('bild');
 const mitZeigerImBild = params.get('film') === '1';
+// B1 (17.11., zum Vergleich): ?zeiger=system: der Zeiger des Systems in der Form des Werkzeugs, solange der gezeichnete genau auf der
+// Hand läge (`zeigerSystemSchritt`); ohne den Schalter wie bisher (immer gezeichnet)
+const zeigerVomSystem = params.get('zeiger') === 'system';
 const mitInfo = params.get('info') === '1';
 if (mitInfo) document.body.classList.add('info');
 
@@ -2405,6 +2408,8 @@ function bild(dt: number): boolean {
     szene.zeigerUmriss = zeigerGestaltSchritt(szene.zeiger, dt);
     if (zeigerGestalt.gleitet) aktiv = true;
   }
+  if (zeigerVomSystem && zeigerSystemSchritt(szene, dt)) aktiv = true;
+  zeigerGezeichnet = !!szene.zeiger;
   const ta = performance.now();
   anzeige.zeichnen(szene);
   mess.teile[4] = performance.now() - ta;
@@ -2596,6 +2601,129 @@ function zeigerGestaltSchritt(z: Szene['zeiger'], dt: number): NonNullable<Szene
     punkte[2 * i + 1] = z.ay + G.punkte[2 * i + 1]!;
   }
   return { punkte, fuell: G.fuell };
+}
+
+// ---------- B1 (17.11., Schalter `?zeiger=system`): der Zeiger des Systems vertritt den gezeichneten ----------
+//
+// Der gezeichnete Zeiger erscheint erst mit dem nächsten Bild (er hängt der Hand ein bis drei Bilder nach und ruckt mit jedem
+// verpassten Bild); den Zeiger des Systems setzt das Betriebssystem selbst, auch wenn Ozzy gerade rechnet. Er bekommt deshalb dieselbe
+// Form (Pfeil, Spitze, Schlinge) und steht für den gezeichneten, solange dieser genau auf der Hand läge. Gezeichnet wird weiter, was
+// sich von der Hand löst oder zum Bild gehört: beim Drücken und Greifen (der Zeiger gleitet zur Stelle und sitzt auf ihr), auf dem
+// Rückweg danach, der Ring des Pinsels über der Haut, und während die Form des Zeigers von einem Werkzeug ins andere gleitet.
+// Tropfen, Schwellung und Feld bleiben im Bild. Vom Gezeichneten zum System wird erst gewechselt, wenn die Hand fast ruht (sonst
+// spränge der Zeiger um den Weg, den er nachhängt).
+
+/** so langsam (CSS-Punkte je Sekunde) muss die Hand sein, damit der Zeiger des Systems den gezeichneten ablöst */
+const ZEIGER_TEMPO_RUHIG = 45;
+/** so viele Bilder bleibt der Zeiger des Systems noch stehen, nachdem der gezeichnete übernommen hat (dessen Bild kommt später an) */
+const ZEIGER_UEBERLAPPEN = 3;
+const zeigerSystem = { an: false, wert: '', ueberlappt: 0, x: 0, y: 0, tempo: 0, war: false, geraet: 'mouse' };
+/** für die Proben: Das letzte Bild hat den Zeiger gezeichnet */
+let zeigerGezeichnet = false;
+const zeigerBilder = new Map<string, string>();
+
+/** der Zeiger einer Art als Bild für das System (CSS `cursor`), auf hellem oder dunklem Grund; die Spitze ist der Ort des Zeigers */
+function zeigerBildFuer(art: Exclude<ZeigerArt, 'ring'>, dunkel: boolean): string {
+  const name = `${art}${dunkel ? ' dunkel' : ''}`;
+  const da = zeigerBilder.get(name);
+  if (da) return da;
+  const L = linienWerte.zeigerGroesse;
+  const linie = linienWerte.zeigerLinie;
+  const umriss = zeigerUmrissVon(art, L, 0);
+  let x0 = 0;
+  let y0 = 0;
+  let x1 = 0;
+  let y1 = 0;
+  for (const [x, y] of umriss) {
+    x0 = Math.min(x0, x);
+    y0 = Math.min(y0, y);
+    x1 = Math.max(x1, x);
+    y1 = Math.max(y1, y);
+  }
+  const rand = 2;
+  const hx = Math.ceil(-x0) + rand;
+  const hy = Math.ceil(-y0) + rand;
+  const b = hx + Math.ceil(x1) + rand;
+  const h = hy + Math.ceil(y1) + rand;
+  const farbe = (c: readonly number[]): string => `rgb(${c.map((v) => Math.round(v * 255)).join(',')})`;
+  const tinte = farbe(dunkel ? [1, 1, 1] : TINTE);
+  const papier = farbe(dunkel ? TINTE : [1, 1, 1]);
+  const gefuellt = art !== 'schlinge';
+  const bild = (s: number): string => {
+    const c = document.createElement('canvas');
+    c.width = b * s;
+    c.height = h * s;
+    const g = c.getContext('2d');
+    if (!g) return '';
+    g.scale(s, s);
+    g.translate(hx, hy);
+    g.beginPath();
+    umriss.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+    g.closePath();
+    g.strokeStyle = tinte;
+    if (gefuellt) {
+      // wie im Bild: gefüllt mit dem Papier, der Rand innen an der Kante (so sitzt die Spitze genau auf der Stelle)
+      g.fillStyle = papier;
+      g.fill();
+      g.clip();
+      g.lineWidth = 2 * linie;
+    } else g.lineWidth = linie;
+    g.stroke();
+    return c.toDataURL('image/png');
+  };
+  const eins = bild(1);
+  const zwei = bild(2);
+  const satz = `url("${eins}") 1x, url("${zwei}") 2x`;
+  const wert =
+    [`image-set(${satz}) ${hx} ${hy}, default`, `-webkit-image-set(${satz}) ${hx} ${hy}, default`, `url("${eins}") ${hx} ${hy}, default`].find(
+      (k) => typeof CSS !== 'undefined' && CSS.supports('cursor', k),
+    ) ?? 'default';
+  zeigerBilder.set(name, wert);
+  return wert;
+}
+
+/**
+ * Ein Bild weiter: Zeigt das System den Zeiger, wird er aus der Szene genommen. true, solange ein Wechsel aussteht (das nächste Bild
+ * muss kommen, auch wenn sonst nichts läuft).
+ */
+function zeigerSystemSchritt(sz: Szene, dt: number): boolean {
+  const Z = zeigerSystem;
+  // die Hand: wie schnell sie gerade ist (geglättet)
+  const weg = Z.war && zeiger.da ? Math.hypot(zeiger.x - Z.x, zeiger.y - Z.y) : 0;
+  Z.x = zeiger.x;
+  Z.y = zeiger.y;
+  Z.tempo += (weg / Math.max(dt, 1e-3) - Z.tempo) * Math.min(1, Math.max(dt, 1e-3) / 0.05);
+  const V = zustand === 'blatt' ? blatt.verhalten : bearbeitenAn && !strichWerkzeug() ? bearbeiten : null;
+  const art = zustand === 'blatt' ? 'pfeil' : zeigerArtJetzt();
+  const gleitet = zustand !== 'blatt' && zeigerGestalt.gleitet;
+  // nur die Maus hat einen Zeiger des Systems (ein schwebender Stift nicht)
+  const moeglich = !!sz.zeiger && Z.geraet === 'mouse' && art !== 'ring' && !gleitet && (V ? V.zeigerAnDerHand : true);
+  let offen = false;
+  if (Z.an && !moeglich) {
+    Z.an = false;
+    Z.ueberlappt = ZEIGER_UEBERLAPPEN;
+  } else if (!Z.an && moeglich) {
+    // gleich, wenn bisher kein Zeiger zu sehen war; sonst erst, wenn die Hand fast ruht
+    if (!Z.war || Z.tempo < ZEIGER_TEMPO_RUHIG) Z.an = true;
+    else offen = true;
+  }
+  Z.war = !!sz.zeiger;
+  if (Z.an) Z.ueberlappt = 0;
+  else if (Z.ueberlappt > 0) {
+    Z.ueberlappt--;
+    offen = true;
+  }
+  // solange er überlappt, bleibt er, wie er war (auch wenn das Werkzeug schon ein anderes ist)
+  const wert = Z.an && art !== 'ring' ? zeigerBildFuer(art, hintenBei(hintenJetzt, zeiger.x * D, zeiger.y * D) > 0.5) : Z.ueberlappt > 0 ? Z.wert : '';
+  if (wert !== Z.wert) {
+    Z.wert = wert;
+    leinwandLinien.style.cursor = wert;
+  }
+  if (Z.an) {
+    sz.zeiger = null;
+    sz.zeigerUmriss = null;
+  }
+  return offen;
 }
 
 /** sichtbare Wand je Achse (Vorzeichen) und ihre Stärke */
@@ -4167,6 +4295,7 @@ leinwandLinien.addEventListener('pointermove', (e) => {
   zeiger.x = x;
   zeiger.y = y;
   zeiger.da = true;
+  zeigerSystem.geraet = e.pointerType;
   if (zustand === 'blatt') {
     blatt.alt = e.altKey;
     blatt.umschalt = e.shiftKey;
@@ -4335,6 +4464,7 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
   zeiger.x = x;
   zeiger.y = y;
   zeiger.da = true;
+  zeigerSystem.geraet = e.pointerType;
   if (zustand === 'blatt') {
     blatt.alt = e.altKey;
     blatt.umschalt = e.shiftKey;
@@ -4371,6 +4501,16 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
     teiler.zug = true;
     anstossen();
     return;
+  }
+  // B1 (17.11.): das Ziel für genau diesen Ort bestimmen, bevor gefragt wird, ob etwas am Zeiger hängt. Bis dahin galt, was seit dem
+  // Bild davor an ihm hing: Ein Tipp mit Stift oder Finger (kein Zeigen davor) und ein rascher Klick griffen oft nichts. Nicht mit dem
+  // Lasso (es greift nichts, es umfährt)
+  if (werkGezeigt && bearbeitenAn && !strichWerkzeug() && raumWerkzeug !== 'lasso') {
+    bearbeiten.alt = e.altKey;
+    bearbeiten.umschalt = e.shiftKey;
+    bearbeiten.kippen = e.shiftKey;
+    bearbeiten.zeigerSetzen(x, y, x, y, 0);
+    bearbeiten.zielJetzt();
   }
   // S17b: ⇧ + Ziehen in einem flachen Feld wendet es, ⇧ + Doppelklick ganz (über einem Punkt oder einer Linie gilt ⇧ der Auswahl)
   if (e.shiftKey && !bearbeiten.haengt) {
@@ -5303,6 +5443,8 @@ const haken = {
     beschaeftigt: werkBeschaeftigt(),
     meldung: werk.G.meldung,
   }),
+  /** B1: der Zeiger jetzt: Zeigt ihn das System (und mit welchem Bild), hat ihn das letzte Bild gezeichnet, seine Form */
+  zeiger: () => ({ system: zeigerSystem.an, bild: zeigerSystem.wert, gezeichnet: zeigerGezeichnet, art: zustand === 'blatt' ? 'pfeil' : zeigerArtJetzt(), tempo: zeigerSystem.tempo }),
   /** wo ein Punkt des Werks (Loop-Kennung, Nummer) auf den Flächen mit diesem Blatt liegt (CSS-Pixel), ohne und mit Spiegelbild */
   ankerImBild: (id: number, i: number, a?: Flaeche['a']): { x: number; y: number; fl: number; a: Flaeche['a']; m: boolean; sichtbar: boolean }[] =>
     werkBlatt.anker.flatMap((A, pi) => {

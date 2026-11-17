@@ -312,7 +312,11 @@ export class Blatt {
       this.strich = strichBeginnen(this.freihand, x, y, t);
     } else if (this.werkzeug === 'ellipse' || this.werkzeug === 'wuerfel') {
       this.aufzug = { von: { x, y }, bis: { x, y } };
-    } else this.verhalten.druecken();
+    } else {
+      // B1 (17.11.): das Ziel für genau diesen Ort, nicht das des Bilds davor
+      this.verhalten.zielJetzt();
+      this.verhalten.druecken();
+    }
   }
 
   bewegen(x: number, y: number, t: number, dt: number): void {

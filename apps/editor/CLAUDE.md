@@ -24,7 +24,9 @@ Gedächtnis des Electron-Editors (Käfig-Zeit) liegt in `docs/verlauf/2026-11-12
   Stufen der Anzeige richten sich nach der Größe im Bild (`werkHaut.bildMass`, `stufenFuer`; `?fein=<n>` legt sie fest). Der Fluss
   der Dicke ist eine Textur (`src/anfang/haut.ts`, `RAUSCH_…`); ohne sichtbare Blase zeichnet die Haut nur den Grund
   (`HautWerte.leer`), und ihr teures Ziel ist nur so groß wie der Kasten der Form im Bild (`HautWerte.ausschnitt`, `hautAusschnitt`
-  in `main.ts`; wer etwas Neues in die Zeichenfläche der Haut zeichnet, das außerhalb dieses Kastens liegt, muss ihn erweitern). Alle Proben: `node scripts/pruefen/ozzy-alle.mjs`; messen: `ozzy-karte-messen.mjs`, `ozzy-zug-messen.mjs`
+  in `main.ts`; wer etwas Neues in die Zeichenfläche der Haut zeichnet, das außerhalb dieses Kastens liegt, muss ihn erweitern). **B1 (17.11.):** Beim Drücken bestimmt `Verhalten.zielJetzt()` das Ziel für genau diesen Ort
+  (vor `druecken`; bis dahin griff nur, was seit dem Bild davor am Zeiger hing). `?zeiger=system`: Der Zeiger des Systems vertritt den
+  gezeichneten, solange dieser auf der Hand läge (`zeigerSystemSchritt` in `main.ts`; Probe `ozzy-zeiger-fenster.mjs`). Alle Proben: `node scripts/pruefen/ozzy-alle.mjs`; messen: `ozzy-karte-messen.mjs`, `ozzy-zug-messen.mjs`
   (gemeinsame Teile und „Flicken“ für Versuche ohne Eingriff in den Arbeitsbaum: `ozzy-teile.mjs`).
 - **`editor.html` + `src/form/editor.ts`, `blaupause.ts`, `lava.ts`:** derselbe Editor im Layout der Blaupause (`/editor`).
   Gehört der Design-Sitzung; nicht anfassen. `editor.ts` ist eine Kopie von `kurven.ts`.

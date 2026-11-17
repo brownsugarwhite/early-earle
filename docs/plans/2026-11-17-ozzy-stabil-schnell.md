@@ -202,6 +202,36 @@ man ihn sieht (Vergleichsbild).
 - Nach dem Loslassen zählt für das nächste Ziel die Hand, nicht der gezeichnete Zeiger.
 - Probe: Film; eine Probe, die ohne vorheriges Zeigen drückt und den Punkt trotzdem greift.
 
+**Gebaut (17.11., 21 Uhr), dein Urteil steht aus.**
+- **Film:** [`2026-11-17-zeiger-system.mp4`](../progress/ozzy/2026-11-17-zeiger-system.mp4) (27 s; Standbild
+  [`2026-11-17-zeiger-system.png`](../progress/ozzy/2026-11-17-zeiger-system.png)): dieselbe Handbewegung oben wie heute, unten mit dem
+  Zeiger des Systems; erst in echter Geschwindigkeit, dann viermal langsamer. Es ist eine **Nachstellung**, kein Mitschnitt (ein
+  Bildschirmfoto der Seite enthält den Zeiger des Systems nicht): Der rote Kreis ist die Hand; angenommen ist, dass ein Bild, das
+  Ozzy zeichnet, zwei Bilder (33 ms) später auf dem Schirm steht als der Zeiger des Systems (üblich sind zwei bis drei; gemessen ist
+  das hier nicht). Verpasste Bilder zeigt der Film nicht (beim Zeigen hält Ozzy im Testbrowser seine Bilder). Skript:
+  `apps/editor/scripts/ozzy/zeiger-system-film.mjs`.
+- **Schalter `?zeiger=system`** (ohne ihn ist alles wie bisher): Der Zeiger des Systems hat die Form des Werkzeugs (Pfeil, Spitze,
+  Schlinge; sein Bild deckt sich mit dem gezeichneten: kein Bildpunkt weicht deutlich ab) und steht für den gezeichneten, solange
+  der genau auf der Hand läge. Gezeichnet bleibt: beim Drücken und Greifen (der Zeiger gleitet zur Stelle und sitzt auf ihr); danach,
+  bis er zur Hand zurückgefunden hat und die Hand fast ruht (sonst spränge er um den Weg, den er nachhängt); der Ring des Pinsels
+  über der Haut; das Gleiten von einer Form des Zeigers in die andere. Tropfen, Schwellung und Feld bleiben im Bild und hängen dem
+  Zeiger des Systems sichtbar nach. **Grenzen:** Wer Punkt um Punkt zieht, sieht den Zeiger des Systems nur in den kurzen Pausen
+  dazwischen; der Gewinn liegt beim freien Zeigen. Im Raum über der Haut bleibt es wie heute (Ring). Ein Stift hat keinen Zeiger des
+  Systems: Dort bleibt alles gezeichnet. Stellen: `main.ts` (`zeigerSystemSchritt`, `zeigerBildFuer`), `verhalten.ts`
+  (`zeigerAnDerHand`).
+- **Greifen sofort beim Drücken** (gilt immer, auch ohne den Schalter): `Verhalten.zielJetzt()` bestimmt das Ziel für genau den Ort
+  des Drückens (dieselbe Suche wie in jedem Bild), bevor Ozzy fragt, ob etwas am Zeiger hängt; auch auf dem Blatt und mit P, nicht mit
+  dem Lasso. Gegenprobe: Die Maus springt auf einen Punkt und drückt, ohne dass dazwischen ein Bild kommt: bisher in 0 von 3 Fällen
+  gegriffen (es drehte die Ansicht), jetzt in 3 von 3. Ein Tropfen, der erst mit dem Drücken entsteht, bleibt an seiner Stelle, der
+  Zeiger gleitet zu ihm. Ins Leere gedrückt dreht es weiter.
+- **Nicht gebaut: „nach dem Loslassen zählt die Hand“.** Solange der gezeichnete Zeiger zu sehen ist, entscheidet er, was getroffen
+  wird (so am 15.11. auf deinen Wunsch gebaut: „kann der cursor nach dem klick auf dem punkt bleiben“). Die Hand zählen zu lassen
+  hieße: Der sichtbare Zeiger zeigt auf etwas anderes, als gegriffen wird. Mit dem Schalter zählt die Hand von selbst, sobald das
+  System den Zeiger zeigt. Offen ist nur der schwebende Stift am iPad (dort ist die Spitze die Wahrheit): nicht geprüft, nicht
+  angefasst.
+- Probe: `apps/editor/scripts/pruefen/ozzy-zeiger-fenster.mjs` (sieben Kriterien: Greifen ohne Zeigen, Drehen ins Leere, ohne und
+  mit Schalter, Ring und Spitze, Deckung der Bilder). Alle 23 Proben halten.
+
 **B2. Eine Abbildung je Fläche, Wenden räumlich (mittel).** Du siehst: ⇧ + Ziehen in einem Feld der Vier Ansichten dreht den Körper
 mit seinen Linien räumlich, parallel und genau wie in der einzelnen Ansicht; über die Hälfte kommt wie bisher die harte Kante.
 - Wand, Feld, eingerastete Ansicht und Kistennetz bekommen eine gemeinsame Art Abbildung (Ort im Raum → Bild und zurück). Das Wenden

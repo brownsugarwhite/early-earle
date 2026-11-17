@@ -13,14 +13,15 @@ Fassung mit allen Messwerten und Zwischenständen liegt im Archiv:
 **Wie es weitergeht (17.11. nachts):** Der Plan „Ozzy stabil und schnell“ ist freigegeben (Florian: „Du kannst loslegen.“):
 [`docs/plans/2026-11-17-ozzy-stabil-schnell.md`](../../plans/2026-11-17-ozzy-stabil-schnell.md) (seine Klarstellungen und Antworten
 wörtlich, Befunde, sechs Etappen; **was gebaut ist, steht dort je Schritt unter „Gebaut“**). Der Spiegel-Schalter ruht, bis er ihn
-genauer beschreibt. **Stand (17.11., 20 Uhr): Etappe A ist gebaut bis auf zwei kleine Reste** (A4: das Gedrehte in der Pose merken, der
-Weichzeichner; A2: Vergleichsbild zu den Spiegelungen). Gemessen an „strange bird“: Grafikkarte je Bild im Raum 15,8 → 6,0 ms, Vier
+genauer beschreibt. **Stand (17.11., 21 Uhr): Etappe A ist gebaut bis auf zwei kleine Reste** (A4: das Gedrehte in der Pose merken, der
+Weichzeichner; A2: Vergleichsbild zu den Spiegelungen), **dazu B1** (Greifen sofort beim Drücken; der Zeiger des Systems als Schalter
+`?zeiger=system` mit Film [`2026-11-17-zeiger-system.mp4`](../../progress/ozzy/2026-11-17-zeiger-system.mp4), sein Urteil steht aus). Gemessen an „strange bird“: Grafikkarte je Bild im Raum 15,8 → 6,0 ms, Vier
 Ansichten 16,8 → 10,3 ms, eingerastet 9,7 → 4,3 ms, nah herangezoomt 21,1 → 12,6 ms; Zug 18,8 / 26,4 → 10,7 / 17,1 ms je Bild; keine
 Scherben und keine Sprünge mehr in der Seifenhaut. Messblätter:
 [`2026-11-17-messen-karte-zug-p.md`](../../progress/ozzy/2026-11-17-messen-karte-zug-p.md) (vorher),
 [`2026-11-17-messen-nach-a.md`](../../progress/ozzy/2026-11-17-messen-nach-a.md) (nach A). Sein Urteil zur Seifenhaut steht aus.
-Nächster Schritt: Etappe B, zuerst der Zeiger-Film. Die Sitzung dieses Plans ist auch die des Kerns: Sie darf
-ihn ändern. Proben: `node scripts/pruefen/ozzy-alle.mjs` (alle 22 nacheinander); Werkzeuge zum Messen: `ozzy-karte-messen.mjs`,
+Nächster Schritt: Etappe B ab B2 (eine Abbildung je Fläche, Wenden räumlich in den Feldern). Die Sitzung dieses Plans ist auch die des Kerns: Sie darf
+ihn ändern. Proben: `node scripts/pruefen/ozzy-alle.mjs` (alle 23 nacheinander); Werkzeuge zum Messen: `ozzy-karte-messen.mjs`,
 `ozzy-zug-messen.mjs`, `ozzy-p-ueberall.mjs`, `ozzy-zuege-zaehlen.mjs` (gemeinsame Teile in `ozzy-teile.mjs`).
 
 ## 1. Einstieg
@@ -129,7 +130,8 @@ und Pose (4990), Test-Haken `window.__ozzy` (5171, 49 Einträge).
 - Werk: `neuAusUmriss` (Phase 3, aus bestehenden Handgriffen), `zugGriffRaum` (S6b, mit seiner Zustimmung); `ablage.ts` erlaubt Punkte
   ohne Spiegelbild (S11, „Ja, lockern“). Der Schnitt `kurven.ts` → `werk.ts` ist wiederholbar (`scripts/werk-schnitt/schnitt.mjs`).
 
-**Schalter in der Adresse:** `?form=<Name>` lädt eine gesicherte Form; `?info=1` zeigt Takt, Finger und Zeiger; `?bild=1` ohne Bedienung;
+**Schalter in der Adresse:** `?form=<Name>` lädt eine gesicherte Form; `?zeiger=system` der Zeiger des Systems in der Form des Werkzeugs
+(B1, zum Vergleich; ohne ihn wird der Zeiger immer gezeichnet); `?info=1` zeigt Takt, Finger und Zeiger; `?bild=1` ohne Bedienung;
 `?film=1` ohne Bedienung mit Zeiger; `?fassung=<n>` Fassung der Seifenhaut; `?ohneLinie=0|1` Linie an der Spiegelkante für Proben (sonst
 das Menü, im Browser gemerkt); `?koerper=0` ohne weißen Körper (Vergleich S20); `?fluss=0` ohne die Bewegungen der Anzeige aus S13;
 `?uebergabeMuster=0` Muster an der Übergabe wie vor S2 (Vergleich). `gewichte=geometrie` und `behalten=0` setzt `adresse.ts` selbst.
