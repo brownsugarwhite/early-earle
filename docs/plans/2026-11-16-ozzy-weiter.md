@@ -350,6 +350,19 @@ Probe zu den Richtungen (⌥ knickt beim Drehen) hält. Bild [`2026-11-17-roentg
 unten Front; links ohne, rechts mit ⌥).
 
 
+**S15 Lichtring** (Florian, 17.11.: „Ja, Lichtring“; aus S8 und dem Konzept der Ecke). Zieht man mit P eine Gerade im Leeren quer über die
+Form (der erste Punkt im Leeren, der Zeiger oder der zweite Punkt im Leeren, noch vor ↩), zeigt ein Lichtring, wo der Loop rundum laufen
+wird: auf allen Flächen (Wände im Raum, Felder der Vier Ansichten) als feine grüne Linie, dazu auf der Blase im Raum, und ein Tropfen läuft
+auf ihm herum. Gerechnet wird er mit derselben Rechnung, die ↩ benutzt (`loopAusSchnitt` des Kerns, nur gelesen, nichts eingesetzt): Er
+zeigt genau den Loop, der entsteht. Gebogen gezogen (das Werk kann es noch nicht) und in der Pose zeigt er nichts. *Probe:* in den Vier
+Ansichten mit P über die Seite: der Ring erscheint in Front und Top, liegt dort auf dem Loop, den ↩ dann anlegt (höchstens 1 px
+daneben); ohne zweiten Klick folgt er dem Zeiger; Bild.
+*Gebaut:* `werkBlatt.lichtring()` (gemerkt je Entwurf, Zeiger und Stand), `lichtringZeichnen()` in `main.ts` (grün, dreimal so breit wie
+Verdecktes, mit Spiegelbild; ein Tropfen läuft herum, auf dem Spiegelbild gegenläufig). Probe `ozzy-lichtring-fenster.mjs` 1 bis 5 halten:
+168 Proben, folgt dem Zeiger, der neue Loop liegt höchstens 0,11 px neben dem Ring. Bild
+[`2026-11-17-lichtring.png`](../progress/ozzy/2026-11-17-lichtring.png) (Vier Ansichten: Front, Top und Raum zeigen den Ring).
+
+
 ## 5. Ideen für mehr liquid drop
 
 Alles in derselben flüssigen Anzeige, die Linien und Punkte schon zeichnet (weiches Vereinigen, Federn):

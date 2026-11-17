@@ -297,8 +297,11 @@ der Ansichts-Tropfen unten rechts (`ansichtsTropfen.ts`; Drehen von Hand in `dre
 `ozzy-ansichts-tropfen-fenster.mjs`. Damit ist S13 durch; Florians Urteil zu allen zehn steht aus.
 
 **S14 Röntgen:** ⌥ halten (iPad: Knopf „Röntgen“) macht Verdecktes greifbar (`Raum.roentgen` in `verhalten.ts`, `kandidat`: das Nähere
-gewinnt), die Haut wird durchsichtiger, das Grün kräftiger, verdeckte Linien breiter. Probe `ozzy-roentgen-fenster.mjs`. Offen danach: der
-Lichtring. `?fluss=0` schaltet alle Bewegungen der Anzeige aus S13 ab. Nebenbei: Der Schalter „Linie an der Spiegelkante“
+gewinnt), die Haut wird durchsichtiger, das Grün kräftiger, verdeckte Linien breiter. Probe `ozzy-roentgen-fenster.mjs`.
+
+**S15 Lichtring:** P im Leeren quer über die Form zeigt vor ↩, wo der Loop rundum laufen wird (`werkBlatt.lichtring`, gerechnet mit
+`loopAusSchnitt` wie ↩, nur gelesen; `lichtringZeichnen`). Probe `ozzy-lichtring-fenster.mjs`. Offen in Ozzy danach: dreimal tippen,
+Kneifen zum Auffalten, Würfel mit ebenen Flächen, Pose ohne Regler, Haut gleitet bei ⌘Z. `?fluss=0` schaltet alle Bewegungen der Anzeige aus S13 ab. Nebenbei: Der Schalter „Linie an der Spiegelkante“
 stand im Raster der Regler zerdrückt (S9), jetzt in einer Zeile.
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**

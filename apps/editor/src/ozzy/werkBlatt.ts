@@ -11,7 +11,7 @@
  * dann auf die Fläche gebracht (an einer Wand perspektivisch). Die Griffe im Netz sind die abgebildeten Spitzen, sie dienen nur dem
  * Drehen der Richtungen.
  */
-import { type Ansicht, type LoopPunkt, hatGriffe, istSichtbar } from '@ee/shape/dicht';
+import { type Ansicht, type LoopPunkt, hatGriffe, istSichtbar, loopAusSchnitt } from '@ee/shape/dicht';
 import * as werk from '../form/werk';
 import { type Art, type Breiten, type Linie, type LinienProben, type Netz, type Punkt, type Stueck, armGriff } from '../linien/netz';
 import { Feder1 } from '../linien/feder';
@@ -53,6 +53,8 @@ const HINTEN_Z = 4e9;
  * Linie, `abzweigungErstellen`). Anker im Blatt, Griffe gleich lang nach beiden Seiten (so nimmt das Werk sie).
  */
 type Entwurf = { fl: number; a: Ansicht; anker: werk.StiftAnker[]; abzweig: boolean; nach: werk.AbzweigOrt | null };
+/** S15: ein Lichtring (Lage im Werk, 3 je Probe; geschlossen; mit Spiegelbild zu zeigen) */
+export type Lichtring = { pos: Float64Array; zu: boolean; spiegeln: boolean };
 
 /** eine Linie, die (noch) kein Bézier-Pfad ist: nur zu sehen, als Streckenzug auf ihrer Fläche (Bildschirm) */
 export interface RoheLinie {
@@ -655,6 +657,39 @@ export class WerkBlatt implements Raum {
     const K: Karte = { a: achse, u, v, vorn, u0, v0, zelle, n, d, toleranz: VERDECKT_TOLERANZ * span, stand, zeit: jetzt };
     this.karten.set(schl, K);
     return K;
+  }
+
+  /** S15, Lichtring: gemerkt je Entwurf, Zeiger und Stand des Werks */
+  private lichtSpeicher: { schl: string; ring: Lichtring | null } | null = null;
+
+  /**
+   * S15, Lichtring: der Loop rundum, den ↩ aus der Geraden mit P anlegen würde (im Leeren begonnen, der Zeiger oder der zweite Punkt im
+   * Leeren): seine Lage (Werk, 3 je Probe), ob er geschlossen ist und ob er gespiegelt zu zeigen ist. Gerechnet mit derselben Rechnung wie
+   * ↩ (`loopAusSchnitt`, nur gelesen). null: keiner (kein solcher Entwurf, gebogen, in der Pose, die Gerade trifft die Form nicht).
+   */
+  lichtring(): Lichtring | null {
+    const E = this.ent;
+    if (!E || E.abzweig || werk.grund || E.anker.length < 1 || E.anker.length > 2) return null;
+    const A = E.anker[0]!;
+    if (E.anker.some((k) => k.aus && Math.hypot(k.aus[0], k.aus[1]) > 1e-9)) return null;
+    let B: { X: number; Y: number };
+    if (E.anker.length === 2) B = E.anker[1]!;
+    else {
+      const F = this.flaechen[E.fl];
+      if (!F) return null;
+      const [zx, zy] = this.zeiger();
+      const XY = F.her(zx, zy);
+      if (!XY) return null;
+      B = { X: XY[0], Y: XY[1] };
+    }
+    if (Math.hypot(B.X - A.X, B.Y - A.Y) * werk.anzeige.skala(E.a) < 12) return null;
+    if (!this.aussen(E.a, A.X, A.Y) || !this.aussen(E.a, B.X, B.Y)) return null;
+    const schl = `${E.a}|${A.X.toFixed(1)},${A.Y.toFixed(1)}|${B.X.toFixed(1)},${B.Y.toFixed(1)}|${werk.standZahl()}`;
+    if (this.lichtSpeicher?.schl === schl) return this.lichtSpeicher.ring;
+    const l = loopAusSchnitt(werk.haut, E.a, werk.uvAus(E.a, A.X, A.Y), werk.uvAus(E.a, B.X, B.Y), -1, 10 / werk.anzeige.skala(E.a));
+    const ring = l && l.ruhe.length >= 6 ? { pos: Float64Array.from(l.ruhe), zu: l.art !== 'ring', spiegeln: l.art !== 'mitte' } : null;
+    this.lichtSpeicher = { schl, ring };
+    return ring;
   }
 
   /** S8: liegt eine Stelle im Blatt außerhalb der Form (dort zeigt die Tiefenkarte keine Haut) */

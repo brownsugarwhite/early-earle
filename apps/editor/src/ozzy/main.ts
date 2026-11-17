@@ -2233,8 +2233,9 @@ function werkLinien(vp: Matrix4, m: Moment, dt: number): { zeiger: Szene['zeiger
     // S13 (4): Tropfen, die zu neuen Kreuzungen fließen und dort verschmelzen
     for (const t of werkBlatt.verschmelzenTropfen(linienWerte.punktRadius * linienWerte.tropfen)) K.punkt(t.x * D, t.y * D, t.r * D);
     ordnungslinien();
+    const licht = lichtringZeichnen();
     // mit Freihand und Formen ist es Ozzys Zeiger (das Verhalten hat dann keinen)
-    return { zeiger: strichWerkzeug() ? (zeiger.da ? zeigerForm(zeiger.x, zeiger.y) : null) : sz.zeiger, aktiv };
+    return { zeiger: strichWerkzeug() ? (zeiger.da ? zeigerForm(zeiger.x, zeiger.y) : null) : sz.zeiger, aktiv: aktiv || licht };
   }
   for (const P of werkBlatt.proben) {
     const g = K.neueGruppe();
@@ -2289,6 +2290,52 @@ function ordnungslinien(): void {
     const [px, py] = projizieren(werkInWelt(q), vp);
     for (const o of orte.values()) K.push(px, py, o.x * D, o.y * D, r, r, g, 1, false);
   }
+}
+
+/**
+ * S15, Lichtring: wo der Loop rundum laufen wird, den ↩ aus der Geraden mit P anlegt: auf allen Flächen fein und grün (Wände, Felder, die
+ * eingerastete Ebene), im Raum auch auf der Blase, und ein Tropfen läuft auf ihm herum. Zurück: ob er zu sehen ist (dann braucht er Bilder).
+ */
+function lichtringZeichnen(): boolean {
+  const ring = werkBlatt.lichtring();
+  if (!ring) return false;
+  const n = ring.pos.length / 3;
+  // kräftiger als Verdecktes (ein Licht, kein Schatten), aber feiner als eine Linie der Form
+  const r = (linienWerte.innen / 2) * D * 3;
+  const lauf = (uhr * 0.55) % 1;
+  const zeichnen = (abb: (p: { x: number; y: number; z: number }) => [number, number]): void => {
+    for (const sp of ring.spiegeln ? [false, true] : [false]) {
+      const xs: number[] = [];
+      const ys: number[] = [];
+      for (let i = 0; i < n; i++) {
+        const [x, y] = abb({ x: ring.pos[3 * i]!, y: ring.pos[3 * i + 1]!, z: (sp ? -1 : 1) * ring.pos[3 * i + 2]! });
+        xs.push(x);
+        ys.push(y);
+      }
+      K.zug(xs, ys, r, ring.zu, 1);
+      // der Tropfen, der auf dem Ring herumläuft (auf dem Spiegelbild gegenläufig: so läuft er einmal rundum)
+      const m = ring.zu ? n : n - 1;
+      const t = (sp ? 1 - lauf : lauf) * m;
+      const i0 = Math.floor(t) % n;
+      const i1 = (i0 + 1) % n;
+      const f = t - Math.floor(t);
+      K.punkt(xs[i0]! + (xs[i1]! - xs[i0]!) * f, ys[i0]! + (ys[i1]! - ys[i0]!) * f, linienWerte.punktRadius * D * 1.2);
+    }
+  };
+  for (const F of werkBlatt.flaechen)
+    zeichnen((p) => {
+      const [x, y] = F.hin(...werk.imBlatt(F.a, p));
+      return [x * D, y * D];
+    });
+  // im Raum (und im Feld des Raums) auch auf der Blase
+  if (ansicht === 'raum' && flach < 0.1) {
+    const vp = vpJetzt();
+    zeichnen((p) => {
+      const [x, y] = projizieren(werkInWelt(p), vp);
+      return [x, y];
+    });
+  }
+  return true;
 }
 
 // ---------- Pinsel an der Blase (Phase 6) ----------
@@ -4203,6 +4250,11 @@ const haken = {
       kante: l.kante ?? null,
       haengt: l.haengt ?? null,
     })),
+  /** S15: der Lichtring jetzt: Proben, geschlossen, gespiegelt; seine Lage im Werk (3 je Probe) */
+  lichtring: () => {
+    const r = werkBlatt.lichtring();
+    return r ? { proben: r.pos.length / 3, zu: r.zu, spiegeln: r.spiegeln, pos: Array.from(r.pos) } : null;
+  },
   /** S14: Röntgen jetzt (0 … 1) und ob Verdecktes greifbar ist */
   roentgen: () => ({ wert: roentgen, greifbar: werkBlatt.roentgen(), fest: roentgenFest }),
   /** S13 (10): der Ansichts-Tropfen: zu sehen, seine Tropfen im Fenster (CSS-Pixel) mit Tiefe zur Kamera, was das Schild sagt */
