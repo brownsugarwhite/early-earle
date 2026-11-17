@@ -55,6 +55,12 @@ export interface Szene {
   gruen: [number, number, number];
   /** Zeiger: Spitze und zwei weitere Ecken (Gerätepunkte), Linienbreite; null = keiner */
   zeiger: { ax: number; ay: number; bx: number; by: number; cx: number; cy: number; linie: number } | null;
+  /**
+   * Ozzy (S13, liquid drop): der Zeiger in der Form des Werkzeugs, statt des Dreiecks: ein geschlossener Umriss aus höchstens
+   * `ZEIGER_PUNKTE` Punkten (Gerätepunkte, x, y im Wechsel) und wie weit er gefüllt ist (1 = Papier mit Rand innen, 0 = nur die Linie,
+   * mittig auf dem Umriss). Fehlt: das Dreieck von `zeiger`.
+   */
+  zeigerUmriss?: { punkte: Float32Array; fuell: number } | null;
   /** der Körper im Raum (sonst durchsichtig) und wie weit eine Kapsel hinter der Haut liegen darf, ohne verdeckt zu sein */
   koerper?: Koerper | null;
   bias?: number;
@@ -66,6 +72,9 @@ export interface Szene {
   /** Farbe des Papiers (für den Tausch und die Füllung des Zeigers); fehlt: weiß */
   papier?: [number, number, number];
 }
+
+/** so viele Punkte hat der Umriss des Zeigers höchstens (wie `uZP` im Shader) */
+export const ZEIGER_PUNKTE = 64;
 
 const VERTEX = `#version 300 es
 in vec2 aPos;
@@ -98,6 +107,11 @@ uniform vec2 uZA;
 uniform vec2 uZB;
 uniform vec2 uZC;
 uniform float uZLinie;
+// Ozzy (S13): der Zeiger als Umriss (höchstens 64 Punkte), seine Füllung und sein Rahmen (nur dort wird gerechnet)
+uniform vec2 uZP[64];
+uniform int uZPN;
+uniform float uZFuell;
+uniform vec4 uZBox;
 out vec4 aus;
 
 const int PB = ${PRIM_BREITE};
@@ -131,6 +145,23 @@ float glocke(float d, float r) {
   float x = clamp(d / max(r, 1e-3), 0.0, 1.0);
   float u = 1.0 - x * x;
   return u * u * u;
+}
+
+// Abstand zu einem geschlossenen Umriss, innen negativ
+float vieleck(vec2 p) {
+  float d = dot(p - uZP[0], p - uZP[0]);
+  float s = 1.0;
+  for (int i = 0; i < 64; i++) {
+    if (i >= uZPN) break;
+    int j = i == 0 ? uZPN - 1 : i - 1;
+    vec2 e = uZP[j] - uZP[i];
+    vec2 w = p - uZP[i];
+    vec2 b = w - e * clamp(dot(w, e) / max(dot(e, e), 1e-9), 0.0, 1.0);
+    d = min(d, dot(b, b));
+    bvec3 c = bvec3(p.y >= uZP[i].y, p.y < uZP[j].y, e.x * w.y > e.y * w.x);
+    if (all(c) || all(not(c))) s = -s;
+  }
+  return s * sqrt(d);
 }
 
 float dreieck(vec2 p, vec2 p0, vec2 p1, vec2 p2) {
@@ -251,12 +282,14 @@ void main() {
   c = tinte * aI + c * (1.0 - aI);
   a = aI + a * (1.0 - aI);
   if (uZeigerDa == 1) {
-    float dz = dreieck(p, uZA, uZB, uZC);
-    float fuell = clamp(0.5 - dz, 0.0, 1.0);
+    bool umriss = uZPN > 0;
+    float dz = umriss ? (p.x < uZBox.x || p.y < uZBox.y || p.x > uZBox.z || p.y > uZBox.w ? 1e4 : vieleck(p)) : dreieck(p, uZA, uZB, uZC);
+    float innen = umriss ? uZFuell : 1.0;
+    float fuell = clamp(0.5 - dz, 0.0, 1.0) * innen;
     c = papier * fuell + c * (1.0 - fuell);
     a = fuell + a * (1.0 - fuell);
-    // Rand innen an der Kante, so sitzt die Spitze genau auf der Stelle
-    float rand = deckung(abs(dz + uZLinie * 0.5) - uZLinie * 0.5, uZLinie * 0.5);
+    // Rand innen an der Kante, so sitzt die Spitze genau auf der Stelle; ohne Füllung mittig auf dem Umriss (Schlinge, Ring)
+    float rand = deckung(abs(dz + uZLinie * 0.5 * innen) - uZLinie * 0.5, uZLinie * 0.5);
     c = tinte * rand + c * (1.0 - rand);
     a = rand + a * (1.0 - rand);
   }
@@ -377,7 +410,7 @@ export class FluessigeAnzeige {
     this.gl = gl;
     gl.getExtension('EXT_color_buffer_float');
     this.prog = programm(gl, VERTEX, FRAGMENT, ['aPos']);
-    for (const n of ['uPrim', 'uKachel', 'uListe', 'uKoerperFarbe', 'uKoerperTiefe', 'uMitKoerper', 'uBias', 'uHoehe', 'uK0', 'uK1', 'uFelder', 'uFeld', 'uTinte', 'uGruen', 'uHinten', 'uHintenZahl', 'uPapier', 'uZeigerDa', 'uZA', 'uZB', 'uZC', 'uZLinie'])
+    for (const n of ['uPrim', 'uKachel', 'uListe', 'uKoerperFarbe', 'uKoerperTiefe', 'uMitKoerper', 'uBias', 'uHoehe', 'uK0', 'uK1', 'uFelder', 'uFeld', 'uTinte', 'uGruen', 'uHinten', 'uHintenZahl', 'uPapier', 'uZeigerDa', 'uZA', 'uZB', 'uZC', 'uZLinie', 'uZP', 'uZPN', 'uZFuell', 'uZBox'])
       this.uni[n] = gl.getUniformLocation(this.prog, n);
     this.progK = programm(gl, KOERPER_VERTEX, KOERPER_FRAGMENT, ['aPos', 'aNormal']);
     for (const n of ['uProj', 'uAnsicht', 'uHuelle', 'uViewport', 'uSchattierung', 'uTinte']) this.uniK[n] = gl.getUniformLocation(this.progK, n);
@@ -649,6 +682,27 @@ export class FluessigeAnzeige {
       gl.uniform2f(this.uni.uZB!, zg.bx, zg.by);
       gl.uniform2f(this.uni.uZC!, zg.cx, zg.cy);
       gl.uniform1f(this.uni.uZLinie!, zg.linie);
+      const u = sz.zeigerUmriss;
+      const n = u ? Math.min(ZEIGER_PUNKTE, u.punkte.length >> 1) : 0;
+      gl.uniform1i(this.uni.uZPN!, n);
+      if (u && n > 0) {
+        const P = new Float32Array(2 * ZEIGER_PUNKTE);
+        P.set(u.punkte.subarray(0, 2 * n));
+        let x0 = Infinity;
+        let y0 = Infinity;
+        let x1 = -Infinity;
+        let y1 = -Infinity;
+        for (let i = 0; i < n; i++) {
+          x0 = Math.min(x0, P[2 * i]!);
+          x1 = Math.max(x1, P[2 * i]!);
+          y0 = Math.min(y0, P[2 * i + 1]!);
+          y1 = Math.max(y1, P[2 * i + 1]!);
+        }
+        const m = zg.linie + 2;
+        gl.uniform2fv(this.uni.uZP!, P);
+        gl.uniform1f(this.uni.uZFuell!, u.fuell);
+        gl.uniform4f(this.uni.uZBox!, x0 - m, y0 - m, x1 + m, y1 + m);
+      }
     }
     gl.bindVertexArray(this.vaoQuad);
     gl.drawArrays(gl.TRIANGLES, 0, 3);

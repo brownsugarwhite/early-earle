@@ -279,6 +279,12 @@ Jede Idee nur in der Anzeige; am Werk ändert sich nichts.
   (dreifach langsamer, Punkt 60 px gezogen): im ersten Bild nach ⌘Z 7 % des Wegs, nach 0,25 s genau angekommen, ein Gipfel. Filme
   [vorher](../progress/ozzy/2026-11-17-zurueck-vorher.mp4) (`?fluss=0`, springt in einem Bild) und
   [nachher](../progress/ozzy/2026-11-17-zurueck-fliesst.mp4); die Linien bleiben dabei an ihren Punkten.
+- **8, Zeiger in Form des Werkzeugs:** *Gebaut:* Pfeil bei der Auswahl, Spitze bei P und Freihand (gefüllt wie der Pfeil), Schlinge beim
+  Lasso und Ring beim Pinsel über der Haut (nur die Linie; der Ring so groß wie der Einfluss des Pinsels, [ und ] ändern ihn). Beim
+  Wechsel gleitet der Umriss in etwa 0,1 s in die neue Form, die Spitze bleibt, wo sie ist. Die flüssige Anzeige zeichnet dafür einen
+  Umriss aus 64 Punkten statt des Dreiecks (`zeigerUmriss`, nur in Ozzy; die Studien bleiben beim Dreieck). Bild
+  [`2026-11-17-zeiger.png`](../progress/ozzy/2026-11-17-zeiger.png), Film [`2026-11-17-zeiger.mp4`](../progress/ozzy/2026-11-17-zeiger.mp4)
+  (zweifach langsamer); Proben Lasso und iPad halten.
 
 Nicht in Ozzy: Pinsel Aufblasen, Absaugen, Glätten (Kern-Sitzung), das Maul-System (eigene Sitzung), iPhone.
 

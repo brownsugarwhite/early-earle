@@ -285,7 +285,9 @@ der Adresse, nicht dem Namen `….local`: den lässt Vite nicht zu). Offen: sein
 
 **S13 (liquid drop, begonnen 17.11.):** Reihenfolge im Plan. Idee 6 gebaut: ⌘Z fließt zurück (`werkBlatt.rueckfluss`/`fliessen`, nur
 Anzeige, 0,22 s; `?fluss=0` aus); Film `scripts/ozzy/zurueck-film.mjs` mit Messung, Filme `2026-11-17-zurueck-*.mp4`. Die Haut springt
-dabei noch (eigener Schritt, wenn er es will). Nebenbei: Der Schalter „Linie an der Spiegelkante“
+dabei noch (eigener Schritt, wenn er es will). Idee 8 gebaut: der Zeiger in Form des Werkzeugs (`zeigerArtJetzt`, `zeigerUmrissVon`,
+`zeigerGestaltSchritt`; in `fluessig.ts` der Umriss `zeigerUmriss` mit `vieleck` im Shader, 64 Punkte); Film `scripts/ozzy/zeiger-film.mjs`.
+Nächste Ideen nach dem Plan: 7 (Meldungen tropfen), 5 (Kante wie Tusche), 4, 1, 2, 9, 10. Nebenbei: Der Schalter „Linie an der Spiegelkante“
 stand im Raster der Regler zerdrückt (S9), jetzt in einer Zeile.
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**

@@ -25,7 +25,7 @@ import { glatt, type Masse, type Moment, moment } from '../anfang/aufblasen';
 import { FLACH, Koerper, netzAusUmriss } from '../anfang/form';
 import { FASSUNGEN, type Fassung, Haut, type HautWerte } from '../anfang/haut';
 import { GRUNDWERTE as BLASE_GRUNDWERTE, REGLER as BLASE_REGLER, type Werte as BlasenWerte } from '../anfang/regler';
-import { FluessigeAnzeige, type Szene } from '../linien/fluessig';
+import { FluessigeAnzeige, type Szene, ZEIGER_PUNKTE } from '../linien/fluessig';
 import { REGLER as LINIEN_REGLER } from '../linien/regler';
 import { GRUNDWERTE as LINIEN_GRUNDWERTE, type Ansicht as LinienAnsicht, Verhalten, type Werte as LinienWerte } from '../linien/verhalten';
 import { auskunft, packen, pruefen } from '../form/ablage';
@@ -1597,6 +1597,8 @@ function bild(dt: number): boolean {
       dunkel: hintenJetzt,
       zeiger: !zeigerZeigen ? null : bearbeitenAn ? (zeigerBearbeiten ?? null) : zeigerForm(zeiger.x, zeiger.y),
     };
+    szene.zeigerUmriss = zeigerGestaltSchritt(szene.zeiger, dt);
+    if (zeigerGestalt.gleitet) aktiv = true;
   }
   const ta = performance.now();
   anzeige.zeichnen(szene);
@@ -1668,6 +1670,119 @@ function zeigerForm(x: number, y: number): Szene['zeiger'] {
     cy: ay + L * Math.sin(ZEIGER_WINKEL[1]!),
     linie: linienWerte.zeigerLinie * D,
   };
+}
+
+// ---------- S13 (liquid drop, Idee 8): der Zeiger in der Form des Werkzeugs ----------
+
+/** Pfeil (Auswahl), Spitze (P und Freihand), Schlinge (Lasso), Ring (Pinsel an der Haut; so groß wie sein Einfluss) */
+type ZeigerArt = 'pfeil' | 'spitze' | 'schlinge' | 'ring';
+/** der Zeiger jetzt: Umriss um die Spitze (Gerätepunkte), Füllung; ob er gerade von einer Form in die andere gleitet */
+const zeigerGestalt = { punkte: new Float32Array(2 * ZEIGER_PUNKTE), fuell: 1, bereit: false, gleitet: false };
+/** der Zeiger liegt über der Haut des Werks und der Pinsel würde ziehen */
+let zeigerPinsel = false;
+
+/** der Umriss einer Art, die Spitze im Ursprung (Gerätepunkte, y nach unten), so groß wie der Pfeil (L) */
+function zeigerUmrissVon(art: ZeigerArt, L: number, ring: number): [number, number][] {
+  const w0 = ZEIGER_WINKEL[0]!;
+  const w1 = ZEIGER_WINKEL[1]!;
+  const dw = (w0 + w1) / 2;
+  const d: [number, number] = [Math.cos(dw), Math.sin(dw)];
+  const q: [number, number] = [-Math.sin(dw), Math.cos(dw)];
+  const bei = (a: number, b: number): [number, number] => [a * d[0] + b * q[0], a * d[1] + b * q[1]];
+  if (art === 'pfeil')
+    return [
+      [0, 0],
+      [L * Math.cos(w0), L * Math.sin(w0)],
+      [L * Math.cos(w1), L * Math.sin(w1)],
+    ];
+  if (art === 'spitze') return [[0, 0], bei(0.42 * L, 0.2 * L), bei(1.0 * L, 0.2 * L), bei(1.0 * L, -0.2 * L), bei(0.42 * L, -0.2 * L)];
+  if (art === 'schlinge') {
+    // ein kurzer Faden von der Spitze, dann die Schlinge (der Faden hin und zurück ist eine Linie)
+    const ende = bei(0.3 * L, 0);
+    const m = bei(0.62 * L, 0);
+    const rd = 0.32 * L;
+    const rq = 0.44 * L;
+    const pkt: [number, number][] = [[0, 0], ende];
+    for (let k = 1; k < 20; k++) {
+      const t = Math.PI + (2 * Math.PI * k) / 20;
+      pkt.push([m[0] + rd * Math.cos(t) * d[0] + rq * Math.sin(t) * q[0], m[1] + rd * Math.cos(t) * d[1] + rq * Math.sin(t) * q[1]]);
+    }
+    pkt.push(ende);
+    return pkt;
+  }
+  // Ring um die Spitze; der erste Punkt zeigt nach oben links (dorthin, wo die anderen ihre Spitze haben)
+  const pkt: [number, number][] = [];
+  for (let k = 0; k < ZEIGER_PUNKTE; k++) {
+    const t = dw + Math.PI + (2 * Math.PI * k) / ZEIGER_PUNKTE;
+    pkt.push([ring * Math.cos(t), ring * Math.sin(t)]);
+  }
+  return pkt;
+}
+
+/** einen geschlossenen Umriss auf `n` Punkte verteilen, je Kante nach ihrer Länge (die Ecken bleiben Ecken) */
+function umfangVerteilen(poly: [number, number][], n: number): Float32Array {
+  const m = poly.length;
+  const len = poly.map((p, i) => Math.hypot(poly[(i + 1) % m]![0] - p[0], poly[(i + 1) % m]![1] - p[1]));
+  const summe = len.reduce((a, b) => a + b, 0) || 1;
+  const zahl = len.map((l) => Math.max(1, Math.round((n * l) / summe)));
+  let rest = n - zahl.reduce((a, b) => a + b, 0);
+  while (rest !== 0) {
+    let k = 0;
+    for (let i = 1; i < m; i++) if (rest > 0 ? len[i]! / zahl[i]! > len[k]! / zahl[k]! : zahl[i]! > zahl[k]!) k = i;
+    if (rest < 0 && zahl[k]! <= 1) break;
+    zahl[k] = zahl[k]! + Math.sign(rest);
+    rest -= Math.sign(rest);
+  }
+  const aus = new Float32Array(2 * n);
+  let j = 0;
+  poly.forEach((p, i) => {
+    const q = poly[(i + 1) % m]!;
+    for (let k = 0; k < zahl[i]! && j < n; k++, j++) {
+      const t = k / zahl[i]!;
+      aus[2 * j] = p[0] + (q[0] - p[0]) * t;
+      aus[2 * j + 1] = p[1] + (q[1] - p[1]) * t;
+    }
+  });
+  for (; j < n; j++) {
+    aus[2 * j] = aus[2 * j - 2]!;
+    aus[2 * j + 1] = aus[2 * j - 1]!;
+  }
+  return aus;
+}
+
+/** welche Form der Zeiger gerade hat */
+function zeigerArtJetzt(): ZeigerArt {
+  if (zustand !== 'ruhe' || !werkGezeigt || !bearbeitenAn) return 'pfeil';
+  if (raumWerkzeug === 'p' || bearbeiten.stift || raumWerkzeug === 'frei') return 'spitze';
+  if (raumWerkzeug === 'lasso') return 'schlinge';
+  if (raumWerkzeug === 'auswahl' && zeigerPinsel && !bearbeiten.haengt) return 'ring';
+  return 'pfeil';
+}
+
+/** der Umriss des Zeigers in diesem Bild: Er gleitet in die Form des Werkzeugs (flüssig, etwa 0,1 s), die Spitze bleibt, wo sie ist */
+function zeigerGestaltSchritt(z: Szene['zeiger'], dt: number): NonNullable<Szene['zeigerUmriss']> | null {
+  if (!z) return null;
+  const L = Math.hypot(z.bx - z.ax, z.by - z.ay);
+  const art = zeigerArtJetzt();
+  const ring = Math.max(0.6 * L, Math.min(10 * L, (pinselRadius / werkHaut.f) * massstab.jetzt * nutzer.zoom * D));
+  const ziel = umfangVerteilen(zeigerUmrissVon(art, L, ring), ZEIGER_PUNKTE);
+  const fuellZiel = art === 'schlinge' || art === 'ring' ? 0 : 1;
+  const G = zeigerGestalt;
+  const k = G.bereit ? 1 - Math.exp(-Math.max(0, dt) / 0.06) : 1;
+  let weg = 0;
+  for (let i = 0; i < 2 * ZEIGER_PUNKTE; i++) {
+    G.punkte[i] = G.punkte[i]! + (ziel[i]! - G.punkte[i]!) * k;
+    weg = Math.max(weg, Math.abs(ziel[i]! - G.punkte[i]!));
+  }
+  G.fuell += (fuellZiel - G.fuell) * k;
+  G.bereit = true;
+  G.gleitet = weg > 0.05 || Math.abs(fuellZiel - G.fuell) > 0.005;
+  const punkte = new Float32Array(2 * ZEIGER_PUNKTE);
+  for (let i = 0; i < ZEIGER_PUNKTE; i++) {
+    punkte[2 * i] = z.ax + G.punkte[2 * i]!;
+    punkte[2 * i + 1] = z.ay + G.punkte[2 * i + 1]!;
+  }
+  return { punkte, fuell: G.fuell };
 }
 
 /** sichtbare Wand je Achse (Vorzeichen) und ihre Stärke */
@@ -2914,6 +3029,7 @@ leinwandLinien.addEventListener('pointermove', (e) => {
     // mit dem Werk: der Pinsel über seiner Haut (der Hauch zeigt Ort und Radius, ein Tropfen den Punkt, den er fassen würde)
     let aufBlase = false;
     pinselZiel = null;
+    zeigerPinsel = false;
     if (werkGezeigt && bearbeitenAn && !bearbeiten.haengt && raumWerkzeug === 'auswahl' && !teiler.ueber && pinselHier(x, y)) {
       const t = werkHautTreffen(x, y);
       if (t) {
@@ -2921,6 +3037,7 @@ leinwandLinien.addEventListener('pointermove', (e) => {
         hauch.ziel = 1;
         pinselZiel = pinselPunkt(t.werk);
         aufBlase = true;
+        zeigerPinsel = true;
       } else hauch.ziel = 0;
     } else if (!werkGezeigt) aufBlase = !p && !teiler.ueber && hauchSuchen(x, y);
     else hauch.ziel = 0;
