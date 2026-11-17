@@ -436,9 +436,35 @@ von unten liegt die Ecke der Wände nicht dort, wo die Kiste aufklappt: Dort zei
 *Probe:* Ecke ziehen: der Punkt bleibt unter dem Zeiger (höchstens 2 px), die Haarlinie erscheint, auf ihr ist die Kiste ganz offen;
 Loslassen davor und dahinter; die Proportionen danach entsprechen dem Loslassen; Doppelklick; Film.
 
-*Vorschlag zum Rückweg (offen):* In den Vier Ansichten den Tropfen in eine Ecke ziehen, dann füllt die Ansicht dieser Ecke das Bild
-(Seite unten links, Front unten rechts, Top oben links; oben rechts der Raum, die Kiste klappt dabei zu). Das wäre der umgekehrte Weg von
-S18 und S19, mit derselben Haarlinie.
+*Rückweg* (Florian, 17.11.: „und ja auch mit rückweg“): In den Vier Ansichten den Tropfen in eine Ecke ziehen, dann füllt die Ansicht
+dieser Ecke das Bild (Seite unten links, Front unten rechts, Top oben links; oben rechts der Raum, die Kiste klappt dabei zu). Der
+umgekehrte Weg von S18 und S19, mit derselben Haarlinie; wird mit ihnen gebaut.
+
+**Rückmeldung vom 17.11., zweite (Florian, wörtlich):** „Noch eines: der look bei den linienansichten unterscheidet sich noch deutlich. in
+dr studie ist mehr verdeckt und die linien laufen sauber durch verjüngung in form. Können die kanten im raum statt auszufaden auch durch
+verjüngung und verdickung an ihre stelle gleiten? wenn ich den raum drehe und auch beim aufziehen in die 4ere ansicht. das würde gut zum
+liquid drop design passen.“ Seine Bilder (dieselbe Form von vorn):
+[Studie](../look/ozzy/2026-11-17-florian-linien-studie.png), [Ozzy](../look/ozzy/2026-11-17-florian-linien-ozzy.png).
+
+**S20 Linienansichten wie in der Studie.** *Befund:* Die Studie zeichnet den Körper zuerst weiß in einen eigenen Puffer, mit seiner Tiefe
+je Bildpunkt (`fluessig.ts`, `Koerper`). Ihr Umriss ist eine Hülle, von der nur die Rückseiten gezeichnet werden: Sie schaut nur am Rand und
+an Falten hinter der Haut hervor, wird dort von selbst schmaler und läuft in die Form aus. Jede Linie wird je Bildpunkt gegen diese Tiefe
+geprüft: davor Tinte, dahinter grün. Ozzy zeichnet in den flachen Ansichten keinen Körper; der Umriss sind Striche aus allen Kanten, an
+denen sich die Haut wegdreht, auch hinter der Form (die dicken Bögen im Bauch und am Hals in seinem Bild), und die Linien werden nur gegen
+eine grobe Tiefenkarte je Achse geprüft (S7). *Vorschlag:* in den eingerasteten Ansichten und den drei Feldern denselben Weg wie die
+Studie, mit derselben Anzeige: die Haut des Werks als weißer Körper mit Tiefe, Umriss als Hülle, Verdecktes je Bildpunkt; in den Feldern je
+Feld mit seiner Abbildung (S17). Die Seifenhaut bleibt im Raum. *Probe:* seine Form in derselben Ansicht wie sein Bild, Studie neben Ozzy:
+die Bögen hinter der Form sind weg, die Linien dahinter grün, der Umriss läuft verjüngt in die Form; Tempo je Bild.
+
+**S21 Kanten gleiten statt auszublenden.** *Heute:* Dreht man den Raum über eine Wand hinweg, wird ihre Zeichnung samt den Kanten der Ecke
+gleichmäßig dünner bis zur Haarlinie (Stärke der Wand), die Punkte verschwinden auf einmal, auf der anderen Seite kommt alles ebenso
+zurück. Beim Aufklappen verschwinden die Wände des Raums im ersten Bild, die Felder übernehmen. *Vorschlag:* Keine Linie blendet aus. Muss
+eine Zeichnung die Seite wechseln, gleitet sie durch den Raum zur anderen Wand, unterwegs verjüngt (an den Enden zuerst, in der Mitte des
+Wegs am schmalsten) und am Ziel wieder voll; die drei Kanten der Ecke gleiten genauso zur neuen Ecke, die Punkte fließen mit. Beim
+Aufklappen gehen die Kanten der Wände und die Teiler durch Verjüngung und Verdickung ineinander über. *Probe:* zuerst ein Film (Raum um
+360° gedreht, Aufklappen), vorher und nachher; keine Linie wird blasser, nur schmaler und breiter.
+
+Reihenfolge: S17, S18 und S19 (mit dem Rückweg), dann S20 und S21.
 
 
 ## 5. Ideen für mehr liquid drop
