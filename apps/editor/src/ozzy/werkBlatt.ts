@@ -91,6 +91,8 @@ type LinienInfo = { fl: number; id: number; m: boolean };
 const MITTE = 1e-6;
 /** so weit (Bildschirmpunkte) muss die Maus gehen, bis aus dem Drücken ein Zug wird (wie `KLICK_WEG` der Studie) */
 const KLICK_WEG = 3;
+/** B4: so weit (Bildschirmpunkte) neben der Fläche eines Entwurfs zählt ein Klick mit P noch zu ihr (er landet an ihrem Rand) */
+const ENTWURF_RAND = 28;
 
 const plus = (p: V3, v: V3): V3 => ({ x: p.x + v.x, y: p.y + v.y, z: p.z + v.z });
 /** ⇧ beim Drehen einer Richtung (S6b): Der Griff kippt aus der Ebene der Fläche; seine Richtung in der Ebene und seine Länge bleiben */
@@ -1514,9 +1516,29 @@ export class WerkBlatt implements Raum {
     };
   }
 
+  /**
+   * Der Ort für einen freien Punkt mit P: ohne Entwurf auf der Fläche unter dem Zeiger. Ist eine Linie angefangen, gehört P ihrer
+   * Fläche (B4, 17.11.): Knapp neben ihr zählt der Klick noch dazu und landet an ihrem Rand; weiter weg gibt es keinen Ort (Ozzy dreht
+   * dann auch nicht, `entwurfOffen`). Bis dahin drehte ein Klick knapp neben dem Feld die Ansicht und schloss die Vier Ansichten.
+   */
   ortFrei(x: number, y: number): { x: number; y: number; mitte: boolean } | null {
-    const fl = this.ent ? (this.flaechen[this.ent.fl]?.enthaelt(x, y) ? this.ent.fl : -1) : this.flaecheUnter(x, y);
-    return fl >= 0 ? { x, y, mitte: false } : null;
+    const E = this.ent;
+    if (!E) return this.flaecheUnter(x, y) >= 0 ? { x, y, mitte: false } : null;
+    const F = this.flaechen[E.fl];
+    if (!F) return null;
+    if (F.enthaelt(x, y)) return { x, y, mitte: false };
+    for (let r = 4; r <= ENTWURF_RAND; r += 4) {
+      for (let k = 0; k < 16; k++) {
+        const qx = x + r * Math.cos((k * Math.PI) / 8);
+        const qy = y + r * Math.sin((k * Math.PI) / 8);
+        if (F.enthaelt(qx, qy)) return { x: qx, y: qy, mitte: false };
+      }
+    }
+    return null;
+  }
+  /** B4: Mit P ist eine Linie angefangen: Jeder Klick gehört ihr (weit neben ihrer Fläche tut er nichts, statt die Ansicht zu drehen) */
+  get entwurfOffen(): boolean {
+    return this.ent !== null;
   }
 
   mittePunkte(): number[] {

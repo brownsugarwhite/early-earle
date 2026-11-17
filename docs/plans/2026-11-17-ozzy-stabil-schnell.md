@@ -335,6 +335,15 @@ notiere das für den feinschliff.“** Welche Unterschiede, hat er nicht gesagt.
   der Silhouette 110 bis 220 ms an (vorher rechnen); Drehen und Aufklappen als eine Bewegung; eine Meldung verschwindet, wenn ihr
   Anlass vorbei ist.
 
+**Gebaut aus B4 (17.11., 22 Uhr 45): Ein Entwurf mit P gehört seiner Fläche.** Du siehst: Ist mit P eine Linie angefangen und ein
+Klick landet knapp neben ihrem Feld (bis 28 Punkte), zählt er zur Linie und liegt an ihrem Rand. Weit daneben tut ein Klick nichts
+und eine Meldung sagt, warum; Esc bricht wie bisher ab. Vorher drehte so ein Klick die Ansicht und schloss die Vier Ansichten, die
+angefangene Linie ließ sich nicht fortsetzen. Stellen: `werkBlatt.ortFrei`, `entwurfOffen`, `ENTWURF_RAND`; `main.ts` beim Drücken.
+Probe `ozzy-p-daneben-fenster.mjs` (mit `ALT=1` das alte Verhalten zum Vergleich: Dort schließen sich die Vier Ansichten).
+**Offen aus B4:** Hinweiszeile; Esc (Florian, 17.11.: nicht jetzt); ⌘Z, bei dem die Haut mit zurückfließt; Enden eines Rings in
+Front und Top löschen; Klick an einer Kreuzung und der Tropfen „Maul“; ↩ an der Silhouette; Drehen und Aufklappen als eine Bewegung;
+Meldungen, die mit ihrem Anlass verschwinden.
+
 ### Etappe C: Werkzeuge mit dem Kern
 
 Ab hier ändert die Sitzung auch den Rechenkern (sie ist die Sitzung des Kerns). Jede Änderung mit Probe im Kern, im Prüffenster

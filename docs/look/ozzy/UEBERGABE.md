@@ -27,8 +27,9 @@ meinte das **Kurvennetz auf der Form im Raum** („genau wie in den Projektionsf
 schaltet im Raum zwischen Seifenhaut und Kurvennetz (weißer Körper mit Umriss, Linien und Punkte auf der Form, zu greifen wie auf den
 Flächen; Film `docs/progress/ozzy/2026-11-17-kurvennetz-im-raum.mp4`). Sein Urteil (17.11.): „Ist erstmal ok so“, er sieht noch
 Unterschiede zur Studie (`raum.html`): **für den Feinschliff notiert**, mit Vergleichsbild und Liste im Plan unter B3. Es fehlen noch
-P auf der Form und das Feld des Raums in den Vier Ansichten. Dann B4; aus B2 offen: der weiße Körper an den Wänden (Vergleichsbild zuerst). Die Sitzung dieses Plans ist auch die des Kerns: Sie darf
-ihn ändern. Proben: `node scripts/pruefen/ozzy-alle.mjs` (alle 25 nacheinander); Werkzeuge zum Messen: `ozzy-karte-messen.mjs`,
+P auf der Form und das Feld des Raums in den Vier Ansichten. Aus B4 gebaut: Ein Entwurf mit P gehört seiner Fläche (ein Klick knapp
+neben dem Feld zählt dazu, statt die Vier Ansichten zu schließen). Dann B4; aus B2 offen: der weiße Körper an den Wänden (Vergleichsbild zuerst). Die Sitzung dieses Plans ist auch die des Kerns: Sie darf
+ihn ändern. Proben: `node scripts/pruefen/ozzy-alle.mjs` (alle 26 nacheinander); Werkzeuge zum Messen: `ozzy-karte-messen.mjs`,
 `ozzy-zug-messen.mjs`, `ozzy-p-ueberall.mjs`, `ozzy-zuege-zaehlen.mjs` (gemeinsame Teile in `ozzy-teile.mjs`).
 
 ## 1. Einstieg

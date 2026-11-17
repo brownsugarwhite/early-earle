@@ -4687,6 +4687,13 @@ leinwandLinien.addEventListener('pointerdown', (e) => {
       anstossen();
       return;
     }
+    // B4 (17.11.): Mit P ist eine Linie angefangen, der Klick liegt weit neben ihrer Fläche: Er tut nichts. Bis dahin drehte er die
+    // Ansicht (und schloss die Vier Ansichten), die angefangene Linie war dann nicht mehr fortzusetzen
+    if (bearbeiten.stift && werkBlatt.entwurfOffen) {
+      werk.G.meldung = 'P: Die Linie gehört zu der Ansicht, in der sie begonnen wurde. Dort weiterzeichnen · ↩ schließt · Esc bricht ab';
+      anstossen();
+      return;
+    }
   }
   // der Pinsel „Ziehen“ an der Haut des Werks (⇧ dreht stattdessen)
   if (werkGezeigt && bearbeitenAn && raumWerkzeug === 'auswahl' && !e.shiftKey && pinselHier(x, y) && pinselBeginnen(x, y)) {
@@ -5553,6 +5560,8 @@ const haken = {
     werkAuswahl: werk.G.auswahl.map((w) => ({ ...w })),
     haengt: bearbeiten.haengt,
     ziel: bearbeiten.stat.ziel,
+    /** B4: so viele Punkte hat die Linie, die mit P gerade gezeichnet wird (0: keine) */
+    entwurf: werkBlatt.entwurfOffen ? (werkBlatt.entwurf()?.anzahl ?? 0) : 0,
     schritte: werk.zurueck.length - (werkForm?.zurueck ?? 0),
     beschaeftigt: werkBeschaeftigt(),
     meldung: werk.G.meldung,
