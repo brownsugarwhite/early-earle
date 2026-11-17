@@ -25,10 +25,14 @@ import {
   Color,
   CustomBlending,
   DataTexture,
+  DoubleSide,
   FloatType,
   FrontSide,
+  GreaterDepth,
   HalfFloatType,
+  LessEqualDepth,
   LinearFilter,
+  LineSegments,
   Mesh,
   NoBlending,
   OneFactor,
@@ -542,6 +546,11 @@ export interface HautWerte {
    */
   leer?: boolean;
   /**
+   * Ozzy, B3 (17.11., Vorschlag): das Netz auf der Haut (`netzZeigen`): 1 = das Netz allein (die Seifenhaut ist aus), 2 = über blasser
+   * Seifenhaut; fehlt oder 0: nur die Seifenhaut
+   */
+  netz?: 0 | 1 | 2;
+  /**
    * Ozzy (A3): Die Haut ist in diesem Bild nur in diesem Kasten zu sehen (Gerätepunkte, Ursprung oben links; der Kasten ihrer Punkte
    * mit etwas Rand). Dann wird das Ziel der Seifenhaut (vierfache Kantenglättung, 16 Bit je Kanal) nur so groß angelegt und darum
    * herum der Grund direkt gezeichnet: Das Bild ist dasselbe, das Löschen und Zusammenführen des Ziels kostet nur noch seinen Anteil
@@ -859,6 +868,74 @@ export class Haut {
     if (this.geoFremd) (this.geoFremd.getAttribute('aDehnung') as BufferAttribute).needsUpdate = true;
   }
 
+  // ---------- Ozzy, B3 (17.11., Vorschlag hinter `?netz=`): das Rechennetz als Haarlinien auf der Haut ----------
+
+  private netzLinien: {
+    quelle: BufferGeometry;
+    kanten: Uint32Array;
+    geo: BufferGeometry;
+    tiefe: Mesh;
+    vorn: LineSegments;
+    hinten: LineSegments;
+  } | null = null;
+
+  /**
+   * Kanten (Paare von Punkten des fremden Netzes) als Haarlinien auf seiner Fläche: vorn in Tinte, was hinter der Fläche liegt, fein
+   * und grün wie Verdecktes. Die Linien teilen sich die Lagen mit der Haut (sie gehen von selbst mit). null: keine. Nach
+   * `blaseErsetzen` aufzurufen.
+   */
+  netzZeigen(kanten: Uint32Array | null): void {
+    const N = this.netzLinien;
+    const quelle = this.geoFremd;
+    if (N && (!kanten || !quelle || N.quelle !== quelle || N.kanten !== kanten)) {
+      for (const o of [N.tiefe, N.vorn, N.hinten]) this.szene.remove(o);
+      N.geo.dispose();
+      this.netzLinien = null;
+    }
+    if (!kanten || !quelle || this.netzLinien) return;
+    const material = (farbe: number, deckung: number): ShaderMaterial =>
+      new ShaderMaterial({
+        vertexShader: `uniform vec4 uAusschnitt;
+void main() {
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  gl_Position.xy = gl_Position.xy * uAusschnitt.xy + uAusschnitt.zw * gl_Position.w;
+}`,
+        fragmentShader: `uniform vec3 uFarbe;
+uniform float uDeckung;
+void main() {
+  gl_FragColor = vec4(uFarbe, uDeckung);
+}`,
+        uniforms: { uAusschnitt: { value: new Vector4(1, 1, 0, 0) }, uFarbe: { value: new Color(farbe) }, uDeckung: { value: deckung } },
+        transparent: true,
+        depthWrite: false,
+        depthTest: true,
+      });
+    // die Fläche selbst, nur in die Tiefe (etwas nach hinten gerückt, damit die Linien auf ihr vorn liegen); nach der Seifenhaut
+    const mt = material(0xffffff, 0);
+    mt.colorWrite = false;
+    mt.depthWrite = true;
+    mt.side = DoubleSide;
+    mt.polygonOffset = true;
+    mt.polygonOffsetFactor = 1;
+    mt.polygonOffsetUnits = 2;
+    const tiefe = new Mesh(quelle, mt);
+    const geo = new BufferGeometry();
+    geo.setAttribute('position', quelle.getAttribute('position'));
+    geo.setIndex(new BufferAttribute(kanten, 1));
+    const mv = material(0x1f1a17, 0.72);
+    mv.depthFunc = LessEqualDepth;
+    const mh = material(0x8fb489, 0.5);
+    mh.depthFunc = GreaterDepth;
+    const vorn = new LineSegments(geo, mv);
+    const hinten = new LineSegments(geo, mh);
+    [tiefe, hinten, vorn].forEach((o, i) => {
+      o.renderOrder = 40 + i;
+      o.frustumCulled = false;
+      this.szene.add(o);
+    });
+    this.netzLinien = { quelle, kanten, geo, tiefe, vorn, hinten };
+  }
+
   blaseErsetzen(netz: HautNetz | null): void {
     if (netz && netz === this.fremd && this.geoFremd) {
       for (const n of ['position', 'normal', 'aHoehe', 'aSeite', 'aBlatt', 'aDehnung', 'aSicht']) (this.geoFremd.getAttribute(n) as BufferAttribute).needsUpdate = true;
@@ -928,6 +1005,18 @@ export class Haut {
     };
     // Blase: Rückseite (Durchgänge 0 und 1) erst, wenn sie sich vom Film gelöst hat
     this.mats.forEach((m, i) => setzen(m, i < 2 ? w.hinten : w.vorn));
+    // B3: das Netz auf der Haut (allein: die Seifenhaut ist aus; sonst liegt es über einer blassen)
+    const netzArt = this.netzLinien ? (w.netz ?? 0) : 0;
+    if (this.netzLinien) {
+      const NL = this.netzLinien;
+      for (const o of [NL.tiefe, NL.vorn, NL.hinten]) {
+        o.visible = netzArt > 0;
+        const ua = (o.material as ShaderMaterial).uniforms.uAusschnitt!.value as Vector4;
+        if (A) ua.set(B / A.b, H0 / A.h, (B - 2 * A.x) / A.b - 1, 1 - (H0 - 2 * A.y) / A.h);
+        else ua.set(1, 1, 0, 0);
+      }
+    }
+    if (netzArt === 2) for (const m of this.mats) m.uniforms.uSicht!.value *= 0.4;
     // Rahmen: immer als durchsichtige Seifenhaut (vier Durchgänge), bis er zum Schatten geworden ist
     this.matsRahmen.forEach((m) => setzen(m, w.rahmen));
     let k = 0;
@@ -935,7 +1024,7 @@ export class Haut {
       const m = mesh.material as ShaderMaterial;
       const i = this.mats.indexOf(m);
       const j = this.matsRahmen.indexOf(m);
-      if (i >= 0) mesh.visible = durch ? i < 4 : i === 4;
+      if (i >= 0) mesh.visible = netzArt === 1 ? false : durch ? i < 4 : i === 4;
       else if (j >= 0) mesh.visible = j < 4 && w.rahmen > 1e-3 && (mesh.geometry !== this.geoSchlauch || w.schlauch);
       k++;
     }

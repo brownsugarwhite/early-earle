@@ -554,6 +554,33 @@ export class GlattPlan {
   }
 
   /**
+   * B3 (Ozzy, 17.11.): die Kanten des Netzes der Anzeige (Stufe 0, das Rechennetz) auf der glatten Fläche nach `stufen` Stufen, als
+   * Paare feiner Punkte: Jede Kante läuft über ihre Mittelpunkte, liegt also auf der gewölbten Fläche (für das Netz im Raum).
+   */
+  netzKanten(stufen: number): Uint32Array {
+    this.sichern(Math.max(1, stufen));
+    const S0 = this.st[0]!;
+    let kanten: number[] = [];
+    for (let i = 0; i < S0.K.a.length; i++) kanten.push(S0.K.a[i]!, S0.K.b[i]!);
+    for (let s = 0; s < stufen; s++) {
+      const S = this.st[s]!;
+      const N = S.n + S.K.a.length;
+      const mitte = new Map<number, number>();
+      for (let i = 0; i < S.K.a.length; i++) mitte.set(Math.min(S.K.a[i]!, S.K.b[i]!) * N + Math.max(S.K.a[i]!, S.K.b[i]!), S.n + i);
+      const fein: number[] = [];
+      for (let k = 0; k < kanten.length; k += 2) {
+        const a = kanten[k]!;
+        const b = kanten[k + 1]!;
+        const m = mitte.get(Math.min(a, b) * N + Math.max(a, b));
+        if (m === undefined) fein.push(a, b);
+        else fein.push(a, m, m, b);
+      }
+      kanten = fein;
+    }
+    return Uint32Array.from(kanten);
+  }
+
+  /**
    * Ein Wert je Rechenpunkt auf die feinen Punkte weitergereicht (für die Seite der Spiegelung): Ein neuer Punkt nimmt den Wert des
    * ersten Endes seiner Kante, der nicht null ist.
    */

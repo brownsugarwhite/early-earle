@@ -48,6 +48,8 @@ const mitZeigerImBild = params.get('film') === '1';
 // B1 (17.11., zum Vergleich): ?zeiger=system: der Zeiger des Systems in der Form des Werkzeugs, solange der gezeichnete genau auf der
 // Hand läge (`zeigerSystemSchritt`); ohne den Schalter wie bisher (immer gezeichnet)
 const zeigerVomSystem = params.get('zeiger') === 'system';
+// B3 (17.11., Vorschlag zum Vergleich): ?netz=1: im Raum das Rechennetz allein, ?netz=2: über blasser Seifenhaut
+const netzArt = (params.get('netz') === '1' ? 1 : params.get('netz') === '2' ? 2 : 0) as 0 | 1 | 2;
 const mitInfo = params.get('info') === '1';
 if (mitInfo) document.body.classList.add('info');
 
@@ -924,7 +926,10 @@ function werkBild(dt: number, m: Moment | null): boolean {
     werk.alsAnzeige(() => werkHaut.rechnen(schnalz ? uebergabeLagen(w) : null, voll, dt, schnalz ? 0 : 1.6, w));
     mess.teile[1] = performance.now() - th;
     if (werkHaut.nurDehnung) haut.dehnungErneuern();
-    else haut.blaseErsetzen(werkHaut.netz);
+    else {
+      haut.blaseErsetzen(werkHaut.netz);
+      if (netzArt) haut.netzZeigen(werkHaut.netzKanten());
+    }
     werkGezeigt = true;
     // S9: ohne Linie an der Spiegelkante (zur Wahl): nach dem Aufblasen die Linie der Mitte löschen, einmal je Form
     if (!mitLinie && werkForm && !werkForm.ohneLinie && werkForm.geladen === undefined && !werk.zug) {
@@ -2346,6 +2351,7 @@ function bild(dt: number): boolean {
     schnitt: schnittJetzt,
     // eingerastet: Das Blatt hat die Blase ganz weggeschnitten und der Rahmen ist weg: nur der Grund
     leer: schnittGanz && zustand === 'ruhe' && vier < 1e-3 && !!m && 1 - m.schatten < 1e-3,
+    netz: werkGezeigt ? netzArt : 0,
     ausschnitt: hautAusschnitt(m),
   };
   const tz = performance.now();

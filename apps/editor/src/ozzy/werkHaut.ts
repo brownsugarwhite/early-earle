@@ -277,6 +277,9 @@ export class WerkHaut {
    */
   bildMass = 0;
   /** Arbeitsfelder für Muster je feinem Punkt (wiederverwendet) */
+  /** B3: Plan und Stufen des gezeigten Netzes, und seine Kanten des Rechennetzes (erst gerechnet, wenn jemand sie braucht) */
+  private netzVon: { plan: GlattPlan; stufen: number } | null = null;
+  private netzKantenSpeicher: { plan: GlattPlan; stufen: number; kanten: Uint32Array } | null = null;
   private mischX: Float32Array | undefined;
   private mischY: Float32Array | undefined;
   private kanten: { index: Uint32Array; liste: Int32Array } | null = null;
@@ -297,6 +300,20 @@ export class WerkHaut {
    */
   vonBlase(bezug: { cx: number; cy: number; r: number }, dehnung: Float32Array): void {
     this.blase = { bezug, dehnung };
+  }
+
+  /**
+   * B3 (17.11.): die Kanten des Rechennetzes auf der gezeigten Haut, als Paare ihrer Punkte (über die Mittelpunkte der Verfeinerung:
+   * Sie liegen auf der gewölbten Fläche); null, solange nichts gezeigt wird. Dieselbe Liste, solange Netz und Stufen dieselben sind.
+   */
+  netzKanten(): Uint32Array | null {
+    const v = this.netzVon;
+    if (!v || !this.netz) return null;
+    const sp = this.netzKantenSpeicher;
+    if (sp && sp.plan === v.plan && sp.stufen === v.stufen) return sp.kanten;
+    const kanten = v.plan.netzKanten(v.stufen);
+    this.netzKantenSpeicher = { plan: v.plan, stufen: v.stufen, kanten };
+    return kanten;
   }
 
   /** eine neue Form (aus der Silhouette, geladen, neu): Muster und Dehnung beginnen von vorn */
@@ -537,6 +554,7 @@ export class WerkHaut {
       });
     const fein = g.plan.rechnen(L, K, stufen, GLATT_RUHE);
     const index = g.plan.index(stufen);
+    this.netzVon = { plan: g.plan, stufen };
     // Dehnung je Punkt der Anzeige (der Bezug folgt langsam), weitergereicht in die feinen Punkte
     this.flaecheRechnen(g);
     const de0 = this.uebergabeDe;

@@ -284,6 +284,15 @@ und Netz. Das Netz ist das dichte Netz der Rechnung (das, was wirklich gerechnet
 in Tinte, hinten fein und grün wie Verdecktes; die Linien und Punkte bleiben darüber greifbar. Ich zeige zwei Bilder (Netz allein,
 Netz über blasser Seifenhaut), du wählst.
 
+**Die zwei Bilder (17.11., 21 Uhr 30), deine Wahl steht aus.** Links die Seifenhaut wie heute, dann **1: das Netz allein**, dann
+**2: das Netz über blasser Seifenhaut**: [`2026-11-17-netz-im-raum-vorschlag.png`](../progress/ozzy/2026-11-17-netz-im-raum-vorschlag.png);
+herangezoomt (links 1, rechts 2): [`2026-11-17-netz-im-raum-nah.png`](../progress/ozzy/2026-11-17-netz-im-raum-nah.png). Es sind
+echte Bilder aus Ozzy, hinter einem Schalter der Adresse: `?netz=1` und `?netz=2` (ohne ihn ändert sich nichts). Gezeigt wird das
+Rechennetz (7 437 Punkte an „strange bird“), jede Kante über ihre Mittelpunkte auf der glatten Fläche; die Linien teilen sich die
+Lagen mit der Haut und gehen beim Ziehen von selbst mit. Stellen: `GlattPlan.netzKanten`, `werkHaut.netzKanten`, `Haut.netzZeigen`,
+`HautWerte.netz`. **Noch nicht gebaut:** Taste und Tropfen zum Umschalten, das Verhalten in den Vier Ansichten (dort steht das Netz
+heute nur im Feld des Raums), die Rückseite beim Wenden.
+
 **B4. Die kleinen Stolpersteine (klein, je einer).**
 - Hinweiszeile: nur, was unter dem Zeiger mit dem Werkzeug gerade möglich ist (höchstens drei Angaben), der Rest hinter „?“.
 - Esc verlässt Werkzeug, Auswahl und Ansicht, lässt aber nicht mehr die Luft ab (dafür bleibt ⌫ ohne Auswahl). Vorschlag, dein Wort.
