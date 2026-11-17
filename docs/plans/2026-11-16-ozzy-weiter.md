@@ -569,7 +569,7 @@ verschwinden unter halber Stärke; beim Aufklappen vergehen die Kanten der Ecke,
 ist gelöscht; das Filmskript `scripts/ozzy/raum-dreh-film.mjs` bleibt (es zeigt jeden Stand). Die Proben zu S16, S18/S19 und S20 halten.
 Film danach: [`2026-11-17-raum-ohne-gleiten.mp4`](../progress/ozzy/2026-11-17-raum-ohne-gleiten.mp4). Die Filme und Bilder der beiden
 Fassungen bleiben als Nachweis, was nicht gemeint war. Was er mit „an ihre Stelle gleiten“ gemeint hat, ist offen: nicht neu bauen, bevor
-er es beschrieben hat.
+er es beschrieben hat. Florian danach (17.11.): „lassen wir es erstmal so. Es gefällt mir gut.“ S21 ruht; nicht wieder vorschlagen.
 
 Reihenfolge: S17, S18 und S19 (mit dem Rückweg), dann S20 und S21.
 

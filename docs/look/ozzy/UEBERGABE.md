@@ -327,7 +327,8 @@ Breite aus derselben Tiefe), Körper auf den Wänden beim Aufklappen und mit der
 gleiten bitte komplett wieder raus. Ich glaube da haben wir uns missverstanden.“): Zwei Fassungen trafen es nicht (die Wände fuhren durch
 die Form; dann blieben die Zeichnungen an den Wänden und nur die Eckkanten glitten). Der Code steht wieder auf dem Stand vor S21
 (`68ebfc41`), die Probe ist gelöscht, die Filme `2026-11-17-raum-gleiten*.mp4` bleiben als Nachweis; Stand danach
-`2026-11-17-raum-ohne-gleiten.mp4`. Nicht neu bauen, bevor er beschrieben hat, was er meinte. Seine Bilder zu S20:
+`2026-11-17-raum-ohne-gleiten.mp4`. Nicht neu bauen, bevor er beschrieben hat, was er meinte. Er danach: „lassen wir es erstmal so. Es
+gefällt mir gut.“ Seine Bilder zu S20:
 `docs/look/ozzy/2026-11-17-florian-linien-*.png`. Offen in Ozzy sonst: Kneifen zum Auffalten (geht in S19 auf), Würfel mit ebenen Flächen, Haut
 gleitet bei ⌘Z.
 
