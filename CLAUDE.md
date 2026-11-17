@@ -5,7 +5,7 @@ Verweise. Verlauf, Messwerte und Florians Rückmeldungen gehören in `docs/` (Pl
 unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.2026 liegt in
 [`docs/verlauf/2026-11-12-projektgedaechtnis-verlauf.md`](docs/verlauf/2026-11-12-projektgedaechtnis-verlauf.md).
 
-## Stand (17.11.2026, abends)
+## Stand (17.11.2026, nachts)
 
 - **Projekt:** levelbasiertes 2048 im Earle-Stil. Prototyp 1 ist abgeschlossen (Archiv-Zweig `prototyp-1`,
   [`docs/prototyp/README.md`](docs/prototyp/README.md)). Die Produktion läuft in vier Teilen (Map, Spielfeld, Charaktere, UI).
@@ -16,9 +16,11 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   [`docs/plans/2026-11-16-ozzy.md`](docs/plans/2026-11-16-ozzy.md) und [`…-ozzy-weiter.md`](docs/plans/2026-11-16-ozzy-weiter.md).
   **Stand, Bedienung, Aufbau, Offenes und Vorschläge: [`docs/look/ozzy/UEBERGABE.md`](docs/look/ozzy/UEBERGABE.md) (17.11. abends).**
   Gebaut: Stand 0, Phasen 1 bis 6, S1 bis S20; alle 24 Proben halten. Florian (17.11.): „Die offenen Abnahmen sind für mich fürs
-  erste ok.“ S21 (Kanten gleiten) ganz entfernt, missverstanden; ruht. Offen: kleine Punkte in Ozzy, Phase 7 (Tempo am Mac und
-  iPhone, seine Reglerwerte), Punkte der Kern-Sitzung. **Florian (16.11.): Am Rechenkern ändert Ozzy nichts und optimiert nichts,
-  das macht die Kern-Sitzung; kein Unterschied zwischen seinen Kurven und dem Modell wie in Sitzung 4.**
+  erste ok.“ S21 (Kanten gleiten) ganz entfernt, missverstanden; ruht. **Seit 17.11. nachts liegt der Plan „Ozzy stabil
+  und schnell“ zur Freigabe:** [`docs/plans/2026-11-17-ozzy-stabil-schnell.md`](docs/plans/2026-11-17-ozzy-stabil-schnell.md)
+  (Etappen A bis F: Tempo, glatte Seifenhaut, Zeiger, Wenden, Wireframe, P, Gleiten, Flächen, halbe Haut mit Spiegel-Schalter;
+  Maul, Posen und Teile danach; gebaut ist davon nichts). Seine Sitzung ist auch die des Kerns und darf ihn ändern. Es bleibt:
+  kein Unterschied zwischen seinen Kurven und dem Modell.
 - **Der Kern** („Kurven als Wahrheit“, seit 05.11.): Linien (Loops mit Bézier-Punkten und Griffen, Kreuzungen, Kante an/aus) sind
   die Wahrheit; darunter ein dichtes Dreiecksnetz, dessen Haut aus den Linien gerechnet wird; gespiegelt; Maul; Fressen-Pose.
   Rechenkern `packages/shape/src/dicht/` und `loeser/`. Das alte Fenster `kurven.html?gewichte=geometrie` (`src/form/kurven.ts`)

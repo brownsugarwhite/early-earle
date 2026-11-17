@@ -10,6 +10,13 @@ erste ok.“ S21 (Kanten gleiten) wurde ganz wieder entfernt (missverstanden; er
 Fassung mit allen Messwerten und Zwischenständen liegt im Archiv:
 [`docs/verlauf/2026-11-17-ozzy-uebergabe-verlauf.md`](../../verlauf/2026-11-17-ozzy-uebergabe-verlauf.md).
 
+**Wie es weitergeht (17.11. nachts):** Der Plan „Ozzy stabil und schnell“ liegt zur Freigabe:
+[`docs/plans/2026-11-17-ozzy-stabil-schnell.md`](../../plans/2026-11-17-ozzy-stabil-schnell.md) (Florians Klarstellungen wörtlich,
+Befunde, sechs Etappen mit Proben, drei Fragen an ihn). Sein Messblatt mit Bildern:
+[`docs/progress/ozzy/2026-11-17-messen-karte-zug-p.md`](../../progress/ozzy/2026-11-17-messen-karte-zug-p.md). Gebaut ist davon
+nichts; neu im Repo sind nur Werkzeuge (`scripts/pruefen/ozzy-teile.mjs`, `ozzy-karte-messen.mjs`, `ozzy-zug-messen.mjs`,
+`ozzy-p-ueberall.mjs`, `ozzy-zuege-zaehlen.mjs`). Die Sitzung dieses Plans ist auch die des Kerns: Sie darf ihn ändern.
+
 ## 1. Einstieg
 
 | Was | Wo |
