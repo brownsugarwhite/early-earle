@@ -319,7 +319,10 @@ Rückseite wie in der Vollansicht, Tab wendet erst zurück). Proben `ozzy-feld-z
 Punkt an der Ecke der Kiste im Raum (Kreis als Haarlinie, die Kiste klappt mit dem Zug auf), der Tropfen der Vier Ansichten in eine Ecke
 (Seite, Front, Top rasten ein, oben rechts klappt die Kiste zu); Doppelklick wie Tab. Probe `ozzy-ecke-fenster.mjs`, Film
 `2026-11-17-ecke.mp4`. Nebenbei: Der Zug am Tropfen der Kreuzung rechnete waagrecht mit der Länge statt der Tiefe (seit S10), behoben.
-**Als Nächstes:** S20 Linienansichten wie in der Studie (Körper weiß mit Tiefe, Umriss als Hülle, Verdecktes je Bildpunkt; seine Bilder `docs/look/ozzy/2026-11-17-florian-linien-*.png`)
+**S20 gebaut:** In den eingerasteten Ansichten und den drei Feldern liegt die Haut des Werks als weißer Körper in der Anzeige wie in der
+Studie (Umriss als Hülle, Verdecktes je Bildpunkt; `linienKoerper`, `feldAnsicht`, `Flaeche.tiefe`; in `fluessig.ts` durchsichtig, mehrere
+Ansichten, eigene Tiefe, Deckung). Probe `ozzy-linien-koerper-fenster.mjs`, Bilder `2026-11-17-linien-koerper*.png`; `?koerper=0` zum
+Vergleich. **Als Nächstes:** S21 Kanten gleiten statt auszublenden. Davor stand: S20 Linienansichten wie in der Studie (Körper weiß mit Tiefe, Umriss als Hülle, Verdecktes je Bildpunkt; seine Bilder `docs/look/ozzy/2026-11-17-florian-linien-*.png`)
 und S21 Kanten gleiten statt auszublenden. Offen in Ozzy sonst: Kneifen zum Auffalten (geht in S19 auf), Würfel mit ebenen Flächen, Haut
 gleitet bei ⌘Z.
 

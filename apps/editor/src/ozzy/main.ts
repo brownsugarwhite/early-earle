@@ -25,7 +25,7 @@ import { glatt, type Masse, type Moment, moment } from '../anfang/aufblasen';
 import { FLACH, Koerper, netzAusUmriss } from '../anfang/form';
 import { FASSUNGEN, type Fassung, Haut, type HautWerte } from '../anfang/haut';
 import { GRUNDWERTE as BLASE_GRUNDWERTE, REGLER as BLASE_REGLER, type Werte as BlasenWerte } from '../anfang/regler';
-import { FluessigeAnzeige, type Szene, ZEIGER_PUNKTE } from '../linien/fluessig';
+import { FluessigeAnzeige, type Koerper as LinienKoerper, type Szene, ZEIGER_PUNKTE } from '../linien/fluessig';
 import { REGLER as LINIEN_REGLER } from '../linien/regler';
 import { GRUNDWERTE as LINIEN_GRUNDWERTE, type Ansicht as LinienAnsicht, Verhalten, type Werte as LinienWerte } from '../linien/verhalten';
 import { auskunft, packen, pruefen } from '../form/ablage';
@@ -277,6 +277,20 @@ let eckKlick = { t: 0, x: 0, y: 0 };
 let kreuzBild: [number, number] | null = null;
 /** S19: Halbmesser des Kreises, auf dem die Kiste ganz offen ist (Anteil der kürzeren Seite des Bilds) */
 const ECK_KREIS = 0.3;
+/**
+ * S20 (Florian, 17.11.: „in der studie ist mehr verdeckt und die linien laufen sauber durch verjüngung in form“): In den flachen Ansichten
+ * liegt die Haut des Werks als weißer Körper in der Anzeige wie in der Studie (Umriss als Hülle, Verdecktes je Bildpunkt). `?koerper=0`
+ * schaltet es zum Vergleich ab.
+ */
+const KOERPER_AN = new URLSearchParams(location.search).get('koerper') !== '0';
+/** so weit (Anteil des Halbmessers der Form) darf eine Linie hinter der Haut liegen und gilt doch als auf ihr (wie `bias` der Studie) */
+const KOERPER_BIAS = 0.02;
+let koerperNetz: unknown = null;
+let koerperNr = 0;
+let koerperVersion = -1;
+let koerperWicklung = 1;
+/** S20: wie deckend der Körper gerade ist: kommt eine flache Ansicht zur Ruhe, blendet er weich ein, der alte Umriss weich aus */
+let koerperDeckung = 0;
 /** S17: Nummer des Bereichs der Anzeige je Feld (an seinem Rand wird abgeschnitten) */
 const BEREICH_VON = { seite: 1, front: 2, top: 3, raum: 4 } as const;
 /** S17: die Bereiche dieses Bilds für die Anzeige (vier Kanten je Feld, Gerätepunkte), leer außerhalb der Vier Ansichten */
@@ -2087,6 +2101,8 @@ function bild(dt: number): boolean {
   vierWarten();
   // S18, S19: die Fahrt nach dem Loslassen des Tropfens an der Ecke; sein Anflug
   if (eckZugSchritt(dt)) aktiv = true;
+  // S20: der weiße Körper blendet ein, sobald eine flache Ansicht ruht
+  if (koerperSchritt(dt)) aktiv = true;
   {
     const P = eckTropfenOrt();
     const ziel = P && zeiger.da && Math.hypot(zeiger.x - P[0], zeiger.y - P[1]) < 14 ? 1 : 0;
@@ -2293,6 +2309,9 @@ function bild(dt: number): boolean {
       bereiche: bereicheJetzt,
       // S17b: die Rückseite gewendeter Felder malt die Anzeige der Linien selbst (die Haut ist aufs Feld des Raums beschnitten)
       dunkelFuellen: vier > 0.999,
+      // S20: der weiße Körper (eingerastet), Linien dürfen ein wenig hinter seiner Haut liegen
+      koerper: linienKoerper(),
+      bias: (raum?.R ?? 0) * KOERPER_BIAS,
     };
     szene.zeigerUmriss = zeigerGestaltSchritt(szene.zeiger, dt);
     if (zeigerGestalt.gleitet) aktiv = true;
@@ -2596,6 +2615,148 @@ function wandLinien(vp: Matrix4, m: Moment): void {
 }
 
 /** Linien der eingerasteten Ansicht, auf der Blase: Seite = die gezeichnete Linie mit Punkten, Front und Top = Umriss */
+/** S20: liegt der weiße Körper in der Anzeige (eingerastet, auch beim Wenden)? */
+function koerperAn(): boolean {
+  if (!KOERPER_AN || !werkGezeigt || zustand !== 'ruhe' || !werkHaut.netz || !raum || eckZug) return false;
+  // eingerastet (auch beim Wenden) oder die Vier Ansichten offen und in Ruhe
+  if (vier < 1e-3) return !einzelUebergang && blattModus();
+  return vier >= 0.999 && !vierFahrt && !!faltJetzt && faltJetzt.e > 0.999;
+}
+
+/** S20: der Körper in diesem Bild: deckend, sobald die Ansicht ruht (weich), sonst gleich weg */
+function koerperSchritt(dt: number): boolean {
+  if (!koerperAn()) {
+    koerperDeckung = 0;
+    return false;
+  }
+  if (koerperDeckung >= 1) return false;
+  koerperDeckung = Math.min(1, koerperDeckung + dt / 0.25);
+  return true;
+}
+
+/**
+ * S20: Projektion und Ansicht eines flachen Felds der Vier Ansichten für den Körper (Spalten wie WebGL): genau `imFeld` (mit Zoom,
+ * Verschiebung, Wenden), die Tiefe von der Seite, von der das Feld geschaut wird (`tiefeVon`), dazu sein Rechteck
+ */
+const FELD_TIEFE = 4;
+function feldAnsicht(n: FeldAchse, f: Falt): { projektion: Float32Array; ansicht: Float32Array; schere: [number, number, number, number]; tiefeMax: number } {
+  const e = raum!;
+  const F = f.F;
+  const r = F[n];
+  const b = blickIn(n, F, f.s4);
+  const sz = f.s4 * b.zoom;
+  const c = Math.cos(feldWende[n].phi);
+  const cu = n === 'top' ? 1 : c;
+  const cv = n === 'top' ? c : 1;
+  const [uc, vc] = n === 'seite' ? [e.cx, e.cy] : n === 'front' ? [0, e.cy] : [e.cx, 0];
+  const mx = r.x + r.w / 2 + b.x;
+  const my = r.y + r.h / 2 + b.y;
+  // NDC: x = Ax + Kx · u, y = Ay + Ky · v
+  const Kx = (2 * sz * cu) / W;
+  const Ax = (2 * (mx - uc * sz * cu)) / W - 1;
+  const Ky = (2 * sz * cv) / H;
+  const Ay = 1 - (2 * (my + vc * sz * cv)) / H;
+  // u und v als Zeile über (x, y, z): Seite (x, y), Front (−z, y), Top (x, −z)
+  const ux = n === 'front' ? [0, 0, -1] : [1, 0, 0];
+  const vy = n === 'top' ? [0, 0, -1] : [0, 1, 0];
+  const L = e.L;
+  const vorn = c >= 0 ? 1 : -1;
+  const achse = n === 'front' ? 0 : n === 'top' ? 1 : 2;
+  const tz = [0, 0, 0];
+  tz[achse] = vorn;
+  const Z0 = FELD_TIEFE * L;
+  const P = new Matrix4().set(
+    Kx * ux[0]!, Kx * ux[1]!, Kx * ux[2]!, Ax,
+    Ky * vy[0]!, Ky * vy[1]!, Ky * vy[2]!, Ay,
+    -tz[0]! / Z0, -tz[1]! / Z0, -tz[2]! / Z0, 0,
+    0, 0, 0, 1,
+  );
+  const V = new Matrix4().set(1, 0, 0, 0, 0, 1, 0, 0, tz[0]!, tz[1]!, tz[2]!, -Z0, 0, 0, 0, 1);
+  return {
+    projektion: Float32Array.from(P.elements),
+    ansicht: Float32Array.from(V.elements),
+    schere: [Math.round(r.x * D), Math.round((H - r.y - r.h) * D), Math.round(r.w * D), Math.round(r.h * D)],
+    tiefeMax: 2 * Z0,
+  };
+}
+
+/** S20: die Tiefe eines Orts des Werks zum Betrachter eines Felds (wie `feldAnsicht` sie in die Anzeige schreibt) */
+function tiefeImFeld(n: FeldAchse): (p: { x: number; y: number; z: number }) => number {
+  const vorn = Math.cos(feldWende[n].phi) >= 0 ? 1 : -1;
+  const Z0 = FELD_TIEFE * raum!.L;
+  const f = werkHaut.f;
+  const mx = werkHaut.mitte.x;
+  const my = werkHaut.mitte.y;
+  return (p) => {
+    const w = n === 'front' ? p.x / f + mx : n === 'top' ? p.y / f + my : p.z / f;
+    return Z0 - vorn * w;
+  };
+}
+
+/** S20: Umlaufsinn der Dreiecke der glatten Haut von außen (an der Normale ihrer ersten Dreiecke gemessen) */
+function wicklungVon(N: { pos: Float32Array; normal: Float32Array; index: Uint32Array }): number {
+  let summe = 0;
+  for (let t = 0; t < Math.min(N.index.length / 3, 200); t++) {
+    const [a, b, c] = [N.index[3 * t]!, N.index[3 * t + 1]!, N.index[3 * t + 2]!];
+    const ux = N.pos[3 * b]! - N.pos[3 * a]!;
+    const uy = N.pos[3 * b + 1]! - N.pos[3 * a + 1]!;
+    const uz = N.pos[3 * b + 2]! - N.pos[3 * a + 2]!;
+    const vx = N.pos[3 * c]! - N.pos[3 * a]!;
+    const vy = N.pos[3 * c + 1]! - N.pos[3 * a + 1]!;
+    const vz = N.pos[3 * c + 2]! - N.pos[3 * a + 2]!;
+    const nx = uy * vz - uz * vy;
+    const ny = uz * vx - ux * vz;
+    const nz = ux * vy - uy * vx;
+    summe += nx * N.normal[3 * a]! + ny * N.normal[3 * a + 1]! + nz * N.normal[3 * a + 2]!;
+  }
+  return summe >= 0 ? 1 : -1;
+}
+
+/** S20: der weiße Körper für die Anzeige (die glatte Haut des Werks), eingerastet mit der Kamera; sonst null */
+function linienKoerper(): LinienKoerper | null {
+  if (!koerperAn() || koerperDeckung <= 0.001) return null;
+  const N = werkHaut.netz!;
+  if (N !== koerperNetz) {
+    koerperNetz = N;
+    koerperNr++;
+    koerperWicklung = wicklungVon(N);
+  }
+  const neu = werkHaut.version !== koerperVersion;
+  koerperVersion = werkHaut.version;
+  const c = kam.aktiv;
+  const f = faltJetzt;
+  return {
+    pos: N.pos,
+    normal: N.normal,
+    index: N.index,
+    projektion: Float32Array.from(new Matrix4().multiplyMatrices(c.projectionMatrix, c.matrixWorldInverse).elements),
+    ansicht: Float32Array.from(c.matrixWorldInverse.elements),
+    // in den Vier Ansichten je flaches Feld mit seiner Abbildung
+    ...(vier >= 0.999 && f ? { ansichten: (['seite', 'front', 'top'] as const).map((n) => feldAnsicht(n, f)) } : {}),
+    schattierung: 0,
+    umriss: linienWerte.umriss * D,
+    geaendert: neu,
+    netz: koerperNr,
+    wicklung: koerperWicklung,
+    durchsichtig: true,
+    deckung: koerperDeckung,
+  };
+}
+
+/** S20: die Tiefe eines Orts des Werks zum Betrachter der Kamera (wie der Körper sie in die Anzeige schreibt) */
+function tiefeDerKamera(): (p: { x: number; y: number; z: number }) => number {
+  const m = kam.aktiv.matrixWorldInverse.elements;
+  const f = werkHaut.f;
+  const mx = werkHaut.mitte.x;
+  const my = werkHaut.mitte.y;
+  return (p) => {
+    const x = p.x / f + mx;
+    const y = p.y / f + my;
+    const z = p.z / f;
+    return -(m[2]! * x + m[6]! * y + m[10]! * z + m[14]!);
+  };
+}
+
 function linienDerAnsicht(vp: Matrix4): void {
   const k = koerper!;
   const blick = new Vector3();
@@ -2605,7 +2766,9 @@ function linienDerAnsicht(vp: Matrix4): void {
   const s = flach * flach * t * t * (3 - 2 * t);
   if (s < 0.01) return;
   if (werkGezeigt && ansicht === 'seite' && mitteDa()) return;
-  const r0 = (linienWerte.umriss / 2) * D * s;
+  // S20: mit dem Körper zeichnet die Hülle den Umriss (der alte blendet dabei aus)
+  const r0 = (linienWerte.umriss / 2) * D * s * (1 - koerperDeckung);
+  if (r0 < 0.01) return;
   const linie = ansicht === 'seite' ? seitenLinie(1.5) : null;
   if (linie) {
     const xs: number[] = [];
@@ -2661,7 +2824,8 @@ function felderLinien(f: Falt, m: Moment): void {
     // S17: was zu diesem Feld gehört, wird an seinem Rand abgeschnitten
     K.bereich = BEREICH_VON[n];
     const achse = n === 'front' ? 0 : n === 'top' ? 1 : 2;
-    const rl = r0 * breite(achse, false);
+    // S20: mit dem Körper zeichnet die Hülle den Umriss (der alte blendet dabei aus)
+    const rl = r0 * breite(achse, false) * (1 - koerperDeckung);
     const linie = n === 'seite' ? seitenLinie(2) : null;
     if (linie) {
       const xs: number[] = [];
@@ -2780,6 +2944,8 @@ function feldFlaeche(n: FeldAchse, f: Falt, st0: number[]): Flaeche {
     // S17b: gewendet schaut der Betrachter von der anderen Seite
     vorn: (Math.cos(feldWende[n].phi) >= 0 ? 1 : -1) * (-sw[achse] || 1),
     bereich: BEREICH_VON[n],
+    // S20: mit dem Körper entscheidet die Anzeige je Bildpunkt, was verdeckt ist
+    ...(koerperAn() && koerperDeckung > 0.001 ? { tiefe: tiefeImFeld(n) } : {}),
     enthaelt: (x, y) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h,
     hin: (X, Y) => {
       if (t > 0.999) {
@@ -2825,7 +2991,12 @@ function flaechenJetzt(vp: Matrix4, m: Moment): { flaechen: Flaeche[]; stabil: b
     kam.aktiv.getWorldDirection(blick);
     const t = wendenSicht ? 1 : Math.min(1, Math.max(0, (Math.abs(blick.dot(VORN[ansicht])) - 0.97) / 0.025));
     const st = flach * flach * t * t * (3 - 2 * t);
-    if (st >= 0.01) liste.push(ebene(ansicht, ansicht === 'seite' ? 0 : ansicht === 'front' ? e.cx : e.cy, vp, st, 1, false));
+    if (st >= 0.01) {
+      const fl = ebene(ansicht, ansicht === 'seite' ? 0 : ansicht === 'front' ? e.cx : e.cy, vp, st, 1, false);
+      // S20: mit dem Körper entscheidet die Anzeige je Bildpunkt, was verdeckt ist
+      if (koerperAn() && koerperDeckung > 0.001) fl.tiefe = tiefeDerKamera();
+      liste.push(fl);
+    }
   }
   // die drei flachen Felder (S10: beim Auffalten von Anfang an, sie zeigen dann die Zeichnungen der Wände)
   if (faltJetzt) {
@@ -4994,6 +5165,11 @@ const haken = {
   },
   /** S17: die Felder der Vier Ansichten (CSS-Pixel) und Zoom und Verschiebung je Feld */
   felderJetzt: () => (raum ? felder() : null),
+  /** S20: der weiße Körper: an, wie deckend, in wie vielen Ansichten; Zeit des letzten Bilds (Rechnen, ms) */
+  koerper: () => {
+    const k = linienKoerper();
+    return { an: koerperAn(), deckung: koerperDeckung, ansichten: k ? (k.ansichten?.length ?? 1) : 0, bildMs: stat.bildMs };
+  },
   /** S18, S19: der Tropfen an der Ecke, der Zug an der Kreuzung, die freie Kreuzung, die Ecke der Kiste beim Aufklappen, der erlaubte Bereich */
   eck: () => ({
     ort: eckTropfenOrt(),

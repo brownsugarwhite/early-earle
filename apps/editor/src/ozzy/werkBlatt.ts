@@ -39,6 +39,11 @@ export interface Flaeche {
   vorn?: number;
   /** S17: Bereich der Anzeige (Feld der Vier Ansichten), an dessen Rand ihre Linien und Punkte abgeschnitten werden; fehlt: keiner */
   bereich?: number;
+  /**
+   * S20: Liegt in dieser Fläche der weiße Körper (wie in der Studie), die Tiefe eines Orts des Werks zum Betrachter, wie der Körper sie in
+   * die Anzeige schreibt: Verdeckt ist dann, was je Bildpunkt hinter ihm liegt. Fehlt: verdeckt nach der Tiefenkarte (S7).
+   */
+  tiefe?: (p: { x: number; y: number; z: number }) => number;
 }
 
 /** S7: Tiefenkarte der Haut längs einer Achse: je Zelle die vorderste Tiefe (zum Betrachter hin), für verdeckte Linien */
@@ -246,8 +251,9 @@ export class WerkBlatt implements Raum {
               if (pi === undefined) {
                 const [x, y] = F.hin(...blatt(q));
                 pi = punkte.length;
-                const hin = this.hinten(karte, m ? werk.spiegeln(q) : q);
-                punkte.push({ x, y, sichtbar: sichtbar && istSichtbar(p), verdeckt: hin, z: hin ? HINTEN_Z : 0 });
+                const q3 = m ? werk.spiegeln(q) : q;
+                const hin = this.hinten(karte, q3);
+                punkte.push({ x, y, sichtbar: sichtbar && istSichtbar(p), verdeckt: hin, z: F.tiefe ? F.tiefe(q3) : hin ? HINTEN_Z : 0 });
                 pSchl.push(`${fl}|${k}`);
                 anker.push({ fl, m: sm, werk: [], zuSehen: istSichtbar(p) });
                 schluessel.set(k, pi);
@@ -286,7 +292,7 @@ export class WerkBlatt implements Raum {
             lSchl.push(`${fl}|${l.id}|${m ? 1 : 0}`);
             infos.push({ fl, id: l.id, m });
             const PR = this.abtasten(F, kontroll, stuecke, br);
-            this.verdeckteProben(PR, k3, stuecke, karte, br);
+            this.verdeckteProben(PR, k3, stuecke, karte, br, F.tiefe);
             proben.push(PR);
           }
         });
@@ -730,7 +736,7 @@ export class WerkBlatt implements Raum {
     return fl === undefined ? 0 : (this.flaechen[fl]?.bereich ?? 0);
   }
 
-  private verdeckteProben(P: LinienProben, k3: V3[][], stuecke: Stueck[], K: Karte | null, br: Breiten): void {
+  private verdeckteProben(P: LinienProben, k3: V3[][], stuecke: Stueck[], K: Karte | null, br: Breiten, tiefe?: (p: V3) => number): void {
     if (!K) return;
     const z = P.z ?? new Float32Array(P.n);
     for (let k = 0; k < P.n; k++) {
@@ -738,6 +744,7 @@ export class WerkBlatt implements Raum {
       const C = k3[si];
       const st = stuecke[si];
       let hin = false;
+      let ort: V3 | null = null;
       if (C && st && st.art !== 'umriss') {
         const t = P.t[k]!;
         const s = 1 - t;
@@ -745,13 +752,15 @@ export class WerkBlatt implements Raum {
         const b1 = 3 * s * s * t;
         const b2 = 3 * s * t * t;
         const b3 = t * t * t;
-        hin = this.hinten(K, {
+        ort = {
           x: b0 * C[0]!.x + b1 * C[1]!.x + b2 * C[2]!.x + b3 * C[3]!.x,
           y: b0 * C[0]!.y + b1 * C[1]!.y + b2 * C[2]!.y + b3 * C[3]!.y,
           z: b0 * C[0]!.z + b1 * C[1]!.z + b2 * C[2]!.z + b3 * C[3]!.z,
-        });
+        };
+        hin = this.hinten(K, ort);
       }
-      z[k] = hin ? HINTEN_Z : 0;
+      // S20: mit dem Körper entscheidet die Anzeige je Bildpunkt (die Tiefe des Orts); die Linie des Umrisses bleibt vorn
+      z[k] = tiefe ? (ort ? tiefe(ort) : 0) : hin ? HINTEN_Z : 0;
       P.schicht[k] = hin ? 1 : 0;
       if (hin) {
         // fein wie Verdecktes; im Röntgen so breit wie vorn, mindestens knapp das Doppelte der feinen Linie

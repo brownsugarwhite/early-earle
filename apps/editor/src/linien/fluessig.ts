@@ -44,6 +44,16 @@ export interface Koerper {
   netz: number;
   /** Umlaufsinn der Dreiecke von außen gesehen: 1 gegen den Uhrzeiger, −1 mit ihm */
   wicklung: number;
+  /**
+   * Ozzy (S20): mehrere Ansichten in einem Bild (die Felder der Vier Ansichten), je mit Projektion und Ansicht, ihrem Rechteck (Gerätepunkte,
+   * Ursprung unten links wie WebGL) und der größten Tiefe: Die Tiefe zum Betrachter wird dann selbst in den Tiefenpuffer geschrieben (so
+   * gilt sie auch, wenn die Projektion nicht zur Ansicht passt). Fehlt: eine Ansicht mit `projektion` und `ansicht`.
+   */
+  ansichten?: { projektion: Float32Array; ansicht: Float32Array; schere: [number, number, number, number]; tiefeMax: number }[];
+  /** Ozzy (S20): außerhalb des Körpers durchsichtig (darunter liegt die Seifenhaut); fehlt: überall Papier */
+  durchsichtig?: boolean;
+  /** Ozzy (S20): wie deckend Körper und Umriss sind (0 … 1; die Verdeckung der Linien gilt unabhängig davon); fehlt: 1 */
+  deckung?: number;
 }
 
 export interface Szene {
@@ -102,6 +112,7 @@ uniform usampler2D uListe;
 uniform sampler2D uKoerperFarbe;
 uniform sampler2D uKoerperTiefe;
 uniform int uMitKoerper;
+uniform float uKoerperDeckung;
 uniform float uBias;
 uniform float uHoehe;
 uniform float uK0;
@@ -233,8 +244,10 @@ void main() {
   float grundA = 0.0;
   if (uMitKoerper == 1) {
     tiefe = texelFetch(uKoerperTiefe, ivec2(gl_FragCoord.xy), 0).r;
-    grund = texelFetch(uKoerperFarbe, ivec2(gl_FragCoord.xy), 0).rgb;
-    grundA = 1.0;
+    vec4 kf = texelFetch(uKoerperFarbe, ivec2(gl_FragCoord.xy), 0);
+    // Ozzy (S20): außerhalb des Körpers durchsichtig (Alpha 0 im Puffer), Körper und Umriss so deckend wie verlangt
+    grundA = kf.a * uKoerperDeckung;
+    grund = kf.a > 0.0 ? kf.rgb : vec3(1.0);
   }
   float fl = 0.0;
   for (int i = 0; i < ${MAX_FELDER}; i++) {
@@ -294,19 +307,23 @@ void main() {
   }
   float d0 = smin(dL.x, dB.x, k);
   float d1 = smin(dL.y, dB.y, k);
-  // auf der Rückseite tauschen Tinte und Papier
+  // auf der Rückseite tauschen Tinte und Papier (Ozzy, S20: auch Körper und Umriss)
   float hinten = hintenBei(p);
+  grund = mix(grund, uTinte + uPapier - grund, hinten);
   vec3 tinte = mix(uTinte, uPapier, hinten);
   vec3 papier = mix(uPapier, uTinte, hinten);
   // wo das weiche Minimum die Form verdickt, gilt die Verdickung als Breite
   float aG = deckung(d1, wE.y + max(dE.y - d1, 0.0));
   float aI = deckung(d0, wE.x + max(dE.x - d0, 0.0));
-  vec3 c = grund * grundA;
-  float a = grundA;
+  // Ozzy (S17b): die Rückseite gewendeter Felder zuunterst, darüber Körper und Umriss (dort getauscht), darüber die Linien
+  vec3 c = vec3(0.0);
+  float a = 0.0;
   if (uDunkelFuellen == 1) {
-    c = uTinte * hinten + c * (1.0 - hinten);
-    a = hinten + a * (1.0 - hinten);
+    c = uTinte * hinten;
+    a = hinten;
   }
+  c = grund * grundA + c * (1.0 - grundA);
+  a = grundA + a * (1.0 - grundA);
   c = uGruen * aG + c * (1.0 - aG);
   a = aG + a * (1.0 - aG);
   c = tinte * aI + c * (1.0 - aI);
@@ -358,9 +375,12 @@ in float vTiefe;
 uniform float uHuelle;
 uniform float uSchattierung;
 uniform vec3 uTinte;
+uniform float uTiefeMax;
 layout(location = 0) out vec4 farbe;
 layout(location = 1) out vec4 tiefe;
 void main() {
+  // Ozzy (S20): die Tiefe zum Betrachter selbst in den Tiefenpuffer (mehrere Ansichten, Projektionen, die nicht zur Ansicht passen)
+  gl_FragDepth = uTiefeMax > 0.0 ? clamp(vTiefe / uTiefeMax, 0.0, 1.0) : gl_FragCoord.z;
   if (uHuelle > 0.0) {
     farbe = vec4(uTinte, 1.0);
   } else {
@@ -440,10 +460,10 @@ export class FluessigeAnzeige {
     this.gl = gl;
     gl.getExtension('EXT_color_buffer_float');
     this.prog = programm(gl, VERTEX, FRAGMENT, ['aPos']);
-    for (const n of ['uPrim', 'uKachel', 'uListe', 'uKoerperFarbe', 'uKoerperTiefe', 'uMitKoerper', 'uBias', 'uHoehe', 'uK0', 'uK1', 'uFelder', 'uFeld', 'uTinte', 'uGruen', 'uHinten', 'uHintenZahl', 'uBereich', 'uBereichZahl', 'uDunkelFuellen', 'uPapier', 'uZeigerDa', 'uZA', 'uZB', 'uZC', 'uZLinie', 'uZP', 'uZPN', 'uZFuell', 'uZBox'])
+    for (const n of ['uPrim', 'uKachel', 'uListe', 'uKoerperFarbe', 'uKoerperTiefe', 'uMitKoerper', 'uKoerperDeckung', 'uBias', 'uHoehe', 'uK0', 'uK1', 'uFelder', 'uFeld', 'uTinte', 'uGruen', 'uHinten', 'uHintenZahl', 'uBereich', 'uBereichZahl', 'uDunkelFuellen', 'uPapier', 'uZeigerDa', 'uZA', 'uZB', 'uZC', 'uZLinie', 'uZP', 'uZPN', 'uZFuell', 'uZBox'])
       this.uni[n] = gl.getUniformLocation(this.prog, n);
     this.progK = programm(gl, KOERPER_VERTEX, KOERPER_FRAGMENT, ['aPos', 'aNormal']);
-    for (const n of ['uProj', 'uAnsicht', 'uHuelle', 'uViewport', 'uSchattierung', 'uTinte']) this.uniK[n] = gl.getUniformLocation(this.progK, n);
+    for (const n of ['uProj', 'uAnsicht', 'uHuelle', 'uViewport', 'uSchattierung', 'uTinte', 'uTiefeMax']) this.uniK[n] = gl.getUniformLocation(this.progK, n);
     this.vaoQuad = gl.createVertexArray()!;
     gl.bindVertexArray(this.vaoQuad);
     const vb = gl.createBuffer();
@@ -565,7 +585,8 @@ export class FluessigeAnzeige {
     gl.bindFramebuffer(gl.FRAMEBUFFER, k.fb);
     gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
     gl.viewport(0, 0, this.breite, this.hoehe);
-    gl.clearBufferfv(gl.COLOR, 0, [1, 1, 1, 1]);
+    gl.disable(gl.SCISSOR_TEST);
+    gl.clearBufferfv(gl.COLOR, 0, [1, 1, 1, kd.durchsichtig ? 0 : 1]);
     gl.clearBufferfv(gl.COLOR, 1, [1e9, 0, 0, 1]);
     gl.clearBufferfi(gl.DEPTH_STENCIL, 0, 1, 0);
     gl.enable(gl.DEPTH_TEST);
@@ -573,24 +594,33 @@ export class FluessigeAnzeige {
     gl.disable(gl.CULL_FACE);
     gl.disable(gl.BLEND);
     gl.useProgram(this.progK);
-    gl.uniformMatrix4fv(this.uniK.uProj!, false, kd.projektion);
-    gl.uniformMatrix4fv(this.uniK.uAnsicht!, false, kd.ansicht);
     gl.uniform2f(this.uniK.uViewport!, this.breite, this.hoehe);
     gl.uniform1f(this.uniK.uSchattierung!, kd.schattierung);
     gl.uniform3f(this.uniK.uTinte!, 0x1f / 255, 0x1a / 255, 0x17 / 255);
     gl.bindVertexArray(k.vao);
-    // erst die Hülle (der Umriss), dann die Haut
-    // die Hülle nur mit ihren Rückseiten: So liegt sie hinter der Haut und schaut nur am Rand (Umriss, Falten) hervor
-    if (kd.umriss > 0) {
-      gl.enable(gl.CULL_FACE);
-      gl.frontFace(kd.wicklung >= 0 ? gl.CCW : gl.CW);
-      gl.cullFace(gl.FRONT);
-      gl.uniform1f(this.uniK.uHuelle!, kd.umriss);
+    const ansichten = kd.ansichten ?? [{ projektion: kd.projektion, ansicht: kd.ansicht, schere: null, tiefeMax: 0 }];
+    for (const a of ansichten) {
+      if (a.schere) {
+        gl.enable(gl.SCISSOR_TEST);
+        gl.scissor(a.schere[0], a.schere[1], Math.max(0, a.schere[2]), Math.max(0, a.schere[3]));
+      }
+      gl.uniformMatrix4fv(this.uniK.uProj!, false, a.projektion);
+      gl.uniformMatrix4fv(this.uniK.uAnsicht!, false, a.ansicht);
+      gl.uniform1f(this.uniK.uTiefeMax!, a.tiefeMax);
+      // erst die Hülle (der Umriss), dann die Haut
+      // die Hülle nur mit ihren Rückseiten: So liegt sie hinter der Haut und schaut nur am Rand (Umriss, Falten) hervor
+      if (kd.umriss > 0) {
+        gl.enable(gl.CULL_FACE);
+        gl.frontFace(kd.wicklung >= 0 ? gl.CCW : gl.CW);
+        gl.cullFace(gl.FRONT);
+        gl.uniform1f(this.uniK.uHuelle!, kd.umriss);
+        gl.drawElements(gl.TRIANGLES, k.anzahl, gl.UNSIGNED_INT, 0);
+        gl.disable(gl.CULL_FACE);
+      }
+      gl.uniform1f(this.uniK.uHuelle!, 0);
       gl.drawElements(gl.TRIANGLES, k.anzahl, gl.UNSIGNED_INT, 0);
-      gl.disable(gl.CULL_FACE);
+      if (a.schere) gl.disable(gl.SCISSOR_TEST);
     }
-    gl.uniform1f(this.uniK.uHuelle!, 0);
-    gl.drawElements(gl.TRIANGLES, k.anzahl, gl.UNSIGNED_INT, 0);
     gl.bindVertexArray(null);
     gl.disable(gl.DEPTH_TEST);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -689,6 +719,7 @@ export class FluessigeAnzeige {
     binde(3, mit ? this.k!.farbe : this.texPrim, 'uKoerperFarbe');
     binde(4, mit ? this.k!.tiefe : this.texPrim, 'uKoerperTiefe');
     gl.uniform1i(this.uni.uMitKoerper!, mit ? 1 : 0);
+    gl.uniform1f(this.uni.uKoerperDeckung!, sz.koerper?.deckung ?? 1);
     gl.uniform1f(this.uni.uBias!, sz.bias ?? 0);
     gl.uniform1f(this.uni.uHoehe!, this.hoehe);
     gl.uniform1f(this.uni.uK0!, sz.k0);

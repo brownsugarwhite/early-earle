@@ -495,6 +495,21 @@ eine grobe Tiefenkarte je Achse geprüft (S7). *Vorschlag:* in den eingerasteten
 Studie, mit derselben Anzeige: die Haut des Werks als weißer Körper mit Tiefe, Umriss als Hülle, Verdecktes je Bildpunkt; in den Feldern je
 Feld mit seiner Abbildung (S17). Die Seifenhaut bleibt im Raum. *Probe:* seine Form in derselben Ansicht wie sein Bild, Studie neben Ozzy:
 die Bögen hinter der Form sind weg, die Linien dahinter grün, der Umriss läuft verjüngt in die Form; Tempo je Bild.
+*Gebaut (17.11., Florian: „Ja, S20“):* Beweis zuerst, Bild [`2026-11-17-linien-koerper.png`](../progress/ozzy/2026-11-17-linien-koerper.png)
+(„teat firefish“ von vorn: links die Studie, in der Mitte Ozzy vorher, rechts nachher). Die Anzeige (`fluessig.ts`) kann den Körper jetzt
+durchsichtig zeichnen (außerhalb liegt die Seifenhaut), in mehreren Ansichten mit je eigenem Rechteck und eigener Tiefe (`gl_FragDepth`
+aus der Tiefe zum Betrachter) und mit einer Deckung; auf der Rückseite tauschen Körper und Umriss die Farben wie die Linien. In Ozzy:
+`linienKoerper` (die glatte Haut des Werks, eingerastet mit der Kamera, in den Vier Ansichten je flaches Feld mit `feldAnsicht`: genau
+`imFeld` mit Zoom, Verschiebung und Wenden, die Tiefe von der Seite, von der das Feld geschaut wird); die Flächen geben ihren Linien die
+echte Tiefe (`Flaeche.tiefe`, `tiefeDerKamera`, `tiefeImFeld`), die Anzeige entscheidet je Bildpunkt (Duldung 2 % des Halbmessers wie in
+der Studie). Der Körper blendet weich ein, sobald eine flache Ansicht ruht (0,25 s), der alte Umriss dabei aus; während Fahrten und beim
+Aufklappen bleibt es wie bisher. Die Breite der Linien (fein, wenn verdeckt) kommt weiter aus der Tiefenkarte (S7). `?koerper=0` schaltet
+es ab. Probe `ozzy-linien-koerper-fenster.mjs` 1 bis 5 halten: in der Front Tinte 67 % von vorher (die Bögen weg), Grün 1,3-fach; der
+Körper blendet in 15 Bildern ein; drei Felder mit Körper, das Feld des Raums unverändert; Rechnen je Bild 2,1 statt 5,8 ms (der alte
+Umriss entfällt). Die Proben zu S7, S10, S16, S17, S18/S19, zu den Ansichten, zum Bearbeiten und zum Röntgen halten, beide Studien laufen.
+Vier Ansichten vorher und nachher: [`2026-11-17-linien-koerper-vier.png`](../progress/ozzy/2026-11-17-linien-koerper-vier.png). Offen:
+an Linien, die fast genau auf der Haut verlaufen, entstehen vereinzelt kurze Striche (vorn und verdeckt wechseln je Bildpunkt); beim
+Aufklappen und Einrasten springt der Look am Ende (weich eingeblendet, nicht mitgeführt).
 
 **S21 Kanten gleiten statt auszublenden.** *Heute:* Dreht man den Raum über eine Wand hinweg, wird ihre Zeichnung samt den Kanten der Ecke
 gleichmäßig dünner bis zur Haarlinie (Stärke der Wand), die Punkte verschwinden auf einmal, auf der anderen Seite kommt alles ebenso
