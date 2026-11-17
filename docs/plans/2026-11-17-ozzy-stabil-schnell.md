@@ -159,9 +159,29 @@ rechts gebaut nach einem Zug; „strange bird“, gleiche Ansicht).
 - Ist von der Blase nichts zu sehen (eingerastet, Felder ohne Raum), wird ihr teures Ziel nicht benutzt (heute 6,5 ms für nichts).
 - Probe: `ozzy-karte-messen` vorher und nachher; Bildvergleich bei stehender Zeit; dein Auge am Film einer Drehung.
 
+**Gebaut (17.11. nachts) bis auf das Zeichenziel.** Messblatt:
+[`2026-11-17-messen-nach-a.md`](../progress/ozzy/2026-11-17-messen-nach-a.md).
+- **Der Fluss der Dicke als Textur** (`haut.ts`: einmal je Bild in 384 × 384 Bildpunkte, alle Durchgänge lesen sie; außerhalb ihres
+  Fensters wird wie bisher gerechnet). Raum 13,3 → 10,7 ms, nah 16,6 → 11,4 ms; Bild gleich (76 dB).
+- **Stufen nach der Größe im Bild** (`werkHaut.stufenFuer`): so viele, dass eine lange Kante der feinen Dreiecke rund fünf
+  Gerätepunkte misst (das Maß, bei dem das Bild im Versuch gleich blieb). „strange bird“ in gewöhnlicher Größe: eine Stufe statt
+  zwei, ab Zoom 2 wieder zwei. Nah heran begrenzt bei großen Formen weiter die Zahl der Dreiecke (wie bisher zwei Stufen); feiner
+  wird es dort erst mit E1. Kleine Formen bekommen nah heran mehr Stufen als bisher.
+- **Ohne sichtbare Blase kein teures Ziel** (eingerastet): 9,7 → 3,9 ms je Bild.
+- **Stand:** Raum 15,8 → **9,5 ms**, nah 21,1 → **12,8 ms**, eingerastet 9,7 → **3,9 ms**, Vier Ansichten 16,8 → 15,1 ms. Die Ziele
+  aus Abschnitt 2 (höchstens 8 und 10 ms) sind im Raum fast, nah noch nicht erreicht.
+- **Nicht gebaut: das Zeichenziel mit 8 Bit.** Beim Nachrechnen zeigte sich: Damit die hellen Spiegelungen nicht abgeschnitten
+  werden, müsste das Bild halb so hell gespeichert werden; nahe Weiß (und die Seifenhaut ist fast überall nahe Weiß) wären die
+  Stufen dann gröber als die des Bildschirms. Das Risiko für „immer super glatt“ ist mir zu groß.
+- **Offen, mein Vorschlag (das Bild bleibt genau gleich):** das teure Ziel nur so groß anlegen wie die Blase im Bild. Die
+  Kantenglättung kostet heute 3,2 bis 4,9 ms je Bild, weil ihr Ziel das ganze Fenster deckt; die Blase füllt im Raum rund ein
+  Sechzehntel davon. Erwartung: Raum rund 6,5 ms, Vier Ansichten rund 10,5 ms, nah wenig Gewinn. Als nächster Schritt.
+
 **A4. Kleinigkeiten (klein).** Fenstermaße nicht bei jedem Mausereignis abfragen; der Strahl gegen die Haut einmal je Bild statt je
 Mausbewegung; in der Pose das Gedrehte merken, statt es zwölfmal je Bild neu zu drehen; Weichzeichner hinter Leiste und Menü nur, wo
 man ihn sieht (Vergleichsbild).
+**Gebaut (17.11. nachts):** die Lage der Zeichenfläche wird gemerkt; was unter dem ruhenden Zeiger liegt, klärt das nächste Bild
+(`schweben`). **Offen:** das Gedrehte in der Pose merken; der Weichzeichner (Vergleichsbild).
 
 ### Etappe B: Bedienung in Ozzy
 
@@ -204,7 +224,11 @@ Netz über blasser Seifenhaut), du wählst.
 Ab hier ändert die Sitzung auch den Rechenkern (sie ist die Sitzung des Kerns). Jede Änderung mit Probe im Kern, im Prüffenster
 `kurven.html` und in Ozzy; der Schnitt `kurven.ts` → `werk.ts` bleibt wiederholbar.
 
-**C1. Fehler zuerst (mittel).** Umgeschlagene Dreiecke nach gewöhnlichen Zügen an der Mitte und an dünnen Spitzen: Ursache messen
+**C1. Fehler zuerst (mittel).** Dazu aus Etappe A (17.11. nachts): Ein neuer Löser läuft empfindlich an (bekommt er am Anfang eines
+Zugs zu wenige Runden am Stück, läuft die Haut einer Form mit nur einer Linie davon; A1 gibt ihm deshalb 16 Runden Anlauf: die
+Ursache klären). Und: Ein Zug mit dem Einfluss O hängt davon ab, wann das Verfeinern eingewechselt wird (mitten in der Bewegung oder
+danach; an „teat firefish“ 1,4 Einheiten Unterschied an den Nachbarpunkten bei einem Zug um 119): Er soll davon unabhängig sein.
+Umgeschlagene Dreiecke nach gewöhnlichen Zügen an der Mitte und an dünnen Spitzen: Ursache messen
 (eine Kernprobe mit dem Zug von heute), beheben, als Zählung in die Proben. Punkte ohne Spiegelbild: den Fall vom 16.11. nachstellen,
 Ursache im Verdichten beheben, Zählung in die Proben. Kriterium: nach den neun Zügen des Messblatts (`ozzy-zuege-zaehlen`) an keiner Form mehr umgeschlagene Dreiecke als davor.
 

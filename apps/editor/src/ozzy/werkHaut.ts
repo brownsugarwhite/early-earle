@@ -16,6 +16,19 @@ const UMRISS_MS = 50;
 const GLATT_RUHE = 3;
 /** unter dieser Abweichung von 1 gilt die Dehnung als ausgeklungen (die Farbe der Seifenhaut ändert sich darunter nicht mehr sichtbar) */
 const DEHNUNG_AUS = 0.01;
+/**
+ * Stufen nach der Größe im Bild (A3, 17.11.): so viele, dass eine lange Kante der feinen Dreiecke (neun Zehntel sind kürzer) rund
+ * `KANTE_ZIEL` Gerätepunkte lang ist. Bei der jetzigen Zahl bleibt es, solange sie zwischen `KANTE_AB` und `KANTE_BIS` liegt (das Band
+ * ist breiter als eine Stufe, nichts flattert an der Grenze). Gemessen an „strange bird“ in gewöhnlicher Größe (lange Kante des
+ * Rechennetzes 10,5 Gerätepunkte): zwei Stufen statt einer (feine Kante 2,6 statt 5,2 Gerätepunkte) kosteten die Grafikkarte 4,4 ms
+ * je Bild und den Prozessor im Zug 2,5 ms, das Bild war gleich (57 dB). Die Schattierung hängt nicht an den Stufen (die Normalen
+ * kommen von den Rechenpunkten), nur Umriss und Wölbung. Nah heran gibt es mehr Stufen als bisher, so weit die Zahl der Dreiecke es
+ * erlaubt (`GLATT_HOECHSTENS` in der Ruhe, `GLATT_IM_ZUG` solange sich die Haut ändert).
+ */
+const KANTE_ZIEL = 5;
+const KANTE_AB = 3.3;
+const KANTE_BIS = 7.6;
+const STUFEN_HOECHSTENS = 4;
 /** der Bereich der Dehnung, den die Seifenhaut als Farbe zeigt (ihr Shader begrenzt auf 0,55 bis 6) */
 const DEHNUNG_AB = 0.5;
 const DEHNUNG_BIS = 6.5;
@@ -35,6 +48,8 @@ type Plan = {
   bezug: Float64Array;
   flaeche: Float64Array;
   dehnung: Float32Array;
+  /** eine lange Kante des Netzes der Anzeige (neun Zehntel sind kürzer), Einheiten des Werks: der Maßstab für die Stufen */
+  kante: number;
 };
 
 /** woher Muster und Dehnung beim Netzwechsel kommen: das Netz der Anzeige davor (Lagen im Werk, Dreiecke) mit beidem je Punkt */
@@ -203,6 +218,21 @@ function dreieckSuche(Q: Float64Array, I: Uint32Array): (x: number, y: number, z
   };
 }
 
+/** Eine lange Kante eines Netzes: Neun Zehntel der Kanten (aus einer Stichprobe der Dreiecke) sind kürzer */
+function langeKante(L: Float64Array, I: Uint32Array): number {
+  const T = I.length / 3;
+  const laengen: number[] = [];
+  for (let t = 0; t < T; t += Math.max(1, Math.floor(T / 1500))) {
+    for (let e = 0; e < 3; e++) {
+      const a = 3 * I[3 * t + e]!;
+      const b = 3 * I[3 * t + ((e + 1) % 3)]!;
+      laengen.push(Math.hypot(L[a]! - L[b]!, L[a + 1]! - L[b + 1]!, L[a + 2]! - L[b + 2]!));
+    }
+  }
+  laengen.sort((x, y) => x - y);
+  return laengen.length ? laengen[Math.floor(0.9 * (laengen.length - 1))]! : 0;
+}
+
 /** Schlüssel einer Linienkante: Loop, Probe, Spiegelhälfte (wie `glattOrt` im Prüffenster) */
 const ort = (li: number, j: number, sp: boolean): number => (li * 1_000_000 + j) * 2 + (sp ? 1 : 0);
 const kennJetzt = (): string => `${werk.grund ? 'p' : 'g'}|${werk.loops.map((l) => `${l.id}.${l.proben.length}.${werk.exakt(l) ? 1 : 0}`).join(',')}`;
@@ -241,6 +271,11 @@ export class WerkHaut {
   private uebergabeDe: Float32Array | null = null;
   /** so weit ist die Dehnung noch von 1 entfernt (größter Betrag über die Rechenpunkte); 0: ausgeklungen */
   dehnungRest = 0;
+  /**
+   * A3: so viele Gerätepunkte ist eine Einheit des Werks im Bild lang (Ozzy setzt es je Bild: die größte Ansicht, die die Haut
+   * zeigt); 0: unbekannt, dann höchstens zwei Stufen wie bis zum 17.11.
+   */
+  bildMass = 0;
   /** Arbeitsfelder für Muster je feinem Punkt (wiederverwendet) */
   private mischX: Float32Array | undefined;
   private mischY: Float32Array | undefined;
@@ -333,9 +368,11 @@ export class WerkHaut {
       bezug: new Float64Array(N),
       flaeche: new Float64Array(N),
       dehnung: new Float32Array(N).fill(1),
+      kante: 0,
     };
     // Lage im Blatt und Bezug der Dehnung: aus dem Plan davor an derselben Stelle (Netzwechsel), sonst die Haut, wie sie jetzt ist
     this.lagenLesen(p, null);
+    p.kante = langeKante(p.lagen, I);
     this.bezugSetzen(p, this.alt ?? this.p);
     this.alt = null;
     return p;
@@ -451,7 +488,7 @@ export class WerkHaut {
     // Liegt die Haut genau wie beim letzten Mal, klingt nur die Dehnung nach (S3: vorher jedes Bild die ganze glatte Anzeige neu, rund
     // 5 ms, 2,5 s lang nach jedem Handgriff): kein neues Glätten, kein neuer Umriss, nur die Dehnung
     const v = this.letzte;
-    if (!vorgabe && this.netz && v && v.plan === g && v.voll === voll && v.lagen.length === L.length) {
+    if (!vorgabe && this.netz && v && v.plan === g && v.voll === voll && v.lagen.length === L.length && this.stufenFuer(g, voll) === this.stufen) {
       let gleich = true;
       for (let i = 0; i < L.length; i++)
         if (L[i] !== v.lagen[i]) {
@@ -479,10 +516,7 @@ export class WerkHaut {
         K[12 * i + 9 + x] = b;
       }
     });
-    const vorher = werk.G.glattVoll;
-    werk.G.glattVoll = voll;
-    const stufen = werk.glattStufen(I.length / 3);
-    werk.G.glattVoll = vorher;
+    const stufen = this.stufenFuer(g, voll);
     if (g.kanten.length && stufen > 0)
       werk.loops.forEach((l, li) => {
         const stuecke = werk.pfadStuecke(l, li);
@@ -600,8 +634,11 @@ export class WerkHaut {
     this.dehnungRest = rest;
   }
 
-  /** Für Proben: Dehnung und Muster je Punkt der Anzeige (Spannweiten; wie viele Punkte mehr als 5 % gedehnt oder gestaucht sind) */
-  musterStand(): { punkte: number; deMin: number; deMax: number; gedehnt: number; rest: number; blatt: [number, number, number, number] } | null {
+  /**
+   * Für Proben: Dehnung und Muster je Punkt der Anzeige (Spannweiten; wie viele Punkte mehr als 5 % gedehnt oder gestaucht sind), dazu
+   * die Stufen der Anzeige und wie lang eine lange Kante des Netzes im Bild ist (Gerätepunkte, ohne Stufen)
+   */
+  musterStand(): { punkte: number; deMin: number; deMax: number; gedehnt: number; rest: number; blatt: [number, number, number, number]; stufen: number; kanteImBild: number } | null {
     const g = this.p;
     if (!g) return null;
     let deMin = Infinity;
@@ -621,12 +658,36 @@ export class WerkHaut {
       y0 = Math.min(y0, g.blattY[d]!);
       y1 = Math.max(y1, g.blattY[d]!);
     }
-    return { punkte: g.dehnung.length, deMin, deMax, gedehnt, rest: this.dehnungRest, blatt: [x0, x1, y0, y1] };
+    return { punkte: g.dehnung.length, deMin, deMax, gedehnt, rest: this.dehnungRest, blatt: [x0, x1, y0, y1], stufen: this.stufen, kanteImBild: g.kante * this.bildMass };
+  }
+
+  /**
+   * So viele Stufen bekommt die Anzeige jetzt: nach der Größe im Bild (`bildMass`), begrenzt durch die Zahl der Dreiecke (`voll`: in
+   * der Ruhe; sonst die Grenze, solange sich die Haut ändert). `?fein=<n>` legt sie fest.
+   */
+  private stufenFuer(g: Plan, voll: boolean): number {
+    if (werk.FEIN >= 0) return werk.FEIN;
+    const dreiecke = g.index.length / 3;
+    const grenze = voll ? werk.GLATT_HOECHSTENS : werk.GLATT_IM_ZUG;
+    let hoechstens = 0;
+    while (hoechstens < STUFEN_HOECHSTENS && 4 ** (hoechstens + 1) * dreiecke <= grenze) hoechstens++;
+    if (!(this.bildMass > 0) || !(g.kante > 0)) return Math.min(hoechstens, 2);
+    const kante = g.kante * this.bildMass;
+    let s = this.stufen;
+    const fein = kante / 2 ** s;
+    if (fein > KANTE_BIS || fein < KANTE_AB) s = Math.round(Math.log2(kante / KANTE_ZIEL));
+    return Math.max(0, Math.min(hoechstens, s));
   }
 
   /** Lassen sich in der Ruhe mehr Stufen zeigen? */
   feinerMoeglich(): boolean {
-    return !!this.p && this.stufen < werk.glattZiel(this.p.index.length / 3);
+    return !!this.p && this.stufen < this.stufenFuer(this.p, true);
+  }
+
+  /** Passt die Zahl der Stufen nicht mehr zur Größe im Bild (nach Zoomen oder einem Wechsel der Ansicht)? Dann neu rechnen. */
+  stufenWechsel(): boolean {
+    const v = this.letzte;
+    return !!this.p && !!this.netz && !!v && this.stufenFuer(this.p, v.voll) !== this.stufen;
   }
 
   /** Umriss der glatten Anzeige von einer Achse (0 = x, Front; 1 = y, Top; 2 = z, Seite): Strecken in der Welt, je 6 Zahlen */

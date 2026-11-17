@@ -10,12 +10,18 @@ erste ok.“ S21 (Kanten gleiten) wurde ganz wieder entfernt (missverstanden; er
 Fassung mit allen Messwerten und Zwischenständen liegt im Archiv:
 [`docs/verlauf/2026-11-17-ozzy-uebergabe-verlauf.md`](../../verlauf/2026-11-17-ozzy-uebergabe-verlauf.md).
 
-**Wie es weitergeht (17.11. nachts):** Der Plan „Ozzy stabil und schnell“ liegt zur Freigabe:
-[`docs/plans/2026-11-17-ozzy-stabil-schnell.md`](../../plans/2026-11-17-ozzy-stabil-schnell.md) (Florians Klarstellungen wörtlich,
-Befunde, sechs Etappen mit Proben, drei Fragen an ihn). Sein Messblatt mit Bildern:
-[`docs/progress/ozzy/2026-11-17-messen-karte-zug-p.md`](../../progress/ozzy/2026-11-17-messen-karte-zug-p.md). Gebaut ist davon
-nichts; neu im Repo sind nur Werkzeuge (`scripts/pruefen/ozzy-teile.mjs`, `ozzy-karte-messen.mjs`, `ozzy-zug-messen.mjs`,
-`ozzy-p-ueberall.mjs`, `ozzy-zuege-zaehlen.mjs`). Die Sitzung dieses Plans ist auch die des Kerns: Sie darf ihn ändern.
+**Wie es weitergeht (17.11. nachts):** Der Plan „Ozzy stabil und schnell“ ist freigegeben (Florian: „Du kannst loslegen.“):
+[`docs/plans/2026-11-17-ozzy-stabil-schnell.md`](../../plans/2026-11-17-ozzy-stabil-schnell.md) (seine Klarstellungen und Antworten
+wörtlich, Befunde, sechs Etappen; **was gebaut ist, steht dort je Schritt unter „Gebaut“**). Der Spiegel-Schalter ruht, bis er ihn
+genauer beschreibt. **Stand: Etappe A ist gebaut bis auf drei Reste** (A3: das Ziel der Kantenglättung nur so groß wie die Blase;
+A4: das Gedrehte in der Pose merken, der Weichzeichner; A2: Vergleichsbild zu den Spiegelungen). Gemessen an „strange bird“:
+Grafikkarte je Bild im Raum 15,8 → 9,5 ms, nah 21,1 → 12,8 ms, eingerastet 9,7 → 3,9 ms; Zug 18,8 / 26,4 → 10,9 / 16,9 ms je Bild;
+keine Scherben und keine Sprünge mehr in der Seifenhaut. Messblätter:
+[`2026-11-17-messen-karte-zug-p.md`](../../progress/ozzy/2026-11-17-messen-karte-zug-p.md) (vorher),
+[`2026-11-17-messen-nach-a.md`](../../progress/ozzy/2026-11-17-messen-nach-a.md) (nach A). Sein Urteil zur Seifenhaut steht aus.
+Nächste Schritte: der Rest von A3, dann Etappe B (zuerst der Zeiger-Film). Die Sitzung dieses Plans ist auch die des Kerns: Sie darf
+ihn ändern. Proben: `node scripts/pruefen/ozzy-alle.mjs` (alle 22 nacheinander); Werkzeuge zum Messen: `ozzy-karte-messen.mjs`,
+`ozzy-zug-messen.mjs`, `ozzy-p-ueberall.mjs`, `ozzy-zuege-zaehlen.mjs` (gemeinsame Teile in `ozzy-teile.mjs`).
 
 ## 1. Einstieg
 

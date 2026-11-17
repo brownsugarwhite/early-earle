@@ -18,6 +18,13 @@ Gedächtnis des Electron-Editors (Käfig-Zeit) liegt in `docs/verlauf/2026-11-12
   Linien des Werks auf allen Flächen als ein Netz (Bildschirm), Ziehen und Drehen als Handgriffe des Werks mit Blattkoordinaten
   (`zugStarten`, `griffZugStarten`, `zugBewegen`, `zugEnde`). Probe `scripts/pruefen/ozzy-bearbeiten-fenster.mjs` (vergleicht mit
   `kurven.html`).
+  **Seit dem 17.11. (Plan `docs/plans/2026-11-17-ozzy-stabil-schnell.md`, Etappe A):** Ozzy meldet dem Werk nach jedem Bild seine
+  Kosten (`werk.bildRestMelden`, sonst greift „flüssig zuerst“ nicht). Muster und Dehnung der Seifenhaut sind stetig (`werkHaut.ts`:
+  `uebernehmen` über Dreiecke beim Netzwechsel, `GlattPlan.mischen` beim Verfeinern, Übergabe von der Blase über ihren Bezug). Die
+  Stufen der Anzeige richten sich nach der Größe im Bild (`werkHaut.bildMass`, `stufenFuer`; `?fein=<n>` legt sie fest). Der Fluss
+  der Dicke ist eine Textur (`src/anfang/haut.ts`, `RAUSCH_…`); ohne sichtbare Blase zeichnet die Haut nur den Grund
+  (`HautWerte.leer`). Alle Proben: `node scripts/pruefen/ozzy-alle.mjs`; messen: `ozzy-karte-messen.mjs`, `ozzy-zug-messen.mjs`
+  (gemeinsame Teile und „Flicken“ für Versuche ohne Eingriff in den Arbeitsbaum: `ozzy-teile.mjs`).
 - **`editor.html` + `src/form/editor.ts`, `blaupause.ts`, `lava.ts`:** derselbe Editor im Layout der Blaupause (`/editor`).
   Gehört der Design-Sitzung; nicht anfassen. `editor.ts` ist eine Kopie von `kurven.ts`.
 - **`form.html` + `src/form/main.ts`** und alles übrige unter `src/` (Electron-App, Käfig-Editor): eingefroren.
@@ -310,5 +317,12 @@ EDITOR_WEB=1 pnpm --filter @ee/editor exec vite --port 5197 --strictPort
 - Kern-Bilder (`blattSchreiben`) sind flach schattiert und übertreiben jede Unruhe; ob etwas ruhig aussieht, im Fenster ansehen
   (Unruhe messen: `form-kante-winkel.ts`, Knick zwischen Nachbardreiecken; Florians Modelle liegen gesichert bei 5,6° bis 6,3°,
   nach jedem Neurechnen bei rund 7°).
+- **Ein neuer Löser braucht Anlauf** (17.11.): In seinen ersten Runden bewegt er die Haut weit (Form mit nur einer Linie: 1,65
+  Einheiten je Runde, ab etwa der sechsten 0,04). Bekommt er dort je Bild nur eine oder zwei Runden, während die Maus weiterzieht,
+  läuft die Haut davon. Deshalb gilt der Bildtakt erst nach `ANLAUF_RUNDEN` (16) Runden eines Lösers; die Ursache ist nicht behoben.
+- **Ein Zug mit dem Einfluss O hängt davon ab, wann das Verfeinern eingewechselt wird** (17.11.): Das Einwechseln setzt den Zug mit
+  neuen Gewichten auf; mitten in der Bewegung gibt das andere Lagen der Nachbarpunkte als danach (an „teat firefish“ 1,4 Einheiten
+  bei einem Zug um 119). Proben, die Ozzy mit dem Prüffenster vergleichen, ziehen rasch und halten dann, bis das Verfeinern da ist
+  (`ozzy-pinsel-fenster.mjs`). Wird ein Fenster schneller oder langsamer, verschieben sich solche Zeitpunkte.
 - **Vor Arbeit an `kurven.ts` oder am Löser lesen:** `docs/verlauf/2026-11-11-uebergabe-kurven.md`, Abschnitt 3 (Karte von
   `kurven.ts`) und Abschnitt 4 (Fallen, was schon kaputtging).

@@ -159,6 +159,8 @@ type Hinten = { kanten: number[]; zahl: number };
 let hintenJetzt: Hinten | null = null;
 /** beim Einrasten schiebt sich das Blatt durch die Blase: Die Haut bleibt nur vor ihm (Welt: n · p ≥ w); null = ganz */
 let schnittJetzt: [number, number, number, number] | null = null;
+/** A3: Das Blatt hat die Blase ganz weggeschnitten (eingerastet): Von der Seifenhaut ist nichts zu sehen */
+let schnittGanz = false;
 /** wie weit die Mitte der Form hinten liegt (0 … 1, für Proben); ob irgendwo im Bild Rückseite zu sehen ist */
 let kanteMitte = 0;
 let kanteSichtbar = false;
@@ -559,6 +561,7 @@ function raumSicht(): number {
 // ---------- Größe ----------
 
 function groesse(): void {
+  leinwandRand = null;
   const r = buehne.getBoundingClientRect();
   W = Math.max(1, r.width);
   H = Math.max(1, r.height);
@@ -2035,6 +2038,12 @@ function umrissJetzt(achse: 0 | 1 | 2): Float32Array {
 function bild(dt: number): boolean {
   const t0 = performance.now();
   let aktiv = false;
+  // A4: was unter dem Zeiger liegt, einmal je Bild (nicht, solange etwas gezogen wird: Dort gilt das Drücken)
+  if (schwebenOffen) {
+    schwebenOffen = false;
+    const zieht = feldWendenZug || schwenkZug || bearbeitenGedrueckt || pinselZug || wenden || raumStrich || raumAufzug || eckZug || teiler.zug || punktZug || drehen || (zug && koerper);
+    if (zustand !== 'blatt' && !zieht) schweben(zeiger.x, zeiger.y);
+  }
   if (festeZeit !== null) dt = 1 / 60;
   uhr = festeZeit !== null ? 7 + festeZeit : mess.still ? uhr : uhr + dt;
   if (zustand === 'blatt') aktiv = blatt.schritt(dt) || aktiv;
@@ -2199,6 +2208,19 @@ function bild(dt: number): boolean {
   }
   kameraSetzen(zustand === 'blatt' ? null : m);
   faltJetzt = zustand === 'blatt' ? null : faltRechnen();
+  // A3: wie groß die Haut im Bild ist (Gerätepunkte je Einheit des Werks; in den Vier Ansichten das größte Feld): danach richten sich
+  // die Stufen der glatten Anzeige. Passt ihre Zahl nicht mehr (Zoomen, Wechsel der Ansicht), wird in der Ruhe neu gerechnet.
+  {
+    let mass = massstab.jetzt * nutzer.zoom;
+    const f4 = faltJetzt;
+    if (f4 && vier > 0.5) for (const n of ['seite', 'front', 'top', 'raum'] as const) mass = Math.max(mass, f4.s4 * blickIn(n, f4.F, f4.s4).zoom);
+    werkHaut.bildMass = (mass * D) / werkHaut.f;
+    if (werkGezeigt && zustand === 'ruhe' && !werkBeschaeftigt() && werkHaut.stufenWechsel()) {
+      werkVoll = true;
+      werkNeu = true;
+      aktiv = true;
+    }
+  }
   bereicheJetzt = bereicheRechnen();
   feldHautSchneiden();
   // S13 (10): der Ansichts-Tropfen zeigt, von wo die Kamera schaut (nur in der Ruhe)
@@ -2261,6 +2283,8 @@ function bild(dt: number): boolean {
     dunkel: vier > 0.999 ? null : hintenJetzt,
     kanteFarbe: KANTE_FARBE,
     schnitt: schnittJetzt,
+    // eingerastet: Das Blatt hat die Blase ganz weggeschnitten und der Rahmen ist weg: nur der Grund
+    leer: schnittGanz && zustand === 'ruhe' && vier < 1e-3 && !!m && 1 - m.schatten < 1e-3,
   };
   const tz = performance.now();
   haut.zeichnen(kam.aktiv, w, []);
@@ -3435,9 +3459,14 @@ function pinselEnde(): void {
 
 // ---------- Eingaben ----------
 
+/** A4: die Lage der Zeichenfläche im Fenster, gemerkt (neu nach jeder Größenänderung), statt sie bei jedem Mausereignis zu erfragen */
+let leinwandRand: { left: number; top: number } | null = null;
 function lageIm(e: PointerEvent | WheelEvent): [number, number] {
-  const r = leinwandLinien.getBoundingClientRect();
-  return [e.clientX - r.left, e.clientY - r.top];
+  if (!leinwandRand) {
+    const r = leinwandLinien.getBoundingClientRect();
+    leinwandRand = { left: r.left, top: r.top };
+  }
+  return [e.clientX - leinwandRand.left, e.clientY - leinwandRand.top];
 }
 
 /** Winkel einer Ansicht (Grad, Gier und Neigung), auf Wunsch von der Gegenseite */
@@ -3633,12 +3662,14 @@ function feldGewendet(): boolean {
 
 /** das Blatt, das sich beim Einrasten durch die Blase schiebt (beim Lösen zurück): von hinter der Form bis vor sie, mit `flach` */
 function schnittRechnen(): [number, number, number, number] | null {
+  schnittGanz = false;
   const e = raum;
   if (!e || zustand === 'blatt') return null;
   const a = ansicht !== 'raum' ? ansicht : ansichtFahrt?.vonAnsicht;
   if (!a || a === 'raum') return null;
   const p = glatt(flach);
   if (p < 1e-3) return null;
+  schnittGanz = p > 0.9999;
   const achse = ACHSE_VON[a];
   const mitte = [e.cx, e.cy, 0][achse]!;
   const c = kam.aktiv.position;
@@ -4224,30 +4255,40 @@ leinwandLinien.addEventListener('pointermove', (e) => {
       k.versatz[i * 3 + 2] = zug.start[i * 3 + 2]! + g * zug.zFaktor[i]! * dw.z * (zug.hinten ? -1 : 1);
     }
   } else {
-    const p = punktSuchen(x, y);
-    punktUnterZeiger = p ? p.i : -1;
-    teiler.ueber = amTeiler(x, y) ? 1 : 0;
-    // mit dem Werk: der Pinsel über seiner Haut (der Hauch zeigt Ort und Radius, ein Tropfen den Punkt, den er fassen würde)
-    let aufBlase = false;
-    pinselZiel = null;
-    zeigerPinsel = false;
-    if (werkGezeigt && bearbeitenAn && !bearbeiten.haengt && raumWerkzeug === 'auswahl' && !teiler.ueber && pinselHier(x, y)) {
-      const t = werkHautTreffen(x, y);
-      if (t) {
-        hauch.pos.copy(t.welt);
-        hauch.ziel = 1;
-        pinselZiel = pinselPunkt(t.werk);
-        aufBlase = true;
-        zeigerPinsel = true;
-      } else hauch.ziel = 0;
-    } else if (!werkGezeigt) aufBlase = !p && !teiler.ueber && hauchSuchen(x, y);
-    else hauch.ziel = 0;
-    wandUnterZeiger = aufBlase || p ? -1 : wandSuchen(x, y);
-    const eo = eckTropfenOrt();
-    leinwandLinien.classList.toggle('teiler', teiler.ueber > 0 || !!eckZug || (!!eo && Math.hypot(x - eo[0], y - eo[1]) < 14));
+    // was unter dem Zeiger liegt, klärt das nächste Bild (A4: einmal je Bild statt je Mausereignis)
+    schwebenOffen = true;
   }
   anstossen();
 });
+
+/**
+ * Was unter dem ruhenden Zeiger liegt: ein Punkt der Silhouette, der Teiler, die Haut des Werks für den Pinsel (der Hauch zeigt Ort
+ * und Radius, ein Tropfen den Punkt, den er fassen würde), eine Wand. A4 (17.11.): einmal je Bild; bis dahin bei jedem Mausereignis
+ * (mit einem Stift bis zu 240-mal je Sekunde, jedes Mal ein Strahl gegen alle Dreiecke der Haut, in der Pose samt Drehen der Haut).
+ */
+let schwebenOffen = false;
+function schweben(x: number, y: number): void {
+  const p = punktSuchen(x, y);
+  punktUnterZeiger = p ? p.i : -1;
+  teiler.ueber = amTeiler(x, y) ? 1 : 0;
+  let aufBlase = false;
+  pinselZiel = null;
+  zeigerPinsel = false;
+  if (werkGezeigt && bearbeitenAn && !bearbeiten.haengt && raumWerkzeug === 'auswahl' && !teiler.ueber && pinselHier(x, y)) {
+    const t = werkHautTreffen(x, y);
+    if (t) {
+      hauch.pos.copy(t.welt);
+      hauch.ziel = 1;
+      pinselZiel = pinselPunkt(t.werk);
+      aufBlase = true;
+      zeigerPinsel = true;
+    } else hauch.ziel = 0;
+  } else if (!werkGezeigt) aufBlase = !p && !teiler.ueber && hauchSuchen(x, y);
+  else hauch.ziel = 0;
+  wandUnterZeiger = aufBlase || p ? -1 : wandSuchen(x, y);
+  const eo = eckTropfenOrt();
+  leinwandLinien.classList.toggle('teiler', teiler.ueber > 0 || !!eckZug || (!!eo && Math.hypot(x - eo[0], y - eo[1]) < 14));
+}
 
 leinwandLinien.addEventListener('pointerdown', (e) => {
   if (e.button !== 0) return;

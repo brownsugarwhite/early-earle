@@ -16,11 +16,11 @@ unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.202
   [`docs/plans/2026-11-16-ozzy.md`](docs/plans/2026-11-16-ozzy.md) und [`…-ozzy-weiter.md`](docs/plans/2026-11-16-ozzy-weiter.md).
   **Stand, Bedienung, Aufbau, Offenes und Vorschläge: [`docs/look/ozzy/UEBERGABE.md`](docs/look/ozzy/UEBERGABE.md) (17.11. abends).**
   Gebaut: Stand 0, Phasen 1 bis 6, S1 bis S20; alle 24 Proben halten. Florian (17.11.): „Die offenen Abnahmen sind für mich fürs
-  erste ok.“ S21 (Kanten gleiten) ganz entfernt, missverstanden; ruht. **Seit 17.11. nachts liegt der Plan „Ozzy stabil
-  und schnell“ zur Freigabe:** [`docs/plans/2026-11-17-ozzy-stabil-schnell.md`](docs/plans/2026-11-17-ozzy-stabil-schnell.md)
-  (Etappen A bis F: Tempo, glatte Seifenhaut, Zeiger, Wenden, Wireframe, P, Gleiten, Flächen, halbe Haut mit Spiegel-Schalter;
-  Maul, Posen und Teile danach; gebaut ist davon nichts). Seine Sitzung ist auch die des Kerns und darf ihn ändern. Es bleibt:
-  kein Unterschied zwischen seinen Kurven und dem Modell.
+  erste ok.“ S21 (Kanten gleiten) ganz entfernt, missverstanden; ruht. **Es gilt der Plan „Ozzy stabil und schnell“** (freigegeben
+  17.11.): [`docs/plans/2026-11-17-ozzy-stabil-schnell.md`](docs/plans/2026-11-17-ozzy-stabil-schnell.md), Etappen A bis F (Tempo,
+  Seifenhaut, Zeiger, Wenden, Wireframe, P, Gleiten, Flächen, halbe Haut; der Spiegel-Schalter ruht, bis Florian ihn beschreibt;
+  Maul, Posen, Teile danach). Was gebaut ist, steht dort je Schritt; Stand: Etappe A bis auf Reste. Die Sitzung ist auch die des
+  Kerns und darf ihn ändern. Es bleibt: kein Unterschied zwischen seinen Kurven und dem Modell.
 - **Der Kern** („Kurven als Wahrheit“, seit 05.11.): Linien (Loops mit Bézier-Punkten und Griffen, Kreuzungen, Kante an/aus) sind
   die Wahrheit; darunter ein dichtes Dreiecksnetz, dessen Haut aus den Linien gerechnet wird; gespiegelt; Maul; Fressen-Pose.
   Rechenkern `packages/shape/src/dicht/` und `loeser/`. Das alte Fenster `kurven.html?gewichte=geometrie` (`src/form/kurven.ts`)

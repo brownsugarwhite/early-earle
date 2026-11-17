@@ -54,6 +54,16 @@ const unterschied = (A, B) => {
   return m;
 };
 
+/**
+ * Der Zug der Probe, in Ozzy und im Prüffenster gleich: 20 Schritte in rascher Folge (`SCHRITT_MS`), dann so lange halten
+ * (`HALTEN_MS`), bis das Verfeinern aus dem Hintergrund eingewechselt ist (gemessen am 17.11.: rund 1,5 s nach dem Drücken).
+ * Grund (17.11., gefunden, als Ozzy mit A1 und A3 schneller wurde): Das Einwechseln setzt den Zug neu auf, mit neuen Gewichten des
+ * Einflusses O. Kommt es mitten in der Bewegung, liegen die Nachbarpunkte danach woanders, als wenn es nach der Bewegung kommt (an
+ * „teat firefish“: 1,4 Einheiten bei einem Zug um 119). Mit 30 ms je Schritt und 300 ms Halten traf es in Ozzy und im Prüffenster
+ * verschiedene Stellen der Bewegung. So verglichen stimmen beide auf 1e-5 überein.
+ */
+const HALTEN_MS = 2200;
+const SCHRITT_MS = Number(process.env.SCHRITT_MS ?? 8);
 const oz = await neueSeite();
 const O = (f, ...a) => oz.evaluate(([f2, a2]) => window.__ozzy[f2](...a2), [f, a]);
 const ruhigO = async () => {
@@ -93,9 +103,10 @@ async function pinselProbe(name, mitPruefung) {
   await oz.waitForTimeout(80);
   for (let k = 1; k <= 20; k++) {
     await oz.mouse.move(x, y - k);
-    await oz.waitForTimeout(30);
+    await oz.waitForTimeout(SCHRITT_MS);
   }
-  await oz.waitForTimeout(300);
+  // halten, bis das Verfeinern aus dem Hintergrund eingewechselt ist (siehe `HALTEN_MS`)
+  await oz.waitForTimeout(HALTEN_MS);
   const imZug = await O('pinsel');
   if (ordner) await oz.screenshot({ path: `${ordner}/ozzy-pinsel-${name}-zug.png` });
   await oz.mouse.up();
@@ -193,14 +204,21 @@ if (v) {
   await pf.mouse.down();
   for (let k = 1; k <= 20; k++) {
     await pf.mouse.move(s0.x + ((X1 - X0) * sx * k) / 20, s0.y + ((Y1 - Y0) * sy * k) / 20);
-    await pf.waitForTimeout(30);
+    await pf.waitForTimeout(SCHRITT_MS);
   }
-  await pf.waitForTimeout(300);
+  await pf.waitForTimeout(HALTEN_MS);
   await pf.mouse.up();
   await ruhigP();
   const P = (await K('loops')).map((l) => ({ id: l.id, punkte: l.punkte.map((p) => ({ ref: p.ref })) }));
   const umP = await K('umgeschlagen');
   const d4 = unterschied(v.Ln, P);
+  if (d4 > 0.01 && Number.isFinite(d4)) {
+    // wo die Linien auseinanderliegen: die vier größten Unterschiede (Loop.Punkt), dazu der gezogene Punkt
+    const D = [];
+    v.Ln.forEach((l, k) => l.punkte.forEach((q, i) => D.push({ wo: `${l.id}.${i}`, d: Math.hypot(q.ref.x - P[k].punkte[i].ref.x, q.ref.y - P[k].punkte[i].ref.y, q.ref.z - P[k].punkte[i].ref.z), o: q.ref, p: P[k].punkte[i].ref })));
+    D.sort((a2, b2) => b2.d - a2.d);
+    console.log(`     gezogen ${v.id}.${v.i}${v.m ? ' (Spiegelbild)' : ''} im Blatt ${v.a}: ${D.slice(0, 4).map((e) => `${e.wo} um ${z2(e.d)} (Ozzy ${z2(e.o.x)}/${z2(e.o.y)}/${z2(e.o.z)}, Prüffenster ${z2(e.p.x)}/${z2(e.p.y)}/${z2(e.p.z)})`).join(' · ')}`);
+  }
   ok(`${NAME} 4 derselbe Zug im Prüffenster: dieselben Linien, gleich viele umgeschlagene Dreiecke`, d4 <= 0.01 && umP === v.umO, `größter Unterschied ${ze(d4)}; umgeschlagen Ozzy ${v.umO}, Prüffenster ${umP}`);
 }
 ok('5 keine Fehler in der Konsole', fehler.length === 0, fehler.slice(0, 3).join(' | '));

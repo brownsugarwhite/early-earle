@@ -144,6 +144,48 @@ float hintenBei(vec2 p) {
 }
 `;
 
+/**
+ * Das Rauschen des Flusses (Gradientenrauschen in drei Richtungen: Lage im Blatt und Zeit) und der Fluss selbst, wie ihn die Dicke
+ * der Haut braucht. A3 (17.11.): Der Fluss hängt nur an der Lage im Blatt, der Zeit und dem Wind; er wird einmal je Bild in eine
+ * kleine Textur gerechnet (`RAUSCH_FRAGMENT`) statt in jedem der vier Durchgänge für jeden Bildpunkt (gemessen: 5 bis 9 ms je Bild).
+ */
+const RAUSCH_GLSL = /* glsl */ `
+vec3 hash3(vec3 p) {
+  p = vec3(dot(p, vec3(127.1, 311.7, 74.7)), dot(p, vec3(269.5, 183.3, 246.1)), dot(p, vec3(113.5, 271.9, 124.6)));
+  return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
+}
+float rauschen(vec3 p) {
+  vec3 i = floor(p);
+  vec3 f = fract(p);
+  vec3 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(dot(hash3(i), f), dot(hash3(i + vec3(1.0, 0.0, 0.0)), f - vec3(1.0, 0.0, 0.0)), u.x),
+                 mix(dot(hash3(i + vec3(0.0, 1.0, 0.0)), f - vec3(0.0, 1.0, 0.0)), dot(hash3(i + vec3(1.0, 1.0, 0.0)), f - vec3(1.0, 1.0, 0.0)), u.x), u.y),
+             mix(mix(dot(hash3(i + vec3(0.0, 0.0, 1.0)), f - vec3(0.0, 0.0, 1.0)), dot(hash3(i + vec3(1.0, 0.0, 1.0)), f - vec3(1.0, 0.0, 1.0)), u.x),
+                 mix(dot(hash3(i + vec3(0.0, 1.0, 1.0)), f - vec3(0.0, 1.0, 1.0)), dot(hash3(i + vec3(1.0, 1.0, 1.0)), f - vec3(1.0, 1.0, 1.0)), u.x), u.y), u.z);
+}
+// der Fluss an einer Lage im Blatt (−1 … 1 um die Form), mit Wind und Zeit
+float flussBei(vec2 blatt, vec2 wind, float zeit) {
+  vec2 p = blatt * 1.55 + wind;
+  float t = zeit * 0.075;
+  vec2 w = vec2(rauschen(vec3(p * 0.85, t)), rauschen(vec3(p * 0.85 + 4.7, t + 2.3)));
+  return 0.62 * rauschen(vec3(p * 1.45 + w * 1.5, t * 1.4)) + 0.26 * rauschen(vec3(p * 3.3 + w * 0.9, t * 2.1));
+}
+`;
+/** halbe Breite des Fensters der Fluss-Textur im Blatt (die Form liegt in −1 … 1) und ihre Kantenlänge in Bildpunkten */
+const RAUSCH_HALB = 1.5;
+const RAUSCH_PUNKTE = 384;
+const RAUSCH_FRAGMENT = /* glsl */ `
+precision highp float;
+uniform float uZeit;
+uniform vec2 uWind;
+uniform float uRauschHalb;
+varying vec2 vUv;
+${RAUSCH_GLSL}
+void main() {
+  gl_FragColor = vec4(flussBei((vUv * 2.0 - 1.0) * uRauschHalb, uWind, uZeit), 0.0, 0.0, 1.0);
+}
+`;
+
 const VERTEX = /* glsl */ `
 attribute float aHoehe;
 attribute float aSeite;
@@ -191,6 +233,9 @@ uniform float uSicht;
 uniform int uRahmen;
 uniform float uSchatten;
 uniform vec3 uSchattenFarbe;
+uniform sampler2D uRausch;
+uniform float uRauschHalb;
+uniform int uRauschAn;
 varying float vSicht;
 varying vec3 vPos;
 varying vec3 vNormal;
@@ -206,26 +251,14 @@ float nachtHier() {
   return hintenBei(vec2(gl_FragCoord.x, uKanteHoehe - gl_FragCoord.y));
 }
 
-vec3 hash3(vec3 p) {
-  p = vec3(dot(p, vec3(127.1, 311.7, 74.7)), dot(p, vec3(269.5, 183.3, 246.1)), dot(p, vec3(113.5, 271.9, 124.6)));
-  return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
-}
-float rauschen(vec3 p) {
-  vec3 i = floor(p);
-  vec3 f = fract(p);
-  vec3 u = f * f * (3.0 - 2.0 * f);
-  return mix(mix(mix(dot(hash3(i), f), dot(hash3(i + vec3(1.0, 0.0, 0.0)), f - vec3(1.0, 0.0, 0.0)), u.x),
-                 mix(dot(hash3(i + vec3(0.0, 1.0, 0.0)), f - vec3(0.0, 1.0, 0.0)), dot(hash3(i + vec3(1.0, 1.0, 0.0)), f - vec3(1.0, 1.0, 0.0)), u.x), u.y),
-             mix(mix(dot(hash3(i + vec3(0.0, 0.0, 1.0)), f - vec3(0.0, 0.0, 1.0)), dot(hash3(i + vec3(1.0, 0.0, 1.0)), f - vec3(1.0, 0.0, 1.0)), u.x),
-                 mix(dot(hash3(i + vec3(0.0, 1.0, 1.0)), f - vec3(0.0, 1.0, 1.0)), dot(hash3(i + vec3(1.0, 1.0, 1.0)), f - vec3(1.0, 1.0, 1.0)), u.x), u.y), u.z);
-}
-
+${RAUSCH_GLSL}
 // Dicke der Haut hier (nm): Fluss (Marangoni), oben dünner, gedehnt dünner, der Zeiger haucht sie an
 float dickeHier(out float hauch) {
-  vec2 p = vBlatt * 1.55 + uWind;
-  float t = uZeit * 0.075;
-  vec2 w = vec2(rauschen(vec3(p * 0.85, t)), rauschen(vec3(p * 0.85 + 4.7, t + 2.3)));
-  float n = 0.62 * rauschen(vec3(p * 1.45 + w * 1.5, t * 1.4)) + 0.26 * rauschen(vec3(p * 3.3 + w * 0.9, t * 2.1));
+  // der Fluss: im Fenster der Textur aus ihr (einmal je Bild gerechnet), außerhalb (weit gezogene Formen) wie in ihr gerechnet
+  float n;
+  vec2 q = vBlatt / uRauschHalb;
+  if (uRauschAn == 1 && max(abs(q.x), abs(q.y)) < 0.97) n = texture2D(uRausch, q * 0.5 + 0.5).r;
+  else n = flussBei(vBlatt, uWind, uZeit);
   float d = uDicke * (1.0 + 0.62 * n);
   d *= mix(1.22, 0.74, smoothstep(-1.0, 1.0, vBlatt.y));
   // gedehnt dünner, gestaucht dicker, beides begrenzt (sonst wird stark Gedehntes farblos weiß und stark Gestauchtes blass)
@@ -477,6 +510,11 @@ export interface HautWerte {
   kanteFarbe?: Color;
   /** Ozzy: ein Blatt in der Blase (Einrasten): Die Haut bleibt nur, wo x · nx + y · ny + z · nz ≥ w (Welt); fehlt: ganz */
   schnitt?: [number, number, number, number] | null;
+  /**
+   * Ozzy (A3): Von der Haut ist in diesem Bild nichts zu sehen (das Blatt hat sie ganz weggeschnitten, der Rahmen ist weg). Dann
+   * nur der Grund (Papier und Rückseite), direkt ins Bild, ohne das Ziel der Seifenhaut (gemessen: 6,5 ms je Bild für nichts).
+   */
+  leer?: boolean;
 }
 
 export const PAPIER = new Color('#ffffff');
@@ -532,6 +570,8 @@ export class Haut {
   private geoFremd: BufferGeometry | null = null;
   /** weiche Schatten an den Wänden des Würfels */
   readonly schatten = new WandSchatten();
+  /** A3: der Fluss der Dicke als Textur (einmal je Bild; neu nur, wenn sich Zeit oder Wind geändert haben) */
+  private rausch: { ziel: WebGLRenderTarget; szene: Scene; material: ShaderMaterial; zeit: number; wx: number; wy: number };
 
   constructor(renderer: WebGLRenderer) {
     this.renderer = renderer;
@@ -567,6 +607,24 @@ export class Haut {
     const sg = new Scene();
     sg.add(new Mesh(quad, grundMaterial));
     this.hintenGrund = { szene: sg, material: grundMaterial };
+    const rauschMaterial = new ShaderMaterial({
+      vertexShader: ENDE_VERTEX,
+      fragmentShader: RAUSCH_FRAGMENT,
+      uniforms: { uZeit: { value: 0 }, uWind: { value: new Vector2() }, uRauschHalb: { value: RAUSCH_HALB } },
+      depthTest: false,
+      depthWrite: false,
+      blending: NoBlending,
+    });
+    const sr = new Scene();
+    sr.add(new Mesh(quad, rauschMaterial));
+    this.rausch = {
+      ziel: new WebGLRenderTarget(RAUSCH_PUNKTE, RAUSCH_PUNKTE, { type: HalfFloatType, depthBuffer: false, minFilter: LinearFilter, magFilter: LinearFilter }),
+      szene: sr,
+      material: rauschMaterial,
+      zeit: NaN,
+      wx: NaN,
+      wy: NaN,
+    };
     this.mats = this.durchgaenge(0);
     this.matsRahmen = this.durchgaenge(1);
     this.szene.add(this.schatten.gruppe);
@@ -601,6 +659,9 @@ export class Haut {
           uRahmen: { value: rahmen },
           uSchatten: { value: 0 },
           uSchattenFarbe: { value: new Color(0.9, 0.9, 0.9) },
+          uRausch: { value: this.rausch.ziel.texture },
+          uRauschHalb: { value: RAUSCH_HALB },
+          uRauschAn: { value: 1 },
         },
         depthWrite: false,
         depthTest: true,
@@ -721,6 +782,7 @@ export class Haut {
     r.render(this.szene, kamera);
     r.setRenderTarget(null);
     r.compile(this.ende.szene, this.ende.kamera);
+    r.compile(this.rausch.szene, this.ende.kamera);
     this.netze.forEach((n, i) => (n.visible = sichtbar[i]!));
   }
 
@@ -806,10 +868,37 @@ export class Haut {
       k++;
     }
     void k;
+    // der Fluss der Dicke für dieses Bild (alle Durchgänge lesen ihn)
+    const R = this.rausch;
+    if (R.zeit !== w.zeit || R.wx !== w.wind.x || R.wy !== w.wind.y) {
+      R.zeit = w.zeit;
+      R.wx = w.wind.x;
+      R.wy = w.wind.y;
+      R.material.uniforms.uZeit!.value = w.zeit;
+      (R.material.uniforms.uWind!.value as Vector2).copy(w.wind);
+      r.setRenderTarget(R.ziel);
+      r.render(R.szene, this.ende.kamera);
+    }
     if (w.wuerfel) this.schatten.aktualisieren(r, w.wuerfel, w.waende, w.weich, w.schattenFarbe);
     else this.schatten.gruppe.visible = false;
     this.schatten.gruppe.visible = !!w.wuerfel;
     const grund = (w.nacht ? NACHT : (w.papier ?? PAPIER)).clone();
+    if (w.leer) {
+      // nur der Grund: Papier, und auf den Flächen der Rückseite ihre Farbe (hier schon für den Bildschirm kodiert)
+      r.setRenderTarget(null);
+      r.setClearColor(grund, 1);
+      r.clear(true, true, false);
+      if (w.dunkel && w.dunkel.zahl > 0 && !w.nacht) {
+        const u = this.hintenGrund.material.uniforms;
+        hintenSetzen(u, w.dunkel, this.ziel.height);
+        (u.uFarbe!.value as Color).copy(w.kanteFarbe ?? NACHT).convertLinearToSRGB();
+        const auto = r.autoClear;
+        r.autoClear = false;
+        r.render(this.hintenGrund.szene, this.ende.kamera);
+        r.autoClear = auto;
+      }
+      return;
+    }
     r.setRenderTarget(this.ziel);
     r.setClearColor(grund, 1);
     r.clear(true, true, false);
