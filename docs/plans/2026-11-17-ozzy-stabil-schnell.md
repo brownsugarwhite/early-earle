@@ -359,6 +359,10 @@ Meldungen, die mit ihrem Anlass verschwinden.
 
 ### Etappe C: Werkzeuge mit dem Kern
 
+**Auftrag (Florian, 17.11., 23 Uhr 30): „ok dann c. […] Du kannst selbstständig bis einschließlich E Tempo II weitermachen. Fragen an
+mich und details die dir auffallen und nicht gleich behoben/entschieden werden müssen kommen in den feinschliff.“** Der Rest von B4
+kommt damit nach dem Plan; die Liste für den Feinschliff ist [`2026-11-17-ozzy-feinschliff.md`](2026-11-17-ozzy-feinschliff.md).
+
 Ab hier ändert die Sitzung auch den Rechenkern (sie ist die Sitzung des Kerns). Jede Änderung mit Probe im Kern, im Prüffenster
 `kurven.html` und in Ozzy; der Schnitt `kurven.ts` → `werk.ts` bleibt wiederholbar.
 
