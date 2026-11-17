@@ -50,7 +50,9 @@ try {
   };
   /** Menü auf, Feld „Sichern“ auf (es belegt sich dann mit dem Namen der Form vor), Name hinein */
   const feld = async (n) => {
-    if (await s.locator('#regler').isHidden()) await s.click('#marke');
+    // das Menü schließt sich als Tropfen (einen Augenblick): erst ganz zu, dann auf
+    await s.waitForFunction(() => document.getElementById('marke').getAttribute('aria-expanded') === 'true' || document.getElementById('regler').hidden);
+    if ((await s.getAttribute('#marke', 'aria-expanded')) !== 'true') await s.click('#marke');
     if (!(await s.locator('#sichern').evaluate((d) => d.open))) await s.click('#sichern > summary');
     await s.waitForTimeout(250);
     await s.fill('#sichern-name', n);

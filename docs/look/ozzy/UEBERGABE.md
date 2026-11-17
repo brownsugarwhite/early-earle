@@ -289,8 +289,9 @@ dabei noch (eigener Schritt, wenn er es will). Idee 8 gebaut: der Zeiger in Form
 `zeigerGestaltSchritt`; in `fluessig.ts` der Umriss `zeigerUmriss` mit `vieleck` im Shader, 64 Punkte); Film `scripts/ozzy/zeiger-film.mjs`.
 Idee 7 gebaut: Meldungen tropfen und verdunsten (`hinweisSetzen`, CSS); Idee 5 gebaut: Kante wie Tusche (`tuscheMerken`,
 `tuscheFliessen`, nur die Breiten der Anzeige); Filme `scripts/ozzy/meldung-film.mjs`, `tusche-film.mjs` (mit Messung). Nächste Ideen:
-Idee 4 gebaut: neue Kreuzungen verschmelzen (`kreuzungenNeu`, `verschmelzenTropfen`; `werkBlatt.neueForm` beim Laden). Offen: 1 (Menüs als
-Tropfen), 2 (Regler als Tropfen), 9 (Ordnungslinien), 10 (Ansichts-Tropfen). `?fluss=0` schaltet alle Bewegungen der Anzeige aus S13 ab. Nebenbei: Der Schalter „Linie an der Spiegelkante“
+Idee 4 gebaut: neue Kreuzungen verschmelzen (`kreuzungenNeu`, `verschmelzenTropfen`; `werkBlatt.neueForm` beim Laden). Idee 1 gebaut:
+Menü, „Maul“ und „Fressen“ als Tropfen (`reglerZeigen` mit `reglerOffen`, `fressenQuellen`; Proben prüfen `#marke[aria-expanded]` statt
+`#regler[hidden]`, das Menü schließt sich einen Augenblick lang). Offen: 2 (Regler als Tropfen), 9 (Ordnungslinien), 10 (Ansichts-Tropfen). `?fluss=0` schaltet alle Bewegungen der Anzeige aus S13 ab. Nebenbei: Der Schalter „Linie an der Spiegelkante“
 stand im Raster der Regler zerdrückt (S9), jetzt in einer Zeile.
 
 **Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**

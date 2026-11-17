@@ -3311,7 +3311,7 @@ window.addEventListener('keydown', (e) => {
   const k = e.key;
   if ((e.metaKey || e.ctrlKey) && k === ',') {
     e.preventDefault();
-    reglerZeigen(regler.hidden);
+    reglerZeigen(!reglerOffen);
     return;
   }
   if ((e.metaKey || e.ctrlKey) && k.toLowerCase() === 'z') {
@@ -3477,11 +3477,38 @@ mitLinieSchalter.addEventListener('change', () => {
 
 const regler = $<HTMLElement>('regler');
 const marke = $<HTMLButtonElement>('marke');
+/** S13 (liquid drop, Idee 1): Das Menü wächst als Tropfen aus „Ozzy“ und fließt beim Schließen dorthin zurück (CSS `#regler`, `.zu`) */
+let reglerOffen = false;
 function reglerZeigen(an: boolean): void {
-  regler.hidden = !an;
+  reglerOffen = an;
+  if (an) {
+    regler.classList.remove('zu');
+    regler.hidden = false;
+  } else if (!regler.hidden && !regler.classList.contains('zu')) {
+    regler.classList.add('zu');
+    const weg = (): void => {
+      if (reglerOffen || !regler.classList.contains('zu')) return;
+      // läuft die Bewegung noch (oder steht sie still, wie im Film), später noch einmal
+      if (regler.getAnimations().some((b) => b.playState !== 'finished')) {
+        setTimeout(weg, 200);
+        return;
+      }
+      regler.hidden = true;
+      regler.classList.remove('zu');
+    };
+    // nur das Ende der eigenen Bewegung zählt (die Teile im Menü melden ihre auch)
+    const ende = (e: AnimationEvent): void => {
+      if (e.target !== regler) return;
+      regler.removeEventListener('animationend', ende);
+      weg();
+    };
+    regler.addEventListener('animationend', ende);
+    // falls das Ende der Bewegung nicht gemeldet wird (Fenster im Hintergrund)
+    setTimeout(weg, 450);
+  }
   marke.setAttribute('aria-expanded', String(an));
 }
-marke.addEventListener('click', () => reglerZeigen(regler.hidden));
+marke.addEventListener('click', () => reglerZeigen(!reglerOffen));
 
 // Laden (Phase 5.1): die gesicherten Formen der Ablage, beim Aufklappen frisch gelesen
 const ladenListe = $<HTMLDivElement>('laden-liste');
@@ -3621,7 +3648,7 @@ function sichernKurz(): void {
     meldungZeigen('Sichern: erst eine Form aufblasen');
     return;
   }
-  if (sichernDetails.open && !regler.hidden) sichernLos();
+  if (sichernDetails.open && reglerOffen) sichernLos();
   else if (werk.G.ablageName) void sichernUnter(werk.G.ablageName);
   else sichernOeffnen();
 }
@@ -3765,14 +3792,17 @@ function maulUiZeigen(): void {
   }
   const o = ort as { x: number; y: number } | null;
   maulTropfen.hidden = !o;
+  if (o) maulLetzterOrt = { x: o.x, y: o.y + 26 };
   if (o && l) {
     const text = maulHart(l) ? 'Maul' : 'Maul formen';
     if (maulTropfen.textContent !== text) maulTropfen.textContent = text;
     maulTropfen.style.left = `${o.x.toFixed(1)}px`;
     maulTropfen.style.top = `${(o.y + 14).toFixed(1)}px`;
   }
-  // oben rechts „Fressen“, sobald es ein Maul gibt
+  // oben rechts „Fressen“, sobald es ein Maul gibt; es quillt aus dem Tropfen „Maul“ (S13, Idee 1)
+  const fressenWar = fressen.hidden;
   fressen.hidden = !(an && werk.G.maul);
+  if (fressenWar && !fressen.hidden) fressenQuellen();
   fressenKnopf.setAttribute('aria-pressed', String(werk.grund !== null));
   if (!vorRegler) {
     fressenMaul.value = String(werk.pose.kiefer);
@@ -3780,6 +3810,26 @@ function maulUiZeigen(): void {
   }
   fressenMaulZahl.textContent = `${Number(fressenMaul.value).toFixed(0)}°`;
   fressenKopfZahl.textContent = `${Number(fressenKopf.value).toFixed(0)}°`;
+}
+
+/** wo der Tropfen „Maul“ zuletzt hing (Mitte, CSS-Pixel): Dort quillt „Fressen“ heraus */
+let maulLetzterOrt: { x: number; y: number } | null = null;
+/** „Fressen“ fliegt aus dem Tropfen „Maul“ an seinen Platz oben rechts und wird dabei vom Tropfen zur Tafel */
+function fressenQuellen(): void {
+  const r = fressen.getBoundingClientRect();
+  const mx = r.left + r.width / 2;
+  const my = r.top + r.height / 2;
+  const von = maulLetzterOrt ?? { x: mx, y: r.top };
+  const dx = von.x - mx;
+  const dy = von.y - my;
+  fressen.animate(
+    [
+      { transform: `translate(${dx}px, ${dy}px) scale(0.12, 0.2)`, opacity: 0.2, borderRadius: '999px' },
+      { transform: `translate(${dx * 0.12}px, ${dy * 0.12}px) scale(1.04, 0.96)`, opacity: 1, borderRadius: '18px', offset: 0.7 },
+      { transform: 'none', opacity: 1, borderRadius: '14px' },
+    ],
+    { duration: 560, easing: 'cubic-bezier(0.2, 0.8, 0.25, 1)' },
+  );
 }
 
 maulTropfen.addEventListener('click', () => {

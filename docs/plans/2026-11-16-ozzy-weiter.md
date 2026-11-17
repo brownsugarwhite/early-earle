@@ -309,6 +309,11 @@ Jede Idee nur in der Anzeige; am Werk ändert sich nichts.
   9 neue Kreuzungen, 27 Tropfen zugleich. Probe zu S8 hält.
 - **1, Menüs als Tropfen:** Das Menü wächst als Tropfen aus dem Wort „Ozzy“ und fließt beim Schließen dorthin zurück; der Knopf
   „Maul“ quillt aus der gewählten Linie, „Fressen“ aus dem Knopf „Maul“. *Probe:* Film (Menü auf und zu, Maul und Fressen).
+  *Gebaut:* Menü (`reglerZeigen`, CSS `regler-auf`/`regler-zu`: ein runder Ausschnitt wächst aus der Mitte von „Ozzy“ und schrumpft
+  dorthin zurück, mit leichtem Nachfedern); Knopf „Maul“ (`maul-quellen`, wächst aus dem Punkt der Linie darüber; nebenbei behoben: die
+  alte Bewegung schob ihn am Ende ein Stück zur Seite); „Fressen“ (`fressenQuellen`, fliegt als Tropfen von dort, wo „Maul“ hing, an
+  seinen Platz und wird zur Tafel). Film [`2026-11-17-menue.mp4`](../progress/ozzy/2026-11-17-menue.mp4) (zweifach langsamer; für das
+  Maul im Film die Linie erst mit K hart gemacht). Probe Sichern hält.
 
 Nicht in Ozzy: Pinsel Aufblasen, Absaugen, Glätten (Kern-Sitzung), das Maul-System (eigene Sitzung), iPhone.
 

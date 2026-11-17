@@ -194,7 +194,20 @@ body.wende-an #hinweis {
   border: 0.5px solid var(--tinte);
   background: color-mix(in srgb, var(--papier) 94%, transparent);
   padding: 2px 11px 3px;
-  animation: tropfen-auf 420ms var(--feder);
+  /* S13 (liquid drop, Idee 1): quillt aus dem Punkt der Linie darüber (14 px über dem Knopf), zentriert wie sonst */
+  transform-origin: 50% -14px;
+  animation: maul-quellen 460ms var(--feder);
+}
+@keyframes maul-quellen {
+  from {
+    transform: translate(-50%, 0) scale(0.12, 0.3);
+    opacity: 0;
+    border-radius: 50%;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
 }
 .maul-tropfen[hidden],
 .fressen[hidden] {
@@ -309,11 +322,41 @@ body.info #info {
   padding: 10px 14px 12px;
   box-sizing: border-box;
   z-index: 4;
-  transform-origin: 20px 0;
-  animation: tropfen-auf 460ms var(--feder);
+  /* S13 (liquid drop, Idee 1): wächst als Tropfen aus dem Wort „Ozzy“ (seine Mitte liegt 30 px rechts, 29 px über dem Menü) und fließt
+     beim Schließen dorthin zurück */
+  transform-origin: 30px -29px;
+  animation: regler-auf 520ms var(--feder);
 }
 #regler[hidden] {
   display: none;
+}
+#regler.zu {
+  animation: regler-zu 300ms cubic-bezier(0.55, 0, 0.8, 0.3) both;
+  pointer-events: none;
+}
+@keyframes regler-auf {
+  from {
+    clip-path: circle(0px at 30px -29px);
+    transform: scale(0.94, 0.9);
+    opacity: 0.6;
+  }
+  to {
+    clip-path: circle(160% at 30px -29px);
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes regler-zu {
+  from {
+    clip-path: circle(160% at 30px -29px);
+    transform: none;
+    opacity: 1;
+  }
+  to {
+    clip-path: circle(0px at 30px -29px);
+    transform: scale(0.94, 0.9);
+    opacity: 0.4;
+  }
 }
 .regler-kopf {
   display: flex;
