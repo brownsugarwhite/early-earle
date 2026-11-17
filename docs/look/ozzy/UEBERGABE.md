@@ -1,419 +1,294 @@
-# Übergabe: Ozzy (Stand 17.11.2026)
+# Übergabe: Ozzy (Stand 17.11.2026, abends)
 
-Ozzy ist der Editor für Florians Formen aus einem Guss (Florian, 16.11.: Name „Ozzy“, Designsystem „liquid drop“). Plan mit seinem
-Auftrag wörtlich, Bestandsaufnahme, acht Grundsätzen und acht Phasen: [`docs/plans/2026-11-16-ozzy.md`](../../plans/2026-11-16-ozzy.md).
-**Florians Ziel für den 17.11.:** mit einer neuen Sitzung auf dem neuen Design und dem neuesten Stand weiterarbeiten. Es gibt keine
-parallele Arbeit an `kurven.ts` mehr; auch die offenen Punkte des Kerns werden hier, im Zweig `claude/ozzy`, weitergeführt.
+Ozzy ist der Editor für Florians Formen aus einem Guss (Florian, 16.11.: Name „Ozzy“, Designsystem „liquid drop“): Man zeichnet eine
+Silhouette, bläst sie zu einer Form auf und bearbeitet sie an ihren Linien, im Raum, in den eingerasteten Ansichten und in den Vier
+Ansichten. Gerechnet wird mit dem Kern von Sitzung 4, unverändert.
 
-## Wo was liegt
+**Stand:** Stand 0, Phasen 1 bis 6 und die Schritte S1 bis S20 sind gebaut. Florian (17.11.): „Die offenen Abnahmen sind für mich fürs
+erste ok.“ S21 (Kanten gleiten) wurde ganz wieder entfernt (missverstanden; er: „lassen wir es erstmal so. Es gefällt mir gut.“). Alle
+24 Proben von Ozzy, die Typen, Lint und die Tests des Fensters halten (17.11. abends). Diese Übergabe ist neu geordnet; die gewachsene
+Fassung mit allen Messwerten und Zwischenständen liegt im Archiv:
+[`docs/verlauf/2026-11-17-ozzy-uebergabe-verlauf.md`](../../verlauf/2026-11-17-ozzy-uebergabe-verlauf.md).
 
-| Was | Ort |
+## 1. Einstieg
+
+| Was | Wo |
 | --- | --- |
-| Arbeitsbaum | `.claude/worktrees/ozzy`, Zweig `claude/ozzy` (von `claude/form-bau`, dazu `claude/look-linien`, `claude/anfang`, der Bleistift-Kern aus `origin/claude/nice-lovelace-gxxpux`) |
-| Server | Eintrag `ozzy` in `.claude/launch.json` (auch uncommittet im Hauptordner, dort liest das Vorschauwerkzeug), Port 5205 |
-| Seite | `http://localhost:5205/ozzy.html` (`?info=1` Takt, `?bild=1` ohne Bedienung, `?film=1` ohne Bedienung mit Zeiger) |
-| Code | `apps/editor/src/ozzy/`: `main.ts` (Ablauf, Raum, Kamera, Wände, Ansichten, Vier Ansichten, Eingaben, Feinregler, Test-Haken `__ozzy`), `blatt.ts` (Blatt: P, Freihand, Formen in einem Netz), `leiste.ts` (Werkzeugleiste mit Tropfen), `kamera.ts` (Perspektive als Zahl), `kapseln.ts` (Puffer der flüssigen Anzeige), `regler.ts` (Feinregler), `ozzy.css` |
-| Studien (benutzt, nicht kopiert) | `src/linien/` (Anzeige `fluessig.ts`, `verhalten.ts`, `stift.ts`, `netz.ts` …), `src/anfang/` (Blase `form.ts`, Seifenhaut `haut.ts`, Ablauf `aufblasen.ts`, Regler) |
-| Kern | `packages/shape/src/dicht/`, `loeser/` (Sitzung 4, unverändert), `zeichnen/` (Bleistift: Faden, Nachlauf, Anpassen, Formen) |
-| Altes Fenster des Kerns | `kurven.html?gewichte=geometrie` im selben Server (5205): voller Stand von Sitzung 4 mit Maul und Pose |
-| Vorlagen, Bilder | `docs/look/ozzy/` (Florians Bleistift-Einstellung), `docs/progress/ozzy/` (Skizze des Plans) |
+| Arbeitsbaum, Zweig | `.claude/worktrees/ozzy`, Zweig `claude/ozzy`. Nach jedem Commit pushen und den Hauptordner (`claude/editor-grundlayout`) per Fast-Forward nachziehen und pushen. `main` bleibt unberührt. |
+| Server | Eintrag `ozzy` in `.claude/launch.json`, Port 5205, mit `--host` im WLAN erreichbar (iPad: `http://<Adresse des Macs im WLAN>:5205/ozzy.html`, mit der Adresse, nicht mit `….local`) |
+| Seite | `http://localhost:5205/ozzy.html`; im selben Server das Prüffenster des Kerns `kurven.html?gewichte=geometrie` |
+| Plan | [`docs/plans/2026-11-16-ozzy.md`](../../plans/2026-11-16-ozzy.md) (Auftrag wörtlich, Grundsätze, Phasen 0 bis 7), [`docs/plans/2026-11-16-ozzy-weiter.md`](../../plans/2026-11-16-ozzy-weiter.md) (S1 bis S21, jeder Schritt mit Befund, Vorschlag, Probe, Gebaut und Florians Worten) |
+| Bilder, Filme | `docs/progress/ozzy/` (je Schritt vorher und nachher), seine Vorlagen in `docs/look/ozzy/` |
+| Seine Testformen | `wesen/`: „teat firefish“, „strange bird“, „test_kaputt“, „maul handgemacht test“ (beliebige Tests, kein Maßstab fürs Tempo) |
 
-## Stand 0 (16.11., gebaut und im Browser geprüft)
+**Florians Regeln für Ozzy** (gelten weiter):
+- „Hauptsache am Rechenkern wird nicht verändert […] daran nichts ändern oder optimieren“ (das macht die Kern-Sitzung), und „keinen
+  Unterschied zwischen meinen Kurven und dem Modell, wie es bei Sitzung 4 ist“. Ozzy benutzt die Rechnung, wie sie ist. Neue Handgriffe
+  im Werk nur mit seiner Zustimmung (bisher `zugGriffRaum`, S6b).
+- Die Reglerwerte bleiben die Grundwerte der Studien, bis er seine festlegt.
+- Look zuerst beweisen (Vergleichsbild oder Film, gleiche Ansicht, vorher und nachher), dann bauen. Je Schritt eine vorher festgelegte
+  Probe. Nie „bestanden“ ohne ihn. Keine Messreihen im Hintergrund, keine Agenten-Fächer ohne Rückfrage (Wochenlimit).
+- Nie unter seinem Fenster bauen (`.claude/worktrees/form-alt`, Port 5194).
+- S21 ruht: Gleiten der Wände oder Kanten nicht neu bauen und nicht wieder vorschlagen, bevor er beschrieben hat, was er meinte.
 
-- **Blatt:** „draw something“ in Lobster, darunter die Leiste: P · Freihand · Formen ▾ (Ellipse, Würfel) · Mülleimer. Unter dem
-  gewählten Werkzeug hängt ein Tropfen, der beim Wechsel mit einer Feder hinüberfließt und sich dabei dehnt; die Formen klappen als
-  Tropfen auf. Mit dem ersten Strich blasst der Gruß aus, die Leiste gleitet an den oberen Rand.
-- **P** ist das Werkzeug der Linien-Studie, unverändert (`Verhalten` mit `Stift2D`). **Freihand** wie im Zeichen-Fenster
-  (Glättung 100 %, Treue 4 px, Nachlauf; geprüft: ein Kreis wird ein Pfad mit 5 Ankern). **Ellipse, Würfel**: Ziehen, ⇧ gleich, ⌥
-  aus der Mitte (der Würfel ist vorerst sein Umriss von der Seite). Alles schreibt in dasselbe Netz; auf dem Blatt ist jede Linie
-  ein Umriss (1 px). Die Silhouette ist die größte geschlossene Linie.
-- **↩ bläst auf** mit dem Ablauf der Aufblas-Studie (Runde 5); der Rahmen fährt zur Rückwand und bleibt dort als Zeichnung der
-  Seite stehen, Front und Top erscheinen auf ihren Wänden. **Raum:** in der Mitte die Seifenblase, an den drei abgewandten Wänden
-  die Linien der Ansichten (keine Schatten), die drei Kanten der fernen Ecke.
-- **Kamera** (`kamera.ts`): Maßstab und Perspektive sind getrennt. Beim Einrasten (1, 3, 7, Drehen nahe einer Achse unter 9°)
-  bleibt der Maßstab genau gleich (geprüft: 0,665 vorher und nachher), am Ende ist die Kamera genau parallel (`OrthographicCamera`),
-  und die Linie der Seite liegt auf dem Umriss der Blase.
-- **Tab: Vier Ansichten** in Flucht: Seite oben links, Front oben rechts, Top unten links, Raum unten rechts. Ein Maßstab für die
-  drei flachen Felder, Spalten und Zeilen nach den Maßen der Form; die Felder zeigen nur Linien, das vierte nur die Blase. Zwei
-  Haarlinien, an ihrer Kreuzung ein Tropfen, der die Felder einstellt (Florians Abweichung bleibt, die Lage folgt weich der Form).
-  Beim Auf- und Zuklappen gleiten die Linien von ihren Wänden in die Felder.
-- **Bearbeiten (vorläufig):** Punkte der Silhouette ziehen (eingerastete Seite, Feld der Seite, Wand der Seite), die Blase folgt;
-  an der Blase ziehen (weiche Verformung der Studie). Alles andere kommt mit dem Werk.
-- **Feinregler** hinter dem Wort „Ozzy“ oben links (⌘,): 77 Regler in 18 Gruppen (Linien und Punkte, Freihand, Seifenhaut und
-  Aufblasen, Raum und Ansichten), Fassung der Haut (M), „Werte kopieren“, „Grundwerte“. Eigene Schlüssel im Browser
-  (`ozzy-…`), die Studien behalten ihre.
+Wer hier weiterarbeitet, liest diese Übergabe, dann den Plan „weiter“ (seine Worte je Schritt) und `apps/editor/CLAUDE.md` (Fallen des
+Kerns und des Werks).
 
-## Phase 1: das Werk (16.11. vormittags, gebaut)
+## 2. Was Ozzy kann (Bedienung)
 
-`apps/editor/src/form/kurven.ts` ist geteilt in **`werk.ts`** (Zustand und Handgriffe einer Form, Bildtakt `bildRechnen`, Hintergrund,
-Maul, Pose, Behalten; ohne DOM und ohne three.js) und die **Hülle `kurven.ts`** (three.js, SVG-Blätter, Knöpfe, Tasten, Zeiger,
-Startcode, Test-Haken `__kurven`). Verhaltensgleich: dieselben neun Fenster-Proben vorher und nachher (Tabelle unten).
+**Blatt:** „draw something“ in Lobster, darunter die Leiste mit Tropfen. P zeichnet Linien mit Punkten und Griffen (Werkzeug der
+Linien-Studie), N Freihand (Florians Bleistift-Einstellung), e Ellipse, E Würfel (⇧ gleich, ⌥ aus der Mitte), V oder Esc Auswahl, ⌫,
+⌘Z. Die größte geschlossene Linie ist die Silhouette; ↩ bläst sie auf (Ablauf der Aufblas-Studie), danach rechnet das Werk die Form
+(Phase 3, „Weg A“: die Form ist, was der Kern aus der Linie macht).
 
-**Wie es gebaut ist** (mit einem Werkzeug, das `kurven.ts` mit dem TypeScript-Compiler liest und jede Anweisung auf oberster Ebene
-zuordnet; keine Zeile von Hand umgeschrieben außer der Sperre der Eingaben beim Maul):
-- **Werk** ist jede Anweisung, die weder DOM noch three.js braucht; Daten bleiben im Werk, außer nur die Hülle braucht sie. Der Startcode
-  des Fensters bleibt in der Hülle (gleiche Reihenfolge wie vorher). Das Werk gibt alles nach außen (`export`).
-- **Haken** (`anzeige` im Werk, Typ `Anzeige`): Wo das Werk die Anzeige ruft, ruft es `anzeige.…` (`geometrieNeu`, `reglerZeigen`,
-  `allesZeigen`, `skala`, `ausschnittGeaendert`, `statusZeigen`, `eingabenSperren`, `hautZeigen`, `baenderZeigen`, `blattZeichnen`,
-  `glattInRuhe`, `rendern`). Die Hülle setzt sie gleich nach `skala` (`Object.assign(anzeige, …)`); vorher sind es leere Haken
-  (`skala` gibt 1).
-- **Geteilter Zustand `G`** (im Werk): 23 Größen, die Werk und Hülle beide setzen (Auswahl, Werkzeugmodus, Meldung, Einfluss O,
-  Radius, Zeichnung im Gang, die Stände des Hintergrunds, `maul`, `neuZeichnen` …). Überall `G.name` statt `name`.
-- **Achtung:** `allesZeigen` steht in der Hülle und tut dort auch Werk-Arbeit (ein gelöschtes Maul aufräumen, `eckenAuto`,
-  `vorrechnenPlanen`, `behaltenPlanen`). Wer das Werk ohne `kurven.ts` benutzt (Ozzy), muss diese vier Dinge in seinem
-  `anzeige.allesZeigen` auch tun, oder das Werk bekommt dafür eine eigene Funktion `geaendert()` (nächster kleiner Schritt).
+**Raum:** in der Mitte die Seifenblase (Haut des Werks), an den drei abgewandten Wänden die Zeichnungen von Seite, Front und Top, die
+Kanten der fernen Ecke. Ziehen ins Leere dreht überall (mit Schwung, rastet nahe einer der sechs Ansichten ein). 1 Seite, 3 Front, 7 Top,
+0 Raum (tippen bleibt, halten schaut kurz hin), ⇧ + 1/3/7 von hinten. Eingerastet dreht ⇧ + Ziehen das Blatt; über die Hälfte kommt die
+Rückseite hinter einer harten Kante (dunkel, Linien weiß), ⇧ + Doppelklick wendet zurück. Rad zoomt, Leertaste halten und ziehen schwenkt
+(kurz getippt bläst sie noch einmal auf), Pos1 passt ein. Esc geht zurück (Vier → Raum → Blatt), ⌫ ohne Auswahl lässt die Luft ab.
 
-**Belegt** ([`docs/progress/ozzy/2026-11-16-werk-proben.md`](../../progress/ozzy/2026-11-16-werk-proben.md)): Typen, Lint, die 24 Tests des Fensters; die neun
-Fenster-Proben vorher und nachher mit denselben Urteilen (die 2 umgeschlagenen Dreiecke einer ersten Abzweigungs-Probe vorher kamen in
-3 weiteren Läufen des alten Stands nicht wieder: Streuung der Uhr).
+**Vier Ansichten:** Tab faltet die Ecke als Kistennetz auf (Front oben links, Seite oben rechts, Top unter der Seite, Raum unten links).
+Steht die Kamera nicht vorn rechts oben, dreht der Raum erst dorthin (S16). Jedes Feld zoomt, schwenkt und wendet für sich (S17). Zwei
+Haarlinien mit einem Tropfen an der Kreuzung stellen die Felder ein; Doppelklick auf den Tropfen wie Tab. Den Tropfen an der Ecke einer
+eingerasteten Ansicht ins Bild ziehen öffnet die Vier Ansichten (S18), ebenso der Punkt an der Ecke der Kiste im Raum (S19); den Tropfen
+in eine Ecke ziehen rastet dort ein (Rückweg).
 
-## Florians Regel (16.11. vormittags)
+**Bearbeiten** (auf jeder Fläche: Wand, eingerastete Ansicht, Feld): Punkte, Linien und Richtungen ziehen; Doppelklick auf eine Richtung
+schaltet Knick und rund; ⌥ knickt (beim Drücken und beim Drehen); ⇧ beim Drehen kippt die Richtung aus der Ebene; L Lasso (⇧ dazu, ⌥ weg);
+K Kante; ⌫ löscht; ⌘A alle; ⌥ halten: Röntgen (Verdecktes greifbar, S14). P im Raum: eine Form auf der Fläche, eine Abzweigung von einer
+Linie, oder zwei Klicks im Leeren quer über die Form mit ↩ ein Loop rundum (vorher zeigt der Lichtring, wo er läuft, S15). N, e, E im Raum
+legen Freihand und Formen auf die Haut. Über der Blase zieht der Pinsel den nächsten Punkt einer Linie mit dem Einfluss O ([ und ]
+Radius). Ein gewählter Ring bekommt den Tropfen „Maul“; mit Maul steht oben rechts „Fressen“ (Pose mit Kiefer und Kopf).
 
-„Hauptsache am Rechenkern wird nicht verändert […] Der Kern ist noch nicht perfekt und das muss [Sitzung 4] machen, also daran nichts
-ändern oder optimieren.“ Und: „Ich will aber keinen Unterschied zwischen meinen Kurven und dem Modell, wie es bei Sitzung 4 ist.“
-Ozzy benutzt die Rechnung, wie sie ist (`packages/shape` und die Rechnung im Werk); was sie nicht kann, ist Arbeit für die
-Kern-Sitzung. Der Vorschlag „Formschicht“ (eine Schicht über der Haut aus den Linien) ist damit vom Tisch.
+**Menü „Ozzy“** (oben links, ⌘,): Laden (`wesen/`), Sichern (⌘S; ein fremder Name erst beim zweiten Druck), „Linie an der Spiegelkante“
+(Standard ohne), Feinregler (die Regler der Studien und von Ozzy in Gruppen, „Werte kopieren“, „Grundwerte“), Fassung der Seifenhaut (M).
 
-**Zur Frage, ob die Trennung nötig war:** `claude/ozzy` ist eine Abzweigung vom Stand der wartenden Sitzung 4 (`claude/form-bau`,
-14.11.); Design, Material und Animationen kommen in eigenen Dateien dazu (`src/ozzy/`, `src/linien/`, `src/anfang/`). Getrennt
-wurde nur `kurven.ts`, weil dort die Rechnung des Fensters (Stand, Züge, Hintergrund, Maul, Pose) mit der alten Bedienung verwoben
-war: Ozzy braucht genau diese Rechnung ohne die alte Bedienung, ohne Kopie (zwei Rechnungen liefen auseinander). Der Schnitt hat
-nichts umgeschrieben (neun Fenster-Proben gleich) und ist wiederholbar: `apps/editor/scripts/werk-schnitt/schnitt.mjs` (Anleitung im
-Kopf; geprüft, dass er aus dem alten `kurven.ts` genau `werk.ts` und `kurven.ts` von 5039cead macht). Arbeitet Sitzung 4 weiter,
-dann am besten im Arbeitsbaum `ozzy` (die Funktionen heißen gleich, sie stehen in `werk.ts`, Liste:
-[`werk-schnittplan.md`](werk-schnittplan.md)); baut sie doch in ihrem alten Zweig in `kurven.ts`, wird der Schnitt wiederholt.
+**iPad** (S12, erster Schritt): Stift wie die Maus (schwebend Zeiger), ein Finger dreht, ab dem ersten Stift ändern Finger nichts an der
+Form, zwei Finger zoomen, schwenken und drehen. Unten Knöpfe für die Tasten (nur mit Berührung).
 
-## Phase 3: Form aus der Silhouette (16.11. vormittags): Weg A gebaut
+**liquid drop** (S13, alle zehn Ideen): Menüs, „Maul“ und „Fressen“ wachsen als Tropfen, Regler als Tropfen am Faden, Lasso als Faden,
+neue Kreuzungen verschmelzen, Kante wie Tusche, ⌘Z fließt zurück (nur die Linien), Meldungen tropfen und verdunsten, der Zeiger nimmt die
+Form des Werkzeugs an, Ordnungslinien zwischen den Ansichten, der Ansichts-Tropfen unten rechts.
 
-**Gebaut:** `neuAusUmriss(anker)` im Werk: Silhouette rund aufgeblasen (`rundAusSeite`, so dicht wie die Startform), die Silhouette ist
-die Linie der Mitte (Anker = Punkte, Griffe = Griffe, Ecken, wo die Richtung wechselt), ein Schritt für ⌘Z. Dann rechnet das Werk die
-Haut gleich über die ganze Form aus dieser Linie (`hautNeuRechnen`, wie nach „Kante an/aus“): Die Form ist, was die Rechnung aus der
-Linie macht (Weg A, Florian). Am Kern und an den bestehenden Funktionen des Werks ist nichts geändert. Prüfhaken
-`__kurven.ablage.neuAusUmriss`, Probe `apps/editor/scripts/pruefen/ozzy-silhouette-fenster.mjs`. Ozzy ruft es noch nicht.
+**Linienansichten wie die Studie** (S20): eingerastet und in den drei Feldern liegt die Haut des Werks als weißer Körper in der Anzeige;
+der Umriss ist eine Hülle, die am Rand hervorschaut und verjüngt in die Form läuft; jede Linie wird je Bildpunkt gegen den Körper
+geprüft (davor Tinte, dahinter fein und grün). Beim Aufklappen liegt der Körper auf den Wänden, beim Einrasten kommt er mit der Fahrt.
 
-**Ergebnis** ([Messung](../../progress/ozzy/2026-11-16-silhouette-beweis.md)): Linie genau auf der Zeichnung und auf ihrem Pfad,
-keine umgeschlagenen Dreiecke, die Form steht, Anfassen ohne Zug bewegt nichts (0,000), im ersten Bild des ersten Zugs bewegt sich
-nichts weiter als die Maus (vorher sprang die Haut bis 17,5), nach dem Loslassen kriecht nichts. Offen, aber so rechnet der Kern:
-An den Einbuchtungen der Schwanzwurzel wölbt sich die Haut bis 2,0 über die Linie, und die Rechnung macht Front und Top selbst (der
-Fischschwanz wird so dick wie hoch; [Bild](../../progress/ozzy/2026-11-16-silhouette-ruck.png), rechts). Dünner wird er mit Linien
-in Top und Front. Weil eine einzige Linie die ganze Form bestimmt, formt ein Zug an ihr die ganze Haut mit (12 nach oben: abseits
-bis 4 beim Fisch, 7 bei der Ellipse); mit mehr Linien wird das örtlicher.
+## 3. Wie es gebaut ist
 
-## Phase 3: Ozzy zeigt die Form des Werks (16.11. vormittags, gebaut)
+```
+Blatt (blatt.ts, Verhalten der Linien-Studie)
+   │ ↩: Silhouette
+   ▼
+Werk (src/form/werk.ts, aus kurven.ts geschnitten; Rechnung des Kerns packages/shape, unverändert)
+   │ Haken `anzeige`, geteilter Zustand `G`
+   ├──► werkHaut.ts   glatte Haut des Werks (wie kurven.ts), Daten für die Seifenhaut (src/anfang/haut.ts)
+   ├──► werkBlatt.ts  „Raum“ der Linien-Studie: je Bild alle Linien auf allen Flächen, Greifen, P, Verdecktes, Fluss, Tusche, Lichtring
+   │       └─► Verhalten (src/linien/verhalten.ts) ─► kapseln.ts ─► flüssige Anzeige (src/linien/fluessig.ts)
+   └──► main.ts       Ablauf, Raum, Kamera, Wände, Ansichten, Vier Ansichten, Eingaben, Menü, Haken
+```
 
-**Ablauf:** ↩ legt die Form im Werk an (`werkFormAnlegen` in `main.ts`: Silhouette in Einheiten des Werks, größte halbe Ausdehnung
-150 wie die Startkugel, Mitte der Silhouette im Ursprung; `neuAusUmriss`, rund 110 bis 220 ms). Die Blase der Studie bläst wie bisher
-auf. Nach dem Abriss, sobald das Werk seine Form gerechnet hat, übernimmt die Haut des Werks die Blase: Jeder Rechenpunkt liegt zuerst
-auf der Blase (über das flache Netz der Silhouette, Vorder- oder Rückseite) und schnalzt mit der Feder der Blase (`rund`, gezählt ab
-der Übergabe) in die Form der Rechnung. Rahmen und Schlauch bleiben die der Studie. In der Ruhe zeigen Wände, Felder und die
-eingerastete Ansicht die Linie der Mitte des Werks (Seite, mit Punkten) und den Umriss der Haut des Werks (Front, Top). Punkte der Seite
-zieht das Werk (`werkGreifen`: Auswahl, `zugStarten`, `zugBewegen`, `zugEnde`, der wartende Griff wie im Prüffenster); ⌘Z im Raum geht
-im Werk zurück, nie hinter die Form aus der Silhouette. Beim Luftablassen wird die Linie des Werks die Zeichnung, wenn sie im Raum
-geändert wurde (`werkAufsBlatt`, ein Schritt für ⌘Z des Blatts); an der Haut des Werks zieht nichts (der Pinsel kommt mit Phase 6).
+| Datei (`apps/editor/src/ozzy/`) | Zeilen | Inhalt |
+| --- | --- | --- |
+| `main.ts` | 5 643 | alles Übrige (Gliederung unten) |
+| `werkBlatt.ts` | 1 618 | Linien des Werks auf allen Flächen als ein Netz der Studie; Züge als Handgriffe des Werks in Blattkoordinaten; `StiftWerk` für P; Verdecktes (Tiefenkarte je Achse, `Flaeche.tiefe`); ⌘Z-Fluss, Tusche, Lichtring |
+| `werkHaut.ts` | 586 | glatte Anzeige der Haut (übernommen aus `kurven.ts`: `glattAnlegen`, `glattZeigen`), Umriss je Achse, Muster und Dehnung für die Seifenhaut |
+| `blatt.ts` | 425 | Blatt: P, Freihand, Formen in einem Netz, Silhouette |
+| `ansichtsTropfen.ts` | 297 | Ansichts-Tropfen (S13, Idee 10) |
+| `leiste.ts` | 222 | Werkzeugleiste mit Tropfen |
+| `regler.ts`, `reglerTropfen.ts` | 120, 88 | Feinregler, Regler als Tropfen |
+| `kamera.ts` | 105 | Maßstab und Perspektive getrennt (parallel unter `P_MIN`) |
+| `kapseln.ts` | 85 | Puffer der flüssigen Anzeige (12 Zahlen je Kapsel) |
+| `adresse.ts` | 19 | Schalter des Werks in der Adresse; muss als erstes geladen werden |
+| `ozzy.css`, `../../ozzy.html` | 742, 66 | Aussehen, Seite |
 
-**Teile:** `src/ozzy/adresse.ts` (die Schalter des Werks in der Adresse: `gewichte=geometrie` wie das Standardfenster, `behalten=0`,
-damit Ozzy dem Prüffenster auf demselben Port nichts überschreibt; muss das erste Import in `main.ts` sein), `src/ozzy/werkHaut.ts` (die
-glatte Anzeige der Haut des Werks wie in `kurven.ts` mit `GlattPlan`, dazu Höhe, Seite, Lage im Blatt und Dehnung je Punkt für die
-Seifenhaut, der Umriss je Achse, der Pfad der Linie der Mitte), in `src/anfang/haut.ts` neu `blaseErsetzen(netz)` (ein fremdes Netz
-statt der Blase des Körpers), in `src/ozzy/blatt.ts` neu `silhouetteErsetzen`. Die Haken des Werks setzt `main.ts` (`geometrieNeu`
-ruft `teilungNeu`, `allesZeigen` tut, was die Hülle dort am Werk tut). Am Werk und am Kern ist nichts geändert.
+**Gliederung von `main.ts`:** Werte (51), Teile (95), Werk (345), Bearbeiten über das Werk (381), Raum (466), Größe (559), Netz der Blase
+(575), Form im Werk (643), Ablauf (934), Kamera (1063), Vier Ansichten mit Kistennetz, Feldern und Ecke (1110), Bild (1933), Zeiger (2400),
+Linien des Werks auf den Flächen (2929), Pinsel (3261), Eingaben (3406), Stift und Finger samt Tasten (3864), Leiste und Menü (4720), Maul
+und Pose (4990), Test-Haken `window.__ozzy` (5171, 49 Einträge).
 
-**Belegt** (Probe `apps/editor/scripts/pruefen/ozzy-werk-fenster.mjs`, alle fünf Kriterien; Bild
-[`2026-11-16-werk-in-ozzy.png`](../../progress/ozzy/2026-11-16-werk-in-ozzy.png)): Form angelegt (7 Punkte); Übergabe im Mittel 0,15 px
-neben der Blase (einzelne Punkte bis 12 px, in Bewegung nicht zu sehen); in der Ruhe die Haut des Werks, die Linie der Seite genau auf
-der Zeichnung; Zug in der eingerasteten Seite 40 px nach oben, ein Schritt, ⌘Z genau zurück; keine Fehler. Derselbe Fisch im Prüffenster
-mit demselben Maßstab: dieselbe Haut (914 Punkte, 21 umgeschlagen), derselbe Zug dieselben 27 umgeschlagenen Dreiecke und dieselbe
-Meldung. Ozzy rechnet also wie das Prüffenster.
+**Was Ozzy an den Studien und am Werk ergänzt hat** (Erweiterungen, die Studien laufen weiter):
+- `src/linien/fluessig.ts`: Bereiche (jede Kapsel an ihrem Feld abgeschnitten, bis zu 8 Vierecke, `MAX_BEREICHE`; Art + 8 · Bereich), dunkle Fläche
+  unter dem Körper, weicher Übergang Tinte → Grün (`band`, feine Breite in den Feldern 10 und 11), Körper durchsichtig, in mehreren
+  Ansichten mit eigenem Rechteck und eigener Tiefe (`gl_FragDepth`), Hülle mit Tiefenabstand, Deckung; Umriss des Zeigers.
+- `src/linien/verhalten.ts`: `Raum.bereich`, `Raum.roentgen`, `Raum.gleiche`, `netzErsetzen`, Lasso; `netz.ts`: `LinienProben.fein`.
+- `src/anfang/haut.ts`: `blaseErsetzen` (fremdes Netz), `HautWerte.papier`, `dunkel`, `schnitt`.
+- Werk: `neuAusUmriss` (Phase 3, aus bestehenden Handgriffen), `zugGriffRaum` (S6b, mit seiner Zustimmung); `ablage.ts` erlaubt Punkte
+  ohne Spiegelbild (S11, „Ja, lockern“). Der Schnitt `kurven.ts` → `werk.ts` ist wiederholbar (`scripts/werk-schnitt/schnitt.mjs`).
 
-**Für die Kern-Sitzung** (so rechnet der Kern, Ozzy ändert daran nichts):
-- An der dünnen Schwanzflosse dieses Fischs (Bilderbogen von Stand 0) faltet die Rechnung die Spitze: 21 umgeschlagene Dreiecke nach
-  dem Setzen; bei 1,5 % kleinerem Maßstab sind es 0. Ein Zug am oberen Punkt (35 Einheiten): 27, und „Hier ließ sich das Netz nicht
-  aufräumen (die Haut lief dabei auseinander)“.
-- Ohne vergehende Zeit (54 Bilder hintereinander gerechnet, nur in einer Probe) endete derselbe Zug einmal mit zerrissener Haut (330
-  umgeschlagen, ein Teil 376 Einheiten weit draußen), ohne dass der Schutz gegen das Davonlaufen griff; ⌘Z holte die Form zurück.
-- Mit der Silhouette als einziger Linie wölbt sich die Haut an Einbuchtungen bis 2 Einheiten über die Linie (siehe oben).
+**Schalter in der Adresse:** `?form=<Name>` lädt eine gesicherte Form; `?info=1` zeigt Takt, Finger und Zeiger; `?bild=1` ohne Bedienung;
+`?film=1` ohne Bedienung mit Zeiger; `?fassung=<n>` Fassung der Seifenhaut; `?ohneLinie=0|1` Linie an der Spiegelkante für Proben (sonst
+das Menü, im Browser gemerkt); `?koerper=0` ohne weißen Körper (Vergleich S20); `?fluss=0` ohne die Bewegungen der Anzeige aus S13;
+`?uebergabeMuster=0` Muster an der Übergabe wie vor S2 (Vergleich). `gewichte=geometrie` und `behalten=0` setzt `adresse.ts` selbst.
 
-**Offen in Ozzy (Feinschliff):** ↩ hält 110 bis 220 ms an (`neuAusUmriss` im Fenster; besser schon rechnen, sobald die Silhouette
-geschlossen ist und ruht); das Muster der Seifenhaut wechselt bei der Übergabe leicht (Lage im Blatt und Bezug der Dehnung kommen aus
-der Form des Werks); der Umriss in Front und Top zeigt auch innere Kanten (Verdecktes kommt mit Phase 4); der Raum (Abstand der Wände)
-richtet sich noch nach der Blase der Studie.
+## 4. Was gebaut wurde
 
-## Phase 5.1 und 5.2: Laden und Bearbeiten über das Werk (16.11. mittags, gebaut)
+| Schritt | Was | Commits | Probe, Film |
+| --- | --- | --- | --- |
+| Stand 0 | Blatt, Leiste mit Tropfen, P, Freihand, Formen, Aufblasen, Raum, Kamera, Vier Ansichten, Feinregler | `9eaa9e55` | Bilderbogen |
+| Phase 1 | Werk aus `kurven.ts` gelöst (`werk.ts` + Hülle), verhaltensgleich | `5039cead` | neun Fenster-Proben vorher/nachher |
+| Phase 3 | Form aus der Silhouette (`neuAusUmriss`, Weg A), Ozzy zeigt die Form des Werks, Übergabe Blase → Haut | `6031f4ea`, `4c791657`, `cbc69dd5` | `ozzy-silhouette`, `ozzy-werk` |
+| Phase 5 | Laden; alle Linien auf allen Flächen mit der Bedienung der Studie; P; Maul und Pose; Freihand im Raum | `a627d3c8`, `1e22390e`, `0dacb5f3` | `ozzy-bearbeiten`, `ozzy-maul-pose` |
+| Phase 6 | Pinsel „Ziehen“ über O (ohne Höhenlinien: „too much“) | `38c11b8a`, `6ce2d81e` | `ozzy-pinsel` |
+| S1 | Messen (Haken `messen`, Messblatt) | `e7735389` | `ozzy-messen` (Messung) |
+| S2 | Seifenhaut springt nicht (Netzwechsel, Übergabe beim Aufblasen) | `33b92a7b`, `e0648b55` | |
+| S3 | Tempo, erster Teil (Blase ruht, kein Bild in der Ruhe) | `cd9a20a8` | |
+| S4 | Drehen und Einrasten überall, Wenden mit harter Kante, Rückseite auch im Raum | `95528538` bis `7c0cbbf8` | `ozzy-ansichten`, `wenden-film` |
+| S5 | Lasso | `4608e8b8` | `ozzy-lasso` |
+| S6 | ⌥ beim Drehen, ⇧ kippt, Ring schwenkt | `f89955ce`, `660c2b29`, `c12ee4b6` | `ozzy-richtung` |
+| S7 | Verdecktes grün | `26de280e` | `ozzy-verdeckt` |
+| S8 | P statt L, gerade (gebogen: Kern-Sitzung) | `f7c50fa9` | `ozzy-p-schnitt` |
+| S9 | ohne Linie an der Spiegelkante (Standard, Menü „mit“) | `5759cbcc`, `4b516ce9` | `ozzy-ohne-linie` |
+| S10 | Felder wie die aufgeklappte Ecke, Auffalten als Kistennetz (Standard, abgeschlossen) | `2d2d88a3`, `b83deed4`, `abd0ac6d` | `ozzy-auffalten` |
+| S11 | Sichern (abgeschlossen) | `8bccf479`, `09c9acc5` | `ozzy-sichern` |
+| S12 | iPad, erster Schritt; Server im WLAN | `cdccd93f`, `3fbb1594` | `ozzy-ipad` |
+| S13 | liquid drop, alle zehn Ideen | `870a2b26` bis `094e8bf0` | `ozzy-ansichts-tropfen`, Filme |
+| S14 | Röntgen | `82cb55b8` | `ozzy-roentgen` |
+| S15 | Lichtring | `5c12a6f4` | `ozzy-lichtring` |
+| S16 | Aufklappen von hinten und von unten | `49b02c7d` | `ozzy-auffalten-hinten` |
+| S17 | Zoomen, Schwenken, Wenden je Feld | `6357d173`, `a773f6a4` | `ozzy-feld-zoom`, `ozzy-feld-wenden` |
+| S18, S19 | Tropfen an der Ecke der Einzelansicht, Punkt an der Ecke der Kiste, Rückweg | `dc0430fa` | `ozzy-ecke` |
+| S20 | Linienansichten wie die Studie, nachgeschärft | `f4ce225b`, `68ebfc41` | `ozzy-linien-koerper` |
+| S21 | Kanten gleiten: zwei Fassungen, ganz entfernt | `658bf44c`, `8c39da4c` → `32084f0a` | Filme `2026-11-17-raum-gleiten*.mp4` als Nachweis |
 
-Florian: „mach Phase 5“. Etappen im Plan (Abschnitt 8, Phase 5): 5.1 Laden, 5.2 Linien und Bedienung (gebaut), 5.3 P und Freihand,
-5.4 Maul und Pose (offen).
+**Abnahme:** S10 und S11 sind abgeschlossen; alle übrigen offenen Abnahmen (S4 bis S9, S12 bis S20) sind nach seinem Wort vom 17.11.
+„fürs erste ok“. S12 ist nur im Simulator und in Chromium geprüft, nicht am echten iPad.
 
-**5.1 Laden:** Menü „Ozzy“ (oben links) → „Laden“ listet die Ablage (`wesen/`); oder `ozzy.html?form=<Name>`. `formLaden` in `main.ts`:
-Das Werk lädt die Form wie das Prüffenster (`wesenLaden`, auf das kleine Netz vergröbert), ihre Linie der Mitte kommt als Zeichnung
-aufs Blatt (ohne Linie der Mitte eine Ellipse um ihre Seite), die Form bläst auf wie eine gezeichnete, nach dem Abriss zeigt die
-Seifenhaut die Haut des Werks. `werkForm.geladen` verhindert, dass `werkFormAnlegen` die Form aus der Zeichnung neu anlegt; ändert man
-die Zeichnung auf dem Blatt, entsteht eine neue Form aus ihr (wie bei einer gezeichneten). **Der Raum folgt jetzt der Form des Werks**
-(`werkMasseWelt`, `raumRechnen`; nach einem Handgriff nur, wenn sich die Größe um mehr als das Band `bw.band` ändert): Vorher nahm er
-die Blase, und an „test_kaputt“ lief das Feld Top über.
+## 5. Seine Entscheidungen, und was abgelehnt wurde
 
-**5.2 Linien und Bedienung:** Die Linien-Studie hängt ihre Bedienung über die Schnittstelle `Raum` an ein fremdes Modell (so lief ihre
-3D-Probe `raum.ts`). `src/ozzy/werkBlatt.ts` ist dieser Raum aus dem Werk:
-- **Netz je Bild** (`bauen`): alle Linien des Werks auf allen Flächen, in Bildschirmpunkten. Flächen (`flaechenJetzt` in `main.ts`): die
-  sichtbaren Wände (Front an der Wand x, Top am Boden, Seite an der Wand z), die eingerastete Ansicht (Ebene durch die Mitte der Form)
-  und die drei Felder der Vier Ansichten (beim Auf- und Zuklappen zwischen Wand und Feld gemischt). Je Fläche das Blatt ihrer Achse wie
-  im Prüffenster (`werk.imBlatt`); ein Punkt des Werks ist auf jeder Fläche ein Anker, an einer Kreuzung teilen sich die Linien den
-  Anker, in Front und Top kommt das Spiegelbild dazu (auf der Mittelebene derselbe Anker). Die Linie wird im Blatt als Bézier-Stück
-  abgetastet und dann auf die Fläche gebracht (an der Wand perspektivisch genau); Arten: Linie der Mitte in der Seite Umriss, Kanten
-  Kante (verjüngt), sonst innen. Linien ohne Pfad (noch ohne Griffe) nur zu sehen.
-- **Bedienung:** ein zweites `Verhalten` in `main.ts` (`bearbeiten`, Raum-Modus). Es bekommt die Flächen nur, wenn sie stehen (keine
-  Fahrt, Vier ganz auf oder zu, eingerastet ganz oder gar nicht); dazwischen zeichnet Ozzy dieselben Linien schlicht. Punkt ziehen →
-  `zugStarten`/`zugBewegen`/`zugEnde` mit den Blattkoordinaten der Fläche (der Zug beginnt erst nach 3 px; der wartende Griff wie im
-  Prüffenster), Linie ziehen → der ganze Loop (wie im Prüffenster), mehrere gewählte → zusammen, Richtung (Nadel) → `griffZugStarten`
-  (die Studie dreht im Bildschirm, die Spitze des Griffs geht im Werk dorthin; ⌥ beim Drücken macht den Punkt zur Ecke), Doppelklick auf
-  die Richtung → `eckeUmschalten`, ⌫ → `loeschen` (geteilte Punkte bleiben, wie in der Studie), K → `kanteSetzen`, ⌘Z → im Werk zurück
-  (nie hinter die geladene oder aufgeblasene Form), ⌘A alle, Esc leert die Auswahl. Ins Leere: im Raum (und im Feld des Raums) drehen,
-  eingerastet und in den Feldern ein Rahmen (E2). Die Auswahl gilt je Punkt des Werks auf allen Flächen (`auswahlAbgleichen`).
+**Entschieden:** Name Ozzy, liquid drop; am Rechenkern nichts ändern; Weg A (die Form ist, was der Kern aus der Linie macht; die
+„Formschicht“ ist vom Tisch); Wenden mit ⇧ + Ziehen und einer harten Kante wie in der Blaupause, die Rückseite auch im Raum; „ohne linie
+als standard und ein schalter im menü für mit linie“; das Kistennetz („ja standard“); Punkte ohne Spiegelbild sichern („Ja, lockern“);
+Server im WLAN; alle Ideen zu liquid drop („je mehr desto besser“); „Röntgen zuerst“; „Jedes Feld für sich“; Rückweg ja; Reglerwerte legt
+er später fest; „Die offenen Abnahmen sind für mich fürs erste ok.“
 
-**Belegt:** Probe `apps/editor/scripts/pruefen/ozzy-bearbeiten-fenster.mjs` („test_kaputt“), alle sechs Kriterien: Laden wie im
-Prüffenster (Unterschied 0); Zug an der Wand der Seite genau 30 px wie die Maus, ein Schritt; ⌘Z genau; Zug an der Wand der Front und
-eine Richtung an der Wand der Seite (−89,3° → −108,3° im Blatt, die Gegenseite in der Flucht); **derselbe Ablauf im Prüffenster mit
-denselben Verschiebungen im Blatt gibt dieselben Punkte und Griffe (höchstens 0,000015 daneben) und gleich viele umgeschlagene Dreiecke
-(10 und 10)**; keine Fehler. Die Probe von Phase 3 (`ozzy-werk-fenster.mjs`) hält weiter. Von Hand im Fenster: Rahmen, Zug im Feld der
-Front, K, ⌫ an „strange bird“ (Punkt der Mitte weg, ⌘Z zurück). Bilder: [`2026-11-16-bearbeiten.png`](../../progress/ozzy/2026-11-16-bearbeiten.png)
-(„strange bird“: Raum, Tropfen an der Wand, Nadel eingerastet, Vier Ansichten; `scripts/pruefen/ozzy-bearbeiten-bilder.mjs`).
+**Abgelehnt oder wieder entfernt** (nicht wieder vorschlagen): Wenden als fließende Welle (erste Fassung); schwarze Wände im Raum statt
+der harten Kante; die erste Fassung des Auffaltens („von der dynamik schlechter als vorher“); Höhenlinien über der Blase („too much“);
+S21 Gleiten der Wände und Kanten (beide Fassungen; „Ich glaube da haben wir uns missverstanden“). Aus der Zeit davor: „Form halten“.
 
-**5.3 P (gebaut, 16.11. mittags):** Taste P oder die Leiste (im Raum mit dem Werk ist nur P an), Esc bricht ab oder schaltet P aus,
-↩ schließt, ⌫ nimmt den letzten Punkt zurück. `werkBlatt.ts` ist jetzt auch das `StiftWerk` der Studie: Frei begonnen zeichnet P eine
-**Form** auf der Fläche unter dem Zeiger (Anker im Blatt ihrer Achse; das Werk kennt je Anker nur gleich lange Griffe nach beiden Seiten,
-ein gebrochener Griff wird so gerade gezogen), geschlossen legt das Werk sie auf die Haut (`stiftFertig`; über die Mitte in Front und
-Top, vorn über den Umriss in der Seite wird sie ein Ring rundum: das ist „Loop rundum statt L“). Auf einem Punkt oder einer Linie
-begonnen ist es eine **Abzweigung** (`abzweigBeginnen`, gesetzte Punkte, Ende an Punkt oder Linie: `abzweigungErstellen`). Der Entwurf
-liegt im Netz des Verhaltens (`entNetz`), die Vorschau zum Zeiger ist `faden`. Probe: Kriterien 6 und 7 von `ozzy-bearbeiten-fenster.mjs`
-(Form und Abzweigung wie im Prüffenster, neue Linie höchstens 0,05 daneben, umgeschlagen 0 und 0). **Behoben:** P fängt Linien im
-Umkreis (rund 16 px, wie in der Studie); in einer Form setzte das den Punkt auf die Linie, 0,1 neben die Kreuzung, die das Werk dort
-selbst anlegt (zwei Punkte fast am selben Ort). In einer Form zählt jetzt der Ort der Maus. **Offen:** Freihand im Raum.
+## 6. Prüfen
 
-**5.4 Maul und Pose, Freihand im Raum (gebaut, 16.11. nachmittags):**
-- **Tropfen „Maul“** (`maulUiZeigen` in `main.ts`): Ist ein Ring gewählt (offen, nicht hängend; wie `maulAnlegen` ihn nimmt), hängt unter
-  seinem tiefsten sichtbaren Punkt ein Tropfen. An einer weichen Linie heißt er „Maul formen“ (`maulFormenGewaehlt`: das Werk formt in
-  Schritten, Ozzy sperrt so lange die Eingaben über `eingabenSperren`), an einer harten „Maul“ (`maulAnlegen`: sie ist das Maul). Am
-  einfachsten wählt man die Lippe mit einem Klick auf die Linie; ein Klick auf einen Punkt an einer Kreuzung wählt den Punkt der anderen
-  Linie (der Anker nimmt den ersten Eintrag), dann bleibt der Tropfen weg.
-- **„Fressen“ oben rechts** (sobald es ein Maul gibt): Knopf (`poseBetreten`/`poseVerlassen`) und Regler Maul 0 bis 55°, Kopf 0 bis 40°
-  (`knochenSetzen`; ein Schritt für ⌘Z je Loslassen, wie im Prüffenster). In der Pose rechnet `werkHaut` in `werk.alsAnzeige` (die Haut,
-  wie die Knochen sie drehen), `werkBlatt.bauen` ebenso; das Papier tönt sich leicht grün (`HautWerte.papier`, neu in `anfang/haut.ts`).
-- **Meldungen des Werks** stehen fünf Sekunden in der Hinweiszeile (vorher sah man in Ozzy keine).
-- **Freihand und Formen im Raum** (N, e, E oder die Leiste; Esc bricht ab oder geht zur Auswahl): Der Strich auf der Fläche unter dem
-  Zeiger wird mit Florians Einstellung ein geschlossener Pfad (`strichBeginnen`/`strichPfad`, jetzt aus `blatt.ts` geteilt), Ellipse und
-  Würfel ein Umriss (`aufzugPfad`); `werkBlatt.pfadAufHaut` legt ihn wie eine Form mit P auf die Haut. Ein offener Strich (im Prüffenster:
-  das Maul aus einer Linie) ist in Ozzy noch nicht angeschlossen.
-- **Probe** `apps/editor/scripts/pruefen/ozzy-maul-pose-fenster.mjs`: alle sechs Kriterien (Tropfen und Fressen; Haut der Pose wie im
-  Prüffenster, Unterschied 0, Papier getönt; Zug in der Pose ein Schritt, ⌘Z genau; Fressen aus: Grundform genau, Papier weiß; Freihand
-  an „test_kaputt“; keine Fehler). Bild [`2026-11-16-maul-pose.png`](../../progress/ozzy/2026-11-16-maul-pose.png).
+- Typen: `pnpm --filter @ee/shape typecheck`, `pnpm --filter @ee/editor exec tsc --noEmit -p tsconfig.json`. Lint nur geänderte Dateien:
+  `pnpm --filter @ee/editor exec eslint <dateien>`. Tests des Fensters aus `apps/editor`: `npx vitest run src/form/ src/linien/`.
+- Proben aus `apps/editor`, Ozzy auf 5205: `GPU=1 node scripts/pruefen/ozzy-<name>-fenster.mjs`. Alle 24 nacheinander dauern rund acht
+  Minuten (die längste, `ozzy-ansichten`, eine Minute). Im Vordergrund, nie zusammen mit vitest, währenddessen nichts unter `src` ändern.
+- Stand 17.11. abends: alle 24 halten. Dabei korrigiert: `ozzy-pinsel` lud die Kugel ohne die Linie an der Spiegelkante (seit S9
+  Standard; jetzt `?ohneLinie=0`); `ozzy-silhouette` meldete die bekannte Grenze des Kerns (an Einbuchtungen bis 2,0 über der Linie, seit
+  Weg A) als Fehler und wacht jetzt darüber, dass es nicht mehr wird (höchstens 2,5).
+- Keine Prüfung, sondern Werkzeug: `ozzy-messen.mjs` (Tempo und Ruhe, S1), `ozzy-bearbeiten-bilder.mjs` (Bilder).
+- Filme in echter Geschwindigkeit, Bild für Bild gerechnet (`__ozzy.film(true)`, `__ozzy.bild(1/60)`): `scripts/ozzy/*-film.mjs`
+  (Ansichten wenden, Lasso, Zurück, Zeiger, Meldung, Tusche, Kreuzung, Menü, Regler, Ordnungslinien, Vier, Vier von hinten, Ecke, Raum
+  drehen). Bildvergleiche im Browser (`OffscreenCanvas`), `pngjs` ist nicht installiert.
 
-**Phase 6, der Pinsel „Ziehen“ an der Blase (gebaut, 16.11. nachmittags):** Über der Haut des Werks (im Raum und im Feld des Raums der
-Vier Ansichten; ⇧ dreht stattdessen) zeigt der Hauch der Seifenhaut den Pinsel und ein Tropfen den nächsten Punkt einer Linie im Radius
-(`werkHautTreffen`: Strahl gegen die Haut des Werks, wie gezeigt; `pinselPunkt`). Drücken wählt diesen Punkt und zieht ihn mit dem
-Einfluss O des Werks (`G.oAn`, `G.radius`, `zugStarten`; danach ist O wieder aus) im Blatt der Achse, die der Kamera am meisten zugewandt
-ist, in der Ebene durch den Punkt. Liegt keine Linie im Pinsel, sagt es die Hinweiszeile, und das Ziehen dreht. Radius: 0,4 der größten
-halben Ausdehnung der Form (`pinselNachForm`), [ und ] ändern ihn. Die Höhenlinien beim Ziehen (geplant) hat Florian gleich wieder
-herausnehmen lassen („too much“, nur die Seifenhaut mit dem Regenbogen); `anfang/haut.ts` steht wie vor Phase 6. Probe `apps/editor/scripts/pruefen/ozzy-pinsel-fenster.mjs`
-(gezeichnete Kugel und „teat firefish“, alle Kriterien; derselbe Zug im Prüffenster: dieselben Linien bis 0,00001). Bild
-[`2026-11-16-pinsel.png`](../../progress/ozzy/2026-11-16-pinsel.png). **Grenze (so rechnet der Kern):** Zwischen den Linien wirkt der
-Pinsel nur über den nächsten Punkt einer Linie; Aufblasen, Absaugen und Glätten der Haut selbst sind Arbeit der Kern-Sitzung. An der
-gezeichneten Kugel (nur die Linie der Mitte) fasst er deshalb nur nahe am Umriss.
+## 7. Offen
 
-**Was dabei auffiel (offen):**
-- Eine Wand, die man fast streifend sieht, ist sehr empfindlich: 25 px nach rechts an der Wand der Front verschoben „test_kaputt“ um 70
-  Einheiten in z (so rechnet die Perspektive). Genau arbeitet man eingerastet oder in den Feldern.
-- Wechselt eine Wand beim Drehen unter die halbe Stärke, verschwinden ihre Punkte auf einmal (die Linien werden weich dünner).
-- In der Pose (5.4) zeichnet `werkBlatt` die Stücke als Bézier aus gedrehten Punkten; wo sich der Winkel längs eines Stücks ändert,
-  braucht es die abgetasteten Stücke (`stueckeGezeigt`) wie im Prüffenster.
-- ⌥ während des Drehens (nicht beim Drücken) knickt noch nicht; Kippen aus der Ebene (⇧) gibt es auf den flachen Flächen nicht.
-- Der Ring eines Rings (offene Linie) teilt seine Enden auf der Mittelebene mit dem Spiegelbild: In Front und Top lassen sie sich mit ⌫
-  nicht löschen (die Studie lässt geteilte Punkte stehen), in der Seite schon.
+**In Ozzy, klein:**
+- Die Enden eines Rings lassen sich in Front und Top nicht löschen (in der Seite schon; die Studie lässt geteilte Punkte stehen).
+- Ein Klick auf einen Punkt an einer Kreuzung wählt den Punkt der anderen Linie; dann erscheint der Tropfen „Maul“ nicht.
+- ⌘Z: Die Linien fließen zurück, die Haut springt noch.
+- ↩ an der Silhouette hält 110 bis 220 ms an (`neuAusUmriss`); besser schon rechnen, sobald die Silhouette geschlossen ist und ruht.
+- Der Würfel bläst wie ein Kissen auf (Beweis „Quader“ offen).
+- S16: Drehen und Aufklappen sind zwei Bewegungen mit einer kurzen Delle dazwischen.
+- Die Wände im Raum zeichnen den Umriss noch wie vor S20 (Striche aus `umrissJetzt`, Verdecktes aus der Tiefenkarte), nicht mit dem
+  weißen Körper.
+- An fast streifend gesehenen Wänden ist Ziehen sehr empfindlich (so rechnet die Perspektive); genau arbeitet man eingerastet oder im Feld.
+- Die Probe von Phase 4 an seinen drei Formen (Größe ±2 %, Umriss genau auf der Linie, kein Zoom im Zug, Einpassen mit Ruheband) ist nie
+  als Ganzes gelaufen.
+- Bewusst so gelassen (S21 ruht): Punkte einer Wand verschwinden beim Drehen auf einmal, wenn sie unter halbe Stärke fällt.
 
-## Was noch fehlt (Stand 16.11. nachmittags; Florian: „wenn ich es mir ansehe fehlt noch einiges“)
+**Phase 7:** Tempo am Mac (120 Bilder je Sekunde: Median höchstens 6 ms, 95 % höchstens 8 ms) und auf dem iPhone 16 nie gemessen; seine
+Reglerwerte als Grundwerte; S12 am echten Gerät (Druck und Schweben des Stifts gibt es im Simulator nicht).
 
-**Stand nach dem neuen Plan (16.11. abends):** S1 gemessen, S2 und S3 zum Teil gebaut: Messblatt
-[`2026-11-16-messen.md`](../../progress/ozzy/2026-11-16-messen.md) (Werkzeug `__ozzy.messen`, Probe `ozzy-messen.mjs`). Die Haut
-springt beim Netzwechsel des Werks nicht mehr (Muster und Dehnung weitergereicht, `werkHaut.ts`), an der Übergabe beim Aufblasen nimmt
-sie beides von der Blase; in der Ruhe läuft kein Bild mehr, Drehen und Vier Ansichten 2,5 bis 4 ms je Bild, der Nachklang nach einem
-Handgriff 0,3 ms. Offen in S3: im Zug die Runde des Werks (rund 6 ms, Kern-Sitzung) und die glatte Anzeige (rund 5 ms).
+**Kern-Sitzung** (Ozzy ändert daran nichts): 4c (Rest der halben Haut); Pose Etappe 4 und 5; umgeschlagene Dreiecke an der Mitte und an
+dünnen Spitzen (Fischschwanz: 21 nach dem Setzen); Griff bei Abzweigungen; Punkte ohne Spiegelbild beim Verdichten (Plan des Kerns, A.4);
+P gebogen (S8); Pinsel zwischen den Linien (Aufblasen, Absaugen, Glätten der Haut); an Einbuchtungen rundet die Haut bis 2,0 über die
+Linie; im Zug die Runde des Werks (rund 6 ms); ohne vergehende Zeit kann ein Zug die Haut zerreißen. Plan:
+[`docs/plans/2026-11-12-schnell-glatt-exakt.md`](../../plans/2026-11-12-schnell-glatt-exakt.md).
 
-**S4 gebaut (16.11. abends, bis `7c0cbbf8`):** Drehen in jeder Ansicht, Einrasten in alle sechs (mit den Gegenseiten), Schwung, Wenden
-mit ⇧ in jede Richtung; die Rückseite hinter der harten Kante der Blaupause, eingerastet und im Raum (gegen seine Hausansicht); Front und
-Rückseite der Front getauscht (Florians Idee, so schlägt beim Einrasten nichts mehr um); beim Einrasten schiebt sich ein Blatt durch die
-Blase. Probe `ozzy-ansichten-fenster.mjs`, Film [`2026-11-16-wenden.mp4`](../../progress/ozzy/2026-11-16-wenden.mp4), Bilder
-[`2026-11-16-kante.png`](../../progress/ozzy/2026-11-16-kante.png), [`2026-11-16-kante-raum.png`](../../progress/ozzy/2026-11-16-kante-raum.png);
-sein Urteil steht aus.
+**Eigene Sitzungen, später:** Maul-System (er beschreibt zuerst die Fälle; daran hängt auch das Maul aus einer Linie, das in Ozzy nicht
+angeschlossen ist), Auswahl wie in Blender (Schritt 7), Teile anfügen, Fell, Look des Spiels, Nacht, Backen fürs Spiel (höchstens 8 000
+Dreiecke je Form).
 
-**S5 gebaut (16.11. abends, `4608e8b8`):** Lasso (L, Knopf ganz links): Schlinge als Haarlinie, gewählt schon beim Ziehen, ⇧ dazu, ⌥ weg,
-Tropfen in der Naht, zieht sich zur Auswahl zusammen; an einer Wand umfahren ist im Werk gewählt und überall markiert. Probe
-`ozzy-lasso-fenster.mjs`, Film [`2026-11-16-lasso.mp4`](../../progress/ozzy/2026-11-16-lasso.mp4). 
+## 8. Rückblick: was besser und eleganter ginge
 
-**S6a und S6b gebaut (bis `660c2b29`):** ⌥ knickt auch während des Drehens einer Richtung; ⇧ kippt sie aus der Ebene (Länge und Richtung
-in der Ebene bleiben; im Werk der neue Handgriff `zugGriffRaum`, mit Florians Zustimmung). Probe `ozzy-richtung-fenster.mjs`. **S6c** (`c12ee4b6`):
-Beim Kippen schwenkt der Ring um die Linie des Griffs. Reglerwerte: vorerst die Grundwerte der Studie, Florian legt sie später fest.
+Vorschläge, nach Nutzen geordnet. Nichts davon ist gebaut; alles nur nach seinem Wort, das Aussehen zuerst als Bild oder Film.
 
+1. **Die Proben als eine Reihe** (klein). 24 Proben, jede mit eigenem Kopf (Browser, `ok`, Warten). Eine war seit S9 kaputt, ohne dass
+   es jemand merkte; eine meldete eine bekannte Grenze als Fehler. Vorschlag: gemeinsame Teile in `ozzy-teile.mjs` (wie
+   `form-pose-teile.mjs`) und `ozzy-alle.mjs`, das alle nacheinander im Vordergrund laufen lässt und je Probe eine Zeile meldet. Am Ende
+   jedes Blocks einmal (rund acht Minuten).
+2. **`main.ts` aufteilen** (mittel). 5 643 Zeilen, rund 330 Teile auf oberster Ebene, verbunden über gemeinsame Variablen; jede Sitzung
+   muss sie lesen, das kostet Zeit und Wochenlimit. Vorschlag: mechanisch nach der Gliederung oben schneiden, mit einem Werkzeug wie beim
+   Werk (nichts umschreiben): `raum.ts`, `vier.ts` (Kistennetz, Felder, Ecke), `linienAnzeige.ts` (Linien, Körper, Zeiger), `eingaben.ts`,
+   `menue.ts`, `maulPose.ts`, `haken.ts` (nur unter Playwright oder mit `?haken=1` angehängt); der gemeinsame Zustand als ein Objekt wie `G`
+   im Werk. Sicherheitsnetz: die Proben.
+3. **Eine Abbildung je Fläche** (mittel). Wand, Feld, eingerastete Ansicht und Kistennetz rechnen „Welt → Bild und zurück“ an mehreren
+   Stellen getrennt (`faltPunkt`/`aufWand`, `imFeld`/`ausFeld`, `feldAnsicht`, `wandAnsicht`, `einzelAbbildung`/`blickIn`, `teilerAus`).
+   Zweimal lief das unbemerkt auseinander (der Zug am Tropfen der Kreuzung rechnete seit S10 an zwei Stellen mit der Länge statt der
+   Tiefe; ein Haken las die falsche Wand). Vorschlag: ein Typ `Abbildung` (hin, zurück, Matrix für die Anzeige) je Fläche, den Linien,
+   Körper, Greifen und Haarlinien gemeinsam benutzen. Kein neues Verhalten, nur weniger Stellen, an denen es auseinanderlaufen kann.
+4. **Eine Art Bewegung für alle Fahrten** (mittel). Heute hat jede Bewegung ihren eigenen Zustand und ihre eigene Kurve (`ansichtFahrt`,
+   `vierFahrt`, `vorDreh` mit `vierWartet`, `vierZuWartet`, `feldWendenZug`, `eckZug`, `einzelUebergang`, `schwenkZug`, dazu acht Stellen,
+   die je Bild weich nachziehen). Darum fühlen sich Übergänge je nach Stelle etwas anders an, und Ketten wie „erst vor die Kiste drehen,
+   dann aufklappen“ (S16) werden zwei Bewegungen mit einer Delle. Vorschlag: ein kleines `fahrt.ts` (von, nach, Dauer, Kurve, Einblenden
+   in eine laufende Fahrt) und Fahrten, die sich verketten lassen; zuerst als Film an S16 („in einer gleichmäßigen Bewegung“).
+5. **Ein Weg für Verdecktes** (Look). Heute zwei: die grobe Tiefenkarte je Achse (S7: Wände des Raums, Greifen) und der Körper mit Tiefe je
+   Bildpunkt (S20: eingerastet, Felder). Vorschlag: den Körper auch auf die Wände des Raums legen (wie schon beim Aufklappen), die
+   Tiefenkarte nur noch fürs Greifen. Dann sieht jede Ansicht aus wie die Studie, und der alte Umriss aus Strichen fällt ganz weg (in den
+   flachen Ansichten sank die Rechenzeit damit von 5,8 auf 2,1 ms je Bild). Zuerst Vergleichsbild an seiner Form im Raum.
+6. **Tempo messen, bevor neue Anzeige dazukommt** (Phase 7). Das Werkzeug gibt es (`__ozzy.messen`, `ozzy-messen.mjs`); gemessen wurde
+   zuletzt am 16.11., vor S13 bis S20.
+7. **`werkHaut.ts` nicht als Kopie pflegen.** Es ist die glatte Anzeige aus `kurven.ts`; ändert die Kern-Sitzung sie dort, läuft Ozzy
+   auseinander. Wie beim Werk mit dem Schnitt erzeugen oder in ein gemeinsames Modul ziehen, abgestimmt mit der Kern-Sitzung.
+8. **Puffer der Kapseln.** In „Art“ stecken drei Dinge (Schicht + 4 · Form + 8 · Bereich), für ein viertes ist kaum Platz. Merkmale als
+   eigene ganze Zahl und die Belegung der 12 Zahlen an einer Stelle beschreiben (`kapseln.ts`).
+9. **Schalter an einer Stelle.** Sie liegen in `adresse.ts`, `main.ts` und `werkBlatt.ts`; alle nach `adresse.ts` (die Liste steht oben).
 
-**S7 gebaut (`26de280e`):** Verdecktes grün und fein auf allen Flächen (Tiefenkarte der Haut je Achse, `werkBlatt.karteFuer`, `hinten`,
-`verdeckteProben`; `Flaeche.vorn` aus `ebene` und `feldFlaeche`); Probe `ozzy-verdeckt-fenster.mjs`. 
+**Was sich bewährt hat** und so bleiben sollte: der wiederholbare Schnitt des Werks (Ozzy rechnet nachweislich wie das Prüffenster); die
+Studien über ihre Schnittstellen benutzt statt kopiert (`Raum`, `Koerper`, `HautWerte`); Proben, die Ozzy gegen das Prüffenster
+vergleichen; je Schritt ein Film in echter Geschwindigkeit, Bild für Bild gerechnet.
 
-**S8 gebaut, gerade (`f7c50fa9`):** P, zwei Klicks im Leeren über die Form hinweg, ↩: ein Loop rundum wie L (`werk.loopSchneiden`). Gebogen
-kann es der Kern nicht (nur ebene Schnitte): Punkt für die Kern-Sitzung, Ozzy meldet es. Probe `ozzy-p-schnitt-fenster.mjs`. 
+## 9. Fallen
 
-**S9 zur Wahl (`5759cbcc`):** `?ohneLinie=1` startet ohne Linie an der Spiegelkante; die Haut steht, der erste Loop mit P lässt sie
-stehen. Seit Florians Entscheidung ist „ohne“ der Standard; im Menü „Linie an der Spiegelkante“ (gemerkt im Browser); ohne Linie der Mitte zeigt die Seite den Umriss der Haut (`mitteDa`). 
-
-**S10 (abgeschlossen):** Die Felder liegen wie die aufgeklappte Ecke (Front oben links, Seite oben rechts, Top unter der Seite, Raum unten
-links). Tab faltet die Ecke auf (Florian: „ja standard“, kein Schalter mehr); die erste Fassung fand er wackelig („von der dynamik
-schlechter als vorher“). Die Fassung als Kistennetz: `faltRechnen` (eigene Kamera `kamFalt`, Anfang `lageRaum`/`projRaum`; die Mitte der Wand der Seite gleitet gerade in ihr
-Feld), `aufWand`/`faltPunkt` (Front und Boden klappen um ihre Kanten, die Zeichnung gleitet auf der Wand, `kF`/`uF`/`kT`/`uT` halten
-ihre Mitte im Bild auf gerader Bahn), `faltKanten` (Ränder als Haarlinien, Teiler auf den Kanten). Probe `ozzy-auffalten-fenster.mjs`,
-Filme `2026-11-16-vier-kistennetz*.mp4` (echt und dreifach langsamer; `ZEITLUPE=3` im Filmskript).
-
-**S11 (abgeschlossen):** Sichern im Menü (Feld über „Laden“, Name vorbelegt, ↩, Esc), ein fremder Name, den es schon gibt, erst beim zweiten
-Druck („Überschreiben“), ⌘S unter dem Namen der Form (`formSichern`, `sichernKurz`; dieselbe Ablage und dasselbe Format wie das
-Prüffenster, am Werk nichts geändert). Probe `ozzy-sichern-fenster.mjs`, 1 bis 5 halten (neu geladen genau gleich). Gefunden: Nach
-manchen Zügen hat ein Punkt der Haut keinen Spiegelpartner; die Prüfung der Ablage lehnte das beim Sichern und Laden ab, im Prüffenster
-genauso. Florian: „Ja, lockern“ → `ablage.ts` erlaubt Punkte ohne Spiegelbild (−1). Die Ursache im Verdichten steht im Plan des Kerns
-(A.4). Prüfhaken `standPruefen`.
-
-**S12 (erster Schritt):** Stift = Zeiger (wie die Maus, schwebend Zeiger und Anschwellen); ein Finger dreht, ab dem ersten Stift ändern
-Finger nichts an der Form; zwei Finger zoomen zu den Fingern hin, schwenken (neu: `nutzer.schwenkX/Y`, ein Versatz der Projektion in
-`kameraSetzen`, vergeht in den Vier Ansichten, „Einpassen“/Pos1 setzt zurück) und drehen verdreht um die Hochachse (wie ein Teller).
-Die Weiche hört in der Fangphase am Fenster zu (`finger`, `geste`, `stiftGesehen`), Safaris eigene Gesten sind abgeschaltet. Knöpfe für
-die Tasten (`#tasten`, nur mit Berührung, lösen die Taste selbst aus). Probe `ozzy-ipad-fenster.mjs`; `?info=1` zeigt Finger und Zeiger.
-Florian: „Ja, im WLAN“ → der Eintrag `ozzy` startet Vite mit `--host`; am iPad `http://<Adresse des Macs im WLAN>:5205/ozzy.html` (mit
-der Adresse, nicht dem Namen `….local`: den lässt Vite nicht zu). Offen: sein Urteil am Gerät.
-
-**S13 (liquid drop, begonnen 17.11.):** Reihenfolge im Plan. Idee 6 gebaut: ⌘Z fließt zurück (`werkBlatt.rueckfluss`/`fliessen`, nur
-Anzeige, 0,22 s; `?fluss=0` aus); Film `scripts/ozzy/zurueck-film.mjs` mit Messung, Filme `2026-11-17-zurueck-*.mp4`. Die Haut springt
-dabei noch (eigener Schritt, wenn er es will). Idee 8 gebaut: der Zeiger in Form des Werkzeugs (`zeigerArtJetzt`, `zeigerUmrissVon`,
-`zeigerGestaltSchritt`; in `fluessig.ts` der Umriss `zeigerUmriss` mit `vieleck` im Shader, 64 Punkte); Film `scripts/ozzy/zeiger-film.mjs`.
-Idee 7 gebaut: Meldungen tropfen und verdunsten (`hinweisSetzen`, CSS); Idee 5 gebaut: Kante wie Tusche (`tuscheMerken`,
-`tuscheFliessen`, nur die Breiten der Anzeige); Filme `scripts/ozzy/meldung-film.mjs`, `tusche-film.mjs` (mit Messung). Nächste Ideen:
-Idee 4 gebaut: neue Kreuzungen verschmelzen (`kreuzungenNeu`, `verschmelzenTropfen`; `werkBlatt.neueForm` beim Laden). Idee 1 gebaut:
-Menü, „Maul“ und „Fressen“ als Tropfen (`reglerZeigen` mit `reglerOffen`, `fressenQuellen`; Proben prüfen `#marke[aria-expanded]` statt
-`#regler[hidden]`, das Menü schließt sich einen Augenblick lang). Idee 2 gebaut: Regler als Tropfen (`reglerTropfen.ts`, CSS `@property`;
-Feder in Teilschritten, sonst wird sie bei ruckelnden Bildern unstet). Idee 9 gebaut: Ordnungslinien (`ordnungslinien()`). Idee 10 gebaut:
-der Ansichts-Tropfen unten rechts (`ansichtsTropfen.ts`; Drehen von Hand in `drehenBeginnen`/`drehenZiehen`/`drehenLos`); Probe
-`ozzy-ansichts-tropfen-fenster.mjs`. Damit ist S13 durch; Florians Urteil zu allen zehn steht aus.
-
-**S14 Röntgen:** ⌥ halten (iPad: Knopf „Röntgen“) macht Verdecktes greifbar (`Raum.roentgen` in `verhalten.ts`, `kandidat`: das Nähere
-gewinnt), die Haut wird durchsichtiger, das Grün kräftiger, verdeckte Linien breiter. Probe `ozzy-roentgen-fenster.mjs`.
-
-**S15 Lichtring:** P im Leeren quer über die Form zeigt vor ↩, wo der Loop rundum laufen wird (`werkBlatt.lichtring`, gerechnet mit
-`loopAusSchnitt` wie ↩, nur gelesen; `lichtringZeichnen`). Probe `ozzy-lichtring-fenster.mjs`. `?fluss=0` schaltet alle Bewegungen der
-Anzeige aus S13 ab. Nebenbei: Der Schalter „Linie an der Spiegelkante“ stand im Raster der Regler zerdrückt (S9), jetzt in einer Zeile.
-
-**Rückmeldung vom 17.11. (wörtlich im Plan „weiter“):** dreimal Tippen fällt weg, „Pose ohne Regler“ gehört zur Maul-Sitzung; neu sind
-S16 bis S19 (Plan). **S16 gebaut** (Aufklappen von hinten): Steht die Kamera nicht vorn rechts oben (dort liegen die Wände so, wie die
-Kiste aufklappt), dreht Tab erst den Raum dorthin (`vorDreh`, Ziel `vorderseiteZiel`, das Aufklappen wartet in `vierWarten`, bis die
-Kamera `VORN_AB` vor allen drei Wänden steht); das Schwarz wird beim Auf- und Zuklappen mit der Kamera des Aufklappens gerechnet, „vorn“
-dreht dabei zur Seite (`hintenRechnen`). Selbst drehen bricht das Warten ab. Probe `ozzy-auffalten-hinten-fenster.mjs` (von hinten, von
-unten), die Probe zu S10 hält von vorn. Film [`2026-11-17-vier-hinten-vorher-nachher.mp4`](../../progress/ozzy/2026-11-17-vier-hinten-vorher-nachher.mp4)
-(links vorher, rechts nachher, zweifach langsamer). Zwischen Drehen und Aufklappen wird es kurz langsamer (zwei Bewegungen). **S17 gebaut**
-(„Jedes Feld für sich“): S17a Zoomen und Schwenken je Feld (`feldBlick`; Rad über dem Feld, Leertaste + Ziehen, zwei Finger; Pos1 setzt
-zurück), die Anzeige schneidet jede Kapsel an ihrem Feld ab (`fluessig.ts`: Bereiche, Art + 8 · Bereich; `Raum.bereich` in der
-Linien-Studie), Auf- und Zuklappen landen im gezoomten Feld; S17b Wenden je Feld (`feldWende`, ⇧ + Ziehen, ⇧ + Doppelklick, Kante und
-Rückseite wie in der Vollansicht, Tab wendet erst zurück). Proben `ozzy-feld-zoom-fenster.mjs`, `ozzy-feld-wenden-fenster.mjs`; Bilder
-`2026-11-17-feld-zoom.png`, `2026-11-17-feld-wenden.png`. **S18, S19 und Rückweg gebaut:** ein Zug an der Kreuzung (`eckZug`,
-`kreuzFrei`, `blickIn`, `faltAnker`): Tropfen an der Ecke der Einzelansicht ins Bild ziehen (Haarlinie = Rand des erlaubten Bereichs),
-Punkt an der Ecke der Kiste im Raum (Kreis als Haarlinie, die Kiste klappt mit dem Zug auf), der Tropfen der Vier Ansichten in eine Ecke
-(Seite, Front, Top rasten ein, oben rechts klappt die Kiste zu); Doppelklick wie Tab. Probe `ozzy-ecke-fenster.mjs`, Film
-`2026-11-17-ecke.mp4`. Nebenbei: Der Zug am Tropfen der Kreuzung rechnete waagrecht mit der Länge statt der Tiefe (seit S10), behoben.
-**S20 gebaut:** In den eingerasteten Ansichten und den drei Feldern liegt die Haut des Werks als weißer Körper in der Anzeige wie in der
-Studie (Umriss als Hülle, Verdecktes je Bildpunkt; `linienKoerper`, `feldAnsicht`, `Flaeche.tiefe`; in `fluessig.ts` durchsichtig, mehrere
-Ansichten, eigene Tiefe, Deckung). Probe `ozzy-linien-koerper-fenster.mjs`, Bilder `2026-11-17-linien-koerper*.png`; `?koerper=0` zum
-Vergleich. Nachgeschärft: Hülle hinter der Haut (keine kurzen Striche), weicher Übergang je Bildpunkt (Tinte verjüngt sich ins Grün,
-Breite aus derselben Tiefe), Körper auf den Wänden beim Aufklappen und mit der Fahrt beim Einrasten (Film `2026-11-17-linien-koerper-fahrt.mp4`). **S21 (Kanten gleiten) ganz wieder entfernt** (Florian, 17.11.: „mach das mit dem
-gleiten bitte komplett wieder raus. Ich glaube da haben wir uns missverstanden.“): Zwei Fassungen trafen es nicht (die Wände fuhren durch
-die Form; dann blieben die Zeichnungen an den Wänden und nur die Eckkanten glitten). Der Code steht wieder auf dem Stand vor S21
-(`68ebfc41`), die Probe ist gelöscht, die Filme `2026-11-17-raum-gleiten*.mp4` bleiben als Nachweis; Stand danach
-`2026-11-17-raum-ohne-gleiten.mp4`. Nicht neu bauen, bevor er beschrieben hat, was er meinte. Er danach: „lassen wir es erstmal so. Es
-gefällt mir gut.“ Seine Bilder zu S20:
-`docs/look/ozzy/2026-11-17-florian-linien-*.png`. Offen in Ozzy sonst: Kneifen zum Auffalten (geht in S19 auf), Würfel mit ebenen Flächen, Haut
-gleitet bei ⌘Z.
-
-**Seine Rückmeldung danach und der Plan, wie es weitergeht (freigegeben, mit seinen Entscheidungen):**
-[`docs/plans/2026-11-16-ozzy-weiter.md`](../../plans/2026-11-16-ozzy-weiter.md): Schritte S1 bis S13 (Messen, Seifenhaut gleitet, Tempo,
-Drehen und Einrasten in jeder Ansicht mit Wenden, Lasso L, Richtungen und Animationen wie in der Studie, Verdecktes grün, P statt L,
-Start ohne Linie, Auffalten der Ecke, Sichern, iPad mit Stift, liquid drop), Ideen und sechs Fragen. Die Liste unten bleibt als
-Bestand.
-
-Phasen 0 bis 6 sind gebaut (Phase 2 und 4 als Teil von Stand 0); im Plan bleibt nur **Phase 7** (Feinschliff, Tempo, iPhone). Offen ist
-aber mehr, nach seinem Auftrag (Plan Abschnitt 3, A1 bis A18) geordnet. Was er beim Ansehen vermisst, entscheidet die Reihenfolge.
-
-- **Arbeiten können:** **Sichern** im Menü fehlt (Vorsicht: `wesen/` sind Florians Formen, nie ohne Frage überschreiben); ⌘Z endet an der
-  Grenze Blatt/Raum (im Raum nie hinter die aufgeblasene oder geladene Form).
-- **Blase (A9):** nur „Ziehen“ über die Linien (O). Aufblasen, Absaugen und Glätten der Haut selbst brauchen eine Änderung der Rechnung:
-  Kern-Sitzung. Die Gruppe der Pinsel in der Leiste (E3) kommt, wenn es mehr als einen gibt.
-- **Aufblasen (A4, Phase 3):** ↩ hält 110 bis 220 ms an; das Muster der Seifenhaut springt bei der Übergabe leicht; der Würfel ist nur ein
-  Rechteck (bläst wie ein Kissen auf; Beweis „Quader“ offen).
-- **Ansichten (A8, A10 bis A12, A15, Phase 4):** die Probe von Phase 4 an seinen drei Formen (Größe bleibt ±2 %, Umriss genau auf der
-  Linie, kein Zoom im Zug, Einpassen mit Ruheband) ist nie gelaufen; Front und Top zeigen im Umriss auch innere Kanten (Verdecktes);
-  an fast streifend gesehenen Wänden ist Ziehen sehr empfindlich; Punkte einer Wand verschwinden beim Drehen auf einmal.
-- **Bearbeiten (A7, A9, Phase 5):** in der Pose die Linien im Übergang Kiefer–Schädel als Bézier aus gedrehten Punkten (Prüffenster:
-  abgetastet, `stueckeGezeigt`); das Maul aus einer Linie (offener Strich); ⌥ knickt nur beim Drücken; Enden eines Rings in Front und Top
-  nicht löschbar; ein Klick auf einen Kreuzungspunkt wählt den Punkt der anderen Linie (der Tropfen „Maul“ kommt dann nicht).
-- **liquid drop (A17, A18):** Tropfen „Maul“, „Fressen“, Laden-Liste und Hinweiszeile sind schlicht; Übergänge und Wechsel noch weicher
-  (A15); die Linien innen (0,25 px) an den Wänden sind sehr fein.
-- **Phase 7:** seine gewählten Werte als Grundwerte, Tempo am Mac (120 Bilder je Sekunde nie gemessen) und auf dem iPhone 16, Bedienung
-  mit Fingern, Aufräumen.
-- **Nicht in Ozzy (Plan Abschnitt 11):** Maul-System (eigene Sitzung), Auswahl wie in Blender (Schritt 7), Teile anfügen, Fell, Look des
-  Spiels, Nacht, Backen fürs Spiel. **Kern-Sitzung:** 4c (Rest der halben Haut), Pose Etappe 4 und 5, umgeschlagene Dreiecke an der
-  Mitte und an dünnen Spitzen, Griff bei Abzweigungen, Pinsel zwischen den Linien.
-
-## Bedienung
-
-Blatt: P, N (Freihand), e (Ellipse), E (Würfel), V oder Esc (Auswahl); ↩ schließt eine Linie mit P, auf einer geschlossenen
-Silhouette bläst ↩ auf; ⌫ letzter Punkt oder Auswahl; ⌘Z. Raum: Ziehen ins Leere dreht, in jeder Ansicht, auch eingerastet (nahe einer der
-sechs Ansichten rastet es ein, mit Schwung); ⇧ + Ziehen in einer eingerasteten Ansicht dreht das Blatt in jede Richtung (losgelassen
-zurück oder, über die Hälfte, auf die Rückseite: dunkel), ⇧ + Doppelklick wendet zurück, ⇧ + 1/3/7 die Ansicht von hinten; L Lasso (Schlinge wählt, ⇧ dazu, ⌥ weg, V zurück); Punkte der
-Seite ziehen (an der Wand, im Feld, eingerastet; das Werk rechnet), seit 5.2 alle Linien auf allen Flächen: Punkte, Linien und
-Richtungen ziehen, Doppelklick auf eine Richtung Knick ↔ rund, ⌥ beim Drücken knickt, ins Leere eingerastet und in den Feldern ein
-Rahmen, K Kante, ⌫ löscht die Auswahl (ohne Auswahl Luft ablassen), Esc leert die Auswahl, ⌘A alle; Menü „Ozzy“ → Laden; ⌘Z im Werk zurück, 1 Seite, 3 Front, 7 Top, 0 Raum (tippen
-bleibt, halten schaut kurz hin), Tab Vier Ansichten, Rad zoomt (Pos1 passt ein), Leertaste noch einmal aufblasen, Esc zurück (Vier →
-Raum → Blatt), ⌫ Luft ablassen, M Fassung. Prüfhaken `window.__ozzy` (u. a. `werk()`, `seitenLinie()`, `uebergabePruefen()`,
-`werkGrenzen()`).
-
-## Fallen
-
-- **Vorschaufenster:** Es ist hochkant und schmal; für Florians Sicht auf 1440 × 900 stellen (`resize_window`), danach zurück.
-- **Rückseite (S4):** `hintenRechnen` (main.ts) gibt je Bild die harte Kante der Blaupause als Fläche (`kanteMitHeim`, wie `sigmaWerte`
-  in `/editor`), gegen „vorn“ (`heimJetzt`: eingerastet die Vorderseite der Ansicht, im Raum seine Hausansicht, bei Fahrten gedreht).
-  Haut (`HautWerte.dunkel`, Grund in `kanteFarbe`, Spiegelung wie in der Nacht) und Linien (`Szene.dunkel`) zeichnen sie selbst (bis zu
-  vier Flächen sind möglich); Marke und Hinweis über `body.wende-an`. Beim Einrasten wandert die Zeichnung der Wand zur Mitte
-  (`blattAchsen`, `flaechenJetzt`), und `schnittRechnen` schiebt ein Blatt durch die Blase (`HautWerte.schnitt`). Die Front schaut seit
-  `49df2266` nach −x (`VORN`, `ANSICHT_WINKEL`, `imFeld`/`ausFeld`). Fallen: Der Zeichner der Haut löscht vor jedem `render`
-  (`autoClear`), für den Grund ist es dort kurz aus; `HautWerte.hinten` ist der Anteil der Rückseite der Blase, nicht die dunkle Fläche.
-  Filme Bild für Bild: `__ozzy.film(true)`, `__ozzy.bild(1/60)` (`scripts/ozzy/wenden-film.mjs`); Haken `dunkelBei(x, y)`.
-- **Ein Griff kann warten:** Nach dem Laden rechnet das Werk im Hintergrund noch die Zerlegung; so lange wartet ein Griff an einer Richtung
-  (`werk.griffWartet()`, `G.gegriffen`, bis zu `GRIFF_WARTEN_MS` = 4 s) und holt dann nach. Proben warten auf `werk().griffWartet`
-  falsch, bevor sie drehen. Ohne ⌥ rastet eine Richtung nahe ihrer Flucht ein: kleine Drehungen (20° auf 12 px) bleiben ohne Wirkung.
-- **Lasso (S5):** in der Linien-Studie (`verhalten.ts`: `lassoDruecken`, `lasso`, `lassoAus`, `punkteImLasso` in `auswahl.ts`); Ozzy ruft
-  es mit dem Werkzeug `lasso` vor allen anderen Griffen (auch vor dem Wenden mit ⇧). Die Auswahl im Netz ist je Fläche; damit ein an
-  einer Wand umfahrener Punkt im Werk gewählt bleibt, nimmt das Lasso alle Punkte desselben Werkpunkts mit (`Raum.gleiche`, in
-  `werkBlatt.ts`). Sonst nimmt der Abgleich (`auswahlAbgleichen`) ihn wieder weg, weil seine Bilder an den anderen Wänden außerhalb liegen.
-- **Wechsel zwischen zwei Ansichten:** `ansichtFahrt.senke` senkt `flach` unterwegs (bis 0,7 bei 90°), `vonAnsicht` merkt die Ansicht,
-  aus der die Fahrt kommt (ihre Wand wandert zurück). Ohne die Senke war mitten in der Drehung nichts zu sehen.
-- **Auf dem Blatt liest die Anzeige „innen“ als „Umriss“** (`Blatt`, `Proxy` auf die Werte), damit P-Linien 1 px breit sind; die
-  Feinregler wirken trotzdem.
-- **`Verhalten.netzErsetzen`** (neu in `src/linien/verhalten.ts`) legt den Stand davor auf den Stapel für ⌘Z; Freihand, Formen und
-  Mülleimer gehen darüber.
-- **Kamera:** Unter `P_MIN` (0,004) wechselt `Kamera.stellen` auf die parallele Kamera, sie steht dann weit hinten (die Seifenhaut
-  rechnet ihre Spiegelung mit `cameraPosition`). Nach `stellen` nie `updateProjectionMatrix` von außen rufen, wenn die Vier Ansichten
-  die Projektion schon verkleinert haben (`kameraSetzen` multipliziert sie vorn an).
-- **Welt = CSS-Pixel des Blatts**, Mitte des Fensters im Ursprung (wie in der Aufblas-Studie): Ändert sich die Fenstergröße nach dem
-  Aufblasen, verschiebt sich die Zuordnung Blatt ↔ Welt (wie dort). Das Werk rechnet in eigenen Einheiten: Welt = Werk / f + Mitte
-  (`werkHaut.f`, `werkHaut.mitte`).
-- **Das Werk rechnet im Takt der Bilder und im Hintergrund.** Proben nie im Schnelldurchlauf (`vorspulen`), solange das Werk rechnet
-  oder gleich danach gezogen wird: Ohne vergehende Zeit endete ein Zug einmal anders (zerrissene Haut). Ozzys Schleife läuft, solange
-  das Werk beschäftigt ist (`werkBeschaeftigt`).
-- **Erst zeigen, dann drücken:** Das Verhalten der Studie greift nur, was im Bild davor unter dem Zeiger hing (`haengt`). Proben fahren
-  den Zeiger hin, warten rund 300 ms und drücken dann; ohne Warten zieht eingerastet ein Rahmen statt des Punkts.
-- **`werkBlatt.bauen` läuft jedes Bild** (alle Linien auf allen Flächen); die Nummern der Anker gelten nur, solange sich der Aufbau
-  nicht ändert (`struktur`). Wer Nummern über Bilder hinweg hält (Auswahl), gleicht über `auswahlAbgleichen` ab.
-- **Die Nummern der Punkte im Werk folgen nicht der Zeichnung** (die Linie der Mitte beginnt, wo der Schnitt beginnt). Punkte über
-  `seitenLinie().punkte` suchen.
-- **`werkHaut.ts` ist die glatte Anzeige aus `kurven.ts` (`glattAnlegen`, `glattZeigen`).** Ändert die Kern-Sitzung sie dort, hier
-  nachziehen.
-- Die Fallen der Studien gelten weiter: `docs/look/anfang/UEBERGABE.md`, `docs/look/linien/UEBERGABE.md`; die des Kerns:
+- **Vorschaufenster:** hochkant und schmal; für Florians Sicht auf 1440 × 900 stellen (`resize_window`), danach zurück.
+- **Das Werk rechnet im Takt der Bilder und im Hintergrund.** Proben nie im Schnelldurchlauf, solange es rechnet; ohne vergehende Zeit
+  endete ein Zug einmal anders. Proben warten auf `bearbeiten().beschaeftigt` falsch und auf `werk().griffWartet` falsch (nach dem Laden
+  wartet ein Griff bis zu 4 s auf die Zerlegung).
+- **Erst zeigen, dann drücken:** Das Verhalten greift nur, was im Bild davor unter dem Zeiger hing. Zeiger hin, rund 300 ms warten,
+  drücken; sonst zieht eingerastet ein Rahmen. Jede Geste zuerst mit einzelnen Klicks prüfen.
+- **`werkBlatt.bauen` läuft jedes Bild;** Nummern der Anker gelten nur, solange sich der Aufbau nicht ändert (`auswahlAbgleichen`). Die
+  Nummern der Punkte im Werk folgen nicht der Zeichnung: Punkte über `seitenLinie().punkte` oder `werkLinienDaten` suchen.
+- **Welt = CSS-Pixel des Blatts,** Mitte des Fensters im Ursprung; das Werk rechnet in eigenen Einheiten (Welt = Werk / f + Mitte,
+  `werkHaut.f`, `werkHaut.mitte`).
+- **Kamera:** Unter `P_MIN` wird sie parallel und steht weit hinten. Nach `stellen` nie `updateProjectionMatrix` von außen rufen, wenn
+  die Vier Ansichten die Projektion schon verändert haben.
+- **Rückseite:** `hintenRechnen` gibt je Bild die harte Kante als Fläche (gegen „vorn“: eingerastet die Vorderseite, im Raum die
+  Hausansicht); beim Auf- und Zuklappen mit der Kamera des Aufklappens. Die Front schaut nach −x (`VORN`, seit `49df2266`).
+- **Kistennetz:** Die Teiler stehen bei Tiefe / (Länge + Tiefe), nicht Länge / (Länge + Tiefe) (der Fehler stand seit S10 an zwei Stellen).
+  Der Haken `flaecheHin` nimmt in den Vier Ansichten das Feld, nicht die Wand, die zum Blatt wird.
+- **Verdecktes (S7, S20):** Die Schicht aus der Tiefenkarte bleibt am Punkt, auch wenn der Körper die Farbe je Bildpunkt entscheidet:
+  Röntgen und Greifen brauchen sie (auf 0 gesetzt brach das Greifen hinter der Form).
+- **Bereiche (S17):** höchstens 8 Vierecke (`MAX_BEREICHE` in `fluessig.ts`, je Viereck vier Halbebenen); ein Feld, das gewendet ist,
+  bekommt seine dunkle Fläche unter dem Körper (sonst deckt das Dunkel den Körper zu).
+- **Rad:** Ereignisse melden ganze Pixel; Proben rechnen mit gerundeten Orten.
+- **Doppelklick auf einen Tropfen:** Der erste Klick darf keine Fahrt beginnen, die den zweiten sperrt (ein ungezogener Tropfen endet
+  sofort).
+- **Proben, die die Linie an der Spiegelkante brauchen,** laden mit `?ohneLinie=0` (sonst merkt sich der Browser die Wahl aus dem Menü).
+- **Auf dem Blatt liest die Anzeige „innen“ als „Umriss“** (damit P-Linien 1 px breit sind). `Verhalten.netzErsetzen` legt den Stand
+  davor auf den Stapel für ⌘Z.
+- **Lasso:** Die Auswahl im Netz ist je Fläche; damit ein an einer Wand umfahrener Punkt gewählt bleibt, nimmt das Lasso alle Punkte
+  desselben Werkpunkts mit (`Raum.gleiche`).
+- **Wechsel zwischen zwei Ansichten:** `ansichtFahrt.senke` senkt `flach` unterwegs (ohne war mitten in der Drehung nichts zu sehen).
+- Die Fallen der Studien: `docs/look/anfang/UEBERGABE.md`, `docs/look/linien/UEBERGABE.md`; die des Kerns und des Werks:
   `apps/editor/CLAUDE.md`.
+
+## 10. Aufgeräumt am 17.11. abends
+
+- Code: unbenutzte Variablen in `main.ts` entfernt (`const k = koerper!` in zwei Funktionen, `void`-Reste); kein Verhalten geändert.
+- Proben: `ozzy-pinsel` und `ozzy-silhouette` korrigiert (siehe Abschnitt 6); die Probe zu S21 ist gelöscht; jede Probe und jedes
+  Filmskript ruft nur Haken, die es gibt.
+- Zwischendateien der Sitzung gelöscht; keine liegengebliebenen Bilder im Temp-Ordner, kein Browser im Hintergrund. Den Server der
+  Linien-Studie (5199), den diese Sitzung am 16.11. gestartet hatte, beendet (Eintrag `linien-look` startet ihn wieder). Ozzy (5205) läuft
+  weiter. Die übrigen Server (5194 sein Fenster, 5197, 5203, 5207 Maskottchen, 4173) gehören anderen Sitzungen.
+- Der Arbeitsbaum ist sauber. Im Hauptordner liegt `assets/fonts/Hippie Movement.otf` ungesichert; sie stammt nicht aus dieser Sitzung.
+- Diese Übergabe neu geordnet, die alte ins Archiv (`docs/verlauf/`).

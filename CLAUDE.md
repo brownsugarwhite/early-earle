@@ -5,20 +5,20 @@ Verweise. Verlauf, Messwerte und Florians Rückmeldungen gehören in `docs/` (Pl
 unten **ersetzen**, nicht anhängen. Der vollständige Verlauf bis zum 12.11.2026 liegt in
 [`docs/verlauf/2026-11-12-projektgedaechtnis-verlauf.md`](docs/verlauf/2026-11-12-projektgedaechtnis-verlauf.md).
 
-## Stand (17.11.2026)
+## Stand (17.11.2026, abends)
 
 - **Projekt:** levelbasiertes 2048 im Earle-Stil. Prototyp 1 ist abgeschlossen (Archiv-Zweig `prototyp-1`,
   [`docs/prototyp/README.md`](docs/prototyp/README.md)). Die Produktion läuft in vier Teilen (Map, Spielfeld, Charaktere, UI).
   **Gearbeitet wird am Teil Charaktere: dem Editor für die Formen.** Das alte Spiel (Brett, Karte, `packages/genome`,
   `render/src/creature`) bleibt unangetastet.
 - **Der Editor heißt Ozzy** (Florian, 16.11.), das Designsystem **liquid drop**: die Studien (Aufblasen, Linien, Ecke/Werft,
-  Bleistift) mit dem vollen Kern von Sitzung 4. Seite `apps/editor/ozzy.html`, Code `apps/editor/src/ozzy/`, Plan
-  [`docs/plans/2026-11-16-ozzy.md`](docs/plans/2026-11-16-ozzy.md), **Stand: [`docs/look/ozzy/UEBERGABE.md`](docs/look/ozzy/UEBERGABE.md).**
-  Gebaut: Stand 0, Phase 1 (Werk `src/form/werk.ts`), 3 (Form aus der Silhouette, Weg A), 5 (Laden, alle Linien auf allen Flächen mit
-  der Bedienung der Linien-Studie über `werkBlatt.ts`, P, Freihand, Maul, Pose), 6 (Pinsel „Ziehen“ über O; keine Höhenlinien über der
-  Blase). **Plan weiter** [`docs/plans/2026-11-16-ozzy-weiter.md`](docs/plans/2026-11-16-ozzy-weiter.md): S1 bis S9 gebaut (S8 gerade, gebogen ist Kern-Sitzung; S9: ohne Linie an der Spiegelkante ist Standard, im Menü mit); S10 Auffalten als Kistennetz (Standard), S11 Sichern im Menü und ⌘S; S12 erster Schritt (Stift, Finger, Knöpfe) gebaut, sein Urteil am iPad offen; S13 liquid drop: alle zehn Ideen gebaut, sein Urteil offen; S14 bis S20 gebaut (Röntgen, Lichtring, Aufklappen von hinten, Zoomen/Wenden je Feld, Tropfen an den Ecken mit Rückweg, weißer Körper wie die Studie); S21 (Kanten gleiten) ganz entfernt: missverstanden; danach er: „lassen wir es erstmal so. Es gefällt mir gut.“ **Florian
-  (16.11.): Am Rechenkern ändert Ozzy nichts und optimiert nichts, das macht die Kern-Sitzung; kein Unterschied zwischen seinen Kurven
-  und dem Modell wie in Sitzung 4.**
+  Bleistift) mit dem vollen Kern von Sitzung 4. Seite `apps/editor/ozzy.html`, Code `apps/editor/src/ozzy/`, Pläne
+  [`docs/plans/2026-11-16-ozzy.md`](docs/plans/2026-11-16-ozzy.md) und [`…-ozzy-weiter.md`](docs/plans/2026-11-16-ozzy-weiter.md).
+  **Stand, Bedienung, Aufbau, Offenes und Vorschläge: [`docs/look/ozzy/UEBERGABE.md`](docs/look/ozzy/UEBERGABE.md) (17.11. abends).**
+  Gebaut: Stand 0, Phasen 1 bis 6, S1 bis S20; alle 24 Proben halten. Florian (17.11.): „Die offenen Abnahmen sind für mich fürs
+  erste ok.“ S21 (Kanten gleiten) ganz entfernt, missverstanden; ruht. Offen: kleine Punkte in Ozzy, Phase 7 (Tempo am Mac und
+  iPhone, seine Reglerwerte), Punkte der Kern-Sitzung. **Florian (16.11.): Am Rechenkern ändert Ozzy nichts und optimiert nichts,
+  das macht die Kern-Sitzung; kein Unterschied zwischen seinen Kurven und dem Modell wie in Sitzung 4.**
 - **Der Kern** („Kurven als Wahrheit“, seit 05.11.): Linien (Loops mit Bézier-Punkten und Griffen, Kreuzungen, Kante an/aus) sind
   die Wahrheit; darunter ein dichtes Dreiecksnetz, dessen Haut aus den Linien gerechnet wird; gespiegelt; Maul; Fressen-Pose.
   Rechenkern `packages/shape/src/dicht/` und `loeser/`. Das alte Fenster `kurven.html?gewichte=geometrie` (`src/form/kurven.ts`)

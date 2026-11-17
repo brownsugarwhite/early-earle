@@ -573,6 +573,11 @@ er es beschrieben hat. Florian danach (17.11.): „lassen wir es erstmal so. Es 
 
 Reihenfolge: S17, S18 und S19 (mit dem Rückweg), dann S20 und S21.
 
+**Abnahme und Rückblick (17.11. abends, Florian):** „Ok, du hast hier sehr gute arbeit geleistet. […] Die offenen abnahmen sind für mich
+fürs erste ok.“ Damit gelten S4 bis S9 und S12 bis S20 fürs Erste als abgenommen (S10 und S11 waren es schon). Alles nachgeprüft (Typen,
+Lint, Tests des Fensters, alle 24 Proben von Ozzy), aufgeräumt; Stand, Offenes und Vorschläge, was im Nachhinein besser und eleganter
+ginge: [`docs/look/ozzy/UEBERGABE.md`](../look/ozzy/UEBERGABE.md), Abschnitte 7 und 8.
+
 
 ## 5. Ideen für mehr liquid drop
 

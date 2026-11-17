@@ -1447,12 +1447,10 @@ function einzelAbbildung(a: 'seite' | 'front' | 'top'): { cx: number; cy: number
   const vp = vpJetzt();
   const C = new Vector3(e.cx, e.cy, 0);
   const [x0, y0] = projizieren(C, vp);
-  const [xu, yu] = projizieren(C.clone().add(a === 'front' ? new Vector3(0, 0, -1) : new Vector3(1, 0, 0)), vp);
-  const [xv, yv] = projizieren(C.clone().add(a === 'top' ? new Vector3(0, 0, -1) : new Vector3(0, 1, 0)), vp);
+  const [xu] = projizieren(C.clone().add(a === 'front' ? new Vector3(0, 0, -1) : new Vector3(1, 0, 0)), vp);
+  const [, yv] = projizieren(C.clone().add(a === 'top' ? new Vector3(0, 0, -1) : new Vector3(0, 1, 0)), vp);
   const su = (xu - x0) / D;
   const sv = -(yv - y0) / D;
-  void yu;
-  void xv;
   return { cx: x0 / D, cy: y0 / D, s: Math.max(Math.abs(su), Math.abs(sv)), phi: (a === 'top' ? sv : su) < 0 ? Math.PI : 0 };
 }
 
@@ -2815,7 +2813,6 @@ function tiefeDerKamera(): (p: { x: number; y: number; z: number }) => number {
 }
 
 function linienDerAnsicht(vp: Matrix4): void {
-  const k = koerper!;
   const blick = new Vector3();
   kam.aktiv.getWorldDirection(blick);
   const achse = ansicht === 'seite' ? new Vector3(0, 0, -1) : ansicht === 'front' ? new Vector3(1, 0, 0) : new Vector3(0, -1, 0);
@@ -2842,7 +2839,6 @@ function linienDerAnsicht(vp: Matrix4): void {
       K.punkt(px, py, linienWerte.punktRadius * D * gross * s);
     }
   } else if (ansicht === 'front' || ansicht === 'top' || (ansicht === 'seite' && werkGezeigt)) {
-    void k;
     const seg = umrissJetzt(ansicht === 'front' ? 0 : ansicht === 'top' ? 1 : 2);
     const g = K.neueGruppe();
     for (let i = 0; i < seg.length; i += 6) {
@@ -2859,7 +2855,6 @@ function linienDerAnsicht(vp: Matrix4): void {
  * Kreuzung.
  */
 function felderLinien(f: Falt, m: Moment): void {
-  const k = koerper!;
   const { F, s4, sw } = f;
   const v = f.e;
   const r0 = (linienWerte.umriss / 2) * D;
@@ -2899,7 +2894,6 @@ function felderLinien(f: Falt, m: Moment): void {
         K.punkt(px, py, linienWerte.punktRadius * D * gross * breite(achse, true));
       }
     } else if (n !== 'seite' || werkGezeigt) {
-      void k;
       const seg = umrissJetzt(achse);
       const g = K.neueGruppe();
       for (let i = 0; i < seg.length; i += 6) {

@@ -124,8 +124,8 @@ async function pinselProbe(name, mitPruefung) {
   return mitPruefung ? vergleich : null;
 }
 
-// ---------- eine gezeichnete Kugel ----------
-await oz.goto(ozzyUrl);
+// ---------- eine gezeichnete Kugel (mit der Linie an der Spiegelkante: seit S9 ist ohne Standard, der Pinsel braucht einen Punkt) ----------
+await oz.goto(`${ozzyUrl}?ohneLinie=0`);
 await oz.waitForFunction(() => !!window.__ozzy);
 await oz.evaluate(() => document.fonts.ready);
 await oz.evaluate(() => {
